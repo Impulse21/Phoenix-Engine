@@ -20,6 +20,8 @@ include(CMakeDependentOption)
 add_subdirectory(ThirdParty)
 
 include(PhxEngineCore.cmake)
+include(PhxEngineRHI.cmake)
+include(PhxEngineApp.cmake)
 
 # -- Add Apps ---
 add_subdirectory(TestBedApp)

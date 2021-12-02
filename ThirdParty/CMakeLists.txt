@@ -15,3 +15,8 @@ option(GLFW_INSTALL "" OFF)
 add_subdirectory(glfw)
 
 set_target_properties(glfw PROPERTIES FOLDER ${third_party_folder})
+
+
+add_subdirectory(DirectX-Headers)
+
+set_target_properties(DirectX-Guids PROPERTIES FOLDER ${third_party_folder})
