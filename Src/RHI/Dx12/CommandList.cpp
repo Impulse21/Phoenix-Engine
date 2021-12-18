@@ -172,6 +172,44 @@ void CommandList::ClearDepthStencilTexture(
     this->m_trackedData->Resource.push_back(depthStencil);
 }
 
+void PhxEngine::RHI::Dx12::CommandList::WriteTexture(TextureHandle texture, uint32_t firstSubresource, size_t numSubresources, SubresourceData* pSubresourceData)
+{
+    Texture* textureImpl = SafeCast<Texture*>(texture.Get());
+    UINT64 requiredSize = GetRequiredIntermediateSize(textureImpl->D3D12Resource, firstSubresource, numSubresources);
+
+    RefCountPtr<ID3D12Resource> intermediateResource;
+    ThrowIfFailed(
+        this->m_graphicsDevice.GetD3D12Device2()->CreateCommittedResource(
+            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+            D3D12_HEAP_FLAG_NONE,
+            &CD3DX12_RESOURCE_DESC::Buffer(requiredSize),
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&intermediateResource)));
+
+
+    std::vector<D3D12_SUBRESOURCE_DATA> subresources(numSubresources);
+    for (int i = 0; i < numSubresources; ++i)
+    {
+        auto& subresource = subresources[i];
+        subresource.RowPitch = pSubresourceData[i].rowPitch;
+        subresource.SlicePitch = pSubresourceData[i].slicePitch;
+        subresource.pData = pSubresourceData[i].pData;
+    }
+
+    UpdateSubresources(
+        this->m_d3d12CommandList,
+        textureImpl->D3D12Resource,
+        intermediateResource,
+        0,
+        firstSubresource,
+        subresources.size(),
+        subresources.data());
+
+    this->m_trackedData->Resource.push_back(texture);
+    this->m_trackedData->NativeResources.push_back(intermediateResource);
+}
+
 std::shared_ptr<TrackedResources> PhxEngine::RHI::Dx12::CommandList::Executed(uint64_t fenceValue)
 {
     this->m_commandAlloatorPool.DiscardAllocator(fenceValue, this->m_activeD3D12CommandAllocator);

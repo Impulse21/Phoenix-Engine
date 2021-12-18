@@ -11,6 +11,7 @@ namespace PhxEngine::RHI::Dx12
 	public:
 		BindlessDescriptorTable(DescriptorHeapAllocation&& allocation)
 			: m_allocation(std::move(allocation))
+			, m_descriptorIndexPool(m_allocation.GetNumHandles())
 		{}
 
 		// TODO Free allocation
@@ -32,7 +33,6 @@ namespace PhxEngine::RHI::Dx12
 		class DescriptorIndexPool
 		{
 		public:
-			DescriptorIndexPool() = default;
 			DescriptorIndexPool(size_t numIndices)
 			{
 				this->m_elements.resize(numIndices);

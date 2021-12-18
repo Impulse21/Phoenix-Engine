@@ -1,42 +1,10 @@
+#include "TestBedApp.h"
+
 #include <PhxEngine/Core/Log.h>
-
-#include <PhxEngine/App/Application.h>
-#include <PhxEngine/RHI/PhxRHI.h>
-#include <PhxEngine/RHI/PhxRHI_Dx12.h>
-
 #include <string>
 
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
-
-class TestBedApp : public ApplicationBase
-{
-public:
-    void LoadContent() override;
-    void RenderScene() override;
-
-private:
-    RHI::TextureHandle m_depthBuffer;
-};
-
-int main()
-{
-    PhxEngine::LogSystem::Initialize();
-
-    // Creating Device
-    LOG_CORE_INFO("Creating DX12 Graphics Device");
-    auto graphicsDevice = std::unique_ptr<IGraphicsDevice>(Dx12::Factory::CreateDevice());
-
-    {
-        auto app = std::make_unique<TestBedApp>();
-        app->Initialize(graphicsDevice.get());
-        app->Run();
-        app->Shutdown();
-    }
-
-    LOG_CORE_INFO("Shutting down");
-    return 0;
-}
 
 void TestBedApp::LoadContent()
 {
@@ -52,6 +20,51 @@ void TestBedApp::LoadContent()
         desc.OptmizedClearValue = std::make_optional<Color>(clearValue);
 
         this->m_depthBuffer = this->GetGraphicsDevice()->CreateDepthStencil(desc);
+    }
+
+    // Create Pipeline State
+    {
+        ShaderDesc shaderDesc = {};
+        shaderDesc.DebugName = "PBR Vertex Shader";
+        shaderDesc.ShaderType = EShaderType::Vertex;
+        ShaderHandle vs = this->GetGraphicsDevice()->CreateShader(shaderDesc, nullptr, 0); // TOOD:
+
+        shaderDesc.DebugName = "PBR Pixel Shader";
+        shaderDesc.ShaderType = EShaderType::Pixel;
+        ShaderHandle ps = this->GetGraphicsDevice()->CreateShader(shaderDesc, nullptr, 0);
+
+        // Create Input Layout
+        std::vector<VertexAttributeDesc> vertexAttributeDescs =
+        {
+            { "POSITION", EFormat::RGB32_FLOAT, 1, 0, 0, sizeof(float) * 3, false},
+            { "NORMAL", EFormat::RGB32_FLOAT, 1, 0, 0, sizeof(float) * 3, false},
+            { "COLOUR", EFormat::RGB32_FLOAT, 1, 0, 0, sizeof(float) * 3, false},
+            { "TEXCOORD", EFormat::RG32_FLOAT, 1, 0, 0, sizeof(float) * 2, false},
+            { "TANGENT", EFormat::RGBA32_FLOAT, 1, 0, 0, sizeof(float) * 4, false},
+        };
+
+        InputLayoutHandle inputLayout = this->GetGraphicsDevice()->CreateInputLayout(vertexAttributeDescs.data(), vertexAttributeDescs.size());
+
+        GraphicsPSODesc psoDesc = {};
+        psoDesc.VertexShader = vs;
+        psoDesc.PixelShader = ps;
+        psoDesc.InputLayout = inputLayout;
+        psoDesc.DsvFormat = this->m_depthBuffer->GetDesc().Format;
+        psoDesc.RtvFormats.push_back(this->GetGraphicsDevice()->GetBackBuffer()->GetDesc().Format);
+
+        ShaderParameterLayout shaderParameterLayout = {};
+        shaderParameterLayout.AddPushConstantParmaeter(0, 0);
+        shaderParameterLayout.AddSRVParameter(0);
+        shaderParameterLayout.AddStaticSampler(
+            0,
+            true, true, true,
+            SamplerAddressMode::Wrap);
+        shaderParameterLayout.AddStaticSampler(
+            1,
+            true, true, true,
+            SamplerAddressMode::Clamp);
+
+        this->m_geomtryPassPso = this->GetGraphicsDevice()->CreateGraphicsPSOHandle(psoDesc);
     }
 }
 

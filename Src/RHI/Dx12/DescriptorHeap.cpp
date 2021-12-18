@@ -75,7 +75,7 @@ std::shared_ptr<DescriptorHeapAllocationPage> CpuDescriptorHeap::CreateAllocatio
 		this->m_heapDesc,
 		this->m_numDescriptorsPerHeap);
 
-	this->m_heapPool.emplace_back(newPage);
+	this->m_heapPool.push_back(newPage);
 	this->m_availableHeaps.insert(this->m_heapPool.size() - 1);
 
 	return newPage;

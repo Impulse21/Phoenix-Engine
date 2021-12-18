@@ -21,6 +21,7 @@ add_subdirectory(ThirdParty)
 
 include(PhxEngineCore.cmake)
 include(PhxEngineRHI.cmake)
+include(PhxEngineRenderer.cmake)
 include(PhxEngineApp.cmake)
 
 # -- Add Apps ---

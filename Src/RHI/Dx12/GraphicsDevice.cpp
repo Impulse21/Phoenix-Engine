@@ -4,12 +4,232 @@
 #include <PhxEngine/Core/Defines.h>
 #include <PhxEngine/Core/Asserts.h>
 
+#include "BiindlessDescriptorTable.h"
 #include "CommandList.h"
 using namespace PhxEngine::RHI;
+using namespace PhxEngine::RHI::Dx12;
 
 static const GUID RenderdocUUID = { 0xa7aa6116, 0x9c8d, 0x4bba, { 0x90, 0x83, 0xb4, 0xd8, 0x16, 0xb7, 0x1b, 0x78 } };
 static const GUID PixUUID = { 0x9f251514, 0x9d4d, 0x4902, { 0x9d, 0x60, 0x18, 0x98, 0x8a, 0xb7, 0xd4, 0xb5 } };
 
+
+DXGI_FORMAT ConvertFormat(EFormat format)
+{
+	return Dx12::GetDxgiFormatMapping(format).srvFormat;
+}
+
+D3D12_SHADER_VISIBILITY ConvertShaderStage(EShaderType s)
+{
+	switch (s)  // NOLINT(clang-diagnostic-switch-enum)
+	{
+	case EShaderType::Vertex:
+		return D3D12_SHADER_VISIBILITY_VERTEX;
+	case EShaderType::Hull:
+		return D3D12_SHADER_VISIBILITY_HULL;
+	case EShaderType::Domain:
+		return D3D12_SHADER_VISIBILITY_DOMAIN;
+	case EShaderType::Geometry:
+		return D3D12_SHADER_VISIBILITY_GEOMETRY;
+	case EShaderType::Pixel:
+		return D3D12_SHADER_VISIBILITY_PIXEL;
+	case EShaderType::Amplification:
+		return D3D12_SHADER_VISIBILITY_AMPLIFICATION;
+	case EShaderType::Mesh:
+		return D3D12_SHADER_VISIBILITY_MESH;
+
+	default:
+		// catch-all case - actually some of the bitfield combinations are unrepresentable in DX12
+		return D3D12_SHADER_VISIBILITY_ALL;
+	}
+}
+
+D3D12_BLEND ConvertBlendValue(BlendFactor value)
+{
+	switch (value)
+	{
+	case BlendFactor::Zero:
+		return D3D12_BLEND_ZERO;
+	case BlendFactor::One:
+		return D3D12_BLEND_ONE;
+	case BlendFactor::SrcColor:
+		return D3D12_BLEND_SRC_COLOR;
+	case BlendFactor::InvSrcColor:
+		return D3D12_BLEND_INV_SRC_COLOR;
+	case BlendFactor::SrcAlpha:
+		return D3D12_BLEND_SRC_ALPHA;
+	case BlendFactor::InvSrcAlpha:
+		return D3D12_BLEND_INV_SRC_ALPHA;
+	case BlendFactor::DstAlpha:
+		return D3D12_BLEND_DEST_ALPHA;
+	case BlendFactor::InvDstAlpha:
+		return D3D12_BLEND_INV_DEST_ALPHA;
+	case BlendFactor::DstColor:
+		return D3D12_BLEND_DEST_COLOR;
+	case BlendFactor::InvDstColor:
+		return D3D12_BLEND_INV_DEST_COLOR;
+	case BlendFactor::SrcAlphaSaturate:
+		return D3D12_BLEND_SRC_ALPHA_SAT;
+	case BlendFactor::ConstantColor:
+		return D3D12_BLEND_BLEND_FACTOR;
+	case BlendFactor::InvConstantColor:
+		return D3D12_BLEND_INV_BLEND_FACTOR;
+	case BlendFactor::Src1Color:
+		return D3D12_BLEND_SRC1_COLOR;
+	case BlendFactor::InvSrc1Color:
+		return D3D12_BLEND_INV_SRC1_COLOR;
+	case BlendFactor::Src1Alpha:
+		return D3D12_BLEND_SRC1_ALPHA;
+	case BlendFactor::InvSrc1Alpha:
+		return D3D12_BLEND_INV_SRC1_ALPHA;
+	default:
+		return D3D12_BLEND_ZERO;
+	}
+}
+
+D3D12_BLEND_OP ConvertBlendOp(EBlendOp value)
+{
+	switch (value)
+	{
+	case EBlendOp::Add:
+		return D3D12_BLEND_OP_ADD;
+	case EBlendOp::Subrtact:
+		return D3D12_BLEND_OP_SUBTRACT;
+	case EBlendOp::ReverseSubtract:
+		return D3D12_BLEND_OP_REV_SUBTRACT;
+	case EBlendOp::Min:
+		return D3D12_BLEND_OP_MIN;
+	case EBlendOp::Max:
+		return D3D12_BLEND_OP_MAX;
+	default:
+		return D3D12_BLEND_OP_ADD;
+	}
+}
+
+D3D12_STENCIL_OP ConvertStencilOp(StencilOp value)
+{
+	switch (value)
+	{
+	case StencilOp::Keep:
+		return D3D12_STENCIL_OP_KEEP;
+	case StencilOp::Zero:
+		return D3D12_STENCIL_OP_ZERO;
+	case StencilOp::Replace:
+		return D3D12_STENCIL_OP_REPLACE;
+	case StencilOp::IncrementAndClamp:
+		return D3D12_STENCIL_OP_INCR_SAT;
+	case StencilOp::DecrementAndClamp:
+		return D3D12_STENCIL_OP_DECR_SAT;
+	case StencilOp::Invert:
+		return D3D12_STENCIL_OP_INVERT;
+	case StencilOp::IncrementAndWrap:
+		return D3D12_STENCIL_OP_INCR;
+	case StencilOp::DecrementAndWrap:
+		return D3D12_STENCIL_OP_DECR;
+	default:
+		return D3D12_STENCIL_OP_KEEP;
+	}
+}
+
+D3D12_COMPARISON_FUNC ConvertComparisonFunc(ComparisonFunc value)
+{
+	switch (value)
+	{
+	case ComparisonFunc::Never:
+		return D3D12_COMPARISON_FUNC_NEVER;
+	case ComparisonFunc::Less:
+		return D3D12_COMPARISON_FUNC_LESS;
+	case ComparisonFunc::Equal:
+		return D3D12_COMPARISON_FUNC_EQUAL;
+	case ComparisonFunc::LessOrEqual:
+		return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+	case ComparisonFunc::Greater:
+		return D3D12_COMPARISON_FUNC_GREATER;
+	case ComparisonFunc::NotEqual:
+		return D3D12_COMPARISON_FUNC_NOT_EQUAL;
+	case ComparisonFunc::GreaterOrEqual:
+		return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+	case ComparisonFunc::Always:
+		return D3D12_COMPARISON_FUNC_ALWAYS;
+	default:
+		return D3D12_COMPARISON_FUNC_NEVER;
+	}
+}
+D3D_PRIMITIVE_TOPOLOGY ConvertPrimitiveType(PrimitiveType pt, uint32_t controlPoints)
+{
+	switch (pt)
+	{
+	case PrimitiveType::PointList:
+		return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+	case PrimitiveType::LineList:
+		return D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
+	case PrimitiveType::TriangleList:
+		return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	case PrimitiveType::TriangleStrip:
+		return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+	case PrimitiveType::TriangleFan:
+		return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+	case PrimitiveType::TriangleListWithAdjacency:
+		return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ;
+	case PrimitiveType::TriangleStripWithAdjacency:
+		return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ;
+	case PrimitiveType::PatchList:
+		if (controlPoints == 0 || controlPoints > 32)
+		{
+			return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+		}
+		return D3D_PRIMITIVE_TOPOLOGY(D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST + (controlPoints - 1));
+	default:
+		return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+	}
+}
+
+D3D12_TEXTURE_ADDRESS_MODE ConvertSamplerAddressMode(SamplerAddressMode mode)
+{
+	switch (mode)
+	{
+	case SamplerAddressMode::Clamp:
+		return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	case SamplerAddressMode::Wrap:
+		return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	case SamplerAddressMode::Border:
+		return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	case SamplerAddressMode::Mirror:
+		return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+	case SamplerAddressMode::MirrorOnce:
+		return D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
+	default:
+		return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	}
+}
+
+UINT ConvertSamplerReductionType(SamplerReductionType reductionType)
+{
+	switch (reductionType)
+	{
+	case SamplerReductionType::Standard:
+		return D3D12_FILTER_REDUCTION_TYPE_STANDARD;
+	case SamplerReductionType::Comparison:
+		return D3D12_FILTER_REDUCTION_TYPE_COMPARISON;
+	case SamplerReductionType::Minimum:
+		return D3D12_FILTER_REDUCTION_TYPE_MINIMUM;
+	case SamplerReductionType::Maximum:
+		return D3D12_FILTER_REDUCTION_TYPE_MAXIMUM;
+	default:
+		return D3D12_FILTER_REDUCTION_TYPE_STANDARD;
+	}
+}
+
+namespace PhxEngine::RHI::Dx12
+{
+	struct RootSignature : public RefCounter<IRootSignature>
+	{
+		RefCountPtr<ID3D12RootSignature> D3D12RootSignature;
+		uint32_t PushConstantByteSize;
+		uint32_t RootParameterIndex = ~0u;
+		bool BindBindlessTables = false;
+		ShaderParameterLayout ShaderParameterLayout = {};
+	};
+}
 
 PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
 	: m_frameCount(0)
@@ -65,6 +285,10 @@ PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
 			100,
 			D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
 			D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
+
+
+	this->m_bindlessResourceDescriptorTable = std::make_unique<BindlessDescriptorTable>(
+		this->GetResourceGpuHeap()->Allocate(NUM_BINDLESS_RESOURCES));
 }
 
 PhxEngine::RHI::Dx12::GraphicsDevice::~GraphicsDevice()
@@ -148,6 +372,75 @@ CommandListHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateCommandList(Comman
 	return CommandListHandle::Create(commandListImpl.release());
 }
 
+ShaderHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateShader(ShaderDesc const& desc, const void* binary, size_t binarySize)
+{
+	auto shaderImpl = std::make_unique<Shader>(desc, binary, binarySize);
+	return ShaderHandle::Create(shaderImpl.release());
+}
+
+InputLayoutHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount)
+{
+	auto inputLayoutImpl = std::make_unique<InputLayout>();
+	inputLayoutImpl->Attributes.resize(attributeCount);
+
+	for (uint32_t index = 0; index < attributeCount; index++)
+	{
+		VertexAttributeDesc& attr = inputLayoutImpl->Attributes[index];
+
+		// Copy the description to get a stable name pointer in desc
+		attr = desc[index];
+
+		PHX_ASSERT(attr.ArraySize > 0);
+
+		const DxgiFormatMapping& formatMapping = GetDxgiFormatMapping(attr.Format);
+		const FormatInfo& formatInfo = GetFormatInfo(attr.Format);
+
+		for (uint32_t semanticIndex = 0; semanticIndex < attr.ArraySize; semanticIndex++)
+		{
+			D3D12_INPUT_ELEMENT_DESC desc;
+
+			desc.SemanticName = attr.Name.c_str();
+			desc.AlignedByteOffset = attr.Offset + semanticIndex * formatInfo.BytesPerBlock;
+			desc.Format = formatMapping.srvFormat;
+			desc.InputSlot = attr.BufferIndex;
+			desc.SemanticIndex = semanticIndex;
+
+			if (attr.IsInstanced)
+			{
+				desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
+				desc.InstanceDataStepRate = 1;
+			}
+			else
+			{
+				desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+				desc.InstanceDataStepRate = 0;
+			}
+
+			inputLayoutImpl->InputElements.push_back(desc);
+		}
+
+		if (inputLayoutImpl->ElementStrides.find(attr.BufferIndex) == inputLayoutImpl->ElementStrides.end())
+		{
+			inputLayoutImpl->ElementStrides[attr.BufferIndex] = attr.ElementStride;
+		}
+		else 
+		{
+			PHX_ASSERT(inputLayoutImpl->ElementStrides[attr.BufferIndex] == attr.ElementStride);
+		}
+	}
+
+	return InputLayoutHandle::Create(inputLayoutImpl.release());
+}
+
+GraphicsPSOHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateGraphicsPSOHandle(GraphicsPSODesc const& desc)
+{
+	std::unique_ptr<GraphicsPSO> psoImpl = std::make_unique<GraphicsPSO>();
+	psoImpl->RootSignature = this->CreateRootSignature(desc);
+	psoImpl->D3D12PipelineState = this->CreateD3D12PipelineState(desc);
+
+	return GraphicsPSOHandle::Create(psoImpl.release());
+}
+
 TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencil(TextureDesc const& desc)
 {
 	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
@@ -196,6 +489,77 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencil(TextureDe
 		&dsvDesc,
 		textureImpl->DsvAllocation.GetCpuHandle());
 
+	return TextureHandle::Create(textureImpl.release());
+}
+
+TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTexture(TextureDesc const& desc)
+{
+	auto& dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
+
+	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
+	if (desc.OptmizedClearValue.has_value())
+	{
+		d3d12OptimizedClearValue.Format = dxgiFormatMapping.rtvFormat;
+		d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.value().R;
+		d3d12OptimizedClearValue.DepthStencil.Stencil = desc.OptmizedClearValue.value().G;
+	}
+
+	RefCountPtr<ID3D12Resource> d3d12Resource;
+	ThrowIfFailed(
+		this->GetD3D12Device2()->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+			D3D12_HEAP_FLAG_NONE,
+			&CD3DX12_RESOURCE_DESC::Tex2D(
+				dxgiFormatMapping.srvFormat,
+				desc.Width,
+				desc.Height,
+				desc.ArraySize,
+				desc.MipLevels,
+				1,
+				0,
+				D3D12_RESOURCE_FLAG_NONE),
+			D3D12_RESOURCE_STATE_COMMON,
+			desc.OptmizedClearValue.has_value() ? &d3d12OptimizedClearValue : nullptr,
+			IID_PPV_ARGS(&d3d12Resource)));
+
+	// Create SRV
+	auto textureImpl = std::make_unique<Texture>();
+	textureImpl->Desc = desc;
+	textureImpl->D3D12Resource = d3d12Resource;
+	textureImpl->SrvAllocation = this->GetResourceCpuHeap()->Allocate(1);
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = dxgiFormatMapping.srvFormat;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+	if (desc.Dimension == TextureDimension::TextureCube)
+	{
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;  // Only 2D textures are supported (this was checked in the calling function).
+		srvDesc.TextureCube.MipLevels = desc.MipLevels;
+		srvDesc.TextureCube.MostDetailedMip = 0;
+	}
+	else
+	{
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;  // Only 2D textures are supported (this was checked in the calling function).
+		srvDesc.Texture2D.MipLevels = desc.MipLevels;
+	}
+
+	this->GetD3D12Device2()->CreateShaderResourceView(
+		textureImpl->D3D12Resource,
+		&srvDesc,
+		textureImpl->SrvAllocation.GetCpuHandle());
+
+	// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+	textureImpl->BindlessResourceIndex = this->m_bindlessResourceDescriptorTable->Allocate();
+	if (textureImpl->BindlessResourceIndex != INVALID_DESCRIPTOR_INDEX)
+	{
+		this->GetD3D12Device2()->CopyDescriptorsSimple(
+			1,
+			this->m_bindlessResourceDescriptorTable->GetCpuHandle(textureImpl->BindlessResourceIndex),
+			textureImpl->SrvAllocation.GetCpuHandle(),
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	}
+	
 	return TextureHandle::Create(textureImpl.release());
 }
 
@@ -270,6 +634,229 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTarget(
 	textureImpl->D3D12Resource->SetName(debugName.c_str());
 
 	return TextureHandle::Create(textureImpl.release());
+}
+
+RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(GraphicsPSODesc const& desc)
+{
+	auto rootSignatureImpl = std::make_unique<RootSignature>();
+
+	std::vector<CD3DX12_ROOT_PARAMETER1> rootParameters;
+
+	// TODO: I am here translate parameters
+	for (const auto& parameter : desc.ShaderParameters.Parameters)
+	{
+		switch (parameter.Type)
+		{
+		case ResourceType::PushConstants:
+			rootSignatureImpl->PushConstantByteSize = parameter.Size / 4;
+			
+			rootParameters.emplace_back().InitAsConstants(
+				rootSignatureImpl->PushConstantByteSize,
+				parameter.Slot);
+			break;
+
+		case ResourceType::ConstantBuffer:
+			rootParameters.emplace_back().InitAsConstantBufferView(
+				parameter.Slot,
+				0,
+				parameter.IsVolatile ? D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC : D3D12_ROOT_DESCRIPTOR_FLAG_NONE);
+			break;
+
+		case ResourceType::SRVBuffer:
+			rootParameters.emplace_back().InitAsShaderResourceView(
+				parameter.Slot,
+				0,
+				parameter.IsVolatile ? D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC : D3D12_ROOT_DESCRIPTOR_FLAG_NONE);
+			break;
+
+		case ResourceType::SRVTexture:
+			// TODO
+			break;
+		}
+	}
+
+	// Create Enable Bindless Table
+	if (!desc.ShaderParameters.BindlessParameters.empty())
+	{
+		std::vector<CD3DX12_DESCRIPTOR_RANGE1> bindlessRanges;
+		rootSignatureImpl->BindBindlessTables = true;
+		for (const auto& bindlessParam : desc.ShaderParameters.BindlessParameters)
+		{
+			auto& range = bindlessRanges.emplace_back();
+			switch (bindlessParam.Type)
+			{
+			case ResourceType::BindlessSRV:
+				range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+				break;
+			default:
+				throw std::exception("Not implemented yet");
+			}
+			range.BaseShaderRegister = 0;
+			range.RegisterSpace = bindlessParam.RegisterSpace;
+			range.OffsetInDescriptorsFromTableStart = 0;
+			range.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE;
+		}
+
+		rootParameters.emplace_back().InitAsDescriptorTable(
+			bindlessRanges.size(),
+			bindlessRanges.data());
+	}
+
+	std::vector<D3D12_STATIC_SAMPLER_DESC> staticSamplers(desc.ShaderParameters.StaticSamplers.size());
+	for (int i = 0; i < staticSamplers.size(); i++)
+	{
+		const auto& sampler = desc.ShaderParameters.StaticSamplers[i];
+
+		staticSamplers[i].ShaderRegister = sampler.Slot;
+		staticSamplers[i].RegisterSpace = 0;
+
+		UINT reductionType = ConvertSamplerReductionType(sampler.ReductionType);
+		if (sampler.MaxAnisotropy > 1.0f)
+		{
+			staticSamplers[i].Filter = D3D12_ENCODE_ANISOTROPIC_FILTER(reductionType);
+		}
+		else
+		{
+			staticSamplers[i].Filter = D3D12_ENCODE_BASIC_FILTER(
+				sampler.MinFilter ? D3D12_FILTER_TYPE_LINEAR : D3D12_FILTER_TYPE_POINT,
+				sampler.MagFilter ? D3D12_FILTER_TYPE_LINEAR : D3D12_FILTER_TYPE_POINT,
+				sampler.MipFilter ? D3D12_FILTER_TYPE_LINEAR : D3D12_FILTER_TYPE_POINT,
+				reductionType);
+		}
+
+		staticSamplers[i].AddressU = ConvertSamplerAddressMode(sampler.AddressU);
+		staticSamplers[i].AddressV = ConvertSamplerAddressMode(sampler.AddressV);
+		staticSamplers[i].AddressW = ConvertSamplerAddressMode(sampler.AddressW);
+
+		staticSamplers[i].MipLODBias = sampler.MipBias;
+		staticSamplers[i].MaxAnisotropy = std::max((UINT)sampler.MaxAnisotropy, 1U);
+		staticSamplers[i].ComparisonFunc = D3D12_COMPARISON_FUNC_LESS;
+		staticSamplers[i].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+		staticSamplers[i].MinLOD = 0;
+		staticSamplers[i].MaxLOD = D3D12_FLOAT32_MAX;
+	}
+
+	D3D12_VERSIONED_ROOT_SIGNATURE_DESC rsDesc = {};
+	rsDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
+
+	if (desc.InputLayout)
+	{
+		rsDesc.Desc_1_1.Flags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+	}
+
+	if (!rootParameters.empty())
+	{
+		rsDesc.Desc_1_1.pParameters = rootParameters.data();
+		rsDesc.Desc_1_1.NumParameters = UINT(rootParameters.size());
+	}
+
+	if (!staticSamplers.empty())
+	{
+		rsDesc.Desc_1_1.pStaticSamplers = staticSamplers.data();
+		rsDesc.Desc_1_1.NumStaticSamplers = UINT(staticSamplers.size());
+	}
+	// Serialize the root signature
+
+	RefCountPtr<ID3DBlob> rsBlob;
+	RefCountPtr<ID3DBlob> errorBlob;
+	ThrowIfFailed(
+		D3D12SerializeVersionedRootSignature(&rsDesc, &rsBlob, &errorBlob));
+
+	ThrowIfFailed(
+		this->GetD3D12Device2()->CreateRootSignature(
+			0,
+			rsBlob->GetBufferPointer(),
+			rsBlob->GetBufferSize(),
+			IID_PPV_ARGS(&rootSignatureImpl->D3D12RootSignature)));
+
+	return RootSignatureHandle::Create(rootSignatureImpl.release());
+}
+
+RefCountPtr<ID3D12PipelineState> PhxEngine::RHI::Dx12::GraphicsDevice::CreateD3D12PipelineState(GraphicsPSODesc const& desc)
+{
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC d3d12Desc = {};
+	d3d12Desc.pRootSignature = nullptr; // TODO
+
+	Shader* shaderImpl = nullptr;
+	shaderImpl = SafeCast<Shader*>(desc.VertexShader.Get());
+	if (shaderImpl)
+	{
+		d3d12Desc.VS = { shaderImpl->GetByteCode().data(), shaderImpl->GetByteCode().size() };
+	}
+
+	shaderImpl = SafeCast<Shader*>(desc.HullShader.Get());
+	if (shaderImpl)
+	{
+		d3d12Desc.HS = { shaderImpl->GetByteCode().data(), shaderImpl->GetByteCode().size() };
+	}
+
+	shaderImpl = SafeCast<Shader*>(desc.DomainShader.Get());
+	if (shaderImpl)
+	{
+		d3d12Desc.DS = { shaderImpl->GetByteCode().data(), shaderImpl->GetByteCode().size() };
+	}
+
+	shaderImpl = SafeCast<Shader*>(desc.GeometryShader.Get());
+	if (shaderImpl)
+	{
+		d3d12Desc.GS = { shaderImpl->GetByteCode().data(), shaderImpl->GetByteCode().size() };
+	}
+
+	shaderImpl = SafeCast<Shader*>(desc.PixelShader.Get());
+	if (shaderImpl)
+	{
+		d3d12Desc.PS = { shaderImpl->GetByteCode().data(), shaderImpl->GetByteCode().size() };
+	}
+
+	this->TranslateBlendState(desc.BlendRenderState, d3d12Desc.BlendState);
+	this->TranslateDepthStencilState(desc.DepthStencilRenderState, d3d12Desc.DepthStencilState);
+	this->TranslateRasterState(desc.RasterRenderState, d3d12Desc.RasterizerState);
+
+	switch (desc.PrimType)
+	{
+	case PrimitiveType::PointList:
+		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		break;
+	case PrimitiveType::LineList:
+		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+		break;
+	case PrimitiveType::TriangleList:
+	case PrimitiveType::TriangleStrip:
+		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		break;
+	case PrimitiveType::PatchList:
+		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+		break;
+	}
+
+	if (desc.DsvFormat.has_value())
+	{
+		d3d12Desc.DSVFormat = GetDxgiFormatMapping(desc.DsvFormat.value()).rtvFormat;
+	}
+
+	d3d12Desc.SampleDesc.Count = desc.SampleCount;
+	d3d12Desc.SampleDesc.Quality = desc.SampleQuality;
+
+	for (size_t i = 0; i < desc.RtvFormats.size(); i++)
+	{
+		d3d12Desc.RTVFormats[i] = GetDxgiFormatMapping(desc.RtvFormats[i]).rtvFormat;
+	}
+
+	InputLayout* inputLayout = SafeCast<InputLayout*>(desc.InputLayout.Get());
+	if (inputLayout && !inputLayout->InputElements.empty())
+	{
+		d3d12Desc.InputLayout.NumElements = uint32_t(inputLayout->InputElements.size());
+		d3d12Desc.InputLayout.pInputElementDescs = &(inputLayout->InputElements[0]);
+	}
+
+	d3d12Desc.NumRenderTargets = (uint32_t)desc.RtvFormats.size();
+	d3d12Desc.SampleMask = ~0u;
+
+	RefCountPtr<ID3D12PipelineState> pipelineState;
+	ThrowIfFailed(
+		this->GetD3D12Device2()->CreateGraphicsPipelineState(&d3d12Desc, IID_PPV_ARGS(&pipelineState)));
+
+	return pipelineState;
 }
 
 void PhxEngine::RHI::Dx12::GraphicsDevice::RunGarbageCollection()
@@ -357,6 +944,86 @@ std::vector<RefCountPtr<IDXGIAdapter1>> PhxEngine::RHI::Dx12::GraphicsDevice::En
 	}
 
 	return adapters;
+}
+
+void PhxEngine::RHI::Dx12::GraphicsDevice::TranslateBlendState(BlendRenderState const& inState, D3D12_BLEND_DESC& outState)
+{
+	outState.AlphaToCoverageEnable = inState.alphaToCoverageEnable;
+	outState.IndependentBlendEnable = true;
+
+	for (uint32_t i = 0; i < c_MaxRenderTargets; i++)
+	{
+		const auto& src = inState.Targets[i];
+		auto& dst = outState.RenderTarget[i];
+
+
+		dst.BlendEnable = src.BlendEnable ? TRUE : FALSE;
+		dst.SrcBlend = ConvertBlendValue(src.SrcBlend);
+		dst.DestBlend = ConvertBlendValue(src.DestBlend);
+		dst.BlendOp = ConvertBlendOp(src.BlendOp);
+		dst.SrcBlendAlpha = ConvertBlendValue(src.SrcBlendAlpha);
+		dst.DestBlendAlpha = ConvertBlendValue(src.DestBlendAlpha);
+		dst.BlendOpAlpha = ConvertBlendOp(src.BlendOpAlpha);
+		dst.RenderTargetWriteMask = (D3D12_COLOR_WRITE_ENABLE)src.ColorWriteMask;
+	}
+}
+
+void PhxEngine::RHI::Dx12::GraphicsDevice::TranslateDepthStencilState(DepthStencilRenderState const& inState, D3D12_DEPTH_STENCIL_DESC& outState)
+{
+	outState.DepthEnable = inState.DepthTestEnable ? TRUE : FALSE;
+	outState.DepthWriteMask = inState.DepthWriteEnable ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
+	outState.DepthFunc = ConvertComparisonFunc(inState.depthFunc);
+	outState.StencilEnable = inState.StencilEnable ? TRUE : FALSE;
+	outState.StencilReadMask = (UINT8)inState.StencilReadMask;
+	outState.StencilWriteMask = (UINT8)inState.StencilWriteMask;
+	outState.FrontFace.StencilFailOp = ConvertStencilOp(inState.FrontFaceStencil.FailOp);
+	outState.FrontFace.StencilDepthFailOp = ConvertStencilOp(inState.FrontFaceStencil.DepthFailOp);
+	outState.FrontFace.StencilPassOp = ConvertStencilOp(inState.FrontFaceStencil.PassOp);
+	outState.FrontFace.StencilFunc = ConvertComparisonFunc(inState.FrontFaceStencil.StencilFunc);
+	outState.BackFace.StencilFailOp = ConvertStencilOp(inState.BackFaceStencil.FailOp);
+	outState.BackFace.StencilDepthFailOp = ConvertStencilOp(inState.BackFaceStencil.DepthFailOp);
+	outState.BackFace.StencilPassOp = ConvertStencilOp(inState.BackFaceStencil.PassOp);
+	outState.BackFace.StencilFunc = ConvertComparisonFunc(inState.BackFaceStencil.StencilFunc);
+}
+
+void PhxEngine::RHI::Dx12::GraphicsDevice::TranslateRasterState(RasterRenderState const& inState, D3D12_RASTERIZER_DESC& outState)
+{
+	switch (inState.fillMode)
+	{
+	case RasterFillMode::Solid:
+		outState.FillMode = D3D12_FILL_MODE_SOLID;
+		break;
+	case RasterFillMode::Wireframe:
+		outState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+		break;
+	default:
+		break;
+	}
+
+	switch (inState.cullMode)
+	{
+	case RasterCullMode::Back:
+		outState.CullMode = D3D12_CULL_MODE_BACK;
+		break;
+	case RasterCullMode::Front:
+		outState.CullMode = D3D12_CULL_MODE_FRONT;
+		break;
+	case RasterCullMode::None:
+		outState.CullMode = D3D12_CULL_MODE_NONE;
+		break;
+	default:
+		break;
+	}
+
+	outState.FrontCounterClockwise = inState.FrontCounterClockwise ? TRUE : FALSE;
+	outState.DepthBias = inState.DepthBias;
+	outState.DepthBiasClamp = inState.DepthBiasClamp;
+	outState.SlopeScaledDepthBias = inState.SlopeScaledDepthBias;
+	outState.DepthClipEnable = inState.DepthClipEnable ? TRUE : FALSE;
+	outState.MultisampleEnable = inState.MultisampleEnable ? TRUE : FALSE;
+	outState.AntialiasedLineEnable = inState.AntialiasedLineEnable ? TRUE : FALSE;
+	outState.ConservativeRaster = inState.ConservativeRasterEnable ? D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON : D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+	outState.ForcedSampleCount = inState.ForcedSampleCount;
 }
 
 size_t PhxEngine::RHI::Dx12::GraphicsDevice::GetCurrentBackBufferIndex() const

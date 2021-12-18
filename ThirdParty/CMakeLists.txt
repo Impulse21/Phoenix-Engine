@@ -20,3 +20,17 @@ set_target_properties(glfw PROPERTIES FOLDER ${third_party_folder})
 add_subdirectory(DirectX-Headers)
 
 set_target_properties(DirectX-Guids PROPERTIES FOLDER ${third_party_folder})
+
+add_library(cgltf INTERFACE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgltf/cgltf.h)
+
+target_include_directories(cgltf INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/cgltf)
+    
+set_target_properties(cgltf PROPERTIES FOLDER ${third_party_folder})
+
+option(BUILD_TOOLS "" OFF)
+option(BUILD_DX11 "" OFF)
+option(BUILD_DX12 "" OFF)
+
+add_subdirectory(DirectXTex)
+set_target_properties(DirectXTex PROPERTIES FOLDER ${third_party_folder})

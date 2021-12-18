@@ -7,7 +7,7 @@ file(GLOB PhxEngineApp_Src
 add_library(PhxEngineApp STATIC EXCLUDE_FROM_ALL ${PhxEngineApp_Src})
 
 target_include_directories(PhxEngineApp PUBLIC Include)
-target_link_libraries(PhxEngineApp PhxEngineCore glfw)
+target_link_libraries(PhxEngineApp PhxEngineCore PhxEngineRenderer glfw)
 
 if(WIN32)
     target_compile_definitions(PhxEngineApp PUBLIC NOMINMAX _CRT_SECURE_NO_WARNINGS)

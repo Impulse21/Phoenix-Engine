@@ -37,6 +37,8 @@ namespace PhxEngine::RHI::Dx12
 		void ClearTextureFloat(ITexture* texture, Color const& clearColour) override;
 		void ClearDepthStencilTexture(ITexture* depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) override;
 
+		void WriteTexture(TextureHandle texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData) override;
+
 	public:
 		std::shared_ptr<TrackedResources> Executed(uint64_t fenceValue);
 		ID3D12CommandList* GetD3D12CommandList() { return this->m_d3d12CommandList; }

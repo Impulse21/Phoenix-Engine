@@ -3,6 +3,7 @@
 #include <array>
 #include <deque>
 #include <tuple>
+#include <unordered_map>
 
 #include "CommandQueue.h"
 #include "DescriptorHeap.h"
@@ -17,6 +18,59 @@
 namespace PhxEngine::RHI::Dx12
 {
     struct TrackedResources;
+
+    class BindlessDescriptorTable;
+
+    class IRootSignature : public IResource
+    {
+    };
+
+    typedef RefCountPtr<IRootSignature> RootSignatureHandle;
+
+    class Shader : public RefCounter<IShader>
+    {
+    public:
+        Shader(ShaderDesc const& desc, const void* binary, size_t binarySize)
+            : m_desc(desc)
+        {
+            this->m_byteCode.resize(binarySize);
+            std::memcpy(this->m_byteCode.data(), binary, binarySize);
+        }
+
+        const ShaderDesc& GetDesc() const { return this->m_desc; }
+        const std::vector<uint8_t>& GetByteCode() const { return this->m_byteCode; }
+
+
+    private:
+        std::vector<uint8_t> m_byteCode;
+        const ShaderDesc m_desc;
+    };
+
+    struct InputLayout : RefCounter<IInputLayout>
+    {
+        std::vector<VertexAttributeDesc> Attributes;
+        std::vector<D3D12_INPUT_ELEMENT_DESC> InputElements;
+
+        // maps a binding slot to an element stride
+        std::unordered_map<uint32_t, uint32_t> ElementStrides;
+
+        uint32_t GetNumAttributes() const override { return this->Attributes.size(); }
+        const VertexAttributeDesc* GetAttributeDesc(uint32_t index) const override
+        {
+            PHX_ASSERT(index < this->GetNumAttributes());
+            return &this->Attributes[index];
+        }
+    };
+
+    struct GraphicsPSO : public RefCounter<IGraphicsPSO>
+    {
+        RootSignatureHandle RootSignature;
+        RefCountPtr<ID3D12PipelineState> D3D12PipelineState;
+        GraphicsPSODesc Desc;
+
+
+        const GraphicsPSODesc& GetDesc() const override { return this->Desc; }
+    };
 
     struct Texture final : public RefCounter<ITexture>
     {
@@ -67,7 +121,12 @@ namespace PhxEngine::RHI::Dx12
 
         CommandListHandle CreateCommandList(CommandListDesc const& desc = {}) override;
 
+        ShaderHandle CreateShader(ShaderDesc const& desc, const void* binary, size_t binarySize) override;
+        InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) override;
+        GraphicsPSOHandle CreateGraphicsPSOHandle(GraphicsPSODesc const& desc) override;
+
         TextureHandle CreateDepthStencil(TextureDesc const& desc) override;
+        TextureHandle CreateTexture(TextureDesc const& desc) override;
 
         ITexture* GetBackBuffer() override { return this->m_swapChain.BackBuffers[this->GetCurrentBackBufferIndex()]; }
 
@@ -94,6 +153,9 @@ namespace PhxEngine::RHI::Dx12
         // -- Dx12 Specific functions ---
     public:
         TextureHandle CreateRenderTarget(TextureDesc const& desc, RefCountPtr<ID3D12Resource> d3d12TextureResource);
+
+        RootSignatureHandle CreateRootSignature(GraphicsPSODesc const& desc);
+        RefCountPtr<ID3D12PipelineState> CreateD3D12PipelineState(GraphicsPSODesc const& desc);
 
     public:
         void RunGarbageCollection();
@@ -133,6 +195,12 @@ namespace PhxEngine::RHI::Dx12
         RefCountPtr<IDXGIAdapter1> SelectOptimalGpu();
         std::vector<RefCountPtr<IDXGIAdapter1>> EnumerateAdapters(RefCountPtr<IDXGIFactory6> factory, bool includeSoftwareAdapter = false);
 
+         // -- Pipeline state conversion --- 
+    private:
+        void TranslateBlendState(BlendRenderState const& inState, D3D12_BLEND_DESC& outState);
+        void TranslateDepthStencilState(DepthStencilRenderState const& inState, D3D12_DEPTH_STENCIL_DESC& outState);
+        void TranslateRasterState(RasterRenderState const& inState, D3D12_RASTERIZER_DESC& outState);
+
 	private:
 		RefCountPtr<IDXGIFactory6> m_factory;
 		RefCountPtr<ID3D12Device> m_device;
@@ -161,6 +229,8 @@ namespace PhxEngine::RHI::Dx12
         // -- Descriptor Heaps ---
 		std::array<std::unique_ptr<CpuDescriptorHeap>, (int)DescriptorHeapTypes::Count> m_cpuDescriptorHeaps;
         std::array<std::unique_ptr<GpuDescriptorHeap>, 2> m_gpuDescriptorHeaps;
+
+        std::unique_ptr<BindlessDescriptorTable> m_bindlessResourceDescriptorTable;
 
         // -- Frame Frences ---
         std::vector<uint64_t> m_frameFence;
