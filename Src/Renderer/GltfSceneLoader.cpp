@@ -310,12 +310,13 @@ Scene* PhxEngine::Renderer::GltfSceneLoader::LoadSceneInternal(
 	return nullptr;
 }
 
-std::shared_ptr<Texture> PhxEngine::Renderer::GltfSceneLoader::LoadTexture(
+std::shared_ptr<PhxEngine::RHI::TextureHandle> PhxEngine::Renderer::GltfSceneLoader::LoadTexture(
 	const cgltf_texture* cglftTexture,
 	bool isSRGB,
 	const cgltf_data* objects,
 	CgltfContext& context)
 {
+	/*
 	if (cglftTexture)
 	{
 		return nullptr;
@@ -367,7 +368,7 @@ std::shared_ptr<Texture> PhxEngine::Renderer::GltfSceneLoader::LoadTexture(
 			void* dataCopy = malloc(dataSize);
 			assert(dataCopy);
 			memcpy(dataCopy, dataPtr, dataSize);
-			textureData = std::make_shared<Blob>(dataCopy, dataSize);
+			textureData = std::make_shared<Core::Blob>(dataCopy, dataSize);
 		}
 
 		// texture = this->m_textureCache->LoadTexture(textureData, name, mimeType, isSRGB);
@@ -380,6 +381,8 @@ std::shared_ptr<Texture> PhxEngine::Renderer::GltfSceneLoader::LoadTexture(
 	// Load texture
 
 	return std::shared_ptr<Texture>();
+	*/
+	return nullptr;
 }
 
 void PhxEngine::Renderer::GltfSceneLoader::LoadMaterialData(
@@ -389,6 +392,7 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMaterialData(
 	CgltfContext& context,
 	std::unordered_map<const cgltf_material*, std::shared_ptr<Material>>& outMaterials)
 {
+	/*
 	for (int i = 0; i < materialCount; i++)
 	{
 		const auto& cgltfMaterial = pMaterials[i];
@@ -436,6 +440,7 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMaterialData(
 
 		outMaterials[&cgltfMaterial] = material;
 	}
+	*/
 }
 
 void PhxEngine::Renderer::GltfSceneLoader::LoadMeshData(

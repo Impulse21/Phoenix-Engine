@@ -6,13 +6,14 @@
 
 
 #include "TestBedApp.h"
+#include "PbrDemo.h"
 
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
 
 std::unique_ptr<ApplicationBase> CreateTestApp()
 {
-    return std::make_unique<TestBedApp>();
+    return std::make_unique<PbrDemo>();
 }
 
 int main()

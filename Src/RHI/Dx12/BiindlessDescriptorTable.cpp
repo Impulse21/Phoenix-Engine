@@ -1,5 +1,6 @@
 #include "BiindlessDescriptorTable.h"
 
+using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::Dx12;
 
 DescriptorIndex BindlessDescriptorTable::Allocate()

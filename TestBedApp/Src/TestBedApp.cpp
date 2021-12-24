@@ -33,17 +33,9 @@ void TestBedApp::LoadContent()
         shaderDesc.ShaderType = EShaderType::Pixel;
         ShaderHandle ps = this->GetGraphicsDevice()->CreateShader(shaderDesc, nullptr, 0);
 
-        // Create Input Layout
-        std::vector<VertexAttributeDesc> vertexAttributeDescs =
-        {
-            { "POSITION", EFormat::RGB32_FLOAT, 1, 0, 0, sizeof(float) * 3, false},
-            { "NORMAL", EFormat::RGB32_FLOAT, 1, 0, 0, sizeof(float) * 3, false},
-            { "COLOUR", EFormat::RGB32_FLOAT, 1, 0, 0, sizeof(float) * 3, false},
-            { "TEXCOORD", EFormat::RG32_FLOAT, 1, 0, 0, sizeof(float) * 2, false},
-            { "TANGENT", EFormat::RGBA32_FLOAT, 1, 0, 0, sizeof(float) * 4, false},
-        };
 
-        InputLayoutHandle inputLayout = this->GetGraphicsDevice()->CreateInputLayout(vertexAttributeDescs.data(), vertexAttributeDescs.size());
+        // InputLayoutHandle inputLayout = this->GetGraphicsDevice()->CreateInputLayout(vertexAttributeDescs.data(), vertexAttributeDescs.size());
+        InputLayoutHandle inputLayout = nullptr;
 
         GraphicsPSODesc psoDesc = {};
         psoDesc.VertexShader = vs;
@@ -70,7 +62,7 @@ void TestBedApp::LoadContent()
 
 void TestBedApp::RenderScene()
 {
-    auto* backBuffer = this->GetGraphicsDevice()->GetBackBuffer();
+    TextureHandle backBuffer = this->GetGraphicsDevice()->GetBackBuffer();
     this->GetCommandList()->Open();
     {
         this->GetCommandList()->BeginScropedMarker("Clear Render Target");

@@ -41,7 +41,7 @@ namespace PhxEngine::Renderer
 			cgltf_data* gltfData,
 			CgltfContext& context);
 
-		std::shared_ptr<Texture> LoadTexture(
+		std::shared_ptr<RHI::TextureHandle> LoadTexture(
 			const cgltf_texture* cglftTexture,
 			bool isSRGB,
 			const cgltf_data* objects,

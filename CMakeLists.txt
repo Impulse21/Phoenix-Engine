@@ -17,6 +17,9 @@ string(APPEND CMAKE_CXX_FLAGS_DEBUG " -D_DEBUG")
 
 include(CMakeDependentOption)
 
+add_subdirectory(Shaders)
+set_target_properties(PhxEngineShaders PROPERTIES FOLDER PhxEngine)
+
 add_subdirectory(ThirdParty)
 
 include(PhxEngineCore.cmake)

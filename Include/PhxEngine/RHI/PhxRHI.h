@@ -7,8 +7,11 @@
 
 #include <PhxEngine/RHI/RefCountPtr.h>
 
+#define INVALID_DESCRIPTOR_INDEX ~0u
 namespace PhxEngine::RHI
 {
+    typedef uint32_t DescriptorIndex;
+
     static constexpr uint32_t c_MaxRenderTargets = 8;
     static constexpr uint32_t c_MaxViewports = 16;
     static constexpr uint32_t c_MaxVertexAttributes = 16;
@@ -508,13 +511,13 @@ namespace PhxEngine::RHI
 
     struct VertexAttributeDesc
     {
-        std::string Name;
-        EFormat Format;
-        uint32_t ArraySize;
-        uint32_t BufferIndex;
-        uint32_t Offset;
-        // note: for most APIs, all strides for a given bufferIndex must be identical
-        uint32_t ElementStride;
+        static const uint32_t SAppendAlignedElement = 0xffffffff; // automatically figure out AlignedByteOffset depending on Format
+
+        std::string SemanticName;
+        uint32_t SemanticIndex = 0;
+        EFormat Format = EFormat::UNKNOWN;
+        uint32_t InputSlot = 0;
+        uint32_t AlignedByteOffset = SAppendAlignedElement;
         bool IsInstanced;
     };
 
@@ -557,6 +560,13 @@ namespace PhxEngine::RHI
     {
         ResourceType Type : 8;
         uint16_t RegisterSpace : 16;
+    };
+
+    // This is just a workaround for now
+    class IRootSignatureBuilder
+    {
+    public:
+        virtual ~IRootSignatureBuilder() = default;
     };
 
     // Shader Binding Layout
@@ -612,6 +622,8 @@ namespace PhxEngine::RHI
             p.Type = ResourceType::BindlessSRV;
 
             this->AddBindlessParameter(std::move(p));
+
+            return *this;
         }
 
         ShaderParameterLayout& AddStaticSampler(
@@ -655,6 +667,7 @@ namespace PhxEngine::RHI
         PrimitiveType PrimType = PrimitiveType::TriangleList;
         InputLayoutHandle InputLayout;
 
+        IRootSignatureBuilder* RootSignatureBuilder = nullptr;
         ShaderParameterLayout ShaderParameters;
 
         ShaderHandle VertexShader;
@@ -716,14 +729,44 @@ namespace PhxEngine::RHI
     public:
         virtual ~ITexture() = default;
         virtual const TextureDesc& GetDesc() const = 0;
+        virtual const DescriptorIndex GetDescriptorIndex() const = 0;
     };
 
     using TextureHandle = RefCountPtr<ITexture>;
+
+    struct BufferRange
+    {
+        uint64_t ByteOffset = 0;
+        uint64_t SizeInBytes = 0;
+
+        BufferRange() = default;
+
+        BufferRange(uint64_t byteOffset, uint64_t sizeInBytes)
+            : ByteOffset(byteOffset)
+            , SizeInBytes(sizeInBytes)
+        { }
+    };
+
+    struct BufferDesc
+    {
+        uint64_t StrideInBytes = 0;
+        uint64_t SizeInBytes = 0;
+
+        bool AllowUnorderedAccess = false;
+        bool CreateSRVViews = false;
+        bool CreateBindless = false;
+
+        std::string DebugName;
+
+    };
 
     class IBuffer : public IResource
     {
     public:
         virtual ~IBuffer() = default;
+
+        virtual const BufferDesc& GetDesc() const = 0;
+        virtual const DescriptorIndex GetDescriptorIndex() const = 0;
     };
 
     using BufferHandle = RefCountPtr<IBuffer>;
@@ -752,7 +795,89 @@ namespace PhxEngine::RHI
         virtual void ClearTextureFloat(ITexture* texture, Color const& clearColour) = 0 ;
         virtual void ClearDepthStencilTexture(ITexture* depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) = 0;
 
+        virtual void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t startVertex = 0, uint32_t startInstance = 0) = 0;
+        virtual void DrawIndexed(
+            uint32_t indexCount,
+            uint32_t instanceCount = 1,
+            uint32_t startIndex = 0,
+            int32_t baseVertex = 0,
+            uint32_t startInstance = 0) = 0;
+
+        template<typename T>
+        void WriteBuffer(BufferHandle buffer, std::vector<T> data, uint64_t destOffsetBytes = 0)
+        {
+            this->WriteBuffer(buffer, data.data(), sizeof(T) * data.size(), destOffsetBytes);
+        }
+
+        // TODO: Take ownership of the data
+        virtual void WriteBuffer(BufferHandle buffer, const void* data, size_t dataSize, uint64_t destOffsetBytes = 0) = 0;
+
         virtual void WriteTexture(TextureHandle texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData) = 0;
+
+        virtual void SetGraphicsPSO(GraphicsPSOHandle graphisPSO) = 0;
+        virtual void SetViewports(Viewport* viewports, size_t numViewports) = 0;
+        virtual void SetScissors(Rect* scissor, size_t numScissors) = 0;
+        virtual void SetRenderTargets(std::vector<TextureHandle> const& renderTargets, TextureHandle depthStencil) = 0;
+
+        virtual void BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants) = 0;
+        template<typename T>
+        void BindPushConstant(uint32_t rootParameterIndex, const T& constants)
+        {
+            static_assert(sizeof(T) % sizeof(uint32_t) == 0, "Size of type must be a multiple of 4 bytes");
+            this->BindPushConstant(rootParameterIndex, sizeof(T), &constants);
+        }
+
+        virtual void BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData) = 0;
+        template<typename T>
+        void BindDynamicConstantBuffer(size_t rootParameterIndex, T const& bufferData)
+        {
+            this->BindDynamicConstantBuffer(rootParameterIndex, sizeof(T), &bufferData);
+        }
+
+        virtual void BindVertexBuffer(uint32_t slot, BufferHandle vertexBuffer) = 0;
+
+        /**
+         * Set dynamic vertex buffer data to the rendering pipeline.
+         */
+        virtual void BindDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData) = 0;
+
+        template<typename T>
+        void BindDynamicVertexBuffer(uint32_t slot, const std::vector<T>& vertexBufferData)
+        {
+            this->SetDynamicVertexBuffer(slot, vertexBufferData.size(), sizeof(T), vertexBufferData.data());
+        }
+
+        virtual void BindIndexBuffer(BufferHandle bufferHandle) = 0;
+
+        /**
+         * Bind dynamic index buffer data to the rendering pipeline.
+         */
+        virtual void BindDynamicIndexBuffer(size_t numIndicies, EFormat indexFormat, const void* indexBufferData) = 0;
+
+        template<typename T>
+        void BindDynamicIndexBuffer(const std::vector<T>& indexBufferData)
+        {
+            static_assert(sizeof(T) == 2 || sizeof(T) == 4);
+
+            EFormat indexFormat = (sizeof(T) == 2) ? EFormat::R16_UINT : EFormat::R32_UINT;
+            this->SetDynamicIndexBuffer(indexBufferData.size(), indexFormat, indexBufferData.data());
+        }
+
+        /**
+         * Set dynamic structured buffer contents.
+         */
+        virtual void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, size_t numElements, size_t elementSize, const void* bufferData) = 0;
+
+        template<typename T>
+        void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, std::vector<T> const& bufferData)
+        {
+            this->BindDynamicStructuredBuffer(rootParameterIndex, bufferData.size(), sizeof(T), bufferData.data());
+        }
+
+        virtual void BindStructuredBuffer(size_t rootParameterIndex, IBuffer* buffer) = 0;
+
+        virtual void BindResourceTable (size_t rootParameterIndex) = 0;
+        virtual void BindSamplerTable(size_t rootParameterIndex) = 0;
     };
 
     using CommandListHandle = RefCountPtr<ICommandList>;
@@ -786,8 +911,15 @@ namespace PhxEngine::RHI
         virtual TextureHandle CreateDepthStencil(TextureDesc const& desc) = 0;
         virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
 
+
+        // TODO: I don't think is this a clear interface as to what desc data is required
+        // Consider cleaning this up eventually.
+        virtual BufferHandle CreateIndexBuffer(BufferDesc const& desc) = 0;
+        virtual BufferHandle CreateVertexBuffer(BufferDesc const& desc) = 0;
+        virtual BufferHandle CreateBuffer(BufferDesc const& desc) = 0;
+
         // -- Create Functions End ---
-        virtual ITexture* GetBackBuffer() = 0;
+        virtual TextureHandle GetBackBuffer() = 0;
 
         virtual void Present() = 0;
         virtual void WaitForIdle() = 0;
@@ -814,5 +946,6 @@ namespace PhxEngine::RHI
             return this->ExecuteCommandLists(&commandList, 1, waitForCompletion, executionQueue);
         }
 
+        virtual size_t GetNumBindlessDescriptors() const = 0;
     };
 }

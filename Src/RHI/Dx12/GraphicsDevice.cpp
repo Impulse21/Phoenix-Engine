@@ -6,6 +6,8 @@
 
 #include "BiindlessDescriptorTable.h"
 #include "CommandList.h"
+#include <PhxEngine/RHI/Dx12/RootSignatureBuilder.h>
+
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::Dx12;
 
@@ -228,6 +230,8 @@ namespace PhxEngine::RHI::Dx12
 		uint32_t RootParameterIndex = ~0u;
 		bool BindBindlessTables = false;
 		ShaderParameterLayout ShaderParameterLayout = {};
+
+		RefCountPtr<ID3D12RootSignature> GetD3D12RootSignature() override { return this->D3D12RootSignature; }
 	};
 }
 
@@ -390,42 +394,30 @@ InputLayoutHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateInputLayout(Vertex
 		// Copy the description to get a stable name pointer in desc
 		attr = desc[index];
 
-		PHX_ASSERT(attr.ArraySize > 0);
+		D3D12_INPUT_ELEMENT_DESC& desc = inputLayoutImpl->InputElements.emplace_back();
+
+		desc.SemanticName = attr.SemanticName.c_str();
+		desc.SemanticIndex = attr.SemanticIndex;
+
 
 		const DxgiFormatMapping& formatMapping = GetDxgiFormatMapping(attr.Format);
-		const FormatInfo& formatInfo = GetFormatInfo(attr.Format);
-
-		for (uint32_t semanticIndex = 0; semanticIndex < attr.ArraySize; semanticIndex++)
+		desc.Format = formatMapping.srvFormat;
+		desc.InputSlot = attr.InputSlot;
+		desc.AlignedByteOffset = attr.AlignedByteOffset;
+		if (desc.AlignedByteOffset == VertexAttributeDesc::SAppendAlignedElement)
 		{
-			D3D12_INPUT_ELEMENT_DESC desc;
-
-			desc.SemanticName = attr.Name.c_str();
-			desc.AlignedByteOffset = attr.Offset + semanticIndex * formatInfo.BytesPerBlock;
-			desc.Format = formatMapping.srvFormat;
-			desc.InputSlot = attr.BufferIndex;
-			desc.SemanticIndex = semanticIndex;
-
-			if (attr.IsInstanced)
-			{
-				desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
-				desc.InstanceDataStepRate = 1;
-			}
-			else
-			{
-				desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
-				desc.InstanceDataStepRate = 0;
-			}
-
-			inputLayoutImpl->InputElements.push_back(desc);
+			desc.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
 		}
 
-		if (inputLayoutImpl->ElementStrides.find(attr.BufferIndex) == inputLayoutImpl->ElementStrides.end())
+		if (attr.IsInstanced)
 		{
-			inputLayoutImpl->ElementStrides[attr.BufferIndex] = attr.ElementStride;
+			desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
+			desc.InstanceDataStepRate = 1;
 		}
-		else 
+		else
 		{
-			PHX_ASSERT(inputLayoutImpl->ElementStrides[attr.BufferIndex] == attr.ElementStride);
+			desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+			desc.InstanceDataStepRate = 0;
 		}
 	}
 
@@ -436,7 +428,7 @@ GraphicsPSOHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateGraphicsPSOHandle(
 {
 	std::unique_ptr<GraphicsPSO> psoImpl = std::make_unique<GraphicsPSO>();
 	psoImpl->RootSignature = this->CreateRootSignature(desc);
-	psoImpl->D3D12PipelineState = this->CreateD3D12PipelineState(desc);
+	psoImpl->D3D12PipelineState = this->CreateD3D12PipelineState(desc, psoImpl->RootSignature);
 
 	return GraphicsPSOHandle::Create(psoImpl.release());
 }
@@ -563,6 +555,56 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTexture(TextureDesc co
 	return TextureHandle::Create(textureImpl.release());
 }
 
+BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateIndexBuffer(BufferDesc const& desc)
+{
+	auto bufferImpl = this->CreateBufferInternal(desc);
+
+	bufferImpl->IndexView = {};
+	auto& view = bufferImpl->IndexView;
+	view.BufferLocation = bufferImpl->D3D12Resource->GetGPUVirtualAddress();
+	view.Format = bufferImpl->GetDesc().StrideInBytes == sizeof(uint32_t)
+		? DXGI_FORMAT_R32_UINT
+		: DXGI_FORMAT_R16_UINT;
+	view.SizeInBytes = bufferImpl->GetDesc().SizeInBytes;
+
+	if (desc.CreateSRVViews)
+	{
+		this->CreateSRVViews(bufferImpl.get());
+	}
+
+	return BufferHandle::Create(bufferImpl.release());
+}
+
+BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateVertexBuffer(BufferDesc const& desc)
+{
+	auto bufferImpl = this->CreateBufferInternal(desc);
+
+	bufferImpl->VertexView = {};
+	auto& view = bufferImpl->VertexView;
+	view.BufferLocation = bufferImpl->D3D12Resource->GetGPUVirtualAddress();
+	view.StrideInBytes = bufferImpl->GetDesc().StrideInBytes;
+	view.SizeInBytes = bufferImpl->GetDesc().SizeInBytes;
+
+	if (desc.CreateSRVViews)
+	{
+		this->CreateSRVViews(bufferImpl.get());
+	}
+
+	return BufferHandle::Create(bufferImpl.release());
+}
+
+BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateBuffer(BufferDesc const& desc)
+{
+	auto bufferImpl = this->CreateBufferInternal(desc);
+
+	if (desc.CreateSRVViews)
+	{
+		this->CreateSRVViews(bufferImpl.get());
+	}
+
+	return BufferHandle::Create(bufferImpl.release());
+}
+
 void PhxEngine::RHI::Dx12::GraphicsDevice::Present()
 {
 	this->m_swapChain.DxgiSwapchain->Present(0, 0);
@@ -640,9 +682,35 @@ RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(Gr
 {
 	auto rootSignatureImpl = std::make_unique<RootSignature>();
 
+	PHX_ASSERT(desc.RootSignatureBuilder);
+	RootSignatureBuilder* rootSignatureBuilder = SafeCast<RootSignatureBuilder*>(desc.RootSignatureBuilder);
+
+	D3D12_VERSIONED_ROOT_SIGNATURE_DESC rsDesc = {};
+	rsDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
+
+	rsDesc.Desc_1_1 = rootSignatureBuilder->Build();
+
+	if (desc.InputLayout)
+	{
+		rsDesc.Desc_1_1.Flags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+	}
+
+	RefCountPtr<ID3DBlob> rsBlob;
+	RefCountPtr<ID3DBlob> errorBlob;
+	ThrowIfFailed(
+		D3D12SerializeVersionedRootSignature(&rsDesc, &rsBlob, &errorBlob));
+
+	ThrowIfFailed(
+		this->GetD3D12Device2()->CreateRootSignature(
+			0,
+			rsBlob->GetBufferPointer(),
+			rsBlob->GetBufferSize(),
+			IID_PPV_ARGS(&rootSignatureImpl->D3D12RootSignature)));
+
+	return RootSignatureHandle::Create(rootSignatureImpl.release());
+	/*
 	std::vector<CD3DX12_ROOT_PARAMETER1> rootParameters;
 
-	// TODO: I am here translate parameters
 	for (const auto& parameter : desc.ShaderParameters.Parameters)
 	{
 		switch (parameter.Type)
@@ -670,7 +738,7 @@ RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(Gr
 			break;
 
 		case ResourceType::SRVTexture:
-			// TODO
+			PHX_ASSERT(false);
 			break;
 		}
 	}
@@ -770,12 +838,13 @@ RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(Gr
 			IID_PPV_ARGS(&rootSignatureImpl->D3D12RootSignature)));
 
 	return RootSignatureHandle::Create(rootSignatureImpl.release());
+	*/
 }
 
-RefCountPtr<ID3D12PipelineState> PhxEngine::RHI::Dx12::GraphicsDevice::CreateD3D12PipelineState(GraphicsPSODesc const& desc)
+RefCountPtr<ID3D12PipelineState> PhxEngine::RHI::Dx12::GraphicsDevice::CreateD3D12PipelineState(GraphicsPSODesc const& desc, RootSignatureHandle rootSignature)
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC d3d12Desc = {};
-	d3d12Desc.pRootSignature = nullptr; // TODO
+	d3d12Desc.pRootSignature = rootSignature->GetD3D12RootSignature(); // TODO
 
 	Shader* shaderImpl = nullptr;
 	shaderImpl = SafeCast<Shader*>(desc.VertexShader.Get());
@@ -1031,6 +1100,53 @@ size_t PhxEngine::RHI::Dx12::GraphicsDevice::GetCurrentBackBufferIndex() const
 	PHX_ASSERT(this->m_swapChain.DxgiSwapchain);
 	
 	return (size_t)this->m_swapChain.DxgiSwapchain->GetCurrentBackBufferIndex();
+}
+
+std::unique_ptr<GpuBuffer> GraphicsDevice::CreateBufferInternal(BufferDesc const& desc)
+{
+	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
+	if (desc.AllowUnorderedAccess)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	}
+
+	std::unique_ptr<GpuBuffer> bufferImpl = std::make_unique<GpuBuffer>();
+	bufferImpl->Desc = desc;
+
+	// Create a committed resource for the GPU resource in a default heap.
+	ThrowIfFailed(
+		this->GetD3D12Device2()->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+			D3D12_HEAP_FLAG_NONE,
+			&CD3DX12_RESOURCE_DESC::Buffer(desc.SizeInBytes, resourceFlags),
+			D3D12_RESOURCE_STATE_COMMON,
+			nullptr,
+			IID_PPV_ARGS(&bufferImpl->D3D12Resource)));
+
+
+	std::wstring debugName(desc.DebugName.begin(), desc.DebugName.end());
+	bufferImpl->D3D12Resource->SetName(debugName.c_str());
+
+	return bufferImpl;
+}
+
+void PhxEngine::RHI::Dx12::GraphicsDevice::CreateSRVViews(GpuBuffer* gpuBuffer)
+{
+	gpuBuffer->SrvAllocation = this->GetResourceCpuHeap()->Allocate(1);
+
+	if (gpuBuffer->GetDesc().CreateBindless)
+	{
+		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+		gpuBuffer->BindlessResourceIndex = this->m_bindlessResourceDescriptorTable->Allocate();
+		if (gpuBuffer->BindlessResourceIndex != INVALID_DESCRIPTOR_INDEX)
+		{
+			this->GetD3D12Device2()->CopyDescriptorsSimple(
+				1,
+				this->m_bindlessResourceDescriptorTable->GetCpuHandle(gpuBuffer->BindlessResourceIndex),
+				gpuBuffer->SrvAllocation.GetCpuHandle(),
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
 }
 
 RefCountPtr<IDXGIFactory6> PhxEngine::RHI::Dx12::GraphicsDevice::CreateFactory() const

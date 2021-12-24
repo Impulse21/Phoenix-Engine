@@ -23,6 +23,10 @@ namespace PhxEngine::RHI::Dx12
 
     class IRootSignature : public IResource
     {
+    public:
+        virtual ~IRootSignature() = default;
+
+        virtual RefCountPtr<ID3D12RootSignature> GetD3D12RootSignature() = 0;
     };
 
     typedef RefCountPtr<IRootSignature> RootSignatureHandle;
@@ -80,15 +84,28 @@ namespace PhxEngine::RHI::Dx12
         DescriptorHeapAllocation DsvAllocation;
         DescriptorHeapAllocation SrvAllocation;
 
-        DescriptorIndex BindlessResourceIndex;
+        // TODO: Free Index
+        DescriptorIndex BindlessResourceIndex = INVALID_DESCRIPTOR_INDEX;
 
         const TextureDesc& GetDesc() const { return this->Desc; }
+        virtual const DescriptorIndex GetDescriptorIndex() const { return this->BindlessResourceIndex; }
     };
 
     struct GpuBuffer final : public RefCounter<IBuffer>
     {
-        // BufferDesc Desc = {};
+        BufferDesc Desc = {};
         RefCountPtr<ID3D12Resource> D3D12Resource;
+
+        DescriptorHeapAllocation SrvAllocation;
+
+        // TODO: Free Index
+        DescriptorIndex BindlessResourceIndex = INVALID_DESCRIPTOR_INDEX;
+
+        D3D12_VERTEX_BUFFER_VIEW VertexView = {};
+        D3D12_INDEX_BUFFER_VIEW IndexView = {};
+
+        const BufferDesc& GetDesc() const { return this->Desc; }
+        const DescriptorIndex GetDescriptorIndex() const { return this->BindlessResourceIndex; }
     };
 
     struct SwapChain
@@ -128,7 +145,11 @@ namespace PhxEngine::RHI::Dx12
         TextureHandle CreateDepthStencil(TextureDesc const& desc) override;
         TextureHandle CreateTexture(TextureDesc const& desc) override;
 
-        ITexture* GetBackBuffer() override { return this->m_swapChain.BackBuffers[this->GetCurrentBackBufferIndex()]; }
+        BufferHandle CreateIndexBuffer(BufferDesc const& desc) override;
+        BufferHandle CreateVertexBuffer(BufferDesc const& desc) override;
+        BufferHandle CreateBuffer(BufferDesc const& desc) override;
+
+        TextureHandle GetBackBuffer() override { return this->m_swapChain.BackBuffers[this->GetCurrentBackBufferIndex()]; }
 
         void Present() override;
 
@@ -150,12 +171,14 @@ namespace PhxEngine::RHI::Dx12
             bool waitForCompletion,
             CommandQueueType executionQueue = CommandQueueType::Graphics) override;
 
+        size_t GetNumBindlessDescriptors() const override { return NUM_BINDLESS_RESOURCES; }
+
         // -- Dx12 Specific functions ---
     public:
         TextureHandle CreateRenderTarget(TextureDesc const& desc, RefCountPtr<ID3D12Resource> d3d12TextureResource);
 
         RootSignatureHandle CreateRootSignature(GraphicsPSODesc const& desc);
-        RefCountPtr<ID3D12PipelineState> CreateD3D12PipelineState(GraphicsPSODesc const& desc);
+        RefCountPtr<ID3D12PipelineState> CreateD3D12PipelineState(GraphicsPSODesc const& desc, RootSignatureHandle rootSignature);
 
     public:
         void RunGarbageCollection();
@@ -184,8 +207,14 @@ namespace PhxEngine::RHI::Dx12
         GpuDescriptorHeap* GetResourceGpuHeap() { return this->m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::CBV_SRV_UAV].get(); }
         GpuDescriptorHeap* GetSamplerGpuHeap() { return this->m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler].get(); }
 
+        const BindlessDescriptorTable* GetBindlessTable() const { return this->m_bindlessResourceDescriptorTable.get(); }
+
     private:
         size_t GetCurrentBackBufferIndex() const;
+
+    private:
+        std::unique_ptr<GpuBuffer> CreateBufferInternal(BufferDesc const& desc);
+        void CreateSRVViews(GpuBuffer* gpuBuffer);
 
         // -- Dx12 API creation ---
     private:

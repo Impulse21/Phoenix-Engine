@@ -21,12 +21,8 @@
 #include <PhxEngine/Core/Asserts.h>
 #include <PhxEngine/RHI/PhxRHI.h>
 
-#define INVALID_DESCRIPTOR_INDEX ~0u
-
 namespace PhxEngine::RHI::Dx12
 {
-    typedef uint32_t DescriptorIndex;
-
     inline void ThrowIfFailed(HRESULT hr)
     {
         if (FAILED(hr))
@@ -55,25 +51,6 @@ namespace PhxEngine::RHI::Dx12
     };
 
    const DxgiFormatMapping& GetDxgiFormatMapping(EFormat abstractFormat);
-
-   struct FormatInfo
-   {
-       EFormat Format;
-       const char* Name;
-       uint8_t BytesPerBlock;
-       uint8_t BlockSize;
-       FormatKind Kind;
-       bool HasRed : 1;
-       bool HasGreen : 1;
-       bool HasBlue : 1;
-       bool HasAlpha : 1;
-       bool HasDepth : 1;
-       bool HasStencil : 1;
-       bool IsSigned : 1;
-       bool IsSRGB : 1;
-   };
-
-   const FormatInfo& GetFormatInfo(EFormat format);
 
    inline D3D12_RESOURCE_STATES ConvertResourceStates(ResourceStates stateBits)
    {

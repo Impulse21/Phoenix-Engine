@@ -3,46 +3,49 @@
 #include <PhxEngine/Core/FileSystem.h>
 #include <PhxEngine/RHI/PhxRHI.h>
 
+#include <array>
 #include <memory>
 #include <string>
 #include <DirectXMath.h>
 
 namespace PhxEngine::Renderer
 {
-	struct Texture
+	enum class VertexAttribute : uint8_t
 	{
-		std::string Path;
-		bool ForceSRGB;
-		RHI::TextureHandle RhiTexture;
-
-		std::shared_ptr<Core::IBlob> Data;
-		std::vector<RHI::SubresourceData> SubresourceData;
+		Position = 0,
+		TexCoord,
+		Normal,
+		Tangent,
+		Colour,
+		Count,
 	};
 
 	struct Material
 	{
 		std::string Name;
+		size_t GlobalMaterialIndex = ~0U;
+
 		DirectX::XMFLOAT3 Albedo = { 0.0f, 0.0f, 0.0f };
-		std::shared_ptr<Texture> AlbedoTexture;
+		RHI::TextureHandle AlbedoTexture;
 
 		bool UseMaterialTexture = true;
-		std::shared_ptr<Texture> MaterialTexture;
+		RHI::TextureHandle MaterialTexture;
 
-		std::shared_ptr<Texture> RoughnessTexture;
-		std::shared_ptr<Texture> MetalnessTexture;
-		std::shared_ptr<Texture> AoTexture;
+		RHI::TextureHandle RoughnessTexture;
+		RHI::TextureHandle MetalnessTexture;
+		RHI::TextureHandle AoTexture;
 
 		float Metalness = 0.0f;
 		float Roughness = 0.0f;
 		float Ao = 0.3f;
 
-		std::shared_ptr<Texture> NormalMapTexture;
+		RHI::TextureHandle NormalMapTexture;
 
 		// TODO: Add emissive Support
 		// TODO: Add Occlusion data
 		// TODO: Add Alpha data
 
-		bool IsDoubleSided = false;
+		// bool IsDoubleSided = false;
 	};
 
 	struct MeshGeometry
@@ -52,6 +55,7 @@ namespace PhxEngine::Renderer
 		uint32_t VertexOffsetInMesh = 0;
 		uint32_t NumVertices = 0;
 		uint32_t NumIndices = 0;
+		size_t GlobalGeometryIndex = 0;
 	};
 
 	struct MeshBuffers
@@ -65,6 +69,13 @@ namespace PhxEngine::Renderer
 		std::vector<DirectX::XMFLOAT2> TexCoordData;
 		std::vector<DirectX::XMFLOAT3> NormalData;
 		std::vector<DirectX::XMFLOAT4> TangentData;
+		std::vector< DirectX::XMFLOAT3> ColourData;
+
+		std::array<RHI::BufferRange, (int)VertexAttribute::Count> BufferRanges;
+
+		[[nodiscard]] bool HasVertexAttribuite(VertexAttribute attr) const { return this->BufferRanges[(int)attr].ByteOffset != 0; }
+		RHI::BufferRange& GetVertexAttribute(VertexAttribute attr) { return this->BufferRanges[(int)attr]; }
+		[[nodiscard]] const RHI::BufferRange& GetVertexAttribute(VertexAttribute attr) const { return this->BufferRanges[(int)attr]; }
 	};
 
 	struct Mesh
@@ -77,5 +88,6 @@ namespace PhxEngine::Renderer
 		uint32_t VertexOffset = 0;
 		uint32_t TotalIndices = 0;
 		uint32_t TotalVertices = 0;
+		size_t GlobalMeshIndex = 0;
 	};
 }

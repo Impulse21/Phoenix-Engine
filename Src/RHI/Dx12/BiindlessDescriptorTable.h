@@ -4,6 +4,8 @@
 
 #include "DescriptorHeap.h"
 
+#include <PhxEngine/RHI/PhxRHI.h>
+
 namespace PhxEngine::RHI::Dx12
 {
 	class BindlessDescriptorTable
@@ -26,8 +28,8 @@ namespace PhxEngine::RHI::Dx12
 		DescriptorIndex Allocate();
 		void Free(DescriptorIndex index);
 
-		D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(DescriptorIndex index) { return this->m_allocation.GetCpuHandle(index); }
-		D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(DescriptorIndex index) { return this->m_allocation.GetGpuHandle(index); }
+		D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(DescriptorIndex index) const { return this->m_allocation.GetCpuHandle(index); }
+		D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(DescriptorIndex index) const { return this->m_allocation.GetGpuHandle(index); }
 
 	private:
 		class DescriptorIndexPool
