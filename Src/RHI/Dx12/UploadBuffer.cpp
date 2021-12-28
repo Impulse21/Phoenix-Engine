@@ -104,6 +104,8 @@ UploadBuffer::Allocation UploadBuffer::Page::Allocate(size_t sizeInBytes, size_t
 	Allocation allocation = {};
 	allocation.Cpu = static_cast<uint8_t*>(this->m_cpuPtr) + this->m_offset;
 	allocation.Gpu = this->m_gpuPtr + this->m_offset;
+	allocation.Offset = this->m_offset;
+	allocation.D3D12Resouce = this->m_d3dResource.Get();
 
 	this->m_offset += sizeInBytesAligned;
 

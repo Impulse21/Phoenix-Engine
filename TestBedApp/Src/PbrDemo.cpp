@@ -144,6 +144,7 @@ void PbrDemo::RenderScene()
         this->GetCommandList()->BindDynamicStructuredBuffer(PBRBindingSlots::GeometryDataSB, this->m_scene->GetGeometryData());
         this->GetCommandList()->BindDynamicStructuredBuffer(PBRBindingSlots::MaterialDataSB, this->m_scene->GetMaterialData());
         this->GetCommandList()->BindResourceTable(PBRBindingSlots::BindlessDescriptorTable);
+
         // Draw the Meshes
         for (auto& meshInstance : this->m_scene->GetSceneGraph()->GetMeshInstanceNodes())
         {
@@ -205,10 +206,19 @@ void PbrDemo::CreatePipelineStates()
         shaderDesc.ShaderType = EShaderType::Pixel;
         ShaderHandle ps = this->GetGraphicsDevice()->CreateShader(shaderDesc, gPbrDemoPS, sizeof(gPbrDemoPS));
 
+        std::vector<VertexAttributeDesc> attributeDesc =
+        {
+            { "POSITION", 0, EFormat::RGB32_FLOAT, 0, VertexAttributeDesc::SAppendAlignedElement, false},
+        };
+
+        // InputLayoutHandle inputLayout = this->GetGraphicsDevice()->CreateInputLayout(attributeDesc.data(), attributeDesc.size());
+        InputLayoutHandle inputLayout = nullptr;
+
         GraphicsPSODesc psoDesc = {};
         psoDesc.VertexShader = vs;
         psoDesc.PixelShader = ps;
-        psoDesc.InputLayout = nullptr;
+        // psoDesc.InputLayout = inputLayout;
+        // psoDesc.InputLayout = nullptr;
         psoDesc.DsvFormat = this->m_depthBuffer->GetDesc().Format;
         psoDesc.RtvFormats.push_back(this->GetGraphicsDevice()->GetBackBuffer()->GetDesc().Format);
 
@@ -230,9 +240,21 @@ void PbrDemo::CreatePipelineStates()
 
         Dx12::DescriptorTable descriptorTable = {};
         auto range = this->GetGraphicsDevice()->GetNumBindlessDescriptors();
-        descriptorTable.AddSRVRange<0, 100>(range, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE);
-        descriptorTable.AddSRVRange<0, 101>(range, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE);
-        descriptorTable.AddSRVRange<0, 102>(range, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE);
+        descriptorTable.AddSRVRange<0, 100>(
+            range,
+            D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE,
+            0);
+
+        descriptorTable.AddSRVRange<0, 101>(
+            range,
+            D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE,
+            0);
+
+        descriptorTable.AddSRVRange<0, 102>(
+            range,
+            D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE,
+            0);
+
         builder.AddDescriptorTable(descriptorTable);
 
         psoDesc.RootSignatureBuilder = &builder;

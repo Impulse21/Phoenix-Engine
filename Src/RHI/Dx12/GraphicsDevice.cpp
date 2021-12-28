@@ -1134,6 +1134,23 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateSRVViews(GpuBuffer* gpuBuffer)
 {
 	gpuBuffer->SrvAllocation = this->GetResourceCpuHeap()->Allocate(1);
 
+	const BufferDesc& desc = gpuBuffer->GetDesc();
+
+	// Typeless Buffer
+	// TODO: Support Structured and Typed Buffers
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.Buffer.FirstElement = 0;
+	srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+	srvDesc.Buffer.NumElements = desc.SizeInBytes / desc.StrideInBytes;
+
+	this->GetD3D12Device2()->CreateShaderResourceView(
+		gpuBuffer->D3D12Resource,
+		&srvDesc,
+		gpuBuffer->SrvAllocation.GetCpuHandle());
+
 	if (gpuBuffer->GetDesc().CreateBindless)
 	{
 		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view

@@ -19,7 +19,10 @@ namespace PhxEngine::RHI::Dx12
 		{
 			void* Cpu;
 			D3D12_GPU_VIRTUAL_ADDRESS Gpu;
+			ID3D12Resource* D3D12Resouce;
+			size_t Offset;
 		};
+
 		explicit UploadBuffer(RefCountPtr<ID3D12Device2> device, size_t pageSize = MB(2));
 
 		Allocation Allocate(size_t sizeInBytes, size_t alignment);

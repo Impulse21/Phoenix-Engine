@@ -8,6 +8,15 @@
 #include <PhxEngine/RHI/RefCountPtr.h>
 
 #define INVALID_DESCRIPTOR_INDEX ~0u
+
+#define PHXRHI_ENUM_CLASS_FLAG_OPERATORS(T) \
+    inline T operator | (T a, T b) { return T(uint32_t(a) | uint32_t(b)); } \
+    inline T operator & (T a, T b) { return T(uint32_t(a) & uint32_t(b)); } /* NOLINT(bugprone-macro-parentheses) */ \
+    inline T operator ~ (T a) { return T(~uint32_t(a)); } /* NOLINT(bugprone-macro-parentheses) */ \
+    inline bool operator !(T a) { return uint32_t(a) == 0; } \
+    inline bool operator ==(T a, uint32_t b) { return uint32_t(a) == b; } \
+    inline bool operator !=(T a, uint32_t b) { return uint32_t(a) != b; }
+
 namespace PhxEngine::RHI
 {
     typedef uint32_t DescriptorIndex;
@@ -204,7 +213,7 @@ namespace PhxEngine::RHI
         Texture3D
     };
 
-    enum ResourceStates : uint32_t
+    enum class ResourceStates : uint32_t
     {
         Unknown = 0,
         Common = 0x00000001,
@@ -229,6 +238,8 @@ namespace PhxEngine::RHI
         AccelStructBuildBlas = 0x00080000,
         ShadingRateSurface = 0x00100000,
     };
+
+    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(ResourceStates)
 
     enum EShaderType : uint16_t
     {
@@ -518,7 +529,7 @@ namespace PhxEngine::RHI
         EFormat Format = EFormat::UNKNOWN;
         uint32_t InputSlot = 0;
         uint32_t AlignedByteOffset = SAppendAlignedElement;
-        bool IsInstanced;
+        bool IsInstanced = false;
     };
 
     class IInputLayout : public IResource
@@ -804,7 +815,7 @@ namespace PhxEngine::RHI
             uint32_t startInstance = 0) = 0;
 
         template<typename T>
-        void WriteBuffer(BufferHandle buffer, std::vector<T> data, uint64_t destOffsetBytes = 0)
+        void WriteBuffer(BufferHandle buffer, std::vector<T> const& data, uint64_t destOffsetBytes = 0)
         {
             this->WriteBuffer(buffer, data.data(), sizeof(T) * data.size(), destOffsetBytes);
         }

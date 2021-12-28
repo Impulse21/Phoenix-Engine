@@ -70,6 +70,9 @@ void PhxEngine::RHI::Dx12::CommandList::Open()
 
     this->m_d3d12CommandList->QueryInterface(&this->m_d3d12CommnadList4);
 
+    // This might be a problem as it might delete any pending resources.
+    this->m_uploadBuffer->Reset();
+
     // Bind Heaps
     this->SetDescritporHeaps(
         {
@@ -212,7 +215,18 @@ void CommandList::DrawIndexed(
 
 void CommandList::WriteBuffer(BufferHandle buffer, const void* data, size_t dataSize, uint64_t destOffsetBytes)
 {
+    auto heapAllocation = this->m_uploadBuffer->Allocate(dataSize, buffer->GetDesc().StrideInBytes);
+    memcpy(heapAllocation.Cpu, data, dataSize);
+    GpuBuffer* bufferImpl = SafeCast<GpuBuffer*>(buffer.Get());
+    this->m_d3d12CommandList->CopyBufferRegion(
+        bufferImpl->D3D12Resource,
+        destOffsetBytes,
+        heapAllocation.D3D12Resouce,
+        heapAllocation.Offset,
+        dataSize);
+
     // TODO: See how the upload buffer can be used here
+    /*
     RefCountPtr<ID3D12Resource> intermediateResource;
     ThrowIfFailed(
         this->m_graphicsDevice.GetD3D12Device2()->CreateCommittedResource(
@@ -229,14 +243,17 @@ void CommandList::WriteBuffer(BufferHandle buffer, const void* data, size_t data
     subresourceData.SlicePitch = subresourceData.RowPitch;
 
     GpuBuffer* bufferImpl = SafeCast<GpuBuffer*>(buffer.Get());
+
     UpdateSubresources(
         this->m_d3d12CommandList.Get(),
         bufferImpl->D3D12Resource,
         intermediateResource,
         0, 0, 1, &subresourceData);
-
-    this->m_trackedData->NativeResources.push_back(intermediateResource);
+        this->m_trackedData->NativeResources.push_back(intermediateResource);
+    */
+    
     this->m_trackedData->Resource.push_back(buffer);
+
 }
 
 void PhxEngine::RHI::Dx12::CommandList::WriteTexture(TextureHandle texture, uint32_t firstSubresource, size_t numSubresources, SubresourceData* pSubresourceData)

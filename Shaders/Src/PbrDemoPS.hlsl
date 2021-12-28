@@ -60,7 +60,8 @@ ConstantBuffer<SceneInfo> SceneInfoCB : register(b1);
 StructuredBuffer<Material> MaterialsSB : register(t2);
 
 Texture2D   Texture2DTable[]    : register(t0, Tex2DSpace);
-TextureCube TextureCubeTable[]  : register(t0, TexCubeSpace);
+TextureCube TextureCubeTable[] : register(t0, TexCubeSpace);
+ByteAddressBuffer BufferTable[] : register(t0, BufferSpace);
 
 SamplerState SamplerDefault : register(s0);
 SamplerState SamplerBrdf : register(s1);
@@ -81,8 +82,6 @@ static const float MaxReflectionLod = 7.0f;
 
 float4 main(PSInput input) : SV_Target
 {
-    return float4(0.2, 0.2, 0.2, 1.0f);
-    
     Material material = MaterialsSB[input.MaterialID];
     
     // -- Collect Material Data ---

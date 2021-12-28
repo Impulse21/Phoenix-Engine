@@ -463,11 +463,13 @@ void Scene::CreateMeshBuffers(ICommandList* commandList)
 			indexBufferDesc.SizeInBytes = sizeof(uint32_t) * buffers->IndexData.size();
 			indexBufferDesc.StrideInBytes = sizeof(uint32_t);
 			indexBufferDesc.DebugName = "Index Buffer";
+			indexBufferDesc.CreateSRVViews = true;
+			indexBufferDesc.CreateBindless = true;
 			buffers->IndexBuffer = this->m_graphicsDevice->CreateIndexBuffer(indexBufferDesc);
 
 			commandList->TransitionBarrier(buffers->IndexBuffer, ResourceStates::Common, ResourceStates::CopyDest);
 			commandList->WriteBuffer<uint32_t>(buffers->IndexBuffer, buffers->IndexData);
-			commandList->TransitionBarrier(buffers->IndexBuffer, ResourceStates::CopyDest, ResourceStates::IndexBuffer);
+			commandList->TransitionBarrier(buffers->IndexBuffer, ResourceStates::CopyDest, ResourceStates::IndexBuffer | ResourceStates::ShaderResource);
 
 			// TODO, clear CPU data sonce the command list takes ownership of data.
 
@@ -477,6 +479,7 @@ void Scene::CreateMeshBuffers(ICommandList* commandList)
 		{
 			RHI::BufferDesc desc = {};
 			desc.SizeInBytes = 0;
+			desc.StrideInBytes = sizeof(float);
 			desc.DebugName = "Vertex Buffer";
 			desc.CreateBindless = true;
 			desc.CreateSRVViews = true;
@@ -542,7 +545,7 @@ void Scene::CreateMeshBuffers(ICommandList* commandList)
 				commandList->WriteBuffer(buffers->VertexBuffer, buffers->TangentData, bufferRange.ByteOffset);
 			}
 
-			commandList->TransitionBarrier(buffers->VertexBuffer, ResourceStates::CopyDest, ResourceStates::ShaderResource);
+			commandList->TransitionBarrier(buffers->VertexBuffer, ResourceStates::CopyDest, ResourceStates::ShaderResource | ResourceStates::VertexBuffer);
 		}
 	}
 }
@@ -610,13 +613,15 @@ void PhxEngine::Renderer::Scene::UpdateGeometryData(std::shared_ptr<Mesh> const&
 			? static_cast<uint32_t>(vertexOffset * sizeof(DirectX::XMFLOAT3) + mesh->Buffers->GetVertexAttribute(VertexAttribute::Normal).ByteOffset)
 			: ~0U;
 
-		gData.PositionOffset = mesh->Buffers->HasVertexAttribuite(VertexAttribute::Tangent)
+		gData.TangentOffset = mesh->Buffers->HasVertexAttribuite(VertexAttribute::Tangent)
 			? static_cast<uint32_t>(vertexOffset * sizeof(DirectX::XMFLOAT4) + mesh->Buffers->GetVertexAttribute(VertexAttribute::Tangent).ByteOffset)
 			: ~0U;
 
-		gData.PositionOffset = mesh->Buffers->HasVertexAttribuite(VertexAttribute::Colour)
+		/*
+		gData.ColourOffset = mesh->Buffers->HasVertexAttribuite(VertexAttribute::Colour)
 			? static_cast<uint32_t>(vertexOffset * sizeof(DirectX::XMFLOAT3) + mesh->Buffers->GetVertexAttribute(VertexAttribute::Colour).ByteOffset)
 			: ~0U;
+			*/
 	}
 }
 
@@ -658,7 +663,7 @@ void PhxEngine::Renderer::Scene::WriteMaterialBuffer(RHI::ICommandList* commandL
 void PhxEngine::Renderer::Scene::UpdateInstanceData(std::shared_ptr<MeshInstanceNode> const& meshInstanceNode)
 {
 	auto& idata = this->m_resources->MeshInstanceData[meshInstanceNode->GetInstanceIndex()];
-	XMStoreFloat4x4(&idata.Transform, meshInstanceNode->GetWorldMatrix());
+	XMStoreFloat4x4(&idata.Transform, XMMatrixTranspose(meshInstanceNode->GetWorldMatrix()));
 
 	const auto& mesh = meshInstanceNode->GetMeshData();
 	idata.FirstGeometryIndex = mesh->Geometry[0]->GlobalGeometryIndex;
