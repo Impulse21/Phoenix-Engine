@@ -11,6 +11,8 @@
 #include <PhxEngine/RHI/Dx12/RootSignatureBuilder.h>
 
 
+#include <GLFW/glfw3.h>
+
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
 using namespace PhxEngine::Renderer;
@@ -64,6 +66,13 @@ namespace PBRBindingSlots
     };
 }
 
+float GetAxisInput(GLFWgamepadstate const& state, int inputId)
+{
+    auto value = state.axes[inputId];
+    return value > 0.2f || value < -0.2f
+        ? value
+        : 0.0f;
+}
 
 void XM_CALLCONV ComputeMatrices(CXMMATRIX view, CXMMATRIX projection, XMFLOAT4X4& viewProjection)
 {
@@ -83,9 +92,9 @@ void PbrDemo::LoadContent()
 
     const std::string baseDir = "D:\\Users\\C.DiPaolo\\Development\\Phoenix-Engine\\Assets\\";
 
-    this->m_skyboxTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\IBL\\\Milkyway\\skybox.dds", true, this->GetCommandList());
-    this->m_irradanceMap = this->m_textureCache->LoadTexture(baseDir + "Textures\\IBL\\\Milkyway\\irradiance_map.dds", true, this->GetCommandList());
-    this->m_prefilteredMap = this->m_textureCache->LoadTexture(baseDir + "Textures\\IBL\\\Milkyway\\prefiltered_radiance_map.dds", true, this->GetCommandList());
+    this->m_skyboxTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\IBL\\Serpentine_Valley\\output_skybox.dds", true, this->GetCommandList());
+    this->m_irradanceMap = this->m_textureCache->LoadTexture(baseDir + "Textures\\IBL\\Serpentine_Valley\\output_irradiance.dds", true, this->GetCommandList());
+    this->m_prefilteredMap = this->m_textureCache->LoadTexture(baseDir + "Textures\\IBL\\Serpentine_Valley\\output_radiance.dds", true, this->GetCommandList());
     this->m_brdfLUT = this->m_textureCache->LoadTexture(baseDir + "Textures\\IBL\\BrdfLut.dds", true, this->GetCommandList());
 
     this->CreateRenderTargets();
@@ -132,7 +141,7 @@ void PbrDemo::RenderScene()
 
         sceneData.CameraPosition = this->m_scene->GetMainCamera()->GetTranslation();
         sceneData.SunColour = { 1.0f, 1.0f, 1.0f };
-        sceneData.SunDirection = { 1.25, 1.0f, -1.0f };
+        sceneData.SunDirection = this->m_sunDirection;
 
         ComputeMatrices(
             this->m_viewMatrix,
@@ -173,6 +182,43 @@ void PbrDemo::RenderScene()
 
     this->GetCommandList()->Close();
     this->GetGraphicsDevice()->ExecuteCommandLists(this->GetCommandList());
+}
+
+void PbrDemo::Update(double elapsedTime)
+{
+    // Temp Light control stuff
+    GLFWgamepadstate state;
+
+    static const XMVECTOR WorldUp = { 0.0f, 1.0f, 0.0f };
+    static const XMVECTOR WorldNorth = XMVector3Normalize(XMVector3Cross(g_XMIdentityR0, WorldUp));
+    static const XMVECTOR WorldEast = XMVector3Cross(WorldUp, WorldNorth);
+    static const XMMATRIX worldBase(WorldEast, WorldUp, WorldNorth, g_XMIdentityR3);
+
+    if (!glfwGetGamepadState(GLFW_JOYSTICK_1, &state))
+    {
+        return;
+    }
+    
+    this->m_pitch += GetAxisInput(state, GLFW_GAMEPAD_AXIS_RIGHT_Y) * 0.01f;
+    this->m_yaw += GetAxisInput(state, GLFW_GAMEPAD_AXIS_RIGHT_X) * 0.01f;
+
+    // Max out pitich
+    this->m_pitch = XMMin(XM_PIDIV2, this->m_pitch);
+    this->m_pitch = XMMax(-XM_PIDIV2, this->m_pitch);
+
+    if (this->m_yaw > XM_PI)
+    {
+        this->m_yaw -= XM_2PI;
+    }
+    else if (this->m_yaw <= -XM_PI)
+    {
+        this->m_yaw += XM_2PI;
+    }
+
+    XMMATRIX orientation = worldBase * XMMatrixRotationX(this->m_pitch) * XMMatrixRotationY(this->m_yaw);
+
+    XMStoreFloat3(&this->m_sunDirection, XMVector3TransformNormal(WorldNorth, orientation));
+
 }
 
 void PbrDemo::CreateRenderTargets()
@@ -279,6 +325,8 @@ void PbrDemo::CreateScene()
     goldMaterial->UseMaterialTexture = false;
     goldMaterial->RoughnessTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\Materials\\Gold\\lightgold_roughness.png", false, this->GetCommandList());
     goldMaterial->MetalnessTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\Materials\\Gold\\lightgold_metallic.png", false, this->GetCommandList());
+    goldMaterial->Ao = 1.0f;
+
 
     auto floorMaterial = sceneGraph->CreateMaterial();
     floorMaterial->AlbedoTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\Materials\\OldPlankFlooring\\old-plank-flooring4_basecolor.png", true, this->GetCommandList());
@@ -296,40 +344,95 @@ void PbrDemo::CreateScene()
     bambooMaterial->MetalnessTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\Materials\\BambooWood\\bamboo-wood-semigloss-metal.png", false, this->GetCommandList());
     bambooMaterial->AoTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\Materials\\BambooWood\\bamboo-wood-semigloss-ao.png", false, this->GetCommandList());
 
+    auto plasticMaterial = sceneGraph->CreateMaterial();
+    plasticMaterial->AlbedoTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\Materials\\scuffed-plastic\\scuffed-plastic8-alb.png", true, this->GetCommandList());
+    plasticMaterial->NormalMapTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\Materials\\scuffed-plastic\\scuffed-plastic-normal.png", false, this->GetCommandList());
+    plasticMaterial->UseMaterialTexture = false;
+    plasticMaterial->RoughnessTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\Materials\\scuffed-plastic\\scuffed-plastic-rough.png", false, this->GetCommandList());
+    plasticMaterial->MetalnessTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\Materials\\scuffed-plastic\\scuffed-plastic-metal.png", false, this->GetCommandList());
+    plasticMaterial->Ao = 1.0f;
+
+
+    auto shinyMetal = sceneGraph->CreateMaterial();
+    shinyMetal->AlbedoTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\Materials\\worn-shiny-metal\\worn-shiny-metal-albedo.png", true, this->GetCommandList());
+    shinyMetal->NormalMapTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\Materials\\worn-shiny-metal\\worn-shiny-metal-Normal-dx.png", false, this->GetCommandList());
+    shinyMetal->UseMaterialTexture = false;
+    shinyMetal->RoughnessTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\Materials\\worn-shiny-metal\\worn-shiny-metal-Roughness.png", false, this->GetCommandList());
+    shinyMetal->MetalnessTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\Materials\\worn-shiny-metal\\worn-shiny-metal-Metallic.png", false, this->GetCommandList());
+    shinyMetal->AoTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\Materials\\worn-shiny-metal\\worn-shiny-metal-ao.png", false, this->GetCommandList());
+
+
+    auto defaultMaterial = sceneGraph->CreateMaterial();
+    // defaultMaterial->AlbedoTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\Materials\\Default\\checker.png", true, this->GetCommandList());
+    defaultMaterial->AlbedoTexture = this->m_textureCache->LoadTexture(baseDir + "Textures\\Materials\\Default\\checkerboard.png", true, this->GetCommandList());
+    defaultMaterial->Roughness = 1.0f;
+    defaultMaterial->Metalness = 0.5f;
+    defaultMaterial->Ao = 1.0f;
+
     // Create plane
     auto planeMesh = sceneGraph->CreateMesh();
-    SceneGraphHelpers::InitializePlaneMesh(planeMesh, floorMaterial, 400.0f, 400.0f, true);
+    SceneGraphHelpers::InitializePlaneMesh(planeMesh, defaultMaterial, 10.0f, 10.0f, true);
+    // SceneGraphHelpers::InitializePlaneMesh(planeMesh, floorMaterial, 10.0f, 10.0f, true);
 
     auto planeNode = sceneGraph->CreateNode<MeshInstanceNode>();
     planeNode->SetMeshData(planeMesh);
     planeNode->SetName("Plane Node");
     sceneGraph->AttachNode(sceneGraph->GetRootNode(), planeNode);
 
-    // Create Sphere
-    auto sphereMesh = sceneGraph->CreateMesh();
-    SceneGraphHelpers::InitializeSphereMesh(sphereMesh, goldMaterial, 1.0f, 16U, true);
+    {
+        // Create Sphere
+        auto sphereMesh = sceneGraph->CreateMesh();
+        SceneGraphHelpers::InitializeSphereMesh(sphereMesh, goldMaterial, 1.0f, 16U, true);
 
-    auto sphereNode = sceneGraph->CreateNode<MeshInstanceNode>();
-    sphereNode->SetMeshData(sphereMesh);
-    sphereNode->SetName("Sphere Node");
-    sphereNode->SetTranslation({ 0.0f, 1.0f, 0.0f });
+        auto sphereNode = sceneGraph->CreateNode<MeshInstanceNode>();
+        sphereNode->SetMeshData(sphereMesh);
+        sphereNode->SetName("Gold Sphere Node");
+        sphereNode->SetTranslation(DirectX::XMFLOAT3(-2.0f, 1.0f, 0.0f));
 
-    sceneGraph->AttachNode(sceneGraph->GetRootNode(), sphereNode);
+        sceneGraph->AttachNode(sceneGraph->GetRootNode(), sphereNode);
+    }
+
+    {
+        // Create Sphere
+        auto sphereMesh = sceneGraph->CreateMesh();
+        SceneGraphHelpers::InitializeSphereMesh(sphereMesh, shinyMetal, 1.0f, 16U, true);
+
+        auto sphereNode = sceneGraph->CreateNode<MeshInstanceNode>();
+        sphereNode->SetMeshData(sphereMesh);
+        sphereNode->SetName("Shiny Metal Sphere Node");
+        sphereNode->SetTranslation(DirectX::XMFLOAT3(-2.0f, 1.0f, 2.0f));
+
+        sceneGraph->AttachNode(sceneGraph->GetRootNode(), sphereNode);
+    }
+
+    {
+        // Create Sphere
+        auto sphereMesh = sceneGraph->CreateMesh();
+        SceneGraphHelpers::InitializeSphereMesh(sphereMesh, plasticMaterial, 1.0f, 16U, true);
+
+        auto sphereNode = sceneGraph->CreateNode<MeshInstanceNode>();
+        sphereNode->SetMeshData(sphereMesh);
+        sphereNode->SetName("plastic Sphere Node");
+        sphereNode->SetTranslation(DirectX::XMFLOAT3(-2.0f, 1.0f, -2.0f));
+
+        sceneGraph->AttachNode(sceneGraph->GetRootNode(), sphereNode);
+    }
 
     // Create Cube
     auto cubeMesh = sceneGraph->CreateMesh();
     SceneGraphHelpers::InitalizeCubeMesh(cubeMesh, bambooMaterial, 2.0f, true);
+    // SceneGraphHelpers::InitalizeCubeMesh(cubeMesh, bambooMaterial, 2.0f, true);
 
     auto cubeNode = sceneGraph->CreateNode<MeshInstanceNode>();
     cubeNode->SetMeshData(cubeMesh);
     cubeNode->SetName("Cube Node");
-    cubeNode->SetTranslation({ 1.0f, 1.0f, 0.0f });
+    cubeNode->SetTranslation(DirectX::XMFLOAT3(2.0f, 1.0f, 0.0f ));
 
     sceneGraph->AttachNode(sceneGraph->GetRootNode(), cubeNode);
 
     // Add a camera node
     auto cameraNode = sceneGraph->CreateNode<PerspectiveCameraNode>();
-    cameraNode->SetTranslation({ 0.0f, 1.0f, -6.0f });
+    cameraNode->SetTranslation(DirectX::XMFLOAT3(0.0f, 10.0f, -10.0f ));
     cameraNode->SetName("Main Camera");
     cameraNode->SetYFov(XMConvertToRadians(45.0f));
     cameraNode->SetZNear(0.1f);

@@ -11,9 +11,10 @@
 
 class PbrDemo : public PhxEngine::ApplicationBase
 {
-public:
+protected:
     void LoadContent() override;
     void RenderScene() override;
+    void Update(double elapsedTime) override;
 
 private:
     void CreateRenderTargets();
@@ -35,4 +36,10 @@ private:
     PhxEngine::RHI::TextureHandle m_irradanceMap;
     PhxEngine::RHI::TextureHandle m_prefilteredMap;
     PhxEngine::RHI::TextureHandle m_brdfLUT;
+
+    // Camera pitch
+    float m_pitch = 0.0f;
+    float m_yaw = 0.0f;
+
+    DirectX::XMFLOAT3 m_sunDirection = { 0.0f, 0.0f, 1.0f };
 };

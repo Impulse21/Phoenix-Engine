@@ -3,6 +3,13 @@
 using namespace DirectX;
 using namespace PhxEngine::Renderer;
 
+void PhxEngine::Renderer::Node::SetTranslation(DirectX::XMVECTOR const& translation)
+{
+	DirectX::XMStoreFloat3(&this->m_translation, translation);
+	this->m_updateLocalTransform = true;
+	this->InvalidateWorldMatrix();
+}
+
 void Node::SetTranslation(DirectX::XMFLOAT3 const& translation)
 {
 	this->m_translation = translation;
@@ -10,9 +17,23 @@ void Node::SetTranslation(DirectX::XMFLOAT3 const& translation)
 	this->InvalidateWorldMatrix();
 }
 
+void PhxEngine::Renderer::Node::SetRotation(DirectX::XMVECTOR const& rotationQuat)
+{
+	DirectX::XMStoreFloat4(&this->m_rotation, rotationQuat);
+	this->m_updateLocalTransform = true;
+	this->InvalidateWorldMatrix();
+}
+
 void PhxEngine::Renderer::Node::SetRotation(DirectX::XMFLOAT4 const& rotationQuat)
 {
 	this->m_rotation = rotationQuat;
+	this->m_updateLocalTransform = true;
+	this->InvalidateWorldMatrix();
+}
+
+void PhxEngine::Renderer::Node::SetScale(DirectX::XMVECTOR const& scale)
+{
+	DirectX::XMStoreFloat3(&this->m_scale, scale);
 	this->m_updateLocalTransform = true;
 	this->InvalidateWorldMatrix();
 }
@@ -59,7 +80,7 @@ void PhxEngine::Renderer::Node::SetParentNode(Node* node)
 
 void PhxEngine::Renderer::Node::UpdateWorldMatrix()
 {
-	if (this->m_updateWorldMatrix)
+	if (!this->m_updateWorldMatrix)
 	{
 		return;
 	}
@@ -89,4 +110,48 @@ const DirectX::XMMATRIX& PhxEngine::Renderer::PerspectiveCameraNode::GetProjecti
 
 	return this->m_projectionMatrix;
 	// TODO: insert return statement here
+}
+
+
+void PhxEngine::Renderer::PerspectiveCameraNode::UpdateViewMatrixLH()
+{
+	/*
+	// axisZ == Forward Vector
+	const XMVECTOR axisZ = XMVector3Normalize(forward);
+
+	// axisX == right vector
+	const XMVECTOR axisX = XMVector3Normalize(XMVector3Cross(up, forward));
+
+	// Axisy == Up vector ( forward cross with right)
+	const XMVECTOR axisY = XMVector3Cross(axisZ, axisX);
+
+	this->m_viewMatrix = this->ConstructViewMatrixLH(
+		axisX,
+		axisY,
+		axisZ,
+		this->GetTranslation());
+		*/
+}
+
+DirectX::XMMATRIX PhxEngine::Renderer::PerspectiveCameraNode::ConstructViewMatrixLH(
+	DirectX::XMVECTOR const& axisX,
+	DirectX::XMVECTOR const& axisY,
+	DirectX::XMVECTOR const& axisZ,
+	DirectX::XMVECTOR const& position) const
+{
+	const XMVECTOR negEye = XMVectorNegate(position);
+
+	// Not sure I get this bit.
+	const XMVECTOR d0 = XMVector3Dot(axisX, negEye);
+	const XMVECTOR d1 = XMVector3Dot(axisY, negEye);
+	const XMVECTOR d2 = XMVector3Dot(axisZ, negEye);
+
+	// Construct column major view matrix;
+	XMMATRIX m;
+	m.r[0] = XMVectorSelect(d0, axisX, g_XMSelect1110.v);
+	m.r[1] = XMVectorSelect(d1, axisY, g_XMSelect1110.v);
+	m.r[2] = XMVectorSelect(d2, axisZ, g_XMSelect1110.v);
+	m.r[3] = g_XMIdentityR3.v;
+
+	return XMMatrixTranspose(m);
 }

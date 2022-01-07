@@ -11,8 +11,13 @@ namespace PhxEngine::Renderer
 	public:
 		virtual ~Node() = default;
 
+		void SetTranslation(DirectX::XMVECTOR const& translation);
 		void SetTranslation(DirectX::XMFLOAT3 const& translation);
+
+		void SetRotation(DirectX::XMVECTOR const& rotationQuat);
 		void SetRotation(DirectX::XMFLOAT4 const& rotationQuat);
+
+		void SetScale(DirectX::XMVECTOR const& scale);
 		void SetScale(DirectX::XMFLOAT3 const& scale);
 
 		const DirectX::XMFLOAT3& GetTranslation() const { return this->m_translation; }
@@ -41,7 +46,7 @@ namespace PhxEngine::Renderer
 		std::list<std::shared_ptr<Node>> m_childiren;
 
 		DirectX::XMFLOAT3 m_translation = { 0.0f, 0.0f, 0.0f };
-		DirectX::XMFLOAT4 m_rotation = { 1.0f, 0.0f, 0.0f, 0.0f };
+		DirectX::XMFLOAT4 m_rotation = { 0.0f, 0.0f, 0.0f, 0.0f };
 		DirectX::XMFLOAT3 m_scale = { 1.0f, 1.0f, 1.0f };
 
 		DirectX::XMMATRIX m_localTransform = DirectX::XMMatrixIdentity();
@@ -86,6 +91,9 @@ namespace PhxEngine::Renderer
 		virtual ~CameraNode() = default;
 
 		virtual const DirectX::XMMATRIX& GetProjectionMatrix() = 0;
+		// virtual const DirectX::XMMATRIX&& GetViewMatrix() = 0;
+
+		virtual void UpdateViewMatrixLH() = 0;
 	};
 
 	class PerspectiveCameraNode final : public CameraNode
@@ -107,6 +115,17 @@ namespace PhxEngine::Renderer
 		float GetYFov() const { return this->m_yFov; }
 
 		const DirectX::XMMATRIX& GetProjectionMatrix() override;
+
+		// const DirectX::XMMATRIX& GetViewMatrix() override;
+
+		void UpdateViewMatrixLH() override;
+
+	private:
+		DirectX::XMMATRIX ConstructViewMatrixLH(
+			DirectX::XMVECTOR const& axisX,
+			DirectX::XMVECTOR const& axisY,
+			DirectX::XMVECTOR const& axisZ,
+			DirectX::XMVECTOR const& position) const;
 
 	private:
 		float m_zNear = 1.f;
