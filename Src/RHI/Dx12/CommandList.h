@@ -10,11 +10,33 @@ namespace PhxEngine::RHI::Dx12
 	class CommandQueue;
 	class GpuDescriptorHeap;
 	class UploadBuffer;
+	class DynamicSuballocator;
 
 	struct TrackedResources
 	{
 		std::vector<RefCountPtr<IResource>> Resource;
 		std::vector<RefCountPtr<IUnknown>> NativeResources;
+	};
+
+	class DynamicSubAllocatorPool
+	{
+	public:
+		DynamicSubAllocatorPool(
+			GpuDescriptorHeap& gpuDescriptorHeap,
+			uint32_t chunkSize);
+		~DynamicSubAllocatorPool() = default;
+
+		DynamicSuballocator* RequestAllocator(uint64_t completedFenceValue);
+		void DiscardAllocator(uint64_t fence, DynamicSuballocator* allocator);
+
+		inline size_t Size() { return this->m_allocatorPool.size(); }
+
+	private:
+		const uint32_t m_chunkSize;
+		GpuDescriptorHeap& m_gpuDescriptorHeap;
+
+		std::vector<std::unique_ptr<DynamicSuballocator>> m_allocatorPool;
+		std::queue<std::pair<uint64_t, DynamicSuballocator*>> m_availableAllocators;
 	};
 
 	class CommandList : public RefCounter<ICommandList>
@@ -64,6 +86,7 @@ namespace PhxEngine::RHI::Dx12
         void BindStructuredBuffer(size_t rootParameterIndex, IBuffer* buffer) override;
 		void BindResourceTable(size_t rootParameterIndex) override;
 		void BindSamplerTable(size_t rootParameterIndex) override;
+		void BindDynamicDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures) override;
 
 	public:
 		std::shared_ptr<TrackedResources> Executed(uint64_t fenceValue);
@@ -75,6 +98,8 @@ namespace PhxEngine::RHI::Dx12
 		void TransitionBarrier(RefCountPtr<ID3D12Resource> d3d12Resource, D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState);
 
 	private:
+		const uint32_t DynamicChunkSizeSrvUavCbv = 256;
+
 		GraphicsDevice& m_graphicsDevice;
 		CommandListDesc m_desc = {};
 		CommandAllocatorPool m_commandAlloatorPool;
@@ -85,6 +110,9 @@ namespace PhxEngine::RHI::Dx12
 		RefCountPtr<ID3D12GraphicsCommandList> m_d3d12CommandList;
 		RefCountPtr<ID3D12GraphicsCommandList4> m_d3d12CommnadList4;
 
+		// Dynamic Descriptor Heap
+		DynamicSubAllocatorPool m_dynamicSubAllocatorPool;
+		DynamicSuballocator* m_activeDynamicSubAllocator;
 	};
 }
 

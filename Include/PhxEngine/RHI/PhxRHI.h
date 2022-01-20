@@ -729,7 +729,7 @@ namespace PhxEngine::RHI
             uint16_t Depth;
         };
 
-        uint16_t MipLevels = 0;
+        uint16_t MipLevels = 1;
 
         std::optional<Color> OptmizedClearValue;
         std::string DebugName;
@@ -887,6 +887,7 @@ namespace PhxEngine::RHI
 
         virtual void BindStructuredBuffer(size_t rootParameterIndex, IBuffer* buffer) = 0;
 
+        virtual void BindDynamicDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures) = 0;
         virtual void BindResourceTable (size_t rootParameterIndex) = 0;
         virtual void BindSamplerTable(size_t rootParameterIndex) = 0;
     };

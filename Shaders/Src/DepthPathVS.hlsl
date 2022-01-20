@@ -4,36 +4,7 @@ struct DrawPushConstant
 {
     uint InstanceBufferIndex;
     uint GeometryBufferIndex;
-};
-
-struct SceneInfo
-{
-    matrix ViewProjection;
-
-	// -- 16 byte boundary ----
-    
-    matrix ShadowViewProjection;
-
-	// -- 16 byte boundary ----
-    
-    float3 CameraPosition;
-    uint _padding;
-
-	// -- 16 byte boundary ----
-    
-    float3 SunDirection;
-    uint _padding1;
-
-	// -- 16 byte boundary ----
-    
-    float3 SunColour;
-    uint IrradianceMapTexIndex;
-
-	// -- 16 byte boundary ----
-    
-    uint PreFilteredEnvMapTexIndex;
-    uint BrdfLUTTexIndex;
-    
+    matrix ViewProjMatrix;
 };
 
 struct GeometryData
@@ -75,7 +46,6 @@ struct MeshInstanceData
 };
 
 ConstantBuffer<DrawPushConstant> DrawPushConstantCB : register(b0);
-ConstantBuffer<SceneInfo> SceneInfoCB : register(b1);
 
 StructuredBuffer<MeshInstanceData> MeshInstanceSB : register(t0);
 StructuredBuffer<GeometryData> GeometrySB : register(t1);
@@ -84,13 +54,7 @@ ByteAddressBuffer BufferTable[] : register(t0, BufferSpace);
 
 struct VsOutput
 {
-    float3 NormalWS     : NORMAL;
-    float4 Colour       : COLOUR;
-    float2 TexCoord : TEXCOORD;
-    float3 PositionWS   : Position;
-    float4 TangentWS    : TANGENT;
-    uint MaterialID : MATERIAL;
-    float4 Position     : SV_POSITION;
+    float4 Position : SV_POSITION;
 };
 
 VsOutput main(
@@ -110,17 +74,8 @@ VsOutput main(
     matrix worldMatrix = instance.Transform;
     float4 modelPosition = float4(asfloat(vertexBuffer.Load3(geometry.PositionOffset + index * 12)), 1.0f);
     
-    output.PositionWS = mul(modelPosition, worldMatrix).xyz;
-    output.Position = mul(float4(output.PositionWS, 1.0f), SceneInfoCB.ViewProjection);
-    
-    
-    output.NormalWS = geometry.NormalOffset == ~0u ? 0 : asfloat(vertexBuffer.Load3(geometry.NormalOffset + index * 12));
-    output.TexCoord = geometry.TexCoordOffset == ~0u ? 0 : asfloat(vertexBuffer.Load2(geometry.TexCoordOffset + index * 8));
-    output.Colour = float4(0.0f, 0.0f, 0.0f, 1.0f);
-    
-    output.TangentWS = geometry.TangentOffset == ~0u ? 0 : asfloat(vertexBuffer.Load4(geometry.TangentOffset + index * 16));
-    output.TangentWS = float4(mul(output.TangentWS.xyz, (float3x3) worldMatrix), output.TangentWS.w);
-    
-    output.MaterialID = geometry.MaterialIndex;
+    output.Position = mul(modelPosition, worldMatrix);
+    output.Position = mul(output.Position, DrawPushConstantCB.ViewProjMatrix);
+
     return output;
 }

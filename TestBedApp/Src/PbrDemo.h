@@ -23,8 +23,14 @@ private:
 
     void CreateScene();
 
+    void CreateShadowMap();
+
 private:
     PhxEngine::RHI::TextureHandle m_depthBuffer;
+    PhxEngine::RHI::TextureHandle m_shadowMap;
+
+    PhxEngine::RHI::GraphicsPSOHandle m_shadowMapPassPso;
+
     PhxEngine::RHI::GraphicsPSOHandle m_geomtryPassPso;
     std::shared_ptr<PhxEngine::Core::IFileSystem> m_fs;
     std::shared_ptr<PhxEngine::Renderer::TextureCache> m_textureCache;
@@ -42,4 +48,7 @@ private:
     float m_yaw = 0.0f;
 
     DirectX::XMFLOAT3 m_sunDirection = { 0.0f, 0.0f, 1.0f };
+    DirectX::XMMATRIX m_sunProj = {};
+    DirectX::XMMATRIX m_sunView = {};
+    DirectX::XMFLOAT4X4 m_sunViewProj = {};
 };

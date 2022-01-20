@@ -148,7 +148,8 @@ namespace PhxEngine::RHI::Dx12
 			ID3D12Device2* d3dDevice,
 			D3D12_DESCRIPTOR_HEAP_DESC const& heapDesc,
 			RefCountPtr<ID3D12DescriptorHeap> d3dHeap,
-			uint32_t numDescriptorsInHeap);
+			uint32_t numDescriptorsInHeap,
+			uint32_t initOffset);
 
 		DescriptorHeapAllocationPage(
 			uint32_t id,

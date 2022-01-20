@@ -8,6 +8,8 @@
 #include <Shaders/PbrDemoVS_compiled.h>
 #include <Shaders/PbrDemoPS_compiled.h>
 
+#include <Shaders/DepthPathVS_compiled.h>
+
 #include <PhxEngine/RHI/Dx12/RootSignatureBuilder.h>
 
 
@@ -18,8 +20,8 @@ using namespace PhxEngine::Core;
 using namespace PhxEngine::Renderer;
 using namespace PhxEngine::RHI;
 using namespace DirectX;
-
-namespace ShaderStructures
+ 
+namespace PBRPassShaderStructures
 {
     struct DrawPushConstant
     {
@@ -33,6 +35,10 @@ namespace ShaderStructures
 
         // -- 16-byte boundry ---
 
+        DirectX::XMFLOAT4X4 ShadowViewProjection;
+
+
+        // -- 16-byte boundry ---
         DirectX::XMFLOAT3 CameraPosition;
         uint32_t _padding;
 
@@ -53,6 +59,17 @@ namespace ShaderStructures
     };
 }
 
+namespace ShadowPassStructures
+{
+    struct DrawPushConstant
+    {
+        uint32_t InstanceBufferIndex;
+        uint32_t GeometryIndex;
+        DirectX::XMFLOAT4X4 LightViewProjection;
+    };
+
+}
+
 namespace PBRBindingSlots
 {
     enum : uint8_t
@@ -62,6 +79,18 @@ namespace PBRBindingSlots
         MeshInstanceDataSB,
         GeometryDataSB,
         MaterialDataSB,
+        ShadowMapTexture,
+        BindlessDescriptorTable
+    };
+}
+
+namespace ShadowPassBindingSlots
+{
+    enum : uint8_t
+    {
+        DrawPushConstant = 0,
+        MeshInstanceDataSB,
+        GeometryDataSB,
         BindlessDescriptorTable
     };
 }
@@ -98,6 +127,9 @@ void PbrDemo::LoadContent()
     this->m_brdfLUT = this->m_textureCache->LoadTexture(baseDir + "Textures\\IBL\\BrdfLut.dds", true, this->GetCommandList());
 
     this->CreateRenderTargets();
+    this->CreateShadowMap();
+
+    this->GetCommandList()->TransitionBarrier(this->m_shadowMap, ResourceStates::DepthWrite, ResourceStates::ShaderResource);
 
     this->CreatePipelineStates();
 
@@ -110,6 +142,8 @@ void PbrDemo::LoadContent()
         XMLoadFloat3(&this->m_scene->GetMainCamera()->GetTranslation()),
         XMVectorSet(0, 0, 0, 1),
         XMVectorSet(0, 1, 0, 0));
+
+    this->m_sunProj = XMMatrixOrthographicLH(20.0f, 20.0f, 1.0f, 7.5f);
 }
 
 void PbrDemo::RenderScene()
@@ -121,6 +155,55 @@ void PbrDemo::RenderScene()
         this->GetCommandList()->TransitionBarrier(backBuffer, ResourceStates::Present, ResourceStates::RenderTarget);
         this->GetCommandList()->ClearTextureFloat(backBuffer, { 0.0f, 0.0f, 0.0f, 1.0f });
         this->GetCommandList()->ClearDepthStencilTexture(this->m_depthBuffer, true, 1.0f, false, 0);
+
+        // Transition to Write State
+        this->GetCommandList()->TransitionBarrier(this->m_shadowMap, ResourceStates::ShaderResource, ResourceStates::DepthWrite);
+        this->GetCommandList()->ClearDepthStencilTexture(this->m_shadowMap, true, 1.0f, false, 0);
+    }
+
+    {
+        ScopedMarker _ = this->GetCommandList()->BeginScropedMarker("Shadow Map Pass");
+        
+        this->GetCommandList()->SetGraphicsPSO(this->m_shadowMapPassPso);
+        this->GetCommandList()->SetRenderTargets({}, this->m_shadowMap);
+
+        Viewport v(this->m_shadowMap->GetDesc().Width, this->m_shadowMap->GetDesc().Height);
+        this->GetCommandList()->SetViewports(&v, 1);
+        Rect rec(LONG_MAX, LONG_MAX);
+        this->GetCommandList()->SetScissors(&rec, 1);
+
+        this->GetCommandList()->BindDynamicStructuredBuffer(ShadowPassBindingSlots::MeshInstanceDataSB, this->m_scene->GetMeshInstanceData());
+        this->GetCommandList()->BindDynamicStructuredBuffer(ShadowPassBindingSlots::GeometryDataSB, this->m_scene->GetGeometryData());
+        this->GetCommandList()->BindResourceTable(ShadowPassBindingSlots::BindlessDescriptorTable);
+
+        // Draw the Meshes
+        for (auto& meshInstance : this->m_scene->GetSceneGraph()->GetMeshInstanceNodes())
+        {
+            const auto& mesh = meshInstance->GetMeshData();
+            this->GetCommandList()->BindIndexBuffer(mesh->Buffers->IndexBuffer);
+
+            for (size_t i = 0; i < mesh->Geometry.size(); i++)
+            {
+                ShadowPassStructures::DrawPushConstant constants;
+                constants.InstanceBufferIndex = meshInstance->GetInstanceIndex();
+                constants.GeometryIndex = i;
+
+                // TODO: No need to upload this everytime.
+                constants.LightViewProjection = this->m_sunViewProj;
+
+                this->GetCommandList()->BindPushConstant(ShadowPassBindingSlots::DrawPushConstant, constants);
+
+                this->GetCommandList()->DrawIndexed(
+                    mesh->Geometry[i]->NumIndices,
+                    1,
+                    mesh->Geometry[i]->IndexOffsetInMesh);
+            }
+        }
+    }
+
+    {
+        ScopedMarker m = this->GetCommandList()->BeginScropedMarker("Transition Shadow Map");
+        this->GetCommandList()->TransitionBarrier(this->m_shadowMap, ResourceStates::DepthWrite, ResourceStates::ShaderResource);
     }
 
     {
@@ -134,7 +217,7 @@ void PbrDemo::RenderScene()
         Rect rec(LONG_MAX, LONG_MAX);
         this->GetCommandList()->SetScissors(&rec, 1);
 
-        ShaderStructures::SceneData sceneData = {};
+        PBRPassShaderStructures::SceneData sceneData = {};
         sceneData.BrdfLUTTexIndex = this->m_brdfLUT->GetDescriptorIndex();
         sceneData.IrradianceMapTexture = this->m_irradanceMap->GetDescriptorIndex();
         sceneData.PreFilteredEnvMapTexIndex = this->m_prefilteredMap->GetDescriptorIndex();
@@ -148,10 +231,14 @@ void PbrDemo::RenderScene()
             this->m_scene->GetMainCamera()->GetProjectionMatrix(),
             sceneData.ViewProjection);
 
+        sceneData.ShadowViewProjection = this->m_sunViewProj;
+
         this->GetCommandList()->BindDynamicConstantBuffer(PBRBindingSlots::SceneDataCB, sceneData);
         this->GetCommandList()->BindDynamicStructuredBuffer(PBRBindingSlots::MeshInstanceDataSB, this->m_scene->GetMeshInstanceData());
         this->GetCommandList()->BindDynamicStructuredBuffer(PBRBindingSlots::GeometryDataSB, this->m_scene->GetGeometryData());
         this->GetCommandList()->BindDynamicStructuredBuffer(PBRBindingSlots::MaterialDataSB, this->m_scene->GetMaterialData());
+        this->GetCommandList()->BindDynamicDescriptorTable(PBRBindingSlots::ShadowMapTexture, { this->m_shadowMap });
+
         this->GetCommandList()->BindResourceTable(PBRBindingSlots::BindlessDescriptorTable);
 
         // Draw the Meshes
@@ -162,7 +249,7 @@ void PbrDemo::RenderScene()
 
             for (size_t i = 0; i < mesh->Geometry.size(); i++)
             {
-                ShaderStructures::DrawPushConstant constants;
+                PBRPassShaderStructures::DrawPushConstant constants;
                 constants.InstanceBufferIndex = meshInstance->GetInstanceIndex();
                 constants.GeometryIndex = i;
 
@@ -217,25 +304,45 @@ void PbrDemo::Update(double elapsedTime)
 
     XMMATRIX orientation = worldBase * XMMatrixRotationX(this->m_pitch) * XMMatrixRotationY(this->m_yaw);
 
-    XMStoreFloat3(&this->m_sunDirection, XMVector3TransformNormal(WorldNorth, orientation));
+    
+    XMVECTOR sunDir = XMVector3TransformNormal(WorldNorth, orientation);
+    XMStoreFloat3(&this->m_sunDirection, sunDir);
+    this->m_sunView = DirectX::XMMatrixLookAtLH(
+        XMVectorNegate(sunDir)* 2,
+        { 0.0f, 0.0f, 0.0f },
+        { 0.0f, 1.0f, 0.0f });
 
+
+    XMStoreFloat4x4(&this->m_sunViewProj, XMMatrixTranspose(this->m_sunView * this->m_sunProj));
 }
 
 void PbrDemo::CreateRenderTargets()
-{    
-    // -- Create Depth Buffer ---
-    {
-        TextureDesc desc = {};
-        desc.Format = EFormat::D32;
-        desc.Width = WindowWidth;
-        desc.Height = WindowHeight;
-        desc.Dimension = TextureDimension::Texture2D;
-        desc.DebugName = "Depth Buffer";
-        Color clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
-        desc.OptmizedClearValue = std::make_optional<Color>(clearValue);
+{
+    TextureDesc desc = {};
+    desc.Format = EFormat::D32;
+    desc.Width = WindowWidth;
+    desc.Height = WindowHeight;
+    desc.Dimension = TextureDimension::Texture2D;
+    desc.DebugName = "Depth Buffer";
+    Color clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
+    desc.OptmizedClearValue = std::make_optional<Color>(clearValue);
 
-        this->m_depthBuffer = this->GetGraphicsDevice()->CreateDepthStencil(desc);
-    }
+    this->m_depthBuffer = this->GetGraphicsDevice()->CreateDepthStencil(desc);
+}
+
+void PbrDemo::CreateShadowMap()
+{
+    const uint32_t shadowMapRes = 1024;
+	TextureDesc desc = {};
+	desc.Format = EFormat::D32;
+	desc.Width = shadowMapRes;
+	desc.Height = shadowMapRes;
+	desc.Dimension = TextureDimension::Texture2D;
+	desc.DebugName = "Shadow Map";
+	Color clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
+	desc.OptmizedClearValue = std::make_optional<Color>(clearValue);
+
+	this->m_shadowMap = this->GetGraphicsDevice()->CreateDepthStencil(desc);
 }
 
 void PbrDemo::CreatePipelineStates()
@@ -246,7 +353,7 @@ void PbrDemo::CreatePipelineStates()
         shaderDesc.DebugName = "PBR Vertex Shader";
         shaderDesc.ShaderType = EShaderType::Vertex;
 
-        ShaderHandle vs = this->GetGraphicsDevice()->CreateShader(shaderDesc, gPbrDemoVS, sizeof(gPbrDemoVS)); // TOOD:
+        ShaderHandle vs = this->GetGraphicsDevice()->CreateShader(shaderDesc, gPbrDemoVS, sizeof(gPbrDemoVS));
 
         shaderDesc.DebugName = "PBR Pixel Shader";
         shaderDesc.ShaderType = EShaderType::Pixel;
@@ -271,7 +378,7 @@ void PbrDemo::CreatePipelineStates()
         // TODO: Work around to get things working. I really shouldn't even care making my stuff abstract. But here we are.
         Dx12::RootSignatureBuilder builder = {};
 
-        builder.Add32BitConstants<0, 0>(sizeof(ShaderStructures::DrawPushConstant) / 4);
+        builder.Add32BitConstants<0, 0>(sizeof(PBRPassShaderStructures::DrawPushConstant) / 4);
         builder.AddConstantBufferView<1, 0>();
         builder.AddShaderResourceView<0, 0>();
         builder.AddShaderResourceView<1, 0>();
@@ -284,19 +391,67 @@ void PbrDemo::CreatePipelineStates()
             D3D12_FILTER_MIN_MAG_MIP_LINEAR,
             D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
 
+        // Shadow Map Sampler
+        builder.AddStaticSampler<2, 0>(
+            D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT,
+            D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+            D3D12_COMPARISON_FUNC_GREATER_EQUAL);
+
+        
+        Dx12::DescriptorTable textureTable = {};
+        textureTable.AddSRVRange<10, 0>(1, D3D12_DESCRIPTOR_RANGE_FLAG_NONE, 0);
+        builder.AddDescriptorTable(textureTable);
+
+        Dx12::DescriptorTable bindlessDescriptorTable = {};
+        auto range = this->GetGraphicsDevice()->GetNumBindlessDescriptors();
+        bindlessDescriptorTable.AddSRVRange<0, 100>(
+            range,
+            D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE,
+            0);
+
+        bindlessDescriptorTable.AddSRVRange<0, 101>(
+            range,
+            D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE,
+            0);
+
+        bindlessDescriptorTable.AddSRVRange<0, 102>(
+            range,
+            D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE,
+            0);
+
+        builder.AddDescriptorTable(bindlessDescriptorTable);
+
+        psoDesc.RootSignatureBuilder = &builder;
+
+        this->m_geomtryPassPso = this->GetGraphicsDevice()->CreateGraphicsPSOHandle(psoDesc);
+    }
+
+    // Create Shadow map pass
+    {
+        ShaderDesc shaderDesc = {};
+        shaderDesc.DebugName = "Depth Vertex Shader";
+        shaderDesc.ShaderType = EShaderType::Vertex;
+
+        ShaderHandle vs = this->GetGraphicsDevice()->CreateShader(shaderDesc, gDepthPathVS, sizeof(gDepthPathVS));
+
+        GraphicsPSODesc psoDesc = {};
+        psoDesc.VertexShader = vs;
+
+        // Currently only one shadow map as there is only one light source
+        psoDesc.DsvFormat = this->m_shadowMap->GetDesc().Format;
+        psoDesc.RasterRenderState.DepthBias = -7.5;
+        psoDesc.RasterRenderState.cullMode = RasterCullMode::Front;
+
+        // TODO: Work around to get things working. I really shouldn't even care making my stuff abstract. But here we are.
+        Dx12::RootSignatureBuilder builder = {};
+
+        builder.Add32BitConstants<0, 0>(sizeof(ShadowPassStructures::DrawPushConstant) / 4);
+        builder.AddShaderResourceView<0, 0>();
+        builder.AddShaderResourceView<1, 0>();
+
         Dx12::DescriptorTable descriptorTable = {};
         auto range = this->GetGraphicsDevice()->GetNumBindlessDescriptors();
         descriptorTable.AddSRVRange<0, 100>(
-            range,
-            D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE,
-            0);
-
-        descriptorTable.AddSRVRange<0, 101>(
-            range,
-            D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE,
-            0);
-
-        descriptorTable.AddSRVRange<0, 102>(
             range,
             D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE,
             0);
@@ -305,7 +460,7 @@ void PbrDemo::CreatePipelineStates()
 
         psoDesc.RootSignatureBuilder = &builder;
 
-        this->m_geomtryPassPso = this->GetGraphicsDevice()->CreateGraphicsPSOHandle(psoDesc);
+        this->m_shadowMapPassPso = this->GetGraphicsDevice()->CreateGraphicsPSOHandle(psoDesc);
     }
 }
 

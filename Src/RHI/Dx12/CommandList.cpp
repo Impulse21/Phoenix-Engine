@@ -40,6 +40,7 @@ PhxEngine::RHI::Dx12::CommandList::CommandList(GraphicsDevice& graphicsDevice, C
 	, m_desc(desc)
 	, m_commandAlloatorPool(graphicsDevice.GetD3D12Device2(), Convert(desc.QueueType))
     , m_uploadBuffer(std::make_unique<UploadBuffer>(graphicsDevice.GetD3D12Device2()))
+    , m_dynamicSubAllocatorPool(*graphicsDevice.GetResourceGpuHeap(), DynamicChunkSizeSrvUavCbv)
 {
 }
 
@@ -52,6 +53,9 @@ void PhxEngine::RHI::Dx12::CommandList::Open()
     auto lastCompletedFence = this->m_graphicsDevice.GetGfxQueue()->GetLastCompletedFence();
 
     this->m_activeD3D12CommandAllocator = this->m_commandAlloatorPool.RequestAllocator(lastCompletedFence);
+
+    this->m_activeDynamicSubAllocator = this->m_dynamicSubAllocatorPool.RequestAllocator(lastCompletedFence);
+    this->m_activeDynamicSubAllocator->ReleaseAllocations();
 
     if (this->m_d3d12CommandList)
     {
@@ -73,12 +77,14 @@ void PhxEngine::RHI::Dx12::CommandList::Open()
     // This might be a problem as it might delete any pending resources.
     this->m_uploadBuffer->Reset();
 
+
     // Bind Heaps
     this->SetDescritporHeaps(
         {
             this->m_graphicsDevice.GetResourceGpuHeap(),
             this->m_graphicsDevice.GetSamplerGpuHeap()
         });
+
 }
 
 void PhxEngine::RHI::Dx12::CommandList::Close()
@@ -381,6 +387,9 @@ std::shared_ptr<TrackedResources> CommandList::Executed(uint64_t fenceValue)
     this->m_commandAlloatorPool.DiscardAllocator(fenceValue, this->m_activeD3D12CommandAllocator);
     this->m_activeD3D12CommandAllocator = nullptr;
 
+    this->m_dynamicSubAllocatorPool.DiscardAllocator(fenceValue, this->m_activeDynamicSubAllocator);
+    this->m_activeDynamicSubAllocator = nullptr;
+
     auto trackedResources = this->m_trackedData;
     this->m_trackedData.reset();
 
@@ -501,4 +510,61 @@ void PhxEngine::RHI::Dx12::CommandList::BindSamplerTable(size_t rootParameterInd
 {
     // TODO:
     PHX_ASSERT(false);
+}
+
+void CommandList::BindDynamicDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures)
+{
+    // Request Descriptoprs for table
+    // Validate with Root Signature. Maybe an improvment in the future.
+    DescriptorHeapAllocation descriptorTable = this->m_activeDynamicSubAllocator->Allocate(textures.size());
+    for (int i = 0; i < textures.size(); i++)
+    {
+        Texture* textureImpl = SafeCast<Texture*>(textures[i].Get());
+        this->m_graphicsDevice.GetD3D12Device2()->CopyDescriptorsSimple(
+            1,
+            descriptorTable.GetCpuHandle(i),
+            textureImpl->SrvAllocation.GetCpuHandle(),
+            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+        this->m_trackedData->Resource.push_back(textures[i]);
+    }
+
+    this->m_d3d12CommandList->SetGraphicsRootDescriptorTable(rootParameterIndex, descriptorTable.GetGpuHandle());
+}
+
+DynamicSubAllocatorPool::DynamicSubAllocatorPool(GpuDescriptorHeap& gpuDescriptorHeap, uint32_t chunkSize)
+    : m_chunkSize(chunkSize)
+    , m_gpuDescriptorHeap(gpuDescriptorHeap)
+{
+}
+
+DynamicSuballocator* DynamicSubAllocatorPool::RequestAllocator(uint64_t completedFenceValue)
+{
+    DynamicSuballocator* pAllocator = nullptr;
+    if (!this->m_availableAllocators.empty())
+    {
+        auto& allocatorPair = this->m_availableAllocators.front();
+        if (allocatorPair.first <= completedFenceValue)
+        {
+            pAllocator = allocatorPair.second;
+            pAllocator->ReleaseAllocations();
+
+            this->m_availableAllocators.pop();
+        }
+    }
+
+    if (!pAllocator)
+    {
+        this->m_allocatorPool.emplace_back(std::make_unique<DynamicSuballocator>(
+            this->m_gpuDescriptorHeap,
+            this->m_chunkSize));
+        pAllocator = this->m_allocatorPool.back().get();
+    }
+
+    return pAllocator;
+}
+
+void PhxEngine::RHI::Dx12::DynamicSubAllocatorPool::DiscardAllocator(uint64_t fence, DynamicSuballocator* allocator)
+{
+    this->m_availableAllocators.push(std::make_pair(fence, allocator));
 }

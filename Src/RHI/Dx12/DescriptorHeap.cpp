@@ -98,7 +98,8 @@ DescriptorHeapAllocationPage::DescriptorHeapAllocationPage(
 	ID3D12Device2* d3dDevice,
 	D3D12_DESCRIPTOR_HEAP_DESC const& heapDesc,
 	RefCountPtr<ID3D12DescriptorHeap> d3dHeap,
-	uint32_t numDescriptorsInHeap)
+	uint32_t numDescriptorsInHeap,
+	uint32_t initOffset)
 	: m_id(id)
 	, m_allocator(allocator)
 	, m_heapDesc(heapDesc)
@@ -106,9 +107,13 @@ DescriptorHeapAllocationPage::DescriptorHeapAllocationPage(
 	, m_numFreeHandles(numDescriptorsInHeap)
 	, m_d3d12Heap(d3dHeap)
 {
-	this->m_baseCpuDescritpor = this->m_d3d12Heap->GetCPUDescriptorHandleForHeapStart();
-	this->m_baseGpuDescritpor = this->m_d3d12Heap->GetGPUDescriptorHandleForHeapStart();
 	this->m_descritporSize = d3dDevice->GetDescriptorHandleIncrementSize(this->m_heapDesc.Type);
+
+	this->m_baseCpuDescritpor = this->m_d3d12Heap->GetCPUDescriptorHandleForHeapStart();
+	this->m_baseCpuDescritpor.ptr += this->GetDescriptorSize() * initOffset;
+
+	this->m_baseGpuDescritpor = this->m_d3d12Heap->GetGPUDescriptorHandleForHeapStart();
+	this->m_baseGpuDescritpor.ptr += this->GetDescriptorSize() * initOffset;
 
 	// Initialize the free lists
 	this->AddNewBlock(0, this->m_numFreeHandles);
@@ -131,9 +136,10 @@ DescriptorHeapAllocationPage::DescriptorHeapAllocationPage(
 			&this->m_heapDesc,
 			IID_PPV_ARGS(&this->m_d3d12Heap)));
 
+	this->m_descritporSize = d3dDevice->GetDescriptorHandleIncrementSize(this->m_heapDesc.Type);
+
 	this->m_baseCpuDescritpor = this->m_d3d12Heap->GetCPUDescriptorHandleForHeapStart();
 	this->m_baseGpuDescritpor = this->m_d3d12Heap->GetGPUDescriptorHandleForHeapStart();
-	this->m_descritporSize = d3dDevice->GetDescriptorHandleIncrementSize(this->m_heapDesc.Type);
 
 	// Initialize the free lists
 	this->AddNewBlock(0, this->m_numFreeHandles);
@@ -308,7 +314,8 @@ GpuDescriptorHeap::GpuDescriptorHeap(
 		this->m_graphicsDevice.GetD3D12Device2(),
 		this->m_heapDesc,
 		this->m_d3dHeap,
-		numDesctiptors);
+		numDesctiptors,
+		0);
 
 	this->m_dynamicPage = std::make_unique<DescriptorHeapAllocationPage>(
 		1,
@@ -316,7 +323,8 @@ GpuDescriptorHeap::GpuDescriptorHeap(
 		this->m_graphicsDevice.GetD3D12Device2(),
 		this->m_heapDesc,
 		this->m_d3dHeap,
-		numDynamicDescriptors);
+		numDynamicDescriptors,
+		numDesctiptors + 1);
 }
 
 GpuDescriptorHeap::~GpuDescriptorHeap()

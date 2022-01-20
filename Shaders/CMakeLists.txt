@@ -4,7 +4,8 @@ project(PhxEngineShaders VERSION 1.0)
 
 # Shader Projects
 set(shader_source_vs
-    Src/PbrDemoVS.hlsl)
+    Src/PbrDemoVS.hlsl
+    Src/DepthPathVS.hlsl)
     
 set(shader_source_ps
     Src/PbrDemoPS.hlsl)
@@ -15,6 +16,7 @@ set(shader_headers
 
 
 set(shader_source_includes
+    Include/Shaders/DepthPathVS_compiled.h
     Include/Shaders/PbrDemoVS_compiled.h
     Include/Shaders/PbrDemoPS_compiled.h)
 

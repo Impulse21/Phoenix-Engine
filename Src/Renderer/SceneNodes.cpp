@@ -155,3 +155,8 @@ DirectX::XMMATRIX PhxEngine::Renderer::PerspectiveCameraNode::ConstructViewMatri
 
 	return XMMatrixTranspose(m);
 }
+
+int PhxEngine::Renderer::SceneForwardIterator::Next(bool allowChildren)
+{
+	return 0;
+}

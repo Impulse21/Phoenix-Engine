@@ -469,6 +469,10 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencil(TextureDe
 	textureImpl->Desc = desc;
 	textureImpl->D3D12Resource = d3d12Resource;
 	textureImpl->DsvAllocation = this->GetDsvCpuHeap()->Allocate(1);
+	textureImpl->SrvAllocation = this->GetResourceCpuHeap()->Allocate(1);
+
+	std::wstring debugName(desc.DebugName.begin(), desc.DebugName.end());
+	textureImpl->D3D12Resource->SetName(debugName.c_str());
 
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
 	dsvDesc.Format = dxgiFormatMapping.rtvFormat;
@@ -480,6 +484,28 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencil(TextureDe
 		textureImpl->D3D12Resource,
 		&dsvDesc,
 		textureImpl->DsvAllocation.GetCpuHandle());
+
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = dxgiFormatMapping.srvFormat;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+	if (desc.Dimension == TextureDimension::TextureCube)
+	{
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;  // Only 2D textures are supported (this was checked in the calling function).
+		srvDesc.TextureCube.MipLevels = desc.MipLevels;
+		srvDesc.TextureCube.MostDetailedMip = 0;
+	}
+	else
+	{
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;  // Only 2D textures are supported (this was checked in the calling function).
+		srvDesc.Texture2D.MipLevels = desc.MipLevels;
+	}
+
+	this->GetD3D12Device2()->CreateShaderResourceView(
+		textureImpl->D3D12Resource,
+		&srvDesc,
+		textureImpl->SrvAllocation.GetCpuHandle());
 
 	return TextureHandle::Create(textureImpl.release());
 }

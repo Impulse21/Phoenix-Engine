@@ -19,14 +19,27 @@ struct DrawPushConstant
 struct SceneInfo
 {
     matrix ViewProjection;
+
+	// -- 16 byte boundary ----
+    
+    matrix ShadowViewProjection;
+
+	// -- 16 byte boundary ----
+    
     float3 CameraPosition;
     uint _padding;
+
+	// -- 16 byte boundary ----
     
     float3 SunDirection;
     uint _padding1;
+
+	// -- 16 byte boundary ----
     
     float3 SunColour;
     uint IrradianceMapTexIndex;
+
+	// -- 16 byte boundary ----
     
     uint PreFilteredEnvMapTexIndex;
     uint BrdfLUTTexIndex;
@@ -59,12 +72,15 @@ ConstantBuffer<DrawPushConstant> DrawPushConstantCB : register(b0);
 ConstantBuffer<SceneInfo> SceneInfoCB : register(b1);
 StructuredBuffer<Material> MaterialsSB : register(t2);
 
+Texture2D ShadowMap : register(t10);
+
 Texture2D   Texture2DTable[]    : register(t0, Tex2DSpace);
 TextureCube TextureCubeTable[] : register(t0, TexCubeSpace);
 ByteAddressBuffer BufferTable[] : register(t0, BufferSpace);
 
 SamplerState SamplerDefault : register(s0);
 SamplerState SamplerBrdf : register(s1);
+SamplerComparisonState ShadowSampler : register(s2);
 
 struct PSInput
 {
@@ -79,6 +95,12 @@ struct PSInput
 // Constant normal incidence Fresnel factor for all dielectrics.
 static const float Fdielectric = 0.04f;
 static const float MaxReflectionLod = 7.0f;
+
+float GetShadow(float3 shadowMapCoord)
+{
+    float result = ShadowMap.SampleCmpLevelZero(ShadowSampler, shadowMapCoord.xy, shadowMapCoord.z);
+    return result * result;
+}
 
 float4 main(PSInput input) : SV_Target
 {
@@ -202,6 +224,9 @@ float4 main(PSInput input) : SV_Target
     }
         
     float3 colour = ambient + Lo;
+    
+    float3 shadowMapCoord = mul(float4(input.PositionWS, 1.0f), SceneInfoCB.ShadowViewProjection).xyz;
+    colour = GetShadow(shadowMapCoord) * colour;
     
     // Correction for gamma?
     colour = colour / (colour + float3(1.0, 1.0, 1.0));
