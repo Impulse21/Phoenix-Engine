@@ -1067,7 +1067,7 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::TranslateDepthStencilState(DepthStenc
 {
 	outState.DepthEnable = inState.DepthTestEnable ? TRUE : FALSE;
 	outState.DepthWriteMask = inState.DepthWriteEnable ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
-	outState.DepthFunc = ConvertComparisonFunc(inState.depthFunc);
+	outState.DepthFunc = ConvertComparisonFunc(inState.DepthFunc);
 	outState.StencilEnable = inState.StencilEnable ? TRUE : FALSE;
 	outState.StencilReadMask = (UINT8)inState.StencilReadMask;
 	outState.StencilWriteMask = (UINT8)inState.StencilWriteMask;
@@ -1095,7 +1095,7 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::TranslateRasterState(RasterRenderStat
 		break;
 	}
 
-	switch (inState.cullMode)
+	switch (inState.CullMode)
 	{
 	case RasterCullMode::Back:
 		outState.CullMode = D3D12_CULL_MODE_BACK;

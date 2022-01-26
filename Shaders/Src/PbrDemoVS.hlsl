@@ -87,6 +87,7 @@ struct VsOutput
     float3 NormalWS     : NORMAL;
     float4 Colour       : COLOUR;
     float2 TexCoord : TEXCOORD;
+    float3 ShadowTexCoord : TEXCOORD1;
     float3 PositionWS   : Position;
     float4 TangentWS    : TANGENT;
     uint MaterialID : MATERIAL;
@@ -112,6 +113,7 @@ VsOutput main(
     
     output.PositionWS = mul(modelPosition, worldMatrix).xyz;
     output.Position = mul(float4(output.PositionWS, 1.0f), SceneInfoCB.ViewProjection);
+    output.ShadowTexCoord = mul(float4(output.PositionWS, 1.0f), SceneInfoCB.ShadowViewProjection).xyz;
     
     
     output.NormalWS = geometry.NormalOffset == ~0u ? 0 : asfloat(vertexBuffer.Load3(geometry.NormalOffset + index * 12));

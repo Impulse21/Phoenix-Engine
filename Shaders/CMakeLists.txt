@@ -5,10 +5,12 @@ project(PhxEngineShaders VERSION 1.0)
 # Shader Projects
 set(shader_source_vs
     Src/PbrDemoVS.hlsl
-    Src/DepthPathVS.hlsl)
+    Src/DepthPathVS.hlsl
+    Src/DebugVS.hlsl)
     
 set(shader_source_ps
-    Src/PbrDemoPS.hlsl)
+    Src/PbrDemoPS.hlsl
+    Src/DebugPS.hlsl)
 
 set(shader_headers
     Src/BRDFFunctions.hlsli
@@ -18,7 +20,9 @@ set(shader_headers
 set(shader_source_includes
     Include/Shaders/DepthPathVS_compiled.h
     Include/Shaders/PbrDemoVS_compiled.h
-    Include/Shaders/PbrDemoPS_compiled.h)
+    Include/Shaders/PbrDemoPS_compiled.h
+    Include/Shaders/DebugVS_compiled.h
+    Include/Shaders/DebugPS_compiled.h)
 
 # first is extra debug flags
 set_source_files_properties(${shader_source_vs} PROPERTIES VS_SHADER_FLAGS "/Fh \"${PROJECT_SOURCE_DIR}/Include/Shaders/%(Filename)_compiled.h\" /Vn \"g%(Filename)\" /Zi /Od /Qembed_debug" VS_SHADER_TYPE Vertex VS_SHADER_MODEL 6.5 VS_SHADER_ENTRYPOINT main)

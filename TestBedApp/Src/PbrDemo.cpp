@@ -15,6 +15,8 @@
 
 #include <GLFW/glfw3.h>
 
+#define SHADOW_DEPTH 100.5f
+
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
 using namespace PhxEngine::Renderer;
@@ -111,7 +113,6 @@ void XM_CALLCONV ComputeMatrices(CXMMATRIX view, CXMMATRIX projection, XMFLOAT4X
 
 void PbrDemo::LoadContent()
 {
-
     this->GetCommandList()->Open();
     this->m_fs = std::make_shared<NativeFileSystem>();
 
@@ -143,7 +144,7 @@ void PbrDemo::LoadContent()
         XMVectorSet(0, 0, 0, 1),
         XMVectorSet(0, 1, 0, 0));
 
-    this->m_sunProj = XMMatrixOrthographicLH(20.0f, 20.0f, 1.0f, 7.5f);
+    this->m_sunProj = XMMatrixOrthographicLH(100.0f, 100.0f, 1.0f, SHADOW_DEPTH);
 }
 
 void PbrDemo::RenderScene()
@@ -162,7 +163,7 @@ void PbrDemo::RenderScene()
     }
 
     {
-        ScopedMarker _ = this->GetCommandList()->BeginScropedMarker("Shadow Map Pass");
+        ScopedMarker _ = this->GetCommandList()->BeginScropedMarker("Shadow Pass");
         
         this->GetCommandList()->SetGraphicsPSO(this->m_shadowMapPassPso);
         this->GetCommandList()->SetRenderTargets({}, this->m_shadowMap);
@@ -225,6 +226,8 @@ void PbrDemo::RenderScene()
         sceneData.CameraPosition = this->m_scene->GetMainCamera()->GetTranslation();
         sceneData.SunColour = { 1.0f, 1.0f, 1.0f };
         sceneData.SunDirection = this->m_sunDirection;
+        // sceneData.SunDirection = { 0.0, 0.0, -1.0f };
+        // sceneData.SunDirection = { 0.335837096, 0.923879147, -0.183468640 };
 
         ComputeMatrices(
             this->m_viewMatrix,
@@ -281,17 +284,42 @@ void PbrDemo::Update(double elapsedTime)
     static const XMVECTOR WorldEast = XMVector3Cross(WorldUp, WorldNorth);
     static const XMMATRIX worldBase(WorldEast, WorldUp, WorldNorth, g_XMIdentityR3);
 
+    /*
+    XMMATRIX sunViewProj =
+    {
+        -0.000187966, -2.08932e-05, 0.000111946, 0.0f,
+        6.83272e-05, -5.74766e-05, 0.00030796, 0.0f,
+        -2.98023e-12, -0.000327675, -6.11563e-05, 0.0f,
+        0.53418, 0.471191, 0.153994, 1.0f
+    };
+
+    XMStoreFloat4x4(&this->m_sunViewProj, XMMatrixTranspose(sunViewProj));
+    ComputeMatrices(
+        this->m_viewMatrix,
+        this->m_sunProj,
+        this->m_sunViewProj);
+    */
+
     if (!glfwGetGamepadState(GLFW_JOYSTICK_1, &state))
     {
         return;
     }
-    
+
     this->m_pitch += GetAxisInput(state, GLFW_GAMEPAD_AXIS_RIGHT_Y) * 0.01f;
     this->m_yaw += GetAxisInput(state, GLFW_GAMEPAD_AXIS_RIGHT_X) * 0.01f;
 
     // Max out pitich
-    this->m_pitch = XMMin(XM_PIDIV2, this->m_pitch);
-    this->m_pitch = XMMax(-XM_PIDIV2, this->m_pitch);
+    // this->m_pitch = XMMin(XM_PIDIV2, this->m_pitch);
+    // this->m_pitch = XMMax(-XM_PIDIV2, this->m_pitch);
+
+    if (this->m_pitch > XM_PI)
+    {
+        this->m_pitch -= XM_2PI;
+    }
+    else if (this->m_pitch <= -XM_PI)
+    {
+        this->m_pitch += XM_2PI;
+    }
 
     if (this->m_yaw > XM_PI)
     {
@@ -304,16 +332,35 @@ void PbrDemo::Update(double elapsedTime)
 
     XMMATRIX orientation = worldBase * XMMatrixRotationX(this->m_pitch) * XMMatrixRotationY(this->m_yaw);
 
-    
+
     XMVECTOR sunDir = XMVector3TransformNormal(WorldNorth, orientation);
     XMStoreFloat3(&this->m_sunDirection, sunDir);
     this->m_sunView = DirectX::XMMatrixLookAtLH(
-        XMVectorNegate(sunDir)* 2,
+        XMVectorNegate(sunDir) * 2,
         { 0.0f, 0.0f, 0.0f },
         { 0.0f, 1.0f, 0.0f });
 
+    /*
+    ComputeMatrices(
+        this->m_sunView,
+        this->m_sunProj,
+        this->m_sunViewProj);
 
-    XMStoreFloat4x4(&this->m_sunViewProj, XMMatrixTranspose(this->m_sunView * this->m_sunProj));
+    ComputeMatrices(
+        this->m_viewMatrix,
+        this->m_scene->GetMainCamera()->GetProjectionMatrix(),
+        this->m_sunViewProj);
+
+    ComputeMatrices(
+        this->m_viewMatrix,
+        this->m_scene->GetMainCamera()->GetProjectionMatrix(),
+        this->m_sunViewProj);
+    */
+
+    ComputeMatrices(
+        this->m_viewMatrix,
+        this->m_scene->GetMainCamera()->GetProjectionMatrix(),
+        this->m_sunViewProj);
 }
 
 void PbrDemo::CreateRenderTargets()
@@ -394,8 +441,7 @@ void PbrDemo::CreatePipelineStates()
         // Shadow Map Sampler
         builder.AddStaticSampler<2, 0>(
             D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT,
-            D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
-            D3D12_COMPARISON_FUNC_GREATER_EQUAL);
+            D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
 
         
         Dx12::DescriptorTable textureTable = {};
@@ -439,8 +485,8 @@ void PbrDemo::CreatePipelineStates()
 
         // Currently only one shadow map as there is only one light source
         psoDesc.DsvFormat = this->m_shadowMap->GetDesc().Format;
-        psoDesc.RasterRenderState.DepthBias = -7.5;
-        psoDesc.RasterRenderState.cullMode = RasterCullMode::Front;
+        psoDesc.RasterRenderState.DepthBias = -100.0f;
+        psoDesc.RasterRenderState.CullMode = RasterCullMode::Back;
 
         // TODO: Work around to get things working. I really shouldn't even care making my stuff abstract. But here we are.
         Dx12::RootSignatureBuilder builder = {};
@@ -534,6 +580,7 @@ void PbrDemo::CreateScene()
     planeNode->SetName("Plane Node");
     sceneGraph->AttachNode(sceneGraph->GetRootNode(), planeNode);
 
+    /*
     {
         // Create Sphere
         auto sphereMesh = sceneGraph->CreateMesh();
@@ -559,21 +606,23 @@ void PbrDemo::CreateScene()
 
         sceneGraph->AttachNode(sceneGraph->GetRootNode(), sphereNode);
     }
-
+    */
     {
         // Create Sphere
         auto sphereMesh = sceneGraph->CreateMesh();
-        SceneGraphHelpers::InitializeSphereMesh(sphereMesh, plasticMaterial, 1.0f, 16U, true);
+        SceneGraphHelpers::InitializeSphereMesh(sphereMesh, plasticMaterial, 2.0f, 16U, true);
 
         auto sphereNode = sceneGraph->CreateNode<MeshInstanceNode>();
         sphereNode->SetMeshData(sphereMesh);
         sphereNode->SetName("plastic Sphere Node");
-        sphereNode->SetTranslation(DirectX::XMFLOAT3(-2.0f, 1.0f, -2.0f));
+        // sphereNode->SetTranslation(DirectX::XMFLOAT3(-2.0f, 1.0f, -2.0f));
+        sphereNode->SetTranslation(DirectX::XMFLOAT3(0.0f, 1.5f, 0.0f));
 
         sceneGraph->AttachNode(sceneGraph->GetRootNode(), sphereNode);
     }
 
     // Create Cube
+    /*
     auto cubeMesh = sceneGraph->CreateMesh();
     SceneGraphHelpers::InitalizeCubeMesh(cubeMesh, bambooMaterial, 2.0f, true);
     // SceneGraphHelpers::InitalizeCubeMesh(cubeMesh, bambooMaterial, 2.0f, true);
@@ -584,7 +633,7 @@ void PbrDemo::CreateScene()
     cubeNode->SetTranslation(DirectX::XMFLOAT3(2.0f, 1.0f, 0.0f ));
 
     sceneGraph->AttachNode(sceneGraph->GetRootNode(), cubeNode);
-
+    */
     // Add a camera node
     auto cameraNode = sceneGraph->CreateNode<PerspectiveCameraNode>();
     cameraNode->SetTranslation(DirectX::XMFLOAT3(0.0f, 10.0f, -10.0f ));

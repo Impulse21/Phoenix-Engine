@@ -453,7 +453,7 @@ namespace PhxEngine::RHI
 
         bool            DepthTestEnable = true;
         bool            DepthWriteEnable = true;
-        ComparisonFunc  depthFunc = ComparisonFunc::Less;
+        ComparisonFunc  DepthFunc = ComparisonFunc::Less;
         bool            StencilEnable = false;
         uint8_t         StencilReadMask = 0xff;
         uint8_t         StencilWriteMask = 0xff;
@@ -465,7 +465,7 @@ namespace PhxEngine::RHI
     struct RasterRenderState
     {
         RasterFillMode fillMode = RasterFillMode::Solid;
-        RasterCullMode cullMode = RasterCullMode::Back;
+        RasterCullMode CullMode = RasterCullMode::Back;
         bool FrontCounterClockwise = false;
         bool DepthClipEnable = false;
         bool scissorEnable = false;

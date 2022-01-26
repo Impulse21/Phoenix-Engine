@@ -87,6 +87,7 @@ struct PSInput
     float3 NormalWS : NORMAL;
     float4 Colour : COLOUR;
     float2 TexCoord : TEXCOORD;
+    float3 ShadowTexCoord : TEXCOORD1;
     float3 PositionWS : Position;
     float4 TangentWS : TANGENT;
     uint MaterialID : MATERIAL;
@@ -225,8 +226,11 @@ float4 main(PSInput input) : SV_Target
         
     float3 colour = ambient + Lo;
     
-    float3 shadowMapCoord = mul(float4(input.PositionWS, 1.0f), SceneInfoCB.ShadowViewProjection).xyz;
-    colour = GetShadow(shadowMapCoord) * colour;
+    float4 shadowMapCoord = mul(float4(input.PositionWS, 1.0f), SceneInfoCB.ShadowViewProjection);
+    // shadowMapCoord.xyz /= shadowMapCoord.w;
+    // shadowMapCoord.xy = shadowMapCoord.xy * 0.5 + 0.5;
+    colour = GetShadow(shadowMapCoord.xyz) * colour;
+    // colour = GetShadow(input.ShadowTexCoord) * colour;
     
     // Correction for gamma?
     colour = colour / (colour + float3(1.0, 1.0, 1.0));
