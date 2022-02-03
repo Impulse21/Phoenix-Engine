@@ -158,7 +158,7 @@ float4 main(PSInput input) : SV_Target
     {
         // -- Iterate over lights here
         // If this is a point light, calculate vector from light to World Pos
-        float3 L = normalize(SceneInfoCB.SunDirection);
+        float3 L = -normalize(SceneInfoCB.SunDirection);
         float3 H = normalize(V + L);
     
         // If point light, calculate attenuation here;
@@ -227,8 +227,18 @@ float4 main(PSInput input) : SV_Target
     float3 colour = ambient + Lo;
     
     float4 shadowMapCoord = mul(float4(input.PositionWS, 1.0f), SceneInfoCB.ShadowViewProjection);
-    // shadowMapCoord.xyz /= shadowMapCoord.w;
-    // shadowMapCoord.xy = shadowMapCoord.xy * 0.5 + 0.5;
+    // Convert to Texture space
+    shadowMapCoord.xyz /= shadowMapCoord.w;
+    
+    // Apply Bias
+    shadowMapCoord.xy = shadowMapCoord.xy * float2(0.5, -0.5) + 0.5;
+    
+    // Transform NDC space [-1,+1]^2 to texture space [0,1]^2
+    // XMMATRIX T(0.5f, 0.0f, 0.0f, 0.0f,
+    //            0.0f, -0.5f, 0.0f, 0.0f,
+    //            0.0f, 0.0f, 1.0f, 0.0f,
+    //            0.5f, 0.5f, 0.0f, 1.0f);
+    
     colour = GetShadow(shadowMapCoord.xyz) * colour;
     // colour = GetShadow(input.ShadowTexCoord) * colour;
     

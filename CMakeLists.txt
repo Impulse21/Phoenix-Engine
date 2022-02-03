@@ -22,10 +22,71 @@ set_target_properties(PhxEngineShaders PROPERTIES FOLDER PhxEngine)
 
 add_subdirectory(ThirdParty)
 
-include(PhxEngineCore.cmake)
-include(PhxEngineRHI.cmake)
-include(PhxEngineRenderer.cmake)
-include(PhxEngineApp.cmake)
+#-- App
+file(GLOB PhxEngineApp_Src
+    Include/PhxEngine/App/*.h
+    Src/App/*.cpp
+)
+
+#-- Core
+file(GLOB PhxEngineCore_Src
+    Include/PhxEngine/Core/*.h
+    Src/Core/*.cpp
+)
+
+#-- Renderer
+file(GLOB PhxEngineRenderer_Src
+    Include/PhxEngine/Renderer/*.h
+    Src/Renderer/*.h
+    Src/Renderer/*.cpp
+)
+
+file(GLOB PhxEngineRHI_Src
+    Include/PhxEngine/RHI/*.h)
+
+# Dx12 implementaion
+file(GLOB PhxEngineRHI_Dx12_Src
+    Src/RHI/Dx12/*.h
+    Src/RHI/Dx12/*.cpp
+)
+
+add_library(PhxEngine STATIC EXCLUDE_FROM_ALL 
+    ${PhxEngineApp_Src}
+    ${PhxEngineCore_Src}
+    ${PhxEngineRenderer_Src}
+    ${PhxEngineRHI_Src}
+    ${PhxEngineRHI_Dx12_Src})
+
+
+source_group("App"      FILES ${PhxEngineApp_Src})
+source_group("Core"     FILES ${PhxEngineCore_Src})
+source_group("Renderer" FILES ${PhxEngineRenderer_Src})
+source_group("RHI"      FILES ${PhxEngineRHI_Src})
+source_group("RHI/Dx12" FILES ${PhxEngineRHI_Dx12_Src})
+
+
+target_include_directories(PhxEngine PUBLIC Include)
+
+target_link_libraries(PhxEngine
+    spdlog
+    glfw
+    cgltf
+    DirectXTex
+    DirectX-Headers
+    DirectX-Guids
+    d3d12.lib
+    dxgi.lib)
+
+set_target_properties(PhxEngine PROPERTIES FOLDER PhxEngine)
+
+if(WIN32)
+    target_compile_definitions(PhxEngine PUBLIC NOMINMAX _CRT_SECURE_NO_WARNINGS)
+endif()
+
+#include(PhxEngineCore.cmake)
+#include(PhxEngineRHI.cmake)
+#include(PhxEngineRenderer.cmake)
+#include(PhxEngineApp.cmake)
 
 # -- Add Apps ---
 add_subdirectory(TestBedApp)

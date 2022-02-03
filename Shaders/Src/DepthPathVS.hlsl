@@ -2,9 +2,9 @@
 
 struct DrawPushConstant
 {
+    matrix ViewProjMatrix;
     uint InstanceBufferIndex;
     uint GeometryBufferIndex;
-    matrix ViewProjMatrix;
 };
 
 struct GeometryData
@@ -74,8 +74,10 @@ VsOutput main(
     matrix worldMatrix = instance.Transform;
     float4 modelPosition = float4(asfloat(vertexBuffer.Load3(geometry.PositionOffset + index * 12)), 1.0f);
     
+    matrix shadowMatrix = DrawPushConstantCB.ViewProjMatrix;
+    
     output.Position = mul(modelPosition, worldMatrix);
-    output.Position = mul(output.Position, DrawPushConstantCB.ViewProjMatrix);
+    output.Position = mul(output.Position, shadowMatrix);
 
     return output;
 }

@@ -21,6 +21,8 @@
 #include <PhxEngine/Core/Asserts.h>
 #include <PhxEngine/RHI/PhxRHI.h>
 
+#define NOMINMAX
+
 namespace PhxEngine::RHI::Dx12
 {
     inline void ThrowIfFailed(HRESULT hr)
