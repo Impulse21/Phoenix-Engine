@@ -208,7 +208,7 @@ void PbrDemo::RenderScene()
         for (auto& meshInstance : this->m_scene->GetSceneGraph()->GetMeshInstanceNodes())
         {
             const auto& mesh = meshInstance->GetMeshData();
-            this->GetCommandList()->BindIndexBuffer(mesh->Buffers->IndexBuffer);
+            this->GetCommandList()->BindIndexBuffer(mesh->Buffers->IndexGpuBuffer);
 
             for (size_t i = 0; i < mesh->Geometry.size(); i++)
             {
@@ -275,7 +275,7 @@ void PbrDemo::RenderScene()
         for (auto& meshInstance : this->m_scene->GetSceneGraph()->GetMeshInstanceNodes())
         {
             const auto& mesh = meshInstance->GetMeshData();
-            this->GetCommandList()->BindIndexBuffer(mesh->Buffers->IndexBuffer);
+            this->GetCommandList()->BindIndexBuffer(mesh->Buffers->IndexGpuBuffer);
 
             for (size_t i = 0; i < mesh->Geometry.size(); i++)
             {

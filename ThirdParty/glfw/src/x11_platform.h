@@ -313,7 +313,7 @@ typedef XRRScreenResources* (* PFN_XRRGetScreenResourcesCurrent)(Display*,Window
 typedef Bool (* PFN_XRRQueryExtension)(Display*,int*,int*);
 typedef Status (* PFN_XRRQueryVersion)(Display*,int*,int*);
 typedef void (* PFN_XRRSelectInput)(Display*,Window,int);
-typedef Status (* PFN_XRRSetCrtcConfig)(Display*,XRRScreenResources*,RRCrtc,Time,int,int,RRMode,Rotation,RROutput*,int);
+typedef Status (* PFN_XRRSetCrtcConfig)(Display*,XRRScreenResources*,RRCrtc,Time,int,int,RRMode,LocalRotation,RROutput*,int);
 typedef void (* PFN_XRRSetCrtcGamma)(Display*,RRCrtc,XRRCrtcGamma*);
 typedef int (* PFN_XRRUpdateConfiguration)(XEvent*);
 #define XRRAllocGamma _glfw.x11.randr.AllocGamma

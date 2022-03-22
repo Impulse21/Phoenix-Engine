@@ -61,7 +61,7 @@ namespace PhxEngine::Renderer
 	struct MeshBuffers
 	{
 		RHI::BufferHandle VertexBuffer;
-		RHI::BufferHandle IndexBuffer;
+		RHI::BufferHandle IndexGpuBuffer;
 		RHI::BufferHandle InstanceBuffer;
 
 		std::vector<uint32_t> IndexData;

@@ -1,6 +1,10 @@
 #include <PhxEngine/App/Application.h>
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/core/Asserts.h>
+#include <PhxEngine/Core/FileSystem.h>
+#include <PhxEngine/Core/TimeStep.h>
+#include <PhxEngine/Core/Layer.h>
+#include "../ImGui/ImGuiLayer.h"
 
 #include "GLFW/glfw3.h"
 
@@ -11,10 +15,18 @@ using namespace PhxEngine;
 
 bool ApplicationBase::sGlwfIsInitialzed = false;
 
-void ApplicationBase::Initialize(RHI::IGraphicsDevice* graphicsDevice)
+namespace
 {
-	PHX_ASSERT(graphicsDevice);
-	this->m_graphicsDevice = graphicsDevice;
+	static bool sGlwfIsInitialzed = false;
+	static std::atomic_uint sNumHeapAlloc = 0;
+	static std::atomic_ullong sSizeOfHeapAlloc = 0;
+}
+
+New::Application* New::Application::sSingleton = nullptr;
+
+void ApplicationBase::Initialize(EngineEnvironment* engineEnv)
+{
+	this->m_env = engineEnv;
 	this->CreateGltfWindow();
 
 	RHI::SwapChainDesc desc = {};
@@ -23,11 +35,13 @@ void ApplicationBase::Initialize(RHI::IGraphicsDevice* graphicsDevice)
 	desc.Height = WindowHeight;
 	desc.WindowHandle = (void*)glfwGetWin32Window(this->m_window);
 
-	this->m_graphicsDevice->CreateSwapChain(desc);
-	this->m_commandList = this->m_graphicsDevice->CreateCommandList();
+	this->GetGraphicsDevice()->CreateSwapChain(desc);
+	this->m_commandList = this->GetGraphicsDevice()->CreateCommandList();
+
+	this->m_baseFileSystem = std::make_shared<Core::NativeFileSystem>();
 }
 
-void PhxEngine::ApplicationBase::Run()
+void PhxEngine::ApplicationBase::RunFrame()
 {
 	this->m_frameStatistics.PreviousFrameTimestamp = glfwGetTime();
 
@@ -45,9 +59,10 @@ void PhxEngine::ApplicationBase::Run()
 		if (this->m_isWindowVisible)
 		{
 			this->Update(elapsedTime);
+			this->Render();
 			this->RenderScene();
 			this->RenderUI();
-			this->m_graphicsDevice->Present();
+			this->GetGraphicsDevice()->Present();
 		}
 
 		this->UpdateAvarageFrameTime(elapsedTime);
@@ -57,7 +72,7 @@ void PhxEngine::ApplicationBase::Run()
 
 void PhxEngine::ApplicationBase::Shutdown()
 {
-	this->m_graphicsDevice->WaitForIdle();
+	this->GetGraphicsDevice()->WaitForIdle();
 }
 
 void PhxEngine::ApplicationBase::CreateGltfWindow()
@@ -124,3 +139,194 @@ void ApplicationBase::UpdateWindowSize()
 
 	// TODO: Update back buffers if resize
 }
+
+
+PhxEngine::New::Application::Application(
+	RHI::IGraphicsDevice* graphicsDevice,
+	ApplicationCommandLineArgs args,
+	std::string const& name)
+	: m_name(name)
+	, m_graphicsDevice(graphicsDevice)
+	, m_commandLineArgs(args)
+{
+	PHX_ASSERT(!sSingleton);
+	sSingleton = this;
+
+	// Create GLTF window
+	this->CreateGltfWindow(name, { 1280, 720 });
+
+	RHI::SwapChainDesc swapchainDesc = {};
+	swapchainDesc.Width = 1280;
+	swapchainDesc.Height = 720;
+	swapchainDesc.Format = RHI::EFormat::RGBA8_UNORM;
+	swapchainDesc.WindowHandle = (void*)glfwGetWin32Window(this->m_window);
+
+	this->m_graphicsDevice->CreateSwapChain(swapchainDesc);
+	// Initialize any sub-systems
+
+	this->m_appCommandList = this->m_graphicsDevice->CreateCommandList();
+
+	// Maybe pass command list in.
+	this->m_imguiLayer = std::make_unique<Debug::ImGuiLayer>(this->m_graphicsDevice, this->m_window);
+
+	this->PushLayer(this->m_imguiLayer.get());
+}
+
+PhxEngine::New::Application::~Application()
+{
+	Application::sSingleton = nullptr;
+}
+
+void PhxEngine::New::Application::Run()
+{
+	while (!glfwWindowShouldClose(this->m_window))
+	{
+		glfwPollEvents();
+
+		this->UpdateWindowSize();
+
+		float time = (float)glfwGetTime();
+
+		Core::TimeStep timestep = time - this->m_lastFrameTime;
+		this->m_lastFrameTime = time;
+
+		// DO Fix Frame Updae
+		if (this->m_isWindowVisible)
+		{
+			this->Update(timestep);
+			this->Render();
+			this->GetGraphicsDevice()->Present();
+		}
+
+		sNumHeapAlloc.store(0);
+		sSizeOfHeapAlloc.store(0);
+	}
+
+	// Clean up
+	for (Core::Layer* layer : this->m_layerStack)
+	{
+		layer->OnDetach();
+	}
+
+	this->m_layerStack.clear();
+}
+
+void PhxEngine::New::Application::PushLayer(Core::Layer* layer)
+{
+	this->m_layerStack.push_back(layer);
+	layer->OnAttach();
+}
+
+
+void PhxEngine::New::Application::Update(Core::TimeStep const& elapsedTime)
+{
+	for (Core::Layer* layer : this->m_layerStack)
+	{
+		layer->OnUpdate(elapsedTime);
+	}
+}
+
+void PhxEngine::New::Application::Render()
+{
+	this->m_appCommandList->Open();
+	RHI::TextureHandle backBuffer = this->GetGraphicsDevice()->GetBackBuffer();
+	this->m_appCommandList->TransitionBarrier(backBuffer, RHI::ResourceStates::Present, RHI::ResourceStates::RenderTarget);
+	this->m_appCommandList->ClearTextureFloat(backBuffer, { 0.0f, 0.0f, 0.0f, 1.0f });
+
+	// Bind Descritpor Heaps
+
+	this->m_imguiLayer->Begin();
+	for (Core::Layer* layer : this->m_layerStack)
+	{
+		layer->OnImGuiRender();
+		layer->OnRender(this->m_appCommandList);
+	}
+	this->m_imguiLayer->End(this->m_appCommandList);
+	this->m_appCommandList->TransitionBarrier(backBuffer, RHI::ResourceStates::RenderTarget, RHI::ResourceStates::Present);
+	this->m_appCommandList->Close();
+
+	// Batch layer command lists?
+	this->GetGraphicsDevice()->ExecuteCommandLists(this->m_appCommandList);
+}
+
+void PhxEngine::New::Application::UpdateWindowSize()
+{
+	int width;
+	int height;
+	glfwGetWindowSize(this->m_window, &width, &height);
+
+	if (width == 0 || height == 0)
+	{
+		// window is minimized
+		this->m_isWindowVisible = false;
+		return;
+	}
+
+	this->m_isWindowVisible = true;
+}
+
+void PhxEngine::New::Application::CreateGltfWindow(std::string const& name, WindowDesc const& desc)
+{
+	LOG_CORE_INFO("Creating window {0} ({1}, {2})", name.c_str(), desc.Width, desc.Height);
+
+	if (!sGlwfIsInitialzed)
+	{
+		glfwInit();
+	}
+
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+	// TODO Check Flags
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+	this->m_window =
+		glfwCreateWindow(
+			desc.Width,
+			desc.Height,
+			name.c_str(),
+			nullptr,
+			nullptr);
+
+	// glfwSetWindowUserPointer(this->m_window, &this->m_windowState);
+
+	/*
+	// Handle Close Event
+	glfwSetWindowCloseCallback(this->m_window, [](GLFWwindow* window) {
+		WindowState& state = *(WindowState*)glfwGetWindowUserPointer(window);
+		state.IsClosing = true;
+		});
+	*/
+}
+
+
+// Heap alloc replacements are used to count heap allocations:
+//	It is good practice to reduce the amount of heap allocations that happen during the frame,
+//	so keep an eye on the info display of the engine while Application::InfoDisplayer::heap_allocation_counter is enabled
+
+void* operator new(std::size_t size) {
+	sNumHeapAlloc.fetch_add(1);
+	sSizeOfHeapAlloc.fetch_add(size);
+	void* p = malloc(size);
+	if (!p) throw std::bad_alloc();
+	return p;
+}
+void* operator new[](std::size_t size) {
+	sNumHeapAlloc.fetch_add(1);
+	sSizeOfHeapAlloc.fetch_add(size);
+	void* p = malloc(size);
+	if (!p) throw std::bad_alloc();
+	return p;
+}
+void* operator new[](std::size_t size, const std::nothrow_t&) throw() {
+	sNumHeapAlloc.fetch_add(1);
+	sSizeOfHeapAlloc.fetch_add(size);
+	return malloc(size);
+}
+void* operator new(std::size_t size, const std::nothrow_t&) throw() {
+	sNumHeapAlloc.fetch_add(1);
+	sSizeOfHeapAlloc.fetch_add(size);
+	return malloc(size);
+}
+void operator delete(void* ptr) throw() { free(ptr); }
+void operator delete (void* ptr, const std::nothrow_t&) throw() { free(ptr); }
+void operator delete[](void* ptr) throw() { free(ptr); }
+void operator delete[](void* ptr, const std::nothrow_t&) throw() { free(ptr); }

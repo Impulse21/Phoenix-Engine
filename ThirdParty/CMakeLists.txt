@@ -16,7 +16,6 @@ add_subdirectory(glfw)
 
 set_target_properties(glfw PROPERTIES FOLDER ${third_party_folder})
 
-
 add_subdirectory(DirectX-Headers)
 
 set_target_properties(DirectX-Guids PROPERTIES FOLDER ${third_party_folder})
@@ -34,3 +33,6 @@ option(BUILD_DX12 "" OFF)
 
 add_subdirectory(DirectXTex)
 set_target_properties(DirectXTex PROPERTIES FOLDER ${third_party_folder})
+
+include(imgui.cmake)
+set_target_properties(imgui PROPERTIES FOLDER ${third_party_folder})

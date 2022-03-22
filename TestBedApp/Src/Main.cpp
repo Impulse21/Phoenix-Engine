@@ -1,11 +1,8 @@
 
-#include <PhxEngine/Core/Log.h>
+#include <PhxEngine/PhxEngine.h>
 
-#include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/RHI/PhxRHI_Dx12.h>
 
-
-#include "TestBedApp.h"
 #include "PbrDemo.h"
 
 using namespace PhxEngine;
@@ -18,16 +15,20 @@ std::unique_ptr<ApplicationBase> CreateTestApp()
 
 int main()
 {
+    // Initialize Engine
     PhxEngine::LogSystem::Initialize();
 
     // Creating Device
     LOG_CORE_INFO("Creating DX12 Graphics Device");
-    auto graphicsDevice = std::unique_ptr<IGraphicsDevice>(Dx12::Factory::CreateDevice());
+    auto graphicsDevice = Dx12::Factory::CreateDevice();
 
     {
+        EngineEnvironment e = {};
+        e.pGraphicsDevice = graphicsDevice.get();
+        e.pRenderSystem = nullptr;
         auto app = CreateTestApp();
-        app->Initialize(graphicsDevice.get());
-        app->Run();
+        app->Initialize(&e);
+        app->RunFrame();
         app->Shutdown();
     }
 

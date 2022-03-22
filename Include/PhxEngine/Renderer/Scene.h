@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sstream>
+
 #include <PhxEngine/Core/FileSystem.h>
 #include <PhxEngine/Renderer/TextureCache.h>
 #include <PhxEngine/RHI/PhxRHI.h>
@@ -7,6 +9,9 @@
 #include <PhxEngine/Renderer/SceneNodes.h>
 
 #include <PhxEngine/Renderer/ShaderStructures.h>
+
+#include <PhxEngine/Ecs/Ecs.h>
+#include <PhxEngine/Renderer/SceneComponents.h>
 
 namespace PhxEngine::Renderer
 {
@@ -136,6 +141,75 @@ namespace PhxEngine::Renderer
 		std::shared_ptr<SceneGraph> m_sceneGraph;
 		RHI::IGraphicsDevice* m_graphicsDevice;
 	};
+
+
+	namespace New
+	{
+		class Scene
+		{
+		public:
+			Scene() = default;
+			~Scene() = default;
+
+			static CameraComponent& GetGlobalCamera();
+
+			// Helper
+			ECS::Entity EntityCreateMeshInstance(std::string const& name);
+			ECS::Entity EntityCreateCamera(
+				std::string const& name,
+				float width,
+				float height,
+				float nearPlane = 0.01f,
+				float farPlane = 1000.0f,
+				float fov = DirectX::XM_PIDIV4);
+
+			ECS::Entity EntityCreateMaterial(std::string const& name);
+			ECS::Entity EntityCreateMesh(std::string const& name);
+
+			ECS::Entity CreateCubeMeshEntity(std::string const& name, ECS::Entity mtlIDmtl, float size, bool rhsCoords);
+
+			void ComponentAttach(ECS::Entity entity, ECS::Entity parent, bool childInLocalSpace = false);
+			void ComponentDetach(ECS::Entity entity);
+			void ComponentDetachChildren(ECS::Entity parent);
+
+			void CreateGpuBuffers(RHI::IGraphicsDevice* graphicsDevice, RHI::CommandListHandle commandList);
+
+			void PopulateShaderSceneData(Shader::SceneData& sceneData);
+
+			// -- System functions ---
+		public:
+			void UpdateTansformsSystem();
+			void UpdateHierarchySystem();
+
+			// -- Feilds ---
+		public:
+			NameComponentStore Names;
+			TransformComponentStore Transforms;
+			HierarchyComponentStore Hierarchy;
+			MaterialComponentStore Materials;
+			MeshComponentStore Meshes;
+			MeshInstanceComponentStore MeshInstances;
+
+			LightComponentStore Lights;
+			CameraComponentStore Cameras;
+
+		public:
+			PhxEngine::RHI::TextureHandle SkyboxTexture;
+			PhxEngine::RHI::TextureHandle IrradanceMap;
+			PhxEngine::RHI::TextureHandle PrefilteredMap;
+			PhxEngine::RHI::TextureHandle BrdfLUT;
+
+		private:
+
+		private:
+			RHI::BufferHandle m_geometryGpuBuffer;
+			RHI::BufferHandle m_meshGpuBuffer;
+			RHI::BufferHandle m_materialBuffer;
+
+		};
+
+		void PrintScene(Scene const& scene, std::stringstream& stream);
+	}
 
 	namespace SceneGraphHelpers
 	{

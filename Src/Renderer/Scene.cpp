@@ -6,9 +6,13 @@
 
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/Asserts.h>
+#include <Shaders/ShaderInteropStructures.h>
+
+#include "..\..\Include\PhxEngine\Renderer\Scene.h"
 
 using namespace PhxEngine::Renderer;
 using namespace PhxEngine::RHI;
+using namespace PhxEngine::ECS;
 using namespace DirectX;
 
 // Helper for flipping winding of geometric primitives for LH vs. RH coords
@@ -101,6 +105,356 @@ PhxEngine::Renderer::Scene::Scene(
 	, m_graphicsDevice(graphicsDevice)
 	, m_resources(std::make_unique<Resources>())
 {
+}
+
+
+CameraComponent& PhxEngine::Renderer::New::Scene::GetGlobalCamera()
+{
+	static CameraComponent mainCamera;
+	return mainCamera;
+}
+
+Entity PhxEngine::Renderer::New::Scene::EntityCreateMeshInstance(std::string const& name)
+{
+	Entity e = ECS::CreateEntity();
+
+	NameComponent& nameComponent = this->Names.Create(e);
+	nameComponent.Name = name;
+
+	this->Transforms.Create(e);
+
+	MeshInstanceComponent& c = this->MeshInstances.Create(e);
+	return e;
+}
+
+Entity PhxEngine::Renderer::New::Scene::EntityCreateCamera(
+	std::string const& name,
+	float width,
+	float height,
+	float nearPlane,
+	float farPlane,
+	float fov)
+{
+	Entity e = ECS::CreateEntity();
+
+	NameComponent& nameComponent = this->Names.Create(e);
+	nameComponent.Name = name;
+
+	this->Transforms.Create(e);
+
+	CameraComponent& c = this->Cameras.Create(e);
+	c.Width = width;
+	c.Height = height;
+	c.ZNear = nearPlane;
+	c.ZFar = farPlane;
+	c.FoV = fov;
+
+	return e;
+}
+
+Entity New::Scene::EntityCreateMaterial(std::string const& name)
+{
+	Entity e = ECS::CreateEntity();
+
+	NameComponent& nameComponent = this->Names.Create(e);
+	nameComponent.Name = name;
+
+	MaterialComponent& c = this->Materials.Create(e);
+	
+	return e;
+}
+
+Entity New::Scene::EntityCreateMesh(std::string const& name)
+{
+	Entity e = ECS::CreateEntity();
+
+	NameComponent& nameComponent = this->Names.Create(e);
+	nameComponent.Name = name;
+
+	MeshComponent& c = this->Meshes.Create(e);
+
+	return e;
+}
+
+Entity New::Scene::CreateCubeMeshEntity(std::string const& name, Entity mtlID, float size, bool rhsCoords)
+{
+	// A cube has six faces, each one pointing in a different direction.
+	const int FaceCount = 6;
+
+	static const XMFLOAT3 faceNormals[FaceCount] =
+	{
+		{ 0,  0,  1 },
+		{ 0,  0, -1 },
+		{ 1,  0,  0 },
+		{ -1,  0,  0 },
+		{ 0,  1,  0 },
+		{ 0, -1,  0 },
+	};
+
+	static const XMFLOAT3 faceColour[] =
+	{
+		{ 1.0f,  0.0f,  0.0f },
+		{ 0.0f,  1.0f,  0.0f },
+		{ 0.0f,  0.0f,  1.0f },
+	};
+
+	static const XMFLOAT2 textureCoordinates[4] =
+	{
+		{ 1, 0 },
+		{ 1, 1 },
+		{ 0, 1 },
+		{ 0, 0 },
+	};
+
+	Entity meshEntity = this->EntityCreateMesh(name);
+	auto* meshComponent = this->Meshes.GetComponent(meshEntity);
+
+	size /= 2;
+
+	for (int i = 0; i < FaceCount; i++)
+	{
+		XMVECTOR normal = XMLoadFloat3(&faceNormals[i]);
+
+		// Get two vectors perpendicular both to the face normal and to each other.
+		XMVECTOR basis = (i >= 4) ? g_XMIdentityR2 : g_XMIdentityR1;
+
+		XMVECTOR side1 = XMVector3Cross(normal, basis);
+		XMVECTOR side2 = XMVector3Cross(normal, side1);
+
+		// Six IndexData (two triangles) per face.
+		size_t vbase = meshComponent->VertexPositions.size();
+		meshComponent->Indices.push_back(static_cast<uint16_t>(vbase + 0));
+		meshComponent->Indices.push_back(static_cast<uint16_t>(vbase + 1));
+		meshComponent->Indices.push_back(static_cast<uint16_t>(vbase + 2));
+
+		meshComponent->Indices.push_back(static_cast<uint16_t>(vbase + 0));
+		meshComponent->Indices.push_back(static_cast<uint16_t>(vbase + 2));
+		meshComponent->Indices.push_back(static_cast<uint16_t>(vbase + 3));
+
+		XMFLOAT3 positon;
+		XMStoreFloat3(&positon, (normal - side1 - side2) * size);
+		meshComponent->VertexPositions.push_back(positon);
+		XMStoreFloat3(&positon, (normal - side1 + side2) * size);
+		meshComponent->VertexPositions.push_back(positon);
+		XMStoreFloat3(&positon, (normal + side1 + side2) * size);
+		meshComponent->VertexPositions.push_back(positon);
+		XMStoreFloat3(&positon, (normal + side1 - side2) * size);
+		meshComponent->VertexPositions.push_back(positon);
+
+		meshComponent->VertexTexCoords.push_back(textureCoordinates[0]);
+		meshComponent->VertexTexCoords.push_back(textureCoordinates[1]);
+		meshComponent->VertexTexCoords.push_back(textureCoordinates[2]);
+		meshComponent->VertexTexCoords.push_back(textureCoordinates[3]);
+
+		meshComponent->VertexColour.push_back(faceColour[0]);
+		meshComponent->VertexColour.push_back(faceColour[1]);
+		meshComponent->VertexColour.push_back(faceColour[2]);
+		meshComponent->VertexColour.push_back(faceColour[3]);
+
+		meshComponent->VertexNormals.push_back(faceNormals[i]);
+		meshComponent->VertexNormals.push_back(faceNormals[i]);
+		meshComponent->VertexNormals.push_back(faceNormals[i]);
+		meshComponent->VertexNormals.push_back(faceNormals[i]);
+	}
+
+	meshComponent->ComputeTangentSpace();
+
+	if (rhsCoords)
+	{
+		meshComponent->ReverseWinding();
+	}
+
+	auto& geometry = meshComponent->Geometry.emplace_back();
+	geometry.MaterialID = mtlID;
+	geometry.NumIndices = meshComponent->TotalIndices;
+	geometry.NumVertices= meshComponent->TotalVertices;
+	return meshEntity;
+}
+
+void PhxEngine::Renderer::New::Scene::ComponentAttach(Entity entity, Entity parent, bool childInLocalSpace)
+{
+	PHX_ASSERT(entity != parent);
+
+	// Detatch so we can ensure the child comes after the parent in the array.
+	// This is to ensure that the parent's transforms are updated fully prior to reaching
+	// any children.
+	if (this->Hierarchy.Contains(entity))
+	{
+		this->ComponentDetach(entity);
+	}
+
+	HierarchyComponent& parentComponent = this->Hierarchy.Create(entity);
+	parentComponent.ParentId = parent;
+
+	TransformComponent* transformParent = this->Transforms.GetComponent(parent);
+	if (transformParent == nullptr)
+	{
+		transformParent = &this->Transforms.Create(parent);
+	}
+
+	TransformComponent* transformChild = this->Transforms.GetComponent(entity);
+	if (transformChild == nullptr)
+	{
+		transformChild = &this->Transforms.Create(entity);
+		transformParent = this->Transforms.GetComponent(parent); // after transforms.Create(), transform_parent pointer could have become invalidated!
+	}
+
+	if (!childInLocalSpace)
+	{
+		XMMATRIX B = XMMatrixInverse(nullptr, XMLoadFloat4x4(&transformParent->WorldMatrix));
+		transformChild->MatrixTransform(B);
+		transformChild->UpdateTransform();
+	}
+
+	transformChild->UpdateTransform(*transformParent);
+}
+
+void PhxEngine::Renderer::New::Scene::ComponentDetach(ECS::Entity entity)
+{
+	const HierarchyComponent* parent = this->Hierarchy.GetComponent(entity);
+
+	if (parent != nullptr)
+	{
+		TransformComponent* transform = this->Transforms.GetComponent(entity);
+		if (transform != nullptr)
+		{
+			transform->ApplyTransform();
+		}
+
+		this->Hierarchy.Remove(entity);
+	}
+}
+
+void PhxEngine::Renderer::New::Scene::ComponentDetachChildren(ECS::Entity parent)
+{
+	for (size_t i = 0; i < this->Hierarchy.GetCount(); )
+	{
+		if (this->Hierarchy[i].ParentId == parent)
+		{
+			Entity entity = this->Hierarchy.GetEntity(i);
+			this->ComponentDetach(entity);
+		}
+		else
+		{
+			++i;
+		}
+	}
+}
+
+void PhxEngine::Renderer::New::Scene::CreateGpuBuffers(RHI::IGraphicsDevice* graphicsDevice, RHI::CommandListHandle commandList)
+{
+	// Build Mesh and Geometry Buffers
+	size_t numGeometryEntries = 0;
+	for (int i = 0; i < Meshes.GetCount(); i++)
+	{
+		MeshComponent& mesh = Meshes[i];
+		numGeometryEntries += mesh.Geometry.size();
+	}
+
+	std::vector<Shader::Mesh> meshGpuData(Meshes.GetCount());
+	std::vector<Shader::Geometry> geometryGpuData;
+	geometryGpuData.reserve(numGeometryEntries);
+
+	for (int i = 0; i < Meshes.GetCount(); i++)
+	{
+		MeshComponent& mesh = Meshes[i];
+
+		// Set geomtry buffer data
+		for (int i = 0; i < mesh.Geometry.size(); i++)
+		{
+			MeshComponent::MeshGeometry& meshGeometry = mesh.Geometry[i];
+			meshGeometry.GlobalGeometryIndex = geometryGpuData.size();
+
+			Shader::Geometry& gpuGeometryData = geometryGpuData.emplace_back();
+			gpuGeometryData.VertexOffset = i;
+			gpuGeometryData.MaterialIndex = this->Materials.GetIndex(meshGeometry.MaterialID);
+		}
+
+		mesh.CreateRenderData(graphicsDevice, commandList);
+		mesh.PopulateShaderMeshData(meshGpuData[i]);
+	}
+
+	// Create GPU Data
+	{
+		BufferDesc desc = {};
+		desc.DebugName = "Mesh Data";
+		desc.CreateBindless = true;
+		desc.CreateSRVViews = true;
+		desc.StrideInBytes = sizeof(Shader::Mesh);
+		desc.SizeInBytes = sizeof(Shader::Mesh) * meshGpuData.size();
+
+		this->m_meshGpuBuffer = graphicsDevice->CreateBuffer(desc);
+
+		// Upload Data
+		commandList->TransitionBarrier(this->m_meshGpuBuffer, ResourceStates::Common, ResourceStates::CopyDest);
+		commandList->WriteBuffer(this->m_meshGpuBuffer, meshGpuData);
+		commandList->TransitionBarrier(this->m_meshGpuBuffer, ResourceStates::CopyDest, ResourceStates::ShaderResource);
+	}
+
+	{
+		BufferDesc desc = {};
+		desc.DebugName = "Mesh Geometry Data";
+		desc.CreateBindless = true;
+		desc.CreateSRVViews = true;
+		desc.StrideInBytes = sizeof(Shader::Geometry);
+		desc.SizeInBytes = sizeof(Shader::Geometry) * geometryGpuData.size();
+
+		this->m_geometryGpuBuffer = graphicsDevice->CreateBuffer(desc);
+
+		// Upload Data
+		commandList->TransitionBarrier(this->m_geometryGpuBuffer, ResourceStates::Common, ResourceStates::CopyDest);
+		commandList->WriteBuffer(this->m_geometryGpuBuffer, geometryGpuData);
+		commandList->TransitionBarrier(this->m_geometryGpuBuffer, ResourceStates::CopyDest, ResourceStates::ShaderResource);
+	}
+}
+
+void PhxEngine::Renderer::New::Scene::PopulateShaderSceneData(Shader::SceneData& sceneData)
+{
+	sceneData.MeshBufferIndex = this->m_meshGpuBuffer->GetDescriptorIndex();
+	sceneData.GeometryBufferIndex = this->m_geometryGpuBuffer->GetDescriptorIndex();
+}
+
+void PhxEngine::Renderer::New::Scene::UpdateTansformsSystem()
+{
+	for (size_t i = 0; i < this->Transforms.GetCount(); i++)
+	{
+		auto& transformComp = this->Transforms[i];
+		transformComp.UpdateTransform();
+	}
+}
+
+void PhxEngine::Renderer::New::Scene::UpdateHierarchySystem()
+{
+	for (size_t i = 0; i < this->Hierarchy.GetCount(); i++)
+	{
+		auto& hier = this->Hierarchy[i];
+		Entity entity = this->Hierarchy.GetEntity(i);
+
+		TransformComponent* childTransform = this->Transforms.GetComponent(entity);
+		if (!childTransform)
+		{
+			continue;
+		}
+
+		XMMATRIX  worldMatrix = childTransform->GetLocalMatrix();
+
+		Entity parentEntity = hier.ParentId;
+		while (parentEntity != InvalidEntity)
+		{
+			// Get the parents transform
+			TransformComponent* parentTransform = this->Transforms.GetComponent(parentEntity);
+			if (parentTransform)
+			{
+				worldMatrix *= parentTransform->GetLocalMatrix();
+			}
+
+			HierarchyComponent* currentParentHeir = this->Hierarchy.GetComponent(parentEntity);
+
+			parentEntity = currentParentHeir ? currentParentHeir->ParentId : InvalidEntity;
+		}
+
+		XMStoreFloat4x4(&childTransform->WorldMatrix, worldMatrix);
+	}
 }
 
 void PhxEngine::Renderer::SceneGraph::Refresh()
@@ -457,7 +811,7 @@ void Scene::CreateMeshBuffers(ICommandList* commandList)
 
 		auto buffers = mesh->Buffers;
 
-		if (!buffers->IndexData.empty() && !buffers->IndexBuffer)
+		if (!buffers->IndexData.empty() && !buffers->IndexGpuBuffer)
 		{
 			RHI::BufferDesc indexBufferDesc = {};
 			indexBufferDesc.SizeInBytes = sizeof(uint32_t) * buffers->IndexData.size();
@@ -465,11 +819,11 @@ void Scene::CreateMeshBuffers(ICommandList* commandList)
 			indexBufferDesc.DebugName = "Index Buffer";
 			indexBufferDesc.CreateSRVViews = true;
 			indexBufferDesc.CreateBindless = true;
-			buffers->IndexBuffer = this->m_graphicsDevice->CreateIndexBuffer(indexBufferDesc);
+			buffers->IndexGpuBuffer = this->m_graphicsDevice->CreateIndexBuffer(indexBufferDesc);
 
-			commandList->TransitionBarrier(buffers->IndexBuffer, ResourceStates::Common, ResourceStates::CopyDest);
-			commandList->WriteBuffer<uint32_t>(buffers->IndexBuffer, buffers->IndexData);
-			commandList->TransitionBarrier(buffers->IndexBuffer, ResourceStates::CopyDest, ResourceStates::IndexBuffer | ResourceStates::ShaderResource);
+			commandList->TransitionBarrier(buffers->IndexGpuBuffer, ResourceStates::Common, ResourceStates::CopyDest);
+			commandList->WriteBuffer<uint32_t>(buffers->IndexGpuBuffer, buffers->IndexData);
+			commandList->TransitionBarrier(buffers->IndexGpuBuffer, ResourceStates::CopyDest, ResourceStates::IndexGpuBuffer | ResourceStates::ShaderResource);
 
 			// TODO, clear CPU data sonce the command list takes ownership of data.
 
@@ -596,7 +950,7 @@ void PhxEngine::Renderer::Scene::UpdateGeometryData(std::shared_ptr<Mesh> const&
 		auto& gData = this->m_resources->GeometryData[geometry->GlobalGeometryIndex];
 		gData.NumVertices = geometry->NumVertices;
 		gData.NumIndices = geometry->NumIndices;
-		gData.IndexBufferIndex = mesh->Buffers->IndexBuffer->GetDescriptorIndex();
+		gData.IndexBufferIndex = mesh->Buffers->IndexGpuBuffer->GetDescriptorIndex();
 		gData.IndexOffset = indexOffset;
 		gData.VertexBufferIndex = mesh->Buffers->VertexBuffer->GetDescriptorIndex();
 		gData.MaterialIndex = geometry->Material->GlobalMaterialIndex;
@@ -675,4 +1029,141 @@ void PhxEngine::Renderer::Scene::WriteInstanceBuffer(RHI::ICommandList* commandL
 	commandList->TransitionBarrier(this->m_instanceBuffer, ResourceStates::Common, ResourceStates::CopyDest);
 	commandList->WriteBuffer(this->m_instanceBuffer, this->m_resources->MeshInstanceData);
 	commandList->TransitionBarrier(this->m_instanceBuffer, ResourceStates::CopyDest, ResourceStates::ShaderResource);
+}
+
+void PhxEngine::Renderer::New::PrintScene(Scene const& scene, std::stringstream& stream)
+{
+	auto WriteEntity = [&](Entity e)
+	{
+		stream << "\t\t\t" << "Entity" << ": " << e << std::endl;
+	};
+	auto WriteNameComponent = [&](const NameComponent* nameComponent)
+	{
+		stream << "\t\tName: ";
+		if (nameComponent)
+		{
+			stream << nameComponent->Name << std::endl;
+		}
+		else
+		{
+			stream << "Unknown" << std::endl;
+		}
+	};
+
+	auto WriteTexture = [&](std::string const& textureName, TextureHandle handle)
+	{
+		stream << "\t\t\t" << textureName << " Texture Descriptor Index: ";
+		if (handle)
+		{
+			stream << handle->GetDescriptorIndex();
+		}
+		else
+		{
+			stream << INVALID_DESCRIPTOR_INDEX;
+		}
+
+		stream << std::endl;
+	}; // end of lambda expression
+
+	auto WriteFloat = [&](std::string const& title, float v)
+	{
+		stream << "\t\t\t" << title << ": " << v << std::endl;
+	}; // end of lambda expression
+
+	auto WriteUint32 = [&](std::string const& title, uint32_t v)
+	{
+		stream << "\t\t\t" << title << ": " << v << std::endl;
+	}; // end of lambda expression
+
+	auto WriteSize = [&](std::string const& title, size_t v)
+	{
+		stream << "\t\t\t" << title << ": " << v << std::endl;
+	}; // end of lambda expression
+
+	auto WriteFloat4 = [&](std::string const& title, XMFLOAT4 const& float4)
+	{
+		stream << "\t\t\t" << title << ": ";
+		stream << "[ " << float4.x << ", " << float4.y << ", " << float4.z << ", " << float4.w << "]" << std::endl;
+	}; // end of lambda expression
+
+	auto WriteBool = [&](std::string const& title, bool boolean)
+	{
+		stream << "\t\t\t" << title << ": " << (boolean ? "true" : "false") << std::endl;
+	}; // end of lambda expression
+
+
+	std::string retVal;
+	stream << "Scene Data" << std::endl;
+
+	stream << "\tMaterials [" << scene.Materials.GetCount() << "]: " << std::endl;
+	for (int i = 0; i < scene.Materials.GetCount(); i++)
+	{
+		
+		const MaterialComponent mtlComponent = scene.Materials[i];
+		ECS::Entity e = scene.Materials.GetEntity(i);
+
+		const NameComponent* mtlName = scene.Names.GetComponent(e);
+		WriteEntity(e);
+		WriteNameComponent(mtlName);
+
+		// Write base colour
+		WriteFloat4("Albedo", mtlComponent.Albedo);
+		WriteTexture("Abledo", mtlComponent.AlbedoTexture);
+
+		WriteFloat("Metalness", mtlComponent.Metalness);
+		WriteFloat("Roughness", mtlComponent.Roughness);
+		WriteTexture("MetalRoughness", mtlComponent.MetalRoughnessTexture);
+
+		WriteTexture("Normal Map", mtlComponent.NormalMapTexture);
+		WriteBool("Is Double Sided", mtlComponent.IsDoubleSided);
+		stream << std::endl;
+	}
+
+	stream << "\tMesh [" << scene.Meshes.GetCount() << "]:" << std::endl;
+
+	for (int i = 0; i < scene.Meshes.GetCount(); i++)
+	{
+		const MeshComponent component = scene.Meshes[i];
+		ECS::Entity e = scene.Meshes.GetEntity(i);
+
+		const NameComponent* nameComponent = scene.Names.GetComponent(e);
+		WriteEntity(e);
+		WriteNameComponent(nameComponent);
+
+		WriteUint32("Index Offset", component.IndexOffset);
+		WriteUint32("Vertex Offset", component.VertexOffset);
+		WriteUint32("Total Indices", component.TotalIndices);
+		WriteUint32("Total Vertices", component.TotalVertices);
+		// WriteSize("Global Mesh Index", component.GlobalMeshIndex);
+
+		stream << "\t\tMesh Geometry [" << scene.Meshes.GetCount() << "]:" << std::endl;
+		for (auto& geom : component.Geometry)
+		{
+			WriteUint32("\tMaterial Index", geom.MaterialID);
+			WriteUint32("\tIndex Offset", geom.IndexOffsetInMesh);
+			WriteUint32("\tVertex Offset", geom.VertexOffsetInMesh);
+			WriteUint32("\tTotal Indices", geom.NumVertices);
+			WriteUint32("\tTotal Vertices", geom.NumIndices);
+			WriteSize("\tGlobal Geometry Index", geom.GlobalGeometryIndex);
+			stream << std::endl;
+		}
+
+		stream << std::endl;
+	}
+
+	stream << "\tMesh Instances [" << scene.MeshInstances.GetCount() << "]:" << std::endl;
+	for (int i = 0; i < scene.MeshInstances.GetCount(); i++)
+	{
+		const MeshInstanceComponent miComp = scene.MeshInstances[i];
+		Entity e = scene.MeshInstances.GetEntity(i);
+
+		WriteEntity(e);
+
+		const NameComponent* nameComponent = scene.Names.GetComponent(e);
+		WriteNameComponent(nameComponent);
+
+		WriteSize("Transform Compoment", scene.Transforms.GetIndex(e));
+		WriteSize("Hierarchy Component", scene.Hierarchy.GetIndex(e));
+		WriteSize("MeshID", miComp.MeshId);
+	}
 }

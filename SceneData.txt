@@ -1,0 +1,988 @@
+Scene Data
+	Materials [25]: 
+			Entity: 1
+		Name: Material 0
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: true
+
+			Entity: 2
+		Name: Material 1
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 3
+		Name: Material 2
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 0
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 4
+		Name: Material 3
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: true
+
+			Entity: 5
+		Name: Material 4
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 6
+		Name: Material 5
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 7
+		Name: Material 6
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 8
+		Name: Material 7
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 9
+		Name: Material 8
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 10
+		Name: Material 9
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 11
+		Name: Material 10
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 12
+		Name: Material 11
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 13
+		Name: Material 12
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 14
+		Name: Material 13
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 15
+		Name: Material 14
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 16
+		Name: Material 15
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 17
+		Name: Material 16
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 18
+		Name: Material 17
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 19
+		Name: Material 18
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 20
+		Name: Material 19
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 21
+		Name: Material 20
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: true
+
+			Entity: 22
+		Name: Material 21
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 23
+		Name: Material 22
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 24
+		Name: Material 23
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+			Entity: 25
+		Name: Material 24
+			Albedo: [ 0.588, 0.588, 0.588, 1]
+			Abledo Texture Descriptor Index: 4294967295
+			Metalness: 1
+			Roughness: 1
+			MetalRoughness Texture Descriptor Index: 4294967295
+			Normal Map Texture Descriptor Index: 4294967295
+			Is Double Sided: false
+
+	Mesh [1]:
+			Entity: 26
+		Name: Mesh 0
+			Index Offset: 0
+			Vertex Offset: 0
+			Total Indices: 786801
+			Total Vertices: 192496
+		Mesh Geometry [1]:
+				Material Index: 1
+				Index Offset: 0
+				Vertex Offset: 0
+				Total Indices: 3175
+				Total Vertices: 10920
+				Global Geometry Index: 0
+
+				Material Index: 4
+				Index Offset: 10920
+				Vertex Offset: 3175
+				Total Indices: 533
+				Total Vertices: 1404
+				Global Geometry Index: 1
+
+				Material Index: 2
+				Index Offset: 12324
+				Vertex Offset: 3708
+				Total Indices: 1231
+				Total Vertices: 6633
+				Global Geometry Index: 2
+
+				Material Index: 5
+				Index Offset: 18957
+				Vertex Offset: 4939
+				Total Indices: 753
+				Total Vertices: 4086
+				Global Geometry Index: 3
+
+				Material Index: 6
+				Index Offset: 23043
+				Vertex Offset: 5692
+				Total Indices: 128
+				Total Vertices: 324
+				Global Geometry Index: 4
+
+				Material Index: 7
+				Index Offset: 23367
+				Vertex Offset: 5820
+				Total Indices: 560
+				Total Vertices: 840
+				Global Geometry Index: 5
+
+				Material Index: 8
+				Index Offset: 24207
+				Vertex Offset: 6380
+				Total Indices: 1864
+				Total Vertices: 6996
+				Global Geometry Index: 6
+
+				Material Index: 9
+				Index Offset: 31203
+				Vertex Offset: 8244
+				Total Indices: 1708
+				Total Vertices: 4368
+				Global Geometry Index: 7
+
+				Material Index: 7
+				Index Offset: 35571
+				Vertex Offset: 9952
+				Total Indices: 3192
+				Total Vertices: 8688
+				Global Geometry Index: 8
+
+				Material Index: 10
+				Index Offset: 44259
+				Vertex Offset: 13144
+				Total Indices: 16
+				Total Vertices: 48
+				Global Geometry Index: 9
+
+				Material Index: 8
+				Index Offset: 44307
+				Vertex Offset: 13160
+				Total Indices: 1864
+				Total Vertices: 6996
+				Global Geometry Index: 10
+
+				Material Index: 7
+				Index Offset: 51303
+				Vertex Offset: 15024
+				Total Indices: 1172
+				Total Vertices: 3288
+				Global Geometry Index: 11
+
+				Material Index: 11
+				Index Offset: 54591
+				Vertex Offset: 16196
+				Total Indices: 6368
+				Total Vertices: 11040
+				Global Geometry Index: 12
+
+				Material Index: 6
+				Index Offset: 65631
+				Vertex Offset: 22564
+				Total Indices: 216
+				Total Vertices: 612
+				Global Geometry Index: 13
+
+				Material Index: 8
+				Index Offset: 66243
+				Vertex Offset: 22780
+				Total Indices: 212
+				Total Vertices: 612
+				Global Geometry Index: 14
+
+				Material Index: 6
+				Index Offset: 66855
+				Vertex Offset: 22992
+				Total Indices: 138
+				Total Vertices: 444
+				Global Geometry Index: 15
+
+				Material Index: 7
+				Index Offset: 67299
+				Vertex Offset: 23130
+				Total Indices: 126
+				Total Vertices: 480
+				Global Geometry Index: 16
+
+				Material Index: 8
+				Index Offset: 67779
+				Vertex Offset: 23256
+				Total Indices: 122
+				Total Vertices: 336
+				Global Geometry Index: 17
+
+				Material Index: 7
+				Index Offset: 68115
+				Vertex Offset: 23378
+				Total Indices: 126
+				Total Vertices: 480
+				Global Geometry Index: 18
+
+				Material Index: 8
+				Index Offset: 68595
+				Vertex Offset: 23504
+				Total Indices: 122
+				Total Vertices: 336
+				Global Geometry Index: 19
+
+				Material Index: 7
+				Index Offset: 68931
+				Vertex Offset: 23626
+				Total Indices: 126
+				Total Vertices: 480
+				Global Geometry Index: 20
+
+				Material Index: 8
+				Index Offset: 69411
+				Vertex Offset: 23752
+				Total Indices: 122
+				Total Vertices: 336
+				Global Geometry Index: 21
+
+				Material Index: 7
+				Index Offset: 69747
+				Vertex Offset: 23874
+				Total Indices: 126
+				Total Vertices: 480
+				Global Geometry Index: 22
+
+				Material Index: 8
+				Index Offset: 70227
+				Vertex Offset: 24000
+				Total Indices: 122
+				Total Vertices: 336
+				Global Geometry Index: 23
+
+				Material Index: 7
+				Index Offset: 70563
+				Vertex Offset: 24122
+				Total Indices: 126
+				Total Vertices: 480
+				Global Geometry Index: 24
+
+				Material Index: 8
+				Index Offset: 71043
+				Vertex Offset: 24248
+				Total Indices: 122
+				Total Vertices: 336
+				Global Geometry Index: 25
+
+				Material Index: 7
+				Index Offset: 71379
+				Vertex Offset: 24370
+				Total Indices: 126
+				Total Vertices: 480
+				Global Geometry Index: 26
+
+				Material Index: 8
+				Index Offset: 71859
+				Vertex Offset: 24496
+				Total Indices: 122
+				Total Vertices: 336
+				Global Geometry Index: 27
+
+				Material Index: 7
+				Index Offset: 72195
+				Vertex Offset: 24618
+				Total Indices: 126
+				Total Vertices: 480
+				Global Geometry Index: 28
+
+				Material Index: 8
+				Index Offset: 72675
+				Vertex Offset: 24744
+				Total Indices: 122
+				Total Vertices: 336
+				Global Geometry Index: 29
+
+				Material Index: 7
+				Index Offset: 73011
+				Vertex Offset: 24866
+				Total Indices: 126
+				Total Vertices: 480
+				Global Geometry Index: 30
+
+				Material Index: 8
+				Index Offset: 73491
+				Vertex Offset: 24992
+				Total Indices: 122
+				Total Vertices: 336
+				Global Geometry Index: 31
+
+				Material Index: 7
+				Index Offset: 73827
+				Vertex Offset: 25114
+				Total Indices: 126
+				Total Vertices: 480
+				Global Geometry Index: 32
+
+				Material Index: 8
+				Index Offset: 74307
+				Vertex Offset: 25240
+				Total Indices: 122
+				Total Vertices: 336
+				Global Geometry Index: 33
+
+				Material Index: 7
+				Index Offset: 74643
+				Vertex Offset: 25362
+				Total Indices: 880
+				Total Vertices: 1320
+				Global Geometry Index: 34
+
+				Material Index: 6
+				Index Offset: 75963
+				Vertex Offset: 26242
+				Total Indices: 56
+				Total Vertices: 96
+				Global Geometry Index: 35
+
+				Material Index: 7
+				Index Offset: 76059
+				Vertex Offset: 26298
+				Total Indices: 560
+				Total Vertices: 840
+				Global Geometry Index: 36
+
+				Material Index: 6
+				Index Offset: 76899
+				Vertex Offset: 26858
+				Total Indices: 66
+				Total Vertices: 162
+				Global Geometry Index: 37
+
+				Material Index: 12
+				Index Offset: 77061
+				Vertex Offset: 26924
+				Total Indices: 314
+				Total Vertices: 726
+				Global Geometry Index: 38
+
+				Material Index: 6
+				Index Offset: 77787
+				Vertex Offset: 27238
+				Total Indices: 48
+				Total Vertices: 72
+				Global Geometry Index: 39
+
+				Material Index: 12
+				Index Offset: 77859
+				Vertex Offset: 27286
+				Total Indices: 98
+				Total Vertices: 246
+				Global Geometry Index: 40
+
+				Material Index: 6
+				Index Offset: 78105
+				Vertex Offset: 27384
+				Total Indices: 48
+				Total Vertices: 72
+				Global Geometry Index: 41
+
+				Material Index: 12
+				Index Offset: 78177
+				Vertex Offset: 27432
+				Total Indices: 688
+				Total Vertices: 1668
+				Global Geometry Index: 42
+
+				Material Index: 6
+				Index Offset: 79845
+				Vertex Offset: 28120
+				Total Indices: 92
+				Total Vertices: 150
+				Global Geometry Index: 43
+
+				Material Index: 11
+				Index Offset: 79995
+				Vertex Offset: 28212
+				Total Indices: 5904
+				Total Vertices: 10224
+				Global Geometry Index: 44
+
+				Material Index: 6
+				Index Offset: 90219
+				Vertex Offset: 34116
+				Total Indices: 92
+				Total Vertices: 150
+				Global Geometry Index: 45
+
+				Material Index: 10
+				Index Offset: 90369
+				Vertex Offset: 34208
+				Total Indices: 7
+				Total Vertices: 15
+				Global Geometry Index: 46
+
+				Material Index: 9
+				Index Offset: 90384
+				Vertex Offset: 34215
+				Total Indices: 1824
+				Total Vertices: 4080
+				Global Geometry Index: 47
+
+				Material Index: 7
+				Index Offset: 94464
+				Vertex Offset: 36039
+				Total Indices: 3764
+				Total Vertices: 11208
+				Global Geometry Index: 48
+
+				Material Index: 13
+				Index Offset: 105672
+				Vertex Offset: 39803
+				Total Indices: 23038
+				Total Vertices: 69624
+				Global Geometry Index: 49
+
+				Material Index: 3
+				Index Offset: 175296
+				Vertex Offset: 62841
+				Total Indices: 36
+				Total Vertices: 54
+				Global Geometry Index: 50
+
+				Material Index: 6
+				Index Offset: 175350
+				Vertex Offset: 62877
+				Total Indices: 120
+				Total Vertices: 192
+				Global Geometry Index: 51
+
+				Material Index: 14
+				Index Offset: 175542
+				Vertex Offset: 62997
+				Total Indices: 3952
+				Total Vertices: 16368
+				Global Geometry Index: 52
+
+				Material Index: 1
+				Index Offset: 191910
+				Vertex Offset: 66949
+				Total Indices: 20987
+				Total Vertices: 83388
+				Global Geometry Index: 53
+
+				Material Index: 15
+				Index Offset: 275298
+				Vertex Offset: 87936
+				Total Indices: 3260
+				Total Vertices: 16512
+				Global Geometry Index: 54
+
+				Material Index: 16
+				Index Offset: 291810
+				Vertex Offset: 91196
+				Total Indices: 3260
+				Total Vertices: 16512
+				Global Geometry Index: 55
+
+				Material Index: 17
+				Index Offset: 308322
+				Vertex Offset: 94456
+				Total Indices: 3260
+				Total Vertices: 16512
+				Global Geometry Index: 56
+
+				Material Index: 15
+				Index Offset: 324834
+				Vertex Offset: 97716
+				Total Indices: 3260
+				Total Vertices: 16512
+				Global Geometry Index: 57
+
+				Material Index: 16
+				Index Offset: 341346
+				Vertex Offset: 100976
+				Total Indices: 3260
+				Total Vertices: 16512
+				Global Geometry Index: 58
+
+				Material Index: 15
+				Index Offset: 357858
+				Vertex Offset: 104236
+				Total Indices: 3260
+				Total Vertices: 16512
+				Global Geometry Index: 59
+
+				Material Index: 17
+				Index Offset: 374370
+				Vertex Offset: 107496
+				Total Indices: 3260
+				Total Vertices: 16512
+				Global Geometry Index: 60
+
+				Material Index: 16
+				Index Offset: 390882
+				Vertex Offset: 110756
+				Total Indices: 3260
+				Total Vertices: 16512
+				Global Geometry Index: 61
+
+				Material Index: 14
+				Index Offset: 407394
+				Vertex Offset: 114016
+				Total Indices: 8340
+				Total Vertices: 33120
+				Global Geometry Index: 62
+
+				Material Index: 18
+				Index Offset: 440514
+				Vertex Offset: 122356
+				Total Indices: 2615
+				Total Vertices: 14592
+				Global Geometry Index: 63
+
+				Material Index: 19
+				Index Offset: 455106
+				Vertex Offset: 124971
+				Total Indices: 2509
+				Total Vertices: 13824
+				Global Geometry Index: 64
+
+				Material Index: 20
+				Index Offset: 468930
+				Vertex Offset: 127480
+				Total Indices: 2615
+				Total Vertices: 14592
+				Global Geometry Index: 65
+
+				Material Index: 19
+				Index Offset: 483522
+				Vertex Offset: 130095
+				Total Indices: 2615
+				Total Vertices: 14592
+				Global Geometry Index: 66
+
+				Material Index: 20
+				Index Offset: 498114
+				Vertex Offset: 132710
+				Total Indices: 2509
+				Total Vertices: 13824
+				Global Geometry Index: 67
+
+				Material Index: 19
+				Index Offset: 511938
+				Vertex Offset: 135219
+				Total Indices: 2615
+				Total Vertices: 14592
+				Global Geometry Index: 68
+
+				Material Index: 18
+				Index Offset: 526530
+				Vertex Offset: 137834
+				Total Indices: 2509
+				Total Vertices: 13824
+				Global Geometry Index: 69
+
+				Material Index: 20
+				Index Offset: 540354
+				Vertex Offset: 140343
+				Total Indices: 2615
+				Total Vertices: 14592
+				Global Geometry Index: 70
+
+				Material Index: 19
+				Index Offset: 554946
+				Vertex Offset: 142958
+				Total Indices: 2509
+				Total Vertices: 13824
+				Global Geometry Index: 71
+
+				Material Index: 18
+				Index Offset: 568770
+				Vertex Offset: 145467
+				Total Indices: 2615
+				Total Vertices: 14592
+				Global Geometry Index: 72
+
+				Material Index: 21
+				Index Offset: 583362
+				Vertex Offset: 148082
+				Total Indices: 16
+				Total Vertices: 24
+				Global Geometry Index: 73
+
+				Material Index: 22
+				Index Offset: 583386
+				Vertex Offset: 148098
+				Total Indices: 2957
+				Total Vertices: 14871
+				Global Geometry Index: 74
+
+				Material Index: 21
+				Index Offset: 598257
+				Vertex Offset: 151055
+				Total Indices: 16
+				Total Vertices: 24
+				Global Geometry Index: 75
+
+				Material Index: 22
+				Index Offset: 598281
+				Vertex Offset: 151071
+				Total Indices: 2957
+				Total Vertices: 14871
+				Global Geometry Index: 76
+
+				Material Index: 21
+				Index Offset: 613152
+				Vertex Offset: 154028
+				Total Indices: 16
+				Total Vertices: 24
+				Global Geometry Index: 77
+
+				Material Index: 22
+				Index Offset: 613176
+				Vertex Offset: 154044
+				Total Indices: 2957
+				Total Vertices: 14871
+				Global Geometry Index: 78
+
+				Material Index: 21
+				Index Offset: 628047
+				Vertex Offset: 157001
+				Total Indices: 16
+				Total Vertices: 24
+				Global Geometry Index: 79
+
+				Material Index: 22
+				Index Offset: 628071
+				Vertex Offset: 157017
+				Total Indices: 2957
+				Total Vertices: 14871
+				Global Geometry Index: 80
+
+				Material Index: 4
+				Index Offset: 642942
+				Vertex Offset: 159974
+				Total Indices: 533
+				Total Vertices: 1404
+				Global Geometry Index: 81
+
+				Material Index: 2
+				Index Offset: 644346
+				Vertex Offset: 160507
+				Total Indices: 1231
+				Total Vertices: 6633
+				Global Geometry Index: 82
+
+				Material Index: 4
+				Index Offset: 650979
+				Vertex Offset: 161738
+				Total Indices: 533
+				Total Vertices: 1404
+				Global Geometry Index: 83
+
+				Material Index: 2
+				Index Offset: 652383
+				Vertex Offset: 162271
+				Total Indices: 1231
+				Total Vertices: 6633
+				Global Geometry Index: 84
+
+				Material Index: 4
+				Index Offset: 659016
+				Vertex Offset: 163502
+				Total Indices: 533
+				Total Vertices: 1404
+				Global Geometry Index: 85
+
+				Material Index: 2
+				Index Offset: 660420
+				Vertex Offset: 164035
+				Total Indices: 1231
+				Total Vertices: 6633
+				Global Geometry Index: 86
+
+				Material Index: 4
+				Index Offset: 667053
+				Vertex Offset: 165266
+				Total Indices: 450
+				Total Vertices: 1200
+				Global Geometry Index: 87
+
+				Material Index: 2
+				Index Offset: 668253
+				Vertex Offset: 165716
+				Total Indices: 1231
+				Total Vertices: 6633
+				Global Geometry Index: 88
+
+				Material Index: 4
+				Index Offset: 674886
+				Vertex Offset: 166947
+				Total Indices: 450
+				Total Vertices: 1200
+				Global Geometry Index: 89
+
+				Material Index: 2
+				Index Offset: 676086
+				Vertex Offset: 167397
+				Total Indices: 1231
+				Total Vertices: 6633
+				Global Geometry Index: 90
+
+				Material Index: 4
+				Index Offset: 682719
+				Vertex Offset: 168628
+				Total Indices: 450
+				Total Vertices: 1200
+				Global Geometry Index: 91
+
+				Material Index: 2
+				Index Offset: 683919
+				Vertex Offset: 169078
+				Total Indices: 1231
+				Total Vertices: 6633
+				Global Geometry Index: 92
+
+				Material Index: 4
+				Index Offset: 690552
+				Vertex Offset: 170309
+				Total Indices: 450
+				Total Vertices: 1200
+				Global Geometry Index: 93
+
+				Material Index: 2
+				Index Offset: 691752
+				Vertex Offset: 170759
+				Total Indices: 1231
+				Total Vertices: 6633
+				Global Geometry Index: 94
+
+				Material Index: 23
+				Index Offset: 698385
+				Vertex Offset: 171990
+				Total Indices: 5308
+				Total Vertices: 27552
+				Global Geometry Index: 95
+
+				Material Index: 24
+				Index Offset: 725937
+				Vertex Offset: 177298
+				Total Indices: 866
+				Total Vertices: 4563
+				Global Geometry Index: 96
+
+				Material Index: 5
+				Index Offset: 730500
+				Vertex Offset: 178164
+				Total Indices: 753
+				Total Vertices: 4086
+				Global Geometry Index: 97
+
+				Material Index: 24
+				Index Offset: 734586
+				Vertex Offset: 178917
+				Total Indices: 866
+				Total Vertices: 4563
+				Global Geometry Index: 98
+
+				Material Index: 5
+				Index Offset: 739149
+				Vertex Offset: 179783
+				Total Indices: 753
+				Total Vertices: 4086
+				Global Geometry Index: 99
+
+				Material Index: 6
+				Index Offset: 743235
+				Vertex Offset: 180536
+				Total Indices: 50
+				Total Vertices: 84
+				Global Geometry Index: 100
+
+				Material Index: 25
+				Index Offset: 743319
+				Vertex Offset: 180586
+				Total Indices: 11890
+				Total Vertices: 43452
+				Global Geometry Index: 101
+
+				Material Index: 6
+				Index Offset: 786771
+				Vertex Offset: 192476
+				Total Indices: 20
+				Total Vertices: 30
+				Global Geometry Index: 102
+
+
+	Mesh Instances [1]:
+			Entity: 28
+		Name: Scene Node 0
+			Transform Compoment: 1
+			Hierarchy Component: 0
+			MeshID: 26

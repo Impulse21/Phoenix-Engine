@@ -12,6 +12,7 @@
 
 using namespace PhxEngine::Core;
 using namespace PhxEngine::Renderer;
+using namespace PhxEngine::ECS;
 using namespace PhxEngine::RHI;
 using namespace DirectX;
 
@@ -139,7 +140,7 @@ static void ComputeTangentSpace(
 	const cgltf_accessor* cgltfPositionsAccessor,
 	const cgltf_accessor* cgltfNormalsAccessor,
 	const cgltf_accessor* cgltfTexCoordsAccessor,
-	std::shared_ptr<MeshBuffers> meshBuffers,
+	MeshComponent& mesh,
 	const uint32_t indexCount,
 	const uint32_t totalIndices,
 	const uint32_t totalVertices)
@@ -153,9 +154,9 @@ static void ComputeTangentSpace(
 
 	for (int i = 0; i < indexCount; i += 3)
 	{
-		auto& index0 = meshBuffers->IndexData[i + 0 + totalIndices];
-		auto& index1 = meshBuffers->IndexData[i + 1 + totalIndices];
-		auto& index2 = meshBuffers->IndexData[i + 2 + totalIndices];
+		auto& index0 = mesh.Indices[i + 0 + totalIndices];
+		auto& index1 = mesh.Indices[i + 1 + totalIndices];
+		auto& index2 = mesh.Indices[i + 2 + totalIndices];
 
 		// Vertices
 		DirectX::XMVECTOR pos0 = DirectX::XMLoadFloat3(reinterpret_cast<const DirectX::XMFLOAT3*>(positionSrc + positionStride * index0));
@@ -201,7 +202,7 @@ static void ComputeTangentSpace(
 			: 1.0f;
 
 		DirectX::XMVectorSetW(tangent, sign);
-		DirectX::XMStoreFloat4(&meshBuffers->TangentData[i + totalVertices], orthTangent);
+		DirectX::XMStoreFloat4(&mesh.VertexTangents[i + totalVertices], orthTangent);
 	}
 }
 
@@ -220,7 +221,7 @@ static cgltf_result CgltfReadFile(
 {
 	CgltfContext* context = (CgltfContext*)file_options->user_data;
 
-	auto blob = context->FileSystem->ReadFile(path);
+	std::shared_ptr<IBlob> blob = context->FileSystem->ReadFile(path);
 
 	if (!blob)
 	{
@@ -243,9 +244,12 @@ void CgltfReleaseFile(
 	// do nothing
 }
 
-Scene* PhxEngine::Renderer::GltfSceneLoader::LoadScene(std::string const& filename)
+bool PhxEngine::Renderer::GltfSceneLoader::LoadScene(
+	std::string const& fileName,
+	RHI::CommandListHandle commandList,
+	New::Scene& scene)
 {
-	this->m_filename = filename; // Is this assignment safe?
+	this->m_filename = fileName; // Is this assignment safe?
 
 	std::string normalizedFileName = this->m_filename.lexically_normal().generic_string();
 
@@ -257,8 +261,10 @@ Scene* PhxEngine::Renderer::GltfSceneLoader::LoadScene(std::string const& filena
 	options.file.release = &CgltfReleaseFile;
 	options.file.user_data = &cgltfContext;
 
+	auto blob =  this->m_fileSystem->ReadFile(fileName);
+
 	cgltf_data* objects = nullptr;
-	cgltf_result res = cgltf_parse_file(&options, normalizedFileName.c_str(), &objects);
+	cgltf_result res = cgltf_parse(&options, blob->Data(), blob->Size(), &objects);
 
 	if (res != cgltf_result_success)
 	{
@@ -273,51 +279,49 @@ Scene* PhxEngine::Renderer::GltfSceneLoader::LoadScene(std::string const& filena
 		LOG_CORE_ERROR("Failed to load buffers for glTF file '{0}'", normalizedFileName.c_str());
 		return false;
 	}
-	this->LoadSceneInternal(objects, cgltfContext);
 
-    return nullptr;
+	return this->LoadSceneInternal(objects, cgltfContext, commandList, scene);
 }
 
-Scene* PhxEngine::Renderer::GltfSceneLoader::LoadSceneInternal(
+bool PhxEngine::Renderer::GltfSceneLoader::LoadSceneInternal(
 	cgltf_data* gltfData,
-	CgltfContext& context)
+	CgltfContext& context,
+	RHI::CommandListHandle commandList,
+	New::Scene& scene)
 {
-	/*
-	Scene scene;
-
-	// load textures
-	std::unordered_map<const cgltf_material*, std::shared_ptr<Material>> sceneMaterials;
 	this->LoadMaterialData(
 		gltfData->materials,
 		gltfData->materials_count,
 		gltfData,
 		context,
-		sceneMaterials);
+		scene);
 
-	std::unordered_map<const cgltf_mesh*, std::shared_ptr<cgltf_mesh>> sceneMeshes;
 	this->LoadMeshData(
 		gltfData->meshes,
 		gltfData->meshes_count,
-		sceneMaterials,
-		sceneMeshes);
+		scene);
 
-	// TODO: Camera
+	Entity rootEntity = CreateEntity();
+	scene.Transforms.Create(rootEntity);
+	scene.Names.Create(rootEntity) = gltfData->scene->name ? gltfData->scene->name : "GLTF Scene"; // TODO: Use filename.
 
-	// TODO: Lights
+	// Load Node Data
+	for (size_t i = 0; i < gltfData->nodes_count; i++)
+	{
+		// Load Node Data
+		this->LoadNode(gltfData->nodes[i], rootEntity, scene);
+	}
 
-	// TODO: Build Scene Graph
-	*/
-	return nullptr;
+	return true;
 }
 
-std::shared_ptr<PhxEngine::RHI::TextureHandle> PhxEngine::Renderer::GltfSceneLoader::LoadTexture(
+PhxEngine::RHI::TextureHandle PhxEngine::Renderer::GltfSceneLoader::LoadTexture(
 	const cgltf_texture* cglftTexture,
 	bool isSRGB,
 	const cgltf_data* objects,
 	CgltfContext& context)
 {
-	/*
-	if (cglftTexture)
+	if (!cglftTexture)
 	{
 		return nullptr;
 	}
@@ -370,18 +374,14 @@ std::shared_ptr<PhxEngine::RHI::TextureHandle> PhxEngine::Renderer::GltfSceneLoa
 			memcpy(dataCopy, dataPtr, dataSize);
 			textureData = std::make_shared<Core::Blob>(dataCopy, dataSize);
 		}
-
+		
 		// texture = this->m_textureCache->LoadTexture(textureData, name, mimeType, isSRGB);
 	}
 	else
 	{
-		// texture = this->m_textureCache->LoadTexture(this->m_filename.parent_path() / activeImage->uri, isSRGB);
+		// texture = this->m_textureCache->LoadTexture(this->m_filename.parent_path() +  / activeImage->uri, isSRGB);
 	}
 
-	// Load texture
-
-	return std::shared_ptr<Texture>();
-	*/
 	return nullptr;
 }
 
@@ -390,67 +390,73 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMaterialData(
 	uint32_t materialCount,
 	const cgltf_data* objects,
 	CgltfContext& context,
-	std::unordered_map<const cgltf_material*, std::shared_ptr<Material>>& outMaterials)
+	New::Scene& scene)
 {
-	/*
 	for (int i = 0; i < materialCount; i++)
 	{
-		const auto& cgltfMaterial = pMaterials[i];
+		const auto& cgltfMtl = pMaterials[i];
 
-		auto material = std::make_shared<Material>();
+		std::string mtlName = cgltfMtl.name ? cgltfMtl.name : "Material " + std::to_string(i);
 
-		if (cgltfMaterial.name)
-		{
-			material->Name = cgltfMaterial.name;
-		}
+		Entity mtlEntity = scene.EntityCreateMaterial(mtlName);
+		this->m_materialMap[&cgltfMtl] = mtlEntity;
+		MaterialComponent& mtl = *scene.Materials.GetComponent(mtlEntity);
 
-		if (cgltfMaterial.has_pbr_specular_glossiness)
+		if (cgltfMtl.has_pbr_specular_glossiness)
 		{
 			LOG_CORE_WARN("Material {0} contains unsupported extension 'PBR Specular_Glossiness' workflow ");
 		}
-		else if (cgltfMaterial.has_pbr_metallic_roughness)
+		else if (cgltfMtl.has_pbr_metallic_roughness)
 		{
-			material->AlbedoTexture = this->LoadTexture(
-				cgltfMaterial.pbr_metallic_roughness.base_color_texture.texture,
+			mtl.AlbedoTexture = this->LoadTexture(
+				cgltfMtl.pbr_metallic_roughness.base_color_texture.texture,
 				true,
 				objects,
 				context);
 
-			cgltfMaterial.pbr_metallic_roughness.metallic_roughness_texture;
-			material->Albedo =
+			mtl.Albedo =
 			{
-				cgltfMaterial.pbr_metallic_roughness.base_color_factor[0],
-				cgltfMaterial.pbr_metallic_roughness.base_color_factor[1],
-				cgltfMaterial.pbr_metallic_roughness.base_color_factor[2],
+				cgltfMtl.pbr_metallic_roughness.base_color_factor[0],
+				cgltfMtl.pbr_metallic_roughness.base_color_factor[1],
+				cgltfMtl.pbr_metallic_roughness.base_color_factor[2],
+				cgltfMtl.pbr_metallic_roughness.base_color_factor[3]
 			};
 
-			material->MaterialTexture = this->LoadTexture(
-				cgltfMaterial.pbr_metallic_roughness.metallic_roughness_texture.texture,
+			mtl.MetalRoughnessTexture = this->LoadTexture(
+				cgltfMtl.pbr_metallic_roughness.metallic_roughness_texture.texture,
 				false,
 				objects,
 				context);
 
-			material->Metalness = cgltfMaterial.pbr_metallic_roughness.metallic_factor;
-			material->Roughness = cgltfMaterial.pbr_metallic_roughness.roughness_factor;
+			mtl.Metalness = cgltfMtl.pbr_metallic_roughness.metallic_factor;
+			mtl.Roughness = cgltfMtl.pbr_metallic_roughness.roughness_factor;
 		}
 
-		// TODO: Emmisive
-		// TODO: Aplha support
-		material->IsDoubleSided = cgltfMaterial.double_sided;
+		// Load Normal map
+		mtl.NormalMapTexture = this->LoadTexture(
+			cgltfMtl.normal_texture.texture,
+			false,
+			objects,
+			context);
 
-		outMaterials[&cgltfMaterial] = material;
+		// TODO: Emmisive
+		// TODO: Aplha suppor
+		mtl.IsDoubleSided = cgltfMtl.double_sided;
 	}
-	*/
+
+	if (scene.Materials.IsEmpty())
+	{
+		scene.EntityCreateMaterial("Default_Material");
+	}
 }
 
 void PhxEngine::Renderer::GltfSceneLoader::LoadMeshData(
 	const cgltf_mesh* pMeshes,
 	uint32_t meshCount,
-	std::unordered_map<const cgltf_material*, std::shared_ptr<Material>> const& materialMap,
-	std::unordered_map<const cgltf_mesh*, std::shared_ptr<cgltf_mesh>>& outMeshes)
+	New::Scene& scene)
 {
-	size_t totalVertexCount = 0;
-	size_t totalIndexCount = 0;
+	std::vector<size_t> totalVertexCounts(meshCount);
+	std::vector<size_t> totalIndexCounts(meshCount);
 
 	for (int i = 0; i < meshCount; i++)
 	{
@@ -468,49 +474,48 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMeshData(
 
 			if (cgltfPrim.indices)
 			{
-				totalIndexCount += cgltfPrim.indices->count;
+				totalIndexCounts[i] += cgltfPrim.indices->count;
 			}
 			else
 			{
-				totalIndexCount += cgltfPrim.attributes->data->count;
+				totalIndexCounts[i] += cgltfPrim.attributes->data->count;
 			}
 
-			totalVertexCount += cgltfPrim.attributes->data->count;
+			totalVertexCounts[i] += cgltfPrim.attributes->data->count;
 		}
 	}
-
+	/*
 	auto meshBuffers = std::make_shared<MeshBuffers>();
-	meshBuffers->IndexData.resize(totalIndexCount);
-	meshBuffers->PositionData.resize(totalVertexCount);
+	meshBuffers->IndexData.resize(totalIndexCounts);
+	meshBuffers->PositionData.resize(totalVertexCounts);
 	meshBuffers->NormalData.resize(totalVertexCount);
 	meshBuffers->TexCoordData.resize(totalVertexCount);
 	meshBuffers->TangentData.resize(totalVertexCount);
-
-
-	totalIndexCount = 0;
-	totalVertexCount = 0;
-
-	std::vector<std::shared_ptr<Mesh>> meshes(meshCount);
-
+	*/
 	for (int i = 0; i < meshCount; i++)
 	{
 		const auto& cgltfMesh = pMeshes[i];
-		std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>();
+		std::string meshName = cgltfMesh.name ? cgltfMesh.name : "Mesh " + std::to_string(i);
 
-		if (cgltfMesh.name)
-		{
-			mesh->Name = cgltfMesh.name;
-		}
+		Entity meshEntity = scene.EntityCreateMesh(meshName);
+		this->m_meshMap[&cgltfMesh] = meshEntity;
+		MeshComponent& mesh = *scene.Meshes.GetComponent(meshEntity);
 
-		mesh->Buffers = meshBuffers;
-		mesh->IndexOffset = totalIndexCount;
-		mesh->VertexOffset = totalVertexCount;
+		// Resize data
+		mesh.VertexPositions.resize(totalVertexCounts[i]);
+		mesh.VertexNormals.resize(totalVertexCounts[i]);
+		mesh.VertexTexCoords.reserve(totalVertexCounts[i]);
+		mesh.VertexTangents.resize(totalVertexCounts[i]);
+		mesh.Indices.resize(totalIndexCounts[i]);
 
-		meshes[i] = mesh;
-		// outMeshes[&cgltfMesh] = mesh;
+		mesh.IndexOffset = 0;
+		mesh.VertexOffset = 0;
 
+		mesh.Geometry.resize(cgltfMesh.primitives_count);
 		for (int iPrim = 0; iPrim < cgltfMesh.primitives_count; iPrim++)
 		{
+			size_t totalIndexCount = 0;
+			size_t totalVertexCount = 0;
 			const auto& cgltfPrim = cgltfMesh.primitives[iPrim];
 
 			if (cgltfPrim.type != cgltf_primitive_type_triangles ||
@@ -575,7 +580,7 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMeshData(
 				// copy the indices
 				auto [indexSrc, indexStride] = CgltfBufferAccessor(cgltfPrim.indices, 0);
 
-				uint32_t* indexDst = meshBuffers->IndexData.data() + totalIndexCount;
+				uint32_t* indexDst = mesh.Indices.data() + totalIndexCount;
 
 				switch (cgltfPrim.indices->component_type)
 				{
@@ -633,7 +638,7 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMeshData(
 				indexCount = cgltfPositionsAccessor->count;
 
 				// generate the indices
-				uint32_t* indexDst = meshBuffers->IndexData.data() + totalIndexCount;
+				uint32_t* indexDst = mesh.Indices.data() + totalIndexCount;
 				for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
 				{
 					*indexDst = (uint32_t)iIdx;
@@ -648,7 +653,7 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMeshData(
 
 				// Do a mem copy?
 				std::memcpy(
-					meshBuffers->PositionData.data() + totalVertexCount,
+					mesh.VertexPositions.data() + totalVertexCount,
 					positionSrc,
 					positionStride* cgltfPositionsAccessor->count);
 			}
@@ -659,7 +664,7 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMeshData(
 
 				// Do a mem copy?
 				std::memcpy(
-					meshBuffers->NormalData.data() + totalVertexCount,
+					mesh.VertexNormals.data() + totalVertexCount,
 					normalSrc,
 					normalStride * cgltfNormalsAccessor->count);
 			}
@@ -670,7 +675,7 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMeshData(
 
 				// Do a mem copy?
 				std::memcpy(
-					meshBuffers->TangentData.data() + totalVertexCount,
+					mesh.VertexTangents.data() + totalVertexCount,
 					tangentSrc,
 					tangentStride* cgltfTangentsAccessor->count);
 			}
@@ -682,15 +687,14 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMeshData(
 				auto [texcoordSrc, texcoordStride] = CgltfBufferAccessor(cgltfTexCoordsAccessor, sizeof(float) * 2);
 
 				std::memcpy(
-					meshBuffers->TexCoordData.data() + totalVertexCount,
+					mesh.VertexTexCoords.data() + totalVertexCount,
 					texcoordSrc,
 					texcoordStride* cgltfTexCoordsAccessor->count);
 			}
 			else
 			{
-				DirectX::XMFLOAT2* texcoordDst = meshBuffers->TexCoordData.data() + totalVertexCount;
 				std::memset(
-					meshBuffers->TexCoordData.data() + totalVertexCount,
+					mesh.VertexTexCoords.data() + totalVertexCount,
 					0.0f,
 					cgltfPositionsAccessor->count * sizeof(float) * 2);
 			}
@@ -701,26 +705,114 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMeshData(
 					cgltfPositionsAccessor,
 					cgltfNormalsAccessor,
 					cgltfTexCoordsAccessor,
-					meshBuffers,
+					mesh,
 					indexCount,
 					totalIndexCount,
 					totalVertexCount);
 			}
 
-			// Construct Geometry
-			auto meshGeometry = std::make_shared<MeshGeometry>();
-			meshGeometry->Material = materialMap.at(cgltfPrim.material);
-			meshGeometry->IndexOffsetInMesh = mesh->TotalIndices;
-			meshGeometry->VertexOffsetInMesh = mesh->TotalVertices;
-			meshGeometry->NumIndices = indexCount;
-			meshGeometry->NumVertices = cgltfPositionsAccessor->count;
+			auto& meshGeometry = mesh.Geometry[iPrim];
+			{
+				auto it = this->m_materialMap.find(cgltfPrim.material);
+				meshGeometry.MaterialID = it == this->m_materialMap.end() ? InvalidEntity : it->second;
+			}
 
-			mesh->TotalIndices += meshGeometry->NumIndices;
-			mesh->VertexOffset += meshGeometry->NumVertices;
-			mesh->Geometry.push_back(meshGeometry);
+			meshGeometry.IndexOffsetInMesh = mesh.TotalIndices;
+			meshGeometry.VertexOffsetInMesh = mesh.TotalVertices;
+			meshGeometry.NumIndices = indexCount;
+			meshGeometry.NumVertices = cgltfPositionsAccessor->count;
 
-			totalIndexCount += meshGeometry->NumIndices;
-			totalVertexCount += meshGeometry->NumVertices;
+			mesh.TotalIndices += meshGeometry.NumIndices;
+			mesh.TotalVertices += meshGeometry.NumVertices;
+
+			totalIndexCount += meshGeometry.NumIndices;
+			totalVertexCount += meshGeometry.NumVertices;
 		}
+	}
+}
+
+void PhxEngine::Renderer::GltfSceneLoader::LoadNode(
+	const cgltf_node& gltfNode,
+	Entity parent,
+	New::Scene& scene)
+{
+
+	Entity entity = InvalidEntity;
+	if (gltfNode.mesh)
+	{
+		// Create a mesh instance
+		static size_t meshId = 0;
+
+		std::string nodeName = gltfNode.name ? gltfNode.name : "Scene Node " + std::to_string(meshId++);
+		entity = scene.EntityCreateMeshInstance(nodeName);
+		auto& instanceComp = *scene.MeshInstances.GetComponent(entity);
+		instanceComp.MeshId = this->m_meshMap[gltfNode.mesh];
+	}
+	else if (gltfNode.camera)
+	{
+		static size_t cameraId = 0;
+		std::string cameraName = gltfNode.name ? gltfNode.name : "Camera " + std::to_string(cameraId++);
+		entity = scene.EntityCreateCamera(
+			cameraName,
+			scene.GetGlobalCamera().Width,
+			scene.GetGlobalCamera().Height,
+			0.1f,
+			1000.0f);
+	}
+
+	if (entity == InvalidEntity)
+	{
+		entity = CreateEntity();
+		scene.Transforms.Create(entity);
+
+		static size_t nodeId = 0;
+		std::string nodeName = gltfNode.name ? gltfNode.name : "Scene Node " + std::to_string(nodeId++);
+		scene.Names.Create(entity).Name = nodeName;
+	}
+
+	// Create an entity map that can be used?
+	TransformComponent& transform = *scene.Transforms.GetComponent(entity);
+	if (gltfNode.has_scale)
+	{
+		std::memcpy(
+			&transform.LocalScale.x,
+			&gltfNode.scale[0],
+			sizeof(float) * 3);
+	}
+	if (gltfNode.has_rotation)
+	{
+		std::memcpy(
+			&transform.LocalRotation.x,
+			&gltfNode.rotation[0],
+			sizeof(float) * 4);
+	}
+	if (gltfNode.has_translation)
+	{
+		std::memcpy(
+			&transform.LocalTranslation.x,
+			&gltfNode.translation[0],
+			sizeof(float) * 3);
+	}
+	if (gltfNode.has_matrix)
+	{
+		std::memcpy(
+			&transform.WorldMatrix._11,
+			&gltfNode.matrix[0],
+			sizeof(float) * 16);
+
+		transform.ApplyTransform();
+	}
+
+	transform.UpdateTransform();
+
+	if (parent != InvalidEntity)
+	{
+		scene.ComponentAttach(entity, parent, true);
+	}
+
+	for (int i = 0; i < gltfNode.children_count; i++)
+	{
+		if (gltfNode.children[i])
+			this->LoadNode(*gltfNode.children[i], entity, scene);
 	}
 }

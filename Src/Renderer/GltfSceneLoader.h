@@ -3,6 +3,7 @@
 #include <PhxEngine/Renderer/SceneLoader.h>
 #include <PhxEngine/Renderer/SceneNodes.h>
 #include <PhxEngine/Renderer/TextureCache.h>
+#include <PhxEngine/Ecs/Ecs.h>
 
 #include <PhxEngine/RHI/PhxRHI.h>
 
@@ -10,10 +11,12 @@
 #include <vector>
 #include <memory>
 
-class cgltf_data;
-class cgltf_material;
-class cgltf_mesh;
-class cgltf_texture;
+struct cgltf_data;
+struct cgltf_material;
+struct cgltf_mesh;
+struct cgltf_texture;
+struct cgltf_camera;
+struct cgltf_node;
 
 struct CgltfContext;
 
@@ -29,19 +32,22 @@ namespace PhxEngine::Renderer
 	class GltfSceneLoader : public ISceneLoader
 	{
 	public:
-		GltfSceneLoader(std::shared_ptr<Core::IFileSystem> fs, std::shared_ptr<TextureCache> textureCache)
+		GltfSceneLoader(std::shared_ptr<Core::IFileSystem> fs, std::shared_ptr<TextureCache> textureCache, RHI::IGraphicsDevice* graphcisDevice)
 			: m_fileSystem(fs)
 			, m_textureCache(textureCache)
+			, m_graphicsDevice(graphcisDevice)
 		{}
 
-		Scene* LoadScene(std::string const& fileName);
+		bool LoadScene(std::string const& fileName, RHI::CommandListHandle commandList, New::Scene& scene) override;
 
 	private:
-		Scene* LoadSceneInternal(
+		bool LoadSceneInternal(
 			cgltf_data* gltfData,
-			CgltfContext& context);
+			CgltfContext& context,
+			RHI::CommandListHandle commandList,
+			New::Scene& scene);
 
-		std::shared_ptr<RHI::TextureHandle> LoadTexture(
+		RHI::TextureHandle LoadTexture(
 			const cgltf_texture* cglftTexture,
 			bool isSRGB,
 			const cgltf_data* objects,
@@ -52,17 +58,26 @@ namespace PhxEngine::Renderer
 			uint32_t materialCount,
 			const cgltf_data* objects,
 			CgltfContext& context,
-			std::unordered_map<const cgltf_material*, std::shared_ptr<Material>>& outMaterials);
+			New::Scene& scene);
 
 		void LoadMeshData(
 			const cgltf_mesh* pMeshes,
 			uint32_t meshCount,
-			std::unordered_map<const cgltf_material*, std::shared_ptr<Material>> const& materialMap,
-			std::unordered_map<const cgltf_mesh*, std::shared_ptr< cgltf_mesh>>& outMeshes);
+			New::Scene& scene);
+
+		void LoadNode(
+			const cgltf_node& gltfNode,
+			ECS::Entity parent,
+			New::Scene& scene);
 
 	private:
+		RHI::IGraphicsDevice* m_graphicsDevice;
 		std::shared_ptr<Core::IFileSystem> m_fileSystem;
 		std::shared_ptr<TextureCache> m_textureCache;
 		std::filesystem::path m_filename;
+
+		// LUT helpers
+		std::unordered_map<const cgltf_material*, ECS::Entity> m_materialMap;
+		std::unordered_map<const cgltf_mesh*, ECS::Entity> m_meshMap;
 	};
 }

@@ -546,6 +546,8 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTexture(TextureDesc co
 	textureImpl->D3D12Resource = d3d12Resource;
 	textureImpl->SrvAllocation = this->GetResourceCpuHeap()->Allocate(1);
 
+	textureImpl->D3D12Resource->SetName(std::wstring(desc.DebugName.begin(), desc.DebugName.end()).c_str());
+
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Format = dxgiFormatMapping.srvFormat;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;

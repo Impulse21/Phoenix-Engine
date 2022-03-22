@@ -41,6 +41,25 @@ file(GLOB PhxEngineRenderer_Src
     Src/Renderer/*.cpp
 )
 
+file(GLOB PhxEngineRenderer_ImGui_Src
+    Src/Renderer/ImGui/*.h
+    Src/Renderer/ImGui/*.cpp
+)
+
+#-- ECS
+file(GLOB PhxEngineECS_Src
+    Include/PhxEngine/ECS/*.h
+    Src/ECS/*.h
+    Src/ECS/*.cpp
+)
+
+#-- ImGui
+file(GLOB PhxEngineImGui_Src
+    Include/PhxEngine/ImGUi/*.h
+    Src/ImGUi/*.h
+    Src/ImGUi/*.cpp
+)
+
 file(GLOB PhxEngineRHI_Src
     Include/PhxEngine/RHI/*.h)
 
@@ -54,18 +73,24 @@ add_library(PhxEngine STATIC EXCLUDE_FROM_ALL
     ${PhxEngineApp_Src}
     ${PhxEngineCore_Src}
     ${PhxEngineRenderer_Src}
+    ${PhxEngineRenderer_ImGui_Src}
+    ${PhxEngineECS_Src}
     ${PhxEngineRHI_Src}
-    ${PhxEngineRHI_Dx12_Src})
+    ${PhxEngineRHI_Dx12_Src}
+    ${PhxEngineImGui_Src})
 
 
-source_group("App"      FILES ${PhxEngineApp_Src})
-source_group("Core"     FILES ${PhxEngineCore_Src})
-source_group("Renderer" FILES ${PhxEngineRenderer_Src})
-source_group("RHI"      FILES ${PhxEngineRHI_Src})
-source_group("RHI/Dx12" FILES ${PhxEngineRHI_Dx12_Src})
+source_group("App"              FILES ${PhxEngineApp_Src})
+source_group("Core"             FILES ${PhxEngineCore_Src})
+source_group("Renderer"         FILES ${PhxEngineRenderer_Src})
+source_group("Renderer/ImGui"   FILES ${PhxEngineRenderer_ImGui_Src})
+source_group("ECS"              FILES ${PhxEngineECS_Src})
+source_group("RHI"              FILES ${PhxEngineRHI_Src})
+source_group("RHI/Dx12"         FILES ${PhxEngineRHI_Dx12_Src})
+source_group("ImGUi"            FILES ${PhxEngineImGui_Src})
 
 
-target_include_directories(PhxEngine PUBLIC Include)
+target_include_directories(PhxEngine PUBLIC Include  Shaders/Include)
 
 target_link_libraries(PhxEngine
     spdlog
@@ -74,8 +99,10 @@ target_link_libraries(PhxEngine
     DirectXTex
     DirectX-Headers
     DirectX-Guids
+    imgui
     d3d12.lib
-    dxgi.lib)
+    dxgi.lib
+    PhxEngineShaders)
 
 set_target_properties(PhxEngine PROPERTIES FOLDER PhxEngine)
 
@@ -90,3 +117,4 @@ endif()
 
 # -- Add Apps ---
 add_subdirectory(TestBedApp)
+add_subdirectory(Editor)

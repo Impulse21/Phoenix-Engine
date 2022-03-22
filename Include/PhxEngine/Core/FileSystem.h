@@ -30,7 +30,7 @@ namespace PhxEngine::Core
 	{
 	public:
 		virtual bool FileExists(std::filesystem::path const& filename) = 0;
-		virtual std::shared_ptr<IBlob> ReadFile(std::filesystem::path const& filename) = 0;
+		virtual std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& filename) = 0;
 
 
 		virtual ~IFileSystem() = default;
@@ -41,7 +41,25 @@ namespace PhxEngine::Core
 	public:
 
 		bool FileExists(std::filesystem::path const& filename) override;
-		std::shared_ptr<IBlob> ReadFile(std::filesystem::path const& filename) override;
+		std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& filename) override;
+	};
+
+	// A layer that represents some path in the underlying file system as an entire FS.
+	// Effectively, just prepends the provided base path to every file name
+	// and passes the requests to the underlying FS.
+	class RelativeFileSystem : public IFileSystem
+	{
+	public:
+		RelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::filesystem::path& basePath);
+
+		[[nodiscard]] std::filesystem::path const& GetBasePath() const { return this->m_basePath; }
+
+		bool FileExists(const std::filesystem::path& name) override;
+		std::unique_ptr<IBlob> ReadFile(const std::filesystem::path& name) override;
+
+	private:
+		std::shared_ptr<IFileSystem> m_underlyingFS;
+		std::filesystem::path m_basePath;
 	};
 }
 

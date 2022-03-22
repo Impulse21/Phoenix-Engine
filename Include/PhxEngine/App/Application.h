@@ -1,6 +1,14 @@
 #pragma once
 
 #include <PhxEngine/RHI/PhxRHI.h>
+#include <PhxEngine/Renderer/Renderer.h>
+#include <PhxEngine/Core/Log.h>
+#include <PhxEngine/Core/Asserts.h>
+#include <PhxEngine/Core/FileSystem.h>
+#include <PhxEngine/App/EngineEnvironment.h>
+
+#include <PhxEngine/Core/TimeStep.h>
+
 #include <stdint.h>
 
 // Forward Declares
@@ -8,26 +16,112 @@ struct GLFWwindow;
 
 namespace PhxEngine
 {
+	namespace Core
+	{
+		class Layer;
+	}
+
+	namespace Debug
+	{
+		class ImGuiLayer;
+	}
+
+	namespace New
+	{
+		struct ApplicationCommandLineArgs
+		{
+			int Count = 0;
+			char** Args = nullptr;
+
+			const char* operator[](int index) const
+			{
+				PHX_ASSERT(index < Count);
+				return Args[index];
+			}
+		};
+
+		class Application
+		{
+		public:
+			Application(
+				RHI::IGraphicsDevice* GraphicsDevice,
+				ApplicationCommandLineArgs args,
+				std::string const& name = "Phoenix Engine");
+			virtual ~Application();
+
+			void Run();
+
+			void PushLayer(Core::Layer* layer);
+
+		protected:
+			virtual void Update(Core::TimeStep const& elapsedTime);
+			virtual void Render();
+			
+			void UpdateWindowSize();
+
+			RHI::IGraphicsDevice* GetGraphicsDevice() { return this->m_graphicsDevice; }
+
+		private:
+			struct WindowDesc
+			{
+				uint32_t Width;
+				uint32_t Height;
+			};
+
+			void CreateGltfWindow(std::string const& name, WindowDesc const& desc);
+
+		protected:
+			ApplicationCommandLineArgs m_commandLineArgs;
+			WindowDesc m_windowDesc;
+			std::shared_ptr<PhxEngine::Core::IFileSystem> m_baseFileSystem;
+
+		private:
+			const std::string m_name;
+			RHI::IGraphicsDevice* m_graphicsDevice;
+			GLFWwindow* m_window;
+
+			bool m_isWindowVisible = false;
+			float m_lastFrameTime = 0.0f;
+
+			std::vector<Core::Layer*> m_layerStack;
+			std::unique_ptr<Debug::ImGuiLayer> m_imguiLayer;
+
+			RHI::CommandListHandle m_appCommandList;
+
+		private:
+			static Application* sSingleton;
+		};
+
+		// To be defined in Client
+		std::unique_ptr<Application> CreateApplication(ApplicationCommandLineArgs args, RHI::IGraphicsDevice* GraphicsDevice);
+	}
+
 	class ApplicationBase
 	{
 	public:
 		virtual ~ApplicationBase() = default;
 
-		void Initialize(RHI::IGraphicsDevice* graphicsDevice);
-		void Run();
+		// Depericated
+		void Initialize(EngineEnvironment* engineEnv);
+		void RunFrame();
 		void Shutdown();
-
 
 	public:
 		void CreateGltfWindow();
 
-		RHI::IGraphicsDevice* GetGraphicsDevice() { return this->m_graphicsDevice; }
+		RHI::IGraphicsDevice* GetGraphicsDevice() { return this->m_env->pGraphicsDevice; }
+		Renderer::RenderSystem* GetRenderSystem() { return this->m_env->pRenderSystem; }
 
 		RHI::ICommandList* GetCommandList() { return this->m_commandList; }
+		std::shared_ptr<PhxEngine::Core::IFileSystem> GetFileSystem() { return this->m_baseFileSystem; }
+
+		GLFWwindow* GetWindow() { return this->m_window; }
 
 	protected:
 		virtual void LoadContent() {};
 		virtual void Update(double elapsedTime) {};
+		virtual void Render() {};
+		// Depericated
 		virtual void RenderScene() {};
 		virtual void RenderUI() {};
 
@@ -53,8 +147,10 @@ namespace PhxEngine
 		uint32_t WindowHeight = 720;
 
 	private:
-		RHI::IGraphicsDevice* m_graphicsDevice;
+		EngineEnvironment* m_env;
 		RHI::CommandListHandle m_commandList;
+
+		std::shared_ptr<PhxEngine::Core::IFileSystem> m_baseFileSystem;
 
 		GLFWwindow* m_window;
 

@@ -23,7 +23,7 @@ namespace PhxEngine::RHI::Dx12
 			size_t Offset;
 		};
 
-		explicit UploadBuffer(RefCountPtr<ID3D12Device2> device, size_t pageSize = MB(2));
+		explicit UploadBuffer(RefCountPtr<ID3D12Device2> device, size_t pageSize = MB(5));
 
 		Allocation Allocate(size_t sizeInBytes, size_t alignment);
 

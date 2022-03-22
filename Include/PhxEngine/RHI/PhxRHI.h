@@ -219,7 +219,7 @@ namespace PhxEngine::RHI
         Common = 0x00000001,
         ConstantBuffer = 0x00000002,
         VertexBuffer = 0x00000004,
-        IndexBuffer = 0x00000008,
+        IndexGpuBuffer = 0x00000008,
         IndirectArgument = 0x00000010,
         ShaderResource = 0x00000020,
         UnorderedAccess = 0x00000040,
@@ -468,7 +468,7 @@ namespace PhxEngine::RHI
         RasterCullMode CullMode = RasterCullMode::Back;
         bool FrontCounterClockwise = false;
         bool DepthClipEnable = false;
-        bool scissorEnable = false;
+        bool ScissorEnable = false;
         bool MultisampleEnable = false;
         bool AntialiasedLineEnable = false;
         int DepthBias = 0;
@@ -655,7 +655,7 @@ namespace PhxEngine::RHI
             desc.AddressU = addressUVW;
             desc.AddressV = addressUVW;
             desc.AddressW = addressUVW;
-            desc.MaxAnisotropy = maxAnisotropy;
+            desc.MaxAnisotropy = static_cast<float>(maxAnisotropy);
             desc.ComparisonFunc = comparisonFunc;
             desc.BorderColor = borderColor;
 
@@ -824,7 +824,7 @@ namespace PhxEngine::RHI
         virtual void WriteBuffer(BufferHandle buffer, const void* data, size_t dataSize, uint64_t destOffsetBytes = 0) = 0;
 
         virtual void WriteTexture(TextureHandle texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData) = 0;
-
+        virtual void WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* data, size_t rowPitch, size_t depthPitch) = 0;
         virtual void SetGraphicsPSO(GraphicsPSOHandle graphisPSO) = 0;
         virtual void SetViewports(Viewport* viewports, size_t numViewports) = 0;
         virtual void SetScissors(Rect* scissor, size_t numScissors) = 0;

@@ -33,6 +33,13 @@ namespace
 
         return d3dCommandListType;
 	}
+
+    // helper function for texture subresource calculations
+    // https://msdn.microsoft.com/en-us/library/windows/desktop/dn705766(v=vs.85).aspx
+    uint32_t CalcSubresource(uint32_t mipSlice, uint32_t arraySlice, uint32_t planeSlice, uint32_t mipLevels, uint32_t arraySize)
+    {
+        return mipSlice + (arraySlice * mipLevels) + (planeSlice * mipLevels * arraySize);
+    }
 }
 
 PhxEngine::RHI::Dx12::CommandList::CommandList(GraphicsDevice& graphicsDevice, CommandListDesc const& desc)
@@ -298,6 +305,20 @@ void PhxEngine::RHI::Dx12::CommandList::WriteTexture(TextureHandle texture, uint
 
     this->m_trackedData->Resource.push_back(texture);
     this->m_trackedData->NativeResources.push_back(intermediateResource);
+}
+
+void PhxEngine::RHI::Dx12::CommandList::WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* data, size_t rowPitch, size_t depthPitch)
+{
+    LOG_CORE_FATAL("NOT IMPLEMENTED FUNCTION CALLED: CommandList::WriteTexture");
+    PHX_ASSERT(false);
+    Texture* textureImpl = SafeCast<Texture*>(texture.Get());
+    uint32_t subresource = CalcSubresource(mipLevel, arraySlice, 0, textureImpl->Desc.MipLevels, textureImpl->Desc.ArraySize);
+
+    D3D12_RESOURCE_DESC resourceDesc = textureImpl->D3D12Resource->GetDesc();
+    D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
+    uint32_t numRows;
+    uint64_t rowSizeInBytes;
+    uint64_t totalBytes;
 }
 
 void PhxEngine::RHI::Dx12::CommandList::SetRenderTargets(std::vector<TextureHandle> const& renderTargets, TextureHandle depthStencil)

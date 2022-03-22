@@ -5,7 +5,7 @@
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::Dx12;
 
-IGraphicsDevice* Factory::CreateDevice()
+std::unique_ptr<IGraphicsDevice> Factory::CreateDevice()
 {
-	return new GraphicsDevice();
+	return std::make_unique<GraphicsDevice>();
 }
