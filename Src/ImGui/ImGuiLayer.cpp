@@ -1,4 +1,4 @@
-#include "ImGuiLayer.h"
+#include <PhxEngine/ImGui/ImGuiLayer.h>
 
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Renderer/Renderer.h>
@@ -92,15 +92,17 @@ void PhxEngine::Debug::ImGuiLayer::OnDetach()
     }
 }
 
-void PhxEngine::Debug::ImGuiLayer::Begin()
+void PhxEngine::Debug::ImGuiLayer::OnUpdate(TimeStep const& ts)
 {
     ImGui::SetCurrentContext(this->m_imguiContext);
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 }
 
-void PhxEngine::Debug::ImGuiLayer::End(RHI::CommandListHandle cmdList)
+void PhxEngine::Debug::ImGuiLayer::OnRender(RHI::CommandListHandle cmdList)
 {
+    this->BuildUI();
+
     auto scrope = cmdList->BeginScropedMarker("ImGui");
 
     ImGui::SetCurrentContext(this->m_imguiContext);

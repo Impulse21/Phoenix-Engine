@@ -4,7 +4,6 @@
 #include <PhxEngine/Core/FileSystem.h>
 #include <PhxEngine/Core/TimeStep.h>
 #include <PhxEngine/Core/Layer.h>
-#include "../ImGui/ImGuiLayer.h"
 
 #include "GLFW/glfw3.h"
 
@@ -165,11 +164,6 @@ PhxEngine::New::Application::Application(
 	// Initialize any sub-systems
 
 	this->m_appCommandList = this->m_graphicsDevice->CreateCommandList();
-
-	// Maybe pass command list in.
-	this->m_imguiLayer = std::make_unique<Debug::ImGuiLayer>(this->m_graphicsDevice, this->m_window);
-
-	this->PushLayer(this->m_imguiLayer.get());
 }
 
 PhxEngine::New::Application::~Application()
@@ -203,7 +197,7 @@ void PhxEngine::New::Application::Run()
 	}
 
 	// Clean up
-	for (Core::Layer* layer : this->m_layerStack)
+	for (auto& layer : this->m_layerStack)
 	{
 		layer->OnDetach();
 	}
@@ -211,16 +205,15 @@ void PhxEngine::New::Application::Run()
 	this->m_layerStack.clear();
 }
 
-void PhxEngine::New::Application::PushLayer(Core::Layer* layer)
+void PhxEngine::New::Application::PushBackLayer(std::shared_ptr<Core::Layer> layer)
 {
 	this->m_layerStack.push_back(layer);
 	layer->OnAttach();
 }
 
-
 void PhxEngine::New::Application::Update(Core::TimeStep const& elapsedTime)
 {
-	for (Core::Layer* layer : this->m_layerStack)
+	for (auto& layer : this->m_layerStack)
 	{
 		layer->OnUpdate(elapsedTime);
 	}
@@ -233,15 +226,11 @@ void PhxEngine::New::Application::Render()
 	this->m_appCommandList->TransitionBarrier(backBuffer, RHI::ResourceStates::Present, RHI::ResourceStates::RenderTarget);
 	this->m_appCommandList->ClearTextureFloat(backBuffer, { 0.0f, 0.0f, 0.0f, 1.0f });
 
-	// Bind Descritpor Heaps
-
-	this->m_imguiLayer->Begin();
-	for (Core::Layer* layer : this->m_layerStack)
+	for (auto& layer : this->m_layerStack)
 	{
-		layer->OnImGuiRender();
 		layer->OnRender(this->m_appCommandList);
 	}
-	this->m_imguiLayer->End(this->m_appCommandList);
+
 	this->m_appCommandList->TransitionBarrier(backBuffer, RHI::ResourceStates::RenderTarget, RHI::ResourceStates::Present);
 	this->m_appCommandList->Close();
 

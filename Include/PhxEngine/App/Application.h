@@ -51,7 +51,7 @@ namespace PhxEngine
 
 			void Run();
 
-			void PushLayer(Core::Layer* layer);
+			void PushBackLayer(std::shared_ptr<Core::Layer> layer);
 
 		protected:
 			virtual void Update(Core::TimeStep const& elapsedTime);
@@ -60,6 +60,7 @@ namespace PhxEngine
 			void UpdateWindowSize();
 
 			RHI::IGraphicsDevice* GetGraphicsDevice() { return this->m_graphicsDevice; }
+			GLFWwindow* GetWindow() { return this->m_window; }
 
 		private:
 			struct WindowDesc
@@ -83,8 +84,7 @@ namespace PhxEngine
 			bool m_isWindowVisible = false;
 			float m_lastFrameTime = 0.0f;
 
-			std::vector<Core::Layer*> m_layerStack;
-			std::unique_ptr<Debug::ImGuiLayer> m_imguiLayer;
+			std::vector<std::shared_ptr<Core::Layer>> m_layerStack;
 
 			RHI::CommandListHandle m_appCommandList;
 

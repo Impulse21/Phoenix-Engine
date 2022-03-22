@@ -1,11 +1,13 @@
 
 #include <PhxEngine/Core/Layer.h>
 
-class EditorLayer : public PhxEngine::Core::Layer
+namespace PhxEngine::Editor
 {
-public:
-	EditorLayer() = default;
-	~EditorLayer() = default;
+	class EditorLayer : public PhxEngine::Core::Layer
+	{
+	public:
+		EditorLayer() = default;
+		~EditorLayer() = default;
 
-	void OnImGuiRender() override;
-};
+	};
+}

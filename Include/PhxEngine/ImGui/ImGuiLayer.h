@@ -18,12 +18,16 @@ namespace PhxEngine::Debug
 		ImGuiLayer(
 			RHI::IGraphicsDevice* graphicsDevice,
 			GLFWwindow* gltfWindow);
-		~ImGuiLayer() = default;
+		virtual ~ImGuiLayer() = default;
 
 		void OnAttach() override;
 		void OnDetach() override;
-		void Begin();
-		void End(RHI::CommandListHandle cmdList);
+
+		void OnUpdate(Core::TimeStep const& ts) override final;
+		void OnRender(RHI::CommandListHandle cmdList) override final;
+
+	protected:
+		virtual void BuildUI() = 0;
 
 	private:
 		void CreatePipelineStateObject();

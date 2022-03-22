@@ -18,7 +18,6 @@ namespace PhxEngine::Core
 		virtual void OnAttach() {};
 		virtual void OnDetach() {};
 		virtual void OnUpdate(TimeStep const& ts) {};
-		virtual void OnImGuiRender() {};
 		virtual void OnRender(RHI::CommandListHandle cmdList) {};
 
 		const std::string& GetName() const { return this->m_debugName; }
