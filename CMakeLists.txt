@@ -102,7 +102,8 @@ target_link_libraries(PhxEngine
     imgui
     d3d12.lib
     dxgi.lib
-    PhxEngineShaders)
+    PhxEngineShaders
+    dxguid)
 
 set_target_properties(PhxEngine PROPERTIES FOLDER PhxEngine)
 

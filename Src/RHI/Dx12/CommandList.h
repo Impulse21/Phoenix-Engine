@@ -46,6 +46,8 @@ namespace PhxEngine::RHI::Dx12
 			GraphicsDevice& graphicsDevice,
 			CommandListDesc const& desc);
 
+		~CommandList();
+
 		// -- Interface implementations ---
 	public:
 		void Open() override;
@@ -109,7 +111,6 @@ namespace PhxEngine::RHI::Dx12
 		std::shared_ptr<TrackedResources> m_trackedData;
 		RefCountPtr<ID3D12CommandAllocator> m_activeD3D12CommandAllocator;
 		RefCountPtr<ID3D12GraphicsCommandList> m_d3d12CommandList;
-		RefCountPtr<ID3D12GraphicsCommandList4> m_d3d12CommnadList4;
 
 		// Dynamic Descriptor Heap
 		DynamicSubAllocatorPool m_dynamicSubAllocatorPool;

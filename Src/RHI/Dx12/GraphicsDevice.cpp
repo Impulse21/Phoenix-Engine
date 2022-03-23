@@ -14,6 +14,8 @@ using namespace PhxEngine::RHI::Dx12;
 static const GUID RenderdocUUID = { 0xa7aa6116, 0x9c8d, 0x4bba, { 0x90, 0x83, 0xb4, 0xd8, 0x16, 0xb7, 0x1b, 0x78 } };
 static const GUID PixUUID = { 0x9f251514, 0x9d4d, 0x4902, { 0x9d, 0x60, 0x18, 0x98, 0x8a, 0xb7, 0xd4, 0xb5 } };
 
+static bool sDebugEnabled = false;
+
 
 DXGI_FORMAT ConvertFormat(EFormat format)
 {
@@ -310,6 +312,8 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::WaitForIdle()
 			queue->WaitForIdle();
 		}
 	}
+
+	this->RunGarbageCollection();
 }
 
 void PhxEngine::RHI::Dx12::GraphicsDevice::CreateSwapChain(SwapChainDesc const& swapChainDesc)
@@ -1197,9 +1201,9 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateSRVViews(GpuBuffer* gpuBuffer)
 RefCountPtr<IDXGIFactory6> PhxEngine::RHI::Dx12::GraphicsDevice::CreateFactory() const
 {
 	uint32_t flags = 0;
-	static const bool debugEnabled = IsDebuggerPresent();
+	sDebugEnabled = IsDebuggerPresent();
 
-	if (debugEnabled)
+	if (sDebugEnabled)
 	{
 		RefCountPtr<ID3D12Debug> debugController;
 		ThrowIfFailed(
@@ -1326,4 +1330,17 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateDevice(RefCountPtr<IDXGIAdapter
 	// Create Compiler
 	// ThrowIfFailed(
 		// DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&context.dxcUtils)));
+
+}
+
+void PhxEngine::RHI::ReportLiveObjects()
+{
+	if (sDebugEnabled)
+	{
+		RefCountPtr<IDXGIDebug1> dxgiDebug;
+		if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug))))
+		{
+			dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_FLAGS(DXGI_DEBUG_RLO_ALL));
+		}
+	}
 }

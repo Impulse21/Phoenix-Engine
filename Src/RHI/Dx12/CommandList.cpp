@@ -51,6 +51,11 @@ PhxEngine::RHI::Dx12::CommandList::CommandList(GraphicsDevice& graphicsDevice, C
 {
 }
 
+PhxEngine::RHI::Dx12::CommandList::~CommandList()
+{
+    this->m_d3d12CommandList.Reset();
+}
+
 void PhxEngine::RHI::Dx12::CommandList::Open()
 {
 	PHX_ASSERT(!this->m_activeD3D12CommandAllocator);
@@ -77,13 +82,12 @@ void PhxEngine::RHI::Dx12::CommandList::Open()
             this->m_activeD3D12CommandAllocator,
             nullptr,
             IID_PPV_ARGS(&this->m_d3d12CommandList));
+
+        this->m_d3d12CommandList->SetName(std::wstring(this->m_desc.DebugName.begin(), this->m_desc.DebugName.end()).c_str());
+
     }
-
-    this->m_d3d12CommandList->QueryInterface(&this->m_d3d12CommnadList4);
-
     // This might be a problem as it might delete any pending resources.
     this->m_uploadBuffer->Reset();
-
 
     // Bind Heaps
     this->SetDescritporHeaps(

@@ -15,6 +15,7 @@
 
 #ifdef _DEBUG
 #include <dxgidebug.h>
+#pragma comment(lib, "dxguid.lib")
 #endif
 
 #include <PhxEngine/Core/Log.h>

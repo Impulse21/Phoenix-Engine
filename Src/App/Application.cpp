@@ -163,11 +163,14 @@ PhxEngine::New::Application::Application(
 	this->m_graphicsDevice->CreateSwapChain(swapchainDesc);
 	// Initialize any sub-systems
 
-	this->m_appCommandList = this->m_graphicsDevice->CreateCommandList();
+	RHI::CommandListDesc desc = {};
+	desc.DebugName = "Application CommandList";
+	this->m_appCommandList = this->m_graphicsDevice->CreateCommandList(desc);
 }
 
 PhxEngine::New::Application::~Application()
 {
+	this->m_appCommandList.Reset();
 	Application::sSingleton = nullptr;
 }
 
@@ -200,9 +203,11 @@ void PhxEngine::New::Application::Run()
 	for (auto& layer : this->m_layerStack)
 	{
 		layer->OnDetach();
+
 	}
 
 	this->m_layerStack.clear();
+	this->GetGraphicsDevice()->WaitForIdle();
 }
 
 void PhxEngine::New::Application::PushBackLayer(std::shared_ptr<Core::Layer> layer)

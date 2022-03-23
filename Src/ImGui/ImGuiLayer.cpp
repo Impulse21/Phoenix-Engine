@@ -30,7 +30,9 @@ PhxEngine::Debug::ImGuiLayer::ImGuiLayer(
     , m_graphicsDevice(graphicsDevice)
     , m_gltfWindow(gltfWindow)
 {
-    this->m_commandlist = this->m_graphicsDevice->CreateCommandList();
+    CommandListDesc desc = {};
+    desc.DebugName = "ImGui CommandList";
+    this->m_commandlist = this->m_graphicsDevice->CreateCommandList(desc);
 }
 
 void PhxEngine::Debug::ImGuiLayer::OnAttach()

@@ -785,6 +785,7 @@ namespace PhxEngine::RHI
     struct CommandListDesc
     {
         CommandQueueType QueueType = CommandQueueType::Graphics;
+        std::string DebugName;
     };
 
     class ScopedMarker;
@@ -960,4 +961,6 @@ namespace PhxEngine::RHI
 
         virtual size_t GetNumBindlessDescriptors() const = 0;
     };
+
+    extern void ReportLiveObjects();
 }

@@ -25,4 +25,7 @@ int main(int argc, char** argv)
 
 		app->Run();
 	}
+	graphicsDevice.reset();
+
+	ReportLiveObjects();
 }
