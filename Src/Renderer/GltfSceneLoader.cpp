@@ -82,13 +82,13 @@ static const cgltf_image* ParseDDSImage(const cgltf_texture* texture, const cglt
 		int numParsed = jsmn_parse(&parser, ext.data, extensionLength, tokens, numTokens);
 		if (numParsed != numTokens)
 		{
-			LOG_CORE_WARN("Failed to parse the DDS glTF extension: {0}", ext.data);
+			LOG_CORE_WARN("Failed to parse the DDS glTF extension: %s", ext.data);
 			return nullptr;
 		}
 
 		if (tokens[0].type != JSMN_OBJECT)
 		{
-			LOG_CORE_WARN("Failed to parse the DDS glTF extension: {0}", ext.data);
+			LOG_CORE_WARN("Failed to parse the DDS glTF extension: %s", ext.data);
 			return nullptr;
 		}
 
@@ -96,7 +96,7 @@ static const cgltf_image* ParseDDSImage(const cgltf_texture* texture, const cglt
 		{
 			if (tokens[k].type != JSMN_STRING)
 			{
-				LOG_CORE_WARN("Failed to parse the DDS glTF extension: {0}", ext.data);
+				LOG_CORE_WARN("Failed to parse the DDS glTF extension: %s", ext.data);
 				return nullptr;
 			}
 
@@ -106,13 +106,13 @@ static const cgltf_image* ParseDDSImage(const cgltf_texture* texture, const cglt
 				int index = cgltf_json_to_int(tokens + k, (const uint8_t*)ext.data);
 				if (index < 0)
 				{
-					LOG_CORE_WARN("Failed to parse the DDS glTF extension: {0}", ext.data);
+					LOG_CORE_WARN("Failed to parse the DDS glTF extension: %s", ext.data);
 					return nullptr;
 				}
 
 				if (size_t(index) >= objects->images_count)
 				{
-					LOG_CORE_WARN("Invalid image index {0} specified in glTF texture definition", index);
+					LOG_CORE_WARN("Invalid image index %s specified in glTF texture definition", index);
 					return nullptr;
 				}
 
@@ -268,7 +268,7 @@ bool PhxEngine::Renderer::GltfSceneLoader::LoadScene(
 
 	if (res != cgltf_result_success)
 	{
-		LOG_CORE_ERROR("Coouldn't load glTF file {0}", normalizedFileName.c_str());
+		LOG_CORE_ERROR("Coouldn't load glTF file %s", normalizedFileName.c_str());
 		return nullptr;
 	}
 
@@ -276,7 +276,7 @@ bool PhxEngine::Renderer::GltfSceneLoader::LoadScene(
 	res = cgltf_load_buffers(&options, objects, normalizedFileName.c_str());
 	if (res != cgltf_result_success)
 	{
-		LOG_CORE_ERROR("Failed to load buffers for glTF file '{0}'", normalizedFileName.c_str());
+		LOG_CORE_ERROR("Failed to load buffers for glTF file '%s'", normalizedFileName.c_str());
 		return false;
 	}
 
@@ -404,7 +404,7 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMaterialData(
 
 		if (cgltfMtl.has_pbr_specular_glossiness)
 		{
-			LOG_CORE_WARN("Material {0} contains unsupported extension 'PBR Specular_Glossiness' workflow ");
+			LOG_CORE_WARN("Material %s contains unsupported extension 'PBR Specular_Glossiness' workflow ");
 		}
 		else if (cgltfMtl.has_pbr_metallic_roughness)
 		{

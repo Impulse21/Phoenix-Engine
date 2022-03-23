@@ -33,32 +33,28 @@ void LogSystem::Initialize()
 	}
 }
 
-void PhxEngine::SpdLogger::PrintMsg(LogLevel level, const char* msg, ...)
+void PhxEngine::SpdLogger::PrintMsg(LogLevel level, const char* msg)
 {
-	va_list argp;
-	va_start(argp, msg);
 	switch (level)
 	{
 	case LogLevel::Fatal:
-		this->m_spdLogger->critical(msg, argp);
+		this->m_spdLogger->critical(msg);
 		break;
 
 	case LogLevel::Error:
-		this->m_spdLogger->error(msg, argp);
+		this->m_spdLogger->error(msg);
 		break;
 
 	case LogLevel::Warn:
-		this->m_spdLogger->warn(msg, argp);
+		this->m_spdLogger->warn(msg);
 		break;
 
 	case LogLevel::Info:
-		this->m_spdLogger->info(msg, argp);
+		this->m_spdLogger->info(msg);
 		break;
 
 	case LogLevel::Trace:
-		this->m_spdLogger->trace(msg, argp);
+		this->m_spdLogger->trace(msg);
 		break;
 	}
-
-	va_end(argp);
 }

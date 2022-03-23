@@ -76,7 +76,7 @@ void PhxEngine::ApplicationBase::Shutdown()
 
 void PhxEngine::ApplicationBase::CreateGltfWindow()
 {
-	LOG_CORE_INFO("Creating window {0} ({1}, {2})", "PhxEngine", WindowWidth, WindowHeight);
+	LOG_CORE_INFO("Creating window %s (%u, %u)", "PhxEngine", WindowWidth, WindowHeight);
 
 	if (!sGlwfIsInitialzed)
 	{
@@ -261,7 +261,7 @@ void PhxEngine::New::Application::UpdateWindowSize()
 
 void PhxEngine::New::Application::CreateGltfWindow(std::string const& name, WindowDesc const& desc)
 {
-	LOG_CORE_INFO("Creating window {0} ({1}, {2})", name.c_str(), desc.Width, desc.Height);
+	LOG_CORE_INFO("Creating window %s (%u, %u)", name.c_str(), desc.Width, desc.Height);
 
 	if (!sGlwfIsInitialzed)
 	{

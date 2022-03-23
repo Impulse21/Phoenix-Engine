@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+#include <iostream>
 #include <memory>
 
 namespace spdlog
@@ -25,7 +27,42 @@ namespace PhxEngine
 			: m_spdLogger(std::move(logger))
 		{}
 
-		void PrintMsg(LogLevel level, const char* msg, ...);
+		void PrintMsg(LogLevel level, const char* msg);
+
+		template<typename ... Args>
+		void PrintMsg(LogLevel level, std::string const& fmt, Args&&... args)
+		{
+			std::string msg = StringFormat(fmt, Convert(std::forward<Args>(args))...);
+			PrintMsg(level, msg.c_str());
+		}
+
+	private:
+		/**
+		 * Convert all std::strings to const char* using constexpr if (C++17)
+		 */
+		template<typename T>
+		auto Convert(T&& t) 
+		{
+			if constexpr (std::is_same<std::remove_cv_t<std::remove_reference_t<T>>, std::string>::value) 
+			{
+				return std::forward<T>(t).c_str();
+			}
+			else 
+			{
+				return std::forward<T>(t);
+			}
+		}
+
+		template<typename ... Args>
+		std::string StringFormat(std::string const& format, Args ... args)
+		{
+			int size_s = std::snprintf(nullptr, 0, format.c_str(), args ...) + 1; // Extra space for '\0'
+			if (size_s <= 0) { throw std::runtime_error("Error during formatting."); }
+			auto size = static_cast<size_t>(size_s);
+			std::unique_ptr<char[]> buf(new char[size]);
+			std::snprintf(buf.get(), size, format.c_str(), args ...);
+			return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
+		}
 
 	private:
 		std::shared_ptr<spdlog::logger> m_spdLogger;

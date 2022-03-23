@@ -990,7 +990,7 @@ RefCountPtr<IDXGIAdapter1> PhxEngine::RHI::Dx12::GraphicsDevice::SelectOptimalGp
 		size_t sharedSystemMemory = desc.SharedSystemMemory;
 
 		LOG_CORE_INFO(
-			"\t{0} [VRAM={1}MB, SRAM={2}MB, SharedRAM={3}MB]",
+			"\t%s [VRAM = %zu MB, SRAM = %zu MB, SharedRAM = %zu MB]",
 			name,
 			BYTE_TO_MB(dedicatedVideoMemory),
 			BYTE_TO_MB(dedicatedSystemMemory),
@@ -1012,7 +1012,7 @@ RefCountPtr<IDXGIAdapter1> PhxEngine::RHI::Dx12::GraphicsDevice::SelectOptimalGp
 	size_t sharedSystemMemory = desc.SharedSystemMemory;
 
 	LOG_CORE_INFO(
-		"Selected GPU {0} [VRAM={1}MB, SRAM={2}MB, SharedRAM={3}MB]",
+		"Selected GPU %s [VRAM = %zu MB, SRAM = %zu MB, SharedRAM = %zu MB]",
 		name,
 		BYTE_TO_MB(dedicatedVideoMemory),
 		BYTE_TO_MB(dedicatedSystemMemory),
