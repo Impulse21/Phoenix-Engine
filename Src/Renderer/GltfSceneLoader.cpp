@@ -16,6 +16,8 @@ using namespace PhxEngine::ECS;
 using namespace PhxEngine::RHI;
 using namespace DirectX;
 
+static bool TransformToLH = true;
+
 class BufferRegionBlob : public IBlob
 {
 public:
@@ -272,7 +274,6 @@ bool PhxEngine::Renderer::GltfSceneLoader::LoadScene(
 		return nullptr;
 	}
 
-
 	res = cgltf_load_buffers(&options, objects, normalizedFileName.c_str());
 	if (res != cgltf_result_success)
 	{
@@ -294,6 +295,7 @@ bool PhxEngine::Renderer::GltfSceneLoader::LoadSceneInternal(
 		gltfData->materials_count,
 		gltfData,
 		context,
+		commandList,
 		scene);
 
 	this->LoadMeshData(
@@ -304,12 +306,13 @@ bool PhxEngine::Renderer::GltfSceneLoader::LoadSceneInternal(
 	Entity rootEntity = CreateEntity();
 	scene.Transforms.Create(rootEntity);
 	scene.Names.Create(rootEntity) = gltfData->scene->name ? gltfData->scene->name : "GLTF Scene"; // TODO: Use filename.
-
+	
+	
 	// Load Node Data
-	for (size_t i = 0; i < gltfData->nodes_count; i++)
+	for (size_t i = 0; i < gltfData->scene->nodes_count; i++)
 	{
 		// Load Node Data
-		this->LoadNode(gltfData->nodes[i], rootEntity, scene);
+		this->LoadNode(*gltfData->scene->nodes[i], rootEntity, scene);
 	}
 
 	return true;
@@ -319,7 +322,8 @@ PhxEngine::RHI::TextureHandle PhxEngine::Renderer::GltfSceneLoader::LoadTexture(
 	const cgltf_texture* cglftTexture,
 	bool isSRGB,
 	const cgltf_data* objects,
-	CgltfContext& context)
+	CgltfContext& context,
+	RHI::CommandListHandle commandList)
 {
 	if (!cglftTexture)
 	{
@@ -375,14 +379,14 @@ PhxEngine::RHI::TextureHandle PhxEngine::Renderer::GltfSceneLoader::LoadTexture(
 			textureData = std::make_shared<Core::Blob>(dataCopy, dataSize);
 		}
 		
-		// texture = this->m_textureCache->LoadTexture(textureData, name, mimeType, isSRGB);
+		texture = this->m_textureCache->LoadTexture(textureData, name, mimeType, isSRGB, commandList);
 	}
 	else
 	{
-		// texture = this->m_textureCache->LoadTexture(this->m_filename.parent_path() +  / activeImage->uri, isSRGB);
+		texture = this->m_textureCache->LoadTexture(this->m_filename.parent_path() / activeImage->uri, isSRGB, commandList);
 	}
 
-	return nullptr;
+	return texture;
 }
 
 void PhxEngine::Renderer::GltfSceneLoader::LoadMaterialData(
@@ -390,6 +394,7 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMaterialData(
 	uint32_t materialCount,
 	const cgltf_data* objects,
 	CgltfContext& context,
+	RHI::CommandListHandle commandList,
 	New::Scene& scene)
 {
 	for (int i = 0; i < materialCount; i++)
@@ -412,7 +417,8 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMaterialData(
 				cgltfMtl.pbr_metallic_roughness.base_color_texture.texture,
 				true,
 				objects,
-				context);
+				context,
+				commandList);
 
 			mtl.Albedo =
 			{
@@ -426,7 +432,8 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMaterialData(
 				cgltfMtl.pbr_metallic_roughness.metallic_roughness_texture.texture,
 				false,
 				objects,
-				context);
+				context,
+				commandList);
 
 			mtl.Metalness = cgltfMtl.pbr_metallic_roughness.metallic_factor;
 			mtl.Roughness = cgltfMtl.pbr_metallic_roughness.roughness_factor;
@@ -437,7 +444,8 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMaterialData(
 			cgltfMtl.normal_texture.texture,
 			false,
 			objects,
-			context);
+			context,
+			commandList);
 
 		// TODO: Emmisive
 		// TODO: Aplha suppor
@@ -504,7 +512,7 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMeshData(
 		// Resize data
 		mesh.VertexPositions.resize(totalVertexCounts[i]);
 		mesh.VertexNormals.resize(totalVertexCounts[i]);
-		mesh.VertexTexCoords.reserve(totalVertexCounts[i]);
+		mesh.VertexTexCoords.resize(totalVertexCounts[i]);
 		mesh.VertexTangents.resize(totalVertexCounts[i]);
 		mesh.Indices.resize(totalIndexCounts[i]);
 
@@ -512,10 +520,11 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMeshData(
 		mesh.VertexOffset = 0;
 
 		mesh.Geometry.resize(cgltfMesh.primitives_count);
+		size_t totalIndexCount = 0;
+		size_t totalVertexCount = 0;
+
 		for (int iPrim = 0; iPrim < cgltfMesh.primitives_count; iPrim++)
 		{
-			size_t totalIndexCount = 0;
-			size_t totalVertexCount = 0;
 			const auto& cgltfPrim = cgltfMesh.primitives[iPrim];
 
 			if (cgltfPrim.type != cgltf_primitive_type_triangles ||
@@ -565,6 +574,7 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMeshData(
 				case cgltf_attribute_type_texcoord:
 					PHX_ASSERT(cgltfAttribute.data->type == cgltf_type_vec2);
 					PHX_ASSERT(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
+					cgltfTexCoordsAccessor = cgltfAttribute.data;
 					break;
 				}
 			}
@@ -581,7 +591,6 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMeshData(
 				auto [indexSrc, indexStride] = CgltfBufferAccessor(cgltfPrim.indices, 0);
 
 				uint32_t* indexDst = mesh.Indices.data() + totalIndexCount;
-
 				switch (cgltfPrim.indices->component_type)
 				{
 				case cgltf_component_type_r_8u:
@@ -592,7 +601,7 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMeshData(
 
 					for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
 					{
-						*indexDst = *(const uint8_t*)indexSrc;
+						*indexDst = *(const uint8_t*)indexSrc + totalVertexCount;
 
 						indexSrc += indexStride;
 						indexDst++;
@@ -607,7 +616,7 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMeshData(
 
 					for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
 					{
-						*indexDst = *(const uint16_t*)indexSrc;
+						*indexDst = *(const uint16_t*)indexSrc + totalVertexCount;;
 
 						indexSrc += indexStride;
 						indexDst++;
@@ -622,7 +631,7 @@ void PhxEngine::Renderer::GltfSceneLoader::LoadMeshData(
 
 					for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
 					{
-						*indexDst = *(const uint32_t*)indexSrc;
+						*indexDst = *(const uint32_t*)indexSrc + totalVertexCount;;
 
 						indexSrc += indexStride;
 						indexDst++;

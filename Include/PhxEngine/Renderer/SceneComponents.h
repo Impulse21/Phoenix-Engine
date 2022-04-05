@@ -15,6 +15,17 @@ namespace PhxEngine::Renderer
 	// TODO: Move to a math library
 	static constexpr DirectX::XMFLOAT4X4 cIdentityMatrix = DirectX::XMFLOAT4X4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
 
+	// TODO: Find a home for this
+	constexpr uint32_t AlignTo(uint32_t value, uint32_t alignment)
+	{
+		return ((value + alignment - 1) / alignment) * alignment;
+	}
+
+	constexpr uint64_t AlignTo(uint64_t value, uint64_t alignment)
+	{
+		return ((value + alignment - 1) / alignment) * alignment;
+	}
+
 	struct NameComponent
 	{
 		std::string Name;
@@ -54,7 +65,7 @@ namespace PhxEngine::Renderer
 				Flags &= ~kDirty;
 			}
 		}
-		inline bool IsDirty() const { return this->Flags & kEmpty; }
+		inline bool IsDirty() const { return this->Flags & kDirty; }
 
 		DirectX::XMFLOAT3 GetPosition() const;
 		DirectX::XMFLOAT4 GetRotation() const;
@@ -147,11 +158,11 @@ namespace PhxEngine::Renderer
 
 		enum LightType : uint32_t
 		{
-			kDirectionalLight = 0,
-			kPointLight,
-			kSpotLight,
+			kDirectionalLight = Shader::ENTITY_TYPE_DIRECTIONALLIGHT,
+			kOmniLight = Shader::ENTITY_TYPE_OMNILIGHT,
+			kSpotLight = Shader::ENTITY_TYPE_SPOTLIGHT,
 			kLightTypeCount
-		} Type = kPointLight;
+		} Type = kOmniLight;
 
 		float Energy = 1.0f;
 		float Range = 10.0f;
@@ -194,6 +205,7 @@ namespace PhxEngine::Renderer
 		RHI::TextureHandle AoTexture;
 		RHI::TextureHandle NormalMapTexture;
 
+		void PopulateShaderData(Shader::MaterialData& shaderData);
 	};
 
 	using MaterialComponentStore = ECS::ComponentStore<MaterialComponent>;
@@ -214,6 +226,8 @@ namespace PhxEngine::Renderer
 		std::vector< DirectX::XMFLOAT3> VertexColour;
 		std::vector<uint32_t> Indices;
 
+		RHI::BufferHandle VertexGpuBuffer;
+		RHI::BufferHandle IndexGpuBuffer;
 
 		// -- TODO: Remove ---
 		uint32_t IndexOffset = 0;
@@ -253,17 +267,9 @@ namespace PhxEngine::Renderer
 		[[nodiscard]] const RHI::BufferRange& GetVertexAttribute(VertexAttribute attr) const { return this->BufferRanges[(int)attr]; }
 
 		// Render Data
-		RHI::BufferHandle VertexGpuBufferPositions;
-		RHI::BufferHandle VertexGpuBufferTexCoords;
-		RHI::BufferHandle VertexGpuBufferNormals;
-		RHI::BufferHandle VertexGpuBufferTangents;
-		RHI::BufferHandle VertexGpuBufferColour;
-
-		RHI::BufferHandle IndexGpuBuffer;
 
 		// GPU Data functions
 		void CreateRenderData(RHI::IGraphicsDevice* grahicsDevice, RHI::CommandListHandle commandList);
-		void PopulateShaderMeshData(Shader::Mesh& mesh);
 
 		// Utility Functions
 		void ReverseWinding();

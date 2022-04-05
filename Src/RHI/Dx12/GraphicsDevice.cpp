@@ -599,7 +599,7 @@ BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateIndexBuffer(BufferDesc 
 		: DXGI_FORMAT_R16_UINT;
 	view.SizeInBytes = bufferImpl->GetDesc().SizeInBytes;
 
-	if (desc.CreateSRVViews)
+	if (desc.CreateSRVViews || HasFlag(desc.MiscFlags, BufferMiscFlags::SrvView))
 	{
 		this->CreateSRVViews(bufferImpl.get());
 	}
@@ -617,7 +617,7 @@ BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateVertexBuffer(BufferDesc
 	view.StrideInBytes = bufferImpl->GetDesc().StrideInBytes;
 	view.SizeInBytes = bufferImpl->GetDesc().SizeInBytes;
 
-	if (desc.CreateSRVViews)
+	if (desc.CreateSRVViews || HasFlag(desc.MiscFlags, BufferMiscFlags::SrvView))
 	{
 		this->CreateSRVViews(bufferImpl.get());
 	}
@@ -629,7 +629,7 @@ BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateBuffer(BufferDesc const
 {
 	auto bufferImpl = this->CreateBufferInternal(desc);
 
-	if (desc.CreateSRVViews)
+	if (desc.CreateSRVViews || HasFlag(desc.MiscFlags, BufferMiscFlags::SrvView))
 	{
 		this->CreateSRVViews(bufferImpl.get());
 	}
@@ -1168,22 +1168,47 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateSRVViews(GpuBuffer* gpuBuffer)
 
 	const BufferDesc& desc = gpuBuffer->GetDesc();
 
-	// Typeless Buffer
-	// TODO: Support Structured and Typed Buffers
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 	srvDesc.Buffer.FirstElement = 0;
-	srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
-	srvDesc.Buffer.NumElements = desc.SizeInBytes / desc.StrideInBytes;
+
+	if (gpuBuffer->Desc.Format == EFormat::UNKNOWN)
+	{
+		if (HasFlag(gpuBuffer->Desc.MiscFlags, BufferMiscFlags::Raw))
+		{
+			srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+			srvDesc.Buffer.NumElements = desc.SizeInBytes / sizeof(uint32_t);
+		}
+		else if(HasFlag(gpuBuffer->Desc.MiscFlags, BufferMiscFlags::Structured))
+		{
+			// This is a Structured Buffer
+			srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+			srvDesc.Buffer.NumElements = desc.SizeInBytes / desc.StrideInBytes;
+			srvDesc.Buffer.StructureByteStride = desc.StrideInBytes;
+		}
+	}
+	else
+	{
+		// This is a typed buffer
+		// TODO: Not implemented
+		PHX_ASSERT(false);
+		/*
+		uint32_t stride = GetFormatStride(format);
+		srv_desc.Format = _ConvertFormat(format);
+		srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+		srv_desc.Buffer.FirstElement = offset / stride;
+		srv_desc.Buffer.NumElements = (UINT)std::min(size, desc.size - offset) / stride;
+		*/
+	}
 
 	this->GetD3D12Device2()->CreateShaderResourceView(
 		gpuBuffer->D3D12Resource,
 		&srvDesc,
 		gpuBuffer->SrvAllocation.GetCpuHandle());
 
-	if (gpuBuffer->GetDesc().CreateBindless)
+	if (gpuBuffer->GetDesc().CreateBindless || HasFlag(gpuBuffer->GetDesc().MiscFlags, RHI::BufferMiscFlags::Bindless))
 	{
 		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
 		gpuBuffer->BindlessResourceIndex = this->m_bindlessResourceDescriptorTable->Allocate();

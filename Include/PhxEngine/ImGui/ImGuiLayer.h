@@ -24,7 +24,7 @@ namespace PhxEngine::Debug
 		void OnDetach() override;
 
 		void OnUpdate(Core::TimeStep const& ts) override final;
-		void OnRender(RHI::CommandListHandle cmdList) override final;
+		void OnRender(RHI::TextureHandle& currentBuffer) override final;
 
 	protected:
 		virtual void BuildUI() = 0;
@@ -35,11 +35,10 @@ namespace PhxEngine::Debug
 	private:
 		GLFWwindow* m_gltfWindow;
 		RHI::IGraphicsDevice* m_graphicsDevice;
-
 		ImGuiContext* m_imguiContext;
 
 		RHI::TextureHandle m_fontTexture;
 		RHI::GraphicsPSOHandle m_pso;
-		RHI::CommandListHandle m_commandlist;
+		RHI::CommandListHandle m_commandList;
 	};
 }

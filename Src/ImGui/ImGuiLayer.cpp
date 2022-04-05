@@ -6,6 +6,8 @@
 
 #include <PhxEngine/RHI/Dx12/RootSignatureBuilder.h>
 
+#include <PhxEngine/App/Application.h>
+
 #include <Shaders/ImGuiVS_compiled.h>
 #include <Shaders/ImGuiPS_compiled.h>
 
@@ -32,7 +34,7 @@ PhxEngine::Debug::ImGuiLayer::ImGuiLayer(
 {
     CommandListDesc desc = {};
     desc.DebugName = "ImGui CommandList";
-    this->m_commandlist = this->m_graphicsDevice->CreateCommandList(desc);
+    this->m_commandList = this->m_graphicsDevice->CreateCommandList(desc);
 }
 
 void PhxEngine::Debug::ImGuiLayer::OnAttach()
@@ -73,14 +75,14 @@ void PhxEngine::Debug::ImGuiLayer::OnAttach()
     subResourceData.slicePitch = subResourceData.rowPitch * height;
     subResourceData.pData = pixelData;
 
-    this->m_commandlist->Open();
-    this->m_commandlist->TransitionBarrier(this->m_fontTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
-    this->m_commandlist->WriteTexture(this->m_fontTexture, 0, 1, &subResourceData);
-    this->m_commandlist->TransitionBarrier(this->m_fontTexture, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource);
+    this->m_commandList->Open();
+    this->m_commandList->TransitionBarrier(this->m_fontTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
+    this->m_commandList->WriteTexture(this->m_fontTexture, 0, 1, &subResourceData);
+    this->m_commandList->TransitionBarrier(this->m_fontTexture, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource);
 
-    this->m_commandlist->Close();
+    this->m_commandList->Close();
 
-    this->m_graphicsDevice->ExecuteCommandLists(this->m_commandlist);
+    this->m_graphicsDevice->ExecuteCommandLists(this->m_commandList, true);
     this->CreatePipelineStateObject();
 }
 
@@ -101,12 +103,9 @@ void PhxEngine::Debug::ImGuiLayer::OnUpdate(TimeStep const& ts)
     ImGui::NewFrame();
 }
 
-void PhxEngine::Debug::ImGuiLayer::OnRender(RHI::CommandListHandle cmdList)
+void PhxEngine::Debug::ImGuiLayer::OnRender(RHI::TextureHandle& currentBuffer)
 {
     this->BuildUI();
-
-    auto scrope = cmdList->BeginScropedMarker("ImGui");
-
     ImGui::SetCurrentContext(this->m_imguiContext);
     ImGui::Render();
 
@@ -120,72 +119,89 @@ void PhxEngine::Debug::ImGuiLayer::OnRender(RHI::CommandListHandle cmdList)
     }
 
     ImVec2 displayPos = drawData->DisplayPos;
-    cmdList->SetGraphicsPSO(this->m_pso);
-    cmdList->SetRenderTargets({ this->m_graphicsDevice->GetBackBuffer() }, nullptr);
 
-    cmdList->BindResourceTable(RootParameters::BindlessResources);
 
-    // Set root arguments.
-    //    DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixOrthographicRH( drawData->DisplaySize.x, drawData->DisplaySize.y, 0.0f, 1.0f );
-    float L = drawData->DisplayPos.x;
-    float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
-    float T = drawData->DisplayPos.y;
-    float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
-    float mvp[4][4] =
-    {
-        { 2.0f / (R - L),   0.0f,           0.0f,       0.0f },
-        { 0.0f,         2.0f / (T - B),     0.0f,       0.0f },
-        { 0.0f,         0.0f,           0.5f,       0.0f },
-        { (R + L) / (L - R),  (T + B) / (B - T),    0.5f,       1.0f },
-    };
+    this->m_commandList->Open();
 
-    Shader::ImguiDrawInfo push = {};
-    push.Mvp = DirectX::XMFLOAT4X4(&mvp[0][0]);
-    push.TextureIndex = this->m_fontTexture->GetDescriptorIndex();
+	{
+		auto scrope = this->m_commandList->BeginScropedMarker("ImGui");
 
-    cmdList->BindPushConstant(RootParameters::MatrixCB, push);
-    Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
-    cmdList->SetViewports(&v, 1);
+		this->m_commandList->TransitionBarrier(currentBuffer, ResourceStates::Present, ResourceStates::RenderTarget);
 
-    const EFormat indexFormat = sizeof(ImDrawIdx) == 2 ? EFormat::R16_UINT : EFormat::R32_UINT;
+		this->m_commandList->SetGraphicsPSO(this->m_pso);
+		this->m_commandList->SetRenderTargets({ this->m_graphicsDevice->GetBackBuffer() }, nullptr);
 
-    for (int i = 0; i < drawData->CmdListsCount; ++i)
-    {
-        const ImDrawList* drawList = drawData->CmdLists[i];
+		this->m_commandList->BindResourceTable(RootParameters::BindlessResources);
 
-        cmdList->BindDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data);
-        cmdList->BindDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data);
+		// Set root arguments.
+		//    DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixOrthographicRH( drawData->DisplaySize.x, drawData->DisplaySize.y, 0.0f, 1.0f );
+		float L = drawData->DisplayPos.x;
+		float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
+		float T = drawData->DisplayPos.y;
+		float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
+		float mvp[4][4] =
+		{
+			{ 2.0f / (R - L),   0.0f,           0.0f,       0.0f },
+			{ 0.0f,         2.0f / (T - B),     0.0f,       0.0f },
+			{ 0.0f,         0.0f,           0.5f,       0.0f },
+			{ (R + L) / (L - R),  (T + B) / (B - T),    0.5f,       1.0f },
+		};
 
-        int indexOffset = 0;
-        for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
-        {
-            const ImDrawCmd& drawCmd = drawList->CmdBuffer[j];
-            if (drawCmd.UserCallback)
-            {
-                drawCmd.UserCallback(drawList, &drawCmd);
-            }
-            else
-            {
-                ImVec4 clipRect = drawCmd.ClipRect;
-                Rect scissorRect;
-                // TODO: Validate
-                scissorRect.MinX = static_cast<int>(clipRect.x - displayPos.x);
-                scissorRect.MinY = static_cast<int>(clipRect.y - displayPos.y);
-                scissorRect.MaxX = static_cast<int>(clipRect.z - displayPos.x);
-                scissorRect.MaxY = static_cast<int>(clipRect.w - displayPos.y);
+		Shader::ImguiDrawInfo push = {};
+		push.Mvp = DirectX::XMFLOAT4X4(&mvp[0][0]);
+		push.TextureIndex = this->m_fontTexture->GetDescriptorIndex();
 
-                if (scissorRect.MaxX - scissorRect.MinX > 0.0f &&
-                    scissorRect.MaxY - scissorRect.MinY > 0.0)
-                {
-                    cmdList->SetScissors(&scissorRect, 1);
-                    cmdList->DrawIndexed(drawCmd.ElemCount, 1, indexOffset);
-                }
-            }
-            indexOffset += drawCmd.ElemCount;
-        }
-    }
+		this->m_commandList->BindPushConstant(RootParameters::MatrixCB, push);
+		Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
+		this->m_commandList->SetViewports(&v, 1);
 
-    ImGui::EndFrame();
+		const EFormat indexFormat = sizeof(ImDrawIdx) == 2 ? EFormat::R16_UINT : EFormat::R32_UINT;
+
+		for (int i = 0; i < drawData->CmdListsCount; ++i)
+		{
+			const ImDrawList* drawList = drawData->CmdLists[i];
+
+			this->m_commandList->BindDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data);
+			this->m_commandList->BindDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data);
+
+			int indexOffset = 0;
+			for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
+			{
+				const ImDrawCmd& drawCmd = drawList->CmdBuffer[j];
+				if (drawCmd.UserCallback)
+				{
+					drawCmd.UserCallback(drawList, &drawCmd);
+				}
+				else
+				{
+					ImVec4 clipRect = drawCmd.ClipRect;
+					Rect scissorRect;
+					// TODO: Validate
+					scissorRect.MinX = static_cast<int>(clipRect.x - displayPos.x);
+					scissorRect.MinY = static_cast<int>(clipRect.y - displayPos.y);
+					scissorRect.MaxX = static_cast<int>(clipRect.z - displayPos.x);
+					scissorRect.MaxY = static_cast<int>(clipRect.w - displayPos.y);
+
+					if (scissorRect.MaxX - scissorRect.MinX > 0.0f &&
+						scissorRect.MaxY - scissorRect.MinY > 0.0)
+					{
+						this->m_commandList->SetScissors(&scissorRect, 1);
+						this->m_commandList->DrawIndexed(drawCmd.ElemCount, 1, indexOffset);
+					}
+				}
+				indexOffset += drawCmd.ElemCount;
+			}
+		}
+
+
+		this->m_commandList->TransitionBarrier(currentBuffer, ResourceStates::RenderTarget, ResourceStates::Present);
+	}
+	this->m_commandList->Close();
+
+	// TODO: Wait for load to finish.
+	AppInstance->GetGraphicsDevice()->ExecuteCommandLists(this->m_commandList);
+
+	ImGui::EndFrame();
 }
 
 void PhxEngine::Debug::ImGuiLayer::CreatePipelineStateObject()

@@ -38,6 +38,11 @@ inline SceneData GetScene()
     return FrameCB.Scene;
 }
 
+inline Frame GetFrame()
+{
+	return FrameCB;
+}
+
 inline Camera GetCamera()
 {
     return CameraCB;

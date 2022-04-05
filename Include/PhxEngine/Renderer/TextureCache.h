@@ -28,7 +28,7 @@ namespace PhxEngine::Renderer
 			std::string const& textureName,
 			std::string const& mmeType,
 			bool isSRGB,
-			RHI::CommandListHandle commandList) {};
+			RHI::CommandListHandle commandList);
 
 		RHI::TextureHandle LoadTexture(
 			std::filesystem::path filename,

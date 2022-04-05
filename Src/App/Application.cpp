@@ -162,15 +162,10 @@ PhxEngine::New::Application::Application(
 
 	this->m_graphicsDevice->CreateSwapChain(swapchainDesc);
 	// Initialize any sub-systems
-
-	RHI::CommandListDesc desc = {};
-	desc.DebugName = "Application CommandList";
-	this->m_appCommandList = this->m_graphicsDevice->CreateCommandList(desc);
 }
 
 PhxEngine::New::Application::~Application()
 {
-	this->m_appCommandList.Reset();
 	Application::sSingleton = nullptr;
 }
 
@@ -226,21 +221,11 @@ void PhxEngine::New::Application::Update(Core::TimeStep const& elapsedTime)
 
 void PhxEngine::New::Application::Render()
 {
-	this->m_appCommandList->Open();
-	RHI::TextureHandle backBuffer = this->GetGraphicsDevice()->GetBackBuffer();
-	this->m_appCommandList->TransitionBarrier(backBuffer, RHI::ResourceStates::Present, RHI::ResourceStates::RenderTarget);
-	this->m_appCommandList->ClearTextureFloat(backBuffer, { 0.0f, 0.0f, 0.0f, 1.0f });
-
+	RHI::TextureHandle currentBuffer = this->GetGraphicsDevice()->GetBackBuffer();
 	for (auto& layer : this->m_layerStack)
 	{
-		layer->OnRender(this->m_appCommandList);
+		layer->OnRender(currentBuffer);
 	}
-
-	this->m_appCommandList->TransitionBarrier(backBuffer, RHI::ResourceStates::RenderTarget, RHI::ResourceStates::Present);
-	this->m_appCommandList->Close();
-
-	// Batch layer command lists?
-	this->GetGraphicsDevice()->ExecuteCommandLists(this->m_appCommandList);
 }
 
 void PhxEngine::New::Application::UpdateWindowSize()
@@ -280,6 +265,7 @@ void PhxEngine::New::Application::CreateGltfWindow(std::string const& name, Wind
 			nullptr,
 			nullptr);
 
+	this->m_windowDesc = desc;
 	// glfwSetWindowUserPointer(this->m_window, &this->m_windowState);
 
 	/*

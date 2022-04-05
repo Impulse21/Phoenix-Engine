@@ -57,7 +57,7 @@ void GltfViewer::LoadContent()
         return;
     }
 
-    this->m_scene.CreateGpuBuffers(this->GetGraphicsDevice(), this->GetCommandList());
+    this->m_scene.RefreshGpuBuffers(this->GetGraphicsDevice(), this->GetCommandList());
 
     this->CreateRenderTargets();
     this->CreatePipelineStateObjects();
@@ -127,7 +127,7 @@ void GltfViewer::RenderScene()
 
             for (size_t i = 0; i < meshComponent.Geometry.size(); i++)
             {
-                Shader::MeshRenderPushConstant pushConstant;
+                Shader::GeometryPassPushConstants pushConstant;
                 pushConstant.MeshIndex = this->m_scene.Meshes.GetIndex(meshInstanceComponent.MeshId);
                 pushConstant.GeometryIndex = meshComponent.Geometry[i].GlobalGeometryIndex;
                 pushConstant.WorldTransform = transformComponent.WorldMatrix;
@@ -162,7 +162,7 @@ void GltfViewer::WriteSeceneData()
         sceneFile.open("SceneData.txt");
 
         std::stringstream stream;
-        New::PrintScene(this->m_scene, stream);
+        PhxEngine::Renderer::New::PrintScene(this->m_scene, stream);
 
         sceneFile << stream.str();
         LOG_CORE_INFO("Wrinting out Scene Data");
@@ -200,7 +200,7 @@ void GltfViewer::CreatePipelineStateObjects()
         // TODO: Work around to get things working. I really shouldn't even care making my stuff abstract. But here we are.
         Dx12::RootSignatureBuilder builder = {};
 
-        builder.Add32BitConstants<999, 0>(sizeof(Shader::MeshRenderPushConstant) / 4);
+        builder.Add32BitConstants<999, 0>(sizeof(Shader::GeometryPassPushConstants) / 4);
         builder.AddConstantBufferView<0, 0>(); // FrameCB
         builder.AddConstantBufferView<1, 0>(); // Camera CB
         // builder.AddShaderResourceView<0, 0>(); // Instance SB

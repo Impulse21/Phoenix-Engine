@@ -95,11 +95,10 @@ namespace PhxEngine::RHI::Dx12
     {
         BufferDesc Desc = {};
         RefCountPtr<ID3D12Resource> D3D12Resource;
-
-        DescriptorHeapAllocation SrvAllocation;
-
-        // TODO: Free Index
         DescriptorIndex BindlessResourceIndex = INVALID_DESCRIPTOR_INDEX;
+
+        // -- Views ---
+        DescriptorHeapAllocation SrvAllocation;
 
         D3D12_VERTEX_BUFFER_VIEW VertexView = {};
         D3D12_INDEX_BUFFER_VIEW IndexView = {};

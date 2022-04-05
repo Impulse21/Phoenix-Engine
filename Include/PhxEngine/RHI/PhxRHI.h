@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <PhxEngine/RHI/RefCountPtr.h>
+#include <PhxEngine/Core/Common.h>
 
 #define INVALID_DESCRIPTOR_INDEX ~0u
 
@@ -16,6 +17,7 @@
     inline bool operator !(T a) { return uint32_t(a) == 0; } \
     inline bool operator ==(T a, uint32_t b) { return uint32_t(a) == b; } \
     inline bool operator !=(T a, uint32_t b) { return uint32_t(a) != b; }
+
 
 namespace PhxEngine::RHI
 {
@@ -758,17 +760,71 @@ namespace PhxEngine::RHI
         { }
     };
 
+
+    enum class BufferMiscFlags
+    {
+        None = 0,
+        SrvView = 1 << 0,
+        Bindless = 1 << 1,
+        Raw = 1 << 2,
+        Structured = 1 << 3,
+        Typed = 1 << 4,
+    };
+
+    template<>
+    struct EnableBitMaskOperators<PhxEngine::RHI::BufferMiscFlags>
+    {
+        static const bool enable = true;
+    };
+
     struct BufferDesc
     {
+        BufferMiscFlags MiscFlags = BufferMiscFlags::None;
+
+        // Stride is required for structured buffers
         uint64_t StrideInBytes = 0;
         uint64_t SizeInBytes = 0;
 
+        EFormat Format = EFormat::UNKNOWN;
+
         bool AllowUnorderedAccess = false;
+
+        // TODO: Remove
         bool CreateSRVViews = false;
         bool CreateBindless = false;
 
         std::string DebugName;
 
+        // TODO: I am here
+        BufferDesc& CreateSrvViews()
+        {
+            this->MiscFlags |= BufferMiscFlags::SrvView;
+            return *this;
+        }
+
+        BufferDesc& EnableBindless()
+        {
+            this->MiscFlags |= BufferMiscFlags::Bindless;
+            return *this;
+        }
+
+        BufferDesc& IsRawBuffer()
+        {
+            this->MiscFlags |= BufferMiscFlags::Raw;
+            return *this;
+        }
+
+        BufferDesc& IsStructuredBuffer()
+        {
+            this->MiscFlags |= BufferMiscFlags::Structured;
+            return *this;
+        }
+
+        BufferDesc& IsTypedBuffer()
+        {
+            this->MiscFlags |= BufferMiscFlags::Typed;
+            return *this;
+        }
     };
 
     class IBuffer : public IResource

@@ -49,18 +49,23 @@ namespace PhxEngine
 				std::string const& name = "Phoenix Engine");
 			virtual ~Application();
 
+			static Application* GetSingleton() { return sSingleton; }
+
 			void Run();
 
 			void PushBackLayer(std::shared_ptr<Core::Layer> layer);
+
+		public:
+			uint32_t GetWindowWidth() const { return this->m_windowDesc.Width; }
+			uint32_t GetWindowHeight() const { return this->m_windowDesc.Height; }
+			RHI::IGraphicsDevice* GetGraphicsDevice() { return this->m_graphicsDevice; }
+			GLFWwindow* GetWindow() { return this->m_window; }
 
 		protected:
 			virtual void Update(Core::TimeStep const& elapsedTime);
 			virtual void Render();
 			
 			void UpdateWindowSize();
-
-			RHI::IGraphicsDevice* GetGraphicsDevice() { return this->m_graphicsDevice; }
-			GLFWwindow* GetWindow() { return this->m_window; }
 
 		private:
 			struct WindowDesc
@@ -74,7 +79,6 @@ namespace PhxEngine
 		protected:
 			ApplicationCommandLineArgs m_commandLineArgs;
 			WindowDesc m_windowDesc;
-			std::shared_ptr<PhxEngine::Core::IFileSystem> m_baseFileSystem;
 
 		private:
 			const std::string m_name;
@@ -86,8 +90,6 @@ namespace PhxEngine
 
 			std::vector<std::shared_ptr<Core::Layer>> m_layerStack;
 
-			RHI::CommandListHandle m_appCommandList;
-
 		private:
 			static Application* sSingleton;
 		};
@@ -95,6 +97,8 @@ namespace PhxEngine
 		// To be defined in Client
 		std::unique_ptr<Application> CreateApplication(ApplicationCommandLineArgs args, RHI::IGraphicsDevice* GraphicsDevice);
 	}
+
+#define AppInstance PhxEngine::New::Application::GetSingleton()
 
 	class ApplicationBase
 	{

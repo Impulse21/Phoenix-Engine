@@ -172,7 +172,7 @@ namespace PhxEngine::Renderer
 			void ComponentDetach(ECS::Entity entity);
 			void ComponentDetachChildren(ECS::Entity parent);
 
-			void CreateGpuBuffers(RHI::IGraphicsDevice* graphicsDevice, RHI::CommandListHandle commandList);
+			void RefreshGpuBuffers(RHI::IGraphicsDevice* graphicsDevice, RHI::CommandListHandle commandList);
 
 			void PopulateShaderSceneData(Shader::SceneData& sceneData);
 
@@ -199,13 +199,13 @@ namespace PhxEngine::Renderer
 			PhxEngine::RHI::TextureHandle PrefilteredMap;
 			PhxEngine::RHI::TextureHandle BrdfLUT;
 
-		private:
+			RHI::BufferHandle GeometryGpuBuffer;
+			RHI::BufferHandle MeshGpuBuffer;
+			RHI::BufferHandle MaterialBuffer;
 
 		private:
-			RHI::BufferHandle m_geometryGpuBuffer;
-			RHI::BufferHandle m_meshGpuBuffer;
-			RHI::BufferHandle m_materialBuffer;
-
+			std::vector<Shader::MaterialData> m_materialShaderData;
+			std::vector<Shader::Geometry> m_geometryShaderData;
 		};
 
 		void PrintScene(Scene const& scene, std::stringstream& stream);

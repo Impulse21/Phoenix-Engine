@@ -108,6 +108,40 @@ const FormatMapping g_FormatMappings[] = {
 };
 
 RHI::TextureHandle PhxEngine::Renderer::TextureCache::LoadTexture(
+    std::shared_ptr<Core::IBlob> textureData,
+    std::string const& textureName,
+    std::string const& mmeType,
+    bool isSRGB,
+    RHI::CommandListHandle commandList)
+{
+    std::string cacheKey = textureName;
+    std::shared_ptr<LoadedTexture> texture = this->GetTextureFromCache(cacheKey);
+    if (texture)
+    {
+        return texture->RhiTexture;
+    }
+
+    // Create texture
+    texture = std::make_shared<LoadedTexture>();
+    texture->ForceSRGB = isSRGB;
+    texture->Path = "Blob";
+
+    if (!textureData)
+    {
+        LOG_CORE_ERROR("Failed to load texture data");
+        return nullptr;
+    }
+
+    if (this->FillTextureData(textureData, texture, "", mmeType))
+    {
+        this->CacheTextureData(cacheKey, texture);
+        this->FinalizeTexture(texture, commandList);
+    }
+
+    return texture->RhiTexture;
+}
+
+RHI::TextureHandle PhxEngine::Renderer::TextureCache::LoadTexture(
     std::filesystem::path filename,
     bool isSRGB,
     RHI::CommandListHandle commandList)

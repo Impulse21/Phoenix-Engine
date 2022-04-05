@@ -8,6 +8,43 @@ namespace Shader
 {
 #endif
 
+// -- Enums ---
+static const uint ENTITY_TYPE_DIRECTIONALLIGHT = 0;
+static const uint ENTITY_TYPE_OMNILIGHT = 1;
+static const uint ENTITY_TYPE_SPOTLIGHT = 2;
+
+struct ShaderTransform
+{
+	float4 Mat0;
+	float4 Mat1;
+	float4 Mat2;
+
+	void init()
+	{
+		Mat0 = float4(1, 0, 0, 0);
+		Mat1 = float4(0, 1, 0, 0);
+		Mat2 = float4(0, 0, 1, 0);
+	}
+	void Create(float4x4 mat)
+	{
+		Mat0 = float4(mat._11, mat._21, mat._31, mat._41);
+		Mat1 = float4(mat._12, mat._22, mat._32, mat._42);
+		Mat2 = float4(mat._13, mat._23, mat._33, mat._43);
+	}
+	float4x4 GetMatrix()
+#ifdef __cplusplus
+		const
+#endif // __cplusplus
+	{
+		return float4x4(
+			Mat0.x, Mat0.y, Mat0.z, Mat0.w,
+			Mat1.x, Mat1.y, Mat1.z, Mat1.w,
+			Mat2.x, Mat2.y, Mat2.z, Mat2.w,
+			0, 0, 0, 1
+		);
+	}
+};
+
 struct ImguiDrawInfo
 {
 	float4x4 Mvp;
@@ -74,8 +111,22 @@ struct Mesh
 
 struct Geometry
 {
-	uint VertexOffset;
 	uint MaterialIndex;
+	uint NumIndices;
+	uint NumVertices;
+	uint IndexOffset;
+
+	// -- 16 byte boundary ---
+	uint VertexBufferIndex;
+	uint PositionOffset;
+	uint TexCoordOffset;
+	uint NormalOffset;
+
+	// -- 16 byte boundary ---
+	uint TangentOffset;
+	uint3 _padding;
+
+	// -- 16 byte boundary ---
 };
 
 struct Frame
@@ -104,11 +155,12 @@ struct Camera
 };
 
 
-struct MeshRenderPushConstant
+struct GeometryPassPushConstants
 {
+	float4x4 WorldTransform;
+
 	uint GeometryIndex;
 	uint MeshIndex;
-	float4x4 WorldTransform;
 };
 
 #ifdef __cplusplus

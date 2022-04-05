@@ -51,13 +51,15 @@ namespace PhxEngine::Renderer
 			const cgltf_texture* cglftTexture,
 			bool isSRGB,
 			const cgltf_data* objects,
-			CgltfContext& context);
+			CgltfContext& context,
+			RHI::CommandListHandle commandList);
 
 		void LoadMaterialData(
 			const cgltf_material* pMaterials,
 			uint32_t materialCount,
 			const cgltf_data* objects,
 			CgltfContext& context,
+			RHI::CommandListHandle commandList,
 			New::Scene& scene);
 
 		void LoadMeshData(

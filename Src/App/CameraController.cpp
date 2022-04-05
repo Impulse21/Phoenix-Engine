@@ -2,6 +2,7 @@
 
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Renderer/SceneNodes.h>
+#include <PhxEngine/Renderer/SceneComponents.h>
 
 #include <GLFW/glfw3.h>
 
@@ -20,7 +21,7 @@ public:
 		assert(joystickFound);
 		if (!joystickFound)
 		{
-			LOG_ERROR("Unable to locate joystick. This is currently required by the application");
+			LOG_WARN("Unable to locate joystick. Please use keyboard");
 		}
 
 		this->m_worldUp = XMVector3Normalize(worldUp);
@@ -76,7 +77,6 @@ public:
 		this->m_camera.SetRotation(rotation);
 
 		this->m_camera.UpdateViewMatrixLH();
-		this->ShowDebugWindow();
 
 	}
 
@@ -89,23 +89,6 @@ private:
 		return value > this->DeadZone || value < -this->DeadZone
 			? value
 			: 0.0f;
-	}
-
-	void ShowDebugWindow()
-	{
-		/*
-		ImGui::Begin("Camera Info", &this->m_enableDebugWindow, ImGuiWindowFlags_AlwaysAutoResize);
-		ImGui::Text("Controller Type:  Debug Camera");
-		ImGui::Text("Pitch %f (Degrees)", XMConvertToDegrees(this->m_pitch));
-		ImGui::Text("Yaw %f (Degrees)", XMConvertToDegrees(this->m_yaw));
-		ImGui::NewLine();
-
-		ImGui::DragFloat("Movement Speed", &this->m_movementSpeed, 0.001f, 0.001f, 1.0f);
-		ImGui::DragFloat("Strafe Speed", &this->m_strafeMovementSpeed, 0.001f, 0.001f, 1.0f);
-		ImGui::DragFloat("Look Speed", &this->m_lookSpeed, 0.001f, 0.001f, 1.0f);
-
-		ImGui::End();
-		*/
 	}
 
 private:
@@ -130,4 +113,9 @@ private:
 std::unique_ptr<ICameraController> PhxEngine::CreateDebugCameraController(PhxEngine::Renderer::CameraNode& camera, DirectX::XMVECTOR const& worldUp)
 {
     return std::unique_ptr<ICameraController>();
+}
+
+std::unique_ptr<ICameraController> PhxEngine::CreateDebugCameraController(PhxEngine::Renderer::CameraComponent& camera, DirectX::XMVECTOR const& worldUp)
+{
+	return std::unique_ptr<ICameraController>();
 }

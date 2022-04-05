@@ -2,9 +2,11 @@
 
 #include <memory>
 #include <DirectXMath.h>
+
 namespace PhxEngine::Renderer
 {
 	class CameraNode;
+	class CameraComponent;
 }
 
 namespace PhxEngine
@@ -24,5 +26,8 @@ namespace PhxEngine
 		PhxEngine::Renderer::CameraNode& camera,
 		DirectX::XMVECTOR const& worldUp);
 
+	std::unique_ptr<ICameraController> CreateDebugCameraController(
+		PhxEngine::Renderer::CameraComponent& camera,
+		DirectX::XMVECTOR const& worldUp);
 }
 

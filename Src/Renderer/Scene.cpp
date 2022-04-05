@@ -341,77 +341,101 @@ void PhxEngine::Renderer::New::Scene::ComponentDetachChildren(ECS::Entity parent
 	}
 }
 
-void PhxEngine::Renderer::New::Scene::CreateGpuBuffers(RHI::IGraphicsDevice* graphicsDevice, RHI::CommandListHandle commandList)
+void PhxEngine::Renderer::New::Scene::RefreshGpuBuffers(RHI::IGraphicsDevice* graphicsDevice, RHI::CommandListHandle commandList)
 {
-	// Build Mesh and Geometry Buffers
-	size_t numGeometryEntries = 0;
+	// let's construct the mesh buffers
+
+	size_t numGeometry = 0ull;
 	for (int i = 0; i < Meshes.GetCount(); i++)
 	{
 		MeshComponent& mesh = Meshes[i];
-		numGeometryEntries += mesh.Geometry.size();
+		mesh.CreateRenderData(graphicsDevice, commandList);
+
+		// Determine the number of geometry data
+		numGeometry += mesh.Geometry.size();
 	}
 
-	std::vector<Shader::Mesh> meshGpuData(Meshes.GetCount());
-	std::vector<Shader::Geometry> geometryGpuData;
-	geometryGpuData.reserve(numGeometryEntries);
-
-	for (int i = 0; i < Meshes.GetCount(); i++)
+	// Construct Geometry Data
+	// TODO: Create a thread to collect geometry Count
+	size_t geometryCounter = 0ull;
+	if (this->m_geometryShaderData.size() != numGeometry)
 	{
-		MeshComponent& mesh = Meshes[i];
+		this->m_geometryShaderData.resize(numGeometry);
 
-		// Set geomtry buffer data
-		for (int i = 0; i < mesh.Geometry.size(); i++)
+		size_t globalGeomtryIndex = 0ull;
+		for (int i = 0; i < Meshes.GetCount(); i++)
 		{
-			MeshComponent::MeshGeometry& meshGeometry = mesh.Geometry[i];
-			meshGeometry.GlobalGeometryIndex = geometryGpuData.size();
+			MeshComponent& mesh = Meshes[i];
 
-			Shader::Geometry& gpuGeometryData = geometryGpuData.emplace_back();
-			gpuGeometryData.VertexOffset = i;
-			gpuGeometryData.MaterialIndex = this->Materials.GetIndex(meshGeometry.MaterialID);
+			for (int j = 0; j < mesh.Geometry.size(); j++)
+			{
+				// Construct the Geometry data
+				auto& geometryData = mesh.Geometry[j];
+				geometryData.GlobalGeometryIndex = geometryCounter++;
+
+				auto& geometryShaderData = this->m_geometryShaderData[geometryData.GlobalGeometryIndex];
+
+				geometryShaderData.MaterialIndex = this->Materials.GetIndex(geometryData.MaterialID);
+				geometryShaderData.NumIndices = geometryData.NumIndices;
+				geometryShaderData.NumVertices = geometryData.NumVertices;
+				geometryShaderData.IndexOffset = geometryData.IndexOffsetInMesh;
+				geometryShaderData.VertexBufferIndex = mesh.VertexGpuBuffer->GetDescriptorIndex();
+				geometryShaderData.PositionOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Position).ByteOffset;
+				geometryShaderData.TexCoordOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::TexCoord).ByteOffset;
+				geometryShaderData.NormalOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Normal).ByteOffset;
+				geometryShaderData.TangentOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Tangent).ByteOffset;
+			}
 		}
 
-		mesh.CreateRenderData(graphicsDevice, commandList);
-		mesh.PopulateShaderMeshData(meshGpuData[i]);
-	}
-
-	// Create GPU Data
-	{
+		// -- Create GPU Data ---
 		BufferDesc desc = {};
-		desc.DebugName = "Mesh Data";
-		desc.CreateBindless = true;
-		desc.CreateSRVViews = true;
-		desc.StrideInBytes = sizeof(Shader::Mesh);
-		desc.SizeInBytes = sizeof(Shader::Mesh) * meshGpuData.size();
-
-		this->m_meshGpuBuffer = graphicsDevice->CreateBuffer(desc);
-
-		// Upload Data
-		commandList->TransitionBarrier(this->m_meshGpuBuffer, ResourceStates::Common, ResourceStates::CopyDest);
-		commandList->WriteBuffer(this->m_meshGpuBuffer, meshGpuData);
-		commandList->TransitionBarrier(this->m_meshGpuBuffer, ResourceStates::CopyDest, ResourceStates::ShaderResource);
-	}
-
-	{
-		BufferDesc desc = {};
-		desc.DebugName = "Mesh Geometry Data";
-		desc.CreateBindless = true;
-		desc.CreateSRVViews = true;
+		desc.DebugName = "Geometry Data";
+		desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::SrvView | RHI::BufferMiscFlags::Raw;
 		desc.StrideInBytes = sizeof(Shader::Geometry);
-		desc.SizeInBytes = sizeof(Shader::Geometry) * geometryGpuData.size();
+		desc.SizeInBytes = sizeof(Shader::Geometry) * this->m_geometryShaderData.size();
 
-		this->m_geometryGpuBuffer = graphicsDevice->CreateBuffer(desc);
+		this->GeometryGpuBuffer = graphicsDevice->CreateBuffer(desc);
 
 		// Upload Data
-		commandList->TransitionBarrier(this->m_geometryGpuBuffer, ResourceStates::Common, ResourceStates::CopyDest);
-		commandList->WriteBuffer(this->m_geometryGpuBuffer, geometryGpuData);
-		commandList->TransitionBarrier(this->m_geometryGpuBuffer, ResourceStates::CopyDest, ResourceStates::ShaderResource);
+		commandList->TransitionBarrier(this->GeometryGpuBuffer, ResourceStates::Common, ResourceStates::CopyDest);
+		commandList->WriteBuffer(this->GeometryGpuBuffer, this->m_geometryShaderData);
+		commandList->TransitionBarrier(this->GeometryGpuBuffer, ResourceStates::CopyDest, ResourceStates::ShaderResource);
+	}
+
+	// Construct Material Data
+	if (this->Materials.GetCount() != this->m_materialShaderData.size())
+	{
+		// Create Material Data
+		this->m_materialShaderData.resize(this->Materials.GetCount());
+
+		for (int i = 0; i < this->Materials.GetCount(); i++)
+		{
+			auto& gpuMaterial = this->m_materialShaderData[i];
+			this->Materials[i].PopulateShaderData(gpuMaterial);
+		}
+
+		// -- Create GPU Data ---
+		BufferDesc desc = {};
+		desc.DebugName = "Material Data";
+		desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::SrvView | RHI::BufferMiscFlags::Raw;
+		desc.StrideInBytes = sizeof(Shader::MaterialData);
+		desc.SizeInBytes = sizeof(Shader::MaterialData) * this->m_materialShaderData.size();
+
+		this->MaterialBuffer = graphicsDevice->CreateBuffer(desc);
+
+		// Upload Data
+		commandList->TransitionBarrier(this->MaterialBuffer, ResourceStates::Common, ResourceStates::CopyDest);
+		commandList->WriteBuffer(this->MaterialBuffer, this->m_materialShaderData);
+		commandList->TransitionBarrier(this->MaterialBuffer, ResourceStates::CopyDest, ResourceStates::ShaderResource);
 	}
 }
 
 void PhxEngine::Renderer::New::Scene::PopulateShaderSceneData(Shader::SceneData& sceneData)
 {
-	sceneData.MeshBufferIndex = this->m_meshGpuBuffer->GetDescriptorIndex();
-	sceneData.GeometryBufferIndex = this->m_geometryGpuBuffer->GetDescriptorIndex();
+	sceneData.MaterialBufferIndex = this->MaterialBuffer->GetDescriptorIndex();
+	sceneData.GeometryBufferIndex = this->GeometryGpuBuffer->GetDescriptorIndex();
+	sceneData.IrradianceMapTexIndex = this->IrradanceMap->GetDescriptorIndex();
+	sceneData.PreFilteredEnvMapTexIndex = this->PrefilteredMap->GetDescriptorIndex();
 }
 
 void PhxEngine::Renderer::New::Scene::UpdateTansformsSystem()

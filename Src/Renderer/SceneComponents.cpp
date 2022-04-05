@@ -168,95 +168,109 @@ void TransformComponent::MatrixTransform(const XMMATRIX& matrix)
 	XMStoreFloat3(&this->LocalTranslation, translate);
 }
 
-void PhxEngine::Renderer::MeshComponent::CreateRenderData(RHI::IGraphicsDevice* graphicsDevice, RHI::CommandListHandle commandList)
+void PhxEngine::Renderer::MeshComponent::CreateRenderData(
+	RHI::IGraphicsDevice* graphicsDevice,
+	RHI::CommandListHandle commandList)
 {
-	auto CreateAndUploadVertexBuffer = [&](
-		RHI::BufferHandle& buffer,
-		const void* data,
-		size_t numElements,
-		size_t stride,
-		std::string const& debugName,
-		RHI::ResourceStates finalState,
-		bool isBindless = true)
+	// Construct the Mesh buffer
+	if (!this->Indices.empty() && !this->IndexGpuBuffer)
 	{
-		RHI::BufferDesc desc = {};
-		desc.SizeInBytes = numElements * stride;
-		desc.StrideInBytes = stride;
-		desc.DebugName = debugName;
-		desc.CreateBindless = isBindless;
-		desc.CreateSRVViews = isBindless;
+		RHI::BufferDesc indexBufferDesc = {};
+		indexBufferDesc.SizeInBytes = sizeof(uint32_t) * this->Indices.size();
+		indexBufferDesc.StrideInBytes = sizeof(uint32_t);
+		indexBufferDesc.DebugName = "Index Buffer";
+		this->IndexGpuBuffer = graphicsDevice->CreateIndexBuffer(indexBufferDesc);
 
-		buffer = graphicsDevice->CreateVertexBuffer(desc);
-		commandList->TransitionBarrier(buffer, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
-		commandList->WriteBuffer(buffer, data, stride * numElements);
-		commandList->TransitionBarrier(buffer, RHI::ResourceStates::CopyDest,finalState);
-	};
-
-	if (!this->IndexGpuBuffer && !this->Indices.empty())
-	{
-		RHI::BufferDesc desc = {};
-		desc.SizeInBytes = this->Indices.size() * sizeof(this->Indices[0]);
-		desc.StrideInBytes = sizeof(this->Indices[0]);
-		desc.DebugName = "IndexBuffer";
-
-		this->IndexGpuBuffer = graphicsDevice->CreateIndexBuffer(desc);
 		commandList->TransitionBarrier(this->IndexGpuBuffer, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
-		commandList->WriteBuffer(this->IndexGpuBuffer, this->Indices.data(), desc.SizeInBytes);
-		commandList->TransitionBarrier(this->IndexGpuBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::IndexGpuBuffer);
+		commandList->WriteBuffer<uint32_t>(this->IndexGpuBuffer, this->Indices);
+		commandList->TransitionBarrier(
+			this->IndexGpuBuffer,
+			RHI::ResourceStates::CopyDest,
+			RHI::ResourceStates::IndexGpuBuffer | RHI::ResourceStates::ShaderResource);
 	}
 
-	if (!this->VertexGpuBufferPositions && !this->VertexPositions.empty())
+	// Construct the Vertex Buffer
+	// Set up the strides and offsets
+	if (!this->VertexGpuBuffer)
 	{
-		CreateAndUploadVertexBuffer(
-			this->VertexGpuBufferPositions,
-			this->VertexPositions.data(),
-			this->VertexPositions.size(),
-			sizeof(this->VertexPositions[0]),
-			"Vertex Position Buffer",
-			RHI::ResourceStates::ShaderResource | RHI::ResourceStates::VertexBuffer);
-	}
+		RHI::BufferDesc vertexDesc = {};
+		vertexDesc.StrideInBytes = sizeof(float);
+		vertexDesc.DebugName = "Vertex Buffer";
+		vertexDesc.EnableBindless();
+		vertexDesc.IsRawBuffer();
+		vertexDesc.CreateSrvViews();
 
-	if (!this->VertexGpuBufferTexCoords && !this->VertexTexCoords.empty())
-	{
-		CreateAndUploadVertexBuffer(
-			this->VertexGpuBufferTexCoords,
-			this->VertexTexCoords.data(),
-			this->VertexTexCoords.size(),
-			sizeof(this->VertexTexCoords[0]),
-			"Vertex Tex Coords Buffer",
-			RHI::ResourceStates::ShaderResource | RHI::ResourceStates::VertexBuffer);
-	}
+		const uint64_t alignment = 16ull;
+		vertexDesc.SizeInBytes =
+			AlignTo(this->VertexPositions.size() * sizeof(DirectX::XMFLOAT3), alignment) +
+			AlignTo(this->VertexTexCoords.size() * sizeof(DirectX::XMFLOAT2), alignment) +
+			AlignTo(this->VertexNormals.size() * sizeof(DirectX::XMFLOAT3), alignment) + 
+			AlignTo(this->VertexTangents.size() * sizeof(DirectX::XMFLOAT4), alignment) +
+			AlignTo(this->VertexColour.size() * sizeof(DirectX::XMFLOAT3), alignment);
 
-	if (!this->VertexGpuBufferNormals && !this->VertexNormals.empty())
-	{
-		CreateAndUploadVertexBuffer(
-			this->VertexGpuBufferNormals,
-			this->VertexNormals.data(),
-			this->VertexNormals.size(),
-			sizeof(this->VertexNormals[0]),
-			"Vertex Normal Buffer",
-			RHI::ResourceStates::ShaderResource | RHI::ResourceStates::VertexBuffer);
-	}
+		// Is this Needed for Raw Buffer Type
+		this->VertexGpuBuffer = graphicsDevice->CreateVertexBuffer(vertexDesc);
 
-	if (!this->VertexGpuBufferTangents && !this->VertexTangents.empty())
-	{
-		CreateAndUploadVertexBuffer(
-			this->VertexGpuBufferTangents,
-			this->VertexTangents.data(),
-			this->VertexTangents.size(),
-			sizeof(this->VertexTangents[0]),
-			"Vertex Tangent Buffer",
-			RHI::ResourceStates::ShaderResource | RHI::ResourceStates::VertexBuffer);
-	}
-}
+		std::vector<uint8_t> gpuBufferData(vertexDesc.SizeInBytes);
+		std::memset(gpuBufferData.data(), 0, vertexDesc.SizeInBytes);
+		uint64_t bufferOffset = 0ull;
 
-void PhxEngine::Renderer::MeshComponent::PopulateShaderMeshData(Shader::Mesh& mesh)
-{
-	mesh.Flags = this->Flags;
-	mesh.VbPositionBufferIndex = this->VertexGpuBufferPositions ? this->VertexGpuBufferPositions->GetDescriptorIndex() : INVALID_DESCRIPTOR_INDEX;
-	mesh.VbNormalBufferIndex = this->VertexGpuBufferNormals ? this->VertexGpuBufferNormals->GetDescriptorIndex() : INVALID_DESCRIPTOR_INDEX;
-	mesh.VbTexCoordBufferIndex = this->VertexGpuBufferTexCoords ? this->VertexGpuBufferTexCoords->GetDescriptorIndex() : INVALID_DESCRIPTOR_INDEX;
-	mesh.VbTangentBufferIndex = this->VertexGpuBufferTangents ? this->VertexGpuBufferTangents->GetDescriptorIndex() : INVALID_DESCRIPTOR_INDEX;
+		auto WriteDataToGpuBuffer = [&](VertexAttribute attr, void* data, uint64_t sizeInBytes)
+		{
+			auto& bufferRange = this->GetVertexAttribute(attr);
+			bufferRange.ByteOffset = bufferOffset;
+			bufferRange.SizeInBytes = sizeInBytes;
+
+			bufferOffset += AlignTo(bufferRange.SizeInBytes, alignment);
+			// DirectX::XMFLOAT3* vertices = reinterpret_cast<DirectX::XMFLOAT3*>(gpuBufferData.data() + bufferOffset);
+			std::memcpy(gpuBufferData.data() + bufferRange.ByteOffset, data, bufferRange.SizeInBytes);
+		};
+
+		if (!this->VertexPositions.empty())
+		{
+			WriteDataToGpuBuffer(
+				VertexAttribute::Position,
+				this->VertexPositions.data(),
+				this->VertexPositions.size() * sizeof(DirectX::XMFLOAT3));
+		}
+
+		if (!this->VertexTexCoords.empty())
+		{
+			WriteDataToGpuBuffer(
+				VertexAttribute::TexCoord,
+				this->VertexTexCoords.data(),
+				this->VertexTexCoords.size() * sizeof(DirectX::XMFLOAT2));
+		}
+
+		if (!this->VertexNormals.empty())
+		{
+			WriteDataToGpuBuffer(
+				VertexAttribute::Normal,
+				this->VertexNormals.data(),
+				this->VertexNormals.size() * sizeof(DirectX::XMFLOAT3));
+		}
+
+		if (!this->VertexTangents.empty())
+		{
+			WriteDataToGpuBuffer(
+				VertexAttribute::Tangent,
+				this->VertexTangents.data(),
+				this->VertexTangents.size() * sizeof(DirectX::XMFLOAT4));
+		}
+
+		if (!this->VertexColour.empty())
+		{
+			WriteDataToGpuBuffer(
+				VertexAttribute::Colour,
+				this->VertexColour.data(),
+				this->VertexColour.size() * sizeof(DirectX::XMFLOAT3));
+		}
+
+		// Write Data
+		commandList->TransitionBarrier(this->VertexGpuBuffer, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
+		commandList->WriteBuffer(this->VertexGpuBuffer, gpuBufferData, 0);
+		commandList->TransitionBarrier(this->VertexGpuBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource);
+	}
 }
 
 void PhxEngine::Renderer::MeshComponent::ReverseWinding()
@@ -365,4 +379,34 @@ void PhxEngine::Renderer::CameraComponent::UpdateCamera()
 	XMStoreFloat4x4(&this->ViewProjection, viewProjectionMatrix);
 
 	XMStoreFloat4x4(&this->ViewProjectionInv, XMMatrixInverse(nullptr, viewProjectionMatrix));
+}
+
+void PhxEngine::Renderer::MaterialComponent::PopulateShaderData(Shader::MaterialData& shaderData)
+{
+	shaderData.AlbedoColour = { this->Albedo.x, this->Albedo.y, this->Albedo.z };
+	shaderData.AO = this->Ao;
+
+	shaderData.AlbedoTexture = INVALID_DESCRIPTOR_INDEX;
+	if (this->AlbedoTexture)
+	{
+		shaderData.AlbedoTexture = this->AlbedoTexture->GetDescriptorIndex();
+	}
+
+	shaderData.AOTexture = INVALID_DESCRIPTOR_INDEX;
+	if (this->AoTexture)
+	{
+		shaderData.AOTexture = this->AoTexture->GetDescriptorIndex();
+	}
+
+	shaderData.MaterialTexture = INVALID_DESCRIPTOR_INDEX;
+	if (this->MetalRoughnessTexture)
+	{
+		shaderData.MaterialTexture = this->MetalRoughnessTexture->GetDescriptorIndex();
+	}
+
+	shaderData.NormalTexture = INVALID_DESCRIPTOR_INDEX;
+	if (this->NormalMapTexture)
+	{
+		shaderData.NormalTexture = this->NormalMapTexture->GetDescriptorIndex();
+	}
 }

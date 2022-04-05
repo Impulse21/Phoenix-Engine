@@ -1,145 +1,26 @@
-#ifndef __PHX_MESH_RENDER_HLSLI__
-#define __PHX_MESH_RENDER_HLSLI__
 
 #include "Globals.hlsli"
 #include "BRDFFunctions.hlsli"
 
 
-PUSH_CONSTANT(push, GeometryPassPushConstants);
+// -- Const buffers ---
 
-inline Mesh GetMesh()
-{
-    return LoadMesh(push.MeshIndex);
-}
-
-inline Geometry GetGeometry()
-{
-    return LoadGeometry(push.GeometryIndex);
-}
-
-inline MaterialData GetMaterial(uint materialID)
-{
-    return LoadMaterial(materialID);
-}
-
-struct VertexInput
-{
-    uint VertexID : SV_VertexID;
-    uint InstanceID : SV_InstanceID;
-};
-
-struct VertexProperties
-{
-    float4 Position;
-    float3 PositionWS;
-    float3 NormalWS;
-    float2 TexCoord;
-    float4 Colour;
-    float4 TangentWS;
-    uint MaterialID;
-    
-    inline void Populate(in VertexInput input)
-    {
-        // matrix mvpMatrix = LoadInstanceMvpMatrix(push.InstanceOffset + input.InstanceID);
-        matrix worldMatrix = push.WorldTransform;
-        //matrix mvpMatrix = worldMatrix * GetCamera().ViewProjection;
-        
-        Mesh mesh = GetMesh();
-        Geometry geometry = GetGeometry();
-        
-        // uint vertexID = input.VertexID + geometry.VertexOffset;
-        
-        // -- TODO: I am here ---
-        // float4 position = float4(ResourceHeap_Buffer[mesh.VbPositionBufferIndex].Load<float3>(vertexID * 12), 1.0f);
-        // PositionWS = mul(position, mvpMatrix).xyz;
-        // Position = mul(float4(PositionWS, 1.0f), GetCamera().ViewProjection);
-        // NormalWS = mesh.VbNormalBufferIndex == ~0u ? 0 : ResourceHeap_Buffer[mesh.VbNormalBufferIndex].Load<float3>(vertexID * 12);
-        // TexCoord = mesh.VbTexCoordBufferIndex == ~0u ? 0 : ResourceHeap_Buffer[mesh.VbTexCoordBufferIndex].Load<float2>(vertexID * 8);
-        // Colour = float4(0.0f, 0.0f, 0.0f, 1.0f);
-        // float4 tangent = mesh.VbTangentBufferIndex == ~0u ? 0 : ResourceHeap_Buffer[mesh.VbTangentBufferIndex].Load<float4>(vertexID * 16);
-        // TangentWS = float4(mul(tangent.xyz, (float3x3) mvpMatrix), tangent.w);
-        // MaterialID = geometry.MaterialIndex;
-    }
-};
-
-    
 struct PSInput
 {
-    // float3 NormalWS : NORMAL;
-    // float4 Colour : COLOUR;
-    // float2 TexCoord : TEXCOORD;
-    // // float3 ShadowTexCoord : TEXCOORD1;
-    // float3 PositionWS : Position;
-    // float4 TangentWS : TANGENT;
-    // uint MaterialID : MATERIAL;
-    float4 Position : SV_POSITION;
+    float3 NormalWS : NORMAL;
+    float4 Colour : COLOUR;
+    float2 TexCoord : TEXCOORD;
+    float3 PositionWS : Position;
+    float4 TangentWS : TANGENT;
+    uint MaterialID : MATERIAL;
 };
-
-#ifdef MESHRENDER_LAYOUT_COMMON
-#define USE_NORMAL
-#define USE_TEX_COORD
-#define USE_COLOUR
-#define USE_TANGENT
-#define USE_MATERIAL
-#endif
-
-#ifdef MESHRENDER_COMPILE_VS
-PSInput main(in VertexInput input)
-{
-    VertexProperties vertexProperties;
-    vertexProperties.Populate(input);
-    
-    PSInput output;
-    // output.PositionWS = vertexProperties.PositionWS;
-    // output.Position = vertexProperties.Position;
-    output.Position = float4(0.0f, 0.0f, 0.0f, 0.0f);
-    
-#ifdef USE_NORMAL
-    output.NormalWS = vertexProperties.NormalWS;
-#endif
-
-#ifdef USE_TEX_COORD
-    output.TexCoord = vertexProperties.TexCoord;
-#endif
-
-#ifdef USE_COLOUR
-    output.Colour = vertexProperties.Colour;
-#endif
-    
-#ifdef USE_TANGENT
-    output.TangentWS = vertexProperties.TangentWS;
-#endif 
-
-#ifdef USE_MATERIAL
-    output.MaterialID = vertexProperties.MaterialID;
-#endif
-    
-    return output;
-}
-
-#endif
-
-
-
-float GetShadow(float3 shadowMapCoord)
-{
-    // float result = ShadowMap.SampleCmpLevelZero(ShadowSampler, shadowMapCoord.xy, shadowMapCoord.z);
-    float result = 1.0f;
-    return result * result;
-}
-
-
-#ifdef MESHRENDER_COMPILE_PS
     
 // Constant normal incidence Fresnel factor for all dielectrics.
 static const float Fdielectric = 0.04f;
 static const float MaxReflectionLod = 7.0f;
 
-
 float4 main(PSInput input) : SV_Target
 {
-    return float4(0.0f, 0.0f, 0.0f, 0.0f);
-/*
     MaterialData material = LoadMaterial(input.MaterialID);
     
     // -- Collect Material Data ---
@@ -148,7 +29,7 @@ float4 main(PSInput input) : SV_Target
     {
         albedo = ResourceHeap_Texture2D[material.AlbedoTexture].Sample(SamplerDefault, input.TexCoord).xyz;
     }
-    
+
     float metallic = material.Metalness;
     if (material.MetalnessTexture != InvalidDescriptorIndex)
     {
@@ -176,28 +57,30 @@ float4 main(PSInput input) : SV_Target
         normal = ResourceHeap_Texture2D[material.NormalTexture].Sample(SamplerDefault, input.TexCoord).rgb * 2.0 - 1.0;;
         normal = normalize(mul(normal, tbn));
     }
-    
+
+
     // -- End Material Collection ---
     
     // -- Lighting Model ---
     float3 N = normalize(normal);
-    float3 V = normalize((float3)GetCamera().CameraPosition - input.PositionWS);
+    float3 V = normalize(GetCamera().CameraPosition - input.PositionWS);
     float3 R = reflect(-V, N);
     
     // Linear Interpolate the value against the abledo as matallic
     // surfaces reflect their colour.
     float3 F0 = lerp(Fdielectric, albedo, metallic);
     
+    float3 sunDir = float3(0.0f, -1.0f, 1.0f);
     // Reflectance equation
     float3 Lo = float3(0.0f, 0.0f, 0.0f);
     {
         // -- Iterate over lights here
         // If this is a point light, calculate vector from light to World Pos
-        float3 L = -normalize(float3(0.0f, -1.0f, 0.0f));
+        float3 L = -normalize(sunDir);
         float3 H = normalize(V + L);
     
         // If point light, calculate attenuation here;
-        float3 radiance = float3(1.0f, 1.0f, 1.0f); // * attenuation;
+        float3 radiance = float3(1.0f, 1.0f, 1.0f);// * attenuation;
     
         // Calculate Normal Distribution Term
         float NDF = DistributionGGX(N, H, roughness);
@@ -233,7 +116,7 @@ float4 main(PSInput input) : SV_Target
     float3 ambient = float(0.03).xxx * albedo * ao;
     if (GetScene().IrradianceMapTexIndex != InvalidDescriptorIndex &&
         GetScene().PreFilteredEnvMapTexIndex != InvalidDescriptorIndex &&
-        FrameCB.BrdfLUTTexIndex != InvalidDescriptorIndex)
+        GetFrame().BrdfLUTTexIndex != InvalidDescriptorIndex)
     {
         
         float3 F = FresnelSchlick(saturate(dot(N, V)), F0, roughness);
@@ -252,21 +135,21 @@ float4 main(PSInput input) : SV_Target
         
         float2 brdfTexCoord = float2(saturate(dot(N, V)), roughness);
         
-        float2 brdf = ResourceHeap_Texture2D[FrameCB.BrdfLUTTexIndex].Sample(SamplerBrdf, brdfTexCoord).rg;
+        float2 brdf = ResourceHeap_Texture2D[GetFrame().BrdfLUTTexIndex].Sample(SamplerBrdf, brdfTexCoord).rg;
         
-        float3 specular = prefilteredColour * (F * brdf.x + brdf.y);
+        float3 specular = prefilteredColour * (F * brdf.x + brdf.y);   
         
         ambient = (kDiffuse * diffuse + specular) * ao;
     }
         
     float3 colour = ambient + Lo;
     
-    float4 shadowMapCoord = mul(float4(input.PositionWS, 1.0f), GetCamera().ShadowViewProjection);
+    // float4 shadowMapCoord = mul(float4(input.PositionWS, 1.0f), SceneInfoCB.ShadowViewProjection);
     // Convert to Texture space
-    shadowMapCoord.xyz /= shadowMapCoord.w;
+    // shadowMapCoord.xyz /= shadowMapCoord.w;
     
     // Apply Bias
-    shadowMapCoord.xy = shadowMapCoord.xy * float2(0.5, -0.5) + 0.5;
+    // shadowMapCoord.xy = shadowMapCoord.xy * float2(0.5, -0.5) + 0.5;
     
     // Transform NDC space [-1,+1]^2 to texture space [0,1]^2
     // XMMATRIX T(0.5f, 0.0f, 0.0f, 0.0f,
@@ -282,7 +165,4 @@ float4 main(PSInput input) : SV_Target
     colour = pow(colour, float3(1.0 / 2.2, 1.0 / 2.2, 1.0 / 2.2));
     
     return float4(colour, 1.0f);
-*/
 }
-#endif
-#endif
