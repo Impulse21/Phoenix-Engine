@@ -1,5 +1,6 @@
 
 #include <memory>
+#include <PhxEngine/App/CameraController.h>
 #include <PhxEngine/Core/Layer.h>
 #include <PhxEngine/Renderer/Scene.h>
 #include <PhxEngine/Renderer/TextureCache.h>
@@ -14,6 +15,7 @@ namespace PhxEngine::Editor
 		~EditorLayer() = default;
 
 		void OnAttach() override;
+		void OnUpdate(Core::TimeStep const& ts) override;
 		void OnRender(RHI::TextureHandle& currentBuffer) override;
 
 	private:
@@ -29,5 +31,7 @@ namespace PhxEngine::Editor
 		// Scene Rendering related stuff
 		PhxEngine::RHI::TextureHandle m_depthBuffer;
 		PhxEngine::RHI::GraphicsPSOHandle m_geometryPassPso;
+
+		std::unique_ptr<ICameraController> m_cameraController;
 	};
 }

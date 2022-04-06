@@ -351,16 +351,36 @@ void PhxEngine::Renderer::MeshComponent::ComputeTangentSpace()
 	}
 }
 
+void PhxEngine::Renderer::CameraComponent::TransformCamera(TransformComponent const& transform)
+{
+	XMVECTOR scale, rotation, translation;
+	XMMatrixDecompose(
+		&scale,
+		&rotation,
+		&translation, 
+		XMLoadFloat4x4(&transform.WorldMatrix));
+
+	XMVECTOR eye = translation;
+	XMVECTOR at = XMVectorSet(0, 0, 1, 0);
+	XMVECTOR up = XMVectorSet(0, 1, 0, 0);
+
+	XMMATRIX rot = XMMatrixRotationQuaternion(rotation);
+	at = XMVector3TransformNormal(at, rot);
+	up = XMVector3TransformNormal(up, rot);
+	// XMStoreFloat3x3(&rotationMatrix, _Rot);
+
+	XMStoreFloat3(&this->Eye, eye);
+	XMStoreFloat3(&this->At, at);
+	XMStoreFloat3(&this->Up, up);
+}
+
 void PhxEngine::Renderer::CameraComponent::UpdateCamera()
 {
 	XMVECTOR cameraPos = XMLoadFloat3(&this->Eye);
 	XMVECTOR cameraLookAt = XMLoadFloat3(&this->At);
 	XMVECTOR cameraUp = XMLoadFloat3(&this->Up);
 	
-	auto viewMatrix = XMMatrixLookAtLH(
-		cameraPos,
-		cameraLookAt,
-		cameraUp);
+	auto viewMatrix = this->ConstructViewMatrixLH();
 
 	XMStoreFloat4x4(&this->View, viewMatrix);
 	XMStoreFloat4x4(&this->ViewInv, XMMatrixInverse(nullptr, viewMatrix));
@@ -379,6 +399,36 @@ void PhxEngine::Renderer::CameraComponent::UpdateCamera()
 	XMStoreFloat4x4(&this->ViewProjection, viewProjectionMatrix);
 
 	XMStoreFloat4x4(&this->ViewProjectionInv, XMMatrixInverse(nullptr, viewProjectionMatrix));
+}
+
+DirectX::XMMATRIX PhxEngine::Renderer::CameraComponent::ConstructViewMatrixLH()
+{
+	const XMVECTOR forward = XMLoadFloat3(&this->At);
+	const XMVECTOR axisZ = XMVector3Normalize(forward);
+
+	// axisX == right vector
+	const XMVECTOR up = XMLoadFloat3(&this->Up);
+	const XMVECTOR axisX = XMVector3Normalize(XMVector3Cross(up, forward));
+
+	// Axisy == Up vector ( forward cross with right)
+	const XMVECTOR axisY = XMVector3Cross(axisZ, axisX);
+
+	// --- Construct View matrix ---
+	const XMVECTOR negEye = XMVectorNegate(XMLoadFloat3(&this->Eye));
+
+	// Not sure I get this bit.
+	const XMVECTOR d0 = XMVector3Dot(axisX, negEye);
+	const XMVECTOR d1 = XMVector3Dot(axisY, negEye);
+	const XMVECTOR d2 = XMVector3Dot(axisZ, negEye);
+
+	// Construct column major view matrix;
+	XMMATRIX m;
+	m.r[0] = XMVectorSelect(d0, axisX, g_XMSelect1110.v);
+	m.r[1] = XMVectorSelect(d1, axisY, g_XMSelect1110.v);
+	m.r[2] = XMVectorSelect(d2, axisZ, g_XMSelect1110.v);
+	m.r[3] = g_XMIdentityR3.v;
+
+	return XMMatrixTranspose(m);
 }
 
 void PhxEngine::Renderer::MaterialComponent::PopulateShaderData(Shader::MaterialData& shaderData)

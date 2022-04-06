@@ -139,7 +139,24 @@ namespace PhxEngine::Renderer
 		DirectX::XMFLOAT4X4 ProjectionInv;
 		DirectX::XMFLOAT4X4 ViewProjectionInv;
 
+		void TransformCamera(TransformComponent const& transform);
 		void UpdateCamera();
+
+		// -- Custom View Matrix construction ---
+		DirectX::XMMATRIX ConstructViewMatrixLH();
+
+		inline void SetDirty(bool value = true)
+		{
+			if (value)
+			{
+				Flags |= kDirty;
+			}
+			else
+			{
+				Flags &= ~kDirty;
+			}
+		}
+		inline bool IsDirty() const { return this->Flags & kDirty; }
 	};
 
 	using CameraComponentStore = ECS::ComponentStore<CameraComponent>;

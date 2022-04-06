@@ -16,9 +16,7 @@ namespace PhxEngine
 	public:
 		virtual ~ICameraController() = default;
 
-		virtual void Update(double elapsedTime) = 0;
-
-		virtual void EnableDebugWindow(bool enabled) = 0;
+		virtual void Update(float elapsedTime) = 0;
 
 	};
 
