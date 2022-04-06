@@ -117,7 +117,7 @@ private:
 class DebugCameraController2 : public ICameraController
 {
 public:
-	DebugCameraController2(CameraComponent& camera, XMVECTOR const& worldUp)
+	DebugCameraController2(CameraComponent& camera)
 		: m_camera(camera)
 	{
 		bool joystickFound = glfwJoystickPresent(this->m_joystickId);
@@ -126,17 +126,6 @@ public:
 		{
 			LOG_WARN("Unable to locate joystick. Please use keyboard");
 		}
-
-		this->m_worldUp = XMVector3Normalize(worldUp);
-		this->m_worldNorth = XMVector3Normalize(XMVector3Cross(g_XMIdentityR0, this->m_worldUp));
-		this->m_worldEast = XMVector3Cross(this->m_worldUp, this->m_worldNorth);
-
-		// Construct current pitch
-		// this->m_pitch = std::sin(XMVectorGetX(XMVector3Dot(this->m_worldUp, this->m_camera.GetForwardVector())));
-
-		//XMVECTOR forward = XMVector3Normalize(XMVector3Cross(this->m_camera.GetRightVector(), this->m_worldUp));
-		//this->m_yaw = atan2(-XMVectorGetX(XMVector3Dot(this->m_worldEast, forward)), XMVectorGetX(XMVector3Dot(this->m_worldNorth, forward)));
-
 	}
 
 	void Update(float elapsedTime)
@@ -187,14 +176,16 @@ public:
 			0.0f
 		};
 
-		const float gamepadRotSpeed = 0.05f;
+		const float gamepadRotSpeed = 0.03f;
 		xDiff += rightStick.x * gamepadRotSpeed;
 		yDiff += rightStick.y * gamepadRotSpeed;
 
 		// Process Translation
-		bool const slowMode = state.buttons[GLFW_KEY_LEFT_SHIFT] == GLFW_PRESS || state.buttons[GLFW_GAMEPAD_BUTTON_LEFT_BUMPER] == GLFW_PRESS;
+		bool const fastMode = state.buttons[GLFW_KEY_LEFT_SHIFT] == GLFW_PRESS || state.buttons[GLFW_GAMEPAD_BUTTON_LEFT_BUMPER] == GLFW_PRESS;
 		const float clampedDT = std::min(elapsedTime, 0.1f); // if dt > 100 millisec, don't allow the camera to jump too far...
-		const float speed = (slowMode ? 1.0f : 10.0f) * 1.0f * clampedDT;
+
+		// TODO: Use move speed
+		const float speed = (fastMode ? 10.0f : 1.0f) * this->m_settings.MoveSpeed * clampedDT;
 
 		static XMVECTOR prevMove = { 0.0f, 0.0f, 0.0f, 0.0f };
 		XMVECTOR moveNew = XMVectorSet(leftStick.x, 0, -leftStick.y, 0);
@@ -204,8 +195,7 @@ public:
 		moveNew *= speed;
 
 		// TODO: Add Accelleration configuration
-		const float acceleration = 0.03f;
-		prevMove = XMVectorLerp(prevMove, moveNew, acceleration * clampedDT / 0.0166f); // smooth the movement a bit
+		prevMove = XMVectorLerp(prevMove, moveNew, this->m_settings.Acceleration * clampedDT / 0.0166f); // smooth the movement a bit
 
 		float moveLength = XMVectorGetX(XMVector3Length(prevMove));
 
@@ -232,6 +222,8 @@ public:
 		this->m_camera.UpdateCamera();
 	}
 
+	CameraControllerSettings& GetSettings() override { return this->m_settings; }
+
 private:
 	float GetAxisInput(GLFWgamepadstate const& state, int inputId)
 	{
@@ -245,18 +237,9 @@ private:
 	const int m_joystickId = GLFW_JOYSTICK_1;
 	const float DeadZone = 0.2f;
 
-	float m_movementSpeed = 0.3f;
-	float m_strafeMovementSpeed = 0.08f;
-	float m_lookSpeed = 0.01f;
-
-	float m_pitch = 0.0f;
-	float m_yaw = 0.0f;
+	CameraControllerSettings m_settings = {};
 	CameraComponent& m_camera;
 	TransformComponent m_cameraTransform;
-
-	XMVECTOR m_worldUp;
-	XMVECTOR m_worldNorth;
-	XMVECTOR m_worldEast;
 };
 
 std::unique_ptr<ICameraController> PhxEngine::CreateDebugCameraController(PhxEngine::Renderer::CameraNode& camera, DirectX::XMVECTOR const& worldUp)
@@ -264,7 +247,7 @@ std::unique_ptr<ICameraController> PhxEngine::CreateDebugCameraController(PhxEng
     return std::unique_ptr<ICameraController>();
 }
 
-std::unique_ptr<ICameraController> PhxEngine::CreateDebugCameraController(PhxEngine::Renderer::CameraComponent& camera, DirectX::XMVECTOR const& worldUp)
+std::unique_ptr<ICameraController> PhxEngine::CreateDebugCameraController(PhxEngine::Renderer::CameraComponent& camera)
 {
-	return std::make_unique<DebugCameraController2>(camera, worldUp);
+	return std::make_unique<DebugCameraController2>(camera);
 }

@@ -11,6 +11,12 @@ namespace PhxEngine::Renderer
 
 namespace PhxEngine
 {
+	struct CameraControllerSettings
+	{
+		float MoveSpeed = 10.0f;
+		float Acceleration = 0.018f;
+	};
+
 	class ICameraController
 	{
 	public:
@@ -18,6 +24,7 @@ namespace PhxEngine
 
 		virtual void Update(float elapsedTime) = 0;
 
+		virtual CameraControllerSettings& GetSettings() = 0;
 	};
 
 	std::unique_ptr<ICameraController> CreateDebugCameraController(
@@ -25,7 +32,6 @@ namespace PhxEngine
 		DirectX::XMVECTOR const& worldUp);
 
 	std::unique_ptr<ICameraController> CreateDebugCameraController(
-		PhxEngine::Renderer::CameraComponent& camera,
-		DirectX::XMVECTOR const& worldUp);
+		PhxEngine::Renderer::CameraComponent& camera);
 }
 

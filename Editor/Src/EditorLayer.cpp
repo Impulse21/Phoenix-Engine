@@ -52,7 +52,7 @@ void PhxEngine::Editor::EditorLayer::OnAttach()
     this->m_scene.GetGlobalCamera().Height = AppInstance->GetWindowHeight();
     this->m_scene.GetGlobalCamera().UpdateCamera();
 
-    this->m_cameraController = CreateDebugCameraController(this->m_scene.GetGlobalCamera(), { 0.0f, 1.0f, 0.0f });
+    this->m_cameraController = CreateDebugCameraController(this->m_scene.GetGlobalCamera());
 
     std::shared_ptr<IFileSystem> modelFileSystem = std::make_shared<RelativeFileSystem>(this->m_fs, "Assets\\Models");
     auto loader = CreateGltfSceneLoader(modelFileSystem, this->m_textureCache, AppInstance->GetGraphicsDevice());
