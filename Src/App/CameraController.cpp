@@ -176,7 +176,7 @@ public:
 			0.0f
 		};
 
-		const float gamepadRotSpeed = 0.03f;
+		const float gamepadRotSpeed = 0.01f;
 		xDiff += rightStick.x * gamepadRotSpeed;
 		yDiff += rightStick.y * gamepadRotSpeed;
 

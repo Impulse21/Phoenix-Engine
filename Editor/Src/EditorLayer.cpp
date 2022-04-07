@@ -69,12 +69,14 @@ void PhxEngine::Editor::EditorLayer::OnAttach()
         return;
     }
 
+    this->m_scene.EntityCreateLight("Omni Light 1");
+
     this->m_scene.RefreshGpuBuffers(AppInstance->GetGraphicsDevice(), this->m_commandList);
 
-    this->m_scene.SkyboxTexture = this->m_textureCache->LoadTexture("..\\Textures\\IBL\\Serpentine_Valley\\output_skybox.dds", true, this->m_commandList);
-    this->m_scene.IrradanceMap = this->m_textureCache->LoadTexture("..\\Textures\\IBL\\Serpentine_Valley\\output_irradiance.dds", true, this->m_commandList);
-    this->m_scene.PrefilteredMap = this->m_textureCache->LoadTexture("..\\Textures\\IBL\\Serpentine_Valley\\output_radiance.dds", true, this->m_commandList);
-    this->m_scene.BrdfLUT = this->m_textureCache->LoadTexture("..\\Textures\\IBL\\BrdfLut.dds", true, this->m_commandList);
+    // this->m_scene.SkyboxTexture = this->m_textureCache->LoadTexture("..\\Textures\\IBL\\PaperMill_Ruins_E\\PaperMill_Skybox.dds", true, this->m_commandList);
+    // this->m_scene.IrradanceMap = this->m_textureCache->LoadTexture("..\\Textures\\IBL\\PaperMill_Ruins_E\\PaperMill_IrradianceMap.dds", true, this->m_commandList);
+    // this->m_scene.PrefilteredMap = this->m_textureCache->LoadTexture("..\\Textures\\IBL\\PaperMill_Ruins_E\\PaperMill_RadianceMap.dds", true, this->m_commandList);
+    // this->m_scene.BrdfLUT = this->m_textureCache->LoadTexture("..\\Textures\\IBL\\BrdfLut.dds", true, this->m_commandList);
 
     this->m_commandList->Close();
     // TODO: Wait for load to finish.
@@ -122,7 +124,7 @@ void PhxEngine::Editor::EditorLayer::OnRender(RHI::TextureHandle& currentBuffer)
 
         // Set up Frame constant buffer
         Shader::Frame frame = {};
-        frame.BrdfLUTTexIndex = this->m_scene.BrdfLUT->GetDescriptorIndex();
+        frame.BrdfLUTTexIndex = this->m_scene.BrdfLUT.Get() ? this->m_scene.BrdfLUT->GetDescriptorIndex() : INVALID_DESCRIPTOR_INDEX;
         frame.Scene = {};
         
         this->m_scene.PopulateShaderSceneData(frame.Scene);

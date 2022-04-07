@@ -165,6 +165,7 @@ namespace PhxEngine::Renderer
 
 			ECS::Entity EntityCreateMaterial(std::string const& name);
 			ECS::Entity EntityCreateMesh(std::string const& name);
+			ECS::Entity EntityCreateLight(std::string const& name);
 
 			ECS::Entity CreateCubeMeshEntity(std::string const& name, ECS::Entity mtlIDmtl, float size, bool rhsCoords);
 

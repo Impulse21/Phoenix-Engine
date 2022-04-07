@@ -41,7 +41,15 @@ float4 main(PSInput input) : SV_Target
     {
         roughness = ResourceHeap_Texture2D[material.RoughnessTexture].Sample(SamplerDefault, input.TexCoord).r;
     }
-        
+
+    // -- Read the Material texture ---
+    if (material.MaterialTexture != InvalidDescriptorIndex)
+    {
+        float2 metalRoughness = ResourceHeap_Texture2D[material.MaterialTexture].Sample(SamplerDefault, input.TexCoord).rg;
+        metallic = metalRoughness.r;
+        roughness = metalRoughness.g;
+    }
+
     float ao = material.AO;
     if (material.AOTexture != InvalidDescriptorIndex)
     {
@@ -57,7 +65,6 @@ float4 main(PSInput input) : SV_Target
         normal = ResourceHeap_Texture2D[material.NormalTexture].Sample(SamplerDefault, input.TexCoord).rgb * 2.0 - 1.0;;
         normal = normalize(mul(normal, tbn));
     }
-
 
     // -- End Material Collection ---
     

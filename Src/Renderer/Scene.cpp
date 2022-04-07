@@ -176,6 +176,19 @@ Entity New::Scene::EntityCreateMesh(std::string const& name)
 	return e;
 }
 
+Entity PhxEngine::Renderer::New::Scene::EntityCreateLight(std::string const& name)
+{
+	Entity e = ECS::CreateEntity();
+
+	NameComponent& nameComponent = this->Names.Create(e);
+	nameComponent.Name = name;
+
+	this->Transforms.Create(e);
+	this->Lights.Create(e);
+
+	return e;
+}
+
 Entity New::Scene::CreateCubeMeshEntity(std::string const& name, Entity mtlID, float size, bool rhsCoords)
 {
 	// A cube has six faces, each one pointing in a different direction.
@@ -434,8 +447,8 @@ void PhxEngine::Renderer::New::Scene::PopulateShaderSceneData(Shader::SceneData&
 {
 	sceneData.MaterialBufferIndex = this->MaterialBuffer->GetDescriptorIndex();
 	sceneData.GeometryBufferIndex = this->GeometryGpuBuffer->GetDescriptorIndex();
-	sceneData.IrradianceMapTexIndex = this->IrradanceMap->GetDescriptorIndex();
-	sceneData.PreFilteredEnvMapTexIndex = this->PrefilteredMap->GetDescriptorIndex();
+	sceneData.IrradianceMapTexIndex = this->IrradanceMap.Get() ? this->IrradanceMap->GetDescriptorIndex() : INVALID_DESCRIPTOR_INDEX;
+	sceneData.PreFilteredEnvMapTexIndex = this->PrefilteredMap.Get() ? this->PrefilteredMap->GetDescriptorIndex() : INVALID_DESCRIPTOR_INDEX;
 }
 
 void PhxEngine::Renderer::New::Scene::UpdateTansformsSystem()
