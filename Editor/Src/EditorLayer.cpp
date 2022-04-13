@@ -2,6 +2,7 @@
 
 #include <PhxEngine/App/Application.h>
 #include <PhxEngine/Core/FileSystem.h>
+#include <PhxEngine/Core/Math.h>
 #include <PhxEngine/Renderer/SceneLoader.h>
 #include <imgui.h>
 
@@ -26,6 +27,7 @@ namespace GeometryPassRP
         PushConstant,
         FrameCB,
         CameraCB,
+        LightSB,
         BindlessTables,
     };
 }
@@ -69,14 +71,29 @@ void PhxEngine::Editor::EditorLayer::OnAttach()
         return;
     }
 
-    this->m_scene.EntityCreateLight("Omni Light 1");
+    // -- Construct a light entity ---
+    auto omniLightEntity = this->m_scene.EntityCreateLight("Omni Light 1");
+    LightComponent& omniLight = *this->m_scene.Lights.GetComponent(omniLightEntity);
+    omniLight.Type = LightComponent::LightType::kOmniLight;
+    omniLight.Colour = { 1.0f, 1.0f, 1.0f };
+    omniLight.Energy = 5.0f;
+    omniLight.Range = 5.0f;
+
+
+    TransformComponent& omniLightPos = *this->m_scene.Transforms.GetComponent(omniLightEntity);
+    DirectX::XMVECTOR translation = { 0.0f, 3.0f, 0.0f };
+    omniLightPos.Translate(translation);
+    omniLightPos.UpdateTransform();
 
     this->m_scene.RefreshGpuBuffers(AppInstance->GetGraphicsDevice(), this->m_commandList);
 
-    // this->m_scene.SkyboxTexture = this->m_textureCache->LoadTexture("..\\Textures\\IBL\\PaperMill_Ruins_E\\PaperMill_Skybox.dds", true, this->m_commandList);
-    // this->m_scene.IrradanceMap = this->m_textureCache->LoadTexture("..\\Textures\\IBL\\PaperMill_Ruins_E\\PaperMill_IrradianceMap.dds", true, this->m_commandList);
-    // this->m_scene.PrefilteredMap = this->m_textureCache->LoadTexture("..\\Textures\\IBL\\PaperMill_Ruins_E\\PaperMill_RadianceMap.dds", true, this->m_commandList);
-    // this->m_scene.BrdfLUT = this->m_textureCache->LoadTexture("..\\Textures\\IBL\\BrdfLut.dds", true, this->m_commandList);
+    this->m_scene.SkyboxTexture = this->m_textureCache->LoadTexture("..\\Textures\\IBL\\PaperMill_Ruins_E\\PaperMill_Skybox.dds", true, this->m_commandList);
+    this->m_scene.IrradanceMap = this->m_textureCache->LoadTexture("..\\Textures\\IBL\\PaperMill_Ruins_E\\PaperMill_IrradianceMap.dds", true, this->m_commandList);
+    this->m_scene.PrefilteredMap = this->m_textureCache->LoadTexture("..\\Textures\\IBL\\PaperMill_Ruins_E\\PaperMill_RadianceMap.dds", true, this->m_commandList);
+    this->m_scene.BrdfLUT = this->m_textureCache->LoadTexture("..\\Textures\\IBL\\BrdfLut.dds", true, this->m_commandList);
+
+    // Load UI data
+    this->m_omniLightTex = this->m_textureCache->LoadTexture("..\\\Editor\\OmniLightIcon.png", false, this->m_commandList);
 
     this->m_commandList->Close();
     // TODO: Wait for load to finish.
@@ -127,6 +144,8 @@ void PhxEngine::Editor::EditorLayer::OnRender(RHI::TextureHandle& currentBuffer)
         frame.BrdfLUTTexIndex = this->m_scene.BrdfLUT.Get() ? this->m_scene.BrdfLUT->GetDescriptorIndex() : INVALID_DESCRIPTOR_INDEX;
         frame.Scene = {};
         
+        // TODO: Fustrum call lights and geometry
+
         this->m_scene.PopulateShaderSceneData(frame.Scene);
         this->m_commandList->BindDynamicConstantBuffer(GeometryPassRP::FrameCB, frame);
 
@@ -137,6 +156,26 @@ void PhxEngine::Editor::EditorLayer::OnRender(RHI::TextureHandle& currentBuffer)
         this->m_commandList->BindDynamicConstantBuffer(GeometryPassRP::CameraCB, camera);
 
         this->m_commandList->BindResourceTable(GeometryPassRP::BindlessTables);
+
+        // -- Create Light Data ---
+        // Use a static here to prevent allocations per frame.
+        thread_local static std::vector<Shader::ShaderLight> sLights(this->m_scene.Lights.GetCount());
+        sLights.clear();
+        for (int i = 0; i < this->m_scene.Lights.GetCount(); i++)
+        {
+            LightComponent& light = this->m_scene.Lights[i];
+            ECS::Entity lightEntity = this->m_scene.Lights.GetEntity(i);
+            TransformComponent& transform = *this->m_scene.Transforms.GetComponent(lightEntity);
+            auto& shaderLight = sLights.emplace_back();
+            shaderLight.SetType(light.Type);
+            shaderLight.SetFlags(light.Type);
+            shaderLight.SetRange(light.Range);
+            shaderLight.SetEnergy(light.Energy);
+            shaderLight.Position = transform.GetPosition();
+            shaderLight.ColorPacked = Math::PackColour({ light.Colour.x, light.Colour.y, light.Colour.z, 1.0f });
+        }
+
+        this->m_commandList->BindDynamicStructuredBuffer<Shader::ShaderLight>(GeometryPassRP::LightSB, sLights);
 
         // Iterate the mesh instances
         {
@@ -171,6 +210,8 @@ void PhxEngine::Editor::EditorLayer::OnRender(RHI::TextureHandle& currentBuffer)
         }
     }
 
+    // Draw Debug World
+    // Draw Lights
     
     this->m_commandList->TransitionBarrier(currentBuffer, ResourceStates::RenderTarget, ResourceStates::Present);
 
@@ -217,6 +258,7 @@ void EditorLayer::CreatePSO()
         builder.Add32BitConstants<999, 0>(sizeof(Shader::GeometryPassPushConstants) / 4);
         builder.AddConstantBufferView<0, 0>(); // FrameCB
         builder.AddConstantBufferView<1, 0>(); // Camera CB
+        builder.AddShaderResourceView<0, 0>(); // Lights SB
 
         // Default Sampler
         builder.AddStaticSampler<50, 0>(
@@ -244,5 +286,13 @@ void EditorLayer::CreatePSO()
 
         this->m_geometryPassPso = AppInstance->GetGraphicsDevice()->CreateGraphicsPSOHandle(psoDesc);
     }
+}
+
+void PhxEngine::Editor::EditorLayer::LoadEditorResources()
+{
+}
+
+void PhxEngine::Editor::EditorLayer::DrawSceneImages()
+{
 }
 

@@ -4,6 +4,9 @@
 #include "ShaderInterop.h"
 
 #ifdef __cplusplus
+
+#include <Directxpackedvector.h>
+
 namespace Shader
 {
 #endif
@@ -12,6 +15,72 @@ namespace Shader
 static const uint ENTITY_TYPE_DIRECTIONALLIGHT = 0;
 static const uint ENTITY_TYPE_OMNILIGHT = 1;
 static const uint ENTITY_TYPE_SPOTLIGHT = 2;
+
+struct ShaderLight
+{
+	float3 Position;
+	uint Type8_Flags8_Range16; // <Range_16><flags_8><type_8>
+
+	// -- 16 byte boundary ----
+
+	uint Energy16_X16; // <free_16><range_8>
+	uint ColorPacked;
+	uint2 _Padding;
+
+#ifndef __cplusplus
+	inline uint GetType()
+	{
+		return Type8_Flags8_Range16 & 0xFF;
+	}
+
+	inline uint GetFlags()
+	{
+		return (Type8_Flags8_Range16 >> 8) & 0xFF;
+	}
+
+	inline float GetRange()
+	{
+		return f16tof32((Type8_Flags8_Range16 >> 16) & 0xFFFF);
+	}
+
+	inline float GetEnergy()
+	{
+		return f16tof32(Energy16_X16 & 0xFFFF);
+	}
+	
+	inline float4 GetColor()
+	{
+		float4 refVal;
+
+		refVal.x = (float)((ColorPacked >> 0) & 0xFF) / 255.0f;
+		refVal.y = (float)((ColorPacked >> 8) & 0xFF) / 255.0f;
+		refVal.z = (float)((ColorPacked >> 16) & 0xFF) / 255.0f;
+		refVal.w = (float)((ColorPacked >> 24) & 0xFF) / 255.0f;
+
+		return refVal;
+	}
+#else
+	inline void SetType(uint type)
+	{
+		Type8_Flags8_Range16 |= type & 0xFF;
+	}
+
+	inline void SetFlags(uint flags)
+	{
+		Type8_Flags8_Range16 |= (flags & 0xFF) << 8;
+	}
+
+	inline void SetRange(float value)
+	{
+		Type8_Flags8_Range16 |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16;
+	}
+
+	inline void SetEnergy(float value)
+	{
+		Energy16_X16 |= DirectX::PackedVector::XMConvertFloatToHalf(value);
+	}
+#endif
+};
 
 struct ShaderTransform
 {
@@ -61,7 +130,7 @@ struct SceneData
 	// -- 16 byte boundary ----
 
 	uint PreFilteredEnvMapTexIndex;
-	uint _padding0;
+	uint NumLights;
 	uint _padding1;
 	uint _padding2;
 
@@ -163,6 +232,10 @@ struct GeometryPassPushConstants
 	uint MeshIndex;
 };
 
+struct ImagePassPushConstants
+{
+
+};
 #ifdef __cplusplus
 }
 #endif

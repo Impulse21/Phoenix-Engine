@@ -27,7 +27,10 @@ namespace PhxEngine::Editor
 			this->m_editorLayer = std::make_shared<EditorLayer>();
 			this->PushBackLayer(this->m_editorLayer);
 
-			this->m_editorGui = std::make_shared<GuiLayer>(this->GetGraphicsDevice(), this->GetWindow());
+			this->m_editorGui = std::make_shared<GuiLayer>(
+				this->GetGraphicsDevice(),
+				this->GetWindow(),
+				this->m_editorLayer);
 			this->PushBackLayer(this->m_editorGui);
 		}
 

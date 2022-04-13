@@ -26,6 +26,7 @@
 
 ConstantBuffer<Frame> FrameCB : register(b0);
 ConstantBuffer<Camera> CameraCB : register(b1);
+StructuredBuffer<ShaderLight> LightSB : register(t0);
 
 // StructuredBuffer<matrix> InstanceTransformsSB : register(t0);
 
@@ -61,5 +62,10 @@ inline Geometry LoadGeometry(uint geoIndex)
 inline MaterialData LoadMaterial(uint mtlIndex)
 {
     return ResourceHeap_Buffer[GetScene().MaterialBufferIndex].Load<MaterialData> (mtlIndex * sizeof(MaterialData));
+}
+
+inline ShaderLight LoadLight(uint lightIndex)
+{
+	return LightSB[lightIndex];
 }
 #endif // __PHX_GLOBALS_HLSLI__

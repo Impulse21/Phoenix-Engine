@@ -191,6 +191,20 @@ namespace PhxEngine::Renderer
 		DirectX::XMFLOAT3 LocalScale;
 		DirectX::XMFLOAT3 Front;
 		DirectX::XMFLOAT3 Right;
+
+		bool CastShadows() const { return Flags & Flags::kCastShadow; }
+
+		inline void SetCastShadows(bool value = true)
+		{
+			if (value)
+			{
+				Flags |= kCastShadow;
+			}
+			else
+			{
+				Flags &= ~kCastShadow;
+			}
+		}
 	};
 
 	using LightComponentStore = ECS::ComponentStore<LightComponent>;

@@ -296,8 +296,8 @@ void PhxEngine::Renderer::New::Scene::ComponentAttach(Entity entity, Entity pare
 		this->ComponentDetach(entity);
 	}
 
-	HierarchyComponent& parentComponent = this->Hierarchy.Create(entity);
-	parentComponent.ParentId = parent;
+	HierarchyComponent& entityComponent = this->Hierarchy.Create(entity);
+	entityComponent.ParentId = parent;
 
 	TransformComponent* transformParent = this->Transforms.GetComponent(parent);
 	if (transformParent == nullptr)
@@ -449,6 +449,7 @@ void PhxEngine::Renderer::New::Scene::PopulateShaderSceneData(Shader::SceneData&
 	sceneData.GeometryBufferIndex = this->GeometryGpuBuffer->GetDescriptorIndex();
 	sceneData.IrradianceMapTexIndex = this->IrradanceMap.Get() ? this->IrradanceMap->GetDescriptorIndex() : INVALID_DESCRIPTOR_INDEX;
 	sceneData.PreFilteredEnvMapTexIndex = this->PrefilteredMap.Get() ? this->PrefilteredMap->GetDescriptorIndex() : INVALID_DESCRIPTOR_INDEX;
+	sceneData.NumLights = this->Lights.GetCount();
 }
 
 void PhxEngine::Renderer::New::Scene::UpdateTansformsSystem()

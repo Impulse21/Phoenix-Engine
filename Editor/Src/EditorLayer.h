@@ -18,8 +18,13 @@ namespace PhxEngine::Editor
 		void OnUpdate(Core::TimeStep const& ts) override;
 		void OnRender(RHI::TextureHandle& currentBuffer) override;
 
+		Renderer::New::Scene& GetScene() { return this->m_scene; }
+
 	private:
 		void CreatePSO();
+		void LoadEditorResources();
+
+		void DrawSceneImages();
 
 	private:
 		uint64_t m_loadFence;
@@ -33,5 +38,8 @@ namespace PhxEngine::Editor
 		PhxEngine::RHI::GraphicsPSOHandle m_geometryPassPso;
 
 		std::unique_ptr<ICameraController> m_cameraController;
+
+		// Editor Specific Resources
+		RHI::TextureHandle m_omniLightTex;
 	};
 }
