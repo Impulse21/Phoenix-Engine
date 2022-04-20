@@ -168,6 +168,7 @@ namespace PhxEngine::Renderer
 			ECS::Entity EntityCreateLight(std::string const& name);
 
 			ECS::Entity CreateCubeMeshEntity(std::string const& name, ECS::Entity mtlIDmtl, float size, bool rhsCoords);
+			ECS::Entity CreateSphereMeshEntity(std::string const& name, ECS::Entity mtlId, float diameter, size_t tessellation, bool rhsCoords);
 
 			void ComponentAttach(ECS::Entity entity, ECS::Entity parent, bool childInLocalSpace = false);
 			void ComponentDetach(ECS::Entity entity);
@@ -193,6 +194,8 @@ namespace PhxEngine::Renderer
 
 			LightComponentStore Lights;
 			CameraComponentStore Cameras;
+			
+			ECS::Entity RootEntity = ECS::InvalidEntity;
 
 		public:
 			PhxEngine::RHI::TextureHandle SkyboxTexture;

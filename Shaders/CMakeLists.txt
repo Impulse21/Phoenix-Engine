@@ -16,14 +16,17 @@ set(shader_source_ps
     Src/DebugPS.hlsl
     Src/MeshRender_BrdfPS.hlsl
     Src/ImGuiPS.hlsl
-    Src/GeometryPassPS.hlsl)
+    Src/GeometryPassPS_Pbr.hlsl
+    Src/GeometryPassPS_Emissive.hlsl
+    Src/GeometryPassPS_Unlit.hlsl)
 
 set(shader_headers
     Src/BRDFFunctions.hlsli
     Src/Defines.hlsli
     Src/Globals.hlsli
     Src/MeshRender.hlsli
-    Src/ResourceHeapTables.hlsli)
+    Src/ResourceHeapTables.hlsli
+    Src/GeometryPass.hlsli)
 
 set(shader_source_includes
     Include/Shaders/DepthPathVS_compiled.h
@@ -36,13 +39,13 @@ set(shader_source_includes
     Include/Shaders/MeshRender_BrdfPS_compiled.h
     Include/Shaders/ImGuiVS_compiled.h
     Include/Shaders/ImGuiPS_compiled.h
-    Include/Shaders/GeometryPassVS_compiled.h
-    Include/Shaders/GeometryPassPS_compiled.h)
+    Include/Shaders/GeometryPassVS_compiled.h)
 
 set(shader_interop_includes
     Include/Shaders/ShaderInterop.h
     Include/Shaders/ShaderInteropStructures.h)
 
+    # Include/Shaders/GeometryPassPS_Pbr_compiled.h
 # first is extra debug flags
 set_source_files_properties(${shader_source_vs} PROPERTIES VS_SHADER_FLAGS "/Fh \"${PROJECT_SOURCE_DIR}/Include/Shaders/%(Filename)_compiled.h\" /Vn \"g%(Filename)\" /Zi /Od /Qembed_debug" VS_SHADER_TYPE Vertex VS_SHADER_MODEL 6.5 VS_SHADER_ENTRYPOINT main)
 #set_source_files_properties(${shader_source_vs} PROPERTIES VS_SHADER_FLAGS "/Fh \"${PROJECT_SOURCE_DIR}/Include/Shaders/%(Filename)_compiled.h\" /Vn \"g%(Filename)\" /Zi" VS_SHADER_TYPE Vertex VS_SHADER_MODEL 6.5 VS_SHADER_ENTRYPOINT main)

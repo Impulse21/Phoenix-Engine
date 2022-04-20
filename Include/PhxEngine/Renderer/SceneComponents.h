@@ -219,13 +219,16 @@ namespace PhxEngine::Renderer
 
 		uint32_t Flags;
 
-		enum LightingModel : uint32_t
+		enum ShaderType : uint8_t
 		{
-			kPbrLighting = 0,
-			LightingModelType
-		} LightingModel = kPbrLighting;
+			kPbr= 0,
+			kUnlit = 1,
+			kEmissive = 2,
+			kNumShaderTypes
+		} ShaderType = kPbr;
 
 		DirectX::XMFLOAT4 Albedo = { 0.0f, 0.0f, 0.0f, 1.0f };
+		DirectX::XMFLOAT4 Emissive = { 0.0f, 0.0f, 0.0f, 1.0f };
 		float Metalness = 1.0f;
 		float Roughness = 1.0f;
 		float Ao = 0.4f;

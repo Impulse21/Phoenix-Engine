@@ -13,6 +13,8 @@ void PhxEngine::Editor::GuiLayer::BuildUI()
 
 	if (ImGui::CollapsingHeader("Scene"))
 	{
+		ImGui::Checkbox("Disable IBL", &this->m_editorLayer->GetEditorSettings().DisableIbl);
+
 		auto& scene = this->m_editorLayer->GetScene();
 
 		if (ImGui::TreeNode("Light Components"))

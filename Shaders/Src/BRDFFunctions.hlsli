@@ -1,8 +1,11 @@
+#ifndef __BRDF_FUNCTIONS__HLSLI__
+#define __BRDF_FUNCTIONS__HLSLI__
 
 #include "Defines.hlsli"
 
-#ifndef __BRDF_FUNCTIONS__HLSLI__
-#define __BRDF_FUNCTIONS__HLSLI__
+// Constant normal incidence Fresnel factor for all dielectrics.
+static const float Fdielectric = 0.04f;
+static const float MaxReflectionLod = 7.0f;
 
 // -- Normal Distribution functions ---
 // approximates the amount the surface's microfacets are aligned to the halfway vector,

@@ -28,6 +28,18 @@ struct ShaderLight
 	uint2 _Padding;
 
 #ifndef __cplusplus
+	inline float4 GetColour()
+	{
+		float4 refVal;
+
+		refVal.x = (float)((ColorPacked >> 0) & 0xFF) / 255.0f;
+		refVal.y = (float)((ColorPacked >> 8) & 0xFF) / 255.0f;
+		refVal.z = (float)((ColorPacked >> 16) & 0xFF) / 255.0f;
+		refVal.w = (float)((ColorPacked >> 24) & 0xFF) / 255.0f;
+
+		return refVal;
+	}
+
 	inline uint GetType()
 	{
 		return Type8_Flags8_Range16 & 0xFF;
@@ -47,18 +59,7 @@ struct ShaderLight
 	{
 		return f16tof32(Energy16_X16 & 0xFFFF);
 	}
-	
-	inline float4 GetColor()
-	{
-		float4 refVal;
 
-		refVal.x = (float)((ColorPacked >> 0) & 0xFF) / 255.0f;
-		refVal.y = (float)((ColorPacked >> 8) & 0xFF) / 255.0f;
-		refVal.z = (float)((ColorPacked >> 16) & 0xFF) / 255.0f;
-		refVal.w = (float)((ColorPacked >> 24) & 0xFF) / 255.0f;
-
-		return refVal;
-	}
 #else
 	inline void SetType(uint type)
 	{
@@ -159,6 +160,22 @@ struct MaterialData
 	// -- 16 byte boundary ----
 
 	uint Flags;
+	uint EmissiveColourPacked;
+	uint2 _Padding;
+
+#ifndef __cplusplus
+	inline float4 GetEmissiveColour()
+	{
+		float4 refVal;
+
+		refVal.x = (float)((EmissiveColourPacked >> 0) & 0xFF) / 255.0f;
+		refVal.y = (float)((EmissiveColourPacked >> 8) & 0xFF) / 255.0f;
+		refVal.z = (float)((EmissiveColourPacked >> 16) & 0xFF) / 255.0f;
+		refVal.w = (float)((EmissiveColourPacked >> 24) & 0xFF) / 255.0f;
+
+		return refVal;
+	}
+#endif
 };
 
 struct Mesh
@@ -223,6 +240,15 @@ struct Camera
 	float3 CameraPosition;
 };
 
+#define DRAW_FLAG_ALBEDO        0x001
+#define DRAW_FLAG_NORMAL        0x002
+#define DRAW_FLAG_ROUGHNESS     0x004
+#define DRAW_FLAG_METALLIC      0x008
+#define DRAW_FLAG_AO            0x010
+#define DRAW_FLAG_TANGENT       0x020
+#define DRAW_FLAG_BITANGENT     0x040
+#define DRAW_FLAG_EMISSIVE		0x080
+#define DRAW_FLAGS_DISABLE_IBL  0x100
 
 struct GeometryPassPushConstants
 {
@@ -230,6 +256,7 @@ struct GeometryPassPushConstants
 
 	uint GeometryIndex;
 	uint MeshIndex;
+	uint DrawFlags;
 };
 
 struct ImagePassPushConstants

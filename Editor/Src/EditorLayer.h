@@ -8,6 +8,11 @@
 
 namespace PhxEngine::Editor
 {
+	struct EditorSettings
+	{
+		bool DisableIbl = true;
+	};
+
 	class EditorLayer : public PhxEngine::Core::Layer
 	{
 	public:
@@ -20,11 +25,15 @@ namespace PhxEngine::Editor
 
 		Renderer::New::Scene& GetScene() { return this->m_scene; }
 
+		EditorSettings& GetEditorSettings() { return this->m_editorSettings; }
+
 	private:
 		void CreatePSO();
 		void LoadEditorResources();
 
 		void DrawSceneImages();
+
+		void CreateSceneLights();
 
 	private:
 		uint64_t m_loadFence;
@@ -41,5 +50,7 @@ namespace PhxEngine::Editor
 
 		// Editor Specific Resources
 		RHI::TextureHandle m_omniLightTex;
+
+		EditorSettings m_editorSettings;
 	};
 }

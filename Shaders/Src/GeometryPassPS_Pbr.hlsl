@@ -1,28 +1,20 @@
 
 #include "Globals.hlsli"
 #include "BRDFFunctions.hlsli"
+#include "GeometryPass.hlsli"
 
-
-// -- Const buffers ---
-
-struct PSInput
-{
-    float3 NormalWS : NORMAL;
-    float4 Colour : COLOUR;
-    float2 TexCoord : TEXCOORD;
-    float3 PositionWS : Position;
-    float4 TangentWS : TANGENT;
-    uint MaterialID : MATERIAL;
-};
-    
-// Constant normal incidence Fresnel factor for all dielectrics.
-static const float Fdielectric = 0.04f;
-static const float MaxReflectionLod = 7.0f;
+PUSH_CONSTANT(push, GeometryPassPushConstants);
 
 float4 main(PSInput input) : SV_Target
 {
     MaterialData material = LoadMaterial(input.MaterialID);
     
+    // This is just a hack to get Emissive materials working without switching Pipeline states during drawcalls.
+    if (push.DrawFlags & DRAW_FLAG_EMISSIVE)
+    {
+        return material.GetEmissiveColour();
+    }
+
     // -- Collect Material Data ---
     float3 albedo = material.AlbedoColour;
     if (material.AlbedoTexture != InvalidDescriptorIndex)
@@ -66,6 +58,7 @@ float4 main(PSInput input) : SV_Target
         normal = normalize(mul(normal, tbn));
     }
 
+    // return float4(normal.x, normal.y, normal.z, 1.0f);
     // -- End Material Collection ---
     
     // -- Lighting Model ---
@@ -86,7 +79,7 @@ float4 main(PSInput input) : SV_Target
         ShaderLight light = LoadLight(i);
 
         float3 L = light.Position - input.PositionWS;
-        const float dist2 = dot(L, L); // Dot product of a vector with itself is the square of it's magnitude.
+        const float dist2 = dot(L, L); // Dot product of a vector with itself is the square of it's magnitude.      
         const float range2 = light.GetRange() * light.GetRange();
 
         [branch]
@@ -101,11 +94,11 @@ float4 main(PSInput input) : SV_Target
             const float attenuation2 = attenuation * attenuation;
 
             // If point light, calculate attenuation here;
-            const float3 lightColour = light.GetColor().rgb;
+            const float3 lightColour = light.GetColour().rgb;
             const float engergy = light.GetEnergy();
             const float range = light.GetRange();
 
-            float3 radiance = light.GetColor().rgb * light.GetEnergy() * attenuation2;
+            float3 radiance = light.GetColour().rgb * light.GetEnergy() * attenuation2;
 
             float3 H = normalize(V + L);
 
@@ -147,7 +140,8 @@ float4 main(PSInput input) : SV_Target
     // float3 ambient = float3(0.5, 0.0, 0.5) * albedo * ao;
     if (GetScene().IrradianceMapTexIndex != InvalidDescriptorIndex &&
         GetScene().PreFilteredEnvMapTexIndex != InvalidDescriptorIndex &&
-        GetFrame().BrdfLUTTexIndex != InvalidDescriptorIndex)
+        GetFrame().BrdfLUTTexIndex != InvalidDescriptorIndex &&
+        (push.DrawFlags & DRAW_FLAGS_DISABLE_IBL) == 0)
     {
         
         float3 F = FresnelSchlick(saturate(dot(N, V)), F0, roughness);
@@ -191,10 +185,9 @@ float4 main(PSInput input) : SV_Target
     
     // colour = GetShadow(shadowMapCoord.xyz) * colour;
     // colour = GetShadow(input.ShadowTexCoord) * colour;
-    
-    // Correction for gamma?
-    colour = colour / (colour + float3(1.0, 1.0, 1.0));
-    colour = pow(colour, float3(1.0 / 2.2, 1.0 / 2.2, 1.0 / 2.2));
+
+    colour = ToneMapping(colour);
+    colour = GammaCorrection(colour);
     
     return float4(colour, 1.0f);
 }

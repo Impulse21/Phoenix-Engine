@@ -303,16 +303,16 @@ bool PhxEngine::Renderer::GltfSceneLoader::LoadSceneInternal(
 		gltfData->meshes_count,
 		scene);
 
-	Entity rootEntity = CreateEntity();
-	scene.Transforms.Create(rootEntity);
-	scene.Names.Create(rootEntity) = gltfData->scene->name ? gltfData->scene->name : "GLTF Scene"; // TODO: Use filename.
+	scene.RootEntity = CreateEntity();
+	scene.Transforms.Create(scene.RootEntity);
+	scene.Names.Create(scene.RootEntity) = gltfData->scene->name ? gltfData->scene->name : "GLTF Scene"; // TODO: Use filename.
 	
 	
 	// Load Node Data
 	for (size_t i = 0; i < gltfData->scene->nodes_count; i++)
 	{
 		// Load Node Data
-		this->LoadNode(*gltfData->scene->nodes[i], rootEntity, scene);
+		this->LoadNode(*gltfData->scene->nodes[i], scene.RootEntity, scene);
 	}
 
 	return true;

@@ -94,9 +94,6 @@ struct PSInput
 };
     
 // Constant normal incidence Fresnel factor for all dielectrics.
-static const float Fdielectric = 0.04f;
-static const float MaxReflectionLod = 7.0f;
-
 float GetShadow(float3 shadowMapCoord)
 {
     float result = ShadowMap.SampleCmpLevelZero(ShadowSampler, shadowMapCoord.xy, shadowMapCoord.z);

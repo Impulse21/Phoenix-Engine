@@ -11,7 +11,7 @@
 #include <fstream>
 
 #include <Shaders/GeometryPassVS_compiled.h>
-#include <Shaders/GeometryPassPS_compiled.h>
+#include <Shaders/GeometryPassPS_Pbr_compiled.h>
 
 using namespace PhxEngine::Editor;
 using namespace PhxEngine::Renderer;
@@ -72,18 +72,7 @@ void PhxEngine::Editor::EditorLayer::OnAttach()
     }
 
     // -- Construct a light entity ---
-    auto omniLightEntity = this->m_scene.EntityCreateLight("Omni Light 1");
-    LightComponent& omniLight = *this->m_scene.Lights.GetComponent(omniLightEntity);
-    omniLight.Type = LightComponent::LightType::kOmniLight;
-    omniLight.Colour = { 1.0f, 1.0f, 1.0f };
-    omniLight.Energy = 5.0f;
-    omniLight.Range = 5.0f;
-
-
-    TransformComponent& omniLightPos = *this->m_scene.Transforms.GetComponent(omniLightEntity);
-    DirectX::XMVECTOR translation = { 0.0f, 3.0f, 0.0f };
-    omniLightPos.Translate(translation);
-    omniLightPos.UpdateTransform();
+    this->CreateSceneLights();
 
     this->m_scene.RefreshGpuBuffers(AppInstance->GetGraphicsDevice(), this->m_commandList);
 
@@ -196,6 +185,18 @@ void PhxEngine::Editor::EditorLayer::OnRender(RHI::TextureHandle& currentBuffer)
 
                     Shader::GeometryPassPushConstants pushConstants = {};
                     pushConstants.GeometryIndex = geometry.GlobalGeometryIndex;
+                    pushConstants.DrawFlags = 0u;
+
+                    auto* mtl = this->m_scene.Materials.GetComponent(geometry.MaterialID);
+                    if (mtl && mtl->ShaderType == MaterialComponent::kEmissive)
+                    {
+                        pushConstants.DrawFlags |= DRAW_FLAG_EMISSIVE;
+                    }
+
+                    if (this->m_editorSettings.DisableIbl)
+                    {
+                        pushConstants.DrawFlags |= DRAW_FLAGS_DISABLE_IBL;
+                    }
 
                     const auto transposedViewProj = DirectX::XMMatrixTranspose(DirectX::XMLoadFloat4x4(&instanceTransform.WorldMatrix));
                     DirectX::XMStoreFloat4x4(&pushConstants.WorldTransform, transposedViewProj);
@@ -232,7 +233,7 @@ void EditorLayer::CreatePSO()
 
         shaderDesc.DebugName = "Geometry Pixel Shader";
         shaderDesc.ShaderType = EShaderType::Pixel;
-        ShaderHandle ps = AppInstance->GetGraphicsDevice()->CreateShader(shaderDesc, gGeometryPassPS, sizeof(gGeometryPassPS));
+        ShaderHandle ps = AppInstance->GetGraphicsDevice()->CreateShader(shaderDesc, gGeometryPassPS_Pbr, sizeof(gGeometryPassPS_Pbr));
 
         std::vector<VertexAttributeDesc> attributeDesc =
         {
@@ -294,5 +295,39 @@ void PhxEngine::Editor::EditorLayer::LoadEditorResources()
 
 void PhxEngine::Editor::EditorLayer::DrawSceneImages()
 {
+}
+
+void PhxEngine::Editor::EditorLayer::CreateSceneLights()
+{
+    auto omniLightEntity = this->m_scene.EntityCreateLight("Omni Light 1");
+    this->m_scene.ComponentAttach(omniLightEntity, this->m_scene.RootEntity);
+
+    LightComponent& omniLight = *this->m_scene.Lights.GetComponent(omniLightEntity);
+    omniLight.Type = LightComponent::LightType::kOmniLight;
+    omniLight.Colour = { 1.0f, 1.0f, 1.0f };
+    omniLight.Energy = 5.0f;
+    omniLight.Range = 5.0f;
+
+
+    TransformComponent& omniLightPos = *this->m_scene.Transforms.GetComponent(omniLightEntity);
+    DirectX::XMVECTOR translation = { 0.0f, 3.0f, 0.0f };
+    omniLightPos.Translate(translation);
+    omniLightPos.UpdateTransform();
+
+    ECS::Entity lightMtlEntity = this->m_scene.EntityCreateMaterial("Omni Light Material");
+
+    {
+        auto& mtl = *this->m_scene.Materials.GetComponent(lightMtlEntity);
+        mtl.Albedo = { omniLight.Colour.x, omniLight.Colour.y, omniLight.Colour.z, 1.0f };
+        // TODO: I am here.
+        mtl.Emissive = { 1.0f, 1.0f, 1.0f, 1.0f };
+        mtl.ShaderType = MaterialComponent::kEmissive;
+    }
+
+    auto meshInstanceEntity = this->m_scene.EntityCreateMeshInstance("Light Debug Mesh Instance");
+    auto& instanceComp = *this->m_scene.MeshInstances.GetComponent(meshInstanceEntity);
+    instanceComp.MeshId = this->m_scene.CreateSphereMeshEntity("LightMesh", lightMtlEntity, 0.1, 5, true);
+
+    this->m_scene.ComponentAttach(meshInstanceEntity, omniLightEntity, true);
 }
 

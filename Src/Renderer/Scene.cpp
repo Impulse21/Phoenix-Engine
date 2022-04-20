@@ -277,10 +277,99 @@ Entity New::Scene::CreateCubeMeshEntity(std::string const& name, Entity mtlID, f
 		meshComponent->ReverseWinding();
 	}
 
+	meshComponent->TotalIndices = meshComponent->Indices.size();
+	meshComponent->TotalVertices = meshComponent->VertexPositions.size();
+
 	auto& geometry = meshComponent->Geometry.emplace_back();
 	geometry.MaterialID = mtlID;
 	geometry.NumIndices = meshComponent->TotalIndices;
 	geometry.NumVertices= meshComponent->TotalVertices;
+	return meshEntity;
+}
+
+Entity PhxEngine::Renderer::New::Scene::CreateSphereMeshEntity(std::string const& name, ECS::Entity mtlID, float diameter, size_t tessellation, bool rhsCoords)
+{
+	if (tessellation < 3)
+	{
+		LOG_CORE_ERROR("tessellation parameter out of range");
+		throw std::out_of_range("tessellation parameter out of range");
+	}
+
+	float radius = diameter / 2.0f;
+	size_t verticalSegments = tessellation;
+	size_t horizontalSegments = tessellation * 2;
+
+	Entity meshEntity = this->EntityCreateMesh(name);
+	auto* meshComponent = this->Meshes.GetComponent(meshEntity);
+	
+	// Create rings of vertices at progressively higher latitudes.
+	for (size_t i = 0; i <= verticalSegments; i++)
+	{
+		float v = 1 - (float)i / verticalSegments;
+
+		float latitude = (i * XM_PI / verticalSegments) - XM_PIDIV2;
+		float dy, dxz;
+
+		XMScalarSinCos(&dy, &dxz, latitude);
+
+		// Create a single ring of vertices at this latitude.
+		for (size_t j = 0; j <= horizontalSegments; j++)
+		{
+			float u = (float)j / horizontalSegments;
+
+			float longitude = j * XM_2PI / horizontalSegments;
+			float dx, dz;
+
+			XMScalarSinCos(&dx, &dz, longitude);
+
+			dx *= dxz;
+			dz *= dxz;
+
+			XMVECTOR normal = XMVectorSet(dx, dy, dz, 0);
+
+			XMFLOAT3 positon;
+			XMStoreFloat3(&positon, normal * radius);
+			meshComponent->VertexPositions.push_back(positon);
+			meshComponent->VertexTexCoords.push_back({ u, v });
+			meshComponent->VertexNormals.push_back({ dx, dy, dz });
+			meshComponent->VertexColour.push_back({ 0.1f, 0.1f, 0.1f });
+			meshComponent->TotalVertices++;
+		}
+	}
+
+	// Fill the index buffer with triangles joining each pair of latitude rings.
+	size_t stride = horizontalSegments + 1;
+	for (size_t i = 0; i < verticalSegments; i++)
+	{
+		for (size_t j = 0; j <= horizontalSegments; j++)
+		{
+			size_t nextI = i + 1;
+			size_t nextJ = (j + 1) % stride;
+
+			meshComponent->Indices.push_back(static_cast<uint16_t>(i * stride + j));
+			meshComponent->Indices.push_back(static_cast<uint16_t>(nextI * stride + j));
+			meshComponent->Indices.push_back(static_cast<uint16_t>(i * stride + nextJ));
+
+			meshComponent->Indices.push_back(static_cast<uint16_t>(i * stride + nextJ));
+			meshComponent->Indices.push_back(static_cast<uint16_t>(nextI * stride + j));
+			meshComponent->Indices.push_back(static_cast<uint16_t>(nextI * stride + nextJ));
+		}
+	}
+
+	meshComponent->TotalIndices = meshComponent->Indices.size();
+
+	meshComponent->ComputeTangentSpace();
+
+	if (rhsCoords)
+	{
+		meshComponent->ReverseWinding();
+	}
+
+	auto& geometry = meshComponent->Geometry.emplace_back();
+	geometry.MaterialID = mtlID;
+	geometry.NumIndices = meshComponent->TotalIndices;
+	geometry.NumVertices = meshComponent->TotalVertices;
+
 	return meshEntity;
 }
 

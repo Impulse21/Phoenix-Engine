@@ -1,5 +1,7 @@
 #include <PhxEngine/Renderer/SceneComponents.h>
 
+#include <PhxEngine/Core/Math.h>
+
 using namespace PhxEngine::Renderer;
 using namespace PhxEngine::ECS;
 using namespace DirectX;
@@ -434,6 +436,7 @@ DirectX::XMMATRIX PhxEngine::Renderer::CameraComponent::ConstructViewMatrixLH()
 void PhxEngine::Renderer::MaterialComponent::PopulateShaderData(Shader::MaterialData& shaderData)
 {
 	shaderData.AlbedoColour = { this->Albedo.x, this->Albedo.y, this->Albedo.z };
+	shaderData.EmissiveColourPacked = Core::Math::PackColour(this->Emissive);
 	shaderData.AO = this->Ao;
 
 	shaderData.AlbedoTexture = INVALID_DESCRIPTOR_INDEX;

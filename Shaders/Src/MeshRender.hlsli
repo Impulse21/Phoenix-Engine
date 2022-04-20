@@ -130,11 +130,6 @@ float GetShadow(float3 shadowMapCoord)
 
 
 #ifdef MESHRENDER_COMPILE_PS
-    
-// Constant normal incidence Fresnel factor for all dielectrics.
-static const float Fdielectric = 0.04f;
-static const float MaxReflectionLod = 7.0f;
-
 
 float4 main(PSInput input) : SV_Target
 {
