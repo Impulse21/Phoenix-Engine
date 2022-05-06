@@ -35,6 +35,8 @@ namespace PhxEngine::Editor
 
 		void CreateSceneLights();
 
+		void PostProcessChain();
+
 	private:
 		uint64_t m_loadFence;
 		RHI::CommandListHandle m_commandList;

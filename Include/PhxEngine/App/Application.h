@@ -2,6 +2,7 @@
 
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Renderer/Renderer.h>
+#include <PhxEngine/Renderer/FontRenderer.h>
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/Asserts.h>
 #include <PhxEngine/Core/FileSystem.h>
@@ -61,6 +62,8 @@ namespace PhxEngine
 			RHI::IGraphicsDevice* GetGraphicsDevice() { return this->m_graphicsDevice; }
 			GLFWwindow* GetWindow() { return this->m_window; }
 
+			// Renderer::FontRenderer* GetFontRenderer() { return this->m_fontRenderer.get(); }
+
 		protected:
 			virtual void Update(Core::TimeStep const& elapsedTime);
 			virtual void Render();
@@ -84,11 +87,12 @@ namespace PhxEngine
 			const std::string m_name;
 			RHI::IGraphicsDevice* m_graphicsDevice;
 			GLFWwindow* m_window;
-
 			bool m_isWindowVisible = false;
 			float m_lastFrameTime = 0.0f;
 
 			std::vector<std::shared_ptr<Core::Layer>> m_layerStack;
+
+			std::unique_ptr<Renderer::FontRenderer> m_fontRenderer;
 
 		private:
 			static Application* sSingleton;

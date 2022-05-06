@@ -1089,7 +1089,7 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::TranslateDepthStencilState(DepthStenc
 
 void PhxEngine::RHI::Dx12::GraphicsDevice::TranslateRasterState(RasterRenderState const& inState, D3D12_RASTERIZER_DESC& outState)
 {
-	switch (inState.fillMode)
+	switch (inState.FillMode)
 	{
 	case RasterFillMode::Solid:
 		outState.FillMode = D3D12_FILL_MODE_SOLID;

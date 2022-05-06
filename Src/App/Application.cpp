@@ -29,7 +29,7 @@ void ApplicationBase::Initialize(EngineEnvironment* engineEnv)
 	this->CreateGltfWindow();
 
 	RHI::SwapChainDesc desc = {};
-	desc.Format = RHI::EFormat::RGBA8_UNORM;
+	desc.Format = RHI::EFormat::RGBA16_FLOAT;
 	desc.Width = WindowWidth;
 	desc.Height = WindowHeight;
 	desc.WindowHandle = (void*)glfwGetWin32Window(this->m_window);
@@ -158,10 +158,14 @@ PhxEngine::New::Application::Application(
 	swapchainDesc.Width = 1280;
 	swapchainDesc.Height = 720;
 	swapchainDesc.Format = RHI::EFormat::RGBA8_UNORM;
+	// HDR - Looks white washed, not sure why?
+	// swapchainDesc.Format = RHI::EFormat::RGBA16_FLOAT;
 	swapchainDesc.WindowHandle = (void*)glfwGetWin32Window(this->m_window);
 
 	this->m_graphicsDevice->CreateSwapChain(swapchainDesc);
+
 	// Initialize any sub-systems
+	// this->m_fontRenderer = std::make_unique<Renderer::FontRenderer>(this->m_graphicsDevice);
 }
 
 PhxEngine::New::Application::~Application()

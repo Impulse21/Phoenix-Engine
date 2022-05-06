@@ -9,7 +9,8 @@ set(shader_source_vs
     Src/MeshRender_CommonVS.hlsl
     Src/MeshRender_PrepassVS.hlsl
     Src/ImGuiVS.hlsl
-    Src/GeometryPassVS.hlsl)
+    Src/GeometryPassVS.hlsl
+    Src/FontVS.hlsl)
     
 set(shader_source_ps
     Src/PbrDemoPS.hlsl
@@ -18,7 +19,8 @@ set(shader_source_ps
     Src/ImGuiPS.hlsl
     Src/GeometryPassPS_Pbr.hlsl
     Src/GeometryPassPS_Emissive.hlsl
-    Src/GeometryPassPS_Unlit.hlsl)
+    Src/GeometryPassPS_Unlit.hlsl
+    Src/FontPS.hlsl)
 
 set(shader_headers
     Src/BRDFFunctions.hlsli
@@ -39,7 +41,9 @@ set(shader_source_includes
     Include/Shaders/MeshRender_BrdfPS_compiled.h
     Include/Shaders/ImGuiVS_compiled.h
     Include/Shaders/ImGuiPS_compiled.h
-    Include/Shaders/GeometryPassVS_compiled.h)
+    Include/Shaders/GeometryPassVS_compiled.h
+    Include/Shaders/FontVS_compiled.h
+    Include/Shaders/FontPS_compiled.h)
 
 set(shader_interop_includes
     Include/Shaders/ShaderInterop.h

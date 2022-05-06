@@ -26,6 +26,7 @@ namespace PhxEngine::Core
 		void* m_data;
 		size_t m_size;
 	};
+
 	class IFileSystem
 	{
 	public:

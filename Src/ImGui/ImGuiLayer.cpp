@@ -64,7 +64,7 @@ void PhxEngine::Debug::ImGuiLayer::OnAttach()
     desc.Height = height;
     desc.Format = RHI::EFormat::RGBA8_UNORM;
     desc.MipLevels = 1;
-    desc.DebugName = "IMGUI Texture Font";
+    desc.DebugName = "IMGUI Font Texture";
 
     this->m_fontTexture = this->m_graphicsDevice->CreateTexture(desc);
 
@@ -139,7 +139,7 @@ void PhxEngine::Debug::ImGuiLayer::OnRender(RHI::TextureHandle& currentBuffer)
 		float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
 		float T = drawData->DisplayPos.y;
 		float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
-		float mvp[4][4] =
+		static const float mvp[4][4] =
 		{
 			{ 2.0f / (R - L),   0.0f,           0.0f,       0.0f },
 			{ 0.0f,         2.0f / (T - B),     0.0f,       0.0f },

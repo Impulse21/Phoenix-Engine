@@ -161,7 +161,7 @@ void PhxEngine::Editor::EditorLayer::OnRender(RHI::TextureHandle& currentBuffer)
             shaderLight.SetRange(light.Range);
             shaderLight.SetEnergy(light.Energy);
             shaderLight.Position = transform.GetPosition();
-            shaderLight.ColorPacked = Math::PackColour({ light.Colour.x, light.Colour.y, light.Colour.z, 1.0f });
+            shaderLight.ColorPacked = Math::PackColour(DirectX::XMFLOAT4(light.Colour.x, light.Colour.y, light.Colour.z, 1.0f ));
         }
 
         this->m_commandList->BindDynamicStructuredBuffer<Shader::ShaderLight>(GeometryPassRP::LightSB, sLights);
@@ -213,7 +213,7 @@ void PhxEngine::Editor::EditorLayer::OnRender(RHI::TextureHandle& currentBuffer)
 
     // Draw Debug World
     // Draw Lights
-    
+
     this->m_commandList->TransitionBarrier(currentBuffer, ResourceStates::RenderTarget, ResourceStates::Present);
 
     this->m_commandList->Close();
@@ -329,5 +329,9 @@ void PhxEngine::Editor::EditorLayer::CreateSceneLights()
     instanceComp.MeshId = this->m_scene.CreateSphereMeshEntity("LightMesh", lightMtlEntity, 0.1, 5, true);
 
     this->m_scene.ComponentAttach(meshInstanceEntity, omniLightEntity, true);
+}
+
+void PhxEngine::Editor::EditorLayer::PostProcessChain()
+{
 }
 

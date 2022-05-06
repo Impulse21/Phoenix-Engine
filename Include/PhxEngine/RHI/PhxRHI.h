@@ -466,7 +466,7 @@ namespace PhxEngine::RHI
 
     struct RasterRenderState
     {
-        RasterFillMode fillMode = RasterFillMode::Solid;
+        RasterFillMode FillMode = RasterFillMode::Solid;
         RasterCullMode CullMode = RasterCullMode::Back;
         bool FrontCounterClockwise = false;
         bool DepthClipEnable = false;

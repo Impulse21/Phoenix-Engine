@@ -121,6 +121,35 @@ struct ImguiDrawInfo
 	uint TextureIndex;
 };
 
+struct FontVertex
+{
+	float2 Position;
+	float2 TexCoord;
+};
+
+struct FontDrawInfo
+{
+	float4x4 Mvp;
+
+	// -- 16 byte boundary ----
+	uint ColorPacked;
+	uint TextureIndex;
+
+#ifndef __cplusplus
+	inline float4 GetColour()
+	{
+		float4 refVal;
+
+		refVal.x = (float)((ColorPacked >> 0) & 0xFF) / 255.0f;
+		refVal.y = (float)((ColorPacked >> 8) & 0xFF) / 255.0f;
+		refVal.z = (float)((ColorPacked >> 16) & 0xFF) / 255.0f;
+		refVal.w = (float)((ColorPacked >> 24) & 0xFF) / 255.0f;
+
+		return refVal;
+	}
+#endif
+};
+
 struct SceneData
 {
 	uint MeshBufferIndex;
