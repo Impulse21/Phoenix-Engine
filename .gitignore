@@ -10,3 +10,4 @@ CTestTestfile.cmake
 
 build
 /.vs
+/PhxEngine/.vs/PhxEngine/v17/.suo
