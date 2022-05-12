@@ -11,3 +11,7 @@ CTestTestfile.cmake
 build
 /.vs
 /PhxEngine/.vs/PhxEngine/v17/.suo
+/PhxEngine/__x64/Debug
+*.user
+/TestApp/__x64/Debug
+/__Build/x64/Debug
