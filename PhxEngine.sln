@@ -5,7 +5,7 @@ VisualStudioVersion = 17.1.32421.90
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhxEngine_Windows", "PhxEngine\PhxEngine_Windows.vcxproj", "{7E0C0A99-2D8E-4C8A-8A69-0605D34A03D7}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestApp", "TestApp\TestApp.vcxproj", "{7A202248-B4DB-4544-9AFA-60BA5E62EE0E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestBed", "TestBed\TestBed.vcxproj", "{BAAA6322-76B4-49F4-83D9-E103CEB627D9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +17,10 @@ Global
 		{7E0C0A99-2D8E-4C8A-8A69-0605D34A03D7}.Debug|x64.Build.0 = Debug|x64
 		{7E0C0A99-2D8E-4C8A-8A69-0605D34A03D7}.Release|x64.ActiveCfg = Release|x64
 		{7E0C0A99-2D8E-4C8A-8A69-0605D34A03D7}.Release|x64.Build.0 = Release|x64
-		{7A202248-B4DB-4544-9AFA-60BA5E62EE0E}.Debug|x64.ActiveCfg = Debug|x64
-		{7A202248-B4DB-4544-9AFA-60BA5E62EE0E}.Debug|x64.Build.0 = Debug|x64
-		{7A202248-B4DB-4544-9AFA-60BA5E62EE0E}.Release|x64.ActiveCfg = Release|x64
-		{7A202248-B4DB-4544-9AFA-60BA5E62EE0E}.Release|x64.Build.0 = Release|x64
+		{BAAA6322-76B4-49F4-83D9-E103CEB627D9}.Debug|x64.ActiveCfg = Debug|x64
+		{BAAA6322-76B4-49F4-83D9-E103CEB627D9}.Debug|x64.Build.0 = Debug|x64
+		{BAAA6322-76B4-49F4-83D9-E103CEB627D9}.Release|x64.ActiveCfg = Release|x64
+		{BAAA6322-76B4-49F4-83D9-E103CEB627D9}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

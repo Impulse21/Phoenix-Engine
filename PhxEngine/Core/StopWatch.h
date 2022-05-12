@@ -19,7 +19,7 @@ namespace PhxEngine::Core
 		{
 			auto timestamp2 = std::chrono::high_resolution_clock::now();
 			std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(timestamp2 - this->m_timestamp);
-			return timeSpan.count();
+			return TimeStep(static_cast<float>(timeSpan.count()));
 		}
 
 	private:

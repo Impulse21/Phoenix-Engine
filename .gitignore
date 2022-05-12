@@ -16,3 +16,6 @@ build
 /TestApp/__x64/Debug
 /__Build/x64/Debug
 /TestApp/TestApp.aps
+/packages
+/TestBed/__x64/Debug
+/TestBed/x64/Debug

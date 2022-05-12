@@ -26,12 +26,12 @@ namespace PhxEngine::RHI::Dx12
     public:
         virtual ~IRootSignature() = default;
 
-        virtual RefCountPtr<ID3D12RootSignature> GetD3D12RootSignature() = 0;
+        virtual Microsoft::WRL::ComPtr<ID3D12RootSignature> GetD3D12RootSignature() = 0;
     };
 
-    typedef RefCountPtr<IRootSignature> RootSignatureHandle;
+    typedef std::shared_ptr<IRootSignature> RootSignatureHandle;
 
-    class Shader : public RefCounter<IShader>
+    class Shader : public IShader
     {
     public:
         Shader(ShaderDesc const& desc, const void* binary, size_t binarySize)
@@ -50,7 +50,7 @@ namespace PhxEngine::RHI::Dx12
         const ShaderDesc m_desc;
     };
 
-    struct InputLayout : RefCounter<IInputLayout>
+    struct InputLayout : public IInputLayout
     {
         std::vector<VertexAttributeDesc> Attributes;
         std::vector<D3D12_INPUT_ELEMENT_DESC> InputElements;
@@ -61,41 +61,41 @@ namespace PhxEngine::RHI::Dx12
         uint32_t GetNumAttributes() const override { return this->Attributes.size(); }
         const VertexAttributeDesc* GetAttributeDesc(uint32_t index) const override
         {
-            PHX_ASSERT(index < this->GetNumAttributes());
+            assert(index < this->GetNumAttributes());
             return &this->Attributes[index];
         }
     };
 
-    struct GraphicsPSO : public RefCounter<IGraphicsPSO>
+    struct GraphicsPSO : public IGraphicsPSO
     {
         RootSignatureHandle RootSignature;
-        RefCountPtr<ID3D12PipelineState> D3D12PipelineState;
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
         GraphicsPSODesc Desc;
 
 
         const GraphicsPSODesc& GetDesc() const override { return this->Desc; }
     };
 
-    struct Texture final : public RefCounter<ITexture>
+    struct Texture final : public ITexture
     {
         TextureDesc Desc = {};
-        RefCountPtr<ID3D12Resource> D3D12Resource;
+        Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
         DescriptorHeapAllocation RtvAllocation;
         DescriptorHeapAllocation DsvAllocation;
         DescriptorHeapAllocation SrvAllocation;
 
         // TODO: Free Index
-        DescriptorIndex BindlessResourceIndex = INVALID_DESCRIPTOR_INDEX;
+        DescriptorIndex BindlessResourceIndex = cInvalidDescriptorIndex;
 
         const TextureDesc& GetDesc() const { return this->Desc; }
         virtual const DescriptorIndex GetDescriptorIndex() const { return this->BindlessResourceIndex; }
     };
 
-    struct GpuBuffer final : public RefCounter<IBuffer>
+    struct GpuBuffer final : public IBuffer
     {
         BufferDesc Desc = {};
-        RefCountPtr<ID3D12Resource> D3D12Resource;
-        DescriptorIndex BindlessResourceIndex = INVALID_DESCRIPTOR_INDEX;
+        Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
+        DescriptorIndex BindlessResourceIndex = cInvalidDescriptorIndex;
 
         // -- Views ---
         DescriptorHeapAllocation SrvAllocation;
@@ -109,7 +109,7 @@ namespace PhxEngine::RHI::Dx12
 
     struct SwapChain
     {
-        RefCountPtr<IDXGISwapChain4> DxgiSwapchain;
+        Microsoft::WRL::ComPtr<IDXGISwapChain4> DxgiSwapchain;
         SwapChainDesc Desc;
         std::vector<TextureHandle> BackBuffers;
     };
@@ -174,10 +174,10 @@ namespace PhxEngine::RHI::Dx12
 
         // -- Dx12 Specific functions ---
     public:
-        TextureHandle CreateRenderTarget(TextureDesc const& desc, RefCountPtr<ID3D12Resource> d3d12TextureResource);
+        TextureHandle CreateRenderTarget(TextureDesc const& desc, Microsoft::WRL::ComPtr<ID3D12Resource> d3d12TextureResource);
 
         RootSignatureHandle CreateRootSignature(GraphicsPSODesc const& desc);
-        RefCountPtr<ID3D12PipelineState> CreateD3D12PipelineState(GraphicsPSODesc const& desc, RootSignatureHandle rootSignature);
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateD3D12PipelineState(GraphicsPSODesc const& desc, RootSignatureHandle rootSignature);
 
     public:
         void RunGarbageCollection();
@@ -217,11 +217,11 @@ namespace PhxEngine::RHI::Dx12
 
         // -- Dx12 API creation ---
     private:
-        RefCountPtr<IDXGIFactory6> CreateFactory() const;
-        void CreateDevice(RefCountPtr<IDXGIAdapter> gpuAdapter);
+        Microsoft::WRL::ComPtr<IDXGIFactory6> CreateFactory() const;
+        void CreateDevice(Microsoft::WRL::ComPtr<IDXGIAdapter> gpuAdapter);
 
-        RefCountPtr<IDXGIAdapter1> SelectOptimalGpu();
-        std::vector<RefCountPtr<IDXGIAdapter1>> EnumerateAdapters(RefCountPtr<IDXGIFactory6> factory, bool includeSoftwareAdapter = false);
+        Microsoft::WRL::ComPtr<IDXGIAdapter1> SelectOptimalGpu();
+        std::vector<Microsoft::WRL::ComPtr<IDXGIAdapter1>> EnumerateAdapters(Microsoft::WRL::ComPtr<IDXGIFactory6> factory, bool includeSoftwareAdapter = false);
 
          // -- Pipeline state conversion --- 
     private:
@@ -234,8 +234,8 @@ namespace PhxEngine::RHI::Dx12
 		Microsoft::WRL::ComPtr<ID3D12Device> m_device;
 		Microsoft::WRL::ComPtr<ID3D12Device2> m_device2;
 		Microsoft::WRL::ComPtr<ID3D12Device5> m_device5;
-		// RefCountPtr<IDxcUtils> dxcUtils;
-        Microsoft::WRL::ComPtr<IDXGIAdapter> m_gpuAdapter;
+		// std::shared_ptr<IDxcUtils> dxcUtils;
+		Microsoft::WRL::ComPtr<IDXGIAdapter> m_gpuAdapter;
 
 		D3D12_FEATURE_DATA_ROOT_SIGNATURE FeatureDataRootSignature = {};
 		D3D12_FEATURE_DATA_SHADER_MODEL   FeatureDataShaderModel = {};

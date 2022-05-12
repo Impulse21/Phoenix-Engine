@@ -3,7 +3,7 @@
 #include "phxpch.h"
 
 #include "Core/Application.h"
-
+#include "RHI/Dx12/PhxRHI_Dx12.h"
 
 #ifdef _WIN32
 extern PhxEngine::Core::Application* PhxEngine::Core::CreateApplication(CommandLineArgs args);
@@ -16,6 +16,8 @@ HINSTANCE hInst;                                        // current instance
 const WCHAR* szTitle = L"PhxEngine";                    // The title bar text
 const WCHAR* szWindowClass = L"PhxEngine";              // the main window class name
 
+std::unique_ptr<PhxEngine::RHI::IGraphicsDevice> gGraphicsDevice;
+
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
@@ -27,38 +29,40 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_ LPWSTR    lpCmdLine,
     _In_ int       nCmdShow)
 {
-    UNREFERENCED_PARAMETER(hPrevInstance);
-    UNREFERENCED_PARAMETER(lpCmdLine);
+	UNREFERENCED_PARAMETER(hPrevInstance);
+	UNREFERENCED_PARAMETER(lpCmdLine);
 
-    // TODO: Place code here.
+	// TODO: Create Graphics Device
+	// Default is to use DirectX for now
+    gGraphicsDevice = PhxEngine::RHI::Dx12::Factory::CreateDevice();
 
-    // Initialize global strings
-    MyRegisterClass(hInstance);
+	auto app = std::unique_ptr<PhxEngine::Core::Application>(PhxEngine::Core::CreateApplication({}));
+	app->Initialize(gGraphicsDevice.get());
 
-    // Perform application initialization:
-    if (!InitInstance(hInstance, nCmdShow))
-    {
-        return FALSE;
-    }
+	MyRegisterClass(hInstance);
 
-    MSG msg = { 0 };
-    while (msg.message != WM_QUIT)
-    {
-        if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-        else 
-        {
-            // TODO: Run Frame
-        }
-    }
+	// Perform application initialization:
+	if (!InitInstance(hInstance, nCmdShow))
+	{
+		return FALSE;
+	}
 
-    return (int)msg.wParam;
+	MSG msg = { 0 };
+	while (msg.message != WM_QUIT)
+	{
+		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+		else
+		{
+			app->RunFrame();
+		}
+	}
+
+	return (int)msg.wParam;
 }
-
-
 
 //
 //  FUNCTION: MyRegisterClass()
