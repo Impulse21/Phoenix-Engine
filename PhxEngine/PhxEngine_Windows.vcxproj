@@ -21,6 +21,8 @@
   <ItemGroup>
     <ClInclude Include="Core\Application.h" />
     <ClInclude Include="Core\EntryPoint.h" />
+    <ClInclude Include="Core\StopWatch.h" />
+    <ClInclude Include="Core\TimeStep.h" />
     <ClInclude Include="PhxEngine.h" />
     <ClInclude Include="phxpch.h" />
   </ItemGroup>

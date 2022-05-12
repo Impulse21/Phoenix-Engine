@@ -15,3 +15,4 @@ build
 *.user
 /TestApp/__x64/Debug
 /__Build/x64/Debug
+/TestApp/TestApp.aps

@@ -10,6 +10,16 @@ namespace PhxEngine::Core
 
 	class Application
 	{
+	public:
+		// virtual void Initialize();
+		//void RunFrame();
+
+		//void FixedUpdate();
+		//void Update();
+		//void Render();
+
+	private:
+
 	};
 
 	// Defined by client

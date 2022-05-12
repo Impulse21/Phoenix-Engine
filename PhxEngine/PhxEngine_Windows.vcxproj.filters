@@ -9,6 +9,12 @@
       <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="phxpch.h" />
+    <ClInclude Include="Core\TimeStep.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\StopWatch.h">
+      <Filter>Core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
