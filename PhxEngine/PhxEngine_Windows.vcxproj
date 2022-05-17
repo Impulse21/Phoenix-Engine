@@ -21,41 +21,46 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Core\Application.h" />
+    <ClInclude Include="Core\Canvas.h" />
     <ClInclude Include="Core\EntryPoint.h" />
     <ClInclude Include="Core\Platform.h" />
     <ClInclude Include="Core\StopWatch.h" />
     <ClInclude Include="Core\TimeStep.h" />
+    <ClInclude Include="Graphics\TextRenderer.h" />
     <ClInclude Include="PhxEngine.h" />
     <ClInclude Include="phxpch.h" />
-    <ClInclude Include="RHI\Dx12\BiindlessDescriptorTable.h" />
-    <ClInclude Include="RHI\Dx12\CommandAllocatorPool.h" />
-    <ClInclude Include="RHI\Dx12\CommandList.h" />
-    <ClInclude Include="RHI\Dx12\CommandQueue.h" />
-    <ClInclude Include="RHI\Dx12\Common.h" />
-    <ClInclude Include="RHI\Dx12\d3dx12.h" />
-    <ClInclude Include="RHI\Dx12\DescriptorHeap.h" />
-    <ClInclude Include="RHI\Dx12\GraphicsDevice.h" />
-    <ClInclude Include="RHI\Dx12\PhxRHI_Dx12.h" />
-    <ClInclude Include="RHI\Dx12\RootSignatureBuilder.h" />
-    <ClInclude Include="RHI\Dx12\UploadBuffer.h" />
-    <ClInclude Include="RHI\PhxRHI.h" />
+    <ClInclude Include="Graphics\RHI\Dx12\BiindlessDescriptorTable.h" />
+    <ClInclude Include="Graphics\RHI\Dx12\CommandAllocatorPool.h" />
+    <ClInclude Include="Graphics\RHI\Dx12\CommandList.h" />
+    <ClInclude Include="Graphics\RHI\Dx12\CommandQueue.h" />
+    <ClInclude Include="Graphics\RHI\Dx12\Common.h" />
+    <ClInclude Include="Graphics\RHI\Dx12\d3dx12.h" />
+    <ClInclude Include="Graphics\RHI\Dx12\DescriptorHeap.h" />
+    <ClInclude Include="Graphics\RHI\Dx12\GraphicsDevice.h" />
+    <ClInclude Include="Graphics\RHI\Dx12\PhxRHI_Dx12.h" />
+    <ClInclude Include="Graphics\RHI\Dx12\RootSignatureBuilder.h" />
+    <ClInclude Include="Graphics\RHI\Dx12\UploadBuffer.h" />
+    <ClInclude Include="Graphics\RHI\PhxRHI.h" />
+    <ClInclude Include="ThirdParty\stb_truetype.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Core\Application.cpp" />
+    <ClCompile Include="Graphics\TextRenderer.cpp" />
     <ClCompile Include="phxpch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="RHI\Dx12\BiindlessDescriptorTable.cpp" />
-    <ClCompile Include="RHI\Dx12\CommandAllocatorPool.cpp" />
-    <ClCompile Include="RHI\Dx12\CommandList.cpp" />
-    <ClCompile Include="RHI\Dx12\CommandQueue.cpp" />
-    <ClCompile Include="RHI\Dx12\DescriptorHeap.cpp" />
-    <ClCompile Include="RHI\Dx12\DxgiFormatMapping.cpp" />
-    <ClCompile Include="RHI\Dx12\GraphicsDevice.cpp" />
-    <ClCompile Include="RHI\Dx12\PhxRHI_Dx12.cpp" />
-    <ClCompile Include="RHI\Dx12\RootSignatureBuilder.cpp" />
-    <ClCompile Include="RHI\Dx12\UploadBuffer.cpp" />
+    <ClCompile Include="Graphics\RHI\Dx12\BiindlessDescriptorTable.cpp" />
+    <ClCompile Include="Graphics\RHI\Dx12\CommandAllocatorPool.cpp" />
+    <ClCompile Include="Graphics\RHI\Dx12\CommandList.cpp" />
+    <ClCompile Include="Graphics\RHI\Dx12\CommandQueue.cpp" />
+    <ClCompile Include="Graphics\RHI\Dx12\DescriptorHeap.cpp" />
+    <ClCompile Include="Graphics\RHI\Dx12\DxgiFormatMapping.cpp" />
+    <ClCompile Include="Graphics\RHI\Dx12\GraphicsDevice.cpp" />
+    <ClCompile Include="Graphics\RHI\Dx12\PhxRHI_Dx12.cpp" />
+    <ClCompile Include="Graphics\RHI\Dx12\RootSignatureBuilder.cpp" />
+    <ClCompile Include="Graphics\RHI\Dx12\UploadBuffer.cpp" />
+    <ClCompile Include="ThirdParty\ThirdParty_Common.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

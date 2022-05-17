@@ -140,7 +140,11 @@ DescriptorHeapAllocationPage::DescriptorHeapAllocationPage(
 	this->m_descritporSize = d3dDevice->GetDescriptorHandleIncrementSize(this->m_heapDesc.Type);
 
 	this->m_baseCpuDescritpor = this->m_d3d12Heap->GetCPUDescriptorHandleForHeapStart();
-	this->m_baseGpuDescritpor = this->m_d3d12Heap->GetGPUDescriptorHandleForHeapStart();
+
+	if (this->IsShaderVisibile())
+	{
+		this->m_baseGpuDescritpor = this->m_d3d12Heap->GetGPUDescriptorHandleForHeapStart();
+	}
 
 	// Initialize the free lists
 	this->AddNewBlock(0, this->m_numFreeHandles);

@@ -18,7 +18,7 @@
 
 #endif
 
-#include "RHI/PhxRHI.h"
+#include "Graphics/RHI/PhxRHI.h"
 
 
 namespace PhxEngine::RHI::Dx12

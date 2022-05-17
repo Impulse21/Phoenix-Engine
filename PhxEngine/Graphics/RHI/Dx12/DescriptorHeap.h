@@ -168,6 +168,7 @@ namespace PhxEngine::RHI::Dx12
 		uint32_t GetNumFreeHandles() const { return this->m_numFreeHandles; }
 		uint32_t GetDescriptorSize() const { return this->m_descritporSize; }
 		uint32_t GetId() const { return this->m_id; }
+		bool IsShaderVisibile() const { return (m_heapDesc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) != 0; }
 
 	protected:
 		uint32_t ComputeCpuOffset(D3D12_CPU_DESCRIPTOR_HANDLE handle);

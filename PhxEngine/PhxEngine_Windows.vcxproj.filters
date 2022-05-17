@@ -15,55 +15,70 @@
     <ClInclude Include="Core\StopWatch.h">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="RHI\PhxRHI.h">
-      <Filter>RHI</Filter>
-    </ClInclude>
     <ClInclude Include="Core\Platform.h">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="RHI\Dx12\BiindlessDescriptorTable.h">
-      <Filter>RHI\Dx12</Filter>
+    <ClInclude Include="Core\Canvas.h">
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="RHI\Dx12\CommandAllocatorPool.h">
-      <Filter>RHI\Dx12</Filter>
+    <ClInclude Include="Graphics\TextRenderer.h">
+      <Filter>Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="RHI\Dx12\CommandList.h">
-      <Filter>RHI\Dx12</Filter>
+    <ClInclude Include="Graphics\RHI\PhxRHI.h">
+      <Filter>Graphics\RHI</Filter>
     </ClInclude>
-    <ClInclude Include="RHI\Dx12\CommandQueue.h">
-      <Filter>RHI\Dx12</Filter>
+    <ClInclude Include="Graphics\RHI\Dx12\UploadBuffer.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
     </ClInclude>
-    <ClInclude Include="RHI\Dx12\Common.h">
-      <Filter>RHI\Dx12</Filter>
+    <ClInclude Include="Graphics\RHI\Dx12\PhxRHI_Dx12.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
     </ClInclude>
-    <ClInclude Include="RHI\Dx12\DescriptorHeap.h">
-      <Filter>RHI\Dx12</Filter>
+    <ClInclude Include="Graphics\RHI\Dx12\RootSignatureBuilder.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
     </ClInclude>
-    <ClInclude Include="RHI\Dx12\GraphicsDevice.h">
-      <Filter>RHI\Dx12</Filter>
+    <ClInclude Include="Graphics\RHI\Dx12\BiindlessDescriptorTable.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
     </ClInclude>
-    <ClInclude Include="RHI\Dx12\PhxRHI_Dx12.h">
-      <Filter>RHI\Dx12</Filter>
+    <ClInclude Include="Graphics\RHI\Dx12\CommandAllocatorPool.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
     </ClInclude>
-    <ClInclude Include="RHI\Dx12\RootSignatureBuilder.h">
-      <Filter>RHI\Dx12</Filter>
+    <ClInclude Include="Graphics\RHI\Dx12\CommandList.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
     </ClInclude>
-    <ClInclude Include="RHI\Dx12\UploadBuffer.h">
-      <Filter>RHI\Dx12</Filter>
+    <ClInclude Include="Graphics\RHI\Dx12\CommandQueue.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
     </ClInclude>
-    <ClInclude Include="RHI\Dx12\d3dx12.h">
-      <Filter>RHI\Dx12</Filter>
+    <ClInclude Include="Graphics\RHI\Dx12\Common.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RHI\Dx12\d3dx12.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RHI\Dx12\DescriptorHeap.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RHI\Dx12\GraphicsDevice.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\stb_truetype.h">
+      <Filter>ThirdParty</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
       <UniqueIdentifier>{0d44b46a-f0b5-4f3a-bcaa-27884974a40c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="RHI">
+    <Filter Include="Graphics">
+      <UniqueIdentifier>{009bac3d-3ad6-4165-9a7e-9e32c1e3d6c8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\RHI">
       <UniqueIdentifier>{a61f0643-fd91-4e27-9499-61249cf9e576}</UniqueIdentifier>
     </Filter>
-    <Filter Include="RHI\Dx12">
+    <Filter Include="Graphics\RHI\Dx12">
       <UniqueIdentifier>{d2af42ca-7d13-4335-841a-0e43832ec792}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty">
+      <UniqueIdentifier>{42dc1f03-4cd0-4112-a753-b84892813d3c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -71,35 +86,41 @@
       <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="phxpch.cpp" />
-    <ClCompile Include="RHI\Dx12\BiindlessDescriptorTable.cpp">
-      <Filter>RHI\Dx12</Filter>
+    <ClCompile Include="Graphics\TextRenderer.cpp">
+      <Filter>Graphics</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\Dx12\CommandAllocatorPool.cpp">
-      <Filter>RHI\Dx12</Filter>
+    <ClCompile Include="Graphics\RHI\Dx12\PhxRHI_Dx12.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\Dx12\CommandList.cpp">
-      <Filter>RHI\Dx12</Filter>
+    <ClCompile Include="Graphics\RHI\Dx12\RootSignatureBuilder.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\Dx12\CommandQueue.cpp">
-      <Filter>RHI\Dx12</Filter>
+    <ClCompile Include="Graphics\RHI\Dx12\UploadBuffer.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\Dx12\DescriptorHeap.cpp">
-      <Filter>RHI\Dx12</Filter>
+    <ClCompile Include="Graphics\RHI\Dx12\GraphicsDevice.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\Dx12\DxgiFormatMapping.cpp">
-      <Filter>RHI\Dx12</Filter>
+    <ClCompile Include="Graphics\RHI\Dx12\BiindlessDescriptorTable.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\Dx12\GraphicsDevice.cpp">
-      <Filter>RHI\Dx12</Filter>
+    <ClCompile Include="Graphics\RHI\Dx12\CommandAllocatorPool.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\Dx12\PhxRHI_Dx12.cpp">
-      <Filter>RHI\Dx12</Filter>
+    <ClCompile Include="Graphics\RHI\Dx12\CommandList.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\Dx12\RootSignatureBuilder.cpp">
-      <Filter>RHI\Dx12</Filter>
+    <ClCompile Include="Graphics\RHI\Dx12\CommandQueue.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\Dx12\UploadBuffer.cpp">
-      <Filter>RHI\Dx12</Filter>
+    <ClCompile Include="Graphics\RHI\Dx12\DescriptorHeap.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RHI\Dx12\DxgiFormatMapping.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\ThirdParty_Common.cpp">
+      <Filter>ThirdParty</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

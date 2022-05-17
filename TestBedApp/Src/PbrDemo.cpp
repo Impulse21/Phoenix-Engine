@@ -179,7 +179,7 @@ void PbrDemo::RenderScene()
     TextureHandle backBuffer = this->GetGraphicsDevice()->GetBackBuffer();
     this->GetCommandList()->Open();
     {
-        this->GetCommandList()->BeginScropedMarker("Clear Render Target");
+        this->GetCommandList()->BeginScopedMarker("Clear Render Target");
         this->GetCommandList()->TransitionBarrier(backBuffer, ResourceStates::Present, ResourceStates::RenderTarget);
         this->GetCommandList()->ClearTextureFloat(backBuffer, { 0.0f, 0.0f, 0.0f, 1.0f });
         this->GetCommandList()->ClearDepthStencilTexture(this->m_depthBuffer, true, 1.0f, false, 0);
@@ -190,7 +190,7 @@ void PbrDemo::RenderScene()
     }
 
     {
-        ScopedMarker _ = this->GetCommandList()->BeginScropedMarker("Shadow Pass");
+        ScopedMarker _ = this->GetCommandList()->BeginScopedMarker("Shadow Pass");
         
         this->GetCommandList()->SetGraphicsPSO(this->m_shadowMapPassPso);
         this->GetCommandList()->SetRenderTargets({}, this->m_shadowMap);
@@ -230,12 +230,12 @@ void PbrDemo::RenderScene()
     }
 
     {
-        ScopedMarker m = this->GetCommandList()->BeginScropedMarker("Transition Shadow Map");
+        ScopedMarker m = this->GetCommandList()->BeginScopedMarker("Transition Shadow Map");
         this->GetCommandList()->TransitionBarrier(this->m_shadowMap, ResourceStates::DepthWrite, ResourceStates::ShaderResource);
     }
 
     {
-        ScopedMarker m = this->GetCommandList()->BeginScropedMarker("Main Render Pass");
+        ScopedMarker m = this->GetCommandList()->BeginScopedMarker("Main Render Pass");
 
         // Set PSO
         this->GetCommandList()->SetGraphicsPSO(this->m_geomtryPassPso);

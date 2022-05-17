@@ -3,7 +3,9 @@
 #include <atomic>
 #include "StopWatch.h"
 
-#include "RHI/PhxRHI.h"
+#include "Core/Canvas.h"
+#include "Core/Platform.h"
+#include "Graphics/RHI/PhxRHI.h"
 
 namespace PhxEngine::Core
 {
@@ -23,7 +25,9 @@ namespace PhxEngine::Core
 		//void FixedUpdate();
 		void Update(TimeStep deltaTime);
 		void Render();
-		void Compose();
+		void Compose(PhxEngine::RHI::CommandListHandle cmdList);
+
+		void SetWindow(Core::Platform::WindowHandle windowHandle, bool isFullscreen = false);
 
 	private:
 		bool m_isInitialized;
@@ -32,6 +36,11 @@ namespace PhxEngine::Core
 		StopWatch m_stopWatch;
 
 		PhxEngine::RHI::IGraphicsDevice* m_graphicsDevice = nullptr;
+		Core::Platform::WindowHandle m_windowHandle = nullptr;
+		Core::Canvas m_canvas;
+
+		// RHI Resources
+		PhxEngine::RHI::CommandListHandle m_composeCommandList;
 	};
 
 	// Defined by client

@@ -2,6 +2,8 @@
 
 #ifdef _WIN32
 
+#define PHX_PLATFORM_WINDOWS_DESKTOP
+
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif // NOMINMAX
@@ -21,9 +23,28 @@ namespace PhxEngine::Core::Platform
 {
 #ifdef _WIN32
 #ifdef PLATFORM_UWP
-using WindowHandle = const winrt::Windows::UI::Core::CoreWindow*;
+	using WindowHandle = const winrt::Windows::UI::Core::CoreWindow*;
 #else
-using WindowHandle = HWND;
+	using WindowHandle = HWND;
 #endif // PLATFORM_UWP
 #endif
+
+
+	struct WindowProperties
+	{
+		int Width = 0;
+		int Height = 0;
+		float Dpi = 0.0f;
+	};
+
+	inline void GetWindowProperties(WindowHandle windowHandle, WindowProperties& outProperties)
+	{
+#ifdef PHX_PLATFORM_WINDOWS_DESKTOP
+		outProperties.Dpi = static_cast<float>(GetDpiForWindow(windowHandle));
+		RECT rect = {};
+		GetClientRect(windowHandle, &rect);
+		outProperties.Width = static_cast<int>(rect.right - rect.left);
+		outProperties.Height = static_cast<int>(rect.bottom - rect.top);
+#endif
+	}
 }

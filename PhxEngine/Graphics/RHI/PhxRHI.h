@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Core/Platform.h"
+#include "Core/Platform.h"
 
 #include <stdint.h>
 #include <optional>
@@ -853,7 +853,7 @@ namespace PhxEngine::RHI
         virtual void Open() = 0;
         virtual void Close() = 0;
 
-        virtual ScopedMarker BeginScropedMarker(std::string name) = 0;
+        virtual ScopedMarker BeginScopedMarker(std::string name) = 0;
         virtual void BeginMarker(std::string name) = 0;
         virtual void EndMarker() = 0;
 

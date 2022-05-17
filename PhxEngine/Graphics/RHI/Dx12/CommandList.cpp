@@ -106,7 +106,7 @@ void PhxEngine::RHI::Dx12::CommandList::Close()
     this->m_d3d12CommandList->Close();
 }
 
-ScopedMarker CommandList::BeginScropedMarker(std::string name)
+ScopedMarker CommandList::BeginScopedMarker(std::string name)
 {
     this->BeginMarker(name);
     return ScopedMarker(this);

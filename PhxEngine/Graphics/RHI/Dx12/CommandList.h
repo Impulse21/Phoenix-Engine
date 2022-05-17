@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RHI/PhxRHI.h"
+#include "Graphics/RHI/PhxRHI.h"
 #include "Common.h"
 #include "CommandAllocatorPool.h"
 
@@ -53,7 +53,7 @@ namespace PhxEngine::RHI::Dx12
 		void Open() override;
 		void Close() override;
 
-		ScopedMarker BeginScropedMarker(std::string name) override;
+		ScopedMarker BeginScopedMarker(std::string name) override;
 		void BeginMarker(std::string name) override;
 		void EndMarker() override;
 

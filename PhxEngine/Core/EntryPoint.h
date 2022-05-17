@@ -3,7 +3,7 @@
 #include "phxpch.h"
 
 #include "Core/Application.h"
-#include "RHI/Dx12/PhxRHI_Dx12.h"
+#include "Graphics/RHI/Dx12/PhxRHI_Dx12.h"
 
 #ifdef _WIN32
 extern PhxEngine::Core::Application* PhxEngine::Core::CreateApplication(CommandLineArgs args);
@@ -13,6 +13,7 @@ extern PhxEngine::Core::Application* PhxEngine::Core::CreateApplication(CommandL
 
 // Global Variables:
 HINSTANCE hInst;                                        // current instance
+HWND gHWnd;
 const WCHAR* szTitle = L"PhxEngine";                    // The title bar text
 const WCHAR* szWindowClass = L"PhxEngine";              // the main window class name
 
@@ -46,6 +47,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	{
 		return FALSE;
 	}
+
+    app->SetWindow(gHWnd);
 
 	MSG msg = { 0 };
 	while (msg.message != WM_QUIT)
@@ -104,16 +107,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
     hInst = hInstance; // Store instance handle in our global variable
 
-    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+    gHWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
-    if (!hWnd)
+    if (!gHWnd)
     {
         return FALSE;
     }
 
-    ShowWindow(hWnd, nCmdShow);
-    UpdateWindow(hWnd);
+    ShowWindow(gHWnd, nCmdShow);
+    UpdateWindow(gHWnd);
 
     return TRUE;
 }
