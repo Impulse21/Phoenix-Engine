@@ -9,4 +9,8 @@
   <ItemGroup>
     <ClCompile Include="TestBedApp.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="..\ThirdParty\dxc_2021_12_08\dxcompiler.dll" />
+    <CopyFileToFolders Include="..\ThirdParty\dxc_2021_12_08\dxil.dll" />
+  </ItemGroup>
 </Project>

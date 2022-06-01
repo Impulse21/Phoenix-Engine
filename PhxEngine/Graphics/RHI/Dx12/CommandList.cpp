@@ -358,7 +358,7 @@ void PhxEngine::RHI::Dx12::CommandList::SetGraphicsPSO(GraphicsPSOHandle graphis
     auto graphicsPsoImpl = std::static_pointer_cast<GraphicsPSO>(graphisPSO);
     this->m_d3d12CommandList->SetPipelineState(graphicsPsoImpl->D3D12PipelineState.Get());
 
-    this->m_d3d12CommandList->SetGraphicsRootSignature(graphicsPsoImpl->RootSignature->GetD3D12RootSignature().Get());
+    this->m_d3d12CommandList->SetGraphicsRootSignature(graphicsPsoImpl->RootSignature.Get());
 
     const auto& desc = graphicsPsoImpl->GetDesc();
     switch (desc.PrimType)
@@ -528,9 +528,12 @@ void PhxEngine::RHI::Dx12::CommandList::BindStructuredBuffer(size_t rootParamete
 
 void PhxEngine::RHI::Dx12::CommandList::BindResourceTable(size_t rootParameterIndex)
 {
-    this->m_d3d12CommandList->SetGraphicsRootDescriptorTable(
-        rootParameterIndex,
-        this->m_graphicsDevice.GetBindlessTable()->GetGpuHandle(0));
+    if (this->m_graphicsDevice.GetMinShaderModel() < ShaderModel::SM_6_6)
+    {
+        this->m_d3d12CommandList->SetGraphicsRootDescriptorTable(
+            rootParameterIndex,
+            this->m_graphicsDevice.GetBindlessTable()->GetGpuHandle(0));
+    }
 }
 
 void PhxEngine::RHI::Dx12::CommandList::BindSamplerTable(size_t rootParameterIndex)

@@ -7,23 +7,41 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhxEngine_Windows", "PhxEng
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestBed", "TestBed\TestBed.vcxproj", "{BAAA6322-76B4-49F4-83D9-E103CEB627D9}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Engine", "Engine", "{E990A58B-30BC-4826-B2EE-20CF15F603F8}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Shaders", "PhxEngine\Shaders\Shaders.vcxitems", "{C5FDA78C-CEEC-4518-8AB3-A35357239060}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
 		Release|x64 = Release|x64
+		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{7E0C0A99-2D8E-4C8A-8A69-0605D34A03D7}.Debug|x64.ActiveCfg = Debug|x64
 		{7E0C0A99-2D8E-4C8A-8A69-0605D34A03D7}.Debug|x64.Build.0 = Debug|x64
+		{7E0C0A99-2D8E-4C8A-8A69-0605D34A03D7}.Debug|x86.ActiveCfg = Debug|Win32
+		{7E0C0A99-2D8E-4C8A-8A69-0605D34A03D7}.Debug|x86.Build.0 = Debug|Win32
 		{7E0C0A99-2D8E-4C8A-8A69-0605D34A03D7}.Release|x64.ActiveCfg = Release|x64
 		{7E0C0A99-2D8E-4C8A-8A69-0605D34A03D7}.Release|x64.Build.0 = Release|x64
+		{7E0C0A99-2D8E-4C8A-8A69-0605D34A03D7}.Release|x86.ActiveCfg = Release|Win32
+		{7E0C0A99-2D8E-4C8A-8A69-0605D34A03D7}.Release|x86.Build.0 = Release|Win32
 		{BAAA6322-76B4-49F4-83D9-E103CEB627D9}.Debug|x64.ActiveCfg = Debug|x64
 		{BAAA6322-76B4-49F4-83D9-E103CEB627D9}.Debug|x64.Build.0 = Debug|x64
+		{BAAA6322-76B4-49F4-83D9-E103CEB627D9}.Debug|x86.ActiveCfg = Debug|Win32
+		{BAAA6322-76B4-49F4-83D9-E103CEB627D9}.Debug|x86.Build.0 = Debug|Win32
 		{BAAA6322-76B4-49F4-83D9-E103CEB627D9}.Release|x64.ActiveCfg = Release|x64
 		{BAAA6322-76B4-49F4-83D9-E103CEB627D9}.Release|x64.Build.0 = Release|x64
+		{BAAA6322-76B4-49F4-83D9-E103CEB627D9}.Release|x86.ActiveCfg = Release|Win32
+		{BAAA6322-76B4-49F4-83D9-E103CEB627D9}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{7E0C0A99-2D8E-4C8A-8A69-0605D34A03D7} = {E990A58B-30BC-4826-B2EE-20CF15F603F8}
+		{C5FDA78C-CEEC-4518-8AB3-A35357239060} = {E990A58B-30BC-4826-B2EE-20CF15F603F8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F0D0B7D2-0FDA-44AB-8E77-5211F9A5957B}

@@ -60,9 +60,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		}
 		else
 		{
-			app->RunFrame();
+			app->Tick();
 		}
 	}
+
+    app->Finalize();
 
 	return (int)msg.wParam;
 }

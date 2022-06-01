@@ -245,6 +245,24 @@ namespace PhxEngine::RHI
 
     PHXRHI_ENUM_CLASS_FLAG_OPERATORS(ResourceStates)
 
+    enum class ShaderType
+    {
+        None,
+        HLSL6,
+    };
+
+    enum class ShaderModel
+    {
+        SM_6_0,
+        SM_6_1,
+        SM_6_2,
+        SM_6_3,
+        SM_6_4,
+        SM_6_5,
+        SM_6_6,
+        SM_6_7,
+    };
+
     enum class ShaderStage : uint16_t
     {
         None            = 0x0000,
@@ -890,7 +908,7 @@ namespace PhxEngine::RHI
         template<typename T>
         void BindPushConstant(uint32_t rootParameterIndex, const T& constants)
         {
-            staticassert(sizeof(T) % sizeof(uint32_t) == 0, "Size of type must be a multiple of 4 bytes");
+            static_assert(sizeof(T) % sizeof(uint32_t) == 0, "Size of type must be a multiple of 4 bytes");
             this->BindPushConstant(rootParameterIndex, sizeof(T), &constants);
         }
 
@@ -1015,6 +1033,9 @@ namespace PhxEngine::RHI
         }
 
         virtual size_t GetNumBindlessDescriptors() const = 0;
+
+        virtual ShaderModel GetMinShaderModel() const = 0;
+        virtual ShaderType GetShaderType() const = 0;
     };
 
     extern void ReportLiveObjects();

@@ -21,11 +21,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Core\Application.h" />
+    <ClInclude Include="Core\ApplicationLayer.h" />
     <ClInclude Include="Core\Canvas.h" />
     <ClInclude Include="Core\EntryPoint.h" />
+    <ClInclude Include="Core\Helpers.h" />
     <ClInclude Include="Core\Platform.h" />
     <ClInclude Include="Core\StopWatch.h" />
+    <ClInclude Include="Core\TaskExecutor.h" />
     <ClInclude Include="Core\TimeStep.h" />
+    <ClInclude Include="Graphics\ImGui\ImGuiRenderer.h" />
+    <ClInclude Include="Graphics\ShaderCompiler.h" />
+    <ClInclude Include="Graphics\ShaderFactory.h" />
+    <ClInclude Include="Graphics\ShaderStore.h" />
     <ClInclude Include="Graphics\TextRenderer.h" />
     <ClInclude Include="PhxEngine.h" />
     <ClInclude Include="phxpch.h" />
@@ -41,10 +48,24 @@
     <ClInclude Include="Graphics\RHI\Dx12\RootSignatureBuilder.h" />
     <ClInclude Include="Graphics\RHI\Dx12\UploadBuffer.h" />
     <ClInclude Include="Graphics\RHI\PhxRHI.h" />
+    <ClInclude Include="ThirdParty\DXC\d3d12shader.h" />
+    <ClInclude Include="ThirdParty\DXC\dxcapi.h" />
+    <ClInclude Include="ThirdParty\ImGui\imconfig.h" />
+    <ClInclude Include="ThirdParty\ImGui\imgui.h" />
+    <ClInclude Include="ThirdParty\ImGui\imgui_impl_win32.h" />
+    <ClInclude Include="ThirdParty\ImGui\imgui_internal.h" />
+    <ClInclude Include="ThirdParty\ImGui\imstb_rectpack.h" />
+    <ClInclude Include="ThirdParty\ImGui\imstb_textedit.h" />
+    <ClInclude Include="ThirdParty\ImGui\imstb_truetype.h" />
     <ClInclude Include="ThirdParty\stb_truetype.h" />
+    <ClInclude Include="ThirdParty\TrueTypeFonts\arial.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Core\Application.cpp" />
+    <ClCompile Include="Core\TaskExecutor.cpp" />
+    <ClCompile Include="Graphics\ImGui\ImGuiRenderer.cpp" />
+    <ClCompile Include="Graphics\ShaderFactory.cpp" />
+    <ClCompile Include="Graphics\ShaderStore.cpp" />
     <ClCompile Include="Graphics\TextRenderer.cpp" />
     <ClCompile Include="phxpch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -60,6 +81,13 @@
     <ClCompile Include="Graphics\RHI\Dx12\PhxRHI_Dx12.cpp" />
     <ClCompile Include="Graphics\RHI\Dx12\RootSignatureBuilder.cpp" />
     <ClCompile Include="Graphics\RHI\Dx12\UploadBuffer.cpp" />
+    <ClCompile Include="ShaderCompiler.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_demo.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_draw.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_impl_win32.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_tables.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_widgets.cpp" />
     <ClCompile Include="ThirdParty\ThirdParty_Common.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -184,6 +212,12 @@
       </SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Lib>
+      <AdditionalDependencies>dxc_2021_12_08\lib\$(Platform)\dxcompiler.lib</AdditionalDependencies>
+    </Lib>
+    <Lib>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\ThirdParty;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -206,6 +240,12 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Lib>
+      <AdditionalDependencies>dxc_2021_12_08\lib\$(Platform)\dxcompiler.lib</AdditionalDependencies>
+    </Lib>
+    <Lib>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\ThirdParty;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Lib>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

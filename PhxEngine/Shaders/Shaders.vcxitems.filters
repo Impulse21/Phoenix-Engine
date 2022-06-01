@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="VS">
+      <UniqueIdentifier>{de5ddaaf-cfbe-4227-b80e-842dfd6fa334}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="PS">
+      <UniqueIdentifier>{9473164d-17e1-4bf5-b1a0-2f6bf1d5de02}</UniqueIdentifier>
+      <Extensions>**PS.hlsl</Extensions>
+    </Filter>
+    <Filter Include="Interop">
+      <UniqueIdentifier>{05077a18-246a-4168-baf8-f4756b7f4baf}</UniqueIdentifier>
+      <Extensions>**Interop**.h</Extensions>
+    </Filter>
+    <Filter Include="Includes">
+      <UniqueIdentifier>{cc67dd1d-0cc0-4dfd-b053-8dda11780ff8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="$(MSBuildThisFileDirectory)ImGuiPS.hlsl">
+      <Filter>PS</Filter>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)ImGuiVS.hlsl">
+      <Filter>VS</Filter>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ShaderInterop.h">
+      <Filter>Interop</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ShaderInteropStructures.h">
+      <Filter>Interop</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)BRDFFunctions.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)ResourceHeapTables.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)ImGui.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+  </ItemGroup>
+</Project>

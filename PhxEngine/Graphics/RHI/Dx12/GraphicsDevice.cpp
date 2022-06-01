@@ -225,20 +225,6 @@ UINT ConvertSamplerReductionType(SamplerReductionType reductionType)
 	}
 }
 
-namespace PhxEngine::RHI::Dx12
-{
-	struct RootSignature : public IRootSignature
-	{
-		Microsoft::WRL::ComPtr<ID3D12RootSignature> D3D12RootSignature;
-		uint32_t PushConstantByteSize;
-		uint32_t RootParameterIndex = ~0u;
-		bool BindBindlessTables = false;
-		ShaderParameterLayout ShaderParameterLayout = {};
-
-		Microsoft::WRL::ComPtr<ID3D12RootSignature> GetD3D12RootSignature() override { return this->D3D12RootSignature; }
-	};
-}
-
 PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
 	: m_frameCount(0)
 {
@@ -385,6 +371,30 @@ CommandListHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateCommandList(Comman
 ShaderHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateShader(ShaderDesc const& desc, const void* binary, size_t binarySize)
 {
 	auto shaderImpl = std::make_unique<Shader>(desc, binary, binarySize);
+
+	// Create Root signature data
+
+	/* This is not working, we don't need it right now. Good for reflection data.
+	ThrowIfFailed(
+		D3D12CreateVersionedRootSignatureDeserializer(
+			shaderImpl->GetByteCode().data(),
+			shaderImpl->GetByteCode().size(),
+			IID_PPV_ARGS(&shaderImpl->GetRootSigDeserializer())));
+
+	assert(shaderImpl->GetRootSigDeserializer()->GetRootSignatureDesc());
+	*/
+
+	// TODO: Check version
+
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSig;
+	auto hr = 
+		this->m_device->CreateRootSignature(
+			0,
+			shaderImpl->GetByteCode().data(),
+			shaderImpl->GetByteCode().size(),
+			IID_PPV_ARGS(&rootSig));
+
+	shaderImpl->SetRootSignature(rootSig);
 	return shaderImpl;
 }
 
@@ -433,8 +443,105 @@ InputLayoutHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateInputLayout(Vertex
 GraphicsPSOHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateGraphicsPSOHandle(GraphicsPSODesc const& desc)
 {
 	std::unique_ptr<GraphicsPSO> psoImpl = std::make_unique<GraphicsPSO>();
-	psoImpl->RootSignature = this->CreateRootSignature(desc);
-	psoImpl->D3D12PipelineState = this->CreateD3D12PipelineState(desc, psoImpl->RootSignature);
+
+	if (desc.VertexShader)
+	{
+		auto shaderImpl = std::static_pointer_cast<Shader>(desc.VertexShader);
+		if (psoImpl->RootSignature == nullptr)
+		{
+			psoImpl->RootSignature = shaderImpl->GetRootSignature();
+		}
+	}
+
+	if (desc.PixelShader)
+	{
+		auto shaderImpl = std::static_pointer_cast<Shader>(desc.PixelShader);
+		if (psoImpl->RootSignature == nullptr)
+		{
+			psoImpl->RootSignature = shaderImpl->GetRootSignature();
+		}
+	}
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC d3d12Desc = {};
+	d3d12Desc.pRootSignature = psoImpl->RootSignature.Get();
+
+	std::shared_ptr<Shader> shaderImpl = nullptr;
+	shaderImpl = std::static_pointer_cast<Shader>(desc.VertexShader);
+	if (shaderImpl)
+	{
+		d3d12Desc.VS = { shaderImpl->GetByteCode().data(), shaderImpl->GetByteCode().size() };
+	}
+
+	shaderImpl = std::static_pointer_cast<Shader>(desc.HullShader);
+	if (shaderImpl)
+	{
+		d3d12Desc.HS = { shaderImpl->GetByteCode().data(), shaderImpl->GetByteCode().size() };
+	}
+
+	shaderImpl = std::static_pointer_cast<Shader>(desc.DomainShader);
+	if (shaderImpl)
+	{
+		d3d12Desc.DS = { shaderImpl->GetByteCode().data(), shaderImpl->GetByteCode().size() };
+	}
+
+	shaderImpl = std::static_pointer_cast<Shader>(desc.GeometryShader);
+	if (shaderImpl)
+	{
+		d3d12Desc.GS = { shaderImpl->GetByteCode().data(), shaderImpl->GetByteCode().size() };
+	}
+
+	shaderImpl = std::static_pointer_cast<Shader>(desc.PixelShader);
+	if (shaderImpl)
+	{
+		d3d12Desc.PS = { shaderImpl->GetByteCode().data(), shaderImpl->GetByteCode().size() };
+	}
+
+	this->TranslateBlendState(desc.BlendRenderState, d3d12Desc.BlendState);
+	this->TranslateDepthStencilState(desc.DepthStencilRenderState, d3d12Desc.DepthStencilState);
+	this->TranslateRasterState(desc.RasterRenderState, d3d12Desc.RasterizerState);
+
+	switch (desc.PrimType)
+	{
+	case PrimitiveType::PointList:
+		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		break;
+	case PrimitiveType::LineList:
+		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+		break;
+	case PrimitiveType::TriangleList:
+	case PrimitiveType::TriangleStrip:
+		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		break;
+	case PrimitiveType::PatchList:
+		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+		break;
+	}
+
+	if (desc.DsvFormat.has_value())
+	{
+		d3d12Desc.DSVFormat = GetDxgiFormatMapping(desc.DsvFormat.value()).rtvFormat;
+	}
+
+	d3d12Desc.SampleDesc.Count = desc.SampleCount;
+	d3d12Desc.SampleDesc.Quality = desc.SampleQuality;
+
+	for (size_t i = 0; i < desc.RtvFormats.size(); i++)
+	{
+		d3d12Desc.RTVFormats[i] = GetDxgiFormatMapping(desc.RtvFormats[i]).rtvFormat;
+	}
+
+	auto inputLayout = std::static_pointer_cast<InputLayout>(desc.InputLayout);
+	if (inputLayout && !inputLayout->InputElements.empty())
+	{
+		d3d12Desc.InputLayout.NumElements = uint32_t(inputLayout->InputElements.size());
+		d3d12Desc.InputLayout.pInputElementDescs = &(inputLayout->InputElements[0]);
+	}
+
+	d3d12Desc.NumRenderTargets = (uint32_t)desc.RtvFormats.size();
+	d3d12Desc.SampleMask = ~0u;
+
+	ThrowIfFailed(
+		this->GetD3D12Device2()->CreateGraphicsPipelineState(&d3d12Desc, IID_PPV_ARGS(&psoImpl->D3D12PipelineState)));
 
 	return psoImpl;
 }
@@ -718,6 +825,7 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTarget(
 	return textureImpl;
 }
 
+/*
 RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(GraphicsPSODesc const& desc)
 {
 	/*
@@ -749,9 +857,6 @@ RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(Gr
 			IID_PPV_ARGS(&rootSignatureImpl->D3D12RootSignature)));
 
 	return RootSignatureHandle::Create(rootSignatureImpl.release());
-	*/
-	return nullptr;
-	/*
 	std::vector<CD3DX12_ROOT_PARAMETER1> rootParameters;
 
 	for (const auto& parameter : desc.ShaderParameters.Parameters)
@@ -881,95 +986,9 @@ RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(Gr
 			IID_PPV_ARGS(&rootSignatureImpl->D3D12RootSignature)));
 
 	return RootSignatureHandle::Create(rootSignatureImpl.release());
+}
 	*/
-}
 
-Microsoft::WRL::ComPtr<ID3D12PipelineState> PhxEngine::RHI::Dx12::GraphicsDevice::CreateD3D12PipelineState(GraphicsPSODesc const& desc, RootSignatureHandle rootSignature)
-{
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC d3d12Desc = {};
-	d3d12Desc.pRootSignature = rootSignature->GetD3D12RootSignature().Get(); // TODO
-
-	std::shared_ptr<Shader> shaderImpl = nullptr;
-	shaderImpl = std::static_pointer_cast<Shader>(desc.VertexShader);
-	if (shaderImpl)
-	{
-		d3d12Desc.VS = { shaderImpl->GetByteCode().data(), shaderImpl->GetByteCode().size() };
-	}
-
-	shaderImpl = std::static_pointer_cast<Shader>(desc.HullShader);
-	if (shaderImpl)
-	{
-		d3d12Desc.HS = { shaderImpl->GetByteCode().data(), shaderImpl->GetByteCode().size() };
-	}
-
-	shaderImpl = std::static_pointer_cast<Shader>(desc.DomainShader);
-	if (shaderImpl)
-	{
-		d3d12Desc.DS = { shaderImpl->GetByteCode().data(), shaderImpl->GetByteCode().size() };
-	}
-
-	shaderImpl = std::static_pointer_cast<Shader>(desc.GeometryShader);
-	if (shaderImpl)
-	{
-		d3d12Desc.GS = { shaderImpl->GetByteCode().data(), shaderImpl->GetByteCode().size() };
-	}
-
-	shaderImpl = std::static_pointer_cast<Shader >(desc.PixelShader);
-	if (shaderImpl)
-	{
-		d3d12Desc.PS = { shaderImpl->GetByteCode().data(), shaderImpl->GetByteCode().size() };
-	}
-
-	this->TranslateBlendState(desc.BlendRenderState, d3d12Desc.BlendState);
-	this->TranslateDepthStencilState(desc.DepthStencilRenderState, d3d12Desc.DepthStencilState);
-	this->TranslateRasterState(desc.RasterRenderState, d3d12Desc.RasterizerState);
-
-	switch (desc.PrimType)
-	{
-	case PrimitiveType::PointList:
-		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-		break;
-	case PrimitiveType::LineList:
-		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
-		break;
-	case PrimitiveType::TriangleList:
-	case PrimitiveType::TriangleStrip:
-		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		break;
-	case PrimitiveType::PatchList:
-		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
-		break;
-	}
-
-	if (desc.DsvFormat.has_value())
-	{
-		d3d12Desc.DSVFormat = GetDxgiFormatMapping(desc.DsvFormat.value()).rtvFormat;
-	}
-
-	d3d12Desc.SampleDesc.Count = desc.SampleCount;
-	d3d12Desc.SampleDesc.Quality = desc.SampleQuality;
-
-	for (size_t i = 0; i < desc.RtvFormats.size(); i++)
-	{
-		d3d12Desc.RTVFormats[i] = GetDxgiFormatMapping(desc.RtvFormats[i]).rtvFormat;
-	}
-
-	auto inputLayout = std::static_pointer_cast<InputLayout>(desc.InputLayout);
-	if (inputLayout && !inputLayout->InputElements.empty())
-	{
-		d3d12Desc.InputLayout.NumElements = uint32_t(inputLayout->InputElements.size());
-		d3d12Desc.InputLayout.pInputElementDescs = &(inputLayout->InputElements[0]);
-	}
-
-	d3d12Desc.NumRenderTargets = (uint32_t)desc.RtvFormats.size();
-	d3d12Desc.SampleMask = ~0u;
-
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState;
-	ThrowIfFailed(
-		this->GetD3D12Device2()->CreateGraphicsPipelineState(&d3d12Desc, IID_PPV_ARGS(&pipelineState)));
-
-	return pipelineState;
-}
 
 void PhxEngine::RHI::Dx12::GraphicsDevice::RunGarbageCollection()
 {
@@ -1267,28 +1286,20 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateDevice(Microsoft::WRL::ComPtr<I
 			D3D_FEATURE_LEVEL_11_1,
 			IID_PPV_ARGS(&this->m_device)));
 
-	/*
-	std::shared_ptr<IUnknown> renderdoc;
+	Microsoft::WRL::ComPtr<IUnknown> renderdoc;
 	if (SUCCEEDED(DXGIGetDebugInterface1(0, RenderdocUUID, &renderdoc)))
 	{
 		this->IsUnderGraphicsDebugger |= !!renderdoc;
 	}
 
-	std::shared_ptr<IUnknown> pix;
+	Microsoft::WRL::ComPtr<IUnknown> pix;
 	if (SUCCEEDED(DXGIGetDebugInterface1(0, PixUUID, &pix)))
 	{
 		this->IsUnderGraphicsDebugger |= !!pix;
 	}
-	*/
 
 	D3D12_FEATURE_DATA_D3D12_OPTIONS5 featureSupport5 = {};
 	bool hasOptions5 = SUCCEEDED(this->m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureSupport5, sizeof(featureSupport5)));
-
-	D3D12_FEATURE_DATA_D3D12_OPTIONS6 featureSupport6 = {};
-	bool hasOptions6 = SUCCEEDED(this->m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &featureSupport6, sizeof(featureSupport6)));
-
-	D3D12_FEATURE_DATA_D3D12_OPTIONS7 featureSupport7 = {};
-	bool hasOptions7 = SUCCEEDED(this->m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureSupport7, sizeof(featureSupport7)));
 
 	if (SUCCEEDED(this->m_device.As(&this->m_device5)) && hasOptions5)
 	{
@@ -1297,11 +1308,17 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateDevice(Microsoft::WRL::ComPtr<I
 		this->IsRayQuerySupported = featureSupport5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_1;
 	}
 
+
+	D3D12_FEATURE_DATA_D3D12_OPTIONS6 featureSupport6 = {};
+	bool hasOptions6 = SUCCEEDED(this->m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &featureSupport6, sizeof(featureSupport6)));
+
 	if (hasOptions6)
 	{
 		this->IsVariableRateShadingSupported = featureSupport6.VariableShadingRateTier >= D3D12_VARIABLE_SHADING_RATE_TIER_2;
 	}
 
+	D3D12_FEATURE_DATA_D3D12_OPTIONS7 featureSupport7 = {};
+	bool hasOptions7 = SUCCEEDED(this->m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureSupport7, sizeof(featureSupport7)));
 
 	if (SUCCEEDED(this->m_device.As(&this->m_device2)) && hasOptions7)
 	{
@@ -1317,9 +1334,11 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateDevice(Microsoft::WRL::ComPtr<I
 
 	// Check shader model support
 	this->FeatureDataShaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_6;
+	this->m_minShaderModel = ShaderModel::SM_6_6;
 	if (FAILED(this->m_device2->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &this->FeatureDataShaderModel, sizeof(this->FeatureDataShaderModel))))
 	{
-		this->FeatureDataShaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_0;
+		this->FeatureDataShaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_5;
+		this->m_minShaderModel = ShaderModel::SM_6_5;
 	}
 
 

@@ -21,16 +21,6 @@ namespace PhxEngine::RHI::Dx12
 
     class BindlessDescriptorTable;
 
-    class IRootSignature : public IResource
-    {
-    public:
-        virtual ~IRootSignature() = default;
-
-        virtual Microsoft::WRL::ComPtr<ID3D12RootSignature> GetD3D12RootSignature() = 0;
-    };
-
-    typedef std::shared_ptr<IRootSignature> RootSignatureHandle;
-
     class Shader : public IShader
     {
     public:
@@ -43,11 +33,17 @@ namespace PhxEngine::RHI::Dx12
 
         const ShaderDesc& GetDesc() const { return this->m_desc; }
         const std::vector<uint8_t>& GetByteCode() const { return this->m_byteCode; }
+        Microsoft::WRL::ComPtr<ID3D12RootSignatureDeserializer> GetRootSigDeserializer() { return this->m_rootSignatureDeserializer; }
 
+        void SetRootSignature(Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSig) { this->m_rootSignature = rootSig; };
+        Microsoft::WRL::ComPtr<ID3D12RootSignature> GetRootSignature() const { return this->m_rootSignature; };
 
     private:
         std::vector<uint8_t> m_byteCode;
         const ShaderDesc m_desc;
+        Microsoft::WRL::ComPtr<ID3D12RootSignatureDeserializer> m_rootSignatureDeserializer;
+
+        Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
     };
 
     struct InputLayout : public IInputLayout
@@ -68,7 +64,7 @@ namespace PhxEngine::RHI::Dx12
 
     struct GraphicsPSO : public IGraphicsPSO
     {
-        RootSignatureHandle RootSignature;
+        Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
         Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
         GraphicsPSODesc Desc;
 
@@ -172,12 +168,12 @@ namespace PhxEngine::RHI::Dx12
 
         size_t GetNumBindlessDescriptors() const override { return NUM_BINDLESS_RESOURCES; }
 
+        virtual ShaderModel GetMinShaderModel() const { return this->m_minShaderModel;  };
+        virtual ShaderType GetShaderType() const { return ShaderType::HLSL6; };
+
         // -- Dx12 Specific functions ---
     public:
         TextureHandle CreateRenderTarget(TextureDesc const& desc, Microsoft::WRL::ComPtr<ID3D12Resource> d3d12TextureResource);
-
-        RootSignatureHandle CreateRootSignature(GraphicsPSODesc const& desc);
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateD3D12PipelineState(GraphicsPSODesc const& desc, RootSignatureHandle rootSignature);
 
     public:
         void RunGarbageCollection();
@@ -239,6 +235,7 @@ namespace PhxEngine::RHI::Dx12
 
 		D3D12_FEATURE_DATA_ROOT_SIGNATURE FeatureDataRootSignature = {};
 		D3D12_FEATURE_DATA_SHADER_MODEL   FeatureDataShaderModel = {};
+        ShaderModel m_minShaderModel = ShaderModel::SM_6_0;
 
 		bool IsDxrSupported = false;
 		bool IsRayQuerySupported = false;

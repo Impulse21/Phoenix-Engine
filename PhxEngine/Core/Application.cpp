@@ -8,22 +8,32 @@ using namespace PhxEngine::RHI;
 void Application::Initialize(PhxEngine::RHI::IGraphicsDevice* graphicsDevice)
 {
 	this->m_graphicsDevice = graphicsDevice;
+
+	Graphics::ShaderFactory factory(this->m_graphicsDevice, "shaders/", "../PhxEngine/Shaders/");
+	this->m_shaderStore.PreloadShaders(factory);
+
 	this->m_composeCommandList = this->m_graphicsDevice->CreateCommandList();
 
-	// TODO: Initalize Sub Systems
 	this->m_isInitialized = true;
 }
 
 void Application::Finalize()
 {
-
+	this->m_imguiRenderer.Finalize();
 }
 
-void Application::RunFrame()
+void Application::Tick()
 {
 	// TODO: Initialization?
 	TimeStep deltaTime = this->m_stopWatch.Elapsed();
 	this->m_stopWatch.Begin();
+
+	if (!this->m_windowHandle)
+	{
+		return;
+	}
+
+	this->m_imguiRenderer.BeginFrame();
 
 	// Variable-timed update:
 	this->Update(deltaTime);
@@ -38,7 +48,12 @@ void Application::RunFrame()
 		this->m_composeCommandList->TransitionBarrier(backBuffer, ResourceStates::Present, ResourceStates::RenderTarget);
 		this->m_composeCommandList->ClearTextureFloat(backBuffer, { 0.0f, 0.0f, 0.0f, 1.0f });
 
+		this->m_composeCommandList->SetRenderTargets({ backBuffer }, nullptr);
+
 		this->Compose(this->m_composeCommandList);
+
+		// Render directly to back buffer
+		this->m_imguiRenderer.Render(this->m_composeCommandList);
 
 		this->m_composeCommandList->TransitionBarrier(backBuffer, ResourceStates::RenderTarget, ResourceStates::Present);
 	}
@@ -57,7 +72,6 @@ void Application::Update(TimeStep deltaTime)
 
 void Application::Render()
 {
-
 }
 
 void Application::Compose(PhxEngine::RHI::CommandListHandle cmdList)
@@ -84,5 +98,5 @@ void PhxEngine::Core::Application::SetWindow(Core::Platform::WindowHandle window
 	swapchainDesc.WindowHandle = windowHandle;
 
 	this->m_graphicsDevice->CreateSwapChain(swapchainDesc);
-
+	this->m_imguiRenderer.Initialize(this->m_graphicsDevice, this->m_shaderStore, this->m_windowHandle);
 }

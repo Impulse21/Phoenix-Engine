@@ -1,15 +1,16 @@
 #pragma once
 
 #include <string>
+#include "Core"
 #include <PhxEngine/Core/TimeStep.h>
 #include <PhxEngine/RHI/PhxRHI.h>
 
 namespace PhxEngine::Core
 {
-	class Layer
+	class AppLayer
 	{
 	public:
-		Layer(std::string const& name = "Layer")
+		AppLayer(std::string const& name = "Layer")
 			: m_debugName(name)
 		{};
 

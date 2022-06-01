@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <ProjectOutputs>
+    <ProjectOutput>
+      <FullPath>C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\__Build\x64\Debug\Shaders_hlsl6\Shaders_hlsl6.exe</FullPath>
+    </ProjectOutput>
+  </ProjectOutputs>
+  <ContentFiles>
+    <ContentFile>
+      <FullPath>C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\__Build\x64\Debug\Shaders_hlsl6\ImGuiPS.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\__Build\x64\Debug\Shaders_hlsl6\ImGuiVS.cso</FullPath>
+    </ContentFile>
+  </ContentFiles>
+  <SatelliteDlls />
+  <NonRecipeFileRefs />
+</Project>

@@ -6,6 +6,9 @@
 #include "Core/Canvas.h"
 #include "Core/Platform.h"
 #include "Graphics/RHI/PhxRHI.h"
+#include "Graphics/ShaderStore.h"
+#include "Graphics/ShaderFactory.h"
+#include "Graphics/ImGui/ImGuiRenderer.h"
 
 namespace PhxEngine::Core
 {
@@ -20,7 +23,7 @@ namespace PhxEngine::Core
 		virtual void Initialize(PhxEngine::RHI::IGraphicsDevice* graphicsDevice);
 		virtual void Finalize();
 
-		void RunFrame();
+		void Tick();
 
 		//void FixedUpdate();
 		void Update(TimeStep deltaTime);
@@ -35,12 +38,14 @@ namespace PhxEngine::Core
 
 		StopWatch m_stopWatch;
 
+		Graphics::ShaderStore m_shaderStore;
 		PhxEngine::RHI::IGraphicsDevice* m_graphicsDevice = nullptr;
 		Core::Platform::WindowHandle m_windowHandle = nullptr;
 		Core::Canvas m_canvas;
 
 		// RHI Resources
 		PhxEngine::RHI::CommandListHandle m_composeCommandList;
+		PhxEngine::Graphics::ImGuiRenderer m_imguiRenderer;
 	};
 
 	// Defined by client
