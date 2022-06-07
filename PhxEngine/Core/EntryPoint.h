@@ -6,8 +6,15 @@
 #include "Graphics/RHI/Dx12/PhxRHI_Dx12.h"
 
 #ifdef _WIN32
-extern PhxEngine::Core::Application* PhxEngine::Core::CreateApplication(CommandLineArgs args);
 
+#include "ThirdParty/ImGui/imgui_impl_win32.h"
+
+#endif 
+
+#ifdef _WIN32
+
+extern PhxEngine::Core::Application* PhxEngine::Core::CreateApplication(CommandLineArgs args);
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 #define MAX_LOADSTRING 100
 
@@ -109,7 +116,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
     hInst = hInstance; // Store instance handle in our global variable
 
-    gHWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+    gHWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX,
         CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
     if (!gHWnd)
@@ -135,6 +142,11 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
+    {
+        return true;
+    }
+            
     switch (message)
     {
     case WM_COMMAND:
