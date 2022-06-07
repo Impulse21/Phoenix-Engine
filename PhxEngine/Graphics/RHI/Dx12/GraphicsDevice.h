@@ -119,6 +119,21 @@ namespace PhxEngine::RHI::Dx12
         Count,
     };
 
+    class DXGIGpuAdapter final : public IGpuAdapter
+    {
+    public:
+        std::string Name;
+        size_t DedicatedSystemMemory = 0;
+        size_t DedicatedVideoMemory = 0;
+        size_t SharedSystemMemory = 0;
+        Microsoft::WRL::ComPtr<IDXGIAdapter1> DxgiAdapter;
+
+        const char* GetName() const override { return this->Name.c_str(); };
+        virtual size_t GetDedicatedSystemMemory() const override { return this->DedicatedSystemMemory; };
+        virtual size_t GetDedicatedVideoMemory() const override { return this->DedicatedVideoMemory; };
+        virtual size_t GetSharedSystemMemory() const override { return this->SharedSystemMemory; };
+    };
+
 	class GraphicsDevice final : public IGraphicsDevice
 	{
 	public:
@@ -168,8 +183,11 @@ namespace PhxEngine::RHI::Dx12
 
         size_t GetNumBindlessDescriptors() const override { return NUM_BINDLESS_RESOURCES; }
 
-        virtual ShaderModel GetMinShaderModel() const { return this->m_minShaderModel;  };
-        virtual ShaderType GetShaderType() const { return ShaderType::HLSL6; };
+        ShaderModel GetMinShaderModel() const override { return this->m_minShaderModel;  };
+        ShaderType GetShaderType() const override { return ShaderType::HLSL6; };
+        GraphicsAPI GetApi() const override { return GraphicsAPI::DX12; }
+
+        const IGpuAdapter* GetGpuAdapter() const override { return this->m_gpuAdapter.get(); };
 
         // -- Dx12 Specific functions ---
     public:
@@ -185,7 +203,7 @@ namespace PhxEngine::RHI::Dx12
         Microsoft::WRL::ComPtr<ID3D12Device5> GetD3D12Device5() { return this->m_device5; }
 
         Microsoft::WRL::ComPtr<IDXGIFactory6> GetDxgiFactory() { return this->m_factory; }
-        Microsoft::WRL::ComPtr<IDXGIAdapter> GetDxgiAdapter() { return this->m_gpuAdapter; }
+        Microsoft::WRL::ComPtr<IDXGIAdapter> GetDxgiAdapter() { return this->m_gpuAdapter->DxgiAdapter; }
 
     public:
         CommandQueue* GetGfxQueue() { return this->GetQueue(CommandQueueType::Graphics); }
@@ -216,7 +234,7 @@ namespace PhxEngine::RHI::Dx12
         Microsoft::WRL::ComPtr<IDXGIFactory6> CreateFactory() const;
         void CreateDevice(Microsoft::WRL::ComPtr<IDXGIAdapter> gpuAdapter);
 
-        Microsoft::WRL::ComPtr<IDXGIAdapter1> SelectOptimalGpu();
+        std::unique_ptr<DXGIGpuAdapter> SelectOptimalGpuApdater();
         std::vector<Microsoft::WRL::ComPtr<IDXGIAdapter1>> EnumerateAdapters(Microsoft::WRL::ComPtr<IDXGIFactory6> factory, bool includeSoftwareAdapter = false);
 
          // -- Pipeline state conversion --- 
@@ -231,7 +249,7 @@ namespace PhxEngine::RHI::Dx12
 		Microsoft::WRL::ComPtr<ID3D12Device2> m_device2;
 		Microsoft::WRL::ComPtr<ID3D12Device5> m_device5;
 		// std::shared_ptr<IDxcUtils> dxcUtils;
-		Microsoft::WRL::ComPtr<IDXGIAdapter> m_gpuAdapter;
+		std::unique_ptr<DXGIGpuAdapter> m_gpuAdapter;
 
 		D3D12_FEATURE_DATA_ROOT_SIGNATURE FeatureDataRootSignature = {};
 		D3D12_FEATURE_DATA_SHADER_MODEL   FeatureDataShaderModel = {};

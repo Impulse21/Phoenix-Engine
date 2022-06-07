@@ -32,6 +32,12 @@ namespace PhxEngine::RHI
     static constexpr uint32_t cMaxVolatileConstantBuffers = 32;
     static constexpr uint32_t cMaxPushConstantSize = 128;      // D3D12: root signature is 256 bytes max., Vulkan: 128 bytes of push constants guaranteed
 
+    enum class GraphicsAPI
+    {
+        Unknown = 0,
+        DX12
+    };
+
     struct Color
     {
         float R;
@@ -500,8 +506,6 @@ namespace PhxEngine::RHI
         float DepthBiasClamp = 0.f;
         float SlopeScaledDepthBias = 0.f;
 
-        // Extended rasterizer state supported by Maxwell
-        // In D3D11, use NvAPI_D3D11_CreateRasterizerState to create such rasterizer state.
         uint8_t ForcedSampleCount = 0;
         bool programmableSamplePositionsEnable = false;
         bool ConservativeRasterEnable = false;
@@ -980,6 +984,17 @@ namespace PhxEngine::RHI
         ICommandList* m_commandList;
     };
 
+    class IGpuAdapter
+    {
+    public:
+        virtual ~IGpuAdapter() = default;
+
+        virtual const char* GetName() const = 0;
+        virtual size_t GetDedicatedSystemMemory() const = 0;
+        virtual size_t GetDedicatedVideoMemory() const = 0;
+        virtual size_t GetSharedSystemMemory() const = 0;
+
+    };
     class IGraphicsDevice
     {
     public:
@@ -1036,6 +1051,9 @@ namespace PhxEngine::RHI
 
         virtual ShaderModel GetMinShaderModel() const = 0;
         virtual ShaderType GetShaderType() const = 0;
+
+        virtual GraphicsAPI GetApi() const = 0;
+        virtual const IGpuAdapter* GetGpuAdapter() const = 0;
     };
 
     extern void ReportLiveObjects();

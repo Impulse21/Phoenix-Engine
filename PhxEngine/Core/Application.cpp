@@ -2,9 +2,23 @@
 
 #include "Application.h"
 
+#include "ThirdParty/ImGui/imgui.h"
+
+
 using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI;
 
+const char* GraphicsAPIToString(GraphicsAPI api)
+{
+	switch (api)
+	{
+	case GraphicsAPI::DX12:
+		return "DX12";
+	case GraphicsAPI::Unknown:
+	default:
+		return "UNKNOWN";
+	}
+}
 void Application::Initialize(PhxEngine::RHI::IGraphicsDevice* graphicsDevice)
 {
 	this->m_graphicsDevice = graphicsDevice;
@@ -41,33 +55,30 @@ void Application::Tick()
 	this->Render();
 
 	this->m_composeCommandList->Open();
-	{
-		auto scopedMarker = this->m_composeCommandList->BeginScopedMarker("Compose back buffer");
-		TextureHandle backBuffer = this->m_graphicsDevice->GetBackBuffer();
 
-		this->m_composeCommandList->TransitionBarrier(backBuffer, ResourceStates::Present, ResourceStates::RenderTarget);
-		this->m_composeCommandList->ClearTextureFloat(backBuffer, { 0.0f, 0.0f, 0.0f, 1.0f });
-
-		this->m_composeCommandList->SetRenderTargets({ backBuffer }, nullptr);
-
-		this->Compose(this->m_composeCommandList);
-
-		// Render directly to back buffer
-		this->m_imguiRenderer.Render(this->m_composeCommandList);
-
-		this->m_composeCommandList->TransitionBarrier(backBuffer, ResourceStates::RenderTarget, ResourceStates::Present);
-	}
+	this->Compose(this->m_composeCommandList);
 
 	this->m_composeCommandList->Close();
 	this->m_graphicsDevice->ExecuteCommandLists(this->m_composeCommandList.get());
 
 	this->m_graphicsDevice->Present();
-	// Execute Pending Command Lists
 }
 
 void Application::Update(TimeStep deltaTime)
 {
+	// Set IMGUI Data
+	static bool sWindowOpen = true;
+	ImGui::Begin("Phx Engine", &sWindowOpen, ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse);
+	ImGui::Text("Version: %s", "0.1");
+	ImGui::Text("Graphics API: %s", GraphicsAPIToString(this->m_graphicsDevice->GetApi()));
 
+	const auto* gpuAdapter = this->m_graphicsDevice->GetGpuAdapter();
+	ImGui::Text("Graphics Adapter: %s", gpuAdapter->GetName());
+	ImGui::BulletText("Dedicated Video Memory: %zu MB (%zu GB)", gpuAdapter->GetDedicatedVideoMemory() >> 20, gpuAdapter->GetDedicatedVideoMemory() >> 30);
+	ImGui::BulletText("Dedicated System Memory: %zu MB (%zu GB)", gpuAdapter->GetDedicatedSystemMemory() >> 20, gpuAdapter->GetDedicatedSystemMemory() >> 30);
+	ImGui::BulletText("Shared System Memory: %zu MB (%zu GB)" , gpuAdapter->GetSharedSystemMemory() >> 20, gpuAdapter->GetSharedSystemMemory() >> 30);
+	ImGui::End();
+	ImGui::ShowDemoWindow();
 }
 
 void Application::Render()
@@ -76,7 +87,18 @@ void Application::Render()
 
 void Application::Compose(PhxEngine::RHI::CommandListHandle cmdList)
 {
-	// Clear back buffer
+	auto scopedMarker = this->m_composeCommandList->BeginScopedMarker("Compose back buffer");
+	TextureHandle backBuffer = this->m_graphicsDevice->GetBackBuffer();
+	
+	this->m_composeCommandList->TransitionBarrier(backBuffer, ResourceStates::Present, ResourceStates::RenderTarget);
+	this->m_composeCommandList->ClearTextureFloat(backBuffer, { 0.0f, 0.0f, 0.0f, 1.0f });
+
+	this->m_composeCommandList->SetRenderTargets({ backBuffer }, nullptr);
+
+	// Render directly to back buffer
+	this->m_imguiRenderer.Render(this->m_composeCommandList);
+
+	this->m_composeCommandList->TransitionBarrier(backBuffer, ResourceStates::RenderTarget, ResourceStates::Present);
 }
 
 void PhxEngine::Core::Application::SetWindow(Core::Platform::WindowHandle windowHandle, bool isFullscreen)

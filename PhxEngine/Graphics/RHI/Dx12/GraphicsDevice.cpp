@@ -229,8 +229,8 @@ PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
 	: m_frameCount(0)
 {
 	this->m_factory = this->CreateFactory();
-	this->m_gpuAdapter = this->SelectOptimalGpu();
-	this->CreateDevice(this->m_gpuAdapter);
+	this->m_gpuAdapter = this->SelectOptimalGpuApdater();
+	this->CreateDevice(this->m_gpuAdapter->DxgiAdapter);
 
 	// Create Queues
 	this->m_commandQueues[(int)CommandQueueType::Graphics] = std::make_unique<CommandQueue>(*this, D3D12_COMMAND_LIST_TYPE_DIRECT);
@@ -1003,7 +1003,7 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::RunGarbageCollection()
 	}
 }
 
-Microsoft::WRL::ComPtr<IDXGIAdapter1> PhxEngine::RHI::Dx12::GraphicsDevice::SelectOptimalGpu()
+std::unique_ptr<DXGIGpuAdapter>  PhxEngine::RHI::Dx12::GraphicsDevice::SelectOptimalGpuApdater()
 {
 	// LOG_CORE_INFO("Selecting Optimal GPU");
 	Microsoft::WRL::ComPtr<IDXGIAdapter1> selectedGpu;
@@ -1019,14 +1019,6 @@ Microsoft::WRL::ComPtr<IDXGIAdapter1> PhxEngine::RHI::Dx12::GraphicsDevice::Sele
 		size_t dedicatedSystemMemory = desc.DedicatedSystemMemory;
 		size_t sharedSystemMemory = desc.SharedSystemMemory;
 
-		/*
-		LOG_CORE_INFO(
-			"\t%s [VRAM = %zu MB, SRAM = %zu MB, SharedRAM = %zu MB]",
-			name,
-			BYTE_TO_MB(dedicatedVideoMemory),
-			BYTE_TO_MB(dedicatedSystemMemory),
-			BYTE_TO_MB(sharedSystemMemory));
-			*/
 		if (!selectedGpu || selectedGPUVideoMemeory < dedicatedVideoMemory)
 		{
 			selectedGpu = adapter;
@@ -1042,15 +1034,15 @@ Microsoft::WRL::ComPtr<IDXGIAdapter1> PhxEngine::RHI::Dx12::GraphicsDevice::Sele
 	size_t dedicatedSystemMemory = desc.DedicatedSystemMemory;
 	size_t sharedSystemMemory = desc.SharedSystemMemory;
 
-	/*
-	LOG_CORE_INFO(
-		"Selected GPU %s [VRAM = %zu MB, SRAM = %zu MB, SharedRAM = %zu MB]",
-		name,
-		BYTE_TO_MB(dedicatedVideoMemory),
-		BYTE_TO_MB(dedicatedSystemMemory),
-		BYTE_TO_MB(sharedSystemMemory));
-	*/
-	return selectedGpu;
+	auto selectedAdataper = std::make_unique<DXGIGpuAdapter>();
+	selectedAdataper->Name = NarrowString(desc.Description);
+	selectedAdataper->DedicatedVideoMemory = desc.DedicatedVideoMemory;
+	selectedAdataper->DedicatedSystemMemory = desc.DedicatedSystemMemory;
+	selectedAdataper->SharedSystemMemory = desc.SharedSystemMemory;
+
+	selectedAdataper->DxgiAdapter = selectedGpu;
+
+	return std::move(selectedAdataper);
 }
 
 std::vector<Microsoft::WRL::ComPtr<IDXGIAdapter1>> PhxEngine::RHI::Dx12::GraphicsDevice::EnumerateAdapters(Microsoft::WRL::ComPtr<IDXGIFactory6> factory, bool includeSoftwareAdapter)
