@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Platform.h"
+#include "Core/TimeStep.h"
 
 #include <stdint.h>
 #include <optional>
@@ -115,6 +116,13 @@ namespace PhxEngine::RHI
     };
 
 #pragma region Enums
+
+    enum class CpuAccessMode
+    {
+        Default = 0,
+        Read,
+        Write
+    };
 
     enum class FormatType : uint8_t
     {
@@ -785,7 +793,6 @@ namespace PhxEngine::RHI
         { }
     };
 
-
     enum class BufferMiscFlags
     {
         None        = 0,
@@ -801,6 +808,7 @@ namespace PhxEngine::RHI
     struct BufferDesc
     {
         BufferMiscFlags MiscFlags = BufferMiscFlags::None;
+        CpuAccessMode CpuAccessMode = CpuAccessMode::Default;
 
         // Stride is required for structured buffers
         uint64_t StrideInBytes = 0;
@@ -858,6 +866,14 @@ namespace PhxEngine::RHI
     };
 
     using BufferHandle = std::shared_ptr<IBuffer>;
+
+    class ITimerQuery
+    {
+    public:
+        virtual ~ITimerQuery() = default;
+    };
+
+    using TimerQueryHandle = std::shared_ptr<ITimerQuery>;
 
     struct CommandListDesc
     {
@@ -968,6 +984,9 @@ namespace PhxEngine::RHI
         virtual void BindDynamicDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures) = 0;
         virtual void BindResourceTable (size_t rootParameterIndex) = 0;
         virtual void BindSamplerTable(size_t rootParameterIndex) = 0;
+
+        virtual void BeginTimerQuery(TimerQueryHandle query) = 0;
+        virtual void EndTimerQuery(TimerQueryHandle query) = 0;
     };
 
     using CommandListHandle = std::shared_ptr<ICommandList>;
@@ -995,6 +1014,7 @@ namespace PhxEngine::RHI
         virtual size_t GetSharedSystemMemory() const = 0;
 
     };
+
     class IGraphicsDevice
     {
     public:
@@ -1012,12 +1032,17 @@ namespace PhxEngine::RHI
         virtual TextureHandle CreateDepthStencil(TextureDesc const& desc) = 0;
         virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
 
-
         // TODO: I don't think is this a clear interface as to what desc data is required
         // Consider cleaning this up eventually.
         virtual BufferHandle CreateIndexBuffer(BufferDesc const& desc) = 0;
         virtual BufferHandle CreateVertexBuffer(BufferDesc const& desc) = 0;
         virtual BufferHandle CreateBuffer(BufferDesc const& desc) = 0;
+
+        // -- Query Stuff ---
+        virtual TimerQueryHandle CreateTimerQuery() = 0;
+        virtual bool PollTimerQuery(TimerQueryHandle query) = 0;
+        virtual Core::TimeStep GetTimerQueryTime(TimerQueryHandle query) = 0;
+        virtual void ResetTimerQuery(TimerQueryHandle query) = 0;
 
         // -- Create Functions End ---
         virtual TextureHandle GetBackBuffer() = 0;

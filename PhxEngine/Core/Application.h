@@ -5,6 +5,7 @@
 
 #include "Core/Canvas.h"
 #include "Core/Platform.h"
+#include "Core/FrameProfiler.h"
 #include "Graphics/RHI/PhxRHI.h"
 #include "Graphics/ShaderStore.h"
 #include "Graphics/ShaderFactory.h"
@@ -45,7 +46,10 @@ namespace PhxEngine::Core
 
 		// RHI Resources
 		PhxEngine::RHI::CommandListHandle m_composeCommandList;
+		PhxEngine::RHI::CommandListHandle m_beginFrameCommandList;
+
 		PhxEngine::Graphics::ImGuiRenderer m_imguiRenderer;
+		std::unique_ptr<FrameProfiler> m_frameProfiler;
 	};
 
 	// Defined by client

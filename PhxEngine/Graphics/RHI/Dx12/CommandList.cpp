@@ -562,6 +562,38 @@ void CommandList::BindDynamicDescriptorTable(size_t rootParameterIndex, std::vec
     this->m_d3d12CommandList->SetGraphicsRootDescriptorTable(rootParameterIndex, descriptorTable.GetGpuHandle());
 }
 
+void PhxEngine::RHI::Dx12::CommandList::BeginTimerQuery(TimerQueryHandle query)
+{
+    auto queryImpl = std::static_pointer_cast<TimerQuery>(query);
+
+    this->m_trackedData->TimerQueries.push_back(queryImpl);
+
+    this->m_d3d12CommandList->EndQuery(
+        this->m_graphicsDevice.GetQueryHeap(),
+        D3D12_QUERY_TYPE_TIMESTAMP,
+        queryImpl->BeginQueryIndex);
+}
+
+void PhxEngine::RHI::Dx12::CommandList::EndTimerQuery(TimerQueryHandle query)
+{
+    auto queryImpl = std::static_pointer_cast<TimerQuery>(query);
+
+    this->m_trackedData->TimerQueries.push_back(queryImpl);
+
+    this->m_d3d12CommandList->EndQuery(
+        this->m_graphicsDevice.GetQueryHeap(),
+        D3D12_QUERY_TYPE_TIMESTAMP,
+        queryImpl->EndQueryIndex);
+
+    this->m_d3d12CommandList->ResolveQueryData(
+        this->m_graphicsDevice.GetQueryHeap(),
+        D3D12_QUERY_TYPE_TIMESTAMP,
+        queryImpl->BeginQueryIndex,
+        2,
+        this->m_graphicsDevice.GetTimestampQueryBuffer()->D3D12Resource.Get(),
+        queryImpl->BeginQueryIndex * sizeof(uint64_t));
+}
+
 DynamicSubAllocatorPool::DynamicSubAllocatorPool(GpuDescriptorHeap& gpuDescriptorHeap, uint32_t chunkSize)
     : m_chunkSize(chunkSize)
     , m_gpuDescriptorHeap(gpuDescriptorHeap)

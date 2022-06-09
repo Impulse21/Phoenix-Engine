@@ -22,8 +22,10 @@
   <ItemGroup>
     <ClInclude Include="Core\Application.h" />
     <ClInclude Include="Core\ApplicationLayer.h" />
+    <ClInclude Include="Core\BitSetAllocator.h" />
     <ClInclude Include="Core\Canvas.h" />
     <ClInclude Include="Core\EntryPoint.h" />
+    <ClInclude Include="Core\FrameProfiler.h" />
     <ClInclude Include="Core\Helpers.h" />
     <ClInclude Include="Core\Platform.h" />
     <ClInclude Include="Core\StopWatch.h" />
@@ -62,8 +64,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Core\Application.cpp" />
+    <ClCompile Include="Core\BitSetAllocator.cpp" />
+    <ClCompile Include="Core\FrameProfiler.cpp" />
     <ClCompile Include="Core\TaskExecutor.cpp" />
     <ClCompile Include="Graphics\ImGui\ImGuiRenderer.cpp" />
+    <ClCompile Include="Graphics\ShaderCompiler.cpp" />
     <ClCompile Include="Graphics\ShaderFactory.cpp" />
     <ClCompile Include="Graphics\ShaderStore.cpp" />
     <ClCompile Include="Graphics\TextRenderer.cpp" />
@@ -81,7 +86,6 @@
     <ClCompile Include="Graphics\RHI\Dx12\PhxRHI_Dx12.cpp" />
     <ClCompile Include="Graphics\RHI\Dx12\RootSignatureBuilder.cpp" />
     <ClCompile Include="Graphics\RHI\Dx12\UploadBuffer.cpp" />
-    <ClCompile Include="ShaderCompiler.cpp" />
     <ClCompile Include="ThirdParty\ImGui\imgui.cpp" />
     <ClCompile Include="ThirdParty\ImGui\imgui_demo.cpp" />
     <ClCompile Include="ThirdParty\ImGui\imgui_draw.cpp" />

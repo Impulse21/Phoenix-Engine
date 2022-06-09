@@ -10,6 +10,8 @@
 #ifdef _DEBUG
 #pragma comment(lib, "dxguid.lib")
 #endif
+
+using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::Dx12;
 
@@ -227,6 +229,7 @@ UINT ConvertSamplerReductionType(SamplerReductionType reductionType)
 
 PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
 	: m_frameCount(0)
+	, m_timerQueryIndexPool(kTimestampQueryHeapSize)
 {
 	this->m_factory = this->CreateFactory();
 	this->m_gpuAdapter = this->SelectOptimalGpuApdater();
@@ -283,6 +286,17 @@ PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
 
 	this->m_bindlessResourceDescriptorTable = std::make_unique<BindlessDescriptorTable>(
 		this->GetResourceGpuHeap()->Allocate(NUM_BINDLESS_RESOURCES));
+
+	// TODO: Data drive device create info
+	this->CreateGpuTimestampQueryHeap(this->kTimestampQueryHeapSize);
+
+	BufferDesc desc = {};
+	desc.SizeInBytes = this->kTimestampQueryHeapSize * sizeof(uint64_t);
+	desc.CpuAccessMode = CpuAccessMode::Read;
+
+	// Create GPU Buffer for timestamp readbacks
+	BufferHandle handle = this->CreateBuffer(desc);
+	this->m_timestampQueryBuffer = std::static_pointer_cast<GpuBuffer>(handle);
 }
 
 PhxEngine::RHI::Dx12::GraphicsDevice::~GraphicsDevice()
@@ -752,6 +766,96 @@ BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateBuffer(BufferDesc const
 	return bufferImpl;
 }
 
+TimerQueryHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTimerQuery()
+{
+
+	int queryIndex = this->m_timerQueryIndexPool.Allocate();
+	if (queryIndex < 0)
+	{
+		return nullptr;
+	}
+
+	auto timerQuery = std::make_shared<TimerQuery>(this->m_timerQueryIndexPool);
+	timerQuery->BeginQueryIndex = queryIndex * 2;
+	timerQuery->EndQueryIndex = timerQuery->BeginQueryIndex + 1;
+	timerQuery->Resolved = false;
+	timerQuery->Time = {};
+
+	return timerQuery;
+}
+
+bool PhxEngine::RHI::Dx12::GraphicsDevice::PollTimerQuery(TimerQueryHandle query)
+{
+	auto queryImpl = std::static_pointer_cast<TimerQuery>(query);
+
+	if (!queryImpl->Started)
+	{
+		return false;
+	}
+
+	if (!queryImpl->CommandQueue)
+	{
+		return true;
+	}
+
+	if (queryImpl->CommandQueue->GetLastCompletedFence() >= queryImpl->FenceCount)
+	{
+		queryImpl->CommandQueue = nullptr;
+		return true;
+	}
+
+	return false;
+}
+
+TimeStep PhxEngine::RHI::Dx12::GraphicsDevice::GetTimerQueryTime(TimerQueryHandle query)
+{
+	auto queryImpl = std::static_pointer_cast<TimerQuery>(query);
+
+	if (queryImpl->Resolved)
+	{
+		return queryImpl->Time;
+	}
+
+	if (queryImpl->CommandQueue)
+	{
+		queryImpl->CommandQueue->WaitForFence(queryImpl->FenceCount);
+		queryImpl->CommandQueue = nullptr;
+	}
+
+	// Could use the queue that it was executued on
+	// The GPU timestamp counter frequency (in ticks/second)
+	uint64_t frequency;
+	this->GetQueue(CommandQueueType::Graphics)->GetD3D12CommandQueue()->GetTimestampFrequency(&frequency);
+
+	D3D12_RANGE bufferReadRange = {
+	queryImpl->BeginQueryIndex * sizeof(uint64_t),
+	(queryImpl->BeginQueryIndex + 2) * sizeof(uint64_t) };
+
+	uint64_t* data;
+	const HRESULT res = this->m_timestampQueryBuffer->D3D12Resource->Map(0, &bufferReadRange, (void**)&data);
+
+	if (FAILED(res))
+	{
+		return TimeStep(0.0f);
+	}
+
+	queryImpl->Resolved = true;
+	queryImpl->Time = TimeStep(float(double(data[queryImpl->EndQueryIndex] - data[queryImpl->BeginQueryIndex]) / double(frequency)));
+
+	this->m_timestampQueryBuffer->D3D12Resource->Unmap(0, nullptr);
+
+	return queryImpl->Time;
+}
+
+void PhxEngine::RHI::Dx12::GraphicsDevice::ResetTimerQuery(TimerQueryHandle query)
+{
+	auto queryImpl = std::static_pointer_cast<TimerQuery>(query);
+	queryImpl->Started = false;
+	queryImpl->Resolved = false;
+	queryImpl->Time = 0.f;
+	queryImpl->CommandQueue = nullptr;
+}
+
 void PhxEngine::RHI::Dx12::GraphicsDevice::Present()
 {
 	this->m_swapChain.DxgiSwapchain->Present(0, 0);
@@ -774,7 +878,8 @@ uint64_t PhxEngine::RHI::Dx12::GraphicsDevice::ExecuteCommandLists(
 	std::vector<ID3D12CommandList*> d3d12CommandLists(numCommandLists);
 	for (size_t i = 0; i < numCommandLists; i++)
 	{
-		d3d12CommandLists[i] = static_cast<CommandList*>(pCommandLists[i])->GetD3D12CommandList();
+		auto cmdImpl = static_cast<CommandList*>(pCommandLists[i]);
+		d3d12CommandLists[i] = cmdImpl->GetD3D12CommandList();		
 	}
 
 	auto* queue = this->GetQueue(executionQueue);
@@ -787,7 +892,15 @@ uint64_t PhxEngine::RHI::Dx12::GraphicsDevice::ExecuteCommandLists(
 
 		for (size_t i = 0; i < numCommandLists; i++)
 		{
-			static_cast<CommandList*>(pCommandLists[i])->Executed(fenceValue);
+			auto trackedResources = static_cast<CommandList*>(pCommandLists[i])->Executed(fenceValue);
+
+			for (auto timerQuery : trackedResources->TimerQueries)
+			{
+				timerQuery->Started = true;
+				timerQuery->Resolved = false;
+
+				// No need to set command queue as it has already been executed.
+			}
 		}
 	}
 	else
@@ -795,6 +908,15 @@ uint64_t PhxEngine::RHI::Dx12::GraphicsDevice::ExecuteCommandLists(
 		for (size_t i = 0; i < numCommandLists; i++)
 		{
 			auto trackedResources = static_cast<CommandList*>(pCommandLists[i])->Executed(fenceValue);
+			
+			for (auto timerQuery : trackedResources->TimerQueries)
+			{
+				timerQuery->Started = true;
+				timerQuery->Resolved = false;
+				timerQuery->CommandQueue = queue;
+				timerQuery->FenceCount = fenceValue;
+			}
+
 			InflightDataEntry entry = { fenceValue, trackedResources };
 			this->m_inflightData[(int)executionQueue].emplace_back(entry);
 		}
@@ -1168,15 +1290,37 @@ std::unique_ptr<GpuBuffer> GraphicsDevice::CreateBufferInternal(BufferDesc const
 
 	std::unique_ptr<GpuBuffer> bufferImpl = std::make_unique<GpuBuffer>();
 	bufferImpl->Desc = desc;
-	auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+	
+	CD3DX12_HEAP_PROPERTIES heapProperties;
+	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
+
+	switch (desc.CpuAccessMode)
+	{
+	case CpuAccessMode::Read:
+		heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK);
+		initialState = D3D12_RESOURCE_STATE_COPY_DEST;
+		break;
+
+	case CpuAccessMode::Write:
+		heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
+		break;
+
+	case CpuAccessMode::Default:
+	default:
+		heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+		initialState = D3D12_RESOURCE_STATE_COMMON;
+	}
+
 	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(desc.SizeInBytes, resourceFlags);
+
 	// Create a committed resource for the GPU resource in a default heap.
 	ThrowIfFailed(
 		this->GetD3D12Device2()->CreateCommittedResource(
 			&heapProperties,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
-			D3D12_RESOURCE_STATE_COMMON,
+			initialState,
 			nullptr,
 			IID_PPV_ARGS(&bufferImpl->D3D12Resource)));
 
@@ -1246,6 +1390,18 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateSRVViews(GpuBuffer* gpuBuffer)
 				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
 	}
+}
+
+void GraphicsDevice::CreateGpuTimestampQueryHeap(uint32_t queryCount)
+{
+	D3D12_QUERY_HEAP_DESC dx12Desc = {};
+	dx12Desc.Count = queryCount;
+	dx12Desc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
+
+	ThrowIfFailed(
+		this->m_device->CreateQueryHeap(
+			&dx12Desc,
+			IID_PPV_ARGS(&this->m_gpuTimestampQueryHeap)));
 }
 
 Microsoft::WRL::ComPtr<IDXGIFactory6> PhxEngine::RHI::Dx12::GraphicsDevice::CreateFactory() const

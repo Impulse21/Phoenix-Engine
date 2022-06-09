@@ -8,6 +8,7 @@
 using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI;
 
+#define NUM_BACK_BUFFERS 3
 const char* GraphicsAPIToString(GraphicsAPI api)
 {
 	switch (api)
@@ -26,7 +27,10 @@ void Application::Initialize(PhxEngine::RHI::IGraphicsDevice* graphicsDevice)
 	Graphics::ShaderFactory factory(this->m_graphicsDevice, "shaders/", "../PhxEngine/Shaders/");
 	this->m_shaderStore.PreloadShaders(factory);
 
+	this->m_beginFrameCommandList = this->m_graphicsDevice->CreateCommandList();
 	this->m_composeCommandList = this->m_graphicsDevice->CreateCommandList();
+
+	this->m_frameProfiler = std::make_unique<FrameProfiler>(graphicsDevice, NUM_BACK_BUFFERS);
 
 	this->m_isInitialized = true;
 }
@@ -38,7 +42,6 @@ void Application::Finalize()
 
 void Application::Tick()
 {
-	// TODO: Initialization?
 	TimeStep deltaTime = this->m_stopWatch.Elapsed();
 	this->m_stopWatch.Begin();
 
@@ -46,6 +49,11 @@ void Application::Tick()
 	{
 		return;
 	}
+
+	this->m_beginFrameCommandList->Open();
+	this->m_frameProfiler->BeginFrame(this->m_beginFrameCommandList);
+	this->m_beginFrameCommandList->Close();
+	this->m_graphicsDevice->ExecuteCommandLists(this->m_beginFrameCommandList.get());
 
 	this->m_imguiRenderer.BeginFrame();
 
@@ -58,6 +66,8 @@ void Application::Tick()
 
 	this->Compose(this->m_composeCommandList);
 
+	this->m_frameProfiler->EndFrame(this->m_composeCommandList);
+
 	this->m_composeCommandList->Close();
 	this->m_graphicsDevice->ExecuteCommandLists(this->m_composeCommandList.get());
 
@@ -69,16 +79,35 @@ void Application::Update(TimeStep deltaTime)
 	// Set IMGUI Data
 	static bool sWindowOpen = true;
 	ImGui::Begin("Phx Engine", &sWindowOpen, ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse);
+	ImGui::Indent();
 	ImGui::Text("Version: %s", "0.1");
 	ImGui::Text("Graphics API: %s", GraphicsAPIToString(this->m_graphicsDevice->GetApi()));
 
 	const auto* gpuAdapter = this->m_graphicsDevice->GetGpuAdapter();
-	ImGui::Text("Graphics Adapter: %s", gpuAdapter->GetName());
-	ImGui::BulletText("Dedicated Video Memory: %zu MB (%zu GB)", gpuAdapter->GetDedicatedVideoMemory() >> 20, gpuAdapter->GetDedicatedVideoMemory() >> 30);
-	ImGui::BulletText("Dedicated System Memory: %zu MB (%zu GB)", gpuAdapter->GetDedicatedSystemMemory() >> 20, gpuAdapter->GetDedicatedSystemMemory() >> 30);
+	ImGui::Text("GPU Adapter: %s", gpuAdapter->GetName());
+
+	ImGui::Indent();
+	ImGui::BulletText("Video Memory: %zu MB (%zu GB)", gpuAdapter->GetDedicatedVideoMemory() >> 20, gpuAdapter->GetDedicatedVideoMemory() >> 30);
+	ImGui::BulletText("System Memory: %zu MB (%zu GB)", gpuAdapter->GetDedicatedSystemMemory() >> 20, gpuAdapter->GetDedicatedSystemMemory() >> 30);
 	ImGui::BulletText("Shared System Memory: %zu MB (%zu GB)" , gpuAdapter->GetSharedSystemMemory() >> 20, gpuAdapter->GetSharedSystemMemory() >> 30);
+	ImGui::Unindent();
+	ImGui::Unindent();
+
+	ImGui::Separator();
+
+	ImGui::Text("Frame Stats");
+	ImGui::Indent();
+
+	auto& cpuStats = this->m_frameProfiler->GetCpuTimeStats();
+	ImGui::Text("Avg CPU Time: %f ms", cpuStats.GetAvg());
+	ImGui::PlotLines("Frame CPU Times", cpuStats.GetExtendedHistory(), cpuStats.GetExentedHistorySize());
+
+	auto& gpuStats = this->m_frameProfiler->GetGpuTimeStats();
+	ImGui::Text("Avg GPU Time: %f ms", gpuStats.GetAvg());
+	ImGui::PlotLines("Frame CPU Times", gpuStats.GetExtendedHistory(), gpuStats.GetExentedHistorySize());
+	
+	ImGui::Unindent();
 	ImGui::End();
-	ImGui::ShowDemoWindow();
 }
 
 void Application::Render()
@@ -112,7 +141,7 @@ void PhxEngine::Core::Application::SetWindow(Core::Platform::WindowHandle window
 	Core::InitializeCanvas(windowHandle, this->m_canvas);
 
 	RHI::SwapChainDesc swapchainDesc = {};
-	swapchainDesc.BufferCount = 3;
+	swapchainDesc.BufferCount = NUM_BACK_BUFFERS;
 	swapchainDesc.Format = FormatType::R10G10B10A2_UNORM;
 	swapchainDesc.Width = this->m_canvas.GetPhysicalWidth();
 	swapchainDesc.Height = this->m_canvas.GetPhysicalHeight();

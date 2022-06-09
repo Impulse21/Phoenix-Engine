@@ -102,9 +102,6 @@
     <ClInclude Include="Core\Helpers.h">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\ShaderCompiler.h">
-      <Filter>Graphics\RHI</Filter>
-    </ClInclude>
     <ClInclude Include="Graphics\ShaderFactory.h">
       <Filter>Graphics</Filter>
     </ClInclude>
@@ -113,6 +110,15 @@
     </ClInclude>
     <ClInclude Include="Core\TaskExecutor.h">
       <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\BitSetAllocator.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\FrameProfiler.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\ShaderCompiler.h">
+      <Filter>Graphics\RHI</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -206,9 +212,6 @@
     <ClCompile Include="Graphics\ImGui\ImGuiRenderer.cpp">
       <Filter>Graphics\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="ShaderCompiler.cpp">
-      <Filter>Graphics\RHI</Filter>
-    </ClCompile>
     <ClCompile Include="Graphics\ShaderFactory.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
@@ -220,6 +223,15 @@
     </ClCompile>
     <ClCompile Include="ThirdParty\ImGui\imgui_demo.cpp">
       <Filter>ThirdParty\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\BitSetAllocator.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\FrameProfiler.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\ShaderCompiler.cpp">
+      <Filter>Graphics\RHI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -8,6 +8,7 @@
 #include "CommandQueue.h"
 #include "DescriptorHeap.h"
 #include "Common.h"
+#include "Core/BitSetAllocator.h"
 
 // Teir 1 limit is 1,000,000
 // https://docs.microsoft.com/en-us/windows/win32/direct3d12/hardware-support
@@ -20,6 +21,36 @@ namespace PhxEngine::RHI::Dx12
     struct TrackedResources;
 
     class BindlessDescriptorTable;
+
+    class TimerQuery : public ITimerQuery
+    {
+    public:
+        explicit TimerQuery(Core::BitSetAllocator& timerQueryIndexPoolRef)
+            : m_timerQueryIndexPoolRef(timerQueryIndexPoolRef)
+        {}
+
+        ~TimerQuery() override
+        {
+            // This will cause problems if we ever remove the device
+            this->m_timerQueryIndexPoolRef.Release(static_cast<int>(this->BeginQueryIndex) / 2);
+        }
+
+        size_t BeginQueryIndex = 0;
+        size_t EndQueryIndex = 0;
+
+        // Microsoft::WRL::ComPtr<ID3D12Fence> Fence;
+        CommandQueue* CommandQueue = nullptr;
+        uint64_t FenceCount = 0;
+
+        bool Started = false;
+        bool Resolved = false;
+        Core::TimeStep Time;
+
+
+    private:
+        // This is for freeing the query index
+        Core::BitSetAllocator& m_timerQueryIndexPoolRef;
+    };
 
     class Shader : public IShader
     {
@@ -159,6 +190,12 @@ namespace PhxEngine::RHI::Dx12
         BufferHandle CreateVertexBuffer(BufferDesc const& desc) override;
         BufferHandle CreateBuffer(BufferDesc const& desc) override;
 
+        // -- Query Stuff ---
+        TimerQueryHandle CreateTimerQuery() override;
+        bool PollTimerQuery(TimerQueryHandle query) override;
+        Core::TimeStep GetTimerQueryTime(TimerQueryHandle query) override;
+        void ResetTimerQuery(TimerQueryHandle query) override;
+
         TextureHandle GetBackBuffer() override { return this->m_swapChain.BackBuffers[this->GetCurrentBackBufferIndex()]; }
 
         void Present() override;
@@ -220,6 +257,9 @@ namespace PhxEngine::RHI::Dx12
         GpuDescriptorHeap* GetResourceGpuHeap() { return this->m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::CBV_SRV_UAV].get(); }
         GpuDescriptorHeap* GetSamplerGpuHeap() { return this->m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler].get(); }
 
+        ID3D12QueryHeap* GetQueryHeap() { return this->m_gpuTimestampQueryHeap.Get(); }
+        std::shared_ptr<GpuBuffer> GetTimestampQueryBuffer() { return this->m_timestampQueryBuffer; }
+
         const BindlessDescriptorTable* GetBindlessTable() const { return this->m_bindlessResourceDescriptorTable.get(); }
 
     private:
@@ -228,6 +268,8 @@ namespace PhxEngine::RHI::Dx12
     private:
         std::unique_ptr<GpuBuffer> CreateBufferInternal(BufferDesc const& desc);
         void CreateSRVViews(GpuBuffer* gpuBuffer);
+
+        void CreateGpuTimestampQueryHeap(uint32_t queryCount);
 
         // -- Dx12 API creation ---
     private:
@@ -244,10 +286,13 @@ namespace PhxEngine::RHI::Dx12
         void TranslateRasterState(RasterRenderState const& inState, D3D12_RASTERIZER_DESC& outState);
 
 	private:
+        const uint32_t kTimestampQueryHeapSize = 1024;
+
 		Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
 		Microsoft::WRL::ComPtr<ID3D12Device> m_device;
 		Microsoft::WRL::ComPtr<ID3D12Device2> m_device2;
 		Microsoft::WRL::ComPtr<ID3D12Device5> m_device5;
+
 		// std::shared_ptr<IDxcUtils> dxcUtils;
 		std::unique_ptr<DXGIGpuAdapter> m_gpuAdapter;
 
@@ -272,6 +317,11 @@ namespace PhxEngine::RHI::Dx12
         // -- Descriptor Heaps ---
 		std::array<std::unique_ptr<CpuDescriptorHeap>, (int)DescriptorHeapTypes::Count> m_cpuDescriptorHeaps;
         std::array<std::unique_ptr<GpuDescriptorHeap>, 2> m_gpuDescriptorHeaps;
+
+        // -- Query Heaps ---
+        Microsoft::WRL::ComPtr<ID3D12QueryHeap> m_gpuTimestampQueryHeap;
+        std::shared_ptr<GpuBuffer> m_timestampQueryBuffer;
+        Core::BitSetAllocator m_timerQueryIndexPool;
 
         std::unique_ptr<BindlessDescriptorTable> m_bindlessResourceDescriptorTable;
 

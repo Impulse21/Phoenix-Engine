@@ -12,10 +12,12 @@ namespace PhxEngine::RHI::Dx12
 	class UploadBuffer;
 	class DynamicSuballocator;
 
+	class TimerQuery;
 	struct TrackedResources
 	{
 		std::vector<std::shared_ptr<IResource>> Resource;
 		std::vector<Microsoft::WRL::ComPtr<IUnknown>> NativeResources;
+		std::vector<std::shared_ptr<TimerQuery>> TimerQueries;
 	};
 
 	class DynamicSubAllocatorPool
@@ -90,6 +92,9 @@ namespace PhxEngine::RHI::Dx12
 		void BindResourceTable(size_t rootParameterIndex) override;
 		void BindSamplerTable(size_t rootParameterIndex) override;
 		void BindDynamicDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures) override;
+
+		void BeginTimerQuery(TimerQueryHandle query);
+		void EndTimerQuery(TimerQueryHandle query);
 
 	public:
 		std::shared_ptr<TrackedResources> Executed(uint64_t fenceValue);
