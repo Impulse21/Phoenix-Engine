@@ -120,6 +120,13 @@
     <ClInclude Include="Graphics\ShaderCompiler.h">
       <Filter>Graphics\RHI</Filter>
     </ClInclude>
+    <ClInclude Include="Systems\ConsoleVarSystem.h" />
+    <ClInclude Include="Core\StringHash.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imgui_stdlib.h">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
@@ -151,6 +158,9 @@
     </Filter>
     <Filter Include="ThirdParty\DXC">
       <UniqueIdentifier>{870790df-f812-47e7-abc6-234d16052f21}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Systems">
+      <UniqueIdentifier>{375e528b-b660-49b7-8b8a-fb76fafff579}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -232,6 +242,10 @@
     </ClCompile>
     <ClCompile Include="Graphics\ShaderCompiler.cpp">
       <Filter>Graphics\RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="Systems\ConsoleVarSystem.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_stdlib.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

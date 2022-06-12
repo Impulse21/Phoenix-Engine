@@ -29,6 +29,7 @@
     <ClInclude Include="Core\Helpers.h" />
     <ClInclude Include="Core\Platform.h" />
     <ClInclude Include="Core\StopWatch.h" />
+    <ClInclude Include="Core\StringHash.h" />
     <ClInclude Include="Core\TaskExecutor.h" />
     <ClInclude Include="Core\TimeStep.h" />
     <ClInclude Include="Graphics\ImGui\ImGuiRenderer.h" />
@@ -50,12 +51,14 @@
     <ClInclude Include="Graphics\RHI\Dx12\RootSignatureBuilder.h" />
     <ClInclude Include="Graphics\RHI\Dx12\UploadBuffer.h" />
     <ClInclude Include="Graphics\RHI\PhxRHI.h" />
+    <ClInclude Include="Systems\ConsoleVarSystem.h" />
     <ClInclude Include="ThirdParty\DXC\d3d12shader.h" />
     <ClInclude Include="ThirdParty\DXC\dxcapi.h" />
     <ClInclude Include="ThirdParty\ImGui\imconfig.h" />
     <ClInclude Include="ThirdParty\ImGui\imgui.h" />
     <ClInclude Include="ThirdParty\ImGui\imgui_impl_win32.h" />
     <ClInclude Include="ThirdParty\ImGui\imgui_internal.h" />
+    <ClInclude Include="ThirdParty\ImGui\imgui_stdlib.h" />
     <ClInclude Include="ThirdParty\ImGui\imstb_rectpack.h" />
     <ClInclude Include="ThirdParty\ImGui\imstb_textedit.h" />
     <ClInclude Include="ThirdParty\ImGui\imstb_truetype.h" />
@@ -86,10 +89,12 @@
     <ClCompile Include="Graphics\RHI\Dx12\PhxRHI_Dx12.cpp" />
     <ClCompile Include="Graphics\RHI\Dx12\RootSignatureBuilder.cpp" />
     <ClCompile Include="Graphics\RHI\Dx12\UploadBuffer.cpp" />
+    <ClCompile Include="Systems\ConsoleVarSystem.cpp" />
     <ClCompile Include="ThirdParty\ImGui\imgui.cpp" />
     <ClCompile Include="ThirdParty\ImGui\imgui_demo.cpp" />
     <ClCompile Include="ThirdParty\ImGui\imgui_draw.cpp" />
     <ClCompile Include="ThirdParty\ImGui\imgui_impl_win32.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_stdlib.cpp" />
     <ClCompile Include="ThirdParty\ImGui\imgui_tables.cpp" />
     <ClCompile Include="ThirdParty\ImGui\imgui_widgets.cpp" />
     <ClCompile Include="ThirdParty\ThirdParty_Common.cpp" />
