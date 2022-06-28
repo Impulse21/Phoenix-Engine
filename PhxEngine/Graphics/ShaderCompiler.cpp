@@ -172,6 +172,7 @@ ShaderCompiler::CompileResult ShaderCompiler::CompileShader(
 		retVal.ErrorMsg = pErrors->GetStringPointer();
 	}
 
+	retVal.Successful = true;
 	HRESULT hrStatus;
 	hr = pResults->GetStatus(&hrStatus);
 	assert(SUCCEEDED(hr));

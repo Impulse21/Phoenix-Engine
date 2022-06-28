@@ -8,7 +8,7 @@
 #include <PhxEngine/Core/FileSystem.h>
 #include <PhxEngine/App/EngineEnvironment.h>
 
-#include <PhxEngine/Core/TimeStep.h>
+#include <PhxEngine/Core/TimeStep.h>"
 
 #include <stdint.h>
 
@@ -94,6 +94,7 @@ namespace PhxEngine
 
 			std::unique_ptr<Renderer::FontRenderer> m_fontRenderer;
 
+			std::shared_ptr<
 		private:
 			static Application* sSingleton;
 		};

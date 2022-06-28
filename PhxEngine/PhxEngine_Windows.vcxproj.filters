@@ -120,12 +120,62 @@
     <ClInclude Include="Graphics\ShaderCompiler.h">
       <Filter>Graphics\RHI</Filter>
     </ClInclude>
-    <ClInclude Include="Systems\ConsoleVarSystem.h" />
     <ClInclude Include="Core\StringHash.h">
       <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="ThirdParty\ImGui\imgui_stdlib.h">
       <Filter>ThirdParty\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Systems\Ecs.h">
+      <Filter>Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="Systems\ConsoleVarSystem.h">
+      <Filter>Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\SceneComponents.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Scene.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Math.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RenderPathComponent.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\SceneLoader.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\cgltf\cgltf.h">
+      <Filter>ThirdParty\cgltf</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\GltfSceneLoader.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Span.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\TextureCache.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Enums.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imGuIZMO\imGuIZMOquat.h">
+      <Filter>ThirdParty\ImGui\imGuIZMO.quat</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imGuIZMO\vgConfig.h">
+      <Filter>ThirdParty\ImGui\imGuIZMO.quat</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imGuIZMO\vGizmo.h">
+      <Filter>ThirdParty\ImGui\imGuIZMO.quat</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imGuIZMO\vGizmoMath.h">
+      <Filter>ThirdParty\ImGui\imGuIZMO.quat</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imGuIZMO\vgMath.h">
+      <Filter>ThirdParty\ImGui\imGuIZMO.quat</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -161,6 +211,15 @@
     </Filter>
     <Filter Include="Systems">
       <UniqueIdentifier>{375e528b-b660-49b7-8b8a-fb76fafff579}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene">
+      <UniqueIdentifier>{566b0c87-8796-4ff3-9c25-bc9e9963e78d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\cgltf">
+      <UniqueIdentifier>{c018f58e-0c2e-4f72-8255-8c0998df16d0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\ImGui\imGuIZMO.quat">
+      <UniqueIdentifier>{7915481c-224a-41f6-8f51-9a2c8f3f6cc0}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -243,12 +302,38 @@
     <ClCompile Include="Graphics\ShaderCompiler.cpp">
       <Filter>Graphics\RHI</Filter>
     </ClCompile>
-    <ClCompile Include="Systems\ConsoleVarSystem.cpp" />
     <ClCompile Include="ThirdParty\ImGui\imgui_stdlib.cpp">
       <Filter>ThirdParty\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Systems\ConsoleVarSystem.cpp">
+      <Filter>Systems</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Scene.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\SceneComponents.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RenderPathComponent.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\GltfSceneLoader.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\SceneLoader.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\TextureCache.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\ImGui\imGuIZMO\imGuIZMOquat.cpp">
+      <Filter>ThirdParty\ImGui\imGuIZMO.quat</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="ThirdParty\cgltf\LICENSE">
+      <Filter>ThirdParty\cgltf</Filter>
+    </None>
   </ItemGroup>
 </Project>

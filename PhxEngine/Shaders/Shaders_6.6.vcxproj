@@ -148,10 +148,35 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include="BRDFFunctions.hlsli" />
+    <None Include="DeferredLighting.hlsli" />
+    <None Include="Defines.hlsli" />
+    <None Include="FullScreenHelpers.hlsli" />
+    <None Include="FullScreenQuad.hlsli" />
+    <None Include="GBuffer.hlsli" />
+    <None Include="GBufferPass.hlsli" />
+    <None Include="Globals.hlsli" />
     <None Include="ImGui.hlsli" />
     <None Include="ResourceHeapTables.hlsli" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="DeferredLightingPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="DeferredLightingVS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="FullScreenQuadPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="FullScreenQuadVS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="GBufferPassPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="GBufferPassVS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+    </FxCompile>
     <FxCompile Include="ImGuiPS.hlsl">
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.5</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.5</ShaderModel>

@@ -10,6 +10,9 @@
 #include "Graphics/ShaderStore.h"
 #include "Graphics/ShaderFactory.h"
 #include "Graphics/ImGui/ImGuiRenderer.h"
+#include "Graphics/RenderPathComponent.h"
+
+#define NUM_BACK_BUFFERS 3
 
 namespace PhxEngine::Core
 {
@@ -32,10 +35,18 @@ namespace PhxEngine::Core
 		void Compose(PhxEngine::RHI::CommandListHandle cmdList);
 
 		void SetWindow(Core::Platform::WindowHandle windowHandle, bool isFullscreen = false);
+		void AttachRenderPath(std::shared_ptr<Graphics::RenderPathComponent> renderPathComponent);
 
+	public:
+		PhxEngine::RHI::IGraphicsDevice* GetGraphicsDevice() { return this->m_graphicsDevice; }
+		const Canvas& GetCanvas() const { return this->m_canvas; }
+		Graphics::ShaderStore& GetShaderStore() { return this->m_shaderStore; }
+		uint64_t GetFrameCount() const { return this->m_frameCount; }
 	private:
 		bool m_isInitialized;
 		std::atomic_bool m_initializationComplete;
+
+		uint64_t m_frameCount = 0;
 
 		StopWatch m_stopWatch;
 
@@ -50,6 +61,8 @@ namespace PhxEngine::Core
 
 		PhxEngine::Graphics::ImGuiRenderer m_imguiRenderer;
 		std::unique_ptr<FrameProfiler> m_frameProfiler;
+
+		std::shared_ptr<Graphics::RenderPathComponent> m_renderPath;
 	};
 
 	// Defined by client

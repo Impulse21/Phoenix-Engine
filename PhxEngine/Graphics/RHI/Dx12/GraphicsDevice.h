@@ -107,6 +107,8 @@ namespace PhxEngine::RHI::Dx12
     {
         TextureDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
+
+        // -- The views ---
         DescriptorHeapAllocation RtvAllocation;
         DescriptorHeapAllocation DsvAllocation;
         DescriptorHeapAllocation SrvAllocation;
@@ -229,6 +231,11 @@ namespace PhxEngine::RHI::Dx12
         // -- Dx12 Specific functions ---
     public:
         TextureHandle CreateRenderTarget(TextureDesc const& desc, Microsoft::WRL::ComPtr<ID3D12Resource> d3d12TextureResource);
+
+
+        void CreateShaderResourceView(Texture* textureImpl);
+        void CreateRenderTargetView(Texture* textureImpl);
+        void CreateDepthStencilView(Texture* textureImpl);
 
     public:
         void RunGarbageCollection();

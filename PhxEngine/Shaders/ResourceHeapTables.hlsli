@@ -15,12 +15,11 @@
 		"SRV(t0, space = 102, offset = 0, numDescriptors = unbounded, flags = DESCRIPTORS_VOLATILE | DATA_VOLATILE)" \
 	"), " 
 
-#define RS_BINDLESS_RS_FLAGS " | CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED "
+#define RS_BINDLESS_RS_FLAGS "CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED "
 
 #else
 
 #define RS_BINDLESS_DESCRIPTOR_TABLE ""
-
 #define RS_BINDLESS_RS_FLAGS ""
 
 #endif // USE_RESOURCE_HEAP

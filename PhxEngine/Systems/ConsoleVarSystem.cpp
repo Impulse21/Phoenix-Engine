@@ -42,17 +42,12 @@ struct ConsoleVarStorage
 template<typename T>
 struct ConsoleVarArray
 {
-    ConsoleVarStorage<T>* ConsoleVars;
+    std::vector<ConsoleVarStorage<T>> ConsoleVars;
     int32_t LastConsoleVar{ 0 };
 
     ConsoleVarArray(size_t size)
     {
-        this->ConsoleVars = new ConsoleVarStorage<T>[size];
-    }
-
-    ~ConsoleVarArray()
-    {
-        delete ConsoleVars;
+        ConsoleVars.resize(size);
     }
 
     T* GetCurrentPtr(int32_t index)
@@ -154,7 +149,7 @@ public:
         }
     }
 
-    ConsoleVarParameter* GetConsoleVar(Core::StringHash hash) override final;
+    ConsoleVarParameter* GetConsoleVar(Core::StringHash hash);
     ConsoleVarParameter* CreateFloatConsoleVar(const char* name, const char* description, double defaultValue, double currentValue) override final;
     ConsoleVarParameter* CreateIntConsoleVar(const char* name, const char* description, int32_t defaultValue, int32_t currentValue) override final;
     ConsoleVarParameter* CreateStringConsoleVar(const char* name, const char* description, const char* defaultValue, const char* currentValue) override final;
@@ -202,7 +197,7 @@ const char* ConsoleVarSystemImpl::GetStringConsoleVar(Core::StringHash hash)
 
 void ConsoleVarSystemImpl::SetStringConsoleVar(Core::StringHash hash, const char* value)
 {
-    this->SetConsoleVarCurrent(hash, value);
+    this->SetConsoleVarCurrent<std::string>(hash, value);
 }
 
 ConsoleVarParameter* ConsoleVarSystemImpl::GetConsoleVar(Core::StringHash hash)

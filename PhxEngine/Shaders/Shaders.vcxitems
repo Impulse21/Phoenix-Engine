@@ -14,8 +14,18 @@
     <ProjectCapability Include="SourceItemsFromImports" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="$(MSBuildThisFileDirectory)DeferredLightingPS.hlsl" />
+    <FxCompile Include="$(MSBuildThisFileDirectory)DeferredLightingVS.hlsl" />
+    <FxCompile Include="$(MSBuildThisFileDirectory)FullScreenHelpers.hlsli">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)FullScreenQuadPS.hlsl" />
+    <FxCompile Include="$(MSBuildThisFileDirectory)FullScreenQuadVS.hlsl" />
     <FxCompile Include="$(MSBuildThisFileDirectory)ImGuiPS.hlsl" />
     <FxCompile Include="$(MSBuildThisFileDirectory)ImGuiVS.hlsl" />
+    <FxCompile Include="$(MSBuildThisFileDirectory)GBufferPassPS.hlsl" />
+    <FxCompile Include="$(MSBuildThisFileDirectory)GBufferPassVS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)ShaderInterop.h" />
@@ -23,7 +33,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)BRDFFunctions.hlsli" />
+    <None Include="$(MSBuildThisFileDirectory)DeferredLighting.hlsli" />
+    <None Include="$(MSBuildThisFileDirectory)Defines.hlsli" />
+    <None Include="$(MSBuildThisFileDirectory)FullScreenQuad.hlsli" />
+    <None Include="$(MSBuildThisFileDirectory)GBuffer.hlsli" />
+    <None Include="$(MSBuildThisFileDirectory)Globals.hlsli" />
     <None Include="$(MSBuildThisFileDirectory)ImGui.hlsli" />
+    <None Include="$(MSBuildThisFileDirectory)GBufferPass.hlsli" />
     <None Include="$(MSBuildThisFileDirectory)ResourceHeapTables.hlsli" />
   </ItemGroup>
 </Project>

@@ -1,6 +1,8 @@
 #include "phxpch.h"
 #include "GraphicsDevice.h"
 
+#include "Core/Helpers.h"
+
 #include "BiindlessDescriptorTable.h"
 #include "CommandList.h"
 
@@ -457,6 +459,7 @@ InputLayoutHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateInputLayout(Vertex
 GraphicsPSOHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateGraphicsPSOHandle(GraphicsPSODesc const& desc)
 {
 	std::unique_ptr<GraphicsPSO> psoImpl = std::make_unique<GraphicsPSO>();
+	psoImpl->Desc = desc;
 
 	if (desc.VertexShader)
 	{
@@ -643,6 +646,8 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTexture(TextureDesc co
 {
 	auto& dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
 
+	// Create
+
 	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
 	if (desc.OptmizedClearValue.has_value())
 	{
@@ -652,16 +657,35 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTexture(TextureDesc co
 	}
 
 	auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
+
+	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		if ((desc.BindingFlags & BindingFlags::ShaderResource) != BindingFlags::ShaderResource)
+		{
+			resourceFlags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+		}
+	}
+	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+	}
+	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	}
+
 	auto resourceDesc =
 		CD3DX12_RESOURCE_DESC::Tex2D(
-			dxgiFormatMapping.srvFormat,
+			desc.IsTypeless ? dxgiFormatMapping.resourcFormatType : dxgiFormatMapping.rtvFormat,
 			desc.Width,
 			desc.Height,
 			desc.ArraySize,
 			desc.MipLevels,
 			1,
 			0,
-			D3D12_RESOURCE_FLAG_NONE);
+			resourceFlags);
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> d3d12Resource;
 	ThrowIfFailed(
@@ -669,50 +693,33 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTexture(TextureDesc co
 			&heapProperties,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
-			D3D12_RESOURCE_STATE_COMMON,
+			ConvertResourceStates(desc.InitialState),
 			desc.OptmizedClearValue.has_value() ? &d3d12OptimizedClearValue : nullptr,
 			IID_PPV_ARGS(&d3d12Resource)));
 
-	// Create SRV
 	auto textureImpl = std::make_unique<Texture>();
 	textureImpl->Desc = desc;
 	textureImpl->D3D12Resource = d3d12Resource;
-	textureImpl->SrvAllocation = this->GetResourceCpuHeap()->Allocate(1);
 
-	textureImpl->D3D12Resource->SetName(std::wstring(desc.DebugName.begin(), desc.DebugName.end()).c_str());
+	std::wstring debugName;
+	Helpers::StringConvert(desc.DebugName, debugName);
+	textureImpl->D3D12Resource->SetName(debugName.c_str());
 
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	srvDesc.Format = dxgiFormatMapping.srvFormat;
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-
-	if (desc.Dimension == TextureDimension::TextureCube)
+	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;  // Only 2D textures are supported (this was checked in the calling function).
-		srvDesc.TextureCube.MipLevels = desc.MipLevels;
-		srvDesc.TextureCube.MostDetailedMip = 0;
-	}
-	else
-	{
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;  // Only 2D textures are supported (this was checked in the calling function).
-		srvDesc.Texture2D.MipLevels = desc.MipLevels;
+		this->CreateShaderResourceView(textureImpl.get());
 	}
 
-	this->GetD3D12Device2()->CreateShaderResourceView(
-		textureImpl->D3D12Resource.Get(),
-		&srvDesc,
-		textureImpl->SrvAllocation.GetCpuHandle());
-
-	// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
-	textureImpl->BindlessResourceIndex = this->m_bindlessResourceDescriptorTable->Allocate();
-	if (textureImpl->BindlessResourceIndex != cInvalidDescriptorIndex)
+	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
 	{
-		this->GetD3D12Device2()->CopyDescriptorsSimple(
-			1,
-			this->m_bindlessResourceDescriptorTable->GetCpuHandle(textureImpl->BindlessResourceIndex),
-			textureImpl->SrvAllocation.GetCpuHandle(),
-			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		this->CreateRenderTargetView(textureImpl.get());
 	}
-	
+
+	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
+	{
+		this->CreateDepthStencilView(textureImpl.get());
+	}
+
 	return textureImpl;
 }
 
@@ -945,6 +952,82 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTarget(
 	textureImpl->D3D12Resource->SetName(debugName.c_str());
 
 	return textureImpl;
+}
+
+void PhxEngine::RHI::Dx12::GraphicsDevice::CreateShaderResourceView(Texture* textureImpl)
+{
+	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
+	textureImpl->SrvAllocation = this->GetResourceCpuHeap()->Allocate(1);
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = dxgiFormatMapping.srvFormat;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+	if (textureImpl->Desc.Dimension == TextureDimension::TextureCube)
+	{
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;  // Only 2D textures are supported (this was checked in the calling function).
+		srvDesc.TextureCube.MipLevels = textureImpl->Desc.MipLevels;
+		srvDesc.TextureCube.MostDetailedMip = 0;
+	}
+	else
+	{
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;  // Only 2D textures are supported (this was checked in the calling function).
+		srvDesc.Texture2D.MipLevels = textureImpl->Desc.MipLevels;
+	}
+
+	this->GetD3D12Device2()->CreateShaderResourceView(
+		textureImpl->D3D12Resource.Get(),
+		&srvDesc,
+		textureImpl->SrvAllocation.GetCpuHandle());
+
+	if (textureImpl->Desc.IsBindless)
+	{
+		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+		textureImpl->BindlessResourceIndex = this->m_bindlessResourceDescriptorTable->Allocate();
+		if (textureImpl->BindlessResourceIndex != cInvalidDescriptorIndex)
+		{
+			this->GetD3D12Device2()->CopyDescriptorsSimple(
+				1,
+				this->m_bindlessResourceDescriptorTable->GetCpuHandle(textureImpl->BindlessResourceIndex),
+				textureImpl->SrvAllocation.GetCpuHandle(),
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
+}
+
+void PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTargetView(Texture* textureImpl)
+{
+	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
+
+	textureImpl->RtvAllocation = this->GetRtvCpuHeap()->Allocate(1);
+
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+	rtvDesc.Format = dxgiFormatMapping.rtvFormat;
+	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D; // TODO: use desc.
+	rtvDesc.Texture2D.MipSlice = 0;
+
+	this->GetD3D12Device2()->CreateRenderTargetView(
+		textureImpl->D3D12Resource.Get(),
+		&rtvDesc,
+		textureImpl->RtvAllocation.GetCpuHandle());
+}
+
+void PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencilView(Texture* textureImpl)
+{
+	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
+
+	textureImpl->DsvAllocation = this->GetDsvCpuHeap()->Allocate(1);
+
+
+	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+	dsvDesc.Format = dxgiFormatMapping.rtvFormat;
+	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D; // TODO: use desc.
+	dsvDesc.Texture2D.MipSlice = 0;
+	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+
+	this->GetD3D12Device2()->CreateDepthStencilView(
+		textureImpl->D3D12Resource.Get(),
+		&dsvDesc,
+		textureImpl->DsvAllocation.GetCpuHandle());
 }
 
 /*
@@ -1344,13 +1427,13 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateSRVViews(GpuBuffer* gpuBuffer)
 
 	if (gpuBuffer->Desc.Format == FormatType::UNKNOWN)
 	{
-		if ((gpuBuffer->Desc.MiscFlags & BufferMiscFlags::Raw) == 1)
+		if ((gpuBuffer->Desc.MiscFlags & BufferMiscFlags::Raw) != 0)
 		{
 			srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
 			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
 			srvDesc.Buffer.NumElements = desc.SizeInBytes / sizeof(uint32_t);
 		}
-		else if((gpuBuffer->Desc.MiscFlags & BufferMiscFlags::Structured) == 1)
+		else if((gpuBuffer->Desc.MiscFlags & BufferMiscFlags::Structured) != 0)
 		{
 			// This is a Structured Buffer
 			srvDesc.Format = DXGI_FORMAT_UNKNOWN;
@@ -1377,7 +1460,7 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateSRVViews(GpuBuffer* gpuBuffer)
 		&srvDesc,
 		gpuBuffer->SrvAllocation.GetCpuHandle());
 
-	if (gpuBuffer->GetDesc().CreateBindless || (gpuBuffer->GetDesc().MiscFlags & RHI::BufferMiscFlags::Bindless) == 1)
+	if (gpuBuffer->GetDesc().CreateBindless || (gpuBuffer->GetDesc().MiscFlags & RHI::BufferMiscFlags::Bindless) != 0)
 	{
 		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
 		gpuBuffer->BindlessResourceIndex = this->m_bindlessResourceDescriptorTable->Allocate();

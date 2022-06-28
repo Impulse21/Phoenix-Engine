@@ -154,6 +154,46 @@ void PhxEngine::RHI::Dx12::CommandList::TransitionBarrier(
     this->m_trackedData->Resource.push_back(buffer);
 }
 
+void PhxEngine::RHI::Dx12::CommandList::TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers)
+{
+    for (PhxEngine::RHI::GpuBarrier& gpuBarrier : gpuBarriers)
+    {
+        if (const GpuBarrier::TextureBarrier* texBarrier = std::get_if<GpuBarrier::TextureBarrier>(&gpuBarrier.Data))
+        {
+            Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource = std::static_pointer_cast<Texture>(texBarrier->Texture)->D3D12Resource;
+
+            CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                D3D12Resource.Get(),
+                ConvertResourceStates(texBarrier->BeforeState),
+                ConvertResourceStates(texBarrier->AfterState));
+
+            this->m_barrierMemoryPool.push_back(barrier);
+            this->m_trackedData->Resource.push_back(texBarrier->Texture);
+        }
+        else if (const GpuBarrier::BufferBarrier* bufferBarrier = std::get_if<GpuBarrier::BufferBarrier>(&gpuBarrier.Data))
+        {
+            Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource = std::static_pointer_cast<GpuBuffer>(bufferBarrier->Buffer)->D3D12Resource;
+            CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                D3D12Resource.Get(),
+                ConvertResourceStates(texBarrier->BeforeState),
+                ConvertResourceStates(texBarrier->AfterState));
+
+            this->m_barrierMemoryPool.push_back(barrier);
+            this->m_trackedData->Resource.push_back(bufferBarrier->Buffer);
+        }
+    }
+
+    if (!this->m_barrierMemoryPool.empty())
+    {
+        // TODO: Batch Barrier
+        this->m_d3d12CommandList->ResourceBarrier(
+            this->m_barrierMemoryPool.size(),
+            this->m_barrierMemoryPool.data());
+
+        this->m_barrierMemoryPool.clear();
+    }
+}
+
 void CommandList::ClearTextureFloat(TextureHandle texture, Color const& clearColour)
 {
     auto textureImpl = std::static_pointer_cast<Texture>(texture);
@@ -365,6 +405,9 @@ void PhxEngine::RHI::Dx12::CommandList::SetGraphicsPSO(GraphicsPSOHandle graphis
     {
     case PrimitiveType::TriangleList:
         this->m_d3d12CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        break;
+    case PrimitiveType::TriangleStrip:
+        this->m_d3d12CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
         break;
 
     default:

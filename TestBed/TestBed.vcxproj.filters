@@ -13,4 +13,7 @@
     <CopyFileToFolders Include="..\ThirdParty\dxc_2021_12_08\dxcompiler.dll" />
     <CopyFileToFolders Include="..\ThirdParty\dxc_2021_12_08\dxil.dll" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
 </Project>

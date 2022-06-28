@@ -23,6 +23,27 @@
     <FxCompile Include="$(MSBuildThisFileDirectory)ImGuiVS.hlsl">
       <Filter>VS</Filter>
     </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)GBufferPassVS.hlsl">
+      <Filter>VS</Filter>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)GBufferPassPS.hlsl">
+      <Filter>PS</Filter>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)FullScreenQuadVS.hlsl">
+      <Filter>VS</Filter>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)FullScreenQuadPS.hlsl">
+      <Filter>PS</Filter>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)FullScreenHelpers.hlsli">
+      <Filter>Includes</Filter>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)DeferredLightingPS.hlsl">
+      <Filter>PS</Filter>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)DeferredLightingVS.hlsl">
+      <Filter>VS</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)ShaderInterop.h">
@@ -40,6 +61,24 @@
       <Filter>Includes</Filter>
     </None>
     <None Include="$(MSBuildThisFileDirectory)ImGui.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)GBufferPass.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)Globals.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)FullScreenQuad.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)Defines.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)DeferredLighting.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)GBuffer.hlsli">
       <Filter>Includes</Filter>
     </None>
   </ItemGroup>

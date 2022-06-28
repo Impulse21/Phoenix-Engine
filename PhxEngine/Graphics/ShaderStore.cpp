@@ -16,6 +16,17 @@ void ShaderStore::PreloadShaders(ShaderFactory& shaderFactory)
 	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::VS_ImGui)] = shaderFactory.LoadShader(ShaderStage::Vertex, "ImGuiVS.cso");
 	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::PS_ImGui)] = shaderFactory.LoadShader(ShaderStage::Pixel, "ImGuiPS.cso");
 
+	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::VS_GBufferPass)] = shaderFactory.LoadShader(ShaderStage::Vertex, "GBufferPassVS.cso");
+	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::PS_GBufferPass)] = shaderFactory.LoadShader(ShaderStage::Pixel, "GBufferPassPS.cso");
+
+	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::VS_FullscreenQuad)] = shaderFactory.LoadShader(ShaderStage::Vertex, "FullScreenQuadVS.cso");
+	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::PS_FullscreenQuad)] = shaderFactory.LoadShader(ShaderStage::Pixel, "FullScreenQuadPS.cso");
+
+	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::VS_DeferredLighting)] = shaderFactory.LoadShader(ShaderStage::Vertex, "DeferredLightingVS.cso");
+	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::PS_DeferredLighting)] = shaderFactory.LoadShader(ShaderStage::Pixel, "DeferredLightingPS.cso");
+
+	// this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::CS_DeferredLighting)] = shaderFactory.LoadShader(ShaderStage::Compute, "DeferredLightingCS.cso");
+
 	return;
 }
 

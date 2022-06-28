@@ -16,16 +16,27 @@ static const uint ENTITY_TYPE_DIRECTIONALLIGHT = 0;
 static const uint ENTITY_TYPE_OMNILIGHT = 1;
 static const uint ENTITY_TYPE_SPOTLIGHT = 2;
 
+static const uint DIRECTION_LIGHTS_OFFSET = 0;
+static const uint NUM_DIRECTIONAL_LIGHTS = 8;
+
+static const uint OMNI_LIGHT_OFFSET = NUM_DIRECTIONAL_LIGHTS;
+static const uint NUM_OMNI_LIGHTS = 200;
+
+static const uint SPOT_LIGHT_OFFSET = NUM_OMNI_LIGHTS + NUM_DIRECTIONAL_LIGHTS;
+static const uint NUM_SPOT_LIGHTS = 200;
+
+static const uint LIGHT_BUFFER_SIZE = DIRECTION_LIGHTS_OFFSET + NUM_OMNI_LIGHTS + NUM_SPOT_LIGHTS;
+
 struct ShaderLight
 {
 	float3 Position;
 	uint Type8_Flags8_Range16; // <Range_16><flags_8><type_8>
 
 	// -- 16 byte boundary ----
-
+	uint2 Direction16_ConeAngleCos16;
 	uint Energy16_X16; // <free_16><range_8>
 	uint ColorPacked;
-	uint2 _Padding;
+	uint _Padding;
 
 #ifndef __cplusplus
 	inline float4 GetColour()
@@ -38,6 +49,20 @@ struct ShaderLight
 		refVal.w = (float)((ColorPacked >> 24) & 0xFF) / 255.0f;
 
 		return refVal;
+	}
+
+	inline float3 GetDirection()
+	{
+		return float3(
+			f16tof32(Direction16_ConeAngleCos16.x & 0xFFFF),
+			f16tof32((Direction16_ConeAngleCos16.x >> 16) & 0xFFFF),
+			f16tof32(Direction16_ConeAngleCos16.y & 0xFFFF)
+		);
+	}
+
+	inline float GetConeAngleCos()
+	{
+		return f16tof32((Direction16_ConeAngleCos16.y >> 16) & 0xFFFF);
 	}
 
 	inline uint GetType()
@@ -79,6 +104,18 @@ struct ShaderLight
 	inline void SetEnergy(float value)
 	{
 		Energy16_X16 |= DirectX::PackedVector::XMConvertFloatToHalf(value);
+	}
+
+	inline void SetDirection(float3 value)
+	{
+		Direction16_ConeAngleCos16.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.x);
+		Direction16_ConeAngleCos16.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.y) << 16;
+		Direction16_ConeAngleCos16.y |= DirectX::PackedVector::XMConvertFloatToHalf(value.z);
+	}
+
+	inline void SetConeAngleCos(float value)
+	{
+		Direction16_ConeAngleCos16.y |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16;
 	}
 #endif
 };
@@ -161,8 +198,8 @@ struct SceneData
 
 	uint PreFilteredEnvMapTexIndex;
 	uint NumLights;
-	uint _padding1;
-	uint _padding2;
+	uint _Padding0;
+	uint _Padding1;
 
 	// -- 16 byte boundary ----
 };
@@ -259,6 +296,12 @@ struct Frame
 struct Camera
 {
 	float4x4 ViewProjection;
+
+	// -- 16 byte boundary ----
+	float4x4 ProjInv;
+
+	// -- 16 byte boundary ----
+	float4x4 ViewInv;
 
 	// -- 16 byte boundary ----
 

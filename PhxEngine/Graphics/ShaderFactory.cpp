@@ -47,7 +47,7 @@ ShaderHandle PhxEngine::Graphics::ShaderFactory::LoadShader(ShaderStage stage, s
 
 		auto output = ShaderCompiler::CompileShader(absoluteSourceFilePath.string(), options);
 
-		if (output.Successful)
+		if (!output.Successful)
 		{
 			throw std::runtime_error("Failed to compile shader");
 		}
@@ -59,7 +59,7 @@ ShaderHandle PhxEngine::Graphics::ShaderFactory::LoadShader(ShaderStage stage, s
 		{
 			auto symbolsPath = absoluteFilePath;
 			symbolsPath.replace_extension(".pdb");
-			Helpers::FileWrite(absoluteFilePath.string(), output.ShaderData, output.ShaderSize);
+			Helpers::FileWrite(symbolsPath.string(), output.ShaderData, output.ShaderSize);
 		}
 	}
 

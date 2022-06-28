@@ -2,12 +2,14 @@
 
 #include "Core/Platform.h"
 #include "Core/TimeStep.h"
+#include "Core/Span.h"
 
 #include <stdint.h>
 #include <optional>
 #include <string>
 #include <vector>
 #include <memory>
+#include <variant>
 
 #define PHXRHI_ENUM_CLASS_FLAG_OPERATORS(T) \
     inline T operator | (T a, T b) { return T(uint32_t(a) | uint32_t(b)); } \
@@ -444,6 +446,32 @@ namespace PhxEngine::RHI
         Maximum
     };
 
+    enum class BufferMiscFlags
+    {
+        None = 0,
+        SrvView = 1 << 0,
+        Bindless = 1 << 1,
+        Raw = 1 << 2,
+        Structured = 1 << 3,
+        Typed = 1 << 4,
+    };
+
+    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(BufferMiscFlags);
+
+    enum class BindingFlags
+    {
+        None = 0,
+        VertexBuffer = 1 << 0,
+        IndexBuffer = 1 << 1,
+        ConstantBuffer = 1 << 2,
+        ShaderResource = 1 << 3,
+        RenderTarget = 1 << 4,
+        DepthStencil = 1 << 5,
+        UnorderedAccess = 1 << 6,
+        ShadingRate = 1 << 7,
+    };
+
+    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(BindingFlags);
 #pragma endregion
 
     struct SwapChainDesc
@@ -752,8 +780,13 @@ namespace PhxEngine::RHI
 
     struct TextureDesc
     {
+        BindingFlags BindingFlags = BindingFlags::ShaderResource;
         TextureDimension Dimension = TextureDimension::Unknown;
+        ResourceStates InitialState = ResourceStates::Common;
+
         FormatType Format = FormatType::UNKNOWN;
+        bool IsTypeless = false;
+        bool IsBindless = true;
 
         uint32_t Width;
         uint32_t Height;
@@ -792,18 +825,6 @@ namespace PhxEngine::RHI
             , SizeInBytes(sizeInBytes)
         { }
     };
-
-    enum class BufferMiscFlags
-    {
-        None        = 0,
-        SrvView     = 1 << 0,
-        Bindless    = 1 << 1,
-        Raw         = 1 << 2,
-        Structured  = 1 << 3,
-        Typed       = 1 << 4,
-    };
-
-    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(BufferMiscFlags);
 
     struct BufferDesc
     {
@@ -881,6 +902,50 @@ namespace PhxEngine::RHI
         std::string DebugName;
     };
 
+    struct GpuBarrier
+    {
+        struct BufferBarrier
+        {
+            RHI::BufferHandle Buffer;
+            RHI::ResourceStates BeforeState;
+            RHI::ResourceStates AfterState;
+        };
+
+        struct TextureBarrier
+        {
+            RHI::TextureHandle Texture;
+            RHI::ResourceStates BeforeState;
+            RHI::ResourceStates AfterState;
+        };
+
+        std::variant<BufferBarrier, TextureBarrier> Data;
+
+        static GpuBarrier CreateTexture(TextureHandle texture, ResourceStates beforeState, ResourceStates afterState)
+        {
+            GpuBarrier::TextureBarrier t = {};
+            t.Texture = texture;
+            t.BeforeState = beforeState;
+            t.AfterState = afterState;
+
+            GpuBarrier barrier = {};
+            barrier.Data = t;
+
+            return barrier;
+        }
+
+        static GpuBarrier CreateBuffer(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState)
+        {
+            GpuBarrier::BufferBarrier b = {};
+            b.Buffer = buffer;
+            b.BeforeState = beforeState;
+            b.AfterState = afterState;
+
+            GpuBarrier barrier = {};
+            barrier.Data = b;
+
+            return barrier;
+        }
+    };
     class ScopedMarker;
 
     class ICommandList : public IResource
@@ -897,6 +962,7 @@ namespace PhxEngine::RHI
 
         virtual void TransitionBarrier(TextureHandle texture, ResourceStates beforeState, ResourceStates afterState) = 0;
         virtual void TransitionBarrier(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState) = 0;
+        virtual void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers) = 0;
         virtual void ClearTextureFloat(TextureHandle texture, Color const& clearColour) = 0 ;
         virtual void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) = 0;
 

@@ -5,6 +5,7 @@
 #include "ShaderInteropStructures.h"
 #include "ResourceHeapTables.hlsli"
 
+#if USE_RESOURCE_HEAP
 #define ImGuiRS "RootFlags( ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED )," \
                 "RootConstants(num32BitConstants=17, b999), " \
                 RS_BINDLESS_DESCRIPTOR_TABLE \
@@ -15,7 +16,20 @@
                                 "filter = FILTER_MIN_MAG_MIP_LINEAR," \
                                 "comparisonFunc = COMPARISON_ALWAYS, " \
                                 "borderColor = STATIC_BORDER_COLOR_TRANSPARENT_BLACK)"
+#else
+#define ImGuiRS "RootFlags( ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT )," \
+                "RootConstants(num32BitConstants=17, b999), " \
+                RS_BINDLESS_DESCRIPTOR_TABLE \
+                "StaticSampler(s0, " \
+                                "addressU = TEXTURE_ADDRESS_WRAP," \
+                                "addressV = TEXTURE_ADDRESS_WRAP," \
+                                "addressW = TEXTURE_ADDRESS_WRAP," \
+                                "filter = FILTER_MIN_MAG_MIP_LINEAR," \
+                                "comparisonFunc = COMPARISON_ALWAYS, " \
+                                "borderColor = STATIC_BORDER_COLOR_TRANSPARENT_BLACK)"
 
+
+#endif
 
 PUSH_CONSTANT(push, ImguiDrawInfo);
 

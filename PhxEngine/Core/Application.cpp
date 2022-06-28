@@ -1,6 +1,7 @@
 #include "phxpch.h"
 
 #include "Application.h"
+#include "Systems/ConsoleVarSystem.h"
 
 #include "ThirdParty/ImGui/imgui.h"
 
@@ -8,7 +9,6 @@
 using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI;
 
-#define NUM_BACK_BUFFERS 3
 const char* GraphicsAPIToString(GraphicsAPI api)
 {
 	switch (api)
@@ -72,10 +72,16 @@ void Application::Tick()
 	this->m_graphicsDevice->ExecuteCommandLists(this->m_composeCommandList.get());
 
 	this->m_graphicsDevice->Present();
+	this->m_frameCount++;
 }
 
 void Application::Update(TimeStep deltaTime)
 {
+	if (this->m_renderPath)
+	{
+		this->m_renderPath->Update(deltaTime);
+	}
+
 	// Set IMGUI Data
 	static bool sWindowOpen = true;
 	ImGui::Begin("Phx Engine", &sWindowOpen, ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse);
@@ -107,11 +113,22 @@ void Application::Update(TimeStep deltaTime)
 	ImGui::PlotLines("Frame CPU Times", gpuStats.GetExtendedHistory(), gpuStats.GetExentedHistorySize());
 	
 	ImGui::Unindent();
+
+	ImGui::End();
+
+	ImGui::Begin("Console Variables", &sWindowOpen);
+
+	ConsoleVarSystem::GetInstance()->DrawImguiEditor();
+
 	ImGui::End();
 }
 
 void Application::Render()
 {
+	if (this->m_renderPath)
+	{
+		this->m_renderPath->Render();
+	}
 }
 
 void Application::Compose(PhxEngine::RHI::CommandListHandle cmdList)
@@ -123,6 +140,11 @@ void Application::Compose(PhxEngine::RHI::CommandListHandle cmdList)
 	this->m_composeCommandList->ClearTextureFloat(backBuffer, { 0.0f, 0.0f, 0.0f, 1.0f });
 
 	this->m_composeCommandList->SetRenderTargets({ backBuffer }, nullptr);
+
+	if (this->m_renderPath)
+	{
+		this->m_renderPath->Compose(cmdList);
+	}
 
 	// Render directly to back buffer
 	this->m_imguiRenderer.Render(this->m_composeCommandList);
@@ -150,4 +172,26 @@ void PhxEngine::Core::Application::SetWindow(Core::Platform::WindowHandle window
 
 	this->m_graphicsDevice->CreateSwapChain(swapchainDesc);
 	this->m_imguiRenderer.Initialize(this->m_graphicsDevice, this->m_shaderStore, this->m_windowHandle);
+
+	if (this->m_renderPath)
+	{
+		this->m_renderPath->OnAttachWindow();
+	}
+}
+
+void PhxEngine::Core::Application::AttachRenderPath(
+	std::shared_ptr<Graphics::RenderPathComponent> renderPathComponent)
+{
+	if (!renderPathComponent)
+	{
+		return;
+	}
+
+	if (this->m_renderPath)
+	{
+		this->m_renderPath->OnDetach();
+	}
+
+	this->m_renderPath = renderPathComponent;
+	this->m_renderPath->OnAttach();
 }

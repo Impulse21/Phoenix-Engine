@@ -61,6 +61,7 @@ namespace PhxEngine::RHI::Dx12
 
 		void TransitionBarrier(TextureHandle texture, ResourceStates beforeState, ResourceStates afterState) override;
 		void TransitionBarrier(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState) override;
+		void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers) override;
 
 		void ClearTextureFloat(TextureHandle texture, Color const& clearColour) override;
 		void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) override;
@@ -116,6 +117,9 @@ namespace PhxEngine::RHI::Dx12
 		std::shared_ptr<TrackedResources> m_trackedData;
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_activeD3D12CommandAllocator;
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_d3d12CommandList;
+
+		// Temp Memory pool used for GPU Barriers
+		std::vector<D3D12_RESOURCE_BARRIER> m_barrierMemoryPool;
 
 		// Dynamic Descriptor Heap
 		DynamicSubAllocatorPool m_dynamicSubAllocatorPool;

@@ -8,9 +8,18 @@ namespace PhxEngine::Graphics
 	{
 		// VS Shaders
 		VS_ImGui,
+		VS_GBufferPass,
+		VS_FullscreenQuad,
+		VS_DeferredLighting,
 
 		// PS Shaders
 		PS_ImGui,
+		PS_GBufferPass,
+		PS_FullscreenQuad,
+		PS_DeferredLighting,
+
+		// Compute Shaders
+		CS_DeferredLighting,
 
 		NumPreloadShaders
 	};
