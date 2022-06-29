@@ -461,8 +461,10 @@ void PhxEngine::Scene::MaterialComponent::PopulateShaderData(Shader::MaterialDat
 	if (this->MetalRoughnessTexture)
 	{
 		shaderData.MaterialTexture = this->MetalRoughnessTexture->GetDescriptorIndex();
-		shaderData.MetalnessTexture = this->MetalRoughnessTexture->GetDescriptorIndex();
-		shaderData.Roughness = this->MetalRoughnessTexture->GetDescriptorIndex();
+		assert(shaderData.MaterialTexture != RHI::cInvalidDescriptorIndex);
+
+		// shaderData.MetalnessTexture = this->MetalRoughnessTexture->GetDescriptorIndex();
+		// shaderData.RoughnessTexture = this->MetalRoughnessTexture->GetDescriptorIndex();
 	}
 
 	shaderData.NormalTexture = RHI::cInvalidDescriptorIndex;

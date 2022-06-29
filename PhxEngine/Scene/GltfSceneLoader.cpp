@@ -18,7 +18,7 @@ using namespace PhxEngine::ECS;
 using namespace PhxEngine::RHI;
 using namespace DirectX;
 
-static bool TransformToLH = true;
+constexpr bool TransformToLH = true;
 
 // TODO: Use Span
 /*
@@ -742,10 +742,14 @@ void PhxEngine::Scene::GltfSceneLoader::LoadMeshData(
 		}
 
 		// Generate Tangents
-
 		if ((mesh.Flags & MeshComponent::kContainsNormals) != 0 && (mesh.Flags & MeshComponent::kContainsTexCoords) != 0 && (mesh.Flags & MeshComponent::kContainsTangents) == 0)
 		{
 			ComputeTangentSpace(mesh);
+		}
+
+		if (TransformToLH)
+		{
+			// mesh.ReverseWinding();
 		}
 	}
 }
@@ -853,8 +857,11 @@ void PhxEngine::Scene::GltfSceneLoader::LoadNode(
 			sizeof(float) * 4);
 
 		// Convert to LH since, GLTF standard is RH
-		transform.LocalRotation.z = -transform.LocalRotation.z;
-		transform.LocalRotation.w = -transform.LocalRotation.w;
+		if (TransformToLH)
+		{
+			transform.LocalRotation.z = -transform.LocalRotation.z;
+			transform.LocalRotation.w = -transform.LocalRotation.w;
+		}
 		transform.SetDirty(true);
 	}
 	if (gltfNode.has_translation)
@@ -863,8 +870,13 @@ void PhxEngine::Scene::GltfSceneLoader::LoadNode(
 			&transform.LocalTranslation.x,
 			&gltfNode.translation[0],
 			sizeof(float) * 3);
+
 		// Convert to LH since, GLTF standard is RH
-		transform.LocalTranslation.z = -transform.LocalTranslation.z;
+		if (TransformToLH)
+		{
+			transform.LocalTranslation.z = -transform.LocalTranslation.z;
+		}
+
 		transform.SetDirty(true);
 	}
 	if (gltfNode.has_matrix)
@@ -894,11 +906,19 @@ void PhxEngine::Scene::GltfSceneLoader::LoadNode(
 		cameraComponent.UpdateCamera();
 	}
 
-	if (gltfNode.light && (gltfNode.light->type == cgltf_light_type_directional  || gltfNode.light->type == cgltf_light_type_spot))
+	if (gltfNode.light)
 	{
 		auto& lightComponent = *scene.Lights.GetComponent(entity);
 		const auto& transformComponent = *scene.Transforms.GetComponent(entity);
-		XMStoreFloat3(&lightComponent.Direction, XMVector3Normalize(transformComponent.GetPositionV()));
+		if (gltfNode.light->type == cgltf_light_type_directional || gltfNode.light->type == cgltf_light_type_spot)
+		{
+			XMStoreFloat3(&lightComponent.Direction, XMVector3Normalize(transformComponent.GetPositionV()));
+		}
+
+		if (gltfNode.light->type == cgltf_light_type_point || gltfNode.light->type == cgltf_light_type_spot)
+		{
+			lightComponent.Position = transformComponent.GetPosition();
+		}
 	}
 
 	for (int i = 0; i < gltfNode.children_count; i++)

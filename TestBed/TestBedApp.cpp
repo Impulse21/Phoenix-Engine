@@ -353,6 +353,7 @@ void TestBedRenderPath::Render()
                 renderLight.SetEnergy(lightComponent.Energy);
                 renderLight.SetFlags(lightComponent.Flags);
                 renderLight.SetDirection(lightComponent.Direction);
+                renderLight.Position = lightComponent.Position;
                 renderLight.ColorPacked = Math::PackColour(lightComponent.Colour);
                 frameData.Scene.NumLights++;
             }
@@ -715,6 +716,9 @@ void TestBedRenderPath::CreatePSO()
         psoDesc.VertexShader = this->m_app->GetShaderStore().Retrieve(PreLoadShaders::VS_GBufferPass);
         psoDesc.PixelShader = this->m_app->GetShaderStore().Retrieve(PreLoadShaders::PS_GBufferPass);
         psoDesc.InputLayout = nullptr;
+
+        // psoDesc.RasterRenderState.CullMode = RHI::RasterCullMode::Front;
+
         psoDesc.RtvFormats.push_back(this->m_gBuffer[0].AlbedoTexture->GetDesc().Format);
         psoDesc.RtvFormats.push_back(this->m_gBuffer[0].NormalTexture->GetDesc().Format);
         psoDesc.RtvFormats.push_back(this->m_gBuffer[0].SurfaceTexture->GetDesc().Format);
@@ -726,8 +730,6 @@ void TestBedRenderPath::CreatePSO()
     {
         // TODO: Use the files directly
         RHI::GraphicsPSODesc psoDesc = {};
-        // psoDesc.PrimType = RHI::PrimitiveType::TriangleStrip;
-
         psoDesc.VertexShader = this->m_app->GetShaderStore().Retrieve(PreLoadShaders::VS_FullscreenQuad);
         psoDesc.PixelShader = this->m_app->GetShaderStore().Retrieve(PreLoadShaders::PS_FullscreenQuad);
         psoDesc.InputLayout = nullptr;

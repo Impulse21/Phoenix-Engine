@@ -127,17 +127,28 @@ PSOutput main(PSInput input)
     }
     
     float metallic = material.Metalness;
+    float roughness = material.Roughness;
+
+    // -- Sample the material texture ---
+    if (material.MaterialTexture != InvalidDescriptorIndex)
+    {
+        float4 materialSample = ResourceHeap_GetTexture2D(material.MaterialTexture).Sample(SamplerDefault, input.TexCoord);
+        metallic = materialSample.b;
+        roughness = materialSample.g;
+    }
+    /* Legacy stuff - add define to drive this 
+    // -- Sample the individual metalness texture if there is one ---
     if (material.MetalnessTexture != InvalidDescriptorIndex)
     {
-        metallic = ResourceHeap_GetTexture2D(material.MaterialTexture).Sample(SamplerDefault, input.TexCoord).b;
+        metallic = ResourceHeap_GetTexture2D(material.MetalnessTexture).Sample(SamplerDefault, input.TexCoord).b;
     }
-    
-    float roughness = material.Roughness;
+
+    // -- Sample the individual Roughtness texture if there is one ---
     if (material.RoughnessTexture != InvalidDescriptorIndex)
     {
         roughness = ResourceHeap_GetTexture2D(material.RoughnessTexture).Sample(SamplerDefault, input.TexCoord).g;
     }
-        
+      */  
     float ao = material.AO;
     if (material.AOTexture != InvalidDescriptorIndex)
     {
