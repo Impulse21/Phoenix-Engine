@@ -18,8 +18,6 @@ using namespace PhxEngine::ECS;
 using namespace PhxEngine::RHI;
 using namespace DirectX;
 
-constexpr bool TransformToLH = true;
-
 // TODO: Use Span
 /*
 class BufferRegionBlob : public IBlob
@@ -202,7 +200,7 @@ static void ComputeTangentSpace(MeshComponent& mesh)
 			? -1.0f
 			: 1.0f;
 
-		DirectX::XMVectorSetW(tangent, sign);
+		orthTangent = DirectX::XMVectorSetW(orthTangent, sign);
 		DirectX::XMStoreFloat4(&mesh.VertexTangents[i], orthTangent);
 	}
 }
@@ -313,7 +311,22 @@ bool PhxEngine::Scene::GltfSceneLoader::LoadSceneInternal(
 	scene.Transforms.Create(scene.RootEntity);
 	scene.Names.Create(scene.RootEntity) = gltfData->scene->name ? gltfData->scene->name : "GLTF Scene"; // TODO: Use filename.
 	
-	
+#ifdef CREATE_DEFAULT_CAMERA
+	// Add a default Camera for testing
+	std::string cameraName = "Default Camera";
+
+	ECS::Entity entity = scene.EntityCreateCamera(cameraName);
+	auto& cameraComponent = *scene.Cameras.GetComponent(entity);
+	cameraComponent.Width = Scene::GetGlobalCamera().Width;
+	cameraComponent.Height = Scene::GetGlobalCamera().Height;
+	cameraComponent.FoV = 1.7;
+	cameraComponent.ZNear = 0.1;
+	cameraComponent.ZFar = 10000;
+	TransformComponent& transform = *scene.Transforms.GetComponent(entity);
+	transform.UpdateTransform();
+	scene.ComponentAttach(entity, scene.RootEntity, true);
+#endif
+
 	// Load Node Data
 	for (size_t i = 0; i < gltfData->scene->nodes_count; i++)
 	{
@@ -504,14 +517,7 @@ void PhxEngine::Scene::GltfSceneLoader::LoadMeshData(
 			totalVertexCounts[i] += cgltfPrim.attributes->data->count;
 		}
 	}
-	/*
-	auto meshBuffers = std::make_shared<MeshBuffers>();
-	meshBuffers->IndexData.resize(totalIndexCounts);
-	meshBuffers->PositionData.resize(totalVertexCounts);
-	meshBuffers->NormalData.resize(totalVertexCount);
-	meshBuffers->TexCoordData.resize(totalVertexCount);
-	meshBuffers->TangentData.resize(totalVertexCount);
-	*/
+
 	for (int i = 0; i < meshCount; i++)
 	{
 		const auto& cgltfMesh = pMeshes[i];
@@ -747,10 +753,7 @@ void PhxEngine::Scene::GltfSceneLoader::LoadMeshData(
 			ComputeTangentSpace(mesh);
 		}
 
-		if (TransformToLH)
-		{
-			// mesh.ReverseWinding();
-		}
+		mesh.ReverseWinding();
 	}
 }
 
@@ -856,12 +859,7 @@ void PhxEngine::Scene::GltfSceneLoader::LoadNode(
 			&gltfNode.rotation[0],
 			sizeof(float) * 4);
 
-		// Convert to LH since, GLTF standard is RH
-		if (TransformToLH)
-		{
-			transform.LocalRotation.z = -transform.LocalRotation.z;
-			transform.LocalRotation.w = -transform.LocalRotation.w;
-		}
+
 		transform.SetDirty(true);
 	}
 	if (gltfNode.has_translation)
@@ -870,12 +868,6 @@ void PhxEngine::Scene::GltfSceneLoader::LoadNode(
 			&transform.LocalTranslation.x,
 			&gltfNode.translation[0],
 			sizeof(float) * 3);
-
-		// Convert to LH since, GLTF standard is RH
-		if (TransformToLH)
-		{
-			transform.LocalTranslation.z = -transform.LocalTranslation.z;
-		}
 
 		transform.SetDirty(true);
 	}

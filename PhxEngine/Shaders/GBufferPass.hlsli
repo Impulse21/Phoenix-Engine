@@ -90,7 +90,7 @@ PSInput main(in VertexInput input)
 
     output.NormalWS = geometry.NormalOffset == ~0u ? 0 : asfloat(vertexBuffer.Load3(geometry.NormalOffset + index * 12));
     output.TexCoord = geometry.TexCoordOffset == ~0u ? 0 : asfloat(vertexBuffer.Load2(geometry.TexCoordOffset + index * 8));
-    output.Colour = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    output.Colour = float4(1.0f, 1.0f, 1.0f, 1.0f);
 
     output.TangentWS = geometry.TangentOffset == ~0u ? 0 : asfloat(vertexBuffer.Load4(geometry.TangentOffset + index * 16));
     output.TangentWS = float4(mul(output.TangentWS.xyz, (float3x3) worldMatrix), output.TangentWS.w);
@@ -161,8 +161,12 @@ PSOutput main(PSInput input)
     if (material.NormalTexture != InvalidDescriptorIndex)
     {
         float3x3 tbn = float3x3(tangent, biTangent, normal);
-        normal = ResourceHeap_GetTexture2D(material.NormalTexture).Sample(SamplerDefault, input.TexCoord).rgb * 2.0 - 1.0;;
+        normal = ResourceHeap_GetTexture2D(material.NormalTexture).Sample(SamplerDefault, input.TexCoord).rgb * 2.0 - 1.0;
         normal = normalize(mul(normal, tbn));
+
+#ifdef __HACK_FLIP_Y_COORD
+         normal.y = -normal.y;
+#endif
     }
 
     // -- End Material Collection ---

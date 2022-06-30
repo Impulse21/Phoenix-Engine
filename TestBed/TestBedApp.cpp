@@ -258,14 +258,41 @@ void TestBedRenderPath::Update(TimeStep const& ts)
 
         ImGui::Indent();
         auto& cameraComponent = *this->m_scene.Cameras.GetComponent(this->m_cameraEntities[this->m_selectedCamera]);
-        ImGui::InputFloat3("Eye", &cameraComponent.Eye.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
-        ImGui::InputFloat3("At", &cameraComponent.At.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
+        // ImGui::InputFloat3("Eye", &cameraComponent.Eye.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
+        ImGui::InputFloat3("Eye", &cameraComponent.Eye.x, "%.3f");
+
+        //ImGui::InputFloat3("At", &cameraComponent.At.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
+        ImGui::InputFloat3("At", &cameraComponent.At.x, "%.3f");
+
         ImGui::InputFloat3("Up", &cameraComponent.Up.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
         ImGui::InputFloat("Width", &cameraComponent.Width, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_ReadOnly);
         ImGui::InputFloat("Height", &cameraComponent.Height, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_ReadOnly);
         ImGui::InputFloat("ZNear", &cameraComponent.ZNear, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_ReadOnly);
         ImGui::InputFloat("ZFar", &cameraComponent.ZFar, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_ReadOnly);
         ImGui::InputFloat("Fov", &cameraComponent.FoV, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_ReadOnly);
+       
+        cameraComponent.UpdateCamera();
+
+        // Get Rotation
+        auto& transformComponent = *this->m_scene.Transforms.GetComponent(this->m_cameraEntities[this->m_selectedCamera]);
+        ImGui::Text("Transform:");
+        ImGui::InputFloat3("Translation", &transformComponent.LocalScale.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
+        ImGui::InputFloat4("Rotation", &transformComponent.LocalRotation.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
+        ImGui::InputFloat3("Scale", &transformComponent.LocalScale.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
+        auto cameraRot = transformComponent.GetRotation();
+        quat qt(
+            cameraRot.w,
+            cameraRot.x,
+            cameraRot.y,
+            cameraRot.z);
+        if (ImGui::gizmo3D("##gizmo1", qt /*, size,  mode */))
+        { 
+            //transformComponent.Rotate(DirectX::XMFLOAT4(qt.x, qt.y, qt.z, qt.w));
+            //transformComponent.UpdateTransform();
+            //
+            //cameraComponent.TransformCamera(transformComponent);
+            //cameraComponent.UpdateCamera();
+        }
 
         ImGui::Unindent();
     }
@@ -277,6 +304,7 @@ void TestBedRenderPath::Update(TimeStep const& ts)
         if (!this->m_lightEntities.empty())
         {
             ImGui::Indent();
+
             auto& lightComponent = *this->m_scene.Lights.GetComponent(this->m_lightEntities[this->m_selectedLight]);
 
             switch (lightComponent.Type)
@@ -301,11 +329,12 @@ void TestBedRenderPath::Update(TimeStep const& ts)
 
             if (lightComponent.Type != LightComponent::LightType::kOmniLight)
             {
-                Vec3 light(lightComponent.Direction.x, lightComponent.Direction.y, lightComponent.Direction.z);
+                // Direction is starting from origin, so we need to negate it
+                Vec3 light(-lightComponent.Direction.x, -lightComponent.Direction.y, -lightComponent.Direction.z);
                 // get/setLigth are helper funcs that you have ideally defined to manage your global/member objs
                 if (ImGui::gizmo3D("##Dir1", light /*, size,  mode */))
                 {
-                    lightComponent.Direction = { light.x, light.y, light.z };
+                    lightComponent.Direction = { -light.x, -light.y, -light.z };
                 }
             }
             
@@ -353,8 +382,11 @@ void TestBedRenderPath::Render()
                 renderLight.SetEnergy(lightComponent.Energy);
                 renderLight.SetFlags(lightComponent.Flags);
                 renderLight.SetDirection(lightComponent.Direction);
-                renderLight.Position = lightComponent.Position;
                 renderLight.ColorPacked = Math::PackColour(lightComponent.Colour);
+
+                auto& transformComponent = *this->m_scene.Transforms.GetComponent(this->m_scene.Lights.GetEntity(i));
+                renderLight.Position = transformComponent.GetPosition();
+
                 frameData.Scene.NumLights++;
             }
         }
@@ -689,7 +721,8 @@ void TestBedRenderPath::CreateRenderTargets()
 
         this->m_gBuffer[i].AlbedoTexture = this->m_app->GetGraphicsDevice()->CreateTexture(desc);
 
-        desc.Format = RHI::FormatType::R10G10B10A2_UNORM;
+        // desc.Format = RHI::FormatType::R10G10B10A2_UNORM;
+        desc.Format = RHI::FormatType::RGBA16_SNORM;
         desc.DebugName = "Normal Buffer";
         this->m_gBuffer[i].NormalTexture = this->m_app->GetGraphicsDevice()->CreateTexture(desc);
 
@@ -717,8 +750,7 @@ void TestBedRenderPath::CreatePSO()
         psoDesc.PixelShader = this->m_app->GetShaderStore().Retrieve(PreLoadShaders::PS_GBufferPass);
         psoDesc.InputLayout = nullptr;
 
-        // psoDesc.RasterRenderState.CullMode = RHI::RasterCullMode::Front;
-
+        // psoDesc.RasterRenderState.CullMode = RHI::RasterCullMode::None;
         psoDesc.RtvFormats.push_back(this->m_gBuffer[0].AlbedoTexture->GetDesc().Format);
         psoDesc.RtvFormats.push_back(this->m_gBuffer[0].NormalTexture->GetDesc().Format);
         psoDesc.RtvFormats.push_back(this->m_gBuffer[0].SurfaceTexture->GetDesc().Format);
