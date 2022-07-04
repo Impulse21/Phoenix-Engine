@@ -5,15 +5,58 @@
 #include "Core/Application.h"
 #include "Graphics/RHI/Dx12/PhxRHI_Dx12.h"
 
-#ifdef _WIN32
+//#define USE_GLFW
+
+#ifdef USE_GLFW
+
+#include "GLFW/glfw3.h"
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include "GLFW/glfw3native.h"
+
+#else
 
 #include "ThirdParty/ImGui/imgui_impl_win32.h"
 
 #endif 
 
-#ifdef _WIN32
-
 extern PhxEngine::Core::Application* PhxEngine::Core::CreateApplication(CommandLineArgs args);
+
+namespace
+{
+    static bool sGlwfIsInitialzed = false;
+}
+
+#ifdef USE_GLFW
+
+int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
+    _In_opt_ HINSTANCE hPrevInstance,
+    _In_ LPWSTR    lpCmdLine,
+    _In_ int       nCmdShow)
+{
+    UNREFERENCED_PARAMETER(hInstance);
+    UNREFERENCED_PARAMETER(hPrevInstance);
+    UNREFERENCED_PARAMETER(lpCmdLine);
+    UNREFERENCED_PARAMETER(nCmdShow);
+
+    // Initialize Engine Core
+
+    // Core Engine Init
+
+    if (!sGlwfIsInitialzed)
+    {
+        glfwInit();
+    }
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    glfwCreateWindow(
+        WindowWidth,
+        WindowHeight,
+        "PhxEngine",
+        nullptr,
+        nullptr);
+}
+
+#else
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 #define MAX_LOADSTRING 100

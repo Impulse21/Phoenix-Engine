@@ -753,6 +753,8 @@ void PhxEngine::Scene::GltfSceneLoader::LoadMeshData(
 			ComputeTangentSpace(mesh);
 		}
 
+		// GLTF 2.0 front face is CCW, I currently use CW as front face.
+		// something to consider to change.
 		mesh.ReverseWinding();
 	}
 }
