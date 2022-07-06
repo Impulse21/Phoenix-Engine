@@ -30,7 +30,7 @@ StructuredBuffer<ShaderLight> LightSB : register(t0);
 // StructuredBuffer<matrix> InstanceTransformsSB : register(t0);
 
 SamplerState SamplerDefault : register(s50);
-SamplerState SamplerBrdf : register(s51);
+// SamplerState SamplerBrdf : register(s51);
 SamplerComparisonState ShadowSampler : register(s52);
 
 inline SceneData GetScene()

@@ -25,7 +25,7 @@ using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Scene;
 
 
-AutoConsoleVar_Int CVAR_DeferredLightUseCompute("DeferredLightingCompute.checkbox", "Use compute Deferred lighting", 0, ConsoleVarFlags::EditCheckbox);
+AutoConsoleVar_Int CVAR_EnableIBL("Renderer.EnableIBL.checkbox", "Enabled Image Based Lighting", 1, ConsoleVarFlags::EditCheckbox);
 
 void TransposeMatrix(DirectX::XMFLOAT4X4 const& in, DirectX::XMFLOAT4X4* out)
 {
@@ -204,12 +204,30 @@ void TestBedRenderPath::OnAttachWindow()
     PhxEngine::Scene::Scene::GetGlobalCamera().Width = this->m_app->GetCanvas().Width;
     PhxEngine::Scene::Scene::GetGlobalCamera().Height = this->m_app->GetCanvas().Height;
 
-    bool result = sceneLoader->LoadScene("..\\Assets\\Models\\Sponza_Intel\\Main\\NewSponza_Main_Blender_glTF.gltf", this->m_commandList, this->m_scene);
-    // bool result = sceneLoader->LoadScene("..\\Assets\\Models\\Sponza_Intel\\Main\\Sponza_YUp.gltf", this->m_commandList, this->m_scene);
+#if false
+    const std::string scenePath = "..\\Assets\\Models\\Sponza_Intel\\Main\\NewSponza_Main_Blender_glTF.gltf";
+#else
+    const std::string scenePath = "..\\Assets\\Models\\\MaterialScene\\MatScene.gltf";
+#endif
+
+    bool result = sceneLoader->LoadScene(scenePath, this->m_commandList, this->m_scene);
+
     if (!result)
     {
         throw std::runtime_error("Failed to load Scene");
     }
+
+#if false
+    this->m_scene.SkyboxTexture = this->m_textureCache->LoadTexture("..\\Assets\\Textures\\IBL\\PaperMill_Ruins_E\\PaperMill_Skybox.dds", true, this->m_commandList);
+    this->m_scene.IrradanceMap = this->m_textureCache->LoadTexture("..\\Assets\\Textures\\IBL\\PaperMill_Ruins_E\\PaperMill_IrradianceMap.dds", true, this->m_commandList);
+    this->m_scene.PrefilteredMap = this->m_textureCache->LoadTexture("..\\Assets\\Textures\\IBL\\PaperMill_Ruins_E\\PaperMill_RadianceMap.dds", true, this->m_commandList);
+#else
+
+    this->m_scene.SkyboxTexture = this->m_textureCache->LoadTexture("..\\Assets\\Textures\\IBL\\Serpentine_Valley\\output_skybox.dds", true, this->m_commandList);
+    this->m_scene.IrradanceMap = this->m_textureCache->LoadTexture("..\\Assets\\Textures\\IBL\\Serpentine_Valley\\output_irradiance.dds", true, this->m_commandList);
+    this->m_scene.PrefilteredMap = this->m_textureCache->LoadTexture("..\\Assets\\Textures\\IBL\\Serpentine_Valley\\output_radiance.dds", true, this->m_commandList);
+#endif 
+    this->m_scene.BrdfLUT = this->m_textureCache->LoadTexture("..\\Assets\\Textures\\IBL\\BrdfLut.dds", true, this->m_commandList);
 
     this->ConstructSceneRenderData(this->m_commandList);
 
@@ -329,13 +347,17 @@ void TestBedRenderPath::Update(TimeStep const& ts)
 
             if (lightComponent.Type != LightComponent::LightType::kOmniLight)
             {
+                ImGui::InputFloat3("Direction", &lightComponent.Direction.x, "%.3f");
+
                 // Direction is starting from origin, so we need to negate it
-                Vec3 light(-lightComponent.Direction.x, -lightComponent.Direction.y, -lightComponent.Direction.z);
+                Vec3 light(lightComponent.Direction.x, lightComponent.Direction.y, -lightComponent.Direction.z);
                 // get/setLigth are helper funcs that you have ideally defined to manage your global/member objs
+                ImGui::Text("This is not working as expected. Do Not Use");
                 if (ImGui::gizmo3D("##Dir1", light /*, size,  mode */))
                 {
-                    lightComponent.Direction = { -light.x, -light.y, -light.z };
+                    lightComponent.Direction = { light.x, light.y, -light.z };
                 }
+
             }
             
             if (lightComponent.Type == LightComponent::LightType::kOmniLight || lightComponent.Type == LightComponent::LightType::kSpotLight)
@@ -360,9 +382,22 @@ void TestBedRenderPath::Render()
     // 3) Group Drawcalls by material usage.
 
     Shader::Frame frameData = {};
-    // frameData.BrdfLUTTexIndex = this->m_scene.BrdfLUT->GetDescriptorIndex();
+    frameData.BrdfLUTTexIndex = this->m_scene.BrdfLUT->GetDescriptorIndex();
     frameData.Scene.MaterialBufferIndex = this->m_materialGpuBuffers->GetDescriptorIndex();
     frameData.Scene.GeometryBufferIndex = this->m_geometryGpuBuffers->GetDescriptorIndex();
+
+    if (CVAR_EnableIBL.Get())
+    {
+        frameData.Scene.IrradianceMapTexIndex = this->m_scene.IrradanceMap->GetDescriptorIndex();
+        frameData.Scene.PreFilteredEnvMapTexIndex = this->m_scene.PrefilteredMap->GetDescriptorIndex();
+    }
+    else
+    {
+
+        frameData.Scene.IrradianceMapTexIndex = RHI::cInvalidDescriptorIndex;
+        frameData.Scene.PreFilteredEnvMapTexIndex = RHI::cInvalidDescriptorIndex;
+    }
+
     frameData.Scene.NumLights = 0;
 
 

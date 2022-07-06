@@ -84,7 +84,7 @@ void Application::Update(TimeStep deltaTime)
 
 	// Set IMGUI Data
 	static bool sWindowOpen = true;
-	ImGui::Begin("Phx Engine", &sWindowOpen, ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse);
+	ImGui::Begin("Phx Engine", &sWindowOpen);
 	ImGui::Indent();
 	ImGui::Text("Version: %s", "0.1");
 	ImGui::Text("Graphics API: %s", GraphicsAPIToString(this->m_graphicsDevice->GetApi()));
@@ -116,7 +116,8 @@ void Application::Update(TimeStep deltaTime)
 
 	ImGui::End();
 
-	ImGui::Begin("Console Variables", &sWindowOpen);
+	static bool sConsoleWindowOpen = false;
+	ImGui::Begin("Console Variables", &sConsoleWindowOpen);
 
 	ConsoleVarSystem::GetInstance()->DrawImguiEditor();
 

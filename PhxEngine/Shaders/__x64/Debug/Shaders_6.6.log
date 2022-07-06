@@ -1,4 +1,9 @@
 ﻿FXC : warning : no output provided for debug - embedding PDB in shader container.  Use -Qembed_debug to silence this warning.
+FXC : error : validation errors
   
-FXC : warning : no output provided for debug - embedding PDB in shader container.  Use -Qembed_debug to silence this warning.
+  Shader SRV descriptor range (RegisterSpace=101, NumDescriptors=1, BaseShaderRegister=0) is not fully bound in root signature.
+  Root Signature in DXIL container is not compatible with shader.
+  
+  Validation failed.
+  
   

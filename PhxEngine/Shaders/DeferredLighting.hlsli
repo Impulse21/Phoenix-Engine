@@ -17,7 +17,8 @@
 	"CBV(b1), " \
     "SRV(t0),"  \
     "DescriptorTable(SRV(t1, numDescriptors = 4)), " \
-	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR),"
+	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
+    "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR),"
 
 #else
 
@@ -27,7 +28,8 @@
 	"CBV(b1), " \
     "SRV(t0),"  \
     "DescriptorTable(SRV(t1, numDescriptors = 4)), " \
-	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR),"
+	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
+    "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR),"
 
 #endif
 
@@ -37,6 +39,7 @@ Texture2D GBuffer_1     : register(t3);
 Texture2D GBuffer_2     : register(t4);
 
 SamplerState DefaultSampler: register(s50);
+SamplerState SamplerBrdf : register(s51);
 
 struct PSInput
 {
@@ -192,7 +195,6 @@ float4 main(PSInput input) : SV_TARGET
 
     // Improvised abmient lighting by using the Env Irradance map.
     float3 ambient = float(0.03).xxx * surfaceProperties.Albedo * surfaceProperties.AO;
-    /* TODO: Enable Specular
     if (GetScene().IrradianceMapTexIndex != InvalidDescriptorIndex &&
         GetScene().PreFilteredEnvMapTexIndex != InvalidDescriptorIndex &&
         FrameCB.BrdfLUTTexIndex != InvalidDescriptorIndex)
@@ -200,7 +202,7 @@ float4 main(PSInput input) : SV_TARGET
 
         float3 F = FresnelSchlick(saturate(dot(N, V)), F0, surfaceProperties.Roughness);
         // Improvised abmient lighting by using the Env Irradance map.
-        float3 irradiance = ResourceHeap_TextureCube[GetScene().IrradianceMapTexIndex].Sample(SamplerDefault, N).rgb;
+        float3 irradiance = ResourceHeap_GetTextureCube(GetScene().IrradianceMapTexIndex).Sample(SamplerDefault, N).rgb;
 
         float3 kSpecular = F;
         float3 kDiffuse = 1.0 - kSpecular;
@@ -210,17 +212,17 @@ float4 main(PSInput input) : SV_TARGET
         // split-sum approximation to get the IBL Specular part.
         float lodLevel = surfaceProperties.Roughness * MaxReflectionLod;
         float3 prefilteredColour =
-            ResourceHeap_TextureCube[GetScene().PreFilteredEnvMapTexIndex].SampleLevel(SamplerDefault, R, lodLevel).rgb;
+            ResourceHeap_GetTextureCube(GetScene().PreFilteredEnvMapTexIndex).SampleLevel(SamplerDefault, R, lodLevel).rgb;
 
         float2 brdfTexCoord = float2(saturate(dot(N, V)), surfaceProperties.Roughness);
 
-        float2 brdf = ResourceHeap_Texture2D[FrameCB.BrdfLUTTexIndex].Sample(SamplerBrdf, brdfTexCoord).rg;
+        float2 brdf = ResourceHeap_GetTexture2D(FrameCB.BrdfLUTTexIndex).Sample(SamplerBrdf, brdfTexCoord).rg;
 
         float3 specular = prefilteredColour * (F * brdf.x + brdf.y);
 
         ambient = (kDiffuse * diffuse + specular) * surfaceProperties.AO;
     }
-    */
+
     float3 colour = ambient + Lo;
 
     // float4 shadowMapCoord = mul(float4(input.PositionWS, 1.0f), GetCamera().ShadowViewProjection);
