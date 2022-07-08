@@ -130,7 +130,7 @@ namespace PhxEngine::Scene
 		float FoV = 1.0f; // Radians
 
 		DirectX::XMFLOAT3 Eye = { 0.0f, 0.0f, 0.0f };
-		DirectX::XMFLOAT3 At = { 0.0f, 0.0f, -1.0f };
+		DirectX::XMFLOAT3 Forward = { 0.0f, 0.0f, -1.0f };
 		DirectX::XMFLOAT3 Up = { 0.0f, 1.0f, 0.0f };
 
 		DirectX::XMFLOAT4X4 View;
@@ -146,10 +146,7 @@ namespace PhxEngine::Scene
 
 		// -- Custom View Matrix construction ---
 		DirectX::XMMATRIX ConstructViewMatrixLH();
-		DirectX::XMMATRIX ConstructViewMatrixRH(
-			DirectX::XMVECTOR const& eye,
-			DirectX::XMVECTOR const& at,
-			DirectX::XMVECTOR const& up);
+		DirectX::XMMATRIX ConstructViewMatrixRH();
 
 		inline void SetDirty(bool value = true)
 		{

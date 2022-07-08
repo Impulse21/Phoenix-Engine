@@ -369,7 +369,7 @@ void PhxEngine::Scene::CameraComponent::TransformCamera(TransformComponent const
 		XMLoadFloat4x4(&transform.WorldMatrix));
 
 	XMVECTOR eye = translation;
-	XMVECTOR at = XMVectorSet(0, 0, 1, 0);
+	XMVECTOR at = XMVectorSet(0, 0, -1, 0);
 	XMVECTOR up = XMVectorSet(0, 1, 0, 0);
 
 	XMMATRIX rot = XMMatrixRotationQuaternion(rotation);
@@ -378,17 +378,13 @@ void PhxEngine::Scene::CameraComponent::TransformCamera(TransformComponent const
 	// XMStoreFloat3x3(&rotationMatrix, _Rot);
 
 	XMStoreFloat3(&this->Eye, eye);
-	XMStoreFloat3(&this->At, at);
+	XMStoreFloat3(&this->Forward, at);
 	XMStoreFloat3(&this->Up, up);
 }
 
 void PhxEngine::Scene::CameraComponent::UpdateCamera()
 {
-	XMVECTOR cameraPos = XMLoadFloat3(&this->Eye);
-	XMVECTOR cameraLookAt = XMLoadFloat3(&this->At);
-	XMVECTOR cameraUp = XMLoadFloat3(&this->Up);
-
-	auto viewMatrix = this->ConstructViewMatrixRH(cameraPos, cameraLookAt, cameraUp);
+	auto viewMatrix = this->ConstructViewMatrixRH();
 
 	XMStoreFloat4x4(&this->View, viewMatrix);
 	XMStoreFloat4x4(&this->ViewInv, XMMatrixInverse(nullptr, viewMatrix));
@@ -407,7 +403,7 @@ void PhxEngine::Scene::CameraComponent::UpdateCamera()
 
 DirectX::XMMATRIX PhxEngine::Scene::CameraComponent::ConstructViewMatrixLH()
 {
-	const XMVECTOR forward = XMLoadFloat3(&this->At);
+	const XMVECTOR forward = -XMLoadFloat3(&this->Forward);
 	const XMVECTOR axisZ = XMVector3Normalize(forward);
 
 	// axisX == right vector
@@ -435,16 +431,9 @@ DirectX::XMMATRIX PhxEngine::Scene::CameraComponent::ConstructViewMatrixLH()
 	return XMMatrixTranspose(m);
 }
 
-DirectX::XMMATRIX PhxEngine::Scene::CameraComponent::ConstructViewMatrixRH(
-	DirectX::XMVECTOR const& eye,
-	DirectX::XMVECTOR const& at,
-	DirectX::XMVECTOR const& up)
+DirectX::XMMATRIX PhxEngine::Scene::CameraComponent::ConstructViewMatrixRH()
 {
-#if true
-	return DirectX::XMMatrixLookAtRH(eye, at, up);
-
-#else
-	const XMVECTOR forward = -XMLoadFloat3(&this->At);
+	const XMVECTOR forward = -XMLoadFloat3(&this->Forward);
 	const XMVECTOR axisZ = XMVector3Normalize(forward);
 
 	// axisX == right vector
@@ -470,7 +459,6 @@ DirectX::XMMATRIX PhxEngine::Scene::CameraComponent::ConstructViewMatrixRH(
 	m.r[3] = g_XMIdentityR3.v;
 
 	return XMMatrixTranspose(m);
-#endif
 }
 
 void PhxEngine::Scene::MaterialComponent::PopulateShaderData(Shader::MaterialData& shaderData)

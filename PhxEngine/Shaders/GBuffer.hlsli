@@ -37,9 +37,9 @@ SurfaceProperties DecodeGBuffer(float4 channels[NUM_GBUFFER_CHANNELS])
 
     surface.Normal  = channels[1].xyz;
    
-    surface.Metalness = channels[2].x;
-    surface.Roughness = channels[2].y;
-    surface.AO = channels[2].z;
+    surface.Metalness = channels[2].r;
+    surface.Roughness = channels[2].g;
+    surface.AO = channels[2].b;
 
     return surface;
 }

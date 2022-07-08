@@ -59,7 +59,7 @@ ShaderHandle PhxEngine::Graphics::ShaderFactory::LoadShader(ShaderStage stage, s
 		{
 			auto symbolsPath = absoluteFilePath;
 			symbolsPath.replace_extension(".pdb");
-			Helpers::FileWrite(symbolsPath.string(), output.ShaderData, output.ShaderSize);
+			Helpers::FileWrite(symbolsPath.string(), output.ShaderPDB.data(), output.ShaderPDB.size());
 		}
 	}
 

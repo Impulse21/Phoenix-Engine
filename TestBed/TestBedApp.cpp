@@ -24,6 +24,12 @@ using namespace PhxEngine::Core;
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Scene;
 
+namespace
+{
+    // const std::string scenePath = "..\\Assets\\Models\\Sponza_Intel\\Main\\NewSponza_Main_Blender_glTF.gltf";
+    const std::string scenePath = "..\\Assets\\Models\\\MaterialScene\\MatScene.gltf";
+    //const std::string scenePath = "..\\Assets\\Models\\CameraTestScene\\CameraTestScene.gltf";
+}
 
 AutoConsoleVar_Int CVAR_EnableIBL("Renderer.EnableIBL.checkbox", "Enabled Image Based Lighting", 1, ConsoleVarFlags::EditCheckbox);
 
@@ -69,6 +75,8 @@ struct GBuffer
     PhxEngine::RHI::TextureHandle AlbedoTexture;
     PhxEngine::RHI::TextureHandle NormalTexture;
     PhxEngine::RHI::TextureHandle SurfaceTexture;
+
+    PhxEngine::RHI::TextureHandle _PostionTexture;
 };
 
 
@@ -204,12 +212,6 @@ void TestBedRenderPath::OnAttachWindow()
     PhxEngine::Scene::Scene::GetGlobalCamera().Width = this->m_app->GetCanvas().Width;
     PhxEngine::Scene::Scene::GetGlobalCamera().Height = this->m_app->GetCanvas().Height;
 
-#if false
-    const std::string scenePath = "..\\Assets\\Models\\Sponza_Intel\\Main\\NewSponza_Main_Blender_glTF.gltf";
-#else
-    const std::string scenePath = "..\\Assets\\Models\\\MaterialScene\\MatScene.gltf";
-#endif
-
     bool result = sceneLoader->LoadScene(scenePath, this->m_commandList, this->m_scene);
 
     if (!result)
@@ -250,7 +252,7 @@ void TestBedRenderPath::Update(TimeStep const& ts)
     this->m_scene.RunMeshInstanceUpdateSystem();
 
     static bool pWindowOpen = true;
-    ImGui::Begin("Testing Application", &pWindowOpen, ImGuiWindowFlags_NoCollapse);
+    ImGui::Begin("Testing Application", &pWindowOpen);
 
     ImGui::Text("Test Type");
     static int selectedTestItem = 0;
@@ -276,11 +278,9 @@ void TestBedRenderPath::Update(TimeStep const& ts)
 
         ImGui::Indent();
         auto& cameraComponent = *this->m_scene.Cameras.GetComponent(this->m_cameraEntities[this->m_selectedCamera]);
-        // ImGui::InputFloat3("Eye", &cameraComponent.Eye.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
-        ImGui::InputFloat3("Eye", &cameraComponent.Eye.x, "%.3f");
 
-        //ImGui::InputFloat3("At", &cameraComponent.At.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
-        ImGui::InputFloat3("At", &cameraComponent.At.x, "%.3f");
+        ImGui::InputFloat3("Eye", &cameraComponent.Eye.x, "%.3f");
+        ImGui::InputFloat3("Forward", &cameraComponent.Forward.x, "%.3f");
 
         ImGui::InputFloat3("Up", &cameraComponent.Up.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
         ImGui::InputFloat("Width", &cameraComponent.Width, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_ReadOnly);
@@ -297,6 +297,7 @@ void TestBedRenderPath::Update(TimeStep const& ts)
         ImGui::InputFloat3("Translation", &transformComponent.LocalScale.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
         ImGui::InputFloat4("Rotation", &transformComponent.LocalRotation.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
         ImGui::InputFloat3("Scale", &transformComponent.LocalScale.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
+
         auto cameraRot = transformComponent.GetRotation();
         quat qt(
             cameraRot.w,
@@ -446,6 +447,7 @@ void TestBedRenderPath::Render()
         this->m_commandList->ClearTextureFloat(currentBuffer.AlbedoTexture, currentBuffer.AlbedoTexture->GetDesc().OptmizedClearValue.value());
         this->m_commandList->ClearTextureFloat(currentBuffer.NormalTexture, currentBuffer.NormalTexture->GetDesc().OptmizedClearValue.value());
         this->m_commandList->ClearTextureFloat(currentBuffer.SurfaceTexture, currentBuffer.SurfaceTexture->GetDesc().OptmizedClearValue.value());
+        this->m_commandList->ClearTextureFloat(currentBuffer._PostionTexture, currentBuffer._PostionTexture->GetDesc().OptmizedClearValue.value());
     }
 
     {
@@ -460,7 +462,8 @@ void TestBedRenderPath::Render()
             {
                 currentBuffer.AlbedoTexture,
                 currentBuffer.NormalTexture,
-                currentBuffer.SurfaceTexture
+                currentBuffer.SurfaceTexture,
+                currentBuffer._PostionTexture,
             },
             this->GetCurrentDepthBuffer());
         this->m_commandList->SetGraphicsPSO(this->m_gbufferPassPso);
@@ -551,6 +554,7 @@ void TestBedRenderPath::Render()
 			RHI::GpuBarrier::CreateTexture(currentBuffer.AlbedoTexture, currentBuffer.AlbedoTexture->GetDesc().InitialState, RHI::ResourceStates::ShaderResource),
 			RHI::GpuBarrier::CreateTexture(currentBuffer.NormalTexture, currentBuffer.NormalTexture->GetDesc().InitialState, RHI::ResourceStates::ShaderResource),
 			RHI::GpuBarrier::CreateTexture(currentBuffer.SurfaceTexture, currentBuffer.SurfaceTexture->GetDesc().InitialState, RHI::ResourceStates::ShaderResource),
+            RHI::GpuBarrier::CreateTexture(currentBuffer._PostionTexture, currentBuffer._PostionTexture->GetDesc().InitialState, RHI::ResourceStates::ShaderResource),
 		};
 
 		this->m_commandList->TransitionBarriers(Span<RHI::GpuBarrier>(preTransition, _countof(preTransition)));
@@ -561,7 +565,8 @@ void TestBedRenderPath::Render()
                 currentDepthBuffer,
                 currentBuffer.AlbedoTexture,
                 currentBuffer.NormalTexture,
-                currentBuffer.SurfaceTexture
+                currentBuffer.SurfaceTexture,
+                currentBuffer._PostionTexture,
             });
         this->m_commandList->Draw(3, 1, 0, 0);
 
@@ -571,6 +576,7 @@ void TestBedRenderPath::Render()
 			RHI::GpuBarrier::CreateTexture(currentBuffer.AlbedoTexture, RHI::ResourceStates::ShaderResource, currentBuffer.AlbedoTexture->GetDesc().InitialState),
 			RHI::GpuBarrier::CreateTexture(currentBuffer.NormalTexture, RHI::ResourceStates::ShaderResource, currentBuffer.NormalTexture->GetDesc().InitialState),
 			RHI::GpuBarrier::CreateTexture(currentBuffer.SurfaceTexture, RHI::ResourceStates::ShaderResource, currentBuffer.SurfaceTexture->GetDesc().InitialState),
+            RHI::GpuBarrier::CreateTexture(currentBuffer._PostionTexture, RHI::ResourceStates::ShaderResource, currentBuffer._PostionTexture->GetDesc().InitialState),
 		};
 
         this->m_commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
@@ -765,6 +771,10 @@ void TestBedRenderPath::CreateRenderTargets()
         desc.Format = RHI::FormatType::RGBA8_UNORM;
         desc.DebugName = "Surface Buffer";
         this->m_gBuffer[i].SurfaceTexture = this->m_app->GetGraphicsDevice()->CreateTexture(desc);
+
+        desc.Format = RHI::FormatType::RGBA32_FLOAT;
+        desc.DebugName = "Debug Position Buffer";
+        this->m_gBuffer[i]._PostionTexture = this->m_app->GetGraphicsDevice()->CreateTexture(desc);
     }
 
     for (size_t i = 0; i < this->m_deferredLightBuffers.size(); i++)
@@ -789,6 +799,7 @@ void TestBedRenderPath::CreatePSO()
         psoDesc.RtvFormats.push_back(this->m_gBuffer[0].AlbedoTexture->GetDesc().Format);
         psoDesc.RtvFormats.push_back(this->m_gBuffer[0].NormalTexture->GetDesc().Format);
         psoDesc.RtvFormats.push_back(this->m_gBuffer[0].SurfaceTexture->GetDesc().Format);
+        psoDesc.RtvFormats.push_back(this->m_gBuffer[0]._PostionTexture->GetDesc().Format);
         psoDesc.DsvFormat = this->GetCurrentDepthBuffer()->GetDesc().Format;
 
         this->m_gbufferPassPso = this->m_app->GetGraphicsDevice()->CreateGraphicsPSOHandle(psoDesc);
