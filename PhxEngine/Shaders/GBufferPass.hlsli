@@ -161,10 +161,17 @@ PSOutput main(PSInput input)
     float3 tangent = normalize(input.TangentWS.xyz);
     float3 normal = normalize(input.NormalWS);
     float3 biTangent = cross(normal, tangent.xyz) * input.TangentWS.w;
+
+    // float3 N = normalize(input.NormalWS);
+    // float3 T = normalize(input.TangentWS.w - dot(input.TangentWS.w, N) * N);
+    // float3 B = cross(N, T);
+
     if (material.NormalTexture != InvalidDescriptorIndex)
     {
         float3x3 tbn = float3x3(tangent, biTangent, normal);
+        // float3x3 tbn = float3x3(T, B, N);
         normal = ResourceHeap_GetTexture2D(material.NormalTexture).Sample(SamplerDefault, input.TexCoord).rgb * 2.0 - 1.0;
+        normal = normalize(normal);
         normal = normalize(mul(normal, tbn));
 
 #ifdef __HACK_FLIP_X_COORD

@@ -46,7 +46,13 @@ SurfaceProperties DecodeGBuffer(float4 channels[NUM_GBUFFER_CHANNELS])
 
 float4 ReconstructClipPosition(float2 pixelPosition, float depth)
 {
-    float z = depth * 2.0 - 1.0;
+    // If we were in openGL land, we would need to change range from [-w, w].
+    // float z = depth * 2.0 - 1.0;
+
+    // However, DX is [0, w] so just use the the depth as is.
+    float z = depth;
+    // pixelPosition.y = 1.0f - pixelPosition.y; // Flip due to DirectX convention
+
     return float4(pixelPosition * 2.0 - 1.0, z, 1.0);
 }
 

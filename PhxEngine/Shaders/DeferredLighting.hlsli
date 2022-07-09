@@ -112,8 +112,8 @@ float4 main(PSInput input) : SV_TARGET
     float3 debugWorldPosition = GBuffer_Debug_Position.Sample(SamplerDefault, input.UV).xyz;
 
     SurfaceProperties surfaceProperties = DecodeGBuffer(gbufferChannels);
-    float3 surfacePosition = ReconstructWorldPosition(camera, input.UV, GBuffer_Depth[input.UV].x);
-    surfacePosition = debugWorldPosition;
+    float depth = GBuffer_Depth.Sample(SamplerDefault, input.UV).x;
+    float3 surfacePosition = ReconstructWorldPosition(camera, input.UV, depth);
 
     // -- Lighting Model ---
     float3 N = normalize(surfaceProperties.Normal);
