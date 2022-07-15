@@ -60,11 +60,8 @@
     <ClInclude Include="Graphics\RHI\Dx12\GraphicsDevice.h">
       <Filter>Graphics\RHI\Dx12</Filter>
     </ClInclude>
-    <ClInclude Include="ThirdParty\stb_truetype.h">
-      <Filter>ThirdParty</Filter>
-    </ClInclude>
     <ClInclude Include="ThirdParty\TrueTypeFonts\arial.h">
-      <Filter>ThirdParty\TrueTypeFonts</Filter>
+      <Filter>ThirdParty\stb\TrueTypeFonts</Filter>
     </ClInclude>
     <ClInclude Include="Core\ApplicationLayer.h">
       <Filter>Core</Filter>
@@ -177,6 +174,15 @@
     <ClInclude Include="ThirdParty\ImGui\imGuIZMO\vgMath.h">
       <Filter>ThirdParty\ImGui\imGuIZMO.quat</Filter>
     </ClInclude>
+    <ClInclude Include="ThirdParty\stb_truetype.h">
+      <Filter>ThirdParty\stb</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\Stb\stb_rect_pack.h">
+      <Filter>ThirdParty\stb</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RectPacker.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
@@ -193,9 +199,6 @@
     </Filter>
     <Filter Include="ThirdParty">
       <UniqueIdentifier>{42dc1f03-4cd0-4112-a753-b84892813d3c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ThirdParty\TrueTypeFonts">
-      <UniqueIdentifier>{9cd2f418-a368-4ac4-8ee6-fc6bc3969d28}</UniqueIdentifier>
     </Filter>
     <Filter Include="ThirdParty\ImGui">
       <UniqueIdentifier>{4689967c-86a8-4286-8f3c-befd169c4495}</UniqueIdentifier>
@@ -223,6 +226,12 @@
     </Filter>
     <Filter Include="Input">
       <UniqueIdentifier>{7f3a4a4b-19f5-40f4-89b4-c8ddd52b3c2f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\stb">
+      <UniqueIdentifier>{7c14a383-a0db-4430-8e41-e62a66a2efc0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\stb\TrueTypeFonts">
+      <UniqueIdentifier>{9cd2f418-a368-4ac4-8ee6-fc6bc3969d28}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

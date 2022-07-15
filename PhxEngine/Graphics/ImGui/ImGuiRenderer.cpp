@@ -230,5 +230,5 @@ void PhxEngine::Graphics::ImGuiRenderer::CreatePipelineStateObject(
     psoDesc.RootSignatureBuilder = &builder;
     */
 
-    this->m_pso = graphicsDevice->CreateGraphicsPSOHandle(psoDesc);
+    this->m_pso = graphicsDevice->CreateGraphicsPSO(psoDesc);
 }

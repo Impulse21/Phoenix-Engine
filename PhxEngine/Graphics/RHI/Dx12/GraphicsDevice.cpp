@@ -320,6 +320,15 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::WaitForIdle()
 	this->RunGarbageCollection();
 }
 
+void PhxEngine::RHI::Dx12::GraphicsDevice::QueueWaitForCommandList(CommandQueueType waitQueue, ExecutionReceipt waitOnRecipt)
+{
+	auto pWaitQueue = this->GetQueue(waitQueue);
+	auto executionQueue = this->GetQueue(waitOnRecipt.CommandQueue);
+
+	// assert(waitOnRecipt.FenceValue <= executionQueue->GetLastCompletedFence());
+	pWaitQueue->GetD3D12CommandQueue()->Wait(executionQueue->GetFence(), waitOnRecipt.FenceValue);
+}
+
 void PhxEngine::RHI::Dx12::GraphicsDevice::CreateSwapChain(SwapChainDesc const& swapChainDesc)
 {
 	assert(swapChainDesc.WindowHandle);
@@ -456,7 +465,7 @@ InputLayoutHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateInputLayout(Vertex
 	return inputLayoutImpl;
 }
 
-GraphicsPSOHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateGraphicsPSOHandle(GraphicsPSODesc const& desc)
+GraphicsPSOHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateGraphicsPSO(GraphicsPSODesc const& desc)
 {
 	std::unique_ptr<GraphicsPSO> psoImpl = std::make_unique<GraphicsPSO>();
 	psoImpl->Desc = desc;
@@ -559,6 +568,30 @@ GraphicsPSOHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateGraphicsPSOHandle(
 
 	ThrowIfFailed(
 		this->GetD3D12Device2()->CreateGraphicsPipelineState(&d3d12Desc, IID_PPV_ARGS(&psoImpl->D3D12PipelineState)));
+
+	return psoImpl;
+}
+
+ComputePSOHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateComputePso(ComputePSODesc const& desc)
+{
+
+	std::unique_ptr<ComputePSO> psoImpl = std::make_unique<ComputePSO>();
+	psoImpl->Desc = desc;
+
+
+	assert(desc.ComputeShader);
+	auto shaderImpl = std::static_pointer_cast<Shader>(desc.ComputeShader);
+	if (psoImpl->RootSignature == nullptr)
+	{
+		psoImpl->RootSignature = shaderImpl->GetRootSignature();
+	}
+
+	D3D12_COMPUTE_PIPELINE_STATE_DESC d3d12Desc = {};
+	d3d12Desc.pRootSignature = psoImpl->RootSignature.Get();
+	d3d12Desc.CS = { shaderImpl->GetByteCode().data(), shaderImpl->GetByteCode().size() };
+
+	ThrowIfFailed(
+		this->GetD3D12Device2()->CreateComputePipelineState(&d3d12Desc, IID_PPV_ARGS(&psoImpl->D3D12PipelineState)));
 
 	return psoImpl;
 }
@@ -720,6 +753,10 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTexture(TextureDesc co
 		this->CreateDepthStencilView(textureImpl.get());
 	}
 
+	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+	{
+		this->CreateUnorderedAccessView(textureImpl.get());
+	}
 	return textureImpl;
 }
 
@@ -876,7 +913,7 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::Present()
 	this->RunGarbageCollection();
 }
 
-uint64_t PhxEngine::RHI::Dx12::GraphicsDevice::ExecuteCommandLists(
+ExecutionReceipt PhxEngine::RHI::Dx12::GraphicsDevice::ExecuteCommandLists(
 	ICommandList* const* pCommandLists,
 	size_t numCommandLists,
 	bool waitForCompletion,
@@ -929,7 +966,7 @@ uint64_t PhxEngine::RHI::Dx12::GraphicsDevice::ExecuteCommandLists(
 		}
 	}
 
-	return fenceValue;
+	return { fenceValue, executionQueue };
 }
 
 TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTarget(
@@ -1028,6 +1065,26 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencilView(Texture* textu
 		textureImpl->D3D12Resource.Get(),
 		&dsvDesc,
 		textureImpl->DsvAllocation.GetCpuHandle());
+}
+
+void PhxEngine::RHI::Dx12::GraphicsDevice::CreateUnorderedAccessView(Texture* textureImpl)
+{
+	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
+	textureImpl->UavAllocation = this->GetResourceCpuHeap()->Allocate(1);
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.Format = dxgiFormatMapping.srvFormat;
+
+	assert(textureImpl->Desc.Dimension == TextureDimension::Texture2D);
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;  // Only 2D textures are supported (this was checked in the calling function).
+	uavDesc.Texture2D.MipSlice = 0;
+
+	this->GetD3D12Device2()->CreateUnorderedAccessView(
+		textureImpl->D3D12Resource.Get(),
+		nullptr,
+		&uavDesc,
+		textureImpl->UavAllocation.GetCpuHandle());
+
+	// Bindless for UAV?
 }
 
 /*

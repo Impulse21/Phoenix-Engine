@@ -9,6 +9,7 @@
 
 #include "Graphics/RenderPathComponent.h"
 #include "Graphics/TextureCache.h"
+#include "Graphics/RectPacker.h"
 
 #include "Scene/Scene.h"
 #include "Scene/SceneLoader.h"
@@ -26,12 +27,18 @@ using namespace PhxEngine::Scene;
 
 namespace
 {
-    // const std::string scenePath = "..\\Assets\\Models\\Sponza_Intel\\Main\\NewSponza_Main_Blender_glTF.gltf";
-    const std::string scenePath = "..\\Assets\\Models\\\MaterialScene\\MatScene.gltf";
+    constexpr uint32_t kMaxShadowResolution2D = 1024U;
+    constexpr uint32_t kMaxShadowResoltuionCube = 256U;
+    constexpr uint32_t kNumShadowCascades = 3U;
+
+    const std::string scenePath = "..\\Assets\\Models\\Sponza_Intel\\Main\\NewSponza_Main_Blender_glTF.gltf";
+    // const std::string scenePath = "..\\Assets\\Models\\\MaterialScene\\MatScene.gltf";
     //const std::string scenePath = "..\\Assets\\Models\\CameraTestScene\\CameraTestScene.gltf";
+    // const std::string scenePath = "..\\Assets\\Models\\My_Cornell\\MyCornell.gltf";
 }
 
-AutoConsoleVar_Int CVAR_EnableIBL("Renderer.EnableIBL.checkbox", "Enabled Image Based Lighting", 1, ConsoleVarFlags::EditCheckbox);
+AutoConsoleVar_Int CVAR_EnableIBL("Renderer.EnableIBL.checkbox", "Enabled Image Based Lighting", 0, ConsoleVarFlags::EditCheckbox);
+AutoConsoleVar_Int CVAR_EnableCSLighting("Renderer.EnableCSLigthing.checkbox", "Enable Compute Shader Lighting Pass", 0, ConsoleVarFlags::EditReadOnly);
 
 void TransposeMatrix(DirectX::XMFLOAT4X4 const& in, DirectX::XMFLOAT4X4* out)
 {
@@ -93,6 +100,9 @@ public:
     void Compose(RHI::CommandListHandle commandList) override;
 
 private:
+    void ShadowAtlasPacking();
+
+private:
     void ConstructSceneRenderData(RHI::CommandListHandle commandList);
     void CreateRenderTargets();
     void CreatePSO();
@@ -117,6 +127,7 @@ private:
     Application* m_app;
 
     RHI::CommandListHandle m_commandList;
+    RHI::CommandListHandle m_computeCommandList;
 
     // -- Scene CPU Buffers ---
     std::vector<Shader::Geometry> m_geometryCpuData;
@@ -125,6 +136,9 @@ private:
     // Uploaded every frame....Could be improved upon.
     std::vector<Shader::ShaderLight> m_lightCpuData;
 
+    // -- Shadow Stuff ---
+    RHI::TextureHandle m_shadowAtlas;
+
     // -- Scene GPU Buffers ---
     RHI::BufferHandle m_geometryGpuBuffers;
     RHI::BufferHandle m_materialGpuBuffers;
@@ -132,10 +146,13 @@ private:
     PhxEngine::RHI::GraphicsPSOHandle m_gbufferPassPso;
     PhxEngine::RHI::GraphicsPSOHandle m_fullscreenQuadPso;
     PhxEngine::RHI::GraphicsPSOHandle m_deferredLightFullQuadPso;
+    PhxEngine::RHI::ComputePSOHandle m_computeQueuePso;
 
     std::array<GBuffer, NUM_BACK_BUFFERS> m_gBuffer;
     std::array<PhxEngine::RHI::TextureHandle, NUM_BACK_BUFFERS> m_deferredLightBuffers;
     std::array<PhxEngine::RHI::TextureHandle, NUM_BACK_BUFFERS> m_depthBuffers;
+
+    PhxEngine::RHI::TextureHandle m_testComputeTexture;
 
 private:
     std::shared_ptr<TextureCache> m_textureCache;
@@ -203,7 +220,21 @@ void TestBedRenderPath::OnAttachWindow()
     auto* graphicsDevice = this->m_app->GetGraphicsDevice();
     this->m_textureCache = std::make_shared<TextureCache>(graphicsDevice);
 
+    {
+        RHI::TextureDesc desc = {};
+        desc.Dimension = RHI::TextureDimension::Texture2D;
+        desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::UnorderedAccess;
+        desc.Format = RHI::FormatType::R11G11B10_FLOAT;
+        desc.InitialState = RHI::ResourceStates::UnorderedAccess;
+        desc.Width = this->m_app->GetCanvas().Width;
+        desc.Height = this->m_app->GetCanvas().Height;
+        this->m_testComputeTexture = graphicsDevice->CreateTexture(desc);
+    }
     auto sceneLoader = CreateGltfSceneLoader(graphicsDevice, this->m_textureCache);
+
+    RHI::CommandListDesc commandLineDesc = {};
+    commandLineDesc.QueueType = RHI::CommandQueueType::Compute;
+    this->m_computeCommandList = graphicsDevice->CreateCommandList(commandLineDesc);
 
     this->m_commandList = graphicsDevice->CreateCommandList();
     this->m_commandList->Open();
@@ -324,49 +355,62 @@ void TestBedRenderPath::Update(TimeStep const& ts)
         {
             ImGui::Indent();
 
-            auto& lightComponent = *this->m_scene.Lights.GetComponent(this->m_lightEntities[this->m_selectedLight]);
-
-            switch (lightComponent.Type)
+            for (int i = 0; i < this->m_scene.Lights.GetCount(); i++)
             {
-            case LightComponent::LightType::kDirectionalLight:
-                ImGui::Text("Light Type: Directional");
-                break;
-            case LightComponent::LightType::kOmniLight:
-                ImGui::Text("Light Type: Omni");
-                break;
-            case LightComponent::LightType::kSpotLight:
-                ImGui::Text("Light Type: Spot");
-                break;
-            default:
-                ImGui::Text("Light Type: UNKOWN");
-                break;
-			}
-
-			bool isEnabled = lightComponent.IsEnabled();
-			ImGui::Checkbox("Is Enabled", &isEnabled);
-			lightComponent.SetEnabled(isEnabled);
-
-            if (lightComponent.Type != LightComponent::LightType::kOmniLight)
-            {
-                ImGui::InputFloat3("Direction", &lightComponent.Direction.x, "%.3f");
-
-                // Direction is starting from origin, so we need to negate it
-                Vec3 light(lightComponent.Direction.x, lightComponent.Direction.y, -lightComponent.Direction.z);
-                // get/setLigth are helper funcs that you have ideally defined to manage your global/member objs
-                ImGui::Text("This is not working as expected. Do Not Use");
-                if (ImGui::gizmo3D("##Dir1", light /*, size,  mode */))
+                if (ImGui::TreeNode(this->m_lightNames[i]))
                 {
-                    lightComponent.Direction = { light.x, light.y, -light.z };
+                    auto& lightComponent = this->m_scene.Lights[i];
+                    bool isEnabled = lightComponent.IsEnabled();
+                    ImGui::Checkbox("Enabled", &isEnabled);
+                    lightComponent.SetEnabled(isEnabled);
+
+                    bool castsShadows = lightComponent.CastShadows();
+                    ImGui::Checkbox("Cast Shadows", &castsShadows);
+                    lightComponent.SetCastShadows(castsShadows);
+
+                    if (ImGui::TreeNode("Extra Details"))
+                    {
+                        switch (lightComponent.Type)
+                        {
+                        case LightComponent::LightType::kDirectionalLight:
+                            ImGui::Text("Light Type: Directional");
+                            break;
+                        case LightComponent::LightType::kOmniLight:
+                            ImGui::Text("Light Type: Omni");
+                            break;
+                        case LightComponent::LightType::kSpotLight:
+                            ImGui::Text("Light Type: Spot");
+                            break;
+                        default:
+                            ImGui::Text("Light Type: UNKOWN");
+                            break;
+                        }
+
+                        if (lightComponent.Type != LightComponent::LightType::kOmniLight)
+                        {
+                            ImGui::InputFloat3("Direction", &lightComponent.Direction.x, "%.3f");
+
+                            // Direction is starting from origin, so we need to negate it
+                            Vec3 light(lightComponent.Direction.x, lightComponent.Direction.y, -lightComponent.Direction.z);
+                            // get/setLigth are helper funcs that you have ideally defined to manage your global/member objs
+                            ImGui::Text("This is not working as expected. Do Not Use");
+                            if (ImGui::gizmo3D("##Dir1", light /*, size,  mode */))
+                            {
+                                lightComponent.Direction = { light.x, light.y, -light.z };
+                            }
+
+                        }
+
+                        if (lightComponent.Type == LightComponent::LightType::kOmniLight || lightComponent.Type == LightComponent::LightType::kSpotLight)
+                        {
+                            ImGui::InputFloat3("Position", &lightComponent.Position.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
+                        }
+                        ImGui::TreePop();
+                    }
+
+                    ImGui::TreePop();
                 }
-
             }
-            
-            if (lightComponent.Type == LightComponent::LightType::kOmniLight || lightComponent.Type == LightComponent::LightType::kSpotLight)
-            {
-                ImGui::InputFloat3("Position", &lightComponent.Position.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
-            }
-
-			ImGui::ColorEdit3("Colour", &lightComponent.Colour.x);
 
 			ImGui::Unindent();
 		}
@@ -378,9 +422,12 @@ void TestBedRenderPath::Update(TimeStep const& ts)
 void TestBedRenderPath::Render()
 {
     // TODO:
-    // 1) Add White Texture for missing texture lookups
-    // 2) Sort Drawcalls from Back to Front or Front to back.
-    // 3) Group Drawcalls by material usage.
+    // 1) Add flag to toggle between Compute shader and Pixel Shader Deferred (Not First)
+    // 2) Clean up how lights are enabled.
+    // 3) Add Shadows
+    // 4) Add Fustrum culling/Light Culling
+    // 5) DDGI
+    // 6) Optmize
 
     Shader::Frame frameData = {};
     frameData.BrdfLUTTexIndex = this->m_scene.BrdfLUT->GetDescriptorIndex();
@@ -401,9 +448,10 @@ void TestBedRenderPath::Render()
 
     frameData.Scene.NumLights = 0;
 
-
     // Update per frame resources
     {
+        // this->ShadowAtlasPacking();
+
         // TODO: I am here - just iterate over the lights.
         // Fill Light data
         this->m_lightCpuData.clear();
@@ -529,6 +577,8 @@ void TestBedRenderPath::Render()
         }
     }
 
+    auto& currentDepthBuffer = this->GetCurrentDepthBuffer();
+
     {
         auto scrope = this->m_commandList->BeginScopedMarker("Opaque Deferred Lighting Pass");
 
@@ -545,8 +595,6 @@ void TestBedRenderPath::Render()
 
         this->m_commandList->SetRenderTargets({ this->GetCurrentDeferredLightBuffer() }, nullptr);
 
-
-        auto& currentDepthBuffer = this->GetCurrentDepthBuffer();
 
 		RHI::GpuBarrier preTransition[] =
 		{
@@ -570,24 +618,125 @@ void TestBedRenderPath::Render()
             });
         this->m_commandList->Draw(3, 1, 0, 0);
 
-		RHI::GpuBarrier postTransition[] =
-		{
-			RHI::GpuBarrier::CreateTexture(currentDepthBuffer, RHI::ResourceStates::ShaderResource, currentDepthBuffer->GetDesc().InitialState),
-			RHI::GpuBarrier::CreateTexture(currentBuffer.AlbedoTexture, RHI::ResourceStates::ShaderResource, currentBuffer.AlbedoTexture->GetDesc().InitialState),
-			RHI::GpuBarrier::CreateTexture(currentBuffer.NormalTexture, RHI::ResourceStates::ShaderResource, currentBuffer.NormalTexture->GetDesc().InitialState),
-			RHI::GpuBarrier::CreateTexture(currentBuffer.SurfaceTexture, RHI::ResourceStates::ShaderResource, currentBuffer.SurfaceTexture->GetDesc().InitialState),
+        if (!CVAR_EnableCSLighting.Get())
+        {
+            RHI::GpuBarrier postTransition[] =
+            {
+                RHI::GpuBarrier::CreateTexture(currentDepthBuffer, RHI::ResourceStates::ShaderResource, currentDepthBuffer->GetDesc().InitialState),
+                RHI::GpuBarrier::CreateTexture(currentBuffer.AlbedoTexture, RHI::ResourceStates::ShaderResource, currentBuffer.AlbedoTexture->GetDesc().InitialState),
+                RHI::GpuBarrier::CreateTexture(currentBuffer.NormalTexture, RHI::ResourceStates::ShaderResource, currentBuffer.NormalTexture->GetDesc().InitialState),
+                RHI::GpuBarrier::CreateTexture(currentBuffer.SurfaceTexture, RHI::ResourceStates::ShaderResource, currentBuffer.SurfaceTexture->GetDesc().InitialState),
+                RHI::GpuBarrier::CreateTexture(currentBuffer._PostionTexture, RHI::ResourceStates::ShaderResource, currentBuffer._PostionTexture->GetDesc().InitialState),
+            };
+
+            this->m_commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
+
+            {
+                // TODO: Post Process
+            }
+        }
+    }
+
+    if (CVAR_EnableCSLighting.Get())
+    {
+
+        // Wait For Complition
+        {
+            this->m_commandList->Close();
+
+            auto executionRecipt = this->m_app->GetGraphicsDevice()->ExecuteCommandLists(
+                this->m_commandList.get());
+
+
+            this->m_app->GetGraphicsDevice()->QueueWaitForCommandList(RHI::CommandQueueType::Compute, executionRecipt);
+        }
+
+        {
+            this->m_computeCommandList->Open();
+            auto scrope = this->m_computeCommandList->BeginScopedMarker("Opaque Deferred Lighting Pass");
+            this->m_computeCommandList->SetComputeState(this->m_computeQueuePso);
+
+            this->m_computeCommandList->BindDynamicConstantBuffer(RootParameters_DeferredLightingFulLQuad::FrameCB + 1, frameData);
+            this->m_computeCommandList->BindDynamicConstantBuffer(RootParameters_DeferredLightingFulLQuad::CameraCB + 1, cameraData);
+
+            // -- Lets go ahead and do the lighting pass now >.<
+            this->m_computeCommandList->BindDynamicStructuredBuffer(
+                RootParameters_DeferredLightingFulLQuad::Lights + 1,
+                this->m_lightCpuData);
+
+            auto& currentDepthBuffer = this->GetCurrentDepthBuffer();
+
+            this->m_computeCommandList->BindDynamicDescriptorTable(
+                RootParameters_DeferredLightingFulLQuad::GBuffer + 1,
+                {
+                    currentDepthBuffer,
+                    currentBuffer.AlbedoTexture,
+                    currentBuffer.NormalTexture,
+                    currentBuffer.SurfaceTexture,
+                    currentBuffer._PostionTexture,
+                });
+
+            // Bind UAVS
+            this->m_computeCommandList->BindDynamicUavDescriptorTable(RootParameters_DeferredLightingFulLQuad::GBuffer + 2, { this->m_testComputeTexture });
+
+
+            Shader::DefferedLightingCSConstants push = {};
+            push.DipatchGridDim =
+            {
+                this->m_testComputeTexture->GetDesc().Width / DEFERRED_BLOCK_SIZE_X,
+                this->m_testComputeTexture->GetDesc().Height / DEFERRED_BLOCK_SIZE_Y,
+            };
+            push.MaxTileWidth = 16;
+
+            this->m_computeCommandList->BindPushConstant(0, push);
+
+            // The texture width divided by the thread group size.
+            this->m_computeCommandList->Dispatch(
+                push.DipatchGridDim.x,
+                push.DipatchGridDim.y,
+                1);
+
+            push.MaxTileWidth = 8;
+
+            this->m_computeCommandList->BindPushConstant(0, push);
+
+            // The texture width divided by the thread group size.
+            this->m_computeCommandList->Dispatch(
+                push.DipatchGridDim.x,
+                push.DipatchGridDim.y,
+                1);
+        }
+
+        this->m_computeCommandList->Close();
+        this->m_app->GetGraphicsDevice()->ExecuteCommandLists(
+            this->m_computeCommandList.get(),
+            true,
+            RHI::CommandQueueType::Compute);
+
+        this->m_commandList->Open();
+        RHI::GpuBarrier postTransition[] =
+        {
+            RHI::GpuBarrier::CreateTexture(currentDepthBuffer, RHI::ResourceStates::ShaderResource, currentDepthBuffer->GetDesc().InitialState),
+            RHI::GpuBarrier::CreateTexture(currentBuffer.AlbedoTexture, RHI::ResourceStates::ShaderResource, currentBuffer.AlbedoTexture->GetDesc().InitialState),
+            RHI::GpuBarrier::CreateTexture(currentBuffer.NormalTexture, RHI::ResourceStates::ShaderResource, currentBuffer.NormalTexture->GetDesc().InitialState),
+            RHI::GpuBarrier::CreateTexture(currentBuffer.SurfaceTexture, RHI::ResourceStates::ShaderResource, currentBuffer.SurfaceTexture->GetDesc().InitialState),
             RHI::GpuBarrier::CreateTexture(currentBuffer._PostionTexture, RHI::ResourceStates::ShaderResource, currentBuffer._PostionTexture->GetDesc().InitialState),
-		};
+        };
 
         this->m_commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
-    }
 
+        {
+            // TODO: Post Process
+        }
+
+        this->m_commandList->Close();
+        this->m_app->GetGraphicsDevice()->ExecuteCommandLists(this->m_commandList.get());
+    }
+    else
     {
-        // TODO: Post Process
+        this->m_commandList->Close();
+        this->m_app->GetGraphicsDevice()->ExecuteCommandLists(this->m_commandList.get());
     }
-
-    this->m_commandList->Close();
-    this->m_app->GetGraphicsDevice()->ExecuteCommandLists(this->m_commandList.get());
 }
 
 void TestBedRenderPath::Compose(RHI::CommandListHandle commandList)
@@ -802,7 +951,7 @@ void TestBedRenderPath::CreatePSO()
         psoDesc.RtvFormats.push_back(this->m_gBuffer[0]._PostionTexture->GetDesc().Format);
         psoDesc.DsvFormat = this->GetCurrentDepthBuffer()->GetDesc().Format;
 
-        this->m_gbufferPassPso = this->m_app->GetGraphicsDevice()->CreateGraphicsPSOHandle(psoDesc);
+        this->m_gbufferPassPso = this->m_app->GetGraphicsDevice()->CreateGraphicsPSO(psoDesc);
     }
 
     {
@@ -815,12 +964,18 @@ void TestBedRenderPath::CreatePSO()
         psoDesc.DepthStencilRenderState.DepthTestEnable = false;
         psoDesc.RtvFormats.push_back(this->m_app->GetGraphicsDevice()->GetBackBuffer()->GetDesc().Format);
 
-        this->m_fullscreenQuadPso = this->m_app->GetGraphicsDevice()->CreateGraphicsPSOHandle(psoDesc);
+        this->m_fullscreenQuadPso = this->m_app->GetGraphicsDevice()->CreateGraphicsPSO(psoDesc);
 
         psoDesc.VertexShader = this->m_app->GetShaderStore().Retrieve(PreLoadShaders::VS_DeferredLighting);
         psoDesc.PixelShader = this->m_app->GetShaderStore().Retrieve(PreLoadShaders::PS_DeferredLighting);
 
-        this->m_deferredLightFullQuadPso = this->m_app->GetGraphicsDevice()->CreateGraphicsPSOHandle(psoDesc);
+        this->m_deferredLightFullQuadPso = this->m_app->GetGraphicsDevice()->CreateGraphicsPSO(psoDesc);
+    }
+
+    {
+        RHI::ComputePSODesc computeDesc = {};
+        computeDesc.ComputeShader = this->m_app->GetShaderStore().Retrieve(PreLoadShaders::CS_DeferredLighting);
+        this->m_computeQueuePso = this->m_app->GetGraphicsDevice()->CreateComputePso(computeDesc);
     }
 }
 
@@ -853,4 +1008,106 @@ void TestBedRenderPath::ConstructDebugData()
             this->m_lightNames.push_back(lightName->Name.c_str());
         }
     };
+}
+
+void TestBedRenderPath::ShadowAtlasPacking()
+{
+    thread_local static Graphics::RectPacker packer;
+
+    for (int i = 0; i < this->m_scene.Lights.GetCount(); i++)
+    {
+        auto& lightComponent = this->m_scene.Lights[i];
+
+        if (!lightComponent.IsEnabled() || lightComponent.CastShadows())
+        {
+            continue;
+        }
+
+        // use light characteristics to determine resolution.
+        auto& camera = *this->m_scene.Cameras.GetComponent(this->m_cameraEntities[this->m_selectedCamera]);
+        const float dist = Core::Math::Distance(camera.Eye, lightComponent.Position);
+        const float range = lightComponent.Range;
+        const float amount = std::min(1.0f, range / std::max(0.001f, dist));
+
+        Graphics::PackerRect rect = {};
+        rect.id = static_cast<int>(i);
+
+        switch (lightComponent.Type)
+        {
+        case LightComponent::LightType::kDirectionalLight:
+            rect.w = kMaxShadowResolution2D * static_cast<int>(kNumShadowCascades);
+            rect.h = kMaxShadowResolution2D;
+            break;
+
+        case LightComponent::LightType::kSpotLight:
+            rect.w = kMaxShadowResolution2D * amount;
+            rect.h = kMaxShadowResolution2D * amount;
+            break;
+
+        case LightComponent::LightType::kOmniLight:
+
+            rect.w = kMaxShadowResolution2D * amount * 6;
+            rect.h = kMaxShadowResolution2D * amount;
+            break;
+        default:
+            continue;
+        }
+
+        if (rect.w > 8 && rect.h > 8)
+        {
+            packer.AddRect(rect);
+        }
+    }
+
+    if (!packer.IsEmpty())
+    {
+        // This limit is from Wicked Engine, not sure I know if it's arbitraty
+        if (!packer.Pack(8192))
+        {
+            return;
+        }
+    
+        for (const auto& rect : packer.GetRects())
+        {
+            uint32_t lightIndex = uint32_t(rect.id);
+            LightComponent& light = this->m_scene.Lights[lightIndex];
+            if (rect.was_packed)
+            {
+                light.ShadowRect = rect;
+
+                // Remove slice multipliers from rect:
+                switch (light.Type)
+                {
+                case LightComponent::kDirectionalLight:
+                    light.ShadowRect.w /= static_cast<int>(kNumShadowCascades);
+                    break;
+
+                case LightComponent::kOmniLight:
+                    light.ShadowRect.w /= 6;
+                    break;
+                }
+            }
+            else
+            {
+                light.Direction = {};
+            }
+        }
+
+        if (this->m_shadowAtlas == nullptr ||
+            (static_cast<int>(this->m_shadowAtlas->GetDesc().Width < packer.GetWidth() || 
+                static_cast<int>(this->m_shadowAtlas->GetDesc().Height < packer.GetHeight()))))
+        {
+            RHI::TextureDesc desc;
+            desc.Width = static_cast<uint32_t>(packer.GetWidth());
+            desc.Height = static_cast<uint32_t>(packer.GetHeight());
+            desc.Format = RHI::FormatType::D16;
+            desc.IsTypeless = true;
+
+            desc.BindingFlags= RHI::BindingFlags::DepthStencil | RHI::BindingFlags::ShaderResource;
+            desc.InitialState = RHI::ResourceStates::ShaderResource;
+            desc.DebugName = "Shadow Map Atlas";
+            this->m_shadowAtlas = this->m_app->GetGraphicsDevice()->CreateTexture(desc);
+        }
+    }
+    // Determine the Texture size
 }

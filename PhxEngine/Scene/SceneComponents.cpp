@@ -385,11 +385,13 @@ void PhxEngine::Scene::CameraComponent::TransformCamera(TransformComponent const
 void PhxEngine::Scene::CameraComponent::UpdateCamera()
 {
 	auto viewMatrix = this->ConstructViewMatrixRH();
+	// auto viewMatrix = this->ConstructViewMatrixLH();
 
 	XMStoreFloat4x4(&this->View, viewMatrix);
 	XMStoreFloat4x4(&this->ViewInv, XMMatrixInverse(nullptr, viewMatrix));
 
 	auto projectionMatrix = XMMatrixPerspectiveFovRH(this->FoV, 1.7f, this->ZNear, this->ZFar);
+	// auto projectionMatrix = XMMatrixPerspectiveFovLH(this->FoV, 1.7f, this->ZNear, this->ZFar);
 
 	XMStoreFloat4x4(&this->Projection, projectionMatrix);
 	XMStoreFloat4x4(&this->ProjectionInv, XMMatrixInverse(nullptr, projectionMatrix));

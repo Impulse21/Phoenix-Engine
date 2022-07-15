@@ -335,6 +335,13 @@ struct ImagePassPushConstants
 {
 
 };
+
+struct DefferedLightingCSConstants
+{
+	uint2 DipatchGridDim; // // Arguments of the Dispatch call
+	uint MaxTileWidth; // 8, 16 or 32.
+};
+
 #ifdef __cplusplus
 }
 #endif

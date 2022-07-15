@@ -30,6 +30,11 @@ using int4 = DirectX::XMINT4;
 
 #endif
 
+
+#define DEFERRED_BLOCK_SIZE_X 16
+#define DEFERRED_BLOCK_SIZE_Y 16
+
+
 #define RESOURCE_HEAP_BUFFER_SPACE     space100
 #define RESOURCE_HEAP_TEX2D_SPACE      space101
 #define RESOURCE_HEAP_TEX_CUBE_SPACE   space102

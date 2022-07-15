@@ -6,6 +6,9 @@
 #include "FullScreenHelpers.hlsli"
 #include "BRDFFunctions.hlsli"
 
+#ifdef ENABLE_THREAD_GROUP_SWIZZLING
+#include "ThreadGroupTilingX.hlsli"
+#endif
 
 // TODO: ROOT SIGNATURE
 
@@ -31,6 +34,27 @@
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR),"
 
+#endif
+
+#ifdef DEFERRED_LIGHTING_COMPILE_CS
+
+#define RS_Deffered \
+	"RootFlags(CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED), " \
+	"RootConstants(num32BitConstants=3, b999), " \
+	"CBV(b0), " \
+	"CBV(b1), " \
+    "SRV(t0),"  \
+    "DescriptorTable(SRV(t1, numDescriptors = 5)), " \
+    "DescriptorTable( UAV(u0, numDescriptors = 1) )," \
+	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
+    "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR),"
+
+
+RWTexture2D<float4> OutputBuffer : register(u0);
+
+// Root Constant
+
+PUSH_CONSTANT(push, DefferedLightingCSConstants);
 #endif
 
 Texture2D GBuffer_Depth : register(t1);
@@ -63,7 +87,7 @@ PSInput main(uint id : SV_VertexID)
 
 #endif
 
-#ifdef DEFERRED_LIGHTING_COMPILE_PS
+#if defined(DEFERRED_LIGHTING_COMPILE_PS) || defined(DEFERRED_LIGHTING_COMPILE_CS)
 
 inline float3 CalculateDirectAnalyticalContribution(float3 N, float3 V, float3 R, float3 F0, float3 L, float3 Radiance, SurfaceProperties surfaceProperties)
 {
@@ -97,23 +121,53 @@ inline float3 CalculateDirectAnalyticalContribution(float3 N, float3 V, float3 R
     return (KDiffuse * (surfaceProperties.Albedo / PI) + specular) * Radiance * NdotL;
 }
 
+#ifdef DEFERRED_LIGHTING_COMPILE_CS
+
+[RootSignature(RS_Deffered)]
+[numthreads(DEFERRED_BLOCK_SIZE_X, DEFERRED_BLOCK_SIZE_Y, 1)]
+void main(uint3 DTid : SV_DispatchThreadID, uint2 GTid : SV_GroupThreadID, uint2 GroupId : SV_GroupID)
+{
+#ifdef ENABLE_THREAD_GROUP_SWIZZLING
+    float2 pixelPosition = ThreadGroupTilingX(
+        push.DipatchGridDim,
+        uint2(DEFERRED_BLOCK_SIZE_X, DEFERRED_BLOCK_SIZE_Y),
+        push.MaxTileWidth,		// User parameter (N). Recommended values: 
+        GTid,		// SV_GroupThreadID
+        GroupId);			// SV_GroupID
+
+#else
+    float2 pixelPosition = DTid.xy;
+#endif 
+
+#else
 [RootSignature(DeferredLightingRS)]
 float4 main(PSInput input) : SV_TARGET
 {
+    float2 pixelPosition = input.UV;
+
+#endif
     Camera camera = GetCamera();
     SceneData scene = GetScene();
 
     float4 gbufferChannels[NUM_GBUFFER_CHANNELS];
-    gbufferChannels[0] = GBuffer_0.Sample(SamplerDefault, input.UV);
-    gbufferChannels[1] = GBuffer_1.Sample(SamplerDefault, input.UV);
-    gbufferChannels[2] = GBuffer_2.Sample(SamplerDefault, input.UV);
 
+#ifdef DEFERRED_LIGHTING_COMPILE_CS
+    gbufferChannels[0] = GBuffer_0[pixelPosition];
+    gbufferChannels[1] = GBuffer_1[pixelPosition];
+    gbufferChannels[2] = GBuffer_2[pixelPosition];
+
+#else
+    gbufferChannels[0] = GBuffer_0.Sample(SamplerDefault, pixelPosition);
+    gbufferChannels[1] = GBuffer_1.Sample(SamplerDefault, pixelPosition);
+    gbufferChannels[2] = GBuffer_2.Sample(SamplerDefault, pixelPosition);
+#endif
     // TODO: Remove after testing
-    float3 debugWorldPosition = GBuffer_Debug_Position.Sample(SamplerDefault, input.UV).xyz;
+    float3 debugWorldPosition = GBuffer_Debug_Position.Sample(SamplerDefault, pixelPosition).xyz;
 
     SurfaceProperties surfaceProperties = DecodeGBuffer(gbufferChannels);
-    float depth = GBuffer_Depth.Sample(SamplerDefault, input.UV).x;
-    float3 surfacePosition = ReconstructWorldPosition(camera, input.UV, depth);
+    float depth = GBuffer_Depth.Sample(SamplerDefault, pixelPosition).x;
+    float3 surfacePosition = ReconstructWorldPosition(camera, pixelPosition, depth);
+    surfacePosition = debugWorldPosition;
 
     // -- Lighting Model ---
     float3 N = normalize(surfaceProperties.Normal);
@@ -277,12 +331,13 @@ float4 main(PSInput input) : SV_TARGET
     colour = colour / (colour + float3(1.0, 1.0, 1.0));
     colour = pow(colour, float3(1.0 / 2.2, 1.0 / 2.2, 1.0 / 2.2));
 
-    return float4(colour, 1.0f);
-}
-#endif
-
 #ifdef DEFERRED_LIGHTING_COMPILE_CS
+    OutputBuffer[pixelPosition] = float4(colour, 1.0f);
+#else
 
+    return float4(colour, 1.0f);
+#endif
+}
 #endif
 
 #endif // _DEFERRED_LIGHTING_HLSL__

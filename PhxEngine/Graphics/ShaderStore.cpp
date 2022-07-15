@@ -25,7 +25,7 @@ void ShaderStore::PreloadShaders(ShaderFactory& shaderFactory)
 	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::VS_DeferredLighting)] = shaderFactory.LoadShader(ShaderStage::Vertex, "DeferredLightingVS.cso");
 	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::PS_DeferredLighting)] = shaderFactory.LoadShader(ShaderStage::Pixel, "DeferredLightingPS.cso");
 
-	// this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::CS_DeferredLighting)] = shaderFactory.LoadShader(ShaderStage::Compute, "DeferredLightingCS.cso");
+	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::CS_DeferredLighting)] = shaderFactory.LoadShader(ShaderStage::Compute, "DeferredLightingCS.cso");
 
 	return;
 }

@@ -11,6 +11,7 @@ namespace PhxEngine::RHI::Dx12
 	class GpuDescriptorHeap;
 	class UploadBuffer;
 	class DynamicSuballocator;
+	class ComputePSO;
 
 	class TimerQuery;
 	struct TrackedResources
@@ -93,7 +94,14 @@ namespace PhxEngine::RHI::Dx12
 		void BindResourceTable(size_t rootParameterIndex) override;
 		void BindSamplerTable(size_t rootParameterIndex) override;
 		void BindDynamicDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures) override;
+		void BindDynamicUavDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures) override;
 
+		// -- Comptute Stuff ---
+		void SetComputeState(ComputePSOHandle state);
+		void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1);
+		void DispatchIndirect(uint32_t offsetBytes);
+
+		// -- Query Stuff ---
 		void BeginTimerQuery(TimerQueryHandle query);
 		void EndTimerQuery(TimerQueryHandle query);
 
@@ -108,6 +116,7 @@ namespace PhxEngine::RHI::Dx12
 
 	private:
 		const uint32_t DynamicChunkSizeSrvUavCbv = 256;
+		ComputePSO* m_activeComputePSO = nullptr;
 
 		GraphicsDevice& m_graphicsDevice;
 		CommandListDesc m_desc = {};

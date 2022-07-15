@@ -1,9 +1,6 @@
-﻿FXC : warning : no output provided for debug - embedding PDB in shader container.  Use -Qembed_debug to silence this warning.
-FXC : error : validation errors
-  
-  Shader SRV descriptor range (RegisterSpace=101, NumDescriptors=1, BaseShaderRegister=0) is not fully bound in root signature.
-  Root Signature in DXIL container is not compatible with shader.
-  
-  Validation failed.
-  
+﻿  In file included from DeferredLightingCS.hlsl:4:
+./DeferredLighting.hlsli(126,2): error G8043D3C9: root signature error - Expected a root signature flag value, found: 'CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED'
+  [RootSignature(RS_Deffered)]
+   ^
+FXC : warning : no output provided for debug - embedding PDB in shader container.  Use -Qembed_debug to silence this warning.
   

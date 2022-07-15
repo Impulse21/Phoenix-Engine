@@ -18,6 +18,12 @@ using namespace PhxEngine::ECS;
 using namespace PhxEngine::RHI;
 using namespace DirectX;
 
+
+namespace
+{
+	constexpr bool cUseLeftHandCoord = false;
+}
+
 // TODO: Use Span
 /*
 class BufferRegionBlob : public IBlob
@@ -755,7 +761,10 @@ void PhxEngine::Scene::GltfSceneLoader::LoadMeshData(
 
 		// GLTF 2.0 front face is CCW, I currently use CW as front face.
 		// something to consider to change.
-		mesh.ReverseWinding();
+		if (!cUseLeftHandCoord)
+		{
+			mesh.ReverseWinding();
+		}
 	}
 }
 
@@ -862,6 +871,12 @@ void PhxEngine::Scene::GltfSceneLoader::LoadNode(
 			sizeof(float) * 4);
 
 
+		if (cUseLeftHandCoord)
+		{
+			transform.LocalRotation.z = -transform.LocalRotation.z;
+			transform.LocalRotation.w = -transform.LocalRotation.w;
+		}
+
 		transform.SetDirty(true);
 	}
 	if (gltfNode.has_translation)
@@ -870,6 +885,11 @@ void PhxEngine::Scene::GltfSceneLoader::LoadNode(
 			&transform.LocalTranslation.x,
 			&gltfNode.translation[0],
 			sizeof(float) * 3);
+
+		if (cUseLeftHandCoord)
+		{
+			transform.LocalTranslation.z = -transform.LocalTranslation.z;
+		}
 
 		transform.SetDirty(true);
 	}

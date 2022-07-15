@@ -103,6 +103,16 @@ namespace PhxEngine::RHI::Dx12
         const GraphicsPSODesc& GetDesc() const override { return this->Desc; }
     };
 
+    struct ComputePSO : public IComputePSO
+    {
+        Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
+        ComputePSODesc Desc;
+
+
+        const ComputePSODesc& GetDesc() const override { return this->Desc; }
+    };
+
     struct Texture final : public ITexture
     {
         TextureDesc Desc = {};
@@ -112,6 +122,7 @@ namespace PhxEngine::RHI::Dx12
         DescriptorHeapAllocation RtvAllocation;
         DescriptorHeapAllocation DsvAllocation;
         DescriptorHeapAllocation SrvAllocation;
+        DescriptorHeapAllocation UavAllocation;
 
         // TODO: Free Index
         DescriptorIndex BindlessResourceIndex = cInvalidDescriptorIndex;
@@ -176,6 +187,7 @@ namespace PhxEngine::RHI::Dx12
         // -- Interface Functions ---
     public:
         void WaitForIdle() override;
+        void QueueWaitForCommandList(CommandQueueType waitQueue, ExecutionReceipt waitOnRecipt) override;
 
 		void CreateSwapChain(SwapChainDesc const& swapChainDesc) override;
 
@@ -183,7 +195,8 @@ namespace PhxEngine::RHI::Dx12
 
         ShaderHandle CreateShader(ShaderDesc const& desc, const void* binary, size_t binarySize) override;
         InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) override;
-        GraphicsPSOHandle CreateGraphicsPSOHandle(GraphicsPSODesc const& desc) override;
+        GraphicsPSOHandle CreateGraphicsPSO(GraphicsPSODesc const& desc) override;
+        ComputePSOHandle CreateComputePso(ComputePSODesc const& desc) override;
 
         TextureHandle CreateDepthStencil(TextureDesc const& desc) override;
         TextureHandle CreateTexture(TextureDesc const& desc) override;
@@ -202,7 +215,7 @@ namespace PhxEngine::RHI::Dx12
 
         void Present() override;
 
-        uint64_t ExecuteCommandLists(
+        ExecutionReceipt ExecuteCommandLists(
             ICommandList* const* pCommandLists,
             size_t numCommandLists,
             CommandQueueType executionQueue = CommandQueueType::Graphics) override
@@ -214,7 +227,7 @@ namespace PhxEngine::RHI::Dx12
                 executionQueue);
         }
 
-        uint64_t ExecuteCommandLists(
+        ExecutionReceipt ExecuteCommandLists(
             ICommandList* const* pCommandLists,
             size_t numCommandLists,
             bool waitForCompletion,
@@ -236,6 +249,7 @@ namespace PhxEngine::RHI::Dx12
         void CreateShaderResourceView(Texture* textureImpl);
         void CreateRenderTargetView(Texture* textureImpl);
         void CreateDepthStencilView(Texture* textureImpl);
+        void CreateUnorderedAccessView(Texture* textureImpl);
 
     public:
         void RunGarbageCollection();

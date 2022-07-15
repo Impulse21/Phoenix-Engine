@@ -9,6 +9,7 @@
 
 #include "Graphics/Enums.h"
 #include "Graphics/RHI/PhxRHI.h"
+#include "Graphics/RectPacker.h"
 
 #include <Shaders/ShaderInteropStructures.h>
 
@@ -195,6 +196,7 @@ namespace PhxEngine::Scene
 		DirectX::XMFLOAT3 LocalScale;
 		DirectX::XMFLOAT3 Front;
 		DirectX::XMFLOAT3 Right;
+		Graphics::PackerRect ShadowRect;
 
 		bool CastShadows() const { return Flags & Flags::kCastShadow; }
 		inline void SetCastShadows(bool value = true)

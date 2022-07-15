@@ -771,6 +771,22 @@ namespace PhxEngine::RHI
 
     using GraphicsPSOHandle = std::shared_ptr<IGraphicsPSO>;
 
+    struct ComputePSODesc
+    {
+        ShaderHandle ComputeShader;
+
+    };
+
+    class IComputePSO : public IResource
+    {
+    public:
+        virtual ~IComputePSO() = default;
+
+        virtual const ComputePSODesc& GetDesc() const = 0;
+    };
+
+    using ComputePSOHandle = std::shared_ptr<IComputePSO>;
+
     struct SubresourceData
     {
         const void* pData = nullptr;
@@ -990,6 +1006,11 @@ namespace PhxEngine::RHI
         virtual void SetScissors(Rect* scissor, size_t numScissors) = 0;
         virtual void SetRenderTargets(std::vector<TextureHandle> const& renderTargets, TextureHandle depthStencil) = 0;
 
+        // -- Comptute Stuff ---
+        virtual void SetComputeState(ComputePSOHandle state) = 0;
+        virtual void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1) = 0;
+        virtual void DispatchIndirect(uint32_t offsetBytes) = 0;
+
         virtual void BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants) = 0;
         template<typename T>
         void BindPushConstant(uint32_t rootParameterIndex, const T& constants)
@@ -1048,6 +1069,8 @@ namespace PhxEngine::RHI
         virtual void BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer) = 0;
 
         virtual void BindDynamicDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures) = 0;
+        virtual void BindDynamicUavDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures) = 0;
+
         virtual void BindResourceTable (size_t rootParameterIndex) = 0;
         virtual void BindSamplerTable(size_t rootParameterIndex) = 0;
 
@@ -1081,6 +1104,12 @@ namespace PhxEngine::RHI
 
     };
 
+    struct ExecutionReceipt
+    {
+        uint64_t FenceValue;
+        CommandQueueType CommandQueue;
+    };
+
     class IGraphicsDevice
     {
     public:
@@ -1093,7 +1122,8 @@ namespace PhxEngine::RHI
 
         virtual ShaderHandle CreateShader(ShaderDesc const& desc, const void* binary, size_t binarySize) = 0;
         virtual InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) = 0;
-        virtual GraphicsPSOHandle CreateGraphicsPSOHandle(GraphicsPSODesc const& desc) = 0;
+        virtual GraphicsPSOHandle CreateGraphicsPSO(GraphicsPSODesc const& desc) = 0;
+        virtual ComputePSOHandle CreateComputePso(ComputePSODesc const& desc) = 0;
 
         virtual TextureHandle CreateDepthStencil(TextureDesc const& desc) = 0;
         virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
@@ -1115,25 +1145,26 @@ namespace PhxEngine::RHI
 
         virtual void Present() = 0;
         virtual void WaitForIdle() = 0;
+        virtual void QueueWaitForCommandList(CommandQueueType waitQueue, ExecutionReceipt waitOnRecipt) = 0;
 
-        virtual uint64_t ExecuteCommandLists(
+        virtual ExecutionReceipt ExecuteCommandLists(
             ICommandList* const* pCommandLists,
             size_t numCommandLists,
             CommandQueueType executionQueue = CommandQueueType::Graphics) = 0;
 
-        virtual uint64_t ExecuteCommandLists(
+        virtual ExecutionReceipt ExecuteCommandLists(
             ICommandList* const* pCommandLists,
             size_t numCommandLists,
             bool waitForCompletion,
             CommandQueueType executionQueue = CommandQueueType::Graphics) = 0;
 
         // Front-end for executeCommandLists(..., 1) for compatibility and convenience
-        uint64_t ExecuteCommandLists(ICommandList* commandList, CommandQueueType executionQueue = CommandQueueType::Graphics)
+        ExecutionReceipt ExecuteCommandLists(ICommandList* commandList, CommandQueueType executionQueue = CommandQueueType::Graphics)
         {
             return this->ExecuteCommandLists(&commandList, 1, executionQueue);
         }
 
-        uint64_t ExecuteCommandLists(ICommandList* commandList, bool waitForCompletion, CommandQueueType executionQueue = CommandQueueType::Graphics)
+        ExecutionReceipt ExecuteCommandLists(ICommandList* commandList, bool waitForCompletion, CommandQueueType executionQueue = CommandQueueType::Graphics)
         {
             return this->ExecuteCommandLists(&commandList, 1, waitForCompletion, executionQueue);
         }

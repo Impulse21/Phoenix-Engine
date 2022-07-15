@@ -28,7 +28,7 @@ namespace PhxEngine::RHI::Dx12
 		operator ID3D12CommandQueue* () const { return this->m_d3d12CommandQueue.Get(); }
 
 		ID3D12CommandQueue* GetD3D12CommandQueue() { return this->m_d3d12CommandQueue.Get(); }
-
+		ID3D12Fence* GetFence() { return this->m_d3d12Fence.Get(); }
 		uint64_t GetLastCompletedFence();
 
 	private:

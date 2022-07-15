@@ -28,4 +28,21 @@ namespace PhxEngine::Core::Math
 
 		return retVal;
 	}
+
+	inline float Distance(DirectX::XMVECTOR const& v1, DirectX::XMVECTOR const& v2)
+	{
+		auto subVector = DirectX::XMVectorSubtract(v1, v2);
+		auto length = DirectX::XMVector3Length(subVector);
+
+		float distance = 0.0f;
+		DirectX::XMStoreFloat(&distance, length);
+		return distance;
+	}
+
+	inline float Distance(DirectX::XMFLOAT3 const& f1, DirectX::XMFLOAT3 const& f2)
+	{
+		auto v1 = DirectX::XMLoadFloat3(&f1);
+		auto v2 = DirectX::XMLoadFloat3(&f2);
+		return Distance(v1, v2);
+	}
 }
