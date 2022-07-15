@@ -39,6 +39,7 @@ namespace
 
 AutoConsoleVar_Int CVAR_EnableIBL("Renderer.EnableIBL.checkbox", "Enabled Image Based Lighting", 0, ConsoleVarFlags::EditCheckbox);
 AutoConsoleVar_Int CVAR_EnableCSLighting("Renderer.EnableCSLigthing.checkbox", "Enable Compute Shader Lighting Pass", 0, ConsoleVarFlags::EditReadOnly);
+AutoConsoleVar_Int CVAR_EnableShadows("Renderer.EnableShadows.checkbox", "Enable Shadows", 0, ConsoleVarFlags::EditCheckbox);
 
 void TransposeMatrix(DirectX::XMFLOAT4X4 const& in, DirectX::XMFLOAT4X4* out)
 {
@@ -450,7 +451,10 @@ void TestBedRenderPath::Render()
 
     // Update per frame resources
     {
-        // this->ShadowAtlasPacking();
+        if (CVAR_EnableShadows.Get())
+        {
+            this->ShadowAtlasPacking();
+        }
 
         // TODO: I am here - just iterate over the lights.
         // Fill Light data
@@ -1013,12 +1017,13 @@ void TestBedRenderPath::ConstructDebugData()
 void TestBedRenderPath::ShadowAtlasPacking()
 {
     thread_local static Graphics::RectPacker packer;
+    packer.Clear();
 
     for (int i = 0; i < this->m_scene.Lights.GetCount(); i++)
     {
         auto& lightComponent = this->m_scene.Lights[i];
 
-        if (!lightComponent.IsEnabled() || lightComponent.CastShadows())
+        if (!lightComponent.IsEnabled() || !lightComponent.CastShadows())
         {
             continue;
         }
