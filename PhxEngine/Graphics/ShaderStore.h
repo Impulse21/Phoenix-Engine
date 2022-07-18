@@ -11,6 +11,7 @@ namespace PhxEngine::Graphics
 		VS_GBufferPass,
 		VS_FullscreenQuad,
 		VS_DeferredLighting,
+		VS_ShadowPass,
 
 		// PS Shaders
 		PS_ImGui,

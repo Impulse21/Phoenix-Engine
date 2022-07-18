@@ -30,6 +30,9 @@
     <FxCompile Include="$(MSBuildThisFileDirectory)ImGuiVS.hlsl" />
     <FxCompile Include="$(MSBuildThisFileDirectory)GBufferPassPS.hlsl" />
     <FxCompile Include="$(MSBuildThisFileDirectory)GBufferPassVS.hlsl" />
+    <FxCompile Include="$(MSBuildThisFileDirectory)ShadowPassVS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)ShaderInterop.h" />

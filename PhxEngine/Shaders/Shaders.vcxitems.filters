@@ -50,6 +50,9 @@
     <FxCompile Include="$(MSBuildThisFileDirectory)DeferredLightingCS.hlsl">
       <Filter>CS</Filter>
     </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)ShadowPassVS.hlsl">
+      <Filter>VS</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)ShaderInterop.h">

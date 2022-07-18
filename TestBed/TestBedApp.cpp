@@ -27,6 +27,7 @@ using namespace PhxEngine::Scene;
 
 namespace
 {
+    constexpr RHI::FormatType kShadowAtlasFormat = RHI::FormatType::D32;
     constexpr uint32_t kMaxShadowResolution2D = 1024U;
     constexpr uint32_t kMaxShadowResoltuionCube = 256U;
     constexpr uint32_t kNumShadowCascades = 3U;
@@ -39,7 +40,7 @@ namespace
 
 AutoConsoleVar_Int CVAR_EnableIBL("Renderer.EnableIBL.checkbox", "Enabled Image Based Lighting", 0, ConsoleVarFlags::EditCheckbox);
 AutoConsoleVar_Int CVAR_EnableCSLighting("Renderer.EnableCSLigthing.checkbox", "Enable Compute Shader Lighting Pass", 0, ConsoleVarFlags::EditReadOnly);
-AutoConsoleVar_Int CVAR_EnableShadows("Renderer.EnableShadows.checkbox", "Enable Shadows", 0, ConsoleVarFlags::EditCheckbox);
+AutoConsoleVar_Int CVAR_EnableShadows("Renderer.EnableShadows.checkbox", "Enable Shadows", 1, ConsoleVarFlags::EditCheckbox);
 
 void TransposeMatrix(DirectX::XMFLOAT4X4 const& in, DirectX::XMFLOAT4X4* out)
 {
@@ -87,6 +88,56 @@ struct GBuffer
     PhxEngine::RHI::TextureHandle _PostionTexture;
 };
 
+
+void DrawMeshes(PhxEngine::Scene::Scene const& scene, RHI::CommandListHandle commandList)
+{
+    auto scrope = commandList->BeginScopedMarker("Render Scene Meshes");
+
+    for (int i = 0; i < scene.MeshInstances.GetCount(); i++)
+    {
+        auto& meshInstanceComponent = scene.MeshInstances[i];
+
+        if ((meshInstanceComponent.RenderBucketMask & RenderType::RenderType_Opaque) != RenderType::RenderType_Opaque)
+        {
+            ECS::Entity e = scene.MeshInstances.GetEntity(i);
+            auto& meshComponent = *scene.Meshes.GetComponent(meshInstanceComponent.MeshId);
+            std::string modelName = "UNKNOWN";
+            auto* nameComponent = scene.Names.GetComponent(meshInstanceComponent.MeshId);
+            if (nameComponent)
+            {
+                modelName = nameComponent->Name;
+            }
+            continue;
+        }
+
+        ECS::Entity e = scene.MeshInstances.GetEntity(i);
+        auto& meshComponent = *scene.Meshes.GetComponent(meshInstanceComponent.MeshId);
+        auto& transformComponent = *scene.Transforms.GetComponent(e);
+        commandList->BindIndexBuffer(meshComponent.IndexGpuBuffer);
+
+        std::string modelName = "UNKNOWN";
+        auto* nameComponent = scene.Names.GetComponent(meshInstanceComponent.MeshId);
+        if (nameComponent)
+        {
+            modelName = nameComponent->Name;
+        }
+
+        auto scrope = commandList->BeginScopedMarker(modelName);
+        for (size_t i = 0; i < meshComponent.Geometry.size(); i++)
+        {
+            Shader::GeometryPassPushConstants pushConstant;
+            pushConstant.MeshIndex = scene.Meshes.GetIndex(meshInstanceComponent.MeshId);
+            pushConstant.GeometryIndex = meshComponent.Geometry[i].GlobalGeometryIndex;
+            TransposeMatrix(transformComponent.WorldMatrix, &pushConstant.WorldTransform);
+            commandList->BindPushConstant(RootParameters_GBuffer::PushConstant, pushConstant);
+
+            commandList->DrawIndexed(
+                meshComponent.Geometry[i].NumIndices,
+                1,
+                meshComponent.Geometry[i].IndexOffsetInMesh);
+        }
+    }
+}
 
 class TestBedRenderPath : public RenderPathComponent
 {
@@ -136,6 +187,7 @@ private:
 
     // Uploaded every frame....Could be improved upon.
     std::vector<Shader::ShaderLight> m_lightCpuData;
+    std::vector<Shader::ShaderLight> m_shadowLights;
 
     // -- Shadow Stuff ---
     RHI::TextureHandle m_shadowAtlas;
@@ -144,6 +196,7 @@ private:
     RHI::BufferHandle m_geometryGpuBuffers;
     RHI::BufferHandle m_materialGpuBuffers;
 
+    PhxEngine::RHI::GraphicsPSOHandle m_shadowPassPso;
     PhxEngine::RHI::GraphicsPSOHandle m_gbufferPassPso;
     PhxEngine::RHI::GraphicsPSOHandle m_fullscreenQuadPso;
     PhxEngine::RHI::GraphicsPSOHandle m_deferredLightFullQuadPso;
@@ -500,11 +553,114 @@ void TestBedRenderPath::Render()
         this->m_commandList->ClearTextureFloat(currentBuffer.NormalTexture, currentBuffer.NormalTexture->GetDesc().OptmizedClearValue.value());
         this->m_commandList->ClearTextureFloat(currentBuffer.SurfaceTexture, currentBuffer.SurfaceTexture->GetDesc().OptmizedClearValue.value());
         this->m_commandList->ClearTextureFloat(currentBuffer._PostionTexture, currentBuffer._PostionTexture->GetDesc().OptmizedClearValue.value());
+
     }
 
     {
         // TODO: Z-Prepasss
     }
+
+	if (CVAR_EnableShadows.Get())
+	{
+		auto scrope = this->m_commandList->BeginScopedMarker("Shadow Pass");
+        if (this->m_shadowAtlas != nullptr)
+        {
+            this->m_commandList->ClearDepthStencilTexture(this->m_shadowAtlas, true, 1.0f, false, 0.0f);
+        }
+
+        // -- Prepare PSO ---
+        this->m_commandList->SetRenderTargets(
+            { },
+            this->m_shadowAtlas);
+
+
+        this->m_commandList->SetGraphicsPSO(this->m_shadowPassPso);
+
+        this->m_commandList->BindDynamicConstantBuffer(RootParameters_GBuffer::FrameCB, frameData);
+
+        // Draw meshes per light
+        // Bind light Buffer
+
+        // Render Each active light
+        this->m_shadowLights.clear();
+        for (int i = 0; i < this->m_scene.Lights.GetCount(); i++)
+        {
+            auto& lightComponent = this->m_scene.Lights[i];
+            if (!lightComponent.IsEnabled() || !lightComponent.CastShadows())
+            {
+                continue;
+            }
+
+            switch (lightComponent.Type)
+            {
+            case LightComponent::LightType::kDirectionalLight:
+                continue;
+                break;
+
+            case LightComponent::LightType::kSpotLight:
+                continue;
+                break;
+
+            case LightComponent::LightType::kOmniLight:
+            {
+                // float nearZ = 0.1f;
+                float nearZ = 1.0f;
+                float farZ = lightComponent.Range;
+
+                DirectX::XMMATRIX shadowProj = DirectX::XMMatrixPerspectiveFovRH(DirectX::XM_PIDIV2, 1, nearZ, farZ);
+
+                std::array<DirectX::XMFLOAT4X4, 6> cameraTransforms;
+
+                // TODO: Clean all of this up
+                static auto constructTransform = [&](DirectX::XMFLOAT4 const& rotation, DirectX::XMMATRIX const& shadowProj, DirectX::XMFLOAT4X4& outTransform)
+                {
+                    DirectX::XMVECTOR q = DirectX::XMQuaternionNormalize(DirectX::XMLoadFloat4(&rotation));
+                    DirectX::XMMATRIX rot = DirectX::XMMatrixRotationQuaternion(q);
+                    const DirectX::XMVECTOR to = DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.0f, 0.0f, -1.0f, 0.0f), rot);
+                    const DirectX::XMVECTOR up = DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), rot);
+                    auto viewMatrix = DirectX::XMMatrixLookToLH(DirectX::XMLoadFloat3(&lightComponent.Position), to, up);
+                    DirectX::XMStoreFloat4x4(&outTransform, DirectX::XMMatrixTranspose(viewMatrix * shadowProj));
+                };
+
+                constructTransform(DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), shadowProj, cameraTransforms[0]); // -z
+                constructTransform(DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f), shadowProj, cameraTransforms[1]); // +z
+                constructTransform(DirectX::XMFLOAT4(0, 0.707f, 0, 0.707f), shadowProj, cameraTransforms[2]); // -x
+                constructTransform(DirectX::XMFLOAT4(0, -0.707f, 0, 0.707f), shadowProj, cameraTransforms[3]); // +x
+                constructTransform(DirectX::XMFLOAT4(0.707f, 0, 0, 0.707f), shadowProj, cameraTransforms[4]); // -y
+                constructTransform(DirectX::XMFLOAT4(-0.707f, 0, 0, 0.707f), shadowProj, cameraTransforms[5]); // +y
+
+                // construct viewports
+                for (size_t i = 0; i < cameraTransforms.size(); i++)
+                {
+                    RHI::ScopedMarker _ = this->m_commandList->BeginScopedMarker("Omni Light (View: " + std::to_string(i) + ")");
+
+                    RHI::Viewport viewport = {};
+                    viewport.MinX = static_cast<float>(lightComponent.ShadowRect.x + i * lightComponent.ShadowRect.w);
+                    viewport.MinY = static_cast<float>(lightComponent.ShadowRect.y);
+                    viewport.MaxX = viewport.MinX + lightComponent.ShadowRect.w;
+                    viewport.MaxY = viewport.MinY + lightComponent.ShadowRect.h;
+                    viewport.MinZ = 0.0f;
+                    viewport.MaxZ = 1.0f;
+
+                    this->m_commandList->SetViewports(&viewport, 1);
+                    RHI::Rect rec(LONG_MAX, LONG_MAX);
+                    this->m_commandList->SetScissors(&rec, 1);
+
+                    Shader::Camera cameraData = {};
+                    cameraData.ViewProjection = cameraTransforms[i];
+
+                    // Reuse object buffer
+                    this->m_commandList->BindDynamicConstantBuffer(RootParameters_GBuffer::CameraCB, cameraData);
+
+                    DrawMeshes(this->m_scene, this->m_commandList);
+                }
+                break;
+            }
+            default:
+                continue;
+            }
+        }
+	}
 
     {
         auto scrope = this->m_commandList->BeginScopedMarker("Opaque GBuffer Pass");
@@ -533,52 +689,7 @@ void TestBedRenderPath::Render()
 
         // this->m_commandList->BindResourceTable(PBRBindingSlots::BindlessDescriptorTable);
 
-        // -- Draw Meshes ---
-        for (int i = 0; i < this->m_scene.MeshInstances.GetCount(); i++)
-        {
-            auto& meshInstanceComponent = this->m_scene.MeshInstances[i];
-
-            if ((meshInstanceComponent.RenderBucketMask & RenderType::RenderType_Opaque) != RenderType::RenderType_Opaque)
-            {
-                ECS::Entity e = this->m_scene.MeshInstances.GetEntity(i);
-                auto& meshComponent = *this->m_scene.Meshes.GetComponent(meshInstanceComponent.MeshId);
-                std::string modelName = "UNKNOWN";
-                auto* nameComponent = this->m_scene.Names.GetComponent(meshInstanceComponent.MeshId);
-                if (nameComponent)
-                {
-                    modelName = nameComponent->Name;
-                }
-                continue;
-            }
-
-            ECS::Entity e = this->m_scene.MeshInstances.GetEntity(i);
-            auto& meshComponent = *this->m_scene.Meshes.GetComponent(meshInstanceComponent.MeshId);
-            auto& transformComponent = *this->m_scene.Transforms.GetComponent(e);
-            this->m_commandList->BindIndexBuffer(meshComponent.IndexGpuBuffer);
-
-
-            std::string modelName = "UNKNOWN";
-            auto* nameComponent = this->m_scene.Names.GetComponent(meshInstanceComponent.MeshId);
-            if (nameComponent)
-            {
-                modelName = nameComponent->Name;
-            }
-
-            auto scrope = this->m_commandList->BeginScopedMarker(modelName);
-            for (size_t i = 0; i < meshComponent.Geometry.size(); i++)
-            {
-                Shader::GeometryPassPushConstants pushConstant;
-                pushConstant.MeshIndex = this->m_scene.Meshes.GetIndex(meshInstanceComponent.MeshId);
-                pushConstant.GeometryIndex = meshComponent.Geometry[i].GlobalGeometryIndex;
-                TransposeMatrix(transformComponent.WorldMatrix, &pushConstant.WorldTransform);
-                this->m_commandList->BindPushConstant(RootParameters_GBuffer::PushConstant, pushConstant);
-
-                this->m_commandList->DrawIndexed(
-                    meshComponent.Geometry[i].NumIndices,
-                    1,
-                    meshComponent.Geometry[i].IndexOffsetInMesh);
-            }
-        }
+        DrawMeshes(this->m_scene, this->m_commandList);
     }
 
     auto& currentDepthBuffer = this->GetCurrentDepthBuffer();
@@ -959,6 +1070,20 @@ void TestBedRenderPath::CreatePSO()
     }
 
     {
+        RHI::GraphicsPSODesc psoDesc = {};
+        psoDesc.VertexShader = this->m_app->GetShaderStore().Retrieve(PreLoadShaders::VS_ShadowPass);
+        psoDesc.InputLayout = nullptr;
+
+        psoDesc.DsvFormat = kShadowAtlasFormat;
+        psoDesc.RasterRenderState.DepthBias = 100000;
+        psoDesc.RasterRenderState.DepthBiasClamp = 0.0f;
+        psoDesc.RasterRenderState.SlopeScaledDepthBias = 1.0f;
+        psoDesc.RasterRenderState.DepthClipEnable = false;
+
+        this->m_shadowPassPso = this->m_app->GetGraphicsDevice()->CreateGraphicsPSO(psoDesc);
+    }
+
+    {
         // TODO: Use the files directly
         RHI::GraphicsPSODesc psoDesc = {};
         psoDesc.VertexShader = this->m_app->GetShaderStore().Retrieve(PreLoadShaders::VS_FullscreenQuad);
@@ -1105,11 +1230,13 @@ void TestBedRenderPath::ShadowAtlasPacking()
             RHI::TextureDesc desc;
             desc.Width = static_cast<uint32_t>(packer.GetWidth());
             desc.Height = static_cast<uint32_t>(packer.GetHeight());
-            desc.Format = RHI::FormatType::D16;
+            desc.Format = kShadowAtlasFormat;
             desc.IsTypeless = true;
+            RHI::Color clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
+            desc.OptmizedClearValue = std::make_optional<RHI::Color>(clearValue);
 
             desc.BindingFlags= RHI::BindingFlags::DepthStencil | RHI::BindingFlags::ShaderResource;
-            desc.InitialState = RHI::ResourceStates::ShaderResource;
+            desc.InitialState = RHI::ResourceStates::DepthWrite;
             desc.DebugName = "Shadow Map Atlas";
             this->m_shadowAtlas = this->m_app->GetGraphicsDevice()->CreateTexture(desc);
         }
