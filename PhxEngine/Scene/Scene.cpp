@@ -514,3 +514,24 @@ void PhxEngine::Scene::Scene::UpdateHierarchySystem()
 		XMStoreFloat4x4(&childTransform->WorldMatrix, worldMatrix);
 	}
 }
+
+void PhxEngine::Scene::Scene::UpdateLightsSystem()
+{
+	for (size_t i = 0; i < this->Lights.GetCount(); i++)
+	{
+		LightComponent& light = this->Lights[i];
+		Entity entity = this->Lights.GetEntity(i);
+		const TransformComponent& transform = *this->Transforms.GetComponent(entity);
+
+		DirectX::XMMATRIX world = DirectX::XMLoadFloat4x4(&transform.WorldMatrix);
+		DirectX::XMVECTOR translationT;
+		DirectX::XMVECTOR rotationV;
+		DirectX::XMVECTOR scaleV;
+		DirectX::XMMatrixDecompose(&scaleV, &rotationV, &translationT, world);
+
+		DirectX::XMStoreFloat3(&light.Position, translationT);
+		DirectX::XMStoreFloat4(&light.Rotation, rotationV);
+		DirectX::XMStoreFloat3(&light.Scale, scaleV);
+	}
+
+}

@@ -48,6 +48,7 @@ namespace PhxEngine::Scene
 	public:
 		void UpdateTansformsSystem();
 		void UpdateHierarchySystem();
+		void UpdateLightsSystem();
 
 		// GPU Related functions
 	public:

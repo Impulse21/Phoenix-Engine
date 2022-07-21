@@ -190,13 +190,15 @@ namespace PhxEngine::Scene
 		float Range = 10.0f;
 		float FoV = DirectX::XM_PIDIV4;
 
-		DirectX::XMFLOAT3 Position;
 		DirectX::XMFLOAT3 Direction;
-		DirectX::XMFLOAT3 LocalRotation;
-		DirectX::XMFLOAT3 LocalScale;
 		DirectX::XMFLOAT3 Front;
 		DirectX::XMFLOAT3 Right;
 		Graphics::PackerRect ShadowRect;
+
+
+		DirectX::XMFLOAT3 Position;
+		DirectX::XMFLOAT4 Rotation;
+		DirectX::XMFLOAT3 Scale;
 
 		bool CastShadows() const { return Flags & Flags::kCastShadow; }
 		inline void SetCastShadows(bool value = true)

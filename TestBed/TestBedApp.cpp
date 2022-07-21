@@ -24,6 +24,7 @@ using namespace PhxEngine;
 using namespace PhxEngine::Core;
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Scene;
+using namespace DirectX;
 
 namespace
 {
@@ -32,8 +33,8 @@ namespace
     constexpr uint32_t kMaxShadowResoltuionCube = 256U;
     constexpr uint32_t kNumShadowCascades = 3U;
 
-    const std::string scenePath = "..\\Assets\\Models\\Sponza_Intel\\Main\\NewSponza_Main_Blender_glTF.gltf";
-    // const std::string scenePath = "..\\Assets\\Models\\\MaterialScene\\MatScene.gltf";
+    // const std::string scenePath = "..\\Assets\\Models\\Sponza_Intel\\Main\\NewSponza_Main_Blender_glTF.gltf";
+    const std::string scenePath = "..\\Assets\\Models\\\MaterialScene\\MatScene.gltf";
     //const std::string scenePath = "..\\Assets\\Models\\CameraTestScene\\CameraTestScene.gltf";
     // const std::string scenePath = "..\\Assets\\Models\\My_Cornell\\MyCornell.gltf";
 }
@@ -41,6 +42,9 @@ namespace
 AutoConsoleVar_Int CVAR_EnableIBL("Renderer.EnableIBL.checkbox", "Enabled Image Based Lighting", 0, ConsoleVarFlags::EditCheckbox);
 AutoConsoleVar_Int CVAR_EnableCSLighting("Renderer.EnableCSLigthing.checkbox", "Enable Compute Shader Lighting Pass", 0, ConsoleVarFlags::EditReadOnly);
 AutoConsoleVar_Int CVAR_EnableShadows("Renderer.EnableShadows.checkbox", "Enable Shadows", 1, ConsoleVarFlags::EditCheckbox);
+AutoConsoleVar_Float CVAR_CSM_ZMulti("Renderer.CSM.ZMultu.checkbox", "CSM Z Multiplier", 10.0f, ConsoleVarFlags::EditFloatDrag);
+AutoConsoleVar_Int CVAR_CSM_RenderFromCascade("Renderer.CSM.RenderFromCascade.checkbox", "Render From Cascade", 0, ConsoleVarFlags::EditCheckbox);
+AutoConsoleVar_Int CVAR_CSM_CascadeNum("Renderer.CSM.CascadeNum.checkbox", "Cascade", 0, ConsoleVarFlags::Advanced);
 
 void TransposeMatrix(DirectX::XMFLOAT4X4 const& in, DirectX::XMFLOAT4X4* out)
 {
@@ -136,6 +140,92 @@ void DrawMeshes(PhxEngine::Scene::Scene const& scene, RHI::CommandListHandle com
                 1,
                 meshComponent.Geometry[i].IndexOffsetInMesh);
         }
+    }
+}
+
+
+namespace ShadowMaps
+{
+    std::vector<DirectX::XMVECTOR> GetFrustumCoordWorldSpace(DirectX::XMMATRIX const& invViewProj)
+    {
+        return
+        {
+            DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(-1, -1, 0, 1), invViewProj), // Near Plane
+            DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(-1, -1, 1, 1), invViewProj), // Far Plane
+            DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(-1, 1, 0, 1), invViewProj), // Near Plane
+            DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(-1,1, 1, 1), invViewProj), // Far Plane
+            DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1, -1, 0, 1), invViewProj), // Near Plane
+            DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1,-1, 1, 1), invViewProj), // Far Plane
+            DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1, 1, 0, 1), invViewProj), // Near Plane
+            DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1,1, 1, 1), invViewProj), // Far Plane
+        };
+    }
+
+    std::vector<DirectX::XMVECTOR> GetFrustumCoordWorldSpace(DirectX::XMMATRIX const& view, DirectX::XMMATRIX const& proj)
+    {
+        return GetFrustumCoordWorldSpace(DirectX::XMMatrixMultiply(view, proj));
+    }
+    
+    DirectX::XMMATRIX GetLightSpaceMatrix(CameraComponent const& camera, LightComponent& light, float nearPlane, const float farPlane)
+    {
+        // Is there a way to not create a new proj matrix per sub-frustum section??????
+        DirectX::XMMATRIX frustumProj = DirectX::XMMatrixPerspectiveFovRH(camera.FoV, 1.7f, std::max(nearPlane, 0.001f), farPlane);
+
+        const auto corners = ShadowMaps::GetFrustumCoordWorldSpace(DirectX::XMLoadFloat4x4(&camera.View), frustumProj);
+
+        DirectX::XMVECTOR center = DirectX::XMVectorZero();
+        for (size_t i = 0; i < corners.size(); i++)
+        {
+            center = DirectX::XMVectorAdd(center, corners[i]);
+        }
+        center = center / static_cast<float>(corners.size());
+
+        // Create Light View Matrix
+        const auto lightView = DirectX::XMMatrixLookAtRH(center - DirectX::XMLoadFloat3(&light.Direction), center, DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
+
+        float minX = std::numeric_limits<float>::max();
+        float maxX = std::numeric_limits<float>::min();
+        float minY = std::numeric_limits<float>::max();
+        float maxY = std::numeric_limits<float>::min();
+        float minZ = std::numeric_limits<float>::max();
+        float maxZ = std::numeric_limits<float>::min();
+
+        // Move Frustum conrers from world space to Light view space and calculate it's bounding
+        for (const auto& corner : corners)
+        {
+            DirectX::XMFLOAT3 lightViewFrustumCorner;
+            DirectX::XMStoreFloat3(&lightViewFrustumCorner, DirectX::XMVector3Transform(corner, lightView));
+
+            minX = std::min(minX, lightViewFrustumCorner.x);
+            maxX = std::max(maxX, lightViewFrustumCorner.x);
+            minY = std::min(minY, lightViewFrustumCorner.y);
+            maxY = std::max(maxY, lightViewFrustumCorner.y);
+            minZ = std::min(minZ, lightViewFrustumCorner.z);
+            maxZ = std::max(maxZ, lightViewFrustumCorner.z);
+        }
+
+        // Tune this parameter according to the scene
+       float zMult = CVAR_CSM_ZMulti.GetFloat();
+        if (minZ < 0)
+        {
+            minZ *= zMult;
+        }
+        else
+        {
+            minZ /= zMult;
+        }
+        if (maxZ < 0)
+        {
+            maxZ /= zMult;
+        }
+        else
+        {
+            maxZ *= zMult;
+        }
+
+        auto lightProjection = DirectX::XMMatrixOrthographicOffCenterRH(minX, maxX, minY, maxY, minZ, maxZ);
+
+        return lightView * lightProjection;
     }
 }
 
@@ -471,6 +561,9 @@ void TestBedRenderPath::Update(TimeStep const& ts)
 	}
 
     ImGui::End();
+
+    // Run System Update
+    this->m_scene.UpdateLightsSystem();
 }
 
 void TestBedRenderPath::Render()
@@ -594,9 +687,50 @@ void TestBedRenderPath::Render()
             switch (lightComponent.Type)
             {
             case LightComponent::LightType::kDirectionalLight:
-                continue;
-                break;
+            {
+                // Construct Cascade shadow Views
+                const float nearPlane = cameraComponent.ZNear;
+                const float farPlane = cameraComponent.ZFar;
+                const float cascadeSplits[kNumShadowCascades + 1] =
+                {
+                    farPlane * 0.0f,  // Near Plane
+                    farPlane * 0.01f, // Near mid plane -> 1% of the view frustrum
+                    farPlane * 0.10f, // Far mind plane -> 10% of the view frustrum
+                    farPlane * 1.0f   // Far Plane
+                };
 
+
+                for (size_t cascade = 0; cascade < kNumShadowCascades; cascade++)
+                {
+                    // Compute cascade sub-frustum in light-view-space from the main frustum corners:
+                    const float splitNear = cascadeSplits[cascade];
+                    const float splitFar = cascadeSplits[cascade + 1];
+
+                    auto cascadeVPMatrix = ShadowMaps::GetLightSpaceMatrix(cameraComponent, lightComponent, splitNear, splitFar);
+
+                    Shader::Camera cameraData = {};
+                    DirectX::XMStoreFloat4x4(&cameraData.ViewProjection, DirectX::XMMatrixTranspose(cascadeVPMatrix));
+
+                    this->m_commandList->BindDynamicConstantBuffer(RootParameters_GBuffer::CameraCB, cameraData);
+
+                    RHI::Viewport viewport = {};
+                    viewport.MinX = static_cast<float>(lightComponent.ShadowRect.x + cascade * lightComponent.ShadowRect.w);
+                    viewport.MinY = static_cast<float>(lightComponent.ShadowRect.y);
+                    viewport.MaxX = viewport.MinX + lightComponent.ShadowRect.w;
+                    viewport.MaxY = viewport.MinY + lightComponent.ShadowRect.h;
+                    viewport.MinZ = 0.0f;
+                    viewport.MaxZ = 1.0f;
+
+                    this->m_commandList->SetViewports(&viewport, 1);
+                    RHI::Rect rec(LONG_MAX, LONG_MAX);
+                    this->m_commandList->SetScissors(&rec, 1);
+
+                    RHI::ScopedMarker _ = this->m_commandList->BeginScopedMarker("Directional Light Cascade: " + std::to_string(cascade));
+                    DrawMeshes(this->m_scene, this->m_commandList);
+                }
+
+                break;
+            }
             case LightComponent::LightType::kSpotLight:
                 continue;
                 break;

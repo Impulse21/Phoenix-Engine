@@ -929,10 +929,7 @@ void PhxEngine::Scene::GltfSceneLoader::LoadNode(
 			XMStoreFloat3(&lightComponent.Direction, XMVector3Normalize(transformComponent.GetPositionV()));
 		}
 
-		if (gltfNode.light->type == cgltf_light_type_point || gltfNode.light->type == cgltf_light_type_spot)
-		{
-			lightComponent.Position = transformComponent.GetPosition();
-		}
+		lightComponent.Position = transformComponent.GetPosition();
 	}
 
 	for (int i = 0; i < gltfNode.children_count; i++)
