@@ -2,6 +2,7 @@
 
 #include <initializer_list>
 #include <vector>
+#include <assert.h>
 
 namespace PhxEngine::Core
 {

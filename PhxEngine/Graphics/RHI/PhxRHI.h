@@ -449,11 +449,10 @@ namespace PhxEngine::RHI
     enum class BufferMiscFlags
     {
         None = 0,
-        SrvView = 1 << 0,
-        Bindless = 1 << 1,
-        Raw = 1 << 2,
-        Structured = 1 << 3,
-        Typed = 1 << 4,
+        Bindless = 1 << 0,
+        Raw = 1 << 1,
+        Structured = 1 << 2,
+        Typed = 1 << 3,
     };
 
     PHXRHI_ENUM_CLASS_FLAG_OPERATORS(BufferMiscFlags);
@@ -845,7 +844,11 @@ namespace PhxEngine::RHI
     struct BufferDesc
     {
         BufferMiscFlags MiscFlags = BufferMiscFlags::None;
+        // TODO: Change to usage
         CpuAccessMode CpuAccessMode = CpuAccessMode::Default;
+
+        BindingFlags Binding = BindingFlags::None;
+        ResourceStates InitialState = ResourceStates::Common;
 
         // Stride is required for structured buffers
         uint64_t StrideInBytes = 0;
@@ -856,17 +859,9 @@ namespace PhxEngine::RHI
         bool AllowUnorderedAccess = false;
 
         // TODO: Remove
-        bool CreateSRVViews = false;
         bool CreateBindless = false;
 
         std::string DebugName;
-
-        // TODO: I am here
-        BufferDesc& CreateSrvViews()
-        {
-            this->MiscFlags = this->MiscFlags | BufferMiscFlags::SrvView;
-            return *this;
-        }
 
         BufferDesc& EnableBindless()
         {
@@ -996,6 +991,12 @@ namespace PhxEngine::RHI
             this->WriteBuffer(buffer, data.data(), sizeof(T) * data.size(), destOffsetBytes);
         }
 
+        template<typename T>
+        void WriteBuffer(BufferHandle buffer, T const& data, uint64_t destOffsetBytes = 0)
+        {
+            this->WriteBuffer(buffer, &data, sizeof(T), destOffsetBytes);
+        }
+
         // TODO: Take ownership of the data
         virtual void WriteBuffer(BufferHandle buffer, const void* data, size_t dataSize, uint64_t destOffsetBytes = 0) = 0;
 
@@ -1019,6 +1020,7 @@ namespace PhxEngine::RHI
             this->BindPushConstant(rootParameterIndex, sizeof(T), &constants);
         }
 
+        virtual void BindConstantBuffer(size_t rootParameterIndex, BufferHandle constantBuffer) = 0;
         virtual void BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData) = 0;
         template<typename T>
         void BindDynamicConstantBuffer(size_t rootParameterIndex, T const& bufferData)

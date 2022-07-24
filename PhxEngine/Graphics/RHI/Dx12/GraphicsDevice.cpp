@@ -22,6 +22,11 @@ static const GUID PixUUID = { 0x9f251514, 0x9d4d, 0x4902, { 0x9d, 0x60, 0x18, 0x
 
 static bool sDebugEnabled = false;
 
+// TODO: Find a home for this, it's also in scene exporer
+constexpr uint64_t AlignTo(uint64_t value, uint64_t alignment)
+{
+	return ((value + alignment - 1) / alignment) * alignment;
+}
 
 DXGI_FORMAT ConvertFormat(FormatType format)
 {
@@ -772,7 +777,7 @@ BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateIndexBuffer(BufferDesc 
 		: DXGI_FORMAT_R16_UINT;
 	view.SizeInBytes = bufferImpl->GetDesc().SizeInBytes;
 
-	if (desc.CreateSRVViews || (desc.MiscFlags & BufferMiscFlags::SrvView) == 1)
+	if ((desc.Binding & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
 		this->CreateSRVViews(bufferImpl.get());
 	}
@@ -790,7 +795,7 @@ BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateVertexBuffer(BufferDesc
 	view.StrideInBytes = bufferImpl->GetDesc().StrideInBytes;
 	view.SizeInBytes = bufferImpl->GetDesc().SizeInBytes;
 
-	if (desc.CreateSRVViews || (desc.MiscFlags & BufferMiscFlags::SrvView) == 1)
+	if ((desc.Binding & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
 		this->CreateSRVViews(bufferImpl.get());
 	}
@@ -801,12 +806,10 @@ BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateVertexBuffer(BufferDesc
 BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateBuffer(BufferDesc const& desc)
 {
 	auto bufferImpl = this->CreateBufferInternal(desc);
-
-	if (desc.CreateSRVViews || (desc.MiscFlags & BufferMiscFlags::SrvView) == 1)
+	if ((desc.Binding & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
 		this->CreateSRVViews(bufferImpl.get());
 	}
-
 	return bufferImpl;
 }
 
@@ -1452,7 +1455,13 @@ std::unique_ptr<GpuBuffer> GraphicsDevice::CreateBufferInternal(BufferDesc const
 		initialState = D3D12_RESOURCE_STATE_COMMON;
 	}
 
-	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(desc.SizeInBytes, resourceFlags);
+	UINT64 alignedSize = 0;
+	if ((desc.Binding & BindingFlags::ConstantBuffer) == BindingFlags::ConstantBuffer)
+	{
+		alignedSize = AlignTo(alignedSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+	}
+
+	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(desc.SizeInBytes, resourceFlags, alignedSize);
 
 	// Create a committed resource for the GPU resource in a default heap.
 	ThrowIfFailed(

@@ -84,6 +84,7 @@ namespace PhxEngine::RHI::Dx12
 		void SetViewports(Viewport* viewports, size_t numViewports) override;
 		void SetScissors(Rect* scissor, size_t numScissors) override;
 		void BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants) override;
+		void BindConstantBuffer(size_t rootParameterIndex, BufferHandle constantBuffer) override;
 		void BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData) override;
 		void BindVertexBuffer(uint32_t slot, BufferHandle vertexBuffer) override;
 		void BindDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData) override;

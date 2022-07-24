@@ -206,7 +206,7 @@ void PhxEngine::Scene::MeshComponent::CreateRenderData(
 		vertexDesc.DebugName = "Vertex Buffer";
 		vertexDesc.EnableBindless();
 		vertexDesc.IsRawBuffer();
-		vertexDesc.CreateSrvViews();
+		vertexDesc.Binding = RHI::BindingFlags::VertexBuffer | RHI::BindingFlags::ShaderResource;
 
 		const uint64_t alignment = 16ull;
 		vertexDesc.SizeInBytes =

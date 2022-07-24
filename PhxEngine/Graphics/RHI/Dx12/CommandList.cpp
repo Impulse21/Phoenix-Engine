@@ -267,9 +267,24 @@ void CommandList::DrawIndexed(
         startInstance);
 }
 
+constexpr uint32_t AlignTo(uint32_t value, uint32_t alignment)
+{
+    return ((value + alignment - 1) / alignment) * alignment;
+}
+
+constexpr uint64_t AlignTo(uint64_t value, uint64_t alignment)
+{
+    return ((value + alignment - 1) / alignment) * alignment;
+}
 void CommandList::WriteBuffer(BufferHandle buffer, const void* data, size_t dataSize, uint64_t destOffsetBytes)
 {
-    auto heapAllocation = this->m_uploadBuffer->Allocate(dataSize, buffer->GetDesc().StrideInBytes);
+    UINT64 alignedSize = dataSize;
+    if ((buffer->GetDesc().Binding & BindingFlags::ConstantBuffer) == BindingFlags::ConstantBuffer)
+    {
+        alignedSize = AlignTo(alignedSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+    }
+
+    auto heapAllocation = this->m_uploadBuffer->Allocate(dataSize, alignedSize);
     memcpy(heapAllocation.Cpu, data, dataSize);
     auto bufferImpl = std::static_pointer_cast<GpuBuffer>(buffer);
     this->m_d3d12CommandList->CopyBufferRegion(
@@ -498,6 +513,21 @@ void PhxEngine::RHI::Dx12::CommandList::BindPushConstant(uint32_t rootParameterI
     {
         this->m_d3d12CommandList->SetGraphicsRoot32BitConstants(rootParameterIndex, sizeInBytes / sizeof(uint32_t), constants, 0);
     }
+}
+
+void PhxEngine::RHI::Dx12::CommandList::BindConstantBuffer(size_t rootParameterIndex, BufferHandle constantBuffer)
+{
+    auto constantBufferImpl = std::static_pointer_cast<GpuBuffer>(constantBuffer);
+    if (this->m_activeComputePSO)
+    {
+        this->m_d3d12CommandList->SetComputeRootConstantBufferView(rootParameterIndex, constantBufferImpl->D3D12Resource->GetGPUVirtualAddress());
+    }
+    else
+    {
+        this->m_d3d12CommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, constantBufferImpl->D3D12Resource->GetGPUVirtualAddress());
+    }
+
+    this->m_trackedData->Resource.push_back(constantBuffer);
 }
 
 void PhxEngine::RHI::Dx12::CommandList::BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData)

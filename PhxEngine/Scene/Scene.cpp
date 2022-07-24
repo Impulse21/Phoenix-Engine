@@ -432,7 +432,8 @@ void PhxEngine::Scene::Scene::RefreshGpuBuffers(RHI::IGraphicsDevice* graphicsDe
 		// -- Create GPU Data ---
 		BufferDesc desc = {};
 		desc.DebugName = "Geometry Data";
-		desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::SrvView | RHI::BufferMiscFlags::Raw;
+		desc.Binding = RHI::BindingFlags::ShaderResource;
+		desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Raw;
 		desc.StrideInBytes = sizeof(Shader::Geometry);
 		desc.SizeInBytes = sizeof(Shader::Geometry) * this->m_geometryShaderData.size();
 
@@ -459,7 +460,8 @@ void PhxEngine::Scene::Scene::RefreshGpuBuffers(RHI::IGraphicsDevice* graphicsDe
 		// -- Create GPU Data ---
 		BufferDesc desc = {};
 		desc.DebugName = "Material Data";
-		desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::SrvView | RHI::BufferMiscFlags::Raw;
+		desc.Binding = RHI::BindingFlags::ShaderResource;
+		desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Raw;
 		desc.StrideInBytes = sizeof(Shader::MaterialData);
 		desc.SizeInBytes = sizeof(Shader::MaterialData) * this->m_materialShaderData.size();
 

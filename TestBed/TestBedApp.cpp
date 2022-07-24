@@ -35,7 +35,7 @@ namespace
 
     // const std::string scenePath = "..\\Assets\\Models\\Sponza_Intel\\Main\\NewSponza_Main_Blender_glTF.gltf";
     const std::string scenePath = "..\\Assets\\Models\\\MaterialScene\\MatScene.gltf";
-    //const std::string scenePath = "..\\Assets\\Models\\CameraTestScene\\CameraTestScene.gltf";
+    // const std::string scenePath = "..\\Assets\\Models\\CameraTestScene\\CameraTestScene.gltf";
     // const std::string scenePath = "..\\Assets\\Models\\My_Cornell\\MyCornell.gltf";
 }
 
@@ -163,13 +163,12 @@ namespace ShadowMaps
 
     std::vector<DirectX::XMVECTOR> GetFrustumCoordWorldSpace(DirectX::XMMATRIX const& view, DirectX::XMMATRIX const& proj)
     {
-        return GetFrustumCoordWorldSpace(DirectX::XMMatrixMultiply(view, proj));
+        return GetFrustumCoordWorldSpace(DirectX::XMMatrixInverse(nullptr, DirectX::XMMatrixMultiply(view, proj)));
     }
-    
+
     DirectX::XMMATRIX GetLightSpaceMatrix(CameraComponent const& camera, LightComponent& light, float nearPlane, const float farPlane)
     {
-        // Is there a way to not create a new proj matrix per sub-frustum section??????
-        DirectX::XMMATRIX frustumProj = DirectX::XMMatrixPerspectiveFovRH(camera.FoV, 1.7f, std::max(nearPlane, 0.001f), farPlane);
+        const DirectX::XMMATRIX frustumProj = DirectX::XMMatrixPerspectiveFovRH(camera.FoV, 1.7f, std::max(nearPlane, 0.001f), farPlane);
 
         const auto corners = ShadowMaps::GetFrustumCoordWorldSpace(DirectX::XMLoadFloat4x4(&camera.View), frustumProj);
 
@@ -181,7 +180,7 @@ namespace ShadowMaps
         center = center / static_cast<float>(corners.size());
 
         // Create Light View Matrix
-        const auto lightView = DirectX::XMMatrixLookAtRH(center - DirectX::XMLoadFloat3(&light.Direction), center, DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
+        const auto lightView = DirectX::XMMatrixLookAtRH(center - DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&light.Direction)), center, DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
 
         float minX = std::numeric_limits<float>::max();
         float maxX = std::numeric_limits<float>::min();
@@ -205,7 +204,77 @@ namespace ShadowMaps
         }
 
         // Tune this parameter according to the scene
-       float zMult = CVAR_CSM_ZMulti.GetFloat();
+        float zMult = CVAR_CSM_ZMulti.GetFloat();
+        if (minZ < 0)
+        {
+            minZ *= zMult;
+        }
+        else
+        {
+            minZ /= zMult;
+        }
+        if (maxZ < 0)
+        {
+            maxZ /= zMult;
+        }
+        else
+        {
+            maxZ *= zMult;
+        }
+
+        auto lightProjection = DirectX::XMMatrixOrthographicOffCenterRH(minX, maxX, minY, maxY, minZ, maxZ);
+
+        return lightView * lightProjection;
+    }
+
+    DirectX::XMMATRIX GetLightSpaceMatrix(CameraComponent const& camera, LightComponent& light, Span<const DirectX::XMVECTOR> frustumCornersWS, float nearPlane, const float farPlane)
+    {
+        assert(frustumCornersWS.Size() == static_cast<size_t>(8));
+        const XMVECTOR cornersWS[] =
+        {
+            XMVectorLerp(frustumCornersWS[0], frustumCornersWS[1], nearPlane),
+            XMVectorLerp(frustumCornersWS[0], frustumCornersWS[1], farPlane),
+            XMVectorLerp(frustumCornersWS[2], frustumCornersWS[3], nearPlane),
+            XMVectorLerp(frustumCornersWS[2], frustumCornersWS[3], farPlane),
+            XMVectorLerp(frustumCornersWS[4], frustumCornersWS[5], nearPlane),
+            XMVectorLerp(frustumCornersWS[4], frustumCornersWS[5], farPlane),
+            XMVectorLerp(frustumCornersWS[6], frustumCornersWS[7], nearPlane),
+            XMVectorLerp(frustumCornersWS[6], frustumCornersWS[7], farPlane),
+        };
+
+        DirectX::XMVECTOR center = DirectX::XMVectorZero();
+        for (size_t i = 0; i < _countof(cornersWS); i++)
+        {
+            center = DirectX::XMVectorAdd(center, cornersWS[i]);
+        }
+        center = center / static_cast<float>(_countof(cornersWS));
+
+        // Create Light View Matrix
+        const auto lightView = DirectX::XMMatrixLookAtRH(center - DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&light.Direction)), center, DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
+
+        float minX = std::numeric_limits<float>::max();
+        float maxX = std::numeric_limits<float>::min();
+        float minY = std::numeric_limits<float>::max();
+        float maxY = std::numeric_limits<float>::min();
+        float minZ = std::numeric_limits<float>::max();
+        float maxZ = std::numeric_limits<float>::min();
+
+        // Move Frustum conrers from world space to Light view space and calculate it's bounding
+        for (const auto& corner : cornersWS)
+        {
+            DirectX::XMFLOAT3 lightViewFrustumCorner;
+            DirectX::XMStoreFloat3(&lightViewFrustumCorner, DirectX::XMVector3Transform(corner, lightView));
+
+            minX = std::min(minX, lightViewFrustumCorner.x);
+            maxX = std::max(maxX, lightViewFrustumCorner.x);
+            minY = std::min(minY, lightViewFrustumCorner.y);
+            maxY = std::max(maxY, lightViewFrustumCorner.y);
+            minZ = std::min(minZ, lightViewFrustumCorner.z);
+            maxZ = std::max(maxZ, lightViewFrustumCorner.z);
+        }
+
+        // Tune this parameter according to the scene
+        float zMult = CVAR_CSM_ZMulti.GetFloat();
         if (minZ < 0)
         {
             minZ *= zMult;
@@ -245,9 +314,11 @@ private:
     void ShadowAtlasPacking();
 
 private:
+    void UpdateFrameRenderData(RHI::CommandListHandle cmdList, Shader::Frame const& frameData);
     void ConstructSceneRenderData(RHI::CommandListHandle commandList);
     void CreateRenderTargets();
     void CreatePSO();
+    void CreateRenderResources();
 
     void ConstructDebugData();
 
@@ -297,6 +368,14 @@ private:
     std::array<PhxEngine::RHI::TextureHandle, NUM_BACK_BUFFERS> m_depthBuffers;
 
     PhxEngine::RHI::TextureHandle m_testComputeTexture;
+
+    enum ConstantBufferTypes
+    {
+        CB_Frame = 0,
+        NumCB
+    };
+    std::array<RHI::BufferHandle, NumCB> m_constantBuffers;
+    
 
 private:
     std::shared_ptr<TextureCache> m_textureCache;
@@ -415,8 +494,7 @@ void TestBedRenderPath::OnAttachWindow()
     this->m_lightCpuData.resize(Shader::LIGHT_BUFFER_SIZE);
 
     this->ConstructDebugData();
-    this->CreateRenderTargets();
-    this->CreatePSO();
+    this->CreateRenderResources();
 
     // TODO: Add wait on fence.
     graphicsDevice->WaitForIdle();
@@ -640,6 +718,11 @@ void TestBedRenderPath::Render()
     GBuffer& currentBuffer = this->GetCurrentGBuffer();
 
     {
+        auto scrope = this->m_commandList->BeginScopedMarker("Prepare Frame Data");
+        this->UpdateFrameRenderData(this->m_commandList, frameData);
+    }
+
+    {
         auto scrope = this->m_commandList->BeginScopedMarker("Clear Render Targets");
         this->m_commandList->ClearDepthStencilTexture(this->GetCurrentDepthBuffer(), true, 1.0f, false, 0.0f);
         this->m_commandList->ClearTextureFloat(currentBuffer.AlbedoTexture, currentBuffer.AlbedoTexture->GetDesc().OptmizedClearValue.value());
@@ -669,7 +752,7 @@ void TestBedRenderPath::Render()
 
         this->m_commandList->SetGraphicsPSO(this->m_shadowPassPso);
 
-        this->m_commandList->BindDynamicConstantBuffer(RootParameters_GBuffer::FrameCB, frameData);
+        this->m_commandList->BindConstantBuffer(RootParameters_GBuffer::FrameCB, this->m_constantBuffers[CB_Frame]);
 
         // Draw meshes per light
         // Bind light Buffer
@@ -699,6 +782,10 @@ void TestBedRenderPath::Render()
                     farPlane * 1.0f   // Far Plane
                 };
 
+                // Is there a way to not create a new proj matrix per sub-frustum section??????
+                // Decided to use a lerp between min max. See GetLightSpaceMatrix
+                // DirectX::XMMATRIX frustumProj = DirectX::XMMatrixPerspectiveFovRH(camera.FoV, 1.7f, std::max(nearPlane, 0.001f), farPlane);
+                // const auto frustumCornersWS = ShadowMaps::GetFrustumCoordWorldSpace(DirectX::XMLoadFloat4x4(&cameraComponent.ViewProjectionInv));
 
                 for (size_t cascade = 0; cascade < kNumShadowCascades; cascade++)
                 {
@@ -706,7 +793,12 @@ void TestBedRenderPath::Render()
                     const float splitNear = cascadeSplits[cascade];
                     const float splitFar = cascadeSplits[cascade + 1];
 
-                    auto cascadeVPMatrix = ShadowMaps::GetLightSpaceMatrix(cameraComponent, lightComponent, splitNear, splitFar);
+                    auto cascadeVPMatrix = 
+                        ShadowMaps::GetLightSpaceMatrix(
+                            cameraComponent,
+                            lightComponent,
+                            splitNear,
+                            splitFar);
 
                     Shader::Camera cameraData = {};
                     DirectX::XMStoreFloat4x4(&cameraData.ViewProjection, DirectX::XMMatrixTranspose(cascadeVPMatrix));
@@ -818,7 +910,8 @@ void TestBedRenderPath::Render()
 
         // -- Bind Data ---
 
-        this->m_commandList->BindDynamicConstantBuffer(RootParameters_GBuffer::FrameCB, frameData);
+        this->m_commandList->BindConstantBuffer(RootParameters_GBuffer::FrameCB, this->m_constantBuffers[CB_Frame]);
+        // TODO: Create a camera const buffer as well
         this->m_commandList->BindDynamicConstantBuffer(RootParameters_GBuffer::CameraCB, cameraData);
 
         // this->m_commandList->BindResourceTable(PBRBindingSlots::BindlessDescriptorTable);
@@ -834,7 +927,7 @@ void TestBedRenderPath::Render()
         this->m_commandList->SetGraphicsPSO(this->m_deferredLightFullQuadPso);
 
         // A second upload........ not ideal
-        this->m_commandList->BindDynamicConstantBuffer(RootParameters_DeferredLightingFulLQuad::FrameCB, frameData);
+        this->m_commandList->BindConstantBuffer(RootParameters_DeferredLightingFulLQuad::FrameCB, this->m_constantBuffers[CB_Frame]);
         this->m_commandList->BindDynamicConstantBuffer(RootParameters_DeferredLightingFulLQuad::CameraCB, cameraData);
 
         // -- Lets go ahead and do the lighting pass now >.<
@@ -905,7 +998,8 @@ void TestBedRenderPath::Render()
             auto scrope = this->m_computeCommandList->BeginScopedMarker("Opaque Deferred Lighting Pass");
             this->m_computeCommandList->SetComputeState(this->m_computeQueuePso);
 
-            this->m_computeCommandList->BindDynamicConstantBuffer(RootParameters_DeferredLightingFulLQuad::FrameCB + 1, frameData);
+
+            this->m_commandList->BindConstantBuffer(RootParameters_DeferredLightingFulLQuad::FrameCB + 1, this->m_constantBuffers[CB_Frame]);
             this->m_computeCommandList->BindDynamicConstantBuffer(RootParameters_DeferredLightingFulLQuad::CameraCB + 1, cameraData);
 
             // -- Lets go ahead and do the lighting pass now >.<
@@ -1037,6 +1131,14 @@ void TestBedRenderPath::Compose(RHI::CommandListHandle commandList)
     commandList->TransitionBarrier(handle, RHI::ResourceStates::ShaderResource, originalState);
 }
 
+void TestBedRenderPath::UpdateFrameRenderData(RHI::CommandListHandle cmdList, Shader::Frame const& frameData)
+{
+    // Upload new data
+    cmdList->TransitionBarrier(this->m_constantBuffers[CB_Frame], RHI::ResourceStates::ConstantBuffer, RHI::ResourceStates::CopyDest);
+    cmdList->WriteBuffer(this->m_constantBuffers[CB_Frame], frameData);
+    cmdList->TransitionBarrier(this->m_constantBuffers[CB_Frame], RHI::ResourceStates::CopyDest, RHI::ResourceStates::ConstantBuffer);
+}
+
 void TestBedRenderPath::ConstructSceneRenderData(RHI::CommandListHandle commandList)
 {
     size_t numGeometry = 0ull;
@@ -1084,7 +1186,8 @@ void TestBedRenderPath::ConstructSceneRenderData(RHI::CommandListHandle commandL
         // -- Create GPU Data ---
         RHI::BufferDesc desc = {};
         desc.DebugName = "Geometry Data";
-        desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::SrvView | RHI::BufferMiscFlags::Raw;
+        desc.Binding = RHI::BindingFlags::ShaderResource;
+        desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Raw;
         desc.StrideInBytes = sizeof(Shader::Geometry);
         desc.SizeInBytes = sizeof(Shader::Geometry) * this->m_geometryCpuData.size();
 
@@ -1111,7 +1214,8 @@ void TestBedRenderPath::ConstructSceneRenderData(RHI::CommandListHandle commandL
         // -- Create GPU Data ---
         RHI::BufferDesc desc = {};
         desc.DebugName = "Material Data";
-        desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::SrvView | RHI::BufferMiscFlags::Raw;
+        desc.Binding = RHI::BindingFlags::ShaderResource;
+        desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Raw;
         desc.StrideInBytes = sizeof(Shader::MaterialData);
         desc.SizeInBytes = sizeof(Shader::MaterialData) * this->m_materialCpuData.size();
 
@@ -1239,6 +1343,24 @@ void TestBedRenderPath::CreatePSO()
         RHI::ComputePSODesc computeDesc = {};
         computeDesc.ComputeShader = this->m_app->GetShaderStore().Retrieve(PreLoadShaders::CS_DeferredLighting);
         this->m_computeQueuePso = this->m_app->GetGraphicsDevice()->CreateComputePso(computeDesc);
+    }
+}
+
+void TestBedRenderPath::CreateRenderResources()
+{
+    this->CreateRenderTargets();
+    this->CreatePSO();
+
+    // -- Create Constant Buffers ---
+    {
+        RHI::BufferDesc bufferDesc = {};
+        bufferDesc.CpuAccessMode = RHI::CpuAccessMode::Default;
+        bufferDesc.Binding = RHI::BindingFlags::ConstantBuffer;
+        bufferDesc.SizeInBytes = sizeof(Shader::Frame);
+        bufferDesc.InitialState = RHI::ResourceStates::ConstantBuffer;
+
+        bufferDesc.DebugName = "Frame Constant Buffer";
+        this->m_constantBuffers[CB_Frame] = this->m_app->GetGraphicsDevice()->CreateBuffer(bufferDesc);
     }
 }
 
