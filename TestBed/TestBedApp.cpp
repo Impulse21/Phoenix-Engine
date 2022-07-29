@@ -298,6 +298,90 @@ namespace ShadowMaps
     }
 }
 
+namespace Shadow
+{
+    void ConstructDirectionLightMatrices(CameraComponent const& cameraComponent, LightComponent& lightComponent, std::array<DirectX::XMMATRIX, kNumShadowCascades>& outCascadeMatrices)
+    {
+        const float nearPlane = cameraComponent.ZNear;
+        const float farPlane = cameraComponent.ZFar;
+        const float cascadeSplits[kNumShadowCascades + 1] =
+        {
+            farPlane * 0.0f,  // Near Plane
+            farPlane * 0.01f, // Near mid plane -> 1% of the view frustrum
+            farPlane * 0.10f, // Far mind plane -> 10% of the view frustrum
+            farPlane * 1.0f   // Far Plane
+        };
+
+        // Is there a way to not create a new proj matrix per sub-frustum section??????
+        // Decided to use a lerp between min max. See GetLightSpaceMatrix
+        // DirectX::XMMATRIX frustumProj = DirectX::XMMatrixPerspectiveFovRH(camera.FoV, 1.7f, std::max(nearPlane, 0.001f), farPlane);
+        // const auto frustumCornersWS = ShadowMaps::GetFrustumCoordWorldSpace(DirectX::XMLoadFloat4x4(&cameraComponent.ViewProjectionInv));
+
+        // Compute cascade sub-frustum in light-view-space from the main frustum corners:
+        for (size_t cascade = 0; cascade < outCascadeMatrices.size(); cascade++)
+        {
+            const float splitNear = cascadeSplits[cascade];
+            const float splitFar = cascadeSplits[cascade + 1];
+
+            outCascadeMatrices[cascade] =
+                ShadowMaps::GetLightSpaceMatrix(
+                    cameraComponent,
+                    lightComponent,
+                    splitNear,
+                    splitFar);
+        }
+    }
+
+    void ConstructDirectionLightMatrices(CameraComponent const& cameraComponent, LightComponent& lightComponent, std::array<DirectX::XMFLOAT4X4, kNumShadowCascades>& outCascadeMatrices)
+    {
+        std::array<DirectX::XMMATRIX, kNumShadowCascades> matrices;
+        ConstructDirectionLightMatrices(cameraComponent, lightComponent, matrices);
+
+        for (size_t i = 0; i < matrices.size(); i++)
+        {
+            DirectX::XMStoreFloat4x4(&outCascadeMatrices[i], DirectX::XMMatrixTranspose(matrices[i]));
+        }
+    }
+
+    void ConstructOmniLightMatrices(LightComponent const& lightComponent, std::array<DirectX::XMMATRIX, 6>& outLightMatrices)
+    {
+        // float nearZ = 0.1f;
+        float nearZ = 1.0f;
+        float farZ = lightComponent.Range;
+
+        DirectX::XMMATRIX shadowProj = DirectX::XMMatrixPerspectiveFovRH(DirectX::XM_PIDIV2, 1, nearZ, farZ);;
+
+        // TODO: Clean all of this up
+        static auto constructViewProjectMatrix = [&](DirectX::XMFLOAT4 const& rotation, DirectX::XMMATRIX const& shadowProj, DirectX::XMMATRIX& outTransform)
+        {
+            DirectX::XMVECTOR q = DirectX::XMQuaternionNormalize(DirectX::XMLoadFloat4(&rotation));
+            DirectX::XMMATRIX rot = DirectX::XMMatrixRotationQuaternion(q);
+            const DirectX::XMVECTOR to = DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.0f, 0.0f, -1.0f, 0.0f), rot);
+            const DirectX::XMVECTOR up = DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), rot);
+            auto viewMatrix = DirectX::XMMatrixLookToLH(DirectX::XMLoadFloat3(&lightComponent.Position), to, up);
+            outTransform = DirectX::XMMatrixTranspose(viewMatrix * shadowProj);
+        };
+
+        constructViewProjectMatrix(DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), shadowProj, outLightMatrices[0]); // -z
+        constructViewProjectMatrix(DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f), shadowProj, outLightMatrices[1]); // +z
+        constructViewProjectMatrix(DirectX::XMFLOAT4(0, 0.707f, 0, 0.707f), shadowProj, outLightMatrices[2]); // -x
+        constructViewProjectMatrix(DirectX::XMFLOAT4(0, -0.707f, 0, 0.707f), shadowProj, outLightMatrices[3]); // +x
+        constructViewProjectMatrix(DirectX::XMFLOAT4(0.707f, 0, 0, 0.707f), shadowProj, outLightMatrices[4]); // -y
+        constructViewProjectMatrix(DirectX::XMFLOAT4(-0.707f, 0, 0, 0.707f), shadowProj, outLightMatrices[5]); // +y
+    }
+
+    void ConstructOmniLightMatrices(LightComponent const& lightComponent, std::array<DirectX::XMFLOAT4X4, 6>& outLightMatrices)
+    {
+        std::array<DirectX::XMMATRIX, 6> matrices;
+        ConstructOmniLightMatrices(lightComponent, matrices);
+
+        for (size_t i = 0; i < matrices.size(); i++)
+        {
+            DirectX::XMStoreFloat4x4(&outLightMatrices[i], DirectX::XMMatrixTranspose(matrices[i]));
+        }
+    }
+}
+
 class TestBedRenderPath : public RenderPathComponent
 {
 public:
@@ -314,7 +398,7 @@ private:
     void ShadowAtlasPacking();
 
 private:
-    void UpdateFrameRenderData(RHI::CommandListHandle cmdList, Shader::Frame const& frameData);
+    void UpdateFrameRenderData(RHI::CommandListHandle cmdList, Shader::Frame& frameData);
     void ConstructSceneRenderData(RHI::CommandListHandle commandList);
     void CreateRenderTargets();
     void CreatePSO();
@@ -349,6 +433,7 @@ private:
     // Uploaded every frame....Could be improved upon.
     std::vector<Shader::ShaderLight> m_lightCpuData;
     std::vector<Shader::ShaderLight> m_shadowLights;
+    std::vector<DirectX::XMFLOAT4X4> m_matricesCPUData;
 
     // -- Shadow Stuff ---
     RHI::TextureHandle m_shadowAtlas;
@@ -376,6 +461,13 @@ private:
     };
     std::array<RHI::BufferHandle, NumCB> m_constantBuffers;
     
+    enum ResourceBufferTypes
+    {
+        RB_LightEntities,
+        RB_Matrices,
+        NumRB
+    };
+    std::array<RHI::BufferHandle, NumRB> m_resourceBuffers;
 
 private:
     std::shared_ptr<TextureCache> m_textureCache;
@@ -491,8 +583,8 @@ void TestBedRenderPath::OnAttachWindow()
     auto fenceValue = graphicsDevice->ExecuteCommandLists(this->m_commandList.get());
 
     // Reserve worst case light data
-    this->m_lightCpuData.resize(Shader::LIGHT_BUFFER_SIZE);
-
+    this->m_lightCpuData.reserve(Shader::SHADER_LIGHT_ENTITY_COUNT);
+    this->m_matricesCPUData.reserve(Shader::MATRIX_COUNT);
     this->ConstructDebugData();
     this->CreateRenderResources();
 
@@ -673,35 +765,9 @@ void TestBedRenderPath::Render()
 
     frameData.Scene.NumLights = 0;
 
-    // Update per frame resources
+    if (CVAR_EnableShadows.Get())
     {
-        if (CVAR_EnableShadows.Get())
-        {
-            this->ShadowAtlasPacking();
-        }
-
-        // TODO: I am here - just iterate over the lights.
-        // Fill Light data
-        this->m_lightCpuData.clear();
-        for (int i = 0; i < this->m_scene.Lights.GetCount(); i++)
-        {
-            auto& lightComponent = this->m_scene.Lights[i];
-            if (lightComponent.IsEnabled())
-            {
-                Shader::ShaderLight& renderLight = this->m_lightCpuData.emplace_back();
-                renderLight.SetType(lightComponent.Type);
-                renderLight.SetRange(lightComponent.Range);
-                renderLight.SetEnergy(lightComponent.Energy);
-                renderLight.SetFlags(lightComponent.Flags);
-                renderLight.SetDirection(lightComponent.Direction);
-                renderLight.ColorPacked = Math::PackColour(lightComponent.Colour);
-
-                auto& transformComponent = *this->m_scene.Transforms.GetComponent(this->m_scene.Lights.GetEntity(i));
-                renderLight.Position = transformComponent.GetPosition();
-
-                frameData.Scene.NumLights++;
-            }
-        }
+        this->ShadowAtlasPacking();
     }
 
     auto& cameraComponent = *this->m_scene.Cameras.GetComponent(this->m_cameraEntities[this->m_selectedCamera]);
@@ -771,37 +837,18 @@ void TestBedRenderPath::Render()
             {
             case LightComponent::LightType::kDirectionalLight:
             {
-                // Construct Cascade shadow Views
-                const float nearPlane = cameraComponent.ZNear;
-                const float farPlane = cameraComponent.ZFar;
-                const float cascadeSplits[kNumShadowCascades + 1] =
-                {
-                    farPlane * 0.0f,  // Near Plane
-                    farPlane * 0.01f, // Near mid plane -> 1% of the view frustrum
-                    farPlane * 0.10f, // Far mind plane -> 10% of the view frustrum
-                    farPlane * 1.0f   // Far Plane
-                };
+                std::array<DirectX::XMMATRIX, kNumShadowCascades> lightVPMatrices;
+                Shadow::ConstructDirectionLightMatrices(cameraComponent, lightComponent, lightVPMatrices);
 
                 // Is there a way to not create a new proj matrix per sub-frustum section??????
                 // Decided to use a lerp between min max. See GetLightSpaceMatrix
                 // DirectX::XMMATRIX frustumProj = DirectX::XMMatrixPerspectiveFovRH(camera.FoV, 1.7f, std::max(nearPlane, 0.001f), farPlane);
                 // const auto frustumCornersWS = ShadowMaps::GetFrustumCoordWorldSpace(DirectX::XMLoadFloat4x4(&cameraComponent.ViewProjectionInv));
 
-                for (size_t cascade = 0; cascade < kNumShadowCascades; cascade++)
+                for (size_t cascade = 0; cascade < lightVPMatrices.size(); cascade++)
                 {
-                    // Compute cascade sub-frustum in light-view-space from the main frustum corners:
-                    const float splitNear = cascadeSplits[cascade];
-                    const float splitFar = cascadeSplits[cascade + 1];
-
-                    auto cascadeVPMatrix = 
-                        ShadowMaps::GetLightSpaceMatrix(
-                            cameraComponent,
-                            lightComponent,
-                            splitNear,
-                            splitFar);
-
                     Shader::Camera cameraData = {};
-                    DirectX::XMStoreFloat4x4(&cameraData.ViewProjection, DirectX::XMMatrixTranspose(cascadeVPMatrix));
+                    DirectX::XMStoreFloat4x4(&cameraData.ViewProjection, DirectX::XMMatrixTranspose(lightVPMatrices[cascade]));
 
                     this->m_commandList->BindDynamicConstantBuffer(RootParameters_GBuffer::CameraCB, cameraData);
 
@@ -824,6 +871,7 @@ void TestBedRenderPath::Render()
                 break;
             }
             case LightComponent::LightType::kSpotLight:
+                // TODO: Do this still
                 continue;
                 break;
 
@@ -835,28 +883,11 @@ void TestBedRenderPath::Render()
 
                 DirectX::XMMATRIX shadowProj = DirectX::XMMatrixPerspectiveFovRH(DirectX::XM_PIDIV2, 1, nearZ, farZ);
 
-                std::array<DirectX::XMFLOAT4X4, 6> cameraTransforms;
-
-                // TODO: Clean all of this up
-                static auto constructTransform = [&](DirectX::XMFLOAT4 const& rotation, DirectX::XMMATRIX const& shadowProj, DirectX::XMFLOAT4X4& outTransform)
-                {
-                    DirectX::XMVECTOR q = DirectX::XMQuaternionNormalize(DirectX::XMLoadFloat4(&rotation));
-                    DirectX::XMMATRIX rot = DirectX::XMMatrixRotationQuaternion(q);
-                    const DirectX::XMVECTOR to = DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.0f, 0.0f, -1.0f, 0.0f), rot);
-                    const DirectX::XMVECTOR up = DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), rot);
-                    auto viewMatrix = DirectX::XMMatrixLookToLH(DirectX::XMLoadFloat3(&lightComponent.Position), to, up);
-                    DirectX::XMStoreFloat4x4(&outTransform, DirectX::XMMatrixTranspose(viewMatrix * shadowProj));
-                };
-
-                constructTransform(DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), shadowProj, cameraTransforms[0]); // -z
-                constructTransform(DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f), shadowProj, cameraTransforms[1]); // +z
-                constructTransform(DirectX::XMFLOAT4(0, 0.707f, 0, 0.707f), shadowProj, cameraTransforms[2]); // -x
-                constructTransform(DirectX::XMFLOAT4(0, -0.707f, 0, 0.707f), shadowProj, cameraTransforms[3]); // +x
-                constructTransform(DirectX::XMFLOAT4(0.707f, 0, 0, 0.707f), shadowProj, cameraTransforms[4]); // -y
-                constructTransform(DirectX::XMFLOAT4(-0.707f, 0, 0, 0.707f), shadowProj, cameraTransforms[5]); // +y
+                std::array<DirectX::XMFLOAT4X4, 6> lightMatrices;
+                Shadow::ConstructOmniLightMatrices(lightComponent, lightMatrices);
 
                 // construct viewports
-                for (size_t i = 0; i < cameraTransforms.size(); i++)
+                for (size_t i = 0; i < lightMatrices.size(); i++)
                 {
                     RHI::ScopedMarker _ = this->m_commandList->BeginScopedMarker("Omni Light (View: " + std::to_string(i) + ")");
 
@@ -873,7 +904,7 @@ void TestBedRenderPath::Render()
                     this->m_commandList->SetScissors(&rec, 1);
 
                     Shader::Camera cameraData = {};
-                    cameraData.ViewProjection = cameraTransforms[i];
+                    cameraData.ViewProjection = lightMatrices[i];
 
                     // Reuse object buffer
                     this->m_commandList->BindDynamicConstantBuffer(RootParameters_GBuffer::CameraCB, cameraData);
@@ -1131,12 +1162,113 @@ void TestBedRenderPath::Compose(RHI::CommandListHandle commandList)
     commandList->TransitionBarrier(handle, RHI::ResourceStates::ShaderResource, originalState);
 }
 
-void TestBedRenderPath::UpdateFrameRenderData(RHI::CommandListHandle cmdList, Shader::Frame const& frameData)
+void TestBedRenderPath::UpdateFrameRenderData(RHI::CommandListHandle cmdList, Shader::Frame& frameData)
 {
+    this->m_lightCpuData.clear();
+    this->m_matricesCPUData.clear();
+
+    
+    // const XMFLOAT2 atlasDIMRcp = XMFLOAT2(1.0f / float(this->m_shadowAtlas->GetDesc().Width), 1.0f / float(this->m_shadowAtlas->GetDesc().Height));
+    for (int i = 0; i < this->m_scene.Lights.GetCount(); i++)
+    {
+        auto& lightComponent = this->m_scene.Lights[i];
+        if (lightComponent.IsEnabled())
+        {
+            Shader::ShaderLight& renderLight = this->m_lightCpuData.emplace_back();
+            renderLight.SetType(lightComponent.Type);
+            renderLight.SetRange(lightComponent.Range);
+            renderLight.SetEnergy(lightComponent.Energy);
+            renderLight.SetFlags(lightComponent.Flags);
+            renderLight.SetDirection(lightComponent.Direction);
+            renderLight.ColorPacked = Math::PackColour(lightComponent.Colour);
+            renderLight.Indices = this->m_matricesCPUData.size();
+
+            auto& transformComponent = *this->m_scene.Transforms.GetComponent(this->m_scene.Lights.GetEntity(i));
+            renderLight.Position = transformComponent.GetPosition();
+
+            /*
+            renderLight.ShadowAtlasMulAdd.x = lightComponent.ShadowRect.w * atlasDIMRcp.x;
+            renderLight.ShadowAtlasMulAdd.y = lightComponent.ShadowRect.h * atlasDIMRcp.y;
+            renderLight.ShadowAtlasMulAdd.z = lightComponent.ShadowRect.x * atlasDIMRcp.x;
+            renderLight.ShadowAtlasMulAdd.w = lightComponent.ShadowRect.y * atlasDIMRcp.y;
+            */
+            switch (lightComponent.Type)
+            {
+            case LightComponent::kDirectionalLight:
+            {   
+                std::array<DirectX::XMFLOAT4X4, kNumShadowCascades> matrices;
+                auto& cameraComponent = *this->m_scene.Cameras.GetComponent(this->m_cameraEntities[this->m_selectedCamera]);
+                Shadow::ConstructDirectionLightMatrices(cameraComponent, lightComponent, matrices);
+            
+                for (size_t i = 0; i < matrices.size(); i++)
+                {
+                    this->m_matricesCPUData.emplace_back(matrices[i]);
+                }
+                break;
+            }
+            case LightComponent::kOmniLight:
+            {
+                std::array<DirectX::XMFLOAT4X4, 6> matrices;
+                Shadow::ConstructOmniLightMatrices(lightComponent, matrices);
+
+                for (size_t i = 0; i < matrices.size(); i++)
+                {
+                    this->m_matricesCPUData.emplace_back(matrices[i]);
+                }
+
+                // Not sure I understand this math here or why the cubemap depth needs to be re-mapped
+                const float nearZ = 0.1f;	// watch out: reversed depth buffer! Also, light near plane is constant for simplicity, this should match on cpu side!
+                const float farZ = std::max(1.0f, lightComponent.Range); // watch out: reversed depth buffer!
+                const float fRange = farZ / (farZ - nearZ);
+                const float cubemapDepthRemapNear = fRange;
+                const float cubemapDepthRemapFar = -fRange * nearZ;
+                renderLight.SetCubemapDepthRemapNear(cubemapDepthRemapNear);
+                renderLight.SetCubemapDepthRemapFar(cubemapDepthRemapFar);
+
+                break;
+            }
+            case LightComponent::kSpotLight:
+            {
+                // TODO:
+                break;
+            }
+            }
+        }
+    }
+
+    frameData.Scene.NumLights = this->m_lightCpuData.size();
+
+    frameData.LightEntityIndex = this->m_resourceBuffers[RB_LightEntities]->GetDescriptorIndex();
+    frameData.MatricesIndex = this->m_resourceBuffers[RB_Matrices]->GetDescriptorIndex();
+
     // Upload new data
-    cmdList->TransitionBarrier(this->m_constantBuffers[CB_Frame], RHI::ResourceStates::ConstantBuffer, RHI::ResourceStates::CopyDest);
+
+    RHI::GpuBarrier barriers[] =
+    {
+        RHI::GpuBarrier::CreateBuffer(this->m_constantBuffers[CB_Frame], this->m_constantBuffers[CB_Frame]->GetDesc().InitialState, RHI::ResourceStates::CopyDest),
+        RHI::GpuBarrier::CreateBuffer(this->m_resourceBuffers[RB_LightEntities], this->m_resourceBuffers[RB_LightEntities]->GetDesc().InitialState, RHI::ResourceStates::CopyDest),
+        RHI::GpuBarrier::CreateBuffer(this->m_resourceBuffers[RB_Matrices], this->m_resourceBuffers[RB_Matrices]->GetDesc().InitialState, RHI::ResourceStates::CopyDest),
+    };
+
+    cmdList->TransitionBarriers(Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
+
     cmdList->WriteBuffer(this->m_constantBuffers[CB_Frame], frameData);
-    cmdList->TransitionBarrier(this->m_constantBuffers[CB_Frame], RHI::ResourceStates::CopyDest, RHI::ResourceStates::ConstantBuffer);
+    if (!this->m_lightCpuData.empty())
+    {
+        cmdList->WriteBuffer(this->m_resourceBuffers[RB_LightEntities], this->m_lightCpuData);
+    }
+
+    if (!this->m_matricesCPUData.empty())
+    {
+        cmdList->WriteBuffer(this->m_resourceBuffers[RB_Matrices], this->m_matricesCPUData);
+    }
+
+    barriers[0] = RHI::GpuBarrier::CreateBuffer(this->m_constantBuffers[CB_Frame], RHI::ResourceStates::CopyDest, this->m_constantBuffers[CB_Frame]->GetDesc().InitialState);
+    barriers[1] = RHI::GpuBarrier::CreateBuffer(this->m_resourceBuffers[RB_LightEntities], RHI::ResourceStates::CopyDest, this->m_resourceBuffers[RB_LightEntities]->GetDesc().InitialState);
+    barriers[2] = RHI::GpuBarrier::CreateBuffer(this->m_resourceBuffers[RB_Matrices], RHI::ResourceStates::CopyDest, this->m_resourceBuffers[RB_Matrices]->GetDesc().InitialState);
+
+    cmdList->TransitionBarriers(Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
+
 }
 
 void TestBedRenderPath::ConstructSceneRenderData(RHI::CommandListHandle commandList)
@@ -1361,6 +1493,30 @@ void TestBedRenderPath::CreateRenderResources()
 
         bufferDesc.DebugName = "Frame Constant Buffer";
         this->m_constantBuffers[CB_Frame] = this->m_app->GetGraphicsDevice()->CreateBuffer(bufferDesc);
+    }
+
+    {
+        RHI::BufferDesc bufferDesc = {};
+        bufferDesc.Binding = RHI::BindingFlags::ShaderResource;
+        bufferDesc.InitialState = RHI::ResourceStates::ShaderResource;
+        bufferDesc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Raw;
+        bufferDesc.SizeInBytes = sizeof(Shader::ShaderLight) * Shader::SHADER_LIGHT_ENTITY_COUNT;
+        bufferDesc.StrideInBytes = sizeof(Shader::ShaderLight);
+        bufferDesc.DebugName = "Light Entity Buffer";
+
+        this->m_resourceBuffers[RB_LightEntities] = this->m_app->GetGraphicsDevice()->CreateBuffer(bufferDesc);
+    }
+
+    {
+        RHI::BufferDesc bufferDesc = {};
+        bufferDesc.Binding = RHI::BindingFlags::ShaderResource;
+        bufferDesc.InitialState = RHI::ResourceStates::ShaderResource;
+        bufferDesc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Raw;
+        bufferDesc.SizeInBytes = sizeof(DirectX::XMFLOAT4X4) * Shader::MATRIX_COUNT;
+        bufferDesc.StrideInBytes = sizeof(DirectX::XMFLOAT4X4);
+        bufferDesc.DebugName = "Matrix Buffer";
+
+        this->m_resourceBuffers[RB_Matrices] = this->m_app->GetGraphicsDevice()->CreateBuffer(bufferDesc);
     }
 }
 

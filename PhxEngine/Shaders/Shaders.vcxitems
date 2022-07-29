@@ -48,6 +48,7 @@
     <None Include="$(MSBuildThisFileDirectory)ImGui.hlsli" />
     <None Include="$(MSBuildThisFileDirectory)GBufferPass.hlsli" />
     <None Include="$(MSBuildThisFileDirectory)ResourceHeapTables.hlsli" />
+    <None Include="$(MSBuildThisFileDirectory)Shadows.hlsli" />
     <None Include="$(MSBuildThisFileDirectory)ThreadGroupTilingX.hlsli" />
   </ItemGroup>
 </Project>

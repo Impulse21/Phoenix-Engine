@@ -172,8 +172,8 @@ void PhxEngine::RHI::Dx12::CommandList::TransitionBarriers(Core::Span<GpuBarrier
             Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource = std::static_pointer_cast<GpuBuffer>(bufferBarrier->Buffer)->D3D12Resource;
             CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
                 D3D12Resource.Get(),
-                ConvertResourceStates(texBarrier->BeforeState),
-                ConvertResourceStates(texBarrier->AfterState));
+                ConvertResourceStates(bufferBarrier->BeforeState),
+                ConvertResourceStates(bufferBarrier->AfterState));
 
             this->m_barrierMemoryPool.push_back(barrier);
             this->m_trackedData->Resource.push_back(bufferBarrier->Buffer);

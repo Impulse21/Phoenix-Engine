@@ -93,5 +93,8 @@
     <None Include="$(MSBuildThisFileDirectory)ThreadGroupTilingX.hlsli">
       <Filter>Includes</Filter>
     </None>
+    <None Include="$(MSBuildThisFileDirectory)Shadows.hlsli">
+      <Filter>Includes</Filter>
+    </None>
   </ItemGroup>
 </Project>

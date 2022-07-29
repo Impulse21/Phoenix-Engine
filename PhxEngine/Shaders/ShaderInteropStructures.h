@@ -16,16 +16,9 @@ static const uint ENTITY_TYPE_DIRECTIONALLIGHT = 0;
 static const uint ENTITY_TYPE_OMNILIGHT = 1;
 static const uint ENTITY_TYPE_SPOTLIGHT = 2;
 
-static const uint DIRECTION_LIGHTS_OFFSET = 0;
-static const uint NUM_DIRECTIONAL_LIGHTS = 8;
+static const uint SHADER_LIGHT_ENTITY_COUNT = 256;
 
-static const uint OMNI_LIGHT_OFFSET = NUM_DIRECTIONAL_LIGHTS;
-static const uint NUM_OMNI_LIGHTS = 200;
-
-static const uint SPOT_LIGHT_OFFSET = NUM_OMNI_LIGHTS + NUM_DIRECTIONAL_LIGHTS;
-static const uint NUM_SPOT_LIGHTS = 200;
-
-static const uint LIGHT_BUFFER_SIZE = DIRECTION_LIGHTS_OFFSET + NUM_OMNI_LIGHTS + NUM_SPOT_LIGHTS;
+static const uint MATRIX_COUNT = 128;
 
 struct ShaderLight
 {
@@ -36,7 +29,14 @@ struct ShaderLight
 	uint2 Direction16_ConeAngleCos16;
 	uint Energy16_X16; // <free_16><range_8>
 	uint ColorPacked;
-	uint _Padding;
+	uint Indices; // Not current packed
+
+	// -- 16 byte boundary ----
+	float4 ShadowAtlasMulAdd;
+
+	// -- 16 byte boundary ----
+	// Near first 16 bits, far being the lather
+	uint CubemapDepthRemapPacked;
 
 #ifndef __cplusplus
 	inline float4 GetColour()
@@ -85,6 +85,16 @@ struct ShaderLight
 		return f16tof32(Energy16_X16 & 0xFFFF);
 	}
 
+	inline float GetCubemapDepthRemapNear(float value)
+	{
+		return f16tof32((CubemapDepthRemapPacked) & 0xFFFF);
+	}
+
+	inline float GetCubemapDepthRemapFar(float value)
+	{
+		return f16tof32((CubemapDepthRemapPacked >> 16u) & 0xFFFF);
+	}
+
 #else
 	inline void SetType(uint type)
 	{
@@ -109,14 +119,25 @@ struct ShaderLight
 	inline void SetDirection(float3 value)
 	{
 		Direction16_ConeAngleCos16.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.x);
-		Direction16_ConeAngleCos16.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.y) << 16;
+		Direction16_ConeAngleCos16.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.y) << 16u;
 		Direction16_ConeAngleCos16.y |= DirectX::PackedVector::XMConvertFloatToHalf(value.z);
 	}
 
 	inline void SetConeAngleCos(float value)
 	{
-		Direction16_ConeAngleCos16.y |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16;
+		Direction16_ConeAngleCos16.y |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16u;
 	}
+
+	inline void SetCubemapDepthRemapNear(float value)
+	{
+		CubemapDepthRemapPacked |= DirectX::PackedVector::XMConvertFloatToHalf(value);
+	}
+
+	inline void SetCubemapDepthRemapFar(float value)
+	{
+		CubemapDepthRemapPacked |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16u;
+	}
+
 #endif
 };
 
@@ -284,8 +305,8 @@ struct Geometry
 struct Frame
 {
 	uint BrdfLUTTexIndex;
-	uint _padding0;
-	uint _padding1;
+	uint LightEntityIndex;
+	uint MatricesIndex;
 	uint _padding2;
 
 	// -- 16 byte boundary ----
