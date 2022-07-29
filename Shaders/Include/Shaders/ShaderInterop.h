@@ -22,12 +22,12 @@ using int4 = DirectX::XMINT4;
 
 #define CONSTANT_BUFFER(name, type, slot)
 #define PUSH_CONSTANT(name, type)
-
+#define RS_PUSH_CONSTANT
 #else
 
 #define CONSTANT_BUFFER(name, type) ConstantBuffer<type> name : register(b999)
 #define PUSH_CONSTANT(name, type) ConstantBuffer<type> name : register(b999)
-
+#define RS_PUSH_CONSTANT "CBV(b999, space = 1, flags = DATA_STATIC)"
 #endif
 
 #define RESOURCE_HEAP_BUFFER_SPACE     space100

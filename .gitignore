@@ -11,3 +11,17 @@ CTestTestfile.cmake
 build
 /.vs
 /PhxEngine/.vs/PhxEngine/v17/.suo
+/PhxEngine/__x64/Debug
+*.user
+/TestApp/__x64/Debug
+/__Build/x64/Debug
+/TestApp/TestApp.aps
+/packages
+/TestBed/__x64/Debug
+/TestBed/x64/Debug
+/Assets/Models/Sponza_Intel
+/Assets/Models/Sponza_Intel.zip
+/Assets/Models/MaterialScene
+/Assets/Models/CameraTestScene/_textures_dds
+/Assets/Models/CameraTestScene/_textures
+=======

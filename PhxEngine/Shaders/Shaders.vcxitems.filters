@@ -1,0 +1,100 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="VS">
+      <UniqueIdentifier>{de5ddaaf-cfbe-4227-b80e-842dfd6fa334}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="PS">
+      <UniqueIdentifier>{9473164d-17e1-4bf5-b1a0-2f6bf1d5de02}</UniqueIdentifier>
+      <Extensions>**PS.hlsl</Extensions>
+    </Filter>
+    <Filter Include="Interop">
+      <UniqueIdentifier>{05077a18-246a-4168-baf8-f4756b7f4baf}</UniqueIdentifier>
+      <Extensions>**Interop**.h</Extensions>
+    </Filter>
+    <Filter Include="Includes">
+      <UniqueIdentifier>{cc67dd1d-0cc0-4dfd-b053-8dda11780ff8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="CS">
+      <UniqueIdentifier>{cd81ce86-afcc-4229-a8a5-041124cf5fcb}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="$(MSBuildThisFileDirectory)ImGuiPS.hlsl">
+      <Filter>PS</Filter>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)ImGuiVS.hlsl">
+      <Filter>VS</Filter>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)GBufferPassVS.hlsl">
+      <Filter>VS</Filter>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)GBufferPassPS.hlsl">
+      <Filter>PS</Filter>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)FullScreenQuadVS.hlsl">
+      <Filter>VS</Filter>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)FullScreenQuadPS.hlsl">
+      <Filter>PS</Filter>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)FullScreenHelpers.hlsli">
+      <Filter>Includes</Filter>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)DeferredLightingPS.hlsl">
+      <Filter>PS</Filter>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)DeferredLightingVS.hlsl">
+      <Filter>VS</Filter>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)DeferredLightingCS.hlsl">
+      <Filter>CS</Filter>
+    </FxCompile>
+    <FxCompile Include="$(MSBuildThisFileDirectory)ShadowPassVS.hlsl">
+      <Filter>VS</Filter>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ShaderInterop.h">
+      <Filter>Interop</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ShaderInteropStructures.h">
+      <Filter>Interop</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)BRDFFunctions.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)ResourceHeapTables.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)ImGui.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)GBufferPass.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)Globals.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)FullScreenQuad.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)Defines.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)DeferredLighting.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)GBuffer.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)ThreadGroupTilingX.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+    <None Include="$(MSBuildThisFileDirectory)Shadows.hlsli">
+      <Filter>Includes</Filter>
+    </None>
+  </ItemGroup>
+</Project>

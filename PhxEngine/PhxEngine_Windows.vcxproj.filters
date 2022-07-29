@@ -1,0 +1,351 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="PhxEngine.h" />
+    <ClInclude Include="Core\EntryPoint.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Application.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="phxpch.h" />
+    <ClInclude Include="Core\TimeStep.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\StopWatch.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Platform.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Canvas.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\TextRenderer.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RHI\PhxRHI.h">
+      <Filter>Graphics\RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RHI\Dx12\UploadBuffer.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RHI\Dx12\PhxRHI_Dx12.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RHI\Dx12\RootSignatureBuilder.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RHI\Dx12\BiindlessDescriptorTable.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RHI\Dx12\CommandAllocatorPool.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RHI\Dx12\CommandList.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RHI\Dx12\CommandQueue.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RHI\Dx12\Common.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RHI\Dx12\d3dx12.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RHI\Dx12\DescriptorHeap.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RHI\Dx12\GraphicsDevice.h">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\TrueTypeFonts\arial.h">
+      <Filter>ThirdParty\stb\TrueTypeFonts</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\ApplicationLayer.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imconfig.h">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imgui.h">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imgui_internal.h">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imstb_rectpack.h">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imstb_textedit.h">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imstb_truetype.h">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imgui_impl_win32.h">
+      <Filter>ThirdParty\ImGui\Backends</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\ImGui\ImGuiRenderer.h">
+      <Filter>Graphics\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\DXC\d3d12shader.h">
+      <Filter>ThirdParty\DXC</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\DXC\dxcapi.h">
+      <Filter>ThirdParty\DXC</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Helpers.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\ShaderFactory.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\ShaderStore.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\TaskExecutor.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\BitSetAllocator.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\FrameProfiler.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\ShaderCompiler.h">
+      <Filter>Graphics\RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\StringHash.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imgui_stdlib.h">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Systems\Ecs.h">
+      <Filter>Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="Systems\ConsoleVarSystem.h">
+      <Filter>Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\SceneComponents.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Scene.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Math.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RenderPathComponent.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\SceneLoader.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\cgltf\cgltf.h">
+      <Filter>ThirdParty\cgltf</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\GltfSceneLoader.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Span.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\TextureCache.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Enums.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imGuIZMO\imGuIZMOquat.h">
+      <Filter>ThirdParty\ImGui\imGuIZMO.quat</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imGuIZMO\vgConfig.h">
+      <Filter>ThirdParty\ImGui\imGuIZMO.quat</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imGuIZMO\vGizmo.h">
+      <Filter>ThirdParty\ImGui\imGuIZMO.quat</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imGuIZMO\vGizmoMath.h">
+      <Filter>ThirdParty\ImGui\imGuIZMO.quat</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imGuIZMO\vgMath.h">
+      <Filter>ThirdParty\ImGui\imGuIZMO.quat</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\stb_truetype.h">
+      <Filter>ThirdParty\stb</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\Stb\stb_rect_pack.h">
+      <Filter>ThirdParty\stb</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RectPacker.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Core">
+      <UniqueIdentifier>{0d44b46a-f0b5-4f3a-bcaa-27884974a40c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics">
+      <UniqueIdentifier>{009bac3d-3ad6-4165-9a7e-9e32c1e3d6c8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\RHI">
+      <UniqueIdentifier>{a61f0643-fd91-4e27-9499-61249cf9e576}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\RHI\Dx12">
+      <UniqueIdentifier>{d2af42ca-7d13-4335-841a-0e43832ec792}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty">
+      <UniqueIdentifier>{42dc1f03-4cd0-4112-a753-b84892813d3c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\ImGui">
+      <UniqueIdentifier>{4689967c-86a8-4286-8f3c-befd169c4495}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\ImGui">
+      <UniqueIdentifier>{4e54d172-a215-4cf8-a504-b67f53ce8072}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\ImGui\Backends">
+      <UniqueIdentifier>{0d413449-8235-4100-b270-173b6e1138dc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\DXC">
+      <UniqueIdentifier>{870790df-f812-47e7-abc6-234d16052f21}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Systems">
+      <UniqueIdentifier>{375e528b-b660-49b7-8b8a-fb76fafff579}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene">
+      <UniqueIdentifier>{566b0c87-8796-4ff3-9c25-bc9e9963e78d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\cgltf">
+      <UniqueIdentifier>{c018f58e-0c2e-4f72-8255-8c0998df16d0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\ImGui\imGuIZMO.quat">
+      <UniqueIdentifier>{7915481c-224a-41f6-8f51-9a2c8f3f6cc0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Input">
+      <UniqueIdentifier>{7f3a4a4b-19f5-40f4-89b4-c8ddd52b3c2f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\stb">
+      <UniqueIdentifier>{7c14a383-a0db-4430-8e41-e62a66a2efc0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\stb\TrueTypeFonts">
+      <UniqueIdentifier>{9cd2f418-a368-4ac4-8ee6-fc6bc3969d28}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Core\Application.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="phxpch.cpp" />
+    <ClCompile Include="Graphics\TextRenderer.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RHI\Dx12\PhxRHI_Dx12.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RHI\Dx12\RootSignatureBuilder.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RHI\Dx12\UploadBuffer.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RHI\Dx12\GraphicsDevice.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RHI\Dx12\BiindlessDescriptorTable.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RHI\Dx12\CommandAllocatorPool.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RHI\Dx12\CommandList.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RHI\Dx12\CommandQueue.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RHI\Dx12\DescriptorHeap.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RHI\Dx12\DxgiFormatMapping.cpp">
+      <Filter>Graphics\RHI\Dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\ThirdParty_Common.cpp">
+      <Filter>ThirdParty</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\ImGui\imgui.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\ImGui\imgui_draw.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\ImGui\imgui_tables.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\ImGui\imgui_widgets.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\ImGui\imgui_impl_win32.cpp">
+      <Filter>ThirdParty\ImGui\Backends</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\ImGui\ImGuiRenderer.cpp">
+      <Filter>Graphics\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\ShaderFactory.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\ShaderStore.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\TaskExecutor.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\ImGui\imgui_demo.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\BitSetAllocator.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\FrameProfiler.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\ShaderCompiler.cpp">
+      <Filter>Graphics\RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\ImGui\imgui_stdlib.cpp">
+      <Filter>ThirdParty\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Systems\ConsoleVarSystem.cpp">
+      <Filter>Systems</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Scene.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\SceneComponents.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RenderPathComponent.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\GltfSceneLoader.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\SceneLoader.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\TextureCache.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\ImGui\imGuIZMO\imGuIZMOquat.cpp">
+      <Filter>ThirdParty\ImGui\imGuIZMO.quat</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+    <None Include="ThirdParty\cgltf\LICENSE">
+      <Filter>ThirdParty\cgltf</Filter>
+    </None>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,6 @@
+﻿  In file included from DeferredLightingCS.hlsl:4:
+./DeferredLighting.hlsli(126,2): error G8043D3C9: root signature error - Expected a root signature flag value, found: 'CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED'
+  [RootSignature(RS_Deffered)]
+   ^
+FXC : warning : no output provided for debug - embedding PDB in shader container.  Use -Qembed_debug to silence this warning.
+  
