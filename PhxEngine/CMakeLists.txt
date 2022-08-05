@@ -106,3 +106,7 @@ set_target_properties(PhxEngine PROPERTIES FOLDER PhxEngine)
 if(WIN32)
     target_compile_definitions(PhxEngine PUBLIC NOMINMAX _CRT_SECURE_NO_WARNINGS)
 endif()
+
+set_property(TARGET PhxEngine
+    PROPERTY VS_PACKAGE_REFERENCES "Microsoft.Direct3D.D3D12_1.606.3"
+)

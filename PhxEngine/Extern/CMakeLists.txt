@@ -35,4 +35,5 @@ set_target_properties(DirectXTex PROPERTIES FOLDER ${extern_folder})
 
 include(imgui.cmake)
 set_target_properties(imgui PROPERTIES FOLDER ${extern_folder})
+
 Footer
