@@ -13,3 +13,21 @@
 [submodule "ThirdParty/DirectXTex"]
 	path = ThirdParty/DirectXTex
 	url = https://github.com/microsoft/DirectXTex.git
+[submodule "PhxEngine/Extern/glfw"]
+	path = PhxEngine/Extern/glfw
+	url = https://github.com/glfw/glfw.git
+[submodule "PhxEngine/Extern/spdlog"]
+	path = PhxEngine/Extern/spdlog
+	url = https://github.com/gabime/spdlog.git
+[submodule "PhxEngine/Extern/imgui"]
+	path = PhxEngine/Extern/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "PhxEngine/Extern/DirectXTex"]
+	path = PhxEngine/Extern/DirectXTex
+	url = https://github.com/microsoft/DirectXTex.git
+[submodule "PhxEngine/Extern/DirectX-Headers"]
+	path = PhxEngine/Extern/DirectX-Headers
+	url = https://github.com/microsoft/DirectX-Headers.git
+[submodule "PhxEngine/Extern/cgltf"]
+	path = PhxEngine/Extern/cgltf
+	url = https://github.com/jkuhlmann/cgltf.git
