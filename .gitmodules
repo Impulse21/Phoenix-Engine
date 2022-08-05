@@ -31,3 +31,6 @@
 [submodule "PhxEngine/Extern/cgltf"]
 	path = PhxEngine/Extern/cgltf
 	url = https://github.com/jkuhlmann/cgltf.git
+[submodule "PhxEngine/Extern/stb"]
+	path = PhxEngine/Extern/stb
+	url = https://github.com/nothings/stb.git
