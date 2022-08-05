@@ -10,7 +10,7 @@
 #include <filesystem>
 
 #define CGLTF_IMPLEMENTATION
-#include "ThirdParty/cgltf/cgltf.h"
+#include <cgltf.h>
 
 using namespace PhxEngine::Core;
 using namespace PhxEngine::Scene;

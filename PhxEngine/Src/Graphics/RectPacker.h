@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "ThirdParty/Stb/stb_rect_pack.h"
+#include <imstb_rectpack.h>
 
 namespace PhxEngine::Graphics
 {

@@ -2,58 +2,34 @@
 
 #include "phxpch.h"
 
-#include "Core/Application.h"
+#include "App/Application.h"
 #include "Graphics/RHI/Dx12/PhxRHI_Dx12.h"
 
 //#define USE_GLFW
 
-#ifdef USE_GLFW
 
-#include "GLFW/glfw3.h"
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include "GLFW/glfw3native.h"
-
-#else
-
+#ifdef LEGACY
 #include "ThirdParty/ImGui/imgui_impl_win32.h"
+#endif
 
-#endif 
+// Client Code
+extern PhxEngine::Application* PhxEngine::CreateApplication(int argc, char* argv[]);
+bool gApplicationRunning = true;
 
-extern PhxEngine::Core::Application* PhxEngine::Core::CreateApplication(CommandLineArgs args);
+#ifndef LEGACY
 
-namespace
+int main(int argc, char** argv)
 {
-    static bool sGlwfIsInitialzed = false;
-}
-
-#ifdef USE_GLFW
-
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-    _In_opt_ HINSTANCE hPrevInstance,
-    _In_ LPWSTR    lpCmdLine,
-    _In_ int       nCmdShow)
-{
-    UNREFERENCED_PARAMETER(hInstance);
-    UNREFERENCED_PARAMETER(hPrevInstance);
-    UNREFERENCED_PARAMETER(lpCmdLine);
-    UNREFERENCED_PARAMETER(nCmdShow);
-
-    // Initialize Engine Core
-
-    // Core Engine Init
-
-    if (!sGlwfIsInitialzed)
+    while (gApplicationRunning = true)
     {
-        glfwInit();
+        // Initialize core systems
+        auto* application = PhxEngine::CreateApplication(argc, argv);
+        application->Run();
+        delete application;
+        // Tear down core systems
     }
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    glfwCreateWindow(
-        WindowWidth,
-        WindowHeight,
-        "PhxEngine",
-        nullptr,
-        nullptr);
+
+    return 0;
 }
 
 #else

@@ -4,8 +4,8 @@
 #include "Graphics/ShaderStore.h"
 #include <Shaders/ShaderInteropStructures.h>
 
-#include "ThirdParty/ImGui/imgui.h"
-#include "ThirdParty/ImGui/imgui_impl_win32.h"
+#include <imgui.h>
+#include "imgui_impl_win32.h"
 
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Core;

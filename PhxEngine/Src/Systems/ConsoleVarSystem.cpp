@@ -1,8 +1,8 @@
 #include "phxpch.h"
 #include "ConsoleVarSystem.h"
 
-#include "ThirdParty/ImGui/imgui.h"
-#include "ThirdParty/ImGui/imgui_stdlib.h"
+#include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
 
 using namespace PhxEngine;
 

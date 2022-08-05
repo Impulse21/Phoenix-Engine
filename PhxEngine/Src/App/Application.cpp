@@ -3,9 +3,10 @@
 #include "Application.h"
 #include "Systems/ConsoleVarSystem.h"
 
-#include "ThirdParty/ImGui/imgui.h"
+#include <imgui.h>
 
 
+using namespace PhxEngine;
 using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI;
 
@@ -38,6 +39,11 @@ void Application::Initialize(PhxEngine::RHI::IGraphicsDevice* graphicsDevice)
 void Application::Finalize()
 {
 	this->m_imguiRenderer.Finalize();
+}
+
+void PhxEngine::Application::Run()
+{
+	// RUN
 }
 
 void Application::Tick()
@@ -106,11 +112,11 @@ void Application::Update(TimeStep deltaTime)
 
 	auto& cpuStats = this->m_frameProfiler->GetCpuTimeStats();
 	ImGui::Text("Avg CPU Time: %f ms", cpuStats.GetAvg());
-	ImGui::PlotLines("Frame CPU Times", cpuStats.GetExtendedHistory(), cpuStats.GetExentedHistorySize());
+	ImGui::PlotLines("Frame CPU Times", cpuStats.GetExtendedHistory(), static_cast<int>(cpuStats.GetExentedHistorySize()));
 
 	auto& gpuStats = this->m_frameProfiler->GetGpuTimeStats();
 	ImGui::Text("Avg GPU Time: %f ms", gpuStats.GetAvg());
-	ImGui::PlotLines("Frame CPU Times", gpuStats.GetExtendedHistory(), gpuStats.GetExentedHistorySize());
+	ImGui::PlotLines("Frame CPU Times", gpuStats.GetExtendedHistory(), static_cast<int>(gpuStats.GetExentedHistorySize()));
 	
 	ImGui::Unindent();
 
@@ -153,7 +159,7 @@ void Application::Compose(PhxEngine::RHI::CommandListHandle cmdList)
 	this->m_composeCommandList->TransitionBarrier(backBuffer, ResourceStates::RenderTarget, ResourceStates::Present);
 }
 
-void PhxEngine::Core::Application::SetWindow(Core::Platform::WindowHandle windowHandle, bool isFullscreen)
+void Application::SetWindow(Core::Platform::WindowHandle windowHandle, bool isFullscreen)
 {
 	assert(this->m_isInitialized);
 
@@ -180,7 +186,7 @@ void PhxEngine::Core::Application::SetWindow(Core::Platform::WindowHandle window
 	}
 }
 
-void PhxEngine::Core::Application::AttachRenderPath(
+void Application::AttachRenderPath(
 	std::shared_ptr<Graphics::RenderPathComponent> renderPathComponent)
 {
 	if (!renderPathComponent)

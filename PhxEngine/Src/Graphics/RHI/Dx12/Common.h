@@ -5,19 +5,24 @@
 #include <string>
 #include <sstream>
 
-#include "d3dx12.h"
-
-#include <dxgi1_6.h>
-#include <d3d12.h>
-
 // #include "dxcapi.h"
 
 #ifdef _DEBUG
 #include <dxgidebug.h>
-#pragma comment(lib, "dxguid.lib")
 
 #endif
 
+#pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "dxguid.lib")
+#pragma comment(lib, "d3d12.lib")
+
+
+// D3D12
+#include "d3d12.h"
+#include "d3dx12.h"
+#include "d3d12sdklayers.h"
+#include "d3d12shader.h"
+#include <dxgi1_6.h>
 #include "Graphics/RHI/PhxRHI.h"
 
 

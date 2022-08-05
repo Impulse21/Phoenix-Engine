@@ -1,7 +1,7 @@
 #include "phxpch.h"
 
 #define STB_RECT_PACK_IMPLEMENTATION
-#include "Stb/stb_rect_pack.h"
+#include <imstb_rectpack.h>
 
 #define STB_TRUETYPE_IMPLEMENTATION
-#include "stb_truetype.h"
+#include <imstb_truetype.h>

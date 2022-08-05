@@ -3,7 +3,7 @@
 
 #include <wrl.h>
 #include "Core/Helpers.h"
-#include "ThirdParty/DXC/dxcapi.h"
+#include <dxc/dxcapi.h>
 #include "Graphics/RHI/Dx12/Common.h"
 
 using namespace PhxEngine::RHI;

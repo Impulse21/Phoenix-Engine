@@ -1,7 +1,7 @@
 #pragma once
 
 #include <atomic>
-#include "StopWatch.h"
+#include "Core/StopWatch.h"
 
 #include "Core/Canvas.h"
 #include "Core/Platform.h"
@@ -14,11 +14,24 @@
 
 #define NUM_BACK_BUFFERS 3
 
-namespace PhxEngine::Core
+namespace PhxEngine
 {
 	struct CommandLineArgs
 	{
 
+	};
+
+	struct ApplicationSpecification
+	{
+		std::string Name = "";
+		uint32_t WindowHeight = 1600;
+		uint32_t WindowWidth = 900;
+		bool FullScreen = false;
+		bool VSync = true;
+		bool EnableImGui = false;
+		std::string WorkingDirectory = "";
+
+		RHI::GraphicsAPI GraphicsAPI = RHI::GraphicsAPI::Unknown;
 	};
 
 	class Application
@@ -27,10 +40,12 @@ namespace PhxEngine::Core
 		virtual void Initialize(PhxEngine::RHI::IGraphicsDevice* graphicsDevice);
 		virtual void Finalize();
 
+		void Run();
+
 		void Tick();
 
 		//void FixedUpdate();
-		void Update(TimeStep deltaTime);
+		void Update(Core::TimeStep deltaTime);
 		void Render();
 		void Compose(PhxEngine::RHI::CommandListHandle cmdList);
 
@@ -39,7 +54,7 @@ namespace PhxEngine::Core
 
 	public:
 		PhxEngine::RHI::IGraphicsDevice* GetGraphicsDevice() { return this->m_graphicsDevice; }
-		const Canvas& GetCanvas() const { return this->m_canvas; }
+		const Core::Canvas& GetCanvas() const { return this->m_canvas; }
 		Graphics::ShaderStore& GetShaderStore() { return this->m_shaderStore; }
 		uint64_t GetFrameCount() const { return this->m_frameCount; }
 	private:
@@ -48,7 +63,7 @@ namespace PhxEngine::Core
 
 		uint64_t m_frameCount = 0;
 
-		StopWatch m_stopWatch;
+		Core::StopWatch m_stopWatch;
 
 		Graphics::ShaderStore m_shaderStore;
 		PhxEngine::RHI::IGraphicsDevice* m_graphicsDevice = nullptr;
@@ -60,12 +75,12 @@ namespace PhxEngine::Core
 		PhxEngine::RHI::CommandListHandle m_beginFrameCommandList;
 
 		PhxEngine::Graphics::ImGuiRenderer m_imguiRenderer;
-		std::unique_ptr<FrameProfiler> m_frameProfiler;
+		std::unique_ptr<Core::FrameProfiler> m_frameProfiler;
 
 		std::shared_ptr<Graphics::RenderPathComponent> m_renderPath;
 	};
 
 	// Defined by client
-	Application* CreateApplication(CommandLineArgs args);
+	Application* CreateApplication(int argc, char** argv);
 }
 

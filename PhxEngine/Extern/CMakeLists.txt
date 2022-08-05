@@ -1,5 +1,8 @@
 # Required dependencies
-set(extern_folder "External Libraries")
+cmake_minimum_required(VERSION 3.16)
+
+include(FetchContent)
+
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
@@ -14,6 +17,7 @@ option(GLFW_INSTALL "" OFF)
 add_subdirectory(glfw)
 
 set_target_properties(glfw PROPERTIES FOLDER ${extern_folder})
+set_target_properties(update_mappings PROPERTIES FOLDER ${extern_folder})
 
 add_subdirectory(DirectX-Headers)
 
@@ -33,7 +37,29 @@ option(BUILD_DX12 "" OFF)
 add_subdirectory(DirectXTex)
 set_target_properties(DirectXTex PROPERTIES FOLDER ${extern_folder})
 
-include(imgui.cmake)
+set(imgui_SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imconfig.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_draw.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_tables.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_widgets.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_internal.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imstb_rectpack.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imstb_textedit.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imstb_truetype.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_demo.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/misc/cpp/imgui_stdlib.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/imgui/misc/cpp/imgui_stdlib.cpp)
+
+add_library(imgui STATIC ${imgui_SRC})
+target_include_directories(imgui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
 set_target_properties(imgui PROPERTIES FOLDER ${extern_folder})
 
-Footer
+
+
+file (GLOB stb_src
+    ${CMAKE_CURRENT_SOURCE_DIR}/stb/*.h)
+
+add_library(stb INTERFACE ${stb_src})
+set_target_properties(stb  PROPERTIES FOLDER ${extern_folder})
