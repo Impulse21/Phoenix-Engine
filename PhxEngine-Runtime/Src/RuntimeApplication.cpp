@@ -2,14 +2,29 @@
 #include <App/EntryPoint.h>
 
 
-class RuntimeApplication : public PhxEngine::Application
+class RuntimeApplication : public PhxEngine::LayeredApplication
 {
 public:
-	RuntimeApplication() = default;
+	RuntimeApplication(PhxEngine::ApplicationSpecification const& spec)
+		: LayeredApplication(spec)
+	{};
+
+	void OnInit() override
+	{
+		// TODO: Push Layer
+		// this->PushLayer(EditorLayer);
+	}
 };
 
-PhxEngine::Application* PhxEngine::CreateApplication(int argc, char** argv)
+PhxEngine::LayeredApplication* PhxEngine::CreateApplication(int argc, char** argv)
 {
 	// Set up application
-	return new RuntimeApplication();
+	ApplicationSpecification spec;
+	spec.Name = "PhxEngine Editor";
+	spec.FullScreen = false;
+	spec.EnableImGui = true;
+	spec.VSync = true;
+	spec.AllowWindowResize = false;
+
+	return new RuntimeApplication(spec);
 }

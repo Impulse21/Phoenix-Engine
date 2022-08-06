@@ -12,6 +12,12 @@
 #include "Graphics/ImGui/ImGuiRenderer.h"
 #include "Graphics/RenderPathComponent.h"
 
+
+// -- New
+#include "App/Layer.h"
+#include "App/LayerStack.h"
+#include "Core/Span.h"
+
 #define NUM_BACK_BUFFERS 3
 
 namespace PhxEngine
@@ -21,6 +27,11 @@ namespace PhxEngine
 
 	};
 
+	struct RendererConfig
+	{
+		RHI::GraphicsAPI GraphicsAPI = RHI::GraphicsAPI::Unknown;
+		uint32_t FramesInFlight = 3;
+	};
 	struct ApplicationSpecification
 	{
 		std::string Name = "";
@@ -29,9 +40,35 @@ namespace PhxEngine
 		bool FullScreen = false;
 		bool VSync = true;
 		bool EnableImGui = false;
+		bool AllowWindowResize = true;
+
 		std::string WorkingDirectory = "";
 
-		RHI::GraphicsAPI GraphicsAPI = RHI::GraphicsAPI::Unknown;
+		RendererConfig RendererConfig;
+	};
+
+	class LayeredApplication
+	{
+	public:
+		LayeredApplication(ApplicationSpecification const& spec);
+		virtual ~LayeredApplication();
+		
+		void Run();
+
+		virtual void OnInit() {};
+
+		void PushLayer(AppLayer* layer);
+		void PushOverlay(AppLayer* layer);
+
+	private:
+		void RenderImGui();
+
+	private:
+		const ApplicationSpecification m_spec;
+
+		LayerStack m_layerStack;
+		bool m_isRunning = true;
+		bool m_isMinimized = false;
 	};
 
 	class Application
@@ -57,6 +94,7 @@ namespace PhxEngine
 		const Core::Canvas& GetCanvas() const { return this->m_canvas; }
 		Graphics::ShaderStore& GetShaderStore() { return this->m_shaderStore; }
 		uint64_t GetFrameCount() const { return this->m_frameCount; }
+
 	private:
 		bool m_isInitialized;
 		std::atomic_bool m_initializationComplete;
@@ -81,6 +119,6 @@ namespace PhxEngine
 	};
 
 	// Defined by client
-	Application* CreateApplication(int argc, char** argv);
+	LayeredApplication* CreateApplication(int argc, char** argv);
 }
 

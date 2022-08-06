@@ -202,3 +202,67 @@ void Application::AttachRenderPath(
 	this->m_renderPath = renderPathComponent;
 	this->m_renderPath->OnAttach();
 }
+
+PhxEngine::LayeredApplication::LayeredApplication(ApplicationSpecification const& spec)
+	: m_spec(spec)
+{
+	// Do the Initializtion of the Application sub systems
+}
+
+PhxEngine::LayeredApplication::~LayeredApplication()
+{
+}
+
+void PhxEngine::LayeredApplication::Run()
+{
+	this->OnInit();
+	while (this->m_isRunning)
+	{
+		// Frame counter
+		// Process Events
+		
+		if (!this->m_isMinimized)
+		{
+			// start CPU timmers
+			
+			// Renderer begin frame
+			for (AppLayer* layer : this->m_layerStack)
+			{
+				// TODO: Time step
+				layer->OnUpdate(Core::TimeStep());
+			}
+
+			if (this->m_spec.EnableImGui)
+			{
+				this->RenderImGui();
+			}
+
+			// Renderer End Frame
+
+			// Execute Renderer on seperate thread maybe?
+			// Finish Timers and 
+			// Swap buffers
+		}
+
+		// Calculate step time based on last frame
+	}
+}
+
+void PhxEngine::LayeredApplication::PushLayer(AppLayer* layer)
+{
+	this->m_layerStack.PushLayer(layer);
+}
+
+void PhxEngine::LayeredApplication::PushOverlay(AppLayer* layer)
+{
+	this->m_layerStack.PushOverlay(layer);
+}
+
+void PhxEngine::LayeredApplication::RenderImGui()
+{
+	// Begin IMGUI
+	for (auto* layer : this->m_layerStack)
+	{
+		layer->OnRenderImGui();
+	}
+}

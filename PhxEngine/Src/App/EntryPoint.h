@@ -13,7 +13,7 @@
 #endif
 
 // Client Code
-extern PhxEngine::Application* PhxEngine::CreateApplication(int argc, char* argv[]);
+extern PhxEngine::LayeredApplication* PhxEngine::CreateApplication(int argc, char* argv[]);
 bool gApplicationRunning = true;
 
 #ifndef LEGACY
