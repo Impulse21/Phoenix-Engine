@@ -23,7 +23,7 @@
 #include "d3d12sdklayers.h"
 #include "d3d12shader.h"
 #include <dxgi1_6.h>
-#include "Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/Graphics/RHI/PhxRHI.h"
 
 
 namespace PhxEngine::RHI::Dx12

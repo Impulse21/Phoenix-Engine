@@ -1,7 +1,7 @@
 #include "phxpch.h"
 #include "SceneComponents.h"
 
-#include "Core/Math.h"
+#include "PhxEngine/Core/Math.h"
 
 using namespace PhxEngine::Scene;
 using namespace PhxEngine::ECS;

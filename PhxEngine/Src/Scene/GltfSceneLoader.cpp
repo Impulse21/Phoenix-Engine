@@ -5,7 +5,7 @@
 
 #include "Scene.h"
 #include "SceneComponents.h"
-#include "Core/Helpers.h"
+#include "PhxEngine/Core/Helpers.h"
 
 #include <filesystem>
 

@@ -8,7 +8,7 @@
 #include "CommandQueue.h"
 #include "DescriptorHeap.h"
 #include "Common.h"
-#include "Core/BitSetAllocator.h"
+#include "PhxEngine/Core/BitSetAllocator.h"
 
 // Teir 1 limit is 1,000,000
 // https://docs.microsoft.com/en-us/windows/win32/direct3d12/hardware-support

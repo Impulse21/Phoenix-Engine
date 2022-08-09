@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Core/TimeStep.h"
-#include "Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/Core/TimeStep.h"
+#include "PhxEngine/Graphics/RHI/PhxRHI.h"
 
 namespace PhxEngine::Graphics
 {

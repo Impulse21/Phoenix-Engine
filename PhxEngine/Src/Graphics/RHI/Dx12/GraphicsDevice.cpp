@@ -1,7 +1,7 @@
 #include "phxpch.h"
 #include "GraphicsDevice.h"
 
-#include "Core/Helpers.h"
+#include "PhxEngine/Core/Helpers.h"
 
 #include "BiindlessDescriptorTable.h"
 #include "CommandList.h"
@@ -21,6 +21,7 @@ static const GUID RenderdocUUID = { 0xa7aa6116, 0x9c8d, 0x4bba, { 0x90, 0x83, 0x
 static const GUID PixUUID = { 0x9f251514, 0x9d4d, 0x4902, { 0x9d, 0x60, 0x18, 0x98, 0x8a, 0xb7, 0xd4, 0xb5 } };
 
 static bool sDebugEnabled = false;
+
 
 // TODO: Find a home for this, it's also in scene exporer
 constexpr uint64_t AlignTo(uint64_t value, uint64_t alignment)

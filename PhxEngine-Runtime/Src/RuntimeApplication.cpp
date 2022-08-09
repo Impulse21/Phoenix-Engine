@@ -1,5 +1,5 @@
-#include <PhxEngine.h>
-#include <App/EntryPoint.h>
+#include <PhxEngine/PhxEngine.h>
+#include <PhxEngine/App/EntryPoint.h>
 
 
 class RuntimeApplication : public PhxEngine::LayeredApplication

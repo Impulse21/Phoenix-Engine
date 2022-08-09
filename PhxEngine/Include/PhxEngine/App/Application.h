@@ -1,27 +1,29 @@
 #pragma once
 
 #include <atomic>
-#include "Core/StopWatch.h"
+#include "PhxEngine/Core/StopWatch.h"
 
-#include "Core/Canvas.h"
-#include "Core/Platform.h"
-#include "Core/FrameProfiler.h"
-#include "Graphics/RHI/PhxRHI.h"
-#include "Graphics/ShaderStore.h"
-#include "Graphics/ShaderFactory.h"
-#include "Graphics/ImGui/ImGuiRenderer.h"
-#include "Graphics/RenderPathComponent.h"
+#include "PhxEngine/Core/Canvas.h"
+#include "PhxEngine/Core/Platform.h"
+#include "PhxEngine/Core/FrameProfiler.h"
+#include "PhxEngine/Graphics/RHI/PhxRHI.h"
 
 
 // -- New
-#include "App/Layer.h"
-#include "App/LayerStack.h"
-#include "Core/Span.h"
+#include "PhxEngine/App/Layer.h"
+#include "PhxEngine/App/LayerStack.h"
+#include "PhxEngine/Core/Span.h"
+#include "PhxEngine/Core/Event.h"
 
 #define NUM_BACK_BUFFERS 3
 
 namespace PhxEngine
 {
+	namespace Core
+	{
+		class IWindow;
+	}
+
 	struct CommandLineArgs
 	{
 
@@ -35,8 +37,8 @@ namespace PhxEngine
 	struct ApplicationSpecification
 	{
 		std::string Name = "";
-		uint32_t WindowHeight = 1600;
-		uint32_t WindowWidth = 900;
+		uint32_t WindowWidth = 1600;
+		uint32_t WindowHeight = 900;
 		bool FullScreen = false;
 		bool VSync = true;
 		bool EnableImGui = false;
@@ -57,8 +59,10 @@ namespace PhxEngine
 
 		virtual void OnInit() {};
 
-		void PushLayer(AppLayer* layer);
-		void PushOverlay(AppLayer* layer);
+		void PushLayer(std::shared_ptr<AppLayer> layer);
+		void PushOverlay(std::shared_ptr<AppLayer> layer);
+
+		virtual void OnEvent(Core::Event& e);
 
 	private:
 		void RenderImGui();
@@ -66,6 +70,7 @@ namespace PhxEngine
 	private:
 		const ApplicationSpecification m_spec;
 
+		std::unique_ptr<Core::IWindow> m_window;
 		LayerStack m_layerStack;
 		bool m_isRunning = true;
 		bool m_isMinimized = false;
@@ -87,12 +92,10 @@ namespace PhxEngine
 		void Compose(PhxEngine::RHI::CommandListHandle cmdList);
 
 		void SetWindow(Core::Platform::WindowHandle windowHandle, bool isFullscreen = false);
-		void AttachRenderPath(std::shared_ptr<Graphics::RenderPathComponent> renderPathComponent);
 
 	public:
 		PhxEngine::RHI::IGraphicsDevice* GetGraphicsDevice() { return this->m_graphicsDevice; }
 		const Core::Canvas& GetCanvas() const { return this->m_canvas; }
-		Graphics::ShaderStore& GetShaderStore() { return this->m_shaderStore; }
 		uint64_t GetFrameCount() const { return this->m_frameCount; }
 
 	private:
@@ -103,7 +106,6 @@ namespace PhxEngine
 
 		Core::StopWatch m_stopWatch;
 
-		Graphics::ShaderStore m_shaderStore;
 		PhxEngine::RHI::IGraphicsDevice* m_graphicsDevice = nullptr;
 		Core::Platform::WindowHandle m_windowHandle = nullptr;
 		Core::Canvas m_canvas;
@@ -112,10 +114,8 @@ namespace PhxEngine
 		PhxEngine::RHI::CommandListHandle m_composeCommandList;
 		PhxEngine::RHI::CommandListHandle m_beginFrameCommandList;
 
-		PhxEngine::Graphics::ImGuiRenderer m_imguiRenderer;
 		std::unique_ptr<Core::FrameProfiler> m_frameProfiler;
 
-		std::shared_ptr<Graphics::RenderPathComponent> m_renderPath;
 	};
 
 	// Defined by client

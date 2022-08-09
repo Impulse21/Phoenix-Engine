@@ -2,8 +2,8 @@
 
 #include <array>
 #include <vector>
-#include "Core/StopWatch.h"
-#include "Graphics/RHI/PhxRHI.h"
+#include <PhxEngine/Core/StopWatch.h>
+#include "PhxEngine/Graphics/RHI/PhxRHI.h"
 
 namespace PhxEngine::Core
 {
