@@ -48,7 +48,6 @@ file(GLOB PhxEngine_Graphics_Inc
 )
 
 file(GLOB PhxEngine_Graphics_Src
-	Include/PhxEngine/Graphics/*.h
     Src/Graphics/*.h
     Src/Graphics/*.cpp
 )

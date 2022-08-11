@@ -1,11 +1,13 @@
 #include "phxpch.h"
 
 #include "Graphics/ImGui/ImGuiRenderer.h"
-#include "Graphics/ShaderStore.h"
+#include <PhxEngine/Graphics/ShaderStore.h>
 #include <Shaders/ShaderInteropStructures.h>
+#include <PhxEngine/App/Application.h>
+#include <PhxEngine/Core/Window.h>
 
 #include <imgui.h>
-#include "imgui_impl_win32.h"
+#include "imgui_impl_glfw.h"
 
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Core;
@@ -18,15 +20,15 @@ enum RootParameters
     NumRootParameters
 };
 
-void PhxEngine::Graphics::ImGuiRenderer::Initialize(
-    RHI::IGraphicsDevice* graphicsDevice,
-    ShaderStore const& shaderStore,
-    Core::Platform::WindowHandle windowHandle)
+void PhxEngine::Graphics::ImGuiRenderer::OnAttach()
 {
     this->m_imguiContext = ImGui::CreateContext();
     ImGui::SetCurrentContext(this->m_imguiContext);
 
-    if (!ImGui_ImplWin32_Init(windowHandle))
+    IWindow* window = LayeredApplication::Ptr->GetWindow();
+    auto* glfwWindow = static_cast<GLFWwindow*>(window->GetNativeWindow());
+
+    if (!ImGui_ImplGlfw_InitForVulkan(glfwWindow, true))
     {
         throw std::runtime_error("Failed it initalize IMGUI");
         return;
@@ -50,7 +52,7 @@ void PhxEngine::Graphics::ImGuiRenderer::Initialize(
     desc.MipLevels = 1;
     desc.DebugName = "IMGUI Font Texture";
 
-    this->m_fontTexture = graphicsDevice->CreateTexture(desc);
+    this->m_fontTexture = IGraphicsDevice::Ptr->CreateTexture(desc);
 
     RHI::SubresourceData subResourceData = {};
 
@@ -59,7 +61,7 @@ void PhxEngine::Graphics::ImGuiRenderer::Initialize(
     subResourceData.slicePitch = subResourceData.rowPitch * height;
     subResourceData.pData = pixelData;
 
-    CommandListHandle uploadCommandList = graphicsDevice->CreateCommandList();
+    CommandListHandle uploadCommandList = IGraphicsDevice::Ptr->CreateCommandList();
 
     uploadCommandList->Open();
     uploadCommandList->TransitionBarrier(this->m_fontTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
@@ -68,15 +70,15 @@ void PhxEngine::Graphics::ImGuiRenderer::Initialize(
 
     uploadCommandList->Close();
 
-    graphicsDevice->ExecuteCommandLists(uploadCommandList.get(), true);
-    this->CreatePipelineStateObject(graphicsDevice, shaderStore);
+    IGraphicsDevice::Ptr->ExecuteCommandLists(uploadCommandList.get(), true);
+    this->CreatePipelineStateObject(IGraphicsDevice::Ptr);
 }
 
-void PhxEngine::Graphics::ImGuiRenderer::Finalize()
+void PhxEngine::Graphics::ImGuiRenderer::OnDetach()
 {
     if (this->m_imguiContext)
     {
-        ImGui_ImplWin32_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext(this->m_imguiContext);
         this->m_imguiContext = nullptr;
     }
@@ -85,11 +87,11 @@ void PhxEngine::Graphics::ImGuiRenderer::Finalize()
 void PhxEngine::Graphics::ImGuiRenderer::BeginFrame()
 {
     ImGui::SetCurrentContext(this->m_imguiContext);
-    ImGui_ImplWin32_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 }
 
-void PhxEngine::Graphics::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
+void PhxEngine::Graphics::ImGuiRenderer::OnCompose(RHI::CommandListHandle cmd)
 {
 	ImGui::SetCurrentContext(this->m_imguiContext);
 	ImGui::Render();
@@ -173,11 +175,10 @@ void PhxEngine::Graphics::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
 }
 
 void PhxEngine::Graphics::ImGuiRenderer::CreatePipelineStateObject(
-    RHI::IGraphicsDevice* graphicsDevice,
-    ShaderStore const& shaderStore)
+    RHI::IGraphicsDevice* graphicsDevice)
 {
-    ShaderHandle vs = shaderStore.Retrieve(PreLoadShaders::VS_ImGui);
-    ShaderHandle ps = shaderStore.Retrieve(PreLoadShaders::PS_ImGui);
+    ShaderHandle vs = ShaderStore::Ptr->Retrieve(PreLoadShaders::VS_ImGui);
+    ShaderHandle ps = ShaderStore::Ptr->Retrieve(PreLoadShaders::PS_ImGui);
 
     std::vector<VertexAttributeDesc> attributeDesc =
     {

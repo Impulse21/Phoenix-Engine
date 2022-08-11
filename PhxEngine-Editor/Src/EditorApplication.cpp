@@ -13,7 +13,6 @@ public:
 
 	void OnInit() override
 	{
-		// TODO: Push Layer
 		this->PushLayer(std::make_shared<EditorLayer>());
 	}
 };

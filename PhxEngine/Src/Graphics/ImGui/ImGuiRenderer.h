@@ -13,7 +13,7 @@ namespace PhxEngine::Graphics
 {
 	class ShaderStore;
 
-	class ImGuiRenderer
+	class ImGuiRenderer : public AppLayer
 	{
 	public:
 		ImGuiRenderer() = default;
@@ -23,15 +23,16 @@ namespace PhxEngine::Graphics
 			RHI::IGraphicsDevice* graphicsDevice,
 			ShaderStore const& shaderStore,
 			Core::Platform::WindowHandle windowHandle);
-		void Finalize();
+
+		void OnAttach() override;
+		void OnDetach() override;
 
 		void BeginFrame();
-		void Render(RHI::CommandListHandle cmd);
+		void OnCompose(RHI::CommandListHandle cmd) override;
 
 	private:
 		void CreatePipelineStateObject(
-			RHI::IGraphicsDevice* graphicsDevice,
-			ShaderStore const& shaderStore);
+			RHI::IGraphicsDevice* graphicsDevice);
 
 	private:
 		ImGuiContext* m_imguiContext;

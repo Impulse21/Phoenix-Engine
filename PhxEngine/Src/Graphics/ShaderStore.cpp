@@ -1,7 +1,7 @@
 #include "phxpch.h"
-#include "ShaderStore.h"
+#include <PhxEngine/Graphics/ShaderStore.h>
 
-#include "Graphics/ShaderFactory.h"
+#include <PhxEngine/Graphics/ShaderFactory.h>
 
 
 using namespace PhxEngine::Graphics;

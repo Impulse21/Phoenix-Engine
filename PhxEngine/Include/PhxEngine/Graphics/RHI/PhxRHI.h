@@ -1123,6 +1123,8 @@ namespace PhxEngine::RHI
         // -- Create Functions ---
     public:
         virtual void CreateSwapChain(SwapChainDesc const& swapChainDesc) = 0;
+
+        // TODO: Change to a new pattern so we don't require a command list stored on an object. Instread, request from a pool of objects
         virtual CommandListHandle CreateCommandList(CommandListDesc const& desc = {}) = 0;
 
         virtual ShaderHandle CreateShader(ShaderDesc const& desc, const void* binary, size_t binarySize) = 0;

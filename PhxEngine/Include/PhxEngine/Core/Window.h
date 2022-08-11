@@ -30,6 +30,7 @@ namespace PhxEngine::Core
 		virtual void CentreWindow() = 0;
 
 		virtual void* GetNativeWindowHandle() = 0;
+		virtual void* GetNativeWindow() = 0;
 	};
 
 	struct WindowSpecification

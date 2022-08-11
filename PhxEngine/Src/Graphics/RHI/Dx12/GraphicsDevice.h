@@ -18,6 +18,7 @@
 
 namespace PhxEngine::RHI::Dx12
 {
+    constexpr size_t kNumCommandListPerFrame = 32;
     struct TrackedResources;
 
     class BindlessDescriptorTable;
@@ -192,6 +193,8 @@ namespace PhxEngine::RHI::Dx12
 		void CreateSwapChain(SwapChainDesc const& swapChainDesc) override;
 
         CommandListHandle CreateCommandList(CommandListDesc const& desc = {}) override;
+        // CommandListHandle BeginGfxCommandList() override;
+        // CommandListHandle BeginComputeCommandList() override;
 
         ShaderHandle CreateShader(ShaderDesc const& desc, const void* binary, size_t binarySize) override;
         InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) override;

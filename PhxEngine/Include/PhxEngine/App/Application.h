@@ -23,6 +23,11 @@ namespace PhxEngine
 	{
 		class IWindow;
 	}
+	namespace Graphics
+	{
+		class ShaderStore;
+		class ImGuiRenderer;
+	}
 
 	struct CommandLineArgs
 	{
@@ -52,6 +57,10 @@ namespace PhxEngine
 	class LayeredApplication
 	{
 	public:
+		// This Prevets us from having more then one application. This is an okay limitation for now as I don't have a use case.
+		inline static LayeredApplication* Ptr = nullptr;
+
+	public:
 		LayeredApplication(ApplicationSpecification const& spec);
 		virtual ~LayeredApplication();
 		
@@ -64,13 +73,25 @@ namespace PhxEngine
 
 		virtual void OnEvent(Core::Event& e);
 
+		Core::IWindow* GetWindow() { return this->m_window.get(); }
+
 	private:
 		void RenderImGui();
 
+		// TODO: have a think about how this will Work
+		void Render();
+		void Compose();
+
 	private:
+		PhxEngine::RHI::CommandListHandle m_composeCommandList;
+
 		const ApplicationSpecification m_spec;
+		uint64_t m_frameCount = 0;
 
 		std::unique_ptr<Core::IWindow> m_window;
+		std::unique_ptr<Graphics::ShaderStore> m_shaderStore;
+		std::shared_ptr<Graphics::ImGuiRenderer> m_imguiRenderer;
+
 		LayerStack m_layerStack;
 		bool m_isRunning = true;
 		bool m_isMinimized = false;
