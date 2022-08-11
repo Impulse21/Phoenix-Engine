@@ -22,6 +22,7 @@
 [submodule "PhxEngine/Extern/imgui"]
 	path = PhxEngine/Extern/imgui
 	url = https://github.com/ocornut/imgui.git
+	branch = docking
 [submodule "PhxEngine/Extern/DirectXTex"]
 	path = PhxEngine/Extern/DirectXTex
 	url = https://github.com/microsoft/DirectXTex.git
