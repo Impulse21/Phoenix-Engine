@@ -19,11 +19,6 @@ namespace PhxEngine::Graphics
 		ImGuiRenderer() = default;
 		virtual ~ImGuiRenderer() = default;
 
-		void Initialize(
-			RHI::IGraphicsDevice* graphicsDevice,
-			ShaderStore const& shaderStore,
-			Core::Platform::WindowHandle windowHandle);
-
 		void OnAttach() override;
 		void OnDetach() override;
 
@@ -33,6 +28,8 @@ namespace PhxEngine::Graphics
 	private:
 		void CreatePipelineStateObject(
 			RHI::IGraphicsDevice* graphicsDevice);
+
+		void SetDarkThemeColors();
 
 	private:
 		ImGuiContext* m_imguiContext;

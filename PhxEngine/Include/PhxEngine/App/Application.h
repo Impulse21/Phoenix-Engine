@@ -75,6 +75,12 @@ namespace PhxEngine
 
 		Core::IWindow* GetWindow() { return this->m_window.get(); }
 
+		void Close() { this->m_isRunning = false; }
+
+		uint64_t GetFrameCount() const { return this->m_frameCount; }
+
+		const ApplicationSpecification& GetSpec() { return this->m_spec; }
+
 	private:
 		void RenderImGui();
 

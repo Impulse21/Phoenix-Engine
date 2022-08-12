@@ -3,6 +3,7 @@
 #include <PhxEngine/App/EntryPoint.h>
 
 #include "EditorLayer.h"
+#include "SceneRenderLayer.h"
 
 class EditorApplication : public PhxEngine::LayeredApplication
 {
@@ -13,7 +14,9 @@ public:
 
 	void OnInit() override
 	{
-		this->PushLayer(std::make_shared<EditorLayer>());
+		auto sceneRenderLayer = std::make_shared<SceneRenderLayer>();
+		this->PushLayer(std::make_shared<EditorLayer>(sceneRenderLayer));
+		this->PushLayer(sceneRenderLayer);
 	}
 };
 
