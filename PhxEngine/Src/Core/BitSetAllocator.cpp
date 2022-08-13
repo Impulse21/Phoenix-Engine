@@ -1,5 +1,5 @@
 #include "phxpch.h"
-#include "BitSetAllocator.h"
+#include "PhxEngine\Core\BitSetAllocator.h"
 
 PhxEngine::Core::BitSetAllocator::BitSetAllocator(size_t capacity)
     : m_nextAvailable(0)

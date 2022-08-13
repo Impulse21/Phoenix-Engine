@@ -22,26 +22,39 @@ include(CMakeDependentOption)
 set(extern_folder "PhxEngine/External Libraries")
 
 #-- App
+
+file(GLOB PhxEngine_App_Inc
+	Include/PhxEngine/App/*.h
+)
+
 file(GLOB PhxEngine_App_Src
     Src/App/*.h
     Src/App/*.cpp
 )
 
 #-- Core
+file(GLOB PhxEngine_Core_Inc
+	Include/PhxEngine/Core/*.h
+)
+
 file(GLOB PhxEngine_Core_Src
     Src/Core/*.h
     Src/Core/*.cpp
 )
 
 #-- Graphics
+file(GLOB PhxEngine_Graphics_Inc
+	Include/PhxEngine/Graphics/*.h
+)
+
 file(GLOB PhxEngine_Graphics_Src
     Src/Graphics/*.h
     Src/Graphics/*.cpp
 )
 
 #-- Graphics RHI
-file(GLOB PhxEngine_Graphics_RHI_Src
-    Src/Graphics/RHI/*.h
+file(GLOB PhxEngine_Graphics_RHI_Inc
+	Include/PhxEngine/Graphics/RHI/*.h
 )
 
 file(GLOB PhxEngine_Graphics_RHI_DX12_Src
@@ -50,45 +63,81 @@ file(GLOB PhxEngine_Graphics_RHI_DX12_Src
 )
 
 #-- Graphics IMGUI
+file(GLOB PhxEngine_Graphics_ImGui_Inc
+	Include/PhxEngine/Graphics/ImGui/*.h
+)
+
 file(GLOB PhxEngine_Graphics_ImGui_Src
     Src/Graphics/ImGui/*.h
     Src/Graphics/ImGui/*.cpp
 )
 
 #-- System
+file(GLOB PhxEngine_System_Inc
+	Include/PhxEngine/Systems/*.h
+)
+
 file(GLOB PhxEngine_System_Src
     Src/Systems/*.h
     Src/Systems/*.cpp
 )
+
 #-- Scene
+file (GLOB PhxEngine_Scene_Inc
+	Include/PhxEngine/Scene/*.h)
+
 file (GLOB PhxEngine_Scene_Src
     Src/Scene/*.h
     Src/Scene/*.cpp)
 
-add_library(PhxEngine STATIC EXCLUDE_FROM_ALL 
+file (GLOB PhxEngine_Inc
+    Include/PhxEngine/*.h)
+	
+file (GLOB PhxEngine_Src
+    Src/*.h
+	Src/*.cpp)
+
+add_library(PhxEngine STATIC EXCLUDE_FROM_ALL  
+    ${PhxEngine_App_Inc}
     ${PhxEngine_App_Src}
+    ${PhxEngine_Core_Inc}
     ${PhxEngine_Core_Src}
+    ${PhxEngine_Graphics_Inc}
     ${PhxEngine_Graphics_Src}
+    ${PhxEngine_Graphics_RHI_Inc}
     ${PhxEngine_Graphics_RHI_Src}
     ${PhxEngine_Graphics_RHI_DX12_Src}
+    ${PhxEngine_Graphics_ImGui_Inc}
     ${PhxEngine_Graphics_ImGui_Src}
+    ${PhxEngine_System_Inc}
     ${PhxEngine_System_Src}
+    ${PhxEngine_Scene_Inc}
     ${PhxEngine_Scene_Src}
-    Src/PhxEngine.h
-    Src/phxpch.h
-    Src/phxpch.cpp)
+    ${PhxEngine_Inc}
+    ${PhxEngine_Src})
 
+source_group("Include"					FILES ${PhxEngine_Inc})
+source_group("Include/App"              FILES ${PhxEngine_App_Inc})
+source_group("Include/Core"             FILES ${PhxEngine_Core_Inc})
+source_group("Include/Graphics"         FILES ${PhxEngine_Graphics_Inc})
+source_group("Include/Graphics/RHI"     FILES ${PhxEngine_Graphics_RHI_Inc})
+source_group("Include/Graphics/ImGui"   FILES ${PhxEngine_Graphics_ImGui_Inc})
+source_group("Include/System"           FILES ${PhxEngine_System_Inc})
+source_group("Include/Scene"            FILES ${PhxEngine_Scene_Inc})
 
-source_group("App"                  FILES ${PhxEngine_App_Src})
-source_group("Core"                 FILES ${PhxEngine_Core_Src})
-source_group("Graphics"             FILES ${PhxEngine_Graphics_Src})
-source_group("Graphics/RHI"         FILES ${PhxEngine_Graphics_RHI_Src})
-source_group("Graphics/RHI/Dx12"    FILES ${PhxEngine_Graphics_RHI_DX12_Src})
-source_group("Graphics/ImGui"       FILES ${PhxEngine_Graphics_ImGui_Src})
-source_group("System"               FILES ${PhxEngine_System_Src})
-source_group("Scene"                FILES ${PhxEngine_Scene_Src})
+source_group("Src"						FILES ${PhxEngine_Src})
+source_group("Src/App"                  FILES ${PhxEngine_App_Src})
+source_group("Src/Core"                 FILES ${PhxEngine_Core_Src})
+source_group("Src/Graphics"             FILES ${PhxEngine_Graphics_Src})
+source_group("Src/Graphics/RHI"         FILES ${PhxEngine_Graphics_RHI_Src})
+source_group("Src/Graphics/RHI/Dx12"    FILES ${PhxEngine_Graphics_RHI_DX12_Src})
+source_group("Src/Graphics/ImGui"       FILES ${PhxEngine_Graphics_ImGui_Src})
+source_group("Src/System"               FILES ${PhxEngine_System_Src})
+source_group("Src/Scene"                FILES ${PhxEngine_Scene_Src})
 
-target_include_directories(${ProjectName} PUBLIC Include  Src ../Shaders/Include)
+target_include_directories(${ProjectName} PUBLIC Include ../Shaders/Include)
+target_include_directories(${ProjectName} PRIVATE Src ../Shaders/Include)
+
 target_precompile_headers(${ProjectName} PRIVATE Src/phxpch.h)
 
 add_subdirectory(Extern)

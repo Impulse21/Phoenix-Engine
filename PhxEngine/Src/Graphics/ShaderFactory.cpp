@@ -2,7 +2,7 @@
 #include "ShaderFactory.h"
 
 #include "ShaderCompiler.h"
-#include "Core/Helpers.h"
+#include "PhxEngine/Core/Helpers.h"
 
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Core;

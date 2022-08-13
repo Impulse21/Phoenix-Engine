@@ -1,8 +1,12 @@
 #pragma once
 
-#include "../PhxRHI.h"
+#include "PhxEngine/Graphics/RHI/PhxRHI.h"
 #include <memory>
 
+namespace PhxEngine::RHI
+{
+    IGraphicsDevice* CreateDx12Device();
+}
 namespace PhxEngine::RHI::Dx12
 {
     namespace Factory

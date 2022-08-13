@@ -1,7 +1,13 @@
 #include "phxpch.h"
 
-#include "Application.h"
+#include "PhxEngine/App/Application.h"
+#include "PhxEngine/Core/Window.h"
+#include "PhxEngine/App/ApplicationEvents.h"
 #include "Systems/ConsoleVarSystem.h"
+#include "PhxEngine/Graphics/ShaderStore.h"
+#include "PhxEngine/Graphics/ShaderFactory.h"
+#include "Graphics/ImGui/ImGuiRenderer.h"
+
 
 #include <imgui.h>
 
@@ -21,12 +27,13 @@ const char* GraphicsAPIToString(GraphicsAPI api)
 		return "UNKNOWN";
 	}
 }
+
 void Application::Initialize(PhxEngine::RHI::IGraphicsDevice* graphicsDevice)
 {
 	this->m_graphicsDevice = graphicsDevice;
 
-	Graphics::ShaderFactory factory(this->m_graphicsDevice, "shaders/", "../PhxEngine/Shaders/");
-	this->m_shaderStore.PreloadShaders(factory);
+	// Graphics::ShaderFactory factory(this->m_graphicsDevice, "shaders/", "../PhxEngine/Shaders/");
+	//this->m_shaderStore.PreloadShaders(factory);
 
 	this->m_beginFrameCommandList = this->m_graphicsDevice->CreateCommandList();
 	this->m_composeCommandList = this->m_graphicsDevice->CreateCommandList();
@@ -38,7 +45,7 @@ void Application::Initialize(PhxEngine::RHI::IGraphicsDevice* graphicsDevice)
 
 void Application::Finalize()
 {
-	this->m_imguiRenderer.Finalize();
+	// this->m_imguiRenderer.Finalize();
 }
 
 void PhxEngine::Application::Run()
@@ -61,7 +68,7 @@ void Application::Tick()
 	this->m_beginFrameCommandList->Close();
 	this->m_graphicsDevice->ExecuteCommandLists(this->m_beginFrameCommandList.get());
 
-	this->m_imguiRenderer.BeginFrame();
+	// this->m_imguiRenderer.BeginFrame();
 
 	// Variable-timed update:
 	this->Update(deltaTime);
@@ -83,11 +90,12 @@ void Application::Tick()
 
 void Application::Update(TimeStep deltaTime)
 {
+	/*
 	if (this->m_renderPath)
 	{
 		this->m_renderPath->Update(deltaTime);
 	}
-
+	*/
 	// Set IMGUI Data
 	static bool sWindowOpen = true;
 	ImGui::Begin("Phx Engine", &sWindowOpen);
@@ -132,14 +140,11 @@ void Application::Update(TimeStep deltaTime)
 
 void Application::Render()
 {
-	if (this->m_renderPath)
-	{
-		this->m_renderPath->Render();
-	}
 }
 
 void Application::Compose(PhxEngine::RHI::CommandListHandle cmdList)
 {
+	/*
 	auto scopedMarker = this->m_composeCommandList->BeginScopedMarker("Compose back buffer");
 	TextureHandle backBuffer = this->m_graphicsDevice->GetBackBuffer();
 	
@@ -157,6 +162,7 @@ void Application::Compose(PhxEngine::RHI::CommandListHandle cmdList)
 	this->m_imguiRenderer.Render(this->m_composeCommandList);
 
 	this->m_composeCommandList->TransitionBarrier(backBuffer, ResourceStates::RenderTarget, ResourceStates::Present);
+	*/
 }
 
 void Application::SetWindow(Core::Platform::WindowHandle windowHandle, bool isFullscreen)
@@ -178,27 +184,180 @@ void Application::SetWindow(Core::Platform::WindowHandle windowHandle, bool isFu
 	swapchainDesc.WindowHandle = windowHandle;
 
 	this->m_graphicsDevice->CreateSwapChain(swapchainDesc);
+	/*
 	this->m_imguiRenderer.Initialize(this->m_graphicsDevice, this->m_shaderStore, this->m_windowHandle);
 
 	if (this->m_renderPath)
 	{
 		this->m_renderPath->OnAttachWindow();
 	}
+	*/
 }
 
-void Application::AttachRenderPath(
-	std::shared_ptr<Graphics::RenderPathComponent> renderPathComponent)
+
+PhxEngine::LayeredApplication::LayeredApplication(ApplicationSpecification const& spec)
+	: m_spec(spec)
 {
-	if (!renderPathComponent)
+	// Do the Initializtion of the Application sub systems
+	LayeredApplication::Ptr = this;
+	// Construct Window
+	WindowSpecification windowSpec = {};
+	windowSpec.Width = this->m_spec.WindowWidth;
+	windowSpec.Height = this->m_spec.WindowHeight;
+	windowSpec.Title = this->m_spec.Name;
+	windowSpec.VSync = this->m_spec.VSync;
+	
+	this->m_window = WindowFactory::CreateGltfWindow(windowSpec);
+	this->m_window->Initialize();
+	this->m_window->SetResizeable(false);
+	this->m_window->SetVSync(this->m_spec.VSync);
+
+	this->m_window->SetEventCallback([this](Event& e) {this->OnEvent(e); });
+
+	// TODO: Create swapchain in Window
+	RHI::SwapChainDesc swapchainDesc = {};
+	swapchainDesc.BufferCount = NUM_BACK_BUFFERS;
+	swapchainDesc.Format = FormatType::R10G10B10A2_UNORM;
+	swapchainDesc.Width = this->m_window->GetWidth();
+	swapchainDesc.Height = this->m_window->GetHeight();
+	swapchainDesc.VSync = true;
+	swapchainDesc.WindowHandle = static_cast<Platform::WindowHandle>(m_window->GetNativeWindowHandle());
+
+	IGraphicsDevice::Ptr->CreateSwapChain(swapchainDesc);
+
+	// Prepare Renderer
+	this->m_shaderStore = std::make_unique<Graphics::ShaderStore>();
+	Graphics::ShaderStore::Ptr = this->m_shaderStore.get();
+	Graphics::ShaderFactory factory(IGraphicsDevice::Ptr, "shaders/", "PhxEngine/Shaders/");
+	this->m_shaderStore->PreloadShaders(factory);
+
+	this->m_composeCommandList = IGraphicsDevice::Ptr->CreateCommandList();
+
+	if (spec.EnableImGui)
 	{
-		return;
+		this->m_imguiRenderer = std::make_shared<Graphics::ImGuiRenderer>();
+		this->PushOverlay(this->m_imguiRenderer);
+	}
+}
+
+PhxEngine::LayeredApplication::~LayeredApplication()
+{
+	Graphics::ShaderStore::Ptr = nullptr;
+	LayeredApplication::Ptr = nullptr;
+}
+
+void PhxEngine::LayeredApplication::Run()
+{
+	this->OnInit();
+	while (this->m_isRunning)
+	{
+		// Frame counter
+		this->m_window->OnUpdate();
+
+		if (!this->m_isMinimized)
+		{
+			// start CPU timmers
+
+			// Renderer begin frame
+			for (auto& layer : this->m_layerStack)
+			{
+				// TODO: Time step
+				layer->OnUpdate(Core::TimeStep());
+			}
+
+			if (this->m_spec.EnableImGui)
+			{
+				this->RenderImGui();
+			}
+
+			this->Render();
+			this->Compose();
+			
+			// Renderer End Frame
+
+			// Execute Renderer on seperate thread maybe?
+			// Finish Timers and 
+			RHI::IGraphicsDevice::Ptr->Present();
+			this->m_frameCount++;
+		}
+
+		// Calculate step time based on last frame
+	}
+}
+
+void PhxEngine::LayeredApplication::PushLayer(std::shared_ptr<AppLayer> layer)
+{
+	this->m_layerStack.PushLayer(layer);
+}
+
+void PhxEngine::LayeredApplication::PushOverlay(std::shared_ptr<AppLayer> layer)
+{
+	this->m_layerStack.PushOverlay(layer);
+}
+
+void PhxEngine::LayeredApplication::OnEvent(Event& e)
+{
+	if (e.GetEventType() == WindowCloseEvent::GetStaticType())
+	{
+		this->m_isRunning = false;
+		e.IsHandled = true;
 	}
 
-	if (this->m_renderPath)
+	if (e.GetEventType() == WindowResizeEvent::GetStaticType())
 	{
-		this->m_renderPath->OnDetach();
+		WindowResizeEvent& resizeEvent = static_cast<WindowResizeEvent&>(e);
+		if (resizeEvent.GetWidth() == 0 && resizeEvent.GetHeight() == 0)
+		{
+			this->m_isMinimized = true;
+		}
+		else
+		{
+			this->m_isMinimized = false;
+			// Trigger Resize event on RHI;
+		}
+	}
+}
+
+void PhxEngine::LayeredApplication::RenderImGui()
+{
+	this->m_imguiRenderer->BeginFrame();
+
+	for (auto& layer : this->m_layerStack)
+	{
+		layer->OnRenderImGui();
+	}
+}
+
+void PhxEngine::LayeredApplication::Render()
+{
+	for (auto& layer : this->m_layerStack)
+	{
+		layer->OnRender();
+	}
+}
+
+void PhxEngine::LayeredApplication::Compose()
+{
+	this->m_composeCommandList->Open();
+
+	{
+		auto scopedMarker = this->m_composeCommandList->BeginScopedMarker("Compose back buffer");
+		TextureHandle backBuffer = IGraphicsDevice::Ptr->GetBackBuffer();
+
+		this->m_composeCommandList->TransitionBarrier(backBuffer, ResourceStates::Present, ResourceStates::RenderTarget);
+		this->m_composeCommandList->ClearTextureFloat(backBuffer, { 0.0f, 0.0f, 0.0f, 1.0f });
+
+		this->m_composeCommandList->SetRenderTargets({ backBuffer }, nullptr);
+
+		for (auto& layer : this->m_layerStack)
+		{
+			layer->OnCompose(this->m_composeCommandList);
+		}
+
+		this->m_composeCommandList->TransitionBarrier(backBuffer, ResourceStates::RenderTarget, ResourceStates::Present);
 	}
 
-	this->m_renderPath = renderPathComponent;
-	this->m_renderPath->OnAttach();
+	this->m_composeCommandList->Close();
+
+	IGraphicsDevice::Ptr->ExecuteCommandLists(this->m_composeCommandList.get());
 }

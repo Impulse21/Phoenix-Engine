@@ -1,32 +1,33 @@
 #pragma once
 
-#include "phxpch.h"
-
-#include "App/Application.h"
-#include "Graphics/RHI/Dx12/PhxRHI_Dx12.h"
+#include "PhxEngine/App/Application.h"
+#include "PhxEngine/Core/Initializer.h"
 
 //#define USE_GLFW
 
 
 #ifdef LEGACY
+#include "PhxEngine/Graphics/RHI/Dx12/PhxRHI_Dx12.h"
 #include "ThirdParty/ImGui/imgui_impl_win32.h"
 #endif
 
 // Client Code
-extern PhxEngine::Application* PhxEngine::CreateApplication(int argc, char* argv[]);
+extern PhxEngine::LayeredApplication* PhxEngine::CreateApplication(int argc, char* argv[]);
 bool gApplicationRunning = true;
 
 #ifndef LEGACY
 
 int main(int argc, char** argv)
 {
-    while (gApplicationRunning = true)
+    // while (gApplicationRunning = true)
     {
-        // Initialize core systems
+        PhxEngine::Core::Initialize();
+
         auto* application = PhxEngine::CreateApplication(argc, argv);
         application->Run();
         delete application;
-        // Tear down core systems
+
+        PhxEngine::Core::Finalize();
     }
 
     return 0;

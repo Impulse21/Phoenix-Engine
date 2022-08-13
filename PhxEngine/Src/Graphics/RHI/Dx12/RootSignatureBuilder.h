@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/Graphics/RHI/PhxRHI.h"
 #include "Common.h"
 
 namespace PhxEngine::RHI::Dx12

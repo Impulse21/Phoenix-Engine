@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/StringHash.h"
+#include "PhxEngine/Core/StringHash.h"
 
 // Credit for this code goes to: https://vkguide.dev/docs/extra-chapter/cvar_system/
 // What a great little tutorial

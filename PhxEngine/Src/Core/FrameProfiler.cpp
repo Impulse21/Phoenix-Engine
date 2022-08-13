@@ -1,5 +1,5 @@
 #include "phxpch.h"
-#include "FrameProfiler.h"
+#include "PhxEngine/Core/FrameProfiler.h"
 
 using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI;

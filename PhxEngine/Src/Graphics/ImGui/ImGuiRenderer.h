@@ -2,9 +2,9 @@
 
 #include <memory>
 
-#include "App/ApplicationLayer.h"
-#include "Core/Platform.h"
-#include "Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/App/Layer.h"
+#include "PhxEngine/Core/Platform.h"
+#include "PhxEngine/Graphics/RHI/PhxRHI.h"
 
 // Forward Declares
 struct ImGuiContext;
@@ -13,25 +13,23 @@ namespace PhxEngine::Graphics
 {
 	class ShaderStore;
 
-	class ImGuiRenderer
+	class ImGuiRenderer : public AppLayer
 	{
 	public:
 		ImGuiRenderer() = default;
 		virtual ~ImGuiRenderer() = default;
 
-		void Initialize(
-			RHI::IGraphicsDevice* graphicsDevice,
-			ShaderStore const& shaderStore,
-			Core::Platform::WindowHandle windowHandle);
-		void Finalize();
+		void OnAttach() override;
+		void OnDetach() override;
 
 		void BeginFrame();
-		void Render(RHI::CommandListHandle cmd);
+		void OnCompose(RHI::CommandListHandle cmd) override;
 
 	private:
 		void CreatePipelineStateObject(
-			RHI::IGraphicsDevice* graphicsDevice,
-			ShaderStore const& shaderStore);
+			RHI::IGraphicsDevice* graphicsDevice);
+
+		void SetDarkThemeColors();
 
 	private:
 		ImGuiContext* m_imguiContext;

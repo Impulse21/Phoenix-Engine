@@ -3,9 +3,9 @@
 #include "GltfSceneLoader.h"
 #include "Graphics/TextureCache.h"
 
-#include "Scene.h"
-#include "SceneComponents.h"
-#include "Core/Helpers.h"
+#include "PhxEngine/Scene/Scene.h"
+#include "PhxEngine/Scene/SceneComponents.h"
+#include "PhxEngine/Core/Helpers.h"
 
 #include <filesystem>
 

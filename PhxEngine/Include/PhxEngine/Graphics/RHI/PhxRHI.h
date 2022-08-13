@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Core/Platform.h"
-#include "Core/TimeStep.h"
-#include "Core/Span.h"
+#include "PhxEngine/Core/Platform.h"
+#include "PhxEngine/Core/TimeStep.h"
+#include "PhxEngine/Core/Span.h"
 
 #include <stdint.h>
 #include <optional>
@@ -1117,9 +1117,14 @@ namespace PhxEngine::RHI
     public:
         virtual ~IGraphicsDevice() = default;
 
+        // Global Singleton not ideal as we can only have one device per application, however, it simplifies a lot when passing the object around
+        inline static IGraphicsDevice* Ptr;
+
         // -- Create Functions ---
     public:
         virtual void CreateSwapChain(SwapChainDesc const& swapChainDesc) = 0;
+
+        // TODO: Change to a new pattern so we don't require a command list stored on an object. Instread, request from a pool of objects
         virtual CommandListHandle CreateCommandList(CommandListDesc const& desc = {}) = 0;
 
         virtual ShaderHandle CreateShader(ShaderDesc const& desc, const void* binary, size_t binarySize) = 0;
@@ -1181,4 +1186,9 @@ namespace PhxEngine::RHI
     };
 
     extern void ReportLiveObjects();
+    
+    namespace DeviceFactory
+    {
+        extern IGraphicsDevice* CreateDx12Device();
+    }
 }

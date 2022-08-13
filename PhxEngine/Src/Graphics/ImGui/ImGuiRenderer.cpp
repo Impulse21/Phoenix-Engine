@@ -1,11 +1,15 @@
 #include "phxpch.h"
 
 #include "Graphics/ImGui/ImGuiRenderer.h"
-#include "Graphics/ShaderStore.h"
+#include <PhxEngine/Graphics/ShaderStore.h>
 #include <Shaders/ShaderInteropStructures.h>
+#include <PhxEngine/App/Application.h>
+#include <PhxEngine/Core/Window.h>
 
 #include <imgui.h>
-#include "imgui_impl_win32.h"
+#include "imgui_impl_glfw.h"
+
+#include <unordered_set>
 
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Core;
@@ -13,20 +17,20 @@ using namespace PhxEngine::RHI;
 
 enum RootParameters
 {
-    MatrixCB,           // cbuffer vertexBuffer : register(b0)
+    PushConstant,           // cbuffer vertexBuffer : register(b0)
     BindlessResources,
     NumRootParameters
 };
 
-void PhxEngine::Graphics::ImGuiRenderer::Initialize(
-    RHI::IGraphicsDevice* graphicsDevice,
-    ShaderStore const& shaderStore,
-    Core::Platform::WindowHandle windowHandle)
+void PhxEngine::Graphics::ImGuiRenderer::OnAttach()
 {
     this->m_imguiContext = ImGui::CreateContext();
     ImGui::SetCurrentContext(this->m_imguiContext);
 
-    if (!ImGui_ImplWin32_Init(windowHandle))
+    IWindow* window = LayeredApplication::Ptr->GetWindow();
+    auto* glfwWindow = static_cast<GLFWwindow*>(window->GetNativeWindow());
+
+    if (!ImGui_ImplGlfw_InitForVulkan(glfwWindow, true))
     {
         throw std::runtime_error("Failed it initalize IMGUI");
         return;
@@ -34,6 +38,13 @@ void PhxEngine::Graphics::ImGuiRenderer::Initialize(
 
     ImGuiIO& io = ImGui::GetIO();
     io.FontAllowUserScaling = true;
+    // Drive this based on configuration
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows
+
+
+    ImGui::StyleColorsDark();
+    SetDarkThemeColors();
 
     unsigned char* pixelData = nullptr;
     int width;
@@ -50,7 +61,7 @@ void PhxEngine::Graphics::ImGuiRenderer::Initialize(
     desc.MipLevels = 1;
     desc.DebugName = "IMGUI Font Texture";
 
-    this->m_fontTexture = graphicsDevice->CreateTexture(desc);
+    this->m_fontTexture = IGraphicsDevice::Ptr->CreateTexture(desc);
 
     RHI::SubresourceData subResourceData = {};
 
@@ -59,7 +70,7 @@ void PhxEngine::Graphics::ImGuiRenderer::Initialize(
     subResourceData.slicePitch = subResourceData.rowPitch * height;
     subResourceData.pData = pixelData;
 
-    CommandListHandle uploadCommandList = graphicsDevice->CreateCommandList();
+    CommandListHandle uploadCommandList = IGraphicsDevice::Ptr->CreateCommandList();
 
     uploadCommandList->Open();
     uploadCommandList->TransitionBarrier(this->m_fontTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
@@ -68,15 +79,15 @@ void PhxEngine::Graphics::ImGuiRenderer::Initialize(
 
     uploadCommandList->Close();
 
-    graphicsDevice->ExecuteCommandLists(uploadCommandList.get(), true);
-    this->CreatePipelineStateObject(graphicsDevice, shaderStore);
+    IGraphicsDevice::Ptr->ExecuteCommandLists(uploadCommandList.get(), true);
+    this->CreatePipelineStateObject(IGraphicsDevice::Ptr);
 }
 
-void PhxEngine::Graphics::ImGuiRenderer::Finalize()
+void PhxEngine::Graphics::ImGuiRenderer::OnDetach()
 {
     if (this->m_imguiContext)
     {
-        ImGui_ImplWin32_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext(this->m_imguiContext);
         this->m_imguiContext = nullptr;
     }
@@ -85,11 +96,11 @@ void PhxEngine::Graphics::ImGuiRenderer::Finalize()
 void PhxEngine::Graphics::ImGuiRenderer::BeginFrame()
 {
     ImGui::SetCurrentContext(this->m_imguiContext);
-    ImGui_ImplWin32_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 }
 
-void PhxEngine::Graphics::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
+void PhxEngine::Graphics::ImGuiRenderer::OnCompose(RHI::CommandListHandle cmd)
 {
 	ImGui::SetCurrentContext(this->m_imguiContext);
 	ImGui::Render();
@@ -125,13 +136,44 @@ void PhxEngine::Graphics::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
 
 	Shader::ImguiDrawInfo push = {};
 	push.Mvp = DirectX::XMFLOAT4X4(&mvp[0][0]);
-	push.TextureIndex = this->m_fontTexture->GetDescriptorIndex();
 
-	cmd->BindPushConstant(RootParameters::MatrixCB, push);
 	Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
 	cmd->SetViewports(&v, 1);
 
 	const FormatType indexFormat = sizeof(ImDrawIdx) == 2 ? FormatType::R16_UINT : FormatType::R32_UINT;
+
+    static thread_local std::unordered_set<RHI::TextureHandle> cache;
+    static thread_local std::vector<RHI::GpuBarrier> preBarriers;
+    static thread_local std::vector<RHI::GpuBarrier> postBarriers;
+    cache.clear();
+    preBarriers.clear();
+    postBarriers.clear();
+
+    for (int i = 0; i < drawData->CmdListsCount; ++i)
+    {
+        const ImDrawList* drawList = drawData->CmdLists[i];
+        for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
+        {
+            const ImDrawCmd& drawCmd = drawList->CmdBuffer[j];
+
+            if (drawCmd.UserCallback)
+            {
+                continue;
+            }
+            // Ensure 
+            /*PhxEngine::RHI::TextureHandle texture = *reinterpret_cast<PhxEngine::RHI::TextureHandle*>(drawCmd.TextureId);
+
+            if (texture && cache.find(texture) == cache.end())
+            {
+                cache.insert(texture);
+                preBarriers.push_back(GpuBarrier::CreateTexture(texture, texture->GetDesc().InitialState, RHI::ResourceStates::ShaderResource));
+                postBarriers.push_back(GpuBarrier::CreateTexture(texture, RHI::ResourceStates::ShaderResource, texture->GetDesc().InitialState));
+            }
+            */
+        }
+    }
+
+    // cmd->TransitionBarriers(Span<GpuBarrier>(preBarriers.data(), preBarriers.size()));
 
 	for (int i = 0; i < drawData->CmdListsCount; ++i)
 	{
@@ -144,6 +186,7 @@ void PhxEngine::Graphics::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
 		for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
 		{
 			const ImDrawCmd& drawCmd = drawList->CmdBuffer[j];
+            
 			if (drawCmd.UserCallback)
 			{
 				drawCmd.UserCallback(drawList, &drawCmd);
@@ -161,6 +204,14 @@ void PhxEngine::Graphics::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
 				if (scissorRect.MaxX - scissorRect.MinX > 0.0f &&
 					scissorRect.MaxY - scissorRect.MinY > 0.0)
 				{
+                    // Ensure 
+                    auto textureIndex = reinterpret_cast<RHI::DescriptorIndex*>(drawCmd.TextureId);
+
+                    push.TextureIndex = textureIndex && *textureIndex != RHI::cInvalidDescriptorIndex
+                        ? *textureIndex
+                        : this->m_fontTexture->GetDescriptorIndex();
+
+                    cmd->BindPushConstant(RootParameters::PushConstant, push);
 					cmd->SetScissors(&scissorRect, 1);
 					cmd->DrawIndexed(drawCmd.ElemCount, 1, indexOffset);
 				}
@@ -169,15 +220,15 @@ void PhxEngine::Graphics::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
 		}
 	}
 
+    // cmd->TransitionBarriers(Span<GpuBarrier>(postBarriers.data(), postBarriers.size()));
 	ImGui::EndFrame();
 }
 
 void PhxEngine::Graphics::ImGuiRenderer::CreatePipelineStateObject(
-    RHI::IGraphicsDevice* graphicsDevice,
-    ShaderStore const& shaderStore)
+    RHI::IGraphicsDevice* graphicsDevice)
 {
-    ShaderHandle vs = shaderStore.Retrieve(PreLoadShaders::VS_ImGui);
-    ShaderHandle ps = shaderStore.Retrieve(PreLoadShaders::PS_ImGui);
+    ShaderHandle vs = ShaderStore::Ptr->Retrieve(PreLoadShaders::VS_ImGui);
+    ShaderHandle ps = ShaderStore::Ptr->Retrieve(PreLoadShaders::PS_ImGui);
 
     std::vector<VertexAttributeDesc> attributeDesc =
     {
@@ -231,4 +282,37 @@ void PhxEngine::Graphics::ImGuiRenderer::CreatePipelineStateObject(
     */
 
     this->m_pso = graphicsDevice->CreateGraphicsPSO(psoDesc);
+}
+
+void PhxEngine::Graphics::ImGuiRenderer::SetDarkThemeColors()
+{
+    auto& colors = ImGui::GetStyle().Colors;
+    colors[ImGuiCol_WindowBg] = ImVec4{ 0.1f, 0.105f, 0.11f, 1.0f };
+
+    // Headers
+    colors[ImGuiCol_Header] = ImVec4{ 0.2f, 0.205f, 0.21f, 1.0f };
+    colors[ImGuiCol_HeaderHovered] = ImVec4{ 0.3f, 0.305f, 0.31f, 1.0f };
+    colors[ImGuiCol_HeaderActive] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
+
+    // Buttons
+    colors[ImGuiCol_Button] = ImVec4{ 0.2f, 0.205f, 0.21f, 1.0f };
+    colors[ImGuiCol_ButtonHovered] = ImVec4{ 0.3f, 0.305f, 0.31f, 1.0f };
+    colors[ImGuiCol_ButtonActive] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
+
+    // Frame BG
+    colors[ImGuiCol_FrameBg] = ImVec4{ 0.2f, 0.205f, 0.21f, 1.0f };
+    colors[ImGuiCol_FrameBgHovered] = ImVec4{ 0.3f, 0.305f, 0.31f, 1.0f };
+    colors[ImGuiCol_FrameBgActive] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
+
+    // Tabs
+    colors[ImGuiCol_Tab] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
+    colors[ImGuiCol_TabHovered] = ImVec4{ 0.38f, 0.3805f, 0.381f, 1.0f };
+    colors[ImGuiCol_TabActive] = ImVec4{ 0.28f, 0.2805f, 0.281f, 1.0f };
+    colors[ImGuiCol_TabUnfocused] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
+    colors[ImGuiCol_TabUnfocusedActive] = ImVec4{ 0.2f, 0.205f, 0.21f, 1.0f };
+
+    // Title
+    colors[ImGuiCol_TitleBg] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
+    colors[ImGuiCol_TitleBgActive] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
+    colors[ImGuiCol_TitleBgCollapsed] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
 }

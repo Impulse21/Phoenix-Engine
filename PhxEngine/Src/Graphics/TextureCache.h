@@ -6,7 +6,8 @@
 
 #include <filesystem>
 
-#include "RHI/PhxRHI.h"
+#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+
 namespace PhxEngine::Graphics
 {
 	struct LoadedTexture;
