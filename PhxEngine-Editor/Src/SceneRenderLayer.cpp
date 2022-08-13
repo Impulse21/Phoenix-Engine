@@ -33,8 +33,8 @@ void SceneRenderLayer::OnRender()
 
 void SceneRenderLayer::ResizeSurface(DirectX::XMFLOAT2 const& size)
 {
-    // this->m_colourBuffers.clear();
-    // this->CreateWindowTextures(size);
+    this->m_colourBuffers.clear();
+    this->CreateWindowTextures(size);
 }
 
 void SceneRenderLayer::CreateWindowTextures(DirectX::XMFLOAT2 const& size)
@@ -46,7 +46,7 @@ void SceneRenderLayer::CreateWindowTextures(DirectX::XMFLOAT2 const& size)
     desc.Width = std::max(size.x, 1.0f);
     desc.Height = std::max(size.y, 1.0f);
 
-    RHI::Color clearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+    RHI::Color clearValue = { 0.0f, 0.0f, 1.0f, 0.0f };
     desc.OptmizedClearValue = std::make_optional<RHI::Color>(clearValue);
 
     // TODO: Determine what format should be used here.

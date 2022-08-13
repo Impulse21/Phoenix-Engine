@@ -95,13 +95,13 @@ void EditorLayer::BeginDockspace()
     this->m_viewportSize = { viewportPanelSize.x, viewportPanelSize.y };
     PhxEngine::RHI::TextureHandle& colourBuffer = this->m_sceneRenderLayer->GetFinalColourBuffer();
 
-    if (this->m_viewportSize.x != colourBuffer->GetDesc().Width || this->m_viewportSize.y != colourBuffer->GetDesc().Height)
+    if ((uint32_t)this->m_viewportSize.x != colourBuffer->GetDesc().Width || (uint32_t)this->m_viewportSize.y != colourBuffer->GetDesc().Height)
     {
         this->m_sceneRenderLayer->ResizeSurface(this->m_viewportSize);
     }
     
     static PhxEngine::RHI::DescriptorIndex img = colourBuffer->GetDescriptorIndex();
-    ImGui::Image(reinterpret_cast<void*>(&img), ImVec2{ this->m_viewportSize.x, this->m_viewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+    ImGui::Image(reinterpret_cast<void*>(&img), ImVec2{ this->m_viewportSize.x, this->m_viewportSize.y });
     ImGui::End();
 }
 
