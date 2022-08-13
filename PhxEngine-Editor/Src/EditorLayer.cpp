@@ -3,6 +3,7 @@
 #include <PhxEngine/Graphics/RHI/PhxRHI.h>
 #include "SceneRenderLayer.h"
 
+#include <iostream>
 #include <imgui.h>
 
 void EditorLayer::OnRenderImGui()
@@ -97,6 +98,9 @@ void EditorLayer::BeginDockspace()
 
     if ((uint32_t)this->m_viewportSize.x != colourBuffer->GetDesc().Width || (uint32_t)this->m_viewportSize.y != colourBuffer->GetDesc().Height)
     {
+
+        // std::cout << "Resizing Window. New = [" << (uint32_t)this->m_viewportSize.x << ", " << (uint32_t)this->m_viewportSize.y << "]";
+        // std::cout << "Current = ["<< colourBuffer->GetDesc().Width  << ", " << colourBuffer->GetDesc().Height << std::endl;
         this->m_sceneRenderLayer->ResizeSurface(this->m_viewportSize);
     }
     

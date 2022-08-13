@@ -116,6 +116,10 @@ namespace PhxEngine::RHI::Dx12
 
     struct Texture final : public ITexture
     {
+        ~Texture()
+        {
+            int i = 0;
+        }
         TextureDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
 
