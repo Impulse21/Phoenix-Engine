@@ -3,6 +3,7 @@
 #include "PhxEngine/Core/Platform.h"
 #include "PhxEngine/Core/TimeStep.h"
 #include "PhxEngine/Core/Span.h"
+#include "PhxEngine/Core/Handle.h"
 
 #include <stdint.h>
 #include <optional>
@@ -818,6 +819,9 @@ namespace PhxEngine::RHI
         std::string DebugName;
     };
 
+    // New;
+    class Texture;
+
     class ITexture : public IResource
     {
     public:
@@ -826,7 +830,8 @@ namespace PhxEngine::RHI
         virtual const DescriptorIndex GetDescriptorIndex() const = 0;
     };
 
-    using TextureHandle = std::shared_ptr<ITexture>;
+    // using TextureHandle = std::shared_ptr<ITexture>;
+    using TextureHandle = Core::Handle<Texture>;
 
     struct BufferRange
     {
@@ -1132,8 +1137,12 @@ namespace PhxEngine::RHI
         virtual GraphicsPSOHandle CreateGraphicsPSO(GraphicsPSODesc const& desc) = 0;
         virtual ComputePSOHandle CreateComputePso(ComputePSODesc const& desc) = 0;
 
-        virtual TextureHandle CreateDepthStencil(TextureDesc const& desc) = 0;
         virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
+        virtual const TextureDesc& GetTextureDesc(TextureHandle handle) = 0;
+        virtual DescriptorIndex GetDescriptorIndex(TextureHandle handle) = 0;
+        virtual void FreeTexture(TextureHandle) = 0;
+
+        virtual TextureHandle CreateDepthStencil(TextureDesc const& desc) = 0;
 
         // TODO: I don't think is this a clear interface as to what desc data is required
         // Consider cleaning this up eventually.

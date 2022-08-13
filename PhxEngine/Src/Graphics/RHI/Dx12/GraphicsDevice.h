@@ -9,6 +9,7 @@
 #include "DescriptorHeap.h"
 #include "Common.h"
 #include "PhxEngine/Core/BitSetAllocator.h"
+#include "PhxEngine/Core/Pool.h"
 
 // Teir 1 limit is 1,000,000
 // https://docs.microsoft.com/en-us/windows/win32/direct3d12/hardware-support
@@ -19,6 +20,8 @@
 namespace PhxEngine::RHI::Dx12
 {
     constexpr size_t kNumCommandListPerFrame = 32;
+    constexpr size_t kResourcePoolSize = 2000000; // 2 MB of handles
+
     struct TrackedResources;
 
     class BindlessDescriptorTable;
@@ -114,12 +117,8 @@ namespace PhxEngine::RHI::Dx12
         const ComputePSODesc& GetDesc() const override { return this->Desc; }
     };
 
-    struct Texture final : public ITexture
+    struct Dx12Texture final : public ITexture
     {
-        ~Texture()
-        {
-            int i = 0;
-        }
         TextureDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
 
@@ -206,7 +205,11 @@ namespace PhxEngine::RHI::Dx12
         ComputePSOHandle CreateComputePso(ComputePSODesc const& desc) override;
 
         TextureHandle CreateDepthStencil(TextureDesc const& desc) override;
+
         TextureHandle CreateTexture(TextureDesc const& desc) override;
+        const TextureDesc& GetTextureDesc(TextureHandle handle) override;
+        DescriptorIndex GetDescriptorIndex(TextureHandle handle) override;
+        void FreeTexture(TextureHandle) override;
 
         BufferHandle CreateIndexBuffer(BufferDesc const& desc) override;
         BufferHandle CreateVertexBuffer(BufferDesc const& desc) override;
@@ -253,10 +256,10 @@ namespace PhxEngine::RHI::Dx12
         TextureHandle CreateRenderTarget(TextureDesc const& desc, Microsoft::WRL::ComPtr<ID3D12Resource> d3d12TextureResource);
 
 
-        void CreateShaderResourceView(Texture* textureImpl);
-        void CreateRenderTargetView(Texture* textureImpl);
-        void CreateDepthStencilView(Texture* textureImpl);
-        void CreateUnorderedAccessView(Texture* textureImpl);
+        void CreateShaderResourceView(Dx12Texture& texture);
+        void CreateRenderTargetView(Dx12Texture& texture);
+        void CreateDepthStencilView(Dx12Texture& texture);
+        void CreateUnorderedAccessView(Dx12Texture& texture);
 
     public:
         void RunGarbageCollection();
@@ -335,6 +338,9 @@ namespace PhxEngine::RHI::Dx12
 		bool IsMeshShadingSupported = false;
 		bool IsCreateNotZeroedAvailable = false;
 		bool IsUnderGraphicsDebugger = false;
+
+        // -- Data Pool ---
+        Core::Pool<Dx12Texture, Texture> m_texturePool;
 
         // -- SwapChain ---
 		SwapChain m_swapChain;
