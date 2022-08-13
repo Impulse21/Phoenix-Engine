@@ -1,5 +1,5 @@
 #include "phxpch.h"
-#include "ShaderFactory.h"
+#include "PhxEngine/Graphics/ShaderFactory.h"
 
 #include "ShaderCompiler.h"
 #include "PhxEngine/Core/Helpers.h"

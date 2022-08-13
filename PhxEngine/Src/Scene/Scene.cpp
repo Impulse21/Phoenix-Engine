@@ -1,6 +1,6 @@
 #include "phxpch.h"
 
-#include "Scene.h"
+#include "PhxEngine/Scene/Scene.h"
 
 #include <DirectXMath.h>
 

@@ -1,7 +1,7 @@
 #include "phxpch.h"
 
-#include "SceneLoader.h"
-#include "Scene.h"
+#include "PhxEngine/Scene/SceneLoader.h"
+#include "PhxEngine/Scene/Scene.h"
 #include "GltfSceneLoader.h"
 
 using namespace PhxEngine::Scene;
