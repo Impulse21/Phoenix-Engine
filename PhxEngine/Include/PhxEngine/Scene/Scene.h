@@ -2,10 +2,10 @@
 
 #include <sstream>
 
-#include "Systems/Ecs.h"
-#include "Scene/SceneComponents.h"
+#include "PhxEngine/Systems/Ecs.h"
+#include "PhxEngine/Scene/SceneComponents.h"
 
-#include "Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/Graphics/RHI/PhxRHI.h"
 
 namespace PhxEngine::Scene
 {

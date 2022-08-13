@@ -87,7 +87,6 @@ file (GLOB PhxEngine_Scene_Inc
 	Include/PhxEngine/Scene/*.h)
 
 file (GLOB PhxEngine_Scene_Src
-	Include/PhxEngine/Scene/*.h
     Src/Scene/*.h
     Src/Scene/*.cpp)
 

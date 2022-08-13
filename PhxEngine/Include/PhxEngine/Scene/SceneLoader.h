@@ -3,7 +3,7 @@
 #include <string>
 #include <memory>
 
-#include "Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/Graphics/RHI/PhxRHI.h"
 
 namespace PhxEngine::Graphics
 {

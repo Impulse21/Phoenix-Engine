@@ -5,11 +5,11 @@
 
 #include <DirectXMath.h>
 
-#include "Systems/Ecs.h"
+#include "PhxEngine/Systems/Ecs.h"
 
-#include "Graphics/Enums.h"
-#include "Graphics/RHI/PhxRHI.h"
-#include "Graphics/RectPacker.h"
+#include "PhxEngine/Graphics/Enums.h"
+#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/Graphics/RectPacker.h"
 
 #include <Shaders/ShaderInteropStructures.h>
 

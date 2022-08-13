@@ -1,9 +1,9 @@
 #pragma once
 
-#include "SceneLoader.h"
-#include "Systems/Ecs.h"
+#include "PhxEngine/Scene/SceneLoader.h"
+#include "PhxEngine/Systems/Ecs.h"
 
-#include "Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/Graphics/RHI/PhxRHI.h"
 
 #include <unordered_map>
 #include <vector>

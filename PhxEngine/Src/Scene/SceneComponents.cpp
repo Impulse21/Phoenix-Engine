@@ -1,5 +1,5 @@
 #include "phxpch.h"
-#include "SceneComponents.h"
+#include "PhxEngine/Scene/SceneComponents.h"
 
 #include "PhxEngine/Core/Math.h"
 
