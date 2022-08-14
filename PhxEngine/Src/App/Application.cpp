@@ -347,7 +347,7 @@ void PhxEngine::LayeredApplication::Compose()
 		this->m_composeCommandList->TransitionBarrier(backBuffer, ResourceStates::Present, ResourceStates::RenderTarget);
 		this->m_composeCommandList->ClearTextureFloat(backBuffer, { 0.0f, 0.0f, 0.0f, 1.0f });
 
-		this->m_composeCommandList->SetRenderTargets({ backBuffer }, nullptr);
+		this->m_composeCommandList->SetRenderTargets({ backBuffer }, TextureHandle());
 
 		for (auto& layer : this->m_layerStack)
 		{

@@ -470,21 +470,21 @@ void PhxEngine::Scene::MaterialComponent::PopulateShaderData(Shader::MaterialDat
 	shaderData.AO = this->Ao;
 
 	shaderData.AlbedoTexture = RHI::cInvalidDescriptorIndex;
-	if (this->AlbedoTexture)
+	if (this->AlbedoTexture.IsValid())
 	{
-		shaderData.AlbedoTexture = this->AlbedoTexture->GetDescriptorIndex();
+		shaderData.AlbedoTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(this->AlbedoTexture);
 	}
 
 	shaderData.AOTexture = RHI::cInvalidDescriptorIndex;
-	if (this->AoTexture)
+	if (this->AoTexture.IsValid())
 	{
-		shaderData.AOTexture = this->AoTexture->GetDescriptorIndex();
+		shaderData.AOTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(this->AoTexture);
 	}
 
 	shaderData.MaterialTexture = RHI::cInvalidDescriptorIndex;
-	if (this->MetalRoughnessTexture)
+	if (this->MetalRoughnessTexture.IsValid())
 	{
-		shaderData.MaterialTexture = this->MetalRoughnessTexture->GetDescriptorIndex();
+		shaderData.MaterialTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(this->NormalMapTexture);
 		assert(shaderData.MaterialTexture != RHI::cInvalidDescriptorIndex);
 
 		// shaderData.MetalnessTexture = this->MetalRoughnessTexture->GetDescriptorIndex();
@@ -492,9 +492,9 @@ void PhxEngine::Scene::MaterialComponent::PopulateShaderData(Shader::MaterialDat
 	}
 
 	shaderData.NormalTexture = RHI::cInvalidDescriptorIndex;
-	if (this->NormalMapTexture)
+	if (this->NormalMapTexture.IsValid())
 	{
-		shaderData.NormalTexture = this->NormalMapTexture->GetDescriptorIndex();
+		shaderData.NormalTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(this->NormalMapTexture);
 	}
 }
 

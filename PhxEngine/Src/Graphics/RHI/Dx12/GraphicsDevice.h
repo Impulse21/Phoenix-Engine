@@ -26,6 +26,12 @@ namespace PhxEngine::RHI::Dx12
 
     class BindlessDescriptorTable;
 
+    struct FrameContext
+    {
+        uint64_t FenceValue;
+        std::vector<Core::Handle<Texture>> PendingDeletionTextures;
+    };
+
     class TimerQuery : public ITimerQuery
     {
     public:
@@ -117,7 +123,7 @@ namespace PhxEngine::RHI::Dx12
         const ComputePSODesc& GetDesc() const override { return this->Desc; }
     };
 
-    struct Dx12Texture final : public ITexture
+    struct Dx12Texture final
     {
         TextureDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
@@ -128,11 +134,20 @@ namespace PhxEngine::RHI::Dx12
         DescriptorHeapAllocation SrvAllocation;
         DescriptorHeapAllocation UavAllocation;
 
-        // TODO: Free Index
         DescriptorIndex BindlessResourceIndex = cInvalidDescriptorIndex;
 
-        const TextureDesc& GetDesc() const { return this->Desc; }
-        virtual const DescriptorIndex GetDescriptorIndex() const { return this->BindlessResourceIndex; }
+        Dx12Texture() = default;
+        Dx12Texture(Dx12Texture& other)
+        {
+            this->Desc = other.Desc;
+            this->D3D12Resource = std::move(other.D3D12Resource);
+
+            this->RtvAllocation = std::move(other.RtvAllocation);
+            this->DsvAllocation = std::move(other.DsvAllocation);
+            this->SrvAllocation = std::move(other.SrvAllocation);
+            this->UavAllocation = std::move(other.UavAllocation);
+            BindlessResourceIndex = other.BindlessResourceIndex;
+        }
     };
 
     struct GpuBuffer final : public IBuffer
@@ -262,6 +277,7 @@ namespace PhxEngine::RHI::Dx12
         void CreateUnorderedAccessView(Dx12Texture& texture);
 
     public:
+        // TODO: Remove
         void RunGarbageCollection();
 
         // -- Getters ---
@@ -290,11 +306,17 @@ namespace PhxEngine::RHI::Dx12
 
         ID3D12QueryHeap* GetQueryHeap() { return this->m_gpuTimestampQueryHeap.Get(); }
         std::shared_ptr<GpuBuffer> GetTimestampQueryBuffer() { return this->m_timestampQueryBuffer; }
-
         const BindlessDescriptorTable* GetBindlessTable() const { return this->m_bindlessResourceDescriptorTable.get(); }
+
+        // Maybe better encapulate this.
+        Core::Pool<Dx12Texture, Texture> GetTexturePool() { return this->m_texturePool; };
 
     private:
         size_t GetCurrentBackBufferIndex() const;
+        FrameContext& GetCurrentFrameContext() 
+        {
+            return this->m_frameContext[this->GetCurrentBackBufferIndex()];
+        }
 
     private:
         std::unique_ptr<GpuBuffer> CreateBufferInternal(BufferDesc const& desc);
@@ -360,7 +382,7 @@ namespace PhxEngine::RHI::Dx12
         std::unique_ptr<BindlessDescriptorTable> m_bindlessResourceDescriptorTable;
 
         // -- Frame Frences ---
-        std::vector<uint64_t> m_frameFence;
+        std::vector<FrameContext> m_frameContext;
         uint64_t m_frameCount;
 
         struct InflightDataEntry

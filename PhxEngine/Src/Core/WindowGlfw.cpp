@@ -1,5 +1,4 @@
-#include "D:/Users/C.DiPaolo/Development/Phoenix-Engine/build/PhxEngine/CMakeFiles/PhxEngine.dir/Debug/cmake_pch.hxx"
-#include "phxpch.h"
+#include <phxpch.h>
 #include "WindowGlfw.h"
 
 #include "GLFW/glfw3.h"

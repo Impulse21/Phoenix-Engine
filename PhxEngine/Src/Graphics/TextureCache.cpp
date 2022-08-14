@@ -129,7 +129,7 @@ RHI::TextureHandle PhxEngine::Graphics::TextureCache::LoadTexture(
     if (textureData.empty())
     {
         // LOG_CORE_ERROR("Failed to load texture data");
-        return nullptr;
+        return TextureHandle();
     }
 
     if (this->FillTextureData(textureData, texture, "", mmeType))
@@ -163,7 +163,7 @@ RHI::TextureHandle PhxEngine::Graphics::TextureCache::LoadTexture(
     if (texBlob.empty())
     {
         // LOG_CORE_ERROR("Failed to load texture data");
-        return nullptr;
+        return TextureHandle();
     }
 
     if (this->FillTextureData(texBlob, texture, filename.extension().generic_string(), ""))
@@ -177,7 +177,7 @@ RHI::TextureHandle PhxEngine::Graphics::TextureCache::LoadTexture(
 
 RHI::TextureHandle PhxEngine::Graphics::TextureCache::GetTexture(std::string const& key)
 {
-    return nullptr;
+    return TextureHandle();
 }
 
 std::shared_ptr<LoadedTexture> PhxEngine::Graphics::TextureCache::GetTextureFromCache(std::string const& key)

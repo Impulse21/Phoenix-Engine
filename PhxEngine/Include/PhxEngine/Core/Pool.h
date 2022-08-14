@@ -29,8 +29,7 @@ namespace PhxEngine::Core
 
 		~Pool()
 		{
-			// ERROR on unfree resources
-
+			assert(this->IsEmpty());
 			delete[] this->m_data;
 			delete[] this->m_freeList;
 			delete[] this->m_generations;
@@ -53,6 +52,7 @@ namespace PhxEngine::Core
 				handle.m_index < this->m_size&&
 				this->m_generations[handle.m_index] == handle.m_generation;
 		}
+
 
 		template<typename... Args>
 		Handle<HT> Emplace(Args&&... args)
@@ -86,11 +86,11 @@ namespace PhxEngine::Core
 				return;
 			}
 
-			this->m_data[handle.m_index]->~ImplT();
+			new (this->m_data + handle.m_index) ImplT();
 			this->m_generations[handle.m_index] += 1;
 
 			// To prevent the risk of re assignment, block index for being allocated
-			if (this->m_generations[handle.m_index] == std::numeric_limits<unint32_t>::max())
+			if (this->m_generations[handle.m_index] == std::numeric_limits<uint32_t>::max())
 			{
 				return;
 			}
@@ -99,6 +99,7 @@ namespace PhxEngine::Core
 			this->m_numActiveEntries--;
 		}
 
+		bool IsEmpty() const { return this->m_numActiveEntries == 0; }
 	private:
 		void Resize()
 		{

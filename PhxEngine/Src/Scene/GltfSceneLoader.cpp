@@ -352,14 +352,14 @@ PhxEngine::RHI::TextureHandle PhxEngine::Scene::GltfSceneLoader::LoadTexture(
 {
 	if (!cglftTexture)
 	{
-		return nullptr;
+		return TextureHandle();
 	}
 
 	const cgltf_image* ddsImage = ParseDDSImage(cglftTexture, objects);
 
 	if ((!cglftTexture->image || (!cglftTexture->image->uri && !cglftTexture->image->buffer_view)) && (!ddsImage || (!ddsImage->uri && !ddsImage->buffer_view)))
 	{
-		return nullptr;
+		return TextureHandle();
 	}
 
 	// Pick either DDS or standard image, prefer DDS
@@ -370,7 +370,7 @@ PhxEngine::RHI::TextureHandle PhxEngine::Scene::GltfSceneLoader::LoadTexture(
 	std::string mimeType = activeImage->mime_type ? activeImage->mime_type : "";
 
 	auto texture = this->m_textureCache->GetTexture(name);
-	if (texture)
+	if (texture.IsValid())
 	{
 		return texture;
 	}

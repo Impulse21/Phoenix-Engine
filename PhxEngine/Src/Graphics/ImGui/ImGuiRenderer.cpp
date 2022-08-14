@@ -142,6 +142,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnCompose(RHI::CommandListHandle cmd)
 
 	const FormatType indexFormat = sizeof(ImDrawIdx) == 2 ? FormatType::R16_UINT : FormatType::R32_UINT;
 
+    /*
     static thread_local std::unordered_set<RHI::TextureHandle> cache;
     static thread_local std::vector<RHI::GpuBarrier> preBarriers;
     static thread_local std::vector<RHI::GpuBarrier> postBarriers;
@@ -169,11 +170,12 @@ void PhxEngine::Graphics::ImGuiRenderer::OnCompose(RHI::CommandListHandle cmd)
                 preBarriers.push_back(GpuBarrier::CreateTexture(texture, texture->GetDesc().InitialState, RHI::ResourceStates::ShaderResource));
                 postBarriers.push_back(GpuBarrier::CreateTexture(texture, RHI::ResourceStates::ShaderResource, texture->GetDesc().InitialState));
             }
-            */
         }
     }
 
-    // cmd->TransitionBarriers(Span<GpuBarrier>(preBarriers.data(), preBarriers.size()));
+    cmd->TransitionBarriers(Span<GpuBarrier>(preBarriers.data(), preBarriers.size()));
+
+    */
 
 	for (int i = 0; i < drawData->CmdListsCount; ++i)
 	{
@@ -209,7 +211,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnCompose(RHI::CommandListHandle cmd)
 
                     push.TextureIndex = textureIndex && *textureIndex != RHI::cInvalidDescriptorIndex
                         ? *textureIndex
-                        : this->m_fontTexture->GetDescriptorIndex();
+                        : IGraphicsDevice::Ptr->GetDescriptorIndex(m_fontTexture);
 
                     cmd->BindPushConstant(RootParameters::PushConstant, push);
 					cmd->SetScissors(&scissorRect, 1);

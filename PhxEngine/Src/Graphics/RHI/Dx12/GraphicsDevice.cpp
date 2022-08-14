@@ -312,6 +312,11 @@ PhxEngine::RHI::Dx12::GraphicsDevice::~GraphicsDevice()
 {
 	// TODO: Check for dangling Handles!!!!!!!!!!!!!!!!!!
 	// TODO: this is to prevent an issue with dangling pointers. See DescriptorHeapAllocator
+	for (auto handle : this->m_swapChain.BackBuffers)
+	{
+		this->m_texturePool.Release(handle);
+	}
+
 	this->m_swapChain.BackBuffers.clear();
 }
 
@@ -374,7 +379,7 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateSwapChain(SwapChainDesc const& 
 	this->m_swapChain.Desc = swapChainDesc;
 
 	this->m_swapChain.BackBuffers.resize(this->m_swapChain.Desc.BufferCount);
-	this->m_frameFence.resize(this->m_swapChain.Desc.BufferCount, 0);
+	this->m_frameContext.resize(this->m_swapChain.Desc.BufferCount, {});
 	for (UINT i = 0; i < this->m_swapChain.Desc.BufferCount; i++)
 	{
 		Microsoft::WRL::ComPtr<ID3D12Resource> backBuffer;
@@ -781,9 +786,10 @@ DescriptorIndex PhxEngine::RHI::Dx12::GraphicsDevice::GetDescriptorIndex(Texture
 	return texture->BindlessResourceIndex;
 }
 
-void PhxEngine::RHI::Dx12::GraphicsDevice::FreeTexture(TextureHandle)
+void PhxEngine::RHI::Dx12::GraphicsDevice::FreeTexture(TextureHandle handle)
 {
-	this->m_inflightData.
+	FrameContext& context = this->GetCurrentFrameContext();
+	context.PendingDeletionTextures.push_back(handle);
 }
 
 BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateIndexBuffer(BufferDesc const& desc)
@@ -928,12 +934,23 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::Present()
 {
 	this->m_swapChain.DxgiSwapchain->Present(0, 0);
 
-	this->m_frameFence[this->GetCurrentBackBufferIndex()] = this->GetGfxQueue()->IncrementFence();
+	this->GetCurrentFrameContext().FenceValue = this->GetGfxQueue()->IncrementFence();
 	this->m_frameCount++;
 
-	// TODO: Add timers to see how long we are waiting for a fence to finish.
-	this->GetGfxQueue()->WaitForFence(this->m_frameFence[this->GetCurrentBackBufferIndex()]);
+	FrameContext& nextFrame = this->GetCurrentFrameContext();
+	this->GetGfxQueue()->WaitForFence(nextFrame.FenceValue);
 
+	// This is where we finally clear the data for the frame once it's made it's way back around.
+	// this is Safe and very explicit. I like it.
+	for (auto& handle : nextFrame.PendingDeletionTextures)
+	{
+		// Free Descriptor Index
+		DescriptorIndex index =  this->m_texturePool.Get(handle)->BindlessResourceIndex;
+		this->m_bindlessResourceDescriptorTable->Free(index);
+		this->m_texturePool.Release(handle);
+	}
+
+	// TODO: Remove once we go to handles
 	this->RunGarbageCollection();
 }
 
@@ -1276,6 +1293,7 @@ RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(Gr
 	*/
 
 
+// TODO: remove
 void PhxEngine::RHI::Dx12::GraphicsDevice::RunGarbageCollection()
 {
 	for (size_t i = 0; i < (size_t)CommandQueueType::Count; i++)

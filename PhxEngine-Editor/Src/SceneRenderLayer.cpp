@@ -1,7 +1,5 @@
 #include "SceneRenderLayer.h"
 
-#include <iostream>
-
 using namespace PhxEngine;
 
 SceneRenderLayer::SceneRenderLayer()
@@ -22,27 +20,26 @@ void SceneRenderLayer::OnAttach()
 void SceneRenderLayer::OnRender()
 {
     this->m_commandList->Open();
-    this->m_commandList->TransitionBarrier(this->GetFinalColourBuffer(), this->GetFinalColourBuffer()->GetDesc().InitialState, RHI::ResourceStates::RenderTarget);
+    const RHI::TextureDesc& finalColourBufferDesc = RHI::IGraphicsDevice::Ptr->GetTextureDesc(this->GetFinalColourBuffer());
+    this->m_commandList->TransitionBarrier(this->GetFinalColourBuffer(), finalColourBufferDesc.InitialState, RHI::ResourceStates::RenderTarget);
     {
         auto scrope = this->m_commandList->BeginScopedMarker("Clear Render Targets");
 
-        this->m_commandList->ClearTextureFloat(this->GetFinalColourBuffer(), this->GetFinalColourBuffer()->GetDesc().OptmizedClearValue.value());
+        this->m_commandList->ClearTextureFloat(this->GetFinalColourBuffer(), finalColourBufferDesc.OptmizedClearValue.value());
     }
 
-    this->m_commandList->TransitionBarrier(this->GetFinalColourBuffer(), RHI::ResourceStates::RenderTarget, this->GetFinalColourBuffer()->GetDesc().InitialState);
+    this->m_commandList->TransitionBarrier(this->GetFinalColourBuffer(), RHI::ResourceStates::RenderTarget, finalColourBufferDesc.InitialState);
     this->m_commandList->Close();
     RHI::IGraphicsDevice::Ptr->ExecuteCommandLists(this->m_commandList.get());
 }
 
 void SceneRenderLayer::ResizeSurface(DirectX::XMFLOAT2 const& size)
 {
-    std::cout << "Use Counts (";
-    for (auto& buffers : this->m_colourBuffers)
+    for (auto handle : this->m_colourBuffers)
     {
-        std::cout << buffers.use_count();
+        RHI::IGraphicsDevice::Ptr->FreeTexture(handle);
     }
 
-    std::cout << ")" << std::endl;
     this->m_colourBuffers.clear();
     this->CreateWindowTextures(size);
 }
