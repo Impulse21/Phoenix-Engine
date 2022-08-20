@@ -20,7 +20,11 @@ namespace PhxEngine::Core
 			this->m_generations = new uint32_t[this->m_size];
 			this->m_freeList = new uint32_t[this->m_size];
 
-			this->m_freeListPosition = this->m_size;
+			std::memset(this->m_data, 0, this->m_size * sizeof(ImplT));
+			std::memset(this->m_generations, 0, this->m_size * sizeof(uint32_t));
+			std::memset(this->m_freeList, 0, this->m_size * sizeof(uint32_t));
+
+			this->m_freeListPosition = this->m_size - 1;
 			for (size_t i = 0; i < this->m_size; i++)
 			{
 				this->m_freeList[i] = static_cast<uint32_t>(this->m_size - i);
@@ -108,6 +112,10 @@ namespace PhxEngine::Core
 			auto* newFreeListArray = new uint32_t[newSize];
 			auto* newGenerations = new uint32_t[newSize];
 
+			std::memset(newDataArray, 0, newSize * sizeof(ImplT));
+			std::memset(newFreeListArray, 0, newSize * sizeof(uint32_t));
+			std::memset(newGenerations, 0, newSize * sizeof(uint32_t));
+
 			// Copy data over
 			std::memcpy(newDataArray, this->m_data, this->m_size * sizeof(ImplT));
 			std::memcpy(newFreeListArray, this->m_freeList, this->m_size * sizeof(uint32_t));
@@ -123,15 +131,15 @@ namespace PhxEngine::Core
 
 			// TODO: Set up New free indices;
 
-			for (size_t freeIndex = this->m_freeListPosition; i < newSize - this->m_size; i++)
+			for (size_t i = this->m_freeListPosition; i < newSize - this->m_size; i++)
 			{
-				this->m_freeListPosition[i] = this->m_size - i;
+				this->m_freeList[i] = this->m_size - i;
 			}
 
 			this->m_size = newSize;
 		}
 
-		bool HasSpace() const { this->m_numActiveEntries < this->m_size; }
+		bool HasSpace() const { return this->m_numActiveEntries < this->m_size; }
 
 	private:
 		size_t m_size;

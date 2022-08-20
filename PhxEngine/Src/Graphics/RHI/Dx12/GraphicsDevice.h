@@ -137,7 +137,7 @@ namespace PhxEngine::RHI::Dx12
         DescriptorIndex BindlessResourceIndex = cInvalidDescriptorIndex;
 
         Dx12Texture() = default;
-        Dx12Texture(Dx12Texture& other)
+        Dx12Texture(Dx12Texture & other)
         {
             this->Desc = other.Desc;
             this->D3D12Resource = std::move(other.D3D12Resource);
@@ -147,6 +147,26 @@ namespace PhxEngine::RHI::Dx12
             this->SrvAllocation = std::move(other.SrvAllocation);
             this->UavAllocation = std::move(other.UavAllocation);
             BindlessResourceIndex = other.BindlessResourceIndex;
+        }
+
+        Dx12Texture(Dx12Texture const& other)
+        {
+            this->Desc = other.Desc;
+            this->D3D12Resource = std::move(other.D3D12Resource);
+
+            this->RtvAllocation = other.RtvAllocation;
+            this->DsvAllocation = std::move(other.DsvAllocation);
+            this->SrvAllocation = std::move(other.SrvAllocation);
+            this->UavAllocation = std::move(other.UavAllocation);
+            BindlessResourceIndex = other.BindlessResourceIndex;
+        }
+
+        ~Dx12Texture()
+        {
+            RtvAllocation.Free();
+            DsvAllocation.Free();
+            SrvAllocation.Free();
+            UavAllocation.Free();
         }
     };
 
@@ -164,6 +184,11 @@ namespace PhxEngine::RHI::Dx12
 
         const BufferDesc& GetDesc() const { return this->Desc; }
         const DescriptorIndex GetDescriptorIndex() const { return this->BindlessResourceIndex; }
+
+        ~GpuBuffer()
+        {
+            SrvAllocation.Free();
+        }
     };
 
     struct SwapChain

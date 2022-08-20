@@ -318,6 +318,16 @@ PhxEngine::RHI::Dx12::GraphicsDevice::~GraphicsDevice()
 	}
 
 	this->m_swapChain.BackBuffers.clear();
+	for (auto& frame : this->m_frameContext)
+	{
+		for (auto& handle : frame.PendingDeletionTextures)
+		{
+			// Free Descriptor Index
+			DescriptorIndex index = this->m_texturePool.Get(handle)->BindlessResourceIndex;
+			this->m_bindlessResourceDescriptorTable->Free(index);
+			this->m_texturePool.Release(handle);
+		}
+	}
 }
 
 void PhxEngine::RHI::Dx12::GraphicsDevice::WaitForIdle()
