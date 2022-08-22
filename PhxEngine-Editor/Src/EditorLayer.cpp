@@ -13,6 +13,10 @@ void EditorLayer::OnRenderImGui()
     this->BeginDockspace();
     ImGui::Begin("Scene Explorer");
     ImGui::Text("Hello World");
+
+    PhxEngine::RHI::TextureHandle& colourBuffer = this->m_sceneRenderLayer->GetFinalColourBuffer();
+    static PhxEngine::RHI::DescriptorIndex img = IGraphicsDevice::Ptr->GetDescriptorIndex(colourBuffer);
+    ImGui::ImageButton(reinterpret_cast<void*>(&img), ImVec2{ 100.0f, 100.f });
     ImGui::End();
 
 	ImGui::ShowDemoWindow();
@@ -96,19 +100,23 @@ void EditorLayer::BeginDockspace()
     ImGui::Begin("Viewport");
     ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
     this->m_viewportSize = { viewportPanelSize.x, viewportPanelSize.y };
-    PhxEngine::RHI::TextureHandle& colourBuffer = this->m_sceneRenderLayer->GetFinalColourBuffer();
-
-    const::TextureDesc& colourBufferDesc = IGraphicsDevice::Ptr->GetTextureDesc(colourBuffer);
-    if ((uint32_t)this->m_viewportSize.x != colourBufferDesc.Width || (uint32_t)this->m_viewportSize.y != colourBufferDesc.Height)
+    if (this->m_sceneRenderLayer)
     {
+        PhxEngine::RHI::TextureHandle& colourBuffer = this->m_sceneRenderLayer->GetFinalColourBuffer();
 
-        // std::cout << "Resizing Window. New = [" << (uint32_t)this->m_viewportSize.x << ", " << (uint32_t)this->m_viewportSize.y << "]";
-        // std::cout << "Current = ["<< colourBuffer->GetDesc().Width  << ", " << colourBuffer->GetDesc().Height << std::endl;
-        this->m_sceneRenderLayer->ResizeSurface(this->m_viewportSize);
+        const::TextureDesc& colourBufferDesc = IGraphicsDevice::Ptr->GetTextureDesc(colourBuffer);
+        if (this->m_sceneRenderLayer && (uint32_t)this->m_viewportSize.x != colourBufferDesc.Width || (uint32_t)this->m_viewportSize.y != colourBufferDesc.Height)
+        {
+
+            // std::cout << "Resizing Window. New = [" << (uint32_t)this->m_viewportSize.x << ", " << (uint32_t)this->m_viewportSize.y << "]";
+            // std::cout << "Current = ["<< colourBuffer->GetDesc().Width  << ", " << colourBuffer->GetDesc().Height << std::endl;
+            // this->m_sceneRenderLayer->ResizeSurface(this->m_viewportSize);
+        }
+
+        static PhxEngine::RHI::DescriptorIndex img = IGraphicsDevice::Ptr->GetDescriptorIndex(colourBuffer);
+        ImGui::Image(reinterpret_cast<void*>(&img), ImVec2{ this->m_viewportSize.x, this->m_viewportSize.y });
     }
-    
-    static PhxEngine::RHI::DescriptorIndex img = IGraphicsDevice::Ptr->GetDescriptorIndex(colourBuffer);
-    ImGui::Image(reinterpret_cast<void*>(&img), ImVec2{ this->m_viewportSize.x, this->m_viewportSize.y });
+
     ImGui::End();
 }
 

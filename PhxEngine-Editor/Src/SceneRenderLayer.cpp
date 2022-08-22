@@ -17,18 +17,27 @@ void SceneRenderLayer::OnAttach()
     this->m_commandList = RHI::IGraphicsDevice::Ptr->CreateCommandList();
 }
 
+void SceneRenderLayer::OnDetach()
+{
+    for (auto& handle : this->m_colourBuffers)
+    {
+        RHI::IGraphicsDevice::Ptr->FreeTexture(handle);
+    }
+}
+
 void SceneRenderLayer::OnRender()
 {
     this->m_commandList->Open();
-    const RHI::TextureDesc& finalColourBufferDesc = RHI::IGraphicsDevice::Ptr->GetTextureDesc(this->GetFinalColourBuffer());
-    this->m_commandList->TransitionBarrier(this->GetFinalColourBuffer(), finalColourBufferDesc.InitialState, RHI::ResourceStates::RenderTarget);
+    Core::Handle<RHI::Texture> renderTarget = this->GetFinalColourBuffer();
+    const RHI::TextureDesc& renderTargetDesc = RHI::IGraphicsDevice::Ptr->GetTextureDesc(renderTarget);
+    this->m_commandList->TransitionBarrier(renderTarget, renderTargetDesc.InitialState, RHI::ResourceStates::RenderTarget);
     {
         auto scrope = this->m_commandList->BeginScopedMarker("Clear Render Targets");
 
-        this->m_commandList->ClearTextureFloat(this->GetFinalColourBuffer(), finalColourBufferDesc.OptmizedClearValue.value());
+        this->m_commandList->ClearTextureFloat(this->GetFinalColourBuffer(), renderTargetDesc.OptmizedClearValue.Colour);
     }
 
-    this->m_commandList->TransitionBarrier(this->GetFinalColourBuffer(), RHI::ResourceStates::RenderTarget, finalColourBufferDesc.InitialState);
+    this->m_commandList->TransitionBarrier(renderTarget, RHI::ResourceStates::RenderTarget, renderTargetDesc.InitialState);
     this->m_commandList->Close();
     RHI::IGraphicsDevice::Ptr->ExecuteCommandLists(this->m_commandList.get());
 }
@@ -54,11 +63,11 @@ void SceneRenderLayer::CreateWindowTextures(DirectX::XMFLOAT2 const& size)
     desc.Height = std::max(size.y, 1.0f);
 
     // TODO: Fix a bug where clear value fails if colour other then red is set to 1
-    RHI::Color clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
-    desc.OptmizedClearValue = std::make_optional<RHI::Color>(clearValue);
+    desc.OptmizedClearValue.Colour = { 0.0f, 0.0f, 0.0f, 1.0f };
 
     // TODO: Determine what format should be used here.
     desc.Format = RHI::FormatType::R10G10B10A2_UNORM;
+    // desc.Format = RHI::FormatType::RGBA32_FLOAT;
     desc.DebugName = "Scene Colour Buffer";
 
     auto& spec = LayeredApplication::Ptr->GetSpec();

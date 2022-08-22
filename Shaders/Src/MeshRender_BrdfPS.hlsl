@@ -1,5 +1,0 @@
-#define MESHRENDER_COMPILE_PS
-#define MESHRENDER_LAYOUT_COMMON
-#define ENABLE_BRDF_LIGHTING
-#include "MeshRender.hlsli"
-

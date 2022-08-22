@@ -20,7 +20,7 @@
 namespace PhxEngine::RHI::Dx12
 {
     constexpr size_t kNumCommandListPerFrame = 32;
-    constexpr size_t kResourcePoolSize = 2000000; // 2 MB of handles
+    constexpr size_t kResourcePoolSize = 500000; // 5 KB of handles
 
     struct TrackedResources;
 
@@ -152,21 +152,13 @@ namespace PhxEngine::RHI::Dx12
         Dx12Texture(Dx12Texture const& other)
         {
             this->Desc = other.Desc;
-            this->D3D12Resource = std::move(other.D3D12Resource);
+            this->D3D12Resource = other.D3D12Resource;
 
             this->RtvAllocation = other.RtvAllocation;
-            this->DsvAllocation = std::move(other.DsvAllocation);
-            this->SrvAllocation = std::move(other.SrvAllocation);
-            this->UavAllocation = std::move(other.UavAllocation);
+            this->DsvAllocation = other.DsvAllocation;
+            this->SrvAllocation = other.SrvAllocation;
+            this->UavAllocation = other.UavAllocation;
             BindlessResourceIndex = other.BindlessResourceIndex;
-        }
-
-        ~Dx12Texture()
-        {
-            RtvAllocation.Free();
-            DsvAllocation.Free();
-            SrvAllocation.Free();
-            UavAllocation.Free();
         }
     };
 
@@ -334,7 +326,7 @@ namespace PhxEngine::RHI::Dx12
         const BindlessDescriptorTable* GetBindlessTable() const { return this->m_bindlessResourceDescriptorTable.get(); }
 
         // Maybe better encapulate this.
-        Core::Pool<Dx12Texture, Texture> GetTexturePool() { return this->m_texturePool; };
+        Core::Pool<Dx12Texture, Texture>& GetTexturePool() { return this->m_texturePool; };
 
     private:
         size_t GetCurrentBackBufferIndex() const;

@@ -238,7 +238,7 @@ UINT ConvertSamplerReductionType(SamplerReductionType reductionType)
 PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
 	: m_frameCount(0)
 	, m_timerQueryIndexPool(kTimestampQueryHeapSize)
-	, m_texturePool(kResourcePoolSize)
+	, m_texturePool(AlignTo(kResourcePoolSize, sizeof(Dx12Texture)))
 {
 	this->m_factory = this->CreateFactory();
 	this->m_gpuAdapter = this->SelectOptimalGpuApdater();
@@ -312,6 +312,12 @@ PhxEngine::RHI::Dx12::GraphicsDevice::~GraphicsDevice()
 {
 	// TODO: Check for dangling Handles!!!!!!!!!!!!!!!!!!
 	// TODO: this is to prevent an issue with dangling pointers. See DescriptorHeapAllocator
+	{
+		auto lh = this->m_texturePool.Get(this->m_swapChain.BackBuffers[0]);
+		auto rh = this->m_texturePool.Get(this->m_swapChain.BackBuffers[1]);
+		assert(lh->D3D12Resource != rh->D3D12Resource);
+	}
+
 	for (auto handle : this->m_swapChain.BackBuffers)
 	{
 		this->m_texturePool.Release(handle);
@@ -621,14 +627,17 @@ ComputePSOHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateComputePso(ComputeP
 
 TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencil(TextureDesc const& desc)
 {
+
 	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
+	d3d12OptimizedClearValue.Color[0] = desc.OptmizedClearValue.Colour.R;
+	d3d12OptimizedClearValue.Color[1] = desc.OptmizedClearValue.Colour.G;
+	d3d12OptimizedClearValue.Color[2] = desc.OptmizedClearValue.Colour.B;
+	d3d12OptimizedClearValue.Color[3] = desc.OptmizedClearValue.Colour.A;
+	d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.DepthStencil.Depth;
+	d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.DepthStencil.Stencil;
+
 	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
-	if (desc.OptmizedClearValue.has_value())
-	{
-		d3d12OptimizedClearValue.Format = dxgiFormatMapping.rtvFormat;
-		d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.value().R;
-		d3d12OptimizedClearValue.DepthStencil.Stencil = desc.OptmizedClearValue.value().G;
-	}
+	d3d12OptimizedClearValue.Format = dxgiFormatMapping.rtvFormat;
 
 	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 	auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
@@ -649,7 +658,7 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencil(TextureDe
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_DEPTH_WRITE,
-			desc.OptmizedClearValue.has_value() ? &d3d12OptimizedClearValue : nullptr,
+			&d3d12OptimizedClearValue,
 			IID_PPV_ARGS(&d3d12Resource)));
 
 	// Create DSV
@@ -700,17 +709,16 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencil(TextureDe
 
 TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTexture(TextureDesc const& desc)
 {
-	auto& dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
-
-	// Create
-
 	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
-	if (desc.OptmizedClearValue.has_value())
-	{
-		d3d12OptimizedClearValue.Format = dxgiFormatMapping.rtvFormat;
-		d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.value().R;
-		d3d12OptimizedClearValue.DepthStencil.Stencil = desc.OptmizedClearValue.value().G;
-	}
+	d3d12OptimizedClearValue.Color[0] = desc.OptmizedClearValue.Colour.R;
+	d3d12OptimizedClearValue.Color[1] = desc.OptmizedClearValue.Colour.G;
+	d3d12OptimizedClearValue.Color[2] = desc.OptmizedClearValue.Colour.B;
+	d3d12OptimizedClearValue.Color[3] = desc.OptmizedClearValue.Colour.A;
+	d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.DepthStencil.Depth;
+	d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.DepthStencil.Stencil;
+
+	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
+	d3d12OptimizedClearValue.Format = dxgiFormatMapping.rtvFormat;
 
 	auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
@@ -743,6 +751,10 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTexture(TextureDesc co
 			0,
 			resourceFlags);
 
+	const bool useClearValue = 
+		((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget) || 
+		((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil);
+
 	Microsoft::WRL::ComPtr<ID3D12Resource> d3d12Resource;
 	ThrowIfFailed(
 		this->GetD3D12Device2()->CreateCommittedResource(
@@ -750,7 +762,7 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTexture(TextureDesc co
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
 			ConvertResourceStates(desc.InitialState),
-			desc.OptmizedClearValue.has_value() ? &d3d12OptimizedClearValue : nullptr,
+			useClearValue ? &d3d12OptimizedClearValue : nullptr,
 			IID_PPV_ARGS(&d3d12Resource)));
 
 	Dx12Texture texture = {};
@@ -955,10 +967,17 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::Present()
 	for (auto& handle : nextFrame.PendingDeletionTextures)
 	{
 		// Free Descriptor Index
-		DescriptorIndex index =  this->m_texturePool.Get(handle)->BindlessResourceIndex;
-		this->m_bindlessResourceDescriptorTable->Free(index);
+		Dx12Texture* texture = this->m_texturePool.Get(handle);
+
+		this->m_bindlessResourceDescriptorTable->Free(texture->BindlessResourceIndex);
+		texture->RtvAllocation.Free();
+		texture->DsvAllocation.Free();
+		texture->SrvAllocation.Free();
+		texture->UavAllocation.Free();
+
 		this->m_texturePool.Release(handle);
 	}
+	nextFrame.PendingDeletionTextures.clear();
 
 	// TODO: Remove once we go to handles
 	this->RunGarbageCollection();
@@ -1739,6 +1758,7 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateDevice(Microsoft::WRL::ComPtr<I
 
 void PhxEngine::RHI::ReportLiveObjects()
 {
+#ifdef _DEBUG
 	if (sDebugEnabled)
 	{
 		Microsoft::WRL::ComPtr<IDXGIDebug1> dxgiDebug;
@@ -1747,4 +1767,5 @@ void PhxEngine::RHI::ReportLiveObjects()
 			dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_FLAGS(DXGI_DEBUG_RLO_ALL));
 		}
 	}
+#endif
 }

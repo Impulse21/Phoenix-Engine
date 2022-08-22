@@ -12,6 +12,8 @@ public:
 	SceneRenderLayer();
 
 	void OnAttach() override;
+	void OnDetach() override;
+
 	void OnRender() override;
 
 	PhxEngine::RHI::TextureHandle GetFinalColourBuffer()

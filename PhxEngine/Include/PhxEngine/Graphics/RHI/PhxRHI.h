@@ -794,6 +794,18 @@ namespace PhxEngine::RHI
         uint32_t slicePitch = 0;
     };
 
+    union ClearValue
+    {
+        // TODO: Change to be a flat array
+        // float Colour[4];
+        RHI::Color Colour;
+        struct ClearDepthStencil
+        {
+            float Depth;
+            uint32_t Stencil;
+        } DepthStencil;
+    };
+
     struct TextureDesc
     {
         BindingFlags BindingFlags = BindingFlags::ShaderResource;
@@ -815,7 +827,7 @@ namespace PhxEngine::RHI
 
         uint16_t MipLevels = 1;
 
-        std::optional<Color> OptmizedClearValue;
+        ClearValue OptmizedClearValue = {};
         std::string DebugName;
     };
 

@@ -62,7 +62,9 @@ void PhxEngine::Graphics::ImGuiRenderer::OnAttach()
     desc.DebugName = "IMGUI Font Texture";
 
     this->m_fontTexture = IGraphicsDevice::Ptr->CreateTexture(desc);
-
+    // TODO: Fix this
+    static uint32_t fontIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_fontTexture);
+    io.Fonts->SetTexID((ImTextureID)fontIndex);
     RHI::SubresourceData subResourceData = {};
 
     // Bytes per pixel * width of the image. Since we are using an RGBA8, there is 4 bytes per pixel.
@@ -85,6 +87,8 @@ void PhxEngine::Graphics::ImGuiRenderer::OnAttach()
 
 void PhxEngine::Graphics::ImGuiRenderer::OnDetach()
 {
+    IGraphicsDevice::Ptr->FreeTexture(this->m_fontTexture);
+
     if (this->m_imguiContext)
     {
         ImGui_ImplGlfw_Shutdown();
@@ -142,41 +146,6 @@ void PhxEngine::Graphics::ImGuiRenderer::OnCompose(RHI::CommandListHandle cmd)
 
 	const FormatType indexFormat = sizeof(ImDrawIdx) == 2 ? FormatType::R16_UINT : FormatType::R32_UINT;
 
-    /*
-    static thread_local std::unordered_set<RHI::TextureHandle> cache;
-    static thread_local std::vector<RHI::GpuBarrier> preBarriers;
-    static thread_local std::vector<RHI::GpuBarrier> postBarriers;
-    cache.clear();
-    preBarriers.clear();
-    postBarriers.clear();
-
-    for (int i = 0; i < drawData->CmdListsCount; ++i)
-    {
-        const ImDrawList* drawList = drawData->CmdLists[i];
-        for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
-        {
-            const ImDrawCmd& drawCmd = drawList->CmdBuffer[j];
-
-            if (drawCmd.UserCallback)
-            {
-                continue;
-            }
-            // Ensure 
-            /*PhxEngine::RHI::TextureHandle texture = *reinterpret_cast<PhxEngine::RHI::TextureHandle*>(drawCmd.TextureId);
-
-            if (texture && cache.find(texture) == cache.end())
-            {
-                cache.insert(texture);
-                preBarriers.push_back(GpuBarrier::CreateTexture(texture, texture->GetDesc().InitialState, RHI::ResourceStates::ShaderResource));
-                postBarriers.push_back(GpuBarrier::CreateTexture(texture, RHI::ResourceStates::ShaderResource, texture->GetDesc().InitialState));
-            }
-        }
-    }
-
-    cmd->TransitionBarriers(Span<GpuBarrier>(preBarriers.data(), preBarriers.size()));
-
-    */
-
 	for (int i = 0; i < drawData->CmdListsCount; ++i)
 	{
 		const ImDrawList* drawList = drawData->CmdLists[i];
@@ -207,12 +176,10 @@ void PhxEngine::Graphics::ImGuiRenderer::OnCompose(RHI::CommandListHandle cmd)
 					scissorRect.MaxY - scissorRect.MinY > 0.0)
 				{
                     // Ensure 
-                    auto textureIndex = reinterpret_cast<RHI::DescriptorIndex*>(drawCmd.TextureId);
-
+                    auto textureIndex = reinterpret_cast<RHI::DescriptorIndex*>(drawCmd.GetTexID());
                     push.TextureIndex = textureIndex && *textureIndex != RHI::cInvalidDescriptorIndex
                         ? *textureIndex
                         : IGraphicsDevice::Ptr->GetDescriptorIndex(m_fontTexture);
-
                     cmd->BindPushConstant(RootParameters::PushConstant, push);
 					cmd->SetScissors(&scissorRect, 1);
 					cmd->DrawIndexed(drawCmd.ElemCount, 1, indexOffset);
@@ -253,8 +220,11 @@ void PhxEngine::Graphics::ImGuiRenderer::CreatePipelineStateObject(
     blendTarget.BlendEnable = true;
     blendTarget.SrcBlend = BlendFactor::SrcAlpha;
     blendTarget.DestBlend = BlendFactor::InvSrcAlpha;
-    blendTarget.SrcBlendAlpha = BlendFactor::InvSrcAlpha;
-    blendTarget.DestBlendAlpha = BlendFactor::Zero;
+    blendTarget.BlendOp = EBlendOp::Add;
+    blendTarget.SrcBlendAlpha = BlendFactor::One;
+    blendTarget.DestBlendAlpha = BlendFactor::InvSrcAlpha;
+    blendTarget.BlendOpAlpha = EBlendOp::Add;
+    blendTarget.ColorWriteMask = ColorMask::All;
 
     psoDesc.RasterRenderState.CullMode = RasterCullMode::None;
     psoDesc.RasterRenderState.ScissorEnable = true;
@@ -262,6 +232,7 @@ void PhxEngine::Graphics::ImGuiRenderer::CreatePipelineStateObject(
 
     psoDesc.DepthStencilRenderState.DepthTestEnable = false;
     psoDesc.DepthStencilRenderState.StencilEnable = false;
+    psoDesc.DepthStencilRenderState.DepthFunc = ComparisonFunc::Always;
 
     // TODO: Build Root Signature
     /*

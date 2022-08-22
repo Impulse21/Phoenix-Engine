@@ -21,14 +21,19 @@ namespace PhxEngine::Core
 			this->m_freeList = new uint32_t[this->m_size];
 
 			std::memset(this->m_data, 0, this->m_size * sizeof(ImplT));
-			std::memset(this->m_generations, 0, this->m_size * sizeof(uint32_t));
 			std::memset(this->m_freeList, 0, this->m_size * sizeof(uint32_t));
+
+			for (size_t i = 0; i < this->m_size; i++)
+			{
+				this->m_generations[i] = 1;
+			}
 
 			this->m_freeListPosition = this->m_size - 1;
 			for (size_t i = 0; i < this->m_size; i++)
 			{
 				this->m_freeList[i] = static_cast<uint32_t>(this->m_size - i);
 			}
+
 		}
 
 		~Pool()
@@ -53,7 +58,7 @@ namespace PhxEngine::Core
 		{
 			return
 				handle.IsValid() &&
-				handle.m_index < this->m_size&&
+				handle.m_index < this->m_size &&
 				this->m_generations[handle.m_index] == handle.m_generation;
 		}
 
@@ -90,6 +95,7 @@ namespace PhxEngine::Core
 				return;
 			}
 
+			this->Get(handle)->~ImplT();
 			new (this->m_data + handle.m_index) ImplT();
 			this->m_generations[handle.m_index] += 1;
 
@@ -104,6 +110,7 @@ namespace PhxEngine::Core
 		}
 
 		bool IsEmpty() const { return this->m_numActiveEntries == 0; }
+
 	private:
 		void Resize()
 		{

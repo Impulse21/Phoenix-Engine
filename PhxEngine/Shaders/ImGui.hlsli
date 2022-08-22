@@ -13,8 +13,7 @@
                                 "addressU = TEXTURE_ADDRESS_WRAP," \
                                 "addressV = TEXTURE_ADDRESS_WRAP," \
                                 "addressW = TEXTURE_ADDRESS_WRAP," \
-                                "filter = FILTER_MIN_MAG_MIP_LINEAR," \
-                                "comparisonFunc = COMPARISON_ALWAYS, " \
+                                "filter = FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR," \
                                 "borderColor = STATIC_BORDER_COLOR_TRANSPARENT_BLACK)"
 #else
 #define ImGuiRS "RootFlags( ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT )," \
@@ -24,10 +23,8 @@
                                 "addressU = TEXTURE_ADDRESS_WRAP," \
                                 "addressV = TEXTURE_ADDRESS_WRAP," \
                                 "addressW = TEXTURE_ADDRESS_WRAP," \
-                                "filter = FILTER_MIN_MAG_MIP_LINEAR," \
-                                "comparisonFunc = COMPARISON_ALWAYS, " \
+                                "filter = FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR," \
                                 "borderColor = STATIC_BORDER_COLOR_TRANSPARENT_BLACK)"
-
 
 #endif
 
@@ -68,7 +65,8 @@ SamplerState LinearClampSampler : register(s0);
 [RootSignature(ImGuiRS)]
 float4 main(PSInput input) : SV_Target
 {
-    float4 outColour = input.Colour * ResourceHeap_GetTexture(push.TextureIndex).SampleLevel(LinearClampSampler, input.TexCoord, 0);
+    float4 textureColour = ResourceHeap_GetTexture(push.TextureIndex).Sample(LinearClampSampler, input.TexCoord);
+    float4 outColour = input.Colour * textureColour;
     return outColour;
 }
 #endif
