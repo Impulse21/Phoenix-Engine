@@ -131,6 +131,8 @@ void CommandList::TransitionBarrier(
         textureImpl->D3D12Resource,
         ConvertResourceStates(beforeState),
         ConvertResourceStates(afterState));
+
+    this->m_trackedData->TextureHandles.push_back(texture);
 }
 
 void PhxEngine::RHI::Dx12::CommandList::TransitionBarrier(
@@ -199,6 +201,7 @@ void CommandList::ClearTextureFloat(TextureHandle texture, Color const& clearCol
         &clearColour.R,
         0,
         nullptr);
+    this->m_trackedData->TextureHandles.push_back(texture);
 }
 
 void CommandList::ClearDepthStencilTexture(
@@ -230,6 +233,7 @@ void CommandList::ClearDepthStencilTexture(
         stencil,
         0,
         nullptr);
+    this->m_trackedData->TextureHandles.push_back(depthStencil);
 }
 
 void CommandList::Draw(
@@ -355,6 +359,8 @@ void PhxEngine::RHI::Dx12::CommandList::WriteTexture(TextureHandle texture, uint
         subresources.data());
 
     this->m_trackedData->NativeResources.push_back(intermediateResource);
+
+    this->m_trackedData->TextureHandles.push_back(texture);
 }
 
 void PhxEngine::RHI::Dx12::CommandList::WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* data, size_t rowPitch, size_t depthPitch)
@@ -376,6 +382,7 @@ void PhxEngine::RHI::Dx12::CommandList::SetRenderTargets(std::vector<TextureHand
     std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> renderTargetViews(renderTargets.size());
     for (int i = 0; i < renderTargets.size(); i++)
     {
+        this->m_trackedData->TextureHandles.push_back(renderTargets[i]);
         auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(renderTargets[i]);
         renderTargetViews[i] = textureImpl->RtvAllocation.GetCpuHandle();
     }
@@ -649,6 +656,7 @@ void CommandList::BindDynamicDescriptorTable(size_t rootParameterIndex, std::vec
     DescriptorHeapAllocation descriptorTable = this->m_activeDynamicSubAllocator->Allocate(textures.size());
     for (int i = 0; i < textures.size(); i++)
     {
+        this->m_trackedData->TextureHandles.push_back(textures[i]);
         auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(textures[i]);
         this->m_graphicsDevice.GetD3D12Device2()->CopyDescriptorsSimple(
             1,
@@ -674,6 +682,7 @@ void PhxEngine::RHI::Dx12::CommandList::BindDynamicUavDescriptorTable(size_t roo
     DescriptorHeapAllocation descriptorTable = this->m_activeDynamicSubAllocator->Allocate(textures.size());
     for (int i = 0; i < textures.size(); i++)
     {
+        this->m_trackedData->TextureHandles.push_back(textures[i]);
         auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(textures[i]);
         this->m_graphicsDevice.GetD3D12Device2()->CopyDescriptorsSimple(
             1,

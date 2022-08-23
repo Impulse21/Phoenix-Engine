@@ -15,6 +15,10 @@ namespace PhxEngine::Core
 
 		bool IsValid() const { return this->m_generation != 0; }
 
+		bool operator==(const Handle& rhs) const
+		{
+			return this->m_generation == rhs.m_generation && this->m_index == rhs.m_index;
+		}
 	private:
 		Handle(uint32_t index, uint32_t generation)
 			: m_index(index)

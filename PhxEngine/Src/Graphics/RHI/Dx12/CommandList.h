@@ -19,6 +19,7 @@ namespace PhxEngine::RHI::Dx12
 		std::vector<std::shared_ptr<IResource>> Resource;
 		std::vector<Microsoft::WRL::ComPtr<IUnknown>> NativeResources;
 		std::vector<std::shared_ptr<TimerQuery>> TimerQueries;
+		std::vector<Core::Handle<Texture>> TextureHandles;
 
 	};
 

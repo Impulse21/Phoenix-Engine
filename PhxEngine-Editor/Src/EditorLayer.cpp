@@ -110,7 +110,7 @@ void EditorLayer::BeginDockspace()
 
             // std::cout << "Resizing Window. New = [" << (uint32_t)this->m_viewportSize.x << ", " << (uint32_t)this->m_viewportSize.y << "]";
             // std::cout << "Current = ["<< colourBuffer->GetDesc().Width  << ", " << colourBuffer->GetDesc().Height << std::endl;
-            // this->m_sceneRenderLayer->ResizeSurface(this->m_viewportSize);
+            this->m_sceneRenderLayer->ResizeSurface(this->m_viewportSize);
         }
 
         static PhxEngine::RHI::DescriptorIndex img = IGraphicsDevice::Ptr->GetDescriptorIndex(colourBuffer);

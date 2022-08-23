@@ -332,7 +332,7 @@ namespace PhxEngine::RHI::Dx12
         size_t GetCurrentBackBufferIndex() const;
         FrameContext& GetCurrentFrameContext() 
         {
-            return this->m_frameContext[this->GetCurrentBackBufferIndex()];
+            return this->m_frameContext[this->m_frameCount % this->m_frameContext.size()];
         }
 
     private:

@@ -957,15 +957,29 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::Present()
 	this->m_swapChain.DxgiSwapchain->Present(0, 0);
 
 	this->GetCurrentFrameContext().FenceValue = this->GetGfxQueue()->IncrementFence();
+
 	this->m_frameCount++;
 
 	FrameContext& nextFrame = this->GetCurrentFrameContext();
 	this->GetGfxQueue()->WaitForFence(nextFrame.FenceValue);
 
+	// TODO: Remove once we go to handles
+	this->RunGarbageCollection();
+
 	// This is where we finally clear the data for the frame once it's made it's way back around.
 	// this is Safe and very explicit. I like it.
 	for (auto& handle : nextFrame.PendingDeletionTextures)
 	{
+		// Temp Debugging to see if inflight data is being deleted.....
+#if true
+		for (auto& tracked : this->m_inflightData[0])
+		{
+			for (auto& trackedHandle : tracked.TrackedResources->TextureHandles)
+			{
+				assert(handle == trackedHandle);
+			}
+		}
+#endif
 		// Free Descriptor Index
 		Dx12Texture* texture = this->m_texturePool.Get(handle);
 
@@ -978,9 +992,6 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::Present()
 		this->m_texturePool.Release(handle);
 	}
 	nextFrame.PendingDeletionTextures.clear();
-
-	// TODO: Remove once we go to handles
-	this->RunGarbageCollection();
 }
 
 ExecutionReceipt PhxEngine::RHI::Dx12::GraphicsDevice::ExecuteCommandLists(
