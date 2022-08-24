@@ -16,7 +16,7 @@ public:
 
 	void OnRender() override;
 
-	PhxEngine::RHI::TextureHandle GetFinalColourBuffer()
+	PhxEngine::RHI::TextureHandle& GetFinalColourBuffer()
 	{
 		return this->m_colourBuffers[PhxEngine::LayeredApplication::Ptr->GetFrameCount() % this->m_colourBuffers.size()];
 	}

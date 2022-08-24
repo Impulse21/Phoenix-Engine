@@ -9,9 +9,12 @@
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 
+#include <pix3.h>
+
 #ifdef _DEBUG
 #pragma comment(lib, "dxguid.lib")
 #endif
+
 
 using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI;
@@ -240,6 +243,10 @@ PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
 	, m_timerQueryIndexPool(kTimestampQueryHeapSize)
 	, m_texturePool(AlignTo(kResourcePoolSize, sizeof(Dx12Texture)))
 {
+#ifdef ENABLE_PIX_CAPUTRE
+	this->m_pixCaptureModule = PIXLoadLatestWinPixGpuCapturerLibrary();
+#endif 
+
 	this->m_factory = this->CreateFactory();
 	this->m_gpuAdapter = this->SelectOptimalGpuApdater();
 	this->CreateDevice(this->m_gpuAdapter->DxgiAdapter);
@@ -311,13 +318,6 @@ PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
 
 PhxEngine::RHI::Dx12::GraphicsDevice::~GraphicsDevice()
 {
-	// TODO: Check for dangling Handles!!!!!!!!!!!!!!!!!!
-	// TODO: this is to prevent an issue with dangling pointers. See DescriptorHeapAllocator
-	{
-		auto lh = this->m_texturePool.Get(this->m_swapChain.BackBuffers[0]);
-		auto rh = this->m_texturePool.Get(this->m_swapChain.BackBuffers[1]);
-		assert(lh->D3D12Resource != rh->D3D12Resource);
-	}
 
 	for (auto handle : this->m_swapChain.BackBuffers)
 	{
@@ -325,6 +325,13 @@ PhxEngine::RHI::Dx12::GraphicsDevice::~GraphicsDevice()
 	}
 
 	this->m_swapChain.BackBuffers.clear();
+	while (!this->m_deleteQueue.empty())
+	{
+		DeleteItem& deleteItem = this->m_deleteQueue.front();
+		deleteItem.DeleteFn();
+		this->m_deleteQueue.pop_front();
+	}
+
 	for (auto& frame : this->m_frameContext)
 	{
 		for (auto& handle : frame.PendingDeletionTextures)
@@ -335,6 +342,11 @@ PhxEngine::RHI::Dx12::GraphicsDevice::~GraphicsDevice()
 			this->m_texturePool.Release(handle);
 		}
 	}
+	
+#ifdef ENABLE_PIX_CAPUTRE
+	FreeLibrary(this->m_pixCaptureModule);
+#endif
+
 }
 
 void PhxEngine::RHI::Dx12::GraphicsDevice::WaitForIdle()
@@ -809,7 +821,9 @@ const TextureDesc& PhxEngine::RHI::Dx12::GraphicsDevice::GetTextureDesc(TextureH
 DescriptorIndex PhxEngine::RHI::Dx12::GraphicsDevice::GetDescriptorIndex(TextureHandle handle)
 {
 	const Dx12Texture* texture = this->m_texturePool.Get(handle);
-	return texture->BindlessResourceIndex;
+	return texture 
+		? texture->BindlessResourceIndex
+		: cInvalidDescriptorIndex;
 }
 
 void PhxEngine::RHI::Dx12::GraphicsDevice::FreeTexture(TextureHandle handle)
@@ -983,7 +997,21 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::ResetTimerQuery(TimerQueryHandle quer
 
 void PhxEngine::RHI::Dx12::GraphicsDevice::Present()
 {
-	this->m_swapChain.DxgiSwapchain->Present(0, 0);
+	HRESULT hr = this->m_swapChain.DxgiSwapchain->Present(0, 0);
+
+	// If the device was reset we must completely reinitialize the renderer.
+	if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+	{
+#ifdef _DEBUG
+		char buff[64] = {};
+		sprintf_s(buff, "Device Lost on Present: Reason code 0x%08X\n",
+			static_cast<unsigned int>((hr == DXGI_ERROR_DEVICE_REMOVED) ? this->GetD3D12Device2()->GetDeviceRemovedReason() : hr));
+		OutputDebugStringA(buff);
+#endif
+
+		// TODO: Handle device lost
+		// HandleDeviceLost();
+	}
 
 	// Mark complition of the graphics Queue 
 	this->GetGfxQueue()->GetD3D12CommandQueue()->Signal(this->m_frameFence.Get(), this->m_frameCount);
@@ -1078,6 +1106,28 @@ ExecutionReceipt PhxEngine::RHI::Dx12::GraphicsDevice::ExecuteCommandLists(
 	}
 
 	return { fenceValue, executionQueue };
+}
+
+void PhxEngine::RHI::Dx12::GraphicsDevice::BeginCapture(std::wstring const& filename)
+{
+#if ENABLE_PIX_CAPUTRE
+	if (this->m_pixCaptureModule)
+	{
+		PIXCaptureParameters param = {};
+		param.GpuCaptureParameters.FileName = filename.c_str();
+		PIXBeginCapture(PIX_CAPTURE_GPU, &param);
+	}
+#endif
+}
+
+void PhxEngine::RHI::Dx12::GraphicsDevice::EndCapture()
+{
+#if ENABLE_PIX_CAPUTRE
+	if (this->m_pixCaptureModule)
+	{
+		PIXEndCapture(false);
+	}
+#endif
 }
 
 TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTarget(

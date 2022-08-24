@@ -62,9 +62,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnAttach()
     desc.DebugName = "IMGUI Font Texture";
 
     this->m_fontTexture = IGraphicsDevice::Ptr->CreateTexture(desc);
-    // TODO: Fix this
-    static uint32_t fontIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_fontTexture);
-    io.Fonts->SetTexID((ImTextureID)fontIndex);
+    io.Fonts->SetTexID(static_cast<void*>(&this->m_fontTexture));
     RHI::SubresourceData subResourceData = {};
 
     // Bytes per pixel * width of the image. Since we are using an RGBA8, there is 4 bytes per pixel.
@@ -176,10 +174,11 @@ void PhxEngine::Graphics::ImGuiRenderer::OnCompose(RHI::CommandListHandle cmd)
 					scissorRect.MaxY - scissorRect.MinY > 0.0)
 				{
                     // Ensure 
-                    auto textureIndex = reinterpret_cast<RHI::DescriptorIndex*>(drawCmd.GetTexID());
-                    push.TextureIndex = textureIndex && *textureIndex != RHI::cInvalidDescriptorIndex
-                        ? *textureIndex
-                        : IGraphicsDevice::Ptr->GetDescriptorIndex(m_fontTexture);
+                    auto textureHandle = static_cast<RHI::TextureHandle*>(drawCmd.GetTexID());
+                    push.TextureIndex = textureHandle
+                        ? IGraphicsDevice::Ptr->GetDescriptorIndex(*textureHandle)
+                        : RHI::cInvalidDescriptorIndex;
+
                     cmd->BindPushConstant(RootParameters::PushConstant, push);
 					cmd->SetScissors(&scissorRect, 1);
 					cmd->DrawIndexed(drawCmd.ElemCount, 1, indexOffset);

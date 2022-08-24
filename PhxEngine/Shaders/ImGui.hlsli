@@ -4,6 +4,7 @@
 #include "ShaderInterop.h"
 #include "ShaderInteropStructures.h"
 #include "ResourceHeapTables.hlsli"
+#include "Defines.hlsli"
 
 #if USE_RESOURCE_HEAP
 #define ImGuiRS "RootFlags( ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED )," \
@@ -65,9 +66,13 @@ SamplerState LinearClampSampler : register(s0);
 [RootSignature(ImGuiRS)]
 float4 main(PSInput input) : SV_Target
 {
-    float4 textureColour = ResourceHeap_GetTexture(push.TextureIndex).Sample(LinearClampSampler, input.TexCoord);
-    float4 outColour = input.Colour * textureColour;
-    return outColour;
+    float4 textureColour = float4(1.0f, 1.0f, 1.0f, 1.0f);
+    if (push.TextureIndex != InvalidDescriptorIndex)
+    {
+        textureColour = ResourceHeap_GetTexture(push.TextureIndex).Sample(LinearClampSampler, input.TexCoord);
+    }
+
+    return input.Colour * textureColour;
 }
 #endif
 

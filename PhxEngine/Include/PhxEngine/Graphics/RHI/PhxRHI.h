@@ -1206,6 +1206,9 @@ namespace PhxEngine::RHI
 
         virtual GraphicsAPI GetApi() const = 0;
         virtual const IGpuAdapter* GetGpuAdapter() const = 0;
+
+        virtual void BeginCapture(std::wstring const& filename) = 0;
+        virtual void EndCapture() = 0;
     };
 
     extern void ReportLiveObjects();

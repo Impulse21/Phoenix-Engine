@@ -15,8 +15,7 @@ void EditorLayer::OnRenderImGui()
     ImGui::Text("Hello World");
 
     PhxEngine::RHI::TextureHandle& colourBuffer = this->m_sceneRenderLayer->GetFinalColourBuffer();
-    static PhxEngine::RHI::DescriptorIndex img = IGraphicsDevice::Ptr->GetDescriptorIndex(colourBuffer);
-    ImGui::ImageButton(reinterpret_cast<void*>(&img), ImVec2{ 100.0f, 100.f });
+    ImGui::ImageButton(static_cast<void*>(&colourBuffer), ImVec2{ 100.0f, 100.f });
     ImGui::End();
 
 	ImGui::ShowDemoWindow();
@@ -113,8 +112,7 @@ void EditorLayer::BeginDockspace()
             this->m_sceneRenderLayer->ResizeSurface(this->m_viewportSize);
         }
 
-        static PhxEngine::RHI::DescriptorIndex img = IGraphicsDevice::Ptr->GetDescriptorIndex(colourBuffer);
-        ImGui::Image(reinterpret_cast<void*>(&img), ImVec2{ this->m_viewportSize.x, this->m_viewportSize.y });
+        ImGui::Image(static_cast<void*>(&colourBuffer), ImVec2{ this->m_viewportSize.x, this->m_viewportSize.y });
     }
 
     ImGui::End();

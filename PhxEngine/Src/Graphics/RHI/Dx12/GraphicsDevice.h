@@ -17,6 +17,8 @@
 
 #define NUM_BINDLESS_RESOURCES TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE / 2
 
+#define ENABLE_PIX_CAPUTRE 1
+
 namespace PhxEngine::RHI::Dx12
 {
     constexpr size_t kNumCommandListPerFrame = 32;
@@ -285,6 +287,9 @@ namespace PhxEngine::RHI::Dx12
 
         const IGpuAdapter* GetGpuAdapter() const override { return this->m_gpuAdapter.get(); };
 
+        void BeginCapture(std::wstring const& filename) override;
+        void EndCapture() override;
+
         // -- Dx12 Specific functions ---
     public:
         TextureHandle CreateRenderTarget(TextureDesc const& desc, Microsoft::WRL::ComPtr<ID3D12Resource> d3d12TextureResource);
@@ -421,5 +426,9 @@ namespace PhxEngine::RHI::Dx12
             std::function<void()> DeleteFn;
         };
         std::deque<DeleteItem> m_deleteQueue;
+
+#ifdef ENABLE_PIX_CAPUTRE
+        HMODULE m_pixCaptureModule;
+#endif
 	};
 }
