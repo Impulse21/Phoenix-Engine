@@ -3,6 +3,7 @@
 #include "PhxEngine/Core/Platform.h"
 #include "PhxEngine/Core/TimeStep.h"
 #include "PhxEngine/Core/Span.h"
+#include "PhxEngine/Core/Handle.h"
 
 #include <stdint.h>
 #include <optional>
@@ -218,6 +219,8 @@ namespace PhxEngine::RHI
 
         Count
     };
+
+    constexpr size_t NumCommandQueues = static_cast<size_t>(CommandQueueType::Count);
 
     enum class TextureDimension : uint8_t
     {
@@ -793,6 +796,18 @@ namespace PhxEngine::RHI
         uint32_t slicePitch = 0;
     };
 
+    union ClearValue
+    {
+        // TODO: Change to be a flat array
+        // float Colour[4];
+        RHI::Color Colour;
+        struct ClearDepthStencil
+        {
+            float Depth;
+            uint32_t Stencil;
+        } DepthStencil;
+    };
+
     struct TextureDesc
     {
         BindingFlags BindingFlags = BindingFlags::ShaderResource;
@@ -814,9 +829,12 @@ namespace PhxEngine::RHI
 
         uint16_t MipLevels = 1;
 
-        std::optional<Color> OptmizedClearValue;
+        ClearValue OptmizedClearValue = {};
         std::string DebugName;
     };
+
+    // New;
+    class Texture;
 
     class ITexture : public IResource
     {
@@ -826,7 +844,8 @@ namespace PhxEngine::RHI
         virtual const DescriptorIndex GetDescriptorIndex() const = 0;
     };
 
-    using TextureHandle = std::shared_ptr<ITexture>;
+    // using TextureHandle = std::shared_ptr<ITexture>;
+    using TextureHandle = Core::Handle<Texture>;
 
     struct BufferRange
     {
@@ -1132,8 +1151,12 @@ namespace PhxEngine::RHI
         virtual GraphicsPSOHandle CreateGraphicsPSO(GraphicsPSODesc const& desc) = 0;
         virtual ComputePSOHandle CreateComputePso(ComputePSODesc const& desc) = 0;
 
-        virtual TextureHandle CreateDepthStencil(TextureDesc const& desc) = 0;
         virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
+        virtual const TextureDesc& GetTextureDesc(TextureHandle handle) = 0;
+        virtual DescriptorIndex GetDescriptorIndex(TextureHandle handle) = 0;
+        virtual void FreeTexture(TextureHandle) = 0;
+
+        virtual TextureHandle CreateDepthStencil(TextureDesc const& desc) = 0;
 
         // TODO: I don't think is this a clear interface as to what desc data is required
         // Consider cleaning this up eventually.
@@ -1183,6 +1206,9 @@ namespace PhxEngine::RHI
 
         virtual GraphicsAPI GetApi() const = 0;
         virtual const IGpuAdapter* GetGpuAdapter() const = 0;
+
+        virtual void BeginCapture(std::wstring const& filename) = 0;
+        virtual void EndCapture() = 0;
     };
 
     extern void ReportLiveObjects();

@@ -9,6 +9,7 @@
 #include "DescriptorHeap.h"
 #include "Common.h"
 #include "PhxEngine/Core/BitSetAllocator.h"
+#include "PhxEngine/Core/Pool.h"
 
 // Teir 1 limit is 1,000,000
 // https://docs.microsoft.com/en-us/windows/win32/direct3d12/hardware-support
@@ -16,12 +17,22 @@
 
 #define NUM_BINDLESS_RESOURCES TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE / 2
 
+#define ENABLE_PIX_CAPUTRE 1
+
 namespace PhxEngine::RHI::Dx12
 {
     constexpr size_t kNumCommandListPerFrame = 32;
+    constexpr size_t kResourcePoolSize = 500000; // 5 KB of handles
+
     struct TrackedResources;
 
     class BindlessDescriptorTable;
+
+    struct FrameContext
+    {
+        uint64_t FenceValue;
+        std::vector<Core::Handle<Texture>> PendingDeletionTextures;
+    };
 
     class TimerQuery : public ITimerQuery
     {
@@ -114,7 +125,7 @@ namespace PhxEngine::RHI::Dx12
         const ComputePSODesc& GetDesc() const override { return this->Desc; }
     };
 
-    struct Texture final : public ITexture
+    struct Dx12Texture final
     {
         TextureDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
@@ -125,11 +136,32 @@ namespace PhxEngine::RHI::Dx12
         DescriptorHeapAllocation SrvAllocation;
         DescriptorHeapAllocation UavAllocation;
 
-        // TODO: Free Index
         DescriptorIndex BindlessResourceIndex = cInvalidDescriptorIndex;
 
-        const TextureDesc& GetDesc() const { return this->Desc; }
-        virtual const DescriptorIndex GetDescriptorIndex() const { return this->BindlessResourceIndex; }
+        Dx12Texture() = default;
+        Dx12Texture(Dx12Texture & other)
+        {
+            this->Desc = other.Desc;
+            this->D3D12Resource = std::move(other.D3D12Resource);
+
+            this->RtvAllocation = std::move(other.RtvAllocation);
+            this->DsvAllocation = std::move(other.DsvAllocation);
+            this->SrvAllocation = std::move(other.SrvAllocation);
+            this->UavAllocation = std::move(other.UavAllocation);
+            BindlessResourceIndex = other.BindlessResourceIndex;
+        }
+
+        Dx12Texture(Dx12Texture const& other)
+        {
+            this->Desc = other.Desc;
+            this->D3D12Resource = other.D3D12Resource;
+
+            this->RtvAllocation = other.RtvAllocation;
+            this->DsvAllocation = other.DsvAllocation;
+            this->SrvAllocation = other.SrvAllocation;
+            this->UavAllocation = other.UavAllocation;
+            BindlessResourceIndex = other.BindlessResourceIndex;
+        }
     };
 
     struct GpuBuffer final : public IBuffer
@@ -146,6 +178,11 @@ namespace PhxEngine::RHI::Dx12
 
         const BufferDesc& GetDesc() const { return this->Desc; }
         const DescriptorIndex GetDescriptorIndex() const { return this->BindlessResourceIndex; }
+
+        ~GpuBuffer()
+        {
+            SrvAllocation.Free();
+        }
     };
 
     struct SwapChain
@@ -153,6 +190,8 @@ namespace PhxEngine::RHI::Dx12
         Microsoft::WRL::ComPtr<IDXGISwapChain4> DxgiSwapchain;
         SwapChainDesc Desc;
         std::vector<TextureHandle> BackBuffers;
+
+        uint32_t GetNumBackBuffers() const { return this->Desc.BufferCount; }
     };
 
     enum class DescriptorHeapTypes : uint8_t
@@ -202,7 +241,11 @@ namespace PhxEngine::RHI::Dx12
         ComputePSOHandle CreateComputePso(ComputePSODesc const& desc) override;
 
         TextureHandle CreateDepthStencil(TextureDesc const& desc) override;
+
         TextureHandle CreateTexture(TextureDesc const& desc) override;
+        const TextureDesc& GetTextureDesc(TextureHandle handle) override;
+        DescriptorIndex GetDescriptorIndex(TextureHandle handle) override;
+        void FreeTexture(TextureHandle) override;
 
         BufferHandle CreateIndexBuffer(BufferDesc const& desc) override;
         BufferHandle CreateVertexBuffer(BufferDesc const& desc) override;
@@ -244,17 +287,21 @@ namespace PhxEngine::RHI::Dx12
 
         const IGpuAdapter* GetGpuAdapter() const override { return this->m_gpuAdapter.get(); };
 
+        void BeginCapture(std::wstring const& filename) override;
+        void EndCapture() override;
+
         // -- Dx12 Specific functions ---
     public:
         TextureHandle CreateRenderTarget(TextureDesc const& desc, Microsoft::WRL::ComPtr<ID3D12Resource> d3d12TextureResource);
 
 
-        void CreateShaderResourceView(Texture* textureImpl);
-        void CreateRenderTargetView(Texture* textureImpl);
-        void CreateDepthStencilView(Texture* textureImpl);
-        void CreateUnorderedAccessView(Texture* textureImpl);
+        void CreateShaderResourceView(Dx12Texture& texture);
+        void CreateRenderTargetView(Dx12Texture& texture);
+        void CreateDepthStencilView(Dx12Texture& texture);
+        void CreateUnorderedAccessView(Dx12Texture& texture);
 
     public:
+        // TODO: Remove
         void RunGarbageCollection();
 
         // -- Getters ---
@@ -283,11 +330,19 @@ namespace PhxEngine::RHI::Dx12
 
         ID3D12QueryHeap* GetQueryHeap() { return this->m_gpuTimestampQueryHeap.Get(); }
         std::shared_ptr<GpuBuffer> GetTimestampQueryBuffer() { return this->m_timestampQueryBuffer; }
-
         const BindlessDescriptorTable* GetBindlessTable() const { return this->m_bindlessResourceDescriptorTable.get(); }
+
+        // Maybe better encapulate this.
+        Core::Pool<Dx12Texture, Texture>& GetTexturePool() { return this->m_texturePool; };
 
     private:
         size_t GetCurrentBackBufferIndex() const;
+        FrameContext& GetCurrentFrameContext() 
+        {
+            return this->m_frameContext[this->m_frameCount % this->m_frameContext.size()];
+        }
+
+        size_t GetBackBufferIndex() const { return this->m_frameCount % this->m_swapChain.GetNumBackBuffers(); }
 
     private:
         std::unique_ptr<GpuBuffer> CreateBufferInternal(BufferDesc const& desc);
@@ -332,6 +387,9 @@ namespace PhxEngine::RHI::Dx12
 		bool IsCreateNotZeroedAvailable = false;
 		bool IsUnderGraphicsDebugger = false;
 
+        // -- Data Pool ---
+        Core::Pool<Dx12Texture, Texture> m_texturePool;
+
         // -- SwapChain ---
 		SwapChain m_swapChain;
 
@@ -350,7 +408,8 @@ namespace PhxEngine::RHI::Dx12
         std::unique_ptr<BindlessDescriptorTable> m_bindlessResourceDescriptorTable;
 
         // -- Frame Frences ---
-        std::vector<uint64_t> m_frameFence;
+        Microsoft::WRL::ComPtr<ID3D12Fence> m_frameFence;
+        std::vector<FrameContext> m_frameContext;
         uint64_t m_frameCount;
 
         struct InflightDataEntry
@@ -360,5 +419,16 @@ namespace PhxEngine::RHI::Dx12
         };
 
         std::array<std::deque<InflightDataEntry>, (int)CommandQueueType::Count> m_inflightData;
+
+        struct DeleteItem
+        {
+            uint32_t Frame;
+            std::function<void()> DeleteFn;
+        };
+        std::deque<DeleteItem> m_deleteQueue;
+
+#ifdef ENABLE_PIX_CAPUTRE
+        HMODULE m_pixCaptureModule;
+#endif
 	};
 }

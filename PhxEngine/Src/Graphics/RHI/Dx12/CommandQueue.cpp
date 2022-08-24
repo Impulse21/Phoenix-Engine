@@ -106,5 +106,5 @@ void PhxEngine::RHI::Dx12::CommandQueue::WaitForFence(uint64_t fenceValue)
 uint64_t PhxEngine::RHI::Dx12::CommandQueue::GetLastCompletedFence()
 {
 	std::scoped_lock _(this->m_fenceMutex);
-	return this->m_lastCompletedFenceValue;
+	return this->m_d3d12Fence->GetCompletedValue();
 }

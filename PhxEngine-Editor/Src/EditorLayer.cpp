@@ -3,13 +3,19 @@
 #include <PhxEngine/Graphics/RHI/PhxRHI.h>
 #include "SceneRenderLayer.h"
 
+#include <iostream>
 #include <imgui.h>
 
+using namespace PhxEngine;
+using namespace PhxEngine::RHI;
 void EditorLayer::OnRenderImGui()
 {
     this->BeginDockspace();
     ImGui::Begin("Scene Explorer");
     ImGui::Text("Hello World");
+
+    PhxEngine::RHI::TextureHandle& colourBuffer = this->m_sceneRenderLayer->GetFinalColourBuffer();
+    ImGui::ImageButton(static_cast<void*>(&colourBuffer), ImVec2{ 100.0f, 100.f });
     ImGui::End();
 
 	ImGui::ShowDemoWindow();
@@ -93,15 +99,22 @@ void EditorLayer::BeginDockspace()
     ImGui::Begin("Viewport");
     ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
     this->m_viewportSize = { viewportPanelSize.x, viewportPanelSize.y };
-    PhxEngine::RHI::TextureHandle& colourBuffer = this->m_sceneRenderLayer->GetFinalColourBuffer();
-
-    if (this->m_viewportSize.x != colourBuffer->GetDesc().Width || this->m_viewportSize.y != colourBuffer->GetDesc().Height)
+    if (this->m_sceneRenderLayer)
     {
-        this->m_sceneRenderLayer->ResizeSurface(this->m_viewportSize);
+        PhxEngine::RHI::TextureHandle& colourBuffer = this->m_sceneRenderLayer->GetFinalColourBuffer();
+
+        const::TextureDesc& colourBufferDesc = IGraphicsDevice::Ptr->GetTextureDesc(colourBuffer);
+        if (this->m_sceneRenderLayer && (uint32_t)this->m_viewportSize.x != colourBufferDesc.Width || (uint32_t)this->m_viewportSize.y != colourBufferDesc.Height)
+        {
+
+            // std::cout << "Resizing Window. New = [" << (uint32_t)this->m_viewportSize.x << ", " << (uint32_t)this->m_viewportSize.y << "]";
+            // std::cout << "Current = ["<< colourBuffer->GetDesc().Width  << ", " << colourBuffer->GetDesc().Height << std::endl;
+            this->m_sceneRenderLayer->ResizeSurface(this->m_viewportSize);
+        }
+
+        ImGui::Image(static_cast<void*>(&colourBuffer), ImVec2{ this->m_viewportSize.x, this->m_viewportSize.y });
     }
-    
-    static PhxEngine::RHI::DescriptorIndex img = colourBuffer->GetDescriptorIndex();
-    ImGui::Image(reinterpret_cast<void*>(&img), ImVec2{ this->m_viewportSize.x, this->m_viewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+
     ImGui::End();
 }
 

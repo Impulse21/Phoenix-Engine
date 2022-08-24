@@ -124,7 +124,7 @@ void CommandList::TransitionBarrier(
     ResourceStates beforeState,
     ResourceStates afterState)
 {
-    auto textureImpl = std::static_pointer_cast<Texture>(texture);
+    Dx12Texture* textureImpl = this->m_graphicsDevice.GetTexturePool().Get(texture);
     assert(textureImpl);
 
     this->TransitionBarrier(
@@ -132,7 +132,7 @@ void CommandList::TransitionBarrier(
         ConvertResourceStates(beforeState),
         ConvertResourceStates(afterState));
 
-    this->m_trackedData->Resource.push_back(texture);
+    this->m_trackedData->TextureHandles.push_back(texture);
 }
 
 void PhxEngine::RHI::Dx12::CommandList::TransitionBarrier(
@@ -157,7 +157,7 @@ void PhxEngine::RHI::Dx12::CommandList::TransitionBarriers(Core::Span<GpuBarrier
     {
         if (const GpuBarrier::TextureBarrier* texBarrier = std::get_if<GpuBarrier::TextureBarrier>(&gpuBarrier.Data))
         {
-            Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource = std::static_pointer_cast<Texture>(texBarrier->Texture)->D3D12Resource;
+            Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource = this->m_graphicsDevice.GetTexturePool().Get(texBarrier->Texture)->D3D12Resource;
 
             CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
                 D3D12Resource.Get(),
@@ -165,7 +165,6 @@ void PhxEngine::RHI::Dx12::CommandList::TransitionBarriers(Core::Span<GpuBarrier
                 ConvertResourceStates(texBarrier->AfterState));
 
             this->m_barrierMemoryPool.push_back(barrier);
-            this->m_trackedData->Resource.push_back(texBarrier->Texture);
         }
         else if (const GpuBarrier::BufferBarrier* bufferBarrier = std::get_if<GpuBarrier::BufferBarrier>(&gpuBarrier.Data))
         {
@@ -193,10 +192,8 @@ void PhxEngine::RHI::Dx12::CommandList::TransitionBarriers(Core::Span<GpuBarrier
 
 void CommandList::ClearTextureFloat(TextureHandle texture, Color const& clearColour)
 {
-    auto textureImpl = std::static_pointer_cast<Texture>(texture);
+    auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(texture);
     assert(textureImpl);
-
-    this->m_trackedData->Resource.push_back(texture);
 
     assert(!textureImpl->RtvAllocation.IsNull());
     this->m_d3d12CommandList->ClearRenderTargetView(
@@ -204,6 +201,7 @@ void CommandList::ClearTextureFloat(TextureHandle texture, Color const& clearCol
         &clearColour.R,
         0,
         nullptr);
+    this->m_trackedData->TextureHandles.push_back(texture);
 }
 
 void CommandList::ClearDepthStencilTexture(
@@ -213,7 +211,7 @@ void CommandList::ClearDepthStencilTexture(
     bool clearStencil,
     uint8_t stencil)
 {
-    auto textureImpl = std::static_pointer_cast<Texture>(depthStencil);
+    auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(depthStencil);
     assert(textureImpl);
 
     D3D12_CLEAR_FLAGS flags = {};
@@ -235,8 +233,7 @@ void CommandList::ClearDepthStencilTexture(
         stencil,
         0,
         nullptr);
-
-    this->m_trackedData->Resource.push_back(depthStencil);
+    this->m_trackedData->TextureHandles.push_back(depthStencil);
 }
 
 void CommandList::Draw(
@@ -327,7 +324,7 @@ void CommandList::WriteBuffer(BufferHandle buffer, const void* data, size_t data
 
 void PhxEngine::RHI::Dx12::CommandList::WriteTexture(TextureHandle texture, uint32_t firstSubresource, size_t numSubresources, SubresourceData* pSubresourceData)
 {
-    auto textureImpl = std::static_pointer_cast<Texture>(texture);
+    auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(texture);
     UINT64 requiredSize = GetRequiredIntermediateSize(textureImpl->D3D12Resource.Get(), firstSubresource, numSubresources);
 
     auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
@@ -361,15 +358,16 @@ void PhxEngine::RHI::Dx12::CommandList::WriteTexture(TextureHandle texture, uint
         subresources.size(),
         subresources.data());
 
-    this->m_trackedData->Resource.push_back(texture);
     this->m_trackedData->NativeResources.push_back(intermediateResource);
+
+    this->m_trackedData->TextureHandles.push_back(texture);
 }
 
 void PhxEngine::RHI::Dx12::CommandList::WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* data, size_t rowPitch, size_t depthPitch)
 {
     // LOG_CORE_FATAL("NOT IMPLEMENTED FUNCTION CALLED: CommandList::WriteTexture");
     assert(false);
-    auto textureImpl = std::static_pointer_cast<Texture>(texture);
+    auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(texture);
     uint32_t subresource = CalcSubresource(mipLevel, arraySlice, 0, textureImpl->Desc.MipLevels, textureImpl->Desc.ArraySize);
 
     D3D12_RESOURCE_DESC resourceDesc = textureImpl->D3D12Resource->GetDesc();
@@ -384,17 +382,16 @@ void PhxEngine::RHI::Dx12::CommandList::SetRenderTargets(std::vector<TextureHand
     std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> renderTargetViews(renderTargets.size());
     for (int i = 0; i < renderTargets.size(); i++)
     {
-        auto textureImpl = std::static_pointer_cast<Texture>(renderTargets[i]);
+        this->m_trackedData->TextureHandles.push_back(renderTargets[i]);
+        auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(renderTargets[i]);
         renderTargetViews[i] = textureImpl->RtvAllocation.GetCpuHandle();
-
-        this->m_trackedData->Resource.push_back(renderTargets[i]);
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE depthView = {};
-    bool hasDepth = depthStencil != nullptr;
+    bool hasDepth = depthStencil.IsValid();
     if (hasDepth)
     {
-        auto textureImpl = std::static_pointer_cast<Texture>(depthStencil);
+        auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(depthStencil);
         depthView = textureImpl->DsvAllocation.GetCpuHandle();
     }
 
@@ -659,14 +656,13 @@ void CommandList::BindDynamicDescriptorTable(size_t rootParameterIndex, std::vec
     DescriptorHeapAllocation descriptorTable = this->m_activeDynamicSubAllocator->Allocate(textures.size());
     for (int i = 0; i < textures.size(); i++)
     {
-        auto textureImpl = std::static_pointer_cast<Texture>(textures[i]);
+        this->m_trackedData->TextureHandles.push_back(textures[i]);
+        auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(textures[i]);
         this->m_graphicsDevice.GetD3D12Device2()->CopyDescriptorsSimple(
             1,
             descriptorTable.GetCpuHandle(i),
             textureImpl->SrvAllocation.GetCpuHandle(),
             D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-        this->m_trackedData->Resource.push_back(textures[i]);
     }
 
     if (this->m_activeComputePSO)
@@ -686,14 +682,14 @@ void PhxEngine::RHI::Dx12::CommandList::BindDynamicUavDescriptorTable(size_t roo
     DescriptorHeapAllocation descriptorTable = this->m_activeDynamicSubAllocator->Allocate(textures.size());
     for (int i = 0; i < textures.size(); i++)
     {
-        auto textureImpl = std::static_pointer_cast<Texture>(textures[i]);
+        this->m_trackedData->TextureHandles.push_back(textures[i]);
+        auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(textures[i]);
         this->m_graphicsDevice.GetD3D12Device2()->CopyDescriptorsSimple(
             1,
             descriptorTable.GetCpuHandle(i),
             textureImpl->UavAllocation.GetCpuHandle(),
             D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-        this->m_trackedData->Resource.push_back(textures[i]);
     }
 
     if (this->m_activeComputePSO)

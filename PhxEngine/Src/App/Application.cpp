@@ -11,6 +11,7 @@
 
 #include <imgui.h>
 
+#define ENABLE_FRAME_CAPTURES 0
 
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
@@ -257,7 +258,11 @@ void PhxEngine::LayeredApplication::Run()
 		if (!this->m_isMinimized)
 		{
 			// start CPU timmers
-
+#if ENABLE_FRAME_CAPTURES
+			wchar_t wcsbuf[200];
+			swprintf(wcsbuf, 200, L"C:\\Users\\dipao\\OneDrive\\Documents\\Pix Captures\\PHXENGINE_CrashFrame_%d.wpix", (int)this->m_frameCount + 1);
+			IGraphicsDevice::Ptr->BeginCapture(std::wstring(wcsbuf));
+#endif
 			// Renderer begin frame
 			for (auto& layer : this->m_layerStack)
 			{
@@ -277,6 +282,9 @@ void PhxEngine::LayeredApplication::Run()
 
 			// Execute Renderer on seperate thread maybe?
 			// Finish Timers and 
+#if ENABLE_FRAME_CAPTURES
+			IGraphicsDevice::Ptr->EndCapture();
+#endif
 			RHI::IGraphicsDevice::Ptr->Present();
 			this->m_frameCount++;
 		}
@@ -347,7 +355,7 @@ void PhxEngine::LayeredApplication::Compose()
 		this->m_composeCommandList->TransitionBarrier(backBuffer, ResourceStates::Present, ResourceStates::RenderTarget);
 		this->m_composeCommandList->ClearTextureFloat(backBuffer, { 0.0f, 0.0f, 0.0f, 1.0f });
 
-		this->m_composeCommandList->SetRenderTargets({ backBuffer }, nullptr);
+		this->m_composeCommandList->SetRenderTargets({ backBuffer }, TextureHandle());
 
 		for (auto& layer : this->m_layerStack)
 		{

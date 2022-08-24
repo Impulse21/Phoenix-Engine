@@ -70,13 +70,30 @@ namespace PhxEngine::RHI::Dx12
 			return *this;
 		}
 
-		DescriptorHeapAllocation(const DescriptorHeapAllocation&) = delete;
-		DescriptorHeapAllocation& operator=(const DescriptorHeapAllocation&) = delete;
-
-		~DescriptorHeapAllocation()
+		DescriptorHeapAllocation(DescriptorHeapAllocation const& other) noexcept
 		{
-			// TODO: FIX ME Potential here for a danling pointer.
-			// Look to use a weak pointer here if possible.
+			this->m_firstCpuHandle = other.m_firstCpuHandle;
+			this->m_firstGpuHandle = other.m_firstGpuHandle;
+			this->m_descriptorAllocator = other.m_descriptorAllocator;
+			this->m_pageId = other.m_pageId;
+			this->m_numHandles = other.m_numHandles;
+			this->m_descriptorSize = other.m_descriptorSize;
+		}
+
+		DescriptorHeapAllocation& operator=(DescriptorHeapAllocation const& other)
+		{
+			this->m_firstCpuHandle = other.m_firstCpuHandle;
+			this->m_firstGpuHandle = other.m_firstGpuHandle;
+			this->m_descriptorAllocator = other.m_descriptorAllocator;
+			this->m_pageId = other.m_pageId;
+			this->m_numHandles = other.m_numHandles;
+			this->m_descriptorSize = other.m_descriptorSize;
+
+			return *this;
+		}
+
+		void Free()
+		{
 			if (!this->IsNull() && this->m_descriptorAllocator)
 			{
 				this->m_descriptorAllocator->Free(std::move(*this));

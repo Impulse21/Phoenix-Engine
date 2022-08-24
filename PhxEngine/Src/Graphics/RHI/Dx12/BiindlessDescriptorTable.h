@@ -5,6 +5,7 @@
 #include "DescriptorHeap.h"
 
 #include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include <queue>
 
 namespace PhxEngine::RHI::Dx12
 {
@@ -13,8 +14,8 @@ namespace PhxEngine::RHI::Dx12
 	public:
 		BindlessDescriptorTable(DescriptorHeapAllocation&& allocation)
 			: m_allocation(std::move(allocation))
-			, m_descriptorIndexPool(m_allocation.GetNumHandles())
-		{}
+		{
+		}
 
 		// TODO Free allocation
 		~BindlessDescriptorTable() = default;
@@ -32,50 +33,35 @@ namespace PhxEngine::RHI::Dx12
 		D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(DescriptorIndex index) const { return this->m_allocation.GetGpuHandle(index); }
 
 	private:
-		class DescriptorIndexPool
+		struct DescriptorIndexPool
 		{
-		public:
-			DescriptorIndexPool(size_t numIndices)
-			{
-				this->m_elements.resize(numIndices);
-				Reset();
-			}
-
-			auto& operator[](size_t index) { return this->m_elements[index]; }
-
-			const auto& operator[](size_t index) const { return this->m_elements[index]; }
-
-			void Reset()
-			{
-				this->m_freeStart = 0;
-				this->m_numActiveElements = 0;
-				for (size_t i = 0; i < this->m_elements.size(); ++i)
-				{
-					this->m_elements[i] = i + 1;
-				}
-			}
-
 			// Removes the first element from the free list and returns its index
-			DescriptorIndex Allocate()
+			UINT Allocate()
 			{
-				assert(this->m_numActiveElements < this->m_elements.size() && "Consider increasing the size of the pool");
-				this->m_numActiveElements++;
-				DescriptorIndex index = this->m_freeStart;
-				this->m_freeStart = this->m_elements[index];
-				return index;
+				std::scoped_lock Guard(this->IndexMutex);
+
+				UINT NewIndex;
+				if (!IndexQueue.empty())
+				{
+					NewIndex = IndexQueue.front();
+					IndexQueue.pop();
+				}
+				else
+				{
+					NewIndex = Index++;
+				}
+				return NewIndex;
 			}
 
-			void Release(DescriptorIndex index)
+			void Release(UINT Index)
 			{
-				this->m_numActiveElements--;
-				this->m_elements[index] = this->m_freeStart;
-				this->m_freeStart = index;
+				std::scoped_lock Guard(this->IndexMutex);
+				IndexQueue.push(Index);
 			}
 
-		private:
-			std::vector<DescriptorIndex> m_elements;
-			DescriptorIndex m_freeStart;
-			size_t m_numActiveElements;
+			std::mutex IndexMutex;
+			std::queue<DescriptorIndex> IndexQueue;
+			size_t Index = 0;
 		};
 
 	private:

@@ -9,9 +9,12 @@
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 
+#include <pix3.h>
+
 #ifdef _DEBUG
 #pragma comment(lib, "dxguid.lib")
 #endif
+
 
 using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI;
@@ -236,9 +239,14 @@ UINT ConvertSamplerReductionType(SamplerReductionType reductionType)
 }
 
 PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
-	: m_frameCount(0)
+	: m_frameCount(1)
 	, m_timerQueryIndexPool(kTimestampQueryHeapSize)
+	, m_texturePool(AlignTo(kResourcePoolSize, sizeof(Dx12Texture)))
 {
+#ifdef ENABLE_PIX_CAPUTRE
+	this->m_pixCaptureModule = PIXLoadLatestWinPixGpuCapturerLibrary();
+#endif 
+
 	this->m_factory = this->CreateFactory();
 	this->m_gpuAdapter = this->SelectOptimalGpuApdater();
 	this->CreateDevice(this->m_gpuAdapter->DxgiAdapter);
@@ -305,12 +313,40 @@ PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
 	// Create GPU Buffer for timestamp readbacks
 	BufferHandle handle = this->CreateBuffer(desc);
 	this->m_timestampQueryBuffer = std::static_pointer_cast<GpuBuffer>(handle);
+
 }
 
 PhxEngine::RHI::Dx12::GraphicsDevice::~GraphicsDevice()
 {
-	// TODO: this is to prevent an issue with dangling pointers. See DescriptorHeapAllocator
+
+	for (auto handle : this->m_swapChain.BackBuffers)
+	{
+		this->m_texturePool.Release(handle);
+	}
+
 	this->m_swapChain.BackBuffers.clear();
+	while (!this->m_deleteQueue.empty())
+	{
+		DeleteItem& deleteItem = this->m_deleteQueue.front();
+		deleteItem.DeleteFn();
+		this->m_deleteQueue.pop_front();
+	}
+
+	for (auto& frame : this->m_frameContext)
+	{
+		for (auto& handle : frame.PendingDeletionTextures)
+		{
+			// Free Descriptor Index
+			DescriptorIndex index = this->m_texturePool.Get(handle)->BindlessResourceIndex;
+			this->m_bindlessResourceDescriptorTable->Free(index);
+			this->m_texturePool.Release(handle);
+		}
+	}
+	
+#ifdef ENABLE_PIX_CAPUTRE
+	FreeLibrary(this->m_pixCaptureModule);
+#endif
+
 }
 
 void PhxEngine::RHI::Dx12::GraphicsDevice::WaitForIdle()
@@ -372,7 +408,7 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateSwapChain(SwapChainDesc const& 
 	this->m_swapChain.Desc = swapChainDesc;
 
 	this->m_swapChain.BackBuffers.resize(this->m_swapChain.Desc.BufferCount);
-	this->m_frameFence.resize(this->m_swapChain.Desc.BufferCount, 0);
+	this->m_frameContext.resize(this->m_swapChain.Desc.BufferCount, {});
 	for (UINT i = 0; i < this->m_swapChain.Desc.BufferCount; i++)
 	{
 		Microsoft::WRL::ComPtr<ID3D12Resource> backBuffer;
@@ -391,6 +427,9 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateSwapChain(SwapChainDesc const& 
 
 		this->m_swapChain.BackBuffers[i] = this->CreateRenderTarget(textureDesc, backBuffer);
 	}
+
+	ThrowIfFailed(
+		this->GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_frameFence)));
 }
 
 CommandListHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateCommandList(CommandListDesc const& desc)
@@ -604,14 +643,17 @@ ComputePSOHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateComputePso(ComputeP
 
 TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencil(TextureDesc const& desc)
 {
+
 	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
+	d3d12OptimizedClearValue.Color[0] = desc.OptmizedClearValue.Colour.R;
+	d3d12OptimizedClearValue.Color[1] = desc.OptmizedClearValue.Colour.G;
+	d3d12OptimizedClearValue.Color[2] = desc.OptmizedClearValue.Colour.B;
+	d3d12OptimizedClearValue.Color[3] = desc.OptmizedClearValue.Colour.A;
+	d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.DepthStencil.Depth;
+	d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.DepthStencil.Stencil;
+
 	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
-	if (desc.OptmizedClearValue.has_value())
-	{
-		d3d12OptimizedClearValue.Format = dxgiFormatMapping.rtvFormat;
-		d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.value().R;
-		d3d12OptimizedClearValue.DepthStencil.Stencil = desc.OptmizedClearValue.value().G;
-	}
+	d3d12OptimizedClearValue.Format = dxgiFormatMapping.rtvFormat;
 
 	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 	auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
@@ -632,18 +674,18 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencil(TextureDe
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_DEPTH_WRITE,
-			desc.OptmizedClearValue.has_value() ? &d3d12OptimizedClearValue : nullptr,
+			&d3d12OptimizedClearValue,
 			IID_PPV_ARGS(&d3d12Resource)));
 
 	// Create DSV
-	auto textureImpl = std::make_unique<Texture>();
-	textureImpl->Desc = desc;
-	textureImpl->D3D12Resource = d3d12Resource;
-	textureImpl->DsvAllocation = this->GetDsvCpuHeap()->Allocate(1);
-	textureImpl->SrvAllocation = this->GetResourceCpuHeap()->Allocate(1);
+	Dx12Texture texture = {};
+	texture.Desc = desc;
+	texture.D3D12Resource = d3d12Resource;
+	texture.DsvAllocation = this->GetDsvCpuHeap()->Allocate(1);
+	texture.SrvAllocation = this->GetResourceCpuHeap()->Allocate(1);
 
 	std::wstring debugName(desc.DebugName.begin(), desc.DebugName.end());
-	textureImpl->D3D12Resource->SetName(debugName.c_str());
+	texture.D3D12Resource->SetName(debugName.c_str());
 
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
 	dsvDesc.Format = dxgiFormatMapping.rtvFormat;
@@ -652,9 +694,9 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencil(TextureDe
 	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 
 	this->GetD3D12Device2()->CreateDepthStencilView(
-		textureImpl->D3D12Resource.Get(),
+		texture.D3D12Resource.Get(),
 		&dsvDesc,
-		textureImpl->DsvAllocation.GetCpuHandle());
+		texture.DsvAllocation.GetCpuHandle());
 
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -674,26 +716,25 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencil(TextureDe
 	}
 
 	this->GetD3D12Device2()->CreateShaderResourceView(
-		textureImpl->D3D12Resource.Get(),
+		texture.D3D12Resource.Get(),
 		&srvDesc,
-		textureImpl->SrvAllocation.GetCpuHandle());
+		texture.SrvAllocation.GetCpuHandle());
 
-	return textureImpl;
+	return this->m_texturePool.Insert(texture);
 }
 
 TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTexture(TextureDesc const& desc)
 {
-	auto& dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
-
-	// Create
-
 	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
-	if (desc.OptmizedClearValue.has_value())
-	{
-		d3d12OptimizedClearValue.Format = dxgiFormatMapping.rtvFormat;
-		d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.value().R;
-		d3d12OptimizedClearValue.DepthStencil.Stencil = desc.OptmizedClearValue.value().G;
-	}
+	d3d12OptimizedClearValue.Color[0] = desc.OptmizedClearValue.Colour.R;
+	d3d12OptimizedClearValue.Color[1] = desc.OptmizedClearValue.Colour.G;
+	d3d12OptimizedClearValue.Color[2] = desc.OptmizedClearValue.Colour.B;
+	d3d12OptimizedClearValue.Color[3] = desc.OptmizedClearValue.Colour.A;
+	d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.DepthStencil.Depth;
+	d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.DepthStencil.Stencil;
+
+	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
+	d3d12OptimizedClearValue.Format = dxgiFormatMapping.rtvFormat;
 
 	auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
@@ -726,6 +767,10 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTexture(TextureDesc co
 			0,
 			resourceFlags);
 
+	const bool useClearValue = 
+		((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget) || 
+		((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil);
+
 	Microsoft::WRL::ComPtr<ID3D12Resource> d3d12Resource;
 	ThrowIfFailed(
 		this->GetD3D12Device2()->CreateCommittedResource(
@@ -733,37 +778,83 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTexture(TextureDesc co
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
 			ConvertResourceStates(desc.InitialState),
-			desc.OptmizedClearValue.has_value() ? &d3d12OptimizedClearValue : nullptr,
+			useClearValue ? &d3d12OptimizedClearValue : nullptr,
 			IID_PPV_ARGS(&d3d12Resource)));
 
-	auto textureImpl = std::make_unique<Texture>();
-	textureImpl->Desc = desc;
-	textureImpl->D3D12Resource = d3d12Resource;
+	Dx12Texture texture = {};
+	texture.Desc = desc;
+	texture.D3D12Resource = d3d12Resource;
 
 	std::wstring debugName;
 	Helpers::StringConvert(desc.DebugName, debugName);
-	textureImpl->D3D12Resource->SetName(debugName.c_str());
+	texture.D3D12Resource->SetName(debugName.c_str());
 
 	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
-		this->CreateShaderResourceView(textureImpl.get());
+		this->CreateShaderResourceView(texture);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
 	{
-		this->CreateRenderTargetView(textureImpl.get());
+		this->CreateRenderTargetView(texture);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
 	{
-		this->CreateDepthStencilView(textureImpl.get());
+		this->CreateDepthStencilView(texture);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
 	{
-		this->CreateUnorderedAccessView(textureImpl.get());
+		this->CreateUnorderedAccessView(texture);
 	}
-	return textureImpl;
+
+	return this->m_texturePool.Insert(texture);
+}
+
+const TextureDesc& PhxEngine::RHI::Dx12::GraphicsDevice::GetTextureDesc(TextureHandle handle)
+{
+	const Dx12Texture* texture = this->m_texturePool.Get(handle);
+	return texture->Desc;
+}
+
+DescriptorIndex PhxEngine::RHI::Dx12::GraphicsDevice::GetDescriptorIndex(TextureHandle handle)
+{
+	const Dx12Texture* texture = this->m_texturePool.Get(handle);
+	return texture 
+		? texture->BindlessResourceIndex
+		: cInvalidDescriptorIndex;
+}
+
+void PhxEngine::RHI::Dx12::GraphicsDevice::FreeTexture(TextureHandle handle)
+{
+	if (!handle.IsValid())
+	{
+		return;
+	}
+
+	// FrameContext& context = this->GetCurrentFrameContext();
+	// context.PendingDeletionTextures.push_back(handle);
+	DeleteItem d =
+	{
+		this->m_frameCount,
+		[=]()
+		{
+			Dx12Texture* texture = this->m_texturePool.Get(handle);
+
+			if (texture)
+			{
+				this->m_bindlessResourceDescriptorTable->Free(texture->BindlessResourceIndex);
+				texture->RtvAllocation.Free();
+				texture->DsvAllocation.Free();
+				texture->SrvAllocation.Free();
+				texture->UavAllocation.Free();
+				this->GetTexturePool().Release(handle);
+			}
+		}
+	};
+
+	this->m_deleteQueue.push_back(d);
 }
 
 BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateIndexBuffer(BufferDesc const& desc)
@@ -906,13 +997,57 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::ResetTimerQuery(TimerQueryHandle quer
 
 void PhxEngine::RHI::Dx12::GraphicsDevice::Present()
 {
-	this->m_swapChain.DxgiSwapchain->Present(0, 0);
+	HRESULT hr = this->m_swapChain.DxgiSwapchain->Present(0, 0);
 
-	this->m_frameFence[this->GetCurrentBackBufferIndex()] = this->GetGfxQueue()->IncrementFence();
+	// If the device was reset we must completely reinitialize the renderer.
+	if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+	{
+#ifdef _DEBUG
+		char buff[64] = {};
+		sprintf_s(buff, "Device Lost on Present: Reason code 0x%08X\n",
+			static_cast<unsigned int>((hr == DXGI_ERROR_DEVICE_REMOVED) ? this->GetD3D12Device2()->GetDeviceRemovedReason() : hr));
+		OutputDebugStringA(buff);
+#endif
+
+		// TODO: Handle device lost
+		// HandleDeviceLost();
+	}
+
+	// Mark complition of the graphics Queue 
+	this->GetGfxQueue()->GetD3D12CommandQueue()->Signal(this->m_frameFence.Get(), this->m_frameCount);
+
+	// Begin the next frame - this affects the GetCurrentBackBufferIndex()
 	this->m_frameCount++;
 
-	// TODO: Add timers to see how long we are waiting for a fence to finish.
-	this->GetGfxQueue()->WaitForFence(this->m_frameFence[this->GetCurrentBackBufferIndex()]);
+	const UINT64 completedFrame = this->m_frameFence->GetCompletedValue();
+
+	// If the fence is max uint64, that might indicate that the device has been removed as fences get reset in this case
+	assert(completedFrame != UINT64_MAX);
+
+	// Since our frame count is 1 based rather then 0, increment the number of buffers by 1 so we don't have to wait on the first 3 frames
+	// that are kicked off.
+	if (this->m_frameCount >= (this->m_swapChain.GetNumBackBuffers() + 1) && completedFrame < this->m_frameCount)
+	{
+		// Wait on the frames last value?
+		// NULL event handle will simply wait immediately:
+		//	https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12fence-seteventoncompletion#remarks
+		ThrowIfFailed(
+			this->m_frameFence->SetEventOnCompletion(this->m_frameCount - this->m_swapChain.GetNumBackBuffers(), NULL));
+	}
+
+	while (!this->m_deleteQueue.empty())
+	{
+		DeleteItem& deleteItem = this->m_deleteQueue.front();
+		if (deleteItem.Frame < completedFrame)
+		{
+			deleteItem.DeleteFn();
+			this->m_deleteQueue.pop_front();
+		}
+		else
+		{
+			break;
+		}
+	}
 
 	this->RunGarbageCollection();
 }
@@ -973,73 +1108,95 @@ ExecutionReceipt PhxEngine::RHI::Dx12::GraphicsDevice::ExecuteCommandLists(
 	return { fenceValue, executionQueue };
 }
 
+void PhxEngine::RHI::Dx12::GraphicsDevice::BeginCapture(std::wstring const& filename)
+{
+#if ENABLE_PIX_CAPUTRE
+	if (this->m_pixCaptureModule)
+	{
+		PIXCaptureParameters param = {};
+		param.GpuCaptureParameters.FileName = filename.c_str();
+		PIXBeginCapture(PIX_CAPTURE_GPU, &param);
+	}
+#endif
+}
+
+void PhxEngine::RHI::Dx12::GraphicsDevice::EndCapture()
+{
+#if ENABLE_PIX_CAPUTRE
+	if (this->m_pixCaptureModule)
+	{
+		PIXEndCapture(false);
+	}
+#endif
+}
+
 TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTarget(
 	TextureDesc const& desc,
 	Microsoft::WRL::ComPtr<ID3D12Resource> d3d12TextureResource)
 {
 	// Construct Texture
-	auto textureImpl = std::make_unique<Texture>();
-	textureImpl->Desc = desc;
-	textureImpl->D3D12Resource = d3d12TextureResource;
-	textureImpl->RtvAllocation = this->GetRtvCpuHeap()->Allocate(1);
+	Dx12Texture texture = {};
+	texture.Desc = desc;
+	texture.D3D12Resource = d3d12TextureResource;
+	texture.RtvAllocation = this->GetRtvCpuHeap()->Allocate(1);
 
 	this->GetD3D12Device2()->CreateRenderTargetView(
-		textureImpl->D3D12Resource.Get(),
+		texture.D3D12Resource.Get(),
 		nullptr,
-		textureImpl->RtvAllocation.GetCpuHandle());
+		texture.RtvAllocation.GetCpuHandle());
 
 	// Set debug name
-	std::wstring debugName(textureImpl->Desc.DebugName.begin(), textureImpl->Desc.DebugName.end());
-	textureImpl->D3D12Resource->SetName(debugName.c_str());
+	std::wstring debugName(texture.Desc.DebugName.begin(), texture.Desc.DebugName.end());
+	texture.D3D12Resource->SetName(debugName.c_str());
 
-	return textureImpl;
+	return this->m_texturePool.Insert(texture);
 }
 
-void PhxEngine::RHI::Dx12::GraphicsDevice::CreateShaderResourceView(Texture* textureImpl)
+void PhxEngine::RHI::Dx12::GraphicsDevice::CreateShaderResourceView(Dx12Texture& texture)
 {
-	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
-	textureImpl->SrvAllocation = this->GetResourceCpuHeap()->Allocate(1);
+	auto dxgiFormatMapping = GetDxgiFormatMapping(texture.Desc.Format);
+	texture.SrvAllocation = this->GetResourceCpuHeap()->Allocate(1);
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Format = dxgiFormatMapping.srvFormat;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-	if (textureImpl->Desc.Dimension == TextureDimension::TextureCube)
+	if (texture.Desc.Dimension == TextureDimension::TextureCube)
 	{
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;  // Only 2D textures are supported (this was checked in the calling function).
-		srvDesc.TextureCube.MipLevels = textureImpl->Desc.MipLevels;
+		srvDesc.TextureCube.MipLevels = texture.Desc.MipLevels;
 		srvDesc.TextureCube.MostDetailedMip = 0;
 	}
 	else
 	{
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;  // Only 2D textures are supported (this was checked in the calling function).
-		srvDesc.Texture2D.MipLevels = textureImpl->Desc.MipLevels;
+		srvDesc.Texture2D.MipLevels = texture.Desc.MipLevels;
 	}
 
 	this->GetD3D12Device2()->CreateShaderResourceView(
-		textureImpl->D3D12Resource.Get(),
+		texture.D3D12Resource.Get(),
 		&srvDesc,
-		textureImpl->SrvAllocation.GetCpuHandle());
+		texture.SrvAllocation.GetCpuHandle());
 
-	if (textureImpl->Desc.IsBindless)
+	if (texture.Desc.IsBindless)
 	{
 		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
-		textureImpl->BindlessResourceIndex = this->m_bindlessResourceDescriptorTable->Allocate();
-		if (textureImpl->BindlessResourceIndex != cInvalidDescriptorIndex)
+		texture.BindlessResourceIndex = this->m_bindlessResourceDescriptorTable->Allocate();
+		if (texture.BindlessResourceIndex != cInvalidDescriptorIndex)
 		{
 			this->GetD3D12Device2()->CopyDescriptorsSimple(
 				1,
-				this->m_bindlessResourceDescriptorTable->GetCpuHandle(textureImpl->BindlessResourceIndex),
-				textureImpl->SrvAllocation.GetCpuHandle(),
+				this->m_bindlessResourceDescriptorTable->GetCpuHandle(texture.BindlessResourceIndex),
+				texture.SrvAllocation.GetCpuHandle(),
 				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
 	}
 }
 
-void PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTargetView(Texture* textureImpl)
+void PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTargetView(Dx12Texture& texture)
 {
-	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
+	auto dxgiFormatMapping = GetDxgiFormatMapping(texture.Desc.Format);
 
-	textureImpl->RtvAllocation = this->GetRtvCpuHeap()->Allocate(1);
+	texture.RtvAllocation = this->GetRtvCpuHeap()->Allocate(1);
 
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 	rtvDesc.Format = dxgiFormatMapping.rtvFormat;
@@ -1047,16 +1204,16 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTargetView(Texture* textu
 	rtvDesc.Texture2D.MipSlice = 0;
 
 	this->GetD3D12Device2()->CreateRenderTargetView(
-		textureImpl->D3D12Resource.Get(),
+		texture.D3D12Resource.Get(),
 		&rtvDesc,
-		textureImpl->RtvAllocation.GetCpuHandle());
+		texture.RtvAllocation.GetCpuHandle());
 }
 
-void PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencilView(Texture* textureImpl)
+void PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencilView(Dx12Texture& texture)
 {
-	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
+	auto dxgiFormatMapping = GetDxgiFormatMapping(texture.Desc.Format);
 
-	textureImpl->DsvAllocation = this->GetDsvCpuHeap()->Allocate(1);
+	texture.DsvAllocation = this->GetDsvCpuHeap()->Allocate(1);
 
 
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
@@ -1066,27 +1223,27 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencilView(Texture* textu
 	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 
 	this->GetD3D12Device2()->CreateDepthStencilView(
-		textureImpl->D3D12Resource.Get(),
+		texture.D3D12Resource.Get(),
 		&dsvDesc,
-		textureImpl->DsvAllocation.GetCpuHandle());
+		texture.DsvAllocation.GetCpuHandle());
 }
 
-void PhxEngine::RHI::Dx12::GraphicsDevice::CreateUnorderedAccessView(Texture* textureImpl)
+void PhxEngine::RHI::Dx12::GraphicsDevice::CreateUnorderedAccessView(Dx12Texture& texture)
 {
-	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
-	textureImpl->UavAllocation = this->GetResourceCpuHeap()->Allocate(1);
+	auto dxgiFormatMapping = GetDxgiFormatMapping(texture.Desc.Format);
+	texture.UavAllocation = this->GetResourceCpuHeap()->Allocate(1);
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.Format = dxgiFormatMapping.srvFormat;
 
-	assert(textureImpl->Desc.Dimension == TextureDimension::Texture2D);
+	assert(texture.Desc.Dimension == TextureDimension::Texture2D);
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;  // Only 2D textures are supported (this was checked in the calling function).
 	uavDesc.Texture2D.MipSlice = 0;
 
 	this->GetD3D12Device2()->CreateUnorderedAccessView(
-		textureImpl->D3D12Resource.Get(),
+		texture.D3D12Resource.Get(),
 		nullptr,
 		&uavDesc,
-		textureImpl->UavAllocation.GetCpuHandle());
+		texture.UavAllocation.GetCpuHandle());
 
 	// Bindless for UAV?
 }
@@ -1256,6 +1413,7 @@ RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(Gr
 	*/
 
 
+// TODO: remove
 void PhxEngine::RHI::Dx12::GraphicsDevice::RunGarbageCollection()
 {
 	for (size_t i = 0; i < (size_t)CommandQueueType::Count; i++)
@@ -1691,6 +1849,7 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateDevice(Microsoft::WRL::ComPtr<I
 
 void PhxEngine::RHI::ReportLiveObjects()
 {
+#ifdef _DEBUG
 	if (sDebugEnabled)
 	{
 		Microsoft::WRL::ComPtr<IDXGIDebug1> dxgiDebug;
@@ -1699,4 +1858,5 @@ void PhxEngine::RHI::ReportLiveObjects()
 			dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_FLAGS(DXGI_DEBUG_RLO_ALL));
 		}
 	}
+#endif
 }
