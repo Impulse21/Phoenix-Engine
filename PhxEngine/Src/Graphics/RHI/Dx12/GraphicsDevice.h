@@ -188,6 +188,8 @@ namespace PhxEngine::RHI::Dx12
         Microsoft::WRL::ComPtr<IDXGISwapChain4> DxgiSwapchain;
         SwapChainDesc Desc;
         std::vector<TextureHandle> BackBuffers;
+
+        uint32_t GetNumBackBuffers() const { return this->Desc.BufferCount; }
     };
 
     enum class DescriptorHeapTypes : uint8_t
@@ -335,6 +337,8 @@ namespace PhxEngine::RHI::Dx12
             return this->m_frameContext[this->m_frameCount % this->m_frameContext.size()];
         }
 
+        size_t GetBackBufferIndex() const { return this->m_frameCount % this->m_swapChain.GetNumBackBuffers(); }
+
     private:
         std::unique_ptr<GpuBuffer> CreateBufferInternal(BufferDesc const& desc);
         void CreateSRVViews(GpuBuffer* gpuBuffer);
@@ -399,6 +403,7 @@ namespace PhxEngine::RHI::Dx12
         std::unique_ptr<BindlessDescriptorTable> m_bindlessResourceDescriptorTable;
 
         // -- Frame Frences ---
+        Microsoft::WRL::ComPtr<ID3D12Fence> m_frameFence;
         std::vector<FrameContext> m_frameContext;
         uint64_t m_frameCount;
 
@@ -409,5 +414,12 @@ namespace PhxEngine::RHI::Dx12
         };
 
         std::array<std::deque<InflightDataEntry>, (int)CommandQueueType::Count> m_inflightData;
+
+        struct DeleteItem
+        {
+            uint32_t Frame;
+            std::function<void()> DeleteFn;
+        };
+        std::deque<DeleteItem> m_deleteQueue;
 	};
 }

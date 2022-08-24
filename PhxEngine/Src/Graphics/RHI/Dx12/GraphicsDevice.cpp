@@ -236,7 +236,7 @@ UINT ConvertSamplerReductionType(SamplerReductionType reductionType)
 }
 
 PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
-	: m_frameCount(0)
+	: m_frameCount(1)
 	, m_timerQueryIndexPool(kTimestampQueryHeapSize)
 	, m_texturePool(AlignTo(kResourcePoolSize, sizeof(Dx12Texture)))
 {
@@ -306,6 +306,7 @@ PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
 	// Create GPU Buffer for timestamp readbacks
 	BufferHandle handle = this->CreateBuffer(desc);
 	this->m_timestampQueryBuffer = std::static_pointer_cast<GpuBuffer>(handle);
+
 }
 
 PhxEngine::RHI::Dx12::GraphicsDevice::~GraphicsDevice()
@@ -414,6 +415,9 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateSwapChain(SwapChainDesc const& 
 
 		this->m_swapChain.BackBuffers[i] = this->CreateRenderTarget(textureDesc, backBuffer);
 	}
+
+	ThrowIfFailed(
+		this->GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_frameFence)));
 }
 
 CommandListHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateCommandList(CommandListDesc const& desc)
@@ -810,8 +814,33 @@ DescriptorIndex PhxEngine::RHI::Dx12::GraphicsDevice::GetDescriptorIndex(Texture
 
 void PhxEngine::RHI::Dx12::GraphicsDevice::FreeTexture(TextureHandle handle)
 {
-	FrameContext& context = this->GetCurrentFrameContext();
-	context.PendingDeletionTextures.push_back(handle);
+	if (!handle.IsValid())
+	{
+		return;
+	}
+
+	// FrameContext& context = this->GetCurrentFrameContext();
+	// context.PendingDeletionTextures.push_back(handle);
+	DeleteItem d =
+	{
+		this->m_frameCount,
+		[=]()
+		{
+			Dx12Texture* texture = this->m_texturePool.Get(handle);
+
+			if (texture)
+			{
+				this->m_bindlessResourceDescriptorTable->Free(texture->BindlessResourceIndex);
+				texture->RtvAllocation.Free();
+				texture->DsvAllocation.Free();
+				texture->SrvAllocation.Free();
+				texture->UavAllocation.Free();
+				this->GetTexturePool().Release(handle);
+			}
+		}
+	};
+
+	this->m_deleteQueue.push_back(d);
 }
 
 BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateIndexBuffer(BufferDesc const& desc)
@@ -956,42 +985,43 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::Present()
 {
 	this->m_swapChain.DxgiSwapchain->Present(0, 0);
 
-	this->GetCurrentFrameContext().FenceValue = this->GetGfxQueue()->IncrementFence();
+	// Mark complition of the graphics Queue 
+	this->GetGfxQueue()->GetD3D12CommandQueue()->Signal(this->m_frameFence.Get(), this->m_frameCount);
 
+	// Begin the next frame - this affects the GetCurrentBackBufferIndex()
 	this->m_frameCount++;
 
-	FrameContext& nextFrame = this->GetCurrentFrameContext();
-	this->GetGfxQueue()->WaitForFence(nextFrame.FenceValue);
+	const UINT64 completedFrame = this->m_frameFence->GetCompletedValue();
 
-	// TODO: Remove once we go to handles
-	this->RunGarbageCollection();
+	// If the fence is max uint64, that might indicate that the device has been removed as fences get reset in this case
+	assert(completedFrame != UINT64_MAX);
 
-	// This is where we finally clear the data for the frame once it's made it's way back around.
-	// this is Safe and very explicit. I like it.
-	for (auto& handle : nextFrame.PendingDeletionTextures)
+	// Since our frame count is 1 based rather then 0, increment the number of buffers by 1 so we don't have to wait on the first 3 frames
+	// that are kicked off.
+	if (this->m_frameCount >= (this->m_swapChain.GetNumBackBuffers() + 1) && completedFrame < this->m_frameCount)
 	{
-		// Temp Debugging to see if inflight data is being deleted.....
-#if true
-		for (auto& tracked : this->m_inflightData[0])
-		{
-			for (auto& trackedHandle : tracked.TrackedResources->TextureHandles)
-			{
-				assert(handle == trackedHandle);
-			}
-		}
-#endif
-		// Free Descriptor Index
-		Dx12Texture* texture = this->m_texturePool.Get(handle);
-
-		this->m_bindlessResourceDescriptorTable->Free(texture->BindlessResourceIndex);
-		texture->RtvAllocation.Free();
-		texture->DsvAllocation.Free();
-		texture->SrvAllocation.Free();
-		texture->UavAllocation.Free();
-
-		this->m_texturePool.Release(handle);
+		// Wait on the frames last value?
+		// NULL event handle will simply wait immediately:
+		//	https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12fence-seteventoncompletion#remarks
+		ThrowIfFailed(
+			this->m_frameFence->SetEventOnCompletion(this->m_frameCount - this->m_swapChain.GetNumBackBuffers(), NULL));
 	}
-	nextFrame.PendingDeletionTextures.clear();
+
+	while (!this->m_deleteQueue.empty())
+	{
+		DeleteItem& deleteItem = this->m_deleteQueue.front();
+		if (deleteItem.Frame < completedFrame)
+		{
+			deleteItem.DeleteFn();
+			this->m_deleteQueue.pop_front();
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	this->RunGarbageCollection();
 }
 
 ExecutionReceipt PhxEngine::RHI::Dx12::GraphicsDevice::ExecuteCommandLists(

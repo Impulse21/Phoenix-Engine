@@ -220,6 +220,8 @@ namespace PhxEngine::RHI
         Count
     };
 
+    constexpr size_t NumCommandQueues = static_cast<size_t>(CommandQueueType::Count);
+
     enum class TextureDimension : uint8_t
     {
         Unknown,
