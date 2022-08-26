@@ -14,13 +14,18 @@ using namespace PhxEngine::Scene;
 using namespace PhxEngine::RHI;
 using namespace DirectX;
 
-Entity New::Scene::CreateEntity(std::string const& name = std::string())
+Entity New::Scene::CreateEntity(std::string const& name)
 {
 	Entity entity = { this->m_registry.create(), this };
 	entity.AddComponent<TransformComponent>();
 	auto& nameComp = entity.AddComponent<NameComponent>();
 	nameComp.Name = name.empty() ? "Entity" : name;
-	return entity
+	return entity;
+}
+
+void New::Scene::DestroyEntity(Entity entity)
+{
+	this->m_registry.destroy(entity);
 }
 
 // --------------------------------------------------------------------------------

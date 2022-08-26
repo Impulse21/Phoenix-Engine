@@ -42,7 +42,6 @@ void PhxEngine::Graphics::ImGuiRenderer::OnAttach()
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows
 
-
     ImGui::StyleColorsDark();
     SetDarkThemeColors();
 

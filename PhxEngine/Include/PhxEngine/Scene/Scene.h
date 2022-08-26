@@ -28,6 +28,8 @@ namespace PhxEngine::Scene
 				return this->m_registry.view<Components...>();
 			}
 
+			entt::registry& GetRegistry() { return this->m_registry; }
+
 		private:
 			entt::registry m_registry;
 

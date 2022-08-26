@@ -38,8 +38,9 @@ namespace PhxEngine::Scene
 		template<typename T>
 		bool HasComponent()
 		{
-			return this->m_scene->m_registry.has<T>(this->m_entityHandle);
+			return this->m_scene->m_registry.all_of<T>(this->m_entityHandle);
 		}
+
 		template<typename T>
 		void RemoveComponent()
 		{
