@@ -1,27 +1,38 @@
 #include "phxpch.h"
 
 #include "PhxEngine/Scene/Scene.h"
+#include <PhxEngine/Scene/Entity.h>
+#include <PhxEngine/Scene/Components.h>
 
 #include <DirectXMath.h>
 
 #include <algorithm>
 
 
+using namespace PhxEngine;
 using namespace PhxEngine::Scene;
 using namespace PhxEngine::RHI;
-using namespace PhxEngine::ECS;
 using namespace DirectX;
 
+Entity New::Scene::CreateEntity(std::string const& name = std::string())
+{
+	Entity entity = { this->m_registry.create(), this };
+	entity.AddComponent<TransformComponent>();
+	auto& nameComp = entity.AddComponent<NameComponent>();
+	nameComp.Name = name.empty() ? "Entity" : name;
+	return entity
+}
 
-CameraComponent& PhxEngine::Scene::Scene::GetGlobalCamera()
+// --------------------------------------------------------------------------------
+CameraComponent& Legacy::Scene::GetGlobalCamera()
 {
 	static CameraComponent mainCamera;
 	return mainCamera;
 }
 
-Entity PhxEngine::Scene::Scene::EntityCreateMeshInstance(std::string const& name)
+ECS::Entity Legacy::Scene::EntityCreateMeshInstance(std::string const& name)
 {
-	Entity e = ECS::CreateEntity();
+	ECS::Entity e = ECS::CreateEntity();
 
 	NameComponent& nameComponent = this->Names.Create(e);
 	nameComponent.Name = name;
@@ -32,9 +43,9 @@ Entity PhxEngine::Scene::Scene::EntityCreateMeshInstance(std::string const& name
 	return e;
 }
 
-Entity PhxEngine::Scene::Scene::EntityCreateCamera(std::string const& name)
+ECS::Entity Legacy::Scene::EntityCreateCamera(std::string const& name)
 {
-	Entity e = ECS::CreateEntity();
+	ECS::Entity e = ECS::CreateEntity();
 
 	NameComponent& nameComponent = this->Names.Create(e);
 	nameComponent.Name = name;
@@ -45,7 +56,7 @@ Entity PhxEngine::Scene::Scene::EntityCreateCamera(std::string const& name)
 	return e;
 }
 
-Entity PhxEngine::Scene::Scene::EntityCreateCamera(
+ECS::Entity Legacy::Scene::EntityCreateCamera(
 	std::string const& name,
 	float width,
 	float height,
@@ -53,7 +64,7 @@ Entity PhxEngine::Scene::Scene::EntityCreateCamera(
 	float farPlane,
 	float fov)
 {
-	Entity e = ECS::CreateEntity();
+	ECS::Entity e = ECS::CreateEntity();
 
 	NameComponent& nameComponent = this->Names.Create(e);
 	nameComponent.Name = name;
@@ -70,9 +81,9 @@ Entity PhxEngine::Scene::Scene::EntityCreateCamera(
 	return e;
 }
 
-Entity Scene::EntityCreateMaterial(std::string const& name)
+ECS::Entity Legacy::Scene::EntityCreateMaterial(std::string const& name)
 {
-	Entity e = ECS::CreateEntity();
+	ECS::Entity e = ECS::CreateEntity();
 
 	NameComponent& nameComponent = this->Names.Create(e);
 	nameComponent.Name = name;
@@ -82,9 +93,9 @@ Entity Scene::EntityCreateMaterial(std::string const& name)
 	return e;
 }
 
-Entity Scene::EntityCreateMesh(std::string const& name)
+ECS::Entity Legacy::Scene::EntityCreateMesh(std::string const& name)
 {
-	Entity e = ECS::CreateEntity();
+	ECS::Entity e = ECS::CreateEntity();
 
 	NameComponent& nameComponent = this->Names.Create(e);
 	nameComponent.Name = name;
@@ -94,9 +105,9 @@ Entity Scene::EntityCreateMesh(std::string const& name)
 	return e;
 }
 
-Entity PhxEngine::Scene::Scene::EntityCreateLight(std::string const& name)
+ECS::Entity Legacy::Scene::EntityCreateLight(std::string const& name)
 {
-	Entity e = ECS::CreateEntity();
+	ECS::Entity e = ECS::CreateEntity();
 
 	NameComponent& nameComponent = this->Names.Create(e);
 	nameComponent.Name = name;
@@ -107,7 +118,7 @@ Entity PhxEngine::Scene::Scene::EntityCreateLight(std::string const& name)
 	return e;
 }
 
-Entity Scene::CreateCubeMeshEntity(std::string const& name, Entity mtlID, float size, bool rhsCoords)
+ECS::Entity Legacy::Scene::CreateCubeMeshEntity(std::string const& name, ECS::Entity mtlID, float size, bool rhsCoords)
 {
 	// A cube has six faces, each one pointing in a different direction.
 	const int FaceCount = 6;
@@ -137,7 +148,7 @@ Entity Scene::CreateCubeMeshEntity(std::string const& name, Entity mtlID, float 
 		{ 0, 0 },
 	};
 
-	Entity meshEntity = this->EntityCreateMesh(name);
+	ECS::Entity meshEntity = this->EntityCreateMesh(name);
 	auto* meshComponent = this->Meshes.GetComponent(meshEntity);
 
 	size /= 2;
@@ -205,7 +216,7 @@ Entity Scene::CreateCubeMeshEntity(std::string const& name, Entity mtlID, float 
 	return meshEntity;
 }
 
-Entity PhxEngine::Scene::Scene::CreateSphereMeshEntity(std::string const& name, ECS::Entity mtlID, float diameter, size_t tessellation, bool rhsCoords)
+ECS::Entity Legacy::Scene::CreateSphereMeshEntity(std::string const& name, ECS::Entity mtlID, float diameter, size_t tessellation, bool rhsCoords)
 {
 	if (tessellation < 3)
 	{
@@ -216,7 +227,7 @@ Entity PhxEngine::Scene::Scene::CreateSphereMeshEntity(std::string const& name, 
 	size_t verticalSegments = tessellation;
 	size_t horizontalSegments = tessellation * 2;
 
-	Entity meshEntity = this->EntityCreateMesh(name);
+	ECS::Entity meshEntity = this->EntityCreateMesh(name);
 	auto* meshComponent = this->Meshes.GetComponent(meshEntity);
 	
 	// Create rings of vertices at progressively higher latitudes.
@@ -290,7 +301,7 @@ Entity PhxEngine::Scene::Scene::CreateSphereMeshEntity(std::string const& name, 
 	return meshEntity;
 }
 
-void PhxEngine::Scene::Scene::ComponentAttach(Entity entity, Entity parent, bool childInLocalSpace)
+void Legacy::Scene::ComponentAttach(ECS::Entity entity, ECS::Entity parent, bool childInLocalSpace)
 {
 	assert(entity != parent);
 
@@ -328,7 +339,7 @@ void PhxEngine::Scene::Scene::ComponentAttach(Entity entity, Entity parent, bool
 	transformChild->UpdateTransform(*transformParent);
 }
 
-void PhxEngine::Scene::Scene::ComponentDetach(ECS::Entity entity)
+void Legacy::Scene::ComponentDetach(ECS::Entity entity)
 {
 	const HierarchyComponent* parent = this->Hierarchy.GetComponent(entity);
 
@@ -344,13 +355,13 @@ void PhxEngine::Scene::Scene::ComponentDetach(ECS::Entity entity)
 	}
 }
 
-void PhxEngine::Scene::Scene::ComponentDetachChildren(ECS::Entity parent)
+void Legacy::Scene::ComponentDetachChildren(ECS::Entity parent)
 {
 	for (size_t i = 0; i < this->Hierarchy.GetCount(); )
 	{
 		if (this->Hierarchy[i].ParentId == parent)
 		{
-			Entity entity = this->Hierarchy.GetEntity(i);
+			ECS::Entity entity = this->Hierarchy.GetEntity(i);
 			this->ComponentDetach(entity);
 		}
 		else
@@ -360,7 +371,7 @@ void PhxEngine::Scene::Scene::ComponentDetachChildren(ECS::Entity parent)
 	}
 }
 
-void PhxEngine::Scene::Scene::RunMeshInstanceUpdateSystem()
+void Legacy::Scene::RunMeshInstanceUpdateSystem()
 {
 	for (int i = 0; i < this->MeshInstances.GetCount(); i++)
 	{
@@ -383,7 +394,7 @@ void PhxEngine::Scene::Scene::RunMeshInstanceUpdateSystem()
 	}
 }
 
-void PhxEngine::Scene::Scene::RefreshGpuBuffers(RHI::IGraphicsDevice* graphicsDevice, RHI::CommandListHandle commandList)
+void Legacy::Scene::RefreshGpuBuffers(RHI::IGraphicsDevice* graphicsDevice, RHI::CommandListHandle commandList)
 {
 	// let's construct the mesh buffers
 
@@ -474,7 +485,7 @@ void PhxEngine::Scene::Scene::RefreshGpuBuffers(RHI::IGraphicsDevice* graphicsDe
 	}
 }
 
-void PhxEngine::Scene::Scene::UpdateTansformsSystem()
+void Legacy::Scene::UpdateTansformsSystem()
 {
 	for (size_t i = 0; i < this->Transforms.GetCount(); i++)
 	{
@@ -483,12 +494,12 @@ void PhxEngine::Scene::Scene::UpdateTansformsSystem()
 	}
 }
 
-void PhxEngine::Scene::Scene::UpdateHierarchySystem()
+void Legacy::Scene::UpdateHierarchySystem()
 {
 	for (size_t i = 0; i < this->Hierarchy.GetCount(); i++)
 	{
 		auto& hier = this->Hierarchy[i];
-		Entity entity = this->Hierarchy.GetEntity(i);
+		ECS::Entity entity = this->Hierarchy.GetEntity(i);
 
 		TransformComponent* childTransform = this->Transforms.GetComponent(entity);
 		if (!childTransform)
@@ -498,8 +509,8 @@ void PhxEngine::Scene::Scene::UpdateHierarchySystem()
 
 		XMMATRIX  worldMatrix = childTransform->GetLocalMatrix();
 
-		Entity parentEntity = hier.ParentId;
-		while (parentEntity != InvalidEntity)
+		ECS::Entity parentEntity = hier.ParentId;
+		while (parentEntity != ECS::InvalidEntity)
 		{
 			// Get the parents transform
 			TransformComponent* parentTransform = this->Transforms.GetComponent(parentEntity);
@@ -510,19 +521,19 @@ void PhxEngine::Scene::Scene::UpdateHierarchySystem()
 
 			HierarchyComponent* currentParentHeir = this->Hierarchy.GetComponent(parentEntity);
 
-			parentEntity = currentParentHeir ? currentParentHeir->ParentId : InvalidEntity;
+			parentEntity = currentParentHeir ? currentParentHeir->ParentId : ECS::InvalidEntity;
 		}
 
 		XMStoreFloat4x4(&childTransform->WorldMatrix, worldMatrix);
 	}
 }
 
-void PhxEngine::Scene::Scene::UpdateLightsSystem()
+void Legacy::Scene::UpdateLightsSystem()
 {
 	for (size_t i = 0; i < this->Lights.GetCount(); i++)
 	{
 		LightComponent& light = this->Lights[i];
-		Entity entity = this->Lights.GetEntity(i);
+		ECS::Entity entity = this->Lights.GetEntity(i);
 		const TransformComponent& transform = *this->Transforms.GetComponent(entity);
 
 		DirectX::XMMATRIX world = DirectX::XMLoadFloat4x4(&transform.WorldMatrix);

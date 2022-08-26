@@ -30,6 +30,13 @@ target_include_directories(cgltf INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/cgltf)
     
 set_target_properties(cgltf PROPERTIES FOLDER ${extern_folder})
 
+add_library(entt INTERFACE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/entt/entt.hpp)
+    
+target_include_directories(entt INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/entt)
+    
+set_target_properties(entt PROPERTIES FOLDER ${extern_folder})
+
 option(BUILD_TOOLS "" OFF)
 option(BUILD_DX11 "" OFF)
 option(BUILD_DX12 "" OFF)

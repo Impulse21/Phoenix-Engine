@@ -36,14 +36,14 @@ namespace PhxEngine::Scene
 			, m_textureCache(textureCache)
 		{}
 
-		bool LoadScene(std::string const& fileName, RHI::CommandListHandle commandList, Scene& scene) override;
+		bool LoadScene(std::string const& fileName, RHI::CommandListHandle commandList, Legacy::Scene& scene) override;
 
 	private:
 		bool LoadSceneInternal(
 			cgltf_data* gltfData,
 			CgltfContext& context,
 			RHI::CommandListHandle commandList,
-			Scene& scene);
+			Legacy::Scene& scene);
 
 		RHI::TextureHandle LoadTexture(
 			const cgltf_texture* cglftTexture,
@@ -58,17 +58,17 @@ namespace PhxEngine::Scene
 			const cgltf_data* objects,
 			CgltfContext& context,
 			RHI::CommandListHandle commandList,
-			Scene& scene);
+			Legacy::Scene& scene);
 
 		void LoadMeshData(
 			const cgltf_mesh* pMeshes,
 			uint32_t meshCount,
-			Scene& scene);
+			Legacy::Scene& scene);
 
 		void LoadNode(
 			const cgltf_node& gltfNode,
 			ECS::Entity parent,
-			Scene& scene);
+			Legacy::Scene& scene);
 
 	private:
 		RHI::IGraphicsDevice* m_graphicsDevice;

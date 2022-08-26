@@ -256,7 +256,7 @@ void CgltfReleaseFile(
 bool PhxEngine::Scene::GltfSceneLoader::LoadScene(
 	std::string const& fileName,
 	RHI::CommandListHandle commandList,
-	Scene& scene)
+	Legacy::Scene& scene)
 {
 	this->m_filename = fileName; // Is this assignment safe?
 
@@ -298,7 +298,7 @@ bool PhxEngine::Scene::GltfSceneLoader::LoadSceneInternal(
 	cgltf_data* gltfData,
 	CgltfContext& context,
 	RHI::CommandListHandle commandList,
-	Scene& scene)
+	Legacy::Scene& scene)
 {
 	this->LoadMaterialData(
 		gltfData->materials,
@@ -321,7 +321,7 @@ bool PhxEngine::Scene::GltfSceneLoader::LoadSceneInternal(
 	// Add a default Camera for testing
 	std::string cameraName = "Default Camera";
 
-	ECS::Entity entity = scene.EntityCreateCamera(cameraName);
+	ECS::ECS::Entity entity = scene.EntityCreateCamera(cameraName);
 	auto& cameraComponent = *scene.Cameras.GetComponent(entity);
 	cameraComponent.Width = Scene::GetGlobalCamera().Width;
 	cameraComponent.Height = Scene::GetGlobalCamera().Height;
@@ -421,7 +421,7 @@ void PhxEngine::Scene::GltfSceneLoader::LoadMaterialData(
 	const cgltf_data* objects,
 	CgltfContext& context,
 	RHI::CommandListHandle commandList,
-	Scene& scene)
+	Legacy::Scene& scene)
 {
 	for (int i = 0; i < materialCount; i++)
 	{
@@ -429,7 +429,7 @@ void PhxEngine::Scene::GltfSceneLoader::LoadMaterialData(
 
 		std::string mtlName = cgltfMtl.name ? cgltfMtl.name : "Material " + std::to_string(i);
 
-		Entity mtlEntity = scene.EntityCreateMaterial(mtlName);
+		ECS::Entity mtlEntity = scene.EntityCreateMaterial(mtlName);
 		this->m_materialMap[&cgltfMtl] = mtlEntity;
 		MaterialComponent& mtl = *scene.Materials.GetComponent(mtlEntity);
 
@@ -492,7 +492,7 @@ void PhxEngine::Scene::GltfSceneLoader::LoadMaterialData(
 void PhxEngine::Scene::GltfSceneLoader::LoadMeshData(
 	const cgltf_mesh* pMeshes,
 	uint32_t meshCount,
-	Scene& scene)
+	Legacy::Scene& scene)
 {
 	std::vector<size_t> totalVertexCounts(meshCount);
 	std::vector<size_t> totalIndexCounts(meshCount);
@@ -529,7 +529,7 @@ void PhxEngine::Scene::GltfSceneLoader::LoadMeshData(
 		const auto& cgltfMesh = pMeshes[i];
 		std::string meshName = cgltfMesh.name ? cgltfMesh.name : "Mesh " + std::to_string(i);
 
-		Entity meshEntity = scene.EntityCreateMesh(meshName);
+		ECS::Entity meshEntity = scene.EntityCreateMesh(meshName);
 		this->m_meshMap[&cgltfMesh] = meshEntity;
 		MeshComponent& mesh = *scene.Meshes.GetComponent(meshEntity);
 
@@ -771,10 +771,10 @@ void PhxEngine::Scene::GltfSceneLoader::LoadMeshData(
 
 void PhxEngine::Scene::GltfSceneLoader::LoadNode(
 	const cgltf_node& gltfNode,
-	Entity parent,
-	Scene& scene)
+	ECS::Entity parent,
+	Legacy::Scene& scene)
 {
-	Entity entity = InvalidEntity;
+	ECS::Entity entity = InvalidEntity;
 
 	if (gltfNode.mesh)
 	{
@@ -793,8 +793,8 @@ void PhxEngine::Scene::GltfSceneLoader::LoadNode(
 
 		entity = scene.EntityCreateCamera(cameraName);
 		auto& cameraComponent = *scene.Cameras.GetComponent(entity);
-		cameraComponent.Width = Scene::GetGlobalCamera().Width;
-		cameraComponent.Height = Scene::GetGlobalCamera().Height;
+		cameraComponent.Width = Legacy::Scene::GetGlobalCamera().Width;
+		cameraComponent.Height = Legacy::Scene::GetGlobalCamera().Height;
 
 		switch (gltfNode.camera->type)
 		{

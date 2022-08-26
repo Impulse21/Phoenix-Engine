@@ -150,7 +150,8 @@ target_link_libraries(${ProjectName} PUBLIC
 	cgltf
 	DirectXTex
 	imgui
-	stb)
+	stb
+	entt)
     
 
 set_target_properties(${ProjectName} PROPERTIES FOLDER PhxEngine)

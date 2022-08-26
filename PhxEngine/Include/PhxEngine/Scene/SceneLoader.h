@@ -12,11 +12,14 @@ namespace PhxEngine::Graphics
 
 namespace PhxEngine::Scene
 {
-	class Scene;
+	namespace Legacy
+	{
+		class Scene;
+	}
 	class ISceneLoader
 	{
 	public:
-		virtual bool LoadScene(std::string const& fileName, RHI::CommandListHandle commandList, Scene& scene) = 0;
+		virtual bool LoadScene(std::string const& fileName, RHI::CommandListHandle commandList, Legacy::Scene& scene) = 0;
 
 		virtual ~ISceneLoader() = default;
 	};
