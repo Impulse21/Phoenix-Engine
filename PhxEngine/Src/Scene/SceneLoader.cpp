@@ -14,3 +14,8 @@ std::unique_ptr<ISceneLoader> PhxEngine::Scene::CreateGltfSceneLoader(
 {
 	return std::make_unique<GltfSceneLoader>(graphicsDevice, textureCache);
 }
+
+std::unique_ptr<New::ISceneLoader> PhxEngine::Scene::CreateGltfSceneLoader()
+{
+	return std::make_unique<New::GltfSceneLoader>();
+}

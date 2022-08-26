@@ -2,6 +2,8 @@
 #include "PhxEngine/App/Application.h"
 #include <PhxEngine/Graphics/RHI/PhxRHI.h>
 #include <PhxEngine/Scene/Components.h>
+#include <PhxEngine/Scene/SceneLoader.h>
+
 #include "SceneRenderLayer.h"
 
 #include <iostream>
@@ -325,6 +327,30 @@ void SceneExplorerPanel::DrawEntityComponents(Entity entity)
             DrawFloat3Control("Scale", component.LocalScale, 1.0f);
         });
 
+    DrawComponent<New::StaticMeshComponent>("StaticMeshComponent", entity, [](auto& component) {
+        ImGui::Text("TODO: Add Data");
+        });
+
+    DrawComponent<New::DirectionalLightComponent>("DirectionalLightComponent", entity, [](auto& component) {
+        ImGui::Text("TODO: Add Data");
+        });
+
+    DrawComponent<New::OmniLightComponent>("OmniLightComponent", entity, [](auto& component) {
+        ImGui::Text("TODO: Add Data");
+        });
+
+    DrawComponent<New::SpotLightComponent>("SpotLightComponent", entity, [](auto& component) {
+        ImGui::Text("TODO: Add Data");
+        });
+
+    DrawComponent<New::SkyLightComponent>("SkyLightComponent", entity, [](auto& component) {
+        ImGui::Text("TODO: Add Data");
+        });
+
+    DrawComponent<New::CameraComponent>("CameraComponent", entity, [](auto& component) {
+            ImGui::Text("TODO: Add Data");
+        });
+
 }
 
 // --------------------------------------------------------------
@@ -335,9 +361,9 @@ EditorLayer::EditorLayer(std::shared_ptr<SceneRenderLayer> sceneRenderLayer)
     , m_sceneRenderLayer(sceneRenderLayer)
 {
     this->m_scene = std::make_shared<New::Scene>();
-    this->m_scene->CreateEntity("Testing");
-    this->m_scene->CreateEntity("Hello");
-    this->m_scene->CreateEntity("World");
+
+    std::unique_ptr<New::ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
+    sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", nullptr, *this->m_scene);
 
     this->m_sceneExplorerPanel.SetScene(this->m_scene);
 };

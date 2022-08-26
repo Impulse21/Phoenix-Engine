@@ -6,6 +6,8 @@
 #include "PhxEngine/Scene/SceneComponents.h"
 
 #include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include <PhxEngine/Scene/AssetStore.h>
+
 #include <entt.hpp>
 
 namespace PhxEngine::Scene
@@ -30,7 +32,10 @@ namespace PhxEngine::Scene
 
 			entt::registry& GetRegistry() { return this->m_registry; }
 
+			AssetStore& GetAssetStore() { return this->m_assetStore; }
+
 		private:
+			AssetStore m_assetStore;
 			entt::registry m_registry;
 
 		};
