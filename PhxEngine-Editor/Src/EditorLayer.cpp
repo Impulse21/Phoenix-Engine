@@ -3,6 +3,7 @@
 #include <PhxEngine/Graphics/RHI/PhxRHI.h>
 #include <PhxEngine/Scene/Components.h>
 #include <PhxEngine/Scene/SceneLoader.h>
+#include <PhxEngine/Scene/SceneWriter.h>
 
 #include "SceneRenderLayer.h"
 
@@ -362,8 +363,16 @@ EditorLayer::EditorLayer(std::shared_ptr<SceneRenderLayer> sceneRenderLayer)
 {
     this->m_scene = std::make_shared<New::Scene>();
 
-    std::unique_ptr<New::ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
-    sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", nullptr, *this->m_scene);
+    this->m_scene->CreateEntity("Hello");
+    this->m_scene->CreateEntity("World");
+
+    auto sceneWriter = ISceneWriter::Create();
+    bool result = sceneWriter->Write("Assets\\Projects\\Sandbox\\Scenes\\TestScene.json", *this->m_scene);
+
+    assert(result);
+
+    // std::unique_ptr<New::ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
+    // sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", nullptr, *this->m_scene);
 
     this->m_sceneExplorerPanel.SetScene(this->m_scene);
 };

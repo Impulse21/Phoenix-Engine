@@ -151,9 +151,10 @@ target_link_libraries(${ProjectName} PUBLIC
 	DirectXTex
 	imgui
 	stb
-	entt)
+	entt
+	cereal
+	rapidjson)
     
-
 set_target_properties(${ProjectName} PROPERTIES FOLDER PhxEngine)
 
 if(WIN32)

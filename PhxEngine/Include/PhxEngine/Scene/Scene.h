@@ -13,15 +13,19 @@
 namespace PhxEngine::Scene
 {
 	class Entity;
+	class ISceneWriter;
 
 	namespace New
 	{
 		class Scene
 		{
 			friend Entity;
+			friend ISceneWriter;
 		public:
 
 			Entity CreateEntity(std::string const& name = std::string());
+			Entity CreateEntity(Core::UUID uuid, std::string const& name = std::string());
+
 			void DestroyEntity(Entity entity);
 
 			template<typename... Components>

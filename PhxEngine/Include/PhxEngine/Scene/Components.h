@@ -3,10 +3,19 @@
 #include <string>
 #include <DirectXMath.h>
 
+#include <PhxEngine/Core/UUID.h>
+
 namespace PhxEngine::Scene
 {
 	namespace New
 	{
+		struct IDComponent
+		{
+			Core::UUID ID;
+
+			IDComponent() = default;
+			IDComponent(const IDComponent&) = default;
+		};
 		struct NameComponent
 		{
 			std::string Name;
@@ -14,6 +23,7 @@ namespace PhxEngine::Scene
 			inline void operator=(const std::string& str) { this->Name = str; }
 			inline void operator=(std::string&& str) { this->Name = std::move(str); }
 			inline bool operator==(const std::string& str) const { return this->Name.compare(str) == 0; }
+
 		};
 
 		struct TransformComponent
@@ -126,6 +136,5 @@ namespace PhxEngine::Scene
 			uint32_t TotalVertices = 0;
 			// Handle to Mesh Asset
 		};
-
 	}
 }
