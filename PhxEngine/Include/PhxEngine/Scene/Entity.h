@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxEngine/Scene/Scene.h>
+#include <PhxEngine/Scene/Components.h>
 #include <entt.hpp>
 
 namespace PhxEngine::Scene
@@ -51,6 +52,9 @@ namespace PhxEngine::Scene
 		operator bool() const { return this->m_entityHandle != entt::null; }
 		operator entt::entity() const { return this->m_entityHandle; }
 		operator uint32_t() const { return (uint32_t)this->m_entityHandle; }
+
+		Core::UUID GetUUID() { return this->GetComponent<New::IDComponent>().ID; }
+		const std::string& GetName() { return this->GetComponent<New::NameComponent>().Name; }
 
 		bool operator==(const Entity& other) const
 		{

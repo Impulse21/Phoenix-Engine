@@ -19,7 +19,7 @@ Entity New::Scene::CreateEntity(std::string const& name)
 	return this->CreateEntity(Core::UUID(), name);
 }
 
-Entity New::Scene::CreateEntity(Core::UUID uuid, std::string const& name = std::string())
+Entity New::Scene::CreateEntity(Core::UUID uuid, std::string const& name)
 {
 	Entity entity = { this->m_registry.create(), this };
 	entity.AddComponent<IDComponent>(uuid);

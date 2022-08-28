@@ -1,69 +1,60 @@
 {
-    "value0": 3,
-    "value1": 4294967295,
-    "value2": 0,
-    "value3": 1,
-    "value4": 2,
-    "value5": 0,
-    "value6": {
-        "value0": {
-            "value0": 78,
-            "value1": 97,
-            "value2": 109,
-            "value3": 101,
-            "value4": 67,
-            "value5": 111,
-            "value6": 109,
-            "value7": 112,
-            "value8": 111,
-            "value9": 110,
-            "value10": 101,
-            "value11": 110,
-            "value12": 116,
-            "value13": 0
+    "entities": [
+        {
+            "UUID": 8857083118062340106,
+            "Name": "World",
+            "Transform Component": {
+                "Translation": {
+                    "float3": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ]
+                },
+                "Rotation": {
+                    "float4": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ]
+                },
+                "Scale": {
+                    "float3": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                }
+            }
         },
-        "name.Name": "Hello"
-    },
-    "value7": 1,
-    "value8": {
-        "value0": {
-            "value0": 78,
-            "value1": 97,
-            "value2": 109,
-            "value3": 101,
-            "value4": 67,
-            "value5": 111,
-            "value6": 109,
-            "value7": 112,
-            "value8": 111,
-            "value9": 110,
-            "value10": 101,
-            "value11": 110,
-            "value12": 116,
-            "value13": 0
-        },
-        "name.Name": "World"
-    },
-    "value9": 2,
-    "value10": 0,
-    "value11": {
-        "transform.LocalTranslation": {
-            "float3": [
-                0.0,
-                0.0,
-                0.0
-            ]
+        {
+            "UUID": 3409520687563897217,
+            "Name": "Hello",
+            "Transform Component": {
+                "Translation": {
+                    "float3": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ]
+                },
+                "Rotation": {
+                    "float4": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ]
+                },
+                "Scale": {
+                    "float3": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                }
+            }
         }
-    },
-    "value12": 1,
-    "value13": {
-        "transform.LocalTranslation": {
-            "float3": [
-                0.0,
-                0.0,
-                0.0
-            ]
-        }
-    },
-    "value14": 0
+    ]
 }

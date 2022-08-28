@@ -5,13 +5,19 @@
 #include <PhxEngine/Scene/Components.h>
 #include <PhxEngine/Scene/SceneWriter.h>
 
+#define ENABLE_CEREAL 1
+
+#if ENABLE_CEREAL
 #include <cereal/archives/json.hpp>
 #include <cereal/types/string.hpp>
 #include <cereal/types/vector.hpp>
 
+#else
+
 #include <rapidjson/document.h>
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/writer.h>
+#endif
 
 #include <fstream>
 
@@ -19,34 +25,85 @@ using namespace PhxEngine;
 using namespace PhxEngine::Core;
 using namespace PhxEngine::Scene;
 
-namespace PhxEngine::Scene::New
+namespace PhxEngine::Scene
 {
-
     template<typename Archive>
-    void serialize(Archive& archive, PhxEngine::Scene::New::NameComponent& name)
+    void serialize(Archive& archive, PhxEngine::Scene::Entity& entity)
     {
-        archive("NameComponent", CEREAL_NVP(name.Name));
+        assert(entity.HasComponent<New::IDComponent>());
+        assert(entity.HasComponent<New::NameComponent>());
+        archive(
+            cereal::make_nvp("UUID", (uint64_t)entity.GetUUID()));
+        archive(
+            cereal::make_nvp("Name", entity.GetName()));
+
+        if (entity.HasComponent<New::TransformComponent>())
+        {
+            archive(
+                cereal::make_nvp("Transform Component", entity.GetComponent<New::TransformComponent>()));
+        }
     }
 
-    template<typename Archive>
-    void serialize(Archive& archive, PhxEngine::Scene::New::TransformComponent& transform)
+    namespace New
     {
-        archive(CEREAL_NVP(transform.LocalTranslation));
+        template<typename Archive>
+        void serialize(Archive& archive, PhxEngine::Scene::New::NameComponent& name)
+        {
+            archive(cereal::make_nvp("Name", name.Name));
+        }
+
+        template<typename Archive>
+        void serialize(Archive& archive, PhxEngine::Scene::New::TransformComponent& transform)
+        {
+            archive(
+                cereal::make_nvp("Translation", transform.LocalTranslation));
+            archive(
+                cereal::make_nvp("Rotation", transform.LocalRotation));
+            archive(
+                cereal::make_nvp("Scale", transform.LocalScale));
+        }
+
+        template<typename Archive>
+        void serialize(Archive& archive, PhxEngine::Scene::New::StaticMeshComponent& transform)
+        {
+            // Get The Static Mesh's Path and save it out.
+            archive(
+                cereal::make_nvp("Translation", transform.LocalTranslation));
+            archive(
+                cereal::make_nvp("Rotation", transform.LocalRotation));
+            archive(
+                cereal::make_nvp("Scale", transform.LocalScale));
+        }
     }
 }
 
 namespace DirectX
 {
     template<typename Archive>
+    void serialize(Archive& archive, DirectX::XMFLOAT2& v)
+    {
+        std::vector<float> float2 = { v.x , v.y};
+        archive(CEREAL_NVP(float2));
+    }
+
+    template<typename Archive>
     void serialize(Archive& archive, DirectX::XMFLOAT3& v)
     {
         std::vector<float> float3 = { v.x , v.y , v.z };
         archive(CEREAL_NVP(float3));
     }
+
+    template<typename Archive>
+    void serialize(Archive& archive, DirectX::XMFLOAT4& v)
+    {
+        std::vector<float> float4 = { v.x , v.y , v.z, v.w};
+        archive(CEREAL_NVP(float4));
+    }
 }
 
 namespace
 {
+#if ENABLE_CEREAL
     class CerealJsonSceneWriter : public ISceneWriter
     {
     public:
@@ -62,14 +119,26 @@ namespace
 
         {
             // output finishes flushing its contents when it goes out of scope
-            cereal::JSONOutputArchive output{ os };
-            entt::snapshot{ scene.GetRegistry()}.entities(output).component<New::NameComponent, New::TransformComponent, DirectX::XMFLOAT3>(output);
+            cereal::JSONOutputArchive archive{ os };
+            std::vector<Entity> entities;
+            entities.reserve(scene.GetRegistry().size());
+            scene.GetRegistry().each([&](auto entityID)
+                {
+                    Entity entity = { entityID, &scene };
+                    if (entity)
+                    {
+                        entities.push_back(entity);
+                    }
+                });
+
+            archive(CEREAL_NVP(entities));
         }
 
         os.close();
         return !os.fail();
     }
 
+#else
     class RapidJsonSceneWriter : public ISceneWriter
     {
     public:
@@ -110,8 +179,8 @@ namespace
         assert(entity.HasComponent<New::IDComponent>());
 
         // TODO: I am here
-        Value name = 
-        out << YAML::BeginMap; // Entity
+        rapidjson::Value uuidValue(r)
+            out << YAML::BeginMap; // Entity
         out << YAML::Key << "Entity" << YAML::Value << entity.GetUUID();
 
         if (entity.HasComponent<TagComponent>())
@@ -125,9 +194,14 @@ namespace
             out << YAML::EndMap; // TagComponent
         }
     }
+#endif
 }
 
 std::unique_ptr<ISceneWriter> PhxEngine::Scene::ISceneWriter::Create()
 {
+#if ENABLE_CEREAL
     return std::make_unique<CerealJsonSceneWriter>();
+#else
+    return std::make_unique<RapidJsonSceneWriter>();
+#endif
 }

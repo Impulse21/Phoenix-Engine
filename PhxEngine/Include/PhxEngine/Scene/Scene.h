@@ -2,6 +2,7 @@
 
 #include <sstream>
 
+#include "PhxEngine/Core/UUID.h"
 #include "PhxEngine/Systems/Ecs.h"
 #include "PhxEngine/Scene/SceneComponents.h"
 
