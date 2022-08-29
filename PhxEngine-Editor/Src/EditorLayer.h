@@ -2,6 +2,7 @@
 
 #include <PhxEngine/App/Layer.h>
 #include <PhxEngine/Scene/Entity.h>
+
 #include <DirectXMath.h>
 
 class SceneRenderLayer;
@@ -29,6 +30,8 @@ class EditorLayer : public PhxEngine::AppLayer
 public:
 	EditorLayer(std::shared_ptr<SceneRenderLayer> sceneRenderLayer);
 
+	void OnAttach() override;
+	void OnDetach() override;
 	void OnRenderImGui() override;
 
 private:

@@ -4,6 +4,7 @@
 #include <PhxEngine/Scene/Components.h>
 #include <PhxEngine/Scene/SceneLoader.h>
 #include <PhxEngine/Scene/SceneWriter.h>
+#include <PhxEngine/Graphics/ShaderStore.h>
 
 #include "SceneRenderLayer.h"
 
@@ -212,6 +213,7 @@ namespace
 
         ImGui::PopID();
     }
+
 }
 
 void SceneExplorerPanel::OnRenderImGui()
@@ -381,6 +383,11 @@ EditorLayer::EditorLayer(std::shared_ptr<SceneRenderLayer> sceneRenderLayer)
     , m_sceneRenderLayer(sceneRenderLayer)
 {
     this->m_scene = std::make_shared<New::Scene>();
+};
+
+
+void EditorLayer::OnAttach()
+{
 
 #if !USE_GLTF_SCENE
     this->m_scene->CreateEntity("Hello");
@@ -395,7 +402,11 @@ EditorLayer::EditorLayer(std::shared_ptr<SceneRenderLayer> sceneRenderLayer)
     sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", nullptr, *this->m_scene);
 #endif
     this->m_sceneExplorerPanel.SetScene(this->m_scene);
-};
+}
+
+void EditorLayer::OnDetach()
+{
+}
 
 void EditorLayer::OnRenderImGui()
 {
@@ -413,9 +424,6 @@ void EditorLayer::OnRenderImGui()
         const::TextureDesc& colourBufferDesc = IGraphicsDevice::Ptr->GetTextureDesc(colourBuffer);
         if (this->m_sceneRenderLayer && (uint32_t)this->m_viewportSize.x != colourBufferDesc.Width || (uint32_t)this->m_viewportSize.y != colourBufferDesc.Height)
         {
-
-            // std::cout << "Resizing Window. New = [" << (uint32_t)this->m_viewportSize.x << ", " << (uint32_t)this->m_viewportSize.y << "]";
-            // std::cout << "Current = ["<< colourBuffer->GetDesc().Width  << ", " << colourBuffer->GetDesc().Height << std::endl;
             this->m_sceneRenderLayer->ResizeSurface(this->m_viewportSize);
         }
 

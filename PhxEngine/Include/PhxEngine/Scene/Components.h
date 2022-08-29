@@ -2,13 +2,27 @@
 
 #include <string>
 #include <DirectXMath.h>
-
+#include "entt.hpp"
 #include <PhxEngine/Core/UUID.h>
 
 namespace PhxEngine::Scene
 {
 	namespace New
 	{
+		// TODO: Move to a math library
+		static constexpr DirectX::XMFLOAT4X4 cIdentityMatrix = DirectX::XMFLOAT4X4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+
+		// TODO: Find a home for this
+		constexpr uint32_t AlignTo(uint32_t value, uint32_t alignment)
+		{
+			return ((value + alignment - 1) / alignment) * alignment;
+		}
+
+		constexpr uint64_t AlignTo(uint64_t value, uint64_t alignment)
+		{
+			return ((value + alignment - 1) / alignment) * alignment;
+		}
+
 		struct IDComponent
 		{
 			Core::UUID ID;
