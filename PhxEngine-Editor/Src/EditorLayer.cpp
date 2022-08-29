@@ -16,6 +16,7 @@ using namespace PhxEngine::Scene;
 
 using namespace PhxEngine::RHI;
 
+#define USE_GLTF_SCENE 1
 namespace
 {
     template<typename T, typename UIFunc>
@@ -219,12 +220,18 @@ void SceneExplorerPanel::OnRenderImGui()
 
 	if (this->m_scene)
 	{
-		// Draw the entity nodes
-		this->m_scene->GetRegistry().each([&](entt::entity entityId)
-			{
-				Entity entity = { entityId, this->m_scene.get() };
-				this->DrawEntityNode(entity);
-			});
+
+        // Draw the entity nodes
+        this->m_scene->GetRegistry().each([&](entt::entity entityId)
+            {
+                Entity entity = { entityId, this->m_scene.get() };
+                if (!entity.HasComponent<New::HierarchyComponent>())
+                {
+                    this->DrawEntityNode(entity);
+                }
+            });
+
+
 
         if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
         {
@@ -278,12 +285,24 @@ void SceneExplorerPanel::DrawEntityNode(Entity entity)
 
     if (opened)
     {
+        auto view = this->m_scene->GetAllEntitiesWith<New::HierarchyComponent>();
+        view.each([&](entt::entity entityId)
+            {
+                // Draw only top level nodes
+                if (view.get<New::HierarchyComponent>(entityId).ParentID == (entt::entity)entity)
+                {
+                    Entity entity = { entityId, this->m_scene.get() };
+                    this->DrawEntityNode(entity);
+                }
+            });
+        /*
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
         bool opened = ImGui::TreeNodeEx((void*)9817239, flags, name.c_str());
         if (opened)
         {
             ImGui::TreePop();
         }
+        */
         ImGui::TreePop();
     }
 
@@ -363,6 +382,7 @@ EditorLayer::EditorLayer(std::shared_ptr<SceneRenderLayer> sceneRenderLayer)
 {
     this->m_scene = std::make_shared<New::Scene>();
 
+#if !USE_GLTF_SCENE
     this->m_scene->CreateEntity("Hello");
     this->m_scene->CreateEntity("World");
 
@@ -370,10 +390,10 @@ EditorLayer::EditorLayer(std::shared_ptr<SceneRenderLayer> sceneRenderLayer)
     bool result = sceneWriter->Write("Assets\\Projects\\Sandbox\\Scenes\\TestScene.json", *this->m_scene);
 
     assert(result);
-
-    // std::unique_ptr<New::ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
-    // sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", nullptr, *this->m_scene);
-
+#else
+    std::unique_ptr<New::ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
+    sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", nullptr, *this->m_scene);
+#endif
     this->m_sceneExplorerPanel.SetScene(this->m_scene);
 };
 

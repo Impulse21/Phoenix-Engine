@@ -450,14 +450,14 @@ void New::GltfSceneLoader::LoadNode(
 			sizeof(float) * 16);
 		transform.SetDirty(true);
 
-		// transform.ApplyTransform();
+		transform.ApplyTransform();
 	}
 
-	// transform.UpdateTransform();
+	transform.UpdateTransform();
 
 	if (parent)
 	{
-		// scene.ComponentAttach(entity, parent, true);
+		entity.AttachToParent(parent, true);
 	}
 
 	for (int i = 0; i < gltfNode.children_count; i++)

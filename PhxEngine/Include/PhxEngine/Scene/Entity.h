@@ -49,6 +49,13 @@ namespace PhxEngine::Scene
 
 			this->m_scene->m_registry.remove<T>(this->m_entityHandle);
 		}
+
+		// Get Children
+		std::vector<Entity> GetChildren();
+		void AttachToParent(Entity parent, bool childInLocalSpace = false);
+		void DetachFromParent();
+		void DetachChildren();
+
 		operator bool() const { return this->m_entityHandle != entt::null; }
 		operator entt::entity() const { return this->m_entityHandle; }
 		operator uint32_t() const { return (uint32_t)this->m_entityHandle; }

@@ -29,6 +29,10 @@ namespace PhxEngine::Scene
 
 			void DestroyEntity(Entity entity);
 
+			void AttachToParent(Entity entity, Entity parent, bool childInLocalSpace = false);
+			void DetachFromParent(Entity entity);
+			void DetachChildren(Entity parent);
+
 			template<typename... Components>
 			auto GetAllEntitiesWith()
 			{

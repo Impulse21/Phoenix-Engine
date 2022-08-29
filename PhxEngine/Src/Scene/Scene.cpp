@@ -31,7 +31,24 @@ Entity New::Scene::CreateEntity(Core::UUID uuid, std::string const& name)
 
 void New::Scene::DestroyEntity(Entity entity)
 {
+	this->DetachChildren(entity);
 	this->m_registry.destroy(entity);
+}
+
+void New::Scene::AttachToParent(Entity entity, Entity parent, bool childInLocalSpace)
+{
+	assert(entity != parent);
+	entity.AttachToParent(parent, childInLocalSpace);
+}
+
+void New::Scene::DetachFromParent(Entity entity)
+{
+	entity.DetachFromParent();
+}
+
+void New::Scene::DetachChildren(Entity parent)
+{
+	parent.DetachChildren();
 }
 
 // --------------------------------------------------------------------------------

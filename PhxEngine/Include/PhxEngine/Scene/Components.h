@@ -56,6 +56,65 @@ namespace PhxEngine::Scene
 
 			inline bool IsDirty() const { return this->Flags & kDirty; }
 
+			// TODO: Move to external functions that operate on the data type.
+			inline void UpdateTransform()
+			{
+				if (this->IsDirty())
+				{
+					this->SetDirty(false);
+					DirectX::XMStoreFloat4x4(&this->WorldMatrix, this->GetLocalMatrix());
+				}
+			}
+
+			inline void UpdateTransform(New::TransformComponent const& parent)
+			{
+				DirectX::XMMATRIX world = this->GetLocalMatrix();
+				DirectX::XMMATRIX worldParentworldParent = XMLoadFloat4x4(&parent.WorldMatrix);
+				world *= worldParentworldParent;
+
+				XMStoreFloat4x4(&WorldMatrix, world);
+			}
+
+			inline void ApplyTransform()
+			{
+				this->SetDirty();
+
+				DirectX::XMVECTOR scalar, rotation, translation;
+				DirectX::XMMatrixDecompose(&scalar, &rotation, &translation, DirectX::XMLoadFloat4x4(&this->WorldMatrix));
+				DirectX::XMStoreFloat3(&this->LocalScale, scalar);
+				DirectX::XMStoreFloat4(&this->LocalRotation, rotation);
+				DirectX::XMStoreFloat3(&this->LocalTranslation, translation);
+			}
+
+			inline DirectX::XMMATRIX GetLocalMatrix()
+			{
+				DirectX::XMVECTOR localScale = XMLoadFloat3(&this->LocalScale);
+				DirectX::XMVECTOR localRotation = XMLoadFloat4(&this->LocalRotation);
+				DirectX::XMVECTOR localTranslation = XMLoadFloat3(&this->LocalTranslation);
+				return
+					DirectX::XMMatrixScalingFromVector(localScale) *
+					DirectX::XMMatrixRotationQuaternion(localRotation) *
+					DirectX::XMMatrixTranslationFromVector(localTranslation);
+			}
+
+			inline void TransformComponent::MatrixTransform(const DirectX::XMFLOAT4X4& matrix)
+			{
+				this->MatrixTransform(DirectX::XMLoadFloat4x4(&matrix));
+			}
+
+			void TransformComponent::MatrixTransform(const DirectX::XMMATRIX& matrix)
+			{
+				this->SetDirty();
+
+				DirectX::XMVECTOR scale;
+				DirectX::XMVECTOR rotate;
+				DirectX::XMVECTOR translate;
+				DirectX::XMMatrixDecompose(&scale, &rotate, &translate, this->GetLocalMatrix() * matrix);
+
+				DirectX::XMStoreFloat3(&this->LocalScale, scale);
+				DirectX::XMStoreFloat4(&this->LocalRotation, rotate);
+				DirectX::XMStoreFloat3(&this->LocalTranslation, translate);
+			}
 		};
 
 		struct HierarchyComponent
