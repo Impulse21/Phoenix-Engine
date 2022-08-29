@@ -30,6 +30,13 @@ target_include_directories(cgltf INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/cgltf)
     
 set_target_properties(cgltf PROPERTIES FOLDER ${extern_folder})
 
+add_library(entt INTERFACE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/entt/entt.hpp)
+    
+target_include_directories(entt INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/entt)
+    
+set_target_properties(entt PROPERTIES FOLDER ${extern_folder})
+
 option(BUILD_TOOLS "" OFF)
 option(BUILD_DX11 "" OFF)
 option(BUILD_DX12 "" OFF)
@@ -56,7 +63,26 @@ add_library(imgui STATIC ${imgui_SRC})
 target_include_directories(imgui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
 set_target_properties(imgui PROPERTIES FOLDER ${extern_folder})
 
+file (GLOB cereal_src
+    ${CMAKE_CURRENT_SOURCE_DIR}/cereal/cereal/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cereal/cereal/archives/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cereal/cereal/details/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cereal/cereal/external/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/cereal/cereal/types/*.h)
+    
+add_library(cereal INTERFACE ${cereal_src})
+target_include_directories(cereal INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/cereal)
+set_target_properties(cereal PROPERTIES FOLDER ${extern_folder})
 
+file (GLOB rapidjson_src
+    ${CMAKE_CURRENT_SOURCE_DIR}/rapidjson/rapidjson/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/rapidjson/rapidjson/error/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/rapidjson/rapidjson/internal/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/rapidjson/rapidjson/msinttypes/*.h)
+    
+add_library(rapidjson INTERFACE ${rapidjson_src})
+target_include_directories(rapidjson INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/rapidjson)
+set_target_properties(rapidjson PROPERTIES FOLDER ${extern_folder})
 
 file (GLOB stb_src
     ${CMAKE_CURRENT_SOURCE_DIR}/stb/*.h)

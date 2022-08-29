@@ -6,6 +6,7 @@
 #include "PhxEngine/Scene/Scene.h"
 #include "PhxEngine/Scene/SceneComponents.h"
 #include "PhxEngine/Core/Helpers.h"
+#include "PhxEngine/Scene/Components.h"
 
 #include <filesystem>
 
@@ -252,11 +253,316 @@ void CgltfReleaseFile(
 {
 	// do nothing
 }
+// --------------------------------------------------------------------------------
 
-bool PhxEngine::Scene::GltfSceneLoader::LoadScene(
+bool New::GltfSceneLoader::LoadScene(
 	std::string const& fileName,
 	RHI::CommandListHandle commandList,
-	Scene& scene)
+	New::Scene& scene)
+{
+	this->m_filename = fileName; // Is this assignment safe?
+
+	std::string normalizedFileName = this->m_filename.lexically_normal().generic_string();
+
+	CgltfContext cgltfContext = {};
+
+	cgltf_options options = { };
+	options.file.read = &CgltfReadFile;
+	options.file.release = &CgltfReleaseFile;
+	options.file.user_data = &cgltfContext;
+
+	std::vector<uint8_t> blob;
+	if (!Helpers::FileRead(fileName, blob))
+	{
+		return cgltf_result_file_not_found;
+	}
+
+	cgltf_data* objects = nullptr;
+	cgltf_result res = cgltf_parse(&options, blob.data(), blob.size(), &objects);
+
+	if (res != cgltf_result_success)
+	{
+		// LOG_CORE_ERROR("Coouldn't load glTF file %s", normalizedFileName.c_str());
+		return false;
+	}
+
+	res = cgltf_load_buffers(&options, objects, normalizedFileName.c_str());
+	if (res != cgltf_result_success)
+	{
+		// LOG_CORE_ERROR("Failed to load buffers for glTF file '%s'", normalizedFileName.c_str());
+		return false;
+	}
+
+	return this->LoadSceneInternal(objects, cgltfContext, commandList, scene);
+}
+
+bool New::GltfSceneLoader::LoadSceneInternal(
+	cgltf_data* gltfData,
+	CgltfContext& context,
+	RHI::CommandListHandle commandList,
+	New::Scene& scene)
+{
+	this->LoadMaterialData(
+		gltfData->materials,
+		gltfData->materials_count,
+		gltfData,
+		context,
+		commandList,
+		scene);
+
+	this->LoadMeshData(
+		gltfData->meshes,
+		gltfData->meshes_count,
+		scene);
+
+#ifdef CREATE_DEFAULT_CAMERA
+	// Add a default Camera for testing
+	std::string cameraName = "Default Camera";
+
+	ECS::ECS::Entity entity = scene.EntityCreateCamera(cameraName);
+	auto& cameraComponent = *scene.Cameras.GetComponent(entity);
+	cameraComponent.Width = Scene::GetGlobalCamera().Width;
+	cameraComponent.Height = Scene::GetGlobalCamera().Height;
+	cameraComponent.FoV = 1.7;
+	cameraComponent.ZNear = 0.1;
+	cameraComponent.ZFar = 10000;
+	TransformComponent& transform = *scene.Transforms.GetComponent(entity);
+	transform.UpdateTransform();
+	scene.ComponentAttach(entity, scene.RootEntity, true);
+#endif
+
+	// Load Node Data
+	for (size_t i = 0; i < gltfData->scene->nodes_count; i++)
+	{
+		// Load Node Data
+		this->LoadNode(*gltfData->scene->nodes[i], {}, scene);
+	}
+
+	return true;
+}
+
+void New::GltfSceneLoader::LoadNode(
+	const cgltf_node& gltfNode,
+	PhxEngine::Scene::Entity parent,
+	New::Scene& scene)
+{
+	PhxEngine::Scene::Entity entity;
+
+	if (gltfNode.mesh)
+	{
+		// Create a mesh instance
+		static size_t meshId = 0;
+
+		std::string nodeName = gltfNode.name ? gltfNode.name : "Scene Node " + std::to_string(meshId++);
+		
+		entity = scene.CreateEntity(nodeName);
+		entity.AddComponent<New::StaticMeshComponent>();
+	}
+	else if (gltfNode.camera)
+	{
+		static size_t cameraId = 0;
+		std::string cameraName = gltfNode.camera->name ? gltfNode.camera->name : "Camera " + std::to_string(cameraId++);
+
+		entity = scene.CreateEntity(cameraName);
+		entity.AddComponent<New::CameraComponent>();
+	}
+	else if (gltfNode.light)
+	{
+		static size_t lightID = 0;
+		std::string lightName = gltfNode.light->name ? gltfNode.light->name : "Light " + std::to_string(lightID++);
+
+		entity = scene.CreateEntity(lightName);
+
+		switch (gltfNode.light->type)
+		{
+		case cgltf_light_type_directional:
+			entity.AddComponent<New::DirectionalLightComponent>();
+			break;
+
+		case cgltf_light_type_point:
+			entity.AddComponent<New::OmniLightComponent>();
+			break;
+
+		case cgltf_light_type_spot:
+			entity.AddComponent<New::SpotLightComponent>();
+			break;
+
+		case cgltf_light_type_invalid:
+		default:
+			// Ignore
+			assert(false);
+		}
+	}
+
+	if (!entity)
+	{
+		static size_t emptyNode = 0;
+
+		std::string nodeName = gltfNode.name ? gltfNode.name : "Scene Node " + std::to_string(emptyNode++);
+		entity = scene.CreateEntity(nodeName);
+	}
+
+	// Create an entity map that can be used?
+	auto& transform = entity.GetComponent<New::TransformComponent>();
+	if (gltfNode.has_scale)
+	{
+		std::memcpy(
+			&transform.LocalScale.x,
+			&gltfNode.scale[0],
+			sizeof(float) * 3);
+		transform.SetDirty(true);
+	}
+	if (gltfNode.has_rotation)
+	{
+		std::memcpy(
+			&transform.LocalRotation.x,
+			&gltfNode.rotation[0],
+			sizeof(float) * 4);
+
+
+		if (cUseLeftHandCoord)
+		{
+			transform.LocalRotation.z = -transform.LocalRotation.z;
+			transform.LocalRotation.w = -transform.LocalRotation.w;
+		}
+
+		transform.SetDirty(true);
+	}
+	if (gltfNode.has_translation)
+	{
+		std::memcpy(
+			&transform.LocalTranslation.x,
+			&gltfNode.translation[0],
+			sizeof(float) * 3);
+
+		if (cUseLeftHandCoord)
+		{
+			transform.LocalTranslation.z = -transform.LocalTranslation.z;
+		}
+
+		transform.SetDirty(true);
+	}
+	if (gltfNode.has_matrix)
+	{
+		std::memcpy(
+			&transform.WorldMatrix._11,
+			&gltfNode.matrix[0],
+			sizeof(float) * 16);
+		transform.SetDirty(true);
+
+		transform.ApplyTransform();
+	}
+
+	transform.UpdateTransform();
+
+	if (parent)
+	{
+		entity.AttachToParent(parent, true);
+	}
+
+	for (int i = 0; i < gltfNode.children_count; i++)
+	{
+		if (gltfNode.children[i])
+			this->LoadNode(*gltfNode.children[i], entity, scene);
+	}
+}
+
+PhxEngine::RHI::TextureHandle New::GltfSceneLoader::LoadTexture(
+	const cgltf_texture* cglftTexture,
+	bool isSRGB,
+	const cgltf_data* objects,
+	CgltfContext& context,
+	RHI::CommandListHandle commandList)
+{
+	return TextureHandle();
+}
+
+void New::GltfSceneLoader::LoadMaterialData(
+	const cgltf_material* pMaterials,
+	uint32_t materialCount,
+	const cgltf_data* objects,
+	CgltfContext& context,
+	PhxEngine::RHI::CommandListHandle commandList,
+	New::Scene& scene)
+{
+	return;
+	/*
+	for (int i = 0; i < materialCount; i++)
+	{
+		const auto& cgltfMtl = pMaterials[i];
+
+		std::string mtlName = cgltfMtl.name ? cgltfMtl.name : "Material " + std::to_string(i);
+
+		PhxEngine::Scene::MaterialAssetHandle mtlHandle = scene.GetAssetStore().CreateMaterial();
+		auto& mtl = *scene.GetAssetStore().GetMaterialAsset(mtlHandle);
+
+		this->m_materialMap[&cgltfMtl] = mtlHandle;
+
+		if (cgltfMtl.alpha_mode == cgltf_alpha_mode_blend)
+		{
+			mtl.BlendMode = Graphics::BlendMode::Alpha;
+		}
+
+		if (cgltfMtl.has_pbr_specular_glossiness)
+		{
+			// // LOG_CORE_WARN("Material %s contains unsupported extension 'PBR Specular_Glossiness' workflow ");
+		}
+		else if (cgltfMtl.has_pbr_metallic_roughness)
+		{
+			mtl.AlbedoTexture = this->LoadTexture(
+				cgltfMtl.pbr_metallic_roughness.base_color_texture.texture,
+				true,
+				objects,
+				context,
+				commandList);
+
+			mtl.Albedo =
+			{
+				cgltfMtl.pbr_metallic_roughness.base_color_factor[0],
+				cgltfMtl.pbr_metallic_roughness.base_color_factor[1],
+				cgltfMtl.pbr_metallic_roughness.base_color_factor[2],
+				cgltfMtl.pbr_metallic_roughness.base_color_factor[3]
+			};
+
+			mtl.MetalRoughnessTexture = this->LoadTexture(
+				cgltfMtl.pbr_metallic_roughness.metallic_roughness_texture.texture,
+				false,
+				objects,
+				context,
+				commandList);
+
+			mtl.Metalness = cgltfMtl.pbr_metallic_roughness.metallic_factor;
+			mtl.Roughness = cgltfMtl.pbr_metallic_roughness.roughness_factor;
+		}
+
+		// Load Normal map
+		mtl.NormalMapTexture = this->LoadTexture(
+			cgltfMtl.normal_texture.texture,
+			false,
+			objects,
+			context,
+			commandList);
+
+		// TODO: Emmisive
+		// TODO: Aplha suppor
+		mtl.IsDoubleSided = cgltfMtl.double_sided;
+	}
+	*/
+}
+
+void New::GltfSceneLoader::LoadMeshData(
+	const cgltf_mesh* pMeshes,
+	uint32_t meshCount,
+	New::Scene& scene)
+{
+	return;
+}
+
+// --------------------------------------------------------------------------------
+bool GltfSceneLoader::LoadScene(
+	std::string const& fileName,
+	RHI::CommandListHandle commandList,
+	Legacy::Scene& scene)
 {
 	this->m_filename = fileName; // Is this assignment safe?
 
@@ -298,7 +604,7 @@ bool PhxEngine::Scene::GltfSceneLoader::LoadSceneInternal(
 	cgltf_data* gltfData,
 	CgltfContext& context,
 	RHI::CommandListHandle commandList,
-	Scene& scene)
+	Legacy::Scene& scene)
 {
 	this->LoadMaterialData(
 		gltfData->materials,
@@ -321,7 +627,7 @@ bool PhxEngine::Scene::GltfSceneLoader::LoadSceneInternal(
 	// Add a default Camera for testing
 	std::string cameraName = "Default Camera";
 
-	ECS::Entity entity = scene.EntityCreateCamera(cameraName);
+	ECS::ECS::Entity entity = scene.EntityCreateCamera(cameraName);
 	auto& cameraComponent = *scene.Cameras.GetComponent(entity);
 	cameraComponent.Width = Scene::GetGlobalCamera().Width;
 	cameraComponent.Height = Scene::GetGlobalCamera().Height;
@@ -421,7 +727,7 @@ void PhxEngine::Scene::GltfSceneLoader::LoadMaterialData(
 	const cgltf_data* objects,
 	CgltfContext& context,
 	RHI::CommandListHandle commandList,
-	Scene& scene)
+	Legacy::Scene& scene)
 {
 	for (int i = 0; i < materialCount; i++)
 	{
@@ -429,7 +735,7 @@ void PhxEngine::Scene::GltfSceneLoader::LoadMaterialData(
 
 		std::string mtlName = cgltfMtl.name ? cgltfMtl.name : "Material " + std::to_string(i);
 
-		Entity mtlEntity = scene.EntityCreateMaterial(mtlName);
+		ECS::Entity mtlEntity = scene.EntityCreateMaterial(mtlName);
 		this->m_materialMap[&cgltfMtl] = mtlEntity;
 		MaterialComponent& mtl = *scene.Materials.GetComponent(mtlEntity);
 
@@ -492,7 +798,7 @@ void PhxEngine::Scene::GltfSceneLoader::LoadMaterialData(
 void PhxEngine::Scene::GltfSceneLoader::LoadMeshData(
 	const cgltf_mesh* pMeshes,
 	uint32_t meshCount,
-	Scene& scene)
+	Legacy::Scene& scene)
 {
 	std::vector<size_t> totalVertexCounts(meshCount);
 	std::vector<size_t> totalIndexCounts(meshCount);
@@ -529,7 +835,7 @@ void PhxEngine::Scene::GltfSceneLoader::LoadMeshData(
 		const auto& cgltfMesh = pMeshes[i];
 		std::string meshName = cgltfMesh.name ? cgltfMesh.name : "Mesh " + std::to_string(i);
 
-		Entity meshEntity = scene.EntityCreateMesh(meshName);
+		ECS::Entity meshEntity = scene.EntityCreateMesh(meshName);
 		this->m_meshMap[&cgltfMesh] = meshEntity;
 		MeshComponent& mesh = *scene.Meshes.GetComponent(meshEntity);
 
@@ -771,10 +1077,10 @@ void PhxEngine::Scene::GltfSceneLoader::LoadMeshData(
 
 void PhxEngine::Scene::GltfSceneLoader::LoadNode(
 	const cgltf_node& gltfNode,
-	Entity parent,
-	Scene& scene)
+	ECS::Entity parent,
+	Legacy::Scene& scene)
 {
-	Entity entity = InvalidEntity;
+	ECS::Entity entity = InvalidEntity;
 
 	if (gltfNode.mesh)
 	{
@@ -793,8 +1099,8 @@ void PhxEngine::Scene::GltfSceneLoader::LoadNode(
 
 		entity = scene.EntityCreateCamera(cameraName);
 		auto& cameraComponent = *scene.Cameras.GetComponent(entity);
-		cameraComponent.Width = Scene::GetGlobalCamera().Width;
-		cameraComponent.Height = Scene::GetGlobalCamera().Height;
+		cameraComponent.Width = Legacy::Scene::GetGlobalCamera().Width;
+		cameraComponent.Height = Legacy::Scene::GetGlobalCamera().Height;
 
 		switch (gltfNode.camera->type)
 		{

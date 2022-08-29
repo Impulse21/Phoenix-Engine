@@ -12,16 +12,41 @@ namespace PhxEngine::Graphics
 
 namespace PhxEngine::Scene
 {
-	class Scene;
+	namespace Legacy
+	{
+		class Scene;
+	}
+
 	class ISceneLoader
 	{
 	public:
-		virtual bool LoadScene(std::string const& fileName, RHI::CommandListHandle commandList, Scene& scene) = 0;
+		virtual bool LoadScene(
+			std::string const& fileName,
+			RHI::CommandListHandle commandList,
+			Legacy::Scene& scene) = 0;
 
 		virtual ~ISceneLoader() = default;
 	};
 
+	namespace New
+	{
+		class Scene;
+
+		class ISceneLoader
+		{
+		public:
+			virtual bool LoadScene(
+				std::string const& fileName,
+				RHI::CommandListHandle commandList,
+				New::Scene& scene) = 0;
+
+			virtual ~ISceneLoader() = default;
+		};
+	}
+
 	std::unique_ptr<ISceneLoader> CreateGltfSceneLoader(
 		RHI::IGraphicsDevice* graphicsDevice,
 		std::shared_ptr<PhxEngine::Graphics::TextureCache> textureCache);
+
+	std::unique_ptr<New::ISceneLoader> CreateGltfSceneLoader();
 }

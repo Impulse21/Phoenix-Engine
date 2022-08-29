@@ -2,85 +2,131 @@
 
 #include <sstream>
 
+#include "PhxEngine/Core/UUID.h"
 #include "PhxEngine/Systems/Ecs.h"
 #include "PhxEngine/Scene/SceneComponents.h"
 
 #include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include <PhxEngine/Scene/AssetStore.h>
+
+#include <entt.hpp>
 
 namespace PhxEngine::Scene
 {
-	class Scene
+	class Entity;
+	class ISceneWriter;
+
+	namespace New
 	{
-	public:
-		Scene() = default;
-		~Scene() = default;
+		class Scene
+		{
+			friend Entity;
+			friend ISceneWriter;
+		public:
 
-		static CameraComponent& GetGlobalCamera();
+			Entity CreateEntity(std::string const& name = std::string());
+			Entity CreateEntity(Core::UUID uuid, std::string const& name = std::string());
 
-		// Helper
-		ECS::Entity EntityCreateMeshInstance(std::string const& name);
-		ECS::Entity EntityCreateCamera(
-			std::string const& name);
+			void DestroyEntity(Entity entity);
 
-		ECS::Entity EntityCreateCamera(
-			std::string const& name,
-			float width,
-			float height,
-			float nearPlane = 0.01f,
-			float farPlane = 1000.0f,
-			float fov = DirectX::XM_PIDIV4);
+			void AttachToParent(Entity entity, Entity parent, bool childInLocalSpace = false);
+			void DetachFromParent(Entity entity);
+			void DetachChildren(Entity parent);
 
-		ECS::Entity EntityCreateMaterial(std::string const& name);
-		ECS::Entity EntityCreateMesh(std::string const& name);
-		ECS::Entity EntityCreateLight(std::string const& name);
+			template<typename... Components>
+			auto GetAllEntitiesWith()
+			{
+				return this->m_registry.view<Components...>();
+			}
 
-		ECS::Entity CreateCubeMeshEntity(std::string const& name, ECS::Entity mtlIDmtl, float size, bool rhsCoords);
-		ECS::Entity CreateSphereMeshEntity(std::string const& name, ECS::Entity mtlId, float diameter, size_t tessellation, bool rhsCoords);
+			entt::registry& GetRegistry() { return this->m_registry; }
 
-		void ComponentAttach(ECS::Entity entity, ECS::Entity parent, bool childInLocalSpace = false);
-		void ComponentDetach(ECS::Entity entity);
-		void ComponentDetachChildren(ECS::Entity parent);
+			AssetStore& GetAssetStore() { return this->m_assetStore; }
+
+		private:
+			AssetStore m_assetStore;
+			entt::registry m_registry;
+
+		};
+	}
 
 
-		void RunMeshInstanceUpdateSystem();
+	namespace Legacy
+	{
 
-		// -- System functions ---
-	public:
-		void UpdateTansformsSystem();
-		void UpdateHierarchySystem();
-		void UpdateLightsSystem();
+		class Scene
+		{
+		public:
+			Scene() = default;
+			~Scene() = default;
 
-		// GPU Related functions
-	public:
-		void RefreshGpuBuffers(RHI::IGraphicsDevice* graphicsDevice, RHI::CommandListHandle commandList);
-		void PopulateShaderSceneData(Shader::SceneData& sceneData);
+			static CameraComponent& GetGlobalCamera();
 
-		// -- Feilds ---
-	public:
-		NameComponentStore Names;
-		TransformComponentStore Transforms;
-		HierarchyComponentStore Hierarchy;
-		MaterialComponentStore Materials;
-		MeshComponentStore Meshes;
-		MeshInstanceComponentStore MeshInstances;
+			// Helper
+			ECS::Entity EntityCreateMeshInstance(std::string const& name);
+			ECS::Entity EntityCreateCamera(
+				std::string const& name);
 
-		LightComponentStore Lights;
-		CameraComponentStore Cameras;
+			ECS::Entity EntityCreateCamera(
+				std::string const& name,
+				float width,
+				float height,
+				float nearPlane = 0.01f,
+				float farPlane = 1000.0f,
+				float fov = DirectX::XM_PIDIV4);
 
-		ECS::Entity RootEntity = ECS::InvalidEntity;
+			ECS::Entity EntityCreateMaterial(std::string const& name);
+			ECS::Entity EntityCreateMesh(std::string const& name);
+			ECS::Entity EntityCreateLight(std::string const& name);
 
-	public:
-		PhxEngine::RHI::TextureHandle SkyboxTexture;
-		PhxEngine::RHI::TextureHandle IrradanceMap;
-		PhxEngine::RHI::TextureHandle PrefilteredMap;
-		PhxEngine::RHI::TextureHandle BrdfLUT;
+			ECS::Entity CreateCubeMeshEntity(std::string const& name, ECS::Entity mtlIDmtl, float size, bool rhsCoords);
+			ECS::Entity CreateSphereMeshEntity(std::string const& name, ECS::Entity mtlId, float diameter, size_t tessellation, bool rhsCoords);
 
-		RHI::BufferHandle GeometryGpuBuffer;
-		RHI::BufferHandle MeshGpuBuffer;
-		RHI::BufferHandle MaterialBuffer;
+			void ComponentAttach(ECS::Entity entity, ECS::Entity parent, bool childInLocalSpace = false);
+			void ComponentDetach(ECS::Entity entity);
+			void ComponentDetachChildren(ECS::Entity parent);
 
-	private:
-		std::vector<Shader::MaterialData> m_materialShaderData;
-		std::vector<Shader::Geometry> m_geometryShaderData;
-	};
+
+			void RunMeshInstanceUpdateSystem();
+
+			// -- System functions ---
+		public:
+			void UpdateTansformsSystem();
+			void UpdateHierarchySystem();
+			void UpdateLightsSystem();
+
+			// GPU Related functions
+		public:
+			void RefreshGpuBuffers(RHI::IGraphicsDevice* graphicsDevice, RHI::CommandListHandle commandList);
+			void PopulateShaderSceneData(Shader::SceneData& sceneData);
+
+			// -- Feilds ---
+		public:
+			NameComponentStore Names;
+			TransformComponentStore Transforms;
+			HierarchyComponentStore Hierarchy;
+			MaterialComponentStore Materials;
+			MeshComponentStore Meshes;
+			MeshInstanceComponentStore MeshInstances;
+
+			LightComponentStore Lights;
+			CameraComponentStore Cameras;
+
+			ECS::Entity RootEntity = ECS::InvalidEntity;
+
+		public:
+			PhxEngine::RHI::TextureHandle SkyboxTexture;
+			PhxEngine::RHI::TextureHandle IrradanceMap;
+			PhxEngine::RHI::TextureHandle PrefilteredMap;
+			PhxEngine::RHI::TextureHandle BrdfLUT;
+
+			RHI::BufferHandle GeometryGpuBuffer;
+			RHI::BufferHandle MeshGpuBuffer;
+			RHI::BufferHandle MaterialBuffer;
+
+		private:
+			std::vector<Shader::MaterialData> m_materialShaderData;
+			std::vector<Shader::Geometry> m_geometryShaderData;
+		};
+	}
 }

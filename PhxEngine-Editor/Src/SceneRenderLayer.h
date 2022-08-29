@@ -20,7 +20,7 @@ public:
 	{
 		return this->m_colourBuffers[PhxEngine::LayeredApplication::Ptr->GetFrameCount() % this->m_colourBuffers.size()];
 	}
-	void SetScene(std::unique_ptr<PhxEngine::Scene::Scene> scene) { this->m_scene = std::move(scene); }
+	void SetScene(std::unique_ptr<PhxEngine::Scene::Legacy::Scene> scene) { this->m_scene = std::move(scene); }
 	void ResizeSurface(DirectX::XMFLOAT2 const& size);
 
 private:
@@ -29,6 +29,6 @@ private:
 private:
 	std::vector<PhxEngine::RHI::TextureHandle> m_colourBuffers;
 	PhxEngine::RHI::CommandListHandle m_commandList;
-	std::unique_ptr<PhxEngine::Scene::Scene> m_scene;
+	std::unique_ptr<PhxEngine::Scene::Legacy::Scene> m_scene;
 };
 
