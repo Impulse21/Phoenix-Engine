@@ -152,6 +152,7 @@ void DeferredRenderer::DrawMeshes(PhxEngine::Scene::New::Scene const& scene, RHI
 {
     auto scrope = commandList->BeginScopedMarker("Render Scene Meshes");
 
+    /*
     for (int i = 0; i < scene.MeshInstances.GetCount(); i++)
     {
         auto& meshInstanceComponent = scene.MeshInstances[i];
@@ -196,10 +197,12 @@ void DeferredRenderer::DrawMeshes(PhxEngine::Scene::New::Scene const& scene, RHI
                 meshComponent.Geometry[i].IndexOffsetInMesh);
         }
     }
+    */
 }
 
 void DeferredRenderer::PrepareFrameRenderData(RHI::CommandListHandle commandList)
 {
+    /*
     size_t numGeometry = 0ull;
     for (int i = 0; i < Meshes.GetCount(); i++)
     {
@@ -306,13 +309,10 @@ void DeferredRenderer::PrepareFrameRenderData(RHI::CommandListHandle commandList
 
             auto& transformComponent = *this->m_scene.Transforms.GetComponent(this->m_scene.Lights.GetEntity(i));
             renderLight.Position = transformComponent.GetPosition();
-
-            /*
             renderLight.ShadowAtlasMulAdd.x = lightComponent.ShadowRect.w * atlasDIMRcp.x;
             renderLight.ShadowAtlasMulAdd.y = lightComponent.ShadowRect.h * atlasDIMRcp.y;
             renderLight.ShadowAtlasMulAdd.z = lightComponent.ShadowRect.x * atlasDIMRcp.x;
             renderLight.ShadowAtlasMulAdd.w = lightComponent.ShadowRect.y * atlasDIMRcp.y;
-            */
             switch (lightComponent.Type)
             {
             case LightComponent::kDirectionalLight:
@@ -389,6 +389,7 @@ void DeferredRenderer::PrepareFrameRenderData(RHI::CommandListHandle commandList
     barriers[2] = RHI::GpuBarrier::CreateBuffer(this->m_resourceBuffers[RB_Matrices], RHI::ResourceStates::CopyDest, this->m_resourceBuffers[RB_Matrices]->GetDesc().InitialState);
 
     commandList->TransitionBarriers(Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
+    */
 
 }
 
