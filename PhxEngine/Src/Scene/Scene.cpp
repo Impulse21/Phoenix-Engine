@@ -460,7 +460,7 @@ void Legacy::Scene::RefreshGpuBuffers(RHI::IGraphicsDevice* graphicsDevice, RHI:
 				geometryShaderData.NumIndices = geometryData.NumIndices;
 				geometryShaderData.NumVertices = geometryData.NumVertices;
 				geometryShaderData.IndexOffset = geometryData.IndexOffsetInMesh;
-				geometryShaderData.VertexBufferIndex = mesh.VertexGpuBuffer->GetDescriptorIndex();
+				geometryShaderData.VertexBufferIndex = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mesh.VertexGpuBuffer);
 				geometryShaderData.PositionOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Position).ByteOffset;
 				geometryShaderData.TexCoordOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::TexCoord).ByteOffset;
 				geometryShaderData.NormalOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Normal).ByteOffset;

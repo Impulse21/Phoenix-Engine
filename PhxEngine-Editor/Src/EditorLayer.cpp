@@ -421,13 +421,19 @@ void EditorLayer::OnRenderImGui()
     {
         PhxEngine::RHI::TextureHandle& colourBuffer = this->m_sceneRenderLayer->GetFinalColourBuffer();
 
-        const::TextureDesc& colourBufferDesc = IGraphicsDevice::Ptr->GetTextureDesc(colourBuffer);
-        if (this->m_sceneRenderLayer && (uint32_t)this->m_viewportSize.x != colourBufferDesc.Width || (uint32_t)this->m_viewportSize.y != colourBufferDesc.Height)
+        if (colourBuffer.IsValid())
         {
-            this->m_sceneRenderLayer->ResizeSurface(this->m_viewportSize);
-        }
+            const::TextureDesc& colourBufferDesc = IGraphicsDevice::Ptr->GetTextureDesc(colourBuffer);
+            if (this->m_sceneRenderLayer && (uint32_t)this->m_viewportSize.x != colourBufferDesc.Width || (uint32_t)this->m_viewportSize.y != colourBufferDesc.Height)
+            {
+                this->m_sceneRenderLayer->ResizeSurface(this->m_viewportSize);
+            }
 
-        ImGui::Image(static_cast<void*>(&colourBuffer), ImVec2{ this->m_viewportSize.x, this->m_viewportSize.y });
+            if (colourBuffer.IsValid())
+            {
+                ImGui::Image(static_cast<void*>(&colourBuffer), ImVec2{ this->m_viewportSize.x, this->m_viewportSize.y });
+            }
+        }
     }
 
     ImGui::End();

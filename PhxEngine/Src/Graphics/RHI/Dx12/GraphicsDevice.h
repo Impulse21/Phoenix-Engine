@@ -22,17 +22,11 @@
 namespace PhxEngine::RHI::Dx12
 {
     constexpr size_t kNumCommandListPerFrame = 32;
-    constexpr size_t kResourcePoolSize = 500000; // 5 KB of handles
+    constexpr size_t kResourcePoolSize = 200000; // 2 KB of handles
 
     struct TrackedResources;
 
     class BindlessDescriptorTable;
-
-    struct FrameContext
-    {
-        uint64_t FenceValue;
-        std::vector<Core::Handle<Texture>> PendingDeletionTextures;
-    };
 
     class TimerQuery : public ITimerQuery
     {
@@ -162,13 +156,24 @@ namespace PhxEngine::RHI::Dx12
             this->UavAllocation = other.UavAllocation;
             BindlessResourceIndex = other.BindlessResourceIndex;
         }
+
+        void DisposeViews()
+        {
+            this->RtvAllocation.Free();
+            this->DsvAllocation.Free();
+            this->SrvAllocation.Free();
+            this->UavAllocation.Free();
+        }
     };
 
-    struct GpuBuffer final : public IBuffer
+    struct Dx12Buffer final
     {
         BufferDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
         DescriptorIndex BindlessResourceIndex = cInvalidDescriptorIndex;
+
+        void* MappedData = nullptr;
+        uint32_t MappedSizeInBytes = 0;
 
         // -- Views ---
         DescriptorHeapAllocation SrvAllocation;
@@ -179,9 +184,9 @@ namespace PhxEngine::RHI::Dx12
         const BufferDesc& GetDesc() const { return this->Desc; }
         const DescriptorIndex GetDescriptorIndex() const { return this->BindlessResourceIndex; }
 
-        ~GpuBuffer()
+        void DisposeViews()
         {
-            SrvAllocation.Free();
+            this->SrvAllocation.Free();
         }
     };
 
@@ -245,11 +250,17 @@ namespace PhxEngine::RHI::Dx12
         TextureHandle CreateTexture(TextureDesc const& desc) override;
         const TextureDesc& GetTextureDesc(TextureHandle handle) override;
         DescriptorIndex GetDescriptorIndex(TextureHandle handle) override;
-        void FreeTexture(TextureHandle) override;
+        void DeleteTexture(TextureHandle) override;
 
         BufferHandle CreateIndexBuffer(BufferDesc const& desc) override;
         BufferHandle CreateVertexBuffer(BufferDesc const& desc) override;
         BufferHandle CreateBuffer(BufferDesc const& desc) override;
+        const BufferDesc& GetBufferDesc(BufferHandle handle) override;
+        DescriptorIndex GetDescriptorIndex(BufferHandle handle) override;
+        void* GetBufferMappedData(BufferHandle handle) override;
+        uint32_t GetBufferMappedDataSizeInBytes(BufferHandle handle) override;
+        void DeleteBuffer(BufferHandle handle) override;
+
 
         // -- Query Stuff ---
         TimerQueryHandle CreateTimerQuery() override;
@@ -329,24 +340,20 @@ namespace PhxEngine::RHI::Dx12
         GpuDescriptorHeap* GetSamplerGpuHeap() { return this->m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler].get(); }
 
         ID3D12QueryHeap* GetQueryHeap() { return this->m_gpuTimestampQueryHeap.Get(); }
-        std::shared_ptr<GpuBuffer> GetTimestampQueryBuffer() { return this->m_timestampQueryBuffer; }
+        BufferHandle GetTimestampQueryBuffer() { return this->m_timestampQueryBuffer; }
         const BindlessDescriptorTable* GetBindlessTable() const { return this->m_bindlessResourceDescriptorTable.get(); }
 
         // Maybe better encapulate this.
         Core::Pool<Dx12Texture, Texture>& GetTexturePool() { return this->m_texturePool; };
+        Core::Pool<Dx12Buffer, Buffer>& GetBufferPool() { return this->m_bufferPool; };
 
     private:
         size_t GetCurrentBackBufferIndex() const;
-        FrameContext& GetCurrentFrameContext() 
-        {
-            return this->m_frameContext[this->m_frameCount % this->m_frameContext.size()];
-        }
-
         size_t GetBackBufferIndex() const { return this->m_frameCount % this->m_swapChain.GetNumBackBuffers(); }
 
     private:
-        std::unique_ptr<GpuBuffer> CreateBufferInternal(BufferDesc const& desc);
-        void CreateSRVViews(GpuBuffer* gpuBuffer);
+        void CreateBufferInternal(BufferDesc const& desc, Dx12Buffer& outBuffer);
+        void CreateSRVViews(Dx12Buffer& gpuBuffer);
 
         void CreateGpuTimestampQueryHeap(uint32_t queryCount);
 
@@ -387,8 +394,9 @@ namespace PhxEngine::RHI::Dx12
 		bool IsCreateNotZeroedAvailable = false;
 		bool IsUnderGraphicsDebugger = false;
 
-        // -- Data Pool ---
+        // -- Resouce Pool ---
         Core::Pool<Dx12Texture, Texture> m_texturePool;
+        Core::Pool<Dx12Buffer, Buffer> m_bufferPool;
 
         // -- SwapChain ---
 		SwapChain m_swapChain;
@@ -402,14 +410,13 @@ namespace PhxEngine::RHI::Dx12
 
         // -- Query Heaps ---
         Microsoft::WRL::ComPtr<ID3D12QueryHeap> m_gpuTimestampQueryHeap;
-        std::shared_ptr<GpuBuffer> m_timestampQueryBuffer;
+        BufferHandle m_timestampQueryBuffer;
         Core::BitSetAllocator m_timerQueryIndexPool;
 
         std::unique_ptr<BindlessDescriptorTable> m_bindlessResourceDescriptorTable;
 
         // -- Frame Frences ---
         Microsoft::WRL::ComPtr<ID3D12Fence> m_frameFence;
-        std::vector<FrameContext> m_frameContext;
         uint64_t m_frameCount;
 
         struct InflightDataEntry

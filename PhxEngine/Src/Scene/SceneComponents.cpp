@@ -181,7 +181,7 @@ void PhxEngine::Scene::MeshComponent::CreateRenderData(
 	RHI::CommandListHandle commandList)
 {
 	// Construct the Mesh buffer
-	if (!this->Indices.empty() && !this->IndexGpuBuffer)
+	if (!this->Indices.empty() && !this->IndexGpuBuffer.IsValid())
 	{
 		RHI::BufferDesc indexBufferDesc = {};
 		indexBufferDesc.SizeInBytes = sizeof(uint32_t) * this->Indices.size();
@@ -199,7 +199,7 @@ void PhxEngine::Scene::MeshComponent::CreateRenderData(
 
 	// Construct the Vertex Buffer
 	// Set up the strides and offsets
-	if (!this->VertexGpuBuffer)
+	if (!this->VertexGpuBuffer.IsValid())
 	{
 		RHI::BufferDesc vertexDesc = {};
 		vertexDesc.StrideInBytes = sizeof(float);
