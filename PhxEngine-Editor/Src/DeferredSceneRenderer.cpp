@@ -68,7 +68,7 @@ void DeferredRenderer::Initialize()
     // -- Create Constant Buffers ---
     {
         RHI::BufferDesc bufferDesc = {};
-        bufferDesc.CpuAccessMode = RHI::CpuAccessMode::Default;
+        bufferDesc.Usage = RHI::Usage::Default;
         bufferDesc.Binding = RHI::BindingFlags::ConstantBuffer;
         bufferDesc.SizeInBytes = sizeof(Shader::Frame);
         bufferDesc.InitialState = RHI::ResourceStates::ConstantBuffer;
@@ -451,8 +451,8 @@ void DeferredRenderer::RenderScene(Scene::New::CameraComponent const& camera, Sc
 
     Shader::Frame frameData = {};
     frameData.BrdfLUTTexIndex = cInvalidDescriptorIndex;// this->m_scene.BrdfLUT->GetDescriptorIndex();
-    frameData.Scene.MaterialBufferIndex = this->m_materialGpuBuffers->GetDescriptorIndex();
-    frameData.Scene.GeometryBufferIndex = this->m_geometryGpuBuffers->GetDescriptorIndex();
+    frameData.Scene.MaterialBufferIndex = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_materialGpuBuffers);
+    frameData.Scene.GeometryBufferIndex = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_geometryGpuBuffers);
 
     this->PrepareFrameRenderData(this->m_commandList);
 

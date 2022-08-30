@@ -45,12 +45,12 @@ private:
 
     void FreeTextureResources()
     {
-        PhxEngine::RHI::IGraphicsDevice::Ptr->FreeTexture(this->m_depthBuffer);
-        PhxEngine::RHI::IGraphicsDevice::Ptr->FreeTexture(this->m_gBuffer.AlbedoTexture);
-        PhxEngine::RHI::IGraphicsDevice::Ptr->FreeTexture(this->m_gBuffer.NormalTexture);
-        PhxEngine::RHI::IGraphicsDevice::Ptr->FreeTexture(this->m_gBuffer.SurfaceTexture);
-        PhxEngine::RHI::IGraphicsDevice::Ptr->FreeTexture(this->m_gBuffer._PostionTexture);
-        PhxEngine::RHI::IGraphicsDevice::Ptr->FreeTexture(this->m_deferredLightBuffer);
+        PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_depthBuffer);
+        PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.AlbedoTexture);
+        PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.NormalTexture);
+        PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.SurfaceTexture);
+        PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer._PostionTexture);
+        PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_deferredLightBuffer);
     }
 
     void PrepareFrameRenderData(PhxEngine::RHI::CommandListHandle commandList);

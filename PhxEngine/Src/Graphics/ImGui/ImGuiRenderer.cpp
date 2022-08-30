@@ -84,7 +84,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnAttach()
 
 void PhxEngine::Graphics::ImGuiRenderer::OnDetach()
 {
-    IGraphicsDevice::Ptr->FreeTexture(this->m_fontTexture);
+    IGraphicsDevice::Ptr->DeleteTexture(this->m_fontTexture);
 
     if (this->m_imguiContext)
     {

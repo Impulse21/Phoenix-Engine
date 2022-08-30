@@ -120,11 +120,11 @@ namespace PhxEngine::RHI
 
 #pragma region Enums
 
-    enum class CpuAccessMode
+    enum class Usage
     {
         Default = 0,
-        Read,
-        Write
+        ReadBack,
+        Upload
     };
 
     enum class FormatType : uint8_t
@@ -834,15 +834,7 @@ namespace PhxEngine::RHI
     };
 
     // New;
-    class Texture;
-
-    class ITexture : public IResource
-    {
-    public:
-        virtual ~ITexture() = default;
-        virtual const TextureDesc& GetDesc() const = 0;
-        virtual const DescriptorIndex GetDescriptorIndex() const = 0;
-    };
+    struct Texture;
 
     // using TextureHandle = std::shared_ptr<ITexture>;
     using TextureHandle = Core::Handle<Texture>;
@@ -864,7 +856,7 @@ namespace PhxEngine::RHI
     {
         BufferMiscFlags MiscFlags = BufferMiscFlags::None;
         // TODO: Change to usage
-        CpuAccessMode CpuAccessMode = CpuAccessMode::Default;
+        Usage Usage = Usage::Default;
 
         BindingFlags Binding = BindingFlags::None;
         ResourceStates InitialState = ResourceStates::Common;
@@ -907,16 +899,9 @@ namespace PhxEngine::RHI
         }
     };
 
-    class IBuffer : public IResource
-    {
-    public:
-        virtual ~IBuffer() = default;
+    struct Buffer;
 
-        virtual const BufferDesc& GetDesc() const = 0;
-        virtual const DescriptorIndex GetDescriptorIndex() const = 0;
-    };
-
-    using BufferHandle = std::shared_ptr<IBuffer>;
+    using BufferHandle = Core::Handle<Buffer>;
 
     class ITimerQuery
     {
@@ -1154,15 +1139,28 @@ namespace PhxEngine::RHI
         virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
         virtual const TextureDesc& GetTextureDesc(TextureHandle handle) = 0;
         virtual DescriptorIndex GetDescriptorIndex(TextureHandle handle) = 0;
-        virtual void FreeTexture(TextureHandle) = 0;
+        virtual void DeleteTexture(TextureHandle handle) = 0;
 
         virtual TextureHandle CreateDepthStencil(TextureDesc const& desc) = 0;
 
         // TODO: I don't think is this a clear interface as to what desc data is required
         // Consider cleaning this up eventually.
+        // -- TODO: Remove
         virtual BufferHandle CreateIndexBuffer(BufferDesc const& desc) = 0;
         virtual BufferHandle CreateVertexBuffer(BufferDesc const& desc) = 0;
+        // -- TODO: End Remove
+
         virtual BufferHandle CreateBuffer(BufferDesc const& desc) = 0;
+        virtual const BufferDesc& GetBufferDesc(BufferHandle handle) = 0;
+        virtual DescriptorIndex GetDescriptorIndex(BufferHandle handle) = 0;
+        template<typename T>
+        T* GetBufferMappedData(BufferHandle handle)
+        {
+            return static_cast<T*>(this->GetMappedData(handle));
+        }
+        virtual void* GetBufferMappedData(BufferHandle handle) = 0;
+        virtual uint32_t GetBufferMappedDataSizeInBytes(BufferHandle handle) = 0;
+        virtual void DeleteBuffer(BufferHandle handle) = 0;
 
         // -- Query Stuff ---
         virtual TimerQueryHandle CreateTimerQuery() = 0;

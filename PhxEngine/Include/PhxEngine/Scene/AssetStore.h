@@ -8,7 +8,7 @@
 
 namespace PhxEngine::RHI
 {
-	class Texture;
+	struct Texture;
 }
 
 namespace PhxEngine::Scene
