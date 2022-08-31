@@ -1678,7 +1678,7 @@ void GraphicsDevice::CreateBufferInternal(BufferDesc const& desc, Dx12Buffer& ou
 	case Usage::ReadBack:
 	{
 		ThrowIfFailed(
-			outBuffer.D3D12Resource->Map(1, nullptr, &outBuffer.MappedData));
+			outBuffer.D3D12Resource->Map(0, nullptr, &outBuffer.MappedData));
 		outBuffer.MappedSizeInBytes = static_cast<uint32_t>(desc.SizeInBytes);
 
 		break;
@@ -1688,7 +1688,7 @@ void GraphicsDevice::CreateBufferInternal(BufferDesc const& desc, Dx12Buffer& ou
 	{
 		D3D12_RANGE readRange = {};
 		ThrowIfFailed(
-			outBuffer.D3D12Resource->Map(1, &readRange, &outBuffer.MappedData));
+			outBuffer.D3D12Resource->Map(0, &readRange, &outBuffer.MappedData));
 
 		outBuffer.MappedSizeInBytes = static_cast<uint32_t>(desc.SizeInBytes);
 		break;
