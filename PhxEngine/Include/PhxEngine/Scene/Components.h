@@ -4,6 +4,9 @@
 #include <DirectXMath.h>
 #include "entt.hpp"
 #include <PhxEngine/Core/UUID.h>
+#include <PhxEngine/Core/RefPtr.h>
+#include <PhxEngine/Core/Helpers.h>
+#include <PhxEngine/Scene/Assets.h>
 
 namespace PhxEngine::Scene
 {
@@ -11,17 +14,6 @@ namespace PhxEngine::Scene
 	{
 		// TODO: Move to a math library
 		static constexpr DirectX::XMFLOAT4X4 cIdentityMatrix = DirectX::XMFLOAT4X4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
-
-		// TODO: Find a home for this
-		constexpr uint32_t AlignTo(uint32_t value, uint32_t alignment)
-		{
-			return ((value + alignment - 1) / alignment) * alignment;
-		}
-
-		constexpr uint64_t AlignTo(uint64_t value, uint64_t alignment)
-		{
-			return ((value + alignment - 1) / alignment) * alignment;
-		}
 
 		struct IDComponent
 		{
@@ -203,11 +195,9 @@ namespace PhxEngine::Scene
 			DirectX::XMFLOAT4 Colour = { 1.0f, 1.0f, 1.0f, 1.0f };
 		};
 
-		struct StaticMeshComponent
+		struct MeshRenderComponent
 		{
-			uint32_t TotalIndices = 0;
-			uint32_t TotalVertices = 0;
-			// Handle to Mesh Asset
+			std::shared_ptr<Assets::Mesh> Mesh;
 		};
 	}
 }

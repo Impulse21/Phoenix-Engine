@@ -241,8 +241,8 @@ UINT ConvertSamplerReductionType(SamplerReductionType reductionType)
 PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
 	: m_frameCount(1)
 	, m_timerQueryIndexPool(kTimestampQueryHeapSize)
-	, m_texturePool(AlignTo(kResourcePoolSize, sizeof(Dx12Texture)))
-	, m_bufferPool(AlignTo(kResourcePoolSize, sizeof(Dx12Buffer)))
+	, m_texturePool(AlignTo(kResourcePoolSize / sizeof(Dx12Texture), sizeof(Dx12Texture)))
+	, m_bufferPool(AlignTo(kResourcePoolSize / sizeof(Dx12Texture), sizeof(Dx12Buffer)))
 {
 #ifdef ENABLE_PIX_CAPUTRE
 	this->m_pixCaptureModule = PIXLoadLatestWinPixGpuCapturerLibrary();

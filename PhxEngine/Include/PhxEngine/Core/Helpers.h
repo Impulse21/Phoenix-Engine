@@ -82,5 +82,15 @@ namespace PhxEngine::Core
 
 			return false;
 		}
+
+		constexpr uint32_t AlignTo(uint32_t value, uint32_t alignment)
+		{
+			return ((value + alignment - 1) / alignment) * alignment;
+		}
+
+		constexpr uint64_t AlignTo(uint64_t value, uint64_t alignment)
+		{
+			return ((value + alignment - 1) / alignment) * alignment;
+		}
 	}
 }

@@ -52,6 +52,21 @@ file(GLOB PhxEngine_Graphics_Src
     Src/Graphics/*.cpp
 )
 
+#-- Renderer
+file(GLOB PhxEngine_Renderer_Inc
+	Include/PhxEngine/Renderer/*.h
+)
+
+file(GLOB PhxEngine_Renderer_Src
+	Src/Renderer/*.h
+	Src/Renderer/*.cpp
+)
+# -- Renderer DX12
+file(GLOB PhxEngine_Renderer_DX12_Src
+	Src/Renderer/Dx12/*.h
+	Src/Renderer/Dx12/*.cpp
+)
+
 #-- Graphics RHI
 file(GLOB PhxEngine_Graphics_RHI_Inc
 	Include/PhxEngine/Graphics/RHI/*.h
@@ -109,6 +124,9 @@ add_library(PhxEngine STATIC EXCLUDE_FROM_ALL
     ${PhxEngine_Graphics_RHI_DX12_Src}
     ${PhxEngine_Graphics_ImGui_Inc}
     ${PhxEngine_Graphics_ImGui_Src}
+	${PhxEngine_Renderer_Inc}
+	${PhxEngine_Renderer_Src}
+	${PhxEngine_Renderer_DX12_Src}
     ${PhxEngine_System_Inc}
     ${PhxEngine_System_Src}
     ${PhxEngine_Scene_Inc}
@@ -122,8 +140,10 @@ source_group("Include/Core"             FILES ${PhxEngine_Core_Inc})
 source_group("Include/Graphics"         FILES ${PhxEngine_Graphics_Inc})
 source_group("Include/Graphics/RHI"     FILES ${PhxEngine_Graphics_RHI_Inc})
 source_group("Include/Graphics/ImGui"   FILES ${PhxEngine_Graphics_ImGui_Inc})
+source_group("Include/Graphics"         FILES ${PhxEngine_Graphics_Inc})
 source_group("Include/System"           FILES ${PhxEngine_System_Inc})
-source_group("Include/Scene"            FILES ${PhxEngine_Scene_Inc})
+source_group("Include/Scene"			FILES ${PhxEngine_Scene_Inc})
+source_group("Include/Renderer"			FILES ${PhxEngine_Renderer_Inc})
 
 source_group("Src"						FILES ${PhxEngine_Src})
 source_group("Src/App"                  FILES ${PhxEngine_App_Src})
@@ -134,6 +154,8 @@ source_group("Src/Graphics/RHI/Dx12"    FILES ${PhxEngine_Graphics_RHI_DX12_Src}
 source_group("Src/Graphics/ImGui"       FILES ${PhxEngine_Graphics_ImGui_Src})
 source_group("Src/System"               FILES ${PhxEngine_System_Src})
 source_group("Src/Scene"                FILES ${PhxEngine_Scene_Src})
+source_group("Src/Renderer"             FILES ${PhxEngine_Renderer_Src})
+source_group("Src/Renderer/Dx12"        FILES ${PhxEngine_Renderer_DX12_Src})
 
 target_include_directories(${ProjectName} PUBLIC Include ../Shaders/Include)
 target_include_directories(${ProjectName} PRIVATE Src ../Shaders/Include)

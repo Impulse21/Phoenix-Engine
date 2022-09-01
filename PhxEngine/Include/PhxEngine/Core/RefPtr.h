@@ -250,7 +250,8 @@ namespace PhxEngine::Core
     // class Texture : public RefCounter { ... }
     //////////////////////////////////////////////////////////////////////////
 
-    class RefCounter
+    template<class T>
+    class RefCounter : public T
     {
     private:
         std::atomic<unsigned long> m_refCount = 1;
@@ -263,7 +264,8 @@ namespace PhxEngine::Core
         virtual unsigned long Release()
         {
             unsigned long result = --m_refCount;
-            if (result == 0) {
+            if (result == 0) 
+            {
                 delete this;
             }
             return result;

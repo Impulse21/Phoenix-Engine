@@ -6,6 +6,8 @@
 #include "PhxEngine/Systems/ConsoleVarSystem.h"
 #include "PhxEngine/Graphics/ShaderStore.h"
 #include "PhxEngine/Graphics/ShaderFactory.h"
+#include "PhxEngine/Renderer/Initializer.h"
+
 #include "Graphics/ImGui/ImGuiRenderer.h"
 
 
@@ -215,6 +217,8 @@ PhxEngine::LayeredApplication::LayeredApplication(ApplicationSpecification const
 
 	this->m_window->SetEventCallback([this](Event& e) {this->OnEvent(e); });
 
+	PhxEngine::Renderer::Initialize();
+
 	// TODO: Create swapchain in Window
 	RHI::SwapChainDesc swapchainDesc = {};
 	swapchainDesc.BufferCount = NUM_BACK_BUFFERS;
@@ -243,6 +247,7 @@ PhxEngine::LayeredApplication::LayeredApplication(ApplicationSpecification const
 
 PhxEngine::LayeredApplication::~LayeredApplication()
 {
+	PhxEngine::Renderer::Finalize();
 	Graphics::ShaderStore::Ptr = nullptr;
 	LayeredApplication::Ptr = nullptr;
 }

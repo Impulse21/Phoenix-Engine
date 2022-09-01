@@ -22,7 +22,7 @@
 namespace PhxEngine::RHI::Dx12
 {
     constexpr size_t kNumCommandListPerFrame = 32;
-    constexpr size_t kResourcePoolSize = 200000; // 2 KB of handles
+    constexpr size_t kResourcePoolSize = 100000; // 1 KB of handles
 
     struct TrackedResources;
 

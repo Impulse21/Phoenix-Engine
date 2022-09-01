@@ -590,6 +590,8 @@ void TestBedRenderPath::OnAttachWindow()
 
     // TODO: Add wait on fence.
     graphicsDevice->WaitForIdle();
+
+
 }
 
 void TestBedRenderPath::Update(TimeStep const& ts)
