@@ -1004,8 +1004,11 @@ namespace PhxEngine::RHI
         // TODO: Take ownership of the data
         virtual void WriteBuffer(BufferHandle buffer, const void* data, size_t dataSize, uint64_t destOffsetBytes = 0) = 0;
 
+        virtual void CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHandle src, uint64_t srcOffset, size_t sizeInBytes) = 0;
+
         virtual void WriteTexture(TextureHandle texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData) = 0;
         virtual void WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* data, size_t rowPitch, size_t depthPitch) = 0;
+
         virtual void SetGraphicsPSO(GraphicsPSOHandle graphisPSO) = 0;
         virtual void SetViewports(Viewport* viewports, size_t numViewports) = 0;
         virtual void SetScissors(Rect* scissor, size_t numScissors) = 0;
@@ -1207,6 +1210,9 @@ namespace PhxEngine::RHI
 
         virtual void BeginCapture(std::wstring const& filename) = 0;
         virtual void EndCapture() = 0;
+
+        virtual size_t GetFrameIndex() = 0;
+        virtual size_t GetMaxInflightFrames() = 0;
     };
 
     extern void ReportLiveObjects();

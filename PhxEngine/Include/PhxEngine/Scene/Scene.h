@@ -42,7 +42,16 @@ namespace PhxEngine::Scene
 				return this->m_registry.view<Components...>();
 			}
 
+			template<typename... Components>
+			auto GetAllEntitiesWith() const 
+			{
+				return this->m_registry.view<Components...>();
+			}
+
+			void ConstructRenderData(RHI::CommandListHandle cmd);
+
 			entt::registry& GetRegistry() { return this->m_registry; }
+			const entt::registry& GetRegistry() const { return this->m_registry; }
 
 		private:
 			entt::registry m_registry;

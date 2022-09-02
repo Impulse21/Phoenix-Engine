@@ -301,6 +301,8 @@ namespace PhxEngine::RHI::Dx12
         void BeginCapture(std::wstring const& filename) override;
         void EndCapture() override;
 
+        size_t GetFrameIndex() override { return this->GetCurrentBackBufferIndex(); };
+        size_t GetMaxInflightFrames() override { return this->m_swapChain.Desc.BufferCount; }
         // -- Dx12 Specific functions ---
     public:
         TextureHandle CreateRenderTarget(TextureDesc const& desc, Microsoft::WRL::ComPtr<ID3D12Resource> d3d12TextureResource);

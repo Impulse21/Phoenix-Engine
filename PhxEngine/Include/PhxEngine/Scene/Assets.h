@@ -16,7 +16,7 @@ namespace PhxEngine::Graphics
 
 namespace PhxEngine::Scene::Assets
 {
-	class Asset : public Core::RefCounter
+	class Asset //: public Core::RefCounter
 	{
 	public:
 		Asset() = default;
@@ -35,7 +35,7 @@ namespace PhxEngine::Scene::Assets
 		Texture();
 		~Texture();
 
-		Renderer::TextureHandle GetRenderHandle();
+		RHI::TextureHandle GetRenderHandle() { return this->m_renderTexture; }
 
 	protected:
 		void CreateRenderResourceIfEmpty() override;
@@ -87,6 +87,7 @@ namespace PhxEngine::Scene::Assets
 		std::shared_ptr<Assets::Texture> AoTexture;
 		std::shared_ptr<Assets::Texture> NormalMapTexture;
 
+		size_t GlobalBufferIndex = 0;
 		void PopulateShaderData(Shader::MaterialData& shaderData);
 		uint32_t GetRenderTypes();
 
@@ -167,6 +168,7 @@ namespace PhxEngine::Scene::Assets
 			uint32_t VertexOffsetInMesh = 0;
 			uint32_t NumVertices = 0;
 			uint32_t NumIndices = 0;
+			size_t GlobalBufferIndex = 0;
 		};
 
 		std::vector<SurfaceDesc> Surfaces;

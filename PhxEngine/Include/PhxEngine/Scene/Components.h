@@ -8,6 +8,8 @@
 #include <PhxEngine/Core/Helpers.h>
 #include <PhxEngine/Scene/Assets.h>
 
+// Required for Operators - Move to CPP please
+using namespace DirectX;
 namespace PhxEngine::Scene
 {
 	namespace New
@@ -169,6 +171,110 @@ namespace PhxEngine::Scene
 				}
 			}
 			inline bool IsDirty() const { return this->Flags & kDirty; }
+
+			inline void TransformCamera(TransformComponent const& transform)
+			{
+				DirectX::XMVECTOR scale, rotation, translation;
+				DirectX::XMMatrixDecompose(
+					&scale,
+					&rotation,
+					&translation,
+					DirectX::XMLoadFloat4x4(&transform.WorldMatrix));
+
+				DirectX::XMVECTOR eye = translation;
+				DirectX::XMVECTOR at = DirectX::XMVectorSet(0, 0, -1, 0);
+				DirectX::XMVECTOR up = DirectX::XMVectorSet(0, 1, 0, 0);
+
+				DirectX::XMMATRIX rot = DirectX::XMMatrixRotationQuaternion(rotation);
+				at = DirectX::XMVector3TransformNormal(at, rot);
+				up = DirectX::XMVector3TransformNormal(up, rot);
+				// DirectX::XMStoreFloat3x3(&rotationMatrix, _Rot);
+
+				DirectX::XMStoreFloat3(&this->Eye, eye);
+				DirectX::XMStoreFloat3(&this->Forward, at);
+				DirectX::XMStoreFloat3(&this->Up, up);
+			}
+
+			inline void UpdateCamera()
+			{
+				auto viewMatrix = this->ConstructViewMatrixRH();
+				// auto viewMatrix = this->ConstructViewMatrixLH();
+
+				DirectX::XMStoreFloat4x4(&this->View, viewMatrix);
+				DirectX::XMStoreFloat4x4(&this->ViewInv, DirectX::XMMatrixInverse(nullptr, viewMatrix));
+
+				auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, 1.7f, this->ZNear, this->ZFar);
+				// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, 1.7f, this->ZNear, this->ZFar);
+
+				DirectX::XMStoreFloat4x4(&this->Projection, projectionMatrix);
+				DirectX::XMStoreFloat4x4(&this->ProjectionInv, DirectX::XMMatrixInverse(nullptr, projectionMatrix));
+
+				auto viewProjectionMatrix = viewMatrix * projectionMatrix;
+
+				DirectX::XMStoreFloat4x4(&this->ViewProjection, viewProjectionMatrix);
+
+				DirectX::XMStoreFloat4x4(&this->ViewProjectionInv, DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix));
+			}
+
+			inline DirectX::XMMATRIX ConstructViewMatrixLH()
+			{
+				const DirectX::XMVECTOR forward = -DirectX::XMLoadFloat3(&this->Forward);
+				const DirectX::XMVECTOR axisZ = DirectX::XMVector3Normalize(forward);
+
+				// axisX == right vector
+				const DirectX::XMVECTOR up = DirectX::XMLoadFloat3(&this->Up);
+				const DirectX::XMVECTOR axisX = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(up, forward));
+
+				// Axisy == Up vector ( forward cross with right)
+				const DirectX::XMVECTOR axisY = DirectX::XMVector3Cross(axisZ, axisX);
+
+				// --- Construct View matrix ---
+				const DirectX::XMVECTOR negEye = DirectX::XMVectorNegate(DirectX::XMLoadFloat3(&this->Eye));
+
+				// Not sure I get this bit.
+				const DirectX::XMVECTOR d0 = DirectX::XMVector3Dot(axisX, negEye);
+				const DirectX::XMVECTOR d1 = DirectX::XMVector3Dot(axisY, negEye);
+				const DirectX::XMVECTOR d2 = DirectX::XMVector3Dot(axisZ, negEye);
+
+				// Construct column major view matrix;
+				DirectX::XMMATRIX m;
+				m.r[0] = DirectX::XMVectorSelect(d0, axisX, g_XMSelect1110.v);
+				m.r[1] = DirectX::XMVectorSelect(d1, axisY, g_XMSelect1110.v);
+				m.r[2] = DirectX::XMVectorSelect(d2, axisZ, g_XMSelect1110.v);
+				m.r[3] = g_XMIdentityR3.v;
+
+				return DirectX::XMMatrixTranspose(m);
+			}
+
+			inline DirectX::XMMATRIX ConstructViewMatrixRH()
+			{
+				const DirectX::XMVECTOR forward = -DirectX::XMLoadFloat3(&this->Forward);
+				const DirectX::XMVECTOR axisZ = DirectX::XMVector3Normalize(forward);
+
+				// axisX == right vector
+				const DirectX::XMVECTOR up = DirectX::XMLoadFloat3(&this->Up);
+				const DirectX::XMVECTOR axisX = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(up, forward));
+
+				// Axisy == Up vector ( forward cross with right)
+				const DirectX::XMVECTOR axisY = DirectX::XMVector3Cross(axisZ, axisX);
+
+				// --- Construct View matrix ---
+				const DirectX::XMVECTOR negEye = DirectX::XMVectorNegate(DirectX::XMLoadFloat3(&this->Eye));
+
+				// Not sure I get this bit.
+				const DirectX::XMVECTOR d0 = DirectX::XMVector3Dot(axisX, negEye);
+				const DirectX::XMVECTOR d1 = DirectX::XMVector3Dot(axisY, negEye);
+				const DirectX::XMVECTOR d2 = DirectX::XMVector3Dot(axisZ, negEye);
+
+				// Construct column major view matrix;
+				DirectX::XMMATRIX m;
+				m.r[0] = DirectX::XMVectorSelect(d0, axisX, g_XMSelect1110.v);
+				m.r[1] = DirectX::XMVectorSelect(d1, axisY, g_XMSelect1110.v);
+				m.r[2] = DirectX::XMVectorSelect(d2, axisZ, g_XMSelect1110.v);
+				m.r[3] = g_XMIdentityR3.v;
+
+				return DirectX::XMMatrixTranspose(m);
+			}
 		};
 
 		struct DirectionalLightComponent
@@ -197,7 +303,16 @@ namespace PhxEngine::Scene
 
 		struct MeshRenderComponent
 		{
+			enum RenderType
+			{
+				RenderType_Void = 0,
+				RenderType_Opaque = 1 << 0,
+				RenderType_Transparent = 1 << 1,
+				RenderType_All = RenderType_Opaque | RenderType_Transparent
+			};
+
 			std::shared_ptr<Assets::Mesh> Mesh;
+			uint32_t RenderBucketMask = 0;
 		};
 	}
 }

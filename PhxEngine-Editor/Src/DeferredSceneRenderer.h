@@ -27,7 +27,7 @@ public:
         this->FreeTextureResources();
     }
 
-    void RenderScene(PhxEngine::Scene::New::CameraComponent const& camera, PhxEngine::Scene::New::Scene const& scene);
+    void RenderScene(PhxEngine::Scene::New::CameraComponent const& camera, PhxEngine::Scene::New::Scene& scene);
 
     PhxEngine::RHI::TextureHandle GetFinalColourBuffer() override { return this->m_deferredLightBuffer; }
 
@@ -53,21 +53,22 @@ private:
         PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_deferredLightBuffer);
     }
 
-    void PrepareFrameRenderData(PhxEngine::RHI::CommandListHandle commandList);
+    void PrepareFrameRenderData(
+        PhxEngine::RHI::CommandListHandle commandList,
+        PhxEngine::Scene::New::Scene& scene,
+        Shader::Frame& outFrameShaderData);
 
     void CreatePSOs();
     void CreateRenderTargets(DirectX::XMFLOAT2 const& size);
 
-    void DrawMeshes(PhxEngine::Scene::New::Scene const& scene, PhxEngine::RHI::CommandListHandle commandList);
+    void DrawMeshes(PhxEngine::Scene::New::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
 
 private:
     PhxEngine::RHI::CommandListHandle m_commandList;
     PhxEngine::RHI::CommandListHandle m_computeCommandList;
 
     // -- Scene CPU Buffers ---
-    std::vector<Shader::Geometry> m_geometryCpuData;
-    std::vector<Shader::MaterialData> m_materialCpuData;
-
+    // 
     // Uploaded every frame....Could be improved upon.
     std::vector<Shader::ShaderLight> m_lightCpuData;
     std::vector<Shader::ShaderLight> m_shadowLights;
@@ -75,14 +76,14 @@ private:
 
     std::array<PhxEngine::RHI::GraphicsPSOHandle, PsoType::NumPsoTypes> m_pso;
 
-    // -- GPU Buffers ---
-    PhxEngine::RHI::BufferHandle GeometryGpuBuffer;
-    PhxEngine::RHI::BufferHandle MeshGpuBuffer;
-    PhxEngine::RHI::BufferHandle MaterialBuffer;
-
     // -- Scene GPU Buffers ---
-    PhxEngine::RHI::BufferHandle m_geometryGpuBuffers;
-    PhxEngine::RHI::BufferHandle m_materialGpuBuffers;
+    size_t m_numGeometryEntires = 0;
+    PhxEngine::RHI::BufferHandle m_geometryGpuBuffer;
+    std::vector<PhxEngine::RHI::BufferHandle> m_geometryUploadBuffers;
+
+    size_t m_numMaterialEntries = 0;
+    PhxEngine::RHI::BufferHandle m_materialGpuBuffer;
+    std::vector<PhxEngine::RHI::BufferHandle> m_materialUploadBuffers;
 
     // -- Textures ---
     GBuffer m_gBuffer;
