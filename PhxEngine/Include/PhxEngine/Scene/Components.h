@@ -312,7 +312,7 @@ namespace PhxEngine::Scene
 			};
 
 			std::shared_ptr<Assets::Mesh> Mesh;
-			uint32_t RenderBucketMask = 0;
+			uint32_t RenderBucketMask = RenderType::RenderType_Opaque;
 		};
 	}
 }

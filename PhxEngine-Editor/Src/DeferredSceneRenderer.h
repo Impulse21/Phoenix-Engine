@@ -24,12 +24,12 @@ public:
     void Initialize() override;
     void Finialize() override
     {
-        this->FreeTextureResources();
+        this->FreeResources();
     }
 
     void RenderScene(PhxEngine::Scene::New::CameraComponent const& camera, PhxEngine::Scene::New::Scene& scene);
 
-    PhxEngine::RHI::TextureHandle GetFinalColourBuffer() override { return this->m_deferredLightBuffer; }
+    PhxEngine::RHI::TextureHandle& GetFinalColourBuffer() override { return this->m_deferredLightBuffer; }
 
     void OnWindowResize(DirectX::XMFLOAT2 const& size) override;
 
@@ -43,20 +43,12 @@ private:
         PhxEngine::RHI::TextureHandle _PostionTexture;
     };
 
-    void FreeTextureResources()
-    {
-        PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_depthBuffer);
-        PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.AlbedoTexture);
-        PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.NormalTexture);
-        PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.SurfaceTexture);
-        PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer._PostionTexture);
-        PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_deferredLightBuffer);
-    }
+    void FreeResources();
+    void FreeTextureResources();
 
     void PrepareFrameRenderData(
         PhxEngine::RHI::CommandListHandle commandList,
-        PhxEngine::Scene::New::Scene& scene,
-        Shader::Frame& outFrameShaderData);
+        PhxEngine::Scene::New::Scene& scene);
 
     void CreatePSOs();
     void CreateRenderTargets(DirectX::XMFLOAT2 const& size);

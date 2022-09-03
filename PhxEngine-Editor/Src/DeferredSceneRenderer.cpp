@@ -50,20 +50,60 @@ namespace
     }
 }
 
+void DeferredRenderer::FreeResources()
+{
+    this->FreeTextureResources();
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteBuffer(this->m_geometryGpuBuffer);
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteBuffer(this->m_materialGpuBuffer);
+    
+    for (RHI::BufferHandle buffer : this->m_constantBuffers)
+    {
+        PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteBuffer(buffer);
+    }
+
+    for (RHI::BufferHandle buffer : this->m_resourceBuffers)
+    {
+        PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteBuffer(buffer);
+    }
+
+    for (int i = 0; i < this->m_materialUploadBuffers.size(); i++)
+    {
+        if (this->m_materialUploadBuffers[i].IsValid())
+        {
+            IGraphicsDevice::Ptr->DeleteBuffer(this->m_materialUploadBuffers[i]);
+        }
+    }
+    for (int i = 0; i < this->m_geometryUploadBuffers.size(); i++)
+    {
+        if (this->m_geometryUploadBuffers[i].IsValid())
+        {
+            IGraphicsDevice::Ptr->DeleteBuffer(this->m_geometryUploadBuffers[i]);
+        }
+    }
+}
+
+void DeferredRenderer::FreeTextureResources()
+{
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_depthBuffer);
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.AlbedoTexture);
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.NormalTexture);
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.SurfaceTexture);
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer._PostionTexture);
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_deferredLightBuffer);
+}
 
 void DeferredRenderer::Initialize()
 {
     auto& spec = LayeredApplication::Ptr->GetSpec();
-    this->CreatePSOs();
     this->m_canvasSize = { static_cast<float>(spec.WindowWidth), static_cast<float>(spec.WindowHeight) };
     this->CreateRenderTargets(m_canvasSize);
+    this->CreatePSOs();
 
     this->m_commandList = RHI::IGraphicsDevice::Ptr->CreateCommandList();
     RHI::CommandListDesc commandLineDesc = {};
     commandLineDesc.QueueType = RHI::CommandQueueType::Compute;
     this->m_computeCommandList = RHI::IGraphicsDevice::Ptr->CreateCommandList(commandLineDesc);
 
-    // TODO: Use Asset Store
     // this->m_scene.BrdfLUT = this->m_textureCache->LoadTexture("..\\Assets\\Textures\\IBL\\BrdfLut.dds", true, this->m_commandList);
 
 
@@ -102,6 +142,9 @@ void DeferredRenderer::Initialize()
 
         this->m_resourceBuffers[RB_Matrices] = RHI::IGraphicsDevice::Ptr->CreateBuffer(bufferDesc);
     }
+
+    this->m_materialUploadBuffers.resize(IGraphicsDevice::Ptr->GetMaxInflightFrames());
+    this->m_geometryUploadBuffers.resize(IGraphicsDevice::Ptr->GetMaxInflightFrames());
 }
 
 void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
@@ -114,17 +157,18 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
     desc.IsBindless = false;
 
     desc.Format = RHI::FormatType::D32;
-    desc.IsTypeless = true;
     desc.DebugName = "Depth Buffer";
     desc.OptmizedClearValue.DepthStencil.Depth = 1.0f;
-    desc.BindingFlags = desc.BindingFlags | RHI::BindingFlags::DepthStencil;
+    desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::DepthStencil;
     desc.InitialState = RHI::ResourceStates::DepthWrite;
-
     this->m_depthBuffer = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
+    // -- Depth end ---
 
     // -- GBuffers ---
+    desc.OptmizedClearValue.Colour = { 0.0f, 0.0f, 0.0f, 1.0f };
     desc.BindingFlags = RHI::BindingFlags::RenderTarget | RHI::BindingFlags::ShaderResource;
     desc.InitialState = RHI::ResourceStates::RenderTarget;
+    desc.IsBindless = true;
 
     desc.Format = RHI::FormatType::RGBA32_FLOAT;
     desc.DebugName = "Albedo Buffer";
@@ -143,8 +187,10 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
 
     desc.Format = RHI::FormatType::RGBA32_FLOAT;
     desc.DebugName = "Debug Position Buffer";
+    this->m_gBuffer._PostionTexture = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
 
     // TODO: Determine what format should be used here.
+    desc.IsTypeless = true;
     desc.Format = RHI::FormatType::R10G10B10A2_UNORM;
     desc.DebugName = "Deferred Lighting";
     this->m_deferredLightBuffer = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
@@ -157,8 +203,7 @@ void DeferredRenderer::DrawMeshes(PhxEngine::Scene::New::Scene& scene, RHI::Comm
     auto view = scene.GetAllEntitiesWith<New::MeshRenderComponent, New::NameComponent, New::TransformComponent>();
     for (auto entity : view)
     {
-
-        auto [meshRenderComponent, nameComp, transformComponent] = view.get<New::MeshRenderComponent, New::NameComponent, New::TransformComponent>(entity);;
+        auto [meshRenderComponent, nameComp, transformComponent] = view.get<New::MeshRenderComponent, New::NameComponent, New::TransformComponent>(entity);
 
         // Skip non opaque items
         if ((meshRenderComponent.RenderBucketMask & New::MeshRenderComponent::RenderType::RenderType_Opaque) != New::MeshRenderComponent::RenderType::RenderType_Opaque)
@@ -190,12 +235,13 @@ void DeferredRenderer::DrawMeshes(PhxEngine::Scene::New::Scene& scene, RHI::Comm
 
 void DeferredRenderer::PrepareFrameRenderData(
     RHI::CommandListHandle commandList,
-    PhxEngine::Scene::New::Scene& scene,
-    Shader::Frame& outFrameShaderData)
+    PhxEngine::Scene::New::Scene& scene)
 {
     // Update Geometry Count
     std::unordered_set<Assets::StandardMaterial*> foundMaterials;
     auto view = scene.GetAllEntitiesWith<New::MeshRenderComponent>();
+    this->m_numGeometryEntires = 0;
+    this->m_numMaterialEntries = 0;
     for (auto e : view)
     {
         auto comp = view.get<New::MeshRenderComponent>(e);
@@ -222,15 +268,17 @@ void DeferredRenderer::PrepareFrameRenderData(
         desc.Binding = RHI::BindingFlags::ShaderResource;
         desc.InitialState = ResourceStates::ShaderResource;
         desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Raw;
-        desc.StrideInBytes = sizeof(Shader::Geometry);
-        desc.SizeInBytes = sizeof(Shader::Geometry) * this->m_numMaterialEntries;
+        desc.CreateBindless = true;
+        desc.StrideInBytes = sizeof(Shader::MaterialData);
+        desc.SizeInBytes = sizeof(Shader::MaterialData) * this->m_numMaterialEntries;
 
         if (this->m_materialGpuBuffer.IsValid())
         {
-            IGraphicsDevice::Ptr->DeleteBuffer(this->m_geometryGpuBuffer);
+            IGraphicsDevice::Ptr->DeleteBuffer(this->m_materialGpuBuffer);
         }
         this->m_materialGpuBuffer = IGraphicsDevice::Ptr->CreateBuffer(desc);
 
+        desc.CreateBindless = false;
         desc.DebugName = "Material Upload Data";
         desc.Usage = RHI::Usage::Upload;
         desc.Binding = RHI::BindingFlags::None;
@@ -290,13 +338,14 @@ void DeferredRenderer::PrepareFrameRenderData(
 
     // Recreate Buffers for geometry data
     if (!this->m_geometryGpuBuffer.IsValid() ||
-        IGraphicsDevice::Ptr->GetBufferDesc(this->m_geometryGpuBuffer).SizeInBytes != this->m_numGeometryEntires * sizeof(Shader::Geometry))
+        IGraphicsDevice::Ptr->GetBufferDesc(this->m_geometryGpuBuffer).SizeInBytes != (this->m_numGeometryEntires * sizeof(Shader::Geometry)))
     {
         RHI::BufferDesc desc = {};
         desc.DebugName = "Geometry Data";
         desc.Binding = RHI::BindingFlags::ShaderResource;
         desc.InitialState = ResourceStates::ShaderResource;
         desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Raw;
+        desc.CreateBindless = true;
         desc.StrideInBytes = sizeof(Shader::Geometry);
         desc.SizeInBytes = sizeof(Shader::Geometry) * this->m_numGeometryEntires;
 
@@ -311,6 +360,7 @@ void DeferredRenderer::PrepareFrameRenderData(
         desc.Binding = RHI::BindingFlags::None;
         desc.MiscFlags = RHI::BufferMiscFlags::None;
         desc.InitialState = ResourceStates::CopySource;
+        desc.CreateBindless = false;
         for (int i = 0; i < this->m_geometryUploadBuffers.size(); i++)
         {
             if (this->m_geometryUploadBuffers[i].IsValid())
@@ -347,13 +397,25 @@ void DeferredRenderer::PrepareFrameRenderData(
         }
 	}
 
+    Shader::Frame frameData = {};
+    frameData.BrdfLUTTexIndex = cInvalidDescriptorIndex;// this->m_scene.BrdfLUT->GetDescriptorIndex();
+    frameData.Scene.NumLights = this->m_lightCpuData.size();
+    frameData.Scene.GeometryBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_geometryGpuBuffer);
+    frameData.Scene.MaterialBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_materialGpuBuffer);
+    frameData.LightEntityIndex = RHI::cInvalidDescriptorIndex; // this->m_resourceBuffers[RB_LightEntities]->GetDescriptorIndex();
+    frameData.MatricesIndex = RHI::cInvalidDescriptorIndex;
+
     // Upload data
     RHI::GpuBarrier preCopyBarriers[] =
-    {
+    { 
+        RHI::GpuBarrier::CreateBuffer(this->m_constantBuffers[CB_Frame], RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
         RHI::GpuBarrier::CreateBuffer(this->m_geometryGpuBuffer, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
         RHI::GpuBarrier::CreateBuffer(this->m_materialGpuBuffer, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
     };
     commandList->TransitionBarriers(Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
+
+    commandList->WriteBuffer(this->m_constantBuffers[CB_Frame], frameData);
+
     commandList->CopyBuffer(
         this->m_geometryGpuBuffer,
         0,
@@ -366,17 +428,16 @@ void DeferredRenderer::PrepareFrameRenderData(
         0,
         currMaterialUploadBuffer,
         0,
-        this->m_numGeometryEntires * sizeof(Shader::Geometry));
+        this->m_numMaterialEntries * sizeof(Shader::MaterialData));
 
     RHI::GpuBarrier postCopyBarriers[] =
     {
+        RHI::GpuBarrier::CreateBuffer(this->m_constantBuffers[CB_Frame], RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
         RHI::GpuBarrier::CreateBuffer(this->m_geometryGpuBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
         RHI::GpuBarrier::CreateBuffer(this->m_materialGpuBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
     };
     commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
 
-    // TODO: I am here
-    
     // const XMFLOAT2 atlasDIMRcp = XMFLOAT2(1.0f / float(this->m_shadowAtlas->GetDesc().Width), 1.0f / float(this->m_shadowAtlas->GetDesc().Height));
     /*
     for (int i = 0; i < this->m_scene.Lights.GetCount(); i++)
@@ -440,11 +501,6 @@ void DeferredRenderer::PrepareFrameRenderData(
         }
     }
     */
-    outFrameShaderData.Scene.NumLights = this->m_lightCpuData.size();
-    outFrameShaderData.Scene.GeometryBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_geometryGpuBuffer);
-    outFrameShaderData.Scene.MaterialBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_materialGpuBuffer);
-    outFrameShaderData.LightEntityIndex = RHI::cInvalidDescriptorIndex; // this->m_resourceBuffers[RB_LightEntities]->GetDescriptorIndex();
-    outFrameShaderData.MatricesIndex = RHI::cInvalidDescriptorIndex;
 }
 
 void DeferredRenderer::CreatePSOs()
@@ -503,9 +559,7 @@ void DeferredRenderer::RenderScene(Scene::New::CameraComponent const& camera, Sc
 {
     this->m_commandList->Open();
 
-    Shader::Frame frameData = {};
-    frameData.BrdfLUTTexIndex = cInvalidDescriptorIndex;// this->m_scene.BrdfLUT->GetDescriptorIndex();
-    this->PrepareFrameRenderData(this->m_commandList, scene, frameData);
+    this->PrepareFrameRenderData(this->m_commandList, scene);
 
     Shader::Camera cameraData = {};
     cameraData.CameraPosition = camera.Eye;
@@ -648,6 +702,7 @@ void DeferredRenderer::RenderScene(Scene::New::CameraComponent const& camera, Sc
                 RHI::ResourceStates::ShaderResource,
                 IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer._PostionTexture).InitialState),
         };
+        this->m_commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
     }
 
     this->m_commandList->Close();

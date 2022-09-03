@@ -31,9 +31,12 @@ namespace
         void Finialize() override {}
         void RenderScene(PhxEngine::Scene::New::CameraComponent const& camera, PhxEngine::Scene::New::Scene& scene) {}
 
-        PhxEngine::RHI::TextureHandle GetFinalColourBuffer() override { return TextureHandle(); }
+        PhxEngine::RHI::TextureHandle& GetFinalColourBuffer() override { return m_dummyHandle; }
 
         void OnWindowResize(DirectX::XMFLOAT2 const& size) override {};
+
+    private:
+        TextureHandle m_dummyHandle = {};
     };
 }
 

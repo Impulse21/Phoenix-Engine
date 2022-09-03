@@ -25,6 +25,14 @@ static const GUID PixUUID = { 0x9f251514, 0x9d4d, 0x4902, { 0x9d, 0x60, 0x18, 0x
 
 static bool sDebugEnabled = false;
 
+// Come up with a better reporting system for resources
+#define TRACK_RESOURCES 0
+namespace
+{
+#if TRACK_RESOURCES
+	static std::unordered_set<std::string> sTrackedResources;
+#endif
+}
 
 // TODO: Find a home for this, it's also in scene exporer
 constexpr uint64_t AlignTo(uint64_t value, uint64_t alignment)
@@ -244,7 +252,7 @@ PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
 	, m_texturePool(AlignTo(kResourcePoolSize / sizeof(Dx12Texture), sizeof(Dx12Texture)))
 	, m_bufferPool(AlignTo(kResourcePoolSize / sizeof(Dx12Texture), sizeof(Dx12Buffer)))
 {
-#ifdef ENABLE_PIX_CAPUTRE
+#if ENABLE_PIX_CAPUTRE
 	this->m_pixCaptureModule = PIXLoadLatestWinPixGpuCapturerLibrary();
 #endif 
 
@@ -333,7 +341,7 @@ PhxEngine::RHI::Dx12::GraphicsDevice::~GraphicsDevice()
 		this->m_deleteQueue.pop_front();
 	}
 
-#ifdef ENABLE_PIX_CAPUTRE
+#if ENABLE_PIX_CAPUTRE
 	FreeLibrary(this->m_pixCaptureModule);
 #endif
 
@@ -720,7 +728,7 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTexture(TextureDesc co
 	d3d12OptimizedClearValue.Color[2] = desc.OptmizedClearValue.Colour.B;
 	d3d12OptimizedClearValue.Color[3] = desc.OptmizedClearValue.Colour.A;
 	d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.DepthStencil.Depth;
-	d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.DepthStencil.Stencil;
+	d3d12OptimizedClearValue.DepthStencil.Stencil = desc.OptmizedClearValue.DepthStencil.Stencil;
 
 	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
 	d3d12OptimizedClearValue.Format = dxgiFormatMapping.rtvFormat;
@@ -890,6 +898,12 @@ BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateBuffer(BufferDesc const
 		this->CreateSRVViews(bufferImpl);
 	}
 
+#if TRACK_RESOURCES
+	if (sTrackedResources.find(desc.DebugName) == sTrackedResources.end())
+	{
+		sTrackedResources.insert(desc.DebugName);
+	}
+#endif
 	return this->m_bufferPool.Insert(bufferImpl);
 }
 
@@ -922,7 +936,7 @@ uint32_t GraphicsDevice::GetBufferMappedDataSizeInBytes(BufferHandle handle)
 
 void GraphicsDevice::DeleteBuffer(BufferHandle handle)
 {
-	if (!handle.IsValid())
+if (!handle.IsValid())
 	{
 		return;
 	}
@@ -936,6 +950,12 @@ void GraphicsDevice::DeleteBuffer(BufferHandle handle)
 
 			if (texture)
 			{
+#if TRACK_RESOURCES
+				if (sTrackedResources.find(texture->GetDesc().DebugName) != sTrackedResources.end())
+				{
+					sTrackedResources.erase(texture->GetDesc().DebugName);
+				}
+#endif
 				this->m_bindlessResourceDescriptorTable->Free(texture->BindlessResourceIndex);
 				texture->DisposeViews();
 				this->GetBufferPool().Release(handle);

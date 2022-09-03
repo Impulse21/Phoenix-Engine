@@ -22,12 +22,12 @@ public:
 	{
 		return this->m_sceneRenderer->GetFinalColourBuffer();
 	}
-	void SetScene(std::unique_ptr<PhxEngine::Scene::New::Scene> scene) { this->m_scene = std::move(scene); }
+	void SetScene(std::shared_ptr<PhxEngine::Scene::New::Scene> scene) { this->m_scene = std::move(scene); }
 	void ResizeSurface(DirectX::XMFLOAT2 const& size);
 
 private:
 	std::unique_ptr<PhxEngine::Graphics::IRenderer> m_sceneRenderer;
-	std::unique_ptr<PhxEngine::Scene::New::Scene> m_scene;
+	std::shared_ptr<PhxEngine::Scene::New::Scene> m_scene;
 	PhxEngine::Scene::New::CameraComponent m_editorCamera;
 };
 

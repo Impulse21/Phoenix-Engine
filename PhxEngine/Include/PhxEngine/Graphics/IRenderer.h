@@ -22,7 +22,7 @@ namespace PhxEngine::Graphics
 
 		virtual void RenderScene(Scene::New::CameraComponent const& camera, Scene::New::Scene& scene) = 0;
 
-		virtual RHI::TextureHandle GetFinalColourBuffer() = 0;
+		virtual RHI::TextureHandle& GetFinalColourBuffer() = 0;
 
 		virtual void OnWindowResize(DirectX::XMFLOAT2 const& size) = 0;
 	};
