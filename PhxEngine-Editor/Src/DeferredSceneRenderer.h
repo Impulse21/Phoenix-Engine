@@ -29,7 +29,11 @@ public:
 
     void RenderScene(PhxEngine::Scene::New::CameraComponent const& camera, PhxEngine::Scene::New::Scene& scene);
 
-    PhxEngine::RHI::TextureHandle& GetFinalColourBuffer() override { return this->m_deferredLightBuffer; }
+    PhxEngine::RHI::TextureHandle& GetFinalColourBuffer() override 
+    {
+        return this->m_gBuffer.NormalTexture;
+        // this->m_deferredLightBuffer; 
+    }
 
     void OnWindowResize(DirectX::XMFLOAT2 const& size) override;
 

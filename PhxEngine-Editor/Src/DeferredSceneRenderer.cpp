@@ -157,6 +157,7 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
     desc.IsBindless = false;
 
     desc.Format = RHI::FormatType::D32;
+    desc.IsTypeless = true;
     desc.DebugName = "Depth Buffer";
     desc.OptmizedClearValue.DepthStencil.Depth = 1.0f;
     desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::DepthStencil;
@@ -179,7 +180,6 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
     desc.Format = RHI::FormatType::RGBA16_SNORM;
     desc.DebugName = "Normal Buffer";
     this->m_gBuffer.NormalTexture = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
-
 
     desc.Format = RHI::FormatType::RGBA8_UNORM;
     desc.DebugName = "Surface Buffer";
@@ -323,7 +323,7 @@ void DeferredRenderer::PrepareFrameRenderData(
         shaderData->MaterialTexture = RHI::cInvalidDescriptorIndex;
         if (mat->MetalRoughnessTexture && mat->MetalRoughnessTexture->GetRenderHandle().IsValid())
         {
-            shaderData->MaterialTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat->NormalMapTexture->GetRenderHandle());
+            shaderData->MaterialTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat->MetalRoughnessTexture->GetRenderHandle());
             assert(shaderData->MaterialTexture != RHI::cInvalidDescriptorIndex);
 
             // shaderData->MetalnessTexture = mat->MetalRoughnessTexture->GetDescriptorIndex();
