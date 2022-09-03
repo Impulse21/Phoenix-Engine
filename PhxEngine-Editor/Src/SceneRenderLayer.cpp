@@ -54,10 +54,19 @@ SceneRenderLayer::SceneRenderLayer()
 
 void SceneRenderLayer::OnAttach()
 {
-    this->m_editorCamera.Eye = {0.0f, 4.0f, 2.0f};
+    DirectX::XMVECTOR eyePos =  DirectX::XMVectorSet(0.0f, 4.0f, 2.0f, 1.0f);
+    DirectX::XMVECTOR focusPoint = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+    DirectX::XMVECTOR eyeDir = DirectX::XMVectorSubtract(focusPoint, eyePos);
+    DirectX::XMVector3Normalize(eyeDir);
+
+    DirectX::XMStoreFloat3(
+        &this->m_editorCamera.Eye,
+        eyePos);
+
     DirectX::XMStoreFloat3(
         &this->m_editorCamera.Forward,
-        DirectX::XMVectorSubtract(DirectX::XMVectorSet(0.0f, 4.0f, 2.0f, 0.0f), DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f)));
+        eyeDir);
+
     this->m_editorCamera.Width = LayeredApplication::Ptr->GetSpec().WindowWidth;
     this->m_editorCamera.Height = LayeredApplication::Ptr->GetSpec().WindowHeight;
     this->m_editorCamera.FoV = 1.7;

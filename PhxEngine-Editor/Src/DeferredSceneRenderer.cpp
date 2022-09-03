@@ -219,7 +219,7 @@ void DeferredRenderer::DrawMeshes(PhxEngine::Scene::New::Scene& scene, RHI::Comm
         auto scrope = commandList->BeginScopedMarker(modelName);
         for (size_t i = 0; i < mesh.Surfaces.size(); i++)
         {
-            Shader::GeometryPassPushConstants pushConstant;
+            Shader::GeometryPassPushConstants pushConstant = {};
             // pushConstant.MeshIndex = scene.Meshes.GetIndex(meshInstanceComponent.MeshId);
             pushConstant.GeometryIndex = mesh.Surfaces[i].GlobalBufferIndex;
             TransposeMatrix(transformComponent.WorldMatrix, &pushConstant.WorldTransform);
@@ -305,6 +305,8 @@ void DeferredRenderer::PrepareFrameRenderData(
         shaderData->AlbedoColour = { mat->Albedo.x, mat->Albedo.y, mat->Albedo.z };
         shaderData->EmissiveColourPacked = Core::Math::PackColour(mat->Emissive);
         shaderData->AO = mat->Ao;
+        shaderData->Metalness = mat->Metalness;
+        shaderData->Roughness = mat->Roughness;
 
         shaderData->AlbedoTexture = RHI::cInvalidDescriptorIndex;
         if (mat->AlbedoTexture && mat->AlbedoTexture->GetRenderHandle().IsValid())
@@ -393,7 +395,7 @@ void DeferredRenderer::PrepareFrameRenderData(
             geometryShaderData->TexCoordOffset = mesh.GetVertexAttribute(Assets::Mesh::VertexAttribute::TexCoord).ByteOffset;
             geometryShaderData->NormalOffset = mesh.GetVertexAttribute(Assets::Mesh::VertexAttribute::Normal).ByteOffset;
             geometryShaderData->TangentOffset = mesh.GetVertexAttribute(Assets::Mesh::VertexAttribute::Tangent).ByteOffset;
-            currGeoIndex++;
+            surfaceDesc.GlobalBufferIndex = currGeoIndex++;
         }
 	}
 

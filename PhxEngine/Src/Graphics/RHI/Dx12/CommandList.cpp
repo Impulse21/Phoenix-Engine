@@ -1,7 +1,7 @@
 #include "phxpch.h"
 #include "CommandList.h"
 
-#include <pix.h>
+#include <pix3.h>
 
 #include "GraphicsDevice.h"
 #include "DescriptorHeap.h"
