@@ -817,7 +817,7 @@ void GltfSceneLoader::LoadMeshData(
 
 			if (cgltfNormalsAccessor)
 			{
-				mesh.Flags |= MeshComponent::Flags::kContainsNormals;
+				mesh.Flags |= Assets::Mesh::Flags::kContainsNormals;
 				auto [normalSrc, normalStride] = CgltfBufferAccessor(cgltfNormalsAccessor, sizeof(float) * 3);
 
 				// Do a mem copy?
@@ -829,7 +829,7 @@ void GltfSceneLoader::LoadMeshData(
 
 			if (cgltfTangentsAccessor)
 			{
-				mesh.Flags |= MeshComponent::Flags::kContainsTangents;
+				mesh.Flags |= Assets::Mesh::Flags::kContainsTangents;
 				auto [tangentSrc, tangentStride] = CgltfBufferAccessor(cgltfTangentsAccessor, sizeof(float) * 4);
 
 				// Do a mem copy?
@@ -841,7 +841,7 @@ void GltfSceneLoader::LoadMeshData(
 
 			if (cgltfTexCoordsAccessor)
 			{
-				mesh.Flags |= MeshComponent::Flags::kContainsTexCoords;
+				mesh.Flags |=Assets::Mesh::Flags::kContainsTexCoords;
 				assert(cgltfTexCoordsAccessor->count == cgltfPositionsAccessor->count);
 
 				auto [texcoordSrc, texcoordStride] = CgltfBufferAccessor(cgltfTexCoordsAccessor, sizeof(float) * 2);
@@ -878,7 +878,7 @@ void GltfSceneLoader::LoadMeshData(
 		}
 
 		// Generate Tangents
-		if ((mesh.Flags & MeshComponent::kContainsNormals) != 0 && (mesh.Flags & MeshComponent::kContainsTexCoords) != 0 && (mesh.Flags & MeshComponent::kContainsTangents) == 0)
+		if ((mesh.Flags & Assets::Mesh::Flags::kContainsNormals) != 0 && (mesh.Flags & Assets::Mesh::Flags::kContainsTexCoords) != 0 && (mesh.Flags & Assets::Mesh::Flags::kContainsTangents) == 0)
 		{
 			ComputeTangentSpace(mesh);
 		}

@@ -203,8 +203,10 @@ namespace PhxEngine::Scene
 				DirectX::XMStoreFloat4x4(&this->View, viewMatrix);
 				DirectX::XMStoreFloat4x4(&this->ViewInv, DirectX::XMMatrixInverse(nullptr, viewMatrix));
 
-				auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, 1.7f, this->ZNear, this->ZFar);
+				// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, 1.7f, this->ZNear, this->ZFar);
 				// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, 1.7f, this->ZNear, this->ZFar);
+				float aspectRatio = this->Width/ this->Height;
+				auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, aspectRatio, this->ZNear, this->ZFar);
 
 				DirectX::XMStoreFloat4x4(&this->Projection, projectionMatrix);
 				DirectX::XMStoreFloat4x4(&this->ProjectionInv, DirectX::XMMatrixInverse(nullptr, projectionMatrix));

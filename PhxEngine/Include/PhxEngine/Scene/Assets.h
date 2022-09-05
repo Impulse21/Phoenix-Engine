@@ -64,7 +64,7 @@ namespace PhxEngine::Scene::Assets
 			kCastShadow = 1 << 0,
 		};
 
-		uint32_t Flags;
+		uint32_t Flags = kEmpty;
 
 		enum ShaderType : uint8_t
 		{
@@ -150,7 +150,7 @@ namespace PhxEngine::Scene::Assets
 			kContainsTangents = 1 << 2,
 		};
 
-		uint32_t Flags;
+		uint32_t Flags = kEmpty;
 		std::vector<DirectX::XMFLOAT3> VertexPositions;
 		std::vector<DirectX::XMFLOAT2> VertexTexCoords;
 		std::vector<DirectX::XMFLOAT3> VertexNormals;
