@@ -9,6 +9,7 @@ using namespace PhxEngine;
 using namespace PhxEngine::Core;
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::RHI;
+using namespace PhxEngine::Scene;
 
 using namespace DirectX;
 
@@ -107,7 +108,7 @@ const FormatMapping g_FormatMappings[] = {
     { RHI::FormatType::BC7_UNORM_SRGB,       DXGI_FORMAT_BC7_UNORM_SRGB,         8 },
 };
 
-RHI::TextureHandle PhxEngine::Graphics::TextureCache::LoadTexture(
+std::shared_ptr<Assets::Texture> PhxEngine::Graphics::TextureCache::LoadTexture(
     std::vector<uint8_t> const& textureData,
     std::string const& textureName,
     std::string const& mmeType,
@@ -115,21 +116,21 @@ RHI::TextureHandle PhxEngine::Graphics::TextureCache::LoadTexture(
     RHI::CommandListHandle commandList)
 {
     std::string cacheKey = textureName;
-    std::shared_ptr<LoadedTexture> texture = this->GetTextureFromCache(cacheKey);
+    std::shared_ptr<Assets::Texture> texture = this->GetTextureFromCache(cacheKey);
     if (texture)
     {
-        return texture->RhiTexture;
+        return texture;
     }
 
     // Create texture
-    texture = std::make_shared<LoadedTexture>();
-    texture->ForceSRGB = isSRGB;
-    texture->Path = "Blob";
+    texture = std::make_shared<Assets::Texture>();
+    texture->m_forceSRGB = isSRGB;
+    texture->m_path = "Blob";
 
     if (textureData.empty())
     {
         // LOG_CORE_ERROR("Failed to load texture data");
-        return TextureHandle();
+        return nullptr;
     }
 
     if (this->FillTextureData(textureData, texture, "", mmeType))
@@ -138,32 +139,32 @@ RHI::TextureHandle PhxEngine::Graphics::TextureCache::LoadTexture(
         this->FinalizeTexture(texture, commandList);
     }
 
-    return texture->RhiTexture;
+    return texture;
 }
 
-RHI::TextureHandle PhxEngine::Graphics::TextureCache::LoadTexture(
+std::shared_ptr<Assets::Texture> PhxEngine::Graphics::TextureCache::LoadTexture(
     std::filesystem::path filename,
     bool isSRGB,
     RHI::CommandListHandle commandList)
 {
     std::string cacheKey = this->ConvertFilePathToKey(filename);
-    std::shared_ptr<LoadedTexture> texture = this->GetTextureFromCache(cacheKey);
+    std::shared_ptr<Assets::Texture> texture = this->GetTextureFromCache(cacheKey);
     if (texture)
     {
-        return texture->RhiTexture;
+        return texture;
     }
 
     // Create texture
-    texture = std::make_shared<LoadedTexture>();
-    texture->ForceSRGB = isSRGB;
-    texture->Path = filename.generic_string();
+    texture = std::make_shared<Assets::Texture>();
+    texture->m_forceSRGB = isSRGB;
+    texture->m_path = filename.generic_string();
 
-    auto texBlob = this->ReadTextureFile(texture->Path);
+    auto texBlob = this->ReadTextureFile(texture->m_path);
 
     if (texBlob.empty())
     {
         // LOG_CORE_ERROR("Failed to load texture data");
-        return TextureHandle();
+        return nullptr;
     }
 
     if (this->FillTextureData(texBlob, texture, filename.extension().generic_string(), ""))
@@ -172,15 +173,15 @@ RHI::TextureHandle PhxEngine::Graphics::TextureCache::LoadTexture(
         this->FinalizeTexture(texture, commandList);
     }
 
-    return texture->RhiTexture;
+    return texture;
 }
 
-RHI::TextureHandle PhxEngine::Graphics::TextureCache::GetTexture(std::string const& key)
+std::shared_ptr<Assets::Texture> PhxEngine::Graphics::TextureCache::GetTexture(std::string const& key)
 {
-    return TextureHandle();
+    return nullptr;
 }
 
-std::shared_ptr<LoadedTexture> PhxEngine::Graphics::TextureCache::GetTextureFromCache(std::string const& key)
+std::shared_ptr<Assets::Texture> PhxEngine::Graphics::TextureCache::GetTextureFromCache(std::string const& key)
 {
     auto itr = this->m_loadedTextures.find(key);
 
@@ -201,7 +202,7 @@ std::vector<uint8_t> PhxEngine::Graphics::TextureCache::ReadTextureFile(std::str
 
 bool PhxEngine::Graphics::TextureCache::FillTextureData(
     std::vector<uint8_t> const& texBlob,
-	std::shared_ptr<LoadedTexture> texture,
+    std::shared_ptr<Assets::Texture>& texture,
 	std::string const& fileExtension,
 	std::string const& mimeType)
 {
@@ -212,24 +213,24 @@ bool PhxEngine::Graphics::TextureCache::FillTextureData(
 			texBlob.data(),
 			texBlob.size(),
 			DDS_FLAGS_FORCE_RGB,
-			&texture->Metadata,
-            texture->ScratchImage);
+			&texture->m_metadata,
+            texture->m_scratchImage);
 	}
 	else if (fileExtension == ".hdr" || fileExtension == ".HDR")
 	{
 		hr = LoadFromHDRMemory(
 			texBlob.data(),
 			texBlob.size(),
-			&texture->Metadata,
-            texture->ScratchImage);
+			&texture->m_metadata,
+            texture->m_scratchImage);
 	}
 	else if (fileExtension == ".tga" || fileExtension == ".TGA")
 	{
 		hr = LoadFromTGAMemory(
 			texBlob.data(),
 			texBlob.size(),
-			&texture->Metadata,
-            texture->ScratchImage);
+			&texture->m_metadata,
+            texture->m_scratchImage);
 	}
 	else
 	{
@@ -237,39 +238,39 @@ bool PhxEngine::Graphics::TextureCache::FillTextureData(
 			texBlob.data(),
 			texBlob.size(),
 			WIC_FLAGS_FORCE_RGB,
-			&texture->Metadata,
-            texture->ScratchImage);
+			&texture->m_metadata,
+            texture->m_scratchImage);
 	}
 
-	if (texture->ForceSRGB)
+	if (texture->m_forceSRGB)
 	{
-        texture->Metadata.format = MakeSRGB(texture->Metadata.format);
+        texture->m_metadata.format = MakeSRGB(texture->m_metadata.format);
 	}
 
 	RHI::TextureDesc textureDesc = {};
-	textureDesc.Width = texture->Metadata.width;
-	textureDesc.Height = texture->Metadata.height;
-	textureDesc.MipLevels = texture->Metadata.mipLevels;
+	textureDesc.Width = texture->m_metadata.width;
+	textureDesc.Height = texture->m_metadata.height;
+	textureDesc.MipLevels = texture->m_metadata.mipLevels;
 
     for (auto& mapping : g_FormatMappings)
     {
-        if (mapping.DxgiFormat == texture->Metadata.format)
+        if (mapping.DxgiFormat == texture->m_metadata.format)
         {
             textureDesc.Format = mapping.PhxRHIFormat;
         }
     }
 
-	textureDesc.DebugName = texture->Path;
+	textureDesc.DebugName = texture->m_path;
 
-	switch (texture->Metadata.dimension)
+	switch (texture->m_metadata.dimension)
 	{
 	case TEX_DIMENSION_TEXTURE1D:
 		textureDesc.Dimension = TextureDimension::Texture1D;
-		textureDesc.ArraySize = texture->Metadata.arraySize;
+		textureDesc.ArraySize = texture->m_metadata.arraySize;
 		break;
 
 	case TEX_DIMENSION_TEXTURE2D:
-		textureDesc.ArraySize = texture->Metadata.arraySize;
+		textureDesc.ArraySize = texture->m_metadata.arraySize;
 		// TODO: Better handle this.
 		if (textureDesc.ArraySize == 6)
 		{
@@ -283,22 +284,22 @@ bool PhxEngine::Graphics::TextureCache::FillTextureData(
 
 	case TEX_DIMENSION_TEXTURE3D:
 		textureDesc.Dimension = TextureDimension::Texture3D;
-		textureDesc.Depth = texture->Metadata.depth;
+		textureDesc.Depth = texture->m_metadata.depth;
 		break;
 	default:
 		throw std::exception("Invalid texture dimension.");
 		break;
 	}
 
-
-    texture->RhiTexture = this->m_graphicsDevice->CreateTexture(textureDesc);
+    // TODO
+    texture->m_renderTexture = this->m_graphicsDevice->CreateTexture(textureDesc);
     // texture->Data = texBlob;
 
-    texture->SubresourceData.resize(texture->ScratchImage.GetImageCount());
-    const Image* pImages = texture->ScratchImage.GetImages();
-    for (int i = 0; i < texture->ScratchImage.GetImageCount(); ++i)
+    texture->m_subresourceData.resize(texture->m_scratchImage.GetImageCount());
+    const Image* pImages = texture->m_scratchImage.GetImages();
+    for (int i = 0; i < texture->m_scratchImage.GetImageCount(); ++i)
     {
-        SubresourceData& subresourceData = texture->SubresourceData[i];
+        SubresourceData& subresourceData = texture->m_subresourceData[i];
         subresourceData.pData = pImages[i].pixels;
         subresourceData.rowPitch = pImages[i].rowPitch;
         subresourceData.slicePitch = pImages[i].slicePitch;
@@ -308,15 +309,16 @@ bool PhxEngine::Graphics::TextureCache::FillTextureData(
 }
 
 void PhxEngine::Graphics::TextureCache::FinalizeTexture(
-	std::shared_ptr<LoadedTexture> texture,
+    std::shared_ptr<Assets::Texture>& texture,
 	CommandListHandle commandList)
 {
-    commandList->TransitionBarrier(texture->RhiTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
-    commandList->WriteTexture(texture->RhiTexture, 0, texture->SubresourceData.size(), texture->SubresourceData.data());
-    commandList->TransitionBarrier(texture->RhiTexture, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource);
+    // TODO:
+    commandList->TransitionBarrier(texture->m_renderTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
+    commandList->WriteTexture(texture->m_renderTexture, 0, texture->m_subresourceData.size(), texture->m_subresourceData.data());
+    commandList->TransitionBarrier(texture->m_renderTexture, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource);
 }
 
-void PhxEngine::Graphics::TextureCache::CacheTextureData(std::string key, std::shared_ptr<LoadedTexture> texture)
+void PhxEngine::Graphics::TextureCache::CacheTextureData(std::string key, std::shared_ptr<Assets::Texture>& texture)
 {
     this->m_loadedTextures[key] = texture;
 }

@@ -349,8 +349,15 @@ void SceneExplorerPanel::DrawEntityComponents(Entity entity)
             DrawFloat3Control("Scale", component.LocalScale, 1.0f);
         });
 
-    DrawComponent<New::StaticMeshComponent>("StaticMeshComponent", entity, [](auto& component) {
-        ImGui::Text("TODO: Add Data");
+    DrawComponent<New::MeshRenderComponent>("MeshRenderComponent", entity, [](auto& component) {
+        ImGui::Text("Mesh Name:");
+            ImGui::Text(component.Mesh->Name.c_str());
+
+            for (int i = 0; i < component.Mesh->Surfaces.size(); i++)
+            {
+                ImGui::Text(component.Mesh->Surfaces[i].Material->Name.c_str());
+            }
+
         });
 
     DrawComponent<New::DirectionalLightComponent>("DirectionalLightComponent", entity, [](auto& component) {
@@ -398,10 +405,27 @@ void EditorLayer::OnAttach()
 
     assert(result);
 #else
+    CommandListHandle cmd = IGraphicsDevice::Ptr->CreateCommandList();
+    cmd->Open();
+
     std::unique_ptr<New::ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
-    sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", nullptr, *this->m_scene);
+    sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", cmd, *this->m_scene);
 #endif
+
+    // TODO: I am here update The mesh render data
+    auto view = this->m_scene->GetAllEntitiesWith<New::MeshRenderComponent>();
+    for (auto e : view)
+    {
+        auto meshRenderComp = view.get<New::MeshRenderComponent>(e);
+        meshRenderComp.Mesh->CreateRenderData(cmd);
+    }
+
+    cmd->Close();
+    auto fenceValue = IGraphicsDevice::Ptr->ExecuteCommandLists(cmd.get());
+
+    this->m_sceneRenderLayer->SetScene(this->m_scene);
     this->m_sceneExplorerPanel.SetScene(this->m_scene);
+    IGraphicsDevice::Ptr->WaitForIdle();
 }
 
 void EditorLayer::OnDetach()
@@ -431,6 +455,7 @@ void EditorLayer::OnRenderImGui()
 
             if (colourBuffer.IsValid())
             {
+                // TODO: Ask Aymar 
                 ImGui::Image(static_cast<void*>(&colourBuffer), ImVec2{ this->m_viewportSize.x, this->m_viewportSize.y });
             }
         }

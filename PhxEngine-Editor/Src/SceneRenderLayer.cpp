@@ -10,7 +10,7 @@ using namespace PhxEngine::Scene;
 
 using namespace PhxEngine::RHI;
 
-#define USE_DUMMY_RENDERER 1
+#define USE_DUMMY_RENDERER 0
 
 namespace
 {
@@ -29,11 +29,14 @@ namespace
     public:
         void Initialize() override {}
         void Finialize() override {}
-        void RenderScene(PhxEngine::Scene::New::CameraComponent const& camera, PhxEngine::Scene::New::Scene const& scene) {}
+        void RenderScene(PhxEngine::Scene::New::CameraComponent const& camera, PhxEngine::Scene::New::Scene& scene) {}
 
-        PhxEngine::RHI::TextureHandle GetFinalColourBuffer() override { return TextureHandle(); }
+        PhxEngine::RHI::TextureHandle& GetFinalColourBuffer() override { return m_dummyHandle; }
 
         void OnWindowResize(DirectX::XMFLOAT2 const& size) override {};
+
+    private:
+        TextureHandle m_dummyHandle = {};
     };
 }
 
@@ -42,7 +45,7 @@ namespace
 SceneRenderLayer::SceneRenderLayer()
 	: AppLayer("Scene Render Layer")
 {
-#ifdef USE_DUMMY_RENDERER
+#if USE_DUMMY_RENDERER
     this->m_sceneRenderer = std::make_unique<DummyRenderer>();
 #else
     this->m_sceneRenderer = std::make_unique<DeferredRenderer>();
@@ -51,6 +54,26 @@ SceneRenderLayer::SceneRenderLayer()
 
 void SceneRenderLayer::OnAttach()
 {
+    DirectX::XMVECTOR eyePos =  DirectX::XMVectorSet(0.0f, 2.0f, 4.0f, 1.0f);
+    DirectX::XMVECTOR focusPoint = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+    DirectX::XMVECTOR eyeDir = DirectX::XMVectorSubtract(focusPoint, eyePos);
+    DirectX::XMVector3Normalize(eyeDir);
+
+    DirectX::XMStoreFloat3(
+        &this->m_editorCamera.Eye,
+        eyePos);
+
+    DirectX::XMStoreFloat3(
+        &this->m_editorCamera.Forward,
+        eyeDir);
+
+    this->m_editorCamera.Width = LayeredApplication::Ptr->GetSpec().WindowWidth;
+    this->m_editorCamera.Height = LayeredApplication::Ptr->GetSpec().WindowHeight;
+    this->m_editorCamera.FoV = 1.7;
+    this->m_editorCamera.ZNear = 0.1;
+    this->m_editorCamera.ZFar = 10000;
+    this->m_editorCamera.UpdateCamera();
+
     this->m_sceneRenderer->Initialize();
 }
 
@@ -69,5 +92,8 @@ void SceneRenderLayer::OnRender()
 
 void SceneRenderLayer::ResizeSurface(DirectX::XMFLOAT2 const& size)
 {
+    this->m_editorCamera.Width = size.x;
+    this->m_editorCamera.Height = size.y;
+    this->m_editorCamera.UpdateCamera();
     this->m_sceneRenderer->OnWindowResize(size);
 }

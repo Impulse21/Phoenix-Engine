@@ -64,7 +64,7 @@ namespace PhxEngine::Scene
         }
 
         template<typename Archive>
-        void serialize(Archive& archive, PhxEngine::Scene::New::StaticMeshComponent& transform)
+        void serialize(Archive& archive, PhxEngine::Scene::New::MeshRenderComponent& transform)
         {
             // Get The Static Mesh's Path and save it out.
             archive(

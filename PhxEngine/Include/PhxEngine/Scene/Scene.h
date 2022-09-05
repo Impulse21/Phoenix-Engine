@@ -7,7 +7,6 @@
 #include "PhxEngine/Scene/SceneComponents.h"
 
 #include "PhxEngine/Graphics/RHI/PhxRHI.h"
-#include <PhxEngine/Scene/AssetStore.h>
 
 #include <entt.hpp>
 
@@ -23,6 +22,10 @@ namespace PhxEngine::Scene
 			friend Entity;
 			friend ISceneWriter;
 		public:
+			~Scene()
+			{
+				this->m_registry.clear();
+			};
 
 			Entity CreateEntity(std::string const& name = std::string());
 			Entity CreateEntity(Core::UUID uuid, std::string const& name = std::string());
@@ -39,12 +42,18 @@ namespace PhxEngine::Scene
 				return this->m_registry.view<Components...>();
 			}
 
-			entt::registry& GetRegistry() { return this->m_registry; }
+			template<typename... Components>
+			auto GetAllEntitiesWith() const 
+			{
+				return this->m_registry.view<Components...>();
+			}
 
-			AssetStore& GetAssetStore() { return this->m_assetStore; }
+			void ConstructRenderData(RHI::CommandListHandle cmd);
+
+			entt::registry& GetRegistry() { return this->m_registry; }
+			const entt::registry& GetRegistry() const { return this->m_registry; }
 
 		private:
-			AssetStore m_assetStore;
 			entt::registry m_registry;
 
 		};
@@ -85,7 +94,6 @@ namespace PhxEngine::Scene
 			void ComponentAttach(ECS::Entity entity, ECS::Entity parent, bool childInLocalSpace = false);
 			void ComponentDetach(ECS::Entity entity);
 			void ComponentDetachChildren(ECS::Entity parent);
-
 
 			void RunMeshInstanceUpdateSystem();
 

@@ -23,6 +23,7 @@ public:
 PhxEngine::LayeredApplication* PhxEngine::CreateApplication(int argc, char** argv)
 {
 	ApplicationSpecification spec;
+
 	spec.Name = "PhxEngine Editor";
 	spec.FullScreen = false;
 	spec.EnableImGui = true;

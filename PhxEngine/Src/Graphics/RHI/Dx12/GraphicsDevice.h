@@ -22,7 +22,7 @@
 namespace PhxEngine::RHI::Dx12
 {
     constexpr size_t kNumCommandListPerFrame = 32;
-    constexpr size_t kResourcePoolSize = 200000; // 2 KB of handles
+    constexpr size_t kResourcePoolSize = 100000; // 1 KB of handles
 
     struct TrackedResources;
 
@@ -301,6 +301,8 @@ namespace PhxEngine::RHI::Dx12
         void BeginCapture(std::wstring const& filename) override;
         void EndCapture() override;
 
+        size_t GetFrameIndex() override { return this->GetCurrentBackBufferIndex(); };
+        size_t GetMaxInflightFrames() override { return this->m_swapChain.Desc.BufferCount; }
         // -- Dx12 Specific functions ---
     public:
         TextureHandle CreateRenderTarget(TextureDesc const& desc, Microsoft::WRL::ComPtr<ID3D12Resource> d3d12TextureResource);

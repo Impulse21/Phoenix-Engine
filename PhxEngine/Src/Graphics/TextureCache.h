@@ -6,11 +6,10 @@
 
 #include <filesystem>
 
-#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/Scene/Assets.h"
 
 namespace PhxEngine::Graphics
 {
-	struct LoadedTexture;
 	class TextureCache
 	{
 	public:
@@ -19,44 +18,44 @@ namespace PhxEngine::Graphics
 			: m_graphicsDevice(graphicsDevice)
 		{}
 
-		RHI::TextureHandle LoadTexture(
+		std::shared_ptr<PhxEngine::Scene::Assets::Texture> LoadTexture(
 			std::vector<uint8_t> const& textureData,
 			std::string const& textureName,
 			std::string const& mmeType,
 			bool isSRGB,
 			RHI::CommandListHandle commandList);
 
-		RHI::TextureHandle LoadTexture(
+		std::shared_ptr<PhxEngine::Scene::Assets::Texture> LoadTexture(
 			std::filesystem::path filename,
 			bool isSRGB,
 			RHI::CommandListHandle commandList);
 
-		RHI::TextureHandle GetTexture(std::string const& key);
+		std::shared_ptr<PhxEngine::Scene::Assets::Texture> GetTexture(std::string const& key);
 
 		void ClearCache() { return this->m_loadedTextures.clear(); }
 
 	private:
-		std::shared_ptr<LoadedTexture> GetTextureFromCache(std::string const& key);
+		std::shared_ptr<PhxEngine::Scene::Assets::Texture> GetTextureFromCache(std::string const& key);
 
 		std::vector<uint8_t> ReadTextureFile(std::string const& filename);
 
 		bool FillTextureData(
 			std::vector<uint8_t> const& texBlob,
-			std::shared_ptr<LoadedTexture> texture,
+			std::shared_ptr<PhxEngine::Scene::Assets::Texture>& texture,
 			std::string const& fileExtension,
 			std::string const& mimeType);
 
 		void FinalizeTexture(
-			std::shared_ptr<LoadedTexture> texture,
+			std::shared_ptr<PhxEngine::Scene::Assets::Texture>& texture,
 			RHI::CommandListHandle commandList);
 
-		void CacheTextureData(std::string key, std::shared_ptr<LoadedTexture> texture);
+		void CacheTextureData(std::string key, std::shared_ptr<PhxEngine::Scene::Assets::Texture>& texture);
 
 		std::string ConvertFilePathToKey(std::filesystem::path const& path) const;
 
 	private:
 		RHI::IGraphicsDevice* m_graphicsDevice;
-		std::unordered_map<std::string, std::shared_ptr<LoadedTexture>> m_loadedTextures;
+		std::unordered_map<std::string, std::shared_ptr<PhxEngine::Scene::Assets::Texture>> m_loadedTextures;
 	};
 }
 

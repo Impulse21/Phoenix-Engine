@@ -1,7 +1,7 @@
 #include "phxpch.h"
 #include "CommandList.h"
 
-#include <pix.h>
+#include <pix3.h>
 
 #include "GraphicsDevice.h"
 #include "DescriptorHeap.h"
@@ -312,6 +312,19 @@ void CommandList::WriteBuffer(BufferHandle buffer, const void* data, size_t data
         0, 0, 1, &subresourceData);
         this->m_trackedData->NativeResources.push_back(intermediateResource);
     */
+}
+
+void CommandList::CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHandle src, uint64_t srcOffset, size_t sizeInBytes)
+{
+    const Dx12Buffer* srcBuffer = this->m_graphicsDevice.GetBufferPool().Get(src);
+    const Dx12Buffer* dstBuffer = this->m_graphicsDevice.GetBufferPool().Get(dst);
+
+    this->m_d3d12CommandList->CopyBufferRegion(
+        dstBuffer->D3D12Resource.Get(),
+        (UINT64)dstOffset,
+        srcBuffer->D3D12Resource.Get(),
+        (UINT64)srcOffset,
+        (UINT64)sizeInBytes);
 }
 
 void PhxEngine::RHI::Dx12::CommandList::WriteTexture(TextureHandle texture, uint32_t firstSubresource, size_t numSubresources, SubresourceData* pSubresourceData)

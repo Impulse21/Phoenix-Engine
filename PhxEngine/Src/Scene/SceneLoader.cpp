@@ -12,10 +12,10 @@ std::unique_ptr<ISceneLoader> PhxEngine::Scene::CreateGltfSceneLoader(
 	RHI::IGraphicsDevice* graphicsDevice,
 	std::shared_ptr<TextureCache> textureCache)
 {
-	return std::make_unique<GltfSceneLoader>(graphicsDevice, textureCache);
+	return nullptr;
 }
 
 std::unique_ptr<New::ISceneLoader> PhxEngine::Scene::CreateGltfSceneLoader()
 {
-	return std::make_unique<New::GltfSceneLoader>();
+	return std::make_unique<GltfSceneLoader>();
 }

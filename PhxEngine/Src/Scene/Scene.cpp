@@ -51,6 +51,15 @@ void New::Scene::DetachChildren(Entity parent)
 	parent.DetachChildren();
 }
 
+void New::Scene::ConstructRenderData(RHI::CommandListHandle cmd)
+{
+	auto view = this->GetAllEntitiesWith<MeshRenderComponent>();
+	for (auto e : view)
+	{
+		auto comp = view.get<MeshRenderComponent>(e);
+		comp.Mesh->CreateRenderData(cmd);
+	}
+}
 // --------------------------------------------------------------------------------
 CameraComponent& Legacy::Scene::GetGlobalCamera()
 {

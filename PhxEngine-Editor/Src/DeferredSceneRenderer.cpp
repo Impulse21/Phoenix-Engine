@@ -2,6 +2,8 @@
 
 #include <PhxEngine/App/Application.h>
 #include <PhxEngine/Scene/Components.h>
+#include <PhxEngine/Scene/Scene.h>
+#include <PhxEngine/Core/Math.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
@@ -48,20 +50,60 @@ namespace
     }
 }
 
+void DeferredRenderer::FreeResources()
+{
+    this->FreeTextureResources();
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteBuffer(this->m_geometryGpuBuffer);
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteBuffer(this->m_materialGpuBuffer);
+    
+    for (RHI::BufferHandle buffer : this->m_constantBuffers)
+    {
+        PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteBuffer(buffer);
+    }
+
+    for (RHI::BufferHandle buffer : this->m_resourceBuffers)
+    {
+        PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteBuffer(buffer);
+    }
+
+    for (int i = 0; i < this->m_materialUploadBuffers.size(); i++)
+    {
+        if (this->m_materialUploadBuffers[i].IsValid())
+        {
+            IGraphicsDevice::Ptr->DeleteBuffer(this->m_materialUploadBuffers[i]);
+        }
+    }
+    for (int i = 0; i < this->m_geometryUploadBuffers.size(); i++)
+    {
+        if (this->m_geometryUploadBuffers[i].IsValid())
+        {
+            IGraphicsDevice::Ptr->DeleteBuffer(this->m_geometryUploadBuffers[i]);
+        }
+    }
+}
+
+void DeferredRenderer::FreeTextureResources()
+{
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_depthBuffer);
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.AlbedoTexture);
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.NormalTexture);
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.SurfaceTexture);
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer._PostionTexture);
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_deferredLightBuffer);
+}
 
 void DeferredRenderer::Initialize()
 {
     auto& spec = LayeredApplication::Ptr->GetSpec();
-    this->CreatePSOs();
     this->m_canvasSize = { static_cast<float>(spec.WindowWidth), static_cast<float>(spec.WindowHeight) };
     this->CreateRenderTargets(m_canvasSize);
+    this->CreatePSOs();
 
     this->m_commandList = RHI::IGraphicsDevice::Ptr->CreateCommandList();
     RHI::CommandListDesc commandLineDesc = {};
     commandLineDesc.QueueType = RHI::CommandQueueType::Compute;
     this->m_computeCommandList = RHI::IGraphicsDevice::Ptr->CreateCommandList(commandLineDesc);
 
-    // TODO: Use Asset Store
     // this->m_scene.BrdfLUT = this->m_textureCache->LoadTexture("..\\Assets\\Textures\\IBL\\BrdfLut.dds", true, this->m_commandList);
 
 
@@ -100,6 +142,9 @@ void DeferredRenderer::Initialize()
 
         this->m_resourceBuffers[RB_Matrices] = RHI::IGraphicsDevice::Ptr->CreateBuffer(bufferDesc);
     }
+
+    this->m_materialUploadBuffers.resize(IGraphicsDevice::Ptr->GetMaxInflightFrames());
+    this->m_geometryUploadBuffers.resize(IGraphicsDevice::Ptr->GetMaxInflightFrames());
 }
 
 void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
@@ -115,14 +160,16 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
     desc.IsTypeless = true;
     desc.DebugName = "Depth Buffer";
     desc.OptmizedClearValue.DepthStencil.Depth = 1.0f;
-    desc.BindingFlags = desc.BindingFlags | RHI::BindingFlags::DepthStencil;
+    desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::DepthStencil;
     desc.InitialState = RHI::ResourceStates::DepthWrite;
-
     this->m_depthBuffer = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
+    // -- Depth end ---
 
     // -- GBuffers ---
+    desc.OptmizedClearValue.Colour = { 0.0f, 0.0f, 0.0f, 1.0f };
     desc.BindingFlags = RHI::BindingFlags::RenderTarget | RHI::BindingFlags::ShaderResource;
     desc.InitialState = RHI::ResourceStates::RenderTarget;
+    desc.IsBindless = true;
 
     desc.Format = RHI::FormatType::RGBA32_FLOAT;
     desc.DebugName = "Albedo Buffer";
@@ -134,165 +181,267 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
     desc.DebugName = "Normal Buffer";
     this->m_gBuffer.NormalTexture = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
 
-
     desc.Format = RHI::FormatType::RGBA8_UNORM;
     desc.DebugName = "Surface Buffer";
     this->m_gBuffer.SurfaceTexture = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
 
     desc.Format = RHI::FormatType::RGBA32_FLOAT;
     desc.DebugName = "Debug Position Buffer";
+    this->m_gBuffer._PostionTexture = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
 
     // TODO: Determine what format should be used here.
+    desc.IsTypeless = true;
     desc.Format = RHI::FormatType::R10G10B10A2_UNORM;
     desc.DebugName = "Deferred Lighting";
     this->m_deferredLightBuffer = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
 }
 
-void DeferredRenderer::DrawMeshes(PhxEngine::Scene::New::Scene const& scene, RHI::CommandListHandle commandList)
+void DeferredRenderer::DrawMeshes(PhxEngine::Scene::New::Scene& scene, RHI::CommandListHandle commandList)
 {
     auto scrope = commandList->BeginScopedMarker("Render Scene Meshes");
 
-    /*
-    for (int i = 0; i < scene.MeshInstances.GetCount(); i++)
+    auto view = scene.GetAllEntitiesWith<New::MeshRenderComponent, New::NameComponent, New::TransformComponent>();
+    for (auto entity : view)
     {
-        auto& meshInstanceComponent = scene.MeshInstances[i];
+        auto [meshRenderComponent, nameComp, transformComponent] = view.get<New::MeshRenderComponent, New::NameComponent, New::TransformComponent>(entity);
 
-        if ((meshInstanceComponent.RenderBucketMask & RenderType::RenderType_Opaque) != RenderType::RenderType_Opaque)
+        // Skip non opaque items
+        if ((meshRenderComponent.RenderBucketMask & New::MeshRenderComponent::RenderType::RenderType_Opaque) != New::MeshRenderComponent::RenderType::RenderType_Opaque)
         {
-            ECS::Entity e = scene.MeshInstances.GetEntity(i);
-            auto& meshComponent = *scene.Meshes.GetComponent(meshInstanceComponent.MeshId);
-            std::string modelName = "UNKNOWN";
-            auto* nameComponent = scene.Names.GetComponent(meshInstanceComponent.MeshId);
-            if (nameComponent)
-            {
-                modelName = nameComponent->Name;
-            }
             continue;
         }
 
-        ECS::Entity e = scene.MeshInstances.GetEntity(i);
-        auto& meshComponent = *scene.Meshes.GetComponent(meshInstanceComponent.MeshId);
-        auto& transformComponent = *scene.Transforms.GetComponent(e);
-        commandList->BindIndexBuffer(meshComponent.IndexGpuBuffer);
+        Assets::Mesh& mesh = *meshRenderComponent.Mesh;
+        commandList->BindIndexBuffer(mesh.IndexGpuBuffer);
 
-        std::string modelName = "UNKNOWN";
-        auto* nameComponent = scene.Names.GetComponent(meshInstanceComponent.MeshId);
-        if (nameComponent)
-        {
-            modelName = nameComponent->Name;
-        }
+        std::string modelName = nameComp.Name;
 
         auto scrope = commandList->BeginScopedMarker(modelName);
-        for (size_t i = 0; i < meshComponent.Geometry.size(); i++)
+        for (size_t i = 0; i < mesh.Surfaces.size(); i++)
         {
-            Shader::GeometryPassPushConstants pushConstant;
-            pushConstant.MeshIndex = scene.Meshes.GetIndex(meshInstanceComponent.MeshId);
-            pushConstant.GeometryIndex = meshComponent.Geometry[i].GlobalGeometryIndex;
+            Shader::GeometryPassPushConstants pushConstant = {};
+            // pushConstant.MeshIndex = scene.Meshes.GetIndex(meshInstanceComponent.MeshId);
+            pushConstant.GeometryIndex = mesh.Surfaces[i].GlobalBufferIndex;
             TransposeMatrix(transformComponent.WorldMatrix, &pushConstant.WorldTransform);
             commandList->BindPushConstant(RootParameters_GBuffer::PushConstant, pushConstant);
 
             commandList->DrawIndexed(
-                meshComponent.Geometry[i].NumIndices,
+                mesh.Surfaces[i].NumIndices,
                 1,
-                meshComponent.Geometry[i].IndexOffsetInMesh);
+                mesh.Surfaces[i].IndexOffsetInMesh);
         }
     }
-    */
 }
 
-void DeferredRenderer::PrepareFrameRenderData(RHI::CommandListHandle commandList)
+void DeferredRenderer::PrepareFrameRenderData(
+    RHI::CommandListHandle commandList,
+    PhxEngine::Scene::New::Scene& scene)
 {
-    /*
-    size_t numGeometry = 0ull;
-    for (int i = 0; i < Meshes.GetCount(); i++)
+    // Update Geometry Count
+    std::unordered_set<Assets::StandardMaterial*> foundMaterials;
+    auto view = scene.GetAllEntitiesWith<New::MeshRenderComponent>();
+    this->m_numGeometryEntires = 0;
+    this->m_numMaterialEntries = 0;
+    for (auto e : view)
     {
-        MeshComponent& mesh = Meshes[i];
-        mesh.CreateRenderData(graphicsDevice, commandList);
+        auto comp = view.get<New::MeshRenderComponent>(e);
+        this->m_numGeometryEntires += comp.Mesh->Surfaces.size();
 
-        // Determine the number of geometry data
-        numGeometry += mesh.Geometry.size();
-    }
-
-    // Construct Geometry Data
-    // TODO: Create a thread to collect geometry Count
-    size_t geometryCounter = 0ull;
-    if (this->m_geometryShaderData.size() != numGeometry)
-    {
-        this->m_geometryShaderData.resize(numGeometry);
-
-        size_t globalGeomtryIndex = 0ull;
-        for (int i = 0; i < Meshes.GetCount(); i++)
+        for (Assets::Mesh::SurfaceDesc surface : comp.Mesh->Surfaces)
         {
-            MeshComponent& mesh = Meshes[i];
-
-            for (int j = 0; j < mesh.Geometry.size(); j++)
+            if (foundMaterials.find(surface.Material.get()) == foundMaterials.end())
             {
-                // Construct the Geometry data
-                auto& geometryData = mesh.Geometry[j];
-                geometryData.GlobalGeometryIndex = geometryCounter++;
-
-                auto& geometryShaderData = this->m_geometryShaderData[geometryData.GlobalGeometryIndex];
-
-                geometryShaderData.MaterialIndex = this->Materials.GetIndex(geometryData.MaterialID);
-                geometryShaderData.NumIndices = geometryData.NumIndices;
-                geometryShaderData.NumVertices = geometryData.NumVertices;
-                geometryShaderData.IndexOffset = geometryData.IndexOffsetInMesh;
-                geometryShaderData.VertexBufferIndex = mesh.VertexGpuBuffer->GetDescriptorIndex();
-                geometryShaderData.PositionOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Position).ByteOffset;
-                geometryShaderData.TexCoordOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::TexCoord).ByteOffset;
-                geometryShaderData.NormalOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Normal).ByteOffset;
-                geometryShaderData.TangentOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Tangent).ByteOffset;
+                // I believe as long as there isn't to many hash collisions, this should perform okay.
+                // Would prefer to just have this data in a flat list somewhere however.
+                foundMaterials.insert(surface.Material.get());
             }
         }
-
-        // -- Create GPU Data ---
-        BufferDesc desc = {};
-        desc.DebugName = "Geometry Data";
-        desc.Binding = RHI::BindingFlags::ShaderResource;
-        desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Raw;
-        desc.StrideInBytes = sizeof(Shader::Geometry);
-        desc.SizeInBytes = sizeof(Shader::Geometry) * this->m_geometryShaderData.size();
-
-        this->GeometryGpuBuffer = graphicsDevice->CreateBuffer(desc);
-
-        // Upload Data
-        commandList->TransitionBarrier(this->GeometryGpuBuffer, ResourceStates::Common, ResourceStates::CopyDest);
-        commandList->WriteBuffer(this->GeometryGpuBuffer, this->m_geometryShaderData);
-        commandList->TransitionBarrier(this->GeometryGpuBuffer, ResourceStates::CopyDest, ResourceStates::ShaderResource);
     }
 
-    // Construct Material Data
-    if (this->Materials.GetCount() != this->m_materialShaderData.size())
+    this->m_numMaterialEntries = foundMaterials.size();
+
+    if (!this->m_materialGpuBuffer.IsValid() ||
+        IGraphicsDevice::Ptr->GetBufferDesc(this->m_materialGpuBuffer).SizeInBytes != this->m_numMaterialEntries * sizeof(Shader::MaterialData))
     {
-        // Create Material Data
-        this->m_materialShaderData.resize(this->Materials.GetCount());
-
-        for (int i = 0; i < this->Materials.GetCount(); i++)
-        {
-            auto& gpuMaterial = this->m_materialShaderData[i];
-            this->Materials[i].PopulateShaderData(gpuMaterial);
-        }
-
-        // -- Create GPU Data ---
-        BufferDesc desc = {};
+        RHI::BufferDesc desc = {};
         desc.DebugName = "Material Data";
         desc.Binding = RHI::BindingFlags::ShaderResource;
+        desc.InitialState = ResourceStates::ShaderResource;
         desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Raw;
+        desc.CreateBindless = true;
         desc.StrideInBytes = sizeof(Shader::MaterialData);
-        desc.SizeInBytes = sizeof(Shader::MaterialData) * this->m_materialShaderData.size();
+        desc.SizeInBytes = sizeof(Shader::MaterialData) * this->m_numMaterialEntries;
 
-        this->MaterialBuffer = graphicsDevice->CreateBuffer(desc);
+        if (this->m_materialGpuBuffer.IsValid())
+        {
+            IGraphicsDevice::Ptr->DeleteBuffer(this->m_materialGpuBuffer);
+        }
+        this->m_materialGpuBuffer = IGraphicsDevice::Ptr->CreateBuffer(desc);
 
-        // Upload Data
-        commandList->TransitionBarrier(this->MaterialBuffer, ResourceStates::Common, ResourceStates::CopyDest);
-        commandList->WriteBuffer(this->MaterialBuffer, this->m_materialShaderData);
-        commandList->TransitionBarrier(this->MaterialBuffer, ResourceStates::CopyDest, ResourceStates::ShaderResource);
+        desc.CreateBindless = false;
+        desc.DebugName = "Material Upload Data";
+        desc.Usage = RHI::Usage::Upload;
+        desc.Binding = RHI::BindingFlags::None;
+        desc.MiscFlags = RHI::BufferMiscFlags::None;
+        desc.InitialState = ResourceStates::CopySource;
+        for (int i = 0; i < this->m_materialUploadBuffers.size(); i++)
+        {
+            if (this->m_materialUploadBuffers[i].IsValid())
+            {
+                IGraphicsDevice::Ptr->DeleteBuffer(this->m_materialUploadBuffers[i]);
+            }
+            this->m_materialUploadBuffers[i] = IGraphicsDevice::Ptr->CreateBuffer(desc);
+        }
     }
 
-    this->m_lightCpuData.clear();
-    this->m_matricesCPUData.clear();
+    // Update Material Syste
+	BufferHandle currMaterialUploadBuffer = this->m_materialUploadBuffers[IGraphicsDevice::Ptr->GetFrameIndex()];
+	Shader::MaterialData* materialBufferMappedData = (Shader::MaterialData*)IGraphicsDevice::Ptr->GetBufferMappedData(currMaterialUploadBuffer);
+	uint32_t currMat = 0;
+	for (Assets::StandardMaterial* mat : foundMaterials)
+	{
+		Shader::MaterialData* shaderData = materialBufferMappedData + currMat;
+
+        shaderData->AlbedoColour = { mat->Albedo.x, mat->Albedo.y, mat->Albedo.z };
+        shaderData->EmissiveColourPacked = Core::Math::PackColour(mat->Emissive);
+        shaderData->AO = mat->Ao;
+        shaderData->Metalness = mat->Metalness;
+        shaderData->Roughness = mat->Roughness;
+
+        shaderData->AlbedoTexture = RHI::cInvalidDescriptorIndex;
+        if (mat->AlbedoTexture && mat->AlbedoTexture->GetRenderHandle().IsValid())
+        {
+            shaderData->AlbedoTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat->AlbedoTexture->GetRenderHandle());
+        }
+
+        shaderData->AOTexture = RHI::cInvalidDescriptorIndex;
+        if (mat->AoTexture && mat->AoTexture->GetRenderHandle().IsValid())
+        {
+            shaderData->AOTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat->AoTexture->GetRenderHandle());
+        }
+
+        shaderData->MaterialTexture = RHI::cInvalidDescriptorIndex;
+        if (mat->MetalRoughnessTexture && mat->MetalRoughnessTexture->GetRenderHandle().IsValid())
+        {
+            shaderData->MaterialTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat->MetalRoughnessTexture->GetRenderHandle());
+            assert(shaderData->MaterialTexture != RHI::cInvalidDescriptorIndex);
+
+            // shaderData->MetalnessTexture = mat->MetalRoughnessTexture->GetDescriptorIndex();
+            // shaderData->RoughnessTexture = mat->MetalRoughnessTexture->GetDescriptorIndex();
+        }
+
+        shaderData->NormalTexture = RHI::cInvalidDescriptorIndex;
+        if (mat->NormalMapTexture && mat->NormalMapTexture->GetRenderHandle().IsValid())
+        {
+            shaderData->NormalTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat->NormalMapTexture->GetRenderHandle());
+        }
+        mat->GlobalBufferIndex = currMat++;
+	}
+
+    // Recreate Buffers for geometry data
+    if (!this->m_geometryGpuBuffer.IsValid() ||
+        IGraphicsDevice::Ptr->GetBufferDesc(this->m_geometryGpuBuffer).SizeInBytes != (this->m_numGeometryEntires * sizeof(Shader::Geometry)))
+    {
+        RHI::BufferDesc desc = {};
+        desc.DebugName = "Geometry Data";
+        desc.Binding = RHI::BindingFlags::ShaderResource;
+        desc.InitialState = ResourceStates::ShaderResource;
+        desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Raw;
+        desc.CreateBindless = true;
+        desc.StrideInBytes = sizeof(Shader::Geometry);
+        desc.SizeInBytes = sizeof(Shader::Geometry) * this->m_numGeometryEntires;
+
+        if (this->m_geometryGpuBuffer.IsValid())
+        {
+            IGraphicsDevice::Ptr->DeleteBuffer(this->m_geometryGpuBuffer);
+        }
+        this->m_geometryGpuBuffer = IGraphicsDevice::Ptr->CreateBuffer(desc);
+
+        desc.DebugName = "Geometry Upload";
+        desc.Usage = RHI::Usage::Upload;
+        desc.Binding = RHI::BindingFlags::None;
+        desc.MiscFlags = RHI::BufferMiscFlags::None;
+        desc.InitialState = ResourceStates::CopySource;
+        desc.CreateBindless = false;
+        for (int i = 0; i < this->m_geometryUploadBuffers.size(); i++)
+        {
+            if (this->m_geometryUploadBuffers[i].IsValid())
+            {
+                IGraphicsDevice::Ptr->DeleteBuffer(this->m_geometryUploadBuffers[i]);
+            }
+            this->m_geometryUploadBuffers[i] = IGraphicsDevice::Ptr->CreateBuffer(desc);
+        }
+    }
+
+    // Move to a "System" like function at some point UpdateMeshSystems
+    BufferHandle currentGeoUploadBuffer = this->m_geometryUploadBuffers[IGraphicsDevice::Ptr->GetFrameIndex()];
+    Shader::Geometry* geometryBufferMappedData = (Shader::Geometry*)IGraphicsDevice::Ptr->GetBufferMappedData(currentGeoUploadBuffer);
+    uint32_t currGeoIndex = 0;
+    for (auto e : view)
+    {
+        auto comp = view.get<New::MeshRenderComponent>(e);
+        Assets::Mesh& mesh = *comp.Mesh;
+        for (int i = 0; i < mesh.Surfaces.size(); i++)
+        {
+            Assets::Mesh::SurfaceDesc& surfaceDesc = mesh.Surfaces[i];
+            Shader::Geometry* geometryShaderData = geometryBufferMappedData + currGeoIndex;
+            // Material Index setup
+            geometryShaderData->MaterialIndex = surfaceDesc.Material->GlobalBufferIndex;
+            geometryShaderData->NumIndices = surfaceDesc.NumIndices;
+            geometryShaderData->NumVertices = surfaceDesc.NumVertices;
+            geometryShaderData->IndexOffset = surfaceDesc.IndexOffsetInMesh;
+            geometryShaderData->VertexBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(mesh.VertexGpuBuffer);
+            geometryShaderData->PositionOffset = mesh.GetVertexAttribute(Assets::Mesh::VertexAttribute::Position).ByteOffset;
+            geometryShaderData->TexCoordOffset = mesh.GetVertexAttribute(Assets::Mesh::VertexAttribute::TexCoord).ByteOffset;
+            geometryShaderData->NormalOffset = mesh.GetVertexAttribute(Assets::Mesh::VertexAttribute::Normal).ByteOffset;
+            geometryShaderData->TangentOffset = mesh.GetVertexAttribute(Assets::Mesh::VertexAttribute::Tangent).ByteOffset;
+            surfaceDesc.GlobalBufferIndex = currGeoIndex++;
+        }
+	}
+
+    Shader::Frame frameData = {};
+    frameData.BrdfLUTTexIndex = cInvalidDescriptorIndex;// this->m_scene.BrdfLUT->GetDescriptorIndex();
+    frameData.Scene.NumLights = this->m_lightCpuData.size();
+    frameData.Scene.GeometryBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_geometryGpuBuffer);
+    frameData.Scene.MaterialBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_materialGpuBuffer);
+    frameData.LightEntityIndex = RHI::cInvalidDescriptorIndex; // this->m_resourceBuffers[RB_LightEntities]->GetDescriptorIndex();
+    frameData.MatricesIndex = RHI::cInvalidDescriptorIndex;
+
+    // Upload data
+    RHI::GpuBarrier preCopyBarriers[] =
+    { 
+        RHI::GpuBarrier::CreateBuffer(this->m_constantBuffers[CB_Frame], RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
+        RHI::GpuBarrier::CreateBuffer(this->m_geometryGpuBuffer, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
+        RHI::GpuBarrier::CreateBuffer(this->m_materialGpuBuffer, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
+    };
+    commandList->TransitionBarriers(Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
+
+    commandList->WriteBuffer(this->m_constantBuffers[CB_Frame], frameData);
+
+    commandList->CopyBuffer(
+        this->m_geometryGpuBuffer,
+        0,
+        currentGeoUploadBuffer,
+        0,
+        this->m_numGeometryEntires * sizeof(Shader::Geometry));
+
+    commandList->CopyBuffer(
+        this->m_materialGpuBuffer,
+        0,
+        currMaterialUploadBuffer,
+        0,
+        this->m_numMaterialEntries * sizeof(Shader::MaterialData));
+
+    RHI::GpuBarrier postCopyBarriers[] =
+    {
+        RHI::GpuBarrier::CreateBuffer(this->m_constantBuffers[CB_Frame], RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
+        RHI::GpuBarrier::CreateBuffer(this->m_geometryGpuBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
+        RHI::GpuBarrier::CreateBuffer(this->m_materialGpuBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
+    };
+    commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
 
     // const XMFLOAT2 atlasDIMRcp = XMFLOAT2(1.0f / float(this->m_shadowAtlas->GetDesc().Width), 1.0f / float(this->m_shadowAtlas->GetDesc().Height));
+    /*
     for (int i = 0; i < this->m_scene.Lights.GetCount(); i++)
     {
         auto& lightComponent = this->m_scene.Lights[i];
@@ -309,10 +458,7 @@ void DeferredRenderer::PrepareFrameRenderData(RHI::CommandListHandle commandList
 
             auto& transformComponent = *this->m_scene.Transforms.GetComponent(this->m_scene.Lights.GetEntity(i));
             renderLight.Position = transformComponent.GetPosition();
-            renderLight.ShadowAtlasMulAdd.x = lightComponent.ShadowRect.w * atlasDIMRcp.x;
-            renderLight.ShadowAtlasMulAdd.y = lightComponent.ShadowRect.h * atlasDIMRcp.y;
-            renderLight.ShadowAtlasMulAdd.z = lightComponent.ShadowRect.x * atlasDIMRcp.x;
-            renderLight.ShadowAtlasMulAdd.w = lightComponent.ShadowRect.y * atlasDIMRcp.y;
+
             switch (lightComponent.Type)
             {
             case LightComponent::kDirectionalLight:
@@ -356,41 +502,7 @@ void DeferredRenderer::PrepareFrameRenderData(RHI::CommandListHandle commandList
             }
         }
     }
-
-    frameData.Scene.NumLights = this->m_lightCpuData.size();
-
-    frameData.LightEntityIndex = this->m_resourceBuffers[RB_LightEntities]->GetDescriptorIndex();
-    frameData.MatricesIndex = this->m_resourceBuffers[RB_Matrices]->GetDescriptorIndex();
-
-    // Upload new data
-
-    RHI::GpuBarrier barriers[] =
-    {
-        RHI::GpuBarrier::CreateBuffer(this->m_constantBuffers[CB_Frame], this->m_constantBuffers[CB_Frame]->GetDesc().InitialState, RHI::ResourceStates::CopyDest),
-        RHI::GpuBarrier::CreateBuffer(this->m_resourceBuffers[RB_LightEntities], this->m_resourceBuffers[RB_LightEntities]->GetDesc().InitialState, RHI::ResourceStates::CopyDest),
-        RHI::GpuBarrier::CreateBuffer(this->m_resourceBuffers[RB_Matrices], this->m_resourceBuffers[RB_Matrices]->GetDesc().InitialState, RHI::ResourceStates::CopyDest),
-    };
-
-    commandList->TransitionBarriers(Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
-
-    commandList->WriteBuffer(this->m_constantBuffers[CB_Frame], frameData);
-    if (!this->m_lightCpuData.empty())
-    {
-        commandList->WriteBuffer(this->m_resourceBuffers[RB_LightEntities], this->m_lightCpuData);
-    }
-
-    if (!this->m_matricesCPUData.empty())
-    {
-        commandList->WriteBuffer(this->m_resourceBuffers[RB_Matrices], this->m_matricesCPUData);
-    }
-
-    barriers[0] = RHI::GpuBarrier::CreateBuffer(this->m_constantBuffers[CB_Frame], RHI::ResourceStates::CopyDest, this->m_constantBuffers[CB_Frame]->GetDesc().InitialState);
-    barriers[1] = RHI::GpuBarrier::CreateBuffer(this->m_resourceBuffers[RB_LightEntities], RHI::ResourceStates::CopyDest, this->m_resourceBuffers[RB_LightEntities]->GetDesc().InitialState);
-    barriers[2] = RHI::GpuBarrier::CreateBuffer(this->m_resourceBuffers[RB_Matrices], RHI::ResourceStates::CopyDest, this->m_resourceBuffers[RB_Matrices]->GetDesc().InitialState);
-
-    commandList->TransitionBarriers(Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
     */
-
 }
 
 void DeferredRenderer::CreatePSOs()
@@ -445,16 +557,11 @@ void DeferredRenderer::CreatePSOs()
     }
 }
 
-void DeferredRenderer::RenderScene(Scene::New::CameraComponent const& camera, Scene::New::Scene const& scene)
+void DeferredRenderer::RenderScene(Scene::New::CameraComponent const& camera, Scene::New::Scene& scene)
 {
     this->m_commandList->Open();
 
-    Shader::Frame frameData = {};
-    frameData.BrdfLUTTexIndex = cInvalidDescriptorIndex;// this->m_scene.BrdfLUT->GetDescriptorIndex();
-    frameData.Scene.MaterialBufferIndex = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_materialGpuBuffers);
-    frameData.Scene.GeometryBufferIndex = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_geometryGpuBuffers);
-
-    this->PrepareFrameRenderData(this->m_commandList);
+    this->PrepareFrameRenderData(this->m_commandList, scene);
 
     Shader::Camera cameraData = {};
     cameraData.CameraPosition = camera.Eye;
@@ -597,6 +704,7 @@ void DeferredRenderer::RenderScene(Scene::New::CameraComponent const& camera, Sc
                 RHI::ResourceStates::ShaderResource,
                 IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer._PostionTexture).InitialState),
         };
+        this->m_commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
     }
 
     this->m_commandList->Close();
