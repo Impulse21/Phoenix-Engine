@@ -1,4 +1,5 @@
 #include "EditorCameraController.h"
+#include "EditorCameraController.h"
 
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
@@ -79,7 +80,6 @@ void EditorCameraController::Pitch(float angle, PhxEngine::Scene::New::CameraCom
 void EditorCameraController::RotateY(float angle, PhxEngine::Scene::New::CameraComponent& camera)
 {
 	// Rotate the basis vectors anout the worl y-axis
-
 	DirectX::XMMATRIX rotMtx = XMMatrixRotationY(angle);
 	XMVECTOR forward = XMLoadFloat3(&camera.Forward);
 	XMVECTOR up = XMLoadFloat3(&camera.Up);

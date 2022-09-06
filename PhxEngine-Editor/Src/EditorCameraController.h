@@ -1,5 +1,7 @@
 #pragma once
 
+// This is to clear #error:  "No Target Architecture" due to DirectXMath. Not sure how to get around this.
+#include <Windows.h>
 #include "PhxEngine/Scene/Components.h"
 #include "PhxEngine/Core/TimeStep.h"
 
@@ -19,6 +21,6 @@ private:
 	void Pitch(float angle, PhxEngine::Scene::New::CameraComponent& camera);
 	void RotateY(float angle, PhxEngine::Scene::New::CameraComponent& camera);
 
-	
+
 };
 
