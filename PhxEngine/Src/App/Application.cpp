@@ -257,6 +257,9 @@ void PhxEngine::LayeredApplication::Run()
 	this->OnInit();
 	while (this->m_isRunning)
 	{
+		TimeStep deltaTime = this->m_stopWatch.Elapsed();
+		this->m_stopWatch.Begin();
+
 		// Frame counter
 		this->m_window->OnUpdate();
 
@@ -272,7 +275,7 @@ void PhxEngine::LayeredApplication::Run()
 			for (auto& layer : this->m_layerStack)
 			{
 				// TODO: Time step
-				layer->OnUpdate(Core::TimeStep());
+				layer->OnUpdate(deltaTime);
 			}
 
 			if (this->m_spec.EnableImGui)
