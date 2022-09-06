@@ -15,29 +15,31 @@ void EditorCameraController::OnUpdate(TimeStep const& timestep, New::CameraCompo
 {
 	auto* gltfWindow = static_cast<GLFWwindow*>(LayeredApplication::Ptr->GetWindow()->GetNativeWindow());
 	assert(gltfWindow);
+	const float clampedDT = std::min(timestep.GetMilliseconds(), 0.1f); // if dt > 100 millisec, don't allow the camera to jump too far...
+	const float speed = ((glfwGetKey(gltfWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) ? 10.0f : 1.0f) * clampedDT;
 
 	int state = glfwGetKey(gltfWindow, GLFW_KEY_W);
 	if (state == GLFW_PRESS)
 	{
-		this->Walk(0.1f * timestep.GetMilliseconds(), camera);
+		this->Walk(speed, camera);
 	}
 
 	state = glfwGetKey(gltfWindow, GLFW_KEY_S);
 	if (state == GLFW_PRESS)
 	{
-		this->Walk(-0.1f * timestep.GetMilliseconds(), camera);
+		this->Walk(-speed, camera);
 	}
 
 	state = glfwGetKey(gltfWindow, GLFW_KEY_A);
 	if (state == GLFW_PRESS)
 	{
-		this->Strafe(-0.1f * timestep.GetMilliseconds(), camera);
+		this->Strafe(-speed, camera);
 	}
 
 	state = glfwGetKey(gltfWindow, GLFW_KEY_D);
 	if (state == GLFW_PRESS)
 	{
-		this->Walk(0.1f * timestep.GetMilliseconds(), camera);
+		this->Strafe(speed, camera);
 	}
 
 	static XMFLOAT2 slastPos = { 0.0f, 0.0f };
