@@ -101,6 +101,7 @@ namespace PhxEngine
 		LayerStack m_layerStack;
 		bool m_isRunning = true;
 		bool m_isMinimized = false;
+		Core::StopWatch m_stopWatch;
 	};
 
 	class Application

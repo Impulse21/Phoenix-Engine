@@ -8,6 +8,8 @@
 #include <DirectXMath.h>
 #include <PhxEngine/Graphics/IRenderer.h>
 
+#include "EditorCameraController.h"
+
 class SceneRenderLayer : public PhxEngine::AppLayer
 {
 public:
@@ -16,6 +18,7 @@ public:
 	void OnAttach() override;
 	void OnDetach() override;
 
+	void OnUpdate(PhxEngine::Core::TimeStep const& dt) override;
 	void OnRender() override;
 
 	PhxEngine::RHI::TextureHandle& GetFinalColourBuffer()
@@ -29,5 +32,6 @@ private:
 	std::unique_ptr<PhxEngine::Graphics::IRenderer> m_sceneRenderer;
 	std::shared_ptr<PhxEngine::Scene::New::Scene> m_scene;
 	PhxEngine::Scene::New::CameraComponent m_editorCamera;
+	EditorCameraController m_editorCameraController;
 };
 

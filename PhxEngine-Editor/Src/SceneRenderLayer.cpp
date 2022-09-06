@@ -82,6 +82,11 @@ void SceneRenderLayer::OnDetach()
     this->m_sceneRenderer->Finialize();
 }
 
+void SceneRenderLayer::OnUpdate(PhxEngine::Core::TimeStep const& dt)
+{
+    this->m_editorCameraController.OnUpdate(dt, this->m_editorCamera);
+}
+
 void SceneRenderLayer::OnRender()
 {
     if (this->m_scene)
