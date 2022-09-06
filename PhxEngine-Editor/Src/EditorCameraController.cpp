@@ -40,6 +40,23 @@ void EditorCameraController::OnUpdate(TimeStep const& timestep, New::CameraCompo
 		this->Walk(0.1f * timestep.GetMilliseconds(), camera);
 	}
 
+	static XMFLOAT2 slastPos = { 0.0f, 0.0f };
+	double xpos, ypos;
+	glfwGetCursorPos(gltfWindow, &xpos, &ypos);
+
+	state = glfwGetMouseButton(gltfWindow, GLFW_MOUSE_BUTTON_MIDDLE);
+	if (state == GLFW_PRESS)
+	{
+
+		float dx = XMConvertToRadians(0.25f * static_cast<float>(xpos - slastPos.x));
+		float dy = XMConvertToRadians(0.25f * static_cast<float>(ypos - slastPos.y));
+
+		this->Pitch(-dy, camera);
+		this->RotateY(-dx, camera);
+	}
+	slastPos.x = xpos;
+	slastPos.y = ypos;
+
 	camera.UpdateCamera();
 }
 
