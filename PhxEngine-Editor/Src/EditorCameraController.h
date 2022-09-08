@@ -13,13 +13,13 @@ public:
 
 	void OnUpdate(
 		PhxEngine::Core::TimeStep const& timestep,
-		PhxEngine::Scene::New::CameraComponent& camera);
+		PhxEngine::Scene::CameraComponent& camera);
 
 private:
-	void Walk(float d, PhxEngine::Scene::New::CameraComponent& camera);
-	void Strafe(float d, PhxEngine::Scene::New::CameraComponent& camera);
-	void Pitch(float angle, PhxEngine::Scene::New::CameraComponent& camera);
-	void RotateY(float angle, PhxEngine::Scene::New::CameraComponent& camera);
+	void Walk(float d, PhxEngine::Scene::CameraComponent& camera);
+	void Strafe(float d, PhxEngine::Scene::CameraComponent& camera);
+	void Pitch(float angle, PhxEngine::Scene::CameraComponent& camera);
+	void RotateY(float angle, PhxEngine::Scene::CameraComponent& camera);
 
 
 };

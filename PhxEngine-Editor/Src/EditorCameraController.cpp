@@ -11,7 +11,7 @@ using namespace  DirectX;
 #include <PhxEngine/App/Application.h>
 #include <PhxEngine/Core/Window.h>
 
-void EditorCameraController::OnUpdate(TimeStep const& timestep, New::CameraComponent& camera)
+void EditorCameraController::OnUpdate(TimeStep const& timestep, CameraComponent& camera)
 {
 	auto* gltfWindow = static_cast<GLFWwindow*>(LayeredApplication::Ptr->GetWindow()->GetNativeWindow());
 	assert(gltfWindow);
@@ -62,7 +62,7 @@ void EditorCameraController::OnUpdate(TimeStep const& timestep, New::CameraCompo
 	camera.UpdateCamera();
 }
 
-void EditorCameraController::Walk(float d, PhxEngine::Scene::New::CameraComponent& camera)
+void EditorCameraController::Walk(float d, PhxEngine::Scene::CameraComponent& camera)
 {
 	// position += d * lookV
 	XMVECTOR s = XMVectorReplicate(d);
@@ -72,7 +72,7 @@ void EditorCameraController::Walk(float d, PhxEngine::Scene::New::CameraComponen
 	XMStoreFloat3(&camera.Eye, XMVectorMultiplyAdd(s, l, p));
 }
 
-void EditorCameraController::Strafe(float d, PhxEngine::Scene::New::CameraComponent& camera)
+void EditorCameraController::Strafe(float d, PhxEngine::Scene::CameraComponent& camera)
 {
 	// position += d * rightV
 	XMVECTOR s = XMVectorReplicate(d);
@@ -84,7 +84,7 @@ void EditorCameraController::Strafe(float d, PhxEngine::Scene::New::CameraCompon
 	XMStoreFloat3(&camera.Eye, XMVectorMultiplyAdd(s, r, p));
 }
 
-void EditorCameraController::Pitch(float angle, PhxEngine::Scene::New::CameraComponent& camera)
+void EditorCameraController::Pitch(float angle, PhxEngine::Scene::CameraComponent& camera)
 {
 	// Rotate Up and look vector about the right vector
 	XMVECTOR forward = XMLoadFloat3(&camera.Forward);
@@ -96,7 +96,7 @@ void EditorCameraController::Pitch(float angle, PhxEngine::Scene::New::CameraCom
 	XMStoreFloat3(&camera.Forward, XMVector3TransformNormal(forward, rotMtx));
 }
 
-void EditorCameraController::RotateY(float angle, PhxEngine::Scene::New::CameraComponent& camera)
+void EditorCameraController::RotateY(float angle, PhxEngine::Scene::CameraComponent& camera)
 {
 	// Rotate the basis vectors anout the worl y-axis
 	DirectX::XMMATRIX rotMtx = XMMatrixRotationY(angle);

@@ -27,7 +27,7 @@ public:
         this->FreeResources();
     }
 
-    void RenderScene(PhxEngine::Scene::New::CameraComponent const& camera, PhxEngine::Scene::New::Scene& scene);
+    void RenderScene(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene);
 
     PhxEngine::RHI::TextureHandle& GetFinalColourBuffer() override 
     {
@@ -51,12 +51,12 @@ private:
 
     void PrepareFrameRenderData(
         PhxEngine::RHI::CommandListHandle commandList,
-        PhxEngine::Scene::New::Scene& scene);
+        PhxEngine::Scene::Scene& scene);
 
     void CreatePSOs();
     void CreateRenderTargets(DirectX::XMFLOAT2 const& size);
 
-    void DrawMeshes(PhxEngine::Scene::New::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
+    void DrawMeshes(PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
 
 private:
     PhxEngine::RHI::CommandListHandle m_commandList;
@@ -65,7 +65,6 @@ private:
     // -- Scene CPU Buffers ---
     // 
     // Uploaded every frame....Could be improved upon.
-    std::vector<Shader::ShaderLight> m_lightCpuData;
     std::vector<Shader::ShaderLight> m_shadowLights;
     std::vector<DirectX::XMFLOAT4X4> m_matricesCPUData;
 

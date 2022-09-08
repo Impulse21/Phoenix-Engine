@@ -65,6 +65,6 @@ inline MaterialData LoadMaterial(uint mtlIndex)
 
 inline ShaderLight LoadLight(uint lightIndex)
 {
-	return LightSB[lightIndex];
+	return ResourceHeap_GetBuffer(GetScene().LightEntityIndex).Load<ShaderLight>(lightIndex * sizeof(ShaderLight));
 }
 #endif // __PHX_GLOBALS_HLSLI__

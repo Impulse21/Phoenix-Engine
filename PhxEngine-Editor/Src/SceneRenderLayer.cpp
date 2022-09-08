@@ -29,7 +29,7 @@ namespace
     public:
         void Initialize() override {}
         void Finialize() override {}
-        void RenderScene(PhxEngine::Scene::New::CameraComponent const& camera, PhxEngine::Scene::New::Scene& scene) {}
+        void RenderScene(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene) {}
 
         PhxEngine::RHI::TextureHandle& GetFinalColourBuffer() override { return m_dummyHandle; }
 

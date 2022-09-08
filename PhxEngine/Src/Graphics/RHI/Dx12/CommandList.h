@@ -44,7 +44,7 @@ namespace PhxEngine::RHI::Dx12
 		std::queue<std::pair<uint64_t, DynamicSuballocator*>> m_availableAllocators;
 	};
 
-	class CommandList : public ICommandList
+	class CommandList final : public ICommandList
 	{
 	public:
 		CommandList(
@@ -61,6 +61,7 @@ namespace PhxEngine::RHI::Dx12
 		ScopedMarker BeginScopedMarker(std::string name) override;
 		void BeginMarker(std::string name) override;
 		void EndMarker() override;
+		GPUAllocation AllocateGpu(size_t bufferSize, size_t stride) override;
 
 		void TransitionBarrier(TextureHandle texture, ResourceStates beforeState, ResourceStates afterState) override;
 		void TransitionBarrier(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState) override;
