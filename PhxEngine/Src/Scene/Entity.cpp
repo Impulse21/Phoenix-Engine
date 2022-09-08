@@ -6,7 +6,7 @@
 using namespace DirectX;
 using namespace PhxEngine::Scene;
 
-Entity::Entity(entt::entity handle, New::Scene* scene)
+Entity::Entity(entt::entity handle, Scene* scene)
 	: m_entityHandle(handle)
 	, m_scene(scene)
 {
@@ -17,19 +17,19 @@ void Entity::AttachToParent(Entity parent, bool childInLocalSpace)
 	assert(*this != parent);
 
 	// Detatch so we can ensure that the child comes after the parent in the compoent Pool
-	if (this->HasComponent<New::HierarchyComponent>())
+	if (this->HasComponent<HierarchyComponent>())
 	{
 		this->DetachFromParent();
 	}
 
-	auto& comp = this->AddComponent<New::HierarchyComponent>();
+	auto& comp = this->AddComponent<HierarchyComponent>();
 	comp.ParentID = (entt::entity)parent;
 
-	assert(parent.HasComponent<New::TransformComponent>());
-	assert(this->HasComponent<New::TransformComponent>());
+	assert(parent.HasComponent<TransformComponent>());
+	assert(this->HasComponent<TransformComponent>());
 
-	auto& transformChild = this->GetComponent<New::TransformComponent>();
-	auto& transformParent = parent.GetComponent<New::TransformComponent>();
+	auto& transformChild = this->GetComponent<TransformComponent>();
+	auto& transformParent = parent.GetComponent<TransformComponent>();
 	if (!childInLocalSpace)
 	{
 		XMMATRIX B = XMMatrixInverse(nullptr, XMLoadFloat4x4(&transformParent.WorldMatrix));
@@ -42,7 +42,7 @@ void Entity::AttachToParent(Entity parent, bool childInLocalSpace)
 
 void Entity::DetachFromParent()
 {
-	if (!this->HasComponent<New::HierarchyComponent>())
+	if (!this->HasComponent<HierarchyComponent>())
 	{
 		return;
 	}
@@ -56,13 +56,13 @@ void Entity::DetachFromParent()
 
 void Entity::DetachChildren()
 {
-	auto view = this->m_scene->GetAllEntitiesWith<New::HierarchyComponent>();
+	auto view = this->m_scene->GetAllEntitiesWith<HierarchyComponent>();
 	for (auto entity : view)
 	{
-		auto hComp = view.get<New::HierarchyComponent>(entity);
+		auto hComp = view.get<HierarchyComponent>(entity);
 		if (hComp.ParentID == this->m_entityHandle)
 		{
-			this->m_scene->GetRegistry().remove<New::HierarchyComponent>(entity);
+			this->m_scene->GetRegistry().remove<HierarchyComponent>(entity);
 		}
 	}
 }

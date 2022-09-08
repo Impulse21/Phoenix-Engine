@@ -16,7 +16,7 @@ static const uint ENTITY_TYPE_DIRECTIONALLIGHT = 0;
 static const uint ENTITY_TYPE_OMNILIGHT = 1;
 static const uint ENTITY_TYPE_SPOTLIGHT = 2;
 
-static const uint SHADER_LIGHT_ENTITY_COUNT = 256;
+static const uint SHADER_LIGHT_ENTITY_COUNT = 128;
 
 static const uint MATRIX_COUNT = 128;
 
@@ -218,9 +218,9 @@ struct SceneData
 	// -- 16 byte boundary ----
 
 	uint PreFilteredEnvMapTexIndex;
+	uint LightEntityIndex;
 	uint NumLights;
-	uint _Padding0;
-	uint _Padding1;
+	uint MatricesIndex;
 
 	// -- 16 byte boundary ----
 };
@@ -305,9 +305,9 @@ struct Geometry
 struct Frame
 {
 	uint BrdfLUTTexIndex;
-	uint LightEntityIndex;
-	uint MatricesIndex;
+	uint _padding1;
 	uint _padding2;
+	uint _padding3;
 
 	// -- 16 byte boundary ----
 	

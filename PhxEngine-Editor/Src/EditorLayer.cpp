@@ -227,7 +227,7 @@ void SceneExplorerPanel::OnRenderImGui()
         this->m_scene->GetRegistry().each([&](entt::entity entityId)
             {
                 Entity entity = { entityId, this->m_scene.get() };
-                if (!entity.HasComponent<New::HierarchyComponent>())
+                if (!entity.HasComponent<HierarchyComponent>())
                 {
                     this->DrawEntityNode(entity);
                 }
@@ -266,7 +266,7 @@ void SceneExplorerPanel::OnRenderImGui()
 
 void SceneExplorerPanel::DrawEntityNode(Entity entity)
 {
-    auto& name = entity.GetComponent<New::NameComponent>().Name;
+    auto& name = entity.GetComponent<NameComponent>().Name;
 
     ImGuiTreeNodeFlags flags = ((this->m_selectedEntity == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow;
     flags |= ImGuiTreeNodeFlags_SpanAvailWidth;
@@ -287,11 +287,11 @@ void SceneExplorerPanel::DrawEntityNode(Entity entity)
 
     if (opened)
     {
-        auto view = this->m_scene->GetAllEntitiesWith<New::HierarchyComponent>();
+        auto view = this->m_scene->GetAllEntitiesWith<HierarchyComponent>();
         view.each([&](entt::entity entityId)
             {
                 // Draw only top level nodes
-                if (view.get<New::HierarchyComponent>(entityId).ParentID == (entt::entity)entity)
+                if (view.get<HierarchyComponent>(entityId).ParentID == (entt::entity)entity)
                 {
                     Entity entity = { entityId, this->m_scene.get() };
                     this->DrawEntityNode(entity);
@@ -320,9 +320,9 @@ void SceneExplorerPanel::DrawEntityNode(Entity entity)
 
 void SceneExplorerPanel::DrawEntityComponents(Entity entity)
 {
-    if (entity.HasComponent<New::NameComponent>())
+    if (entity.HasComponent<NameComponent>())
     {
-        auto& name = entity.GetComponent<New::NameComponent>().Name;
+        auto& name = entity.GetComponent<NameComponent>().Name;
 
         ImGui::Text(name.c_str());
     }
@@ -343,13 +343,13 @@ void SceneExplorerPanel::DrawEntityComponents(Entity entity)
     ImGui::PopItemWidth();
 
 
-    DrawComponent<New::TransformComponent>("Transform", entity, [](auto& component) {
+    DrawComponent<TransformComponent>("Transform", entity, [](auto& component) {
             DrawFloat3Control("Translation", component.LocalTranslation);
             DrawFloat4Control("Rotation", component.LocalRotation);
             DrawFloat3Control("Scale", component.LocalScale, 1.0f);
         });
 
-    DrawComponent<New::MeshRenderComponent>("MeshRenderComponent", entity, [](auto& component) {
+    DrawComponent<MeshRenderComponent>("MeshRenderComponent", entity, [](auto& component) {
         ImGui::Text("Mesh Name:");
             ImGui::Text(component.Mesh->Name.c_str());
 
@@ -360,23 +360,46 @@ void SceneExplorerPanel::DrawEntityComponents(Entity entity)
 
         });
 
-    DrawComponent<New::DirectionalLightComponent>("DirectionalLightComponent", entity, [](auto& component) {
+    DrawComponent<LightComponent>("LightComponent", entity, [](auto& component) {
+        switch (component.Type)
+        {
+        case LightComponent::kDirectionalLight:
+            ImGui::Text("Type: Directional");
+            break;
+        case LightComponent::kOmniLight:
+            ImGui::Text("Type: Omni");
+            break;
+        case LightComponent::kSpotLight:
+            ImGui::Text("Type: Spot");
+            break;
+        default:
+            ImGui::Text("Type: Unkown");
+            break;
+
+        }
+            bool isEnabled = component.IsEnabled();
+            ImGui::Checkbox("Enabled", &isEnabled);
+            component.SetEnabled(isEnabled);
+
+            bool castsShadows = component.CastShadows();
+            ImGui::Checkbox("Cast Shadows", &castsShadows);
+            component.SetCastShadows(castsShadows);
+            ImGui::InputFloat3("Direction", &component.Direction.x, "%.3f");
+            // Direction is starting from origin, so we need to negate it
+            // Vec3 light(lightComponent.Direction.x, lightComponent.Direction.y, -lightComponent.Direction.z);
+            // get/setLigth are helper funcs that you have ideally defined to manage your global/member objs
+            // ImGui::Text("This is not working as expected. Do Not Use");
+            // if (ImGui::gizmo3D("##Dir1", light /*, size,  mode */))
+            {
+               //  lightComponent.Direction = { light.x, light.y, -light.z };
+            }
+        });
+
+    DrawComponent<SkyLightComponent>("SkyLightComponent", entity, [](auto& component) {
         ImGui::Text("TODO: Add Data");
         });
 
-    DrawComponent<New::OmniLightComponent>("OmniLightComponent", entity, [](auto& component) {
-        ImGui::Text("TODO: Add Data");
-        });
-
-    DrawComponent<New::SpotLightComponent>("SpotLightComponent", entity, [](auto& component) {
-        ImGui::Text("TODO: Add Data");
-        });
-
-    DrawComponent<New::SkyLightComponent>("SkyLightComponent", entity, [](auto& component) {
-        ImGui::Text("TODO: Add Data");
-        });
-
-    DrawComponent<New::CameraComponent>("CameraComponent", entity, [](auto& component) {
+    DrawComponent<CameraComponent>("CameraComponent", entity, [](auto& component) {
             ImGui::Text("TODO: Add Data");
         });
 
@@ -389,7 +412,7 @@ EditorLayer::EditorLayer(std::shared_ptr<SceneRenderLayer> sceneRenderLayer)
     : AppLayer("Editor Layer")
     , m_sceneRenderLayer(sceneRenderLayer)
 {
-    this->m_scene = std::make_shared<New::Scene>();
+    this->m_scene = std::make_shared<PhxEngine::Scene::Scene>();
 };
 
 
@@ -408,15 +431,15 @@ void EditorLayer::OnAttach()
     CommandListHandle cmd = IGraphicsDevice::Ptr->CreateCommandList();
     cmd->Open();
 
-    std::unique_ptr<New::ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
+    std::unique_ptr<ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
     sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", cmd, *this->m_scene);
 #endif
 
     // TODO: I am here update The mesh render data
-    auto view = this->m_scene->GetAllEntitiesWith<New::MeshRenderComponent>();
+    auto view = this->m_scene->GetAllEntitiesWith<MeshRenderComponent>();
     for (auto e : view)
     {
-        auto meshRenderComp = view.get<New::MeshRenderComponent>(e);
+        auto meshRenderComp = view.get<MeshRenderComponent>(e);
         meshRenderComp.Mesh->CreateRenderData(cmd);
     }
 

@@ -12,18 +12,19 @@
 
 namespace PhxEngine::RHI::Dx12
 {
+	class GraphicsDevice;
 	class UploadBuffer
 	{
 	public:
 		struct Allocation
 		{
-			void* Cpu;
+			void* CpuData;
 			D3D12_GPU_VIRTUAL_ADDRESS Gpu;
-			ID3D12Resource* D3D12Resouce;
+			BufferHandle BufferHandle;
 			size_t Offset;
 		};
 
-		explicit UploadBuffer(Microsoft::WRL::ComPtr<ID3D12Device2> device, size_t pageSize = MB(10));
+		explicit UploadBuffer(GraphicsDevice& device, size_t pageSize = MB(10));
 
 		Allocation Allocate(size_t sizeInBytes, size_t alignment);
 
@@ -34,7 +35,7 @@ namespace PhxEngine::RHI::Dx12
 	private:
 		struct Page
 		{
-			Page(Microsoft::WRL::ComPtr<ID3D12Device2> device, size_t sizeInBytes);
+			Page(GraphicsDevice& device, size_t sizeInBytes);
 			~Page();
 
 			bool HasSpace(size_t sizeInBytes, size_t alignment) const;
@@ -44,9 +45,8 @@ namespace PhxEngine::RHI::Dx12
 			void Reset();
 
 		private:
-			Microsoft::WRL::ComPtr<ID3D12Resource> m_d3dResource;
-
-			void* m_cpuPtr;
+			GraphicsDevice& m_device;
+			BufferHandle m_buffer;
 			D3D12_GPU_VIRTUAL_ADDRESS m_gpuPtr;
 
 			size_t m_pageSize;
@@ -58,7 +58,7 @@ namespace PhxEngine::RHI::Dx12
 		std::shared_ptr<Page> RequestPage();
 
 	private:
-		Microsoft::WRL::ComPtr<ID3D12Device2> m_device;
+		GraphicsDevice& m_device;
 		PagePool m_pagePool;
 		PagePool m_availablePages;
 

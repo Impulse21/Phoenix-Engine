@@ -1,6 +1,6 @@
 #include "phxpch.h"
 #include "UploadBuffer.h"
-
+#include "GraphicsDevice.h"
 using namespace PhxEngine::RHI::Dx12;
 
 size_t AlignUp(size_t value, size_t alignment)
@@ -9,7 +9,7 @@ size_t AlignUp(size_t value, size_t alignment)
 	return remainder ? value + (alignment - remainder) : value;
 }
 
-UploadBuffer::UploadBuffer(Microsoft::WRL::ComPtr<ID3D12Device2> device, size_t pageSize)
+UploadBuffer::UploadBuffer(GraphicsDevice& device, size_t pageSize)
 	: m_device(device)
 	, m_pageSize(pageSize)
 {
@@ -58,31 +58,30 @@ std::shared_ptr<UploadBuffer::Page> UploadBuffer::RequestPage()
 	return page;
 }
 
-UploadBuffer::Page::Page(Microsoft::WRL::ComPtr<ID3D12Device2> device, size_t sizeInBytes)
-	: m_cpuPtr(nullptr)
+UploadBuffer::Page::Page(GraphicsDevice& device, size_t sizeInBytes)
+	: m_device(device)
 	, m_offset(0)
 	, m_pageSize(sizeInBytes)
 	, m_gpuPtr(D3D12_GPU_VIRTUAL_ADDRESS(0))
 {
-	auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeInBytes);
-	ThrowIfFailed(
-		device->CreateCommittedResource(
-			&heapProperties,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(&this->m_d3dResource)));
+	BufferDesc desc = {};
+	desc.Usage = Usage::Upload;
+	desc.SizeInBytes = sizeInBytes;
+	desc.InitialState = ResourceStates::CopySource | ResourceStates::GenericRead;
+	this->m_buffer = device.CreateBuffer(desc);
 
-	this->m_gpuPtr = this->m_d3dResource->GetGPUVirtualAddress();
-	this->m_d3dResource->Map(0, nullptr, &this->m_cpuPtr);
+	Dx12Buffer* bufferImpl = device.GetBufferPool().Get(this->m_buffer);
+
+	this->m_gpuPtr = bufferImpl->D3D12Resource->GetGPUVirtualAddress();
 }
 
 UploadBuffer::Page::~Page()
 {
-	this->m_d3dResource->Unmap(0, nullptr);
-	this->m_cpuPtr = nullptr;
+	if (this->m_buffer.IsValid())
+	{
+		this->m_device.GetBufferPool().Release(this->m_buffer);
+	}
+
 	this->m_gpuPtr = D3D12_GPU_VIRTUAL_ADDRESS(0);
 }
 
@@ -100,15 +99,15 @@ UploadBuffer::Allocation UploadBuffer::Page::Allocate(size_t sizeInBytes, size_t
 	{
 		throw std::bad_alloc();
 	}
-
+	Dx12Buffer* bufferImpl = this->m_device.GetBufferPool().Get(this->m_buffer);
 	size_t sizeInBytesAligned = AlignUp(sizeInBytes, alignment);
 
 	this->m_offset = AlignUp(this->m_offset, alignment);
 	Allocation allocation = {};
-	allocation.Cpu = static_cast<uint8_t*>(this->m_cpuPtr) + this->m_offset;
+	allocation.CpuData = static_cast<uint8_t*>(bufferImpl->MappedData) + this->m_offset;
 	allocation.Gpu = this->m_gpuPtr + this->m_offset;
 	allocation.Offset = this->m_offset;
-	allocation.D3D12Resouce = this->m_d3dResource.Get();
+	allocation.BufferHandle = this->m_buffer;
 
 	this->m_offset += sizeInBytesAligned;
 

@@ -8,14 +8,7 @@ using namespace PhxEngine::Scene;
 using namespace PhxEngine::Core;
 using namespace PhxEngine::Graphics;
 
-std::unique_ptr<ISceneLoader> PhxEngine::Scene::CreateGltfSceneLoader(
-	RHI::IGraphicsDevice* graphicsDevice,
-	std::shared_ptr<TextureCache> textureCache)
-{
-	return nullptr;
-}
-
-std::unique_ptr<New::ISceneLoader> PhxEngine::Scene::CreateGltfSceneLoader()
+std::unique_ptr<ISceneLoader> PhxEngine::Scene::CreateGltfSceneLoader()
 {
 	return std::make_unique<GltfSceneLoader>();
 }

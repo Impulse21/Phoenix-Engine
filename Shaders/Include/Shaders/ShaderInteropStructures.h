@@ -218,9 +218,9 @@ namespace Shader
 		// -- 16 byte boundary ----
 
 		uint PreFilteredEnvMapTexIndex;
+		uint LightEntityIndex;
 		uint NumLights;
-		uint _Padding0;
-		uint _Padding1;
+		uint MatricesIndex;
 
 		// -- 16 byte boundary ----
 	};
@@ -305,9 +305,9 @@ namespace Shader
 	struct Frame
 	{
 		uint BrdfLUTTexIndex;
-		uint LightEntityIndex;
-		uint MatricesIndex;
+		uint _padding1;
 		uint _padding2;
+		uint _padding3;
 
 		// -- 16 byte boundary ----
 

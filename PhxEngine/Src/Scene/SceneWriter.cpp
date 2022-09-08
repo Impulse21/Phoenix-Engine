@@ -27,54 +27,51 @@ using namespace PhxEngine::Scene;
 
 namespace PhxEngine::Scene
 {
-    template<typename Archive>
-    void serialize(Archive& archive, PhxEngine::Scene::Entity& entity)
-    {
-        assert(entity.HasComponent<New::IDComponent>());
-        assert(entity.HasComponent<New::NameComponent>());
-        archive(
-            cereal::make_nvp("UUID", (uint64_t)entity.GetUUID()));
-        archive(
-            cereal::make_nvp("Name", entity.GetName()));
+	template<typename Archive>
+	void serialize(Archive& archive, PhxEngine::Scene::Entity& entity)
+	{
+		assert(entity.HasComponent<IDComponent>());
+		assert(entity.HasComponent<NameComponent>());
+		archive(
+			cereal::make_nvp("UUID", (uint64_t)entity.GetUUID()));
+		archive(
+			cereal::make_nvp("Name", entity.GetName()));
 
-        if (entity.HasComponent<New::TransformComponent>())
-        {
-            archive(
-                cereal::make_nvp("Transform Component", entity.GetComponent<New::TransformComponent>()));
-        }
-    }
+		if (entity.HasComponent<TransformComponent>())
+		{
+			archive(
+				cereal::make_nvp("Transform Component", entity.GetComponent<TransformComponent>()));
+		}
+	}
 
-    namespace New
-    {
-        template<typename Archive>
-        void serialize(Archive& archive, PhxEngine::Scene::New::NameComponent& name)
-        {
-            archive(cereal::make_nvp("Name", name.Name));
-        }
+	template<typename Archive>
+	void serialize(Archive& archive, PhxEngine::Scene::NameComponent& name)
+	{
+		archive(cereal::make_nvp("Name", name.Name));
+	}
 
-        template<typename Archive>
-        void serialize(Archive& archive, PhxEngine::Scene::New::TransformComponent& transform)
-        {
-            archive(
-                cereal::make_nvp("Translation", transform.LocalTranslation));
-            archive(
-                cereal::make_nvp("Rotation", transform.LocalRotation));
-            archive(
-                cereal::make_nvp("Scale", transform.LocalScale));
-        }
+	template<typename Archive>
+	void serialize(Archive& archive, PhxEngine::Scene::TransformComponent& transform)
+	{
+		archive(
+			cereal::make_nvp("Translation", transform.LocalTranslation));
+		archive(
+			cereal::make_nvp("Rotation", transform.LocalRotation));
+		archive(
+			cereal::make_nvp("Scale", transform.LocalScale));
+	}
 
-        template<typename Archive>
-        void serialize(Archive& archive, PhxEngine::Scene::New::MeshRenderComponent& transform)
-        {
-            // Get The Static Mesh's Path and save it out.
-            archive(
-                cereal::make_nvp("Translation", transform.LocalTranslation));
-            archive(
-                cereal::make_nvp("Rotation", transform.LocalRotation));
-            archive(
-                cereal::make_nvp("Scale", transform.LocalScale));
-        }
-    }
+	template<typename Archive>
+	void serialize(Archive& archive, PhxEngine::Scene::MeshRenderComponent& transform)
+	{
+		// Get The Static Mesh's Path and save it out.
+		archive(
+			cereal::make_nvp("Translation", transform.LocalTranslation));
+		archive(
+			cereal::make_nvp("Rotation", transform.LocalRotation));
+		archive(
+			cereal::make_nvp("Scale", transform.LocalScale));
+	}
 }
 
 namespace DirectX
@@ -108,10 +105,10 @@ namespace
     {
     public:
         CerealJsonSceneWriter() = default;
-        bool Write(std::string const& filePath, New::Scene& scene);
+        bool Write(std::string const& filePath, PhxEngine::Scene::Scene& scene);
     };
 
-    bool CerealJsonSceneWriter::Write(std::string const& filePath, New::Scene& scene)
+    bool CerealJsonSceneWriter::Write(std::string const& filePath, PhxEngine::Scene::Scene& scene)
     {
         std::ofstream os(filePath.c_str(), std::ofstream::out);
 
@@ -143,13 +140,13 @@ namespace
     {
     public:
         RapidJsonSceneWriter() = default;
-        bool Write(std::string const& filePath, New::Scene& scene);
+        bool Write(std::string const& filePath, Scene& scene);
 
     private:
         void WriteEntity(rapidjson::Document& d, rapidjson::Value& entitiesV, Entity entity);
     };
 
-    bool RapidJsonSceneWriter::Write(std::string const& filePath, New::Scene& scene)
+    bool RapidJsonSceneWriter::Write(std::string const& filePath, Scene& scene)
     {
         rapidjson::Document d;
         {
@@ -176,7 +173,7 @@ namespace
     }
     void RapidJsonSceneWriter::WriteEntity(rapidjson::Document& d, rapidjson::Value& entitiesV, Entity entity)
     {
-        assert(entity.HasComponent<New::IDComponent>());
+        assert(entity.HasComponent<IDComponent>());
 
         // TODO: I am here
         rapidjson::Value uuidValue(r)

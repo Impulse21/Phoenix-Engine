@@ -16,7 +16,7 @@ namespace PhxEngine::Scene
 		static std::unique_ptr<ISceneWriter> Create();
 
 		virtual ~ISceneWriter() = default;
-		virtual bool Write(std::string const& filePath, New::Scene& scene) = 0;
+		virtual bool Write(std::string const& filePath, Scene& scene) = 0;
 	};
 
 }

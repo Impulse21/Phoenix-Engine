@@ -5,7 +5,6 @@
 #include "Graphics/TextureCache.h"
 
 #include "PhxEngine/Scene/Scene.h"
-#include "PhxEngine/Scene/SceneComponents.h"
 #include "PhxEngine/Core/Helpers.h"
 #include "PhxEngine/Scene/Components.h"
 
@@ -16,7 +15,6 @@
 
 using namespace PhxEngine::Core;
 using namespace PhxEngine::Scene;
-using namespace PhxEngine::ECS;
 using namespace PhxEngine::RHI;
 using namespace DirectX;
 
@@ -265,7 +263,7 @@ GltfSceneLoader::GltfSceneLoader()
 bool GltfSceneLoader::LoadScene(
 	std::string const& fileName,
 	RHI::CommandListHandle commandList,
-	New::Scene& scene)
+	PhxEngine::Scene::Scene& scene)
 {
 
 	this->m_filename = fileName; // Is this assignment safe?
@@ -308,7 +306,7 @@ bool GltfSceneLoader::LoadSceneInternal(
 	cgltf_data* gltfData,
 	CgltfContext& context,
 	RHI::CommandListHandle commandList,
-	New::Scene& scene)
+	Scene& scene)
 {
 	this->LoadMaterialData(
 		gltfData->materials,
@@ -352,7 +350,7 @@ bool GltfSceneLoader::LoadSceneInternal(
 void GltfSceneLoader::LoadNode(
 	const cgltf_node& gltfNode,
 	PhxEngine::Scene::Entity parent,
-	New::Scene& scene)
+	Scene& scene)
 {
 	PhxEngine::Scene::Entity entity;
 
@@ -364,7 +362,7 @@ void GltfSceneLoader::LoadNode(
 		std::string nodeName = gltfNode.name ? gltfNode.name : "Scene Node " + std::to_string(meshId++);
 		
 		entity = scene.CreateEntity(nodeName);
-		auto& meshRenderComponent = entity.AddComponent<New::MeshRenderComponent>();
+		auto& meshRenderComponent = entity.AddComponent<MeshRenderComponent>();
 		meshRenderComponent.Mesh = this->m_meshMap[gltfNode.mesh];
 	}
 	else if (gltfNode.camera)
@@ -373,7 +371,7 @@ void GltfSceneLoader::LoadNode(
 		std::string cameraName = gltfNode.camera->name ? gltfNode.camera->name : "Camera " + std::to_string(cameraId++);
 
 		entity = scene.CreateEntity(cameraName);
-		entity.AddComponent<New::CameraComponent>();
+		entity.AddComponent<CameraComponent>();
 	}
 	else if (gltfNode.light)
 	{
@@ -381,19 +379,19 @@ void GltfSceneLoader::LoadNode(
 		std::string lightName = gltfNode.light->name ? gltfNode.light->name : "Light " + std::to_string(lightID++);
 
 		entity = scene.CreateEntity(lightName);
-
+		auto& lightComponent = entity.AddComponent<LightComponent>();
 		switch (gltfNode.light->type)
 		{
 		case cgltf_light_type_directional:
-			entity.AddComponent<New::DirectionalLightComponent>();
+			lightComponent.Type = LightComponent::kDirectionalLight;
 			break;
 
 		case cgltf_light_type_point:
-			entity.AddComponent<New::OmniLightComponent>();
+			lightComponent.Type = LightComponent::kOmniLight;
 			break;
 
 		case cgltf_light_type_spot:
-			entity.AddComponent<New::SpotLightComponent>();
+			lightComponent.Type = LightComponent::kSpotLight;
 			break;
 
 		case cgltf_light_type_invalid:
@@ -401,6 +399,11 @@ void GltfSceneLoader::LoadNode(
 			// Ignore
 			assert(false);
 		}
+		
+		std::memcpy(
+			&lightComponent.Colour.x,
+			&gltfNode.light->color[0],
+			sizeof(float) * 3);
 	}
 
 	if (!entity)
@@ -412,7 +415,7 @@ void GltfSceneLoader::LoadNode(
 	}
 
 	// Create an entity map that can be used?
-	auto& transform = entity.GetComponent<New::TransformComponent>();
+	auto& transform = entity.GetComponent<TransformComponent>();
 	if (gltfNode.has_scale)
 	{
 		std::memcpy(
@@ -556,7 +559,7 @@ void GltfSceneLoader::LoadMaterialData(
 	const cgltf_data* objects,
 	CgltfContext& context,
 	PhxEngine::RHI::CommandListHandle commandList,
-	New::Scene& scene)
+	Scene& scene)
 {
 	for (int i = 0; i < materialCount; i++)
 	{
@@ -621,7 +624,7 @@ void GltfSceneLoader::LoadMaterialData(
 void GltfSceneLoader::LoadMeshData(
 	const cgltf_mesh* pMeshes,
 	uint32_t meshCount,
-	New::Scene& scene)
+	Scene& scene)
 {
 	std::vector<size_t> totalVertexCounts(meshCount);
 	std::vector<size_t> totalIndexCounts(meshCount);

@@ -4,12 +4,10 @@
 
 namespace PhxEngine::Scene
 {
-	namespace New
-	{
-		struct CameraComponent;
-		struct Scene;
-	}
+	struct CameraComponent;
+	class Scene;
 }
+
 namespace PhxEngine::Graphics
 {
 	class IRenderer
@@ -20,7 +18,7 @@ namespace PhxEngine::Graphics
 		virtual void Initialize() = 0;
 		virtual void Finialize() = 0;
 
-		virtual void RenderScene(Scene::New::CameraComponent const& camera, Scene::New::Scene& scene) = 0;
+		virtual void RenderScene(Scene::CameraComponent const& camera, Scene::Scene& scene) = 0;
 
 		virtual RHI::TextureHandle& GetFinalColourBuffer() = 0;
 

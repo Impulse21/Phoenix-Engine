@@ -52,7 +52,7 @@ namespace PhxEngine::Scene
 		uint32_t GetRenderTypes();
 	};
 
-	using MaterialAssetHandle = Core::Handle<Scene::MaterialAsset>;
+	using MaterialAssetHandle = Core::Handle<MaterialAsset>;
 
 	struct TextureAsset
 	{
@@ -67,11 +67,11 @@ namespace PhxEngine::Scene
 	public:
 		AssetStore() = default;
 
-		Core::Handle<Scene::StaticMeshAsset> CreateMesh(std::string_view filename, bool isAsync = false);
-		Core::Handle<Scene::TextureAsset> CreateTexture(std::string_view filename, bool isAsync = false);
+		Core::Handle<StaticMeshAsset> CreateMesh(std::string_view filename, bool isAsync = false);
+		Core::Handle<TextureAsset> CreateTexture(std::string_view filename, bool isAsync = false);
 		MaterialAssetHandle CreateMaterial();
 
-		MaterialAsset* GetStaticMeshAsset(Core::Handle<Scene::StaticMeshAsset> handle);
+		MaterialAsset* GetStaticMeshAsset(Core::Handle<StaticMeshAsset> handle);
 		MaterialAsset* GetMaterialAsset(MaterialAssetHandle handle);
 
 		// Free

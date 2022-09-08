@@ -10,7 +10,7 @@ namespace PhxEngine::Scene
 	{
 	public:
 		Entity() = default;
-		Entity(entt::entity handle, New::Scene* scene);
+		Entity(entt::entity handle, Scene* scene);
 		Entity(Entity const& other) = default;
 
 		// Wrappers
@@ -60,8 +60,8 @@ namespace PhxEngine::Scene
 		operator entt::entity() const { return this->m_entityHandle; }
 		operator uint32_t() const { return (uint32_t)this->m_entityHandle; }
 
-		Core::UUID GetUUID() { return this->GetComponent<New::IDComponent>().ID; }
-		const std::string& GetName() { return this->GetComponent<New::NameComponent>().Name; }
+		Core::UUID GetUUID() { return this->GetComponent<IDComponent>().ID; }
+		const std::string& GetName() { return this->GetComponent<NameComponent>().Name; }
 
 		bool operator==(const Entity& other) const
 		{
@@ -76,7 +76,7 @@ namespace PhxEngine::Scene
 	private:
 		entt::entity m_entityHandle = entt::null;
 		// TODO: Make into a weak ref
-		New::Scene* m_scene;
+		Scene* m_scene;
 	};
 }
 

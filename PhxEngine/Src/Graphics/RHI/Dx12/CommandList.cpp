@@ -43,7 +43,7 @@ PhxEngine::RHI::Dx12::CommandList::CommandList(GraphicsDevice& graphicsDevice, C
 	: m_graphicsDevice(graphicsDevice)
 	, m_desc(desc)
 	, m_commandAlloatorPool(graphicsDevice.GetD3D12Device2(), Convert(desc.QueueType))
-    , m_uploadBuffer(std::make_unique<UploadBuffer>(graphicsDevice.GetD3D12Device2()))
+    , m_uploadBuffer(std::make_unique<UploadBuffer>(graphicsDevice))
     , m_dynamicSubAllocatorPool(*graphicsDevice.GetResourceGpuHeap(), DynamicChunkSizeSrvUavCbv)
 {
 }
@@ -199,6 +199,19 @@ void CommandList::ClearTextureFloat(TextureHandle texture, Color const& clearCol
     this->m_trackedData->TextureHandles.push_back(texture);
 }
 
+
+GPUAllocation CommandList::AllocateGpu(size_t bufferSize, size_t stride)
+{
+    auto heapAllocation = this->m_uploadBuffer->Allocate(bufferSize, stride);
+
+    GPUAllocation gpuAlloc = {};
+    gpuAlloc.GpuBuffer = heapAllocation.BufferHandle;
+    gpuAlloc.CpuData = heapAllocation.CpuData;
+    gpuAlloc.Offset = heapAllocation.Offset;
+
+    return gpuAlloc;
+}
+
 void CommandList::ClearDepthStencilTexture(
     TextureHandle depthStencil,
     bool clearDepth,
@@ -278,11 +291,12 @@ void CommandList::WriteBuffer(BufferHandle buffer, const void* data, size_t data
     }
 
     auto heapAllocation = this->m_uploadBuffer->Allocate(dataSize, alignedSize);
-    memcpy(heapAllocation.Cpu, data, dataSize);
+    Dx12Buffer* uploadBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(heapAllocation.BufferHandle);
+    memcpy(heapAllocation.CpuData, data, dataSize);
     this->m_d3d12CommandList->CopyBufferRegion(
         bufferImpl->D3D12Resource.Get(),
         destOffsetBytes,
-        heapAllocation.D3D12Resouce,
+        uploadBufferImpl->D3D12Resource.Get(),
         heapAllocation.Offset,
         dataSize);
 
@@ -533,7 +547,7 @@ void PhxEngine::RHI::Dx12::CommandList::BindConstantBuffer(size_t rootParameterI
 void PhxEngine::RHI::Dx12::CommandList::BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData)
 {
     UploadBuffer::Allocation alloc = this->m_uploadBuffer->Allocate(sizeInBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
-    std::memcpy(alloc.Cpu, bufferData, sizeInBytes);
+    std::memcpy(alloc.CpuData, bufferData, sizeInBytes);
 
     if (this->m_activeComputePSO)
     {
@@ -556,7 +570,7 @@ void PhxEngine::RHI::Dx12::CommandList::BindDynamicVertexBuffer(uint32_t slot, s
 {
     size_t bufferSize = numVertices * vertexSize;
     auto heapAllocation = this->m_uploadBuffer->Allocate(bufferSize, vertexSize);
-    memcpy(heapAllocation.Cpu, vertexBufferData, bufferSize);
+    memcpy(heapAllocation.CpuData, vertexBufferData, bufferSize);
 
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
     vertexBufferView.BufferLocation = heapAllocation.Gpu;
@@ -579,7 +593,7 @@ void PhxEngine::RHI::Dx12::CommandList::BindDynamicIndexBuffer(size_t numIndicie
     size_t bufferSize = numIndicies * indexSizeInBytes;
 
     auto heapAllocation = this->m_uploadBuffer->Allocate(bufferSize, indexSizeInBytes);
-    memcpy(heapAllocation.Cpu, indexBufferData, bufferSize);
+    memcpy(heapAllocation.CpuData, indexBufferData, bufferSize);
 
     D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
     indexBufferView.BufferLocation = heapAllocation.Gpu;
@@ -595,7 +609,7 @@ void PhxEngine::RHI::Dx12::CommandList::BindDynamicStructuredBuffer(uint32_t roo
 {
     size_t sizeInBytes = numElements * elementSize;
     UploadBuffer::Allocation alloc = this->m_uploadBuffer->Allocate(sizeInBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
-    std::memcpy(alloc.Cpu, bufferData, sizeInBytes);
+    std::memcpy(alloc.CpuData, bufferData, sizeInBytes);
 
     if (this->m_activeComputePSO)
     {

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "PhxEngine/Scene/SceneLoader.h"
-#include "PhxEngine/Systems/Ecs.h"
 #include <PhxEngine/Scene/Assets.h>
 #include <PhxEngine/Scene/Entity.h>
 
@@ -31,7 +30,7 @@ namespace PhxEngine::Scene
 {
 	static std::unordered_map<std::string, bool> sSupportedExtensions;
 
-	class GltfSceneLoader : public New::ISceneLoader
+	class GltfSceneLoader : public ISceneLoader
 	{
 	public:
 		GltfSceneLoader();
@@ -39,14 +38,14 @@ namespace PhxEngine::Scene
 		bool LoadScene(
 			std::string const& fileName,
 			RHI::CommandListHandle commandList,
-			New::Scene& scene) override;
+			PhxEngine::Scene::Scene& scene) override;
 
 	private:
 		bool LoadSceneInternal(
 			cgltf_data* gltfData,
 			CgltfContext& context,
 			RHI::CommandListHandle commandList,
-			New::Scene& scene);
+			Scene& scene);
 
 		std::shared_ptr<Assets::Texture> LoadTexture(
 			const cgltf_texture* cglftTexture,
@@ -61,17 +60,17 @@ namespace PhxEngine::Scene
 			const cgltf_data* objects,
 			CgltfContext& context,
 			RHI::CommandListHandle commandList,
-			New::Scene& scene);
+			Scene& scene);
 
 		void LoadMeshData(
 			const cgltf_mesh* pMeshes,
 			uint32_t meshCount,
-			New::Scene& scene);
+			Scene& scene);
 
 		void LoadNode(
 			const cgltf_node& gltfNode,
 			PhxEngine::Scene::Entity parent,
-			New::Scene& scene);
+			Scene& scene);
 
 	private:
 		std::filesystem::path m_filename;

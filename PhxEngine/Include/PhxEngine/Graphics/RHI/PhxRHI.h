@@ -260,6 +260,7 @@ namespace PhxEngine::RHI
         AccelStructBuildInput   = 1 << 18,
         AccelStructBuildBlas    = 1 << 19,
         ShadingRateSurface      = 1 << 20,
+        GenericRead             = 1 << 21,
     };
 
     PHXRHI_ENUM_CLASS_FLAG_OPERATORS(ResourceStates)
@@ -963,6 +964,13 @@ namespace PhxEngine::RHI
     };
     class ScopedMarker;
 
+    struct GPUAllocation
+    {
+        void* CpuData;
+        BufferHandle GpuBuffer;
+        size_t Offset;
+    };
+
     class ICommandList : public IResource
     {
     public:
@@ -974,6 +982,7 @@ namespace PhxEngine::RHI
         virtual ScopedMarker BeginScopedMarker(std::string name) = 0;
         virtual void BeginMarker(std::string name) = 0;
         virtual void EndMarker() = 0;
+        virtual GPUAllocation AllocateGpu(size_t bufferSize, size_t stride) = 0;
 
         virtual void TransitionBarrier(TextureHandle texture, ResourceStates beforeState, ResourceStates afterState) = 0;
         virtual void TransitionBarrier(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState) = 0;
