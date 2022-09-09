@@ -27,6 +27,8 @@ void ShaderStore::PreloadShaders(ShaderFactory& shaderFactory)
 
 	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::CS_DeferredLighting)] = shaderFactory.LoadShader(ShaderStage::Compute, "DeferredLightingCS.cso");
 
+	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::VS_ToneMapping)] = shaderFactory.LoadShader(ShaderStage::Vertex, "ToneMappingVS.cso");
+	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::PS_ToneMapping)] = shaderFactory.LoadShader(ShaderStage::Pixel, "ToneMappingPS.cso");
 
 	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::VS_ShadowPass)] = shaderFactory.LoadShader(ShaderStage::Vertex, "ShadowPassVS.cso");
 

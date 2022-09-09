@@ -12,12 +12,14 @@ namespace PhxEngine::Graphics
 		VS_FullscreenQuad,
 		VS_DeferredLighting,
 		VS_ShadowPass,
+		VS_ToneMapping,
 
 		// PS Shaders
 		PS_ImGui,
 		PS_GBufferPass,
 		PS_FullscreenQuad,
 		PS_DeferredLighting,
+		PS_ToneMapping,
 
 		// Compute Shaders
 		CS_DeferredLighting,
