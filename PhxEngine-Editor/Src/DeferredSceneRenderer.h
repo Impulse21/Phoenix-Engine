@@ -17,6 +17,9 @@ class DeferredRenderer : public PhxEngine::Graphics::IRenderer
         PSO_FullScreenQuad,
         PSO_DeferredLightingPass,
 
+        // -- Post Process ---
+        PSO_ToneMappingPass,
+
         NumPsoTypes
     };
 
@@ -31,7 +34,7 @@ public:
 
     PhxEngine::RHI::TextureHandle& GetFinalColourBuffer() override 
     {
-        return this->m_deferredLightBuffer; 
+        return this->m_finalColourBuffer;
     }
 
     void OnWindowResize(DirectX::XMFLOAT2 const& size) override;
@@ -82,6 +85,7 @@ private:
     // -- Textures ---
     GBuffer m_gBuffer;
     PhxEngine::RHI::TextureHandle m_deferredLightBuffer;
+    PhxEngine::RHI::TextureHandle m_finalColourBuffer;
     PhxEngine::RHI::TextureHandle m_depthBuffer;
 
     DirectX::XMFLOAT2 m_canvasSize;

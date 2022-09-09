@@ -49,6 +49,14 @@ namespace
             GBuffer,
         };
     }
+    namespace RootParameters_ToneMapping
+    {
+        enum
+        {
+            Push = 0,
+            HDRBuffer,
+        };
+    }
 }
 
 void DeferredRenderer::FreeResources()
@@ -91,6 +99,7 @@ void DeferredRenderer::FreeTextureResources()
     PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.SurfaceTexture);
     PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer._PostionTexture);
     PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_deferredLightBuffer);
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_finalColourBuffer);
 }
 
 void DeferredRenderer::Initialize()
@@ -190,11 +199,14 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
     desc.DebugName = "Debug Position Buffer";
     this->m_gBuffer._PostionTexture = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
 
-    // TODO: Determine what format should be used here.
     desc.IsTypeless = true;
-    desc.Format = RHI::FormatType::R10G10B10A2_UNORM;
+    desc.Format = RHI::FormatType::RGBA16_FLOAT;
     desc.DebugName = "Deferred Lighting";
     this->m_deferredLightBuffer = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
+
+    desc.Format = RHI::FormatType::R10G10B10A2_UNORM;
+    desc.DebugName = "Final Colour Buffer";
+    this->m_finalColourBuffer = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
 }
 
 void DeferredRenderer::DrawMeshes(PhxEngine::Scene::Scene& scene, RHI::CommandListHandle commandList)
@@ -564,8 +576,8 @@ void DeferredRenderer::CreatePSOs()
         */
     }
 
+    // Any Fullscreen Quad shaders
     {
-        // TODO: Use the files directly
         RHI::GraphicsPSODesc psoDesc = {};
         psoDesc.VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_FullscreenQuad);
         psoDesc.PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_FullscreenQuad);
@@ -575,9 +587,15 @@ void DeferredRenderer::CreatePSOs()
         psoDesc.RtvFormats.push_back(IGraphicsDevice::Ptr->GetTextureDesc(IGraphicsDevice::Ptr->GetBackBuffer()).Format);
         this->m_pso[PSO_FullScreenQuad] = IGraphicsDevice::Ptr->CreateGraphicsPSO(psoDesc);
 
+        psoDesc.VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_ToneMapping);
+        psoDesc.PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_ToneMapping);
+
+        this->m_pso[PSO_ToneMappingPass] = IGraphicsDevice::Ptr->CreateGraphicsPSO(psoDesc);
+
+        psoDesc.RtvFormats.clear();
+        psoDesc.RtvFormats.push_back(IGraphicsDevice::Ptr->GetTextureDesc(this->m_deferredLightBuffer).Format);
         psoDesc.VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_DeferredLighting);
         psoDesc.PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_DeferredLighting);
-
         this->m_pso[PSO_DeferredLightingPass] = IGraphicsDevice::Ptr->CreateGraphicsPSO(psoDesc);
     }
 }
@@ -648,7 +666,6 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 
         this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_DeferredLightingPass]);
 
-        // A second upload........ not ideal
         this->m_commandList->BindConstantBuffer(RootParameters_DeferredLightingFulLQuad::FrameCB, this->m_constantBuffers[CB_Frame]);
         this->m_commandList->BindDynamicConstantBuffer(RootParameters_DeferredLightingFulLQuad::CameraCB, cameraData);
 
@@ -726,6 +743,45 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
         this->m_commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
     }
 
+	{
+        auto _ = this->m_commandList->BeginScopedMarker("Post Process FX");
+		{
+			auto scrope = this->m_commandList->BeginScopedMarker("Tone Mapping");
+
+			this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_ToneMappingPass]);
+            this->m_commandList->SetRenderTargets({ this->m_finalColourBuffer }, TextureHandle());
+
+
+            RHI::GpuBarrier preTransition[] =
+            {
+                RHI::GpuBarrier::CreateTexture(
+                    this->m_deferredLightBuffer,
+                    IGraphicsDevice::Ptr->GetTextureDesc(this->m_deferredLightBuffer).InitialState,
+                    RHI::ResourceStates::ShaderResource),
+            };
+            this->m_commandList->TransitionBarriers(Span<RHI::GpuBarrier>(preTransition, _countof(preTransition)));
+
+            // Exposure, not needed right now
+            this->m_commandList->BindPushConstant(RootParameters_ToneMapping::Push, 1.0f);
+
+            this->m_commandList->BindDynamicDescriptorTable(
+                RootParameters_ToneMapping::HDRBuffer,
+                {
+                    this->m_deferredLightBuffer,
+                });
+
+            this->m_commandList->Draw(3, 1, 0, 0);
+
+            RHI::GpuBarrier postTransition[] =
+            {
+                RHI::GpuBarrier::CreateTexture(
+                    this->m_deferredLightBuffer,
+                    RHI::ResourceStates::ShaderResource,
+                    IGraphicsDevice::Ptr->GetTextureDesc(this->m_deferredLightBuffer).InitialState),
+            };
+            this->m_commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
+		}
+	}
     this->m_commandList->Close();
     RHI::IGraphicsDevice::Ptr->ExecuteCommandLists(this->m_commandList.get());
 }

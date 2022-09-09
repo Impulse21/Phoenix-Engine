@@ -327,10 +327,6 @@ float4 main(PSInput input) : SV_TARGET
     // colour = GetShadow(shadowMapCoord.xyz) * colour;
     // colour = GetShadow(input.ShadowTexCoord) * colour;
 
-    // Correction for gamma?
-    colour = colour / (colour + float3(1.0, 1.0, 1.0));
-    colour = pow(colour, float3(1.0 / 2.2, 1.0 / 2.2, 1.0 / 2.2));
-
 #ifdef DEFERRED_LIGHTING_COMPILE_CS
     OutputBuffer[pixelPosition] = float4(colour, 1.0f);
 #else
