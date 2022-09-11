@@ -111,6 +111,12 @@ file (GLOB PhxEngine_Inc
 file (GLOB PhxEngine_Src
     Src/*.h
 	Src/*.cpp)
+file (GLOB PhxEngine_Shader_Inc
+	Shaders/*.hlsli
+	Shaders/Include/*.h)
+
+file (GLOB PhxEngine_Shader_Src
+	Shaders/*.hlsl)
 
 add_library(PhxEngine STATIC EXCLUDE_FROM_ALL  
     ${PhxEngine_App_Inc}
@@ -182,6 +188,8 @@ set_target_properties(${ProjectName} PROPERTIES FOLDER PhxEngine)
 if(WIN32)
     target_compile_definitions(${ProjectName} PUBLIC NOMINMAX _CRT_SECURE_NO_WARNINGS)
 endif()
+
+#INCLUDE_EXTERNAL_MSPROJECT(ShadersSource ${CMAKE_SOURCE_DIR}/PhxEngine/Shaders/ShadersSource.vcitems)
 
 # Copy the shader library next to the executable
 add_custom_command(
