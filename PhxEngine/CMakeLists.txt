@@ -157,8 +157,8 @@ source_group("Src/Scene"                FILES ${PhxEngine_Scene_Src})
 source_group("Src/Renderer"             FILES ${PhxEngine_Renderer_Src})
 source_group("Src/Renderer/Dx12"        FILES ${PhxEngine_Renderer_DX12_Src})
 
-target_include_directories(${ProjectName} PUBLIC Include ../Shaders/Include)
-target_include_directories(${ProjectName} PRIVATE Src ../Shaders/Include)
+target_include_directories(${ProjectName} PUBLIC Include Shaders/Include)
+target_include_directories(${ProjectName} PRIVATE Src Shaders/Include)
 
 target_precompile_headers(${ProjectName} PRIVATE Src/phxpch.h)
 
@@ -182,6 +182,12 @@ set_target_properties(${ProjectName} PROPERTIES FOLDER PhxEngine)
 if(WIN32)
     target_compile_definitions(${ProjectName} PUBLIC NOMINMAX _CRT_SECURE_NO_WARNINGS)
 endif()
+
+# Copy the shader library next to the executable
+add_custom_command(
+		TARGET ${ProjectName} POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_SOURCE_DIR}/PhxEngine/Shaders ${CMAKE_CURRENT_BINARY_DIR}/Shaders
+)
 
 # D3D12 Agility SDK
 message("Fetching D3D12 Agility SDK")
