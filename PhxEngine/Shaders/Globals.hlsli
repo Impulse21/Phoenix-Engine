@@ -33,10 +33,6 @@ SamplerState SamplerDefault : register(s50);
 // SamplerState SamplerBrdf : register(s51);
 SamplerComparisonState ShadowSampler : register(s52);
 
-inline SceneData GetScene()
-{
-    return FrameCB.Scene;
-}
 
 inline Frame GetFrame()
 {
@@ -47,6 +43,20 @@ inline Camera GetCamera()
 {
     return CameraCB;
 }
+
+inline Scene GetScene()
+{
+    return GetFrame().SceneData;
+}
+
+inline Atmosphere GetAtmosphere()
+{
+	return GetScene().AtmosphereData;
+}
+
+// -- Atmosphere helpers ---
+inline float3 GetHorizonColour() { return GetAtmosphere().HorizonColour; }
+inline float3 GetZenithColour() { return GetAtmosphere().ZenithColour; }
 
 inline Mesh LoadMesh(uint meshIndex)
 {

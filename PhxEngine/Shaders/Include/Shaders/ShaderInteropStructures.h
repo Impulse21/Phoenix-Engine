@@ -20,6 +20,76 @@ namespace Shader
 
 	static const uint MATRIX_COUNT = 128;
 
+	// -- Common Structurs ---
+	struct Frame
+	{
+		uint Option;
+		uint BrdfLUTTexIndex;
+		uint _padding1;
+		uint _padding2;
+
+		// -- 16 byte boundary ----
+
+		Scene Scene;
+	};
+
+	struct Scene
+	{
+		uint MeshBufferIndex;  // Currently not used
+		uint GeometryBufferIndex;
+		uint MaterialBufferIndex;
+		uint IrradianceMapTexIndex;
+
+		// -- 16 byte boundary ----
+
+		uint PreFilteredEnvMapTexIndex; // Currently not used
+		uint LightEntityIndex;
+		uint NumLights;
+		uint MatricesIndex;
+
+		// -- 16 byte boundary ----
+		Atmosphere AtmosphereData;
+	};
+
+	struct Atmosphere
+	{
+		float3 SunColour;
+		uint _padding;
+		// -- 16 byte boundary ----
+
+		float3 SunDirection;
+		uint _padding;
+		// -- 16 byte boundary ----
+
+		float3 HorizonColour;
+		uint _padding;
+		// -- 16 byte boundary ----
+
+		float3 ZenithColour;
+		uint _padding;
+		// -- 16 byte boundary ----
+	}
+
+	struct Camera
+	{
+		float4x4 ViewProjection;
+
+		// -- 16 byte boundary ----
+		float4x4 ProjInv;
+
+		// -- 16 byte boundary ----
+		float4x4 ViewInv;
+
+		// -- 16 byte boundary ----
+
+		float4x4 ShadowViewProjection;
+
+		// -- 16 byte boundary ----
+
+		float3 CameraPosition;
+	};
+
+	// -- Common Buffers END --- 
 	struct ShaderLight
 	{
 		float3 Position;
@@ -208,23 +278,6 @@ namespace Shader
 #endif
 	};
 
-	struct SceneData
-	{
-		uint MeshBufferIndex;
-		uint GeometryBufferIndex;
-		uint MaterialBufferIndex;
-		uint IrradianceMapTexIndex;
-
-		// -- 16 byte boundary ----
-
-		uint PreFilteredEnvMapTexIndex;
-		uint LightEntityIndex;
-		uint NumLights;
-		uint MatricesIndex;
-
-		// -- 16 byte boundary ----
-	};
-
 	struct MaterialData
 	{
 		float3 AlbedoColour;
@@ -300,37 +353,6 @@ namespace Shader
 		uint3 _padding;
 
 		// -- 16 byte boundary ---
-	};
-
-	struct Frame
-	{
-		uint BrdfLUTTexIndex;
-		uint _padding1;
-		uint _padding2;
-		uint _padding3;
-
-		// -- 16 byte boundary ----
-
-		SceneData Scene;
-	};
-
-	struct Camera
-	{
-		float4x4 ViewProjection;
-
-		// -- 16 byte boundary ----
-		float4x4 ProjInv;
-
-		// -- 16 byte boundary ----
-		float4x4 ViewInv;
-
-		// -- 16 byte boundary ----
-
-		float4x4 ShadowViewProjection;
-
-		// -- 16 byte boundary ----
-
-		float3 CameraPosition;
 	};
 
 #define DRAW_FLAG_ALBEDO        0x001
