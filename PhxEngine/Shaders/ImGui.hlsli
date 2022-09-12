@@ -1,8 +1,9 @@
 #ifndef __IMGUI__HLSLI__
 #define __IMGUI__HLSLI__
 
-#include "ShaderInterop.h"
-#include "ShaderInteropStructures.h"
+
+#include "Include/Shaders/ShaderInterop.h"
+#include "Include/Shaders/ShaderInteropStructures.h"
 #include "ResourceHeapTables.hlsli"
 #include "Defines.hlsli"
 

@@ -66,7 +66,6 @@ Texture2D GBuffer_2     : register(t4);
 Texture2D GBuffer_Debug_Position  : register(t5);
 
 SamplerState DefaultSampler: register(s50);
-SamplerState SamplerBrdf : register(s51);
 
 struct PSInput
 {
@@ -147,7 +146,7 @@ float4 main(PSInput input) : SV_TARGET
 
 #endif
     Camera camera = GetCamera();
-    SceneData scene = GetScene();
+    Scene scene = GetScene();
 
     float4 gbufferChannels[NUM_GBUFFER_CHANNELS];
 

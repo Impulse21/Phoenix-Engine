@@ -1,7 +1,13 @@
 #ifndef __PHX_SHADER_INTEROP_STRUCTURES_HLSLI__
 #define __PHX_SHADER_INTEROP_STRUCTURES_HLSLI__
 
+#ifdef __cplusplus
+
 #include "ShaderInterop.h"
+
+#else 
+#include "Include/Shaders/ShaderInterop.h"
+#endif 
 
 #ifdef __cplusplus
 
@@ -20,17 +26,24 @@ namespace Shader
 
 	static const uint MATRIX_COUNT = 128;
 
-	// -- Common Structurs ---
-	struct Frame
-	{
-		uint Option;
-		uint BrdfLUTTexIndex;
-		uint _padding1;
-		uint _padding2;
 
+	struct Atmosphere
+	{
+		float3 SunColour;
+		uint _padding;
 		// -- 16 byte boundary ----
 
-		Scene Scene;
+		float3 SunDirection;
+		uint _padding1;
+		// -- 16 byte boundary ----
+
+		float3 HorizonColour;
+		uint _padding2;
+		// -- 16 byte boundary ----
+
+		float3 ZenithColour;
+		uint _padding3;
+		// -- 16 byte boundary ----
 	};
 
 	struct Scene
@@ -51,28 +64,25 @@ namespace Shader
 		Atmosphere AtmosphereData;
 	};
 
-	struct Atmosphere
+	// -- Common Structurs ---
+	struct Frame
 	{
-		float3 SunColour;
-		uint _padding;
+		uint Option;
+		uint BrdfLUTTexIndex;
+		uint _padding1;
+		uint _padding2;
+
 		// -- 16 byte boundary ----
 
-		float3 SunDirection;
-		uint _padding;
-		// -- 16 byte boundary ----
-
-		float3 HorizonColour;
-		uint _padding;
-		// -- 16 byte boundary ----
-
-		float3 ZenithColour;
-		uint _padding;
-		// -- 16 byte boundary ----
-	}
+		Scene SceneData;
+	};
 
 	struct Camera
 	{
 		float4x4 ViewProjection;
+
+		// -- 16 byte boundary ----
+		float4x4 ViewProjectionInv;
 
 		// -- 16 byte boundary ----
 		float4x4 ProjInv;

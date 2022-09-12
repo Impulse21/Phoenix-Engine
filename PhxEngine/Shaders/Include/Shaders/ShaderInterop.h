@@ -20,6 +20,16 @@ using int2 = DirectX::XMINT2;
 using int3 = DirectX::XMINT3;
 using int4 = DirectX::XMINT4;
 
+namespace DefaultRootParameters
+{
+	enum
+	{
+		FrameCB = 0,
+		CameraCB,
+		DEP_Light,
+	};
+}
+
 #define CONSTANT_BUFFER(name, type, slot)
 #define PUSH_CONSTANT(name, type)
 #define RS_PUSH_CONSTANT
@@ -29,6 +39,10 @@ using int4 = DirectX::XMINT4;
 #define PUSH_CONSTANT(name, type) ConstantBuffer<type> name : register(b999)
 #define RS_PUSH_CONSTANT "CBV(b999, space = 1, flags = DATA_STATIC)"
 #endif
+
+#define DEFERRED_BLOCK_SIZE_X 16
+#define DEFERRED_BLOCK_SIZE_Y 16
+
 
 #define RESOURCE_HEAP_BUFFER_SPACE     space100
 #define RESOURCE_HEAP_TEX2D_SPACE      space101

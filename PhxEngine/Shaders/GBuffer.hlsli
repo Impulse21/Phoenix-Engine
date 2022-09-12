@@ -1,7 +1,7 @@
 #ifndef __GBUFFER_HLSL__
 #define __GBUFFER_HLSL__
 
-#include "ShaderInteropStructures.h"
+#include "Include/Shaders/ShaderInteropStructures.h"
 
 struct SurfaceProperties
 {

@@ -32,6 +32,10 @@ void ShaderStore::PreloadShaders(ShaderFactory& shaderFactory)
 
 	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::VS_ShadowPass)] = shaderFactory.LoadShader(ShaderStage::Vertex, "ShadowPassVS.cso");
 
+
+	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::VS_Sky)] = shaderFactory.LoadShader(ShaderStage::Vertex, "SkyVS.cso");
+	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::PS_SkyProcedural)] = shaderFactory.LoadShader(ShaderStage::Pixel, "Sky_ProceduralPS.cso");
+
 	return;
 }
 
