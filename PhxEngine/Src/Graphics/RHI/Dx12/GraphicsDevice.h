@@ -303,6 +303,9 @@ namespace PhxEngine::RHI::Dx12
 
         size_t GetFrameIndex() override { return this->GetCurrentBackBufferIndex(); };
         size_t GetMaxInflightFrames() override { return this->m_swapChain.Desc.BufferCount; }
+
+        bool CheckCapability(DeviceCapability deviceCapability);
+
         // -- Dx12 Specific functions ---
     public:
         TextureHandle CreateRenderTarget(TextureDesc const& desc, Microsoft::WRL::ComPtr<ID3D12Resource> d3d12TextureResource);
@@ -388,13 +391,8 @@ namespace PhxEngine::RHI::Dx12
 		D3D12_FEATURE_DATA_SHADER_MODEL   FeatureDataShaderModel = {};
         ShaderModel m_minShaderModel = ShaderModel::SM_6_0;
 
-		bool IsDxrSupported = false;
-		bool IsRayQuerySupported = false;
-		bool IsRenderPassSupported = false;
-		bool IsVariableRateShadingSupported = false;
-		bool IsMeshShadingSupported = false;
-		bool IsCreateNotZeroedAvailable = false;
 		bool IsUnderGraphicsDebugger = false;
+        RHI::DeviceCapability m_capabilities;
 
         // -- Resouce Pool ---
         Core::Pool<Dx12Texture, Texture> m_texturePool;

@@ -210,6 +210,11 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
     this->m_finalColourBuffer = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
 }
 
+void DeferredRenderer::RefreshEnvProbs(PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList)
+{
+    // TODO:
+}
+
 void DeferredRenderer::DrawMeshes(PhxEngine::Scene::Scene& scene, RHI::CommandListHandle commandList)
 {
     auto scrope = commandList->BeginScopedMarker("Render Scene Meshes");
@@ -244,6 +249,27 @@ void DeferredRenderer::DrawMeshes(PhxEngine::Scene::Scene& scene, RHI::CommandLi
                 1,
                 mesh.Surfaces[i].IndexOffsetInMesh);
         }
+    }
+}
+
+void DeferredRenderer::RunProbeUpdateSystem(PhxEngine::Scene::Scene& scene)
+{
+    if (!this->m_envMapArray.IsValid())
+    {
+        // Create EnvMap
+
+        TextureDesc desc;
+        desc.ArraySize = kEnvmapCount * 6;
+        desc.BindingFlags = BindingFlags::ShaderResource | BindingFlags::UnorderedAccess | BindingFlags::RenderTarget;
+        desc.Format = kEnvmapFormat;
+        desc.Height = kEnvmapRes;
+        desc.Height = kEnvmapRes;
+        desc.MipLevels = kEnvmapRes;
+        desc.Dimension = TextureDimension::TextureCubeArray;
+        // ResourceMiscFlag::TEXTURECUBE;
+        desc.InitialState = ResourceStates::ShaderResource;
+
+        this->m_envMapArray = IGraphicsDevice::Ptr->CreateTexture(desc);
     }
 }
 
@@ -620,6 +646,17 @@ void DeferredRenderer::CreatePSOs()
         psoDesc.VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_DeferredLighting);
         psoDesc.PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_DeferredLighting);
         this->m_pso[PSO_DeferredLightingPass] = IGraphicsDevice::Ptr->CreateGraphicsPSO(psoDesc);
+    }
+
+    // ENV Map
+    {
+        RHI::GraphicsPSODesc psoDesc = {};
+        psoDesc.VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_EnvMap_Sky);
+        psoDesc.PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_EnvMap_SkyProcedural);
+        // TODO handle GS 
+        assert(IGraphicsDevice::Ptr->CheckCapability(DeviceCapability::RT_VT_ArrayIndex_Without_GS));
+
+        this->m_pso[PSO_EnvCapture_SkyProcedural] = IGraphicsDevice::Ptr->CreateGraphicsPSO(psoDesc);
     }
 }
 
