@@ -16,6 +16,7 @@ class DeferredRenderer : public PhxEngine::Graphics::IRenderer
         PSO_GBufferPass = 0,
         PSO_FullScreenQuad,
         PSO_DeferredLightingPass,
+        PSO_Sky,
 
         // -- Post Process ---
         PSO_ToneMappingPass,

@@ -1,7 +1,7 @@
 #ifndef _TONE_MAPPING_HLSL__
 #define _TONE_MAPPING_HLSL__
 
-#include "ShaderInterop.h"
+#include "Include/Shaders/ShaderInterop.h"
 #include "FullScreenHelpers.hlsli"
 
 #if USE_RESOURCE_HEAP
@@ -43,7 +43,7 @@ struct PSInput
 PSInput main(uint id : SV_VertexID)
 {
     PSInput output;
-    CreateFullScreenTriangle(id, output.Position, output.UV);
+    CreateFullscreenTriangle_POS_UV(id, output.Position, output.UV);
 
     return output;
 }

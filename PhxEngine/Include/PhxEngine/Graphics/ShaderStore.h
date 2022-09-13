@@ -13,6 +13,7 @@ namespace PhxEngine::Graphics
 		VS_DeferredLighting,
 		VS_ShadowPass,
 		VS_ToneMapping,
+		VS_Sky,
 
 		// PS Shaders
 		PS_ImGui,
@@ -20,6 +21,7 @@ namespace PhxEngine::Graphics
 		PS_FullscreenQuad,
 		PS_DeferredLighting,
 		PS_ToneMapping,
+		PS_SkyProcedural,
 
 		// Compute Shaders
 		CS_DeferredLighting,

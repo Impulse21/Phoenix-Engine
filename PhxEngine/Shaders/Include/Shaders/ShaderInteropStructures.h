@@ -1,7 +1,13 @@
 #ifndef __PHX_SHADER_INTEROP_STRUCTURES_HLSLI__
 #define __PHX_SHADER_INTEROP_STRUCTURES_HLSLI__
 
+#ifdef __cplusplus
+
 #include "ShaderInterop.h"
+
+#else 
+#include "Include/Shaders/ShaderInterop.h"
+#endif 
 
 #ifdef __cplusplus
 
@@ -20,6 +26,80 @@ namespace Shader
 
 	static const uint MATRIX_COUNT = 128;
 
+
+	struct Atmosphere
+	{
+		float3 SunColour;
+		uint _padding;
+		// -- 16 byte boundary ----
+
+		float3 SunDirection;
+		uint _padding1;
+		// -- 16 byte boundary ----
+
+		float3 HorizonColour;
+		uint _padding2;
+		// -- 16 byte boundary ----
+
+		float3 ZenithColour;
+		uint _padding3;
+		// -- 16 byte boundary ----
+	};
+
+	struct Scene
+	{
+		uint MeshBufferIndex;  // Currently not used
+		uint GeometryBufferIndex;
+		uint MaterialBufferIndex;
+		uint IrradianceMapTexIndex;
+
+		// -- 16 byte boundary ----
+
+		uint PreFilteredEnvMapTexIndex; // Currently not used
+		uint LightEntityIndex;
+		uint NumLights;
+		uint MatricesIndex;
+
+		// -- 16 byte boundary ----
+		Atmosphere AtmosphereData;
+	};
+
+	// -- Common Structurs ---
+	struct Frame
+	{
+		uint Option;
+		uint BrdfLUTTexIndex;
+		uint _padding1;
+		uint _padding2;
+
+		// -- 16 byte boundary ----
+
+		Scene SceneData;
+	};
+
+	struct Camera
+	{
+		float4x4 ViewProjection;
+
+		// -- 16 byte boundary ----
+		float4x4 ViewProjectionInv;
+
+		// -- 16 byte boundary ----
+		float4x4 ProjInv;
+
+		// -- 16 byte boundary ----
+		float4x4 ViewInv;
+
+		// -- 16 byte boundary ----
+
+		float4x4 ShadowViewProjection;
+
+		// -- 16 byte boundary ----
+
+		float3 CameraPosition;
+	};
+
+	// -- Common Buffers END --- 
 	struct ShaderLight
 	{
 		float3 Position;
@@ -208,23 +288,6 @@ namespace Shader
 #endif
 	};
 
-	struct SceneData
-	{
-		uint MeshBufferIndex;
-		uint GeometryBufferIndex;
-		uint MaterialBufferIndex;
-		uint IrradianceMapTexIndex;
-
-		// -- 16 byte boundary ----
-
-		uint PreFilteredEnvMapTexIndex;
-		uint LightEntityIndex;
-		uint NumLights;
-		uint MatricesIndex;
-
-		// -- 16 byte boundary ----
-	};
-
 	struct MaterialData
 	{
 		float3 AlbedoColour;
@@ -300,37 +363,6 @@ namespace Shader
 		uint3 _padding;
 
 		// -- 16 byte boundary ---
-	};
-
-	struct Frame
-	{
-		uint BrdfLUTTexIndex;
-		uint _padding1;
-		uint _padding2;
-		uint _padding3;
-
-		// -- 16 byte boundary ----
-
-		SceneData Scene;
-	};
-
-	struct Camera
-	{
-		float4x4 ViewProjection;
-
-		// -- 16 byte boundary ----
-		float4x4 ProjInv;
-
-		// -- 16 byte boundary ----
-		float4x4 ViewInv;
-
-		// -- 16 byte boundary ----
-
-		float4x4 ShadowViewProjection;
-
-		// -- 16 byte boundary ----
-
-		float3 CameraPosition;
 	};
 
 #define DRAW_FLAG_ALBEDO        0x001

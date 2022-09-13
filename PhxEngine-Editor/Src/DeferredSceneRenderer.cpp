@@ -5,6 +5,7 @@
 #include <PhxEngine/Scene/Components.h>
 #include <PhxEngine/Scene/Scene.h>
 #include <PhxEngine/Core/Math.h>
+#include <Shaders/ShaderInterop.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
@@ -493,11 +494,14 @@ void DeferredRenderer::PrepareFrameRenderData(
 
 	Shader::Frame frameData = {};
 	frameData.BrdfLUTTexIndex = cInvalidDescriptorIndex;// this->m_scene.BrdfLUT->GetDescriptorIndex();
-	frameData.Scene.NumLights = lightCount;
-	frameData.Scene.GeometryBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_geometryGpuBuffer);
-	frameData.Scene.MaterialBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_materialGpuBuffer);
-	frameData.Scene.LightEntityIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_LightEntities]);
-	frameData.Scene.MatricesIndex = RHI::cInvalidDescriptorIndex;
+	frameData.SceneData.NumLights = lightCount;
+	frameData.SceneData.GeometryBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_geometryGpuBuffer);
+	frameData.SceneData.MaterialBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_materialGpuBuffer);
+	frameData.SceneData.LightEntityIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_LightEntities]);
+	frameData.SceneData.MatricesIndex = RHI::cInvalidDescriptorIndex;
+    frameData.SceneData.AtmosphereData = {};
+    frameData.SceneData.AtmosphereData.ZenithColour = { 1.0f, 0.0f, 0.0f};// { 0.117647, 0.156863, 0.235294 };
+    frameData.SceneData.AtmosphereData.HorizonColour = { 0.0f, 0.0f, 1.0f };// { 0.0392157, 0.0392157, 0.0784314 };
 
 	// Upload data
 	RHI::GpuBarrier preCopyBarriers[] =
@@ -561,6 +565,25 @@ void DeferredRenderer::CreatePSOs()
     }
 
     {
+
+        RHI::GraphicsPSODesc psoDesc = {};
+        psoDesc.VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_Sky);
+        psoDesc.PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_SkyProcedural);
+        psoDesc.InputLayout = nullptr;
+
+        psoDesc.RtvFormats.push_back(IGraphicsDevice::Ptr->GetTextureDesc(this->m_deferredLightBuffer).Format);
+        psoDesc.DsvFormat = IGraphicsDevice::Ptr->GetTextureDesc(this->m_depthBuffer).Format;
+        psoDesc.RasterRenderState.DepthClipEnable = false;
+       // psoDesc.RasterRenderState.CullMode = RHI::RasterCullMode::Front;
+
+        psoDesc.DepthStencilRenderState = {};
+        psoDesc.DepthStencilRenderState.DepthWriteEnable = false;
+        psoDesc.DepthStencilRenderState.DepthFunc = RHI::ComparisonFunc::LessOrEqual;
+
+        this->m_pso[PSO_Sky] = IGraphicsDevice::Ptr->CreateGraphicsPSO(psoDesc);
+    }
+
+    {
         /*
         RHI::GraphicsPSODesc psoDesc = {};
         psoDesc.VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_ShadowPass);
@@ -582,7 +605,7 @@ void DeferredRenderer::CreatePSOs()
         psoDesc.VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_FullscreenQuad);
         psoDesc.PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_FullscreenQuad);
         psoDesc.InputLayout = nullptr;
-        psoDesc.RasterRenderState.CullMode = RHI::RasterCullMode::Front;
+        //psoDesc.RasterRenderState.CullMode = RHI::RasterCullMode::Front;
         psoDesc.DepthStencilRenderState.DepthTestEnable = false;
         psoDesc.RtvFormats.push_back(IGraphicsDevice::Ptr->GetTextureDesc(IGraphicsDevice::Ptr->GetBackBuffer()).Format);
         this->m_pso[PSO_FullScreenQuad] = IGraphicsDevice::Ptr->CreateGraphicsPSO(psoDesc);
@@ -609,6 +632,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
     Shader::Camera cameraData = {};
     cameraData.CameraPosition = camera.Eye;
     TransposeMatrix(camera.ViewProjection, &cameraData.ViewProjection);
+    TransposeMatrix(camera.ViewProjectionInv, &cameraData.ViewProjectionInv);
     TransposeMatrix(camera.ProjectionInv, &cameraData.ProjInv);
     TransposeMatrix(camera.ViewInv, &cameraData.ViewInv);
 
@@ -741,6 +765,19 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
                 IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer._PostionTexture).InitialState),
         };
         this->m_commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
+    }
+
+    {
+        auto scrope = this->m_commandList->BeginScopedMarker("Draw Sky Pass");
+
+        this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_Sky]);
+
+        this->m_commandList->BindConstantBuffer(DefaultRootParameters::FrameCB, this->m_constantBuffers[CB_Frame]);
+        this->m_commandList->BindDynamicConstantBuffer(DefaultRootParameters::CameraCB, cameraData);
+
+        this->m_commandList->SetRenderTargets({ this->m_deferredLightBuffer }, this->m_depthBuffer);
+
+        this->m_commandList->Draw(3, 1, 0, 0);
     }
 
 	{
