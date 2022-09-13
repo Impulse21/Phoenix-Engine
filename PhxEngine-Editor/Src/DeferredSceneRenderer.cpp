@@ -500,8 +500,8 @@ void DeferredRenderer::PrepareFrameRenderData(
 	frameData.SceneData.LightEntityIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_LightEntities]);
 	frameData.SceneData.MatricesIndex = RHI::cInvalidDescriptorIndex;
     frameData.SceneData.AtmosphereData = {};
-    frameData.SceneData.AtmosphereData.ZenithColour = { 0.117647, 0.156863, 0.235294 };
-    frameData.SceneData.AtmosphereData.HorizonColour = { 0.0392157, 0.0392157, 0.0784314 };
+    frameData.SceneData.AtmosphereData.ZenithColour = { 1.0f, 0.0f, 0.0f};// { 0.117647, 0.156863, 0.235294 };
+    frameData.SceneData.AtmosphereData.HorizonColour = { 0.0f, 0.0f, 1.0f };// { 0.0392157, 0.0392157, 0.0784314 };
 
 	// Upload data
 	RHI::GpuBarrier preCopyBarriers[] =
