@@ -9,13 +9,14 @@ struct PSInput
 	float4 Position : SV_POSITION;
 };
 
+
+
 [RootSignature(PHX_ENGINE_DEFAULT_ROOTSIGNATURE)]
-PSInput main(uint id : SV_VertexID)
+PSInput main(uint vID : SV_VertexID)
 {
     PSInput output;
 
-    float2 temp;
-    CreateFullScreenTriangle(id, output.Position, temp);
+    CreateFullscreenTriangle_POS(vID, output.Position);
     output.Position.z = 1.0f;
 
     output.ClipSpace = output.Position.xy;

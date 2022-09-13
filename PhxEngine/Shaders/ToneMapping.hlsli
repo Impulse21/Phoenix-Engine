@@ -43,7 +43,7 @@ struct PSInput
 PSInput main(uint id : SV_VertexID)
 {
     PSInput output;
-    CreateFullScreenTriangle(id, output.Position, output.UV);
+    CreateFullscreenTriangle_POS_UV(id, output.Position, output.UV);
 
     return output;
 }

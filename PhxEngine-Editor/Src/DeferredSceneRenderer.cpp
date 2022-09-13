@@ -574,7 +574,7 @@ void DeferredRenderer::CreatePSOs()
         psoDesc.RtvFormats.push_back(IGraphicsDevice::Ptr->GetTextureDesc(this->m_deferredLightBuffer).Format);
         psoDesc.DsvFormat = IGraphicsDevice::Ptr->GetTextureDesc(this->m_depthBuffer).Format;
         psoDesc.RasterRenderState.DepthClipEnable = false;
-        psoDesc.RasterRenderState.CullMode = RHI::RasterCullMode::Front;
+       // psoDesc.RasterRenderState.CullMode = RHI::RasterCullMode::Front;
 
         psoDesc.DepthStencilRenderState = {};
         psoDesc.DepthStencilRenderState.DepthWriteEnable = false;
@@ -605,7 +605,7 @@ void DeferredRenderer::CreatePSOs()
         psoDesc.VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_FullscreenQuad);
         psoDesc.PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_FullscreenQuad);
         psoDesc.InputLayout = nullptr;
-        psoDesc.RasterRenderState.CullMode = RHI::RasterCullMode::Front;
+        //psoDesc.RasterRenderState.CullMode = RHI::RasterCullMode::Front;
         psoDesc.DepthStencilRenderState.DepthTestEnable = false;
         psoDesc.RtvFormats.push_back(IGraphicsDevice::Ptr->GetTextureDesc(IGraphicsDevice::Ptr->GetBackBuffer()).Format);
         this->m_pso[PSO_FullScreenQuad] = IGraphicsDevice::Ptr->CreateGraphicsPSO(psoDesc);
