@@ -190,6 +190,11 @@ namespace PhxEngine::RHI::Dx12
         }
     };
 
+    struct Dx12RenderPass final
+    {
+        RenderPassDesc Desc = {};
+    };
+
     struct SwapChain
     {
         Microsoft::WRL::ComPtr<IDXGISwapChain4> DxgiSwapchain;
@@ -244,6 +249,9 @@ namespace PhxEngine::RHI::Dx12
         InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) override;
         GraphicsPSOHandle CreateGraphicsPSO(GraphicsPSODesc const& desc) override;
         ComputePSOHandle CreateComputePso(ComputePSODesc const& desc) override;
+
+        void CreateRenderPass(RenderPassDesc const& desc) override;
+        void DeleteRenderPass(RenderPassHandle handle) override;
 
         TextureHandle CreateDepthStencil(TextureDesc const& desc) override;
 
@@ -397,6 +405,7 @@ namespace PhxEngine::RHI::Dx12
         // -- Resouce Pool ---
         Core::Pool<Dx12Texture, Texture> m_texturePool;
         Core::Pool<Dx12Buffer, Buffer> m_bufferPool;
+        Core::Pool<Dx12RenderPass, RenderPass> m_renderPassPool;
 
         // -- SwapChain ---
 		SwapChain m_swapChain;

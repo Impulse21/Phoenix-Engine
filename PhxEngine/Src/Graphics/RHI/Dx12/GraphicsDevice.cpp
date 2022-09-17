@@ -251,6 +251,7 @@ PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
 	, m_timerQueryIndexPool(kTimestampQueryHeapSize)
 	, m_texturePool(AlignTo(kResourcePoolSize / sizeof(Dx12Texture), sizeof(Dx12Texture)))
 	, m_bufferPool(AlignTo(kResourcePoolSize / sizeof(Dx12Texture), sizeof(Dx12Buffer)))
+	, m_renderPassPool(AlignTo(10 * sizeof(Dx12RenderPass), sizeof(Dx12RenderPass)))
 {
 #if ENABLE_PIX_CAPUTRE
 	this->m_pixCaptureModule = PIXLoadLatestWinPixGpuCapturerLibrary();
@@ -636,6 +637,17 @@ ComputePSOHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateComputePso(ComputeP
 		this->GetD3D12Device2()->CreateComputePipelineState(&d3d12Desc, IID_PPV_ARGS(&psoImpl->D3D12PipelineState)));
 
 	return psoImpl;
+}
+
+void PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderPass(RenderPassDesc const& desc)
+{
+	// TODO: I am here.
+	qweqwe
+}
+
+void PhxEngine::RHI::Dx12::GraphicsDevice::DeleteRenderPass(RenderPassHandle handle)
+{
+	aqwdasd
 }
 
 TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencil(TextureDesc const& desc)

@@ -67,6 +67,9 @@ namespace PhxEngine::RHI::Dx12
 		void TransitionBarrier(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState) override;
 		void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers) override;
 
+		void BeginRenderPass(RenderPassHandle renderPass) override;
+		void EndRenderPass() override;
+
 		void ClearTextureFloat(TextureHandle texture, Color const& clearColour) override;
 		void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) override;
 

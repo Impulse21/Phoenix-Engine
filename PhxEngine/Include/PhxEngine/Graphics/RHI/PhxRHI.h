@@ -991,6 +991,9 @@ namespace PhxEngine::RHI
         virtual void ClearTextureFloat(TextureHandle texture, Color const& clearColour) = 0 ;
         virtual void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) = 0;
 
+        virtual void BeginRenderPass(RenderPassHandle renderPass) = 0;
+        virtual void EndRenderPass() = 0;
+
         virtual void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t startVertex = 0, uint32_t startInstance = 0) = 0;
         virtual void DrawIndexed(
             uint32_t indexCount,
@@ -1099,6 +1102,15 @@ namespace PhxEngine::RHI
 
     using CommandListHandle = std::shared_ptr<ICommandList>;
 
+    struct RenderPassDesc
+    {
+
+    };
+
+    // Forward Declare, no real implementation
+    struct RenderPass;
+    using RenderPassHandle = Core::Handle<RenderPass>;
+
     class ScopedMarker
     {
     public:
@@ -1167,6 +1179,9 @@ namespace PhxEngine::RHI
         virtual const TextureDesc& GetTextureDesc(TextureHandle handle) = 0;
         virtual DescriptorIndex GetDescriptorIndex(TextureHandle handle) = 0;
         virtual void DeleteTexture(TextureHandle handle) = 0;
+
+        virtual void CreateRenderPass(RenderPassDesc const& desc) = 0;
+        virtual void DeleteRenderPass(RenderPassHandle handle) = 0;
 
         virtual TextureHandle CreateDepthStencil(TextureDesc const& desc) = 0;
 

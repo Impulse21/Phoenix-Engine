@@ -185,6 +185,16 @@ void PhxEngine::RHI::Dx12::CommandList::TransitionBarriers(Core::Span<GpuBarrier
     }
 }
 
+void PhxEngine::RHI::Dx12::CommandList::BeginRenderPass(RenderPassHandle renderPass)
+{
+    qweqwe
+}
+
+void PhxEngine::RHI::Dx12::CommandList::EndRenderPass()
+{
+    qiodwqdoiqw
+}
+
 void CommandList::ClearTextureFloat(TextureHandle texture, Color const& clearColour)
 {
     auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(texture);
