@@ -6,6 +6,7 @@
 #include <PhxEngine/Scene/Scene.h>
 #include <PhxEngine/Core/Math.h>
 #include <Shaders/ShaderInterop.h>
+#include <PhxEngine/Renderer/Renderer.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
@@ -89,6 +90,11 @@ void DeferredRenderer::FreeResources()
         {
             IGraphicsDevice::Ptr->DeleteBuffer(this->m_geometryUploadBuffers[i]);
         }
+    }
+
+    if (this->m_envMapArray.IsValid())
+    {
+        IGraphicsDevice::Ptr->DeleteTexture(this->m_envMapArray);
     }
 }
 
@@ -210,9 +216,18 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
     this->m_finalColourBuffer = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
 }
 
-void DeferredRenderer::RefreshEnvProbs(PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList)
+void DeferredRenderer::RefreshEnvProbs(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList)
 {
-    // TODO:
+    // Currently not considering env props
+    EnvProbeComponent skyCaptureProbe;
+    skyCaptureProbe.Position = camera.Eye;
+    skyCaptureProbe.textureIndex = 0;
+
+    // Render Camera
+    Renderer::RenderCam cameras[6];
+    Renderer::CreateCubemapCameras(skyCaptureProbe.Position, camera.ZNear, camera.ZFar, Core::Span<Renderer::RenderCam>(cameras, ARRAYSIZE(cameras)));
+
+    // TODO: I am herer
 }
 
 void DeferredRenderer::DrawMeshes(PhxEngine::Scene::Scene& scene, RHI::CommandListHandle commandList)
@@ -257,7 +272,6 @@ void DeferredRenderer::RunProbeUpdateSystem(PhxEngine::Scene::Scene& scene)
     if (!this->m_envMapArray.IsValid())
     {
         // Create EnvMap
-
         TextureDesc desc;
         desc.ArraySize = kEnvmapCount * 6;
         desc.BindingFlags = BindingFlags::ShaderResource | BindingFlags::UnorderedAccess | BindingFlags::RenderTarget;
@@ -266,11 +280,13 @@ void DeferredRenderer::RunProbeUpdateSystem(PhxEngine::Scene::Scene& scene)
         desc.Height = kEnvmapRes;
         desc.MipLevels = kEnvmapRes;
         desc.Dimension = TextureDimension::TextureCubeArray;
-        // ResourceMiscFlag::TEXTURECUBE;
         desc.InitialState = ResourceStates::ShaderResource;
+        desc.DebugName = "envMapArray";
 
         this->m_envMapArray = IGraphicsDevice::Ptr->CreateTexture(desc);
     }
+
+    // TODO: Future env probe stuff
 }
 
 void DeferredRenderer::PrepareFrameRenderData(
