@@ -23,7 +23,7 @@ namespace PhxEngine::RHI::Dx12
 {
     constexpr size_t kNumCommandListPerFrame = 32;
     constexpr size_t kResourcePoolSize = 100000; // 1 KB of handles
-
+    constexpr size_t kNumConcurrentRenderTargets = 8;
     struct TrackedResources;
 
     class BindlessDescriptorTable;
@@ -126,11 +126,19 @@ namespace PhxEngine::RHI::Dx12
 
         // -- The views ---
         DescriptorHeapAllocation RtvAllocation;
+        std::vector<DescriptorHeapAllocation> RtvSubresourcesAlloc = {};
+
         DescriptorHeapAllocation DsvAllocation;
+        std::vector<DescriptorHeapAllocation> DsvSubresourcesAlloc = {};
+
         DescriptorHeapAllocation SrvAllocation;
+        std::vector<DescriptorHeapAllocation> SrvSubresourcesAlloc = {};
+
         DescriptorHeapAllocation UavAllocation;
+        std::vector<DescriptorHeapAllocation> UavSubresourcesAlloc = {};
 
         DescriptorIndex BindlessResourceIndex = cInvalidDescriptorIndex;
+        std::vector<DescriptorIndex> BindlessSubresourceIndex = {};
 
         Dx12Texture() = default;
         Dx12Texture(Dx12Texture & other)
@@ -193,6 +201,15 @@ namespace PhxEngine::RHI::Dx12
     struct Dx12RenderPass final
     {
         RenderPassDesc Desc = {};
+
+        D3D12_RENDER_PASS_FLAGS D12RenderFlags = D3D12_RENDER_PASS_FLAG_NONE;
+
+        size_t NumRenderTargets = 0;
+        std::array<D3D12_RENDER_PASS_RENDER_TARGET_DESC, kNumConcurrentRenderTargets> RTVs = {};
+        D3D12_RENDER_PASS_DEPTH_STENCIL_DESC DSV = {};
+
+        std::vector<D3D12_RESOURCE_BARRIER> BarrierDescBegin;
+        std::vector<D3D12_RESOURCE_BARRIER> BarrierDescEnd;
     };
 
     struct SwapChain
@@ -250,7 +267,7 @@ namespace PhxEngine::RHI::Dx12
         GraphicsPSOHandle CreateGraphicsPSO(GraphicsPSODesc const& desc) override;
         ComputePSOHandle CreateComputePso(ComputePSODesc const& desc) override;
 
-        void CreateRenderPass(RenderPassDesc const& desc) override;
+        RenderPassHandle CreateRenderPass(RenderPassDesc const& desc) override;
         void DeleteRenderPass(RenderPassHandle handle) override;
 
         TextureHandle CreateDepthStencil(TextureDesc const& desc) override;
@@ -359,6 +376,7 @@ namespace PhxEngine::RHI::Dx12
         // Maybe better encapulate this.
         Core::Pool<Dx12Texture, Texture>& GetTexturePool() { return this->m_texturePool; };
         Core::Pool<Dx12Buffer, Buffer>& GetBufferPool() { return this->m_bufferPool; };
+        Core::Pool<Dx12RenderPass, RenderPass>& GetRenderPassPool() { return this->m_renderPassPool; };
 
     private:
         size_t GetCurrentBackBufferIndex() const;

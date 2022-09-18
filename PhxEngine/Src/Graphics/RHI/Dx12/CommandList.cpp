@@ -81,6 +81,8 @@ void PhxEngine::RHI::Dx12::CommandList::Open()
             IID_PPV_ARGS(&this->m_d3d12CommandList));
 
         this->m_d3d12CommandList->SetName(std::wstring(this->m_desc.DebugName.begin(), this->m_desc.DebugName.end()).c_str());
+         ThrowIfFailed(
+             this->m_d3d12CommandList.As<ID3D12GraphicsCommandList6>(&this->m_d3d12CommandList6));
 
     }
     // This might be a problem as it might delete any pending resources.
@@ -187,12 +189,52 @@ void PhxEngine::RHI::Dx12::CommandList::TransitionBarriers(Core::Span<GpuBarrier
 
 void PhxEngine::RHI::Dx12::CommandList::BeginRenderPass(RenderPassHandle renderPass)
 {
-    qweqwe
+    Dx12RenderPass* renderPassImpl = this->m_graphicsDevice.GetRenderPassPool().Get(renderPass);
+    if (!renderPassImpl)
+    {
+        return;
+    }
+
+    // Transiion Barriers
+    if (!renderPassImpl->BarrierDescBegin.empty())
+    {
+        this->m_d3d12CommandList->ResourceBarrier(
+            (UINT)renderPassImpl->BarrierDescBegin.size(),
+            renderPassImpl->BarrierDescBegin.data());
+    }
+
+    this->m_d3d12CommandList6->BeginRenderPass(
+        (UINT)renderPassImpl->NumRenderTargets,
+        renderPassImpl->RTVs.data(),
+        renderPassImpl->DSV.cpuDescriptor.ptr == 0 ? nullptr : &renderPassImpl->DSV,
+        renderPassImpl->D12RenderFlags);
+
+    this->m_activeRenderTarget = renderPass;
 }
 
 void PhxEngine::RHI::Dx12::CommandList::EndRenderPass()
 {
-    qiodwqdoiqw
+    if (!this->m_activeRenderTarget.IsValid())
+    {
+        return;
+    }
+
+    Dx12RenderPass* renderPassImpl = this->m_graphicsDevice.GetRenderPassPool().Get(this->m_activeRenderTarget);
+    if (!renderPassImpl)
+    {
+        return;
+    }
+
+    // Transiion Barriers
+    if (!renderPassImpl->BarrierDescEnd.empty())
+    {
+        this->m_d3d12CommandList->ResourceBarrier(
+            (UINT)renderPassImpl->BarrierDescEnd.size(),
+            renderPassImpl->BarrierDescEnd.data());
+    }
+
+    this->m_activeRenderTarget = {};
+    this->m_d3d12CommandList6->EndRenderPass();
 }
 
 void CommandList::ClearTextureFloat(TextureHandle texture, Color const& clearColour)

@@ -1102,9 +1102,45 @@ namespace PhxEngine::RHI
 
     using CommandListHandle = std::shared_ptr<ICommandList>;
 
+    struct RenderPassAttachment
+    {
+        enum class Type
+        {
+            RenderTarget,
+            DepthStencil,
+        } Type = Type::RenderTarget;
+
+        enum class LoadOpType
+        {
+            Load,
+            Clear,
+            DontCare,
+        } LoadOp = LoadOpType::Load;
+
+        TextureHandle Texture;
+        int Subresource = -1;
+        
+        enum class StoreOpType
+        {
+            Store,
+            DontCare,
+        } StoreOp = StoreOpType::Store;
+
+        ResourceStates InitialLayout = ResourceStates::Unknown;	// layout before the render pass
+        ResourceStates SubpassLayout = ResourceStates::Unknown;	// layout within the render pass
+        ResourceStates FinalLayout = ResourceStates::Unknown;		// layout after the render pass
+    };
+
     struct RenderPassDesc
     {
+        enum Flags
+        {
+            None = 0,
+            AllowUavWrites = 1 << 0,
+        };
 
+        uint32_t Flags = Flags::None;
+        std::vector<RenderPassAttachment> Attachments;
     };
 
     // Forward Declare, no real implementation
@@ -1180,7 +1216,7 @@ namespace PhxEngine::RHI
         virtual DescriptorIndex GetDescriptorIndex(TextureHandle handle) = 0;
         virtual void DeleteTexture(TextureHandle handle) = 0;
 
-        virtual void CreateRenderPass(RenderPassDesc const& desc) = 0;
+        virtual RenderPassHandle CreateRenderPass(RenderPassDesc const& desc) = 0;
         virtual void DeleteRenderPass(RenderPassHandle handle) = 0;
 
         virtual TextureHandle CreateDepthStencil(TextureDesc const& desc) = 0;

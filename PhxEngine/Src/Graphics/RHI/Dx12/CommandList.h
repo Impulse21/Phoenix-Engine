@@ -134,6 +134,7 @@ namespace PhxEngine::RHI::Dx12
 		std::shared_ptr<TrackedResources> m_trackedData;
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_activeD3D12CommandAllocator;
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_d3d12CommandList;
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList6> m_d3d12CommandList6;
 
 		// Temp Memory pool used for GPU Barriers
 		std::vector<D3D12_RESOURCE_BARRIER> m_barrierMemoryPool;
@@ -141,6 +142,8 @@ namespace PhxEngine::RHI::Dx12
 		// Dynamic Descriptor Heap
 		DynamicSubAllocatorPool m_dynamicSubAllocatorPool;
 		DynamicSuballocator* m_activeDynamicSubAllocator;
+
+		RHI::RenderPassHandle m_activeRenderTarget;
 	};
 }
 

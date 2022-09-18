@@ -639,15 +639,273 @@ ComputePSOHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateComputePso(ComputeP
 	return psoImpl;
 }
 
-void PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderPass(RenderPassDesc const& desc)
+RenderPassHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderPass(RenderPassDesc const& desc)
 {
-	// TODO: I am here.
-	qweqwe
+	if (!this->CheckCapability(DeviceCapability::RenderPass))
+	{
+		return {};
+	}
+
+	Dx12RenderPass renderPassImpl = {};
+
+	if (desc.Flags & RenderPassDesc::Flags::AllowUavWrites)
+	{
+		renderPassImpl.D12RenderFlags |= D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES;
+	}
+
+	for (auto& attachment : desc.Attachments)
+	{
+		Dx12Texture* textureImpl = this->m_texturePool.Get(attachment.Texture);
+		assert(textureImpl);
+		if (!textureImpl)
+		{
+			continue;
+		}
+
+		auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
+		D3D12_CLEAR_VALUE clearValue = {};
+		clearValue.Color[0] = textureImpl->Desc.OptmizedClearValue.Colour.R;
+		clearValue.Color[1] = textureImpl->Desc.OptmizedClearValue.Colour.G;
+		clearValue.Color[2] = textureImpl->Desc.OptmizedClearValue.Colour.B;
+		clearValue.Color[3] = textureImpl->Desc.OptmizedClearValue.Colour.A;
+		clearValue.DepthStencil.Depth = textureImpl->Desc.OptmizedClearValue.DepthStencil.Depth;
+		clearValue.DepthStencil.Depth = textureImpl->Desc.OptmizedClearValue.DepthStencil.Stencil;
+		clearValue.Format = dxgiFormatMapping.rtvFormat;
+
+		
+		switch (attachment.Type)
+		{
+		case RenderPassAttachment::Type::RenderTarget:
+		{
+			D3D12_RENDER_PASS_RENDER_TARGET_DESC& renderPassRTDesc =  renderPassImpl.RTVs[renderPassImpl.NumRenderTargets];
+
+			// Use main view
+			if (attachment.Subresource < 0 || textureImpl->RtvSubresourcesAlloc.empty())
+			{
+				renderPassRTDesc.cpuDescriptor = textureImpl->RtvAllocation.GetCpuHandle();
+			}
+			else // Use Subresource
+			{
+				assert((size_t)attachment.Subresource < textureImpl->RtvSubresourcesAlloc.size());
+				renderPassRTDesc.cpuDescriptor = textureImpl->RtvSubresourcesAlloc[(size_t)attachment.Subresource].GetCpuHandle();
+			}
+
+			switch (attachment.LoadOp)
+			{
+			case RenderPassAttachment::LoadOpType::Clear:
+			{
+				renderPassRTDesc.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+				renderPassRTDesc.BeginningAccess.Clear.ClearValue = clearValue;
+				break;
+			}
+			case RenderPassAttachment::LoadOpType::DontCare:
+			{
+				renderPassRTDesc.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD;
+				break;
+			}
+			case RenderPassAttachment::LoadOpType::Load:
+			default:
+				renderPassRTDesc.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+			}
+
+			switch (attachment.StoreOp)
+			{
+			case RenderPassAttachment::StoreOpType::DontCare:
+			{
+				renderPassRTDesc.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD;
+				break;
+			}
+			case RenderPassAttachment::StoreOpType::Store:
+			default:
+				renderPassRTDesc.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+				break;
+			}
+
+			renderPassImpl.NumRenderTargets++;
+			break;
+		}
+		case RenderPassAttachment::Type::DepthStencil:
+		{
+			D3D12_RENDER_PASS_DEPTH_STENCIL_DESC& renderPassDSDesc = renderPassImpl.DSV;
+
+			// Use main view
+			if (attachment.Subresource < 0 || textureImpl->DsvSubresourcesAlloc.empty())
+			{
+				renderPassDSDesc.cpuDescriptor = textureImpl->DsvAllocation.GetCpuHandle();
+			}
+			else // Use Subresource
+			{
+				assert((size_t)attachment.Subresource < textureImpl->DsvSubresourcesAlloc.size());
+				renderPassDSDesc.cpuDescriptor = textureImpl->DsvSubresourcesAlloc[(size_t)attachment.Subresource].GetCpuHandle();
+			}
+
+			switch (attachment.LoadOp)
+			{
+			case RenderPassAttachment::LoadOpType::Clear:
+			{
+				renderPassDSDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+				renderPassDSDesc.StencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+				renderPassDSDesc.DepthBeginningAccess.Clear.ClearValue = clearValue;
+				renderPassDSDesc.StencilBeginningAccess.Clear.ClearValue = clearValue;
+				break;
+			}
+			case RenderPassAttachment::LoadOpType::DontCare:
+			{
+				renderPassDSDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD;
+				renderPassDSDesc.StencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD;
+				break;
+			}
+			case RenderPassAttachment::LoadOpType::Load:
+			default:
+				renderPassDSDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+				renderPassDSDesc.StencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+			}
+
+			switch (attachment.StoreOp)
+			{
+			case RenderPassAttachment::StoreOpType::DontCare:
+			{
+				renderPassDSDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD;
+				renderPassDSDesc.StencilEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD;
+				break;
+			}
+			case RenderPassAttachment::StoreOpType::Store:
+			default:
+				renderPassDSDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+				renderPassDSDesc.StencilEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+				break;
+			}
+
+			break;
+		}
+		}
+	}
+
+	// Construct Begin Resource Barriers
+	for (auto& attachment : desc.Attachments)
+	{
+		D3D12_RESOURCE_STATES beforeState = ConvertResourceStates(attachment.InitialLayout);
+		D3D12_RESOURCE_STATES afterState = ConvertResourceStates(attachment.SubpassLayout);
+
+		if (beforeState == afterState)
+		{
+			// Nothing to do here;
+			continue;
+		}
+
+		Dx12Texture* textureImpl = this->m_texturePool.Get(attachment.Texture);
+
+		D3D12_RESOURCE_BARRIER barrierdesc = {};
+		barrierdesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrierdesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		barrierdesc.Transition.pResource = textureImpl->D3D12Resource.Get();
+		barrierdesc.Transition.StateBefore = beforeState;
+		barrierdesc.Transition.StateAfter = afterState;
+
+		// Unroll subresouce Barriers
+		if (attachment.Subresource >= 0)
+		{
+			switch (attachment.Type)
+			{
+			case RenderPassAttachment::Type::RenderTarget:
+			{
+				break;
+			}
+			case RenderPassAttachment::Type::DepthStencil:
+			{
+				break;
+			}
+			default:
+				assert(false);
+				continue;
+			}
+
+			// TODO:
+		}
+		else
+		{
+			barrierdesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			renderPassImpl.BarrierDescBegin.push_back(barrierdesc);
+		}
+	}
+
+	// Construct End Resource Barriers
+	for (auto& attachment : desc.Attachments)
+	{
+		D3D12_RESOURCE_STATES beforeState = ConvertResourceStates(attachment.SubpassLayout);
+		D3D12_RESOURCE_STATES afterState = ConvertResourceStates(attachment.FinalLayout);
+
+		if (beforeState == afterState)
+		{
+			// Nothing to do here;
+			continue;
+		}
+
+		Dx12Texture* textureImpl = this->m_texturePool.Get(attachment.Texture);
+
+		D3D12_RESOURCE_BARRIER barrierdesc = {};
+		barrierdesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrierdesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		barrierdesc.Transition.pResource = textureImpl->D3D12Resource.Get();
+		barrierdesc.Transition.StateBefore = beforeState;
+		barrierdesc.Transition.StateAfter = afterState;
+
+		// Unroll subresouce Barriers
+		if (attachment.Subresource >= 0)
+		{
+			switch (attachment.Type)
+			{
+			case RenderPassAttachment::Type::RenderTarget:
+			{
+				break;
+			}
+			case RenderPassAttachment::Type::DepthStencil:
+			{
+				break;
+			}
+			default:
+				assert(false);
+				continue;
+			}
+
+			// TODO:
+		}
+		else
+		{
+			barrierdesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			renderPassImpl.BarrierDescEnd.push_back(barrierdesc);
+		}
+	}
 }
 
 void PhxEngine::RHI::Dx12::GraphicsDevice::DeleteRenderPass(RenderPassHandle handle)
 {
-	aqwdasd
+	if (!handle.IsValid())
+	{
+		return;
+	}
+
+	DeleteItem d =
+	{
+		this->m_frameCount,
+		[=]()
+		{
+			Dx12RenderPass* pass = this->m_renderPassPool.Get(handle);
+
+			if (pass)
+			{
+#if TRACK_RESOURCES
+				if (sTrackedResources.find(texture->GetDesc().DebugName) != sTrackedResources.end())
+				{
+					sTrackedResources.erase(texture->GetDesc().DebugName);
+				}
+#endif
+				this->GetRenderPassPool().Release(handle);
+			}
+		}
+	};
+
+	this->m_deleteQueue.push_back(d);
 }
 
 TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencil(TextureDesc const& desc)
@@ -988,7 +1246,7 @@ uint32_t GraphicsDevice::GetBufferMappedDataSizeInBytes(BufferHandle handle)
 
 void GraphicsDevice::DeleteBuffer(BufferHandle handle)
 {
-if (!handle.IsValid())
+	if (!handle.IsValid())
 	{
 		return;
 	}
