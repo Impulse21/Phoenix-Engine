@@ -388,4 +388,13 @@ namespace PhxEngine::Scene
 		std::shared_ptr<Assets::Mesh> Mesh;
 		uint32_t RenderBucketMask = RenderType::RenderType_Opaque;
 	};
+
+	struct EnvProbeComponent
+	{
+		int textureIndex = -1;
+		DirectX::XMFLOAT3 Position = {};
+		float Range;
+		DirectX::XMFLOAT4X4 InverseMatrix = {};
+
+	};
 }

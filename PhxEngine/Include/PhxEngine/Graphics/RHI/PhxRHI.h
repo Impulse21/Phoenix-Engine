@@ -14,6 +14,7 @@
 
 #define PHXRHI_ENUM_CLASS_FLAG_OPERATORS(T) \
     inline T operator | (T a, T b) { return T(uint32_t(a) | uint32_t(b)); } \
+    inline T& operator |=(T& a, T b) { return a = a | b; }\
     inline T operator & (T a, T b) { return T(uint32_t(a) & uint32_t(b)); } /* NOLINT(bugprone-macro-parentheses) */ \
     inline T operator ~ (T a) { return T(~uint32_t(a)); } /* NOLINT(bugprone-macro-parentheses) */ \
     inline bool operator !(T a) { return uint32_t(a) == 0; } \
@@ -904,6 +905,51 @@ namespace PhxEngine::RHI
 
     using BufferHandle = Core::Handle<Buffer>;
 
+    struct RenderPassAttachment
+    {
+        enum class Type
+        {
+            RenderTarget,
+            DepthStencil,
+        } Type = Type::RenderTarget;
+
+        enum class LoadOpType
+        {
+            Load,
+            Clear,
+            DontCare,
+        } LoadOp = LoadOpType::Load;
+
+        TextureHandle Texture;
+        int Subresource = -1;
+
+        enum class StoreOpType
+        {
+            Store,
+            DontCare,
+        } StoreOp = StoreOpType::Store;
+
+        ResourceStates InitialLayout = ResourceStates::Unknown;	// layout before the render pass
+        ResourceStates SubpassLayout = ResourceStates::Unknown;	// layout within the render pass
+        ResourceStates FinalLayout = ResourceStates::Unknown;		// layout after the render pass
+    };
+
+    struct RenderPassDesc
+    {
+        enum Flags
+        {
+            None = 0,
+            AllowUavWrites = 1 << 0,
+        };
+
+        uint32_t Flags = Flags::None;
+        std::vector<RenderPassAttachment> Attachments;
+    };
+
+    // Forward Declare, no real implementation
+    struct RenderPass;
+    using RenderPassHandle = Core::Handle<RenderPass>;
+
     class ITimerQuery
     {
     public:
@@ -989,6 +1035,9 @@ namespace PhxEngine::RHI
         virtual void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers) = 0;
         virtual void ClearTextureFloat(TextureHandle texture, Color const& clearColour) = 0 ;
         virtual void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) = 0;
+
+        virtual void BeginRenderPass(RenderPassHandle renderPass) = 0;
+        virtual void EndRenderPass() = 0;
 
         virtual void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t startVertex = 0, uint32_t startInstance = 0) = 0;
         virtual void DrawIndexed(
@@ -1128,6 +1177,20 @@ namespace PhxEngine::RHI
         CommandQueueType CommandQueue;
     };
 
+    enum class DeviceCapability
+    {
+        None = 0,
+        RT_VT_ArrayIndex_Without_GS     = 1 << 0,
+        DXR                             = 1 << 1,
+        RenderPass                      = 1 << 2,
+        RayQuery                        = 1 << 3,
+        VariableRateShading             = 1 << 4,
+        MeshShading                     = 1 << 5,
+        CreateNoteZeroed                = 1 << 6,
+    };
+
+    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(DeviceCapability);
+
     class IGraphicsDevice
     {
     public:
@@ -1152,6 +1215,9 @@ namespace PhxEngine::RHI
         virtual const TextureDesc& GetTextureDesc(TextureHandle handle) = 0;
         virtual DescriptorIndex GetDescriptorIndex(TextureHandle handle) = 0;
         virtual void DeleteTexture(TextureHandle handle) = 0;
+
+        virtual RenderPassHandle CreateRenderPass(RenderPassDesc const& desc) = 0;
+        virtual void DeleteRenderPass(RenderPassHandle handle) = 0;
 
         virtual TextureHandle CreateDepthStencil(TextureDesc const& desc) = 0;
 
@@ -1222,6 +1288,8 @@ namespace PhxEngine::RHI
 
         virtual size_t GetFrameIndex() = 0;
         virtual size_t GetMaxInflightFrames() = 0;
+
+        virtual bool CheckCapability(DeviceCapability deviceCapability) = 0;
     };
 
     extern void ReportLiveObjects();

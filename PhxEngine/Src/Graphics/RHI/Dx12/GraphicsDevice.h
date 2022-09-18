@@ -23,7 +23,7 @@ namespace PhxEngine::RHI::Dx12
 {
     constexpr size_t kNumCommandListPerFrame = 32;
     constexpr size_t kResourcePoolSize = 100000; // 1 KB of handles
-
+    constexpr size_t kNumConcurrentRenderTargets = 8;
     struct TrackedResources;
 
     class BindlessDescriptorTable;
@@ -126,11 +126,19 @@ namespace PhxEngine::RHI::Dx12
 
         // -- The views ---
         DescriptorHeapAllocation RtvAllocation;
+        std::vector<DescriptorHeapAllocation> RtvSubresourcesAlloc = {};
+
         DescriptorHeapAllocation DsvAllocation;
+        std::vector<DescriptorHeapAllocation> DsvSubresourcesAlloc = {};
+
         DescriptorHeapAllocation SrvAllocation;
+        std::vector<DescriptorHeapAllocation> SrvSubresourcesAlloc = {};
+
         DescriptorHeapAllocation UavAllocation;
+        std::vector<DescriptorHeapAllocation> UavSubresourcesAlloc = {};
 
         DescriptorIndex BindlessResourceIndex = cInvalidDescriptorIndex;
+        std::vector<DescriptorIndex> BindlessSubresourceIndex = {};
 
         Dx12Texture() = default;
         Dx12Texture(Dx12Texture & other)
@@ -190,6 +198,20 @@ namespace PhxEngine::RHI::Dx12
         }
     };
 
+    struct Dx12RenderPass final
+    {
+        RenderPassDesc Desc = {};
+
+        D3D12_RENDER_PASS_FLAGS D12RenderFlags = D3D12_RENDER_PASS_FLAG_NONE;
+
+        size_t NumRenderTargets = 0;
+        std::array<D3D12_RENDER_PASS_RENDER_TARGET_DESC, kNumConcurrentRenderTargets> RTVs = {};
+        D3D12_RENDER_PASS_DEPTH_STENCIL_DESC DSV = {};
+
+        std::vector<D3D12_RESOURCE_BARRIER> BarrierDescBegin;
+        std::vector<D3D12_RESOURCE_BARRIER> BarrierDescEnd;
+    };
+
     struct SwapChain
     {
         Microsoft::WRL::ComPtr<IDXGISwapChain4> DxgiSwapchain;
@@ -244,6 +266,9 @@ namespace PhxEngine::RHI::Dx12
         InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) override;
         GraphicsPSOHandle CreateGraphicsPSO(GraphicsPSODesc const& desc) override;
         ComputePSOHandle CreateComputePso(ComputePSODesc const& desc) override;
+
+        RenderPassHandle CreateRenderPass(RenderPassDesc const& desc) override;
+        void DeleteRenderPass(RenderPassHandle handle) override;
 
         TextureHandle CreateDepthStencil(TextureDesc const& desc) override;
 
@@ -303,6 +328,9 @@ namespace PhxEngine::RHI::Dx12
 
         size_t GetFrameIndex() override { return this->GetCurrentBackBufferIndex(); };
         size_t GetMaxInflightFrames() override { return this->m_swapChain.Desc.BufferCount; }
+
+        bool CheckCapability(DeviceCapability deviceCapability);
+
         // -- Dx12 Specific functions ---
     public:
         TextureHandle CreateRenderTarget(TextureDesc const& desc, Microsoft::WRL::ComPtr<ID3D12Resource> d3d12TextureResource);
@@ -348,6 +376,7 @@ namespace PhxEngine::RHI::Dx12
         // Maybe better encapulate this.
         Core::Pool<Dx12Texture, Texture>& GetTexturePool() { return this->m_texturePool; };
         Core::Pool<Dx12Buffer, Buffer>& GetBufferPool() { return this->m_bufferPool; };
+        Core::Pool<Dx12RenderPass, RenderPass>& GetRenderPassPool() { return this->m_renderPassPool; };
 
     private:
         size_t GetCurrentBackBufferIndex() const;
@@ -388,17 +417,13 @@ namespace PhxEngine::RHI::Dx12
 		D3D12_FEATURE_DATA_SHADER_MODEL   FeatureDataShaderModel = {};
         ShaderModel m_minShaderModel = ShaderModel::SM_6_0;
 
-		bool IsDxrSupported = false;
-		bool IsRayQuerySupported = false;
-		bool IsRenderPassSupported = false;
-		bool IsVariableRateShadingSupported = false;
-		bool IsMeshShadingSupported = false;
-		bool IsCreateNotZeroedAvailable = false;
 		bool IsUnderGraphicsDebugger = false;
+        RHI::DeviceCapability m_capabilities;
 
         // -- Resouce Pool ---
         Core::Pool<Dx12Texture, Texture> m_texturePool;
         Core::Pool<Dx12Buffer, Buffer> m_bufferPool;
+        Core::Pool<Dx12RenderPass, RenderPass> m_renderPassPool;
 
         // -- SwapChain ---
 		SwapChain m_swapChain;

@@ -17,6 +17,7 @@ class DeferredRenderer : public PhxEngine::Graphics::IRenderer
         PSO_FullScreenQuad,
         PSO_DeferredLightingPass,
         PSO_Sky,
+        PSO_EnvCapture_SkyProcedural,
 
         // -- Post Process ---
         PSO_ToneMappingPass,
@@ -30,6 +31,8 @@ public:
     {
         this->FreeResources();
     }
+
+    void Update(PhxEngine::Scene::Scene& scene);
 
     void RenderScene(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene);
 
@@ -60,7 +63,15 @@ private:
     void CreatePSOs();
     void CreateRenderTargets(DirectX::XMFLOAT2 const& size);
 
+    // Potential Render Functions
+private:
+    void RefreshEnvProbs(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
     void DrawMeshes(PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
+
+
+    // Scene Update Systems -> Should be coupled with Scene?
+private:
+    void RunProbeUpdateSystem(PhxEngine::Scene::Scene& scene);
 
 private:
     PhxEngine::RHI::CommandListHandle m_commandList;
@@ -91,6 +102,14 @@ private:
 
     DirectX::XMFLOAT2 m_canvasSize;
 
+    // -- Scene Env Propes ---
+    static constexpr uint32_t kEnvmapCount = 16;
+    static constexpr uint32_t kEnvmapRes = 128;
+    static constexpr PhxEngine::RHI::FormatType kEnvmapFormat = PhxEngine::RHI::FormatType::R11G11B10_FLOAT;
+    static constexpr uint32_t kEnvmapMIPs = 8;
+    static constexpr uint32_t kEnvmapMSAASampleCount = 8;
+
+    PhxEngine::RHI::TextureHandle m_envMapArray;
 
     enum ConstantBufferTypes
     {
