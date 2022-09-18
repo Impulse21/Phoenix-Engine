@@ -18,10 +18,8 @@ namespace PhxEngine::Scene
 	struct IDComponent
 	{
 		Core::UUID ID;
-
-		IDComponent() = default;
-		IDComponent(const IDComponent&) = default;
 	};
+
 	struct NameComponent
 	{
 		std::string Name;
@@ -141,12 +139,12 @@ namespace PhxEngine::Scene
 				DirectX::XMMatrixTranslationFromVector(localTranslation);
 		}
 
-		inline void TransformComponent::MatrixTransform(const DirectX::XMFLOAT4X4& matrix)
+		inline void MatrixTransform(const DirectX::XMFLOAT4X4& matrix)
 		{
 			this->MatrixTransform(DirectX::XMLoadFloat4x4(&matrix));
 		}
 
-		void TransformComponent::MatrixTransform(const DirectX::XMMATRIX& matrix)
+		inline void MatrixTransform(const DirectX::XMMATRIX& matrix)
 		{
 			this->SetDirty();
 
