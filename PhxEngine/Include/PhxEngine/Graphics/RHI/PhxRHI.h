@@ -1231,11 +1231,13 @@ namespace PhxEngine::RHI
         virtual BufferHandle CreateBuffer(BufferDesc const& desc) = 0;
         virtual const BufferDesc& GetBufferDesc(BufferHandle handle) = 0;
         virtual DescriptorIndex GetDescriptorIndex(BufferHandle handle) = 0;
+
         template<typename T>
         T* GetBufferMappedData(BufferHandle handle)
         {
-            return static_cast<T*>(this->GetMappedData(handle));
-        }
+            return static_cast<T*>(this->GetBufferMappedData(handle));
+        };
+
         virtual void* GetBufferMappedData(BufferHandle handle) = 0;
         virtual uint32_t GetBufferMappedDataSizeInBytes(BufferHandle handle) = 0;
         virtual void DeleteBuffer(BufferHandle handle) = 0;

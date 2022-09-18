@@ -473,7 +473,7 @@ void DeferredRenderer::PrepareFrameRenderData(
     size_t lightCount = 0;
     for (auto e : lightView)
     {
-        auto& [lightComponent, transformComponent] = lightView.get<LightComponent, TransformComponent>(e);
+        auto [lightComponent, transformComponent] = lightView.get<LightComponent, TransformComponent>(e);
         if (!lightComponent.IsEnabled() && lightCount < Shader::SHADER_LIGHT_ENTITY_COUNT)
         {
             continue;

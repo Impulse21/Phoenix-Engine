@@ -5,7 +5,7 @@
 #include <PhxEngine/Scene/Components.h>
 #include <PhxEngine/Scene/SceneWriter.h>
 
-#define ENABLE_CEREAL 1
+#define ENABLE_CEREAL 0
 
 #if ENABLE_CEREAL
 #include <cereal/archives/json.hpp>
@@ -25,8 +25,15 @@ using namespace PhxEngine;
 using namespace PhxEngine::Core;
 using namespace PhxEngine::Scene;
 
+
+#if ENABLE_CEREAL
 namespace PhxEngine::Scene
 {
+    template<typename Archive>
+    void serialize(Archive& archive, PhxEngine::Scene::IDComponent& idComponent)
+    {
+        // TODO
+    }
 	template<typename Archive>
 	void serialize(Archive& archive, PhxEngine::Scene::Entity& entity)
 	{
@@ -65,12 +72,7 @@ namespace PhxEngine::Scene
 	void serialize(Archive& archive, PhxEngine::Scene::MeshRenderComponent& transform)
 	{
 		// Get The Static Mesh's Path and save it out.
-		archive(
-			cereal::make_nvp("Translation", transform.LocalTranslation));
-		archive(
-			cereal::make_nvp("Rotation", transform.LocalRotation));
-		archive(
-			cereal::make_nvp("Scale", transform.LocalScale));
+        // TODO
 	}
 }
 
@@ -97,7 +99,7 @@ namespace DirectX
         archive(CEREAL_NVP(float4));
     }
 }
-
+#endif 
 namespace
 {
 #if ENABLE_CEREAL
@@ -116,6 +118,7 @@ namespace
 
         {
             // output finishes flushing its contents when it goes out of scope
+            /* TODO: Compiler error that I don't want to deal with at the moment.
             cereal::JSONOutputArchive archive{ os };
             std::vector<Entity> entities;
             entities.reserve(scene.GetRegistry().size());
@@ -129,6 +132,7 @@ namespace
                 });
 
             archive(CEREAL_NVP(entities));
+            */
         }
 
         os.close();
@@ -140,13 +144,13 @@ namespace
     {
     public:
         RapidJsonSceneWriter() = default;
-        bool Write(std::string const& filePath, Scene& scene);
+        bool Write(std::string const& filePath, PhxEngine::Scene::Scene &scene);
 
     private:
         void WriteEntity(rapidjson::Document& d, rapidjson::Value& entitiesV, Entity entity);
     };
 
-    bool RapidJsonSceneWriter::Write(std::string const& filePath, Scene& scene)
+    bool RapidJsonSceneWriter::Write(std::string const& filePath, PhxEngine::Scene::Scene& scene)
     {
         rapidjson::Document d;
         {
@@ -175,21 +179,6 @@ namespace
     {
         assert(entity.HasComponent<IDComponent>());
 
-        // TODO: I am here
-        rapidjson::Value uuidValue(r)
-            out << YAML::BeginMap; // Entity
-        out << YAML::Key << "Entity" << YAML::Value << entity.GetUUID();
-
-        if (entity.HasComponent<TagComponent>())
-        {
-            out << YAML::Key << "TagComponent";
-            out << YAML::BeginMap; // TagComponent
-
-            auto& tag = entity.GetComponent<TagComponent>().Tag;
-            out << YAML::Key << "Tag" << YAML::Value << tag;
-
-            out << YAML::EndMap; // TagComponent
-        }
     }
 #endif
 }
