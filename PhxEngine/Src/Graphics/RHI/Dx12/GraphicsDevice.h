@@ -141,36 +141,36 @@ namespace PhxEngine::RHI::Dx12
         std::vector<DescriptorIndex> BindlessSubresourceIndex = {};
 
         Dx12Texture() = default;
-        Dx12Texture(Dx12Texture & other)
-        {
-            this->Desc = other.Desc;
-            this->D3D12Resource = std::move(other.D3D12Resource);
-
-            this->RtvAllocation = std::move(other.RtvAllocation);
-            this->DsvAllocation = std::move(other.DsvAllocation);
-            this->SrvAllocation = std::move(other.SrvAllocation);
-            this->UavAllocation = std::move(other.UavAllocation);
-            BindlessResourceIndex = other.BindlessResourceIndex;
-        }
-
-        Dx12Texture(Dx12Texture const& other)
-        {
-            this->Desc = other.Desc;
-            this->D3D12Resource = other.D3D12Resource;
-
-            this->RtvAllocation = other.RtvAllocation;
-            this->DsvAllocation = other.DsvAllocation;
-            this->SrvAllocation = other.SrvAllocation;
-            this->UavAllocation = other.UavAllocation;
-            BindlessResourceIndex = other.BindlessResourceIndex;
-        }
 
         void DisposeViews()
         {
-            this->RtvAllocation.Free();
-            this->DsvAllocation.Free();
-            this->SrvAllocation.Free();
-            this->UavAllocation.Free();
+            for (auto& view : this->RtvSubresourcesAlloc)
+            {
+                view.Free();
+            }
+            RtvSubresourcesAlloc.clear();
+            RtvAllocation = {};
+
+            for (auto& view : this->DsvSubresourcesAlloc)
+            {
+                view.Free();
+            }
+            DsvSubresourcesAlloc.clear();
+            DsvAllocation = {};
+
+            for (auto& view : this->SrvSubresourcesAlloc)
+            {
+                view.Free();
+            }
+            SrvSubresourcesAlloc.clear();
+            SrvAllocation = {};
+
+            for (auto& view : this->UavSubresourcesAlloc)
+            {
+                view.Free();
+            }
+            UavSubresourcesAlloc.clear();
+            UavAllocation = {};
         }
     };
 
@@ -179,12 +179,18 @@ namespace PhxEngine::RHI::Dx12
         BufferDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
         DescriptorIndex BindlessResourceIndex = cInvalidDescriptorIndex;
+        std::vector<DescriptorIndex> BindlessSubresourceIndex = {};
 
         void* MappedData = nullptr;
         uint32_t MappedSizeInBytes = 0;
 
         // -- Views ---
         DescriptorHeapAllocation SrvAllocation;
+        std::vector<DescriptorHeapAllocation> SrvSubresourcesAlloc = {};
+
+        DescriptorHeapAllocation UavAllocation;
+        std::vector<DescriptorHeapAllocation> UavSubresourcesAlloc = {};
+
 
         D3D12_VERTEX_BUFFER_VIEW VertexView = {};
         D3D12_INDEX_BUFFER_VIEW IndexView = {};
@@ -194,7 +200,19 @@ namespace PhxEngine::RHI::Dx12
 
         void DisposeViews()
         {
-            this->SrvAllocation.Free();
+            for (auto& view : this->SrvSubresourcesAlloc)
+            {
+                view.Free();
+            }
+            SrvSubresourcesAlloc.clear();
+            SrvAllocation = {};
+
+            for (auto& view : this->UavSubresourcesAlloc)
+            {
+                view.Free();
+            }
+            UavSubresourcesAlloc.clear();
+            UavAllocation = {};
         }
     };
 
@@ -270,8 +288,6 @@ namespace PhxEngine::RHI::Dx12
         RenderPassHandle CreateRenderPass(RenderPassDesc const& desc) override;
         void DeleteRenderPass(RenderPassHandle handle) override;
 
-        TextureHandle CreateDepthStencil(TextureDesc const& desc) override;
-
         TextureHandle CreateTexture(TextureDesc const& desc) override;
         const TextureDesc& GetTextureDesc(TextureHandle handle) override;
         DescriptorIndex GetDescriptorIndex(TextureHandle handle) override;
@@ -286,6 +302,8 @@ namespace PhxEngine::RHI::Dx12
         uint32_t GetBufferMappedDataSizeInBytes(BufferHandle handle) override;
         void DeleteBuffer(BufferHandle handle) override;
 
+        int CreateSubresource(TextureHandle texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip = 0, uint32_t mipCount = ~0u) override;
+        int CreateSubresource(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size = ~0u) override;
 
         // -- Query Stuff ---
         TimerQueryHandle CreateTimerQuery() override;
@@ -335,11 +353,13 @@ namespace PhxEngine::RHI::Dx12
     public:
         TextureHandle CreateRenderTarget(TextureDesc const& desc, Microsoft::WRL::ComPtr<ID3D12Resource> d3d12TextureResource);
 
+        int CreateShaderResourceView(BufferHandle buffer, size_t offset, size_t size);
+        int CreateUnorderedAccessView(BufferHandle buffer, size_t offset, size_t size);
 
-        void CreateShaderResourceView(Dx12Texture& texture);
-        void CreateRenderTargetView(Dx12Texture& texture);
-        void CreateDepthStencilView(Dx12Texture& texture);
-        void CreateUnorderedAccessView(Dx12Texture& texture);
+        int CreateShaderResourceView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+        int CreateRenderTargetView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+        int CreateDepthStencilView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+        int CreateUnorderedAccessView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
 
     public:
         // TODO: Remove
@@ -386,7 +406,6 @@ namespace PhxEngine::RHI::Dx12
 
     private:
         void CreateBufferInternal(BufferDesc const& desc, Dx12Buffer& outBuffer);
-        void CreateSRVViews(Dx12Buffer& gpuBuffer);
 
         void CreateGpuTimestampQueryHeap(uint32_t queryCount);
 

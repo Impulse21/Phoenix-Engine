@@ -476,6 +476,15 @@ namespace PhxEngine::RHI
     };
 
     PHXRHI_ENUM_CLASS_FLAG_OPERATORS(BindingFlags);
+
+    enum class SubresouceType
+    {
+        SRV,
+        UAV,
+        RTV,
+        DSV,
+    };
+
 #pragma endregion
 
     union ClearValue
@@ -1230,7 +1239,8 @@ namespace PhxEngine::RHI
         virtual RenderPassHandle CreateRenderPass(RenderPassDesc const& desc) = 0;
         virtual void DeleteRenderPass(RenderPassHandle handle) = 0;
 
-        virtual TextureHandle CreateDepthStencil(TextureDesc const& desc) = 0;
+        virtual int CreateSubresource(TextureHandle texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip = 0, uint32_t mpCount = ~0) = 0;
+        virtual int CreateSubresource(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size = ~0u) = 0;
 
         // TODO: I don't think is this a clear interface as to what desc data is required
         // Consider cleaning this up eventually.
