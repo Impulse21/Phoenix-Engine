@@ -187,6 +187,37 @@ void PhxEngine::RHI::Dx12::CommandList::TransitionBarriers(Core::Span<GpuBarrier
     }
 }
 
+void PhxEngine::RHI::Dx12::CommandList::BeginRenderPassBackBuffer()
+{
+    SwapChain& swapchain = this->m_graphicsDevice.GetSwapchain();
+    if (!swapchain.RenderPass.IsValid())
+    {
+        return;
+    }
+
+    this->m_activeRenderTarget = this->m_graphicsDevice.GetSwapchain().RenderPass;
+    Dx12Texture* backBuffer = this->m_graphicsDevice.GetTexturePool().Get(this->m_graphicsDevice.GetBackBuffer());
+
+    D3D12_RESOURCE_BARRIER barrier = {};
+    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.Transition.pResource = backBuffer->D3D12Resource.Get();
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    this->m_d3d12CommandList6->ResourceBarrier(1, &barrier);
+
+    D3D12_RENDER_PASS_RENDER_TARGET_DESC RTV = {};
+    RTV.cpuDescriptor = backBuffer->RtvAllocation.GetCpuHandle();
+    RTV.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+    RTV.BeginningAccess.Clear.ClearValue.Color[0] = swapchain.Desc.OptmizedClearValue.Colour.R;
+    RTV.BeginningAccess.Clear.ClearValue.Color[1] = swapchain.Desc.OptmizedClearValue.Colour.G;
+    RTV.BeginningAccess.Clear.ClearValue.Color[2] = swapchain.Desc.OptmizedClearValue.Colour.B;
+    RTV.BeginningAccess.Clear.ClearValue.Color[3] = swapchain.Desc.OptmizedClearValue.Colour.A;
+    RTV.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+    this->m_d3d12CommandList6->BeginRenderPass(1, &RTV, nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
+}
+
 void PhxEngine::RHI::Dx12::CommandList::BeginRenderPass(RenderPassHandle renderPass)
 {
     Dx12RenderPass* renderPassImpl = this->m_graphicsDevice.GetRenderPassPool().Get(renderPass);
@@ -219,18 +250,34 @@ void PhxEngine::RHI::Dx12::CommandList::EndRenderPass()
         return;
     }
 
-    Dx12RenderPass* renderPassImpl = this->m_graphicsDevice.GetRenderPassPool().Get(this->m_activeRenderTarget);
-    if (!renderPassImpl)
+    if (this->m_activeRenderTarget == this->m_graphicsDevice.GetSwapchain().RenderPass)
     {
-        return;
-    }
+        Dx12Texture* backBuffer = this->m_graphicsDevice.GetTexturePool().Get(this->m_graphicsDevice.GetBackBuffer());
 
-    // Transiion Barriers
-    if (!renderPassImpl->BarrierDescEnd.empty())
+        D3D12_RESOURCE_BARRIER barrier = {};
+        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.Transition.pResource = backBuffer->D3D12Resource.Get();
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        this->m_d3d12CommandList6->ResourceBarrier(1, &barrier);
+    }
+    else
     {
-        this->m_d3d12CommandList->ResourceBarrier(
-            (UINT)renderPassImpl->BarrierDescEnd.size(),
-            renderPassImpl->BarrierDescEnd.data());
+        Dx12RenderPass* renderPassImpl = this->m_graphicsDevice.GetRenderPassPool().Get(this->m_activeRenderTarget);
+        if (!renderPassImpl)
+        {
+            return;
+        }
+
+        // Transiion Barriers
+        if (!renderPassImpl->BarrierDescEnd.empty())
+        {
+            this->m_d3d12CommandList->ResourceBarrier(
+                (UINT)renderPassImpl->BarrierDescEnd.size(),
+                renderPassImpl->BarrierDescEnd.data());
+        }
     }
 
     this->m_activeRenderTarget = {};

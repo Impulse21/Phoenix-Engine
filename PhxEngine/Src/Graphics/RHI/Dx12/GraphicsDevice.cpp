@@ -335,6 +335,8 @@ PhxEngine::RHI::Dx12::GraphicsDevice::~GraphicsDevice()
 	}
 
 	this->m_swapChain.BackBuffers.clear();
+	this->DeleteRenderPass(this->m_swapChain.RenderPass);
+
 	while (!this->m_deleteQueue.empty())
 	{
 		DeleteItem& deleteItem = this->m_deleteQueue.front();
@@ -424,6 +426,13 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateSwapChain(SwapChainDesc const& 
 		textureDesc.DebugName = std::string(allocatorName);
 
 		this->m_swapChain.BackBuffers[i] = this->CreateRenderTarget(textureDesc, backBuffer);
+	}
+
+	// Create a dummy Renderpass 
+	if (!this->m_swapChain.RenderPass.IsValid())
+	{
+		// Create Dummy Render pass
+		this->m_swapChain.RenderPass = this->CreateRenderPass({});
 	}
 
 	ThrowIfFailed(
@@ -669,7 +678,7 @@ RenderPassHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderPass(RenderPa
 		clearValue.Color[2] = textureImpl->Desc.OptmizedClearValue.Colour.B;
 		clearValue.Color[3] = textureImpl->Desc.OptmizedClearValue.Colour.A;
 		clearValue.DepthStencil.Depth = textureImpl->Desc.OptmizedClearValue.DepthStencil.Depth;
-		clearValue.DepthStencil.Depth = textureImpl->Desc.OptmizedClearValue.DepthStencil.Stencil;
+		clearValue.DepthStencil.Stencil = textureImpl->Desc.OptmizedClearValue.DepthStencil.Stencil;
 		clearValue.Format = dxgiFormatMapping.rtvFormat;
 
 		
@@ -876,6 +885,8 @@ RenderPassHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderPass(RenderPa
 			renderPassImpl.BarrierDescEnd.push_back(barrierdesc);
 		}
 	}
+
+	return this->m_renderPassPool.Insert(renderPassImpl);
 }
 
 void PhxEngine::RHI::Dx12::GraphicsDevice::DeleteRenderPass(RenderPassHandle handle)

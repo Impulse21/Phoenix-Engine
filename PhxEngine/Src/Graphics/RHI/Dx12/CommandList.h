@@ -67,6 +67,7 @@ namespace PhxEngine::RHI::Dx12
 		void TransitionBarrier(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState) override;
 		void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers) override;
 
+		void BeginRenderPassBackBuffer() override;
 		void BeginRenderPass(RenderPassHandle renderPass) override;
 		void EndRenderPass() override;
 

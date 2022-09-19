@@ -217,7 +217,7 @@ namespace PhxEngine::RHI::Dx12
         Microsoft::WRL::ComPtr<IDXGISwapChain4> DxgiSwapchain;
         SwapChainDesc Desc;
         std::vector<TextureHandle> BackBuffers;
-
+        RenderPassHandle RenderPass = {};
         uint32_t GetNumBackBuffers() const { return this->Desc.BufferCount; }
     };
 
@@ -353,6 +353,8 @@ namespace PhxEngine::RHI::Dx12
 
         Microsoft::WRL::ComPtr<IDXGIFactory6> GetDxgiFactory() { return this->m_factory; }
         Microsoft::WRL::ComPtr<IDXGIAdapter> GetDxgiAdapter() { return this->m_gpuAdapter->DxgiAdapter; }
+
+        SwapChain& GetSwapchain() { return this->m_swapChain; }
 
     public:
         CommandQueue* GetGfxQueue() { return this->GetQueue(CommandQueueType::Graphics); }

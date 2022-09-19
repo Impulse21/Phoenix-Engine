@@ -478,6 +478,18 @@ namespace PhxEngine::RHI
     PHXRHI_ENUM_CLASS_FLAG_OPERATORS(BindingFlags);
 #pragma endregion
 
+    union ClearValue
+    {
+        // TODO: Change to be a flat array
+        // float Colour[4];
+        RHI::Color Colour;
+        struct ClearDepthStencil
+        {
+            float Depth;
+            uint32_t Stencil;
+        } DepthStencil;
+    };
+
     struct SwapChainDesc
     {
         uint32_t Width;
@@ -486,6 +498,16 @@ namespace PhxEngine::RHI
         FormatType Format = FormatType::UNKNOWN;
         bool VSync = false;
         Core::Platform::WindowHandle WindowHandle;
+        ClearValue OptmizedClearValue = 
+        { 
+            .Colour = 
+            { 
+                0.0f,
+                0.0f,
+                0.0f, 
+                1.0f,
+            } 
+        };
     };
 
     // -- Pipeline State objects ---
@@ -798,18 +820,6 @@ namespace PhxEngine::RHI
         uint32_t slicePitch = 0;
     };
 
-    union ClearValue
-    {
-        // TODO: Change to be a flat array
-        // float Colour[4];
-        RHI::Color Colour;
-        struct ClearDepthStencil
-        {
-            float Depth;
-            uint32_t Stencil;
-        } DepthStencil;
-    };
-
     struct TextureDesc
     {
         BindingFlags BindingFlags = BindingFlags::ShaderResource;
@@ -931,7 +941,7 @@ namespace PhxEngine::RHI
 
         ResourceStates InitialLayout = ResourceStates::Unknown;	// layout before the render pass
         ResourceStates SubpassLayout = ResourceStates::Unknown;	// layout within the render pass
-        ResourceStates FinalLayout = ResourceStates::Unknown;		// layout after the render pass
+        ResourceStates FinalLayout = ResourceStates::Unknown;   // layout after the render pass
     };
 
     struct RenderPassDesc
@@ -1036,6 +1046,7 @@ namespace PhxEngine::RHI
         virtual void ClearTextureFloat(TextureHandle texture, Color const& clearColour) = 0 ;
         virtual void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) = 0;
 
+        virtual void BeginRenderPassBackBuffer() = 0;
         virtual void BeginRenderPass(RenderPassHandle renderPass) = 0;
         virtual void EndRenderPass() = 0;
 

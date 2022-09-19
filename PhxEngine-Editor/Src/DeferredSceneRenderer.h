@@ -25,6 +25,15 @@ class DeferredRenderer : public PhxEngine::Graphics::IRenderer
         NumPsoTypes
     };
 
+    enum RenderPassType
+    {
+        RenderPass_GBuffer,
+        RenderPass_DeferredLighting,
+        RenderPass_Sky,
+        RenderPass_PostFx,
+        NumRenderPassTypes
+    };
+
 public:
     void Initialize() override;
     void Finialize() override
@@ -125,6 +134,8 @@ private:
         NumRB
     };
     std::array<PhxEngine::RHI::BufferHandle, NumRB> m_resourceBuffers;
+
+    std::array<PhxEngine::RHI::RenderPassHandle, NumRenderPassTypes> m_renderPasses;
 };
 
 
