@@ -358,19 +358,16 @@ void PhxEngine::LayeredApplication::Compose()
 
 	{
 		auto scopedMarker = this->m_composeCommandList->BeginScopedMarker("Compose back buffer");
+
+		this->m_composeCommandList->BeginRenderPassBackBuffer();
 		TextureHandle backBuffer = IGraphicsDevice::Ptr->GetBackBuffer();
-
-		this->m_composeCommandList->TransitionBarrier(backBuffer, ResourceStates::Present, ResourceStates::RenderTarget);
-		this->m_composeCommandList->ClearTextureFloat(backBuffer, { 0.0f, 0.0f, 0.0f, 1.0f });
-
-		this->m_composeCommandList->SetRenderTargets({ backBuffer }, TextureHandle());
 
 		for (auto& layer : this->m_layerStack)
 		{
 			layer->OnCompose(this->m_composeCommandList);
 		}
 
-		this->m_composeCommandList->TransitionBarrier(backBuffer, ResourceStates::RenderTarget, ResourceStates::Present);
+		this->m_composeCommandList->EndRenderPass();
 	}
 
 	this->m_composeCommandList->Close();

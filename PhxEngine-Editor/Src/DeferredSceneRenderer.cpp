@@ -100,6 +100,14 @@ void DeferredRenderer::FreeResources()
 
 void DeferredRenderer::FreeTextureResources()
 {
+    for (int i = 0; i < this->m_renderPasses.size(); i++)
+    {
+        if (this->m_renderPasses[i].IsValid())
+        {
+            IGraphicsDevice::Ptr->DeleteRenderPass(this->m_renderPasses[i]);
+        }
+    }
+
     PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_depthBuffer);
     PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.AlbedoTexture);
     PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.NormalTexture);
@@ -178,19 +186,18 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
     desc.DebugName = "Depth Buffer";
     desc.OptmizedClearValue.DepthStencil.Depth = 1.0f;
     desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::DepthStencil;
-    desc.InitialState = RHI::ResourceStates::DepthWrite;
+    desc.InitialState = RHI::ResourceStates::DepthRead;
     this->m_depthBuffer = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
     // -- Depth end ---
 
     // -- GBuffers ---
     desc.OptmizedClearValue.Colour = { 0.0f, 0.0f, 0.0f, 1.0f };
     desc.BindingFlags = RHI::BindingFlags::RenderTarget | RHI::BindingFlags::ShaderResource;
-    desc.InitialState = RHI::ResourceStates::RenderTarget;
+    desc.InitialState = RHI::ResourceStates::ShaderResource;
     desc.IsBindless = true;
 
     desc.Format = RHI::FormatType::RGBA32_FLOAT;
     desc.DebugName = "Albedo Buffer";
-
     this->m_gBuffer.AlbedoTexture = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
 
     // desc.Format = RHI::FormatType::R10G10B10A2_UNORM;
@@ -214,6 +221,101 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
     desc.Format = RHI::FormatType::R10G10B10A2_UNORM;
     desc.DebugName = "Final Colour Buffer";
     this->m_finalColourBuffer = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
+
+
+    // Create backing render targets
+    this->m_renderPasses[RenderPass_GBuffer] = IGraphicsDevice::Ptr->CreateRenderPass(
+        {
+            .Attachments =
+            {
+                {
+                    .LoadOp = RenderPassAttachment::LoadOpType::Clear,
+                    .Texture = this->m_gBuffer.AlbedoTexture,
+                    .InitialLayout = RHI::ResourceStates::ShaderResource,
+                    .SubpassLayout = RHI::ResourceStates::RenderTarget,
+                    .FinalLayout = RHI::ResourceStates::ShaderResource
+                },
+                {
+                    .LoadOp = RenderPassAttachment::LoadOpType::Clear,
+                    .Texture = this->m_gBuffer.NormalTexture,
+                    .InitialLayout = RHI::ResourceStates::ShaderResource,
+                    .SubpassLayout = RHI::ResourceStates::RenderTarget,
+                    .FinalLayout = RHI::ResourceStates::ShaderResource
+                },
+                {
+                    .LoadOp = RenderPassAttachment::LoadOpType::Clear,
+                    .Texture = this->m_gBuffer.SurfaceTexture,
+                    .InitialLayout = RHI::ResourceStates::ShaderResource,
+                    .SubpassLayout = RHI::ResourceStates::RenderTarget,
+                    .FinalLayout = RHI::ResourceStates::ShaderResource
+                },
+                {
+                    .LoadOp = RenderPassAttachment::LoadOpType::Clear,
+                    .Texture = this->m_gBuffer._PostionTexture,
+                    .InitialLayout = RHI::ResourceStates::ShaderResource,
+                    .SubpassLayout = RHI::ResourceStates::RenderTarget,
+                    .FinalLayout = RHI::ResourceStates::ShaderResource
+                },
+                {
+                    .Type = RenderPassAttachment::Type::DepthStencil,
+                    .LoadOp = RenderPassAttachment::LoadOpType::Clear,
+                    .Texture = this->m_depthBuffer,
+                    .InitialLayout = RHI::ResourceStates::DepthRead,
+                    .SubpassLayout = RHI::ResourceStates::DepthWrite,
+                    .FinalLayout = RHI::ResourceStates::DepthRead
+                },
+            }
+        });
+
+    this->m_renderPasses[RenderPass_DeferredLighting] = IGraphicsDevice::Ptr->CreateRenderPass(
+        {
+            .Attachments =
+            {
+                {
+                    .LoadOp = RenderPassAttachment::LoadOpType::Clear,
+                    .Texture = this->m_deferredLightBuffer,
+                    .InitialLayout = RHI::ResourceStates::ShaderResource,
+                    .SubpassLayout = RHI::ResourceStates::RenderTarget,
+                    .FinalLayout = RHI::ResourceStates::RenderTarget
+                },
+            }
+        });
+
+    this->m_renderPasses[RenderPass_Sky] = IGraphicsDevice::Ptr->CreateRenderPass(
+        {
+            .Attachments =
+            {
+                {
+                    .LoadOp = RenderPassAttachment::LoadOpType::Load,
+                    .Texture = this->m_deferredLightBuffer,
+                    .InitialLayout = RHI::ResourceStates::RenderTarget,
+                    .SubpassLayout = RHI::ResourceStates::RenderTarget,
+                    .FinalLayout = RHI::ResourceStates::ShaderResource
+                },
+                {
+                    .Type = RenderPassAttachment::Type::DepthStencil,
+                    .LoadOp = RenderPassAttachment::LoadOpType::Load,
+                    .Texture = this->m_depthBuffer,
+                    .InitialLayout = RHI::ResourceStates::DepthRead,
+                    .SubpassLayout = RHI::ResourceStates::DepthRead,
+                    .FinalLayout = RHI::ResourceStates::DepthRead
+                },
+            }
+        });
+
+    this->m_renderPasses[RenderPass_PostFx] = IGraphicsDevice::Ptr->CreateRenderPass(
+        {
+            .Attachments =
+            {
+                {
+                    .LoadOp = RenderPassAttachment::LoadOpType::Clear,
+                    .Texture = this->m_finalColourBuffer,
+                    .InitialLayout = RHI::ResourceStates::ShaderResource,
+                    .SubpassLayout = RHI::ResourceStates::RenderTarget,
+                    .FinalLayout = RHI::ResourceStates::ShaderResource
+                },
+            }
+        });
 }
 
 void DeferredRenderer::RefreshEnvProbs(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList)
@@ -690,35 +792,10 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
     TransposeMatrix(camera.ViewInv, &cameraData.ViewInv);
 
     {
-        auto _ = this->m_commandList->BeginScopedMarker("Clear Render Targets");
-        this->m_commandList->ClearDepthStencilTexture(this->m_depthBuffer, true, 1.0f, false, 0.0f);
-        this->m_commandList->ClearTextureFloat(
-            this->m_gBuffer.AlbedoTexture,
-            IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.AlbedoTexture).OptmizedClearValue.Colour);
-        this->m_commandList->ClearTextureFloat(
-            this->m_gBuffer.NormalTexture,
-            IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.NormalTexture).OptmizedClearValue.Colour);
-        this->m_commandList->ClearTextureFloat(
-            this->m_gBuffer.SurfaceTexture,
-            IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.SurfaceTexture).OptmizedClearValue.Colour);
-        this->m_commandList->ClearTextureFloat(
-            this->m_gBuffer._PostionTexture,
-            IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer._PostionTexture).OptmizedClearValue.Colour);
-
-    }
-
-    {
         auto scrope = this->m_commandList->BeginScopedMarker("Opaque GBuffer Pass");
 
         // -- Prepare PSO ---
-        this->m_commandList->SetRenderTargets(
-            {
-                this->m_gBuffer.AlbedoTexture,
-                this->m_gBuffer.NormalTexture,
-                this->m_gBuffer.SurfaceTexture,
-                this->m_gBuffer._PostionTexture,
-            },
-            this->m_depthBuffer);
+        this->m_commandList->BeginRenderPass(this->m_renderPasses[RenderPass_GBuffer]);
         this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_GBufferPass]);
 
         RHI::Viewport v(this->m_canvasSize.x, this->m_canvasSize.y);
@@ -736,47 +813,18 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
         // this->m_commandList->BindResourceTable(PBRBindingSlots::BindlessDescriptorTable);
 
         DrawMeshes(scene, this->m_commandList);
+        this->m_commandList->EndRenderPass();
     }
 
     {
         auto scrope = this->m_commandList->BeginScopedMarker("Opaque Deferred Lighting Pass");
 
+        this->m_commandList->BeginRenderPass(this->m_renderPasses[RenderPass_DeferredLighting]);
         this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_DeferredLightingPass]);
 
         this->m_commandList->BindConstantBuffer(RootParameters_DeferredLightingFulLQuad::FrameCB, this->m_constantBuffers[CB_Frame]);
         this->m_commandList->BindDynamicConstantBuffer(RootParameters_DeferredLightingFulLQuad::CameraCB, cameraData);
 
-        this->m_commandList->SetRenderTargets({ this->m_deferredLightBuffer }, TextureHandle());
-
-        RHI::GpuBarrier preTransition[] =
-        {
-            RHI::GpuBarrier::CreateTexture(
-                this->m_depthBuffer,
-                IGraphicsDevice::Ptr->GetTextureDesc(this->m_depthBuffer).InitialState,
-                RHI::ResourceStates::ShaderResource),
-
-            RHI::GpuBarrier::CreateTexture(
-                this->m_gBuffer.AlbedoTexture,
-                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.AlbedoTexture).InitialState,
-                RHI::ResourceStates::ShaderResource),
-
-            RHI::GpuBarrier::CreateTexture(
-                this->m_gBuffer.NormalTexture,
-                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.NormalTexture).InitialState,
-                RHI::ResourceStates::ShaderResource),
-
-            RHI::GpuBarrier::CreateTexture(
-                this->m_gBuffer.SurfaceTexture,
-                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.SurfaceTexture).InitialState,
-                RHI::ResourceStates::ShaderResource),
-
-            RHI::GpuBarrier::CreateTexture(
-                this->m_gBuffer._PostionTexture,
-                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer._PostionTexture).InitialState,
-                RHI::ResourceStates::ShaderResource),
-        };
-
-        this->m_commandList->TransitionBarriers(Span<RHI::GpuBarrier>(preTransition, _countof(preTransition)));
 
         this->m_commandList->BindDynamicDescriptorTable(
             RootParameters_DeferredLightingFulLQuad::GBuffer,
@@ -789,40 +837,13 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
             });
         this->m_commandList->Draw(3, 1, 0, 0);
 
-
-        RHI::GpuBarrier postTransition[] =
-        {
-            RHI::GpuBarrier::CreateTexture(
-                this->m_depthBuffer,
-                RHI::ResourceStates::ShaderResource,
-                IGraphicsDevice::Ptr->GetTextureDesc(this->m_depthBuffer).InitialState),
-
-            RHI::GpuBarrier::CreateTexture(
-                this->m_gBuffer.AlbedoTexture,
-                RHI::ResourceStates::ShaderResource,
-                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.AlbedoTexture).InitialState),
-
-            RHI::GpuBarrier::CreateTexture(
-                this->m_gBuffer.NormalTexture,
-                RHI::ResourceStates::ShaderResource,
-                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.NormalTexture).InitialState),
-
-            RHI::GpuBarrier::CreateTexture(
-                this->m_gBuffer.SurfaceTexture,
-                RHI::ResourceStates::ShaderResource,
-                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.SurfaceTexture).InitialState),
-
-            RHI::GpuBarrier::CreateTexture(
-                this->m_gBuffer._PostionTexture,
-                RHI::ResourceStates::ShaderResource,
-                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer._PostionTexture).InitialState),
-        };
-        this->m_commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
+        this->m_commandList->EndRenderPass();
     }
 
     {
         auto scrope = this->m_commandList->BeginScopedMarker("Draw Sky Pass");
 
+        this->m_commandList->BeginRenderPass(this->m_renderPasses[RenderPass_Sky]);
         this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_Sky]);
 
         this->m_commandList->BindConstantBuffer(DefaultRootParameters::FrameCB, this->m_constantBuffers[CB_Frame]);
@@ -831,6 +852,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
         this->m_commandList->SetRenderTargets({ this->m_deferredLightBuffer }, this->m_depthBuffer);
 
         this->m_commandList->Draw(3, 1, 0, 0);
+        this->m_commandList->EndRenderPass();
     }
 
 	{
@@ -838,18 +860,8 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 		{
 			auto scrope = this->m_commandList->BeginScopedMarker("Tone Mapping");
 
+            this->m_commandList->BeginRenderPass(this->m_renderPasses[RenderPass_PostFx]);
 			this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_ToneMappingPass]);
-            this->m_commandList->SetRenderTargets({ this->m_finalColourBuffer }, TextureHandle());
-
-
-            RHI::GpuBarrier preTransition[] =
-            {
-                RHI::GpuBarrier::CreateTexture(
-                    this->m_deferredLightBuffer,
-                    IGraphicsDevice::Ptr->GetTextureDesc(this->m_deferredLightBuffer).InitialState,
-                    RHI::ResourceStates::ShaderResource),
-            };
-            this->m_commandList->TransitionBarriers(Span<RHI::GpuBarrier>(preTransition, _countof(preTransition)));
 
             // Exposure, not needed right now
             this->m_commandList->BindPushConstant(RootParameters_ToneMapping::Push, 1.0f);
@@ -861,17 +873,10 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
                 });
 
             this->m_commandList->Draw(3, 1, 0, 0);
-
-            RHI::GpuBarrier postTransition[] =
-            {
-                RHI::GpuBarrier::CreateTexture(
-                    this->m_deferredLightBuffer,
-                    RHI::ResourceStates::ShaderResource,
-                    IGraphicsDevice::Ptr->GetTextureDesc(this->m_deferredLightBuffer).InitialState),
-            };
-            this->m_commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
+            this->m_commandList->EndRenderPass();
 		}
 	}
+
     this->m_commandList->Close();
     RHI::IGraphicsDevice::Ptr->ExecuteCommandLists(this->m_commandList.get());
 }
