@@ -919,88 +919,6 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::DeleteRenderPass(RenderPassHandle han
 	this->m_deleteQueue.push_back(d);
 }
 
-TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencil(TextureDesc const& desc)
-{
-
-	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
-	d3d12OptimizedClearValue.Color[0] = desc.OptmizedClearValue.Colour.R;
-	d3d12OptimizedClearValue.Color[1] = desc.OptmizedClearValue.Colour.G;
-	d3d12OptimizedClearValue.Color[2] = desc.OptmizedClearValue.Colour.B;
-	d3d12OptimizedClearValue.Color[3] = desc.OptmizedClearValue.Colour.A;
-	d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.DepthStencil.Depth;
-	d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.DepthStencil.Stencil;
-
-	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
-	d3d12OptimizedClearValue.Format = dxgiFormatMapping.rtvFormat;
-
-	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-	auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-	auto resourceDesc = 
-		CD3DX12_RESOURCE_DESC::Tex2D(
-			dxgiFormatMapping.rtvFormat,
-			desc.Width,
-			desc.Height,
-			desc.ArraySize,
-			desc.MipLevels,
-			1,
-			0,
-			resourceFlags);
-	Microsoft::WRL::ComPtr<ID3D12Resource> d3d12Resource;
-	ThrowIfFailed(
-		this->GetD3D12Device2()->CreateCommittedResource(
-			&heapProperties,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDesc,
-			D3D12_RESOURCE_STATE_DEPTH_WRITE,
-			&d3d12OptimizedClearValue,
-			IID_PPV_ARGS(&d3d12Resource)));
-
-	// Create DSV
-	Dx12Texture texture = {};
-	texture.Desc = desc;
-	texture.D3D12Resource = d3d12Resource;
-	texture.DsvAllocation = this->GetDsvCpuHeap()->Allocate(1);
-	texture.SrvAllocation = this->GetResourceCpuHeap()->Allocate(1);
-
-	std::wstring debugName(desc.DebugName.begin(), desc.DebugName.end());
-	texture.D3D12Resource->SetName(debugName.c_str());
-
-	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-	dsvDesc.Format = dxgiFormatMapping.rtvFormat;
-	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D; // TODO: use desc.
-	dsvDesc.Texture2D.MipSlice = 0;
-	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
-
-	this->GetD3D12Device2()->CreateDepthStencilView(
-		texture.D3D12Resource.Get(),
-		&dsvDesc,
-		texture.DsvAllocation.GetCpuHandle());
-
-
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	srvDesc.Format = dxgiFormatMapping.srvFormat;
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-
-	if (desc.Dimension == TextureDimension::TextureCube)
-	{
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;  // Only 2D textures are supported (this was checked in the calling function).
-		srvDesc.TextureCube.MipLevels = desc.MipLevels;
-		srvDesc.TextureCube.MostDetailedMip = 0;
-	}
-	else
-	{
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;  // Only 2D textures are supported (this was checked in the calling function).
-		srvDesc.Texture2D.MipLevels = desc.MipLevels;
-	}
-
-	this->GetD3D12Device2()->CreateShaderResourceView(
-		texture.D3D12Resource.Get(),
-		&srvDesc,
-		texture.SrvAllocation.GetCpuHandle());
-
-	return this->m_texturePool.Insert(texture);
-}
-
 TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTexture(TextureDesc const& desc)
 {
 	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
@@ -1099,35 +1017,36 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTexture(TextureDesc co
 			useClearValue ? &d3d12OptimizedClearValue : nullptr,
 			IID_PPV_ARGS(&d3d12Resource)));
 
-	Dx12Texture texture = {};
-	texture.Desc = desc;
-	texture.D3D12Resource = d3d12Resource;
-
+	Dx12Texture textureImpl = {};
+	textureImpl.Desc = desc;
+	textureImpl.D3D12Resource = d3d12Resource;
 	std::wstring debugName;
 	Helpers::StringConvert(desc.DebugName, debugName);
-	texture.D3D12Resource->SetName(debugName.c_str());
+	textureImpl.D3D12Resource->SetName(debugName.c_str());
+
+	TextureHandle texture = this->m_texturePool.Insert(textureImpl);
 
 	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
-		this->CreateShaderResourceView(texture);
+		this->CreateSubresource(texture, RHI::SubresouceType::SRV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
 	{
-		this->CreateRenderTargetView(texture);
+		this->CreateSubresource(texture, RHI::SubresouceType::RTV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
 	{
-		this->CreateDepthStencilView(texture);
+		this->CreateSubresource(texture, RHI::SubresouceType::DSV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
 	{
-		this->CreateUnorderedAccessView(texture);
+		this->CreateSubresource(texture, RHI::SubresouceType::UAV, 0, ~0u, 0, ~0u);
 	}
 
-	return this->m_texturePool.Insert(texture);
+	return texture;
 }
 
 const TextureDesc& PhxEngine::RHI::Dx12::GraphicsDevice::GetTextureDesc(TextureHandle handle)
@@ -1160,7 +1079,11 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::DeleteTexture(TextureHandle handle)
 
 			if (texture)
 			{
-				this->m_bindlessResourceDescriptorTable->Free(texture->BindlessResourceIndex);
+				for (DescriptorIndex index : texture->BindlessSubresourceIndex)
+				{
+					this->m_bindlessResourceDescriptorTable->Free(index);
+				}
+				
 				texture->DisposeViews();
 				this->GetTexturePool().Release(handle);
 			}
@@ -1172,8 +1095,10 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::DeleteTexture(TextureHandle handle)
 
 BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateIndexBuffer(BufferDesc const& desc)
 {
-	Dx12Buffer bufferImpl = {};
+	BufferHandle buffer = this->m_bufferPool.Emplace();
+	Dx12Buffer& bufferImpl = *this->m_bufferPool.Get(buffer);
 	this->CreateBufferInternal(desc, bufferImpl);
+
 
 	bufferImpl.IndexView = {};
 	auto& view = bufferImpl.IndexView;
@@ -1185,15 +1110,16 @@ BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateIndexBuffer(BufferDesc 
 
 	if ((desc.Binding & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
-		this->CreateSRVViews(bufferImpl);
+		this->CreateSubresource(buffer, RHI::SubresouceType::SRV, 0u);
 	}
 
-	return this->m_bufferPool.Insert(bufferImpl);
+	return buffer;
 }
 
 BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateVertexBuffer(BufferDesc const& desc)
 {
-	Dx12Buffer bufferImpl = {};
+	BufferHandle buffer = this->m_bufferPool.Emplace();
+	Dx12Buffer& bufferImpl = *this->m_bufferPool.Get(buffer);
 	this->CreateBufferInternal(desc, bufferImpl);
 
 	bufferImpl.VertexView = {};
@@ -1204,19 +1130,26 @@ BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateVertexBuffer(BufferDesc
 
 	if ((desc.Binding & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
-		this->CreateSRVViews(bufferImpl);
+		this->CreateSubresource(buffer, RHI::SubresouceType::SRV, 0u);
 	}
 
-	return this->m_bufferPool.Insert(bufferImpl);
+	return buffer;
 }
 
 BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateBuffer(BufferDesc const& desc)
 {
-	Dx12Buffer bufferImpl = {};
+	BufferHandle buffer = this->m_bufferPool.Emplace();
+	Dx12Buffer& bufferImpl = *this->m_bufferPool.Get(buffer);
 	this->CreateBufferInternal(desc, bufferImpl);
+
 	if ((desc.Binding & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
-		this->CreateSRVViews(bufferImpl);
+		this->CreateSubresource(buffer, RHI::SubresouceType::SRV, 0u);
+	}
+
+	if ((desc.Binding & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+	{
+		this->CreateSubresource(buffer, RHI::SubresouceType::UAV, 0u);
 	}
 
 #if TRACK_RESOURCES
@@ -1225,7 +1158,7 @@ BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateBuffer(BufferDesc const
 		sTrackedResources.insert(desc.DebugName);
 	}
 #endif
-	return this->m_bufferPool.Insert(bufferImpl);
+	return buffer;
 }
 
 const BufferDesc& GraphicsDevice::GetBufferDesc(BufferHandle handle)
@@ -1267,9 +1200,9 @@ void GraphicsDevice::DeleteBuffer(BufferHandle handle)
 		this->m_frameCount,
 		[=]()
 		{
-			Dx12Buffer* texture = this->m_bufferPool.Get(handle);
+			Dx12Buffer* bufferImpl = this->m_bufferPool.Get(handle);
 
-			if (texture)
+			if (bufferImpl)
 			{
 #if TRACK_RESOURCES
 				if (sTrackedResources.find(texture->GetDesc().DebugName) != sTrackedResources.end())
@@ -1277,14 +1210,48 @@ void GraphicsDevice::DeleteBuffer(BufferHandle handle)
 					sTrackedResources.erase(texture->GetDesc().DebugName);
 				}
 #endif
-				this->m_bindlessResourceDescriptorTable->Free(texture->BindlessResourceIndex);
-				texture->DisposeViews();
+				for (DescriptorIndex index : bufferImpl->BindlessSubresourceIndex)
+				{
+					this->m_bindlessResourceDescriptorTable->Free(index);
+				}
+
+				bufferImpl->DisposeViews();
 				this->GetBufferPool().Release(handle);
 			}
 		}
 	};
 
 	this->m_deleteQueue.push_back(d);
+}
+
+int PhxEngine::RHI::Dx12::GraphicsDevice::CreateSubresource(TextureHandle texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+{
+	switch (subresourceType)
+	{
+	case SubresouceType::SRV:
+		return this->CreateShaderResourceView(texture, firstSlice, sliceCount, firstMip, mipCount);
+	case SubresouceType::UAV:
+		return this->CreateUnorderedAccessView(texture, firstSlice, sliceCount, firstMip, mipCount);
+	case SubresouceType::RTV:
+		return this->CreateRenderTargetView(texture, firstSlice, sliceCount, firstMip, mipCount);
+	case SubresouceType::DSV:
+		return this->CreateDepthStencilView(texture, firstSlice, sliceCount, firstMip, mipCount);
+	default:
+		throw std::runtime_error("Unknown sub resource type");
+	}
+}
+
+int PhxEngine::RHI::Dx12::GraphicsDevice::CreateSubresource(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size)
+{
+	switch (subresourceType)
+	{
+	case SubresouceType::SRV:
+		return this->CreateShaderResourceView(buffer, offset, size);
+	case SubresouceType::UAV:
+		return this->CreateUnorderedAccessView(buffer, offset, size);
+	default:
+		throw std::runtime_error("Unknown sub resource type");
+	}
 }
 
 TimerQueryHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateTimerQuery()
@@ -1540,116 +1507,132 @@ TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTarget(
 	return this->m_texturePool.Insert(texture);
 }
 
-void PhxEngine::RHI::Dx12::GraphicsDevice::CreateShaderResourceView(Dx12Texture& texture)
+int PhxEngine::RHI::Dx12::GraphicsDevice::CreateShaderResourceView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
-	auto dxgiFormatMapping = GetDxgiFormatMapping(texture.Desc.Format);
-	texture.SrvAllocation = this->GetResourceCpuHeap()->Allocate(1);
+	// TODO: Make use of parameters.
+	Dx12Texture* textureImpl = this->m_texturePool.Get(texture);
+
+	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Format = dxgiFormatMapping.srvFormat;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
 	uint32_t planeSlice = (srvDesc.Format == DXGI_FORMAT_X24_TYPELESS_G8_UINT) ? 1 : 0;
 
-	if (texture.Desc.Dimension == TextureDimension::TextureCube)
+	if (textureImpl->Desc.Dimension == TextureDimension::TextureCube)
 	{
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;  // Only 2D textures are supported (this was checked in the calling function).
-		srvDesc.TextureCube.MipLevels = texture.Desc.MipLevels;
-		srvDesc.TextureCube.MostDetailedMip = 0;
+		srvDesc.TextureCube.MipLevels = mipCount;
+		srvDesc.TextureCube.MostDetailedMip = firstMip;
 	}
 	else
 	{
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;  // Only 2D textures are supported (this was checked in the calling function).
-		srvDesc.Texture2D.MipLevels = texture.Desc.MipLevels;
+		srvDesc.Texture2D.MipLevels = mipCount;
 	}
-	switch (texture.Desc.Dimension)
+	switch (textureImpl->Desc.Dimension)
 	{
 	case TextureDimension::Texture1D:
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
-		srvDesc.Texture1D.MostDetailedMip = 0; // Subresource data
-		srvDesc.Texture1D.MipLevels = texture.Desc.MipLevels;// Subresource data
+		srvDesc.Texture1D.MostDetailedMip = firstMip; // Subresource data
+		srvDesc.Texture1D.MipLevels = mipCount;// Subresource data
 		break;
 	case TextureDimension::Texture1DArray:
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1DARRAY;
-		srvDesc.Texture1DArray.FirstArraySlice = 0;
-		srvDesc.Texture1DArray.ArraySize = texture.Desc.ArraySize;// Subresource data
-		srvDesc.Texture1DArray.MostDetailedMip = 0;// Subresource data
-		srvDesc.Texture1DArray.MipLevels = texture.Desc.MipLevels;// Subresource data
+		srvDesc.Texture1DArray.FirstArraySlice = firstSlice;
+		srvDesc.Texture1DArray.ArraySize = sliceCount;// Subresource data
+		srvDesc.Texture1DArray.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.Texture1DArray.MipLevels = mipCount;// Subresource data
 		break;
 	case TextureDimension::Texture2D:
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MostDetailedMip = 0;// Subresource data
-		srvDesc.Texture2D.MipLevels = texture.Desc.MipLevels;// Subresource data
+		srvDesc.Texture2D.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.Texture2D.MipLevels = mipCount;// Subresource data
 		srvDesc.Texture2D.PlaneSlice = planeSlice;
 		break;
 	case TextureDimension::Texture2DArray:
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-		srvDesc.Texture2DArray.FirstArraySlice = 0;// Subresource data
-		srvDesc.Texture2DArray.ArraySize = texture.Desc.ArraySize;// Subresource data
-		srvDesc.Texture2DArray.MostDetailedMip = 0;// Subresource data
-		srvDesc.Texture2DArray.MipLevels = texture.Desc.MipLevels;// Subresource data
+		srvDesc.Texture2DArray.FirstArraySlice = firstSlice;// Subresource data
+		srvDesc.Texture2DArray.ArraySize = sliceCount;// Subresource data
+		srvDesc.Texture2DArray.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.Texture2DArray.MipLevels = mipCount;// Subresource data
 		srvDesc.Texture2DArray.PlaneSlice = planeSlice;
 		break;
 	case TextureDimension::TextureCube:
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
-		srvDesc.TextureCube.MostDetailedMip = 0;// Subresource data
-		srvDesc.TextureCube.MipLevels = texture.Desc.MipLevels;// Subresource data
+		srvDesc.TextureCube.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.TextureCube.MipLevels = mipCount;// Subresource data
 		break;
 	case TextureDimension::TextureCubeArray:
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
 		srvDesc.TextureCubeArray.First2DArrayFace = 0;// Subresource data
-		srvDesc.TextureCubeArray.NumCubes = texture.Desc.ArraySize / 6;// Subresource data
-		srvDesc.TextureCubeArray.MostDetailedMip = 0;// Subresource data
-		srvDesc.TextureCubeArray.MipLevels = texture.Desc.MipLevels;// Subresource data
+		srvDesc.TextureCubeArray.NumCubes = textureImpl->Desc.ArraySize / 6;// Subresource data
+		srvDesc.TextureCubeArray.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.TextureCubeArray.MipLevels = mipCount;// Subresource data
 		break;
 	case TextureDimension::Texture2DMS:
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
 		break;
 	case TextureDimension::Texture2DMSArray:
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
-		srvDesc.Texture2DMSArray.FirstArraySlice = 0;// Subresource data
-		srvDesc.Texture2DMSArray.ArraySize = texture.Desc.ArraySize;// Subresource data
+		srvDesc.Texture2DMSArray.FirstArraySlice = firstSlice;// Subresource data
+		srvDesc.Texture2DMSArray.ArraySize = sliceCount;// Subresource data
 		break;
 	case TextureDimension::Texture3D:
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-		srvDesc.Texture3D.MostDetailedMip = 0;// Subresource data
-		srvDesc.Texture3D.MipLevels = texture.Desc.MipLevels;// Subresource data
+		srvDesc.Texture3D.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.Texture3D.MipLevels = mipCount;// Subresource data
 		break;
 	case TextureDimension::Unknown:
 	default:
 		throw std::runtime_error("Unsupported Enum");
-		return;
 	}
 
-	this->GetD3D12Device2()->CreateShaderResourceView(
-		texture.D3D12Resource.Get(),
-		&srvDesc,
-		texture.SrvAllocation.GetCpuHandle());
+	DescriptorHeapAllocation& allocation = textureImpl->SrvSubresourcesAlloc.emplace_back(std::move(this->GetResourceCpuHeap()->Allocate(1)));
 
-	if (texture.Desc.IsBindless)
+	this->GetD3D12Device2()->CreateShaderResourceView(
+		textureImpl->D3D12Resource.Get(),
+		&srvDesc,
+		allocation.GetCpuHandle());
+
+	if (textureImpl->Desc.IsBindless)
 	{
 		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
-		texture.BindlessResourceIndex = this->m_bindlessResourceDescriptorTable->Allocate();
-		if (texture.BindlessResourceIndex != cInvalidDescriptorIndex)
+		textureImpl->BindlessSubresourceIndex.push_back(this->m_bindlessResourceDescriptorTable->Allocate());
+		DescriptorIndex index = textureImpl->BindlessSubresourceIndex.back();
+		if (index != cInvalidDescriptorIndex)
 		{
 			this->GetD3D12Device2()->CopyDescriptorsSimple(
 				1,
-				this->m_bindlessResourceDescriptorTable->GetCpuHandle(texture.BindlessResourceIndex),
-				texture.SrvAllocation.GetCpuHandle(),
+				this->m_bindlessResourceDescriptorTable->GetCpuHandle(index),
+				allocation.GetCpuHandle(),
 				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
 	}
+
+	if (textureImpl->SrvAllocation.IsNull())
+	{
+		textureImpl->SrvAllocation = textureImpl->SrvSubresourcesAlloc.back();
+		if (textureImpl->Desc.IsBindless && textureImpl->BindlessSubresourceIndex.back() != cInvalidDescriptorIndex)
+		{
+			textureImpl->BindlessResourceIndex = textureImpl->BindlessSubresourceIndex.back();
+		}
+
+		return -1;
+	}
+
+	return textureImpl->SrvSubresourcesAlloc.size() - 1;
 }
 
-void PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTargetView(Dx12Texture& texture)
+int PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTargetView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
-	auto dxgiFormatMapping = GetDxgiFormatMapping(texture.Desc.Format);
+	Dx12Texture* textureImpl = this->m_texturePool.Get(texture);
 
-	texture.RtvAllocation = this->GetRtvCpuHeap()->Allocate(1);
-
+	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 	rtvDesc.Format = dxgiFormatMapping.rtvFormat;
 
-	switch (texture.Desc.Dimension)
+	switch (textureImpl->Desc.Dimension)
 	{
 	case TextureDimension::Texture1D:
 		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1D;
@@ -1657,8 +1640,8 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTargetView(Dx12Texture& t
 		break;
 	case TextureDimension::Texture1DArray:
 		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
-		rtvDesc.Texture1DArray.FirstArraySlice = 0;
-		rtvDesc.Texture1DArray.ArraySize = texture.Desc.ArraySize;
+		rtvDesc.Texture1DArray.FirstArraySlice = firstSlice;
+		rtvDesc.Texture1DArray.ArraySize = sliceCount;
 		rtvDesc.Texture1DArray.MipSlice = 0;
 		break;
 	case TextureDimension::Texture2D:
@@ -1669,8 +1652,8 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTargetView(Dx12Texture& t
 	case TextureDimension::TextureCube:
 	case TextureDimension::TextureCubeArray:
 		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-		rtvDesc.Texture2DArray.ArraySize = texture.Desc.ArraySize;
-		rtvDesc.Texture2DArray.FirstArraySlice = 0;
+		rtvDesc.Texture2DArray.ArraySize = sliceCount;
+		rtvDesc.Texture2DArray.FirstArraySlice = firstSlice;
 		rtvDesc.Texture2DArray.MipSlice = 0;
 		break;
 	case TextureDimension::Texture2DMS:
@@ -1678,39 +1661,45 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTargetView(Dx12Texture& t
 		break;
 	case TextureDimension::Texture2DMSArray:
 		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
-		rtvDesc.Texture2DMSArray.FirstArraySlice = 0;
-		rtvDesc.Texture2DMSArray.ArraySize = texture.Desc.ArraySize;
+		rtvDesc.Texture2DMSArray.FirstArraySlice = firstSlice;
+		rtvDesc.Texture2DMSArray.ArraySize = sliceCount;
 		break;
 	case TextureDimension::Texture3D:
 		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
 		rtvDesc.Texture3D.FirstWSlice = 0;
-		rtvDesc.Texture3D.WSize = texture.Desc.ArraySize;
+		rtvDesc.Texture3D.WSize = textureImpl->Desc.ArraySize;
 		rtvDesc.Texture3D.MipSlice = 0;
 		break;
 	case TextureDimension::Unknown:
 	default:
 		throw std::runtime_error("Unsupported Enum");
-		return;
 	}
 
+	DescriptorHeapAllocation& allocation = textureImpl->RtvSubresourcesAlloc.emplace_back(std::move(this->GetRtvCpuHeap()->Allocate(1)));
 	this->GetD3D12Device2()->CreateRenderTargetView(
-		texture.D3D12Resource.Get(),
+		textureImpl->D3D12Resource.Get(),
 		&rtvDesc,
-		texture.RtvAllocation.GetCpuHandle());
+		allocation.GetCpuHandle());
+
+	if (textureImpl->RtvAllocation.IsNull())
+	{
+		textureImpl->RtvAllocation = textureImpl->RtvSubresourcesAlloc.back();
+		return -1;
+	}
+
+	return textureImpl->RtvSubresourcesAlloc.size() - 1;
 }
 
-void PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencilView(Dx12Texture& texture)
+int PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencilView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
-	auto dxgiFormatMapping = GetDxgiFormatMapping(texture.Desc.Format);
+	Dx12Texture* textureImpl = this->m_texturePool.Get(texture);
 
-	texture.DsvAllocation = this->GetDsvCpuHeap()->Allocate(1);
-
-
+	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
 	dsvDesc.Format = dxgiFormatMapping.rtvFormat;
 	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 
-	switch (texture.Desc.Dimension)
+	switch (textureImpl->Desc.Dimension)
 	{
 	case TextureDimension::Texture1D:
 		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1D;
@@ -1718,8 +1707,8 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencilView(Dx12Texture& t
 		break;
 	case TextureDimension::Texture1DArray:
 		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
-		dsvDesc.Texture1DArray.FirstArraySlice = 0;
-		dsvDesc.Texture1DArray.ArraySize = texture.Desc.ArraySize;
+		dsvDesc.Texture1DArray.FirstArraySlice = firstSlice;
+		dsvDesc.Texture1DArray.ArraySize = sliceCount;
 		dsvDesc.Texture1DArray.MipSlice = 0;
 		break;
 	case TextureDimension::Texture2D:
@@ -1730,8 +1719,8 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencilView(Dx12Texture& t
 	case TextureDimension::TextureCube:
 	case TextureDimension::TextureCubeArray:
 		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
-		dsvDesc.Texture2DArray.ArraySize = texture.Desc.ArraySize;
-		dsvDesc.Texture2DArray.FirstArraySlice = 0;
+		dsvDesc.Texture2DArray.ArraySize = sliceCount;
+		dsvDesc.Texture2DArray.FirstArraySlice = firstSlice;
 		dsvDesc.Texture2DArray.MipSlice = 0;
 		break;
 	case TextureDimension::Texture2DMS:
@@ -1739,34 +1728,43 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencilView(Dx12Texture& t
 		break;
 	case TextureDimension::Texture2DMSArray:
 		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
-		dsvDesc.Texture2DMSArray.FirstArraySlice = 0;
-		dsvDesc.Texture2DMSArray.ArraySize = texture.Desc.ArraySize;
+		dsvDesc.Texture2DMSArray.FirstArraySlice = firstSlice;
+		dsvDesc.Texture2DMSArray.ArraySize = sliceCount;
 		break;
 	case TextureDimension::Texture3D: 
 	{
-		return;
+		throw std::runtime_error("Unsupported Dimension");
 	}
 	case TextureDimension::Unknown:
 	default:
 		throw std::runtime_error("Unsupported Enum");
-		return;
 	}
 
+	DescriptorHeapAllocation& allocation = textureImpl->DsvSubresourcesAlloc.emplace_back(std::move(this->GetDsvCpuHeap()->Allocate(1)));
+
 	this->GetD3D12Device2()->CreateDepthStencilView(
-		texture.D3D12Resource.Get(),
+		textureImpl->D3D12Resource.Get(),
 		&dsvDesc,
-		texture.DsvAllocation.GetCpuHandle());
+		allocation.GetCpuHandle());
+
+	if (textureImpl->DsvAllocation.IsNull())
+	{
+		textureImpl->DsvAllocation = textureImpl->DsvSubresourcesAlloc.back();
+		return -1;
+	}
+
+	return textureImpl->DsvSubresourcesAlloc.size() - 1;
 }
 
-void PhxEngine::RHI::Dx12::GraphicsDevice::CreateUnorderedAccessView(Dx12Texture& texture)
+int PhxEngine::RHI::Dx12::GraphicsDevice::CreateUnorderedAccessView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
-	auto dxgiFormatMapping = GetDxgiFormatMapping(texture.Desc.Format);
-	texture.UavAllocation = this->GetResourceCpuHeap()->Allocate(1);
+	Dx12Texture* textureImpl = this->m_texturePool.Get(texture);
 
+	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.Format = dxgiFormatMapping.srvFormat;
 
-	switch (texture.Desc.Dimension)
+	switch (textureImpl->Desc.Dimension)
 	{
 	case TextureDimension::Texture1D:
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1D;
@@ -1774,8 +1772,8 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateUnorderedAccessView(Dx12Texture
 		break;
 	case TextureDimension::Texture1DArray:
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1DARRAY;
-		uavDesc.Texture1DArray.FirstArraySlice = 0;
-		uavDesc.Texture1DArray.ArraySize = texture.Desc.ArraySize;
+		uavDesc.Texture1DArray.FirstArraySlice = firstSlice;
+		uavDesc.Texture1DArray.ArraySize = sliceCount;
 		uavDesc.Texture1DArray.MipSlice = 0;
 		break;
 	case TextureDimension::Texture2D:
@@ -1786,35 +1784,60 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateUnorderedAccessView(Dx12Texture
 	case TextureDimension::TextureCube:
 	case TextureDimension::TextureCubeArray:
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-		uavDesc.Texture2DArray.FirstArraySlice = 0;
-		uavDesc.Texture2DArray.ArraySize = texture.Desc.ArraySize;
+		uavDesc.Texture2DArray.FirstArraySlice = firstSlice;
+		uavDesc.Texture2DArray.ArraySize = sliceCount;
 		uavDesc.Texture2DArray.MipSlice = 0;
 		break;
 	case TextureDimension::Texture3D:
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
 		uavDesc.Texture3D.FirstWSlice = 0;
-		uavDesc.Texture3D.WSize = texture.Desc.Depth;
+		uavDesc.Texture3D.WSize = textureImpl->Desc.Depth;
 		uavDesc.Texture3D.MipSlice = 0;
 		break;
 	case TextureDimension::Texture2DMS:
 	case TextureDimension::Texture2DMSArray:
 	{
-		throw std::runtime_error("Unsupported Dimention");
-		return;
+		throw std::runtime_error("Unsupported Dimension");
 	}
 	case TextureDimension::Unknown:
 	default:
-		throw std::runtime_error("Unsupported Enum");;
-		return;
+		throw std::runtime_error("Unsupported Enum");
 	}
 
+	DescriptorHeapAllocation& allocation = textureImpl->UavSubresourcesAlloc.emplace_back(std::move(this->GetResourceCpuHeap()->Allocate(1)));
 	this->GetD3D12Device2()->CreateUnorderedAccessView(
-		texture.D3D12Resource.Get(),
+		textureImpl->D3D12Resource.Get(),
 		nullptr,
 		&uavDesc,
-		texture.UavAllocation.GetCpuHandle());
+		allocation.GetCpuHandle());
 
-	// Bindless for UAV?
+	if (textureImpl->Desc.IsBindless)
+	{
+		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+		textureImpl->BindlessSubresourceIndex.push_back(this->m_bindlessResourceDescriptorTable->Allocate());
+		DescriptorIndex index = textureImpl->BindlessSubresourceIndex.back();
+		if (index != cInvalidDescriptorIndex)
+		{
+			this->GetD3D12Device2()->CopyDescriptorsSimple(
+				1,
+				this->m_bindlessResourceDescriptorTable->GetCpuHandle(index),
+				allocation.GetCpuHandle(),
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
+
+	if (textureImpl->UavAllocation.IsNull())
+	{
+		textureImpl->UavAllocation = textureImpl->UavSubresourcesAlloc.back();
+		if (textureImpl->Desc.IsBindless && textureImpl->BindlessSubresourceIndex.back() != cInvalidDescriptorIndex)
+		{
+			textureImpl->BindlessResourceIndex = textureImpl->BindlessSubresourceIndex.back();
+		}
+
+		return -1;
+	}
+
+	return textureImpl->UavSubresourcesAlloc.size() - 1;
 }
 
 /*
@@ -2230,63 +2253,152 @@ void GraphicsDevice::CreateBufferInternal(BufferDesc const& desc, Dx12Buffer& ou
 	outBuffer.D3D12Resource->SetName(debugName.c_str());
 }
 
-void PhxEngine::RHI::Dx12::GraphicsDevice::CreateSRVViews(Dx12Buffer& gpuBuffer)
+int PhxEngine::RHI::Dx12::GraphicsDevice::CreateShaderResourceView(BufferHandle buffer, size_t offset, size_t size)
 {
-	gpuBuffer.SrvAllocation = this->GetResourceCpuHeap()->Allocate(1);
+	Dx12Buffer* bufferImpl = this->m_bufferPool.Get(buffer);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-	srvDesc.Buffer.FirstElement = 0;
 
-	if (gpuBuffer.Desc.Format == FormatType::UNKNOWN)
+	if (bufferImpl->Desc.Format == FormatType::UNKNOWN)
 	{
-		if ((gpuBuffer.Desc.MiscFlags & BufferMiscFlags::Raw) != 0)
+		if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Raw) != 0)
 		{
 			srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
 			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
-			srvDesc.Buffer.NumElements = gpuBuffer.Desc.SizeInBytes / sizeof(uint32_t);
+			srvDesc.Buffer.FirstElement = (UINT)offset / sizeof(uint32_t);
+			srvDesc.Buffer.NumElements = (UINT)std::min(size, bufferImpl->Desc.SizeInBytes - offset) / sizeof(uint32_t);
 		}
-		else if((gpuBuffer.Desc.MiscFlags & BufferMiscFlags::Structured) != 0)
+		else if((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Structured) != 0)
 		{
 			// This is a Structured Buffer
 			srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-			srvDesc.Buffer.NumElements = gpuBuffer.Desc.SizeInBytes / gpuBuffer.Desc.StrideInBytes;
-			srvDesc.Buffer.StructureByteStride = gpuBuffer.Desc.StrideInBytes;
+			srvDesc.Buffer.FirstElement = (UINT)offset / bufferImpl->Desc.StrideInBytes;
+			srvDesc.Buffer.NumElements = (UINT)std::min(size, bufferImpl->Desc.SizeInBytes - offset) / bufferImpl->Desc.StrideInBytes;
+			srvDesc.Buffer.StructureByteStride = bufferImpl->Desc.StrideInBytes;
 		}
 	}
 	else
 	{
-		// This is a typed buffer
-		// TODO: Not implemented
-		assert(false);
-		/*
+		throw std::runtime_error("Unsupported at this time.");
+#if false
 		uint32_t stride = GetFormatStride(format);
 		srv_desc.Format = _ConvertFormat(format);
 		srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 		srv_desc.Buffer.FirstElement = offset / stride;
 		srv_desc.Buffer.NumElements = (UINT)std::min(size, desc.size - offset) / stride;
-		*/
+#endif
 	}
 
+	DescriptorHeapAllocation& allocation = bufferImpl->SrvSubresourcesAlloc.emplace_back(this->GetResourceCpuHeap()->Allocate(1));
 	this->GetD3D12Device2()->CreateShaderResourceView(
-		gpuBuffer.D3D12Resource.Get(),
+		bufferImpl->D3D12Resource.Get(),
 		&srvDesc,
-		gpuBuffer.SrvAllocation.GetCpuHandle());
+		allocation.GetCpuHandle());
 
-	if (gpuBuffer.GetDesc().CreateBindless || (gpuBuffer.GetDesc().MiscFlags & RHI::BufferMiscFlags::Bindless) != 0)
+	const bool isBindless = bufferImpl->GetDesc().CreateBindless || (bufferImpl->GetDesc().MiscFlags & RHI::BufferMiscFlags::Bindless) != 0;
+	if (isBindless)
 	{
 		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
-		gpuBuffer.BindlessResourceIndex = this->m_bindlessResourceDescriptorTable->Allocate();
-		if (gpuBuffer.BindlessResourceIndex != cInvalidDescriptorIndex)
+		bufferImpl->BindlessSubresourceIndex.push_back(this->m_bindlessResourceDescriptorTable->Allocate());
+		DescriptorIndex index = bufferImpl->BindlessSubresourceIndex.back();
+		if (index != cInvalidDescriptorIndex)
 		{
 			this->GetD3D12Device2()->CopyDescriptorsSimple(
 				1,
-				this->m_bindlessResourceDescriptorTable->GetCpuHandle(gpuBuffer.BindlessResourceIndex),
-				gpuBuffer.SrvAllocation.GetCpuHandle(),
+				this->m_bindlessResourceDescriptorTable->GetCpuHandle(index),
+				allocation.GetCpuHandle(),
 				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
 	}
+
+	if (bufferImpl->SrvAllocation.IsNull())
+	{
+		bufferImpl->SrvAllocation = bufferImpl->SrvSubresourcesAlloc.back();
+		if (isBindless && bufferImpl->BindlessSubresourceIndex.back() != cInvalidDescriptorIndex)
+		{
+			bufferImpl->BindlessResourceIndex = bufferImpl->BindlessSubresourceIndex.back();
+		}
+
+		return -1;
+	}
+
+	return bufferImpl->SrvSubresourcesAlloc.size() - 1;
+}
+
+int PhxEngine::RHI::Dx12::GraphicsDevice::CreateUnorderedAccessView(BufferHandle buffer, size_t offset, size_t size)
+{
+	Dx12Buffer* bufferImpl = this->m_bufferPool.Get(buffer);
+
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+
+	if (bufferImpl->Desc.Format == FormatType::UNKNOWN)
+	{
+		if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Raw) != 0)
+		{
+			uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+			uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+			uavDesc.Buffer.FirstElement = (UINT)offset / sizeof(uint32_t);
+			uavDesc.Buffer.NumElements = (UINT)std::min(size, bufferImpl->Desc.SizeInBytes - offset) / sizeof(uint32_t);
+		}
+		else if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Structured) != 0)
+		{
+			// This is a Structured Buffer
+			uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+			uavDesc.Buffer.FirstElement = (UINT)offset / bufferImpl->Desc.StrideInBytes;
+			uavDesc.Buffer.NumElements = (UINT)std::min(size, bufferImpl->Desc.SizeInBytes - offset) / bufferImpl->Desc.StrideInBytes;
+			uavDesc.Buffer.StructureByteStride = bufferImpl->Desc.StrideInBytes;
+		}
+	}
+	else
+	{
+		throw std::runtime_error("Unsupported at this time.");
+#if false
+		uint32_t stride = GetFormatStride(format);
+		uavDesc.Format = _ConvertFormat(format);
+		uavDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+		uavDesc.Buffer.FirstElement = offset / stride;
+		uavDesc.Buffer.NumElements = (UINT)std::min(size, desc.size - offset) / stride;
+#endif
+	}
+
+	DescriptorHeapAllocation& allocation = bufferImpl->UavSubresourcesAlloc.emplace_back(this->GetResourceCpuHeap()->Allocate(1));
+	this->GetD3D12Device2()->CreateUnorderedAccessView(
+		bufferImpl->D3D12Resource.Get(),
+		nullptr,
+		&uavDesc,
+		allocation.GetCpuHandle());
+
+	const bool isBindless = bufferImpl->GetDesc().CreateBindless || (bufferImpl->GetDesc().MiscFlags & RHI::BufferMiscFlags::Bindless) != 0;
+	if (isBindless)
+	{
+		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+		bufferImpl->BindlessSubresourceIndex.push_back(this->m_bindlessResourceDescriptorTable->Allocate());
+		DescriptorIndex index = bufferImpl->BindlessSubresourceIndex.back();
+		if (index != cInvalidDescriptorIndex)
+		{
+			this->GetD3D12Device2()->CopyDescriptorsSimple(
+				1,
+				this->m_bindlessResourceDescriptorTable->GetCpuHandle(index),
+				allocation.GetCpuHandle(),
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
+
+	if (bufferImpl->UavAllocation.IsNull())
+	{
+		bufferImpl->UavAllocation = bufferImpl->UavSubresourcesAlloc.back();
+		if (isBindless && bufferImpl->BindlessSubresourceIndex.back() != cInvalidDescriptorIndex)
+		{
+			bufferImpl->BindlessResourceIndex = bufferImpl->BindlessSubresourceIndex.back();
+		}
+
+		return -1;
+	}
+
+	return bufferImpl->UavSubresourcesAlloc.size() - 1;
 }
 
 void GraphicsDevice::CreateGpuTimestampQueryHeap(uint32_t queryCount)

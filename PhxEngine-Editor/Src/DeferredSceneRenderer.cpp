@@ -374,6 +374,7 @@ void DeferredRenderer::RunProbeUpdateSystem(PhxEngine::Scene::Scene& scene)
     if (!this->m_envMapArray.IsValid())
     {
         // Create EnvMap
+        // TODO: Create depth
         TextureDesc desc;
         desc.ArraySize = kEnvmapCount * 6;
         desc.BindingFlags = BindingFlags::ShaderResource | BindingFlags::UnorderedAccess | BindingFlags::RenderTarget;
@@ -771,6 +772,8 @@ void DeferredRenderer::CreatePSOs()
         RHI::GraphicsPSODesc psoDesc = {};
         psoDesc.VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_EnvMap_Sky);
         psoDesc.PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_EnvMap_SkyProcedural);
+        psoDesc.RtvFormats.push_back(kEnvmapFormat);
+        psoDesc.DsvFormat = kEnvmapDepth;
         // TODO handle GS 
         assert(IGraphicsDevice::Ptr->CheckCapability(DeviceCapability::RT_VT_ArrayIndex_Without_GS));
 
