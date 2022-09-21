@@ -175,7 +175,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnCompose(RHI::CommandListHandle cmd)
                     // Ensure 
                     auto textureHandle = static_cast<RHI::TextureHandle*>(drawCmd.GetTexID());
                     push.TextureIndex = textureHandle
-                        ? IGraphicsDevice::Ptr->GetDescriptorIndex(*textureHandle)
+                        ? IGraphicsDevice::Ptr->GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
                         : RHI::cInvalidDescriptorIndex;
 
                     cmd->BindPushConstant(RootParameters::PushConstant, push);

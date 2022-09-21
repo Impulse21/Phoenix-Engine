@@ -311,14 +311,14 @@ namespace PhxEngine::RHI::Dx12
 
         TextureHandle CreateTexture(TextureDesc const& desc) override;
         const TextureDesc& GetTextureDesc(TextureHandle handle) override;
-        DescriptorIndex GetDescriptorIndex(TextureHandle handle) override;
+        DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource = -1) override;
         void DeleteTexture(TextureHandle) override;
 
         BufferHandle CreateIndexBuffer(BufferDesc const& desc) override;
         BufferHandle CreateVertexBuffer(BufferDesc const& desc) override;
         BufferHandle CreateBuffer(BufferDesc const& desc) override;
         const BufferDesc& GetBufferDesc(BufferHandle handle) override;
-        DescriptorIndex GetDescriptorIndex(BufferHandle handle) override;
+        DescriptorIndex GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource = -1) override;
         void* GetBufferMappedData(BufferHandle handle) override;
         uint32_t GetBufferMappedDataSizeInBytes(BufferHandle handle) override;
         void DeleteBuffer(BufferHandle handle) override;

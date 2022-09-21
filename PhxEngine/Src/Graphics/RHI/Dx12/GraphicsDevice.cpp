@@ -1075,12 +1075,43 @@ const TextureDesc& PhxEngine::RHI::Dx12::GraphicsDevice::GetTextureDesc(TextureH
 	return texture->Desc;
 }
 
-DescriptorIndex PhxEngine::RHI::Dx12::GraphicsDevice::GetDescriptorIndex(TextureHandle handle)
+DescriptorIndex PhxEngine::RHI::Dx12::GraphicsDevice::GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource)
 {
 	const Dx12Texture* texture = this->m_texturePool.Get(handle);
-	return texture 
-		? texture->SrvAllocation.BindlessIndex
-		: cInvalidDescriptorIndex;
+
+	if (!texture)
+	{
+		return cInvalidDescriptorIndex;
+	}
+
+	switch (type)
+	{
+	case SubresouceType::SRV:
+		return subResource == -1
+			? texture->SrvAllocation.BindlessIndex
+			: texture->SrvSubresourcesAlloc[subResource].BindlessIndex;
+		break;
+
+	case SubresouceType::UAV:
+		return subResource == -1
+			? texture->UavAllocation.BindlessIndex
+			: texture->UavSubresourcesAlloc[subResource].BindlessIndex;
+		break;
+
+	case SubresouceType::RTV:
+		return subResource == -1
+			? texture->RtvAllocation.BindlessIndex
+			: texture->RtvSubresourcesAlloc[subResource].BindlessIndex;
+		break;
+
+	case SubresouceType::DSV:
+		return subResource == -1
+			? texture->DsvAllocation.BindlessIndex
+			: texture->DsvSubresourcesAlloc[subResource].BindlessIndex;
+		break;
+	default:
+		throw std::runtime_error("Unsupported enum type");
+	}
 }
 
 void PhxEngine::RHI::Dx12::GraphicsDevice::DeleteTexture(TextureHandle handle)
@@ -1197,12 +1228,29 @@ const BufferDesc& GraphicsDevice::GetBufferDesc(BufferHandle handle)
 	return this->m_bufferPool.Get(handle)->Desc;
 }
 
-DescriptorIndex GraphicsDevice::GetDescriptorIndex(BufferHandle handle)
+DescriptorIndex GraphicsDevice::GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource)
 {
 	const Dx12Buffer* bufferImpl = this->m_bufferPool.Get(handle);
-	return bufferImpl
-		? bufferImpl->SrvAllocation.BindlessIndex
-		: cInvalidDescriptorIndex;
+
+	if (!bufferImpl)
+	{
+		return cInvalidDescriptorIndex;
+	}
+
+	switch (type)
+	{
+	case SubresouceType::SRV:
+		return subResource == -1
+			? bufferImpl->SrvAllocation.BindlessIndex
+			: bufferImpl->SrvSubresourcesAlloc[subResource].BindlessIndex;
+
+	case SubresouceType::UAV:
+		return subResource == -1
+			? bufferImpl->UavAllocation.BindlessIndex
+			: bufferImpl->UavSubresourcesAlloc[subResource].BindlessIndex;
+	default:
+		throw std::runtime_error("Unsupported enum type");
+	}
 }
 
 void* GraphicsDevice::GetBufferMappedData(BufferHandle handle)

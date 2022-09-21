@@ -26,6 +26,8 @@ namespace Shader
 
 	static const uint MATRIX_COUNT = 128;
 
+	// -- Groups ---
+	static const uint GENERATE_MIP_CHAIN_2D_BLOCK_SIZE = 8;
 
 	struct Atmosphere
 	{
@@ -401,6 +403,18 @@ namespace Shader
 	{
 		uint2 DipatchGridDim; // // Arguments of the Dispatch call
 		uint MaxTileWidth; // 8, 16 or 32.
+	};
+
+	struct GenerateMipChainPushConstants
+	{
+		uint TextureInput;
+		uint TextureOutput;
+		uint ArrayIndex;
+		uint _Padding;
+		// -- 16 byte boundary ---
+
+		float2 OutputResolution;
+		float2 OutputResolutionRcp;
 	};
 
 #ifdef __cplusplus

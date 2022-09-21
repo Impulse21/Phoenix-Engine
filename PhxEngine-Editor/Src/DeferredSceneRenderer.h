@@ -25,6 +25,13 @@ class DeferredRenderer : public PhxEngine::Graphics::IRenderer
         NumPsoTypes
     };
 
+    enum PsoComputeType
+    {
+        PSO_GenerateMipMaps_TextureCubeArray = 0,
+
+        NumComputePsoTypes
+    };
+
     enum RenderPassType
     {
         RenderPass_GBuffer,
@@ -93,6 +100,7 @@ private:
     std::vector<DirectX::XMFLOAT4X4> m_matricesCPUData;
 
     std::array<PhxEngine::RHI::GraphicsPSOHandle, PsoType::NumPsoTypes> m_pso;
+    std::array<PhxEngine::RHI::ComputePSOHandle, PsoComputeType::NumComputePsoTypes> m_psoCompute;
 
     // -- Scene GPU Buffers ---
     size_t m_numGeometryEntires = 0;

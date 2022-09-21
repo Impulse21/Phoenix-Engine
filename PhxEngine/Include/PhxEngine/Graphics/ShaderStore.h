@@ -6,7 +6,7 @@ namespace PhxEngine::Graphics
 {
 	enum class PreLoadShaders
 	{
-		// VS Shaders
+		// -- VS Shaders ---
 		VS_ImGui,
 		VS_GBufferPass,
 		VS_FullscreenQuad,
@@ -16,7 +16,7 @@ namespace PhxEngine::Graphics
 		VS_Sky,
 		VS_EnvMap_Sky,
 
-		// PS Shaders
+		// -- PS Shaders ---
 		PS_ImGui,
 		PS_GBufferPass,
 		PS_FullscreenQuad,
@@ -24,8 +24,10 @@ namespace PhxEngine::Graphics
 		PS_ToneMapping,
 		PS_SkyProcedural,
 		PS_EnvMap_SkyProcedural,
-		// Compute Shaders
+
+		// -- Compute Shaders ---
 		CS_DeferredLighting,
+		CS_GenerateMips_TextureCubeArray,
 
 		NumPreloadShaders
 	};

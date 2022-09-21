@@ -372,7 +372,7 @@ void DeferredRenderer::RefreshEnvProbs(PhxEngine::Scene::CameraComponent const& 
         renderCamsCB.Properties[i].x = i;
     }
     commandList->BindDynamicConstantBuffer(RootParameters_EnvMap_SkyProceduralCapture::CubeRenderCamsCB, renderCamsCB);
-    
+
     Shader::Camera shaderCamCB = {};
     shaderCamCB.CameraPosition = skyCaptureProbe.Position;
     commandList->BindDynamicConstantBuffer(RootParameters_EnvMap_SkyProceduralCapture::CameraCB, shaderCamCB);
@@ -382,8 +382,68 @@ void DeferredRenderer::RefreshEnvProbs(PhxEngine::Scene::CameraComponent const& 
     // 240 is the number of vers on an ISOSphere
     // 6 instances, one per cam side.
     commandList->Draw(240, 6);
-   
+
     commandList->EndRenderPass();
+
+    // Generate MIPS
+
+    // Bind Compute shader
+    {
+        RHI::ScopedMarker scope = commandList->BeginScopedMarker("Generate Mip Chain");
+        this->m_commandList->SetComputeState(this->m_psoCompute[PsoComputeType::PSO_GenerateMipMaps_TextureCubeArray]);
+
+        TextureDesc textureDesc = RHI::IGraphicsDevice::Ptr->GetTextureDesc(this->m_envMapArray);
+
+        Shader::GenerateMipChainPushConstants push = {};
+        push.ArrayIndex = skyCaptureProbe.textureIndex;
+        for (int i = 0; i < textureDesc.MipLevels - 1; i++)
+        {
+            GpuBarrier preBarriers[] =
+            {
+                GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 0),
+                GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 1),
+                GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 2),
+                GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 3),
+                GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 4),
+                GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 5),
+            };
+
+            // this->m_commandList->TransitionBarriers(Core::Span<GpuBarrier>(preBarriers, ARRAYSIZE(preBarriers)));
+
+
+            push.TextureInput = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_envMapArray, RHI::SubresouceType::SRV, i);
+            push.TextureOutput = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_envMapArray, RHI::SubresouceType::UAV, i + 1);
+            this->m_commandList->BindPushConstant(0, push);
+
+            textureDesc.Width = std::max(1u, textureDesc.Width / 2);
+            textureDesc.Height = std::max(1u, textureDesc.Height / 2);
+
+            push.OutputResolution = { (float)textureDesc.Width, (float)textureDesc.Height };
+            push.OutputResolutionRcp = { 1.0f / (float)textureDesc.Width, 1.0f / (float)textureDesc.Height };
+
+            this->m_commandList->Dispatch(
+                std::max(1u, (textureDesc.Width + Shader::GENERATE_MIP_CHAIN_2D_BLOCK_SIZE - 1) / Shader::GENERATE_MIP_CHAIN_2D_BLOCK_SIZE),
+                std::max(1u, (textureDesc.Height + Shader::GENERATE_MIP_CHAIN_2D_BLOCK_SIZE - 1) / Shader::GENERATE_MIP_CHAIN_2D_BLOCK_SIZE),
+                6);
+
+            GpuBarrier postBarriers[] =
+            {
+                GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 0),
+                GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 1),
+                GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 2),
+                GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 3),
+                GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 4),
+                GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 5),
+            };
+
+            // this->m_commandList->TransitionBarriers(Core::Span<GpuBarrier>(postBarriers, ARRAYSIZE(postBarriers)));
+
+        }
+
+
+    }
+
+    // Filter Env Map
 }
 
 void DeferredRenderer::DrawMeshes(PhxEngine::Scene::Scene& scene, RHI::CommandListHandle commandList)
@@ -629,19 +689,19 @@ void DeferredRenderer::PrepareFrameRenderData(
         shaderData->AlbedoTexture = RHI::cInvalidDescriptorIndex;
         if (mat->AlbedoTexture && mat->AlbedoTexture->GetRenderHandle().IsValid())
         {
-            shaderData->AlbedoTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat->AlbedoTexture->GetRenderHandle());
+            shaderData->AlbedoTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat->AlbedoTexture->GetRenderHandle(), RHI::SubresouceType::SRV);
         }
 
         shaderData->AOTexture = RHI::cInvalidDescriptorIndex;
         if (mat->AoTexture && mat->AoTexture->GetRenderHandle().IsValid())
         {
-            shaderData->AOTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat->AoTexture->GetRenderHandle());
+            shaderData->AOTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat->AoTexture->GetRenderHandle(), RHI::SubresouceType::SRV);
         }
 
         shaderData->MaterialTexture = RHI::cInvalidDescriptorIndex;
         if (mat->MetalRoughnessTexture && mat->MetalRoughnessTexture->GetRenderHandle().IsValid())
         {
-            shaderData->MaterialTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat->MetalRoughnessTexture->GetRenderHandle());
+            shaderData->MaterialTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat->MetalRoughnessTexture->GetRenderHandle(), RHI::SubresouceType::SRV);
             assert(shaderData->MaterialTexture != RHI::cInvalidDescriptorIndex);
 
             // shaderData->MetalnessTexture = mat->MetalRoughnessTexture->GetDescriptorIndex();
@@ -651,7 +711,7 @@ void DeferredRenderer::PrepareFrameRenderData(
         shaderData->NormalTexture = RHI::cInvalidDescriptorIndex;
         if (mat->NormalMapTexture && mat->NormalMapTexture->GetRenderHandle().IsValid())
         {
-            shaderData->NormalTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat->NormalMapTexture->GetRenderHandle());
+            shaderData->NormalTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat->NormalMapTexture->GetRenderHandle(), RHI::SubresouceType::SRV);
         }
         mat->GlobalBufferIndex = currMat++;
 	}
@@ -708,7 +768,7 @@ void DeferredRenderer::PrepareFrameRenderData(
             geometryShaderData->NumIndices = surfaceDesc.NumIndices;
             geometryShaderData->NumVertices = surfaceDesc.NumVertices;
             geometryShaderData->IndexOffset = surfaceDesc.IndexOffsetInMesh;
-            geometryShaderData->VertexBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(mesh.VertexGpuBuffer);
+            geometryShaderData->VertexBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(mesh.VertexGpuBuffer, RHI::SubresouceType::SRV);
             geometryShaderData->PositionOffset = mesh.GetVertexAttribute(Assets::Mesh::VertexAttribute::Position).ByteOffset;
             geometryShaderData->TexCoordOffset = mesh.GetVertexAttribute(Assets::Mesh::VertexAttribute::TexCoord).ByteOffset;
             geometryShaderData->NormalOffset = mesh.GetVertexAttribute(Assets::Mesh::VertexAttribute::Normal).ByteOffset;
@@ -799,9 +859,9 @@ void DeferredRenderer::PrepareFrameRenderData(
 	Shader::Frame frameData = {};
 	frameData.BrdfLUTTexIndex = cInvalidDescriptorIndex;// this->m_scene.BrdfLUT->GetDescriptorIndex();
 	frameData.SceneData.NumLights = lightCount;
-	frameData.SceneData.GeometryBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_geometryGpuBuffer);
-	frameData.SceneData.MaterialBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_materialGpuBuffer);
-	frameData.SceneData.LightEntityIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_LightEntities]);
+	frameData.SceneData.GeometryBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_geometryGpuBuffer, RHI::SubresouceType::SRV);
+	frameData.SceneData.MaterialBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_materialGpuBuffer, RHI::SubresouceType::SRV);
+	frameData.SceneData.LightEntityIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_LightEntities], RHI::SubresouceType::SRV);
 	frameData.SceneData.MatricesIndex = RHI::cInvalidDescriptorIndex;
     frameData.SceneData.AtmosphereData = {};
     frameData.SceneData.AtmosphereData.ZenithColour = { 1.0f, 0.0f, 0.0f};// { 0.117647, 0.156863, 0.235294 };
@@ -935,6 +995,14 @@ void DeferredRenderer::CreatePSOs()
                 .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_EnvMap_SkyProcedural),
                 .RtvFormats = { kEnvmapFormat },
                 .DsvFormat = { kEnvmapDepth }
+            });
+    }
+
+    // Generate Mips
+    {
+        this->m_psoCompute[PSO_GenerateMipMaps_TextureCubeArray] = IGraphicsDevice::Ptr->CreateComputePso(
+            {
+                .ComputeShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::CS_GenerateMips_TextureCubeArray)
             });
     }
 }

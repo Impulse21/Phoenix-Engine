@@ -155,12 +155,24 @@ void PhxEngine::RHI::Dx12::CommandList::TransitionBarriers(Core::Span<GpuBarrier
     {
         if (const GpuBarrier::TextureBarrier* texBarrier = std::get_if<GpuBarrier::TextureBarrier>(&gpuBarrier.Data))
         {
-            Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource = this->m_graphicsDevice.GetTexturePool().Get(texBarrier->Texture)->D3D12Resource;
+            Dx12Texture* textureImpl = this->m_graphicsDevice.GetTexturePool().Get(texBarrier->Texture);
+            D3D12_RESOURCE_BARRIER barrier = {};
+            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            barrier.Transition.pResource = textureImpl->D3D12Resource.Get();
+            barrier.Transition.StateBefore = ConvertResourceStates(texBarrier->BeforeState);
+            barrier.Transition.StateAfter = ConvertResourceStates(texBarrier->AfterState);
+            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
-            CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                D3D12Resource.Get(),
-                ConvertResourceStates(texBarrier->BeforeState),
-                ConvertResourceStates(texBarrier->AfterState));
+            if (texBarrier->Mip >= 0 || texBarrier->Slice >= 0)
+            {
+                barrier.Transition.Subresource = D3D12CalcSubresource(
+                    (UINT)std::max(0, texBarrier->Mip),
+                    (UINT)std::max(0, texBarrier->Slice),
+                    0,
+                    textureImpl->Desc.MipLevels,
+                    textureImpl->Desc.ArraySize);
+            }
 
             this->m_barrierMemoryPool.push_back(barrier);
         }
