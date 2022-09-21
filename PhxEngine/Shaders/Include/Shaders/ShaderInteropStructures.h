@@ -64,6 +64,7 @@ namespace Shader
 
 		// -- 16 byte boundary ----
 		Atmosphere AtmosphereData;
+		uint EnvMapArray;
 	};
 
 	// -- Common Structurs ---
@@ -415,6 +416,21 @@ namespace Shader
 
 		float2 OutputResolution;
 		float2 OutputResolutionRcp;
+	};
+
+	struct FilterEnvMapPushConstants
+	{
+		uint TextureInput;
+		uint TextureOutput;
+		uint ArrayIndex;
+		uint NumSamples;
+		// -- 16 byte boundary ---
+
+		float2 FilteredResolution;
+		float2 FilteredResolutionRcp;
+		// -- 16 byte boundary ---
+
+		uint FilterRoughness;
 	};
 
 #ifdef __cplusplus

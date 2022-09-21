@@ -28,6 +28,7 @@ class DeferredRenderer : public PhxEngine::Graphics::IRenderer
     enum PsoComputeType
     {
         PSO_GenerateMipMaps_TextureCubeArray = 0,
+        PSO_FilterEnvMap,
 
         NumComputePsoTypes
     };

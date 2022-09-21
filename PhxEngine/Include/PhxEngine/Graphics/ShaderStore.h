@@ -28,6 +28,7 @@ namespace PhxEngine::Graphics
 		// -- Compute Shaders ---
 		CS_DeferredLighting,
 		CS_GenerateMips_TextureCubeArray,
+		CS_FilterEnvMap,
 
 		NumPreloadShaders
 	};

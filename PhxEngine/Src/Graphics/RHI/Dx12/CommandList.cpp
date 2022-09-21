@@ -186,6 +186,27 @@ void PhxEngine::RHI::Dx12::CommandList::TransitionBarriers(Core::Span<GpuBarrier
 
             this->m_barrierMemoryPool.push_back(barrier);
         }
+
+        else if (const GpuBarrier::MemoryBarrier* memoryBarrier = std::get_if<GpuBarrier::MemoryBarrier>(&gpuBarrier.Data))
+        {
+            D3D12_RESOURCE_BARRIER barrier = {};
+            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            barrier.UAV.pResource = nullptr;
+
+            if (const TextureHandle* texture = std::get_if<TextureHandle>(&memoryBarrier->Resource))
+            {
+                Dx12Texture* textureImpl = this->m_graphicsDevice.GetTexturePool().Get(*texture);
+                barrier.UAV.pResource = textureImpl->D3D12Resource.Get();
+            }
+            else if (const BufferHandle* buffer = std::get_if<BufferHandle>(&memoryBarrier->Resource))
+            {
+                Dx12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(*buffer);
+                barrier.UAV.pResource = bufferImpl->D3D12Resource.Get();
+            }
+
+            this->m_barrierMemoryPool.push_back(barrier);
+        }
     }
 
     if (!this->m_barrierMemoryPool.empty())

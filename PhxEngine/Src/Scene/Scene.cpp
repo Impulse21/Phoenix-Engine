@@ -60,3 +60,13 @@ void PhxEngine::Scene::Scene::ConstructRenderData(RHI::CommandListHandle cmd)
 		comp.Mesh->CreateRenderData(cmd);
 	}
 }
+
+RHI::DescriptorIndex PhxEngine::Scene::Scene::GetBrdfLutDescriptorIndex()
+{
+	if (!this->m_brdfLut)
+	{
+		return RHI::cInvalidDescriptorIndex;
+	}
+
+	return IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_brdfLut->GetRenderHandle(), RHI::SubresouceType::SRV);
+}

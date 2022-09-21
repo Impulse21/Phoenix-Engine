@@ -4,7 +4,7 @@
 
 using namespace PhxEngine::Core;
 
-std::unique_ptr<IWindow> WindowFactory::CreateGltfWindow(WindowSpecification const& spec)
+std::unique_ptr<IWindow> WindowFactory::CreateGlfwWindow(WindowSpecification const& spec)
 {
 	return std::make_unique<WindowGlfw>(spec);
 }

@@ -1001,7 +1001,36 @@ namespace PhxEngine::RHI
             int Slice;
         };
 
-        std::variant<BufferBarrier, TextureBarrier> Data;
+        struct MemoryBarrier
+        {
+            std::variant<TextureHandle, BufferHandle> Resource;
+        };
+
+        std::variant<BufferBarrier, TextureBarrier, GpuBarrier::MemoryBarrier> Data;
+
+        static GpuBarrier CreateMemory()
+        {
+            GpuBarrier barrier = {};
+            barrier.Data = GpuBarrier::MemoryBarrier{};
+
+            return barrier;
+        }
+
+        static GpuBarrier CreateMemory(TextureHandle texture)
+        {
+            GpuBarrier barrier = {};
+            barrier.Data = GpuBarrier::MemoryBarrier{ .Resource = texture };
+
+            return barrier;
+        }
+
+        static GpuBarrier CreateMemory(BufferHandle buffer)
+        {
+            GpuBarrier barrier = {};
+            barrier.Data = GpuBarrier::MemoryBarrier{ .Resource = buffer };
+
+            return barrier;
+        }
 
         static GpuBarrier CreateTexture(
             TextureHandle texture,
