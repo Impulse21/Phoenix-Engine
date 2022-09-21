@@ -208,7 +208,7 @@ void PhxEngine::RHI::Dx12::CommandList::BeginRenderPassBackBuffer()
     this->m_d3d12CommandList6->ResourceBarrier(1, &barrier);
 
     D3D12_RENDER_PASS_RENDER_TARGET_DESC RTV = {};
-    RTV.cpuDescriptor = backBuffer->RtvAllocation.GetCpuHandle();
+    RTV.cpuDescriptor = backBuffer->RtvAllocation.Allocation.GetCpuHandle();
     RTV.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
     RTV.BeginningAccess.Clear.ClearValue.Color[0] = swapchain.Desc.OptmizedClearValue.Colour.R;
     RTV.BeginningAccess.Clear.ClearValue.Color[1] = swapchain.Desc.OptmizedClearValue.Colour.G;
@@ -289,9 +289,9 @@ void CommandList::ClearTextureFloat(TextureHandle texture, Color const& clearCol
     auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(texture);
     assert(textureImpl);
 
-    assert(!textureImpl->RtvAllocation.IsNull());
+    assert(!textureImpl->RtvAllocation.Allocation.IsNull());
     this->m_d3d12CommandList->ClearRenderTargetView(
-        textureImpl->RtvAllocation.GetCpuHandle(),
+        textureImpl->RtvAllocation.Allocation.GetCpuHandle(),
         &clearColour.R,
         0,
         nullptr);
@@ -332,9 +332,9 @@ void CommandList::ClearDepthStencilTexture(
         flags |= D3D12_CLEAR_FLAG_STENCIL;
     }
 
-    assert(!textureImpl->DsvAllocation.IsNull());
+    assert(!textureImpl->DsvAllocation.Allocation.IsNull());
     this->m_d3d12CommandList->ClearDepthStencilView(
-        textureImpl->DsvAllocation.GetCpuHandle(),
+        textureImpl->DsvAllocation.Allocation.GetCpuHandle(),
         flags,
         depth,
         stencil,
@@ -502,7 +502,7 @@ void PhxEngine::RHI::Dx12::CommandList::SetRenderTargets(std::vector<TextureHand
     {
         this->m_trackedData->TextureHandles.push_back(renderTargets[i]);
         auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(renderTargets[i]);
-        renderTargetViews[i] = textureImpl->RtvAllocation.GetCpuHandle();
+        renderTargetViews[i] = textureImpl->RtvAllocation.Allocation.GetCpuHandle();
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE depthView = {};
@@ -510,7 +510,7 @@ void PhxEngine::RHI::Dx12::CommandList::SetRenderTargets(std::vector<TextureHand
     if (hasDepth)
     {
         auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(depthStencil);
-        depthView = textureImpl->DsvAllocation.GetCpuHandle();
+        depthView = textureImpl->DsvAllocation.Allocation.GetCpuHandle();
     }
 
     this->m_d3d12CommandList->OMSetRenderTargets(
@@ -775,7 +775,7 @@ void CommandList::BindDynamicDescriptorTable(size_t rootParameterIndex, std::vec
         this->m_graphicsDevice.GetD3D12Device2()->CopyDescriptorsSimple(
             1,
             descriptorTable.GetCpuHandle(i),
-            textureImpl->SrvAllocation.GetCpuHandle(),
+            textureImpl->SrvAllocation.Allocation.GetCpuHandle(),
             D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     }
 
@@ -801,7 +801,7 @@ void PhxEngine::RHI::Dx12::CommandList::BindDynamicUavDescriptorTable(size_t roo
         this->m_graphicsDevice.GetD3D12Device2()->CopyDescriptorsSimple(
             1,
             descriptorTable.GetCpuHandle(i),
-            textureImpl->UavAllocation.GetCpuHandle(),
+            textureImpl->UavAllocation.Allocation.GetCpuHandle(),
             D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
     }

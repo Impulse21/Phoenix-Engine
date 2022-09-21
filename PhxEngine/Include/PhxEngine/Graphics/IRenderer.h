@@ -18,6 +18,7 @@ namespace PhxEngine::Graphics
 		virtual void Initialize() = 0;
 		virtual void Finialize() = 0;
 
+		virtual void Update(Scene::Scene& scene) = 0;
 		virtual void RenderScene(Scene::CameraComponent const& camera, Scene::Scene& scene) = 0;
 
 		virtual RHI::TextureHandle& GetFinalColourBuffer() = 0;

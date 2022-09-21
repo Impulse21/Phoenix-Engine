@@ -6,7 +6,7 @@ struct PSInput
 	float3 NormalWS     : NORMAL;
 };
 
-[RootSignature(PHX_ENGINE_DEFAULT_ROOTSIGNATURE)]
+[RootSignature(PHX_ENGINE_SKY_CAPTURE_ROOTSIGNATURE)]
 float4 main(PSInput input) : SV_TARGET
 {
 

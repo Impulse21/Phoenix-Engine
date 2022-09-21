@@ -365,6 +365,14 @@ namespace Shader
 		// -- 16 byte boundary ---
 	};
 
+	struct CubemapRenderCams
+	{
+		float4x4 ViewProjection[6];
+		// -- 16 byte boundary ---
+		uint4 Properties[6];
+		// -- 16 byte boundary ---
+	};
+
 #define DRAW_FLAG_ALBEDO        0x001
 #define DRAW_FLAG_NORMAL        0x002
 #define DRAW_FLAG_ROUGHNESS     0x004

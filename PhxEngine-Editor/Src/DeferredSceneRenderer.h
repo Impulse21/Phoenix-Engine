@@ -119,7 +119,9 @@ private:
     static constexpr uint32_t kEnvmapMIPs = 8;
     static constexpr uint32_t kEnvmapMSAASampleCount = 8;
 
+    PhxEngine::RHI::TextureHandle m_envMapDepthBuffer;
     PhxEngine::RHI::TextureHandle m_envMapArray;
+    std::array<PhxEngine::RHI::RenderPassHandle, kEnvmapCount> m_envMapRenderPasses;
 
     enum ConstantBufferTypes
     {

@@ -51,6 +51,16 @@ namespace
             GBuffer,
         };
     }
+
+    namespace RootParameters_EnvMap_SkyProceduralCapture
+    {
+        enum
+        {
+            FrameCB = 0,
+            CameraCB,
+            CubeRenderCamsCB,
+        };
+    }
     namespace RootParameters_ToneMapping
     {
         enum
@@ -90,6 +100,19 @@ void DeferredRenderer::FreeResources()
         {
             IGraphicsDevice::Ptr->DeleteBuffer(this->m_geometryUploadBuffers[i]);
         }
+    }
+
+    for (int i = 0; i < this->m_envMapRenderPasses.size(); i++)
+    {
+        if (this->m_envMapRenderPasses[i].IsValid())
+        {
+            IGraphicsDevice::Ptr->DeleteRenderPass(this->m_envMapRenderPasses[i]);
+        }
+    }
+
+    if (this->m_envMapDepthBuffer.IsValid())
+    {
+        IGraphicsDevice::Ptr->DeleteTexture(this->m_envMapDepthBuffer);
     }
 
     if (this->m_envMapArray.IsValid())
@@ -329,7 +352,38 @@ void DeferredRenderer::RefreshEnvProbs(PhxEngine::Scene::CameraComponent const& 
     Renderer::RenderCam cameras[6];
     Renderer::CreateCubemapCameras(skyCaptureProbe.Position, camera.ZNear, camera.ZFar, Core::Span<Renderer::RenderCam>(cameras, ARRAYSIZE(cameras)));
 
-    // TODO: I am herer
+
+    RHI::ScopedMarker scope = commandList->BeginScopedMarker("Refresh Env Probes");
+
+    commandList->BeginRenderPass(this->m_envMapRenderPasses[skyCaptureProbe.textureIndex]);
+    commandList->SetGraphicsPSO(this->m_pso[PSO_EnvCapture_SkyProcedural]);
+
+    RHI::Viewport v(kEnvmapRes, kEnvmapRes);
+    this->m_commandList->SetViewports(&v, 1);
+
+    RHI::Rect rec(LONG_MAX, LONG_MAX);
+    this->m_commandList->SetScissors(&rec, 1);
+
+    // TODO: Bind Command
+    Shader::CubemapRenderCams renderCamsCB;
+    for (int i = 0; i < ARRAYSIZE(cameras); i++)
+    {
+        DirectX::XMStoreFloat4x4(&renderCamsCB.ViewProjection[i], DirectX::XMMatrixTranspose(cameras[i].ViewProjection));
+        renderCamsCB.Properties[i].x = i;
+    }
+    commandList->BindDynamicConstantBuffer(RootParameters_EnvMap_SkyProceduralCapture::CubeRenderCamsCB, renderCamsCB);
+    
+    Shader::Camera shaderCamCB = {};
+    shaderCamCB.CameraPosition = skyCaptureProbe.Position;
+    commandList->BindDynamicConstantBuffer(RootParameters_EnvMap_SkyProceduralCapture::CameraCB, shaderCamCB);
+
+    commandList->BindConstantBuffer(RootParameters_EnvMap_SkyProceduralCapture::FrameCB, this->m_constantBuffers[CB_Frame]);
+
+    // 240 is the number of vers on an ISOSphere
+    // 6 instances, one per cam side.
+    commandList->Draw(240, 6);
+   
+    commandList->EndRenderPass();
 }
 
 void DeferredRenderer::DrawMeshes(PhxEngine::Scene::Scene& scene, RHI::CommandListHandle commandList)
@@ -372,21 +426,126 @@ void DeferredRenderer::DrawMeshes(PhxEngine::Scene::Scene& scene, RHI::CommandLi
 void DeferredRenderer::RunProbeUpdateSystem(PhxEngine::Scene::Scene& scene)
 {
     if (!this->m_envMapArray.IsValid())
-    {
-        // Create EnvMap
-        // TODO: Create depth
-        TextureDesc desc;
-        desc.ArraySize = kEnvmapCount * 6;
-        desc.BindingFlags = BindingFlags::ShaderResource | BindingFlags::UnorderedAccess | BindingFlags::RenderTarget;
-        desc.Format = kEnvmapFormat;
-        desc.Height = kEnvmapRes;
-        desc.Height = kEnvmapRes;
-        desc.MipLevels = kEnvmapRes;
-        desc.Dimension = TextureDimension::TextureCubeArray;
-        desc.InitialState = ResourceStates::ShaderResource;
-        desc.DebugName = "envMapArray";
+	{
+        this->m_envMapDepthBuffer = IGraphicsDevice::Ptr->CreateTexture(
+            {
+                .BindingFlags = BindingFlags::DepthStencil,
+                .Dimension = TextureDimension::TextureCube,
+                .InitialState = ResourceStates::DepthWrite,
+                .Format = kEnvmapDepth,
+                .IsBindless = false,
+                .Width = kEnvmapRes,
+                .Height = kEnvmapRes,
+                .ArraySize = 6,
+                .OptmizedClearValue = {.DepthStencil = {.Depth = 1.0f }},
+                .DebugName = "Env Map Depth"
+			});
 
-        this->m_envMapArray = IGraphicsDevice::Ptr->CreateTexture(desc);
+        // Create EnvMap
+
+        this->m_envMapArray = IGraphicsDevice::Ptr->CreateTexture(
+            {
+                .BindingFlags = BindingFlags::ShaderResource | BindingFlags::UnorderedAccess | BindingFlags::RenderTarget,
+                .Dimension = TextureDimension::TextureCubeArray,
+                .InitialState = ResourceStates::RenderTarget,
+                .Format = kEnvmapFormat,
+                .IsBindless = true,
+                .Width = kEnvmapRes,
+                .Height = kEnvmapRes,
+                .ArraySize = kEnvmapCount * 6,
+                .MipLevels = kEnvmapMIPs,
+                .OptmizedClearValue = {.Colour = { 0.0f, 0.0f, 0.0f, 1.0f }},
+                .DebugName = "Env Map Array"
+            });
+
+        // Create sub resource views
+
+        // Cube arrays per mip level:
+        for (int i = 0; i < kEnvmapMIPs; i++)
+        {
+            int subIndex = IGraphicsDevice::Ptr->CreateSubresource(
+                this->m_envMapArray,
+                RHI::SubresouceType::SRV,
+                0,
+                kEnvmapCount * 6,
+                i,
+                1);
+
+            assert(i == subIndex);
+            subIndex = IGraphicsDevice::Ptr->CreateSubresource(
+                this->m_envMapArray,
+                RHI::SubresouceType::UAV,
+                0,
+                kEnvmapCount * 6,
+                i,
+                1);
+            assert(i == subIndex);
+        }
+        
+        // individual cubes with mips:
+        for (int i = 0; i < kEnvmapCount; i++)
+        {
+			int subIndex = IGraphicsDevice::Ptr->CreateSubresource(
+				this->m_envMapArray,
+				RHI::SubresouceType::SRV,
+				i * 6,
+				6,
+				0,
+				~0u);
+            assert((kEnvmapMIPs + i) == subIndex);
+        }
+
+	    // individual cubes only mip0:
+        for (int i = 0; i < kEnvmapCount; i++)
+		{
+			int subIndex = IGraphicsDevice::Ptr->CreateSubresource(
+				this->m_envMapArray,
+				RHI::SubresouceType::SRV,
+				i * 6,
+				6,
+				0,
+				1);
+            assert((kEnvmapMIPs + kEnvmapCount + i) == subIndex);
+        }
+
+		// Create Render Passes
+		for (uint32_t i = 0; i < kEnvmapCount; ++i)
+		{
+			int subIndex = IGraphicsDevice::Ptr->CreateSubresource(
+				this->m_envMapArray,
+				RHI::SubresouceType::RTV,
+				i * 6,
+				6,
+				0,
+				1);
+
+                assert(i == subIndex);
+
+				this->m_envMapRenderPasses[i] = IGraphicsDevice::Ptr->CreateRenderPass(
+					{
+			            .Attachments =
+			            {
+				            {
+                                .LoadOp = RenderPassAttachment::LoadOpType::DontCare,
+                                .Texture = this->m_envMapArray,
+                                .Subresource = subIndex,
+                                .StoreOp = RenderPassAttachment::StoreOpType::Store,
+					            .InitialLayout = RHI::ResourceStates::RenderTarget,
+					            .SubpassLayout = RHI::ResourceStates::RenderTarget,
+					            .FinalLayout = RHI::ResourceStates::RenderTarget
+				            },
+				            {
+					            .Type = RenderPassAttachment::Type::DepthStencil,
+					            .LoadOp = RenderPassAttachment::LoadOpType::Clear,
+                                .Texture = this->m_envMapDepthBuffer,
+                                .StoreOp = RenderPassAttachment::StoreOpType::DontCare,
+					            .InitialLayout = RHI::ResourceStates::DepthWrite,
+					            .SubpassLayout = RHI::ResourceStates::DepthWrite,
+					            .FinalLayout = RHI::ResourceStates::DepthWrite
+				            },
+			            }
+					});
+            }
     }
 
     // TODO: Future env probe stuff
@@ -769,16 +928,20 @@ void DeferredRenderer::CreatePSOs()
 
     // ENV Map
     {
-        RHI::GraphicsPSODesc psoDesc = {};
-        psoDesc.VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_EnvMap_Sky);
-        psoDesc.PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_EnvMap_SkyProcedural);
-        psoDesc.RtvFormats.push_back(kEnvmapFormat);
-        psoDesc.DsvFormat = kEnvmapDepth;
-        // TODO handle GS 
         assert(IGraphicsDevice::Ptr->CheckCapability(DeviceCapability::RT_VT_ArrayIndex_Without_GS));
-
-        this->m_pso[PSO_EnvCapture_SkyProcedural] = IGraphicsDevice::Ptr->CreateGraphicsPSO(psoDesc);
+        this->m_pso[PSO_EnvCapture_SkyProcedural] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
+            {
+                .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_EnvMap_Sky),
+                .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_EnvMap_SkyProcedural),
+                .RtvFormats = { kEnvmapFormat },
+                .DsvFormat = { kEnvmapDepth }
+            });
     }
+}
+
+void DeferredRenderer::Update(PhxEngine::Scene::Scene& scene)
+{
+    this->RunProbeUpdateSystem(scene);
 }
 
 void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene)
@@ -786,6 +949,8 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
     this->m_commandList->Open();
 
     this->PrepareFrameRenderData(this->m_commandList, scene);
+
+    this->RefreshEnvProbs(camera, scene, this->m_commandList);
 
     Shader::Camera cameraData = {};
     cameraData.CameraPosition = camera.Eye;
