@@ -284,39 +284,27 @@ float4 main(PSInput input) : SV_TARGET
     float3 ambient = float(0.01).xxx * surfaceProperties.Albedo * surfaceProperties.AO;
 
     float3 F = FresnelSchlick(saturate(dot(N, V)), F0, surfaceProperties.Roughness);
+    // Improvised abmient lighting by using the Env Irradance map.
+    float3 irradiance = float3(0, 0, 0);
+    if (GetScene().IrradianceMapTexIndex != InvalidDescriptorIndex)
+    {
+        irradiance = ResourceHeap_GetTextureCube(GetScene().IrradianceMapTexIndex).Sample(SamplerDefault, N).rgb;
+    }
+
+    float3 kSpecular = F;
     float3 kDiffuse = 1.0 - kSpecular;
+    float3 diffuse = irradiance * surfaceProperties.Albedo;
 
 	// Sample both the BRDFLut and Pre-filtered map and combine them together as per the
 	// split-sum approximation to get the IBL Specular part.
-	float lodLevel = surfaceProperties.Roughness * MaxReflectionLod;
-	float3 prefilteredColour =
-		ResourceHeap_GetTextureCube(GetScene().PreFilteredEnvMapTexIndex).SampleLevel(SamplerDefault, R, lodLevel).rgb;
-
-	float3 F = FresnelSchlick(saturate(dot(N, V)), F0, surfaceProperties.Roughness);
-
-	// Improvised abmient lighting by using the Env Irradance map.
-	float3 irradiance = float3(0, 0, 0);
-	if (GetScene().EnvMapArray != InvalidDescriptorIndex)
-	{
-		irradiance = ResourceHeap_GetTextureCubeArray(GetScene().EnvMapArray).SampleLevel(SamplerDefault, N).rgb;
-	}
-
-	float3 kSpecular = F;
-	float3 kDiffuse = 1.0 - kSpecular;
-	float3 diffuse = irradiance * surfaceProperties.Albedo;
-
-	// Sample both the BRDFLut and Pre-filtered map and combine them together as per the
-	// split-sum approximation to get the IBL Specular part.
-
 	float3 prefilteredColour = float3(0.0f, 0.0f, 0.0f);
 	if (GetScene().EnvMapArray != InvalidDescriptorIndex)
 	{
 		float lodLevel = surfaceProperties.Roughness * MaxReflectionLod;
-		prefilteredColour = ResourceHeap_GetTextureCube(GetScene().EnvMapArray).SampleLevel(SamplerLinearClamped, float4(N, 0), lodLevel).rgb;
+		prefilteredColour = ResourceHeap_GetTextureCubeArray(GetScene().EnvMapArray).SampleLevel(SamplerLinearClamped, float4(N, 0), lodLevel).rgb;
 	}
 
 	float2 brdfTexCoord = float2(saturate(dot(N, V)), surfaceProperties.Roughness);
-
 	float2 brdf = float2(1.0f, 1.0f);
 	if (FrameCB.BrdfLUTTexIndex != InvalidDescriptorIndex)
 	{

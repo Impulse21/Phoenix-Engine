@@ -1692,7 +1692,6 @@ int PhxEngine::RHI::Dx12::GraphicsDevice::CreateShaderResourceView(TextureHandle
 			.SliceCount = sliceCount
 		};
 
-	// TODO: I AM HERE
 	this->GetD3D12Device2()->CreateShaderResourceView(
 		textureImpl->D3D12Resource.Get(),
 		&srvDesc,
@@ -1734,17 +1733,17 @@ int PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTargetView(TextureHandle t
 	{
 	case TextureDimension::Texture1D:
 		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1D;
-		rtvDesc.Texture1D.MipSlice = 0;
+		rtvDesc.Texture1D.MipSlice = firstMip;
 		break;
 	case TextureDimension::Texture1DArray:
 		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
 		rtvDesc.Texture1DArray.FirstArraySlice = firstSlice;
 		rtvDesc.Texture1DArray.ArraySize = sliceCount;
-		rtvDesc.Texture1DArray.MipSlice = 0;
+		rtvDesc.Texture1DArray.MipSlice = firstMip;
 		break;
 	case TextureDimension::Texture2D:
 		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-		rtvDesc.Texture2D.MipSlice = 0;
+		rtvDesc.Texture2D.MipSlice = firstMip;
 		break;
 	case TextureDimension::Texture2DArray:
 	case TextureDimension::TextureCube:
@@ -1752,7 +1751,7 @@ int PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTargetView(TextureHandle t
 		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
 		rtvDesc.Texture2DArray.ArraySize = sliceCount;
 		rtvDesc.Texture2DArray.FirstArraySlice = firstSlice;
-		rtvDesc.Texture2DArray.MipSlice = 0;
+		rtvDesc.Texture2DArray.MipSlice = firstMip;
 		break;
 	case TextureDimension::Texture2DMS:
 		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
@@ -1766,7 +1765,7 @@ int PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTargetView(TextureHandle t
 		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
 		rtvDesc.Texture3D.FirstWSlice = 0;
 		rtvDesc.Texture3D.WSize = textureImpl->Desc.ArraySize;
-		rtvDesc.Texture3D.MipSlice = 0;
+		rtvDesc.Texture3D.MipSlice = firstMip;
 		break;
 	case TextureDimension::Unknown:
 	default:
@@ -1811,17 +1810,17 @@ int PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencilView(TextureHandle t
 	{
 	case TextureDimension::Texture1D:
 		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1D;
-		dsvDesc.Texture1D.MipSlice = 0;
+		dsvDesc.Texture1D.MipSlice = firstMip;
 		break;
 	case TextureDimension::Texture1DArray:
 		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
 		dsvDesc.Texture1DArray.FirstArraySlice = firstSlice;
 		dsvDesc.Texture1DArray.ArraySize = sliceCount;
-		dsvDesc.Texture1DArray.MipSlice = 0;
+		dsvDesc.Texture1DArray.MipSlice = firstMip;
 		break;
 	case TextureDimension::Texture2D:
 		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-		dsvDesc.Texture2D.MipSlice = 0;
+		dsvDesc.Texture2D.MipSlice = firstMip;
 		break;
 	case TextureDimension::Texture2DArray:
 	case TextureDimension::TextureCube:
@@ -1829,7 +1828,7 @@ int PhxEngine::RHI::Dx12::GraphicsDevice::CreateDepthStencilView(TextureHandle t
 		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
 		dsvDesc.Texture2DArray.ArraySize = sliceCount;
 		dsvDesc.Texture2DArray.FirstArraySlice = firstSlice;
-		dsvDesc.Texture2DArray.MipSlice = 0;
+		dsvDesc.Texture2DArray.MipSlice = firstMip;
 		break;
 	case TextureDimension::Texture2DMS:
 		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
@@ -1885,17 +1884,17 @@ int PhxEngine::RHI::Dx12::GraphicsDevice::CreateUnorderedAccessView(TextureHandl
 	{
 	case TextureDimension::Texture1D:
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1D;
-		uavDesc.Texture1D.MipSlice = 0;
+		uavDesc.Texture1D.MipSlice = firstMip;
 		break;
 	case TextureDimension::Texture1DArray:
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1DARRAY;
 		uavDesc.Texture1DArray.FirstArraySlice = firstSlice;
 		uavDesc.Texture1DArray.ArraySize = sliceCount;
-		uavDesc.Texture1DArray.MipSlice = 0;
+		uavDesc.Texture1DArray.MipSlice = firstMip;
 		break;
 	case TextureDimension::Texture2D:
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-		uavDesc.Texture2D.MipSlice = 0;
+		uavDesc.Texture2D.MipSlice = firstMip;
 		break;
 	case TextureDimension::Texture2DArray:
 	case TextureDimension::TextureCube:
@@ -1903,13 +1902,13 @@ int PhxEngine::RHI::Dx12::GraphicsDevice::CreateUnorderedAccessView(TextureHandl
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
 		uavDesc.Texture2DArray.FirstArraySlice = firstSlice;
 		uavDesc.Texture2DArray.ArraySize = sliceCount;
-		uavDesc.Texture2DArray.MipSlice = 0;
+		uavDesc.Texture2DArray.MipSlice = firstMip;
 		break;
 	case TextureDimension::Texture3D:
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
 		uavDesc.Texture3D.FirstWSlice = 0;
 		uavDesc.Texture3D.WSize = textureImpl->Desc.Depth;
-		uavDesc.Texture3D.MipSlice = 0;
+		uavDesc.Texture3D.MipSlice = firstMip;
 		break;
 	case TextureDimension::Texture2DMS:
 	case TextureDimension::Texture2DMSArray:

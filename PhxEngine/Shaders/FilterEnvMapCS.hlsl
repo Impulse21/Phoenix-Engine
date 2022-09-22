@@ -1,5 +1,6 @@
 
 
+#include "Defines.hlsli"
 #include "Include/Shaders/ShaderInterop.h"
 #include "Include/Shaders/ShaderInteropStructures.h"
 #include "ResourceHeapTables.hlsli"
@@ -86,7 +87,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
         for (uint i = 0; i < push.NumSamples; ++i)
         {
-            float Xi = Hammersley(i, push.NumSamples);
+            float2 Xi = Hammersley(i, push.NumSamples);
             float3 hemisphere = ImportanceSampleGGX(Xi, push.FilterRoughness, N);
             float3 light = mul(hemisphere, tangentToWorldMtx);
 

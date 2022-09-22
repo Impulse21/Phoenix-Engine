@@ -38,6 +38,7 @@ namespace DefaultRootParameters
 #define CONSTANT_BUFFER(name, type) ConstantBuffer<type> name : register(b999)
 #define PUSH_CONSTANT(name, type) ConstantBuffer<type> name : register(b999)
 #define RS_PUSH_CONSTANT "CBV(b999, space = 1, flags = DATA_STATIC)"
+
 #endif
 
 #define DEFERRED_BLOCK_SIZE_X 16

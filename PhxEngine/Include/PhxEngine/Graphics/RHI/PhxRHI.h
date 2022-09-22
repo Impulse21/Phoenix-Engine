@@ -1043,6 +1043,8 @@ namespace PhxEngine::RHI
             t.Texture = texture;
             t.BeforeState = beforeState;
             t.AfterState = afterState;
+            t.Mip = mip;
+            t.Slice = slice;
 
             GpuBarrier barrier = {};
             barrier.Data = t;

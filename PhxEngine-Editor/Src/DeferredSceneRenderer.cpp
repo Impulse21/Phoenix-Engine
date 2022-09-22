@@ -341,7 +341,7 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
         });
 }
 
-void DeferredRenderer::RefreshEnvProbs(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList)
+void DeferredRenderer::RefreshEnvProbes(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList)
 {
     // Currently not considering env props
     EnvProbeComponent skyCaptureProbe;
@@ -408,7 +408,7 @@ void DeferredRenderer::RefreshEnvProbs(PhxEngine::Scene::CameraComponent const& 
                 GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 5),
             };
 
-            // this->m_commandList->TransitionBarriers(Core::Span<GpuBarrier>(preBarriers, ARRAYSIZE(preBarriers)));
+            this->m_commandList->TransitionBarriers(Core::Span<GpuBarrier>(preBarriers, ARRAYSIZE(preBarriers)));
 
             textureDesc.Width = std::max(1u, textureDesc.Width / 2);
             textureDesc.Height = std::max(1u, textureDesc.Height / 2);
@@ -435,68 +435,68 @@ void DeferredRenderer::RefreshEnvProbs(PhxEngine::Scene::CameraComponent const& 
                 GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 5),
             };
 
-            // this->m_commandList->TransitionBarriers(Core::Span<GpuBarrier>(postBarriers, ARRAYSIZE(postBarriers)));
+            this->m_commandList->TransitionBarriers(Core::Span<GpuBarrier>(postBarriers, ARRAYSIZE(postBarriers)));
 
         }
+    }
 
+    {
+        RHI::ScopedMarker scope = commandList->BeginScopedMarker("Filter Env Map");
+        this->m_commandList->SetComputeState(this->m_psoCompute[PsoComputeType::PSO_FilterEnvMap]);
+
+        TextureDesc textureDesc = RHI::IGraphicsDevice::Ptr->GetTextureDesc(this->m_envMapArray);
+
+        textureDesc.Width = 1;
+        textureDesc.Height = 1;
+
+        Shader::FilterEnvMapPushConstants push = {};
+        push.ArrayIndex = skyCaptureProbe.textureIndex;
+        // We can skip the most detailed mip as it's bassiclly a straight reflection. So end before 0.
+        for (int i = textureDesc.MipLevels - 1; i > 0; --i)
         {
-            RHI::ScopedMarker scope = commandList->BeginScopedMarker("Filter Env Map");
-            this->m_commandList->SetComputeState(this->m_psoCompute[PsoComputeType::PSO_FilterEnvMap]);
-
-            TextureDesc textureDesc = RHI::IGraphicsDevice::Ptr->GetTextureDesc(this->m_envMapArray);
-
-            textureDesc.Width = 1;
-            textureDesc.Height = 1;
-
-            Shader::FilterEnvMapPushConstants push = {};
-            push.ArrayIndex = skyCaptureProbe.textureIndex;
-            // We can skip the most detailed mip as it's bassiclly a straight reflection. So end before 0.
-            for (int i = textureDesc.MipLevels - 1; i > 0; --i)
+            GpuBarrier preBarriers[] =
             {
-                GpuBarrier preBarriers[] =
-                {
-                    GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 0),
-                    GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 1),
-                    GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 2),
-                    GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 3),
-                    GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 4),
-                    GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 5),
-                };
+                GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 0),
+                GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 1),
+                GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 2),
+                GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 3),
+                GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 4),
+                GpuBarrier::CreateTexture(this->m_envMapArray, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1, push.ArrayIndex * 6 + 5),
+            };
 
-                // this->m_commandList->TransitionBarriers(Core::Span<GpuBarrier>(preBarriers, ARRAYSIZE(preBarriers)));
+            this->m_commandList->TransitionBarriers(Core::Span<GpuBarrier>(preBarriers, ARRAYSIZE(preBarriers)));
 
 
-                push.TextureInput = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_envMapArray, RHI::SubresouceType::SRV, std::max(0, (int)i - 2));
-                push.TextureOutput = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_envMapArray, RHI::SubresouceType::UAV, i);
-                push.FilteredResolution = { (float)textureDesc.Width, (float)textureDesc.Height };
-                push.FilteredResolutionRcp = { 1.0f / (float)textureDesc.Width, 1.0f / (float)textureDesc.Height };
-                push.FilterRoughness = (float)i / (float)textureDesc.MipLevels;
-                // In the example they use 1024: https://placeholderart.wordpress.com/2015/07/28/implementation-notes-runtime-environment-map-filtering-for-image-based-lighting/
-                push.NumSamples = 128;
-                this->m_commandList->BindPushConstant(0, push);
+            push.TextureInput = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_envMapArray, RHI::SubresouceType::SRV, std::max(0, (int)i - 2));
+            push.TextureOutput = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_envMapArray, RHI::SubresouceType::UAV, i);
+            push.FilteredResolution = { (float)textureDesc.Width, (float)textureDesc.Height };
+            push.FilteredResolutionRcp = { 1.0f / (float)textureDesc.Width, 1.0f / (float)textureDesc.Height };
+            push.FilterRoughness = (float)i / (float)textureDesc.MipLevels;
+            // In the example they use 1024: https://placeholderart.wordpress.com/2015/07/28/implementation-notes-runtime-environment-map-filtering-for-image-based-lighting/
+            push.NumSamples = 128;
+            this->m_commandList->BindPushConstant(0, push);
 
 
-                this->m_commandList->Dispatch(
-                    (textureDesc.Width + Shader::GENERATE_MIP_CHAIN_2D_BLOCK_SIZE - 1) / Shader::GENERATE_MIP_CHAIN_2D_BLOCK_SIZE,
-                    (textureDesc.Height + Shader::GENERATE_MIP_CHAIN_2D_BLOCK_SIZE - 1) / Shader::GENERATE_MIP_CHAIN_2D_BLOCK_SIZE,
-                    6);
+            this->m_commandList->Dispatch(
+                (textureDesc.Width + Shader::GENERATE_MIP_CHAIN_2D_BLOCK_SIZE - 1) / Shader::GENERATE_MIP_CHAIN_2D_BLOCK_SIZE,
+                (textureDesc.Height + Shader::GENERATE_MIP_CHAIN_2D_BLOCK_SIZE - 1) / Shader::GENERATE_MIP_CHAIN_2D_BLOCK_SIZE,
+                6);
 
-                GpuBarrier postBarriers[] =
-                {
-                    GpuBarrier::CreateMemory(),
-                    GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 0),
-                    GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 1),
-                    GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 2),
-                    GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 3),
-                    GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 4),
-                    GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 5),
-                };
+            GpuBarrier postBarriers[] =
+            {
+                GpuBarrier::CreateMemory(),
+                GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 0),
+                GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 1),
+                GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 2),
+                GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 3),
+                GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 4),
+                GpuBarrier::CreateTexture(this->m_envMapArray, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1, push.ArrayIndex * 6 + 5),
+            };
 
-                // this->m_commandList->TransitionBarriers(Core::Span<GpuBarrier>(postBarriers, ARRAYSIZE(postBarriers)));
+            this->m_commandList->TransitionBarriers(Core::Span<GpuBarrier>(postBarriers, ARRAYSIZE(postBarriers)));
 
-                textureDesc.Width *= 2;
-                textureDesc.Height *= 2;
-            }
+            textureDesc.Width *= 2;
+            textureDesc.Height *= 2;
         }
     }
 
@@ -921,8 +921,13 @@ void DeferredRenderer::PrepareFrameRenderData(
 	frameData.SceneData.LightEntityIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_LightEntities], RHI::SubresouceType::SRV);
 	frameData.SceneData.MatricesIndex = RHI::cInvalidDescriptorIndex;
     frameData.SceneData.AtmosphereData = {};
+#if false
     frameData.SceneData.AtmosphereData.ZenithColour = { 1.0f, 0.0f, 0.0f};// { 0.117647, 0.156863, 0.235294 };
     frameData.SceneData.AtmosphereData.HorizonColour = { 0.0f, 0.0f, 1.0f };// { 0.0392157, 0.0392157, 0.0784314 };
+#else
+    frameData.SceneData.AtmosphereData.ZenithColour = { 0.117647, 0.156863, 0.235294 };
+    frameData.SceneData.AtmosphereData.HorizonColour = { 0.0392157, 0.0392157, 0.0784314 };
+#endif
     frameData.SceneData.EnvMapArray = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_envMapArray, RHI::SubresouceType::SRV);
     frameData.BrdfLUTTexIndex = scene.GetBrdfLutDescriptorIndex();
 
@@ -1079,7 +1084,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 
     this->PrepareFrameRenderData(this->m_commandList, scene);
 
-    this->RefreshEnvProbs(camera, scene, this->m_commandList);
+    this->RefreshEnvProbes(camera, scene, this->m_commandList);
 
     Shader::Camera cameraData = {};
     cameraData.CameraPosition = camera.Eye;
