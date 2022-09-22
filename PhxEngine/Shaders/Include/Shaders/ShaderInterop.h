@@ -38,14 +38,17 @@ namespace DefaultRootParameters
 #define CONSTANT_BUFFER(name, type) ConstantBuffer<type> name : register(b999)
 #define PUSH_CONSTANT(name, type) ConstantBuffer<type> name : register(b999)
 #define RS_PUSH_CONSTANT "CBV(b999, space = 1, flags = DATA_STATIC)"
+
 #endif
 
 #define DEFERRED_BLOCK_SIZE_X 16
 #define DEFERRED_BLOCK_SIZE_Y 16
 
 
-#define RESOURCE_HEAP_BUFFER_SPACE     space100
-#define RESOURCE_HEAP_TEX2D_SPACE      space101
-#define RESOURCE_HEAP_TEX_CUBE_SPACE   space102
+#define RESOURCE_HEAP_BUFFER_SPACE			space100
+#define RESOURCE_HEAP_TEX2D_SPACE			space101
+#define RESOURCE_HEAP_TEX_CUBE_SPACE		space102
+#define RESOURCE_HEAP_TEX_CUBE_ARRAY_SPACE	space103
+#define RESOURCE_HEAP_RWTEX2DARRAY_SPACE	space104
 
 #endif // __PHX_SHADER_INTEROP_HLSLI__

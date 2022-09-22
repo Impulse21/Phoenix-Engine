@@ -8,5 +8,5 @@
 #define InvalidDescriptorIndex ~0U
 
 
-#define PI 3.14159265f
+#define PI 3.14159265358979323846
 #endif

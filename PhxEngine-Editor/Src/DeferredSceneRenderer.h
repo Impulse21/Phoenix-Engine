@@ -25,6 +25,14 @@ class DeferredRenderer : public PhxEngine::Graphics::IRenderer
         NumPsoTypes
     };
 
+    enum PsoComputeType
+    {
+        PSO_GenerateMipMaps_TextureCubeArray = 0,
+        PSO_FilterEnvMap,
+
+        NumComputePsoTypes
+    };
+
     enum RenderPassType
     {
         RenderPass_GBuffer,
@@ -74,7 +82,7 @@ private:
 
     // Potential Render Functions
 private:
-    void RefreshEnvProbs(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
+    void RefreshEnvProbes(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
     void DrawMeshes(PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
 
 
@@ -93,6 +101,7 @@ private:
     std::vector<DirectX::XMFLOAT4X4> m_matricesCPUData;
 
     std::array<PhxEngine::RHI::GraphicsPSOHandle, PsoType::NumPsoTypes> m_pso;
+    std::array<PhxEngine::RHI::ComputePSOHandle, PsoComputeType::NumComputePsoTypes> m_psoCompute;
 
     // -- Scene GPU Buffers ---
     size_t m_numGeometryEntires = 0;
@@ -119,7 +128,9 @@ private:
     static constexpr uint32_t kEnvmapMIPs = 8;
     static constexpr uint32_t kEnvmapMSAASampleCount = 8;
 
+    PhxEngine::RHI::TextureHandle m_envMapDepthBuffer;
     PhxEngine::RHI::TextureHandle m_envMapArray;
+    std::array<PhxEngine::RHI::RenderPassHandle, kEnvmapCount> m_envMapRenderPasses;
 
     enum ConstantBufferTypes
     {

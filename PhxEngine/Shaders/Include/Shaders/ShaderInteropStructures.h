@@ -26,6 +26,8 @@ namespace Shader
 
 	static const uint MATRIX_COUNT = 128;
 
+	// -- Groups ---
+	static const uint GENERATE_MIP_CHAIN_2D_BLOCK_SIZE = 8;
 
 	struct Atmosphere
 	{
@@ -62,6 +64,7 @@ namespace Shader
 
 		// -- 16 byte boundary ----
 		Atmosphere AtmosphereData;
+		uint EnvMapArray;
 	};
 
 	// -- Common Structurs ---
@@ -365,6 +368,14 @@ namespace Shader
 		// -- 16 byte boundary ---
 	};
 
+	struct CubemapRenderCams
+	{
+		float4x4 ViewProjection[6];
+		// -- 16 byte boundary ---
+		uint4 Properties[6];
+		// -- 16 byte boundary ---
+	};
+
 #define DRAW_FLAG_ALBEDO        0x001
 #define DRAW_FLAG_NORMAL        0x002
 #define DRAW_FLAG_ROUGHNESS     0x004
@@ -393,6 +404,33 @@ namespace Shader
 	{
 		uint2 DipatchGridDim; // // Arguments of the Dispatch call
 		uint MaxTileWidth; // 8, 16 or 32.
+	};
+
+	struct GenerateMipChainPushConstants
+	{
+		uint TextureInput;
+		uint TextureOutput;
+		uint ArrayIndex;
+		uint _Padding;
+		// -- 16 byte boundary ---
+
+		float2 OutputResolution;
+		float2 OutputResolutionRcp;
+	};
+
+	struct FilterEnvMapPushConstants
+	{
+		uint TextureInput;
+		uint TextureOutput;
+		uint ArrayIndex;
+		uint NumSamples;
+		// -- 16 byte boundary ---
+
+		float2 FilteredResolution;
+		float2 FilteredResolutionRcp;
+		// -- 16 byte boundary ---
+
+		uint FilterRoughness;
 	};
 
 #ifdef __cplusplus

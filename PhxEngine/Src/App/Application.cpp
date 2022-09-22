@@ -210,7 +210,7 @@ PhxEngine::LayeredApplication::LayeredApplication(ApplicationSpecification const
 	windowSpec.Title = this->m_spec.Name;
 	windowSpec.VSync = this->m_spec.VSync;
 	
-	this->m_window = WindowFactory::CreateGltfWindow(windowSpec);
+	this->m_window = WindowFactory::CreateGlfwWindow(windowSpec);
 	this->m_window->Initialize();
 	this->m_window->SetResizeable(false);
 	this->m_window->SetVSync(this->m_spec.VSync);

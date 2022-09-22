@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include <PhxEngine/Core/RefPtr.h>
 #include <PhxEngine/Graphics/RHI/PhxRHI.h>
 #include <PhxEngine/Renderer/ResourceManager.h>

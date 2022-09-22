@@ -19,7 +19,7 @@ namespace PhxEngine::Renderer
 			const DirectX::XMVECTOR to = DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.0f, 0.0f, -1.0f, 0.0f), rot);
 			const DirectX::XMVECTOR up = DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), rot);
 			const DirectX::XMMATRIX V = DirectX::XMMatrixLookToRH(eye, to, up);
-			const DirectX::XMMATRIX P = DirectX::XMMatrixPerspectiveFovRH(fov, 1, farPlane, nearPlane);
+			const DirectX::XMMATRIX P = DirectX::XMMatrixPerspectiveFovRH(fov, 1, nearPlane, farPlane);
 			this->ViewProjection = XMMatrixMultiply(V, P);
 		}
 	};
@@ -28,7 +28,7 @@ namespace PhxEngine::Renderer
 	{
 		assert(cameras.Size() == 6);
 		cameras[0] = RenderCam(position, DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), nearZ, farZ, DirectX::XM_PIDIV2); // -z
-		cameras[1] = RenderCam(position, DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f), farZ, farZ, DirectX::XM_PIDIV2); // +z
+		cameras[1] = RenderCam(position, DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f), nearZ, farZ, DirectX::XM_PIDIV2); // +z
 		cameras[2] = RenderCam(position, DirectX::XMFLOAT4(0, 0.707f, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // -x
 		cameras[3] = RenderCam(position, DirectX::XMFLOAT4(0, -0.707f, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // +x
 		cameras[4] = RenderCam(position, DirectX::XMFLOAT4(0.707f, 0, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // -y

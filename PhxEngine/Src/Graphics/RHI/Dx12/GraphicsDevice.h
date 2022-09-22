@@ -119,55 +119,77 @@ namespace PhxEngine::RHI::Dx12
         const ComputePSODesc& GetDesc() const override { return this->Desc; }
     };
 
+    struct DescriptorView
+    {
+        DescriptorHeapAllocation Allocation;
+        DescriptorIndex BindlessIndex = cInvalidDescriptorIndex;
+        D3D12_DESCRIPTOR_HEAP_TYPE Type = {};
+        union
+        {
+            D3D12_CONSTANT_BUFFER_VIEW_DESC CBVDesc;
+            D3D12_SHADER_RESOURCE_VIEW_DESC SRVDesc;
+            D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
+            D3D12_SAMPLER_DESC SAMDesc;
+            D3D12_RENDER_TARGET_VIEW_DESC RTVDesc;
+            D3D12_DEPTH_STENCIL_VIEW_DESC DSVDesc;
+        };
+
+        uint32_t FirstMip = 0;
+        uint32_t MipCount = 0;
+        uint32_t FirstSlice = 0;
+        uint32_t SliceCount = 0;
+    };
+
     struct Dx12Texture final
     {
         TextureDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
 
         // -- The views ---
-        DescriptorHeapAllocation RtvAllocation;
-        std::vector<DescriptorHeapAllocation> RtvSubresourcesAlloc = {};
+        DescriptorView RtvAllocation;
+        std::vector<DescriptorView> RtvSubresourcesAlloc = {};
 
-        DescriptorHeapAllocation DsvAllocation;
-        std::vector<DescriptorHeapAllocation> DsvSubresourcesAlloc = {};
+        DescriptorView DsvAllocation;
+        std::vector<DescriptorView> DsvSubresourcesAlloc = {};
 
-        DescriptorHeapAllocation SrvAllocation;
-        std::vector<DescriptorHeapAllocation> SrvSubresourcesAlloc = {};
+        DescriptorView SrvAllocation;
+        std::vector<DescriptorView> SrvSubresourcesAlloc = {};
 
-        DescriptorHeapAllocation UavAllocation;
-        std::vector<DescriptorHeapAllocation> UavSubresourcesAlloc = {};
-
-        DescriptorIndex BindlessResourceIndex = cInvalidDescriptorIndex;
-        std::vector<DescriptorIndex> BindlessSubresourceIndex = {};
+        DescriptorView UavAllocation;
+        std::vector<DescriptorView> UavSubresourcesAlloc = {};
 
         Dx12Texture() = default;
 
         void DisposeViews()
         {
+            RtvAllocation.Allocation.Free();
             for (auto& view : this->RtvSubresourcesAlloc)
             {
-                view.Free();
+                view.Allocation.Free();
             }
             RtvSubresourcesAlloc.clear();
             RtvAllocation = {};
 
+            DsvAllocation.Allocation.Free();
             for (auto& view : this->DsvSubresourcesAlloc)
             {
-                view.Free();
+                view.Allocation.Free();
             }
             DsvSubresourcesAlloc.clear();
             DsvAllocation = {};
 
+            SrvAllocation.Allocation.Free();
             for (auto& view : this->SrvSubresourcesAlloc)
             {
-                view.Free();
+                view.Allocation.Free();
             }
             SrvSubresourcesAlloc.clear();
             SrvAllocation = {};
 
+            UavAllocation.Allocation.Free();
             for (auto& view : this->UavSubresourcesAlloc)
             {
-                view.Free();
+                view.Allocation.Free();
             }
             UavSubresourcesAlloc.clear();
             UavAllocation = {};
@@ -178,38 +200,37 @@ namespace PhxEngine::RHI::Dx12
     {
         BufferDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
-        DescriptorIndex BindlessResourceIndex = cInvalidDescriptorIndex;
-        std::vector<DescriptorIndex> BindlessSubresourceIndex = {};
 
         void* MappedData = nullptr;
         uint32_t MappedSizeInBytes = 0;
 
         // -- Views ---
-        DescriptorHeapAllocation SrvAllocation;
-        std::vector<DescriptorHeapAllocation> SrvSubresourcesAlloc = {};
+        DescriptorView SrvAllocation;
+        std::vector<DescriptorView> SrvSubresourcesAlloc = {};
 
-        DescriptorHeapAllocation UavAllocation;
-        std::vector<DescriptorHeapAllocation> UavSubresourcesAlloc = {};
+        DescriptorView UavAllocation;
+        std::vector<DescriptorView> UavSubresourcesAlloc = {};
 
 
         D3D12_VERTEX_BUFFER_VIEW VertexView = {};
         D3D12_INDEX_BUFFER_VIEW IndexView = {};
 
         const BufferDesc& GetDesc() const { return this->Desc; }
-        const DescriptorIndex GetDescriptorIndex() const { return this->BindlessResourceIndex; }
 
         void DisposeViews()
         {
+            SrvAllocation.Allocation.Free();
             for (auto& view : this->SrvSubresourcesAlloc)
             {
-                view.Free();
+                view.Allocation.Free();
             }
             SrvSubresourcesAlloc.clear();
             SrvAllocation = {};
 
+            UavAllocation.Allocation.Free();
             for (auto& view : this->UavSubresourcesAlloc)
             {
-                view.Free();
+                view.Allocation.Free();
             }
             UavSubresourcesAlloc.clear();
             UavAllocation = {};
@@ -290,14 +311,14 @@ namespace PhxEngine::RHI::Dx12
 
         TextureHandle CreateTexture(TextureDesc const& desc) override;
         const TextureDesc& GetTextureDesc(TextureHandle handle) override;
-        DescriptorIndex GetDescriptorIndex(TextureHandle handle) override;
+        DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource = -1) override;
         void DeleteTexture(TextureHandle) override;
 
         BufferHandle CreateIndexBuffer(BufferDesc const& desc) override;
         BufferHandle CreateVertexBuffer(BufferDesc const& desc) override;
         BufferHandle CreateBuffer(BufferDesc const& desc) override;
         const BufferDesc& GetBufferDesc(BufferHandle handle) override;
-        DescriptorIndex GetDescriptorIndex(BufferHandle handle) override;
+        DescriptorIndex GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource = -1) override;
         void* GetBufferMappedData(BufferHandle handle) override;
         uint32_t GetBufferMappedDataSizeInBytes(BufferHandle handle) override;
         void DeleteBuffer(BufferHandle handle) override;

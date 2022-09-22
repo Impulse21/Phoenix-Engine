@@ -997,16 +997,54 @@ namespace PhxEngine::RHI
             RHI::TextureHandle Texture;
             RHI::ResourceStates BeforeState;
             RHI::ResourceStates AfterState;
+            int Mip;
+            int Slice;
         };
 
-        std::variant<BufferBarrier, TextureBarrier> Data;
+        struct MemoryBarrier
+        {
+            std::variant<TextureHandle, BufferHandle> Resource;
+        };
 
-        static GpuBarrier CreateTexture(TextureHandle texture, ResourceStates beforeState, ResourceStates afterState)
+        std::variant<BufferBarrier, TextureBarrier, GpuBarrier::MemoryBarrier> Data;
+
+        static GpuBarrier CreateMemory()
+        {
+            GpuBarrier barrier = {};
+            barrier.Data = GpuBarrier::MemoryBarrier{};
+
+            return barrier;
+        }
+
+        static GpuBarrier CreateMemory(TextureHandle texture)
+        {
+            GpuBarrier barrier = {};
+            barrier.Data = GpuBarrier::MemoryBarrier{ .Resource = texture };
+
+            return barrier;
+        }
+
+        static GpuBarrier CreateMemory(BufferHandle buffer)
+        {
+            GpuBarrier barrier = {};
+            barrier.Data = GpuBarrier::MemoryBarrier{ .Resource = buffer };
+
+            return barrier;
+        }
+
+        static GpuBarrier CreateTexture(
+            TextureHandle texture,
+            ResourceStates beforeState,
+            ResourceStates afterState,
+            int mip = -1,
+            int slice = -1)
         {
             GpuBarrier::TextureBarrier t = {};
             t.Texture = texture;
             t.BeforeState = beforeState;
             t.AfterState = afterState;
+            t.Mip = mip;
+            t.Slice = slice;
 
             GpuBarrier barrier = {};
             barrier.Data = t;
@@ -1233,7 +1271,7 @@ namespace PhxEngine::RHI
 
         virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
         virtual const TextureDesc& GetTextureDesc(TextureHandle handle) = 0;
-        virtual DescriptorIndex GetDescriptorIndex(TextureHandle handle) = 0;
+        virtual DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource = -1) = 0;
         virtual void DeleteTexture(TextureHandle handle) = 0;
 
         virtual RenderPassHandle CreateRenderPass(RenderPassDesc const& desc) = 0;
@@ -1251,7 +1289,7 @@ namespace PhxEngine::RHI
 
         virtual BufferHandle CreateBuffer(BufferDesc const& desc) = 0;
         virtual const BufferDesc& GetBufferDesc(BufferHandle handle) = 0;
-        virtual DescriptorIndex GetDescriptorIndex(BufferHandle handle) = 0;
+        virtual DescriptorIndex GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource = -1) = 0;
 
         template<typename T>
         T* GetBufferMappedData(BufferHandle handle)

@@ -32,10 +32,11 @@
 // RootFlags( CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED | SAMPLER_HEAP_DIRECTLY_INDEXED )
 #ifndef USE_RESOURCE_HEAP
 
-Texture2D ResourceHeap_Texture2D[] : register(t0, RESOURCE_HEAP_TEX2D_SPACE);
-TextureCube ResourceHeap_TextureCube[] : register(t0, RESOURCE_HEAP_TEX_CUBE_SPACE);
-ByteAddressBuffer ResourceHeap_Buffer[] : register(t0, RESOURCE_HEAP_BUFFER_SPACE);
-
+Texture2D					ResourceHeap_Texture2D[]			: register(t0, RESOURCE_HEAP_TEX2D_SPACE);
+TextureCube					ResourceHeap_TextureCube[]			: register(t0, RESOURCE_HEAP_TEX_CUBE_SPACE);
+TextureCubeArray			ResourceHeap_TextureCubeArray[]		: register(t0, RESOURCE_HEAP_TEX_CUBE_ARRAY_SPACE);
+ByteAddressBuffer			ResourceHeap_Buffer[]				: register(t0, RESOURCE_HEAP_BUFFER_SPACE);
+RWTexture2DArray<float4>	ResourceHeap_RWTexture2DArray[]		: register(t0, RESOURCE_HEAP_RWTEX2DARRAY_SPACE);
 #endif
 
 inline Texture2D ResourceHeap_GetTexture(uint index)
@@ -56,12 +57,30 @@ inline Texture2D ResourceHeap_GetTexture2D(uint index)
 #endif
 }
 
+inline RWTexture2DArray<float4> ResourceHeap_GetRWTexture2DArray(uint index)
+{
+#ifdef USE_RESOURCE_HEAP
+	return ResourceDescriptorHeap[index];
+#else
+	return ResourceHeap_RWTexture2DArray[index];
+#endif
+}
+
 inline TextureCube ResourceHeap_GetTextureCube(uint index)
 {
 #ifdef USE_RESOURCE_HEAP
 	return ResourceDescriptorHeap[index];
 #else
 	return ResourceHeap_TextureCube[index];
+#endif
+}
+
+inline TextureCubeArray ResourceHeap_GetTextureCubeArray(uint index)
+{
+#ifdef USE_RESOURCE_HEAP
+	return ResourceDescriptorHeap[index];
+#else
+	return ResourceHeap_TextureCubeArray[index];
 #endif
 }
 

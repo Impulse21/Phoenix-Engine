@@ -278,39 +278,46 @@ float4 main(PSInput input) : SV_TARGET
 #endif
     }
 
+    // -- Indirect Lighting calculations ---
+    
     // Improvised abmient lighting by using the Env Irradance map.
     float3 ambient = float(0.01).xxx * surfaceProperties.Albedo * surfaceProperties.AO;
-    if (GetScene().IrradianceMapTexIndex != InvalidDescriptorIndex &&
-        GetScene().PreFilteredEnvMapTexIndex != InvalidDescriptorIndex &&
-        FrameCB.BrdfLUTTexIndex != InvalidDescriptorIndex)
+
+    float3 F = FresnelSchlick(saturate(dot(N, V)), F0, surfaceProperties.Roughness);
+    // Improvised abmient lighting by using the Env Irradance map.
+    float3 irradiance = float3(0, 0, 0);
+    if (GetScene().IrradianceMapTexIndex != InvalidDescriptorIndex)
     {
-
-        float3 F = FresnelSchlick(saturate(dot(N, V)), F0, surfaceProperties.Roughness);
-        // Improvised abmient lighting by using the Env Irradance map.
-        float3 irradiance = ResourceHeap_GetTextureCube(GetScene().IrradianceMapTexIndex).Sample(SamplerDefault, N).rgb;
-
-        float3 kSpecular = F;
-        float3 kDiffuse = 1.0 - kSpecular;
-        float3 diffuse = irradiance * surfaceProperties.Albedo;
-
-        // Sample both the BRDFLut and Pre-filtered map and combine them together as per the
-        // split-sum approximation to get the IBL Specular part.
-        float lodLevel = surfaceProperties.Roughness * MaxReflectionLod;
-        float3 prefilteredColour =
-            ResourceHeap_GetTextureCube(GetScene().PreFilteredEnvMapTexIndex).SampleLevel(SamplerDefault, R, lodLevel).rgb;
-
-        float2 brdfTexCoord = float2(saturate(dot(N, V)), surfaceProperties.Roughness);
-
-        float2 brdf = ResourceHeap_GetTexture2D(FrameCB.BrdfLUTTexIndex).Sample(SamplerBrdf, brdfTexCoord).rg;
-
-        float3 specular = prefilteredColour * (F * brdf.x + brdf.y);
-
-        ambient = (kDiffuse * diffuse + specular) * surfaceProperties.AO;
+        irradiance = ResourceHeap_GetTextureCube(GetScene().IrradianceMapTexIndex).Sample(SamplerDefault, N).rgb;
     }
 
-    float3 colour = ambient + Lo;
+    float3 kSpecular = F;
+    float3 kDiffuse = 1.0 - kSpecular;
+    float3 diffuse = irradiance * surfaceProperties.Albedo;
 
-    // float4 shadowMapCoord = mul(float4(input.PositionWS, 1.0f), GetCamera().ShadowViewProjection);
+	// Sample both the BRDFLut and Pre-filtered map and combine them together as per the
+	// split-sum approximation to get the IBL Specular part.
+	float3 prefilteredColour = float3(0.0f, 0.0f, 0.0f);
+	if (GetScene().EnvMapArray != InvalidDescriptorIndex)
+	{
+		float lodLevel = surfaceProperties.Roughness * MaxReflectionLod;
+		prefilteredColour = ResourceHeap_GetTextureCubeArray(GetScene().EnvMapArray).SampleLevel(SamplerLinearClamped, float4(N, 0), lodLevel).rgb;
+	}
+
+	float2 brdfTexCoord = float2(saturate(dot(N, V)), surfaceProperties.Roughness);
+	float2 brdf = float2(1.0f, 1.0f);
+	if (FrameCB.BrdfLUTTexIndex != InvalidDescriptorIndex)
+	{
+		brdf = ResourceHeap_GetTexture2D(FrameCB.BrdfLUTTexIndex).Sample(SamplerLinearClamped, brdfTexCoord).rg;
+	}
+
+	float3 specular = prefilteredColour * (F * brdf.x + brdf.y);
+
+	ambient = (kDiffuse * diffuse + specular) * surfaceProperties.AO;
+
+	float3 colour = ambient + Lo;
+
+	// float4 shadowMapCoord = mul(float4(input.PositionWS, 1.0f), GetCamera().ShadowViewProjection);
     // Convert to Texture space
     // shadowMapCoord.xyz /= shadowMapCoord.w;
 
