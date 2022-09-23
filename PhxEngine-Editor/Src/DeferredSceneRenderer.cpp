@@ -976,91 +976,72 @@ void DeferredRenderer::PrepareFrameRenderData(
 
 void DeferredRenderer::CreatePSOs()
 {
-    {
-        RHI::GraphicsPSODesc psoDesc = {};
-        psoDesc.VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_GBufferPass);
-        psoDesc.PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_GBufferPass);
-        psoDesc.InputLayout = nullptr;
+    this->m_pso[PSO_GBufferPass] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
+        {
+            .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_GBufferPass),
+            .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_GBufferPass),
+            .RtvFormats = {
+                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.AlbedoTexture).Format,
+                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.NormalTexture).Format,
+            IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.SurfaceTexture).Format,
+                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer._PostionTexture).Format
+            },
+            .DsvFormat = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_depthBuffer).Format }
+        });
 
-        // psoDesc.RasterRenderState.CullMode = RHI::RasterCullMode::None;
-        psoDesc.RtvFormats.push_back(IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.AlbedoTexture).Format);
-        psoDesc.RtvFormats.push_back(IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.NormalTexture).Format);
-        psoDesc.RtvFormats.push_back(IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.SurfaceTexture).Format);
-        psoDesc.RtvFormats.push_back(IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer._PostionTexture).Format);
-        psoDesc.DsvFormat = IGraphicsDevice::Ptr->GetTextureDesc(this->m_depthBuffer).Format;
+    this->m_pso[PSO_Sky] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
+        {
+            .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_Sky),
+            .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_SkyProcedural),
+            .DepthStencilRenderState = {
+                .DepthWriteEnable = false,
+                .DepthFunc = RHI::ComparisonFunc::LessOrEqual
+            },
+            .RasterRenderState = { .DepthClipEnable = false },
+            .RtvFormats = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_deferredLightBuffer).Format },
+            .DsvFormat = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_depthBuffer).Format }
+        });
 
-        this->m_pso[PSO_GBufferPass] = IGraphicsDevice::Ptr->CreateGraphicsPSO(psoDesc);
-    }
 
-    {
+    this->m_pso[PSO_FullScreenQuad] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
+        {
+            .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_FullscreenQuad),
+            .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_FullscreenQuad),
+            .DepthStencilRenderState = {
+                .DepthTestEnable = false,
+            },
+            .RtvFormats = { IGraphicsDevice::Ptr->GetTextureDesc(IGraphicsDevice::Ptr->GetBackBuffer()).Format },
+        });
 
-        RHI::GraphicsPSODesc psoDesc = {};
-        psoDesc.VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_Sky);
-        psoDesc.PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_SkyProcedural);
-        psoDesc.InputLayout = nullptr;
+    this->m_pso[PSO_ToneMappingPass] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
+        {
+            .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_ToneMapping),
+            .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_ToneMapping),
+            .DepthStencilRenderState = {
+                .DepthTestEnable = false,
+            },
+            .RtvFormats = { IGraphicsDevice::Ptr->GetTextureDesc(IGraphicsDevice::Ptr->GetBackBuffer()).Format },
+        });
 
-        psoDesc.RtvFormats.push_back(IGraphicsDevice::Ptr->GetTextureDesc(this->m_deferredLightBuffer).Format);
-        psoDesc.DsvFormat = IGraphicsDevice::Ptr->GetTextureDesc(this->m_depthBuffer).Format;
-        psoDesc.RasterRenderState.DepthClipEnable = false;
-       // psoDesc.RasterRenderState.CullMode = RHI::RasterCullMode::Front;
+    this->m_pso[PSO_DeferredLightingPass] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
+        {
+            .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_DeferredLighting),
+            .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_DeferredLighting),
+            .DepthStencilRenderState = {
+                .DepthTestEnable = false,
+            },
+            .RtvFormats = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_deferredLightBuffer).Format },
+        });
 
-        psoDesc.DepthStencilRenderState = {};
-        psoDesc.DepthStencilRenderState.DepthWriteEnable = false;
-        psoDesc.DepthStencilRenderState.DepthFunc = RHI::ComparisonFunc::LessOrEqual;
+    assert(IGraphicsDevice::Ptr->CheckCapability(DeviceCapability::RT_VT_ArrayIndex_Without_GS));
+    this->m_pso[PSO_EnvCapture_SkyProcedural] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
+        {
+            .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_EnvMap_Sky),
+            .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_EnvMap_SkyProcedural),
+            .RtvFormats = { kEnvmapFormat },
+            .DsvFormat = { kEnvmapDepth }
+        });
 
-        this->m_pso[PSO_Sky] = IGraphicsDevice::Ptr->CreateGraphicsPSO(psoDesc);
-    }
-
-    {
-        /*
-        RHI::GraphicsPSODesc psoDesc = {};
-        psoDesc.VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_ShadowPass);
-        psoDesc.InputLayout = nullptr;
-
-        psoDesc.DsvFormat = kShadowAtlasFormat;
-        psoDesc.RasterRenderState.DepthBias = 100000;
-        psoDesc.RasterRenderState.DepthBiasClamp = 0.0f;
-        psoDesc.RasterRenderState.SlopeScaledDepthBias = 1.0f;
-        psoDesc.RasterRenderState.DepthClipEnable = false;
-
-        this->m_pso[PSO_] = IGraphicsDevice::Ptr->CreateGraphicsPSO(psoDesc);
-        */
-    }
-
-    // Any Fullscreen Quad shaders
-    {
-        RHI::GraphicsPSODesc psoDesc = {};
-        psoDesc.VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_FullscreenQuad);
-        psoDesc.PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_FullscreenQuad);
-        psoDesc.InputLayout = nullptr;
-        //psoDesc.RasterRenderState.CullMode = RHI::RasterCullMode::Front;
-        psoDesc.DepthStencilRenderState.DepthTestEnable = false;
-        psoDesc.RtvFormats.push_back(IGraphicsDevice::Ptr->GetTextureDesc(IGraphicsDevice::Ptr->GetBackBuffer()).Format);
-        this->m_pso[PSO_FullScreenQuad] = IGraphicsDevice::Ptr->CreateGraphicsPSO(psoDesc);
-
-        psoDesc.VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_ToneMapping);
-        psoDesc.PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_ToneMapping);
-
-        this->m_pso[PSO_ToneMappingPass] = IGraphicsDevice::Ptr->CreateGraphicsPSO(psoDesc);
-
-        psoDesc.RtvFormats.clear();
-        psoDesc.RtvFormats.push_back(IGraphicsDevice::Ptr->GetTextureDesc(this->m_deferredLightBuffer).Format);
-        psoDesc.VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_DeferredLighting);
-        psoDesc.PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_DeferredLighting);
-        this->m_pso[PSO_DeferredLightingPass] = IGraphicsDevice::Ptr->CreateGraphicsPSO(psoDesc);
-    }
-
-    // ENV Map
-    {
-        assert(IGraphicsDevice::Ptr->CheckCapability(DeviceCapability::RT_VT_ArrayIndex_Without_GS));
-        this->m_pso[PSO_EnvCapture_SkyProcedural] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
-            {
-                .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_EnvMap_Sky),
-                .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_EnvMap_SkyProcedural),
-                .RtvFormats = { kEnvmapFormat },
-                .DsvFormat = { kEnvmapDepth }
-            });
-    }
 
     // Compute PSO's
     this->m_psoCompute[PSO_GenerateMipMaps_TextureCubeArray] = IGraphicsDevice::Ptr->CreateComputePso(
