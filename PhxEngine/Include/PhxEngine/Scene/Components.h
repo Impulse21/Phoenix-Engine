@@ -240,7 +240,9 @@ namespace PhxEngine::Scene
 			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, 1.7f, this->ZNear, this->ZFar);
 			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, 1.7f, this->ZNear, this->ZFar);
 			float aspectRatio = this->Width / this->Height;
-			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, aspectRatio, this->ZNear, this->ZFar);
+
+			// Note the farPlane is passed in as near, this is to support reverseZ
+			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, aspectRatio, this->ZFar, this->ZNear);
 
 			DirectX::XMStoreFloat4x4(&this->Projection, projectionMatrix);
 			DirectX::XMStoreFloat4x4(&this->ProjectionInv, DirectX::XMMatrixInverse(nullptr, projectionMatrix));

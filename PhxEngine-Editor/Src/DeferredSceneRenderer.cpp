@@ -207,7 +207,7 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
     desc.Format = RHI::FormatType::D32;
     desc.IsTypeless = true;
     desc.DebugName = "Depth Buffer";
-    desc.OptmizedClearValue.DepthStencil.Depth = 1.0f;
+    desc.OptmizedClearValue.DepthStencil.Depth = 0.0f;
     desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::DepthStencil;
     desc.InitialState = RHI::ResourceStates::DepthRead;
     this->m_depthBuffer = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
@@ -554,7 +554,7 @@ void DeferredRenderer::RunProbeUpdateSystem(PhxEngine::Scene::Scene& scene)
                 .Width = kEnvmapRes,
                 .Height = kEnvmapRes,
                 .ArraySize = 6,
-                .OptmizedClearValue = {.DepthStencil = {.Depth = 1.0f }},
+                .OptmizedClearValue = {.DepthStencil = {.Depth = 0.0f }},
                 .DebugName = "Env Map Depth"
 			});
 
@@ -980,6 +980,7 @@ void DeferredRenderer::CreatePSOs()
         {
             .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_GBufferPass),
             .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_GBufferPass),
+            .DepthStencilRenderState = {.DepthFunc = ComparisonFunc::Greater },
             .RtvFormats = {
                 IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.AlbedoTexture).Format,
                 IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.NormalTexture).Format,
@@ -995,7 +996,7 @@ void DeferredRenderer::CreatePSOs()
             .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_SkyProcedural),
             .DepthStencilRenderState = {
                 .DepthWriteEnable = false,
-                .DepthFunc = RHI::ComparisonFunc::LessOrEqual
+                .DepthFunc = RHI::ComparisonFunc::GreaterOrEqual
             },
             .RasterRenderState = { .DepthClipEnable = false },
             .RtvFormats = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_deferredLightBuffer).Format },
@@ -1038,6 +1039,7 @@ void DeferredRenderer::CreatePSOs()
         {
             .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_EnvMap_Sky),
             .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_EnvMap_SkyProcedural),
+            .DepthStencilRenderState = { .DepthFunc = ComparisonFunc::Greater },
             .RtvFormats = { kEnvmapFormat },
             .DsvFormat = { kEnvmapDepth }
         });
