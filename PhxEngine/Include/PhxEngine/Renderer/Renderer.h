@@ -29,12 +29,12 @@ namespace PhxEngine::Renderer
 	inline void CreateCubemapCameras(DirectX::XMFLOAT3 position, float nearZ, float farZ, Core::Span<RenderCam> cameras)
 	{
 		assert(cameras.Size() == 6);
-		cameras[0] = RenderCam(position, DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), nearZ, farZ, DirectX::XM_PIDIV2); // -z
-		cameras[1] = RenderCam(position, DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f), nearZ, farZ, DirectX::XM_PIDIV2); // +z
-		cameras[2] = RenderCam(position, DirectX::XMFLOAT4(0, 0.707f, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // -x
-		cameras[3] = RenderCam(position, DirectX::XMFLOAT4(0, -0.707f, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // +x
-		cameras[4] = RenderCam(position, DirectX::XMFLOAT4(0.707f, 0, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // -y
-		cameras[5] = RenderCam(position, DirectX::XMFLOAT4(-0.707f, 0, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // +y
+		cameras[0] = RenderCam(position, DirectX::XMFLOAT4(0, -0.707f, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // +x
+		cameras[1] = RenderCam(position, DirectX::XMFLOAT4(0, 0.707f, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // -x
+		cameras[2] = RenderCam(position, DirectX::XMFLOAT4(-0.707f, 0, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // +y
+		cameras[3] = RenderCam(position, DirectX::XMFLOAT4(0.707f, 0, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // -y
+		cameras[4] = RenderCam(position, DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f), nearZ, farZ, DirectX::XM_PIDIV2); // +z
+		cameras[5] = RenderCam(position, DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), nearZ, farZ, DirectX::XM_PIDIV2); // -z
 	}
 
 	class Renderer

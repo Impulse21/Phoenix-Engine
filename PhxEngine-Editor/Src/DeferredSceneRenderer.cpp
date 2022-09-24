@@ -921,7 +921,7 @@ void DeferredRenderer::PrepareFrameRenderData(
 	frameData.SceneData.LightEntityIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_LightEntities], RHI::SubresouceType::SRV);
 	frameData.SceneData.MatricesIndex = RHI::cInvalidDescriptorIndex;
     frameData.SceneData.AtmosphereData = {};
-#if false
+#if true
     frameData.SceneData.AtmosphereData.ZenithColour = { 1.0f, 0.0f, 0.0f};// { 0.117647, 0.156863, 0.235294 };
     frameData.SceneData.AtmosphereData.HorizonColour = { 0.0f, 0.0f, 1.0f };// { 0.0392157, 0.0392157, 0.0784314 };
 #else
@@ -984,7 +984,7 @@ void DeferredRenderer::CreatePSOs()
             .RtvFormats = {
                 IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.AlbedoTexture).Format,
                 IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.NormalTexture).Format,
-            IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.SurfaceTexture).Format,
+                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.SurfaceTexture).Format,
                 IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer._PostionTexture).Format
             },
             .DsvFormat = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_depthBuffer).Format }
