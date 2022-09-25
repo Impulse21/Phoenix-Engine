@@ -350,8 +350,11 @@ void DeferredRenderer::RefreshEnvProbes(PhxEngine::Scene::CameraComponent const&
 
     // Render Camera
     Renderer::RenderCam cameras[6];
-    Renderer::CreateCubemapCameras(skyCaptureProbe.Position, camera.ZNear, camera.ZFar, Core::Span<Renderer::RenderCam>(cameras, ARRAYSIZE(cameras)));
-
+    Renderer::CreateCubemapCameras(
+        skyCaptureProbe.Position,
+        camera.ZNear,
+        camera.ZFar,
+        Core::Span<Renderer::RenderCam>(cameras, ARRAYSIZE(cameras)));
 
     RHI::ScopedMarker scope = commandList->BeginScopedMarker("Refresh Env Probes");
 
@@ -672,6 +675,8 @@ void DeferredRenderer::PrepareFrameRenderData(
     RHI::CommandListHandle commandList,
     PhxEngine::Scene::Scene& scene)
 {
+    auto scope = this->m_commandList->BeginScopedMarker("Prepare Frame Data");
+
     // Update Geometry Count
     std::unordered_set<Assets::StandardMaterial*> foundMaterials;
     auto view = scene.GetAllEntitiesWith<MeshRenderComponent>();
@@ -914,7 +919,6 @@ void DeferredRenderer::PrepareFrameRenderData(
 	}
 
 	Shader::Frame frameData = {};
-	frameData.BrdfLUTTexIndex = cInvalidDescriptorIndex;// this->m_scene.BrdfLUT->GetDescriptorIndex();
 	frameData.SceneData.NumLights = lightCount;
 	frameData.SceneData.GeometryBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_geometryGpuBuffer, RHI::SubresouceType::SRV);
 	frameData.SceneData.MaterialBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_materialGpuBuffer, RHI::SubresouceType::SRV);
