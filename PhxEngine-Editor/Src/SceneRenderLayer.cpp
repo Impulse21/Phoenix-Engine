@@ -58,7 +58,7 @@ void SceneRenderLayer::OnAttach()
     DirectX::XMVECTOR eyePos =  DirectX::XMVectorSet(0.0f, 2.0f, 10.0f, 1.0f);
     DirectX::XMVECTOR focusPoint = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
     DirectX::XMVECTOR eyeDir = DirectX::XMVectorSubtract(focusPoint, eyePos);
-    DirectX::XMVector3Normalize(eyeDir);
+    eyeDir = DirectX::XMVector3Normalize(eyeDir);
 
     DirectX::XMStoreFloat3(
         &this->m_editorCamera.Eye,

@@ -383,8 +383,7 @@ void DeferredRenderer::RefreshEnvProbes(PhxEngine::Scene::CameraComponent const&
 
     // 240 is the number of vers on an ISOSphere
     // 6 instances, one per cam side.
-    // commandList->Draw(240, 6);
-    commandList->Draw(3, 6);
+    commandList->Draw(240, 6);
 
     commandList->EndRenderPass();
 
@@ -1044,6 +1043,7 @@ void DeferredRenderer::CreatePSOs()
             .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_EnvMap_Sky),
             .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_EnvMap_SkyProcedural),
             .DepthStencilRenderState = { .DepthFunc = ComparisonFunc::GreaterOrEqual },
+            .RasterRenderState = {.CullMode = RasterCullMode::Front }, // Since we are inside the ICOSphere, chance cull mode.
             .RtvFormats = { kEnvmapFormat },
             .DsvFormat = { kEnvmapDepth }
         });

@@ -231,7 +231,11 @@ namespace PhxEngine::Scene
 
 		inline void UpdateCamera()
 		{
-			auto viewMatrix = this->ConstructViewMatrixRH();
+			auto viewMatrix = DirectX::XMMatrixLookToRH(
+				DirectX::XMLoadFloat3(&this->Eye),
+				DirectX::XMLoadFloat3(&this->Forward),
+				DirectX::XMLoadFloat3(&this->Up));
+
 			// auto viewMatrix = this->ConstructViewMatrixLH();
 
 			DirectX::XMStoreFloat4x4(&this->View, viewMatrix);
@@ -252,66 +256,6 @@ namespace PhxEngine::Scene
 			DirectX::XMStoreFloat4x4(&this->ViewProjection, viewProjectionMatrix);
 
 			DirectX::XMStoreFloat4x4(&this->ViewProjectionInv, DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix));
-		}
-
-		inline DirectX::XMMATRIX ConstructViewMatrixLH()
-		{
-			const DirectX::XMVECTOR forward = -DirectX::XMLoadFloat3(&this->Forward);
-			const DirectX::XMVECTOR axisZ = DirectX::XMVector3Normalize(forward);
-
-			// axisX == right vector
-			const DirectX::XMVECTOR up = DirectX::XMLoadFloat3(&this->Up);
-			const DirectX::XMVECTOR axisX = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(up, forward));
-
-			// Axisy == Up vector ( forward cross with right)
-			const DirectX::XMVECTOR axisY = DirectX::XMVector3Cross(axisZ, axisX);
-
-			// --- Construct View matrix ---
-			const DirectX::XMVECTOR negEye = DirectX::XMVectorNegate(DirectX::XMLoadFloat3(&this->Eye));
-
-			// Not sure I get this bit.
-			const DirectX::XMVECTOR d0 = DirectX::XMVector3Dot(axisX, negEye);
-			const DirectX::XMVECTOR d1 = DirectX::XMVector3Dot(axisY, negEye);
-			const DirectX::XMVECTOR d2 = DirectX::XMVector3Dot(axisZ, negEye);
-
-			// Construct column major view matrix;
-			DirectX::XMMATRIX m;
-			m.r[0] = DirectX::XMVectorSelect(d0, axisX, g_XMSelect1110.v);
-			m.r[1] = DirectX::XMVectorSelect(d1, axisY, g_XMSelect1110.v);
-			m.r[2] = DirectX::XMVectorSelect(d2, axisZ, g_XMSelect1110.v);
-			m.r[3] = g_XMIdentityR3.v;
-
-			return DirectX::XMMatrixTranspose(m);
-		}
-
-		inline DirectX::XMMATRIX ConstructViewMatrixRH()
-		{
-			const DirectX::XMVECTOR forward = -DirectX::XMLoadFloat3(&this->Forward);
-			const DirectX::XMVECTOR axisZ = DirectX::XMVector3Normalize(forward);
-
-			// axisX == right vector
-			const DirectX::XMVECTOR up = DirectX::XMLoadFloat3(&this->Up);
-			const DirectX::XMVECTOR axisX = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(up, forward));
-
-			// Axisy == Up vector ( forward cross with right)
-			const DirectX::XMVECTOR axisY = DirectX::XMVector3Cross(axisZ, axisX);
-
-			// --- Construct View matrix ---
-			const DirectX::XMVECTOR negEye = DirectX::XMVectorNegate(DirectX::XMLoadFloat3(&this->Eye));
-
-			// Not sure I get this bit.
-			const DirectX::XMVECTOR d0 = DirectX::XMVector3Dot(axisX, negEye);
-			const DirectX::XMVECTOR d1 = DirectX::XMVector3Dot(axisY, negEye);
-			const DirectX::XMVECTOR d2 = DirectX::XMVector3Dot(axisZ, negEye);
-
-			// Construct column major view matrix;
-			DirectX::XMMATRIX m;
-			m.r[0] = DirectX::XMVectorSelect(d0, axisX, g_XMSelect1110.v);
-			m.r[1] = DirectX::XMVectorSelect(d1, axisY, g_XMSelect1110.v);
-			m.r[2] = DirectX::XMVectorSelect(d2, axisZ, g_XMSelect1110.v);
-			m.r[3] = g_XMIdentityR3.v;
-
-			return DirectX::XMMatrixTranspose(m);
 		}
 	};
 
