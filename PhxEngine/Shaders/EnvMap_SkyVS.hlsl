@@ -1,15 +1,14 @@
 
 #include "Icosphere.hlsli"
-#include "Cube.hlsli"
-
 #include "Sky.hlsli"
 #include "Globals.hlsli"
-#include "FullScreenHelpers.hlsli"
+
+#include "Cube.hlsli"
 struct PSInput
 {
-    float2 TexCoords    : TEXCOORD;
+    float3 NormalWS     : NORMAL;
+    float4 Position     : SV_POSITION;
     uint RTIndex        : SV_RenderTargetArrayIndex;
-	float4 Position     : SV_POSITION;
 };
 
 
@@ -20,11 +19,8 @@ PSInput main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
 
     output.RTIndex = instanceID;
 
-    CreateFullscreenTriangle_POS(vertexID, output.Position);
-    output.TexCoords = output.Position.xy;
-
-    // output.Position = mul(CubemapRenderCamsCB.ViewProjection[output.RTIndex], float4(sIcosphere[vertexID].xyz, 0.0f));
-    // output.NormalWS = sIcosphere[vertexID].xyz;
+    output.Position = mul(float4(sIcosphere[vertexID].xyz, 0.0f), CubemapRenderCamsCB.ViewProjection[output.RTIndex]);
+    output.NormalWS = sIcosphere[vertexID].xyz;
 
     return output;
 }
