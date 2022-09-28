@@ -185,6 +185,7 @@ void Application::SetWindow(Core::Platform::WindowHandle windowHandle, bool isFu
 	swapchainDesc.Height = this->m_canvas.GetPhysicalHeight();
 	swapchainDesc.VSync = true;
 	swapchainDesc.WindowHandle = windowHandle;
+	swapchainDesc.EnableHDR = true;
 
 	this->m_graphicsDevice->CreateSwapChain(swapchainDesc);
 	/*

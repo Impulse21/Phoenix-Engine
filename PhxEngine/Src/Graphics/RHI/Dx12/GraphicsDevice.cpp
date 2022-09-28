@@ -408,6 +408,55 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateSwapChain(SwapChainDesc const& 
 
 	this->m_swapChain.Desc = swapChainDesc;
 
+	const bool hdrSupported = swapChainDesc.EnableHDR && this->IsHdrSwapchainSupported();
+	assert(!hdrSupported); // Not supported
+
+	/* Used to change the colour space -> From Wicked Engine.
+	DXGI_COLOR_SPACE_TYPE colourSpace = {};
+	switch (dx12Desc.Format)
+	{
+	case DXGI_FORMAT_R10G10B10A2_UNORM:
+		colourSpace = hdrSupported ? DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 : DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+		break;
+	case DXGI_FORMAT_R16G16B16A16_FLOAT:
+		// This format is HDR (Linear):
+		colourSpace = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+		break;
+	default:
+		// Anything else will be SDR (SRGB):
+		colourSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+		break;
+	}
+
+
+	UINT colourSpaceSupport = 0;
+	if (SUCCEEDED(this->m_swapChain.DxgiSwapchain->CheckColorSpaceSupport(colourSpace, &colourSpaceSupport)))
+	{
+		if (colourSpaceSupport & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT)
+		{
+			auto hr = this->m_swapChain.DxgiSwapchain->SetColorSpace1(colourSpace);
+			assert(SUCCEEDED(hr));
+			if (SUCCEEDED(hr))
+			{
+				switch (colourSpace)
+				{
+				default:
+				case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709:
+					this->m_swapChain.ColourSpace = ColourSpace::SRGB;
+					break;
+				case DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709:
+					assert(false); // Not supported
+					this->m_swapChain.ColourSpace = ColourSpace::HDR_LINEAR;
+					break;
+				case DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020:
+					
+					this->m_swapChain.ColourSpace = ColourSpace::HDR10_ST2084;
+					break;
+				}
+			}
+		}
+	}
+	*/
 	this->m_swapChain.BackBuffers.resize(this->m_swapChain.Desc.BufferCount);
 	for (UINT i = 0; i < this->m_swapChain.Desc.BufferCount; i++)
 	{
@@ -437,6 +486,34 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateSwapChain(SwapChainDesc const& 
 
 	ThrowIfFailed(
 		this->GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_frameFence)));
+}
+
+bool PhxEngine::RHI::Dx12::GraphicsDevice::IsHdrSwapchainSupported()
+{
+	if (!this->m_swapChain.DxgiSwapchain)
+	{
+		return false;
+	}
+
+	// HDR display query: https://docs.microsoft.com/en-us/windows/win32/direct3darticles/high-dynamic-range
+	Microsoft::WRL::ComPtr<IDXGIOutput> dxgiOutput;
+	if (SUCCEEDED(this->m_swapChain.DxgiSwapchain->GetContainingOutput(&dxgiOutput)))
+	{
+		Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
+		if (SUCCEEDED(dxgiOutput.As(&output6)))
+		{
+			DXGI_OUTPUT_DESC1 desc1;
+			if (SUCCEEDED(output6->GetDesc1(&desc1)))
+			{
+				if (desc1.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020)
+				{
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
 }
 
 CommandListHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateCommandList(CommandListDesc const& desc)

@@ -43,6 +43,13 @@ namespace PhxEngine::RHI
         DX12
     };
 
+    enum class ColourSpace
+    {
+        SRGB,
+        HDR_LINEAR,
+        HDR10_ST2084
+    };
+
     struct Color
     {
         float R;
@@ -506,6 +513,7 @@ namespace PhxEngine::RHI
         uint32_t BufferCount = 3;
         FormatType Format = FormatType::UNKNOWN;
         bool VSync = false;
+        bool EnableHDR = false;
         Core::Platform::WindowHandle WindowHandle;
         ClearValue OptmizedClearValue = 
         { 

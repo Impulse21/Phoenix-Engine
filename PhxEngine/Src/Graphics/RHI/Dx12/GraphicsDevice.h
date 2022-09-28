@@ -257,6 +257,8 @@ namespace PhxEngine::RHI::Dx12
         SwapChainDesc Desc;
         std::vector<TextureHandle> BackBuffers;
         RenderPassHandle RenderPass = {};
+        RHI::ColourSpace ColourSpace = RHI::ColourSpace::SRGB;
+
         uint32_t GetNumBackBuffers() const { return this->Desc.BufferCount; }
     };
 
@@ -424,6 +426,7 @@ namespace PhxEngine::RHI::Dx12
     private:
         size_t GetCurrentBackBufferIndex() const;
         size_t GetBackBufferIndex() const { return this->m_frameCount % this->m_swapChain.GetNumBackBuffers(); }
+        bool IsHdrSwapchainSupported();
 
     private:
         void CreateBufferInternal(BufferDesc const& desc, Dx12Buffer& outBuffer);
