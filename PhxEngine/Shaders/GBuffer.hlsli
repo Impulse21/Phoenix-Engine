@@ -46,17 +46,10 @@ SurfaceProperties DecodeGBuffer(float4 channels[NUM_GBUFFER_CHANNELS])
 
 float4 ReconstructClipPosition(float2 pixelPosition, float depth)
 {
-    // If we were in openGL land, we would need to change range from [-w, w].
-    // float z = depth * 2.0 - 1.0;
-
-    // However, DX is [0, w] so just use the the depth as is.
-    float z = depth;
-    // pixelPosition.y = 1.0f - pixelPosition.y; // Flip due to DirectX convention
-
-    return float4(pixelPosition * 2.0 - 1.0, z, 1.0);
+    return float4(pixelPosition.x * 2.0 - 1.0, 1.0 - pixelPosition.y * 2.0, depth, 1.0);
 }
 
-float4 ReconstructViewPosition(matrix projMatrixInv, float4 clipPosition)
+float4 ReconstructViewPosition(float4 clipPosition, matrix projMatrixInv)
 {
     return mul(clipPosition, projMatrixInv);
 }
@@ -64,14 +57,12 @@ float4 ReconstructViewPosition(matrix projMatrixInv, float4 clipPosition)
 float3 ReconstructWorldPosition(Camera camera, float2 pixelPosition, float depth)
 {
     float4 clipPosition = ReconstructClipPosition(pixelPosition, depth);
-    float4 viewPosition = ReconstructViewPosition(camera.ProjInv, clipPosition);
+    float4 unprojected = ReconstructViewPosition(clipPosition, camera.ViewProjectionInv);
 
     // Perspective division
-    viewPosition /= viewPosition.w;
+    unprojected.xyz /= unprojected.w;
 
-    float4 worldPosition = mul(viewPosition, camera.ViewInv);
-
-    return worldPosition.xyz;
+    return unprojected.xyz;
 }
 
 #endif // __GBUFFER_HLSL__

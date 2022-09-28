@@ -109,9 +109,6 @@ struct PSOutput
     float4 Channel_0    : SV_Target0;
     float4 Channel_1    : SV_Target1;
     float4 Channel_2    : SV_Target2;
-
-    // TODO: Remove after testing
-    float4 Channel_Debug_Position  : SV_Target3;
 };
 
 [RootSignature(GBufferPassRS)]
@@ -190,7 +187,6 @@ PSOutput main(PSInput input)
     output.Channel_0 = float4(albedo, 1.0f);
     output.Channel_1 = float4(normal, 1.0f);
     output.Channel_2 = float4(metallic, roughness, ao, 1.0f);
-    output.Channel_Debug_Position = float4(input.PositionWS, 1.0f);
 
     return output;
 }

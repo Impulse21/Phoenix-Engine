@@ -19,7 +19,7 @@
 	"CBV(b0), " \
 	"CBV(b1), " \
     "SRV(t0),"  \
-    "DescriptorTable(SRV(t1, numDescriptors = 5)), " \
+    "DescriptorTable(SRV(t1, numDescriptors = 4)), " \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR),"
 
@@ -30,7 +30,7 @@
 	"CBV(b0), " \
 	"CBV(b1), " \
     "SRV(t0),"  \
-    "DescriptorTable(SRV(t1, numDescriptors = 5)), " \
+    "DescriptorTable(SRV(t1, numDescriptors = 4)), " \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR),"
 
@@ -44,7 +44,7 @@
 	"CBV(b0), " \
 	"CBV(b1), " \
     "SRV(t0),"  \
-    "DescriptorTable(SRV(t1, numDescriptors = 5)), " \
+    "DescriptorTable(SRV(t1, numDescriptors = 4)), " \
     "DescriptorTable( UAV(u0, numDescriptors = 1) )," \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR),"
@@ -61,9 +61,6 @@ Texture2D GBuffer_Depth : register(t1);
 Texture2D GBuffer_0     : register(t2);
 Texture2D GBuffer_1     : register(t3);
 Texture2D GBuffer_2     : register(t4);
-
-// TODO: Remove after testing
-Texture2D GBuffer_Debug_Position  : register(t5);
 
 SamplerState DefaultSampler: register(s50);
 
@@ -160,13 +157,9 @@ float4 main(PSInput input) : SV_TARGET
     gbufferChannels[1] = GBuffer_1.Sample(SamplerDefault, pixelPosition);
     gbufferChannels[2] = GBuffer_2.Sample(SamplerDefault, pixelPosition);
 #endif
-    // TODO: Remove after testing
-    float3 debugWorldPosition = GBuffer_Debug_Position.Sample(SamplerDefault, pixelPosition).xyz;
-
     SurfaceProperties surfaceProperties = DecodeGBuffer(gbufferChannels);
     float depth = GBuffer_Depth.Sample(SamplerDefault, pixelPosition).x;
     float3 surfacePosition = ReconstructWorldPosition(camera, pixelPosition, depth);
-    surfacePosition = debugWorldPosition;
 
     // -- Lighting Model ---
     float3 N = normalize(surfaceProperties.Normal);
