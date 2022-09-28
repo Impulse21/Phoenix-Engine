@@ -16,13 +16,6 @@ using namespace PhxEngine::RHI;
 
 namespace
 {
-    inline void TransposeMatrix(DirectX::XMFLOAT4X4 const& in, DirectX::XMFLOAT4X4* out)
-    {
-        auto matrix = DirectX::XMLoadFloat4x4(&in);
-
-        DirectX::XMStoreFloat4x4(out, DirectX::XMMatrixTranspose(matrix));
-    }
-
     namespace RootParameters_GBuffer
     {
         enum
@@ -370,7 +363,7 @@ void DeferredRenderer::RefreshEnvProbes(PhxEngine::Scene::CameraComponent const&
     Shader::CubemapRenderCams renderCamsCB;
     for (int i = 0; i < ARRAYSIZE(cameras); i++)
     {
-        DirectX::XMStoreFloat4x4(&renderCamsCB.ViewProjection[i], DirectX::XMMatrixTranspose(cameras[i].ViewProjection));
+        DirectX::XMStoreFloat4x4(&renderCamsCB.ViewProjection[i], cameras[i].ViewProjection);
         renderCamsCB.Properties[i].x = i;
     }
     commandList->BindDynamicConstantBuffer(RootParameters_EnvMap_SkyProceduralCapture::CubeRenderCamsCB, renderCamsCB);
@@ -531,7 +524,7 @@ void DeferredRenderer::DrawMeshes(PhxEngine::Scene::Scene& scene, RHI::CommandLi
             Shader::GeometryPassPushConstants pushConstant = {};
             // pushConstant.MeshIndex = scene.Meshes.GetIndex(meshInstanceComponent.MeshId);
             pushConstant.GeometryIndex = mesh.Surfaces[i].GlobalBufferIndex;
-            TransposeMatrix(transformComponent.WorldMatrix, &pushConstant.WorldTransform);
+            pushConstant.WorldTransform = transformComponent.WorldMatrix;
             commandList->BindPushConstant(RootParameters_GBuffer::PushConstant, pushConstant);
 
             commandList->DrawIndexed(
@@ -1075,10 +1068,10 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 
     Shader::Camera cameraData = {};
     cameraData.CameraPosition = camera.Eye;
-    TransposeMatrix(camera.ViewProjection, &cameraData.ViewProjection);
-    TransposeMatrix(camera.ViewProjectionInv, &cameraData.ViewProjectionInv);
-    TransposeMatrix(camera.ProjectionInv, &cameraData.ProjInv);
-    TransposeMatrix(camera.ViewInv, &cameraData.ViewInv);
+    cameraData.ViewProjection = camera.ViewProjection;
+    cameraData.ViewProjectionInv = camera.ViewProjectionInv;
+    cameraData.ProjInv = camera.ProjectionInv;
+    cameraData.ViewInv = camera.ViewInv;
 
     {
         auto scrope = this->m_commandList->BeginScopedMarker("Opaque GBuffer Pass");
