@@ -128,7 +128,6 @@ void DeferredRenderer::FreeTextureResources()
     PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.AlbedoTexture);
     PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.NormalTexture);
     PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.SurfaceTexture);
-    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer._PostionTexture);
     PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_deferredLightBuffer);
     PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_finalColourBuffer);
 }
@@ -225,10 +224,6 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
     desc.DebugName = "Surface Buffer";
     this->m_gBuffer.SurfaceTexture = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
 
-    desc.Format = RHI::FormatType::RGBA32_FLOAT;
-    desc.DebugName = "Debug Position Buffer";
-    this->m_gBuffer._PostionTexture = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
-
     desc.IsTypeless = true;
     desc.Format = RHI::FormatType::RGBA16_FLOAT;
     desc.DebugName = "Deferred Lighting";
@@ -261,13 +256,6 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
                 {
                     .LoadOp = RenderPassAttachment::LoadOpType::Clear,
                     .Texture = this->m_gBuffer.SurfaceTexture,
-                    .InitialLayout = RHI::ResourceStates::ShaderResource,
-                    .SubpassLayout = RHI::ResourceStates::RenderTarget,
-                    .FinalLayout = RHI::ResourceStates::ShaderResource
-                },
-                {
-                    .LoadOp = RenderPassAttachment::LoadOpType::Clear,
-                    .Texture = this->m_gBuffer._PostionTexture,
                     .InitialLayout = RHI::ResourceStates::ShaderResource,
                     .SubpassLayout = RHI::ResourceStates::RenderTarget,
                     .FinalLayout = RHI::ResourceStates::ShaderResource
@@ -981,7 +969,6 @@ void DeferredRenderer::CreatePSOs()
                 IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.AlbedoTexture).Format,
                 IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.NormalTexture).Format,
                 IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.SurfaceTexture).Format,
-                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer._PostionTexture).Format
             },
             .DsvFormat = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_depthBuffer).Format }
         });
@@ -1115,7 +1102,6 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
                 this->m_gBuffer.AlbedoTexture,
                 this->m_gBuffer.NormalTexture,
                 this->m_gBuffer.SurfaceTexture,
-                this->m_gBuffer._PostionTexture,
             });
         this->m_commandList->Draw(3, 1, 0, 0);
 
