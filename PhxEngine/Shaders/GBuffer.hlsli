@@ -58,7 +58,7 @@ float4 ReconstructClipPosition(float2 pixelPosition, float depth)
 
 float4 ReconstructViewPosition(matrix projMatrixInv, float4 clipPosition)
 {
-    return mul(projMatrixInv, clipPosition);
+    return mul(clipPosition, projMatrixInv);
 }
 
 float3 ReconstructWorldPosition(Camera camera, float2 pixelPosition, float depth)
@@ -69,7 +69,7 @@ float3 ReconstructWorldPosition(Camera camera, float2 pixelPosition, float depth
     // Perspective division
     viewPosition /= viewPosition.w;
 
-    float4 worldPosition = mul(camera.ViewInv, viewPosition);
+    float4 worldPosition = mul(viewPosition, camera.ViewInv);
 
     return worldPosition.xyz;
 }

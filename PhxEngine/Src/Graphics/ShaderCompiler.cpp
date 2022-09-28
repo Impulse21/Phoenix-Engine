@@ -90,13 +90,16 @@ ShaderCompiler::CompileResult ShaderCompiler::CompileShader(
 		L"-all_resources_bound", // This might cause problems with pix.
 		DXC_ARG_WARNINGS_ARE_ERRORS, // L"-WX"
 		DXC_ARG_DEBUG, // L"-Zi"
+		DXC_ARG_PACK_MATRIX_ROW_MAJOR, // L"-Zpr"
 #ifdef _DEBUG
 		L"-Od", // Disable optimization
 #else
 		L"-O3", // Optimization level 3
 #endif
+		// TODO: to set default Root sign, TODO
+		// -rootsig-define <Name>,
 	};
-
+	
 	std::wstring wStrSourceFile;
 	Helpers::StringConvert(shaderSourceFile, wStrSourceFile);
 

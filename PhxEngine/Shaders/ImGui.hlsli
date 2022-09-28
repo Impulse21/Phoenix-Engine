@@ -52,7 +52,7 @@ struct PSInput
 PSInput main(VSInput input)
 {
     PSInput output;
-    output.Position = mul(push.Mvp, float4(input.Position.xy, 0.f, 1.f));
+    output.Position = mul(float4(input.Position.xy, 0.f, 1.f), push.Mvp);
     output.Colour = input.Color;
     output.TexCoord = input.TexCoord;
 
