@@ -4,7 +4,7 @@
 #include "Globals.hlsli"
 #include "GBuffer.hlsli"
 #include "FullScreenHelpers.hlsli"
-#include "BRDFFunctions.hlsli"
+#include "Lighting.hlsli"
 
 #ifdef ENABLE_THREAD_GROUP_SWIZZLING
 #include "ThreadGroupTilingX.hlsli"
@@ -85,38 +85,6 @@ PSInput main(uint id : SV_VertexID)
 
 #if defined(DEFERRED_LIGHTING_COMPILE_PS) || defined(DEFERRED_LIGHTING_COMPILE_CS)
 
-inline float3 CalculateDirectAnalyticalContribution(float3 N, float3 V, float3 R, float3 F0, float3 L, float3 Radiance, SurfaceProperties surfaceProperties)
-{
-    float3 H = normalize(V + L);
-
-    // Calculate surfaceProperties.Normal Distribution Term
-    float NDF = DistributionGGX(N, H, surfaceProperties.Roughness);
-
-    // Calculate Geometry Term
-    float G = GeometrySmith(N, V, L, surfaceProperties.Roughness);
-
-    // Calculate Fersnel Term
-    float3 F = FresnelSchlick(saturate(dot(H, V)), F0);
-
-    // Now calculate Cook-Torrance BRDF
-    float3 numerator = NDF * G * F;
-
-    // NOTE: we add 0.0001 to the denomiator to prevent a divide by zero in the case any dot product ends up zero
-    float denominator = 4.0 * saturate(dot(N, V)) * saturate(dot(N, L)) + 0.0001;
-
-    float3 specular = numerator / denominator;
-
-    // Now we can calculate the light's constribution to the reflectance equation. Since Fersnel Value directly corresponds to
-    // Ks, we ca use F to denote the specular contribution of any light that hits the surface.
-    // we can now deduce what the diffuse contribution is as 1.0 = KSpecular + kDiffuse;
-    float3 kSpecular = F;
-    float3 KDiffuse = float3(1.0, 1.0, 1.0) - kSpecular;
-    KDiffuse *= 1.0f - surfaceProperties.Metalness;
-
-    float NdotL = saturate(dot(N, L));
-    return (KDiffuse * (surfaceProperties.Albedo / PI) + specular) * Radiance * NdotL;
-}
-
 #ifdef DEFERRED_LIGHTING_COMPILE_CS
 
 [RootSignature(RS_Deffered)]
@@ -160,121 +128,41 @@ float4 main(PSInput input) : SV_TARGET
     SurfaceProperties surfaceProperties = DecodeGBuffer(gbufferChannels);
     float depth = GBuffer_Depth.Sample(SamplerDefault, pixelPosition).x;
     float3 surfacePosition = ReconstructWorldPosition(camera, pixelPosition, depth);
+    float3 viewIncident = surfacePosition - (float3)GetCamera().CameraPosition;
+    const float shadow = 1.0f;
+	Lighting lightingTerms;
 
-    // -- Lighting Model ---
+    // -- Collect Direct Light contribution ---
+	[loop]
+	for (int nLights = 0; nLights < scene.NumLights; nLights++)
+	{
+		ShaderLight light = LoadLight(nLights);
+		LightingPart directRadiance;
+		directRadiance.Diffuse = 0;
+		directRadiance.Specular = 0;
+
+		ShadeSurface_Direct(light, surfaceProperties, surfacePosition, viewIncident, directRadiance);
+
+
+        lightingTerms.Direct.Diffuse += (shadow * directRadiance.Diffuse) * light.GetColour().rgb;
+        lightingTerms.Direct.Specular += (shadow * directRadiance.Specular) * light.GetColour().rgb;
+	}
+
+    // -- Collect Indirect Light Contribution ---
+    // 
+    // Improvised abmient lighting by using the Env Irradance map.
+
     float3 N = normalize(surfaceProperties.Normal);
     float3 V = normalize((float3)GetCamera().CameraPosition - surfacePosition);
-    float3 R = reflect(-V, N);
-
-    // Linear Interpolate the value against the abledo as matallic
-    // surfaces reflect their colour.
     float3 F0 = lerp(Fdielectric, surfaceProperties.Albedo, surfaceProperties.Metalness);
 
-    // Reflectance equation
-    float3 Lo = float3(0.0f, 0.0f, 0.0f);
+    float3 ambient = float(0.01).xxx;
+
+    if (GetScene().EnvMapArray != InvalidDescriptorIndex)
     {
-#ifdef USE_HARD_CODED_LIGHT
-        // If point light, calculate attenuation here;
-        float3 radiance = float3(1.0f, 1.0f, 1.0f); // * attenuation;
-
-        // If this is a point light, calculate vector from light to World Pos
-        float3 L = -normalize(float3(0.0f, -1.0f, 0.0f));
-        float3 H = normalize(V + L);
-
-        // Calculate surfaceProperties.Normal Distribution Term
-        float NDF = DistributionGGX(N, H, surfaceProperties.Roughness);
-
-        // Calculate Geometry Term
-        float G = GeometrySmith(N, V, L, surfaceProperties.Roughness);
-
-        // Calculate Fersnel Term
-        float3 F = FresnelSchlick(saturate(dot(H, V)), F0);
-
-        // Now calculate Cook-Torrance BRDF
-        float3 numerator = NDF * G * F;
-
-        // NOTE: we add 0.0001 to the denomiator to prevent a divide by zero in the case any dot product ends up zero
-        float denominator = 4.0 * saturate(dot(N, V)) * saturate(dot(N, L)) + 0.0001;
-
-        float3 specular = numerator / denominator;
-
-        // Now we can calculate the light's constribution to the reflectance equation. Since Fersnel Value directly corresponds to
-        // Ks, we ca use F to denote the specular contribution of any light that hits the surface.
-        // we can now deduce what the diffuse contribution is as 1.0 = KSpecular + kDiffuse;
-        float3 kSpecular = F;
-        float3 KDiffuse = float3(1.0, 1.0, 1.0) - kSpecular;
-        KDiffuse *= 1.0f - surfaceProperties.Metalness;
-
-        float NdotL = saturate(dot(N, L));
-        Lo += (KDiffuse * (surfaceProperties.Albedo / PI) + specular) * radiance * NdotL;
-        // -- Direct Lights ---
-#else
-        [loop]
-        for (int nLights = 0; nLights < scene.NumLights; nLights++)
-        {
-            ShaderLight light = LoadLight(nLights);
-
-            switch (light.GetType())
-            {
-            case ENTITY_TYPE_DIRECTIONALLIGHT:
-            {
-                float3 L = -normalize(light.GetDirection());
-                float3 radiance = light.GetColour().rgb * light.GetEnergy(); // *shadow;
-
-                Lo += CalculateDirectAnalyticalContribution(N, V, R, F0, L, radiance, surfaceProperties);
-            }
-                break;
-
-            case ENTITY_TYPE_OMNILIGHT:
-            {
-                float3 L = normalize(light.Position - surfacePosition);
-
-                // TODO: Ignore any lights that Range is less then distance.
-                const float dist2 = dot(L, L);
-                const float range2 = light.GetRange() * light.GetRange();
-
-                // Calculate attenutaion
-                const float att = saturate(1 - (dist2 / range2));
-                const float attenuation = att * att;
-
-                // Calculate attenutaion
-                float3 radiance = light.GetColour().rgb * light.GetEnergy(); // *shadow;
-                radiance *= attenuation;
-
-                Lo += CalculateDirectAnalyticalContribution(N, V, R, F0, L, radiance, surfaceProperties);
-            }
-                break;
-
-            case ENTITY_TYPE_SPOTLIGHT:
-            {
-                float3 L = normalize(light.Position - surfacePosition);
-                const float dist2 = dot(L, L);
-                const float range2 = light.GetRange() * light.GetRange();
-
-                // TODO: Ignore any lights that Range is less then distance.
-                const float spotFactor = dot(L, light.GetDirection());
-                const float spotCutoff = light.GetConeAngleCos();
-
-                // Calculate attenutaion
-                const float att = saturate(1 - (dist2 / range2));
-                float attenuation = att * att;
-                attenuation *= saturate((1 - (1 - spotFactor) * 1 / (1 - spotCutoff)));
-
-                float3 radiance = light.GetColour().rgb * light.GetEnergy(); // *shadow;
-                radiance *= attenuation;
-
-                Lo += CalculateDirectAnalyticalContribution(N, V, R, F0, L, radiance, surfaceProperties);
-            }
-                break;
-            }
-        }
-#endif
+        float lodLevel = GetScene().EnvMap_NumMips;
+        ambient += ResourceHeap_GetTextureCubeArray(GetScene().EnvMapArray).SampleLevel(SamplerLinearClamped, float4(N, 0), lodLevel).rgb;
     }
-
-    // -- Indirect Lighting calculations ---
-    
-    // Improvised abmient lighting by using the Env Irradance map.
-    float3 ambient = float(0.01).xxx * surfaceProperties.Albedo * surfaceProperties.AO;
 
     float3 F = FresnelSchlick(saturate(dot(N, V)), F0, surfaceProperties.Roughness);
     // Improvised abmient lighting by using the Env Irradance map.
@@ -304,33 +192,17 @@ float4 main(PSInput input) : SV_TARGET
 		brdf = ResourceHeap_GetTexture2D(FrameCB.BrdfLUTTexIndex).Sample(SamplerLinearClamped, brdfTexCoord).rg;
 	}
 
-	float3 specular = prefilteredColour * (F * brdf.x + brdf.y);
+    lightingTerms.Indirect.Specular = prefilteredColour * (F * brdf.x + brdf.y);
+    lightingTerms.Indirect.Diffuse = ambient;
 
-	ambient = (kDiffuse * diffuse + specular) * surfaceProperties.AO;
-
-	float3 colour = ambient + Lo;
-
-	// float4 shadowMapCoord = mul(float4(input.PositionWS, 1.0f), GetCamera().ShadowViewProjection);
-    // Convert to Texture space
-    // shadowMapCoord.xyz /= shadowMapCoord.w;
-
-    // Apply Bias
-    // shadowMapCoord.xy = shadowMapCoord.xy * float2(0.5, -0.5) + 0.5;
-
-    // Transform NDC space [-1,+1]^2 to texture space [0,1]^2
-    // XMMATRIX T(0.5f, 0.0f, 0.0f, 0.0f,
-    //            0.0f, -0.5f, 0.0f, 0.0f,
-    //            0.0f, 0.0f, 1.0f, 0.0f,
-    //            0.5f, 0.5f, 0.0f, 1.0f);
-
-    // colour = GetShadow(shadowMapCoord.xyz) * colour;
-    // colour = GetShadow(input.ShadowTexCoord) * colour;
+	float3 finalColour = ApplyLighting(lightingTerms);
+;
 
 #ifdef DEFERRED_LIGHTING_COMPILE_CS
-    OutputBuffer[pixelPosition] = float4(colour, 1.0f);
+    OutputBuffer[pixelPosition] = float4(finalColour, 1.0f);
 #else
 
-    return float4(colour, 1.0f);
+    return float4(finalColour, 1.0f);
 #endif
 }
 #endif

@@ -65,6 +65,7 @@ namespace Shader
 		// -- 16 byte boundary ----
 		Atmosphere AtmosphereData;
 		uint EnvMapArray;
+		uint EnvMap_NumMips;
 	};
 
 	// -- Common Structurs ---

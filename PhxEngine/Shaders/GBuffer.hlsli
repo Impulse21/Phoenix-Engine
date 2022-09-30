@@ -2,30 +2,8 @@
 #define __GBUFFER_HLSL__
 
 #include "Include/Shaders/ShaderInteropStructures.h"
+#include "Lighting.hlsli"
 
-struct SurfaceProperties
-{
-    float3 Albedo;
-    float Opactiy;
-    float3 Normal;
-    float Roughness;
-    float Metalness;
-    float AO;
-};
-
-SurfaceProperties DefaultSurfaceProperties()
-{
-    SurfaceProperties result;
-
-    result.Albedo = 0;
-    result.Opactiy = 1;
-    result.Normal = 0;
-    result.Roughness = 0;
-    result.Metalness = 0;
-    result.AO = 0;
-
-    return result;
-}
 
 #define NUM_GBUFFER_CHANNELS 3
 SurfaceProperties DecodeGBuffer(float4 channels[NUM_GBUFFER_CHANNELS])

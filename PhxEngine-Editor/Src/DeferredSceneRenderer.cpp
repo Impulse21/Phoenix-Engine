@@ -913,6 +913,7 @@ void DeferredRenderer::PrepareFrameRenderData(
     frameData.SceneData.AtmosphereData.HorizonColour = { 0.0392157, 0.0392157, 0.0784314 };
 #endif
     frameData.SceneData.EnvMapArray = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_envMapArray, RHI::SubresouceType::SRV);
+    frameData.SceneData.EnvMap_NumMips = kEnvmapMIPs;
     frameData.BrdfLUTTexIndex = scene.GetBrdfLutDescriptorIndex();
 
 	// Upload data
