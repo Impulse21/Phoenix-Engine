@@ -212,7 +212,7 @@ float3 BRDF_DirectDiffuse(BRDFDataPerSurface brdfSurfaceData, BRDFDataPerLight b
 
     // Lambert has been modified for optmization. Rather then calculating this per light
     // I encoded the Cdiff(albedo) into BRDFDataPerSurface::DiffuseReflectance and will divide total
-    // per light diffuse by pi at the end. I think this will work....
+    // per light diffuse by pi at the end. See "ApplyLighting"
 
     return kD;
 }
