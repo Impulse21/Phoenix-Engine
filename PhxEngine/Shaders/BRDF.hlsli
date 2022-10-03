@@ -214,7 +214,7 @@ float3 BRDF_DirectDiffuse(BRDFDataPerSurface brdfSurfaceData, BRDFDataPerLight b
     // I encoded the Cdiff(albedo) into BRDFDataPerSurface::DiffuseReflectance and will divide total
     // per light diffuse by pi at the end. See "ApplyLighting"
 
-    return kD;
+    return kD * brdfLightData.NdotL;
 }
 
 float3 BRDF_DirectSpecular(BRDFDataPerSurface brdfSurfaceData, BRDFDataPerLight brdfLightData)

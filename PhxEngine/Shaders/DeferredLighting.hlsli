@@ -158,7 +158,7 @@ float4 main(PSInput input) : SV_TARGET
     // -- Diffuse ---
     {
         // Improvised abmient lighting by using the Env Irradance map.
-        float3 ambient = float(0.01).xxx;;
+        float3 ambient = float(0.00).xxx;;
         if (GetScene().EnvMapArray != InvalidDescriptorIndex)
         {
             float lodLevel = GetScene().EnvMap_NumMips;
