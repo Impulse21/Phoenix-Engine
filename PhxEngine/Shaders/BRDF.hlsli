@@ -168,7 +168,7 @@ BRDFDataPerSurface CreatePerSurfaceBRDFData(Surface surface, float3 surfacePos, 
 
     output.NdotV = saturate(dot(output.N, output.V));
 
-    output.DiffuseReflectance = (1 - surface.Metalness) * surface.Albedo;
+    output.DiffuseReflectance = (1 - surface.Metalness); // * surface.Albedo;
     output.F0 = surface.Specular;
     output.F90 = saturate(50.0 * dot(output.F0, 0.33));
     output.Alpha = surface.Roughness * surface.Roughness;
@@ -229,8 +229,9 @@ float3 BRDF_DirectSpecular(BRDFDataPerSurface brdfSurfaceData, BRDFDataPerLight 
     // float3 F = FresnelSchlick(brdfSurfaceData.F0, brdfSurfaceData.F90, brdfLightData.NdotV);
     
     // Now calculate Cook-Torrance BRDF
+    float3 specular = NDF * G * brdfLightData.F;
 
-    return NDF * G * brdfLightData.F;
+    return specular * brdfLightData.NdotL;
 
     // We do not need to do this as we are using GeometrySmithG2_Lagarde.
     // The returned value of G is  G2 / (4 * NdotL * NdotV) and therefore includes division by specular BRDF denominator
