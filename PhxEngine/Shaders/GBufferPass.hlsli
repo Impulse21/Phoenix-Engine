@@ -3,6 +3,7 @@
 
 #include "Globals.hlsli"
 #include "Defines.hlsli"
+#include "GBuffer.hlsli"
 
 #if USE_RESOURCE_HEAP
 #define GBufferPassRS \
@@ -116,48 +117,50 @@ PSOutput main(PSInput input)
 {
     MaterialData material = LoadMaterial(input.MaterialID);
     
+    Surface surface = DefaultSurface();
+
     // -- Collect Material Data ---
     // TODO: Add default WHITE texture (1,1,1,1) so that we can avoid branching.
     // Example of the look up: ao = material.AO * texture[material.AOtexture];
     //  4x4 dxt1 white texture
-    float3 albedo = material.AlbedoColour;
+    surface.Albedo = material.AlbedoColour;
     if (material.AlbedoTexture != InvalidDescriptorIndex)
     {
-        albedo = ResourceHeap_GetTexture2D(material.AlbedoTexture).Sample(SamplerDefault, input.TexCoord).xyz;
+        surface.Albedo = ResourceHeap_GetTexture2D(material.AlbedoTexture).Sample(SamplerDefault, input.TexCoord).xyz;
     }
     
-    float metallic = material.Metalness;
-    float roughness = material.Roughness;
+    surface.Metalness = material.Metalness;
+    surface.Roughness = material.Roughness;
 
     // -- Sample the material texture ---
     if (material.MaterialTexture != InvalidDescriptorIndex)
     {
         float4 materialSample = ResourceHeap_GetTexture2D(material.MaterialTexture).Sample(SamplerDefault, input.TexCoord);
-        metallic = materialSample.b;
-        roughness = materialSample.g;
+        surface.Metalness = materialSample.b;
+        surface.Roughness = materialSample.g;
     }
     /* Legacy stuff - add define to drive this 
     // -- Sample the individual metalness texture if there is one ---
     if (material.MetalnessTexture != InvalidDescriptorIndex)
     {
-        metallic = ResourceHeap_GetTexture2D(material.MetalnessTexture).Sample(SamplerDefault, input.TexCoord).b;
+        surface.Metalness = ResourceHeap_GetTexture2D(material.MetalnessTexture).Sample(SamplerDefault, input.TexCoord).b;
     }
 
     // -- Sample the individual Roughtness texture if there is one ---
     if (material.RoughnessTexture != InvalidDescriptorIndex)
     {
-        roughness = ResourceHeap_GetTexture2D(material.RoughnessTexture).Sample(SamplerDefault, input.TexCoord).g;
+        surface.Roughness = ResourceHeap_GetTexture2D(material.RoughnessTexture).Sample(SamplerDefault, input.TexCoord).g;
     }
       */  
-    float ao = material.AO;
+    surface.AO = material.AO;
     if (material.AOTexture != InvalidDescriptorIndex)
     {
-        ao = ResourceHeap_GetTexture2D(material.AOTexture).Sample(SamplerDefault, input.TexCoord).r;
+        surface.AO = ResourceHeap_GetTexture2D(material.AOTexture).Sample(SamplerDefault, input.TexCoord).r;
     }
 
     float3 tangent = normalize(input.TangentWS.xyz);
-    float3 normal = normalize(input.NormalWS);
-    float3 biTangent = cross(normal, tangent.xyz) * input.TangentWS.w;
+    surface.Normal = normalize(input.NormalWS);
+    float3 biTangent = cross(surface.Normal, tangent.xyz) * input.TangentWS.w;
 
     // float3 N = normalize(input.NormalWS);
     // float3 T = normalize(input.TangentWS.w - dot(input.TangentWS.w, N) * N);
@@ -165,28 +168,31 @@ PSOutput main(PSInput input)
 
     if (material.NormalTexture != InvalidDescriptorIndex)
     {
-        float3x3 tbn = float3x3(tangent, biTangent, normal);
+        float3x3 tbn = float3x3(tangent, biTangent, surface.Normal);
         // float3x3 tbn = float3x3(T, B, N);
-        normal = ResourceHeap_GetTexture2D(material.NormalTexture).Sample(SamplerDefault, input.TexCoord).rgb * 2.0 - 1.0;
-        normal = normalize(normal);
-        normal = normalize(mul(normal, tbn));
+        surface.Normal = ResourceHeap_GetTexture2D(material.NormalTexture).Sample(SamplerDefault, input.TexCoord).rgb * 2.0 - 1.0;
+        surface.Normal = normalize(surface.Normal);
+        surface.Normal = normalize(mul(surface.Normal, tbn));
 
 #ifdef __HACK_FLIP_X_COORD
-         normal.x = -normal.x;
+        surface.Normal.x = -surface.Normal.x;
 #endif
 #ifdef __HACK_FLIP_Y_COORD
-         normal.y = -normal.y;
+        surface.Normal.y = -surface.Normal.y;
 #endif
 #ifdef __HACK_FLIP_Z_COORD
-         normal.z = -normal.z;
+        surface.Normal.z = -surface.Normal.z;
 #endif
     }
 
+    float4 channelData[NUM_GBUFFER_CHANNELS];
+    EncodeGBuffer(surface, channelData);
+
     // -- End Material Collection ---
     PSOutput output;
-    output.Channel_0 = float4(albedo, 1.0f);
-    output.Channel_1 = float4(normal, 1.0f);
-    output.Channel_2 = float4(ao, roughness, metallic, 1.0f);
+    output.Channel_0 = channelData[0];
+    output.Channel_1 = channelData[1];
+    output.Channel_2 = channelData[2];
 
     return output;
 }

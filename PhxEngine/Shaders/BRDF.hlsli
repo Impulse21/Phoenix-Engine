@@ -29,6 +29,7 @@ Surface DefaultSurface()
     result.Roughness = 0;
     result.Metalness = 0;
     result.AO = 0;
+    result.Emissive = 0;
     result.Specular = 0;
 
     return result;

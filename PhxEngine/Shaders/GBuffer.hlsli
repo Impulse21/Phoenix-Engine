@@ -15,7 +15,7 @@ Surface DecodeGBuffer(float4 channels[NUM_GBUFFER_CHANNELS])
 
     surface.Normal  = channels[1].xyz;
    
-    surface.Metalness = channels[2].r;
+    surface.Metalness = channels[2].b;
     surface.Roughness = channels[2].g;
     surface.AO = channels[2].b;
 
@@ -24,6 +24,13 @@ Surface DecodeGBuffer(float4 channels[NUM_GBUFFER_CHANNELS])
     surface.Specular = lerp(Fdielectric, surface.Albedo, surface.Metalness);
 
     return surface;
+}
+
+void EncodeGBuffer(in Surface surface, inout float4 channels[NUM_GBUFFER_CHANNELS])
+{
+    channels[0] = float4(surface.Albedo, 1.0f);
+    channels[1] = float4(surface.Normal, 1.0f);
+    channels[2] = float4(surface.AO, surface.Roughness, surface.Metalness, 1.0f);
 }
 
 float4 ReconstructClipPosition(float2 pixelPosition, float depth)
