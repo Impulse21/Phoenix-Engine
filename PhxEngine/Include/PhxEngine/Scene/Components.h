@@ -281,8 +281,8 @@ namespace PhxEngine::Scene
 		DirectX::XMFLOAT3 Direction;
 		DirectX::XMFLOAT4 Colour = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-		float Energy = 1.0f;
-		float Range = 10.0f;
+		float Energy = 2.0f;
+		float Range = 200.0f;
 		float FoV = DirectX::XM_PIDIV4;
 
 		bool CastShadows() const { return Flags & Flags::kCastShadow; }

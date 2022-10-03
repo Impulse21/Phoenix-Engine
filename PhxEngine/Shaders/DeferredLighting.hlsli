@@ -125,23 +125,28 @@ float4 main(PSInput input) : SV_TARGET
     gbufferChannels[1] = GBuffer_1.Sample(SamplerDefault, pixelPosition);
     gbufferChannels[2] = GBuffer_2.Sample(SamplerDefault, pixelPosition);
 #endif
-    SurfaceProperties surfaceProperties = DecodeGBuffer(gbufferChannels);
-    float depth = GBuffer_Depth.Sample(SamplerDefault, pixelPosition).x;
+
+    Surface surface = DecodeGBuffer(gbufferChannels);
+    const float depth = GBuffer_Depth.Sample(SamplerDefault, pixelPosition).x;
     float3 surfacePosition = ReconstructWorldPosition(camera, pixelPosition, depth);
-    float3 viewIncident = surfacePosition - (float3)GetCamera().CameraPosition;
+
+    const float3 viewIncident = surfacePosition - (float3)GetCamera().CameraPosition;
+    BRDFDataPerSurface brdfSurfaceData = CreatePerSurfaceBRDFData(surface, surfacePosition, viewIncident);
+
     const float shadow = 1.0f;
-	Lighting lightingTerms;
+    Lighting lightingTerms;
+    lightingTerms.Init();
 
     // -- Collect Direct Light contribution ---
 	[loop]
 	for (int nLights = 0; nLights < scene.NumLights; nLights++)
 	{
 		ShaderLight light = LoadLight(nLights);
-		LightingPart directRadiance;
-		directRadiance.Diffuse = 0;
-		directRadiance.Specular = 0;
 
-		ShadeSurface_Direct(light, surfaceProperties, surfacePosition, viewIncident, directRadiance);
+		LightingPart directRadiance;
+        directRadiance.Init(0, 0);
+
+		ShadeSurface_Direct(light, brdfSurfaceData, directRadiance);
 
 
         lightingTerms.Direct.Diffuse += (shadow * directRadiance.Diffuse) * light.GetColour().rgb;
@@ -149,53 +154,63 @@ float4 main(PSInput input) : SV_TARGET
 	}
 
     // -- Collect Indirect Light Contribution ---
-    // 
-    // Improvised abmient lighting by using the Env Irradance map.
-
-    float3 N = normalize(surfaceProperties.Normal);
-    float3 V = normalize((float3)GetCamera().CameraPosition - surfacePosition);
-    float3 F0 = lerp(Fdielectric, surfaceProperties.Albedo, surfaceProperties.Metalness);
-
-    float3 ambient = float(0.01).xxx;
-
-    if (GetScene().EnvMapArray != InvalidDescriptorIndex)
+    
+    // -- Diffuse ---
     {
-        float lodLevel = GetScene().EnvMap_NumMips;
-        ambient += ResourceHeap_GetTextureCubeArray(GetScene().EnvMapArray).SampleLevel(SamplerLinearClamped, float4(N, 0), lodLevel).rgb;
+        // Improvised abmient lighting by using the Env Irradance map.
+        float3 ambient = float(0.01).xxx;;
+        if (GetScene().EnvMapArray != InvalidDescriptorIndex)
+        {
+            float lodLevel = GetScene().EnvMap_NumMips;
+            ambient += ResourceHeap_GetTextureCubeArray(GetScene().EnvMapArray).SampleLevel(SamplerLinearClamped, float4(brdfSurfaceData.N, 0), lodLevel).rgb;
+        }
+
+        lightingTerms.Indirect.Diffuse = ambient;
+
+        // -- TODO: Create an irradiance map. I would love to use DDGI to complete this task :)
+
+        // For now, the diffuse component will just be the ambient term.
+        // Not that kD is calculating when the final light is applied.
+        /*
+        float3 F = FresnelSchlick(saturate(dot(N, V)), F0, surfaceProperties.Roughness);
+        // Improvised abmient lighting by using the Env Irradance map.
+        float3 irradiance = float3(0, 0, 0);
+        if (GetScene().IrradianceMapTexIndex != InvalidDescriptorIndex)
+        {
+            irradiance = ResourceHeap_GetTextureCube(GetScene().IrradianceMapTexIndex).Sample(SamplerDefault, N).rgb;
+        }
+        // This bit is calcularted in the final lighting
+        float3 kSpecular = F;
+        float3 kDiffuse = 1.0 - kSpecular;
+        float3 diffuse = irradiance * surfaceProperties.Albedo;
+        */
+
     }
 
-    float3 F = FresnelSchlick(saturate(dot(N, V)), F0, surfaceProperties.Roughness);
-    // Improvised abmient lighting by using the Env Irradance map.
-    float3 irradiance = float3(0, 0, 0);
-    if (GetScene().IrradianceMapTexIndex != InvalidDescriptorIndex)
+    // -- Specular ---
     {
-        irradiance = ResourceHeap_GetTextureCube(GetScene().IrradianceMapTexIndex).Sample(SamplerDefault, N).rgb;
+        // Approximate Specular IBL
+        // Sample both the BRDFLut and Pre-filtered map and combine them together as per the
+        // split-sum approximation to get the IBL Specular part.
+
+        float3 prefilteredColour = float3(0.0f, 0.0f, 0.0f);
+        if (GetScene().EnvMapArray != InvalidDescriptorIndex)
+        {
+            float lodLevel = surface.Roughness * MaxReflectionLod;
+            prefilteredColour = ResourceHeap_GetTextureCubeArray(GetScene().EnvMapArray).SampleLevel(SamplerLinearClamped, float4(brdfSurfaceData.N, 0), lodLevel).rgb;
+        }
+
+        float2 envBrdfUV = float2(brdfSurfaceData.NdotV, surface.Roughness);
+        float2 envBrdf = float2(1.0f, 1.0f);
+        if (FrameCB.BrdfLUTTexIndex != InvalidDescriptorIndex)
+        {
+            envBrdf = ResourceHeap_GetTexture2D(FrameCB.BrdfLUTTexIndex).Sample(SamplerLinearClamped, envBrdfUV).rg;
+        }
+
+        lightingTerms.Indirect.Specular = prefilteredColour * (brdfSurfaceData.F * envBrdf.x + envBrdf.y);
     }
 
-    float3 kSpecular = F;
-    float3 kDiffuse = 1.0 - kSpecular;
-    float3 diffuse = irradiance * surfaceProperties.Albedo;
-
-	// Sample both the BRDFLut and Pre-filtered map and combine them together as per the
-	// split-sum approximation to get the IBL Specular part.
-	float3 prefilteredColour = float3(0.0f, 0.0f, 0.0f);
-	if (GetScene().EnvMapArray != InvalidDescriptorIndex)
-	{
-		float lodLevel = surfaceProperties.Roughness * MaxReflectionLod;
-		prefilteredColour = ResourceHeap_GetTextureCubeArray(GetScene().EnvMapArray).SampleLevel(SamplerLinearClamped, float4(N, 0), lodLevel).rgb;
-	}
-
-	float2 brdfTexCoord = float2(saturate(dot(N, V)), surfaceProperties.Roughness);
-	float2 brdf = float2(1.0f, 1.0f);
-	if (FrameCB.BrdfLUTTexIndex != InvalidDescriptorIndex)
-	{
-		brdf = ResourceHeap_GetTexture2D(FrameCB.BrdfLUTTexIndex).Sample(SamplerLinearClamped, brdfTexCoord).rg;
-	}
-
-    lightingTerms.Indirect.Specular = prefilteredColour * (F * brdf.x + brdf.y);
-    lightingTerms.Indirect.Diffuse = ambient;
-
-	float3 finalColour = ApplyLighting(lightingTerms);
+	float3 finalColour = ApplyLighting(lightingTerms, brdfSurfaceData, surface);
 ;
 
 #ifdef DEFERRED_LIGHTING_COMPILE_CS

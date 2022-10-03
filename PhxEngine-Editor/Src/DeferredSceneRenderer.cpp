@@ -720,6 +720,11 @@ void DeferredRenderer::PrepareFrameRenderData(
 	uint32_t currMat = 0;
 	for (Assets::StandardMaterial* mat : foundMaterials)
 	{
+        if (!mat)
+        {
+            continue;
+        }
+
 		Shader::MaterialData* shaderData = materialBufferMappedData + currMat;
 
         shaderData->AlbedoColour = { mat->Albedo.x, mat->Albedo.y, mat->Albedo.z };
@@ -906,11 +911,11 @@ void DeferredRenderer::PrepareFrameRenderData(
 	frameData.SceneData.MatricesIndex = RHI::cInvalidDescriptorIndex;
     frameData.SceneData.AtmosphereData = {};
 #if true
-    frameData.SceneData.AtmosphereData.ZenithColour = { 0.117647, 0.156863, 0.235294 };// { 0.117647, 0.156863, 0.235294 };
+    frameData.SceneData.AtmosphereData.ZenithColour = { 0.0f, 0.0f, 0.0f };// { 0.117647, 0.156863, 0.235294 };
     frameData.SceneData.AtmosphereData.HorizonColour = { 0.0f, 0.0f, 0.0f };// { 0.0392157, 0.0392157, 0.0784314 };
 #else
-    frameData.SceneData.AtmosphereData.ZenithColour = { 0.117647, 0.156863, 0.235294 };
-    frameData.SceneData.AtmosphereData.HorizonColour = { 0.0392157, 0.0392157, 0.0784314 };
+    frameData.SceneData.AtmosphereData.ZenithColour = { 0.117647, 0.156863, 0.235294 };// { 0.117647, 0.156863, 0.235294 };
+    frameData.SceneData.AtmosphereData.HorizonColour = { 0.0f, 0.0f, 0.0f };// { 0.0392157, 0.0392157, 0.0784314 };
 #endif
     frameData.SceneData.EnvMapArray = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_envMapArray, RHI::SubresouceType::SRV);
     frameData.SceneData.EnvMap_NumMips = kEnvmapMIPs;

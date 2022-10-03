@@ -186,7 +186,7 @@ PSOutput main(PSInput input)
     PSOutput output;
     output.Channel_0 = float4(albedo, 1.0f);
     output.Channel_1 = float4(normal, 1.0f);
-    output.Channel_2 = float4(metallic, roughness, ao, 1.0f);
+    output.Channel_2 = float4(ao, roughness, metallic, 1.0f);
 
     return output;
 }

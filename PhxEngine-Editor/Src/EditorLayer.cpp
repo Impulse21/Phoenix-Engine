@@ -385,6 +385,10 @@ void SceneExplorerPanel::DrawEntityComponents(Entity entity)
             ImGui::Checkbox("Cast Shadows", &castsShadows);
             component.SetCastShadows(castsShadows);
             ImGui::InputFloat3("Direction", &component.Direction.x, "%.3f");
+
+            
+            ImGui::InputFloat("Energy", &component.Energy);
+            ImGui::InputFloat("Range", &component.Range);
             // Direction is starting from origin, so we need to negate it
             // Vec3 light(lightComponent.Direction.x, lightComponent.Direction.y, -lightComponent.Direction.z);
             // get/setLigth are helper funcs that you have ideally defined to manage your global/member objs
@@ -432,8 +436,10 @@ void EditorLayer::OnAttach()
     cmd->Open();
 
     std::unique_ptr<ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
-    sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", cmd, *this->m_scene);
+    
+    // sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", cmd, *this->m_scene);
     // sceneLoader->LoadScene("Assets\\Models\\EnvMapTest\\EnvMapTest.gltf", cmd, *this->m_scene);
+    sceneLoader->LoadScene("Assets\\Models\\BRDFTests\\MetalRoughSpheresNoTextures.gltf", cmd, *this->m_scene);
 #endif
 
     // TODO: I am here update The mesh render data

@@ -6,9 +6,9 @@
 
 
 #define NUM_GBUFFER_CHANNELS 3
-SurfaceProperties DecodeGBuffer(float4 channels[NUM_GBUFFER_CHANNELS])
+Surface DecodeGBuffer(float4 channels[NUM_GBUFFER_CHANNELS])
 {
-    SurfaceProperties surface = DefaultSurfaceProperties();
+    Surface surface = DefaultSurface();
 
     surface.Albedo  = channels[0].xyz;
     surface.Opactiy = channels[0].w;
@@ -18,6 +18,10 @@ SurfaceProperties DecodeGBuffer(float4 channels[NUM_GBUFFER_CHANNELS])
     surface.Metalness = channels[2].r;
     surface.Roughness = channels[2].g;
     surface.AO = channels[2].b;
+
+    // TODO: Put into G Buffer;
+    surface.Emissive = 0;
+    surface.Specular = lerp(Fdielectric, surface.Albedo, surface.Metalness);
 
     return surface;
 }

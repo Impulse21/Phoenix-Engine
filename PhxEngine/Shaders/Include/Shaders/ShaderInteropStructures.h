@@ -121,6 +121,8 @@ namespace Shader
 		// -- 16 byte boundary ----
 		// Near first 16 bits, far being the lather
 		uint CubemapDepthRemapPacked;
+		float Energy;
+		float Range;
 
 #ifndef __cplusplus
 		inline float4 GetColour()
@@ -161,12 +163,14 @@ namespace Shader
 
 		inline float GetRange()
 		{
-			return f16tof32((Type8_Flags8_Range16 >> 16) & 0xFFFF);
+			// return f16tof32((Type8_Flags8_Range16 >> 16) & 0xFFFF);
+			return Range;
 		}
 
 		inline float GetEnergy()
 		{
-			return f16tof32(Energy16_X16 & 0xFFFF);
+			// return f16tof32(Energy16_X16 & 0xFFFF);
+			return Energy;
 		}
 
 		inline float GetCubemapDepthRemapNear(float value)
@@ -192,12 +196,14 @@ namespace Shader
 
 		inline void SetRange(float value)
 		{
-			Type8_Flags8_Range16 |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16;
+			// Type8_Flags8_Range16 |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16;
+			Range = value;
 		}
 
 		inline void SetEnergy(float value)
 		{
-			Energy16_X16 |= DirectX::PackedVector::XMConvertFloatToHalf(value);
+			// Energy16_X16 |= DirectX::PackedVector::XMConvertFloatToHalf(value);
+			Energy = value;
 		}
 
 		inline void SetDirection(float3 value)
