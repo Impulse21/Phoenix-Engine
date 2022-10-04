@@ -388,9 +388,8 @@ void SceneExplorerPanel::DrawEntityComponents(Entity entity)
             component.SetCastShadows(castsShadows);
             ImGui::InputFloat3("Direction", &component.Direction.x, "%.3f");
 
-            
-            ImGui::InputFloat("Intensity", &component.Intensity);
-            ImGui::InputFloat("Range", &component.Range);
+            ImGui::SliderFloat("Intensity", &component.Intensity, 0.0f, 1000.0f);
+            ImGui::SliderFloat("Range", &component.Range, 0.0f, (float)std::numeric_limits<uint16_t>().max(), "%e");
             // Direction is starting from origin, so we need to negate it
             // Vec3 light(lightComponent.Direction.x, lightComponent.Direction.y, -lightComponent.Direction.z);
             // get/setLigth are helper funcs that you have ideally defined to manage your global/member objs
