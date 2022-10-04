@@ -405,7 +405,7 @@ void SceneExplorerPanel::DrawEntityComponents(Entity entity)
         
         ImGui::ColorPicker3("Zenith Colour", &component.ZenithColour.x, ImGuiColorEditFlags_NoSidePreview);
         ImGui::ColorPicker3("Horizon Colour", &component.HorizonColour.x, ImGuiColorEditFlags_NoSidePreview);
-        ImGui::ColorPicker3("AmbientColour Colour", &component.AmbientColour.x, ImGuiColorEditFlags_NoSidePreview);
+        ImGui::ColorPicker3("Ambient Colour", &component.AmbientColour.x, ImGuiColorEditFlags_NoSidePreview);
         });
 
     DrawComponent<CameraComponent>("CameraComponent", entity, [](auto& component) {
