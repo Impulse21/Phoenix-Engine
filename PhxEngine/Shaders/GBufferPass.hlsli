@@ -110,6 +110,7 @@ struct PSOutput
     float4 Channel_0    : SV_Target0;
     float4 Channel_1    : SV_Target1;
     float4 Channel_2    : SV_Target2;
+    float4 Channel_3    : SV_Target3;
 };
 
 [RootSignature(GBufferPassRS)]
@@ -193,6 +194,7 @@ PSOutput main(PSInput input)
     output.Channel_0 = channelData[0];
     output.Channel_1 = channelData[1];
     output.Channel_2 = channelData[2];
+    output.Channel_3 = channelData[3];
 
     return output;
 }

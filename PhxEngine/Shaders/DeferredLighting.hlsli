@@ -19,7 +19,7 @@
 	"CBV(b0), " \
 	"CBV(b1), " \
     "SRV(t0),"  \
-    "DescriptorTable(SRV(t1, numDescriptors = 4)), " \
+    "DescriptorTable(SRV(t1, numDescriptors = 5)), " \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR),"
 
@@ -30,7 +30,7 @@
 	"CBV(b0), " \
 	"CBV(b1), " \
     "SRV(t0),"  \
-    "DescriptorTable(SRV(t1, numDescriptors = 4)), " \
+    "DescriptorTable(SRV(t1, numDescriptors = 5)), " \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR),"
 
@@ -44,7 +44,7 @@
 	"CBV(b0), " \
 	"CBV(b1), " \
     "SRV(t0),"  \
-    "DescriptorTable(SRV(t1, numDescriptors = 4)), " \
+    "DescriptorTable(SRV(t1, numDescriptors = 5)), " \
     "DescriptorTable( UAV(u0, numDescriptors = 1) )," \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR),"
@@ -61,6 +61,7 @@ Texture2D GBuffer_Depth : register(t1);
 Texture2D GBuffer_0     : register(t2);
 Texture2D GBuffer_1     : register(t3);
 Texture2D GBuffer_2     : register(t4);
+Texture2D GBuffer_3     : register(t5);
 
 SamplerState DefaultSampler: register(s50);
 
@@ -119,11 +120,13 @@ float4 main(PSInput input) : SV_TARGET
     gbufferChannels[0] = GBuffer_0[pixelPosition];
     gbufferChannels[1] = GBuffer_1[pixelPosition];
     gbufferChannels[2] = GBuffer_2[pixelPosition];
+    gbufferChannels[3] = GBuffer_3[pixelPosition];
 
 #else
     gbufferChannels[0] = GBuffer_0.Sample(SamplerDefault, pixelPosition);
     gbufferChannels[1] = GBuffer_1.Sample(SamplerDefault, pixelPosition);
     gbufferChannels[2] = GBuffer_2.Sample(SamplerDefault, pixelPosition);
+    gbufferChannels[3] = GBuffer_3.Sample(SamplerDefault, pixelPosition);
 #endif
 
     Surface surface = DecodeGBuffer(gbufferChannels);
