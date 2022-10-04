@@ -200,7 +200,7 @@ float4 main(PSInput input) : SV_TARGET
         if (GetScene().EnvMapArray != InvalidDescriptorIndex)
         {
             float lodLevel = surface.Roughness * MaxReflectionLod;
-            prefilteredColour = ResourceHeap_GetTextureCubeArray(GetScene().EnvMapArray).SampleLevel(SamplerLinearClamped, float4(brdfSurfaceData.N, 0), lodLevel).rgb;
+            prefilteredColour = ResourceHeap_GetTextureCubeArray(GetScene().EnvMapArray).SampleLevel(SamplerLinearClamped, float4(brdfSurfaceData.R, 0), lodLevel).rgb;
         }
 
         float2 envBrdfUV = float2(brdfSurfaceData.NdotV, surface.Roughness);
