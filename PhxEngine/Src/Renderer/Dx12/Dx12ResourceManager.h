@@ -32,7 +32,7 @@ namespace PhxEngine::Renderer
 		DirectX::XMFLOAT4 Emissive = { 0.0f, 0.0f, 0.0f, 1.0f };
 		float Metalness = 1.0f;
 		float Roughness = 1.0f;
-		float Ao = 0.4f;
+		float Ao = 1.0f;
 		bool IsDoubleSided = false;
 
 		RHI::TextureHandle AlbedoTexture;

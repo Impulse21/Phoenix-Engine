@@ -33,8 +33,8 @@ struct Lighting
 float3 ApplyLighting(Lighting lightingTerms, BRDFDataPerSurface brdfSurfaceData, Surface surface)
 {
     // input diffuse contains Kd * (Cdiff). Now we finally apply PI to complete Lambert's equation.
-    float3 diffuse = (lightingTerms.Direct.Diffuse / PI) + (lightingTerms.Indirect.Diffuse * (1 - brdfSurfaceData.F) * surface.AO);
-    float3 specular = lightingTerms.Direct.Specular + (lightingTerms.Indirect.Specular * surface.AO); // indirect specular is completed.
+    float3 diffuse = lightingTerms.Direct.Diffuse / PI + lightingTerms.Indirect.Diffuse * (1 - brdfSurfaceData.F) * surface.AO;
+    float3 specular = lightingTerms.Direct.Specular + lightingTerms.Indirect.Specular * surface.AO; // indirect specular is completed.
 
     float3 colour = diffuse * brdfSurfaceData.DiffuseReflectance; // If an object is metallic, this should cancel out the diffuse term.
     colour += specular;

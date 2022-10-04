@@ -14,10 +14,10 @@ Surface DecodeGBuffer(float4 channels[NUM_GBUFFER_CHANNELS])
     surface.Opactiy = channels[0].w;
 
     surface.Normal  = channels[1].xyz;
-   
-    surface.Metalness = channels[2].b;
+
+    surface.AO = channels[2].r;
     surface.Roughness = channels[2].g;
-    surface.AO = channels[2].b;
+    surface.Metalness = channels[2].b;
 
     // TODO: Put into G Buffer;
     surface.Emissive = 0;
