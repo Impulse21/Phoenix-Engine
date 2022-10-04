@@ -381,10 +381,15 @@ void SceneExplorerPanel::DrawEntityComponents(Entity entity)
             ImGui::Checkbox("Enabled", &isEnabled);
             component.SetEnabled(isEnabled);
 
+            ImGui::ColorPicker3("Light Colour", &component.Colour.x, ImGuiColorEditFlags_NoSidePreview);
+
             bool castsShadows = component.CastShadows();
             ImGui::Checkbox("Cast Shadows", &castsShadows);
             component.SetCastShadows(castsShadows);
             ImGui::InputFloat3("Direction", &component.Direction.x, "%.3f");
+
+            ImGui::SliderFloat("Intensity", &component.Intensity, 0.0f, 1000.0f);
+            ImGui::SliderFloat("Range", &component.Range, 0.0f, (float)std::numeric_limits<uint16_t>().max(), "%e");
             // Direction is starting from origin, so we need to negate it
             // Vec3 light(lightComponent.Direction.x, lightComponent.Direction.y, -lightComponent.Direction.z);
             // get/setLigth are helper funcs that you have ideally defined to manage your global/member objs
@@ -395,8 +400,11 @@ void SceneExplorerPanel::DrawEntityComponents(Entity entity)
             }
         });
 
-    DrawComponent<SkyLightComponent>("SkyLightComponent", entity, [](auto& component) {
-        ImGui::Text("TODO: Add Data");
+    DrawComponent<WorldEnvironmentComponent>("WorldEnvironmentComponent", entity, [](auto& component) {
+        
+        ImGui::ColorPicker3("Zenith Colour", &component.ZenithColour.x, ImGuiColorEditFlags_NoSidePreview);
+        ImGui::ColorPicker3("Horizon Colour", &component.HorizonColour.x, ImGuiColorEditFlags_NoSidePreview);
+        ImGui::ColorPicker3("Ambient Colour", &component.AmbientColour.x, ImGuiColorEditFlags_NoSidePreview);
         });
 
     DrawComponent<CameraComponent>("CameraComponent", entity, [](auto& component) {
@@ -432,9 +440,14 @@ void EditorLayer::OnAttach()
     cmd->Open();
 
     std::unique_ptr<ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
+    
     sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", cmd, *this->m_scene);
     // sceneLoader->LoadScene("Assets\\Models\\EnvMapTest\\EnvMapTest.gltf", cmd, *this->m_scene);
+    // sceneLoader->LoadScene("Assets\\Models\\BRDFTests\\MetalRoughSpheresNoTextures.gltf", cmd, *this->m_scene);
 #endif
+
+    entt::entity worldEntity = this->m_scene->CreateEntity("World Environment Component");
+    this->m_scene->GetRegistry().emplace<WorldEnvironmentComponent>(worldEntity);
 
     // TODO: I am here update The mesh render data
     auto view = this->m_scene->GetAllEntitiesWith<MeshRenderComponent>();

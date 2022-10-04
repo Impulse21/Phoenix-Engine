@@ -128,6 +128,7 @@ void DeferredRenderer::FreeTextureResources()
     PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.AlbedoTexture);
     PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.NormalTexture);
     PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.SurfaceTexture);
+    PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_gBuffer.SpecularTexture);
     PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_deferredLightBuffer);
     PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_finalColourBuffer);
 }
@@ -224,6 +225,10 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
     desc.DebugName = "Surface Buffer";
     this->m_gBuffer.SurfaceTexture = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
 
+    desc.Format = RHI::FormatType::SRGBA8_UNORM;
+    desc.DebugName = "Specular Buffer";
+    this->m_gBuffer.SpecularTexture = RHI::IGraphicsDevice::Ptr->CreateTexture(desc);
+
     desc.IsTypeless = true;
     desc.Format = RHI::FormatType::RGBA16_FLOAT;
     desc.DebugName = "Deferred Lighting";
@@ -256,6 +261,13 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
                 {
                     .LoadOp = RenderPassAttachment::LoadOpType::Clear,
                     .Texture = this->m_gBuffer.SurfaceTexture,
+                    .InitialLayout = RHI::ResourceStates::ShaderResource,
+                    .SubpassLayout = RHI::ResourceStates::RenderTarget,
+                    .FinalLayout = RHI::ResourceStates::ShaderResource
+                },
+                {
+                    .LoadOp = RenderPassAttachment::LoadOpType::Clear,
+                    .Texture = this->m_gBuffer.SpecularTexture,
                     .InitialLayout = RHI::ResourceStates::ShaderResource,
                     .SubpassLayout = RHI::ResourceStates::RenderTarget,
                     .FinalLayout = RHI::ResourceStates::ShaderResource
@@ -720,6 +732,11 @@ void DeferredRenderer::PrepareFrameRenderData(
 	uint32_t currMat = 0;
 	for (Assets::StandardMaterial* mat : foundMaterials)
 	{
+        if (!mat)
+        {
+            continue;
+        }
+
 		Shader::MaterialData* shaderData = materialBufferMappedData + currMat;
 
         shaderData->AlbedoColour = { mat->Albedo.x, mat->Albedo.y, mat->Albedo.z };
@@ -846,13 +863,30 @@ void DeferredRenderer::PrepareFrameRenderData(
         Shader::ShaderLight* renderLight = lightArray + lightCount++;
         renderLight->SetType(lightComponent.Type);
         renderLight->SetRange(lightComponent.Range);
-        renderLight->SetEnergy(lightComponent.Energy);
+        renderLight->SetIntensity(lightComponent.Intensity);
         renderLight->SetFlags(lightComponent.Flags);
         renderLight->SetDirection(lightComponent.Direction);
         renderLight->ColorPacked = Math::PackColour(lightComponent.Colour);
         renderLight->Indices = this->m_matricesCPUData.size();
 
         renderLight->Position = transformComponent.GetPosition();
+
+        if (lightComponent.Type == LightComponent::kSpotLight)
+        {
+
+            const float outerConeAngle = lightComponent.OuterConeAngle;
+            const float innerConeAngle = std::min(lightComponent.InnerConeAngle, outerConeAngle);
+            const float outerConeAngleCos = std::cos(outerConeAngle);
+            const float innerConeAngleCos = std::cos(innerConeAngle);
+
+            // https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_lights_punctual#inner-and-outer-cone-angles
+            const float lightAngleScale = 1.0f / std::max(0.001f, innerConeAngleCos - outerConeAngleCos);
+            const float lightAngleOffset = -outerConeAngleCos * lightAngleScale;
+
+            renderLight->SetConeAngleCos(outerConeAngleCos);
+            renderLight->SetAngleScale(lightAngleScale);
+            renderLight->SetAngleOffset(lightAngleOffset);
+        }
         /*
         switch (lightComponent.Type)
         {
@@ -904,15 +938,27 @@ void DeferredRenderer::PrepareFrameRenderData(
 	frameData.SceneData.MaterialBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_materialGpuBuffer, RHI::SubresouceType::SRV);
 	frameData.SceneData.LightEntityIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_LightEntities], RHI::SubresouceType::SRV);
 	frameData.SceneData.MatricesIndex = RHI::cInvalidDescriptorIndex;
+
     frameData.SceneData.AtmosphereData = {};
-#if true
-    frameData.SceneData.AtmosphereData.ZenithColour = { 0.117647, 0.156863, 0.235294 };// { 0.117647, 0.156863, 0.235294 };
-    frameData.SceneData.AtmosphereData.HorizonColour = { 0.0f, 0.0f, 0.0f };// { 0.0392157, 0.0392157, 0.0784314 };
-#else
-    frameData.SceneData.AtmosphereData.ZenithColour = { 0.117647, 0.156863, 0.235294 };
-    frameData.SceneData.AtmosphereData.HorizonColour = { 0.0392157, 0.0392157, 0.0784314 };
-#endif
+    auto worldEnvView = scene.GetRegistry().view<WorldEnvironmentComponent>();
+    if (worldEnvView.empty())
+    {
+        WorldEnvironmentComponent worldComp = {};
+        frameData.SceneData.AtmosphereData.ZenithColour = worldComp.ZenithColour;
+        frameData.SceneData.AtmosphereData.HorizonColour = worldComp.HorizonColour;
+        frameData.SceneData.AtmosphereData.AmbientColour = worldComp.AmbientColour;
+    }
+    else
+    {
+        auto& worldComp = worldEnvView.get<WorldEnvironmentComponent>(worldEnvView[0]);
+
+        frameData.SceneData.AtmosphereData.ZenithColour = worldComp.ZenithColour;
+        frameData.SceneData.AtmosphereData.HorizonColour = worldComp.HorizonColour;
+        frameData.SceneData.AtmosphereData.AmbientColour = worldComp.AmbientColour;
+
+    }
     frameData.SceneData.EnvMapArray = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_envMapArray, RHI::SubresouceType::SRV);
+    frameData.SceneData.EnvMap_NumMips = kEnvmapMIPs;
     frameData.BrdfLUTTexIndex = scene.GetBrdfLutDescriptorIndex();
 
 	// Upload data
@@ -969,6 +1015,7 @@ void DeferredRenderer::CreatePSOs()
                 IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.AlbedoTexture).Format,
                 IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.NormalTexture).Format,
                 IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.SurfaceTexture).Format,
+                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.SpecularTexture).Format,
             },
             .DsvFormat = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_depthBuffer).Format }
         });
@@ -1102,6 +1149,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
                 this->m_gBuffer.AlbedoTexture,
                 this->m_gBuffer.NormalTexture,
                 this->m_gBuffer.SurfaceTexture,
+                this->m_gBuffer.SpecularTexture,
             });
         this->m_commandList->Draw(3, 1, 0, 0);
 

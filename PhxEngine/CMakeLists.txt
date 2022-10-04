@@ -111,12 +111,21 @@ file (GLOB PhxEngine_Inc
 file (GLOB PhxEngine_Src
     Src/*.h
 	Src/*.cpp)
-file (GLOB PhxEngine_Shader_Inc
-	Shaders/*.hlsli
+	
+file (GLOB PhxEngine_Shader_Interop_Inc
 	Shaders/Include/*.h)
 
 file (GLOB PhxEngine_Shader_Src
-	Shaders/*.hlsl)
+	Shaders/*.hlsli)
+
+file (GLOB PhxEngine_Shader_VS_Src
+	Shaders/*VS.hlsl)
+
+file (GLOB PhxEngine_Shader_PS_Src
+	Shaders/*PS.hlsl)
+
+file (GLOB PhxEngine_Shader_CS_Src
+	Shaders/*CS.hlsl)
 
 add_library(PhxEngine STATIC EXCLUDE_FROM_ALL  
     ${PhxEngine_App_Inc}
@@ -137,6 +146,11 @@ add_library(PhxEngine STATIC EXCLUDE_FROM_ALL
     ${PhxEngine_System_Src}
     ${PhxEngine_Scene_Inc}
     ${PhxEngine_Scene_Src}
+	${PhxEngine_Shader_Interop_Inc}
+	${PhxEngine_Shader_Src}
+	${PhxEngine_Shader_VS_Src}
+	${PhxEngine_Shader_PS_Src}
+	${PhxEngine_Shader_CS_Src}
     ${PhxEngine_Inc}
     ${PhxEngine_Src})
 
@@ -162,6 +176,19 @@ source_group("Src/System"               FILES ${PhxEngine_System_Src})
 source_group("Src/Scene"                FILES ${PhxEngine_Scene_Src})
 source_group("Src/Renderer"             FILES ${PhxEngine_Renderer_Src})
 source_group("Src/Renderer/Dx12"        FILES ${PhxEngine_Renderer_DX12_Src})
+
+
+source_group("Shaders/Includes/Interop"	FILES ${PhxEngine_Shader_Interop_Inc})
+source_group("Shaders/Include"		    FILES ${PhxEngine_Shader_Src})
+source_group("Shaders/VS"			    FILES ${PhxEngine_Shader_VS_Src})
+source_group("Shaders/PS"			    FILES ${PhxEngine_Shader_PS_Src})
+source_group("Shaders/CS"			    FILES ${PhxEngine_Shader_CS_Src})
+
+
+ set_source_files_properties(${PhxEngine_Shader_Src} PROPERTIES VS_TOOL_OVERRIDE "None")
+ set_source_files_properties(${PhxEngine_Shader_VS_Src} PROPERTIES VS_TOOL_OVERRIDE "None")
+ set_source_files_properties(${PhxEngine_Shader_PS_Src} PROPERTIES VS_TOOL_OVERRIDE "None")
+ set_source_files_properties(${PhxEngine_Shader_CS_Src} PROPERTIES VS_TOOL_OVERRIDE "None")
 
 target_include_directories(${ProjectName} PUBLIC Include Shaders/Include)
 target_include_directories(${ProjectName} PRIVATE Src Shaders/Include)

@@ -2,46 +2,36 @@
 #define __GBUFFER_HLSL__
 
 #include "Include/Shaders/ShaderInteropStructures.h"
+#include "Lighting.hlsli"
 
-struct SurfaceProperties
+
+#define NUM_GBUFFER_CHANNELS 4
+Surface DecodeGBuffer(float4 channels[NUM_GBUFFER_CHANNELS])
 {
-    float3 Albedo;
-    float Opactiy;
-    float3 Normal;
-    float Roughness;
-    float Metalness;
-    float AO;
-};
-
-SurfaceProperties DefaultSurfaceProperties()
-{
-    SurfaceProperties result;
-
-    result.Albedo = 0;
-    result.Opactiy = 1;
-    result.Normal = 0;
-    result.Roughness = 0;
-    result.Metalness = 0;
-    result.AO = 0;
-
-    return result;
-}
-
-#define NUM_GBUFFER_CHANNELS 3
-SurfaceProperties DecodeGBuffer(float4 channels[NUM_GBUFFER_CHANNELS])
-{
-    SurfaceProperties surface = DefaultSurfaceProperties();
+    Surface surface = DefaultSurface();
 
     surface.Albedo  = channels[0].xyz;
     surface.Opactiy = channels[0].w;
 
     surface.Normal  = channels[1].xyz;
-   
-    surface.Metalness = channels[2].r;
+
+    surface.AO = channels[2].r;
     surface.Roughness = channels[2].g;
-    surface.AO = channels[2].b;
+    surface.Metalness = channels[2].b;
+    surface.Specular = channels[3].rgb; 
+
+    // TODO: Put into G Buffer;
+    surface.Emissive = 0;
 
     return surface;
+}
+
+void EncodeGBuffer(in Surface surface, inout float4 channels[NUM_GBUFFER_CHANNELS])
+{
+    channels[0] = float4(surface.Albedo, 1.0f);
+    channels[1] = float4(surface.Normal, 1.0f);
+    channels[2] = float4(surface.AO, surface.Roughness, surface.Metalness, 1.0f);
+    channels[3] = float4(lerp(Fdielectric, surface.Albedo, surface.Metalness), 1.0f);
 }
 
 float4 ReconstructClipPosition(float2 pixelPosition, float depth)

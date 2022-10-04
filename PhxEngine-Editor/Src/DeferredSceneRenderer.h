@@ -66,6 +66,7 @@ private:
         PhxEngine::RHI::TextureHandle AlbedoTexture;
         PhxEngine::RHI::TextureHandle NormalTexture;
         PhxEngine::RHI::TextureHandle SurfaceTexture;
+        PhxEngine::RHI::TextureHandle SpecularTexture;
     };
 
     void FreeResources();

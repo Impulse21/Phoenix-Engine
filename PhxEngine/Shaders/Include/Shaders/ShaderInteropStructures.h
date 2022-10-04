@@ -46,6 +46,10 @@ namespace Shader
 		float3 ZenithColour;
 		uint _padding3;
 		// -- 16 byte boundary ----
+
+		float3 AmbientColour;
+		uint _padding4;
+		// -- 16 byte boundary ----
 	};
 
 	struct Scene
@@ -65,6 +69,7 @@ namespace Shader
 		// -- 16 byte boundary ----
 		Atmosphere AtmosphereData;
 		uint EnvMapArray;
+		uint EnvMap_NumMips;
 	};
 
 	// -- Common Structurs ---
@@ -110,7 +115,7 @@ namespace Shader
 
 		// -- 16 byte boundary ----
 		uint2 Direction16_ConeAngleCos16;
-		uint Energy16_X16; // <free_16><range_8>
+		uint Intensity16_X16; // <free_16><range_8>
 		uint ColorPacked;
 		uint Indices; // Not current packed
 
@@ -120,6 +125,13 @@ namespace Shader
 		// -- 16 byte boundary ----
 		// Near first 16 bits, far being the lather
 		uint CubemapDepthRemapPacked;
+		float Intensity;
+		float Range;
+		float ConeAngleCos;
+		// -- 16 byte boundary ----
+
+		float AngleScale;
+		float AngleOffset;
 
 #ifndef __cplusplus
 		inline float4 GetColour()
@@ -145,7 +157,8 @@ namespace Shader
 
 		inline float GetConeAngleCos()
 		{
-			return f16tof32((Direction16_ConeAngleCos16.y >> 16) & 0xFFFF);
+			// return f16tof32((Direction16_ConeAngleCos16.y >> 16) & 0xFFFF);
+			return ConeAngleCos;
 		}
 
 		inline uint GetType()
@@ -160,12 +173,25 @@ namespace Shader
 
 		inline float GetRange()
 		{
-			return f16tof32((Type8_Flags8_Range16 >> 16) & 0xFFFF);
+			// return f16tof32((Type8_Flags8_Range16 >> 16) & 0xFFFF);
+			return Range;
 		}
 
-		inline float GetEnergy()
+		inline float GetIntensity()
 		{
-			return f16tof32(Energy16_X16 & 0xFFFF);
+			// return f16tof32(Energy16_X16 & 0xFFFF);
+			return Intensity;
+		}
+
+		inline float GetAngleScale()
+		{
+			// return f16tof32(remap);
+			return AngleScale;
+		}
+
+		inline float GetAngleOffset()
+		{
+			return AngleOffset;
 		}
 
 		inline float GetCubemapDepthRemapNear(float value)
@@ -191,12 +217,14 @@ namespace Shader
 
 		inline void SetRange(float value)
 		{
-			Type8_Flags8_Range16 |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16;
+			// Type8_Flags8_Range16 |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16;
+			Range = value;
 		}
 
-		inline void SetEnergy(float value)
+		inline void SetIntensity(float value)
 		{
-			Energy16_X16 |= DirectX::PackedVector::XMConvertFloatToHalf(value);
+			// Intensity16_X16 |= DirectX::PackedVector::XMConvertFloatToHalf(value);
+			Intensity = value;
 		}
 
 		inline void SetDirection(float3 value)
@@ -209,6 +237,17 @@ namespace Shader
 		inline void SetConeAngleCos(float value)
 		{
 			Direction16_ConeAngleCos16.y |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16u;
+			ConeAngleCos = value;
+		}
+
+		inline void SetAngleScale(float value)
+		{
+			AngleScale = value;
+		}
+
+		inline void SetAngleOffset(float value)
+		{
+			AngleOffset = value;
 		}
 
 		inline void SetCubemapDepthRemapNear(float value)
