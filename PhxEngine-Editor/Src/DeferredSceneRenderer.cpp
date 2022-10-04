@@ -851,13 +851,30 @@ void DeferredRenderer::PrepareFrameRenderData(
         Shader::ShaderLight* renderLight = lightArray + lightCount++;
         renderLight->SetType(lightComponent.Type);
         renderLight->SetRange(lightComponent.Range);
-        renderLight->SetEnergy(lightComponent.Energy);
+        renderLight->SetIntensity(lightComponent.Intensity);
         renderLight->SetFlags(lightComponent.Flags);
         renderLight->SetDirection(lightComponent.Direction);
         renderLight->ColorPacked = Math::PackColour(lightComponent.Colour);
         renderLight->Indices = this->m_matricesCPUData.size();
 
         renderLight->Position = transformComponent.GetPosition();
+
+        if (lightComponent.Type == LightComponent::kSpotLight)
+        {
+
+            const float outerConeAngle = lightComponent.OuterConeAngle;
+            const float innerConeAngle = std::min(lightComponent.InnerConeAngle, outerConeAngle);
+            const float outerConeAngleCos = std::cos(outerConeAngle);
+            const float innerConeAngleCos = std::cos(innerConeAngle);
+
+            // https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_lights_punctual#inner-and-outer-cone-angles
+            const float lightAngleScale = 1.0f / std::max(0.001f, innerConeAngleCos - outerConeAngleCos);
+            const float lightAngleOffset = -outerConeAngleCos * lightAngleScale;
+
+            renderLight->SetConeAngleCos(outerConeAngleCos);
+            renderLight->SetAngleScale(lightAngleScale);
+            renderLight->SetAngleOffset(lightAngleOffset);
+        }
         /*
         switch (lightComponent.Type)
         {
@@ -909,14 +926,25 @@ void DeferredRenderer::PrepareFrameRenderData(
 	frameData.SceneData.MaterialBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_materialGpuBuffer, RHI::SubresouceType::SRV);
 	frameData.SceneData.LightEntityIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_LightEntities], RHI::SubresouceType::SRV);
 	frameData.SceneData.MatricesIndex = RHI::cInvalidDescriptorIndex;
+
     frameData.SceneData.AtmosphereData = {};
-#if true
-    frameData.SceneData.AtmosphereData.ZenithColour = { 0.0f, 0.0f, 0.0f };// { 0.117647, 0.156863, 0.235294 };
-    frameData.SceneData.AtmosphereData.HorizonColour = { 0.0f, 0.0f, 0.0f };// { 0.0392157, 0.0392157, 0.0784314 };
-#else
-    frameData.SceneData.AtmosphereData.ZenithColour = { 0.117647, 0.156863, 0.235294 };// { 0.117647, 0.156863, 0.235294 };
-    frameData.SceneData.AtmosphereData.HorizonColour = { 0.0f, 0.0f, 0.0f };// { 0.0392157, 0.0392157, 0.0784314 };
-#endif
+    auto worldEnvView = scene.GetRegistry().view<WorldEnvironmentComponent>();
+    if (worldEnvView.empty())
+    {
+        WorldEnvironmentComponent worldComp = {};
+        frameData.SceneData.AtmosphereData.ZenithColour = worldComp.ZenithColour;
+        frameData.SceneData.AtmosphereData.HorizonColour = worldComp.HorizonColour;
+        frameData.SceneData.AtmosphereData.AmbientColour = worldComp.AmbientColour;
+    }
+    else
+    {
+        auto& worldComp = worldEnvView.get<WorldEnvironmentComponent>(worldEnvView[0]);
+
+        frameData.SceneData.AtmosphereData.ZenithColour = worldComp.ZenithColour;
+        frameData.SceneData.AtmosphereData.HorizonColour = worldComp.HorizonColour;
+        frameData.SceneData.AtmosphereData.AmbientColour = worldComp.AmbientColour;
+
+    }
     frameData.SceneData.EnvMapArray = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_envMapArray, RHI::SubresouceType::SRV);
     frameData.SceneData.EnvMap_NumMips = kEnvmapMIPs;
     frameData.BrdfLUTTexIndex = scene.GetBrdfLutDescriptorIndex();

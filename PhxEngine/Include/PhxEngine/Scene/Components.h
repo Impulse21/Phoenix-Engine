@@ -281,9 +281,11 @@ namespace PhxEngine::Scene
 		DirectX::XMFLOAT3 Direction;
 		DirectX::XMFLOAT4 Colour = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-		float Energy = 1.0f;
-		float Range = 15.0f;
+		float Intensity = 1.0f;
+		float Range = 10.0f;
 		float FoV = DirectX::XM_PIDIV4;
+		float OuterConeAngle = DirectX::XM_PIDIV4;
+		float InnerConeAngle = 0;
 
 		bool CastShadows() const { return Flags & Flags::kCastShadow; }
 		inline void SetCastShadows(bool value = true)
@@ -317,6 +319,14 @@ namespace PhxEngine::Scene
 	{
 
 		DirectX::XMFLOAT4 Colour = { 1.0f, 1.0f, 1.0f, 1.0f };
+	};
+
+	struct WorldEnvironmentComponent
+	{
+		DirectX::XMFLOAT3 ZenithColour = { 0.117647, 0.156863, 0.235294 };
+		DirectX::XMFLOAT3 HorizonColour = { 0.0f, 0.0f, 0.0f };
+		DirectX::XMFLOAT3 AmbientColour = { 0.2, 0.2, 0.2 };
+
 	};
 
 	struct MeshRenderComponent
