@@ -124,10 +124,14 @@ PSOutput main(PSInput input)
     // TODO: Add default WHITE texture (1,1,1,1) so that we can avoid branching.
     // Example of the look up: ao = material.AO * texture[material.AOtexture];
     //  4x4 dxt1 white texture
-    surface.Albedo = material.AlbedoColour;
+    
+    // Got this from Wicked engine.
+    // Better apply the vertex base colour with the albedo info.
+    surface.Albedo = 1.0f;
+    surface.Albedo *= material.AlbedoColour;
     if (material.AlbedoTexture != InvalidDescriptorIndex)
     {
-        surface.Albedo = ResourceHeap_GetTexture2D(material.AlbedoTexture).Sample(SamplerDefault, input.TexCoord).xyz;
+        surface.Albedo *= ResourceHeap_GetTexture2D(material.AlbedoTexture).Sample(SamplerDefault, input.TexCoord).xyz;
     }
     
     surface.Metalness = material.Metalness;
