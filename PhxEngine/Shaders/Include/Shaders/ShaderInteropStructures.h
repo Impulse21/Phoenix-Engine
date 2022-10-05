@@ -126,11 +126,12 @@ namespace Shader
 		// Near first 16 bits, far being the lather
 		uint CubemapDepthRemapPacked;
 		float Intensity;
-		float Range;
+		// float Range;
 		float ConeAngleCos;
+		float AngleScale;
+
 		// -- 16 byte boundary ----
 
-		float AngleScale;
 		float AngleOffset;
 
 #ifndef __cplusplus
@@ -173,8 +174,8 @@ namespace Shader
 
 		inline float GetRange()
 		{
-			// return f16tof32((Type8_Flags8_Range16 >> 16) & 0xFFFF);
-			return Range;
+			return f16tof32((Type8_Flags8_Range16 >> 16) & 0xFFFF);
+			// return Range;
 		}
 
 		inline float GetIntensity()
@@ -217,8 +218,8 @@ namespace Shader
 
 		inline void SetRange(float value)
 		{
-			// Type8_Flags8_Range16 |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16;
-			Range = value;
+			Type8_Flags8_Range16 |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16u;
+			// Range = value;
 		}
 
 		inline void SetIntensity(float value)
