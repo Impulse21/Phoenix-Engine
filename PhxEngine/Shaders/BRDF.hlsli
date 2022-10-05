@@ -170,7 +170,7 @@ BRDFDataPerSurface CreatePerSurfaceBRDFData(Surface surface, float3 surfacePos, 
 
     output.NdotV = saturate(dot(output.N, output.V));
 
-    output.DiffuseReflectance = (1 - max(Fdielectric, surface.Metalness)) * surface.Albedo;
+    output.DiffuseReflectance = (1 - surface.Metalness) * surface.Albedo;
     output.F0 = surface.Specular;
     output.F90 = saturate(50.0 * dot(output.F0, 0.33));
     output.Alpha = surface.Roughness * surface.Roughness;
