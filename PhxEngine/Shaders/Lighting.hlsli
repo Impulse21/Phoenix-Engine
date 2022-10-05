@@ -58,7 +58,17 @@ void Light_Directional(
     if (any(brdfLightData.NdotL))
     {
         // TODO: Move light colour to here!!
+        // The Direct Equation: Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+        // 
+        // LoDiffuse = (kD * albedo / PI) * radiance * NdotL
+        //           = ((1 - F) (1 - metalness) * albedo / PI)  * radiance * NdotL
+        //  DiffuseReflectance = (1-metalness) * albedo.
+        //           = ((1 - F) * DiffuseReflectance / PI)  * radiance * NdotL
+        // Moved Diffuse reflectance / PI out to Apply lighting. Consider moving it back for read ability.
+        //
         outDirectRadiance.Diffuse = BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData) * lightIrradance;
+
+        // LoSpecular = (Specular) * radiance * NdotL
         outDirectRadiance.Specular = BRDF_DirectSpecular(brdfSurfaceData, brdfLightData) * lightIrradance;
     }
 }
@@ -98,7 +108,17 @@ void Light_Omni(
             const float lightIrradance = light.GetIntensity() * attenuation;
 
             // TODO: Move light colour to here!!
+            // The Direct Equation: Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+            // 
+            // LoDiffuse = (kD * albedo / PI) * radiance * NdotL
+            //           = ((1 - F) (1 - metalness) * albedo / PI)  * radiance * NdotL
+            //  DiffuseReflectance = (1-metalness) * albedo.
+            //           = ((1 - F) * DiffuseReflectance / PI)  * radiance * NdotL
+            // Moved Diffuse reflectance / PI out to Apply lighting. Consider moving it back for read ability.
+            //
             outDirectRadiance.Diffuse = BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData) * lightIrradance;
+
+            // LoSpecular = (Specular) * radiance * NdotL
             outDirectRadiance.Specular = BRDF_DirectSpecular(brdfSurfaceData, brdfLightData) * lightIrradance;
         }
     }
@@ -148,7 +168,17 @@ void Light_Spot(
                 const float lightIrradance = light.GetIntensity() * attenuation;
 
                 // TODO: Move light colour to here!!
+                // The Direct Equation: Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+                // 
+                // LoDiffuse = (kD * albedo / PI) * radiance * NdotL
+                //           = ((1 - F) (1 - metalness) * albedo / PI)  * radiance * NdotL
+                //  DiffuseReflectance = (1-metalness) * albedo.
+                //           = ((1 - F) * DiffuseReflectance / PI)  * radiance * NdotL
+                // Moved Diffuse reflectance / PI out to Apply lighting. Consider moving it back for read ability.
+                //
                 outDirectRadiance.Diffuse = BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData) * lightIrradance;
+
+                // LoSpecular = (Specular) * radiance * NdotL
                 outDirectRadiance.Specular = BRDF_DirectSpecular(brdfSurfaceData, brdfLightData) * lightIrradance;
             }
         }
