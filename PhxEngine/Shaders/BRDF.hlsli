@@ -40,6 +40,7 @@ struct BRDFDataPerSurface
     float3 P; // World-space position
     float3 N; // Shading Normal
     float3 V; // Direction to Viewer ( or opposite direction of incident ray)
+    float3 R; // Reflection Vector
 
     // -- Dot Products ---
     float NdotV;
@@ -165,6 +166,7 @@ BRDFDataPerSurface CreatePerSurfaceBRDFData(Surface surface, float3 surfacePos, 
     output.P = surfacePos;
     output.N = normalize(surface.Normal);
     output.V = -normalize(viewIncidentVector);
+    output.R = reflect(viewIncidentVector, output.N);
 
     output.NdotV = saturate(dot(output.N, output.V));
 
