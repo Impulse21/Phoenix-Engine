@@ -323,7 +323,7 @@ namespace PhxEngine::Scene
 
 	struct WorldEnvironmentComponent
 	{
-		DirectX::XMFLOAT3 ZenithColour = { 0.117647, 0.156863, 0.235294 };
+		DirectX::XMFLOAT3 ZenithColour = { 0.39, 0.57, 1.0 };
 		DirectX::XMFLOAT3 HorizonColour = { 0.0f, 0.0f, 0.0f };
 		DirectX::XMFLOAT3 AmbientColour = { 0.2, 0.2, 0.2 };
 

@@ -968,7 +968,7 @@ void DeferredRenderer::PrepareFrameRenderData(
     if (sun)
     {
         frameData.SceneData.AtmosphereData.SunColour = { sun->Colour.x, sun->Colour.y, sun->Colour.z };
-        frameData.SceneData.AtmosphereData.SunDirection = { sun->Direction.x, sun->Direction.y, sun->Direction.z };
+        frameData.SceneData.AtmosphereData.SunDirection = { -sun->Direction.x, -sun->Direction.y, -sun->Direction.z };
     }
     else
     {
