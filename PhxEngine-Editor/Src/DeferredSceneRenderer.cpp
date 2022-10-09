@@ -850,6 +850,7 @@ void DeferredRenderer::PrepareFrameRenderData(
     Shader::ShaderLight* lightArray = (Shader::ShaderLight*)lightBufferAlloc.CpuData;
     DirectX::XMMATRIX* matrixArray = (DirectX::XMMATRIX*)matrixBufferAlloc.CpuData;
 
+    this->m_frameSun = {};
     auto lightView = scene.GetAllEntitiesWith<LightComponent, TransformComponent>();
     size_t lightCount = 0;
     for (auto e : lightView)
@@ -870,6 +871,11 @@ void DeferredRenderer::PrepareFrameRenderData(
         renderLight->Indices = this->m_matricesCPUData.size();
 
         renderLight->Position = transformComponent.GetPosition();
+
+        if (lightComponent.Type == LightComponent::kDirectionalLight && this->m_frameSun == entt::entity())
+        {
+            this->m_frameSun = e;
+        }
 
         if (lightComponent.Type == LightComponent::kSpotLight)
         {
@@ -957,6 +963,19 @@ void DeferredRenderer::PrepareFrameRenderData(
         frameData.SceneData.AtmosphereData.AmbientColour = worldComp.AmbientColour;
 
     }
+
+    auto sun = scene.GetRegistry().try_get<LightComponent>(this->m_frameSun);
+    if (sun)
+    {
+        frameData.SceneData.AtmosphereData.SunColour = { sun->Colour.x, sun->Colour.y, sun->Colour.z };
+        frameData.SceneData.AtmosphereData.SunDirection = { -sun->Direction.x, -sun->Direction.y, -sun->Direction.z };
+    }
+    else
+    {
+        frameData.SceneData.AtmosphereData.SunColour = { };
+        frameData.SceneData.AtmosphereData.SunDirection = { };
+    }
+
     frameData.SceneData.EnvMapArray = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_envMapArray, RHI::SubresouceType::SRV);
     frameData.SceneData.EnvMap_NumMips = kEnvmapMIPs;
     frameData.BrdfLUTTexIndex = scene.GetBrdfLutDescriptorIndex();

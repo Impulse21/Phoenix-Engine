@@ -7,6 +7,7 @@
 #include <PhxEngine/Graphics/RHI/PhxRHI.h>
 #include <array>
 #include <vector>
+#include <entt.hpp>
 
 
 class DeferredRenderer : public PhxEngine::Graphics::IRenderer
@@ -147,6 +148,8 @@ private:
     std::array<PhxEngine::RHI::BufferHandle, NumRB> m_resourceBuffers;
 
     std::array<PhxEngine::RHI::RenderPassHandle, NumRenderPassTypes> m_renderPasses;
+
+    entt::entity m_frameSun;
 };
 
 

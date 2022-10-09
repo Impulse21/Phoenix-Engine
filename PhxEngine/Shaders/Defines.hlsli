@@ -9,4 +9,5 @@
 
 
 #define PI 3.14159265358979323846
+#define PI_INV 1/PI
 #endif

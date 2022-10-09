@@ -29,6 +29,9 @@ namespace Shader
 	// -- Groups ---
 	static const uint GENERATE_MIP_CHAIN_2D_BLOCK_SIZE = 8;
 
+	// -- Frame Options ---
+	static const uint FRAME_OPTION_BIT_SIMPLE_SKY = 1 << 0;
+
 	struct Atmosphere
 	{
 		float3 SunColour;

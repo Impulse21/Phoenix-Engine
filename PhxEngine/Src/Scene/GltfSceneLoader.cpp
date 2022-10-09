@@ -385,6 +385,7 @@ void GltfSceneLoader::LoadNode(
 		{
 		case cgltf_light_type_directional:
 			lightComponent.Type = LightComponent::kDirectionalLight;
+			lightComponent.Direction = { 0.0f, -1.0f, 0.0f };
 			break;
 
 		case cgltf_light_type_point:
