@@ -71,8 +71,6 @@ void SceneRenderLayer::OnAttach()
     this->m_editorCamera.Width = LayeredApplication::Ptr->GetSpec().WindowWidth;
     this->m_editorCamera.Height = LayeredApplication::Ptr->GetSpec().WindowHeight;
     this->m_editorCamera.FoV = 1.7;
-    this->m_editorCamera.ZNear = 0.1;
-    this->m_editorCamera.ZFar = 10000;
     this->m_editorCamera.UpdateCamera();
 
     this->m_sceneRenderer->Initialize();

@@ -60,6 +60,24 @@ namespace PhxEngine::Scene
 
 		inline bool IsDirty() const { return this->Flags & kDirty; }
 
+		void RotateRollPitchYaw(const XMFLOAT3& value)
+		{
+			SetDirty();
+
+			// This needs to be handled a bit differently
+			XMVECTOR quat = XMLoadFloat4(&this->LocalRotation);
+			XMVECTOR x = XMQuaternionRotationRollPitchYaw(value.x, 0, 0);
+			XMVECTOR y = XMQuaternionRotationRollPitchYaw(0, value.y, 0);
+			XMVECTOR z = XMQuaternionRotationRollPitchYaw(0, 0, value.z);
+
+			quat = XMQuaternionMultiply(x, quat);
+			quat = XMQuaternionMultiply(quat, y);
+			quat = XMQuaternionMultiply(z, quat);
+			quat = XMQuaternionNormalize(quat);
+
+			XMStoreFloat4(&this->LocalRotation, quat);
+		}
+
 		DirectX::XMFLOAT3 GetPosition() const
 		{
 			return *((XMFLOAT3*)&this->WorldMatrix._41);
@@ -278,9 +296,15 @@ namespace PhxEngine::Scene
 			kLightTypeCount
 		} Type = kOmniLight;
 
-		DirectX::XMFLOAT3 Direction;
 		DirectX::XMFLOAT4 Colour = { 1.0f, 1.0f, 1.0f, 1.0f };
 
+		// helper data
+		DirectX::XMFLOAT3 Direction;
+		DirectX::XMFLOAT3 Position;
+		DirectX::XMFLOAT4 Rotation;
+		DirectX::XMFLOAT3 Scale;
+
+		// end Helper data
 		float Intensity = 1.0f;
 		float Range = 10.0f;
 		float FoV = DirectX::XM_PIDIV4;

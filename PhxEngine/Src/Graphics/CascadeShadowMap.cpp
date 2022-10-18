@@ -63,10 +63,7 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 	// Construct a frustrum corders from an NDC Matrix, if reverse Z, then swap the Z
 	const float ndcZNear = this->m_isReverseZ ? 1.0f : 0.0f;
 	const float ndcZFar = this->m_isReverseZ ? 0.0f : 1.0f;
-	const DirectX::XMVECTOR vLightDir = DirectX::XMLoadFloat3(&lightComponent.Direction);
 	const DirectX::XMMATRIX viewProjectInv = DirectX::XMLoadFloat4x4(&cameraComponent.ViewProjectionInv);
-	// const DirectX::XMMATRIX lightViewWicked = DirectX::XMMatrixLookToRH(DirectX::XMVectorZero(), vLightDir, DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f));
-
 	// Experiment pulling this info directly from the view projection
 	const std::array<DirectX::XMVECTOR, 8> frustumCornersWS =
 	{
@@ -80,9 +77,22 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 		DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1, 1, ndcZFar, 1.0f),		viewProjectInv), // Far
 	};
 
+	// The light view matrix, the UP cannot be parrell, and in the opposite direction as we wll get a zero vector, which fucks everything up. Need to determine based on rotation.
+	const XMMATRIX vLightRotation = XMMatrixRotationQuaternion(XMLoadFloat4(&lightComponent.Rotation));
+	const XMVECTOR to = XMVector3TransformNormal(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), vLightRotation);
+	const XMVECTOR up = XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), vLightRotation);
+
+	const DirectX::XMMATRIX lightView = 
+		DirectX::XMMatrixLookToRH(
+			DirectX::XMVectorZero(),
+			to,
+			up);
+
+	// const float splitClamp = std::min(1.0f, (float)maxZDepth / cameraComponent.ZFar);
 	// TODO: Apply a clamp to this ?
 	float farSplit = 1.0f;
-	float nearSplit = farSplit / this->m_numCascades;
+	float nearSplit = (farSplit / this->m_numCascades);
+
 	std::vector<Renderer::RenderCam> retVal(this->m_numCascades);
 	for (int i = this->m_numCascades - 1; i >= 0; i--)
 	{
@@ -92,58 +102,45 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 		}
 
 		// Adjust the frustrum corders to the split and move to light space.
-		const DirectX::XMVECTOR cascadeCornersWS[] =
+		const DirectX::XMVECTOR cascadeCornersLS[] =
 		{
-			DirectX::XMVectorLerp(frustumCornersWS[0], frustumCornersWS[1], nearSplit),
-			DirectX::XMVectorLerp(frustumCornersWS[0], frustumCornersWS[1], farSplit),
-			DirectX::XMVectorLerp(frustumCornersWS[2], frustumCornersWS[3], nearSplit),
-			DirectX::XMVectorLerp(frustumCornersWS[2], frustumCornersWS[3], farSplit),
-			DirectX::XMVectorLerp(frustumCornersWS[4], frustumCornersWS[5], nearSplit),
-			DirectX::XMVectorLerp(frustumCornersWS[4], frustumCornersWS[5], farSplit),
-			DirectX::XMVectorLerp(frustumCornersWS[6], frustumCornersWS[7], nearSplit),
-			DirectX::XMVectorLerp(frustumCornersWS[6], frustumCornersWS[7], farSplit),
+			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[0], frustumCornersWS[1], nearSplit), lightView),
+			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[0], frustumCornersWS[1], farSplit), lightView),
+			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[2], frustumCornersWS[3], nearSplit), lightView),
+			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[2], frustumCornersWS[3], farSplit), lightView),
+			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[4], frustumCornersWS[5], nearSplit), lightView),
+			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[4], frustumCornersWS[5], farSplit), lightView),
+			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[6], frustumCornersWS[7], nearSplit), lightView),
+			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[6], frustumCornersWS[7], farSplit), lightView),
 		};
 
-		const int numCorners = ARRAYSIZE(cascadeCornersWS);
+		const int numCorners = ARRAYSIZE(cascadeCornersLS);
 
 		// Calculate the Center of the boxes by taking the average of all the points
-		XMVECTOR centerWS = DirectX::XMVectorZero();
+		XMVECTOR cascadeCenterLS = DirectX::XMVectorZero();
 		for (int j = 0; j < numCorners; ++j)
 		{
-			centerWS = DirectX::XMVectorAdd(centerWS, cascadeCornersWS[j]);
+			cascadeCenterLS = DirectX::XMVectorAdd(cascadeCenterLS, cascadeCornersLS[j]);
 		}
 
-		centerWS = centerWS / (float)numCorners;
+		cascadeCenterLS = cascadeCenterLS / (float)numCorners;// Compute radius of bounding sphere
 
-#define EnableBoundingSphere 0
-#if EnableBoundingSphere
-		// Compute radius of bounding sphere
 		float radius = 0.0f;
 		for (int j = 0; j < numCorners; ++j)
 		{
-			radius = std::max(radius, DirectX::XMVectorGetX(DirectX::XMVectorSubtract(cascadeCornersWS[i], centerWS)));
+			radius = std::max(radius, DirectX::XMVectorGetX(DirectX::XMVectorSubtract(cascadeCornersLS[i], cascadeCenterLS)));
 		}
 
-		DirectX::XMVECTOR centerLS = DirectX::XMVector2Transform(centerWS, lightView);
-
-		// Move Center into light view
 		DirectX::XMVECTOR vRadius = DirectX::XMVectorReplicate(radius);
-		DirectX::XMVECTOR vMin = centerLS - vRadius;
-		DirectX::XMVECTOR vMax = centerLS + vRadius;
-#else
-		DirectX::XMMATRIX lightView = DirectX::XMMatrixLookToRH(
-			centerWS,
-			vLightDir,
-			DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f));
+		DirectX::XMVECTOR vMin = cascadeCenterLS - vRadius;
+		DirectX::XMVECTOR vMax = cascadeCenterLS + vRadius;
 
-		DirectX::XMVECTOR vMin = DirectX::XMVectorSet(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 1.0f);
-		DirectX::XMVECTOR vMax = DirectX::XMVectorSet(std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), 1.0f);;
-		for (const auto& corner : cascadeCornersWS)
-		{
-			const DirectX::XMVECTOR cornerLS = DirectX::XMVector3Transform(corner, lightView);
-			vMin = DirectX::XMVectorMin(vMin, cornerLS);
-			vMax = DirectX::XMVectorMax(vMax, cornerLS);
-		}
+		float resolution = RHI::IGraphicsDevice::Ptr->GetTextureDesc(this->m_shadowMapTexArray).Width;
+		const XMVECTOR extent = XMVectorSubtract(vMax, vMin);
+		const XMVECTOR texelSize = extent / float(resolution);
+		vMin = XMVectorFloor(vMin / texelSize) * texelSize;
+		vMax = XMVectorFloor(vMax / texelSize) * texelSize;
+		cascadeCenterLS = (vMin + vMax) * 0.5f;
 
 
 		DirectX::XMFLOAT3 min = {};
@@ -152,21 +149,17 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 		DirectX::XMFLOAT3 max = {};
 		DirectX::XMStoreFloat3(&max, vMax);
 
-		float resolution = RHI::IGraphicsDevice::Ptr->GetTextureDesc(this->m_shadowMapTexArray).Width;
+		DirectX::XMFLOAT3 center = {};
+		DirectX::XMStoreFloat3(&center, cascadeCenterLS);
 
-		// Snap cascade to texel grid:
-		const XMVECTOR extent = XMVectorSubtract(vMax, vMin);
-		const XMVECTOR texelSize = extent / float(resolution);
-		vMin = XMVectorFloor(vMin / texelSize) * texelSize;
-		vMax = XMVectorFloor(vMax / texelSize) * texelSize;
+		// Extrude bounds to avoid early shadow clipping:
+		float ext = abs(center.z - min.z);
+		ext = std::max(ext, std::min(1500.0f, cameraComponent.ZFar) * 0.5f);
+		min.z = center.z - ext;
+		max.z = center.z + ext;
 
-		// Extend Z to avoid early z cliping
-		// Tune this parameter according to the scene
-		constexpr float zMult = 10.0f;
-		min.z = min.z < 0 ? min.z * zMult : min.z / zMult;
-		max.z = max.z < 0 ? max.z / zMult : max.z * zMult;
 
-		const DirectX::XMMATRIX lightProjection = 
+		const DirectX::XMMATRIX lightProjection =
 			DirectX::XMMatrixOrthographicOffCenterLH(
 				min.x,
 				max.x,
@@ -174,7 +167,7 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 				max.y,
 				this->m_isReverseZ ? max.z : min.z,
 				this->m_isReverseZ ? min.z : max.z);
-#endif
+
 		retVal[i] = {};
 		retVal[i].ViewProjection = lightView * lightProjection;
 	}

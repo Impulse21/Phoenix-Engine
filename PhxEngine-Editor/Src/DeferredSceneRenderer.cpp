@@ -678,6 +678,29 @@ void DeferredRenderer::RunProbeUpdateSystem(PhxEngine::Scene::Scene& scene)
     // TODO: Future env probe stuff
 }
 
+void DeferredRenderer::RunLightUpdateSystem(PhxEngine::Scene::Scene& scene)
+{
+    auto view = scene.GetAllEntitiesWith<LightComponent, TransformComponent>();
+    for (auto e : view)
+    {
+        auto [lightComponent, transformComponent] = view.get<LightComponent, TransformComponent>(e);
+
+        XMMATRIX worldMatrix = XMLoadFloat4x4(&transformComponent.WorldMatrix);
+        XMVECTOR vScale;
+        XMVECTOR vRot;
+        XMVECTOR vTranslation;
+        XMMatrixDecompose(&vScale, &vRot, &vTranslation, worldMatrix);
+
+
+        XMStoreFloat3(&lightComponent.Position, vTranslation);
+        XMStoreFloat4(&lightComponent.Rotation, vRot);
+        XMStoreFloat3(&lightComponent.Scale, vScale);
+        XMStoreFloat3(&lightComponent.Direction, XMVector3Normalize(XMVector3TransformNormal(XMVectorSet(0, 1, 0, 0), worldMatrix)));
+
+        transformComponent.WorldMatrix;
+    }
+}
+
 void DeferredRenderer::PrepareFrameRenderData(
     RHI::CommandListHandle commandList,
     PhxEngine::Scene::Scene& scene)
@@ -1129,6 +1152,7 @@ void DeferredRenderer::CreatePSOs()
 
 void DeferredRenderer::Update(PhxEngine::Scene::Scene& scene)
 {
+    this->RunLightUpdateSystem(scene);
     this->RunProbeUpdateSystem(scene);
 }
 

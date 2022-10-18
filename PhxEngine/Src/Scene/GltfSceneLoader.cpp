@@ -330,8 +330,6 @@ bool GltfSceneLoader::LoadSceneInternal(
 	cameraComponent.Width = Scene::GetGlobalCamera().Width;
 	cameraComponent.Height = Scene::GetGlobalCamera().Height;
 	cameraComponent.FoV = 1.7;
-	cameraComponent.ZNear = 0.1;
-	cameraComponent.ZFar = 10000;
 	TransformComponent& transform = *scene.Transforms.GetComponent(entity);
 	transform.UpdateTransform();
 	scene.ComponentAttach(entity, scene.RootEntity, true);
@@ -385,7 +383,6 @@ void GltfSceneLoader::LoadNode(
 		{
 		case cgltf_light_type_directional:
 			lightComponent.Type = LightComponent::kDirectionalLight;
-			lightComponent.Direction = { 0.0f, -1.0f, 0.0f };
 			break;
 
 		case cgltf_light_type_point:
@@ -471,6 +468,12 @@ void GltfSceneLoader::LoadNode(
 		transform.SetDirty(true);
 
 		transform.ApplyTransform();
+	}
+
+	// GLTF default light Direciton is forward - I want this to be downwards.
+	if (gltfNode.light)
+	{
+		transform.RotateRollPitchYaw(XMFLOAT3(-XM_PIDIV2, 0, 0));
 	}
 
 	transform.UpdateTransform();

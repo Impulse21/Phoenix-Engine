@@ -92,6 +92,7 @@ private:
     // Scene Update Systems -> Should be coupled with Scene?
 private:
     void RunProbeUpdateSystem(PhxEngine::Scene::Scene& scene);
+    void RunLightUpdateSystem(PhxEngine::Scene::Scene& scene);
 
 private:
     PhxEngine::RHI::CommandListHandle m_commandList;
