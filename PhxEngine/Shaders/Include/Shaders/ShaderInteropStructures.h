@@ -410,7 +410,7 @@ namespace Shader
 		// -- 16 byte boundary ---
 	};
 
-	struct CubemapRenderCams
+	struct RenderCams
 	{
 		float4x4 ViewProjection[6];
 		// -- 16 byte boundary ---

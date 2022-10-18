@@ -5,9 +5,11 @@
 #include <Shaders/ShaderInteropStructures.h>
 #include <PhxEngine/Graphics/IRenderer.h>
 #include <PhxEngine/Graphics/RHI/PhxRHI.h>
+#include <PhxEngine/Graphics/CascadeShadowMap.h>
 #include <array>
 #include <vector>
 #include <entt.hpp>
+#include <memory>
 
 
 class DeferredRenderer : public PhxEngine::Graphics::IRenderer
@@ -19,6 +21,7 @@ class DeferredRenderer : public PhxEngine::Graphics::IRenderer
         PSO_DeferredLightingPass,
         PSO_Sky,
         PSO_EnvCapture_SkyProcedural,
+        PSO_Shadow,
 
         // -- Post Process ---
         PSO_ToneMappingPass,
@@ -83,7 +86,7 @@ private:
     // Potential Render Functions
 private:
     void RefreshEnvProbes(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
-    void DrawMeshes(PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
+    void DrawMeshes(PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList, uint32_t numInstances = 1);
 
 
     // Scene Update Systems -> Should be coupled with Scene?
@@ -120,6 +123,11 @@ private:
 
     DirectX::XMFLOAT2 m_canvasSize;
 
+
+    static constexpr uint32_t kCascadeShadowMapRes = 2048;
+    static constexpr uint16_t kCascadeShadowMapNumCas = 4;
+    static constexpr PhxEngine::RHI::FormatType kCascadeShadowMapFormat = PhxEngine::RHI::FormatType::D24S8;
+
     // -- Scene Env Propes ---
     static constexpr uint32_t kEnvmapCount = 16;
     static constexpr uint32_t kEnvmapRes = 128;
@@ -150,6 +158,8 @@ private:
     std::array<PhxEngine::RHI::RenderPassHandle, NumRenderPassTypes> m_renderPasses;
 
     entt::entity m_frameSun;
+
+    std::unique_ptr<PhxEngine::Graphics::CascadeShadowMap> m_cascadeShadowMaps;
 };
 
 

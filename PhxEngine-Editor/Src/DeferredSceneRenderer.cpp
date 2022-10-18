@@ -54,6 +54,18 @@ namespace
             CubeRenderCamsCB,
         };
     }
+
+    namespace RootParameters_Shadow
+    {
+        enum
+        {
+            Push = 0,
+            FrameCB,
+            CameraCB,
+            RenderCams,
+        };
+    }
+
     namespace RootParameters_ToneMapping
     {
         enum
@@ -136,6 +148,9 @@ void DeferredRenderer::FreeTextureResources()
 void DeferredRenderer::Initialize()
 {
     auto& spec = LayeredApplication::Ptr->GetSpec();
+
+    this->m_cascadeShadowMaps = std::make_unique<Graphics::CascadeShadowMap>(kCascadeShadowMapRes, kCascadeShadowMapNumCas, kCascadeShadowMapFormat, true);
+
     this->m_canvasSize = { static_cast<float>(spec.WindowWidth), static_cast<float>(spec.WindowHeight) };
     this->CreateRenderTargets(m_canvasSize);
     this->CreatePSOs();
@@ -360,7 +375,7 @@ void DeferredRenderer::RefreshEnvProbes(PhxEngine::Scene::CameraComponent const&
     RHI::Rect rec(LONG_MAX, LONG_MAX);
     this->m_commandList->SetScissors(&rec, 1);
 
-    Shader::CubemapRenderCams renderCamsCB;
+    Shader::RenderCams renderCamsCB;
     for (int i = 0; i < ARRAYSIZE(cameras); i++)
     {
         DirectX::XMStoreFloat4x4(&renderCamsCB.ViewProjection[i], cameras[i].ViewProjection);
@@ -498,7 +513,7 @@ void DeferredRenderer::RefreshEnvProbes(PhxEngine::Scene::CameraComponent const&
     // Filter Env Map
 }
 
-void DeferredRenderer::DrawMeshes(PhxEngine::Scene::Scene& scene, RHI::CommandListHandle commandList)
+void DeferredRenderer::DrawMeshes(PhxEngine::Scene::Scene& scene, RHI::CommandListHandle commandList, uint32_t numInstances)
 {
     auto scrope = commandList->BeginScopedMarker("Render Scene Meshes");
 
@@ -529,7 +544,7 @@ void DeferredRenderer::DrawMeshes(PhxEngine::Scene::Scene& scene, RHI::CommandLi
 
             commandList->DrawIndexed(
                 mesh.Surfaces[i].NumIndices,
-                1,
+                numInstances,
                 mesh.Surfaces[i].IndexOffsetInMesh);
         }
     }
@@ -1094,6 +1109,12 @@ void DeferredRenderer::CreatePSOs()
             .DsvFormat = { kEnvmapDepth }
         });
 
+    this->m_pso[PSO_Shadow] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
+        {
+            .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_ShadowPass),
+            .DepthStencilRenderState = {.DepthFunc = ComparisonFunc::Greater },
+            .DsvFormat = { kCascadeShadowMapFormat }
+        });
 
     // Compute PSO's
     this->m_psoCompute[PSO_GenerateMipMaps_TextureCubeArray] = IGraphicsDevice::Ptr->CreateComputePso(
@@ -1125,6 +1146,58 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
     cameraData.ViewProjectionInv = camera.ViewProjectionInv;
     cameraData.ProjInv = camera.ProjectionInv;
     cameraData.ViewInv = camera.ViewInv;
+
+    auto view = scene.GetAllEntitiesWith<LightComponent>();
+    bool foundDirectionalLight = false;
+    for (auto e : view)
+    {
+        // Only support Directional Lights
+        auto& lightComponent = view.get<LightComponent>(e);
+
+        if (lightComponent.Type != LightComponent::kDirectionalLight || !lightComponent.CastShadows())
+        {
+            continue;
+        }
+
+        // only suppport one light
+        if (foundDirectionalLight)
+        {
+            break;
+        }
+
+        foundDirectionalLight = true;
+
+        auto scrope = this->m_commandList->BeginScopedMarker("Shadow Map Pass");
+
+        // -- Prepare PSO ---
+        this->m_commandList->BeginRenderPass(this->m_cascadeShadowMaps->GetRenderPass());
+        this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_Shadow]);
+
+        RHI::Viewport v(kCascadeShadowMapRes, kCascadeShadowMapRes);
+        this->m_commandList->SetViewports(&v, 1);
+
+        RHI::Rect rec(LONG_MAX, LONG_MAX);
+        this->m_commandList->SetScissors(&rec, 1);
+
+        // -- Bind Data ---
+        std::vector<Renderer::RenderCam> renderCams = this->m_cascadeShadowMaps->CreateRenderCams(camera, lightComponent, 100.0f);
+
+        Shader::RenderCams renderCamsCB;
+        for (int i = 0; i < renderCams.size(); i++)
+        {
+            DirectX::XMStoreFloat4x4(&renderCamsCB.ViewProjection[i], renderCams[i].ViewProjection);
+            renderCamsCB.Properties[i].x = i;
+        }
+
+        // Do NOT NEED FRAME AND CAM DATA!!
+        this->m_commandList->BindConstantBuffer(RootParameters_Shadow::FrameCB, this->m_constantBuffers[CB_Frame]);
+        this->m_commandList->BindDynamicConstantBuffer(RootParameters_Shadow::CameraCB, cameraData);
+        this->m_commandList->BindDynamicConstantBuffer(RootParameters_Shadow::RenderCams, renderCamsCB);
+
+        DrawMeshes(scene, this->m_commandList, kCascadeShadowMapNumCas);
+        this->m_commandList->EndRenderPass();
+
+    }
 
     {
         auto scrope = this->m_commandList->BeginScopedMarker("Opaque GBuffer Pass");
