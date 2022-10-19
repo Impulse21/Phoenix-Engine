@@ -6,6 +6,7 @@
 #include <PhxEngine/Graphics/IRenderer.h>
 #include <PhxEngine/Graphics/RHI/PhxRHI.h>
 #include <PhxEngine/Graphics/CascadeShadowMap.h>
+#include <PhxEngine/Scene/Components.h>
 #include <array>
 #include <vector>
 #include <entt.hpp>
@@ -78,6 +79,7 @@ private:
 
     void PrepareFrameRenderData(
         PhxEngine::RHI::CommandListHandle commandList,
+        PhxEngine::Scene::CameraComponent const& mainCamera,
         PhxEngine::Scene::Scene& scene);
 
     void CreatePSOs();
@@ -152,9 +154,9 @@ private:
     {
         RB_LightEntities,
         RB_Matrices,
-        NumRB
+        NumResourceBuffers
     };
-    std::array<PhxEngine::RHI::BufferHandle, NumRB> m_resourceBuffers;
+    std::array<PhxEngine::RHI::BufferHandle, NumResourceBuffers> m_resourceBuffers;
 
     std::array<PhxEngine::RHI::RenderPassHandle, NumRenderPassTypes> m_renderPasses;
 

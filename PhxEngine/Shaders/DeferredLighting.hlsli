@@ -21,7 +21,8 @@
     "SRV(t0),"  \
     "DescriptorTable(SRV(t1, numDescriptors = 5)), " \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
-    "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR),"
+    "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
+"StaticSampler(s52, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, comparisonFunc = COMPARISON_GREATER_EQUAL),"
 
 #else
 
@@ -32,7 +33,8 @@
     "SRV(t0),"  \
     "DescriptorTable(SRV(t1, numDescriptors = 5)), " \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
-    "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR),"
+    "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
+"StaticSampler(s52, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, comparisonFunc = COMPARISON_GREATER_EQUAL),"
 
 #endif
 
@@ -47,7 +49,8 @@
     "DescriptorTable(SRV(t1, numDescriptors = 5)), " \
     "DescriptorTable( UAV(u0, numDescriptors = 1) )," \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
-    "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR),"
+    "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
+"StaticSampler(s52, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, comparisonFunc = COMPARISON_GREATER_EQUAL),"
 
 
 RWTexture2D<float4> OutputBuffer : register(u0);
@@ -136,21 +139,35 @@ float4 main(PSInput input) : SV_TARGET
     const float3 viewIncident = surfacePosition - (float3)GetCamera().CameraPosition;
     BRDFDataPerSurface brdfSurfaceData = CreatePerSurfaceBRDFData(surface, surfacePosition, viewIncident);
 
-    const float shadow = 1.0f;
     Lighting lightingTerms;
     lightingTerms.Init();
 
     // -- Collect Direct Light contribution ---
+    float shadow = 1.0;
 	[loop]
 	for (int nLights = 0; nLights < scene.NumLights; nLights++)
 	{
 		ShaderLight light = LoadLight(nLights);
 
+		[loop]
+		for (int cascade = 0; cascade < light.GetNumCascades(); cascade++)
+		{
+            float3 shadowPos = mul(float4(surfacePosition, 1.0f), LoadMatrix(light.GetIndices() + cascade)).xyz;
+            float3 shadowUV = ClipSpaceToUV(shadowPos);
+
+            [branch]
+            if (light.CascadeTextureIndex >= 0)
+            {
+                Texture2DArray cascadeTextureArray = ResourceHeap_GetTexture2DArray(light.CascadeTextureIndex);
+                shadow = cascadeTextureArray.SampleCmpLevelZero(ShadowSampler, float3(shadowUV.xy, cascade), shadowUV.z).r;
+            }
+
+		}
+
 		LightingPart directRadiance;
         directRadiance.Init(0, 0);
 
 		ShadeSurface_Direct(light, brdfSurfaceData, directRadiance);
-
 
         lightingTerms.Direct.Diffuse += (shadow * directRadiance.Diffuse) * light.GetColour().rgb;
         lightingTerms.Direct.Specular += (shadow * directRadiance.Specular) * light.GetColour().rgb;

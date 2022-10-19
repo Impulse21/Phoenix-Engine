@@ -703,6 +703,7 @@ void DeferredRenderer::RunLightUpdateSystem(PhxEngine::Scene::Scene& scene)
 
 void DeferredRenderer::PrepareFrameRenderData(
     RHI::CommandListHandle commandList,
+    CameraComponent const& mainCamera,
     PhxEngine::Scene::Scene& scene)
 {
     auto scope = this->m_commandList->BeginScopedMarker("Prepare Frame Data");
@@ -906,8 +907,8 @@ void DeferredRenderer::PrepareFrameRenderData(
         renderLight->SetFlags(lightComponent.Flags);
         renderLight->SetDirection(lightComponent.Direction);
         renderLight->ColorPacked = Math::PackColour(lightComponent.Colour);
-        renderLight->Indices = this->m_matricesCPUData.size();
-
+        renderLight->SetIndices((uint32_t)this->m_matricesCPUData.size());
+        renderLight->SetNumCascades(0);
         renderLight->Position = transformComponent.GetPosition();
 
         if (lightComponent.Type == LightComponent::kDirectionalLight && this->m_frameSun == entt::entity())
@@ -931,49 +932,54 @@ void DeferredRenderer::PrepareFrameRenderData(
             renderLight->SetAngleScale(lightAngleScale);
             renderLight->SetAngleOffset(lightAngleOffset);
         }
-        /*
-        switch (lightComponent.Type)
-        {
-        case LightComponent::kDirectionalLight:
-        {
-            // std::array<DirectX::XMFLOAT4X4, kNumShadowCascades> matrices;
-            // auto& cameraComponent = *this->m_scene.Cameras.GetComponent(this->m_cameraEntities[this->m_selectedCamera]);
-            // Shadow::ConstructDirectionLightMatrices(cameraComponent, lightComponent, matrices);
 
-            for (size_t i = 0; i < matrices.size(); i++)
+        if (lightComponent.CastShadows())
+        {
+            switch (lightComponent.Type)
             {
-                this->m_matricesCPUData.emplace_back(matrices[i]);
-            }
-            break;
-        }
-        case LightComponent::kOmniLight:
-        {
-            std::array<DirectX::XMFLOAT4X4, 6> matrices;
-            Shadow::ConstructOmniLightMatrices(lightComponent, matrices);
-
-            for (size_t i = 0; i < matrices.size(); i++)
+            case LightComponent::kDirectionalLight:
             {
-                this->m_matricesCPUData.emplace_back(matrices[i]);
+                // Add support for adjusting the number of cascades
+                std::vector<Renderer::RenderCam> renderCams = this->m_cascadeShadowMaps->CreateRenderCams(mainCamera, lightComponent, 100.0f);
+                renderLight->SetNumCascades((uint32_t)renderCams.size());
+                renderLight->CascadeTextureIndex = this->m_cascadeShadowMaps->GetTextureArrayIndex();
+
+                for (size_t i = 0; i < renderCams.size(); i++)
+                {
+                    DirectX::XMFLOAT4X4& matrixEntry = this->m_matricesCPUData.emplace_back();
+                    DirectX::XMStoreFloat4x4(&matrixEntry, renderCams[i].ViewProjection);
+                }
+                break;
             }
+            case LightComponent::kOmniLight:
+            {
+                /*
+                std::array<DirectX::XMFLOAT4X4, 6> matrices;
+                Shadow::ConstructOmniLightMatrices(lightComponent, matrices);
 
-            // Not sure I understand this math here or why the cubemap depth needs to be re-mapped
-            const float nearZ = 0.1f;	// watch out: reversed depth buffer! Also, light near plane is constant for simplicity, this should match on cpu side!
-            const float farZ = std::max(1.0f, lightComponent.Range); // watch out: reversed depth buffer!
-            const float fRange = farZ / (farZ - nearZ);
-            const float cubemapDepthRemapNear = fRange;
-            const float cubemapDepthRemapFar = -fRange * nearZ;
-            renderLight.SetCubemapDepthRemapNear(cubemapDepthRemapNear);
-            renderLight.SetCubemapDepthRemapFar(cubemapDepthRemapFar);
+                for (size_t i = 0; i < matrices.size(); i++)
+                {
+                    this->m_matricesCPUData.emplace_back(matrices[i]);
+                }
 
-            break;
+                // Not sure I understand this math here or why the cubemap depth needs to be re-mapped
+                const float nearZ = 0.1f;	// watch out: reversed depth buffer! Also, light near plane is constant for simplicity, this should match on cpu side!
+                const float farZ = std::max(1.0f, lightComponent.Range); // watch out: reversed depth buffer!
+                const float fRange = farZ / (farZ - nearZ);
+                const float cubemapDepthRemapNear = fRange;
+                const float cubemapDepthRemapFar = -fRange * nearZ;
+                renderLight.SetCubemapDepthRemapNear(cubemapDepthRemapNear);
+                renderLight.SetCubemapDepthRemapFar(cubemapDepthRemapFar);
+                */
+                break;
+            }
+            case LightComponent::kSpotLight:
+            {
+                // TODO:
+                break;
+            }
+            }
         }
-        case LightComponent::kSpotLight:
-		{
-			// TODO:
-			break;
-		}
-		}
-		*/
 	}
 
 	Shader::Frame frameData = {};
@@ -981,7 +987,7 @@ void DeferredRenderer::PrepareFrameRenderData(
 	frameData.SceneData.GeometryBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_geometryGpuBuffer, RHI::SubresouceType::SRV);
 	frameData.SceneData.MaterialBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_materialGpuBuffer, RHI::SubresouceType::SRV);
 	frameData.SceneData.LightEntityIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_LightEntities], RHI::SubresouceType::SRV);
-	frameData.SceneData.MatricesIndex = RHI::cInvalidDescriptorIndex;
+	frameData.SceneData.MatricesIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_Matrices], RHI::SubresouceType::SRV);
 
     frameData.SceneData.AtmosphereData = {};
     auto worldEnvView = scene.GetRegistry().view<WorldEnvironmentComponent>();
@@ -1160,7 +1166,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 {
     this->m_commandList->Open();
 
-    this->PrepareFrameRenderData(this->m_commandList, scene);
+    this->PrepareFrameRenderData(this->m_commandList, camera, scene);
 
     this->RefreshEnvProbes(camera, scene, this->m_commandList);
 

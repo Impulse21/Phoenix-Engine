@@ -23,6 +23,8 @@ namespace PhxEngine::Graphics
 		uint16_t GetNumCascades() const { return this->m_numCascades; }
 		PhxEngine::RHI::RenderPassHandle GetRenderPass() const { return this->m_renderPass; }
 
+		RHI::DescriptorIndex GetTextureArrayIndex() { return RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_shadowMapTexArray, RHI::SubresouceType::SRV); }
+
 	private:
 		const bool m_isReverseZ;
 		const uint16_t m_numCascades;

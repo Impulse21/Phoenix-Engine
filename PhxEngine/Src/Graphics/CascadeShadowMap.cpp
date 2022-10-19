@@ -16,7 +16,7 @@ CascadeShadowMap::CascadeShadowMap(uint32_t resolution, uint16_t numCascades, RH
 		{
 			.BindingFlags = RHI::BindingFlags::DepthStencil | RHI::BindingFlags::ShaderResource,
 			.Dimension = RHI::TextureDimension::Texture2DArray,
-			.InitialState = RHI::ResourceStates::DepthWrite,
+			.InitialState = RHI::ResourceStates::ShaderResource,
 			.Format = format,
 			.Width = resolution,
 			.Height = resolution,
@@ -34,9 +34,9 @@ CascadeShadowMap::CascadeShadowMap(uint32_t resolution, uint16_t numCascades, RH
 					.LoadOp = RHI::RenderPassAttachment::LoadOpType::Clear,
 					.Texture = this->m_shadowMapTexArray,
 					.StoreOp = RHI::RenderPassAttachment::StoreOpType::Store,
-					.InitialLayout = RHI::ResourceStates::DepthWrite,
+					.InitialLayout = RHI::ResourceStates::ShaderResource,
 					.SubpassLayout = RHI::ResourceStates::DepthWrite,
-					.FinalLayout = RHI::ResourceStates::DepthWrite
+					.FinalLayout = RHI::ResourceStates::ShaderResource
 				},
 			}
 		});
@@ -125,6 +125,7 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 
 		cascadeCenterLS = cascadeCenterLS / (float)numCorners;// Compute radius of bounding sphere
 
+#if false
 		float radius = 0.0f;
 		for (int j = 0; j < numCorners; ++j)
 		{
@@ -134,7 +135,15 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 		DirectX::XMVECTOR vRadius = DirectX::XMVectorReplicate(radius);
 		DirectX::XMVECTOR vMin = cascadeCenterLS - vRadius;
 		DirectX::XMVECTOR vMax = cascadeCenterLS + vRadius;
-
+#else
+		DirectX::XMVECTOR vMin = DirectX::XMVectorSet(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 1.0f);
+		DirectX::XMVECTOR vMax = DirectX::XMVectorSet(std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), 1.0f);;
+		for (const auto& corner : cascadeCornersLS)
+		{
+			vMin = DirectX::XMVectorMin(vMin, corner);
+			vMax = DirectX::XMVectorMax(vMax, corner);
+		}
+#endif 
 		float resolution = RHI::IGraphicsDevice::Ptr->GetTextureDesc(this->m_shadowMapTexArray).Width;
 		const XMVECTOR extent = XMVectorSubtract(vMax, vMin);
 		const XMVECTOR texelSize = extent / float(resolution);
@@ -160,7 +169,7 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 
 
 		const DirectX::XMMATRIX lightProjection =
-			DirectX::XMMatrixOrthographicOffCenterLH(
+			DirectX::XMMatrixOrthographicOffCenterRH(
 				min.x,
 				max.x,
 				min.y,
@@ -170,6 +179,10 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 
 		retVal[i] = {};
 		retVal[i].ViewProjection = lightView * lightProjection;
+
+
+		farSplit = nearSplit;
+		nearSplit = (farSplit / this->m_numCascades);
 	}
 
 	return retVal;

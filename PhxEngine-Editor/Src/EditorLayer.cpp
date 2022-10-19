@@ -441,9 +441,10 @@ void EditorLayer::OnAttach()
 
     std::unique_ptr<ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
     
-    sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", cmd, *this->m_scene);
+    // sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", cmd, *this->m_scene);
     // sceneLoader->LoadScene("Assets\\Models\\EnvMapTest\\EnvMapTest.gltf", cmd, *this->m_scene);
     // sceneLoader->LoadScene("Assets\\Models\\BRDFTests\\MetalRoughSpheresNoTextures.gltf", cmd, *this->m_scene);
+    sceneLoader->LoadScene("Assets\\Models\\\ShadowTest\\ShadowTestScene.gltf", cmd, *this->m_scene);
 #endif
 
     entt::entity worldEntity = this->m_scene->CreateEntity("World Environment Component");

@@ -14,7 +14,7 @@
     "SRV(t0),"  \ // TODO: Remove
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
 	"StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
-	"StaticSampler(s52, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, comparisonFunc = COMPARISON_LESS_EQUAL),"
+	"StaticSampler(s52, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, comparisonFunc = COMPARISON_GREATER_EQUAL),"
 
 #endif 
 #define PHX_ENGINE_DEFAULT_ROOTSIGNATURE \
@@ -23,7 +23,8 @@
 	"CBV(b1), " \
     "SRV(t0),"  \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
-    "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR),"
+    "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
+	"StaticSampler(s52, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, comparisonFunc = COMPARISON_GREATER_EQUAL),"
 
 
 ConstantBuffer<Frame> FrameCB : register(b0);
@@ -34,8 +35,17 @@ StructuredBuffer<ShaderLight> LightSB : register(t0);
 
 SamplerState SamplerDefault : register(s50);
 SamplerState SamplerLinearClamped : register(s51);
-// SamplerComparisonState ShadowSampler : register(s52);
+SamplerComparisonState ShadowSampler : register(s52);
 
+inline float2 ClipSpaceToUV(in float2 clipspace)
+{
+	return clipspace * float2(0.5, -0.5) + 0.5;
+}
+
+inline float3 ClipSpaceToUV(in float3 clipspace)
+{
+	return clipspace * float3(0.5, -0.5, 0.5) + 0.5;
+}
 
 inline Frame GetFrame()
 {
@@ -79,5 +89,10 @@ inline MaterialData LoadMaterial(uint mtlIndex)
 inline ShaderLight LoadLight(uint lightIndex)
 {
 	return ResourceHeap_GetBuffer(GetScene().LightEntityIndex).Load<ShaderLight>(lightIndex * sizeof(ShaderLight));
+}
+
+inline float4x4 LoadMatrix(uint matrixIndex)
+{
+	return ResourceHeap_GetBuffer(GetScene().MatricesIndex).Load<float4x4>(matrixIndex * sizeof(float4x4));
 }
 #endif // __PHX_GLOBALS_HLSLI__
