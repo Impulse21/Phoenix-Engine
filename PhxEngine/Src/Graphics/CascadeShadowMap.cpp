@@ -6,12 +6,9 @@
 using namespace PhxEngine;
 using namespace PhxEngine::Graphics;
 
-CascadeShadowMap::CascadeShadowMap(uint32_t resolution, uint16_t numCascades, RHI::FormatType format, bool isReverseZ)
+CascadeShadowMap::CascadeShadowMap(uint32_t resolution, RHI::FormatType format, bool isReverseZ)
 	: m_isReverseZ(isReverseZ)
-	, m_numCascades(numCascades)
 {
-	assert(numCascades > 0);
-
 	this->m_shadowMapTexArray = RHI::IGraphicsDevice::Ptr->CreateTexture(
 		{
 			.BindingFlags = RHI::BindingFlags::DepthStencil | RHI::BindingFlags::ShaderResource,
@@ -20,7 +17,7 @@ CascadeShadowMap::CascadeShadowMap(uint32_t resolution, uint16_t numCascades, RH
 			.Format = format,
 			.Width = resolution,
 			.Height = resolution,
-			.ArraySize = numCascades,
+			.ArraySize = kNumCascades,
 			.OptmizedClearValue = { .DepthStencil = {.Depth = this->m_isReverseZ ? 0.0f : 1.0f } },
 			.DebugName = "Cascade Shadow maps",
 		});
@@ -88,18 +85,25 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 			to,
 			up);
 
+
+	float splitDepthClamp = std::min(1.0f, maxZDepth / cameraComponent.ZFar);
+	
+	std::array<float, kNumCascades + 1> cascadeSplits
+	{
+		splitDepthClamp * 0.0f,		// near plane
+		splitDepthClamp * 0.01f,	// near-mid split
+		splitDepthClamp * 0.1f,		// mid-far split
+		splitDepthClamp * 1.0f,		// far plane
+	};
+
 	// const float splitClamp = std::min(1.0f, (float)maxZDepth / cameraComponent.ZFar);
 	// TODO: Apply a clamp to this ?
-	float farSplit = 1.0f;
-	float nearSplit = (farSplit / this->m_numCascades);
 
-	std::vector<Renderer::RenderCam> retVal(this->m_numCascades);
-	for (int i = this->m_numCascades - 1; i >= 0; i--)
+	std::vector<Renderer::RenderCam> retVal(kNumCascades);
+	for (int i = 0; i < kNumCascades; i--)
 	{
-		if (i == 0)
-		{
-			nearSplit = 0;
-		}
+		float nearSplit = cascadeSplits[i];
+		float farSplit = cascadeSplits[i + 1];
 
 		// Adjust the frustrum corders to the split and move to light space.
 		const DirectX::XMVECTOR cascadeCornersLS[] =
@@ -179,10 +183,6 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 
 		retVal[i] = {};
 		retVal[i].ViewProjection = lightView * lightProjection;
-
-
-		farSplit = nearSplit;
-		nearSplit = (farSplit / this->m_numCascades);
 	}
 
 	return retVal;

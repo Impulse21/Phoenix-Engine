@@ -160,7 +160,13 @@ float4 main(PSInput input) : SV_TARGET
             if (light.CascadeTextureIndex >= 0)
             {
                 Texture2DArray cascadeTextureArray = ResourceHeap_GetTexture2DArray(light.CascadeTextureIndex);
-                shadow *= cascadeTextureArray.SampleCmpLevelZero(ShadowSampler, float3(shadowUV.xy, cascade), shadowUV.z).r;
+                const float sampleResult = 
+                    cascadeTextureArray.SampleCmpLevelZero(
+                        ShadowSampler,
+                        float3(shadowUV.xy, cascade),
+                        shadowPos.z).r;
+
+                shadow *= sampleResult;
             }
 
 		}

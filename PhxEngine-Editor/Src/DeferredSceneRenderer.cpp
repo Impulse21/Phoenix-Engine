@@ -149,7 +149,7 @@ void DeferredRenderer::Initialize()
 {
     auto& spec = LayeredApplication::Ptr->GetSpec();
 
-    this->m_cascadeShadowMaps = std::make_unique<Graphics::CascadeShadowMap>(kCascadeShadowMapRes, kCascadeShadowMapNumCas, kCascadeShadowMapFormat, true);
+    this->m_cascadeShadowMaps = std::make_unique<Graphics::CascadeShadowMap>(kCascadeShadowMapRes, kCascadeShadowMapFormat, true);
 
     this->m_canvasSize = { static_cast<float>(spec.WindowWidth), static_cast<float>(spec.WindowHeight) };
     this->CreateRenderTargets(m_canvasSize);
@@ -941,7 +941,7 @@ void DeferredRenderer::PrepareFrameRenderData(
             case LightComponent::kDirectionalLight:
             {
                 // Add support for adjusting the number of cascades
-                std::vector<Renderer::RenderCam> renderCams = this->m_cascadeShadowMaps->CreateRenderCams(mainCamera, lightComponent, 100.0f);
+                std::vector<Renderer::RenderCam> renderCams = this->m_cascadeShadowMaps->CreateRenderCams(mainCamera, lightComponent, 800.0f);
                 renderLight->SetNumCascades((uint32_t)renderCams.size());
                 renderLight->CascadeTextureIndex = this->m_cascadeShadowMaps->GetTextureArrayIndex();
 
@@ -1220,7 +1220,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
         this->m_commandList->SetScissors(&rec, 1);
 
         // -- Bind Data ---
-        std::vector<Renderer::RenderCam> renderCams = this->m_cascadeShadowMaps->CreateRenderCams(camera, lightComponent, 100.0f);
+        std::vector<Renderer::RenderCam> renderCams = this->m_cascadeShadowMaps->CreateRenderCams(camera, lightComponent, 800.0f);
 
         Shader::RenderCams renderCamsCB;
         for (int i = 0; i < renderCams.size(); i++)
@@ -1234,7 +1234,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
         this->m_commandList->BindDynamicConstantBuffer(RootParameters_Shadow::CameraCB, cameraData);
         this->m_commandList->BindDynamicConstantBuffer(RootParameters_Shadow::RenderCams, renderCamsCB);
 
-        DrawMeshes(scene, this->m_commandList, kCascadeShadowMapNumCas);
+        DrawMeshes(scene, this->m_commandList, Graphics::CascadeShadowMap::GetNumCascades());
         this->m_commandList->EndRenderPass();
 
     }

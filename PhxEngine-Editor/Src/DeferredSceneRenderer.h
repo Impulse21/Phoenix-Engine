@@ -122,7 +122,6 @@ private:
 
 
     static constexpr uint32_t kCascadeShadowMapRes = 2048;
-    static constexpr uint16_t kCascadeShadowMapNumCas = 3;
     static constexpr PhxEngine::RHI::FormatType kCascadeShadowMapFormat = PhxEngine::RHI::FormatType::D24S8;
 
     // -- Scene Env Propes ---
