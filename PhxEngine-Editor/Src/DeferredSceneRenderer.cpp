@@ -1151,7 +1151,15 @@ void DeferredRenderer::CreatePSOs()
     this->m_pso[PSO_Shadow] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
         {
             .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_ShadowPass),
-            .DepthStencilRenderState = {.DepthFunc = ComparisonFunc::Greater },
+            .DepthStencilRenderState = 
+                {
+                    .DepthFunc = ComparisonFunc::Greater,
+                },
+            .RasterRenderState = 
+                {
+                    .DepthBias = -1000,
+                    .DepthBiasClamp = 0
+                },
             .DsvFormat = { kCascadeShadowMapFormat }
         });
 
