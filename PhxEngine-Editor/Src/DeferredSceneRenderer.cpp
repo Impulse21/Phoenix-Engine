@@ -892,6 +892,7 @@ void DeferredRenderer::PrepareFrameRenderData(
     this->m_frameSun = {};
     auto lightView = scene.GetAllEntitiesWith<LightComponent, TransformComponent>();
     size_t lightCount = 0;
+    size_t matrixCount = 0;
     for (auto e : lightView)
     {
         auto [lightComponent, transformComponent] = lightView.get<LightComponent, TransformComponent>(e);
@@ -907,7 +908,7 @@ void DeferredRenderer::PrepareFrameRenderData(
         renderLight->SetFlags(lightComponent.Flags);
         renderLight->SetDirection(lightComponent.Direction);
         renderLight->ColorPacked = Math::PackColour(lightComponent.Colour);
-        renderLight->SetIndices((uint32_t)this->m_matricesCPUData.size());
+        renderLight->SetIndices(matrixCount);
         renderLight->SetNumCascades(0);
         renderLight->Position = transformComponent.GetPosition();
 
@@ -946,8 +947,8 @@ void DeferredRenderer::PrepareFrameRenderData(
 
                 for (size_t i = 0; i < renderCams.size(); i++)
                 {
-                    DirectX::XMFLOAT4X4& matrixEntry = this->m_matricesCPUData.emplace_back();
-                    DirectX::XMStoreFloat4x4(&matrixEntry, renderCams[i].ViewProjection);
+                    std:memcpy(matrixArray + matrixCount, &renderCams[i].ViewProjection, sizeof(DirectX::XMMATRIX));
+                    matrixCount++;
                 }
                 break;
             }
@@ -1031,6 +1032,7 @@ void DeferredRenderer::PrepareFrameRenderData(
 		RHI::GpuBarrier::CreateBuffer(this->m_geometryGpuBuffer, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
 		RHI::GpuBarrier::CreateBuffer(this->m_materialGpuBuffer, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
         RHI::GpuBarrier::CreateBuffer(this->m_resourceBuffers[RB_LightEntities], RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
+        RHI::GpuBarrier::CreateBuffer(this->m_resourceBuffers[RB_Matrices], RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
 	};
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
 
@@ -1057,12 +1059,20 @@ void DeferredRenderer::PrepareFrameRenderData(
         lightBufferAlloc.Offset,
         Shader::SHADER_LIGHT_ENTITY_COUNT * sizeof(Shader::ShaderLight));
 
+    commandList->CopyBuffer(
+        this->m_resourceBuffers[RB_Matrices],
+        0,
+        matrixBufferAlloc.GpuBuffer,
+        matrixBufferAlloc.Offset,
+        sizeof(DirectX::XMMATRIX) * Shader::MATRIX_COUNT);
+
 	RHI::GpuBarrier postCopyBarriers[] =
 	{
 		RHI::GpuBarrier::CreateBuffer(this->m_constantBuffers[CB_Frame], RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
 		RHI::GpuBarrier::CreateBuffer(this->m_geometryGpuBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
 		RHI::GpuBarrier::CreateBuffer(this->m_materialGpuBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
         RHI::GpuBarrier::CreateBuffer(this->m_resourceBuffers[RB_LightEntities], RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
+        RHI::GpuBarrier::CreateBuffer(this->m_resourceBuffers[RB_Matrices], RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
 	};
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
 }

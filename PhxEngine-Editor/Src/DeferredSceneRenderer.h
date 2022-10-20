@@ -100,12 +100,6 @@ private:
     PhxEngine::RHI::CommandListHandle m_commandList;
     PhxEngine::RHI::CommandListHandle m_computeCommandList;
 
-    // -- Scene CPU Buffers ---
-    // 
-    // Uploaded every frame....Could be improved upon.
-    std::vector<Shader::ShaderLight> m_shadowLights;
-    std::vector<DirectX::XMFLOAT4X4> m_matricesCPUData;
-
     std::array<PhxEngine::RHI::GraphicsPSOHandle, PsoType::NumPsoTypes> m_pso;
     std::array<PhxEngine::RHI::ComputePSOHandle, PsoComputeType::NumComputePsoTypes> m_psoCompute;
 
@@ -128,7 +122,7 @@ private:
 
 
     static constexpr uint32_t kCascadeShadowMapRes = 2048;
-    static constexpr uint16_t kCascadeShadowMapNumCas = 4;
+    static constexpr uint16_t kCascadeShadowMapNumCas = 3;
     static constexpr PhxEngine::RHI::FormatType kCascadeShadowMapFormat = PhxEngine::RHI::FormatType::D24S8;
 
     // -- Scene Env Propes ---
