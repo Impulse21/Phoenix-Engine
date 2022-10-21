@@ -40,6 +40,8 @@ void main(
 
 	uint index = inVertexID;
 	float4 position = float4(asfloat(vertexBuffer.Load3(geometry.PositionOffset + index * 12)), 1.0f);
+	matrix worldMatrix = push.WorldTransform;
 
+	position = mul(position, worldMatrix);
 	outPosition = mul(position, RenderCams.ViewProjection[outRTIndex]);
 }

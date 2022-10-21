@@ -100,7 +100,7 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 	// TODO: Apply a clamp to this ?
 
 	std::vector<Renderer::RenderCam> retVal(kNumCascades);
-	for (int i = 0; i < kNumCascades; i--)
+	for (int i = 0; i < kNumCascades; i++)
 	{
 		float nearSplit = cascadeSplits[i];
 		float farSplit = cascadeSplits[i + 1];
