@@ -196,7 +196,7 @@ namespace PhxEngine::Scene
 		float Width = 0.0f;
 		float Height = 0.0f;
 		float ZNear = 0.1f;
-		float ZFar = 1000.0f;
+		float ZFar = 5000.0f;
 		float FoV = 1.0f; // Radians
 
 		DirectX::XMFLOAT3 Eye = { 0.0f, 0.0f, 0.0f };

@@ -55,7 +55,7 @@ CascadeShadowMap::~CascadeShadowMap()
 std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRenderCams(
 	Scene::CameraComponent const& cameraComponent,
 	Scene::LightComponent& lightComponent,
-	uint32_t maxZDepth)
+	float maxZDepth)
 {
 	// Construct a frustrum corders from an NDC Matrix, if reverse Z, then swap the Z
 	const float ndcZNear = this->m_isReverseZ ? 1.0f : 0.0f;

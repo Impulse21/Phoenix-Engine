@@ -18,7 +18,7 @@ namespace PhxEngine::Graphics
 		std::vector<Renderer::RenderCam> CreateRenderCams(
 			Scene::CameraComponent const& cameraComponent,
 			Scene::LightComponent& lightComponent,
-			uint32_t maxZDepth);
+			float maxZDepth);
 
 		constexpr static size_t GetNumCascades() { return kNumCascades; }
 		PhxEngine::RHI::RenderPassHandle GetRenderPass() const { return this->m_renderPass; }

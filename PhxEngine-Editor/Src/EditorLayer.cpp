@@ -388,7 +388,7 @@ void SceneExplorerPanel::DrawEntityComponents(Entity entity)
             component.SetCastShadows(castsShadows);
             ImGui::InputFloat3("Direction", &component.Direction.x, "%.3f");
 
-            ImGui::SliderFloat("Intensity", &component.Intensity, 0.0f, 1000.0f);
+            ImGui::SliderFloat("Intensity", &component.Intensity, 0.0f, 5000.0f);
             ImGui::SliderFloat("Range", &component.Range, 0.0f, (float)std::numeric_limits<uint16_t>().max(), "%e");
             // Direction is starting from origin, so we need to negate it
             // Vec3 light(lightComponent.Direction.x, lightComponent.Direction.y, -lightComponent.Direction.z);
