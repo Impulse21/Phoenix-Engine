@@ -383,9 +383,13 @@ void SceneExplorerPanel::DrawEntityComponents(Entity entity)
 
             ImGui::ColorPicker3("Light Colour", &component.Colour.x, ImGuiColorEditFlags_NoSidePreview);
 
-            bool castsShadows = component.CastShadows();
-            ImGui::Checkbox("Cast Shadows", &castsShadows);
-            component.SetCastShadows(castsShadows);
+            if (component.Type == LightComponent::kDirectionalLight)
+            {
+                bool castsShadows = component.CastShadows();
+                ImGui::Checkbox("Cast Shadows", &castsShadows);
+                component.SetCastShadows(castsShadows);
+            }
+
             ImGui::InputFloat3("Direction", &component.Direction.x, "%.3f");
 
             ImGui::SliderFloat("Intensity", &component.Intensity, 0.0f, 5000.0f);

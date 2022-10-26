@@ -7,6 +7,7 @@
 #include <PhxEngine/Core/RefPtr.h>
 #include <PhxEngine/Core/Helpers.h>
 #include <PhxEngine/Scene/Assets.h>
+#include <PhxEngine/Core/Primitives.h>
 
 // Required for Operators - Move to CPP please
 using namespace DirectX;
@@ -211,6 +212,9 @@ namespace PhxEngine::Scene
 		DirectX::XMFLOAT4X4 ProjectionInv;
 		DirectX::XMFLOAT4X4 ViewProjectionInv;
 
+		Core::Frustum ProjectionFrustum;
+		Core::Frustum ViewProjectionFrustum;
+
 		inline void SetDirty(bool value = true)
 		{
 			if (value)
@@ -270,10 +274,12 @@ namespace PhxEngine::Scene
 			DirectX::XMStoreFloat4x4(&this->ProjectionInv, DirectX::XMMatrixInverse(nullptr, projectionMatrix));
 
 			auto viewProjectionMatrix = viewMatrix * projectionMatrix;
-
 			DirectX::XMStoreFloat4x4(&this->ViewProjection, viewProjectionMatrix);
 
 			DirectX::XMStoreFloat4x4(&this->ViewProjectionInv, DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix));
+
+			this->ProjectionFrustum = Core::Frustum(projectionMatrix, true);
+			this->ViewProjectionFrustum = Core::Frustum(viewProjectionMatrix, true);
 		}
 	};
 

@@ -9,7 +9,10 @@ namespace PhxEngine::Core
 		DirectX::XMFLOAT4 Planes[6];
 
 		Frustum() {};
-		Frustum(DirectX::XMMATRIX const& viewProjection, bool isReverseProjection = false);
+		Frustum(DirectX::XMMATRIX const& matrix, bool isReverseProjection = false);
+
+		DirectX::XMFLOAT3 GetCorner(int index) const;
+		DirectX::XMVECTOR GetCornerV(int index) const;
 
 		DirectX::XMFLOAT4& GetNearPlane() { return this->Planes[0]; };
 		DirectX::XMFLOAT4& GetFarPlane() { return this->Planes[1]; };
