@@ -2,6 +2,7 @@
 
 #include <DirectXMath.h>
 #include <PhxEngine/Core/Span.h>
+#include <PhxEngine/Core/Primitives.h>
 
 namespace PhxEngine::Renderer
 {
@@ -9,6 +10,7 @@ namespace PhxEngine::Renderer
 	struct RenderCam
 	{
 		DirectX::XMMATRIX ViewProjection;
+		Core::Frustum Frustum;
 
 		RenderCam() = default;
 		RenderCam(DirectX::XMFLOAT3 const& eyePos, DirectX::XMFLOAT4 const& rotation, float nearPlane, float farPlane, float fov)

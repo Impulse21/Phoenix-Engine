@@ -61,17 +61,21 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 	const float ndcZNear = this->m_isReverseZ ? 1.0f : 0.0f;
 	const float ndcZFar = this->m_isReverseZ ? 0.0f : 1.0f;
 	const DirectX::XMMATRIX viewProjectInv = DirectX::XMLoadFloat4x4(&cameraComponent.ViewProjectionInv);
+
 	// Experiment pulling this info directly from the view projection
 	const std::array<DirectX::XMVECTOR, 8> frustumCornersWS =
 	{
-		DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(-1, -1, ndcZNear, 1.0f),	viewProjectInv), // Near
-		DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(-1, -1, ndcZFar, 1.0f),	viewProjectInv),// Far
-		DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(-1, 1, ndcZNear, 1.0f),	viewProjectInv),// Near
-		DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(-1, 1, ndcZFar, 1.0f),	viewProjectInv), // Far
-		DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1, -1, ndcZNear, 1.0f),	viewProjectInv), // Near
-		DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1, -1, ndcZFar, 1.0f),	viewProjectInv), // Far
-		DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1, 1, ndcZNear, 1.0f),	viewProjectInv), // Near
-		DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1, 1, ndcZFar, 1.0f),		viewProjectInv), // Far
+		// Near
+		DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1, 1, ndcZNear, 1.0f),	viewProjectInv),
+		DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1, -1, ndcZNear, 1.0f),	viewProjectInv),
+		DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(-1, 1, ndcZNear, 1.0f),	viewProjectInv),
+		DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(-1, -1, ndcZNear, 1.0f),	viewProjectInv),
+
+		// Far
+		DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1, 1, ndcZFar, 1.0f),		viewProjectInv),
+		DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1, -1, ndcZFar, 1.0f),	viewProjectInv),
+		DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(-1, 1, ndcZFar, 1.0f),	viewProjectInv),
+		DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(-1, -1, ndcZFar, 1.0f),	viewProjectInv),
 	};
 
 	// The light view matrix, the UP cannot be parrell, and in the opposite direction as we wll get a zero vector, which fucks everything up. Need to determine based on rotation.
@@ -108,14 +112,17 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 		// Adjust the frustrum corders to the split and move to light space.
 		const DirectX::XMVECTOR cascadeCornersLS[] =
 		{
-			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[0], frustumCornersWS[1], nearSplit), lightView),
-			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[0], frustumCornersWS[1], farSplit), lightView),
-			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[2], frustumCornersWS[3], nearSplit), lightView),
-			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[2], frustumCornersWS[3], farSplit), lightView),
-			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[4], frustumCornersWS[5], nearSplit), lightView),
-			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[4], frustumCornersWS[5], farSplit), lightView),
-			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[6], frustumCornersWS[7], nearSplit), lightView),
-			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[6], frustumCornersWS[7], farSplit), lightView),
+			// Near
+			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[0], frustumCornersWS[4], nearSplit), lightView),
+			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[1], frustumCornersWS[5], nearSplit), lightView),
+			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[2], frustumCornersWS[6], nearSplit), lightView),
+			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[3], frustumCornersWS[7], nearSplit), lightView),
+
+			// Far
+			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[0], frustumCornersWS[4], farSplit), lightView),
+			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[1], frustumCornersWS[5], farSplit), lightView),
+			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[2], frustumCornersWS[6], farSplit), lightView),
+			DirectX::XMVector3Transform(DirectX::XMVectorLerp(frustumCornersWS[3], frustumCornersWS[7], farSplit), lightView),
 		};
 
 		const int numCorners = ARRAYSIZE(cascadeCornersLS);
@@ -129,11 +136,11 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 
 		cascadeCenterLS = cascadeCenterLS / (float)numCorners;// Compute radius of bounding sphere
 
-#if false
+#if true
 		float radius = 0.0f;
 		for (int j = 0; j < numCorners; ++j)
 		{
-			radius = std::max(radius, DirectX::XMVectorGetX(DirectX::XMVectorSubtract(cascadeCornersLS[i], cascadeCenterLS)));
+			radius = std::max(radius, DirectX::XMVectorGetX(DirectX::XMVector3Length(DirectX::XMVectorSubtract(cascadeCornersLS[i], cascadeCenterLS))));
 		}
 
 		DirectX::XMVECTOR vRadius = DirectX::XMVectorReplicate(radius);
@@ -183,6 +190,7 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 
 		retVal[i] = {};
 		retVal[i].ViewProjection = lightView * lightProjection;
+		retVal[i].Frustum = Core::Frustum(retVal[i].ViewProjection);
 	}
 
 	return retVal;

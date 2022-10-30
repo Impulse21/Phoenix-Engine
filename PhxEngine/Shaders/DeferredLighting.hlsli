@@ -149,7 +149,7 @@ float4 main(PSInput input) : SV_TARGET
 	{
 		ShaderLight light = LoadLight(nLights);
 
-		[loop]
+		// [loop]
 		for (int cascade = 0; cascade < light.GetNumCascades(); cascade++)
 		{
             const float4x4 shadowMatrix = LoadMatrix(light.GetIndices() + cascade);

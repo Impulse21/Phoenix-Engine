@@ -215,6 +215,8 @@ namespace PhxEngine::Scene
 		Core::Frustum ProjectionFrustum;
 		Core::Frustum ViewProjectionFrustum;
 
+		inline DirectX::XMMATRIX GetInvViewProjMatrix() const { return DirectX::XMLoadFloat4x4(&this->ViewProjectionInv); }
+
 		inline void SetDirty(bool value = true)
 		{
 			if (value)
@@ -253,22 +255,30 @@ namespace PhxEngine::Scene
 
 		inline void UpdateCamera()
 		{
+#if false
+			auto e = DirectX::XMVectorSet(this->Eye.x, this->Eye.y, -this->Eye.z, 1.0f);
+			auto viewMatrix = DirectX::XMMatrixLookToLH(
+				e,
+				// DirectX::XMLoadFloat3(&this->Forward),
+				DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f),
+				DirectX::XMLoadFloat3(&this->Up));
+#else
 			auto viewMatrix = DirectX::XMMatrixLookToRH(
 				DirectX::XMLoadFloat3(&this->Eye),
 				DirectX::XMLoadFloat3(&this->Forward),
 				DirectX::XMLoadFloat3(&this->Up));
-
+#endif
 			// auto viewMatrix = this->ConstructViewMatrixLH();
 
 			DirectX::XMStoreFloat4x4(&this->View, viewMatrix);
 			DirectX::XMStoreFloat4x4(&this->ViewInv, DirectX::XMMatrixInverse(nullptr, viewMatrix));
 
-			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, 1.7f, this->ZNear, this->ZFar);
-			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, 1.7f, this->ZNear, this->ZFar);
 			float aspectRatio = this->Width / this->Height;
 
 			// Note the farPlane is passed in as near, this is to support reverseZ
 			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, aspectRatio, this->ZFar, this->ZNear);
+			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(1.04719758, 1904.00 / 984.00, 5000.00, 0.1);
+			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, 1.7f, this->ZFar, this->ZNear);
 
 			DirectX::XMStoreFloat4x4(&this->Projection, projectionMatrix);
 			DirectX::XMStoreFloat4x4(&this->ProjectionInv, DirectX::XMMatrixInverse(nullptr, projectionMatrix));
@@ -276,7 +286,8 @@ namespace PhxEngine::Scene
 			auto viewProjectionMatrix = viewMatrix * projectionMatrix;
 			DirectX::XMStoreFloat4x4(&this->ViewProjection, viewProjectionMatrix);
 
-			DirectX::XMStoreFloat4x4(&this->ViewProjectionInv, DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix));
+			auto viewProjectionInv = DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix);
+			DirectX::XMStoreFloat4x4(&this->ViewProjectionInv, viewProjectionInv);
 
 			this->ProjectionFrustum = Core::Frustum(projectionMatrix, true);
 			this->ViewProjectionFrustum = Core::Frustum(viewProjectionMatrix, true);
@@ -311,7 +322,7 @@ namespace PhxEngine::Scene
 		DirectX::XMFLOAT3 Scale;
 
 		// end Helper data
-		float Intensity = 1.0f;
+		float Intensity = 10.0f;
 		float Range = 10.0f;
 		float FoV = DirectX::XM_PIDIV4;
 		float OuterConeAngle = DirectX::XM_PIDIV4;
