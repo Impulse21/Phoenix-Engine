@@ -121,8 +121,8 @@ private:
     DirectX::XMFLOAT2 m_canvasSize;
 
 
-    static constexpr uint32_t kCascadeShadowMapRes = 2048;
-    static constexpr PhxEngine::RHI::FormatType kCascadeShadowMapFormat = PhxEngine::RHI::FormatType::D24S8;
+    static constexpr uint32_t kCascadeShadowMapRes = 1024;
+    static constexpr PhxEngine::RHI::FormatType kCascadeShadowMapFormat = PhxEngine::RHI::FormatType::D16;
 
     // -- Scene Env Propes ---
     static constexpr uint32_t kEnvmapCount = 16;
