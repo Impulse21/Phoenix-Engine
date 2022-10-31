@@ -136,7 +136,6 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 
 		cascadeCenterLS = cascadeCenterLS / (float)numCorners;// Compute radius of bounding sphere
 
-#if true
 		float radius = 0.0f;
 		for (int j = 0; j < numCorners; ++j)
 		{
@@ -146,15 +145,7 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 		DirectX::XMVECTOR vRadius = DirectX::XMVectorReplicate(radius);
 		DirectX::XMVECTOR vMin = cascadeCenterLS - vRadius;
 		DirectX::XMVECTOR vMax = cascadeCenterLS + vRadius;
-#else
-		DirectX::XMVECTOR vMin = DirectX::XMVectorSet(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 1.0f);
-		DirectX::XMVECTOR vMax = DirectX::XMVectorSet(std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), 1.0f);;
-		for (const auto& corner : cascadeCornersLS)
-		{
-			vMin = DirectX::XMVectorMin(vMin, corner);
-			vMax = DirectX::XMVectorMax(vMax, corner);
-		}
-#endif 
+
 		float resolution = RHI::IGraphicsDevice::Ptr->GetTextureDesc(this->m_shadowMapTexArray).Width;
 		const XMVECTOR extent = XMVectorSubtract(vMax, vMin);
 		const XMVECTOR texelSize = extent / float(resolution);
