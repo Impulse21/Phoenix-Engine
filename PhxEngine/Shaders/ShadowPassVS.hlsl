@@ -8,6 +8,7 @@
 	"RootConstants(num32BitConstants=19, b999), " \
 	"CBV(b0), " \
 	"CBV(b1), " \
+    "CBV(b2),"  \
 	RS_BINDLESS_DESCRIPTOR_TABLE \
 
 #else
@@ -15,31 +16,32 @@
 	"RootConstants(num32BitConstants=19, b999), " \
 	"CBV(b0), " \
 	"CBV(b1), " \
+    "CBV(b2),"  \
 	RS_BINDLESS_DESCRIPTOR_TABLE \
 
 #endif 
 
 PUSH_CONSTANT(push, GeometryPassPushConstants);
 
-struct VertexInput
-{
-	uint VertexID : SV_VertexID;
-	uint InstanceID : SV_InstanceID;
-};
+
+ConstantBuffer<RenderCams> RenderCams : register(b2);
 
 [RootSignature(ShadowPassRS)]
-float4 main(in VertexInput input) : SV_POSITION
+void main(
+	in uint inVertexID : SV_VertexID,
+	in uint inInstanceID : SV_InstanceID,
+	out float4 outPosition : SV_POSITION,
+	out uint outRTIndex : SV_RenderTargetArrayIndex)
 {
+	outRTIndex = inInstanceID;
+
 	Geometry geometry = LoadGeometry(push.GeometryIndex);
 	ByteAddressBuffer vertexBuffer = ResourceHeap_GetBuffer(geometry.VertexBufferIndex);
 
-	uint index = input.VertexID;
-
-	matrix worldMatrix = push.WorldTransform;
+	uint index = inVertexID;
 	float4 position = float4(asfloat(vertexBuffer.Load3(geometry.PositionOffset + index * 12)), 1.0f);
+	matrix worldMatrix = push.WorldTransform;
 
 	position = mul(position, worldMatrix);
-	position = mul(position, GetCamera().ViewProjection);
-
-	return position;
+	outPosition = mul(position, RenderCams.ViewProjection[outRTIndex]);
 }

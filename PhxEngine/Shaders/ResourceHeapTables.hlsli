@@ -12,6 +12,7 @@
 #define RS_BINDLESS_DESCRIPTOR_TABLE 	"DescriptorTable( " \
 		"SRV(t0, space = 100, offset = 0, numDescriptors = unbounded, flags = DESCRIPTORS_VOLATILE | DATA_VOLATILE)," \
 		"SRV(t0, space = 101, offset = 0, numDescriptors = unbounded, flags = DESCRIPTORS_VOLATILE | DATA_VOLATILE)," \
+		"SRV(t0, space = 101, offset = 0, numDescriptors = unbounded, flags = DESCRIPTORS_VOLATILE | DATA_VOLATILE)," \
 		"SRV(t0, space = 102, offset = 0, numDescriptors = unbounded, flags = DESCRIPTORS_VOLATILE | DATA_VOLATILE)" \
 	"), " 
 
@@ -33,6 +34,7 @@
 #ifndef USE_RESOURCE_HEAP
 
 Texture2D					ResourceHeap_Texture2D[]			: register(t0, RESOURCE_HEAP_TEX2D_SPACE);
+Texture2D					ResourceHeap_Texture2DArray[]		: register(t0, RESOURCE_HEAP_TEX2D_ARRAY_SPACE);
 TextureCube					ResourceHeap_TextureCube[]			: register(t0, RESOURCE_HEAP_TEX_CUBE_SPACE);
 TextureCubeArray			ResourceHeap_TextureCubeArray[]		: register(t0, RESOURCE_HEAP_TEX_CUBE_ARRAY_SPACE);
 ByteAddressBuffer			ResourceHeap_Buffer[]				: register(t0, RESOURCE_HEAP_BUFFER_SPACE);
@@ -54,6 +56,15 @@ inline Texture2D ResourceHeap_GetTexture2D(uint index)
 	return ResourceDescriptorHeap[index];
 #else
 	return ResourceHeap_Texture2D[index];
+#endif
+}
+
+inline Texture2DArray ResourceHeap_GetTexture2DArray(uint index)
+{
+#ifdef USE_RESOURCE_HEAP
+	return ResourceDescriptorHeap[index];
+#else
+	return ResourceHeap_Texture2DArray[index];
 #endif
 }
 

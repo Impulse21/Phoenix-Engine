@@ -54,6 +54,18 @@ namespace
             CubeRenderCamsCB,
         };
     }
+
+    namespace RootParameters_Shadow
+    {
+        enum
+        {
+            Push = 0,
+            FrameCB,
+            CameraCB,
+            RenderCams,
+        };
+    }
+
     namespace RootParameters_ToneMapping
     {
         enum
@@ -136,6 +148,9 @@ void DeferredRenderer::FreeTextureResources()
 void DeferredRenderer::Initialize()
 {
     auto& spec = LayeredApplication::Ptr->GetSpec();
+
+    this->m_cascadeShadowMaps = std::make_unique<Graphics::CascadeShadowMap>(kCascadeShadowMapRes, kCascadeShadowMapFormat, true);
+
     this->m_canvasSize = { static_cast<float>(spec.WindowWidth), static_cast<float>(spec.WindowHeight) };
     this->CreateRenderTargets(m_canvasSize);
     this->CreatePSOs();
@@ -360,7 +375,7 @@ void DeferredRenderer::RefreshEnvProbes(PhxEngine::Scene::CameraComponent const&
     RHI::Rect rec(LONG_MAX, LONG_MAX);
     this->m_commandList->SetScissors(&rec, 1);
 
-    Shader::CubemapRenderCams renderCamsCB;
+    Shader::RenderCams renderCamsCB;
     for (int i = 0; i < ARRAYSIZE(cameras); i++)
     {
         DirectX::XMStoreFloat4x4(&renderCamsCB.ViewProjection[i], cameras[i].ViewProjection);
@@ -498,7 +513,7 @@ void DeferredRenderer::RefreshEnvProbes(PhxEngine::Scene::CameraComponent const&
     // Filter Env Map
 }
 
-void DeferredRenderer::DrawMeshes(PhxEngine::Scene::Scene& scene, RHI::CommandListHandle commandList)
+void DeferredRenderer::DrawMeshes(PhxEngine::Scene::Scene& scene, RHI::CommandListHandle commandList, uint32_t numInstances)
 {
     auto scrope = commandList->BeginScopedMarker("Render Scene Meshes");
 
@@ -529,7 +544,7 @@ void DeferredRenderer::DrawMeshes(PhxEngine::Scene::Scene& scene, RHI::CommandLi
 
             commandList->DrawIndexed(
                 mesh.Surfaces[i].NumIndices,
-                1,
+                numInstances,
                 mesh.Surfaces[i].IndexOffsetInMesh);
         }
     }
@@ -663,8 +678,32 @@ void DeferredRenderer::RunProbeUpdateSystem(PhxEngine::Scene::Scene& scene)
     // TODO: Future env probe stuff
 }
 
+void DeferredRenderer::RunLightUpdateSystem(PhxEngine::Scene::Scene& scene)
+{
+    auto view = scene.GetAllEntitiesWith<LightComponent, TransformComponent>();
+    for (auto e : view)
+    {
+        auto [lightComponent, transformComponent] = view.get<LightComponent, TransformComponent>(e);
+
+        XMMATRIX worldMatrix = XMLoadFloat4x4(&transformComponent.WorldMatrix);
+        XMVECTOR vScale;
+        XMVECTOR vRot;
+        XMVECTOR vTranslation;
+        XMMatrixDecompose(&vScale, &vRot, &vTranslation, worldMatrix);
+
+
+        XMStoreFloat3(&lightComponent.Position, vTranslation);
+        XMStoreFloat4(&lightComponent.Rotation, vRot);
+        XMStoreFloat3(&lightComponent.Scale, vScale);
+        XMStoreFloat3(&lightComponent.Direction, XMVector3Normalize(XMVector3TransformNormal(XMVectorSet(0, 1, 0, 0), worldMatrix)));
+
+        transformComponent.WorldMatrix;
+    }
+}
+
 void DeferredRenderer::PrepareFrameRenderData(
     RHI::CommandListHandle commandList,
+    CameraComponent const& mainCamera,
     PhxEngine::Scene::Scene& scene)
 {
     auto scope = this->m_commandList->BeginScopedMarker("Prepare Frame Data");
@@ -853,6 +892,7 @@ void DeferredRenderer::PrepareFrameRenderData(
     this->m_frameSun = {};
     auto lightView = scene.GetAllEntitiesWith<LightComponent, TransformComponent>();
     size_t lightCount = 0;
+    size_t matrixCount = 0;
     for (auto e : lightView)
     {
         auto [lightComponent, transformComponent] = lightView.get<LightComponent, TransformComponent>(e);
@@ -868,8 +908,8 @@ void DeferredRenderer::PrepareFrameRenderData(
         renderLight->SetFlags(lightComponent.Flags);
         renderLight->SetDirection(lightComponent.Direction);
         renderLight->ColorPacked = Math::PackColour(lightComponent.Colour);
-        renderLight->Indices = this->m_matricesCPUData.size();
-
+        renderLight->SetIndices(matrixCount);
+        renderLight->SetNumCascades(0);
         renderLight->Position = transformComponent.GetPosition();
 
         if (lightComponent.Type == LightComponent::kDirectionalLight && this->m_frameSun == entt::entity())
@@ -893,49 +933,54 @@ void DeferredRenderer::PrepareFrameRenderData(
             renderLight->SetAngleScale(lightAngleScale);
             renderLight->SetAngleOffset(lightAngleOffset);
         }
-        /*
-        switch (lightComponent.Type)
-        {
-        case LightComponent::kDirectionalLight:
-        {
-            // std::array<DirectX::XMFLOAT4X4, kNumShadowCascades> matrices;
-            // auto& cameraComponent = *this->m_scene.Cameras.GetComponent(this->m_cameraEntities[this->m_selectedCamera]);
-            // Shadow::ConstructDirectionLightMatrices(cameraComponent, lightComponent, matrices);
 
-            for (size_t i = 0; i < matrices.size(); i++)
+        if (lightComponent.CastShadows())
+        {
+            switch (lightComponent.Type)
             {
-                this->m_matricesCPUData.emplace_back(matrices[i]);
-            }
-            break;
-        }
-        case LightComponent::kOmniLight:
-        {
-            std::array<DirectX::XMFLOAT4X4, 6> matrices;
-            Shadow::ConstructOmniLightMatrices(lightComponent, matrices);
-
-            for (size_t i = 0; i < matrices.size(); i++)
+            case LightComponent::kDirectionalLight:
             {
-                this->m_matricesCPUData.emplace_back(matrices[i]);
+                // Add support for adjusting the number of cascades
+                std::vector<Renderer::RenderCam> renderCams = this->m_cascadeShadowMaps->CreateRenderCams(mainCamera, lightComponent, 800.0f);
+                renderLight->SetNumCascades((uint32_t)renderCams.size());
+                renderLight->CascadeTextureIndex = this->m_cascadeShadowMaps->GetTextureArrayIndex();
+
+                for (size_t i = 0; i < renderCams.size(); i++)
+                {
+                    std:memcpy(matrixArray + matrixCount, &renderCams[i].ViewProjection, sizeof(DirectX::XMMATRIX));
+                    matrixCount++;
+                }
+                break;
             }
+            case LightComponent::kOmniLight:
+            {
+                /*
+                std::array<DirectX::XMFLOAT4X4, 6> matrices;
+                Shadow::ConstructOmniLightMatrices(lightComponent, matrices);
 
-            // Not sure I understand this math here or why the cubemap depth needs to be re-mapped
-            const float nearZ = 0.1f;	// watch out: reversed depth buffer! Also, light near plane is constant for simplicity, this should match on cpu side!
-            const float farZ = std::max(1.0f, lightComponent.Range); // watch out: reversed depth buffer!
-            const float fRange = farZ / (farZ - nearZ);
-            const float cubemapDepthRemapNear = fRange;
-            const float cubemapDepthRemapFar = -fRange * nearZ;
-            renderLight.SetCubemapDepthRemapNear(cubemapDepthRemapNear);
-            renderLight.SetCubemapDepthRemapFar(cubemapDepthRemapFar);
+                for (size_t i = 0; i < matrices.size(); i++)
+                {
+                    this->m_matricesCPUData.emplace_back(matrices[i]);
+                }
 
-            break;
+                // Not sure I understand this math here or why the cubemap depth needs to be re-mapped
+                const float nearZ = 0.1f;	// watch out: reversed depth buffer! Also, light near plane is constant for simplicity, this should match on cpu side!
+                const float farZ = std::max(1.0f, lightComponent.Range); // watch out: reversed depth buffer!
+                const float fRange = farZ / (farZ - nearZ);
+                const float cubemapDepthRemapNear = fRange;
+                const float cubemapDepthRemapFar = -fRange * nearZ;
+                renderLight.SetCubemapDepthRemapNear(cubemapDepthRemapNear);
+                renderLight.SetCubemapDepthRemapFar(cubemapDepthRemapFar);
+                */
+                break;
+            }
+            case LightComponent::kSpotLight:
+            {
+                // TODO:
+                break;
+            }
+            }
         }
-        case LightComponent::kSpotLight:
-		{
-			// TODO:
-			break;
-		}
-		}
-		*/
 	}
 
 	Shader::Frame frameData = {};
@@ -943,7 +988,7 @@ void DeferredRenderer::PrepareFrameRenderData(
 	frameData.SceneData.GeometryBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_geometryGpuBuffer, RHI::SubresouceType::SRV);
 	frameData.SceneData.MaterialBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_materialGpuBuffer, RHI::SubresouceType::SRV);
 	frameData.SceneData.LightEntityIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_LightEntities], RHI::SubresouceType::SRV);
-	frameData.SceneData.MatricesIndex = RHI::cInvalidDescriptorIndex;
+	frameData.SceneData.MatricesIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_Matrices], RHI::SubresouceType::SRV);
 
     frameData.SceneData.AtmosphereData = {};
     auto worldEnvView = scene.GetRegistry().view<WorldEnvironmentComponent>();
@@ -987,6 +1032,7 @@ void DeferredRenderer::PrepareFrameRenderData(
 		RHI::GpuBarrier::CreateBuffer(this->m_geometryGpuBuffer, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
 		RHI::GpuBarrier::CreateBuffer(this->m_materialGpuBuffer, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
         RHI::GpuBarrier::CreateBuffer(this->m_resourceBuffers[RB_LightEntities], RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
+        RHI::GpuBarrier::CreateBuffer(this->m_resourceBuffers[RB_Matrices], RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
 	};
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
 
@@ -1013,12 +1059,20 @@ void DeferredRenderer::PrepareFrameRenderData(
         lightBufferAlloc.Offset,
         Shader::SHADER_LIGHT_ENTITY_COUNT * sizeof(Shader::ShaderLight));
 
+    commandList->CopyBuffer(
+        this->m_resourceBuffers[RB_Matrices],
+        0,
+        matrixBufferAlloc.GpuBuffer,
+        matrixBufferAlloc.Offset,
+        sizeof(DirectX::XMMATRIX) * Shader::MATRIX_COUNT);
+
 	RHI::GpuBarrier postCopyBarriers[] =
 	{
 		RHI::GpuBarrier::CreateBuffer(this->m_constantBuffers[CB_Frame], RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
 		RHI::GpuBarrier::CreateBuffer(this->m_geometryGpuBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
 		RHI::GpuBarrier::CreateBuffer(this->m_materialGpuBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
         RHI::GpuBarrier::CreateBuffer(this->m_resourceBuffers[RB_LightEntities], RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
+        RHI::GpuBarrier::CreateBuffer(this->m_resourceBuffers[RB_Matrices], RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
 	};
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
 }
@@ -1094,6 +1148,23 @@ void DeferredRenderer::CreatePSOs()
             .DsvFormat = { kEnvmapDepth }
         });
 
+    this->m_pso[PSO_Shadow] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
+        {
+            .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_ShadowPass),
+            .DepthStencilRenderState =
+                {
+                    .DepthFunc = ComparisonFunc::Greater,
+                },
+            .RasterRenderState =
+                {
+                    .CullMode = RasterCullMode::None,
+                    .DepthClipEnable = 1,
+                    .DepthBias = -1,
+                    .DepthBiasClamp = 0,
+                    .SlopeScaledDepthBias = -4,
+                },
+            .DsvFormat = { kCascadeShadowMapFormat }
+        });
 
     // Compute PSO's
     this->m_psoCompute[PSO_GenerateMipMaps_TextureCubeArray] = IGraphicsDevice::Ptr->CreateComputePso(
@@ -1108,6 +1179,7 @@ void DeferredRenderer::CreatePSOs()
 
 void DeferredRenderer::Update(PhxEngine::Scene::Scene& scene)
 {
+    this->RunLightUpdateSystem(scene);
     this->RunProbeUpdateSystem(scene);
 }
 
@@ -1115,7 +1187,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 {
     this->m_commandList->Open();
 
-    this->PrepareFrameRenderData(this->m_commandList, scene);
+    this->PrepareFrameRenderData(this->m_commandList, camera, scene);
 
     this->RefreshEnvProbes(camera, scene, this->m_commandList);
 
@@ -1125,6 +1197,58 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
     cameraData.ViewProjectionInv = camera.ViewProjectionInv;
     cameraData.ProjInv = camera.ProjectionInv;
     cameraData.ViewInv = camera.ViewInv;
+
+    auto view = scene.GetAllEntitiesWith<LightComponent>();
+    bool foundDirectionalLight = false;
+    for (auto e : view)
+    {
+        // Only support Directional Lights
+        auto& lightComponent = view.get<LightComponent>(e);
+
+        if (lightComponent.Type != LightComponent::kDirectionalLight || !lightComponent.CastShadows())
+        {
+            continue;
+        }
+
+        // only suppport one light
+        if (foundDirectionalLight)
+        {
+            break;
+        }
+
+        foundDirectionalLight = true;
+
+        auto scrope = this->m_commandList->BeginScopedMarker("Shadow Map Pass");
+
+        // -- Prepare PSO ---
+        this->m_commandList->BeginRenderPass(this->m_cascadeShadowMaps->GetRenderPass());
+        this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_Shadow]);
+
+        RHI::Viewport v(kCascadeShadowMapRes, kCascadeShadowMapRes);
+        this->m_commandList->SetViewports(&v, 1);
+
+        RHI::Rect rec(LONG_MAX, LONG_MAX);
+        this->m_commandList->SetScissors(&rec, 1);
+
+        // -- Bind Data ---
+        std::vector<Renderer::RenderCam> renderCams = this->m_cascadeShadowMaps->CreateRenderCams(camera, lightComponent, 800.0f);
+
+        Shader::RenderCams renderCamsCB;
+        for (int i = 0; i < renderCams.size(); i++)
+        {
+            DirectX::XMStoreFloat4x4(&renderCamsCB.ViewProjection[i], renderCams[i].ViewProjection);
+            renderCamsCB.Properties[i].x = i;
+        }
+
+        // Do NOT NEED FRAME AND CAM DATA!!
+        this->m_commandList->BindConstantBuffer(RootParameters_Shadow::FrameCB, this->m_constantBuffers[CB_Frame]);
+        this->m_commandList->BindDynamicConstantBuffer(RootParameters_Shadow::CameraCB, cameraData);
+        this->m_commandList->BindDynamicConstantBuffer(RootParameters_Shadow::RenderCams, renderCamsCB);
+
+        DrawMeshes(scene, this->m_commandList, Graphics::CascadeShadowMap::GetNumCascades());
+        this->m_commandList->EndRenderPass();
+
+    }
 
     {
         auto scrope = this->m_commandList->BeginScopedMarker("Opaque GBuffer Pass");

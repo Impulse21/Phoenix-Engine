@@ -120,7 +120,7 @@ namespace Shader
 		uint2 Direction16_ConeAngleCos16;
 		uint Intensity16_X16; // <free_16><range_8>
 		uint ColorPacked;
-		uint Indices; // Not current packed
+		uint Indices16_Cascades16; // Not current packed
 
 		// -- 16 byte boundary ----
 		float4 ShadowAtlasMulAdd;
@@ -135,6 +135,7 @@ namespace Shader
 
 		float AngleScale;
 		float AngleOffset;
+		uint CascadeTextureIndex;
 
 #ifndef __cplusplus
 		inline float4 GetColour()
@@ -172,6 +173,16 @@ namespace Shader
 		inline uint GetFlags()
 		{
 			return (Type8_Flags8_Range16 >> 8) & 0xFF;
+		}
+
+		inline uint GetIndices()
+		{
+			return Indices16_Cascades16 & 0xFFFF;
+		}
+
+		inline uint GetNumCascades()
+		{
+			return (Indices16_Cascades16 >> 16u) & 0xFFFF;
 		}
 
 		inline float GetRange()
@@ -263,6 +274,15 @@ namespace Shader
 			CubemapDepthRemapPacked |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16u;
 		}
 
+		inline void SetIndices(uint value)
+		{
+			this->Indices16_Cascades16 |= (value & 0xFFFF);
+		}
+
+		inline void SetNumCascades(uint value)
+		{
+			this->Indices16_Cascades16 |= (value & 0xFFFF) << 16u;
+		}
 #endif
 	};
 
@@ -410,7 +430,7 @@ namespace Shader
 		// -- 16 byte boundary ---
 	};
 
-	struct CubemapRenderCams
+	struct RenderCams
 	{
 		float4x4 ViewProjection[6];
 		// -- 16 byte boundary ---

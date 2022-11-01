@@ -14,7 +14,7 @@
     "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR),"
 
 
-ConstantBuffer<CubemapRenderCams> CubemapRenderCamsCB : register(b2);
+ConstantBuffer<RenderCams> CubemapRenderCamsCB : register(b2);
 
 
 /*

@@ -5,9 +5,12 @@
 #include <Shaders/ShaderInteropStructures.h>
 #include <PhxEngine/Graphics/IRenderer.h>
 #include <PhxEngine/Graphics/RHI/PhxRHI.h>
+#include <PhxEngine/Graphics/CascadeShadowMap.h>
+#include <PhxEngine/Scene/Components.h>
 #include <array>
 #include <vector>
 #include <entt.hpp>
+#include <memory>
 
 
 class DeferredRenderer : public PhxEngine::Graphics::IRenderer
@@ -19,6 +22,7 @@ class DeferredRenderer : public PhxEngine::Graphics::IRenderer
         PSO_DeferredLightingPass,
         PSO_Sky,
         PSO_EnvCapture_SkyProcedural,
+        PSO_Shadow,
 
         // -- Post Process ---
         PSO_ToneMappingPass,
@@ -75,6 +79,7 @@ private:
 
     void PrepareFrameRenderData(
         PhxEngine::RHI::CommandListHandle commandList,
+        PhxEngine::Scene::CameraComponent const& mainCamera,
         PhxEngine::Scene::Scene& scene);
 
     void CreatePSOs();
@@ -83,22 +88,17 @@ private:
     // Potential Render Functions
 private:
     void RefreshEnvProbes(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
-    void DrawMeshes(PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
+    void DrawMeshes(PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList, uint32_t numInstances = 1);
 
 
     // Scene Update Systems -> Should be coupled with Scene?
 private:
     void RunProbeUpdateSystem(PhxEngine::Scene::Scene& scene);
+    void RunLightUpdateSystem(PhxEngine::Scene::Scene& scene);
 
 private:
     PhxEngine::RHI::CommandListHandle m_commandList;
     PhxEngine::RHI::CommandListHandle m_computeCommandList;
-
-    // -- Scene CPU Buffers ---
-    // 
-    // Uploaded every frame....Could be improved upon.
-    std::vector<Shader::ShaderLight> m_shadowLights;
-    std::vector<DirectX::XMFLOAT4X4> m_matricesCPUData;
 
     std::array<PhxEngine::RHI::GraphicsPSOHandle, PsoType::NumPsoTypes> m_pso;
     std::array<PhxEngine::RHI::ComputePSOHandle, PsoComputeType::NumComputePsoTypes> m_psoCompute;
@@ -119,6 +119,10 @@ private:
     PhxEngine::RHI::TextureHandle m_depthBuffer;
 
     DirectX::XMFLOAT2 m_canvasSize;
+
+
+    static constexpr uint32_t kCascadeShadowMapRes = 1024;
+    static constexpr PhxEngine::RHI::FormatType kCascadeShadowMapFormat = PhxEngine::RHI::FormatType::D16;
 
     // -- Scene Env Propes ---
     static constexpr uint32_t kEnvmapCount = 16;
@@ -143,13 +147,15 @@ private:
     {
         RB_LightEntities,
         RB_Matrices,
-        NumRB
+        NumResourceBuffers
     };
-    std::array<PhxEngine::RHI::BufferHandle, NumRB> m_resourceBuffers;
+    std::array<PhxEngine::RHI::BufferHandle, NumResourceBuffers> m_resourceBuffers;
 
     std::array<PhxEngine::RHI::RenderPassHandle, NumRenderPassTypes> m_renderPasses;
 
     entt::entity m_frameSun;
+
+    std::unique_ptr<PhxEngine::Graphics::CascadeShadowMap> m_cascadeShadowMaps;
 };
 
 

@@ -299,6 +299,7 @@ void PhxEngine::LayeredApplication::Run()
 		}
 
 		// Calculate step time based on last frame
+		IGraphicsDevice::Ptr->WaitForIdle();
 	}
 }
 

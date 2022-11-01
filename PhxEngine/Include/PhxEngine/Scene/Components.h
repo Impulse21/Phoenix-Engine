@@ -7,6 +7,7 @@
 #include <PhxEngine/Core/RefPtr.h>
 #include <PhxEngine/Core/Helpers.h>
 #include <PhxEngine/Scene/Assets.h>
+#include <PhxEngine/Core/Primitives.h>
 
 // Required for Operators - Move to CPP please
 using namespace DirectX;
@@ -59,6 +60,24 @@ namespace PhxEngine::Scene
 		}
 
 		inline bool IsDirty() const { return this->Flags & kDirty; }
+
+		void RotateRollPitchYaw(const XMFLOAT3& value)
+		{
+			SetDirty();
+
+			// This needs to be handled a bit differently
+			XMVECTOR quat = XMLoadFloat4(&this->LocalRotation);
+			XMVECTOR x = XMQuaternionRotationRollPitchYaw(value.x, 0, 0);
+			XMVECTOR y = XMQuaternionRotationRollPitchYaw(0, value.y, 0);
+			XMVECTOR z = XMQuaternionRotationRollPitchYaw(0, 0, value.z);
+
+			quat = XMQuaternionMultiply(x, quat);
+			quat = XMQuaternionMultiply(quat, y);
+			quat = XMQuaternionMultiply(z, quat);
+			quat = XMQuaternionNormalize(quat);
+
+			XMStoreFloat4(&this->LocalRotation, quat);
+		}
 
 		DirectX::XMFLOAT3 GetPosition() const
 		{
@@ -178,7 +197,7 @@ namespace PhxEngine::Scene
 		float Width = 0.0f;
 		float Height = 0.0f;
 		float ZNear = 0.1f;
-		float ZFar = 1000.0f;
+		float ZFar = 5000.0f;
 		float FoV = 1.0f; // Radians
 
 		DirectX::XMFLOAT3 Eye = { 0.0f, 0.0f, 0.0f };
@@ -192,6 +211,11 @@ namespace PhxEngine::Scene
 		DirectX::XMFLOAT4X4 ViewInv;
 		DirectX::XMFLOAT4X4 ProjectionInv;
 		DirectX::XMFLOAT4X4 ViewProjectionInv;
+
+		Core::Frustum ProjectionFrustum;
+		Core::Frustum ViewProjectionFrustum;
+
+		inline DirectX::XMMATRIX GetInvViewProjMatrix() const { return DirectX::XMLoadFloat4x4(&this->ViewProjectionInv); }
 
 		inline void SetDirty(bool value = true)
 		{
@@ -231,31 +255,42 @@ namespace PhxEngine::Scene
 
 		inline void UpdateCamera()
 		{
+#if false
+			auto e = DirectX::XMVectorSet(this->Eye.x, this->Eye.y, -this->Eye.z, 1.0f);
+			auto viewMatrix = DirectX::XMMatrixLookToLH(
+				e,
+				// DirectX::XMLoadFloat3(&this->Forward),
+				DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f),
+				DirectX::XMLoadFloat3(&this->Up));
+#else
 			auto viewMatrix = DirectX::XMMatrixLookToRH(
 				DirectX::XMLoadFloat3(&this->Eye),
 				DirectX::XMLoadFloat3(&this->Forward),
 				DirectX::XMLoadFloat3(&this->Up));
-
+#endif
 			// auto viewMatrix = this->ConstructViewMatrixLH();
 
 			DirectX::XMStoreFloat4x4(&this->View, viewMatrix);
 			DirectX::XMStoreFloat4x4(&this->ViewInv, DirectX::XMMatrixInverse(nullptr, viewMatrix));
 
-			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, 1.7f, this->ZNear, this->ZFar);
-			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, 1.7f, this->ZNear, this->ZFar);
 			float aspectRatio = this->Width / this->Height;
 
 			// Note the farPlane is passed in as near, this is to support reverseZ
 			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, aspectRatio, this->ZFar, this->ZNear);
+			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(1.04719758, 1904.00 / 984.00, 5000.00, 0.1);
+			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, 1.7f, this->ZFar, this->ZNear);
 
 			DirectX::XMStoreFloat4x4(&this->Projection, projectionMatrix);
 			DirectX::XMStoreFloat4x4(&this->ProjectionInv, DirectX::XMMatrixInverse(nullptr, projectionMatrix));
 
 			auto viewProjectionMatrix = viewMatrix * projectionMatrix;
-
 			DirectX::XMStoreFloat4x4(&this->ViewProjection, viewProjectionMatrix);
 
-			DirectX::XMStoreFloat4x4(&this->ViewProjectionInv, DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix));
+			auto viewProjectionInv = DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix);
+			DirectX::XMStoreFloat4x4(&this->ViewProjectionInv, viewProjectionInv);
+
+			this->ProjectionFrustum = Core::Frustum(projectionMatrix, true);
+			this->ViewProjectionFrustum = Core::Frustum(viewProjectionMatrix, true);
 		}
 	};
 
@@ -278,10 +313,16 @@ namespace PhxEngine::Scene
 			kLightTypeCount
 		} Type = kOmniLight;
 
-		DirectX::XMFLOAT3 Direction;
 		DirectX::XMFLOAT4 Colour = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-		float Intensity = 1.0f;
+		// helper data
+		DirectX::XMFLOAT3 Direction;
+		DirectX::XMFLOAT3 Position;
+		DirectX::XMFLOAT4 Rotation;
+		DirectX::XMFLOAT3 Scale;
+
+		// end Helper data
+		float Intensity = 10.0f;
 		float Range = 10.0f;
 		float FoV = DirectX::XM_PIDIV4;
 		float OuterConeAngle = DirectX::XM_PIDIV4;
@@ -325,7 +366,7 @@ namespace PhxEngine::Scene
 	{
 		DirectX::XMFLOAT3 ZenithColour = { 0.39, 0.57, 1.0 };
 		DirectX::XMFLOAT3 HorizonColour = { 0.0f, 0.0f, 0.0f };
-		DirectX::XMFLOAT3 AmbientColour = { 0.2, 0.2, 0.2 };
+		DirectX::XMFLOAT3 AmbientColour = { 0.0, 0.0, 0.0 };
 
 	};
 
