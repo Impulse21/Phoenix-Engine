@@ -1,4 +1,5 @@
-#include "DeferredSceneRenderer.h"
+#include "C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Build/PhxEngine/CMakeFiles/PhxEngine.dir/Debug/cmake_pch.hxx"
+#include "DeferredRenderer.h"
 
 #include <PhxEngine/App/Application.h>
 #include <PhxEngine/Graphics/RHI/PhxRHI.h>
@@ -11,7 +12,7 @@
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
 using namespace PhxEngine::Scene;
-
+using namespace PhxEngine::Renderer;
 using namespace PhxEngine::RHI;
 
 namespace
@@ -1177,7 +1178,7 @@ void DeferredRenderer::CreatePSOs()
         });
 }
 
-void DeferredRenderer::Update(PhxEngine::Scene::Scene& scene)
+void DeferredRenderer::OnUpdate(PhxEngine::Scene::Scene& scene)
 {
     this->RunLightUpdateSystem(scene);
     this->RunProbeUpdateSystem(scene);

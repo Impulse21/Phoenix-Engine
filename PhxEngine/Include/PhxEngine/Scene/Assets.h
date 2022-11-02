@@ -4,7 +4,7 @@
 
 #include <PhxEngine/Core/RefPtr.h>
 #include <PhxEngine/Graphics/RHI/PhxRHI.h>
-#include <PhxEngine/Renderer/ResourceManager.h>
+#include <PhxEngine/Renderer/Renderer.h>
 #include <Shaders/ShaderInteropStructures.h>
 
 // It would be good to hide these details somehow.
@@ -126,14 +126,8 @@ namespace PhxEngine::Scene::Assets
 		void SetBlendMode(PhxEngine::Renderer::BlendMode blendMode);
 		PhxEngine::Renderer::BlendMode GetBlendMode();
 #endif
-	public:
-		Renderer::MaterialHandle GetRenderHandle();
-
 	protected:
 		void CreateRenderResourceIfEmpty() override;
-
-	private:
-		Renderer::MaterialHandle m_renderMaterial;
 	};
 
 	class Mesh : public Asset

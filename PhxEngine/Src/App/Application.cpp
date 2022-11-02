@@ -216,9 +216,6 @@ PhxEngine::LayeredApplication::LayeredApplication(ApplicationSpecification const
 	this->m_window->SetResizeable(false);
 	this->m_window->SetVSync(this->m_spec.VSync);
 
-	this->m_window->SetEventCallback([this](Event& e) {this->OnEvent(e); });
-
-	PhxEngine::Renderer::Initialize();
 
 	// TODO: Create swapchain in Window
 	RHI::SwapChainDesc swapchainDesc = {};
@@ -236,6 +233,10 @@ PhxEngine::LayeredApplication::LayeredApplication(ApplicationSpecification const
 	Graphics::ShaderStore::Ptr = this->m_shaderStore.get();
 	Graphics::ShaderFactory factory(IGraphicsDevice::Ptr, "shaders/", "PhxEngine/Shaders/");
 	this->m_shaderStore->PreloadShaders(factory);
+
+	this->m_window->SetEventCallback([this](Event& e) {this->OnEvent(e); });
+
+	PhxEngine::Renderer::Initialize();
 
 	this->m_composeCommandList = IGraphicsDevice::Ptr->CreateCommandList();
 
