@@ -3,10 +3,16 @@
 #include <DirectXMath.h>
 #include <PhxEngine/Core/Span.h>
 #include <PhxEngine/Core/Primitives.h>
+#include <PhxEngine/Graphics/RHI/PhxRHI.h>
+
+namespace PhxEngine::Scene
+{
+	struct CameraComponent;
+	class Scene;
+}
 
 namespace PhxEngine::Renderer
 {
-
 	struct RenderCam
 	{
 		DirectX::XMMATRIX ViewProjection;
@@ -39,13 +45,31 @@ namespace PhxEngine::Renderer
 		cameras[5] = RenderCam(position, DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), nearZ, farZ, DirectX::XM_PIDIV2); // -z
 	}
 
-	class Renderer
+	// -- Enums ---
+	enum class BlendMode
+	{
+		Opaque = 0,
+		Alpha,
+		Count
+	};
+
+	class IRenderer
 	{
 	public:
 		// Global pointer set by intializer
-		inline static Renderer* Ptr = nullptr;
+		inline static IRenderer* Ptr = nullptr;
 
 	public:
-		virtual ~Renderer() = default;
+		virtual ~IRenderer() = default;
+
+		virtual void Initialize() = 0;
+		virtual void Finialize() = 0;
+		virtual void OnUpdate(Scene::Scene& scene) = 0;
+		virtual void RenderScene(Scene::CameraComponent const& camera, Scene::Scene& scene) = 0;
+
+		virtual RHI::TextureHandle& GetFinalColourBuffer() = 0;
+
+		virtual void OnWindowResize(DirectX::XMFLOAT2 const& size) = 0;
+		virtual void OnReloadShaders() = 0;
 	};
 }

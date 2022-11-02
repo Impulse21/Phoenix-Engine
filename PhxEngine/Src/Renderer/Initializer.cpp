@@ -3,30 +3,24 @@
 
 #include "PhxEngine/Graphics/RHI/PhxRHI.h"
 
-#include "Dx12/Dx12Renderer.h"
-#include "Dx12/Dx12ResourceManager.h"
+#include "DeferredRenderer.h"
 
 using namespace PhxEngine::RHI;
 
 void PhxEngine::Renderer::Initialize()
 {
 	// Create Graphics Core
-	ResourceManager::Ptr = new Dx12ResourceManager();
-	Renderer::Ptr = new Dx12Renderer();
+	IRenderer::Ptr = new DeferredRenderer();
+	IRenderer::Ptr->Initialize();
 
 }
 
 void PhxEngine::Renderer::Finalize()
 {
-	if (Renderer::Ptr)
+	if (IRenderer::Ptr)
 	{
-		delete Renderer::Ptr;
-		Renderer::Ptr = nullptr;
-	};
-
-	if (ResourceManager::Ptr)
-	{
-		delete ResourceManager::Ptr;
-		ResourceManager::Ptr = nullptr;
+		IRenderer::Ptr->Finialize();
+		delete IRenderer::Ptr;
+		IRenderer::Ptr = nullptr;
 	};
 }

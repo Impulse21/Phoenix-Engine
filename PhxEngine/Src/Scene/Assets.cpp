@@ -1,7 +1,6 @@
 #include "C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Build/PhxEngine/CMakeFiles/PhxEngine.dir/Debug/cmake_pch.hxx"
 #include <PhxEngine/Scene/Assets.h>
 
-#include <PhxEngine/Renderer/ResourceManager.h>
 #include <PhxEngine/Graphics/RHI/PhxRHI.h>
 #include <PhxEngine/Core/Helpers.h>
 
@@ -329,10 +328,6 @@ std::shared_ptr<Assets::Texture> StandardMaterial::GetNormalMapTexture()
 #endif
 void StandardMaterial::CreateRenderResourceIfEmpty()
 {
-	if (!this->m_renderMaterial.IsValid())
-	{
-		this->m_renderMaterial = Renderer::ResourceManager::Ptr->CreateMaterial();
-	}
 }
 
 Assets::Texture::Texture()
