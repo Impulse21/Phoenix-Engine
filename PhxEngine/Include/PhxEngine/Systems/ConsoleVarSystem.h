@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PhxEngine/Core/StringHash.h"
+#include "PhxEngine/App/Layer.h"
 
 // Credit for this code goes to: https://vkguide.dev/docs/extra-chapter/cvar_system/
 // What a great little tutorial
@@ -19,6 +20,8 @@ namespace PhxEngine
 	};
 
 	struct ConsoleVarParameter;
+
+
 	class ConsoleVarSystem
 	{
 	public:
@@ -77,6 +80,16 @@ namespace PhxEngine
 
 		const char* Get();
 		void Set(std::string&& val);
+	};
+
+	class ConsoleVarAppLayer : public AppLayer
+	{
+	public:
+		ConsoleVarAppLayer()
+			: AppLayer("Console Var Layer")
+		{};
+
+		void OnRenderImGui() override { ConsoleVarSystem::GetInstance()->DrawImguiEditor(); }
 	};
 }
 
