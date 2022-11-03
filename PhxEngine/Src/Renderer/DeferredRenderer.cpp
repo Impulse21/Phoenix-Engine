@@ -8,6 +8,7 @@
 #include <PhxEngine/Core/Math.h>
 #include <Shaders/ShaderInterop.h>
 #include <PhxEngine/Renderer/Renderer.h>
+#include <PhxEngine/Systems/ConsoleVarSystem.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
@@ -76,6 +77,8 @@ namespace
         };
     }
 }
+
+static AutoConsoleVar_Int sTestInt("Renderer", "Testing_INT", 1);
 
 void DeferredRenderer::FreeResources()
 {

@@ -12,6 +12,8 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "PhxEngine/Systems/ConsoleVarSystem.h"
+
 using namespace PhxEngine;
 using namespace PhxEngine::Scene;
 
@@ -478,6 +480,13 @@ void EditorLayer::OnDetach()
 void EditorLayer::OnRenderImGui()
 {
     this->BeginDockspace();
+
+    static bool sConsoleWindowOpen = false;
+    ImGui::Begin("Console Variables", &sConsoleWindowOpen);
+
+    ConsoleVarSystem::GetInstance()->DrawImguiEditor();
+
+    ImGui::End();
 
     this->m_sceneExplorerPanel.OnRenderImGui();
 
