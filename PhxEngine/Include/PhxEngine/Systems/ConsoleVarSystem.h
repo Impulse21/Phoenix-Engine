@@ -37,7 +37,7 @@ namespace PhxEngine
 		virtual const char* GetStringConsoleVar(Core::StringHash hash) = 0;
 		virtual void SetStringConsoleVar(Core::StringHash hash, const char* value) = 0;
 
-		virtual void DrawImguiEditor() =0;
+		virtual void DrawImguiEditor() = 0;
 
 	public:
 		virtual ConsoleVarParameter* CreateFloatConsoleVar(const char* name, const char* description, double defaultValue, double currentValue) = 0;
