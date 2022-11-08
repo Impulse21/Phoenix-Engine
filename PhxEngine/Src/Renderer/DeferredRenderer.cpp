@@ -705,6 +705,25 @@ void DeferredRenderer::RunLightUpdateSystem(PhxEngine::Scene::Scene& scene)
     }
 }
 
+void PhxEngine::Renderer::DeferredRenderer::RunMeshUpdateSystem(PhxEngine::Scene::Scene& scene)
+{
+
+    auto view = scene.GetAllEntitiesWith<MeshRenderComponent>();
+    for (auto e : view)
+    {
+        auto [meshRenderComponent] = view.get(e);
+        meshRenderComponent.RenderBucketMask = MeshRenderComponent::RenderType::RenderType_Opaque;
+        for (auto& surface : meshRenderComponent.Mesh->Surfaces)
+        {
+            if (surface.Material->BlendMode == BlendMode::Alpha)
+            {
+                meshRenderComponent.RenderBucketMask = MeshRenderComponent::RenderType::RenderType_Transparent;
+                break;
+            }
+        }
+    }
+}
+
 void DeferredRenderer::PrepareFrameRenderData(
     RHI::CommandListHandle commandList,
     CameraComponent const& mainCamera,
@@ -1097,6 +1116,20 @@ void DeferredRenderer::CreatePSOs()
             .DsvFormat = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_depthBuffer).Format }
         });
 
+    this->m_pso[PSO_GBufferPass_DoubleSided] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
+        {
+            .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_GBufferPass),
+            .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_GBufferPass),
+            .DepthStencilRenderState = {.DepthFunc = ComparisonFunc::Greater },
+            .RasterRenderState = { .CullMode = RasterCullMode::None },
+            .RtvFormats = {
+                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.AlbedoTexture).Format,
+                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.NormalTexture).Format,
+                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.SurfaceTexture).Format,
+                IGraphicsDevice::Ptr->GetTextureDesc(this->m_gBuffer.SpecularTexture).Format,
+            },
+            .DsvFormat = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_depthBuffer).Format }
+        });
     this->m_pso[PSO_Sky] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
         {
             .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_Sky),
@@ -1185,6 +1218,7 @@ void DeferredRenderer::OnUpdate(PhxEngine::Scene::Scene& scene)
 {
     this->RunLightUpdateSystem(scene);
     this->RunProbeUpdateSystem(scene);
+    this->RunMeshUpdateSystem(scene);
 }
 
 void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene)

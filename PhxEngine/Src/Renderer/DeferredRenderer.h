@@ -19,6 +19,7 @@ namespace PhxEngine::Renderer
         enum PsoType
         {
             PSO_GBufferPass = 0,
+            PSO_GBufferPass_DoubleSided,
             PSO_FullScreenQuad,
             PSO_DeferredLightingPass,
             PSO_Sky,
@@ -98,6 +99,7 @@ namespace PhxEngine::Renderer
     private:
         void RunProbeUpdateSystem(PhxEngine::Scene::Scene& scene);
         void RunLightUpdateSystem(PhxEngine::Scene::Scene& scene);
+        void RunMeshUpdateSystem(PhxEngine::Scene::Scene& scene);
 
     private:
         PhxEngine::RHI::CommandListHandle m_commandList;
