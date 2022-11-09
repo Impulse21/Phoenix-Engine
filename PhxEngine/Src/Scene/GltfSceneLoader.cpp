@@ -736,9 +736,13 @@ void GltfSceneLoader::LoadMeshData(
 					break;
 
 				case cgltf_attribute_type_texcoord:
-					assert(cgltfAttribute.data->type == cgltf_type_vec2);
-					assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
-					cgltfTexCoordsAccessor = cgltfAttribute.data;
+					// Conly handle file UV set 0
+					if (std::strcmp(cgltfAttribute.name, "TEXCOORD_0") == 0)
+					{
+						assert(cgltfAttribute.data->type == cgltf_type_vec2);
+						assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
+						cgltfTexCoordsAccessor = cgltfAttribute.data;
+					}
 					break;
 				}
 			}

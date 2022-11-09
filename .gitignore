@@ -26,3 +26,6 @@ build
 /Assets/Models/CameraTestScene/_textures
 =======
 /Output/Bin
+/PhxEngine-Tools/.vs
+/PhxEngine-Tools/SceneConverter/bin/Debug/netcoreapp3.1
+/PhxEngine-Tools/SceneConverter/obj
