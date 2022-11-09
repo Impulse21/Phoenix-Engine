@@ -447,10 +447,13 @@ void EditorLayer::OnAttach()
 
     std::unique_ptr<ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
     
-    // sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", cmd, *this->m_scene);
-    // sceneLoader->LoadScene("Assets\\Models\\EnvMapTest\\EnvMapTest.gltf", cmd, *this->m_scene);
-    // sceneLoader->LoadScene("Assets\\Models\\BRDFTests\\MetalRoughSpheresNoTextures.gltf", cmd, *this->m_scene);
-    sceneLoader->LoadScene("Assets\\Models\\\ShadowTest\\ShadowTestScene.gltf", cmd, *this->m_scene);
+    // bool result = sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", cmd, *this->m_scene);
+    // bool result = sceneLoader->LoadScene("Assets\\Models\\EnvMapTest\\EnvMapTest.gltf", cmd, *this->m_scene);
+    // bool result = sceneLoader->LoadScene("Assets\\Models\\BRDFTests\\MetalRoughSpheresNoTextures.gltf", cmd, *this->m_scene);
+    // bool result = sceneLoader->LoadScene("Assets\\Models\\ShadowTest\\ShadowTestScene.gltf", cmd, *this->m_scene);
+    // bool result = sceneLoader->LoadScene("Assets\\Models\\Sponza\\Sponza.gltf", cmd, *this->m_scene);
+    bool result = sceneLoader->LoadScene("Assets\\Models\\Sponza_Intel\\Main\\NewSponza_Main_glTF_002.gltf", cmd, *this->m_scene);
+    assert(result);
 #endif
 
     entt::entity worldEntity = this->m_scene->CreateEntity("World Environment Component");

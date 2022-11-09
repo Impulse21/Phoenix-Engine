@@ -280,7 +280,7 @@ bool GltfSceneLoader::LoadScene(
 	std::vector<uint8_t> blob;
 	if (!Helpers::FileRead(fileName, blob))
 	{
-		return cgltf_result_file_not_found;
+		return false;
 	}
 
 	cgltf_data* objects = nullptr;
@@ -383,14 +383,17 @@ void GltfSceneLoader::LoadNode(
 		{
 		case cgltf_light_type_directional:
 			lightComponent.Type = LightComponent::kDirectionalLight;
+			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 9.0f;
 			break;
 
 		case cgltf_light_type_point:
 			lightComponent.Type = LightComponent::kOmniLight;
+			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 420.0f;
 			break;
 
 		case cgltf_light_type_spot:
 			lightComponent.Type = LightComponent::kSpotLight;
+			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 420.0f;
 			break;
 
 		case cgltf_light_type_invalid:
@@ -405,7 +408,6 @@ void GltfSceneLoader::LoadNode(
 			sizeof(float) * 3);
 
 		lightComponent.Range = gltfNode.light->range > 0 ? (float)gltfNode.light->range : std::numeric_limits<float>().max();
-		lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 420.0f;
 		lightComponent.InnerConeAngle = (float)gltfNode.light->spot_inner_cone_angle;
 		lightComponent.OuterConeAngle = (float)gltfNode.light->spot_outer_cone_angle;
 
@@ -734,9 +736,12 @@ void GltfSceneLoader::LoadMeshData(
 					break;
 
 				case cgltf_attribute_type_texcoord:
-					assert(cgltfAttribute.data->type == cgltf_type_vec2);
-					assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
-					cgltfTexCoordsAccessor = cgltfAttribute.data;
+					if (std::strcmp(cgltfAttribute.name, "TEXCOORD_0") == 0)
+					{
+						assert(cgltfAttribute.data->type == cgltf_type_vec2);
+						assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
+						cgltfTexCoordsAccessor = cgltfAttribute.data;
+					}
 					break;
 				}
 			}

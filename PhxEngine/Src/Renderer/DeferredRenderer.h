@@ -96,6 +96,7 @@ namespace PhxEngine::Renderer
 
         // Scene Update Systems -> Should be coupled with Scene?
     private:
+        void RunMeshUpdateSystem(PhxEngine::Scene::Scene& scene);
         void RunProbeUpdateSystem(PhxEngine::Scene::Scene& scene);
         void RunLightUpdateSystem(PhxEngine::Scene::Scene& scene);
 
