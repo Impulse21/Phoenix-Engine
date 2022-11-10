@@ -554,6 +554,24 @@ void DeferredRenderer::DrawMeshes(PhxEngine::Scene::Scene& scene, RHI::CommandLi
     }
 }
 
+void PhxEngine::Renderer::DeferredRenderer::RunMeshUpdateSystem(PhxEngine::Scene::Scene& scene)
+{
+    auto view = scene.GetAllEntitiesWith<MeshRenderComponent>();
+    for (auto entity : view)
+    {
+        auto& meshRenderComponent = view.get<MeshRenderComponent>(entity);
+        meshRenderComponent.RenderBucketMask = MeshRenderComponent::RenderType::RenderType_Opaque;
+        for (auto& surface : meshRenderComponent.Mesh->Surfaces)
+        {
+            if (surface.Material->BlendMode == BlendMode::Alpha)
+            {
+                meshRenderComponent.RenderBucketMask = MeshRenderComponent::RenderType::RenderType_Transparent;
+                break;
+            }
+        }
+    }
+}
+
 void DeferredRenderer::RunProbeUpdateSystem(PhxEngine::Scene::Scene& scene)
 {
     if (!this->m_envMapArray.IsValid())
@@ -1183,6 +1201,7 @@ void DeferredRenderer::CreatePSOs()
 
 void DeferredRenderer::OnUpdate(PhxEngine::Scene::Scene& scene)
 {
+    this->RunMeshUpdateSystem(scene);
     this->RunLightUpdateSystem(scene);
     this->RunProbeUpdateSystem(scene);
 }
