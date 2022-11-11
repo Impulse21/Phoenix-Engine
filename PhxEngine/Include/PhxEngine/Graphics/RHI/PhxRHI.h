@@ -932,6 +932,101 @@ namespace PhxEngine::RHI
 
     using BufferHandle = Core::Handle<Buffer>;
 
+    struct RTAccelerationStructureDesc
+    {
+        enum FLAGS
+        {
+            kEmpty = 0,
+            kAllowUpdate = 1 << 0,
+            kAllowCompaction = 1 << 1,
+            kPreferFastTrace = 1 << 2,
+            kPreferFastBuild = 1 << 3,
+            kMinimizeMemory = 1 << 4,
+        };
+        uint32_t Flags = kEmpty;
+
+        enum class Type
+        {
+            BottomLevel = 0,
+            TopLevel
+        } Type;
+
+        struct BottomLevelDesc
+        {
+            struct Geometry
+            {
+                enum FLAGS
+                {
+                    kEmpty = 0,
+                    kOpaque = 1 << 0,
+                    kNoduplicateAnyHitInvocation = 1 << 1,
+                    kUseTransform = 1 << 2,
+                };
+                uint32_t Flags = kEmpty;
+
+                enum class Type
+                {
+                    Triangles,
+                    ProceduralAABB,
+                } Type = Type::Triangles;
+
+                struct TrianglesDesc
+                {
+                    BufferHandle VertedBuffer;
+                    BufferHandle IndexBuffer;
+                    uint32_t IndexCount = 0;
+                    uint64_t IndexOffset = 0;
+                    uint32_t VertexCount = 0;
+                    uint64_t VertexByteOffset = 0;
+                    uint32_t VertexStride = 0;
+                    RHI::FormatType IndexFormat = RHI::FormatType::R32_UINT;
+                    RHI::FormatType VertexFormat = RHI::FormatType::RGB32_FLOAT;
+                    BufferHandle Transform3x4Buffer;
+                    uint32_t Transform3x4BufferOffset = 0;
+                } Triangles;
+
+                struct ProceduralAABBsDesc
+                {
+                    BufferHandle AABBBuffer;
+                    uint32_t Offset = 0;
+                    uint32_t Count = 0;
+                    uint32_t Stride = 0;
+                } AABBs;
+            };
+
+            std::vector<Geometry> Geometries;
+        } ButtomLevel;
+
+        struct TopLevelDesc
+        {
+            struct Instance
+            {
+                enum FLAGS
+                {
+                    kEmpty = 0,
+                    kTriangleCullDisable = 1 << 0,
+                    kTriangleFrontCounterClockwise = 1 << 1,
+                    kForceOpaque = 1 << 2,
+                    kForceNowOpaque = 1 << 3,
+                };
+
+                float Transform[3][4];
+                uint32_t InstanceId : 24;
+                uint32_t InstanceMask : 8;
+                uint32_t InstanceContributionToHitGroupIndex : 24;
+                uint32_t Flags : 8;
+                BufferHandle BottomLevel = {};
+            };
+
+            BufferHandle InstanceBuffer = {};
+            uint32_t Offset = 0;
+            uint32_t Count = 0;
+        } TopLevel;
+    };
+
+    struct RTAccelerationStructure;
+    using RTAccelerationStructureHandle = Core::Handle<RTAccelerationStructure>;
+
     struct RenderPassAttachment
     {
         enum class Type
@@ -1308,6 +1403,9 @@ namespace PhxEngine::RHI
         virtual void* GetBufferMappedData(BufferHandle handle) = 0;
         virtual uint32_t GetBufferMappedDataSizeInBytes(BufferHandle handle) = 0;
         virtual void DeleteBuffer(BufferHandle handle) = 0;
+
+        // -- Ray Tracing ---
+        virtual RTAccelerationStructureHandle CreateRTAccelerationStructure(RTAccelerationStructureDesc const& desc) = 0;
 
         // -- Query Stuff ---
         virtual TimerQueryHandle CreateTimerQuery() = 0;

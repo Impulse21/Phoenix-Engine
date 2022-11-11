@@ -206,6 +206,37 @@ void Assets::Mesh::CreateRenderData(RHI::CommandListHandle commandList)
 		commandList->WriteBuffer(this->VertexGpuBuffer, gpuBufferData, 0);
 		commandList->TransitionBarrier(this->VertexGpuBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource);
 	}
+
+
+	// Create RT BLAS object
+	if (RHI::IGraphicsDevice::Ptr->CheckCapability(RHI::DeviceCapability::DXR))
+	{
+		this->BlasState = BLASState::Rebuild;
+
+		// Create Blast
+		RHI::RTAccelerationStructureDesc rtDesc = {};
+		rtDesc.Type = RHI::RTAccelerationStructureDesc::Type::BottomLevel;
+		rtDesc.Flags == RHI::RTAccelerationStructureDesc::kPreferFastTrace;
+
+		for (int i = 0; i < this->Surfaces.size(); i++)
+		{
+			auto& surface = this->Surfaces[i];
+
+			auto& geometry = rtDesc.ButtomLevel.Geometries.emplace_back();
+			geometry.Type = RHI::RTAccelerationStructureDesc::BottomLevelDesc::Geometry::Type::Triangles;
+			geometry.Triangles.VertedBuffer = this->VertexGpuBuffer;
+			geometry.Triangles.VertexStride = sizeof(DirectX::XMFLOAT4);
+			geometry.Triangles.VertexByteOffset = surface.VertexOffsetInMesh * geometry.Triangles.VertexStride;
+			geometry.Triangles.VertexCount = (uint32_t)this->VertexPositions.size();
+			geometry.Triangles.VertexFormat = RHI::FormatType::RGB32_FLOAT;
+
+			geometry.Triangles.IndexBuffer = this->IndexGpuBuffer;
+			geometry.Triangles.IndexCount = surface.NumIndices;
+			geometry.Triangles.IndexOffset = surface.IndexOffsetInMesh;
+		}
+
+		this->Blas = RHI::IGraphicsDevice::Ptr->CreateRTAccelerationStructure(rtDesc);
+	}
 }
 
 StandardMaterial::StandardMaterial()

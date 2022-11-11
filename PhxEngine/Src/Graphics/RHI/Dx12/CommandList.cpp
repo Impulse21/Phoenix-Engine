@@ -814,7 +814,7 @@ void CommandList::BindDynamicDescriptorTable(size_t rootParameterIndex, std::vec
         this->m_graphicsDevice.GetD3D12Device2()->CopyDescriptorsSimple(
             1,
             descriptorTable.GetCpuHandle(i),
-            textureImpl->SrvAllocation.Allocation.GetCpuHandle(),
+            textureImpl->Srv.Allocation.GetCpuHandle(),
             D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     }
 

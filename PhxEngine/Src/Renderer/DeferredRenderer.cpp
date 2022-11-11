@@ -569,6 +569,8 @@ void PhxEngine::Renderer::DeferredRenderer::RunMeshUpdateSystem(PhxEngine::Scene
                 break;
             }
         }
+
+        // Update TLAS Structures
     }
 }
 
