@@ -78,7 +78,7 @@ namespace
     }
 }
 
-static AutoConsoleVar_Int sTestInt("Renderer", "Testing_INT", 1);
+static AutoConsoleVar_Int sCVRTShadows("Renderer.Shadows.RT", "RT_SHADOWS", 1, ConsoleVarFlags::EditCheckbox);
 
 void DeferredRenderer::FreeResources()
 {
@@ -103,11 +103,20 @@ void DeferredRenderer::FreeResources()
             IGraphicsDevice::Ptr->DeleteBuffer(this->m_materialUploadBuffers[i]);
         }
     }
+
     for (int i = 0; i < this->m_geometryUploadBuffers.size(); i++)
     {
         if (this->m_geometryUploadBuffers[i].IsValid())
         {
             IGraphicsDevice::Ptr->DeleteBuffer(this->m_geometryUploadBuffers[i]);
+        }
+    }
+
+    for (int i = 0; i < this->m_tlasUploadBuffers.size(); i++)
+    {
+        if (this->m_tlasUploadBuffers[i].IsValid())
+        {
+            IGraphicsDevice::Ptr->DeleteBuffer(this->m_tlasUploadBuffers[i]);
         }
     }
 
@@ -127,6 +136,12 @@ void DeferredRenderer::FreeResources()
     if (this->m_envMapArray.IsValid())
     {
         IGraphicsDevice::Ptr->DeleteTexture(this->m_envMapArray);
+    }
+
+    if (this->m_tlas.IsValid())
+    {
+        IGraphicsDevice::Ptr->DeleteBuffer(IGraphicsDevice::Ptr->GetRTAccelerationStructureDesc(this->m_tlas).TopLevel.InstanceBuffer);
+        IGraphicsDevice::Ptr->DeleteRtAccelerationStructure(this->m_tlas);
     }
 }
 
@@ -205,6 +220,7 @@ void DeferredRenderer::Initialize()
 
     this->m_materialUploadBuffers.resize(IGraphicsDevice::Ptr->GetMaxInflightFrames());
     this->m_geometryUploadBuffers.resize(IGraphicsDevice::Ptr->GetMaxInflightFrames());
+    this->m_tlasUploadBuffers.resize(IGraphicsDevice::Ptr->GetMaxInflightFrames());
 }
 
 void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
@@ -351,6 +367,78 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
                 },
             }
         });
+}
+
+void DeferredRenderer::UpdateRaytracingAccelerationStructures(PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList)
+{
+    if (!this->m_tlas.IsValid())
+    {
+        return;
+    }
+
+    BufferHandle instanceBuffer = IGraphicsDevice::Ptr->GetRTAccelerationStructureDesc(this->m_tlas).TopLevel.InstanceBuffer;
+    {
+        auto _ = commandList->BeginScopedMarker("Copy TLAS buffer");
+
+        BufferHandle currentTlasUploadBuffer = this->m_tlasUploadBuffers[IGraphicsDevice::Ptr->GetFrameIndex()];
+        commandList->CopyBuffer(
+            instanceBuffer,
+            0,
+            currentTlasUploadBuffer,
+            0,
+            IGraphicsDevice::Ptr->GetBufferDesc(instanceBuffer).SizeInBytes);
+
+    }
+
+	{
+        auto _ = commandList->BeginScopedMarker("BLAS update");
+		auto view = scene.GetAllEntitiesWith<MeshRenderComponent>();
+		for (auto e : view)
+		{
+			auto& meshComponent = view.get<MeshRenderComponent>(e);
+
+			if (meshComponent.Mesh && meshComponent.Mesh->Blas.IsValid())
+			{
+				switch (meshComponent.Mesh->BlasState)
+				{
+				case Assets::Mesh::BLASState::Rebuild:
+					commandList->RTBuildAccelerationStructure(meshComponent.Mesh->Blas);
+					break;
+				case Assets::Mesh::BLASState::Refit:
+					assert(false);
+					break;
+				case Assets::Mesh::BLASState::Complete:
+				default:
+					break;
+				}
+
+				meshComponent.Mesh->BlasState = Assets::Mesh::BLASState::Complete;
+			}
+		}
+	}
+
+    // TLAS:
+    {
+        auto _ = commandList->BeginScopedMarker("TLAS Update");
+        BufferDesc instanceBufferDesc = IGraphicsDevice::Ptr->GetBufferDesc(instanceBuffer);
+
+        GpuBarrier preBarriers[] =
+        {
+            GpuBarrier::CreateBuffer(instanceBuffer, ResourceStates::CopyDest, ResourceStates::AccelStructBuildInput),
+        };
+
+        commandList->TransitionBarriers(Core::Span(preBarriers, ARRAYSIZE(preBarriers)));
+
+        commandList->RTBuildAccelerationStructure(this->m_tlas);
+
+        GpuBarrier postBarriers[] =
+        { 
+            GpuBarrier::CreateBuffer(instanceBuffer, ResourceStates::AccelStructBuildInput, ResourceStates::CopyDest),
+            GpuBarrier::CreateMemory()
+        };
+
+        commandList->TransitionBarriers(Core::Span(postBarriers, ARRAYSIZE(postBarriers)));
+    }
 }
 
 void DeferredRenderer::RefreshEnvProbes(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList)
@@ -899,6 +987,99 @@ void DeferredRenderer::PrepareFrameRenderData(
         }
 	}
 
+    // Set up TLAS Data
+    if (IGraphicsDevice::Ptr->CheckCapability(DeviceCapability::RayTracing))
+    {
+        BufferDesc desc;
+        desc.StrideInBytes = IGraphicsDevice::Ptr->GetRTTopLevelAccelerationStructureInstanceSize();
+        desc.SizeInBytes = desc.StrideInBytes * view.size() * 2; // *2 to grow fast
+        desc.Usage = Usage::Upload;
+
+        if (!this->m_tlasUploadBuffers.front().IsValid() || IGraphicsDevice::Ptr->GetBufferDesc(this->m_tlasUploadBuffers.front()).SizeInBytes < desc.SizeInBytes)
+        {
+            for (int i = 0; i < this->m_tlasUploadBuffers.size(); i++)
+            {
+                if (this->m_tlasUploadBuffers[i].IsValid())
+                {
+                    IGraphicsDevice::Ptr->DeleteBuffer(this->m_tlasUploadBuffers[i]);
+                }
+                this->m_tlasUploadBuffers[i] = IGraphicsDevice::Ptr->CreateBuffer(desc);
+            }
+        }
+
+        BufferHandle currentTlasUploadBuffer = this->m_tlasUploadBuffers[IGraphicsDevice::Ptr->GetFrameIndex()];
+        void* pTlasUploadBufferData = (Shader::Geometry*)IGraphicsDevice::Ptr->GetBufferMappedData(currentGeoUploadBuffer);
+
+        if (pTlasUploadBufferData)
+        {
+            // Ensure we remove any old data
+            std::memset(pTlasUploadBufferData, 0, IGraphicsDevice::Ptr->GetBufferDesc(currentTlasUploadBuffer).SizeInBytes);
+
+            int instanceId = 0;
+            auto viewMeshTranslation = scene.GetAllEntitiesWith<MeshRenderComponent, TransformComponent>();
+            for (auto e : view)
+            {
+                auto [meshComponent, transformComponent] = viewMeshTranslation.get<MeshRenderComponent, TransformComponent>(e);
+
+                RTAccelerationStructureDesc::TopLevelDesc::Instance instance = {};
+                for (int i = 0; i < ARRAYSIZE(instance.Transform); ++i)
+                {
+                    for (int j = 0; j < ARRAYSIZE(instance.Transform[i]); ++j)
+                    {
+                        instance.Transform[i][j] = transformComponent.WorldMatrix.m[j][i];
+                    }
+                }
+
+                instance.InstanceId = instanceId++;
+                instance.InstanceMask = 0;
+                instance.BottomLevel = meshComponent.Mesh->Blas;
+                instance.InstanceContributionToHitGroupIndex = 0;
+                instance.Flags = 0;
+
+                // TODO: Disable cull for Two-sided materials.
+                /*
+                if (meshComponent)
+                {
+                    instance.flags |= RaytracingAccelerationStructureDesc::TopLevel::Instance::FLAG_TRIANGLE_CULL_DISABLE;
+                }
+                if (XMVectorGetX(XMMatrixDeterminant(W)) > 0)
+                {
+                    // There is a mismatch between object space winding and BLAS winding:
+                    //	https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_raytracing_instance_flags
+                    // instance.flags |= RaytracingAccelerationStructureDesc::TopLevel::Instance::FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
+                }
+                */
+
+                void* dest = (void*)((size_t)pTlasUploadBufferData + (size_t)instance.InstanceId * IGraphicsDevice::Ptr->GetRTTopLevelAccelerationStructureInstanceSize());
+                IGraphicsDevice::Ptr->WriteRTTopLevelAccelerationStructureInstance(instance, dest);
+            }
+        }
+
+
+        if (!this->m_tlas.IsValid() || IGraphicsDevice::Ptr->GetRTAccelerationStructureDesc(this->m_tlas).TopLevel.Count < view.size())
+        {
+            RHI::RTAccelerationStructureDesc desc;
+            desc.Flags = RHI::RTAccelerationStructureDesc::kPreferFastBuild;
+            desc.Type = RHI::RTAccelerationStructureDesc::Type::TopLevel;
+            desc.TopLevel.Count = (uint32_t)view.size() * 2; // *2 to grow fast
+
+            RHI::BufferDesc bufferDesc = {};
+            bufferDesc.MiscFlags = BufferMiscFlags::Structured; // TODO: RayTracing
+            bufferDesc.StrideInBytes = IGraphicsDevice::Ptr->GetRTTopLevelAccelerationStructureInstanceSize();
+            bufferDesc.SizeInBytes = bufferDesc.StrideInBytes * desc.TopLevel.Count;
+            bufferDesc.DebugName = "TLAS::InstanceBuffer";
+
+            if (this->m_tlas.IsValid())
+            {
+                IGraphicsDevice::Ptr->DeleteBuffer(IGraphicsDevice::Ptr->GetRTAccelerationStructureDesc(this->m_tlas).TopLevel.InstanceBuffer);
+            }
+
+            desc.TopLevel.InstanceBuffer = IGraphicsDevice::Ptr->CreateBuffer(bufferDesc);
+
+            IGraphicsDevice::Ptr->DeleteRtAccelerationStructure(this->m_tlas);
+            this->m_tlas = IGraphicsDevice::Ptr->CreateRTAccelerationStructure(desc);
+        }
+    }
 
 
     GPUAllocation lightBufferAlloc =
@@ -1013,6 +1194,7 @@ void DeferredRenderer::PrepareFrameRenderData(
 	frameData.SceneData.MaterialBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_materialGpuBuffer, RHI::SubresouceType::SRV);
 	frameData.SceneData.LightEntityIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_LightEntities], RHI::SubresouceType::SRV);
 	frameData.SceneData.MatricesIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_Matrices], RHI::SubresouceType::SRV);
+    frameData.SceneData.RT_TlasIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_Matrices], RHI::SubresouceType::SRV);
 
     frameData.SceneData.AtmosphereData = {};
     auto worldEnvView = scene.GetRegistry().view<WorldEnvironmentComponent>();
@@ -1161,6 +1343,16 @@ void DeferredRenderer::CreatePSOs()
             .RtvFormats = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_deferredLightBuffer).Format },
         });
 
+    this->m_pso[PSO_DeferredLightingPass_RTShadows] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
+        {
+            .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_DeferredLighting),
+            .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_DeferredLighting_RTShadows),
+            .DepthStencilRenderState = {
+                .DepthTestEnable = false,
+            },
+            .RtvFormats = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_deferredLightBuffer).Format },
+        });
+
     assert(IGraphicsDevice::Ptr->CheckCapability(DeviceCapability::RT_VT_ArrayIndex_Without_GS));
     this->m_pso[PSO_EnvCapture_SkyProcedural] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
         {
@@ -1214,6 +1406,16 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 
     this->PrepareFrameRenderData(this->m_commandList, camera, scene);
 
+    if (IGraphicsDevice::Ptr->CheckCapability(DeviceCapability::RayTracing))
+    {
+        this->UpdateRaytracingAccelerationStructures(scene, this->m_commandList);
+    }
+
+    // Preframe Transisions
+    {
+        this->m_commandList->BeginScopedMarker("PrePass Transisions");
+
+    }
     this->RefreshEnvProbes(camera, scene, this->m_commandList);
 
     Shader::Camera cameraData = {};
@@ -1304,7 +1506,14 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
         auto scrope = this->m_commandList->BeginScopedMarker("Opaque Deferred Lighting Pass");
 
         this->m_commandList->BeginRenderPass(this->m_renderPasses[RenderPass_DeferredLighting]);
-        this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_DeferredLightingPass]);
+        if ((bool)sCVRTShadows.Get())
+        {
+            this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_DeferredLightingPass_RTShadows]);
+        }
+        else
+        {
+            this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_DeferredLightingPass]);
+        }
 
         this->m_commandList->BindConstantBuffer(RootParameters_DeferredLightingFulLQuad::FrameCB, this->m_constantBuffers[CB_Frame]);
         this->m_commandList->BindDynamicConstantBuffer(RootParameters_DeferredLightingFulLQuad::CameraCB, cameraData);

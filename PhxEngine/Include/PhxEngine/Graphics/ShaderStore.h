@@ -21,6 +21,7 @@ namespace PhxEngine::Graphics
 		PS_GBufferPass,
 		PS_FullscreenQuad,
 		PS_DeferredLighting,
+		PS_DeferredLighting_RTShadows,
 		PS_ToneMapping,
 		PS_SkyProcedural,
 		PS_EnvMap_SkyProcedural,

@@ -929,8 +929,10 @@ namespace PhxEngine::RHI
     };
 
     struct Buffer;
-
     using BufferHandle = Core::Handle<Buffer>;
+
+    struct RTAccelerationStructure;
+    using RTAccelerationStructureHandle = Core::Handle<RTAccelerationStructure>;
 
     struct RTAccelerationStructureDesc
     {
@@ -972,7 +974,7 @@ namespace PhxEngine::RHI
 
                 struct TrianglesDesc
                 {
-                    BufferHandle VertedBuffer;
+                    BufferHandle VertexBuffer;
                     BufferHandle IndexBuffer;
                     uint32_t IndexCount = 0;
                     uint64_t IndexOffset = 0;
@@ -1015,7 +1017,7 @@ namespace PhxEngine::RHI
                 uint32_t InstanceMask : 8;
                 uint32_t InstanceContributionToHitGroupIndex : 24;
                 uint32_t Flags : 8;
-                BufferHandle BottomLevel = {};
+                RTAccelerationStructureHandle BottomLevel = {};
             };
 
             BufferHandle InstanceBuffer = {};
@@ -1024,8 +1026,6 @@ namespace PhxEngine::RHI
         } TopLevel;
     };
 
-    struct RTAccelerationStructure;
-    using RTAccelerationStructureHandle = Core::Handle<RTAccelerationStructure>;
 
     struct RenderPassAttachment
     {
@@ -1185,6 +1185,11 @@ namespace PhxEngine::RHI
         virtual void Open() = 0;
         virtual void Close() = 0;
 
+        // -- Ray Trace stuff       ---
+        virtual void RTBuildAccelerationStructure(RHI::RTAccelerationStructureHandle accelStructure) = 0;
+
+        // -- Ray Trace Stuff END   ---
+
         virtual ScopedMarker BeginScopedMarker(std::string name) = 0;
         virtual void BeginMarker(std::string name) = 0;
         virtual void EndMarker() = 0;
@@ -1342,7 +1347,7 @@ namespace PhxEngine::RHI
     {
         None = 0,
         RT_VT_ArrayIndex_Without_GS     = 1 << 0,
-        DXR                             = 1 << 1,
+        RayTracing                             = 1 << 1,
         RenderPass                      = 1 << 2,
         RayQuery                        = 1 << 3,
         VariableRateShading             = 1 << 4,
@@ -1406,6 +1411,10 @@ namespace PhxEngine::RHI
 
         // -- Ray Tracing ---
         virtual RTAccelerationStructureHandle CreateRTAccelerationStructure(RTAccelerationStructureDesc const& desc) = 0;
+        virtual size_t GetRTTopLevelAccelerationStructureInstanceSize() = 0;
+        virtual void WriteRTTopLevelAccelerationStructureInstance(RTAccelerationStructureDesc::TopLevelDesc::Instance const& instance, void* dest) = 0;
+        virtual const RTAccelerationStructureDesc& GetRTAccelerationStructureDesc(RTAccelerationStructureHandle handle) = 0;
+        virtual void DeleteRtAccelerationStructure(RTAccelerationStructureHandle handle) = 0;
 
         // -- Query Stuff ---
         virtual TimerQueryHandle CreateTimerQuery() = 0;

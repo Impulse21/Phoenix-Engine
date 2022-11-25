@@ -6,6 +6,7 @@
 #include "ShaderInterop.h"
 
 #else 
+
 #include "Include/Shaders/ShaderInterop.h"
 #endif 
 
@@ -71,8 +72,12 @@ namespace Shader
 
 		// -- 16 byte boundary ----
 		Atmosphere AtmosphereData;
+
+		// -- 16 byte boundary ----
+
 		uint EnvMapArray;
 		uint EnvMap_NumMips;
+		uint RT_TlasIndex;
 	};
 
 	// -- Common Structurs ---

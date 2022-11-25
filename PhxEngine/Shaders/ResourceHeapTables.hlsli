@@ -33,12 +33,13 @@
 // RootFlags( CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED | SAMPLER_HEAP_DIRECTLY_INDEXED )
 #ifndef USE_RESOURCE_HEAP
 
-Texture2D					ResourceHeap_Texture2D[]			: register(t0, RESOURCE_HEAP_TEX2D_SPACE);
-Texture2D					ResourceHeap_Texture2DArray[]		: register(t0, RESOURCE_HEAP_TEX2D_ARRAY_SPACE);
-TextureCube					ResourceHeap_TextureCube[]			: register(t0, RESOURCE_HEAP_TEX_CUBE_SPACE);
-TextureCubeArray			ResourceHeap_TextureCubeArray[]		: register(t0, RESOURCE_HEAP_TEX_CUBE_ARRAY_SPACE);
-ByteAddressBuffer			ResourceHeap_Buffer[]				: register(t0, RESOURCE_HEAP_BUFFER_SPACE);
-RWTexture2DArray<float4>	ResourceHeap_RWTexture2DArray[]		: register(t0, RESOURCE_HEAP_RWTEX2DARRAY_SPACE);
+Texture2D						ResourceHeap_Texture2D[]			: register(t0, RESOURCE_HEAP_TEX2D_SPACE);
+Texture2D						ResourceHeap_Texture2DArray[]		: register(t0, RESOURCE_HEAP_TEX2D_ARRAY_SPACE);
+TextureCube						ResourceHeap_TextureCube[]			: register(t0, RESOURCE_HEAP_TEX_CUBE_SPACE);
+TextureCubeArray				ResourceHeap_TextureCubeArray[]		: register(t0, RESOURCE_HEAP_TEX_CUBE_ARRAY_SPACE);
+ByteAddressBuffer				ResourceHeap_Buffer[]				: register(t0, RESOURCE_HEAP_BUFFER_SPACE);
+RWTexture2DArray<float4>		ResourceHeap_RWTexture2DArray[]		: register(t0, RESOURCE_HEAP_RWTEX2DARRAY_SPACE);
+RaytracingAccelerationStructure ResourceHeap_RTAccelStructure[]		: register(t0, RESOURCE_HEAP_RT_ACCEL_STRUCTURE);
 #endif
 
 inline Texture2D ResourceHeap_GetTexture(uint index)
@@ -101,6 +102,15 @@ inline ByteAddressBuffer ResourceHeap_GetBuffer(uint index)
 	return ResourceDescriptorHeap[index];
 #else
 	return ResourceHeap_Buffer[index];
+#endif
+}
+
+inline RaytracingAccelerationStructure ResourceHeap_GetRTAccelStructure(uint index)
+{
+#ifdef USE_RESOURCE_HEAP
+	return ResourceDescriptorHeap[index];
+#else
+	return ResourceHeap_RTAccelStructure[index];
 #endif
 }
 #endif

@@ -58,6 +58,10 @@ namespace PhxEngine::RHI::Dx12
 		void Open() override;
 		void Close() override;
 
+		// -- RayTrace Stuff		---]
+		void RTBuildAccelerationStructure(RHI::RTAccelerationStructureHandle accelStructure) override;
+
+		// -- RayTrace Stuff END	---
 		ScopedMarker BeginScopedMarker(std::string name) override;
 		void BeginMarker(std::string name) override;
 		void EndMarker() override;
@@ -145,6 +149,7 @@ namespace PhxEngine::RHI::Dx12
 		DynamicSuballocator* m_activeDynamicSubAllocator;
 
 		RHI::RenderPassHandle m_activeRenderTarget;
+		std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> m_buildGeometries;
 	};
 }
 

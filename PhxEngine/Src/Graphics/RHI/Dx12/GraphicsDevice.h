@@ -337,6 +337,10 @@ namespace PhxEngine::RHI::Dx12
         void DeleteBuffer(BufferHandle handle) override;
 
         RTAccelerationStructureHandle CreateRTAccelerationStructure(RTAccelerationStructureDesc const& desc) override;
+        const RTAccelerationStructureDesc& GetRTAccelerationStructureDesc(RTAccelerationStructureHandle handle) override;
+        void WriteRTTopLevelAccelerationStructureInstance(RTAccelerationStructureDesc::TopLevelDesc::Instance const& instance, void* dest) override;
+        size_t GetRTTopLevelAccelerationStructureInstanceSize() override;
+        void DeleteRtAccelerationStructure(RTAccelerationStructureHandle handle) override;
 
         int CreateSubresource(TextureHandle texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip = 0, uint32_t mipCount = ~0u) override;
         int CreateSubresource(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size = ~0u) override;
@@ -435,6 +439,7 @@ namespace PhxEngine::RHI::Dx12
         Core::Pool<Dx12Texture, Texture>& GetTexturePool() { return this->m_texturePool; };
         Core::Pool<Dx12Buffer, Buffer>& GetBufferPool() { return this->m_bufferPool; };
         Core::Pool<Dx12RenderPass, RenderPass>& GetRenderPassPool() { return this->m_renderPassPool; };
+        Core::Pool<Dx12RTAccelerationStructure, RTAccelerationStructure>& GetRTAccelerationStructurePool() { return this->m_rtAccelerationStructurePool; }
 
     private:
         size_t GetCurrentBackBufferIndex() const;

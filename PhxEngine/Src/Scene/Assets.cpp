@@ -209,7 +209,7 @@ void Assets::Mesh::CreateRenderData(RHI::CommandListHandle commandList)
 
 
 	// Create RT BLAS object
-	if (RHI::IGraphicsDevice::Ptr->CheckCapability(RHI::DeviceCapability::DXR))
+	if (RHI::IGraphicsDevice::Ptr->CheckCapability(RHI::DeviceCapability::RayTracing))
 	{
 		this->BlasState = BLASState::Rebuild;
 
@@ -224,7 +224,7 @@ void Assets::Mesh::CreateRenderData(RHI::CommandListHandle commandList)
 
 			auto& geometry = rtDesc.ButtomLevel.Geometries.emplace_back();
 			geometry.Type = RHI::RTAccelerationStructureDesc::BottomLevelDesc::Geometry::Type::Triangles;
-			geometry.Triangles.VertedBuffer = this->VertexGpuBuffer;
+			geometry.Triangles.VertexBuffer = this->VertexGpuBuffer;
 			geometry.Triangles.VertexStride = sizeof(DirectX::XMFLOAT4);
 			geometry.Triangles.VertexByteOffset = surface.VertexOffsetInMesh * geometry.Triangles.VertexStride;
 			geometry.Triangles.VertexCount = (uint32_t)this->VertexPositions.size();
