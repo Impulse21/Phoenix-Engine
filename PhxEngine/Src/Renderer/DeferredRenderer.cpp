@@ -1039,7 +1039,7 @@ void DeferredRenderer::PrepareFrameRenderData(
                 }
 
                 instance.InstanceId = instanceId++;
-                instance.InstanceMask = 0;
+                instance.InstanceMask = 0xff;
                 instance.BottomLevel = meshComponent.Mesh->Blas;
                 instance.InstanceContributionToHitGroupIndex = 0;
                 instance.Flags = 0;
@@ -1416,7 +1416,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 
     if (IGraphicsDevice::Ptr->CheckCapability(DeviceCapability::RayTracing))
     {
-        // this->UpdateRaytracingAccelerationStructures(scene, this->m_commandList);
+        this->UpdateRaytracingAccelerationStructures(scene, this->m_commandList);
     }
 
     // Preframe Transisions

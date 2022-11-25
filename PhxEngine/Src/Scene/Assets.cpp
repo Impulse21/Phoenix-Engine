@@ -225,7 +225,7 @@ void Assets::Mesh::CreateRenderData(RHI::CommandListHandle commandList)
 			auto& geometry = rtDesc.ButtomLevel.Geometries.emplace_back();
 			geometry.Type = RHI::RTAccelerationStructureDesc::BottomLevelDesc::Geometry::Type::Triangles;
 			geometry.Triangles.VertexBuffer = this->VertexGpuBuffer;
-			geometry.Triangles.VertexStride = sizeof(DirectX::XMFLOAT4);
+			geometry.Triangles.VertexStride = sizeof(DirectX::XMFLOAT3);
 			geometry.Triangles.VertexByteOffset = surface.VertexOffsetInMesh * geometry.Triangles.VertexStride;
 			geometry.Triangles.VertexCount = (uint32_t)this->VertexPositions.size();
 			geometry.Triangles.VertexFormat = RHI::FormatType::RGB32_FLOAT;

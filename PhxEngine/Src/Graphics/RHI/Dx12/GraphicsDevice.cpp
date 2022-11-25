@@ -1474,6 +1474,8 @@ RTAccelerationStructureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRTAcce
 				dx12GeometryDesc.AABBs.AABBCount = g.AABBs.Stride;
 			}
 		}
+		rtAccelerationStructureImpl.Dx12Desc.pGeometryDescs = rtAccelerationStructureImpl.Geometries.data();
+		rtAccelerationStructureImpl.Dx12Desc.NumDescs = (UINT)rtAccelerationStructureImpl.Geometries.size();
 		break;
 	}
 	case RTAccelerationStructureDesc::Type::TopLevel:
