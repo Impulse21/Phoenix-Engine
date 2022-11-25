@@ -78,7 +78,7 @@ namespace
     }
 }
 
-static AutoConsoleVar_Int sCVRTShadows("Renderer.Shadows.RT", "RT_SHADOWS", 1, ConsoleVarFlags::EditCheckbox);
+static AutoConsoleVar_Int sCVarRTShadows("Renderer.Shadows.RT", "RT_SHADOWS", 1, ConsoleVarFlags::EditCheckbox);
 
 void DeferredRenderer::FreeResources()
 {
@@ -381,6 +381,8 @@ void DeferredRenderer::UpdateRaytracingAccelerationStructures(PhxEngine::Scene::
         auto _ = commandList->BeginScopedMarker("Copy TLAS buffer");
 
         BufferHandle currentTlasUploadBuffer = this->m_tlasUploadBuffers[IGraphicsDevice::Ptr->GetFrameIndex()];
+
+        commandList->TransitionBarrier(instanceBuffer, ResourceStates::Common, ResourceStates::CopyDest);
         commandList->CopyBuffer(
             instanceBuffer,
             0,
@@ -433,7 +435,7 @@ void DeferredRenderer::UpdateRaytracingAccelerationStructures(PhxEngine::Scene::
 
         GpuBarrier postBarriers[] =
         { 
-            GpuBarrier::CreateBuffer(instanceBuffer, ResourceStates::AccelStructBuildInput, ResourceStates::CopyDest),
+            GpuBarrier::CreateBuffer(instanceBuffer, ResourceStates::AccelStructBuildInput, ResourceStates::Common),
             GpuBarrier::CreateMemory()
         };
 
@@ -797,6 +799,12 @@ void DeferredRenderer::RunLightUpdateSystem(PhxEngine::Scene::Scene& scene)
     {
         auto [lightComponent, transformComponent] = view.get<LightComponent, TransformComponent>(e);
 
+        // TODO:REMOVE
+        if (lightComponent.Type == LightComponent::kDirectionalLight)
+        {
+            lightComponent.SetEnabled(true);
+        }
+
         XMMATRIX worldMatrix = XMLoadFloat4x4(&transformComponent.WorldMatrix);
         XMVECTOR vScale;
         XMVECTOR vRot;
@@ -1008,7 +1016,7 @@ void DeferredRenderer::PrepareFrameRenderData(
         }
 
         BufferHandle currentTlasUploadBuffer = this->m_tlasUploadBuffers[IGraphicsDevice::Ptr->GetFrameIndex()];
-        void* pTlasUploadBufferData = (Shader::Geometry*)IGraphicsDevice::Ptr->GetBufferMappedData(currentGeoUploadBuffer);
+        void* pTlasUploadBufferData = (Shader::Geometry*)IGraphicsDevice::Ptr->GetBufferMappedData(currentTlasUploadBuffer);
 
         if (pTlasUploadBufferData)
         {
@@ -1194,7 +1202,7 @@ void DeferredRenderer::PrepareFrameRenderData(
 	frameData.SceneData.MaterialBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_materialGpuBuffer, RHI::SubresouceType::SRV);
 	frameData.SceneData.LightEntityIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_LightEntities], RHI::SubresouceType::SRV);
 	frameData.SceneData.MatricesIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_Matrices], RHI::SubresouceType::SRV);
-    frameData.SceneData.RT_TlasIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_Matrices], RHI::SubresouceType::SRV);
+    frameData.SceneData.RT_TlasIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_tlas);
 
     frameData.SceneData.AtmosphereData = {};
     auto worldEnvView = scene.GetRegistry().view<WorldEnvironmentComponent>();
@@ -1408,7 +1416,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 
     if (IGraphicsDevice::Ptr->CheckCapability(DeviceCapability::RayTracing))
     {
-        this->UpdateRaytracingAccelerationStructures(scene, this->m_commandList);
+        // this->UpdateRaytracingAccelerationStructures(scene, this->m_commandList);
     }
 
     // Preframe Transisions
@@ -1506,7 +1514,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
         auto scrope = this->m_commandList->BeginScopedMarker("Opaque Deferred Lighting Pass");
 
         this->m_commandList->BeginRenderPass(this->m_renderPasses[RenderPass_DeferredLighting]);
-        if ((bool)sCVRTShadows.Get())
+        if ((bool)sCVarRTShadows.Get())
         {
             this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_DeferredLightingPass_RTShadows]);
         }

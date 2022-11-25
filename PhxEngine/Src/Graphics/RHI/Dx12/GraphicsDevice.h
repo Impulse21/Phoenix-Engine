@@ -341,6 +341,7 @@ namespace PhxEngine::RHI::Dx12
         void WriteRTTopLevelAccelerationStructureInstance(RTAccelerationStructureDesc::TopLevelDesc::Instance const& instance, void* dest) override;
         size_t GetRTTopLevelAccelerationStructureInstanceSize() override;
         void DeleteRtAccelerationStructure(RTAccelerationStructureHandle handle) override;
+        DescriptorIndex GetDescriptorIndex(RTAccelerationStructureHandle handle) override;
 
         int CreateSubresource(TextureHandle texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip = 0, uint32_t mipCount = ~0u) override;
         int CreateSubresource(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size = ~0u) override;
@@ -382,12 +383,13 @@ namespace PhxEngine::RHI::Dx12
         const IGpuAdapter* GetGpuAdapter() const override { return this->m_gpuAdapter.get(); };
 
         void BeginCapture(std::wstring const& filename) override;
-        void EndCapture() override;
+        void EndCapture(bool discard = false) override;
 
         size_t GetFrameIndex() override { return this->GetCurrentBackBufferIndex(); };
         size_t GetMaxInflightFrames() override { return this->m_swapChain.Desc.BufferCount; }
 
         bool CheckCapability(DeviceCapability deviceCapability);
+        bool IsDevicedRemoved() override;
 
         // -- Dx12 Specific functions ---
     public:

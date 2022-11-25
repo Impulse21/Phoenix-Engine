@@ -55,47 +55,49 @@ inline void CalculateDirectionalShadow(ShaderLight light, float3 surfacePosition
 
 inline void  CalculateShadowRT(ShaderLight light, float3 surfacePosition, uint tlasIndex, inout float shadow)
 {
-	RayDesc ray;
-	ray.Origin = surfacePosition;
-	ray.Direction = -light.GetDirection();
-	ray.TMin = 0;
-	ray.TMax = 1000;
-
-	RayQuery<RAY_FLAG_CULL_NON_OPAQUE |
-		RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES |
-		RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
-
-	rayQuery.TraceRayInline(
-		ResourceHeap_GetRTAccelStructure(tlasIndex),
-		RAY_FLAG_NONE, // OR'd with flags above
-		0xff,
-		ray);
-
-	rayQuery.Proceed();
-
-	// From Donut Engine
-	/*
-	while (rayQuery.Proceed())
+	if (tlasIndex >= 0)
 	{
-		if (rayQuery.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
+		RayDesc ray;
+		ray.Origin = surfacePosition;
+		ray.Direction = -light.GetDirection();
+		ray.TMin = 0.001;
+		ray.TMax = 1000;
+
+		RayQuery<RAY_FLAG_CULL_NON_OPAQUE |
+			RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES |
+			RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
+
+		rayQuery.TraceRayInline(
+			ResourceHeap_GetRTAccelStructure(tlasIndex),
+			RAY_FLAG_NONE, // OR'd with flags above
+			0xff,
+			ray);
+
+		rayQuery.Proceed();
+
+		// From Donut Engine
+		/*
+		while (rayQuery.Proceed())
 		{
-			if (considerTransparentMaterial(
-				rayQuery.CandidateInstanceID(),
-				rayQuery.CandidatePrimitiveIndex(),
-				rayQuery.CandidateGeometryIndex(),
-				rayQuery.CandidateTriangleBarycentrics()))
+			if (rayQuery.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
 			{
-				rayQuery.CommitNonOpaqueTriangleHit();
+				if (considerTransparentMaterial(
+					rayQuery.CandidateInstanceID(),
+					rayQuery.CandidatePrimitiveIndex(),
+					rayQuery.CandidateGeometryIndex(),
+					rayQuery.CandidateTriangleBarycentrics()))
+				{
+					rayQuery.CommitNonOpaqueTriangleHit();
+				}
 			}
 		}
-	}
-	*/
+		*/
 
-	if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
-	{
-		shadow = 0.0f;
+		if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
+		{
+			shadow = 0.0f;
+		}
 	}
-
 }
 #endif 
 #endif 

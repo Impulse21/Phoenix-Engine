@@ -1415,6 +1415,7 @@ namespace PhxEngine::RHI
         virtual void WriteRTTopLevelAccelerationStructureInstance(RTAccelerationStructureDesc::TopLevelDesc::Instance const& instance, void* dest) = 0;
         virtual const RTAccelerationStructureDesc& GetRTAccelerationStructureDesc(RTAccelerationStructureHandle handle) = 0;
         virtual void DeleteRtAccelerationStructure(RTAccelerationStructureHandle handle) = 0;
+        virtual DescriptorIndex GetDescriptorIndex(RTAccelerationStructureHandle handle) = 0;
 
         // -- Query Stuff ---
         virtual TimerQueryHandle CreateTimerQuery() = 0;
@@ -1460,12 +1461,14 @@ namespace PhxEngine::RHI
         virtual const IGpuAdapter* GetGpuAdapter() const = 0;
 
         virtual void BeginCapture(std::wstring const& filename) = 0;
-        virtual void EndCapture() = 0;
+        virtual void EndCapture(bool discard = false) = 0;
 
         virtual size_t GetFrameIndex() = 0;
         virtual size_t GetMaxInflightFrames() = 0;
 
         virtual bool CheckCapability(DeviceCapability deviceCapability) = 0;
+
+        virtual bool IsDevicedRemoved() = 0;
     };
 
     extern void ReportLiveObjects();

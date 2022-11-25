@@ -1612,12 +1612,30 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::DeleteRtAccelerationStructure(RTAccel
 					sTrackedResources.erase(texture->GetDesc().DebugName);
 				}
 #endif
+
+				if (impl->Srv.BindlessIndex != cInvalidDescriptorIndex)
+				{
+					this->m_bindlessResourceDescriptorTable->Free(impl->Srv.BindlessIndex);
+				}
+
 				this->m_rtAccelerationStructurePool.Release(handle);
 			}
 		}
 	};
 
 	this->m_deleteQueue.push_back(d);
+}
+
+DescriptorIndex PhxEngine::RHI::Dx12::GraphicsDevice::GetDescriptorIndex(RTAccelerationStructureHandle handle)
+{
+	const Dx12RTAccelerationStructure* impl = this->m_rtAccelerationStructurePool.Get(handle);
+
+	if (!impl)
+	{
+		return cInvalidDescriptorIndex;
+	}
+
+	return impl->Srv.BindlessIndex;
 }
 
 int PhxEngine::RHI::Dx12::GraphicsDevice::CreateSubresource(TextureHandle texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
@@ -1866,12 +1884,12 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::BeginCapture(std::wstring const& file
 #endif
 }
 
-void PhxEngine::RHI::Dx12::GraphicsDevice::EndCapture()
+void PhxEngine::RHI::Dx12::GraphicsDevice::EndCapture(bool discard)
 {
 #if ENABLE_PIX_CAPUTRE
 	if (this->m_pixCaptureModule)
 	{
-		PIXEndCapture(false);
+		PIXEndCapture(discard);
 	}
 #endif
 }
@@ -1879,6 +1897,12 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::EndCapture()
 bool PhxEngine::RHI::Dx12::GraphicsDevice::CheckCapability(DeviceCapability deviceCapability)
 {
 	return (this->m_capabilities & deviceCapability) == deviceCapability;
+}
+
+bool PhxEngine::RHI::Dx12::GraphicsDevice::IsDevicedRemoved()
+{
+	HRESULT hr =  this->GetD3D12Device5()->GetDeviceRemovedReason();
+	return FAILED(hr);
 }
 
 TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTarget(
@@ -2852,6 +2876,19 @@ Microsoft::WRL::ComPtr<IDXGIFactory6> PhxEngine::RHI::Dx12::GraphicsDevice::Crea
 
 		debugController->EnableDebugLayer();
 		flags = DXGI_CREATE_FACTORY_DEBUG;
+
+
+		Microsoft::WRL::ComPtr<ID3D12Debug3> debugController3;
+		if (SUCCEEDED(debugController->QueryInterface(IID_PPV_ARGS(&debugController3))))
+		{
+			debugController3->SetEnableGPUBasedValidation(false);
+		}
+
+		Microsoft::WRL::ComPtr<ID3D12Debug5> debugController5;
+		if (SUCCEEDED(debugController->QueryInterface(IID_PPV_ARGS(&debugController5))))
+		{
+			debugController5->SetEnableAutoName(true);
+		}
 	}
 	
 	Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
