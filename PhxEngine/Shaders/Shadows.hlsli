@@ -53,19 +53,17 @@ inline void CalculateDirectionalShadow(ShaderLight light, float3 surfacePosition
 
 #ifdef RT_SHADOWS
 
-inline void  CalculateShadowRT(ShaderLight light, float3 surfacePosition, uint tlasIndex, inout float shadow)
+inline void CalculateShadowRT(ShaderLight light, float3 surfacePosition, uint tlasIndex, inout float shadow)
 {
 	if (tlasIndex >= 0)
 	{
 		RayDesc ray;
 		ray.Origin = surfacePosition;
-		ray.Direction = -light.GetDirection();
+		ray.Direction = -normalize(light.GetDirection());
 		ray.TMin = 0.001;
 		ray.TMax = 1000;
 
-		RayQuery<RAY_FLAG_CULL_NON_OPAQUE |
-			RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES |
-			RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
+		RayQuery<RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> rayQuery;
 
 		rayQuery.TraceRayInline(
 			ResourceHeap_GetRTAccelStructure(tlasIndex),
@@ -74,6 +72,11 @@ inline void  CalculateShadowRT(ShaderLight light, float3 surfacePosition, uint t
 			ray);
 
 		rayQuery.Proceed();
+
+		if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
+		{
+			shadow = 0.0f;
+		}
 
 		// From Donut Engine
 		/*
@@ -93,10 +96,6 @@ inline void  CalculateShadowRT(ShaderLight light, float3 surfacePosition, uint t
 		}
 		*/
 
-		if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
-		{
-			shadow = 0.0f;
-		}
 	}
 }
 #endif 

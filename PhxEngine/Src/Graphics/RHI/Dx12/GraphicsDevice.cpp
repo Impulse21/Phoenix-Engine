@@ -1583,7 +1583,7 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::WriteRTTopLevelAccelerationStructureI
 	tmp.InstanceMask = instance.InstanceMask;
 	tmp.InstanceContributionToHitGroupIndex = instance.InstanceContributionToHitGroupIndex;
 	tmp.Flags = instance.Flags;
-
+	tmp.Flags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE;
 	std::memcpy(dest, &tmp, sizeof(D3D12_RAYTRACING_INSTANCE_DESC)); // memcpy whole structure into mapped pointer to avoid read from uncached memory
 }
 
