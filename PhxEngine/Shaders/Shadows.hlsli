@@ -53,13 +53,13 @@ inline void CalculateDirectionalShadow(ShaderLight light, float3 surfacePosition
 
 #ifdef RT_SHADOWS
 
-inline void CalculateShadowRT(ShaderLight light, float3 surfacePosition, uint tlasIndex, inout float shadow)
+inline void CalculateShadowRT(float3 lightDir, float3 surfacePosition, uint tlasIndex, inout float shadow)
 {
 	if (tlasIndex >= 0)
 	{
 		RayDesc ray;
 		ray.Origin = surfacePosition;
-		ray.Direction = -normalize(light.GetDirection());
+		ray.Direction = -lightDir;
 		ray.TMin = 0.001;
 		ray.TMax = 1000;
 

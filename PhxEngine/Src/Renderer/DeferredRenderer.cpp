@@ -799,12 +799,6 @@ void DeferredRenderer::RunLightUpdateSystem(PhxEngine::Scene::Scene& scene)
     {
         auto [lightComponent, transformComponent] = view.get<LightComponent, TransformComponent>(e);
 
-        // TODO:REMOVE
-        if (lightComponent.Type == LightComponent::kDirectionalLight)
-        {
-            lightComponent.SetEnabled(true);
-        }
-
         XMMATRIX worldMatrix = XMLoadFloat4x4(&transformComponent.WorldMatrix);
         XMVECTOR vScale;
         XMVECTOR vRot;

@@ -447,14 +447,28 @@ void EditorLayer::OnAttach()
 
     std::unique_ptr<ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
     
+    bool addDefaultLight = false;
     // bool result = sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", cmd, *this->m_scene);
     // bool result = sceneLoader->LoadScene("Assets\\Models\\EnvMapTest\\EnvMapTest.gltf", cmd, *this->m_scene);
     // bool result = sceneLoader->LoadScene("Assets\\Models\\BRDFTests\\MetalRoughSpheresNoTextures.gltf", cmd, *this->m_scene);
-    bool result = sceneLoader->LoadScene("Assets\\Models\\ShadowTest\\ShadowTestScene.gltf", cmd, *this->m_scene);
-    // bool result = sceneLoader->LoadScene("Assets\\Models\\Sponza\\Sponza.gltf", cmd, *this->m_scene);
-    // bool result = sceneLoader->LoadScene("Assets\\Models\\Sponza_Intel\\Main\\NewSponza_Main_glTF_002.gltf", cmd, *this->m_scene);
+    // bool result = sceneLoader->LoadScene("Assets\\Models\\ShadowTest\\ShadowTestScene.gltf", cmd, *this->m_scene);
+    // bool result = sceneLoader->LoadScene("Assets\\Models\\Sponza\\Sponza.gltf", cmd, *this->m_scene); addDefaultLight = true;
+    bool result = sceneLoader->LoadScene("Assets\\Models\\Sponza_Intel\\Main\\NewSponza_Main_glTF_002.gltf", cmd, *this->m_scene);
     assert(result);
 #endif
+
+    if (addDefaultLight)
+    {
+        Entity e = this->m_scene->CreateEntity("Default Sun");
+        auto& lightComponent = e.AddComponent<LightComponent>();
+        lightComponent.Type = LightComponent::kDirectionalLight;
+        lightComponent.Intensity = 9.0f;
+        lightComponent.SetEnabled(false);
+
+        auto& transform = e.GetComponent<TransformComponent>();
+        transform.RotateRollPitchYaw(XMFLOAT3(-0.785398163, 0, 0)); // 45 Degrees
+        transform.UpdateTransform();
+    }
 
     entt::entity worldEntity = this->m_scene->CreateEntity("World Environment Component");
     this->m_scene->GetRegistry().emplace<WorldEnvironmentComponent>(worldEntity);

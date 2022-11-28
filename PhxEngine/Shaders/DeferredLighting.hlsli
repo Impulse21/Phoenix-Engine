@@ -151,7 +151,26 @@ float4 main(PSInput input) : SV_TARGET
 		ShaderLight light = LoadLight(nLights);
 
 #ifdef RT_SHADOWS
-        CalculateShadowRT(light, surfacePosition, GetScene().RT_TlasIndex, shadow);
+        switch (light.GetType())
+        {
+        case ENTITY_TYPE_DIRECTIONALLIGHT:
+        {
+            CalculateShadowRT(normalize(light.GetDirection()), surfacePosition, GetScene().RT_TlasIndex, shadow);
+            break;
+        }
+        case ENTITY_TYPE_OMNILIGHT:
+        {
+            float3 lightDir = normalize(light.Position - surfacePosition);
+            CalculateShadowRT(lightDir, surfacePosition, GetScene().RT_TlasIndex, shadow);
+            break;
+        }
+        case ENTITY_TYPE_SPOTLIGHT:
+        default:
+        {
+            break;
+        }
+        }
+
 #else
         if (light.GetType() == ENTITY_TYPE_DIRECTIONALLIGHT)
         {

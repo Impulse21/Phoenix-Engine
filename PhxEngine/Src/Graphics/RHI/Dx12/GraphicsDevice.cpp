@@ -1599,13 +1599,14 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::DeleteRtAccelerationStructure(RTAccel
 		return;
 	}
 
+	Dx12RTAccelerationStructure* impl = this->m_rtAccelerationStructurePool.Get(handle);
+	this->DeleteBuffer(impl->SratchBuffer);
+
 	DeleteItem d =
 	{
 		this->m_frameCount,
 		[=]()
 		{
-			Dx12RTAccelerationStructure* impl = this->m_rtAccelerationStructurePool.Get(handle);
-
 			if (impl)
 			{
 #if TRACK_RESOURCES

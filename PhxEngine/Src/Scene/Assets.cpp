@@ -25,6 +25,7 @@ Assets::Mesh::~Mesh()
 {
 	RHI::IGraphicsDevice::Ptr->DeleteBuffer(this->IndexGpuBuffer);
 	RHI::IGraphicsDevice::Ptr->DeleteBuffer(this->VertexGpuBuffer);
+	RHI::IGraphicsDevice::Ptr->DeleteRtAccelerationStructure(this->Blas);
 }
 
 void Assets::Mesh::ReverseWinding()
@@ -126,6 +127,7 @@ void Assets::Mesh::CreateRenderData(RHI::CommandListHandle commandList)
 
 	// Construct the Vertex Buffer
 	// Set up the strides and offsets
+	RHI::BufferDesc vertexDesc = {};
 	if (!this->VertexGpuBuffer.IsValid())
 	{
 		RHI::BufferDesc vertexDesc = {};
@@ -207,7 +209,6 @@ void Assets::Mesh::CreateRenderData(RHI::CommandListHandle commandList)
 		commandList->TransitionBarrier(this->VertexGpuBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource);
 	}
 
-
 	// Create RT BLAS object
 	if (RHI::IGraphicsDevice::Ptr->CheckCapability(RHI::DeviceCapability::RayTracing))
 	{
@@ -226,7 +227,7 @@ void Assets::Mesh::CreateRenderData(RHI::CommandListHandle commandList)
 			geometry.Type = RHI::RTAccelerationStructureDesc::BottomLevelDesc::Geometry::Type::Triangles;
 			geometry.Triangles.VertexBuffer = this->VertexGpuBuffer;
 			geometry.Triangles.VertexStride = sizeof(DirectX::XMFLOAT3);
-			geometry.Triangles.VertexByteOffset = surface.VertexOffsetInMesh * geometry.Triangles.VertexStride;
+			geometry.Triangles.VertexByteOffset = 0;
 			geometry.Triangles.VertexCount = (uint32_t)this->VertexPositions.size();
 			geometry.Triangles.VertexFormat = RHI::FormatType::RGB32_FLOAT;
 
