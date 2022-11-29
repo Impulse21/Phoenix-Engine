@@ -1,63 +1,102 @@
 #ifndef __SHADOWS_HLSL__
 #define __SHADOWS_HLSL__
 
-#include "ShaderInteropStructures.h"
+#include "Include/Shaders/ShaderInterop.h"
 
 
-inline float3 sample_shadow(float2 uv, float cmp)
+inline void CalculateDirectionalShadow(ShaderLight light, float3 surfacePosition, inout float shadow)
 {
-	[branch]
-	if (GetFrame().texture_shadowatlas_index < 0)
-		return 0;
+	// [loop]
+	for (int cascade = 0; cascade < light.GetNumCascades(); cascade++)
+	{
+		[branch]
+		if (light.CascadeTextureIndex >= 0)
+		{
+			float4x4 shadowMatrix = LoadMatrix(light.GetIndices() + cascade);
+			float3 shadowPos = mul(float4(surfacePosition, 1.0f), shadowMatrix).xyz;
+			float3 shadowUV = ClipSpaceToUV(shadowPos);
+			const float3 cascadeEdgeFactor = saturate(saturate(abs(shadowPos)) - 0.8) * 5.0; // fade will be on edge and inwards 20%
+			const float cascadeFade = max(cascadeEdgeFactor.x, max(cascadeEdgeFactor.y, cascadeEdgeFactor.z));
 
-	Texture2D texture_shadowatlas = bindless_textures[GetFrame().texture_shadowatlas_index];
-	float3 shadow = texture_shadowatlas.SampleCmpLevelZero(sampler_cmp_depth, uv, cmp).r;
+			Texture2DArray cascadeTextureArray = ResourceHeap_GetTexture2DArray(light.CascadeTextureIndex);
+			const float shadowMain = cascadeTextureArray.SampleCmpLevelZero(
+				ShadowSampler,
+				float3(shadowUV.xy, cascade),
+				shadowPos.z).r;
 
-	return shadow;
+			// If we are on cascade edge threshold and not the last cascade, then fallback to a larger cascade:
+			[branch]
+			if (cascadeFade > 0 && cascade < light.GetNumCascades() - 1)
+			{
+				// Project into next shadow cascade (no need to divide by .w because ortho projection!):
+				cascade += 1;
+
+				shadowMatrix = LoadMatrix(light.GetIndices() + cascade);
+				shadowPos = mul(float4(surfacePosition, 1.0f), shadowMatrix).xyz;
+				shadowUV = ClipSpaceToUV(shadowPos);
+				const float shadowFallback = cascadeTextureArray.SampleCmpLevelZero(
+					ShadowSampler,
+					float3(shadowUV.xy, cascade),
+					shadowPos.z).r;
+
+				shadow *= lerp(shadowMain, shadowFallback, cascadeFade);
+			}
+			else
+			{
+				shadow *= shadowMain;
+			}
+			break;
+		}
+	}
 }
 
-// Shout out to Wicked Engine here again.
-// Convert texture coordinates on a cubemap face to cubemap sampling coordinates:
-// direction	: direction that is usable for cubemap sampling
-// returns float3 that has uv in .xy components, and face index in Z component
-//	https://stackoverflow.com/questions/53115467/how-to-implement-texturecube-using-6-sampler2d
-inline float3 CubemapToUV(in float3 r)
-{
-	float faceIndex = 0;
-	float3 absr = abs(r);
-	float3 uvw = 0;
-	if (absr.x > absr.y && absr.x > absr.z)
-	{
-		// x major
-		float negx = step(r.x, 0.0);
-		uvw = float3(r.zy, absr.x) * float3(lerp(-1.0, 1.0, negx), -1, 1);
-		faceIndex = negx;
-	}
-	else if (absr.y > absr.z)
-	{
-		// y major
-		float negy = step(r.y, 0.0);
-		uvw = float3(r.xz, absr.y) * float3(1.0, lerp(1.0, -1.0, negy), 1.0);
-		faceIndex = 2.0 + negy;
-	}
-	else
-	{
-		// z major
-		float negz = step(r.z, 0.0);
-		uvw = float3(r.xy, absr.z) * float3(lerp(1.0, -1.0, negz), -1, 1);
-		faceIndex = 4.0 + negz;
-	}
-	return float3((uvw.xy / uvw.z + 1) * 0.5, faceIndex);
-}
 
-inline float ShadowPointLight(ShaderLight light, float3 LUnnormalized)
+#ifdef RT_SHADOWS
+
+inline void CalculateShadowRT(float3 lightDir, float3 surfacePosition, uint tlasIndex, inout float shadow)
 {
-	const float remappedDistance = light.GetCubemapDepthRemapNear() + light.GetCubemapDepthRemapFar() / (max(max(abs(LUnnormalized.x), abs(LUnnormalized.y)), abs(LUnnormalized.z)) * 0.989); // little bias to avoid artifact
-	const float3 UVSlice = CubemapToUV(-LUnnormalized);
-	float2 shadowUV = UVSlice.xy;
-	shadow_border_shrink(light, shadowUV);
-	shadowUV.x += UVSlice.z;
-	shadowUV = mad(shadowUV, light.ShadowAtlasMulAdd.xy, light.ShadowAtlasMulAdd.zw);
-	return SampleShadow(shadowUV, remappedDistance);
+	if (tlasIndex >= 0)
+	{
+		RayDesc ray;
+		ray.Origin = surfacePosition;
+		ray.Direction = -lightDir;
+		ray.TMin = 0.001;
+		ray.TMax = 1000;
+
+		RayQuery<RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> rayQuery;
+
+		rayQuery.TraceRayInline(
+			ResourceHeap_GetRTAccelStructure(tlasIndex),
+			RAY_FLAG_NONE, // OR'd with flags above
+			0xff,
+			ray);
+
+		rayQuery.Proceed();
+
+		if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
+		{
+			shadow = 0.0f;
+		}
+
+		// From Donut Engine
+		/*
+		while (rayQuery.Proceed())
+		{
+			if (rayQuery.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
+			{
+				if (considerTransparentMaterial(
+					rayQuery.CandidateInstanceID(),
+					rayQuery.CandidatePrimitiveIndex(),
+					rayQuery.CandidateGeometryIndex(),
+					rayQuery.CandidateTriangleBarycentrics()))
+				{
+					rayQuery.CommitNonOpaqueTriangleHit();
+				}
+			}
+		}
+		*/
+
+	}
 }
+#endif 
 #endif 

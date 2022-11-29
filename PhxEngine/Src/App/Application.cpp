@@ -10,14 +10,14 @@
 
 #include "Graphics/ImGui/ImGuiRenderer.h"
 
-
 #include <imgui.h>
-
-#define ENABLE_FRAME_CAPTURES 0
 
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI;
+
+
+static AutoConsoleVar_Int sPixCapture("Debug.EnablePixCapture", "PixCapture", 0, ConsoleVarFlags::EditCheckbox);
 
 const char* GraphicsAPIToString(GraphicsAPI api)
 {
@@ -268,11 +268,13 @@ void PhxEngine::LayeredApplication::Run()
 		if (!this->m_isMinimized)
 		{
 			// start CPU timmers
-#if ENABLE_FRAME_CAPTURES
-			wchar_t wcsbuf[200];
-			swprintf(wcsbuf, 200, L"C:\\Users\\dipao\\OneDrive\\Documents\\Pix Captures\\PHXENGINE_CrashFrame_%d.wpix", (int)this->m_frameCount + 1);
-			IGraphicsDevice::Ptr->BeginCapture(std::wstring(wcsbuf));
-#endif
+			if ((bool)sPixCapture.Get())
+			{
+				wchar_t wcsbuf[200];
+				swprintf(wcsbuf, 200, L"C:\\Users\\dipao\\OneDrive\\Documents\\Pix Captures\\PhxEngine_Debug\\PHXENGINE_CrashFrame_%d.wpix", (int)this->m_frameCount + 1);
+				IGraphicsDevice::Ptr->BeginCapture(std::wstring(wcsbuf));
+			}
+
 			// Renderer begin frame
 			for (auto& layer : this->m_layerStack)
 			{
@@ -286,15 +288,21 @@ void PhxEngine::LayeredApplication::Run()
 			}
 
 			this->Render();
+
 			this->Compose();
 			
 			// Renderer End Frame
 
+			if ((bool)sPixCapture.Get())
+			{
+				// Only capture if the Device was removed
+				// bool isRemoved = IGraphicsDevice::Ptr->IsDevicedRemoved();
+				IGraphicsDevice::Ptr->EndCapture();
+			}
+
 			// Execute Renderer on seperate thread maybe?
 			// Finish Timers and 
-#if ENABLE_FRAME_CAPTURES
-			IGraphicsDevice::Ptr->EndCapture();
-#endif
+
 			RHI::IGraphicsDevice::Ptr->Present();
 			this->m_frameCount++;
 		}

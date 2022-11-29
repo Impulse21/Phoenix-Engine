@@ -252,6 +252,7 @@ PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
 	, m_texturePool(AlignTo(kResourcePoolSize / sizeof(Dx12Texture), sizeof(Dx12Texture)))
 	, m_bufferPool(AlignTo(kResourcePoolSize / sizeof(Dx12Texture), sizeof(Dx12Buffer)))
 	, m_renderPassPool(AlignTo(10 * sizeof(Dx12RenderPass), sizeof(Dx12RenderPass)))
+	, m_rtAccelerationStructurePool(AlignTo(kResourcePoolSize / sizeof(Dx12RTAccelerationStructure), sizeof(Dx12RTAccelerationStructure)))
 {
 #if ENABLE_PIX_CAPUTRE
 	this->m_pixCaptureModule = PIXLoadLatestWinPixGpuCapturerLibrary();
@@ -1165,7 +1166,7 @@ DescriptorIndex PhxEngine::RHI::Dx12::GraphicsDevice::GetDescriptorIndex(Texture
 	{
 	case SubresouceType::SRV:
 		return subResource == -1
-			? texture->SrvAllocation.BindlessIndex
+			? texture->Srv.BindlessIndex
 			: texture->SrvSubresourcesAlloc[subResource].BindlessIndex;
 		break;
 
@@ -1318,7 +1319,7 @@ DescriptorIndex GraphicsDevice::GetDescriptorIndex(BufferHandle handle, Subresou
 	{
 	case SubresouceType::SRV:
 		return subResource == -1
-			? bufferImpl->SrvAllocation.BindlessIndex
+			? bufferImpl->Srv.BindlessIndex
 			: bufferImpl->SrvSubresourcesAlloc[subResource].BindlessIndex;
 
 	case SubresouceType::UAV:
@@ -1389,6 +1390,255 @@ void GraphicsDevice::DeleteBuffer(BufferHandle handle)
 	};
 
 	this->m_deleteQueue.push_back(d);
+}
+
+RTAccelerationStructureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRTAccelerationStructure(RTAccelerationStructureDesc const& desc)
+{
+	RTAccelerationStructureHandle handle = this->m_rtAccelerationStructurePool.Emplace();
+	Dx12RTAccelerationStructure& rtAccelerationStructureImpl= *this->m_rtAccelerationStructurePool.Get(handle);
+	rtAccelerationStructureImpl.Desc = desc;
+
+	if (desc.Flags & RTAccelerationStructureDesc::FLAGS::kAllowUpdate)
+	{
+		rtAccelerationStructureImpl.Dx12Desc.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
+	}
+
+	if (desc.Flags & RTAccelerationStructureDesc::FLAGS::kAllowCompaction)
+	{
+		rtAccelerationStructureImpl.Dx12Desc.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION;
+	}
+
+	if (desc.Flags & RTAccelerationStructureDesc::FLAGS::kPreferFastTrace)
+	{
+		rtAccelerationStructureImpl.Dx12Desc.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+	}
+
+	if (desc.Flags & RTAccelerationStructureDesc::FLAGS::kPreferFastBuild)
+	{
+		rtAccelerationStructureImpl.Dx12Desc.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
+	}
+
+	if (desc.Flags & RTAccelerationStructureDesc::FLAGS::kMinimizeMemory)
+	{
+		rtAccelerationStructureImpl.Dx12Desc.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_MINIMIZE_MEMORY;
+	}
+
+
+	switch (desc.Type)
+	{
+	case RTAccelerationStructureDesc::Type::BottomLevel:
+	{
+		rtAccelerationStructureImpl.Dx12Desc.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+		rtAccelerationStructureImpl.Dx12Desc.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+
+		for (auto& g : desc.ButtomLevel.Geometries)
+		{
+			D3D12_RAYTRACING_GEOMETRY_DESC& dx12GeometryDesc = rtAccelerationStructureImpl.Geometries.emplace_back();
+			dx12GeometryDesc = {};
+
+			if (g.Type == RTAccelerationStructureDesc::BottomLevelDesc::Geometry::Type::Triangles)
+			{
+				dx12GeometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+
+				Dx12Buffer* dx12VertexBuffer = this->m_bufferPool.Get(g.Triangles.VertexBuffer);
+				assert(dx12VertexBuffer);
+				Dx12Buffer* dx12IndexBuffer = this->m_bufferPool.Get(g.Triangles.IndexBuffer);
+				assert(dx12IndexBuffer);
+
+				D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC& trianglesDesc = dx12GeometryDesc.Triangles;
+				trianglesDesc.VertexFormat = ConvertFormat(g.Triangles.VertexFormat);
+				trianglesDesc.VertexCount = (UINT)g.Triangles.VertexCount;
+				trianglesDesc.VertexBuffer.StartAddress = dx12VertexBuffer->VertexView.BufferLocation + (D3D12_GPU_VIRTUAL_ADDRESS)g.Triangles.VertexByteOffset;
+				trianglesDesc.VertexBuffer.StrideInBytes = g.Triangles.VertexStride;
+				trianglesDesc.IndexBuffer =
+					dx12VertexBuffer->IndexView.BufferLocation +
+					(D3D12_GPU_VIRTUAL_ADDRESS)g.Triangles.IndexOffset * (g.Triangles.IndexFormat == FormatType::R16_UINT ? sizeof(uint16_t) : sizeof(uint32_t));
+				trianglesDesc.IndexCount = g.Triangles.IndexCount;
+				trianglesDesc.IndexFormat = g.Triangles.IndexFormat == FormatType::R16_UINT ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+
+				if (g.Flags & RTAccelerationStructureDesc::BottomLevelDesc::Geometry::kUseTransform)
+				{
+					Dx12Buffer* transform3x4Buffer = this->m_bufferPool.Get(g.Triangles.Transform3x4Buffer);
+					assert(transform3x4Buffer);
+					trianglesDesc.Transform3x4 = transform3x4Buffer->D3D12Resource->GetGPUVirtualAddress() + (D3D12_GPU_VIRTUAL_ADDRESS)g.Triangles.Transform3x4BufferOffset;
+				}
+			}
+			else if (g.Type == RTAccelerationStructureDesc::BottomLevelDesc::Geometry::Type::ProceduralAABB)
+			{
+				dx12GeometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS;
+
+				Dx12Buffer* aabbBuffer = this->m_bufferPool.Get(g.AABBs.AABBBuffer);
+				assert(aabbBuffer);
+				dx12GeometryDesc.AABBs.AABBs.StartAddress = aabbBuffer->D3D12Resource->GetGPUVirtualAddress() + (D3D12_GPU_VIRTUAL_ADDRESS)g.AABBs.Offset;
+				dx12GeometryDesc.AABBs.AABBs.StrideInBytes = (UINT64)g.AABBs.Stride;
+				dx12GeometryDesc.AABBs.AABBCount = g.AABBs.Stride;
+			}
+		}
+		rtAccelerationStructureImpl.Dx12Desc.pGeometryDescs = rtAccelerationStructureImpl.Geometries.data();
+		rtAccelerationStructureImpl.Dx12Desc.NumDescs = (UINT)rtAccelerationStructureImpl.Geometries.size();
+		break;
+	}
+	case RTAccelerationStructureDesc::Type::TopLevel:
+	{
+		rtAccelerationStructureImpl.Dx12Desc.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+		rtAccelerationStructureImpl.Dx12Desc.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+
+		Dx12Buffer* instanceBuffer = this->m_bufferPool.Get(desc.TopLevel.InstanceBuffer);
+		assert(instanceBuffer);
+		rtAccelerationStructureImpl.Dx12Desc.InstanceDescs = instanceBuffer->D3D12Resource->GetGPUVirtualAddress() +
+			(D3D12_GPU_VIRTUAL_ADDRESS)desc.TopLevel.Offset;
+		rtAccelerationStructureImpl.Dx12Desc.NumDescs = (UINT)desc.TopLevel.Count;
+
+		break;
+	}
+	default:
+		return {};
+	}
+
+	this->GetD3D12Device5()->GetRaytracingAccelerationStructurePrebuildInfo(
+		&rtAccelerationStructureImpl.Dx12Desc,
+		&rtAccelerationStructureImpl.Info);
+
+
+	UINT64 alignment = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
+	UINT64 alignedSize = AlignTo(rtAccelerationStructureImpl.Info.ResultDataMaxSizeInBytes, alignment);
+
+	D3D12_RESOURCE_DESC resourceDesc;
+	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+	resourceDesc.Width = (UINT64)alignedSize;
+	resourceDesc.Height = 1;
+	resourceDesc.MipLevels = 1;
+	resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	resourceDesc.DepthOrArraySize = 1;
+	resourceDesc.Alignment = 0;
+	resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	resourceDesc.SampleDesc.Count = 1;
+	resourceDesc.SampleDesc.Quality = 0;
+
+	D3D12_RESOURCE_STATES resourceState = D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+
+
+	CD3DX12_HEAP_PROPERTIES heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+	ThrowIfFailed(
+		this->GetD3D12Device5()->CreateCommittedResource(
+			&heapProperties,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			resourceState,
+			nullptr,
+			IID_PPV_ARGS(&rtAccelerationStructureImpl.D3D12Resource)));
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+	srvDesc.RaytracingAccelerationStructure.Location = rtAccelerationStructureImpl.D3D12Resource->GetGPUVirtualAddress();
+
+
+	rtAccelerationStructureImpl.Srv = {
+			.Allocation = this->GetResourceCpuHeap()->Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.SRVDesc = srvDesc,
+	};
+
+	this->GetD3D12Device5()->CreateShaderResourceView(
+		nullptr,
+		&srvDesc,
+		rtAccelerationStructureImpl.Srv.Allocation.GetCpuHandle());
+
+	// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+	rtAccelerationStructureImpl.Srv.BindlessIndex = this->m_bindlessResourceDescriptorTable->Allocate();
+	if (rtAccelerationStructureImpl.Srv.BindlessIndex != cInvalidDescriptorIndex)
+	{
+		this->GetD3D12Device5()->CopyDescriptorsSimple(
+			1,
+			this->m_bindlessResourceDescriptorTable->GetCpuHandle(rtAccelerationStructureImpl.Srv.BindlessIndex),
+			rtAccelerationStructureImpl.Srv.Allocation.GetCpuHandle(),
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	}
+
+	BufferDesc scratchBufferDesc = {};
+	rtAccelerationStructureImpl.SratchBuffer;
+	scratchBufferDesc.SizeInBytes = (uint32_t)std::max(rtAccelerationStructureImpl.Info.ScratchDataSizeInBytes, rtAccelerationStructureImpl.Info.UpdateScratchDataSizeInBytes);
+
+	rtAccelerationStructureImpl.SratchBuffer = this->CreateBuffer(scratchBufferDesc);
+
+	return handle;
+}
+
+const RTAccelerationStructureDesc& PhxEngine::RHI::Dx12::GraphicsDevice::GetRTAccelerationStructureDesc(RTAccelerationStructureHandle handle)
+{
+	assert(handle.IsValid());
+	return this->m_rtAccelerationStructurePool.Get(handle)->Desc;
+}
+
+void PhxEngine::RHI::Dx12::GraphicsDevice::WriteRTTopLevelAccelerationStructureInstance(RTAccelerationStructureDesc::TopLevelDesc::Instance const& instance, void* dest)
+{
+	assert(instance.BottomLevel.IsValid());
+
+	D3D12_RAYTRACING_INSTANCE_DESC tmp;
+	tmp.AccelerationStructure = this->m_rtAccelerationStructurePool.Get(instance.BottomLevel)->D3D12Resource->GetGPUVirtualAddress();
+	std::memcpy(tmp.Transform, &instance.Transform, sizeof(tmp.Transform));
+	tmp.InstanceID = instance.InstanceId;
+	tmp.InstanceMask = instance.InstanceMask;
+	tmp.InstanceContributionToHitGroupIndex = instance.InstanceContributionToHitGroupIndex;
+	tmp.Flags = instance.Flags;
+	tmp.Flags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE;
+	std::memcpy(dest, &tmp, sizeof(D3D12_RAYTRACING_INSTANCE_DESC)); // memcpy whole structure into mapped pointer to avoid read from uncached memory
+}
+
+size_t PhxEngine::RHI::Dx12::GraphicsDevice::GetRTTopLevelAccelerationStructureInstanceSize()
+{
+	return sizeof(D3D12_RAYTRACING_INSTANCE_DESC);
+}
+
+void PhxEngine::RHI::Dx12::GraphicsDevice::DeleteRtAccelerationStructure(RTAccelerationStructureHandle handle)
+{
+	if (!handle.IsValid())
+	{
+		return;
+	}
+
+	Dx12RTAccelerationStructure* impl = this->m_rtAccelerationStructurePool.Get(handle);
+	this->DeleteBuffer(impl->SratchBuffer);
+
+	DeleteItem d =
+	{
+		this->m_frameCount,
+		[=]()
+		{
+			if (impl)
+			{
+#if TRACK_RESOURCES
+				if (sTrackedResources.find(texture->GetDesc().DebugName) != sTrackedResources.end())
+				{
+					sTrackedResources.erase(texture->GetDesc().DebugName);
+				}
+#endif
+
+				if (impl->Srv.BindlessIndex != cInvalidDescriptorIndex)
+				{
+					this->m_bindlessResourceDescriptorTable->Free(impl->Srv.BindlessIndex);
+				}
+
+				this->m_rtAccelerationStructurePool.Release(handle);
+			}
+		}
+	};
+
+	this->m_deleteQueue.push_back(d);
+}
+
+DescriptorIndex PhxEngine::RHI::Dx12::GraphicsDevice::GetDescriptorIndex(RTAccelerationStructureHandle handle)
+{
+	const Dx12RTAccelerationStructure* impl = this->m_rtAccelerationStructurePool.Get(handle);
+
+	if (!impl)
+	{
+		return cInvalidDescriptorIndex;
+	}
+
+	return impl->Srv.BindlessIndex;
 }
 
 int PhxEngine::RHI::Dx12::GraphicsDevice::CreateSubresource(TextureHandle texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
@@ -1637,12 +1887,12 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::BeginCapture(std::wstring const& file
 #endif
 }
 
-void PhxEngine::RHI::Dx12::GraphicsDevice::EndCapture()
+void PhxEngine::RHI::Dx12::GraphicsDevice::EndCapture(bool discard)
 {
 #if ENABLE_PIX_CAPUTRE
 	if (this->m_pixCaptureModule)
 	{
-		PIXEndCapture(false);
+		PIXEndCapture(discard);
 	}
 #endif
 }
@@ -1650,6 +1900,12 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::EndCapture()
 bool PhxEngine::RHI::Dx12::GraphicsDevice::CheckCapability(DeviceCapability deviceCapability)
 {
 	return (this->m_capabilities & deviceCapability) == deviceCapability;
+}
+
+bool PhxEngine::RHI::Dx12::GraphicsDevice::IsDevicedRemoved()
+{
+	HRESULT hr =  this->GetD3D12Device5()->GetDeviceRemovedReason();
+	return FAILED(hr);
 }
 
 TextureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRenderTarget(
@@ -1788,9 +2044,9 @@ int PhxEngine::RHI::Dx12::GraphicsDevice::CreateShaderResourceView(TextureHandle
 		}
 	}
 
-	if (textureImpl->SrvAllocation.Allocation.IsNull())
+	if (textureImpl->Srv.Allocation.IsNull())
 	{
-		textureImpl->SrvAllocation = view;
+		textureImpl->Srv = view;
 		return -1;
 	}
 
@@ -2442,8 +2698,7 @@ void GraphicsDevice::CreateBufferInternal(BufferDesc const& desc, Dx12Buffer& ou
 	}
 	case Usage::Default:
 	default:
-		heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-		initialState = D3D12_RESOURCE_STATE_COMMON;
+		break;
 	}
 
 	std::wstring debugName(desc.DebugName.begin(), desc.DebugName.end());
@@ -2514,9 +2769,9 @@ int PhxEngine::RHI::Dx12::GraphicsDevice::CreateShaderResourceView(BufferHandle 
 		}
 	}
 
-	if (bufferImpl->SrvAllocation.Allocation.IsNull())
+	if (bufferImpl->Srv.Allocation.IsNull())
 	{
-		bufferImpl->SrvAllocation = view;
+		bufferImpl->Srv = view;
 		return -1;
 	}
 
@@ -2624,6 +2879,19 @@ Microsoft::WRL::ComPtr<IDXGIFactory6> PhxEngine::RHI::Dx12::GraphicsDevice::Crea
 
 		debugController->EnableDebugLayer();
 		flags = DXGI_CREATE_FACTORY_DEBUG;
+
+
+		Microsoft::WRL::ComPtr<ID3D12Debug3> debugController3;
+		if (SUCCEEDED(debugController->QueryInterface(IID_PPV_ARGS(&debugController3))))
+		{
+			debugController3->SetEnableGPUBasedValidation(false);
+		}
+
+		Microsoft::WRL::ComPtr<ID3D12Debug5> debugController5;
+		if (SUCCEEDED(debugController->QueryInterface(IID_PPV_ARGS(&debugController5))))
+		{
+			debugController5->SetEnableAutoName(true);
+		}
 	}
 	
 	Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
@@ -2672,7 +2940,7 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::CreateDevice(Microsoft::WRL::ComPtr<I
 	{
 		if (featureSupport5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0)
 		{
-			this->m_capabilities |= DeviceCapability::DXR;
+			this->m_capabilities |= DeviceCapability::RayTracing;
 		}
 		if (featureSupport5.RenderPassesTier >= D3D12_RENDER_PASS_TIER_0)
 		{

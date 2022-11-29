@@ -21,6 +21,7 @@ namespace PhxEngine::Renderer
             PSO_GBufferPass = 0,
             PSO_FullScreenQuad,
             PSO_DeferredLightingPass,
+            PSO_DeferredLightingPass_RTShadows,
             PSO_Sky,
             PSO_EnvCapture_SkyProcedural,
             PSO_Shadow,
@@ -90,9 +91,9 @@ namespace PhxEngine::Renderer
 
         // Potential Render Functions
     private:
+        void UpdateRaytracingAccelerationStructures(PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
         void RefreshEnvProbes(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
         void DrawMeshes(PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList, uint32_t numInstances = 1);
-
 
         // Scene Update Systems -> Should be coupled with Scene?
     private:
@@ -115,6 +116,10 @@ namespace PhxEngine::Renderer
         size_t m_numMaterialEntries = 0;
         PhxEngine::RHI::BufferHandle m_materialGpuBuffer;
         std::vector<PhxEngine::RHI::BufferHandle> m_materialUploadBuffers;
+
+        // -- Scene TLAS Structures
+        PhxEngine::RHI::RTAccelerationStructureHandle m_tlas;
+        std::vector<PhxEngine::RHI::BufferHandle> m_tlasUploadBuffers;
 
         // -- Textures ---
         GBuffer m_gBuffer;

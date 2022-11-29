@@ -60,6 +60,13 @@ uint64_t PhxEngine::RHI::Dx12::CommandQueue::ExecuteCommandLists(std::vector<ID3
 {
 	this->m_d3d12CommandQueue->ExecuteCommandLists(commandLists.size(), commandLists.data());
 
+	bool isRemoved = IGraphicsDevice::Ptr->IsDevicedRemoved();
+	if (isRemoved)
+	{
+		// Only capture if the Device was removed
+		IGraphicsDevice::Ptr->EndCapture();
+	}
+
 	return this->IncrementFence();
 }
 

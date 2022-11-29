@@ -5,6 +5,7 @@
 #include "GBuffer.hlsli"
 #include "FullScreenHelpers.hlsli"
 #include "Lighting.hlsli"
+#include "Shadows.hlsli"
 
 #ifdef ENABLE_THREAD_GROUP_SWIZZLING
 #include "ThreadGroupTilingX.hlsli"
@@ -149,48 +150,33 @@ float4 main(PSInput input) : SV_TARGET
 	{
 		ShaderLight light = LoadLight(nLights);
 
-		// [loop]
-		for (int cascade = 0; cascade < light.GetNumCascades(); cascade++)
-		{
-            float4x4 shadowMatrix = LoadMatrix(light.GetIndices() + cascade);
-            float3 shadowPos = mul(float4(surfacePosition, 1.0f), shadowMatrix).xyz;
-            float3 shadowUV = ClipSpaceToUV(shadowPos);
-            const float3 cascadeEdgeFactor = saturate(saturate(abs(shadowPos)) - 0.8) * 5.0; // fade will be on edge and inwards 20%
-            const float cascadeFade = max(cascadeEdgeFactor.x, max(cascadeEdgeFactor.y, cascadeEdgeFactor.z));
+#ifdef RT_SHADOWS
+        switch (light.GetType())
+        {
+        case ENTITY_TYPE_DIRECTIONALLIGHT:
+        {
+            CalculateShadowRT(normalize(light.GetDirection()), surfacePosition, GetScene().RT_TlasIndex, shadow);
+            break;
+        }
+        case ENTITY_TYPE_OMNILIGHT:
+        {
+            float3 lightDir = normalize(light.Position - surfacePosition);
+            CalculateShadowRT(lightDir, surfacePosition, GetScene().RT_TlasIndex, shadow);
+            break;
+        }
+        case ENTITY_TYPE_SPOTLIGHT:
+        default:
+        {
+            break;
+        }
+        }
 
-            [branch]
-            if (light.CascadeTextureIndex >= 0)
-            {
-                Texture2DArray cascadeTextureArray = ResourceHeap_GetTexture2DArray(light.CascadeTextureIndex);
-                const float shadowMain = cascadeTextureArray.SampleCmpLevelZero(
-                        ShadowSampler,
-                        float3(shadowUV.xy, cascade),
-                        shadowPos.z).r;
-
-                // If we are on cascade edge threshold and not the last cascade, then fallback to a larger cascade:
-                [branch]
-                if (cascadeFade > 0 && cascade < light.GetNumCascades() - 1)
-                {
-                    // Project into next shadow cascade (no need to divide by .w because ortho projection!):
-                    cascade += 1;
-
-                    shadowMatrix = LoadMatrix(light.GetIndices() + cascade);
-                    shadowPos = mul(float4(surfacePosition, 1.0f), shadowMatrix).xyz;
-                    shadowUV = ClipSpaceToUV(shadowPos);
-                    const float shadowFallback = cascadeTextureArray.SampleCmpLevelZero(
-                        ShadowSampler,
-                        float3(shadowUV.xy, cascade),
-                        shadowPos.z).r;
-
-                    shadow *= lerp(shadowMain, shadowFallback, cascadeFade);
-                }
-                else
-                {
-                    shadow *= shadowMain;
-                }
-                break;
-            }
-		}
+#else
+        if (light.GetType() == ENTITY_TYPE_DIRECTIONALLIGHT)
+        {
+            CalculateDirectionalShadow(light, surfacePosition, shadow);
+        }
+#endif 
 
 		LightingPart directRadiance;
         directRadiance.Init(0, 0);

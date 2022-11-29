@@ -105,6 +105,99 @@ void PhxEngine::RHI::Dx12::CommandList::Close()
     this->m_d3d12CommandList->Close();
 }
 
+void PhxEngine::RHI::Dx12::CommandList::RTBuildAccelerationStructure(RHI::RTAccelerationStructureHandle accelStructure)
+{
+    Dx12RTAccelerationStructure* dx12AccelStructure = this->m_graphicsDevice.GetRTAccelerationStructurePool().Get(accelStructure);
+    assert(dx12AccelStructure);
+
+
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC dx12BuildDesc = {};
+    dx12BuildDesc.Inputs = dx12AccelStructure->Dx12Desc;
+
+    this->m_buildGeometries = dx12AccelStructure->Geometries;
+
+    // Create a local copy.
+    dx12BuildDesc.Inputs.pGeometryDescs = this->m_buildGeometries.data();
+
+    switch (dx12AccelStructure->Desc.Type)
+    {
+    case RTAccelerationStructureDesc::Type::BottomLevel:
+    {
+        for (int i = 0; i < dx12AccelStructure->Desc.ButtomLevel.Geometries.size(); i++)
+        {
+            auto& geometry = dx12AccelStructure->Desc.ButtomLevel.Geometries[i];
+            auto& buildGeometry = this->m_buildGeometries[i];
+
+            if (geometry.Flags & RTAccelerationStructureDesc::BottomLevelDesc::Geometry::kOpaque)
+            {
+                buildGeometry.Flags |= D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+            }
+            if (geometry.Flags & RTAccelerationStructureDesc::BottomLevelDesc::Geometry::kNoduplicateAnyHitInvocation)
+            {
+                buildGeometry.Flags |= D3D12_RAYTRACING_GEOMETRY_FLAG_NO_DUPLICATE_ANYHIT_INVOCATION;
+            }
+
+            if (geometry.Type == RTAccelerationStructureDesc::BottomLevelDesc::Geometry::Type::Triangles)
+            {
+                Dx12Buffer* vertexBuffer = this->m_graphicsDevice.GetBufferPool().Get(geometry.Triangles.VertexBuffer);
+                assert(vertexBuffer);
+                buildGeometry.Triangles.VertexBuffer.StartAddress = vertexBuffer->D3D12Resource->GetGPUVirtualAddress() + (D3D12_GPU_VIRTUAL_ADDRESS)geometry.Triangles.VertexByteOffset;
+
+
+                Dx12Buffer* indexBuffer = this->m_graphicsDevice.GetBufferPool().Get(geometry.Triangles.IndexBuffer);
+                assert(indexBuffer);
+                buildGeometry.Triangles.IndexBuffer = indexBuffer->D3D12Resource->GetGPUVirtualAddress() + 
+                    (D3D12_GPU_VIRTUAL_ADDRESS)geometry.Triangles.IndexOffset * (geometry.Triangles.IndexFormat == FormatType::R16_UINT ? sizeof(uint16_t) : sizeof(uint32_t));
+
+                if (geometry.Flags & RTAccelerationStructureDesc::BottomLevelDesc::Geometry::kUseTransform)
+                {
+                    Dx12Buffer* transform3x4Buffer = this->m_graphicsDevice.GetBufferPool().Get(geometry.Triangles.Transform3x4Buffer);
+                    assert(transform3x4Buffer);
+                    buildGeometry.Triangles.Transform3x4 = transform3x4Buffer->D3D12Resource->GetGPUVirtualAddress() + (D3D12_GPU_VIRTUAL_ADDRESS)geometry.Triangles.Transform3x4BufferOffset;
+                }
+            }
+            else if (geometry.Type == RTAccelerationStructureDesc::BottomLevelDesc::Geometry::Type::ProceduralAABB)
+            {
+                Dx12Buffer* aabbBuffer  = this->m_graphicsDevice.GetBufferPool().Get(geometry.AABBs.AABBBuffer);
+                assert(aabbBuffer);
+                buildGeometry.AABBs.AABBs.StartAddress = aabbBuffer->D3D12Resource->GetGPUVirtualAddress() + (D3D12_GPU_VIRTUAL_ADDRESS)geometry.AABBs.Offset;
+            }
+        }
+        break;
+    }
+    case RTAccelerationStructureDesc::Type::TopLevel:
+    {
+        Dx12Buffer* instanceBuffer = this->m_graphicsDevice.GetBufferPool().Get(dx12AccelStructure->Desc.TopLevel.InstanceBuffer);
+        assert(instanceBuffer);
+
+        dx12BuildDesc.Inputs.InstanceDescs = instanceBuffer->D3D12Resource->GetGPUVirtualAddress() +
+            (D3D12_GPU_VIRTUAL_ADDRESS)dx12AccelStructure->Desc.TopLevel.Offset;
+        break;
+    }
+    default:
+        return;
+    }
+
+    // TODO: handle Update
+    /*
+    if (src != nullptr)
+    {
+        desc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
+
+        auto src_internal = to_internal(src);
+        desc.SourceAccelerationStructureData = src_internal->gpu_address;
+    }
+    */
+    dx12BuildDesc.DestAccelerationStructureData = dx12AccelStructure->D3D12Resource->GetGPUVirtualAddress();
+
+
+    Dx12Buffer* scratchBuffer = this->m_graphicsDevice.GetBufferPool().Get(dx12AccelStructure->SratchBuffer);
+    assert(scratchBuffer);
+
+    dx12BuildDesc.ScratchAccelerationStructureData = scratchBuffer->D3D12Resource->GetGPUVirtualAddress();
+    this->m_d3d12CommandList6->BuildRaytracingAccelerationStructure(&dx12BuildDesc, 0, nullptr);
+}
+
 ScopedMarker CommandList::BeginScopedMarker(std::string name)
 {
     this->BeginMarker(name);
@@ -814,7 +907,7 @@ void CommandList::BindDynamicDescriptorTable(size_t rootParameterIndex, std::vec
         this->m_graphicsDevice.GetD3D12Device2()->CopyDescriptorsSimple(
             1,
             descriptorTable.GetCpuHandle(i),
-            textureImpl->SrvAllocation.Allocation.GetCpuHandle(),
+            textureImpl->Srv.Allocation.GetCpuHandle(),
             D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     }
 

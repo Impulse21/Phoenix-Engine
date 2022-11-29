@@ -188,6 +188,15 @@ namespace PhxEngine::Scene::Assets
 		RHI::BufferHandle VertexGpuBuffer;
 		RHI::BufferHandle IndexGpuBuffer;
 
+		enum class BLASState
+		{
+			Rebuild = 0,
+			Refit,
+			Complete,
+		};
+		BLASState BlasState = BLASState::Rebuild;
+		RHI::RTAccelerationStructureHandle Blas;
+
 		// Utility Functions
 		void ReverseWinding();
 		void ComputeTangentSpace();

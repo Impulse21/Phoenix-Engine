@@ -51,6 +51,7 @@ namespace PhxEngine::Scene
 
 		void SetBrdfLut(std::shared_ptr<Assets::Texture> texture) { this->m_brdfLut = texture; }
 		RHI::DescriptorIndex GetBrdfLutDescriptorIndex();
+
 	private:
 		entt::registry m_registry;
 		std::shared_ptr<Assets::Texture> m_brdfLut;

@@ -152,7 +152,7 @@ namespace PhxEngine::RHI::Dx12
         DescriptorView DsvAllocation;
         std::vector<DescriptorView> DsvSubresourcesAlloc = {};
 
-        DescriptorView SrvAllocation;
+        DescriptorView Srv;
         std::vector<DescriptorView> SrvSubresourcesAlloc = {};
 
         DescriptorView UavAllocation;
@@ -178,13 +178,13 @@ namespace PhxEngine::RHI::Dx12
             DsvSubresourcesAlloc.clear();
             DsvAllocation = {};
 
-            SrvAllocation.Allocation.Free();
+            Srv.Allocation.Free();
             for (auto& view : this->SrvSubresourcesAlloc)
             {
                 view.Allocation.Free();
             }
             SrvSubresourcesAlloc.clear();
-            SrvAllocation = {};
+            Srv = {};
 
             UavAllocation.Allocation.Free();
             for (auto& view : this->UavSubresourcesAlloc)
@@ -205,7 +205,7 @@ namespace PhxEngine::RHI::Dx12
         uint32_t MappedSizeInBytes = 0;
 
         // -- Views ---
-        DescriptorView SrvAllocation;
+        DescriptorView Srv;
         std::vector<DescriptorView> SrvSubresourcesAlloc = {};
 
         DescriptorView UavAllocation;
@@ -219,13 +219,13 @@ namespace PhxEngine::RHI::Dx12
 
         void DisposeViews()
         {
-            SrvAllocation.Allocation.Free();
+            Srv.Allocation.Free();
             for (auto& view : this->SrvSubresourcesAlloc)
             {
                 view.Allocation.Free();
             }
             SrvSubresourcesAlloc.clear();
-            SrvAllocation = {};
+            Srv = {};
 
             UavAllocation.Allocation.Free();
             for (auto& view : this->UavSubresourcesAlloc)
@@ -235,6 +235,17 @@ namespace PhxEngine::RHI::Dx12
             UavSubresourcesAlloc.clear();
             UavAllocation = {};
         }
+    };
+
+    struct Dx12RTAccelerationStructure final
+    {
+        RTAccelerationStructureDesc Desc = {};
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS Dx12Desc = {};
+        std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> Geometries;
+        D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO Info = {};
+        BufferHandle SratchBuffer;
+        Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
+        DescriptorView Srv;
     };
 
     struct Dx12RenderPass final
@@ -325,6 +336,13 @@ namespace PhxEngine::RHI::Dx12
         uint32_t GetBufferMappedDataSizeInBytes(BufferHandle handle) override;
         void DeleteBuffer(BufferHandle handle) override;
 
+        RTAccelerationStructureHandle CreateRTAccelerationStructure(RTAccelerationStructureDesc const& desc) override;
+        const RTAccelerationStructureDesc& GetRTAccelerationStructureDesc(RTAccelerationStructureHandle handle) override;
+        void WriteRTTopLevelAccelerationStructureInstance(RTAccelerationStructureDesc::TopLevelDesc::Instance const& instance, void* dest) override;
+        size_t GetRTTopLevelAccelerationStructureInstanceSize() override;
+        void DeleteRtAccelerationStructure(RTAccelerationStructureHandle handle) override;
+        DescriptorIndex GetDescriptorIndex(RTAccelerationStructureHandle handle) override;
+
         int CreateSubresource(TextureHandle texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip = 0, uint32_t mipCount = ~0u) override;
         int CreateSubresource(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size = ~0u) override;
 
@@ -365,12 +383,13 @@ namespace PhxEngine::RHI::Dx12
         const IGpuAdapter* GetGpuAdapter() const override { return this->m_gpuAdapter.get(); };
 
         void BeginCapture(std::wstring const& filename) override;
-        void EndCapture() override;
+        void EndCapture(bool discard = false) override;
 
         size_t GetFrameIndex() override { return this->GetCurrentBackBufferIndex(); };
         size_t GetMaxInflightFrames() override { return this->m_swapChain.Desc.BufferCount; }
 
         bool CheckCapability(DeviceCapability deviceCapability);
+        bool IsDevicedRemoved() override;
 
         // -- Dx12 Specific functions ---
     public:
@@ -422,6 +441,7 @@ namespace PhxEngine::RHI::Dx12
         Core::Pool<Dx12Texture, Texture>& GetTexturePool() { return this->m_texturePool; };
         Core::Pool<Dx12Buffer, Buffer>& GetBufferPool() { return this->m_bufferPool; };
         Core::Pool<Dx12RenderPass, RenderPass>& GetRenderPassPool() { return this->m_renderPassPool; };
+        Core::Pool<Dx12RTAccelerationStructure, RTAccelerationStructure>& GetRTAccelerationStructurePool() { return this->m_rtAccelerationStructurePool; }
 
     private:
         size_t GetCurrentBackBufferIndex() const;
@@ -469,6 +489,7 @@ namespace PhxEngine::RHI::Dx12
         Core::Pool<Dx12Texture, Texture> m_texturePool;
         Core::Pool<Dx12Buffer, Buffer> m_bufferPool;
         Core::Pool<Dx12RenderPass, RenderPass> m_renderPassPool;
+        Core::Pool<Dx12RTAccelerationStructure, RTAccelerationStructure> m_rtAccelerationStructurePool;
 
         // -- SwapChain ---
 		SwapChain m_swapChain;
