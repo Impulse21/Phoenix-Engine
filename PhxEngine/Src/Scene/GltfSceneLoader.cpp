@@ -152,7 +152,8 @@ static std::pair<const uint8_t*, size_t> CgltfBufferAccessor(const cgltf_accesso
 	return std::make_pair(data, stride);
 }
 
-static void ComputeTangentSpace(Assets::Mesh& mesh)
+
+static void ComputeTangentSpace(MeshComponent& mesh)
 {
 	std::vector<DirectX::XMVECTOR> computedTangents(mesh.VertexPositions.size());
 	std::vector<DirectX::XMVECTOR> computedBitangents(mesh.VertexPositions.size());
@@ -361,8 +362,8 @@ void GltfSceneLoader::LoadNode(
 		std::string nodeName = gltfNode.name ? gltfNode.name : "Scene Node " + std::to_string(meshId++);
 		
 		entity = scene.CreateEntity(nodeName);
-		auto& meshRenderComponent = entity.AddComponent<MeshRenderComponent>();
-		meshRenderComponent.Mesh = this->m_meshMap[gltfNode.mesh];
+		auto& meshRenderComponent = entity.AddComponent<MeshInstanceComponent>();
+		meshRenderComponent.Mesh = this->m_meshEntityMap[gltfNode.mesh];
 	}
 	else if (gltfNode.camera)
 	{
@@ -410,7 +411,6 @@ void GltfSceneLoader::LoadNode(
 		lightComponent.Range = gltfNode.light->range > 0 ? (float)gltfNode.light->range : std::numeric_limits<float>().max();
 		lightComponent.InnerConeAngle = (float)gltfNode.light->spot_inner_cone_angle;
 		lightComponent.OuterConeAngle = (float)gltfNode.light->spot_outer_cone_angle;
-
 	}
 
 	if (!entity)
@@ -578,9 +578,12 @@ void GltfSceneLoader::LoadMaterialData(
 	{
 		const auto& cgltfMtl = pMaterials[i];
 
-		this->m_materialMap[&cgltfMtl] = std::make_shared<Assets::StandardMaterial>();
-		Assets::StandardMaterial& mtl = *this->m_materialMap[&cgltfMtl];
-		mtl.Name = cgltfMtl.name ? cgltfMtl.name : "Material " + std::to_string(i);
+		std::string name = cgltfMtl.name ? cgltfMtl.name : "Material " + std::to_string(i);
+		Entity mtlEntity = scene.CreateEntity(name);
+		this->m_materialEntityMap[&cgltfMtl] = mtlEntity;
+
+		MaterialComponent& mtl = mtlEntity.AddComponent<MaterialComponent>();
+;
 
 		if (cgltfMtl.alpha_mode == cgltf_alpha_mode_blend)
 		{
@@ -593,14 +596,14 @@ void GltfSceneLoader::LoadMaterialData(
 		}
 		else if (cgltfMtl.has_pbr_metallic_roughness)
 		{
-			mtl.AlbedoTexture = this->LoadTexture(
+			mtl.BaseColourTexture = this->LoadTexture(
 				cgltfMtl.pbr_metallic_roughness.base_color_texture.texture,
 				true,
 				objects,
 				context,
 				commandList);
 
-			mtl.Albedo = 
+			mtl.BaseColour = 
 			{
 				cgltfMtl.pbr_metallic_roughness.base_color_factor[0],
 				cgltfMtl.pbr_metallic_roughness.base_color_factor[1],
@@ -628,7 +631,6 @@ void GltfSceneLoader::LoadMaterialData(
 			commandList);
 
 		// TODO: Emmisive
-		// TODO: Aplha suppor
 		mtl.IsDoubleSided = cgltfMtl.double_sided;
 	}
 }
@@ -672,9 +674,9 @@ void GltfSceneLoader::LoadMeshData(
 	for (int i = 0; i < meshCount; i++)
 	{
 		const auto& cgltfMesh = pMeshes[i];
-		this->m_meshMap[&cgltfMesh] = std::make_shared<Assets::Mesh>();
-		Assets::Mesh& mesh = *this->m_meshMap[&cgltfMesh];
-		mesh.Name = cgltfMesh.name ? cgltfMesh.name : "Mesh " + std::to_string(i);
+		std::string name = cgltfMesh.name ? cgltfMesh.name : "Mesh " + std::to_string(i);
+		Entity meshEntity = scene.CreateEntity(name);
+		auto& mesh = meshEntity.AddComponent<MeshComponent>();
 
 		// Resize data
 		mesh.VertexPositions.resize(totalVertexCounts[i]);
@@ -880,8 +882,8 @@ void GltfSceneLoader::LoadMeshData(
 
 			auto& meshGeometry = mesh.Surfaces[iPrim];
 			{
-				auto it = this->m_materialMap.find(cgltfPrim.material);
-				meshGeometry.Material = it == this->m_materialMap.end() ? nullptr : it->second;
+				auto it = this->m_materialEntityMap.find(cgltfPrim.material);
+				meshGeometry.Material = it == this->m_materialEntityMap.end() ? entt::null : (entt::entity)it->second;
 			}
 
 			meshGeometry.IndexOffsetInMesh = mesh.TotalIndices;

@@ -351,13 +351,13 @@ void SceneExplorerPanel::DrawEntityComponents(Entity entity)
             DrawFloat3Control("Scale", component.LocalScale, 1.0f);
         });
 
-    DrawComponent<MeshRenderComponent>("MeshRenderComponent", entity, [](auto& component) {
-        ImGui::Text("Mesh Name:");
-            ImGui::Text(component.Mesh->Name.c_str());
+    DrawComponent<MeshComponent>("MeshComponent", entity, [](auto& component) {
+        ImGui::Text("Mesh Component");
+            // ImGui::Text(component.Name.c_str());
 
-            for (int i = 0; i < component.Mesh->Surfaces.size(); i++)
+            for (int i = 0; i < component.Surfaces.size(); i++)
             {
-                ImGui::Text(component.Mesh->Surfaces[i].Material->Name.c_str());
+                // ImGui::Text(component.Surfaces[i].Material->Name.c_str());
             }
 
         });
@@ -474,11 +474,11 @@ void EditorLayer::OnAttach()
     this->m_scene->GetRegistry().emplace<WorldEnvironmentComponent>(worldEntity);
 
     // TODO: I am here update The mesh render data
-    auto view = this->m_scene->GetAllEntitiesWith<MeshRenderComponent>();
+    auto view = this->m_scene->GetAllEntitiesWith<MeshComponent>();
     for (auto e : view)
     {
-        auto meshRenderComp = view.get<MeshRenderComponent>(e);
-        meshRenderComp.Mesh->CreateRenderData(cmd);
+        auto& meshRenderComp = view.get<MeshComponent>(e);
+        meshRenderComp.CreateRenderData(cmd);
     }
 
     

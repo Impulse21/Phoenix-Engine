@@ -1,6 +1,6 @@
 #include "phxpch.h"
 
-#include "PhxEngine/Scene/Scene.h"
+#include <PhxEngine/Core/Math.h>
 #include <PhxEngine/Scene/Entity.h>
 #include <PhxEngine/Scene/Components.h>
 
@@ -13,6 +13,13 @@ using namespace PhxEngine;
 using namespace PhxEngine::Scene;
 using namespace PhxEngine::RHI;
 using namespace DirectX;
+
+PhxEngine::Scene::Scene::Scene()
+{
+	this->m_materialUploadBuffers.resize(IGraphicsDevice::Ptr->GetMaxInflightFrames());
+	this->m_geometryUploadBuffers.resize(IGraphicsDevice::Ptr->GetMaxInflightFrames());
+	this->m_tlasUploadBuffers.resize(IGraphicsDevice::Ptr->GetMaxInflightFrames());
+}
 
 Entity PhxEngine::Scene::Scene::CreateEntity(std::string const& name)
 {
@@ -53,11 +60,11 @@ void PhxEngine::Scene::Scene::DetachChildren(Entity parent)
 
 void PhxEngine::Scene::Scene::ConstructRenderData(RHI::CommandListHandle cmd)
 {
-	auto view = this->GetAllEntitiesWith<MeshRenderComponent>();
+	auto view = this->GetAllEntitiesWith<MeshComponent>();
 	for (auto e : view)
 	{
-		auto comp = view.get<MeshRenderComponent>(e);
-		comp.Mesh->CreateRenderData(cmd);
+		auto comp = view.get<MeshComponent>(e);
+		comp.CreateRenderData(cmd);
 	}
 }
 
@@ -69,4 +76,613 @@ RHI::DescriptorIndex PhxEngine::Scene::Scene::GetBrdfLutDescriptorIndex()
 	}
 
 	return IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_brdfLut->GetRenderHandle(), RHI::SubresouceType::SRV);
+}
+
+void PhxEngine::Scene::Scene::OnUpdate()
+{
+	// Update Geometry Count
+	this->UpdateGpuBufferSizes();
+
+	// Clear instance data
+	Shader::MeshInstance* pInstanceUploadBufferData = (Shader::MeshInstance*)IGraphicsDevice::Ptr->GetBufferMappedData(this->GetInstanceUploadBuffer());
+	if (pInstanceUploadBufferData)
+	{
+		// Ensure we remove any old data
+		std::memset(pInstanceUploadBufferData, 0, IGraphicsDevice::Ptr->GetBufferDesc(this->GetInstanceUploadBuffer()).SizeInBytes);
+	}
+
+	this->RunMaterialUpdateSystem();
+	this->RunMeshUpdateSystem();
+	// TODO: Update Hierarchy
+	this->RunProbeUpdateSystem();
+
+	// Update light buffer ? Do this in a per frame setup.
+	this->RunLightUpdateSystem();
+	this->RunMeshInstanceUpdateSystem();
+
+	// -- Fill Constant Buffer structure for this frame ---
+	// this->m_shaderData.NumLights = lightCount;
+	this->m_shaderData.MeshInstanceBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_instanceGpuBuffer, RHI::SubresouceType::SRV);
+	this->m_shaderData.GeometryBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_geometryGpuBuffer, RHI::SubresouceType::SRV);
+	this->m_shaderData.MaterialBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_materialGpuBuffer, RHI::SubresouceType::SRV);
+	// TODO: Light Buffer
+	this->m_shaderData.RT_TlasIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_tlas);
+
+	// this->m_shaderData.LightEntityIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_LightEntities], RHI::SubresouceType::SRV);
+	// this->m_shaderData.MatricesIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_resourceBuffers[RB_Matrices], RHI::SubresouceType::SRV);
+	this->m_shaderData.AtmosphereData = {};
+	auto worldEnvView = this->GetRegistry().view<WorldEnvironmentComponent>();
+	if (worldEnvView.empty())
+	{
+		WorldEnvironmentComponent worldComp = {};
+		this->m_shaderData.AtmosphereData.ZenithColour = worldComp.ZenithColour;
+		this->m_shaderData.AtmosphereData.HorizonColour = worldComp.HorizonColour;
+		this->m_shaderData.AtmosphereData.AmbientColour = worldComp.AmbientColour;
+	}
+	else
+	{
+		auto& worldComp = worldEnvView.get<WorldEnvironmentComponent>(worldEnvView[0]);
+
+		this->m_shaderData.AtmosphereData.ZenithColour = worldComp.ZenithColour;
+		this->m_shaderData.AtmosphereData.HorizonColour = worldComp.HorizonColour;
+		this->m_shaderData.AtmosphereData.AmbientColour = worldComp.AmbientColour;
+
+	}
+
+	auto sun = this->GetRegistry().try_get<LightComponent>(this->m_activeSun);
+	if (sun)
+	{
+		this->m_shaderData.AtmosphereData.SunColour = { sun->Colour.x, sun->Colour.y, sun->Colour.z };
+		this->m_shaderData.AtmosphereData.SunDirection = { -sun->Direction.x, -sun->Direction.y, -sun->Direction.z };
+	}
+	else
+	{
+		this->m_shaderData.AtmosphereData.SunColour = { };
+		this->m_shaderData.AtmosphereData.SunDirection = { };
+	}
+
+	this->m_shaderData.EnvMapArray = IGraphicsDevice::Ptr->GetDescriptorIndex(this->m_envMapArray, RHI::SubresouceType::SRV);
+	this->m_shaderData.EnvMap_NumMips = kEnvmapMIPs;
+}
+
+void PhxEngine::Scene::Scene::RunMaterialUpdateSystem()
+{
+	Shader::MaterialData* pMaterialUploadBufferData = (Shader::MaterialData*)IGraphicsDevice::Ptr->GetBufferMappedData(this->GetMaterialUploadBuffer());
+	auto view = this->GetAllEntitiesWith<MaterialComponent>();
+	uint32_t currMat = 0;
+	for (auto entity : view)
+	{
+		auto& mat = view.get<MaterialComponent>(entity);
+
+		Shader::MaterialData* shaderData = pMaterialUploadBufferData + currMat;
+
+		shaderData->AlbedoColour = { mat.BaseColour.x, mat.BaseColour.y, mat.BaseColour.z };
+		shaderData->EmissiveColourPacked = Core::Math::PackColour(mat.Emissive);
+		shaderData->AO = mat.Ao;
+		shaderData->Metalness = mat.Metalness;
+		shaderData->Roughness = mat.Roughness;
+
+		shaderData->AlbedoTexture = RHI::cInvalidDescriptorIndex;
+		if (mat.BaseColourTexture && mat.BaseColourTexture->GetRenderHandle().IsValid())
+		{
+			shaderData->AlbedoTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat.BaseColourTexture->GetRenderHandle(), RHI::SubresouceType::SRV);
+		}
+
+		shaderData->AOTexture = RHI::cInvalidDescriptorIndex;
+		if (mat.AoTexture && mat.AoTexture->GetRenderHandle().IsValid())
+		{
+			shaderData->AOTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat.AoTexture->GetRenderHandle(), RHI::SubresouceType::SRV);
+		}
+
+		shaderData->MaterialTexture = RHI::cInvalidDescriptorIndex;
+		if (mat.MetalRoughnessTexture && mat.MetalRoughnessTexture->GetRenderHandle().IsValid())
+		{
+			shaderData->MaterialTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat.MetalRoughnessTexture->GetRenderHandle(), RHI::SubresouceType::SRV);
+			assert(shaderData->MaterialTexture != RHI::cInvalidDescriptorIndex);
+
+			// shaderData->MetalnessTexture = mat.MetalRoughnessTexture->GetDescriptorIndex();
+			// shaderData->RoughnessTexture = mat.MetalRoughnessTexture->GetDescriptorIndex();
+		}
+
+		shaderData->NormalTexture = RHI::cInvalidDescriptorIndex;
+		if (mat.NormalMapTexture && mat.NormalMapTexture->GetRenderHandle().IsValid())
+		{
+			shaderData->NormalTexture = RHI::IGraphicsDevice::Ptr->GetDescriptorIndex(mat.NormalMapTexture->GetRenderHandle(), RHI::SubresouceType::SRV);
+		}
+		mat.GlobalBufferIndex = currMat++;
+	}
+}
+
+void PhxEngine::Scene::Scene::RunMeshUpdateSystem()
+{
+	auto view = this->GetAllEntitiesWith<MeshComponent>();
+	for (auto entity : view)
+	{
+		auto& meshComponent = view.get<MeshComponent>(entity);
+		meshComponent.RenderBucketMask = MeshComponent::RenderType::RenderType_Opaque;
+		for (auto& surface : meshComponent.Surfaces)
+		{
+			const auto& material = this->m_registry.get<MaterialComponent>(surface.Material);
+			if (material.BlendMode == Renderer::BlendMode::Alpha)
+			{
+				meshComponent.RenderBucketMask = MeshComponent::RenderType::RenderType_Transparent;
+				break;
+			}
+		}
+	}
+
+	// -- Update data --
+	Shader::Geometry* geometryBufferMappedData = (Shader::Geometry*)IGraphicsDevice::Ptr->GetBufferMappedData(this->GetGeometryBuffer());
+	uint32_t currGeoIndex = 0;
+	for (auto entity : view)
+	{
+		auto& mesh = view.get<MeshComponent>(entity);
+		mesh.GlobalGeometryBufferIndex = currGeoIndex;
+		for (int i = 0; i < mesh.Surfaces.size(); i++)
+		{
+			MeshComponent::SurfaceDesc& surfaceDesc = mesh.Surfaces[i];
+			Shader::Geometry* geometryShaderData = geometryBufferMappedData + currGeoIndex;
+
+			auto& material = this->GetRegistry().get<MaterialComponent>(surfaceDesc.Material);
+			geometryShaderData->MaterialIndex = material.GlobalBufferIndex;
+			geometryShaderData->NumIndices = surfaceDesc.NumIndices;
+			geometryShaderData->NumVertices = surfaceDesc.NumVertices;
+			geometryShaderData->IndexOffset = surfaceDesc.IndexOffsetInMesh;
+			geometryShaderData->VertexBufferIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(mesh.VertexGpuBuffer, RHI::SubresouceType::SRV);
+			geometryShaderData->PositionOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Position).ByteOffset;
+			geometryShaderData->TexCoordOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::TexCoord).ByteOffset;
+			geometryShaderData->NormalOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Normal).ByteOffset;
+			geometryShaderData->TangentOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Tangent).ByteOffset;;
+		}
+	}
+}
+
+void PhxEngine::Scene::Scene::RunProbeUpdateSystem()
+{
+	if (!this->m_envMapArray.IsValid())
+	{
+		this->m_envMapDepthBuffer = IGraphicsDevice::Ptr->CreateTexture(
+			{
+				.BindingFlags = BindingFlags::DepthStencil,
+				.Dimension = TextureDimension::TextureCube,
+				.InitialState = ResourceStates::DepthWrite,
+				.Format = kEnvmapDepth,
+				.IsBindless = false,
+				.Width = kEnvmapRes,
+				.Height = kEnvmapRes,
+				.ArraySize = 6,
+				.OptmizedClearValue = {.DepthStencil = {.Depth = 0.0f }},
+				.DebugName = "Env Map Depth"
+			});
+
+		// Create EnvMap
+
+		this->m_envMapArray = IGraphicsDevice::Ptr->CreateTexture(
+			{
+				.BindingFlags = BindingFlags::ShaderResource | BindingFlags::UnorderedAccess | BindingFlags::RenderTarget,
+				.Dimension = TextureDimension::TextureCubeArray,
+				.InitialState = ResourceStates::RenderTarget,
+				.Format = kEnvmapFormat,
+				.IsBindless = true,
+				.Width = kEnvmapRes,
+				.Height = kEnvmapRes,
+				.ArraySize = kEnvmapCount * 6,
+				.MipLevels = kEnvmapMIPs,
+				.OptmizedClearValue = {.Colour = { 0.0f, 0.0f, 0.0f, 1.0f }},
+				.DebugName = "Env Map Array"
+			});
+
+		// Create sub resource views
+
+		// Cube arrays per mip level:
+		for (int i = 0; i < kEnvmapMIPs; i++)
+		{
+			int subIndex = IGraphicsDevice::Ptr->CreateSubresource(
+				this->m_envMapArray,
+				RHI::SubresouceType::SRV,
+				0,
+				kEnvmapCount * 6,
+				i,
+				1);
+
+			assert(i == subIndex);
+			subIndex = IGraphicsDevice::Ptr->CreateSubresource(
+				this->m_envMapArray,
+				RHI::SubresouceType::UAV,
+				0,
+				kEnvmapCount * 6,
+				i,
+				1);
+			assert(i == subIndex);
+		}
+
+		// individual cubes with mips:
+		for (int i = 0; i < kEnvmapCount; i++)
+		{
+			int subIndex = IGraphicsDevice::Ptr->CreateSubresource(
+				this->m_envMapArray,
+				RHI::SubresouceType::SRV,
+				i * 6,
+				6,
+				0,
+				~0u);
+			assert((kEnvmapMIPs + i) == subIndex);
+		}
+
+		// individual cubes only mip0:
+		for (int i = 0; i < kEnvmapCount; i++)
+		{
+			int subIndex = IGraphicsDevice::Ptr->CreateSubresource(
+				this->m_envMapArray,
+				RHI::SubresouceType::SRV,
+				i * 6,
+				6,
+				0,
+				1);
+			assert((kEnvmapMIPs + kEnvmapCount + i) == subIndex);
+		}
+
+		// Create Render Passes
+		for (uint32_t i = 0; i < kEnvmapCount; ++i)
+		{
+			int subIndex = IGraphicsDevice::Ptr->CreateSubresource(
+				this->m_envMapArray,
+				RHI::SubresouceType::RTV,
+				i * 6,
+				6,
+				0,
+				1);
+
+			assert(i == subIndex);
+
+			this->m_envMapRenderPasses[i] = IGraphicsDevice::Ptr->CreateRenderPass(
+				{
+					.Attachments =
+					{
+						{
+							.LoadOp = RenderPassAttachment::LoadOpType::DontCare,
+							.Texture = this->m_envMapArray,
+							.Subresource = subIndex,
+							.StoreOp = RenderPassAttachment::StoreOpType::Store,
+							.InitialLayout = RHI::ResourceStates::RenderTarget,
+							.SubpassLayout = RHI::ResourceStates::RenderTarget,
+							.FinalLayout = RHI::ResourceStates::RenderTarget
+						},
+						{
+							.Type = RenderPassAttachment::Type::DepthStencil,
+							.LoadOp = RenderPassAttachment::LoadOpType::Clear,
+							.Texture = this->m_envMapDepthBuffer,
+							.StoreOp = RenderPassAttachment::StoreOpType::DontCare,
+							.InitialLayout = RHI::ResourceStates::DepthWrite,
+							.SubpassLayout = RHI::ResourceStates::DepthWrite,
+							.FinalLayout = RHI::ResourceStates::DepthWrite
+						},
+					}
+				});
+		}
+	}
+}
+
+void PhxEngine::Scene::Scene::RunLightUpdateSystem()
+{
+	auto view = this->GetAllEntitiesWith<LightComponent, TransformComponent>();
+	for (auto e : view)
+	{
+		auto [lightComponent, transformComponent] = view.get<LightComponent, TransformComponent>(e);
+
+		XMMATRIX worldMatrix = XMLoadFloat4x4(&transformComponent.WorldMatrix);
+		XMVECTOR vScale;
+		XMVECTOR vRot;
+		XMVECTOR vTranslation;
+		XMMatrixDecompose(&vScale, &vRot, &vTranslation, worldMatrix);
+
+
+		XMStoreFloat3(&lightComponent.Position, vTranslation);
+		XMStoreFloat4(&lightComponent.Rotation, vRot);
+		XMStoreFloat3(&lightComponent.Scale, vScale);
+		XMStoreFloat3(&lightComponent.Direction, XMVector3Normalize(XMVector3TransformNormal(XMVectorSet(0, 1, 0, 0), worldMatrix)));
+
+		transformComponent.WorldMatrix;
+	}
+}
+
+void PhxEngine::Scene::Scene::RunMeshInstanceUpdateSystem()
+{
+	auto view = this->GetAllEntitiesWith<MeshInstanceComponent, TransformComponent>();
+	for (auto e : view)
+	{
+		auto [meshInstanceComponent, transformComponent] = view.get<MeshInstanceComponent, TransformComponent>(e);
+		meshInstanceComponent.WorldMatrix = transformComponent.WorldMatrix;
+	}
+
+	// -- Update data --
+	Shader::MeshInstance* pUploadBufferData = (Shader::MeshInstance*)IGraphicsDevice::Ptr->GetBufferMappedData(this->GetInstanceUploadBuffer());
+	uint32_t currInstanceIndex = 0;
+	for (auto e : view)
+	{
+		auto [meshInstanceComponent, transformComponent] = view.get<MeshInstanceComponent, TransformComponent>(e);
+		Shader::MeshInstance* shaderMeshInstance = pUploadBufferData + currInstanceIndex;
+
+		auto& mesh = this->GetRegistry().get<MeshComponent>(meshInstanceComponent.Mesh);
+		shaderMeshInstance->GeometryOffset = mesh.GlobalGeometryBufferIndex;
+		shaderMeshInstance->GeometryCount = (uint)mesh.Surfaces.size();
+		shaderMeshInstance->WorldMatrix = transformComponent.WorldMatrix;
+
+		meshInstanceComponent.GlobalBufferIndex = currInstanceIndex;
+	}
+}
+
+void PhxEngine::Scene::Scene::FreeResources()
+{
+	PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteBuffer(this->m_instanceGpuBuffer);
+	PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteBuffer(this->m_geometryGpuBuffer);
+	PhxEngine::RHI::IGraphicsDevice::Ptr->DeleteBuffer(this->m_materialGpuBuffer);
+
+	for (int i = 0; i < this->m_materialUploadBuffers.size(); i++)
+	{
+		if (this->m_materialUploadBuffers[i].IsValid())
+		{
+			IGraphicsDevice::Ptr->DeleteBuffer(this->m_materialUploadBuffers[i]);
+		}
+	}
+
+	for (int i = 0; i < this->m_instanceUploadBuffers.size(); i++)
+	{
+		if (this->m_instanceUploadBuffers[i].IsValid())
+		{
+			IGraphicsDevice::Ptr->DeleteBuffer(this->m_instanceUploadBuffers[i]);
+		}
+	}
+
+	for (int i = 0; i < this->m_geometryUploadBuffers.size(); i++)
+	{
+		if (this->m_geometryUploadBuffers[i].IsValid())
+		{
+			IGraphicsDevice::Ptr->DeleteBuffer(this->m_geometryUploadBuffers[i]);
+		}
+	}
+	for (int i = 0; i < this->m_tlasUploadBuffers.size(); i++)
+	{
+		if (this->m_tlasUploadBuffers[i].IsValid())
+		{
+			IGraphicsDevice::Ptr->DeleteBuffer(this->m_tlasUploadBuffers[i]);
+		}
+	}
+
+	if (this->m_tlas.IsValid())
+	{
+		IGraphicsDevice::Ptr->DeleteBuffer(IGraphicsDevice::Ptr->GetRTAccelerationStructureDesc(this->m_tlas).TopLevel.InstanceBuffer);
+		IGraphicsDevice::Ptr->DeleteRtAccelerationStructure(this->m_tlas);
+	}
+
+	for (int i = 0; i < this->m_envMapRenderPasses.size(); i++)
+	{
+		if (this->m_envMapRenderPasses[i].IsValid())
+		{
+			IGraphicsDevice::Ptr->DeleteRenderPass(this->m_envMapRenderPasses[i]);
+		}
+	}
+
+	if (this->m_envMapDepthBuffer.IsValid())
+	{
+		IGraphicsDevice::Ptr->DeleteTexture(this->m_envMapDepthBuffer);
+	}
+
+	if (this->m_envMapArray.IsValid())
+	{
+		IGraphicsDevice::Ptr->DeleteTexture(this->m_envMapArray);
+	}
+}
+
+void PhxEngine::Scene::Scene::UpdateGpuBufferSizes()
+{
+	auto meshEntitiesView = this->GetAllEntitiesWith<MeshComponent>();
+	this->m_numGeometryEntires = 0;
+	for (auto e : meshEntitiesView)
+	{
+		auto comp = meshEntitiesView.get<MeshComponent>(e);
+		this->m_numGeometryEntires += comp.Surfaces.size();
+	}
+
+	auto materialEntitiesView = this->GetAllEntitiesWith<MaterialComponent>();
+	this->m_numMaterialEntries = materialEntitiesView.size();
+
+	if (!this->m_materialGpuBuffer.IsValid() ||
+		IGraphicsDevice::Ptr->GetBufferDesc(this->m_materialGpuBuffer).SizeInBytes != this->m_numMaterialEntries * sizeof(Shader::MaterialData))
+	{
+		RHI::BufferDesc desc = {};
+		desc.DebugName = "Material Data";
+		desc.Binding = RHI::BindingFlags::ShaderResource;
+		desc.InitialState = ResourceStates::ShaderResource;
+		desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Raw;
+		desc.CreateBindless = true;
+		desc.StrideInBytes = sizeof(Shader::MaterialData);
+		desc.SizeInBytes = sizeof(Shader::MaterialData) * this->m_numMaterialEntries;
+
+		if (this->m_materialGpuBuffer.IsValid())
+		{
+			IGraphicsDevice::Ptr->DeleteBuffer(this->m_materialGpuBuffer);
+		}
+		this->m_materialGpuBuffer = IGraphicsDevice::Ptr->CreateBuffer(desc);
+
+		desc.CreateBindless = false;
+		desc.DebugName = "Material Upload Data";
+		desc.Usage = RHI::Usage::Upload;
+		desc.Binding = RHI::BindingFlags::None;
+		desc.MiscFlags = RHI::BufferMiscFlags::None;
+		desc.InitialState = ResourceStates::CopySource;
+		for (int i = 0; i < this->m_materialUploadBuffers.size(); i++)
+		{
+			if (this->m_materialUploadBuffers[i].IsValid())
+			{
+				IGraphicsDevice::Ptr->DeleteBuffer(this->m_materialUploadBuffers[i]);
+			}
+			this->m_materialUploadBuffers[i] = IGraphicsDevice::Ptr->CreateBuffer(desc);
+		}
+	}
+
+	if (!this->m_geometryGpuBuffer.IsValid() ||
+		IGraphicsDevice::Ptr->GetBufferDesc(this->m_geometryGpuBuffer).SizeInBytes != (this->m_numGeometryEntires * sizeof(Shader::Geometry)))
+	{
+		RHI::BufferDesc desc = {};
+		desc.DebugName = "Geometry Data";
+		desc.Binding = RHI::BindingFlags::ShaderResource;
+		desc.InitialState = ResourceStates::ShaderResource;
+		desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Raw;
+		desc.CreateBindless = true;
+		desc.StrideInBytes = sizeof(Shader::Geometry);
+		desc.SizeInBytes = sizeof(Shader::Geometry) * this->m_numGeometryEntires;
+
+		if (this->m_geometryGpuBuffer.IsValid())
+		{
+			IGraphicsDevice::Ptr->DeleteBuffer(this->m_geometryGpuBuffer);
+		}
+		this->m_geometryGpuBuffer = IGraphicsDevice::Ptr->CreateBuffer(desc);
+
+		desc.DebugName = "Geometry Upload";
+		desc.Usage = RHI::Usage::Upload;
+		desc.Binding = RHI::BindingFlags::None;
+		desc.MiscFlags = RHI::BufferMiscFlags::None;
+		desc.InitialState = ResourceStates::CopySource;
+		desc.CreateBindless = false;
+		for (int i = 0; i < this->m_geometryUploadBuffers.size(); i++)
+		{
+			if (this->m_geometryUploadBuffers[i].IsValid())
+			{
+				IGraphicsDevice::Ptr->DeleteBuffer(this->m_geometryUploadBuffers[i]);
+			}
+			this->m_geometryUploadBuffers[i] = IGraphicsDevice::Ptr->CreateBuffer(desc);
+		}
+	}
+
+	auto meshInstanceView = this->GetAllEntitiesWith<MeshInstanceComponent>();
+	this->m_numInstances = meshInstanceView.size();
+	if (!this->m_instanceGpuBuffer.IsValid() ||
+		IGraphicsDevice::Ptr->GetBufferDesc(this->m_instanceGpuBuffer).SizeInBytes != (this->m_numInstances * sizeof(Shader::MeshInstance)))
+	{
+		RHI::BufferDesc desc = {};
+		desc.DebugName = "Instance Data";
+		desc.Binding = RHI::BindingFlags::ShaderResource;
+		desc.InitialState = ResourceStates::ShaderResource;
+		desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Raw;
+		desc.CreateBindless = true;
+		desc.StrideInBytes = sizeof(Shader::MeshInstance);
+		desc.SizeInBytes = sizeof(Shader::MeshInstance) * this->m_numInstances;
+
+		if (this->m_instanceGpuBuffer.IsValid())
+		{
+			IGraphicsDevice::Ptr->DeleteBuffer(this->m_instanceGpuBuffer);
+		}
+		this->m_instanceGpuBuffer = IGraphicsDevice::Ptr->CreateBuffer(desc);
+
+		desc.DebugName = "Geometry Upload";
+		desc.Usage = RHI::Usage::Upload;
+		desc.Binding = RHI::BindingFlags::None;
+		desc.MiscFlags = RHI::BufferMiscFlags::None;
+		desc.InitialState = ResourceStates::CopySource;
+		desc.CreateBindless = false;
+		for (int i = 0; i < this->m_instanceUploadBuffers.size(); i++)
+		{
+			if (this->m_instanceUploadBuffers[i].IsValid())
+			{
+				IGraphicsDevice::Ptr->DeleteBuffer(this->m_instanceUploadBuffers[i]);
+			}
+			this->m_instanceUploadBuffers[i] = IGraphicsDevice::Ptr->CreateBuffer(desc);
+		}
+	}
+
+	// Set up TLAS Data
+	if (IGraphicsDevice::Ptr->CheckCapability(DeviceCapability::RayTracing))
+	{
+		BufferDesc desc;
+		desc.StrideInBytes = IGraphicsDevice::Ptr->GetRTTopLevelAccelerationStructureInstanceSize();
+		desc.SizeInBytes = desc.StrideInBytes * this->m_numInstances * 2; // *2 to grow fast
+		desc.Usage = Usage::Upload;
+
+		if (!this->m_tlasUploadBuffers.front().IsValid() || IGraphicsDevice::Ptr->GetBufferDesc(this->m_tlasUploadBuffers.front()).SizeInBytes < desc.SizeInBytes)
+		{
+			for (int i = 0; i < this->m_tlasUploadBuffers.size(); i++)
+			{
+				if (this->m_tlasUploadBuffers[i].IsValid())
+				{
+					IGraphicsDevice::Ptr->DeleteBuffer(this->m_tlasUploadBuffers[i]);
+				}
+				this->m_tlasUploadBuffers[i] = IGraphicsDevice::Ptr->CreateBuffer(desc);
+			}
+		}
+
+		BufferHandle currentTlasUploadBuffer = this->m_tlasUploadBuffers[IGraphicsDevice::Ptr->GetFrameIndex()];
+		void* pTlasUploadBufferData = IGraphicsDevice::Ptr->GetBufferMappedData(currentTlasUploadBuffer);
+
+		if (pTlasUploadBufferData)
+		{
+			// Ensure we remove any old data
+			std::memset(pTlasUploadBufferData, 0, IGraphicsDevice::Ptr->GetBufferDesc(currentTlasUploadBuffer).SizeInBytes);
+
+			int instanceId = 0;
+			auto viewMeshTranslation = this->GetAllEntitiesWith<MeshInstanceComponent, TransformComponent>();
+			for (auto e : viewMeshTranslation)
+			{
+				auto [meshInstanceComponent, transformComponent] = viewMeshTranslation.get<MeshInstanceComponent, TransformComponent>(e);
+
+				RTAccelerationStructureDesc::TopLevelDesc::Instance instance = {};
+				for (int i = 0; i < ARRAYSIZE(instance.Transform); ++i)
+				{
+					for (int j = 0; j < ARRAYSIZE(instance.Transform[i]); ++j)
+					{
+						instance.Transform[i][j] = transformComponent.WorldMatrix.m[j][i];
+					}
+				}
+
+				auto& meshComponent = this->m_registry.get<MeshComponent>(meshInstanceComponent.Mesh);
+				instance.InstanceId = instanceId++;
+				instance.InstanceMask = 0xff;
+				instance.BottomLevel = meshComponent.Blas;
+				instance.InstanceContributionToHitGroupIndex = 0;
+				instance.Flags = 0;
+
+				// TODO: Disable cull for Two-sided materials.
+				/*
+				if (meshComponent)
+				{
+					instance.flags |= RaytracingAccelerationStructureDesc::TopLevel::Instance::FLAG_TRIANGLE_CULL_DISABLE;
+				}
+				if (XMVectorGetX(XMMatrixDeterminant(W)) > 0)
+				{
+					// There is a mismatch between object space winding and BLAS winding:
+					//	https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_raytracing_instance_flags
+					// instance.flags |= RaytracingAccelerationStructureDesc::TopLevel::Instance::FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
+				}
+				*/
+
+				void* dest = (void*)((size_t)pTlasUploadBufferData + (size_t)instance.InstanceId * IGraphicsDevice::Ptr->GetRTTopLevelAccelerationStructureInstanceSize());
+				IGraphicsDevice::Ptr->WriteRTTopLevelAccelerationStructureInstance(instance, dest);
+			}
+		}
+
+
+		if (!this->m_tlas.IsValid() || IGraphicsDevice::Ptr->GetRTAccelerationStructureDesc(this->m_tlas).TopLevel.Count < this->m_numInstances)
+		{
+			RHI::RTAccelerationStructureDesc desc;
+			desc.Flags = RHI::RTAccelerationStructureDesc::kPreferFastBuild;
+			desc.Type = RHI::RTAccelerationStructureDesc::Type::TopLevel;
+			desc.TopLevel.Count = (uint32_t)this->m_numInstances * 2; // *2 to grow fast
+
+			RHI::BufferDesc bufferDesc = {};
+			bufferDesc.MiscFlags = BufferMiscFlags::Structured; // TODO: RayTracing
+			bufferDesc.StrideInBytes = IGraphicsDevice::Ptr->GetRTTopLevelAccelerationStructureInstanceSize();
+			bufferDesc.SizeInBytes = bufferDesc.StrideInBytes * desc.TopLevel.Count;
+			bufferDesc.DebugName = "TLAS::InstanceBuffer";
+
+			if (this->m_tlas.IsValid())
+			{
+				IGraphicsDevice::Ptr->DeleteBuffer(IGraphicsDevice::Ptr->GetRTAccelerationStructureDesc(this->m_tlas).TopLevel.InstanceBuffer);
+			}
+
+			desc.TopLevel.InstanceBuffer = IGraphicsDevice::Ptr->CreateBuffer(bufferDesc);
+
+			IGraphicsDevice::Ptr->DeleteRtAccelerationStructure(this->m_tlas);
+			this->m_tlas = IGraphicsDevice::Ptr->CreateRTAccelerationStructure(desc);
+		}
+	}
 }

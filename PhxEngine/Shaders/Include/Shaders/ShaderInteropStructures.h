@@ -58,7 +58,7 @@ namespace Shader
 
 	struct Scene
 	{
-		uint MeshBufferIndex;  // Currently not used
+		uint MeshInstanceBufferIndex;
 		uint GeometryBufferIndex;
 		uint MaterialBufferIndex;
 		uint IrradianceMapTexIndex;
@@ -398,21 +398,15 @@ namespace Shader
 #endif
 	};
 
-	struct Mesh
+	struct MeshInstance
 	{
-		uint VbPositionBufferIndex;
-		uint VbTexCoordBufferIndex;
-		uint VbNormalBufferIndex;
-		uint VbTangentBufferIndex;
-
+		float4x4 WorldMatrix;
 		// -- 16 byte boundary ----
-		uint Flags;
 
-		uint _padding0;
-		uint _padding1;
-		uint _padding2;
-
-		// -- 16 byte boundary ----
+		uint GeometryOffset;
+		uint GeometryCount;
+		uint Colour;
+		uint Emissive;
 	};
 
 	struct Geometry
@@ -455,10 +449,10 @@ namespace Shader
 
 	struct GeometryPassPushConstants
 	{
-		float4x4 WorldTransform;
-
 		uint GeometryIndex;
-		uint MeshIndex;
+		uint MaterialIndex;
+		uint InstancePtrBufferDescriptorIndex;
+		uint InstancePtrDataOffset;
 		uint DrawFlags;
 	};
 
@@ -498,6 +492,11 @@ namespace Shader
 		// -- 16 byte boundary ---
 
 		uint FilterRoughness;
+	};
+
+	struct ShaderMeshInstancePointer
+	{
+		uint InstanceIndex;
 	};
 
 #ifdef __cplusplus

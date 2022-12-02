@@ -433,6 +433,8 @@ void CommandList::ClearTextureFloat(TextureHandle texture, Color const& clearCol
 
 GPUAllocation CommandList::AllocateGpu(size_t bufferSize, size_t stride)
 {
+    assert(bufferSize <= this->m_uploadBuffer->GetPageSize());
+
     auto heapAllocation = this->m_uploadBuffer->Allocate(bufferSize, stride);
 
     GPUAllocation gpuAlloc = {};
