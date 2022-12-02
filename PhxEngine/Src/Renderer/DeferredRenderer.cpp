@@ -78,7 +78,7 @@ namespace
     }
 }
 
-static AutoConsoleVar_Int sCVarRTShadows("Renderer.Shadows.RT", "RT_SHADOWS", 1, ConsoleVarFlags::EditCheckbox);
+static AutoConsoleVar_Int sCVarRTShadows("Renderer.Shadows.RT", "RT_SHADOWS", 1, ConsoleVarFlags::EditReadOnly);
 
 void DeferredRenderer::FreeResources()
 {
@@ -615,7 +615,6 @@ void DeferredRenderer::PrepareFrameRenderData(
 {
     auto scope = this->m_commandList->BeginScopedMarker("Prepare Frame Data");
 
-
     GPUAllocation lightBufferAlloc =
         commandList->AllocateGpu(
             sizeof(Shader::ShaderLight) * Shader::SHADER_LIGHT_ENTITY_COUNT,
@@ -719,6 +718,12 @@ void DeferredRenderer::PrepareFrameRenderData(
 	Shader::Frame frameData = {};
     // Move to Renderer...
     frameData.BrdfLUTTexIndex = scene.GetBrdfLutDescriptorIndex();
+    frameData.LightEntityDescritporIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(lightBufferAlloc.GpuBuffer, RHI::SubresouceType::SRV);
+    frameData.LightDataOffset = lightBufferAlloc.Offset;
+    frameData.LightCount = lightCount;
+
+    frameData.MatricesDescritporIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(matrixBufferAlloc.GpuBuffer, RHI::SubresouceType::SRV);
+    frameData.MatricesDataOffset = matrixBufferAlloc.Offset;
 
 	// Upload data
 	RHI::GpuBarrier preCopyBarriers[] =
@@ -899,6 +904,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
     cameraData.ProjInv = camera.ProjectionInv;
     cameraData.ViewInv = camera.ViewInv;
 
+    /* Disabled Light
     auto view = scene.GetAllEntitiesWith<LightComponent>();
     bool foundDirectionalLight = false;
     for (auto e : view)
@@ -948,9 +954,8 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 
         // DrawMeshes(scene, this->m_commandList, Graphics::CascadeShadowMap::GetNumCascades());
         this->m_commandList->EndRenderPass();
-
     }
-
+    */
     {
         auto scrope = this->m_commandList->BeginScopedMarker("Opaque GBuffer Pass");
 

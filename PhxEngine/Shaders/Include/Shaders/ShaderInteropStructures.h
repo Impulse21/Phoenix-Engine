@@ -66,18 +66,14 @@ namespace Shader
 		// -- 16 byte boundary ----
 
 		uint PreFilteredEnvMapTexIndex; // Currently not used
-		uint LightEntityIndex;
-		uint NumLights;
-		uint MatricesIndex;
+		uint EnvMapArray;
+		uint EnvMap_NumMips;
+		uint RT_TlasIndex;
 
 		// -- 16 byte boundary ----
 		Atmosphere AtmosphereData;
 
 		// -- 16 byte boundary ----
-
-		uint EnvMapArray;
-		uint EnvMap_NumMips;
-		uint RT_TlasIndex;
 	};
 
 	// -- Common Structurs ---
@@ -85,11 +81,16 @@ namespace Shader
 	{
 		uint Option;
 		uint BrdfLUTTexIndex;
-		uint _padding1;
-		uint _padding2;
+		uint LightEntityDescritporIndex;
+		uint LightDataOffset;
 
 		// -- 16 byte boundary ----
+		uint LightCount;
+		uint MatricesDescritporIndex;
+		uint MatricesDataOffset;
+		uint _padding;
 
+		// -- 16 byte boundary ----
 		Scene SceneData;
 	};
 
