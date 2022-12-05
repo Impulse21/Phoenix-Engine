@@ -583,7 +583,6 @@ void GltfSceneLoader::LoadMaterialData(
 		this->m_materialEntityMap[&cgltfMtl] = mtlEntity;
 
 		MaterialComponent& mtl = mtlEntity.AddComponent<MaterialComponent>();
-;
 
 		if (cgltfMtl.alpha_mode == cgltf_alpha_mode_blend)
 		{
@@ -676,6 +675,7 @@ void GltfSceneLoader::LoadMeshData(
 		const auto& cgltfMesh = pMeshes[i];
 		std::string name = cgltfMesh.name ? cgltfMesh.name : "Mesh " + std::to_string(i);
 		Entity meshEntity = scene.CreateEntity(name);
+		this->m_meshEntityMap[&cgltfMesh] = meshEntity;
 		auto& mesh = meshEntity.AddComponent<MeshComponent>();
 
 		// Resize data

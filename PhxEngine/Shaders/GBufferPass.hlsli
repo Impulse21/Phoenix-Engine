@@ -30,19 +30,19 @@
 
 PUSH_CONSTANT(push, GeometryPassPushConstants);
 
-inline Mesh GetMesh()
-{
-    return LoadMesh(push.MeshIndex);
-}
-
 inline Geometry GetGeometry()
 {
     return LoadGeometry(push.GeometryIndex);
 }
 
-inline MaterialData GetMaterial(uint materialID)
+inline MaterialData GetMaterial()
 {
-    return LoadMaterial(materialID);
+    return LoadMaterial(push.MaterialIndex);
+}
+
+inline ShaderMeshInstancePointer GetMeshInstancePtr(uint index)
+{
+    return ResourceHeap_GetBuffer(push.InstancePtrBufferDescriptorIndex).Load<ShaderMeshInstancePointer>(push.InstancePtrDataOffset + index * sizeof(ShaderMeshInstancePointer));
 }
 
 struct VertexInput
@@ -78,22 +78,28 @@ PSInput main(in VertexInput input)
 {
     PSInput output;
 
-    Geometry geometry = LoadGeometry(push.GeometryIndex);
+    // Get Instance Data
+
+    Geometry geometry = GetGeometry();
     ByteAddressBuffer vertexBuffer = ResourceHeap_GetBuffer(geometry.VertexBufferIndex);
 
-    uint index = input.VertexID;
+    uint vertexId = input.VertexID;
 
-    matrix worldMatrix = push.WorldTransform;
-    float4 position = float4(asfloat(vertexBuffer.Load3(geometry.PositionOffset + index * 12)), 1.0f);
+    ShaderMeshInstancePointer instancePtr = GetMeshInstancePtr(input.InstanceID);
+    MeshInstance meshInstance = LoadMeshInstance(instancePtr.GetInstanceIndex());
+    meshInstance = ResourceHeap_GetBuffer(GetScene().MeshInstanceBufferIndex).Load<MeshInstance>(meshInstanceIndex * sizeof(MeshInstance))
+
+    matrix worldMatrix = meshInstance.WorldMatrix;
+    float4 position = float4(asfloat(vertexBuffer.Load3(geometry.PositionOffset + vertexId * 12)), 1.0f);
 
     output.PositionWS = mul(position, worldMatrix).xyz;
     output.Position = mul(float4(output.PositionWS, 1.0f), GetCamera().ViewProjection);
 
-    output.NormalWS = geometry.NormalOffset == ~0u ? 0 : asfloat(vertexBuffer.Load3(geometry.NormalOffset + index * 12));
-    output.TexCoord = geometry.TexCoordOffset == ~0u ? 0 : asfloat(vertexBuffer.Load2(geometry.TexCoordOffset + index * 8));
+    output.NormalWS = geometry.NormalOffset == ~0u ? 0 : asfloat(vertexBuffer.Load3(geometry.NormalOffset + vertexId * 12));
+    output.TexCoord = geometry.TexCoordOffset == ~0u ? 0 : asfloat(vertexBuffer.Load2(geometry.TexCoordOffset + vertexId * 8));
     output.Colour = float4(1.0f, 1.0f, 1.0f, 1.0f);
 
-    output.TangentWS = geometry.TangentOffset == ~0u ? 0 : asfloat(vertexBuffer.Load4(geometry.TangentOffset + index * 16));
+    output.TangentWS = geometry.TangentOffset == ~0u ? 0 : asfloat(vertexBuffer.Load4(geometry.TangentOffset + vertexId * 16));
     output.TangentWS = float4(mul(output.TangentWS.xyz, (float3x3) worldMatrix), output.TangentWS.w);
 
     output.MaterialID = geometry.MaterialIndex;

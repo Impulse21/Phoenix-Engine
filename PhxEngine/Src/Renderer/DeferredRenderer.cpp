@@ -390,7 +390,7 @@ void DeferredRenderer::RefreshEnvProbes(PhxEngine::Scene::CameraComponent const&
     for (int i = 0; i < ARRAYSIZE(cameras); i++)
     {
         DirectX::XMStoreFloat4x4(&renderCamsCB.ViewProjection[i], cameras[i].ViewProjection);
-        renderCamsCB.Properties[i].x = i;
+        renderCamsCB.RtIndex[i] = (uint)i;
     }
     commandList->BindDynamicConstantBuffer(RootParameters_EnvMap_SkyProceduralCapture::CubeRenderCamsCB, renderCamsCB);
 
@@ -526,7 +526,12 @@ void DeferredRenderer::RefreshEnvProbes(PhxEngine::Scene::CameraComponent const&
     // Filter Env Map
 }
 
-void PhxEngine::Renderer::DeferredRenderer::DrawMeshes(DrawQueue const& drawQueue, PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList, uint32_t numInstances)
+void PhxEngine::Renderer::DeferredRenderer::DrawMeshes(
+    DrawQueue const& drawQueue,
+    PhxEngine::Scene::Scene& scene,
+    PhxEngine::RHI::CommandListHandle commandList,
+    const RenderCam* renderCams,
+    uint32_t numRenderCameras)
 {
     auto scrope = commandList->BeginScopedMarker("Render Scene Meshes");
 
@@ -597,11 +602,17 @@ void PhxEngine::Renderer::DeferredRenderer::DrawMeshes(DrawQueue const& drawQueu
 
         auto& instanceComp = scene.GetRegistry().get<MeshInstanceComponent>((entt::entity)drawBatch.GetInstanceEntityHandle());
 
-        // TODO: Check if visible to camera or cameras
-        Shader::ShaderMeshInstancePointer shaderMeshPtr = {};
-        shaderMeshPtr.InstanceIndex = instanceComp.GlobalBufferIndex;
-        instanceBatch.NumInstance++;
-        instanceCount++;
+        for (uint32_t renderCamIndex = 0; renderCamIndex < numRenderCameras; renderCamIndex++)
+        {
+            Shader::ShaderMeshInstancePointer shaderMeshPtr = {};
+            shaderMeshPtr.Create(instanceComp.GlobalBufferIndex, renderCamIndex);
+
+            // Write into actual GPU-buffer:
+            std::memcpy(pInstancePointerData + instanceCount, &shaderMeshPtr, sizeof(shaderMeshPtr)); // memcpy whole structure into mapped pointer to avoid read from uncached memory
+
+            instanceBatch.NumInstance++;
+            instanceCount++;
+        }
     }
 
     // Flush what ever is left over.
@@ -724,6 +735,7 @@ void DeferredRenderer::PrepareFrameRenderData(
 
     frameData.MatricesDescritporIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(matrixBufferAlloc.GpuBuffer, RHI::SubresouceType::SRV);
     frameData.MatricesDataOffset = matrixBufferAlloc.Offset;
+    frameData.SceneData = scene.GetShaderData();
 
 	// Upload data
 	RHI::GpuBarrier preCopyBarriers[] =
@@ -904,7 +916,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
     cameraData.ProjInv = camera.ProjectionInv;
     cameraData.ViewInv = camera.ViewInv;
 
-    /* Disabled Light
+    /* Disabled Shadow
     auto view = scene.GetAllEntitiesWith<LightComponent>();
     bool foundDirectionalLight = false;
     for (auto e : view)

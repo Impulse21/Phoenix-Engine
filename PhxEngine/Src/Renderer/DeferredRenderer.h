@@ -92,7 +92,12 @@ namespace PhxEngine::Renderer
         void UpdateRaytracingAccelerationStructures(PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
         void RefreshEnvProbes(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
 
-        void DrawMeshes(DrawQueue const& drawQueue, PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList, uint32_t numInstances = 1);
+        void DrawMeshes(
+            DrawQueue const& drawQueue,
+            PhxEngine::Scene::Scene& scene,
+            PhxEngine::RHI::CommandListHandle commandList,
+            const RenderCam* renderCams = nullptr,
+            uint32_t numRenderCameras = 1);
 
     private:
         PhxEngine::RHI::CommandListHandle m_commandList;

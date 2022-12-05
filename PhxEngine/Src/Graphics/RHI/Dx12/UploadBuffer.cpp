@@ -68,6 +68,9 @@ UploadBuffer::Page::Page(GraphicsDevice& device, size_t sizeInBytes)
 	desc.Usage = Usage::Upload;
 	desc.SizeInBytes = sizeInBytes;
 	desc.InitialState = ResourceStates::CopySource | ResourceStates::GenericRead;
+	desc.Binding |= BindingFlags::ShaderResource;
+	desc.MiscFlags |= BufferMiscFlags::Bindless | BufferMiscFlags::Raw;
+	desc.CreateBindless = true;
 	this->m_buffer = device.CreateBuffer(desc);
 
 	Dx12Buffer* bufferImpl = device.GetBufferPool().Get(this->m_buffer);

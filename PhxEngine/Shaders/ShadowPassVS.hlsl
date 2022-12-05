@@ -33,15 +33,25 @@ void main(
 	out float4 outPosition : SV_POSITION,
 	out uint outRTIndex : SV_RenderTargetArrayIndex)
 {
-	outRTIndex = inInstanceID;
+    outPosition = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    outRTIndex = 0;
+	
+	/*
+    ShaderMeshInstancePointer instancePtr = GetMeshInstancePtr(inInstanceID);
+
+	MeshInstance meshInstance = LoadMeshInstance(instancePtr.GetInstanceIndex());
+	matrix worldMatrix = meshInstance.WorldMatrix;
 
 	Geometry geometry = LoadGeometry(push.GeometryIndex);
 	ByteAddressBuffer vertexBuffer = ResourceHeap_GetBuffer(geometry.VertexBufferIndex);
 
 	uint index = inVertexID;
 	float4 position = float4(asfloat(vertexBuffer.Load3(geometry.PositionOffset + index * 12)), 1.0f);
-	matrix worldMatrix = push.WorldTransform;
 
 	position = mul(position, worldMatrix);
-	outPosition = mul(position, RenderCams.ViewProjection[outRTIndex]);
+    outPosition = mul(position, RenderCams.ViewProjection[instancePtr.GetInstanceIndex()]);
+    outRTIndex = mul(position, RenderCams.RtIndex[instancePtr.GetInstanceIndex()]);
+	
+	outRTIndex = inInstanceID;
+	*/
 }

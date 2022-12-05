@@ -434,8 +434,7 @@ namespace Shader
 	{
 		float4x4 ViewProjection[6];
 		// -- 16 byte boundary ---
-		uint4 Properties[6];
-		// -- 16 byte boundary ---
+		uint RtIndex[6];
 	};
 
 #define DRAW_FLAG_ALBEDO        0x001
@@ -497,7 +496,24 @@ namespace Shader
 
 	struct ShaderMeshInstancePointer
 	{
-		uint InstanceIndex;
+		uint Data;
+
+		void Create(uint instanceIndex, uint frustumIndex)
+		{
+			Data = 0;
+			Data |= instanceIndex & 0xFFFFFF;
+			Data |= (frustumIndex & 0xF) << 24u;
+		};
+
+		uint GetInstanceIndex()
+		{
+			return Data & 0xFFFFFF;
+		}
+
+		uint GetFrustumIndex()
+		{
+			return (Data >> 24u) & 0xF;
+		}
 	};
 
 #ifdef __cplusplus

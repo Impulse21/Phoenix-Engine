@@ -18,6 +18,7 @@ PhxEngine::Scene::Scene::Scene()
 {
 	this->m_materialUploadBuffers.resize(IGraphicsDevice::Ptr->GetMaxInflightFrames());
 	this->m_geometryUploadBuffers.resize(IGraphicsDevice::Ptr->GetMaxInflightFrames());
+	this->m_instanceUploadBuffers.resize(IGraphicsDevice::Ptr->GetMaxInflightFrames());
 	this->m_tlasUploadBuffers.resize(IGraphicsDevice::Ptr->GetMaxInflightFrames());
 }
 
@@ -129,6 +130,7 @@ void PhxEngine::Scene::Scene::OnUpdate()
 
 	}
 
+	// TODO:
 	auto sun = this->GetRegistry().try_get<LightComponent>(this->m_activeSun);
 	if (sun)
 	{
@@ -212,7 +214,7 @@ void PhxEngine::Scene::Scene::RunMeshUpdateSystem()
 	}
 
 	// -- Update data --
-	Shader::Geometry* geometryBufferMappedData = (Shader::Geometry*)IGraphicsDevice::Ptr->GetBufferMappedData(this->GetGeometryBuffer());
+	Shader::Geometry* geometryBufferMappedData = (Shader::Geometry*)IGraphicsDevice::Ptr->GetBufferMappedData(this->GetGeometryUploadBuffer());
 	uint32_t currGeoIndex = 0;
 	for (auto entity : view)
 	{
@@ -383,6 +385,11 @@ void PhxEngine::Scene::Scene::RunLightUpdateSystem()
 		XMStoreFloat3(&lightComponent.Direction, XMVector3Normalize(XMVector3TransformNormal(XMVectorSet(0, 1, 0, 0), worldMatrix)));
 
 		transformComponent.WorldMatrix;
+
+		if (lightComponent.Type == LightComponent::kDirectionalLight)
+		{
+			this->m_activeSun = e;
+		}
 	}
 }
 

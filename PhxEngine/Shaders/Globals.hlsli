@@ -11,7 +11,6 @@
 	"RootConstants(num32BitConstants=12, b999), " \
 	"CBV(b0), " \
 	"CBV(b1), " \
-    "SRV(t0),"  \ // TODO: Remove
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
 	"StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
 	"StaticSampler(s52, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, comparisonFunc = COMPARISON_GREATER_EQUAL),"
@@ -21,7 +20,6 @@
 	"RootFlags(CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED), " \
 	"CBV(b0), " \
 	"CBV(b1), " \
-    "SRV(t0),"  \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
 	"StaticSampler(s52, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, comparisonFunc = COMPARISON_GREATER_EQUAL),"
@@ -29,9 +27,6 @@
 
 ConstantBuffer<Frame> FrameCB : register(b0);
 ConstantBuffer<Camera> CameraCB : register(b1);
-StructuredBuffer<ShaderLight> LightSB : register(t0);
-
-// StructuredBuffer<matrix> InstanceTransformsSB : register(t0);
 
 SamplerState SamplerDefault : register(s50);
 SamplerState SamplerLinearClamped : register(s51);
@@ -71,11 +66,6 @@ inline Atmosphere GetAtmosphere()
 inline float3 GetHorizonColour() { return GetAtmosphere().HorizonColour; }
 inline float3 GetZenithColour() { return GetAtmosphere().ZenithColour; }
 
-inline Mesh LoadMesh(uint meshIndex)
-{
-    return ResourceHeap_GetBuffer(GetScene().MeshBufferIndex).Load<Mesh>(meshIndex * sizeof(Mesh));
-}
-
 inline Geometry LoadGeometry(uint geoIndex)
 {
     return ResourceHeap_GetBuffer(GetScene().GeometryBufferIndex).Load<Geometry>(geoIndex * sizeof(Geometry));
@@ -88,11 +78,17 @@ inline MaterialData LoadMaterial(uint mtlIndex)
 
 inline ShaderLight LoadLight(uint lightIndex)
 {
-	return ResourceHeap_GetBuffer(GetScene().LightEntityIndex).Load<ShaderLight>(lightIndex * sizeof(ShaderLight));
+	return ResourceHeap_GetBuffer(GetFrame().LightEntityDescritporIndex).Load<ShaderLight>(GetFrame().LightDataOffset + lightIndex * sizeof(ShaderLight));
 }
 
 inline float4x4 LoadMatrix(uint matrixIndex)
 {
-	return ResourceHeap_GetBuffer(GetScene().MatricesIndex).Load<float4x4>(matrixIndex * sizeof(float4x4));
+	return ResourceHeap_GetBuffer(GetFrame().MatricesDescritporIndex).Load<float4x4>(GetFrame().MatricesDataOffset + matrixIndex * sizeof(float4x4));
 }
+
+inline MeshInstance LoadMeshInstance(uint meshInstanceIndex)
+{
+	return ResourceHeap_GetBuffer(GetScene().MeshInstanceBufferIndex).Load<MeshInstance>(meshInstanceIndex * sizeof(MeshInstance));
+}
+
 #endif // __PHX_GLOBALS_HLSLI__
