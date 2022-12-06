@@ -407,6 +407,9 @@ namespace PhxEngine::Scene
 			uint32_t VertexOffsetInMesh = 0;
 			uint32_t NumVertices = 0;
 			uint32_t NumIndices = 0;
+
+			// For debug purposes.
+			size_t GlobalGeometryBufferIndex = 0;
 		};
 		std::vector<SurfaceDesc> Surfaces;
 
