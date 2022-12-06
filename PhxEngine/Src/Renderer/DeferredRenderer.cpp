@@ -754,7 +754,7 @@ void DeferredRenderer::PrepareFrameRenderData(
         0,
         scene.GetInstanceUploadBuffer(),
         0,
-        scene.GetNumInstances() * sizeof(Shader::Geometry));
+        scene.GetNumInstances() * sizeof(Shader::MeshInstance));
 
 	commandList->CopyBuffer(
 		scene.GetGeometryBuffer(),
