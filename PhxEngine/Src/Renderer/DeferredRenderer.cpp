@@ -999,6 +999,12 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
         {
             auto& instanceComponent = instanceView.get<MeshInstanceComponent>(e);
 
+            auto& meshComponent = scene.GetRegistry().get<MeshComponent>(instanceComponent.Mesh);
+            if (meshComponent.RenderBucketMask & MeshComponent::RenderType_Transparent)
+            {
+                continue;
+            }
+
             // TODO: Set up distance need AABB to calculate this.
             const float distance = 0;
 
