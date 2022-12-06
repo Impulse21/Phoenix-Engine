@@ -183,7 +183,7 @@ void Application::SetWindow(Core::Platform::WindowHandle windowHandle, bool isFu
 	swapchainDesc.Format = FormatType::R10G10B10A2_UNORM;
 	swapchainDesc.Width = this->m_canvas.GetPhysicalWidth();
 	swapchainDesc.Height = this->m_canvas.GetPhysicalHeight();
-	swapchainDesc.VSync = true;
+	swapchainDesc.VSync = false;
 	swapchainDesc.WindowHandle = windowHandle;
 	swapchainDesc.EnableHDR = true;
 
@@ -223,7 +223,7 @@ PhxEngine::LayeredApplication::LayeredApplication(ApplicationSpecification const
 	swapchainDesc.Format = FormatType::R10G10B10A2_UNORM;
 	swapchainDesc.Width = this->m_window->GetWidth();
 	swapchainDesc.Height = this->m_window->GetHeight();
-	swapchainDesc.VSync = true;
+	swapchainDesc.VSync = false;
 	swapchainDesc.WindowHandle = static_cast<Platform::WindowHandle>(m_window->GetNativeWindowHandle());
 
 	IGraphicsDevice::Ptr->CreateSwapChain(swapchainDesc);

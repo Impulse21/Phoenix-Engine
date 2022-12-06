@@ -54,14 +54,14 @@ struct VertexInput
     
 struct PSInput
 {
-    float3 NormalWS     : NORMAL;
-    float4 Colour       : COLOUR;
+    float3 NormalWS : NORMAL;
+    float4 Colour : COLOUR;
     float2 TexCoord : TEXCOORD;
     float3 ShadowTexCoord : TEXCOORD1;
-    float3 PositionWS   : Position;
-    float4 TangentWS    : TANGENT;
+    float3 PositionWS : Position;
+    float4 TangentWS : TANGENT;
     uint MaterialID : MATERIAL;
-    float4 Position     : SV_POSITION;
+    float4 Position : SV_POSITION;
 };
 
 #ifdef GBUFFER_PASS_LAYOUT_COMMON
@@ -87,7 +87,7 @@ PSInput main(in VertexInput input)
 
     ShaderMeshInstancePointer instancePtr = GetMeshInstancePtr(input.InstanceID);
     MeshInstance meshInstance = LoadMeshInstance(instancePtr.GetInstanceIndex());
-    meshInstance = ResourceHeap_GetBuffer(GetScene().MeshInstanceBufferIndex).Load<MeshInstance>(meshInstanceIndex * sizeof(MeshInstance))
+    meshInstance = ResourceHeap_GetBuffer(GetScene().MeshInstanceBufferIndex).Load<MeshInstance>(instancePtr.GetInstanceIndex() * sizeof(MeshInstance));
 
     matrix worldMatrix = meshInstance.WorldMatrix;
     float4 position = float4(asfloat(vertexBuffer.Load3(geometry.PositionOffset + vertexId * 12)), 1.0f);

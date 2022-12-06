@@ -219,11 +219,11 @@ void PhxEngine::Scene::Scene::RunMeshUpdateSystem()
 	for (auto entity : view)
 	{
 		auto& mesh = view.get<MeshComponent>(entity);
-		mesh.GlobalGeometryBufferIndex = currGeoIndex;
+		mesh.GlobalGeometryBufferIndex = currGeoIndex++;
 		for (int i = 0; i < mesh.Surfaces.size(); i++)
 		{
 			MeshComponent::SurfaceDesc& surfaceDesc = mesh.Surfaces[i];
-			Shader::Geometry* geometryShaderData = geometryBufferMappedData + currGeoIndex;
+			Shader::Geometry* geometryShaderData = geometryBufferMappedData + mesh.GlobalGeometryBufferIndex;
 
 			auto& material = this->GetRegistry().get<MaterialComponent>(surfaceDesc.Material);
 			geometryShaderData->MaterialIndex = material.GlobalBufferIndex;
@@ -234,7 +234,8 @@ void PhxEngine::Scene::Scene::RunMeshUpdateSystem()
 			geometryShaderData->PositionOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Position).ByteOffset;
 			geometryShaderData->TexCoordOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::TexCoord).ByteOffset;
 			geometryShaderData->NormalOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Normal).ByteOffset;
-			geometryShaderData->TangentOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Tangent).ByteOffset;;
+			geometryShaderData->TangentOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Tangent).ByteOffset;
+
 		}
 	}
 }
@@ -415,7 +416,7 @@ void PhxEngine::Scene::Scene::RunMeshInstanceUpdateSystem()
 		shaderMeshInstance->GeometryCount = (uint)mesh.Surfaces.size();
 		shaderMeshInstance->WorldMatrix = transformComponent.WorldMatrix;
 
-		meshInstanceComponent.GlobalBufferIndex = currInstanceIndex;
+		meshInstanceComponent.GlobalBufferIndex = currInstanceIndex++;
 	}
 }
 

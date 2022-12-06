@@ -23,7 +23,7 @@ PhxEngine::LayeredApplication* PhxEngine::CreateApplication(int argc, char** arg
 	spec.Name = "PhxEngine Editor";
 	spec.FullScreen = false;
 	spec.EnableImGui = true;
-	spec.VSync = true;
+	spec.VSync = false;
 	spec.AllowWindowResize = false;
 
 	return new RuntimeApplication(spec);
