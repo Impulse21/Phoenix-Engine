@@ -78,15 +78,22 @@ namespace PhxEngine::Renderer
 		{
 			std::sort(DrawBatches.begin(), DrawBatches.end(), std::greater<DrawBatch>());
 		}
+
 		inline void SortOpaque()
 		{
 			std::sort(DrawBatches.begin(), DrawBatches.end(), std::less<DrawBatch>());
+		}
+
+		inline void Reset()
+		{
+			DrawBatches.clear();
 		}
 
 		inline bool Empty() const
 		{
 			return DrawBatches.empty();
 		}
+
 		inline size_t Size() const
 		{
 			return DrawBatches.size();
