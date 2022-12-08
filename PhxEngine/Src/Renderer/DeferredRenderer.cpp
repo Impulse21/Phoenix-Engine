@@ -991,10 +991,10 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 
         // Construct a render queue
         thread_local static DrawQueue drawQueue;
+        drawQueue.Reset();
 
         // Look through Meshes and instances?
         // TODO: Only get a list of visible entries
-        drawQueue.Reset();
         auto instanceView = scene.GetAllEntitiesWith<MeshInstanceComponent>();
         for (auto e : instanceView)
         {
