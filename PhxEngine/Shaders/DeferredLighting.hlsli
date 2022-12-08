@@ -146,9 +146,9 @@ float4 main(PSInput input) : SV_TARGET
     // -- Collect Direct Light contribution ---
     float shadow = 1.0;
 	[loop]
-	for (int nLights = 0; nLights < scene.NumLights; nLights++)
+	for (int iLight = 0; iLight < GetFrame().LightCount; iLight++)
 	{
-		ShaderLight light = LoadLight(nLights);
+		ShaderLight light = LoadLight(iLight);
 
 #ifdef RT_SHADOWS
         switch (light.GetType())

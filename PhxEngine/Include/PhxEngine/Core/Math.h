@@ -18,17 +18,6 @@ namespace PhxEngine::Core::Math
 		return retVal;
 	}
 
-	inline uint32_t PackColour(PhxEngine::RHI::Color const& colour)
-	{
-		uint32_t retVal = 0;
-		retVal |= (uint32_t)((uint8_t)(Saturate(colour.R) * 255.0f) << 0);
-		retVal |= (uint32_t)((uint8_t)(Saturate(colour.G) * 255.0f) << 8);
-		retVal |= (uint32_t)((uint8_t)(Saturate(colour.B) * 255.0f) << 16);
-		retVal |= (uint32_t)((uint8_t)(Saturate(colour.A) * 255.0f) << 24);
-
-		return retVal;
-	}
-
 	inline float Distance(DirectX::XMVECTOR const& v1, DirectX::XMVECTOR const& v2)
 	{
 		auto subVector = DirectX::XMVectorSubtract(v1, v2);

@@ -45,7 +45,7 @@ namespace PhxEngine
 		uint32_t WindowWidth = 2000;
 		uint32_t WindowHeight = 1200;
 		bool FullScreen = false;
-		bool VSync = true;
+		bool VSync = false;
 		bool EnableImGui = false;
 		bool AllowWindowResize = true;
 

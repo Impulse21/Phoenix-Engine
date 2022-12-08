@@ -370,7 +370,17 @@ namespace PhxEngine::Scene
 
 	};
 
-	struct MeshRenderComponent
+	struct EnvProbeComponent
+	{
+		int textureIndex = -1;
+		DirectX::XMFLOAT3 Position = {};
+		float Range;
+		DirectX::XMFLOAT4X4 InverseMatrix = {};
+
+	};
+
+
+	struct MeshComponent
 	{
 		enum RenderType
 		{
@@ -380,16 +390,139 @@ namespace PhxEngine::Scene
 			RenderType_All = RenderType_Opaque | RenderType_Transparent
 		};
 
-		std::shared_ptr<Assets::Mesh> Mesh;
+		enum Flags
+		{
+			kEmpty = 0,
+			kContainsNormals = 1 << 0,
+			kContainsTexCoords = 1 << 1,
+			kContainsTangents = 1 << 2,
+		};
+
+		uint32_t Flags = kEmpty;
+
+		struct SurfaceDesc
+		{
+			entt::entity Material;
+			uint32_t IndexOffsetInMesh = 0;
+			uint32_t VertexOffsetInMesh = 0;
+			uint32_t NumVertices = 0;
+			uint32_t NumIndices = 0;
+
+			// For debug purposes.
+			size_t GlobalGeometryBufferIndex = 0;
+		};
+		std::vector<SurfaceDesc> Surfaces;
+
+		size_t GlobalGeometryBufferIndex = 0;
+
+		RHI::BufferHandle GeneralGpuBuffer;
+
+		RHI::BufferHandle VertexGpuBuffer;
+		RHI::BufferHandle IndexGpuBuffer;
+
+		struct BufferViews
+		{
+			uint64_t Offset = ~0ull;
+			uint64_t Size = 0ull;
+			int SubresourceSRV = -1;
+			int DescriptorSRV = -1;
+			int SubresourceUAV = -1;
+			int DescriptorUAV = -1;
+
+			constexpr bool IsValid() const
+			{
+				return this->Offset != ~0ull;
+			}
+		};
+
 		uint32_t RenderBucketMask = RenderType::RenderType_Opaque;
+
+		uint32_t TotalIndices = 0;
+		uint32_t TotalVertices = 0;
+
+		enum class BLASState
+		{
+			Rebuild = 0,
+			Refit,
+			Complete,
+		};
+		BLASState BlasState = BLASState::Rebuild;
+		RHI::RTAccelerationStructureHandle Blas;
+
+		// -- CPU Data ---
+		std::vector<DirectX::XMFLOAT3> VertexPositions;
+		std::vector<DirectX::XMFLOAT2> VertexTexCoords;
+		std::vector<DirectX::XMFLOAT3> VertexNormals;
+		std::vector<DirectX::XMFLOAT4> VertexTangents;
+		std::vector< DirectX::XMFLOAT3> VertexColour;
+		std::vector<uint32_t> Indices;
+
+		enum class VertexAttribute : uint8_t
+		{
+			Position = 0,
+			TexCoord,
+			Normal,
+			Tangent,
+			Colour,
+			Count,
+		};
+
+		std::array<RHI::BufferRange, (int)VertexAttribute::Count> BufferRanges;
+
+		[[nodiscard]] bool HasVertexAttribuite(VertexAttribute attr) const { return this->BufferRanges[(int)attr].SizeInBytes != 0; }
+		RHI::BufferRange& GetVertexAttribute(VertexAttribute attr) { return this->BufferRanges[(int)attr]; }
+		[[nodiscard]] const RHI::BufferRange& GetVertexAttribute(VertexAttribute attr) const { return this->BufferRanges[(int)attr]; }
+
+		void ReverseWinding()
+		{
+			assert(this->IsTriMesh());
+			for (auto iter = this->Indices.begin(); iter != this->Indices.end(); iter += 3)
+			{
+				std::swap(*iter, *(iter + 2));
+			}
+		}
+
+		bool IsTriMesh() const { return (this->Indices.size() % 3) == 0; }
+
+		void CreateRenderData(RHI::CommandListHandle commandList);
 	};
 
-	struct EnvProbeComponent
+	struct MeshInstanceComponent
 	{
-		int textureIndex = -1;
-		DirectX::XMFLOAT3 Position = {};
-		float Range;
-		DirectX::XMFLOAT4X4 InverseMatrix = {};
+		enum RenderType
+		{
+			RenderType_Void = 0,
+			RenderType_Opaque = 1 << 0,
+			RenderType_Transparent = 1 << 1,
+			RenderType_All = RenderType_Opaque | RenderType_Transparent
+		};
+		uint32_t RenderBucketMask = RenderType::RenderType_Opaque;
 
+		entt::entity Mesh = entt::null;
+		DirectX::XMFLOAT4 Color = DirectX::XMFLOAT4(1, 1, 1, 1);
+		DirectX::XMFLOAT4 EmissiveColor = DirectX::XMFLOAT4(1, 1, 1, 1);
+
+		DirectX::XMFLOAT4X4 WorldMatrix = cIdentityMatrix;
+		size_t GlobalBufferIndex = ~0ull;
+	};
+
+
+	struct MaterialComponent
+	{
+		PhxEngine::Renderer::BlendMode BlendMode = Renderer::BlendMode::Opaque;
+		DirectX::XMFLOAT4 BaseColour = { 0.0f, 0.0f, 0.0f, 1.0f };
+		DirectX::XMFLOAT4 Emissive = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+		float Metalness = 1.0f;
+		float Roughness = 1.0f;
+		float Ao = 1.0f;
+		bool IsDoubleSided = false;
+
+		std::shared_ptr<Assets::Texture> BaseColourTexture;
+		std::shared_ptr<Assets::Texture> MetalRoughnessTexture;
+		std::shared_ptr<Assets::Texture> AoTexture;
+		std::shared_ptr<Assets::Texture> NormalMapTexture;
+
+		size_t GlobalBufferIndex = ~0ull;
 	};
 }

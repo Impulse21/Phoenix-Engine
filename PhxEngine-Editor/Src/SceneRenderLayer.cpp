@@ -49,7 +49,7 @@ void SceneRenderLayer::OnUpdate(PhxEngine::Core::TimeStep const& dt)
     this->m_editorCameraController.OnUpdate(dt, this->m_editorCamera);
     if (this->m_scene)
     {
-        IRenderer::Ptr->OnUpdate(*this->m_scene);
+        this->m_scene->OnUpdate();
     }
 }
 

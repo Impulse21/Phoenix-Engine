@@ -58,7 +58,7 @@ namespace Shader
 
 	struct Scene
 	{
-		uint MeshBufferIndex;  // Currently not used
+		uint MeshInstanceBufferIndex;
 		uint GeometryBufferIndex;
 		uint MaterialBufferIndex;
 		uint IrradianceMapTexIndex;
@@ -66,18 +66,14 @@ namespace Shader
 		// -- 16 byte boundary ----
 
 		uint PreFilteredEnvMapTexIndex; // Currently not used
-		uint LightEntityIndex;
-		uint NumLights;
-		uint MatricesIndex;
+		uint EnvMapArray;
+		uint EnvMap_NumMips;
+		uint RT_TlasIndex;
 
 		// -- 16 byte boundary ----
 		Atmosphere AtmosphereData;
 
 		// -- 16 byte boundary ----
-
-		uint EnvMapArray;
-		uint EnvMap_NumMips;
-		uint RT_TlasIndex;
 	};
 
 	// -- Common Structurs ---
@@ -85,11 +81,16 @@ namespace Shader
 	{
 		uint Option;
 		uint BrdfLUTTexIndex;
-		uint _padding1;
-		uint _padding2;
+		uint LightEntityDescritporIndex;
+		uint LightDataOffset;
 
 		// -- 16 byte boundary ----
+		uint LightCount;
+		uint MatricesDescritporIndex;
+		uint MatricesDataOffset;
+		uint _padding;
 
+		// -- 16 byte boundary ----
 		Scene SceneData;
 	};
 
@@ -398,21 +399,15 @@ namespace Shader
 #endif
 	};
 
-	struct Mesh
+	struct MeshInstance
 	{
-		uint VbPositionBufferIndex;
-		uint VbTexCoordBufferIndex;
-		uint VbNormalBufferIndex;
-		uint VbTangentBufferIndex;
-
+		float4x4 WorldMatrix;
 		// -- 16 byte boundary ----
-		uint Flags;
 
-		uint _padding0;
-		uint _padding1;
-		uint _padding2;
-
-		// -- 16 byte boundary ----
+		uint GeometryOffset;
+		uint GeometryCount;
+		uint Colour;
+		uint Emissive;
 	};
 
 	struct Geometry
@@ -439,8 +434,7 @@ namespace Shader
 	{
 		float4x4 ViewProjection[6];
 		// -- 16 byte boundary ---
-		uint4 Properties[6];
-		// -- 16 byte boundary ---
+		uint RtIndex[6];
 	};
 
 #define DRAW_FLAG_ALBEDO        0x001
@@ -455,10 +449,10 @@ namespace Shader
 
 	struct GeometryPassPushConstants
 	{
-		float4x4 WorldTransform;
-
 		uint GeometryIndex;
-		uint MeshIndex;
+		uint MaterialIndex;
+		uint InstancePtrBufferDescriptorIndex;
+		uint InstancePtrDataOffset;
 		uint DrawFlags;
 	};
 
@@ -498,6 +492,28 @@ namespace Shader
 		// -- 16 byte boundary ---
 
 		uint FilterRoughness;
+	};
+
+	struct ShaderMeshInstancePointer
+	{
+		uint Data;
+
+		void Create(uint instanceIndex, uint frustumIndex)
+		{
+			Data = 0;
+			Data |= instanceIndex & 0xFFFFFF;
+			Data |= (frustumIndex & 0xF) << 24u;
+		};
+
+		uint GetInstanceIndex()
+		{
+			return Data & 0xFFFFFF;
+		}
+
+		uint GetFrustumIndex()
+		{
+			return (Data >> 24u) & 0xF;
+		}
 	};
 
 #ifdef __cplusplus

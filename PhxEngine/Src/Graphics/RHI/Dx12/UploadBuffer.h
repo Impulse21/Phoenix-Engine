@@ -30,7 +30,7 @@ namespace PhxEngine::RHI::Dx12
 
 		void Reset();
 
-		size_t GetPageSize() { this->m_pageSize; }
+		size_t GetPageSize() { return this->m_pageSize; }
 
 	private:
 		struct Page

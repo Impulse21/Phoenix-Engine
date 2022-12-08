@@ -5,6 +5,7 @@
 #include <PhxEngine/Core/Primitives.h>
 #include <PhxEngine/Graphics/RHI/PhxRHI.h>
 
+
 namespace PhxEngine::Scene
 {
 	struct CameraComponent;
@@ -64,7 +65,7 @@ namespace PhxEngine::Renderer
 
 		virtual void Initialize() = 0;
 		virtual void Finialize() = 0;
-		virtual void OnUpdate(Scene::Scene& scene) = 0;
+
 		virtual void RenderScene(Scene::CameraComponent const& camera, Scene::Scene& scene) = 0;
 
 		virtual RHI::TextureHandle& GetFinalColourBuffer() = 0;

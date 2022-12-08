@@ -77,9 +77,7 @@ namespace PhxEngine::Scene
 
 		std::unique_ptr<Graphics::TextureCache> m_textureCache;
 
-		// LUT helpers
-		// Cache Handles TODO
-		std::unordered_map<const cgltf_material*, std::shared_ptr<Assets::StandardMaterial>> m_materialMap;
-		std::unordered_map<const cgltf_mesh*, std::shared_ptr<Assets::Mesh>> m_meshMap;
+		std::unordered_map<const cgltf_material*, Entity> m_materialEntityMap;
+		std::unordered_map<const cgltf_mesh*, Entity> m_meshEntityMap;
 	};
 }

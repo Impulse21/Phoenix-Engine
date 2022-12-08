@@ -6,7 +6,7 @@
 #include <PhxEngine/Graphics/IRenderer.h>
 #include <PhxEngine/Graphics/RHI/PhxRHI.h>
 #include <PhxEngine/Graphics/CascadeShadowMap.h>
-#include <PhxEngine/Scene/Components.h>
+#include "DrawQueue.h"
 #include <array>
 #include <vector>
 #include <entt.hpp>
@@ -56,8 +56,6 @@ namespace PhxEngine::Renderer
             this->FreeResources();
         }
 
-        void OnUpdate(PhxEngine::Scene::Scene& scene);
-
         void RenderScene(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene);
 
         PhxEngine::RHI::TextureHandle& GetFinalColourBuffer() override
@@ -93,13 +91,13 @@ namespace PhxEngine::Renderer
     private:
         void UpdateRaytracingAccelerationStructures(PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
         void RefreshEnvProbes(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList);
-        void DrawMeshes(PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList, uint32_t numInstances = 1);
 
-        // Scene Update Systems -> Should be coupled with Scene?
-    private:
-        void RunMeshUpdateSystem(PhxEngine::Scene::Scene& scene);
-        void RunProbeUpdateSystem(PhxEngine::Scene::Scene& scene);
-        void RunLightUpdateSystem(PhxEngine::Scene::Scene& scene);
+        void DrawMeshes(
+            DrawQueue const& drawQueue,
+            PhxEngine::Scene::Scene& scene,
+            PhxEngine::RHI::CommandListHandle commandList,
+            const RenderCam* renderCams = nullptr,
+            uint32_t numRenderCameras = 1);
 
     private:
         PhxEngine::RHI::CommandListHandle m_commandList;
@@ -107,19 +105,6 @@ namespace PhxEngine::Renderer
 
         std::array<PhxEngine::RHI::GraphicsPSOHandle, PsoType::NumPsoTypes> m_pso;
         std::array<PhxEngine::RHI::ComputePSOHandle, PsoComputeType::NumComputePsoTypes> m_psoCompute;
-
-        // -- Scene GPU Buffers ---
-        size_t m_numGeometryEntires = 0;
-        PhxEngine::RHI::BufferHandle m_geometryGpuBuffer;
-        std::vector<PhxEngine::RHI::BufferHandle> m_geometryUploadBuffers;
-
-        size_t m_numMaterialEntries = 0;
-        PhxEngine::RHI::BufferHandle m_materialGpuBuffer;
-        std::vector<PhxEngine::RHI::BufferHandle> m_materialUploadBuffers;
-
-        // -- Scene TLAS Structures
-        PhxEngine::RHI::RTAccelerationStructureHandle m_tlas;
-        std::vector<PhxEngine::RHI::BufferHandle> m_tlasUploadBuffers;
 
         // -- Textures ---
         GBuffer m_gBuffer;
@@ -129,21 +114,8 @@ namespace PhxEngine::Renderer
 
         DirectX::XMFLOAT2 m_canvasSize;
 
-
         static constexpr uint32_t kCascadeShadowMapRes = 1024;
         static constexpr PhxEngine::RHI::FormatType kCascadeShadowMapFormat = PhxEngine::RHI::FormatType::D16;
-
-        // -- Scene Env Propes ---
-        static constexpr uint32_t kEnvmapCount = 16;
-        static constexpr uint32_t kEnvmapRes = 128;
-        static constexpr PhxEngine::RHI::FormatType kEnvmapFormat = PhxEngine::RHI::FormatType::R11G11B10_FLOAT;
-        static constexpr PhxEngine::RHI::FormatType kEnvmapDepth = PhxEngine::RHI::FormatType::D16;
-        static constexpr uint32_t kEnvmapMIPs = 8;
-        static constexpr uint32_t kEnvmapMSAASampleCount = 8;
-
-        PhxEngine::RHI::TextureHandle m_envMapDepthBuffer;
-        PhxEngine::RHI::TextureHandle m_envMapArray;
-        std::array<PhxEngine::RHI::RenderPassHandle, kEnvmapCount> m_envMapRenderPasses;
 
         enum ConstantBufferTypes
         {
@@ -152,18 +124,7 @@ namespace PhxEngine::Renderer
         };
         std::array<PhxEngine::RHI::BufferHandle, NumCB> m_constantBuffers;
 
-        enum ResourceBufferTypes
-        {
-            RB_LightEntities,
-            RB_Matrices,
-            NumResourceBuffers
-        };
-        std::array<PhxEngine::RHI::BufferHandle, NumResourceBuffers> m_resourceBuffers;
-
         std::array<PhxEngine::RHI::RenderPassHandle, NumRenderPassTypes> m_renderPasses;
-
-        entt::entity m_frameSun;
-
         std::unique_ptr<PhxEngine::Graphics::CascadeShadowMap> m_cascadeShadowMaps;
     };
 
