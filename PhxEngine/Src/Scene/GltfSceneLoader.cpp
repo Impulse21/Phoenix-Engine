@@ -336,11 +336,15 @@ bool GltfSceneLoader::LoadSceneInternal(
 	scene.ComponentAttach(entity, scene.RootEntity, true);
 #endif
 
+	// Create a top level node
+	std::string rootName = this->m_filename.stem().generic_string();;
+	Entity entity = scene.CreateEntity(rootName);
+
 	// Load Node Data
 	for (size_t i = 0; i < gltfData->scene->nodes_count; i++)
 	{
 		// Load Node Data
-		this->LoadNode(*gltfData->scene->nodes[i], {}, scene);
+		this->LoadNode(*gltfData->scene->nodes[i], entity, scene);
 	}
 	
 	scene.SetBrdfLut(this->m_textureCache->LoadTexture("Assets\\Textures\\IBL\\BrdfLut.dds", true, commandList));
