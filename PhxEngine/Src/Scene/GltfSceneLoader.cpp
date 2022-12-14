@@ -309,6 +309,10 @@ bool GltfSceneLoader::LoadSceneInternal(
 	RHI::CommandListHandle commandList,
 	Scene& scene)
 {
+	// Create a top level node
+	std::string rootName = this->m_filename.stem().generic_string();;
+	this->m_rootNode = scene.CreateEntity(rootName);
+
 	this->LoadMaterialData(
 		gltfData->materials,
 		gltfData->materials_count,
@@ -336,15 +340,11 @@ bool GltfSceneLoader::LoadSceneInternal(
 	scene.ComponentAttach(entity, scene.RootEntity, true);
 #endif
 
-	// Create a top level node
-	std::string rootName = this->m_filename.stem().generic_string();;
-	Entity entity = scene.CreateEntity(rootName);
-
 	// Load Node Data
 	for (size_t i = 0; i < gltfData->scene->nodes_count; i++)
 	{
 		// Load Node Data
-		this->LoadNode(*gltfData->scene->nodes[i], entity, scene);
+		this->LoadNode(*gltfData->scene->nodes[i], this->m_rootNode, scene);
 	}
 	
 	scene.SetBrdfLut(this->m_textureCache->LoadTexture("Assets\\Textures\\IBL\\BrdfLut.dds", true, commandList));
@@ -578,12 +578,17 @@ void GltfSceneLoader::LoadMaterialData(
 	PhxEngine::RHI::CommandListHandle commandList,
 	Scene& scene)
 {
+	Entity rootMaterialNode = scene.CreateEntity("Materials");
+	scene.AttachToParent(rootMaterialNode, this->m_rootNode);
+
 	for (int i = 0; i < materialCount; i++)
 	{
 		const auto& cgltfMtl = pMaterials[i];
 
 		std::string name = cgltfMtl.name ? cgltfMtl.name : "Material " + std::to_string(i);
 		Entity mtlEntity = scene.CreateEntity(name);
+		scene.AttachToParent(mtlEntity, rootMaterialNode);
+
 		this->m_materialEntityMap[&cgltfMtl] = mtlEntity;
 
 		MaterialComponent& mtl = mtlEntity.AddComponent<MaterialComponent>();
@@ -644,6 +649,9 @@ void GltfSceneLoader::LoadMeshData(
 	uint32_t meshCount,
 	Scene& scene)
 {
+	Entity rootMeshNode = scene.CreateEntity("Meshes");
+	scene.AttachToParent(rootMeshNode, this->m_rootNode);
+
 	std::vector<size_t> totalVertexCounts(meshCount);
 	std::vector<size_t> totalIndexCounts(meshCount);
 
@@ -679,6 +687,7 @@ void GltfSceneLoader::LoadMeshData(
 		const auto& cgltfMesh = pMeshes[i];
 		std::string name = cgltfMesh.name ? cgltfMesh.name : "Mesh " + std::to_string(i);
 		Entity meshEntity = scene.CreateEntity(name);
+		scene.AttachToParent(meshEntity, rootMeshNode);
 		this->m_meshEntityMap[&cgltfMesh] = meshEntity;
 		auto& mesh = meshEntity.AddComponent<MeshComponent>();
 

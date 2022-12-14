@@ -77,6 +77,7 @@ namespace PhxEngine::Scene
 
 		std::unique_ptr<Graphics::TextureCache> m_textureCache;
 
+		Entity m_rootNode;
 		std::unordered_map<const cgltf_material*, Entity> m_materialEntityMap;
 		std::unordered_map<const cgltf_mesh*, Entity> m_meshEntityMap;
 	};
