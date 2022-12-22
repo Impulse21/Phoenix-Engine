@@ -3,9 +3,17 @@
 #include <DirectXMath.h>
 #include <algorithm>
 
+#define KBToBytes(x)	((size_t) (x) << 10)
+#define MBToBytes(x)	((size_t) (x) << 20)
+
+#define BytesKB(x)		((size_t) (x) >> 10)
+#define BytesToMB(x)	((size_t) (x) >> 20)
+
 namespace PhxEngine::Core::Math
 {
 	constexpr float Saturate(float x) { return std::min(std::max(x, 0.0f), 1.0f); }
+	constexpr float cMaxFloat = std::numeric_limits<float>::max();
+	constexpr float cMinFloat = std::numeric_limits<float>::lowest();
 
 	inline uint32_t PackColour(DirectX::XMFLOAT4 const& colour)
 	{
@@ -33,5 +41,15 @@ namespace PhxEngine::Core::Math
 		auto v1 = DirectX::XMLoadFloat3(&f1);
 		auto v2 = DirectX::XMLoadFloat3(&f2);
 		return Distance(v1, v2);
+	}
+
+	inline DirectX::XMFLOAT3 Min(DirectX::XMFLOAT3 const& a, DirectX::XMFLOAT3 const& b)
+	{
+		return DirectX::XMFLOAT3(std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z));
+	}
+
+	inline DirectX::XMFLOAT3 Max(DirectX::XMFLOAT3 const& a, DirectX::XMFLOAT3 const& b)
+	{
+		return DirectX::XMFLOAT3(std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z));
 	}
 }

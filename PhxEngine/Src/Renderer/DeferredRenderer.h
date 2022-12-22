@@ -6,11 +6,13 @@
 #include <PhxEngine/Graphics/IRenderer.h>
 #include <PhxEngine/Graphics/RHI/PhxRHI.h>
 #include <PhxEngine/Graphics/CascadeShadowMap.h>
-#include "DrawQueue.h"
 #include <array>
 #include <vector>
 #include <entt.hpp>
 #include <memory>
+
+#include "Visibility.h"
+#include "DrawQueue.h"
 
 namespace PhxEngine::Renderer
 {
@@ -126,6 +128,8 @@ namespace PhxEngine::Renderer
 
         std::array<PhxEngine::RHI::RenderPassHandle, NumRenderPassTypes> m_renderPasses;
         std::unique_ptr<PhxEngine::Graphics::CascadeShadowMap> m_cascadeShadowMaps;
+
+        Renderer::CullResults m_cullResults;
     };
 
 }

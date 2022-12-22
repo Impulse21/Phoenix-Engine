@@ -65,6 +65,34 @@ DirectX::XMVECTOR Frustum::GetCornerV(int index) const
 	return DirectX::XMVector3Transform(d, DirectX::XMMatrixInverse(nullptr, m));
 }
 
+// From Wicked Engine 
+bool PhxEngine::Core::Frustum::CheckBoxFast(AABB const& aabb) const
+{
+	if (!aabb.IsValid())
+	{
+		return false;
+	}
+
+	DirectX::XMVECTOR max = DirectX::XMLoadFloat3(&aabb.Max);
+	DirectX::XMVECTOR min = DirectX::XMLoadFloat3(&aabb.Min);
+	DirectX::XMVECTOR zero = DirectX::XMVectorZero();
+
+	for (auto& p : this->Planes)
+	{
+		DirectX::XMVECTOR planeV = DirectX::XMLoadFloat4(&p);
+		DirectX::XMVECTOR lt = DirectX::XMVectorLess(planeV, zero);
+		DirectX::XMVECTOR furthestFromPlane = DirectX::XMVectorSelect(max, min, lt); 
+
+		// Need to understand Plane Dot Coord.
+		if (DirectX::XMVectorGetX(DirectX::XMPlaneDotCoord(planeV, furthestFromPlane)) < 0.0f)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
 
 DirectX::XMFLOAT3 Frustum::GetCorner(int index) const
 {
@@ -72,4 +100,50 @@ DirectX::XMFLOAT3 Frustum::GetCorner(int index) const
 	DirectX::XMStoreFloat3(&retVal, this->GetCornerV(index));
 
 	return retVal;
+}
+
+DirectX::XMFLOAT3 PhxEngine::Core::AABB::GetCenter() const
+{
+	return DirectX::XMFLOAT3((this->Min.x + this->Max.x) * 0.5f, (this->Min.y + this->Max.y) * 0.5f, (this->Min.z + this->Max.z) * 0.5f);
+}
+
+AABB PhxEngine::Core::AABB::Transform(DirectX::XMMATRIX const& transform) const
+{
+	// Transform the AABB's 8 corners into transform space
+	std::array<DirectX::XMVECTOR, 8> corners =
+	{
+		DirectX::XMVector3Transform(DirectX::XMLoadFloat3(&this->Min), transform),
+		DirectX::XMVector3Transform(DirectX::XMVectorSet(this->Min.x, this->Max.y, this->Min.z, 1), transform),
+		DirectX::XMVector3Transform(DirectX::XMVectorSet(this->Min.x, this->Max.y, this->Max.z, 1), transform),
+		DirectX::XMVector3Transform(DirectX::XMVectorSet(this->Min.x, this->Min.y, this->Max.z, 1), transform),
+		DirectX::XMVector3Transform(DirectX::XMVectorSet(this->Max.x, this->Min.y, this->Max.z, 1), transform),
+		DirectX::XMVector3Transform(DirectX::XMVectorSet(this->Max.x, this->Min.y, this->Min.z, 1), transform),
+		DirectX::XMVector3Transform(DirectX::XMVectorSet(this->Max.x, this->Max.y, this->Min.z, 1), transform),
+		DirectX::XMVector3Transform(DirectX::XMLoadFloat3(&this->Max), transform),
+	};
+	
+	DirectX::XMVECTOR transformedMinV = corners[0];
+	DirectX::XMVECTOR transformedMaxV = corners[0];
+	transformedMinV = DirectX::XMVectorMin(transformedMinV, corners[1]);
+	transformedMaxV = DirectX::XMVectorMax(transformedMaxV, corners[1]);
+	transformedMinV = DirectX::XMVectorMin(transformedMinV, corners[2]);
+	transformedMaxV = DirectX::XMVectorMax(transformedMaxV, corners[2]);
+	transformedMinV = DirectX::XMVectorMin(transformedMinV, corners[3]);
+	transformedMaxV = DirectX::XMVectorMax(transformedMaxV, corners[3]);
+	transformedMinV = DirectX::XMVectorMin(transformedMinV, corners[4]);
+	transformedMaxV = DirectX::XMVectorMax(transformedMaxV, corners[4]);
+	transformedMinV = DirectX::XMVectorMin(transformedMinV, corners[5]);
+	transformedMaxV = DirectX::XMVectorMax(transformedMaxV, corners[5]);
+	transformedMinV = DirectX::XMVectorMin(transformedMinV, corners[6]);
+	transformedMaxV = DirectX::XMVectorMax(transformedMaxV, corners[6]);
+	transformedMinV = DirectX::XMVectorMin(transformedMinV, corners[7]);
+	transformedMaxV = DirectX::XMVectorMax(transformedMaxV, corners[7]);
+
+	DirectX::XMFLOAT3 transformedMin;
+	DirectX::XMStoreFloat3(&transformedMin, transformedMinV);
+
+	DirectX::XMFLOAT3 transformedMax;
+	DirectX::XMStoreFloat3(&transformedMax, transformedMaxV);
+
+	return AABB(transformedMin, transformedMax);
 }

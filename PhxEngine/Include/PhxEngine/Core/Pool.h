@@ -6,6 +6,8 @@
 
 #include "Handle.h"
 
+#include <iostream>
+
 namespace PhxEngine::Core
 {
 	template<typename ImplT, typename HT>

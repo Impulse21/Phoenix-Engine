@@ -1,5 +1,6 @@
 #include "C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Build/PhxEngine/CMakeFiles/PhxEngine.dir/Debug/cmake_pch.hxx"
 #include <PhxEngine/Scene/Components.h>
+#include <PhxEngine/Core/Math.h>
 
 #include <PhxEngine/Core/Helpers.h>
 
@@ -7,20 +8,31 @@ using namespace PhxEngine;
 using namespace PhxEngine::Core;
 using namespace PhxEngine::Scene;
 
+constexpr uint64_t kVertexBufferAlignment = 16ull;
 
-void MeshComponent::CreateRenderData(RHI::CommandListHandle commandList)
+void MeshComponent::CreateRenderData(
+	RHI::CommandListHandle commandList,
+	Renderer::ResourceUpload& indexUploader,
+	Renderer::ResourceUpload& vertexUploader)
 {
 	// Construct the Mesh buffer
 	if (!this->Indices.empty() && !this->IndexGpuBuffer.IsValid())
 	{
 		RHI::BufferDesc indexBufferDesc = {};
-		indexBufferDesc.SizeInBytes = sizeof(uint32_t) * this->Indices.size();
+		indexBufferDesc.SizeInBytes = this->GetIndexBufferSizeInBytes();
 		indexBufferDesc.StrideInBytes = sizeof(uint32_t);
 		indexBufferDesc.DebugName = "Index Buffer";
 		this->IndexGpuBuffer = RHI::IGraphicsDevice::Ptr->CreateIndexBuffer(indexBufferDesc);
 
+		auto offset = indexUploader.SetData(this->Indices.data(), indexBufferDesc.SizeInBytes);
+
 		commandList->TransitionBarrier(this->IndexGpuBuffer, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
-		commandList->WriteBuffer<uint32_t>(this->IndexGpuBuffer, this->Indices);
+		commandList->CopyBuffer(
+			this->IndexGpuBuffer,
+			0,
+			indexUploader.UploadBuffer,
+			offset,
+			indexBufferDesc.SizeInBytes);
 		commandList->TransitionBarrier(
 			this->IndexGpuBuffer,
 			RHI::ResourceStates::CopyDest,
@@ -38,31 +50,24 @@ void MeshComponent::CreateRenderData(RHI::CommandListHandle commandList)
 		vertexDesc.EnableBindless();
 		vertexDesc.IsRawBuffer();
 		vertexDesc.Binding = RHI::BindingFlags::VertexBuffer | RHI::BindingFlags::ShaderResource;
-
-		const uint64_t alignment = 16ull;
-		vertexDesc.SizeInBytes =
-			Helpers::AlignTo(this->VertexPositions.size() * sizeof(DirectX::XMFLOAT3), alignment) +
-			Helpers::AlignTo(this->VertexTexCoords.size() * sizeof(DirectX::XMFLOAT2), alignment) +
-			Helpers::AlignTo(this->VertexNormals.size() * sizeof(DirectX::XMFLOAT3), alignment) +
-			Helpers::AlignTo(this->VertexTangents.size() * sizeof(DirectX::XMFLOAT4), alignment) +
-			Helpers::AlignTo(this->VertexColour.size() * sizeof(DirectX::XMFLOAT3), alignment);
+		vertexDesc.SizeInBytes = this->GetVertexBufferSizeInBytes();
 
 		// Is this Needed for Raw Buffer Type
-		this->VertexGpuBuffer = RHI::IGraphicsDevice::Ptr->CreateIndexBuffer(vertexDesc);
+		this->VertexGpuBuffer = RHI::IGraphicsDevice::Ptr->CreateVertexBuffer(vertexDesc);
 
 		std::vector<uint8_t> gpuBufferData(vertexDesc.SizeInBytes);
 		std::memset(gpuBufferData.data(), 0, vertexDesc.SizeInBytes);
 		uint64_t bufferOffset = 0ull;
+
+		uint64_t startOffset = vertexUploader.Offset;
 
 		auto WriteDataToGpuBuffer = [&](VertexAttribute attr, void* data, uint64_t sizeInBytes)
 		{
 			auto& bufferRange = this->GetVertexAttribute(attr);
 			bufferRange.ByteOffset = bufferOffset;
 			bufferRange.SizeInBytes = sizeInBytes;
-
-			bufferOffset += Helpers::AlignTo(bufferRange.SizeInBytes, alignment);
-			// DirectX::XMFLOAT3* vertices = reinterpret_cast<DirectX::XMFLOAT3*>(gpuBufferData.data() + bufferOffset);
-			std::memcpy(gpuBufferData.data() + bufferRange.ByteOffset, data, bufferRange.SizeInBytes);
+			bufferOffset += Helpers::AlignTo(bufferRange.SizeInBytes, kVertexBufferAlignment);
+			vertexUploader.SetData(data, bufferRange.SizeInBytes, kVertexBufferAlignment);
 		};
 
 		if (!this->VertexPositions.empty())
@@ -107,8 +112,31 @@ void MeshComponent::CreateRenderData(RHI::CommandListHandle commandList)
 
 		// Write Data
 		commandList->TransitionBarrier(this->VertexGpuBuffer, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
-		commandList->WriteBuffer(this->VertexGpuBuffer, gpuBufferData, 0);
+		commandList->CopyBuffer(
+			this->VertexGpuBuffer,
+			0,
+			vertexUploader.UploadBuffer,
+			startOffset,
+			vertexDesc.SizeInBytes);
 		commandList->TransitionBarrier(this->VertexGpuBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource);
+	}
+
+	// Construct AABB
+	// TODO: Experiment with SIMD
+	{
+		DirectX::XMFLOAT3 minBounds = DirectX::XMFLOAT3(Math::cMaxFloat, Math::cMaxFloat, Math::cMaxFloat);
+		DirectX::XMFLOAT3 maxBounds = DirectX::XMFLOAT3(Math::cMinFloat, Math::cMinFloat, Math::cMinFloat);
+
+		if (!this->VertexPositions.empty())
+		{
+			for (const DirectX::XMFLOAT3& pos : this->VertexPositions)
+			{
+				minBounds = Math::Min(minBounds, pos);
+				maxBounds = Math::Max(maxBounds, pos);
+			}
+		}
+
+		this->Aabb = AABB(minBounds, maxBounds);
 	}
 
 	// Create RT BLAS object
@@ -140,4 +168,19 @@ void MeshComponent::CreateRenderData(RHI::CommandListHandle commandList)
 
 		this->Blas = RHI::IGraphicsDevice::Ptr->CreateRTAccelerationStructure(rtDesc);
 	}
+}
+
+uint64_t PhxEngine::Scene::MeshComponent::GetIndexBufferSizeInBytes() const
+{
+	return sizeof(uint32_t) * this->Indices.size();
+}
+
+uint64_t PhxEngine::Scene::MeshComponent::GetVertexBufferSizeInBytes() const
+{
+	return 
+		Helpers::AlignTo(this->VertexPositions.size() * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment) +
+		Helpers::AlignTo(this->VertexTexCoords.size() * sizeof(DirectX::XMFLOAT2), kVertexBufferAlignment) +
+		Helpers::AlignTo(this->VertexNormals.size() * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment) +
+		Helpers::AlignTo(this->VertexTangents.size() * sizeof(DirectX::XMFLOAT4), kVertexBufferAlignment) +
+		Helpers::AlignTo(this->VertexColour.size() * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment);
 }

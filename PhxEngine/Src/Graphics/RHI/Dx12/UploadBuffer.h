@@ -2,13 +2,12 @@
 
 
 #include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include <PhxEngine/Core/Math.h>
 #include "Common.h"
 
 #include <deque>
 #include <memory>
 
-#define KB(x)   ((size_t) (x) << 10)
-#define MB(x)   ((size_t) (x) << 20)
 
 namespace PhxEngine::RHI::Dx12
 {
@@ -24,7 +23,7 @@ namespace PhxEngine::RHI::Dx12
 			size_t Offset;
 		};
 
-		explicit UploadBuffer(GraphicsDevice& device, size_t pageSize = MB(10));
+		explicit UploadBuffer(GraphicsDevice& device, size_t pageSize = MBToBytes(10));
 
 		Allocation Allocate(size_t sizeInBytes, size_t alignment);
 

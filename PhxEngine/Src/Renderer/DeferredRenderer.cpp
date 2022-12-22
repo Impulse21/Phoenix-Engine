@@ -78,7 +78,7 @@ namespace
     }
 }
 
-static AutoConsoleVar_Int sCVarRTShadows("Renderer.Shadows.RT", "RT_SHADOWS", 1, ConsoleVarFlags::EditReadOnly);
+static AutoConsoleVar_Int sCVarRTShadows("Renderer.Shadows.RT", "RT_SHADOWS", 0, ConsoleVarFlags::EditReadOnly);
 
 void DeferredRenderer::FreeResources()
 {
@@ -895,6 +895,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 {
     this->m_commandList->Open();
 
+    Renderer::FrustumCull(&scene, &camera, 0, this->m_cullResults);
     this->PrepareFrameRenderData(this->m_commandList, camera, scene);
 
     if (IGraphicsDevice::Ptr->CheckCapability(DeviceCapability::RayTracing))
@@ -994,11 +995,10 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
         drawQueue.Reset();
 
         // Look through Meshes and instances?
-        // TODO: Only get a list of visible entries
-        auto instanceView = scene.GetAllEntitiesWith<MeshInstanceComponent>();
-        for (auto e : instanceView)
+        for (auto e : this->m_cullResults.VisibleMeshInstances)
         {
-            auto& instanceComponent = instanceView.get<MeshInstanceComponent>(e);
+            auto& instanceComponent = e.GetComponent<MeshInstanceComponent>();
+            auto& aabbComp = e.GetComponent<AABBComponent>();
 
             auto& meshComponent = scene.GetRegistry().get<MeshComponent>(instanceComponent.Mesh);
             if (meshComponent.RenderBucketMask & MeshComponent::RenderType_Transparent)
@@ -1006,13 +1006,14 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
                 continue;
             }
 
-            // TODO: Set up distance need AABB to calculate this.
-            const float distance = 0;
+            const float distance = Math::Distance(camera.Eye, aabbComp.BoundingData.GetCenter());
 
             drawQueue.Push((uint32_t)instanceComponent.Mesh, (uint32_t)e, distance);
         }
 
+        drawQueue.SortOpaque();
         DrawMeshes(drawQueue, scene, this->m_commandList);
+
         this->m_commandList->EndRenderPass();
     }
 

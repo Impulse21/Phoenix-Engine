@@ -469,6 +469,8 @@ namespace PhxEngine::Scene
 
 		std::array<RHI::BufferRange, (int)VertexAttribute::Count> BufferRanges;
 
+		Core::AABB Aabb;
+
 		[[nodiscard]] bool HasVertexAttribuite(VertexAttribute attr) const { return this->BufferRanges[(int)attr].SizeInBytes != 0; }
 		RHI::BufferRange& GetVertexAttribute(VertexAttribute attr) { return this->BufferRanges[(int)attr]; }
 		[[nodiscard]] const RHI::BufferRange& GetVertexAttribute(VertexAttribute attr) const { return this->BufferRanges[(int)attr]; }
@@ -484,7 +486,10 @@ namespace PhxEngine::Scene
 
 		bool IsTriMesh() const { return (this->Indices.size() % 3) == 0; }
 
-		void CreateRenderData(RHI::CommandListHandle commandList);
+		void CreateRenderData(RHI::CommandListHandle commandList, Renderer::ResourceUpload& indexUploader, Renderer::ResourceUpload& vertexUploader);
+
+		uint64_t GetIndexBufferSizeInBytes() const;
+		uint64_t GetVertexBufferSizeInBytes() const;
 	};
 
 	struct MeshInstanceComponent
@@ -506,6 +511,12 @@ namespace PhxEngine::Scene
 		size_t GlobalBufferIndex = ~0ull;
 	};
 
+	struct AABBComponent
+	{
+		Core::AABB BoundingData;
+
+		 operator Core::AABB&() { return this->BoundingData; }
+	};
 
 	struct MaterialComponent
 	{
