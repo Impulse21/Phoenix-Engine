@@ -15,6 +15,7 @@ namespace PhxEngine::Graphics
 		VS_ToneMapping,
 		VS_Sky,
 		VS_EnvMap_Sky,
+		VS_VertexColor,
 
 		// -- PS Shaders ---
 		PS_ImGui,
@@ -25,6 +26,7 @@ namespace PhxEngine::Graphics
 		PS_ToneMapping,
 		PS_SkyProcedural,
 		PS_EnvMap_SkyProcedural,
+		PS_VertexColor,
 
 		// -- Compute Shaders ---
 		CS_DeferredLighting,

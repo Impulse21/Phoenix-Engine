@@ -1,5 +1,6 @@
 #include "C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Build/PhxEngine/CMakeFiles/PhxEngine.dir/Debug/cmake_pch.hxx"
 #include "PhxEngine/Core/Primitives.h"
+#include "PhxEngine/Core/Math.h"
 #include <algorithm>
 
 using namespace PhxEngine::Core;
@@ -33,6 +34,11 @@ PhxEngine::Core::Frustum::Frustum(DirectX::XMMATRIX const& m, bool isReverseProj
 	// Far plane:
 	XMStoreFloat4(&this->GetFarPlane(), XMPlaneNormalize(mat.r[3] - mat.r[2]));
 
+	if (isReverseProjection)
+	{
+		// std::swap(this->GetNearPlane(), this->GetFarPlane());
+	}
+
 	// Left plane:
 	XMStoreFloat4(&this->GetLeftPlane(), XMPlaneNormalize(mat.r[3] + mat.r[0]));
 
@@ -47,22 +53,15 @@ PhxEngine::Core::Frustum::Frustum(DirectX::XMMATRIX const& m, bool isReverseProj
 #endif
 }
 
-
+// Construct plane points using Planer intersection.
+// https://donw.io/post/frustum-point-extraction/
 DirectX::XMVECTOR Frustum::GetCornerV(int index) const
 {
-
 	const DirectX::XMFLOAT4& a = (index & 1) ? this->GetRightPlane() : this->GetLeftPlane();
 	const DirectX::XMFLOAT4& b = (index & 2) ? this->GetTopPlane() : this->GetBottomPlane();
 	const DirectX::XMFLOAT4& c = (index & 4) ? this->GetFarPlane() : this->GetNearPlane();
 
-	auto m = DirectX::XMMatrixSet(
-		a.x, a.y, a.z, 0.0f,
-		b.x, b.y, a.z, 0.0f,
-		c.x, c.y, c.z, 0.0f,
-		0.f, 0.f, 0.f, 1.0f);
-
-	DirectX::XMVECTOR d = DirectX::XMVectorSet(a.w, b.w, c.w, 1.0f);
-	return DirectX::XMVector3Transform(d, DirectX::XMMatrixInverse(nullptr, m));
+	return Math::PlaneIntersects(a, b, c);
 }
 
 // From Wicked Engine 

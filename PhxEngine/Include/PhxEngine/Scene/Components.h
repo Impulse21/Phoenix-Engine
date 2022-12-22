@@ -255,7 +255,7 @@ namespace PhxEngine::Scene
 
 		inline void UpdateCamera()
 		{
-#if false
+#if true
 			auto e = DirectX::XMVectorSet(this->Eye.x, this->Eye.y, -this->Eye.z, 1.0f);
 			auto viewMatrix = DirectX::XMMatrixLookToLH(
 				e,
@@ -276,8 +276,12 @@ namespace PhxEngine::Scene
 			float aspectRatio = this->Width / this->Height;
 
 			// Note the farPlane is passed in as near, this is to support reverseZ
+
+#if true
+			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(1.04719758, 1904.00 / 984.00, 5000.00, 0.1);
+#else
 			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, aspectRatio, this->ZFar, this->ZNear);
-			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(1.04719758, 1904.00 / 984.00, 5000.00, 0.1);
+#endif
 			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, 1.7f, this->ZFar, this->ZNear);
 
 			DirectX::XMStoreFloat4x4(&this->Projection, projectionMatrix);

@@ -663,18 +663,22 @@ void PhxEngine::RHI::Dx12::CommandList::SetGraphicsPSO(GraphicsPSOHandle graphis
     this->m_d3d12CommandList->SetGraphicsRootSignature(graphicsPsoImpl->RootSignature.Get());
 
     const auto& desc = graphicsPsoImpl->GetDesc();
+    D3D_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
     switch (desc.PrimType)
     {
     case PrimitiveType::TriangleList:
-        this->m_d3d12CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
         break;
     case PrimitiveType::TriangleStrip:
-        this->m_d3d12CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+        topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
         break;
-
+    case PrimitiveType::LineList:
+        topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+        break;
     default:
-        assert(true);
+        assert(false);
     }
+    this->m_d3d12CommandList->IASetPrimitiveTopology(topology);
 
     this->m_trackedData->Resource.push_back(graphisPSO);
 }

@@ -24,7 +24,33 @@ namespace PhxEngine::Core
 		}
 
 		AABB Transform(DirectX::XMMATRIX const& transform) const;
+		inline DirectX::XMFLOAT3 GetCorner(size_t index) const
+		{
+			switch (index)
+			{
+			case 0:
+				return { this->Min.x, this->Min.y, this->Max.z };
+			case 1:
+				return { this->Max.x, this->Min.y, this->Max.z };
+			case 2:
+				return { this->Min.x, this->Max.y, this->Max.z };
+			case 3:
+				return this->Max;
+			case 4:
+				return this->Min;
+			case 5:
+				return { this->Max.x, this->Min.y, this->Min.z };
+			case 6:
+				return { this->Min.x, this->Max.y, this->Min.z };
+			case 7:
+				return { this->Max.x, this->Max.y, this->Min.z };
+			default:
+				assert(0);
+				return { 0.0f, 0.0f, 0.0f };
+			}
+		}
 	};
+
 	struct Frustum
 	{
 		DirectX::XMFLOAT4 Planes[6];

@@ -40,6 +40,9 @@ void ShaderStore::PreloadShaders(ShaderFactory& shaderFactory)
 	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::VS_EnvMap_Sky)] = shaderFactory.LoadShader(ShaderStage::Vertex, "EnvMap_SkyVS.cso");
 	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::PS_EnvMap_SkyProcedural)] = shaderFactory.LoadShader(ShaderStage::Pixel, "EnvMap_Sky_ProceduralPS.cso");
 
+	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::VS_VertexColor)] = shaderFactory.LoadShader(ShaderStage::Vertex, "VertexColourVS.cso");
+	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::PS_VertexColor)] = shaderFactory.LoadShader(ShaderStage::Pixel, "VertexColourPS.cso");
+
 	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::CS_GenerateMips_TextureCubeArray)] = shaderFactory.LoadShader(ShaderStage::Compute, "GenerateMipChain_CubeArrayCS.cso");
 	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::CS_FilterEnvMap)] = shaderFactory.LoadShader(ShaderStage::Compute, "FilterEnvMapCS.cso");
 

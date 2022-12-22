@@ -79,6 +79,9 @@ namespace
 }
 
 static AutoConsoleVar_Int sCVarRTShadows("Renderer.Shadows.RT", "RT_SHADOWS", 0, ConsoleVarFlags::EditReadOnly);
+static AutoConsoleVar_Int sCVarDebugDrawAABB("Renderer.Debug.DrawAABB", "Draw's all AABB", 0, ConsoleVarFlags::EditCheckbox);
+static AutoConsoleVar_Int sCVarDebugDrawCamera("Renderer.Debug.DebugCamera", "Draws Frustum", 0, ConsoleVarFlags::EditCheckbox);
+static AutoConsoleVar_Int sCVarDebugFreezeCamera("Renderer.Debug.FreezeCamera", "Freeze Cull Camera", 0, ConsoleVarFlags::EditCheckbox);
 
 void DeferredRenderer::FreeResources()
 {
@@ -117,6 +120,7 @@ void DeferredRenderer::Initialize()
 
     this->m_canvasSize = { static_cast<float>(spec.WindowWidth), static_cast<float>(spec.WindowHeight) };
     this->CreateRenderTargets(m_canvasSize);
+    this->CreateInputLayouts();
     this->CreatePSOs();
 
     this->m_commandList = RHI::IGraphicsDevice::Ptr->CreateCommandList();
@@ -257,6 +261,28 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
                     .Texture = this->m_deferredLightBuffer,
                     .InitialLayout = RHI::ResourceStates::RenderTarget,
                     .SubpassLayout = RHI::ResourceStates::RenderTarget,
+                    .FinalLayout = RHI::ResourceStates::RenderTarget
+                },
+                {
+                    .Type = RenderPassAttachment::Type::DepthStencil,
+                    .LoadOp = RenderPassAttachment::LoadOpType::Load,
+                    .Texture = this->m_depthBuffer,
+                    .InitialLayout = RHI::ResourceStates::DepthRead,
+                    .SubpassLayout = RHI::ResourceStates::DepthRead,
+                    .FinalLayout = RHI::ResourceStates::DepthRead
+                },
+            }
+        });
+
+    this->m_renderPasses[RenderPass_Debug] = IGraphicsDevice::Ptr->CreateRenderPass(
+        {
+            .Attachments =
+            {
+                {
+                    .LoadOp = RenderPassAttachment::LoadOpType::Load,
+                    .Texture = this->m_deferredLightBuffer,
+                    .InitialLayout = RHI::ResourceStates::RenderTarget,
+                    .SubpassLayout = RHI::ResourceStates::RenderTarget,
                     .FinalLayout = RHI::ResourceStates::ShaderResource
                 },
                 {
@@ -283,6 +309,94 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
                 },
             }
         });
+}
+
+void PhxEngine::Renderer::DeferredRenderer::DebugDrawWorld(PhxEngine::Scene::Scene& scene, Scene::CameraComponent const& camera, PhxEngine::RHI::CommandListHandle commandList)
+{
+    auto _ = commandList->BeginScopedMarker("Debug Draw World");
+    this->m_drawInfo.clear();
+    this->m_commandList->BeginRenderPass(this->m_renderPasses[RenderPass_Debug]);
+    commandList->SetGraphicsPSO(this->m_pso[PSO_Debug_Cube]);
+    commandList->BindDynamicIndexBuffer(kDrawCubeIndices.size(), RHI::FormatType::R16_UINT, kDrawCubeIndices.data());
+
+    if ((bool)sCVarDebugDrawAABB.Get())
+    {
+        auto _ = commandList->BeginScopedMarker("Draw AAB");
+        for (Entity& e : this->m_cullResults.VisibleMeshInstances)
+        {
+            this->m_drawCubeVertices.clear();
+            auto aabbComp = e.GetComponent<AABBComponent>();
+
+            for (int i = 0; i < 8; i++)
+            {
+                DirectX::XMFLOAT3 corner = aabbComp.BoundingData.GetCorner(i);
+                this->m_drawCubeVertices.push_back(
+                    {
+                        .Position = { corner.x, corner.y, corner.z, 1.0f },
+                        .Colour = { 1.0f, 1.0f, 1.0f, 1.0f },
+                    });
+            }
+
+            commandList->BindDynamicVertexBuffer(0, this->m_drawCubeVertices);
+            auto instance = e.GetComponent<MeshInstanceComponent>();
+            Shader::MiscPushConstants push = {};
+            push.Transform = camera.ViewProjection;
+            push.Colour = { 1.0f, 0.0f, 0.0f, 1.0f };
+            commandList->BindPushConstant(0, push);
+            commandList->DrawIndexed(kDrawCubeIndices.size());
+        }
+    }
+
+    if ((bool)sCVarDebugDrawCamera.Get())
+    {
+        auto _ = commandList->BeginScopedMarker("Draw Camera");
+        this->m_drawCubeVertices.clear();
+
+        Shader::MiscPushConstants push = {};
+        push.Transform = camera.ViewProjection;
+        push.Colour = { 1.0f, 1.0f, 1.0f, 1.0f };
+        commandList->BindPushConstant(0, push);
+
+        // Draw First Segment
+        for (int i = 0; i < 4; i++)
+        {
+            this->m_drawCubeVertices.push_back(
+                {
+                    .Position = { this->m_cullResults.Eye.x, this->m_cullResults.Eye.y, this->m_cullResults.Eye.z, 1.0f },
+                    .Colour = { 1.0f, 1.0f, 1.0f, 1.0f },
+                });
+        }
+
+        for (int i = 0; i < 4; i++)
+        {
+            DirectX::XMFLOAT3 corner = this->m_cullResults.Frustum.GetCorner(i);
+            this->m_drawCubeVertices.push_back(
+                {
+                    .Position = { corner.x, corner.y, corner.z, 1.0f },
+                    .Colour = { 1.0f, 1.0f, 1.0f, 1.0f },
+                });
+        }
+        commandList->BindDynamicVertexBuffer(0, this->m_drawCubeVertices);
+        commandList->DrawIndexed(kDrawCubeIndices.size());
+
+        this->m_drawCubeVertices.clear();
+        for (int i = 0; i < 8; i++)
+        {
+            DirectX::XMFLOAT3 corner = this->m_cullResults.Frustum.GetCorner(i);
+            this->m_drawCubeVertices.push_back(
+                {
+                    .Position = { corner.x, corner.y, corner.z, 1.0f },
+                    .Colour = { 1.0f, 1.0f, 1.0f, 1.0f },
+                });
+        }
+
+        commandList->BindDynamicVertexBuffer(0, this->m_drawCubeVertices);
+        push.Colour = { 0.0f, 0.0f, 1.0f, 1.0f };
+        commandList->BindPushConstant(0, push);
+        commandList->DrawIndexed(kDrawCubeIndices.size());
+    }
+
+    commandList->EndRenderPass();
 }
 
 void DeferredRenderer::UpdateRaytracingAccelerationStructures(PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList)
@@ -781,6 +895,23 @@ void DeferredRenderer::PrepareFrameRenderData(
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
 }
 
+void PhxEngine::Renderer::DeferredRenderer::CreateInputLayouts()
+{
+    VertexAttributeDesc posCol[] =
+    {
+        { 
+            .SemanticName = "POSITION",
+            .Format = FormatType::RGBA32_FLOAT,
+        },
+        {
+            .SemanticName = "COLOR",
+            .Format = FormatType::RGBA32_FLOAT,
+        }
+    };
+
+    this->m_inputLayouts[IL_PosCol] = IGraphicsDevice::Ptr->CreateInputLayout(posCol, ARRAYSIZE(posCol));
+}
+
 void DeferredRenderer::CreatePSOs()
 {
     this->m_pso[PSO_GBufferPass] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
@@ -880,6 +1011,41 @@ void DeferredRenderer::CreatePSOs()
             .DsvFormat = { kCascadeShadowMapFormat }
         });
 
+    this->m_pso[PSO_Debug_Cube] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
+        {
+            .PrimType = PrimitiveType::LineList,
+            .InputLayout = this->m_inputLayouts[IL_PosCol],
+            .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_VertexColor),
+            .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_VertexColor),
+            .BlendRenderState =
+                {
+                    .Targets =
+                        {
+                            {
+                                .BlendEnable = true,
+                                .SrcBlend = BlendFactor::SrcAlpha,
+                                .DestBlend = BlendFactor::InvSrcAlpha,
+                                .BlendOp = EBlendOp::Add,
+                            },
+                        },
+                },
+            .DepthStencilRenderState =
+                {
+                    .DepthWriteEnable = false,
+                    .DepthFunc = ComparisonFunc::GreaterOrEqual,
+                    .StencilEnable = false,
+                },
+            .RasterRenderState =
+                {
+                    .FillMode = RasterFillMode::Wireframe,
+                    .CullMode = RasterCullMode::None,
+                    .DepthClipEnable = true,
+                    .AntialiasedLineEnable = true,
+                },
+            .RtvFormats = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_deferredLightBuffer).Format },
+            .DsvFormat = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_depthBuffer).Format }
+        });
+
     // Compute PSO's
     this->m_psoCompute[PSO_GenerateMipMaps_TextureCubeArray] = IGraphicsDevice::Ptr->CreateComputePso(
         {
@@ -895,7 +1061,13 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 {
     this->m_commandList->Open();
 
-    Renderer::FrustumCull(&scene, &camera, 0, this->m_cullResults);
+    uint32_t cullOptions = CullOptions::None;
+    if ((bool)sCVarDebugFreezeCamera.Get())
+    {
+        cullOptions |= CullOptions::FreezeCamera;
+    }
+
+    Renderer::FrustumCull(&scene, &camera, cullOptions, this->m_cullResults);
     this->PrepareFrameRenderData(this->m_commandList, camera, scene);
 
     if (IGraphicsDevice::Ptr->CheckCapability(DeviceCapability::RayTracing))
@@ -1057,10 +1229,12 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
         this->m_commandList->BindConstantBuffer(DefaultRootParameters::FrameCB, this->m_constantBuffers[CB_Frame]);
         this->m_commandList->BindDynamicConstantBuffer(DefaultRootParameters::CameraCB, cameraData);
 
-        this->m_commandList->SetRenderTargets({ this->m_deferredLightBuffer }, this->m_depthBuffer);
-
         this->m_commandList->Draw(3, 1, 0, 0);
         this->m_commandList->EndRenderPass();
+    }
+
+    {
+        this->DebugDrawWorld(scene, camera, this->m_commandList);
     }
 
 	{

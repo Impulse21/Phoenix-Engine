@@ -15,9 +15,10 @@ void PhxEngine::Renderer::FrustumCull(Scene::Scene* scene, const Scene::CameraCo
 	outCullResults.VisibleMeshInstances.clear();
 	outCullResults.Scene = scene;
 
-	if ((options & CullOptions::FreezeCamera) == 0)
+	if ((options & CullOptions::FreezeCamera) != CullOptions::FreezeCamera)
 	{
 		outCullResults.Frustum = cameraComp->ViewProjectionFrustum;
+		outCullResults.Eye = cameraComp->Eye;
 	}
 
 	auto view = outCullResults.Scene->GetAllEntitiesWith<MeshInstanceComponent, AABBComponent>();

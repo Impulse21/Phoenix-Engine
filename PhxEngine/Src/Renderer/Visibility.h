@@ -18,6 +18,7 @@ namespace PhxEngine::Renderer
 	{
 		Scene::Scene* Scene;
 		Core::Frustum Frustum;
+		DirectX::XMFLOAT3 Eye;
 
 		std::vector<Scene::Entity> VisibleMeshInstances;
 	};
