@@ -459,7 +459,8 @@ void EditorLayer::OnAttach()
     // result = sceneLoader->LoadScene("Assets\\Models\\Sponza_Intel\\Main_Curtains\\NewSponza_Curtains_glTF.gltf", cmd, *this->m_scene);
     // assert(result);
     // bool result = sceneLoader->LoadScene("Assets\\Models\\TestScene\\TestScene.gltf", cmd, *this->m_scene);
-    bool result = sceneLoader->LoadScene("Assets\\Models\\TestScenes\\MaterialShowcase.gltf", cmd, *this->m_scene);
+    // bool result = sceneLoader->LoadScene("Assets\\Models\\TestScenes\\MaterialShowcase.gltf", cmd, *this->m_scene);
+    bool result = sceneLoader->LoadScene("Assets\\Models\\TestScenes\\InstanceDemoScene.gltf", cmd, *this->m_scene);
     assert(result);
 #endif
 

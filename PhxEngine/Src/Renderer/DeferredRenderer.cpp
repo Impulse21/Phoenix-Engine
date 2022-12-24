@@ -322,10 +322,11 @@ void PhxEngine::Renderer::DeferredRenderer::DebugDrawWorld(PhxEngine::Scene::Sce
     if ((bool)sCVarDebugDrawAABB.Get())
     {
         auto _ = commandList->BeginScopedMarker("Draw AABB");
-        for (Entity& e : this->m_cullResults.VisibleMeshInstances)
+        auto aabbView = this->m_cullResults.Scene->GetAllEntitiesWith<MeshInstanceComponent, AABBComponent>();
+        for (auto e : aabbView)
         {
+            auto [instance, aabbComp] =  aabbView.get<MeshInstanceComponent, AABBComponent>(e);
             this->m_drawCubeVertices.clear();
-            auto aabbComp = e.GetComponent<AABBComponent>();
 
             for (int i = 0; i < 8; i++)
             {
@@ -338,7 +339,6 @@ void PhxEngine::Renderer::DeferredRenderer::DebugDrawWorld(PhxEngine::Scene::Sce
             }
 
             commandList->BindDynamicVertexBuffer(0, this->m_drawCubeVertices);
-            auto instance = e.GetComponent<MeshInstanceComponent>();
             Shader::MiscPushConstants push = {};
             push.Transform = camera.ViewProjection;
             push.Colour = { 1.0f, 0.0f, 0.0f, 1.0f };
