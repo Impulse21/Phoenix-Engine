@@ -321,7 +321,7 @@ void PhxEngine::Renderer::DeferredRenderer::DebugDrawWorld(PhxEngine::Scene::Sce
 
     if ((bool)sCVarDebugDrawAABB.Get())
     {
-        auto _ = commandList->BeginScopedMarker("Draw AAB");
+        auto _ = commandList->BeginScopedMarker("Draw AABB");
         for (Entity& e : this->m_cullResults.VisibleMeshInstances)
         {
             this->m_drawCubeVertices.clear();
@@ -349,6 +349,20 @@ void PhxEngine::Renderer::DeferredRenderer::DebugDrawWorld(PhxEngine::Scene::Sce
 
     if ((bool)sCVarDebugDrawCamera.Get())
     {
+
+        const std::array<DirectX::XMVECTOR, 8> NDC =
+        {
+            DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(-1, 1, 1, 1.0f),	this->m_cullResults.InvViewProj),
+            DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1,  1, 1, 1.0f),	this->m_cullResults.InvViewProj),
+            DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(-1,-1, 1, 1.0f),	this->m_cullResults.InvViewProj),
+            DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1, -1, 1, 1.0f),	this->m_cullResults.InvViewProj),
+
+            DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(-1, 1, 0, 1.0f),	this->m_cullResults.InvViewProj),
+            DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1,  1, 0, 1.0f),	this->m_cullResults.InvViewProj),
+            DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(-1,-1, 0, 1.0f),	this->m_cullResults.InvViewProj),
+            DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(1, -1, 0, 1.0f),	this->m_cullResults.InvViewProj),
+        };
+
         auto _ = commandList->BeginScopedMarker("Draw Camera");
         this->m_drawCubeVertices.clear();
 
@@ -370,6 +384,7 @@ void PhxEngine::Renderer::DeferredRenderer::DebugDrawWorld(PhxEngine::Scene::Sce
         for (int i = 0; i < 4; i++)
         {
             DirectX::XMFLOAT3 corner = this->m_cullResults.Frustum.GetCorner(i);
+            // DirectX::XMStoreFloat3(&corner, NDC[i]);
             this->m_drawCubeVertices.push_back(
                 {
                     .Position = { corner.x, corner.y, corner.z, 1.0f },
@@ -383,6 +398,7 @@ void PhxEngine::Renderer::DeferredRenderer::DebugDrawWorld(PhxEngine::Scene::Sce
         for (int i = 0; i < 8; i++)
         {
             DirectX::XMFLOAT3 corner = this->m_cullResults.Frustum.GetCorner(i);
+            // DirectX::XMStoreFloat3(&corner, NDC[i]);
             this->m_drawCubeVertices.push_back(
                 {
                     .Position = { corner.x, corner.y, corner.z, 1.0f },

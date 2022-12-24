@@ -19,6 +19,7 @@ void PhxEngine::Renderer::FrustumCull(Scene::Scene* scene, const Scene::CameraCo
 	{
 		outCullResults.Frustum = cameraComp->ViewProjectionFrustum;
 		outCullResults.Eye = cameraComp->Eye;
+		outCullResults.InvViewProj = cameraComp->GetInvViewProjMatrix();
 	}
 
 	auto view = outCullResults.Scene->GetAllEntitiesWith<MeshInstanceComponent, AABBComponent>();
@@ -29,6 +30,10 @@ void PhxEngine::Renderer::FrustumCull(Scene::Scene* scene, const Scene::CameraCo
 		if (outCullResults.Frustum.CheckBoxFast(aabbComponent))
 		{
 			outCullResults.VisibleMeshInstances.push_back({ e, outCullResults.Scene });
+		}
+		else
+		{
+			continue;
 		}
 	}
 

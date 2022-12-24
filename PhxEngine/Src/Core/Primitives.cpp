@@ -8,26 +8,10 @@ using namespace DirectX;
 
 PhxEngine::Core::Frustum::Frustum(DirectX::XMMATRIX const& m, bool isReverseProjection)
 {
-	// We are interested in columns of the matrix, so transpose because we can access only rows:
+	// We are interested in columns of the m, so transpose because we can access only rows:
 	const XMMATRIX mat = XMMatrixTranspose(m);
-
-#if false
-	// near plane
-	DirectX::XMStoreFloat4(&this->GetNearPlane(), XMPlaneNormalize(-mat.r[2]));
-
-	DirectX::XMStoreFloat4(&this->GetFarPlane(), XMPlaneNormalize(-mat.r[3] + mat.r[2]));
-
-	if (isReverseProjection)
-	{
-		std::swap(this->GetNearPlane(), this->GetFarPlane());
-	}
-
-	DirectX::XMStoreFloat4(&this->GetLeftPlane(), XMPlaneNormalize(-mat.r[3] - mat.r[0]));
-	DirectX::XMStoreFloat4(&this->GetRightPlane(), XMPlaneNormalize(-mat.r[3] + mat.r[0]));
-
-	DirectX::XMStoreFloat4(&this->GetTopPlane(), XMPlaneNormalize(-mat.r[3] + mat.r[1]));
-	DirectX::XMStoreFloat4(&this->GetBottomPlane(), XMPlaneNormalize(-mat.r[3] - mat.r[2]));
-#else
+	// https://www.gamedevs.org/uploads/fast-extraction-viewing-frustum-planes-from-world-view-projection-matrix.pdf
+#if true
 	// Near plane:
 	XMStoreFloat4(&this->GetNearPlane(), XMPlaneNormalize(mat.r[2]));
 
@@ -36,7 +20,7 @@ PhxEngine::Core::Frustum::Frustum(DirectX::XMMATRIX const& m, bool isReverseProj
 
 	if (isReverseProjection)
 	{
-		// std::swap(this->GetNearPlane(), this->GetFarPlane());
+		std::swap(this->GetNearPlane(), this->GetFarPlane());
 	}
 
 	// Left plane:
@@ -50,6 +34,39 @@ PhxEngine::Core::Frustum::Frustum(DirectX::XMMATRIX const& m, bool isReverseProj
 
 	// Bottom plane:
 	XMStoreFloat4(&this->GetBottomPlane(), XMPlaneNormalize(mat.r[3] + mat.r[1]));
+
+	// Reverse Z since we are using Right Hand.
+	for (auto& plane : this->Planes)
+	{
+		plane.z = -plane.z;
+	}
+#else
+	DirectX::XMVECTOR negRow2 = DirectX::XMVectorNegate(mat.r[2]);
+	DirectX::XMVECTOR negRow3 = DirectX::XMVectorNegate(mat.r[3]);
+	// Near plane:
+	XMStoreFloat4(&this->GetNearPlane(), XMPlaneNormalize(XMVectorSelect(m.r[2], negRow2, g_XMSelect1110)));
+
+	// Far plane:
+	XMStoreFloat4(&this->GetFarPlane(), XMPlaneNormalize(negRow3 + mat.r[2]));
+
+	if (isReverseProjection)
+	{
+		std::swap(this->GetNearPlane(), this->GetFarPlane());
+	}
+
+	// Left plane:
+	XMStoreFloat4(&this->GetLeftPlane(), XMPlaneNormalize(negRow3 - mat.r[0]));
+
+	// Right plane:
+	XMStoreFloat4(&this->GetRightPlane(), XMPlaneNormalize(mat.r[3] + mat.r[0]));
+
+	// Top plane:
+	XMStoreFloat4(&this->GetTopPlane(), XMPlaneNormalize(negRow3 + mat.r[1]));
+
+	// Bottom plane:
+	XMStoreFloat4(&this->GetBottomPlane(), XMPlaneNormalize(negRow3 - mat.r[1]));
+
+	*this = normalize();
 #endif
 }
 
