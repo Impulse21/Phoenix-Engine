@@ -78,7 +78,7 @@ namespace
     }
 }
 
-static AutoConsoleVar_Int sCVarRTShadows("Renderer.Shadows.RT", "RT_SHADOWS", 0, ConsoleVarFlags::EditReadOnly);
+static AutoConsoleVar_Int sCVarRTShadows("Renderer.Shadows.RT", "Ray Traced Shadows", 0, ConsoleVarFlags::EditCheckbox);
 static AutoConsoleVar_Int sCVarDebugDrawAABB("Renderer.Debug.DrawAABB", "Draw's all AABB", 0, ConsoleVarFlags::EditCheckbox);
 static AutoConsoleVar_Int sCVarDebugDrawCamera("Renderer.Debug.DebugCamera", "Draws Frustum", 0, ConsoleVarFlags::EditCheckbox);
 static AutoConsoleVar_Int sCVarDebugFreezeCamera("Renderer.Debug.FreezeCamera", "Freeze Cull Camera", 0, ConsoleVarFlags::EditCheckbox);
