@@ -59,13 +59,36 @@ void PhxEngine::Scene::Scene::DetachChildren(Entity parent)
 	parent.DetachChildren();
 }
 
-void PhxEngine::Scene::Scene::ConstructRenderData(RHI::CommandListHandle cmd)
+void PhxEngine::Scene::Scene::ConstructRenderData(
+	RHI::CommandListHandle cmd,
+	Renderer::ResourceUpload& indexUploader,
+	Renderer::ResourceUpload& vertexUploader)
 {
-	auto view = this->GetAllEntitiesWith<MeshComponent>();
+	auto view = this->GetAllEntitiesWith<MeshComponent, NameComponent>();
+	uint64_t indexBufferSize = 0;
+	uint64_t vertexBufferSize = 0;
 	for (auto e : view)
 	{
-		auto comp = view.get<MeshComponent>(e);
-		comp.CreateRenderData(cmd);
+		auto [meshComp, nameComp] = view.get<MeshComponent, NameComponent>(e);
+		const uint64_t indexSize = meshComp.GetIndexBufferSizeInBytes();
+		const uint64_t vertexSize = meshComp.GetVertexBufferSizeInBytes();
+		std::cout << "Mesh: " << nameComp.Name << std::endl;
+		std::cout << "\tIndex Size:" << KBToBytes(indexSize) << "(KB)" << std::endl;
+		std::cout << "\tVertex Size: " << KBToBytes(vertexSize) << "(KB)" << std::endl;
+		std::cout << std::endl;
+
+		indexBufferSize += indexSize;
+		vertexBufferSize += vertexSize;
+	}
+
+	// Construct Upload Buffers
+	indexUploader = Renderer::CreateResourceUpload(indexBufferSize);
+	vertexUploader = Renderer::CreateResourceUpload(vertexBufferSize);
+
+	for (auto e : view)
+	{
+		auto [meshComp, nameComp] = view.get<MeshComponent, NameComponent>(e);
+		meshComp.CreateRenderData(cmd, indexUploader, vertexUploader);
 	}
 }
 
@@ -417,7 +440,19 @@ void PhxEngine::Scene::Scene::RunMeshInstanceUpdateSystem()
 		shaderMeshInstance->WorldMatrix = transformComponent.WorldMatrix;
 
 		meshInstanceComponent.GlobalBufferIndex = currInstanceIndex++;
+
+		Entity entity(e, this);
 	}
+
+	auto aabbView = this->GetAllEntitiesWith<MeshInstanceComponent, AABBComponent>();
+	for (auto e : aabbView)
+	{
+		auto [meshInstanceComponent, aabbComponent] = aabbView.get<MeshInstanceComponent, AABBComponent>(e);
+		auto& mesh = this->GetRegistry().get<MeshComponent>(meshInstanceComponent.Mesh);
+
+		aabbComponent.BoundingData = mesh.Aabb.Transform(DirectX::XMLoadFloat4x4(&meshInstanceComponent.WorldMatrix));
+	}
+
 }
 
 void PhxEngine::Scene::Scene::FreeResources()

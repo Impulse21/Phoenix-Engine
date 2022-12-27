@@ -368,7 +368,10 @@ void GltfSceneLoader::LoadNode(
 		entity = scene.CreateEntity(nodeName);
 		auto& meshRenderComponent = entity.AddComponent<MeshInstanceComponent>();
 		meshRenderComponent.Mesh = this->m_meshEntityMap[gltfNode.mesh];
+
+		entity.AddComponent<AABBComponent>();
 	}
+
 	else if (gltfNode.camera)
 	{
 		static size_t cameraId = 0;
@@ -897,6 +900,7 @@ void GltfSceneLoader::LoadMeshData(
 			{
 				auto it = this->m_materialEntityMap.find(cgltfPrim.material);
 				meshGeometry.Material = it == this->m_materialEntityMap.end() ? entt::null : (entt::entity)it->second;
+				assert(meshGeometry.Material != entt::null);
 			}
 
 			meshGeometry.IndexOffsetInMesh = mesh.TotalIndices;

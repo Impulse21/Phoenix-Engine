@@ -5,6 +5,7 @@
 #include <PhxEngine/Scene/SceneLoader.h>
 #include <PhxEngine/Scene/SceneWriter.h>
 #include <PhxEngine/Graphics/ShaderStore.h>
+#include <PhxEngine/Core/Math.h>
 
 #include "SceneRenderLayer.h"
 
@@ -453,9 +454,13 @@ void EditorLayer::OnAttach()
     // bool result = sceneLoader->LoadScene("Assets\\Models\\BRDFTests\\MetalRoughSpheresNoTextures.gltf", cmd, *this->m_scene);
     // bool result = sceneLoader->LoadScene("Assets\\Models\\ShadowTest\\ShadowTestScene.gltf", cmd, *this->m_scene);
     // bool result = sceneLoader->LoadScene("Assets\\Models\\Sponza\\Sponza.gltf", cmd, *this->m_scene); addDefaultLight = true;
-    bool result = sceneLoader->LoadScene("Assets\\Models\\Sponza_Intel\\Main\\NewSponza_Main_glTF_002.gltf", cmd, *this->m_scene);
-    assert(result);
-    result = sceneLoader->LoadScene("Assets\\Models\\Sponza_Intel\\Main_Curtains\\NewSponza_Curtains_glTF.gltf", cmd, *this->m_scene);
+    // bool result = sceneLoader->LoadScene("Assets\\Models\\Sponza_Intel\\Main\\NewSponza_Main_glTF_002.gltf", cmd, *this->m_scene);
+    // assert(result);
+    // result = sceneLoader->LoadScene("Assets\\Models\\Sponza_Intel\\Main_Curtains\\NewSponza_Curtains_glTF.gltf", cmd, *this->m_scene);
+    // assert(result);
+    // bool result = sceneLoader->LoadScene("Assets\\Models\\TestScene\\TestScene.gltf", cmd, *this->m_scene);
+    bool result = sceneLoader->LoadScene("Assets\\Models\\TestScenes\\MaterialShowcase.gltf", cmd, *this->m_scene);
+    // bool result = sceneLoader->LoadScene("Assets\\Models\\TestScenes\\InstanceDemoScene.gltf", cmd, *this->m_scene);
     assert(result);
 #endif
 
@@ -476,16 +481,39 @@ void EditorLayer::OnAttach()
     this->m_scene->GetRegistry().emplace<WorldEnvironmentComponent>(worldEntity);
 
     // TODO: I am here update The mesh render data
-    auto view = this->m_scene->GetAllEntitiesWith<MeshComponent>();
+
+    auto view = this->m_scene->GetAllEntitiesWith<MeshComponent, NameComponent>();
+    uint64_t indexBufferSize = 0;
+    uint64_t vertexBufferSize = 0;
     for (auto e : view)
     {
-        auto& meshRenderComp = view.get<MeshComponent>(e);
-        meshRenderComp.CreateRenderData(cmd);
+        auto [meshComp, nameComp] = view.get<MeshComponent, NameComponent>(e);
+        const uint64_t indexSize = meshComp.GetIndexBufferSizeInBytes();
+        const uint64_t vertexSize = meshComp.GetVertexBufferSizeInBytes();
+        std::cout << "Mesh: " << nameComp.Name << std::endl;
+        std::cout << "\tIndex Size:" << BytesToMB(indexSize) << "(MB)" << std::endl;
+        std::cout << "\tVertex Size: " << BytesToMB(vertexSize) << "(MB)" << std::endl;
+        std::cout << std::endl;
+
+        indexBufferSize += indexSize;
+        vertexBufferSize += vertexSize;
     }
 
-    
+    // Construct Upload Buffers
+    Renderer::ResourceUpload indexUploader = Renderer::CreateResourceUpload(indexBufferSize);
+    Renderer::ResourceUpload vertexUploader = Renderer::CreateResourceUpload(vertexBufferSize);
+    for (auto e : view)
+    {
+        auto [meshComp, nameComp] = view.get<MeshComponent, NameComponent>(e);
+
+        meshComp.CreateRenderData(cmd, indexUploader, vertexUploader);
+    }
+
     cmd->Close();
     auto fenceValue = IGraphicsDevice::Ptr->ExecuteCommandLists(cmd.get());
+
+    IGraphicsDevice::Ptr->DeleteBuffer(indexUploader.UploadBuffer);
+    IGraphicsDevice::Ptr->DeleteBuffer(vertexUploader.UploadBuffer);
 
     this->m_sceneRenderLayer->SetScene(this->m_scene);
     this->m_sceneExplorerPanel.SetScene(this->m_scene);

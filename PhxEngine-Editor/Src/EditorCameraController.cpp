@@ -99,7 +99,11 @@ void EditorCameraController::Pitch(float angle, PhxEngine::Scene::CameraComponen
 void EditorCameraController::RotateY(float angle, PhxEngine::Scene::CameraComponent& camera)
 {
 	// Rotate the basis vectors anout the worl y-axis
+#ifdef LH
+	DirectX::XMMATRIX rotMtx = XMMatrixRotationY(-angle);
+#else
 	DirectX::XMMATRIX rotMtx = XMMatrixRotationY(angle);
+#endif
 	XMVECTOR forward = XMLoadFloat3(&camera.Forward);
 	XMVECTOR up = XMLoadFloat3(&camera.Up);
 	XMStoreFloat3(&camera.Up, XMVector3TransformNormal(up, rotMtx));

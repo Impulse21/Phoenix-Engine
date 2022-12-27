@@ -55,7 +55,10 @@ namespace PhxEngine::Scene
 			return this->m_registry.view<Components...>();
 		}
 
-		void ConstructRenderData(RHI::CommandListHandle cmd);
+		void ConstructRenderData(
+			RHI::CommandListHandle cmd,
+			Renderer::ResourceUpload& indexUploader,
+			Renderer::ResourceUpload& vertexUploader);
 
 		entt::registry& GetRegistry() { return this->m_registry; }
 		const entt::registry& GetRegistry() const { return this->m_registry; }

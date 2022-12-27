@@ -565,30 +565,30 @@ InputLayoutHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateInputLayout(Vertex
 		// Copy the description to get a stable name pointer in desc
 		attr = desc[index];
 
-		D3D12_INPUT_ELEMENT_DESC& desc = inputLayoutImpl->InputElements.emplace_back();
+		D3D12_INPUT_ELEMENT_DESC& dx12Desc = inputLayoutImpl->InputElements.emplace_back();
 
-		desc.SemanticName = attr.SemanticName.c_str();
-		desc.SemanticIndex = attr.SemanticIndex;
+		dx12Desc.SemanticName = attr.SemanticName.c_str();
+		dx12Desc.SemanticIndex = attr.SemanticIndex;
 
 
 		const DxgiFormatMapping& formatMapping = GetDxgiFormatMapping(attr.Format);
-		desc.Format = formatMapping.srvFormat;
-		desc.InputSlot = attr.InputSlot;
-		desc.AlignedByteOffset = attr.AlignedByteOffset;
-		if (desc.AlignedByteOffset == VertexAttributeDesc::SAppendAlignedElement)
+		dx12Desc.Format = formatMapping.srvFormat;
+		dx12Desc.InputSlot = attr.InputSlot;
+		dx12Desc.AlignedByteOffset = attr.AlignedByteOffset;
+		if (dx12Desc.AlignedByteOffset == VertexAttributeDesc::SAppendAlignedElement)
 		{
-			desc.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+			dx12Desc.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
 		}
 
 		if (attr.IsInstanced)
 		{
-			desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
-			desc.InstanceDataStepRate = 1;
+			dx12Desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
+			dx12Desc.InstanceDataStepRate = 1;
 		}
 		else
 		{
-			desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
-			desc.InstanceDataStepRate = 0;
+			dx12Desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+			dx12Desc.InstanceDataStepRate = 0;
 		}
 	}
 

@@ -456,6 +456,12 @@ namespace Shader
 		uint DrawFlags;
 	};
 
+	struct MiscPushConstants
+	{
+		float4x4 Transform;
+		float4 Colour;
+	};
+
 	struct ImagePassPushConstants
 	{
 

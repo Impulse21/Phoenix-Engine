@@ -26,3 +26,8 @@ build
 /Assets/Models/CameraTestScene/_textures
 =======
 /Output/Bin
+/Assets/Models/TestScenes/_textures_dds
+/Assets/Models/TestScenes/_textures
+/Assets/Models/TestScenes
+/Assets/Models/CullTestScene/CullScene.gltf
+/Assets/Models/CullTestScene/CullScene.bin

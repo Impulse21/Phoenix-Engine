@@ -6,16 +6,25 @@
 #include <PhxEngine/Graphics/IRenderer.h>
 #include <PhxEngine/Graphics/RHI/PhxRHI.h>
 #include <PhxEngine/Graphics/CascadeShadowMap.h>
-#include "DrawQueue.h"
 #include <array>
 #include <vector>
 #include <entt.hpp>
 #include <memory>
 
+#include "Visibility.h"
+#include "DrawQueue.h"
+
 namespace PhxEngine::Renderer
 {
     class DeferredRenderer : public IRenderer
     {
+        enum InputLayouts
+        {
+            IL_PosCol,
+
+            NumILTypes
+        };
+
         enum PsoType
         {
             PSO_GBufferPass = 0,
@@ -28,6 +37,9 @@ namespace PhxEngine::Renderer
 
             // -- Post Process ---
             PSO_ToneMappingPass,
+
+            // -- Debug ---
+            PSO_Debug_Cube,
 
             NumPsoTypes
         };
@@ -45,6 +57,7 @@ namespace PhxEngine::Renderer
             RenderPass_GBuffer,
             RenderPass_DeferredLighting,
             RenderPass_Sky,
+            RenderPass_Debug,
             RenderPass_PostFx,
             NumRenderPassTypes
         };
@@ -84,8 +97,11 @@ namespace PhxEngine::Renderer
             PhxEngine::Scene::CameraComponent const& mainCamera,
             PhxEngine::Scene::Scene& scene);
 
+        void CreateInputLayouts();
         void CreatePSOs();
         void CreateRenderTargets(DirectX::XMFLOAT2 const& size);
+
+        void DebugDrawWorld(PhxEngine::Scene::Scene& scene, Scene::CameraComponent const& camera, PhxEngine::RHI::CommandListHandle commandList);
 
         // Potential Render Functions
     private:
@@ -103,6 +119,7 @@ namespace PhxEngine::Renderer
         PhxEngine::RHI::CommandListHandle m_commandList;
         PhxEngine::RHI::CommandListHandle m_computeCommandList;
 
+        std::array<PhxEngine::RHI::InputLayoutHandle, InputLayouts::NumILTypes> m_inputLayouts;
         std::array<PhxEngine::RHI::GraphicsPSOHandle, PsoType::NumPsoTypes> m_pso;
         std::array<PhxEngine::RHI::ComputePSOHandle, PsoComputeType::NumComputePsoTypes> m_psoCompute;
 
@@ -126,6 +143,30 @@ namespace PhxEngine::Renderer
 
         std::array<PhxEngine::RHI::RenderPassHandle, NumRenderPassTypes> m_renderPasses;
         std::unique_ptr<PhxEngine::Graphics::CascadeShadowMap> m_cascadeShadowMaps;
+
+        Renderer::CullResults m_cullResults;
+
+        struct DrawCubeInfo
+        {
+            size_t VBOffset = 0;
+            size_t IBOffset = 0;
+        };
+
+        std::vector<DrawCubeInfo> m_drawInfo;
+
+        struct VertexPosColour
+        {
+            DirectX::XMFLOAT4 Position;
+            DirectX::XMFLOAT4 Colour;
+        };
+
+        std::vector<VertexPosColour> m_drawCubeVertices;
+        const std::array<uint16_t, 24> kDrawCubeIndices
+        {
+            0, 2, 2, 3, 0, 1, 1, 3,
+            4 ,6, 6, 7, 4, 5, 5, 7,
+            0, 4, 2, 6, 1, 5, 3, 7
+        };
     };
 
 }

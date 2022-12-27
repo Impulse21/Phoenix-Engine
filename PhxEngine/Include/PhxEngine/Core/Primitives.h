@@ -4,6 +4,53 @@
 
 namespace PhxEngine::Core
 {
+	struct AABB
+	{
+		DirectX::XMFLOAT3 Min;
+		DirectX::XMFLOAT3 Max;
+
+		AABB(
+			const DirectX::XMFLOAT3& min = DirectX::XMFLOAT3(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()),
+			const DirectX::XMFLOAT3& max = DirectX::XMFLOAT3(std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest())
+		) : Min(min), Max(max) {}
+
+
+		DirectX::XMFLOAT3 GetCenter() const;
+		constexpr bool IsValid() const
+		{
+			if (this->Min.x > this->Max.x || this->Min.y > this->Max.y || this->Min.z > this->Max.z)
+				return false;
+			return true;
+		}
+
+		AABB Transform(DirectX::XMMATRIX const& transform) const;
+		inline DirectX::XMFLOAT3 GetCorner(size_t index) const
+		{
+			switch (index)
+			{
+			case 0:
+				return { this->Min.x, this->Min.y, this->Max.z };
+			case 1:
+				return { this->Max.x, this->Min.y, this->Max.z };
+			case 2:
+				return { this->Min.x, this->Max.y, this->Max.z };
+			case 3:
+				return this->Max;
+			case 4:
+				return this->Min;
+			case 5:
+				return { this->Max.x, this->Min.y, this->Min.z };
+			case 6:
+				return { this->Min.x, this->Max.y, this->Min.z };
+			case 7:
+				return { this->Max.x, this->Max.y, this->Min.z };
+			default:
+				assert(0);
+				return { 0.0f, 0.0f, 0.0f };
+			}
+		}
+	};
+
 	struct Frustum
 	{
 		DirectX::XMFLOAT4 Planes[6];
@@ -28,5 +75,7 @@ namespace PhxEngine::Core
 		const DirectX::XMFLOAT4& GetTopPlane() const { return this->Planes[4]; };
 		const DirectX::XMFLOAT4& GetBottomPlane() const { return this->Planes[5]; };
 
+		bool CheckBoxFast(AABB const& aabb) const;
 	};
+
 }

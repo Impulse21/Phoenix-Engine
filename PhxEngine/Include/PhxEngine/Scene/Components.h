@@ -201,7 +201,7 @@ namespace PhxEngine::Scene
 		float FoV = 1.0f; // Radians
 
 		DirectX::XMFLOAT3 Eye = { 0.0f, 0.0f, 0.0f };
-		DirectX::XMFLOAT3 Forward = { 0.0f, 0.0f, -1.0f };
+		DirectX::XMFLOAT3 Forward = { 0.0f, 0.0f, 1.0f };
 		DirectX::XMFLOAT3 Up = { 0.0f, 1.0f, 0.0f };
 
 		DirectX::XMFLOAT4X4 View;
@@ -263,10 +263,17 @@ namespace PhxEngine::Scene
 				DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f),
 				DirectX::XMLoadFloat3(&this->Up));
 #else
+#ifdef LH
+			auto viewMatrix = DirectX::XMMatrixLookToLH(
+				DirectX::XMLoadFloat3(&this->Eye),
+				DirectX::XMLoadFloat3(&this->Forward),
+				DirectX::XMLoadFloat3(&this->Up));
+#else
 			auto viewMatrix = DirectX::XMMatrixLookToRH(
 				DirectX::XMLoadFloat3(&this->Eye),
 				DirectX::XMLoadFloat3(&this->Forward),
 				DirectX::XMLoadFloat3(&this->Up));
+#endif
 #endif
 			// auto viewMatrix = this->ConstructViewMatrixLH();
 
@@ -276,8 +283,16 @@ namespace PhxEngine::Scene
 			float aspectRatio = this->Width / this->Height;
 
 			// Note the farPlane is passed in as near, this is to support reverseZ
+
+#if false
+			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(1.04719758, 1904.00 / 984.00, 5000.00, 0.1);
+#else
+#ifdef LH
+			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, aspectRatio, this->ZFar, this->ZNear);
+#else
 			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, aspectRatio, this->ZFar, this->ZNear);
-			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(1.04719758, 1904.00 / 984.00, 5000.00, 0.1);
+#endif
+#endif
 			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, 1.7f, this->ZFar, this->ZNear);
 
 			DirectX::XMStoreFloat4x4(&this->Projection, projectionMatrix);
@@ -469,6 +484,8 @@ namespace PhxEngine::Scene
 
 		std::array<RHI::BufferRange, (int)VertexAttribute::Count> BufferRanges;
 
+		Core::AABB Aabb;
+
 		[[nodiscard]] bool HasVertexAttribuite(VertexAttribute attr) const { return this->BufferRanges[(int)attr].SizeInBytes != 0; }
 		RHI::BufferRange& GetVertexAttribute(VertexAttribute attr) { return this->BufferRanges[(int)attr]; }
 		[[nodiscard]] const RHI::BufferRange& GetVertexAttribute(VertexAttribute attr) const { return this->BufferRanges[(int)attr]; }
@@ -484,7 +501,10 @@ namespace PhxEngine::Scene
 
 		bool IsTriMesh() const { return (this->Indices.size() % 3) == 0; }
 
-		void CreateRenderData(RHI::CommandListHandle commandList);
+		void CreateRenderData(RHI::CommandListHandle commandList, Renderer::ResourceUpload& indexUploader, Renderer::ResourceUpload& vertexUploader);
+
+		uint64_t GetIndexBufferSizeInBytes() const;
+		uint64_t GetVertexBufferSizeInBytes() const;
 	};
 
 	struct MeshInstanceComponent
@@ -506,6 +526,12 @@ namespace PhxEngine::Scene
 		size_t GlobalBufferIndex = ~0ull;
 	};
 
+	struct AABBComponent
+	{
+		Core::AABB BoundingData;
+
+		 operator Core::AABB&() { return this->BoundingData; }
+	};
 
 	struct MaterialComponent
 	{
