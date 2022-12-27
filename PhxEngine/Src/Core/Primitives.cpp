@@ -35,11 +35,6 @@ PhxEngine::Core::Frustum::Frustum(DirectX::XMMATRIX const& m, bool isReverseProj
 	// Bottom plane:
 	XMStoreFloat4(&this->GetBottomPlane(), XMPlaneNormalize(mat.r[3] + mat.r[1]));
 
-	// Reverse Z since we are using Right Hand.
-	for (auto& plane : this->Planes)
-	{
-		plane.z = -plane.z;
-	}
 #else
 	DirectX::XMVECTOR negRow2 = DirectX::XMVectorNegate(mat.r[2]);
 	DirectX::XMVECTOR negRow3 = DirectX::XMVectorNegate(mat.r[3]);
