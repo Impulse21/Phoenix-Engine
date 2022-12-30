@@ -142,6 +142,8 @@ void PhxEngine::Scene::Scene::OnUpdate()
 		this->m_shaderData.AtmosphereData.ZenithColour = worldComp.ZenithColour;
 		this->m_shaderData.AtmosphereData.HorizonColour = worldComp.HorizonColour;
 		this->m_shaderData.AtmosphereData.AmbientColour = worldComp.AmbientColour;
+		this->m_shaderData.IrradianceMapTexIndex = cInvalidDescriptorIndex;
+		this->m_shaderData.PreFilteredEnvMapTexIndex = cInvalidDescriptorIndex;
 	}
 	else
 	{
@@ -150,6 +152,8 @@ void PhxEngine::Scene::Scene::OnUpdate()
 		this->m_shaderData.AtmosphereData.ZenithColour = worldComp.ZenithColour;
 		this->m_shaderData.AtmosphereData.HorizonColour = worldComp.HorizonColour;
 		this->m_shaderData.AtmosphereData.AmbientColour = worldComp.AmbientColour;
+		this->m_shaderData.IrradianceMapTexIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(worldComp.IblTextures[WorldEnvironmentComponent::IrradanceMap], RHI::SubresouceType::SRV);;
+		this->m_shaderData.PreFilteredEnvMapTexIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(worldComp.IblTextures[WorldEnvironmentComponent::PreFilteredEnvMap], RHI::SubresouceType::SRV);
 
 	}
 
@@ -514,6 +518,14 @@ void PhxEngine::Scene::Scene::FreeResources()
 	if (this->m_envMapArray.IsValid())
 	{
 		IGraphicsDevice::Ptr->DeleteTexture(this->m_envMapArray);
+	}
+
+	auto worldEnvView = this->GetRegistry().view<WorldEnvironmentComponent>();
+	if (!worldEnvView.empty())
+	{
+		auto& worldComp = worldEnvView.get<WorldEnvironmentComponent>(worldEnvView[0]);
+		IGraphicsDevice::Ptr->DeleteTexture(worldComp.IblTextures[WorldEnvironmentComponent::IrradanceMap]);
+		IGraphicsDevice::Ptr->DeleteTexture(worldComp.IblTextures[WorldEnvironmentComponent::PreFilteredEnvMap]);
 	}
 }
 

@@ -379,9 +379,30 @@ namespace PhxEngine::Scene
 
 	struct WorldEnvironmentComponent
 	{
+		enum class IndirectLightingMode : uint8_t
+		{
+			GeneratedEnvMap = 0,
+			IBL,
+		} IndirectLightingMode;
+
+		enum SkyType
+		{
+			Simple = 0,
+		};
+
 		DirectX::XMFLOAT3 ZenithColour = { 0.39, 0.57, 1.0 };
 		DirectX::XMFLOAT3 HorizonColour = { 0.0f, 0.0f, 0.0f };
 		DirectX::XMFLOAT3 AmbientColour = { 0.0, 0.0, 0.0 };
+
+
+		enum IBLTextures
+		{
+			IrradanceMap,
+			PreFilteredEnvMap,
+			EnvMap,
+			NumIblTextures
+		};
+		std::array < PhxEngine::RHI::TextureHandle, NumIblTextures> IblTextures;
 
 	};
 

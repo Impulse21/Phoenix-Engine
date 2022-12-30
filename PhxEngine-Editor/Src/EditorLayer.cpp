@@ -408,10 +408,22 @@ void SceneExplorerPanel::DrawEntityComponents(Entity entity)
         });
 
     DrawComponent<WorldEnvironmentComponent>("WorldEnvironmentComponent", entity, [](auto& component) {
-        
-        ImGui::ColorPicker3("Zenith Colour", &component.ZenithColour.x, ImGuiColorEditFlags_NoSidePreview);
-        ImGui::ColorPicker3("Horizon Colour", &component.HorizonColour.x, ImGuiColorEditFlags_NoSidePreview);
-        ImGui::ColorPicker3("Ambient Colour", &component.AmbientColour.x, ImGuiColorEditFlags_NoSidePreview);
+        const char* items[] = { "Generated", "IBL" };
+        ImGui::Combo("Lighting Type", (int*)&component.IndirectLightingMode, items, IM_ARRAYSIZE(items));
+
+        switch (component.IndirectLightingMode)
+        {
+        case WorldEnvironmentComponent::IndirectLightingMode::IBL:
+        {
+            break;
+        }
+        case WorldEnvironmentComponent::IndirectLightingMode::GeneratedEnvMap:
+        default:
+
+            ImGui::ColorPicker3("Zenith Colour", &component.ZenithColour.x, ImGuiColorEditFlags_NoSidePreview);
+            ImGui::ColorPicker3("Horizon Colour", &component.HorizonColour.x, ImGuiColorEditFlags_NoSidePreview);
+            ImGui::ColorPicker3("Ambient Colour", &component.AmbientColour.x, ImGuiColorEditFlags_NoSidePreview);
+        }
         });
 
     DrawComponent<CameraComponent>("CameraComponent", entity, [](auto& component) {
@@ -449,17 +461,14 @@ void EditorLayer::OnAttach()
     std::unique_ptr<ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
     
     bool addDefaultLight = false;
-    // bool result = sceneLoader->LoadScene("Assets\\Models\\MaterialScene\\MatScene.gltf", cmd, *this->m_scene);
-    // bool result = sceneLoader->LoadScene("Assets\\Models\\EnvMapTest\\EnvMapTest.gltf", cmd, *this->m_scene);
-    // bool result = sceneLoader->LoadScene("Assets\\Models\\BRDFTests\\MetalRoughSpheresNoTextures.gltf", cmd, *this->m_scene);
     // bool result = sceneLoader->LoadScene("Assets\\Models\\ShadowTest\\ShadowTestScene.gltf", cmd, *this->m_scene);
     // bool result = sceneLoader->LoadScene("Assets\\Models\\Sponza\\Sponza.gltf", cmd, *this->m_scene); addDefaultLight = true;
-    bool result = sceneLoader->LoadScene("Assets\\Models\\Sponza_Intel\\Main\\NewSponza_Main_glTF_002.gltf", cmd, *this->m_scene);
+    // bool result = sceneLoader->LoadScene("Assets\\Models\\Sponza_Intel\\Main\\NewSponza_Main_glTF_002.gltf", cmd, *this->m_scene);
     // assert(result);
     // result = sceneLoader->LoadScene("Assets\\Models\\Sponza_Intel\\Main_Curtains\\NewSponza_Curtains_glTF.gltf", cmd, *this->m_scene);
     // assert(result);
     // bool result = sceneLoader->LoadScene("Assets\\Models\\TestScene\\TestScene.gltf", cmd, *this->m_scene);
-    // bool result = sceneLoader->LoadScene("Assets\\Models\\TestScenes\\MaterialShowcase.gltf", cmd, *this->m_scene);
+    bool result = sceneLoader->LoadScene("Assets\\Models\\TestScenes\\MaterialShowcase.gltf", cmd, *this->m_scene);
     // bool result = sceneLoader->LoadScene("Assets\\Models\\TestScenes\\InstanceDemoScene.gltf", cmd, *this->m_scene);
     assert(result);
 #endif

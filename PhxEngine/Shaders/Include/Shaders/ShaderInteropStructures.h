@@ -65,7 +65,7 @@ namespace Shader
 
 		// -- 16 byte boundary ----
 
-		uint PreFilteredEnvMapTexIndex; // Currently not used
+		uint PreFilteredEnvMapTexIndex;
 		uint EnvMapArray;
 		uint EnvMap_NumMips;
 		uint RT_TlasIndex;
