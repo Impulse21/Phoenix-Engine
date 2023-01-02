@@ -25,6 +25,7 @@ namespace PhxEngine::Graphics
 		PS_DeferredLighting_RTShadows,
 		PS_ToneMapping,
 		PS_SkyProcedural,
+		PS_SkyTexture,
 		PS_EnvMap_SkyProcedural,
 		PS_VertexColor,
 

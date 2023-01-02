@@ -129,7 +129,6 @@ namespace PhxEngine::Scene
 		PhxEngine::RHI::TextureHandle m_envMapArray;
 		std::array<PhxEngine::RHI::RenderPassHandle, kEnvmapCount> m_envMapRenderPasses;
 
-
 		entt::entity m_activeSun;
 	};
 

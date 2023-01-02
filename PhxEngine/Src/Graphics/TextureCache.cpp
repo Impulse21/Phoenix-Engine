@@ -1,6 +1,6 @@
 #include "phxpch.h"
 
-#include "TextureCache.h"
+#include <PhxEngine/Graphics/TextureCache.h>
 #include "PhxEngine/Core/Helpers.h"
 
 #include "DirectXTex.h"

@@ -18,6 +18,7 @@
 #endif 
 #define PHX_ENGINE_DEFAULT_ROOTSIGNATURE \
 	"RootFlags(CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED), " \
+	"RootConstants(num32BitConstants=12, b999), " \
 	"CBV(b0), " \
 	"CBV(b1), " \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \

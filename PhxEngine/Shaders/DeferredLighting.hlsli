@@ -190,6 +190,14 @@ float4 main(PSInput input) : SV_TARGET
     // -- Collect Indirect Light Contribution ---
     
     // -- Diffuse ---
+    if (GetFrame().Option & FRAME_OPTION_BIT_IBL)
+    {
+        float3 F = FresnelSchlick(brdfSurfaceData.NdotV, brdfSurfaceData.F0, surface.Roughness);
+        
+        // Improvised abmient lighting by using the Env Irradance map.
+        lightingTerms.Indirect.Diffuse = ResourceHeap_GetTextureCube(GetScene().IrradianceMapTexIndex).Sample(SamplerDefault, brdfSurfaceData.N).rgb;
+    }
+    else
     {
         // Improvised abmient lighting by using the Env Irradance map.
         float3 ambient = GetAtmosphere().AmbientColour;
@@ -228,9 +236,13 @@ float4 main(PSInput input) : SV_TARGET
         // split-sum approximation to get the IBL Specular part.
 
         float3 prefilteredColour = float3(0.0f, 0.0f, 0.0f);
-        if (GetScene().EnvMapArray != InvalidDescriptorIndex)
+        float lodLevel = surface.Roughness * MaxReflectionLod;
+        if (GetFrame().Option & FRAME_OPTION_BIT_IBL)
         {
-            float lodLevel = surface.Roughness * MaxReflectionLod;
+            prefilteredColour = ResourceHeap_GetTextureCube(GetScene().PreFilteredEnvMapTexIndex).SampleLevel(SamplerLinearClamped, brdfSurfaceData.R, lodLevel).rgb;
+        }
+        else if (GetScene().EnvMapArray != InvalidDescriptorIndex)
+        {
             prefilteredColour = ResourceHeap_GetTextureCubeArray(GetScene().EnvMapArray).SampleLevel(SamplerLinearClamped, float4(brdfSurfaceData.R, 0), lodLevel).rgb;
         }
 

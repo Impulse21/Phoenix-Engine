@@ -2,7 +2,7 @@
 
 #include <memory>
 #include "GltfSceneLoader.h"
-#include "Graphics/TextureCache.h"
+#include <PhxEngine/Graphics/TextureCache.h>
 
 #include "PhxEngine/Scene/Scene.h"
 #include "PhxEngine/Core/Helpers.h"
