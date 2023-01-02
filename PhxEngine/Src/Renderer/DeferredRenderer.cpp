@@ -854,7 +854,9 @@ void DeferredRenderer::PrepareFrameRenderData(
             }
             }
         }
-	}
+	} 
+    auto view = scene.GetAllEntitiesWith<WorldEnvironmentComponent>();
+    auto worldComp = view.get<WorldEnvironmentComponent>(view.front());
 
 	Shader::Frame frameData = {};
     // Move to Renderer...
@@ -865,6 +867,12 @@ void DeferredRenderer::PrepareFrameRenderData(
 
     frameData.MatricesDescritporIndex = IGraphicsDevice::Ptr->GetDescriptorIndex(matrixBufferAlloc.GpuBuffer, RHI::SubresouceType::SRV);
     frameData.MatricesDataOffset = matrixBufferAlloc.Offset;
+
+    if (worldComp.IndirectLightingMode == WorldEnvironmentComponent::IndirectLightingMode::IBL)
+    {
+        frameData.Option |= Shader::FRAME_OPTION_BIT_IBL;
+    }
+
     frameData.SceneData = scene.GetShaderData();
 
 	// Upload data
@@ -944,7 +952,7 @@ void DeferredRenderer::CreatePSOs()
             .DsvFormat = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_depthBuffer).Format }
         });
 
-    this->m_pso[PSO_Sky] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
+    this->m_pso[PSO_SkyProcedural] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
         {
             .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_Sky),
             .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_SkyProcedural),
@@ -957,6 +965,18 @@ void DeferredRenderer::CreatePSOs()
             .DsvFormat = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_depthBuffer).Format }
         });
 
+    this->m_pso[PSO_SkyTex] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
+        {
+            .VertexShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::VS_Sky),
+            .PixelShader = Graphics::ShaderStore::Ptr->Retrieve(Graphics::PreLoadShaders::PS_SkyTexture),
+            .DepthStencilRenderState = {
+                .DepthWriteEnable = false,
+                .DepthFunc = RHI::ComparisonFunc::GreaterOrEqual
+            },
+            .RasterRenderState = {.DepthClipEnable = false },
+            .RtvFormats = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_deferredLightBuffer).Format },
+            .DsvFormat = { IGraphicsDevice::Ptr->GetTextureDesc(this->m_depthBuffer).Format }
+        });
 
     this->m_pso[PSO_FullScreenQuad] = IGraphicsDevice::Ptr->CreateGraphicsPSO(
         {
@@ -1076,6 +1096,10 @@ void DeferredRenderer::CreatePSOs()
 void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene)
 {
     this->m_commandList->Open();
+
+    auto view = scene.GetAllEntitiesWith<WorldEnvironmentComponent>();
+
+    auto worldComp = view.get<WorldEnvironmentComponent>(view.front());
 
     uint32_t cullOptions = CullOptions::None;
     if ((bool)sCVarDebugFreezeCamera.Get())
@@ -1221,7 +1245,6 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
         this->m_commandList->BindConstantBuffer(RootParameters_DeferredLightingFulLQuad::FrameCB, this->m_constantBuffers[CB_Frame]);
         this->m_commandList->BindDynamicConstantBuffer(RootParameters_DeferredLightingFulLQuad::CameraCB, cameraData);
 
-
         this->m_commandList->BindDynamicDescriptorTable(
             RootParameters_DeferredLightingFulLQuad::GBuffer,
             {
@@ -1240,7 +1263,18 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
         auto scrope = this->m_commandList->BeginScopedMarker("Draw Sky Pass");
 
         this->m_commandList->BeginRenderPass(this->m_renderPasses[RenderPass_Sky]);
-        this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_Sky]);
+
+        if (worldComp.IndirectLightingMode == WorldEnvironmentComponent::IndirectLightingMode::IBL)
+        {
+            this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_SkyTex]);
+            Shader::ImagePassPushConstants push = {};
+            push.Index = IGraphicsDevice::Ptr->GetDescriptorIndex(worldComp.IblTextures[WorldEnvironmentComponent::IBLTextures::EnvMap]->GetRenderHandle(), RHI::SubresouceType::SRV);
+            this->m_commandList->BindPushConstant(DefaultRootParameters::PushConstant, push);
+        }
+        else
+        {
+            this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_SkyProcedural]);
+        }
 
         this->m_commandList->BindConstantBuffer(DefaultRootParameters::FrameCB, this->m_constantBuffers[CB_Frame]);
         this->m_commandList->BindDynamicConstantBuffer(DefaultRootParameters::CameraCB, cameraData);

@@ -31,7 +31,8 @@ namespace PhxEngine::Renderer
             PSO_FullScreenQuad,
             PSO_DeferredLightingPass,
             PSO_DeferredLightingPass_RTShadows,
-            PSO_Sky,
+            PSO_SkyProcedural,
+            PSO_SkyTex,
             PSO_EnvCapture_SkyProcedural,
             PSO_Shadow,
 

@@ -6,6 +6,7 @@
 #include <PhxEngine/Scene/SceneWriter.h>
 #include <PhxEngine/Graphics/ShaderStore.h>
 #include <PhxEngine/Core/Math.h>
+#include <PhxEngine/Graphics/TextureCache.h>
 
 #include "SceneRenderLayer.h"
 
@@ -415,6 +416,39 @@ void SceneExplorerPanel::DrawEntityComponents(Entity entity)
         {
         case WorldEnvironmentComponent::IndirectLightingMode::IBL:
         {
+            // Draw Images
+            std::shared_ptr<Assets::Texture> image = component.IblTextures[WorldEnvironmentComponent::IrradanceMap];
+            if (image && image->GetRenderHandle().IsValid())
+            {
+                // ImGui::Image(static_cast<void*>(&image->GetRenderHandle()), ImVec2{100, 100});
+                ImGui::Text("Image Set");
+            }
+            else
+            {
+                ImGui::Text("None");
+            }
+
+            image = component.IblTextures[WorldEnvironmentComponent::PreFilteredEnvMap];
+            if (image && image->GetRenderHandle().IsValid())
+            {
+                // ImGui::Image(static_cast<void*>(&image->GetRenderHandle()), ImVec2{ 100, 100 });
+                ImGui::Text("Image Set");
+            }
+            else
+            {
+                ImGui::Text("None");
+            }
+
+            image = component.IblTextures[WorldEnvironmentComponent::EnvMap];
+            if (image && image->GetRenderHandle().IsValid())
+            {
+                // ImGui::Image(static_cast<void*>(&image->GetRenderHandle()), ImVec2{ 100, 100 });
+                ImGui::Text("Image Set");
+            }
+            else
+            {
+                ImGui::Text("None");
+            }
             break;
         }
         case WorldEnvironmentComponent::IndirectLightingMode::GeneratedEnvMap:
@@ -458,7 +492,8 @@ void EditorLayer::OnAttach()
     CommandListHandle cmd = IGraphicsDevice::Ptr->CreateCommandList();
     cmd->Open();
 
-    std::unique_ptr<ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
+    std::unique_ptr<ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader(); 
+    auto textureCache = std::make_unique<Graphics::TextureCache>(IGraphicsDevice::Ptr);
     
     bool addDefaultLight = false;
     // bool result = sceneLoader->LoadScene("Assets\\Models\\ShadowTest\\ShadowTestScene.gltf", cmd, *this->m_scene);
@@ -487,8 +522,11 @@ void EditorLayer::OnAttach()
     }
 
     entt::entity worldEntity = this->m_scene->CreateEntity("World Environment Component");
-    this->m_scene->GetRegistry().emplace<WorldEnvironmentComponent>(worldEntity);
-
+    WorldEnvironmentComponent& worldComponent = this->m_scene->GetRegistry().emplace<WorldEnvironmentComponent>(worldEntity);
+    worldComponent.IblTextures[WorldEnvironmentComponent::IrradanceMap] = textureCache->LoadTexture("Assets\\Textures\\IBL\\PaperMill_Ruins_E\\PaperMill_IrradianceMap.dds", false, cmd);
+    worldComponent.IblTextures[WorldEnvironmentComponent::PreFilteredEnvMap] = textureCache->LoadTexture("Assets\\Textures\\IBL\\PaperMill_Ruins_E\\PaperMill_RadianceMap.dds", false, cmd);
+    worldComponent.IblTextures[WorldEnvironmentComponent::EnvMap] = textureCache->LoadTexture("Assets\\Textures\\IBL\\PaperMill_Ruins_E\\PaperMill_Skybox.dds", false, cmd);
+  
     // TODO: I am here update The mesh render data
 
     auto view = this->m_scene->GetAllEntitiesWith<MeshComponent, NameComponent>();

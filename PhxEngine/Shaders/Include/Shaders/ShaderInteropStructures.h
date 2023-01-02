@@ -32,6 +32,7 @@ namespace Shader
 
 	// -- Frame Options ---
 	static const uint FRAME_OPTION_BIT_SIMPLE_SKY = 1 << 0;
+	static const uint FRAME_OPTION_BIT_IBL = 1 << 1;
 
 	struct Atmosphere
 	{
@@ -72,8 +73,6 @@ namespace Shader
 
 		// -- 16 byte boundary ----
 		Atmosphere AtmosphereData;
-
-		// -- 16 byte boundary ----
 	};
 
 	// -- Common Structurs ---
@@ -464,7 +463,7 @@ namespace Shader
 
 	struct ImagePassPushConstants
 	{
-
+		uint Index;
 	};
 
 	struct DefferedLightingCSConstants

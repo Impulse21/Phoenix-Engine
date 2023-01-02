@@ -37,7 +37,7 @@ namespace PhxEngine::Scene::Assets
 		Texture();
 		~Texture();
 
-		RHI::TextureHandle GetRenderHandle() { return this->m_renderTexture; }
+		RHI::TextureHandle& GetRenderHandle() { return this->m_renderTexture; }
 
 	protected:
 		void CreateRenderResourceIfEmpty() override;

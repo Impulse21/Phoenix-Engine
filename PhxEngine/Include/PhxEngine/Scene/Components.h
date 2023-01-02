@@ -402,7 +402,7 @@ namespace PhxEngine::Scene
 			EnvMap,
 			NumIblTextures
 		};
-		std::array < PhxEngine::RHI::TextureHandle, NumIblTextures> IblTextures;
+		std::array<std::shared_ptr<Assets::Texture>, NumIblTextures> IblTextures;
 
 	};
 

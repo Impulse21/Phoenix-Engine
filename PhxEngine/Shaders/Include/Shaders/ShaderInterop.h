@@ -24,7 +24,8 @@ namespace DefaultRootParameters
 {
 	enum
 	{
-		FrameCB = 0,
+		PushConstant = 0,
+		FrameCB,
 		CameraCB,
 		DEP_Light,
 	};
