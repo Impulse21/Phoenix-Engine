@@ -383,7 +383,7 @@ namespace PhxEngine::Scene
 		{
 			GeneratedEnvMap = 0,
 			IBL,
-		} IndirectLightingMode;
+		} IndirectLightingMode = IndirectLightingMode::GeneratedEnvMap;
 
 		enum SkyType
 		{
