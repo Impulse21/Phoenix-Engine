@@ -351,20 +351,75 @@ void SceneExplorerPanel::DrawEntityComponents(Entity entity)
             DrawFloat3Control("Translation", component.LocalTranslation);
             DrawFloat4Control("Rotation", component.LocalRotation);
             DrawFloat3Control("Scale", component.LocalScale, 1.0f);
-        });
+    });
 
-    DrawComponent<MeshComponent>("MeshComponent", entity, [](auto& component) {
-        ImGui::Text("Mesh Component");
-            // ImGui::Text(component.Name.c_str());
+    DrawComponent<MaterialComponent>("Material Component", entity, [](auto& component) {
 
-            for (int i = 0; i < component.Surfaces.size(); i++)
+        ImGui::ColorPicker3("Base Colour", &component.BaseColour.x, ImGuiColorEditFlags_NoSidePreview);
+        ImGui::SliderFloat("Roughness", &component.Roughness, 0.0f, 1.0f, " % .4f");
+        ImGui::SliderFloat("Metalness", &component.Metalness, 0.0f, 1.0f, " % .4f");
+        if (ImGui::CollapsingHeader("Textures"))
+        {
+            ImGui::Text("Base Color");
+            if (component.BaseColourTexture)
             {
-                // ImGui::Text(component.Surfaces[i].Material->Name.c_str());
+                ImGui::Image(static_cast<void*>(&component.BaseColourTexture->GetRenderHandle()), { 100, 100 });
             }
+            ImGui::Separator();
 
-        });
+            ImGui::Text("Metal (B) Roughness(R)");
+            if (component.MetalRoughnessTexture)
+            {
+                ImGui::Image(static_cast<void*>(&component.MetalRoughnessTexture->GetRenderHandle()), { 100, 100 });
+            }
+            ImGui::Separator();
 
-    DrawComponent<LightComponent>("LightComponent", entity, [](auto& component) {
+            ImGui::Text("Normal Map");
+            if (component.NormalMapTexture)
+            {
+                ImGui::Image(static_cast<void*>(&component.NormalMapTexture->GetRenderHandle()), { 100, 100 });
+            }
+        }
+    });
+
+    DrawComponent<MeshComponent>("Mesh Component", entity, [&](auto& component) {
+        if (ImGui::TreeNode("Materials"))
+        {
+            for (size_t i = 0; i < component.Surfaces.size(); i++)
+            {
+                auto* nameComp = this->m_scene->GetRegistry().try_get<NameComponent>(component.Surfaces[i].Material);
+                std::string text = std::to_string(i) + ".";
+                if (nameComp)
+                {
+                    text += (" " + nameComp->Name);
+                }
+                else
+                {
+                    text += " None";
+                }
+                ImGui::Text(text.c_str());
+            }
+            ImGui::TreePop();
+        }
+
+    });
+
+	DrawComponent<MeshInstanceComponent>("Mesh Instance Component", entity, [&](auto& component) {
+
+        auto* nameComp = this->m_scene->GetRegistry().try_get<NameComponent>(component.Mesh);
+        std::string text = "Mesh:";
+        if (nameComp)
+        {
+            text += (" " + nameComp->Name);
+        }
+        else
+        {
+            text += " None";
+        }
+        ImGui::Text(text.c_str());
+	});
+
+    DrawComponent<LightComponent>("Light Component", entity, [](auto& component) {
         switch (component.Type)
         {
         case LightComponent::kDirectionalLight:
@@ -408,7 +463,7 @@ void SceneExplorerPanel::DrawEntityComponents(Entity entity)
             }
         });
 
-    DrawComponent<WorldEnvironmentComponent>("WorldEnvironmentComponent", entity, [](auto& component) {
+    DrawComponent<WorldEnvironmentComponent>("World Environment Component", entity, [](auto& component) {
         const char* items[] = { "Generated", "IBL" };
         ImGui::Combo("Lighting Type", (int*)&component.IndirectLightingMode, items, IM_ARRAYSIZE(items));
 
