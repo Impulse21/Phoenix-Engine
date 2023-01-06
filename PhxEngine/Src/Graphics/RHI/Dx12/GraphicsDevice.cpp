@@ -5,6 +5,7 @@
 
 #include "BiindlessDescriptorTable.h"
 #include "CommandList.h"
+#include <PhxEngine/Core/Log.h>
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -2502,6 +2503,16 @@ std::unique_ptr<DXGIGpuAdapter>  PhxEngine::RHI::Dx12::GraphicsDevice::SelectOpt
 	size_t dedicatedVideoMemory = desc.DedicatedVideoMemory;
 	size_t dedicatedSystemMemory = desc.DedicatedSystemMemory;
 	size_t sharedSystemMemory = desc.SharedSystemMemory;
+
+	LOG_CORE_INFO(
+		"Found Suitable D3D12 Adapter {0}",
+		name.c_str());
+
+	LOG_CORE_INFO(
+		"Adapter has {0}MB of dedicated video memory, {1}MB of dedicated system memory, and {2}MB of shared system memory.",
+		dedicatedVideoMemory / (1024 * 1024),
+		dedicatedSystemMemory / (1024 * 1024),
+		sharedSystemMemory / (1024 * 1024));
 
 	auto selectedAdataper = std::make_unique<DXGIGpuAdapter>();
 	selectedAdataper->Name = NarrowString(desc.Description);

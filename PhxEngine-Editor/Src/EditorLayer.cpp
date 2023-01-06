@@ -592,10 +592,6 @@ void EditorLayer::OnAttach()
         auto [meshComp, nameComp] = view.get<MeshComponent, NameComponent>(e);
         const uint64_t indexSize = meshComp.GetIndexBufferSizeInBytes();
         const uint64_t vertexSize = meshComp.GetVertexBufferSizeInBytes();
-        std::cout << "Mesh: " << nameComp.Name << std::endl;
-        std::cout << "\tIndex Size:" << BytesToMB(indexSize) << "(MB)" << std::endl;
-        std::cout << "\tVertex Size: " << BytesToMB(vertexSize) << "(MB)" << std::endl;
-        std::cout << std::endl;
 
         indexBufferSize += indexSize;
         vertexBufferSize += vertexSize;

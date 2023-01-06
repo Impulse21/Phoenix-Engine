@@ -1,6 +1,6 @@
 #include "phxpch.h"
 #include "PhxEngine/Core/Initializer.h"
-
+#include <PhxEngine/Core/Log.h>
 #include "PhxEngine/Graphics/RHI/PhxRHI.h"
 
 using namespace PhxEngine::RHI;
@@ -8,6 +8,7 @@ using namespace PhxEngine::RHI;
 void PhxEngine::Core::Initialize()
 {
 	// Create Graphics Core
+	Log::Initialize();
 	RHI::IGraphicsDevice::Ptr = RHI::DeviceFactory::CreateDx12Device();
 }
 

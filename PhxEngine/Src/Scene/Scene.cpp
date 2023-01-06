@@ -71,11 +71,7 @@ void PhxEngine::Scene::Scene::ConstructRenderData(
 	{
 		auto [meshComp, nameComp] = view.get<MeshComponent, NameComponent>(e);
 		const uint64_t indexSize = meshComp.GetIndexBufferSizeInBytes();
-		const uint64_t vertexSize = meshComp.GetVertexBufferSizeInBytes();
-		std::cout << "Mesh: " << nameComp.Name << std::endl;
-		std::cout << "\tIndex Size:" << KBToBytes(indexSize) << "(KB)" << std::endl;
-		std::cout << "\tVertex Size: " << KBToBytes(vertexSize) << "(KB)" << std::endl;
-		std::cout << std::endl;
+		const uint64_t vertexSize = meshComp.GetVertexBufferSizeInBytes();;
 
 		indexBufferSize += indexSize;
 		vertexBufferSize += vertexSize;
