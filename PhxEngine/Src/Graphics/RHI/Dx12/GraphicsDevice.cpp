@@ -31,7 +31,7 @@ static bool sDebugEnabled = false;
 namespace
 {
 #if TRACK_RESOURCES
-	static std::unordered_set<std::string> sTrackedResources;
+	static std::unordered_map<std::string, uint32_t> sTrackedResources;
 #endif
 }
 
@@ -321,6 +321,7 @@ PhxEngine::RHI::Dx12::GraphicsDevice::GraphicsDevice()
 	BufferDesc desc = {};
 	desc.SizeInBytes = this->kTimestampQueryHeapSize * sizeof(uint64_t);
 	desc.Usage = Usage::ReadBack;
+	desc.DebugName = "Timestamp Query Buffer";
 
 	// Create GPU Buffer for timestamp readbacks
 	this->m_timestampQueryBuffer = this->CreateBuffer(desc);
@@ -1004,12 +1005,6 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::DeleteRenderPass(RenderPassHandle han
 
 			if (pass)
 			{
-#if TRACK_RESOURCES
-				if (sTrackedResources.find(texture->GetDesc().DebugName) != sTrackedResources.end())
-				{
-					sTrackedResources.erase(texture->GetDesc().DebugName);
-				}
-#endif
 				this->GetRenderPassPool().Release(handle);
 			}
 		}
@@ -1294,9 +1289,15 @@ BufferHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateBuffer(BufferDesc const
 	}
 
 #if TRACK_RESOURCES
-	if (sTrackedResources.find(desc.DebugName) == sTrackedResources.end())
+	assert(desc.DebugName != "");
+	auto itr = sTrackedResources.find(desc.DebugName);
+	if (itr == sTrackedResources.end())
 	{
-		sTrackedResources.insert(desc.DebugName);
+		sTrackedResources.insert(std::make_pair(desc.DebugName, 1u));
+	}
+	else
+	{
+		itr->second += 1;
 	}
 #endif
 	return buffer;
@@ -1352,6 +1353,8 @@ void GraphicsDevice::DeleteBuffer(BufferHandle handle)
 	{
 		return;
 	}
+	Dx12Buffer* bufferImpl = this->m_bufferPool.Get(handle);
+	assert(bufferImpl->Desc.DebugName != "");
 
 	DeleteItem d =
 	{
@@ -1363,9 +1366,13 @@ void GraphicsDevice::DeleteBuffer(BufferHandle handle)
 			if (bufferImpl)
 			{
 #if TRACK_RESOURCES
-				if (sTrackedResources.find(texture->GetDesc().DebugName) != sTrackedResources.end())
+				auto itr = sTrackedResources.find(bufferImpl->Desc.DebugName);
+				if (itr != sTrackedResources.end())
 				{
-					sTrackedResources.erase(texture->GetDesc().DebugName);
+					if (itr->second != 0)
+					{
+						itr->second--;
+					}
 				}
 #endif
 				for (auto& view : bufferImpl->SrvSubresourcesAlloc)
@@ -1561,7 +1568,7 @@ RTAccelerationStructureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRTAcce
 	BufferDesc scratchBufferDesc = {};
 	rtAccelerationStructureImpl.SratchBuffer;
 	scratchBufferDesc.SizeInBytes = (uint32_t)std::max(rtAccelerationStructureImpl.Info.ScratchDataSizeInBytes, rtAccelerationStructureImpl.Info.UpdateScratchDataSizeInBytes);
-
+	scratchBufferDesc.DebugName = "RT Scratch Buffer";
 	rtAccelerationStructureImpl.SratchBuffer = this->CreateBuffer(scratchBufferDesc);
 
 	return handle;
@@ -1603,6 +1610,11 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::DeleteRtAccelerationStructure(RTAccel
 	Dx12RTAccelerationStructure* impl = this->m_rtAccelerationStructurePool.Get(handle);
 	this->DeleteBuffer(impl->SratchBuffer);
 
+	if (impl->Desc.Type == RTAccelerationStructureDesc::Type::TopLevel)
+	{
+		this->DeleteBuffer(impl->Desc.TopLevel.InstanceBuffer);
+	}
+
 	DeleteItem d =
 	{
 		this->m_frameCount,
@@ -1610,13 +1622,6 @@ void PhxEngine::RHI::Dx12::GraphicsDevice::DeleteRtAccelerationStructure(RTAccel
 		{
 			if (impl)
 			{
-#if TRACK_RESOURCES
-				if (sTrackedResources.find(texture->GetDesc().DebugName) != sTrackedResources.end())
-				{
-					sTrackedResources.erase(texture->GetDesc().DebugName);
-				}
-#endif
-
 				if (impl->Srv.BindlessIndex != cInvalidDescriptorIndex)
 				{
 					this->m_bindlessResourceDescriptorTable->Free(impl->Srv.BindlessIndex);

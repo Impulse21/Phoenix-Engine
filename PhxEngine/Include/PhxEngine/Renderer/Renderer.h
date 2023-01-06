@@ -17,7 +17,6 @@ namespace PhxEngine::Renderer
 {
 	struct ResourceUpload
 	{
-
 		RHI::BufferHandle UploadBuffer;
 		void* Data = nullptr;
 		uint64_t Offset = 0;
@@ -30,6 +29,11 @@ namespace PhxEngine::Renderer
 			this->Offset += Core::Helpers::AlignTo(sizeInBytes, alignment);
 
 			return currentOffset;
+		}
+
+		void Free()
+		{
+			RHI::IGraphicsDevice::Ptr->DeleteBuffer(this->UploadBuffer);
 		}
 	};
 

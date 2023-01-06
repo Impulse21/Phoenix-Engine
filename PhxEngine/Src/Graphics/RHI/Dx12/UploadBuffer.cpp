@@ -83,7 +83,7 @@ UploadBuffer::Page::~Page()
 {
 	if (this->m_buffer.IsValid())
 	{
-		this->m_device.GetBufferPool().Release(this->m_buffer);
+		this->m_device.DeleteBuffer(this->m_buffer);
 	}
 
 	this->m_gpuPtr = D3D12_GPU_VIRTUAL_ADDRESS(0);

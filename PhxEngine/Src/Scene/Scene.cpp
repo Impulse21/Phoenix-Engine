@@ -86,6 +86,9 @@ void PhxEngine::Scene::Scene::ConstructRenderData(
 		auto [meshComp, nameComp] = view.get<MeshComponent, NameComponent>(e);
 		meshComp.CreateRenderData(cmd, indexUploader, vertexUploader);
 	}
+
+	indexUploader.Free();
+	vertexUploader.Free();
 }
 
 RHI::DescriptorIndex PhxEngine::Scene::Scene::GetBrdfLutDescriptorIndex()
@@ -524,6 +527,18 @@ void PhxEngine::Scene::Scene::FreeResources()
 	{
 		IGraphicsDevice::Ptr->DeleteTexture(this->m_envMapArray);
 	}
+
+	auto meshView = this->GetAllEntitiesWith<MeshComponent>();
+	for (auto e : meshView)
+	{
+		auto& meshComp = meshView.get<MeshComponent>(e);
+		if (meshComp.Blas.IsValid())
+		{
+			IGraphicsDevice::Ptr->DeleteBuffer(meshComp.IndexGpuBuffer);
+			IGraphicsDevice::Ptr->DeleteBuffer(meshComp.VertexGpuBuffer);
+			IGraphicsDevice::Ptr->DeleteRtAccelerationStructure(meshComp.Blas);
+		}
+	}
 }
 
 void PhxEngine::Scene::Scene::UpdateGpuBufferSizes()
@@ -650,6 +665,7 @@ void PhxEngine::Scene::Scene::UpdateGpuBufferSizes()
 		desc.StrideInBytes = IGraphicsDevice::Ptr->GetRTTopLevelAccelerationStructureInstanceSize();
 		desc.SizeInBytes = desc.StrideInBytes * this->m_numInstances * 2; // *2 to grow fast
 		desc.Usage = Usage::Upload;
+		desc.DebugName = "TLAS Upload Buffer";
 
 		if (!this->m_tlasUploadBuffers.front().IsValid() || IGraphicsDevice::Ptr->GetBufferDesc(this->m_tlasUploadBuffers.front()).SizeInBytes < desc.SizeInBytes)
 		{

@@ -606,6 +606,8 @@ void EditorLayer::OnAttach()
 
         meshComp.CreateRenderData(cmd, indexUploader, vertexUploader);
     }
+    indexUploader.Free();
+    vertexUploader.Free();
 
     cmd->Close();
     auto fenceValue = IGraphicsDevice::Ptr->ExecuteCommandLists(cmd.get());
