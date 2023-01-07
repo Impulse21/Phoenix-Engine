@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include <PhxEngine/RHI/PhxRHI.h>B
 #include <PhxEngine/Core/Math.h>
 #include "Common.h"
 
@@ -9,7 +9,7 @@
 #include <memory>
 
 
-namespace PhxEngine::RHI::Dx12
+namespace PhxEngine::RHI::D3D12
 {
 	class GraphicsDevice;
 	class UploadBuffer

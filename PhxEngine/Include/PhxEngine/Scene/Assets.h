@@ -3,7 +3,7 @@
 #include <array>
 
 #include <PhxEngine/Core/RefPtr.h>
-#include <PhxEngine/Graphics/RHI/PhxRHI.h>
+#include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Renderer/Renderer.h>
 #include <Shaders/ShaderInteropStructures.h>
 

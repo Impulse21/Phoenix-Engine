@@ -7,7 +7,7 @@
 
 
 #ifdef LEGACY
-#include "PhxEngine/Graphics/RHI/Dx12/PhxRHI_Dx12.h"
+#include "PhxEngine/RHI/Dx12/PhxRHI_Dx12.h"
 #include "ThirdParty/ImGui/imgui_impl_win32.h"
 #endif
 

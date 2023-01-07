@@ -23,10 +23,10 @@
 #include "d3d12sdklayers.h"
 #include "d3d12shader.h"
 #include <dxgi1_6.h>
-#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include <PhxEngine/RHI/PhxRHI.h>
 
 
-namespace PhxEngine::RHI::Dx12
+namespace PhxEngine::RHI::D3D12
 {
     inline void ThrowIfFailed(HRESULT hr)
     {

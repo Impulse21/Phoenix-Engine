@@ -1,7 +1,7 @@
 #include "phxpch.h"
 #include "UploadBuffer.h"
 #include "GraphicsDevice.h"
-using namespace PhxEngine::RHI::Dx12;
+using namespace PhxEngine::RHI::D3D12;
 
 size_t AlignUp(size_t value, size_t alignment)
 {

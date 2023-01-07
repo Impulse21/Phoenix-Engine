@@ -1,9 +1,9 @@
 #pragma once
 
-#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include <PhxEngine/RHI/PhxRHI.h>
 #include "Common.h"
 
-namespace PhxEngine::RHI::Dx12
+namespace PhxEngine::RHI::D3D12
 {
 	/*
 		The maximum size of a root signature is 64 DWORDs.

@@ -1,10 +1,10 @@
 #pragma once
 
-#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include <PhxEngine/RHI/PhxRHI.h>
 #include "Common.h"
 #include "CommandAllocatorPool.h"
 
-namespace PhxEngine::RHI::Dx12
+namespace PhxEngine::RHI::D3D12
 {
 	class GraphicsDevice;
 	class CommandQueue;

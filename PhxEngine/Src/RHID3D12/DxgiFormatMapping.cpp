@@ -2,7 +2,7 @@
 #include "Common.h"
 
 using namespace PhxEngine::RHI;
-using namespace PhxEngine::RHI::Dx12;
+using namespace PhxEngine::RHI::D3D12;
 
 // Format mapping table. The rows must be in the exactly same order as Format enum members are defined.
 static const DxgiFormatMapping c_FormatMappings[] = {
@@ -83,7 +83,7 @@ static const DxgiFormatMapping c_FormatMappings[] = {
     { FormatType::BC7_UNORM_SRGB,       DXGI_FORMAT_BC7_TYPELESS,           DXGI_FORMAT_BC7_UNORM_SRGB,           DXGI_FORMAT_BC7_UNORM_SRGB         },
 };
 
-const PhxEngine::RHI::Dx12::DxgiFormatMapping& PhxEngine::RHI::Dx12::GetDxgiFormatMapping(FormatType abstractFormat)
+const PhxEngine::RHI::D3D12::DxgiFormatMapping& PhxEngine::RHI::D3D12::GetDxgiFormatMapping(FormatType abstractFormat)
 {
     static_assert(sizeof(c_FormatMappings) / sizeof(DxgiFormatMapping) == size_t(FormatType::COUNT),
         "The format mapping table doesn't have the right number of elements");

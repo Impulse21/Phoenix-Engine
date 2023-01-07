@@ -4,7 +4,7 @@
 #include "GraphicsDevice.h"
 
 using namespace Microsoft::WRL;
-using namespace PhxEngine::RHI::Dx12;
+using namespace PhxEngine::RHI::D3D12;
 
 CommandQueue::CommandQueue(GraphicsDevice& graphicsDevice, D3D12_COMMAND_LIST_TYPE type)
 	: m_graphicsDevice(graphicsDevice)
@@ -46,7 +46,7 @@ CommandQueue::CommandQueue(GraphicsDevice& graphicsDevice, D3D12_COMMAND_LIST_TY
 	this->m_nextFenceValue = this->m_lastCompletedFenceValue + 1;
 }
 
-PhxEngine::RHI::Dx12::CommandQueue::~CommandQueue()
+PhxEngine::RHI::D3D12::CommandQueue::~CommandQueue()
 {
 	if (!this->m_d3d12CommandQueue)
 	{
@@ -56,7 +56,7 @@ PhxEngine::RHI::Dx12::CommandQueue::~CommandQueue()
 	CloseHandle(this->m_fenceEvent);
 }
 
-uint64_t PhxEngine::RHI::Dx12::CommandQueue::ExecuteCommandLists(std::vector<ID3D12CommandList*> const& commandLists)
+uint64_t PhxEngine::RHI::D3D12::CommandQueue::ExecuteCommandLists(std::vector<ID3D12CommandList*> const& commandLists)
 {
 	this->m_d3d12CommandQueue->ExecuteCommandLists(commandLists.size(), commandLists.data());
 
@@ -70,14 +70,14 @@ uint64_t PhxEngine::RHI::Dx12::CommandQueue::ExecuteCommandLists(std::vector<ID3
 	return this->IncrementFence();
 }
 
-uint64_t PhxEngine::RHI::Dx12::CommandQueue::IncrementFence()
+uint64_t PhxEngine::RHI::D3D12::CommandQueue::IncrementFence()
 {
 	std::scoped_lock _(this->m_fenceMutex);
 	this->m_d3d12CommandQueue->Signal(this->m_d3d12Fence.Get(), this->m_nextFenceValue);
 	return this->m_nextFenceValue++;
 }
 
-bool PhxEngine::RHI::Dx12::CommandQueue::IsFenceComplete(uint64_t fenceValue)
+bool PhxEngine::RHI::D3D12::CommandQueue::IsFenceComplete(uint64_t fenceValue)
 {
 	// Avoid querying the fence value by testing against the last one seen.
 	// The max() is to protect against an unlikely race condition that could cause the last
@@ -90,7 +90,7 @@ bool PhxEngine::RHI::Dx12::CommandQueue::IsFenceComplete(uint64_t fenceValue)
 	return fenceValue <= this->m_lastCompletedFenceValue;
 }
 
-void PhxEngine::RHI::Dx12::CommandQueue::WaitForFence(uint64_t fenceValue)
+void PhxEngine::RHI::D3D12::CommandQueue::WaitForFence(uint64_t fenceValue)
 {
 	if (this->IsFenceComplete(fenceValue))
 	{
@@ -110,7 +110,7 @@ void PhxEngine::RHI::Dx12::CommandQueue::WaitForFence(uint64_t fenceValue)
 	}
 }
 
-uint64_t PhxEngine::RHI::Dx12::CommandQueue::GetLastCompletedFence()
+uint64_t PhxEngine::RHI::D3D12::CommandQueue::GetLastCompletedFence()
 {
 	std::scoped_lock _(this->m_fenceMutex);
 	return this->m_d3d12Fence->GetCompletedValue();

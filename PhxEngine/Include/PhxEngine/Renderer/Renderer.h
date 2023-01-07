@@ -3,7 +3,7 @@
 #include <DirectXMath.h>
 #include <PhxEngine/Core/Span.h>
 #include <PhxEngine/Core/Primitives.h>
-#include <PhxEngine/Graphics/RHI/PhxRHI.h>
+#include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Core/Helpers.h>
 
 

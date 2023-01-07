@@ -1,7 +1,7 @@
 #include "phxpch.h"
 #include "PhxEngine/Core/Initializer.h"
 #include <PhxEngine/Core/Log.h>
-#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/RHI/PhxRHI.h"
 
 using namespace PhxEngine::RHI;
 

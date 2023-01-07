@@ -6,7 +6,7 @@
 #include "PhxEngine/Core/Canvas.h"
 #include "PhxEngine/Core/Platform.h"
 #include "PhxEngine/Core/FrameProfiler.h"
-#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/RHI/PhxRHI.h"
 
 
 // -- New

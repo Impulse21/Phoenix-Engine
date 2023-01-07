@@ -1,7 +1,7 @@
 #include "phxpch.h"
 #include "PhxEngine/Renderer/Initializer.h"
 
-#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/RHI/PhxRHI.h"
 
 #include "DeferredRenderer.h"
 

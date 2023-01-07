@@ -279,6 +279,12 @@ namespace PhxEngine::RHI
         HLSL6,
     };
 
+    enum class FeatureLevel
+    {
+        SM5,
+        SM6
+    };
+
     enum class ShaderModel
     {
         SM_6_0,
@@ -289,6 +295,11 @@ namespace PhxEngine::RHI
         SM_6_5,
         SM_6_6,
         SM_6_7,
+    };
+
+    enum class FeatureLevel
+    {
+
     };
 
     enum class ShaderStage : uint16_t
@@ -1477,4 +1488,11 @@ namespace PhxEngine::RHI
     {
         extern IGraphicsDevice* CreateDx12Device();
     }
+
+    extern IGraphicsDevice* GRHI;
+
+    std::unique_ptr<IGraphicsDevice> PlatformCreateRHI();
+
+    void RHIInitialize();
+    void RHIFinalize();
 }

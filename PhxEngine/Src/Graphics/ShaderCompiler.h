@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/RHI/PhxRHI.h"
 
 namespace PhxEngine::RHI
 {

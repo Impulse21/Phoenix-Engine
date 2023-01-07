@@ -10,7 +10,7 @@
 
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
-using namespace PhxEngine::RHI::Dx12;
+using namespace PhxEngine::RHI::D3D12;
 
 namespace
 {
@@ -39,7 +39,7 @@ namespace
     }
 }
 
-PhxEngine::RHI::Dx12::CommandList::CommandList(GraphicsDevice& graphicsDevice, CommandListDesc const& desc)
+PhxEngine::RHI::D3D12::CommandList::CommandList(GraphicsDevice& graphicsDevice, CommandListDesc const& desc)
 	: m_graphicsDevice(graphicsDevice)
 	, m_desc(desc)
 	, m_commandAlloatorPool(graphicsDevice.GetD3D12Device2(), Convert(desc.QueueType))
@@ -48,12 +48,12 @@ PhxEngine::RHI::Dx12::CommandList::CommandList(GraphicsDevice& graphicsDevice, C
 {
 }
 
-PhxEngine::RHI::Dx12::CommandList::~CommandList()
+PhxEngine::RHI::D3D12::CommandList::~CommandList()
 {
     this->m_d3d12CommandList.Reset();
 }
 
-void PhxEngine::RHI::Dx12::CommandList::Open()
+void PhxEngine::RHI::D3D12::CommandList::Open()
 {
 	assert(!this->m_activeD3D12CommandAllocator);
 
@@ -97,7 +97,7 @@ void PhxEngine::RHI::Dx12::CommandList::Open()
 
 }
 
-void PhxEngine::RHI::Dx12::CommandList::Close()
+void PhxEngine::RHI::D3D12::CommandList::Close()
 {
     // Is this needed
     assert(this->m_d3d12CommandList);
@@ -105,7 +105,7 @@ void PhxEngine::RHI::Dx12::CommandList::Close()
     this->m_d3d12CommandList->Close();
 }
 
-void PhxEngine::RHI::Dx12::CommandList::RTBuildAccelerationStructure(RHI::RTAccelerationStructureHandle accelStructure)
+void PhxEngine::RHI::D3D12::CommandList::RTBuildAccelerationStructure(RHI::RTAccelerationStructureHandle accelStructure)
 {
     Dx12RTAccelerationStructure* dx12AccelStructure = this->m_graphicsDevice.GetRTAccelerationStructurePool().Get(accelStructure);
     assert(dx12AccelStructure);
@@ -228,7 +228,7 @@ void CommandList::TransitionBarrier(
         ConvertResourceStates(afterState));
 }
 
-void PhxEngine::RHI::Dx12::CommandList::TransitionBarrier(
+void PhxEngine::RHI::D3D12::CommandList::TransitionBarrier(
     BufferHandle buffer,
     ResourceStates beforeState,
     ResourceStates afterState)
@@ -242,7 +242,7 @@ void PhxEngine::RHI::Dx12::CommandList::TransitionBarrier(
         ConvertResourceStates(afterState));
 }
 
-void PhxEngine::RHI::Dx12::CommandList::TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers)
+void PhxEngine::RHI::D3D12::CommandList::TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers)
 {
     for (PhxEngine::RHI::GpuBarrier& gpuBarrier : gpuBarriers)
     {
@@ -319,7 +319,7 @@ void PhxEngine::RHI::Dx12::CommandList::TransitionBarriers(Core::Span<GpuBarrier
     }
 }
 
-void PhxEngine::RHI::Dx12::CommandList::BeginRenderPassBackBuffer()
+void PhxEngine::RHI::D3D12::CommandList::BeginRenderPassBackBuffer()
 {
     SwapChain& swapchain = this->m_graphicsDevice.GetSwapchain();
     if (!swapchain.RenderPass.IsValid())
@@ -350,7 +350,7 @@ void PhxEngine::RHI::Dx12::CommandList::BeginRenderPassBackBuffer()
     this->m_d3d12CommandList6->BeginRenderPass(1, &RTV, nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
 }
 
-void PhxEngine::RHI::Dx12::CommandList::BeginRenderPass(RenderPassHandle renderPass)
+void PhxEngine::RHI::D3D12::CommandList::BeginRenderPass(RenderPassHandle renderPass)
 {
     Dx12RenderPass* renderPassImpl = this->m_graphicsDevice.GetRenderPassPool().Get(renderPass);
     if (!renderPassImpl)
@@ -375,7 +375,7 @@ void PhxEngine::RHI::Dx12::CommandList::BeginRenderPass(RenderPassHandle renderP
     this->m_activeRenderTarget = renderPass;
 }
 
-void PhxEngine::RHI::Dx12::CommandList::EndRenderPass()
+void PhxEngine::RHI::D3D12::CommandList::EndRenderPass()
 {
     if (!this->m_activeRenderTarget.IsValid())
     {
@@ -574,7 +574,7 @@ void CommandList::CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHandle 
         (UINT64)sizeInBytes);
 }
 
-void PhxEngine::RHI::Dx12::CommandList::WriteTexture(TextureHandle texture, uint32_t firstSubresource, size_t numSubresources, SubresourceData* pSubresourceData)
+void PhxEngine::RHI::D3D12::CommandList::WriteTexture(TextureHandle texture, uint32_t firstSubresource, size_t numSubresources, SubresourceData* pSubresourceData)
 {
     auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(texture);
     UINT64 requiredSize = GetRequiredIntermediateSize(textureImpl->D3D12Resource.Get(), firstSubresource, numSubresources);
@@ -615,7 +615,7 @@ void PhxEngine::RHI::Dx12::CommandList::WriteTexture(TextureHandle texture, uint
     this->m_trackedData->TextureHandles.push_back(texture);
 }
 
-void PhxEngine::RHI::Dx12::CommandList::WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* data, size_t rowPitch, size_t depthPitch)
+void PhxEngine::RHI::D3D12::CommandList::WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* data, size_t rowPitch, size_t depthPitch)
 {
     // LOG_CORE_FATAL("NOT IMPLEMENTED FUNCTION CALLED: CommandList::WriteTexture");
     assert(false);
@@ -629,7 +629,7 @@ void PhxEngine::RHI::Dx12::CommandList::WriteTexture(TextureHandle texture, uint
     uint64_t totalBytes;
 }
 
-void PhxEngine::RHI::Dx12::CommandList::SetRenderTargets(std::vector<TextureHandle> const& renderTargets, TextureHandle depthStencil)
+void PhxEngine::RHI::D3D12::CommandList::SetRenderTargets(std::vector<TextureHandle> const& renderTargets, TextureHandle depthStencil)
 {
     std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> renderTargetViews(renderTargets.size());
     for (int i = 0; i < renderTargets.size(); i++)
@@ -654,7 +654,7 @@ void PhxEngine::RHI::Dx12::CommandList::SetRenderTargets(std::vector<TextureHand
         hasDepth ? &depthView : nullptr);
 }
 
-void PhxEngine::RHI::Dx12::CommandList::SetGraphicsPSO(GraphicsPSOHandle graphisPSO)
+void PhxEngine::RHI::D3D12::CommandList::SetGraphicsPSO(GraphicsPSOHandle graphisPSO)
 {
     this->m_activeComputePSO = nullptr;
     auto graphicsPsoImpl = std::static_pointer_cast<GraphicsPSO>(graphisPSO);
@@ -683,7 +683,7 @@ void PhxEngine::RHI::Dx12::CommandList::SetGraphicsPSO(GraphicsPSOHandle graphis
     this->m_trackedData->Resource.push_back(graphisPSO);
 }
 
-void PhxEngine::RHI::Dx12::CommandList::SetViewports(Viewport* viewports, size_t numViewports)
+void PhxEngine::RHI::D3D12::CommandList::SetViewports(Viewport* viewports, size_t numViewports)
 {
     CD3DX12_VIEWPORT dx12Viewports[16] = {};
     for (int i = 0; i < numViewports; i++)
@@ -701,7 +701,7 @@ void PhxEngine::RHI::Dx12::CommandList::SetViewports(Viewport* viewports, size_t
     this->m_d3d12CommandList->RSSetViewports((UINT)numViewports, dx12Viewports);
 }
 
-void PhxEngine::RHI::Dx12::CommandList::SetScissors(Rect* scissors, size_t numScissors)
+void PhxEngine::RHI::D3D12::CommandList::SetScissors(Rect* scissors, size_t numScissors)
 {
     CD3DX12_RECT dx12Scissors[16] = {};
     for (int i = 0; i < numScissors; i++)
@@ -732,7 +732,7 @@ std::shared_ptr<TrackedResources> CommandList::Executed(uint64_t fenceValue)
     return trackedResources;
 }
 
-void PhxEngine::RHI::Dx12::CommandList::SetDescritporHeaps(std::array<GpuDescriptorHeap*, 2> const& shaderHeaps)
+void PhxEngine::RHI::D3D12::CommandList::SetDescritporHeaps(std::array<GpuDescriptorHeap*, 2> const& shaderHeaps)
 {
     std::vector<ID3D12DescriptorHeap*> heaps;
     for (auto* heap : shaderHeaps)
@@ -756,7 +756,7 @@ void CommandList::TransitionBarrier(Microsoft::WRL::ComPtr<ID3D12Resource> d3d12
     this->m_d3d12CommandList->ResourceBarrier(1, &barrier);
 }
 
-void PhxEngine::RHI::Dx12::CommandList::BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants)
+void PhxEngine::RHI::D3D12::CommandList::BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants)
 {
     if (this->m_activeComputePSO)
     {
@@ -768,7 +768,7 @@ void PhxEngine::RHI::Dx12::CommandList::BindPushConstant(uint32_t rootParameterI
     }
 }
 
-void PhxEngine::RHI::Dx12::CommandList::BindConstantBuffer(size_t rootParameterIndex, BufferHandle constantBuffer)
+void PhxEngine::RHI::D3D12::CommandList::BindConstantBuffer(size_t rootParameterIndex, BufferHandle constantBuffer)
 {
     const Dx12Buffer* constantBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(constantBuffer);
     if (this->m_activeComputePSO)
@@ -781,7 +781,7 @@ void PhxEngine::RHI::Dx12::CommandList::BindConstantBuffer(size_t rootParameterI
     }
 }
 
-void PhxEngine::RHI::Dx12::CommandList::BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData)
+void PhxEngine::RHI::D3D12::CommandList::BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData)
 {
     UploadBuffer::Allocation alloc = this->m_uploadBuffer->Allocate(sizeInBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
     std::memcpy(alloc.CpuData, bufferData, sizeInBytes);
@@ -796,14 +796,14 @@ void PhxEngine::RHI::Dx12::CommandList::BindDynamicConstantBuffer(size_t rootPar
     }
 }
 
-void PhxEngine::RHI::Dx12::CommandList::BindVertexBuffer(uint32_t slot, BufferHandle vertexBuffer)
+void PhxEngine::RHI::D3D12::CommandList::BindVertexBuffer(uint32_t slot, BufferHandle vertexBuffer)
 {
     const Dx12Buffer* vertexBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(vertexBuffer);
 
     this->m_d3d12CommandList->IASetVertexBuffers(slot, 1, &vertexBufferImpl->VertexView);
 }
 
-void PhxEngine::RHI::Dx12::CommandList::BindDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData)
+void PhxEngine::RHI::D3D12::CommandList::BindDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData)
 {
     size_t bufferSize = numVertices * vertexSize;
     auto heapAllocation = this->m_uploadBuffer->Allocate(bufferSize, vertexSize);
@@ -817,14 +817,14 @@ void PhxEngine::RHI::Dx12::CommandList::BindDynamicVertexBuffer(uint32_t slot, s
     this->m_d3d12CommandList->IASetVertexBuffers(slot, 1, &vertexBufferView);
 }
 
-void PhxEngine::RHI::Dx12::CommandList::BindIndexBuffer(BufferHandle indexBuffer)
+void PhxEngine::RHI::D3D12::CommandList::BindIndexBuffer(BufferHandle indexBuffer)
 {
     const Dx12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(indexBuffer);
 
     this->m_d3d12CommandList->IASetIndexBuffer(&bufferImpl->IndexView);
 }
 
-void PhxEngine::RHI::Dx12::CommandList::BindDynamicIndexBuffer(size_t numIndicies, FormatType indexFormat, const void* indexBufferData)
+void PhxEngine::RHI::D3D12::CommandList::BindDynamicIndexBuffer(size_t numIndicies, FormatType indexFormat, const void* indexBufferData)
 {
     size_t indexSizeInBytes = indexFormat == FormatType::R16_UINT ? 2 : 4;
     size_t bufferSize = numIndicies * indexSizeInBytes;
@@ -842,7 +842,7 @@ void PhxEngine::RHI::Dx12::CommandList::BindDynamicIndexBuffer(size_t numIndicie
     this->m_d3d12CommandList->IASetIndexBuffer(&indexBufferView);
 }
 
-void PhxEngine::RHI::Dx12::CommandList::BindDynamicStructuredBuffer(uint32_t rootParameterIndex, size_t numElements, size_t elementSize, const void* bufferData)
+void PhxEngine::RHI::D3D12::CommandList::BindDynamicStructuredBuffer(uint32_t rootParameterIndex, size_t numElements, size_t elementSize, const void* bufferData)
 {
     size_t sizeInBytes = numElements * elementSize;
     UploadBuffer::Allocation alloc = this->m_uploadBuffer->Allocate(sizeInBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
@@ -858,7 +858,7 @@ void PhxEngine::RHI::Dx12::CommandList::BindDynamicStructuredBuffer(uint32_t roo
     }
 }
 
-void PhxEngine::RHI::Dx12::CommandList::BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer)
+void PhxEngine::RHI::D3D12::CommandList::BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer)
 {
     const Dx12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(buffer);
 
@@ -876,7 +876,7 @@ void PhxEngine::RHI::Dx12::CommandList::BindStructuredBuffer(size_t rootParamete
     }
 }
 
-void PhxEngine::RHI::Dx12::CommandList::BindResourceTable(size_t rootParameterIndex)
+void PhxEngine::RHI::D3D12::CommandList::BindResourceTable(size_t rootParameterIndex)
 {
     if (this->m_graphicsDevice.GetMinShaderModel() < ShaderModel::SM_6_6)
     {
@@ -895,7 +895,7 @@ void PhxEngine::RHI::Dx12::CommandList::BindResourceTable(size_t rootParameterIn
     }
 }
 
-void PhxEngine::RHI::Dx12::CommandList::BindSamplerTable(size_t rootParameterIndex)
+void PhxEngine::RHI::D3D12::CommandList::BindSamplerTable(size_t rootParameterIndex)
 {
     // TODO:
     assert(false);
@@ -927,7 +927,7 @@ void CommandList::BindDynamicDescriptorTable(size_t rootParameterIndex, std::vec
     }
 }
 
-void PhxEngine::RHI::Dx12::CommandList::BindDynamicUavDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures)
+void PhxEngine::RHI::D3D12::CommandList::BindDynamicUavDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures)
 {
     // Request Descriptoprs for table
     // Validate with Root Signature. Maybe an improvment in the future.
@@ -954,7 +954,7 @@ void PhxEngine::RHI::Dx12::CommandList::BindDynamicUavDescriptorTable(size_t roo
     }
 }
 
-void PhxEngine::RHI::Dx12::CommandList::SetComputeState(ComputePSOHandle state)
+void PhxEngine::RHI::D3D12::CommandList::SetComputeState(ComputePSOHandle state)
 {
     auto computePsoImpl = std::static_pointer_cast<ComputePSO>(state);
     this->m_d3d12CommandList->SetComputeRootSignature(computePsoImpl->RootSignature.Get());
@@ -965,18 +965,18 @@ void PhxEngine::RHI::Dx12::CommandList::SetComputeState(ComputePSOHandle state)
     this->m_activeComputePSO = computePsoImpl.get();
 }
 
-void PhxEngine::RHI::Dx12::CommandList::Dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ)
+void PhxEngine::RHI::D3D12::CommandList::Dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ)
 {
     this->m_d3d12CommandList->Dispatch(groupsX, groupsY, groupsZ);
 }
 
-void PhxEngine::RHI::Dx12::CommandList::DispatchIndirect(uint32_t offsetBytes)
+void PhxEngine::RHI::D3D12::CommandList::DispatchIndirect(uint32_t offsetBytes)
 {
     // Not supported yet
     assert(false);
 }
 
-void PhxEngine::RHI::Dx12::CommandList::BeginTimerQuery(TimerQueryHandle query)
+void PhxEngine::RHI::D3D12::CommandList::BeginTimerQuery(TimerQueryHandle query)
 {
     auto queryImpl = std::static_pointer_cast<TimerQuery>(query);
 
@@ -988,7 +988,7 @@ void PhxEngine::RHI::Dx12::CommandList::BeginTimerQuery(TimerQueryHandle query)
         queryImpl->BeginQueryIndex);
 }
 
-void PhxEngine::RHI::Dx12::CommandList::EndTimerQuery(TimerQueryHandle query)
+void PhxEngine::RHI::D3D12::CommandList::EndTimerQuery(TimerQueryHandle query)
 {
     auto queryImpl = std::static_pointer_cast<TimerQuery>(query);
 
@@ -1043,7 +1043,7 @@ DynamicSuballocator* DynamicSubAllocatorPool::RequestAllocator(uint64_t complete
     return pAllocator;
 }
 
-void PhxEngine::RHI::Dx12::DynamicSubAllocatorPool::DiscardAllocator(uint64_t fence, DynamicSuballocator* allocator)
+void PhxEngine::RHI::D3D12::DynamicSubAllocatorPool::DiscardAllocator(uint64_t fence, DynamicSuballocator* allocator)
 {
     this->m_availableAllocators.push(std::make_pair(fence, allocator));
 }

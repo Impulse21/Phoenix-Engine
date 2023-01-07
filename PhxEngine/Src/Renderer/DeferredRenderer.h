@@ -4,7 +4,7 @@
 #include <PhxEngine/Core/Span.h>
 #include <Shaders/ShaderInteropStructures.h>
 #include <PhxEngine/Graphics/IRenderer.h>
-#include <PhxEngine/Graphics/RHI/PhxRHI.h>
+#include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Graphics/CascadeShadowMap.h>
 #include <array>
 #include <vector>

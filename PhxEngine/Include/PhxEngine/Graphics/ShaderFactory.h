@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <filesystem>
 
-#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/RHI/PhxRHI.h"
 
 namespace PhxEngine::Graphics
 {

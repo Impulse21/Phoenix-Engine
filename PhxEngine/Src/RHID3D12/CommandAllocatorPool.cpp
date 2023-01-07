@@ -1,7 +1,7 @@
 #include "phxpch.h"
 #include "CommandAllocatorPool.h"
 
-using namespace PhxEngine::RHI::Dx12;
+using namespace PhxEngine::RHI::D3D12;
 
 CommandAllocatorPool::CommandAllocatorPool(
 	Microsoft::WRL::ComPtr<ID3D12Device2> device,
@@ -19,7 +19,7 @@ CommandAllocatorPool::~CommandAllocatorPool()
 	this->m_allocatorPool.clear();
 }
 
-ID3D12CommandAllocator* PhxEngine::RHI::Dx12::CommandAllocatorPool::RequestAllocator(uint64_t completedFenceValue)
+ID3D12CommandAllocator* PhxEngine::RHI::D3D12::CommandAllocatorPool::RequestAllocator(uint64_t completedFenceValue)
 {
 	std::lock_guard<std::mutex> lockGuard(this->m_allocatonMutex);
 

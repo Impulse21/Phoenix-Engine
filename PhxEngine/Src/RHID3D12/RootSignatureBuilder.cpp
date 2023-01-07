@@ -3,7 +3,7 @@
 
 #include "Common.h"
 
-using namespace PhxEngine::RHI::Dx12;
+using namespace PhxEngine::RHI::D3D12;
 
 D3D12_ROOT_SIGNATURE_DESC1 RootSignatureBuilder::Build() noexcept
 {

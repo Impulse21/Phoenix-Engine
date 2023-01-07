@@ -67,14 +67,24 @@ file(GLOB PhxEngine_Renderer_DX12_Src
 	Src/Renderer/Dx12/*.cpp
 )
 
-#-- Graphics RHI
+#-- RHI
 file(GLOB PhxEngine_Graphics_RHI_Inc
-	Include/PhxEngine/Graphics/RHI/*.h
+	Include/PhxEngine/RHI/*.h
+)
+
+file(GLOB PhxEngine_Graphics_RHI_Src
+    Src/RHI/*.h
+    Src/RHI/*.cpp
+)
+
+file(GLOB PhxEngine_Graphics_RHI_Windows_Src
+    Src/RHI/Windows/*.h
+    Src/RHI/Windows/*.cpp
 )
 
 file(GLOB PhxEngine_Graphics_RHI_DX12_Src
-    Src/Graphics/RHI/Dx12/*.h
-    Src/Graphics/RHI/Dx12/*.cpp
+    Src/RHID3D12/*.h
+    Src/RHID3D12/*.cpp
 )
 
 #-- Graphics IMGUI
@@ -91,6 +101,7 @@ file(GLOB PhxEngine_Graphics_ImGui_Src
 file(GLOB PhxEngine_System_Inc
 	Include/PhxEngine/Systems/*.h
 )
+
 
 file(GLOB PhxEngine_System_Src
     Src/Systems/*.h
@@ -127,6 +138,7 @@ file (GLOB PhxEngine_Shader_PS_Src
 file (GLOB PhxEngine_Shader_CS_Src
 	Shaders/*CS.hlsl)
 
+
 add_library(PhxEngine STATIC EXCLUDE_FROM_ALL  
     ${PhxEngine_App_Inc}
     ${PhxEngine_App_Src}
@@ -136,6 +148,7 @@ add_library(PhxEngine STATIC EXCLUDE_FROM_ALL
     ${PhxEngine_Graphics_Src}
     ${PhxEngine_Graphics_RHI_Inc}
     ${PhxEngine_Graphics_RHI_Src}
+	${PhxEngine_Graphics_RHI_Windows_Src}
     ${PhxEngine_Graphics_RHI_DX12_Src}
     ${PhxEngine_Graphics_ImGui_Inc}
     ${PhxEngine_Graphics_ImGui_Src}
@@ -158,7 +171,7 @@ source_group("Include"					FILES ${PhxEngine_Inc})
 source_group("Include/App"              FILES ${PhxEngine_App_Inc})
 source_group("Include/Core"             FILES ${PhxEngine_Core_Inc})
 source_group("Include/Graphics"         FILES ${PhxEngine_Graphics_Inc})
-source_group("Include/Graphics/RHI"     FILES ${PhxEngine_Graphics_RHI_Inc})
+source_group("Include/RHI"				FILES ${PhxEngine_Graphics_RHI_Inc})
 source_group("Include/Graphics/ImGui"   FILES ${PhxEngine_Graphics_ImGui_Inc})
 source_group("Include/Graphics"         FILES ${PhxEngine_Graphics_Inc})
 source_group("Include/System"           FILES ${PhxEngine_System_Inc})
@@ -169,8 +182,9 @@ source_group("Src"						FILES ${PhxEngine_Src})
 source_group("Src/App"                  FILES ${PhxEngine_App_Src})
 source_group("Src/Core"                 FILES ${PhxEngine_Core_Src})
 source_group("Src/Graphics"             FILES ${PhxEngine_Graphics_Src})
-source_group("Src/Graphics/RHI"         FILES ${PhxEngine_Graphics_RHI_Src})
-source_group("Src/Graphics/RHI/Dx12"    FILES ${PhxEngine_Graphics_RHI_DX12_Src})
+source_group("Src/RHI"					FILES ${PhxEngine_Graphics_RHI_Src})
+source_group("Src/RHI/Windows"			FILES ${PhxEngine_Graphics_RHI_Windows_Src})
+source_group("Src/RHID3D12"			    FILES ${PhxEngine_Graphics_RHI_DX12_Src})
 source_group("Src/Graphics/ImGui"       FILES ${PhxEngine_Graphics_ImGui_Src})
 source_group("Src/System"               FILES ${PhxEngine_System_Src})
 source_group("Src/Scene"                FILES ${PhxEngine_Scene_Src})

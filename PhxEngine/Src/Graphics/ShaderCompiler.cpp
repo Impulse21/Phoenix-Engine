@@ -4,10 +4,10 @@
 #include <wrl.h>
 #include "PhxEngine/Core/Helpers.h"
 #include <dxc/dxcapi.h>
-#include "Graphics/RHI/Dx12/Common.h"
+#include "RHID3D12/Common.h"
 
 using namespace PhxEngine::RHI;
-using namespace PhxEngine::RHI::Dx12;
+using namespace PhxEngine::RHI::D3D12;
 using namespace PhxEngine::Core;
 
 namespace

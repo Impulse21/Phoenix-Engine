@@ -47,4 +47,25 @@ namespace PhxEngine::Core::Platform
 		outProperties.Height = static_cast<int>(rect.bottom - rect.top);
 #endif
 	}
+
+	inline bool VerifyWindowsVersion(uint32_t majorVersion, uint32_t minorVersion, uint32_t buildNumber)
+	{
+#ifdef PHX_PLATFORM_WINDOWS_DESKTOP
+		OSVERSIONINFOEX Version;
+		Version.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+		Version.dwMajorVersion = majorVersion;
+		Version.dwMinorVersion = minorVersion;
+		Version.dwBuildNumber = buildNumber;
+
+		ULONGLONG ConditionMask = 0;
+		ConditionMask = VerSetConditionMask(ConditionMask, VER_MAJORVERSION, VER_GREATER_EQUAL);
+		ConditionMask = VerSetConditionMask(ConditionMask, VER_MINORVERSION, VER_GREATER_EQUAL);
+		ConditionMask = VerSetConditionMask(ConditionMask, VER_BUILDNUMBER, VER_GREATER_EQUAL);
+
+		return !!VerifyVersionInfo(&Version, VER_MAJORVERSION | VER_MINORVERSION | VER_BUILDNUMBER, ConditionMask);
+#else
+		return false;
+#endif
+
+	}
 }

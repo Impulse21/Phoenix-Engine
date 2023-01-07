@@ -19,7 +19,7 @@
 
 #define ENABLE_PIX_CAPUTRE 1
 
-namespace PhxEngine::RHI::Dx12
+namespace PhxEngine::RHI::D3D12
 {
     constexpr size_t kNumCommandListPerFrame = 32;
     constexpr size_t kResourcePoolSize = 100000; // 1 KB of handles
@@ -295,6 +295,8 @@ namespace PhxEngine::RHI::Dx12
         virtual size_t GetDedicatedSystemMemory() const override { return this->DedicatedSystemMemory; };
         virtual size_t GetDedicatedVideoMemory() const override { return this->DedicatedVideoMemory; };
         virtual size_t GetSharedSystemMemory() const override { return this->SharedSystemMemory; };
+
+        static HRESULT EnumAdapters(uint32_t adapterIndex, IDXGIFactory6* factory6, IDXGIAdapter1** outAdapter);
     };
 
 	class GraphicsDevice final : public IGraphicsDevice

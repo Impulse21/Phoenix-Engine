@@ -2,7 +2,7 @@
 #include "DeferredRenderer.h"
 
 #include <PhxEngine/App/Application.h>
-#include <PhxEngine/Graphics/RHI/PhxRHI.h>
+#include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Scene/Components.h>
 #include <PhxEngine/Scene/Scene.h>
 #include <PhxEngine/Core/Math.h>

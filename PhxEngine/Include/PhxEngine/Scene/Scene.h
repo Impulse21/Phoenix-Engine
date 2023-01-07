@@ -3,7 +3,7 @@
 #include <sstream>
 
 #include <PhxEngine/Core/UUID.h>
-#include <PhxEngine/Graphics/RHI/PhxRHI.h>
+#include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Scene/Assets.h>
 #include <Shaders/ShaderInteropStructures.h>
 #include <entt.hpp>

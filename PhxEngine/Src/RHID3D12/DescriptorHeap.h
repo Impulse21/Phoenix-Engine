@@ -5,7 +5,7 @@
 #include <map>
 #include <mutex>
 
-namespace PhxEngine::RHI::Dx12
+namespace PhxEngine::RHI::D3D12
 {
 	class DescriptorHeapAllocation;
 	class DescriptorHeapAllocationPage;

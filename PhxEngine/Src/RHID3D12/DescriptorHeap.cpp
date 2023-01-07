@@ -5,7 +5,7 @@
 
 #include "GraphicsDevice.h"
 
-using namespace PhxEngine::RHI::Dx12;
+using namespace PhxEngine::RHI::D3D12;
 
 CpuDescriptorHeap::CpuDescriptorHeap(
 	GraphicsDevice& graphicsDevice,

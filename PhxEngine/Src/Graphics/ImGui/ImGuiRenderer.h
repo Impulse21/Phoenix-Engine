@@ -4,7 +4,7 @@
 
 #include "PhxEngine/App/Layer.h"
 #include "PhxEngine/Core/Platform.h"
-#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/RHI/PhxRHI.h"
 
 // Forward Declares
 struct ImGuiContext;

@@ -4,10 +4,10 @@
 
 #include "DescriptorHeap.h"
 
-#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include <PhxEngine/RHI/PhxRHI.h>
 #include <queue>
 
-namespace PhxEngine::RHI::Dx12
+namespace PhxEngine::RHI::D3D12
 {
 	class BindlessDescriptorTable
 	{
