@@ -1493,7 +1493,12 @@ namespace PhxEngine::RHI
     class IRHI
     {
     public:
+        virtual void Initialize() = 0;
+        virtual void Finailize() = 0;
+
+    public:
         virtual ~IRHI() = default;
+
     };
 
     extern IGraphicsDevice* GRHI;
