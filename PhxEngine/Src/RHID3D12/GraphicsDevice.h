@@ -289,7 +289,7 @@ namespace PhxEngine::RHI::D3D12
         size_t DedicatedSystemMemory = 0;
         size_t DedicatedVideoMemory = 0;
         size_t SharedSystemMemory = 0;
-        Microsoft::WRL::ComPtr<IDXGIAdapter1> DxgiAdapter;
+        RefPtr<IDXGIAdapter1> DxgiAdapter;
 
         const char* GetName() const override { return this->Name.c_str(); };
         virtual size_t GetDedicatedSystemMemory() const override { return this->DedicatedSystemMemory; };
@@ -303,6 +303,7 @@ namespace PhxEngine::RHI::D3D12
 	{
 	public:
 		GraphicsDevice();
+        GraphicsDevice(DXGIGpuAdapter const& adapter);
 		~GraphicsDevice();
 
         // -- Interface Functions ---
@@ -416,7 +417,7 @@ namespace PhxEngine::RHI::D3D12
         Microsoft::WRL::ComPtr<ID3D12Device5> GetD3D12Device5() { return this->m_device5; }
 
         Microsoft::WRL::ComPtr<IDXGIFactory6> GetDxgiFactory() { return this->m_factory; }
-        Microsoft::WRL::ComPtr<IDXGIAdapter> GetDxgiAdapter() { return this->m_gpuAdapter->DxgiAdapter; }
+        RefPtr<IDXGIAdapter> GetDxgiAdapter() { return this->m_gpuAdapter->DxgiAdapter; }
 
         SwapChain& GetSwapchain() { return this->m_swapChain; }
 

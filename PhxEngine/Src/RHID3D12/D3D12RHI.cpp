@@ -55,7 +55,7 @@ std::unique_ptr<PhxEngine::RHI::IGraphicsDevice> PhxEngine::RHI::D3D12::D3D12RHI
     }
 
     // TODO: Create the Adapter now.
-    return std::unique_ptr<PhxEngine::RHI::IGraphicsDevice>();
+    return std::unique_ptr<GraphicsDevice>();
 }
 
 void PhxEngine::RHI::D3D12::D3D12RHIFactory::FindAdapter()
@@ -63,11 +63,11 @@ void PhxEngine::RHI::D3D12::D3D12RHIFactory::FindAdapter()
     LOG_CORE_INFO("Finding a suitable adapter");
 
     // Create factory
-    Microsoft::WRL::ComPtr<IDXGIFactory6> factory = this->CreateDXGIFactory6();
+    RefPtr<IDXGIFactory6> factory = this->CreateDXGIFactory6();
 
-    Microsoft::WRL::ComPtr<IDXGIAdapter1> selectedAdapter;
+    RefPtr<IDXGIAdapter1> selectedAdapter;
     size_t selectedGPUVideoMemeory = 0;
-    Microsoft::WRL::ComPtr<IDXGIAdapter1> tempAdapter;
+    RefPtr<IDXGIAdapter1> tempAdapter;
     for (uint32_t adapterIndex = 0; DXGIGpuAdapter::EnumAdapters(adapterIndex, factory.Get(), tempAdapter.ReleaseAndGetAddressOf()) != DXGI_ERROR_NOT_FOUND; ++adapterIndex)
     {
         if (!tempAdapter)
@@ -127,7 +127,7 @@ void PhxEngine::RHI::D3D12::D3D12RHIFactory::FindAdapter()
     this->m_choosenAdapter->DxgiAdapter = selectedAdapter;
 }
 
-Microsoft::WRL::ComPtr<IDXGIFactory6> D3D12RHIFactory::CreateDXGIFactory6() const
+RefPtr<IDXGIFactory6> D3D12RHIFactory::CreateDXGIFactory6() const
 {
     uint32_t flags = 0;
     sDebugEnabled = IsDebuggerPresent();
@@ -155,7 +155,7 @@ Microsoft::WRL::ComPtr<IDXGIFactory6> D3D12RHIFactory::CreateDXGIFactory6() cons
         }
     }
 
-    Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
+    RefPtr<IDXGIFactory6> factory;
     ThrowIfFailed(
         CreateDXGIFactory2(flags, IID_PPV_ARGS(&factory)));
 

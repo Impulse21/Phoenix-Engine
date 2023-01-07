@@ -4,6 +4,7 @@
 #include "PhxEngine/Core/TimeStep.h"
 #include "PhxEngine/Core/Span.h"
 #include "PhxEngine/Core/Handle.h"
+#include <PhxEngine/RHI/RefPtr.h>
 
 #include <stdint.h>
 #include <optional>
@@ -1488,6 +1489,12 @@ namespace PhxEngine::RHI
     {
         extern IGraphicsDevice* CreateDx12Device();
     }
+
+    class IRHI
+    {
+    public:
+        virtual ~IRHI() = default;
+    };
 
     extern IGraphicsDevice* GRHI;
 

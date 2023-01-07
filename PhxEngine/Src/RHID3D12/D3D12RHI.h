@@ -14,7 +14,7 @@ namespace PhxEngine::RHI::D3D12
 
 	private:
 		void FindAdapter();
-		Microsoft::WRL::ComPtr<IDXGIFactory6> CreateDXGIFactory6() const;
+		RefPtr<IDXGIFactory6> CreateDXGIFactory6() const;
 
 
 	private:

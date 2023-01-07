@@ -5,7 +5,6 @@ set(ProjectName PhxEngine)
 
 project(${ProjectName})
 
-
 set_property( GLOBAL PROPERTY USE_FOLDERS ON)
 
 if (MSVC)

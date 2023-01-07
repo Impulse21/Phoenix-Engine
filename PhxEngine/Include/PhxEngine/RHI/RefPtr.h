@@ -4,7 +4,7 @@
 #include <assert.h>
 #include <atomic>
 
-namespace PhxEngine::Core
+namespace PhxEngine::RHI
 {
     //////////////////////////////////////////////////////////////////////////
     // RefPtr
