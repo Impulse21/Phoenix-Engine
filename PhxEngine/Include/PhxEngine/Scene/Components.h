@@ -4,7 +4,6 @@
 #include <DirectXMath.h>
 #include "entt.hpp"
 #include <PhxEngine/Core/UUID.h>
-#include <PhxEngine/Core/RefPtr.h>
 #include <PhxEngine/Core/Helpers.h>
 #include <PhxEngine/Scene/Assets.h>
 #include <PhxEngine/Core/Primitives.h>

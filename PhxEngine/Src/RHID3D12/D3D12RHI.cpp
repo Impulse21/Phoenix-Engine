@@ -3,6 +3,7 @@
 #include <PhxEngine/RHI/PhxRHI.h>
 
 using namespace PhxEngine::Core;
+using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::D3D12;
 
 namespace
@@ -44,7 +45,7 @@ bool D3D12RHIFactory::IsSupported(FeatureLevel requestedFeatureLevel)
         && IsAdapterSupported(this->m_choosenAdapter, requestedFeatureLevel);
 }
 
-std::unique_ptr<PhxEngine::RHI::IGraphicsDevice> PhxEngine::RHI::D3D12::D3D12RHIFactory::CreateRHI()
+std::unique_ptr<PhxEngine::RHI::IRHI> PhxEngine::RHI::D3D12::D3D12RHIFactory::CreateRHI()
 {
     if (!this->m_choosenAdapter)
     {
@@ -55,7 +56,7 @@ std::unique_ptr<PhxEngine::RHI::IGraphicsDevice> PhxEngine::RHI::D3D12::D3D12RHI
     }
 
     // TODO: Create the Adapter now.
-    return std::unique_ptr<GraphicsDevice>();
+    return std::unique_ptr<IRHI>();
 }
 
 void PhxEngine::RHI::D3D12::D3D12RHIFactory::FindAdapter()
@@ -63,11 +64,11 @@ void PhxEngine::RHI::D3D12::D3D12RHIFactory::FindAdapter()
     LOG_CORE_INFO("Finding a suitable adapter");
 
     // Create factory
-    RefPtr<IDXGIFactory6> factory = this->CreateDXGIFactory6();
+    RefCountPtr<IDXGIFactory6> factory = this->CreateDXGIFactory6();
 
-    RefPtr<IDXGIAdapter1> selectedAdapter;
+    RefCountPtr<IDXGIAdapter1> selectedAdapter;
     size_t selectedGPUVideoMemeory = 0;
-    RefPtr<IDXGIAdapter1> tempAdapter;
+    RefCountPtr<IDXGIAdapter1> tempAdapter;
     for (uint32_t adapterIndex = 0; DXGIGpuAdapter::EnumAdapters(adapterIndex, factory.Get(), tempAdapter.ReleaseAndGetAddressOf()) != DXGI_ERROR_NOT_FOUND; ++adapterIndex)
     {
         if (!tempAdapter)
@@ -127,7 +128,7 @@ void PhxEngine::RHI::D3D12::D3D12RHIFactory::FindAdapter()
     this->m_choosenAdapter->DxgiAdapter = selectedAdapter;
 }
 
-RefPtr<IDXGIFactory6> D3D12RHIFactory::CreateDXGIFactory6() const
+RefCountPtr<IDXGIFactory6> PhxEngine::RHI::D3D12::D3D12RHIFactory::CreateDXGIFactory6() const
 {
     uint32_t flags = 0;
     sDebugEnabled = IsDebuggerPresent();
@@ -155,10 +156,9 @@ RefPtr<IDXGIFactory6> D3D12RHIFactory::CreateDXGIFactory6() const
         }
     }
 
-    RefPtr<IDXGIFactory6> factory;
+    RefCountPtr<IDXGIFactory6> factory;
     ThrowIfFailed(
         CreateDXGIFactory2(flags, IID_PPV_ARGS(&factory)));
 
     return factory;
 }
-

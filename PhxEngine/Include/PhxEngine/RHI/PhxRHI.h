@@ -4,7 +4,7 @@
 #include "PhxEngine/Core/TimeStep.h"
 #include "PhxEngine/Core/Span.h"
 #include "PhxEngine/Core/Handle.h"
-#include <PhxEngine/RHI/RefPtr.h>
+#include <PhxEngine/RHI/RefCountPtr.h>
 
 #include <stdint.h>
 #include <optional>
@@ -296,11 +296,6 @@ namespace PhxEngine::RHI
         SM_6_5,
         SM_6_6,
         SM_6_7,
-    };
-
-    enum class FeatureLevel
-    {
-
     };
 
     enum class ShaderStage : uint16_t
@@ -1494,16 +1489,16 @@ namespace PhxEngine::RHI
     {
     public:
         virtual void Initialize() = 0;
-        virtual void Finailize() = 0;
+        virtual void Finalize() = 0;
 
     public:
         virtual ~IRHI() = default;
 
     };
 
-    extern IGraphicsDevice* GRHI;
+    extern IRHI* GRHI;
 
-    std::unique_ptr<IGraphicsDevice> PlatformCreateRHI();
+    std::unique_ptr<IRHI> PlatformCreateRHI();
 
     void RHIInitialize();
     void RHIFinalize();

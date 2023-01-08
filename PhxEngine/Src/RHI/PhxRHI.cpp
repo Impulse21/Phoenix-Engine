@@ -5,7 +5,7 @@
 using namespace PhxEngine::RHI;
 
 // Global
-IGraphicsDevice* PhxEngine::RHI::GRHI = nullptr;
+IRHI* PhxEngine::RHI::GRHI = nullptr;
 
 void RHIInitialize()
 {
@@ -18,12 +18,10 @@ void RHIInitialize()
 	// Call Platform specific iniitalization
 	LOG_CORE_WARN("Initializing RHI");
 
-	std::unique_ptr<IGraphicsDevice> safeGRHIPtr = PlatformCreateRHI();
+	std::unique_ptr<IRHI> safeGRHIPtr = PlatformCreateRHI();
 
 	// Take full control of the pointer for now, should be made safier but I want explicit control.
 	GRHI = safeGRHIPtr.release();
-	// TODO: remove this entry once I am there.
-	IGraphicsDevice::Ptr = GRHI;
 
 	if (!GRHI)
 	{
@@ -44,5 +42,4 @@ void RHIFinalize()
 
 	delete GRHI;
 	GRHI = nullptr;
-	IGraphicsDevice::Ptr = nullptr;
 }

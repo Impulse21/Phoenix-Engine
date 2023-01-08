@@ -1,5 +1,4 @@
 #pragma once
-#pragma once
 
 #include <assert.h>
 #include <atomic>
@@ -7,12 +6,12 @@
 namespace PhxEngine::RHI
 {
     //////////////////////////////////////////////////////////////////////////
-    // RefPtr
+    // RefCountPtr
     // Mostly a copy of Microsoft::WRL::ComPtr<T>
     //////////////////////////////////////////////////////////////////////////
 
     template <typename T>
-    class RefPtr
+    class RefCountPtr
     {
     public:
         typedef T InterfaceType;
@@ -30,7 +29,7 @@ namespace PhxEngine::RHI
 
     protected:
         InterfaceType* ptr_;
-        template<class U> friend class RefPtr;
+        template<class U> friend class RefCountPtr;
 
         void InternalAddRef() const noexcept
         {
@@ -56,37 +55,37 @@ namespace PhxEngine::RHI
 
     public:
 
-        RefPtr() noexcept : ptr_(nullptr)
+        RefCountPtr() noexcept : ptr_(nullptr)
         {
         }
 
-        RefPtr(std::nullptr_t) noexcept : ptr_(nullptr)
+        RefCountPtr(std::nullptr_t) noexcept : ptr_(nullptr)
         {
         }
 
         template<class U>
-        RefPtr(U* other) noexcept : ptr_(other)
+        RefCountPtr(U* other) noexcept : ptr_(other)
         {
             InternalAddRef();
         }
 
-        RefPtr(const RefPtr& other) noexcept : ptr_(other.ptr_)
+        RefCountPtr(const RefCountPtr& other) noexcept : ptr_(other.ptr_)
         {
             InternalAddRef();
         }
 
         // copy ctor that allows to instanatiate class when U* is convertible to T*
         template<class U>
-        RefPtr(const RefPtr<U>& other, typename std::enable_if<std::is_convertible<U*, T*>::value, void*>::type* = nullptr) noexcept :
+        RefCountPtr(const RefCountPtr<U>& other, typename std::enable_if<std::is_convertible<U*, T*>::value, void*>::type* = nullptr) noexcept :
             ptr_(other.ptr_)
 
         {
             InternalAddRef();
         }
 
-        RefPtr(RefPtr&& other) noexcept : ptr_(nullptr)
+        RefCountPtr(RefCountPtr&& other) noexcept : ptr_(nullptr)
         {
-            if (this != reinterpret_cast<RefPtr*>(&reinterpret_cast<unsigned char&>(other)))
+            if (this != reinterpret_cast<RefCountPtr*>(&reinterpret_cast<unsigned char&>(other)))
             {
                 Swap(other);
             }
@@ -94,76 +93,76 @@ namespace PhxEngine::RHI
 
         // Move ctor that allows instantiation of a class when U* is convertible to T*
         template<class U>
-        RefPtr(RefPtr<U>&& other, typename std::enable_if<std::is_convertible<U*, T*>::value, void*>::type* = nullptr) noexcept :
+        RefCountPtr(RefCountPtr<U>&& other, typename std::enable_if<std::is_convertible<U*, T*>::value, void*>::type* = nullptr) noexcept :
             ptr_(other.ptr_)
         {
             other.ptr_ = nullptr;
         }
 
-        ~RefPtr() noexcept
+        ~RefCountPtr() noexcept
         {
             InternalRelease();
         }
 
-        RefPtr& operator=(std::nullptr_t) noexcept
+        RefCountPtr& operator=(std::nullptr_t) noexcept
         {
             InternalRelease();
             return *this;
         }
 
-        RefPtr& operator=(T* other) noexcept
+        RefCountPtr& operator=(T* other) noexcept
         {
             if (ptr_ != other)
             {
-                RefPtr(other).Swap(*this);
+                RefCountPtr(other).Swap(*this);
             }
             return *this;
         }
 
         template <typename U>
-        RefPtr& operator=(U* other) noexcept
+        RefCountPtr& operator=(U* other) noexcept
         {
-            RefPtr(other).Swap(*this);
+            RefCountPtr(other).Swap(*this);
             return *this;
         }
 
-        RefPtr& operator=(const RefPtr& other) noexcept  // NOLINT(bugprone-unhandled-self-assignment)
+        RefCountPtr& operator=(const RefCountPtr& other) noexcept  // NOLINT(bugprone-unhandled-self-assignment)
         {
             if (ptr_ != other.ptr_)
             {
-                RefPtr(other).Swap(*this);
+                RefCountPtr(other).Swap(*this);
             }
             return *this;
         }
 
         template<class U>
-        RefPtr& operator=(const RefPtr<U>& other) noexcept
+        RefCountPtr& operator=(const RefCountPtr<U>& other) noexcept
         {
-            RefPtr(other).Swap(*this);
+            RefCountPtr(other).Swap(*this);
             return *this;
         }
 
-        RefPtr& operator=(RefPtr&& other) noexcept
+        RefCountPtr& operator=(RefCountPtr&& other) noexcept
         {
-            RefPtr(static_cast<RefPtr&&>(other)).Swap(*this);
+            RefCountPtr(static_cast<RefCountPtr&&>(other)).Swap(*this);
             return *this;
         }
 
         template<class U>
-        RefPtr& operator=(RefPtr<U>&& other) noexcept
+        RefCountPtr& operator=(RefCountPtr<U>&& other) noexcept
         {
-            RefPtr(static_cast<RefPtr<U>&&>(other)).Swap(*this);
+            RefCountPtr(static_cast<RefCountPtr<U>&&>(other)).Swap(*this);
             return *this;
         }
 
-        void Swap(RefPtr&& r) noexcept
+        void Swap(RefCountPtr&& r) noexcept
         {
             T* tmp = ptr_;
             ptr_ = r.ptr_;
             r.ptr_ = tmp;
         }
 
-        void Swap(RefPtr& r) noexcept
+        void Swap(RefCountPtr& r) noexcept
         {
             T* tmp = ptr_;
             ptr_ = r.ptr_;
@@ -230,9 +229,9 @@ namespace PhxEngine::RHI
         }
 
         // Create a wrapper around a raw object while keeping the object's reference count unchanged
-        static RefPtr<T> Create(T* other)
+        static RefCountPtr<T> Create(T* other)
         {
-            RefPtr<T> Ptr;
+            RefCountPtr<T> Ptr;
             Ptr.Attach(other);
             return Ptr;
         }
@@ -241,13 +240,13 @@ namespace PhxEngine::RHI
         {
             return InternalRelease();
         }
-    };    // RefPtr
+    };    // RefCountPtr
 
     //////////////////////////////////////////////////////////////////////////
     // RefCounter<T>
-    // A class that implements reference counting in a way compatible with RefPtr.
+    // A class that implements reference counting in a way compatible with RefCountPtr.
     // Intended usage is to use it as a base class for interface implementations, like so:
-    // class Texture : public RefCounter { ... }
+    // class Texture : public RefCounter<ITexture> { ... }
     //////////////////////////////////////////////////////////////////////////
 
     template<class T>
@@ -256,19 +255,19 @@ namespace PhxEngine::RHI
     private:
         std::atomic<unsigned long> m_refCount = 1;
     public:
-        virtual unsigned long AddRef()
+        virtual unsigned long AddRef() override
         {
             return ++m_refCount;
         }
 
-        virtual unsigned long Release()
+        virtual unsigned long Release() override
         {
             unsigned long result = --m_refCount;
-            if (result == 0) 
-            {
+            if (result == 0) {
                 delete this;
             }
             return result;
         }
     };
+
 }

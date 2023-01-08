@@ -260,7 +260,6 @@ PhxEngine::RHI::D3D12::GraphicsDevice::GraphicsDevice()
 #endif 
 
 	this->m_factory = this->CreateFactory();
-	this->m_gpuAdapter = this->SelectOptimalGpuApdater();
 	this->CreateDevice(this->m_gpuAdapter->DxgiAdapter);
 
 	// Create Queues
@@ -2478,84 +2477,6 @@ void PhxEngine::RHI::D3D12::GraphicsDevice::RunGarbageCollection()
 	}
 }
 
-std::unique_ptr<DXGIGpuAdapter>  PhxEngine::RHI::D3D12::GraphicsDevice::SelectOptimalGpuApdater()
-{
-	// LOG_CORE_INFO("Selecting Optimal GPU");
-	Microsoft::WRL::ComPtr<IDXGIAdapter1> selectedGpu;
-
-	size_t selectedGPUVideoMemeory = 0;
-	for (auto adapter : EnumerateAdapters(this->m_factory))
-	{
-		DXGI_ADAPTER_DESC desc = {};
-		adapter->GetDesc(&desc);
-
-		std::string name = NarrowString(desc.Description);
-		size_t dedicatedVideoMemory = desc.DedicatedVideoMemory;
-		size_t dedicatedSystemMemory = desc.DedicatedSystemMemory;
-		size_t sharedSystemMemory = desc.SharedSystemMemory;
-
-		if (!selectedGpu || selectedGPUVideoMemeory < dedicatedVideoMemory)
-		{
-			selectedGpu = adapter;
-			selectedGPUVideoMemeory = dedicatedVideoMemory;
-		}
-	}
-
-	DXGI_ADAPTER_DESC desc = {};
-	selectedGpu->GetDesc(&desc);
-
-	std::string name = NarrowString(desc.Description);
-	size_t dedicatedVideoMemory = desc.DedicatedVideoMemory;
-	size_t dedicatedSystemMemory = desc.DedicatedSystemMemory;
-	size_t sharedSystemMemory = desc.SharedSystemMemory;
-
-	LOG_CORE_INFO(
-		"Found Suitable D3D12 Adapter {0}",
-		name.c_str());
-
-	LOG_CORE_INFO(
-		"Adapter has {0}MB of dedicated video memory, {1}MB of dedicated system memory, and {2}MB of shared system memory.",
-		dedicatedVideoMemory / (1024 * 1024),
-		dedicatedSystemMemory / (1024 * 1024),
-		sharedSystemMemory / (1024 * 1024));
-
-	auto selectedAdataper = std::make_unique<DXGIGpuAdapter>();
-	selectedAdataper->Name = NarrowString(desc.Description);
-	selectedAdataper->DedicatedVideoMemory = desc.DedicatedVideoMemory;
-	selectedAdataper->DedicatedSystemMemory = desc.DedicatedSystemMemory;
-	selectedAdataper->SharedSystemMemory = desc.SharedSystemMemory;
-
-	selectedAdataper->DxgiAdapter = selectedGpu;
-
-	return std::move(selectedAdataper);
-}
-
-std::vector<Microsoft::WRL::ComPtr<IDXGIAdapter1>> PhxEngine::RHI::D3D12::GraphicsDevice::EnumerateAdapters(Microsoft::WRL::ComPtr<IDXGIFactory6> factory, bool includeSoftwareAdapter)
-{
-	std::vector<Microsoft::WRL::ComPtr<IDXGIAdapter1>> adapters;
-	auto nextAdapter = [&](uint32_t adapterIndex, Microsoft::WRL::ComPtr<IDXGIAdapter1>& adapter)
-	{
-		return factory->EnumAdapterByGpuPreference(
-			adapterIndex,
-			DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
-			IID_PPV_ARGS(adapter.ReleaseAndGetAddressOf()));
-	};
-
-	Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
-	uint32_t gpuIndex = 0;
-	for (uint32_t adapterIndex = 0; DXGI_ERROR_NOT_FOUND != nextAdapter(adapterIndex, adapter); ++adapterIndex)
-	{
-		DXGI_ADAPTER_DESC1 desc = {};
-		adapter->GetDesc1(&desc);
-		if (!includeSoftwareAdapter && (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE))
-			continue;
-
-		adapters.push_back(adapter);
-	}
-
-	return adapters;
-}
-
 void PhxEngine::RHI::D3D12::GraphicsDevice::TranslateBlendState(BlendRenderState const& inState, D3D12_BLEND_DESC& outState)
 {
 	outState.AlphaToCoverageEnable = inState.alphaToCoverageEnable;
@@ -2917,11 +2838,11 @@ Microsoft::WRL::ComPtr<IDXGIFactory6> PhxEngine::RHI::D3D12::GraphicsDevice::Cre
 	return factory;
 }
 
-void PhxEngine::RHI::D3D12::GraphicsDevice::CreateDevice(Microsoft::WRL::ComPtr<IDXGIAdapter> gpuAdapter)
+void PhxEngine::RHI::D3D12::GraphicsDevice::CreateDevice(IDXGIAdapter* gpuAdapter)
 {
 	ThrowIfFailed(
 		D3D12CreateDevice(
-			gpuAdapter.Get(),
+			gpuAdapter,
 			D3D_FEATURE_LEVEL_11_1,
 			IID_PPV_ARGS(&this->m_device)));
 
