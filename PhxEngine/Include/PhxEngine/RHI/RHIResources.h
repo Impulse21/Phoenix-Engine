@@ -154,11 +154,12 @@ namespace PhxEngine::RHI
         };
     };
 
-    class IRHIViewport : IRHIResource
+    class IRHIViewport : public IRHIResource
     {
     public:
-        virtual const RHIViewportDesc& GetDesc() = 0;
+        virtual const RHIViewportDesc& GetDesc() const = 0;
         virtual ~IRHIViewport() = default;
+
     };
 
     using RHIViewportHandle = RefCountPtr<IRHIViewport>;

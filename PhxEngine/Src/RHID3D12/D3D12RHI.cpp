@@ -15,7 +15,7 @@ namespace
     static const GUID PixUUID = { 0x9f251514, 0x9d4d, 0x4902, { 0x9d, 0x60, 0x18, 0x98, 0x8a, 0xb7, 0xd4, 0xb5 } };
 
     static bool sDebugEnabled = false;
-    bool IsAdapterSupported(std::shared_ptr<DXGIGpuAdapter>& adapter, PhxEngine::RHI::FeatureLevel level)
+    bool IsAdapterSupported(std::shared_ptr<D3D12Adapter>& adapter, PhxEngine::RHI::FeatureLevel level)
     {
         if (!adapter)
         {
@@ -23,7 +23,7 @@ namespace
         }
 
         DXGI_ADAPTER_DESC adapterDesc;
-        if (FAILED(adapter->DxgiAdapter->GetDesc(&adapterDesc)))
+        if (FAILED(adapter->GetDxgiAdapter()->GetDesc(&adapterDesc)))
         {
             return false;
         }
@@ -128,12 +128,12 @@ void PhxEngine::RHI::D3D12::D3D12RHIFactory::FindAdapter()
         dedicatedSystemMemory / (1024 * 1024),
         sharedSystemMemory / (1024 * 1024));
 
-    this->m_choosenAdapter = std::make_shared<DXGIGpuAdapter>();
-    this->m_choosenAdapter->Name = NarrowString(desc.Description);
-    this->m_choosenAdapter->DedicatedVideoMemory = desc.DedicatedVideoMemory;
-    this->m_choosenAdapter->DedicatedSystemMemory = desc.DedicatedSystemMemory;
-    this->m_choosenAdapter->SharedSystemMemory = desc.SharedSystemMemory;
-    this->m_choosenAdapter->DxgiAdapter = selectedAdapter;
+    D3D12AdapterDesc adapterDesc =
+    {
+        .Name = NarrowString(desc.Description),
+        .DXGIDesc = desc,
+    };
+    this->m_choosenAdapter = std::make_shared<D3D12Adapter>(adapterDesc, selectedAdapter);
 }
 
 RefCountPtr<IDXGIFactory6> PhxEngine::RHI::D3D12::D3D12RHIFactory::CreateDXGIFactory6() const

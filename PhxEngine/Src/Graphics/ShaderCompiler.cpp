@@ -4,7 +4,7 @@
 #include <wrl.h>
 #include "PhxEngine/Core/Helpers.h"
 #include <dxc/dxcapi.h>
-#include "RHID3D12/Common.h"
+#include "RHID3D12/D3D12Common.h"
 
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::D3D12;

@@ -254,6 +254,7 @@ namespace PhxEngine::RHI
     {
     private:
         std::atomic<unsigned long> m_refCount = 1;
+
     public:
         virtual unsigned long AddRef() override
         {

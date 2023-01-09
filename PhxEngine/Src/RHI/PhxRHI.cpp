@@ -7,7 +7,7 @@ using namespace PhxEngine::RHI;
 // Global
 IRHI* PhxEngine::RHI::GRHI = nullptr;
 
-void RHIInitialize()
+void PhxEngine::RHI::RHIInitialize()
 {
 	if (GRHI)
 	{
@@ -32,7 +32,7 @@ void RHIInitialize()
 	GRHI = safeGRHIPtr.release();
 }
 
-void RHIFinalize()
+void PhxEngine::RHI::RHIFinalize()
 {
 	if (!GRHI)
 	{

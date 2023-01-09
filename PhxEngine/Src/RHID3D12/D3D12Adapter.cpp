@@ -1,6 +1,8 @@
 #include "C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Build/PhxEngine/CMakeFiles/PhxEngine.dir/Debug/cmake_pch.hxx"
 #include "D3D12Adapter.h"
 
+#include "D3D12CommandQueue.h"
+
 using namespace PhxEngine::RHI::D3D12;
 
 namespace
@@ -145,5 +147,9 @@ void PhxEngine::RHI::D3D12::D3D12Adapter::InitializeD3D12Devices()
 		}
 	}
 
-	// TODO: Log message queue to log.
+	// Create Queues
+	this->m_commandQueues[(int)CommandQueueType::Graphics] = std::make_unique<D3D12CommandQueue>(D3D12_COMMAND_LIST_TYPE_DIRECT, this);
+	this->m_commandQueues[(int)CommandQueueType::Compute] = std::make_unique<D3D12CommandQueue>(D3D12_COMMAND_LIST_TYPE_COMPUTE, this);
+	this->m_commandQueues[(int)CommandQueueType::Copy] = std::make_unique<D3D12CommandQueue>(D3D12_COMMAND_LIST_TYPE_COPY, this);
+
 }

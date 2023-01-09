@@ -17,6 +17,11 @@ namespace PhxEngine::RHI::D3D12
 		void Initialize() override;
 		void Finalize() override;
 
+		RHIViewportHandle CreateViewport(RHIViewportDesc const& desc) override;
+
+	public:
+		D3D12Adapter* GetAdapter() { return this->m_adapter.get(); }
+
 	private:
 		std::shared_ptr<D3D12Adapter> m_adapter;
 
@@ -37,7 +42,7 @@ namespace PhxEngine::RHI::D3D12
 
 	private:
 		// Choosen adapter.
-		std::shared_ptr<DXGIGpuAdapter> m_choosenAdapter;
+		std::shared_ptr<D3D12Adapter> m_choosenAdapter;
 	};
 }
 
