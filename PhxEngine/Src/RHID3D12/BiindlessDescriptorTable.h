@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Common.h"
+#include "D3D12Common.h"
 
 #include "DescriptorHeap.h"
 

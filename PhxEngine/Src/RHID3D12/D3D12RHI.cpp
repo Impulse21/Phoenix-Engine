@@ -1,6 +1,9 @@
 #include "C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Build/PhxEngine/CMakeFiles/PhxEngine.dir/Debug/cmake_pch.hxx"
 #include "D3D12RHI.h"
 #include <PhxEngine/RHI/PhxRHI.h>
+#include "D3D12Common.h"
+#include "D3D12Adapter.h"
+
 
 using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI;
@@ -8,6 +11,9 @@ using namespace PhxEngine::RHI::D3D12;
 
 namespace
 {
+    static const GUID RenderdocUUID = { 0xa7aa6116, 0x9c8d, 0x4bba, { 0x90, 0x83, 0xb4, 0xd8, 0x16, 0xb7, 0x1b, 0x78 } };
+    static const GUID PixUUID = { 0x9f251514, 0x9d4d, 0x4902, { 0x9d, 0x60, 0x18, 0x98, 0x8a, 0xb7, 0xd4, 0xb5 } };
+
     static bool sDebugEnabled = false;
     bool IsAdapterSupported(std::shared_ptr<DXGIGpuAdapter>& adapter, PhxEngine::RHI::FeatureLevel level)
     {
@@ -54,9 +60,11 @@ std::unique_ptr<PhxEngine::RHI::IRHI> PhxEngine::RHI::D3D12::D3D12RHIFactory::Cr
             LOG_CORE_ERROR("Unable to create D3D12 RHI On current platform.");
         }
     }
+    
+    auto rhi = std::make_unique<D3D12RHI>(this->m_choosenAdapter);
+    // Decorate with Validation layer if required
 
-    // TODO: Create the Adapter now.
-    return std::unique_ptr<IRHI>();
+    return rhi;
 }
 
 void PhxEngine::RHI::D3D12::D3D12RHIFactory::FindAdapter()
@@ -161,4 +169,36 @@ RefCountPtr<IDXGIFactory6> PhxEngine::RHI::D3D12::D3D12RHIFactory::CreateDXGIFac
         CreateDXGIFactory2(flags, IID_PPV_ARGS(&factory)));
 
     return factory;
+}
+
+D3D12RHI* D3D12RHI::Singleton = nullptr;
+
+D3D12RHI::D3D12RHI(std::shared_ptr<D3D12Adapter>& adapter)
+    : m_adapter(adapter)
+{
+    assert(!Singleton);
+
+    Singleton = this;
+
+    // TODO: lite set up that is required.
+}
+
+void PhxEngine::RHI::D3D12::D3D12RHI::Initialize()
+{
+    this->m_adapter->InitializeD3D12Devices();
+    Microsoft::WRL::ComPtr<IUnknown> renderdoc;
+    if (SUCCEEDED(DXGIGetDebugInterface1(0, RenderdocUUID, &renderdoc)))
+    {
+        this->m_isUnderGraphicsDebugger |= !!renderdoc;
+    }
+
+    Microsoft::WRL::ComPtr<IUnknown> pix;
+    if (SUCCEEDED(DXGIGetDebugInterface1(0, PixUUID, &pix)))
+    {
+        this->m_isUnderGraphicsDebugger |= !!pix;
+    }
+}
+
+void PhxEngine::RHI::D3D12::D3D12RHI::Finalize()
+{
 }

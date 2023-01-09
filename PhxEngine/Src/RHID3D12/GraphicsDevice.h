@@ -7,7 +7,7 @@
 
 #include "CommandQueue.h"
 #include "DescriptorHeap.h"
-#include "Common.h"
+#include "D3D12Common.h"
 #include "PhxEngine/Core/BitSetAllocator.h"
 #include "PhxEngine/Core/Pool.h"
 

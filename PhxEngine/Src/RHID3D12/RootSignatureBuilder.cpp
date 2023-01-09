@@ -1,7 +1,7 @@
 #include "phxpch.h"
 #include "RootSignatureBuilder.h"
 
-#include "Common.h"
+#include "D3D12Common.h"
 
 using namespace PhxEngine::RHI::D3D12;
 

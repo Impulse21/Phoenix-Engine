@@ -1,7 +1,7 @@
 #pragma once
 
 #include <PhxEngine/RHI/PhxRHI.h>
-#include "Common.h"
+#include "D3D12Common.h"
 #include "CommandAllocatorPool.h"
 
 namespace PhxEngine::RHI::D3D12

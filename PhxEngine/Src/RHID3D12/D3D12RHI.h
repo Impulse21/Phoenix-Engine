@@ -5,19 +5,22 @@
 
 namespace PhxEngine::RHI::D3D12
 {
+	class D3D12Adapter;
 	class D3D12RHI : public IRHI
 	{
-		static D3D12RHI* SingleD3DRHI;
+		static D3D12RHI* Singleton;
 
 	public:
-		D3D12RHI(DXGIGpuAdapter const& adapter);
+		D3D12RHI(std::shared_ptr<D3D12Adapter>& adapter);
 		~D3D12RHI() = default;
 
 		void Initialize() override;
 		void Finalize() override;
 
 	private:
-		DXGIGpuAdapter m_adapter;
+		std::shared_ptr<D3D12Adapter> m_adapter;
+
+		bool m_isUnderGraphicsDebugger = false;
 	};
 
 	class D3D12RHIFactory : public IRHIFactory

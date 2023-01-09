@@ -24,6 +24,7 @@
 #include "d3d12shader.h"
 #include <dxgi1_6.h>
 #include <PhxEngine/RHI/PhxRHI.h>
+#include "PhxEngine/RHI/RefCountPtr.h"
 
 
 namespace PhxEngine::RHI::D3D12
@@ -88,4 +89,22 @@ namespace PhxEngine::RHI::D3D12
 
        return result;
    }
+
+   class D3D12Adapter;
+   class D3D12AdapterChild
+   {
+   public:
+       D3D12AdapterChild(D3D12Adapter* parent = nullptr) : ParentAdapter(parent) {}
+       virtual ~D3D12AdapterChild() = default;
+
+       FORCEINLINE D3D12Adapter* GetParentAdapter() const
+       {
+           assert(this->ParentAdapter != nullptr);
+           return this->ParentAdapter;
+       }
+
+   protected:
+       D3D12Adapter* ParentAdapter;
+
+   };
 }

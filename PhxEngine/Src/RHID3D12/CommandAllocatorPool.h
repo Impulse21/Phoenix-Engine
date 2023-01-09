@@ -3,7 +3,7 @@
 #include <queue>
 #include <mutex>
 
-#include "Common.h"
+#include "D3D12Common.h"
 
 namespace PhxEngine::RHI::D3D12
 {

@@ -3,7 +3,7 @@
 
 #include <PhxEngine/RHI/PhxRHI.h>B
 #include <PhxEngine/Core/Math.h>
-#include "Common.h"
+#include "D3D12Common.h"
 
 #include <deque>
 #include <memory>
