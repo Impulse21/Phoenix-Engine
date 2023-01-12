@@ -257,7 +257,7 @@ void CgltfReleaseFile(
 
 
 GltfSceneLoader::GltfSceneLoader()
-	: m_textureCache(std::make_unique<Graphics::TextureCache>(IGraphicsDevice::Ptr))
+	: m_textureCache(std::make_unique<Graphics::TextureCache>(IGraphicsDevice::GPtr))
 {
 
 }

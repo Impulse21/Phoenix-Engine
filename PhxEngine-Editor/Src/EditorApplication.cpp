@@ -1,15 +1,15 @@
 
 #include <PhxEngine/PhxEngine.h>
-#include <PhxEngine/App/EntryPoint.h>
+#include <PhxEngine/Engine/EntryPoint.h>
 
 #include "EditorLayer.h"
 #include "SceneRenderLayer.h"
 
-class EditorApplication : public PhxEngine::LayeredApplication
+class EditorApplication : public PhxEngine::EngineApp
 {
 public:
 	EditorApplication(PhxEngine::ApplicationSpecification const& spec)
-		: LayeredApplication(spec)
+		: EngineApp(spec)
 	{};
 
 	void OnInit() override
@@ -20,7 +20,7 @@ public:
 	}
 };
 
-PhxEngine::LayeredApplication* PhxEngine::CreateApplication(int argc, char** argv)
+PhxEngine::EngineApp* PhxEngine::CreateApplication(int argc, char** argv)
 {
 	ApplicationSpecification spec;
 

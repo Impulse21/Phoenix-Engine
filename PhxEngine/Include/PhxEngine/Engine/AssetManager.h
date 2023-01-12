@@ -6,7 +6,7 @@ namespace PhxEngine
 	class AssetManager
 	{
 	public:
-		inline static AssetManager* Ptr = nullptr;
+		inline static AssetManager* GPtr = nullptr;
 
 		void RegisterPath(std::string const& path);
 

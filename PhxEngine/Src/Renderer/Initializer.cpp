@@ -10,17 +10,17 @@ using namespace PhxEngine::RHI;
 void PhxEngine::Renderer::Initialize()
 {
 	// Create Graphics Core
-	IRenderer::Ptr = new DeferredRenderer();
-	IRenderer::Ptr->Initialize();
+	IRenderer::GPtr = new DeferredRenderer();
+	IRenderer::GPtr->Initialize();
 
 }
 
 void PhxEngine::Renderer::Finalize()
 {
-	if (IRenderer::Ptr)
+	if (IRenderer::GPtr)
 	{
-		IRenderer::Ptr->Finialize();
-		delete IRenderer::Ptr;
-		IRenderer::Ptr = nullptr;
+		IRenderer::GPtr->Finialize();
+		delete IRenderer::GPtr;
+		IRenderer::GPtr = nullptr;
 	};
 }

@@ -23,9 +23,9 @@ Assets::Mesh::Mesh(std::string const& meshName)
 
 Assets::Mesh::~Mesh()
 {
-	RHI::IGraphicsDevice::Ptr->DeleteBuffer(this->IndexGpuBuffer);
-	RHI::IGraphicsDevice::Ptr->DeleteBuffer(this->VertexGpuBuffer);
-	RHI::IGraphicsDevice::Ptr->DeleteRtAccelerationStructure(this->Blas);
+	RHI::IGraphicsDevice::GPtr->DeleteBuffer(this->IndexGpuBuffer);
+	RHI::IGraphicsDevice::GPtr->DeleteBuffer(this->VertexGpuBuffer);
+	RHI::IGraphicsDevice::GPtr->DeleteRtAccelerationStructure(this->Blas);
 }
 
 void Assets::Mesh::ReverseWinding()
@@ -115,7 +115,7 @@ void Assets::Mesh::CreateRenderData(RHI::CommandListHandle commandList)
 		indexBufferDesc.SizeInBytes = sizeof(uint32_t) * this->Indices.size();
 		indexBufferDesc.StrideInBytes = sizeof(uint32_t);
 		indexBufferDesc.DebugName = "Index Buffer";
-		this->IndexGpuBuffer = RHI::IGraphicsDevice::Ptr->CreateIndexBuffer(indexBufferDesc);
+		this->IndexGpuBuffer = RHI::IGraphicsDevice::GPtr->CreateIndexBuffer(indexBufferDesc);
 
 		commandList->TransitionBarrier(this->IndexGpuBuffer, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
 		commandList->WriteBuffer<uint32_t>(this->IndexGpuBuffer, this->Indices);
@@ -146,7 +146,7 @@ void Assets::Mesh::CreateRenderData(RHI::CommandListHandle commandList)
 			Helpers::AlignTo(this->VertexColour.size() * sizeof(DirectX::XMFLOAT3), alignment);
 
 		// Is this Needed for Raw Buffer Type
-		this->VertexGpuBuffer = RHI::IGraphicsDevice::Ptr->CreateIndexBuffer(vertexDesc);
+		this->VertexGpuBuffer = RHI::IGraphicsDevice::GPtr->CreateIndexBuffer(vertexDesc);
 
 		std::vector<uint8_t> gpuBufferData(vertexDesc.SizeInBytes);
 		std::memset(gpuBufferData.data(), 0, vertexDesc.SizeInBytes);
@@ -210,7 +210,7 @@ void Assets::Mesh::CreateRenderData(RHI::CommandListHandle commandList)
 	}
 
 	// Create RT BLAS object
-	if (RHI::IGraphicsDevice::Ptr->CheckCapability(RHI::DeviceCapability::RayTracing))
+	if (RHI::IGraphicsDevice::GPtr->CheckCapability(RHI::DeviceCapability::RayTracing))
 	{
 		this->BlasState = BLASState::Rebuild;
 
@@ -236,7 +236,7 @@ void Assets::Mesh::CreateRenderData(RHI::CommandListHandle commandList)
 			geometry.Triangles.IndexOffset = surface.IndexOffsetInMesh;
 		}
 
-		this->Blas = RHI::IGraphicsDevice::Ptr->CreateRTAccelerationStructure(rtDesc);
+		this->Blas = RHI::IGraphicsDevice::GPtr->CreateRTAccelerationStructure(rtDesc);
 	}
 }
 
@@ -369,7 +369,7 @@ Assets::Texture::Texture()
 
 Assets::Texture::~Texture()
 {
-	RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_renderTexture);
+	RHI::IGraphicsDevice::GPtr->DeleteTexture(this->m_renderTexture);
 }
 
 void Assets::Texture::CreateRenderResourceIfEmpty()

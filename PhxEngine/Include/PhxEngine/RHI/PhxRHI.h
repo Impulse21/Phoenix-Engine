@@ -14,16 +14,6 @@
 #include <memory>
 #include <variant>
 
-#define PHXRHI_ENUM_CLASS_FLAG_OPERATORS(T) \
-    inline T operator | (T a, T b) { return T(uint32_t(a) | uint32_t(b)); } \
-    inline T& operator |=(T& a, T b) { return a = a | b; }\
-    inline T operator & (T a, T b) { return T(uint32_t(a) & uint32_t(b)); } /* NOLINT(bugprone-macro-parentheses) */ \
-    inline T operator ~ (T a) { return T(~uint32_t(a)); } /* NOLINT(bugprone-macro-parentheses) */ \
-    inline bool operator !(T a) { return uint32_t(a) == 0; } \
-    inline bool operator ==(T a, uint32_t b) { return uint32_t(a) == b; } \
-    inline bool operator !=(T a, uint32_t b) { return uint32_t(a) != b; }
-
-
 namespace PhxEngine::RHI
 {
     typedef uint32_t DescriptorIndex;
@@ -201,32 +191,6 @@ namespace PhxEngine::RHI
         SM_6_7,
     };
 
-    enum class ShaderStage : uint16_t
-    {
-        None            = 0x0000,
-
-        Compute         = 0x0020,
-
-        Vertex          = 0x0001,
-        Hull            = 0x0002,
-        Domain          = 0x0004,
-        Geometry        = 0x0008,
-        Pixel           = 0x0010,
-        Amplification   = 0x0040,
-        Mesh            = 0x0080,
-        AllGraphics     = 0x00FE,
-
-        RayGeneration   = 0x0100,
-        AnyHit          = 0x0200,
-        ClosestHit      = 0x0400,
-        Miss            = 0x0800,
-        Intersection    = 0x1000,
-        Callable        = 0x2000,
-        AllRayTracing   = 0x3F00,
-
-        All             = 0x3FFF,
-    };
-    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(ShaderStage)
 
     enum class PrimitiveType : uint8_t
     {
@@ -1263,7 +1227,7 @@ namespace PhxEngine::RHI
         virtual ~IGraphicsDevice() = default;
 
         // Global Singleton not ideal as we can only have one device per application, however, it simplifies a lot when passing the object around
-        inline static IGraphicsDevice* Ptr;
+        inline static IGraphicsDevice* GPtr;
 
         // -- Create Functions ---
     public:
@@ -1385,6 +1349,7 @@ namespace PhxEngine::RHI
         virtual void Finalize() = 0;
 
         virtual RHIViewportHandle CreateViewport(RHIViewportDesc const& desc) = 0;
+        virtual RHIShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<const void*> shaderByteCode) = 0;
 
     public:
         virtual ~IRHI() = default;

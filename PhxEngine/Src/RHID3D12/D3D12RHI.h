@@ -18,6 +18,7 @@ namespace PhxEngine::RHI::D3D12
 		void Finalize() override;
 
 		RHIViewportHandle CreateViewport(RHIViewportDesc const& desc) override;
+		RHIShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<const void*> shaderByteCode) override;
 
 	public:
 		D3D12Adapter* GetAdapter() { return this->m_adapter.get(); }

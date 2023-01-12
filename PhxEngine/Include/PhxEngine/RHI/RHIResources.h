@@ -1,9 +1,45 @@
 #pragma once
 
+#define PHXRHI_ENUM_CLASS_FLAG_OPERATORS(T) \
+    inline T operator | (T a, T b) { return T(uint32_t(a) | uint32_t(b)); } \
+    inline T& operator |=(T& a, T b) { return a = a | b; }\
+    inline T operator & (T a, T b) { return T(uint32_t(a) & uint32_t(b)); } /* NOLINT(bugprone-macro-parentheses) */ \
+    inline T operator ~ (T a) { return T(~uint32_t(a)); } /* NOLINT(bugprone-macro-parentheses) */ \
+    inline bool operator !(T a) { return uint32_t(a) == 0; } \
+    inline bool operator ==(T a, uint32_t b) { return uint32_t(a) == b; } \
+    inline bool operator !=(T a, uint32_t b) { return uint32_t(a) != b; }
+
 namespace PhxEngine::RHI
 {
 
 #pragma region Enums
+    enum class ShaderStage : uint16_t
+    {
+        None = 0x0000,
+
+        Compute = 0x0020,
+
+        Vertex = 0x0001,
+        Hull = 0x0002,
+        Domain = 0x0004,
+        Geometry = 0x0008,
+        Pixel = 0x0010,
+        Amplification = 0x0040,
+        Mesh = 0x0080,
+        AllGraphics = 0x00FE,
+
+        RayGeneration = 0x0100,
+        AnyHit = 0x0200,
+        ClosestHit = 0x0400,
+        Miss = 0x0800,
+        Intersection = 0x1000,
+        Callable = 0x2000,
+        AllRayTracing = 0x3F00,
+
+        All = 0x3FFF,
+    };
+    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(ShaderStage)
+
     enum class FormatType : uint8_t
     {
         UNKNOWN = 0,
@@ -163,4 +199,21 @@ namespace PhxEngine::RHI
     };
 
     using RHIViewportHandle = RefCountPtr<IRHIViewport>;
+
+    struct RHIShaderDesc
+    {
+        ShaderStage Stage = ShaderStage::None;
+        std::string DebugName = "";
+    };
+
+    class IRHIShader : public IRHIResource
+    {
+    public:
+        virtual ~IRHIShader() = default;
+
+        virtual const RHIShaderDesc& GetDesc() const = 0;
+        virtual const std::vector<uint8_t>& GetByteCode() const = 0;
+    };
+
+    using RHIShaderHandle = RefCountPtr<IRHIShader>;
 }

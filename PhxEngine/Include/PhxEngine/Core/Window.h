@@ -4,6 +4,10 @@
 #include <functional>
 #include "PhxEngine/Core/Event.h"
 
+namespace PhxEngine
+{
+	class IPhxEngineRoot;
+}
 namespace PhxEngine::Core
 {
 
@@ -31,6 +35,8 @@ namespace PhxEngine::Core
 
 		virtual void* GetNativeWindowHandle() = 0;
 		virtual void* GetNativeWindow() = 0;
+
+		virtual bool ShouldClose() = 0;
 	};
 
 	struct WindowSpecification
@@ -45,7 +51,7 @@ namespace PhxEngine::Core
 
 	namespace WindowFactory
 	{
-		std::unique_ptr<IWindow> CreateGlfwWindow(WindowSpecification const& spec);
+		std::unique_ptr<IWindow> CreateGlfwWindow(IPhxEngineRoot* engRoot, WindowSpecification const& spec);
 	}
 
 }

@@ -2,7 +2,7 @@
 
 #include <PhxEngine/Graphics/ShaderStore.h>
 #include <PhxEngine/Core/Span.h>
-#include <Shaders/ShaderInteropStructures.h>
+#include <PhxEngine/Shaders/ShaderInteropStructures.h>
 #include <PhxEngine/Graphics/IRenderer.h>
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Graphics/CascadeShadowMap.h>

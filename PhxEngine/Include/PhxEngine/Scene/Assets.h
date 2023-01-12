@@ -4,7 +4,7 @@
 
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Renderer/Renderer.h>
-#include <Shaders/ShaderInteropStructures.h>
+#include <PhxEngine/Shaders/ShaderInteropStructures.h>
 
 // It would be good to hide these details somehow.
 #include <DirectXMath.h>

@@ -5,7 +5,8 @@
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include "GLFW/glfw3native.h"
-#include "PhxEngine/App/ApplicationEvents.h"
+#include "PhxEngine/Engine/ApplicationEvents.h"
+#include "PhxEngine/Engine/EngineRoot.h"
 
 using namespace PhxEngine::Core;
 
@@ -19,8 +20,9 @@ namespace
 	}
 }
 
-WindowGlfw::WindowGlfw(WindowSpecification const& spec)
-	: m_spec(spec)
+WindowGlfw::WindowGlfw(PhxEngine::IPhxEngineRoot* engRoot, WindowSpecification const& spec)
+	: m_root(engRoot)
+	, m_spec(spec)
 	, m_glfwWindow(nullptr)
 {
 }
@@ -115,4 +117,9 @@ void PhxEngine::Core::WindowGlfw::CentreWindow()
 void* PhxEngine::Core::WindowGlfw::GetNativeWindowHandle()
 {
 	return glfwGetWin32Window(this->m_glfwWindow);
+}
+
+bool PhxEngine::Core::WindowGlfw::ShouldClose()
+{
+	return glfwWindowShouldClose(this->m_glfwWindow);
 }

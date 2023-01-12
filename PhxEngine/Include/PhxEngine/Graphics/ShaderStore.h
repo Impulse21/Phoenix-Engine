@@ -41,7 +41,7 @@ namespace PhxEngine::Graphics
 	class ShaderStore
 	{
 	public:
-		inline static ShaderStore* Ptr = nullptr;
+		inline static ShaderStore* GPtr = nullptr;
 		void PreloadShaders(ShaderFactory& shaderFactory);
 
 	public:

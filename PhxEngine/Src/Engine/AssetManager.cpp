@@ -1,5 +1,5 @@
 #include <phxpch.h>
-#include "PhxEngine/App/AssetManager.h"
+#include "PhxEngine/Engine/AssetManager.h"
 
 void PhxEngine::AssetManager::RegisterPath(std::string const& path)
 {

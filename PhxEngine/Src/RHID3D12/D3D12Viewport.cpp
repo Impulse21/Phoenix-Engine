@@ -16,6 +16,12 @@ RHIViewportHandle D3D12RHI::CreateViewport(RHIViewportDesc const& desc)
 	return RHIViewportHandle::Create(viewportImpl.release());
 }
 
+RHIShaderHandle PhxEngine::RHI::D3D12::D3D12RHI::CreateShader(ShaderDesc const& desc, Core::Span<const void*> shaderByteCode)
+{
+	// auto shaderImpl = std::make_unique<Shader>(desc, shaderByteCode, shaderByteCode.Size());
+	return nullptr;
+}
+
 void PhxEngine::RHI::D3D12::D3D12Viewport::Initialize()
 {
 	D3D12Adapter* adapter = this->GetParentAdapter();

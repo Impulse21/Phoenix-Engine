@@ -25,4 +25,5 @@ add_definitions(-D_UNICODE)
 add_subdirectory(PhxEngine)
 add_subdirectory(PhxEngine-Runtime)
 add_subdirectory(PhxEngine-Editor)
+add_subdirectory(Examples/BasicTriangle)
 

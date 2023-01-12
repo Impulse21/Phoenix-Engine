@@ -22,7 +22,7 @@ void MeshComponent::CreateRenderData(
 		indexBufferDesc.SizeInBytes = this->GetIndexBufferSizeInBytes();
 		indexBufferDesc.StrideInBytes = sizeof(uint32_t);
 		indexBufferDesc.DebugName = "Index Buffer";
-		this->IndexGpuBuffer = RHI::IGraphicsDevice::Ptr->CreateIndexBuffer(indexBufferDesc);
+		this->IndexGpuBuffer = RHI::IGraphicsDevice::GPtr->CreateIndexBuffer(indexBufferDesc);
 
 		auto offset = indexUploader.SetData(this->Indices.data(), indexBufferDesc.SizeInBytes);
 
@@ -53,7 +53,7 @@ void MeshComponent::CreateRenderData(
 		vertexDesc.SizeInBytes = this->GetVertexBufferSizeInBytes();
 
 		// Is this Needed for Raw Buffer Type
-		this->VertexGpuBuffer = RHI::IGraphicsDevice::Ptr->CreateVertexBuffer(vertexDesc);
+		this->VertexGpuBuffer = RHI::IGraphicsDevice::GPtr->CreateVertexBuffer(vertexDesc);
 
 		std::vector<uint8_t> gpuBufferData(vertexDesc.SizeInBytes);
 		std::memset(gpuBufferData.data(), 0, vertexDesc.SizeInBytes);
@@ -140,7 +140,7 @@ void MeshComponent::CreateRenderData(
 	}
 
 	// Create RT BLAS object
-	if (RHI::IGraphicsDevice::Ptr->CheckCapability(RHI::DeviceCapability::RayTracing))
+	if (RHI::IGraphicsDevice::GPtr->CheckCapability(RHI::DeviceCapability::RayTracing))
 	{
 		this->BlasState = BLASState::Rebuild;
 
@@ -166,7 +166,7 @@ void MeshComponent::CreateRenderData(
 			geometry.Triangles.IndexOffset = surface.IndexOffsetInMesh;
 		}
 
-		this->Blas = RHI::IGraphicsDevice::Ptr->CreateRTAccelerationStructure(rtDesc);
+		this->Blas = RHI::IGraphicsDevice::GPtr->CreateRTAccelerationStructure(rtDesc);
 	}
 }
 

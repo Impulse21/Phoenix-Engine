@@ -1,7 +1,7 @@
 #include "SceneRenderLayer.h"
 #include <PhxEngine/Graphics/ShaderStore.h>
 #include <PhxEngine/Core/Span.h>
-#include <Shaders/ShaderInteropStructures.h>
+#include <PhxEngine/Shaders/ShaderInteropStructures.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
@@ -34,8 +34,8 @@ void SceneRenderLayer::OnAttach()
         &this->m_editorCamera.Forward,
         eyeDir);
 
-    this->m_editorCamera.Width = LayeredApplication::Ptr->GetSpec().WindowWidth;
-    this->m_editorCamera.Height = LayeredApplication::Ptr->GetSpec().WindowHeight;
+    this->m_editorCamera.Width = EngineApp::Ptr->GetSpec().WindowWidth;
+    this->m_editorCamera.Height = EngineApp::Ptr->GetSpec().WindowHeight;
     this->m_editorCamera.FoV = 1.7;
     this->m_editorCamera.UpdateCamera();
 }

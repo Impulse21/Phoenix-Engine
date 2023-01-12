@@ -5,7 +5,7 @@
 #include <PhxEngine/Core/UUID.h>
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Scene/Assets.h>
-#include <Shaders/ShaderInteropStructures.h>
+#include <PhxEngine/Shaders/ShaderInteropStructures.h>
 #include <entt.hpp>
 
 namespace PhxEngine::Scene
@@ -72,18 +72,18 @@ namespace PhxEngine::Scene
 
 		size_t GetNumInstances() const { return this->m_numInstances; }
 		PhxEngine::RHI::BufferHandle GetInstanceBuffer() const { return this->m_instanceGpuBuffer; }
-		PhxEngine::RHI::BufferHandle GetInstanceUploadBuffer() const { return this->m_instanceUploadBuffers[RHI::IGraphicsDevice::Ptr->GetFrameIndex()]; }
+		PhxEngine::RHI::BufferHandle GetInstanceUploadBuffer() const { return this->m_instanceUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
 
 		size_t GetNumGeometryEntries() const { return this->m_numGeometryEntires; }
 		PhxEngine::RHI::BufferHandle GetGeometryBuffer() const { return this->m_geometryGpuBuffer; }
-		PhxEngine::RHI::BufferHandle GetGeometryUploadBuffer() const { return this->m_geometryUploadBuffers[RHI::IGraphicsDevice::Ptr->GetFrameIndex()]; }
+		PhxEngine::RHI::BufferHandle GetGeometryUploadBuffer() const { return this->m_geometryUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
 
 		size_t GetNumMaterialEntries() const { return this->m_numMaterialEntries; }
 		PhxEngine::RHI::BufferHandle GetMaterialBuffer() const { return this->m_materialGpuBuffer; }
-		PhxEngine::RHI::BufferHandle GetMaterialUploadBuffer() const { return this->m_materialUploadBuffers[RHI::IGraphicsDevice::Ptr->GetFrameIndex()]; }
+		PhxEngine::RHI::BufferHandle GetMaterialUploadBuffer() const { return this->m_materialUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
 
 		PhxEngine::RHI::RTAccelerationStructureHandle GetTlas() { return this->m_tlas; }
-		PhxEngine::RHI::BufferHandle GetTlasUploadBuffer() { return this->m_tlasUploadBuffers[RHI::IGraphicsDevice::Ptr->GetFrameIndex()]; }
+		PhxEngine::RHI::BufferHandle GetTlasUploadBuffer() { return this->m_tlasUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
 
 		PhxEngine::RHI::TextureHandle GetEnvMapDepthBuffer() const { return this->m_envMapDepthBuffer; }
 		PhxEngine::RHI::TextureHandle GetEnvMapArray() const { return this->m_envMapArray; }

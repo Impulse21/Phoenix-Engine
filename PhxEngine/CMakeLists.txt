@@ -21,14 +21,13 @@ include(CMakeDependentOption)
 set(extern_folder "PhxEngine/External Libraries")
 
 #-- App
-
-file(GLOB PhxEngine_App_Inc
-	Include/PhxEngine/App/*.h
+file(GLOB PhxEngine_Engine_Inc
+	Include/PhxEngine/Engine/*.h
 )
 
-file(GLOB PhxEngine_App_Src
-    Src/App/*.h
-    Src/App/*.cpp
+file(GLOB PhxEngine_Engine_Src
+    Src/Engine/*.h
+    Src/Engine/*.cpp
 )
 
 #-- Core
@@ -139,8 +138,8 @@ file (GLOB PhxEngine_Shader_CS_Src
 
 
 add_library(PhxEngine STATIC EXCLUDE_FROM_ALL  
-    ${PhxEngine_App_Inc}
-    ${PhxEngine_App_Src}
+    ${PhxEngine_Engine_Inc}
+    ${PhxEngine_Engine_Src}
     ${PhxEngine_Core_Inc}
     ${PhxEngine_Core_Src}
     ${PhxEngine_Graphics_Inc}
@@ -167,7 +166,7 @@ add_library(PhxEngine STATIC EXCLUDE_FROM_ALL
     ${PhxEngine_Src})
 
 source_group("Include"					FILES ${PhxEngine_Inc})
-source_group("Include/App"              FILES ${PhxEngine_App_Inc})
+source_group("Include/Engine"           FILES ${PhxEngine_Engine_Inc})
 source_group("Include/Core"             FILES ${PhxEngine_Core_Inc})
 source_group("Include/Graphics"         FILES ${PhxEngine_Graphics_Inc})
 source_group("Include/RHI"				FILES ${PhxEngine_Graphics_RHI_Inc})
@@ -178,7 +177,7 @@ source_group("Include/Scene"			FILES ${PhxEngine_Scene_Inc})
 source_group("Include/Renderer"			FILES ${PhxEngine_Renderer_Inc})
 
 source_group("Src"						FILES ${PhxEngine_Src})
-source_group("Src/App"                  FILES ${PhxEngine_App_Src})
+source_group("Src/Engine"               FILES ${PhxEngine_Engine_Src})
 source_group("Src/Core"                 FILES ${PhxEngine_Core_Src})
 source_group("Src/Graphics"             FILES ${PhxEngine_Graphics_Src})
 source_group("Src/RHI"					FILES ${PhxEngine_Graphics_RHI_Src})
@@ -280,17 +279,17 @@ add_library(
 target_include_directories(DirectXShaderCompiler INTERFACE "${dxc_SOURCE_DIR}/include")
 target_link_libraries(DirectXShaderCompiler INTERFACE "${dxc_SOURCE_DIR}/lib/x64/dxcompiler.lib")
 set_target_properties(DirectXShaderCompiler  PROPERTIES FOLDER ${extern_folder})
-target_link_libraries(${ProjectName} PUBLIC DirectXShaderCompiler)
+# target_link_libraries(${ProjectName} PUBLIC DirectXShaderCompiler)
 
 # Copy DLLs
-add_custom_command(
-	TARGET ${ProjectName} POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy
-	"${dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll"
-	"${dxc_SOURCE_DIR}/bin/x64/dxil.dll"
-
-	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>
-	DEPENDS DirectXShaderCompiler)
+#add_custom_command(
+#	TARGET ${ProjectName} POST_BUILD
+#	COMMAND ${CMAKE_COMMAND} -E copy
+#	"${dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll"
+#	"${dxc_SOURCE_DIR}/bin/x64/dxil.dll"
+#
+#	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>
+#	DEPENDS DirectXShaderCompiler)
 message("DirectXShaderCompiler fetched")
 
 # PIX

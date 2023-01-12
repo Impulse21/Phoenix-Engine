@@ -9,9 +9,8 @@
 #include "PhxEngine/RHI/PhxRHI.h"
 
 
-// -- New
-#include "PhxEngine/App/Layer.h"
-#include "PhxEngine/App/LayerStack.h"
+#include "PhxEngine/Engine/Layer.h"
+#include "PhxEngine/Engine/LayerStack.h"
 #include "PhxEngine/Core/Span.h"
 #include "PhxEngine/Core/Event.h"
 
@@ -23,10 +22,16 @@ namespace PhxEngine
 	{
 		class IWindow;
 	}
+
 	namespace Graphics
 	{
 		class ShaderStore;
 		class ImGuiRenderer;
+	}
+
+	namespace Renderer
+	{
+		class ShaderCodeLibrary;
 	}
 
 	struct CommandLineArgs
@@ -39,6 +44,7 @@ namespace PhxEngine
 		RHI::GraphicsAPI GraphicsAPI = RHI::GraphicsAPI::Unknown;
 		uint32_t FramesInFlight = 3;
 	};
+
 	struct ApplicationSpecification
 	{
 		std::string Name = "";
@@ -54,16 +60,20 @@ namespace PhxEngine
 		RendererConfig RendererConfig;
 	};
 
-	class LayeredApplication
+	class EngineApp
 	{
 	public:
 		// This Prevets us from having more then one application. This is an okay limitation for now as I don't have a use case.
-		inline static LayeredApplication* Ptr = nullptr;
+		inline static EngineApp* GPtr = nullptr;
 
 	public:
-		LayeredApplication(ApplicationSpecification const& spec);
-		virtual ~LayeredApplication();
+		EngineApp(ApplicationSpecification const& spec);
+		virtual ~EngineApp();
 		
+		void PreInitialize();
+		void Initialize();
+		void Finalize();
+
 		void Run();
 
 		virtual void OnInit() {};
@@ -89,64 +99,25 @@ namespace PhxEngine
 		void Compose();
 
 	private:
-		PhxEngine::RHI::CommandListHandle m_composeCommandList;
-
 		const ApplicationSpecification m_spec;
 		uint64_t m_frameCount = 0;
 
-		std::unique_ptr<Core::IWindow> m_window;
-		std::unique_ptr<Graphics::ShaderStore> m_shaderStore;
-		std::shared_ptr<Graphics::ImGuiRenderer> m_imguiRenderer;
-
+		// Application state
 		LayerStack m_layerStack;
 		bool m_isRunning = true;
 		bool m_isMinimized = false;
 		Core::StopWatch m_stopWatch;
-	};
 
-	class Application
-	{
-	public:
-		virtual void Initialize(PhxEngine::RHI::IGraphicsDevice* graphicsDevice);
-		virtual void Finalize();
+		// Interna systems
+		std::unique_ptr<Core::IWindow> m_window;
+		std::unique_ptr<Graphics::ShaderStore> m_shaderStore;
+		std::shared_ptr<Graphics::ImGuiRenderer> m_imguiRenderer;
 
-		void Run();
-
-		void Tick();
-
-		//void FixedUpdate();
-		void Update(Core::TimeStep deltaTime);
-		void Render();
-		void Compose(PhxEngine::RHI::CommandListHandle cmdList);
-
-		void SetWindow(Core::Platform::WindowHandle windowHandle, bool isFullscreen = false);
-
-	public:
-		PhxEngine::RHI::IGraphicsDevice* GetGraphicsDevice() { return this->m_graphicsDevice; }
-		const Core::Canvas& GetCanvas() const { return this->m_canvas; }
-		uint64_t GetFrameCount() const { return this->m_frameCount; }
-
-	private:
-		bool m_isInitialized;
-		std::atomic_bool m_initializationComplete;
-
-		uint64_t m_frameCount = 0;
-
-		Core::StopWatch m_stopWatch;
-
-		PhxEngine::RHI::IGraphicsDevice* m_graphicsDevice = nullptr;
-		Core::Platform::WindowHandle m_windowHandle = nullptr;
-		Core::Canvas m_canvas;
-
-		// RHI Resources
-		PhxEngine::RHI::CommandListHandle m_composeCommandList;
-		PhxEngine::RHI::CommandListHandle m_beginFrameCommandList;
-
-		std::unique_ptr<Core::FrameProfiler> m_frameProfiler;
-
+		// -- Render Stuff ---
+		RHI::RHIViewportHandle m_viewport;
 	};
 
 	// Defined by client
-	LayeredApplication* CreateApplication(int argc, char** argv);
+	EngineApp* CreateApplication(int argc, char** argv);
 }
 

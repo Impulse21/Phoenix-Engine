@@ -33,14 +33,14 @@ namespace PhxEngine::Renderer
 
 		void Free()
 		{
-			RHI::IGraphicsDevice::Ptr->DeleteBuffer(this->UploadBuffer);
+			RHI::IGraphicsDevice::GPtr->DeleteBuffer(this->UploadBuffer);
 		}
 	};
 
 	static ResourceUpload CreateResourceUpload(uint64_t sizeInBytes, std::string const& debugName = "Resource Upload")
 	{
 		ResourceUpload retVal = {};
-		retVal.UploadBuffer = RHI::IGraphicsDevice::Ptr->CreateBuffer(
+		retVal.UploadBuffer = RHI::IGraphicsDevice::GPtr->CreateBuffer(
 			{
 				.MiscFlags = RHI::BufferMiscFlags::Raw,
 				.Usage = RHI::Usage::Upload,
@@ -51,7 +51,7 @@ namespace PhxEngine::Renderer
 				.DebugName = "Resource Upload",
 			});
 
-		retVal.Data = RHI::IGraphicsDevice::Ptr->GetBufferMappedData(retVal.UploadBuffer);
+		retVal.Data = RHI::IGraphicsDevice::GPtr->GetBufferMappedData(retVal.UploadBuffer);
 		return retVal;
 	}
 
@@ -99,7 +99,7 @@ namespace PhxEngine::Renderer
 	{
 	public:
 		// Global pointer set by intializer
-		inline static IRenderer* Ptr = nullptr;
+		inline static IRenderer* GPtr = nullptr;
 
 	public:
 		virtual ~IRenderer() = default;

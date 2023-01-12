@@ -231,9 +231,9 @@ namespace PhxEngine::RHI
         // Create a wrapper around a raw object while keeping the object's reference count unchanged
         static RefCountPtr<T> Create(T* other)
         {
-            RefCountPtr<T> Ptr;
-            Ptr.Attach(other);
-            return Ptr;
+            RefCountPtr<T> GPtr;
+            GPtr.Attach(other);
+            return GPtr;
         }
 
         unsigned long Reset()

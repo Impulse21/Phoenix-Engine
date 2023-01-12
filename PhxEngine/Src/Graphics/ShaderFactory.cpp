@@ -1,7 +1,7 @@
 #include "phxpch.h"
 #include "PhxEngine/Graphics/ShaderFactory.h"
 
-#include "ShaderCompiler.h"
+// #include "ShaderCompiler.h"
 #include "PhxEngine/Core/Helpers.h"
 
 using namespace PhxEngine::Graphics;
@@ -20,6 +20,7 @@ PhxEngine::Graphics::ShaderFactory::ShaderFactory(
 
 ShaderHandle PhxEngine::Graphics::ShaderFactory::LoadShader(ShaderStage stage, std::string const& shaderFilename)
 {
+	/*
 	std::string shaderPath = this->m_shaderPath + shaderFilename;
 	std::filesystem::path absoluteFilePath = std::filesystem::absolute(shaderPath);
 
@@ -75,6 +76,8 @@ ShaderHandle PhxEngine::Graphics::ShaderFactory::LoadShader(ShaderStage stage, s
 	desc.Stage = stage;
 
 	return this->m_graphicsDevice->CreateShader(desc, buffer.data(), buffer.size());
+	*/
+	return nullptr;
 }
 
 bool PhxEngine::Graphics::ShaderFactory::IsShaderOutdated(std::filesystem::path const& shaderFilename)

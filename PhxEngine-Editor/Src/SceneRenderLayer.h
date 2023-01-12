@@ -1,7 +1,7 @@
 #pragma once
 
-#include <PhxEngine/App/Layer.h>
-#include <PhxEngine/App/Application.h>
+#include <PhxEngine/Engine/Layer.h>
+#include <PhxEngine/Engine/EngineApp.h>
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Scene/Components.h>
 #include <PhxEngine/Scene/Scene.h>
