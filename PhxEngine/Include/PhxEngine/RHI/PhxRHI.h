@@ -1342,23 +1342,26 @@ namespace PhxEngine::RHI
         extern IGraphicsDevice* CreateDx12Device();
     }
 
-    class IRHI
+
+    class IPhxRHI
     {
     public:
         virtual void Initialize() = 0;
         virtual void Finalize() = 0;
 
         virtual RHIViewportHandle CreateViewport(RHIViewportDesc const& desc) = 0;
-        virtual RHIShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<const void*> shaderByteCode) = 0;
+        virtual RHIShaderHandle CreateShader(RHIShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) = 0;
 
+        virtual IRHIFrameRenderCtx* BeginFrameRenderContext(RHIViewportHandle viewport) = 0;
+        virtual void FinishAndPresetFrameRenderContext(IRHIFrameRenderCtx* context) = 0;
     public:
-        virtual ~IRHI() = default;
+        virtual ~IPhxRHI() = default;
 
     };
 
-    extern IRHI* GRHI;
+    extern IPhxRHI* GRHI;
 
-    std::unique_ptr<IRHI> PlatformCreateRHI();
+    std::unique_ptr<IPhxRHI> PlatformCreateRHI();
 
     void RHIInitialize();
     void RHIFinalize();

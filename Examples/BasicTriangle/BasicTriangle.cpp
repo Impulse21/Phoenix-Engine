@@ -1,5 +1,10 @@
 #include <PhxEngine/PhxEngine.h>
  
+#include <PhxEngine/Graphics/ShaderFactory.h>
+#include <PhxEngine/Core/Helpers.h>
+#include <PhxEngine/Core/Platform.h>
+#include <PhxEngine/Core/Span.h>
+
 using namespace PhxEngine;
 
 class BasicTriangle : public EngineRenderPass
@@ -14,8 +19,66 @@ public:
 
     bool Initialize()
     {
+        std::filesystem::path appShaderPath = Core::Platform::GetExcecutableDir() / "shaders/basic_triangle";
+        std::vector<uint8_t> shaderByteCode;
+        {
+            std::filesystem::path vertexShaderFile = appShaderPath / "BasicTriangle.cso";
+            PhxEngine::Core::Helpers::FileRead(vertexShaderFile.generic_string(), shaderByteCode);
+
+            Core::Span span(shaderByteCode);
+            this->m_vertexShader = this->GetRoot()->GetRHI()->CreateShader(
+                {
+                    .Stage = RHI::ShaderStage::Vertex,
+                    .EntryPoint = "main_vs",
+                    .DebugName = "BasicTriangleVS",
+                },
+                Core::Span(shaderByteCode));
+        }
+
+        shaderByteCode.clear();
+        {
+            std::filesystem::path vertexShaderFile = appShaderPath / "BasicTriangle.cso";
+            PhxEngine::Core::Helpers::FileRead(vertexShaderFile.generic_string(), shaderByteCode);
+
+            Core::Span span(shaderByteCode);
+            this->m_pixelShader = this->GetRoot()->GetRHI()->CreateShader(
+                {
+                    .Stage = RHI::ShaderStage::Pixel,
+                    .EntryPoint = "main_ps",
+                    .DebugName = "BasicTrianglePS",
+                },
+                Core::Span(shaderByteCode));
+        }
+
         return true;
     }
+
+    void Render(RHI::IRHIFrameRenderCtx* frameRenderer) override
+    {
+        if (!this->m_pipeline)
+        {
+            // TODO: Create Pipeline
+        }
+
+        RHI::IRHICommandList* commandList = frameRenderer->BeginCommandRecording();
+
+        {
+            auto _ = commandList->BeginScopedMarker("Render Triagnle");
+            commandList->BeginRenderPassBackBuffer();
+
+            commandList->SetGraphicsPipeline(this->m_pipeline);
+            commandList->Draw(3);
+
+            commandList->EndRenderPass();
+        }
+
+        frameRenderer->SubmitCommands({ commandList });
+    }
+
+private:
+    RHI::RHIShaderHandle m_vertexShader;
+    RHI::RHIShaderHandle m_pixelShader;
+    RHI::RHIGraphicsPipelineHandle m_pipeline;
 };
 
 #ifdef WIN32

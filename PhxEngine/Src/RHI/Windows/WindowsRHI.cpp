@@ -6,7 +6,7 @@
 using namespace PhxEngine::RHI;
 
 
-std::unique_ptr<IRHI> PhxEngine::RHI::PlatformCreateRHI()
+std::unique_ptr<IPhxRHI> PhxEngine::RHI::PlatformCreateRHI()
 {
 	LOG_CORE_INFO("Initializing RHI on Windows platform");
 

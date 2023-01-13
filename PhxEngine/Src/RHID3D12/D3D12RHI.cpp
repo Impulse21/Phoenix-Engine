@@ -36,12 +36,13 @@ namespace
 
 bool D3D12RHIFactory::IsSupported(FeatureLevel requestedFeatureLevel)
 {
+    /*
     if (!Platform::VerifyWindowsVersion(10, 0, 15063))
     {
         LOG_CORE_WARN("Current windows version doesn't support D3D12. Update to 1703 or newer to for D3D12 support.");
         return false;
     }
-
+    */
     if (!this->m_choosenAdapter)
     {
         this->FindAdapter();
@@ -51,7 +52,7 @@ bool D3D12RHIFactory::IsSupported(FeatureLevel requestedFeatureLevel)
         && IsAdapterSupported(this->m_choosenAdapter, requestedFeatureLevel);
 }
 
-std::unique_ptr<PhxEngine::RHI::IRHI> PhxEngine::RHI::D3D12::D3D12RHIFactory::CreateRHI()
+std::unique_ptr<PhxEngine::RHI::IPhxRHI> PhxEngine::RHI::D3D12::D3D12RHIFactory::CreateRHI()
 {
     if (!this->m_choosenAdapter)
     {

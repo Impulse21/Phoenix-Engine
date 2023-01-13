@@ -62,7 +62,6 @@ void PhxEngine::PhxEngineRoot::Run()
 		{
 			this->Update(deltaTime);
 			this->Render();
-			this->Present();
 		}
 
 		this->m_profile.UpdateAverageFrameTime(deltaTime.GetMilliseconds());
@@ -74,20 +73,34 @@ void PhxEngine::PhxEngineRoot::Run()
 
 void PhxEngine::PhxEngineRoot::AddPassToBack(EngineRenderPass* pass)
 {
+	this->m_renderPasses.push_back(pass);
 }
 
 void PhxEngine::PhxEngineRoot::RemovePass(EngineRenderPass* pass)
 {
+	// Doesn't compress the vector, Not an issue right now as I don't have a use case for it yet.
+	// Consider using a std::list.
+	auto itr = std::find(this->m_renderPasses.begin(), this->m_renderPasses.end(), pass);
+	if (itr != this->m_renderPasses.end())
+	{
+		this->m_renderPasses.erase(itr);
+	}
 }
 
 void PhxEngine::PhxEngineRoot::Update(TimeStep const& deltaTime)
 {
+	for (EngineRenderPass* renderPass : this->m_renderPasses)
+	{
+		renderPass->Update(deltaTime);
+	}
 }
 
 void PhxEngine::PhxEngineRoot::Render()
 {
-}
+	RHI::IRHIFrameRenderContext* frameRenderContext = this->GetRHI()->BeginFrameRenderContext(this->m_viewport);
 
-void PhxEngine::PhxEngineRoot::Present()
-{
+	for (EngineRenderPass* renderPass : this->m_renderPasses)
+	{
+		renderPass->Render(frameRenderContext);
+	}
 }

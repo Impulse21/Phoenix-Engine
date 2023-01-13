@@ -6,7 +6,7 @@
 namespace PhxEngine::RHI::D3D12
 {
 	class D3D12Adapter;
-	class D3D12RHI : public IRHI
+	class D3D12RHI : public IPhxRHI
 	{
 		static D3D12RHI* Singleton;
 
@@ -34,7 +34,7 @@ namespace PhxEngine::RHI::D3D12
 	public:
 		bool IsSupported() override { return this->IsSupported(FeatureLevel::SM6); }
 		bool IsSupported(FeatureLevel requestedFeatureLevel) override;
-		std::unique_ptr<PhxEngine::RHI::IRHI> CreateRHI() override;
+		std::unique_ptr<PhxEngine::RHI::IPhxRHI> CreateRHI() override;
 
 	private:
 		void FindAdapter();

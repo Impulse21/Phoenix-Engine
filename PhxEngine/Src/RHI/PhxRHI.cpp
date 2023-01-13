@@ -5,7 +5,7 @@
 using namespace PhxEngine::RHI;
 
 // Global
-IRHI* PhxEngine::RHI::GRHI = nullptr;
+IPhxRHI* PhxEngine::RHI::GRHI = nullptr;
 
 void PhxEngine::RHI::RHIInitialize()
 {
@@ -18,7 +18,7 @@ void PhxEngine::RHI::RHIInitialize()
 	// Call Platform specific iniitalization
 	LOG_CORE_WARN("Initializing RHI");
 
-	std::unique_ptr<IRHI> safeGRHIPtr = PlatformCreateRHI();
+	std::unique_ptr<IPhxRHI> safeGRHIPtr = PlatformCreateRHI();
 
 	if (!safeGRHIPtr)
 	{

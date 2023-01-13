@@ -12,7 +12,7 @@ namespace PhxEngine::RHI
 		virtual bool IsSupported() = 0;
 		virtual bool IsSupported(FeatureLevel requestedFeatureLevel) = 0;
 
-		virtual std::unique_ptr<IRHI> CreateRHI() = 0;
+		virtual std::unique_ptr<IPhxRHI> CreateRHI() = 0;
 
 		virtual ~IRHIFactory() {};
 	};

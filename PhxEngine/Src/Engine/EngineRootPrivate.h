@@ -26,12 +26,11 @@ namespace PhxEngine
 		void AddPassToBack(EngineRenderPass* pass) override;
 		void RemovePass(EngineRenderPass* pass) override;
 
-		RHI::IRHI* GetRHI() override { return this->m_rhi.get(); }
+		RHI::IPhxRHI* GetRHI() override { return this->m_rhi.get(); }
 
 	private:
 		void Update(Core::TimeStep const& deltaTime);
 		void Render();
-		void Present();
 
 	private:
 		Core::StopWatch m_frameTimer; // TODO: Move to a profiler and scope
@@ -42,8 +41,9 @@ namespace PhxEngine
 
 		// Engine Core Systems
 		// Move logging system here.
-		std::unique_ptr<RHI::IRHI> m_rhi;
+		std::unique_ptr<RHI::IPhxRHI> m_rhi;
 		std::unique_ptr<Core::IWindow> m_window;
+		RHI::RHIViewportHandle m_viewport;
 		bool m_windowIsVisibile;
 		uint64_t m_frameCount;
 

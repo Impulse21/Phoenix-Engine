@@ -13,6 +13,15 @@ namespace PhxEngine::RHI
 {
 
 #pragma region Enums
+    enum class RHICommandQueueType : uint8_t
+    {
+        Graphics = 0,
+        Compute,
+        Copy,
+
+        Count
+    };
+
     enum class ShaderStage : uint16_t
     {
         None = 0x0000,
@@ -203,6 +212,7 @@ namespace PhxEngine::RHI
     struct RHIShaderDesc
     {
         ShaderStage Stage = ShaderStage::None;
+        std::string EntryPoint = "main";
         std::string DebugName = "";
     };
 
@@ -216,4 +226,84 @@ namespace PhxEngine::RHI
     };
 
     using RHIShaderHandle = RefCountPtr<IRHIShader>;
+
+    class RHIScopedMarker
+    {
+    public:
+        RHIScopedMarker(ICommandList* context)
+            : m_commandList(context) {}
+
+        ~RHIScopedMarker() { this->m_commandList->EndMarker(); }
+
+    private:
+        ICommandList* m_commandList;
+    }; 
+
+    struct RHIGraphicsPipelineDesc
+    {
+        PrimitiveType PrimType = PrimitiveType::TriangleList;
+        InputLayoutHandle InputLayout;
+
+        IRootSignatureBuilder* RootSignatureBuilder = nullptr;
+        ShaderParameterLayout ShaderParameters;
+
+        RHIShaderHandle VertexShader;
+        RHIShaderHandle HullShader;
+        RHIShaderHandle DomainShader;
+        RHIShaderHandle GeometryShader;
+        RHIShaderHandle PixelShader;
+
+        BlendRenderState BlendRenderState = {};
+        DepthStencilRenderState DepthStencilRenderState = {};
+        RasterRenderState RasterRenderState = {};
+
+        std::vector<FormatType> RtvFormats;
+        std::optional<FormatType> DsvFormat;
+
+        uint32_t SampleCount = 1;
+        uint32_t SampleQuality = 0;
+    };
+
+    class IRHIGraphicsPipeline : public IResource
+    {
+    public:
+        virtual ~IRHIGraphicsPipeline() = default;
+
+        virtual const GraphicsPSODesc& GetDesc() const = 0;
+    };
+
+    using RHIGraphicsPipelineHandle = std::shared_ptr<IRHIGraphicsPipeline>;
+
+    class IRHICommandList
+    {
+    public:
+        virtual ~IRHICommandList() = default;
+
+        virtual RHIShaderHandle BeginScopedMarker(std::string name) = 0;
+        virtual void BeginMarker(std::string name) = 0;
+        virtual void EndMarker() = 0;
+
+        virtual void BeginRenderPassBackBuffer() = 0;
+        virtual void BeginRenderPass(RenderPassHandle renderPass) = 0;
+        virtual void EndRenderPass() = 0;
+
+        virtual void SetGraphicsPipeline(RHIGraphicsPipelineHandle pipeline) = 0;
+
+        virtual void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t startVertex = 0, uint32_t startInstance = 0) = 0;
+        virtual void DrawIndexed(
+            uint32_t indexCount,
+            uint32_t instanceCount = 1,
+            uint32_t startIndex = 0,
+            int32_t baseVertex = 0,
+            uint32_t startInstance = 0) = 0;
+    };
+
+    class IRHIFrameRenderCtx
+    {
+    public:
+        virtual ~IRHIFrameRenderCtx() = default;
+
+        virtual IRHICommandList* BeginCommandRecording(RHICommandQueueType QueueType = RHICommandQueueType::Graphics) = 0;
+        virtual uint64_t SubmitCommands(Core::Span<IRHICommandList*> commands) = 0;
+    };
 }
