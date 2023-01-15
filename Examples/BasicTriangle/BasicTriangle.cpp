@@ -19,7 +19,7 @@ public:
 
     bool Initialize()
     {
-        std::filesystem::path appShaderPath = Core::Platform::GetExcecutableDir() / "shaders/basic_triangle";
+        std::filesystem::path appShaderPath = Core::Platform::GetExcecutableDir() / "shaders/BasicTriangle/dxil";
         std::vector<uint8_t> shaderByteCode;
         {
             std::filesystem::path vertexShaderFile = appShaderPath / "BasicTriangle.cso";
@@ -57,7 +57,15 @@ public:
     {
         if (!this->m_pipeline)
         {
-            // TODO: Create Pipeline
+            this->m_pipeline = this->GetRoot()->GetRHI()->CreateGraphicsPipeline(
+                {
+                    .VertexShader = this->m_vertexShader,
+                    .PixelShader = this->m_pixelShader,
+                    .DepthStencilRenderState = {
+                        .DepthTestEnable = false
+                    },
+                    .RenderTargets = { frameRenderer->GetBackBuffer() },
+                });
         }
 
         RHI::IRHICommandList* commandList = frameRenderer->BeginCommandRecording();

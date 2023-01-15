@@ -1,5 +1,7 @@
 #pragma once
 
+#include <filesystem>
+
 #ifdef _WIN32
 
 #define PHX_PLATFORM_WINDOWS_DESKTOP

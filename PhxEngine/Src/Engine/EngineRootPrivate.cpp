@@ -97,7 +97,7 @@ void PhxEngine::PhxEngineRoot::Update(TimeStep const& deltaTime)
 
 void PhxEngine::PhxEngineRoot::Render()
 {
-	RHI::IRHIFrameRenderContext* frameRenderContext = this->GetRHI()->BeginFrameRenderContext(this->m_viewport);
+	RHI::IRHIFrameRenderCtx* frameRenderContext = this->GetRHI()->BeginFrameRenderContext(this->m_viewport);
 
 	for (EngineRenderPass* renderPass : this->m_renderPasses)
 	{

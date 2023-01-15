@@ -12,6 +12,19 @@
 namespace PhxEngine::RHI
 {
 
+    typedef uint32_t DescriptorIndex;
+
+    static constexpr DescriptorIndex cInvalidDescriptorIndex = ~0u;
+
+    static constexpr uint32_t cMaxRenderTargets = 8;
+    static constexpr uint32_t cMaxViewports = 16;
+    static constexpr uint32_t cMaxVertexAttributes = 16;
+    static constexpr uint32_t cMaxBindingLayouts = 5;
+    static constexpr uint32_t cMaxBindingsPerLayout = 128;
+    static constexpr uint32_t cMaxVolatileConstantBuffersPerLayout = 6;
+    static constexpr uint32_t cMaxVolatileConstantBuffers = 32;
+    static constexpr uint32_t cMaxPushConstantSize = 128;      // D3D12: root signature is 256 bytes max., Vulkan: 128 bytes of push constants guaranteed
+
 #pragma region Enums
     enum class RHICommandQueueType : uint8_t
     {
@@ -20,6 +33,18 @@ namespace PhxEngine::RHI
         Copy,
 
         Count
+    };
+
+    enum class RHIPrimitiveType : uint8_t
+    {
+        PointList,
+        LineList,
+        TriangleList,
+        TriangleStrip,
+        TriangleFan,
+        TriangleListWithAdjacency,
+        TriangleStripWithAdjacency,
+        PatchList
     };
 
     enum class ShaderStage : uint16_t
@@ -49,7 +74,7 @@ namespace PhxEngine::RHI
     };
     PHXRHI_ENUM_CLASS_FLAG_OPERATORS(ShaderStage)
 
-    enum class FormatType : uint8_t
+    enum class RHIFormat : uint8_t
     {
         UNKNOWN = 0,
         R8_UINT,
@@ -124,48 +149,165 @@ namespace PhxEngine::RHI
 
         COUNT,
     };
+
+    enum class RHIBindingFlags
+    {
+        None = 0,
+        VertexBuffer = 1 << 0,
+        IndexBuffer = 1 << 1,
+        ConstantBuffer = 1 << 2,
+        ShaderResource = 1 << 3,
+        RenderTarget = 1 << 4,
+        DepthStencil = 1 << 5,
+        UnorderedAccess = 1 << 6,
+        ShadingRate = 1 << 7,
+    };
+    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(RHIBindingFlags);
+
+    enum class RHITextureDimension : uint8_t
+    {
+        Unknown,
+        Texture1D,
+        Texture1DArray,
+        Texture2D,
+        Texture2DArray,
+        TextureCube,
+        TextureCubeArray,
+        Texture2DMS,
+        Texture2DMSArray,
+        Texture3D
+    };
+
+    enum class RHIResourceStates : uint32_t
+    {
+        Unknown = 0,
+        Common = 1 << 0,
+        ConstantBuffer = 1 << 1,
+        VertexBuffer = 1 << 2,
+        IndexGpuBuffer = 1 << 3,
+        IndirectArgument = 1 << 4,
+        ShaderResource = 1 << 5,
+        UnorderedAccess = 1 << 6,
+        RenderTarget = 1 << 7,
+        DepthWrite = 1 << 8,
+        DepthRead = 1 << 9,
+        StreamOut = 1 << 10,
+        CopyDest = 1 << 11,
+        CopySource = 1 << 12,
+        ResolveDest = 1 << 13,
+        ResolveSource = 1 << 14,
+        Present = 1 << 15,
+        AccelStructRead = 1 << 16,
+        AccelStructWrite = 1 << 17,
+        AccelStructBuildInput = 1 << 18,
+        AccelStructBuildBlas = 1 << 19,
+        ShadingRateSurface = 1 << 20,
+        GenericRead = 1 << 21,
+    };
+    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(RHIResourceStates)
+
+    enum class RHISubresouceType
+    {
+        SRV,
+        UAV,
+        RTV,
+        DSV,
+    };
+
+    enum class RHIBlendFactor : uint8_t
+    {
+        Zero = 1,
+        One = 2,
+        SrcColor = 3,
+        InvSrcColor = 4,
+        SrcAlpha = 5,
+        InvSrcAlpha = 6,
+        DstAlpha = 7,
+        InvDstAlpha = 8,
+        DstColor = 9,
+        InvDstColor = 10,
+        SrcAlphaSaturate = 11,
+        ConstantColor = 14,
+        InvConstantColor = 15,
+        Src1Color = 16,
+        InvSrc1Color = 17,
+        Src1Alpha = 18,
+        InvSrc1Alpha = 19,
+
+        // Vulkan names
+        OneMinusSrcColor = InvSrcColor,
+        OneMinusSrcAlpha = InvSrcAlpha,
+        OneMinusDstAlpha = InvDstAlpha,
+        OneMinusDstColor = InvDstColor,
+        OneMinusConstantColor = InvConstantColor,
+        OneMinusSrc1Color = InvSrc1Color,
+        OneMinusSrc1Alpha = InvSrc1Alpha,
+    };
+
+    enum class RHIBlendOp : uint8_t
+    {
+        Add = 1,
+        Subrtact = 2,
+        ReverseSubtract = 3,
+        Min = 4,
+        Max = 5
+    };
+
+    enum class RHIColorMask : uint8_t
+    {
+        // These values are equal to their counterparts in DX11, DX12, and Vulkan.
+        Red = 1,
+        Green = 2,
+        Blue = 4,
+        Alpha = 8,
+        All = 0xF
+    };
+
+    enum class RHIStencilOp : uint8_t
+    {
+        Keep = 1,
+        Zero = 2,
+        Replace = 3,
+        IncrementAndClamp = 4,
+        DecrementAndClamp = 5,
+        Invert = 6,
+        IncrementAndWrap = 7,
+        DecrementAndWrap = 8
+    };
+
+    enum class RHIComparisonFunc : uint8_t
+    {
+        Never = 1,
+        Less = 2,
+        Equal = 3,
+        LessOrEqual = 4,
+        Greater = 5,
+        NotEqual = 6,
+        GreaterOrEqual = 7,
+        Always = 8
+    };
+
+    enum class RHIRasterFillMode : uint8_t
+    {
+        Solid,
+        Wireframe,
+
+        // Vulkan names
+        Fill = Solid,
+        Line = Wireframe
+    };
+
+    enum class RHIRasterCullMode : uint8_t
+    {
+        Back,
+        Front,
+        None
+    };
+
 #pragma endregion
-
-    struct Color
-    {
-        float R;
-        float G;
-        float B;
-        float A;
-
-        Color()
-            : R(0.f), G(0.f), B(0.f), A(0.f)
-        { }
-
-        Color(float c)
-            : R(c), G(c), B(c), A(c)
-        { }
-
-        Color(float r, float g, float b, float a)
-            : R(r), G(g), B(b), A(a) { }
-
-        bool operator ==(const Color& other) const { return R == other.R && G == other.G && B == other.B && A == other.A; }
-        bool operator !=(const Color& other) const { return !(*this == other); }
-    };
-
-    union ClearValue
-    {
-        // TODO: Change to be a flat array
-        // float Colour[4];
-        RHI::Color Colour;
-        struct ClearDepthStencil
-        {
-            float Depth;
-            uint32_t Stencil;
-        } DepthStencil;
-    };
 
     class IRHIResource
     {
-    protected:
-        IRHIResource() = default;
-        virtual ~IRHIResource() = default;
-
     public:
         virtual unsigned long AddRef() = 0;
         virtual unsigned long Release() = 0;
@@ -175,6 +317,61 @@ namespace PhxEngine::RHI
         IRHIResource(const IRHIResource&&) = delete;
         IRHIResource& operator=(const IRHIResource&) = delete;
         IRHIResource& operator=(const IRHIResource&&) = delete;
+
+    protected:
+        IRHIResource() = default;
+        virtual ~IRHIResource() = default;
+    };
+
+    struct RHIColor
+    {
+        float R;
+        float G;
+        float B;
+        float A;
+
+        RHIColor()
+            : R(0.f), G(0.f), B(0.f), A(0.f)
+        { }
+
+        RHIColor(float c)
+            : R(c), G(c), B(c), A(c)
+        { }
+
+        RHIColor(float r, float g, float b, float a)
+            : R(r), G(g), B(b), A(a) { }
+
+        bool operator ==(const RHIColor& other) const { return R == other.R && G == other.G && B == other.B && A == other.A; }
+        bool operator !=(const RHIColor& other) const { return !(*this == other); }
+    };
+
+    union RHIClearValue
+    {
+        // TODO: Change to be a flat array
+        // float Colour[4];
+        RHIColor Colour;
+        struct ClearDepthStencil
+        {
+            float Depth;
+            uint32_t Stencil;
+        } DepthStencil;
+    };
+
+    class IRHIRHIResource
+    {
+    protected:
+        IRHIRHIResource() = default;
+        virtual ~IRHIRHIResource() = default;
+
+    public:
+        virtual unsigned long AddRef() = 0;
+        virtual unsigned long Release() = 0;
+
+        // Non-copyable and non-movable
+        IRHIRHIResource(const IRHIRHIResource&) = delete;
+        IRHIRHIResource(const IRHIRHIResource&&) = delete;
+        IRHIRHIResource& operator=(const IRHIRHIResource&) = delete;
+        IRHIRHIResource& operator=(const IRHIRHIResource&&) = delete;
     };
 
 
@@ -184,10 +381,10 @@ namespace PhxEngine::RHI
         uint32_t Width;
         uint32_t Height;
         uint32_t BufferCount = 3;
-        FormatType Format = FormatType::UNKNOWN;
+        RHIFormat Format = RHIFormat::UNKNOWN;
         bool VSync = false;
         bool EnableHDR = false;
-        ClearValue OptmizedClearValue =
+        RHIClearValue OptmizedClearValue =
         {
             .Colour =
             {
@@ -199,7 +396,7 @@ namespace PhxEngine::RHI
         };
     };
 
-    class IRHIViewport : public IRHIResource
+    class IRHIViewport : public IRHIRHIResource
     {
     public:
         virtual const RHIViewportDesc& GetDesc() const = 0;
@@ -216,7 +413,7 @@ namespace PhxEngine::RHI
         std::string DebugName = "";
     };
 
-    class IRHIShader : public IRHIResource
+    class IRHIShader : public IRHIRHIResource
     {
     public:
         virtual ~IRHIShader() = default;
@@ -227,25 +424,108 @@ namespace PhxEngine::RHI
 
     using RHIShaderHandle = RefCountPtr<IRHIShader>;
 
-    class RHIScopedMarker
+    struct RHITextureDesc
+    {
+        RHIBindingFlags BindingFlags = RHIBindingFlags::ShaderResource;
+        RHITextureDimension Dimension = RHITextureDimension::Unknown;
+        RHIResourceStates InitialState = RHIResourceStates::Common;
+
+        RHIFormat Format = RHIFormat::UNKNOWN;
+
+        uint32_t Width;
+        uint32_t Height;
+
+        union
+        {
+            uint16_t ArraySize = 1;
+            uint16_t Depth;
+        };
+
+        uint16_t MipLevels = 1;
+
+        RHIClearValue OptmizedClearValue = {};
+        std::string DebugName;
+    };
+
+    class IRHITexture
     {
     public:
-        RHIScopedMarker(ICommandList* context)
-            : m_commandList(context) {}
+        virtual RHITextureDesc& GetDesc() const = 0;
 
-        ~RHIScopedMarker() { this->m_commandList->EndMarker(); }
+        virtual ~IRHITexture() = default;
+    };
+    using RHITextureHandle = RefCountPtr<IRHITexture>;
 
-    private:
-        ICommandList* m_commandList;
-    }; 
+#pragma region PipelineStateDesc
+    // -- Pipeline State objects ---
+    struct RHIBlendRenderState
+    {
+        struct RenderTarget
+        {
+            bool        BlendEnable = false;
+            RHIBlendFactor SrcBlend = RHIBlendFactor::One;
+            RHIBlendFactor DestBlend = RHIBlendFactor::Zero;
+            RHIBlendOp    BlendOp = RHIBlendOp::Add;
+            RHIBlendFactor SrcBlendAlpha = RHIBlendFactor::One;
+            RHIBlendFactor DestBlendAlpha = RHIBlendFactor::Zero;
+            RHIBlendOp    BlendOpAlpha = RHIBlendOp::Add;
+            RHIColorMask   ColorWriteMask = RHIColorMask::All;
+        };
+
+        RenderTarget Targets[cMaxRenderTargets];
+        bool alphaToCoverageEnable = false;
+    };
+
+    struct RHIDepthStencilRenderState
+    {
+        struct StencilOpDesc
+        {
+            RHIStencilOp FailOp = RHIStencilOp::Keep;
+            RHIStencilOp DepthFailOp = RHIStencilOp::Keep;
+            RHIStencilOp PassOp = RHIStencilOp::Keep;
+            RHIComparisonFunc StencilFunc = RHIComparisonFunc::Always;
+
+            constexpr StencilOpDesc& setFailOp(RHIStencilOp value) { this->FailOp = value; return *this; }
+            constexpr StencilOpDesc& setDepthFailOp(RHIStencilOp value) { this->DepthFailOp = value; return *this; }
+            constexpr StencilOpDesc& setPassOp(RHIStencilOp value) { this->PassOp = value; return *this; }
+            constexpr StencilOpDesc& setStencilFunc(RHIComparisonFunc value) { this->StencilFunc = value; return *this; }
+        };
+
+        bool            DepthTestEnable = true;
+        bool            DepthWriteEnable = true;
+        RHIComparisonFunc  DepthFunc = RHIComparisonFunc::Less;
+        bool            StencilEnable = false;
+        uint8_t         StencilReadMask = 0xff;
+        uint8_t         StencilWriteMask = 0xff;
+        uint8_t         stencilRefValue = 0;
+        StencilOpDesc   FrontFaceStencil;
+        StencilOpDesc   BackFaceStencil;
+    };
+
+    struct RHIRasterRenderState
+    {
+        RHIRasterFillMode FillMode = RHIRasterFillMode::Solid;
+        RHIRasterCullMode CullMode = RHIRasterCullMode::Back;
+        bool FrontCounterClockwise = false;
+        bool DepthClipEnable = false;
+        bool ScissorEnable = false;
+        bool MultisampleEnable = false;
+        bool AntialiasedLineEnable = false;
+        int DepthBias = 0;
+        float DepthBiasClamp = 0.f;
+        float SlopeScaledDepthBias = 0.f;
+
+        uint8_t ForcedSampleCount = 0;
+        bool programmableSamplePositionsEnable = false;
+        bool ConservativeRasterEnable = false;
+        bool quadFillEnable = false;
+        char samplePositionsX[16]{};
+        char samplePositionsY[16]{};
+    };
 
     struct RHIGraphicsPipelineDesc
     {
-        PrimitiveType PrimType = PrimitiveType::TriangleList;
-        InputLayoutHandle InputLayout;
-
-        IRootSignatureBuilder* RootSignatureBuilder = nullptr;
-        ShaderParameterLayout ShaderParameters;
+        RHIPrimitiveType PrimType = RHIPrimitiveType::TriangleList;
 
         RHIShaderHandle VertexShader;
         RHIShaderHandle HullShader;
@@ -253,26 +533,78 @@ namespace PhxEngine::RHI
         RHIShaderHandle GeometryShader;
         RHIShaderHandle PixelShader;
 
-        BlendRenderState BlendRenderState = {};
-        DepthStencilRenderState DepthStencilRenderState = {};
-        RasterRenderState RasterRenderState = {};
+        RHIBlendRenderState BlendRenderState = {};
+        RHIDepthStencilRenderState DepthStencilRenderState = {};
+        RHIRasterRenderState RasterRenderState = {};
 
-        std::vector<FormatType> RtvFormats;
-        std::optional<FormatType> DsvFormat;
+        Core::Span<RHITextureHandle> RenderTargets;
+        RHITextureHandle DepthStencilTexture;
 
         uint32_t SampleCount = 1;
         uint32_t SampleQuality = 0;
     };
+    // -- Pipeline State Objects End ---
+#pragma endregion
 
-    class IRHIGraphicsPipeline : public IResource
+    class IRHIGraphicsPipeline : public IRHIResource
     {
     public:
         virtual ~IRHIGraphicsPipeline() = default;
 
-        virtual const GraphicsPSODesc& GetDesc() const = 0;
+        virtual const RHIGraphicsPipelineDesc& GetDesc() const = 0;
     };
 
     using RHIGraphicsPipelineHandle = std::shared_ptr<IRHIGraphicsPipeline>;
+    
+    struct RHIRenderPassDesc
+    {
+        struct RenderPassAttachment
+        {
+            enum class Type
+            {
+                RenderTarget,
+                DepthStencil,
+            } Type = Type::RenderTarget;
+
+            enum class LoadOpType
+            {
+                Load,
+                Clear,
+                DontCare,
+            } LoadOp = LoadOpType::Load;
+
+            TextureHandle Texture;
+            int Subresource = -1;
+
+            enum class StoreOpType
+            {
+                Store,
+                DontCare,
+            } StoreOp = StoreOpType::Store;
+
+            RHIResourceStates InitialLayout = RHIResourceStates::Unknown;	// layout before the render pass
+            RHIResourceStates SubpassLayout = RHIResourceStates::Unknown;	// layout within the render pass
+            RHIResourceStates FinalLayout = RHIResourceStates::Unknown;   // layout after the render pass
+        };
+
+        enum Flags
+        {
+            None = 0,
+            AllowUavWrites = 1 << 0,
+        };
+
+        uint32_t Flags = Flags::None;
+        std::vector<RenderPassAttachment> Attachments;
+    };
+
+    class IRHIRenderPass
+    {
+    public:
+        virtual RHIRenderPassDesc& GetDesc() const = 0;
+
+        virtual ~IRHIRenderPass() = default;
+    };
+    using RHIRenderPassHandle = RefCountPtr<IRHIRenderPass>;
 
     class IRHICommandList
     {
@@ -284,7 +616,7 @@ namespace PhxEngine::RHI
         virtual void EndMarker() = 0;
 
         virtual void BeginRenderPassBackBuffer() = 0;
-        virtual void BeginRenderPass(RenderPassHandle renderPass) = 0;
+        virtual void BeginRenderPass(RHIResourceStates renderPass) = 0;
         virtual void EndRenderPass() = 0;
 
         virtual void SetGraphicsPipeline(RHIGraphicsPipelineHandle pipeline) = 0;
@@ -298,6 +630,18 @@ namespace PhxEngine::RHI
             uint32_t startInstance = 0) = 0;
     };
 
+    class RHIScopedMarker
+    {
+    public:
+        RHIScopedMarker(IRHICommandList* context)
+            : m_commandList(context) {}
+
+        ~RHIScopedMarker() { this->m_commandList->EndMarker(); }
+
+    private:
+        IRHICommandList* m_commandList;
+    };
+
     class IRHIFrameRenderCtx
     {
     public:
@@ -305,5 +649,6 @@ namespace PhxEngine::RHI
 
         virtual IRHICommandList* BeginCommandRecording(RHICommandQueueType QueueType = RHICommandQueueType::Graphics) = 0;
         virtual uint64_t SubmitCommands(Core::Span<IRHICommandList*> commands) = 0;
+        virtual RHITextureHandle GetBackBuffer() = 0;
     };
 }

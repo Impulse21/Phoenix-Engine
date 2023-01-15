@@ -28,9 +28,8 @@ file(GLOB sources "*.cpp" "*.h")
 set(project BasicTriangle)
 set(folder "Examples/Basic Triangle")
 
-set_source_files_properties(BasicTriangle.hlsl PROPERTIES ShaderType "vs" ShaderModel "6_6" EntryPoint "main_vs")
-set_source_files_properties(BasicTriangle.hlsl PROPERTIES ShaderType "ps" ShaderModel "6_6" EntryPoint "main_ps")
-
+set_source_files_properties(BasicTriangle.hlsl PROPERTIES ShaderType "vs" ShaderModel "6_6" EntryPoint "main_vs" OutputName "BasicTriangleVS")
+set_source_files_properties(BasicTriangle.hlsl PROPERTIES ShaderType "ps" ShaderModel "6_6" EntryPoint "main_ps" OutputName "BasicTrianglePS")
 
 message("Fetching DirectXShaderCompiler")
 FetchContent_Declare(dxc URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.7.2207/dxc_2022_07_18.zip)

@@ -16,18 +16,6 @@
 
 namespace PhxEngine::RHI
 {
-    typedef uint32_t DescriptorIndex;
-
-    static constexpr DescriptorIndex cInvalidDescriptorIndex = ~0u;
-
-    static constexpr uint32_t cMaxRenderTargets = 8;
-    static constexpr uint32_t cMaxViewports = 16;
-    static constexpr uint32_t cMaxVertexAttributes = 16;
-    static constexpr uint32_t cMaxBindingLayouts = 5;
-    static constexpr uint32_t cMaxBindingsPerLayout = 128;
-    static constexpr uint32_t cMaxVolatileConstantBuffersPerLayout = 6;
-    static constexpr uint32_t cMaxVolatileConstantBuffers = 32;
-    static constexpr uint32_t cMaxPushConstantSize = 128;      // D3D12: root signature is 256 bytes max., Vulkan: 128 bytes of push constants guaranteed
 
     enum class GraphicsAPI
     {
@@ -40,6 +28,82 @@ namespace PhxEngine::RHI
         SRGB,
         HDR_LINEAR,
         HDR10_ST2084
+    };
+
+    enum class FormatType : uint8_t
+    {
+        UNKNOWN = 0,
+        R8_UINT,
+        R8_SINT,
+        R8_UNORM,
+        R8_SNORM,
+        RG8_UINT,
+        RG8_SINT,
+        RG8_UNORM,
+        RG8_SNORM,
+        R16_UINT,
+        R16_SINT,
+        R16_UNORM,
+        R16_SNORM,
+        R16_FLOAT,
+        BGRA4_UNORM,
+        B5G6R5_UNORM,
+        B5G5R5A1_UNORM,
+        RGBA8_UINT,
+        RGBA8_SINT,
+        RGBA8_UNORM,
+        RGBA8_SNORM,
+        BGRA8_UNORM,
+        SRGBA8_UNORM,
+        SBGRA8_UNORM,
+        R10G10B10A2_UNORM,
+        R11G11B10_FLOAT,
+        RG16_UINT,
+        RG16_SINT,
+        RG16_UNORM,
+        RG16_SNORM,
+        RG16_FLOAT,
+        R32_UINT,
+        R32_SINT,
+        R32_FLOAT,
+        RGBA16_UINT,
+        RGBA16_SINT,
+        RGBA16_FLOAT,
+        RGBA16_UNORM,
+        RGBA16_SNORM,
+        RG32_UINT,
+        RG32_SINT,
+        RG32_FLOAT,
+        RGB32_UINT,
+        RGB32_SINT,
+        RGB32_FLOAT,
+        RGBA32_UINT,
+        RGBA32_SINT,
+        RGBA32_FLOAT,
+
+        D16,
+        D24S8,
+        X24G8_UINT,
+        D32,
+        D32S8,
+        X32G8_UINT,
+
+        BC1_UNORM,
+        BC1_UNORM_SRGB,
+        BC2_UNORM,
+        BC2_UNORM_SRGB,
+        BC3_UNORM,
+        BC3_UNORM_SRGB,
+        BC4_UNORM,
+        BC4_SNORM,
+        BC5_UNORM,
+        BC5_SNORM,
+        BC6H_UFLOAT,
+        BC6H_SFLOAT,
+        BC7_UNORM,
+        BC7_UNORM_SRGB,
+
+        COUNT,
     };
 
     struct Viewport
@@ -378,7 +442,7 @@ namespace PhxEngine::RHI
         bool VSync = false;
         bool EnableHDR = false;
         Core::Platform::WindowHandle WindowHandle;
-        ClearValue OptmizedClearValue = 
+        RHIClearValue OptmizedClearValue = 
         { 
             .Colour = 
             { 
@@ -513,7 +577,7 @@ namespace PhxEngine::RHI
     struct StaticSamplerParameter
     {
         uint32_t Slot;
-        Color BorderColor = 1.f;
+        RHIColor BorderColor = 1.f;
         float MaxAnisotropy = 1.f;
         float MipBias = 0.f;
 
@@ -614,7 +678,7 @@ namespace PhxEngine::RHI
             SamplerAddressMode         addressUVW,
             uint32_t				   maxAnisotropy = 16U,
             ComparisonFunc             comparisonFunc = ComparisonFunc::LessOrEqual,
-            Color                      borderColor = {1.0f , 1.0f, 1.0f, 0.0f} )
+            RHIColor                      borderColor = {1.0f , 1.0f, 1.0f, 0.0f} )
         {
             StaticSamplerParameter& desc = this->StaticSamplers.emplace_back();
             desc.Slot = shaderRegister;
@@ -721,7 +785,7 @@ namespace PhxEngine::RHI
 
         uint16_t MipLevels = 1;
 
-        ClearValue OptmizedClearValue = {};
+        RHIClearValue OptmizedClearValue = {};
         std::string DebugName;
     };
 
@@ -1061,7 +1125,7 @@ namespace PhxEngine::RHI
         virtual void TransitionBarrier(TextureHandle texture, ResourceStates beforeState, ResourceStates afterState) = 0;
         virtual void TransitionBarrier(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState) = 0;
         virtual void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers) = 0;
-        virtual void ClearTextureFloat(TextureHandle texture, Color const& clearColour) = 0 ;
+        virtual void ClearTextureFloat(TextureHandle texture, RHIColor const& clearColour) = 0 ;
         virtual void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) = 0;
 
         virtual void BeginRenderPassBackBuffer() = 0;
@@ -1351,6 +1415,7 @@ namespace PhxEngine::RHI
 
         virtual RHIViewportHandle CreateViewport(RHIViewportDesc const& desc) = 0;
         virtual RHIShaderHandle CreateShader(RHIShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) = 0;
+        virtual RHIGraphicsPipelineHandle CreateGraphicsPipeline(RHIGraphicsPipelineDesc const& desc) = 0;
 
         virtual IRHIFrameRenderCtx* BeginFrameRenderContext(RHIViewportHandle viewport) = 0;
         virtual void FinishAndPresetFrameRenderContext(IRHIFrameRenderCtx* context) = 0;
