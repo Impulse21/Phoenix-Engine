@@ -66,7 +66,7 @@ void PhxEngine::EngineApp::PreInitialize()
 	// TODO: Create swapchain in Window
 	RHI::RHIViewportDesc viewportDesc = {};
 	viewportDesc.BufferCount = NUM_BACK_BUFFERS;
-	viewportDesc.Format = FormatType::R10G10B10A2_UNORM;
+	viewportDesc.Format = RHIFormat::R10G10B10A2_UNORM;
 	viewportDesc.Width = this->m_window->GetWidth();
 	viewportDesc.Height = this->m_window->GetHeight();
 	viewportDesc.VSync = false;

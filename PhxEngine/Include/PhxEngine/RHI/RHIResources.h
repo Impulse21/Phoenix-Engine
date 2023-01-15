@@ -447,7 +447,7 @@ namespace PhxEngine::RHI
         std::string DebugName;
     };
 
-    class IRHITexture
+    class IRHITexture : public IRHIResource
     {
     public:
         virtual RHITextureDesc& GetDesc() const = 0;
@@ -573,7 +573,7 @@ namespace PhxEngine::RHI
                 DontCare,
             } LoadOp = LoadOpType::Load;
 
-            TextureHandle Texture;
+            RHITextureHandle Texture;
             int Subresource = -1;
 
             enum class StoreOpType

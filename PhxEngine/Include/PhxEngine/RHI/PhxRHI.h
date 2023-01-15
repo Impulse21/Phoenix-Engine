@@ -16,7 +16,6 @@
 
 namespace PhxEngine::RHI
 {
-
     enum class GraphicsAPI
     {
         Unknown = 0,
@@ -104,6 +103,28 @@ namespace PhxEngine::RHI
         BC7_UNORM_SRGB,
 
         COUNT,
+    };
+
+    struct Color
+    {
+        float R;
+        float G;
+        float B;
+        float A;
+
+        Color()
+            : R(0.f), G(0.f), B(0.f), A(0.f)
+        { }
+
+        Color(float c)
+            : R(c), G(c), B(c), A(c)
+        { }
+
+        Color(float r, float g, float b, float a)
+            : R(r), G(g), B(b), A(a) { }
+
+        bool operator ==(const Color& other) const { return R == other.R && G == other.G && B == other.B && A == other.A; }
+        bool operator !=(const Color& other) const { return !(*this == other); }
     };
 
     struct Viewport
@@ -1125,7 +1146,7 @@ namespace PhxEngine::RHI
         virtual void TransitionBarrier(TextureHandle texture, ResourceStates beforeState, ResourceStates afterState) = 0;
         virtual void TransitionBarrier(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState) = 0;
         virtual void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers) = 0;
-        virtual void ClearTextureFloat(TextureHandle texture, RHIColor const& clearColour) = 0 ;
+        virtual void ClearTextureFloat(TextureHandle texture, Color const& clearColour) = 0 ;
         virtual void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) = 0;
 
         virtual void BeginRenderPassBackBuffer() = 0;

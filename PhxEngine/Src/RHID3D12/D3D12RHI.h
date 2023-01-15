@@ -18,7 +18,11 @@ namespace PhxEngine::RHI::D3D12
 		void Finalize() override;
 
 		RHIViewportHandle CreateViewport(RHIViewportDesc const& desc) override;
-		RHIShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<const void*> shaderByteCode) override;
+		RHIShaderHandle CreateShader(RHIShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) override;
+		RHIGraphicsPipelineHandle CreateGraphicsPipeline(RHIGraphicsPipelineDesc const& desc) override;
+
+		IRHIFrameRenderCtx* BeginFrameRenderContext(RHIViewportHandle viewport) override;
+		void FinishAndPresetFrameRenderContext(IRHIFrameRenderCtx* context) override;
 
 	public:
 		D3D12Adapter* GetAdapter() { return this->m_adapter.get(); }

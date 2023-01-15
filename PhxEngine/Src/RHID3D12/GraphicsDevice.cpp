@@ -43,7 +43,7 @@ constexpr uint64_t AlignTo(uint64_t value, uint64_t alignment)
 
 DXGI_FORMAT ConvertFormat(FormatType format)
 {
-	return D3D12::GetDxgiFormatMapping(format).srvFormat;
+	return D3D12::GetDxgiFormatMapping(format).SrvFormat;
 }
 
 D3D12_SHADER_VISIBILITY ConvertShaderStage(ShaderStage s)
@@ -388,7 +388,7 @@ void PhxEngine::RHI::D3D12::GraphicsDevice::CreateSwapChain(SwapChainDesc const&
 	DXGI_SWAP_CHAIN_DESC1 dx12Desc = {};
 	dx12Desc.Width = swapChainDesc.Width;
 	dx12Desc.Height = swapChainDesc.Height;
-	dx12Desc.Format = mapping.rtvFormat;
+	dx12Desc.Format = mapping.RtvFormat;
 	dx12Desc.SampleDesc.Count = 1;
 	dx12Desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	dx12Desc.BufferCount = swapChainDesc.BufferCount;
@@ -573,7 +573,7 @@ InputLayoutHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateInputLayout(Verte
 
 
 		const DxgiFormatMapping& formatMapping = GetDxgiFormatMapping(attr.Format);
-		dx12Desc.Format = formatMapping.srvFormat;
+		dx12Desc.Format = formatMapping.SrvFormat;
 		dx12Desc.InputSlot = attr.InputSlot;
 		dx12Desc.AlignedByteOffset = attr.AlignedByteOffset;
 		if (dx12Desc.AlignedByteOffset == VertexAttributeDesc::SAppendAlignedElement)
@@ -676,7 +676,7 @@ GraphicsPSOHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateGraphicsPSO(Graph
 
 	if (desc.DsvFormat.has_value())
 	{
-		d3d12Desc.DSVFormat = GetDxgiFormatMapping(desc.DsvFormat.value()).rtvFormat;
+		d3d12Desc.DSVFormat = GetDxgiFormatMapping(desc.DsvFormat.value()).RtvFormat;
 	}
 
 	d3d12Desc.SampleDesc.Count = desc.SampleCount;
@@ -684,7 +684,7 @@ GraphicsPSOHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateGraphicsPSO(Graph
 
 	for (size_t i = 0; i < desc.RtvFormats.size(); i++)
 	{
-		d3d12Desc.RTVFormats[i] = GetDxgiFormatMapping(desc.RtvFormats[i]).rtvFormat;
+		d3d12Desc.RTVFormats[i] = GetDxgiFormatMapping(desc.RtvFormats[i]).RtvFormat;
 	}
 
 	auto inputLayout = std::static_pointer_cast<InputLayout>(desc.InputLayout);
@@ -758,7 +758,7 @@ RenderPassHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateRenderPass(RenderP
 		clearValue.Color[3] = textureImpl->Desc.OptmizedClearValue.Colour.A;
 		clearValue.DepthStencil.Depth = textureImpl->Desc.OptmizedClearValue.DepthStencil.Depth;
 		clearValue.DepthStencil.Stencil = textureImpl->Desc.OptmizedClearValue.DepthStencil.Stencil;
-		clearValue.Format = dxgiFormatMapping.rtvFormat;
+		clearValue.Format = dxgiFormatMapping.RtvFormat;
 
 		
 		switch (attachment.Type)
@@ -1023,7 +1023,7 @@ TextureHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateTexture(TextureDesc c
 	d3d12OptimizedClearValue.DepthStencil.Stencil = desc.OptmizedClearValue.DepthStencil.Stencil;
 
 	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
-	d3d12OptimizedClearValue.Format = dxgiFormatMapping.rtvFormat;
+	d3d12OptimizedClearValue.Format = dxgiFormatMapping.RtvFormat;
 
 	auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
@@ -1054,7 +1054,7 @@ TextureHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateTexture(TextureDesc c
 	{
 		resourceDesc =
 			CD3DX12_RESOURCE_DESC::Tex1D(
-				desc.IsTypeless ? dxgiFormatMapping.resourcFormatType : dxgiFormatMapping.rtvFormat,
+				desc.IsTypeless ? dxgiFormatMapping.ResourcFormatType : dxgiFormatMapping.RtvFormat,
 				desc.Width,
 				desc.ArraySize,
 				desc.MipLevels,
@@ -1070,7 +1070,7 @@ TextureHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateTexture(TextureDesc c
 	{
 		resourceDesc =
 			CD3DX12_RESOURCE_DESC::Tex2D(
-				desc.IsTypeless ? dxgiFormatMapping.resourcFormatType : dxgiFormatMapping.rtvFormat,
+				desc.IsTypeless ? dxgiFormatMapping.ResourcFormatType : dxgiFormatMapping.RtvFormat,
 				desc.Width,
 				desc.Height,
 				desc.ArraySize,
@@ -1084,7 +1084,7 @@ TextureHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateTexture(TextureDesc c
 	{
 		resourceDesc =
 			CD3DX12_RESOURCE_DESC::Tex3D(
-				desc.IsTypeless ? dxgiFormatMapping.resourcFormatType : dxgiFormatMapping.rtvFormat,
+				desc.IsTypeless ? dxgiFormatMapping.ResourcFormatType : dxgiFormatMapping.RtvFormat,
 				desc.Width,
 				desc.Height,
 				desc.ArraySize,
@@ -1946,7 +1946,7 @@ int PhxEngine::RHI::D3D12::GraphicsDevice::CreateShaderResourceView(TextureHandl
 
 	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	srvDesc.Format = dxgiFormatMapping.srvFormat;
+	srvDesc.Format = dxgiFormatMapping.SrvFormat;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
 	uint32_t planeSlice = (srvDesc.Format == DXGI_FORMAT_X24_TYPELESS_G8_UINT) ? 1 : 0;
@@ -2065,7 +2065,7 @@ int PhxEngine::RHI::D3D12::GraphicsDevice::CreateRenderTargetView(TextureHandle 
 
 	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-	rtvDesc.Format = dxgiFormatMapping.rtvFormat;
+	rtvDesc.Format = dxgiFormatMapping.RtvFormat;
 
 	switch (textureImpl->Desc.Dimension)
 	{
@@ -2141,7 +2141,7 @@ int PhxEngine::RHI::D3D12::GraphicsDevice::CreateDepthStencilView(TextureHandle 
 
 	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-	dsvDesc.Format = dxgiFormatMapping.rtvFormat;
+	dsvDesc.Format = dxgiFormatMapping.RtvFormat;
 	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 
 	switch (textureImpl->Desc.Dimension)
@@ -2216,7 +2216,7 @@ int PhxEngine::RHI::D3D12::GraphicsDevice::CreateUnorderedAccessView(TextureHand
 
 	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-	uavDesc.Format = dxgiFormatMapping.srvFormat;
+	uavDesc.Format = dxgiFormatMapping.SrvFormat;
 
 	switch (textureImpl->Desc.Dimension)
 	{

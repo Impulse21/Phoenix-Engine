@@ -50,11 +50,13 @@ namespace PhxEngine::RHI::D3D12
 
     struct DxgiFormatMapping
     {
-        FormatType abstractFormat;
-        DXGI_FORMAT resourcFormatType;
-        DXGI_FORMAT srvFormat;
-        DXGI_FORMAT rtvFormat;
+        RHIFormat AbstractFormat;
+        DXGI_FORMAT ResourcFormatType;
+        DXGI_FORMAT SrvFormat;
+        DXGI_FORMAT RtvFormat;
     };
+
+   const DxgiFormatMapping& GetDxgiFormatMapping(RHIFormat abstractFormat);
 
    const DxgiFormatMapping& GetDxgiFormatMapping(FormatType abstractFormat);
 

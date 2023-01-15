@@ -244,7 +244,7 @@ void PhxEngine::RHI::D3D12::CommandList::TransitionBarrier(
 
 void PhxEngine::RHI::D3D12::CommandList::TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers)
 {
-    for (PhxEngine::RHI::GpuBarrier& gpuBarrier : gpuBarriers)
+    for (const PhxEngine::RHI::GpuBarrier& gpuBarrier : gpuBarriers)
     {
         if (const GpuBarrier::TextureBarrier* texBarrier = std::get_if<GpuBarrier::TextureBarrier>(&gpuBarrier.Data))
         {
@@ -837,7 +837,7 @@ void PhxEngine::RHI::D3D12::CommandList::BindDynamicIndexBuffer(size_t numIndici
     indexBufferView.SizeInBytes = static_cast<UINT>(bufferSize);
     const auto& formatMapping = GetDxgiFormatMapping(indexFormat);;
     
-    indexBufferView.Format = formatMapping.srvFormat;
+    indexBufferView.Format = formatMapping.SrvFormat;
 
     this->m_d3d12CommandList->IASetIndexBuffer(&indexBufferView);
 }

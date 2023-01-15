@@ -16,10 +16,24 @@ RHIViewportHandle D3D12RHI::CreateViewport(RHIViewportDesc const& desc)
 	return RHIViewportHandle::Create(viewportImpl.release());
 }
 
-RHIShaderHandle PhxEngine::RHI::D3D12::D3D12RHI::CreateShader(ShaderDesc const& desc, Core::Span<const void*> shaderByteCode)
+RHIShaderHandle D3D12RHI::CreateShader(RHIShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
 {
 	// auto shaderImpl = std::make_unique<Shader>(desc, shaderByteCode, shaderByteCode.Size());
 	return nullptr;
+}
+
+RHIGraphicsPipelineHandle PhxEngine::RHI::D3D12::D3D12RHI::CreateGraphicsPipeline(RHIGraphicsPipelineDesc const& desc)
+{
+	return nullptr;
+}
+
+IRHIFrameRenderCtx* PhxEngine::RHI::D3D12::D3D12RHI::BeginFrameRenderContext(RHIViewportHandle viewport)
+{
+	return nullptr;
+}
+
+void PhxEngine::RHI::D3D12::D3D12RHI::FinishAndPresetFrameRenderContext(IRHIFrameRenderCtx* context)
+{
 }
 
 void PhxEngine::RHI::D3D12::D3D12Viewport::Initialize()
@@ -39,7 +53,7 @@ void PhxEngine::RHI::D3D12::D3D12Viewport::Initialize()
 	DXGI_SWAP_CHAIN_DESC1 dx12Desc = {};
 	dx12Desc.Width = this->m_desc.Width;
 	dx12Desc.Height = this->m_desc.Height;
-	dx12Desc.Format = mapping.rtvFormat;
+	dx12Desc.Format = mapping.RtvFormat;
 	dx12Desc.SampleDesc.Count = 1;
 	dx12Desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	dx12Desc.BufferCount = this->m_desc.BufferCount;
