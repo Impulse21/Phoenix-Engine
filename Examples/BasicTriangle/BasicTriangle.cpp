@@ -22,14 +22,13 @@ public:
         std::filesystem::path appShaderPath = Core::Platform::GetExcecutableDir() / "shaders/BasicTriangle/dxil";
         std::vector<uint8_t> shaderByteCode;
         {
-            std::filesystem::path vertexShaderFile = appShaderPath / "BasicTriangle.cso";
-            PhxEngine::Core::Helpers::FileRead(vertexShaderFile.generic_string(), shaderByteCode);
+            std::filesystem::path shaderFile = appShaderPath / "BasicTriangleVS.cso";
+            PhxEngine::Core::Helpers::FileRead(shaderFile.generic_string(), shaderByteCode);
 
             Core::Span span(shaderByteCode);
             this->m_vertexShader = this->GetRoot()->GetRHI()->CreateShader(
                 {
                     .Stage = RHI::ShaderStage::Vertex,
-                    .EntryPoint = "main_vs",
                     .DebugName = "BasicTriangleVS",
                 },
                 Core::Span(shaderByteCode));
@@ -37,14 +36,13 @@ public:
 
         shaderByteCode.clear();
         {
-            std::filesystem::path vertexShaderFile = appShaderPath / "BasicTriangle.cso";
-            PhxEngine::Core::Helpers::FileRead(vertexShaderFile.generic_string(), shaderByteCode);
+            std::filesystem::path shaderFile = appShaderPath / "BasicTrianglePS.cso";
+            PhxEngine::Core::Helpers::FileRead(shaderFile.generic_string(), shaderByteCode);
 
             Core::Span span(shaderByteCode);
             this->m_pixelShader = this->GetRoot()->GetRHI()->CreateShader(
                 {
                     .Stage = RHI::ShaderStage::Pixel,
-                    .EntryPoint = "main_ps",
                     .DebugName = "BasicTrianglePS",
                 },
                 Core::Span(shaderByteCode));

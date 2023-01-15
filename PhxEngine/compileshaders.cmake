@@ -54,14 +54,14 @@ function(dxc_compile_shaders)
     file(MAKE_DIRECTORY ${params_OUTPUT_BASE}/dxil)
 
     foreach(FILE ${params_SOURCES})
-        get_source_file_property(outputName ${FILE} OutputName)
+        get_filename_component(FILE_WE ${FILE} NAME_WE)
         get_source_file_property(shadertype ${FILE} ShaderType)
         get_source_file_property(shadermodel ${FILE} ShaderModel)
         get_source_file_property(entryPoint ${FILE} EntryPoint)
 
         add_custom_command(
             TARGET ${params_TARGET}
-            COMMAND ${dxc_SOURCE_DIR}/bin/x64/dxc.exe /nologo /E${entryPoint} /T${shadertype}_6_6 /D "USE_RESOURCE_HEAP" /I "../../PhxEngine/Include" $<IF:$<CONFIG:DEBUG>,/Od,/O3> /Zi /Fo ${params_OUTPUT_BASE}/dxil/${outputName}.cso /Fd ${params_OUTPUT_BASE}/dxil/${outputName}.pdb ${FILE}
+            COMMAND ${dxc_SOURCE_DIR}/bin/x64/dxc.exe /nologo /E${entryPoint} /T${shadertype}_6_6 /D "USE_RESOURCE_HEAP" /I "../../PhxEngine/Include" $<IF:$<CONFIG:DEBUG>,/Od,/O3> /Zi /Fo ${params_OUTPUT_BASE}/dxil/${FILE_WE}.cso /Fd ${params_OUTPUT_BASE}/dxil/${FILE_WE}.pdb ${FILE}
             MAIN_DEPENDENCY ${FILE}
             COMMENT "HLSL ${FILE}"
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

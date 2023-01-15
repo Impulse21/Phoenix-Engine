@@ -257,7 +257,7 @@ add_custom_command(
 	COMMAND ${CMAKE_COMMAND} -E copy_directory
 	"${d3d12-agility-sdk_SOURCE_DIR}/build/native/bin/x64"
 
-	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/D3D12
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/D3D12
 	DEPENDS D3D12AgilitySDK)
 
 message("D3D12 Agility SDK fetched")
@@ -312,6 +312,6 @@ add_custom_command(
 	COMMAND ${CMAKE_COMMAND} -E copy
 	"${pix_SOURCE_DIR}/bin/x64/WinPixEventRuntime.dll"
 
-	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 	DEPENDS PIX)
 message("PIX fetched")
