@@ -17,11 +17,19 @@ namespace PhxEngine::RHI::D3D12
 
 	public:
 		void Initialize();
+		void WaitForIdleFrame();
+
+		void Present();
+
 
 	private:
 		RHIViewportDesc m_desc;
 		RefCountPtr<IDXGISwapChain1> m_swapchain;
 		RefCountPtr<IDXGISwapChain4> m_swapchain4;
+
+		RefCountPtr<ID3D12Fence> m_frameFence;
+		uint64_t m_frameCount;
+
 	};
 }
 

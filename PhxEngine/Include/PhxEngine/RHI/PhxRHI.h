@@ -1436,9 +1436,10 @@ namespace PhxEngine::RHI
 
         virtual RHIViewportHandle CreateViewport(RHIViewportDesc const& desc) = 0;
         virtual RHIShaderHandle CreateShader(RHIShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) = 0;
+        virtual RHIInputLayoutHandle CreateInputLayout(Core::Span<RHIVertexAttributeDesc> desc) = 0;
         virtual RHIGraphicsPipelineHandle CreateGraphicsPipeline(RHIGraphicsPipelineDesc const& desc) = 0;
 
-        virtual IRHIFrameRenderCtx* BeginFrameRenderContext(RHIViewportHandle viewport) = 0;
+        virtual IRHIFrameRenderCtx& BeginFrameRenderContext(RHIViewportHandle viewport) = 0;
         virtual void FinishAndPresetFrameRenderContext(IRHIFrameRenderCtx* context) = 0;
     public:
         virtual ~IPhxRHI() = default;

@@ -6,36 +6,42 @@
 namespace PhxEngine::RHI::D3D12
 {
     class D3D12CommandQueue;
+    class D3D12Device;
+
+    struct D3D12DeviceBasicInfo
+    {
+        uint32_t NumDeviceNodes;
+    };
 
     struct D3D12AdapterDesc
     {
         std::string Name;
-
+        D3D12DeviceBasicInfo DeviceBasicInfo;
         DXGI_ADAPTER_DESC DXGIDesc{};
     };
 
-	class D3D12Adapter final
+	class D3D12Adapter
     {
+    private:
+        static HRESULT EnumAdapters(uint32_t adapterIndex, IDXGIFactory6* factory6, IDXGIAdapter1** outAdapter);
+
     public:
         D3D12Adapter(D3D12AdapterDesc const& descIn, RefCountPtr<IDXGIAdapter1>& dxgiAdapter);
         ~D3D12Adapter() = default;
 
         void InitializeD3D12Devices();
 
-        ID3D12Device* GetD3D12Device() { return this->m_device; }
-        ID3D12Device2* GetD3D12Device2() { return this->m_device2; }
-        ID3D12Device5* GetD3D12Device5() { return this->m_device5; }
-        IDXGIFactory6* GetDxgiFactory6() { return this->m_factory6; }
+    public:
+        ID3D12Device* GetRootDevice() { return this->m_rootDevice; }
+        ID3D12Device2* GetRootDevice2() { return this->m_rootDevice2; }
+        ID3D12Device5* GetRootDevice5() { return this->m_rootDevice5; }
+        IDXGIFactory6* GetFactory6() { return this->m_factory6; }
 
         IDXGIAdapter1* GetDxgiAdapter() { return this->m_dxgiAdapter; }
 
-        D3D12CommandQueue* GetQueue(CommandQueueType type) { return this->m_commandQueues[(int)type].get(); }
-
-        D3D12CommandQueue* GetGfxQueue() { return this->GetQueue(CommandQueueType::Graphics); }
-        D3D12CommandQueue* GetComputeQueue() { return this->GetQueue(CommandQueueType::Compute); }
-        D3D12CommandQueue* GetCopyQueue() { return this->GetQueue(CommandQueueType::Copy); }
-
         const D3D12AdapterDesc& GetDesc() const { return this->m_desc; }
+
+        D3D12Device* GetDevice() const { return this->m_device.get(); }
 
         const char* GetName() const { return this->GetDesc().Name.c_str(); };
         size_t GetDedicatedSystemMemory() const { return this->GetDesc().DXGIDesc.DedicatedSystemMemory; };
@@ -43,16 +49,19 @@ namespace PhxEngine::RHI::D3D12
         size_t GetSharedSystemMemory() const { return this->GetDesc().DXGIDesc.SharedSystemMemory; };
 
     private:
-        D3D12AdapterDesc m_desc;
+        const D3D12AdapterDesc m_desc;
         RHI::DeviceCapability m_capabilities;
 
         D3D12_FEATURE_DATA_ROOT_SIGNATURE m_featureDataRootSignature = {};
         D3D12_FEATURE_DATA_SHADER_MODEL   m_featureDataShaderModel = {};
         ShaderModel m_minShaderModel = ShaderModel::SM_6_0;
 
-        RefCountPtr<ID3D12Device> m_device;
-        RefCountPtr<ID3D12Device2> m_device2;
-        RefCountPtr<ID3D12Device5> m_device5;
+        // Only support a single device (node)
+        std::unique_ptr<D3D12Device> m_device;
+
+        RefCountPtr<ID3D12Device> m_rootDevice;
+        RefCountPtr<ID3D12Device2> m_rootDevice2;
+        RefCountPtr<ID3D12Device5> m_rootDevice5;
 
         RefCountPtr<IDXGIFactory6> m_factory6;
 
@@ -60,9 +69,6 @@ namespace PhxEngine::RHI::D3D12
 
         // -- Command Queues ---
         std::array<std::unique_ptr<D3D12CommandQueue>, (int)CommandQueueType::Count> m_commandQueues;
-
-
-        static HRESULT EnumAdapters(uint32_t adapterIndex, IDXGIFactory6* factory6, IDXGIAdapter1** outAdapter);
     };
 }
 

@@ -79,7 +79,6 @@ namespace PhxEngine::RHI::D3D12
         std::vector<uint8_t> m_byteCode;
         const ShaderDesc m_desc;
         Microsoft::WRL::ComPtr<ID3D12RootSignatureDeserializer> m_rootSignatureDeserializer;
-
         Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
     };
 
@@ -411,9 +410,9 @@ namespace PhxEngine::RHI::D3D12
 
         // -- Getters ---
     public:
-        Microsoft::WRL::ComPtr<ID3D12Device> GetD3D12Device() { return this->m_device; }
-        Microsoft::WRL::ComPtr<ID3D12Device2> GetD3D12Device2() { return this->m_device2; }
-        Microsoft::WRL::ComPtr<ID3D12Device5> GetD3D12Device5() { return this->m_device5; }
+        Microsoft::WRL::ComPtr<ID3D12Device> GetD3D12Device() { return this->m_rootDevice; }
+        Microsoft::WRL::ComPtr<ID3D12Device2> GetD3D12Device2() { return this->m_rootDevice2; }
+        Microsoft::WRL::ComPtr<ID3D12Device5> GetD3D12Device5() { return this->m_rootDevice5; }
 
         Microsoft::WRL::ComPtr<IDXGIFactory6> GetDxgiFactory() { return this->m_factory; }
         RefCountPtr<IDXGIAdapter> GetDxgiAdapter() { return this->m_gpuAdapter->DxgiAdapter; }
@@ -470,9 +469,9 @@ namespace PhxEngine::RHI::D3D12
         const uint32_t kTimestampQueryHeapSize = 1024;
 
 		Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
-		Microsoft::WRL::ComPtr<ID3D12Device> m_device;
-		Microsoft::WRL::ComPtr<ID3D12Device2> m_device2;
-		Microsoft::WRL::ComPtr<ID3D12Device5> m_device5;
+		Microsoft::WRL::ComPtr<ID3D12Device> m_rootDevice;
+		Microsoft::WRL::ComPtr<ID3D12Device2> m_rootDevice2;
+		Microsoft::WRL::ComPtr<ID3D12Device5> m_rootDevice5;
 
 		// std::shared_ptr<IDxcUtils> dxcUtils;
 		std::unique_ptr<DXGIGpuAdapter> m_gpuAdapter;

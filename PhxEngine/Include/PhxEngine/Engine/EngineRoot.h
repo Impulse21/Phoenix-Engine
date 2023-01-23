@@ -42,11 +42,11 @@ namespace PhxEngine
 			: m_root(root) {}
 
 		virtual void Update(Core::TimeStep delta) {};
-		virtual void Render(RHI::IRHIFrameRenderCtx* renderContext) {};
+		virtual void Render(RHI::IRHIFrameRenderCtx& renderContext) {};
 
 	public:
 		IPhxEngineRoot* GetRoot() { return this->m_root; }
-
+		RHI::IPhxRHI* GetRHI() { return this->m_root->GetRHI(); }
 	private:
 		IPhxEngineRoot* m_root;
 	};

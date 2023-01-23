@@ -2,6 +2,7 @@
 #include "D3D12Adapter.h"
 
 #include "D3D12CommandQueue.h"
+#include "D3D12Device.h"
 
 using namespace PhxEngine::RHI::D3D12;
 
@@ -21,10 +22,12 @@ void PhxEngine::RHI::D3D12::D3D12Adapter::InitializeD3D12Devices()
 		D3D12CreateDevice(
 			this->GetDxgiAdapter(),
 			D3D_FEATURE_LEVEL_11_1,
-			IID_PPV_ARGS(&this->m_device)));
+			IID_PPV_ARGS(&this->m_rootDevice)));
+
+	this->m_rootDevice->GetNodeCount();
 
 	D3D12_FEATURE_DATA_D3D12_OPTIONS featureOpptions = {};
-	bool hasOptions = SUCCEEDED(this->m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &featureOpptions, sizeof(featureOpptions)));
+	bool hasOptions = SUCCEEDED(this->m_rootDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &featureOpptions, sizeof(featureOpptions)));
 
 	if (hasOptions)
 	{
@@ -36,9 +39,9 @@ void PhxEngine::RHI::D3D12::D3D12Adapter::InitializeD3D12Devices()
 
 	// TODO: Move to acability array
 	D3D12_FEATURE_DATA_D3D12_OPTIONS5 featureSupport5 = {};
-	bool hasOptions5 = SUCCEEDED(this->m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureSupport5, sizeof(featureSupport5)));
+	bool hasOptions5 = SUCCEEDED(this->m_rootDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureSupport5, sizeof(featureSupport5)));
 
-	if (SUCCEEDED(this->m_device->QueryInterface(IID_PPV_ARGS(this->m_device5.ReleaseAndGetAddressOf()))))
+	if (SUCCEEDED(this->m_rootDevice->QueryInterface(IID_PPV_ARGS(this->m_rootDevice5.ReleaseAndGetAddressOf()))))
 	{
 		if (featureSupport5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0)
 		{
@@ -55,7 +58,7 @@ void PhxEngine::RHI::D3D12::D3D12Adapter::InitializeD3D12Devices()
 	}
 
 	D3D12_FEATURE_DATA_D3D12_OPTIONS6 featureSupport6 = {};
-	bool hasOptions6 = SUCCEEDED(this->m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &featureSupport6, sizeof(featureSupport6)));
+	bool hasOptions6 = SUCCEEDED(this->m_rootDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &featureSupport6, sizeof(featureSupport6)));
 
 	if (hasOptions6)
 	{
@@ -66,9 +69,9 @@ void PhxEngine::RHI::D3D12::D3D12Adapter::InitializeD3D12Devices()
 	}
 
 	D3D12_FEATURE_DATA_D3D12_OPTIONS7 featureSupport7 = {};
-	bool hasOptions7 = SUCCEEDED(this->m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureSupport7, sizeof(featureSupport7)));
+	bool hasOptions7 = SUCCEEDED(this->m_rootDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureSupport7, sizeof(featureSupport7)));
 
-	if (SUCCEEDED(this->m_device->QueryInterface(IID_PPV_ARGS(this->m_device2.ReleaseAndGetAddressOf())) && hasOptions7))
+	if (SUCCEEDED(this->m_rootDevice->QueryInterface(IID_PPV_ARGS(this->m_rootDevice2.ReleaseAndGetAddressOf())) && hasOptions7))
 	{
 		if (featureSupport7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1)
 		{
@@ -78,7 +81,7 @@ void PhxEngine::RHI::D3D12::D3D12Adapter::InitializeD3D12Devices()
 	}
 
 	this->m_featureDataRootSignature.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
-	if (FAILED(this->m_device2->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &this->m_featureDataRootSignature, sizeof(this->m_featureDataRootSignature))))
+	if (FAILED(this->m_rootDevice2->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &this->m_featureDataRootSignature, sizeof(this->m_featureDataRootSignature))))
 	{
 		this->m_featureDataRootSignature.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
 	}
@@ -86,7 +89,7 @@ void PhxEngine::RHI::D3D12::D3D12Adapter::InitializeD3D12Devices()
 	// Check shader model support
 	this->m_featureDataShaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_6;
 	this->m_minShaderModel = ShaderModel::SM_6_6;
-	if (FAILED(this->m_device2->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &this->m_featureDataShaderModel, sizeof(this->m_featureDataShaderModel))))
+	if (FAILED(this->m_rootDevice2->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &this->m_featureDataShaderModel, sizeof(this->m_featureDataShaderModel))))
 	{
 		this->m_featureDataShaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_5;
 		this->m_minShaderModel = ShaderModel::SM_6_5;
@@ -94,7 +97,7 @@ void PhxEngine::RHI::D3D12::D3D12Adapter::InitializeD3D12Devices()
 	else
 	{
 		D3D12_FEATURE_DATA_D3D12_OPTIONS d3d12DeviceCapability{};
-		this->m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &d3d12DeviceCapability, sizeof(d3d12DeviceCapability));
+		this->m_rootDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &d3d12DeviceCapability, sizeof(d3d12DeviceCapability));
 
 		if (d3d12DeviceCapability.ResourceBindingTier >= D3D12_RESOURCE_BINDING_TIER_3)
 		{
@@ -107,7 +110,7 @@ void PhxEngine::RHI::D3D12::D3D12Adapter::InitializeD3D12Devices()
 	if (debugEnabled)
 	{
 		Microsoft::WRL::ComPtr<ID3D12InfoQueue> infoQueue;
-		if (SUCCEEDED(this->m_device->QueryInterface<ID3D12InfoQueue>(&infoQueue)))
+		if (SUCCEEDED(this->m_rootDevice->QueryInterface<ID3D12InfoQueue>(&infoQueue)))
 		{
 			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
 			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
@@ -147,9 +150,6 @@ void PhxEngine::RHI::D3D12::D3D12Adapter::InitializeD3D12Devices()
 		}
 	}
 
-	// Create Queues
-	this->m_commandQueues[(int)CommandQueueType::Graphics] = std::make_unique<D3D12CommandQueue>(D3D12_COMMAND_LIST_TYPE_DIRECT, this);
-	this->m_commandQueues[(int)CommandQueueType::Compute] = std::make_unique<D3D12CommandQueue>(D3D12_COMMAND_LIST_TYPE_COMPUTE, this);
-	this->m_commandQueues[(int)CommandQueueType::Copy] = std::make_unique<D3D12CommandQueue>(D3D12_COMMAND_LIST_TYPE_COPY, this);
+	this->m_device = std::make_unique<D3D12Device>(0, this);
 
 }

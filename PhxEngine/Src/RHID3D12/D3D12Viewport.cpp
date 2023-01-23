@@ -2,11 +2,11 @@
 #include "D3D12Viewport.h"
 #include "D3D12RHI.h"
 #include "D3D12Adapter.h"
+#include "D3D12Device.h"
 #include "D3D12CommandQueue.h"
 
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::D3D12;
-
 
 RHIViewportHandle D3D12RHI::CreateViewport(RHIViewportDesc const& desc)
 {
@@ -16,30 +16,10 @@ RHIViewportHandle D3D12RHI::CreateViewport(RHIViewportDesc const& desc)
 	return RHIViewportHandle::Create(viewportImpl.release());
 }
 
-RHIShaderHandle D3D12RHI::CreateShader(RHIShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
-{
-	// auto shaderImpl = std::make_unique<Shader>(desc, shaderByteCode, shaderByteCode.Size());
-	return nullptr;
-}
-
-RHIGraphicsPipelineHandle PhxEngine::RHI::D3D12::D3D12RHI::CreateGraphicsPipeline(RHIGraphicsPipelineDesc const& desc)
-{
-	return nullptr;
-}
-
-IRHIFrameRenderCtx* PhxEngine::RHI::D3D12::D3D12RHI::BeginFrameRenderContext(RHIViewportHandle viewport)
-{
-	return nullptr;
-}
-
-void PhxEngine::RHI::D3D12::D3D12RHI::FinishAndPresetFrameRenderContext(IRHIFrameRenderCtx* context)
-{
-}
-
 void PhxEngine::RHI::D3D12::D3D12Viewport::Initialize()
 {
 	D3D12Adapter* adapter = this->GetParentAdapter();
-	IDXGIFactory2* factory6 = adapter->GetDxgiFactory6();
+	IDXGIFactory2* factory6 = adapter->GetFactory6();
 
 	assert(this->m_desc.WindowHandle);
 	if (!this->m_desc.WindowHandle)
@@ -62,7 +42,7 @@ void PhxEngine::RHI::D3D12::D3D12Viewport::Initialize()
 
 	ThrowIfFailed(
 		factory6->CreateSwapChainForHwnd(
-			adapter->GetGfxQueue()->GetD3D12CommandQueue(),
+			adapter->GetDevice()->GetGfxQueue()->GetD3D12CommandQueue(),
 			static_cast<HWND>(this->m_desc.WindowHandle),
 			&dx12Desc,
 			nullptr,
@@ -70,4 +50,51 @@ void PhxEngine::RHI::D3D12::D3D12Viewport::Initialize()
 			this->m_swapchain.ReleaseAndGetAddressOf()));
 
 	ThrowIfFailed(this->m_swapchain->QueryInterface(this->m_swapchain4.ReleaseAndGetAddressOf()));
+}
+
+void PhxEngine::RHI::D3D12::D3D12Viewport::WaitForIdleFrame()
+{
+	const UINT64 completedFrame = this->m_frameFence->GetCompletedValue();
+
+	// If the fence is max uint64, that might indicate that the device has been removed as fences get reset in this case
+	assert(completedFrame != UINT64_MAX);
+
+	// Since our frame count is 1 based rather then 0, increment the number of buffers by 1 so we don't have to wait on the first 3 frames
+	// that are kicked off.
+	if (this->m_frameCount >= (this->m_desc.BufferCount + 1) && completedFrame < this->m_frameCount)
+	{
+		// Wait on the frames last value?
+		// NULL event handle will simply wait immediately:
+		//	https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12fence-seteventoncompletion#remarks
+		ThrowIfFailed(
+			this->m_frameFence->SetEventOnCompletion(this->m_frameCount - this->m_desc.BufferCount, NULL));
+	}
+}
+
+void PhxEngine::RHI::D3D12::D3D12Viewport::Present()
+{
+	HRESULT hr = this->m_swapchain4->Present(0, 0);
+
+	// If the device was reset we must completely reinitialize the renderer.
+	if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+	{
+		
+#ifdef _DEBUG
+		char buff[64] = {};
+		sprintf_s(buff, "Device Lost on Present: Reason code 0x%08X\n",
+			static_cast<unsigned int>((hr == DXGI_ERROR_DEVICE_REMOVED) 
+				? this->ParentAdapter->GetRootDevice()->GetDeviceRemovedReason() 
+				: hr));
+		OutputDebugStringA(buff);
+#endif
+
+		// TODO: Handle device lost
+		// HandleDeviceLost();
+	}
+
+	// Mark complition of the graphics Queue 
+	this->ParentAdapter->GetDevice()->GetGfxQueue()->GetD3D12CommandQueue()->Signal(this->m_frameFence.Get(), this->m_frameCount);
+
+	// Begin the next frame - this affects the GetCurrentBackBufferIndex()
+	this->m_frameCount++;
 }

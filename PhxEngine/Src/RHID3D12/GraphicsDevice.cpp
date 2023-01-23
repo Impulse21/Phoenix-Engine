@@ -544,7 +544,7 @@ ShaderHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateShader(ShaderDesc cons
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSig;
 	auto hr = 
-		this->m_device->CreateRootSignature(
+		this->m_rootDevice->CreateRootSignature(
 			0,
 			shaderImpl->GetByteCode().data(),
 			shaderImpl->GetByteCode().size(),
@@ -2798,7 +2798,7 @@ void GraphicsDevice::CreateGpuTimestampQueryHeap(uint32_t queryCount)
 	dx12Desc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
 
 	ThrowIfFailed(
-		this->m_device->CreateQueryHeap(
+		this->m_rootDevice->CreateQueryHeap(
 			&dx12Desc,
 			IID_PPV_ARGS(&this->m_gpuTimestampQueryHeap)));
 }
@@ -2844,7 +2844,7 @@ void PhxEngine::RHI::D3D12::GraphicsDevice::CreateDevice(IDXGIAdapter* gpuAdapte
 		D3D12CreateDevice(
 			gpuAdapter,
 			D3D_FEATURE_LEVEL_11_1,
-			IID_PPV_ARGS(&this->m_device)));
+			IID_PPV_ARGS(&this->m_rootDevice)));
 
 	Microsoft::WRL::ComPtr<IUnknown> renderdoc;
 	if (SUCCEEDED(DXGIGetDebugInterface1(0, RenderdocUUID, &renderdoc)))
@@ -2859,7 +2859,7 @@ void PhxEngine::RHI::D3D12::GraphicsDevice::CreateDevice(IDXGIAdapter* gpuAdapte
 	}
 
 	D3D12_FEATURE_DATA_D3D12_OPTIONS featureOpptions = {};
-	bool hasOptions = SUCCEEDED(this->m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &featureOpptions, sizeof(featureOpptions)));
+	bool hasOptions = SUCCEEDED(this->m_rootDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &featureOpptions, sizeof(featureOpptions)));
 
 	if (hasOptions)
 	{
@@ -2871,9 +2871,9 @@ void PhxEngine::RHI::D3D12::GraphicsDevice::CreateDevice(IDXGIAdapter* gpuAdapte
 
 	// TODO: Move to acability array
 	D3D12_FEATURE_DATA_D3D12_OPTIONS5 featureSupport5 = {};
-	bool hasOptions5 = SUCCEEDED(this->m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureSupport5, sizeof(featureSupport5)));
+	bool hasOptions5 = SUCCEEDED(this->m_rootDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureSupport5, sizeof(featureSupport5)));
 
-	if (SUCCEEDED(this->m_device.As(&this->m_device5)) && hasOptions5)
+	if (SUCCEEDED(this->m_rootDevice.As(&this->m_rootDevice5)) && hasOptions5)
 	{
 		if (featureSupport5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0)
 		{
@@ -2891,7 +2891,7 @@ void PhxEngine::RHI::D3D12::GraphicsDevice::CreateDevice(IDXGIAdapter* gpuAdapte
 
 
 	D3D12_FEATURE_DATA_D3D12_OPTIONS6 featureSupport6 = {};
-	bool hasOptions6 = SUCCEEDED(this->m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &featureSupport6, sizeof(featureSupport6)));
+	bool hasOptions6 = SUCCEEDED(this->m_rootDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &featureSupport6, sizeof(featureSupport6)));
 
 	if (hasOptions6)
 	{
@@ -2902,9 +2902,9 @@ void PhxEngine::RHI::D3D12::GraphicsDevice::CreateDevice(IDXGIAdapter* gpuAdapte
 	}
 
 	D3D12_FEATURE_DATA_D3D12_OPTIONS7 featureSupport7 = {};
-	bool hasOptions7 = SUCCEEDED(this->m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureSupport7, sizeof(featureSupport7)));
+	bool hasOptions7 = SUCCEEDED(this->m_rootDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureSupport7, sizeof(featureSupport7)));
 
-	if (SUCCEEDED(this->m_device.As(&this->m_device2)) && hasOptions7)
+	if (SUCCEEDED(this->m_rootDevice.As(&this->m_rootDevice2)) && hasOptions7)
 	{
 		if (featureSupport7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1)
 		{
@@ -2914,7 +2914,7 @@ void PhxEngine::RHI::D3D12::GraphicsDevice::CreateDevice(IDXGIAdapter* gpuAdapte
 	}
 
 	this->FeatureDataRootSignature.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
-	if (FAILED(this->m_device2->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &this->FeatureDataRootSignature, sizeof(this->FeatureDataRootSignature))))
+	if (FAILED(this->m_rootDevice2->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &this->FeatureDataRootSignature, sizeof(this->FeatureDataRootSignature))))
 	{
 		this->FeatureDataRootSignature.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
 	}
@@ -2922,7 +2922,7 @@ void PhxEngine::RHI::D3D12::GraphicsDevice::CreateDevice(IDXGIAdapter* gpuAdapte
 	// Check shader model support
 	this->FeatureDataShaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_6;
 	this->m_minShaderModel = ShaderModel::SM_6_6;
-	if (FAILED(this->m_device2->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &this->FeatureDataShaderModel, sizeof(this->FeatureDataShaderModel))))
+	if (FAILED(this->m_rootDevice2->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &this->FeatureDataShaderModel, sizeof(this->FeatureDataShaderModel))))
 	{
 		this->FeatureDataShaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_5;
 		this->m_minShaderModel = ShaderModel::SM_6_5;
@@ -2933,7 +2933,7 @@ void PhxEngine::RHI::D3D12::GraphicsDevice::CreateDevice(IDXGIAdapter* gpuAdapte
 	if (debugEnabled)
 	{
 		Microsoft::WRL::ComPtr<ID3D12InfoQueue> infoQueue;
-		if (SUCCEEDED(this->m_device->QueryInterface<ID3D12InfoQueue>(&infoQueue)))
+		if (SUCCEEDED(this->m_rootDevice->QueryInterface<ID3D12InfoQueue>(&infoQueue)))
 		{
 			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
 			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);

@@ -26,7 +26,7 @@ public:
             PhxEngine::Core::Helpers::FileRead(shaderFile.generic_string(), shaderByteCode);
 
             Core::Span span(shaderByteCode);
-            this->m_vertexShader = this->GetRoot()->GetRHI()->CreateShader(
+            this->m_vertexShader = this->GetRHI()->CreateShader(
                 {
                     .Stage = RHI::ShaderStage::Vertex,
                     .DebugName = "BasicTriangleVS",
@@ -40,7 +40,7 @@ public:
             PhxEngine::Core::Helpers::FileRead(shaderFile.generic_string(), shaderByteCode);
 
             Core::Span span(shaderByteCode);
-            this->m_pixelShader = this->GetRoot()->GetRHI()->CreateShader(
+            this->m_pixelShader = this->GetRHI()->CreateShader(
                 {
                     .Stage = RHI::ShaderStage::Pixel,
                     .DebugName = "BasicTrianglePS",
@@ -51,22 +51,22 @@ public:
         return true;
     }
 
-    void Render(RHI::IRHIFrameRenderCtx* frameRenderer) override
+    void Render(RHI::IRHIFrameRenderCtx& frameRenderer) override
     {
         if (!this->m_pipeline)
         {
-            this->m_pipeline = this->GetRoot()->GetRHI()->CreateGraphicsPipeline(
+            this->m_pipeline = this->GetRHI()->CreateGraphicsPipeline(
                 {
                     .VertexShader = this->m_vertexShader,
                     .PixelShader = this->m_pixelShader,
                     .DepthStencilRenderState = {
                         .DepthTestEnable = false
                     },
-                    .RenderTargets = { frameRenderer->GetBackBuffer() },
+                    .RenderTargets = { frameRenderer.GetBackBuffer() },
                 });
         }
 
-        RHI::IRHICommandList* commandList = frameRenderer->BeginCommandRecording();
+        RHI::IRHICommandList* commandList = frameRenderer.BeginCommandRecording();
 
         {
             auto _ = commandList->BeginScopedMarker("Render Triagnle");
@@ -78,7 +78,7 @@ public:
             commandList->EndRenderPass();
         }
 
-        frameRenderer->SubmitCommands({ commandList });
+        frameRenderer.SubmitCommands({ commandList });
     }
 
 private:

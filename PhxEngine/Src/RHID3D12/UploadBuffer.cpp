@@ -10,7 +10,7 @@ size_t AlignUp(size_t value, size_t alignment)
 }
 
 UploadBuffer::UploadBuffer(GraphicsDevice& device, size_t pageSize)
-	: m_device(device)
+	: m_rootDevice(device)
 	, m_pageSize(pageSize)
 {
 }
@@ -51,7 +51,7 @@ std::shared_ptr<UploadBuffer::Page> UploadBuffer::RequestPage()
 	}
 	else
 	{
-		page = std::make_shared<Page>(this->m_device, this->m_pageSize);
+		page = std::make_shared<Page>(this->m_rootDevice, this->m_pageSize);
 		this->m_pagePool.push_back(page);
 	}
 
@@ -59,7 +59,7 @@ std::shared_ptr<UploadBuffer::Page> UploadBuffer::RequestPage()
 }
 
 UploadBuffer::Page::Page(GraphicsDevice& device, size_t sizeInBytes)
-	: m_device(device)
+	: m_rootDevice(device)
 	, m_offset(0)
 	, m_pageSize(sizeInBytes)
 	, m_gpuPtr(D3D12_GPU_VIRTUAL_ADDRESS(0))
@@ -83,7 +83,7 @@ UploadBuffer::Page::~Page()
 {
 	if (this->m_buffer.IsValid())
 	{
-		this->m_device.DeleteBuffer(this->m_buffer);
+		this->m_rootDevice.DeleteBuffer(this->m_buffer);
 	}
 
 	this->m_gpuPtr = D3D12_GPU_VIRTUAL_ADDRESS(0);
@@ -103,7 +103,7 @@ UploadBuffer::Allocation UploadBuffer::Page::Allocate(size_t sizeInBytes, size_t
 	{
 		throw std::bad_alloc();
 	}
-	Dx12Buffer* bufferImpl = this->m_device.GetBufferPool().Get(this->m_buffer);
+	Dx12Buffer* bufferImpl = this->m_rootDevice.GetBufferPool().Get(this->m_buffer);
 	size_t sizeInBytesAligned = AlignUp(sizeInBytes, alignment);
 
 	this->m_offset = AlignUp(this->m_offset, alignment);

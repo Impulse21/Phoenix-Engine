@@ -97,7 +97,8 @@ void PhxEngine::PhxEngineRoot::Update(TimeStep const& deltaTime)
 
 void PhxEngine::PhxEngineRoot::Render()
 {
-	RHI::IRHIFrameRenderCtx* frameRenderContext = this->GetRHI()->BeginFrameRenderContext(this->m_viewport);
+	// Blocking if next frame is not ready.
+	RHI::IRHIFrameRenderCtx& frameRenderContext = this->GetRHI()->BeginFrameRenderContext(this->m_viewport);
 
 	for (EngineRenderPass* renderPass : this->m_renderPasses)
 	{

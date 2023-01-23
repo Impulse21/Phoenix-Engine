@@ -8,11 +8,11 @@
 
 namespace PhxEngine::RHI::D3D12
 {
-	class D3D12Adapter;
+	class D3D12Device;
 	class D3D12CommandQueue
 	{
 	public:
-		D3D12CommandQueue(D3D12_COMMAND_LIST_TYPE type, D3D12Adapter* parentAdapter);
+		D3D12CommandQueue(D3D12_COMMAND_LIST_TYPE type, D3D12Device* parentDevice);
 		~D3D12CommandQueue();
 
 		D3D12_COMMAND_LIST_TYPE GetType() const { return this->m_type; }
@@ -32,7 +32,7 @@ namespace PhxEngine::RHI::D3D12
 
 	private:
 		const D3D12_COMMAND_LIST_TYPE m_type;
-		D3D12Adapter* m_adapter;
+		D3D12Device* m_parentDevice;
 
 		RefCountPtr<ID3D12CommandQueue> m_d3d12CommandQueue;
 		RefCountPtr<ID3D12Fence> m_d3d12Fence;

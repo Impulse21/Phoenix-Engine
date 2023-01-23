@@ -424,6 +424,27 @@ namespace PhxEngine::RHI
 
     using RHIShaderHandle = RefCountPtr<IRHIShader>;
 
+    struct RHIVertexAttributeDesc
+    {
+        static const uint32_t SAppendAlignedElement = 0xffffffff; // automatically figure out AlignedByteOffset depending on Format
+
+        std::string SemanticName;
+        uint32_t SemanticIndex = 0;
+        RHIFormat Format = RHIFormat::UNKNOWN;
+        uint32_t InputSlot = 0;
+        uint32_t AlignedByteOffset = SAppendAlignedElement;
+        bool IsInstanced = false;
+    };
+
+    class IRHIInputLayout : public IRHIResource
+    {
+    public:
+        [[nodiscard]] virtual uint32_t GetNumAttributes() const = 0;
+        [[nodiscard]] virtual const RHIVertexAttributeDesc* GetAttributeDesc(uint32_t index) const = 0;
+    };
+
+    using RHIInputLayoutHandle = RefCountPtr<IRHIInputLayout>;
+
     struct RHITextureDesc
     {
         RHIBindingFlags BindingFlags = RHIBindingFlags::ShaderResource;
@@ -537,8 +558,10 @@ namespace PhxEngine::RHI
         RHIDepthStencilRenderState DepthStencilRenderState = {};
         RHIRasterRenderState RasterRenderState = {};
 
-        Core::Span<RHITextureHandle> RenderTargets;
+        std::vector<RHITextureHandle> RenderTargets;
         RHITextureHandle DepthStencilTexture;
+
+        RHIInputLayoutHandle InputLayout;
 
         uint32_t SampleCount = 1;
         uint32_t SampleQuality = 0;
@@ -606,7 +629,7 @@ namespace PhxEngine::RHI
     };
     using RHIRenderPassHandle = RefCountPtr<IRHIRenderPass>;
 
-    class IRHICommandList
+    class IRHICommandList : public IRHIResource
     {
     public:
         virtual ~IRHICommandList() = default;

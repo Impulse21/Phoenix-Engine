@@ -83,7 +83,7 @@ static const DxgiFormatMapping c_FormatMappings[] = {
     { RHIFormat::BC7_UNORM_SRGB,       DXGI_FORMAT_BC7_TYPELESS,           DXGI_FORMAT_BC7_UNORM_SRGB,           DXGI_FORMAT_BC7_UNORM_SRGB         },
 };
 
-const PhxEngine::RHI::D3D12::DxgiFormatMapping& PhxEngine::RHI::D3D12::GetDxgiFormatMapping(RHIFormat abstractFormat)
+const DxgiFormatMapping& PhxEngine::RHI::D3D12::GetDxgiFormatMapping(RHIFormat abstractFormat)
 {
     static_assert(sizeof(c_FormatMappings) / sizeof(DxgiFormatMapping) == size_t(RHIFormat::COUNT),
         "The format mapping table doesn't have the right number of elements");

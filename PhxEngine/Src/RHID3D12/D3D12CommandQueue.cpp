@@ -1,30 +1,30 @@
 #include "C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Build/PhxEngine/CMakeFiles/PhxEngine.dir/Debug/cmake_pch.hxx"
 #include "D3D12CommandQueue.h"
 
-#include "D3D12Adapter.h"
+#include "D3D12Device.h"
 
 using namespace Microsoft::WRL;
 using namespace PhxEngine::RHI::D3D12;
 
-D3D12CommandQueue::D3D12CommandQueue(D3D12_COMMAND_LIST_TYPE type, D3D12Adapter* parentAdapter)
-	: m_adapter(parentAdapter)
+D3D12CommandQueue::D3D12CommandQueue(D3D12_COMMAND_LIST_TYPE type, D3D12Device* parentDevice)
+	: m_parentDevice(parentDevice)
 	, m_type(type)
-	, m_allocatorPool(parentAdapter->GetD3D12Device2(), type)
+	, m_allocatorPool(parentDevice->GetNativeDevice2(), type)
 {
 	// Create Command Queue
 	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 	queueDesc.Type = this->m_type;
 	queueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
 	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-	queueDesc.NodeMask = 0;
+	queueDesc.NodeMask = this->m_parentDevice->GetNodeMask();
 
 	ThrowIfFailed(
-		this->m_adapter->GetD3D12Device2()->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&this->m_d3d12CommandQueue)));
+		this->m_parentDevice->GetNativeDevice2()->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&this->m_d3d12CommandQueue)));
 
 	// Create Fence
 	ThrowIfFailed(
-		this->m_adapter->GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_d3d12Fence)));
-	this->m_d3d12Fence->SetName(L"Dx12CommandQueue::Dx12CommandQueue::Fence");
+		this->m_parentDevice->GetNativeDevice2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_d3d12Fence)));
+	this->m_d3d12Fence->SetName(L"D3D12CommandQueue::D3D12CommandQueue::Fence");
 
 	switch (type)
 	{
