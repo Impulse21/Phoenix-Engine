@@ -623,7 +623,7 @@ namespace PhxEngine::RHI
     class IRHIRenderPass
     {
     public:
-        virtual RHIRenderPassDesc& GetDesc() const = 0;
+        virtual const RHIRenderPassDesc& GetDesc() const = 0;
 
         virtual ~IRHIRenderPass() = default;
     };

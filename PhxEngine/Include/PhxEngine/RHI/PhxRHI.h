@@ -1438,6 +1438,8 @@ namespace PhxEngine::RHI
         virtual RHIShaderHandle CreateShader(RHIShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) = 0;
         virtual RHIInputLayoutHandle CreateInputLayout(Core::Span<RHIVertexAttributeDesc> desc) = 0;
         virtual RHIGraphicsPipelineHandle CreateGraphicsPipeline(RHIGraphicsPipelineDesc const& desc) = 0;
+        virtual RHITextureHandle CreateTexture(RHITextureDesc const& desc) = 0;
+        virtual RHIRenderPassHandle CreateRenderPass(RHIRenderPassDesc const& desc) = 0;
 
         virtual IRHIFrameRenderCtx& BeginFrameRenderContext(RHIViewportHandle viewport) = 0;
         virtual void FinishAndPresetFrameRenderContext(IRHIFrameRenderCtx* context) = 0;

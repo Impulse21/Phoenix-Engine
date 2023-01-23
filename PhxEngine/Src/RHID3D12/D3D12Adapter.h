@@ -2,6 +2,7 @@
 
 #include "D3D12Common.h"
 #include "D3D12CommandQueue.h"
+#include <PhxEngine/RHI/RHIResources.h>
 
 namespace PhxEngine::RHI::D3D12
 {
@@ -31,6 +32,11 @@ namespace PhxEngine::RHI::D3D12
 
         void InitializeD3D12Devices();
 
+        // Factory methods
+    public:
+        // RHIBufferHandle CreateBuffer(RHIBufferDesc const& desc);
+        RHITextureHandle CreateTexture(RHITextureDesc const& desc);
+
     public:
         ID3D12Device* GetRootDevice() { return this->m_rootDevice; }
         ID3D12Device2* GetRootDevice2() { return this->m_rootDevice2; }
@@ -47,6 +53,8 @@ namespace PhxEngine::RHI::D3D12
         size_t GetDedicatedSystemMemory() const { return this->GetDesc().DXGIDesc.DedicatedSystemMemory; };
         size_t GetDedicatedVideoMemory() const { return this->GetDesc().DXGIDesc.DedicatedVideoMemory; };
         size_t GetSharedSystemMemory() const { return this->GetDesc().DXGIDesc.SharedSystemMemory; };
+
+        bool CheckCapability(DeviceCapability deviceCapability) const;
 
     private:
         const D3D12AdapterDesc m_desc;

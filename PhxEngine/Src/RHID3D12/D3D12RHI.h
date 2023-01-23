@@ -81,6 +81,81 @@ namespace PhxEngine::RHI::D3D12
 		std::unordered_map<uint32_t, uint32_t> ElementStrides;
 	};
 
+	class D3D12RenderPass final : public RefCountPtr<IRHIRenderPass>
+	{
+	public:
+		const RHIRenderPassDesc& GetDesc() const override { return this->Desc; }
+		RHIRenderPassDesc Desc = {};
+
+		D3D12_RENDER_PASS_FLAGS D12RenderFlags = D3D12_RENDER_PASS_FLAG_NONE;
+
+		size_t NumRenderTargets = 0;
+		std::array<D3D12_RENDER_PASS_RENDER_TARGET_DESC, kNumConcurrentRenderTargets> RTVs = {};
+		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC DSV = {};
+
+		std::vector<D3D12_RESOURCE_BARRIER> BarrierDescBegin;
+		std::vector<D3D12_RESOURCE_BARRIER> BarrierDescEnd;
+	};
+
+	class D3D12Texture : public RefCountPtr<IRHITexture>
+	{
+	public:
+		D3D12Texture() = default;
+		~D3D12Texture() = default;
+
+		RHITextureDesc Desc = {};
+
+		RefCountPtr<ID3D12Resource> D3D12Resource;
+
+		// -- The views ---
+		DescriptorView RtvAllocation;
+		std::vector<DescriptorView> RtvSubresourcesAlloc = {};
+
+		DescriptorView DsvAllocation;
+		std::vector<DescriptorView> DsvSubresourcesAlloc = {};
+
+		DescriptorView Srv;
+		std::vector<DescriptorView> SrvSubresourcesAlloc = {};
+
+		DescriptorView UavAllocation;
+		std::vector<DescriptorView> UavSubresourcesAlloc = {};
+
+		void DisposeViews()
+		{
+			RtvAllocation.Allocation.Free();
+			for (auto& view : this->RtvSubresourcesAlloc)
+			{
+				view.Allocation.Free();
+			}
+			RtvSubresourcesAlloc.clear();
+			RtvAllocation = {};
+
+			DsvAllocation.Allocation.Free();
+			for (auto& view : this->DsvSubresourcesAlloc)
+			{
+				view.Allocation.Free();
+			}
+			DsvSubresourcesAlloc.clear();
+			DsvAllocation = {};
+
+			Srv.Allocation.Free();
+			for (auto& view : this->SrvSubresourcesAlloc)
+			{
+				view.Allocation.Free();
+			}
+			SrvSubresourcesAlloc.clear();
+			Srv = {};
+
+			UavAllocation.Allocation.Free();
+			for (auto& view : this->UavSubresourcesAlloc)
+			{
+				view.Allocation.Free();
+			}
+			UavSubresourcesAlloc.clear();
+			UavAllocation = {};
+		}
+
+	};
 
 	class D3D12FrameRenderCtx : public IRHIFrameRenderCtx
 	{
@@ -104,13 +179,21 @@ namespace PhxEngine::RHI::D3D12
 		std::mutex m_commandMutex;
 	};
 
+	struct D3D12Resource
+	{
+		RefCountPtr<ID3D12Resource> NativeResource;
+	};
+
 	class D3D12RHI : public IPhxRHI
 	{
 		static D3D12RHI* Singleton;
 
 	public:
+		static D3D12RHI* GetD3D12RHI() { return Singleton; }
+
+	public:
 		D3D12RHI(std::shared_ptr<D3D12Adapter>& adapter);
-		~D3D12RHI() = default;
+		~D3D12RHI();
 
 		void Initialize() override;
 		void Finalize() override;
@@ -119,6 +202,9 @@ namespace PhxEngine::RHI::D3D12
 		RHIShaderHandle CreateShader(RHIShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) override;
 		RHIInputLayoutHandle CreateInputLayout(Core::Span<RHIVertexAttributeDesc> desc) override;
 		RHIGraphicsPipelineHandle CreateGraphicsPipeline(RHIGraphicsPipelineDesc const& desc) override;
+		RHITextureHandle CreateTexture(RHITextureDesc const& desc) override;
+		RHITextureHandle CreateTexture(RHITextureDesc const& desc, RefCountPtr<D3D12Resource> resource);
+		RHIRenderPassHandle CreateRenderPass(RHIRenderPassDesc const& desc) override;
 
 		IRHIFrameRenderCtx& BeginFrameRenderContext(RHIViewportHandle viewport) override;
 		void FinishAndPresetFrameRenderContext(IRHIFrameRenderCtx* context) override;

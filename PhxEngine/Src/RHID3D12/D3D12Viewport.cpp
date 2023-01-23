@@ -18,8 +18,8 @@ RHIViewportHandle D3D12RHI::CreateViewport(RHIViewportDesc const& desc)
 
 void PhxEngine::RHI::D3D12::D3D12Viewport::Initialize()
 {
-	D3D12Adapter* adapter = this->GetParentAdapter();
-	IDXGIFactory2* factory6 = adapter->GetFactory6();
+	D3D12RHI* rhi = this->GetParentRHI();
+	IDXGIFactory2* factory6 = rhi->GetAdapter()->GetFactory6();
 
 	assert(this->m_desc.WindowHandle);
 	if (!this->m_desc.WindowHandle)
@@ -42,7 +42,7 @@ void PhxEngine::RHI::D3D12::D3D12Viewport::Initialize()
 
 	ThrowIfFailed(
 		factory6->CreateSwapChainForHwnd(
-			adapter->GetDevice()->GetGfxQueue()->GetD3D12CommandQueue(),
+			rhi->GetAdapter()->GetDevice()->GetGfxQueue()->GetD3D12CommandQueue(),
 			static_cast<HWND>(this->m_desc.WindowHandle),
 			&dx12Desc,
 			nullptr,
@@ -50,6 +50,40 @@ void PhxEngine::RHI::D3D12::D3D12Viewport::Initialize()
 			this->m_swapchain.ReleaseAndGetAddressOf()));
 
 	ThrowIfFailed(this->m_swapchain->QueryInterface(this->m_swapchain4.ReleaseAndGetAddressOf()));
+
+	// Create Back Buffer Textures
+
+	this->m_backBuffers.resize(this->m_desc.BufferCount);
+	for (UINT i = 0; i < this->m_desc.BufferCount; i++)
+	{
+		RefCountPtr<ID3D12Resource> backBuffer;
+		ThrowIfFailed(
+			this->m_swapchain4->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
+
+		char allocatorName[32];
+		sprintf_s(allocatorName, "Back Buffer %iu", i);
+
+		this->m_backBuffers[i] = rhi->CreateTexture(
+			{
+				.Dimension = TextureDimension::Texture2D,
+				.Format = this->m_desc.Format,
+				.Width = this->m_desc.Width,
+				.Height = this->m_desc.Height,
+				.DebugName = std::string(allocatorName)
+			},
+			backBuffer);
+	}
+
+	// Create a dummy Renderpass 
+	if (!this->m_renderPass)
+	{
+		// Create Dummy Render pass
+		this->m_renderPass = rhi->CreateRenderPass({});
+	}
+
+	ThrowIfFailed(
+		rhi->GetAdapter()->GetRootDevice()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_frameFence)));
+
 }
 
 void PhxEngine::RHI::D3D12::D3D12Viewport::WaitForIdleFrame()

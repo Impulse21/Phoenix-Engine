@@ -108,21 +108,21 @@ namespace PhxEngine::RHI::D3D12
 #endif
    }
 
-   class D3D12Adapter;
-   class D3D12AdapterChild
+   class D3D12RHI;
+   class D3D12RHIChild
    {
    public:
-       D3D12AdapterChild(D3D12Adapter* parent = nullptr) : ParentAdapter(parent) {}
-       virtual ~D3D12AdapterChild() = default;
+       D3D12RHIChild(D3D12RHI* parent = nullptr) : ParentRHI(parent) {}
+       virtual ~D3D12RHIChild() = default;
 
-       FORCEINLINE D3D12Adapter* GetParentAdapter() const
+       FORCEINLINE D3D12RHI* GetParentRHI() const
        {
-           assert(this->ParentAdapter != nullptr);
-           return this->ParentAdapter;
+           assert(this->ParentRHI != nullptr);
+           return this->ParentRHI;
        }
 
    protected:
-       D3D12Adapter* ParentAdapter;
+       D3D12RHI* ParentRHI;
 
    };
 }

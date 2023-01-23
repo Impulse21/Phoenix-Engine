@@ -3,6 +3,7 @@
 
 #include "D3D12CommandQueue.h"
 #include "D3D12Device.h"
+using namespace PhxEngine::RHI;
 
 using namespace PhxEngine::RHI::D3D12;
 
@@ -152,4 +153,14 @@ void PhxEngine::RHI::D3D12::D3D12Adapter::InitializeD3D12Devices()
 
 	this->m_device = std::make_unique<D3D12Device>(0, this);
 
+}
+
+RHITextureHandle D3D12Adapter::CreateTexture(RHITextureDesc const& desc)
+{
+	return RHITextureHandle();
+}
+
+bool PhxEngine::RHI::D3D12::D3D12Adapter::CheckCapability(DeviceCapability deviceCapability) const
+{
+	return (this->m_capabilities & deviceCapability) == deviceCapability;
 }

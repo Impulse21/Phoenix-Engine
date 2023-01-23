@@ -435,6 +435,11 @@ D3D12RHI::D3D12RHI(std::shared_ptr<D3D12Adapter>& adapter)
     // TODO: lite set up that is required.
 }
 
+PhxEngine::RHI::D3D12::D3D12RHI::~D3D12RHI()
+{
+    Singleton = nullptr;
+}
+
 void PhxEngine::RHI::D3D12::D3D12RHI::Initialize()
 {
     this->m_adapter->InitializeD3D12Devices();
@@ -617,6 +622,277 @@ RHIGraphicsPipelineHandle PhxEngine::RHI::D3D12::D3D12RHI::CreateGraphicsPipelin
             &d3d12Desc, IID_PPV_ARGS(&psoImpl->D3D12PipelineState)));
 
     return psoImpl;
+}
+
+RHITextureHandle PhxEngine::RHI::D3D12::D3D12RHI::CreateTexture(RHITextureDesc const& desc)
+{
+    return RHITextureHandle();
+}
+
+RHITextureHandle PhxEngine::RHI::D3D12::D3D12RHI::CreateTexture(RHITextureDesc const& desc, RefCountPtr<D3D12Resource> resource)
+{
+    return RHITextureHandle();
+}
+
+RHIRenderPassHandle PhxEngine::RHI::D3D12::D3D12RHI::CreateRenderPass(RHIRenderPassDesc const& desc)
+{
+    if (!this->m_adapter->CheckCapability(DeviceCapability::RenderPass))
+    {
+        return {};
+    }
+
+    auto renderPassImpl = std::make_unique<D3D12RenderPass>();
+
+    if (desc.Flags & RenderPassDesc::Flags::AllowUavWrites)
+    {
+        renderPassImpl->D12RenderFlags |= D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES;
+    }
+
+    for (auto& attachment : desc.Attachments)
+    {
+        auto textureImpl = SafeCast<D3D12Texture*>(attachment.Texture.Get());
+        assert(textureImpl);
+        if (!textureImpl)
+        {
+            continue;
+        }
+
+        auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
+        D3D12_CLEAR_VALUE clearValue = {};
+        clearValue.Color[0] = textureImpl->Desc.OptmizedClearValue.Colour.R;
+        clearValue.Color[1] = textureImpl->Desc.OptmizedClearValue.Colour.G;
+        clearValue.Color[2] = textureImpl->Desc.OptmizedClearValue.Colour.B;
+        clearValue.Color[3] = textureImpl->Desc.OptmizedClearValue.Colour.A;
+        clearValue.DepthStencil.Depth = textureImpl->Desc.OptmizedClearValue.DepthStencil.Depth;
+        clearValue.DepthStencil.Stencil = textureImpl->Desc.OptmizedClearValue.DepthStencil.Stencil;
+        clearValue.Format = dxgiFormatMapping.RtvFormat;
+
+
+        switch (attachment.Type)
+        {
+        case RHIRenderPassDesc::RenderPassAttachment::Type::RenderTarget:
+        {
+            D3D12_RENDER_PASS_RENDER_TARGET_DESC& renderPassRTDesc = renderPassImpl->RTVs[renderPassImpl->NumRenderTargets];
+
+            // Use main view
+            if (attachment.Subresource < 0 || textureImpl->RtvSubresourcesAlloc.empty())
+            {
+                renderPassRTDesc.cpuDescriptor = textureImpl->RtvAllocation.Allocation.GetCpuHandle();
+            }
+            else // Use Subresource
+            {
+                assert((size_t)attachment.Subresource < textureImpl->RtvSubresourcesAlloc.size());
+                renderPassRTDesc.cpuDescriptor = textureImpl->RtvSubresourcesAlloc[(size_t)attachment.Subresource].Allocation.GetCpuHandle();
+            }
+
+            switch (attachment.LoadOp)
+            {
+            case RHIRenderPassDesc::RenderPassAttachment::LoadOpType::Clear:
+            {
+                renderPassRTDesc.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+                renderPassRTDesc.BeginningAccess.Clear.ClearValue = clearValue;
+                break;
+            }
+            case RHIRenderPassDesc::RenderPassAttachment::LoadOpType::DontCare:
+            {
+                renderPassRTDesc.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD;
+                break;
+            }
+            case RHIRenderPassDesc::RenderPassAttachment::LoadOpType::Load:
+            default:
+                renderPassRTDesc.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+            }
+
+            switch (attachment.StoreOp)
+            {
+            case RHIRenderPassDesc::RenderPassAttachment::StoreOpType::DontCare:
+            {
+                renderPassRTDesc.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD;
+                break;
+            }
+            case RHIRenderPassDesc::RenderPassAttachment::StoreOpType::Store:
+            default:
+                renderPassRTDesc.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+                break;
+            }
+
+            renderPassImpl->NumRenderTargets++;
+            break;
+        }
+        case RHIRenderPassDesc::RenderPassAttachment::Type::DepthStencil:
+        {
+            D3D12_RENDER_PASS_DEPTH_STENCIL_DESC& renderPassDSDesc = renderPassImpl->DSV;
+
+            // Use main view
+            if (attachment.Subresource < 0 || textureImpl->DsvSubresourcesAlloc.empty())
+            {
+                renderPassDSDesc.cpuDescriptor = textureImpl->DsvAllocation.Allocation.GetCpuHandle();
+            }
+            else // Use Subresource
+            {
+                assert((size_t)attachment.Subresource < textureImpl->DsvSubresourcesAlloc.size());
+                renderPassDSDesc.cpuDescriptor = textureImpl->DsvSubresourcesAlloc[(size_t)attachment.Subresource].Allocation.GetCpuHandle();
+            }
+
+            switch (attachment.LoadOp)
+            {
+            case RHIRenderPassDesc::RenderPassAttachment::LoadOpType::Clear:
+            {
+                renderPassDSDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+                renderPassDSDesc.StencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+                renderPassDSDesc.DepthBeginningAccess.Clear.ClearValue = clearValue;
+                renderPassDSDesc.StencilBeginningAccess.Clear.ClearValue = clearValue;
+                break;
+            }
+            case RHIRenderPassDesc::RenderPassAttachment::LoadOpType::DontCare:
+            {
+                renderPassDSDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD;
+                renderPassDSDesc.StencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD;
+                break;
+            }
+            case RHIRenderPassDesc::RenderPassAttachment::LoadOpType::Load:
+            default:
+                renderPassDSDesc.DepthBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+                renderPassDSDesc.StencilBeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+            }
+
+            switch (attachment.StoreOp)
+            {
+            case RHIRenderPassDesc::RenderPassAttachment::StoreOpType::DontCare:
+            {
+                renderPassDSDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD;
+                renderPassDSDesc.StencilEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD;
+                break;
+            }
+            case RHIRenderPassDesc::RenderPassAttachment::StoreOpType::Store:
+            default:
+                renderPassDSDesc.DepthEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+                renderPassDSDesc.StencilEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+                break;
+            }
+
+            break;
+        }
+        }
+    }
+
+    // Construct Begin Resource Barriers
+    for (auto& attachment : desc.Attachments)
+    {
+        D3D12_RESOURCE_STATES beforeState = ConvertResourceStates(attachment.InitialLayout);
+        D3D12_RESOURCE_STATES afterState = ConvertResourceStates(attachment.SubpassLayout);
+
+        if (beforeState == afterState)
+        {
+            // Nothing to do here;
+            continue;
+        }
+
+        auto textureImpl = SafeCast<D3D12Texture*>(attachment.Texture);
+
+        D3D12_RESOURCE_BARRIER barrierdesc = {};
+        barrierdesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrierdesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrierdesc.Transition.pResource = textureImpl->D3D12Resource.Get();
+        barrierdesc.Transition.StateBefore = beforeState;
+        barrierdesc.Transition.StateAfter = afterState;
+
+        // Unroll subresouce Barriers
+        if (attachment.Subresource >= 0)
+        {
+            const DescriptorView* descriptor = nullptr;
+            switch (attachment.Type)
+            {
+            case RHIRenderPassDesc::RenderPassAttachment::Type::RenderTarget:
+            {
+                descriptor = &textureImpl->RtvSubresourcesAlloc[attachment.Subresource];
+                break;
+            }
+            case RHIRenderPassDesc::RenderPassAttachment::Type::DepthStencil:
+            {
+                descriptor = &textureImpl->DsvSubresourcesAlloc[attachment.Subresource];
+                break;
+            }
+            default:
+                assert(false);
+                continue;
+            }
+
+            for (uint32_t mip = descriptor->FirstMip; mip < std::min((uint32_t)textureImpl->Desc.MipLevels, descriptor->FirstMip + descriptor->MipCount); ++mip)
+            {
+                for (uint32_t slice = descriptor->FirstSlice; slice < std::min((uint32_t)textureImpl->Desc.ArraySize, descriptor->FirstSlice + descriptor->SliceCount); ++slice)
+                {
+                    barrierdesc.Transition.Subresource = D3D12CalcSubresource(mip, slice, 0, textureImpl->Desc.MipLevels, textureImpl->Desc.ArraySize);
+                    renderPassImpl->BarrierDescBegin.push_back(barrierdesc);
+                }
+            }
+        }
+        else
+        {
+            barrierdesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            renderPassImpl->BarrierDescBegin.push_back(barrierdesc);
+        }
+    }
+
+    // Construct End Resource Barriers
+    for (auto& attachment : desc.Attachments)
+    {
+        D3D12_RESOURCE_STATES beforeState = ConvertResourceStates(attachment.SubpassLayout);
+        D3D12_RESOURCE_STATES afterState = ConvertResourceStates(attachment.FinalLayout);
+
+        if (beforeState == afterState)
+        {
+            // Nothing to do here;
+            continue;
+        }
+
+        auto textureImpl = SafeCast<D3D12Texture*>(attachment.Texture);
+
+        D3D12_RESOURCE_BARRIER barrierdesc = {};
+        barrierdesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrierdesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrierdesc.Transition.pResource = textureImpl->D3D12Resource.Get();
+        barrierdesc.Transition.StateBefore = beforeState;
+        barrierdesc.Transition.StateAfter = afterState;
+
+        // Unroll subresouce Barriers
+        if (attachment.Subresource >= 0)
+        {
+            const DescriptorView* descriptor = nullptr;
+            switch (attachment.Type)
+            {
+            case RHIRenderPassDesc::RenderPassAttachment::Type::RenderTarget:
+            {
+                descriptor = &textureImpl->RtvSubresourcesAlloc[attachment.Subresource];
+                break;
+            }
+            case RHIRenderPassDesc::RenderPassAttachment::Type::DepthStencil:
+            {
+                descriptor = &textureImpl->DsvSubresourcesAlloc[attachment.Subresource];
+                break;
+            }
+            default:
+                assert(false);
+                continue;
+            }
+
+            for (uint32_t mip = descriptor->FirstMip; mip < std::min((uint32_t)textureImpl->Desc.MipLevels, descriptor->FirstMip + descriptor->MipCount); ++mip)
+            {
+                for (uint32_t slice = descriptor->FirstSlice; slice < std::min((uint32_t)textureImpl->Desc.ArraySize, descriptor->FirstSlice + descriptor->SliceCount); ++slice)
+                {
+                    barrierdesc.Transition.Subresource = D3D12CalcSubresource(mip, slice, 0, textureImpl->Desc.MipLevels, textureImpl->Desc.ArraySize);
+                    renderPassImpl->BarrierDescBegin.push_back(barrierdesc);
+                }
+            }
+        }
+        else
+        {
+            barrierdesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            renderPassImpl->BarrierDescEnd.push_back(barrierdesc);
+        }
+    }
+
+    return RHIRenderPassHandle::Create(renderPassImpl.release());
 }
 
 IRHIFrameRenderCtx& PhxEngine::RHI::D3D12::D3D12RHI::BeginFrameRenderContext(RHIViewportHandle viewport)
