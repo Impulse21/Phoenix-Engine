@@ -92,9 +92,3 @@ const DxgiFormatMapping& PhxEngine::RHI::D3D12::GetDxgiFormatMapping(RHIFormat a
     assert(mapping.AbstractFormat == abstractFormat);
     return mapping;
 }
-
-const DxgiFormatMapping& PhxEngine::RHI::D3D12::GetDxgiFormatMapping(FormatType abstractFormat)
-{
-    const DxgiFormatMapping& mapping = c_FormatMappings[uint32_t(abstractFormat)];
-    return mapping;
-}

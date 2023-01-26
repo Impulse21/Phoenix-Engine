@@ -35,6 +35,6 @@ namespace PhxEngine::Graphics
 		ImGuiContext* m_imguiContext;
 
 		RHI::TextureHandle m_fontTexture;
-		RHI::GraphicsPSOHandle m_pso;
+		RHI::GraphicsPipelineHandle m_pso;
 	};
 }

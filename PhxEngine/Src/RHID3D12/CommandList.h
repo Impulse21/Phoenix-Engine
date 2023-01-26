@@ -11,12 +11,12 @@ namespace PhxEngine::RHI::D3D12
 	class GpuDescriptorHeap;
 	class UploadBuffer;
 	class DynamicSuballocator;
-	class ComputePSO;
+	class D3D12ComputePipeline;
 
 	class TimerQuery;
 	struct TrackedResources
 	{
-		std::vector<std::shared_ptr<IResource>> Resource;
+		std::vector<std::shared_ptr<IRHIResource>> Resource;
 		std::vector<Microsoft::WRL::ComPtr<IUnknown>> NativeResources;
 		std::vector<std::shared_ptr<TimerQuery>> TimerQueries;
 		std::vector<Core::Handle<Texture>> TextureHandles;
@@ -44,7 +44,7 @@ namespace PhxEngine::RHI::D3D12
 		std::queue<std::pair<uint64_t, DynamicSuballocator*>> m_availableAllocators;
 	};
 
-	class CommandList final : public ICommandList
+	class CommandList final : public RefCounter<ICommandList>
 	{
 	public:
 		CommandList(
@@ -92,7 +92,7 @@ namespace PhxEngine::RHI::D3D12
 		void WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* data, size_t rowPitch, size_t depthPitch) override;
 		void SetRenderTargets(std::vector<TextureHandle> const& renderTargets, TextureHandle depthStencil) override;
 
-        void SetGraphicsPSO(GraphicsPSOHandle graphisPSO) override;
+        void SetGraphicsPSO(GraphicsPipelineHandle graphisPSO) override;
 		void SetViewports(Viewport* viewports, size_t numViewports) override;
 		void SetScissors(Rect* scissor, size_t numScissors) override;
 		void BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants) override;
@@ -101,7 +101,7 @@ namespace PhxEngine::RHI::D3D12
 		void BindVertexBuffer(uint32_t slot, BufferHandle vertexBuffer) override;
 		void BindDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData) override;
 		void BindIndexBuffer(BufferHandle indexBuffer) override;
-		void BindDynamicIndexBuffer(size_t numIndicies, FormatType indexFormat, const void* indexBufferData) override;
+		void BindDynamicIndexBuffer(size_t numIndicies, RHIFormat indexFormat, const void* indexBufferData) override;
         void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, size_t numElements, size_t elementSize, const void* bufferData) override;
         void BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer) override;
 		void BindResourceTable(size_t rootParameterIndex) override;
@@ -110,7 +110,7 @@ namespace PhxEngine::RHI::D3D12
 		void BindDynamicUavDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures) override;
 
 		// -- Comptute Stuff ---
-		void SetComputeState(ComputePSOHandle state);
+		void SetComputeState(ComputePipelineHandle state);
 		void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1);
 		void DispatchIndirect(uint32_t offsetBytes);
 
@@ -129,7 +129,7 @@ namespace PhxEngine::RHI::D3D12
 
 	private:
 		const uint32_t DynamicChunkSizeSrvUavCbv = 256;
-		ComputePSO* m_activeComputePSO = nullptr;
+		D3D12ComputePipeline* m_activeComputePipeline = nullptr;
 
 		GraphicsDevice& m_graphicsDevice;
 		CommandListDesc m_desc = {};

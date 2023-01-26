@@ -159,7 +159,7 @@ void MeshComponent::CreateRenderData(
 			geometry.Triangles.VertexStride = sizeof(DirectX::XMFLOAT3);
 			geometry.Triangles.VertexByteOffset = 0;
 			geometry.Triangles.VertexCount = (uint32_t)this->VertexPositions.size();
-			geometry.Triangles.VertexFormat = RHI::FormatType::RGB32_FLOAT;
+			geometry.Triangles.VertexFormat = RHI::RHIFormat::RGB32_FLOAT;
 
 			geometry.Triangles.IndexBuffer = this->IndexGpuBuffer;
 			geometry.Triangles.IndexCount = surface.NumIndices;

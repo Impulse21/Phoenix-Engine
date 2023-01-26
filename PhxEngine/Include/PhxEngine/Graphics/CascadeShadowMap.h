@@ -10,7 +10,7 @@ namespace PhxEngine::Graphics
 	class CascadeShadowMap
 	{
 	public:
-		CascadeShadowMap(uint32_t resolution, RHI::FormatType format, bool isReverseZ);
+		CascadeShadowMap(uint32_t resolution, RHI::RHIFormat format, bool isReverseZ);
 		~CascadeShadowMap();
 
 		// Construct Shadow Render Cams

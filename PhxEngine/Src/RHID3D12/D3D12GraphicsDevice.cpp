@@ -1,5 +1,5 @@
 #include "phxpch.h"
-#include "GraphicsDevice.h"
+#include "D3D12GraphicsDevice.h"
 
 #include "PhxEngine/Core/Helpers.h"
 
@@ -26,6 +26,10 @@ static const GUID PixUUID = { 0x9f251514, 0x9d4d, 0x4902, { 0x9d, 0x60, 0x18, 0x
 
 static bool sDebugEnabled = false;
 
+// DirectX Aligily SDK
+extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 606; }
+extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
+
 // Come up with a better reporting system for resources
 #define TRACK_RESOURCES 0
 namespace
@@ -41,7 +45,7 @@ constexpr uint64_t AlignTo(uint64_t value, uint64_t alignment)
 	return ((value + alignment - 1) / alignment) * alignment;
 }
 
-DXGI_FORMAT ConvertFormat(FormatType format)
+DXGI_FORMAT ConvertFormat(RHIFormat format)
 {
 	return D3D12::GetDxgiFormatMapping(format).SrvFormat;
 }
@@ -247,20 +251,36 @@ UINT ConvertSamplerReductionType(SamplerReductionType reductionType)
 	}
 }
 
-PhxEngine::RHI::D3D12::GraphicsDevice::GraphicsDevice()
-	: m_frameCount(1)
+PhxEngine::RHI::D3D12::GraphicsDevice::GraphicsDevice(std::shared_ptr<D3D12Adapter> adapter, RefCountPtr<IDXGIFactory6> factory)
+	: m_gpuAdapter(adapter)
+	, m_frameCount(1)
 	, m_timerQueryIndexPool(kTimestampQueryHeapSize)
 	, m_texturePool(AlignTo(kResourcePoolSize / sizeof(Dx12Texture), sizeof(Dx12Texture)))
 	, m_bufferPool(AlignTo(kResourcePoolSize / sizeof(Dx12Texture), sizeof(Dx12Buffer)))
 	, m_renderPassPool(AlignTo(10 * sizeof(Dx12RenderPass), sizeof(Dx12RenderPass)))
 	, m_rtAccelerationStructurePool(AlignTo(kResourcePoolSize / sizeof(Dx12RTAccelerationStructure), sizeof(Dx12RTAccelerationStructure)))
+	, m_graphicsPipelinePool(AlignTo(10 * sizeof(D3D12GraphicsPipeline), sizeof(D3D12GraphicsPipeline)))
+	, m_computePipelinePool(AlignTo(10 * sizeof(D3D12ComputePipeline), sizeof(D3D12ComputePipeline)))
 {
 #if ENABLE_PIX_CAPUTRE
 	this->m_pixCaptureModule = PIXLoadLatestWinPixGpuCapturerLibrary();
 #endif 
+	sSingleton = this;
+	IGraphicsDevice::GPtr = this;
+}
 
-	this->m_factory = this->CreateFactory();
-	this->CreateDevice(this->m_gpuAdapter->DxgiAdapter);
+PhxEngine::RHI::D3D12::GraphicsDevice::~GraphicsDevice()
+{
+#if ENABLE_PIX_CAPUTRE
+	FreeLibrary(this->m_pixCaptureModule);
+#endif
+	sSingleton = nullptr;
+	IGraphicsDevice::GPtr = nullptr;
+}
+
+void PhxEngine::RHI::D3D12::GraphicsDevice::Initialize()
+{
+	this->InitializeD3D12Device(this->m_gpuAdapter->NativeAdapter);
 
 	// Create Queues
 	this->m_commandQueues[(int)CommandQueueType::Graphics] = std::make_unique<CommandQueue>(*this, D3D12_COMMAND_LIST_TYPE_DIRECT);
@@ -324,20 +344,19 @@ PhxEngine::RHI::D3D12::GraphicsDevice::GraphicsDevice()
 
 	// Create GPU Buffer for timestamp readbacks
 	this->m_timestampQueryBuffer = this->CreateBuffer(desc);
-
 }
 
-PhxEngine::RHI::D3D12::GraphicsDevice::~GraphicsDevice()
+void PhxEngine::RHI::D3D12::GraphicsDevice::Finalize()
 {
 	this->DeleteBuffer(this->m_timestampQueryBuffer);
 
-	for (auto handle : this->m_swapChain.BackBuffers)
+	for (auto handle : this->m_activeViewport->BackBuffers)
 	{
 		this->m_texturePool.Release(handle);
 	}
 
-	this->m_swapChain.BackBuffers.clear();
-	this->DeleteRenderPass(this->m_swapChain.RenderPass);
+	this->m_activeViewport->BackBuffers.clear();
+	this->DeleteRenderPass(m_activeViewport->RenderPass);
 
 	while (!this->m_deleteQueue.empty())
 	{
@@ -345,11 +364,6 @@ PhxEngine::RHI::D3D12::GraphicsDevice::~GraphicsDevice()
 		deleteItem.DeleteFn();
 		this->m_deleteQueue.pop_front();
 	}
-
-#if ENABLE_PIX_CAPUTRE
-	FreeLibrary(this->m_pixCaptureModule);
-#endif
-
 }
 
 void PhxEngine::RHI::D3D12::GraphicsDevice::WaitForIdle()
@@ -374,132 +388,17 @@ void PhxEngine::RHI::D3D12::GraphicsDevice::QueueWaitForCommandList(CommandQueue
 	pWaitQueue->GetD3D12CommandQueue()->Wait(executionQueue->GetFence(), waitOnRecipt.FenceValue);
 }
 
-void PhxEngine::RHI::D3D12::GraphicsDevice::CreateSwapChain(SwapChainDesc const& swapChainDesc)
-{
-	assert(swapChainDesc.WindowHandle);
-	if (!swapChainDesc.WindowHandle)
-	{
-		// LOG_CORE_ERROR("Invalid window handle");
-		throw std::runtime_error("Invalid Window Error");
-	}
-
-	auto& mapping = GetDxgiFormatMapping(swapChainDesc.Format);
-
-	DXGI_SWAP_CHAIN_DESC1 dx12Desc = {};
-	dx12Desc.Width = swapChainDesc.Width;
-	dx12Desc.Height = swapChainDesc.Height;
-	dx12Desc.Format = mapping.RtvFormat;
-	dx12Desc.SampleDesc.Count = 1;
-	dx12Desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	dx12Desc.BufferCount = swapChainDesc.BufferCount;
-	dx12Desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-	dx12Desc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-
-	Microsoft::WRL::ComPtr<IDXGISwapChain1> tmpSwapChain;
-	ThrowIfFailed(
-		this->m_factory->CreateSwapChainForHwnd(
-			this->GetGfxQueue()->GetD3D12CommandQueue(),
-			static_cast<HWND>(swapChainDesc.WindowHandle),
-			&dx12Desc,
-			nullptr,
-			nullptr,
-			&tmpSwapChain));
-
-	ThrowIfFailed(
-		tmpSwapChain.As(&this->m_swapChain.DxgiSwapchain));
-
-	this->m_swapChain.Desc = swapChainDesc;
-
-	const bool hdrSupported = swapChainDesc.EnableHDR && this->IsHdrSwapchainSupported();
-	assert(!hdrSupported); // Not supported
-
-	/* Used to change the colour space -> From Wicked Engine.
-	DXGI_COLOR_SPACE_TYPE colourSpace = {};
-	switch (dx12Desc.Format)
-	{
-	case DXGI_FORMAT_R10G10B10A2_UNORM:
-		colourSpace = hdrSupported ? DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 : DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
-		break;
-	case DXGI_FORMAT_R16G16B16A16_FLOAT:
-		// This format is HDR (Linear):
-		colourSpace = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
-		break;
-	default:
-		// Anything else will be SDR (SRGB):
-		colourSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
-		break;
-	}
-
-
-	UINT colourSpaceSupport = 0;
-	if (SUCCEEDED(this->m_swapChain.DxgiSwapchain->CheckColorSpaceSupport(colourSpace, &colourSpaceSupport)))
-	{
-		if (colourSpaceSupport & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT)
-		{
-			auto hr = this->m_swapChain.DxgiSwapchain->SetColorSpace1(colourSpace);
-			assert(SUCCEEDED(hr));
-			if (SUCCEEDED(hr))
-			{
-				switch (colourSpace)
-				{
-				default:
-				case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709:
-					this->m_swapChain.ColourSpace = ColourSpace::SRGB;
-					break;
-				case DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709:
-					assert(false); // Not supported
-					this->m_swapChain.ColourSpace = ColourSpace::HDR_LINEAR;
-					break;
-				case DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020:
-					
-					this->m_swapChain.ColourSpace = ColourSpace::HDR10_ST2084;
-					break;
-				}
-			}
-		}
-	}
-	*/
-	this->m_swapChain.BackBuffers.resize(this->m_swapChain.Desc.BufferCount);
-	for (UINT i = 0; i < this->m_swapChain.Desc.BufferCount; i++)
-	{
-		Microsoft::WRL::ComPtr<ID3D12Resource> backBuffer;
-		ThrowIfFailed(
-			this->m_swapChain.DxgiSwapchain->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
-
-		auto textureDesc = TextureDesc();
-		textureDesc.Dimension = TextureDimension::Texture2D;
-		textureDesc.Format = this->m_swapChain.Desc.Format;
-		textureDesc.Width = this->m_swapChain.Desc.Width;
-		textureDesc.Height = this->m_swapChain.Desc.Height;
-
-		char allocatorName[32];
-		sprintf_s(allocatorName, "Back Buffer %iu", i);
-		textureDesc.DebugName = std::string(allocatorName);
-
-		this->m_swapChain.BackBuffers[i] = this->CreateRenderTarget(textureDesc, backBuffer);
-	}
-
-	// Create a dummy Renderpass 
-	if (!this->m_swapChain.RenderPass.IsValid())
-	{
-		// Create Dummy Render pass
-		this->m_swapChain.RenderPass = this->CreateRenderPass({});
-	}
-
-	ThrowIfFailed(
-		this->GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_frameFence)));
-}
 
 bool PhxEngine::RHI::D3D12::GraphicsDevice::IsHdrSwapchainSupported()
 {
-	if (!this->m_swapChain.DxgiSwapchain)
+	if (!this->m_activeViewport->NativeSwapchain)
 	{
 		return false;
 	}
 
 	// HDR display query: https://docs.microsoft.com/en-us/windows/win32/direct3darticles/high-dynamic-range
 	Microsoft::WRL::ComPtr<IDXGIOutput> dxgiOutput;
-	if (SUCCEEDED(this->m_swapChain.DxgiSwapchain->GetContainingOutput(&dxgiOutput)))
+	if (SUCCEEDED(this->m_activeViewport->NativeSwapchain->GetContainingOutput(&dxgiOutput)))
 	{
 		Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
 		if (SUCCEEDED(dxgiOutput.As(&output6)))
@@ -524,9 +423,9 @@ CommandListHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateCommandList(Comma
 	return commandListImpl;
 }
 
-ShaderHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateShader(ShaderDesc const& desc, const void* binary, size_t binarySize)
+ShaderHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
 {
-	auto shaderImpl = std::make_unique<Shader>(desc, binary, binarySize);
+	auto shaderImpl = std::make_unique<Shader>(desc, shaderByteCode.begin(), shaderByteCode.Size());
 
 	// Create Root signature data
 
@@ -596,31 +495,31 @@ InputLayoutHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateInputLayout(Verte
 	return inputLayoutImpl;
 }
 
-GraphicsPSOHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateGraphicsPSO(GraphicsPSODesc const& desc)
+GraphicsPipelineHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateGraphicsPipeline(GraphicsPipelineDesc const& desc)
 {
-	std::unique_ptr<GraphicsPSO> psoImpl = std::make_unique<GraphicsPSO>();
-	psoImpl->Desc = desc;
+	D3D12GraphicsPipeline pipeline = {};
+	pipeline.Desc = desc;
 
 	if (desc.VertexShader)
 	{
 		auto shaderImpl = std::static_pointer_cast<Shader>(desc.VertexShader);
-		if (psoImpl->RootSignature == nullptr)
+		if (pipeline.RootSignature == nullptr)
 		{
-			psoImpl->RootSignature = shaderImpl->GetRootSignature();
+			pipeline.RootSignature = shaderImpl->GetRootSignature();
 		}
 	}
 
 	if (desc.PixelShader)
 	{
 		auto shaderImpl = std::static_pointer_cast<Shader>(desc.PixelShader);
-		if (psoImpl->RootSignature == nullptr)
+		if (pipeline.RootSignature == nullptr)
 		{
-			psoImpl->RootSignature = shaderImpl->GetRootSignature();
+			pipeline.RootSignature = shaderImpl->GetRootSignature();
 		}
 	}
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC d3d12Desc = {};
-	d3d12Desc.pRootSignature = psoImpl->RootSignature.Get();
+	d3d12Desc.pRootSignature = pipeline.RootSignature.Get();
 
 	std::shared_ptr<Shader> shaderImpl = nullptr;
 	shaderImpl = std::static_pointer_cast<Shader>(desc.VertexShader);
@@ -698,33 +597,32 @@ GraphicsPSOHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateGraphicsPSO(Graph
 	d3d12Desc.SampleMask = ~0u;
 
 	ThrowIfFailed(
-		this->GetD3D12Device2()->CreateGraphicsPipelineState(&d3d12Desc, IID_PPV_ARGS(&psoImpl->D3D12PipelineState)));
+		this->GetD3D12Device2()->CreateGraphicsPipelineState(&d3d12Desc, IID_PPV_ARGS(&pipeline.D3D12PipelineState)));
 
-	return psoImpl;
+	return this->m_graphicsPipelinePool.Insert(pipeline);
 }
 
-ComputePSOHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateComputePso(ComputePSODesc const& desc)
+ComputePipelineHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateComputePipeline(ComputePipelineDesc const& desc)
 {
-
-	std::unique_ptr<ComputePSO> psoImpl = std::make_unique<ComputePSO>();
-	psoImpl->Desc = desc;
+	D3D12ComputePipeline pipeline = {};
+	pipeline.Desc = desc;
 
 
 	assert(desc.ComputeShader);
 	auto shaderImpl = std::static_pointer_cast<Shader>(desc.ComputeShader);
-	if (psoImpl->RootSignature == nullptr)
+	if (pipeline.RootSignature == nullptr)
 	{
-		psoImpl->RootSignature = shaderImpl->GetRootSignature();
+		pipeline.RootSignature = shaderImpl->GetRootSignature();
 	}
 
 	D3D12_COMPUTE_PIPELINE_STATE_DESC d3d12Desc = {};
-	d3d12Desc.pRootSignature = psoImpl->RootSignature.Get();
+	d3d12Desc.pRootSignature = pipeline.RootSignature.Get();
 	d3d12Desc.CS = { shaderImpl->GetByteCode().data(), shaderImpl->GetByteCode().size() };
 
 	ThrowIfFailed(
-		this->GetD3D12Device2()->CreateComputePipelineState(&d3d12Desc, IID_PPV_ARGS(&psoImpl->D3D12PipelineState)));
+		this->GetD3D12Device2()->CreateComputePipelineState(&d3d12Desc, IID_PPV_ARGS(&pipeline.D3D12PipelineState)));
 
-	return psoImpl;
+	return this->m_computePipelinePool.Insert(pipeline);
 }
 
 RenderPassHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateRenderPass(RenderPassDesc const& desc)
@@ -1054,7 +952,7 @@ TextureHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateTexture(TextureDesc c
 	{
 		resourceDesc =
 			CD3DX12_RESOURCE_DESC::Tex1D(
-				desc.IsTypeless ? dxgiFormatMapping.ResourcFormatType : dxgiFormatMapping.RtvFormat,
+				desc.IsTypeless ? dxgiFormatMapping.ResourcRHIFormat : dxgiFormatMapping.RtvFormat,
 				desc.Width,
 				desc.ArraySize,
 				desc.MipLevels,
@@ -1070,7 +968,7 @@ TextureHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateTexture(TextureDesc c
 	{
 		resourceDesc =
 			CD3DX12_RESOURCE_DESC::Tex2D(
-				desc.IsTypeless ? dxgiFormatMapping.ResourcFormatType : dxgiFormatMapping.RtvFormat,
+				desc.IsTypeless ? dxgiFormatMapping.ResourcRHIFormat : dxgiFormatMapping.RtvFormat,
 				desc.Width,
 				desc.Height,
 				desc.ArraySize,
@@ -1084,7 +982,7 @@ TextureHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateTexture(TextureDesc c
 	{
 		resourceDesc =
 			CD3DX12_RESOURCE_DESC::Tex3D(
-				desc.IsTypeless ? dxgiFormatMapping.ResourcFormatType : dxgiFormatMapping.RtvFormat,
+				desc.IsTypeless ? dxgiFormatMapping.ResourcRHIFormat : dxgiFormatMapping.RtvFormat,
 				desc.Width,
 				desc.Height,
 				desc.ArraySize,
@@ -1459,9 +1357,9 @@ RTAccelerationStructureHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateRTAcc
 				trianglesDesc.VertexBuffer.StrideInBytes = g.Triangles.VertexStride;
 				trianglesDesc.IndexBuffer =
 					dx12VertexBuffer->IndexView.BufferLocation +
-					(D3D12_GPU_VIRTUAL_ADDRESS)g.Triangles.IndexOffset * (g.Triangles.IndexFormat == FormatType::R16_UINT ? sizeof(uint16_t) : sizeof(uint32_t));
+					(D3D12_GPU_VIRTUAL_ADDRESS)g.Triangles.IndexOffset * (g.Triangles.IndexFormat == RHIFormat::R16_UINT ? sizeof(uint16_t) : sizeof(uint32_t));
 				trianglesDesc.IndexCount = g.Triangles.IndexCount;
-				trianglesDesc.IndexFormat = g.Triangles.IndexFormat == FormatType::R16_UINT ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+				trianglesDesc.IndexFormat = g.Triangles.IndexFormat == RHIFormat::R16_UINT ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 
 				if (g.Flags & RTAccelerationStructureDesc::BottomLevelDesc::Geometry::kUseTransform)
 				{
@@ -1767,63 +1665,6 @@ void PhxEngine::RHI::D3D12::GraphicsDevice::ResetTimerQuery(TimerQueryHandle que
 	queryImpl->CommandQueue = nullptr;
 }
 
-void PhxEngine::RHI::D3D12::GraphicsDevice::Present()
-{
-	HRESULT hr = this->m_swapChain.DxgiSwapchain->Present(0, 0);
-
-	// If the device was reset we must completely reinitialize the renderer.
-	if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
-	{
-#ifdef _DEBUG
-		char buff[64] = {};
-		sprintf_s(buff, "Device Lost on Present: Reason code 0x%08X\n",
-			static_cast<unsigned int>((hr == DXGI_ERROR_DEVICE_REMOVED) ? this->GetD3D12Device2()->GetDeviceRemovedReason() : hr));
-		OutputDebugStringA(buff);
-#endif
-
-		// TODO: Handle device lost
-		// HandleDeviceLost();
-	}
-
-	// Mark complition of the graphics Queue 
-	this->GetGfxQueue()->GetD3D12CommandQueue()->Signal(this->m_frameFence.Get(), this->m_frameCount);
-
-	// Begin the next frame - this affects the GetCurrentBackBufferIndex()
-	this->m_frameCount++;
-
-	const UINT64 completedFrame = this->m_frameFence->GetCompletedValue();
-
-	// If the fence is max uint64, that might indicate that the device has been removed as fences get reset in this case
-	assert(completedFrame != UINT64_MAX);
-
-	// Since our frame count is 1 based rather then 0, increment the number of buffers by 1 so we don't have to wait on the first 3 frames
-	// that are kicked off.
-	if (this->m_frameCount >= (this->m_swapChain.GetNumBackBuffers() + 1) && completedFrame < this->m_frameCount)
-	{
-		// Wait on the frames last value?
-		// NULL event handle will simply wait immediately:
-		//	https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12fence-seteventoncompletion#remarks
-		ThrowIfFailed(
-			this->m_frameFence->SetEventOnCompletion(this->m_frameCount - this->m_swapChain.GetNumBackBuffers(), NULL));
-	}
-
-	while (!this->m_deleteQueue.empty())
-	{
-		DeleteItem& deleteItem = this->m_deleteQueue.front();
-		if (deleteItem.Frame < completedFrame)
-		{
-			deleteItem.DeleteFn();
-			this->m_deleteQueue.pop_front();
-		}
-		else
-		{
-			break;
-		}
-	}
-
-	this->RunGarbageCollection();
-}
-
 ExecutionReceipt PhxEngine::RHI::D3D12::GraphicsDevice::ExecuteCommandLists(
 	ICommandList* const* pCommandLists,
 	size_t numCommandLists,
@@ -1937,6 +1778,52 @@ TextureHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateRenderTarget(
 	texture.D3D12Resource->SetName(debugName.c_str());
 
 	return this->m_texturePool.Insert(texture);
+}
+
+TextureHandle PhxEngine::RHI::D3D12::GraphicsDevice::CreateTexture(TextureDesc const& desc, RefCountPtr<ID3D12Resource> d3d12Resource)
+{
+	// Construct Texture
+	Dx12Texture texture = {};
+	texture.Desc = desc;
+	texture.D3D12Resource = d3d12Resource;
+	texture.RtvAllocation =
+	{
+		.Allocation = this->GetRtvCpuHeap()->Allocate(1),
+		.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV
+	};
+
+	this->GetD3D12Device2()->CreateRenderTargetView(
+		texture.D3D12Resource.Get(),
+		nullptr,
+		texture.RtvAllocation.Allocation.GetCpuHandle());
+
+	// Set debug name
+	std::wstring debugName(texture.Desc.DebugName.begin(), texture.Desc.DebugName.end());
+	texture.D3D12Resource->SetName(debugName.c_str());
+
+	TextureHandle textureHande = this->m_texturePool.Insert(texture);
+
+	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
+	{
+		this->CreateSubresource(textureHande, RHI::SubresouceType::SRV, 0, ~0u, 0, ~0u);
+	}
+
+	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
+	{
+		this->CreateSubresource(textureHande, RHI::SubresouceType::RTV, 0, ~0u, 0, ~0u);
+	}
+
+	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
+	{
+		this->CreateSubresource(textureHande, RHI::SubresouceType::DSV, 0, ~0u, 0, ~0u);
+	}
+
+	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+	{
+		this->CreateSubresource(textureHande, RHI::SubresouceType::UAV, 0, ~0u, 0, ~0u);
+	}
+
+	return textureHande;
 }
 
 int PhxEngine::RHI::D3D12::GraphicsDevice::CreateShaderResourceView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
@@ -2299,7 +2186,7 @@ int PhxEngine::RHI::D3D12::GraphicsDevice::CreateUnorderedAccessView(TextureHand
 }
 
 /*
-RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(GraphicsPSODesc const& desc)
+RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(GraphicsPipelineDesc const& desc)
 {
 	/*
 	auto rootSignatureImpl = std::make_unique<RootSignature>();
@@ -2559,9 +2446,9 @@ void PhxEngine::RHI::D3D12::GraphicsDevice::TranslateRasterState(RasterRenderSta
 
 size_t PhxEngine::RHI::D3D12::GraphicsDevice::GetCurrentBackBufferIndex() const
 {
-	assert(this->m_swapChain.DxgiSwapchain);
+	assert(this->m_activeViewport);
 	
-	return (size_t)this->m_swapChain.DxgiSwapchain->GetCurrentBackBufferIndex();
+	return (size_t)this->m_activeViewport->NativeSwapchain4->GetCurrentBackBufferIndex();
 }
 
 void GraphicsDevice::CreateBufferInternal(BufferDesc const& desc, Dx12Buffer& outBuffer)
@@ -2650,7 +2537,7 @@ int PhxEngine::RHI::D3D12::GraphicsDevice::CreateShaderResourceView(BufferHandle
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 
-	if (bufferImpl->Desc.Format == FormatType::UNKNOWN)
+	if (bufferImpl->Desc.Format == RHIFormat::UNKNOWN)
 	{
 		if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Raw) != 0)
 		{
@@ -2723,7 +2610,7 @@ int PhxEngine::RHI::D3D12::GraphicsDevice::CreateUnorderedAccessView(BufferHandl
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 
-	if (bufferImpl->Desc.Format == FormatType::UNKNOWN)
+	if (bufferImpl->Desc.Format == RHIFormat::UNKNOWN)
 	{
 		if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Raw) != 0)
 		{
@@ -2838,7 +2725,7 @@ Microsoft::WRL::ComPtr<IDXGIFactory6> PhxEngine::RHI::D3D12::GraphicsDevice::Cre
 	return factory;
 }
 
-void PhxEngine::RHI::D3D12::GraphicsDevice::CreateDevice(IDXGIAdapter* gpuAdapter)
+void PhxEngine::RHI::D3D12::GraphicsDevice::InitializeD3D12Device(IDXGIAdapter* gpuAdapter)
 {
 	ThrowIfFailed(
 		D3D12CreateDevice(
@@ -2993,7 +2880,7 @@ void PhxEngine::RHI::ReportLiveObjects()
 #endif
 }
 
-HRESULT PhxEngine::RHI::D3D12::DXGIGpuAdapter::EnumAdapters(uint32_t adapterIndex, IDXGIFactory6* factory6, IDXGIAdapter1** outAdapter)
+HRESULT D3D12Adapter::EnumAdapters(uint32_t adapterIndex, IDXGIFactory6* factory6, IDXGIAdapter1** outAdapter)
 {
 	return factory6->EnumAdapterByGpuPreference(
 		adapterIndex,

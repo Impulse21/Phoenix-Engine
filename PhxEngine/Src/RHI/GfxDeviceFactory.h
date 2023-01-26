@@ -6,15 +6,12 @@
 
 namespace PhxEngine::RHI
 {
-	class IRHIFactory
+	class IGraphicsDeviceFactory
 	{
 	public:
 		virtual bool IsSupported() = 0;
 		virtual bool IsSupported(FeatureLevel requestedFeatureLevel) = 0;
-
-		virtual std::unique_ptr<IPhxRHI> CreateRHI() = 0;
-
-		virtual ~IRHIFactory() {};
+		virtual std::unique_ptr<IGraphicsDevice> CreateDevice() = 0;
 	};
 
 	enum class RHIType
@@ -22,10 +19,10 @@ namespace PhxEngine::RHI
 		D3D12
 	};
 
-	class RHIFactoryProvider
+	class GfxDeviceFactoryProvider
 	{
 	public:
-		std::unique_ptr<IRHIFactory> CreateRHIFactory(RHIType type);
+		std::unique_ptr<IGraphicsDeviceFactory> CreatGfxDeviceFactory(RHIType type);
 	};
 }
 

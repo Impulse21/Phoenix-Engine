@@ -108,13 +108,11 @@ namespace PhxEngine
 		bool m_isMinimized = false;
 		Core::StopWatch m_stopWatch;
 
-		// Interna systems
+		// Internal systems
 		std::unique_ptr<Core::IWindow> m_window;
 		std::unique_ptr<Graphics::ShaderStore> m_shaderStore;
 		std::shared_ptr<Graphics::ImGuiRenderer> m_imguiRenderer;
 
-		// -- Render Stuff ---
-		RHI::RHIViewportHandle m_viewport;
 	};
 
 	// Defined by client

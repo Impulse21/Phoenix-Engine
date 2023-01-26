@@ -6,7 +6,7 @@
 using namespace PhxEngine;
 using namespace PhxEngine::Graphics;
 
-CascadeShadowMap::CascadeShadowMap(uint32_t resolution, RHI::FormatType format, bool isReverseZ)
+CascadeShadowMap::CascadeShadowMap(uint32_t resolution, RHI::RHIFormat format, bool isReverseZ)
 	: m_isReverseZ(isReverseZ)
 {
 	this->m_shadowMapTexArray = RHI::IGraphicsDevice::GPtr->CreateTexture(

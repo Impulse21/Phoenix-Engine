@@ -26,7 +26,7 @@ namespace PhxEngine
 		void AddPassToBack(EngineRenderPass* pass) override;
 		void RemovePass(EngineRenderPass* pass) override;
 
-		RHI::IPhxRHI* GetRHI() override { return this->m_rhi.get(); }
+		RHI::IGraphicsDevice* GetGfxDevice() override { return this->m_gfxDevice.get(); }
 
 	private:
 		void Update(Core::TimeStep const& deltaTime);
@@ -41,9 +41,8 @@ namespace PhxEngine
 
 		// Engine Core Systems
 		// Move logging system here.
-		std::unique_ptr<RHI::IPhxRHI> m_rhi;
+		std::unique_ptr<RHI::IGraphicsDevice> m_gfxDevice;
 		std::unique_ptr<Core::IWindow> m_window;
-		RHI::RHIViewportHandle m_viewport;
 		bool m_windowIsVisibile;
 		uint64_t m_frameCount;
 

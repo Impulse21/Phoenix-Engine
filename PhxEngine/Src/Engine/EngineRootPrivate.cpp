@@ -27,8 +27,8 @@ void PhxEngine::PhxEngineRoot::Initialize(EngineParam const& params)
 
 	LOG_CORE_INFO("Initializing Engine Root");
 
-	this->m_rhi = RHI::PlatformCreateRHI();
-	this->m_rhi->Initialize();
+	this->m_gfxDevice = RHI::CreatePlatformGfxDevice();
+	this->m_gfxDevice->Initialize();
 
 	WindowSpecification windowSpec = {};
 	windowSpec.Width = this->m_params.WindowWidth;
@@ -40,11 +40,20 @@ void PhxEngine::PhxEngineRoot::Initialize(EngineParam const& params)
 	this->m_window->Initialize();
 	this->m_window->SetResizeable(false);
 	this->m_window->SetVSync(this->m_params.VSync);
+
+	this->GetGfxDevice()->CreateViewport(
+		{
+			.WindowHandle = static_cast<Platform::WindowHandle>(m_window->GetNativeWindowHandle()),
+			.Width = this->m_window->GetWidth(),
+			.Height = this->m_window->GetHeight(),
+			.Format = RHI::RHIFormat::R10G10B10A2_UNORM,
+		});
 }
 
 void PhxEngine::PhxEngineRoot::Finalizing()
 {
 	LOG_CORE_INFO("PhxEngine is Finalizing.");
+	this->m_gfxDevice->Finalize();
 }
 
 void PhxEngine::PhxEngineRoot::Run()
@@ -68,7 +77,7 @@ void PhxEngine::PhxEngineRoot::Run()
 		this->m_frameCount++;
 	}
 
-	// this->m_rhi->WaitForIdle();
+	this->m_gfxDevice->WaitForIdle();
 }
 
 void PhxEngine::PhxEngineRoot::AddPassToBack(EngineRenderPass* pass)
@@ -97,11 +106,12 @@ void PhxEngine::PhxEngineRoot::Update(TimeStep const& deltaTime)
 
 void PhxEngine::PhxEngineRoot::Render()
 {
-	// Blocking if next frame is not ready.
-	RHI::IRHIFrameRenderCtx& frameRenderContext = this->GetRHI()->BeginFrameRenderContext(this->m_viewport);
+	this->m_gfxDevice->BeginFrame();
 
 	for (EngineRenderPass* renderPass : this->m_renderPasses)
 	{
-		renderPass->Render(frameRenderContext);
+		renderPass->Render();
 	}
+
+	this->m_gfxDevice->EndFrame();
 }

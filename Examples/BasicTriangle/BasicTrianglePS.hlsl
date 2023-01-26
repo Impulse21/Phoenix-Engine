@@ -1,3 +1,5 @@
+
+[RootSignature("")]
 void main(
 	in float3 inColour : COLOR,
 	out float4 outColour : SV_Target0

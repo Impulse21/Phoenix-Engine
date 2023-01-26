@@ -26,7 +26,7 @@ public:
             PhxEngine::Core::Helpers::FileRead(shaderFile.generic_string(), shaderByteCode);
 
             Core::Span span(shaderByteCode);
-            this->m_vertexShader = this->GetRHI()->CreateShader(
+            this->m_vertexShader = this->GetGfxDevice()->CreateShader(
                 {
                     .Stage = RHI::ShaderStage::Vertex,
                     .DebugName = "BasicTriangleVS",
@@ -40,7 +40,7 @@ public:
             PhxEngine::Core::Helpers::FileRead(shaderFile.generic_string(), shaderByteCode);
 
             Core::Span span(shaderByteCode);
-            this->m_pixelShader = this->GetRHI()->CreateShader(
+            this->m_pixelShader = this->GetGfxDevice()->CreateShader(
                 {
                     .Stage = RHI::ShaderStage::Pixel,
                     .DebugName = "BasicTrianglePS",
@@ -51,21 +51,23 @@ public:
         return true;
     }
 
-    void Render(RHI::IRHIFrameRenderCtx& frameRenderer) override
+    void Render() override
     {
-        if (!this->m_pipeline)
+        if (!this->m_pipeline.IsValid())
         {
-            this->m_pipeline = this->GetRHI()->CreateGraphicsPipeline(
+            
+            this->m_pipeline = this->GetGfxDevice()->CreateGraphicsPipeline(
                 {
                     .VertexShader = this->m_vertexShader,
                     .PixelShader = this->m_pixelShader,
                     .DepthStencilRenderState = {
                         .DepthTestEnable = false
                     },
-                    .RenderTargets = { frameRenderer.GetBackBuffer() },
+                    .RtvFormats = { this->GetGfxDevice()->GetTextureDesc(this->GetGfxDevice()->GetBackBuffer()).Format },
                 });
         }
 
+        /*
         RHI::IRHICommandList* commandList = frameRenderer.BeginCommandRecording();
 
         {
@@ -79,12 +81,13 @@ public:
         }
 
         frameRenderer.SubmitCommands({ commandList });
+        */
     }
 
 private:
-    RHI::RHIShaderHandle m_vertexShader;
-    RHI::RHIShaderHandle m_pixelShader;
-    RHI::RHIGraphicsPipelineHandle m_pipeline;
+    RHI::ShaderHandle m_vertexShader;
+    RHI::ShaderHandle m_pixelShader;
+    RHI::GraphicsPipelineHandle m_pipeline;
 };
 
 #ifdef WIN32

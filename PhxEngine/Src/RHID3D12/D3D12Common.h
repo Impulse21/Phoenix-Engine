@@ -24,7 +24,7 @@
 #include "d3d12shader.h"
 #include <dxgi1_6.h>
 #include <PhxEngine/RHI/PhxRHI.h>
-#include "PhxEngine/RHI/RefCountPtr.h"
+#include <PhxEngine/RHI/RefCountPtr.h>
 
 
 namespace PhxEngine::RHI::D3D12
@@ -51,14 +51,14 @@ namespace PhxEngine::RHI::D3D12
     struct DxgiFormatMapping
     {
         RHIFormat AbstractFormat;
-        DXGI_FORMAT ResourcFormatType;
+        DXGI_FORMAT ResourcRHIFormat;
         DXGI_FORMAT SrvFormat;
         DXGI_FORMAT RtvFormat;
     };
 
    const DxgiFormatMapping& GetDxgiFormatMapping(RHIFormat abstractFormat);
 
-   const DxgiFormatMapping& GetDxgiFormatMapping(FormatType abstractFormat);
+   const DxgiFormatMapping& GetDxgiFormatMapping(RHIFormat abstractFormat);
 
    inline D3D12_RESOURCE_STATES ConvertResourceStates(ResourceStates stateBits)
    {

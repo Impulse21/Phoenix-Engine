@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include "GraphicsDevice.h"
+#include "D3D12GraphicsDevice.h"
 
 using namespace PhxEngine::RHI::D3D12;
 

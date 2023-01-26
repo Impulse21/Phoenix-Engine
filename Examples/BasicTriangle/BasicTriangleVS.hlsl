@@ -12,6 +12,7 @@ static const float3 gColors[] =
 	float3(0, 0, 1)
 };
 
+[RootSignature("")]
 void main(
 	uint inVertexId : SV_VertexID,
 	out float4 outPos : SV_Position,

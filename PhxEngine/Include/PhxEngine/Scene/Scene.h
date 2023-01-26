@@ -20,8 +20,8 @@ namespace PhxEngine::Scene
 	public:
 		static constexpr uint32_t kEnvmapCount = 16;
 		static constexpr uint32_t kEnvmapRes = 128;
-		static constexpr PhxEngine::RHI::FormatType kEnvmapFormat = PhxEngine::RHI::FormatType::R11G11B10_FLOAT;
-		static constexpr PhxEngine::RHI::FormatType kEnvmapDepth = PhxEngine::RHI::FormatType::D16;
+		static constexpr PhxEngine::RHI::RHIFormat kEnvmapFormat = PhxEngine::RHI::RHIFormat::R11G11B10_FLOAT;
+		static constexpr PhxEngine::RHI::RHIFormat kEnvmapDepth = PhxEngine::RHI::RHIFormat::D16;
 		static constexpr uint32_t kEnvmapMIPs = 8;
 		static constexpr uint32_t kEnvmapMSAASampleCount = 8;
 

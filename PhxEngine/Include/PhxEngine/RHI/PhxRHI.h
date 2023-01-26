@@ -5,7 +5,6 @@
 #include "PhxEngine/Core/Span.h"
 #include "PhxEngine/Core/Handle.h"
 #include <PhxEngine/RHI/RefCountPtr.h>
-#include <PhxEngine/RHI/RHIResources.h>
 
 #include <stdint.h>
 #include <optional>
@@ -14,13 +13,62 @@
 #include <memory>
 #include <variant>
 
+#define PHXRHI_ENUM_CLASS_FLAG_OPERATORS(T) \
+    inline T operator | (T a, T b) { return T(uint32_t(a) | uint32_t(b)); } \
+    inline T& operator |=(T& a, T b) { return a = a | b; }\
+    inline T operator & (T a, T b) { return T(uint32_t(a) & uint32_t(b)); } /* NOLINT(bugprone-macro-parentheses) */ \
+    inline T operator ~ (T a) { return T(~uint32_t(a)); } /* NOLINT(bugprone-macro-parentheses) */ \
+    inline bool operator !(T a) { return uint32_t(a) == 0; } \
+    inline bool operator ==(T a, uint32_t b) { return uint32_t(a) == b; } \
+    inline bool operator !=(T a, uint32_t b) { return uint32_t(a) != b; }
+
 namespace PhxEngine::RHI
 {
+    typedef uint32_t DescriptorIndex;
+
+    static constexpr DescriptorIndex cInvalidDescriptorIndex = ~0u;
+
+    static constexpr uint32_t cMaxRenderTargets = 8;
+    static constexpr uint32_t cMaxViewports = 16;
+    static constexpr uint32_t cMaxVertexAttributes = 16;
+    static constexpr uint32_t cMaxBindingLayouts = 5;
+    static constexpr uint32_t cMaxBindingsPerLayout = 128;
+    static constexpr uint32_t cMaxVolatileConstantBuffersPerLayout = 6;
+    static constexpr uint32_t cMaxVolatileConstantBuffers = 32;
+    static constexpr uint32_t cMaxPushConstantSize = 128;      // D3D12: root signature is 256 bytes max., Vulkan: 128 bytes of push constants guaranteed
+
     enum class GraphicsAPI
     {
         Unknown = 0,
         DX12
     };
+
+    enum class ShaderStage : uint16_t
+    {
+        None = 0x0000,
+
+        Compute = 0x0020,
+
+        Vertex = 0x0001,
+        Hull = 0x0002,
+        Domain = 0x0004,
+        Geometry = 0x0008,
+        Pixel = 0x0010,
+        Amplification = 0x0040,
+        Mesh = 0x0080,
+        AllGraphics = 0x00FE,
+
+        RayGeneration = 0x0100,
+        AnyHit = 0x0200,
+        ClosestHit = 0x0400,
+        Miss = 0x0800,
+        Intersection = 0x1000,
+        Callable = 0x2000,
+        AllRayTracing = 0x3F00,
+
+        All = 0x3FFF,
+    };
+    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(ShaderStage)
 
     enum class ColourSpace
     {
@@ -29,7 +77,7 @@ namespace PhxEngine::RHI
         HDR10_ST2084
     };
 
-    enum class FormatType : uint8_t
+    enum class RHIFormat : uint8_t
     {
         UNKNOWN = 0,
         R8_UINT,
@@ -125,6 +173,18 @@ namespace PhxEngine::RHI
 
         bool operator ==(const Color& other) const { return R == other.R && G == other.G && B == other.B && A == other.A; }
         bool operator !=(const Color& other) const { return !(*this == other); }
+    };
+
+    union RHIClearValue
+    {
+        // TODO: Change to be a flat array
+        // float Colour[4];
+        Color Colour;
+        struct ClearDepthStencil
+        {
+            float Depth;
+            uint32_t Stencil;
+        } DepthStencil;
     };
 
     struct Viewport
@@ -453,28 +513,6 @@ namespace PhxEngine::RHI
 
 #pragma endregion
 
-
-    struct SwapChainDesc
-    {
-        uint32_t Width;
-        uint32_t Height;
-        uint32_t BufferCount = 3;
-        FormatType Format = FormatType::UNKNOWN;
-        bool VSync = false;
-        bool EnableHDR = false;
-        Core::Platform::WindowHandle WindowHandle;
-        RHIClearValue OptmizedClearValue = 
-        { 
-            .Colour = 
-            { 
-                0.0f,
-                0.0f,
-                0.0f, 
-                1.0f,
-            } 
-        };
-    };
-
     // -- Pipeline State objects ---
     struct BlendRenderState
     {
@@ -542,19 +580,22 @@ namespace PhxEngine::RHI
     };
     // -- Pipeline State Objects End ---
 
-    class IResource
+    class IRHIResource
     {
-    protected:
-        IResource() = default;
-        virtual ~IResource() = default;
-
     public:
+        virtual unsigned long AddRef() = 0;
+        virtual unsigned long Release() = 0;
 
         // Non-copyable and non-movable
-        IResource(const IResource&) = delete;
-        IResource(const IResource&&) = delete;
-        IResource& operator=(const IResource&) = delete;
-        IResource& operator=(const IResource&&) = delete;
+        IRHIResource(const IRHIResource&) = delete;
+        IRHIResource(const IRHIResource&&) = delete;
+        IRHIResource& operator=(const IRHIResource&) = delete;
+        IRHIResource& operator=(const IRHIResource&&) = delete;
+
+    protected:
+        IRHIResource() = default;
+        virtual ~IRHIResource() = default;
+
     };
 
     struct ShaderDesc
@@ -563,7 +604,7 @@ namespace PhxEngine::RHI
         std::string DebugName = "";
     };
 
-    class IShader : public IResource
+    class IShader : public IRHIResource
     {
     public:
         virtual ~IShader() = default;
@@ -580,13 +621,13 @@ namespace PhxEngine::RHI
 
         std::string SemanticName;
         uint32_t SemanticIndex = 0;
-        FormatType Format = FormatType::UNKNOWN;
+        RHIFormat Format = RHIFormat::UNKNOWN;
         uint32_t InputSlot = 0;
         uint32_t AlignedByteOffset = SAppendAlignedElement;
         bool IsInstanced = false;
     };
 
-    class IInputLayout : public IResource
+    class IInputLayout : public IRHIResource
     {
     public:
         [[nodiscard]] virtual uint32_t GetNumAttributes() const = 0;
@@ -598,7 +639,7 @@ namespace PhxEngine::RHI
     struct StaticSamplerParameter
     {
         uint32_t Slot;
-        RHIColor BorderColor = 1.f;
+        Color BorderColor = 1.f;
         float MaxAnisotropy = 1.f;
         float MipBias = 0.f;
 
@@ -699,7 +740,7 @@ namespace PhxEngine::RHI
             SamplerAddressMode         addressUVW,
             uint32_t				   maxAnisotropy = 16U,
             ComparisonFunc             comparisonFunc = ComparisonFunc::LessOrEqual,
-            RHIColor                      borderColor = {1.0f , 1.0f, 1.0f, 0.0f} )
+            Color                      borderColor = {1.0f , 1.0f, 1.0f, 0.0f} )
         {
             StaticSamplerParameter& desc = this->StaticSamplers.emplace_back();
             desc.Slot = shaderRegister;
@@ -727,71 +768,13 @@ namespace PhxEngine::RHI
         }
     };
 
-    struct GraphicsPSODesc
-    {
-        PrimitiveType PrimType = PrimitiveType::TriangleList;
-        InputLayoutHandle InputLayout;
-
-        IRootSignatureBuilder* RootSignatureBuilder = nullptr;
-        ShaderParameterLayout ShaderParameters;
-
-        ShaderHandle VertexShader;
-        ShaderHandle HullShader;
-        ShaderHandle DomainShader;
-        ShaderHandle GeometryShader;
-        ShaderHandle PixelShader;
-        
-        BlendRenderState BlendRenderState = {};
-        DepthStencilRenderState DepthStencilRenderState = {};
-        RasterRenderState RasterRenderState = {};
-
-        std::vector<FormatType> RtvFormats;
-        std::optional<FormatType> DsvFormat;
-
-        uint32_t SampleCount = 1;
-        uint32_t SampleQuality = 0;
-    };
-
-    class IGraphicsPSO : public IResource
-    {
-    public:
-        virtual ~IGraphicsPSO() = default;
-
-        virtual const GraphicsPSODesc& GetDesc() const = 0;
-    };
-
-    using GraphicsPSOHandle = std::shared_ptr<IGraphicsPSO>;
-
-    struct ComputePSODesc
-    {
-        ShaderHandle ComputeShader;
-
-    };
-
-    class IComputePSO : public IResource
-    {
-    public:
-        virtual ~IComputePSO() = default;
-
-        virtual const ComputePSODesc& GetDesc() const = 0;
-    };
-
-    using ComputePSOHandle = std::shared_ptr<IComputePSO>;
-
-    struct SubresourceData
-    {
-        const void* pData = nullptr;
-        uint32_t rowPitch = 0;
-        uint32_t slicePitch = 0;
-    };
-
     struct TextureDesc
     {
         BindingFlags BindingFlags = BindingFlags::ShaderResource;
         TextureDimension Dimension = TextureDimension::Unknown;
         ResourceStates InitialState = ResourceStates::Common;
 
-        FormatType Format = FormatType::UNKNOWN;
+        RHIFormat Format = RHIFormat::UNKNOWN;
         bool IsTypeless = false;
         bool IsBindless = true;
 
@@ -842,7 +825,7 @@ namespace PhxEngine::RHI
         uint64_t StrideInBytes = 0;
         uint64_t SizeInBytes = 0;
 
-        FormatType Format = FormatType::UNKNOWN;
+        RHIFormat Format = RHIFormat::UNKNOWN;
 
         bool AllowUnorderedAccess = false;
 
@@ -878,6 +861,49 @@ namespace PhxEngine::RHI
 
     struct Buffer;
     using BufferHandle = Core::Handle<Buffer>;
+
+    struct GraphicsPipelineDesc
+    {
+        PrimitiveType PrimType = PrimitiveType::TriangleList;
+        InputLayoutHandle InputLayout;
+
+        IRootSignatureBuilder* RootSignatureBuilder = nullptr;
+        ShaderParameterLayout ShaderParameters;
+
+        ShaderHandle VertexShader;
+        ShaderHandle HullShader;
+        ShaderHandle DomainShader;
+        ShaderHandle GeometryShader;
+        ShaderHandle PixelShader;
+        
+        BlendRenderState BlendRenderState = {};
+        DepthStencilRenderState DepthStencilRenderState = {};
+        RasterRenderState RasterRenderState = {};
+
+        std::vector<RHIFormat> RtvFormats;
+        std::optional<RHIFormat> DsvFormat;
+
+        uint32_t SampleCount = 1;
+        uint32_t SampleQuality = 0;
+    };
+
+    struct GraphicsPipeline;
+    using GraphicsPipelineHandle = Core::Handle<GraphicsPipeline>;
+
+    struct ComputePipelineDesc
+    {
+        ShaderHandle ComputeShader;
+    };
+
+    struct ComputePipeline;
+    using ComputePipelineHandle = Core::Handle<ComputePipeline>;
+
+    struct SubresourceData
+    {
+        const void* pData = nullptr;
+        uint32_t rowPitch = 0;
+        uint32_t slicePitch = 0;
+    };
 
     struct RTAccelerationStructure;
     using RTAccelerationStructureHandle = Core::Handle<RTAccelerationStructure>;
@@ -929,8 +955,8 @@ namespace PhxEngine::RHI
                     uint32_t VertexCount = 0;
                     uint64_t VertexByteOffset = 0;
                     uint32_t VertexStride = 0;
-                    RHI::FormatType IndexFormat = RHI::FormatType::R32_UINT;
-                    RHI::FormatType VertexFormat = RHI::FormatType::RGB32_FLOAT;
+                    RHI::RHIFormat IndexFormat = RHI::RHIFormat::R32_UINT;
+                    RHI::RHIFormat VertexFormat = RHI::RHIFormat::RGB32_FLOAT;
                     BufferHandle Transform3x4Buffer;
                     uint32_t Transform3x4BufferOffset = 0;
                 } Triangles;
@@ -1125,7 +1151,7 @@ namespace PhxEngine::RHI
         size_t Offset;
     };
 
-    class ICommandList : public IResource
+    class ICommandList : public IRHIResource
     {
     public:
         virtual ~ICommandList() = default;
@@ -1181,13 +1207,13 @@ namespace PhxEngine::RHI
         virtual void WriteTexture(TextureHandle texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData) = 0;
         virtual void WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* data, size_t rowPitch, size_t depthPitch) = 0;
 
-        virtual void SetGraphicsPSO(GraphicsPSOHandle graphisPSO) = 0;
+        virtual void SetGraphicsPSO(GraphicsPipelineHandle graphisPSO) = 0;
         virtual void SetViewports(Viewport* viewports, size_t numViewports) = 0;
         virtual void SetScissors(Rect* scissor, size_t numScissors) = 0;
         virtual void SetRenderTargets(std::vector<TextureHandle> const& renderTargets, TextureHandle depthStencil) = 0;
 
         // -- Comptute Stuff ---
-        virtual void SetComputeState(ComputePSOHandle state) = 0;
+        virtual void SetComputeState(ComputePipelineHandle state) = 0;
         virtual void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1) = 0;
         virtual void DispatchIndirect(uint32_t offsetBytes) = 0;
 
@@ -1225,14 +1251,14 @@ namespace PhxEngine::RHI
         /**
          * Bind dynamic index buffer data to the rendering pipeline.
          */
-        virtual void BindDynamicIndexBuffer(size_t numIndicies, FormatType indexFormat, const void* indexBufferData) = 0;
+        virtual void BindDynamicIndexBuffer(size_t numIndicies, RHIFormat indexFormat, const void* indexBufferData) = 0;
 
         template<typename T>
         void BindDynamicIndexBuffer(const std::vector<T>& indexBufferData)
         {
             staticassert(sizeof(T) == 2 || sizeof(T) == 4);
 
-            FormatType indexFormat = (sizeof(T) == 2) ? FormatType::R16_UINT : FormatType::R32_UINT;
+            RHIFormat indexFormat = (sizeof(T) == 2) ? RHIFormat::R16_UINT : RHIFormat::R32_UINT;
             this->BindDynamicIndexBuffer(indexBufferData.size(), indexFormat, indexBufferData.data());
         }
 
@@ -1306,25 +1332,56 @@ namespace PhxEngine::RHI
 
     PHXRHI_ENUM_CLASS_FLAG_OPERATORS(DeviceCapability);
 
+    struct ViewportDesc
+    {
+        Core::Platform::WindowHandle WindowHandle;
+        uint32_t Width;
+        uint32_t Height;
+        uint32_t BufferCount = 3;
+        RHIFormat Format = RHIFormat::UNKNOWN;
+        bool VSync = false;
+        bool EnableHDR = false;
+        RHIClearValue OptmizedClearValue =
+        {
+            .Colour =
+            {
+                0.0f,
+                0.0f,
+                0.0f,
+                1.0f,
+            }
+        };
+    };
+
+    struct Viewport;
+    using ViewportHandle = Core::Handle<Viewport>;
+
     class IGraphicsDevice
     {
     public:
         virtual ~IGraphicsDevice() = default;
 
         // Global Singleton not ideal as we can only have one device per application, however, it simplifies a lot when passing the object around
+        // TODO: Remove. Only around for compiling.
         inline static IGraphicsDevice* GPtr;
+
+    public:
+        virtual void Initialize() = 0;
+        virtual void Finalize() = 0;
 
         // -- Create Functions ---
     public:
-        virtual void CreateSwapChain(SwapChainDesc const& swapChainDesc) = 0;
+        virtual void CreateViewport(ViewportDesc const& desc) = 0;
+        virtual void BeginFrame() = 0;
+        virtual void EndFrame() = 0;
 
         // TODO: Change to a new pattern so we don't require a command list stored on an object. Instread, request from a pool of objects
         virtual CommandListHandle CreateCommandList(CommandListDesc const& desc = {}) = 0;
 
-        virtual ShaderHandle CreateShader(ShaderDesc const& desc, const void* binary, size_t binarySize) = 0;
+        virtual ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) = 0;
         virtual InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) = 0;
-        virtual GraphicsPSOHandle CreateGraphicsPSO(GraphicsPSODesc const& desc) = 0;
-        virtual ComputePSOHandle CreateComputePso(ComputePSODesc const& desc) = 0;
+        virtual GraphicsPipelineHandle CreateGraphicsPipeline(GraphicsPipelineDesc const& desc) = 0;
+        virtual ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc) = 0;
 
         virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
         virtual const TextureDesc& GetTextureDesc(TextureHandle handle) = 0;
@@ -1375,7 +1432,6 @@ namespace PhxEngine::RHI
         // -- Create Functions End ---
         virtual TextureHandle GetBackBuffer() = 0;
 
-        virtual void Present() = 0;
         virtual void WaitForIdle() = 0;
         virtual void QueueWaitForCommandList(CommandQueueType waitQueue, ExecutionReceipt waitOnRecipt) = 0;
 
@@ -1427,31 +1483,5 @@ namespace PhxEngine::RHI
         extern IGraphicsDevice* CreateDx12Device();
     }
 
-
-    class IPhxRHI
-    {
-    public:
-        virtual void Initialize() = 0;
-        virtual void Finalize() = 0;
-
-        virtual RHIViewportHandle CreateViewport(RHIViewportDesc const& desc) = 0;
-        virtual RHIShaderHandle CreateShader(RHIShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) = 0;
-        virtual RHIInputLayoutHandle CreateInputLayout(Core::Span<RHIVertexAttributeDesc> desc) = 0;
-        virtual RHIGraphicsPipelineHandle CreateGraphicsPipeline(RHIGraphicsPipelineDesc const& desc) = 0;
-        virtual RHITextureHandle CreateTexture(RHITextureDesc const& desc) = 0;
-        virtual RHIRenderPassHandle CreateRenderPass(RHIRenderPassDesc const& desc) = 0;
-
-        virtual IRHIFrameRenderCtx& BeginFrameRenderContext(RHIViewportHandle viewport) = 0;
-        virtual void FinishAndPresetFrameRenderContext(IRHIFrameRenderCtx* context) = 0;
-    public:
-        virtual ~IPhxRHI() = default;
-
-    };
-
-    extern IPhxRHI* GRHI;
-
-    std::unique_ptr<IPhxRHI> PlatformCreateRHI();
-
-    void RHIInitialize();
-    void RHIFinalize();
+    std::unique_ptr<IGraphicsDevice> CreatePlatformGfxDevice();
 }

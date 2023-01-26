@@ -152,7 +152,7 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
     desc.Dimension = RHI::TextureDimension::Texture2D;
     desc.IsBindless = false;
 
-    desc.Format = RHI::FormatType::D32;
+    desc.Format = RHI::RHIFormat::D32;
     desc.IsTypeless = true;
     desc.DebugName = "Depth Buffer";
     desc.OptmizedClearValue.DepthStencil.Depth = 0.0f;
@@ -167,29 +167,29 @@ void DeferredRenderer::CreateRenderTargets(DirectX::XMFLOAT2 const& size)
     desc.InitialState = RHI::ResourceStates::ShaderResource;
     desc.IsBindless = true;
 
-    desc.Format = RHI::FormatType::RGBA32_FLOAT;
+    desc.Format = RHI::RHIFormat::RGBA32_FLOAT;
     desc.DebugName = "Albedo Buffer";
     this->m_gBuffer.AlbedoTexture = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
 
-    // desc.Format = RHI::FormatType::R10G10B10A2_UNORM;
-    desc.Format = RHI::FormatType::RGBA16_SNORM;
+    // desc.Format = RHI::RHIFormat::R10G10B10A2_UNORM;
+    desc.Format = RHI::RHIFormat::RGBA16_SNORM;
     desc.DebugName = "Normal Buffer";
     this->m_gBuffer.NormalTexture = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
 
-    desc.Format = RHI::FormatType::RGBA8_UNORM;
+    desc.Format = RHI::RHIFormat::RGBA8_UNORM;
     desc.DebugName = "Surface Buffer";
     this->m_gBuffer.SurfaceTexture = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
 
-    desc.Format = RHI::FormatType::SRGBA8_UNORM;
+    desc.Format = RHI::RHIFormat::SRGBA8_UNORM;
     desc.DebugName = "Specular Buffer";
     this->m_gBuffer.SpecularTexture = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
 
     desc.IsTypeless = true;
-    desc.Format = RHI::FormatType::RGBA16_FLOAT;
+    desc.Format = RHI::RHIFormat::RGBA16_FLOAT;
     desc.DebugName = "Deferred Lighting";
     this->m_deferredLightBuffer = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
 
-    desc.Format = RHI::FormatType::R10G10B10A2_UNORM;
+    desc.Format = RHI::RHIFormat::R10G10B10A2_UNORM;
     desc.DebugName = "Final Colour Buffer";
     this->m_finalColourBuffer = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
 
@@ -317,7 +317,7 @@ void PhxEngine::Renderer::DeferredRenderer::DebugDrawWorld(PhxEngine::Scene::Sce
     this->m_drawInfo.clear();
     this->m_commandList->BeginRenderPass(this->m_renderPasses[RenderPass_Debug]);
     commandList->SetGraphicsPSO(this->m_pso[PSO_Debug_Cube]);
-    commandList->BindDynamicIndexBuffer(kDrawCubeIndices.size(), RHI::FormatType::R16_UINT, kDrawCubeIndices.data());
+    commandList->BindDynamicIndexBuffer(kDrawCubeIndices.size(), RHI::RHIFormat::R16_UINT, kDrawCubeIndices.data());
 
     if ((bool)sCVarDebugDrawAABB.Get())
     {
@@ -925,11 +925,11 @@ void PhxEngine::Renderer::DeferredRenderer::CreateInputLayouts()
     {
         { 
             .SemanticName = "POSITION",
-            .Format = FormatType::RGBA32_FLOAT,
+            .Format = RHIFormat::RGBA32_FLOAT,
         },
         {
             .SemanticName = "COLOR",
-            .Format = FormatType::RGBA32_FLOAT,
+            .Format = RHIFormat::RGBA32_FLOAT,
         }
     };
 
@@ -938,7 +938,7 @@ void PhxEngine::Renderer::DeferredRenderer::CreateInputLayouts()
 
 void DeferredRenderer::CreatePSOs()
 {
-    this->m_pso[PSO_GBufferPass] = IGraphicsDevice::GPtr->CreateGraphicsPSO(
+    this->m_pso[PSO_GBufferPass] = IGraphicsDevice::GPtr->CreateGraphicsPipeline(
         {
             .VertexShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::VS_GBufferPass),
             .PixelShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::PS_GBufferPass),
@@ -952,7 +952,7 @@ void DeferredRenderer::CreatePSOs()
             .DsvFormat = { IGraphicsDevice::GPtr->GetTextureDesc(this->m_depthBuffer).Format }
         });
 
-    this->m_pso[PSO_SkyProcedural] = IGraphicsDevice::GPtr->CreateGraphicsPSO(
+    this->m_pso[PSO_SkyProcedural] = IGraphicsDevice::GPtr->CreateGraphicsPipeline(
         {
             .VertexShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::VS_Sky),
             .PixelShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::PS_SkyProcedural),
@@ -965,7 +965,7 @@ void DeferredRenderer::CreatePSOs()
             .DsvFormat = { IGraphicsDevice::GPtr->GetTextureDesc(this->m_depthBuffer).Format }
         });
 
-    this->m_pso[PSO_SkyTex] = IGraphicsDevice::GPtr->CreateGraphicsPSO(
+    this->m_pso[PSO_SkyTex] = IGraphicsDevice::GPtr->CreateGraphicsPipeline(
         {
             .VertexShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::VS_Sky),
             .PixelShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::PS_SkyTexture),
@@ -978,7 +978,7 @@ void DeferredRenderer::CreatePSOs()
             .DsvFormat = { IGraphicsDevice::GPtr->GetTextureDesc(this->m_depthBuffer).Format }
         });
 
-    this->m_pso[PSO_FullScreenQuad] = IGraphicsDevice::GPtr->CreateGraphicsPSO(
+    this->m_pso[PSO_FullScreenQuad] = IGraphicsDevice::GPtr->CreateGraphicsPipeline(
         {
             .VertexShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::VS_FullscreenQuad),
             .PixelShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::PS_FullscreenQuad),
@@ -988,7 +988,7 @@ void DeferredRenderer::CreatePSOs()
             .RtvFormats = { IGraphicsDevice::GPtr->GetTextureDesc(IGraphicsDevice::GPtr->GetBackBuffer()).Format },
         });
 
-    this->m_pso[PSO_ToneMappingPass] = IGraphicsDevice::GPtr->CreateGraphicsPSO(
+    this->m_pso[PSO_ToneMappingPass] = IGraphicsDevice::GPtr->CreateGraphicsPipeline(
         {
             .VertexShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::VS_ToneMapping),
             .PixelShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::PS_ToneMapping),
@@ -998,7 +998,7 @@ void DeferredRenderer::CreatePSOs()
             .RtvFormats = { IGraphicsDevice::GPtr->GetTextureDesc(IGraphicsDevice::GPtr->GetBackBuffer()).Format },
         });
 
-    this->m_pso[PSO_DeferredLightingPass] = IGraphicsDevice::GPtr->CreateGraphicsPSO(
+    this->m_pso[PSO_DeferredLightingPass] = IGraphicsDevice::GPtr->CreateGraphicsPipeline(
         {
             .VertexShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::VS_DeferredLighting),
             .PixelShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::PS_DeferredLighting),
@@ -1008,7 +1008,7 @@ void DeferredRenderer::CreatePSOs()
             .RtvFormats = { IGraphicsDevice::GPtr->GetTextureDesc(this->m_deferredLightBuffer).Format },
         });
 
-    this->m_pso[PSO_DeferredLightingPass_RTShadows] = IGraphicsDevice::GPtr->CreateGraphicsPSO(
+    this->m_pso[PSO_DeferredLightingPass_RTShadows] = IGraphicsDevice::GPtr->CreateGraphicsPipeline(
         {
             .VertexShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::VS_DeferredLighting),
             .PixelShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::PS_DeferredLighting_RTShadows),
@@ -1019,7 +1019,7 @@ void DeferredRenderer::CreatePSOs()
         });
 
     assert(IGraphicsDevice::GPtr->CheckCapability(DeviceCapability::RT_VT_ArrayIndex_Without_GS));
-    this->m_pso[PSO_EnvCapture_SkyProcedural] = IGraphicsDevice::GPtr->CreateGraphicsPSO(
+    this->m_pso[PSO_EnvCapture_SkyProcedural] = IGraphicsDevice::GPtr->CreateGraphicsPipeline(
         {
             .VertexShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::VS_EnvMap_Sky),
             .PixelShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::PS_EnvMap_SkyProcedural),
@@ -1029,7 +1029,7 @@ void DeferredRenderer::CreatePSOs()
             .DsvFormat = { Scene::Scene::kEnvmapDepth }
         });
 
-    this->m_pso[PSO_Shadow] = IGraphicsDevice::GPtr->CreateGraphicsPSO(
+    this->m_pso[PSO_Shadow] = IGraphicsDevice::GPtr->CreateGraphicsPipeline(
         {
             .VertexShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::VS_ShadowPass),
             .DepthStencilRenderState =
@@ -1047,7 +1047,7 @@ void DeferredRenderer::CreatePSOs()
             .DsvFormat = { kCascadeShadowMapFormat }
         });
 
-    this->m_pso[PSO_Debug_Cube] = IGraphicsDevice::GPtr->CreateGraphicsPSO(
+    this->m_pso[PSO_Debug_Cube] = IGraphicsDevice::GPtr->CreateGraphicsPipeline(
         {
             .PrimType = PrimitiveType::LineList,
             .InputLayout = this->m_inputLayouts[IL_PosCol],
@@ -1083,11 +1083,11 @@ void DeferredRenderer::CreatePSOs()
         });
 
     // Compute PSO's
-    this->m_psoCompute[PSO_GenerateMipMaps_TextureCubeArray] = IGraphicsDevice::GPtr->CreateComputePso(
+    this->m_psoCompute[PSO_GenerateMipMaps_TextureCubeArray] = IGraphicsDevice::GPtr->CreateComputePipeline(
         {
             .ComputeShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::CS_GenerateMips_TextureCubeArray)
         });
-    this->m_psoCompute[PSO_FilterEnvMap] = IGraphicsDevice::GPtr->CreateComputePso(
+    this->m_psoCompute[PSO_FilterEnvMap] = IGraphicsDevice::GPtr->CreateComputePipeline(
         {
             .ComputeShader = Graphics::ShaderStore::GPtr->Retrieve(Graphics::PreLoadShaders::CS_FilterEnvMap)
         });

@@ -56,7 +56,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnAttach()
     desc.Dimension = RHI::TextureDimension::Texture2D;
     desc.Width = width;
     desc.Height = height;
-    desc.Format = RHI::FormatType::RGBA8_UNORM;
+    desc.Format = RHI::RHIFormat::RGBA8_UNORM;
     desc.MipLevels = 1;
     desc.DebugName = "IMGUI Font Texture";
 
@@ -141,7 +141,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnCompose(RHI::CommandListHandle cmd)
 	Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
 	cmd->SetViewports(&v, 1);
 
-	const FormatType indexFormat = sizeof(ImDrawIdx) == 2 ? FormatType::R16_UINT : FormatType::R32_UINT;
+	const RHIFormat indexFormat = sizeof(ImDrawIdx) == 2 ? RHIFormat::R16_UINT : RHIFormat::R32_UINT;
 
 	for (int i = 0; i < drawData->CmdListsCount; ++i)
 	{
@@ -199,20 +199,20 @@ void PhxEngine::Graphics::ImGuiRenderer::CreatePipelineStateObject(
 
     std::vector<VertexAttributeDesc> attributeDesc =
     {
-        { "POSITION",   0, FormatType::RG32_FLOAT,  0, VertexAttributeDesc::SAppendAlignedElement, false},
-        { "TEXCOORD",   0, FormatType::RG32_FLOAT,  0, VertexAttributeDesc::SAppendAlignedElement, false},
-        { "COLOR",      0, FormatType::RGBA8_UNORM, 0, VertexAttributeDesc::SAppendAlignedElement, false},
+        { "POSITION",   0, RHIFormat::RG32_FLOAT,  0, VertexAttributeDesc::SAppendAlignedElement, false},
+        { "TEXCOORD",   0, RHIFormat::RG32_FLOAT,  0, VertexAttributeDesc::SAppendAlignedElement, false},
+        { "COLOR",      0, RHIFormat::RGBA8_UNORM, 0, VertexAttributeDesc::SAppendAlignedElement, false},
     };
 
     InputLayoutHandle inputLayout = graphicsDevice->CreateInputLayout(attributeDesc.data(), attributeDesc.size());
 
-    GraphicsPSODesc psoDesc = {};
+    GraphicsPipelineDesc psoDesc = {};
     psoDesc.VertexShader = vs;
     psoDesc.PixelShader = ps;
     psoDesc.InputLayout = inputLayout;
     // TODO: Render to it's own resource, then compose image.
     // TODO: Set it's own Format
-    psoDesc.RtvFormats.push_back(FormatType::R10G10B10A2_UNORM);
+    psoDesc.RtvFormats = { graphicsDevice->GetTextureDesc(graphicsDevice->GetBackBuffer()).Format };
 
     auto& blendTarget = psoDesc.BlendRenderState.Targets[0];
     blendTarget.BlendEnable = true;
@@ -252,7 +252,7 @@ void PhxEngine::Graphics::ImGuiRenderer::CreatePipelineStateObject(
     psoDesc.RootSignatureBuilder = &builder;
     */
 
-    this->m_pso = graphicsDevice->CreateGraphicsPSO(psoDesc);
+    this->m_pso = graphicsDevice->CreateGraphicsPipeline(psoDesc);
 }
 
 void PhxEngine::Graphics::ImGuiRenderer::SetDarkThemeColors()

@@ -64,7 +64,7 @@ void PhxEngine::EngineApp::PreInitialize()
 	this->m_window->SetVSync(this->m_spec.VSync);
 
 	// TODO: Create swapchain in Window
-	RHI::RHIViewportDesc viewportDesc = {};
+	RHI::ViewportDesc viewportDesc = {};
 	viewportDesc.BufferCount = NUM_BACK_BUFFERS;
 	viewportDesc.Format = RHIFormat::R10G10B10A2_UNORM;
 	viewportDesc.Width = this->m_window->GetWidth();
@@ -73,7 +73,7 @@ void PhxEngine::EngineApp::PreInitialize()
 	viewportDesc.WindowHandle = static_cast<Platform::WindowHandle>(m_window->GetNativeWindowHandle());
 
 	// Render Something
-	this->m_viewport = GRHI->CreateViewport(viewportDesc);
+	IGraphicsDevice::GPtr->CreateViewport(viewportDesc);
 
 	// Initialize Loading scene TODO: Let application override render logic for custom screens.
 
@@ -150,7 +150,7 @@ void PhxEngine::EngineApp::Run()
 			// Execute Renderer on seperate thread maybe?
 			// Finish Timers and 
 
-			RHI::IGraphicsDevice::GPtr->Present();
+			RHI::IGraphicsDevice::GPtr->EndFrame();
 			this->m_frameCount++;
 		}
 

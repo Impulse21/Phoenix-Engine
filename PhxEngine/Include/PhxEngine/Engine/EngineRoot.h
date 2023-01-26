@@ -32,7 +32,7 @@ namespace PhxEngine
 		virtual void AddPassToBack(EngineRenderPass* pass) = 0;
 		virtual void RemovePass(EngineRenderPass* pass) = 0;
 
-		virtual RHI::IPhxRHI* GetRHI() = 0;
+		virtual RHI::IGraphicsDevice* GetGfxDevice() = 0;
 	};
 
 	class EngineRenderPass
@@ -42,11 +42,12 @@ namespace PhxEngine
 			: m_root(root) {}
 
 		virtual void Update(Core::TimeStep delta) {};
-		virtual void Render(RHI::IRHIFrameRenderCtx& renderContext) {};
+		virtual void Render() {};
 
 	public:
 		IPhxEngineRoot* GetRoot() { return this->m_root; }
-		RHI::IPhxRHI* GetRHI() { return this->m_root->GetRHI(); }
+		RHI::IGraphicsDevice* GetGfxDevice() { return this->m_root->GetGfxDevice(); }
+
 	private:
 		IPhxEngineRoot* m_root;
 	};
