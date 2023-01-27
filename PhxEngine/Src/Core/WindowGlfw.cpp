@@ -76,14 +76,20 @@ void PhxEngine::Core::WindowGlfw::Initialize()
 			data.Height = height;
 
 			WindowResizeEvent event(width, height);
-			data.EventCallback(event);
+			if (data.EventCallback)
+			{
+				data.EventCallback(event);
+			}
 		});
 
 	glfwSetWindowCloseCallback(this->m_glfwWindow, [](GLFWwindow* window)
 		{
 			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
 			WindowCloseEvent event;
-			data.EventCallback(event);
+			if (data.EventCallback)
+			{
+				data.EventCallback(event);
+			}
 		});
 }
 

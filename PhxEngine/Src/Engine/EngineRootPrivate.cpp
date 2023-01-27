@@ -40,6 +40,10 @@ void PhxEngine::PhxEngineRoot::Initialize(EngineParam const& params)
 	this->m_window->Initialize();
 	this->m_window->SetResizeable(false);
 	this->m_window->SetVSync(this->m_params.VSync);
+	this->m_window->SetEventCallback(
+		[this](Event& e) {  
+			// TODO:
+		});
 
 	this->GetGfxDevice()->CreateViewport(
 		{
@@ -115,3 +119,4 @@ void PhxEngine::PhxEngineRoot::Render()
 
 	this->m_gfxDevice->EndFrame();
 }
+

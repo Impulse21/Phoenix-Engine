@@ -7,6 +7,7 @@
 #include "Handle.h"
 
 #include <iostream>
+#include <PhxEngine/Core/Helpers.h>
 
 namespace PhxEngine::Core
 {
@@ -40,7 +41,11 @@ namespace PhxEngine::Core
 
 		~Pool()
 		{
-			assert(this->IsEmpty());
+			for (int i = 0; i < this->m_size; i++)
+			{
+				this->m_data[i].~ImplT();
+			}
+
 			delete[] this->m_data;
 			delete[] this->m_freeList;
 			delete[] this->m_generations;

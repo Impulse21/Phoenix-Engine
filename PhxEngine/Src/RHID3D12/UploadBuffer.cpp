@@ -9,7 +9,7 @@ size_t AlignUp(size_t value, size_t alignment)
 	return remainder ? value + (alignment - remainder) : value;
 }
 
-UploadBuffer::UploadBuffer(GraphicsDevice& device, size_t pageSize)
+UploadBuffer::UploadBuffer(D3D12GraphicsDevice& device, size_t pageSize)
 	: m_rootDevice(device)
 	, m_pageSize(pageSize)
 {
@@ -58,7 +58,7 @@ std::shared_ptr<UploadBuffer::Page> UploadBuffer::RequestPage()
 	return page;
 }
 
-UploadBuffer::Page::Page(GraphicsDevice& device, size_t sizeInBytes)
+UploadBuffer::Page::Page(D3D12GraphicsDevice& device, size_t sizeInBytes)
 	: m_rootDevice(device)
 	, m_offset(0)
 	, m_pageSize(sizeInBytes)
@@ -74,7 +74,7 @@ UploadBuffer::Page::Page(GraphicsDevice& device, size_t sizeInBytes)
 	desc.DebugName = "Frame Upload Buffer";
 	this->m_buffer = device.CreateBuffer(desc);
 
-	Dx12Buffer* bufferImpl = device.GetBufferPool().Get(this->m_buffer);
+	D3D12Buffer* bufferImpl = device.GetBufferPool().Get(this->m_buffer);
 
 	this->m_gpuPtr = bufferImpl->D3D12Resource->GetGPUVirtualAddress();
 }
@@ -103,7 +103,7 @@ UploadBuffer::Allocation UploadBuffer::Page::Allocate(size_t sizeInBytes, size_t
 	{
 		throw std::bad_alloc();
 	}
-	Dx12Buffer* bufferImpl = this->m_rootDevice.GetBufferPool().Get(this->m_buffer);
+	D3D12Buffer* bufferImpl = this->m_rootDevice.GetBufferPool().Get(this->m_buffer);
 	size_t sizeInBytesAligned = AlignUp(sizeInBytes, alignment);
 
 	this->m_offset = AlignUp(this->m_offset, alignment);

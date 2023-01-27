@@ -4,7 +4,6 @@
 #include "PhxEngine/Core/TimeStep.h"
 #include "PhxEngine/Core/Span.h"
 #include "PhxEngine/Core/Handle.h"
-#include <PhxEngine/RHI/RefCountPtr.h>
 
 #include <stdint.h>
 #include <optional>
@@ -583,9 +582,6 @@ namespace PhxEngine::RHI
     class IRHIResource
     {
     public:
-        virtual unsigned long AddRef() = 0;
-        virtual unsigned long Release() = 0;
-
         // Non-copyable and non-movable
         IRHIResource(const IRHIResource&) = delete;
         IRHIResource(const IRHIResource&&) = delete;
@@ -604,16 +600,8 @@ namespace PhxEngine::RHI
         std::string DebugName = "";
     };
 
-    class IShader : public IRHIResource
-    {
-    public:
-        virtual ~IShader() = default;
-
-        virtual const ShaderDesc& GetDesc() const = 0;
-        virtual const std::vector<uint8_t>& GetByteCode() const = 0;
-    };
-
-    using ShaderHandle = std::shared_ptr<IShader>;
+    struct RHIShader;
+    using ShaderHandle = Core::Handle<RHIShader>;
 
     struct VertexAttributeDesc
     {
@@ -627,14 +615,8 @@ namespace PhxEngine::RHI
         bool IsInstanced = false;
     };
 
-    class IInputLayout : public IRHIResource
-    {
-    public:
-        [[nodiscard]] virtual uint32_t GetNumAttributes() const = 0;
-        [[nodiscard]] virtual const VertexAttributeDesc* GetAttributeDesc(uint32_t index) const = 0;
-    };
-
-    using InputLayoutHandle = std::shared_ptr<IInputLayout>;
+    struct InputLayout;
+    using InputLayoutHandle = Core::Handle<InputLayout>;
 
     struct StaticSamplerParameter
     {
@@ -1299,18 +1281,6 @@ namespace PhxEngine::RHI
         ICommandList* m_commandList;
     };
 
-    class IGpuAdapter
-    {
-    public:
-        virtual ~IGpuAdapter() = default;
-
-        virtual const char* GetName() const = 0;
-        virtual size_t GetDedicatedSystemMemory() const = 0;
-        virtual size_t GetDedicatedVideoMemory() const = 0;
-        virtual size_t GetSharedSystemMemory() const = 0;
-
-    };
-
     struct ExecutionReceipt
     {
         uint64_t FenceValue;
@@ -1463,7 +1433,6 @@ namespace PhxEngine::RHI
         virtual ShaderType GetShaderType() const = 0;
 
         virtual GraphicsAPI GetApi() const = 0;
-        virtual const IGpuAdapter* GetGpuAdapter() const = 0;
 
         virtual void BeginCapture(std::wstring const& filename) = 0;
         virtual void EndCapture(bool discard = false) = 0;

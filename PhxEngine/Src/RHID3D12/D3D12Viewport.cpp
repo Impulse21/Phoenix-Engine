@@ -4,7 +4,7 @@
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::D3D12;
 
-void PhxEngine::RHI::D3D12::GraphicsDevice::CreateViewport(ViewportDesc const& desc)
+void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateViewport(ViewportDesc const& desc)
 {
 	assert(!this->m_activeViewport);
 	if (this->m_activeViewport)
@@ -51,7 +51,7 @@ void PhxEngine::RHI::D3D12::GraphicsDevice::CreateViewport(ViewportDesc const& d
 	impl.BackBuffers.resize(impl.Desc.BufferCount);
 	for (UINT i = 0; i < impl.Desc.BufferCount; i++)
 	{
-		RefCountPtr<ID3D12Resource> backBuffer;
+		Microsoft::WRL::ComPtr<ID3D12Resource> backBuffer;
 		ThrowIfFailed(
 			impl.NativeSwapchain4->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
 
@@ -82,7 +82,7 @@ void PhxEngine::RHI::D3D12::GraphicsDevice::CreateViewport(ViewportDesc const& d
 
 }
 
-void PhxEngine::RHI::D3D12::GraphicsDevice::BeginFrame()
+void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::BeginFrame()
 {
 	assert(this->m_activeViewport);
 	const UINT64 completedFrame = this->m_frameFence->GetCompletedValue();
@@ -103,7 +103,7 @@ void PhxEngine::RHI::D3D12::GraphicsDevice::BeginFrame()
 	}
 }
 
-void PhxEngine::RHI::D3D12::GraphicsDevice::EndFrame()
+void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::EndFrame()
 {
 	HRESULT hr = this->m_activeViewport->NativeSwapchain4->Present(0, 0);
 

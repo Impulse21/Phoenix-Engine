@@ -15,9 +15,8 @@ static const float3 gColors[] =
 [RootSignature("")]
 void main(
 	uint inVertexId : SV_VertexID,
-	out float4 outPos : SV_Position,
-	out float3 outColour : COLOR
-)
+	out float3 outColour : COLOR,
+	out float4 outPos : SV_Position)
 {
     outPos = float4(gPositions[inVertexId], 0, 1);
     outColour = gColors[inVertexId];

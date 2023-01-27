@@ -55,25 +55,17 @@ static bool SafeTestD3D12CreateDevice(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL m
 
 bool D3D12GraphicsDeviceFactory::IsSupported(FeatureLevel requestedFeatureLevel)
 {
-    /*
-    if (!Platform::VerifyWindowsVersion(10, 0, 15063))
-    {
-        LOG_CORE_WARN("Current windows version doesn't support D3D12. Update to 1703 or newer to for D3D12 support.");
-        return false;
-    }
-    */
-    if (!this->m_choosenAdapter)
-    {
-        this->FindAdapter();
-    }
-
-    return this->m_choosenAdapter
-        && IsAdapterSupported(this->m_choosenAdapter, requestedFeatureLevel);
+    return true;
 }
 
 std::unique_ptr<PhxEngine::RHI::IGraphicsDevice> PhxEngine::RHI::D3D12::D3D12GraphicsDeviceFactory::CreateDevice()
 {
-    if (!this->m_choosenAdapter)
+    Microsoft::WRL::ComPtr<IDXGIFactory6> factory = this->CreateDXGIFactory6();
+
+    D3D12Adapter adapter = {};
+    this->FindAdapter(factory, adapter);
+
+    if (!adapter.NativeAdapter)
     {
         if (!this->IsSupported())
         {
@@ -81,23 +73,20 @@ std::unique_ptr<PhxEngine::RHI::IGraphicsDevice> PhxEngine::RHI::D3D12::D3D12Gra
         }
     }
 
-    auto device = std::make_unique<GraphicsDevice>(this->m_choosenAdapter, this->CreateDXGIFactory6());
-    // Decorate with Validation layer if required
+    auto device = std::make_unique<D3D12GraphicsDevice>(adapter, factory);
 
     return device;
 }
 
-void PhxEngine::RHI::D3D12::D3D12GraphicsDeviceFactory::FindAdapter()
+void PhxEngine::RHI::D3D12::D3D12GraphicsDeviceFactory::FindAdapter(Microsoft::WRL::ComPtr<IDXGIFactory6> factory, D3D12Adapter& outAdapter)
 {
     LOG_CORE_INFO("Finding a suitable adapter");
 
     // Create factory
-    RefCountPtr<IDXGIFactory6> factory = this->CreateDXGIFactory6();
-
-    RefCountPtr<IDXGIAdapter1> selectedAdapter;
+    Microsoft::WRL::ComPtr<IDXGIAdapter1> selectedAdapter;
     D3D12DeviceBasicInfo selectedBasicDeviceInfo = {};
     size_t selectedGPUVideoMemeory = 0;
-    RefCountPtr<IDXGIAdapter1> tempAdapter;
+    Microsoft::WRL::ComPtr<IDXGIAdapter1> tempAdapter;
     for (uint32_t adapterIndex = 0; D3D12Adapter::EnumAdapters(adapterIndex, factory.Get(), tempAdapter.ReleaseAndGetAddressOf()) != DXGI_ERROR_NOT_FOUND; ++adapterIndex)
     {
         if (!tempAdapter)
@@ -120,7 +109,7 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDeviceFactory::FindAdapter()
         }
 
         D3D12DeviceBasicInfo basicDeviceInfo = {};
-        if (!SafeTestD3D12CreateDevice(tempAdapter, D3D_FEATURE_LEVEL_11_1, basicDeviceInfo))
+        if (!SafeTestD3D12CreateDevice(tempAdapter.Get(), D3D_FEATURE_LEVEL_11_1, basicDeviceInfo))
         {
             continue;
         }
@@ -162,15 +151,13 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDeviceFactory::FindAdapter()
         dedicatedSystemMemory / (1024 * 1024),
         sharedSystemMemory / (1024 * 1024));
 
-    this->m_choosenAdapter = std::make_shared<D3D12Adapter>();
-    this->m_choosenAdapter->Name = NarrowString(desc.Description);
-    this->m_choosenAdapter->BasicDeviceInfo = selectedBasicDeviceInfo;
-    this->m_choosenAdapter->NativeDesc = desc;
-    this->m_choosenAdapter->NativeAdapter = selectedAdapter;
-
+    outAdapter.Name = NarrowString(desc.Description);
+    outAdapter.BasicDeviceInfo = selectedBasicDeviceInfo;
+    outAdapter.NativeDesc = desc;
+    outAdapter.NativeAdapter = selectedAdapter;
 }
 
-PhxEngine::RHI::RefCountPtr<IDXGIFactory6> PhxEngine::RHI::D3D12::D3D12GraphicsDeviceFactory::CreateDXGIFactory6() const
+Microsoft::WRL::ComPtr<IDXGIFactory6> PhxEngine::RHI::D3D12::D3D12GraphicsDeviceFactory::CreateDXGIFactory6() const
 {
     uint32_t flags = 0;
     sDebugEnabled = IsDebuggerPresent();
@@ -183,7 +170,6 @@ PhxEngine::RHI::RefCountPtr<IDXGIFactory6> PhxEngine::RHI::D3D12::D3D12GraphicsD
 
         debugController->EnableDebugLayer();
         flags = DXGI_CREATE_FACTORY_DEBUG;
-
 
         Microsoft::WRL::ComPtr<ID3D12Debug3> debugController3;
         if (SUCCEEDED(debugController->QueryInterface(IID_PPV_ARGS(&debugController3))))
@@ -198,9 +184,9 @@ PhxEngine::RHI::RefCountPtr<IDXGIFactory6> PhxEngine::RHI::D3D12::D3D12GraphicsD
         }
     }
 
-    RefCountPtr<IDXGIFactory6> factory;
+    Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
     ThrowIfFailed(
-        CreateDXGIFactory2(flags, IID_PPV_ARGS(&factory)));
+        CreateDXGIFactory2(flags, IID_PPV_ARGS(factory.ReleaseAndGetAddressOf())));
 
     return factory;
 }

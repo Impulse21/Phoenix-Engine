@@ -114,5 +114,8 @@ int main(int __argc, const char** __argv)
     }
 
     root->Finalizing();
+    root.reset();
+    RHI::ReportLiveObjects();
+
     return 0;
 }

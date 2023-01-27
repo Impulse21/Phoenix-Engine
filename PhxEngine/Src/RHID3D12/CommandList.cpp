@@ -39,7 +39,7 @@ namespace
     }
 }
 
-PhxEngine::RHI::D3D12::CommandList::CommandList(GraphicsDevice& graphicsDevice, CommandListDesc const& desc)
+PhxEngine::RHI::D3D12::CommandList::CommandList(D3D12GraphicsDevice& graphicsDevice, CommandListDesc const& desc)
 	: m_graphicsDevice(graphicsDevice)
 	, m_desc(desc)
 	, m_commandAlloatorPool(graphicsDevice.GetD3D12Device2(), Convert(desc.QueueType))
@@ -107,7 +107,7 @@ void PhxEngine::RHI::D3D12::CommandList::Close()
 
 void PhxEngine::RHI::D3D12::CommandList::RTBuildAccelerationStructure(RHI::RTAccelerationStructureHandle accelStructure)
 {
-    Dx12RTAccelerationStructure* dx12AccelStructure = this->m_graphicsDevice.GetRTAccelerationStructurePool().Get(accelStructure);
+    D3D12RTAccelerationStructure* dx12AccelStructure = this->m_graphicsDevice.GetRTAccelerationStructurePool().Get(accelStructure);
     assert(dx12AccelStructure);
 
 
@@ -139,26 +139,26 @@ void PhxEngine::RHI::D3D12::CommandList::RTBuildAccelerationStructure(RHI::RTAcc
 
             if (geometry.Type == RTAccelerationStructureDesc::BottomLevelDesc::Geometry::Type::Triangles)
             {
-                Dx12Buffer* vertexBuffer = this->m_graphicsDevice.GetBufferPool().Get(geometry.Triangles.VertexBuffer);
+                D3D12Buffer* vertexBuffer = this->m_graphicsDevice.GetBufferPool().Get(geometry.Triangles.VertexBuffer);
                 assert(vertexBuffer);
                 buildGeometry.Triangles.VertexBuffer.StartAddress = vertexBuffer->D3D12Resource->GetGPUVirtualAddress() + (D3D12_GPU_VIRTUAL_ADDRESS)geometry.Triangles.VertexByteOffset;
 
 
-                Dx12Buffer* indexBuffer = this->m_graphicsDevice.GetBufferPool().Get(geometry.Triangles.IndexBuffer);
+                D3D12Buffer* indexBuffer = this->m_graphicsDevice.GetBufferPool().Get(geometry.Triangles.IndexBuffer);
                 assert(indexBuffer);
                 buildGeometry.Triangles.IndexBuffer = indexBuffer->D3D12Resource->GetGPUVirtualAddress() + 
                     (D3D12_GPU_VIRTUAL_ADDRESS)geometry.Triangles.IndexOffset * (geometry.Triangles.IndexFormat == RHIFormat::R16_UINT ? sizeof(uint16_t) : sizeof(uint32_t));
 
                 if (geometry.Flags & RTAccelerationStructureDesc::BottomLevelDesc::Geometry::kUseTransform)
                 {
-                    Dx12Buffer* transform3x4Buffer = this->m_graphicsDevice.GetBufferPool().Get(geometry.Triangles.Transform3x4Buffer);
+                    D3D12Buffer* transform3x4Buffer = this->m_graphicsDevice.GetBufferPool().Get(geometry.Triangles.Transform3x4Buffer);
                     assert(transform3x4Buffer);
                     buildGeometry.Triangles.Transform3x4 = transform3x4Buffer->D3D12Resource->GetGPUVirtualAddress() + (D3D12_GPU_VIRTUAL_ADDRESS)geometry.Triangles.Transform3x4BufferOffset;
                 }
             }
             else if (geometry.Type == RTAccelerationStructureDesc::BottomLevelDesc::Geometry::Type::ProceduralAABB)
             {
-                Dx12Buffer* aabbBuffer  = this->m_graphicsDevice.GetBufferPool().Get(geometry.AABBs.AABBBuffer);
+                D3D12Buffer* aabbBuffer  = this->m_graphicsDevice.GetBufferPool().Get(geometry.AABBs.AABBBuffer);
                 assert(aabbBuffer);
                 buildGeometry.AABBs.AABBs.StartAddress = aabbBuffer->D3D12Resource->GetGPUVirtualAddress() + (D3D12_GPU_VIRTUAL_ADDRESS)geometry.AABBs.Offset;
             }
@@ -167,7 +167,7 @@ void PhxEngine::RHI::D3D12::CommandList::RTBuildAccelerationStructure(RHI::RTAcc
     }
     case RTAccelerationStructureDesc::Type::TopLevel:
     {
-        Dx12Buffer* instanceBuffer = this->m_graphicsDevice.GetBufferPool().Get(dx12AccelStructure->Desc.TopLevel.InstanceBuffer);
+        D3D12Buffer* instanceBuffer = this->m_graphicsDevice.GetBufferPool().Get(dx12AccelStructure->Desc.TopLevel.InstanceBuffer);
         assert(instanceBuffer);
 
         dx12BuildDesc.Inputs.InstanceDescs = instanceBuffer->D3D12Resource->GetGPUVirtualAddress() +
@@ -191,7 +191,7 @@ void PhxEngine::RHI::D3D12::CommandList::RTBuildAccelerationStructure(RHI::RTAcc
     dx12BuildDesc.DestAccelerationStructureData = dx12AccelStructure->D3D12Resource->GetGPUVirtualAddress();
 
 
-    Dx12Buffer* scratchBuffer = this->m_graphicsDevice.GetBufferPool().Get(dx12AccelStructure->SratchBuffer);
+    D3D12Buffer* scratchBuffer = this->m_graphicsDevice.GetBufferPool().Get(dx12AccelStructure->SratchBuffer);
     assert(scratchBuffer);
 
     dx12BuildDesc.ScratchAccelerationStructureData = scratchBuffer->D3D12Resource->GetGPUVirtualAddress();
@@ -219,7 +219,7 @@ void CommandList::TransitionBarrier(
     ResourceStates beforeState,
     ResourceStates afterState)
 {
-    Dx12Texture* textureImpl = this->m_graphicsDevice.GetTexturePool().Get(texture);
+    D3D12Texture* textureImpl = this->m_graphicsDevice.GetTexturePool().Get(texture);
     assert(textureImpl);
 
     this->TransitionBarrier(
@@ -233,7 +233,7 @@ void PhxEngine::RHI::D3D12::CommandList::TransitionBarrier(
     ResourceStates beforeState,
     ResourceStates afterState)
 {
-    Dx12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(buffer);
+    D3D12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(buffer);
     assert(bufferImpl);
 
     this->TransitionBarrier(
@@ -248,7 +248,7 @@ void PhxEngine::RHI::D3D12::CommandList::TransitionBarriers(Core::Span<GpuBarrie
     {
         if (const GpuBarrier::TextureBarrier* texBarrier = std::get_if<GpuBarrier::TextureBarrier>(&gpuBarrier.Data))
         {
-            Dx12Texture* textureImpl = this->m_graphicsDevice.GetTexturePool().Get(texBarrier->Texture);
+            D3D12Texture* textureImpl = this->m_graphicsDevice.GetTexturePool().Get(texBarrier->Texture);
             D3D12_RESOURCE_BARRIER barrier = {};
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
             barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -289,7 +289,7 @@ void PhxEngine::RHI::D3D12::CommandList::TransitionBarriers(Core::Span<GpuBarrie
 
             if (const TextureHandle* texture = std::get_if<TextureHandle>(&memoryBarrier->Resource))
             {
-                Dx12Texture* textureImpl = this->m_graphicsDevice.GetTexturePool().Get(*texture);
+                D3D12Texture* textureImpl = this->m_graphicsDevice.GetTexturePool().Get(*texture);
                 if (textureImpl && textureImpl->D3D12Resource != nullptr)
                 {
                     barrier.UAV.pResource = textureImpl->D3D12Resource.Get();
@@ -297,7 +297,7 @@ void PhxEngine::RHI::D3D12::CommandList::TransitionBarriers(Core::Span<GpuBarrie
             }
             else if (const BufferHandle* buffer = std::get_if<BufferHandle>(&memoryBarrier->Resource))
             {
-                Dx12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(*buffer);
+                D3D12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(*buffer);
                 if (bufferImpl && bufferImpl->D3D12Resource != nullptr)
                 {
                     barrier.UAV.pResource = bufferImpl->D3D12Resource.Get();
@@ -328,7 +328,7 @@ void PhxEngine::RHI::D3D12::CommandList::BeginRenderPassBackBuffer()
     }
 
     this->m_activeRenderTarget = viewport.RenderPass;
-    Dx12Texture* backBuffer = this->m_graphicsDevice.GetTexturePool().Get(this->m_graphicsDevice.GetBackBuffer());
+    D3D12Texture* backBuffer = this->m_graphicsDevice.GetTexturePool().Get(this->m_graphicsDevice.GetBackBuffer());
 
     D3D12_RESOURCE_BARRIER barrier = {};
     barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -352,7 +352,7 @@ void PhxEngine::RHI::D3D12::CommandList::BeginRenderPassBackBuffer()
 
 void PhxEngine::RHI::D3D12::CommandList::BeginRenderPass(RenderPassHandle renderPass)
 {
-    Dx12RenderPass* renderPassImpl = this->m_graphicsDevice.GetRenderPassPool().Get(renderPass);
+    D3D12RenderPass* renderPassImpl = this->m_graphicsDevice.GetRenderPassPool().Get(renderPass);
     if (!renderPassImpl)
     {
         return;
@@ -384,7 +384,7 @@ void PhxEngine::RHI::D3D12::CommandList::EndRenderPass()
 
     if (this->m_activeRenderTarget == this->m_graphicsDevice.GetActiveViewport()->RenderPass)
     {
-        Dx12Texture* backBuffer = this->m_graphicsDevice.GetTexturePool().Get(this->m_graphicsDevice.GetBackBuffer());
+        D3D12Texture* backBuffer = this->m_graphicsDevice.GetTexturePool().Get(this->m_graphicsDevice.GetBackBuffer());
 
         D3D12_RESOURCE_BARRIER barrier = {};
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -397,7 +397,7 @@ void PhxEngine::RHI::D3D12::CommandList::EndRenderPass()
     }
     else
     {
-        Dx12RenderPass* renderPassImpl = this->m_graphicsDevice.GetRenderPassPool().Get(this->m_activeRenderTarget);
+        D3D12RenderPass* renderPassImpl = this->m_graphicsDevice.GetRenderPassPool().Get(this->m_activeRenderTarget);
         if (!renderPassImpl)
         {
             return;
@@ -517,14 +517,14 @@ constexpr uint64_t AlignTo(uint64_t value, uint64_t alignment)
 void CommandList::WriteBuffer(BufferHandle buffer, const void* data, size_t dataSize, uint64_t destOffsetBytes)
 {
     UINT64 alignedSize = dataSize;
-    const Dx12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(buffer);
+    const D3D12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(buffer);
     if ((bufferImpl->GetDesc().Binding & BindingFlags::ConstantBuffer) == BindingFlags::ConstantBuffer)
     {
         alignedSize = AlignTo(alignedSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
     }
 
     auto heapAllocation = this->m_uploadBuffer->Allocate(dataSize, alignedSize);
-    Dx12Buffer* uploadBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(heapAllocation.BufferHandle);
+    D3D12Buffer* uploadBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(heapAllocation.BufferHandle);
     memcpy(heapAllocation.CpuData, data, dataSize);
     this->m_d3d12CommandList->CopyBufferRegion(
         bufferImpl->D3D12Resource.Get(),
@@ -563,8 +563,8 @@ void CommandList::WriteBuffer(BufferHandle buffer, const void* data, size_t data
 
 void CommandList::CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHandle src, uint64_t srcOffset, size_t sizeInBytes)
 {
-    const Dx12Buffer* srcBuffer = this->m_graphicsDevice.GetBufferPool().Get(src);
-    const Dx12Buffer* dstBuffer = this->m_graphicsDevice.GetBufferPool().Get(dst);
+    const D3D12Buffer* srcBuffer = this->m_graphicsDevice.GetBufferPool().Get(src);
+    const D3D12Buffer* dstBuffer = this->m_graphicsDevice.GetBufferPool().Get(dst);
 
     this->m_d3d12CommandList->CopyBufferRegion(
         dstBuffer->D3D12Resource.Get(),
@@ -768,7 +768,7 @@ void PhxEngine::RHI::D3D12::CommandList::BindPushConstant(uint32_t rootParameter
 
 void PhxEngine::RHI::D3D12::CommandList::BindConstantBuffer(size_t rootParameterIndex, BufferHandle constantBuffer)
 {
-    const Dx12Buffer* constantBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(constantBuffer);
+    const D3D12Buffer* constantBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(constantBuffer);
     if (this->m_activeComputePipeline)
     {
         this->m_d3d12CommandList->SetComputeRootConstantBufferView(rootParameterIndex, constantBufferImpl->D3D12Resource->GetGPUVirtualAddress());
@@ -796,7 +796,7 @@ void PhxEngine::RHI::D3D12::CommandList::BindDynamicConstantBuffer(size_t rootPa
 
 void PhxEngine::RHI::D3D12::CommandList::BindVertexBuffer(uint32_t slot, BufferHandle vertexBuffer)
 {
-    const Dx12Buffer* vertexBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(vertexBuffer);
+    const D3D12Buffer* vertexBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(vertexBuffer);
 
     this->m_d3d12CommandList->IASetVertexBuffers(slot, 1, &vertexBufferImpl->VertexView);
 }
@@ -817,7 +817,7 @@ void PhxEngine::RHI::D3D12::CommandList::BindDynamicVertexBuffer(uint32_t slot, 
 
 void PhxEngine::RHI::D3D12::CommandList::BindIndexBuffer(BufferHandle indexBuffer)
 {
-    const Dx12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(indexBuffer);
+    const D3D12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(indexBuffer);
 
     this->m_d3d12CommandList->IASetIndexBuffer(&bufferImpl->IndexView);
 }
@@ -858,7 +858,7 @@ void PhxEngine::RHI::D3D12::CommandList::BindDynamicStructuredBuffer(uint32_t ro
 
 void PhxEngine::RHI::D3D12::CommandList::BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer)
 {
-    const Dx12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(buffer);
+    const D3D12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(buffer);
 
     if (this->m_activeComputePipeline)
     {
@@ -989,7 +989,7 @@ void PhxEngine::RHI::D3D12::CommandList::EndTimerQuery(TimerQueryHandle query)
     auto queryImpl = std::static_pointer_cast<TimerQuery>(query);
 
 
-    const Dx12Buffer* timeStampQueryBuffer = this->m_graphicsDevice.GetBufferPool().Get(this->m_graphicsDevice.GetTimestampQueryBuffer());
+    const D3D12Buffer* timeStampQueryBuffer = this->m_graphicsDevice.GetBufferPool().Get(this->m_graphicsDevice.GetTimestampQueryBuffer());
 
     this->m_trackedData->TimerQueries.push_back(queryImpl);
 

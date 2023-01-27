@@ -24,7 +24,6 @@
 #include "d3d12shader.h"
 #include <dxgi1_6.h>
 #include <PhxEngine/RHI/PhxRHI.h>
-#include <PhxEngine/RHI/RefCountPtr.h>
 
 
 namespace PhxEngine::RHI::D3D12

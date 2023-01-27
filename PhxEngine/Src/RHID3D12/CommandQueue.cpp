@@ -5,7 +5,7 @@
 using namespace Microsoft::WRL;
 using namespace PhxEngine::RHI::D3D12;
 
-CommandQueue::CommandQueue(GraphicsDevice& graphicsDevice, D3D12_COMMAND_LIST_TYPE type)
+CommandQueue::CommandQueue(D3D12GraphicsDevice& graphicsDevice, D3D12_COMMAND_LIST_TYPE type)
 	: m_graphicsDevice(graphicsDevice)
 	, m_type(type)
 	, m_allocatorPool(graphicsDevice.GetD3D12Device2(), type)

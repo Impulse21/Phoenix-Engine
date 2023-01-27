@@ -62,51 +62,35 @@ namespace PhxEngine::RHI::D3D12
     {
         ViewportDesc Desc;
 
-        RefCountPtr<IDXGISwapChain1> NativeSwapchain;
-        RefCountPtr<IDXGISwapChain4> NativeSwapchain4;
+        Microsoft::WRL::ComPtr<IDXGISwapChain1> NativeSwapchain;
+        Microsoft::WRL::ComPtr<IDXGISwapChain4> NativeSwapchain4;
 
         std::vector<TextureHandle> BackBuffers;
         RenderPassHandle RenderPass;
     };
 
-    class Shader : public RefCounter<IShader>
+    struct D3D12Shader
     {
-    public:
-        Shader(ShaderDesc const& desc, const void* binary, size_t binarySize)
-            : m_desc(desc)
+        std::vector<uint8_t> ByteCode;
+        const ShaderDesc Desc;
+        Microsoft::WRL::ComPtr<ID3D12RootSignatureDeserializer> RootSignatureDeserializer;
+        Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
+
+        D3D12Shader() = default;
+        D3D12Shader(ShaderDesc const& desc, const void* binary, size_t binarySize)
+            : Desc(desc)
         {
-            this->m_byteCode.resize(binarySize);
-            std::memcpy(this->m_byteCode.data(), binary, binarySize);
+            this->ByteCode.resize(binarySize);
+            std::memcpy(ByteCode.data(), binary, binarySize);
         }
-
-        const ShaderDesc& GetDesc() const { return this->m_desc; }
-        const std::vector<uint8_t>& GetByteCode() const { return this->m_byteCode; }
-        Microsoft::WRL::ComPtr<ID3D12RootSignatureDeserializer> GetRootSigDeserializer() { return this->m_rootSignatureDeserializer; }
-
-        void SetRootSignature(Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSig) { this->m_rootSignature = rootSig; };
-        Microsoft::WRL::ComPtr<ID3D12RootSignature> GetRootSignature() const { return this->m_rootSignature; };
-
-    private:
-        std::vector<uint8_t> m_byteCode;
-        const ShaderDesc m_desc;
-        Microsoft::WRL::ComPtr<ID3D12RootSignatureDeserializer> m_rootSignatureDeserializer;
-        Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
     };
 
-    struct InputLayout : public RefCounter<IInputLayout>
+    struct D3D12InputLayout
     {
         std::vector<VertexAttributeDesc> Attributes;
         std::vector<D3D12_INPUT_ELEMENT_DESC> InputElements;
 
-        // maps a binding slot to an element stride
-        std::unordered_map<uint32_t, uint32_t> ElementStrides;
-
-        uint32_t GetNumAttributes() const override { return this->Attributes.size(); }
-        const VertexAttributeDesc* GetAttributeDesc(uint32_t index) const override
-        {
-            assert(index < this->GetNumAttributes());
-            return &this->Attributes[index];
-        }
+        D3D12InputLayout() = default;
     };
 
     struct D3D12GraphicsPipeline
@@ -114,6 +98,8 @@ namespace PhxEngine::RHI::D3D12
         Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
         Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
         GraphicsPipelineDesc Desc;
+
+        D3D12GraphicsPipeline() = default;
     };
 
     struct D3D12ComputePipeline
@@ -121,6 +107,8 @@ namespace PhxEngine::RHI::D3D12
         Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
         Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
         ComputePipelineDesc Desc;
+
+        D3D12ComputePipeline() = default;
     };
 
     struct DescriptorView
@@ -144,7 +132,7 @@ namespace PhxEngine::RHI::D3D12
         uint32_t SliceCount = 0;
     };
 
-    struct Dx12Texture final
+    struct D3D12Texture final
     {
         TextureDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
@@ -162,7 +150,7 @@ namespace PhxEngine::RHI::D3D12
         DescriptorView UavAllocation;
         std::vector<DescriptorView> UavSubresourcesAlloc = {};
 
-        Dx12Texture() = default;
+        D3D12Texture() = default;
 
         void DisposeViews()
         {
@@ -200,7 +188,7 @@ namespace PhxEngine::RHI::D3D12
         }
     };
 
-    struct Dx12Buffer final
+    struct D3D12Buffer final
     {
         BufferDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
@@ -220,6 +208,8 @@ namespace PhxEngine::RHI::D3D12
         D3D12_INDEX_BUFFER_VIEW IndexView = {};
 
         const BufferDesc& GetDesc() const { return this->Desc; }
+
+        D3D12Buffer() = default;
 
         void DisposeViews()
         {
@@ -241,7 +231,7 @@ namespace PhxEngine::RHI::D3D12
         }
     };
 
-    struct Dx12RTAccelerationStructure final
+    struct D3D12RTAccelerationStructure final
     {
         RTAccelerationStructureDesc Desc = {};
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS Dx12Desc = {};
@@ -250,9 +240,11 @@ namespace PhxEngine::RHI::D3D12
         BufferHandle SratchBuffer;
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
         DescriptorView Srv;
+
+        D3D12RTAccelerationStructure() = default;
     };
 
-    struct Dx12RenderPass final
+    struct D3D12RenderPass final
     {
         RenderPassDesc Desc = {};
 
@@ -264,6 +256,8 @@ namespace PhxEngine::RHI::D3D12
 
         std::vector<D3D12_RESOURCE_BARRIER> BarrierDescBegin;
         std::vector<D3D12_RESOURCE_BARRIER> BarrierDescEnd;
+
+        D3D12RenderPass() = default;
     };
 
     enum class DescriptorHeapTypes : uint8_t
@@ -280,7 +274,7 @@ namespace PhxEngine::RHI::D3D12
         uint32_t NumDeviceNodes;
     };
 
-    class D3D12Adapter final : public IGpuAdapter
+    class D3D12Adapter final 
     {
     public:
         std::string Name;
@@ -289,24 +283,19 @@ namespace PhxEngine::RHI::D3D12
         size_t SharedSystemMemory = 0;
         D3D12DeviceBasicInfo BasicDeviceInfo;
         DXGI_ADAPTER_DESC NativeDesc;
-        RHI::RefCountPtr<IDXGIAdapter1> NativeAdapter;
-
-        const char* GetName() const override { return this->Name.c_str(); };
-        virtual size_t GetDedicatedSystemMemory() const override { return this->DedicatedSystemMemory; };
-        virtual size_t GetDedicatedVideoMemory() const override { return this->DedicatedVideoMemory; };
-        virtual size_t GetSharedSystemMemory() const override { return this->SharedSystemMemory; };
+        Microsoft::WRL::ComPtr<IDXGIAdapter1> NativeAdapter;
 
         static HRESULT EnumAdapters(uint32_t adapterIndex, IDXGIFactory6* factory6, IDXGIAdapter1** outAdapter);
     };
 
-	class GraphicsDevice final : public IGraphicsDevice
+	class D3D12GraphicsDevice final : public IGraphicsDevice
 	{
     private:
-        inline static GraphicsDevice* sSingleton = nullptr;
+        inline static D3D12GraphicsDevice* sSingleton = nullptr;
 
 	public:
-		GraphicsDevice(std::shared_ptr<D3D12Adapter> adapter, RefCountPtr<IDXGIFactory6> factory);
-		~GraphicsDevice();
+		D3D12GraphicsDevice(D3D12Adapter const& adapter, Microsoft::WRL::ComPtr<IDXGIFactory6> factory);
+		~D3D12GraphicsDevice();
 
         // -- Interface Functions ---
     public:
@@ -389,8 +378,6 @@ namespace PhxEngine::RHI::D3D12
         ShaderType GetShaderType() const override { return ShaderType::HLSL6; };
         GraphicsAPI GetApi() const override { return GraphicsAPI::DX12; }
 
-        const IGpuAdapter* GetGpuAdapter() const override { return this->m_gpuAdapter.get(); };
-
         void BeginCapture(std::wstring const& filename) override;
         void EndCapture(bool discard = false) override;
 
@@ -404,7 +391,7 @@ namespace PhxEngine::RHI::D3D12
     public:
         D3D12Viewport* GetActiveViewport() const { return this->m_activeViewport.get(); }
         TextureHandle CreateRenderTarget(TextureDesc const& desc, Microsoft::WRL::ComPtr<ID3D12Resource> d3d12TextureResource);
-        TextureHandle CreateTexture(TextureDesc const& desc, RefCountPtr<ID3D12Resource> d3d12Resource);
+        TextureHandle CreateTexture(TextureDesc const& desc, Microsoft::WRL::ComPtr<ID3D12Resource> d3d12Resource);
 
         int CreateShaderResourceView(BufferHandle buffer, size_t offset, size_t size);
         int CreateUnorderedAccessView(BufferHandle buffer, size_t offset, size_t size);
@@ -425,7 +412,7 @@ namespace PhxEngine::RHI::D3D12
         Microsoft::WRL::ComPtr<ID3D12Device5> GetD3D12Device5() { return this->m_rootDevice5; }
 
         Microsoft::WRL::ComPtr<IDXGIFactory6> GetDxgiFactory() { return this->m_factory; }
-        RefCountPtr<IDXGIAdapter> GetDxgiAdapter() { return this->m_gpuAdapter->NativeAdapter; }
+        Microsoft::WRL::ComPtr<IDXGIAdapter> GetDxgiAdapter() { return this->m_gpuAdapter.NativeAdapter; }
 
     public:
         CommandQueue* GetGfxQueue() { return this->GetQueue(CommandQueueType::Graphics); }
@@ -447,12 +434,12 @@ namespace PhxEngine::RHI::D3D12
         const BindlessDescriptorTable* GetBindlessTable() const { return this->m_bindlessResourceDescriptorTable.get(); }
 
         // Maybe better encapulate this.
-        Core::Pool<Dx12Texture, Texture>& GetTexturePool() { return this->m_texturePool; };
-        Core::Pool<Dx12Buffer, Buffer>& GetBufferPool() { return this->m_bufferPool; };
-        Core::Pool<Dx12RenderPass, RenderPass>& GetRenderPassPool() { return this->m_renderPassPool; };
+        Core::Pool<D3D12Texture, Texture>& GetTexturePool() { return this->m_texturePool; };
+        Core::Pool<D3D12Buffer, Buffer>& GetBufferPool() { return this->m_bufferPool; };
+        Core::Pool<D3D12RenderPass, RenderPass>& GetRenderPassPool() { return this->m_renderPassPool; };
         Core::Pool<D3D12GraphicsPipeline, GraphicsPipeline>& GetGraphicsPipelinePool() { return this->m_graphicsPipelinePool; }
         Core::Pool<D3D12ComputePipeline, ComputePipeline>& GetComputePipelinePool() { return this->m_computePipelinePool; }
-        Core::Pool<Dx12RTAccelerationStructure, RTAccelerationStructure>& GetRTAccelerationStructurePool() { return this->m_rtAccelerationStructurePool; }
+        Core::Pool<D3D12RTAccelerationStructure, RTAccelerationStructure>& GetRTAccelerationStructurePool() { return this->m_rtAccelerationStructurePool; }
 
     private:
         size_t GetCurrentBackBufferIndex() const;
@@ -460,7 +447,7 @@ namespace PhxEngine::RHI::D3D12
         bool IsHdrSwapchainSupported();
 
     private:
-        void CreateBufferInternal(BufferDesc const& desc, Dx12Buffer& outBuffer);
+        void CreateBufferInternal(BufferDesc const& desc, D3D12Buffer& outBuffer);
 
         void CreateGpuTimestampQueryHeap(uint32_t queryCount);
 
@@ -484,7 +471,7 @@ namespace PhxEngine::RHI::D3D12
 		Microsoft::WRL::ComPtr<ID3D12Device5> m_rootDevice5;
 
 		// std::shared_ptr<IDxcUtils> dxcUtils;
-		std::shared_ptr<D3D12Adapter> m_gpuAdapter;
+		D3D12Adapter m_gpuAdapter;
 
 		D3D12_FEATURE_DATA_ROOT_SIGNATURE FeatureDataRootSignature = {};
 		D3D12_FEATURE_DATA_SHADER_MODEL   FeatureDataShaderModel = {};
@@ -496,10 +483,12 @@ namespace PhxEngine::RHI::D3D12
         std::unique_ptr<D3D12Viewport> m_activeViewport;
 
         // -- Resouce Pool ---
-        Core::Pool<Dx12Texture, Texture> m_texturePool;
-        Core::Pool<Dx12Buffer, Buffer> m_bufferPool;
-        Core::Pool<Dx12RenderPass, RenderPass> m_renderPassPool;
-        Core::Pool<Dx12RTAccelerationStructure, RTAccelerationStructure> m_rtAccelerationStructurePool;
+        Core::Pool<D3D12Texture, Texture> m_texturePool;
+        Core::Pool<D3D12Shader, RHIShader> m_shaderPool;
+        Core::Pool<D3D12InputLayout, InputLayout> m_inputLayoutPool;
+        Core::Pool<D3D12Buffer, Buffer> m_bufferPool;
+        Core::Pool<D3D12RenderPass, RenderPass> m_renderPassPool;
+        Core::Pool<D3D12RTAccelerationStructure, RTAccelerationStructure> m_rtAccelerationStructurePool;
         Core::Pool<D3D12GraphicsPipeline, GraphicsPipeline> m_graphicsPipelinePool;
         Core::Pool<D3D12ComputePipeline, ComputePipeline> m_computePipelinePool;
 
@@ -518,7 +507,7 @@ namespace PhxEngine::RHI::D3D12
         std::unique_ptr<BindlessDescriptorTable> m_bindlessResourceDescriptorTable;
 
         // -- Frame Frences --
-        RefCountPtr<ID3D12Fence> m_frameFence;
+        Microsoft::WRL::ComPtr<ID3D12Fence> m_frameFence;
         uint64_t m_frameCount = 1;
 
         struct InflightDataEntry

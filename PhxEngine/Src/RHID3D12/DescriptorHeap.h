@@ -9,7 +9,7 @@ namespace PhxEngine::RHI::D3D12
 {
 	class DescriptorHeapAllocation;
 	class DescriptorHeapAllocationPage;
-	class GraphicsDevice;
+	class D3D12GraphicsDevice;
 
 	class IDescriptorAllocator
 	{
@@ -236,7 +236,7 @@ namespace PhxEngine::RHI::D3D12
 	{
 	public:
 		CpuDescriptorHeap(
-			GraphicsDevice& d3dDevice,
+			D3D12GraphicsDevice& d3dDevice,
 			uint32_t numDesctiptors,
 			D3D12_DESCRIPTOR_HEAP_TYPE type,
 			D3D12_DESCRIPTOR_HEAP_FLAGS flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE);
@@ -258,7 +258,7 @@ namespace PhxEngine::RHI::D3D12
 
 	private:
 		const uint32_t m_descriptorSize;
-		GraphicsDevice& m_graphicsDevice;
+		D3D12GraphicsDevice& m_graphicsDevice;
 
 		D3D12_DESCRIPTOR_HEAP_DESC m_heapDesc;
 		uint32_t m_numDescriptorsPerHeap;
@@ -274,7 +274,7 @@ namespace PhxEngine::RHI::D3D12
 	{
 	public:
 		GpuDescriptorHeap(
-			GraphicsDevice& graphicsDevice,
+			D3D12GraphicsDevice& graphicsDevice,
 			uint32_t numDesctiptors,
 			uint32_t numDynamicDesciprotrs,
 			D3D12_DESCRIPTOR_HEAP_TYPE type,
@@ -301,7 +301,7 @@ namespace PhxEngine::RHI::D3D12
 
 	private:
 		const uint32_t m_descriptorSize;
-		GraphicsDevice& m_graphicsDevice;
+		D3D12GraphicsDevice& m_graphicsDevice;
 
 		D3D12_DESCRIPTOR_HEAP_DESC m_heapDesc;
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_d3dHeap;

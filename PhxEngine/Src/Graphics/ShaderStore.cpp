@@ -9,10 +9,6 @@ using namespace PhxEngine::RHI;
 
 void ShaderStore::PreloadShaders(ShaderFactory& shaderFactory)
 {
-	// TODO: Add Async
-
-	this->m_shaderHandles.assign(static_cast<size_t>(PreLoadShaders::NumPreloadShaders), nullptr);
-
 	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::VS_ImGui)] = shaderFactory.LoadShader(ShaderStage::Vertex, "ImGuiVS.cso");
 	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::PS_ImGui)] = shaderFactory.LoadShader(ShaderStage::Pixel, "ImGuiPS.cso");
 

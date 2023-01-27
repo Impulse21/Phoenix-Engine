@@ -77,7 +77,7 @@ ShaderHandle PhxEngine::Graphics::ShaderFactory::LoadShader(ShaderStage stage, s
 
 	return this->m_graphicsDevice->CreateShader(desc, buffer.data(), buffer.size());
 	*/
-	return nullptr;
+	return ShaderHandle();
 }
 
 bool PhxEngine::Graphics::ShaderFactory::IsShaderOutdated(std::filesystem::path const& shaderFilename)

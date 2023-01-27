@@ -6,7 +6,7 @@
 
 namespace PhxEngine::RHI::D3D12
 {
-	class GraphicsDevice;
+	class D3D12GraphicsDevice;
 	class CommandQueue;
 	class GpuDescriptorHeap;
 	class UploadBuffer;
@@ -44,11 +44,11 @@ namespace PhxEngine::RHI::D3D12
 		std::queue<std::pair<uint64_t, DynamicSuballocator*>> m_availableAllocators;
 	};
 
-	class CommandList final : public RefCounter<ICommandList>
+	class CommandList final : public ICommandList
 	{
 	public:
 		CommandList(
-			GraphicsDevice& graphicsDevice,
+			D3D12GraphicsDevice& graphicsDevice,
 			CommandListDesc const& desc);
 
 		~CommandList();
@@ -131,7 +131,7 @@ namespace PhxEngine::RHI::D3D12
 		const uint32_t DynamicChunkSizeSrvUavCbv = 256;
 		D3D12ComputePipeline* m_activeComputePipeline = nullptr;
 
-		GraphicsDevice& m_graphicsDevice;
+		D3D12GraphicsDevice& m_graphicsDevice;
 		CommandListDesc m_desc = {};
 		CommandAllocatorPool m_commandAlloatorPool;
 		std::unique_ptr<UploadBuffer> m_uploadBuffer;

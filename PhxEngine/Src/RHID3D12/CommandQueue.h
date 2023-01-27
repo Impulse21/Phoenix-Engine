@@ -8,12 +8,12 @@
 
 namespace PhxEngine::RHI::D3D12
 {
-	class GraphicsDevice;
+	class D3D12GraphicsDevice;
 
 	class CommandQueue
 	{
 	public:
-		CommandQueue(GraphicsDevice& graphicsDevice, D3D12_COMMAND_LIST_TYPE type);
+		CommandQueue(D3D12GraphicsDevice& graphicsDevice, D3D12_COMMAND_LIST_TYPE type);
 		~CommandQueue();
 
 		D3D12_COMMAND_LIST_TYPE GetType() const { return this->m_type; }
@@ -33,7 +33,7 @@ namespace PhxEngine::RHI::D3D12
 
 	private:
 		const D3D12_COMMAND_LIST_TYPE m_type;
-		GraphicsDevice& m_graphicsDevice;
+		D3D12GraphicsDevice& m_graphicsDevice;
 
 		Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_d3d12CommandQueue;
 		Microsoft::WRL::ComPtr<ID3D12Fence> m_d3d12Fence;

@@ -11,7 +11,7 @@
 
 namespace PhxEngine::RHI::D3D12
 {
-	class GraphicsDevice;
+	class D3D12GraphicsDevice;
 	class UploadBuffer
 	{
 	public:
@@ -23,7 +23,7 @@ namespace PhxEngine::RHI::D3D12
 			size_t Offset;
 		};
 
-		explicit UploadBuffer(GraphicsDevice& device, size_t pageSize = MBToBytes(10));
+		explicit UploadBuffer(D3D12GraphicsDevice& device, size_t pageSize = MBToBytes(10));
 
 		Allocation Allocate(size_t sizeInBytes, size_t alignment);
 
@@ -34,7 +34,7 @@ namespace PhxEngine::RHI::D3D12
 	private:
 		struct Page
 		{
-			Page(GraphicsDevice& device, size_t sizeInBytes);
+			Page(D3D12GraphicsDevice& device, size_t sizeInBytes);
 			~Page();
 
 			bool HasSpace(size_t sizeInBytes, size_t alignment) const;
@@ -44,7 +44,7 @@ namespace PhxEngine::RHI::D3D12
 			void Reset();
 
 		private:
-			GraphicsDevice& m_rootDevice;
+			D3D12GraphicsDevice& m_rootDevice;
 			BufferHandle m_buffer;
 			D3D12_GPU_VIRTUAL_ADDRESS m_gpuPtr;
 
@@ -57,7 +57,7 @@ namespace PhxEngine::RHI::D3D12
 		std::shared_ptr<Page> RequestPage();
 
 	private:
-		GraphicsDevice& m_rootDevice;
+		D3D12GraphicsDevice& m_rootDevice;
 		PagePool m_pagePool;
 		PagePool m_availablePages;
 

@@ -8,7 +8,7 @@
 using namespace PhxEngine::RHI::D3D12;
 
 CpuDescriptorHeap::CpuDescriptorHeap(
-	GraphicsDevice& graphicsDevice,
+	D3D12GraphicsDevice& graphicsDevice,
 	uint32_t numDesctiptors,
 	D3D12_DESCRIPTOR_HEAP_TYPE type,
 	D3D12_DESCRIPTOR_HEAP_FLAGS flags)
@@ -291,7 +291,7 @@ void DescriptorHeapAllocationPage::FreeBlock(uint32_t offset, uint32_t numDescri
 }
 
 GpuDescriptorHeap::GpuDescriptorHeap(
-	GraphicsDevice& graphicsDevice,
+	D3D12GraphicsDevice& graphicsDevice,
 	uint32_t numDesctiptors,
 	uint32_t numDynamicDescriptors,
 	D3D12_DESCRIPTOR_HEAP_TYPE type,
