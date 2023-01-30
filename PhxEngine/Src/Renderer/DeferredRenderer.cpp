@@ -316,7 +316,7 @@ void PhxEngine::Renderer::DeferredRenderer::DebugDrawWorld(PhxEngine::Scene::Sce
     auto _ = commandList->BeginScopedMarker("Debug Draw World");
     this->m_drawInfo.clear();
     this->m_commandList->BeginRenderPass(this->m_renderPasses[RenderPass_Debug]);
-    commandList->SetGraphicsPSO(this->m_pso[PSO_Debug_Cube]);
+    commandList->SetGraphicsPipeline(this->m_pso[PSO_Debug_Cube]);
     commandList->BindDynamicIndexBuffer(kDrawCubeIndices.size(), RHI::RHIFormat::R16_UINT, kDrawCubeIndices.data());
 
     if ((bool)sCVarDebugDrawAABB.Get())
@@ -508,7 +508,7 @@ void DeferredRenderer::RefreshEnvProbes(PhxEngine::Scene::CameraComponent const&
     RHI::ScopedMarker scope = commandList->BeginScopedMarker("Refresh Env Probes");
 
     commandList->BeginRenderPass(scene.GetEnvMapRenderPasses(skyCaptureProbe.textureIndex));
-    commandList->SetGraphicsPSO(this->m_pso[PSO_EnvCapture_SkyProcedural]);
+    commandList->SetGraphicsPipeline(this->m_pso[PSO_EnvCapture_SkyProcedural]);
 
     RHI::Viewport v(Scene::Scene::kEnvmapRes , Scene::Scene::kEnvmapRes);
     this->m_commandList->SetViewports(&v, 1);
@@ -1154,7 +1154,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 
         // -- Prepare PSO ---
         this->m_commandList->BeginRenderPass(this->m_cascadeShadowMaps->GetRenderPass());
-        this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_Shadow]);
+        this->m_commandList->SetGraphicsPipeline(this->m_pso[PSO_Shadow]);
 
         RHI::Viewport v(kCascadeShadowMapRes, kCascadeShadowMapRes);
         this->m_commandList->SetViewports(&v, 1);
@@ -1186,7 +1186,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 
         // -- Prepare PSO ---
         this->m_commandList->BeginRenderPass(this->m_renderPasses[RenderPass_GBuffer]);
-        this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_GBufferPass]);
+        this->m_commandList->SetGraphicsPipeline(this->m_pso[PSO_GBufferPass]);
 
         RHI::Viewport v(this->m_canvasSize.x, this->m_canvasSize.y);
         this->m_commandList->SetViewports(&v, 1);
@@ -1235,11 +1235,11 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
         this->m_commandList->BeginRenderPass(this->m_renderPasses[RenderPass_DeferredLighting]);
         if ((bool)sCVarRTShadows.Get())
         {
-            this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_DeferredLightingPass_RTShadows]);
+            this->m_commandList->SetGraphicsPipeline(this->m_pso[PSO_DeferredLightingPass_RTShadows]);
         }
         else
         {
-            this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_DeferredLightingPass]);
+            this->m_commandList->SetGraphicsPipeline(this->m_pso[PSO_DeferredLightingPass]);
         }
 
         this->m_commandList->BindConstantBuffer(RootParameters_DeferredLightingFulLQuad::FrameCB, this->m_constantBuffers[CB_Frame]);
@@ -1266,14 +1266,14 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 
         if (worldComp.IndirectLightingMode == WorldEnvironmentComponent::IndirectLightingMode::IBL)
         {
-            this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_SkyTex]);
+            this->m_commandList->SetGraphicsPipeline(this->m_pso[PSO_SkyTex]);
             Shader::ImagePassPushConstants push = {};
             push.Index = IGraphicsDevice::GPtr->GetDescriptorIndex(worldComp.IblTextures[WorldEnvironmentComponent::IBLTextures::EnvMap]->GetRenderHandle(), RHI::SubresouceType::SRV);
             this->m_commandList->BindPushConstant(DefaultRootParameters::PushConstant, push);
         }
         else
         {
-            this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_SkyProcedural]);
+            this->m_commandList->SetGraphicsPipeline(this->m_pso[PSO_SkyProcedural]);
         }
 
         this->m_commandList->BindConstantBuffer(DefaultRootParameters::FrameCB, this->m_constantBuffers[CB_Frame]);
@@ -1293,7 +1293,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 			auto scrope = this->m_commandList->BeginScopedMarker("Tone Mapping");
 
             this->m_commandList->BeginRenderPass(this->m_renderPasses[RenderPass_PostFx]);
-			this->m_commandList->SetGraphicsPSO(this->m_pso[PSO_ToneMappingPass]);
+			this->m_commandList->SetGraphicsPipeline(this->m_pso[PSO_ToneMappingPass]);
 
             // Exposure, not needed right now
             this->m_commandList->BindPushConstant(RootParameters_ToneMapping::Push, 1.0f);
@@ -1310,7 +1310,7 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
 	}
 
     this->m_commandList->Close();
-    RHI::IGraphicsDevice::GPtr->ExecuteCommandLists(this->m_commandList.get());
+    RHI::IGraphicsDevice::GPtr->ExecuteCommandLists({ this->m_commandList.get() });
 }
 
 void DeferredRenderer::OnWindowResize(DirectX::XMFLOAT2 const& size)

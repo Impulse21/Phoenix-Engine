@@ -9,7 +9,7 @@
 namespace PhxEngine::RHI::D3D12
 {
 	class D3D12GraphicsDevice;
-
+	class D3D12CommandList;
 	class CommandQueue
 	{
 	public:
@@ -18,7 +18,13 @@ namespace PhxEngine::RHI::D3D12
 
 		D3D12_COMMAND_LIST_TYPE GetType() const { return this->m_type; }
 
+		D3D12CommandList* RequestCommandList();
+		uint64_t ExecuteCommandLists(Core::Span<D3D12CommandList*> commandLists);
+		// TODO: Move to private.
 		uint64_t ExecuteCommandLists(std::vector<ID3D12CommandList*> const& commandLists);
+
+		ID3D12CommandAllocator* RequestAllocator();
+		void DiscardAllocator(uint64_t fence, ID3D12CommandAllocator* allocator);
 
 		uint64_t IncrementFence();
 		bool IsFenceComplete(uint64_t fenceValue);
@@ -31,6 +37,8 @@ namespace PhxEngine::RHI::D3D12
 		ID3D12Fence* GetFence() { return this->m_d3d12Fence.Get(); }
 		uint64_t GetLastCompletedFence();
 
+		D3D12GraphicsDevice& GetGfxDevice() { return this->m_graphicsDevice; }
+
 	private:
 		const D3D12_COMMAND_LIST_TYPE m_type;
 		D3D12GraphicsDevice& m_graphicsDevice;
@@ -38,6 +46,10 @@ namespace PhxEngine::RHI::D3D12
 		Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_d3d12CommandQueue;
 		Microsoft::WRL::ComPtr<ID3D12Fence> m_d3d12Fence;
 		
+		std::vector<std::unique_ptr<D3D12CommandList>> m_commandListsPool;
+		std::queue<D3D12CommandList*> m_availableCommandLists;
+		std::mutex m_commandListMutx;
+
 		CommandAllocatorPool m_allocatorPool;
 
 		uint64_t m_nextFenceValue = 0;

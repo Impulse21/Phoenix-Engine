@@ -52,6 +52,9 @@ void PhxEngine::PhxEngineRoot::Initialize(EngineParam const& params)
 			.Height = this->m_window->GetHeight(),
 			.Format = RHI::RHIFormat::R10G10B10A2_UNORM,
 		});
+
+	this->m_canvasSize.x = windowSpec.Width;
+	this->m_canvasSize.y = windowSpec.Height;
 }
 
 void PhxEngine::PhxEngineRoot::Finalizing()

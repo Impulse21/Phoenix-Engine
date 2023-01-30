@@ -20,6 +20,13 @@ namespace PhxEngine::RHI::D3D12
 		std::vector<Microsoft::WRL::ComPtr<IUnknown>> NativeResources;
 		std::vector<std::shared_ptr<TimerQuery>> TimerQueries;
 		std::vector<Core::Handle<Texture>> TextureHandles;
+		bool IsEmpty()
+		{
+			return this->Resource.empty() &&
+				this->NativeResources.empty() &&
+				this->TimerQueries.empty() &&
+				this->TextureHandles.empty();
+		}
 
 	};
 
@@ -44,14 +51,12 @@ namespace PhxEngine::RHI::D3D12
 		std::queue<std::pair<uint64_t, DynamicSuballocator*>> m_availableAllocators;
 	};
 
-	class CommandList final : public ICommandList
+	class D3D12CommandList final : public ICommandList
 	{
 	public:
-		CommandList(
-			D3D12GraphicsDevice& graphicsDevice,
-			CommandListDesc const& desc);
+		D3D12CommandList(CommandQueue* parentQueue);
 
-		~CommandList();
+		~D3D12CommandList();
 
 		// -- Interface implementations ---
 	public:
@@ -92,7 +97,7 @@ namespace PhxEngine::RHI::D3D12
 		void WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* data, size_t rowPitch, size_t depthPitch) override;
 		void SetRenderTargets(std::vector<TextureHandle> const& renderTargets, TextureHandle depthStencil) override;
 
-        void SetGraphicsPSO(GraphicsPipelineHandle graphisPSO) override;
+        void SetGraphicsPipeline(GraphicsPipelineHandle graphisPSO) override;
 		void SetViewports(Viewport* viewports, size_t numViewports) override;
 		void SetScissors(Rect* scissor, size_t numScissors) override;
 		void BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants) override;
@@ -129,11 +134,10 @@ namespace PhxEngine::RHI::D3D12
 
 	private:
 		const uint32_t DynamicChunkSizeSrvUavCbv = 256;
+		CommandQueue* m_parentQueue;
+		D3D12GraphicsDevice& m_graphicsDevice;
 		D3D12ComputePipeline* m_activeComputePipeline = nullptr;
 
-		D3D12GraphicsDevice& m_graphicsDevice;
-		CommandListDesc m_desc = {};
-		CommandAllocatorPool m_commandAlloatorPool;
 		std::unique_ptr<UploadBuffer> m_uploadBuffer;
 
 		std::shared_ptr<TrackedResources> m_trackedData;

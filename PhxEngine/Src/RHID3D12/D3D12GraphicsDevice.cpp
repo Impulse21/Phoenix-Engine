@@ -425,8 +425,18 @@ bool PhxEngine::RHI::D3D12::D3D12GraphicsDevice::IsHdrSwapchainSupported()
 
 CommandListHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateCommandList(CommandListDesc const& desc)
 {
-	auto commandListImpl = std::make_unique<CommandList>(*this, desc);
-	return commandListImpl;
+	// auto commandListImpl = std::make_unique<D3D12CommandList>(*this, desc);
+	return nullptr;
+}
+
+ICommandList* PhxEngine::RHI::D3D12::D3D12GraphicsDevice::BeginCommandRecording(CommandQueueType queueType)
+{
+	CommandQueue* queue = this->GetQueue(queueType);
+
+	D3D12CommandList* commandList = queue->RequestCommandList();;
+	commandList->Open();
+
+	return commandList;
 }
 
 ShaderHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
@@ -1674,19 +1684,21 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::ResetTimerQuery(TimerQueryHandl
 }
 
 ExecutionReceipt PhxEngine::RHI::D3D12::D3D12GraphicsDevice::ExecuteCommandLists(
-	ICommandList* const* pCommandLists,
-	size_t numCommandLists,
+	Core::Span<ICommandList*> commandLists,
 	bool waitForCompletion,
 	CommandQueueType executionQueue)
 {
-	std::vector<ID3D12CommandList*> d3d12CommandLists(numCommandLists);
-	for (size_t i = 0; i < numCommandLists; i++)
-	{
-		auto cmdImpl = static_cast<CommandList*>(pCommandLists[i]);
-		d3d12CommandLists[i] = cmdImpl->GetD3D12CommandList();		
-	}
-
 	auto* queue = this->GetQueue(executionQueue);
+
+	static thread_local std::vector<D3D12CommandList*> d3d12CommandLists;
+	d3d12CommandLists.clear();
+
+	for (auto commandList : commandLists)
+	{
+		auto impl = SafeCast<D3D12CommandList*>(commandList);
+		assert(impl);
+		d3d12CommandLists.push_back(impl);
+	}
 
 	auto fenceValue = queue->ExecuteCommandLists(d3d12CommandLists);
 
@@ -1694,9 +1706,9 @@ ExecutionReceipt PhxEngine::RHI::D3D12::D3D12GraphicsDevice::ExecuteCommandLists
 	{
 		queue->WaitForFence(fenceValue);
 
-		for (size_t i = 0; i < numCommandLists; i++)
+		for (size_t i = 0; i < commandLists.Size(); i++)
 		{
-			auto trackedResources = static_cast<CommandList*>(pCommandLists[i])->Executed(fenceValue);
+			auto trackedResources = static_cast<D3D12CommandList*>(commandLists[i])->Executed(fenceValue);
 
 			for (auto timerQuery : trackedResources->TimerQueries)
 			{
@@ -1707,12 +1719,19 @@ ExecutionReceipt PhxEngine::RHI::D3D12::D3D12GraphicsDevice::ExecuteCommandLists
 			}
 		}
 	}
+#if false
 	else
 	{
-		for (size_t i = 0; i < numCommandLists; i++)
+		for (size_t i = 0; i < d3d12CommandLists.size(); i++)
 		{
-			auto trackedResources = static_cast<CommandList*>(pCommandLists[i])->Executed(fenceValue);
+			auto trackedResources = d3d12CommandLists[i]->Executed(fenceValue);
 			
+			if (!trackedResources)
+			{
+				continue;
+			}
+
+			assert(trackedResources->IsEmpty());
 			for (auto timerQuery : trackedResources->TimerQueries)
 			{
 				timerQuery->Started = true;
@@ -1724,8 +1743,9 @@ ExecutionReceipt PhxEngine::RHI::D3D12::D3D12GraphicsDevice::ExecuteCommandLists
 			InflightDataEntry entry = { fenceValue, trackedResources };
 			this->m_inflightData[(int)executionQueue].emplace_back(entry);
 		}
-	}
 
+	}
+#endif
 	return { fenceValue, executionQueue };
 }
 

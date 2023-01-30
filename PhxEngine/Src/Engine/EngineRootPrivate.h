@@ -27,6 +27,7 @@ namespace PhxEngine
 		void RemovePass(EngineRenderPass* pass) override;
 
 		RHI::IGraphicsDevice* GetGfxDevice() override { return this->m_gfxDevice.get(); }
+		virtual const DirectX::XMFLOAT2& GetCanvasSize() const override{ return this->m_canvasSize; }
 
 	private:
 		void Update(Core::TimeStep const& deltaTime);
@@ -43,6 +44,7 @@ namespace PhxEngine
 		// Move logging system here.
 		std::unique_ptr<RHI::IGraphicsDevice> m_gfxDevice;
 		std::unique_ptr<Core::IWindow> m_window;
+		DirectX::XMFLOAT2 m_canvasSize;
 		bool m_windowIsVisibile;
 		uint64_t m_frameCount;
 

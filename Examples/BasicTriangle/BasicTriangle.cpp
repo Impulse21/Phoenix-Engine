@@ -67,21 +67,24 @@ public:
                 });
         }
 
-        /*
-        RHI::IRHICommandList* commandList = frameRenderer.BeginCommandRecording();
-
+        RHI::ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
         {
             auto _ = commandList->BeginScopedMarker("Render Triagnle");
             commandList->BeginRenderPassBackBuffer();
 
             commandList->SetGraphicsPipeline(this->m_pipeline);
+            auto canvas = this->GetRoot()->GetCanvasSize();
+            RHI::Viewport v(canvas.x, canvas.y);
+            commandList->SetViewports(&v, 1);
+
+            RHI::Rect rec(LONG_MAX, LONG_MAX);
+            commandList->SetScissors(&rec, 1);
             commandList->Draw(3);
 
             commandList->EndRenderPass();
         }
-
-        frameRenderer.SubmitCommands({ commandList });
-        */
+        commandList->Close();
+        this->GetGfxDevice()->ExecuteCommandLists({commandList});
     }
 
 private:

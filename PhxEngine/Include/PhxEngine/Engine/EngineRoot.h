@@ -2,6 +2,7 @@
 #include <memory>
 #include <string>
 #include <PhxEngine/RHI/PhxRHI.h>
+#include <DirectXMath.h>
 
 namespace PhxEngine
 {
@@ -33,6 +34,7 @@ namespace PhxEngine
 		virtual void RemovePass(EngineRenderPass* pass) = 0;
 
 		virtual RHI::IGraphicsDevice* GetGfxDevice() = 0;
+		virtual const DirectX::XMFLOAT2& GetCanvasSize() const = 0;
 	};
 
 	class EngineRenderPass

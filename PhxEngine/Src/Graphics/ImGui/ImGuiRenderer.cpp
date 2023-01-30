@@ -78,7 +78,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnAttach()
 
     uploadCommandList->Close();
 
-    IGraphicsDevice::GPtr->ExecuteCommandLists(uploadCommandList.get(), true);
+    IGraphicsDevice::GPtr->ExecuteCommandLists({ uploadCommandList.get() }, true);
     this->CreatePipelineStateObject(IGraphicsDevice::GPtr);
 }
 
@@ -118,7 +118,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnCompose(RHI::CommandListHandle cmd)
 	ImVec2 displayPos = drawData->DisplayPos;
 
 	auto scrope = cmd->BeginScopedMarker("ImGui");
-	cmd->SetGraphicsPSO(this->m_pso);
+	cmd->SetGraphicsPipeline(this->m_pso);
 	cmd->BindResourceTable(RootParameters::BindlessResources);
 
 	// Set root arguments.

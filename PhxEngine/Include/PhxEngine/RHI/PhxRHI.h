@@ -1189,7 +1189,7 @@ namespace PhxEngine::RHI
         virtual void WriteTexture(TextureHandle texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData) = 0;
         virtual void WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* data, size_t rowPitch, size_t depthPitch) = 0;
 
-        virtual void SetGraphicsPSO(GraphicsPipelineHandle graphisPSO) = 0;
+        virtual void SetGraphicsPipeline(GraphicsPipelineHandle graphisPSO) = 0;
         virtual void SetViewports(Viewport* viewports, size_t numViewports) = 0;
         virtual void SetScissors(Rect* scissor, size_t numScissors) = 0;
         virtual void SetRenderTargets(std::vector<TextureHandle> const& renderTargets, TextureHandle depthStencil) = 0;
@@ -1347,6 +1347,7 @@ namespace PhxEngine::RHI
 
         // TODO: Change to a new pattern so we don't require a command list stored on an object. Instread, request from a pool of objects
         virtual CommandListHandle CreateCommandList(CommandListDesc const& desc = {}) = 0;
+        virtual ICommandList* BeginCommandRecording(CommandQueueType QueueType = CommandQueueType::Graphics) = 0;
 
         virtual ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) = 0;
         virtual InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) = 0;
@@ -1406,26 +1407,13 @@ namespace PhxEngine::RHI
         virtual void QueueWaitForCommandList(CommandQueueType waitQueue, ExecutionReceipt waitOnRecipt) = 0;
 
         virtual ExecutionReceipt ExecuteCommandLists(
-            ICommandList* const* pCommandLists,
-            size_t numCommandLists,
+            Core::Span<ICommandList*> commandLists,
             CommandQueueType executionQueue = CommandQueueType::Graphics) = 0;
 
         virtual ExecutionReceipt ExecuteCommandLists(
-            ICommandList* const* pCommandLists,
-            size_t numCommandLists,
+            Core::Span<ICommandList*> commandLists,
             bool waitForCompletion,
             CommandQueueType executionQueue = CommandQueueType::Graphics) = 0;
-
-        // Front-end for executeCommandLists(..., 1) for compatibility and convenience
-        ExecutionReceipt ExecuteCommandLists(ICommandList* commandList, CommandQueueType executionQueue = CommandQueueType::Graphics)
-        {
-            return this->ExecuteCommandLists(&commandList, 1, executionQueue);
-        }
-
-        ExecutionReceipt ExecuteCommandLists(ICommandList* commandList, bool waitForCompletion, CommandQueueType executionQueue = CommandQueueType::Graphics)
-        {
-            return this->ExecuteCommandLists(&commandList, 1, waitForCompletion, executionQueue);
-        }
 
         virtual size_t GetNumBindlessDescriptors() const = 0;
 

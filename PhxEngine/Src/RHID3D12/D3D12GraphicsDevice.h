@@ -9,7 +9,9 @@
 #include "DescriptorHeap.h"
 #include "D3D12Common.h"
 #include "PhxEngine/Core/BitSetAllocator.h"
-#include "PhxEngine/Core/Pool.h"
+#include <PhxEngine/Core/Pool.h>
+#include "CommandList.h"
+
 
 // Teir 1 limit is 1,000,000
 // https://docs.microsoft.com/en-us/windows/win32/direct3d12/hardware-support
@@ -311,9 +313,9 @@ namespace PhxEngine::RHI::D3D12
         virtual void BeginFrame() override;
         virtual void EndFrame() override;
 
+        // TODO: remove
         CommandListHandle CreateCommandList(CommandListDesc const& desc = {}) override;
-        // CommandListHandle BeginGfxCommandList() override;
-        // CommandListHandle BeginComputeCommandList() override;
+        ICommandList* BeginCommandRecording(CommandQueueType QueueType = CommandQueueType::Graphics) override;
 
         ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) override;
         InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) override;
@@ -353,22 +355,18 @@ namespace PhxEngine::RHI::D3D12
         Core::TimeStep GetTimerQueryTime(TimerQueryHandle query) override;
         void ResetTimerQuery(TimerQueryHandle query) override;
 
-
         ExecutionReceipt ExecuteCommandLists(
-            ICommandList* const* pCommandLists,
-            size_t numCommandLists,
+            Core::Span<ICommandList*> commandLists,
             CommandQueueType executionQueue = CommandQueueType::Graphics) override
         {
             return this->ExecuteCommandLists(
-                pCommandLists,
-                numCommandLists,
+                commandLists,
                 false,
                 executionQueue);
         }
 
         ExecutionReceipt ExecuteCommandLists(
-            ICommandList* const* pCommandLists,
-            size_t numCommandLists,
+            Core::Span<ICommandList*> commandLists,
             bool waitForCompletion,
             CommandQueueType executionQueue = CommandQueueType::Graphics) override;
 
@@ -453,7 +451,6 @@ namespace PhxEngine::RHI::D3D12
 
         // -- Dx12 API creation ---
     private:
-        Microsoft::WRL::ComPtr<IDXGIFactory6> CreateFactory() const;
         void InitializeD3D12Device(IDXGIAdapter* gpuAdapter);
 
          // -- Pipeline state conversion --- 
@@ -495,6 +492,8 @@ namespace PhxEngine::RHI::D3D12
         // -- Command Queues ---
 		std::array<std::unique_ptr<CommandQueue>, (int)CommandQueueType::Count> m_commandQueues;
 
+        // -- Command lists ---
+        // 
         // -- Descriptor Heaps ---
 		std::array<std::unique_ptr<CpuDescriptorHeap>, (int)DescriptorHeapTypes::Count> m_cpuDescriptorHeaps;
         std::array<std::unique_ptr<GpuDescriptorHeap>, 2> m_gpuDescriptorHeaps;

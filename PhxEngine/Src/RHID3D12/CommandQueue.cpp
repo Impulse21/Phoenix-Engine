@@ -55,6 +55,45 @@ PhxEngine::RHI::D3D12::CommandQueue::~CommandQueue()
 	CloseHandle(this->m_fenceEvent);
 }
 
+D3D12CommandList* PhxEngine::RHI::D3D12::CommandQueue::RequestCommandList()
+{
+	auto _ = std::scoped_lock(this->m_commandListMutx);
+
+	D3D12CommandList* retVal;
+	if (!this->m_availableCommandLists.empty())
+	{
+		retVal = this->m_availableCommandLists.front();
+	}
+	else
+	{
+		retVal = this->m_commandListsPool.emplace_back(std::make_unique<D3D12CommandList>(this)).get();
+	}
+
+	return retVal;
+}
+
+uint64_t PhxEngine::RHI::D3D12::CommandQueue::ExecuteCommandLists(Core::Span<D3D12CommandList*> commandLists)
+{
+	auto _ = std::scoped_lock(this->m_commandListMutx);
+	static thread_local std::vector<ID3D12CommandList*> d3d12CommandLists;
+	d3d12CommandLists.clear();
+	
+	for (auto commandList : commandLists)
+	{
+		d3d12CommandLists.push_back(commandList->GetD3D12CommandList());
+	}
+
+	uint64_t fenceVal= this->ExecuteCommandLists(d3d12CommandLists);
+
+	for (auto& commandList : commandLists)
+	{
+		commandList->Executed(fenceVal);
+		this->m_availableCommandLists.emplace(commandList);
+	}
+
+	return fenceVal;
+}
+
 uint64_t PhxEngine::RHI::D3D12::CommandQueue::ExecuteCommandLists(std::vector<ID3D12CommandList*> const& commandLists)
 {
 	this->m_d3d12CommandQueue->ExecuteCommandLists(commandLists.size(), commandLists.data());
@@ -67,6 +106,17 @@ uint64_t PhxEngine::RHI::D3D12::CommandQueue::ExecuteCommandLists(std::vector<ID
 	}
 
 	return this->IncrementFence();
+}
+
+ID3D12CommandAllocator* PhxEngine::RHI::D3D12::CommandQueue::RequestAllocator()
+{
+	auto lastCompletedFence = this->GetLastCompletedFence();
+	return this->m_allocatorPool.RequestAllocator(lastCompletedFence);
+}
+
+void PhxEngine::RHI::D3D12::CommandQueue::DiscardAllocator(uint64_t fence, ID3D12CommandAllocator* allocator)
+{
+	this->m_allocatorPool.DiscardAllocator(fence, allocator);
 }
 
 uint64_t PhxEngine::RHI::D3D12::CommandQueue::IncrementFence()
