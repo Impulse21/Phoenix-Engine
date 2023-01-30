@@ -80,7 +80,7 @@ void PhxEngine::PhxEngineRoot::Run()
 			this->Render();
 		}
 
-		this->m_profile.UpdateAverageFrameTime(deltaTime.GetMilliseconds());
+		this->m_profile.UpdateAverageFrameTime(deltaTime);
 		this->m_frameCount++;
 	}
 
@@ -101,6 +101,27 @@ void PhxEngine::PhxEngineRoot::RemovePass(EngineRenderPass* pass)
 	{
 		this->m_renderPasses.erase(itr);
 	}
+}
+
+void PhxEngine::PhxEngineRoot::SetInformativeWindowTitle(std::string_view appName, std::string_view extraInfo)
+{
+	std::stringstream ss;
+	ss << appName;
+	ss << "(D3D12)";
+
+	double frameTime = this->m_profile.AverageFrameTime;
+	if (frameTime > 0)
+	{
+		// ss << "=>" << std::setprecision(4) << frameTime << " CPU (ms) - " << std::setprecision(4) << (1.0f / frameTime) << " FPS";
+		ss << "- " << std::setprecision(4) << (1.0f / frameTime) << " FPS";
+	}
+
+	if (!extraInfo.empty())
+	{
+		ss << extraInfo;
+	}
+
+	this->m_window->SetWindowTitle(ss.str());
 }
 
 void PhxEngine::PhxEngineRoot::Update(TimeStep const& deltaTime)

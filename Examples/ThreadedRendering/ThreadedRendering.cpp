@@ -7,43 +7,43 @@
 
 using namespace PhxEngine;
 
-class BasicTriangle : public EngineRenderPass
+class ThreadedRendering : public EngineRenderPass
 {
 private:
 
 public:
-    BasicTriangle(IPhxEngineRoot* root)
+    ThreadedRendering(IPhxEngineRoot* root)
         : EngineRenderPass(root)
     {
     }
 
     bool Initialize()
     {
-        std::filesystem::path appShaderPath = Core::Platform::GetExcecutableDir() / "shaders/BasicTriangle/dxil";
+        std::filesystem::path appShaderPath = Core::Platform::GetExcecutableDir() / "shaders/ThreadedRendering/dxil";
         std::vector<uint8_t> shaderByteCode;
         {
-            std::filesystem::path shaderFile = appShaderPath / "BasicTriangleVS.cso";
+            std::filesystem::path shaderFile = appShaderPath / "ColourVS.cso";
             PhxEngine::Core::Helpers::FileRead(shaderFile.generic_string(), shaderByteCode);
 
             Core::Span span(shaderByteCode);
             this->m_vertexShader = this->GetGfxDevice()->CreateShader(
                 {
                     .Stage = RHI::ShaderStage::Vertex,
-                    .DebugName = "BasicTriangleVS",
+                    .DebugName = "ColourVS",
                 },
                 Core::Span(shaderByteCode));
         }
 
         shaderByteCode.clear();
         {
-            std::filesystem::path shaderFile = appShaderPath / "BasicTrianglePS.cso";
+            std::filesystem::path shaderFile = appShaderPath / "ColourPS.cso";
             PhxEngine::Core::Helpers::FileRead(shaderFile.generic_string(), shaderByteCode);
 
             Core::Span span(shaderByteCode);
             this->m_pixelShader = this->GetGfxDevice()->CreateShader(
                 {
                     .Stage = RHI::ShaderStage::Pixel,
-                    .DebugName = "BasicTrianglePS",
+                    .DebugName = "ColourPS",
                 },
                 Core::Span(shaderByteCode));
         }
@@ -55,11 +55,6 @@ public:
     {
         this->GetGfxDevice()->DeleteGraphicsPipeline(this->m_pipeline);
         this->m_pipeline = {};
-    }
-
-    void Update(Core::TimeStep const& deltaTime) override
-    {
-        this->GetRoot()->SetInformativeWindowTitle("Basic Triangle", {});
     }
 
     void Render() override
@@ -80,7 +75,7 @@ public:
 
         RHI::ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
         {
-            auto _ = commandList->BeginScopedMarker("Render Triagnle");
+            auto _ = commandList->BeginScopedMarker("Render Cube");
             commandList->BeginRenderPassBackBuffer();
 
             commandList->SetGraphicsPipeline(this->m_pipeline);
@@ -118,7 +113,7 @@ int main(int __argc, const char** __argv)
     root->Initialize(params);
 
     {
-        BasicTriangle example(root.get());
+        ThreadedRendering example(root.get());
         if (example.Initialize())
         {
             root->AddPassToBack(&example);

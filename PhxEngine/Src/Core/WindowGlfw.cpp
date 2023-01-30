@@ -129,3 +129,15 @@ bool PhxEngine::Core::WindowGlfw::ShouldClose()
 {
 	return glfwWindowShouldClose(this->m_glfwWindow);
 }
+
+void PhxEngine::Core::WindowGlfw::SetWindowTitle(std::string_view strView)
+{
+	if (strView == this->m_windowTitle)
+	{
+		return;
+	}
+
+	glfwSetWindowTitle(this->m_glfwWindow, strView.data());
+
+	this->m_windowTitle = strView;
+}

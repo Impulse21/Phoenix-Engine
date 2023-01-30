@@ -26,6 +26,7 @@ namespace PhxEngine
 		void Run() override;
 		void AddPassToBack(EngineRenderPass* pass) override;
 		void RemovePass(EngineRenderPass* pass) override;
+		void SetInformativeWindowTitle(std::string_view appName, std::string_view extraInfo) override;
 
 		RHI::IGraphicsDevice* GetGfxDevice() override { return this->m_gfxDevice.get(); }
 		virtual const DirectX::XMFLOAT2& GetCanvasSize() const override{ return this->m_canvasSize; }
@@ -62,16 +63,16 @@ namespace PhxEngine
 
 				if (this->m_frameTimeSum > this->m_averageTimeUpdateInterval && this->m_numAccumulatedFrames > 0)
 				{
-					this->AverageFrameTime = m_frameTimeSum / double(m_averageTimeUpdateInterval);
+					this->AverageFrameTime = m_frameTimeSum / double(this->m_numAccumulatedFrames);
 					this->m_numAccumulatedFrames = 0;
-					m_frameTimeSum = 0.0;
+					this->m_frameTimeSum = 0.0;
 				}
 			}
 
 		private:
 			double m_frameTimeSum = 0.0f;
 			uint64_t m_numAccumulatedFrames = 0;
-			double m_averageTimeUpdateInterval = 0.0f;
+			double m_averageTimeUpdateInterval = 0.5f;
 		} m_profile = {};
 	};
 }

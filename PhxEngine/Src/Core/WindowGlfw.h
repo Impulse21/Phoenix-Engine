@@ -43,6 +43,8 @@ namespace PhxEngine::Core
 
 		bool ShouldClose() override;
 
+		void SetWindowTitle(std::string_view strView) override;
+
 	private:
 		PhxEngine::IPhxEngineRoot* m_root;
 
@@ -50,6 +52,7 @@ namespace PhxEngine::Core
 		GLFWwindow* m_glfwWindow;
 
 		WindowData m_data;
+		std::string m_windowTitle;
 
 		bool m_vsyncEnabled;
 		bool m_isResizeable;

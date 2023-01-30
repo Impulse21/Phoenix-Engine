@@ -36,6 +36,7 @@ namespace PhxEngine
 
 		virtual RHI::IGraphicsDevice* GetGfxDevice() = 0;
 		virtual const DirectX::XMFLOAT2& GetCanvasSize() const = 0;
+		virtual void SetInformativeWindowTitle(std::string_view appName, std::string_view extraInfo) = 0;
 	};
 
 	class EngineRenderPass
@@ -44,7 +45,7 @@ namespace PhxEngine
 		explicit EngineRenderPass(IPhxEngineRoot* root)
 			: m_root(root) {}
 
-		virtual void Update(Core::TimeStep delta) {};
+		virtual void Update(Core::TimeStep const& delta) {};
 		virtual void Render() {};
 
 		virtual void OnWindowResize(WindowResizeEvent const& resizeEvent) {};

@@ -4,11 +4,11 @@ include(../../PhxEngine/compileshaders.cmake)
 file(GLOB shaders "*.hlsl")
 file(GLOB sources "*.cpp" "*.h")
 
-set(project BasicTriangle)
-set(folder "Examples/Basic Triangle")
+set(project ThreadedRendering)
+set(folder "Examples/Threaded Rendering")
 
-set_source_files_properties(BasicTriangleVS.hlsl PROPERTIES ShaderType "vs" ShaderModel "6_6" EntryPoint "main")
-set_source_files_properties(BasicTrianglePS.hlsl PROPERTIES ShaderType "ps" ShaderModel "6_6" EntryPoint "main")
+set_source_files_properties(ColourVS.hlsl PROPERTIES ShaderType "vs" ShaderModel "6_6" EntryPoint "main")
+set_source_files_properties(ColourPS.hlsl PROPERTIES ShaderType "ps" ShaderModel "6_6" EntryPoint "main")
 
 message("Fetching DirectXShaderCompiler")
 FetchContent_Declare(dxc URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.7.2207/dxc_2022_07_18.zip)
@@ -24,6 +24,7 @@ dxc_compile_shaders(
 
 add_executable(${project} WIN32 ${sources})
 target_link_libraries(${project} PhxEngine)
+target_link_libraries(${project} taskflow)
 add_dependencies(${project} ${project}_shaders)
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 

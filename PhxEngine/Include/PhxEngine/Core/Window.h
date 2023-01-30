@@ -36,6 +36,7 @@ namespace PhxEngine::Core
 		virtual void* GetNativeWindowHandle() = 0;
 		virtual void* GetNativeWindow() = 0;
 
+		virtual void SetWindowTitle(std::string_view strView) = 0;
 		virtual bool ShouldClose() = 0;
 	};
 
