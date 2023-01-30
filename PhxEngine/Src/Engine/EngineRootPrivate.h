@@ -8,6 +8,7 @@ namespace PhxEngine
 	namespace Core
 	{
 		class IWindow;
+		class Event;
 	}
 
 	class PhxEngineRoot : public IPhxEngineRoot
@@ -32,6 +33,7 @@ namespace PhxEngine
 	private:
 		void Update(Core::TimeStep const& deltaTime);
 		void Render();
+		void ProcessEvent(Core::Event& e);
 
 	private:
 		Core::StopWatch m_frameTimer; // TODO: Move to a profiler and scope

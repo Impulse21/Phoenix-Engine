@@ -51,6 +51,12 @@ public:
         return true;
     }
 
+    void OnWindowResize(WindowResizeEvent const& e) override
+    {
+        this->GetGfxDevice()->DeleteGraphicsPipeline(this->m_pipeline);
+        this->m_pipeline = {};
+    }
+
     void Render() override
     {
         if (!this->m_pipeline.IsValid())

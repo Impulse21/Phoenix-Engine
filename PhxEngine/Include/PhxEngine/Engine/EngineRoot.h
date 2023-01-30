@@ -2,6 +2,7 @@
 #include <memory>
 #include <string>
 #include <PhxEngine/RHI/PhxRHI.h>
+#include <PhxEngine/Engine/ApplicationEvents.h>
 #include <DirectXMath.h>
 
 namespace PhxEngine
@@ -45,6 +46,8 @@ namespace PhxEngine
 
 		virtual void Update(Core::TimeStep delta) {};
 		virtual void Render() {};
+
+		virtual void OnWindowResize(WindowResizeEvent const& resizeEvent) {};
 
 	public:
 		IPhxEngineRoot* GetRoot() { return this->m_root; }

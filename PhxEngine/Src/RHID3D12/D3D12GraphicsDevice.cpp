@@ -362,12 +362,7 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::Finalize()
 	this->m_activeViewport->BackBuffers.clear();
 	this->DeleteRenderPass(m_activeViewport->RenderPass);
 
-	while (!this->m_deleteQueue.empty())
-	{
-		DeleteItem& deleteItem = this->m_deleteQueue.front();
-		deleteItem.DeleteFn();
-		this->m_deleteQueue.pop_front();
-	}
+	this->RunGarbageCollection(UINT64_MAX);
 
 	this->m_activeViewport.reset();
 }
@@ -382,7 +377,7 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::WaitForIdle()
 		}
 	}
 
-	this->RunGarbageCollection();
+	this->RunGarbageCollection(UINT64_MAX);
 }
 
 void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::QueueWaitForCommandList(CommandQueueType waitQueue, ExecutionReceipt waitOnRecipt)
@@ -619,6 +614,29 @@ GraphicsPipelineHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateGraphic
 		this->GetD3D12Device2()->CreateGraphicsPipelineState(&d3d12Desc, IID_PPV_ARGS(&pipeline.D3D12PipelineState)));
 
 	return this->m_graphicsPipelinePool.Insert(pipeline);
+}
+
+void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::DeleteGraphicsPipeline(GraphicsPipelineHandle handle)
+{
+	if (!handle.IsValid())
+	{
+		return;
+	}
+
+	DeleteItem d =
+	{
+		this->m_frameCount,
+		[=]()
+		{
+			D3D12GraphicsPipeline* pipeline = this->GetGraphicsPipelinePool().Get(handle);
+			if (pipeline)
+			{
+				this->GetGraphicsPipelinePool().Release(handle);
+			}
+		}
+	};
+
+	this->m_deleteQueue.push_back(d);
 }
 
 ComputePipelineHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateComputePipeline(ComputePipelineDesc const& desc)
@@ -2379,8 +2397,22 @@ RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(Gr
 
 
 // TODO: remove
-void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::RunGarbageCollection()
+void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::RunGarbageCollection(UINT64 completedFrame)
 {
+	while (!this->m_deleteQueue.empty())
+	{
+		DeleteItem& deleteItem = this->m_deleteQueue.front();
+		if (deleteItem.Frame < completedFrame)
+		{
+			deleteItem.DeleteFn();
+			this->m_deleteQueue.pop_front();
+		}
+		else
+		{
+			break;
+		}
+	}
+
 	for (size_t i = 0; i < (size_t)CommandQueueType::Count; i++)
 	{
 		auto* queue = this->GetQueue((CommandQueueType)i);
@@ -2475,7 +2507,6 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::TranslateRasterState(RasterRend
 size_t PhxEngine::RHI::D3D12::D3D12GraphicsDevice::GetCurrentBackBufferIndex() const
 {
 	assert(this->m_activeViewport);
-	
 	return (size_t)this->m_activeViewport->NativeSwapchain4->GetCurrentBackBufferIndex();
 }
 

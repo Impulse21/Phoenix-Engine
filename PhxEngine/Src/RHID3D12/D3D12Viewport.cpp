@@ -47,28 +47,7 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateViewport(ViewportDesc con
 	ThrowIfFailed(impl.NativeSwapchain->QueryInterface(impl.NativeSwapchain4.ReleaseAndGetAddressOf()));
 
 	// Create Back Buffer Textures
-
-	impl.BackBuffers.resize(impl.Desc.BufferCount);
-	for (UINT i = 0; i < impl.Desc.BufferCount; i++)
-	{
-		Microsoft::WRL::ComPtr<ID3D12Resource> backBuffer;
-		ThrowIfFailed(
-			impl.NativeSwapchain4->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
-
-		char allocatorName[32];
-		sprintf_s(allocatorName, "Back Buffer %iu", i);
-
-		impl.BackBuffers[i] = this->CreateTexture(
-			{
-				.BindingFlags = BindingFlags::RenderTarget,
-				.Dimension = TextureDimension::Texture2D,
-				.Format = impl.Desc.Format,
-				.Width = impl.Desc.Width,
-				.Height = impl.Desc.Height,
-				.DebugName = std::string(allocatorName)
-			},
-			backBuffer);
-	}
+	CreateBackBuffers(this->GetActiveViewport());
 
 	// Create a dummy Renderpass 
 	if (!impl.RenderPass.IsValid())
@@ -79,6 +58,65 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateViewport(ViewportDesc con
 
 	ThrowIfFailed(
 		this->GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_frameFence)));
+
+}
+
+void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::ResizeViewport(ViewportDesc const desc)
+{
+	for (auto backBuffer : this->m_activeViewport->BackBuffers)
+	{
+		this->DeleteTexture(backBuffer);
+	}
+	this->DeleteRenderPass(this->m_activeViewport->RenderPass);
+
+	// Wait for processing to finish
+	this->WaitForIdle();
+
+	this->m_activeViewport->Desc = desc;
+
+	auto& mapping = GetDxgiFormatMapping(desc.Format);
+	// Resize Swap Chain, Recreate BackBuffers
+	this->m_activeViewport->NativeSwapchain4->ResizeBuffers(
+		desc.BufferCount,
+		desc.Width,
+		desc.Height,
+		mapping.RtvFormat,
+		(UINT)0);
+
+	this->CreateBackBuffers(this->GetActiveViewport());
+
+	// Create a dummy Renderpass 
+	if (!this->m_activeViewport->RenderPass.IsValid())
+	{
+		// Create Dummy Render pass
+		this->m_activeViewport->RenderPass = this->CreateRenderPass({});
+	}
+
+}
+
+void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateBackBuffers(D3D12Viewport* viewport)
+{
+	viewport->BackBuffers.resize(viewport->Desc.BufferCount);
+	for (UINT i = 0; i < viewport->Desc.BufferCount; i++)
+	{
+		Microsoft::WRL::ComPtr<ID3D12Resource> backBuffer;
+		ThrowIfFailed(
+			viewport->NativeSwapchain4->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
+
+		char allocatorName[32];
+		sprintf_s(allocatorName, "Back Buffer %iu", i);
+
+		viewport->BackBuffers[i] = this->CreateTexture(
+			{
+				.BindingFlags = BindingFlags::RenderTarget,
+				.Dimension = TextureDimension::Texture2D,
+				.Format = viewport->Desc.Format,
+				.Width = viewport->Desc.Width,
+				.Height = viewport->Desc.Height,
+				.DebugName = std::string(allocatorName)
+			},
+			backBuffer);
+	}
 
 }
 
@@ -101,6 +139,8 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::BeginFrame()
 		ThrowIfFailed(
 			this->m_frameFence->SetEventOnCompletion(this->m_frameCount - bufferCount, NULL));
 	}
+
+	this->RunGarbageCollection(completedFrame);
 }
 
 void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::EndFrame()

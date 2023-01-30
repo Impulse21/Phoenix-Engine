@@ -28,6 +28,8 @@ namespace PhxEngine::RHI::D3D12
     constexpr size_t kNumConcurrentRenderTargets = 8;
     struct TrackedResources;
 
+    class D3D12GraphicsDevice;
+
     class BindlessDescriptorTable;
 
     class TimerQuery : public ITimerQuery
@@ -309,6 +311,7 @@ namespace PhxEngine::RHI::D3D12
 
         // TODO: Return a handle to viewport so we can have more then one. Need to sort out how delete queue would work.
         void CreateViewport(ViewportDesc const& desc) override;
+        void ResizeViewport(ViewportDesc const desc) override;
         TextureHandle GetBackBuffer() override { return this->m_activeViewport->BackBuffers[this->GetCurrentBackBufferIndex()]; }
         virtual void BeginFrame() override;
         virtual void EndFrame() override;
@@ -320,6 +323,7 @@ namespace PhxEngine::RHI::D3D12
         ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) override;
         InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) override;
         GraphicsPipelineHandle CreateGraphicsPipeline(GraphicsPipelineDesc const& desc) override;
+        void DeleteGraphicsPipeline(GraphicsPipelineHandle handle) override;
         ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc) override;
 
         RenderPassHandle CreateRenderPass(RenderPassDesc const& desc) override;
@@ -400,8 +404,9 @@ namespace PhxEngine::RHI::D3D12
         int CreateUnorderedAccessView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
 
     public:
-        // TODO: Remove
-        void RunGarbageCollection();
+        void RunGarbageCollection(UINT64 completedFrame);
+        void CreateBackBuffers(D3D12Viewport* viewport);
+
 
         // -- Getters ---
     public:

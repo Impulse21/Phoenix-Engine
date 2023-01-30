@@ -2,6 +2,7 @@
 
 #include "EngineRootPrivate.h"
 #include <PhxEngine/Core/Window.h>
+#include <PhxEngine/Engine/ApplicationEvents.h>
 
 
 using namespace PhxEngine;
@@ -41,8 +42,8 @@ void PhxEngine::PhxEngineRoot::Initialize(EngineParam const& params)
 	this->m_window->SetResizeable(false);
 	this->m_window->SetVSync(this->m_params.VSync);
 	this->m_window->SetEventCallback(
-		[this](Event& e) {  
-			// TODO:
+		[this](Event& e) {
+			this->ProcessEvent(e);
 		});
 
 	this->GetGfxDevice()->CreateViewport(
@@ -65,7 +66,6 @@ void PhxEngine::PhxEngineRoot::Finalizing()
 
 void PhxEngine::PhxEngineRoot::Run()
 {
-
 	while (!this->m_window->ShouldClose())
 	{
 		TimeStep deltaTime = this->m_frameTimer.Elapsed();
@@ -121,5 +121,33 @@ void PhxEngine::PhxEngineRoot::Render()
 	}
 
 	this->m_gfxDevice->EndFrame();
+}
+
+void PhxEngine::PhxEngineRoot::ProcessEvent(Event& e)
+{
+	if (e.GetEventType() == WindowCloseEvent::GetStaticType())
+	{
+		e.IsHandled = true;
+	}
+
+	if (e.GetEventType() == WindowResizeEvent::GetStaticType())
+	{
+		WindowResizeEvent& resizeEvent = static_cast<WindowResizeEvent&>(e);
+		if (resizeEvent.GetWidth() == 0 && resizeEvent.GetHeight() == 0)
+		{
+			this->m_windowIsVisibile = true;
+		}
+		else
+		{
+			this->m_windowIsVisibile = false;
+			// Notify GFX to resize!
+			
+			// Trigger Resize event on RHI;
+			for (auto& pass : this->m_renderPasses)
+			{
+				pass->OnWindowResize(resizeEvent);
+			}
+		}
+	}
 }
 

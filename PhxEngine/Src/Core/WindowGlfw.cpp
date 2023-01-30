@@ -52,7 +52,7 @@ void PhxEngine::Core::WindowGlfw::Initialize()
 	}
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	// glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 	this->m_glfwWindow = glfwCreateWindow(
 		static_cast<int>(this->m_spec.Width),

@@ -1342,6 +1342,7 @@ namespace PhxEngine::RHI
         // -- Create Functions ---
     public:
         virtual void CreateViewport(ViewportDesc const& desc) = 0;
+        virtual void ResizeViewport(ViewportDesc const desc) = 0;
         virtual void BeginFrame() = 0;
         virtual void EndFrame() = 0;
 
@@ -1352,6 +1353,7 @@ namespace PhxEngine::RHI
         virtual ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) = 0;
         virtual InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) = 0;
         virtual GraphicsPipelineHandle CreateGraphicsPipeline(GraphicsPipelineDesc const& desc) = 0;
+        virtual void DeleteGraphicsPipeline(GraphicsPipelineHandle handle) = 0;
         virtual ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc) = 0;
 
         virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
