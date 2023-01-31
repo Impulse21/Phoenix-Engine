@@ -2,7 +2,7 @@
 #define __PHX_RESOURCE_HEAP_TABLES_HLSLI__
 
 
-#include "Include/Shaders/ShaderInterop.h"
+#include "../Include/PhxEngine/Shaders/ShaderInterop.h"
 
 
 #ifndef RS_BINDLESS_DESCRIPTOR_TABLE

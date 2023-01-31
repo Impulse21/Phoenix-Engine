@@ -1,7 +1,7 @@
 #ifndef __GBUFFER_HLSL__
 #define __GBUFFER_HLSL__
 
-#include "Include/Shaders/ShaderInteropStructures.h"
+#include "../Include/PhxEngine/Shaders/ShaderInteropStructures.h"
 #include "Lighting.hlsli"
 
 

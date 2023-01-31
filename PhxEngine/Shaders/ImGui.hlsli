@@ -2,8 +2,8 @@
 #define __IMGUI__HLSLI__
 
 
-#include "Include/Shaders/ShaderInterop.h"
-#include "Include/Shaders/ShaderInteropStructures.h"
+#include "../Include/PhxEngine/Shaders/ShaderInterop.h"
+#include "../Include/PhxEngine/Shaders/ShaderInteropStructures.h"
 #include "ResourceHeapTables.hlsli"
 #include "Defines.hlsli"
 

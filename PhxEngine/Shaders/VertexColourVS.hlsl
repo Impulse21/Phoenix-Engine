@@ -1,4 +1,4 @@
-#include "Include/Shaders/ShaderInteropStructures.h"
+#include "../Include/PhxEngine/Shaders/ShaderInteropStructures.h"
 
 #define RS \
 	"RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT), " \

@@ -1,25 +1,3 @@
-#
-# Copyright (c) 2014-2020, NVIDIA CORPORATION. All rights reserved.
-#
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
-
-
 # generates a build target that will compile shaders for a given config file
 #
 # usage: donut_compile_shaders(TARGET <generated build target name>
@@ -51,6 +29,8 @@ function(dxc_compile_shaders)
         message(FATAL_ERROR "dxc_compile_shaders: OUTPUT_BASE argument missing")
     endif()
 
+    message("--->Includes: ${INCLUDES}")
+
     file(MAKE_DIRECTORY ${params_OUTPUT_BASE}/dxil)
 
     foreach(FILE ${params_SOURCES})
@@ -61,7 +41,7 @@ function(dxc_compile_shaders)
 
         add_custom_command(
             TARGET ${params_TARGET}
-            COMMAND ${dxc_SOURCE_DIR}/bin/x64/dxc.exe /nologo /E${entryPoint} /T${shadertype}_6_6 /D "USE_RESOURCE_HEAP" /I "../../PhxEngine/Include" $<IF:$<CONFIG:DEBUG>,/Od,/O3> /Zi /Fo ${params_OUTPUT_BASE}/dxil/${FILE_WE}.cso /Fd ${params_OUTPUT_BASE}/dxil/${FILE_WE}.pdb ${FILE}
+            COMMAND ${dxc_SOURCE_DIR}/bin/x64/dxc.exe /nologo /E${entryPoint} /T${shadertype}_6_6 /D "USE_RESOURCE_HEAP" $<IF:$<CONFIG:DEBUG>,/Od,/O3> /Zi /Fo ${params_OUTPUT_BASE}/dxil/${FILE_WE}.cso /Fd ${params_OUTPUT_BASE}/dxil/${FILE_WE}.pdb ${FILE}
             MAIN_DEPENDENCY ${FILE}
             COMMENT "HLSL ${FILE}"
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

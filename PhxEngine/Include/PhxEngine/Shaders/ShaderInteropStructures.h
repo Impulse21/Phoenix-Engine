@@ -7,7 +7,7 @@
 
 #else 
 
-#include "Include/Shaders/ShaderInterop.h"
+#include "../Include/PhxEngine/Shaders/ShaderInterop.h"
 #endif 
 
 #ifdef __cplusplus
