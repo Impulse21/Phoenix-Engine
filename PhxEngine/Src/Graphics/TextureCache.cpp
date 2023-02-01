@@ -1,6 +1,7 @@
 #include "phxpch.h"
 
 #include <PhxEngine/Graphics/TextureCache.h>
+#include <PhxEngine/Core/VirtualFileSystem.h>
 #include "PhxEngine/Core/Helpers.h"
 
 #include "DirectXTex.h"
@@ -108,6 +109,13 @@ const FormatMapping g_FormatMappings[] = {
     { RHI::RHIFormat::BC7_UNORM_SRGB,       DXGI_FORMAT_BC7_UNORM_SRGB,         8 },
 };
 
+TextureCache::TextureCache(
+    std::shared_ptr<IFileSystem> fs,
+    RHI::IGraphicsDevice* graphicsDevice)
+    : m_graphicsDevice(graphicsDevice)
+    , m_fs(std::move(fs))
+{}
+
 std::shared_ptr<Assets::Texture> PhxEngine::Graphics::TextureCache::LoadTexture(
     std::vector<uint8_t> const& textureData,
     std::string const& textureName,
@@ -133,19 +141,20 @@ std::shared_ptr<Assets::Texture> PhxEngine::Graphics::TextureCache::LoadTexture(
         return nullptr;
     }
 
+    /* TODO FIX ME
     if (this->FillTextureData(textureData, texture, "", mmeType))
     {
         this->CacheTextureData(cacheKey, texture);
         this->FinalizeTexture(texture, commandList);
     }
-
+    */
     return texture;
 }
 
 std::shared_ptr<Assets::Texture> PhxEngine::Graphics::TextureCache::LoadTexture(
     std::filesystem::path filename,
     bool isSRGB,
-    RHI::CommandListHandle commandList)
+    RHI::ICommandList* commandList)
 {
     std::string cacheKey = this->ConvertFilePathToKey(filename);
     std::shared_ptr<Assets::Texture> texture = this->GetTextureFromCache(cacheKey);
@@ -159,15 +168,15 @@ std::shared_ptr<Assets::Texture> PhxEngine::Graphics::TextureCache::LoadTexture(
     texture->m_forceSRGB = isSRGB;
     texture->m_path = filename.generic_string();
 
-    auto texBlob = this->ReadTextureFile(texture->m_path);
+    std::unique_ptr<IBlob> texBlob = this->m_fs->ReadFile(texture->m_path);
 
-    if (texBlob.empty())
+    if (!texBlob || IBlob::IsEmpty(*texBlob))
     {
-        // LOG_CORE_ERROR("Failed to load texture data");
+        LOG_CORE_ERROR("Failed to load texture data");
         return nullptr;
     }
 
-    if (this->FillTextureData(texBlob, texture, filename.extension().generic_string(), ""))
+    if (this->FillTextureData(*texBlob, texture, filename.extension().generic_string(), ""))
     {
         this->CacheTextureData(cacheKey, texture);
         this->FinalizeTexture(texture, commandList);
@@ -193,15 +202,8 @@ std::shared_ptr<Assets::Texture> PhxEngine::Graphics::TextureCache::GetTextureFr
     return itr->second;
 }
 
-std::vector<uint8_t> PhxEngine::Graphics::TextureCache::ReadTextureFile(std::string const& filename)
-{
-    std::vector<uint8_t> retVal;
-    Helpers::FileRead(filename, retVal);
-    return retVal;
-}
-
 bool PhxEngine::Graphics::TextureCache::FillTextureData(
-    std::vector<uint8_t> const& texBlob,
+    IBlob const& texBlob,
     std::shared_ptr<Assets::Texture>& texture,
 	std::string const& fileExtension,
 	std::string const& mimeType)
@@ -210,8 +212,8 @@ bool PhxEngine::Graphics::TextureCache::FillTextureData(
 	if (fileExtension == ".dds" || fileExtension == ".DDS" || mimeType == "image/vnd-ms.dds")
 	{
 		hr = LoadFromDDSMemory(
-			texBlob.data(),
-			texBlob.size(),
+			texBlob.Data(),
+			texBlob.Size(),
 			DDS_FLAGS_FORCE_RGB,
 			&texture->m_metadata,
             texture->m_scratchImage);
@@ -219,24 +221,24 @@ bool PhxEngine::Graphics::TextureCache::FillTextureData(
 	else if (fileExtension == ".hdr" || fileExtension == ".HDR")
 	{
 		hr = LoadFromHDRMemory(
-			texBlob.data(),
-			texBlob.size(),
+            texBlob.Data(),
+            texBlob.Size(),
 			&texture->m_metadata,
             texture->m_scratchImage);
 	}
 	else if (fileExtension == ".tga" || fileExtension == ".TGA")
 	{
 		hr = LoadFromTGAMemory(
-			texBlob.data(),
-			texBlob.size(),
+            texBlob.Data(),
+            texBlob.Size(),
 			&texture->m_metadata,
             texture->m_scratchImage);
 	}
 	else
 	{
 		hr = LoadFromWICMemory(
-			texBlob.data(),
-			texBlob.size(),
+            texBlob.Data(),
+            texBlob.Size(),
 			WIC_FLAGS_FORCE_RGB,
 			&texture->m_metadata,
             texture->m_scratchImage);
@@ -310,7 +312,7 @@ bool PhxEngine::Graphics::TextureCache::FillTextureData(
 
 void PhxEngine::Graphics::TextureCache::FinalizeTexture(
     std::shared_ptr<Assets::Texture>& texture,
-	CommandListHandle commandList)
+	ICommandList* commandList)
 {
     // TODO:
     commandList->TransitionBarrier(texture->m_renderTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);

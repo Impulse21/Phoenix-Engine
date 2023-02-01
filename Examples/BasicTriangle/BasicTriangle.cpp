@@ -4,6 +4,8 @@
 #include <PhxEngine/Core/Helpers.h>
 #include <PhxEngine/Core/Platform.h>
 #include <PhxEngine/Core/Span.h>
+#include <PhxEngine/Core/VirtualFileSystem.h>
+#include <PhxEngine/Graphics/ShaderFactory.h>
 
 using namespace PhxEngine;
 
@@ -19,34 +21,25 @@ public:
 
     bool Initialize()
     {
-        std::filesystem::path appShaderPath = Core::Platform::GetExcecutableDir() / "shaders/BasicTriangle/dxil";
-        std::vector<uint8_t> shaderByteCode;
-        {
-            std::filesystem::path shaderFile = appShaderPath / "BasicTriangleVS.cso";
-            PhxEngine::Core::Helpers::FileRead(shaderFile.generic_string(), shaderByteCode);
+        std::filesystem::path appShadersRoot = Core::Platform::GetExcecutableDir() / "Shaders";
 
-            Core::Span span(shaderByteCode);
-            this->m_vertexShader = this->GetGfxDevice()->CreateShader(
-                {
-                    .Stage = RHI::ShaderStage::Vertex,
-                    .DebugName = "BasicTriangleVS",
-                },
-                Core::Span(shaderByteCode));
-        }
+        std::shared_ptr<Core::IRootFileSystem> rootFilePath = Core::CreateRootFileSystem();
+        rootFilePath->Mount("BasicTriangle\dxil", appShadersRoot);
 
-        shaderByteCode.clear();
-        {
-            std::filesystem::path shaderFile = appShaderPath / "BasicTrianglePS.cso";
-            PhxEngine::Core::Helpers::FileRead(shaderFile.generic_string(), shaderByteCode);
+        this->m_shaderFactory = std::make_unique<Graphics::ShaderFactory>(this->GetGfxDevice(), appShadersRoot);
+        this->m_vertexShader = this->m_shaderFactory->LoadShader(
+            "BasicTriangleVS.hlsl",
+            {
+                .Stage = RHI::ShaderStage::Vertex,
+                .DebugName = "BasicTriangleVS",
+            });
 
-            Core::Span span(shaderByteCode);
-            this->m_pixelShader = this->GetGfxDevice()->CreateShader(
-                {
-                    .Stage = RHI::ShaderStage::Pixel,
-                    .DebugName = "BasicTrianglePS",
-                },
-                Core::Span(shaderByteCode));
-        }
+        this->m_pixelShader = this->m_shaderFactory->LoadShader(
+            "BasicTrianglePS.hlsl",
+            {
+                .Stage = RHI::ShaderStage::Pixel,
+                .DebugName = "BasicTrianglePS",
+            });
 
         return true;
     }
@@ -101,6 +94,7 @@ public:
 private:
     RHI::ShaderHandle m_vertexShader;
     RHI::ShaderHandle m_pixelShader;
+    std::unique_ptr<Graphics::ShaderFactory> m_shaderFactory;
     RHI::GraphicsPipelineHandle m_pipeline;
 };
 

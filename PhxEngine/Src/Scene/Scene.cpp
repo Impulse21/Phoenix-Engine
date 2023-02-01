@@ -60,7 +60,7 @@ void PhxEngine::Scene::Scene::DetachChildren(Entity parent)
 }
 
 void PhxEngine::Scene::Scene::ConstructRenderData(
-	RHI::CommandListHandle cmd,
+	RHI::ICommandList* cmd,
 	Renderer::ResourceUpload& indexUploader,
 	Renderer::ResourceUpload& vertexUploader)
 {

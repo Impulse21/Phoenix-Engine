@@ -62,6 +62,7 @@ namespace PhxEngine::RHI::D3D12
         Core::BitSetAllocator& m_timerQueryIndexPoolRef;
     };
 
+
     struct D3D12Viewport
     {
         ViewportDesc Desc;
@@ -391,6 +392,8 @@ namespace PhxEngine::RHI::D3D12
 
         // -- Dx12 Specific functions ---
     public:
+        void DeleteD3DResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource);
+
         D3D12Viewport* GetActiveViewport() const { return this->m_activeViewport.get(); }
         TextureHandle CreateRenderTarget(TextureDesc const& desc, Microsoft::WRL::ComPtr<ID3D12Resource> d3d12TextureResource);
         TextureHandle CreateTexture(TextureDesc const& desc, Microsoft::WRL::ComPtr<ID3D12Resource> d3d12Resource);

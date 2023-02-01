@@ -1454,6 +1454,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ToneMapping.hlsli">
     </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VertexBuffer.hlsli">
+    </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\PhxEngine\Shaders\CMakeFiles\PhxEngine_shaders">
     </None>
   </ItemGroup>

@@ -1727,6 +1727,10 @@ ExecutionReceipt PhxEngine::RHI::D3D12::D3D12GraphicsDevice::ExecuteCommandLists
 		for (size_t i = 0; i < commandLists.Size(); i++)
 		{
 			auto trackedResources = static_cast<D3D12CommandList*>(commandLists[i])->Executed(fenceValue);
+			if (!trackedResources)
+			{
+				continue;
+			}
 
 			for (auto timerQuery : trackedResources->TimerQueries)
 			{
@@ -1798,6 +1802,20 @@ bool PhxEngine::RHI::D3D12::D3D12GraphicsDevice::IsDevicedRemoved()
 {
 	HRESULT hr =  this->GetD3D12Device5()->GetDeviceRemovedReason();
 	return FAILED(hr);
+}
+
+void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::DeleteD3DResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource)
+{
+	DeleteItem d =
+	{
+		this->m_frameCount,
+		[=]()
+		{
+			resource;
+		}
+	};
+
+	this->m_deleteQueue.push_back(d);
 }
 
 TextureHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateRenderTarget(

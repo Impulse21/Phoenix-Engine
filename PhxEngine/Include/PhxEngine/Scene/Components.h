@@ -521,7 +521,7 @@ namespace PhxEngine::Scene
 
 		bool IsTriMesh() const { return (this->Indices.size() % 3) == 0; }
 
-		void CreateRenderData(RHI::CommandListHandle commandList, Renderer::ResourceUpload& indexUploader, Renderer::ResourceUpload& vertexUploader);
+		void CreateRenderData(RHI::ICommandList* commandList, Renderer::ResourceUpload& indexUploader, Renderer::ResourceUpload& vertexUploader);
 
 		uint64_t GetIndexBufferSizeInBytes() const;
 		uint64_t GetVertexBufferSizeInBytes() const;

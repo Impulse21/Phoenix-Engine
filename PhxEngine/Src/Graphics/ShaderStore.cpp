@@ -9,6 +9,7 @@ using namespace PhxEngine::RHI;
 
 void ShaderStore::PreloadShaders(ShaderFactory& shaderFactory)
 {
+	/*
 	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::VS_ImGui)] = shaderFactory.LoadShader(ShaderStage::Vertex, "ImGuiVS.cso");
 	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::PS_ImGui)] = shaderFactory.LoadShader(ShaderStage::Pixel, "ImGuiPS.cso");
 
@@ -42,7 +43,7 @@ void ShaderStore::PreloadShaders(ShaderFactory& shaderFactory)
 
 	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::CS_GenerateMips_TextureCubeArray)] = shaderFactory.LoadShader(ShaderStage::Compute, "GenerateMipChain_CubeArrayCS.cso");
 	this->m_shaderHandles[static_cast<size_t>(PreLoadShaders::CS_FilterEnvMap)] = shaderFactory.LoadShader(ShaderStage::Compute, "FilterEnvMapCS.cso");
-
+	*/
 	return;
 }
 

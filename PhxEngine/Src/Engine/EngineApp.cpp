@@ -78,7 +78,6 @@ void PhxEngine::EngineApp::PreInitialize()
 	// Initialize Loading scene TODO: Let application override render logic for custom screens.
 
 	// GRHI->CreateShader();
-
 }
 
 void PhxEngine::EngineApp::Initialize()
@@ -86,7 +85,7 @@ void PhxEngine::EngineApp::Initialize()
 	// Prepare Renderer
 	this->m_shaderStore = std::make_unique<Graphics::ShaderStore>();
 	Graphics::ShaderStore::GPtr = this->m_shaderStore.get();
-	Graphics::ShaderFactory factory(IGraphicsDevice::GPtr, "shaders/", "PhxEngine/Shaders/");
+	Graphics::ShaderFactory factory(IGraphicsDevice::GPtr, nullptr);
 	this->m_shaderStore->PreloadShaders(factory);
 
 	this->m_window->SetEventCallback([this](Event& e) {this->OnEvent(e); });

@@ -590,8 +590,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::WriteTexture(TextureHandle texture
         subresources.size(),
         subresources.data());
 
-    this->m_trackedData->NativeResources.push_back(intermediateResource);
-
+    this->m_graphicsDevice.DeleteD3DResource(intermediateResource);
     this->m_trackedData->TextureHandles.push_back(texture);
 }
 

@@ -25,8 +25,9 @@ add_definitions(-DUNICODE)
 add_definitions(-D_UNICODE)
 
 add_subdirectory(PhxEngine)
-add_subdirectory(PhxEngine-Runtime)
-add_subdirectory(PhxEngine-Editor)
+# add_subdirectory(PhxEngine-Runtime)
+# add_subdirectory(PhxEngine-Editor)
 add_subdirectory(Examples/BasicTriangle)
 add_subdirectory(Examples/ThreadedRendering)
+add_subdirectory(Examples/DeferredRendering)
 

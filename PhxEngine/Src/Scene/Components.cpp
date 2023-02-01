@@ -11,7 +11,7 @@ using namespace PhxEngine::Scene;
 constexpr uint64_t kVertexBufferAlignment = 16ull;
 
 void MeshComponent::CreateRenderData(
-	RHI::CommandListHandle commandList,
+	RHI::ICommandList* commandList,
 	Renderer::ResourceUpload& indexUploader,
 	Renderer::ResourceUpload& vertexUploader)
 {

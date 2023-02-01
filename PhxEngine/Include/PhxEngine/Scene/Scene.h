@@ -56,7 +56,7 @@ namespace PhxEngine::Scene
 		}
 
 		void ConstructRenderData(
-			RHI::CommandListHandle cmd,
+			RHI::ICommandList* cmd,
 			Renderer::ResourceUpload& indexUploader,
 			Renderer::ResourceUpload& vertexUploader);
 

@@ -133,6 +133,9 @@
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ToneMapping.hlsli">
       <Filter>Shaders\Include</Filter>
     </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VertexBuffer.hlsli">
+      <Filter>Shaders\Include</Filter>
+    </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\PhxEngine\Shaders\CMakeFiles\PhxEngine_shaders" />
   </ItemGroup>
   <ItemGroup>

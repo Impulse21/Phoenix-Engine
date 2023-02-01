@@ -8,15 +8,19 @@
 
 #include "PhxEngine/Scene/Assets.h"
 
+namespace PhxEngine::Core
+{
+	class IFileSystem;
+	class IBlob;
+}
 namespace PhxEngine::Graphics
 {
 	class TextureCache
 	{
 	public:
 		TextureCache(
-			RHI::IGraphicsDevice* graphicsDevice)
-			: m_graphicsDevice(graphicsDevice)
-		{}
+			std::shared_ptr<Core::IFileSystem> fs,
+			RHI::IGraphicsDevice* graphicsDevice);
 
 		std::shared_ptr<PhxEngine::Scene::Assets::Texture> LoadTexture(
 			std::vector<uint8_t> const& textureData,
@@ -28,7 +32,7 @@ namespace PhxEngine::Graphics
 		std::shared_ptr<PhxEngine::Scene::Assets::Texture> LoadTexture(
 			std::filesystem::path filename,
 			bool isSRGB,
-			RHI::CommandListHandle commandList);
+			RHI::ICommandList* commandList);
 
 		std::shared_ptr<PhxEngine::Scene::Assets::Texture> GetTexture(std::string const& key);
 
@@ -37,23 +41,22 @@ namespace PhxEngine::Graphics
 	private:
 		std::shared_ptr<PhxEngine::Scene::Assets::Texture> GetTextureFromCache(std::string const& key);
 
-		std::vector<uint8_t> ReadTextureFile(std::string const& filename);
-
 		bool FillTextureData(
-			std::vector<uint8_t> const& texBlob,
+			Core::IBlob const& texBlob,
 			std::shared_ptr<PhxEngine::Scene::Assets::Texture>& texture,
 			std::string const& fileExtension,
 			std::string const& mimeType);
 
 		void FinalizeTexture(
 			std::shared_ptr<PhxEngine::Scene::Assets::Texture>& texture,
-			RHI::CommandListHandle commandList);
+			RHI::ICommandList* commandList);
 
 		void CacheTextureData(std::string key, std::shared_ptr<PhxEngine::Scene::Assets::Texture>& texture);
 
 		std::string ConvertFilePathToKey(std::filesystem::path const& path) const;
 
 	private:
+		std::shared_ptr<Core::IFileSystem> m_fs;
 		RHI::IGraphicsDevice* m_graphicsDevice;
 		std::unordered_map<std::string, std::shared_ptr<PhxEngine::Scene::Assets::Texture>> m_loadedTextures;
 	};
