@@ -273,14 +273,14 @@ struct GBufferFillPass
     void Initialize(Graphics::ShaderFactory& factory)
     {
         this->m_vertexShader = factory.CreateShader(
-            "dxgi/GBufferPassVS.hlsl",
+            "PhxEngine/GBufferPassVS.hlsl",
             {
                 .Stage = RHI::ShaderStage::Vertex,
                 .DebugName = "GBufferPassVS",
             });
 
         this->m_pixelShader = factory.CreateShader(
-            "dxgi/GBufferPassPS.hlsl",
+            "PhxEngine/GBufferPassPS.hlsl",
             {
                 .Stage = RHI::ShaderStage::Vertex,
                 .DebugName = "GBufferPassPS",
@@ -353,12 +353,11 @@ public:
         // Create File Sustem
         std::shared_ptr<Core::IFileSystem> nativeFS = Core::CreateNativeFileSystem();
 
-        std::filesystem::path appShadersRoot = Core::Platform::GetExcecutableDir() / "Shaders";
-
+        std::filesystem::path appShadersRoot = Core::Platform::GetExcecutableDir() / "Shaders/PhxEngine/dxil";
         std::shared_ptr<Core::IRootFileSystem> rootFilePath = Core::CreateRootFileSystem();
-        rootFilePath->Mount("PhxEngine\dxil", appShadersRoot);
+        rootFilePath->Mount("/Shaders/PhxEngine", appShadersRoot);
 
-        this->m_shaderFactory = std::make_unique<Graphics::ShaderFactory>(this->GetGfxDevice(), rootFilePath);
+        this->m_shaderFactory = std::make_unique<Graphics::ShaderFactory>(this->GetGfxDevice(), rootFilePath, "/Shaders");
 
         auto textureCache = std::make_unique<Graphics::TextureCache>(nativeFS, this->GetGfxDevice());
         this->CreateSimpleScene(textureCache.get());
