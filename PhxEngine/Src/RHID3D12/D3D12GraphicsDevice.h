@@ -324,10 +324,13 @@ namespace PhxEngine::RHI::D3D12
         ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) override;
         InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) override;
         GraphicsPipelineHandle CreateGraphicsPipeline(GraphicsPipelineDesc const& desc) override;
+        const GraphicsPipelineDesc& GetGfxPipelineDesc(GraphicsPipelineHandle handle) override;
         void DeleteGraphicsPipeline(GraphicsPipelineHandle handle) override;
         ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc) override;
 
         RenderPassHandle CreateRenderPass(RenderPassDesc const& desc) override;
+        void GetRenderPassFormats(RenderPassHandle handle, std::vector<RHIFormat>& outRtvFormats, RHIFormat& depthFormat) override;
+        RenderPassDesc GetRenderPassDesc(RenderPassHandle) override;
         void DeleteRenderPass(RenderPassHandle handle) override;
 
         TextureHandle CreateTexture(TextureDesc const& desc) override;

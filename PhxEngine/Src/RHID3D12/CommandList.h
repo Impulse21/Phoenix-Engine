@@ -111,7 +111,7 @@ namespace PhxEngine::RHI::D3D12
         void BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer) override;
 		void BindResourceTable(size_t rootParameterIndex) override;
 		void BindSamplerTable(size_t rootParameterIndex) override;
-		void BindDynamicDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures) override;
+		void BindDynamicDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures) override;
 		void BindDynamicUavDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures) override;
 
 		// -- Comptute Stuff ---

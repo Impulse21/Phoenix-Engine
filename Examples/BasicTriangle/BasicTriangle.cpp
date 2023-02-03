@@ -26,7 +26,7 @@ public:
         std::shared_ptr<Core::IRootFileSystem> rootFilePath = Core::CreateRootFileSystem();
         rootFilePath->Mount("BasicTriangle\dxil", appShadersRoot);
 
-        this->m_shaderFactory = std::make_unique<Graphics::ShaderFactory>(this->GetGfxDevice(), appShadersRoot);
+        this->m_shaderFactory = std::make_unique<Graphics::ShaderFactory>(this->GetGfxDevice(), rootFilePath);
         this->m_vertexShader = this->m_shaderFactory->LoadShader(
             "BasicTriangleVS.hlsl",
             {
@@ -59,7 +59,6 @@ public:
     {
         if (!this->m_pipeline.IsValid())
         {
-            
             this->m_pipeline = this->GetGfxDevice()->CreateGraphicsPipeline(
                 {
                     .VertexShader = this->m_vertexShader,

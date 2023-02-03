@@ -753,7 +753,7 @@ namespace PhxEngine::RHI
     struct TextureDesc
     {
         BindingFlags BindingFlags = BindingFlags::ShaderResource;
-        TextureDimension Dimension = TextureDimension::Unknown;
+        TextureDimension Dimension = TextureDimension::Texture2D;
         ResourceStates InitialState = ResourceStates::Common;
 
         RHIFormat Format = RHIFormat::UNKNOWN;
@@ -1257,7 +1257,7 @@ namespace PhxEngine::RHI
 
         virtual void BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer) = 0;
 
-        virtual void BindDynamicDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures) = 0;
+        virtual void BindDynamicDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures) = 0;
         virtual void BindDynamicUavDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures) = 0;
 
         virtual void BindResourceTable (size_t rootParameterIndex) = 0;
@@ -1353,6 +1353,7 @@ namespace PhxEngine::RHI
         virtual ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) = 0;
         virtual InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) = 0;
         virtual GraphicsPipelineHandle CreateGraphicsPipeline(GraphicsPipelineDesc const& desc) = 0;
+        virtual const GraphicsPipelineDesc& GetGfxPipelineDesc(GraphicsPipelineHandle handle) = 0;
         virtual void DeleteGraphicsPipeline(GraphicsPipelineHandle handle) = 0;
         virtual ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc) = 0;
 
@@ -1362,6 +1363,8 @@ namespace PhxEngine::RHI
         virtual void DeleteTexture(TextureHandle handle) = 0;
 
         virtual RenderPassHandle CreateRenderPass(RenderPassDesc const& desc) = 0;
+        virtual void GetRenderPassFormats(RenderPassHandle handle, std::vector<RHIFormat>& outRtvFormats, RHIFormat& depthFormat) = 0;
+        virtual RenderPassDesc GetRenderPassDesc(RenderPassHandle) = 0;
         virtual void DeleteRenderPass(RenderPassHandle handle) = 0;
 
         virtual int CreateSubresource(TextureHandle texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip = 0, uint32_t mpCount = ~0) = 0;
@@ -1443,4 +1446,18 @@ namespace PhxEngine::RHI
     }
 
     std::unique_ptr<IGraphicsDevice> CreatePlatformGfxDevice();
+
+
+    template <class T>
+    void HashCombine(size_t& seed, const T& v)
+    {
+        std::hash<T> hasher;
+        seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+}
+
+
+namespace std
+{
+    // TODO: Custom Hashes
 }

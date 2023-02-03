@@ -137,6 +137,12 @@
       <Filter>Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\PhxEngine\Shaders\CMakeFiles\PhxEngine_shaders" />
+    <None Include="..\..\..\PhxEngine\Shaders\RectVS.hlsl">
+      <Filter>Shaders\VS</Filter>
+    </None>
+    <None Include="..\..\..\PhxEngine\Shaders\BlitPS.hlsl">
+      <Filter>Shaders\PS</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">

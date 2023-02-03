@@ -616,6 +616,11 @@ GraphicsPipelineHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateGraphic
 	return this->m_graphicsPipelinePool.Insert(pipeline);
 }
 
+const GraphicsPipelineDesc& PhxEngine::RHI::D3D12::D3D12GraphicsDevice::GetGfxPipelineDesc(GraphicsPipelineHandle handle)
+{
+	return this->m_graphicsPipelinePool.Get(handle)->Desc;
+}
+
 void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::DeleteGraphicsPipeline(GraphicsPipelineHandle handle)
 {
 	if (!handle.IsValid())
@@ -920,6 +925,36 @@ RenderPassHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateRenderPass(Re
 	}
 
 	return this->m_renderPassPool.Insert(renderPassImpl);
+}
+
+void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::GetRenderPassFormats(RenderPassHandle handle, std::vector<RHIFormat>& outRtvFormats, RHIFormat& depthFormat)
+{
+	D3D12RenderPass* renderPass = this->GetRenderPassPool().Get(handle);
+	if (!renderPass)
+	{
+		depthFormat = RHIFormat::UNKNOWN;
+		return;
+	}
+
+	outRtvFormats.reserve(renderPass->NumRenderTargets);
+	for (auto& attachment : renderPass->Desc.Attachments)
+	{
+		RHIFormat format = this->GetTextureDesc(attachment.Texture).Format;
+		if (attachment.Type == RenderPassAttachment::Type::RenderTarget)
+		{
+			outRtvFormats.push_back(format);
+		}
+		else
+		{
+			depthFormat = format;
+		}
+	}
+}
+
+RenderPassDesc PhxEngine::RHI::D3D12::D3D12GraphicsDevice::GetRenderPassDesc(RenderPassHandle handle)
+{
+	D3D12RenderPass* renderPass = this->GetRenderPassPool().Get(handle);
+	return renderPass->Desc;
 }
 
 void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::DeleteRenderPass(RenderPassHandle handle)

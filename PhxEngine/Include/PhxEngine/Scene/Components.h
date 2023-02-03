@@ -250,6 +250,7 @@ namespace PhxEngine::Scene
 			DirectX::XMStoreFloat3(&this->Eye, eye);
 			DirectX::XMStoreFloat3(&this->Forward, at);
 			DirectX::XMStoreFloat3(&this->Up, up);
+			this->SetDirty();
 		}
 
 		inline void UpdateCamera()

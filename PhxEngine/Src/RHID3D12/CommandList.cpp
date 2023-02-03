@@ -878,12 +878,12 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BindSamplerTable(size_t rootParame
     assert(false);
 }
 
-void D3D12CommandList::BindDynamicDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures)
+void D3D12CommandList::BindDynamicDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures)
 {
     // Request Descriptoprs for table
     // Validate with Root Signature. Maybe an improvment in the future.
-    DescriptorHeapAllocation descriptorTable = this->m_activeDynamicSubAllocator->Allocate(textures.size());
-    for (int i = 0; i < textures.size(); i++)
+    DescriptorHeapAllocation descriptorTable = this->m_activeDynamicSubAllocator->Allocate(textures.Size());
+    for (int i = 0; i < textures.Size(); i++)
     {
         this->m_trackedData->TextureHandles.push_back(textures[i]);
         auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(textures[i]);
