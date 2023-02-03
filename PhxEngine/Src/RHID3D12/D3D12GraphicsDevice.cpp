@@ -1761,6 +1761,7 @@ ExecutionReceipt PhxEngine::RHI::D3D12::D3D12GraphicsDevice::ExecuteCommandLists
 
 		for (size_t i = 0; i < commandLists.Size(); i++)
 		{
+			/*
 			auto trackedResources = static_cast<D3D12CommandList*>(commandLists[i])->Executed(fenceValue);
 			if (!trackedResources)
 			{
@@ -1774,6 +1775,7 @@ ExecutionReceipt PhxEngine::RHI::D3D12::D3D12GraphicsDevice::ExecuteCommandLists
 
 				// No need to set command queue as it has already been executed.
 			}
+			*/
 		}
 	}
 #if false

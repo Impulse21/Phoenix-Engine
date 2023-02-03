@@ -63,6 +63,7 @@ D3D12CommandList* PhxEngine::RHI::D3D12::CommandQueue::RequestCommandList()
 	if (!this->m_availableCommandLists.empty())
 	{
 		retVal = this->m_availableCommandLists.front();
+		this->m_availableCommandLists.pop();
 	}
 	else
 	{

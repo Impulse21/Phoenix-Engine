@@ -60,5 +60,6 @@ void CommandAllocatorPool::DiscardAllocator(uint64_t fence, ID3D12CommandAllocat
 {
 	std::lock_guard<std::mutex> lockGuard(this->m_allocatonMutex);
 
+	assert(allocator);
 	this->m_availableAllocators.push(std::make_pair(fence, allocator));
 }

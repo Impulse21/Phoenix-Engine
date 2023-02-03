@@ -463,6 +463,9 @@ public:
 
             this->m_gbufferFillPass.EndPass(commandList);
         }
+
+        commandList->Close();
+        this->GetGfxDevice()->ExecuteCommandLists({ commandList });
     }
 
 private:
