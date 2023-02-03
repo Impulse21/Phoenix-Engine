@@ -21,20 +21,18 @@ public:
 
     bool Initialize()
     {
-        std::filesystem::path appShadersRoot = Core::Platform::GetExcecutableDir() / "Shaders";
+        const std::filesystem::path appShaderPath = Core::Platform::GetExcecutableDir() / "Shaders/BasicTriangle/dxil";
 
-        std::shared_ptr<Core::IRootFileSystem> rootFilePath = Core::CreateRootFileSystem();
-        rootFilePath->Mount("BasicTriangle\dxil", appShadersRoot);
-
-        this->m_shaderFactory = std::make_unique<Graphics::ShaderFactory>(this->GetGfxDevice(), rootFilePath);
-        this->m_vertexShader = this->m_shaderFactory->LoadShader(
+        std::shared_ptr<Core::IFileSystem> nativeFS = Core::CreateNativeFileSystem();
+        this->m_shaderFactory = std::make_unique<Graphics::ShaderFactory>(this->GetGfxDevice(), nativeFS, appShaderPath);
+        this->m_vertexShader = this->m_shaderFactory->CreateShader(
             "BasicTriangleVS.hlsl",
             {
                 .Stage = RHI::ShaderStage::Vertex,
                 .DebugName = "BasicTriangleVS",
             });
 
-        this->m_pixelShader = this->m_shaderFactory->LoadShader(
+        this->m_pixelShader = this->m_shaderFactory->CreateShader(
             "BasicTrianglePS.hlsl",
             {
                 .Stage = RHI::ShaderStage::Pixel,

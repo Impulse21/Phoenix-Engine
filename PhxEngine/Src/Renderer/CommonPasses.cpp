@@ -7,14 +7,14 @@ PhxEngine::Renderer::CommonPasses::CommonPasses(RHI::IGraphicsDevice* gfxDevice,
 	: m_gfxDevice(gfxDevice)
 {
 
-	this->RectVS = shaderFactory.LoadShader(
+	this->RectVS = shaderFactory.CreateShader(
 		"RectVS.hlsl",
 		{
 			.Stage = RHI::ShaderStage::Vertex,
 			.DebugName = "RectVS",
 		});
 
-	this->RectVS = shaderFactory.LoadShader(
+	this->RectVS = shaderFactory.CreateShader(
 		"BlitPS.hlsl",
 		{
 			.Stage = RHI::ShaderStage::Pixel,
@@ -69,8 +69,8 @@ PhxEngine::Renderer::CommonPasses::CommonPasses(RHI::IGraphicsDevice* gfxDevice,
 
 void PhxEngine::Renderer::CommonPasses::BlitTexture(RHI::ICommandList* cmdList, RHI::TextureHandle sourceTexture, RHI::RenderPassHandle renderPass)
 {
-	RHI::GraphicsPipelineHandle gfxPipeline = this->m_psoCache[PsoCacheKey{ fbinfo, shader, params.blendState }];
-	if ()
+	// RHI::GraphicsPipelineHandle gfxPipeline = this->m_psoCache[PsoCacheKey{ fbinfo, shader, params.blendState }];
+	if (false)
 	{
 
 	}

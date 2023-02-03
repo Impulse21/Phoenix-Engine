@@ -272,15 +272,15 @@ struct GBufferFillPass
 {
     void Initialize(Graphics::ShaderFactory& factory)
     {
-        this->m_vertexShader = factory.LoadShader(
-            "GBufferPassVS.hlsl",
+        this->m_vertexShader = factory.CreateShader(
+            "dxgi/GBufferPassVS.hlsl",
             {
                 .Stage = RHI::ShaderStage::Vertex,
                 .DebugName = "GBufferPassVS",
             });
 
-        this->m_pixelShader = factory.LoadShader(
-            "GBufferPassPS.hlsl",
+        this->m_pixelShader = factory.CreateShader(
+            "dxgi/GBufferPassPS.hlsl",
             {
                 .Stage = RHI::ShaderStage::Vertex,
                 .DebugName = "GBufferPassPS",

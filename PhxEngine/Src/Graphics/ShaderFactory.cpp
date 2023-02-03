@@ -12,13 +12,17 @@ using namespace PhxEngine::RHI;
 
 PhxEngine::Graphics::ShaderFactory::ShaderFactory(
 	RHI::IGraphicsDevice* graphicsDevice,
-	std::shared_ptr<IFileSystem> fs)
+	std::shared_ptr<IFileSystem> fs,
+	std::filesystem::path const& basePath)
 	: m_graphicsDevice(graphicsDevice)
 	, m_fs(std::move(fs))
+	, m_basePath(basePath)
 {
 }
 
-ShaderHandle PhxEngine::Graphics::ShaderFactory::LoadShader(std::string const& filename, ShaderDesc const& shaderDesc)
+ShaderHandle PhxEngine::Graphics::ShaderFactory::CreateShader(
+	std::string const& filename,
+	ShaderDesc const& shaderDesc)
 {
 	std::shared_ptr<IBlob> shaderByteCode = this->GetByteCode(filename);
 	
@@ -106,7 +110,7 @@ std::shared_ptr<IBlob> PhxEngine::Graphics::ShaderFactory::GetByteCode(std::stri
 		}
 	}
 
-	std::filesystem::path shaderFilePath = (adjustedName + ".cso");
+	std::filesystem::path shaderFilePath = this->m_basePath / (adjustedName + ".cso");
 
 	std::weak_ptr<IBlob>& dataWkPtr = this->m_bytecodeCache[adjustedName];
 	if (auto cachedData = dataWkPtr.lock())

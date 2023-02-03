@@ -42,7 +42,7 @@ namespace PhxEngine::Renderer
 		};
 	private:
 		RHI::IGraphicsDevice* m_gfxDevice;
-		std::unordered_map<PsoCacheKey, RHI::GraphicsPipelineHandle> m_psoCache;
+		// std::unordered_map<PsoCacheKey, RHI::GraphicsPipelineHandle> m_psoCache;
 	};
 }
 

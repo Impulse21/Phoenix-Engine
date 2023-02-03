@@ -18,10 +18,11 @@ namespace PhxEngine::Graphics
 	public:
 		ShaderFactory(
 			RHI::IGraphicsDevice* graphicsDevice,
-			std::shared_ptr<Core::IFileSystem> fs);
+			std::shared_ptr<Core::IFileSystem> fs,
+			std::filesystem::path const& basePath);
 		~ShaderFactory() = default;
 
-		RHI::ShaderHandle LoadShader(std::string const& filename, RHI::ShaderDesc const& shaderDesc);
+		RHI::ShaderHandle CreateShader(std::string const& filename, RHI::ShaderDesc const& shaderDesc);
 
 	private:
 		std::shared_ptr<Core::IBlob> GetByteCode(std::string const& filename);
@@ -29,6 +30,7 @@ namespace PhxEngine::Graphics
 		bool IsShaderOutdated(std::filesystem::path const& shader);
 
 	private:
+		const std::filesystem::path m_basePath;
 		std::shared_ptr<Core::IFileSystem> m_fs;
 		std::unordered_map<std::string, std::weak_ptr<Core::IBlob>> m_bytecodeCache;
 		RHI::IGraphicsDevice* m_graphicsDevice;

@@ -10,7 +10,7 @@ namespace PhxEngine::Renderer
 		ShaderCodeLibrary() = default;
 		~ShaderCodeLibrary() = default;
 
-		RHI::ShaderHandle LoadShader(RHI::ShaderDesc const desc);
+		RHI::ShaderHandle CreateShader(RHI::ShaderDesc const desc);
 	
 	};
 }

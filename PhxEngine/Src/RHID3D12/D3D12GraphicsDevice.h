@@ -330,7 +330,7 @@ namespace PhxEngine::RHI::D3D12
 
         RenderPassHandle CreateRenderPass(RenderPassDesc const& desc) override;
         void GetRenderPassFormats(RenderPassHandle handle, std::vector<RHIFormat>& outRtvFormats, RHIFormat& depthFormat) override;
-        RenderPassDesc GetRenderPassDesc(RenderPassHandle) override;
+        RenderPassDesc GetRenderPassDesc(RenderPassHandle handle) override;
         void DeleteRenderPass(RenderPassHandle handle) override;
 
         TextureHandle CreateTexture(TextureDesc const& desc) override;

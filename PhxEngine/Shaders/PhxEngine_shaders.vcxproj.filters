@@ -22,6 +22,9 @@
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ImGuiVS.hlsl">
       <Filter>Shaders\VS</Filter>
     </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\RectVS.hlsl">
+      <Filter>Shaders\VS</Filter>
+    </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ShadowPassVS.hlsl">
       <Filter>Shaders\VS</Filter>
     </None>
@@ -33,6 +36,9 @@
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VertexColourVS.hlsl">
       <Filter>Shaders\VS</Filter>
+    </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\BlitPS.hlsl">
+      <Filter>Shaders\PS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\DeferredLightingPS.hlsl">
       <Filter>Shaders\PS</Filter>
@@ -137,12 +143,6 @@
       <Filter>Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\PhxEngine\Shaders\CMakeFiles\PhxEngine_shaders" />
-    <None Include="..\..\..\PhxEngine\Shaders\RectVS.hlsl">
-      <Filter>Shaders\VS</Filter>
-    </None>
-    <None Include="..\..\..\PhxEngine\Shaders\BlitPS.hlsl">
-      <Filter>Shaders\PS</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">

@@ -85,7 +85,7 @@ void PhxEngine::EngineApp::Initialize()
 	// Prepare Renderer
 	this->m_shaderStore = std::make_unique<Graphics::ShaderStore>();
 	Graphics::ShaderStore::GPtr = this->m_shaderStore.get();
-	Graphics::ShaderFactory factory(IGraphicsDevice::GPtr, nullptr);
+	Graphics::ShaderFactory factory(IGraphicsDevice::GPtr, nullptr, "");
 	this->m_shaderStore->PreloadShaders(factory);
 
 	this->m_window->SetEventCallback([this](Event& e) {this->OnEvent(e); });

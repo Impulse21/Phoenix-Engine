@@ -31,7 +31,9 @@ function(dxc_compile_shaders)
 
     message("--->Includes: ${INCLUDES}")
 
-    file(MAKE_DIRECTORY ${params_OUTPUT_BASE}/dxil)
+    set(OUTPUT_DIR ${params_OUTPUT_BASE}/dxil)
+    file(MAKE_DIRECTORY ${OUTPUT_DIR})
+    message(${OUTPUT_DIR})
 
     foreach(FILE ${params_SOURCES})
         get_filename_component(FILE_WE ${FILE} NAME_WE)
@@ -41,7 +43,7 @@ function(dxc_compile_shaders)
 
         add_custom_command(
             TARGET ${params_TARGET}
-            COMMAND ${dxc_SOURCE_DIR}/bin/x64/dxc.exe /nologo /E${entryPoint} /T${shadertype}_6_6 /D "USE_RESOURCE_HEAP" $<IF:$<CONFIG:DEBUG>,/Od,/O3> /Zi /Fo ${params_OUTPUT_BASE}/dxil/${FILE_WE}.cso /Fd ${params_OUTPUT_BASE}/dxil/${FILE_WE}.pdb ${FILE}
+            COMMAND ${dxc_SOURCE_DIR}/bin/x64/dxc.exe /nologo /E${entryPoint} /T${shadertype}_6_6 /D "USE_RESOURCE_HEAP" $<IF:$<CONFIG:DEBUG>,/Od,/O3> /Zi /Fo ${OUTPUT_DIR}/${FILE_WE}.cso /Fd ${OUTPUT_DIR}/${FILE_WE}.pdb ${FILE}
             MAIN_DEPENDENCY ${FILE}
             COMMENT "HLSL ${FILE}"
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
