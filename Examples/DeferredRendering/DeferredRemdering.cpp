@@ -19,7 +19,7 @@ using namespace PhxEngine::Graphics;
 
 namespace CubeGeometry
 {
-    static constexpr uint16_t kIndices[] = {
+    static constexpr uint32_t kIndices[] = {
          0,  1,  2,   0,  3,  1, // front face
          4,  5,  6,   4,  7,  5, // left face
          8,  9, 10,   8, 11,  9, // right face
@@ -323,6 +323,7 @@ struct GBufferFillPass
         commandList->SetScissors(&rec, 1);
 
         commandList->BindConstantBuffer(1, frameCB);
+
         // TODO: Create a camera const buffer as well
         commandList->BindDynamicConstantBuffer(2, cameraData);
     }
@@ -407,10 +408,15 @@ public:
 
         ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
 
-        this->PrepareRenderData(commandList, this->m_simpleScene);
+        {
+            auto _ = commandList->BeginScopedMarker("Preare Frame Data");
+            this->PrepareRenderData(commandList, this->m_simpleScene);
+        }
 
         // Set up RenderData
         {
+
+            auto _ = commandList->BeginScopedMarker("GBuffer Fill");
             Shader::Camera cameraData = {};
             cameraData.CameraPosition = this->m_mainCamera.Eye;
             cameraData.ViewProjection = this->m_mainCamera.ViewProjection;
@@ -563,7 +569,7 @@ private:
         // Upload data
         RHI::GpuBarrier preCopyBarriers[] =
         {
-            RHI::GpuBarrier::CreateBuffer(this->m_frameConstantBuffer, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
+            RHI::GpuBarrier::CreateBuffer(this->m_frameConstantBuffer, RHI::ResourceStates::ConstantBuffer, RHI::ResourceStates::CopyDest),
             RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
             RHI::GpuBarrier::CreateBuffer(scene.GetGeometryBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
             RHI::GpuBarrier::CreateBuffer(scene.GetMaterialBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
@@ -595,7 +601,7 @@ private:
 
         RHI::GpuBarrier postCopyBarriers[] =
         {
-            RHI::GpuBarrier::CreateBuffer(this->m_frameConstantBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
+            RHI::GpuBarrier::CreateBuffer(this->m_frameConstantBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ConstantBuffer),
             RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
             RHI::GpuBarrier::CreateBuffer(scene.GetGeometryBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
             RHI::GpuBarrier::CreateBuffer(scene.GetMaterialBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),

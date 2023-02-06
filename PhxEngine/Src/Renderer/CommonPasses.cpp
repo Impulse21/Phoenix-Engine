@@ -8,14 +8,14 @@ PhxEngine::Renderer::CommonPasses::CommonPasses(RHI::IGraphicsDevice* gfxDevice,
 {
 
 	this->RectVS = shaderFactory.CreateShader(
-		"RectVS.hlsl",
+		"PhxEngine/RectVS.hlsl",
 		{
 			.Stage = RHI::ShaderStage::Vertex,
 			.DebugName = "RectVS",
 		});
 
-	this->RectVS = shaderFactory.CreateShader(
-		"BlitPS.hlsl",
+	this->BlitPS = shaderFactory.CreateShader(
+		"PhxEngine/BlitPS.hlsl",
 		{
 			.Stage = RHI::ShaderStage::Pixel,
 			.DebugName = "BlitPS",
@@ -72,7 +72,7 @@ void PhxEngine::Renderer::CommonPasses::BlitTexture(RHI::ICommandList* cmdList, 
 	std::vector<RHI::RHIFormat> rtvs;
 	RHI::RHIFormat depth;
 	this->m_gfxDevice->GetRenderPassFormats(renderPass, rtvs, depth);
-	PsoCacheKey key = { .RTVFormats = rtvs, .DepthFormat = depth };
+	PsoCacheKey key = { .RTVFormats = { RHI::RHIFormat::R10G10B10A2_UNORM } , .DepthFormat = depth };
 	RHI::GraphicsPipelineHandle pso = this->m_psoCache[key];
 	if (!pso.IsValid())
 	{
@@ -81,11 +81,12 @@ void PhxEngine::Renderer::CommonPasses::BlitTexture(RHI::ICommandList* cmdList, 
 			.PixelShader = this->BlitPS,
 			.DepthStencilRenderState = {.DepthTestEnable = false, .StencilEnable = false },
 			.RasterRenderState = {.CullMode = RHI::RasterCullMode::None },
-			.RtvFormats = rtvs
+			.RtvFormats = { RHI::RHIFormat::R10G10B10A2_UNORM }
 			});
 	}
+	auto scopedMarker = cmdList->BeginScopedMarker("Blit Texture");
 	cmdList->BeginRenderPass(renderPass);
-
+	cmdList->SetGraphicsPipeline(this->m_psoCache[key]);
 	cmdList->BindDynamicDescriptorTable(0, { sourceTexture });
 
 	RHI::Viewport v(canvas.x, canvas.y);

@@ -338,18 +338,34 @@ RenderPassHandle PhxEngine::RHI::D3D12::D3D12CommandList::GetRenderPassBackBuffe
 void PhxEngine::RHI::D3D12::D3D12CommandList::BeginRenderPass(RenderPassHandle renderPass)
 {
     D3D12RenderPass* renderPassImpl = this->m_graphicsDevice.GetRenderPassPool().Get(renderPass);
-    if (!renderPassImpl)
+    if (renderPass == this->m_graphicsDevice.GetActiveViewport()->RenderPass)
     {
-        return;
+        D3D12Texture* backBuffer = this->m_graphicsDevice.GetTexturePool().Get(this->m_graphicsDevice.GetBackBuffer());
+
+        D3D12_RESOURCE_BARRIER barrier = {};
+        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.Transition.pResource = backBuffer->D3D12Resource.Get();
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        this->m_d3d12CommandList6->ResourceBarrier(1, &barrier);
+    }
+    else
+    {
+        if (!renderPassImpl)
+        {
+            return;
+        }
+        // Transiion Barriers
+        if (!renderPassImpl->BarrierDescBegin.empty())
+        {
+            this->m_d3d12CommandList->ResourceBarrier(
+                (UINT)renderPassImpl->BarrierDescBegin.size(),
+                renderPassImpl->BarrierDescBegin.data());
+        }
     }
 
-    // Transiion Barriers
-    if (!renderPassImpl->BarrierDescBegin.empty())
-    {
-        this->m_d3d12CommandList->ResourceBarrier(
-            (UINT)renderPassImpl->BarrierDescBegin.size(),
-            renderPassImpl->BarrierDescBegin.data());
-    }
 
     this->m_d3d12CommandList6->BeginRenderPass(
         (UINT)renderPassImpl->NumRenderTargets,

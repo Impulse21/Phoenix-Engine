@@ -166,6 +166,7 @@ void PhxEngine::Scene::Scene::OnUpdate()
 	}
 
 	// TODO:
+#if false
 	auto sun = this->GetRegistry().try_get<LightComponent>(this->m_activeSun);
 	if (sun)
 	{
@@ -177,6 +178,10 @@ void PhxEngine::Scene::Scene::OnUpdate()
 		this->m_shaderData.AtmosphereData.SunColour = { };
 		this->m_shaderData.AtmosphereData.SunDirection = { };
 	}
+#else
+	this->m_shaderData.AtmosphereData.SunColour = { };
+	this->m_shaderData.AtmosphereData.SunDirection = { };
+#endif
 
 	this->m_shaderData.EnvMapArray = IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_envMapArray, RHI::SubresouceType::SRV);
 	this->m_shaderData.EnvMap_NumMips = kEnvmapMIPs;
