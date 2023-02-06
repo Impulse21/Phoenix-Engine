@@ -34,7 +34,7 @@ namespace PhxEngine::Core
 			this->m_freeListPosition = this->m_size - 1;
 			for (size_t i = 0; i < this->m_size; i++)
 			{
-				this->m_freeList[i] = static_cast<uint32_t>(this->m_size - i);
+				this->m_freeList[i] = static_cast<uint32_t>((this->m_size - 1) - i);
 			}
 
 		}
