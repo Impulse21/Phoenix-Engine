@@ -67,14 +67,33 @@ PhxEngine::Renderer::CommonPasses::CommonPasses(RHI::IGraphicsDevice* gfxDevice,
 	this->m_gfxDevice->ExecuteCommandLists({ upload });
 }
 
-void PhxEngine::Renderer::CommonPasses::BlitTexture(RHI::ICommandList* cmdList, RHI::TextureHandle sourceTexture, RHI::RenderPassHandle renderPass)
+void PhxEngine::Renderer::CommonPasses::BlitTexture(RHI::ICommandList* cmdList, RHI::TextureHandle sourceTexture, RHI::RenderPassHandle renderPass, DirectX::XMFLOAT2 const& canvas)
 {
-	// RHI::GraphicsPipelineHandle gfxPipeline = this->m_psoCache[PsoCacheKey{ fbinfo, shader, params.blendState }];
-	if (false)
+	std::vector<RHI::RHIFormat> rtvs;
+	RHI::RHIFormat depth;
+	this->m_gfxDevice->GetRenderPassFormats(renderPass, rtvs, depth);
+	PsoCacheKey key = { .RTVFormats = rtvs, .DepthFormat = depth };
+	RHI::GraphicsPipelineHandle pso = this->m_psoCache[key];
+	if (!pso.IsValid())
 	{
-
+		this->m_psoCache[key] = this->m_gfxDevice->CreateGraphicsPipeline({
+			.VertexShader = this->RectVS,
+			.PixelShader = this->BlitPS,
+			.DepthStencilRenderState = {.DepthTestEnable = false, .StencilEnable = false },
+			.RasterRenderState = {.CullMode = RHI::RasterCullMode::None },
+			.RtvFormats = rtvs
+			});
 	}
 	cmdList->BeginRenderPass(renderPass);
 
 	cmdList->BindDynamicDescriptorTable(0, { sourceTexture });
+
+	RHI::Viewport v(canvas.x, canvas.y);
+	cmdList->SetViewports(&v, 1);
+
+	RHI::Rect rec(LONG_MAX, LONG_MAX);
+	cmdList->SetScissors(&rec, 1);
+	cmdList->Draw(4);
+
+	cmdList->EndRenderPass();
 }

@@ -77,6 +77,7 @@ namespace PhxEngine::RHI::D3D12
 		void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers) override;
 
 		void BeginRenderPassBackBuffer() override;
+		RenderPassHandle GetRenderPassBackBuffer() override;
 		void BeginRenderPass(RenderPassHandle renderPass) override;
 		void EndRenderPass() override;
 

@@ -133,7 +133,7 @@ namespace PhxEngine::Core
 			// Copy data over
 			std::memcpy(newDataArray, this->m_data, this->m_size * sizeof(ImplT));
 			std::memcpy(newFreeListArray, this->m_freeList, this->m_size * sizeof(uint32_t));
-			std::memcpy(m_generations, this->m_generations, this->m_size * sizeof(uint32_t));
+			std::memcpy(newGenerations, this->m_generations, this->m_size * sizeof(uint32_t));
 
 			delete[] this->m_data;
 			delete[] this->m_freeList;

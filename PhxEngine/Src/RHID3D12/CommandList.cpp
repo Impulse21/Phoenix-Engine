@@ -329,6 +329,12 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BeginRenderPassBackBuffer()
     this->m_d3d12CommandList6->BeginRenderPass(1, &RTV, nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
 }
 
+RenderPassHandle PhxEngine::RHI::D3D12::D3D12CommandList::GetRenderPassBackBuffer()
+{
+    D3D12Viewport& viewport = *this->m_graphicsDevice.GetActiveViewport();
+    return viewport.RenderPass;
+}
+
 void PhxEngine::RHI::D3D12::D3D12CommandList::BeginRenderPass(RenderPassHandle renderPass)
 {
     D3D12RenderPass* renderPassImpl = this->m_graphicsDevice.GetRenderPassPool().Get(renderPass);

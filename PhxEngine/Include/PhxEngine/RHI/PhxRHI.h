@@ -1158,6 +1158,7 @@ namespace PhxEngine::RHI
         virtual void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) = 0;
 
         virtual void BeginRenderPassBackBuffer() = 0;
+        virtual RenderPassHandle GetRenderPassBackBuffer() = 0;
         virtual void BeginRenderPass(RenderPassHandle renderPass) = 0;
         virtual void EndRenderPass() = 0;
 

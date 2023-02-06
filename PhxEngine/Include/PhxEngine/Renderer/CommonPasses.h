@@ -3,6 +3,7 @@
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Graphics/ShaderFactory.h>
 #include <unordered_map>
+#include <DirectXMath.h>
 
 namespace PhxEngine::Renderer
 {
@@ -11,7 +12,7 @@ namespace PhxEngine::Renderer
 	public:
 		CommonPasses(RHI::IGraphicsDevice* gfxDevice, Graphics::ShaderFactory& shaderFactory);
 
-		void BlitTexture(RHI::ICommandList* cmdList, RHI::TextureHandle sourceTexture, RHI::RenderPassHandle descRenderPass);
+		void BlitTexture(RHI::ICommandList* cmdList, RHI::TextureHandle sourceTexture, RHI::RenderPassHandle descRenderPass, DirectX::XMFLOAT2 const& canvas);
 
 	public:
 		RHI::ShaderHandle FullScreenVS;
@@ -21,13 +22,13 @@ namespace PhxEngine::Renderer
 		RHI::TextureHandle BlackTexture;
 		RHI::TextureHandle WhiteTexture;
 
-	private:
+	protected:
 		struct PsoCacheKey
 		{
-			RHI::RHIFormat Format;
+			std::vector<RHI::RHIFormat> RTVFormats;
+			RHI::RHIFormat DepthFormat;
 
-
-			bool operator==(const PsoCacheKey& other) const { return Format == other.Format; }
+			bool operator==(const PsoCacheKey& other) const { return RTVFormats == other.RTVFormats && DepthFormat == other.DepthFormat; }
 			bool operator!=(const PsoCacheKey& other) const { return !(*this == other); }
 
 			struct Hash
@@ -35,14 +36,19 @@ namespace PhxEngine::Renderer
 				size_t operator ()(const PsoCacheKey& s) const
 				{
 					size_t hash = 0;
-					RHI::HashCombine(hash, s.Format);
+					for (auto& format : s.RTVFormats)
+					{
+						RHI::HashCombine(hash, format);
+					}
+
+					RHI::HashCombine(hash, s.DepthFormat);
 					return hash;
 				}
 			};
 		};
 	private:
 		RHI::IGraphicsDevice* m_gfxDevice;
-		// std::unordered_map<PsoCacheKey, RHI::GraphicsPipelineHandle> m_psoCache;
+		RHI::GraphicsPipelineHandle m_blitPipeline;
+		std::unordered_map<PsoCacheKey, RHI::GraphicsPipelineHandle, PsoCacheKey::Hash> m_psoCache;
 	};
 }
-

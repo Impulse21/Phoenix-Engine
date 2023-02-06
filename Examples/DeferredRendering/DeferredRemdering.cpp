@@ -11,6 +11,7 @@
 #include <PhxEngine/Graphics/TextureCache.h>
 #include <PhxEngine/Renderer/Renderer.h>
 #include <PhxEngine/Graphics/ShaderFactory.h>
+#include <PhxEngine/Renderer/CommonPasses.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
@@ -363,6 +364,7 @@ public:
         this->CreateSimpleScene(textureCache.get());
 
         this->m_renderTargets.Initialize(this->GetGfxDevice(), this->GetRoot()->GetCanvasSize());
+        this->m_commonPasses = std::make_shared<Renderer::CommonPasses>(this->GetGfxDevice(), *this->m_shaderFactory);
         this->m_gbufferFillPass.Initialize(*this->m_shaderFactory);
 
         this->m_frameConstantBuffer = RHI::IGraphicsDevice::GPtr->CreateBuffer({
@@ -404,6 +406,9 @@ public:
         this->m_mainCamera.UpdateCamera();
 
         ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
+
+        this->PrepareRenderData(commandList, this->m_simpleScene);
+
         // Set up RenderData
         {
             Shader::Camera cameraData = {};
@@ -463,6 +468,12 @@ public:
 
             this->m_gbufferFillPass.EndPass(commandList);
         }
+
+        this->m_commonPasses->BlitTexture(
+            commandList,
+            this->m_renderTargets.AlbedoTex,
+            commandList->GetRenderPassBackBuffer(),
+            this->GetRoot()->GetCanvasSize());
 
         commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList });
@@ -536,6 +547,8 @@ private:
 
     void PrepareRenderData(ICommandList* commandList, Scene::Scene& scene)
     {
+        scene.OnUpdate();
+
         Shader::Frame frameData = {};
         // Move to Renderer...
         frameData.BrdfLUTTexIndex = scene.GetBrdfLutDescriptorIndex();
@@ -599,6 +612,7 @@ private:
     RHI::BufferHandle m_frameConstantBuffer;
     GBufferRenderTargets m_renderTargets;
     GBufferFillPass m_gbufferFillPass;
+    std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
 
 
     float m_rotation = 0.0f;
