@@ -305,6 +305,7 @@ struct GBufferFillPass
 					.VertexShader = this->m_vertexShader,
 					.PixelShader = this->m_pixelShader,
 			        .DepthStencilRenderState = {.DepthFunc = ComparisonFunc::Greater },
+                    .RasterRenderState = { .FrontCounterClockwise = true },
 			        .RtvFormats = {
 				        IGraphicsDevice::GPtr->GetTextureDesc(gbufferRenderTargets.AlbedoTex).Format,
 				        IGraphicsDevice::GPtr->GetTextureDesc(gbufferRenderTargets.NormalTex).Format,
@@ -376,6 +377,24 @@ public:
             .DebugName = "Frame Constant Buffer",
             });
 
+
+        // DirectX::XMVECTOR eyePos =  DirectX::XMVectorSet(0.0f, 2.0f, 4.0f, 1.0f);
+        DirectX::XMVECTOR eyePos = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f);
+        DirectX::XMVECTOR focusPoint = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+        DirectX::XMVECTOR eyeDir = DirectX::XMVectorSubtract(focusPoint, eyePos);
+        eyeDir = DirectX::XMVector3Normalize(eyeDir);
+
+        DirectX::XMStoreFloat3(
+            &this->m_mainCamera.Eye,
+            eyePos);
+
+        DirectX::XMStoreFloat3(
+            &this->m_mainCamera.Forward,
+            eyeDir);
+
+        this->m_mainCamera.FoV = 1.7;
+        this->m_mainCamera.UpdateCamera();
+
         return true;
     }
 
@@ -398,12 +417,16 @@ public:
     void Render() override
     {
         Scene::TransformComponent t = {};
-        t.RotateRollPitchYaw({ DirectX::XMConvertToRadians(this->m_rotation), 0.0f, 0.0f });
-        t.RotateRollPitchYaw({ 0.0f, DirectX::XMConvertToRadians(-30.f), 0.0f });
+        // t.RotateRollPitchYaw({ DirectX::XMConvertToRadians(this->m_rotation), 0.0f, 0.0f });
+        t.RotateRollPitchYaw({ 0.0f, DirectX::XMConvertToRadians(-180.f), 0.0f });
         t.LocalTranslation = DirectX::XMFLOAT3(0.0f, 0.0f, -2.0f);
+        t.SetDirty();
         t.UpdateTransform();
 
-        this->m_mainCamera.TransformCamera(t);
+        this->m_mainCamera.Width = this->GetRoot()->GetCanvasSize().x;
+        this->m_mainCamera.Height = this->GetRoot()->GetCanvasSize().y;
+
+        // this->m_mainCamera.TransformCamera(t);
         this->m_mainCamera.UpdateCamera();
 
         ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
