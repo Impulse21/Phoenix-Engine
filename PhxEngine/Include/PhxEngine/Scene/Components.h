@@ -8,6 +8,8 @@
 #include <PhxEngine/Scene/Assets.h>
 #include <PhxEngine/Core/Primitives.h>
 
+#define LH
+
 // Required for Operators - Move to CPP please
 using namespace DirectX;
 namespace PhxEngine::Scene
@@ -239,7 +241,7 @@ namespace PhxEngine::Scene
 				DirectX::XMLoadFloat4x4(&transform.WorldMatrix));
 
 			DirectX::XMVECTOR eye = translation;
-			DirectX::XMVECTOR at = DirectX::XMVectorSet(0, 0, -1, 0);
+			DirectX::XMVECTOR at = DirectX::XMVectorSet(0, 0, 1, 0);
 			DirectX::XMVECTOR up = DirectX::XMVectorSet(0, 1, 0, 0);
 
 			DirectX::XMMATRIX rot = DirectX::XMMatrixRotationQuaternion(rotation);

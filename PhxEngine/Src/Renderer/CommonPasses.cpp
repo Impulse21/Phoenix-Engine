@@ -77,6 +77,7 @@ void PhxEngine::Renderer::CommonPasses::BlitTexture(RHI::ICommandList* cmdList, 
 	if (!pso.IsValid())
 	{
 		this->m_psoCache[key] = this->m_gfxDevice->CreateGraphicsPipeline({
+			.PrimType = RHI::PrimitiveType::TriangleStrip,
 			.VertexShader = this->RectVS,
 			.PixelShader = this->BlitPS,
 			.DepthStencilRenderState = {.DepthTestEnable = false, .StencilEnable = false },
@@ -94,7 +95,7 @@ void PhxEngine::Renderer::CommonPasses::BlitTexture(RHI::ICommandList* cmdList, 
 
 	RHI::Rect rec(LONG_MAX, LONG_MAX);
 	cmdList->SetScissors(&rec, 1);
-	cmdList->Draw(4);
+	cmdList->Draw(3);
 
 	cmdList->EndRenderPass();
 }

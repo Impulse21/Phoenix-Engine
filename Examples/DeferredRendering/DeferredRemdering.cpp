@@ -12,6 +12,7 @@
 #include <PhxEngine/Renderer/Renderer.h>
 #include <PhxEngine/Graphics/ShaderFactory.h>
 #include <PhxEngine/Renderer/CommonPasses.h>
+#include <PhxEngine/Core/Math.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
@@ -29,10 +30,10 @@ namespace CubeGeometry
     };
 
     static constexpr DirectX::XMFLOAT3 kPositions[] = {
-        {-0.5f,  0.5f, -0.5f}, // front face
-        { 0.5f, -0.5f, -0.5f},
-        {-0.5f, -0.5f, -0.5f},
-        { 0.5f,  0.5f, -0.5f},
+        {-0.5f,  0.5f, 0.5f}, // front face
+        { 0.5f, -0.5f, 0.5f},
+        {-0.5f, -0.5f, 0.5f},
+        { 0.5f,  0.5f, 0.5f},
 
         { 0.5f, -0.5f, -0.5f}, // right side face
         { 0.5f,  0.5f,  0.5f},
@@ -168,6 +169,10 @@ struct GBufferRenderTargets
     RHI::RenderPassHandle RenderPass;
     DirectX::XMFLOAT2 CanvasSize;
 
+
+    // Extra
+    RHI::TextureHandle FinalColourBuffer;
+
     void Initialize(
         RHI::IGraphicsDevice* gfxDevice,
         DirectX::XMFLOAT2 const& size)
@@ -184,9 +189,9 @@ struct GBufferRenderTargets
         desc.Format = RHI::RHIFormat::D32;
         desc.IsTypeless = true;
         desc.DebugName = "Depth Buffer";
-        desc.OptmizedClearValue.DepthStencil.Depth = 0.0f;
+        desc.OptmizedClearValue.DepthStencil.Depth = 1.0f;
         desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::DepthStencil;
-        desc.InitialState = RHI::ResourceStates::DepthRead;
+        desc.InitialState = RHI::ResourceStates::DepthWrite;
         this->DepthTex = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
         // -- Depth end ---
 
@@ -212,6 +217,11 @@ struct GBufferRenderTargets
         desc.Format = RHI::RHIFormat::SRGBA8_UNORM;
         desc.DebugName = "Specular Buffer";
         this->SpecularTex = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
+
+        desc.Format = RHI::RHIFormat::R10G10B10A2_UNORM;
+        desc.DebugName = "Final Colour Buffer";
+        desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::ShaderResource | BindingFlags::UnorderedAccess;
+        this->FinalColourBuffer = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
 
         this->RenderPass = IGraphicsDevice::GPtr->CreateRenderPass(
             {
@@ -249,9 +259,9 @@ struct GBufferRenderTargets
                         .Type = RenderPassAttachment::Type::DepthStencil,
                         .LoadOp = RenderPassAttachment::LoadOpType::Clear,
                         .Texture = this->DepthTex,
-                        .InitialLayout = RHI::ResourceStates::DepthRead,
+                        .InitialLayout = RHI::ResourceStates::DepthWrite,
                         .SubpassLayout = RHI::ResourceStates::DepthWrite,
-                        .FinalLayout = RHI::ResourceStates::DepthRead
+                        .FinalLayout = RHI::ResourceStates::DepthWrite
                     },
                 }
             });
@@ -268,6 +278,122 @@ struct GBufferRenderTargets
     }
 };
 
+
+struct DeferredLightingPass
+{
+    struct Input
+    {
+        RHI::TextureHandle Depth;
+        RHI::TextureHandle GBufferAlbedo;
+        RHI::TextureHandle GBufferNormals;
+        RHI::TextureHandle GBufferSurface;
+        RHI::TextureHandle GBufferSpecular;
+
+        RHI::TextureHandle OutputTexture;
+
+        RHI::BufferHandle FrameBuffer;
+        Shader::Camera* CameraData;
+
+        void FillGBuffer(GBufferRenderTargets const& renderTargets)
+        {
+            this->Depth = renderTargets.DepthTex;
+            this->GBufferAlbedo = renderTargets.AlbedoTex;
+            this->GBufferNormals = renderTargets.NormalTex;
+            this->GBufferSurface = renderTargets.SurfaceTex;
+            this->GBufferSpecular = renderTargets.SpecularTex;
+        }
+    };
+
+    DeferredLightingPass(IGraphicsDevice* gfxDevice, std::shared_ptr<Renderer::CommonPasses> commonPasses)
+        : m_gfxDevice(gfxDevice)
+        , m_commonPasses(commonPasses)
+    {
+    }
+
+    void Initialize(Graphics::ShaderFactory& factory)
+    {
+        this->m_pixelShader = factory.CreateShader(
+            "PhxEngine/DeferredLightingPS.hlsl",
+            {
+                .Stage = RHI::ShaderStage::Pixel,
+                .DebugName = "DeferredLightingPS",
+            });
+
+        this->m_computeShader = factory.CreateShader(
+            "PhxEngine/DeferredLightingCS.hlsl",
+            {
+                .Stage = RHI::ShaderStage::Pixel,
+                .DebugName = "DeferredLightingCS",
+            });
+    }
+
+    void Render(ICommandList* commandList, Input const& input)
+    {
+        // Set Push Constants for input texture Data.
+        if (!this->m_computePso.IsValid())
+        {
+            this->m_computePso = this->m_gfxDevice->CreateComputePipeline({
+                    .ComputeShader = this->m_computeShader
+                });
+        }
+
+        auto _ = commandList->BeginScopedMarker("Deferred Lighting Pass CS");
+
+        RHI::GpuBarrier preBarriers[] =
+        {
+            RHI::GpuBarrier::CreateTexture(input.Depth, this->m_gfxDevice->GetTextureDesc(input.Depth).InitialState, RHI::ResourceStates::ShaderResource),
+            RHI::GpuBarrier::CreateTexture(input.OutputTexture, this->m_gfxDevice->GetTextureDesc(input.OutputTexture).InitialState, RHI::ResourceStates::UnorderedAccess),
+        };
+
+        commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
+
+        // TODO: Change to match same syntax as GFX pipeline
+        commandList->SetComputeState(this->m_computePso);
+
+        commandList->BindConstantBuffer(1, input.FrameBuffer);
+        commandList->BindDynamicConstantBuffer(2, *input.CameraData);
+        commandList->BindDynamicDescriptorTable(
+            4,
+            {
+                input.Depth,
+                input.GBufferAlbedo,
+                input.GBufferNormals,
+                input.GBufferSurface,
+                input.GBufferSpecular
+            });
+        commandList->BindDynamicUavDescriptorTable(5, { input.OutputTexture });
+
+        auto& outputDesc = this->m_gfxDevice->GetTextureDesc(input.OutputTexture);
+
+        Shader::DefferedLightingCSConstants push = {};
+        push.DipatchGridDim =
+        {
+            outputDesc.Width / DEFERRED_BLOCK_SIZE_X,
+            outputDesc.Height / DEFERRED_BLOCK_SIZE_Y,
+        };
+        push.MaxTileWidth = 16;
+
+        commandList->Dispatch(
+            push.DipatchGridDim.x,
+            push.DipatchGridDim.y,
+            1);
+
+        RHI::GpuBarrier postTransition[] =
+        {
+            RHI::GpuBarrier::CreateTexture(input.Depth, RHI::ResourceStates::ShaderResource, this->m_gfxDevice->GetTextureDesc(input.Depth).InitialState),
+            RHI::GpuBarrier::CreateTexture(input.OutputTexture, RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetTextureDesc(input.OutputTexture).InitialState),
+        };
+
+        commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
+    }
+
+private:
+    IGraphicsDevice* m_gfxDevice;
+    std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
+    RHI::ShaderHandle m_pixelShader;
+    RHI::ShaderHandle m_computeShader;
+    RHI::ComputePipelineHandle m_computePso;
+};
 
 struct GBufferFillPass
 {
@@ -304,8 +430,8 @@ struct GBufferFillPass
 				{
 					.VertexShader = this->m_vertexShader,
 					.PixelShader = this->m_pixelShader,
-			        .DepthStencilRenderState = {.DepthFunc = ComparisonFunc::Greater },
-                    .RasterRenderState = { .FrontCounterClockwise = true },
+			        // .DepthStencilRenderState = {.DepthFunc = ComparisonFunc::Greater },
+                    //  .RasterRenderState = { .FrontCounterClockwise = true },
 			        .RtvFormats = {
 				        IGraphicsDevice::GPtr->GetTextureDesc(gbufferRenderTargets.AlbedoTex).Format,
 				        IGraphicsDevice::GPtr->GetTextureDesc(gbufferRenderTargets.NormalTex).Format,
@@ -368,6 +494,8 @@ public:
         this->m_renderTargets.Initialize(this->GetGfxDevice(), this->GetRoot()->GetCanvasSize());
         this->m_commonPasses = std::make_shared<Renderer::CommonPasses>(this->GetGfxDevice(), *this->m_shaderFactory);
         this->m_gbufferFillPass.Initialize(*this->m_shaderFactory);
+        this->m_deferredLightingPass = std::make_shared<DeferredLightingPass>(this->GetGfxDevice(), this->m_commonPasses);
+        this->m_deferredLightingPass->Initialize(*this->m_shaderFactory);
 
         this->m_frameConstantBuffer = RHI::IGraphicsDevice::GPtr->CreateBuffer({
             .Usage = RHI::Usage::Default,
@@ -379,7 +507,7 @@ public:
 
 
         // DirectX::XMVECTOR eyePos =  DirectX::XMVectorSet(0.0f, 2.0f, 4.0f, 1.0f);
-        DirectX::XMVECTOR eyePos = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f);
+        DirectX::XMVECTOR eyePos = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, -1.0f);
         DirectX::XMVECTOR focusPoint = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
         DirectX::XMVECTOR eyeDir = DirectX::XMVectorSubtract(focusPoint, eyePos);
         eyeDir = DirectX::XMVector3Normalize(eyeDir);
@@ -394,7 +522,6 @@ public:
 
         this->m_mainCamera.FoV = 1.7;
         this->m_mainCamera.UpdateCamera();
-
         return true;
     }
 
@@ -409,25 +536,24 @@ public:
 
     void Update(Core::TimeStep const& deltaTime) override
     {
-        this->m_rotation += deltaTime.GetSeconds() * 1.1f;
+        this->m_rotation += deltaTime.GetSeconds() * 1.3f;
         this->GetRoot()->SetInformativeWindowTitle("Example: Deferred Rendering", {});
 
     }
 
     void Render() override
     {
-        Scene::TransformComponent t = {};
-        // t.RotateRollPitchYaw({ DirectX::XMConvertToRadians(this->m_rotation), 0.0f, 0.0f });
-        t.RotateRollPitchYaw({ 0.0f, DirectX::XMConvertToRadians(-180.f), 0.0f });
-        t.LocalTranslation = DirectX::XMFLOAT3(0.0f, 0.0f, -2.0f);
-        t.SetDirty();
-        t.UpdateTransform();
-
         this->m_mainCamera.Width = this->GetRoot()->GetCanvasSize().x;
         this->m_mainCamera.Height = this->GetRoot()->GetCanvasSize().y;
-
-        // this->m_mainCamera.TransformCamera(t);
         this->m_mainCamera.UpdateCamera();
+
+        auto& cubeTransform = this->m_cubeInstance.GetComponent<Scene::TransformComponent>();
+        /*
+        cubeTransform.LocalRotation = { 0.0f, 0.0f, 0.0f, 1.0f };
+        cubeTransform.MatrixTransform(DirectX::XMMatrixRotationRollPitchYaw(0.0f, DirectX::XMConvertToRadians(this->m_rotation), 0.0f));
+        cubeTransform.MatrixTransform(DirectX::XMMatrixRotationRollPitchYaw(DirectX::XMConvertToRadians(-10), 0.0f, 0.0f));
+        cubeTransform.UpdateTransform();
+        */
 
         ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
 
@@ -436,16 +562,17 @@ public:
             this->PrepareRenderData(commandList, this->m_simpleScene);
         }
 
+        Shader::Camera cameraData = {};
+        cameraData.CameraPosition = this->m_mainCamera.Eye;
+        cameraData.ViewProjection = this->m_mainCamera.ViewProjection;
+        cameraData.ViewProjectionInv = this->m_mainCamera.ViewProjectionInv;
+        cameraData.ProjInv = this->m_mainCamera.ProjectionInv;
+        cameraData.ViewInv = this->m_mainCamera.ViewInv;
+
         // Set up RenderData
         {
 
             auto _ = commandList->BeginScopedMarker("GBuffer Fill");
-            Shader::Camera cameraData = {};
-            cameraData.CameraPosition = this->m_mainCamera.Eye;
-            cameraData.ViewProjection = this->m_mainCamera.ViewProjection;
-            cameraData.ViewProjectionInv = this->m_mainCamera.ViewProjectionInv;
-            cameraData.ProjInv = this->m_mainCamera.ProjectionInv;
-            cameraData.ViewInv = this->m_mainCamera.ViewInv;
 
             this->m_gbufferFillPass.BeginPass(this->GetGfxDevice(), commandList, this->m_frameConstantBuffer, cameraData, this->m_renderTargets);
             auto view = this->m_simpleScene.GetAllEntitiesWith<Scene::MeshInstanceComponent, Scene::TransformComponent>();
@@ -498,9 +625,17 @@ public:
             this->m_gbufferFillPass.EndPass(commandList);
         }
 
+		DeferredLightingPass::Input input = {};
+		input.FillGBuffer(this->m_renderTargets);
+		input.OutputTexture = this->m_renderTargets.FinalColourBuffer;
+        input.FrameBuffer = this->m_frameConstantBuffer;
+        input.CameraData = &cameraData;
+
+		this->m_deferredLightingPass->Render(commandList, input);
+
         this->m_commonPasses->BlitTexture(
             commandList,
-            this->m_renderTargets.AlbedoTex,
+            this->m_renderTargets.FinalColourBuffer,
             commandList->GetRenderPassBackBuffer(),
             this->GetRoot()->GetCanvasSize());
 
@@ -560,8 +695,8 @@ private:
         mesh.TotalVertices = meshGeometry.NumVertices;
 
         // Add a Mesh Instance
-        Scene::Entity meshInstanceEntity = this->m_simpleScene.CreateEntity("Cube Instance");
-        auto& meshInstance = meshInstanceEntity.AddComponent<Scene::MeshInstanceComponent>();
+        this->m_cubeInstance = this->m_simpleScene.CreateEntity("Cube Instance");
+        auto& meshInstance = this->m_cubeInstance.AddComponent<Scene::MeshInstanceComponent>();
         meshInstance.Mesh = meshEntity;
 
         Renderer::ResourceUpload indexUpload;
@@ -578,16 +713,41 @@ private:
     {
         scene.OnUpdate();
 
+        GPUAllocation lightBufferAlloc =
+            commandList->AllocateGpu(
+                sizeof(Shader::ShaderLight) * Shader::SHADER_LIGHT_ENTITY_COUNT,
+                sizeof(Shader::ShaderLight));
+        GPUAllocation matrixBufferAlloc =
+            commandList->AllocateGpu(
+                sizeof(DirectX::XMMATRIX) * Shader::MATRIX_COUNT,
+                sizeof(DirectX::XMMATRIX));
+
+        Shader::ShaderLight* lightArray = (Shader::ShaderLight*)lightBufferAlloc.CpuData;
+        DirectX::XMMATRIX* matrixArray = (DirectX::XMMATRIX*)matrixBufferAlloc.CpuData;
+
+        Shader::ShaderLight* renderLight = lightArray;
+        renderLight->SetType(Scene::LightComponent::kDirectionalLight);
+        renderLight->SetRange(10.0f);
+        renderLight->SetIntensity(10.0f);
+        renderLight->SetFlags(Scene::LightComponent::kEnabled);
+        renderLight->SetDirection({ 0.0f, 1.0f, 0.0f});
+        renderLight->ColorPacked = Core::Math::PackColour({ 1.0f, 1.0f, 1.0f, 1.0f });
+        renderLight->SetIndices(0);
+        renderLight->SetNumCascades(0);
+        renderLight->Position = { 0.0f, 0.0f, 0.0f };
+
         Shader::Frame frameData = {};
         // Move to Renderer...
         frameData.BrdfLUTTexIndex = scene.GetBrdfLutDescriptorIndex();
-        frameData.LightEntityDescritporIndex = RHI::cInvalidDescriptorIndex;
-        frameData.LightDataOffset = 0;
-        frameData.LightCount = 0;
+        frameData.LightEntityDescritporIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(lightBufferAlloc.GpuBuffer, RHI::SubresouceType::SRV);
+        frameData.LightDataOffset = lightBufferAlloc.Offset;
+        frameData.LightCount = 1;
 
         frameData.MatricesDescritporIndex = RHI::cInvalidDescriptorIndex;
         frameData.MatricesDataOffset = 0;
         frameData.SceneData = scene.GetShaderData();
+
+        frameData.SceneData.AtmosphereData.AmbientColour = float3(0.4f, 0.0f, 0.4f);
 
         // Upload data
         RHI::GpuBarrier preCopyBarriers[] =
@@ -638,11 +798,14 @@ private:
     RHI::GraphicsPipelineHandle m_pipeline;
     Scene::Scene m_simpleScene;
     Scene::CameraComponent m_mainCamera;
+    Scene::Entity m_cubeInstance;
+
     RHI::BufferHandle m_frameConstantBuffer;
+
     GBufferRenderTargets m_renderTargets;
     GBufferFillPass m_gbufferFillPass;
+    std::shared_ptr<DeferredLightingPass> m_deferredLightingPass;
     std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
-
 
     float m_rotation = 0.0f;
 };

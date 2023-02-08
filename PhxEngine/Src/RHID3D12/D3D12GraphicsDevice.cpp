@@ -258,7 +258,7 @@ PhxEngine::RHI::D3D12::D3D12GraphicsDevice::D3D12GraphicsDevice(D3D12Adapter con
 	, m_timerQueryIndexPool(kTimestampQueryHeapSize)
 	, m_texturePool(kResourcePoolSize)
 	, m_bufferPool(kResourcePoolSize)
-	, m_renderPassPool(20)
+	, m_renderPassPool(200)
 	, m_rtAccelerationStructurePool(kResourcePoolSize)
 	, m_graphicsPipelinePool(10)
 	, m_computePipelinePool(10)

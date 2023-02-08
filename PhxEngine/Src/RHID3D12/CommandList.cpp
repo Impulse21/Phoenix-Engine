@@ -337,22 +337,13 @@ RenderPassHandle PhxEngine::RHI::D3D12::D3D12CommandList::GetRenderPassBackBuffe
 
 void PhxEngine::RHI::D3D12::D3D12CommandList::BeginRenderPass(RenderPassHandle renderPass)
 {
-    D3D12RenderPass* renderPassImpl = this->m_graphicsDevice.GetRenderPassPool().Get(renderPass);
     if (renderPass == this->m_graphicsDevice.GetActiveViewport()->RenderPass)
     {
-        D3D12Texture* backBuffer = this->m_graphicsDevice.GetTexturePool().Get(this->m_graphicsDevice.GetBackBuffer());
-
-        D3D12_RESOURCE_BARRIER barrier = {};
-        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        barrier.Transition.pResource = backBuffer->D3D12Resource.Get();
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        this->m_d3d12CommandList6->ResourceBarrier(1, &barrier);
+        this->BeginRenderPassBackBuffer();
     }
     else
     {
+        D3D12RenderPass* renderPassImpl = this->m_graphicsDevice.GetRenderPassPool().Get(renderPass);
         if (!renderPassImpl)
         {
             return;
@@ -364,16 +355,16 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BeginRenderPass(RenderPassHandle r
                 (UINT)renderPassImpl->BarrierDescBegin.size(),
                 renderPassImpl->BarrierDescBegin.data());
         }
+
+
+        this->m_d3d12CommandList6->BeginRenderPass(
+            (UINT)renderPassImpl->NumRenderTargets,
+            renderPassImpl->RTVs.data(),
+            renderPassImpl->DSV.cpuDescriptor.ptr == 0 ? nullptr : &renderPassImpl->DSV,
+            renderPassImpl->D12RenderFlags);
+
+        this->m_activeRenderTarget = renderPass;
     }
-
-
-    this->m_d3d12CommandList6->BeginRenderPass(
-        (UINT)renderPassImpl->NumRenderTargets,
-        renderPassImpl->RTVs.data(),
-        renderPassImpl->DSV.cpuDescriptor.ptr == 0 ? nullptr : &renderPassImpl->DSV,
-        renderPassImpl->D12RenderFlags);
-
-    this->m_activeRenderTarget = renderPass;
 }
 
 void PhxEngine::RHI::D3D12::D3D12CommandList::EndRenderPass()
@@ -926,14 +917,13 @@ void D3D12CommandList::BindDynamicDescriptorTable(size_t rootParameterIndex, Cor
     }
 }
 
-void PhxEngine::RHI::D3D12::D3D12CommandList::BindDynamicUavDescriptorTable(size_t rootParameterIndex, std::vector<TextureHandle> const& textures)
+void PhxEngine::RHI::D3D12::D3D12CommandList::BindDynamicUavDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures)
 {
     // Request Descriptoprs for table
     // Validate with Root Signature. Maybe an improvment in the future.
-    DescriptorHeapAllocation descriptorTable = this->m_activeDynamicSubAllocator->Allocate(textures.size());
-    for (int i = 0; i < textures.size(); i++)
+    DescriptorHeapAllocation descriptorTable = this->m_activeDynamicSubAllocator->Allocate(textures.Size());
+    for (int i = 0; i < textures.Size(); i++)
     {
-        this->m_trackedData->TextureHandles.push_back(textures[i]);
         auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(textures[i]);
         this->m_graphicsDevice.GetD3D12Device2()->CopyDescriptorsSimple(
             1,
