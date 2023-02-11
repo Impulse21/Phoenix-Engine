@@ -18,144 +18,111 @@ using namespace PhxEngine;
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::Graphics;
 
-namespace CubeGeometry
+namespace MeshPrefabs
 {
-    static constexpr uint32_t kIndices[] = {
-         0,  1,  2,   0,  3,  1, // front face
-         4,  5,  6,   4,  7,  5, // left face
-         8,  9, 10,   8, 11,  9, // right face
-        12, 13, 14,  12, 15, 13, // back face
-        16, 17, 18,  16, 19, 17, // top face
-        20, 21, 22,  20, 23, 21, // bottom face
-    };
+    void CreateCube(float size, Scene::Entity materialEntity, Scene::MeshComponent& meshComponent, bool isRHCoord = false)
+    {
+        // A cube has six faces, each one pointing in a different direction.
+        const int FaceCount = 6;
 
-    static constexpr DirectX::XMFLOAT3 kPositions[] = {
-        {-0.5f,  0.5f, 0.5f}, // front face
-        { 0.5f, -0.5f, 0.5f},
-        {-0.5f, -0.5f, 0.5f},
-        { 0.5f,  0.5f, 0.5f},
+        static const XMVECTORF32 faceNormals[FaceCount] =
+        {
+            { 0,  0,  1 },
+            { 0,  0, -1 },
+            { 1,  0,  0 },
+            { -1,  0,  0 },
+            { 0,  1,  0 },
+            { 0, -1,  0 },
+        };
 
-        { 0.5f, -0.5f, -0.5f}, // right side face
-        { 0.5f,  0.5f,  0.5f},
-        { 0.5f, -0.5f,  0.5f},
-        { 0.5f,  0.5f, -0.5f},
+        static const XMFLOAT3 faceColour[] =
+        {
+            { 1.0f,  0.0f,  0.0f },
+            { 0.0f,  1.0f,  0.0f },
+            { 0.0f,  0.0f,  1.0f },
+        };
 
-        {-0.5f,  0.5f,  0.5f}, // left side face
-        {-0.5f, -0.5f, -0.5f},
-        {-0.5f, -0.5f,  0.5f},
-        {-0.5f,  0.5f, -0.5f},
+        static const XMFLOAT2 textureCoordinates[4] =
+        {
+            { 1, 0 },
+            { 1, 1 },
+            { 0, 1 },
+            { 0, 0 },
+        };
 
-        { 0.5f,  0.5f,  0.5f}, // back face
-        {-0.5f, -0.5f,  0.5f},
-        { 0.5f, -0.5f,  0.5f},
-        {-0.5f,  0.5f,  0.5f},
+        size /= 2;
 
-        {-0.5f,  0.5f, -0.5f}, // top face
-        { 0.5f,  0.5f,  0.5f},
-        { 0.5f,  0.5f, -0.5f},
-        {-0.5f,  0.5f,  0.5f},
+        for (int i = 0; i < FaceCount; i++)
+        {
+            XMVECTOR normalV = faceNormals[i];
 
-        { 0.5f, -0.5f,  0.5f}, // bottom face
-        {-0.5f, -0.5f, -0.5f},
-        { 0.5f, -0.5f, -0.5f},
-        {-0.5f, -0.5f,  0.5f},
-    };
+            // Get two vectors perpendicular both to the face normal and to each other.
+            XMVECTOR basis = (i >= 4) ? g_XMIdentityR2 : g_XMIdentityR1;
 
-    static constexpr DirectX::XMFLOAT2 kTexCoords[] = {
-        {0.0f, 0.0f}, // front face
-        {1.0f, 1.0f},
-        {0.0f, 1.0f},
-        {1.0f, 0.0f},
+            XMVECTOR side1 = XMVector3Cross(normalV, basis);
+            XMVECTOR side2 = XMVector3Cross(normalV, side1);
 
-        {0.0f, 1.0f}, // right side face
-        {1.0f, 0.0f},
-        {1.0f, 1.0f},
-        {0.0f, 0.0f},
+            // Six indices (two triangles) per face.
+            size_t vbase = meshComponent.VertexPositions.size();
+            meshComponent.Indices.push_back(static_cast<uint32_t>(vbase + 0));
+            meshComponent.Indices.push_back(static_cast<uint32_t>(vbase + 1));
+            meshComponent.Indices.push_back(static_cast<uint32_t>(vbase + 2));
 
-        {0.0f, 0.0f}, // left side face
-        {1.0f, 1.0f},
-        {0.0f, 1.0f},
-        {1.0f, 0.0f},
+            meshComponent.Indices.push_back(static_cast<uint32_t>(vbase + 0));
+            meshComponent.Indices.push_back(static_cast<uint32_t>(vbase + 2));
+            meshComponent.Indices.push_back(static_cast<uint32_t>(vbase + 3));
 
-        {0.0f, 0.0f}, // back face
-        {1.0f, 1.0f},
-        {0.0f, 1.0f},
-        {1.0f, 0.0f},
+            XMFLOAT3 positon;
+            XMStoreFloat3(&positon, (normalV - side1 - side2) * size);
+            meshComponent.VertexPositions.push_back(positon);
+            XMStoreFloat3(&positon, (normalV - side1 + side2) * size);
+            meshComponent.VertexPositions.push_back(positon);
+            XMStoreFloat3(&positon, (normalV + side1 + side2) * size);
+            meshComponent.VertexPositions.push_back(positon);
+            XMStoreFloat3(&positon, (normalV + side1 - side2) * size);
+            meshComponent.VertexPositions.push_back(positon);
 
-        {0.0f, 1.0f}, // top face
-        {1.0f, 0.0f},
-        {1.0f, 1.0f},
-        {0.0f, 0.0f},
+            meshComponent.VertexTexCoords.push_back(textureCoordinates[0]);
+            meshComponent.VertexTexCoords.push_back(textureCoordinates[1]);
+            meshComponent.VertexTexCoords.push_back(textureCoordinates[2]);
+            meshComponent.VertexTexCoords.push_back(textureCoordinates[3]);
 
-        {1.0f, 1.0f}, // bottom face
-        {0.0f, 0.0f},
-        {1.0f, 0.0f},
-        {0.0f, 1.0f},
-    };
+            meshComponent.VertexColour.push_back(faceColour[0]);
+            meshComponent.VertexColour.push_back(faceColour[1]);
+            meshComponent.VertexColour.push_back(faceColour[2]);
+            meshComponent.VertexColour.push_back(faceColour[3]);
 
-    static constexpr DirectX::XMFLOAT3 kNormals[] = {
-        { 0.0f, 0.0f, -1.0f }, // front face
-        { 0.0f, 0.0f, -1.0f },
-        { 0.0f, 0.0f, -1.0f },
-        { 0.0f, 0.0f, -1.0f },
+            DirectX::XMFLOAT3 normal;
+            DirectX::XMStoreFloat3(&normal, normalV);
+            meshComponent.VertexNormals.push_back(normal);
+            meshComponent.VertexNormals.push_back(normal);
+            meshComponent.VertexNormals.push_back(normal);
+            meshComponent.VertexNormals.push_back(normal);
 
-        { 1.0f, 0.0f, 0.0f }, // right side face
-        { 1.0f, 0.0f, 0.0f },
-        { 1.0f, 0.0f, 0.0f },
-        { 1.0f, 0.0f, 0.0f },
+        }
 
-        { -1.0f, 0.0f, 0.0f }, // left side face
-        { -1.0f, 0.0f, 0.0f },
-        { -1.0f, 0.0f, 0.0f },
-        { -1.0f, 0.0f, 0.0f },
+        meshComponent.ComputeTangents();
 
-        { 0.0f, 0.0f, 1.0f }, // back face
-        { 0.0f, 0.0f, 1.0f },
-        { 0.0f, 0.0f, 1.0f },
-        { 0.0f, 0.0f, 1.0f },
+        if (isRHCoord)
+        {
+            meshComponent.ReverseWinding();
+        }
 
-        { 0.0f, 1.0f, 0.0f }, // top face
-        { 0.0f, 1.0f, 0.0f },
-        { 0.0f, 1.0f, 0.0f },
-        { 0.0f, 1.0f, 0.0f },
+        meshComponent.Flags = ~0u;
 
-        { 0.0f, -1.0f, 0.0f }, // bottom face
-        { 0.0f, -1.0f, 0.0f },
-        { 0.0f, -1.0f, 0.0f },
-        { 0.0f, -1.0f, 0.0f },
-    };
+        auto& meshGeometry = meshComponent.Surfaces.emplace_back();
+        {
+            meshGeometry.Material = materialEntity;
+        }
 
-    static constexpr DirectX::XMFLOAT4 kTangents[] = {
-        { 1.0f, 0.0f, 0.0f, 1.0f }, // front face
-        { 1.0f, 0.0f, 0.0f, 1.0f },
-        { 1.0f, 0.0f, 0.0f, 1.0f },
-        { 1.0f, 0.0f, 0.0f, 1.0f },
-          
-        { 0.0f, 0.0f, 1.0f, 1.0f }, // right side face
-        { 0.0f, 0.0f, 1.0f, 1.0f },
-        { 0.0f, 0.0f, 1.0f, 1.0f },
-        { 0.0f, 0.0f, 1.0f, 1.0f },
-          
-        { 0.0f, 0.0f, -1.0f, 1.0f }, // left side face
-        { 0.0f, 0.0f, -1.0f, 1.0f },
-        { 0.0f, 0.0f, -1.0f, 1.0f },
-        { 0.0f, 0.0f, -1.0f, 1.0f },
-          
-        { -1.0f, 0.0f, 0.0f, 1.0f }, // back face
-        { -1.0f, 0.0f, 0.0f, 1.0f },
-        { -1.0f, 0.0f, 0.0f, 1.0f },
-        { -1.0f, 0.0f, 0.0f, 1.0f },
-          
-        { 1.0f, 0.0f, 0.0f, 1.0f }, // top face
-        { 1.0f, 0.0f, 0.0f, 1.0f },
-        { 1.0f, 0.0f, 0.0f, 1.0f },
-        { 1.0f, 0.0f, 0.0f, 1.0f },
-          
-        { 1.0f, 0.0f, 0.0f, 1.0f }, // bottom face
-        { 1.0f, 0.0f, 0.0f, 1.0f },
-        { 1.0f, 0.0f, 0.0f, 1.0f },
-        { 1.0f, 0.0f, 0.0f, 1.0f },
-    };
+        meshGeometry.IndexOffsetInMesh = 0;
+        meshGeometry.VertexOffsetInMesh = 9;
+        meshGeometry.NumIndices = meshComponent.Indices.size();
+        meshGeometry.NumVertices = meshComponent.VertexPositions.size();
+
+        meshComponent.TotalIndices = meshGeometry.NumIndices;
+        meshComponent.TotalVertices = meshGeometry.NumVertices;
+    }
 }
 
 struct GBufferRenderTargets
@@ -660,39 +627,8 @@ private:
 
         Scene::Entity meshEntity = this->m_simpleScene.CreateEntity("Cube");
         auto& mesh = meshEntity.AddComponent<Scene::MeshComponent>();
-        
-        mesh.Indices.resize(ARRAYSIZE(CubeGeometry::kIndices));
-        std::memcpy(mesh.Indices.data(), CubeGeometry::kIndices, sizeof(CubeGeometry::kIndices[0]) * ARRAYSIZE(CubeGeometry::kIndices));
-
-        mesh.VertexPositions.resize(ARRAYSIZE(CubeGeometry::kPositions));
-        std::memcpy(mesh.VertexPositions.data(), CubeGeometry::kPositions, sizeof(CubeGeometry::kPositions[0]) * ARRAYSIZE(CubeGeometry::kPositions));
-
-        mesh.VertexNormals.resize(ARRAYSIZE(CubeGeometry::kNormals));
-        std::memcpy(mesh.VertexNormals.data(), CubeGeometry::kNormals, sizeof(CubeGeometry::kNormals[0]) * ARRAYSIZE(CubeGeometry::kNormals));
-
-        mesh.VertexTangents.resize(ARRAYSIZE(CubeGeometry::kTangents));
-        std::memcpy(mesh.VertexTangents.data(), CubeGeometry::kTangents, sizeof(CubeGeometry::kTangents[0]) * ARRAYSIZE(CubeGeometry::kTangents));
-
-        mesh.VertexTexCoords.resize(ARRAYSIZE(CubeGeometry::kTexCoords));
-        std::memcpy(mesh.VertexTexCoords.data(), CubeGeometry::kTexCoords, sizeof(CubeGeometry::kTexCoords[0]) * ARRAYSIZE(CubeGeometry::kTexCoords));
-
-        mesh.VertexPositions.resize(ARRAYSIZE(CubeGeometry::kPositions));
-        std::memcpy(mesh.VertexPositions.data(), CubeGeometry::kPositions, sizeof(CubeGeometry::kPositions[0]) * ARRAYSIZE(CubeGeometry::kPositions));
-
-        mesh.Flags = ~0u;
-
-        auto& meshGeometry = mesh.Surfaces.emplace_back();
-        {
-            meshGeometry.Material = materialEntity;
-        }
-
-        meshGeometry.IndexOffsetInMesh = 0;
-        meshGeometry.VertexOffsetInMesh = 9;
-        meshGeometry.NumIndices = ARRAYSIZE(CubeGeometry::kIndices);
-        meshGeometry.NumVertices = ARRAYSIZE(CubeGeometry::kPositions);
-
-        mesh.TotalIndices = meshGeometry.NumIndices;
-        mesh.TotalVertices = meshGeometry.NumVertices;
+       
+        MeshPrefabs::CreateCube(1, materialEntity, mesh);
 
         // Add a Mesh Instance
         this->m_cubeInstance = this->m_simpleScene.CreateEntity("Cube Instance");

@@ -255,8 +255,10 @@ namespace PhxEngine::Scene
 			this->SetDirty();
 		}
 
-		inline void UpdateCamera()
+		inline void UpdateCamera(bool reverseZ = false)
 		{
+			const float nearZ = reverseZ ? this->ZFar : this->ZNear;
+			const float farZ = reverseZ ? this->ZNear : this->ZFar;
 #if false
 			auto e = DirectX::XMVectorSet(this->Eye.x, this->Eye.y, -this->Eye.z, 1.0f);
 			auto viewMatrix = DirectX::XMMatrixLookToLH(
@@ -290,7 +292,7 @@ namespace PhxEngine::Scene
 			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(1.04719758, 1904.00 / 984.00, 5000.00, 0.1);
 #else
 #ifdef LH
-			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, aspectRatio, this->ZFar, this->ZNear);
+			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, aspectRatio, nearZ, farZ);
 #else
 			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, aspectRatio, this->ZFar, this->ZNear);
 #endif
@@ -519,6 +521,75 @@ namespace PhxEngine::Scene
 			for (auto iter = this->Indices.begin(); iter != this->Indices.end(); iter += 3)
 			{
 				std::swap(*iter, *(iter + 2));
+			}
+		}
+		
+		void ComputeTangents()
+		{
+			// http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-13-normal-mapping/#tangent-and-bitangent
+
+			assert(this->IsTriMesh());
+			assert(!this->VertexPositions.empty());
+
+			const size_t vertexCount = this->VertexPositions.size();
+			this->VertexTangents.resize(vertexCount);
+
+			std::vector<XMVECTOR> tangents(vertexCount);
+			std::vector<XMVECTOR> bitangents(vertexCount);
+
+			for (int i = 0; i < this->Indices.size(); i += 3)
+			{
+				auto& index0 = this->Indices[i + 0];
+				auto& index1 = this->Indices[i + 1];
+				auto& index2 = this->Indices[i + 2];
+
+				// Vertices
+				XMVECTOR pos0 = XMLoadFloat3(&this->VertexPositions[index0]);
+				XMVECTOR pos1 = XMLoadFloat3(&this->VertexPositions[index1]);
+				XMVECTOR pos2 = XMLoadFloat3(&this->VertexPositions[index2]);
+
+				// UVs
+				XMVECTOR uvs0 = XMLoadFloat2(&this->VertexTexCoords[index0]);
+				XMVECTOR uvs1 = XMLoadFloat2(&this->VertexTexCoords[index1]);
+				XMVECTOR uvs2 = XMLoadFloat2(&this->VertexTexCoords[index2]);
+
+				XMVECTOR deltaPos1 = pos1 - pos0;
+				XMVECTOR deltaPos2 = pos2 - pos0;
+
+				XMVECTOR deltaUV1 = uvs1 - uvs0;
+				XMVECTOR deltaUV2 = uvs2 - uvs0;
+
+				// TODO: Take advantage of SIMD better here
+				float r = 1.0f / (XMVectorGetX(deltaUV1) * XMVectorGetY(deltaUV2) - XMVectorGetY(deltaUV1) * XMVectorGetX(deltaUV2));
+
+				XMVECTOR tangent = (deltaPos1 * XMVectorGetY(deltaUV2) - deltaPos2 * XMVectorGetY(deltaUV1)) * r;
+				XMVECTOR bitangent = (deltaPos2 * XMVectorGetX(deltaUV1) - deltaPos1 * XMVectorGetX(deltaUV2)) * r;
+
+				tangents[index0] += tangent;
+				tangents[index1] += tangent;
+				tangents[index2] += tangent;
+
+				bitangents[index0] += bitangent;
+				bitangents[index1] += bitangent;
+				bitangents[index2] += bitangent;
+			}
+
+			assert(this->VertexNormals.size() == vertexCount);
+			for (int i = 0; i < vertexCount; i++)
+			{
+				const XMVECTOR normal = XMLoadFloat3(&this->VertexNormals[i]);
+				const XMVECTOR& tangent = tangents[i];
+				const XMVECTOR& bitangent = bitangents[i];
+
+				// Gram-Schmidt orthogonalize
+
+				DirectX::XMVECTOR orthTangent = DirectX::XMVector3Normalize(tangent - normal * DirectX::XMVector3Dot(normal, tangent));
+				float sign = DirectX::XMVectorGetX(DirectX::XMVector3Dot(DirectX::XMVector3Cross(normal, tangent), bitangent)) > 0
+					? -1.0f
+					: 1.0f;
+
+				XMVectorSetW(tangent, sign);
+				DirectX::XMStoreFloat4(&this->VertexTangents[i], orthTangent);
 			}
 		}
 
