@@ -471,7 +471,7 @@ public:
             });
 
 
-        DirectX::XMVECTOR eyePos = DirectX::XMVectorSet(0.0f, 0.0f, -1.5f, 0.0f);
+        DirectX::XMVECTOR eyePos = DirectX::XMVectorSet(0.0f, 0.0f, -3.5f, 0.0f);
         DirectX::XMVECTOR focusPoint = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
         DirectX::XMVECTOR eyeDir = DirectX::XMVectorSubtract(focusPoint, eyePos);
         eyeDir = DirectX::XMVector3Normalize(eyeDir);
@@ -484,7 +484,7 @@ public:
             &this->m_mainCamera.Forward,
             eyeDir);
 
-        this->m_mainCamera.FoV = 1.7;
+        this->m_mainCamera.FoV = DirectX::XMConvertToRadians(60);
         this->m_mainCamera.UpdateCamera();
         return true;
     }
@@ -524,6 +524,7 @@ public:
             this->PrepareRenderData(commandList, this->m_simpleScene);
         }
 
+        // The camera data doesn't match whats in the CPU and what's in the GPU.
         Shader::Camera cameraData = {};
         cameraData.CameraPosition = this->m_mainCamera.Eye;
         cameraData.ViewProjection = this->m_mainCamera.ViewProjection;

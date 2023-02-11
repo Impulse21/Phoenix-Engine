@@ -258,14 +258,6 @@ namespace PhxEngine::Scene
 		{
 			const float nearZ = reverseZ ? this->ZFar : this->ZNear;
 			const float farZ = reverseZ ? this->ZNear : this->ZFar;
-#if false
-			auto e = DirectX::XMVectorSet(this->Eye.x, this->Eye.y, -this->Eye.z, 1.0f);
-			auto viewMatrix = DirectX::XMMatrixLookToLH(
-				e,
-				// DirectX::XMLoadFloat3(&this->Forward),
-				DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f),
-				DirectX::XMLoadFloat3(&this->Up));
-#else
 #ifdef LH
 			auto viewMatrix = DirectX::XMMatrixLookToLH(
 				DirectX::XMLoadFloat3(&this->Eye),
@@ -277,38 +269,40 @@ namespace PhxEngine::Scene
 				DirectX::XMLoadFloat3(&this->Forward),
 				DirectX::XMLoadFloat3(&this->Up));
 #endif
-#endif
 			// auto viewMatrix = this->ConstructViewMatrixLH();
 
 			DirectX::XMStoreFloat4x4(&this->View, viewMatrix);
 			DirectX::XMStoreFloat4x4(&this->ViewInv, DirectX::XMMatrixInverse(nullptr, viewMatrix));
 
 			float aspectRatio = this->Width / this->Height;
-
-			// Note the farPlane is passed in as near, this is to support reverseZ
-
-#if false
-			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(1.04719758, 1904.00 / 984.00, 5000.00, 0.1);
-#else
 #ifdef LH
 			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, aspectRatio, nearZ, farZ);
 #else
 			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, aspectRatio, nearZ, farZ);
 #endif
-#endif
 			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, 1.7f, this->ZFar, this->ZNear);
 
 			DirectX::XMStoreFloat4x4(&this->Projection, projectionMatrix);
-			DirectX::XMStoreFloat4x4(&this->ProjectionInv, DirectX::XMMatrixInverse(nullptr, projectionMatrix));
+
+			this->UpdateCache();
+		}
+
+		inline void UpdateCache()
+		{
+			DirectX::XMMATRIX viewMatrix = DirectX::XMLoadFloat4x4(&this->View);
+			DirectX::XMMATRIX projectionMatrix = DirectX::XMLoadFloat4x4(&this->Projection);
 
 			auto viewProjectionMatrix = viewMatrix * projectionMatrix;
 			DirectX::XMStoreFloat4x4(&this->ViewProjection, viewProjectionMatrix);
+
+			DirectX::XMStoreFloat4x4(&this->ProjectionInv, DirectX::XMMatrixInverse(nullptr, projectionMatrix));
 
 			auto viewProjectionInv = DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix);
 			DirectX::XMStoreFloat4x4(&this->ViewProjectionInv, viewProjectionInv);
 
 			this->ProjectionFrustum = Core::Frustum(projectionMatrix, true);
 			this->ViewProjectionFrustum = Core::Frustum(viewProjectionMatrix, true);
+			DirectX::XMStoreFloat4x4(&this->ViewInv, DirectX::XMMatrixInverse(nullptr, viewMatrix));
 		}
 	};
 

@@ -13,8 +13,8 @@ namespace PhxEngine
 		uint32_t FramesInFlight = 3;
 
 		std::string Name = "";
-		uint32_t WindowWidth = 2000;
-		uint32_t WindowHeight = 1200;
+		uint32_t WindowWidth = 1280;
+		uint32_t WindowHeight = 720;
 		bool FullScreen = false;
 		bool VSync = false;
 		bool EnableImGui = false;
