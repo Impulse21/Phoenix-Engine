@@ -9,7 +9,6 @@
 #include <PhxEngine/Core/Primitives.h>
 
 #define LH
-
 // Required for Operators - Move to CPP please
 using namespace DirectX;
 namespace PhxEngine::Scene
@@ -294,7 +293,7 @@ namespace PhxEngine::Scene
 #ifdef LH
 			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, aspectRatio, nearZ, farZ);
 #else
-			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, aspectRatio, this->ZFar, this->ZNear);
+			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, aspectRatio, nearZ, farZ);
 #endif
 #endif
 			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, 1.7f, this->ZFar, this->ZNear);

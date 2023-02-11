@@ -94,12 +94,11 @@ PSInput main(in VertexInput input)
     output.PositionWS = mul(vertexData.Position, worldMatrix).xyz;
     output.Position = mul(float4(output.PositionWS, 1.0f), GetCamera().ViewProjection);
 
-    output.NormalWS = vertexData.Normal;
+    output.NormalWS = mul(vertexData.Normal, worldMatrix).xyz;
     output.TexCoord = vertexData.TexCoord;
     output.Colour = float4(1.0f, 1.0f, 1.0f, 1.0f);
 
-    output.TangentWS = vertexData.Tangent;
-    output.TangentWS = float4(mul(output.TangentWS.xyz, (float3x3) worldMatrix), output.TangentWS.w);
+    output.TangentWS = float4(mul(vertexData.Tangent.xyz, (float3x3)worldMatrix), vertexData.Tangent.w);
 
     output.MaterialID = geometry.MaterialIndex;
 

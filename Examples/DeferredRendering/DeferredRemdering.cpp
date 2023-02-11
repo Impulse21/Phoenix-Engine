@@ -20,7 +20,7 @@ using namespace PhxEngine::Graphics;
 
 namespace MeshPrefabs
 {
-    void CreateCube(float size, Scene::Entity materialEntity, Scene::MeshComponent& meshComponent, bool isRHCoord = false)
+    void CreateCube(float size, Scene::Entity materialEntity, Scene::MeshComponent& meshComponent, bool isLHCoord = false)
     {
         // A cube has six faces, each one pointing in a different direction.
         const int FaceCount = 6;
@@ -103,7 +103,7 @@ namespace MeshPrefabs
 
         meshComponent.ComputeTangents();
 
-        if (isRHCoord)
+        if (isLHCoord)
         {
             meshComponent.ReverseWinding();
         }
@@ -397,8 +397,6 @@ struct GBufferFillPass
 				{
 					.VertexShader = this->m_vertexShader,
 					.PixelShader = this->m_pixelShader,
-			        // .DepthStencilRenderState = {.DepthFunc = ComparisonFunc::Greater },
-                    //  .RasterRenderState = { .FrontCounterClockwise = true },
 			        .RtvFormats = {
 				        IGraphicsDevice::GPtr->GetTextureDesc(gbufferRenderTargets.AlbedoTex).Format,
 				        IGraphicsDevice::GPtr->GetTextureDesc(gbufferRenderTargets.NormalTex).Format,
@@ -473,8 +471,7 @@ public:
             });
 
 
-        // DirectX::XMVECTOR eyePos =  DirectX::XMVectorSet(0.0f, 2.0f, 4.0f, 1.0f);
-        DirectX::XMVECTOR eyePos = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, -1.0f);
+        DirectX::XMVECTOR eyePos = DirectX::XMVectorSet(0.0f, 0.0f, -1.5f, 0.0f);
         DirectX::XMVECTOR focusPoint = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
         DirectX::XMVECTOR eyeDir = DirectX::XMVectorSubtract(focusPoint, eyePos);
         eyeDir = DirectX::XMVector3Normalize(eyeDir);
@@ -503,7 +500,7 @@ public:
 
     void Update(Core::TimeStep const& deltaTime) override
     {
-        this->m_rotation += deltaTime.GetSeconds() * 1.3f;
+        this->m_rotation += deltaTime.GetSeconds() * 2.5f;
         this->GetRoot()->SetInformativeWindowTitle("Example: Deferred Rendering", {});
 
     }
@@ -515,12 +512,10 @@ public:
         this->m_mainCamera.UpdateCamera();
 
         auto& cubeTransform = this->m_cubeInstance.GetComponent<Scene::TransformComponent>();
-        /*
         cubeTransform.LocalRotation = { 0.0f, 0.0f, 0.0f, 1.0f };
         cubeTransform.MatrixTransform(DirectX::XMMatrixRotationRollPitchYaw(0.0f, DirectX::XMConvertToRadians(this->m_rotation), 0.0f));
-        cubeTransform.MatrixTransform(DirectX::XMMatrixRotationRollPitchYaw(DirectX::XMConvertToRadians(-10), 0.0f, 0.0f));
+        // cubeTransform.MatrixTransform(DirectX::XMMatrixRotationRollPitchYaw(DirectX::XMConvertToRadians(-30), 0.0f, 0.0f));
         cubeTransform.UpdateTransform();
-        */
 
         ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
 
@@ -628,7 +623,7 @@ private:
         Scene::Entity meshEntity = this->m_simpleScene.CreateEntity("Cube");
         auto& mesh = meshEntity.AddComponent<Scene::MeshComponent>();
        
-        MeshPrefabs::CreateCube(1, materialEntity, mesh);
+        MeshPrefabs::CreateCube(1, materialEntity, mesh, true);
 
         // Add a Mesh Instance
         this->m_cubeInstance = this->m_simpleScene.CreateEntity("Cube Instance");
@@ -666,7 +661,7 @@ private:
         renderLight->SetRange(10.0f);
         renderLight->SetIntensity(10.0f);
         renderLight->SetFlags(Scene::LightComponent::kEnabled);
-        renderLight->SetDirection({ 0.0f, 1.0f, 0.0f});
+        renderLight->SetDirection({ 0.1, -1.0, 0.2 });
         renderLight->ColorPacked = Core::Math::PackColour({ 1.0f, 1.0f, 1.0f, 1.0f });
         renderLight->SetIndices(0);
         renderLight->SetNumCascades(0);
