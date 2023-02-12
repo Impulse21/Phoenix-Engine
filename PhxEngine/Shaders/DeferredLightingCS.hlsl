@@ -1,3 +1,4 @@
+#pragma pack_matrix(row_major)
 #define DEFERRED_LIGHTING_COMPILE_CS
 // #define USE_HARD_CODED_LIGHT
 // #define ENABLE_THREAD_GROUP_SWIZZLING

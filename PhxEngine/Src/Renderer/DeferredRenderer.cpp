@@ -524,8 +524,7 @@ void DeferredRenderer::RefreshEnvProbes(PhxEngine::Scene::CameraComponent const&
     }
     commandList->BindDynamicConstantBuffer(RootParameters_EnvMap_SkyProceduralCapture::CubeRenderCamsCB, renderCamsCB);
 
-    Shader::Camera shaderCamCB = {};
-    shaderCamCB.CameraPosition = skyCaptureProbe.Position;
+    Shader::Camera shaderCamCB = {};;
     commandList->BindDynamicConstantBuffer(RootParameters_EnvMap_SkyProceduralCapture::CameraCB, shaderCamCB);
 
     commandList->BindConstantBuffer(RootParameters_EnvMap_SkyProceduralCapture::FrameCB, this->m_constantBuffers[CB_Frame]);
@@ -1123,7 +1122,6 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
     this->RefreshEnvProbes(camera, scene, this->m_commandList);
 
     Shader::Camera cameraData = {};
-    cameraData.CameraPosition = camera.Eye;
     cameraData.ViewProjection = camera.ViewProjection;
     cameraData.ViewProjectionInv = camera.ViewProjectionInv;
     cameraData.ProjInv = camera.ProjectionInv;

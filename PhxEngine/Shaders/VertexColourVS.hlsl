@@ -1,3 +1,5 @@
+#pragma pack_matrix(row_major)
+
 #include "../Include/PhxEngine/Shaders/ShaderInteropStructures.h"
 
 #define RS \

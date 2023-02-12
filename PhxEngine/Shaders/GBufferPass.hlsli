@@ -94,7 +94,7 @@ PSInput main(in VertexInput input)
     output.PositionWS = mul(vertexData.Position, worldMatrix).xyz;
     output.Position = mul(float4(output.PositionWS, 1.0f), GetCamera().ViewProjection);
 
-    output.NormalWS = mul(vertexData.Normal, worldMatrix).xyz;
+    output.NormalWS = mul(vertexData.Normal, (float3x3)worldMatrix).xyz;
     output.TexCoord = vertexData.TexCoord;
     output.Colour = float4(1.0f, 1.0f, 1.0f, 1.0f);
 

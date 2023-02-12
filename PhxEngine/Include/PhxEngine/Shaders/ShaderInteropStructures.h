@@ -112,7 +112,12 @@ namespace Shader
 
 		// -- 16 byte boundary ----
 
-		float3 CameraPosition;
+#ifndef __cplusplus
+		inline float3 GetPosition()
+		{
+			return ViewInv[3].xyz;
+		}
+#endif 
 	};
 
 	// -- Common Buffers END --- 

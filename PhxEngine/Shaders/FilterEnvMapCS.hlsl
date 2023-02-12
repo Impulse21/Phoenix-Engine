@@ -1,4 +1,4 @@
-
+#pragma pack_matrix(row_major)
 
 #include "Defines.hlsli"
 #include "../Include/PhxEngine/Shaders/ShaderInterop.h"

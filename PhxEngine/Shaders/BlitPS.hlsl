@@ -1,3 +1,4 @@
+#pragma pack_matrix(row_major)
 
 #define BLIT_ROOTSIGNATURE \
 	"DescriptorTable(SRV(t0, numDescriptors = 1)), " \

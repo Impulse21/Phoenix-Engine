@@ -471,7 +471,7 @@ public:
             });
 
 
-        DirectX::XMVECTOR eyePos = DirectX::XMVectorSet(0.0f, 0.0f, -3.5f, 0.0f);
+        DirectX::XMVECTOR eyePos = DirectX::XMVectorSet(0.0f, 0.0f, -2.0f, 0.0f);
         DirectX::XMVECTOR focusPoint = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
         DirectX::XMVECTOR eyeDir = DirectX::XMVectorSubtract(focusPoint, eyePos);
         eyeDir = DirectX::XMVector3Normalize(eyeDir);
@@ -500,7 +500,7 @@ public:
 
     void Update(Core::TimeStep const& deltaTime) override
     {
-        this->m_rotation += deltaTime.GetSeconds() * 2.5f;
+        this->m_rotation += deltaTime.GetMilliseconds() * 0.1f;
         this->GetRoot()->SetInformativeWindowTitle("Example: Deferred Rendering", {});
 
     }
@@ -514,7 +514,7 @@ public:
         auto& cubeTransform = this->m_cubeInstance.GetComponent<Scene::TransformComponent>();
         cubeTransform.LocalRotation = { 0.0f, 0.0f, 0.0f, 1.0f };
         cubeTransform.MatrixTransform(DirectX::XMMatrixRotationRollPitchYaw(0.0f, DirectX::XMConvertToRadians(this->m_rotation), 0.0f));
-        // cubeTransform.MatrixTransform(DirectX::XMMatrixRotationRollPitchYaw(DirectX::XMConvertToRadians(-30), 0.0f, 0.0f));
+        cubeTransform.MatrixTransform(DirectX::XMMatrixRotationRollPitchYaw(DirectX::XMConvertToRadians(-30), 0.0f, 0.0f));
         cubeTransform.UpdateTransform();
 
         ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
@@ -526,7 +526,6 @@ public:
 
         // The camera data doesn't match whats in the CPU and what's in the GPU.
         Shader::Camera cameraData = {};
-        cameraData.CameraPosition = this->m_mainCamera.Eye;
         cameraData.ViewProjection = this->m_mainCamera.ViewProjection;
         cameraData.ViewProjectionInv = this->m_mainCamera.ViewProjectionInv;
         cameraData.ProjInv = this->m_mainCamera.ProjectionInv;
@@ -618,7 +617,7 @@ private:
         mtl.Metalness = 0.4;
         mtl.BaseColour = DirectX::XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
 
-        std::filesystem::path texturePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Textures/TestTexture.png";
+        std::filesystem::path texturePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Textures/Phoenix.png";
         mtl.BaseColourTexture = textureCache->LoadTexture(texturePath, true, commandList);
 
         Scene::Entity meshEntity = this->m_simpleScene.CreateEntity("Cube");
@@ -662,7 +661,7 @@ private:
         renderLight->SetRange(10.0f);
         renderLight->SetIntensity(10.0f);
         renderLight->SetFlags(Scene::LightComponent::kEnabled);
-        renderLight->SetDirection({ 0.1, -1.0, 0.2 });
+        renderLight->SetDirection({ 0.1, -0.2, 1.0f });
         renderLight->ColorPacked = Core::Math::PackColour({ 1.0f, 1.0f, 1.0f, 1.0f });
         renderLight->SetIndices(0);
         renderLight->SetNumCascades(0);
