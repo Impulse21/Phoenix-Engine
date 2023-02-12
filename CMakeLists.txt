@@ -30,4 +30,5 @@ add_subdirectory(PhxEngine)
 add_subdirectory(Examples/BasicTriangle)
 add_subdirectory(Examples/ThreadedRendering)
 add_subdirectory(Examples/DeferredRendering)
+add_subdirectory(Examples/Shadows)
 

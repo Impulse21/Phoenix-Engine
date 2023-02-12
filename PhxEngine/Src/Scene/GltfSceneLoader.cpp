@@ -6,6 +6,7 @@
 
 #include "PhxEngine/Scene/Scene.h"
 #include "PhxEngine/Core/Helpers.h"
+#include <PhxEngine/Core/VirtualFileSystem.h>
 #include "PhxEngine/Scene/Components.h"
 
 #include <filesystem>
@@ -214,8 +215,8 @@ static void ComputeTangentSpace(MeshComponent& mesh)
 
 struct CgltfContext
 {
-	// std::shared_ptr<IFileSystem> FileSystem;
-	std::vector<std::vector<uint8_t>> Blobs;
+	std::shared_ptr<IFileSystem> FileSystem;
+	std::vector<std::shared_ptr<IBlob>> Blobs;
 };
 
 static cgltf_result CgltfReadFile(
@@ -227,21 +228,23 @@ static cgltf_result CgltfReadFile(
 {
 	CgltfContext* context = (CgltfContext*)file_options->user_data;
 
-	std::vector<uint8_t>& dataBlob = context->Blobs.emplace_back();
-	if (!Helpers::FileRead(path, dataBlob))
+	std::unique_ptr<IBlob> dataBlob = context->FileSystem->ReadFile(path);
+	if (!dataBlob)
 	{
 		return cgltf_result_file_not_found;
 	}
 
 	if (size)
 	{
-		*size = dataBlob.size();
+		*size = dataBlob->Size();
 	}
 		
 	if (data)
 	{
-		*data = (void*)dataBlob.data();  // NOLINT(clang-diagnostic-cast-qual)
+		*data = (void*)dataBlob->Data();  // NOLINT(clang-diagnostic-cast-qual)
 	}
+
+	context->Blobs.push_back(std::move(dataBlob));
 
 	return cgltf_result_success;
 }
@@ -262,30 +265,37 @@ GltfSceneLoader::GltfSceneLoader()
 
 }
 bool GltfSceneLoader::LoadScene(
-	std::string const& fileName,
-	RHI::CommandListHandle commandList,
+	std::shared_ptr<Core::IFileSystem> fileSystem,
+	std::shared_ptr<Graphics::TextureCache> textureCache,
+	std::filesystem::path const& fileName,
+	RHI::ICommandList* commandList,
 	PhxEngine::Scene::Scene& scene)
 {
+	this->m_textureCache = textureCache;
 
 	this->m_filename = fileName; // Is this assignment safe?
 
 	std::string normalizedFileName = this->m_filename.lexically_normal().generic_string();
 
-	CgltfContext cgltfContext = {};
+	CgltfContext cgltfContext =
+	{
+		.FileSystem = fileSystem,
+		.Blobs = {}
+	};
 
 	cgltf_options options = { };
 	options.file.read = &CgltfReadFile;
 	options.file.release = &CgltfReleaseFile;
 	options.file.user_data = &cgltfContext;
 
-	std::vector<uint8_t> blob;
-	if (!Helpers::FileRead(fileName, blob))
+	std::unique_ptr<IBlob> blob = fileSystem->ReadFile(fileName);
+	if (!blob)
 	{
 		return false;
 	}
 
 	cgltf_data* objects = nullptr;
-	cgltf_result res = cgltf_parse(&options, blob.data(), blob.size(), &objects);
+	cgltf_result res = cgltf_parse(&options, blob->Data(), blob->Size(), &objects);
 
 	if (res != cgltf_result_success)
 	{
@@ -306,7 +316,7 @@ bool GltfSceneLoader::LoadScene(
 bool GltfSceneLoader::LoadSceneInternal(
 	cgltf_data* gltfData,
 	CgltfContext& context,
-	RHI::CommandListHandle commandList,
+	ICommandList* commandList,
 	Scene& scene)
 {
 	// Create a top level node
@@ -347,7 +357,7 @@ bool GltfSceneLoader::LoadSceneInternal(
 		this->LoadNode(*gltfData->scene->nodes[i], this->m_rootNode, scene);
 	}
 	
-	scene.SetBrdfLut(this->m_textureCache->LoadTexture("Assets\\Textures\\IBL\\BrdfLut.dds", true, commandList.get()));
+	scene.SetBrdfLut(this->m_textureCache->LoadTexture("Assets\\Textures\\IBL\\BrdfLut.dds", true, commandList));
 	return true;
 }
 
@@ -504,7 +514,7 @@ std::shared_ptr<Assets::Texture> GltfSceneLoader::LoadTexture(
 	bool isSRGB,
 	const cgltf_data* objects,
 	CgltfContext& context,
-	RHI::CommandListHandle commandList)
+	ICommandList* commandList)
 {
 	if (!cglftTexture)
 	{
@@ -535,15 +545,13 @@ std::shared_ptr<Assets::Texture> GltfSceneLoader::LoadTexture(
 
 	if (activeImage->buffer_view)
 	{
-		const uint8_t* dataPtr = static_cast<uint8_t*>(activeImage->buffer_view->data) + activeImage->buffer_view->offset;
+		uint8_t* dataPtr = static_cast<uint8_t*>(activeImage->buffer_view->data) + activeImage->buffer_view->offset;
 		const size_t dataSize = activeImage->buffer_view->size;
-
-		std::vector<uint8_t> textureData;
 
 		for (const auto& blob : context.Blobs)
 		{
-			const uint8_t* blobData = static_cast<const uint8_t*>(blob.data());
-			const size_t blobSize = blob.size();
+			const uint8_t* blobData = static_cast<const uint8_t*>(blob->Data());
+			const size_t blobSize = blob->Size();
 
 			if (blobData < dataPtr && blobData + blobSize > dataPtr)
 			{
@@ -557,17 +565,12 @@ std::shared_ptr<Assets::Texture> GltfSceneLoader::LoadTexture(
 			}
 		}
 
-		if (textureData.empty())
-		{
-			textureData.resize(dataSize);
-			memcpy(textureData.data(), dataPtr, dataSize);
-		}
-
+		std::shared_ptr<Core::IBlob> textureData = CreateBlob(dataPtr, dataSize);
 		texture = this->m_textureCache->LoadTexture(textureData, name, mimeType, isSRGB, commandList);
 	}
 	else
 	{
-		texture = this->m_textureCache->LoadTexture(this->m_filename.parent_path() / activeImage->uri, isSRGB, commandList.get());
+		texture = this->m_textureCache->LoadTexture(this->m_filename.parent_path() / activeImage->uri, isSRGB, commandList);
 	}
 
 	return texture;
@@ -578,7 +581,7 @@ void GltfSceneLoader::LoadMaterialData(
 	uint32_t materialCount,
 	const cgltf_data* objects,
 	CgltfContext& context,
-	PhxEngine::RHI::CommandListHandle commandList,
+	ICommandList* commandList,
 	Scene& scene)
 {
 	Entity rootMaterialNode = scene.CreateEntity("Materials");

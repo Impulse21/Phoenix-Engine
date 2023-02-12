@@ -733,6 +733,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::SetDescritporHeaps(std::array<GpuD
         }
     }
 
+    // TODO: NOT VALID FOR COPY
     this->m_d3d12CommandList->SetDescriptorHeaps(heaps.size(), heaps.data());
 }
 

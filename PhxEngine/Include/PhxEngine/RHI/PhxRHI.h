@@ -1412,6 +1412,8 @@ namespace PhxEngine::RHI
         virtual void WaitForIdle() = 0;
         virtual void QueueWaitForCommandList(CommandQueueType waitQueue, ExecutionReceipt waitOnRecipt) = 0;
 
+        virtual void RunGarbageCollection(uint64_t completedFrame = std::numeric_limits<uint64_t>::max()) = 0;
+
         virtual ExecutionReceipt ExecuteCommandLists(
             Core::Span<ICommandList*> commandLists,
             CommandQueueType executionQueue = CommandQueueType::Graphics) = 0;

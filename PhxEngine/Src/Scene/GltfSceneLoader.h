@@ -21,6 +21,7 @@ struct cgltf_node;
 
 struct CgltfContext;
 
+
 namespace PhxEngine::Graphics
 {
 	class TextureCache;
@@ -36,15 +37,17 @@ namespace PhxEngine::Scene
 		GltfSceneLoader();
 
 		bool LoadScene(
-			std::string const& fileName,
-			RHI::CommandListHandle commandList,
+			std::shared_ptr<Core::IFileSystem> fileSystem,
+			std::shared_ptr<Graphics::TextureCache> textureCache,
+			std::filesystem::path const& fileName,
+			RHI::ICommandList* commandList,
 			PhxEngine::Scene::Scene& scene) override;
 
 	private:
 		bool LoadSceneInternal(
 			cgltf_data* gltfData,
 			CgltfContext& context,
-			RHI::CommandListHandle commandList,
+			RHI::ICommandList* commandList,
 			Scene& scene);
 
 		std::shared_ptr<Assets::Texture> LoadTexture(
@@ -52,14 +55,14 @@ namespace PhxEngine::Scene
 			bool isSRGB,
 			const cgltf_data* objects,
 			CgltfContext& context,
-			RHI::CommandListHandle commandList);
+			RHI::ICommandList* commandList);
 
 		void LoadMaterialData(
 			const cgltf_material* pMaterials,
 			uint32_t materialCount,
 			const cgltf_data* objects,
 			CgltfContext& context,
-			RHI::CommandListHandle commandList,
+			RHI::ICommandList* commandList,
 			Scene& scene);
 
 		void LoadMeshData(
@@ -75,7 +78,7 @@ namespace PhxEngine::Scene
 	private:
 		std::filesystem::path m_filename;
 
-		std::unique_ptr<Graphics::TextureCache> m_textureCache;
+		std::shared_ptr<Graphics::TextureCache> m_textureCache;
 
 		Entity m_rootNode;
 		std::unordered_map<const cgltf_material*, Entity> m_materialEntityMap;

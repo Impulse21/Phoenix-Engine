@@ -23,11 +23,11 @@ namespace PhxEngine::Graphics
 			RHI::IGraphicsDevice* graphicsDevice);
 
 		std::shared_ptr<PhxEngine::Scene::Assets::Texture> LoadTexture(
-			std::vector<uint8_t> const& textureData,
+			std::shared_ptr<Core::IBlob> textureData,
 			std::string const& textureName,
 			std::string const& mmeType,
 			bool isSRGB,
-			RHI::CommandListHandle commandList);
+			RHI::ICommandList* commandList);
 
 		std::shared_ptr<PhxEngine::Scene::Assets::Texture> LoadTexture(
 			std::filesystem::path filename,

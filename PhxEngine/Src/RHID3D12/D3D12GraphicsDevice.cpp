@@ -2452,7 +2452,7 @@ RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(Gr
 
 
 // TODO: remove
-void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::RunGarbageCollection(UINT64 completedFrame)
+void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::RunGarbageCollection(uint64_t completedFrame)
 {
 	while (!this->m_deleteQueue.empty())
 	{

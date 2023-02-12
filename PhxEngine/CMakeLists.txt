@@ -195,7 +195,8 @@ target_link_libraries(${project} PUBLIC
 	stb
 	entt
 	cereal
-	rapidjson)
+	rapidjson
+	taskflow)
     
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 
