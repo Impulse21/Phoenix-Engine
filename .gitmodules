@@ -35,3 +35,6 @@
 [submodule "PhxEngine/Extern/stb"]
 	path = PhxEngine/Extern/stb
 	url = https://github.com/nothings/stb.git
+[submodule "Extern/taskflow"]
+	path = PhxEngine/Extern/taskflow
+	url = https://github.com/taskflow/taskflow.git

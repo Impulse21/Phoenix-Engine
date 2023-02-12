@@ -1,7 +1,7 @@
 #ifndef _TONE_MAPPING_HLSL__
 #define _TONE_MAPPING_HLSL__
 
-#include "Include/Shaders/ShaderInterop.h"
+#include "../Include/PhxEngine/Shaders/ShaderInterop.h"
 #include "FullScreenHelpers.hlsli"
 
 #if USE_RESOURCE_HEAP

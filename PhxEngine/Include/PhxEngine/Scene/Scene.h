@@ -3,9 +3,9 @@
 #include <sstream>
 
 #include <PhxEngine/Core/UUID.h>
-#include <PhxEngine/Graphics/RHI/PhxRHI.h>
+#include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Scene/Assets.h>
-#include <Shaders/ShaderInteropStructures.h>
+#include <PhxEngine/Shaders/ShaderInteropStructures.h>
 #include <entt.hpp>
 
 namespace PhxEngine::Scene
@@ -20,8 +20,8 @@ namespace PhxEngine::Scene
 	public:
 		static constexpr uint32_t kEnvmapCount = 16;
 		static constexpr uint32_t kEnvmapRes = 128;
-		static constexpr PhxEngine::RHI::FormatType kEnvmapFormat = PhxEngine::RHI::FormatType::R11G11B10_FLOAT;
-		static constexpr PhxEngine::RHI::FormatType kEnvmapDepth = PhxEngine::RHI::FormatType::D16;
+		static constexpr PhxEngine::RHI::RHIFormat kEnvmapFormat = PhxEngine::RHI::RHIFormat::R11G11B10_FLOAT;
+		static constexpr PhxEngine::RHI::RHIFormat kEnvmapDepth = PhxEngine::RHI::RHIFormat::D16;
 		static constexpr uint32_t kEnvmapMIPs = 8;
 		static constexpr uint32_t kEnvmapMSAASampleCount = 8;
 
@@ -56,7 +56,7 @@ namespace PhxEngine::Scene
 		}
 
 		void ConstructRenderData(
-			RHI::CommandListHandle cmd,
+			RHI::ICommandList* cmd,
 			Renderer::ResourceUpload& indexUploader,
 			Renderer::ResourceUpload& vertexUploader);
 
@@ -72,18 +72,18 @@ namespace PhxEngine::Scene
 
 		size_t GetNumInstances() const { return this->m_numInstances; }
 		PhxEngine::RHI::BufferHandle GetInstanceBuffer() const { return this->m_instanceGpuBuffer; }
-		PhxEngine::RHI::BufferHandle GetInstanceUploadBuffer() const { return this->m_instanceUploadBuffers[RHI::IGraphicsDevice::Ptr->GetFrameIndex()]; }
+		PhxEngine::RHI::BufferHandle GetInstanceUploadBuffer() const { return this->m_instanceUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
 
 		size_t GetNumGeometryEntries() const { return this->m_numGeometryEntires; }
 		PhxEngine::RHI::BufferHandle GetGeometryBuffer() const { return this->m_geometryGpuBuffer; }
-		PhxEngine::RHI::BufferHandle GetGeometryUploadBuffer() const { return this->m_geometryUploadBuffers[RHI::IGraphicsDevice::Ptr->GetFrameIndex()]; }
+		PhxEngine::RHI::BufferHandle GetGeometryUploadBuffer() const { return this->m_geometryUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
 
 		size_t GetNumMaterialEntries() const { return this->m_numMaterialEntries; }
 		PhxEngine::RHI::BufferHandle GetMaterialBuffer() const { return this->m_materialGpuBuffer; }
-		PhxEngine::RHI::BufferHandle GetMaterialUploadBuffer() const { return this->m_materialUploadBuffers[RHI::IGraphicsDevice::Ptr->GetFrameIndex()]; }
+		PhxEngine::RHI::BufferHandle GetMaterialUploadBuffer() const { return this->m_materialUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
 
 		PhxEngine::RHI::RTAccelerationStructureHandle GetTlas() { return this->m_tlas; }
-		PhxEngine::RHI::BufferHandle GetTlasUploadBuffer() { return this->m_tlasUploadBuffers[RHI::IGraphicsDevice::Ptr->GetFrameIndex()]; }
+		PhxEngine::RHI::BufferHandle GetTlasUploadBuffer() { return this->m_tlasUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
 
 		PhxEngine::RHI::TextureHandle GetEnvMapDepthBuffer() const { return this->m_envMapDepthBuffer; }
 		PhxEngine::RHI::TextureHandle GetEnvMapArray() const { return this->m_envMapArray; }

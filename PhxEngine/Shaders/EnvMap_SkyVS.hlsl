@@ -1,3 +1,4 @@
+#pragma pack_matrix(row_major)
 
 #include "Icosphere.hlsli"
 #include "Sky.hlsli"

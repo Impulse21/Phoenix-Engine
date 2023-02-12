@@ -1,7 +1,7 @@
 #ifndef __SHADOWS_HLSL__
 #define __SHADOWS_HLSL__
 
-#include "Include/Shaders/ShaderInterop.h"
+#include "../Include/PhxEngine/Shaders/ShaderInterop.h"
 
 
 inline void CalculateDirectionalShadow(ShaderLight light, float3 surfacePosition, inout float shadow)

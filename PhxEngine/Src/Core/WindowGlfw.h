@@ -6,7 +6,7 @@ struct GLFWwindow;
 
 namespace PhxEngine::Core
 {
-
+	class WindowGlfw;
 	struct WindowData
 	{
 		uint32_t Width;
@@ -17,7 +17,7 @@ namespace PhxEngine::Core
 	class WindowGlfw : public IWindow
 	{
 	public:
-		WindowGlfw(WindowSpecification const& spec);
+		WindowGlfw(PhxEngine::IPhxEngineRoot* engRoot, WindowSpecification const& spec);
 		~WindowGlfw();
 
 		void Initialize() override;
@@ -40,14 +40,23 @@ namespace PhxEngine::Core
 
 		void* GetNativeWindowHandle() override;
 		void* GetNativeWindow() override { return this->m_glfwWindow; }
+
+		bool ShouldClose() override;
+
+		void SetWindowTitle(std::string_view strView) override;
+
 	private:
+		PhxEngine::IPhxEngineRoot* m_root;
+
 		const WindowSpecification m_spec;
 		GLFWwindow* m_glfwWindow;
 
 		WindowData m_data;
+		std::string m_windowTitle;
 
 		bool m_vsyncEnabled;
 		bool m_isResizeable;
+		bool m_isVisible;
 	
 	};
 }

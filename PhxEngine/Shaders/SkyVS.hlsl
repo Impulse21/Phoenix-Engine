@@ -1,3 +1,4 @@
+#pragma pack_matrix(row_major)
 
 #include "Sky.hlsli"
 #include "FullScreenHelpers.hlsli"

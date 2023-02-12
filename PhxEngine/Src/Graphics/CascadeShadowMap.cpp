@@ -6,10 +6,10 @@
 using namespace PhxEngine;
 using namespace PhxEngine::Graphics;
 
-CascadeShadowMap::CascadeShadowMap(uint32_t resolution, RHI::FormatType format, bool isReverseZ)
+CascadeShadowMap::CascadeShadowMap(uint32_t resolution, RHI::RHIFormat format, bool isReverseZ)
 	: m_isReverseZ(isReverseZ)
 {
-	this->m_shadowMapTexArray = RHI::IGraphicsDevice::Ptr->CreateTexture(
+	this->m_shadowMapTexArray = RHI::IGraphicsDevice::GPtr->CreateTexture(
 		{
 			.BindingFlags = RHI::BindingFlags::DepthStencil | RHI::BindingFlags::ShaderResource,
 			.Dimension = RHI::TextureDimension::Texture2DArray,
@@ -22,7 +22,7 @@ CascadeShadowMap::CascadeShadowMap(uint32_t resolution, RHI::FormatType format, 
 			.DebugName = "Cascade Shadow maps",
 		});
 
-	this->m_renderPass = RHI::IGraphicsDevice::Ptr->CreateRenderPass(
+	this->m_renderPass = RHI::IGraphicsDevice::GPtr->CreateRenderPass(
 		{
 			.Attachments =
 			{
@@ -43,12 +43,12 @@ CascadeShadowMap::~CascadeShadowMap()
 {
 	if (this->m_renderPass.IsValid())
 	{
-		RHI::IGraphicsDevice::Ptr->DeleteRenderPass(this->m_renderPass);
+		RHI::IGraphicsDevice::GPtr->DeleteRenderPass(this->m_renderPass);
 	}
 
 	if (this->m_shadowMapTexArray.IsValid())
 	{
-		RHI::IGraphicsDevice::Ptr->DeleteTexture(this->m_shadowMapTexArray);
+		RHI::IGraphicsDevice::GPtr->DeleteTexture(this->m_shadowMapTexArray);
 	}
 }
 
@@ -146,7 +146,7 @@ std::vector<Renderer::RenderCam> PhxEngine::Graphics::CascadeShadowMap::CreateRe
 		DirectX::XMVECTOR vMin = cascadeCenterLS - vRadius;
 		DirectX::XMVECTOR vMax = cascadeCenterLS + vRadius;
 
-		float resolution = RHI::IGraphicsDevice::Ptr->GetTextureDesc(this->m_shadowMapTexArray).Width;
+		float resolution = RHI::IGraphicsDevice::GPtr->GetTextureDesc(this->m_shadowMapTexArray).Width;
 		const XMVECTOR extent = XMVectorSubtract(vMax, vMin);
 		const XMVECTOR texelSize = extent / float(resolution);
 		vMin = XMVectorFloor(vMin / texelSize) * texelSize;

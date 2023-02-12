@@ -2,9 +2,9 @@
 
 #include <memory>
 
-#include "PhxEngine/App/Layer.h"
+#include "PhxEngine/Engine/Layer.h"
 #include "PhxEngine/Core/Platform.h"
-#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/RHI/PhxRHI.h"
 
 // Forward Declares
 struct ImGuiContext;
@@ -35,6 +35,6 @@ namespace PhxEngine::Graphics
 		ImGuiContext* m_imguiContext;
 
 		RHI::TextureHandle m_fontTexture;
-		RHI::GraphicsPSOHandle m_pso;
+		RHI::GraphicsPipelineHandle m_pso;
 	};
 }

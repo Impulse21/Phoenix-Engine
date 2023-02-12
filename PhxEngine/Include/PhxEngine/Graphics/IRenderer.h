@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RHI/PhxRHI.h"
+#include <PhxEngine/RHI/PhxRHI.h>
 
 namespace PhxEngine::Scene
 {

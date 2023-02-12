@@ -4,11 +4,11 @@
 #include <DirectXMath.h>
 #include "entt.hpp"
 #include <PhxEngine/Core/UUID.h>
-#include <PhxEngine/Core/RefPtr.h>
 #include <PhxEngine/Core/Helpers.h>
 #include <PhxEngine/Scene/Assets.h>
 #include <PhxEngine/Core/Primitives.h>
 
+#define LH
 // Required for Operators - Move to CPP please
 using namespace DirectX;
 namespace PhxEngine::Scene
@@ -240,7 +240,7 @@ namespace PhxEngine::Scene
 				DirectX::XMLoadFloat4x4(&transform.WorldMatrix));
 
 			DirectX::XMVECTOR eye = translation;
-			DirectX::XMVECTOR at = DirectX::XMVectorSet(0, 0, -1, 0);
+			DirectX::XMVECTOR at = DirectX::XMVectorSet(0, 0, 1, 0);
 			DirectX::XMVECTOR up = DirectX::XMVectorSet(0, 1, 0, 0);
 
 			DirectX::XMMATRIX rot = DirectX::XMMatrixRotationQuaternion(rotation);
@@ -251,18 +251,13 @@ namespace PhxEngine::Scene
 			DirectX::XMStoreFloat3(&this->Eye, eye);
 			DirectX::XMStoreFloat3(&this->Forward, at);
 			DirectX::XMStoreFloat3(&this->Up, up);
+			this->SetDirty();
 		}
 
-		inline void UpdateCamera()
+		inline void UpdateCamera(bool reverseZ = false)
 		{
-#if false
-			auto e = DirectX::XMVectorSet(this->Eye.x, this->Eye.y, -this->Eye.z, 1.0f);
-			auto viewMatrix = DirectX::XMMatrixLookToLH(
-				e,
-				// DirectX::XMLoadFloat3(&this->Forward),
-				DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f),
-				DirectX::XMLoadFloat3(&this->Up));
-#else
+			const float nearZ = reverseZ ? this->ZFar : this->ZNear;
+			const float farZ = reverseZ ? this->ZNear : this->ZFar;
 #ifdef LH
 			auto viewMatrix = DirectX::XMMatrixLookToLH(
 				DirectX::XMLoadFloat3(&this->Eye),
@@ -274,38 +269,40 @@ namespace PhxEngine::Scene
 				DirectX::XMLoadFloat3(&this->Forward),
 				DirectX::XMLoadFloat3(&this->Up));
 #endif
-#endif
 			// auto viewMatrix = this->ConstructViewMatrixLH();
 
 			DirectX::XMStoreFloat4x4(&this->View, viewMatrix);
 			DirectX::XMStoreFloat4x4(&this->ViewInv, DirectX::XMMatrixInverse(nullptr, viewMatrix));
 
 			float aspectRatio = this->Width / this->Height;
-
-			// Note the farPlane is passed in as near, this is to support reverseZ
-
-#if false
-			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(1.04719758, 1904.00 / 984.00, 5000.00, 0.1);
-#else
 #ifdef LH
-			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, aspectRatio, this->ZFar, this->ZNear);
+			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, aspectRatio, nearZ, farZ);
 #else
-			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, aspectRatio, this->ZFar, this->ZNear);
-#endif
+			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, aspectRatio, nearZ, farZ);
 #endif
 			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, 1.7f, this->ZFar, this->ZNear);
 
 			DirectX::XMStoreFloat4x4(&this->Projection, projectionMatrix);
-			DirectX::XMStoreFloat4x4(&this->ProjectionInv, DirectX::XMMatrixInverse(nullptr, projectionMatrix));
+
+			this->UpdateCache();
+		}
+
+		inline void UpdateCache()
+		{
+			DirectX::XMMATRIX viewMatrix = DirectX::XMLoadFloat4x4(&this->View);
+			DirectX::XMMATRIX projectionMatrix = DirectX::XMLoadFloat4x4(&this->Projection);
 
 			auto viewProjectionMatrix = viewMatrix * projectionMatrix;
 			DirectX::XMStoreFloat4x4(&this->ViewProjection, viewProjectionMatrix);
+
+			DirectX::XMStoreFloat4x4(&this->ProjectionInv, DirectX::XMMatrixInverse(nullptr, projectionMatrix));
 
 			auto viewProjectionInv = DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix);
 			DirectX::XMStoreFloat4x4(&this->ViewProjectionInv, viewProjectionInv);
 
 			this->ProjectionFrustum = Core::Frustum(projectionMatrix, true);
 			this->ViewProjectionFrustum = Core::Frustum(viewProjectionMatrix, true);
+			DirectX::XMStoreFloat4x4(&this->ViewInv, DirectX::XMMatrixInverse(nullptr, viewMatrix));
 		}
 	};
 
@@ -519,10 +516,79 @@ namespace PhxEngine::Scene
 				std::swap(*iter, *(iter + 2));
 			}
 		}
+		
+		void ComputeTangents()
+		{
+			// http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-13-normal-mapping/#tangent-and-bitangent
+
+			assert(this->IsTriMesh());
+			assert(!this->VertexPositions.empty());
+
+			const size_t vertexCount = this->VertexPositions.size();
+			this->VertexTangents.resize(vertexCount);
+
+			std::vector<XMVECTOR> tangents(vertexCount);
+			std::vector<XMVECTOR> bitangents(vertexCount);
+
+			for (int i = 0; i < this->Indices.size(); i += 3)
+			{
+				auto& index0 = this->Indices[i + 0];
+				auto& index1 = this->Indices[i + 1];
+				auto& index2 = this->Indices[i + 2];
+
+				// Vertices
+				XMVECTOR pos0 = XMLoadFloat3(&this->VertexPositions[index0]);
+				XMVECTOR pos1 = XMLoadFloat3(&this->VertexPositions[index1]);
+				XMVECTOR pos2 = XMLoadFloat3(&this->VertexPositions[index2]);
+
+				// UVs
+				XMVECTOR uvs0 = XMLoadFloat2(&this->VertexTexCoords[index0]);
+				XMVECTOR uvs1 = XMLoadFloat2(&this->VertexTexCoords[index1]);
+				XMVECTOR uvs2 = XMLoadFloat2(&this->VertexTexCoords[index2]);
+
+				XMVECTOR deltaPos1 = pos1 - pos0;
+				XMVECTOR deltaPos2 = pos2 - pos0;
+
+				XMVECTOR deltaUV1 = uvs1 - uvs0;
+				XMVECTOR deltaUV2 = uvs2 - uvs0;
+
+				// TODO: Take advantage of SIMD better here
+				float r = 1.0f / (XMVectorGetX(deltaUV1) * XMVectorGetY(deltaUV2) - XMVectorGetY(deltaUV1) * XMVectorGetX(deltaUV2));
+
+				XMVECTOR tangent = (deltaPos1 * XMVectorGetY(deltaUV2) - deltaPos2 * XMVectorGetY(deltaUV1)) * r;
+				XMVECTOR bitangent = (deltaPos2 * XMVectorGetX(deltaUV1) - deltaPos1 * XMVectorGetX(deltaUV2)) * r;
+
+				tangents[index0] += tangent;
+				tangents[index1] += tangent;
+				tangents[index2] += tangent;
+
+				bitangents[index0] += bitangent;
+				bitangents[index1] += bitangent;
+				bitangents[index2] += bitangent;
+			}
+
+			assert(this->VertexNormals.size() == vertexCount);
+			for (int i = 0; i < vertexCount; i++)
+			{
+				const XMVECTOR normal = XMLoadFloat3(&this->VertexNormals[i]);
+				const XMVECTOR& tangent = tangents[i];
+				const XMVECTOR& bitangent = bitangents[i];
+
+				// Gram-Schmidt orthogonalize
+
+				DirectX::XMVECTOR orthTangent = DirectX::XMVector3Normalize(tangent - normal * DirectX::XMVector3Dot(normal, tangent));
+				float sign = DirectX::XMVectorGetX(DirectX::XMVector3Dot(DirectX::XMVector3Cross(normal, tangent), bitangent)) > 0
+					? -1.0f
+					: 1.0f;
+
+				XMVectorSetW(tangent, sign);
+				DirectX::XMStoreFloat4(&this->VertexTangents[i], orthTangent);
+			}
+		}
 
 		bool IsTriMesh() const { return (this->Indices.size() % 3) == 0; }
 
-		void CreateRenderData(RHI::CommandListHandle commandList, Renderer::ResourceUpload& indexUploader, Renderer::ResourceUpload& vertexUploader);
+		void CreateRenderData(RHI::ICommandList* commandList, Renderer::ResourceUpload& indexUploader, Renderer::ResourceUpload& vertexUploader);
 
 		uint64_t GetIndexBufferSizeInBytes() const;
 		uint64_t GetVertexBufferSizeInBytes() const;

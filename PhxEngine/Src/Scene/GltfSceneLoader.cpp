@@ -256,8 +256,8 @@ void CgltfReleaseFile(
 // --------------------------------------------------------------------------------
 
 
+// TODO: Fix me
 GltfSceneLoader::GltfSceneLoader()
-	: m_textureCache(std::make_unique<Graphics::TextureCache>(IGraphicsDevice::Ptr))
 {
 
 }
@@ -347,7 +347,7 @@ bool GltfSceneLoader::LoadSceneInternal(
 		this->LoadNode(*gltfData->scene->nodes[i], this->m_rootNode, scene);
 	}
 	
-	scene.SetBrdfLut(this->m_textureCache->LoadTexture("Assets\\Textures\\IBL\\BrdfLut.dds", true, commandList));
+	scene.SetBrdfLut(this->m_textureCache->LoadTexture("Assets\\Textures\\IBL\\BrdfLut.dds", true, commandList.get()));
 	return true;
 }
 
@@ -567,7 +567,7 @@ std::shared_ptr<Assets::Texture> GltfSceneLoader::LoadTexture(
 	}
 	else
 	{
-		texture = this->m_textureCache->LoadTexture(this->m_filename.parent_path() / activeImage->uri, isSRGB, commandList);
+		texture = this->m_textureCache->LoadTexture(this->m_filename.parent_path() / activeImage->uri, isSRGB, commandList.get());
 	}
 
 	return texture;

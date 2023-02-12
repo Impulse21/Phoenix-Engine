@@ -4,7 +4,7 @@
 #include <PhxEngine/Scene/Assets.h>
 #include <PhxEngine/Scene/Entity.h>
 
-#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/RHI/PhxRHI.h"
 #include <PhxEngine/Scene/AssetStore.h>
 
 #include <unordered_map>

@@ -137,7 +137,7 @@ float4 main(PSInput input) : SV_TARGET
     const float depth = GBuffer_Depth.Sample(SamplerDefault, pixelPosition).x;
     float3 surfacePosition = ReconstructWorldPosition(camera, pixelPosition, depth);
 
-    const float3 viewIncident = surfacePosition - (float3)GetCamera().CameraPosition;
+    const float3 viewIncident = surfacePosition - (float3)GetCamera().GetPosition();
     BRDFDataPerSurface brdfSurfaceData = CreatePerSurfaceBRDFData(surface, surfacePosition, viewIncident);
 
     Lighting lightingTerms;

@@ -1,4 +1,6 @@
-#include "Include/Shaders/ShaderInteropStructures.h"
+#pragma pack_matrix(row_major)
+
+#include "../Include/PhxEngine/Shaders/ShaderInteropStructures.h"
 
 #define RS \
 	"RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT), " \

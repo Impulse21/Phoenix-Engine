@@ -3,7 +3,13 @@
 #include <unordered_map>
 #include <filesystem>
 
-#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/RHI/PhxRHI.h"
+
+namespace PhxEngine::Core
+{
+	class IFileSystem;
+	class IBlob;
+}
 
 namespace PhxEngine::Graphics
 {
@@ -12,18 +18,21 @@ namespace PhxEngine::Graphics
 	public:
 		ShaderFactory(
 			RHI::IGraphicsDevice* graphicsDevice,
-			std::string const& shaderPath,
-			std::string const& shaderSourcePath);
+			std::shared_ptr<Core::IFileSystem> fs,
+			std::filesystem::path const& basePath);
 		~ShaderFactory() = default;
 
-		RHI::ShaderHandle LoadShader(RHI::ShaderStage stage, std::string const& shaderFilename);
+		RHI::ShaderHandle CreateShader(std::string const& filename, RHI::ShaderDesc const& shaderDesc);
 
 	private:
+		std::shared_ptr<Core::IBlob> GetByteCode(std::string const& filename);
+
 		bool IsShaderOutdated(std::filesystem::path const& shader);
 
 	private:
-		const std::string m_shaderPath;
-		const std::string m_shaderSourcePath;
+		const std::filesystem::path m_basePath;
+		std::shared_ptr<Core::IFileSystem> m_fs;
+		std::unordered_map<std::string, std::weak_ptr<Core::IBlob>> m_bytecodeCache;
 		RHI::IGraphicsDevice* m_graphicsDevice;
 	};
 }

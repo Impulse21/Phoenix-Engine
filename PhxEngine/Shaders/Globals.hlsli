@@ -2,8 +2,8 @@
 #define __PHX_GLOBALS_HLSLI__
 
 
-#include "Include/Shaders/ShaderInterop.h"
-#include "Include/Shaders/ShaderInteropStructures.h"
+#include "../Include/PhxEngine/Shaders/ShaderInterop.h"
+#include "../Include/PhxEngine/Shaders/ShaderInteropStructures.h"
 #include "ResourceHeapTables.hlsli"
 #if false
 #define PHX_ENGINE_DEFAULT_ROOTSIGNATURE \

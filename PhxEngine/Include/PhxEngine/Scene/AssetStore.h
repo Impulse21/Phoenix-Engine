@@ -1,7 +1,7 @@
 #pragma once
 
 #include <PhxEngine/Core/Pool.h>
-#include <PhxEngine/Graphics/RHI/PhxRHI.h>
+#include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Graphics/Enums.h>
 #include <DirectXMath.h>
 

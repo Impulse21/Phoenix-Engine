@@ -5,7 +5,8 @@
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include "GLFW/glfw3native.h"
-#include "PhxEngine/App/ApplicationEvents.h"
+#include "PhxEngine/Engine/ApplicationEvents.h"
+#include "PhxEngine/Engine/EngineRoot.h"
 
 using namespace PhxEngine::Core;
 
@@ -19,8 +20,9 @@ namespace
 	}
 }
 
-WindowGlfw::WindowGlfw(WindowSpecification const& spec)
-	: m_spec(spec)
+WindowGlfw::WindowGlfw(PhxEngine::IPhxEngineRoot* engRoot, WindowSpecification const& spec)
+	: m_root(engRoot)
+	, m_spec(spec)
 	, m_glfwWindow(nullptr)
 {
 }
@@ -50,7 +52,7 @@ void PhxEngine::Core::WindowGlfw::Initialize()
 	}
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	// glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 	this->m_glfwWindow = glfwCreateWindow(
 		static_cast<int>(this->m_spec.Width),
@@ -74,14 +76,20 @@ void PhxEngine::Core::WindowGlfw::Initialize()
 			data.Height = height;
 
 			WindowResizeEvent event(width, height);
-			data.EventCallback(event);
+			if (data.EventCallback)
+			{
+				data.EventCallback(event);
+			}
 		});
 
 	glfwSetWindowCloseCallback(this->m_glfwWindow, [](GLFWwindow* window)
 		{
 			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
 			WindowCloseEvent event;
-			data.EventCallback(event);
+			if (data.EventCallback)
+			{
+				data.EventCallback(event);
+			}
 		});
 }
 
@@ -115,4 +123,21 @@ void PhxEngine::Core::WindowGlfw::CentreWindow()
 void* PhxEngine::Core::WindowGlfw::GetNativeWindowHandle()
 {
 	return glfwGetWin32Window(this->m_glfwWindow);
+}
+
+bool PhxEngine::Core::WindowGlfw::ShouldClose()
+{
+	return glfwWindowShouldClose(this->m_glfwWindow);
+}
+
+void PhxEngine::Core::WindowGlfw::SetWindowTitle(std::string_view strView)
+{
+	if (strView == this->m_windowTitle)
+	{
+		return;
+	}
+
+	glfwSetWindowTitle(this->m_glfwWindow, strView.data());
+
+	this->m_windowTitle = strView;
 }

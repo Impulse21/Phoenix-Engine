@@ -1,12 +1,12 @@
 #include <PhxEngine/PhxEngine.h>
-#include <PhxEngine/App/EntryPoint.h>
+#include <PhxEngine/Engine/EntryPoint.h>
 
 
-class RuntimeApplication : public PhxEngine::LayeredApplication
+class RuntimeApplication : public PhxEngine::EngineApp
 {
 public:
 	RuntimeApplication(PhxEngine::ApplicationSpecification const& spec)
-		: LayeredApplication(spec)
+		: EngineApp(spec)
 	{};
 
 	void OnInit() override
@@ -16,7 +16,7 @@ public:
 	}
 };
 
-PhxEngine::LayeredApplication* PhxEngine::CreateApplication(int argc, char** argv)
+PhxEngine::EngineApp* PhxEngine::CreateApplication(int argc, char** argv)
 {
 	// Set up application
 	ApplicationSpecification spec;

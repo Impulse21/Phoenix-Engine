@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PhxEngine/Core/Platform.h"
+#include <PhxEngine/Core/Log.h>
 
 // -- STL Includes ---
 #include <iostream>

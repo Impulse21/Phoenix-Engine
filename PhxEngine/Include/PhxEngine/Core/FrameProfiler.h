@@ -3,7 +3,7 @@
 #include <array>
 #include <vector>
 #include <PhxEngine/Core/StopWatch.h>
-#include "PhxEngine/Graphics/RHI/PhxRHI.h"
+#include "PhxEngine/RHI/PhxRHI.h"
 
 namespace PhxEngine::Core
 {

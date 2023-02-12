@@ -2,9 +2,9 @@
 
 #include <PhxEngine/Graphics/ShaderStore.h>
 #include <PhxEngine/Core/Span.h>
-#include <Shaders/ShaderInteropStructures.h>
+#include <PhxEngine/Shaders/ShaderInteropStructures.h>
 #include <PhxEngine/Graphics/IRenderer.h>
-#include <PhxEngine/Graphics/RHI/PhxRHI.h>
+#include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Graphics/CascadeShadowMap.h>
 #include <array>
 #include <vector>
@@ -121,8 +121,8 @@ namespace PhxEngine::Renderer
         PhxEngine::RHI::CommandListHandle m_computeCommandList;
 
         std::array<PhxEngine::RHI::InputLayoutHandle, InputLayouts::NumILTypes> m_inputLayouts;
-        std::array<PhxEngine::RHI::GraphicsPSOHandle, PsoType::NumPsoTypes> m_pso;
-        std::array<PhxEngine::RHI::ComputePSOHandle, PsoComputeType::NumComputePsoTypes> m_psoCompute;
+        std::array<PhxEngine::RHI::GraphicsPipelineHandle, PsoType::NumPsoTypes> m_pso;
+        std::array<PhxEngine::RHI::ComputePipelineHandle, PsoComputeType::NumComputePsoTypes> m_psoCompute;
 
         // -- Textures ---
         GBuffer m_gBuffer;
@@ -133,7 +133,7 @@ namespace PhxEngine::Renderer
         DirectX::XMFLOAT2 m_canvasSize;
 
         static constexpr uint32_t kCascadeShadowMapRes = 1024;
-        static constexpr PhxEngine::RHI::FormatType kCascadeShadowMapFormat = PhxEngine::RHI::FormatType::D16;
+        static constexpr PhxEngine::RHI::RHIFormat kCascadeShadowMapFormat = PhxEngine::RHI::RHIFormat::D16;
 
         enum ConstantBufferTypes
         {

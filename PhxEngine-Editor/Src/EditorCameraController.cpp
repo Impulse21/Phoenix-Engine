@@ -8,12 +8,12 @@ using namespace PhxEngine::Scene;
 using namespace  DirectX;
 
 #include <GLFW/glfw3.h>
-#include <PhxEngine/App/Application.h>
+#include <PhxEngine/Engine/EngineApp.h>
 #include <PhxEngine/Core/Window.h>
 
 void EditorCameraController::OnUpdate(TimeStep const& timestep, CameraComponent& camera)
 {
-	auto* gltfWindow = static_cast<GLFWwindow*>(LayeredApplication::Ptr->GetWindow()->GetNativeWindow());
+	auto* gltfWindow = static_cast<GLFWwindow*>(EngineApp::Ptr->GetWindow()->GetNativeWindow());
 	assert(gltfWindow);
 	const float clampedDT = std::min(timestep.GetMilliseconds(), 0.1f); // if dt > 100 millisec, don't allow the camera to jump too far...
 	const float speed = ((glfwGetKey(gltfWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) ? 10.0f : 1.0f) * clampedDT;

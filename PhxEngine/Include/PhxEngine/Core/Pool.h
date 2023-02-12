@@ -7,6 +7,7 @@
 #include "Handle.h"
 
 #include <iostream>
+#include <PhxEngine/Core/Helpers.h>
 
 namespace PhxEngine::Core
 {
@@ -33,14 +34,18 @@ namespace PhxEngine::Core
 			this->m_freeListPosition = this->m_size - 1;
 			for (size_t i = 0; i < this->m_size; i++)
 			{
-				this->m_freeList[i] = static_cast<uint32_t>(this->m_size - i);
+				this->m_freeList[i] = static_cast<uint32_t>((this->m_size - 1) - i);
 			}
 
 		}
 
 		~Pool()
 		{
-			assert(this->IsEmpty());
+			for (int i = 0; i < this->m_size; i++)
+			{
+				this->m_data[i].~ImplT();
+			}
+
 			delete[] this->m_data;
 			delete[] this->m_freeList;
 			delete[] this->m_generations;
@@ -116,6 +121,8 @@ namespace PhxEngine::Core
 	private:
 		void Resize()
 		{
+			// RESIZING STILL DOESN"T WORK
+			assert(false);
 			size_t newSize = this->m_size * 2;
 			auto* newDataArray = new ImplT[newSize];
 			auto* newFreeListArray = new uint32_t[newSize];
@@ -127,8 +134,9 @@ namespace PhxEngine::Core
 
 			// Copy data over
 			std::memcpy(newDataArray, this->m_data, this->m_size * sizeof(ImplT));
-			std::memcpy(newFreeListArray, this->m_freeList, this->m_size * sizeof(uint32_t));
-			std::memcpy(m_generations, this->m_generations, this->m_size * sizeof(uint32_t));
+			// No need to copy the free list as we need to re-populate it.
+			// std::memcpy(newFreeListArray, this->m_freeList, this->m_size * sizeof(uint32_t));
+			std::memcpy(newGenerations, this->m_generations, this->m_size * sizeof(uint32_t));
 
 			delete[] this->m_data;
 			delete[] this->m_freeList;
@@ -138,14 +146,14 @@ namespace PhxEngine::Core
 			this->m_freeList = newFreeListArray;
 			this->m_generations = newGenerations;
 
-			// TODO: Set up New free indices;
-
-			for (size_t i = this->m_freeListPosition; i < newSize - this->m_size; i++)
-			{
-				this->m_freeList[i] = this->m_size - i;
-			}
+			this->m_freeListPosition = this->m_size - 1;
 
 			this->m_size = newSize;
+
+			for (size_t i = 0; i < this->m_size -1; i++)
+			{
+				this->m_freeList[i] = (this->m_size - 1) - i;
+			}
 		}
 
 		bool HasSpace() const { return this->m_numActiveEntries < this->m_size; }

@@ -3,7 +3,7 @@
 #include <DirectXMath.h>
 #include <PhxEngine/Core/Span.h>
 #include <PhxEngine/Core/Primitives.h>
-#include <PhxEngine/Graphics/RHI/PhxRHI.h>
+#include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Core/Helpers.h>
 
 
@@ -33,14 +33,14 @@ namespace PhxEngine::Renderer
 
 		void Free()
 		{
-			RHI::IGraphicsDevice::Ptr->DeleteBuffer(this->UploadBuffer);
+			RHI::IGraphicsDevice::GPtr->DeleteBuffer(this->UploadBuffer);
 		}
 	};
 
 	static ResourceUpload CreateResourceUpload(uint64_t sizeInBytes, std::string const& debugName = "Resource Upload")
 	{
 		ResourceUpload retVal = {};
-		retVal.UploadBuffer = RHI::IGraphicsDevice::Ptr->CreateBuffer(
+		retVal.UploadBuffer = RHI::IGraphicsDevice::GPtr->CreateBuffer(
 			{
 				.MiscFlags = RHI::BufferMiscFlags::Raw,
 				.Usage = RHI::Usage::Upload,
@@ -51,7 +51,7 @@ namespace PhxEngine::Renderer
 				.DebugName = "Resource Upload",
 			});
 
-		retVal.Data = RHI::IGraphicsDevice::Ptr->GetBufferMappedData(retVal.UploadBuffer);
+		retVal.Data = RHI::IGraphicsDevice::GPtr->GetBufferMappedData(retVal.UploadBuffer);
 		return retVal;
 	}
 
@@ -79,12 +79,14 @@ namespace PhxEngine::Renderer
 	inline void CreateCubemapCameras(DirectX::XMFLOAT3 position, float nearZ, float farZ, Core::Span<RenderCam> cameras)
 	{
 		assert(cameras.Size() == 6);
+		/*
 		cameras[0] = RenderCam(position, DirectX::XMFLOAT4(0, -0.707f, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // +x
 		cameras[1] = RenderCam(position, DirectX::XMFLOAT4(0, 0.707f, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // -x
 		cameras[2] = RenderCam(position, DirectX::XMFLOAT4(0.707f, 0, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // +y
 		cameras[3] = RenderCam(position, DirectX::XMFLOAT4(-0.707f, 0, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // -y
 		cameras[4] = RenderCam(position, DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f), nearZ, farZ, DirectX::XM_PIDIV2); // +z
 		cameras[5] = RenderCam(position, DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), nearZ, farZ, DirectX::XM_PIDIV2); // -z
+		*/
 	}
 
 	// -- Enums ---
@@ -99,7 +101,7 @@ namespace PhxEngine::Renderer
 	{
 	public:
 		// Global pointer set by intializer
-		inline static IRenderer* Ptr = nullptr;
+		inline static IRenderer* GPtr = nullptr;
 
 	public:
 		virtual ~IRenderer() = default;

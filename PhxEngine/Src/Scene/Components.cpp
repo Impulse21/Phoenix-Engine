@@ -11,7 +11,7 @@ using namespace PhxEngine::Scene;
 constexpr uint64_t kVertexBufferAlignment = 16ull;
 
 void MeshComponent::CreateRenderData(
-	RHI::CommandListHandle commandList,
+	RHI::ICommandList* commandList,
 	Renderer::ResourceUpload& indexUploader,
 	Renderer::ResourceUpload& vertexUploader)
 {
@@ -22,7 +22,7 @@ void MeshComponent::CreateRenderData(
 		indexBufferDesc.SizeInBytes = this->GetIndexBufferSizeInBytes();
 		indexBufferDesc.StrideInBytes = sizeof(uint32_t);
 		indexBufferDesc.DebugName = "Index Buffer";
-		this->IndexGpuBuffer = RHI::IGraphicsDevice::Ptr->CreateIndexBuffer(indexBufferDesc);
+		this->IndexGpuBuffer = RHI::IGraphicsDevice::GPtr->CreateIndexBuffer(indexBufferDesc);
 
 		auto offset = indexUploader.SetData(this->Indices.data(), indexBufferDesc.SizeInBytes);
 
@@ -53,7 +53,7 @@ void MeshComponent::CreateRenderData(
 		vertexDesc.SizeInBytes = this->GetVertexBufferSizeInBytes();
 
 		// Is this Needed for Raw Buffer Type
-		this->VertexGpuBuffer = RHI::IGraphicsDevice::Ptr->CreateVertexBuffer(vertexDesc);
+		this->VertexGpuBuffer = RHI::IGraphicsDevice::GPtr->CreateVertexBuffer(vertexDesc);
 
 		std::vector<uint8_t> gpuBufferData(vertexDesc.SizeInBytes);
 		std::memset(gpuBufferData.data(), 0, vertexDesc.SizeInBytes);
@@ -140,7 +140,7 @@ void MeshComponent::CreateRenderData(
 	}
 
 	// Create RT BLAS object
-	if (RHI::IGraphicsDevice::Ptr->CheckCapability(RHI::DeviceCapability::RayTracing))
+	if (RHI::IGraphicsDevice::GPtr->CheckCapability(RHI::DeviceCapability::RayTracing))
 	{
 		this->BlasState = BLASState::Rebuild;
 
@@ -159,14 +159,14 @@ void MeshComponent::CreateRenderData(
 			geometry.Triangles.VertexStride = sizeof(DirectX::XMFLOAT3);
 			geometry.Triangles.VertexByteOffset = 0;
 			geometry.Triangles.VertexCount = (uint32_t)this->VertexPositions.size();
-			geometry.Triangles.VertexFormat = RHI::FormatType::RGB32_FLOAT;
+			geometry.Triangles.VertexFormat = RHI::RHIFormat::RGB32_FLOAT;
 
 			geometry.Triangles.IndexBuffer = this->IndexGpuBuffer;
 			geometry.Triangles.IndexCount = surface.NumIndices;
 			geometry.Triangles.IndexOffset = surface.IndexOffsetInMesh;
 		}
 
-		this->Blas = RHI::IGraphicsDevice::Ptr->CreateRTAccelerationStructure(rtDesc);
+		this->Blas = RHI::IGraphicsDevice::GPtr->CreateRTAccelerationStructure(rtDesc);
 	}
 }
 

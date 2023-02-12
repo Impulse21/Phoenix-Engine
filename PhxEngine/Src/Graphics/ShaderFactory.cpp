@@ -1,8 +1,10 @@
 #include "phxpch.h"
 #include "PhxEngine/Graphics/ShaderFactory.h"
 
-#include "ShaderCompiler.h"
+// #include "ShaderCompiler.h"
 #include "PhxEngine/Core/Helpers.h"
+#include <PhxEngine/Core/VirtualFileSystem.h>
+
 
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Core;
@@ -10,14 +12,33 @@ using namespace PhxEngine::RHI;
 
 PhxEngine::Graphics::ShaderFactory::ShaderFactory(
 	RHI::IGraphicsDevice* graphicsDevice,
-	std::string const& shaderPath,
-	std::string const& shaderSourcePath)
-	: m_shaderPath(shaderPath)
-	, m_graphicsDevice(graphicsDevice)
-	, m_shaderSourcePath(shaderSourcePath)
+	std::shared_ptr<IFileSystem> fs,
+	std::filesystem::path const& basePath)
+	: m_graphicsDevice(graphicsDevice)
+	, m_fs(std::move(fs))
+	, m_basePath(basePath)
 {
 }
 
+ShaderHandle PhxEngine::Graphics::ShaderFactory::CreateShader(
+	std::string const& filename,
+	ShaderDesc const& shaderDesc)
+{
+	std::shared_ptr<IBlob> shaderByteCode = this->GetByteCode(filename);
+	
+	if (!shaderByteCode)
+	{
+		return {};
+	}
+	
+	return this->m_graphicsDevice->CreateShader(
+		shaderDesc,
+		Core::Span(
+			static_cast<const uint8_t*>(shaderByteCode->Data()),
+			shaderByteCode->Size()));
+}
+
+/*
 ShaderHandle PhxEngine::Graphics::ShaderFactory::LoadShader(ShaderStage stage, std::string const& shaderFilename)
 {
 	std::string shaderPath = this->m_shaderPath + shaderFilename;
@@ -75,6 +96,33 @@ ShaderHandle PhxEngine::Graphics::ShaderFactory::LoadShader(ShaderStage stage, s
 	desc.Stage = stage;
 
 	return this->m_graphicsDevice->CreateShader(desc, buffer.data(), buffer.size());
+}
+	*/
+
+std::shared_ptr<IBlob> PhxEngine::Graphics::ShaderFactory::GetByteCode(std::string const& filename)
+{
+	std::string adjustedName = filename;
+	{
+		size_t pos = adjustedName.find(".hlsl");
+		if (pos != std::string::npos)
+		{
+			adjustedName.erase(pos, 5);
+		}
+	}
+
+	std::filesystem::path shaderFilePath = this->m_basePath / (adjustedName + ".cso");
+
+	std::weak_ptr<IBlob>& dataWkPtr = this->m_bytecodeCache[adjustedName];
+	if (auto cachedData = dataWkPtr.lock())
+	{
+		return cachedData;
+	}
+
+	std::shared_ptr<IBlob> data = this->m_fs->ReadFile(shaderFilePath);
+
+	this->m_bytecodeCache[adjustedName] = std::weak_ptr(data);
+
+	return data;
 }
 
 bool PhxEngine::Graphics::ShaderFactory::IsShaderOutdated(std::filesystem::path const& shaderFilename)

@@ -2,8 +2,8 @@
 
 #include "Graphics/ImGui/ImGuiRenderer.h"
 #include <PhxEngine/Graphics/ShaderStore.h>
-#include <Shaders/ShaderInteropStructures.h>
-#include <PhxEngine/App/Application.h>
+#include <PhxEngine/Shaders/ShaderInteropStructures.h>
+#include <PhxEngine/Engine/EngineApp.h>
 #include <PhxEngine/Core/Window.h>
 
 #include <imgui.h>
@@ -27,7 +27,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnAttach()
     this->m_imguiContext = ImGui::CreateContext();
     ImGui::SetCurrentContext(this->m_imguiContext);
 
-    IWindow* window = LayeredApplication::Ptr->GetWindow();
+    IWindow* window = EngineApp::GPtr->GetWindow();
     auto* glfwWindow = static_cast<GLFWwindow*>(window->GetNativeWindow());
 
     if (!ImGui_ImplGlfw_InitForVulkan(glfwWindow, true))
@@ -56,11 +56,11 @@ void PhxEngine::Graphics::ImGuiRenderer::OnAttach()
     desc.Dimension = RHI::TextureDimension::Texture2D;
     desc.Width = width;
     desc.Height = height;
-    desc.Format = RHI::FormatType::RGBA8_UNORM;
+    desc.Format = RHI::RHIFormat::RGBA8_UNORM;
     desc.MipLevels = 1;
     desc.DebugName = "IMGUI Font Texture";
 
-    this->m_fontTexture = IGraphicsDevice::Ptr->CreateTexture(desc);
+    this->m_fontTexture = IGraphicsDevice::GPtr->CreateTexture(desc);
     io.Fonts->SetTexID(static_cast<void*>(&this->m_fontTexture));
     RHI::SubresourceData subResourceData = {};
 
@@ -69,7 +69,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnAttach()
     subResourceData.slicePitch = subResourceData.rowPitch * height;
     subResourceData.pData = pixelData;
 
-    CommandListHandle uploadCommandList = IGraphicsDevice::Ptr->CreateCommandList();
+    CommandListHandle uploadCommandList = IGraphicsDevice::GPtr->CreateCommandList();
 
     uploadCommandList->Open();
     uploadCommandList->TransitionBarrier(this->m_fontTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
@@ -78,13 +78,13 @@ void PhxEngine::Graphics::ImGuiRenderer::OnAttach()
 
     uploadCommandList->Close();
 
-    IGraphicsDevice::Ptr->ExecuteCommandLists(uploadCommandList.get(), true);
-    this->CreatePipelineStateObject(IGraphicsDevice::Ptr);
+    IGraphicsDevice::GPtr->ExecuteCommandLists({ uploadCommandList.get() }, true);
+    this->CreatePipelineStateObject(IGraphicsDevice::GPtr);
 }
 
 void PhxEngine::Graphics::ImGuiRenderer::OnDetach()
 {
-    IGraphicsDevice::Ptr->DeleteTexture(this->m_fontTexture);
+    IGraphicsDevice::GPtr->DeleteTexture(this->m_fontTexture);
 
     if (this->m_imguiContext)
     {
@@ -118,7 +118,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnCompose(RHI::CommandListHandle cmd)
 	ImVec2 displayPos = drawData->DisplayPos;
 
 	auto scrope = cmd->BeginScopedMarker("ImGui");
-	cmd->SetGraphicsPSO(this->m_pso);
+	cmd->SetGraphicsPipeline(this->m_pso);
 	cmd->BindResourceTable(RootParameters::BindlessResources);
 
 	// Set root arguments.
@@ -141,7 +141,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnCompose(RHI::CommandListHandle cmd)
 	Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
 	cmd->SetViewports(&v, 1);
 
-	const FormatType indexFormat = sizeof(ImDrawIdx) == 2 ? FormatType::R16_UINT : FormatType::R32_UINT;
+	const RHIFormat indexFormat = sizeof(ImDrawIdx) == 2 ? RHIFormat::R16_UINT : RHIFormat::R32_UINT;
 
 	for (int i = 0; i < drawData->CmdListsCount; ++i)
 	{
@@ -175,7 +175,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnCompose(RHI::CommandListHandle cmd)
                     // Ensure 
                     auto textureHandle = static_cast<RHI::TextureHandle*>(drawCmd.GetTexID());
                     push.TextureIndex = textureHandle
-                        ? IGraphicsDevice::Ptr->GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
+                        ? IGraphicsDevice::GPtr->GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
                         : RHI::cInvalidDescriptorIndex;
 
                     cmd->BindPushConstant(RootParameters::PushConstant, push);
@@ -194,25 +194,25 @@ void PhxEngine::Graphics::ImGuiRenderer::OnCompose(RHI::CommandListHandle cmd)
 void PhxEngine::Graphics::ImGuiRenderer::CreatePipelineStateObject(
     RHI::IGraphicsDevice* graphicsDevice)
 {
-    ShaderHandle vs = ShaderStore::Ptr->Retrieve(PreLoadShaders::VS_ImGui);
-    ShaderHandle ps = ShaderStore::Ptr->Retrieve(PreLoadShaders::PS_ImGui);
+    ShaderHandle vs = ShaderStore::GPtr->Retrieve(PreLoadShaders::VS_ImGui);
+    ShaderHandle ps = ShaderStore::GPtr->Retrieve(PreLoadShaders::PS_ImGui);
 
     std::vector<VertexAttributeDesc> attributeDesc =
     {
-        { "POSITION",   0, FormatType::RG32_FLOAT,  0, VertexAttributeDesc::SAppendAlignedElement, false},
-        { "TEXCOORD",   0, FormatType::RG32_FLOAT,  0, VertexAttributeDesc::SAppendAlignedElement, false},
-        { "COLOR",      0, FormatType::RGBA8_UNORM, 0, VertexAttributeDesc::SAppendAlignedElement, false},
+        { "POSITION",   0, RHIFormat::RG32_FLOAT,  0, VertexAttributeDesc::SAppendAlignedElement, false},
+        { "TEXCOORD",   0, RHIFormat::RG32_FLOAT,  0, VertexAttributeDesc::SAppendAlignedElement, false},
+        { "COLOR",      0, RHIFormat::RGBA8_UNORM, 0, VertexAttributeDesc::SAppendAlignedElement, false},
     };
 
     InputLayoutHandle inputLayout = graphicsDevice->CreateInputLayout(attributeDesc.data(), attributeDesc.size());
 
-    GraphicsPSODesc psoDesc = {};
+    GraphicsPipelineDesc psoDesc = {};
     psoDesc.VertexShader = vs;
     psoDesc.PixelShader = ps;
     psoDesc.InputLayout = inputLayout;
     // TODO: Render to it's own resource, then compose image.
     // TODO: Set it's own Format
-    psoDesc.RtvFormats.push_back(FormatType::R10G10B10A2_UNORM);
+    psoDesc.RtvFormats = { graphicsDevice->GetTextureDesc(graphicsDevice->GetBackBuffer()).Format };
 
     auto& blendTarget = psoDesc.BlendRenderState.Targets[0];
     blendTarget.BlendEnable = true;
@@ -252,7 +252,7 @@ void PhxEngine::Graphics::ImGuiRenderer::CreatePipelineStateObject(
     psoDesc.RootSignatureBuilder = &builder;
     */
 
-    this->m_pso = graphicsDevice->CreateGraphicsPSO(psoDesc);
+    this->m_pso = graphicsDevice->CreateGraphicsPipeline(psoDesc);
 }
 
 void PhxEngine::Graphics::ImGuiRenderer::SetDarkThemeColors()

@@ -1,6 +1,6 @@
 #include "EditorLayer.h"
-#include "PhxEngine/App/Application.h"
-#include <PhxEngine/Graphics/RHI/PhxRHI.h>
+#include "PhxEngine/Engine/EngineApp.h"
+#include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Scene/Components.h>
 #include <PhxEngine/Scene/SceneLoader.h>
 #include <PhxEngine/Scene/SceneWriter.h>
@@ -731,7 +731,7 @@ void EditorLayer::BeginDockspace()
         {
 
             if (ImGui::MenuItem("Close", NULL, false, false))
-                PhxEngine::LayeredApplication::Ptr->Close();
+                PhxEngine::EngineApp::Ptr->Close();
             ImGui::EndMenu();
         }
 
