@@ -21,6 +21,9 @@ PhxEngine::Renderer::CommonPasses::CommonPasses(RHI::IGraphicsDevice* gfxDevice,
 			.DebugName = "BlitPS",
 		});
 
+	const uint32_t texWidth = 4;
+	const uint32_t texHeight = 4;
+	const uint32_t textureSize = texWidth * texHeight;
 	this->BlackTexture = this->m_gfxDevice->CreateTexture({
 			.BindingFlags = RHI::BindingFlags::ShaderResource,
 			.Dimension = RHI::TextureDimension::Texture2D,
@@ -36,7 +39,7 @@ PhxEngine::Renderer::CommonPasses::CommonPasses(RHI::IGraphicsDevice* gfxDevice,
 			.BindingFlags = RHI::BindingFlags::ShaderResource,
 			.Dimension = RHI::TextureDimension::Texture2D,
 			.InitialState = RHI::ResourceStates::CopyDest,
-			.Format = RHI::RHIFormat::BC1_UNORM,
+			.Format = RHI::RHIFormat::RGBA8_UNORM,
 			.IsBindless = true,
 			.Width = 1,
 			.Height = 1,
@@ -45,22 +48,17 @@ PhxEngine::Renderer::CommonPasses::CommonPasses(RHI::IGraphicsDevice* gfxDevice,
 
 	RHI::ICommandList* upload = this->m_gfxDevice->BeginCommandRecording();
 
-	const uint32_t texWidth = 4;
-	const uint32_t texHeight = 4;
-	const uint32_t textureSize = texWidth * texHeight;
-
 	RHI::SubresourceData subResourceData = {};
-	subResourceData.rowPitch = (texWidth + 3) / 4 * 8;
+	//  BC1 = subResourceData.rowPitch = (texWidth + 3) / 4 * 8;
+	subResourceData.rowPitch = 1;
 	subResourceData.slicePitch = 0;
 
-	std::array<uint8_t, textureSize> blackImage;
-	std::memset(blackImage.data(), 0, blackImage.size());
-	subResourceData.pData = blackImage.data();
+	const uint32_t blackImage = 0x00000000;
+	subResourceData.pData = &blackImage;
 	upload->WriteTexture(this->BlackTexture, 0, 1, &subResourceData);
 
-	std::array<uint8_t, textureSize> whiteImage;
-	std::memset(whiteImage.data(), 0xff, whiteImage.size());
-	subResourceData.pData = whiteImage.data();
+	const uint32_t whiteImage = 0xffffffff;
+	subResourceData.pData = &whiteImage;
 	upload->WriteTexture(this->WhiteTexture, 0, 1, &subResourceData);
 
 
