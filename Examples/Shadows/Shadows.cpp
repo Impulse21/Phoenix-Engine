@@ -368,22 +368,16 @@ public:
             .DebugName = "Frame Constant Buffer",
             });
 
-
-        DirectX::XMVECTOR eyePos = DirectX::XMVectorSet(0.0f, 0.0f, -2.0f, 0.0f);
-        DirectX::XMVECTOR focusPoint = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
-        DirectX::XMVECTOR eyeDir = DirectX::XMVectorSubtract(focusPoint, eyePos);
-        eyeDir = DirectX::XMVector3Normalize(eyeDir);
-
-        DirectX::XMStoreFloat3(
-            &this->m_mainCamera.Eye,
-            eyePos);
-
-        DirectX::XMStoreFloat3(
-            &this->m_mainCamera.Forward,
-            eyeDir);
-
         this->m_mainCamera.FoV = DirectX::XMConvertToRadians(60);
+
+        Scene::TransformComponent t = {};
+        t.LocalTranslation = { 0.0f, 2.0f, 0.0f };
+        t.RotateRollPitchYaw({ 0.0f, DirectX::XMConvertToRadians(90), 0.0f });
+        t.UpdateTransform();
+
+        this->m_mainCamera.TransformCamera(t);
         this->m_mainCamera.UpdateCamera();
+
         return true;
     }
 
@@ -398,6 +392,16 @@ public:
             sceneFilename,
             commandList,
             this->m_scene);
+
+        if (retVal)
+        {
+            Renderer::ResourceUpload indexUpload;
+            Renderer::ResourceUpload vertexUpload;
+            this->m_scene.ConstructRenderData(commandList, indexUpload, vertexUpload);
+
+            indexUpload.Free();
+            vertexUpload.Free();
+        }
 
         commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList }, true);
@@ -416,9 +420,8 @@ public:
 
     void Update(Core::TimeStep const& deltaTime) override
     {
-        this->m_rotation += deltaTime.GetMilliseconds() * 0.1f;
+        this->m_rotation += deltaTime.GetSeconds() * 1.1f;
         this->GetRoot()->SetInformativeWindowTitle("Example: Deferred Rendering", {});
-
     }
 
     void RenderScene() override
@@ -465,6 +468,7 @@ public:
             for (auto e : view)
             {
                 auto [meshInstance, transform] = view.get<Scene::MeshInstanceComponent, Scene::TransformComponent>(e);
+
                 Shader::ShaderMeshInstancePointer shaderMeshPtr = {};
                 shaderMeshPtr.Create(meshInstance.GlobalBufferIndex, 0);
 

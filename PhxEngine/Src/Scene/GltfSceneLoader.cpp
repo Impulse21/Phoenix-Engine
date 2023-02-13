@@ -22,7 +22,7 @@ using namespace DirectX;
 
 namespace
 {
-	constexpr bool cUseLeftHandCoord = false;
+	constexpr bool cUseLeftHandCoord = true;
 }
 
 // TODO: Use Span
@@ -455,13 +455,6 @@ void GltfSceneLoader::LoadNode(
 			&gltfNode.rotation[0],
 			sizeof(float) * 4);
 
-
-		if (cUseLeftHandCoord)
-		{
-			transform.LocalRotation.z = -transform.LocalRotation.z;
-			transform.LocalRotation.w = -transform.LocalRotation.w;
-		}
-
 		transform.SetDirty(true);
 	}
 	if (gltfNode.has_translation)
@@ -470,11 +463,6 @@ void GltfSceneLoader::LoadNode(
 			&transform.LocalTranslation.x,
 			&gltfNode.translation[0],
 			sizeof(float) * 3);
-
-		if (cUseLeftHandCoord)
-		{
-			transform.LocalTranslation.z = -transform.LocalTranslation.z;
-		}
 
 		transform.SetDirty(true);
 	}
@@ -918,17 +906,22 @@ void GltfSceneLoader::LoadMeshData(
 			totalVertexCount += meshGeometry.NumVertices;
 		}
 
-		// Generate Tangents
-		if ((mesh.Flags & Assets::Mesh::Flags::kContainsNormals) != 0 && (mesh.Flags & Assets::Mesh::Flags::kContainsTexCoords) != 0 && (mesh.Flags & Assets::Mesh::Flags::kContainsTangents) == 0)
-		{
-			ComputeTangentSpace(mesh);
-		}
-
 		// GLTF 2.0 front face is CCW, I currently use CW as front face.
 		// something to consider to change.
 		if (!cUseLeftHandCoord)
 		{
 			mesh.ReverseWinding();
+
+			for (auto& pos : mesh.VertexPositions)
+			{
+				pos.z *= -1;
+			}
+		}
+
+		// Generate Tangents
+		if ((mesh.Flags & Assets::Mesh::Flags::kContainsNormals) != 0 && (mesh.Flags & Assets::Mesh::Flags::kContainsTexCoords) != 0 && (mesh.Flags & Assets::Mesh::Flags::kContainsTangents) == 0)
+		{
+			ComputeTangentSpace(mesh);
 		}
 	}
 }
