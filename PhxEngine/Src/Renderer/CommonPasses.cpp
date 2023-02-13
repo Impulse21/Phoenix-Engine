@@ -30,8 +30,8 @@ PhxEngine::Renderer::CommonPasses::CommonPasses(RHI::IGraphicsDevice* gfxDevice,
 			.InitialState = RHI::ResourceStates::CopyDest,
 			.Format = RHI::RHIFormat::BC1_UNORM,
 			.IsBindless = true,
-			.Width = 1,
-			.Height = 1,
+			.Width = texWidth,
+			.Height = texHeight,
 			.DebugName = "BlackTexture",
 		});
 
@@ -39,25 +39,27 @@ PhxEngine::Renderer::CommonPasses::CommonPasses(RHI::IGraphicsDevice* gfxDevice,
 			.BindingFlags = RHI::BindingFlags::ShaderResource,
 			.Dimension = RHI::TextureDimension::Texture2D,
 			.InitialState = RHI::ResourceStates::CopyDest,
-			.Format = RHI::RHIFormat::RGBA8_UNORM,
+			.Format = RHI::RHIFormat::BC1_UNORM,
 			.IsBindless = true,
-			.Width = 1,
-			.Height = 1,
+			.Width = texWidth,
+			.Height = texHeight,
 			.DebugName = "WhiteTexture",
 		});
 
 	RHI::ICommandList* upload = this->m_gfxDevice->BeginCommandRecording();
 
 	RHI::SubresourceData subResourceData = {};
-	//  BC1 = subResourceData.rowPitch = (texWidth + 3) / 4 * 8;
-	subResourceData.rowPitch = 1;
+	const uint64_t nbw = std::max<uint64_t>(1u, (uint64_t(texWidth) + 3u) / 4u);
+	const uint64_t nbh = std::max<uint64_t>(1u, (uint64_t(texHeight) + 3u) / 4u);
+	subResourceData.rowPitch = nbw * 8u;
+	subResourceData.slicePitch = subResourceData.rowPitch * nbh;
 	subResourceData.slicePitch = 0;
 
-	const uint32_t blackImage = 0x00000000;
+	const uint64_t blackImage = 0u;
 	subResourceData.pData = &blackImage;
 	upload->WriteTexture(this->BlackTexture, 0, 1, &subResourceData);
 
-	const uint32_t whiteImage = 0xffffffff;
+	const uint64_t whiteImage = ~0u;
 	subResourceData.pData = &whiteImage;
 	upload->WriteTexture(this->WhiteTexture, 0, 1, &subResourceData);
 

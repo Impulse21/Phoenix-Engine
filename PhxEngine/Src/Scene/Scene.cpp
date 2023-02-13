@@ -210,6 +210,10 @@ void PhxEngine::Scene::Scene::RunMaterialUpdateSystem(std::shared_ptr<Renderer::
 		{
 			shaderData->AlbedoTexture = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(mat.BaseColourTexture->GetRenderHandle(), RHI::SubresouceType::SRV);
 		}
+		else
+		{
+			shaderData->AlbedoTexture = commonPasses->GetWhiteTexDescriptorIndex();
+		}
 
 		shaderData->AOTexture = RHI::cInvalidDescriptorIndex;
 		if (mat.AoTexture && mat.AoTexture->GetRenderHandle().IsValid())
