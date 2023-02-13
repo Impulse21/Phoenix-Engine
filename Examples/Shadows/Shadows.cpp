@@ -371,7 +371,7 @@ public:
         this->m_mainCamera.FoV = DirectX::XMConvertToRadians(60);
 
         Scene::TransformComponent t = {};
-        t.LocalTranslation = { 0.0f, 2.0f, 0.0f };
+        t.LocalTranslation = { -5.0f, 2.0f, 0.0f };
         t.RotateRollPitchYaw({ 0.0f, DirectX::XMConvertToRadians(90), 0.0f });
         t.UpdateTransform();
 
