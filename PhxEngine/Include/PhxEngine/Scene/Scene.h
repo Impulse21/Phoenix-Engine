@@ -8,6 +8,14 @@
 #include <PhxEngine/Shaders/ShaderInteropStructures.h>
 #include <entt.hpp>
 
+namespace PhxEngine
+{
+	namespace Renderer
+	{
+		class CommonPasses;
+	}
+}
+
 namespace PhxEngine::Scene
 {
 	class Entity;
@@ -90,10 +98,10 @@ namespace PhxEngine::Scene
 		const PhxEngine::RHI::RenderPassHandle GetEnvMapRenderPasses(int index) { return this->m_envMapRenderPasses[index]; }
 
 	public:
-		void OnUpdate();
+		void OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses);
 
 	private:
-		void RunMaterialUpdateSystem();
+		void RunMaterialUpdateSystem(std::shared_ptr<Renderer::CommonPasses>& commonPasses);
 		void RunMeshUpdateSystem();
 		void RunProbeUpdateSystem();
 		void RunLightUpdateSystem();

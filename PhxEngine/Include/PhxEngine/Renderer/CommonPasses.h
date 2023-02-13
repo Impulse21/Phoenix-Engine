@@ -20,7 +20,10 @@ namespace PhxEngine::Renderer
 		RHI::ShaderHandle BlitPS;
 
 		RHI::TextureHandle BlackTexture;
+		RHI::DescriptorIndex GetBlackTexDescriptorIndex() { return this->m_gfxDevice->GetDescriptorIndex(this->BlackTexture, RHI::SubresouceType::SRV); }
+
 		RHI::TextureHandle WhiteTexture;
+		RHI::DescriptorIndex GetWhiteTexDescriptorIndex() { return this->m_gfxDevice->GetDescriptorIndex(this->WhiteTexture, RHI::SubresouceType::SRV); }
 
 	protected:
 		struct PsoCacheKey

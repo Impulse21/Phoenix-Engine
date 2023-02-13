@@ -3,6 +3,7 @@
 #include <PhxEngine/Core/Math.h>
 #include <PhxEngine/Scene/Entity.h>
 #include <PhxEngine/Scene/Components.h>
+#include <PhxEngine/Renderer/CommonPasses.h>
 
 #include <DirectXMath.h>
 
@@ -101,7 +102,7 @@ RHI::DescriptorIndex PhxEngine::Scene::Scene::GetBrdfLutDescriptorIndex()
 	return IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_brdfLut->GetRenderHandle(), RHI::SubresouceType::SRV);
 }
 
-void PhxEngine::Scene::Scene::OnUpdate()
+void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses)
 {
 	// Update Geometry Count
 	this->UpdateGpuBufferSizes();
@@ -114,7 +115,7 @@ void PhxEngine::Scene::Scene::OnUpdate()
 		std::memset(pInstanceUploadBufferData, 0, IGraphicsDevice::GPtr->GetBufferDesc(this->GetInstanceUploadBuffer()).SizeInBytes);
 	}
 
-	this->RunMaterialUpdateSystem();
+	this->RunMaterialUpdateSystem(commonPasses);
 	this->RunMeshUpdateSystem();
 	// TODO: Update Hierarchy
 	this->RunProbeUpdateSystem();
@@ -187,7 +188,7 @@ void PhxEngine::Scene::Scene::OnUpdate()
 	this->m_shaderData.EnvMap_NumMips = kEnvmapMIPs;
 }
 
-void PhxEngine::Scene::Scene::RunMaterialUpdateSystem()
+void PhxEngine::Scene::Scene::RunMaterialUpdateSystem(std::shared_ptr<Renderer::CommonPasses>& commonPasses)
 {
 	Shader::MaterialData* pMaterialUploadBufferData = (Shader::MaterialData*)IGraphicsDevice::GPtr->GetBufferMappedData(this->GetMaterialUploadBuffer());
 	auto view = this->GetAllEntitiesWith<MaterialComponent>();
@@ -231,6 +232,7 @@ void PhxEngine::Scene::Scene::RunMaterialUpdateSystem()
 		{
 			shaderData->NormalTexture = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(mat.NormalMapTexture->GetRenderHandle(), RHI::SubresouceType::SRV);
 		}
+
 		mat.GlobalBufferIndex = currMat++;
 	}
 }

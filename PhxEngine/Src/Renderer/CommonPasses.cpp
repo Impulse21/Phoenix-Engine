@@ -21,13 +21,11 @@ PhxEngine::Renderer::CommonPasses::CommonPasses(RHI::IGraphicsDevice* gfxDevice,
 			.DebugName = "BlitPS",
 		});
 
-	const uint32_t kBlackImage = 0xff000000;
-	const uint32_t kWhiteImage = 0xffffffff;
 	this->BlackTexture = this->m_gfxDevice->CreateTexture({
 			.BindingFlags = RHI::BindingFlags::ShaderResource,
 			.Dimension = RHI::TextureDimension::Texture2D,
 			.InitialState = RHI::ResourceStates::CopyDest,
-			.Format = RHI::RHIFormat::RGBA8_UNORM,
+			.Format = RHI::RHIFormat::BC1_UNORM,
 			.IsBindless = true,
 			.Width = 1,
 			.Height = 1,
@@ -38,7 +36,7 @@ PhxEngine::Renderer::CommonPasses::CommonPasses(RHI::IGraphicsDevice* gfxDevice,
 			.BindingFlags = RHI::BindingFlags::ShaderResource,
 			.Dimension = RHI::TextureDimension::Texture2D,
 			.InitialState = RHI::ResourceStates::CopyDest,
-			.Format = RHI::RHIFormat::RGBA8_UNORM,
+			.Format = RHI::RHIFormat::BC1_UNORM,
 			.IsBindless = true,
 			.Width = 1,
 			.Height = 1,
@@ -46,15 +44,25 @@ PhxEngine::Renderer::CommonPasses::CommonPasses(RHI::IGraphicsDevice* gfxDevice,
 		});
 
 	RHI::ICommandList* upload = this->m_gfxDevice->BeginCommandRecording();
+
+	const uint32_t texWidth = 4;
+	const uint32_t texHeight = 4;
+	const uint32_t textureSize = texWidth * texHeight;
+
 	RHI::SubresourceData subResourceData = {};
-	subResourceData.rowPitch = 0;
+	subResourceData.rowPitch = (texWidth + 3) / 4 * 8;
 	subResourceData.slicePitch = 0;
-	subResourceData.pData = &kBlackImage;
 
+	std::array<uint8_t, textureSize> blackImage;
+	std::memset(blackImage.data(), 0, blackImage.size());
+	subResourceData.pData = blackImage.data();
 	upload->WriteTexture(this->BlackTexture, 0, 1, &subResourceData);
 
-	subResourceData.pData = &kWhiteImage;
-	upload->WriteTexture(this->BlackTexture, 0, 1, &subResourceData);
+	std::array<uint8_t, textureSize> whiteImage;
+	std::memset(whiteImage.data(), 0xff, whiteImage.size());
+	subResourceData.pData = whiteImage.data();
+	upload->WriteTexture(this->WhiteTexture, 0, 1, &subResourceData);
+
 
 	RHI::GpuBarrier uploadBarriers[] =
 	{
@@ -64,7 +72,7 @@ PhxEngine::Renderer::CommonPasses::CommonPasses(RHI::IGraphicsDevice* gfxDevice,
 	upload->TransitionBarriers(Core::Span<RHI::GpuBarrier>(uploadBarriers, _countof(uploadBarriers)));
 
 	upload->Close();
-	this->m_gfxDevice->ExecuteCommandLists({ upload });
+	this->m_gfxDevice->ExecuteCommandLists({ upload }, true);
 }
 
 void PhxEngine::Renderer::CommonPasses::BlitTexture(RHI::ICommandList* cmdList, RHI::TextureHandle sourceTexture, RHI::RenderPassHandle renderPass, DirectX::XMFLOAT2 const& canvas)

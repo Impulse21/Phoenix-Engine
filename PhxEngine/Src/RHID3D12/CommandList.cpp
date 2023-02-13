@@ -604,7 +604,6 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::WriteTexture(TextureHandle texture
         subresources.data());
 
     this->m_graphicsDevice.DeleteD3DResource(intermediateResource);
-    this->m_trackedData->TextureHandles.push_back(texture);
 }
 
 void PhxEngine::RHI::D3D12::D3D12CommandList::WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* data, size_t rowPitch, size_t depthPitch)

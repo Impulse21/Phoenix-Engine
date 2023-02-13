@@ -642,7 +642,7 @@ private:
 
     void PrepareRenderData(ICommandList* commandList, Scene::Scene& scene)
     {
-        scene.OnUpdate();
+        scene.OnUpdate(this->m_commonPasses);
 
         GPUAllocation lightBufferAlloc =
             commandList->AllocateGpu(
