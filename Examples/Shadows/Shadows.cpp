@@ -266,7 +266,7 @@ private:
         frameData.MatricesDataOffset = 0;
         frameData.SceneData = scene.GetShaderData();
 
-        frameData.SceneData.AtmosphereData.AmbientColour = float3(0.4f, 0.0f, 0.4f);
+        frameData.SceneData.AtmosphereData.AmbientColour = float3(0.4f, 0.4f, 0.4f);
 
         // Upload data
         RHI::GpuBarrier preCopyBarriers[] =
