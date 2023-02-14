@@ -15,6 +15,7 @@
 #include <PhxEngine/Renderer/CommonPasses.h>
 #include <PhxEngine/Renderer/GBufferFillPass.h>
 #include <PhxEngine/Renderer/DeferredLightingPass.h>
+#include <PhxEngine/Renderer/ToneMappingPass.h>
 #include <PhxEngine/Core/Math.h>
 #include <PhxEngine/Engine/ApplicationBase.h>
 #include <PhxEngine/Renderer/GBuffer.h>
@@ -27,7 +28,7 @@ using namespace PhxEngine::Renderer;
 struct RenderTargets : public GBufferRenderTargets
 {
     // Extra
-    RHI::TextureHandle FinalColourBuffer;
+    RHI::TextureHandle ColourBuffer;
 
     void Initialize(
         RHI::IGraphicsDevice* gfxDevice,
@@ -42,17 +43,18 @@ struct RenderTargets : public GBufferRenderTargets
         desc.OptmizedClearValue.Colour = { 0.0f, 0.0f, 0.0f, 1.0f };
         desc.InitialState = RHI::ResourceStates::ShaderResource;
         desc.IsBindless = true;
-        desc.Format = RHI::RHIFormat::R10G10B10A2_UNORM;
-        desc.DebugName = "Final Colour Buffer";
+        desc.IsTypeless = true;
+        desc.Format = RHI::RHIFormat::RGBA16_FLOAT;
+        desc.DebugName = "Colour Buffer";
         desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::ShaderResource | BindingFlags::UnorderedAccess;
 
-        this->FinalColourBuffer = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
+        this->ColourBuffer = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
     }
 
     void Free(RHI::IGraphicsDevice* gfxDevice) override
     {
         GBufferRenderTargets::Free(gfxDevice);
-        gfxDevice->DeleteTexture(this->FinalColourBuffer);
+        gfxDevice->DeleteTexture(this->ColourBuffer);
     }
 };
 
@@ -90,6 +92,9 @@ public:
 
         this->m_deferredLightingPass = std::make_shared<DeferredLightingPass>(this->GetGfxDevice(), this->m_commonPasses);
         this->m_deferredLightingPass->Initialize(*this->m_shaderFactory);
+
+        this->m_toneMappingPass = std::make_unique<Renderer::ToneMappingPass>(this->GetGfxDevice(), this->m_commonPasses);
+        this->m_toneMappingPass->Initialize(*this->m_shaderFactory);
 
         this->m_frameConstantBuffer = RHI::IGraphicsDevice::GPtr->CreateBuffer({
             .Usage = RHI::Usage::Default,
@@ -206,15 +211,15 @@ public:
 
 		DeferredLightingPass::Input input = {};
 		input.FillGBuffer(this->m_renderTargets);
-		input.OutputTexture = this->m_renderTargets.FinalColourBuffer;
+		input.OutputTexture = this->m_renderTargets.ColourBuffer;
         input.FrameBuffer = this->m_frameConstantBuffer;
         input.CameraData = &cameraData;
 
 		this->m_deferredLightingPass->Render(commandList, input);
 
-        this->m_commonPasses->BlitTexture(
+        this->m_toneMappingPass->Render(
             commandList,
-            this->m_renderTargets.FinalColourBuffer,
+            this->m_renderTargets.ColourBuffer,
             commandList->GetRenderPassBackBuffer(),
             this->GetRoot()->GetCanvasSize());
 
@@ -319,6 +324,7 @@ private:
     std::unique_ptr<GBufferFillPass> m_gbufferFillPass;
     std::shared_ptr<DeferredLightingPass> m_deferredLightingPass;
     std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
+    std::unique_ptr<Renderer::ToneMappingPass> m_toneMappingPass;
 
     float m_rotation = 0.0f;
 };

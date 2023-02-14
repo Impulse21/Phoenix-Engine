@@ -27,7 +27,7 @@ void DeferredLightingPass::Initialize(Graphics::ShaderFactory& factory)
     this->m_computeShader = factory.CreateShader(
         "PhxEngine/DeferredLightingCS.hlsl",
         {
-            .Stage = RHI::ShaderStage::Pixel,
+            .Stage = RHI::ShaderStage::Compute,
             .DebugName = "DeferredLightingCS",
         });
 }

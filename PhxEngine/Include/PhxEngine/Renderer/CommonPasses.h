@@ -12,7 +12,7 @@ namespace PhxEngine::Renderer
 	public:
 		CommonPasses(RHI::IGraphicsDevice* gfxDevice, Graphics::ShaderFactory& shaderFactory);
 
-		void BlitTexture(RHI::ICommandList* cmdList, RHI::TextureHandle sourceTexture, RHI::RenderPassHandle descRenderPass, DirectX::XMFLOAT2 const& canvas);
+		void BlitTexture(RHI::ICommandList* cmdList, RHI::TextureHandle sourceTexture, RHI::RenderPassHandle renderPass, DirectX::XMFLOAT2 const& canvas);
 
 	public:
 		RHI::ShaderHandle FullScreenVS;

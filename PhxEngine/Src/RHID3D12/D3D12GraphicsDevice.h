@@ -78,7 +78,8 @@ namespace PhxEngine::RHI::D3D12
     {
         std::vector<uint8_t> ByteCode;
         const ShaderDesc Desc;
-        Microsoft::WRL::ComPtr<ID3D12RootSignatureDeserializer> RootSignatureDeserializer;
+        Microsoft::WRL::ComPtr<ID3D12VersionedRootSignatureDeserializer> RootSignatureDeserializer;
+        const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* RootSignatureDesc = nullptr;
         Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
 
         D3D12Shader() = default;

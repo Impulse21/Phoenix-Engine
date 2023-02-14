@@ -9,8 +9,8 @@ SamplerState Sampler : register(S0);
 
 [RootSignature(BLIT_ROOTSIGNATURE)]
 float4 main(
-	in float4 positionClip : SV_Position,
-	in float2 texCoord : TEXCOORD) : SV_TARGET
+	in float2 texCoord : TEXCOORD,
+	in float4 positionClip : SV_Position) : SV_TARGET
 {
     return SourceTexture.Sample(Sampler, texCoord);
 }
