@@ -61,13 +61,13 @@ void MeshComponent::CreateRenderData(
 
 		uint64_t startOffset = vertexUploader.Offset;
 
-		auto WriteDataToGpuBuffer = [&](VertexAttribute attr, void* data, uint64_t sizeInBytes)
+		auto WriteDataToGpuBuffer = [&](VertexAttribute attr, void* Data, uint64_t sizeInBytes)
 		{
 			auto& bufferRange = this->GetVertexAttribute(attr);
 			bufferRange.ByteOffset = bufferOffset;
 			bufferRange.SizeInBytes = sizeInBytes;
 			bufferOffset += Helpers::AlignTo(bufferRange.SizeInBytes, kVertexBufferAlignment);
-			vertexUploader.SetData(data, bufferRange.SizeInBytes, kVertexBufferAlignment);
+			vertexUploader.SetData(Data, bufferRange.SizeInBytes, kVertexBufferAlignment);
 		};
 
 		if (!this->VertexPositions.empty())

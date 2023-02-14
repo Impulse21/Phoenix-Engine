@@ -148,9 +148,9 @@ static std::pair<const uint8_t*, size_t> CgltfBufferAccessor(const cgltf_accesso
 {
 	// TODO: sparse accessor support
 	const cgltf_buffer_view* view = accessor->buffer_view;
-	const uint8_t* data = (uint8_t*)view->buffer->data + view->offset + accessor->offset;
+	const uint8_t* Data = (uint8_t*)view->buffer->data + view->offset + accessor->offset;
 	const size_t stride = view->stride ? view->stride : defaultStride;
-	return std::make_pair(data, stride);
+	return std::make_pair(Data, stride);
 }
 
 
@@ -224,7 +224,7 @@ static cgltf_result CgltfReadFile(
 	const struct cgltf_file_options* file_options,
 	const char* path,
 	cgltf_size* size,
-	void** data)
+	void** Data)
 {
 	CgltfContext* context = (CgltfContext*)file_options->user_data;
 
@@ -239,9 +239,9 @@ static cgltf_result CgltfReadFile(
 		*size = dataBlob->Size();
 	}
 		
-	if (data)
+	if (Data)
 	{
-		*data = (void*)dataBlob->Data();  // NOLINT(clang-diagnostic-cast-qual)
+		*Data = (void*)dataBlob->Data();  // NOLINT(clang-diagnostic-cast-qual)
 	}
 
 	context->Blobs.push_back(std::move(dataBlob));

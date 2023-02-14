@@ -92,10 +92,10 @@ namespace PhxEngine::RHI::D3D12
 			int32_t baseVertex = 0,
 			uint32_t startInstance = 0);
 
-		void WriteBuffer(BufferHandle buffer, const void* data, size_t dataSize, uint64_t destOffsetBytes = 0) override;
+		void WriteBuffer(BufferHandle buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes = 0) override;
 		void CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHandle src, uint64_t srcOffset, size_t sizeInBytes) override;
 		void WriteTexture(TextureHandle texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData) override;
-		void WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* data, size_t rowPitch, size_t depthPitch) override;
+		void WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* Data, size_t rowPitch, size_t depthPitch) override;
 		void SetRenderTargets(std::vector<TextureHandle> const& renderTargets, TextureHandle depthStencil) override;
 
         void SetGraphicsPipeline(GraphicsPipelineHandle graphisPSO) override;

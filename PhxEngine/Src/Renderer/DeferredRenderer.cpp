@@ -714,7 +714,7 @@ void PhxEngine::Renderer::DeferredRenderer::DrawMeshes(
     };
 
     uint32_t instanceCount = 0;
-    for (const DrawBatch& drawBatch : drawQueue.DrawBatches)
+    for (const DrawBatch& drawBatch : drawQueue.DrawItems)
     {
         entt::entity meshEntityHandle = (entt::entity)drawBatch.GetMeshEntityHandle();
 

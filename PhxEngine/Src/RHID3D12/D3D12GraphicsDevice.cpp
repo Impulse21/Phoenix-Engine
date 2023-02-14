@@ -1711,8 +1711,8 @@ TimeStep PhxEngine::RHI::D3D12::D3D12GraphicsDevice::GetTimerQueryTime(TimerQuer
 	(queryImpl->BeginQueryIndex + 2) * sizeof(uint64_t) };
 
 	const D3D12Buffer* timestampQueryBuffer = this->m_bufferPool.Get(this->m_timestampQueryBuffer);
-	uint64_t* data;
-	const HRESULT res = timestampQueryBuffer->D3D12Resource->Map(0, &bufferReadRange, (void**)&data);
+	uint64_t* Data;
+	const HRESULT res = timestampQueryBuffer->D3D12Resource->Map(0, &bufferReadRange, (void**)&Data);
 
 	if (FAILED(res))
 	{
@@ -1720,7 +1720,7 @@ TimeStep PhxEngine::RHI::D3D12::D3D12GraphicsDevice::GetTimerQueryTime(TimerQuer
 	}
 
 	queryImpl->Resolved = true;
-	queryImpl->Time = TimeStep(float(double(data[queryImpl->EndQueryIndex] - data[queryImpl->BeginQueryIndex]) / double(frequency)));
+	queryImpl->Time = TimeStep(float(double(Data[queryImpl->EndQueryIndex] - Data[queryImpl->BeginQueryIndex]) / double(frequency)));
 
 	timestampQueryBuffer->D3D12Resource->Unmap(0, nullptr);
 

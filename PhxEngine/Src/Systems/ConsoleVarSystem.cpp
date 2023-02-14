@@ -520,9 +520,9 @@ T* PtrGetConsoleVarCurrentByIndex(int32_t index)
 }
 
 template<typename T>
-void SetConsoleVarCurrentByIndex(int32_t index, const T& data) 
+void SetConsoleVarCurrentByIndex(int32_t index, const T& Data) 
 {
-    ConsoleVarSystemImpl::GetInstance()->GetConsoleVarArray<T>()->SetCurrent(data, index);
+    ConsoleVarSystemImpl::GetInstance()->GetConsoleVarArray<T>()->SetCurrent(Data, index);
 }
 
 AutoConsoleVar_Float::AutoConsoleVar_Float(const char* name, const char* description, double defaultValue, ConsoleVarFlags flags)

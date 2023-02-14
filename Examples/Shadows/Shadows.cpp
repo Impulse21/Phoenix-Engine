@@ -13,25 +13,18 @@
 #include <PhxEngine/Renderer/Renderer.h>
 #include <PhxEngine/Graphics/ShaderFactory.h>
 #include <PhxEngine/Renderer/CommonPasses.h>
+#include <PhxEngine/Renderer/GBufferFillPass.h>
 #include <PhxEngine/Core/Math.h>
 #include <PhxEngine/Engine/ApplicationBase.h>
+#include <PhxEngine/Renderer/GBuffer.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::Graphics;
+using namespace PhxEngine::Renderer;
 
-struct GBufferRenderTargets
+struct RenderTargets : public GBufferRenderTargets
 {
-    RHI::TextureHandle DepthTex;
-    RHI::TextureHandle AlbedoTex;
-    RHI::TextureHandle NormalTex;
-    RHI::TextureHandle SurfaceTex;
-    RHI::TextureHandle SpecularTex;
-
-    RHI::RenderPassHandle RenderPass;
-    DirectX::XMFLOAT2 CanvasSize;
-
-
     // Extra
     RHI::TextureHandle FinalColourBuffer;
 
@@ -39,104 +32,26 @@ struct GBufferRenderTargets
         RHI::IGraphicsDevice* gfxDevice,
         DirectX::XMFLOAT2 const& size)
     {
-        CanvasSize = size;
+        GBufferRenderTargets::Initialize(gfxDevice, size);
 
-        // -- Depth ---
         RHI::TextureDesc desc = {};
         desc.Width = std::max(size.x, 1.0f);
         desc.Height = std::max(size.y, 1.0f);
         desc.Dimension = RHI::TextureDimension::Texture2D;
-        desc.IsBindless = false;
-
-        desc.Format = RHI::RHIFormat::D32;
-        desc.IsTypeless = true;
-        desc.DebugName = "Depth Buffer";
-        desc.OptmizedClearValue.DepthStencil.Depth = 1.0f;
-        desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::DepthStencil;
-        desc.InitialState = RHI::ResourceStates::DepthWrite;
-        this->DepthTex = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
-        // -- Depth end ---
-
-        // -- GBuffers ---
         desc.OptmizedClearValue.Colour = { 0.0f, 0.0f, 0.0f, 1.0f };
-        desc.BindingFlags = RHI::BindingFlags::RenderTarget | RHI::BindingFlags::ShaderResource;
         desc.InitialState = RHI::ResourceStates::ShaderResource;
         desc.IsBindless = true;
-
-        desc.Format = RHI::RHIFormat::RGBA32_FLOAT;
-        desc.DebugName = "Albedo Buffer";
-        this->AlbedoTex = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
-
-        // desc.Format = RHI::RHIFormat::R10G10B10A2_UNORM;
-        desc.Format = RHI::RHIFormat::RGBA16_SNORM;
-        desc.DebugName = "Normal Buffer";
-        this->NormalTex = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
-
-        desc.Format = RHI::RHIFormat::RGBA8_UNORM;
-        desc.DebugName = "Surface Buffer";
-        this->SurfaceTex = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
-
-        desc.Format = RHI::RHIFormat::SRGBA8_UNORM;
-        desc.DebugName = "Specular Buffer";
-        this->SpecularTex = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
-
         desc.Format = RHI::RHIFormat::R10G10B10A2_UNORM;
         desc.DebugName = "Final Colour Buffer";
         desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::ShaderResource | BindingFlags::UnorderedAccess;
-        this->FinalColourBuffer = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
 
-        this->RenderPass = IGraphicsDevice::GPtr->CreateRenderPass(
-            {
-                .Attachments =
-                {
-                    {
-                        .LoadOp = RenderPassAttachment::LoadOpType::Clear,
-                        .Texture = this->AlbedoTex,
-                        .InitialLayout = RHI::ResourceStates::ShaderResource,
-                        .SubpassLayout = RHI::ResourceStates::RenderTarget,
-                        .FinalLayout = RHI::ResourceStates::ShaderResource
-                    },
-                    {
-                        .LoadOp = RenderPassAttachment::LoadOpType::Clear,
-                        .Texture = this->NormalTex,
-                        .InitialLayout = RHI::ResourceStates::ShaderResource,
-                        .SubpassLayout = RHI::ResourceStates::RenderTarget,
-                        .FinalLayout = RHI::ResourceStates::ShaderResource
-                    },
-                    {
-                        .LoadOp = RenderPassAttachment::LoadOpType::Clear,
-                        .Texture = this->SurfaceTex,
-                        .InitialLayout = RHI::ResourceStates::ShaderResource,
-                        .SubpassLayout = RHI::ResourceStates::RenderTarget,
-                        .FinalLayout = RHI::ResourceStates::ShaderResource
-                    },
-                    {
-                        .LoadOp = RenderPassAttachment::LoadOpType::Clear,
-                        .Texture = this->SpecularTex,
-                        .InitialLayout = RHI::ResourceStates::ShaderResource,
-                        .SubpassLayout = RHI::ResourceStates::RenderTarget,
-                        .FinalLayout = RHI::ResourceStates::ShaderResource
-                    },
-                    {
-                        .Type = RenderPassAttachment::Type::DepthStencil,
-                        .LoadOp = RenderPassAttachment::LoadOpType::Clear,
-                        .Texture = this->DepthTex,
-                        .InitialLayout = RHI::ResourceStates::DepthWrite,
-                        .SubpassLayout = RHI::ResourceStates::DepthWrite,
-                        .FinalLayout = RHI::ResourceStates::DepthWrite
-                    },
-                }
-            });
+        this->FinalColourBuffer = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
     }
 
-    void Free(RHI::IGraphicsDevice* gfxDevice)
+    void Free(RHI::IGraphicsDevice* gfxDevice) override
     {
-        gfxDevice->DeleteRenderPass(this->RenderPass);
-        gfxDevice->DeleteTexture(this->DepthTex);
-        gfxDevice->DeleteTexture(this->AlbedoTex);
-        gfxDevice->DeleteTexture(this->NormalTex);
-        gfxDevice->DeleteTexture(this->SurfaceTex);
-        gfxDevice->DeleteTexture(this->SpecularTex);
+        GBufferRenderTargets::Free(gfxDevice);
+        gfxDevice->DeleteTexture(this->FinalColourBuffer);
     }
 };
 
@@ -157,7 +72,7 @@ struct DeferredLightingPass
         RHI::BufferHandle FrameBuffer;
         Shader::Camera* CameraData;
 
-        void FillGBuffer(GBufferRenderTargets const& renderTargets)
+        void FillGBuffer(RenderTargets const& renderTargets)
         {
             this->Depth = renderTargets.DepthTex;
             this->GBufferAlbedo = renderTargets.AlbedoTex;
@@ -258,76 +173,6 @@ private:
     RHI::ComputePipelineHandle m_computePso;
 };
 
-// TODO: MOVE TO ENGINE AND UPDATE DEFERREED RENDERER
-struct GBufferFillPass
-{
-    void Initialize(Graphics::ShaderFactory& factory)
-    {
-        this->m_vertexShader = factory.CreateShader(
-            "PhxEngine/GBufferPassVS.hlsl",
-            {
-                .Stage = RHI::ShaderStage::Vertex,
-                .DebugName = "GBufferPassVS",
-            });
-
-        this->m_pixelShader = factory.CreateShader(
-            "PhxEngine/GBufferPassPS.hlsl",
-            {
-                .Stage = RHI::ShaderStage::Vertex,
-                .DebugName = "GBufferPassPS",
-            });
-    }
-
-    void WindowResized(IGraphicsDevice* gfxDevice)
-    {
-        gfxDevice->DeleteGraphicsPipeline(this->m_pipeline);
-        this->m_pipeline = {};
-    }
-
-    void BeginPass(IGraphicsDevice* gfxDevice, ICommandList* commandList, BufferHandle frameCB, Shader::Camera cameraData, GBufferRenderTargets const& gbufferRenderTargets)
-    {
-		commandList->BeginRenderPass(gbufferRenderTargets.RenderPass);
-
-		if (!this->m_pipeline.IsValid())
-		{
-			this->m_pipeline = gfxDevice->CreateGraphicsPipeline(
-				{
-					.VertexShader = this->m_vertexShader,
-					.PixelShader = this->m_pixelShader,
-			        .RtvFormats = {
-				        IGraphicsDevice::GPtr->GetTextureDesc(gbufferRenderTargets.AlbedoTex).Format,
-				        IGraphicsDevice::GPtr->GetTextureDesc(gbufferRenderTargets.NormalTex).Format,
-				        IGraphicsDevice::GPtr->GetTextureDesc(gbufferRenderTargets.SurfaceTex).Format,
-				        IGraphicsDevice::GPtr->GetTextureDesc(gbufferRenderTargets.SpecularTex).Format,
-			        },
-			        .DsvFormat = { IGraphicsDevice::GPtr->GetTextureDesc(gbufferRenderTargets.DepthTex).Format }
-				});
-		}
-        commandList->SetGraphicsPipeline(this->m_pipeline);
-
-        RHI::Viewport v(gbufferRenderTargets.CanvasSize.x, gbufferRenderTargets.CanvasSize.y);
-        commandList->SetViewports(&v, 1);
-
-        RHI::Rect rec(LONG_MAX, LONG_MAX);
-        commandList->SetScissors(&rec, 1);
-
-        commandList->BindConstantBuffer(1, frameCB);
-
-        // TODO: Create a camera const buffer as well
-        commandList->BindDynamicConstantBuffer(2, cameraData);
-    }
-
-    void EndPass(ICommandList* commandList)
-    {
-        commandList->EndRenderPass();
-    }
-private:
-    RHI::ShaderHandle m_vertexShader;
-    RHI::ShaderHandle m_pixelShader;
-    RHI::GraphicsPipelineHandle m_pipeline;
-
-};
-
 class Shadows : public ApplicationBase
 {
 private:
@@ -356,7 +201,10 @@ public:
         this->BeginLoadingScene(nativeFS, scenePath);
 
         this->m_renderTargets.Initialize(this->GetGfxDevice(), this->GetRoot()->GetCanvasSize());
-        this->m_gbufferFillPass.Initialize(*this->m_shaderFactory);
+
+        this->m_gbufferFillPass = std::make_unique<GBufferFillPass>(this->GetGfxDevice(), this->m_commonPasses);
+        this->m_gbufferFillPass->Initialize(*this->m_shaderFactory);
+
         this->m_deferredLightingPass = std::make_shared<DeferredLightingPass>(this->GetGfxDevice(), this->m_commonPasses);
         this->m_deferredLightingPass->Initialize(*this->m_shaderFactory);
 
@@ -415,7 +263,7 @@ public:
         this->m_pipeline = {};
         this->m_renderTargets.Free(this->GetGfxDevice());
         this->m_renderTargets.Initialize(this->GetGfxDevice(), this->GetRoot()->GetCanvasSize());
-        this->m_gbufferFillPass.WindowResized(this->GetGfxDevice());
+        this->m_gbufferFillPass->WindowResized();
     }
 
     void Update(Core::TimeStep const& deltaTime) override
@@ -444,61 +292,33 @@ public:
         cameraData.ProjInv = this->m_mainCamera.ProjectionInv;
         cameraData.ViewInv = this->m_mainCamera.ViewInv;
 
-        // Set up RenderData
         {
-
             auto _ = commandList->BeginScopedMarker("GBuffer Fill");
 
-            this->m_gbufferFillPass.BeginPass(this->GetGfxDevice(), commandList, this->m_frameConstantBuffer, cameraData, this->m_renderTargets);
-            auto view = this->m_scene.GetAllEntitiesWith<Scene::MeshInstanceComponent, Scene::TransformComponent>();
-            uint32_t instanceCount = 0;
+            this->m_gbufferFillPass->BeginPass(commandList, this->m_frameConstantBuffer, cameraData, this->m_renderTargets);
+            static thread_local DrawQueue drawQueue;
+            drawQueue.Reset();
+
+            // Look through Meshes and instances?
+            auto view = this->m_scene.GetAllEntitiesWith<Scene::MeshInstanceComponent, Scene::AABBComponent>();
             for (auto e : view)
             {
-                instanceCount++;
-            }
+                auto [instanceComponent, aabbComp] = view.get<Scene::MeshInstanceComponent, Scene::AABBComponent>(e);
 
-            GPUAllocation instanceBufferAlloc =
-                commandList->AllocateGpu(
-                    sizeof(Shader::ShaderMeshInstancePointer) * (size_t)instanceCount,
-                    sizeof(Shader::ShaderMeshInstancePointer));
-
-            const DescriptorIndex instanceBufferDescriptorIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(instanceBufferAlloc.GpuBuffer, RHI::SubresouceType::SRV);
-            Shader::ShaderMeshInstancePointer* pInstancePointerData = (Shader::ShaderMeshInstancePointer*)instanceBufferAlloc.CpuData;
-            instanceCount = 0;
-            for (auto e : view)
-            {
-                auto [meshInstance, transform] = view.get<Scene::MeshInstanceComponent, Scene::TransformComponent>(e);
-
-                Shader::ShaderMeshInstancePointer shaderMeshPtr = {};
-                shaderMeshPtr.Create(meshInstance.GlobalBufferIndex, 0);
-
-                // Write into actual GPU-buffer:
-                std::memcpy(pInstancePointerData + instanceCount, &shaderMeshPtr, sizeof(shaderMeshPtr)); // memcpy whole structure into mapped pointer to avoid read from uncached memory
-                instanceCount++;
-
-                auto meshComponent= this->m_scene.GetRegistry().get<Scene::MeshComponent>(meshInstance.Mesh);
-                commandList->BindIndexBuffer(meshComponent.IndexGpuBuffer);
-
-                for (size_t i = 0; i < meshComponent.Surfaces.size(); i++)
+                auto& meshComponent = this->m_scene.GetRegistry().get<Scene::MeshComponent>(instanceComponent.Mesh);
+                if (meshComponent.RenderBucketMask & Scene::MeshComponent::RenderType_Transparent)
                 {
-                    auto& materiaComp = this->m_scene.GetRegistry().get<Scene::MaterialComponent>(meshComponent.Surfaces[i].Material);
-
-                    Shader::GeometryPassPushConstants pushConstant = {};
-                    pushConstant.GeometryIndex = meshComponent.GlobalGeometryBufferIndex + i;
-                    pushConstant.MaterialIndex = materiaComp.GlobalBufferIndex;
-                    pushConstant.InstancePtrBufferDescriptorIndex = instanceBufferDescriptorIndex;
-                    pushConstant.InstancePtrDataOffset = (uint32_t)(instanceBufferAlloc.Offset + instanceCount * sizeof(Shader::ShaderMeshInstancePointer));
-
-                    commandList->BindPushConstant(0, pushConstant);
-
-                    commandList->DrawIndexed(
-                        meshComponent.Surfaces[i].NumIndices,
-                        1,
-                        meshComponent.Surfaces[i].IndexOffsetInMesh);
+                    continue;
                 }
+
+                const float distance = Core::Math::Distance(this->m_mainCamera.Eye, aabbComp.BoundingData.GetCenter());
+
+                drawQueue.Push((uint32_t)instanceComponent.Mesh, (uint32_t)e, distance);
             }
 
-            this->m_gbufferFillPass.EndPass(commandList);
+            drawQueue.SortOpaque();
+
+            RenderViews(commandList, this->m_gbufferFillPass.get(), this->m_scene, drawQueue, true);
         }
 
 		DeferredLightingPass::Input input = {};
@@ -612,8 +432,8 @@ private:
 
     RHI::BufferHandle m_frameConstantBuffer;
 
-    GBufferRenderTargets m_renderTargets;
-    GBufferFillPass m_gbufferFillPass;
+    RenderTargets m_renderTargets;
+    std::unique_ptr<GBufferFillPass> m_gbufferFillPass;
     std::shared_ptr<DeferredLightingPass> m_deferredLightingPass;
     std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
 

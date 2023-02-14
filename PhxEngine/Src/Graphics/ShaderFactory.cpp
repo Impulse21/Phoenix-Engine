@@ -118,11 +118,11 @@ std::shared_ptr<IBlob> PhxEngine::Graphics::ShaderFactory::GetByteCode(std::stri
 		return cachedData;
 	}
 
-	std::shared_ptr<IBlob> data = this->m_fs->ReadFile(shaderFilePath);
+	std::shared_ptr<IBlob> Data = this->m_fs->ReadFile(shaderFilePath);
 
-	this->m_bytecodeCache[adjustedName] = std::weak_ptr(data);
+	this->m_bytecodeCache[adjustedName] = std::weak_ptr(Data);
 
-	return data;
+	return Data;
 }
 
 bool PhxEngine::Graphics::ShaderFactory::IsShaderOutdated(std::filesystem::path const& shaderFilename)

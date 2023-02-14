@@ -48,7 +48,7 @@ namespace PhxEngine::Core
 			std::filesystem::create_directories(path);
 		}
 
-		inline bool FileRead(std::string const& file, std::vector<uint8_t>& data)
+		inline bool FileRead(std::string const& file, std::vector<uint8_t>& Data)
 		{
 			std::ifstream fStream(file, std::ios::binary | std::ios::ate);
 
@@ -56,8 +56,8 @@ namespace PhxEngine::Core
 			{
 				const size_t dataSize = fStream.tellg();
 				fStream.seekg(0, fStream.beg);
-				data.resize(dataSize);
-				fStream.read((char*)data.data(), dataSize);
+				Data.resize(dataSize);
+				fStream.read((char*)Data.data(), dataSize);
 				fStream.close();
 				return true;
 			}
@@ -65,7 +65,7 @@ namespace PhxEngine::Core
 			return false;
 		}
 
-		inline bool FileWrite(const std::string& fileName, const uint8_t* data, size_t size)
+		inline bool FileWrite(const std::string& fileName, const uint8_t* Data, size_t size)
 		{
 			if (size <= 0)
 			{
@@ -75,7 +75,7 @@ namespace PhxEngine::Core
 			std::ofstream file(fileName, std::ios::binary | std::ios::trunc);
 			if (file.is_open())
 			{
-				file.write((const char*)data, (std::streamsize)size);
+				file.write((const char*)Data, (std::streamsize)size);
 				file.close();
 				return true;
 			}
