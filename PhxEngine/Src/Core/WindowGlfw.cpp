@@ -91,6 +91,17 @@ void PhxEngine::Core::WindowGlfw::Initialize()
 				Data.EventCallback(event);
 			}
 		});
+
+	glfwSetKeyCallback(this->m_glfwWindow, [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+			
+		WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+		WindowKeyEvent event(key, scancode, action, mods);
+		if (data.EventCallback)
+		{
+			data.EventCallback(event);
+		}
+			
+		});
 }
 
 void PhxEngine::Core::WindowGlfw::OnUpdate()

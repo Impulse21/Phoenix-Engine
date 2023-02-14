@@ -19,6 +19,7 @@
 #include <PhxEngine/Core/Math.h>
 #include <PhxEngine/Engine/ApplicationBase.h>
 #include <PhxEngine/Renderer/GBuffer.h>
+#include <PhxEngine/Engine/CameraControllers.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
@@ -158,6 +159,7 @@ public:
     {
         this->m_rotation += deltaTime.GetSeconds() * 1.1f;
         this->GetRoot()->SetInformativeWindowTitle("Example: Deferred Rendering", {});
+        this->m_cameraController.OnUpdate(this->GetRoot()->GetWindow(), deltaTime, this->m_mainCamera);
     }
 
     void RenderScene() override
@@ -266,7 +268,7 @@ private:
         frameData.MatricesDataOffset = 0;
         frameData.SceneData = scene.GetShaderData();
 
-        frameData.SceneData.AtmosphereData.AmbientColour = float3(0.4f, 0.4f, 0.4f);
+        frameData.SceneData.AtmosphereData.AmbientColour = float3(0.0f, 0.0f, 0.0f);
 
         // Upload data
         RHI::GpuBarrier preCopyBarriers[] =
@@ -317,7 +319,7 @@ private:
     RHI::GraphicsPipelineHandle m_pipeline;
     Scene::Scene m_scene;
     Scene::CameraComponent m_mainCamera;
-
+    PhxEngine::FirstPersonCameraController m_cameraController;
     RHI::BufferHandle m_frameConstantBuffer;
 
     RenderTargets m_renderTargets;

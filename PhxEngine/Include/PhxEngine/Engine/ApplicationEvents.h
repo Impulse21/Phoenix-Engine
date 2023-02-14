@@ -31,5 +31,30 @@ namespace PhxEngine
 		uint32_t m_width;
 		uint32_t m_height;
 	};
+
+	class WindowKeyEvent : public Core::Event
+	{
+	public:
+		WindowKeyEvent(int key, int scancode, int action, int mods)
+			: m_key(key)
+			, m_scancode(scancode)
+			, m_action(action)
+			, m_mods(mods)
+		{}
+
+		EVENT_CLASS_TYPE(WindowKeyEvent);
+
+
+		int GetKey() const { this->m_key; }
+		int GetScanCode() const { this->m_scancode; };
+		int GetAction() const { this->m_action; };
+		int GetMods() const { this->m_mods; }
+
+	private:
+		int m_key;
+		int m_scancode;
+		int m_action;
+		int m_mods;
+	};
 }
 
