@@ -78,7 +78,8 @@ namespace PhxEngine::RHI::D3D12
     {
         std::vector<uint8_t> ByteCode;
         const ShaderDesc Desc;
-        Microsoft::WRL::ComPtr<ID3D12RootSignatureDeserializer> RootSignatureDeserializer;
+        Microsoft::WRL::ComPtr<ID3D12VersionedRootSignatureDeserializer> RootSignatureDeserializer;
+        const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* RootSignatureDesc = nullptr;
         Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
 
         D3D12Shader() = default;
@@ -310,6 +311,8 @@ namespace PhxEngine::RHI::D3D12
         void WaitForIdle() override;
         void QueueWaitForCommandList(CommandQueueType waitQueue, ExecutionReceipt waitOnRecipt) override;
 
+        void RunGarbageCollection(uint64_t completedFrame = std::numeric_limits<uint64_t>::max()) override;
+
         // TODO: Return a handle to viewport so we can have more then one. Need to sort out how delete queue would work.
         void CreateViewport(ViewportDesc const& desc) override;
         void ResizeViewport(ViewportDesc const desc) override;
@@ -410,7 +413,6 @@ namespace PhxEngine::RHI::D3D12
         int CreateUnorderedAccessView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
 
     public:
-        void RunGarbageCollection(UINT64 completedFrame);
         void CreateBackBuffers(D3D12Viewport* viewport);
 
 
@@ -530,7 +532,7 @@ namespace PhxEngine::RHI::D3D12
 
         struct DeleteItem
         {
-            uint32_t Frame;
+            uint64_t Frame;
             std::function<void()> DeleteFn;
         };
         std::deque<DeleteItem> m_deleteQueue;

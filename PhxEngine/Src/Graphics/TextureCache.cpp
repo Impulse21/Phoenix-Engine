@@ -117,11 +117,11 @@ TextureCache::TextureCache(
 {}
 
 std::shared_ptr<Assets::Texture> PhxEngine::Graphics::TextureCache::LoadTexture(
-    std::vector<uint8_t> const& textureData,
+    std::shared_ptr<IBlob> textureData,
     std::string const& textureName,
     std::string const& mmeType,
     bool isSRGB,
-    RHI::CommandListHandle commandList)
+    RHI::ICommandList* commandList)
 {
     std::string cacheKey = textureName;
     std::shared_ptr<Assets::Texture> texture = this->GetTextureFromCache(cacheKey);
@@ -135,19 +135,18 @@ std::shared_ptr<Assets::Texture> PhxEngine::Graphics::TextureCache::LoadTexture(
     texture->m_forceSRGB = isSRGB;
     texture->m_path = "Blob";
 
-    if (textureData.empty())
+    if (textureData == nullptr || IBlob::IsEmpty(*textureData))
     {
-        // LOG_CORE_ERROR("Failed to load texture data");
+        LOG_CORE_ERROR("Failed to load texture data");
         return nullptr;
     }
 
-    /* TODO FIX ME
-    if (this->FillTextureData(textureData, texture, "", mmeType))
+    if (this->FillTextureData(*textureData, texture, "", mmeType))
     {
         this->CacheTextureData(cacheKey, texture);
         this->FinalizeTexture(texture, commandList);
     }
-    */
+
     return texture;
 }
 

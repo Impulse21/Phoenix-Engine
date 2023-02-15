@@ -26,6 +26,8 @@ namespace PhxEngine
 		void Run() override;
 		void AddPassToBack(EngineRenderPass* pass) override;
 		void RemovePass(EngineRenderPass* pass) override;
+
+		Core::IWindow* GetWindow() override { return this->m_window.get(); }
 		void SetInformativeWindowTitle(std::string_view appName, std::string_view extraInfo) override;
 
 		RHI::IGraphicsDevice* GetGfxDevice() override { return this->m_gfxDevice.get(); }

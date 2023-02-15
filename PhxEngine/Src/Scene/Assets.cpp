@@ -152,7 +152,7 @@ void Assets::Mesh::CreateRenderData(RHI::CommandListHandle commandList)
 		std::memset(gpuBufferData.data(), 0, vertexDesc.SizeInBytes);
 		uint64_t bufferOffset = 0ull;
 
-		auto WriteDataToGpuBuffer = [&](VertexAttribute attr, void* data, uint64_t sizeInBytes)
+		auto WriteDataToGpuBuffer = [&](VertexAttribute attr, void* Data, uint64_t sizeInBytes)
 		{
 			auto& bufferRange = this->GetVertexAttribute(attr);
 			bufferRange.ByteOffset = bufferOffset;
@@ -160,7 +160,7 @@ void Assets::Mesh::CreateRenderData(RHI::CommandListHandle commandList)
 
 			bufferOffset += Helpers::AlignTo(bufferRange.SizeInBytes, alignment);
 			// DirectX::XMFLOAT3* vertices = reinterpret_cast<DirectX::XMFLOAT3*>(gpuBufferData.data() + bufferOffset);
-			std::memcpy(gpuBufferData.data() + bufferRange.ByteOffset, data, bufferRange.SizeInBytes);
+			std::memcpy(gpuBufferData.data() + bufferRange.ByteOffset, Data, bufferRange.SizeInBytes);
 		};
 
 		if (!this->VertexPositions.empty())

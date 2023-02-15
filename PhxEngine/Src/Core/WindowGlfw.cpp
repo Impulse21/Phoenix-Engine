@@ -71,25 +71,36 @@ void PhxEngine::Core::WindowGlfw::Initialize()
 	// Set GLFW callbacks
 	glfwSetWindowSizeCallback(this->m_glfwWindow, [](GLFWwindow* window, int width, int height)
 		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
-			data.Width = width;
-			data.Height = height;
+			WindowData& Data = *(WindowData*)glfwGetWindowUserPointer(window);
+			Data.Width = width;
+			Data.Height = height;
 
 			WindowResizeEvent event(width, height);
-			if (data.EventCallback)
+			if (Data.EventCallback)
 			{
-				data.EventCallback(event);
+				Data.EventCallback(event);
 			}
 		});
 
 	glfwSetWindowCloseCallback(this->m_glfwWindow, [](GLFWwindow* window)
 		{
-			WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+			WindowData& Data = *(WindowData*)glfwGetWindowUserPointer(window);
 			WindowCloseEvent event;
-			if (data.EventCallback)
+			if (Data.EventCallback)
 			{
-				data.EventCallback(event);
+				Data.EventCallback(event);
 			}
+		});
+
+	glfwSetKeyCallback(this->m_glfwWindow, [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+			
+		WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+		WindowKeyEvent event(key, scancode, action, mods);
+		if (data.EventCallback)
+		{
+			data.EventCallback(event);
+		}
+			
 		});
 }
 

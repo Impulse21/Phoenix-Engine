@@ -32,7 +32,7 @@ namespace PhxEngine::Core
 		virtual bool FileExists(std::filesystem::path const& name) = 0;
 		virtual bool FolderExists(std::filesystem::path const& name) = 0;
 		virtual std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) = 0;
-		virtual bool WriteFile(std::filesystem::path const& name, Core::Span<char> data) = 0;
+		virtual bool WriteFile(std::filesystem::path const& name, Core::Span<char> Data) = 0;
 	};
 
 	class IRootFileSystem : public IFileSystem
@@ -48,5 +48,5 @@ namespace PhxEngine::Core
 	std::unique_ptr<IFileSystem> CreateNativeFileSystem();
 	std::unique_ptr<IFileSystem> CreateRelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::filesystem::path& baseBath);
 	std::unique_ptr<IRootFileSystem> CreateRootFileSystem();
-	std::unique_ptr<IBlob> CreateBlob(void* data, size_t size);
+	std::unique_ptr<IBlob> CreateBlob(void* Data, size_t size);
 }

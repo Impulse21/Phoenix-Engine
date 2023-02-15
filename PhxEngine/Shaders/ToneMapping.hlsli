@@ -22,6 +22,15 @@
 
 #endif
 
+struct PushConstant
+{
+    float Exposure;
+};
+
+PUSH_CONSTANT(push, PushConstant);
+Texture2D HdrBuffer : register(t0);
+SamplerState DefaultSampler : register(s50);
+
 // https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/ACES.hlsl
 // sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
 static const float3x3 ACESInputMat =
@@ -56,53 +65,37 @@ float3 ConvertToSRGB(float3 ldr)
 
 float3 ACESFitted(float3 colour)
 {
-	colour = mul(ACESInputMat, colour);
+    colour = mul(ACESInputMat, colour);
 
 	// Apply RRT and ODT
-	colour = RRTAndODTFit(colour);
+    colour = RRTAndODTFit(colour);
 
-	colour = mul(ACESOutputMat, colour);
+    colour = mul(ACESOutputMat, colour);
 
 	// Clamp to [0, 1]
-	colour = saturate(colour);
+    colour = saturate(colour);
 
-	return colour;
+    return colour;
 }
-
-struct PushConstant
-{
-    float Exposure;
-};
-
-PUSH_CONSTANT(push, PushConstant);
-Texture2D HdrBuffer: register(t0);
-SamplerState DefaultSampler: register(s50);
-
-struct PSInput
-{
-    float2 UV : TEXCOORD;
-    float4 Position : SV_POSITION;
-};
-
 
 #ifdef TONE_MAPPING_COMPILE_VS
 [RootSignature(ToneMappingRS)]
-PSInput main(uint id : SV_VertexID)
+void main(uint id : SV_VertexID,
+	out float2 oTexCoord : TEXCOORD,
+	out float4 oPositionClip : SV_Position)
 {
-    PSInput output;
-    CreateFullscreenTriangle_POS_UV(id, output.Position, output.UV);
-
-    return output;
+    CreateFullscreenTriangle_POS_UV(id, oPositionClip, oTexCoord);
 }
-
 #endif
 
 #ifdef TONE_MAPPING_COMPILE_PS
 [RootSignature(ToneMappingRS)]
-float4 main(PSInput input) : SV_TARGET
+float4 main(
+	in float2 texCoord : TEXCOORD,
+	in float4 positionClip : SV_Position) : SV_TARGET
 { 
 	const float sGamma = 2.2;
-	float3 hdrColour = HdrBuffer.Sample(DefaultSampler, input.UV).rgb;
+	float3 hdrColour = HdrBuffer.Sample(DefaultSampler, texCoord).rgb;
 
 #ifdef LEGACY_TONE_MAPPING
 

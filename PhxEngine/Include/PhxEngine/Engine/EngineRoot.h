@@ -7,6 +7,11 @@
 
 namespace PhxEngine
 {
+	namespace Core
+	{
+		class IWindow;
+	}
+
 	struct EngineParam
 	{
 		RHI::GraphicsAPI GraphicsAPI = RHI::GraphicsAPI::Unknown;
@@ -37,6 +42,8 @@ namespace PhxEngine
 		virtual RHI::IGraphicsDevice* GetGfxDevice() = 0;
 		virtual const DirectX::XMFLOAT2& GetCanvasSize() const = 0;
 		virtual void SetInformativeWindowTitle(std::string_view appName, std::string_view extraInfo) = 0;
+
+		virtual Core::IWindow* GetWindow() = 0;
 	};
 
 	class EngineRenderPass

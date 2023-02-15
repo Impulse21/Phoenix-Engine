@@ -1,19 +1,22 @@
 #pragma once
 
-#include <DirectXMath.h>
-#include <Directxpackedvector.h>
+#include <PhxEngine/RHI/PhxRHI.h>
 
-#include <vector>
-#include <algorithm>
-#include <atomic>
+#include <PhxEngine/Shaders/ShaderInteropStructures.h>
+
+namespace PhxEngine::Scene
+{
+	class Scene;
+}
 
 namespace PhxEngine::Renderer
-{
+{	
 	// From WICKED Engine - thought this was a really cool set of classes.
 	// https://github.com/turanszkij/WickedEngine
-	struct DrawBatch
+	struct DrawItem
 	{
 		uint64_t Data;
+
 		inline void Create(uint32_t meshEntityHandle, uint32_t instanceEntityHandle, float distance)
 		{
 			// These asserts are a indicating if render queue limits are reached:
@@ -42,14 +45,14 @@ namespace PhxEngine::Renderer
 		// opaque sorting
 		//	Priority is set to mesh index to have more instancing
 		//	distance is second priority (front to back Z-buffering)
-		bool operator<(const DrawBatch& other) const
+		bool operator<(const DrawItem& other) const
 		{
 			return Data < other.Data;
 		}
 		// transparent sorting
 		//	Priority is distance for correct alpha blending (back to front rendering)
 		//	mesh index is second priority for instancing
-		bool operator>(const DrawBatch& other) const
+		bool operator>(const DrawItem& other) const
 		{
 			// Swap bits of meshIndex and distance to prioritize distance more
 			uint64_t a_data = 0ull;
@@ -67,7 +70,7 @@ namespace PhxEngine::Renderer
 	struct DrawQueue
 	{
 		// TODO: Allocate from a frame memory
-		std::vector<DrawBatch> DrawItems;
+		std::vector<DrawItem> DrawItems;
 
 		inline void Push(uint32_t meshEntityHandle, uint32_t instanceEntityHandle, float distance)
 		{
@@ -76,12 +79,12 @@ namespace PhxEngine::Renderer
 
 		inline void SortTransparent()
 		{
-			std::sort(DrawItems.begin(), DrawItems.end(), std::greater<DrawBatch>());
+			std::sort(DrawItems.begin(), DrawItems.end(), std::greater<DrawItem>());
 		}
 
 		inline void SortOpaque()
 		{
-			std::sort(DrawItems.begin(), DrawItems.end(), std::less<DrawBatch>());
+			std::sort(DrawItems.begin(), DrawItems.end(), std::less<DrawItem>());
 		}
 
 		inline void Reset()
@@ -99,5 +102,14 @@ namespace PhxEngine::Renderer
 			return DrawItems.size();
 		}
 	};
+
+	class IGeometryPass
+	{
+	public:
+		virtual void BindPushConstant(RHI::ICommandList* commandList, Shader::GeometryPassPushConstants const& pushData) = 0;
+
+	};
+
+	void RenderViews(RHI::ICommandList* commandList, IGeometryPass* geometryPass, Scene::Scene& scene, DrawQueue& drawQueue, bool markMeshes = false);
 }
 

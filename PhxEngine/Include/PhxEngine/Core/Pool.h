@@ -90,9 +90,9 @@ namespace PhxEngine::Core
 			return handle;
 		}
 
-		Handle<HT> Insert(ImplT const& data)
+		Handle<HT> Insert(ImplT const& Data)
 		{
-			return this->Emplace(data);
+			return this->Emplace(Data);
 		}
 
 		void Release(Handle<HT> handle)

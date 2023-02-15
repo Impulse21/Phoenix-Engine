@@ -11,7 +11,7 @@ namespace PhxEngine::Core
 {
 	enum class EventType
 	{
-		WindowClose, WindowResize, WindowFocus, WindowLostFocus, WindowMoved
+		WindowClose, WindowResize, WindowFocus, WindowLostFocus, WindowMoved, WindowKeyEvent
 	};
 
 	class Event

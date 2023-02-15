@@ -1183,12 +1183,12 @@ namespace PhxEngine::RHI
         }
 
         // TODO: Take ownership of the data
-        virtual void WriteBuffer(BufferHandle buffer, const void* data, size_t dataSize, uint64_t destOffsetBytes = 0) = 0;
+        virtual void WriteBuffer(BufferHandle buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes = 0) = 0;
 
         virtual void CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHandle src, uint64_t srcOffset, size_t sizeInBytes) = 0;
 
         virtual void WriteTexture(TextureHandle texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData) = 0;
-        virtual void WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* data, size_t rowPitch, size_t depthPitch) = 0;
+        virtual void WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* Data, size_t rowPitch, size_t depthPitch) = 0;
 
         virtual void SetGraphicsPipeline(GraphicsPipelineHandle graphisPSO) = 0;
         virtual void SetViewports(Viewport* viewports, size_t numViewports) = 0;
@@ -1242,7 +1242,7 @@ namespace PhxEngine::RHI
             staticassert(sizeof(T) == 2 || sizeof(T) == 4);
 
             RHIFormat indexFormat = (sizeof(T) == 2) ? RHIFormat::R16_UINT : RHIFormat::R32_UINT;
-            this->BindDynamicIndexBuffer(indexBufferData.size(), indexFormat, indexBufferData.data());
+            this->BindDynamicIndexBuffer(indexBufferData.size(), indexFormat, indexBufferData.Data());
         }
 
         /**
@@ -1253,7 +1253,7 @@ namespace PhxEngine::RHI
         template<typename T>
         void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, std::vector<T> const& bufferData)
         {
-            this->BindDynamicStructuredBuffer(rootParameterIndex, bufferData.size(), sizeof(T), bufferData.data());
+            this->BindDynamicStructuredBuffer(rootParameterIndex, bufferData.size(), sizeof(T), bufferData.Data());
         }
 
         virtual void BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer) = 0;
@@ -1411,6 +1411,8 @@ namespace PhxEngine::RHI
 
         virtual void WaitForIdle() = 0;
         virtual void QueueWaitForCommandList(CommandQueueType waitQueue, ExecutionReceipt waitOnRecipt) = 0;
+
+        virtual void RunGarbageCollection(uint64_t completedFrame = std::numeric_limits<uint64_t>::max()) = 0;
 
         virtual ExecutionReceipt ExecuteCommandLists(
             Core::Span<ICommandList*> commandLists,

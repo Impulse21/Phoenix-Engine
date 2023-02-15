@@ -438,30 +438,33 @@ ShaderHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateShader(ShaderDesc
 {
 	ShaderHandle handle = this->m_shaderPool.Emplace(desc, shaderByteCode.begin(), shaderByteCode.Size());
 	D3D12Shader* shaderImpl = this->m_shaderPool.Get(handle);
-	
-	// Create Root signature data
+	auto hr = D3D12CreateVersionedRootSignatureDeserializer(
+		shaderImpl->ByteCode.data(),
+		shaderImpl->ByteCode.size(),
+		IID_PPV_ARGS(&shaderImpl->RootSignatureDeserializer));
 
-	/* This is not working, we don't need it right now. Good for reflection data.
-	ThrowIfFailed(
-		D3D12CreateVersionedRootSignatureDeserializer(
-			shaderImpl->ByteCode.data(),
-			shaderImpl->ByteCode.size(),
-			IID_PPV_ARGS(&shaderImpl->GetRootSigDeserializer())));
+	if (SUCCEEDED(hr))
+	{
+		hr = shaderImpl->RootSignatureDeserializer->GetRootSignatureDescAtVersion(D3D_ROOT_SIGNATURE_VERSION_1_1, &shaderImpl->RootSignatureDesc);
+		if (SUCCEEDED(hr))
+		{
+			assert(shaderImpl->RootSignatureDesc->Version == D3D_ROOT_SIGNATURE_VERSION_1_1);
 
-	assert(shaderImpl->GetRootSigDeserializer()->GetRootSignatureDesc());
-	*/
+			Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSig;
+			hr = this->m_rootDevice->CreateRootSignature(
+				0,
+				shaderImpl->ByteCode.data(),
+				shaderImpl->ByteCode.size(),
+				IID_PPV_ARGS(&rootSig)
+			);
+			assert(SUCCEEDED(hr));
+			if (SUCCEEDED(hr))
+			{
+				shaderImpl->RootSignature = rootSig;
+			}
+		}
+	}
 
-	// TODO: Check version
-
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSig;
-	auto hr = 
-		this->m_rootDevice->CreateRootSignature(
-			0,
-			shaderImpl->ByteCode.data(),
-			shaderImpl->ByteCode.size(),
-			IID_PPV_ARGS(&rootSig));
-
-	shaderImpl->RootSignature = rootSig;
 	return handle;
 }
 
@@ -1711,8 +1714,8 @@ TimeStep PhxEngine::RHI::D3D12::D3D12GraphicsDevice::GetTimerQueryTime(TimerQuer
 	(queryImpl->BeginQueryIndex + 2) * sizeof(uint64_t) };
 
 	const D3D12Buffer* timestampQueryBuffer = this->m_bufferPool.Get(this->m_timestampQueryBuffer);
-	uint64_t* data;
-	const HRESULT res = timestampQueryBuffer->D3D12Resource->Map(0, &bufferReadRange, (void**)&data);
+	uint64_t* Data;
+	const HRESULT res = timestampQueryBuffer->D3D12Resource->Map(0, &bufferReadRange, (void**)&Data);
 
 	if (FAILED(res))
 	{
@@ -1720,7 +1723,7 @@ TimeStep PhxEngine::RHI::D3D12::D3D12GraphicsDevice::GetTimerQueryTime(TimerQuer
 	}
 
 	queryImpl->Resolved = true;
-	queryImpl->Time = TimeStep(float(double(data[queryImpl->EndQueryIndex] - data[queryImpl->BeginQueryIndex]) / double(frequency)));
+	queryImpl->Time = TimeStep(float(double(Data[queryImpl->EndQueryIndex] - Data[queryImpl->BeginQueryIndex]) / double(frequency)));
 
 	timestampQueryBuffer->D3D12Resource->Unmap(0, nullptr);
 
@@ -2452,7 +2455,7 @@ RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(Gr
 
 
 // TODO: remove
-void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::RunGarbageCollection(UINT64 completedFrame)
+void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::RunGarbageCollection(uint64_t completedFrame)
 {
 	while (!this->m_deleteQueue.empty())
 	{

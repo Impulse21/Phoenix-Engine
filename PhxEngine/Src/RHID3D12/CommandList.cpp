@@ -507,7 +507,7 @@ constexpr uint64_t AlignTo(uint64_t value, uint64_t alignment)
 {
     return ((value + alignment - 1) / alignment) * alignment;
 }
-void D3D12CommandList::WriteBuffer(BufferHandle buffer, const void* data, size_t dataSize, uint64_t destOffsetBytes)
+void D3D12CommandList::WriteBuffer(BufferHandle buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes)
 {
     UINT64 alignedSize = dataSize;
     const D3D12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(buffer);
@@ -518,7 +518,7 @@ void D3D12CommandList::WriteBuffer(BufferHandle buffer, const void* data, size_t
 
     auto heapAllocation = this->m_uploadBuffer->Allocate(dataSize, alignedSize);
     D3D12Buffer* uploadBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(heapAllocation.BufferHandle);
-    memcpy(heapAllocation.CpuData, data, dataSize);
+    memcpy(heapAllocation.CpuData, Data, dataSize);
     this->m_d3d12CommandList->CopyBufferRegion(
         bufferImpl->D3D12Resource.Get(),
         destOffsetBytes,
@@ -604,10 +604,9 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::WriteTexture(TextureHandle texture
         subresources.data());
 
     this->m_graphicsDevice.DeleteD3DResource(intermediateResource);
-    this->m_trackedData->TextureHandles.push_back(texture);
 }
 
-void PhxEngine::RHI::D3D12::D3D12CommandList::WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* data, size_t rowPitch, size_t depthPitch)
+void PhxEngine::RHI::D3D12::D3D12CommandList::WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* Data, size_t rowPitch, size_t depthPitch)
 {
     // LOG_CORE_FATAL("NOT IMPLEMENTED FUNCTION CALLED: CommandList::WriteTexture");
     assert(false);
@@ -733,6 +732,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::SetDescritporHeaps(std::array<GpuD
         }
     }
 
+    // TODO: NOT VALID FOR COPY
     this->m_d3d12CommandList->SetDescriptorHeaps(heaps.size(), heaps.data());
 }
 

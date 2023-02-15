@@ -10,8 +10,8 @@ namespace
 	class Blob : public IBlob
 	{
 	public:
-        Blob(void* data, size_t size)
-            : m_data(data)
+        Blob(void* Data, size_t size)
+            : m_data(Data)
             , m_size(size)
         {}
 
@@ -40,7 +40,7 @@ namespace
         bool FileExists(std::filesystem::path const& name) override;
         bool FolderExists(std::filesystem::path const& name) override;
         std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
-        bool WriteFile(std::filesystem::path const& name, Span<char> data) override;
+        bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
     };
 
     class RelativeFileSystem : public IFileSystem
@@ -53,7 +53,7 @@ namespace
         bool FileExists(std::filesystem::path const& name) override;
         bool FolderExists(std::filesystem::path const& name) override;
         std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
-        bool WriteFile(std::filesystem::path const& name, Span<char> data) override;
+        bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
 
     private:
         std::shared_ptr<IFileSystem> m_underlyingFS;
@@ -70,7 +70,7 @@ namespace
         bool FileExists(std::filesystem::path const& name) override;
         bool FolderExists(std::filesystem::path const& name) override;
         std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
-        bool WriteFile(std::filesystem::path const& name, Span<char> data) override;
+        bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
 
     private:
         bool FindMountPoint(const std::filesystem::path& path, std::filesystem::path* pRelativePath, IFileSystem** ppFS);
@@ -111,27 +111,27 @@ std::unique_ptr<IBlob> NativeFileSystem::ReadFile(std::filesystem::path const& n
         return nullptr;
     }
 
-    char* data = static_cast<char*>(malloc(size));
+    char* Data = static_cast<char*>(malloc(size));
 
-    if (data == nullptr)
+    if (Data == nullptr)
     {
         LOG_CORE_ERROR("Out of memory");
         return nullptr;
     }
 
-    file.read(data, size);
+    file.read(Data, size);
 
     if (!file.good())
     {
         LOG_CORE_ERROR("Reading error");
-        free(data);
+        free(Data);
         return nullptr;
     }
 
-    return std::make_unique<Blob>(data, size);
+    return std::make_unique<Blob>(Data, size);
 }
 
-bool NativeFileSystem::WriteFile(std::filesystem::path const& name, Span<char> data)
+bool NativeFileSystem::WriteFile(std::filesystem::path const& name, Span<char> Data)
 {
     std::ofstream file(name, std::ios::binary);
 
@@ -141,9 +141,9 @@ bool NativeFileSystem::WriteFile(std::filesystem::path const& name, Span<char> d
         return false;
     }
 
-    if (data.Size() > 0)
+    if (Data.Size() > 0)
     {
-        file.write(data.begin(), static_cast<std::streamsize>(data.Size()));
+        file.write(Data.begin(), static_cast<std::streamsize>(Data.Size()));
     }
 
     if (!file.good())
@@ -176,9 +176,9 @@ std::unique_ptr<IBlob> RelativeFileSystem::ReadFile(std::filesystem::path const&
     return this->m_underlyingFS->ReadFile(this->m_basePath / name.relative_path());
 }
 
-bool RelativeFileSystem::WriteFile(std::filesystem::path const& name, Span<char> data)
+bool RelativeFileSystem::WriteFile(std::filesystem::path const& name, Span<char> Data)
 {
-    return this->m_underlyingFS->WriteFile(this->m_basePath / name.relative_path(), data);
+    return this->m_underlyingFS->WriteFile(this->m_basePath / name.relative_path(), Data);
 }
 
 void RootFileSystem::Mount(const std::filesystem::path& path, std::shared_ptr<IFileSystem> fs)
@@ -252,14 +252,14 @@ std::unique_ptr<IBlob> RootFileSystem::ReadFile(std::filesystem::path const& nam
     return nullptr;
 }
 
-bool RootFileSystem::WriteFile(std::filesystem::path const& name, Span<char> data)
+bool RootFileSystem::WriteFile(std::filesystem::path const& name, Span<char> Data)
 {
     std::filesystem::path relativePath;
     IFileSystem* fs = nullptr;
 
     if (this->FindMountPoint(name, &relativePath, &fs))
     {
-        return fs->WriteFile(relativePath, data);
+        return fs->WriteFile(relativePath, Data);
     }
 
     return false;
@@ -306,7 +306,7 @@ std::unique_ptr<IRootFileSystem> PhxEngine::Core::CreateRootFileSystem()
     return std::make_unique<RootFileSystem>();
 }
 
-std::unique_ptr<IBlob> PhxEngine::Core::CreateBlob(void* data, size_t size)
+std::unique_ptr<IBlob> PhxEngine::Core::CreateBlob(void* Data, size_t size)
 {
-    return std::make_unique<Blob>(data, size);
+    return std::make_unique<Blob>(Data, size);
 }
