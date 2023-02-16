@@ -1259,7 +1259,22 @@ namespace PhxEngine::RHI
         virtual void BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer) = 0;
 
         virtual void BindDynamicDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures) = 0;
-        virtual void BindDynamicUavDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures) = 0;
+        void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Core::Span<BufferHandle> buffers)
+        {
+            this->BindDynamicUavDescriptorTable(rootParameterIndex, buffers, {});
+        }
+        void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Core::Span<TextureHandle> textures)
+        {
+            this->BindDynamicUavDescriptorTable(rootParameterIndex, {}, textures);
+        }
+        virtual void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Core::Span<BufferHandle> buffers,
+            Core::Span<TextureHandle> textures) = 0;
 
         virtual void BindResourceTable (size_t rootParameterIndex) = 0;
         virtual void BindSamplerTable(size_t rootParameterIndex) = 0;

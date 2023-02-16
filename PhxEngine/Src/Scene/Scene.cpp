@@ -16,6 +16,7 @@ using namespace PhxEngine::RHI;
 using namespace DirectX;
 
 PhxEngine::Scene::Scene::Scene()
+	: m_numMeshlets(0)
 {
 	this->m_materialUploadBuffers.resize(IGraphicsDevice::GPtr->GetMaxInflightFrames());
 	this->m_geometryUploadBuffers.resize(IGraphicsDevice::GPtr->GetMaxInflightFrames());
@@ -104,6 +105,8 @@ RHI::DescriptorIndex PhxEngine::Scene::Scene::GetBrdfLutDescriptorIndex()
 
 void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses)
 {
+	this->m_numMeshlets = 0;
+
 	// Update Geometry Count
 	this->UpdateGpuBufferSizes();
 
@@ -124,11 +127,33 @@ void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> c
 	this->RunLightUpdateSystem();
 	this->RunMeshInstanceUpdateSystem();
 
+	// Create Meshlet Buffer from the result of the Mesh sizes;
+	if (!this->m_meshletGpuBuffer.IsValid() ||
+		IGraphicsDevice::GPtr->GetBufferDesc(this->m_meshletGpuBuffer).SizeInBytes != (this->m_numMeshlets * sizeof(Shader::Meshlet)))
+	{
+		if (this->m_meshletGpuBuffer.IsValid())
+		{
+			IGraphicsDevice::GPtr->DeleteBuffer(this->m_meshletGpuBuffer);
+		}
+
+		this->m_meshletGpuBuffer = IGraphicsDevice::GPtr->CreateBuffer(
+			{
+				.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Raw,
+				.Binding = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::UnorderedAccess,
+				.InitialState = ResourceStates::ShaderResource,
+				.StrideInBytes = sizeof(Shader::Meshlet),
+				.SizeInBytes = sizeof(Shader::Meshlet) * this->m_numMeshlets,
+				.AllowUnorderedAccess = true,
+				.CreateBindless = true,
+			});
+	}
+
 	// -- Fill Constant Buffer structure for this frame ---
 	// this->m_shaderData.NumLights = lightCount;
 	this->m_shaderData.MeshInstanceBufferIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_instanceGpuBuffer, RHI::SubresouceType::SRV);
 	this->m_shaderData.GeometryBufferIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_geometryGpuBuffer, RHI::SubresouceType::SRV);
 	this->m_shaderData.MaterialBufferIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_materialGpuBuffer, RHI::SubresouceType::SRV);
+	this->m_shaderData.MeshletBufferIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_meshletGpuBuffer, RHI::SubresouceType::SRV);
 	// TODO: Light Buffer
 	this->m_shaderData.RT_TlasIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_tlas);
 
@@ -276,6 +301,9 @@ void PhxEngine::Scene::Scene::RunMeshUpdateSystem()
 			geometryShaderData->MaterialIndex = material.GlobalBufferIndex;
 			geometryShaderData->NumIndices = surfaceDesc.NumIndices;
 			geometryShaderData->NumVertices = surfaceDesc.NumVertices;
+			geometryShaderData->MeshletOffset = mesh.MeshletCount;
+			geometryShaderData->MeshletCount = ((surfaceDesc.NumIndices / 3) + 1) / Shader::MESHLET_TRIANGLE_COUNT;
+			mesh.MeshletCount += geometryShaderData->MeshletCount;
 			geometryShaderData->IndexOffset = surfaceDesc.IndexOffsetInMesh;
 			geometryShaderData->VertexBufferIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(mesh.VertexGpuBuffer, RHI::SubresouceType::SRV);
 			geometryShaderData->PositionOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Position).ByteOffset;
@@ -461,6 +489,8 @@ void PhxEngine::Scene::Scene::RunMeshInstanceUpdateSystem()
 		shaderMeshInstance->GeometryOffset = mesh.GlobalGeometryBufferIndex;
 		shaderMeshInstance->GeometryCount = (uint)mesh.Surfaces.size();
 		shaderMeshInstance->WorldMatrix = transformComponent.WorldMatrix;
+		shaderMeshInstance->MeshletOffset = mesh.MeshletCount;
+		this->m_numMeshlets += mesh.MeshletCount;
 
 		meshInstanceComponent.GlobalBufferIndex = currInstanceIndex++;
 
@@ -483,6 +513,7 @@ void PhxEngine::Scene::Scene::FreeResources()
 	PhxEngine::RHI::IGraphicsDevice::GPtr->DeleteBuffer(this->m_instanceGpuBuffer);
 	PhxEngine::RHI::IGraphicsDevice::GPtr->DeleteBuffer(this->m_geometryGpuBuffer);
 	PhxEngine::RHI::IGraphicsDevice::GPtr->DeleteBuffer(this->m_materialGpuBuffer);
+	PhxEngine::RHI::IGraphicsDevice::GPtr->DeleteBuffer(this->m_meshletGpuBuffer);
 
 	for (int i = 0; i < this->m_materialUploadBuffers.size(); i++)
 	{

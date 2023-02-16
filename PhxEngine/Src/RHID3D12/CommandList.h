@@ -113,7 +113,7 @@ namespace PhxEngine::RHI::D3D12
 		void BindResourceTable(size_t rootParameterIndex) override;
 		void BindSamplerTable(size_t rootParameterIndex) override;
 		void BindDynamicDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures) override;
-		void BindDynamicUavDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures) override;
+		void BindDynamicUavDescriptorTable(size_t rootParameterIndex, Core::Span<BufferHandle> buffers, Core::Span<TextureHandle> textures) override;
 
 		// -- Comptute Stuff ---
 		void SetComputeState(ComputePipelineHandle state);

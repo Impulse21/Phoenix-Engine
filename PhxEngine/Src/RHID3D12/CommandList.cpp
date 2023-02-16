@@ -917,11 +917,25 @@ void D3D12CommandList::BindDynamicDescriptorTable(size_t rootParameterIndex, Cor
     }
 }
 
-void PhxEngine::RHI::D3D12::D3D12CommandList::BindDynamicUavDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures)
+void PhxEngine::RHI::D3D12::D3D12CommandList::BindDynamicUavDescriptorTable(
+    size_t rootParameterIndex,
+    Core::Span<BufferHandle> buffers,
+    Core::Span<TextureHandle> textures)
 {
     // Request Descriptoprs for table
     // Validate with Root Signature. Maybe an improvment in the future.
     DescriptorHeapAllocation descriptorTable = this->m_activeDynamicSubAllocator->Allocate(textures.Size());
+    for (int i = 0; i < buffers.Size(); i++)
+    {
+        auto impl = this->m_graphicsDevice.GetBufferPool().Get(buffers[i]);
+        this->m_graphicsDevice.GetD3D12Device2()->CopyDescriptorsSimple(
+            1,
+            descriptorTable.GetCpuHandle(i),
+            impl->UavAllocation.Allocation.GetCpuHandle(),
+            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+    }
+
     for (int i = 0; i < textures.Size(); i++)
     {
         auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(textures[i]);

@@ -97,6 +97,9 @@ namespace PhxEngine::Scene
 		PhxEngine::RHI::TextureHandle GetEnvMapArray() const { return this->m_envMapArray; }
 		const PhxEngine::RHI::RenderPassHandle GetEnvMapRenderPasses(int index) { return this->m_envMapRenderPasses[index]; }
 
+		PhxEngine::RHI::BufferHandle GetMeshletBuffer() const { return this->m_meshletGpuBuffer; }
+		size_t GetNumMeshlets() const { return this->m_numMeshlets; }
+
 	public:
 		void OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses);
 
@@ -128,6 +131,9 @@ namespace PhxEngine::Scene
 		size_t m_numMaterialEntries = 0;
 		PhxEngine::RHI::BufferHandle m_materialGpuBuffer;
 		std::vector<PhxEngine::RHI::BufferHandle> m_materialUploadBuffers;
+
+		size_t m_numMeshlets = 0;
+		PhxEngine::RHI::BufferHandle m_meshletGpuBuffer;
 
 		PhxEngine::RHI::RTAccelerationStructureHandle m_tlas;
 		std::vector<PhxEngine::RHI::BufferHandle> m_tlasUploadBuffers;

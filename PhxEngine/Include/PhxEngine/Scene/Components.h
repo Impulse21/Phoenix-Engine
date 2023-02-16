@@ -447,7 +447,7 @@ namespace PhxEngine::Scene
 		std::vector<SurfaceDesc> Surfaces;
 
 		size_t GlobalGeometryBufferIndex = 0;
-
+		size_t MeshletCount = 0;
 		RHI::BufferHandle GeneralGpuBuffer;
 
 		RHI::BufferHandle VertexGpuBuffer;

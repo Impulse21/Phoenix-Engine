@@ -328,7 +328,7 @@ struct DeferredLightingPass
                 input.GBufferSurface,
                 input.GBufferSpecular
             });
-        commandList->BindDynamicUavDescriptorTable(5, { input.OutputTexture });
+        commandList->BindDynamicUavDescriptorTable(5, {}, { input.OutputTexture });
 
         auto& outputDesc = this->m_gfxDevice->GetTextureDesc(input.OutputTexture);
 

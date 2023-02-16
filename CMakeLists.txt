@@ -31,4 +31,5 @@ add_subdirectory(Examples/BasicTriangle)
 add_subdirectory(Examples/ThreadedRendering)
 add_subdirectory(Examples/DeferredRendering)
 add_subdirectory(Examples/Shadows)
+add_subdirectory(Examples/VisibilityBufferRendering)
 

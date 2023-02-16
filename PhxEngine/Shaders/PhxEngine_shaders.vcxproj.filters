@@ -37,6 +37,9 @@
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VertexColourVS.hlsl">
       <Filter>Shaders\VS</Filter>
     </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBufferFillPassVS.hlsl">
+      <Filter>Shaders\VS</Filter>
+    </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\BlitPS.hlsl">
       <Filter>Shaders\PS</Filter>
     </None>
@@ -70,6 +73,9 @@
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VertexColourPS.hlsl">
       <Filter>Shaders\PS</Filter>
     </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBufferFillPassPS.hlsl">
+      <Filter>Shaders\PS</Filter>
+    </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\DeferredLightingCS.hlsl">
       <Filter>Shaders\CS</Filter>
     </None>
@@ -77,6 +83,9 @@
       <Filter>Shaders\CS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\GenerateMipChain_CubeArrayCS.hlsl">
+      <Filter>Shaders\CS</Filter>
+    </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\MeshletBufferFillPassCS.hlsl">
       <Filter>Shaders\CS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Include\PhxEngine\Shaders\ShaderInterop.h">
@@ -140,6 +149,9 @@
       <Filter>Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VertexBuffer.hlsli">
+      <Filter>Shaders\Include</Filter>
+    </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBuffer.hlsli">
       <Filter>Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\PhxEngine\Shaders\CMakeFiles\PhxEngine_shaders" />
