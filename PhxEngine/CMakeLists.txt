@@ -212,6 +212,7 @@ add_custom_command(
 		COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_SOURCE_DIR}/PhxEngine/Shaders ${CMAKE_CURRENT_BINARY_DIR}/Shaders
 )
 
+
 # D3D12 Agility SDK
 message("Fetching D3D12 Agility SDK")
 FetchContent_Declare(d3d12-agility-sdk URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.608.2)
@@ -237,6 +238,7 @@ add_custom_command(
 	DEPENDS D3D12AgilitySDK)
 
 message("D3D12 Agility SDK fetched")
+
 
 # DXC
 message("Fetching DirectXShaderCompiler")

@@ -981,12 +981,12 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::DispatchIndirect(uint32_t offsetBy
 void PhxEngine::RHI::D3D12::D3D12CommandList::SetMeshPipeline(MeshPipelineHandle meshPipeline)
 {
     this->m_activePipelineType = PipelineType::Mesh;
-    D3D12MeshPipeline* psoImpl = this->m_graphicsDevice.GetMeshPipelinePool().Get(meshPipeline);
-    // this->m_d3d12CommandList->SetPipelineState(m_activeMeshPipeline->D3D12PipelineState.Get());
+    this->m_activeMeshPipeline = this->m_graphicsDevice.GetMeshPipelinePool().Get(meshPipeline);
+    this->m_d3d12CommandList->SetPipelineState(this->m_activeMeshPipeline->D3D12PipelineState.Get());
 
-    this->m_d3d12CommandList->SetGraphicsRootSignature(psoImpl->RootSignature.Get());
+    this->m_d3d12CommandList->SetGraphicsRootSignature(this->m_activeMeshPipeline->RootSignature.Get());
 
-    const auto& desc = psoImpl->Desc;
+    const auto& desc = this->m_activeMeshPipeline->Desc;
     D3D_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
     switch (desc.PrimType)
     {
