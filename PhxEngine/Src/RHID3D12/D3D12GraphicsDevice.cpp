@@ -27,7 +27,7 @@ static const GUID PixUUID = { 0x9f251514, 0x9d4d, 0x4902, { 0x9d, 0x60, 0x18, 0x
 static bool sDebugEnabled = false;
 
 // DirectX Aligily SDK
-extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 606; }
+extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 608; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
 
 // Come up with a better reporting system for resources
@@ -262,6 +262,7 @@ PhxEngine::RHI::D3D12::D3D12GraphicsDevice::D3D12GraphicsDevice(D3D12Adapter con
 	, m_rtAccelerationStructurePool(kResourcePoolSize)
 	, m_graphicsPipelinePool(10)
 	, m_computePipelinePool(10)
+	, m_meshPipelinePool(10)
 	, m_inputLayoutPool(10)
 	, m_shaderPool(10)
 {
@@ -667,6 +668,162 @@ ComputePipelineHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateComputeP
 		this->GetD3D12Device2()->CreateComputePipelineState(&d3d12Desc, IID_PPV_ARGS(&pipeline.D3D12PipelineState)));
 
 	return this->m_computePipelinePool.Insert(pipeline);
+}
+
+MeshPipelineHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateMeshPipeline(MeshPipelineDesc const& desc)
+{
+	D3D12MeshPipeline pipeline = {};
+	pipeline.Desc = desc;
+
+	if (desc.AmpShader.IsValid())
+	{
+		D3D12Shader* shaderImpl = this->m_shaderPool.Get(desc.AmpShader);
+		if (pipeline.RootSignature == nullptr)
+		{
+			pipeline.RootSignature = shaderImpl->RootSignature;
+		}
+	}
+
+	if (desc.MeshShader.IsValid())
+	{
+		D3D12Shader* shaderImpl = this->m_shaderPool.Get(desc.MeshShader);
+		if (pipeline.RootSignature == nullptr)
+		{
+			pipeline.RootSignature = shaderImpl->RootSignature;
+		}
+	}
+
+	if (desc.PixelShader.IsValid())
+	{
+		D3D12Shader* shaderImpl = this->m_shaderPool.Get(desc.PixelShader);
+		if (pipeline.RootSignature == nullptr)
+		{
+			pipeline.RootSignature = shaderImpl->RootSignature;
+		}
+	}
+
+#pragma warning(push)
+#pragma warning(disable: 4324) // structure was padded due to alignment specifier
+	struct PSO_STREAM
+	{
+		typedef __declspec(align(sizeof(void*))) D3D12_PIPELINE_STATE_SUBOBJECT_TYPE ALIGNED_TYPE;
+
+		ALIGNED_TYPE RootSignature_Type;        ID3D12RootSignature* RootSignature;
+		ALIGNED_TYPE PrimitiveTopology_Type;    D3D12_PRIMITIVE_TOPOLOGY_TYPE PrimitiveTopologyType;
+		ALIGNED_TYPE AmplificationShader_Type;  D3D12_SHADER_BYTECODE AmplificationShader;
+		ALIGNED_TYPE MeshShader_Type;           D3D12_SHADER_BYTECODE MeshShader;
+		ALIGNED_TYPE PixelShader_Type;          D3D12_SHADER_BYTECODE PixelShader;
+		ALIGNED_TYPE RasterizerState_Type;      D3D12_RASTERIZER_DESC RasterizerState;
+		ALIGNED_TYPE DepthStencilState_Type;    D3D12_DEPTH_STENCIL_DESC DepthStencilState;
+		ALIGNED_TYPE BlendState_Type;           D3D12_BLEND_DESC BlendState;
+		ALIGNED_TYPE SampleDesc_Type;           DXGI_SAMPLE_DESC SampleDesc;
+		ALIGNED_TYPE SampleMask_Type;           UINT SampleMask;
+		ALIGNED_TYPE RenderTargets_Type;        D3D12_RT_FORMAT_ARRAY RenderTargets;
+		ALIGNED_TYPE DSVFormat_Type;            DXGI_FORMAT DSVFormat;
+	} psoDesc = { };
+#pragma warning(pop)
+
+	psoDesc.RootSignature_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE;
+	psoDesc.PrimitiveTopology_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PRIMITIVE_TOPOLOGY;
+	psoDesc.AmplificationShader_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_AS;
+	psoDesc.MeshShader_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_MS;
+	psoDesc.PixelShader_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PS;
+	psoDesc.RasterizerState_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER;
+	psoDesc.DepthStencilState_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL;
+	psoDesc.BlendState_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_BLEND;
+	psoDesc.SampleDesc_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_DESC;
+	psoDesc.SampleMask_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_MASK;
+	psoDesc.RenderTargets_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RENDER_TARGET_FORMATS;
+	psoDesc.DSVFormat_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL_FORMAT;
+
+	psoDesc.RootSignature = pipeline.RootSignature.Get();
+
+	D3D12Shader* shaderImpl = nullptr;
+	shaderImpl = this->m_shaderPool.Get(desc.AmpShader);
+	if (shaderImpl)
+	{
+		psoDesc.AmplificationShader = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+	}
+
+	shaderImpl = this->m_shaderPool.Get(desc.MeshShader);
+	if (shaderImpl)
+	{
+		psoDesc.MeshShader = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+	}
+
+	shaderImpl = this->m_shaderPool.Get(desc.PixelShader);
+	if (shaderImpl)
+	{
+		psoDesc.PixelShader= { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+	}
+
+	this->TranslateBlendState(desc.BlendRenderState, psoDesc.BlendState);
+	this->TranslateDepthStencilState(desc.DepthStencilRenderState, psoDesc.DepthStencilState);
+	this->TranslateRasterState(desc.RasterRenderState, psoDesc.RasterizerState);
+
+	switch (desc.PrimType)
+	{
+	case PrimitiveType::PointList:
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		break;
+	case PrimitiveType::LineList:
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+		break;
+	case PrimitiveType::TriangleList:
+	case PrimitiveType::TriangleStrip:
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		break;
+	case PrimitiveType::PatchList:
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+		break;
+	}
+	psoDesc.SampleDesc.Count = desc.SampleCount;
+	psoDesc.SampleDesc.Quality = desc.SampleQuality;
+	psoDesc.SampleMask = ~0u;
+
+	psoDesc.RenderTargets.NumRenderTargets = desc.RtvFormats.size();
+
+	for (size_t i = 0; i < desc.RtvFormats.size(); i++)
+	{
+		psoDesc.RenderTargets.RTFormats[i] = GetDxgiFormatMapping(desc.RtvFormats[i]).RtvFormat;
+	}
+
+	if (desc.DsvFormat.has_value())
+	{
+		psoDesc.DSVFormat = GetDxgiFormatMapping(desc.DsvFormat.value()).RtvFormat;
+	}
+
+	D3D12_PIPELINE_STATE_STREAM_DESC streamDesc;
+	streamDesc.pPipelineStateSubobjectStream = &psoDesc;
+	streamDesc.SizeInBytes = sizeof(psoDesc);
+
+	ThrowIfFailed(
+		this->GetD3D12Device2()->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pipeline.D3D12PipelineState)));
+
+	return this->m_meshPipelinePool.Insert(pipeline);
+}
+
+void D3D12GraphicsDevice::DeleteMeshPipeline(MeshPipelineHandle handle)
+{
+	if (!handle.IsValid())
+	{
+		return;
+	}
+
+	DeleteItem d =
+	{
+		this->m_frameCount,
+		[=]()
+		{
+			D3D12MeshPipeline* pipeline = this->GetMeshPipelinePool().Get(handle);
+			if (pipeline)
+			{
+				this->GetMeshPipelinePool().Release(handle);
+			}
+		}
+	};
+
+	this->m_deleteQueue.push_back(d);
 }
 
 RenderPassHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateRenderPass(RenderPassDesc const& desc)

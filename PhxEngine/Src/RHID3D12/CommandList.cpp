@@ -647,7 +647,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::SetRenderTargets(std::vector<Textu
 
 void PhxEngine::RHI::D3D12::D3D12CommandList::SetGraphicsPipeline(GraphicsPipelineHandle graphicsPiplineHandle)
 {
-    this->m_activeComputePipeline = nullptr;
+    this->m_activePipelineType = PipelineType::Gfx;
     D3D12GraphicsPipeline* graphisPipeline = this->m_graphicsDevice.GetGraphicsPipelinePool().Get(graphicsPiplineHandle);
     this->m_d3d12CommandList->SetPipelineState(graphisPipeline->D3D12PipelineState.Get());
 
@@ -748,7 +748,7 @@ void D3D12CommandList::TransitionBarrier(Microsoft::WRL::ComPtr<ID3D12Resource> 
 
 void PhxEngine::RHI::D3D12::D3D12CommandList::BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants)
 {
-    if (this->m_activeComputePipeline)
+    if (this->m_activePipelineType == PipelineType::Compute)
     {
         this->m_d3d12CommandList->SetComputeRoot32BitConstants(rootParameterIndex, sizeInBytes / sizeof(uint32_t), constants, 0);
     }
@@ -761,7 +761,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BindPushConstant(uint32_t rootPara
 void PhxEngine::RHI::D3D12::D3D12CommandList::BindConstantBuffer(size_t rootParameterIndex, BufferHandle constantBuffer)
 {
     const D3D12Buffer* constantBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(constantBuffer);
-    if (this->m_activeComputePipeline)
+    if (this->m_activePipelineType == PipelineType::Compute)
     {
         this->m_d3d12CommandList->SetComputeRootConstantBufferView(rootParameterIndex, constantBufferImpl->D3D12Resource->GetGPUVirtualAddress());
     }
@@ -776,7 +776,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BindDynamicConstantBuffer(size_t r
     UploadBuffer::Allocation alloc = this->m_uploadBuffer->Allocate(sizeInBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
     std::memcpy(alloc.CpuData, bufferData, sizeInBytes);
 
-    if (this->m_activeComputePipeline)
+    if (this->m_activePipelineType == PipelineType::Compute)
     {
         this->m_d3d12CommandList->SetComputeRootConstantBufferView(rootParameterIndex, alloc.Gpu);
     }
@@ -838,7 +838,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BindDynamicStructuredBuffer(uint32
     UploadBuffer::Allocation alloc = this->m_uploadBuffer->Allocate(sizeInBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
     std::memcpy(alloc.CpuData, bufferData, sizeInBytes);
 
-    if (this->m_activeComputePipeline)
+    if (this->m_activePipelineType == PipelineType::Compute)
     {
         this->m_d3d12CommandList->SetComputeRootShaderResourceView(rootParameterIndex, alloc.Gpu);
     }
@@ -852,7 +852,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BindStructuredBuffer(size_t rootPa
 {
     const D3D12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(buffer);
 
-    if (this->m_activeComputePipeline)
+    if (this->m_activePipelineType == PipelineType::Compute)
     {
         this->m_d3d12CommandList->SetComputeRootShaderResourceView(
             rootParameterIndex,
@@ -870,7 +870,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BindResourceTable(size_t rootParam
 {
     if (this->m_graphicsDevice.GetMinShaderModel() < ShaderModel::SM_6_6)
     {
-        if (this->m_activeComputePipeline)
+        if (this->m_activePipelineType == PipelineType::Compute)
         {
             this->m_d3d12CommandList->SetComputeRootDescriptorTable(
                 rootParameterIndex,
@@ -907,7 +907,7 @@ void D3D12CommandList::BindDynamicDescriptorTable(size_t rootParameterIndex, Cor
             D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     }
 
-    if (this->m_activeComputePipeline)
+    if (this->m_activePipelineType == PipelineType::Compute)
     {
         this->m_d3d12CommandList->SetComputeRootDescriptorTable(rootParameterIndex, descriptorTable.GetGpuHandle());
     }
@@ -947,7 +947,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BindDynamicUavDescriptorTable(
 
     }
 
-    if (this->m_activeComputePipeline)
+    if (this->m_activePipelineType == PipelineType::Compute)
     {
         this->m_d3d12CommandList->SetComputeRootDescriptorTable(rootParameterIndex, descriptorTable.GetGpuHandle());
     }
@@ -959,6 +959,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BindDynamicUavDescriptorTable(
 
 void PhxEngine::RHI::D3D12::D3D12CommandList::SetComputeState(ComputePipelineHandle state)
 {
+    this->m_activePipelineType = PipelineType::Compute;
     D3D12ComputePipeline* computePsoImpl = this->m_graphicsDevice.GetComputePipelinePool().Get(state);
     this->m_d3d12CommandList->SetComputeRootSignature(computePsoImpl->RootSignature.Get());
     this->m_d3d12CommandList->SetPipelineState(computePsoImpl->D3D12PipelineState.Get());
@@ -975,6 +976,51 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::DispatchIndirect(uint32_t offsetBy
 {
     // Not supported yet
     assert(false);
+}
+
+void PhxEngine::RHI::D3D12::D3D12CommandList::SetMeshPipeline(MeshPipelineHandle meshPipeline)
+{
+    this->m_activePipelineType = PipelineType::Mesh;
+    D3D12MeshPipeline* psoImpl = this->m_graphicsDevice.GetMeshPipelinePool().Get(meshPipeline);
+    // this->m_d3d12CommandList->SetPipelineState(m_activeMeshPipeline->D3D12PipelineState.Get());
+
+    this->m_d3d12CommandList->SetGraphicsRootSignature(psoImpl->RootSignature.Get());
+
+    const auto& desc = psoImpl->Desc;
+    D3D_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+    switch (desc.PrimType)
+    {
+    case PrimitiveType::TriangleList:
+        topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+        break;
+    case PrimitiveType::TriangleStrip:
+        topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+        break;
+    case PrimitiveType::LineList:
+        topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+        break;
+    default:
+        assert(false);
+    }
+    this->m_d3d12CommandList->IASetPrimitiveTopology(topology);
+
+    // TODO: Move viewport logic here as well...
+}
+
+void PhxEngine::RHI::D3D12::D3D12CommandList::DispatchMesh(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ)
+{
+    assert(this->m_activePipelineType == PipelineType::Mesh);
+    this->m_d3d12CommandList6->DispatchMesh(groupsX, groupsY, groupsZ);
+}
+
+void PhxEngine::RHI::D3D12::D3D12CommandList::DispatchMeshIndirect(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ)
+{
+    D3D12_INDIRECT_ARGUMENT_DESC desc = {};
+    desc.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH;
+    /*
+    desc.
+    this->m_d3d12CommandList6->ExecuteIndirect()
+    */
 }
 
 void PhxEngine::RHI::D3D12::D3D12CommandList::BeginTimerQuery(TimerQueryHandle query)

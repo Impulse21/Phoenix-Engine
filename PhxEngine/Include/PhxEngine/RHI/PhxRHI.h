@@ -880,6 +880,29 @@ namespace PhxEngine::RHI
     struct ComputePipeline;
     using ComputePipelineHandle = Core::Handle<ComputePipeline>;
 
+    struct MeshPipelineDesc
+    {
+        PrimitiveType PrimType = PrimitiveType::TriangleList;
+
+        ShaderHandle AmpShader;
+        ShaderHandle MeshShader;
+        ShaderHandle PixelShader;
+
+        BlendRenderState BlendRenderState = {};
+        DepthStencilRenderState DepthStencilRenderState = {};
+        RasterRenderState RasterRenderState = {};
+
+        std::vector<RHIFormat> RtvFormats;
+        std::optional<RHIFormat> DsvFormat;
+
+        uint32_t SampleCount = 1;
+        uint32_t SampleQuality = 0;
+
+    };
+
+    struct MeshPipeline;
+    using MeshPipelineHandle = Core::Handle<MeshPipeline>;
+
     struct SubresourceData
     {
         const void* pData = nullptr;
@@ -1200,6 +1223,11 @@ namespace PhxEngine::RHI
         virtual void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1) = 0;
         virtual void DispatchIndirect(uint32_t offsetBytes) = 0;
 
+        // -- Mesh Stuff ---
+        virtual void SetMeshPipeline(MeshPipelineHandle meshPipeline) = 0;
+        virtual void DispatchMesh(uint32_t groupsX, uint32_t groupsY = 1u, uint32_t groupsZ = 1u) = 0;
+        virtual void DispatchMeshIndirect(uint32_t groupsX, uint32_t groupsY = 1u, uint32_t groupsZ = 1u) = 0;
+
         virtual void BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants) = 0;
         template<typename T>
         void BindPushConstant(uint32_t rootParameterIndex, const T& constants)
@@ -1372,6 +1400,10 @@ namespace PhxEngine::RHI
         virtual const GraphicsPipelineDesc& GetGfxPipelineDesc(GraphicsPipelineHandle handle) = 0;
         virtual void DeleteGraphicsPipeline(GraphicsPipelineHandle handle) = 0;
         virtual ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc) = 0;
+
+
+        virtual MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc) = 0;
+        virtual void DeleteMeshPipeline(MeshPipelineHandle handle) = 0;
 
         virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
         virtual const TextureDesc& GetTextureDesc(TextureHandle handle) = 0;

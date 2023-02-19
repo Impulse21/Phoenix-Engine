@@ -12,6 +12,7 @@ namespace PhxEngine::RHI::D3D12
 	class UploadBuffer;
 	class DynamicSuballocator;
 	class D3D12ComputePipeline;
+	class D3D12MeshPipeline;
 
 	class TimerQuery;
 	struct TrackedResources
@@ -120,6 +121,11 @@ namespace PhxEngine::RHI::D3D12
 		void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1);
 		void DispatchIndirect(uint32_t offsetBytes);
 
+		// -- Mesh Stuff ---
+		void SetMeshPipeline(MeshPipelineHandle meshPipeline) override;
+		void DispatchMesh(uint32_t groupsX, uint32_t groupsY = 1u, uint32_t groupsZ = 1u) override;
+		void DispatchMeshIndirect(uint32_t groupsX, uint32_t groupsY = 1u, uint32_t groupsZ = 1u) override;
+
 		// -- Query Stuff ---
 		void BeginTimerQuery(TimerQueryHandle query);
 		void EndTimerQuery(TimerQueryHandle query);
@@ -136,8 +142,21 @@ namespace PhxEngine::RHI::D3D12
 	private:
 		const uint32_t DynamicChunkSizeSrvUavCbv = 256;
 		CommandQueue* m_parentQueue;
+
 		D3D12GraphicsDevice& m_graphicsDevice;
-		D3D12ComputePipeline* m_activeComputePipeline = nullptr;
+
+		enum class PipelineType
+		{
+			Gfx,
+			Compute,
+			Mesh,
+		} m_activePipelineType;
+
+		union
+		{
+			D3D12ComputePipeline* m_activeComputePipeline;
+			D3D12MeshPipeline* m_activeMeshPipeline;
+		};
 
 		std::unique_ptr<UploadBuffer> m_uploadBuffer;
 

@@ -117,6 +117,15 @@ namespace PhxEngine::RHI::D3D12
         D3D12ComputePipeline() = default;
     };
 
+    struct D3D12MeshPipeline
+    {
+        Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
+        MeshPipelineDesc Desc;
+
+        D3D12MeshPipeline() = default;
+    };
+
     struct DescriptorView
     {
         DescriptorHeapAllocation Allocation;
@@ -331,6 +340,9 @@ namespace PhxEngine::RHI::D3D12
         void DeleteGraphicsPipeline(GraphicsPipelineHandle handle) override;
         ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc) override;
 
+        MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc) override;
+        void DeleteMeshPipeline(MeshPipelineHandle handle) override;
+
         RenderPassHandle CreateRenderPass(RenderPassDesc const& desc) override;
         void GetRenderPassFormats(RenderPassHandle handle, std::vector<RHIFormat>& outRtvFormats, RHIFormat& depthFormat) override;
         RenderPassDesc GetRenderPassDesc(RenderPassHandle handle) override;
@@ -450,6 +462,7 @@ namespace PhxEngine::RHI::D3D12
         Core::Pool<D3D12RenderPass, RenderPass>& GetRenderPassPool() { return this->m_renderPassPool; };
         Core::Pool<D3D12GraphicsPipeline, GraphicsPipeline>& GetGraphicsPipelinePool() { return this->m_graphicsPipelinePool; }
         Core::Pool<D3D12ComputePipeline, ComputePipeline>& GetComputePipelinePool() { return this->m_computePipelinePool; }
+        Core::Pool<D3D12MeshPipeline, MeshPipeline>& GetMeshPipelinePool() { return this->m_meshPipelinePool; }
         Core::Pool<D3D12RTAccelerationStructure, RTAccelerationStructure>& GetRTAccelerationStructurePool() { return this->m_rtAccelerationStructurePool; }
 
     private:
@@ -501,6 +514,7 @@ namespace PhxEngine::RHI::D3D12
         Core::Pool<D3D12RTAccelerationStructure, RTAccelerationStructure> m_rtAccelerationStructurePool;
         Core::Pool<D3D12GraphicsPipeline, GraphicsPipeline> m_graphicsPipelinePool;
         Core::Pool<D3D12ComputePipeline, ComputePipeline> m_computePipelinePool;
+        Core::Pool<D3D12MeshPipeline, MeshPipeline> m_meshPipelinePool;
 
         // -- Command Queues ---
 		std::array<std::unique_ptr<CommandQueue>, (int)CommandQueueType::Count> m_commandQueues;

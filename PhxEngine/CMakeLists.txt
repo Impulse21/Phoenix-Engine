@@ -214,7 +214,7 @@ add_custom_command(
 
 # D3D12 Agility SDK
 message("Fetching D3D12 Agility SDK")
-FetchContent_Declare(d3d12-agility-sdk URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.606.3)
+FetchContent_Declare(d3d12-agility-sdk URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.608.2)
 FetchContent_MakeAvailable(d3d12-agility-sdk)
 file(GLOB_RECURSE d3d12-agility-sdk_include "${d3d12-agility-sdk_SOURCE_DIR}/build/native/include/*.h")
 add_library(
