@@ -13,6 +13,16 @@ using namespace PhxEngine::Scene;
 
 constexpr uint64_t kVertexBufferAlignment = 16ull;
 
+namespace
+{
+	// An integer version of ceil(value / divisor)
+	template <typename T, typename U>
+	T DivRoundUp(T num, U denom)
+	{
+		return (num + denom - 1) / denom;
+	}
+}
+
 void MeshComponent::CreateRenderData(
 	RHI::ICommandList* commandList,
 	Renderer::ResourceUpload& indexUploader,
@@ -205,9 +215,7 @@ void PhxEngine::Scene::MeshComponent::ComputeMeshlets(RHI::IGraphicsDevice* gfxD
 		meshlets,
 		uniqueVertexIB,
 		prims,
-		meshletSubsets.data(),
-		128u,
-		MESHLET_MAXIMUM_SIZE);
+		meshletSubsets.data());
 
 	this->MeshletSubsets.resize(meshletSubsets.size());
 	for (uint32_t i = 0; i < meshletSubsets.size(); ++i)
@@ -249,21 +257,19 @@ void PhxEngine::Scene::MeshComponent::ComputeMeshlets(RHI::IGraphicsDevice* gfxD
 	}
 
 	{
-
-		const size_t sizeInBytes = uniqueVertexIB.size() * sizeof(uint8_t);
+		const size_t sizeInBytes = uniqueVertexIB.size();
 		this->UniqueVertexIndices = gfxDevice->CreateBuffer(
 			{
 				.MiscFlags = RHI::BufferMiscFlags::Raw | RHI::BufferMiscFlags::Bindless,
 				.Binding = RHI::BindingFlags::ShaderResource,
 				.InitialState = RHI::ResourceStates::CopyDest,
-				.StrideInBytes = sizeof(uint8_t),
 				.SizeInBytes = sizeInBytes,
 				.DebugName = "Unique Vertex IB",
 			});
 
 		Renderer::ResourceUpload unqiueVertexIBUploader = Renderer::CreateResourceUpload(sizeInBytes);
 
-		auto offset = unqiueVertexIBUploader.SetData(uniqueVertexIB.data(), uniqueVertexIB.size() * sizeof(uint8_t));
+		auto offset = unqiueVertexIBUploader.SetData(uniqueVertexIB.data(), uniqueVertexIB.size());
 
 		commandList->CopyBuffer(
 			this->UniqueVertexIndices,

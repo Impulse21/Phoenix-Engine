@@ -11,8 +11,9 @@
 	"CBV(b0), " \
 	"CBV(b1), " \
 
-#define MAX_PRIMS_PER_MESHLET 256
+#define MAX_PRIMS_PER_MESHLET 128
 #define MAX_VERTICES_PER_MESHLET 128
+#define MAX_THREAD_COUNT 128
 
 PUSH_CONSTANT(push, MeshletPushConstants);
 
@@ -28,7 +29,7 @@ struct VertexOut
 inline uint LoadPrimitiveIndices(uint index)
 {
     StructuredBuffer<uint> primitiveIndices = ResourceDescriptorHeap[push.PrimitiveIndicesIdx];
-    return primitiveIndices.Load(index * 4);
+    return primitiveIndices[index];
 }
 
 inline uint LoadUniqueVertexIB(uint index)
@@ -49,7 +50,9 @@ uint3 UnpackPrimitive(uint primitive)
 
 uint3 GetPrimitive(Meshlet_NEW m, uint index)
 {
-    return UnpackPrimitive(LoadPrimitiveIndices(m.PrimOffset + index));
+    uint primitive = LoadPrimitiveIndices(m.PrimOffset + index);
+    uint3 unpackedPrimitive = UnpackPrimitive(primitive);
+    return unpackedPrimitive;
 }
 
 uint GetVertexIndex(Meshlet_NEW m, uint localIndex)
@@ -76,7 +79,7 @@ VertexOut GetVertexAttributes(uint meshletIndex, uint vertexIndex)
 }
 
 [RootSignature(ROOT_SIG)]
-[numthreads(128, 1, 1)]
+[numthreads(MAX_THREAD_COUNT, 1, 1)]
 [outputtopology("triangle")]
 void main(
     uint gtid : SV_GroupThreadID,

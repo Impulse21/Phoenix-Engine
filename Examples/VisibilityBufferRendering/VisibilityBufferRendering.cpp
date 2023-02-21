@@ -240,7 +240,7 @@ public:
                 .DebugName = "VisibilityBufferFillPassPS",
             });
 
-        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/TestScenes/MaterialShowcase.gltf";
+        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/TestScenes/VisibilityBufferScene.gltf";
         this->BeginLoadingScene(nativeFS, scenePath);
 
         this->m_renderTargets.Initialize(this->GetGfxDevice(), this->GetRoot()->GetCanvasSize());
@@ -265,6 +265,21 @@ public:
             });
 
         this->m_mainCamera.FoV = DirectX::XMConvertToRadians(60);
+
+        // -- Depth ---
+        RHI::TextureDesc desc = {};
+        desc.Width = std::max(this->GetRoot()->GetCanvasSize().x, 1.0f);
+        desc.Height = std::max(this->GetRoot()->GetCanvasSize().y, 1.0f);
+        desc.Dimension = RHI::TextureDimension::Texture2D;
+        desc.IsBindless = false;
+
+        desc.Format = RHI::RHIFormat::D32;
+        desc.IsTypeless = true;
+        desc.DebugName = "Depth Buffer";
+        desc.OptmizedClearValue.DepthStencil.Depth = 1.0f;
+        desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::DepthStencil;
+        desc.InitialState = RHI::ResourceStates::DepthWrite;
+        this->m_depthTex = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
 
         Scene::TransformComponent t = {};
         t.LocalTranslation = { -5.0f, 2.0f, 0.0f };
@@ -347,10 +362,8 @@ public:
 				{
 					.MeshShader = this->m_meshShader,
 					.PixelShader = this->m_pixelShader,
-					.DepthStencilRenderState = {
-						.DepthTestEnable = false
-					},
 					.RtvFormats = { this->GetGfxDevice()->GetTextureDesc(this->GetGfxDevice()->GetBackBuffer()).Format },
+                    .DsvFormat = { this->GetGfxDevice()->GetTextureDesc(this->m_depthTex).Format }
 				});
 		}
 
@@ -504,6 +517,8 @@ private:
     std::shared_ptr<DeferredLightingPass> m_deferredLightingPass;
     std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
     std::unique_ptr<Renderer::ToneMappingPass> m_toneMappingPass;
+
+    RHI::TextureHandle m_depthTex;
 
     float m_rotation = 0.0f;
 };

@@ -9,6 +9,7 @@
 
 #define MAX_PRIMS_PER_MESHLET 256
 #define MAX_VERTICES_PER_MESHLET 128
+#define MAX_THREAD_COUNT 256
 
 PUSH_CONSTANT(push, MeshletPushConstants);
 
@@ -31,6 +32,11 @@ float4 main(VertexOut input) : SV_TARGET
     float3 diffuseColor;
     float shininess;
     uint meshletIndex = input.MeshletIndex;
+    if (meshletIndex == 0)
+    {
+        meshletIndex += 1;
+    }
+    
     diffuseColor = float3(
             float(meshletIndex & 1),
             float(meshletIndex & 3) / 4,
