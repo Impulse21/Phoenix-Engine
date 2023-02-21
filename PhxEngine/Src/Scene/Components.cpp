@@ -3,6 +3,9 @@
 #include <PhxEngine/Core/Math.h>
 
 #include <PhxEngine/Core/Helpers.h>
+#include <DirectXMesh.h>
+#include <PhxEngine/Renderer/Renderer.h>
+
 
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
@@ -167,6 +170,145 @@ void MeshComponent::CreateRenderData(
 		}
 
 		this->Blas = RHI::IGraphicsDevice::GPtr->CreateRTAccelerationStructure(rtDesc);
+	}
+}
+
+void PhxEngine::Scene::MeshComponent::ComputeMeshlets(RHI::IGraphicsDevice* gfxDevice, RHI::ICommandList* commandList)
+{
+	std::vector<uint32_t> attributes;
+	for (int i = 0; i < this->Surfaces.size(); i++)
+	{
+		auto& surface = this->Surfaces[i];
+		for (int j = surface.IndexOffsetInMesh; j < surface.NumIndices; j +=3)
+		{
+			attributes.emplace_back(i);
+		}
+	}
+
+	auto subsets = DirectX::ComputeSubsets(attributes.data(), attributes.size());
+	this->indexSubsets.resize(subsets.size());
+	for (uint32_t i = 0; i < subsets.size(); ++i)
+	{
+		indexSubsets[i].Offset = static_cast<uint32_t>(subsets[i].first) * 3;
+		indexSubsets[i].Count = static_cast<uint32_t>(subsets[i].second) * 3;
+	}
+
+	std::vector<std::pair<size_t, size_t>> meshletSubsets(subsets.size());
+	std::vector<DirectX::Meshlet> meshlets;
+	std::vector<uint8_t> uniqueVertexIB;
+	std::vector<DirectX::MeshletTriangle> prims;
+	DirectX::ComputeMeshlets(
+		this->Indices.data(), this->Indices.size() / 3,
+		this->VertexPositions.data(), this->VertexPositions.size(),
+		subsets.data(), subsets.size(),
+		nullptr,
+		meshlets,
+		uniqueVertexIB,
+		prims,
+		meshletSubsets.data(),
+		128u,
+		MESHLET_MAXIMUM_SIZE);
+
+	this->MeshletSubsets.resize(meshletSubsets.size());
+	for (uint32_t i = 0; i < meshletSubsets.size(); ++i)
+	{
+		this->MeshletSubsets[i].Offset = static_cast<uint32_t>(meshletSubsets[i].first);
+		this->MeshletSubsets[i].Count = static_cast<uint32_t>(meshletSubsets[i].second);
+	}
+
+	{
+		this->MeshletsCount = meshlets.size();
+		const size_t sizeInBytes = meshlets.size() * sizeof(DirectX::Meshlet);
+		this->Meshlets = gfxDevice->CreateBuffer(
+			{
+				.MiscFlags = RHI::BufferMiscFlags::Structured | RHI::BufferMiscFlags::Bindless,
+				.Binding = RHI::BindingFlags::ShaderResource,
+				.InitialState = RHI::ResourceStates::CopyDest,
+				.StrideInBytes = sizeof(DirectX::Meshlet),
+				.SizeInBytes = sizeInBytes,
+				.DebugName = "Meshlet Buffer",
+			});
+
+
+		Renderer::ResourceUpload meshletsUploader = Renderer::CreateResourceUpload(sizeInBytes);
+
+		auto offset = meshletsUploader.SetData(meshlets.data(), meshlets.size() * sizeof(DirectX::Meshlet));
+		commandList->CopyBuffer(
+			this->Meshlets,
+			0,
+			meshletsUploader.UploadBuffer,
+			offset,
+			sizeInBytes);
+
+		commandList->TransitionBarrier(
+			this->Meshlets,
+			RHI::ResourceStates::CopyDest,
+			RHI::ResourceStates::ShaderResource);
+
+		meshletsUploader.Free();
+	}
+
+	{
+
+		const size_t sizeInBytes = uniqueVertexIB.size() * sizeof(uint8_t);
+		this->UniqueVertexIndices = gfxDevice->CreateBuffer(
+			{
+				.MiscFlags = RHI::BufferMiscFlags::Raw | RHI::BufferMiscFlags::Bindless,
+				.Binding = RHI::BindingFlags::ShaderResource,
+				.InitialState = RHI::ResourceStates::CopyDest,
+				.StrideInBytes = sizeof(uint8_t),
+				.SizeInBytes = sizeInBytes,
+				.DebugName = "Unique Vertex IB",
+			});
+
+		Renderer::ResourceUpload unqiueVertexIBUploader = Renderer::CreateResourceUpload(sizeInBytes);
+
+		auto offset = unqiueVertexIBUploader.SetData(meshlets.data(), meshlets.size() * sizeof(DirectX::Meshlet));
+
+		commandList->CopyBuffer(
+			this->UniqueVertexIndices,
+			0,
+			unqiueVertexIBUploader.UploadBuffer,
+			offset,
+			sizeInBytes);
+
+		commandList->TransitionBarrier(
+			this->UniqueVertexIndices,
+			RHI::ResourceStates::CopyDest,
+			RHI::ResourceStates::ShaderResource);
+
+		unqiueVertexIBUploader.Free();
+	}
+
+	{
+		const size_t sizeInBytes = prims.size() * sizeof(DirectX::MeshletTriangle);
+		this->PrimitiveIndices = gfxDevice->CreateBuffer(
+			{
+				.MiscFlags = RHI::BufferMiscFlags::Structured | RHI::BufferMiscFlags::Bindless,
+				.Binding = RHI::BindingFlags::ShaderResource,
+				.InitialState = RHI::ResourceStates::CopyDest,
+				.StrideInBytes = sizeof(DirectX::MeshletTriangle),
+				.SizeInBytes = sizeInBytes,
+				.DebugName = "Unique Vertex IB",
+			});
+
+		Renderer::ResourceUpload meshletTriangleUplaoder = Renderer::CreateResourceUpload(sizeInBytes);
+
+		auto offset = meshletTriangleUplaoder.SetData(meshlets.data(), meshlets.size() * sizeof(DirectX::Meshlet));
+
+		commandList->CopyBuffer(
+			this->PrimitiveIndices,
+			0,
+			meshletTriangleUplaoder.UploadBuffer,
+			offset,
+			sizeInBytes);
+
+		commandList->TransitionBarrier(
+			this->PrimitiveIndices,
+			RHI::ResourceStates::CopyDest,
+			RHI::ResourceStates::ShaderResource);
+
+		meshletTriangleUplaoder.Free();
 	}
 }
 

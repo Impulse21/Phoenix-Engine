@@ -455,6 +455,32 @@ namespace Shader
 		uint PrimitiveOffset;
 	};
 
+	struct Subset
+	{
+		uint32_t Offset;
+		uint32_t Count;
+	};
+
+	struct Meshlet_NEW
+	{
+		uint VertCount;
+		uint VertOffset;
+		uint PrimCount;
+		uint PrimOffset;
+	};
+	
+	struct MeshletPushConstants
+	{
+		float4x4 WorldMatrix;
+		uint VerticesBufferIdx;
+		uint MeshletsBufferIdx;
+		uint UniqueVertexIBIdx;
+		uint PrimitiveIndicesIdx;
+
+		uint GeometryIdx;
+		uint SubsetOffset;
+	};
+
 	struct RenderCams
 	{
 		float4x4 ViewProjection[6];

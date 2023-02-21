@@ -145,6 +145,7 @@ void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> c
 				.SizeInBytes = sizeof(Shader::Meshlet) * this->m_numMeshlets,
 				.AllowUnorderedAccess = true,
 				.CreateBindless = true,
+				.DebugName = "Meshlet Buffer"
 			});
 	}
 

@@ -52,16 +52,16 @@ struct RenderTargets
         this->ColourBuffer = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
 
         RHI::TextureDesc visibilityBufferDesc = {};
-        desc.Width = std::max(size.x, 1.0f);
-        desc.Height = std::max(size.y, 1.0f);
-        desc.Dimension = RHI::TextureDimension::Texture2D;
-        desc.OptmizedClearValue.Colour = { 0.0f, 0.0f, 0.0f, 1.0f };
-        desc.InitialState = RHI::ResourceStates::ShaderResource;
-        desc.IsBindless = true;
-        desc.IsTypeless = true;
-        desc.Format = RHI::RHIFormat::RGBA8_UNORM;
-        desc.DebugName = "Visibility Buffer";
-        desc.BindingFlags = RHI::BindingFlags::ShaderResource;
+        visibilityBufferDesc.Width = std::max(size.x, 1.0f);
+        visibilityBufferDesc.Height = std::max(size.y, 1.0f);
+        visibilityBufferDesc.Dimension = RHI::TextureDimension::Texture2D;
+        visibilityBufferDesc.OptmizedClearValue.Colour = { 0.0f, 0.0f, 0.0f, 1.0f };
+        visibilityBufferDesc.InitialState = RHI::ResourceStates::ShaderResource;
+        visibilityBufferDesc.IsBindless = true;
+        visibilityBufferDesc.IsTypeless = true;
+        visibilityBufferDesc.Format = RHI::RHIFormat::RGBA8_UNORM;
+        visibilityBufferDesc.DebugName = "Visibility Buffer";
+        visibilityBufferDesc.BindingFlags = RHI::BindingFlags::ShaderResource;
 
         this->VisibilityBuffer = RHI::IGraphicsDevice::GPtr->CreateTexture(visibilityBufferDesc);
         this->VisibilityRenderPass = IGraphicsDevice::GPtr->CreateRenderPass(
@@ -87,6 +87,120 @@ struct RenderTargets
     }
 };
 
+struct RenderScene
+{
+    RHI::BufferHandle GlobalVertexBuffer;
+    RHI::BufferHandle GlobalIndexBuffer;
+
+    void MergeMeshes(RHI::IGraphicsDevice* gfxDevice, RHI::ICommandList* commandList, Scene::Scene& scene)
+    {
+        uint64_t vertexCount = 0;
+        uint64_t vertexSizeInBytes = 0;
+        uint64_t indexCount = 0;
+        uint64_t indexSizeInBytes = 0;
+
+        auto view = scene.GetAllEntitiesWith<Scene::MeshComponent>();
+        for (auto e : view)
+        {
+            auto& meshComp = view.get<Scene::MeshComponent>(e);
+
+            meshComp.GlobalIndexBufferOffset = indexCount;
+            indexCount += meshComp.TotalIndices;
+            indexSizeInBytes += meshComp.GetIndexBufferSizeInBytes();
+
+            meshComp.GlobalVertexBufferOffset = vertexCount;
+            vertexCount += meshComp.TotalVertices;
+            vertexSizeInBytes += meshComp.GetVertexBufferSizeInBytes();
+        }
+
+        if (this->GlobalVertexBuffer.IsValid())
+        {
+            gfxDevice->DeleteBuffer(this->GlobalVertexBuffer);
+        }
+
+        RHI::BufferDesc vertexDesc = {};
+        vertexDesc.StrideInBytes = sizeof(float);
+        vertexDesc.DebugName = "Vertex Buffer";
+        vertexDesc.EnableBindless();
+        vertexDesc.IsRawBuffer();
+        vertexDesc.Binding = RHI::BindingFlags::VertexBuffer | RHI::BindingFlags::ShaderResource;
+        vertexDesc.SizeInBytes = vertexSizeInBytes;
+
+        this->GlobalVertexBuffer = RHI::IGraphicsDevice::GPtr->CreateVertexBuffer(vertexDesc);
+
+        if (this->GlobalIndexBuffer.IsValid())
+        {
+            gfxDevice->DeleteBuffer(this->GlobalIndexBuffer);
+        }
+
+        RHI::BufferDesc indexBufferDesc = {};
+        indexBufferDesc.SizeInBytes = indexSizeInBytes;
+        indexBufferDesc.StrideInBytes = sizeof(uint32_t);
+        indexBufferDesc.DebugName = "Index Buffer";
+        vertexDesc.Binding = RHI::BindingFlags::IndexBuffer;
+        this->GlobalIndexBuffer = RHI::IGraphicsDevice::GPtr->CreateIndexBuffer(indexBufferDesc);
+
+        // Upload data
+        {
+            RHI::GpuBarrier preCopyBarriers[] =
+            {
+                RHI::GpuBarrier::CreateBuffer(this->GlobalVertexBuffer, gfxDevice->GetBufferDesc(this->GlobalVertexBuffer).InitialState, RHI::ResourceStates::CopyDest),
+                RHI::GpuBarrier::CreateBuffer(this->GlobalIndexBuffer, gfxDevice->GetBufferDesc(this->GlobalIndexBuffer).InitialState, RHI::ResourceStates::CopyDest),
+            };
+
+            commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
+        }
+
+        for (auto e : view)
+        {
+            auto& meshComp = view.get<Scene::MeshComponent>(e);;
+            
+            BufferDesc vertexBufferDesc = gfxDevice->GetBufferDesc(meshComp.VertexGpuBuffer);
+            BufferDesc indexBufferDesc = gfxDevice->GetBufferDesc(meshComp.IndexGpuBuffer);
+            RHI::GpuBarrier preCopyBarriers[] =
+            {
+                RHI::GpuBarrier::CreateBuffer(meshComp.VertexGpuBuffer, vertexBufferDesc.InitialState, RHI::ResourceStates::CopySource),
+                RHI::GpuBarrier::CreateBuffer(meshComp.IndexGpuBuffer, indexBufferDesc.InitialState, RHI::ResourceStates::CopySource),
+            };
+
+            commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
+
+            commandList->CopyBuffer(
+                meshComp.VertexGpuBuffer,
+                0,
+                this->GlobalVertexBuffer,
+                meshComp.GlobalVertexBufferOffset* vertexBufferDesc.StrideInBytes,
+                vertexBufferDesc.SizeInBytes);
+
+            commandList->CopyBuffer(
+                meshComp.IndexGpuBuffer,
+                0,
+                this->GlobalIndexBuffer,
+                meshComp.GlobalIndexBufferOffset * indexBufferDesc.StrideInBytes,
+                indexBufferDesc.SizeInBytes);
+
+            // Upload data
+            RHI::GpuBarrier postCopyBarriers[] =
+            {
+                RHI::GpuBarrier::CreateBuffer(meshComp.VertexGpuBuffer, RHI::ResourceStates::CopySource, vertexBufferDesc.InitialState),
+                RHI::GpuBarrier::CreateBuffer(meshComp.IndexGpuBuffer, RHI::ResourceStates::CopySource, indexBufferDesc.InitialState),
+            };
+
+            commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
+        }
+
+
+        // Upload data
+        RHI::GpuBarrier postCopyBarriers[] =
+        {
+            RHI::GpuBarrier::CreateBuffer(this->GlobalVertexBuffer, RHI::ResourceStates::CopyDest, gfxDevice->GetBufferDesc(this->GlobalVertexBuffer).InitialState),
+            RHI::GpuBarrier::CreateBuffer(this->GlobalIndexBuffer, RHI::ResourceStates::CopyDest, gfxDevice->GetBufferDesc(this->GlobalIndexBuffer).InitialState),
+        };
+
+        commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
+    }
+};
+
 class VisibilityRenderering : public ApplicationBase
 {
 private:
@@ -106,12 +220,27 @@ public:
         std::filesystem::path appShadersRoot = Core::Platform::GetExcecutableDir() / "Shaders/PhxEngine/dxil";
         std::shared_ptr<Core::IRootFileSystem> rootFilePath = Core::CreateRootFileSystem();
         rootFilePath->Mount("/Shaders/PhxEngine", appShadersRoot);
+        rootFilePath->Mount("/Shaders/VisibilityBufferRendering", appShadersRoot);
 
         this->m_shaderFactory = std::make_unique<Graphics::ShaderFactory>(this->GetGfxDevice(), rootFilePath, "/Shaders");
         this->m_commonPasses = std::make_shared<Renderer::CommonPasses>(this->GetGfxDevice(), *this->m_shaderFactory);
         this->m_textureCache = std::make_unique<Graphics::TextureCache>(nativeFS, this->GetGfxDevice());
 
-        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza/Sponza.gltf";
+        this->m_meshShader = this->m_shaderFactory->CreateShader(
+            "VisibilityBufferRendering/VisibilityBufferFillPassMS.hlsl",
+            {
+                .Stage = RHI::ShaderStage::Mesh,
+                .DebugName = "VisibilityBufferFillPassMS",
+            });
+
+        this->m_pixelShader = this->m_shaderFactory->CreateShader(
+            "VisibilityBufferRendering/VisibilityBufferFillPassPS.hlsl",
+            {
+                .Stage = RHI::ShaderStage::Pixel,
+                .DebugName = "VisibilityBufferFillPassPS",
+            });
+
+        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/TestScenes/MaterialShowcase.gltf";
         this->BeginLoadingScene(nativeFS, scenePath);
 
         this->m_renderTargets.Initialize(this->GetGfxDevice(), this->GetRoot()->GetCanvasSize());
@@ -166,6 +295,13 @@ public:
             Renderer::ResourceUpload vertexUpload;
             this->m_scene.ConstructRenderData(commandList, indexUpload, vertexUpload);
 
+
+            auto view = this->m_scene.GetAllEntitiesWith<Scene::MeshComponent>();
+            for (auto e : view)
+            {
+                view.get<Scene::MeshComponent>(e).ComputeMeshlets(this->GetGfxDevice(), commandList);
+            }
+
             indexUpload.Free();
             vertexUpload.Free();
         }
@@ -178,7 +314,7 @@ public:
 
     void OnWindowResize(WindowResizeEvent const& e) override
     {
-        this->GetGfxDevice()->DeleteGraphicsPipeline(this->m_pipeline);
+        this->GetGfxDevice()->DeleteMeshPipeline(this->m_pipeline);
         this->m_pipeline = {};
         this->m_renderTargets.Free(this->GetGfxDevice());
         this->m_renderTargets.Initialize(this->GetGfxDevice(), this->GetRoot()->GetCanvasSize());
@@ -194,77 +330,76 @@ public:
 
     void RenderScene() override
     {
-        this->m_mainCamera.Width = this->GetRoot()->GetCanvasSize().x;
-        this->m_mainCamera.Height = this->GetRoot()->GetCanvasSize().y;
-        this->m_mainCamera.UpdateCamera();
+		this->m_mainCamera.Width = this->GetRoot()->GetCanvasSize().x;
+		this->m_mainCamera.Height = this->GetRoot()->GetCanvasSize().y;
+		this->m_mainCamera.UpdateCamera();
 
-        ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
+		// The camera data doesn't match whats in the CPU and what's in the GPU.
+		Shader::Camera cameraData = {};
+		cameraData.ViewProjection = this->m_mainCamera.ViewProjection;
+		cameraData.ViewProjectionInv = this->m_mainCamera.ViewProjectionInv;
+		cameraData.ProjInv = this->m_mainCamera.ProjectionInv;
+		cameraData.ViewInv = this->m_mainCamera.ViewInv;
 
-        {
-            auto _ = commandList->BeginScopedMarker("Preare Frame Data");
+		if (!this->m_pipeline.IsValid())
+		{
+			this->m_pipeline = this->GetGfxDevice()->CreateMeshPipeline(
+				{
+					.MeshShader = this->m_meshShader,
+					.PixelShader = this->m_pixelShader,
+					.DepthStencilRenderState = {
+						.DepthTestEnable = false
+					},
+					.RtvFormats = { this->GetGfxDevice()->GetTextureDesc(this->GetGfxDevice()->GetBackBuffer()).Format },
+				});
+		}
+
+		RHI::ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
+		{
             this->PrepareRenderData(commandList, this->m_scene);
-            size_t numInstance = this->m_scene.GetAllEntitiesWith<Scene::MeshInstanceComponent>().size();
-            this->m_meshletBufferFillPass->Dispatch(commandList, this->m_scene.GetMeshletBuffer(), this->m_scene.GetNumMeshlets());
-        }
 
-        // The camera data doesn't match whats in the CPU and what's in the GPU.
-        Shader::Camera cameraData = {};
-        cameraData.ViewProjection = this->m_mainCamera.ViewProjection;
-        cameraData.ViewProjectionInv = this->m_mainCamera.ViewProjectionInv;
-        cameraData.ProjInv = this->m_mainCamera.ProjectionInv;
-        cameraData.ViewInv = this->m_mainCamera.ViewInv;
+			auto _ = commandList->BeginScopedMarker("Render Triagnle");
+			commandList->BeginRenderPassBackBuffer();
 
-        {
-            auto _ = commandList->BeginScopedMarker("GBuffer Fill");
+			commandList->SetMeshPipeline(this->m_pipeline);
+			auto canvas = this->GetRoot()->GetCanvasSize();
+			RHI::Viewport v(canvas.x, canvas.y);
+			commandList->SetViewports(&v, 1);
 
-            this->m_visibilityBufferFillPass->BeginPass(commandList, this->m_frameConstantBuffer, cameraData, this->m_renderTargets.VisibilityRenderPass);
-            static thread_local DrawQueue drawQueue;
-            drawQueue.Reset();
+			RHI::Rect rec(LONG_MAX, LONG_MAX);
+			commandList->SetScissors(&rec, 1);
 
-            // Look through Meshes and instances?
+            commandList->BindConstantBuffer(1, this->m_frameConstantBuffer);
+            commandList->BindDynamicConstantBuffer(2, cameraData);
+
             auto view = this->m_scene.GetAllEntitiesWith<Scene::MeshInstanceComponent, Scene::AABBComponent>();
             for (auto e : view)
             {
                 auto [instanceComponent, aabbComp] = view.get<Scene::MeshInstanceComponent, Scene::AABBComponent>(e);
 
                 auto& meshComponent = this->m_scene.GetRegistry().get<Scene::MeshComponent>(instanceComponent.Mesh);
-                if (meshComponent.RenderBucketMask & Scene::MeshComponent::RenderType_Transparent)
+
+                Shader::MeshletPushConstants pushConstant = {};
+                pushConstant.WorldMatrix = instanceComponent.WorldMatrix;
+                pushConstant.VerticesBufferIdx = this->GetGfxDevice()->GetDescriptorIndex(meshComponent.VertexGpuBuffer, RHI::SubresouceType::SRV);
+                pushConstant.MeshletsBufferIdx = this->GetGfxDevice()->GetDescriptorIndex(meshComponent.Meshlets, RHI::SubresouceType::SRV);
+                pushConstant.PrimitiveIndicesIdx = this->GetGfxDevice()->GetDescriptorIndex(meshComponent.PrimitiveIndices, RHI::SubresouceType::SRV);
+                pushConstant.UniqueVertexIBIdx = this->GetGfxDevice()->GetDescriptorIndex(meshComponent.UniqueVertexIndices, RHI::SubresouceType::SRV);
+                pushConstant.GeometryIdx = meshComponent.Surfaces.front().GlobalGeometryBufferIndex;
+
+
+                for (auto& subset : meshComponent.MeshletSubsets)
                 {
-                    continue;
+                    pushConstant.SubsetOffset = subset.Offset;
+                    commandList->BindPushConstant(0, pushConstant);
+                    commandList->DispatchMesh(subset.Count, 1, 1);
                 }
-
-                const float distance = Core::Math::Distance(this->m_mainCamera.Eye, aabbComp.BoundingData.GetCenter());
-
-                drawQueue.Push((uint32_t)instanceComponent.Mesh, (uint32_t)e, distance);
             }
 
-            drawQueue.SortOpaque();
+			commandList->EndRenderPass();
+		}
 
-            RenderViews(commandList, this->m_visibilityBufferFillPass.get(), this->m_scene, drawQueue, true);
-        }
-
-        /**
-		DeferredLightingPass::Input input = {};
-		input.FillGBuffer(this->m_renderTargets);
-		input.OutputTexture = this->m_renderTargets.ColourBuffer;
-        input.FrameBuffer = this->m_frameConstantBuffer;
-        input.CameraData = &cameraData;
-
-		this->m_deferredLightingPass->Render(commandList, input);
-
-        this->m_toneMappingPass->Render(
-            commandList,
-            this->m_renderTargets.ColourBuffer,
-            commandList->GetRenderPassBackBuffer(),
-            this->GetRoot()->GetCanvasSize());
-        */
-        this->m_commonPasses->BlitTexture(
-            commandList,
-            this->m_renderTargets.VisibilityBuffer,
-            commandList->GetRenderPassBackBuffer(),
-            this->GetRoot()->GetCanvasSize());
-
-        commandList->Close();
+		commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList });
     }
 
@@ -355,7 +490,9 @@ private:
 
 private:
     std::unique_ptr<Graphics::ShaderFactory> m_shaderFactory;
-    RHI::GraphicsPipelineHandle m_pipeline;
+    RHI::MeshPipelineHandle m_pipeline;
+    RHI::ShaderHandle m_meshShader;
+    RHI::ShaderHandle m_pixelShader;
     Scene::Scene m_scene;
     Scene::CameraComponent m_mainCamera;
     PhxEngine::FirstPersonCameraController m_cameraController;
@@ -380,7 +517,7 @@ int main(int __argc, const char** __argv)
     std::unique_ptr<IPhxEngineRoot> root = CreateEngineRoot();
 
     EngineParam params = {};
-    params.Name = "PhxEngine Example: Shadows";
+    params.Name = "PhxEngine Example: Visibility Buffer";
     params.GraphicsAPI = RHI::GraphicsAPI::DX12;
     params.WindowWidth = 2000;
     params.WindowHeight = 1200;

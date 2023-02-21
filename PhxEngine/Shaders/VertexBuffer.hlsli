@@ -29,4 +29,5 @@ inline VertexData RetrieveVertexData(in uint vertexId, in Geometry geometry)
     
     return output;
 }
+
 #endif

@@ -191,6 +191,7 @@ target_link_libraries(${project} PUBLIC
 	DirectX-Guids
 	cgltf
 	DirectXTex
+	DirectXMesh
 	imgui
 	stb
 	entt
