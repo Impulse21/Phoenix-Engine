@@ -263,7 +263,7 @@ void PhxEngine::Scene::MeshComponent::ComputeMeshlets(RHI::IGraphicsDevice* gfxD
 
 		Renderer::ResourceUpload unqiueVertexIBUploader = Renderer::CreateResourceUpload(sizeInBytes);
 
-		auto offset = unqiueVertexIBUploader.SetData(meshlets.data(), meshlets.size() * sizeof(DirectX::Meshlet));
+		auto offset = unqiueVertexIBUploader.SetData(uniqueVertexIB.data(), uniqueVertexIB.size() * sizeof(uint8_t));
 
 		commandList->CopyBuffer(
 			this->UniqueVertexIndices,
@@ -289,12 +289,12 @@ void PhxEngine::Scene::MeshComponent::ComputeMeshlets(RHI::IGraphicsDevice* gfxD
 				.InitialState = RHI::ResourceStates::CopyDest,
 				.StrideInBytes = sizeof(DirectX::MeshletTriangle),
 				.SizeInBytes = sizeInBytes,
-				.DebugName = "Unique Vertex IB",
+				.DebugName = "Primitive Indices",
 			});
 
 		Renderer::ResourceUpload meshletTriangleUplaoder = Renderer::CreateResourceUpload(sizeInBytes);
 
-		auto offset = meshletTriangleUplaoder.SetData(meshlets.data(), meshlets.size() * sizeof(DirectX::Meshlet));
+		auto offset = meshletTriangleUplaoder.SetData(prims.data(), prims.size() * sizeof(DirectX::MeshletTriangle));
 
 		commandList->CopyBuffer(
 			this->PrimitiveIndices,
