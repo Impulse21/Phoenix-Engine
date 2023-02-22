@@ -91,10 +91,13 @@ namespace PhxEngine::RHI::D3D12
 			uint32_t instanceCount = 1,
 			uint32_t startIndex = 0,
 			int32_t baseVertex = 0,
-			uint32_t startInstance = 0);
+			uint32_t startInstance = 0) override;
 
-		void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCommandCount = 1) = 0;
-		void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCommandCount = 1) = 0;
+		void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes) override;
+		void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) override;
+
+		virtual void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes) override;
+		virtual void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) override;
 
 		void WriteBuffer(BufferHandle buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes = 0) override;
 		void CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHandle src, uint64_t srcOffset, size_t sizeInBytes) override;
@@ -122,12 +125,14 @@ namespace PhxEngine::RHI::D3D12
 		// -- Comptute Stuff ---
 		void SetComputeState(ComputePipelineHandle state);
 		void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1);
-		void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCommandCount = 1);
+		void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes);
+		void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) override;
 
 		// -- Mesh Stuff ---
 		void SetMeshPipeline(MeshPipelineHandle meshPipeline) override;
 		void DispatchMesh(uint32_t groupsX, uint32_t groupsY = 1u, uint32_t groupsZ = 1u) override;
-		void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCommandCount = 1) override;
+		void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes) override;
+		void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) override;
 
 		// -- Query Stuff ---
 		void BeginTimerQuery(TimerQueryHandle query);

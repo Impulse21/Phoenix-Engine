@@ -1220,8 +1220,11 @@ namespace PhxEngine::RHI
             int32_t baseVertex = 0,
             uint32_t startInstance = 0) = 0;
 
-        virtual void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCommandCount = 1) = 0;
-        virtual void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCommandCount = 1) = 0;
+        virtual void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes) = 0;
+        virtual void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
+
+        virtual void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes) = 0;
+        virtual void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
 
         template<typename T>
         void WriteBuffer(BufferHandle buffer, std::vector<T> const& data, uint64_t destOffsetBytes = 0)
@@ -1251,12 +1254,14 @@ namespace PhxEngine::RHI
         // -- Comptute Stuff ---
         virtual void SetComputeState(ComputePipelineHandle state) = 0;
         virtual void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1) = 0;
-        virtual void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCommandCount = 1) = 0;
+        virtual void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes) = 0;
+        virtual void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
 
         // -- Mesh Stuff ---
         virtual void SetMeshPipeline(MeshPipelineHandle meshPipeline) = 0;
         virtual void DispatchMesh(uint32_t groupsX, uint32_t groupsY = 1u, uint32_t groupsZ = 1u) = 0;
-        virtual void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCommandCount = 1) = 0;
+        virtual void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes) = 0;
+        virtual void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
 
         virtual void BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants) = 0;
         template<typename T>
