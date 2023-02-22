@@ -87,6 +87,41 @@ struct RenderTargets
     }
 };
 
+struct SceneVisibilityRenderer3D
+{
+    SceneVisibilityRenderer3D(RHI::IGraphicsDevice* gfxDevice, std::shared_ptr<PhxEngine::Renderer::CommonPasses> commonPasses)
+    {
+
+    }
+
+    void Initialize(Graphics::ShaderFactory& factory)
+    {
+
+    }
+private:
+    RHI::RenderPassHandle m_visFillRenderPass;
+    RHI::TextureHandle m_visibilityBuffer;
+    RHI::TextureHandle m_depthBuffer;
+
+    RHI::RenderPassHandle m_lightingRenderPass;
+    RHI::TextureHandle m_colourBuffer;
+
+    RHI::ShaderHandle m_cullPassCS;
+
+    RHI::ShaderHandle m_visFillPassVS;
+    RHI::ShaderHandle m_visFillPassMS;
+    RHI::ShaderHandle m_visFillPassPS;
+
+    RHI::ShaderHandle m_visDeferredLightPassCS;
+
+    RHI::GraphicsPipelineHandle m_pipelineVisFillGfx;
+    RHI::MeshPipelineHandle m_pipelineVisFillMesh;
+
+    RHI::ComputePipelineHandle m_pipelineCullPipeline;
+    RHI::ComputePipelineHandle m_pipelineVisDeferredPass;
+
+};
+
 struct RenderScene
 {
     RHI::BufferHandle GlobalVertexBuffer;
