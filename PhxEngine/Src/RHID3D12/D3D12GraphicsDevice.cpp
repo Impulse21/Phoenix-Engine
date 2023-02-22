@@ -292,6 +292,52 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::Initialize()
 	this->m_commandQueues[(int)CommandQueueType::Compute] = std::make_unique<CommandQueue>(*this, D3D12_COMMAND_LIST_TYPE_COMPUTE);
 	this->m_commandQueues[(int)CommandQueueType::Copy] = std::make_unique<CommandQueue>(*this, D3D12_COMMAND_LIST_TYPE_COPY);
 
+	// -- Create Common indirect signatures --
+	// Create common indirect command signatures:
+
+
+
+	D3D12_INDIRECT_ARGUMENT_DESC dispatchArgs[1];
+	dispatchArgs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
+
+	D3D12_COMMAND_SIGNATURE_DESC cmdDesc = {};
+	cmdDesc.ByteStride = sizeof(IndirectDispatchArgs);
+	cmdDesc.NumArgumentDescs = 1;
+	cmdDesc.pArgumentDescs = dispatchArgs;
+	ThrowIfFailed(
+		this->GetD3D12Device()->CreateCommandSignature(&cmdDesc, nullptr, IID_PPV_ARGS(&this->m_dispatchIndirectCommandSignature)));
+
+
+	D3D12_INDIRECT_ARGUMENT_DESC drawInstancedArgs[1];
+	drawInstancedArgs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
+
+	cmdDesc.ByteStride = sizeof(IndirectDrawArgInstanced);
+	cmdDesc.NumArgumentDescs = 1;
+	cmdDesc.pArgumentDescs = drawInstancedArgs;
+	ThrowIfFailed(
+		this->GetD3D12Device()->CreateCommandSignature(&cmdDesc, nullptr, IID_PPV_ARGS(&this->m_drawInstancedIndirectCommandSignature)));
+
+	D3D12_INDIRECT_ARGUMENT_DESC drawIndexedInstancedArgs[1];
+	drawIndexedInstancedArgs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+
+	cmdDesc.ByteStride = sizeof(IndirectDrawArgsIndexedInstanced);
+	cmdDesc.NumArgumentDescs = 1;
+	cmdDesc.pArgumentDescs = drawIndexedInstancedArgs;
+	ThrowIfFailed(
+		this->GetD3D12Device()->CreateCommandSignature(&cmdDesc, nullptr, IID_PPV_ARGS(&this->m_drawIndexedInstancedIndirectCommandSignature)));
+
+	if (this->CheckCapability(DeviceCapability::MeshShading))
+	{
+		D3D12_INDIRECT_ARGUMENT_DESC dispatchMeshArgs[1];
+		dispatchMeshArgs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH;
+
+		cmdDesc.ByteStride = sizeof(IndirectDispatchArgs);
+		cmdDesc.NumArgumentDescs = 1;
+		cmdDesc.pArgumentDescs = dispatchMeshArgs;
+		ThrowIfFailed(
+			this->GetD3D12Device()->CreateCommandSignature(&cmdDesc, nullptr, IID_PPV_ARGS(&this->m_dispatchMeshIndirectCommandSignature)));
+	}
+
 	// Create Descriptor Heaps
 	this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::CBV_SRV_UAV] =
 		std::make_unique<CpuDescriptorHeap>(

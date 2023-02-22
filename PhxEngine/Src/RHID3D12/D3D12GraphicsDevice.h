@@ -444,6 +444,12 @@ namespace PhxEngine::RHI::D3D12
 
         CommandQueue* GetQueue(CommandQueueType type) { return this->m_commandQueues[(int)type].get(); }
 
+        // -- Command Signatures ---
+        ID3D12CommandSignature* GetDispatchIndirectCommandSignature() const{ return this->m_dispatchIndirectCommandSignature.Get(); }
+        ID3D12CommandSignature* GetDrawInstancedIndirectCommandSignature() const { return this->m_drawInstancedIndirectCommandSignature.Get(); }
+        ID3D12CommandSignature* GetDrawIndexedInstancedIndirectCommandSignature() const{ return this->m_drawIndexedInstancedIndirectCommandSignature.Get(); }
+        ID3D12CommandSignature* GetDispatchMeshIndirectCommandSignature() const { return this->m_dispatchMeshIndirectCommandSignature.Get(); }
+
         CpuDescriptorHeap* GetResourceCpuHeap() { return this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::CBV_SRV_UAV].get(); }
         CpuDescriptorHeap* GetSamplerCpuHeap() { return this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler].get(); }
         CpuDescriptorHeap* GetRtvCpuHeap() { return this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::RTV].get(); }
@@ -492,6 +498,12 @@ namespace PhxEngine::RHI::D3D12
 		Microsoft::WRL::ComPtr<ID3D12Device> m_rootDevice;
 		Microsoft::WRL::ComPtr<ID3D12Device2> m_rootDevice2;
 		Microsoft::WRL::ComPtr<ID3D12Device5> m_rootDevice5;
+
+        // -- Command Signatures ---
+        Microsoft::WRL::ComPtr<ID3D12CommandSignature> m_dispatchIndirectCommandSignature;
+        Microsoft::WRL::ComPtr<ID3D12CommandSignature> m_drawInstancedIndirectCommandSignature;
+        Microsoft::WRL::ComPtr<ID3D12CommandSignature> m_drawIndexedInstancedIndirectCommandSignature;
+        Microsoft::WRL::ComPtr<ID3D12CommandSignature> m_dispatchMeshIndirectCommandSignature;
 
 		// std::shared_ptr<IDxcUtils> dxcUtils;
 		D3D12Adapter m_gpuAdapter;

@@ -498,6 +498,31 @@ void D3D12CommandList::DrawIndexed(
         startInstance);
 }
 
+
+void PhxEngine::RHI::D3D12::D3D12CommandList::DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCommandCount)
+{
+    D3D12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    this->m_d3d12CommandList6->ExecuteIndirect(
+        this->m_graphicsDevice.GetDrawInstancedIndirectCommandSignature(),
+        maxCommandCount,
+        bufferImpl->D3D12Resource.Get(),
+        argsOffsetInBytes,
+        nullptr,
+        1);
+}
+
+void PhxEngine::RHI::D3D12::D3D12CommandList::DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCommandCount)
+{
+    D3D12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    this->m_d3d12CommandList6->ExecuteIndirect(
+        this->m_graphicsDevice.GetDrawIndexedInstancedIndirectCommandSignature(),
+        maxCommandCount,
+        bufferImpl->D3D12Resource.Get(),
+        argsOffsetInBytes,
+        nullptr,
+        1);
+}
+
 constexpr uint32_t AlignTo(uint32_t value, uint32_t alignment)
 {
     return ((value + alignment - 1) / alignment) * alignment;
@@ -972,10 +997,16 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::Dispatch(uint32_t groupsX, uint32_
     this->m_d3d12CommandList->Dispatch(groupsX, groupsY, groupsZ);
 }
 
-void PhxEngine::RHI::D3D12::D3D12CommandList::DispatchIndirect(uint32_t offsetBytes)
+void PhxEngine::RHI::D3D12::D3D12CommandList::DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCommandCount)
 {
-    // Not supported yet
-    assert(false);
+    D3D12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    this->m_d3d12CommandList6->ExecuteIndirect(
+        this->m_graphicsDevice.GetDispatchIndirectCommandSignature(),
+        maxCommandCount,
+        bufferImpl->D3D12Resource.Get(),
+        argsOffsetInBytes,
+        nullptr,
+        1);
 }
 
 void PhxEngine::RHI::D3D12::D3D12CommandList::SetMeshPipeline(MeshPipelineHandle meshPipeline)
@@ -1013,14 +1044,16 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::DispatchMesh(uint32_t groupsX, uin
     this->m_d3d12CommandList6->DispatchMesh(groupsX, groupsY, groupsZ);
 }
 
-void PhxEngine::RHI::D3D12::D3D12CommandList::DispatchMeshIndirect(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ)
+void PhxEngine::RHI::D3D12::D3D12CommandList::DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCommandCount)
 {
-    D3D12_INDIRECT_ARGUMENT_DESC desc = {};
-    desc.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH;
-    /*
-    desc.
-    this->m_d3d12CommandList6->ExecuteIndirect()
-    */
+    D3D12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    this->m_d3d12CommandList6->ExecuteIndirect(
+        this->m_graphicsDevice.GetDispatchIndirectCommandSignature(),
+        maxCommandCount,
+        bufferImpl->D3D12Resource.Get(),
+        argsOffsetInBytes,
+        nullptr,
+        1);
 }
 
 void PhxEngine::RHI::D3D12::D3D12CommandList::BeginTimerQuery(TimerQueryHandle query)

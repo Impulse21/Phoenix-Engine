@@ -93,6 +93,9 @@ namespace PhxEngine::RHI::D3D12
 			int32_t baseVertex = 0,
 			uint32_t startInstance = 0);
 
+		void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCommandCount = 1) = 0;
+		void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCommandCount = 1) = 0;
+
 		void WriteBuffer(BufferHandle buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes = 0) override;
 		void CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHandle src, uint64_t srcOffset, size_t sizeInBytes) override;
 		void WriteTexture(TextureHandle texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData) override;
@@ -119,12 +122,12 @@ namespace PhxEngine::RHI::D3D12
 		// -- Comptute Stuff ---
 		void SetComputeState(ComputePipelineHandle state);
 		void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1);
-		void DispatchIndirect(uint32_t offsetBytes);
+		void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCommandCount = 1);
 
 		// -- Mesh Stuff ---
 		void SetMeshPipeline(MeshPipelineHandle meshPipeline) override;
 		void DispatchMesh(uint32_t groupsX, uint32_t groupsY = 1u, uint32_t groupsZ = 1u) override;
-		void DispatchMeshIndirect(uint32_t groupsX, uint32_t groupsY = 1u, uint32_t groupsZ = 1u) override;
+		void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCommandCount = 1) override;
 
 		// -- Query Stuff ---
 		void BeginTimerQuery(TimerQueryHandle query);

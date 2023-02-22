@@ -512,6 +512,32 @@ namespace PhxEngine::RHI
 
 #pragma endregion
 
+    // -- Indirect Objects ---
+    // 
+    struct IndirectDrawArgInstanced
+    {
+        uint32_t VertexCount;
+        uint32_t InstanceCount;
+        uint32_t StartVertex;
+        uint32_t StartInstance;
+    };
+
+    struct IndirectDrawArgsIndexedInstanced
+    {
+        uint32_t IndexCount;
+        uint32_t InstanceCount;
+        uint32_t StartIndex;
+        uint32_t VertexOffset;
+        uint32_t StartInstance;
+    };
+
+    struct IndirectDispatchArgs
+    {
+        uint32_t GroupCountX;
+        uint32_t GroupCountY;
+        uint32_t mGroupCountZ;
+    };
+
     // -- Pipeline State objects ---
     struct BlendRenderState
     {
@@ -1186,12 +1212,16 @@ namespace PhxEngine::RHI
         virtual void EndRenderPass() = 0;
 
         virtual void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t startVertex = 0, uint32_t startInstance = 0) = 0;
+
         virtual void DrawIndexed(
             uint32_t indexCount,
             uint32_t instanceCount = 1,
             uint32_t startIndex = 0,
             int32_t baseVertex = 0,
             uint32_t startInstance = 0) = 0;
+
+        virtual void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCommandCount = 1) = 0;
+        virtual void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCommandCount = 1) = 0;
 
         template<typename T>
         void WriteBuffer(BufferHandle buffer, std::vector<T> const& data, uint64_t destOffsetBytes = 0)
@@ -1221,12 +1251,12 @@ namespace PhxEngine::RHI
         // -- Comptute Stuff ---
         virtual void SetComputeState(ComputePipelineHandle state) = 0;
         virtual void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1) = 0;
-        virtual void DispatchIndirect(uint32_t offsetBytes) = 0;
+        virtual void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCommandCount = 1) = 0;
 
         // -- Mesh Stuff ---
         virtual void SetMeshPipeline(MeshPipelineHandle meshPipeline) = 0;
         virtual void DispatchMesh(uint32_t groupsX, uint32_t groupsY = 1u, uint32_t groupsZ = 1u) = 0;
-        virtual void DispatchMeshIndirect(uint32_t groupsX, uint32_t groupsY = 1u, uint32_t groupsZ = 1u) = 0;
+        virtual void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCommandCount = 1) = 0;
 
         virtual void BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants) = 0;
         template<typename T>
