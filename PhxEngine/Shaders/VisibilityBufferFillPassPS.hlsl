@@ -1,18 +1,29 @@
+#pragma pack_matrix(row_major)
+
+#include "VisibilityFillPass_Resources.hlsli"
+
+// Renders Meshlet
+[RootSignature(VisibilityBufferFillRS)]
+uint main(PSInputVisBuffer input, uint primtitiveId : SV_PrimitiveID) : SV_TARGET
+{
+    // Pack data
+    uint output = ((primtitiveId << 24) & 0xFF000000) | ((input.DrawId) & 0x00FFFFFF);
+    
+    return output;
+}
+
+/*
 #include "Globals.hlsli"
 #include "Defines.hlsli"
 
 #define ROOT_SIG \
 	"RootFlags(CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED), " \
-	"RootConstants(num32BitConstants=22, b999), " \
 	"CBV(b0), " \
 	"CBV(b1), " \
 
 #define MAX_PRIMS_PER_MESHLET 256
 #define MAX_VERTICES_PER_MESHLET 128
 #define MAX_THREAD_COUNT 256
-
-PUSH_CONSTANT(push, MeshletPushConstants);
-
 
 struct VertexOut
 {
@@ -22,6 +33,7 @@ struct VertexOut
     float4 Position : SV_Position;
 };
 
+// Renders Meshlet
 [RootSignature(ROOT_SIG)]
 float4 main(VertexOut input) : SV_TARGET
 {
@@ -57,3 +69,4 @@ float4 main(VertexOut input) : SV_TARGET
 
     return float4(finalColor, 1);
 }
+*/

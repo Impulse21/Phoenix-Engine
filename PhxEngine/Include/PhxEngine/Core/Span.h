@@ -39,6 +39,11 @@ namespace PhxEngine::Core
 			assert(index < this->m_length);
 			return this->m_array[index];
 		}
+		const T& operator[](size_t index) const
+		{
+			assert(index < this->m_length);
+			return this->m_array[index];
+		}
 
 		size_t Size() const { return this->m_length; }
 

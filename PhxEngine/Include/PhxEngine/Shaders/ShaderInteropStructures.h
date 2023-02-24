@@ -84,7 +84,27 @@ namespace Shader
 		Atmosphere AtmosphereData;
 	};
 
+
+	struct Scene_NEW
+	{
+		uint ObjectBufferIdx;
+		uint GeometryBufferIdx;
+		uint MaterialBufferIdx;
+		uint MeshletBufferIndex;
+
+		// -- 16 byte boundary ----
+		uint GlobalVertexBufferIdx;
+		uint GlobalIndexxBufferIdx;
+		uint DrawPacketBufferIdx;
+	};
+
 	// -- Common Structurs ---
+	struct Frame_NEW
+	{
+		// -- 16 byte boundary ----
+		Scene_NEW SceneData;
+	};
+
 	struct Frame
 	{
 		uint Option;
@@ -469,6 +489,17 @@ namespace Shader
 		uint PrimOffset;
 	};
 	
+	struct DrawPacket
+	{
+		uint InstanceIdx;
+		uint GeometryIdx;
+	};
+
+	struct VisibilityFillPushConstant
+	{
+		uint DrawPacketIndex;
+	};
+
 	struct MeshletPushConstants
 	{
 		float4x4 WorldMatrix;

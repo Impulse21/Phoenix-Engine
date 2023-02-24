@@ -93,6 +93,10 @@ namespace PhxEngine::RHI::D3D12
 			int32_t baseVertex = 0,
 			uint32_t startInstance = 0) override;
 
+
+		void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes) override;
+		void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) override;
+
 		void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes) override;
 		void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) override;
 

@@ -26,79 +26,648 @@ using namespace PhxEngine::RHI;
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Renderer;
 
-struct RenderTargets
+struct VisibilityIndirectDraw
 {
-    // Extra
-    RHI::TextureHandle VisibilityBuffer;
-    RHI::RenderPassHandle VisibilityRenderPass;
-    RHI::TextureHandle ColourBuffer;
+    uint32_t InstanceIdx;
+    IndirectDrawArgsIndexedInstanced Draw;
+};
 
-    void Initialize(
-        RHI::IGraphicsDevice* gfxDevice,
-        DirectX::XMFLOAT2 const& size)
+constexpr uint32_t kMaxDrawPackets = 10;
+
+// Add one so there is space for root constant
+// 5 + 3 == 8 Extra room for counter and any root constants..
+constexpr size_t kIndirectDrawStructStride = sizeof(VisibilityIndirectDraw);
+
+// The following value defines the maximum amount of indirect draw calls that will be
+// drawn at once. This value depends on the number of submeshes or individual objects
+// in the scene. Changing a scene will require to change this value accordingly.
+constexpr size_t kMaxDrawIndirect = kMaxDrawPackets;
+
+// The following values point to the position in the indirect draw buffer that holds the
+// number of draw calls to draw after triangle filtering and batch compaction.
+// This value number is stored in the last position of the indirect draw buffer.
+// So it depends on MAX_DRAWS_INDIRECT
+constexpr size_t kDrawCounterSlotPos = (kMaxDrawIndirect - 1) * kIndirectDrawStructStride;
+constexpr size_t kDrawCounterSlotOffsetInBytes = kDrawCounterSlotPos * sizeof(uint32_t);
+
+struct RenderableScene
+{
+    RHI::BufferHandle GlobalIndexBuffer;
+    RHI::BufferHandle ObjectInstanceBuffer;
+    RHI::BufferHandle GeometryBufferHandle;
+    RHI::BufferHandle DrawPacketBufferHandle;
+    RHI::BufferHandle IndirectDrawArgBufferAll;
+    RHI::BufferHandle FrameConstantBuffer;
+
+    void PrepareRenderData(RHI::IGraphicsDevice* gfxDevice, RHI::ICommandList* commandList, Scene::Scene& scene)
     {
-        RHI::TextureDesc desc = {};
-        desc.Width = std::max(size.x, 1.0f);
-        desc.Height = std::max(size.y, 1.0f);
-        desc.Dimension = RHI::TextureDimension::Texture2D;
-        desc.OptmizedClearValue.Colour = { 1.0f, 1.0f, 1.0f, 1.0f };
-        desc.InitialState = RHI::ResourceStates::ShaderResource;
-        desc.IsBindless = true;
-        desc.IsTypeless = true;
-        desc.Format = RHI::RHIFormat::RGBA16_FLOAT;
-        desc.DebugName = "Colour Buffer";
-        desc.BindingFlags = RHI::BindingFlags::ShaderResource | BindingFlags::UnorderedAccess;
+        if (this->FrameConstantBuffer.IsValid())
+        {
+            gfxDevice->DeleteBuffer(this->FrameConstantBuffer);
+        }
 
-        this->ColourBuffer = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
-
-        RHI::TextureDesc visibilityBufferDesc = {};
-        visibilityBufferDesc.Width = std::max(size.x, 1.0f);
-        visibilityBufferDesc.Height = std::max(size.y, 1.0f);
-        visibilityBufferDesc.Dimension = RHI::TextureDimension::Texture2D;
-        visibilityBufferDesc.OptmizedClearValue.Colour = { 0.0f, 0.0f, 0.0f, 1.0f };
-        visibilityBufferDesc.InitialState = RHI::ResourceStates::ShaderResource;
-        visibilityBufferDesc.IsBindless = true;
-        visibilityBufferDesc.IsTypeless = true;
-        visibilityBufferDesc.Format = RHI::RHIFormat::RGBA8_UNORM;
-        visibilityBufferDesc.DebugName = "Visibility Buffer";
-        visibilityBufferDesc.BindingFlags = RHI::BindingFlags::ShaderResource;
-
-        this->VisibilityBuffer = RHI::IGraphicsDevice::GPtr->CreateTexture(visibilityBufferDesc);
-        this->VisibilityRenderPass = IGraphicsDevice::GPtr->CreateRenderPass(
-            {
-                .Attachments =
-                {
-                    {
-                        .LoadOp = RenderPassAttachment::LoadOpType::Load,
-                        .Texture = this->VisibilityBuffer,
-                        .InitialLayout = RHI::ResourceStates::ShaderResource,
-                        .SubpassLayout = RHI::ResourceStates::RenderTarget,
-                        .FinalLayout = RHI::ResourceStates::ShaderResource
-                    },
-                }
+        this->FrameConstantBuffer = RHI::IGraphicsDevice::GPtr->CreateBuffer({
+            .Usage = RHI::Usage::Default,
+            .Binding = RHI::BindingFlags::ConstantBuffer,
+            .InitialState = RHI::ResourceStates::ConstantBuffer,
+            .SizeInBytes = sizeof(Shader::Frame),
+            .DebugName = "Frame Constant Buffer",
             });
+
+        //Fill Global Vertex and index Buffers;
+        this->MergeMeshes(gfxDevice, commandList, scene);
+        auto geometryUploadBuffer = this->BuildGeometryBuffer(gfxDevice, scene);
+        auto objectUploadBuffer = this->BuildObjectInstanceBuffer(gfxDevice, scene);
+        auto drawPacketUploader = this->CreateDrawPacketBuffer(gfxDevice, scene);
+        auto indirectArgDrawAllBuffer = this->BuildIndirectDrawArgBufferAll(gfxDevice, scene, drawPacketUploader);
+
+        // Upload data
+        RHI::GpuBarrier preCopyBarriers[] =
+        {
+            RHI::GpuBarrier::CreateBuffer(this->IndirectDrawArgBufferAll, RHI::ResourceStates::IndirectArgument, RHI::ResourceStates::CopyDest),
+            RHI::GpuBarrier::CreateBuffer(this->FrameConstantBuffer, RHI::ResourceStates::ConstantBuffer, RHI::ResourceStates::CopyDest),
+            RHI::GpuBarrier::CreateBuffer(this->DrawPacketBufferHandle, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
+            RHI::GpuBarrier::CreateBuffer(this->GeometryBufferHandle, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
+            RHI::GpuBarrier::CreateBuffer(this->ObjectInstanceBuffer, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
+        };
+
+        commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
+
+        Shader::Frame_NEW frame = {};
+        frame.SceneData = {};
+        frame.SceneData.ObjectBufferIdx = gfxDevice->GetDescriptorIndex(this->ObjectInstanceBuffer, SubresouceType::SRV);
+        frame.SceneData.GeometryBufferIdx = gfxDevice->GetDescriptorIndex(this->GeometryBufferHandle, SubresouceType::SRV);
+        frame.SceneData.GlobalVertexBufferIdx = RHI::cInvalidDescriptorIndex;
+        frame.SceneData.GlobalIndexxBufferIdx = gfxDevice->GetDescriptorIndex(this->GlobalIndexBuffer, SubresouceType::SRV);
+        frame.SceneData.DrawPacketBufferIdx = gfxDevice->GetDescriptorIndex(this->DrawPacketBufferHandle, SubresouceType::SRV);
+        frame.SceneData.MaterialBufferIdx = RHI::cInvalidDescriptorIndex;
+        frame.SceneData.MeshletBufferIndex = RHI::cInvalidDescriptorIndex;
+
+        commandList->WriteBuffer(this->FrameConstantBuffer, frame);
+
+        commandList->CopyBuffer(
+            this->DrawPacketBufferHandle,
+            0,
+            drawPacketUploader.UploadBuffer,
+            0,
+            gfxDevice->GetBufferDesc(this->DrawPacketBufferHandle).SizeInBytes);
+
+        commandList->CopyBuffer(
+            this->IndirectDrawArgBufferAll,
+            0,
+            indirectArgDrawAllBuffer.UploadBuffer,
+            0,
+            gfxDevice->GetBufferDesc(this->IndirectDrawArgBufferAll).SizeInBytes);
+
+        commandList->CopyBuffer(
+            this->GeometryBufferHandle,
+            0,
+            geometryUploadBuffer.UploadBuffer,
+            0,
+            gfxDevice->GetBufferDesc(this->GeometryBufferHandle).SizeInBytes);
+
+        commandList->CopyBuffer(
+            this->ObjectInstanceBuffer,
+            0,
+            objectUploadBuffer.UploadBuffer,
+            0,
+            gfxDevice->GetBufferDesc(this->ObjectInstanceBuffer).SizeInBytes);
+
+        RHI::GpuBarrier postCopyBarriers[] =
+        {
+            RHI::GpuBarrier::CreateBuffer(this->IndirectDrawArgBufferAll, RHI::ResourceStates::CopyDest, RHI::ResourceStates::IndirectArgument),
+            RHI::GpuBarrier::CreateBuffer(this->FrameConstantBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ConstantBuffer),
+            RHI::GpuBarrier::CreateBuffer(this->DrawPacketBufferHandle, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
+            RHI::GpuBarrier::CreateBuffer(this->GeometryBufferHandle, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
+            RHI::GpuBarrier::CreateBuffer(this->ObjectInstanceBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
+        };
+
+        commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
+
+        geometryUploadBuffer.Free();
+        objectUploadBuffer.Free();
+        indirectArgDrawAllBuffer.Free();
     }
 
-    void Free(RHI::IGraphicsDevice* gfxDevice)
+    void MergeMeshes(RHI::IGraphicsDevice* gfxDevice, RHI::ICommandList* commandList, Scene::Scene& scene)
     {
-        gfxDevice->DeleteRenderPass(this->VisibilityRenderPass);
-        gfxDevice->DeleteTexture(this->VisibilityBuffer);
-        gfxDevice->DeleteTexture(this->ColourBuffer);
+        uint64_t indexCount = 0;
+        uint64_t indexSizeInBytes = 0;
+
+        auto view = scene.GetAllEntitiesWith<Scene::MeshComponent>();
+        for (auto e : view)
+        {
+            auto& meshComp = view.get<Scene::MeshComponent>(e);
+
+            meshComp.GlobalIndexBufferOffset = indexCount;
+            indexCount += meshComp.TotalIndices;
+            indexSizeInBytes += meshComp.GetIndexBufferSizeInBytes();
+        }
+
+        if (this->GlobalIndexBuffer.IsValid())
+        {
+            gfxDevice->DeleteBuffer(this->GlobalIndexBuffer);
+        }
+
+        RHI::BufferDesc indexBufferDesc = {};
+        indexBufferDesc.SizeInBytes = indexSizeInBytes;
+        indexBufferDesc.StrideInBytes = sizeof(uint32_t);
+        indexBufferDesc.DebugName = "Index Buffer";
+        indexBufferDesc.Binding = RHI::BindingFlags::IndexBuffer;
+        this->GlobalIndexBuffer = RHI::IGraphicsDevice::GPtr->CreateIndexBuffer(indexBufferDesc);
+
+        // Upload data
+        {
+            RHI::GpuBarrier preCopyBarriers[] =
+            {
+                RHI::GpuBarrier::CreateBuffer(this->GlobalIndexBuffer, gfxDevice->GetBufferDesc(this->GlobalIndexBuffer).InitialState, RHI::ResourceStates::CopyDest),
+            };
+
+            commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
+        }
+
+        for (auto e : view)
+        {
+            auto& meshComp = view.get<Scene::MeshComponent>(e);;
+
+            BufferDesc vertexBufferDesc = gfxDevice->GetBufferDesc(meshComp.VertexGpuBuffer);
+            BufferDesc indexBufferDesc = gfxDevice->GetBufferDesc(meshComp.IndexGpuBuffer);
+            RHI::GpuBarrier preCopyBarriers[] =
+            {
+                RHI::GpuBarrier::CreateBuffer(meshComp.IndexGpuBuffer, RHI::ResourceStates::IndexGpuBuffer | RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopySource),
+            };
+
+            commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
+
+            commandList->CopyBuffer(
+                this->GlobalIndexBuffer,
+                meshComp.GlobalIndexBufferOffset * indexBufferDesc.StrideInBytes,
+                meshComp.IndexGpuBuffer,
+                0,
+                indexBufferDesc.SizeInBytes);
+
+            // Upload data
+            RHI::GpuBarrier postCopyBarriers[] =
+            {
+                RHI::GpuBarrier::CreateBuffer(meshComp.IndexGpuBuffer, RHI::ResourceStates::CopySource, RHI::ResourceStates::IndexGpuBuffer | RHI::ResourceStates::ShaderResource),
+            };
+
+            commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
+        }
+
+
+        // Upload data
+        RHI::GpuBarrier postCopyBarriers[] =
+        {
+            RHI::GpuBarrier::CreateBuffer(this->GlobalIndexBuffer, RHI::ResourceStates::CopyDest, gfxDevice->GetBufferDesc(this->GlobalIndexBuffer).InitialState),
+        };
+
+        commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
+    }
+
+    ResourceUpload BuildGeometryBuffer(IGraphicsDevice* gfxDevice, Scene::Scene& scene)
+    {
+        auto view = scene.GetAllEntitiesWith<Scene::MeshComponent>();
+        uint32_t numGeometryEntires = 0;
+        for (auto entity : view)
+        {
+            auto& meshComponent = view.get<Scene::MeshComponent>(entity);
+            numGeometryEntires += meshComponent.Surfaces.size();
+
+            meshComponent.RenderBucketMask = Scene::MeshComponent::RenderType::RenderType_Opaque;
+            for (auto& surface : meshComponent.Surfaces)
+            {
+                const auto& material = scene.GetRegistry().get<Scene::MaterialComponent>(surface.Material);
+                if (material.BlendMode == Renderer::BlendMode::Alpha)
+                {
+                    meshComponent.RenderBucketMask = Scene::MeshComponent::RenderType::RenderType_Transparent;
+                    break;
+                }
+            }
+        }
+
+        if (this->GeometryBufferHandle.IsValid())
+        {
+            gfxDevice->DeleteBuffer(this->GeometryBufferHandle);
+        }
+
+        this->GeometryBufferHandle = gfxDevice->CreateBuffer({
+                .MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Structured,
+                .Binding = RHI::BindingFlags::ShaderResource,
+                .InitialState = ResourceStates::ShaderResource,
+                .StrideInBytes = sizeof(Shader::Geometry),
+                .SizeInBytes = sizeof(Shader::Geometry) * numGeometryEntires,
+                .CreateBindless = true,
+                .DebugName = "Geometry Data",
+            });
+
+        // -- Update data --
+        ResourceUpload geometryUpload = Renderer::CreateResourceUpload(numGeometryEntires * sizeof(Shader::Geometry));
+        Shader::Geometry* geometryBufferMappedData = (Shader::Geometry*)geometryUpload.Data;
+        uint32_t currGeoIndex = 0;
+        for (auto entity : view)
+        {
+            auto& mesh = view.get<Scene::MeshComponent>(entity);
+            mesh.GlobalGeometryBufferIndex = currGeoIndex;
+            for (int i = 0; i < mesh.Surfaces.size(); i++)
+            {
+                Scene::MeshComponent::SurfaceDesc& surfaceDesc = mesh.Surfaces[i];
+                surfaceDesc.GlobalGeometryBufferIndex = currGeoIndex++;
+
+                Shader::Geometry* geometryShaderData = geometryBufferMappedData + surfaceDesc.GlobalGeometryBufferIndex;
+                auto& material = scene.GetRegistry().get<Scene::MaterialComponent>(surfaceDesc.Material);
+                geometryShaderData->MaterialIndex = material.GlobalBufferIndex;
+                geometryShaderData->NumIndices = surfaceDesc.NumIndices;
+                geometryShaderData->NumVertices = surfaceDesc.NumVertices;
+                geometryShaderData->MeshletOffset = mesh.MeshletCount;
+                geometryShaderData->MeshletCount = ((surfaceDesc.NumIndices / 3) + 1) / Shader::MESHLET_TRIANGLE_COUNT;
+                mesh.MeshletCount += geometryShaderData->MeshletCount;
+                geometryShaderData->IndexOffset = surfaceDesc.IndexOffsetInMesh;
+                geometryShaderData->VertexBufferIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(mesh.VertexGpuBuffer, RHI::SubresouceType::SRV);
+                geometryShaderData->PositionOffset = mesh.GetVertexAttribute(Scene::MeshComponent::VertexAttribute::Position).ByteOffset;
+                geometryShaderData->TexCoordOffset = mesh.GetVertexAttribute(Scene::MeshComponent::VertexAttribute::TexCoord).ByteOffset;
+                geometryShaderData->NormalOffset = mesh.GetVertexAttribute(Scene::MeshComponent::VertexAttribute::Normal).ByteOffset;
+                geometryShaderData->TangentOffset = mesh.GetVertexAttribute(Scene::MeshComponent::VertexAttribute::Tangent).ByteOffset;
+            }
+        }
+
+        return geometryUpload;
+    }
+
+    ResourceUpload BuildObjectInstanceBuffer(IGraphicsDevice* gfxDevice, Scene::Scene& scene)
+    {
+        auto meshInstanceView = scene.GetAllEntitiesWith<Scene::MeshInstanceComponent>();
+        uint32_t numObjects = meshInstanceView.size();
+        if (this->ObjectInstanceBuffer.IsValid())
+        {
+            gfxDevice->DeleteBuffer(ObjectInstanceBuffer);
+        }
+
+        this->ObjectInstanceBuffer = gfxDevice->CreateBuffer({
+                .MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Structured,
+                .Binding = RHI::BindingFlags::ShaderResource,
+                .InitialState = ResourceStates::ShaderResource,
+                .StrideInBytes = sizeof(Shader::MeshInstance),
+                .SizeInBytes = sizeof(Shader::MeshInstance) * numObjects,
+                .CreateBindless = true,
+                .DebugName = "Object Data",
+            });
+
+        auto view = scene.GetAllEntitiesWith<Scene::MeshInstanceComponent, Scene::TransformComponent>();
+        for (auto e : view)
+        {
+            auto [meshInstanceComponent, transformComponent] = view.get<Scene::MeshInstanceComponent, Scene::TransformComponent>(e);
+            meshInstanceComponent.WorldMatrix = transformComponent.WorldMatrix;
+        }
+        ResourceUpload objectUploadBuffer = Renderer::CreateResourceUpload(numObjects * sizeof(Shader::MeshInstance));
+        Shader::MeshInstance* pUploadBufferData = (Shader::MeshInstance*)objectUploadBuffer.Data;
+        uint32_t currInstanceIndex = 0;
+        for (auto e : view)
+        {
+            auto [meshInstanceComponent, transformComponent] = view.get<Scene::MeshInstanceComponent, Scene::TransformComponent>(e);
+            Shader::MeshInstance* shaderMeshInstance = pUploadBufferData + currInstanceIndex;
+
+            auto& mesh = scene.GetRegistry().get<Scene::MeshComponent>(meshInstanceComponent.Mesh);
+            shaderMeshInstance->GeometryOffset = mesh.GlobalGeometryBufferIndex;
+            shaderMeshInstance->GeometryCount = (uint)mesh.Surfaces.size();
+            shaderMeshInstance->WorldMatrix = transformComponent.WorldMatrix;
+            shaderMeshInstance->MeshletOffset = mesh.MeshletCount;
+            // this->m_numMeshlets += mesh.MeshletCount;
+
+            meshInstanceComponent.GlobalBufferIndex = currInstanceIndex++;
+        }
+
+        return objectUploadBuffer;
+    }
+
+    ResourceUpload CreateDrawPacketBuffer(IGraphicsDevice* gfxDevice, Scene::Scene& scene)
+    {
+        if (this->DrawPacketBufferHandle.IsValid())
+        {
+            gfxDevice->DeleteBuffer(this->DrawPacketBufferHandle);
+        }
+
+        this->DrawPacketBufferHandle = gfxDevice->CreateBuffer({
+            .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::Bindless,
+            .Binding = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
+            .InitialState = ResourceStates::ShaderResource,
+            .StrideInBytes = sizeof(Shader::DrawPacket),
+            .SizeInBytes = sizeof(Shader::DrawPacket) * kMaxDrawPackets,
+            .AllowUnorderedAccess = true });
+
+        return Renderer::CreateResourceUpload(gfxDevice->GetBufferDesc(this->DrawPacketBufferHandle).SizeInBytes);
+    }
+
+    ResourceUpload BuildIndirectDrawArgBufferAll(IGraphicsDevice* gfxDevice, Scene::Scene& scene, ResourceUpload& drawPacketUploader)
+    {
+        if (this->IndirectDrawArgBufferAll.IsValid())
+        {
+            gfxDevice->DeleteBuffer(this->IndirectDrawArgBufferAll);
+        }
+        
+        const size_t maxDrawCount = kMaxDrawIndirect;
+        const size_t sizeInBytes = kMaxDrawIndirect * kIndirectDrawStructStride + sizeof(uint32_t);
+        this->IndirectDrawArgBufferAll = gfxDevice->CreateBuffer({
+            .MiscFlags = BufferMiscFlags::Structured,
+            .Binding = BindingFlags::UnorderedAccess,
+            .InitialState = ResourceStates::IndirectArgument,
+            .StrideInBytes = kIndirectDrawStructStride,
+            .SizeInBytes = sizeInBytes,
+            .AllowUnorderedAccess = true });
+
+        // Number of Draw batches
+        ResourceUpload indirectDrawUpload = Renderer::CreateResourceUpload(sizeInBytes);
+        auto objectInstanceView = scene.GetAllEntitiesWith<Scene::MeshInstanceComponent>();
+        uint32_t drawIndex = 0;
+
+        for (auto e : objectInstanceView)
+        {
+            auto& objectInstance = objectInstanceView.get<Scene::MeshInstanceComponent>(e);
+
+            auto& meshComponent = scene.GetRegistry().get<Scene::MeshComponent>(objectInstance.Mesh);
+            if (meshComponent.RenderBucketMask != meshComponent.RenderType_Opaque)
+            {
+                continue;
+            }
+            for (auto& s : meshComponent.Surfaces)
+            {
+                auto packet = (Shader::DrawPacket*)drawPacketUploader.Data + drawIndex;
+                packet->GeometryIdx = s.GlobalGeometryBufferIndex;
+                packet->InstanceIdx = objectInstance.GlobalBufferIndex;
+
+                VisibilityIndirectDraw args = {};
+                args.InstanceIdx = drawIndex;
+                RHI::IndirectDrawArgsIndexedInstanced& drawArg = args.Draw;
+                // drawArg.StartInstance = drawIndex; // Draw ID
+                drawArg.StartInstance = 0; 
+                drawArg.InstanceCount = 1;
+                drawArg.IndexCount = s.NumIndices;
+                drawArg.StartIndex = meshComponent.GlobalIndexBufferOffset + s.IndexOffsetInMesh;
+                drawArg.VertexOffset = 0;
+
+                indirectDrawUpload.SetData(&args, kIndirectDrawStructStride, kIndirectDrawStructStride);
+                drawIndex++;
+            }
+        }
+
+        uint32_t* counter = reinterpret_cast<uint32_t*>(indirectDrawUpload.Data) + (sizeInBytes / sizeof(uint32_t) - 1);
+        *counter = drawIndex;
+
+        std::array<uint32_t, sizeInBytes / 4> testing;
+
+        std::memcpy(testing.data(), indirectDrawUpload.Data, sizeInBytes);
+
+        return indirectDrawUpload;
     }
 };
 
 struct SceneVisibilityRenderer3D
 {
     SceneVisibilityRenderer3D(RHI::IGraphicsDevice* gfxDevice, std::shared_ptr<PhxEngine::Renderer::CommonPasses> commonPasses)
+        : m_gfxDevice(gfxDevice)
+        , m_commonPasses(commonPasses)
     {
-
     }
 
-    void Initialize(Graphics::ShaderFactory& factory)
+    void WindowResize(DirectX::XMFLOAT2 const& canvasSize)
     {
+        this->m_canvasSize = canvasSize;
 
+        if (this->m_depthBuffer.IsValid())
+        {
+            this->m_gfxDevice->DeleteTexture(this->m_depthBuffer);
+        }
+
+        if (this->m_visibilityBuffer.IsValid())
+        {
+            this->m_gfxDevice->DeleteTexture(this->m_visibilityBuffer);
+        }
+
+        if (this->m_visFillRenderPass.IsValid())
+        {
+            this->m_gfxDevice->DeleteRenderPass(this->m_visFillRenderPass);
+        }
+
+        RHI::TextureDesc desc = {};
+        desc.Width = std::max(canvasSize.x, 1.0f);
+        desc.Height = std::max(canvasSize.y, 1.0f);
+        desc.Dimension = RHI::TextureDimension::Texture2D;
+        desc.IsBindless = false;
+
+        desc.Format = RHI::RHIFormat::D32;
+        desc.IsTypeless = true;
+        desc.DebugName = "Depth Buffer";
+        desc.OptmizedClearValue.DepthStencil.Depth = 1.0f;
+        desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::DepthStencil;
+        desc.InitialState = RHI::ResourceStates::DepthRead;
+        this->m_depthBuffer = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
+
+        desc.OptmizedClearValue.Colour = { 1.0f, 1.0f, 1.0f, 1.0f };
+        desc.InitialState = RHI::ResourceStates::ShaderResource;
+        desc.IsBindless = true;
+        desc.IsTypeless = true;
+        desc.Format = RHI::RHIFormat::RGBA8_UNORM;
+        desc.DebugName = "Visibility Buffer";
+        desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::RenderTarget;
+
+        this->m_visibilityBuffer = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
+        this->m_visFillRenderPass = IGraphicsDevice::GPtr->CreateRenderPass(
+            {
+                .Attachments =
+                {
+                    {
+                        .LoadOp = RenderPassAttachment::LoadOpType::Clear,
+                        .Texture = this->m_visibilityBuffer,
+                        .InitialLayout = RHI::ResourceStates::ShaderResource,
+                        .SubpassLayout = RHI::ResourceStates::RenderTarget,
+                        .FinalLayout = RHI::ResourceStates::ShaderResource
+                    },
+                    {
+                        .Type = RenderPassAttachment::Type::DepthStencil,
+                        .LoadOp = RenderPassAttachment::LoadOpType::Clear,
+                        .Texture = this->m_depthBuffer,
+                        .InitialLayout = RHI::ResourceStates::DepthRead,
+                        .SubpassLayout = RHI::ResourceStates::DepthWrite,
+                        .FinalLayout = RHI::ResourceStates::DepthRead
+                    },
+                }
+            });
     }
+
+    void Initialize(Graphics::ShaderFactory& factory, DirectX::XMFLOAT2 const& canvasSize)
+    {
+        this->m_cullPassCS = factory.CreateShader(
+            "PhxEngine/CullPass.hlsl",
+            {
+                .Stage = RHI::ShaderStage::Compute,
+                .DebugName = "CullPassCS",
+            });
+
+        this->m_visFillPassMS = factory.CreateShader(
+            "PhxEngine/VisibilityBufferFillPassMS.hlsl",
+            {
+                .Stage = RHI::ShaderStage::Mesh,
+                .DebugName = "VisibilityBufferFillPassMS",
+            });
+
+        this->m_visFillPassVS = factory.CreateShader(
+            "PhxEngine/VisibilityBufferFillPassVS.hlsl",
+            {
+                .Stage = RHI::ShaderStage::Vertex,
+                .DebugName = "VisibilityBufferFillPassVS",
+            });
+
+        this->m_visFillPassPS = factory.CreateShader(
+            "PhxEngine/VisibilityBufferFillPassPS.hlsl",
+            {
+                .Stage = RHI::ShaderStage::Pixel,
+                .DebugName = "VisibilityBufferFillPassPS",
+            });
+
+        // TODO: Deferred Lighting
+
+        this->WindowResize(canvasSize);
+    }
+
+    void Render(RenderableScene const& renderableScene, Scene::CameraComponent mainCamera, RHI::Viewport& viewport)
+    {
+        // Do Render
+        this->ConstructPipelines();
+
+        Shader::Camera cameraData = {};
+        cameraData.ViewProjection = mainCamera.ViewProjection;
+        cameraData.ViewProjectionInv = mainCamera.ViewProjectionInv;
+        cameraData.ProjInv = mainCamera.ProjectionInv;
+        cameraData.ViewInv = mainCamera.ViewInv;
+
+        RHI::ICommandList* commandList = this->m_gfxDevice->BeginCommandRecording();
+        {
+#if false
+            auto _ = commandList->BeginScopedMarker("Visibility Cull Pass");
+
+            // TODO: Change to match same syntax as GFX pipeline
+            commandList->SetComputeState(this->m_pipelineCullPipeline);
+
+            commandList->BindConstantBuffer(1, input.FrameBuffer);
+            commandList->BindDynamicConstantBuffer(2, *input.CameraData);
+#endif
+        }
+
+        {
+            auto _ = commandList->BeginScopedMarker("Visibility Buffer Fill Pass");
+            commandList->BeginRenderPass(this->m_visFillRenderPass);
+            commandList->SetViewports(&viewport, 1);
+            RHI::Rect rec(LONG_MAX, LONG_MAX);
+            commandList->SetScissors(&rec, 1);
+
+            if (this->EnableMeshPipeline)
+            {
+#if false
+                commandList->SetMeshPipeline(this->m_pipelineVisFillMesh);
+                auto view = this->m_scene.GetAllEntitiesWith<Scene::MeshInstanceComponent, Scene::AABBComponent>();
+                for (auto e : view)
+                {
+                    auto [instanceComponent, aabbComp] = view.get<Scene::MeshInstanceComponent, Scene::AABBComponent>(e);
+
+                    auto& meshComponent = this->m_scene.GetRegistry().get<Scene::MeshComponent>(instanceComponent.Mesh);
+
+                    Shader::MeshletPushConstants pushConstant = {};
+                    pushConstant.WorldMatrix = instanceComponent.WorldMatrix;
+                    pushConstant.VerticesBufferIdx = this->GetGfxDevice()->GetDescriptorIndex(meshComponent.VertexGpuBuffer, RHI::SubresouceType::SRV);
+                    pushConstant.MeshletsBufferIdx = this->GetGfxDevice()->GetDescriptorIndex(meshComponent.Meshlets, RHI::SubresouceType::SRV);
+                    pushConstant.PrimitiveIndicesIdx = this->GetGfxDevice()->GetDescriptorIndex(meshComponent.PrimitiveIndices, RHI::SubresouceType::SRV);
+                    pushConstant.UniqueVertexIBIdx = this->GetGfxDevice()->GetDescriptorIndex(meshComponent.UniqueVertexIndices, RHI::SubresouceType::SRV);
+                    pushConstant.GeometryIdx = meshComponent.Surfaces.front().GlobalGeometryBufferIndex;
+
+
+                    for (auto& subset : meshComponent.MeshletSubsets)
+                    {
+                        pushConstant.SubsetOffset = subset.Offset;
+                        commandList->BindPushConstant(0, pushConstant);
+                        commandList->DispatchMesh(subset.Count, 1, 1);
+                    }
+                }
+#endif 
+            }
+            else
+            {
+                commandList->SetGraphicsPipeline(this->m_pipelineVisFillGfx);
+
+                commandList->BindIndexBuffer(renderableScene.GlobalIndexBuffer);
+                commandList->BindConstantBuffer(1, renderableScene.FrameConstantBuffer);
+                commandList->BindDynamicConstantBuffer(2, cameraData);
+
+                commandList->ExecuteIndirect(
+                    this->m_indirectDrawSignature,
+                    renderableScene.IndirectDrawArgBufferAll,
+                    0,
+                    renderableScene.IndirectDrawArgBufferAll,
+                    kMaxDrawIndirect * kIndirectDrawStructStride,
+                    kMaxDrawIndirect);
+            }
+            commandList->EndRenderPass();
+        }
+
+        this->m_commonPasses->BlitTexture(commandList, this->m_visibilityBuffer, commandList->GetRenderPassBackBuffer(), this->m_canvasSize);
+        commandList->Close();
+        this->m_gfxDevice->ExecuteCommandLists({ commandList });
+    }
+
+    void ConstructPipelines()
+    {
+        if (!this->m_pipelineVisFillGfx.IsValid())
+        {
+            this->m_pipelineVisFillGfx = this->m_gfxDevice->CreateGraphicsPipeline(
+                {
+                    .VertexShader = this->m_visFillPassVS,
+                    .PixelShader = this->m_visFillPassPS,
+                    .RtvFormats = { this->m_gfxDevice->GetTextureDesc(this->m_visibilityBuffer).Format },
+                    .DsvFormat = { this->m_gfxDevice->GetTextureDesc(this->m_depthBuffer).Format }
+                });
+
+            // Construct Command Signature
+            this->m_indirectDrawSignature = this->m_gfxDevice->CreateCommandSignature<VisibilityIndirectDraw>({
+                    .ArgDesc = 
+                        {
+                            {.Type = IndirectArgumentType::Constant, .Constant = { .RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+                            {.Type = IndirectArgumentType::DrawIndex }
+                        },
+                    .PipelineType = PipelineType::Gfx,
+                    .GfxHandle = this->m_pipelineVisFillGfx
+                });
+        }
+
+        if (!this->m_pipelineVisFillMesh.IsValid())
+        {
+#if false
+            this->m_pipelineVisFillMesh = this->m_gfxDevice->CreateMeshPipeline(
+                {
+                    .MeshShader = this->m_visFillPassMS,
+                    .PixelShader = this->m_visFillPassPS,
+                    .RtvFormats = { this->m_gfxDevice->GetTextureDesc(this->m_visibilityBuffer).Format },
+                    .DsvFormat = { this->m_gfxDevice->GetTextureDesc(this->m_depthBuffer).Format }
+                });
+#endif
+        }
+
+        if (!this->m_pipelineCullPipeline.IsValid())
+        {
+#if false
+            this->m_pipelineCullPipeline = this->m_gfxDevice->CreateComputePipeline(
+                {
+                    .ComputeShader = this->m_cullPassCS,
+                });
+#endif
+        }
+    }
+
+    bool EnableMeshPipeline = false;
+
 private:
+    DirectX::XMFLOAT2 m_canvasSize;
+    RHI::IGraphicsDevice* m_gfxDevice;
+    std::shared_ptr<PhxEngine::Renderer::CommonPasses> m_commonPasses;
+
     RHI::RenderPassHandle m_visFillRenderPass;
     RHI::TextureHandle m_visibilityBuffer;
     RHI::TextureHandle m_depthBuffer;
@@ -115,126 +684,16 @@ private:
     RHI::ShaderHandle m_visDeferredLightPassCS;
 
     RHI::GraphicsPipelineHandle m_pipelineVisFillGfx;
+    RHI::CommandSignatureHandle m_indirectDrawSignature;
     RHI::MeshPipelineHandle m_pipelineVisFillMesh;
 
     RHI::ComputePipelineHandle m_pipelineCullPipeline;
     RHI::ComputePipelineHandle m_pipelineVisDeferredPass;
 
+
+
 };
 
-struct RenderScene
-{
-    RHI::BufferHandle GlobalVertexBuffer;
-    RHI::BufferHandle GlobalIndexBuffer;
-
-    void MergeMeshes(RHI::IGraphicsDevice* gfxDevice, RHI::ICommandList* commandList, Scene::Scene& scene)
-    {
-        uint64_t vertexCount = 0;
-        uint64_t vertexSizeInBytes = 0;
-        uint64_t indexCount = 0;
-        uint64_t indexSizeInBytes = 0;
-
-        auto view = scene.GetAllEntitiesWith<Scene::MeshComponent>();
-        for (auto e : view)
-        {
-            auto& meshComp = view.get<Scene::MeshComponent>(e);
-
-            meshComp.GlobalIndexBufferOffset = indexCount;
-            indexCount += meshComp.TotalIndices;
-            indexSizeInBytes += meshComp.GetIndexBufferSizeInBytes();
-
-            meshComp.GlobalVertexBufferOffset = vertexCount;
-            vertexCount += meshComp.TotalVertices;
-            vertexSizeInBytes += meshComp.GetVertexBufferSizeInBytes();
-        }
-
-        if (this->GlobalVertexBuffer.IsValid())
-        {
-            gfxDevice->DeleteBuffer(this->GlobalVertexBuffer);
-        }
-
-        RHI::BufferDesc vertexDesc = {};
-        vertexDesc.StrideInBytes = sizeof(float);
-        vertexDesc.DebugName = "Vertex Buffer";
-        vertexDesc.EnableBindless();
-        vertexDesc.IsRawBuffer();
-        vertexDesc.Binding = RHI::BindingFlags::VertexBuffer | RHI::BindingFlags::ShaderResource;
-        vertexDesc.SizeInBytes = vertexSizeInBytes;
-
-        this->GlobalVertexBuffer = RHI::IGraphicsDevice::GPtr->CreateVertexBuffer(vertexDesc);
-
-        if (this->GlobalIndexBuffer.IsValid())
-        {
-            gfxDevice->DeleteBuffer(this->GlobalIndexBuffer);
-        }
-
-        RHI::BufferDesc indexBufferDesc = {};
-        indexBufferDesc.SizeInBytes = indexSizeInBytes;
-        indexBufferDesc.StrideInBytes = sizeof(uint32_t);
-        indexBufferDesc.DebugName = "Index Buffer";
-        vertexDesc.Binding = RHI::BindingFlags::IndexBuffer;
-        this->GlobalIndexBuffer = RHI::IGraphicsDevice::GPtr->CreateIndexBuffer(indexBufferDesc);
-
-        // Upload data
-        {
-            RHI::GpuBarrier preCopyBarriers[] =
-            {
-                RHI::GpuBarrier::CreateBuffer(this->GlobalVertexBuffer, gfxDevice->GetBufferDesc(this->GlobalVertexBuffer).InitialState, RHI::ResourceStates::CopyDest),
-                RHI::GpuBarrier::CreateBuffer(this->GlobalIndexBuffer, gfxDevice->GetBufferDesc(this->GlobalIndexBuffer).InitialState, RHI::ResourceStates::CopyDest),
-            };
-
-            commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
-        }
-
-        for (auto e : view)
-        {
-            auto& meshComp = view.get<Scene::MeshComponent>(e);;
-            
-            BufferDesc vertexBufferDesc = gfxDevice->GetBufferDesc(meshComp.VertexGpuBuffer);
-            BufferDesc indexBufferDesc = gfxDevice->GetBufferDesc(meshComp.IndexGpuBuffer);
-            RHI::GpuBarrier preCopyBarriers[] =
-            {
-                RHI::GpuBarrier::CreateBuffer(meshComp.VertexGpuBuffer, vertexBufferDesc.InitialState, RHI::ResourceStates::CopySource),
-                RHI::GpuBarrier::CreateBuffer(meshComp.IndexGpuBuffer, indexBufferDesc.InitialState, RHI::ResourceStates::CopySource),
-            };
-
-            commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
-
-            commandList->CopyBuffer(
-                meshComp.VertexGpuBuffer,
-                0,
-                this->GlobalVertexBuffer,
-                meshComp.GlobalVertexBufferOffset* vertexBufferDesc.StrideInBytes,
-                vertexBufferDesc.SizeInBytes);
-
-            commandList->CopyBuffer(
-                meshComp.IndexGpuBuffer,
-                0,
-                this->GlobalIndexBuffer,
-                meshComp.GlobalIndexBufferOffset * indexBufferDesc.StrideInBytes,
-                indexBufferDesc.SizeInBytes);
-
-            // Upload data
-            RHI::GpuBarrier postCopyBarriers[] =
-            {
-                RHI::GpuBarrier::CreateBuffer(meshComp.VertexGpuBuffer, RHI::ResourceStates::CopySource, vertexBufferDesc.InitialState),
-                RHI::GpuBarrier::CreateBuffer(meshComp.IndexGpuBuffer, RHI::ResourceStates::CopySource, indexBufferDesc.InitialState),
-            };
-
-            commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
-        }
-
-
-        // Upload data
-        RHI::GpuBarrier postCopyBarriers[] =
-        {
-            RHI::GpuBarrier::CreateBuffer(this->GlobalVertexBuffer, RHI::ResourceStates::CopyDest, gfxDevice->GetBufferDesc(this->GlobalVertexBuffer).InitialState),
-            RHI::GpuBarrier::CreateBuffer(this->GlobalIndexBuffer, RHI::ResourceStates::CopyDest, gfxDevice->GetBufferDesc(this->GlobalIndexBuffer).InitialState),
-        };
-
-        commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
-    }
-};
 
 class VisibilityRenderering : public ApplicationBase
 {
@@ -255,66 +714,20 @@ public:
         std::filesystem::path appShadersRoot = Core::Platform::GetExcecutableDir() / "Shaders/PhxEngine/dxil";
         std::shared_ptr<Core::IRootFileSystem> rootFilePath = Core::CreateRootFileSystem();
         rootFilePath->Mount("/Shaders/PhxEngine", appShadersRoot);
-        rootFilePath->Mount("/Shaders/VisibilityBufferRendering", appShadersRoot);
 
         this->m_shaderFactory = std::make_unique<Graphics::ShaderFactory>(this->GetGfxDevice(), rootFilePath, "/Shaders");
         this->m_commonPasses = std::make_shared<Renderer::CommonPasses>(this->GetGfxDevice(), *this->m_shaderFactory);
+        this->m_sceneRenderer = std::make_unique<SceneVisibilityRenderer3D>(this->GetGfxDevice(), this->m_commonPasses);
+        this->m_sceneRenderer->Initialize(*this->m_shaderFactory, this->GetRoot()->GetCanvasSize());
+        this->m_toneMappingPass = std::make_unique<Renderer::ToneMappingPass>(this->GetGfxDevice(), this->m_commonPasses);
+        this->m_toneMappingPass->Initialize(*this->m_shaderFactory);
+
         this->m_textureCache = std::make_unique<Graphics::TextureCache>(nativeFS, this->GetGfxDevice());
-
-        this->m_meshShader = this->m_shaderFactory->CreateShader(
-            "VisibilityBufferRendering/VisibilityBufferFillPassMS.hlsl",
-            {
-                .Stage = RHI::ShaderStage::Mesh,
-                .DebugName = "VisibilityBufferFillPassMS",
-            });
-
-        this->m_pixelShader = this->m_shaderFactory->CreateShader(
-            "VisibilityBufferRendering/VisibilityBufferFillPassPS.hlsl",
-            {
-                .Stage = RHI::ShaderStage::Pixel,
-                .DebugName = "VisibilityBufferFillPassPS",
-            });
 
         std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/TestScenes/VisibilityBufferScene.gltf";
         this->BeginLoadingScene(nativeFS, scenePath);
 
-        this->m_renderTargets.Initialize(this->GetGfxDevice(), this->GetRoot()->GetCanvasSize());
-
-        this->m_visibilityBufferFillPass = std::make_unique<VisibilityBufferFillPass>(this->GetGfxDevice(), this->m_commonPasses);
-        this->m_visibilityBufferFillPass->Initialize(*this->m_shaderFactory);
-        this->m_meshletBufferFillPass = std::make_unique<MeshletBufferFillPass>(this->GetGfxDevice(), this->m_commonPasses);
-        this->m_meshletBufferFillPass->Initialize(*this->m_shaderFactory);
-
-        this->m_deferredLightingPass = std::make_shared<DeferredLightingPass>(this->GetGfxDevice(), this->m_commonPasses);
-        this->m_deferredLightingPass->Initialize(*this->m_shaderFactory);
-
-        this->m_toneMappingPass = std::make_unique<Renderer::ToneMappingPass>(this->GetGfxDevice(), this->m_commonPasses);
-        this->m_toneMappingPass->Initialize(*this->m_shaderFactory);
-
-        this->m_frameConstantBuffer = RHI::IGraphicsDevice::GPtr->CreateBuffer({
-            .Usage = RHI::Usage::Default,
-            .Binding = RHI::BindingFlags::ConstantBuffer,
-            .InitialState = RHI::ResourceStates::ConstantBuffer,
-            .SizeInBytes = sizeof(Shader::Frame),
-            .DebugName = "Frame Constant Buffer",
-            });
-
         this->m_mainCamera.FoV = DirectX::XMConvertToRadians(60);
-
-        // -- Depth ---
-        RHI::TextureDesc desc = {};
-        desc.Width = std::max(this->GetRoot()->GetCanvasSize().x, 1.0f);
-        desc.Height = std::max(this->GetRoot()->GetCanvasSize().y, 1.0f);
-        desc.Dimension = RHI::TextureDimension::Texture2D;
-        desc.IsBindless = false;
-
-        desc.Format = RHI::RHIFormat::D32;
-        desc.IsTypeless = true;
-        desc.DebugName = "Depth Buffer";
-        desc.OptmizedClearValue.DepthStencil.Depth = 1.0f;
-        desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::DepthStencil;
-        desc.InitialState = RHI::ResourceStates::DepthWrite;
-        this->m_depthTex = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
 
         Scene::TransformComponent t = {};
         t.LocalTranslation = { -5.0f, 2.0f, 0.0f };
@@ -344,16 +757,17 @@ public:
             Renderer::ResourceUpload indexUpload;
             Renderer::ResourceUpload vertexUpload;
             this->m_scene.ConstructRenderData(commandList, indexUpload, vertexUpload);
-
-
+            /*
             auto view = this->m_scene.GetAllEntitiesWith<Scene::MeshComponent>();
             for (auto e : view)
             {
                 view.get<Scene::MeshComponent>(e).ComputeMeshlets(this->GetGfxDevice(), commandList);
             }
-
+            */
             indexUpload.Free();
             vertexUpload.Free();
+
+            this->m_renderableScene.PrepareRenderData(this->GetGfxDevice(), commandList, this->m_scene);
         }
 
         commandList->Close();
@@ -366,9 +780,7 @@ public:
     {
         this->GetGfxDevice()->DeleteMeshPipeline(this->m_pipeline);
         this->m_pipeline = {};
-        this->m_renderTargets.Free(this->GetGfxDevice());
-        this->m_renderTargets.Initialize(this->GetGfxDevice(), this->GetRoot()->GetCanvasSize());
-        this->m_visibilityBufferFillPass->WindowResized();
+        this->m_sceneRenderer->WindowResize(this->GetRoot()->GetCanvasSize());
     }
 
     void Update(Core::TimeStep const& deltaTime) override
@@ -384,156 +796,9 @@ public:
 		this->m_mainCamera.Height = this->GetRoot()->GetCanvasSize().y;
 		this->m_mainCamera.UpdateCamera();
 
-		// The camera data doesn't match whats in the CPU and what's in the GPU.
-		Shader::Camera cameraData = {};
-		cameraData.ViewProjection = this->m_mainCamera.ViewProjection;
-		cameraData.ViewProjectionInv = this->m_mainCamera.ViewProjectionInv;
-		cameraData.ProjInv = this->m_mainCamera.ProjectionInv;
-		cameraData.ViewInv = this->m_mainCamera.ViewInv;
-
-		if (!this->m_pipeline.IsValid())
-		{
-			this->m_pipeline = this->GetGfxDevice()->CreateMeshPipeline(
-				{
-					.MeshShader = this->m_meshShader,
-					.PixelShader = this->m_pixelShader,
-					.RtvFormats = { this->GetGfxDevice()->GetTextureDesc(this->GetGfxDevice()->GetBackBuffer()).Format },
-                    .DsvFormat = { this->GetGfxDevice()->GetTextureDesc(this->m_depthTex).Format }
-				});
-		}
-
-		RHI::ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
-		{
-            this->PrepareRenderData(commandList, this->m_scene);
-
-			auto _ = commandList->BeginScopedMarker("Render Triagnle");
-			commandList->BeginRenderPassBackBuffer();
-
-			commandList->SetMeshPipeline(this->m_pipeline);
-			auto canvas = this->GetRoot()->GetCanvasSize();
-			RHI::Viewport v(canvas.x, canvas.y);
-			commandList->SetViewports(&v, 1);
-
-			RHI::Rect rec(LONG_MAX, LONG_MAX);
-			commandList->SetScissors(&rec, 1);
-
-            commandList->BindConstantBuffer(1, this->m_frameConstantBuffer);
-            commandList->BindDynamicConstantBuffer(2, cameraData);
-
-            auto view = this->m_scene.GetAllEntitiesWith<Scene::MeshInstanceComponent, Scene::AABBComponent>();
-            for (auto e : view)
-            {
-                auto [instanceComponent, aabbComp] = view.get<Scene::MeshInstanceComponent, Scene::AABBComponent>(e);
-
-                auto& meshComponent = this->m_scene.GetRegistry().get<Scene::MeshComponent>(instanceComponent.Mesh);
-
-                Shader::MeshletPushConstants pushConstant = {};
-                pushConstant.WorldMatrix = instanceComponent.WorldMatrix;
-                pushConstant.VerticesBufferIdx = this->GetGfxDevice()->GetDescriptorIndex(meshComponent.VertexGpuBuffer, RHI::SubresouceType::SRV);
-                pushConstant.MeshletsBufferIdx = this->GetGfxDevice()->GetDescriptorIndex(meshComponent.Meshlets, RHI::SubresouceType::SRV);
-                pushConstant.PrimitiveIndicesIdx = this->GetGfxDevice()->GetDescriptorIndex(meshComponent.PrimitiveIndices, RHI::SubresouceType::SRV);
-                pushConstant.UniqueVertexIBIdx = this->GetGfxDevice()->GetDescriptorIndex(meshComponent.UniqueVertexIndices, RHI::SubresouceType::SRV);
-                pushConstant.GeometryIdx = meshComponent.Surfaces.front().GlobalGeometryBufferIndex;
-
-
-                for (auto& subset : meshComponent.MeshletSubsets)
-                {
-                    pushConstant.SubsetOffset = subset.Offset;
-                    commandList->BindPushConstant(0, pushConstant);
-                    commandList->DispatchMesh(subset.Count, 1, 1);
-                }
-            }
-
-			commandList->EndRenderPass();
-		}
-
-		commandList->Close();
-        this->GetGfxDevice()->ExecuteCommandLists({ commandList });
-    }
-
-private:
-    void PrepareRenderData(ICommandList* commandList, Scene::Scene& scene)
-    {
-        scene.OnUpdate(this->m_commonPasses);
-
-        GPUAllocation lightBufferAlloc =
-            commandList->AllocateGpu(
-                sizeof(Shader::ShaderLight) * Shader::SHADER_LIGHT_ENTITY_COUNT,
-                sizeof(Shader::ShaderLight));
-        GPUAllocation matrixBufferAlloc =
-            commandList->AllocateGpu(
-                sizeof(DirectX::XMMATRIX) * Shader::MATRIX_COUNT,
-                sizeof(DirectX::XMMATRIX));
-
-        Shader::ShaderLight* lightArray = (Shader::ShaderLight*)lightBufferAlloc.CpuData;
-        DirectX::XMMATRIX* matrixArray = (DirectX::XMMATRIX*)matrixBufferAlloc.CpuData;
-
-        Shader::ShaderLight* renderLight = lightArray;
-        renderLight->SetType(Scene::LightComponent::kDirectionalLight);
-        renderLight->SetRange(10.0f);
-        renderLight->SetIntensity(10.0f);
-        renderLight->SetFlags(Scene::LightComponent::kEnabled);
-        renderLight->SetDirection({ 0.0, -1.0f, 0.0f });
-        renderLight->ColorPacked = Core::Math::PackColour({ 1.0f, 1.0f, 1.0f, 1.0f });
-        renderLight->SetIndices(0);
-        renderLight->SetNumCascades(0);
-        renderLight->Position = { 0.0f, 0.0f, 0.0f };
-
-        Shader::Frame frameData = {};
-        // Move to Renderer...
-        frameData.BrdfLUTTexIndex = scene.GetBrdfLutDescriptorIndex();
-        frameData.LightEntityDescritporIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(lightBufferAlloc.GpuBuffer, RHI::SubresouceType::SRV);
-        frameData.LightDataOffset = lightBufferAlloc.Offset;
-        frameData.LightCount = 1;
-
-        frameData.MatricesDescritporIndex = RHI::cInvalidDescriptorIndex;
-        frameData.MatricesDataOffset = 0;
-        frameData.SceneData = scene.GetShaderData();
-
-        frameData.SceneData.AtmosphereData.AmbientColour = float3(0.0f, 0.0f, 0.0f);
-
-        // Upload data
-        RHI::GpuBarrier preCopyBarriers[] =
-        {
-            RHI::GpuBarrier::CreateBuffer(this->m_frameConstantBuffer, RHI::ResourceStates::ConstantBuffer, RHI::ResourceStates::CopyDest),
-            RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
-            RHI::GpuBarrier::CreateBuffer(scene.GetGeometryBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
-            RHI::GpuBarrier::CreateBuffer(scene.GetMaterialBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
-        };
-        commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
-
-        commandList->WriteBuffer(this->m_frameConstantBuffer, frameData);
-
-        commandList->CopyBuffer(
-            scene.GetInstanceBuffer(),
-            0,
-            scene.GetInstanceUploadBuffer(),
-            0,
-            scene.GetNumInstances() * sizeof(Shader::MeshInstance));
-
-        commandList->CopyBuffer(
-            scene.GetGeometryBuffer(),
-            0,
-            scene.GetGeometryUploadBuffer(),
-            0,
-            scene.GetNumGeometryEntries() * sizeof(Shader::Geometry));
-
-        commandList->CopyBuffer(
-            scene.GetMaterialBuffer(),
-            0,
-            scene.GetMaterialUploadBuffer(),
-            0,
-            scene.GetNumMaterialEntries() * sizeof(Shader::MaterialData));
-
-        RHI::GpuBarrier postCopyBarriers[] =
-        {
-            RHI::GpuBarrier::CreateBuffer(this->m_frameConstantBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ConstantBuffer),
-            RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
-            RHI::GpuBarrier::CreateBuffer(scene.GetGeometryBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
-            RHI::GpuBarrier::CreateBuffer(scene.GetMaterialBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
-        };
-
-        commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
+        auto canvas = this->GetRoot()->GetCanvasSize();
+        RHI::Viewport v(canvas.x, canvas.y);
+        this->m_sceneRenderer->Render(this->m_renderableScene, this->m_mainCamera, v);
     }
 
 private:
@@ -541,16 +806,15 @@ private:
     RHI::MeshPipelineHandle m_pipeline;
     RHI::ShaderHandle m_meshShader;
     RHI::ShaderHandle m_pixelShader;
+
     Scene::Scene m_scene;
+    RenderableScene m_renderableScene;
+
     Scene::CameraComponent m_mainCamera;
     PhxEngine::FirstPersonCameraController m_cameraController;
-    RHI::BufferHandle m_frameConstantBuffer;
 
-    RenderTargets m_renderTargets;
-    std::unique_ptr<VisibilityBufferFillPass> m_visibilityBufferFillPass;
-    std::unique_ptr<MeshletBufferFillPass> m_meshletBufferFillPass;
-    std::shared_ptr<DeferredLightingPass> m_deferredLightingPass;
     std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
+    std::unique_ptr<SceneVisibilityRenderer3D> m_sceneRenderer;
     std::unique_ptr<Renderer::ToneMappingPass> m_toneMappingPass;
 
     RHI::TextureHandle m_depthTex;

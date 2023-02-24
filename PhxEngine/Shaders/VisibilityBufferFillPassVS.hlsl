@@ -1,33 +1,23 @@
 #pragma pack_matrix(row_major)
 
-#include "../Include/PhxEngine/Shaders/ShaderInteropStructures.h"
-#include "Globals.hlsli"
-#include "Defines.hlsli"
 #include "VertexBuffer.hlsli"
-#include "VisibilityBuffer.hlsli"
-
-
-inline ShaderMeshInstancePointer GetMeshInstancePtr(uint index)
-{
-    return ResourceHeap_GetBuffer(push.InstancePtrBufferDescriptorIndex).Load<ShaderMeshInstancePointer> (push.InstancePtrDataOffset + index * sizeof(ShaderMeshInstancePointer));
-}
-
+#include "VisibilityFillPass_Resources.hlsli"
 
 [RootSignature(VisibilityBufferFillRS)]
-PSInput_VisBuffer main(
+PSInputVisBuffer main(
 	uint vertexID : SV_VertexID,
 	uint instanceID : SV_InstanceID)
 {
-    Geometry geometry = LoadGeometry(push.GeometryIndex);
+    DrawPacket packet = LoadDrawPacket(push.DrawPacketIndex);
+    
+    Geometry geometry = LoadGeometry(packet.GeometryIdx);
     float4 position = RetrieveVertexPosition(vertexID, geometry);
     
-    ShaderMeshInstancePointer instancePtr = GetMeshInstancePtr(instanceID);
-    MeshInstance meshInstance = LoadMeshInstance(instancePtr.GetInstanceIndex());
-    meshInstance = ResourceHeap_GetBuffer(GetScene().MeshInstanceBufferIndex).Load<MeshInstance>(instancePtr.GetInstanceIndex() * sizeof(MeshInstance));
+    MeshInstance meshInstance = LoadMeshInstance(packet.InstanceIdx);
     
-    PSInput_VisBuffer output;
+    PSInputVisBuffer output;
     output.Position = mul(position, meshInstance.WorldMatrix);
     output.Position = mul(output.Position, GetCamera().ViewProjection);
-    
+    output.DrawId = instanceID;
     return output;
 }

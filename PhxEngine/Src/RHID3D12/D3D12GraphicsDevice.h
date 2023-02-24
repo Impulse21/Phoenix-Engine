@@ -147,6 +147,12 @@ namespace PhxEngine::RHI::D3D12
         uint32_t SliceCount = 0;
     };
 
+    struct D3D12CommandSignature final
+    {
+        std::vector<D3D12_INDIRECT_ARGUMENT_DESC> D3D12Descs;
+        Microsoft::WRL::ComPtr<ID3D12CommandSignature> NativeSignature;
+    };
+
     struct D3D12Texture final
     {
         TextureDesc Desc = {};
@@ -333,6 +339,9 @@ namespace PhxEngine::RHI::D3D12
         CommandListHandle CreateCommandList(CommandListDesc const& desc = {}) override;
         ICommandList* BeginCommandRecording(CommandQueueType QueueType = CommandQueueType::Graphics) override;
 
+        CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride) override;
+        void DeleteCommandSignature(CommandSignatureHandle handle) override;
+
         ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) override;
         InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) override;
         GraphicsPipelineHandle CreateGraphicsPipeline(GraphicsPipelineDesc const& desc) override;
@@ -470,6 +479,7 @@ namespace PhxEngine::RHI::D3D12
         Core::Pool<D3D12ComputePipeline, ComputePipeline>& GetComputePipelinePool() { return this->m_computePipelinePool; }
         Core::Pool<D3D12MeshPipeline, MeshPipeline>& GetMeshPipelinePool() { return this->m_meshPipelinePool; }
         Core::Pool<D3D12RTAccelerationStructure, RTAccelerationStructure>& GetRTAccelerationStructurePool() { return this->m_rtAccelerationStructurePool; }
+        Core::Pool<D3D12CommandSignature, CommandSignature>& GetCommandSignaturePool() { return this->m_commandSignaturePool; }
 
     private:
         size_t GetCurrentBackBufferIndex() const;
@@ -519,6 +529,7 @@ namespace PhxEngine::RHI::D3D12
 
         // -- Resouce Pool ---
         Core::Pool<D3D12Texture, Texture> m_texturePool;
+        Core::Pool<D3D12CommandSignature, CommandSignature> m_commandSignaturePool;
         Core::Pool<D3D12Shader, RHIShader> m_shaderPool;
         Core::Pool<D3D12InputLayout, InputLayout> m_inputLayoutPool;
         Core::Pool<D3D12Buffer, Buffer> m_bufferPool;

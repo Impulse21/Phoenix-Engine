@@ -494,8 +494,6 @@ void PhxEngine::Scene::Scene::RunMeshInstanceUpdateSystem()
 		this->m_numMeshlets += mesh.MeshletCount;
 
 		meshInstanceComponent.GlobalBufferIndex = currInstanceIndex++;
-
-		Entity entity(e, this);
 	}
 
 	auto aabbView = this->GetAllEntitiesWith<MeshInstanceComponent, AABBComponent>();

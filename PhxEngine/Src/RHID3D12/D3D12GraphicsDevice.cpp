@@ -265,6 +265,7 @@ PhxEngine::RHI::D3D12::D3D12GraphicsDevice::D3D12GraphicsDevice(D3D12Adapter con
 	, m_meshPipelinePool(10)
 	, m_inputLayoutPool(10)
 	, m_shaderPool(10)
+	, m_commandSignaturePool(10)
 {
 	sSingleton = this;
 	IGraphicsDevice::GPtr = this;
@@ -479,6 +480,95 @@ ICommandList* PhxEngine::RHI::D3D12::D3D12GraphicsDevice::BeginCommandRecording(
 	commandList->Open();
 
 	return commandList;
+}
+
+CommandSignatureHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride)
+{
+	CommandSignatureHandle handle = this->m_commandSignaturePool.Emplace();
+	D3D12CommandSignature* signature = this->m_commandSignaturePool.Get(handle);
+
+	signature->D3D12Descs.resize(desc.ArgDesc.Size());
+	for (int i = 0; i < desc.ArgDesc.Size(); i++)
+	{
+		const IndirectArgumnetDesc& argDesc = desc.ArgDesc[i];
+		D3D12_INDIRECT_ARGUMENT_DESC& d3d12DispatchArgs = signature->D3D12Descs[i];
+		switch (argDesc.Type)
+		{
+		case IndirectArgumentType::Draw:
+			d3d12DispatchArgs.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
+			break;
+
+		case IndirectArgumentType::DrawIndex:
+			d3d12DispatchArgs.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+			break;
+		case IndirectArgumentType::Dispatch:
+			d3d12DispatchArgs.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
+			break;
+		case IndirectArgumentType::DispatchMesh:
+			d3d12DispatchArgs.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH;
+			break;
+		case IndirectArgumentType::Constant:
+			d3d12DispatchArgs.Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+			d3d12DispatchArgs.Constant.DestOffsetIn32BitValues = argDesc.Constant.DestOffsetIn32BitValues;
+			d3d12DispatchArgs.Constant.RootParameterIndex = argDesc.Constant.RootParameterIndex;
+			d3d12DispatchArgs.Constant.Num32BitValuesToSet = argDesc.Constant.Num32BitValuesToSet;
+			break;
+		default:
+			break;
+		}	
+	}
+
+	D3D12_COMMAND_SIGNATURE_DESC cmdDesc = {};
+	cmdDesc.ByteStride = byteStride;
+	cmdDesc.NumArgumentDescs = signature->D3D12Descs.size();
+	cmdDesc.pArgumentDescs = signature->D3D12Descs.data();
+
+	ID3D12RootSignature* rootSig = nullptr;
+	switch (desc.PipelineType)
+	{
+	case PipelineType::Gfx:
+		rootSig = this->m_graphicsPipelinePool.Get(desc.GfxHandle)->RootSignature.Get();
+		break;
+	case PipelineType::Compute:
+		rootSig = this->m_computePipelinePool.Get(desc.ComputeHandle)->RootSignature.Get();
+		break;
+	case PipelineType::Mesh:
+		rootSig = this->m_meshPipelinePool.Get(desc.MeshHandle)->RootSignature.Get();
+		break;
+	default:
+		rootSig = nullptr;
+		break;
+	}
+	ThrowIfFailed(
+		this->GetD3D12Device()->CreateCommandSignature(
+			&cmdDesc,
+			rootSig,
+			IID_PPV_ARGS(&signature->NativeSignature)));
+
+	return handle;
+}
+
+void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::DeleteCommandSignature(CommandSignatureHandle handle)
+{
+	if (!handle.IsValid())
+	{
+		return;
+	}
+
+	DeleteItem d =
+	{
+		this->m_frameCount,
+		[=]()
+		{
+			D3D12CommandSignature* signature= this->GetCommandSignaturePool().Get(handle);
+			if (signature)
+			{
+				this->GetCommandSignaturePool().Release(handle);
+			}
+		}
+	};
+
+	this->m_deleteQueue.push_back(d);
 }
 
 ShaderHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
