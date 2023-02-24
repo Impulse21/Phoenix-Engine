@@ -12,6 +12,7 @@ namespace PhxEngine::RHI::D3D12
 	class UploadBuffer;
 	class DynamicSuballocator;
 	class D3D12ComputePipeline;
+	class D3D12MeshPipeline;
 
 	class TimerQuery;
 	struct TrackedResources
@@ -90,7 +91,17 @@ namespace PhxEngine::RHI::D3D12
 			uint32_t instanceCount = 1,
 			uint32_t startIndex = 0,
 			int32_t baseVertex = 0,
-			uint32_t startInstance = 0);
+			uint32_t startInstance = 0) override;
+
+
+		void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes) override;
+		void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) override;
+
+		void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes) override;
+		void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) override;
+
+		virtual void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes) override;
+		virtual void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) override;
 
 		void WriteBuffer(BufferHandle buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes = 0) override;
 		void CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHandle src, uint64_t srcOffset, size_t sizeInBytes) override;
@@ -113,12 +124,19 @@ namespace PhxEngine::RHI::D3D12
 		void BindResourceTable(size_t rootParameterIndex) override;
 		void BindSamplerTable(size_t rootParameterIndex) override;
 		void BindDynamicDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures) override;
-		void BindDynamicUavDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures) override;
+		void BindDynamicUavDescriptorTable(size_t rootParameterIndex, Core::Span<BufferHandle> buffers, Core::Span<TextureHandle> textures) override;
 
 		// -- Comptute Stuff ---
 		void SetComputeState(ComputePipelineHandle state);
 		void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1);
-		void DispatchIndirect(uint32_t offsetBytes);
+		void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes);
+		void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) override;
+
+		// -- Mesh Stuff ---
+		void SetMeshPipeline(MeshPipelineHandle meshPipeline) override;
+		void DispatchMesh(uint32_t groupsX, uint32_t groupsY = 1u, uint32_t groupsZ = 1u) override;
+		void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes) override;
+		void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) override;
 
 		// -- Query Stuff ---
 		void BeginTimerQuery(TimerQueryHandle query);
@@ -136,8 +154,21 @@ namespace PhxEngine::RHI::D3D12
 	private:
 		const uint32_t DynamicChunkSizeSrvUavCbv = 256;
 		CommandQueue* m_parentQueue;
+
 		D3D12GraphicsDevice& m_graphicsDevice;
-		D3D12ComputePipeline* m_activeComputePipeline = nullptr;
+
+		enum class PipelineType
+		{
+			Gfx,
+			Compute,
+			Mesh,
+		} m_activePipelineType;
+
+		union
+		{
+			D3D12ComputePipeline* m_activeComputePipeline;
+			D3D12MeshPipeline* m_activeMeshPipeline;
+		};
 
 		std::unique_ptr<UploadBuffer> m_uploadBuffer;
 

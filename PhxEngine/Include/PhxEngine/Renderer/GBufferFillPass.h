@@ -17,7 +17,7 @@ namespace PhxEngine::Renderer
 		GBufferFillPass(RHI::IGraphicsDevice* gfxDevice, std::shared_ptr<CommonPasses> commonPasses);
 		~GBufferFillPass() = default;
 
-		void Initialize(Graphics::ShaderFactory& shaderFactory);
+		void Initialize(Graphics::ShaderFactory& factory);
 
 		void WindowResized();
 

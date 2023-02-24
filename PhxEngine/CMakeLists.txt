@@ -191,6 +191,7 @@ target_link_libraries(${project} PUBLIC
 	DirectX-Guids
 	cgltf
 	DirectXTex
+	DirectXMesh
 	imgui
 	stb
 	entt
@@ -212,9 +213,10 @@ add_custom_command(
 		COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_SOURCE_DIR}/PhxEngine/Shaders ${CMAKE_CURRENT_BINARY_DIR}/Shaders
 )
 
+
 # D3D12 Agility SDK
 message("Fetching D3D12 Agility SDK")
-FetchContent_Declare(d3d12-agility-sdk URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.606.3)
+FetchContent_Declare(d3d12-agility-sdk URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.608.2)
 FetchContent_MakeAvailable(d3d12-agility-sdk)
 file(GLOB_RECURSE d3d12-agility-sdk_include "${d3d12-agility-sdk_SOURCE_DIR}/build/native/include/*.h")
 add_library(
@@ -237,6 +239,7 @@ add_custom_command(
 	DEPENDS D3D12AgilitySDK)
 
 message("D3D12 Agility SDK fetched")
+
 
 # DXC
 message("Fetching DirectXShaderCompiler")

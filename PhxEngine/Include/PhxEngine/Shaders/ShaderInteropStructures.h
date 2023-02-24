@@ -27,6 +27,9 @@ namespace Shader
 
 	static const uint MATRIX_COUNT = 128;
 
+	// This is restricted to 256 as the Visbuffer is only able to store upt to 256 PrimIDs
+	static const uint MESHLET_TRIANGLE_COUNT = 256u; 
+
 	// -- Groups ---
 	static const uint GENERATE_MIP_CHAIN_2D_BLOCK_SIZE = 8;
 
@@ -62,7 +65,7 @@ namespace Shader
 		uint MeshInstanceBufferIndex;
 		uint GeometryBufferIndex;
 		uint MaterialBufferIndex;
-		uint IrradianceMapTexIndex;
+		uint MeshletBufferIndex;
 
 		// -- 16 byte boundary ----
 
@@ -71,11 +74,37 @@ namespace Shader
 		uint EnvMap_NumMips;
 		uint RT_TlasIndex;
 
+		// --- 16 byte boundary ---
+		uint IrradianceMapTexIndex;
+		uint _padding;
+		uint __pading;
+		uint ___padding;
+
 		// -- 16 byte boundary ----
 		Atmosphere AtmosphereData;
 	};
 
+
+	struct Scene_NEW
+	{
+		uint ObjectBufferIdx;
+		uint GeometryBufferIdx;
+		uint MaterialBufferIdx;
+		uint MeshletBufferIndex;
+
+		// -- 16 byte boundary ----
+		uint GlobalVertexBufferIdx;
+		uint GlobalIndexxBufferIdx;
+		uint DrawPacketBufferIdx;
+	};
+
 	// -- Common Structurs ---
+	struct Frame_NEW
+	{
+		// -- 16 byte boundary ----
+		Scene_NEW SceneData;
+	};
+
 	struct Frame
 	{
 		uint Option;
@@ -412,6 +441,9 @@ namespace Shader
 		uint GeometryCount;
 		uint Colour;
 		uint Emissive;
+
+		// -- 16 byte boundary ----
+		uint MeshletOffset;
 	};
 
 	struct Geometry
@@ -429,9 +461,55 @@ namespace Shader
 
 		// -- 16 byte boundary ---
 		uint TangentOffset;
-		uint3 _padding;
+		uint MeshletOffset;
+		uint MeshletCount;
+		uint _padding;
 
 		// -- 16 byte boundary ---
+	};
+
+	struct Meshlet
+	{
+		uint MeshInstanceIdx;
+		uint GeometryIdx;
+		uint PrimitiveOffset;
+	};
+
+	struct Subset
+	{
+		uint32_t Offset;
+		uint32_t Count;
+	};
+
+	struct Meshlet_NEW
+	{
+		uint VertCount;
+		uint VertOffset;
+		uint PrimCount;
+		uint PrimOffset;
+	};
+	
+	struct DrawPacket
+	{
+		uint InstanceIdx;
+		uint GeometryIdx;
+	};
+
+	struct VisibilityFillPushConstant
+	{
+		uint DrawPacketIndex;
+	};
+
+	struct MeshletPushConstants
+	{
+		float4x4 WorldMatrix;
+		uint VerticesBufferIdx;
+		uint MeshletsBufferIdx;
+		uint UniqueVertexIBIdx;
+		uint PrimitiveIndicesIdx;
+
+		uint GeometryIdx;
+		uint SubsetOffset;
 	};
 
 	struct RenderCams

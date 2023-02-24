@@ -43,6 +43,9 @@ option(BUILD_DX12 "" OFF)
 add_subdirectory(DirectXTex)
 set_target_properties(DirectXTex PROPERTIES FOLDER ${extern_folder})
 
+add_subdirectory(DirectXMesh)
+set_target_properties(DirectXMesh PROPERTIES FOLDER ${extern_folder})
+
 set(imgui_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imconfig.h
     ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_draw.cpp

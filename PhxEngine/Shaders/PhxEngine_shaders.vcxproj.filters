@@ -37,6 +37,9 @@
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VertexColourVS.hlsl">
       <Filter>Shaders\VS</Filter>
     </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBufferFillPassVS.hlsl">
+      <Filter>Shaders\VS</Filter>
+    </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\BlitPS.hlsl">
       <Filter>Shaders\PS</Filter>
     </None>
@@ -70,6 +73,9 @@
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VertexColourPS.hlsl">
       <Filter>Shaders\PS</Filter>
     </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBufferFillPassPS.hlsl">
+      <Filter>Shaders\PS</Filter>
+    </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\DeferredLightingCS.hlsl">
       <Filter>Shaders\CS</Filter>
     </None>
@@ -78,6 +84,15 @@
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\GenerateMipChain_CubeArrayCS.hlsl">
       <Filter>Shaders\CS</Filter>
+    </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\MeshletBufferFillPassCS.hlsl">
+      <Filter>Shaders\CS</Filter>
+    </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBufferFillPassAS.hlsl">
+      <Filter>Shaders\AS</Filter>
+    </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBufferFillPassMS.hlsl">
+      <Filter>Shaders\MS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Include\PhxEngine\Shaders\ShaderInterop.h">
       <Filter>Shaders\Include</Filter>
@@ -142,7 +157,13 @@
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VertexBuffer.hlsli">
       <Filter>Shaders\Include</Filter>
     </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBuffer.hlsli">
+      <Filter>Shaders\Include</Filter>
+    </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\PhxEngine\Shaders\CMakeFiles\PhxEngine_shaders" />
+    <None Include="..\..\..\PhxEngine\Shaders\VisibilityFillPass_Resources.hlsli">
+      <Filter>Shaders\Include</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">
@@ -151,11 +172,17 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{9541DD17-153B-3A5A-B15F-76D020B6FC9C}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders\AS">
+      <UniqueIdentifier>{CD674BBF-7761-34D1-B607-B08DD2A4845B}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Shaders\CS">
       <UniqueIdentifier>{3908CAE2-1DB2-3305-BFDE-D6B9DB9E086D}</UniqueIdentifier>
     </Filter>
     <Filter Include="Shaders\Include">
       <UniqueIdentifier>{C698F384-662B-3F7A-A8BE-7CC43C4FB711}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\MS">
+      <UniqueIdentifier>{4811474B-BD3F-3896-86EF-5765524301E2}</UniqueIdentifier>
     </Filter>
     <Filter Include="Shaders\PS">
       <UniqueIdentifier>{C7D3CB0B-8BCD-39E7-BBB1-52CB88083791}</UniqueIdentifier>

@@ -117,6 +117,15 @@ namespace PhxEngine::RHI::D3D12
         D3D12ComputePipeline() = default;
     };
 
+    struct D3D12MeshPipeline
+    {
+        Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
+        MeshPipelineDesc Desc;
+
+        D3D12MeshPipeline() = default;
+    };
+
     struct DescriptorView
     {
         DescriptorHeapAllocation Allocation;
@@ -136,6 +145,12 @@ namespace PhxEngine::RHI::D3D12
         uint32_t MipCount = 0;
         uint32_t FirstSlice = 0;
         uint32_t SliceCount = 0;
+    };
+
+    struct D3D12CommandSignature final
+    {
+        std::vector<D3D12_INDIRECT_ARGUMENT_DESC> D3D12Descs;
+        Microsoft::WRL::ComPtr<ID3D12CommandSignature> NativeSignature;
     };
 
     struct D3D12Texture final
@@ -324,12 +339,18 @@ namespace PhxEngine::RHI::D3D12
         CommandListHandle CreateCommandList(CommandListDesc const& desc = {}) override;
         ICommandList* BeginCommandRecording(CommandQueueType QueueType = CommandQueueType::Graphics) override;
 
+        CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride) override;
+        void DeleteCommandSignature(CommandSignatureHandle handle) override;
+
         ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) override;
         InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) override;
         GraphicsPipelineHandle CreateGraphicsPipeline(GraphicsPipelineDesc const& desc) override;
         const GraphicsPipelineDesc& GetGfxPipelineDesc(GraphicsPipelineHandle handle) override;
         void DeleteGraphicsPipeline(GraphicsPipelineHandle handle) override;
         ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc) override;
+
+        MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc) override;
+        void DeleteMeshPipeline(MeshPipelineHandle handle) override;
 
         RenderPassHandle CreateRenderPass(RenderPassDesc const& desc) override;
         void GetRenderPassFormats(RenderPassHandle handle, std::vector<RHIFormat>& outRtvFormats, RHIFormat& depthFormat) override;
@@ -432,6 +453,12 @@ namespace PhxEngine::RHI::D3D12
 
         CommandQueue* GetQueue(CommandQueueType type) { return this->m_commandQueues[(int)type].get(); }
 
+        // -- Command Signatures ---
+        ID3D12CommandSignature* GetDispatchIndirectCommandSignature() const{ return this->m_dispatchIndirectCommandSignature.Get(); }
+        ID3D12CommandSignature* GetDrawInstancedIndirectCommandSignature() const { return this->m_drawInstancedIndirectCommandSignature.Get(); }
+        ID3D12CommandSignature* GetDrawIndexedInstancedIndirectCommandSignature() const{ return this->m_drawIndexedInstancedIndirectCommandSignature.Get(); }
+        ID3D12CommandSignature* GetDispatchMeshIndirectCommandSignature() const { return this->m_dispatchMeshIndirectCommandSignature.Get(); }
+
         CpuDescriptorHeap* GetResourceCpuHeap() { return this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::CBV_SRV_UAV].get(); }
         CpuDescriptorHeap* GetSamplerCpuHeap() { return this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler].get(); }
         CpuDescriptorHeap* GetRtvCpuHeap() { return this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::RTV].get(); }
@@ -450,7 +477,9 @@ namespace PhxEngine::RHI::D3D12
         Core::Pool<D3D12RenderPass, RenderPass>& GetRenderPassPool() { return this->m_renderPassPool; };
         Core::Pool<D3D12GraphicsPipeline, GraphicsPipeline>& GetGraphicsPipelinePool() { return this->m_graphicsPipelinePool; }
         Core::Pool<D3D12ComputePipeline, ComputePipeline>& GetComputePipelinePool() { return this->m_computePipelinePool; }
+        Core::Pool<D3D12MeshPipeline, MeshPipeline>& GetMeshPipelinePool() { return this->m_meshPipelinePool; }
         Core::Pool<D3D12RTAccelerationStructure, RTAccelerationStructure>& GetRTAccelerationStructurePool() { return this->m_rtAccelerationStructurePool; }
+        Core::Pool<D3D12CommandSignature, CommandSignature>& GetCommandSignaturePool() { return this->m_commandSignaturePool; }
 
     private:
         size_t GetCurrentBackBufferIndex() const;
@@ -480,6 +509,12 @@ namespace PhxEngine::RHI::D3D12
 		Microsoft::WRL::ComPtr<ID3D12Device2> m_rootDevice2;
 		Microsoft::WRL::ComPtr<ID3D12Device5> m_rootDevice5;
 
+        // -- Command Signatures ---
+        Microsoft::WRL::ComPtr<ID3D12CommandSignature> m_dispatchIndirectCommandSignature;
+        Microsoft::WRL::ComPtr<ID3D12CommandSignature> m_drawInstancedIndirectCommandSignature;
+        Microsoft::WRL::ComPtr<ID3D12CommandSignature> m_drawIndexedInstancedIndirectCommandSignature;
+        Microsoft::WRL::ComPtr<ID3D12CommandSignature> m_dispatchMeshIndirectCommandSignature;
+
 		// std::shared_ptr<IDxcUtils> dxcUtils;
 		D3D12Adapter m_gpuAdapter;
 
@@ -494,6 +529,7 @@ namespace PhxEngine::RHI::D3D12
 
         // -- Resouce Pool ---
         Core::Pool<D3D12Texture, Texture> m_texturePool;
+        Core::Pool<D3D12CommandSignature, CommandSignature> m_commandSignaturePool;
         Core::Pool<D3D12Shader, RHIShader> m_shaderPool;
         Core::Pool<D3D12InputLayout, InputLayout> m_inputLayoutPool;
         Core::Pool<D3D12Buffer, Buffer> m_bufferPool;
@@ -501,6 +537,7 @@ namespace PhxEngine::RHI::D3D12
         Core::Pool<D3D12RTAccelerationStructure, RTAccelerationStructure> m_rtAccelerationStructurePool;
         Core::Pool<D3D12GraphicsPipeline, GraphicsPipeline> m_graphicsPipelinePool;
         Core::Pool<D3D12ComputePipeline, ComputePipeline> m_computePipelinePool;
+        Core::Pool<D3D12MeshPipeline, MeshPipeline> m_meshPipelinePool;
 
         // -- Command Queues ---
 		std::array<std::unique_ptr<CommandQueue>, (int)CommandQueueType::Count> m_commandQueues;

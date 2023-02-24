@@ -498,6 +498,83 @@ void D3D12CommandList::DrawIndexed(
         startInstance);
 }
 
+void PhxEngine::RHI::D3D12::D3D12CommandList::ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes)
+{
+    D3D12CommandSignature* commandSignatureImpl = this->m_graphicsDevice.GetCommandSignaturePool().Get(commandSignature);
+    D3D12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    this->m_d3d12CommandList6->ExecuteIndirect(
+        commandSignatureImpl->NativeSignature.Get(),
+        1,
+        bufferImpl->D3D12Resource.Get(),
+        argsOffsetInBytes,
+        nullptr,
+        1);
+}
+
+void PhxEngine::RHI::D3D12::D3D12CommandList::ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount)
+{
+    D3D12CommandSignature* commandSignatureImpl = this->m_graphicsDevice.GetCommandSignaturePool().Get(commandSignature);
+    D3D12Buffer* argBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    D3D12Buffer* countBufferBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    this->m_d3d12CommandList6->ExecuteIndirect(
+        commandSignatureImpl->NativeSignature.Get(),
+        maxCount,
+        argBufferImpl->D3D12Resource.Get(),
+        argsOffsetInBytes,
+        countBufferBufferImpl->D3D12Resource.Get(),
+        countOffsetInBytes);
+}
+
+void PhxEngine::RHI::D3D12::D3D12CommandList::DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes)
+{
+    D3D12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    this->m_d3d12CommandList6->ExecuteIndirect(
+        this->m_graphicsDevice.GetDrawInstancedIndirectCommandSignature(),
+        1,
+        bufferImpl->D3D12Resource.Get(),
+        argsOffsetInBytes,
+        nullptr,
+        1);
+}
+
+void PhxEngine::RHI::D3D12::D3D12CommandList::DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount)
+{
+    D3D12Buffer* argBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    D3D12Buffer* countBufferBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    this->m_d3d12CommandList6->ExecuteIndirect(
+        this->m_graphicsDevice.GetDrawInstancedIndirectCommandSignature(),
+        maxCount,
+        argBufferImpl->D3D12Resource.Get(),
+        argsOffsetInBytes,
+        countBufferBufferImpl->D3D12Resource.Get(),
+        countOffsetInBytes);
+}
+
+void PhxEngine::RHI::D3D12::D3D12CommandList::DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes)
+{
+    D3D12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    this->m_d3d12CommandList6->ExecuteIndirect(
+        this->m_graphicsDevice.GetDrawIndexedInstancedIndirectCommandSignature(),
+        1,
+        bufferImpl->D3D12Resource.Get(),
+        argsOffsetInBytes,
+        nullptr,
+        1);
+}
+
+void PhxEngine::RHI::D3D12::D3D12CommandList::DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount)
+{
+    D3D12Buffer* argBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    D3D12Buffer* countBufferBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    this->m_d3d12CommandList6->ExecuteIndirect(
+        this->m_graphicsDevice.GetDrawIndexedInstancedIndirectCommandSignature(),
+        maxCount,
+        argBufferImpl->D3D12Resource.Get(),
+        argsOffsetInBytes,
+        countBufferBufferImpl->D3D12Resource.Get(),
+        countOffsetInBytes);
+}
+
 constexpr uint32_t AlignTo(uint32_t value, uint32_t alignment)
 {
     return ((value + alignment - 1) / alignment) * alignment;
@@ -647,7 +724,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::SetRenderTargets(std::vector<Textu
 
 void PhxEngine::RHI::D3D12::D3D12CommandList::SetGraphicsPipeline(GraphicsPipelineHandle graphicsPiplineHandle)
 {
-    this->m_activeComputePipeline = nullptr;
+    this->m_activePipelineType = PipelineType::Gfx;
     D3D12GraphicsPipeline* graphisPipeline = this->m_graphicsDevice.GetGraphicsPipelinePool().Get(graphicsPiplineHandle);
     this->m_d3d12CommandList->SetPipelineState(graphisPipeline->D3D12PipelineState.Get());
 
@@ -748,7 +825,7 @@ void D3D12CommandList::TransitionBarrier(Microsoft::WRL::ComPtr<ID3D12Resource> 
 
 void PhxEngine::RHI::D3D12::D3D12CommandList::BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants)
 {
-    if (this->m_activeComputePipeline)
+    if (this->m_activePipelineType == PipelineType::Compute)
     {
         this->m_d3d12CommandList->SetComputeRoot32BitConstants(rootParameterIndex, sizeInBytes / sizeof(uint32_t), constants, 0);
     }
@@ -761,7 +838,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BindPushConstant(uint32_t rootPara
 void PhxEngine::RHI::D3D12::D3D12CommandList::BindConstantBuffer(size_t rootParameterIndex, BufferHandle constantBuffer)
 {
     const D3D12Buffer* constantBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(constantBuffer);
-    if (this->m_activeComputePipeline)
+    if (this->m_activePipelineType == PipelineType::Compute)
     {
         this->m_d3d12CommandList->SetComputeRootConstantBufferView(rootParameterIndex, constantBufferImpl->D3D12Resource->GetGPUVirtualAddress());
     }
@@ -776,7 +853,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BindDynamicConstantBuffer(size_t r
     UploadBuffer::Allocation alloc = this->m_uploadBuffer->Allocate(sizeInBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
     std::memcpy(alloc.CpuData, bufferData, sizeInBytes);
 
-    if (this->m_activeComputePipeline)
+    if (this->m_activePipelineType == PipelineType::Compute)
     {
         this->m_d3d12CommandList->SetComputeRootConstantBufferView(rootParameterIndex, alloc.Gpu);
     }
@@ -838,7 +915,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BindDynamicStructuredBuffer(uint32
     UploadBuffer::Allocation alloc = this->m_uploadBuffer->Allocate(sizeInBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
     std::memcpy(alloc.CpuData, bufferData, sizeInBytes);
 
-    if (this->m_activeComputePipeline)
+    if (this->m_activePipelineType == PipelineType::Compute)
     {
         this->m_d3d12CommandList->SetComputeRootShaderResourceView(rootParameterIndex, alloc.Gpu);
     }
@@ -852,7 +929,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BindStructuredBuffer(size_t rootPa
 {
     const D3D12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(buffer);
 
-    if (this->m_activeComputePipeline)
+    if (this->m_activePipelineType == PipelineType::Compute)
     {
         this->m_d3d12CommandList->SetComputeRootShaderResourceView(
             rootParameterIndex,
@@ -870,7 +947,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BindResourceTable(size_t rootParam
 {
     if (this->m_graphicsDevice.GetMinShaderModel() < ShaderModel::SM_6_6)
     {
-        if (this->m_activeComputePipeline)
+        if (this->m_activePipelineType == PipelineType::Compute)
         {
             this->m_d3d12CommandList->SetComputeRootDescriptorTable(
                 rootParameterIndex,
@@ -907,7 +984,7 @@ void D3D12CommandList::BindDynamicDescriptorTable(size_t rootParameterIndex, Cor
             D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     }
 
-    if (this->m_activeComputePipeline)
+    if (this->m_activePipelineType == PipelineType::Compute)
     {
         this->m_d3d12CommandList->SetComputeRootDescriptorTable(rootParameterIndex, descriptorTable.GetGpuHandle());
     }
@@ -917,11 +994,25 @@ void D3D12CommandList::BindDynamicDescriptorTable(size_t rootParameterIndex, Cor
     }
 }
 
-void PhxEngine::RHI::D3D12::D3D12CommandList::BindDynamicUavDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures)
+void PhxEngine::RHI::D3D12::D3D12CommandList::BindDynamicUavDescriptorTable(
+    size_t rootParameterIndex,
+    Core::Span<BufferHandle> buffers,
+    Core::Span<TextureHandle> textures)
 {
     // Request Descriptoprs for table
     // Validate with Root Signature. Maybe an improvment in the future.
     DescriptorHeapAllocation descriptorTable = this->m_activeDynamicSubAllocator->Allocate(textures.Size());
+    for (int i = 0; i < buffers.Size(); i++)
+    {
+        auto impl = this->m_graphicsDevice.GetBufferPool().Get(buffers[i]);
+        this->m_graphicsDevice.GetD3D12Device2()->CopyDescriptorsSimple(
+            1,
+            descriptorTable.GetCpuHandle(i),
+            impl->UavAllocation.Allocation.GetCpuHandle(),
+            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+    }
+
     for (int i = 0; i < textures.Size(); i++)
     {
         auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(textures[i]);
@@ -933,7 +1024,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BindDynamicUavDescriptorTable(size
 
     }
 
-    if (this->m_activeComputePipeline)
+    if (this->m_activePipelineType == PipelineType::Compute)
     {
         this->m_d3d12CommandList->SetComputeRootDescriptorTable(rootParameterIndex, descriptorTable.GetGpuHandle());
     }
@@ -945,6 +1036,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BindDynamicUavDescriptorTable(size
 
 void PhxEngine::RHI::D3D12::D3D12CommandList::SetComputeState(ComputePipelineHandle state)
 {
+    this->m_activePipelineType = PipelineType::Compute;
     D3D12ComputePipeline* computePsoImpl = this->m_graphicsDevice.GetComputePipelinePool().Get(state);
     this->m_d3d12CommandList->SetComputeRootSignature(computePsoImpl->RootSignature.Get());
     this->m_d3d12CommandList->SetPipelineState(computePsoImpl->D3D12PipelineState.Get());
@@ -957,10 +1049,89 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::Dispatch(uint32_t groupsX, uint32_
     this->m_d3d12CommandList->Dispatch(groupsX, groupsY, groupsZ);
 }
 
-void PhxEngine::RHI::D3D12::D3D12CommandList::DispatchIndirect(uint32_t offsetBytes)
+void PhxEngine::RHI::D3D12::D3D12CommandList::DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes)
 {
-    // Not supported yet
-    assert(false);
+    D3D12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    this->m_d3d12CommandList6->ExecuteIndirect(
+        this->m_graphicsDevice.GetDispatchIndirectCommandSignature(),
+        1,
+        bufferImpl->D3D12Resource.Get(),
+        argsOffsetInBytes,
+        nullptr,
+        1);
+}
+
+void PhxEngine::RHI::D3D12::D3D12CommandList::DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount)
+{
+    D3D12Buffer* argBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    D3D12Buffer* countBufferBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    this->m_d3d12CommandList6->ExecuteIndirect(
+        this->m_graphicsDevice.GetDispatchIndirectCommandSignature(),
+        maxCount,
+        argBufferImpl->D3D12Resource.Get(),
+        argsOffsetInBytes,
+        countBufferBufferImpl->D3D12Resource.Get(),
+        countOffsetInBytes);
+}
+
+void PhxEngine::RHI::D3D12::D3D12CommandList::SetMeshPipeline(MeshPipelineHandle meshPipeline)
+{
+    this->m_activePipelineType = PipelineType::Mesh;
+    this->m_activeMeshPipeline = this->m_graphicsDevice.GetMeshPipelinePool().Get(meshPipeline);
+    this->m_d3d12CommandList->SetPipelineState(this->m_activeMeshPipeline->D3D12PipelineState.Get());
+
+    this->m_d3d12CommandList->SetGraphicsRootSignature(this->m_activeMeshPipeline->RootSignature.Get());
+
+    const auto& desc = this->m_activeMeshPipeline->Desc;
+    D3D_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+    switch (desc.PrimType)
+    {
+    case PrimitiveType::TriangleList:
+        topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+        break;
+    case PrimitiveType::TriangleStrip:
+        topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+        break;
+    case PrimitiveType::LineList:
+        topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+        break;
+    default:
+        assert(false);
+    }
+    this->m_d3d12CommandList->IASetPrimitiveTopology(topology);
+
+    // TODO: Move viewport logic here as well...
+}
+
+void PhxEngine::RHI::D3D12::D3D12CommandList::DispatchMesh(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ)
+{
+    assert(this->m_activePipelineType == PipelineType::Mesh);
+    this->m_d3d12CommandList6->DispatchMesh(groupsX, groupsY, groupsZ);
+}
+
+void PhxEngine::RHI::D3D12::D3D12CommandList::DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes)
+{
+    D3D12Buffer* bufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    this->m_d3d12CommandList6->ExecuteIndirect(
+        this->m_graphicsDevice.GetDispatchIndirectCommandSignature(),
+        1,
+        bufferImpl->D3D12Resource.Get(),
+        argsOffsetInBytes,
+        nullptr,
+        1);
+}
+
+void PhxEngine::RHI::D3D12::D3D12CommandList::DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount)
+{
+    D3D12Buffer* argBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    D3D12Buffer* countBufferBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    this->m_d3d12CommandList6->ExecuteIndirect(
+        this->m_graphicsDevice.GetDispatchIndirectCommandSignature(),
+        maxCount,
+        argBufferImpl->D3D12Resource.Get(),
+        argsOffsetInBytes,
+        countBufferBufferImpl->D3D12Resource.Get(),
+        countOffsetInBytes);
 }
 
 void PhxEngine::RHI::D3D12::D3D12CommandList::BeginTimerQuery(TimerQueryHandle query)

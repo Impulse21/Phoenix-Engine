@@ -512,6 +512,32 @@ namespace PhxEngine::RHI
 
 #pragma endregion
 
+    // -- Indirect Objects ---
+    // 
+    struct IndirectDrawArgInstanced
+    {
+        uint32_t VertexCount;
+        uint32_t InstanceCount;
+        uint32_t StartVertex;
+        uint32_t StartInstance;
+    };
+
+    struct IndirectDrawArgsIndexedInstanced
+    {
+        uint32_t IndexCount;
+        uint32_t InstanceCount;
+        uint32_t StartIndex;
+        uint32_t VertexOffset;
+        uint32_t StartInstance;
+    };
+
+    struct IndirectDispatchArgs
+    {
+        uint32_t GroupCountX;
+        uint32_t GroupCountY;
+        uint32_t mGroupCountZ;
+    };
+
     // -- Pipeline State objects ---
     struct BlendRenderState
     {
@@ -794,6 +820,52 @@ namespace PhxEngine::RHI
         { }
     };
 
+    enum class IndirectArgumentType
+    {
+        Draw = 0,
+        DrawIndex,
+        Dispatch,
+        DispatchMesh,
+        Constant,
+    };
+
+    enum class PipelineType
+    {
+        None = 0,
+        Gfx,
+        Compute,
+        Mesh,
+    };
+    struct IndirectArgumnetDesc
+    {
+        IndirectArgumentType Type;
+        union
+        {
+            struct
+            {
+                uint32_t Slot;
+            } 	VertexBuffer;
+            struct
+            {
+                uint32_t RootParameterIndex;
+                uint32_t DestOffsetIn32BitValues;
+                uint32_t Num32BitValuesToSet;
+            } 	Constant;
+            struct
+            {
+                uint32_t RootParameterIndex;
+            } 	ConstantBufferView;
+            struct
+            {
+                uint32_t RootParameterIndex;
+            } 	ShaderResourceView;
+            struct
+            {
+                uint32_t RootParameterIndex;
+            } 	UnorderedAccessView;
+        };
+    };
+
     struct BufferDesc
     {
         BufferMiscFlags MiscFlags = BufferMiscFlags::None;
@@ -879,6 +951,29 @@ namespace PhxEngine::RHI
 
     struct ComputePipeline;
     using ComputePipelineHandle = Core::Handle<ComputePipeline>;
+
+    struct MeshPipelineDesc
+    {
+        PrimitiveType PrimType = PrimitiveType::TriangleList;
+
+        ShaderHandle AmpShader;
+        ShaderHandle MeshShader;
+        ShaderHandle PixelShader;
+
+        BlendRenderState BlendRenderState = {};
+        DepthStencilRenderState DepthStencilRenderState = {};
+        RasterRenderState RasterRenderState = {};
+
+        std::vector<RHIFormat> RtvFormats;
+        std::optional<RHIFormat> DsvFormat;
+
+        uint32_t SampleCount = 1;
+        uint32_t SampleQuality = 0;
+
+    };
+
+    struct MeshPipeline;
+    using MeshPipelineHandle = Core::Handle<MeshPipeline>;
 
     struct SubresourceData
     {
@@ -1133,6 +1228,22 @@ namespace PhxEngine::RHI
         size_t Offset;
     };
 
+    struct CommandSignatureDesc
+    {
+        Core::Span<IndirectArgumnetDesc> ArgDesc;
+
+        PipelineType PipelineType;
+        union
+        {
+            RHI::GraphicsPipelineHandle GfxHandle;
+            RHI::ComputePipelineHandle ComputeHandle;
+            RHI::MeshPipelineHandle MeshHandle;
+        };
+    };
+
+    struct CommandSignature;
+    using CommandSignatureHandle = Core::Handle<CommandSignature>;
+
     class ICommandList : public IRHIResource
     {
     public:
@@ -1163,12 +1274,22 @@ namespace PhxEngine::RHI
         virtual void EndRenderPass() = 0;
 
         virtual void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t startVertex = 0, uint32_t startInstance = 0) = 0;
+
         virtual void DrawIndexed(
             uint32_t indexCount,
             uint32_t instanceCount = 1,
             uint32_t startIndex = 0,
             int32_t baseVertex = 0,
             uint32_t startInstance = 0) = 0;
+
+        virtual void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes) = 0;
+        virtual void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
+
+        virtual void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes) = 0;
+        virtual void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
+
+        virtual void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes) = 0;
+        virtual void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
 
         template<typename T>
         void WriteBuffer(BufferHandle buffer, std::vector<T> const& data, uint64_t destOffsetBytes = 0)
@@ -1198,7 +1319,14 @@ namespace PhxEngine::RHI
         // -- Comptute Stuff ---
         virtual void SetComputeState(ComputePipelineHandle state) = 0;
         virtual void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1) = 0;
-        virtual void DispatchIndirect(uint32_t offsetBytes) = 0;
+        virtual void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes) = 0;
+        virtual void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
+
+        // -- Mesh Stuff ---
+        virtual void SetMeshPipeline(MeshPipelineHandle meshPipeline) = 0;
+        virtual void DispatchMesh(uint32_t groupsX, uint32_t groupsY = 1u, uint32_t groupsZ = 1u) = 0;
+        virtual void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes) = 0;
+        virtual void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
 
         virtual void BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants) = 0;
         template<typename T>
@@ -1259,7 +1387,22 @@ namespace PhxEngine::RHI
         virtual void BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer) = 0;
 
         virtual void BindDynamicDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures) = 0;
-        virtual void BindDynamicUavDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures) = 0;
+        void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Core::Span<BufferHandle> buffers)
+        {
+            this->BindDynamicUavDescriptorTable(rootParameterIndex, buffers, {});
+        }
+        void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Core::Span<TextureHandle> textures)
+        {
+            this->BindDynamicUavDescriptorTable(rootParameterIndex, {}, textures);
+        }
+        virtual void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Core::Span<BufferHandle> buffers,
+            Core::Span<TextureHandle> textures) = 0;
 
         virtual void BindResourceTable (size_t rootParameterIndex) = 0;
         virtual void BindSamplerTable(size_t rootParameterIndex) = 0;
@@ -1351,12 +1494,25 @@ namespace PhxEngine::RHI
         virtual CommandListHandle CreateCommandList(CommandListDesc const& desc = {}) = 0;
         virtual ICommandList* BeginCommandRecording(CommandQueueType QueueType = CommandQueueType::Graphics) = 0;
 
+        template<typename T>
+        CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc)
+        {
+            static_assert(sizeof(T) % sizeof(uint32_t) == 0);
+            return this->CreateCommandSignature(desc, sizeof(T));
+        }
+
+        virtual CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride) = 0;
+        virtual void DeleteCommandSignature(CommandSignatureHandle handle) = 0;
         virtual ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) = 0;
         virtual InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) = 0;
         virtual GraphicsPipelineHandle CreateGraphicsPipeline(GraphicsPipelineDesc const& desc) = 0;
         virtual const GraphicsPipelineDesc& GetGfxPipelineDesc(GraphicsPipelineHandle handle) = 0;
         virtual void DeleteGraphicsPipeline(GraphicsPipelineHandle handle) = 0;
         virtual ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc) = 0;
+
+
+        virtual MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc) = 0;
+        virtual void DeleteMeshPipeline(MeshPipelineHandle handle) = 0;
 
         virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
         virtual const TextureDesc& GetTextureDesc(TextureHandle handle) = 0;

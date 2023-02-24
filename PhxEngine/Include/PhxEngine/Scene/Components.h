@@ -447,11 +447,15 @@ namespace PhxEngine::Scene
 		std::vector<SurfaceDesc> Surfaces;
 
 		size_t GlobalGeometryBufferIndex = 0;
+		size_t MeshletCount = 0;
 
 		RHI::BufferHandle GeneralGpuBuffer;
-
 		RHI::BufferHandle VertexGpuBuffer;
 		RHI::BufferHandle IndexGpuBuffer;
+		RHI::BufferHandle Meshlets;
+		RHI::BufferHandle UniqueVertexIndices;
+		RHI::BufferHandle PrimitiveIndices;
+		size_t MeshletsCount = 0;
 
 		struct BufferViews
 		{
@@ -469,6 +473,9 @@ namespace PhxEngine::Scene
 		};
 
 		uint32_t RenderBucketMask = RenderType::RenderType_Opaque;
+
+		uint64_t GlobalIndexBufferOffset = 0;
+		uint64_t GlobalVertexBufferOffset = 0;
 
 		uint32_t TotalIndices = 0;
 		uint32_t TotalVertices = 0;
@@ -489,6 +496,8 @@ namespace PhxEngine::Scene
 		std::vector<DirectX::XMFLOAT4> VertexTangents;
 		std::vector< DirectX::XMFLOAT3> VertexColour;
 		std::vector<uint32_t> Indices;
+		std::vector<Shader::Subset> MeshletSubsets;
+		std::vector<Shader::Subset> indexSubsets;
 
 		enum class VertexAttribute : uint8_t
 		{
@@ -589,7 +598,7 @@ namespace PhxEngine::Scene
 		bool IsTriMesh() const { return (this->Indices.size() % 3) == 0; }
 
 		void CreateRenderData(RHI::ICommandList* commandList, Renderer::ResourceUpload& indexUploader, Renderer::ResourceUpload& vertexUploader);
-
+		void ComputeMeshlets(RHI::IGraphicsDevice* gfxDevice, RHI::ICommandList* commandList);
 		uint64_t GetIndexBufferSizeInBytes() const;
 		uint64_t GetVertexBufferSizeInBytes() const;
 	};
@@ -638,4 +647,5 @@ namespace PhxEngine::Scene
 
 		size_t GlobalBufferIndex = ~0ull;
 	};
+
 }

@@ -74,7 +74,7 @@
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/EnvMap_SkyVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FullScreenQuadVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GBufferPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ImGuiVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/RectVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ShadowPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/SkyVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ToneMappingVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/BlitPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLighting_RTShadowsPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/EnvMap_Sky_ProceduralPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FullScreenQuadPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GBufferPassPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ImGuiPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/Sky_ProceduralPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/Sky_TexturePS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ToneMappingPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FilterEnvMapCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GenerateMipChain_CubeArrayCS.hlsl</Message>
+      <Message>HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/EnvMap_SkyVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FullScreenQuadVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GBufferPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ImGuiVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/RectVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ShadowPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/SkyVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ToneMappingVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/BlitPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLighting_RTShadowsPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/EnvMap_Sky_ProceduralPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FullScreenQuadPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GBufferPassPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ImGuiPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/Sky_ProceduralPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/Sky_TexturePS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ToneMappingPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FilterEnvMapCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GenerateMipChain_CubeArrayCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/MeshletBufferFillPassCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassAS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassMS.hlsl</Message>
       <Command>setlocal
 cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
 if %errorlevel% neq 0 goto :cmEnd
@@ -198,6 +198,19 @@ if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
 C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tvs_6_6 /D USE_RESOURCE_HEAP /Od /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VertexColourVS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VertexColourVS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourVS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tvs_6_6 /D USE_RESOURCE_HEAP /Od /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassVS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassVS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassVS.hlsl
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -353,6 +366,19 @@ cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
 if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tps_6_6 /D USE_RESOURCE_HEAP /Od /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassPS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassPS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassPS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
 C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tcs_6_6 /D USE_RESOURCE_HEAP /Od /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/DeferredLightingCS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/DeferredLightingCS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingCS.hlsl
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
@@ -386,6 +412,45 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 :cmErrorLevel
 exit /b %1
 :cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tcs_6_6 /D USE_RESOURCE_HEAP /Od /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/MeshletBufferFillPassCS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/MeshletBufferFillPassCS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/MeshletBufferFillPassCS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tas_6_6 /D USE_RESOURCE_HEAP /Od /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassAS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassAS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassAS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tms_6_6 /D USE_RESOURCE_HEAP /Od /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassMS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassMS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassMS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -399,7 +464,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/EnvMap_SkyVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FullScreenQuadVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GBufferPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ImGuiVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/RectVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ShadowPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/SkyVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ToneMappingVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/BlitPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLighting_RTShadowsPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/EnvMap_Sky_ProceduralPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FullScreenQuadPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GBufferPassPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ImGuiPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/Sky_ProceduralPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/Sky_TexturePS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ToneMappingPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FilterEnvMapCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GenerateMipChain_CubeArrayCS.hlsl</Message>
+      <Message>HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/EnvMap_SkyVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FullScreenQuadVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GBufferPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ImGuiVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/RectVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ShadowPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/SkyVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ToneMappingVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/BlitPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLighting_RTShadowsPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/EnvMap_Sky_ProceduralPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FullScreenQuadPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GBufferPassPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ImGuiPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/Sky_ProceduralPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/Sky_TexturePS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ToneMappingPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FilterEnvMapCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GenerateMipChain_CubeArrayCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/MeshletBufferFillPassCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassAS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassMS.hlsl</Message>
       <Command>setlocal
 cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
 if %errorlevel% neq 0 goto :cmEnd
@@ -523,6 +588,19 @@ if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
 C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tvs_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VertexColourVS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VertexColourVS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourVS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tvs_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassVS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassVS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassVS.hlsl
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -678,6 +756,19 @@ cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
 if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tps_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassPS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassPS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassPS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
 C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tcs_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/DeferredLightingCS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/DeferredLightingCS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingCS.hlsl
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
@@ -705,6 +796,45 @@ if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
 C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tcs_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/GenerateMipChain_CubeArrayCS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/GenerateMipChain_CubeArrayCS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GenerateMipChain_CubeArrayCS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tcs_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/MeshletBufferFillPassCS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/MeshletBufferFillPassCS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/MeshletBufferFillPassCS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tas_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassAS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassAS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassAS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tms_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassMS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassMS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassMS.hlsl
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -724,7 +854,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/EnvMap_SkyVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FullScreenQuadVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GBufferPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ImGuiVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/RectVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ShadowPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/SkyVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ToneMappingVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/BlitPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLighting_RTShadowsPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/EnvMap_Sky_ProceduralPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FullScreenQuadPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GBufferPassPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ImGuiPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/Sky_ProceduralPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/Sky_TexturePS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ToneMappingPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FilterEnvMapCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GenerateMipChain_CubeArrayCS.hlsl</Message>
+      <Message>HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/EnvMap_SkyVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FullScreenQuadVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GBufferPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ImGuiVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/RectVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ShadowPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/SkyVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ToneMappingVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/BlitPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLighting_RTShadowsPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/EnvMap_Sky_ProceduralPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FullScreenQuadPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GBufferPassPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ImGuiPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/Sky_ProceduralPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/Sky_TexturePS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ToneMappingPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FilterEnvMapCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GenerateMipChain_CubeArrayCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/MeshletBufferFillPassCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassAS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassMS.hlsl</Message>
       <Command>setlocal
 cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
 if %errorlevel% neq 0 goto :cmEnd
@@ -848,6 +978,19 @@ if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
 C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tvs_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VertexColourVS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VertexColourVS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourVS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tvs_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassVS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassVS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassVS.hlsl
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -1003,6 +1146,19 @@ cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
 if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tps_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassPS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassPS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassPS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
 C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tcs_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/DeferredLightingCS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/DeferredLightingCS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingCS.hlsl
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
@@ -1030,6 +1186,45 @@ if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
 C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tcs_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/GenerateMipChain_CubeArrayCS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/GenerateMipChain_CubeArrayCS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GenerateMipChain_CubeArrayCS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tcs_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/MeshletBufferFillPassCS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/MeshletBufferFillPassCS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/MeshletBufferFillPassCS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tas_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassAS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassAS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassAS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tms_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassMS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassMS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassMS.hlsl
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -1049,7 +1244,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/EnvMap_SkyVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FullScreenQuadVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GBufferPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ImGuiVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/RectVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ShadowPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/SkyVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ToneMappingVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/BlitPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLighting_RTShadowsPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/EnvMap_Sky_ProceduralPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FullScreenQuadPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GBufferPassPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ImGuiPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/Sky_ProceduralPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/Sky_TexturePS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ToneMappingPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FilterEnvMapCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GenerateMipChain_CubeArrayCS.hlsl</Message>
+      <Message>HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/EnvMap_SkyVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FullScreenQuadVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GBufferPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ImGuiVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/RectVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ShadowPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/SkyVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ToneMappingVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassVS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/BlitPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLighting_RTShadowsPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/EnvMap_Sky_ProceduralPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FullScreenQuadPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GBufferPassPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ImGuiPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/Sky_ProceduralPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/Sky_TexturePS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/ToneMappingPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassPS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/FilterEnvMapCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/GenerateMipChain_CubeArrayCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/MeshletBufferFillPassCS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassAS.hlsl	HLSL C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassMS.hlsl</Message>
       <Command>setlocal
 cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
 if %errorlevel% neq 0 goto :cmEnd
@@ -1173,6 +1368,19 @@ if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
 C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tvs_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VertexColourVS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VertexColourVS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VertexColourVS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tvs_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassVS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassVS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassVS.hlsl
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -1328,6 +1536,19 @@ cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
 if %errorlevel% neq 0 goto :cmEnd
 C:
 if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tps_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassPS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassPS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassPS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
 C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tcs_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/DeferredLightingCS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/DeferredLightingCS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/DeferredLightingCS.hlsl
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
@@ -1361,12 +1582,52 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 :cmErrorLevel
 exit /b %1
 :cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tcs_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/MeshletBufferFillPassCS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/MeshletBufferFillPassCS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/MeshletBufferFillPassCS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tas_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassAS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassAS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassAS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+cd C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\_deps\dxc-src\bin\x64\dxc.exe /nologo /Emain /Tms_6_6 /D USE_RESOURCE_HEAP /O3 /Zi /Fo C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassMS.cso /Fd C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Output/bin/Shaders/PhxEngine/dxil/VisibilityBufferFillPassMS.pdb C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/PhxEngine/Shaders/VisibilityBufferFillPassMS.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <CustomBuild Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\CMakeFiles\9faf3254ab7a4c5213b2427c89cb46ca\PhxEngine_shaders.rule">
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'"></Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -1378,7 +1639,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\PhxEngine\Shaders\CMakeFiles\PhxEngine_shaders</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
       <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</VerifyInputsAndOutputsExist>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'"></Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -1390,7 +1652,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\PhxEngine\Shaders\CMakeFiles\PhxEngine_shaders</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
       <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</VerifyInputsAndOutputsExist>
-      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'"></Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+      </Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -1402,7 +1665,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\PhxEngine\Shaders\CMakeFiles\PhxEngine_shaders</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
       <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</VerifyInputsAndOutputsExist>
-      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'"></Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+      </Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -1474,6 +1738,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\..\PhxEngine\Shaders\VisibilityFillPass_Resources.hlsli" />
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\DeferredLightingVS.hlsl">
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\EnvMap_SkyVS.hlsl">
@@ -1493,6 +1758,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ToneMappingVS.hlsl">
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VertexColourVS.hlsl">
+    </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBufferFillPassVS.hlsl">
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\BlitPS.hlsl">
     </None>
@@ -1516,11 +1783,19 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VertexColourPS.hlsl">
     </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBufferFillPassPS.hlsl">
+    </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\DeferredLightingCS.hlsl">
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\FilterEnvMapCS.hlsl">
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\GenerateMipChain_CubeArrayCS.hlsl">
+    </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\MeshletBufferFillPassCS.hlsl">
+    </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBufferFillPassAS.hlsl">
+    </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBufferFillPassMS.hlsl">
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Include\PhxEngine\Shaders\ShaderInterop.h">
     </None>
@@ -1563,6 +1838,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ToneMapping.hlsli">
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VertexBuffer.hlsli">
+    </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBuffer.hlsli">
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\PhxEngine\Shaders\CMakeFiles\PhxEngine_shaders">
     </None>

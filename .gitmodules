@@ -38,3 +38,6 @@
 [submodule "Extern/taskflow"]
 	path = PhxEngine/Extern/taskflow
 	url = https://github.com/taskflow/taskflow.git
+[submodule "PhxEngine/Extern/DirectXMesh"]
+	path = PhxEngine/Extern/DirectXMesh
+	url = https://github.com/microsoft/DirectXMesh.git

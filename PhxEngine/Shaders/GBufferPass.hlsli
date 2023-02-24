@@ -87,7 +87,6 @@ PSInput main(in VertexInput input)
 
     ShaderMeshInstancePointer instancePtr = GetMeshInstancePtr(input.InstanceID);
     MeshInstance meshInstance = LoadMeshInstance(instancePtr.GetInstanceIndex());
-    meshInstance = ResourceHeap_GetBuffer(GetScene().MeshInstanceBufferIndex).Load<MeshInstance>(instancePtr.GetInstanceIndex() * sizeof(MeshInstance));
 
     matrix worldMatrix = meshInstance.WorldMatrix;
 
