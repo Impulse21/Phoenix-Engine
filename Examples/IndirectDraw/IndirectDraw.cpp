@@ -13,13 +13,11 @@
 #include <PhxEngine/Renderer/Renderer.h>
 #include <PhxEngine/Graphics/ShaderFactory.h>
 #include <PhxEngine/Renderer/CommonPasses.h>
-#include <PhxEngine/Renderer/GBufferFillPass.h>
-#include <PhxEngine/Renderer/DeferredLightingPass.h>
 #include <PhxEngine/Renderer/ToneMappingPass.h>
 #include <PhxEngine/Core/Math.h>
 #include <PhxEngine/Engine/ApplicationBase.h>
-#include <PhxEngine/Renderer/GBuffer.h>
 #include <PhxEngine/Engine/CameraControllers.h>
+#include <PhxEngine/Renderer/GeometryPasses.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
@@ -69,38 +67,6 @@ private:
     RHI::IGraphicsDevice* m_gfxDevice;
 };
 
-struct RenderTargets : public GBufferRenderTargets
-{
-    // Extra
-    RHI::TextureHandle ColourBuffer;
-
-    void Initialize(
-        RHI::IGraphicsDevice* gfxDevice,
-        DirectX::XMFLOAT2 const& size)
-    {
-        GBufferRenderTargets::Initialize(gfxDevice, size);
-
-        RHI::TextureDesc desc = {};
-        desc.Width = std::max(size.x, 1.0f);
-        desc.Height = std::max(size.y, 1.0f);
-        desc.Dimension = RHI::TextureDimension::Texture2D;
-        desc.OptmizedClearValue.Colour = { 0.0f, 0.0f, 0.0f, 1.0f };
-        desc.InitialState = RHI::ResourceStates::ShaderResource;
-        desc.IsBindless = true;
-        desc.IsTypeless = true;
-        desc.Format = RHI::RHIFormat::RGBA16_FLOAT;
-        desc.DebugName = "Colour Buffer";
-        desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::ShaderResource | BindingFlags::UnorderedAccess;
-
-        this->ColourBuffer = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
-    }
-
-    void Free(RHI::IGraphicsDevice* gfxDevice) override
-    {
-        GBufferRenderTargets::Free(gfxDevice);
-        gfxDevice->DeleteTexture(this->ColourBuffer);
-    }
-};
 
 class IndirectDraw : public ApplicationBase
 {
@@ -127,14 +93,6 @@ public:
 
         std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza/Sponza.gltf";
         this->BeginLoadingScene(nativeFS, scenePath);
-
-        this->m_renderTargets.Initialize(this->GetGfxDevice(), this->GetRoot()->GetCanvasSize());
-
-        this->m_gbufferFillPass = std::make_unique<GBufferFillPass>(this->GetGfxDevice(), this->m_commonPasses);
-        this->m_gbufferFillPass->Initialize(*this->m_shaderFactory);
-
-        this->m_deferredLightingPass = std::make_shared<DeferredLightingPass>(this->GetGfxDevice(), this->m_commonPasses);
-        this->m_deferredLightingPass->Initialize(*this->m_shaderFactory);
 
         this->m_gpuCullPass = std::make_unique<GpuCullPass>(this->GetGfxDevice());
         this->m_gpuCullPass->Initialize(*this->m_shaderFactory);
@@ -196,9 +154,6 @@ public:
     {
         this->GetGfxDevice()->DeleteGraphicsPipeline(this->m_pipeline);
         this->m_pipeline = {};
-        this->m_renderTargets.Free(this->GetGfxDevice());
-        this->m_renderTargets.Initialize(this->GetGfxDevice(), this->GetRoot()->GetCanvasSize());
-        this->m_gbufferFillPass->WindowResized();
     }
 
     void Update(Core::TimeStep const& deltaTime) override
@@ -236,11 +191,11 @@ public:
         {
             auto _ = commandList->BeginScopedMarker("GBuffer Fill");
 
-            this->m_gbufferFillPass->BeginPass(commandList, this->m_frameConstantBuffer, cameraData, this->m_renderTargets);
             if (this->m_settings.EnableGpuCulling)
             {
                 if (!this->m_commandSignatureHandle.IsValid())
                 {
+#if false
                     this->m_commandSignatureHandle = this->m_gfxDevice->CreateCommandSignature<VisibilityIndirectDraw>({
                    .ArgDesc =
                        {
@@ -250,11 +205,12 @@ public:
                    .PipelineType = PipelineType::Gfx,
                    .GfxHandle = this->m_gbufferFillPass->GetPipeline();
                         });
+#endif
                 }
             }
             else
             {
-                static thread_local DrawQueue drawQueue;
+                static thread_local Renderer::DrawQueue drawQueue;
                 drawQueue.Reset();
 
                 // Look through Meshes and instances?
@@ -276,24 +232,16 @@ public:
 
                 drawQueue.SortOpaque();
 
-                RenderViews(commandList, this->m_gbufferFillPass.get(), this->m_scene, drawQueue, true);
             }
         }
 
-		DeferredLightingPass::Input input = {};
-		input.FillGBuffer(this->m_renderTargets);
-		input.OutputTexture = this->m_renderTargets.ColourBuffer;
-        input.FrameBuffer = this->m_frameConstantBuffer;
-        input.CameraData = &cameraData;
-
-		this->m_deferredLightingPass->Render(commandList, input);
-
+#if false
         this->m_toneMappingPass->Render(
             commandList,
             this->m_renderTargets.ColourBuffer,
             commandList->GetRenderPassBackBuffer(),
             this->GetRoot()->GetCanvasSize());
-
+#endif
         commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList });
     }
@@ -394,9 +342,6 @@ private:
     PhxEngine::FirstPersonCameraController m_cameraController;
     RHI::BufferHandle m_frameConstantBuffer;
 
-    RenderTargets m_renderTargets;
-    std::unique_ptr<GBufferFillPass> m_gbufferFillPass;
-    std::shared_ptr<DeferredLightingPass> m_deferredLightingPass;
     std::unique_ptr<GpuCullPass> m_gpuCullPass;
     std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
     std::unique_ptr<Renderer::ToneMappingPass> m_toneMappingPass;

@@ -160,10 +160,10 @@
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBuffer.hlsli">
       <Filter>Shaders\Include</Filter>
     </None>
-    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\PhxEngine\Shaders\CMakeFiles\PhxEngine_shaders" />
-    <None Include="..\..\..\PhxEngine\Shaders\VisibilityFillPass_Resources.hlsli">
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityFillPass_Resources.hlsli">
       <Filter>Shaders\Include</Filter>
     </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\PhxEngine\Shaders\CMakeFiles\PhxEngine_shaders" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">

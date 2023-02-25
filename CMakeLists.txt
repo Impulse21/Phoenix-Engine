@@ -34,4 +34,3 @@ add_subdirectory(Examples/Shadows)
 add_subdirectory(Examples/VisibilityBufferRendering)
 add_subdirectory(Examples/Meshlet)
 add_subdirectory(Examples/IndirectDraw)
-
