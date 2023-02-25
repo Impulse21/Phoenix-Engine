@@ -18,16 +18,121 @@
 #include <PhxEngine/Engine/ApplicationBase.h>
 #include <PhxEngine/Engine/CameraControllers.h>
 #include <PhxEngine/Renderer/GeometryPasses.h>
+#include <PhxEngine/Core/Math.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Renderer;
 
+
+namespace PhxEngine::Renderer
+{
+    // From WICKED Engine - thought this was a really cool set of classes.
+    // https://github.com/turanszkij/WickedEngine
+    struct DrawBatch
+    {
+        uint64_t Data;
+        inline void Create(uint32_t meshEntityHandle, uint32_t instanceEntityHandle, float distance)
+        {
+            // These asserts are a indicating if render queue limits are reached:
+            assert(meshEntityHandle < 0x00FFFFFF);
+            assert(instanceEntityHandle < 0x00FFFFFF);
+
+            Data = 0;
+            Data |= uint64_t(meshEntityHandle & 0x00FFFFFF) << 40ull;
+            Data |= uint64_t(DirectX::PackedVector::XMConvertFloatToHalf(distance) & 0xFFFF) << 24ull;
+            Data |= uint64_t(instanceEntityHandle & 0x00FFFFFF) << 0ull;
+        }
+
+        inline float GetDistance() const
+        {
+            return DirectX::PackedVector::XMConvertHalfToFloat(DirectX::PackedVector::HALF((Data >> 24ull) & 0xFFFF));
+        }
+        inline uint32_t GetMeshEntityHandle() const
+        {
+            return (Data >> 40ull) & 0x00FFFFFF;
+        }
+        inline uint32_t GetInstanceEntityHandle() const
+        {
+            return (Data >> 0ull) & 0x00FFFFFF;
+        }
+
+        // opaque sorting
+        //	Priority is set to mesh index to have more instancing
+        //	distance is second priority (front to back Z-buffering)
+        bool operator<(const DrawBatch& other) const
+        {
+            return Data < other.Data;
+        }
+        // transparent sorting
+        //	Priority is distance for correct alpha blending (back to front rendering)
+        //	mesh index is second priority for instancing
+        bool operator>(const DrawBatch& other) const
+        {
+            // Swap bits of meshIndex and distance to prioritize distance more
+            uint64_t a_data = 0ull;
+            a_data |= ((Data >> 24ull) & 0xFFFF) << 48ull; // distance repack
+            a_data |= ((Data >> 40ull) & 0x00FFFFFF) << 24ull; // meshIndex repack
+            a_data |= Data & 0x00FFFFFF; // instanceIndex repack
+            uint64_t b_data = 0ull;
+            b_data |= ((other.Data >> 24ull) & 0xFFFF) << 48ull; // distance repack
+            b_data |= ((other.Data >> 40ull) & 0x00FFFFFF) << 24ull; // meshIndex repack
+            b_data |= other.Data & 0x00FFFFFF; // instanceIndex repack
+            return a_data > b_data;
+        }
+    };
+
+    struct CullResults
+    {
+        Scene::Scene* Scene;
+        Core::Frustum Frustum;
+        DirectX::XMFLOAT3 Eye;
+        DirectX::XMMATRIX InvViewProj;
+
+        std::vector<Scene::Entity> VisibleMeshInstances;
+    };
+
+    enum CullOptions
+    {
+        None = 0,
+        FreezeCamera,
+    };
+
+    void FrustumCull(Scene::Scene* scene, const Scene::CameraComponent* cameraComp, uint32_t options, CullResults& outCullResults)
+    {
+        // DO Culling
+        outCullResults.VisibleMeshInstances.clear();
+        outCullResults.Scene = scene;
+
+        if ((options & CullOptions::FreezeCamera) != CullOptions::FreezeCamera)
+        {
+            outCullResults.Frustum = cameraComp->ViewProjectionFrustum;
+            outCullResults.Eye = cameraComp->Eye;
+            outCullResults.InvViewProj = cameraComp->GetInvViewProjMatrix();
+        }
+
+        auto view = outCullResults.Scene->GetAllEntitiesWith<Scene::MeshInstanceComponent, Scene::AABBComponent>();
+        for (auto e : view)
+        {
+            auto [meshInstanceComponent, aabbComponent] = view.get<Scene::MeshInstanceComponent, Scene::AABBComponent>(e);
+
+            if (outCullResults.Frustum.CheckBoxFast(aabbComponent))
+            {
+                outCullResults.VisibleMeshInstances.push_back({ e, outCullResults.Scene });
+            }
+            else
+            {
+                continue;
+            }
+        }
+}
+
 struct Settings
 {
     bool EnableGpuCulling = false;
     bool EnableMeshlets = false;
+    bool FreezeCamera = false;
 };
 
 struct GpuCullPass
@@ -175,38 +280,86 @@ public:
             this->PrepareRenderData(commandList, this->m_scene);
         }
 
-        // The camera data doesn't match whats in the CPU and what's in the GPU.
         Shader::Camera cameraData = {};
         cameraData.ViewProjection = this->m_mainCamera.ViewProjection;
         cameraData.ViewProjectionInv = this->m_mainCamera.ViewProjectionInv;
         cameraData.ProjInv = this->m_mainCamera.ProjectionInv;
         cameraData.ViewInv = this->m_mainCamera.ViewInv;
 
+        uint32_t cullOptions = CullOptions::None;
+
+        thread_local static DrawQueue drawQueue;
+        drawQueue.Reset();
         if (this->m_settings.EnableGpuCulling)
         {
             auto _ = commandList->BeginScopedMarker("GPU Cull");
             this->m_gpuCullPass->Dispatch();
         }
-
+        else
         {
-            auto _ = commandList->BeginScopedMarker("GBuffer Fill");
+            if (this->m_settings.FreezeCamera)
+            {
+                cullOptions |= CullOptions::FreezeCamera;
+            }
+
+            Renderer::FrustumCull(&this->m_scene, &this->m_mainCamera, cullOptions, this->m_cullResults);
+            for (auto e : this->m_cullResults.VisibleMeshInstances)
+            {
+                auto& instanceComponent = e.GetComponent<Scene::MeshInstanceComponent>();
+                auto& aabbComp = e.GetComponent<Scene::AABBComponent>();
+
+                auto& meshComponent = this->m_scene.GetRegistry().get<Scene::MeshComponent>(instanceComponent.Mesh);
+                if (meshComponent.RenderBucketMask & Scene::MeshComponent::RenderType_Transparent)
+                {
+                    continue;
+                }
+
+                const float distance = Core::Math::Distance(this->m_mainCamera.Eye, aabbComp.BoundingData.GetCenter());
+
+                drawQueue.Push((uint32_t)instanceComponent.Mesh, (uint32_t)e, distance);
+            }
+
+            drawQueue.SortOpaque();
+        }
+
+
+        // TODO: Create command signature
+        if (!this->m_commandSignatureHandle.IsValid())
+        {
+#if false
+            this->m_commandSignatureHandle = this->m_gfxDevice->CreateCommandSignature<VisibilityIndirectDraw>({
+           .ArgDesc =
+               {
+                   {.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+                   {.Type = IndirectArgumentType::DrawIndex }
+               },
+           .PipelineType = PipelineType::Gfx,
+           .GfxHandle = this->m_gbufferFillPass->GetPipeline();
+                });
+#endif
+        }
+
+
+        // Render Scene Pre pass
+        {
+            auto _ = commandList->BeginScopedMarker("Early Z pass");
 
             if (this->m_settings.EnableGpuCulling)
             {
-                if (!this->m_commandSignatureHandle.IsValid())
-                {
-#if false
-                    this->m_commandSignatureHandle = this->m_gfxDevice->CreateCommandSignature<VisibilityIndirectDraw>({
-                   .ArgDesc =
-                       {
-                           {.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
-                           {.Type = IndirectArgumentType::DrawIndex }
-                       },
-                   .PipelineType = PipelineType::Gfx,
-                   .GfxHandle = this->m_gbufferFillPass->GetPipeline();
-                        });
-#endif
-                }
+                // TODO: Indirect Draw with built up buffer
+            }
+            else
+            {
+                // TODO: standard draw
+            }
+        }
+
+        {
+            auto _ = commandList->BeginScopedMarker("Draw Scene (Opaque)");
+
+            if (this->m_settings.EnableGpuCulling)
+            {
+                // TODO: Draw Indirect
             }
             else
             {
@@ -249,6 +402,100 @@ public:
     Settings& GetSettings() { return this->m_settings; }
 
 private:
+    void DrawMeshes(
+        ICommandList* commandList,
+        DrawQueue const& drawQueue,
+        const RenderCam* renderCams,
+        uint32_t numRenderCameras)
+    {
+
+        auto scrope = commandList->BeginScopedMarker("Render Meshes");
+
+        GPUAllocation instanceBufferAlloc =
+            commandList->AllocateGpu(
+                sizeof(Shader::ShaderMeshInstancePointer) * drawQueue.Size(),
+                sizeof(Shader::ShaderMeshInstancePointer));
+
+        // See how this data is copied over.
+        const DescriptorIndex instanceBufferDescriptorIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(instanceBufferAlloc.GpuBuffer, RHI::SubresouceType::SRV);
+
+        Shader::ShaderMeshInstancePointer* pInstancePointerData = (Shader::ShaderMeshInstancePointer*)instanceBufferAlloc.CpuData;
+
+        struct InstanceBatch
+        {
+            entt::entity MeshEntity = entt::null;
+            uint32_t NumInstance;
+            uint32_t DataOffset;
+        } instanceBatch = {};
+
+        auto batchFlush = [&]()
+        {
+            if (instanceBatch.NumInstance == 0)
+            {
+                return;
+            }
+
+            auto [meshComponent, nameComponent] = this->m_scene.GetRegistry().get<Scene::MeshComponent, Scene::NameComponent>(instanceBatch.MeshEntity);
+            commandList->BindIndexBuffer(meshComponent.IndexGpuBuffer);
+
+            std::string modelName = nameComponent.Name;
+
+            auto scrope = commandList->BeginScopedMarker(modelName);
+            for (size_t i = 0; i < meshComponent.Surfaces.size(); i++)
+            {
+                auto& materiaComp = this->m_scene.GetRegistry().get<Scene::MaterialComponent>(meshComponent.Surfaces[i].Material);
+
+                Shader::GeometryPassPushConstants pushConstant = {};
+                pushConstant.GeometryIndex = meshComponent.GlobalGeometryBufferIndex + i;
+                pushConstant.MaterialIndex = materiaComp.GlobalBufferIndex;
+                pushConstant.InstancePtrBufferDescriptorIndex = instanceBufferDescriptorIndex;
+                pushConstant.InstancePtrDataOffset = instanceBatch.DataOffset;
+
+
+                commandList->BindPushConstant(0, pushConstant);
+
+                commandList->DrawIndexed(
+                    meshComponent.Surfaces[i].NumIndices,
+                    instanceBatch.NumInstance,
+                    meshComponent.Surfaces[i].IndexOffsetInMesh);
+            }
+        };
+
+        uint32_t instanceCount = 0;
+        for (const DrawPacket& drawBatch : drawQueue.DrawItem)
+        {
+            entt::entity meshEntityHandle = (entt::entity)drawBatch.GetMeshEntityHandle();
+
+            // Flush if we are dealing with a new Mesh
+            if (instanceBatch.MeshEntity != meshEntityHandle)
+            {
+                // TODO: Flush draw
+                batchFlush();
+
+                instanceBatch.MeshEntity = meshEntityHandle;
+                instanceBatch.NumInstance = 0;
+                instanceBatch.DataOffset = (uint32_t)(instanceBufferAlloc.Offset + instanceCount * sizeof(Shader::ShaderMeshInstancePointer));
+            }
+
+            auto& instanceComp = this->m_scene.GetRegistry().get<Scene::MeshInstanceComponent>((entt::entity)drawBatch.GetInstanceEntityHandle());
+
+            for (uint32_t renderCamIndex = 0; renderCamIndex < numRenderCameras; renderCamIndex++)
+            {
+                Shader::ShaderMeshInstancePointer shaderMeshPtr = {};
+                shaderMeshPtr.Create(instanceComp.GlobalBufferIndex, renderCamIndex);
+
+                // Write into actual GPU-buffer:
+                std::memcpy(pInstancePointerData + instanceCount, &shaderMeshPtr, sizeof(shaderMeshPtr)); // memcpy whole structure into mapped pointer to avoid read from uncached memory
+
+                instanceBatch.NumInstance++;
+                instanceCount++;
+            }
+        }
+
+        // Flush what ever is left over.
+        batchFlush();
+    }
+
     void PrepareRenderData(ICommandList* commandList, Scene::Scene& scene)
     {
         scene.OnUpdate(this->m_commonPasses);
@@ -346,6 +593,7 @@ private:
     std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
     std::unique_ptr<Renderer::ToneMappingPass> m_toneMappingPass;
 
+    Renderer::CullResults m_cullResults;
 
     RHI::CommandSignatureHandle m_commandSignatureHandle;
 

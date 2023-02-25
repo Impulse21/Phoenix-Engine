@@ -13,7 +13,7 @@ namespace PhxEngine::Renderer
 {	
 	// From WICKED Engine - thought this was a really cool set of classes.
 	// https://github.com/turanszkij/WickedEngine
-	struct DrawItem
+	struct DrawPacket
 	{
 		uint64_t Data;
 
@@ -45,14 +45,14 @@ namespace PhxEngine::Renderer
 		// opaque sorting
 		//	Priority is set to mesh index to have more instancing
 		//	distance is second priority (front to back Z-buffering)
-		bool operator<(const DrawItem& other) const
+		bool operator<(const DrawPacket& other) const
 		{
 			return Data < other.Data;
 		}
 		// transparent sorting
 		//	Priority is distance for correct alpha blending (back to front rendering)
 		//	mesh index is second priority for instancing
-		bool operator>(const DrawItem& other) const
+		bool operator>(const DrawPacket& other) const
 		{
 			// Swap bits of meshIndex and distance to prioritize distance more
 			uint64_t a_data = 0ull;
@@ -70,36 +70,36 @@ namespace PhxEngine::Renderer
 	struct DrawQueue
 	{
 		// TODO: Allocate from a frame memory
-		std::vector<DrawItem> DrawItems;
+		std::vector<DrawPacket> DrawItem;
 
 		inline void Push(uint32_t meshEntityHandle, uint32_t instanceEntityHandle, float distance)
 		{
-			DrawItems.emplace_back().Create(meshEntityHandle, instanceEntityHandle, distance);
+			DrawItem.emplace_back().Create(meshEntityHandle, instanceEntityHandle, distance);
 		}
 
 		inline void SortTransparent()
 		{
-			std::sort(DrawItems.begin(), DrawItems.end(), std::greater<DrawItem>());
+			std::sort(DrawItem.begin(), DrawItem.end(), std::greater<DrawPacket>());
 		}
 
 		inline void SortOpaque()
 		{
-			std::sort(DrawItems.begin(), DrawItems.end(), std::less<DrawItem>());
+			std::sort(DrawItem.begin(), DrawItem.end(), std::less<DrawPacket>());
 		}
 
 		inline void Reset()
 		{
-			DrawItems.clear();
+			DrawItem.clear();
 		}
 
 		inline bool Empty() const
 		{
-			return DrawItems.empty();
+			return DrawItem.empty();
 		}
 
 		inline size_t Size() const
 		{
-			return DrawItems.size();
+			return DrawItem.size();
 		}
 	};
 
