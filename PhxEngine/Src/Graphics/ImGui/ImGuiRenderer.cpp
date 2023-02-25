@@ -10,6 +10,7 @@
 #include "imgui_impl_glfw.h"
 
 #include <unordered_set>
+#include "ImGuiRenderer.h"
 
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Core;
