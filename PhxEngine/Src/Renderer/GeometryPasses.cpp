@@ -63,7 +63,7 @@ void PhxEngine::Renderer::RenderViews(RHI::ICommandList* commandList, IGeometryP
     };
 
     uint32_t instanceCount = 0;
-    for (const DrawItem& drawBatch : drawQueue.DrawItems)
+    for (const DrawPacket& drawBatch : drawQueue.DrawItem)
     {
         entt::entity meshEntityHandle = (entt::entity)drawBatch.GetMeshEntityHandle();
 

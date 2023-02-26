@@ -8,160 +8,160 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\DeferredLightingVS.hlsl">
-      <Filter>Shaders\VS</Filter>
+      <Filter>CMake Rules\Shaders\VS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\EnvMap_SkyVS.hlsl">
-      <Filter>Shaders\VS</Filter>
+      <Filter>CMake Rules\Shaders\VS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\FullScreenQuadVS.hlsl">
-      <Filter>Shaders\VS</Filter>
+      <Filter>CMake Rules\Shaders\VS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\GBufferPassVS.hlsl">
-      <Filter>Shaders\VS</Filter>
+      <Filter>CMake Rules\Shaders\VS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ImGuiVS.hlsl">
-      <Filter>Shaders\VS</Filter>
+      <Filter>CMake Rules\Shaders\VS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\RectVS.hlsl">
-      <Filter>Shaders\VS</Filter>
+      <Filter>CMake Rules\Shaders\VS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ShadowPassVS.hlsl">
-      <Filter>Shaders\VS</Filter>
+      <Filter>CMake Rules\Shaders\VS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\SkyVS.hlsl">
-      <Filter>Shaders\VS</Filter>
+      <Filter>CMake Rules\Shaders\VS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ToneMappingVS.hlsl">
-      <Filter>Shaders\VS</Filter>
+      <Filter>CMake Rules\Shaders\VS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VertexColourVS.hlsl">
-      <Filter>Shaders\VS</Filter>
+      <Filter>CMake Rules\Shaders\VS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBufferFillPassVS.hlsl">
-      <Filter>Shaders\VS</Filter>
+      <Filter>CMake Rules\Shaders\VS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\BlitPS.hlsl">
-      <Filter>Shaders\PS</Filter>
+      <Filter>CMake Rules\Shaders\PS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\DeferredLightingPS.hlsl">
-      <Filter>Shaders\PS</Filter>
+      <Filter>CMake Rules\Shaders\PS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\DeferredLighting_RTShadowsPS.hlsl">
-      <Filter>Shaders\PS</Filter>
+      <Filter>CMake Rules\Shaders\PS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\EnvMap_Sky_ProceduralPS.hlsl">
-      <Filter>Shaders\PS</Filter>
+      <Filter>CMake Rules\Shaders\PS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\FullScreenQuadPS.hlsl">
-      <Filter>Shaders\PS</Filter>
+      <Filter>CMake Rules\Shaders\PS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\GBufferPassPS.hlsl">
-      <Filter>Shaders\PS</Filter>
+      <Filter>CMake Rules\Shaders\PS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ImGuiPS.hlsl">
-      <Filter>Shaders\PS</Filter>
+      <Filter>CMake Rules\Shaders\PS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\Sky_ProceduralPS.hlsl">
-      <Filter>Shaders\PS</Filter>
+      <Filter>CMake Rules\Shaders\PS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\Sky_TexturePS.hlsl">
-      <Filter>Shaders\PS</Filter>
+      <Filter>CMake Rules\Shaders\PS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ToneMappingPS.hlsl">
-      <Filter>Shaders\PS</Filter>
+      <Filter>CMake Rules\Shaders\PS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VertexColourPS.hlsl">
-      <Filter>Shaders\PS</Filter>
+      <Filter>CMake Rules\Shaders\PS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBufferFillPassPS.hlsl">
-      <Filter>Shaders\PS</Filter>
+      <Filter>CMake Rules\Shaders\PS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\DeferredLightingCS.hlsl">
-      <Filter>Shaders\CS</Filter>
+      <Filter>CMake Rules\Shaders\CS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\FilterEnvMapCS.hlsl">
-      <Filter>Shaders\CS</Filter>
+      <Filter>CMake Rules\Shaders\CS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\GenerateMipChain_CubeArrayCS.hlsl">
-      <Filter>Shaders\CS</Filter>
+      <Filter>CMake Rules\Shaders\CS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\MeshletBufferFillPassCS.hlsl">
-      <Filter>Shaders\CS</Filter>
+      <Filter>CMake Rules\Shaders\CS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBufferFillPassAS.hlsl">
-      <Filter>Shaders\AS</Filter>
+      <Filter>CMake Rules\Shaders\AS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBufferFillPassMS.hlsl">
-      <Filter>Shaders\MS</Filter>
+      <Filter>CMake Rules\Shaders\MS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Include\PhxEngine\Shaders\ShaderInterop.h">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Include\PhxEngine\Shaders\ShaderInteropStructures.h">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\BRDF.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\CommonFunctions.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\Cube.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\DeferredLighting.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\Defines.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\FullScreenHelpers.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\FullScreenQuad.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\GBuffer.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\GBufferPass.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\Globals.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\Icosphere.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ImGui.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\Lighting.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ResourceHeapTables.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\Shadows.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\Sky.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ThreadGroupTilingX.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ToneMapping.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VertexBuffer.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityBuffer.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\VisibilityFillPass_Resources.hlsli">
-      <Filter>Shaders\Include</Filter>
+      <Filter>CMake Rules\Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\PhxEngine\Shaders\CMakeFiles\PhxEngine_shaders" />
   </ItemGroup>
@@ -169,25 +169,25 @@
     <Filter Include="CMake Rules">
       <UniqueIdentifier>{53A2016A-75FE-3175-806B-6B64AEC48584}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Shaders">
+    <Filter Include="CMake Rules\Shaders">
       <UniqueIdentifier>{9541DD17-153B-3A5A-B15F-76D020B6FC9C}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Shaders\AS">
+    <Filter Include="CMake Rules\Shaders\AS">
       <UniqueIdentifier>{CD674BBF-7761-34D1-B607-B08DD2A4845B}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Shaders\CS">
+    <Filter Include="CMake Rules\Shaders\CS">
       <UniqueIdentifier>{3908CAE2-1DB2-3305-BFDE-D6B9DB9E086D}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Shaders\Include">
+    <Filter Include="CMake Rules\Shaders\Include">
       <UniqueIdentifier>{C698F384-662B-3F7A-A8BE-7CC43C4FB711}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Shaders\MS">
+    <Filter Include="CMake Rules\Shaders\MS">
       <UniqueIdentifier>{4811474B-BD3F-3896-86EF-5765524301E2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Shaders\PS">
+    <Filter Include="CMake Rules\Shaders\PS">
       <UniqueIdentifier>{C7D3CB0B-8BCD-39E7-BBB1-52CB88083791}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Shaders\VS">
+    <Filter Include="CMake Rules\Shaders\VS">
       <UniqueIdentifier>{DE57C976-64F4-3D28-A635-FA4091D0CB2D}</UniqueIdentifier>
     </Filter>
   </ItemGroup>

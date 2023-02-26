@@ -251,9 +251,10 @@ void PhxEngine::Graphics::ImGuiRenderer::CreatePipelineStateObject(
     builder.AddDescriptorTable(bindlessTable);
 
     psoDesc.RootSignatureBuilder = &builder;
-    */
 
-    this->m_pso = graphicsDevice->CreateGraphicsPipeline(psoDesc);
+    this->m_pso = graphicsDevice->CreateGraphicsP00
+        ipeline(psoDesc);
+    */
 }
 
 void PhxEngine::Graphics::ImGuiRenderer::SetDarkThemeColors()
