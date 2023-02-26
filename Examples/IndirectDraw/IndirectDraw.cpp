@@ -26,582 +26,375 @@ using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Renderer;
 
 
-namespace PhxEngine::Renderer
+float GetRandomFloat(float min, float max)
 {
-    // From WICKED Engine - thought this was a really cool set of classes.
-    // https://github.com/turanszkij/WickedEngine
-    struct DrawBatch
-    {
-        uint64_t Data;
-        inline void Create(uint32_t meshEntityHandle, uint32_t instanceEntityHandle, float distance)
-        {
-            // These asserts are a indicating if render queue limits are reached:
-            assert(meshEntityHandle < 0x00FFFFFF);
-            assert(instanceEntityHandle < 0x00FFFFFF);
-
-            Data = 0;
-            Data |= uint64_t(meshEntityHandle & 0x00FFFFFF) << 40ull;
-            Data |= uint64_t(DirectX::PackedVector::XMConvertFloatToHalf(distance) & 0xFFFF) << 24ull;
-            Data |= uint64_t(instanceEntityHandle & 0x00FFFFFF) << 0ull;
-        }
-
-        inline float GetDistance() const
-        {
-            return DirectX::PackedVector::XMConvertHalfToFloat(DirectX::PackedVector::HALF((Data >> 24ull) & 0xFFFF));
-        }
-        inline uint32_t GetMeshEntityHandle() const
-        {
-            return (Data >> 40ull) & 0x00FFFFFF;
-        }
-        inline uint32_t GetInstanceEntityHandle() const
-        {
-            return (Data >> 0ull) & 0x00FFFFFF;
-        }
-
-        // opaque sorting
-        //	Priority is set to mesh index to have more instancing
-        //	distance is second priority (front to back Z-buffering)
-        bool operator<(const DrawBatch& other) const
-        {
-            return Data < other.Data;
-        }
-        // transparent sorting
-        //	Priority is distance for correct alpha blending (back to front rendering)
-        //	mesh index is second priority for instancing
-        bool operator>(const DrawBatch& other) const
-        {
-            // Swap bits of meshIndex and distance to prioritize distance more
-            uint64_t a_data = 0ull;
-            a_data |= ((Data >> 24ull) & 0xFFFF) << 48ull; // distance repack
-            a_data |= ((Data >> 40ull) & 0x00FFFFFF) << 24ull; // meshIndex repack
-            a_data |= Data & 0x00FFFFFF; // instanceIndex repack
-            uint64_t b_data = 0ull;
-            b_data |= ((other.Data >> 24ull) & 0xFFFF) << 48ull; // distance repack
-            b_data |= ((other.Data >> 40ull) & 0x00FFFFFF) << 24ull; // meshIndex repack
-            b_data |= other.Data & 0x00FFFFFF; // instanceIndex repack
-            return a_data > b_data;
-        }
-    };
-
-    struct CullResults
-    {
-        Scene::Scene* Scene;
-        Core::Frustum Frustum;
-        DirectX::XMFLOAT3 Eye;
-        DirectX::XMMATRIX InvViewProj;
-
-        std::vector<Scene::Entity> VisibleMeshInstances;
-    };
-
-    enum CullOptions
-    {
-        None = 0,
-        FreezeCamera,
-    };
-
-    void FrustumCull(Scene::Scene* scene, const Scene::CameraComponent* cameraComp, uint32_t options, CullResults& outCullResults)
-    {
-        // DO Culling
-        outCullResults.VisibleMeshInstances.clear();
-        outCullResults.Scene = scene;
-
-        if ((options & CullOptions::FreezeCamera) != CullOptions::FreezeCamera)
-        {
-            outCullResults.Frustum = cameraComp->ViewProjectionFrustum;
-            outCullResults.Eye = cameraComp->Eye;
-            outCullResults.InvViewProj = cameraComp->GetInvViewProjMatrix();
-        }
-
-        auto view = outCullResults.Scene->GetAllEntitiesWith<Scene::MeshInstanceComponent, Scene::AABBComponent>();
-        for (auto e : view)
-        {
-            auto [meshInstanceComponent, aabbComponent] = view.get<Scene::MeshInstanceComponent, Scene::AABBComponent>(e);
-
-            if (outCullResults.Frustum.CheckBoxFast(aabbComponent))
-            {
-                outCullResults.VisibleMeshInstances.push_back({ e, outCullResults.Scene });
-            }
-            else
-            {
-                continue;
-            }
-        }
+    float scale = static_cast<float>(rand()) / RAND_MAX;
+    float range = max - min;
+    return scale * range + min;
 }
 
-struct Settings
+struct IndirectCommand
 {
-    bool EnableGpuCulling = false;
-    bool EnableMeshlets = false;
-    bool FreezeCamera = false;
+    uint32_t SceneConstantBufferIndex = RHI::cInvalidDescriptorIndex;
+    uint32_t LookupIndex = 0;
+    RHI::IndirectDrawArgInstanced DrawArgs;
 };
 
-struct GpuCullPass
+// Constant buffer definition.
+struct SceneConstantBuffer
 {
-public:
-    GpuCullPass(RHI::IGraphicsDevice* gfxDevice)
-        : m_gfxDevice(gfxDevice)
-    {}
+    XMFLOAT4 Velocity;
+    XMFLOAT4 Offset;
+    XMFLOAT4 Color;
+    XMFLOAT4X4 Projection;
 
-    void Initialize(Graphics::ShaderFactory& factory)
-    {
-        this->m_computeShader = factory.CreateShader(
-            "IndirectCull/CullPass.hlsl",
-            {
-                .Stage = RHI::ShaderStage::Compute,
-                .DebugName = "CullPassCS",
-            });
-        assert(this->m_computeShader.IsValid());
-    }
+    // Constant buffers are 256-byte aligned. Add padding in the struct to allow multiple buffers
+    // to be array-indexed.
+    float Padding[36];
+};
 
-    void Dispatch()
-    {
-        if (!this->m_computeShader.IsValid())
-        {
-            this->m_pipeline = this->m_gfxDevice->CreateComputePipeline(
-                {
-                    .ComputeShader = this->m_computeShader,
-                });
-        }
+// Root constants for the compute shader.
+struct CSRootConstants
+{
+    float XOffset;
+    float ZOffset;
+    float CullOffset;
+    float CommandCount;
+};
 
-        // Dispatch
-    }
 
+#define	D3D12_UAV_COUNTER_PLACEMENT_ALIGNMENT	( 4096 )
+// We pack the UAV counter into the same buffer as the commands rather than create
+// a separate 64K resource/heap for it. The counter must be aligned on 4K boundaries,
+// so we pad the command buffer (if necessary) such that the counter will be placed
+// at a valid location in the buffer.
+constexpr uint32_t AlignForUavCounter(UINT bufferSize)
+{
+    const UINT alignment = D3D12_UAV_COUNTER_PLACEMENT_ALIGNMENT;
+    return (bufferSize + (alignment - 1)) & ~(alignment - 1);
+}
+
+constexpr uint32_t TriangleCount = 1024;
+constexpr uint32_t CommandSizePerFrame = TriangleCount * sizeof(IndirectCommand);
+constexpr uint32_t CommandBufferCounterOffset = AlignForUavCounter(CommandSizePerFrame);
+constexpr float TriangleHalfWidth = 0.05f;
+constexpr float TriangleDepth = 1.0f;
+constexpr float CullingCutoff = 0.5f;
+constexpr uint32_t ComputeThreadBlockSize = 128;        // Should match the value in compute.hlsl.
+
+
+
+class IndirectDraw : public EngineRenderPass
+{
 private:
-    RHI::ShaderHandle m_computeShader;
-    RHI::ComputePipelineHandle m_pipeline;
-    RHI::IGraphicsDevice* m_gfxDevice;
-};
 
-
-class IndirectDraw : public ApplicationBase
-{
 public:
     IndirectDraw(IPhxEngineRoot* root)
-        : ApplicationBase(root)
+        : EngineRenderPass(root)
     {
     }
 
     bool Initialize()
     {
-        // Load Data in seperate thread?
-        // Create File Sustem
+        const std::filesystem::path appShaderPath = Core::Platform::GetExcecutableDir() / "Shaders/IndirectDraw/dxil";
+
         std::shared_ptr<Core::IFileSystem> nativeFS = Core::CreateNativeFileSystem();
-
-        std::filesystem::path appShadersRoot = Core::Platform::GetExcecutableDir() / "Shaders/PhxEngine/dxil";
-        std::shared_ptr<Core::IRootFileSystem> rootFilePath = Core::CreateRootFileSystem();
-        rootFilePath->Mount("/Shaders/PhxEngine", appShadersRoot);
-        rootFilePath->Mount("/Shaders/IndirectDraw", appShadersRoot);
-
-        this->m_shaderFactory = std::make_unique<Graphics::ShaderFactory>(this->GetGfxDevice(), rootFilePath, "/Shaders");
-        this->m_commonPasses = std::make_shared<Renderer::CommonPasses>(this->GetGfxDevice(), *this->m_shaderFactory);
-        this->m_textureCache = std::make_unique<Graphics::TextureCache>(nativeFS, this->GetGfxDevice());
-
-        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza/Sponza.gltf";
-        this->BeginLoadingScene(nativeFS, scenePath);
-
-        this->m_gpuCullPass = std::make_unique<GpuCullPass>(this->GetGfxDevice());
-        this->m_gpuCullPass->Initialize(*this->m_shaderFactory);
-
-        this->m_toneMappingPass = std::make_unique<Renderer::ToneMappingPass>(this->GetGfxDevice(), this->m_commonPasses);
-        this->m_toneMappingPass->Initialize(*this->m_shaderFactory);
-
-        // TODO LOAD IBL for nicer shading
-        this->m_frameConstantBuffer = RHI::IGraphicsDevice::GPtr->CreateBuffer({
-            .Usage = RHI::Usage::Default,
-            .Binding = RHI::BindingFlags::ConstantBuffer,
-            .InitialState = RHI::ResourceStates::ConstantBuffer,
-            .SizeInBytes = sizeof(Shader::Frame),
-            .DebugName = "Frame Constant Buffer",
+        this->m_shaderFactory = std::make_unique<Graphics::ShaderFactory>(this->GetGfxDevice(), nativeFS, appShaderPath);
+        this->m_vertexShader = this->m_shaderFactory->CreateShader(
+            "InidrectDrawVS.hlsl",
+            {
+                .Stage = RHI::ShaderStage::Vertex,
+                .DebugName = "InidrectDrawVS",
             });
 
-        this->m_mainCamera.FoV = DirectX::XMConvertToRadians(60);
+        this->m_pixelShader = this->m_shaderFactory->CreateShader(
+            "IndirectDrawPS.hlsl",
+            {
+                .Stage = RHI::ShaderStage::Pixel,
+                .DebugName = "BasicTrianglePS",
+            });
 
-        Scene::TransformComponent t = {};
-        t.LocalTranslation = { -5.0f, 2.0f, 0.0f };
-        t.RotateRollPitchYaw({ 0.0f, DirectX::XMConvertToRadians(90), 0.0f });
-        t.UpdateTransform();
+        this->m_computeShader = this->m_shaderFactory->CreateShader(
+            "IndirectDrawCS.hlsl",
+            {
+                .Stage = RHI::ShaderStage::Compute,
+                .DebugName = "BasicTrianglePS",
+            });
 
-        this->m_mainCamera.TransformCamera(t);
-        this->m_mainCamera.UpdateCamera();
-
-        return true;
-    }
-
-    bool LoadScene(std::shared_ptr< Core::IFileSystem> fileSystem, std::filesystem::path sceneFilename) override
-    {
-        std::unique_ptr<Scene::ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
-        ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
-
-        bool retVal = sceneLoader->LoadScene(
-            fileSystem,
-            this->m_textureCache,
-            sceneFilename,
-            commandList,
-            this->m_scene);
-
-        if (retVal)
+        std::vector<VertexAttributeDesc> attributeDesc =
         {
-            Renderer::ResourceUpload indexUpload;
-            Renderer::ResourceUpload vertexUpload;
-            this->m_scene.ConstructRenderData(commandList, indexUpload, vertexUpload);
+            { "POSITION",   0, RHIFormat::RG32_FLOAT,  0, VertexAttributeDesc::SAppendAlignedElement, false},
+        };
 
-            indexUpload.Free();
-            vertexUpload.Free();
+        this->m_inputLayout = this->GetGfxDevice()->CreateInputLayout(attributeDesc.data(), attributeDesc.size());
+
+        this->m_computeConstants.XOffset = TriangleHalfWidth;
+        this->m_computeConstants.ZOffset = TriangleDepth;
+        this->m_computeConstants.CullOffset = CullingCutoff;
+        this->m_computeConstants.CommandCount = TriangleCount;
+
+        float center = this->GetRoot()->GetCanvasSize().x / 2.0f;
+        this->m_cullingScissorRect.MinX = static_cast<LONG>(center - (center * CullingCutoff));
+        this->m_cullingScissorRect.MaxX = static_cast<LONG>(center + (center * CullingCutoff));
+        this->m_cullingScissorRect.MinY = 0.0f;
+        this->m_cullingScissorRect.MaxY = static_cast<LONG>(this->GetRoot()->GetCanvasSize().y);
+
+
+		for (int i = 0; i < this->m_indirectDrawBuffers.size(); i++)
+		{
+			this->m_indirectDrawBuffers[i] = this->GetGfxDevice()->CreateBuffer({
+			   .MiscFlags = BufferMiscFlags::Structured,
+			   .Binding = BindingFlags::UnorderedAccess,
+			   .InitialState = ResourceStates::IndirectArgument,
+			   .StrideInBytes = sizeof(IndirectCommand),
+			   .SizeInBytes = sizeof(IndirectCommand) * TriangleCount + sizeof(uint32_t),
+			   .AllowUnorderedAccess = true });
+		}
+
+        RHI::BufferDesc desc = {};
+        desc.DebugName = "Instance Data";
+        desc.Binding = RHI::BindingFlags::ShaderResource;
+        desc.InitialState = ResourceStates::ShaderResource;
+        desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Structured;
+        desc.CreateBindless = true;
+        desc.StrideInBytes = sizeof(SceneConstantBuffer);
+        desc.SizeInBytes = sizeof(SceneConstantBuffer) * TriangleCount;
+
+        if (this->m_constantBufferData.IsValid())
+        {
+            IGraphicsDevice::GPtr->DeleteBuffer(this->m_constantBufferData);
         }
+        this->m_constantBufferData = IGraphicsDevice::GPtr->CreateBuffer(desc);
+
+        desc.DebugName = "Instance Upload";
+        desc.Usage = RHI::Usage::Upload;
+        desc.Binding = RHI::BindingFlags::None;
+        desc.MiscFlags = RHI::BufferMiscFlags::None;
+        desc.InitialState = ResourceStates::CopySource;
+        desc.CreateBindless = false;
+        for (int i = 0; i < this->m_constantUploadBuffers.size(); i++)
+        {
+            if (this->m_constantUploadBuffers[i].IsValid())
+            {
+                IGraphicsDevice::GPtr->DeleteBuffer(this->m_constantUploadBuffers[i]);
+            }
+            this->m_constantUploadBuffers[i] = IGraphicsDevice::GPtr->CreateBuffer(desc);
+        }
+
+        for (auto& uploadBuffer : this->m_constantUploadBuffers)
+        {
+            // Initialize the constant buffers for each of the triangles.
+            SceneConstantBuffer* start = reinterpret_cast<SceneConstantBuffer*>(this->GetGfxDevice()->GetBufferMappedData(uploadBuffer));
+            for (uint32_t n = 0; n < TriangleCount; n++)
+            {
+                auto data = start + n;
+                data->Velocity = XMFLOAT4(GetRandomFloat(0.01f, 0.02f), 0.0f, 0.0f, 0.0f);
+                data->Offset = XMFLOAT4(GetRandomFloat(-5.0f, -1.5f), GetRandomFloat(-1.0f, 1.0f), GetRandomFloat(0.0f, 2.0f), 0.0f);
+                data->Color = XMFLOAT4(GetRandomFloat(0.5f, 1.0f), GetRandomFloat(0.5f, 1.0f), GetRandomFloat(0.5f, 1.0f), 1.0f);
+                XMStoreFloat4x4(&data->Projection, XMMatrixTranspose(XMMatrixPerspectiveFovLH(XM_PIDIV4, 1.7, 0.01f, 20.0f)));
+                data += 1;
+            }
+        }
+
+        // Get structured buffer indiex;
+        
+        // Fill Commands
+        ResourceUpload indirectDrawUpload = Renderer::CreateResourceUpload(sizeof(IndirectCommand) * TriangleCount + sizeof(uint32_t));
+        for (UINT n = 0; n < TriangleCount; n++)
+        {
+            IndirectCommand command = {};
+            command.SceneConstantBufferIndex = this->GetGfxDevice()->GetDescriptorIndex(this->m_constantBufferData, SubresouceType::SRV);
+            command.LookupIndex = n;
+            command.DrawArgs.VertexCount = 3;
+            command.DrawArgs.InstanceCount = 1;
+            command.DrawArgs.StartVertex= 0;
+            command.DrawArgs.StartInstance= 0;
+
+            indirectDrawUpload.SetData(&command, sizeof(IndirectCommand), sizeof(IndirectCommand));
+        }
+
+        ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
+        assert(this->m_indirectDrawBuffers.size() == 3);
+        // Upload data
+        RHI::GpuBarrier preCopyBarriers[] =
+        {
+            RHI::GpuBarrier::CreateBuffer(this->m_indirectDrawBuffers[0], RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
+            RHI::GpuBarrier::CreateBuffer(this->m_indirectDrawBuffers[1], RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
+            RHI::GpuBarrier::CreateBuffer(this->m_indirectDrawBuffers[2], RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
+        };
+        commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
+
+        for (int i = 0; i < this->m_indirectDrawBuffers.size(); i++)
+        {
+            commandList->CopyBuffer(
+                this->m_indirectDrawBuffers[i],
+                0,
+                indirectDrawUpload.UploadBuffer,
+                0,
+                sizeof(IndirectCommand) * TriangleCount + sizeof(uint32_t));
+        }
+
+        RHI::GpuBarrier postCopyBarriers[] =
+        {
+            RHI::GpuBarrier::CreateBuffer(this->m_indirectDrawBuffers[0], RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
+            RHI::GpuBarrier::CreateBuffer(this->m_indirectDrawBuffers[1], RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
+            RHI::GpuBarrier::CreateBuffer(this->m_indirectDrawBuffers[2], RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
+        };
+        commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
 
         commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList }, true);
-
-        return retVal;
+		return true;
     }
 
     void OnWindowResize(WindowResizeEvent const& e) override
     {
-        this->GetGfxDevice()->DeleteGraphicsPipeline(this->m_pipeline);
-        this->m_pipeline = {};
+        this->GetGfxDevice()->DeleteGraphicsPipeline(this->m_gfxPipeline);
+        this->m_gfxPipeline = {};
     }
 
     void Update(Core::TimeStep const& deltaTime) override
     {
-        this->GetRoot()->SetInformativeWindowTitle("Example: GPU Culling", {});
-        this->m_cameraController.OnUpdate(this->GetRoot()->GetWindow(), deltaTime, this->m_mainCamera);
+        // Initialize the constant buffers for each of the triangles.
+        SceneConstantBuffer* start = reinterpret_cast<SceneConstantBuffer*>(this->GetGfxDevice()->GetBufferMappedData(this->m_constantUploadBuffers[this->m_currentFrame]));
+        for (UINT n = 0; n < TriangleCount; n++)
+        {
+            SceneConstantBuffer* data = start + n;
+            const float offsetBounds = 2.5f;
+
+            // Animate the triangles.
+            data->Offset.x += data->Velocity.x;
+            if (data->Offset.x > offsetBounds)
+            {
+                data->Velocity.x = GetRandomFloat(0.01f, 0.02f);
+                data->Offset.x = -offsetBounds;
+            }
+        }
+
+        this->GetRoot()->SetInformativeWindowTitle("Indirect Draw", {});
     }
 
-    void RenderScene() override
+    void Render() override
     {
-        this->m_mainCamera.Width = this->GetRoot()->GetCanvasSize().x;
-        this->m_mainCamera.Height = this->GetRoot()->GetCanvasSize().y;
-        this->m_mainCamera.UpdateCamera();
-
-        ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
-
+        if (!this->m_gfxPipeline.IsValid())
         {
-            auto _ = commandList->BeginScopedMarker("Preare Frame Data");
-            this->PrepareRenderData(commandList, this->m_scene);
-        }
-
-        Shader::Camera cameraData = {};
-        cameraData.ViewProjection = this->m_mainCamera.ViewProjection;
-        cameraData.ViewProjectionInv = this->m_mainCamera.ViewProjectionInv;
-        cameraData.ProjInv = this->m_mainCamera.ProjectionInv;
-        cameraData.ViewInv = this->m_mainCamera.ViewInv;
-
-        uint32_t cullOptions = CullOptions::None;
-
-        thread_local static DrawQueue drawQueue;
-        drawQueue.Reset();
-        if (this->m_settings.EnableGpuCulling)
-        {
-            auto _ = commandList->BeginScopedMarker("GPU Cull");
-            this->m_gpuCullPass->Dispatch();
-        }
-        else
-        {
-            if (this->m_settings.FreezeCamera)
-            {
-                cullOptions |= CullOptions::FreezeCamera;
-            }
-
-            Renderer::FrustumCull(&this->m_scene, &this->m_mainCamera, cullOptions, this->m_cullResults);
-            for (auto e : this->m_cullResults.VisibleMeshInstances)
-            {
-                auto& instanceComponent = e.GetComponent<Scene::MeshInstanceComponent>();
-                auto& aabbComp = e.GetComponent<Scene::AABBComponent>();
-
-                auto& meshComponent = this->m_scene.GetRegistry().get<Scene::MeshComponent>(instanceComponent.Mesh);
-                if (meshComponent.RenderBucketMask & Scene::MeshComponent::RenderType_Transparent)
+            this->m_gfxPipeline = this->GetGfxDevice()->CreateGraphicsPipeline(
                 {
-                    continue;
-                }
-
-                const float distance = Core::Math::Distance(this->m_mainCamera.Eye, aabbComp.BoundingData.GetCenter());
-
-                drawQueue.Push((uint32_t)instanceComponent.Mesh, (uint32_t)e, distance);
-            }
-
-            drawQueue.SortOpaque();
-        }
-
-
-        // TODO: Create command signature
-        if (!this->m_commandSignatureHandle.IsValid())
-        {
-#if false
-            this->m_commandSignatureHandle = this->m_gfxDevice->CreateCommandSignature<VisibilityIndirectDraw>({
-           .ArgDesc =
-               {
-                   {.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
-                   {.Type = IndirectArgumentType::DrawIndex }
-               },
-           .PipelineType = PipelineType::Gfx,
-           .GfxHandle = this->m_gbufferFillPass->GetPipeline();
+                    .InputLayout = this->m_inputLayout,
+                    .VertexShader = this->m_vertexShader,
+                    .PixelShader = this->m_pixelShader,
+                    .DepthStencilRenderState = {
+                        .DepthTestEnable = false
+                    },
+                    .RtvFormats = { this->GetGfxDevice()->GetTextureDesc(this->GetGfxDevice()->GetBackBuffer()).Format },
                 });
-#endif
+
+            this->m_commandSignature = this->GetGfxDevice()->CreateCommandSignature<IndirectCommand>({
+                    .ArgDesc =
+                        {
+                            {.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+                            {.Type = IndirectArgumentType::DrawIndex }
+                        },
+                    .PipelineType = PipelineType::Gfx,
+                    .GfxHandle = this->m_gfxPipeline
+                });
         }
 
-
-        // Render Scene Pre pass
+        if (!this->m_computeShader.IsValid())
         {
-            auto _ = commandList->BeginScopedMarker("Early Z pass");
-
-            if (this->m_settings.EnableGpuCulling)
-            {
-                // TODO: Indirect Draw with built up buffer
-            }
-            else
-            {
-                // TODO: standard draw
-            }
-        }
-
-        {
-            auto _ = commandList->BeginScopedMarker("Draw Scene (Opaque)");
-
-            if (this->m_settings.EnableGpuCulling)
-            {
-                // TODO: Draw Indirect
-            }
-            else
-            {
-                static thread_local Renderer::DrawQueue drawQueue;
-                drawQueue.Reset();
-
-                // Look through Meshes and instances?
-                auto view = this->m_scene.GetAllEntitiesWith<Scene::MeshInstanceComponent, Scene::AABBComponent>();
-                for (auto e : view)
+            this->m_computePipeline = this->GetGfxDevice()->CreateComputePipeline(
                 {
-                    auto [instanceComponent, aabbComp] = view.get<Scene::MeshInstanceComponent, Scene::AABBComponent>(e);
-
-                    auto& meshComponent = this->m_scene.GetRegistry().get<Scene::MeshComponent>(instanceComponent.Mesh);
-                    if (meshComponent.RenderBucketMask & Scene::MeshComponent::RenderType_Transparent)
-                    {
-                        continue;
-                    }
-
-                    const float distance = Core::Math::Distance(this->m_mainCamera.Eye, aabbComp.BoundingData.GetCenter());
-
-                    drawQueue.Push((uint32_t)instanceComponent.Mesh, (uint32_t)e, distance);
-                }
-
-                drawQueue.SortOpaque();
-
-            }
+                    .ComputeShader = this->m_computeShader,
+                });
         }
 
-#if false
-        this->m_toneMappingPass->Render(
-            commandList,
-            this->m_renderTargets.ColourBuffer,
-            commandList->GetRenderPassBackBuffer(),
-            this->GetRoot()->GetCanvasSize());
-#endif
+        RHI::ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
+        {
+            auto _ = commandList->BeginScopedMarker("Upload");
+            // Upload data
+            RHI::GpuBarrier preCopyBarriers[] =
+            {
+                RHI::GpuBarrier::CreateBuffer(this->m_constantBufferData, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
+            };
+            commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
+
+            for (int i = 0; i < this->m_indirectDrawBuffers.size(); i++)
+            {
+                commandList->CopyBuffer(
+                    this->m_constantBufferData,
+                    0,
+                    this->m_constantUploadBuffers[this->m_currentFrame],
+                    0,
+                    sizeof(IndirectCommand) * TriangleCount + sizeof(uint32_t));
+            }
+
+            RHI::GpuBarrier postCopyBarriers[] =
+            {
+                RHI::GpuBarrier::CreateBuffer(this->m_constantBufferData, RHI::ResourceStates::CopyDest,  RHI::ResourceStates::ShaderResource),
+            };
+            commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
+        }
+        {
+            auto _ = commandList->BeginScopedMarker("Compute");
+            commandList->SetComputeState(this->m_computePipeline);
+            commandList->Dispatch(static_cast<UINT>(ceil(TriangleCount / float(ComputeThreadBlockSize))), 1, 1);
+        }
+        {
+            auto _ = commandList->BeginScopedMarker("Render");
+            commandList->BeginRenderPassBackBuffer();
+
+            commandList->SetGraphicsPipeline(this->m_gfxPipeline);
+            auto canvas = this->GetRoot()->GetCanvasSize();
+            RHI::Viewport v(canvas.x, canvas.y);
+            commandList->SetViewports(&v, 1);
+
+            RHI::Rect rec(LONG_MAX, LONG_MAX);
+            commandList->SetScissors(&rec, 1);
+
+            commandList->BindDynamicVertexBuffer(0, this->m_triangleVertices);
+
+            if (false)
+            {
+
+            }
+            else
+            {
+                commandList->ExecuteIndirect(
+                    this->m_commandSignature,
+                    this->m_indirectDrawBuffers[this->m_currentFrame],
+                    0,);
+            }
+            commandList->EndRenderPass();
+        }
+
         commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList });
     }
 
-    Settings& GetSettings() { return this->m_settings; }
-
 private:
-    void DrawMeshes(
-        ICommandList* commandList,
-        DrawQueue const& drawQueue,
-        const RenderCam* renderCams,
-        uint32_t numRenderCameras)
+    uint32_t m_currentFrame = 0;
+    CSRootConstants m_computeConstants;
+    RHI::Rect m_cullingScissorRect = {};
+
+    std::vector<DirectX::XMFLOAT3> m_triangleVertices =
     {
-
-        auto scrope = commandList->BeginScopedMarker("Render Meshes");
-
-        GPUAllocation instanceBufferAlloc =
-            commandList->AllocateGpu(
-                sizeof(Shader::ShaderMeshInstancePointer) * drawQueue.Size(),
-                sizeof(Shader::ShaderMeshInstancePointer));
-
-        // See how this data is copied over.
-        const DescriptorIndex instanceBufferDescriptorIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(instanceBufferAlloc.GpuBuffer, RHI::SubresouceType::SRV);
-
-        Shader::ShaderMeshInstancePointer* pInstancePointerData = (Shader::ShaderMeshInstancePointer*)instanceBufferAlloc.CpuData;
-
-        struct InstanceBatch
-        {
-            entt::entity MeshEntity = entt::null;
-            uint32_t NumInstance;
-            uint32_t DataOffset;
-        } instanceBatch = {};
-
-        auto batchFlush = [&]()
-        {
-            if (instanceBatch.NumInstance == 0)
-            {
-                return;
-            }
-
-            auto [meshComponent, nameComponent] = this->m_scene.GetRegistry().get<Scene::MeshComponent, Scene::NameComponent>(instanceBatch.MeshEntity);
-            commandList->BindIndexBuffer(meshComponent.IndexGpuBuffer);
-
-            std::string modelName = nameComponent.Name;
-
-            auto scrope = commandList->BeginScopedMarker(modelName);
-            for (size_t i = 0; i < meshComponent.Surfaces.size(); i++)
-            {
-                auto& materiaComp = this->m_scene.GetRegistry().get<Scene::MaterialComponent>(meshComponent.Surfaces[i].Material);
-
-                Shader::GeometryPassPushConstants pushConstant = {};
-                pushConstant.GeometryIndex = meshComponent.GlobalGeometryBufferIndex + i;
-                pushConstant.MaterialIndex = materiaComp.GlobalBufferIndex;
-                pushConstant.InstancePtrBufferDescriptorIndex = instanceBufferDescriptorIndex;
-                pushConstant.InstancePtrDataOffset = instanceBatch.DataOffset;
-
-
-                commandList->BindPushConstant(0, pushConstant);
-
-                commandList->DrawIndexed(
-                    meshComponent.Surfaces[i].NumIndices,
-                    instanceBatch.NumInstance,
-                    meshComponent.Surfaces[i].IndexOffsetInMesh);
-            }
-        };
-
-        uint32_t instanceCount = 0;
-        for (const DrawPacket& drawBatch : drawQueue.DrawItem)
-        {
-            entt::entity meshEntityHandle = (entt::entity)drawBatch.GetMeshEntityHandle();
-
-            // Flush if we are dealing with a new Mesh
-            if (instanceBatch.MeshEntity != meshEntityHandle)
-            {
-                // TODO: Flush draw
-                batchFlush();
-
-                instanceBatch.MeshEntity = meshEntityHandle;
-                instanceBatch.NumInstance = 0;
-                instanceBatch.DataOffset = (uint32_t)(instanceBufferAlloc.Offset + instanceCount * sizeof(Shader::ShaderMeshInstancePointer));
-            }
-
-            auto& instanceComp = this->m_scene.GetRegistry().get<Scene::MeshInstanceComponent>((entt::entity)drawBatch.GetInstanceEntityHandle());
-
-            for (uint32_t renderCamIndex = 0; renderCamIndex < numRenderCameras; renderCamIndex++)
-            {
-                Shader::ShaderMeshInstancePointer shaderMeshPtr = {};
-                shaderMeshPtr.Create(instanceComp.GlobalBufferIndex, renderCamIndex);
-
-                // Write into actual GPU-buffer:
-                std::memcpy(pInstancePointerData + instanceCount, &shaderMeshPtr, sizeof(shaderMeshPtr)); // memcpy whole structure into mapped pointer to avoid read from uncached memory
-
-                instanceBatch.NumInstance++;
-                instanceCount++;
-            }
-        }
-
-        // Flush what ever is left over.
-        batchFlush();
-    }
-
-    void PrepareRenderData(ICommandList* commandList, Scene::Scene& scene)
-    {
-        scene.OnUpdate(this->m_commonPasses);
-
-        GPUAllocation lightBufferAlloc =
-            commandList->AllocateGpu(
-                sizeof(Shader::ShaderLight) * Shader::SHADER_LIGHT_ENTITY_COUNT,
-                sizeof(Shader::ShaderLight));
-        GPUAllocation matrixBufferAlloc =
-            commandList->AllocateGpu(
-                sizeof(DirectX::XMMATRIX) * Shader::MATRIX_COUNT,
-                sizeof(DirectX::XMMATRIX));
-
-        Shader::ShaderLight* lightArray = (Shader::ShaderLight*)lightBufferAlloc.CpuData;
-        DirectX::XMMATRIX* matrixArray = (DirectX::XMMATRIX*)matrixBufferAlloc.CpuData;
-
-        Shader::ShaderLight* renderLight = lightArray;
-        renderLight->SetType(Scene::LightComponent::kDirectionalLight);
-        renderLight->SetRange(10.0f);
-        renderLight->SetIntensity(10.0f);
-        renderLight->SetFlags(Scene::LightComponent::kEnabled);
-        renderLight->SetDirection({ 0.0, -1.0f, 0.0f });
-        renderLight->ColorPacked = Core::Math::PackColour({ 1.0f, 1.0f, 1.0f, 1.0f });
-        renderLight->SetIndices(0);
-        renderLight->SetNumCascades(0);
-        renderLight->Position = { 0.0f, 0.0f, 0.0f };
-
-        Shader::Frame frameData = {};
-        // Move to Renderer...
-        frameData.BrdfLUTTexIndex = scene.GetBrdfLutDescriptorIndex();
-        frameData.LightEntityDescritporIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(lightBufferAlloc.GpuBuffer, RHI::SubresouceType::SRV);
-        frameData.LightDataOffset = lightBufferAlloc.Offset;
-        frameData.LightCount = 1;
-
-        frameData.MatricesDescritporIndex = RHI::cInvalidDescriptorIndex;
-        frameData.MatricesDataOffset = 0;
-        frameData.SceneData = scene.GetShaderData();
-
-        frameData.SceneData.AtmosphereData.AmbientColour = float3(0.0f, 0.0f, 0.0f);
-
-        // Upload data
-        RHI::GpuBarrier preCopyBarriers[] =
-        {
-            RHI::GpuBarrier::CreateBuffer(this->m_frameConstantBuffer, RHI::ResourceStates::ConstantBuffer, RHI::ResourceStates::CopyDest),
-            RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
-            RHI::GpuBarrier::CreateBuffer(scene.GetGeometryBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
-            RHI::GpuBarrier::CreateBuffer(scene.GetMaterialBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
-        };
-        commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
-
-        commandList->WriteBuffer(this->m_frameConstantBuffer, frameData);
-
-        commandList->CopyBuffer(
-            scene.GetInstanceBuffer(),
-            0,
-            scene.GetInstanceUploadBuffer(),
-            0,
-            scene.GetNumInstances() * sizeof(Shader::MeshInstance));
-
-        commandList->CopyBuffer(
-            scene.GetGeometryBuffer(),
-            0,
-            scene.GetGeometryUploadBuffer(),
-            0,
-            scene.GetNumGeometryEntries() * sizeof(Shader::Geometry));
-
-        commandList->CopyBuffer(
-            scene.GetMaterialBuffer(),
-            0,
-            scene.GetMaterialUploadBuffer(),
-            0,
-            scene.GetNumMaterialEntries() * sizeof(Shader::MaterialData));
-
-        RHI::GpuBarrier postCopyBarriers[] =
-        {
-            RHI::GpuBarrier::CreateBuffer(this->m_frameConstantBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ConstantBuffer),
-            RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
-            RHI::GpuBarrier::CreateBuffer(scene.GetGeometryBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
-            RHI::GpuBarrier::CreateBuffer(scene.GetMaterialBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
-        };
-
-        commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
-    }
-
-private:
-    Settings m_settings = {};
-    std::unique_ptr<Graphics::ShaderFactory> m_shaderFactory;
-    RHI::GraphicsPipelineHandle m_pipeline;
-    Scene::Scene m_scene;
-    Scene::CameraComponent m_mainCamera;
-    PhxEngine::FirstPersonCameraController m_cameraController;
-    RHI::BufferHandle m_frameConstantBuffer;
-
-    std::unique_ptr<GpuCullPass> m_gpuCullPass;
-    std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
-    std::unique_ptr<Renderer::ToneMappingPass> m_toneMappingPass;
-
-    Renderer::CullResults m_cullResults;
-
-    RHI::CommandSignatureHandle m_commandSignatureHandle;
-
-    struct GBufferFillIndirectDraw
-    {
-        uint32_t GeometryIndex;
-        RHI::IndirectDrawArgInstanced DrawAgs = {};
+        DirectX::XMFLOAT3( 0.0f, TriangleHalfWidth, TriangleDepth ),
+        DirectX::XMFLOAT3( TriangleHalfWidth, -TriangleHalfWidth, TriangleDepth ),
+        DirectX::XMFLOAT3( - TriangleHalfWidth, -TriangleHalfWidth, TriangleDepth )
     };
+
+    std::array<RHI::BufferHandle, 3> m_indirectDrawBuffers;
+    std::array<RHI::BufferHandle, 3> m_constantUploadBuffers;
+    RHI::BufferHandle m_constantBufferData;
+
+    RHI::CommandSignatureHandle m_commandSignature;
+    RHI::InputLayoutHandle m_inputLayout;
+    RHI::ShaderHandle m_vertexShader;
+    RHI::ShaderHandle m_pixelShader;
+    RHI::ShaderHandle m_computeShader;
+    std::unique_ptr<Graphics::ShaderFactory> m_shaderFactory;
+    RHI::GraphicsPipelineHandle m_gfxPipeline;
+    RHI::ComputePipelineHandle m_computePipeline;
 };
 
 #ifdef WIN32
@@ -613,10 +406,8 @@ int main(int __argc, const char** __argv)
     std::unique_ptr<IPhxEngineRoot> root = CreateEngineRoot();
 
     EngineParam params = {};
-    params.Name = "PhxEngine Example: Shadows";
+    params.Name = "PhxEngine Example: Indirect Draw";
     params.GraphicsAPI = RHI::GraphicsAPI::DX12;
-    params.WindowWidth = 2000;
-    params.WindowHeight = 1200;
     root->Initialize(params);
 
     {
