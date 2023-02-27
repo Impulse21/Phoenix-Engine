@@ -164,6 +164,9 @@
       <Filter>Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\PhxEngine\Shaders\CMakeFiles\PhxEngine_shaders" />
+    <None Include="..\..\..\PhxEngine\Shaders\StandardObjectPass.hlsli">
+      <Filter>Shaders\Include</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">
