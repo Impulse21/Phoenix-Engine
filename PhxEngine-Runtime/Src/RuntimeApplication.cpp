@@ -66,14 +66,6 @@ public:
         this->m_toneMappingPass = std::make_unique<Renderer::ToneMappingPass>(this->GetGfxDevice(), this->m_commonPasses);
         this->m_toneMappingPass->Initialize(*this->m_shaderFactory);
 
-        this->m_frameConstantBuffer = RHI::IGraphicsDevice::GPtr->CreateBuffer({
-            .Usage = RHI::Usage::Default,
-            .Binding = RHI::BindingFlags::ConstantBuffer,
-            .InitialState = RHI::ResourceStates::ConstantBuffer,
-            .SizeInBytes = sizeof(Shader::Frame),
-            .DebugName = "Frame Constant Buffer",
-            });
-
         this->m_mainCamera.FoV = DirectX::XMConvertToRadians(60);
 
         Scene::TransformComponent t = {};
