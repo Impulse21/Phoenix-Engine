@@ -10,6 +10,7 @@
 #include "imgui_impl_glfw.h"
 
 #include <unordered_set>
+#include "ImGuiRenderer.h"
 
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Core;
@@ -250,9 +251,10 @@ void PhxEngine::Graphics::ImGuiRenderer::CreatePipelineStateObject(
     builder.AddDescriptorTable(bindlessTable);
 
     psoDesc.RootSignatureBuilder = &builder;
-    */
 
-    this->m_pso = graphicsDevice->CreateGraphicsPipeline(psoDesc);
+    this->m_pso = graphicsDevice->CreateGraphicsP00
+        ipeline(psoDesc);
+    */
 }
 
 void PhxEngine::Graphics::ImGuiRenderer::SetDarkThemeColors()
