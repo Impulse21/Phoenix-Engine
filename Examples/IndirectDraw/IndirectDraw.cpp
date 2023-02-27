@@ -355,14 +355,17 @@ public:
 
             if (false)
             {
-
+                commandList->ExecuteIndirect(
+                    this->m_commandSignature,
+                    this->m_indirectDrawBuffers[this->m_currentFrame],
+                    TriangleCount);
             }
             else
             {
                 commandList->ExecuteIndirect(
                     this->m_commandSignature,
                     this->m_indirectDrawBuffers[this->m_currentFrame],
-                    0,);
+                    TriangleCount);
             }
             commandList->EndRenderPass();
         }
@@ -411,6 +414,9 @@ int main(int __argc, const char** __argv)
     root->Initialize(params);
 
     {
+        // TODO: Incomplete example
+        assert(false);
+        /*
         IndirectDraw example(root.get());
         if (example.Initialize())
         {
@@ -418,6 +424,7 @@ int main(int __argc, const char** __argv)
             root->Run();
             root->RemovePass(&example);
         }
+        */
     }
 
     root->Finalizing();
