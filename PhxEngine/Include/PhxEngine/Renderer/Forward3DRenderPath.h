@@ -58,10 +58,10 @@ namespace PhxEngine::Renderer
 		enum
 		{
 			VS_DepthOnly,
-			VS_Geomtry,
+			VS_ForwardGeometry,
 			VS_Rect,
 
-			PS_GeometryShading,
+			PS_ForwardGeometry,
 			PS_Blit,
 			PS_ToneMapping,
 

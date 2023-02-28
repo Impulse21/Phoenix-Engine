@@ -5,6 +5,8 @@
 #include "../Include/PhxEngine/Shaders/ShaderInteropStructures.h"
 #include "BRDF.hlsli"
 
+#include "Shadows.hlsli"
+
 struct LightingPart
 {
 	float3 Diffuse;
@@ -29,6 +31,52 @@ struct Lighting
     }
 };
 
+void CalculateDirectLightingContribution(in Scene scene, in BRDFDataPerSurface brdfSurfaceData, in Surface surface, inout Lighting lightingTerms)
+{
+    // TODO Handle Lights in some way
+    float shadow = 1.0;
+    float3 lightDirection = normalize(float3(1.25f, 1.0f, -2.0f));
+    #ifdef RT_SHADOWS
+    CalculateShadowRT(lightDirection, brdfSurfaceData.P, scene.RT_TlasIndex, shadow);
+    #endif
+    // TODO: Call ShadeSurface_Direct
+    BRDFDataPerLight brdfLightData = CreatePerLightBRDFData(lightDirection, brdfSurfaceData);
+    
+    lightingTerms.Direct.Init(0, 0);
+    lightingTerms.Direct.Diffuse = BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData) * 1.0f;
+    lightingTerms.Direct.Specular = BRDF_DirectSpecular(brdfSurfaceData, brdfLightData) * 1.0f;
+
+    float3 lightColour = 1.0f;
+    lightingTerms.Direct.Diffuse += (shadow * lightingTerms.Direct.Diffuse) * lightColour;
+    lightingTerms.Direct.Specular += (shadow * lightingTerms.Direct.Specular) * lightColour;
+}
+
+void CalculateIndirectLightingContribution_IBL(
+    in Scene scene,
+    in BRDFDataPerSurface brdfSurfaceData,
+    in Surface surface,
+    TextureCube irradianceMapTex,
+    TextureCube prefilteredColourMapTex,
+    Texture2D brdfLutTex,
+    in SamplerState defaultSampler,
+    in SamplerState linearClampedSampler,
+    inout Lighting lightingTerms)
+{
+    // Difuse
+    float lodLevel = surface.Roughness * MaxReflectionLod;
+    float3 F = FresnelSchlick(brdfSurfaceData.NdotV, brdfSurfaceData.F0, surface.Roughness);
+        
+    // Improvised abmient lighting by using the Env Irradance map.
+    lightingTerms.Indirect.Diffuse = irradianceMapTex.Sample(defaultSampler, brdfSurfaceData.N).rgb;
+    
+    // Spec
+    float3 prefilteredColour = prefilteredColourMapTex.SampleLevel(linearClampedSampler, brdfSurfaceData.R, lodLevel).rgb;
+    
+    float2 envBrdfUV = float2(brdfSurfaceData.NdotV, surface.Roughness);
+    float2 envBrdf = brdfLutTex.Sample(linearClampedSampler, envBrdfUV).rg;
+
+    lightingTerms.Indirect.Specular = prefilteredColour * (brdfSurfaceData.F * envBrdf.x + envBrdf.y);
+}
 
 float3 ApplyLighting(Lighting lightingTerms, BRDFDataPerSurface brdfSurfaceData, Surface surface)
 {

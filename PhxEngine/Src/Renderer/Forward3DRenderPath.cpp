@@ -175,13 +175,13 @@ tf::Task PhxEngine::Renderer::Forward3DRenderPath::LoadShaders(tf::Taskflow& tas
 			this->m_shaders[EShaders::PS_Blit] = this->m_shaderFactory->CreateShader("PhxEngine/BlitPS.hlsl", { .Stage = RHI::ShaderStage::Pixel, .DebugName = "BlitPS", });
 			});
 		subflow.emplace([&]() {
-			this->m_shaders[EShaders::VS_DepthOnly] = this->m_shaderFactory->CreateShader("PhxEngine/ZPassVS.hlsl", { .Stage = RHI::ShaderStage::Vertex, .DebugName = "ZPassVS", });
+			this->m_shaders[EShaders::VS_DepthOnly] = this->m_shaderFactory->CreateShader("PhxEngine/DepthPassVS.hlsl", { .Stage = RHI::ShaderStage::Vertex, .DebugName = "DepthPassVS", });
 			});
 		subflow.emplace([&]() {
-			this->m_shaders[EShaders::VS_Geomtry] = this->m_shaderFactory->CreateShader("PhxEngine/ZPassVS.hlsl", { .Stage = RHI::ShaderStage::Vertex, .DebugName = "ZPassVS", });
+			this->m_shaders[EShaders::VS_ForwardGeometry] = this->m_shaderFactory->CreateShader("PhxEngine/ForwardGeometryPassVS.hlsl", { .Stage = RHI::ShaderStage::Vertex, .DebugName = "ForwardGeometryPassVS", });
 			});
 		subflow.emplace([&]() {
-			this->m_shaders[EShaders::PS_GeometryShading] = this->m_shaderFactory->CreateShader("PhxEngine/ZPassVS.hlsl", { .Stage = RHI::ShaderStage::Pixel, .DebugName = "ZPassVS", });
+			this->m_shaders[EShaders::PS_ForwardGeometry] = this->m_shaderFactory->CreateShader("PhxEngine/ForwardGeometryPassPS.hlsl", { .Stage = RHI::ShaderStage::Pixel, .DebugName = "ForwardGeometryPassPS", });
 			});
 		subflow.emplace([&]() {
 			this->m_shaders[EShaders::PS_ToneMapping] = this->m_shaderFactory->CreateShader("PhxEngine/ToneMappingPS.hlsl", { .Stage = RHI::ShaderStage::Pixel, .DebugName = "ToneMappingPS", });
@@ -203,8 +203,8 @@ tf::Task PhxEngine::Renderer::Forward3DRenderPath::LoadPipelineStates(tf::Taskfl
 		subflow.emplace([this]() {
 			this->m_gfxStates[EGfxPipelineStates::GeometryPass] = this->m_gfxDevice->CreateGraphicsPipeline(
 				{
-					.VertexShader = this->m_shaders[EShaders::VS_Geomtry],
-					.PixelShader = this->m_shaders[EShaders::PS_GeometryShading],
+					.VertexShader = this->m_shaders[EShaders::VS_ForwardGeometry],
+					.PixelShader = this->m_shaders[EShaders::PS_ForwardGeometry],
 					.DepthStencilRenderState = {.DepthTestEnable = true, .DepthWriteEnable = false },
 					.RtvFormats = { this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).Format },
 					.DsvFormat = { this->m_gfxDevice->GetTextureDesc(this->m_mainDepthTexture).Format },
