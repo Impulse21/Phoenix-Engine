@@ -30,6 +30,8 @@ using namespace PhxEngine::RHI;
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Renderer;
 
+#define TEST_SCENE
+
 class PhxEngineRuntimeApp : public ApplicationBase
 {
 private:
@@ -59,8 +61,16 @@ public:
             this->m_shaderFactory,
             this->GetRoot()->GetFrameProfiler());
 
+#ifndef TEST_SCENE
         std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza_Intel/Main/NewSponza_Main_glTF_002.gltf";
-        this->m_loadAsync = true; // TODO: Command Queue issues when processing the Delete Queue.
+#else
+        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/TestScenes/VisibilityBufferScene.gltf";  
+#endif
+#ifndef TEST_SCENE
+        this->m_loadAsync = true; // race condition when loading textures
+#else
+        this->m_loadAsync = false; // race condition when loading textures
+#endif
         this->BeginLoadingScene(nativeFS, scenePath);
 
         this->m_forwardRenderer->Initialize(this->GetRoot()->GetCanvasSize());
