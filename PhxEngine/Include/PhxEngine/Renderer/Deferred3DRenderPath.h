@@ -3,6 +3,7 @@
 #include <array>
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <DirectXMath.h>
+#include <PhxEngine/Renderer/GBuffer.h>
 
 namespace tf
 {
@@ -34,8 +35,8 @@ namespace PhxEngine::Renderer
 	{
 		enum
 		{
-			DepthPass,
-			GeometryPass,
+			GBufferFillPass,
+			DeferredLightingPass,
 			ToneMappingPass,
 			Count
 		};
@@ -45,6 +46,7 @@ namespace PhxEngine::Renderer
 	{
 		enum
 		{
+			DeferredLightingPass,
 			Count
 		};
 	}
@@ -61,13 +63,16 @@ namespace PhxEngine::Renderer
 	{
 		enum
 		{
-			VS_DepthOnly,
-			VS_ForwardGeometry,
+			VS_GBufferFill,
+			VS_DeferredLightingPass,
 			VS_Rect,
 
-			PS_ForwardGeometry,
+			PS_GBufferFill,
+			PS_DeferredLightingPass,
 			PS_Blit,
 			PS_ToneMapping,
+
+			CS_DeferredLightingPass,
 
 			Count
 		};
@@ -77,16 +82,16 @@ namespace PhxEngine::Renderer
 	{
 		enum
 		{
-			DepthPass,
-			GeometryShadePass,
+			GBufferFillPass,
+			DeferredLightingPass,
 			Count
 		};
 	}
 
-	class Forward3DRenderPath
+	class Deferred3DRenderPath
 	{
 	public:
-		Forward3DRenderPath(
+		Deferred3DRenderPath(
 			RHI::IGraphicsDevice* gfxDevice,
 			std::shared_ptr<Renderer::CommonPasses> commonPasses,
 			std::shared_ptr<Graphics::ShaderFactory> shaderFactory,
@@ -97,6 +102,8 @@ namespace PhxEngine::Renderer
 		void Render(Scene::Scene& scene, Scene::CameraComponent& cameraComponent);
 
 		void WindowResize(DirectX::XMFLOAT2 const& canvasSize);
+
+		void BuildUI();
 
 	private:
 		tf::Task LoadShaders(tf::Taskflow& taskFlow);
@@ -121,12 +128,18 @@ namespace PhxEngine::Renderer
 		std::array<RHI::ShaderHandle, EShaders::Count> m_shaders;
 		std::array<RHI::RenderPassHandle, ERenderPasses::Count> m_renderPasses;
 
-		RHI::TextureHandle m_mainDepthTexture;
+		GBufferRenderTargets m_gbuffer;
 		RHI::TextureHandle m_colourBuffer;
 
 		RHI::BufferHandle m_frameCB;
 
 		DirectX::XMFLOAT2 m_canvasSize;
+
+		struct Settings
+		{
+			bool EnableComputeDeferredLighting = false;
+		} m_settings;
+		
 	};
 }
 

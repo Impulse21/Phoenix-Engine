@@ -1,5 +1,5 @@
 #include "C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Build/PhxEngine/CMakeFiles/PhxEngine.dir/Debug/cmake_pch.hxx"
-#include <PhxEngine/Renderer/Forward3DRenderPath.h>
+#include <PhxEngine/Renderer/Deferred3DRenderPath.h>
 #include <PhxEngine/Renderer/CommonPasses.h>
 #include <PhxEngine/Graphics/ShaderFactory.h>
 #include <PhxEngine/Scene/Scene.h>
@@ -9,6 +9,7 @@
 #include <taskflow/taskflow.hpp>
 
 #include "DrawQueue.h"
+#include <PhxEngine/Renderer/Deferred3DRenderPath.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
@@ -17,8 +18,7 @@ using namespace PhxEngine::Renderer;
 using namespace PhxEngine::Core;
 
 
-
-PhxEngine::Renderer::Forward3DRenderPath::Forward3DRenderPath(
+PhxEngine::Renderer::Deferred3DRenderPath::Deferred3DRenderPath(
 	RHI::IGraphicsDevice* gfxDevice,
 	std::shared_ptr<Renderer::CommonPasses> commonPasses,
 	std::shared_ptr<Graphics::ShaderFactory> shaderFactory,
@@ -30,7 +30,7 @@ PhxEngine::Renderer::Forward3DRenderPath::Forward3DRenderPath(
 {
 }
 
-void PhxEngine::Renderer::Forward3DRenderPath::Initialize(DirectX::XMFLOAT2 const& canvasSize)
+void PhxEngine::Renderer::Deferred3DRenderPath::Initialize(DirectX::XMFLOAT2 const& canvasSize)
 {
 	tf::Executor executor;
 	tf::Taskflow taskflow;
@@ -59,7 +59,7 @@ void PhxEngine::Renderer::Forward3DRenderPath::Initialize(DirectX::XMFLOAT2 cons
 	loadFuture.wait();
 }
 
-void PhxEngine::Renderer::Forward3DRenderPath::Render(Scene::Scene& scene, Scene::CameraComponent& mainCamera)
+void PhxEngine::Renderer::Deferred3DRenderPath::Render(Scene::Scene& scene, Scene::CameraComponent& mainCamera)
 {
 	Shader::Camera cameraData = {};
 	cameraData.ViewProjection = mainCamera.ViewProjection;
@@ -105,29 +105,95 @@ void PhxEngine::Renderer::Forward3DRenderPath::Render(Scene::Scene& scene, Scene
 	drawQueue.SortOpaque();
 
 	{
-		auto rangeId = this->m_frameProfiler->BeginRangeGPU("Early Depth Pass", commandList);
-		auto _ = commandList->BeginScopedMarker("Early Depth Pass");
-		commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::DepthPass]);
+		auto rangeId = this->m_frameProfiler->BeginRangeGPU("GBuffer Fill Pass", commandList);
+		auto _ = commandList->BeginScopedMarker("GBuffer Fill Pass");
+		commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::GBufferFillPass]);
 		commandList->SetViewports(&v, 1);
 		commandList->SetScissors(&rec, 1);
-		commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::DepthPass]);
+		commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]);
 		commandList->BindConstantBuffer(1, this->m_frameCB);
 		commandList->BindDynamicConstantBuffer(2, cameraData);
+
 		this->RenderGeometry(commandList, scene, drawQueue, true);
+
 		commandList->EndRenderPass();
 		this->m_frameProfiler->EndRangeGPU(rangeId);
 	}
 
+	if (this->m_settings.EnableComputeDeferredLighting)
 	{
-		auto _ = commandList->BeginScopedMarker("Geometry Shade");
-		auto rangeId = this->m_frameProfiler->BeginRangeGPU("Geometry Shade", commandList);
-		commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::GeometryShadePass]);
-		commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::GeometryPass]);
-		commandList->SetViewports(&v, 1);
-		commandList->SetScissors(&rec, 1);
+		auto _ = commandList->BeginScopedMarker("Deferred Lighting Pass (Compute)");
+		auto rangeId = this->m_frameProfiler->BeginRangeGPU("Deferred Lighting Pass (Compute)", commandList);
+
+		RHI::GpuBarrier preBarriers[] =
+		{
+			RHI::GpuBarrier::CreateTexture(this->m_colourBuffer, this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).InitialState, RHI::ResourceStates::UnorderedAccess),
+		};
+		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
+
+		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DeferredLightingPass]);
+		
 		commandList->BindConstantBuffer(1, this->m_frameCB);
 		commandList->BindDynamicConstantBuffer(2, cameraData);
-		this->RenderGeometry(commandList, scene, drawQueue, true);
+		commandList->BindDynamicDescriptorTable(
+			3,
+			{
+				this->m_gbuffer.DepthTex,
+				this->m_gbuffer.AlbedoTex,
+				this->m_gbuffer.NormalTex,
+				this->m_gbuffer.SurfaceTex,
+				this->m_gbuffer.SpecularTex,
+			});
+
+		commandList->BindDynamicUavDescriptorTable(4, { this->m_colourBuffer });
+
+		auto& outputDesc = this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer);
+
+		Shader::DefferedLightingCSConstants push = {};
+		push.DipatchGridDim =
+		{
+			outputDesc.Width / DEFERRED_BLOCK_SIZE_X,
+			outputDesc.Height / DEFERRED_BLOCK_SIZE_Y,
+		};
+		push.MaxTileWidth = 16;
+
+		commandList->BindPushConstant(0, push);
+
+		commandList->Dispatch(
+			push.DipatchGridDim.x,
+			push.DipatchGridDim.y,
+			1);
+
+		RHI::GpuBarrier postTransition[] =
+		{
+			RHI::GpuBarrier::CreateTexture(this->m_colourBuffer, RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).InitialState),
+		};
+
+		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
+
+		this->m_frameProfiler->EndRangeGPU(rangeId);
+	}
+	else
+	{
+		auto _ = commandList->BeginScopedMarker("Deferred Lighting Pass");
+		auto rangeId = this->m_frameProfiler->BeginRangeGPU("Deferred Lighting Pass", commandList);
+		commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::DeferredLightingPass]);
+		commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::DeferredLightingPass]);
+		commandList->SetViewports(&v, 1);
+		commandList->SetScissors(&rec, 1);
+		commandList->BindConstantBuffer(0, this->m_frameCB);
+		commandList->BindDynamicConstantBuffer(1, cameraData);
+		commandList->BindDynamicDescriptorTable(
+			2,
+			{
+				this->m_gbuffer.DepthTex,
+				this->m_gbuffer.AlbedoTex,
+				this->m_gbuffer.NormalTex,
+				this->m_gbuffer.SurfaceTex,
+				this->m_gbuffer.SpecularTex,
+			});
+
+		commandList->Draw(3, 1, 0, 0);
 		commandList->EndRenderPass();
 		this->m_frameProfiler->EndRangeGPU(rangeId);
 	}
@@ -157,33 +223,20 @@ void PhxEngine::Renderer::Forward3DRenderPath::Render(Scene::Scene& scene, Scene
 	this->m_gfxDevice->ExecuteCommandLists({ commandList });
 }
 
-void PhxEngine::Renderer::Forward3DRenderPath::WindowResize(DirectX::XMFLOAT2 const& canvasSize)
+void PhxEngine::Renderer::Deferred3DRenderPath::WindowResize(DirectX::XMFLOAT2 const& canvasSize)
 {
 	this->m_canvasSize = canvasSize;
 	{
+		this->m_gbuffer.Free(this->m_gfxDevice);
+		this->m_gbuffer.Initialize(this->m_gfxDevice, canvasSize);
+
 		RHI::TextureDesc desc = {};
 		desc.Width = std::max(canvasSize.x, 1.0f);
 		desc.Height = std::max(canvasSize.y, 1.0f);
 		desc.Dimension = RHI::TextureDimension::Texture2D;
-		desc.IsBindless = false;
-
-		desc.Format = RHI::RHIFormat::D32;
-		desc.IsTypeless = true;
-		desc.DebugName = "Main Depth Buffer";
-		desc.OptmizedClearValue.DepthStencil.Depth = 1.0f;
-		desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::DepthStencil;
-		desc.InitialState = RHI::ResourceStates::DepthRead;
-
-		if (this->m_mainDepthTexture.IsValid())
-		{
-			this->m_gfxDevice->DeleteTexture(this->m_mainDepthTexture);
-		}
-
-		this->m_mainDepthTexture = this->m_gfxDevice->CreateTexture(desc);
-
+		desc.IsBindless = true;
 		desc.OptmizedClearValue.Colour = { 0.0f, 0.0f, 0.0f, 1.0f };
 		desc.InitialState = RHI::ResourceStates::ShaderResource;
-		desc.IsBindless = true;
 		desc.IsTypeless = true;
 		desc.Format = RHI::RHIFormat::RGBA16_FLOAT;
 		desc.DebugName = "Colour Buffer";
@@ -199,7 +252,11 @@ void PhxEngine::Renderer::Forward3DRenderPath::WindowResize(DirectX::XMFLOAT2 co
 	this->CreateRenderPasses();
 }
 
-tf::Task PhxEngine::Renderer::Forward3DRenderPath::LoadShaders(tf::Taskflow& taskflow)
+void PhxEngine::Renderer::Deferred3DRenderPath::BuildUI()
+{
+}
+
+tf::Task PhxEngine::Renderer::Deferred3DRenderPath::LoadShaders(tf::Taskflow& taskflow)
 {
 	tf::Task shaderLoadTask = taskflow.emplace([&](tf::Subflow& subflow) {
 		// Load Shaders
@@ -210,13 +267,19 @@ tf::Task PhxEngine::Renderer::Forward3DRenderPath::LoadShaders(tf::Taskflow& tas
 			this->m_shaders[EShaders::PS_Blit] = this->m_shaderFactory->CreateShader("PhxEngine/BlitPS.hlsl", { .Stage = RHI::ShaderStage::Pixel, .DebugName = "BlitPS", });
 			});
 		subflow.emplace([&]() {
-			this->m_shaders[EShaders::VS_DepthOnly] = this->m_shaderFactory->CreateShader("PhxEngine/DepthPassVS.hlsl", { .Stage = RHI::ShaderStage::Vertex, .DebugName = "DepthPassVS", });
+			this->m_shaders[EShaders::VS_GBufferFill] = this->m_shaderFactory->CreateShader("PhxEngine/GBufferFillPassVS.hlsl", { .Stage = RHI::ShaderStage::Vertex, .DebugName = "GBufferFillPassVS", });
 			});
 		subflow.emplace([&]() {
-			this->m_shaders[EShaders::VS_ForwardGeometry] = this->m_shaderFactory->CreateShader("PhxEngine/ForwardGeometryPassVS.hlsl", { .Stage = RHI::ShaderStage::Vertex, .DebugName = "ForwardGeometryPassVS", });
+			this->m_shaders[EShaders::PS_GBufferFill] = this->m_shaderFactory->CreateShader("PhxEngine/GBufferFillPassPS.hlsl", { .Stage = RHI::ShaderStage::Pixel, .DebugName = "GBufferFillPassPS", });
 			});
 		subflow.emplace([&]() {
-			this->m_shaders[EShaders::PS_ForwardGeometry] = this->m_shaderFactory->CreateShader("PhxEngine/ForwardGeometryPassPS.hlsl", { .Stage = RHI::ShaderStage::Pixel, .DebugName = "ForwardGeometryPassPS", });
+			this->m_shaders[EShaders::VS_DeferredLightingPass] = this->m_shaderFactory->CreateShader("PhxEngine/DeferredLightingPassVS.hlsl", { .Stage = RHI::ShaderStage::Vertex, .DebugName = "DeferredLightingPassVS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::PS_DeferredLightingPass] = this->m_shaderFactory->CreateShader("PhxEngine/DeferredLightingPassPS.hlsl", { .Stage = RHI::ShaderStage::Pixel, .DebugName = "DeferredLightingPassPS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::CS_DeferredLightingPass] = this->m_shaderFactory->CreateShader("PhxEngine/DeferredLightingPassCS.hlsl", { .Stage = RHI::ShaderStage::Compute, .DebugName = "DeferredLightingPassCS", });
 			});
 		subflow.emplace([&]() {
 			this->m_shaders[EShaders::PS_ToneMapping] = this->m_shaderFactory->CreateShader("PhxEngine/ToneMappingPS.hlsl", { .Stage = RHI::ShaderStage::Pixel, .DebugName = "ToneMappingPS", });
@@ -225,24 +288,30 @@ tf::Task PhxEngine::Renderer::Forward3DRenderPath::LoadShaders(tf::Taskflow& tas
 	return shaderLoadTask;
 }
 
-tf::Task PhxEngine::Renderer::Forward3DRenderPath::LoadPipelineStates(tf::Taskflow& taskflow)
+tf::Task PhxEngine::Renderer::Deferred3DRenderPath::LoadPipelineStates(tf::Taskflow& taskflow)
 {
 	tf::Task createPipelineStatesTask = taskflow.emplace([&](tf::Subflow& subflow) {
 		subflow.emplace([&]() {
-			this->m_gfxStates[EGfxPipelineStates::DepthPass] = this->m_gfxDevice->CreateGraphicsPipeline(
-				{
-					.VertexShader = this->m_shaders[EShaders::VS_DepthOnly],
-					.DsvFormat = { this->m_gfxDevice->GetTextureDesc(this->m_mainDepthTexture).Format }
+			this->m_gfxStates[EGfxPipelineStates::GBufferFillPass] = this->m_gfxDevice->CreateGraphicsPipeline({
+					.VertexShader = this->m_shaders[EShaders::VS_GBufferFill],
+					.PixelShader = this->m_shaders[EShaders::PS_GBufferFill],
+					.RtvFormats = this->m_gbuffer.GBufferFormats,
+					.DsvFormat = this->m_gbuffer.DepthFormat
 				});
 			});
 		subflow.emplace([&]() {
-			this->m_gfxStates[EGfxPipelineStates::GeometryPass] = this->m_gfxDevice->CreateGraphicsPipeline(
-				{
-					.VertexShader = this->m_shaders[EShaders::VS_ForwardGeometry],
-					.PixelShader = this->m_shaders[EShaders::PS_ForwardGeometry],
-					.DepthStencilRenderState = {.DepthTestEnable = true, .DepthWriteEnable = false },
-					.RtvFormats = { this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).Format },
-					.DsvFormat = { this->m_gfxDevice->GetTextureDesc(this->m_mainDepthTexture).Format },
+			this->m_gfxStates[EGfxPipelineStates::DeferredLightingPass] = this->m_gfxDevice->CreateGraphicsPipeline({
+					.VertexShader = this->m_shaders[EShaders::VS_DeferredLightingPass],
+					.PixelShader = this->m_shaders[EShaders::PS_DeferredLightingPass],
+					.DepthStencilRenderState = {
+						.DepthTestEnable = false,
+					},
+					.RtvFormats = { IGraphicsDevice::GPtr->GetTextureDesc(this->m_colourBuffer).Format },
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_computeStates[EComputePipelineStates::DeferredLightingPass] = this->m_gfxDevice->CreateComputePipeline({
+					.ComputeShader = this->m_shaders[EShaders::CS_DeferredLightingPass],
 				});
 			});
 		subflow.emplace([&]() {
@@ -261,32 +330,60 @@ tf::Task PhxEngine::Renderer::Forward3DRenderPath::LoadPipelineStates(tf::Taskfl
 	return createPipelineStatesTask;
 }
 
-void PhxEngine::Renderer::Forward3DRenderPath::CreateRenderPasses()
+void PhxEngine::Renderer::Deferred3DRenderPath::CreateRenderPasses()
 {
-	if (this->m_renderPasses[ERenderPasses::DepthPass].IsValid())
+	if (this->m_renderPasses[ERenderPasses::GBufferFillPass].IsValid())
 	{
-		this->m_gfxDevice->DeleteRenderPass(this->m_renderPasses[ERenderPasses::DepthPass]);
+		this->m_gfxDevice->DeleteRenderPass(this->m_renderPasses[ERenderPasses::GBufferFillPass]);
 	}
-	this->m_renderPasses[ERenderPasses::DepthPass] = this->m_gfxDevice->CreateRenderPass(
+	this->m_renderPasses[ERenderPasses::GBufferFillPass] = this->m_gfxDevice->CreateRenderPass(
 		{
 			.Attachments =
 			{
 				{
+					.LoadOp = RenderPassAttachment::LoadOpType::Clear,
+					.Texture = this->m_gbuffer.AlbedoTex,
+					.InitialLayout = RHI::ResourceStates::ShaderResource,
+					.SubpassLayout = RHI::ResourceStates::RenderTarget,
+					.FinalLayout = RHI::ResourceStates::ShaderResource
+				},
+				{
+					.LoadOp = RenderPassAttachment::LoadOpType::Clear,
+					.Texture = this->m_gbuffer.NormalTex,
+					.InitialLayout = RHI::ResourceStates::ShaderResource,
+					.SubpassLayout = RHI::ResourceStates::RenderTarget,
+					.FinalLayout = RHI::ResourceStates::ShaderResource
+				},
+				{
+					.LoadOp = RenderPassAttachment::LoadOpType::Clear,
+					.Texture = this->m_gbuffer.SurfaceTex,
+					.InitialLayout = RHI::ResourceStates::ShaderResource,
+					.SubpassLayout = RHI::ResourceStates::RenderTarget,
+					.FinalLayout = RHI::ResourceStates::ShaderResource
+				},
+				{
+					.LoadOp = RenderPassAttachment::LoadOpType::Clear,
+					.Texture = this->m_gbuffer.SpecularTex,
+					.InitialLayout = RHI::ResourceStates::ShaderResource,
+					.SubpassLayout = RHI::ResourceStates::RenderTarget,
+					.FinalLayout = RHI::ResourceStates::ShaderResource
+				},
+				{
 					.Type = RenderPassAttachment::Type::DepthStencil,
 					.LoadOp = RenderPassAttachment::LoadOpType::Clear,
-					.Texture = this->m_mainDepthTexture,
-					.InitialLayout = RHI::ResourceStates::DepthRead,
+					.Texture = this->m_gbuffer.DepthTex,
+					.InitialLayout = RHI::ResourceStates::ShaderResource,
 					.SubpassLayout = RHI::ResourceStates::DepthWrite,
-					.FinalLayout = RHI::ResourceStates::DepthRead
+					.FinalLayout = RHI::ResourceStates::ShaderResource
 				},
 			}
 		});
 
-	if (this->m_renderPasses[ERenderPasses::GeometryShadePass].IsValid())
+	if (this->m_renderPasses[ERenderPasses::DeferredLightingPass].IsValid())
 	{
-		this->m_gfxDevice->DeleteRenderPass(this->m_renderPasses[ERenderPasses::GeometryShadePass]);
+		this->m_gfxDevice->DeleteRenderPass(this->m_renderPasses[ERenderPasses::DeferredLightingPass]);
 	}
-	this->m_renderPasses[ERenderPasses::GeometryShadePass] = this->m_gfxDevice->CreateRenderPass(
+	this->m_renderPasses[ERenderPasses::DeferredLightingPass] = this->m_gfxDevice->CreateRenderPass(
 		{
 			.Attachments =
 			{
@@ -297,19 +394,11 @@ void PhxEngine::Renderer::Forward3DRenderPath::CreateRenderPasses()
 					.SubpassLayout = RHI::ResourceStates::RenderTarget,
 					.FinalLayout = RHI::ResourceStates::ShaderResource
 				},
-				{
-					.Type = RenderPassAttachment::Type::DepthStencil,
-					.LoadOp = RenderPassAttachment::LoadOpType::Load,
-					.Texture = this->m_mainDepthTexture,
-					.InitialLayout = RHI::ResourceStates::DepthRead,
-					.SubpassLayout = RHI::ResourceStates::DepthRead,
-					.FinalLayout = RHI::ResourceStates::DepthRead
-				},
 			}
 		});
 }
 
-void PhxEngine::Renderer::Forward3DRenderPath::PrepareFrameRenderData(
+void PhxEngine::Renderer::Deferred3DRenderPath::PrepareFrameRenderData(
 	ICommandList* commandList,
 	Scene::CameraComponent const& mainCamera,
 	Scene::Scene& scene)
@@ -370,7 +459,7 @@ void PhxEngine::Renderer::Forward3DRenderPath::PrepareFrameRenderData(
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
 }
 
-void PhxEngine::Renderer::Forward3DRenderPath::UpdateRTAccelerationStructures(ICommandList* commandList, PhxEngine::Scene::Scene& scene)
+void PhxEngine::Renderer::Deferred3DRenderPath::UpdateRTAccelerationStructures(ICommandList* commandList, PhxEngine::Scene::Scene& scene)
 {
 	if (!scene.GetTlas().IsValid())
 	{
@@ -446,7 +535,7 @@ void PhxEngine::Renderer::Forward3DRenderPath::UpdateRTAccelerationStructures(IC
 	}
 }
 
-void PhxEngine::Renderer::Forward3DRenderPath::RenderGeometry(RHI::ICommandList* commandList, Scene::Scene& scene, DrawQueue& drawQueue, bool markMeshes)
+void PhxEngine::Renderer::Deferred3DRenderPath::RenderGeometry(RHI::ICommandList* commandList, Scene::Scene& scene, DrawQueue& drawQueue, bool markMeshes)
 {
 	auto _ = commandList->BeginScopedMarker("Render Meshes");
 

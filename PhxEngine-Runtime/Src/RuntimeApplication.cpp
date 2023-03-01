@@ -20,7 +20,7 @@
 #include <PhxEngine/Engine/ApplicationBase.h>
 #include <PhxEngine/Renderer/GBuffer.h>
 #include <PhxEngine/Engine/CameraControllers.h>
-#include <PhxEngine/Renderer/Forward3DRenderPath.h>
+#include <PhxEngine/Renderer/Deferred3DRenderPath.h>
 #include <PhxEngine/Core/FrameProfiler.h>
 #include <PhxEngine/Engine/ImguiRenderer.h>
 
@@ -30,7 +30,6 @@ using namespace PhxEngine::RHI;
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Renderer;
 
-#define TEST_SCENE
 
 class PhxEngineRuntimeApp : public ApplicationBase
 {
@@ -55,7 +54,7 @@ public:
         this->m_shaderFactory = std::make_shared<Graphics::ShaderFactory>(this->GetGfxDevice(), rootFilePath, "/Shaders");
         this->m_commonPasses = std::make_shared<Renderer::CommonPasses>(this->GetGfxDevice(), *this->m_shaderFactory);
         this->m_textureCache = std::make_unique<Graphics::TextureCache>(nativeFS, this->GetGfxDevice());
-        this->m_forwardRenderer = std::make_unique<Renderer::Forward3DRenderPath>(
+        this->m_forwardRenderer = std::make_unique<Renderer::Deferred3DRenderPath>(
             this->GetGfxDevice(),
             this->m_commonPasses,
             this->m_shaderFactory,
@@ -111,16 +110,16 @@ public:
         auto& worldComponent = worldE.AddComponent<Scene::WorldEnvironmentComponent>();
 
         // Load IBL Textures
-        std::filesystem::path texturePath = Core::Platform::GetExcecutableDir().parent_path() / "Assets/Textures/IBL/PaperMill_Ruins_E/PaperMill_IrradianceMap.dds";
+        std::filesystem::path texturePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Textures/IBL/PaperMill_Ruins_E/PaperMill_IrradianceMap.dds";
         worldComponent.IblTextures[Scene::WorldEnvironmentComponent::IBLTextures::IrradanceMap] = m_textureCache->LoadTexture(texturePath, true, commandList);
 
-        texturePath = Core::Platform::GetExcecutableDir().parent_path() / "Assets/Textures/IBL/PaperMill_Ruins_E/PaperMill_Skybox.dds";
+        texturePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Textures/IBL/PaperMill_Ruins_E/PaperMill_Skybox.dds";
         worldComponent.IblTextures[Scene::WorldEnvironmentComponent::IBLTextures::EnvMap] = m_textureCache->LoadTexture(texturePath, true, commandList);
 
-        texturePath = Core::Platform::GetExcecutableDir().parent_path() / "Assets/Textures/IBL/PaperMill_Ruins_E/PaperMill_RadianceMap.dds";
+        texturePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Textures/IBL/PaperMill_Ruins_E/PaperMill_RadianceMap.dds";
         worldComponent.IblTextures[Scene::WorldEnvironmentComponent::IBLTextures::PreFilteredEnvMap] = m_textureCache->LoadTexture(texturePath, true, commandList);
 
-        texturePath = Core::Platform::GetExcecutableDir().parent_path() / "Assets/Textures/IBL/BrdfLut.dds";
+        texturePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Textures/IBL/BrdfLut.dds";
         auto brdfLut = m_textureCache->LoadTexture(texturePath, true, commandList);
         this->m_scene.SetBrdfLut(brdfLut);
 
@@ -173,7 +172,7 @@ private:
 
 private:
     std::shared_ptr<Graphics::ShaderFactory> m_shaderFactory;
-    std::shared_ptr<Renderer::Forward3DRenderPath> m_forwardRenderer;
+    std::shared_ptr<Renderer::Deferred3DRenderPath> m_forwardRenderer;
     RHI::TextureHandle m_splashScreenTexture;
 
     Scene::Scene m_scene;
@@ -241,12 +240,12 @@ int main(int __argc, const char** __argv)
             PhxEngineRuntimeUI userInterface(root.get(), &app);
             if (userInterface.Initialize(*app.GetShaderFactory()))
             {
-                root->AddPassToBack(&userInterface);
+                // root->AddPassToBack(&userInterface);
             }
 
             root->Run();
             root->RemovePass(&app);
-            root->RemovePass(&userInterface);
+            // root->RemovePass(&userInterface);
         }
     }
 

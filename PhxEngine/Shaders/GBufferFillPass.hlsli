@@ -1,11 +1,10 @@
-#ifndef _STANDARD_OBJECT_PASS_HLSL__
-#define _STANDARD_OBJECT_PASS_HLSL__
+#ifndef __GBUFFER_FILL_PASS_HLSL__
+#define __GBUFFER_FILL_PASS_HLSL__
 
 // Helpers for Syntax Code writhing
 // #define COMPILE_VS
 // #define DEPTH_PASS
 // #define COMPILE_PS
-// #define GBUFFER_OUTPUT
 
 #include "../Include/PhxEngine/Shaders/ShaderInterop.h"
 #include "../Include/PhxEngine/Shaders/ShaderInteropStructures.h"
@@ -13,22 +12,12 @@
 #include "Globals.hlsli"
 #include "VertexBuffer.hlsli"
 #include "Defines.hlsli"
-#include "BRDF.hlsli"
-
-#ifdef GBUFFER_OUTPUT
 #include "GBuffer.hlsli"
-#else
-#include "Lighting.hlsli"
-#endif // GBUFFER_OUTPUT
 
 PUSH_CONSTANT(push, GeometryPassPushConstants);
 
 struct PSInput
 {
-#ifdef DEPTH_PASS
-    
-    float4 Position : SV_POSITION;
-#else // DEPTHPASS
     float3 NormalWS : NORMAL;
     float4 Colour : COLOUR;
     float2 TexCoord : TEXCOORD;
@@ -37,7 +26,6 @@ struct PSInput
     float4 TangentWS : TANGENT;
     uint MaterialID : MATERIAL;
     float4 Position : SV_POSITION;
- #endif
 };
 
 #ifdef COMPILE_VS
@@ -60,11 +48,6 @@ PSInput main(
     matrix worldMatrix = meshInstance.WorldMatrix;
     
     PSInput output;
-#ifdef DEPTH_PASS
-    output.Position = mul(vertexData.Position, worldMatrix);
-    output.Position = mul(output.Position, GetCamera().ViewProjection);
-    
-#else
     output.PositionWS = mul(vertexData.Position, worldMatrix).xyz;
     output.Position = mul(float4(output.PositionWS, 1.0f), GetCamera().ViewProjection);
 
@@ -75,9 +58,7 @@ PSInput main(
     output.TangentWS = float4(mul(vertexData.Tangent.xyz, (float3x3) worldMatrix), vertexData.Tangent.w);
 
     output.MaterialID = geometry.MaterialIndex;
-    
-#endif 
-    
+
     return output;
 }
 #endif // COMPILE_VS
@@ -128,7 +109,6 @@ inline Surface LoadSurfaceData(in PSInput input, in MaterialData material)
 }
 
 
-#ifdef GBUFFER_OUTPUT
 struct PSOutput
 {
     float4 Channel_0    : SV_Target0;
@@ -140,17 +120,9 @@ struct PSOutput
 [RootSignature(PHX_ENGINE_DEFAULT_ROOTSIGNATURE)]
 PSOutput main(PSInput input)
 {
-#else
-
-[RootSignature(PHX_ENGINE_DEFAULT_ROOTSIGNATURE)]
-float4 main(PSInput input) : SV_TARGET
-{
-#endif // GBUFFER_OUTPUT
     MaterialData material = LoadMaterial(input.MaterialID);
     Surface surface = LoadSurfaceData(input, material);
 
-    
-#ifdef GBUFFER_OUTPUT
     float4 channelData[NUM_GBUFFER_CHANNELS];
     EncodeGBuffer(surface, channelData);
 
@@ -162,7 +134,14 @@ float4 main(PSInput input) : SV_TARGET
     output.Channel_3 = channelData[3];
 
     return output;
-#else // GBUFFER_OUTPUT
+}
+#endif // COMPILE_PS
+
+#endif // __GBUFFER_FILL_PASS_HLSL__
+
+/*
+
+
     Lighting lightingTerms;
     lightingTerms.Init();
     
@@ -171,21 +150,8 @@ float4 main(PSInput input) : SV_TARGET
     
     CalculateDirectLightingContribution(GetScene(), brdfSurfaceData, surface, lightingTerms);
     
-    CalculateIndirectLightingContribution_IBL(
-        GetScene(),
-        brdfSurfaceData,
-        surface,
-        ResourceHeap_GetTextureCube(GetScene().IrradianceMapTexIndex),
-        ResourceHeap_GetTextureCube(GetScene().PreFilteredEnvMapTexIndex),
-        ResourceHeap_GetTexture2D(FrameCB.BrdfLUTTexIndex),
-        SamplerDefault,
-        SamplerLinearClamped,
-        lightingTerms);
     
     float3 finalColour = ApplyLighting(lightingTerms, brdfSurfaceData, surface);
+    return float4(1.0f, 0.0f, 0.0f, 1.0f);
     return float4(finalColour, 1.0f);
-#endif // GBUFFER_OUTPUT
-}
-#endif // COMPILE_PS
-
-#endif //_STANDARD_OBJECT_PASS_HLSL__
+*/

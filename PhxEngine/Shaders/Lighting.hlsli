@@ -43,8 +43,8 @@ void CalculateDirectLightingContribution(in Scene scene, in BRDFDataPerSurface b
     BRDFDataPerLight brdfLightData = CreatePerLightBRDFData(lightDirection, brdfSurfaceData);
     
     lightingTerms.Direct.Init(0, 0);
-    lightingTerms.Direct.Diffuse = BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData) * 1.0f;
-    lightingTerms.Direct.Specular = BRDF_DirectSpecular(brdfSurfaceData, brdfLightData) * 1.0f;
+    lightingTerms.Direct.Diffuse = BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData);
+    lightingTerms.Direct.Specular = BRDF_DirectSpecular(brdfSurfaceData, brdfLightData);
 
     float3 lightColour = 1.0f;
     lightingTerms.Direct.Diffuse += (shadow * lightingTerms.Direct.Diffuse) * lightColour;

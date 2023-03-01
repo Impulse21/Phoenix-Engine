@@ -6,6 +6,8 @@
 using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI;
 
+#define DISABLED
+
 PhxEngine::Core::StatHistory::StatHistory()
 	: m_average(0.0f)
 	, m_recent(0.0f)
@@ -58,6 +60,9 @@ PhxEngine::Core::FrameProfiler::FrameProfiler(RHI::IGraphicsDevice* graphicsDevi
 
 void PhxEngine::Core::FrameProfiler::BeginFrame()
 {
+#ifdef DISABLED
+	return;
+#endif
 	this->m_cpuRangeId = this->BeginRangeCPU("CPU Frame");
 
 	RHI::ICommandList* cmd = this->m_gfxDevice->BeginCommandRecording();
@@ -68,6 +73,9 @@ void PhxEngine::Core::FrameProfiler::BeginFrame()
 
 void PhxEngine::Core::FrameProfiler::EndFrame()
 {
+#ifdef DISABLED
+	return;
+#endif
 	this->EndRangeCPU(this->m_cpuRangeId);
 
 	RHI::ICommandList* cmd = this->m_gfxDevice->BeginCommandRecording();
@@ -82,6 +90,9 @@ void PhxEngine::Core::FrameProfiler::EndFrame()
 
 RangeId PhxEngine::Core::FrameProfiler::BeginRangeCPU(std::string const& name)
 {
+#ifdef DISABLED
+	return 0;
+#endif
 	Core::StringHash hash(name);
 
 	auto _ = std::scoped_lock(this->m_mutex);
@@ -97,6 +108,9 @@ RangeId PhxEngine::Core::FrameProfiler::BeginRangeCPU(std::string const& name)
 
 void PhxEngine::Core::FrameProfiler::EndRangeCPU(RangeId id)
 {
+#ifdef DISABLED
+	return;
+#endif
 	assert(this->m_profileRanges[id].IsActive);
 	assert(!this->m_profileRanges[id].Cmd);
 
@@ -108,6 +122,9 @@ void PhxEngine::Core::FrameProfiler::EndRangeCPU(RangeId id)
 
 RangeId PhxEngine::Core::FrameProfiler::BeginRangeGPU(std::string const& name, RHI::ICommandList* cmd)
 {
+#ifdef DISABLED
+	return 0;
+#endif
 	Core::StringHash hash(name);
 
 	auto _ = std::scoped_lock(this->m_mutex);
@@ -133,6 +150,9 @@ RangeId PhxEngine::Core::FrameProfiler::BeginRangeGPU(std::string const& name, R
 
 void PhxEngine::Core::FrameProfiler::EndRangeGPU(RangeId id)
 {
+#ifdef DISABLED
+	return;
+#endif
 	assert(this->m_profileRanges[id].IsActive);
 	assert(this->m_profileRanges[id].Cmd);
 
