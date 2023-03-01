@@ -30,7 +30,6 @@ using namespace PhxEngine::RHI;
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Renderer;
 
-
 class PhxEngineRuntimeApp : public ApplicationBase
 {
 private:
@@ -61,7 +60,7 @@ public:
             this->GetRoot()->GetFrameProfiler());
 
 #ifndef TEST_SCENE
-        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza_Intel/Main/NewSponza_Main_glTF_002.gltf";
+        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza_Intel/Main/NewSponza_Main_glTF.gltf";
 #else
         std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/TestScenes/VisibilityBufferScene.gltf";  
 #endif
@@ -77,7 +76,7 @@ public:
         this->m_mainCamera.FoV = DirectX::XMConvertToRadians(60);
 
         Scene::TransformComponent t = {};
-        t.LocalTranslation = { -5.0f, 2.0f, 0.0f };
+        t.LocalTranslation = { -5.0f, -2.0f, 3.0f };
         t.RotateRollPitchYaw({ 0.0f, DirectX::XMConvertToRadians(90), 0.0f });
         t.UpdateTransform();
 

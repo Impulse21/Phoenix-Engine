@@ -31,13 +31,13 @@ void FirstPersonCameraController::OnUpdate(IWindow* window, TimeStep const& time
 	state = glfwGetKey(gltfWindow, GLFW_KEY_A);
 	if (state == GLFW_PRESS)
 	{
-		this->Strafe(speed, camera);
+		this->Strafe(-speed, camera);
 	}
 
 	state = glfwGetKey(gltfWindow, GLFW_KEY_D);
 	if (state == GLFW_PRESS)
 	{
-		this->Strafe(-speed, camera);
+		this->Strafe(speed, camera);
 	}
 
 	static XMFLOAT2 slastPos = { 0.0f, 0.0f };

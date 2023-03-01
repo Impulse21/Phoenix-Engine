@@ -8,7 +8,6 @@
 #include <PhxEngine/Scene/Assets.h>
 #include <PhxEngine/Core/Primitives.h>
 
-#define LH
 // Required for Operators - Move to CPP please
 using namespace DirectX;
 namespace PhxEngine::Scene
@@ -201,7 +200,7 @@ namespace PhxEngine::Scene
 		float FoV = 1.0f; // Radians
 
 		DirectX::XMFLOAT3 Eye = { 0.0f, 0.0f, 0.0f };
-		DirectX::XMFLOAT3 Forward = { 0.0f, 0.0f, 1.0f };
+		DirectX::XMFLOAT3 Forward = { 0.0f, 0.0f, -1.0f };
 		DirectX::XMFLOAT3 Up = { 0.0f, 1.0f, 0.0f };
 
 		DirectX::XMFLOAT4X4 View;
@@ -280,8 +279,6 @@ namespace PhxEngine::Scene
 #else
 			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, aspectRatio, nearZ, farZ);
 #endif
-			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, 1.7f, this->ZFar, this->ZNear);
-
 			DirectX::XMStoreFloat4x4(&this->Projection, projectionMatrix);
 
 			this->UpdateCache();

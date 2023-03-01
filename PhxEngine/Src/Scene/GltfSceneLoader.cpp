@@ -22,7 +22,7 @@ using namespace DirectX;
 
 namespace
 {
-	constexpr bool cUseLeftHandCoord = true;
+	constexpr bool cUseLeftHandCoord = false;
 }
 
 // TODO: Use Span
@@ -908,10 +908,9 @@ void GltfSceneLoader::LoadMeshData(
 
 		// GLTF 2.0 front face is CCW, I currently use CW as front face.
 		// something to consider to change.
-		if (!cUseLeftHandCoord)
+		if (cUseLeftHandCoord)
 		{
 			mesh.ReverseWinding();
-
 			for (auto& pos : mesh.VertexPositions)
 			{
 				pos.z *= -1;

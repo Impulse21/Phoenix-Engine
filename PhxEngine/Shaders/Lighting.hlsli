@@ -35,7 +35,7 @@ void CalculateDirectLightingContribution(in Scene scene, in BRDFDataPerSurface b
 {
     // TODO Handle Lights in some way
     float shadow = 1.0;
-    float3 lightDirection = normalize(float3(0.1f, -0.2f, 1.0f));
+    float3 lightDirection = normalize(float3(0.0f, 0.0f, 0.0f) -  float3(0.0f, -2.0f, 1.0f));
     #ifdef RT_SHADOWS
     CalculateShadowRT(lightDirection, brdfSurfaceData.P, scene.RT_TlasIndex, shadow);
     #endif
