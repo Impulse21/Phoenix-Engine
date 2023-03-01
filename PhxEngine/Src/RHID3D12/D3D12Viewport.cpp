@@ -61,6 +61,11 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateViewport(ViewportDesc con
 
 }
 
+const ViewportDesc& PhxEngine::RHI::D3D12::D3D12GraphicsDevice::GetViewportDesc()
+{
+	return this->m_activeViewport->Desc;
+}
+
 void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::ResizeViewport(ViewportDesc const desc)
 {
 	for (auto backBuffer : this->m_activeViewport->BackBuffers)

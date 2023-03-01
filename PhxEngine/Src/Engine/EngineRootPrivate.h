@@ -32,6 +32,7 @@ namespace PhxEngine
 
 		RHI::IGraphicsDevice* GetGfxDevice() override { return this->m_gfxDevice.get(); }
 		virtual const DirectX::XMFLOAT2& GetCanvasSize() const override{ return this->m_canvasSize; }
+		std::shared_ptr<Core::FrameProfiler> GetFrameProfiler() override { return this->m_frameProfiler; }
 
 	private:
 		void Update(Core::TimeStep const& deltaTime);
@@ -47,6 +48,7 @@ namespace PhxEngine
 
 		// Engine Core Systems
 		// Move logging system here.
+		std::shared_ptr<Core::FrameProfiler> m_frameProfiler;
 		std::unique_ptr<RHI::IGraphicsDevice> m_gfxDevice;
 		std::unique_ptr<Core::IWindow> m_window;
 		DirectX::XMFLOAT2 m_canvasSize;

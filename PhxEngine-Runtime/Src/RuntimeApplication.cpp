@@ -21,7 +21,10 @@
 #include <PhxEngine/Renderer/GBuffer.h>
 #include <PhxEngine/Engine/CameraControllers.h>
 #include <PhxEngine/Renderer/Forward3DRenderPath.h>
+#include <PhxEngine/Core/FrameProfiler.h>
+#include <PhxEngine/Engine/ImguiRenderer.h>
 
+#include <imgui.h>
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::Graphics;
@@ -50,10 +53,14 @@ public:
         this->m_shaderFactory = std::make_shared<Graphics::ShaderFactory>(this->GetGfxDevice(), rootFilePath, "/Shaders");
         this->m_commonPasses = std::make_shared<Renderer::CommonPasses>(this->GetGfxDevice(), *this->m_shaderFactory);
         this->m_textureCache = std::make_unique<Graphics::TextureCache>(nativeFS, this->GetGfxDevice());
-        this->m_forwardRenderer = std::make_unique<Renderer::Forward3DRenderPath>(this->GetGfxDevice(), this->m_commonPasses, this->m_shaderFactory);
+        this->m_forwardRenderer = std::make_unique<Renderer::Forward3DRenderPath>(
+            this->GetGfxDevice(),
+            this->m_commonPasses,
+            this->m_shaderFactory,
+            this->GetRoot()->GetFrameProfiler());
 
         std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza_Intel/Main/NewSponza_Main_glTF_002.gltf";
-        this->m_loadAsync = true;
+        this->m_loadAsync = false; // TODO: Command Queue issues when processing the Delete Queue.
         this->BeginLoadingScene(nativeFS, scenePath);
 
         this->m_forwardRenderer->Initialize(this->GetRoot()->GetCanvasSize());
@@ -88,10 +95,24 @@ public:
             Renderer::ResourceUpload indexUpload;
             Renderer::ResourceUpload vertexUpload;
             this->m_scene.ConstructRenderData(commandList, indexUpload, vertexUpload);
-
-            indexUpload.Free();
-            vertexUpload.Free();
         }
+
+        Scene::Entity worldE = this->m_scene.CreateEntity("WorldComponent");
+        auto& worldComponent = worldE.AddComponent<Scene::WorldEnvironmentComponent>();
+
+        // Load IBL Textures
+        std::filesystem::path texturePath = Core::Platform::GetExcecutableDir().parent_path() / "Assets/Textures/IBL/PaperMill_Ruins_E/PaperMill_IrradianceMap.dds";
+        worldComponent.IblTextures[Scene::WorldEnvironmentComponent::IBLTextures::IrradanceMap] = m_textureCache->LoadTexture(texturePath, true, commandList);
+
+        texturePath = Core::Platform::GetExcecutableDir().parent_path() / "Assets/Textures/IBL/PaperMill_Ruins_E/PaperMill_Skybox.dds";
+        worldComponent.IblTextures[Scene::WorldEnvironmentComponent::IBLTextures::EnvMap] = m_textureCache->LoadTexture(texturePath, true, commandList);
+
+        texturePath = Core::Platform::GetExcecutableDir().parent_path() / "Assets/Textures/IBL/PaperMill_Ruins_E/PaperMill_RadianceMap.dds";
+        worldComponent.IblTextures[Scene::WorldEnvironmentComponent::IBLTextures::PreFilteredEnvMap] = m_textureCache->LoadTexture(texturePath, true, commandList);
+
+        texturePath = Core::Platform::GetExcecutableDir().parent_path() / "Assets/Textures/IBL/BrdfLut.dds";
+        auto brdfLut = m_textureCache->LoadTexture(texturePath, true, commandList);
+        this->m_scene.SetBrdfLut(brdfLut);
 
         commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList }, true);
@@ -101,7 +122,7 @@ public:
 
     void OnWindowResize(WindowResizeEvent const& e) override
     {
-        this->m_forwardRenderer->WindowResize({e.GetWidth(), e.GetHeight()});
+        this->m_forwardRenderer->WindowResize({(float)e.GetWidth(), (float)e.GetHeight()});
     }
 
     void Update(Core::TimeStep const& deltaTime) override
@@ -127,8 +148,14 @@ public:
 
     void RenderScene() override
     {
+        this->m_mainCamera.Width = this->GetRoot()->GetCanvasSize().x;
+        this->m_mainCamera.Height = this->GetRoot()->GetCanvasSize().y;
+        this->m_mainCamera.UpdateCamera();
+
         this->m_forwardRenderer->Render(this->m_scene, this->m_mainCamera);
     }
+
+    std::shared_ptr<Graphics::ShaderFactory> GetShaderFactory() { return this->m_shaderFactory; }
 
 private:
 
@@ -144,6 +171,38 @@ private:
     std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
 
     float m_rotation = 0.0f;
+};
+
+
+class PhxEngineRuntimeUI : public PhxEngine::ImGuiRenderer
+{
+private:
+
+public:
+    PhxEngineRuntimeUI(IPhxEngineRoot* root, PhxEngineRuntimeApp* app)
+        : ImGuiRenderer(root)
+        , m_app(app)
+    {
+    }
+
+    void BuildUI() override
+    {
+        if (m_app->IsSceneLoaded())
+        {
+            ImGui::Begin("Frame Stats");
+            this->GetRoot()->GetFrameProfiler()->BuildUI();
+            ImGui::End();
+        }
+        else
+        {
+            ImGui::Begin("Loading Scene");
+            ImGui::Text("The Scene Is currently Loading...");
+            ImGui::End();
+        }
+    }
+
+private:
+    PhxEngineRuntimeApp* m_app;
 };
 
 #ifdef WIN32
@@ -166,8 +225,16 @@ int main(int __argc, const char** __argv)
         if (app.Initialize())
         {
             root->AddPassToBack(&app);
+
+            PhxEngineRuntimeUI userInterface(root.get(), &app);
+            if (userInterface.Initialize(*app.GetShaderFactory()))
+            {
+                root->AddPassToBack(&userInterface);
+            }
+
             root->Run();
             root->RemovePass(&app);
+            root->RemovePass(&userInterface);
         }
     }
 

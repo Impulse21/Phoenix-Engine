@@ -32,19 +32,8 @@ namespace PhxEngine::RHI::D3D12
 
     class BindlessDescriptorTable;
 
-    class TimerQuery : public ITimerQuery
+    struct D3D12TimerQuery
     {
-    public:
-        explicit TimerQuery(Core::BitSetAllocator& timerQueryIndexPoolRef)
-            : m_timerQueryIndexPoolRef(timerQueryIndexPoolRef)
-        {}
-
-        ~TimerQuery() override
-        {
-            // This will cause problems if we ever remove the device
-            this->m_timerQueryIndexPoolRef.Release(static_cast<int>(this->BeginQueryIndex) / 2);
-        }
-
         size_t BeginQueryIndex = 0;
         size_t EndQueryIndex = 0;
 
@@ -56,10 +45,6 @@ namespace PhxEngine::RHI::D3D12
         bool Resolved = false;
         Core::TimeStep Time;
 
-
-    private:
-        // This is for freeing the query index
-        Core::BitSetAllocator& m_timerQueryIndexPoolRef;
     };
 
 
@@ -330,6 +315,7 @@ namespace PhxEngine::RHI::D3D12
 
         // TODO: Return a handle to viewport so we can have more then one. Need to sort out how delete queue would work.
         void CreateViewport(ViewportDesc const& desc) override;
+        const ViewportDesc& GetViewportDesc() override;
         void ResizeViewport(ViewportDesc const desc) override;
         TextureHandle GetBackBuffer() override { return this->m_activeViewport->BackBuffers[this->GetCurrentBackBufferIndex()]; }
         virtual void BeginFrame() override;
@@ -383,6 +369,7 @@ namespace PhxEngine::RHI::D3D12
 
         // -- Query Stuff ---
         TimerQueryHandle CreateTimerQuery() override;
+        void DeleteTimerQuery(TimerQueryHandle query) override;
         bool PollTimerQuery(TimerQueryHandle query) override;
         Core::TimeStep GetTimerQueryTime(TimerQueryHandle query) override;
         void ResetTimerQuery(TimerQueryHandle query) override;
@@ -480,6 +467,7 @@ namespace PhxEngine::RHI::D3D12
         Core::Pool<D3D12MeshPipeline, MeshPipeline>& GetMeshPipelinePool() { return this->m_meshPipelinePool; }
         Core::Pool<D3D12RTAccelerationStructure, RTAccelerationStructure>& GetRTAccelerationStructurePool() { return this->m_rtAccelerationStructurePool; }
         Core::Pool<D3D12CommandSignature, CommandSignature>& GetCommandSignaturePool() { return this->m_commandSignaturePool; }
+        Core::Pool<D3D12TimerQuery, TimerQuery>& GetTimerQueryPool() { return this->m_timerQueryPool; }
 
     private:
         size_t GetCurrentBackBufferIndex() const;
@@ -538,6 +526,7 @@ namespace PhxEngine::RHI::D3D12
         Core::Pool<D3D12GraphicsPipeline, GraphicsPipeline> m_graphicsPipelinePool;
         Core::Pool<D3D12ComputePipeline, ComputePipeline> m_computePipelinePool;
         Core::Pool<D3D12MeshPipeline, MeshPipeline> m_meshPipelinePool;
+        Core::Pool<D3D12TimerQuery, TimerQuery> m_timerQueryPool;
 
         // -- Command Queues ---
 		std::array<std::unique_ptr<CommandQueue>, (int)CommandQueueType::Count> m_commandQueues;

@@ -10,6 +10,10 @@ namespace tf
 	class Taskflow;
 }
 
+namespace PhxEngine::Core
+{
+	class FrameProfiler;
+}
 namespace PhxEngine::Graphics
 {
 	class ShaderFactory;
@@ -85,7 +89,8 @@ namespace PhxEngine::Renderer
 		Forward3DRenderPath(
 			RHI::IGraphicsDevice* gfxDevice,
 			std::shared_ptr<Renderer::CommonPasses> commonPasses,
-			std::shared_ptr<Graphics::ShaderFactory> shaderFactory);
+			std::shared_ptr<Graphics::ShaderFactory> shaderFactory,
+			std::shared_ptr<Core::FrameProfiler> frameProfiler);
 
 		void Initialize(DirectX::XMFLOAT2 const& canvasSize);
 
@@ -108,11 +113,12 @@ namespace PhxEngine::Renderer
 		RHI::IGraphicsDevice* m_gfxDevice;
 		std::shared_ptr<Graphics::ShaderFactory> m_shaderFactory;
 		std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
+		std::shared_ptr<Core::FrameProfiler> m_frameProfiler;
 
 		std::array<RHI::GraphicsPipelineHandle, EGfxPipelineStates::Count> m_gfxStates;
-		std::array<RHI::GraphicsPipelineHandle, EComputePipelineStates::Count> m_computeStates;
-		std::array<RHI::GraphicsPipelineHandle, EMeshPipelineStates::Count> m_meshStates;
-		std::array<RHI::ShaderHandle, EMeshPipelineStates::Count> m_shaders;
+		std::array<RHI::ComputePipelineHandle, EComputePipelineStates::Count> m_computeStates;
+		std::array<RHI::MeshPipelineHandle, EMeshPipelineStates::Count> m_meshStates;
+		std::array<RHI::ShaderHandle, EShaders::Count> m_shaders;
 		std::array<RHI::RenderPassHandle, ERenderPasses::Count> m_renderPasses;
 
 		RHI::TextureHandle m_mainDepthTexture;

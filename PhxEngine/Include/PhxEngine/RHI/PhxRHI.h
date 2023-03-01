@@ -1123,13 +1123,8 @@ namespace PhxEngine::RHI
     struct RenderPass;
     using RenderPassHandle = Core::Handle<RenderPass>;
 
-    class ITimerQuery
-    {
-    public:
-        virtual ~ITimerQuery() = default;
-    };
-
-    using TimerQueryHandle = std::shared_ptr<ITimerQuery>;
+    struct TimerQuery;
+    using TimerQueryHandle = Core::Handle<TimerQuery>;
 
     struct CommandListDesc
     {
@@ -1268,7 +1263,7 @@ namespace PhxEngine::RHI
         virtual void ClearTextureFloat(TextureHandle texture, Color const& clearColour) = 0 ;
         virtual void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) = 0;
 
-        virtual void BeginRenderPassBackBuffer() = 0;
+        virtual void BeginRenderPassBackBuffer(bool clear = true) = 0;
         virtual RenderPassHandle GetRenderPassBackBuffer() = 0;
         virtual void BeginRenderPass(RenderPassHandle renderPass) = 0;
         virtual void EndRenderPass() = 0;
@@ -1486,6 +1481,7 @@ namespace PhxEngine::RHI
         // -- Create Functions ---
     public:
         virtual void CreateViewport(ViewportDesc const& desc) = 0;
+        virtual const ViewportDesc& GetViewportDesc() = 0;
         virtual void ResizeViewport(ViewportDesc const desc) = 0;
         virtual void BeginFrame() = 0;
         virtual void EndFrame() = 0;
@@ -1558,6 +1554,7 @@ namespace PhxEngine::RHI
 
         // -- Query Stuff ---
         virtual TimerQueryHandle CreateTimerQuery() = 0;
+        virtual void DeleteTimerQuery(TimerQueryHandle query) = 0;
         virtual bool PollTimerQuery(TimerQueryHandle query) = 0;
         virtual Core::TimeStep GetTimerQueryTime(TimerQueryHandle query) = 0;
         virtual void ResetTimerQuery(TimerQueryHandle query) = 0;

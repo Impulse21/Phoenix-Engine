@@ -46,7 +46,7 @@ inline ShaderMeshInstancePointer GetMeshInstancePtr(uint index)
     return ResourceHeap_GetBuffer(push.InstancePtrBufferDescriptorIndex).Load<ShaderMeshInstancePointer>(push.InstancePtrDataOffset + index * sizeof(ShaderMeshInstancePointer));
 }
 
-[RootSignature(VisibilityBufferFillRS)]
+[RootSignature(PHX_ENGINE_DEFAULT_ROOTSIGNATURE)]
 PSInput main(
 	uint vertexID : SV_VertexID,
 	uint instanceID : SV_InstanceID)
@@ -54,7 +54,7 @@ PSInput main(
     Geometry geometry = LoadGeometry(push.GeometryIndex);
     VertexData vertexData = RetrieveVertexData(vertexID, geometry);
     
-    ShaderMeshInstancePointer instancePtr = GetMeshInstancePtr(input.InstanceID);
+    ShaderMeshInstancePointer instancePtr = GetMeshInstancePtr(instanceID);
     MeshInstance meshInstance = LoadMeshInstance(instancePtr.GetInstanceIndex());
     
     matrix worldMatrix = meshInstance.WorldMatrix;
@@ -137,12 +137,12 @@ struct PSOutput
     float4 Channel_3    : SV_Target3;
 };
 
-[RootSignature(GBufferPassRS)]
+[RootSignature(PHX_ENGINE_DEFAULT_ROOTSIGNATURE)]
 PSOutput main(PSInput input)
 {
 #else
 
-[RootSignature(GBufferPassRS)]
+[RootSignature(PHX_ENGINE_DEFAULT_ROOTSIGNATURE)]
 float4 main(PSInput input) : SV_TARGET
 {
 #endif // GBUFFER_OUTPUT
@@ -187,3 +187,5 @@ float4 main(PSInput input) : SV_TARGET
 #endif // GBUFFER_OUTPUT
 }
 #endif // COMPILE_PS
+
+#endif //_STANDARD_OBJECT_PASS_HLSL__

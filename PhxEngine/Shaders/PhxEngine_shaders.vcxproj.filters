@@ -10,7 +10,13 @@
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\DeferredLightingVS.hlsl">
       <Filter>Shaders\VS</Filter>
     </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\DepthPassVS.hlsl">
+      <Filter>Shaders\VS</Filter>
+    </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\EnvMap_SkyVS.hlsl">
+      <Filter>Shaders\VS</Filter>
+    </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ForwardGeometryPassVS.hlsl">
       <Filter>Shaders\VS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\FullScreenQuadVS.hlsl">
@@ -50,6 +56,9 @@
       <Filter>Shaders\PS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\EnvMap_Sky_ProceduralPS.hlsl">
+      <Filter>Shaders\PS</Filter>
+    </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ForwardGeometryPassPS.hlsl">
       <Filter>Shaders\PS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\FullScreenQuadPS.hlsl">
@@ -148,6 +157,9 @@
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\Sky.hlsli">
       <Filter>Shaders\Include</Filter>
     </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\StandardObjectPass.hlsli">
+      <Filter>Shaders\Include</Filter>
+    </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ThreadGroupTilingX.hlsli">
       <Filter>Shaders\Include</Filter>
     </None>
@@ -164,9 +176,6 @@
       <Filter>Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\PhxEngine\Shaders\CMakeFiles\PhxEngine_shaders" />
-    <None Include="..\..\..\PhxEngine\Shaders\StandardObjectPass.hlsli">
-      <Filter>Shaders\Include</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">

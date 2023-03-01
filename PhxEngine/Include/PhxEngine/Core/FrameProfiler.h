@@ -2,8 +2,10 @@
 
 #include <array>
 #include <vector>
+#include <unordered_map>
 #include <PhxEngine/Core/StopWatch.h>
 #include "PhxEngine/RHI/PhxRHI.h"
+#include <PhxEngine/Core/StringHash.h>
 
 namespace PhxEngine::Core
 {
@@ -38,32 +40,57 @@ namespace PhxEngine::Core
 		float m_max;
 	};
 
+	using RangeId = uint32_t;
 	class FrameProfiler
 	{
 	public:
+		FrameProfiler(RHI::IGraphicsDevice* gfxDevice);
 		FrameProfiler(RHI::IGraphicsDevice* graphicsDevice, size_t numBackBuffers);
 
-		void BeginFrame(RHI::CommandListHandle cmd);
-		void EndFrame(RHI::CommandListHandle cmd);
+		void BeginFrame();
+		void EndFrame();
 
-		const StatHistory& GetCpuTimeStats() const { return this->m_cpuTime; }
-		const StatHistory& GetGpuTimeStats() const { return this->m_gpuTime; }
+		RangeId BeginRangeCPU(std::string const& name);
+		void EndRangeCPU(RangeId id);
+
+		RangeId BeginRangeGPU(std::string const& name, RHI::ICommandList* cmd);
+		void EndRangeGPU(RangeId id);
+
+		void BuildUI();
 
 	private:
-		RHI::TimerQueryHandle& GetCurrentFrameGpuQuery() { return this->m_timerQueries[this->m_frameCounter % this->m_timerQueries.size()]; }
+		struct Range
+		{
+			std::string Name;
+			StatHistory Stats;
+			bool IsActive;
+			RHI::ICommandList* Cmd = nullptr;
+			StopWatch CpuTimer;
+			std::vector<RHI::TimerQueryHandle> TimerQueries;
+
+			void Free(RHI::IGraphicsDevice* gfxDevice)
+			{
+				if (this->Cmd)
+				{
+					for (auto& timerQuery : TimerQueries)
+					{
+						gfxDevice->DeleteTimerQuery(timerQuery);
+					}
+					TimerQueries.clear();
+				}
+			}
+		};
 
 	private:
-		RHI::IGraphicsDevice* m_graphicsDevice;
+		std::mutex m_mutex;
+		RHI::IGraphicsDevice* m_gfxDevice;
 
 		// -- Buffer per frame ---
-		std::vector<RHI::TimerQueryHandle> m_timerQueries;
-
+		std::unordered_map<RangeId, Range> m_profileRanges;
 		size_t m_frameCounter = 0;
 
-		StopWatch m_cpuTimer;
-		StatHistory m_cpuTime;
-		StatHistory m_gpuTime;
-		StatHistory m_frameDelta;
+		size_t m_cpuRangeId;
+		size_t m_gpuRangeId;
 	};
 }
 

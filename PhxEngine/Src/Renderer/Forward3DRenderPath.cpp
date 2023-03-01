@@ -5,6 +5,7 @@
 #include <PhxEngine/Scene/Scene.h>
 #include <PhxEngine/Scene/Components.h>
 #include <PhxEngine/Core/Math.h>
+#include <PhxEngine/Core/FrameProfiler.h>
 #include <taskflow/taskflow.hpp>
 
 #include "DrawQueue.h"
@@ -20,11 +21,12 @@ using namespace PhxEngine::Core;
 PhxEngine::Renderer::Forward3DRenderPath::Forward3DRenderPath(
 	RHI::IGraphicsDevice* gfxDevice,
 	std::shared_ptr<Renderer::CommonPasses> commonPasses,
-	std::shared_ptr<Graphics::ShaderFactory> shaderFactory)
+	std::shared_ptr<Graphics::ShaderFactory> shaderFactory,
+	std::shared_ptr<Core::FrameProfiler> frameProfiler)
 	: m_gfxDevice(gfxDevice)
 	, m_commonPasses(commonPasses)
 	, m_shaderFactory(shaderFactory)
-	, m_canvasSize({})
+	, m_frameProfiler(frameProfiler)
 {
 }
 
@@ -33,6 +35,7 @@ void PhxEngine::Renderer::Forward3DRenderPath::Initialize(DirectX::XMFLOAT2 cons
 	tf::Executor executor;
 	tf::Taskflow taskflow;
 
+	this->WindowResize(canvasSize);
 	tf::Task shaderLoadTask = this->LoadShaders(taskflow);
 	tf::Task createPipelineStates = this->LoadPipelineStates(taskflow);
 
@@ -40,18 +43,40 @@ void PhxEngine::Renderer::Forward3DRenderPath::Initialize(DirectX::XMFLOAT2 cons
 
 	tf::Future loadFuture = executor.run(taskflow);
 
-	this->WindowResize(canvasSize);
+
+	// -- Create Constant Buffers ---
+	{
+		RHI::BufferDesc bufferDesc = {};
+		bufferDesc.Usage = RHI::Usage::Default;
+		bufferDesc.Binding = RHI::BindingFlags::ConstantBuffer;
+		bufferDesc.SizeInBytes = sizeof(Shader::Frame);
+		bufferDesc.InitialState = RHI::ResourceStates::ConstantBuffer;
+
+		bufferDesc.DebugName = "Frame Constant Buffer";
+		this->m_frameCB = RHI::IGraphicsDevice::GPtr->CreateBuffer(bufferDesc);
+	}
+
 	loadFuture.wait();
 }
 
 void PhxEngine::Renderer::Forward3DRenderPath::Render(Scene::Scene& scene, Scene::CameraComponent& mainCamera)
 {
-	ICommandList* commandList = this->m_gfxDevice->BeginCommandRecording();
-	this->PrepareFrameRenderData(commandList, mainCamera, scene);
+	Shader::Camera cameraData = {};
+	cameraData.ViewProjection = mainCamera.ViewProjection;
+	cameraData.ViewProjectionInv = mainCamera.ViewProjectionInv;
+	cameraData.ProjInv = mainCamera.ProjectionInv;
+	cameraData.ViewInv = mainCamera.ViewInv;
 
-	if (this->m_gfxDevice->CheckCapability(DeviceCapability::RayTracing))
+	ICommandList* commandList = this->m_gfxDevice->BeginCommandRecording();
 	{
-		this->UpdateRTAccelerationStructures(commandList, scene);
+		auto rangeId = this->m_frameProfiler->BeginRangeGPU("Prepare Render Data", commandList);
+		this->PrepareFrameRenderData(commandList, mainCamera, scene);
+
+		if (this->m_gfxDevice->CheckCapability(DeviceCapability::RayTracing))
+		{
+			this->UpdateRTAccelerationStructures(commandList, scene);
+		}
+		this->m_frameProfiler->EndRangeGPU(rangeId);
 	}
 
 	RHI::Viewport v(this->m_canvasSize.x, this->m_canvasSize.y);
@@ -80,29 +105,38 @@ void PhxEngine::Renderer::Forward3DRenderPath::Render(Scene::Scene& scene, Scene
 	drawQueue.SortOpaque();
 
 	{
+		auto rangeId = this->m_frameProfiler->BeginRangeGPU("Early Depth Pass", commandList);
 		auto _ = commandList->BeginScopedMarker("Early Depth Pass");
 		commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::DepthPass]);
 		commandList->SetViewports(&v, 1);
 		commandList->SetScissors(&rec, 1);
 		commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::DepthPass]);
+		commandList->BindConstantBuffer(1, this->m_frameCB);
+		commandList->BindDynamicConstantBuffer(2, cameraData);
 		this->RenderGeometry(commandList, scene, drawQueue, true);
 		commandList->EndRenderPass();
+		this->m_frameProfiler->EndRangeGPU(rangeId);
 	}
 
 	{
 		auto _ = commandList->BeginScopedMarker("Geometry Shade");
+		auto rangeId = this->m_frameProfiler->BeginRangeGPU("Geometry Shade", commandList);
 		commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::GeometryShadePass]);
 		commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::GeometryPass]);
 		commandList->SetViewports(&v, 1);
 		commandList->SetScissors(&rec, 1);
+		commandList->BindConstantBuffer(1, this->m_frameCB);
+		commandList->BindDynamicConstantBuffer(2, cameraData);
 		this->RenderGeometry(commandList, scene, drawQueue, true);
 		commandList->EndRenderPass();
+		this->m_frameProfiler->EndRangeGPU(rangeId);
 	}
 
 	{
 		auto __ = commandList->BeginScopedMarker("Post Process");
 		{
 			auto _ = commandList->BeginScopedMarker("Tone Mapping");
+			auto rangeId = this->m_frameProfiler->BeginRangeGPU("Tone Mapping", commandList);
 			commandList->BeginRenderPassBackBuffer();
 
 			commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::ToneMappingPass]);
@@ -115,6 +149,7 @@ void PhxEngine::Renderer::Forward3DRenderPath::Render(Scene::Scene& scene, Scene
 			commandList->Draw(3);
 
 			commandList->EndRenderPass();
+			this->m_frameProfiler->EndRangeGPU(rangeId);
 		}
 	}
 
@@ -152,7 +187,7 @@ void PhxEngine::Renderer::Forward3DRenderPath::WindowResize(DirectX::XMFLOAT2 co
 		desc.IsTypeless = true;
 		desc.Format = RHI::RHIFormat::RGBA16_FLOAT;
 		desc.DebugName = "Colour Buffer";
-		desc.BindingFlags = RHI::BindingFlags::ShaderResource;
+		desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::RenderTarget;
 
 		if (this->m_colourBuffer.IsValid())
 		{
@@ -192,15 +227,15 @@ tf::Task PhxEngine::Renderer::Forward3DRenderPath::LoadShaders(tf::Taskflow& tas
 
 tf::Task PhxEngine::Renderer::Forward3DRenderPath::LoadPipelineStates(tf::Taskflow& taskflow)
 {
-	tf::Task createPipelineStatesTask = taskflow.emplace([this](tf::Subflow& subflow) {
-		subflow.emplace([this]() {
+	tf::Task createPipelineStatesTask = taskflow.emplace([&](tf::Subflow& subflow) {
+		subflow.emplace([&]() {
 			this->m_gfxStates[EGfxPipelineStates::DepthPass] = this->m_gfxDevice->CreateGraphicsPipeline(
 				{
 					.VertexShader = this->m_shaders[EShaders::VS_DepthOnly],
 					.DsvFormat = { this->m_gfxDevice->GetTextureDesc(this->m_mainDepthTexture).Format }
 				});
 			});
-		subflow.emplace([this]() {
+		subflow.emplace([&]() {
 			this->m_gfxStates[EGfxPipelineStates::GeometryPass] = this->m_gfxDevice->CreateGraphicsPipeline(
 				{
 					.VertexShader = this->m_shaders[EShaders::VS_ForwardGeometry],
@@ -210,7 +245,7 @@ tf::Task PhxEngine::Renderer::Forward3DRenderPath::LoadPipelineStates(tf::Taskfl
 					.DsvFormat = { this->m_gfxDevice->GetTextureDesc(this->m_mainDepthTexture).Format },
 				});
 			});
-		subflow.emplace([this]() {
+		subflow.emplace([&]() {
 			this->m_gfxStates[EGfxPipelineStates::ToneMappingPass] = this->m_gfxDevice->CreateGraphicsPipeline(
 				{
 					.PrimType = RHI::PrimitiveType::TriangleStrip,
@@ -294,7 +329,7 @@ void PhxEngine::Renderer::Forward3DRenderPath::PrepareFrameRenderData(
 	// Upload data
 	RHI::GpuBarrier preCopyBarriers[] =
 	{
-		RHI::GpuBarrier::CreateBuffer(this->m_frameCB, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(this->m_frameCB, RHI::ResourceStates::ConstantBuffer, RHI::ResourceStates::CopyDest),
 		RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
 		RHI::GpuBarrier::CreateBuffer(scene.GetGeometryBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
 		RHI::GpuBarrier::CreateBuffer(scene.GetMaterialBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
@@ -326,7 +361,7 @@ void PhxEngine::Renderer::Forward3DRenderPath::PrepareFrameRenderData(
 
 	RHI::GpuBarrier postCopyBarriers[] =
 	{
-		RHI::GpuBarrier::CreateBuffer(this->m_frameCB, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
+		RHI::GpuBarrier::CreateBuffer(this->m_frameCB, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ConstantBuffer),
 		RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
 		RHI::GpuBarrier::CreateBuffer(scene.GetGeometryBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
 		RHI::GpuBarrier::CreateBuffer(scene.GetMaterialBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
@@ -440,11 +475,8 @@ void PhxEngine::Renderer::Forward3DRenderPath::RenderGeometry(RHI::ICommandList*
 
 		auto [meshComponent, nameComponent] = scene.GetRegistry().get<Scene::MeshComponent, Scene::NameComponent>(instanceBatch.MeshEntity);
 
-		if (markMeshes)
-		{
-			std::string modelName = nameComponent.Name;
-			auto scrope = commandList->BeginScopedMarker(modelName);
-		}
+		std::string modelName = nameComponent.Name;
+		auto scrope = commandList->BeginScopedMarker(modelName);
 
 		for (size_t i = 0; i < meshComponent.Surfaces.size(); i++)
 		{
@@ -456,11 +488,11 @@ void PhxEngine::Renderer::Forward3DRenderPath::RenderGeometry(RHI::ICommandList*
 			pushConstant.InstancePtrBufferDescriptorIndex = instanceBufferDescriptorIndex;
 			pushConstant.InstancePtrDataOffset = instanceBatch.DataOffset;
 
-			assert(false); // TODO: BIND PUSH 
+			commandList->BindPushConstant(0, pushConstant);
 			commandList->DrawIndexed(
 				meshComponent.Surfaces[i].NumIndices,
 				instanceBatch.NumInstance,
-				meshComponent.Surfaces[i].IndexOffsetInMesh);
+				meshComponent.GlobalIndexBufferOffset + meshComponent.Surfaces[i].IndexOffsetInMesh);
 		}
 	};
 

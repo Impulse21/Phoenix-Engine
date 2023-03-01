@@ -825,7 +825,7 @@ void PhxEngine::Scene::Scene::MergeMeshes(RHI::ICommandList* cmd)
 	indexBufferDesc.StrideInBytes = sizeof(uint32_t);
 	indexBufferDesc.DebugName = "Index Buffer";
 	indexBufferDesc.Binding = RHI::BindingFlags::IndexBuffer;
-	this->GetGlobalIndexBuffer() = RHI::IGraphicsDevice::GPtr->CreateIndexBuffer(indexBufferDesc);
+	this->m_globalIndexBuffer = RHI::IGraphicsDevice::GPtr->CreateIndexBuffer(indexBufferDesc);
 
 	// Upload data
 	{

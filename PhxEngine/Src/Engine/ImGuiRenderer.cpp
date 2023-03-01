@@ -167,7 +167,7 @@ void PhxEngine::ImGuiRenderer::Render()
     ICommandList* cmd = this->GetGfxDevice()->BeginCommandRecording();
     {
         auto scrope = cmd->BeginScopedMarker("ImGui");
-        cmd->BeginRenderPassBackBuffer();
+        cmd->BeginRenderPassBackBuffer(false);
         cmd->SetGraphicsPipeline(this->m_pipeline);
 
         // Set root arguments.
