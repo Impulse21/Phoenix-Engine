@@ -66,7 +66,7 @@ public:
         std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/TestScenes/VisibilityBufferScene.gltf";  
 #endif
 #ifndef TEST_SCENE
-        this->m_loadAsync = true; // race condition when loading textures
+        this->m_loadAsync = false; // race condition when loading textures
 #else
         this->m_loadAsync = false; // race condition when loading textures
 #endif

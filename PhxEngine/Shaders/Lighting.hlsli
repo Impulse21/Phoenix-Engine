@@ -35,16 +35,17 @@ void CalculateDirectLightingContribution(in Scene scene, in BRDFDataPerSurface b
 {
     // TODO Handle Lights in some way
     float shadow = 1.0;
-    float3 lightDirection = normalize(float3(1.25f, 1.0f, -2.0f));
+    float3 lightDirection = normalize(float3(0.1f, -0.2f, 1.0f));
     #ifdef RT_SHADOWS
     CalculateShadowRT(lightDirection, brdfSurfaceData.P, scene.RT_TlasIndex, shadow);
     #endif
     // TODO: Call ShadeSurface_Direct
     BRDFDataPerLight brdfLightData = CreatePerLightBRDFData(lightDirection, brdfSurfaceData);
     
+    float LightIntensity = 9.0f;
     lightingTerms.Direct.Init(0, 0);
-    lightingTerms.Direct.Diffuse = BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData);
-    lightingTerms.Direct.Specular = BRDF_DirectSpecular(brdfSurfaceData, brdfLightData);
+    lightingTerms.Direct.Diffuse = BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData) * 9.0f;
+    lightingTerms.Direct.Specular = BRDF_DirectSpecular(brdfSurfaceData, brdfLightData) * 9.0f;
 
     float3 lightColour = 1.0f;
     lightingTerms.Direct.Diffuse += (shadow * lightingTerms.Direct.Diffuse) * lightColour;
