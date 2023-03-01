@@ -143,6 +143,8 @@ namespace PhxEngine::RHI::D3D12
 
 	public:
 		std::shared_ptr<TrackedResources> Executed(uint64_t fenceValue);
+		std::deque<Microsoft::WRL::ComPtr<ID3D12Resource>>& GetDeferredDeleteQueue() { return this->m_deferredDeleteQueue; }
+
 		ID3D12CommandList* GetD3D12CommandList() { return this->m_d3d12CommandList.Get(); }
 		Core::Span<RHI::TimerQueryHandle> GetTimerQueries() const { return Core::Span<RHI::TimerQueryHandle>(this->m_timerQueries.data(), this->m_timerQueries.size()); }
 
@@ -188,6 +190,9 @@ namespace PhxEngine::RHI::D3D12
 		std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> m_buildGeometries;
 
 		std::vector<RHI::TimerQueryHandle> m_timerQueries;
+
+
+		std::deque<Microsoft::WRL::ComPtr<ID3D12Resource>> m_deferredDeleteQueue;
 	};
 }
 

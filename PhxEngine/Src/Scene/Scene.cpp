@@ -89,9 +89,6 @@ void PhxEngine::Scene::Scene::ConstructRenderData(
 		meshComp.CreateRenderData(cmd, indexUploader, vertexUploader);
 	}
 
-	indexUploader.Free();
-	vertexUploader.Free();
-
 	// Construct Global Index buffer
 	this->MergeMeshes(cmd);
 }

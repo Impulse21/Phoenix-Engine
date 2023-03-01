@@ -38,6 +38,7 @@ PhxEngine::RHI::D3D12::D3D12CommandList::~D3D12CommandList()
 void PhxEngine::RHI::D3D12::D3D12CommandList::Open()
 {
 	assert(!this->m_activeD3D12CommandAllocator);
+    assert(this->m_deferredDeleteQueue.empty());
 
     this->m_trackedData = std::make_shared<TrackedResources>();
     this->m_timerQueries.clear();
@@ -689,7 +690,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::WriteTexture(TextureHandle texture
         subresources.size(),
         subresources.data());
 
-    this->m_graphicsDevice.DeleteD3DResource(intermediateResource);
+    this->m_deferredDeleteQueue.push_back(intermediateResource);
 }
 
 void PhxEngine::RHI::D3D12::D3D12CommandList::WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* Data, size_t rowPitch, size_t depthPitch)

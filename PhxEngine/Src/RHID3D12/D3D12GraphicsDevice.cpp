@@ -2086,6 +2086,19 @@ ExecutionReceipt PhxEngine::RHI::D3D12::D3D12GraphicsDevice::ExecuteCommandLists
 
 	auto fenceValue = queue->ExecuteCommandLists(d3d12CommandLists);
 
+
+	for (auto commandList : commandLists)
+	{
+		auto cmdImpl = SafeCast<D3D12CommandList*>(commandList);
+
+		while (!cmdImpl->GetDeferredDeleteQueue().empty())
+		{
+			Microsoft::WRL::ComPtr<ID3D12Resource> resource = cmdImpl->GetDeferredDeleteQueue().front();
+			this->DeleteD3DResource(resource);
+			cmdImpl->GetDeferredDeleteQueue().pop_front();
+		}
+	}
+
 	if (waitForCompletion)
 	{
 		queue->WaitForFence(fenceValue);

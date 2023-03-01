@@ -60,7 +60,7 @@ public:
             this->GetRoot()->GetFrameProfiler());
 
         std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza_Intel/Main/NewSponza_Main_glTF_002.gltf";
-        this->m_loadAsync = false; // TODO: Command Queue issues when processing the Delete Queue.
+        this->m_loadAsync = true; // TODO: Command Queue issues when processing the Delete Queue.
         this->BeginLoadingScene(nativeFS, scenePath);
 
         this->m_forwardRenderer->Initialize(this->GetRoot()->GetCanvasSize());
@@ -90,10 +90,10 @@ public:
             commandList,
             this->m_scene);
 
+        Renderer::ResourceUpload indexUpload;
+        Renderer::ResourceUpload vertexUpload;
         if (retVal)
         {
-            Renderer::ResourceUpload indexUpload;
-            Renderer::ResourceUpload vertexUpload;
             this->m_scene.ConstructRenderData(commandList, indexUpload, vertexUpload);
         }
 
@@ -117,6 +117,8 @@ public:
         commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList }, true);
 
+        indexUpload.Free();
+        vertexUpload.Free();
         return retVal;
     }
 
