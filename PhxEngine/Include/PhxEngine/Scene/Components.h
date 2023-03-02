@@ -8,6 +8,8 @@
 #include <PhxEngine/Scene/Assets.h>
 #include <PhxEngine/Core/Primitives.h>
 
+#define LH
+
 // Required for Operators - Move to CPP please
 using namespace DirectX;
 namespace PhxEngine::Scene
@@ -200,7 +202,11 @@ namespace PhxEngine::Scene
 		float FoV = 1.0f; // Radians
 
 		DirectX::XMFLOAT3 Eye = { 0.0f, 0.0f, 0.0f };
+#ifdef LH
+		DirectX::XMFLOAT3 Forward = { 0.0f, 0.0f, 1.0f };
+#else
 		DirectX::XMFLOAT3 Forward = { 0.0f, 0.0f, -1.0f };
+#endif
 		DirectX::XMFLOAT3 Up = { 0.0f, 1.0f, 0.0f };
 
 		DirectX::XMFLOAT4X4 View;

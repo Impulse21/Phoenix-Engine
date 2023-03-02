@@ -180,8 +180,8 @@ float4 main(PSInput input) : SV_TARGET
         ResourceHeap_GetTexture2D(FrameCB.BrdfLUTTexIndex),
         SamplerDefault,
         SamplerLinearClamped,
-        lightingTerms);
-    
+        lightingTerms); 
+
     float3 finalColour = ApplyLighting(lightingTerms, brdfSurfaceData, surface);
     return float4(finalColour, 1.0f);
 #endif // GBUFFER_OUTPUT

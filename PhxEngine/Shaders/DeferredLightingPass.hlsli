@@ -139,7 +139,6 @@ float4 main(PSInput input) : SV_TARGET
     
     CalculateDirectLightingContribution(GetScene(), brdfSurfaceData, surface, lightingTerms);
     
-/*
     CalculateIndirectLightingContribution_IBL(
         GetScene(),
         brdfSurfaceData,
@@ -150,7 +149,6 @@ float4 main(PSInput input) : SV_TARGET
         SamplerDefault,
         SamplerLinearClamped,
         lightingTerms);
-  */  
 	float3 finalColour = ApplyLighting(lightingTerms, brdfSurfaceData, surface);
     
 #ifdef COMPILE_CS

@@ -8,6 +8,7 @@ using namespace PhxEngine;
 using namespace PhxEngine::Core;
 using namespace PhxEngine::Scene;
 
+#define LH
 
 void FirstPersonCameraController::OnUpdate(IWindow* window, TimeStep const& timestep, CameraComponent& camera)
 {
@@ -31,13 +32,21 @@ void FirstPersonCameraController::OnUpdate(IWindow* window, TimeStep const& time
 	state = glfwGetKey(gltfWindow, GLFW_KEY_A);
 	if (state == GLFW_PRESS)
 	{
+#ifdef LH
+		this->Strafe(speed, camera);
+#else
 		this->Strafe(-speed, camera);
+#endif
 	}
 
 	state = glfwGetKey(gltfWindow, GLFW_KEY_D);
 	if (state == GLFW_PRESS)
 	{
+#ifdef LH
+		this->Strafe(-speed, camera);
+#else
 		this->Strafe(speed, camera);
+#endif
 	}
 
 	static XMFLOAT2 slastPos = { 0.0f, 0.0f };

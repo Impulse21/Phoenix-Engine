@@ -587,7 +587,7 @@ namespace PhxEngine::RHI
     {
         RasterFillMode FillMode = RasterFillMode::Solid;
         RasterCullMode CullMode = RasterCullMode::Back;
-        bool FrontCounterClockwise = true;
+        bool FrontCounterClockwise = false;
         bool DepthClipEnable = false;
         bool ScissorEnable = false;
         bool MultisampleEnable = false;

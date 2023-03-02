@@ -241,7 +241,7 @@ tf::Task PhxEngine::Renderer::RenderPath3DForward::LoadPipelineStates(tf::Taskfl
 			{
 				.VertexShader = this->m_shaders[EShaders::VS_ForwardGeometry],
 				.PixelShader = this->m_shaders[EShaders::PS_ForwardGeometry],
-				.DepthStencilRenderState = {.DepthTestEnable = true, .DepthWriteEnable = false },
+				.DepthStencilRenderState = {.DepthTestEnable = true, .DepthWriteEnable = false, .DepthFunc = ComparisonFunc::Equal },
 				.RtvFormats = { this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).Format },
 				.DsvFormat = { this->m_gfxDevice->GetTextureDesc(this->m_mainDepthTexture).Format },
 			});

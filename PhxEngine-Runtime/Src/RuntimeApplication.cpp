@@ -31,6 +31,8 @@ using namespace PhxEngine::RHI;
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Renderer;
 
+#define TEST_SCENE
+
 class PhxEngineRuntimeApp : public ApplicationBase
 {
 private:
@@ -69,7 +71,7 @@ public:
 #ifndef TEST_SCENE
         std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza_Intel/Main/NewSponza_Main_glTF.gltf";
 #else
-        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/TestScenes/VisibilityBufferScene.gltf";  
+        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/TestScenes/VisibilityBufferScene.gltf"; 
 #endif
 #ifndef TEST_SCENE
         this->m_loadAsync = false; // race condition when loading textures
@@ -78,13 +80,13 @@ public:
 #endif
         this->BeginLoadingScene(nativeFS, scenePath);
 
-        this->m_forwardRenderer->Initialize(this->GetRoot()->GetCanvasSize());
+        this->m_deferredRenderer->Initialize(this->GetRoot()->GetCanvasSize());
 
         this->m_mainCamera.FoV = DirectX::XMConvertToRadians(60);
 
         Scene::TransformComponent t = {};
-        t.LocalTranslation = { -5.0f, -2.0f, 3.0f };
-        t.RotateRollPitchYaw({ 0.0f, DirectX::XMConvertToRadians(90), 0.0f });
+        t.LocalTranslation = { 0.0f, 2.0f, -10.0f };
+        t.SetDirty();
         t.UpdateTransform();
 
         this->m_mainCamera.TransformCamera(t);
@@ -139,7 +141,7 @@ public:
 
     void OnWindowResize(WindowResizeEvent const& e) override
     {
-        this->m_forwardRenderer->WindowResize({(float)e.GetWidth(), (float)e.GetHeight()});
+        this->m_deferredRenderer->WindowResize({(float)e.GetWidth(), (float)e.GetHeight()});
     }
 
     void Update(Core::TimeStep const& deltaTime) override
@@ -169,7 +171,7 @@ public:
         this->m_mainCamera.Height = this->GetRoot()->GetCanvasSize().y;
         this->m_mainCamera.UpdateCamera();
 
-        this->m_forwardRenderer->Render(this->m_scene, this->m_mainCamera);
+        this->m_deferredRenderer->Render(this->m_scene, this->m_mainCamera);
     }
 
     std::shared_ptr<Graphics::ShaderFactory> GetShaderFactory() { return this->m_shaderFactory; }
