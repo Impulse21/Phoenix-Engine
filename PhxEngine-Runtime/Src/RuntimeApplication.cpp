@@ -31,7 +31,7 @@ using namespace PhxEngine::RHI;
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Renderer;
 
-#define TEST_SCENE
+// #define TEST_SCENE
 
 class PhxEngineRuntimeApp : public ApplicationBase
 {
