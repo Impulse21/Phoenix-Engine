@@ -88,10 +88,10 @@ namespace PhxEngine::Renderer
 		};
 	}
 
-	class Deferred3DRenderPath
+	class RenderPath3DDeferred
 	{
 	public:
-		Deferred3DRenderPath(
+		RenderPath3DDeferred(
 			RHI::IGraphicsDevice* gfxDevice,
 			std::shared_ptr<Renderer::CommonPasses> commonPasses,
 			std::shared_ptr<Graphics::ShaderFactory> shaderFactory,

@@ -20,7 +20,8 @@
 #include <PhxEngine/Engine/ApplicationBase.h>
 #include <PhxEngine/Renderer/GBuffer.h>
 #include <PhxEngine/Engine/CameraControllers.h>
-#include <PhxEngine/Renderer/Deferred3DRenderPath.h>
+#include <PhxEngine/Renderer/RenderPath3DDeferred.h>
+#include <PhxEngine/Renderer/RenderPath3DForward.h>
 #include <PhxEngine/Core/FrameProfiler.h>
 #include <PhxEngine/Engine/ImguiRenderer.h>
 
@@ -53,7 +54,13 @@ public:
         this->m_shaderFactory = std::make_shared<Graphics::ShaderFactory>(this->GetGfxDevice(), rootFilePath, "/Shaders");
         this->m_commonPasses = std::make_shared<Renderer::CommonPasses>(this->GetGfxDevice(), *this->m_shaderFactory);
         this->m_textureCache = std::make_unique<Graphics::TextureCache>(nativeFS, this->GetGfxDevice());
-        this->m_forwardRenderer = std::make_unique<Renderer::Deferred3DRenderPath>(
+        this->m_forwardRenderer = std::make_unique<Renderer::RenderPath3DForward>(
+            this->GetGfxDevice(),
+            this->m_commonPasses,
+            this->m_shaderFactory,
+            this->GetRoot()->GetFrameProfiler());
+
+        this->m_deferredRenderer = std::make_unique<Renderer::RenderPath3DDeferred>(
             this->GetGfxDevice(),
             this->m_commonPasses,
             this->m_shaderFactory,
@@ -171,7 +178,8 @@ private:
 
 private:
     std::shared_ptr<Graphics::ShaderFactory> m_shaderFactory;
-    std::shared_ptr<Renderer::Deferred3DRenderPath> m_forwardRenderer;
+    std::shared_ptr<Renderer::RenderPath3DForward> m_forwardRenderer;
+    std::shared_ptr<Renderer::RenderPath3DDeferred> m_deferredRenderer;
     RHI::TextureHandle m_splashScreenTexture;
 
     Scene::Scene m_scene;

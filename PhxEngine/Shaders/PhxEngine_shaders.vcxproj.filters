@@ -13,7 +13,13 @@
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\DeferredLightingVS.hlsl">
       <Filter>Shaders\VS</Filter>
     </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\DepthPassVS.hlsl">
+      <Filter>Shaders\VS</Filter>
+    </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\EnvMap_SkyVS.hlsl">
+      <Filter>Shaders\VS</Filter>
+    </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ForwardGeometryPassVS.hlsl">
       <Filter>Shaders\VS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\FullScreenQuadVS.hlsl">
@@ -59,6 +65,9 @@
       <Filter>Shaders\PS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\EnvMap_Sky_ProceduralPS.hlsl">
+      <Filter>Shaders\PS</Filter>
+    </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ForwardGeometryPassPS.hlsl">
       <Filter>Shaders\PS</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\FullScreenQuadPS.hlsl">
@@ -167,6 +176,9 @@
       <Filter>Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\Sky.hlsli">
+      <Filter>Shaders\Include</Filter>
+    </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\StandardObjectPass.hlsli">
       <Filter>Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ThreadGroupTilingX.hlsli">
