@@ -487,6 +487,15 @@ void GltfSceneLoader::LoadNode(
 
 	transform.UpdateTransform();
 
+	if (cUseLeftHandCoord)
+	{
+		transform.LocalTranslation.z *= -1.0f;
+		transform.LocalRotation.x *= -1.0f;
+		transform.LocalRotation.y *= 1.0f;
+		transform.SetDirty();
+		transform.UpdateTransform();
+	}
+
 	if (parent)
 	{
 		entity.AttachToParent(parent, true);
@@ -919,6 +928,23 @@ void GltfSceneLoader::LoadMeshData(
 		if ((mesh.Flags & Assets::Mesh::Flags::kContainsNormals) != 0 && (mesh.Flags & Assets::Mesh::Flags::kContainsTexCoords) != 0 && (mesh.Flags & Assets::Mesh::Flags::kContainsTangents) == 0)
 		{
 			ComputeTangentSpace(mesh);
+		}
+
+		if (cUseLeftHandCoord)
+		{
+			// Flip Z
+			for (auto& pos : mesh.VertexPositions)
+			{
+				pos.z *= -1.0f;
+			}
+			for (auto& normal : mesh.VertexNormals)
+			{
+				normal.z *= -1.0f;
+			}
+			for (auto& tan : mesh.VertexTangents)
+			{
+				tan.z *= -1.0f;
+			}
 		}
 	}
 }
