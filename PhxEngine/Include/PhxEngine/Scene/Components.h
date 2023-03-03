@@ -525,7 +525,7 @@ namespace PhxEngine::Scene
 			assert(this->IsTriMesh());
 			for (auto iter = this->Indices.begin(); iter != this->Indices.end(); iter += 3)
 			{
-				std::swap(*iter, *(iter + 2));
+				std::swap(*(iter + 1), *(iter + 2));
 			}
 		}
 		
