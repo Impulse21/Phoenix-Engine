@@ -11,6 +11,7 @@
 #include "PhxEngine/Core/BitSetAllocator.h"
 #include <PhxEngine/Core/Pool.h>
 #include "CommandList.h"
+#include <PhxEngine/Core/Profiler.h>
 
 
 // Teir 1 limit is 1,000,000
@@ -404,6 +405,8 @@ namespace PhxEngine::RHI::D3D12
         bool CheckCapability(DeviceCapability deviceCapability);
         bool IsDevicedRemoved() override;
 
+        float GetAvgFrameTime() override { return this->m_frameStats.GetAvg(); };
+
         // -- Dx12 Specific functions ---
     public:
         void DeleteD3DResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource);
@@ -419,6 +422,8 @@ namespace PhxEngine::RHI::D3D12
         int CreateRenderTargetView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
         int CreateDepthStencilView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
         int CreateUnorderedAccessView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+
+        void UpdateFrameStatistics(uint32_t completedFence);
 
     public:
         void CreateBackBuffers(D3D12Viewport* viewport);
@@ -547,6 +552,7 @@ namespace PhxEngine::RHI::D3D12
         // -- Frame Frences --
         Microsoft::WRL::ComPtr<ID3D12Fence> m_frameFence;
         uint64_t m_frameCount = 1;
+        Core::StatHistory m_frameStats;
 
         struct InflightDataEntry
         {
@@ -555,6 +561,8 @@ namespace PhxEngine::RHI::D3D12
         };
 
         std::array<std::deque<InflightDataEntry>, (int)CommandQueueType::Count> m_inflightData;
+
+        std::deque<std::tuple<uint32_t, D3D12TimerQuery*>> m_pendingTimerQueries;
 
         struct DeleteItem
         {

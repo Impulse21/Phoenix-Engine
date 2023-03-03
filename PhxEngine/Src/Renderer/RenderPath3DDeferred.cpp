@@ -5,7 +5,7 @@
 #include <PhxEngine/Scene/Scene.h>
 #include <PhxEngine/Scene/Components.h>
 #include <PhxEngine/Core/Math.h>
-#include <PhxEngine/Core/FrameProfiler.h>
+#include <PhxEngine/Core/Profiler.h>
 #include <taskflow/taskflow.hpp>
 
 #include "DrawQueue.h"

@@ -31,7 +31,7 @@ struct Lighting
     }
 };
 
-void CalculateDirectLightingContribution(in Scene scene, in BRDFDataPerSurface brdfSurfaceData, in Surface surface, inout Lighting lightingTerms)
+void DirectLightContribution(in Scene scene, in BRDFDataPerSurface brdfSurfaceData, in Surface surface, inout Lighting lightingTerms)
 {
     // TODO Handle Lights in some way
     float shadow = 1.0;
@@ -52,7 +52,7 @@ void CalculateDirectLightingContribution(in Scene scene, in BRDFDataPerSurface b
     lightingTerms.Direct.Specular += (shadow * lightingTerms.Direct.Specular) * lightColour;
 }
 
-void CalculateIndirectLightingContribution_IBL(
+void IndirectLightContribution_IBL(
     in Scene scene,
     in BRDFDataPerSurface brdfSurfaceData,
     in Surface surface,

@@ -1592,6 +1592,8 @@ namespace PhxEngine::RHI
         virtual bool CheckCapability(DeviceCapability deviceCapability) = 0;
 
         virtual bool IsDevicedRemoved() = 0;
+
+        virtual float GetAvgFrameTime() = 0;
     };
 
     extern void ReportLiveObjects();

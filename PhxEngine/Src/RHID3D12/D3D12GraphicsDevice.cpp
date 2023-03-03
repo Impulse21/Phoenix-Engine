@@ -477,7 +477,7 @@ ICommandList* PhxEngine::RHI::D3D12::D3D12GraphicsDevice::BeginCommandRecording(
 {
 	CommandQueue* queue = this->GetQueue(queueType);
 
-	D3D12CommandList* commandList = queue->RequestCommandList();;
+	D3D12CommandList* commandList = queue->RequestCommandList();
 	commandList->Open();
 
 	return commandList;
@@ -2617,6 +2617,23 @@ int PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateUnorderedAccessView(Textur
 
 	textureImpl->UavSubresourcesAlloc.push_back(view);
 	return textureImpl->UavSubresourcesAlloc.size() - 1;
+}
+
+void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::UpdateFrameStatistics(uint32_t completedFence)
+{
+	while (!this->m_pendingTimerQueries.empty())
+	{
+		std::tuple<uint32_t, D3D12TimerQuery*>& timerQueryTuple = this->m_pendingTimerQueries.front();
+		if (std::get<0>(timerQueryTuple) < completedFence)
+		{
+			this->TimeStastd::get<1>(timerQueryTuple);
+			this->m_deleteQueue.pop_front();
+		}
+		else
+		{
+			break;
+		}
+	}
 }
 
 /*

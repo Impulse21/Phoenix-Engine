@@ -22,7 +22,7 @@
 #include <PhxEngine/Engine/CameraControllers.h>
 #include <PhxEngine/Renderer/RenderPath3DDeferred.h>
 #include <PhxEngine/Renderer/RenderPath3DForward.h>
-#include <PhxEngine/Core/FrameProfiler.h>
+#include <PhxEngine/Core/Profiler.h>
 #include <PhxEngine/Engine/ImguiRenderer.h>
 
 #include <imgui.h>
@@ -31,7 +31,7 @@ using namespace PhxEngine::RHI;
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Renderer;
 
-// #define TEST_SCENE
+#define SIMPLE_SCENE
 
 class PhxEngineRuntimeApp : public ApplicationBase
 {
@@ -68,17 +68,18 @@ public:
             this->m_shaderFactory,
             this->GetRoot()->GetFrameProfiler());
 
-#ifndef TEST_SCENE
-        // std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza_Intel/Main/NewSponza_Main_glTF.gltf";
+#ifdef SIMPLE_SCENE
         std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza/Sponza.gltf";
 #else
-        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/TestScenes/VisibilityBufferScene.gltf"; 
+        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza_Intel/Main/NewSponza_Main_glTF.gltf";
 #endif
-#ifndef TEST_SCENE
-        this->m_loadAsync = false; // race condition when loading textures
+
+#ifdef ASYNC_LOADING
+        this->m_loadAsync = true; // race condition when loading textures
 #else
         this->m_loadAsync = false; // race condition when loading textures
 #endif
+
         this->BeginLoadingScene(nativeFS, scenePath);
 
         this->m_deferredRenderer->Initialize(this->GetRoot()->GetCanvasSize());

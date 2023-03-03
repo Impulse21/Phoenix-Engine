@@ -4,9 +4,14 @@
 #include <vector>
 #include <unordered_map>
 #include <PhxEngine/Core/StopWatch.h>
-#include "PhxEngine/RHI/PhxRHI.h"
 #include <PhxEngine/Core/StringHash.h>
 
+// TODO: REmove
+namespace PhxEngine::RHI
+{
+	IGraphicsDevice;
+
+}
 namespace PhxEngine::Core
 {
 	class StatHistory
@@ -83,7 +88,6 @@ namespace PhxEngine::Core
 
 	private:
 		std::mutex m_mutex;
-		RHI::IGraphicsDevice* m_gfxDevice;
 
 		// -- Buffer per frame ---
 		std::unordered_map<RangeId, Range> m_profileRanges;

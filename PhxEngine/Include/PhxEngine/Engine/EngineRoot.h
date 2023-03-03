@@ -3,7 +3,7 @@
 #include <string>
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Engine/ApplicationEvents.h>
-#include <PhxEngine/Core/FrameProfiler.h>
+#include <PhxEngine/Core/Profiler.h>
 #include <DirectXMath.h>
 
 namespace PhxEngine

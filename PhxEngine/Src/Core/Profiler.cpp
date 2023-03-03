@@ -1,5 +1,5 @@
 #include "phxpch.h"
-#include "PhxEngine/Core/FrameProfiler.h"
+#include "PhxEngine/Core/Profiler.h"
 #include "imgui.h"
 #include <PhxEngine/Core/StringHash.h>
 

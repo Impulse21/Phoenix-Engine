@@ -169,9 +169,9 @@ float4 main(PSInput input) : SV_TARGET
     const float3 viewIncident = input.PositionWS - (float3) GetCamera().GetPosition();
     BRDFDataPerSurface brdfSurfaceData = CreatePerSurfaceBRDFData(surface, input.PositionWS, viewIncident);
     
-    CalculateDirectLightingContribution(GetScene(), brdfSurfaceData, surface, lightingTerms);
+    DirectLightContribution(GetScene(), brdfSurfaceData, surface, lightingTerms);
     
-    CalculateIndirectLightingContribution_IBL(
+    IndirectLightContribution_IBL(
         GetScene(),
         brdfSurfaceData,
         surface,
