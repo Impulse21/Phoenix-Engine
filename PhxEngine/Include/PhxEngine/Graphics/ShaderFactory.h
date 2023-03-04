@@ -30,6 +30,7 @@ namespace PhxEngine::Graphics
 		bool IsShaderOutdated(std::filesystem::path const& shader);
 
 	private:
+		std::mutex m_loadMutex;
 		const std::filesystem::path m_basePath;
 		std::shared_ptr<Core::IFileSystem> m_fs;
 		std::unordered_map<std::string, std::weak_ptr<Core::IBlob>> m_bytecodeCache;

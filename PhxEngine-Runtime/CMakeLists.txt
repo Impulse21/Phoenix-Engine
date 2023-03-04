@@ -1,12 +1,16 @@
+include(../PhxEngine/compileshaders.cmake)
 
-# Required dependencies
+file(GLOB sources "Src/*.cpp" "Src/*.h")
 
-file(GLOB PhxEngine_Runtime_SRC
-    Src/*.h
-    Src/*.cpp)
+set(project PhxEngine-Runtime)
+set(folder "Applications/Runtime")
 
-add_executable(PhxEngine-Runtime ${PhxEngine_Runtime_SRC})
-target_link_libraries(PhxEngine-Runtime PhxEngine)
 
-set_target_properties(PhxEngine-Runtime  PROPERTIES FOLDER "Applications/Runtime")
-set_target_properties(PhxEngine-Runtime PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+add_executable(${project} WIN32 ${sources})
+target_link_libraries(${project} PhxEngine)
+add_dependencies(${project} ${project}_shaders)
+set_target_properties(${project} PROPERTIES FOLDER ${folder})
+
+if (MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /MP")
+endif()

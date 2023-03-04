@@ -38,8 +38,10 @@ PhxEngine::RHI::D3D12::D3D12CommandList::~D3D12CommandList()
 void PhxEngine::RHI::D3D12::D3D12CommandList::Open()
 {
 	assert(!this->m_activeD3D12CommandAllocator);
+    assert(this->m_deferredDeleteQueue.empty());
 
     this->m_trackedData = std::make_shared<TrackedResources>();
+    this->m_timerQueries.clear();
 
     this->m_activeD3D12CommandAllocator = this->m_parentQueue->RequestAllocator();
 
@@ -298,7 +300,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::TransitionBarriers(Core::Span<GpuB
     }
 }
 
-void PhxEngine::RHI::D3D12::D3D12CommandList::BeginRenderPassBackBuffer()
+void PhxEngine::RHI::D3D12::D3D12CommandList::BeginRenderPassBackBuffer(bool clear)
 {
     D3D12Viewport& viewport = *this->m_graphicsDevice.GetActiveViewport();
     if (!viewport.RenderPass.IsValid())
@@ -320,11 +322,19 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BeginRenderPassBackBuffer()
 
     D3D12_RENDER_PASS_RENDER_TARGET_DESC RTV = {};
     RTV.cpuDescriptor = backBuffer->RtvAllocation.Allocation.GetCpuHandle();
-    RTV.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
-    RTV.BeginningAccess.Clear.ClearValue.Color[0] = viewport.Desc.OptmizedClearValue.Colour.R;
-    RTV.BeginningAccess.Clear.ClearValue.Color[1] = viewport.Desc.OptmizedClearValue.Colour.G;
-    RTV.BeginningAccess.Clear.ClearValue.Color[2] = viewport.Desc.OptmizedClearValue.Colour.B;
-    RTV.BeginningAccess.Clear.ClearValue.Color[3] = viewport.Desc.OptmizedClearValue.Colour.A;
+    if (clear)
+    {
+        RTV.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+        RTV.BeginningAccess.Clear.ClearValue.Color[0] = viewport.Desc.OptmizedClearValue.Colour.R;
+        RTV.BeginningAccess.Clear.ClearValue.Color[1] = viewport.Desc.OptmizedClearValue.Colour.G;
+        RTV.BeginningAccess.Clear.ClearValue.Color[2] = viewport.Desc.OptmizedClearValue.Colour.B;
+        RTV.BeginningAccess.Clear.ClearValue.Color[3] = viewport.Desc.OptmizedClearValue.Colour.A;
+    }
+    else
+    {
+        RTV.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+    }
+
     RTV.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
     this->m_d3d12CommandList6->BeginRenderPass(1, &RTV, nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
 }
@@ -680,7 +690,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::WriteTexture(TextureHandle texture
         subresources.size(),
         subresources.data());
 
-    this->m_graphicsDevice.DeleteD3DResource(intermediateResource);
+    this->m_deferredDeleteQueue.push_back(intermediateResource);
 }
 
 void PhxEngine::RHI::D3D12::D3D12CommandList::WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* Data, size_t rowPitch, size_t depthPitch)
@@ -1136,10 +1146,10 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::DispatchMeshIndirect(RHI::BufferHa
 
 void PhxEngine::RHI::D3D12::D3D12CommandList::BeginTimerQuery(TimerQueryHandle query)
 {
-    auto queryImpl = std::static_pointer_cast<TimerQuery>(query);
+    assert(query.IsValid());
+    D3D12TimerQuery* queryImpl = this->m_graphicsDevice.GetTimerQueryPool().Get(query);
 
-    this->m_trackedData->TimerQueries.push_back(queryImpl);
-
+    this->m_timerQueries.push_back(query);
     this->m_d3d12CommandList->EndQuery(
         this->m_graphicsDevice.GetQueryHeap(),
         D3D12_QUERY_TYPE_TIMESTAMP,
@@ -1148,12 +1158,11 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BeginTimerQuery(TimerQueryHandle q
 
 void PhxEngine::RHI::D3D12::D3D12CommandList::EndTimerQuery(TimerQueryHandle query)
 {
-    auto queryImpl = std::static_pointer_cast<TimerQuery>(query);
+    D3D12TimerQuery* queryImpl = this->m_graphicsDevice.GetTimerQueryPool().Get(query);
 
+    this->m_timerQueries.push_back(query);
 
     const D3D12Buffer* timeStampQueryBuffer = this->m_graphicsDevice.GetBufferPool().Get(this->m_graphicsDevice.GetTimestampQueryBuffer());
-
-    this->m_trackedData->TimerQueries.push_back(queryImpl);
 
     this->m_d3d12CommandList->EndQuery(
         this->m_graphicsDevice.GetQueryHeap(),

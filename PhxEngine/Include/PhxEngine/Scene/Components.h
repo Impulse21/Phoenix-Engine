@@ -9,6 +9,7 @@
 #include <PhxEngine/Core/Primitives.h>
 
 #define LH
+
 // Required for Operators - Move to CPP please
 using namespace DirectX;
 namespace PhxEngine::Scene
@@ -201,7 +202,11 @@ namespace PhxEngine::Scene
 		float FoV = 1.0f; // Radians
 
 		DirectX::XMFLOAT3 Eye = { 0.0f, 0.0f, 0.0f };
+#ifdef LH
 		DirectX::XMFLOAT3 Forward = { 0.0f, 0.0f, 1.0f };
+#else
+		DirectX::XMFLOAT3 Forward = { 0.0f, 0.0f, -1.0f };
+#endif
 		DirectX::XMFLOAT3 Up = { 0.0f, 1.0f, 0.0f };
 
 		DirectX::XMFLOAT4X4 View;
@@ -280,8 +285,6 @@ namespace PhxEngine::Scene
 #else
 			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(this->FoV, aspectRatio, nearZ, farZ);
 #endif
-			// auto projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(this->FoV, 1.7f, this->ZFar, this->ZNear);
-
 			DirectX::XMStoreFloat4x4(&this->Projection, projectionMatrix);
 
 			this->UpdateCache();
@@ -522,7 +525,7 @@ namespace PhxEngine::Scene
 			assert(this->IsTriMesh());
 			for (auto iter = this->Indices.begin(); iter != this->Indices.end(); iter += 3)
 			{
-				std::swap(*iter, *(iter + 2));
+				std::swap(*(iter + 1), *(iter + 2));
 			}
 		}
 		

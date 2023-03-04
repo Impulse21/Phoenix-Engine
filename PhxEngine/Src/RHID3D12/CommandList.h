@@ -14,7 +14,6 @@ namespace PhxEngine::RHI::D3D12
 	class D3D12ComputePipeline;
 	class D3D12MeshPipeline;
 
-	class TimerQuery;
 	struct TrackedResources
 	{
 		std::vector<std::shared_ptr<IRHIResource>> Resource;
@@ -77,7 +76,7 @@ namespace PhxEngine::RHI::D3D12
 		void TransitionBarrier(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState) override;
 		void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers) override;
 
-		void BeginRenderPassBackBuffer() override;
+		void BeginRenderPassBackBuffer(bool clear = true) override;
 		RenderPassHandle GetRenderPassBackBuffer() override;
 		void BeginRenderPass(RenderPassHandle renderPass) override;
 		void EndRenderPass() override;
@@ -144,7 +143,10 @@ namespace PhxEngine::RHI::D3D12
 
 	public:
 		std::shared_ptr<TrackedResources> Executed(uint64_t fenceValue);
+		std::deque<Microsoft::WRL::ComPtr<ID3D12Resource>>& GetDeferredDeleteQueue() { return this->m_deferredDeleteQueue; }
+
 		ID3D12CommandList* GetD3D12CommandList() { return this->m_d3d12CommandList.Get(); }
+		Core::Span<RHI::TimerQueryHandle> GetTimerQueries() const { return Core::Span<RHI::TimerQueryHandle>(this->m_timerQueries.data(), this->m_timerQueries.size()); }
 
 		void SetDescritporHeaps(std::array<GpuDescriptorHeap*, 2> const& shaderHeaps);
 
@@ -186,6 +188,11 @@ namespace PhxEngine::RHI::D3D12
 
 		RHI::RenderPassHandle m_activeRenderTarget;
 		std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> m_buildGeometries;
+
+		std::vector<RHI::TimerQueryHandle> m_timerQueries;
+
+
+		std::deque<Microsoft::WRL::ComPtr<ID3D12Resource>> m_deferredDeleteQueue;
 	};
 }
 

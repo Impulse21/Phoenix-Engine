@@ -264,8 +264,9 @@ PhxEngine::RHI::D3D12::D3D12GraphicsDevice::D3D12GraphicsDevice(D3D12Adapter con
 	, m_computePipelinePool(10)
 	, m_meshPipelinePool(10)
 	, m_inputLayoutPool(10)
-	, m_shaderPool(10)
+	, m_shaderPool(20)
 	, m_commandSignaturePool(10)
+	, m_timerQueryPool(this->kTimestampQueryHeapSize / 2)
 {
 	sSingleton = this;
 	IGraphicsDevice::GPtr = this;
@@ -476,7 +477,7 @@ ICommandList* PhxEngine::RHI::D3D12::D3D12GraphicsDevice::BeginCommandRecording(
 {
 	CommandQueue* queue = this->GetQueue(queueType);
 
-	D3D12CommandList* commandList = queue->RequestCommandList();;
+	D3D12CommandList* commandList = queue->RequestCommandList();
 	commandList->Open();
 
 	return commandList;
@@ -1947,21 +1948,52 @@ TimerQueryHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateTimerQuery()
 	int queryIndex = this->m_timerQueryIndexPool.Allocate();
 	if (queryIndex < 0)
 	{
-		return nullptr;
+		assert(false);
+		return {};
 	}
 
-	auto timerQuery = std::make_shared<TimerQuery>(this->m_timerQueryIndexPool);
-	timerQuery->BeginQueryIndex = queryIndex * 2;
-	timerQuery->EndQueryIndex = timerQuery->BeginQueryIndex + 1;
-	timerQuery->Resolved = false;
-	timerQuery->Time = {};
+	TimerQueryHandle handle = this->m_timerQueryPool.Emplace();
 
-	return timerQuery;
+	D3D12TimerQuery& timerQuery = *this->m_timerQueryPool.Get(handle);
+	
+	timerQuery.BeginQueryIndex = queryIndex * 2;
+	timerQuery.EndQueryIndex = timerQuery.BeginQueryIndex + 1;
+	timerQuery.Resolved = false;
+	timerQuery.Time = {};
+
+	
+	return handle;
+}
+
+void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::DeleteTimerQuery(TimerQueryHandle query)
+{
+	if (!query.IsValid())
+	{
+		return;
+	}
+
+	DeleteItem d =
+	{
+		this->m_frameCount,
+		[=]()
+		{
+			D3D12TimerQuery* impl = this->m_timerQueryPool.Get(query);
+
+			if (impl)
+			{
+				this->m_timerQueryIndexPool.Release(static_cast<int>(impl->BeginQueryIndex) / 2);
+				this->m_timerQueryPool.Release(query);
+			}
+		}
+	};
+
+	this->m_deleteQueue.push_back(d);
 }
 
 bool PhxEngine::RHI::D3D12::D3D12GraphicsDevice::PollTimerQuery(TimerQueryHandle query)
 {
-	auto queryImpl = std::static_pointer_cast<TimerQuery>(query);
+	assert(query.IsValid());
+	D3D12TimerQuery* queryImpl = this->m_timerQueryPool.Get(query);
 
 	if (!queryImpl->Started)
 	{
@@ -1984,7 +2016,8 @@ bool PhxEngine::RHI::D3D12::D3D12GraphicsDevice::PollTimerQuery(TimerQueryHandle
 
 TimeStep PhxEngine::RHI::D3D12::D3D12GraphicsDevice::GetTimerQueryTime(TimerQueryHandle query)
 {
-	auto queryImpl = std::static_pointer_cast<TimerQuery>(query);
+	assert(query.IsValid());
+	D3D12TimerQuery* queryImpl = this->m_timerQueryPool.Get(query);
 
 	if (queryImpl->Resolved)
 	{
@@ -2025,7 +2058,9 @@ TimeStep PhxEngine::RHI::D3D12::D3D12GraphicsDevice::GetTimerQueryTime(TimerQuer
 
 void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::ResetTimerQuery(TimerQueryHandle query)
 {
-	auto queryImpl = std::static_pointer_cast<TimerQuery>(query);
+	assert(query.IsValid());
+	D3D12TimerQuery* queryImpl = this->m_timerQueryPool.Get(query);
+
 	queryImpl->Started = false;
 	queryImpl->Resolved = false;
 	queryImpl->Time = 0.f;
@@ -2051,56 +2086,58 @@ ExecutionReceipt PhxEngine::RHI::D3D12::D3D12GraphicsDevice::ExecuteCommandLists
 
 	auto fenceValue = queue->ExecuteCommandLists(d3d12CommandLists);
 
+
+	for (auto commandList : commandLists)
+	{
+		auto cmdImpl = SafeCast<D3D12CommandList*>(commandList);
+
+		while (!cmdImpl->GetDeferredDeleteQueue().empty())
+		{
+			Microsoft::WRL::ComPtr<ID3D12Resource> resource = cmdImpl->GetDeferredDeleteQueue().front();
+			this->DeleteD3DResource(resource);
+			cmdImpl->GetDeferredDeleteQueue().pop_front();
+		}
+	}
+
 	if (waitForCompletion)
 	{
 		queue->WaitForFence(fenceValue);
 
-		for (size_t i = 0; i < commandLists.Size(); i++)
+		for (auto commandList : commandLists)
 		{
-			/*
-			auto trackedResources = static_cast<D3D12CommandList*>(commandLists[i])->Executed(fenceValue);
-			if (!trackedResources)
-			{
-				continue;
-			}
+			auto cmdImpl = SafeCast<D3D12CommandList*>(commandList);
 
-			for (auto timerQuery : trackedResources->TimerQueries)
+			for (auto timerQueryHandle : cmdImpl->GetTimerQueries())
 			{
-				timerQuery->Started = true;
-				timerQuery->Resolved = false;
-
-				// No need to set command queue as it has already been executed.
+				auto timerQuery = this->GetTimerQueryPool().Get(timerQueryHandle);
+				if (timerQuery)
+				{
+					timerQuery->Started = true;
+					timerQuery->Resolved = false;
+				}
 			}
-			*/
 		}
 	}
-#if false
 	else
 	{
-		for (size_t i = 0; i < d3d12CommandLists.size(); i++)
+		for (auto commandList : commandLists)
 		{
-			auto trackedResources = d3d12CommandLists[i]->Executed(fenceValue);
-			
-			if (!trackedResources)
-			{
-				continue;
-			}
+			auto cmdImpl = SafeCast<D3D12CommandList*>(commandList);
 
-			assert(trackedResources->IsEmpty());
-			for (auto timerQuery : trackedResources->TimerQueries)
+			for (auto timerQueryHandle : cmdImpl->GetTimerQueries())
 			{
-				timerQuery->Started = true;
-				timerQuery->Resolved = false;
-				timerQuery->CommandQueue = queue;
-				timerQuery->FenceCount = fenceValue;
+				auto timerQuery = this->GetTimerQueryPool().Get(timerQueryHandle);
+				if (timerQuery)
+				{
+					timerQuery->Started = true;
+					timerQuery->Resolved = false;
+					timerQuery->CommandQueue = queue;
+					timerQuery->FenceCount = fenceValue;
+				}
 			}
-
-			InflightDataEntry entry = { fenceValue, trackedResources };
-			this->m_inflightData[(int)executionQueue].emplace_back(entry);
 		}
-
 	}
-#endif
+
 	return { fenceValue, executionQueue };
 }
 

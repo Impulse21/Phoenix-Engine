@@ -24,7 +24,7 @@ void GBufferRenderTargets::Initialize(
     desc.DebugName = "Depth Buffer";
     desc.OptmizedClearValue.DepthStencil.Depth = 1.0f;
     desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::DepthStencil;
-    desc.InitialState = RHI::ResourceStates::DepthWrite;
+    desc.InitialState = RHI::ResourceStates::ShaderResource;
     this->DepthTex = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
     // -- Depth end ---
 
@@ -50,6 +50,14 @@ void GBufferRenderTargets::Initialize(
     desc.Format = RHI::RHIFormat::SRGBA8_UNORM;
     desc.DebugName = "Specular Buffer";
     this->SpecularTex = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
+
+    this->GBufferFormats = {
+                    IGraphicsDevice::GPtr->GetTextureDesc(this->AlbedoTex).Format,
+                    IGraphicsDevice::GPtr->GetTextureDesc(this->NormalTex).Format,
+                    IGraphicsDevice::GPtr->GetTextureDesc(this->SurfaceTex).Format,
+                    IGraphicsDevice::GPtr->GetTextureDesc(this->SpecularTex).Format };
+
+    this->DepthFormat = IGraphicsDevice::GPtr->GetTextureDesc(this->DepthTex).Format;
 
     this->RenderPass = IGraphicsDevice::GPtr->CreateRenderPass(
         {
@@ -87,9 +95,9 @@ void GBufferRenderTargets::Initialize(
                     .Type = RenderPassAttachment::Type::DepthStencil,
                     .LoadOp = RenderPassAttachment::LoadOpType::Clear,
                     .Texture = this->DepthTex,
-                    .InitialLayout = RHI::ResourceStates::DepthWrite,
+                    .InitialLayout = RHI::ResourceStates::ShaderResource,
                     .SubpassLayout = RHI::ResourceStates::DepthWrite,
-                    .FinalLayout = RHI::ResourceStates::DepthWrite
+                    .FinalLayout = RHI::ResourceStates::ShaderResource
                 },
             }
         });

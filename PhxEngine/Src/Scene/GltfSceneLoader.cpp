@@ -22,7 +22,10 @@ using namespace DirectX;
 
 namespace
 {
-	constexpr bool cUseLeftHandCoord = true;
+	constexpr bool cReverseWinding = true;
+	constexpr bool cReverseZ = true;
+	constexpr const size_t cIndexRemap[] = { 0,2,1 };
+
 }
 
 // TODO: Use Span
@@ -485,6 +488,15 @@ void GltfSceneLoader::LoadNode(
 
 	transform.UpdateTransform();
 
+	if (cReverseZ)
+	{
+		transform.LocalTranslation.z *= -1.0f;
+		transform.LocalRotation.x *= -1.0f;
+		transform.LocalRotation.y *= 1.0f;
+		transform.SetDirty();
+		transform.UpdateTransform();
+	}
+
 	if (parent)
 	{
 		entity.AttachToParent(parent, true);
@@ -908,20 +920,32 @@ void GltfSceneLoader::LoadMeshData(
 
 		// GLTF 2.0 front face is CCW, I currently use CW as front face.
 		// something to consider to change.
-		if (!cUseLeftHandCoord)
+		if (cReverseWinding)
 		{
 			mesh.ReverseWinding();
-
-			for (auto& pos : mesh.VertexPositions)
-			{
-				pos.z *= -1;
-			}
 		}
 
 		// Generate Tangents
 		if ((mesh.Flags & Assets::Mesh::Flags::kContainsNormals) != 0 && (mesh.Flags & Assets::Mesh::Flags::kContainsTexCoords) != 0 && (mesh.Flags & Assets::Mesh::Flags::kContainsTangents) == 0)
 		{
 			ComputeTangentSpace(mesh);
+		}
+
+		if (cReverseZ)
+		{
+			// Flip Z
+			for (auto& pos : mesh.VertexPositions)
+			{
+				pos.z *= -1.0f;
+			}
+			for (auto& normal : mesh.VertexNormals)
+			{
+				normal.z *= -1.0f;
+			}
+			for (auto& tan : mesh.VertexTangents)
+			{
+				tan.z *= -1.0f;
+			}
 		}
 	}
 }

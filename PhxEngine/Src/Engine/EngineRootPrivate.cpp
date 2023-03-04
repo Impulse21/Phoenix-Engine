@@ -56,6 +56,8 @@ void PhxEngine::PhxEngineRoot::Initialize(EngineParam const& params)
 
 	this->m_canvasSize.x = windowSpec.Width;
 	this->m_canvasSize.y = windowSpec.Height;
+
+	this->m_frameProfiler = std::make_shared<Core::FrameProfiler>(this->m_gfxDevice.get());
 }
 
 void PhxEngine::PhxEngineRoot::Finalizing()
@@ -68,6 +70,7 @@ void PhxEngine::PhxEngineRoot::Run()
 {
 	while (!this->m_window->ShouldClose())
 	{
+		this->m_frameProfiler->BeginFrame();
 		TimeStep deltaTime = this->m_frameTimer.Elapsed();
 		this->m_frameTimer.Begin();
 
@@ -76,11 +79,18 @@ void PhxEngine::PhxEngineRoot::Run()
 		
 		if (this->m_windowIsVisibile)
 		{
+
+			auto updateLoopId = this->m_frameProfiler->BeginRangeCPU("Update Loop");
 			this->Update(deltaTime);
+			this->m_frameProfiler->EndRangeCPU(updateLoopId);
+
+			auto renderLoopId = this->m_frameProfiler->BeginRangeCPU("Render Loop");
 			this->Render();
+			this->m_frameProfiler->EndRangeCPU(renderLoopId);
 		}
 
 		this->m_profile.UpdateAverageFrameTime(deltaTime);
+		this->m_frameProfiler->EndFrame();
 		this->m_frameCount++;
 	}
 

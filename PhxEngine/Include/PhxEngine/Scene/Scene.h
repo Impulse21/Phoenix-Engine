@@ -97,6 +97,8 @@ namespace PhxEngine::Scene
 		PhxEngine::RHI::TextureHandle GetEnvMapArray() const { return this->m_envMapArray; }
 		const PhxEngine::RHI::RenderPassHandle GetEnvMapRenderPasses(int index) { return this->m_envMapRenderPasses[index]; }
 
+		PhxEngine::RHI::BufferHandle GetGlobalIndexBuffer() const { return this->m_globalIndexBuffer; }
+
 		PhxEngine::RHI::BufferHandle GetMeshletBuffer() const { return this->m_meshletGpuBuffer; }
 		size_t GetNumMeshlets() const { return this->m_numMeshlets; }
 
@@ -114,11 +116,15 @@ namespace PhxEngine::Scene
 
 		void UpdateGpuBufferSizes();
 
+		void MergeMeshes(RHI::ICommandList* cmd);
+
 	private:
 		Shader::Scene m_shaderData;
 
 		entt::registry m_registry;
 		std::shared_ptr<Assets::Texture> m_brdfLut;
+
+		RHI::BufferHandle m_globalIndexBuffer;
 
 		size_t m_numInstances = 0;
 		PhxEngine::RHI::BufferHandle m_instanceGpuBuffer;

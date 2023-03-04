@@ -89,8 +89,8 @@ void PhxEngine::Scene::Scene::ConstructRenderData(
 		meshComp.CreateRenderData(cmd, indexUploader, vertexUploader);
 	}
 
-	indexUploader.Free();
-	vertexUploader.Free();
+	// Construct Global Index buffer
+	this->MergeMeshes(cmd);
 }
 
 RHI::DescriptorIndex PhxEngine::Scene::Scene::GetBrdfLutDescriptorIndex()
@@ -155,6 +155,7 @@ void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> c
 	this->m_shaderData.GeometryBufferIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_geometryGpuBuffer, RHI::SubresouceType::SRV);
 	this->m_shaderData.MaterialBufferIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_materialGpuBuffer, RHI::SubresouceType::SRV);
 	this->m_shaderData.MeshletBufferIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_meshletGpuBuffer, RHI::SubresouceType::SRV);
+	this->m_shaderData.GlobalIndexBufferIdx = IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_globalIndexBuffer, RHI::SubresouceType::SRV);
 	// TODO: Light Buffer
 	this->m_shaderData.RT_TlasIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_tlas);
 
@@ -794,4 +795,80 @@ void PhxEngine::Scene::Scene::UpdateGpuBufferSizes()
 			this->m_tlas = IGraphicsDevice::GPtr->CreateRTAccelerationStructure(desc);
 		}
 	}
+}
+
+void PhxEngine::Scene::Scene::MergeMeshes(RHI::ICommandList* cmd)
+{
+	uint64_t indexCount = 0;
+	uint64_t indexSizeInBytes = 0;
+
+	auto view = this->GetAllEntitiesWith<MeshComponent>();
+	for (auto e : view)
+	{
+		auto& meshComp = view.get<MeshComponent>(e);
+
+		meshComp.GlobalIndexBufferOffset = indexCount;
+		indexCount += meshComp.TotalIndices;
+		indexSizeInBytes += meshComp.GetIndexBufferSizeInBytes();
+	}
+
+	if (this->GetGlobalIndexBuffer().IsValid())
+	{
+		IGraphicsDevice::GPtr->DeleteBuffer(this->GetGlobalIndexBuffer());
+	}
+
+	RHI::BufferDesc indexBufferDesc = {};
+	indexBufferDesc.SizeInBytes = indexSizeInBytes;
+	indexBufferDesc.StrideInBytes = sizeof(uint32_t);
+	indexBufferDesc.DebugName = "Index Buffer";
+	indexBufferDesc.Binding = RHI::BindingFlags::IndexBuffer;
+	this->m_globalIndexBuffer = RHI::IGraphicsDevice::GPtr->CreateIndexBuffer(indexBufferDesc);
+
+	// Upload data
+	{
+		RHI::GpuBarrier preCopyBarriers[] =
+		{
+			RHI::GpuBarrier::CreateBuffer(this->GetGlobalIndexBuffer(), IGraphicsDevice::GPtr->GetBufferDesc(this->GetGlobalIndexBuffer()).InitialState, RHI::ResourceStates::CopyDest),
+		};
+
+		cmd->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
+	}
+
+	for (auto e : view)
+	{
+		auto& meshComp = view.get<MeshComponent>(e);
+
+		BufferDesc vertexBufferDesc = IGraphicsDevice::GPtr->GetBufferDesc(meshComp.VertexGpuBuffer);
+		BufferDesc indexBufferDesc = IGraphicsDevice::GPtr->GetBufferDesc(meshComp.IndexGpuBuffer);
+		RHI::GpuBarrier preCopyBarriers[] =
+		{
+			RHI::GpuBarrier::CreateBuffer(meshComp.IndexGpuBuffer, RHI::ResourceStates::IndexGpuBuffer | RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopySource),
+		};
+
+		cmd->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
+
+		cmd->CopyBuffer(
+			this->GetGlobalIndexBuffer(),
+			meshComp.GlobalIndexBufferOffset * indexBufferDesc.StrideInBytes,
+			meshComp.IndexGpuBuffer,
+			0,
+			indexBufferDesc.SizeInBytes);
+
+		// Upload data
+		RHI::GpuBarrier postCopyBarriers[] =
+		{
+			RHI::GpuBarrier::CreateBuffer(meshComp.IndexGpuBuffer, RHI::ResourceStates::CopySource, RHI::ResourceStates::IndexGpuBuffer | RHI::ResourceStates::ShaderResource),
+		};
+
+		cmd->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
+	}
+
+
+	// Upload data
+	RHI::GpuBarrier postCopyBarriers[] =
+	{
+		RHI::GpuBarrier::CreateBuffer(this->GetGlobalIndexBuffer(), RHI::ResourceStates::CopyDest, IGraphicsDevice::GPtr->GetBufferDesc(this->GetGlobalIndexBuffer()).InitialState),
+	};
+
+	cmd->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
 }

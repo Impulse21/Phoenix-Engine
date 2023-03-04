@@ -3,6 +3,7 @@
 #include <string>
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Engine/ApplicationEvents.h>
+#include <PhxEngine/Core/Profiler.h>
 #include <DirectXMath.h>
 
 namespace PhxEngine
@@ -43,6 +44,7 @@ namespace PhxEngine
 		virtual const DirectX::XMFLOAT2& GetCanvasSize() const = 0;
 		virtual void SetInformativeWindowTitle(std::string_view appName, std::string_view extraInfo) = 0;
 
+		virtual std::shared_ptr<Core::FrameProfiler> GetFrameProfiler() = 0;
 		virtual Core::IWindow* GetWindow() = 0;
 	};
 

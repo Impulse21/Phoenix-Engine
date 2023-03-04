@@ -103,6 +103,7 @@ std::shared_ptr<IBlob> PhxEngine::Graphics::ShaderFactory::GetByteCode(std::stri
 {
 	std::string adjustedName = filename;
 	{
+		auto _ = std::scoped_lock(this->m_loadMutex);
 		size_t pos = adjustedName.find(".hlsl");
 		if (pos != std::string::npos)
 		{
@@ -112,14 +113,18 @@ std::shared_ptr<IBlob> PhxEngine::Graphics::ShaderFactory::GetByteCode(std::stri
 
 	std::filesystem::path shaderFilePath = this->m_basePath / (adjustedName + ".cso");
 
-	std::weak_ptr<IBlob>& dataWkPtr = this->m_bytecodeCache[adjustedName];
-	if (auto cachedData = dataWkPtr.lock())
 	{
-		return cachedData;
+		auto _ = std::scoped_lock(this->m_loadMutex);
+		std::weak_ptr<IBlob>& dataWkPtr = this->m_bytecodeCache[adjustedName];
+		if (auto cachedData = dataWkPtr.lock())
+		{
+			return cachedData;
+		}
 	}
 
 	std::shared_ptr<IBlob> Data = this->m_fs->ReadFile(shaderFilePath);
 
+	auto _ = std::scoped_lock(this->m_loadMutex);
 	this->m_bytecodeCache[adjustedName] = std::weak_ptr(Data);
 
 	return Data;

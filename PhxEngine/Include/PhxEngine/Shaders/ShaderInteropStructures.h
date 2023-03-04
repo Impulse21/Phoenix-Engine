@@ -76,7 +76,7 @@ namespace Shader
 
 		// --- 16 byte boundary ---
 		uint IrradianceMapTexIndex;
-		uint _padding;
+		uint GlobalIndexBufferIdx;
 		uint __pading;
 		uint ___padding;
 
