@@ -22,7 +22,8 @@ using namespace DirectX;
 
 namespace
 {
-	constexpr bool cUseLeftHandCoord = true;
+	constexpr bool cReverseWinding = true;
+	constexpr bool cReverseZ = true;
 	constexpr const size_t cIndexRemap[] = { 0,2,1 };
 
 }
@@ -487,7 +488,7 @@ void GltfSceneLoader::LoadNode(
 
 	transform.UpdateTransform();
 
-	if (cUseLeftHandCoord)
+	if (cReverseZ)
 	{
 		transform.LocalTranslation.z *= -1.0f;
 		transform.LocalRotation.x *= -1.0f;
@@ -919,7 +920,7 @@ void GltfSceneLoader::LoadMeshData(
 
 		// GLTF 2.0 front face is CCW, I currently use CW as front face.
 		// something to consider to change.
-		if (cUseLeftHandCoord)
+		if (cReverseWinding)
 		{
 			mesh.ReverseWinding();
 		}
@@ -930,7 +931,7 @@ void GltfSceneLoader::LoadMeshData(
 			ComputeTangentSpace(mesh);
 		}
 
-		if (cUseLeftHandCoord)
+		if (cReverseZ)
 		{
 			// Flip Z
 			for (auto& pos : mesh.VertexPositions)
