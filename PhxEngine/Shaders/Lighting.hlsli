@@ -35,7 +35,7 @@ void DirectLightContribution(in Scene scene, in BRDFDataPerSurface brdfSurfaceDa
 {
     // TODO Handle Lights in some way
     float shadow = 1.0;
-    float3 lightDirection = normalize(float3(0.0f, -1.0f, 0.0f));
+    float3 lightDirection = normalize(float3(0.70711, -0.70711, 0));
     #ifdef RT_SHADOWS
     CalculateShadowRT(lightDirection, brdfSurfaceData.P, scene.RT_TlasIndex, shadow);
     #endif
@@ -43,13 +43,13 @@ void DirectLightContribution(in Scene scene, in BRDFDataPerSurface brdfSurfaceDa
     BRDFDataPerLight brdfLightData = CreatePerLightBRDFData(lightDirection, brdfSurfaceData);
     
     float LightIntensity = 9.0f;
-    lightingTerms.Direct.Init(0, 0);
-    lightingTerms.Direct.Diffuse = BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData) * 9.0f;
-    lightingTerms.Direct.Specular = BRDF_DirectSpecular(brdfSurfaceData, brdfLightData) * 9.0f;
+    float3 directLightContribution = BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData) * 9.0f;
+    float3 specularLightContribution = BRDF_DirectSpecular(brdfSurfaceData, brdfLightData) * 9.0f;
 
     float3 lightColour = 1.0f;
-    lightingTerms.Direct.Diffuse += (shadow * lightingTerms.Direct.Diffuse) * lightColour;
-    lightingTerms.Direct.Specular += (shadow * lightingTerms.Direct.Specular) * lightColour;
+    lightingTerms.Direct.Init(0, 0);
+    lightingTerms.Direct.Diffuse += (shadow * directLightContribution) * lightColour;
+    lightingTerms.Direct.Specular += (shadow * specularLightContribution) * lightColour;
 }
 
 void IndirectLightContribution_IBL(
