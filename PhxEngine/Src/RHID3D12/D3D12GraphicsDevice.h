@@ -423,8 +423,6 @@ namespace PhxEngine::RHI::D3D12
         int CreateDepthStencilView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
         int CreateUnorderedAccessView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
 
-        void UpdateFrameStatistics(uint32_t completedFence);
-
     public:
         void CreateBackBuffers(D3D12Viewport* viewport);
 
@@ -561,8 +559,6 @@ namespace PhxEngine::RHI::D3D12
         };
 
         std::array<std::deque<InflightDataEntry>, (int)CommandQueueType::Count> m_inflightData;
-
-        std::deque<std::tuple<uint32_t, D3D12TimerQuery*>> m_pendingTimerQueries;
 
         struct DeleteItem
         {

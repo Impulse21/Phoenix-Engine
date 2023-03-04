@@ -146,10 +146,6 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::BeginFrame()
 	}
 
 	this->RunGarbageCollection(completedFrame);
-
-	// Update Frame statistics
-	this->UpdateFrameStatistics(completedFrame);
-
 }
 
 void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::EndFrame()

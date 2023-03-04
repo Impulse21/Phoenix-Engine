@@ -5,13 +5,8 @@
 #include <unordered_map>
 #include <PhxEngine/Core/StopWatch.h>
 #include <PhxEngine/Core/StringHash.h>
+#include <PhxEngine/RHI/PhxRHI.h>
 
-// TODO: REmove
-namespace PhxEngine::RHI
-{
-	IGraphicsDevice;
-
-}
 namespace PhxEngine::Core
 {
 	class StatHistory
@@ -87,6 +82,7 @@ namespace PhxEngine::Core
 		};
 
 	private:
+		RHI::IGraphicsDevice* m_gfxDevice;
 		std::mutex m_mutex;
 
 		// -- Buffer per frame ---

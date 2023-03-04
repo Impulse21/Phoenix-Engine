@@ -2619,23 +2619,6 @@ int PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateUnorderedAccessView(Textur
 	return textureImpl->UavSubresourcesAlloc.size() - 1;
 }
 
-void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::UpdateFrameStatistics(uint32_t completedFence)
-{
-	while (!this->m_pendingTimerQueries.empty())
-	{
-		std::tuple<uint32_t, D3D12TimerQuery*>& timerQueryTuple = this->m_pendingTimerQueries.front();
-		if (std::get<0>(timerQueryTuple) < completedFence)
-		{
-			this->TimeStastd::get<1>(timerQueryTuple);
-			this->m_deleteQueue.pop_front();
-		}
-		else
-		{
-			break;
-		}
-	}
-}
-
 /*
 RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(GraphicsPipelineDesc const& desc)
 {
