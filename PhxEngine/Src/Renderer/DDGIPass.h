@@ -38,18 +38,33 @@ namespace PhxEngine::Renderer
 		Settings& GetSettings() { return this->m_settings; }
 
 	private:
-		void InitializeProbeGrid();
+		void InitializeProbeGrid(Scene::Scene const& scene);
+		void RecreateProbeGrideResources();
 
-	private: 
+	private:
+		RHI::IGraphicsDevice* m_gfxDevice;
+		DirectX::XMFLOAT2 m_canvas;
 		Settings m_settings;
 		uint32_t m_sceneId;
 
 		struct ProbeGrid
 		{
 			float ProbeDistance = 1.0f;
+			uint32_t RaysPerProbe = 256;
 			DirectX::XMFLOAT3 GridStartPosition;
 			DirectX::XMINT3 ProbeCount;
+			float ProbeMaxDistance = 4.0f; 
+			uint32_t IrradianceOctSize = 8;
+			uint32_t DepthOctSize = 16;
 		} m_probeGrid;
+
+		RHI::TextureHandle m_depthTexture;
+		RHI::TextureHandle m_radianceTexture;
+		RHI::TextureHandle m_sampleProbeGrid;
+
+		std::vector<RHI::TextureHandle> m_irradianceTextures;
+		std::vector<RHI::TextureHandle> m_depthTextures;
+		RHI::BufferHandle m_rayBuffer;
 	};
 }
 

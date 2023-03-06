@@ -49,6 +49,11 @@ namespace PhxEngine::Core
 				return { 0.0f, 0.0f, 0.0f };
 			}
 		}
+
+		static AABB Merge(AABB const& a, AABB const& b)
+		{
+			return AABB(Core::Math::Min(a.Min, b.Min), Core::Math::Max(a.Max, b.Max));
+		}
 	};
 
 	struct Frustum

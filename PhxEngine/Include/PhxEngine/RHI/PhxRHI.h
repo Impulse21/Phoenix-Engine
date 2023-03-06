@@ -1252,8 +1252,8 @@ namespace PhxEngine::RHI
 
         // -- Ray Trace Stuff END   ---
 
-        virtual ScopedMarker BeginScopedMarker(std::string name) = 0;
-        virtual void BeginMarker(std::string name) = 0;
+        virtual ScopedMarker BeginScopedMarker(std::string_view name) = 0;
+        virtual void BeginMarker(std::string_view name) = 0;
         virtual void EndMarker() = 0;
         virtual GPUAllocation AllocateGpu(size_t bufferSize, size_t stride) = 0;
 

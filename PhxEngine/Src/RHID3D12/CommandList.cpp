@@ -179,13 +179,13 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::RTBuildAccelerationStructure(RHI::
     this->m_d3d12CommandList6->BuildRaytracingAccelerationStructure(&dx12BuildDesc, 0, nullptr);
 }
 
-ScopedMarker D3D12CommandList::BeginScopedMarker(std::string name)
+ScopedMarker D3D12CommandList::BeginScopedMarker(std::string_view name)
 {
     this->BeginMarker(name);
     return ScopedMarker(this);
 }
 
-void D3D12CommandList::BeginMarker(std::string name)
+void D3D12CommandList::BeginMarker(std::string_view name)
 {
     PIXBeginEvent(this->m_d3d12CommandList.Get(), 0, std::wstring(name.begin(), name.end()).c_str());
 }

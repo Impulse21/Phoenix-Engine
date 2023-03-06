@@ -60,6 +60,39 @@ namespace Shader
 		// -- 16 byte boundary ----
 	};
 
+	struct DDGI
+	{
+		float3 GridStartPosition;
+		float MaxDepth;
+		// -- 16 byte boundary ----
+
+		float3 GridStep;
+		float DepthSharpness;
+		// -- 16 byte boundary ----
+
+		uint3 ProbeCounts;
+		float Hysteresis;
+		// -- 16 byte boundary ----
+
+		float NormalBias;
+		float EnergyPreservation;
+		uint IrradianceProbeSideLength;
+		uint IrradianceTextureWidth;
+		// -- 16 byte boundary ----
+
+		uint IrradianceTextureHeight;
+		uint DepthProbeSideLength;
+		uint DepthTextureWidth;
+		uint DepthTextureHeight;
+		// -- 16 byte boundary ----
+
+		uint RaysPerProbe;
+		uint VisibilityTest;
+		uint _padding;
+		uint __padding;
+		// -- 16 byte boundary ----
+	};
+
 	struct Scene
 	{
 		uint MeshInstanceBufferIndex;
@@ -538,6 +571,31 @@ namespace Shader
 		uint DrawFlags;
 	};
 
+	struct RayTracePushConstants
+	{
+		float4x4 RandomOrientation;
+		uint32_t NumFrames;
+		uint32_t InfiniteBounces;
+		float	GiIntensity;
+	};
+
+	struct ProbeUpdatePushConstants
+	{
+		uint32_t FirstFrame;
+	};
+
+	struct SampleProbeGridPushConstants
+	{
+		int   BufferMip;
+		float GiIntensity;
+	};
+
+	struct RayBuffer
+	{
+		uint data;
+
+	};
+
 	struct MiscPushConstants
 	{
 		float4x4 Transform;
@@ -604,6 +662,31 @@ namespace Shader
 		}
 	};
 
+	namespace DDGI
+	{
+		struct RayData
+		{
+			float3 Direction;
+			float depth;
+			float4 Radiance;
+		};
+
+		struct PackedRayData
+		{
+			uint2 Data;
+
+
+#ifndef __cplusplus
+			inline void Store(float3 offset)
+			{
+				data = pack_half3(offset);
+			}
+			inline float3 Load()
+			{
+				return unpack_half3(data);
+			}
+		};
+	}
 #ifdef __cplusplus
 }
 #endif
