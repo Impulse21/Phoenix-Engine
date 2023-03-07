@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DirectXMath.h>
+#include <PhxEngine/Core/Math.h>
 
 namespace PhxEngine::Core
 {

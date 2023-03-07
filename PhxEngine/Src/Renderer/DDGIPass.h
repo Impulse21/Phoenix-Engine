@@ -58,9 +58,11 @@ namespace PhxEngine::Renderer
 			uint32_t DepthOctSize = 16;
 		} m_probeGrid;
 
+		RHI::ShaderHandle m_rayTraceComputeShader;
+		RHI::ComputePipelineHandle m_rayTraceComputePipeline;
+
 		RHI::TextureHandle m_depthTexture;
 		RHI::TextureHandle m_radianceTexture;
-		RHI::TextureHandle m_sampleProbeGrid;
 
 		std::vector<RHI::TextureHandle> m_irradianceTextures;
 		std::vector<RHI::TextureHandle> m_depthTextures;

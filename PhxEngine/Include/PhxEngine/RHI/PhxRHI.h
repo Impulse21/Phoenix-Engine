@@ -307,6 +307,7 @@ namespace PhxEngine::RHI
         AccelStructBuildBlas    = 1 << 19,
         ShadingRateSurface      = 1 << 20,
         GenericRead             = 1 << 21,
+        ShaderResourceNonPixel  = 1 << 22,
     };
 
     PHXRHI_ENUM_CLASS_FLAG_OPERATORS(ResourceStates)

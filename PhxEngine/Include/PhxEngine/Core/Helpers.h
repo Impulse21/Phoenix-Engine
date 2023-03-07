@@ -10,8 +10,26 @@
 
 namespace PhxEngine::Core
 {
+	namespace Random
+	{
+
+		inline static std::mt19937& Generator()
+		{
+			static std::random_device rand_dev;
+			static std::mt19937 generator(rand_dev());
+			return generator;
+		}
+
+		int GetRandom(int minValue, int maxValue)
+		{
+			std::uniform_int_distribution<int>  distr(minValue, maxValue);
+			return distr(Generator());
+		}
+	}
+
 	namespace Helpers
 	{
+
 		inline void StringConvert(std::string const& from, std::wstring& to)
 		{
 #ifdef _WIN32

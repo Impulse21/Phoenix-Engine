@@ -3,6 +3,8 @@
 #include <taskflow/taskflow.hpp>
 #include <PhxEngine/Graphics/ShaderFactory.h>
 #include <PhxEngine/Scene/Scene.h>
+#include <PhxEngine/Shaders/ShaderInteropStructures.h>
+#include <PhxEngine/Core/Helpers.h>
 
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Renderer;
@@ -11,21 +13,61 @@ using namespace DirectX;
 
 void DDGI::Initialize(tf::Taskflow& taskflow, ShaderFactory& shaderFactory)
 {
-	// TODO: Create shaders and Pipeline statess
+	this->m_rayTraceComputeShader = shaderFactory.CreateShader(
+		"PhxEngine/DDGIRayTraceCS.hlsl",
+		{
+			.Stage = ShaderStage::Compute,
+			.DebugName = "DDGIRayTraceCS"
+		});
+
+	this->m_rayTraceComputePipeline = this->m_gfxDevice->CreateComputePipeline({
+			.ComputeShader = this->m_rayTraceComputeShader
+		});
+
 }
 
 void PhxEngine::Renderer::DDGI::Render(RHI::ICommandList* commandList, Scene::Scene& scene)
 {
 	{
 		commandList->BeginScopedMarker("DDGI: Ray Trace");
-		Shader::RayTracePushConstants push = {};
-		push.RandomOrientation = ;
-		push.NumFrames = ;
-		push.InfiniteBounces = 1;
-		push.GiIntensity = 1.7;
+		Shader::DDGI::PushConstants push = {};
+		push.InstanceInclusionMask = 0xFF;
+		push.FrameIndex = this->m_gfxDevice->GetFrameIndex();
+		push.RayCount = this->m_probeGrid.RaysPerProbe;
+		push.BlendSpeed = 0.02f;
 
+		commandList->SetComputeState(this->m_rayTraceComputePipeline);
 		commandList->BindPushConstant(0, push);
 
+		Shader::MiscPushConstants cb = {};
+		float angle = Core::Random::GetRandom(0.0f, 1.0f) * DirectX::XM_2PI;
+		XMVECTOR axis = XMVectorSet(
+			Core::Random::GetRandom(-1.0f, 1.0f),
+			Core::Random::GetRandom(-1.0f, 1.0f),
+			Core::Random::GetRandom(-1.0f, 1.0f),
+			0);
+
+		axis = DirectX::XMVector3Normalize(axis);
+		DirectX::XMStoreFloat4x4(&cb.Transform, DirectX::XMMatrixRotationAxis(axis, angle));
+
+		commandList->BindDynamicConstantBuffer(3, cb);
+		commandList->BindDynamicUavDescriptorTable(4, { this->m_rayBuffer });
+		const uint32_t totalProbes = this->m_probeGrid.ProbeCount.x * this->m_probeGrid.ProbeCount.y * this->m_probeGrid.ProbeCount.z;
+
+		commandList->Dispatch(totalProbes, 1, 1);
+	}
+
+	{
+		RHI::GpuBarrier barriers[] =
+		{
+			RHI::GpuBarrier::CreateMemory(),
+			RHI::GpuBarrier::CreateBuffer(this->m_rayBuffer, IGraphicsDevice::GPtr->GetBufferDesc(this->m_rayBuffer).InitialState, RHI::ResourceStates::ShaderResourceNonPixel),
+			RHI::GpuBarrier::CreateTexture(this->m_depthTextures[1], IGraphicsDevice::GPtr->GetTextureDesc(this->m_depthTextures[1]).InitialState, RHI::ResourceStates::UnorderedAccess),
+			// TODO Swich to an offset buffer.
+			RHI::GpuBarrier::CreateBuffer(this->m_rayBuffer, IGraphicsDevice::GPtr->GetBufferDesc(this->m_rayBuffer).InitialState, RHI::ResourceStates::UnorderedAccess),
+		};
+
+		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
 	}
 }
 
@@ -140,22 +182,6 @@ void PhxEngine::Renderer::DDGI::RecreateProbeGrideResources()
 	}
 
 	// Sample Probe grid
-
-	if (this->m_sampleProbeGrid.IsValid())
-	{
-		this->m_gfxDevice->DeleteTexture(this->m_sampleProbeGrid);
-	}
-
-	this->m_sampleProbeGrid = this->m_gfxDevice->CreateTexture({
-			.BindingFlags = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
-			.Dimension = RHI::TextureDimension::Texture2D,
-			.InitialState = RHI::ResourceStates::UnorderedAccess,
-			.Format = RHI::RHIFormat::RGBA16_FLOAT,
-			.Width = (uint32_t)this->m_canvas.x,
-			.Height = (uint32_t)this->m_canvas.y,
-			.MipLevels = 1,
-			.DebugName = "DDGI::SampleProbeGrid",
-		});
 
 	if (this->m_rayBuffer.IsValid())
 	{
