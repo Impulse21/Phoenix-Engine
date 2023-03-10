@@ -67,8 +67,8 @@ namespace PhxEngine::RHI::D3D12
 		void RTBuildAccelerationStructure(RHI::RTAccelerationStructureHandle accelStructure) override;
 
 		// -- RayTrace Stuff END	---
-		ScopedMarker BeginScopedMarker(std::string name) override;
-		void BeginMarker(std::string name) override;
+		ScopedMarker BeginScopedMarker(std::string_view name) override;
+		void BeginMarker(std::string_view name) override;
 		void EndMarker() override;
 		GPUAllocation AllocateGpu(size_t bufferSize, size_t stride) override;
 

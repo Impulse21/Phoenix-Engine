@@ -8,6 +8,7 @@
 #else 
 
 #include "../Include/PhxEngine/Shaders/ShaderInterop.h"
+#include "PackHelpers.hlsli"
 #endif 
 
 #ifdef __cplusplus
@@ -59,6 +60,41 @@ namespace Shader
 		uint _padding4;
 		// -- 16 byte boundary ----
 	};
+
+	/*
+	struct DDGI
+	{
+		float3 GridStartPosition;
+		float MaxDepth;
+		// -- 16 byte boundary ----
+
+		float3 GridStep;
+		float DepthSharpness;
+		// -- 16 byte boundary ----
+
+		uint3 ProbeCounts;
+		float Hysteresis;
+		// -- 16 byte boundary ----
+
+		float NormalBias;
+		float EnergyPreservation;
+		uint IrradianceProbeSideLength;
+		uint IrradianceTextureWidth;
+		// -- 16 byte boundary ----
+
+		uint IrradianceTextureHeight;
+		uint DepthProbeSideLength;
+		uint DepthTextureWidth;
+		uint DepthTextureHeight;
+		// -- 16 byte boundary ----
+
+		uint RaysPerProbe;
+		uint VisibilityTest;
+		uint _padding;
+		uint __padding;
+		// -- 16 byte boundary ----
+	};
+	*/
 
 	struct Scene
 	{
@@ -603,6 +639,53 @@ namespace Shader
 			return (Data >> 24u) & 0xF;
 		}
 	};
+
+#ifdef __cplusplus
+	namespace DDGI
+	{
+#endif
+		struct PushConstants
+		{
+			uint InstanceInclusionMask;
+			uint FrameIndex;
+			uint RayCount;
+			float BlendSpeed;
+		};
+
+		struct RayData
+		{
+			float3 Direction;
+			float Depth;
+			float4 Radiance;
+		};
+
+		struct PackedRayData
+		{
+			uint4 Data;
+
+#ifndef __cplusplus
+
+			inline void Store(RayData rayData)
+			{
+				Data.xy = PackHalf4(float4(rayData.Direction, rayData.Depth));
+				Data.zw = PackHalf4(rayData.Radiance);
+			}
+
+			inline RayData Load()
+			{
+				RayData rayData;
+				float4 unpk = UnpackHalf4(Data.xy);
+				rayData.Direction = unpk.xyz;
+				rayData.Depth = unpk.w;
+				rayData.Radiance = UnpackHalf4(Data.zw);
+				return rayData;
+			}
+#endif
+		};
+
+#ifdef __cplusplus
+	}
+#endif
 
 #ifdef __cplusplus
 }

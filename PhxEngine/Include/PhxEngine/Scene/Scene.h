@@ -102,6 +102,7 @@ namespace PhxEngine::Scene
 		PhxEngine::RHI::BufferHandle GetMeshletBuffer() const { return this->m_meshletGpuBuffer; }
 		size_t GetNumMeshlets() const { return this->m_numMeshlets; }
 
+		const Core::AABB& GetBoundingBox() const { return this->m_sceneBounds; }
 	public:
 		void OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses);
 
@@ -150,6 +151,8 @@ namespace PhxEngine::Scene
 		std::array<PhxEngine::RHI::RenderPassHandle, kEnvmapCount> m_envMapRenderPasses;
 
 		entt::entity m_activeSun;
+
+		Core::AABB m_sceneBounds;
 	};
 
 }

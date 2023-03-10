@@ -504,8 +504,8 @@ void PhxEngine::Scene::Scene::RunMeshInstanceUpdateSystem()
 		auto& mesh = this->GetRegistry().get<MeshComponent>(meshInstanceComponent.Mesh);
 
 		aabbComponent.BoundingData = mesh.Aabb.Transform(DirectX::XMLoadFloat4x4(&meshInstanceComponent.WorldMatrix));
+		this->m_sceneBounds = Core::AABB::Merge(this->m_sceneBounds, aabbComponent.BoundingData);
 	}
-
 }
 
 void PhxEngine::Scene::Scene::FreeResources()

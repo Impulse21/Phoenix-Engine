@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DirectXMath.h>
+#include <PhxEngine/Core/Math.h>
 
 namespace PhxEngine::Core
 {
@@ -48,6 +49,11 @@ namespace PhxEngine::Core
 				assert(0);
 				return { 0.0f, 0.0f, 0.0f };
 			}
+		}
+
+		static AABB Merge(AABB const& a, AABB const& b)
+		{
+			return AABB(Core::Math::Min(a.Min, b.Min), Core::Math::Max(a.Max, b.Max));
 		}
 	};
 
