@@ -455,9 +455,10 @@ namespace PhxEngine::Scene
 		RHI::BufferHandle GeneralGpuBuffer;
 		RHI::BufferHandle VertexGpuBuffer;
 		RHI::BufferHandle IndexGpuBuffer;
-		RHI::BufferHandle Meshlets;
 		RHI::BufferHandle UniqueVertexIndices;
 		RHI::BufferHandle PrimitiveIndices;
+
+		RHI::BufferHandle Meshlets;
 		size_t MeshletsCount = 0;
 
 		struct BufferViews
