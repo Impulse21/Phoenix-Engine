@@ -104,10 +104,10 @@ include_directories (${EASTL_ROOT_DIR}/test/packages/EAThread/include)
 set(EASTL_LIBRARY debug ${EASTL_ROOT_DIR}/build/Debug/EASTL.lib optimized ${EASTL_ROOT_DIR}/build/Release/EASTL.lib)
 add_custom_target(NatVis SOURCES ${EASTL_ROOT_DIR}/doc/EASTL.natvis)
 
-
 file (GLOB tlsf_src
-    ${CMAKE_CURRENT_SOURCE_DIR}/tlsf/*.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/tlsf/*.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/tlsf/tlsf.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/tlsf/tlsf.c)
 
-add_library(tlsf INTERFACE ${tlsf_src})
-set_target_properties(tlsf  PROPERTIES FOLDER ${extern_folder})
+add_library(tlsf STATIC ${CMAKE_CURRENT_SOURCE_DIR}/tlsf/tlsf.c)
+target_include_directories(tlsf PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/tlsf)
+set_target_properties(tlsf PROPERTIES FOLDER ${extern_folder})

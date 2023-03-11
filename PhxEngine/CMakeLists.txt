@@ -198,7 +198,6 @@ target_link_libraries(${project} PUBLIC
 	cereal
 	rapidjson
 	taskflow
-	${EASTL_LIBRARY}
 	tlsf)
     
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
