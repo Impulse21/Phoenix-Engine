@@ -91,3 +91,23 @@ file (GLOB stb_src
 
 add_library(stb INTERFACE ${stb_src})
 set_target_properties(stb  PROPERTIES FOLDER ${extern_folder})
+
+
+set(EASTL_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/EASTL)
+include_directories (${EASTL_ROOT_DIR}/include)
+include_directories (${EASTL_ROOT_DIR}/test/packages/EAAssert/include)
+include_directories (${EASTL_ROOT_DIR}/test/packages/EABase/include/Common)
+include_directories (${EASTL_ROOT_DIR}/test/packages/EAMain/include)
+include_directories (${EASTL_ROOT_DIR}/test/packages/EAStdC/include)
+include_directories (${EASTL_ROOT_DIR}/test/packages/EATest/include)
+include_directories (${EASTL_ROOT_DIR}/test/packages/EAThread/include)
+set(EASTL_LIBRARY debug ${EASTL_ROOT_DIR}/build/Debug/EASTL.lib optimized ${EASTL_ROOT_DIR}/build/Release/EASTL.lib)
+add_custom_target(NatVis SOURCES ${EASTL_ROOT_DIR}/doc/EASTL.natvis)
+
+
+file (GLOB tlsf_src
+    ${CMAKE_CURRENT_SOURCE_DIR}/tlsf/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/tlsf/*.cpp)
+
+add_library(tlsf INTERFACE ${tlsf_src})
+set_target_properties(tlsf  PROPERTIES FOLDER ${extern_folder})

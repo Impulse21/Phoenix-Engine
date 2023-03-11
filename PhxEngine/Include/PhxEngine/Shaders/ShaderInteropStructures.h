@@ -549,7 +549,7 @@ namespace Shader
 			retVal.z = (float)((Normal >> 16) & 0xFF) / 127.0f;
 			retVal.w = (float)((Normal >> 24) & 0xFF) / 127.0f;
 
-			return refVal;
+			return retVal;
 		}
 
 		float4 GetTanget()
@@ -561,7 +561,7 @@ namespace Shader
 			retVal.z = (float)((Tanget >> 16) & 0xFF) / 127.0f;
 			retVal.w = (float)((Tanget >> 24) & 0xFF) / 127.0f;
 
-			return refVal;
+			return retVal;
 		}
 
 		float2 GetTexCoord()
@@ -589,7 +589,9 @@ namespace Shader
 
 		void SetTexCoord(float2 texCoord)
 		{
-			TexCoords = PackHalf2(texCoord);
+			DirectX::PackedVector::HALF x = DirectX::PackedVector::XMConvertFloatToHalf(texCoord.x);
+			DirectX::PackedVector::HALF y = DirectX::PackedVector::XMConvertFloatToHalf(texCoord.y);
+			TexCoords = x || y << 16u;
 		}
 #endif
 

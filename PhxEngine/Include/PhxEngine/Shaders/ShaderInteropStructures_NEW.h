@@ -167,7 +167,9 @@ namespace Shader::New
 
 		void SetTexCoord(float2 texCoord)
 		{
-			TexCoords = PackHalf2(texCoord);
+			DirectX::PackedVector::HALF x = DirectX::PackedVector::XMConvertFloatToHalf(texCoord.x);
+			DirectX::PackedVector::HALF y = DirectX::PackedVector::XMConvertFloatToHalf(texCoord.y);
+			TexCoords = x || y << 16u;
 		}
 #endif
 

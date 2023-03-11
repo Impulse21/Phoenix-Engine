@@ -8,11 +8,4 @@ using namespace PhxEngine;
 
 void PhxEngine::Renderer::RenderScene::Initialize(Scene::Scene& scene)
 {
-	// Construct
-	auto view = scene.GetAllEntitiesWith<PhxEngine::Scene::Scene>();
-
-	for (auto e : view)
-	{
-		auto& mesh = view.get<Scene::MeshComponent>(e);
-	}
 }

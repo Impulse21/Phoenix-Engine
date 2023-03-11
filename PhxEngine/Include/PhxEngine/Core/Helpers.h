@@ -3,6 +3,7 @@
 #include <string>
 #include <fstream>
 #include <filesystem>
+#include <random>
 
 #ifdef _WIN32
 #include <stringapiset.h>
@@ -20,7 +21,7 @@ namespace PhxEngine::Core
 			return generator;
 		}
 
-		int GetRandom(int minValue, int maxValue)
+		inline int GetRandom(int minValue, int maxValue)
 		{
 			std::uniform_int_distribution<int>  distr(minValue, maxValue);
 			return distr(Generator());

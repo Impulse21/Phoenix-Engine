@@ -44,7 +44,7 @@ namespace PhxEngine::Renderer
 		RHI::BufferHandle GlobalIndexBuffer;
 
 		RHI::BufferHandle MeshletsBuffer;
-		RHI::BufferHandle MeshletsBuffer;
+		RHI::BufferHandle VertexIBBuffer;
 		RHI::BufferHandle MeshletTrianglesBuffer;
 
 		RHI::CommandSignatureHandle IndirectDrawCommandSignature;
@@ -68,6 +68,3 @@ namespace PhxEngine::Renderer
 
 	};
 }
-
-inline float4 GetColour()
-{
