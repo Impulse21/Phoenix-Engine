@@ -41,3 +41,6 @@
 [submodule "PhxEngine/Extern/DirectXMesh"]
 	path = PhxEngine/Extern/DirectXMesh
 	url = https://github.com/microsoft/DirectXMesh.git
+[submodule "PhxEngine/Extern/EASTL"]
+	path = PhxEngine/Extern/EASTL
+	url = https://github.com/electronicarts/EASTL.git
