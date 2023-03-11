@@ -32,14 +32,26 @@ namespace PhxEngine::Renderer
 		std::vector<Shader::MeshletPackedVertexData> MeshletVertexData;
 
 		std::vector<DirectX::CullData> MeshletCullData;
-		std::vector
-		RHI::BufferHandle GeometryBuffer;
-		RHI::BufferHandle GeometryBoundsBuffer;
+
+		// GPU Data
 		RHI::BufferHandle ObjectInstancesBuffer;
 
+		RHI::BufferHandle GeometryBuffer;
+		RHI::BufferHandle GeometryBoundsBuffer;
+		RHI::BufferHandle MaterialBuffer;
+
+		// Only required for non mesh shaders...
+		RHI::BufferHandle GlobalIndexBuffer;
+
 		RHI::BufferHandle MeshletsBuffer;
-		RHI::BufferHandle MeshletsBuffer
+		RHI::BufferHandle MeshletsBuffer;
 		RHI::BufferHandle MeshletTrianglesBuffer;
+
+		RHI::CommandSignatureHandle IndirectDrawCommandSignature;
+
+		RHI::BufferHandle IndirectDrawCulled;
+		RHI::BufferHandle IndirectDrawEarly;
+		RHI::BufferHandle IndirectDrawLate;
 
 		struct Settings
 		{
