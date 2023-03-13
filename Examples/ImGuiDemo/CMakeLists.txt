@@ -7,6 +7,21 @@ file(GLOB sources "*.cpp" "*.h")
 set(project ImGuiDemo)
 set(folder "Examples/ImGui Demo")
 
+set_source_files_properties(BasicTriangleVS.hlsl PROPERTIES ShaderType "vs" ShaderModel "6_6" EntryPoint "main")
+set_source_files_properties(BasicTrianglePS.hlsl PROPERTIES ShaderType "ps" ShaderModel "6_6" EntryPoint "main")
+
+message("Fetching DirectXShaderCompiler")
+FetchContent_Declare(dxc URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.7.2207/dxc_2022_07_18.zip)
+FetchContent_MakeAvailable(dxc)
+
+dxc_compile_shaders(
+    TARGET ${project}_shaders
+    SOURCES ${shaders}
+    CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/shaders.cfg
+    FOLDER ${folder}
+    OUTPUT_BASE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Shaders/${project}
+)
+
 add_executable(${project} WIN32 ${sources})
 target_link_libraries(${project} PhxEngine)
 add_dependencies(${project} ${project}_shaders)
