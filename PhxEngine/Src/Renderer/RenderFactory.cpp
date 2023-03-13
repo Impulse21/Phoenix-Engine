@@ -48,6 +48,7 @@ RenderMeshHandle PhxEngine::Renderer::RenderResourceFactory::CreateRenderMesh(Re
 			.SizeInBytes = sizeof(uint32_t) * desc.Indices.Size(),
 			.DebugName = "Vertex Buffer" });
 
+
 	// FILL Data
 	RHI::ICommandList* commandList = this->m_gfxDevice->BeginCommandRecording();
 

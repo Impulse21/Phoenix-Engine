@@ -969,6 +969,6 @@ void GltfSceneLoader::LoadMeshData(
 			}
 		}
 
-
+		CreateRenderMeshes
 	}
 }
