@@ -7,6 +7,10 @@
 #include <PhxEngine/Core/Helpers.h>
 
 
+namespace PhxEngine::Core
+{
+	class IAllocator;
+}
 namespace PhxEngine::Scene
 {
 	struct CameraComponent;
@@ -115,5 +119,53 @@ namespace PhxEngine::Renderer
 
 		virtual void OnWindowResize(DirectX::XMFLOAT2 const& size) = 0;
 		virtual void OnReloadShaders() = 0;
+	};
+	
+	struct RenderMeshDesc
+	{
+		enum Flags
+		{
+			kEmpty = 0,
+			kContainsNormals = 1 << 0,
+			kContainsTexCoords = 1 << 1,
+			kContainsTangents = 1 << 2,
+		};
+
+		uint32_t Flags = kEmpty;
+
+		Core::Span<DirectX::XMFLOAT3> Position;
+		Core::Span<DirectX::XMFLOAT2> TexCoords;
+		Core::Span<DirectX::XMFLOAT3> Normals;
+		Core::Span<DirectX::XMFLOAT4> Tangents;
+		Core::Span<DirectX::XMFLOAT3> Colour;
+		Core::Span<uint32_t> Indices;
+
+		struct SurfaceDesc
+		{
+			// TODO Material
+			uint32_t BufferIndexOffset = 0;
+			uint32_t BufferVertexOffset = 0;
+			uint32_t NumVertices = 0;
+			uint32_t NumIndices = 0;
+		};
+		Core::Span<SurfaceDesc> Surfaces;
+	};
+
+	struct RenderMesh;
+	using RenderMeshHandle = Core::Handle<RenderMesh>;
+
+	class IRenderResourceFactory
+	{
+	public:
+		static std::unique_ptr<IRenderResourceFactory> Create();
+
+		virtual void Initialize() = 0;
+		virtual void Finialize() = 0;
+
+		virtual RenderMeshHandle CreateRenderMesh(RenderMeshDesc const& desc) = 0;
+		virtual void DeleteRenderMesh(RenderMeshHandle handle) = 0;
+
+		// TODO: Add Texture and buffer support
+		virtual ~IRenderResourceFactory() = default;
 	};
 }

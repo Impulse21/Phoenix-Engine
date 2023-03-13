@@ -494,14 +494,6 @@ namespace PhxEngine::Scene
 		RHI::RTAccelerationStructureHandle Blas;
 
 		// -- CPU Data ---
-		std::vector<DirectX::XMFLOAT3> VertexPositions;
-		std::vector<DirectX::XMFLOAT2> VertexTexCoords;
-		std::vector<DirectX::XMFLOAT3> VertexNormals;
-		std::vector<DirectX::XMFLOAT4> VertexTangents;
-		std::vector< DirectX::XMFLOAT3> VertexColour;
-		std::vector<uint32_t> Indices;
-		std::vector<Shader::Subset> MeshletSubsets;
-		std::vector<Shader::Subset> indexSubsets;
 
 		enum class VertexAttribute : uint8_t
 		{
@@ -521,12 +513,12 @@ namespace PhxEngine::Scene
 		RHI::BufferRange& GetVertexAttribute(VertexAttribute attr) { return this->BufferRanges[(int)attr]; }
 		[[nodiscard]] const RHI::BufferRange& GetVertexAttribute(VertexAttribute attr) const { return this->BufferRanges[(int)attr]; }
 
-		void ReverseWinding()
+		static void ReverseWinding(uint32_t* indices, size_t numIndices)
 		{
-			assert(this->IsTriMesh());
-			for (auto iter = this->Indices.begin(); iter != this->Indices.end(); iter += 3)
+			assert((numIndices % 3) == 0);
+			for (size_t i = 0; i < numIndices; i += 3)
 			{
-				std::swap(*(iter + 1), *(iter + 2));
+				std::swap(indices[i + 1], indices[i + 2]);
 			}
 		}
 		

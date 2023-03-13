@@ -8,6 +8,8 @@
 #include "PhxEngine/Core/Helpers.h"
 #include <PhxEngine/Core/VirtualFileSystem.h>
 #include "PhxEngine/Scene/Components.h"
+#include <PhxEngine/Core/Memory.h>
+#include <PhxEngine/Core/Span.h>
 
 #include <filesystem>
 
@@ -157,26 +159,32 @@ static std::pair<const uint8_t*, size_t> CgltfBufferAccessor(const cgltf_accesso
 }
 
 
-static void ComputeTangentSpace(MeshComponent& mesh)
+static void ComputeTangentSpace(
+	PhxEngine::Core::Span<uint32_t> indices,
+	PhxEngine::Core::Span<DirectX::XMFLOAT3> positions,
+	PhxEngine::Core::Span<DirectX::XMFLOAT2> texCoords,
+	PhxEngine::Core::Span<DirectX::XMFLOAT3> normals,
+	DirectX::XMFLOAT4* outTangentData)
 {
-	std::vector<DirectX::XMVECTOR> computedTangents(mesh.VertexPositions.size());
-	std::vector<DirectX::XMVECTOR> computedBitangents(mesh.VertexPositions.size());
+	// TODO: Avoid Allocations
+	std::vector<DirectX::XMVECTOR> computedTangents(positions.Size());
+	std::vector<DirectX::XMVECTOR> computedBitangents(positions.Size());
 
-	for (int i = 0; i < mesh.Indices.size(); i += 3)
+	for (int i = 0; i < indices.Size(); i += 3)
 	{
-		auto& index0 = mesh.Indices[i + 0];
-		auto& index1 = mesh.Indices[i + 1];
-		auto& index2 = mesh.Indices[i + 2];
+		auto& index0 = indices[i + 0];
+		auto& index1 = indices[i + 1];
+		auto& index2 = indices[i + 2];
 
 		// Vertices
-		DirectX::XMVECTOR pos0 = DirectX::XMLoadFloat3(&mesh.VertexPositions[index0]);
-		DirectX::XMVECTOR pos1 = DirectX::XMLoadFloat3(&mesh.VertexPositions[index1]);
-		DirectX::XMVECTOR pos2 = DirectX::XMLoadFloat3(&mesh.VertexPositions[index2]);
+		DirectX::XMVECTOR pos0 = DirectX::XMLoadFloat3(&positions[index0]);
+		DirectX::XMVECTOR pos1 = DirectX::XMLoadFloat3(&positions[index1]);
+		DirectX::XMVECTOR pos2 = DirectX::XMLoadFloat3(&positions[index2]);
 
 		// UVs
-		DirectX::XMVECTOR uvs0 = DirectX::XMLoadFloat2(&mesh.VertexTexCoords[index0]);
-		DirectX::XMVECTOR uvs1 = DirectX::XMLoadFloat2(&mesh.VertexTexCoords[index1]);
-		DirectX::XMVECTOR uvs2 = DirectX::XMLoadFloat2(&mesh.VertexTexCoords[index2]);
+		DirectX::XMVECTOR uvs0 = DirectX::XMLoadFloat2(&texCoords[index0]);
+		DirectX::XMVECTOR uvs1 = DirectX::XMLoadFloat2(&texCoords[index1]);
+		DirectX::XMVECTOR uvs2 = DirectX::XMLoadFloat2(&texCoords[index2]);
 
 		DirectX::XMVECTOR deltaPos1 = DirectX::XMVectorSubtract(pos1, pos0);
 		DirectX::XMVECTOR deltaPos2 = DirectX::XMVectorSubtract(pos2, pos0);
@@ -199,9 +207,9 @@ static void ComputeTangentSpace(MeshComponent& mesh)
 		computedBitangents[index2] += bitangent;
 	}
 
-	for (int i = 0; i < mesh.VertexPositions.size(); i++)
+	for (int i = 0; i < positions.Size(); i++)
 	{
-		const DirectX::XMVECTOR normal = DirectX::XMLoadFloat3(&mesh.VertexNormals[i]);
+		const DirectX::XMVECTOR normal = DirectX::XMLoadFloat3(&normals[i]);
 		const DirectX::XMVECTOR& tangent = computedTangents[i];
 		const DirectX::XMVECTOR& bitangent = computedBitangents[i];
 
@@ -212,7 +220,7 @@ static void ComputeTangentSpace(MeshComponent& mesh)
 			: 1.0f;
 
 		orthTangent = DirectX::XMVectorSetW(orthTangent, sign);
-		DirectX::XMStoreFloat4(&mesh.VertexTangents[i], orthTangent);
+		DirectX::XMStoreFloat4(&(outTangentData + i), orthTangent);
 	}
 }
 
@@ -688,8 +696,20 @@ void GltfSceneLoader::LoadMeshData(
 		}
 	}
 
+	LinearAllocator allocator;
+	allocator.Initialize(PhxMB(10));
+
 	for (int i = 0; i < meshCount; i++)
 	{
+		allocator.Clear();
+
+		DirectX::XMFLOAT3* vertexPosition = reinterpret_cast<DirectX::XMFLOAT3*>(allocator.Allocate(sizeof(float) * 3 * totalVertexCounts[i], 0));
+		DirectX::XMFLOAT2* vertexTexCoords = reinterpret_cast<DirectX::XMFLOAT2*>(allocator.Allocate(sizeof(float) * 2 * totalVertexCounts[i], 0));
+		DirectX::XMFLOAT3* vertexNormals = reinterpret_cast<DirectX::XMFLOAT3*>(allocator.Allocate(sizeof(float) * 3 * totalVertexCounts[i], 0));
+		DirectX::XMFLOAT4* vertexTangents = reinterpret_cast<DirectX::XMFLOAT4*>(allocator.Allocate(sizeof(float) * 4 * totalVertexCounts[i], 0));
+		DirectX::XMFLOAT3* vertexColour = reinterpret_cast<DirectX::XMFLOAT3*>(allocator.Allocate(sizeof(float) * 3 * totalVertexCounts[i], 0));
+		uint32_t* indices = reinterpret_cast<uint32_t*>(allocator.Allocate(sizeof(uint32_t) * totalVertexCounts[i], 0));
+
 		const auto& cgltfMesh = pMeshes[i];
 		std::string name = cgltfMesh.name ? cgltfMesh.name : "Mesh " + std::to_string(i);
 		Entity meshEntity = scene.CreateEntity(name);
@@ -697,12 +717,6 @@ void GltfSceneLoader::LoadMeshData(
 		this->m_meshEntityMap[&cgltfMesh] = meshEntity;
 		auto& mesh = meshEntity.AddComponent<MeshComponent>();
 
-		// Resize data
-		mesh.VertexPositions.resize(totalVertexCounts[i]);
-		mesh.VertexNormals.resize(totalVertexCounts[i]);
-		mesh.VertexTexCoords.resize(totalVertexCounts[i]);
-		mesh.VertexTangents.resize(totalVertexCounts[i]);
-		mesh.Indices.resize(totalIndexCounts[i]);
 
 		mesh.Surfaces.resize(cgltfMesh.primitives_count);
 		size_t totalIndexCount = 0;
@@ -778,7 +792,7 @@ void GltfSceneLoader::LoadMeshData(
 				// copy the indices
 				auto [indexSrc, indexStride] = CgltfBufferAccessor(cgltfPrim.indices, 0);
 
-				uint32_t* indexDst = mesh.Indices.data() + totalIndexCount;
+				uint32_t* indexDst = indices + totalIndexCount;
 				switch (cgltfPrim.indices->component_type)
 				{
 				case cgltf_component_type_r_8u:
@@ -835,7 +849,7 @@ void GltfSceneLoader::LoadMeshData(
 				indexCount = cgltfPositionsAccessor->count;
 
 				// generate the indices
-				uint32_t* indexDst = mesh.Indices.data() + totalIndexCount;
+				uint32_t* indexDst = indices + totalIndexCount;
 				for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
 				{
 					*indexDst = (uint32_t)iIdx;
@@ -850,7 +864,7 @@ void GltfSceneLoader::LoadMeshData(
 
 				// Do a mem copy?
 				std::memcpy(
-					mesh.VertexPositions.data() + totalVertexCount,
+					vertexPosition + totalVertexCount,
 					positionSrc,
 					positionStride * cgltfPositionsAccessor->count);
 			}
@@ -862,7 +876,7 @@ void GltfSceneLoader::LoadMeshData(
 
 				// Do a mem copy?
 				std::memcpy(
-					mesh.VertexNormals.data() + totalVertexCount,
+					vertexNormals + totalVertexCount,
 					normalSrc,
 					normalStride * cgltfNormalsAccessor->count);
 			}
@@ -874,7 +888,7 @@ void GltfSceneLoader::LoadMeshData(
 
 				// Do a mem copy?
 				std::memcpy(
-					mesh.VertexTangents.data() + totalVertexCount,
+					vertexTangents + totalVertexCount,
 					tangentSrc,
 					tangentStride * cgltfTangentsAccessor->count);
 			}
@@ -887,14 +901,14 @@ void GltfSceneLoader::LoadMeshData(
 				auto [texcoordSrc, texcoordStride] = CgltfBufferAccessor(cgltfTexCoordsAccessor, sizeof(float) * 2);
 
 				std::memcpy(
-					mesh.VertexTexCoords.data() + totalVertexCount,
+					vertexTexCoords + totalVertexCount,
 					texcoordSrc,
 					texcoordStride * cgltfTexCoordsAccessor->count);
 			}
 			else
 			{
 				std::memset(
-					mesh.VertexTexCoords.data() + totalVertexCount,
+					vertexTexCoords + totalVertexCount,
 					0.0f,
 					cgltfPositionsAccessor->count * sizeof(float) * 2);
 			}
@@ -918,34 +932,43 @@ void GltfSceneLoader::LoadMeshData(
 			totalVertexCount += meshGeometry.NumVertices;
 		}
 
+		// Now I have all the data. Do some process
+	
 		// GLTF 2.0 front face is CCW, I currently use CW as front face.
 		// something to consider to change.
 		if (cReverseWinding)
 		{
-			mesh.ReverseWinding();
+			MeshComponent::ReverseWinding(indices, totalIndexCount);
 		}
 
 		// Generate Tangents
 		if ((mesh.Flags & Assets::Mesh::Flags::kContainsNormals) != 0 && (mesh.Flags & Assets::Mesh::Flags::kContainsTexCoords) != 0 && (mesh.Flags & Assets::Mesh::Flags::kContainsTangents) == 0)
 		{
-			ComputeTangentSpace(mesh);
+			ComputeTangentSpace(
+				Core::Span(indices, mesh.TotalIndices),
+				Core::Span(vertexPosition, mesh.TotalVertices),
+				Core::Span(vertexTexCoords, mesh.TotalVertices),
+				Core::Span(vertexNormals, mesh.TotalVertices),
+				vertexTangents);
 		}
 
 		if (cReverseZ)
 		{
 			// Flip Z
-			for (auto& pos : mesh.VertexPositions)
+			for (int i = 0; i < mesh.TotalVertices; i++)
 			{
-				pos.z *= -1.0f;
+				(vertexPosition + i)->z *= -1.0f;
 			}
-			for (auto& normal : mesh.VertexNormals)
+			for (int i = 0; i < mesh.TotalVertices; i++)
 			{
-				normal.z *= -1.0f;
+				(vertexNormals + i)->z *= -1.0f;
 			}
-			for (auto& tan : mesh.VertexTangents)
+			for (int i = 0; i < mesh.TotalVertices; i++)
 			{
-				tan.z *= -1.0f;
+				(vertexTangents+ i)->z *= -1.0f;
 			}
 		}
+
+
 	}
 }
