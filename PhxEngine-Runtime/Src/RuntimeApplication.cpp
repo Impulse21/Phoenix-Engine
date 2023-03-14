@@ -24,7 +24,6 @@
 #include <PhxEngine/Renderer/RenderPath3DForward.h>
 #include <PhxEngine/Core/Profiler.h>
 #include <PhxEngine/Engine/ImguiRenderer.h>
-#include <PhxEngine/Renderer/RenderScene.h>
 
 #include <imgui.h>
 using namespace PhxEngine;
@@ -115,7 +114,6 @@ public:
         if (retVal)
         {
             this->m_scene.ConstructRenderData(commandList, indexUpload, vertexUpload);
-            this->m_renderScene.Initialize(this->m_scene);
         }
 
         Scene::Entity worldE = this->m_scene.CreateEntity("WorldComponent");
@@ -189,7 +187,6 @@ private:
     RHI::TextureHandle m_splashScreenTexture;
 
     Scene::Scene m_scene;
-    Renderer::RenderScene m_renderScene;
     Scene::CameraComponent m_mainCamera;
     PhxEngine::FirstPersonCameraController m_cameraController;
 

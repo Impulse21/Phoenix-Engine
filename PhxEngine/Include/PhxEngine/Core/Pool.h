@@ -8,7 +8,6 @@
 
 #include <iostream>
 #include <PhxEngine/Core/Helpers.h>
-#include <PhxEngine/Core/Memory.h>
 
 namespace PhxEngine::Core
 {
@@ -40,30 +39,6 @@ namespace PhxEngine::Core
 
 		}
 
-		Pool(IAllocator* allocator, size_t initialCapcity)
-			: m_size(initialCapcity)
-			, m_numActiveEntries(0)
-			, m_allocator(allocator)
-		{
-			this->m_data = reinterpret_cast<ImplT*>(allocator->Allocate(sizeof(ImplT) * this->m_size, sizeof(ImplT)));
-			this->m_generations = reinterpret_cast<uint32_t*>((allocator->Allocate(sizeof(uint32_t) * this->m_size, sizeof(uint32_t)));
-			this->m_freeList = reinterpret_cast<uint32_t>(allocator->Allocate(sizeof(uint32_t) * this->m_size, sizeof(uint32_t)));
-
-			std::memset(this->m_data, 0, this->m_size * sizeof(ImplT));
-			std::memset(this->m_freeList, 0, this->m_size * sizeof(uint32_t));
-
-			for (size_t i = 0; i < this->m_size; i++)
-			{
-				this->m_generations[i] = 1;
-			}
-
-			this->m_freeListPosition = this->m_size - 1;
-			for (size_t i = 0; i < this->m_size; i++)
-			{
-				this->m_freeList[i] = static_cast<uint32_t>((this->m_size - 1) - i);
-			}
-		}
-
 		~Pool()
 		{
 			for (int i = 0; i < this->m_size; i++)
@@ -71,19 +46,9 @@ namespace PhxEngine::Core
 				this->m_data[i].~ImplT();
 			}
 
-			if (this->m_allocator)
-			{
-				this->m_allocator->Deallocate(this->m_data);
-				this->m_allocator->Deallocate(this->m_freeList);
-				this->m_allocator->Deallocate(this->m_generations);
-			}
-			else
-			{
-				delete[] this->m_data;
-				delete[] this->m_freeList;
-				delete[] this->m_generations;
-			}
-
+			delete[] this->m_data;
+			delete[] this->m_freeList;
+			delete[] this->m_generations;
 		}
 
 		ImplT* Get(Handle<HT> handle)
@@ -159,24 +124,9 @@ namespace PhxEngine::Core
 			// RESIZING STILL DOESN"T WORK
 			assert(false);
 			size_t newSize = this->m_size * 2;
-			ImplT* newDataArray = nullptr;
-			uint32_t* newFreeListArray = nullptr;
-			uint32_t* newGenerations = nullptr;
-
-			if (this->m_allocator)
-			{
-				newDataArray = reinterpret_cast<ImplT*>(allocator->Allocate(sizeof(ImplT) * this->m_size, sizeof(ImplT)));
-				newFreeListArray = reinterpret_cast<uint32_t*>((allocator->Allocate(sizeof(uint32_t) * this->m_size, sizeof(uint32_t)));
-				newGenerations = reinterpret_cast<uint32_t>(allocator->Allocate(sizeof(uint32_t) * this->m_size, sizeof(uint32_t)));
-
-			}
-			else
-			{
-				newDataArray = new ImplT[newSize];
-				newFreeListArray = new uint32_t[newSize];
-				newGenerations = new uint32_t[newSize];
-			}
-
+			auto* newDataArray = new ImplT[newSize];
+			auto* newFreeListArray = new uint32_t[newSize];
+			auto* newGenerations = new uint32_t[newSize];
 
 			std::memset(newDataArray, 0, newSize * sizeof(ImplT));
 			std::memset(newFreeListArray, 0, newSize * sizeof(uint32_t));
@@ -188,18 +138,9 @@ namespace PhxEngine::Core
 			// std::memcpy(newFreeListArray, this->m_freeList, this->m_size * sizeof(uint32_t));
 			std::memcpy(newGenerations, this->m_generations, this->m_size * sizeof(uint32_t));
 
-			if (this->m_allocator)
-			{
-				this->m_allocator->Deallocate(this->m_data);
-				this->m_allocator->Deallocate(this->m_freeList);
-				this->m_allocator->Deallocate(this->m_generations);
-			}
-			else
-			{
-				delete[] this->m_data;
-				delete[] this->m_freeList;
-				delete[] this->m_generations;
-			}
+			delete[] this->m_data;
+			delete[] this->m_freeList;
+			delete[] this->m_generations;
 
 			this->m_data = newDataArray;
 			this->m_freeList = newFreeListArray;
@@ -230,7 +171,5 @@ namespace PhxEngine::Core
 
 		// Data Array
 		ImplT* m_data;
-
-		IAllocator* m_allocator;
 	};
 }

@@ -25,7 +25,14 @@ namespace PhxEngine::Renderer
 		Core::AABB Bounds;
 		Shader::New::Scene GpuData;
 
-	
+		std::vector<Shader::New::Meshlet> Meshlets;
+		std::vector<DirectX::MeshletTriangle> MeshletTriangles;
+		std::vector<uint8_t> UniqueVertexIB;
+		std::vector<Shader::New::MeshletVertexPositions> MeshletPositions;
+		std::vector<Shader::New::MeshletPackedVertexData> MeshletVertexData;
+
+		std::vector<DirectX::CullData> MeshletCullData;
+
 		// GPU Data
 		RHI::BufferHandle ObjectInstancesBuffer;
 
@@ -53,14 +60,11 @@ namespace PhxEngine::Renderer
 
 		// GPU Buffers
 
-		void Initialize(RHI::IGraphicsDevice* gfxDevice, RHI::ICommandList* commandList, Scene::Scene& scene);
-		void PrepareFrame(RHI::IGraphicsDevice* gfxDevice, RHI::ICommandList* commandList, Scene::Scene& scene);
+		void Initialize(Scene::Scene& scene);
+		void PrepareGpuData();
 
 		void Update(Core::TimeStep const& deltaTime);
 		void UploadGpuData();
 
-	private:
-		Renderer::ResourceUpload UpdateMaterialData(RHI::IGraphicsDevice* gfxDevice, Scene::Scene& scene);
-		Renderer::ResourceUpload UpdateGeometryData(RHI::IGraphicsDevice* gfxDevice, Scene::Scene& scene);
 	};
 }
