@@ -2,6 +2,7 @@
 
 #include <PhxEngine/Renderer/Renderer.h>
 #include <PhxEngine/Core/Pool.h>
+#include <PhxEngine/Core/Primitives.h>
 
 namespace PhxEngine::Renderer
 {
@@ -12,6 +13,22 @@ namespace PhxEngine::Renderer
 
 		RHI::BufferHandle VertexBuffer;
 		RHI::DescriptorIndex VertexBufferDescIndex;
+
+		enum class VertexAttribute : uint8_t
+		{
+			Position = 0,
+			TexCoord,
+			Normal,
+			Tangent,
+			Colour,
+			Count,
+		};
+		std::array<RHI::BufferRange, (int)VertexAttribute::Count> BufferRanges;
+
+		[[nodiscard]] bool HasVertexAttribuite(VertexAttribute attr) const { return this->BufferRanges[(int)attr].SizeInBytes != 0; }
+		RHI::BufferRange& GetVertexAttribute(VertexAttribute attr) { return this->BufferRanges[(int)attr]; }
+		[[nodiscard]] const RHI::BufferRange& GetVertexAttribute(VertexAttribute attr) const { return this->BufferRanges[(int)attr]; }
+
 	};
 
 	class RenderResourceFactory : public IRenderResourceFactory

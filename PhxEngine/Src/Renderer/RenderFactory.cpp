@@ -35,35 +35,67 @@ RenderMeshHandle PhxEngine::Renderer::RenderResourceFactory::CreateRenderMesh(Re
 			.DebugName = "Index Buffer" });
 	renderMesh.IndexBufferDescIndex = this->m_gfxDevice->GetDescriptorIndex(renderMesh.IndexBuffer, RHI::SubresouceType::SRV);
 
-	Helpers::AlignTo(desc.Position.Size() * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment) +
-	Helpers::AlignTo(desc.TexCoords.Size() * sizeof(DirectX::XMFLOAT2), kVertexBufferAlignment) +
-	Helpers::AlignTo(desc.Normals.Size() * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment) +
-	Helpers::AlignTo(desc.Tangents.Size() * sizeof(DirectX::XMFLOAT4), kVertexBufferAlignment) +
-	Helpers::AlignTo(desc.Colour.Size() * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment);
+	uint64_t vertexBufferSize =
+		Helpers::AlignTo(desc.Position.Size() * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment) +
+		Helpers::AlignTo(desc.TexCoords.Size() * sizeof(DirectX::XMFLOAT2), kVertexBufferAlignment) +
+		Helpers::AlignTo(desc.Normals.Size() * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment) +
+		Helpers::AlignTo(desc.Tangents.Size() * sizeof(DirectX::XMFLOAT4), kVertexBufferAlignment) +
+		Helpers::AlignTo(desc.Colour.Size() * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment);
 
 	renderMesh.VertexBuffer = this->m_gfxDevice->CreateIndexBuffer({
 			.MiscFlags = RHI::BufferMiscFlags::Raw | RHI::BufferMiscFlags::Bindless,
 			.Binding = RHI::BindingFlags::VertexBuffer | RHI::BindingFlags::ShaderResource,
 			.StrideInBytes = sizeof(float),
-			.SizeInBytes = sizeof(uint32_t) * desc.Indices.Size(),
+			.SizeInBytes = vertexBufferSize,
 			.DebugName = "Vertex Buffer" });
-
+	ResourceUpload vertexUploadBuffer = CreateResourceUpload(vertexBufferSize);
 
 	// FILL Data
 	RHI::ICommandList* commandList = this->m_gfxDevice->BeginCommandRecording();
+	{
+		RHI::GpuBarrier preBarriers[] =
+		{
+			RHI::GpuBarrier::CreateBuffer(renderMesh.IndexBuffer, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest),
+			RHI::GpuBarrier::CreateBuffer(renderMesh.VertexBuffer, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest),
+		};
+		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
 
-	commandList->TransitionBarrier(renderMesh.IndexBuffer, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
+	}
+
 	commandList->WriteBuffer(
 		renderMesh.IndexBuffer,
 		desc.Indices.begin(),
 		desc.Indices.Size() * sizeof(uint32_t));
-	commandList->TransitionBarrier(
-		renderMesh.IndexBuffer,
-		RHI::ResourceStates::CopyDest,
-		RHI::ResourceStates::IndexGpuBuffer | RHI::ResourceStates::ShaderResource);
 
+	uint64_t bufferOffset = 0ull;
+	auto WriteVertexData = [&](InternalRenderMesh::VertexAttribute attr, void* data, uint64_t sizeInBytes)
+	{
+		auto& bufferRange = renderMesh.GetVertexAttribute(attr);
+		bufferRange.ByteOffset = bufferOffset;
+		bufferRange.SizeInBytes = sizeInBytes;
+		bufferOffset += Helpers::AlignTo(bufferRange.SizeInBytes, kVertexBufferAlignment);
+		vertexUploadBuffer.SetData(data, bufferRange.SizeInBytes, kVertexBufferAlignment);
+	};
 
-	// Construct
+	commandList->CopyBuffer(
+		renderMesh.VertexBuffer,
+		0,
+		vertexUploadBuffer.UploadBuffer,
+		vertexUploadBuffer.Offset,
+		vertexBufferSize);
+
+	{
+		RHI::GpuBarrier postBarriers[] =
+		{
+			RHI::GpuBarrier::CreateBuffer(renderMesh.IndexBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::IndexGpuBuffer | RHI::ResourceStates::ShaderResource),
+			RHI::GpuBarrier::CreateBuffer(renderMesh.VertexBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
+		};
+		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postBarriers, _countof(postBarriers)));
+	}
+
+	this->m_gfxDevice->ExecuteCommandLists({ commandList });
+	vertexUploadBuffer.Free();
+
 	return retVal;
 }
 
