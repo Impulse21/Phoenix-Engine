@@ -208,12 +208,6 @@ endif()
 
 #INCLUDE_EXTERNAL_MSPROJECT(ShadersSource ${CMAKE_SOURCE_DIR}/PhxEngine/Shaders/ShadersSource.vcitems)
 
-# Copy the shader library next to the executable
-add_custom_command(
-		TARGET ${project} POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_SOURCE_DIR}/PhxEngine/Shaders ${CMAKE_CURRENT_BINARY_DIR}/Shaders
-)
-
 # D3D12 Agility SDK
 message("Fetching D3D12 Agility SDK")
 FetchContent_Declare(d3d12-agility-sdk URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.608.2)

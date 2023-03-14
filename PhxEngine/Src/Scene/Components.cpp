@@ -23,10 +23,9 @@ namespace
 	}
 }
 
-void MeshComponent::CreateRenderData(
-	RHI::ICommandList* commandList,
-	Renderer::ResourceUpload& indexUploader,
-	Renderer::ResourceUpload& vertexUploader)
+void MeshComponent::BuildRenderData(
+	Core::IAllocator* allocator,
+	RHI::ICommandList* commandList)
 {
 	// Construct the Mesh buffer
 	if (!this->Indices.empty() && !this->IndexGpuBuffer.IsValid())
@@ -207,15 +206,7 @@ void PhxEngine::Scene::MeshComponent::ComputeMeshlets(RHI::IGraphicsDevice* gfxD
 	std::vector<DirectX::Meshlet> meshlets;
 	std::vector<uint8_t> uniqueVertexIB;
 	std::vector<DirectX::MeshletTriangle> prims;
-	DirectX::ComputeMeshlets(
-		this->Indices.data(), this->Indices.size() / 3,
-		this->VertexPositions.data(), this->VertexPositions.size(),
-		subsets.data(), subsets.size(),
-		nullptr,
-		meshlets,
-		uniqueVertexIB,
-		prims,
-		meshletSubsets.data());
+
 
 	this->MeshletSubsets.resize(meshletSubsets.size());
 	for (uint32_t i = 0; i < meshletSubsets.size(); ++i)
@@ -316,19 +307,4 @@ void PhxEngine::Scene::MeshComponent::ComputeMeshlets(RHI::IGraphicsDevice* gfxD
 
 		meshletTriangleUplaoder.Free();
 	}
-}
-
-uint64_t PhxEngine::Scene::MeshComponent::GetIndexBufferSizeInBytes() const
-{
-	return sizeof(uint32_t) * this->Indices.size();
-}
-
-uint64_t PhxEngine::Scene::MeshComponent::GetVertexBufferSizeInBytes() const
-{
-	return 
-		Helpers::AlignTo(this->VertexPositions.size() * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment) +
-		Helpers::AlignTo(this->VertexTexCoords.size() * sizeof(DirectX::XMFLOAT2), kVertexBufferAlignment) +
-		Helpers::AlignTo(this->VertexNormals.size() * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment) +
-		Helpers::AlignTo(this->VertexTangents.size() * sizeof(DirectX::XMFLOAT4), kVertexBufferAlignment) +
-		Helpers::AlignTo(this->VertexColour.size() * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment);
 }

@@ -68,6 +68,7 @@ namespace PhxEngine::Scene
 		void LoadMeshData(
 			const cgltf_mesh* pMeshes,
 			uint32_t meshCount,
+			ICommandList* commandList,
 			Scene& scene);
 
 		void LoadNode(
@@ -82,6 +83,6 @@ namespace PhxEngine::Scene
 
 		Entity m_rootNode;
 		std::unordered_map<const cgltf_material*, Entity> m_materialEntityMap;
-		std::unordered_map<const cgltf_mesh*, Entity> m_meshEntityMap;
+		std::unordered_map<const cgltf_mesh*, std::vector<Entity>> m_meshEntityMap;
 	};
 }

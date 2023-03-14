@@ -7,6 +7,7 @@
 #include <PhxEngine/Scene/Assets.h>
 #include <PhxEngine/Shaders/ShaderInteropStructures.h>
 #include <entt.hpp>
+#include <PhxEngine/Core/Memory.h>
 
 namespace PhxEngine
 {
@@ -36,11 +37,15 @@ namespace PhxEngine::Scene
 	public:
 		Scene();
 
+		Scene(Core::IAllocator* allocator);
+
 		~Scene()
 		{
 			this->FreeResources();
 			this->m_registry.clear();
 		};
+
+		uint64_t BuildRenderData(RHI::IGraphicsDevice* gfxDevice);
 
 		Entity CreateEntity(std::string const& name = std::string());
 		Entity CreateEntity(Core::UUID uuid, std::string const& name = std::string());
@@ -63,10 +68,6 @@ namespace PhxEngine::Scene
 			return this->m_registry.view<Components...>();
 		}
 
-		void ConstructRenderData(
-			RHI::ICommandList* cmd,
-			Renderer::ResourceUpload& indexUploader,
-			Renderer::ResourceUpload& vertexUploader);
 
 		entt::registry& GetRegistry() { return this->m_registry; }
 		const entt::registry& GetRegistry() const { return this->m_registry; }
@@ -103,6 +104,8 @@ namespace PhxEngine::Scene
 		size_t GetNumMeshlets() const { return this->m_numMeshlets; }
 
 		const Core::AABB& GetBoundingBox() const { return this->m_sceneBounds; }
+
+		Core::IAllocator* GetAllocator() { return this->m_sceneAllocator; }
 	public:
 		void OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses);
 
@@ -120,12 +123,16 @@ namespace PhxEngine::Scene
 		void MergeMeshes(RHI::ICommandList* cmd);
 
 	private:
+
+	private:
+		Core::IAllocator* m_sceneAllocator;
 		Shader::Scene m_shaderData;
 
 		entt::registry m_registry;
 		std::shared_ptr<Assets::Texture> m_brdfLut;
 
 		RHI::BufferHandle m_globalIndexBuffer;
+		RHI::BufferHandle m_globalVertexBuffer;
 
 		size_t m_numInstances = 0;
 		PhxEngine::RHI::BufferHandle m_instanceGpuBuffer;

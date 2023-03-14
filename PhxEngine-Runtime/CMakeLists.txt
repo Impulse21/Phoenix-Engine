@@ -8,7 +8,7 @@ set(folder "Applications/Runtime")
 
 add_executable(${project} WIN32 ${sources})
 target_link_libraries(${project} PhxEngine)
-add_dependencies(${project} ${project}_shaders)
+# add_dependencies(${project} ${project}_shaders)
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 
 if (MSVC)

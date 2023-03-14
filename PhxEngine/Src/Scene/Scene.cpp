@@ -6,6 +6,7 @@
 #include <PhxEngine/Renderer/CommonPasses.h>
 
 #include <DirectXMath.h>
+#include <DirectXMesh.h>
 
 #include <algorithm>
 
@@ -15,6 +16,8 @@ using namespace PhxEngine::Scene;
 using namespace PhxEngine::RHI;
 using namespace DirectX;
 
+constexpr uint64_t kVertexBufferAlignment = 16ull;
+
 PhxEngine::Scene::Scene::Scene()
 	: m_numMeshlets(0)
 {
@@ -22,6 +25,67 @@ PhxEngine::Scene::Scene::Scene()
 	this->m_geometryUploadBuffers.resize(IGraphicsDevice::GPtr->GetMaxInflightFrames());
 	this->m_instanceUploadBuffers.resize(IGraphicsDevice::GPtr->GetMaxInflightFrames());
 	this->m_tlasUploadBuffers.resize(IGraphicsDevice::GPtr->GetMaxInflightFrames());
+}
+
+uint64_t PhxEngine::Scene::Scene::BuildRenderData(RHI::IGraphicsDevice* gfxDevice)
+{
+	// Construct Render Data
+	auto meshView = this->GetAllEntitiesWith<MeshComponent>();
+	size_t totalVertexCount;
+	size_t totalIndexCount;
+	for (auto e : meshView)
+	{
+		auto& mesh = meshView.get<MeshComponent>(e);
+
+		mesh.GlobalOffsetIndexBuffer = totalIndexCount;
+		mesh.GlobalOffsetVertexBuffer = totalVertexCount;
+
+		// Determine the size in bytes.
+		totalVertexCount += mesh.TotalVertices * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment;
+		if ((mesh.Flags & MeshComponent::Flags::kContainsNormals) == 1)
+		{
+			totalVertexCount += mesh.TotalVertices * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment;
+		}
+
+		if ((mesh.Flags & MeshComponent::Flags::kContainsTexCoords) == 1)
+		{
+			totalVertexCount += mesh.TotalVertices * sizeof(DirectX::XMFLOAT2), kVertexBufferAlignment;
+		}
+
+		if ((mesh.Flags & MeshComponent::Flags::kContainsTangents) == 1)
+		{
+			totalVertexCount += mesh.TotalVertices * sizeof(DirectX::XMFLOAT4), kVertexBufferAlignment;
+		}
+
+		totalIndexCount += sizeof(uint32_t) * mesh.TotalIndices;
+	}
+
+	this->m_globalIndexBuffer = gfxDevice->CreateIndexBuffer({
+			.StrideInBytes = sizeof(uint32_t),
+			.SizeInBytes = totalIndexCount,
+			.DebugName = "Index Buffer" });
+
+	this->m_globalVertexBuffer = gfxDevice->CreateIndexBuffer({
+			.MiscFlags = RHI::BufferMiscFlags::Raw | RHI::BufferMiscFlags::Bindless,
+			.Binding = RHI::BindingFlags::VertexBuffer | RHI::BindingFlags::ShaderResource,
+			.StrideInBytes = sizeof(float),
+			.SizeInBytes = totalVertexCount,
+			.DebugName = "Vertex Buffer" });
+
+	for (auto e : meshView)
+	{
+		DirectX::ComputeMeshlets(
+			this->Indices.data(), this->Indices.size() / 3,
+			this->VertexPositions.data(), this->VertexPositions.size(),
+			subsets.data(), subsets.size(),
+			nullptr,
+			meshlets,
+			uniqueVertexIB,
+			prims,
+			meshletSubsets.data());
+	}
+	// TODO: Write Data
+	return 0;
 }
 
 Entity PhxEngine::Scene::Scene::CreateEntity(std::string const& name)
