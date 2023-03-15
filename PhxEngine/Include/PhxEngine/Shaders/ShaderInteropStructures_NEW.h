@@ -59,18 +59,57 @@ namespace Shader::New
 #endif 
 	};
 
-	struct MeshInstance
+	struct ObjectInstance
 	{
 		float4x4 WorldMatrix;
 		// -- 16 byte boundary ----
 
 		uint GeometryOffset;
-		uint GeometryCount;
 		uint Colour;
 		uint Emissive;
+		uint MeshletOffset;
 
 		// -- 16 byte boundary ----
-		uint MeshletOffset;
+	};
+
+	struct Material
+	{
+		float3 AlbedoColour;
+		uint AlbedoTexture;
+
+		// -- 16 byte boundary ----
+
+		uint MaterialTexture;
+		uint RoughnessTexture;
+		uint MetalnessTexture;
+		uint AOTexture;
+
+		// -- 16 byte boundary ----
+
+		uint NormalTexture;
+		float Metalness;
+		float Roughness;
+		float AO;
+
+		// -- 16 byte boundary ----
+
+		uint Flags;
+		uint EmissiveColourPacked;
+		uint2 _Padding;
+
+#ifndef __cplusplus
+		inline float4 GetEmissiveColour()
+		{
+			float4 refVal;
+
+			refVal.x = (float)((EmissiveColourPacked >> 0) & 0xFF) / 255.0f;
+			refVal.y = (float)((EmissiveColourPacked >> 8) & 0xFF) / 255.0f;
+			refVal.z = (float)((EmissiveColourPacked >> 16) & 0xFF) / 255.0f;
+			refVal.w = (float)((EmissiveColourPacked >> 24) & 0xFF) / 255.0f;
+
+			return refVal;
+		}
+#endif
 	};
 
 	struct Geometry
@@ -78,7 +117,7 @@ namespace Shader::New
 		uint MaterialIndex;
 		uint NumIndices;
 		uint NumVertices;
-		uint IndexOffset;
+		uint IndexByteOffset;
 
 		// -- 16 byte boundary ---
 		uint VertexBufferIndex;
@@ -88,6 +127,8 @@ namespace Shader::New
 
 		// -- 16 byte boundary ---
 		uint TangentOffset;
+
+		// TODO: I am here
 		uint MeshletOffset;
 		uint MeshletCount;
 		uint _padding;

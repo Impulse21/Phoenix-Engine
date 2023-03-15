@@ -37,15 +37,15 @@ namespace PhxEngine::Scene
 	public:
 		Scene();
 
-		Scene(Core::IAllocator* allocator);
-
 		~Scene()
 		{
 			this->FreeResources();
 			this->m_registry.clear();
 		};
 
-		uint64_t BuildRenderData(RHI::IGraphicsDevice* gfxDevice);
+		void Initialize(Core::IAllocator* allocator);
+
+		RHI::ExecutionReceipt BuildRenderData(RHI::IGraphicsDevice* gfxDevice);
 
 		Entity CreateEntity(std::string const& name = std::string());
 		Entity CreateEntity(Core::UUID uuid, std::string const& name = std::string());
@@ -79,33 +79,12 @@ namespace PhxEngine::Scene
 
 		const Shader::Scene GetShaderData() const { return this->m_shaderData; };
 
-		size_t GetNumInstances() const { return this->m_numInstances; }
-		PhxEngine::RHI::BufferHandle GetInstanceBuffer() const { return this->m_instanceGpuBuffer; }
-		PhxEngine::RHI::BufferHandle GetInstanceUploadBuffer() const { return this->m_instanceUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
-
-		size_t GetNumGeometryEntries() const { return this->m_numGeometryEntires; }
-		PhxEngine::RHI::BufferHandle GetGeometryBuffer() const { return this->m_geometryGpuBuffer; }
-		PhxEngine::RHI::BufferHandle GetGeometryUploadBuffer() const { return this->m_geometryUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
-
-		size_t GetNumMaterialEntries() const { return this->m_numMaterialEntries; }
-		PhxEngine::RHI::BufferHandle GetMaterialBuffer() const { return this->m_materialGpuBuffer; }
-		PhxEngine::RHI::BufferHandle GetMaterialUploadBuffer() const { return this->m_materialUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
-
-		PhxEngine::RHI::RTAccelerationStructureHandle GetTlas() { return this->m_tlas; }
-		PhxEngine::RHI::BufferHandle GetTlasUploadBuffer() { return this->m_tlasUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
-
-		PhxEngine::RHI::TextureHandle GetEnvMapDepthBuffer() const { return this->m_envMapDepthBuffer; }
-		PhxEngine::RHI::TextureHandle GetEnvMapArray() const { return this->m_envMapArray; }
-		const PhxEngine::RHI::RenderPassHandle GetEnvMapRenderPasses(int index) { return this->m_envMapRenderPasses[index]; }
-
-		PhxEngine::RHI::BufferHandle GetGlobalIndexBuffer() const { return this->m_globalIndexBuffer; }
-
-		PhxEngine::RHI::BufferHandle GetMeshletBuffer() const { return this->m_meshletGpuBuffer; }
-		size_t GetNumMeshlets() const { return this->m_numMeshlets; }
-
 		const Core::AABB& GetBoundingBox() const { return this->m_sceneBounds; }
 
 		Core::IAllocator* GetAllocator() { return this->m_sceneAllocator; }
+
+		RHI::BufferHandle GetGlobalIndexBuffer() const { return this->m_globalIndexBuffer; }
+
 	public:
 		void OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses);
 
@@ -120,10 +99,11 @@ namespace PhxEngine::Scene
 
 		void UpdateGpuBufferSizes();
 
-		void MergeMeshes(RHI::ICommandList* cmd);
-
 	private:
-
+		void BuildMaterialData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice, std::vector<Renderer::ResourceUpload>& resourcesToFree);
+		void BuildMeshData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice);
+		void BuildGeometryData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice, std::vector<Renderer::ResourceUpload>& resourcesToFree);
+		void BuildObjectInstances(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice, std::vector<Renderer::ResourceUpload>& resourcesToFree);
 	private:
 		Core::IAllocator* m_sceneAllocator;
 		Shader::Scene m_shaderData;
@@ -134,28 +114,18 @@ namespace PhxEngine::Scene
 		RHI::BufferHandle m_globalIndexBuffer;
 		RHI::BufferHandle m_globalVertexBuffer;
 
-		size_t m_numInstances = 0;
-		PhxEngine::RHI::BufferHandle m_instanceGpuBuffer;
-		std::vector<PhxEngine::RHI::BufferHandle> m_instanceUploadBuffers;
+		RHI::BufferHandle m_globalMeshletBuffer;
+		RHI::BufferHandle m_globalUniqueVertexIBBuffer;
+		RHI::BufferHandle m_globalMeshletPrimitiveBuffer;
+		RHI::BufferHandle m_globalMeshletCullDataBuffer;
 
-		size_t m_numGeometryEntires = 0;
-		PhxEngine::RHI::BufferHandle m_geometryGpuBuffer;
-		std::vector<PhxEngine::RHI::BufferHandle> m_geometryUploadBuffers;
-
-		size_t m_numMaterialEntries = 0;
-		PhxEngine::RHI::BufferHandle m_materialGpuBuffer;
-		std::vector<PhxEngine::RHI::BufferHandle> m_materialUploadBuffers;
-
-		size_t m_numMeshlets = 0;
-		PhxEngine::RHI::BufferHandle m_meshletGpuBuffer;
+		RHI::BufferHandle m_geometryCullDataBuffer;
+		RHI::BufferHandle m_geometryGpuBuffer;
+		RHI::BufferHandle m_materialGpuBuffer;
+		RHI::BufferHandle m_instanceGpuBuffer;
 
 		PhxEngine::RHI::RTAccelerationStructureHandle m_tlas;
 		std::vector<PhxEngine::RHI::BufferHandle> m_tlasUploadBuffers;
-
-
-		PhxEngine::RHI::TextureHandle m_envMapDepthBuffer;
-		PhxEngine::RHI::TextureHandle m_envMapArray;
-		std::array<PhxEngine::RHI::RenderPassHandle, kEnvmapCount> m_envMapRenderPasses;
 
 		entt::entity m_activeSun;
 

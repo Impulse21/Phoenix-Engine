@@ -24,6 +24,7 @@
 #include <PhxEngine/Renderer/RenderPath3DForward.h>
 #include <PhxEngine/Core/Profiler.h>
 #include <PhxEngine/Engine/ImguiRenderer.h>
+#include <PhxEngine/Core/Memory.h>
 
 #include <imgui.h>
 using namespace PhxEngine;
@@ -109,13 +110,6 @@ public:
             commandList,
             this->m_scene);
 
-        Renderer::ResourceUpload indexUpload;
-        Renderer::ResourceUpload vertexUpload;
-        if (retVal)
-        {
-            this->m_scene.ConstructRenderData(commandList, indexUpload, vertexUpload);
-        }
-
         Scene::Entity worldE = this->m_scene.CreateEntity("WorldComponent");
         auto& worldComponent = worldE.AddComponent<Scene::WorldEnvironmentComponent>();
 
@@ -136,8 +130,6 @@ public:
         commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList }, true);
 
-        indexUpload.Free();
-        vertexUpload.Free();
         return retVal;
     }
 
@@ -234,6 +226,10 @@ int main(int __argc, const char** __argv)
 #endif
 {
     std::unique_ptr<IPhxEngineRoot> root = CreateEngineRoot();
+
+    PhxEngine::Core::MemoryService::GetInstance().Initialize({
+            .MaximumDynamicSize = PhxGB(1)
+        });
 
     EngineParam params = {};
     params.Name = "PhxEngine Example: Shadows";

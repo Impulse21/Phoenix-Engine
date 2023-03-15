@@ -68,7 +68,7 @@ namespace PhxEngine::Scene
 		void LoadMeshData(
 			const cgltf_mesh* pMeshes,
 			uint32_t meshCount,
-			ICommandList* commandList,
+			RHI::ICommandList* commandList,
 			Scene& scene);
 
 		void LoadNode(

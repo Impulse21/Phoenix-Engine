@@ -8,6 +8,7 @@
 #include "PhxEngine/Core/Helpers.h"
 #include <PhxEngine/Core/VirtualFileSystem.h>
 #include "PhxEngine/Scene/Components.h"
+#include <DirectXMesh.h>
 
 #include <filesystem>
 
@@ -345,6 +346,7 @@ bool GltfSceneLoader::LoadSceneInternal(
 	this->LoadMeshData(
 		gltfData->meshes,
 		gltfData->meshes_count,
+		commandList,
 		scene);
 
 #ifdef CREATE_DEFAULT_CAMERA
@@ -931,6 +933,7 @@ void GltfSceneLoader::LoadMeshData(
 				}
 			}
 
+			// Calculate AABB
 			{
 				DirectX::XMFLOAT3 minBounds = DirectX::XMFLOAT3(Math::cMaxFloat, Math::cMaxFloat, Math::cMaxFloat);
 				DirectX::XMFLOAT3 maxBounds = DirectX::XMFLOAT3(Math::cMinFloat, Math::cMinFloat, Math::cMinFloat);
@@ -945,7 +948,45 @@ void GltfSceneLoader::LoadMeshData(
 				}
 
 				mesh.Aabb = AABB(minBounds, maxBounds);
+				mesh.BoundingSphere = Sphere(minBounds, maxBounds);
 			}
+
+			// Calculate Meshlet Data
+
+			// Recomended for NVIDA, which is the GPU I am testing.
+			const size_t maxVertices = 64;
+			const size_t maxTriangles = 124;
+			auto hr = DirectX::ComputeMeshlets(
+				mesh.Indices, mesh.TotalIndices / 3,
+				mesh.Positions, mesh.TotalVertices,
+				nullptr,
+				mesh.Meshlets,
+				mesh.UniqueVertexIB,
+				mesh.MeshletTriangles,
+				maxVertices,
+				maxVertices);
+			assert(SUCCEEDED(hr));
+
+			mesh.PackedVertexData = reinterpret_cast<Shader::New::MeshletPackedVertexData*>(scene.GetAllocator()->Allocate(sizeof(Shader::New::MeshletPackedVertexData) * mesh.TotalVertices, 0));
+			for (int i = 0; i < mesh.TotalVertices; i++)
+			{
+				Shader::New::MeshletPackedVertexData& vertex = mesh.PackedVertexData[i];
+				vertex.SetNormal({ mesh.Normals[i].x, mesh.Normals[i].y, mesh.Normals[i].z, 1.0f });
+				vertex.SetTangent(mesh.Tangents[i]);
+				vertex.SetTexCoord(mesh.TexCoords[i]);
+			}
+
+			mesh.MeshletCullData = reinterpret_cast<DirectX::CullData*>(scene.GetAllocator()->Allocate(sizeof(DirectX::CullData) * mesh.Meshlets.size(), 0));
+
+			// Get Meshlet Culling data
+			DirectX::ComputeCullData(
+				mesh.Positions, mesh.TotalVertices,
+				mesh.Meshlets.data(), mesh.Meshlets.size(),
+				reinterpret_cast<const uint16_t*>(mesh.UniqueVertexIB.data()), mesh.UniqueVertexIB.size() / sizeof(uint16_t),
+				mesh.MeshletTriangles.data(), mesh.MeshletTriangles.size(),
+				mesh.MeshletCullData);
+
+			mesh.BuildRenderData(scene.GetAllocator(), RHI::IGraphicsDevice::GPtr);
 		}
 	}
 }

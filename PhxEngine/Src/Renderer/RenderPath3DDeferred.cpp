@@ -92,10 +92,6 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 		auto [instanceComponent, aabbComp] = view.get<Scene::MeshInstanceComponent, Scene::AABBComponent>(e);
 
 		auto& meshComponent = scene.GetRegistry().get<Scene::MeshComponent>(instanceComponent.Mesh);
-		if (meshComponent.RenderBucketMask & Scene::MeshComponent::RenderType_Transparent)
-		{
-			continue;
-		}
 
 		const float distance = Core::Math::Distance(mainCamera.Eye, aabbComp.BoundingData.GetCenter());
 
@@ -415,45 +411,18 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 	frameData.MatricesDataOffset = 0;
 	frameData.SceneData = scene.GetShaderData();
 
+	assert(false); // TODO: Do this else where
 	// Upload data
 	RHI::GpuBarrier preCopyBarriers[] =
 	{
 		RHI::GpuBarrier::CreateBuffer(this->m_frameCB, RHI::ResourceStates::ConstantBuffer, RHI::ResourceStates::CopyDest),
-		RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
-		RHI::GpuBarrier::CreateBuffer(scene.GetGeometryBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
-		RHI::GpuBarrier::CreateBuffer(scene.GetMaterialBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
 	};
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
 
 	commandList->WriteBuffer(this->m_frameCB, frameData);
-
-	commandList->CopyBuffer(
-		scene.GetInstanceBuffer(),
-		0,
-		scene.GetInstanceUploadBuffer(),
-		0,
-		scene.GetNumInstances() * sizeof(Shader::MeshInstance));
-
-	commandList->CopyBuffer(
-		scene.GetGeometryBuffer(),
-		0,
-		scene.GetGeometryUploadBuffer(),
-		0,
-		scene.GetNumGeometryEntries() * sizeof(Shader::Geometry));
-
-	commandList->CopyBuffer(
-		scene.GetMaterialBuffer(),
-		0,
-		scene.GetMaterialUploadBuffer(),
-		0,
-		scene.GetNumMaterialEntries() * sizeof(Shader::MaterialData));
-
 	RHI::GpuBarrier postCopyBarriers[] =
 	{
 		RHI::GpuBarrier::CreateBuffer(this->m_frameCB, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ConstantBuffer),
-		RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
-		RHI::GpuBarrier::CreateBuffer(scene.GetGeometryBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
-		RHI::GpuBarrier::CreateBuffer(scene.GetMaterialBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
 	};
 
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
@@ -465,7 +434,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::UpdateRTAccelerationStructures(I
 	{
 		return;
 	}
-
+#ifdef false
 	auto __ = commandList->BeginScopedMarker("Prepare Frame RT Structures");
 	BufferHandle instanceBuffer = this->m_gfxDevice->GetRTAccelerationStructureDesc(scene.GetTlas()).TopLevel.InstanceBuffer;
 	{
@@ -533,6 +502,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::UpdateRTAccelerationStructures(I
 
 		commandList->TransitionBarriers(Core::Span(postBarriers, ARRAYSIZE(postBarriers)));
 	}
+#endif
 }
 
 void PhxEngine::Renderer::RenderPath3DDeferred::RenderGeometry(RHI::ICommandList* commandList, Scene::Scene& scene, DrawQueue& drawQueue, bool markMeshes)
@@ -567,22 +537,19 @@ void PhxEngine::Renderer::RenderPath3DDeferred::RenderGeometry(RHI::ICommandList
 		std::string modelName = nameComponent.Name;
 		auto scrope = commandList->BeginScopedMarker(modelName);
 
-		for (size_t i = 0; i < meshComponent.Surfaces.size(); i++)
-		{
-			auto& materiaComp = scene.GetRegistry().get<Scene::MaterialComponent>(meshComponent.Surfaces[i].Material);
+		auto& materiaComp = scene.GetRegistry().get<Scene::MaterialComponent>(meshComponent.Material);
 
-			Shader::GeometryPassPushConstants pushConstant = {};
-			pushConstant.GeometryIndex = meshComponent.GlobalGeometryBufferIndex + i;
-			pushConstant.MaterialIndex = materiaComp.GlobalBufferIndex;
-			pushConstant.InstancePtrBufferDescriptorIndex = instanceBufferDescriptorIndex;
-			pushConstant.InstancePtrDataOffset = instanceBatch.DataOffset;
+		Shader::GeometryPassPushConstants pushConstant = {};
+		pushConstant.GeometryIndex = meshComponent.GlobalIndexOffsetGeometryBuffer;
+		pushConstant.MaterialIndex = materiaComp.GlobalBufferIndex;
+		pushConstant.InstancePtrBufferDescriptorIndex = instanceBufferDescriptorIndex;
+		pushConstant.InstancePtrDataOffset = instanceBatch.DataOffset;
 
-			commandList->BindPushConstant(0, pushConstant);
-			commandList->DrawIndexed(
-				meshComponent.Surfaces[i].NumIndices,
-				instanceBatch.NumInstance,
-				meshComponent.GlobalIndexBufferOffset + meshComponent.Surfaces[i].IndexOffsetInMesh);
-		}
+		commandList->BindPushConstant(0, pushConstant);
+		commandList->DrawIndexed(
+			meshComponent.TotalIndices,
+			instanceBatch.NumInstance,
+			meshComponent.GlobalByteOffsetIndexBuffer);
 	};
 
 	commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());

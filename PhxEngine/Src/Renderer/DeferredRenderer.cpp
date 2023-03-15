@@ -417,6 +417,7 @@ void PhxEngine::Renderer::DeferredRenderer::DebugDrawWorld(PhxEngine::Scene::Sce
 
 void DeferredRenderer::UpdateRaytracingAccelerationStructures(PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList)
 {
+#ifdef false
     if (!scene.GetTlas().IsValid())
     {
         return;
@@ -488,10 +489,12 @@ void DeferredRenderer::UpdateRaytracingAccelerationStructures(PhxEngine::Scene::
 
         commandList->TransitionBarriers(Core::Span(postBarriers, ARRAYSIZE(postBarriers)));
     }
+#endif
 }
 
 void DeferredRenderer::RefreshEnvProbes(PhxEngine::Scene::CameraComponent const& camera, PhxEngine::Scene::Scene& scene, PhxEngine::RHI::CommandListHandle commandList)
 {
+#ifdef false
     // Currently not considering env props
     EnvProbeComponent skyCaptureProbe;
     skyCaptureProbe.Position = camera.Eye;
@@ -653,6 +656,7 @@ void DeferredRenderer::RefreshEnvProbes(PhxEngine::Scene::CameraComponent const&
     }
 
     // Filter Env Map
+#endif
 }
 
 void PhxEngine::Renderer::DeferredRenderer::DrawMeshes(
@@ -689,30 +693,28 @@ void PhxEngine::Renderer::DeferredRenderer::DrawMeshes(
         }
 
         auto [meshComponent, nameComponent] = scene.GetRegistry().get<MeshComponent, NameComponent>(instanceBatch.MeshEntity);
-        commandList->BindIndexBuffer(meshComponent.IndexGpuBuffer);
 
         std::string modelName = nameComponent.Name;
 
         auto scrope = commandList->BeginScopedMarker(modelName);
-        for (size_t i = 0; i < meshComponent.Surfaces.size(); i++)
-        {
-            auto& materiaComp = scene.GetRegistry().get<MaterialComponent>(meshComponent.Surfaces[i].Material);
+        auto& materiaComp = scene.GetRegistry().get<Scene::MaterialComponent>(meshComponent.Material);
 
-            Shader::GeometryPassPushConstants pushConstant = {};
-            pushConstant.GeometryIndex = meshComponent.GlobalGeometryBufferIndex + i;
-            pushConstant.MaterialIndex = materiaComp.GlobalBufferIndex;
-            pushConstant.InstancePtrBufferDescriptorIndex = instanceBufferDescriptorIndex;
-            pushConstant.InstancePtrDataOffset = instanceBatch.DataOffset;
+        Shader::GeometryPassPushConstants pushConstant = {};
+        pushConstant.GeometryIndex = meshComponent.GlobalIndexOffsetGeometryBuffer;
+        pushConstant.MaterialIndex = materiaComp.GlobalBufferIndex;
+        pushConstant.InstancePtrBufferDescriptorIndex = instanceBufferDescriptorIndex;
+        pushConstant.InstancePtrDataOffset = instanceBatch.DataOffset;
 
-            commandList->BindPushConstant(RootParameters_GBuffer::PushConstant, pushConstant);
-
-            commandList->DrawIndexed(
-                meshComponent.Surfaces[i].NumIndices,
-                instanceBatch.NumInstance,
-                meshComponent.Surfaces[i].IndexOffsetInMesh);
-        }
+        // TODO: FIX OFFSET IN BUFFER
+        assert(false);
+        commandList->BindPushConstant(RootParameters_GBuffer::PushConstant, pushConstant);
+        commandList->DrawIndexed(
+            meshComponent.TotalIndices,
+            instanceBatch.NumInstance,
+            meshComponent.GlobalByteOffsetIndexBuffer);
     };
 
+    commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());
     uint32_t instanceCount = 0;
     for (const DrawBatch& drawBatch : drawQueue.DrawItems)
     {
@@ -753,169 +755,6 @@ void DeferredRenderer::PrepareFrameRenderData(
     CameraComponent const& mainCamera,
     PhxEngine::Scene::Scene& scene)
 {
-    auto scope = this->m_commandList->BeginScopedMarker("Prepare Frame Data");
-
-    GPUAllocation lightBufferAlloc =
-        commandList->AllocateGpu(
-            sizeof(Shader::ShaderLight) * Shader::SHADER_LIGHT_ENTITY_COUNT,
-            sizeof(Shader::ShaderLight));
-    GPUAllocation matrixBufferAlloc =
-        commandList->AllocateGpu(
-            sizeof(DirectX::XMMATRIX) * Shader::MATRIX_COUNT,
-            sizeof(DirectX::XMMATRIX));
-
-    Shader::ShaderLight* lightArray = (Shader::ShaderLight*)lightBufferAlloc.CpuData;
-    DirectX::XMMATRIX* matrixArray = (DirectX::XMMATRIX*)matrixBufferAlloc.CpuData;
-
-    auto lightView = scene.GetAllEntitiesWith<LightComponent, TransformComponent>();
-    size_t lightCount = 0;
-    size_t matrixCount = 0;
-    for (auto e : lightView)
-    {
-        auto [lightComponent, transformComponent] = lightView.get<LightComponent, TransformComponent>(e);
-        if (!lightComponent.IsEnabled() && lightCount < Shader::SHADER_LIGHT_ENTITY_COUNT)
-        {
-            continue;
-        }
-
-        Shader::ShaderLight* renderLight = lightArray + lightCount++;
-        renderLight->SetType(lightComponent.Type);
-        renderLight->SetRange(lightComponent.Range);
-        renderLight->SetIntensity(lightComponent.Intensity);
-        renderLight->SetFlags(lightComponent.Flags);
-        renderLight->SetDirection(lightComponent.Direction);
-        renderLight->ColorPacked = Math::PackColour(lightComponent.Colour);
-        renderLight->SetIndices(matrixCount);
-        renderLight->SetNumCascades(0);
-        renderLight->Position = transformComponent.GetPosition();
-
-        if (lightComponent.Type == LightComponent::kSpotLight)
-        {
-
-            const float outerConeAngle = lightComponent.OuterConeAngle;
-            const float innerConeAngle = std::min(lightComponent.InnerConeAngle, outerConeAngle);
-            const float outerConeAngleCos = std::cos(outerConeAngle);
-            const float innerConeAngleCos = std::cos(innerConeAngle);
-
-            // https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_lights_punctual#inner-and-outer-cone-angles
-            const float lightAngleScale = 1.0f / std::max(0.001f, innerConeAngleCos - outerConeAngleCos);
-            const float lightAngleOffset = -outerConeAngleCos * lightAngleScale;
-
-            renderLight->SetConeAngleCos(outerConeAngleCos);
-            renderLight->SetAngleScale(lightAngleScale);
-            renderLight->SetAngleOffset(lightAngleOffset);
-        }
-
-        if (lightComponent.CastShadows())
-        {
-            switch (lightComponent.Type)
-            {
-            case LightComponent::kDirectionalLight:
-            {
-                // Add support for adjusting the number of cascades
-                std::vector<Renderer::RenderCam> renderCams = this->m_cascadeShadowMaps->CreateRenderCams(mainCamera, lightComponent, 800.0f);
-                renderLight->SetNumCascades((uint32_t)renderCams.size());
-                renderLight->CascadeTextureIndex = this->m_cascadeShadowMaps->GetTextureArrayIndex();
-
-                for (size_t i = 0; i < renderCams.size(); i++)
-                {
-                    std:memcpy(matrixArray + matrixCount, &renderCams[i].ViewProjection, sizeof(DirectX::XMMATRIX));
-                    matrixCount++;
-                }
-                break;
-            }
-            case LightComponent::kOmniLight:
-            {
-                /*
-                std::array<DirectX::XMFLOAT4X4, 6> matrices;
-                Shadow::ConstructOmniLightMatrices(lightComponent, matrices);
-
-                for (size_t i = 0; i < matrices.size(); i++)
-                {
-                    this->m_matricesCPUData.emplace_back(matrices[i]);
-                }
-
-                // Not sure I understand this math here or why the cubemap depth needs to be re-mapped
-                const float nearZ = 0.1f;	// watch out: reversed depth buffer! Also, light near plane is constant for simplicity, this should match on cpu side!
-                const float farZ = std::max(1.0f, lightComponent.Range); // watch out: reversed depth buffer!
-                const float fRange = farZ / (farZ - nearZ);
-                const float cubemapDepthRemapNear = fRange;
-                const float cubemapDepthRemapFar = -fRange * nearZ;
-                renderLight.SetCubemapDepthRemapNear(cubemapDepthRemapNear);
-                renderLight.SetCubemapDepthRemapFar(cubemapDepthRemapFar);
-                */
-                break;
-            }
-            case LightComponent::kSpotLight:
-            {
-                // TODO:
-                break;
-            }
-            }
-        }
-	} 
-    auto view = scene.GetAllEntitiesWith<WorldEnvironmentComponent>();
-    auto worldComp = view.get<WorldEnvironmentComponent>(view.front());
-
-	Shader::Frame frameData = {};
-    // Move to Renderer...
-    frameData.BrdfLUTTexIndex = scene.GetBrdfLutDescriptorIndex();
-    frameData.LightEntityDescritporIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(lightBufferAlloc.GpuBuffer, RHI::SubresouceType::SRV);
-    frameData.LightDataOffset = lightBufferAlloc.Offset;
-    frameData.LightCount = lightCount;
-
-    frameData.MatricesDescritporIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(matrixBufferAlloc.GpuBuffer, RHI::SubresouceType::SRV);
-    frameData.MatricesDataOffset = matrixBufferAlloc.Offset;
-
-    if (worldComp.IndirectLightingMode == WorldEnvironmentComponent::IndirectLightingMode::IBL)
-    {
-        frameData.Option |= Shader::FRAME_OPTION_BIT_IBL;
-    }
-
-    frameData.SceneData = scene.GetShaderData();
-
-	// Upload data
-	RHI::GpuBarrier preCopyBarriers[] =
-	{
-		RHI::GpuBarrier::CreateBuffer(this->m_constantBuffers[CB_Frame], RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
-        RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
-		RHI::GpuBarrier::CreateBuffer(scene.GetGeometryBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
-		RHI::GpuBarrier::CreateBuffer(scene.GetMaterialBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
-	};
-	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
-
-	commandList->WriteBuffer(this->m_constantBuffers[CB_Frame], frameData);
-
-    commandList->CopyBuffer(
-        scene.GetInstanceBuffer(),
-        0,
-        scene.GetInstanceUploadBuffer(),
-        0,
-        scene.GetNumInstances() * sizeof(Shader::MeshInstance));
-
-	commandList->CopyBuffer(
-		scene.GetGeometryBuffer(),
-		0,
-		scene.GetGeometryUploadBuffer(),
-		0,
-		scene.GetNumGeometryEntries() * sizeof(Shader::Geometry));
-
-	commandList->CopyBuffer(
-		scene.GetMaterialBuffer(),
-		0,
-		scene.GetMaterialUploadBuffer(),
-		0,
-		scene.GetNumMaterialEntries() * sizeof(Shader::MaterialData));
-
-	RHI::GpuBarrier postCopyBarriers[] =
-	{
-		RHI::GpuBarrier::CreateBuffer(this->m_constantBuffers[CB_Frame], RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
-        RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
-		RHI::GpuBarrier::CreateBuffer(scene.GetGeometryBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
-		RHI::GpuBarrier::CreateBuffer(scene.GetMaterialBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
-	};
-
-	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
 }
 
 void PhxEngine::Renderer::DeferredRenderer::CreateInputLayouts()
@@ -1211,11 +1050,6 @@ void DeferredRenderer::RenderScene(PhxEngine::Scene::CameraComponent const& came
             auto& aabbComp = e.GetComponent<AABBComponent>();
 
             auto& meshComponent = scene.GetRegistry().get<MeshComponent>(instanceComponent.Mesh);
-            if (meshComponent.RenderBucketMask & MeshComponent::RenderType_Transparent)
-            {
-                continue;
-            }
-
             const float distance = Math::Distance(camera.Eye, aabbComp.BoundingData.GetCenter());
 
             drawQueue.Push((uint32_t)instanceComponent.Mesh, (uint32_t)e, distance);

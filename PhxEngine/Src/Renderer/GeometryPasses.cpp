@@ -36,32 +36,31 @@ void PhxEngine::Renderer::RenderViews(RHI::ICommandList* commandList, IGeometryP
         }
 
         auto [meshComponent, nameComponent] = scene.GetRegistry().get<Scene::MeshComponent, Scene::NameComponent>(instanceBatch.MeshEntity);
-        commandList->BindIndexBuffer(meshComponent.IndexGpuBuffer);
 
-        if (markMeshes)
-        {
-            std::string modelName = nameComponent.Name;
-            auto scrope = commandList->BeginScopedMarker(modelName);
-        }
+		if (markMeshes)
+		{
+			std::string modelName = nameComponent.Name;
+			auto scrope = commandList->BeginScopedMarker(modelName);
+		}
 
-        for (size_t i = 0; i < meshComponent.Surfaces.size(); i++)
-        {
-            auto& materiaComp = scene.GetRegistry().get<Scene::MaterialComponent>(meshComponent.Surfaces[i].Material);
+		auto& materiaComp = scene.GetRegistry().get<Scene::MaterialComponent>(meshComponent.Material);
 
-            Shader::GeometryPassPushConstants pushConstant = {};
-            pushConstant.GeometryIndex = meshComponent.GlobalGeometryBufferIndex + i;
-            pushConstant.MaterialIndex = materiaComp.GlobalBufferIndex;
-            pushConstant.InstancePtrBufferDescriptorIndex = instanceBufferDescriptorIndex;
-            pushConstant.InstancePtrDataOffset = instanceBatch.DataOffset;
+		Shader::GeometryPassPushConstants pushConstant = {};
+		pushConstant.GeometryIndex = meshComponent.GlobalIndexOffsetGeometryBuffer;
+		pushConstant.MaterialIndex = materiaComp.GlobalBufferIndex;
+		pushConstant.InstancePtrBufferDescriptorIndex = instanceBufferDescriptorIndex;
+		pushConstant.InstancePtrDataOffset = instanceBatch.DataOffset;
 
-            geometryPass->BindPushConstant(commandList, pushConstant);
-            commandList->DrawIndexed(
-                meshComponent.Surfaces[i].NumIndices,
-                instanceBatch.NumInstance,
-                meshComponent.Surfaces[i].IndexOffsetInMesh);
-        }
-    };
+        // TODO: FIX OFFSET IN BUFFER
+        assert(false);
+		geometryPass->BindPushConstant(commandList, pushConstant);
+		commandList->DrawIndexed(
+			meshComponent.TotalIndices,
+			instanceBatch.NumInstance,
+			meshComponent.GlobalByteOffsetIndexBuffer);
+	};
 
+    commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());
     uint32_t instanceCount = 0;
     for (const DrawPacket& drawBatch : drawQueue.DrawItem)
     {

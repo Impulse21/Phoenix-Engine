@@ -7,6 +7,8 @@
 #include <PhxEngine/Core/Helpers.h>
 #include <PhxEngine/Scene/Assets.h>
 #include <PhxEngine/Core/Primitives.h>
+#include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
+#include <DirectXMesh.h>
 
 #define LH
 
@@ -445,9 +447,7 @@ namespace PhxEngine::Scene
 		entt::entity Material;
 
 		Core::AABB Aabb;
-		Sphere BoundingSphere;
-
-		// Create Bounding Sphere
+		Core::Sphere BoundingSphere;
 
 		uint32_t TotalVertices = 0;
 		DirectX::XMFLOAT3* Positions = nullptr;
@@ -458,15 +458,34 @@ namespace PhxEngine::Scene
 
 		uint32_t TotalIndices = 0;
 		uint32_t* Indices = nullptr;
+		
+		std::vector<DirectX::Meshlet> Meshlets;
+		std::vector<uint8_t> UniqueVertexIB;
+		std::vector<DirectX::MeshletTriangle> MeshletTriangles;
 
-		// Meshlet Data
+		Shader::New::MeshletPackedVertexData* PackedVertexData = nullptr;
+		DirectX::CullData* MeshletCullData = nullptr;
 
-		// -- Render Data --
-		size_t GlobalOffsetVertexBuffer;
-		size_t GlobalOffsetIndexBuffer;
+		// -- GPU Data --
+		size_t GlobalByteOffsetVertexBuffer;
+		size_t GlobalByteOffsetIndexBuffer;
+
+		size_t GlobalIndexOffsetMeshletBuffer;
+		size_t GlobalIndexOffsetUnqiueVertexIBBuffer;
+		size_t GlobalIndexOffsetMeshletPrimitiveBuffer;
+		size_t GlobalIndexOffsetMeshletCullDataBuffer;
+
+		size_t GlobalIndexOffsetGeometryBuffer;
 
 		RHI::BufferHandle IndexBuffer;
 		RHI::BufferHandle VertexBuffer;
+		RHI::BufferHandle MeshletBuffer;
+		RHI::BufferHandle UniqueVertexIBBuffer;
+		RHI::BufferHandle MeshletPrimitivesBuffer;
+		RHI::BufferHandle MeshletCullDataBuffer;
+
+		// TODO: Is this needed or is there a better way to do this.
+		RHI::BufferHandle PackedVertexDataBuffer;
 
 		enum class VertexAttribute : uint8_t
 		{
@@ -480,14 +499,14 @@ namespace PhxEngine::Scene
 
 		std::array<RHI::BufferRange, (int)VertexAttribute::Count> BufferRanges;
 
-
+		// -- Helper Functions ---
 		[[nodiscard]] bool HasVertexAttribuite(VertexAttribute attr) const { return this->BufferRanges[(int)attr].SizeInBytes != 0; }
 		RHI::BufferRange& GetVertexAttribute(VertexAttribute attr) { return this->BufferRanges[(int)attr]; }
 		[[nodiscard]] const RHI::BufferRange& GetVertexAttribute(VertexAttribute attr) const { return this->BufferRanges[(int)attr]; }
 
 		void BuildRenderData(
 			Core::IAllocator* allocator,
-			RHI::ICommandList* commandList);
+			RHI::IGraphicsDevice* gfxDevice);
 	};
 
 	struct MeshInstanceComponent
