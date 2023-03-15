@@ -685,7 +685,6 @@ void GltfSceneLoader::LoadMeshData(
 		Entity rootModelEntity = scene.CreateEntity(name);
 		scene.AttachToParent(rootModelEntity, rootMeshNode);
 
-
 		for (int iPrim = 0; iPrim < cgltfMesh.primitives_count; iPrim++)
 		{
 			const auto& cgltfPrim = cgltfMesh.primitives[iPrim];
@@ -856,7 +855,7 @@ void GltfSceneLoader::LoadMeshData(
 
 			if (cgltfNormalsAccessor)
 			{
-				mesh.Flags |= Assets::Mesh::Flags::kContainsNormals;
+				mesh.Flags |= MeshComponent::Flags::kContainsNormals;
 				auto [normalSrc, normalStride] = CgltfBufferAccessor(cgltfNormalsAccessor, sizeof(float) * 3);
 
 				// Do a mem copy?
@@ -868,7 +867,7 @@ void GltfSceneLoader::LoadMeshData(
 
 			if (cgltfTangentsAccessor)
 			{
-				mesh.Flags |= Assets::Mesh::Flags::kContainsTangents;
+				mesh.Flags |= MeshComponent::Flags::kContainsTangents;
 				auto [tangentSrc, tangentStride] = CgltfBufferAccessor(cgltfTangentsAccessor, sizeof(float) * 4);
 
 				// Do a mem copy?
@@ -880,7 +879,7 @@ void GltfSceneLoader::LoadMeshData(
 
 			if (cgltfTexCoordsAccessor)
 			{
-				mesh.Flags |=Assets::Mesh::Flags::kContainsTexCoords;
+				mesh.Flags |= MeshComponent::Flags::kContainsTexCoords;
 				assert(cgltfTexCoordsAccessor->count == cgltfPositionsAccessor->count);
 
 				auto [texcoordSrc, texcoordStride] = CgltfBufferAccessor(cgltfTexCoordsAccessor, sizeof(float) * 2);
@@ -930,6 +929,22 @@ void GltfSceneLoader::LoadMeshData(
 				{
 					mesh.Tangents[i].z *= -1.0f;
 				}
+			}
+
+			{
+				DirectX::XMFLOAT3 minBounds = DirectX::XMFLOAT3(Math::cMaxFloat, Math::cMaxFloat, Math::cMaxFloat);
+				DirectX::XMFLOAT3 maxBounds = DirectX::XMFLOAT3(Math::cMinFloat, Math::cMinFloat, Math::cMinFloat);
+
+				if (mesh.Positions)
+				{
+					for (int i = 0; i < mesh.TotalVertices; i++)
+					{
+						minBounds = Math::Min(minBounds, mesh.Positions[i]);
+						maxBounds = Math::Max(maxBounds, mesh.Positions[i]);
+					}
+				}
+
+				mesh.Aabb = AABB(minBounds, maxBounds);
 			}
 		}
 	}

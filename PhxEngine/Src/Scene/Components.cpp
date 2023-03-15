@@ -28,50 +28,59 @@ void MeshComponent::BuildRenderData(
 	RHI::ICommandList* commandList)
 {
 	// Construct the Mesh buffer
-	if (!this->Indices.empty() && !this->IndexGpuBuffer.IsValid())
+	if (this->Indices && !this->IndexBuffer.IsValid())
 	{
 		RHI::BufferDesc indexBufferDesc = {};
-		indexBufferDesc.SizeInBytes = this->GetIndexBufferSizeInBytes();
+		indexBufferDesc.SizeInBytes = sizeof(uint32_t) * TotalIndices;
 		indexBufferDesc.StrideInBytes = sizeof(uint32_t);
 		indexBufferDesc.DebugName = "Index Buffer";
-		this->IndexGpuBuffer = RHI::IGraphicsDevice::GPtr->CreateIndexBuffer(indexBufferDesc);
+		this->IndexBuffer = RHI::IGraphicsDevice::GPtr->CreateIndexBuffer(indexBufferDesc);
 
-		auto offset = indexUploader.SetData(this->Indices.data(), indexBufferDesc.SizeInBytes);
+		commandList->TransitionBarrier(this->IndexBuffer, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
+		commandList->WriteBuffer(this->IndexBuffer, this->Indices);
 
-		commandList->TransitionBarrier(this->IndexGpuBuffer, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
-		commandList->CopyBuffer(
-			this->IndexGpuBuffer,
-			0,
-			indexUploader.UploadBuffer,
-			offset,
-			indexBufferDesc.SizeInBytes);
 		commandList->TransitionBarrier(
-			this->IndexGpuBuffer,
+			this->IndexBuffer,
 			RHI::ResourceStates::CopyDest,
 			RHI::ResourceStates::IndexGpuBuffer | RHI::ResourceStates::ShaderResource);
 	}
 
-	// Construct the Vertex Buffer
-	// Set up the strides and offsets
-	RHI::BufferDesc vertexDesc = {};
-	if (!this->VertexGpuBuffer.IsValid())
+	Renderer::ResourceUpload vertexUpload = {};
+	if (this->Positions && !this->IndexBuffer.IsValid())
 	{
+		size_t vertexBufferSize = this->TotalVertices * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment;
+		if (this->Normals && (this->Flags & MeshComponent::Flags::kContainsNormals) == 1)
+		{
+			vertexBufferSize += this->TotalVertices * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment;
+		}
+
+		if (this->TexCoords && (this->Flags & MeshComponent::Flags::kContainsTexCoords) == 1)
+		{
+			vertexBufferSize += this->TotalVertices * sizeof(DirectX::XMFLOAT2), kVertexBufferAlignment;
+		}
+
+		if (this->Tangents && (this->Flags & MeshComponent::Flags::kContainsTangents) == 1)
+		{
+			vertexBufferSize += this->TotalVertices * sizeof(DirectX::XMFLOAT4), kVertexBufferAlignment;
+		}
+
 		RHI::BufferDesc vertexDesc = {};
 		vertexDesc.StrideInBytes = sizeof(float);
 		vertexDesc.DebugName = "Vertex Buffer";
 		vertexDesc.EnableBindless();
 		vertexDesc.IsRawBuffer();
 		vertexDesc.Binding = RHI::BindingFlags::VertexBuffer | RHI::BindingFlags::ShaderResource;
-		vertexDesc.SizeInBytes = this->GetVertexBufferSizeInBytes();
+		vertexDesc.SizeInBytes = vertexBufferSize;
 
 		// Is this Needed for Raw Buffer Type
-		this->VertexGpuBuffer = RHI::IGraphicsDevice::GPtr->CreateVertexBuffer(vertexDesc);
+		this->VertexBuffer = RHI::IGraphicsDevice::GPtr->CreateVertexBuffer(vertexDesc);
+		vertexUpload = Renderer::CreateResourceUpload(vertexDesc.SizeInBytes);
 
 		std::vector<uint8_t> gpuBufferData(vertexDesc.SizeInBytes);
 		std::memset(gpuBufferData.data(), 0, vertexDesc.SizeInBytes);
 		uint64_t bufferOffset = 0ull;
 
-		uint64_t startOffset = vertexUploader.Offset;
+		uint64_t startOffset = vertexUpload.Offset;
 
 		auto WriteDataToGpuBuffer = [&](VertexAttribute attr, void* Data, uint64_t sizeInBytes)
 		{
@@ -79,76 +88,63 @@ void MeshComponent::BuildRenderData(
 			bufferRange.ByteOffset = bufferOffset;
 			bufferRange.SizeInBytes = sizeInBytes;
 			bufferOffset += Helpers::AlignTo(bufferRange.SizeInBytes, kVertexBufferAlignment);
-			vertexUploader.SetData(Data, bufferRange.SizeInBytes, kVertexBufferAlignment);
+			vertexUpload.SetData(Data, bufferRange.SizeInBytes, kVertexBufferAlignment);
 		};
 
-		if (!this->VertexPositions.empty())
+		if (this->Positions)
 		{
 			WriteDataToGpuBuffer(
 				VertexAttribute::Position,
-				this->VertexPositions.data(),
-				this->VertexPositions.size() * sizeof(DirectX::XMFLOAT3));
+				this->Positions,
+				this->TotalVertices * sizeof(DirectX::XMFLOAT3));
 		}
 
-		if (!this->VertexTexCoords.empty())
+		if (this->TexCoords)
 		{
 			WriteDataToGpuBuffer(
 				VertexAttribute::TexCoord,
-				this->VertexTexCoords.data(),
-				this->VertexTexCoords.size() * sizeof(DirectX::XMFLOAT2));
+				this->TexCoords.data(),
+				this->TotalVertices * sizeof(DirectX::XMFLOAT2));
 		}
 
-		if (!this->VertexNormals.empty())
+		if (this->Normals)
 		{
 			WriteDataToGpuBuffer(
 				VertexAttribute::Normal,
 				this->VertexNormals.data(),
-				this->VertexNormals.size() * sizeof(DirectX::XMFLOAT3));
+				this->TotalVertices * sizeof(DirectX::XMFLOAT3));
 		}
 
-		if (!this->VertexTangents.empty())
+		if (this->Tangents)
 		{
 			WriteDataToGpuBuffer(
 				VertexAttribute::Tangent,
-				this->VertexTangents.data(),
-				this->VertexTangents.size() * sizeof(DirectX::XMFLOAT4));
+				this->Tangents,
+				this->TotalVertices * sizeof(DirectX::XMFLOAT4));
 		}
 
-		if (!this->VertexColour.empty())
+		if (this->Colour)
 		{
 			WriteDataToGpuBuffer(
 				VertexAttribute::Colour,
-				this->VertexColour.data(),
-				this->VertexColour.size() * sizeof(DirectX::XMFLOAT3));
+				this->Colour,
+				this->TotalVertices * sizeof(DirectX::XMFLOAT3));
 		}
 
 		// Write Data
-		commandList->TransitionBarrier(this->VertexGpuBuffer, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
+		commandList->TransitionBarrier(this->VertexBuffer, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
 		commandList->CopyBuffer(
-			this->VertexGpuBuffer,
+			this->VertexBuffer,
 			0,
-			vertexUploader.UploadBuffer,
+			vertexUpload.UploadBuffer,
 			startOffset,
 			vertexDesc.SizeInBytes);
-		commandList->TransitionBarrier(this->VertexGpuBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource);
+		commandList->TransitionBarrier(this->VertexBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource);
 	}
 
 	// Construct AABB
 	// TODO: Experiment with SIMD
 	{
-		DirectX::XMFLOAT3 minBounds = DirectX::XMFLOAT3(Math::cMaxFloat, Math::cMaxFloat, Math::cMaxFloat);
-		DirectX::XMFLOAT3 maxBounds = DirectX::XMFLOAT3(Math::cMinFloat, Math::cMinFloat, Math::cMinFloat);
-
-		if (!this->VertexPositions.empty())
-		{
-			for (const DirectX::XMFLOAT3& pos : this->VertexPositions)
-			{
-				minBounds = Math::Min(minBounds, pos);
-				maxBounds = Math::Max(maxBounds, pos);
-			}
-		}
-
-		this->Aabb = AABB(minBounds, maxBounds);
 	}
 
 	// Create RT BLAS object

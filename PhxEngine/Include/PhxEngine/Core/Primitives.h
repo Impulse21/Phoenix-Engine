@@ -5,6 +5,26 @@
 
 namespace PhxEngine::Core
 {
+	struct Sphere
+	{
+		DirectX::XMFLOAT3 Centre;
+		float Radius;
+
+		Sphere() : Centre(XMFLOAT3(0, 0, 0)), Radius(0) {}
+		Sphere(const XMFLOAT3& c, float r) : Centre(c), Radius(r) {}
+		Sphere(
+			const DirectX::XMFLOAT3& min = DirectX::XMFLOAT3(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()),
+			const DirectX::XMFLOAT3& max = DirectX::XMFLOAT3(std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()))
+		{
+			DirectX::XMVECTOR minV = XMLoadFloat3(&min);
+			DirectX::XMVECTOR maxV = XMLoadFloat3(&max);
+
+			DirectX::XMVECTOR centre = DirectX::XMVectorAdd(minV, maxV) / 2.0f;
+			DirectX::XMVECTOR radius = DirectX::XMVectorMax(DirectX::XMVector3Length(DirectX::XMVectorSubtract(maxV, centre)), DirectX::XMVectorSubtract(centre, minV));
+		}
+
+	};
+
 	struct AABB
 	{
 		DirectX::XMFLOAT3 Min;

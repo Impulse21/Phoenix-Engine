@@ -445,6 +445,8 @@ namespace PhxEngine::Scene
 		entt::entity Material;
 
 		Core::AABB Aabb;
+		Sphere BoundingSphere;
+
 		// Create Bounding Sphere
 
 		uint32_t TotalVertices = 0;
