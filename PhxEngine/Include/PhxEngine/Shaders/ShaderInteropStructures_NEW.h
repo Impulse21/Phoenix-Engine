@@ -18,6 +18,32 @@
 namespace Shader::New
 {
 #endif
+	struct IndirectDrawArgsIndexedInstanced
+	{
+		uint32_t IndexCount;
+		uint32_t InstanceCount;
+		uint32_t StartIndex;
+		uint32_t VertexOffset;
+		uint32_t StartInstance;
+	};
+
+	struct IndirectDispatchArgs
+	{
+		uint32_t GroupCountX;
+		uint32_t GroupCountY;
+		uint32_t mGroupCountZ;
+	};
+
+	struct MeshDrawCommand
+	{
+		uint DrawId;
+		IndirectDrawArgsIndexedInstanced Indirect;
+		IndirectDispatchArgs IndirectMS;
+	};
+
+#ifdef __cplusplus
+	static_assert(sizeof(MeshDrawCommand) % sizeof(uint32_t) == 0);
+#endif
 
 	struct Scene
 	{
@@ -30,6 +56,11 @@ namespace Shader::New
 		uint GlobalVertexBufferIdx;
 		uint GlobalIndexxBufferIdx;
 		uint DrawPacketBufferIdx;
+	};
+
+	struct Frame
+	{
+		Scene SceneData;
 	};
 
 	struct Camera
@@ -213,6 +244,10 @@ namespace Shader::New
 			TexCoords = x || y << 16u;
 		}
 #endif
+	};
+
+	struct CullPushConstants
+	{
 
 	};
 

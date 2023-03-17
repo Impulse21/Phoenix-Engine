@@ -313,14 +313,7 @@ void PhxEngine::Renderer::RenderPath3DForward::PrepareFrameRenderData(
 {
 	auto _ = commandList->BeginScopedMarker("Prepare Frame Data");
 
-	Shader::Frame frameData = {};
-	// Move to Renderer...
-	frameData.BrdfLUTTexIndex = scene.GetBrdfLutDescriptorIndex();
-	frameData.LightEntityDescritporIndex = RHI::cInvalidDescriptorIndex;
-	frameData.LightDataOffset = 0;
-	frameData.LightCount = 0;
-	frameData.MatricesDescritporIndex = RHI::cInvalidDescriptorIndex;
-	frameData.MatricesDataOffset = 0;
+	Shader::New::Frame frameData = {};
 	frameData.SceneData = scene.GetShaderData();
 
 	// Upload data

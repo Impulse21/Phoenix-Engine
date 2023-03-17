@@ -6,6 +6,7 @@
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Scene/Assets.h>
 #include <PhxEngine/Shaders/ShaderInteropStructures.h>
+#include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
 #include <entt.hpp>
 #include <PhxEngine/Core/Memory.h>
 
@@ -77,13 +78,17 @@ namespace PhxEngine::Scene
 
 		PhxEngine::RHI::RTAccelerationStructureHandle GetTlas() const { return this->m_tlas; }
 
-		const Shader::Scene GetShaderData() const { return this->m_shaderData; };
+		const Shader::New::Scene GetShaderData() const { return this->m_shaderData; };
 
 		const Core::AABB& GetBoundingBox() const { return this->m_sceneBounds; }
 
 		Core::IAllocator* GetAllocator() { return this->m_sceneAllocator; }
 
 		RHI::BufferHandle GetGlobalIndexBuffer() const { return this->m_globalIndexBuffer; }
+
+		RHI::BufferHandle GetIndirectDrawEarlyBuffer() { return this->m_indirectDrawEarlyBuffer; }
+		RHI::BufferHandle GetIndirectDrawCulledBuffer() { return this->m_indirectDrawCulledBuffer; }
+		RHI::BufferHandle GetIndirectDrawLateBuffer() { return this->m_indirectDrawLateBuffer; }
 
 	public:
 		void OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses);
@@ -94,7 +99,6 @@ namespace PhxEngine::Scene
 		void RunProbeUpdateSystem();
 		void RunLightUpdateSystem();
 		void RunMeshInstanceUpdateSystem();
-
 		void FreeResources();
 
 		void UpdateGpuBufferSizes();
@@ -104,9 +108,12 @@ namespace PhxEngine::Scene
 		void BuildMeshData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice);
 		void BuildGeometryData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice, std::vector<Renderer::ResourceUpload>& resourcesToFree);
 		void BuildObjectInstances(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice, std::vector<Renderer::ResourceUpload>& resourcesToFree);
+		void BuildIndirectBuffers(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice);
+		void BuildSceneData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice);
+
 	private:
 		Core::IAllocator* m_sceneAllocator;
-		Shader::Scene m_shaderData;
+		Shader::New::Scene m_shaderData;
 
 		entt::registry m_registry;
 		std::shared_ptr<Assets::Texture> m_brdfLut;
@@ -123,6 +130,10 @@ namespace PhxEngine::Scene
 		RHI::BufferHandle m_geometryGpuBuffer;
 		RHI::BufferHandle m_materialGpuBuffer;
 		RHI::BufferHandle m_instanceGpuBuffer;
+
+		RHI::BufferHandle m_indirectDrawEarlyBuffer;
+		RHI::BufferHandle m_indirectDrawCulledBuffer;
+		RHI::BufferHandle m_indirectDrawLateBuffer;
 
 		PhxEngine::RHI::RTAccelerationStructureHandle m_tlas;
 		std::vector<PhxEngine::RHI::BufferHandle> m_tlasUploadBuffers;

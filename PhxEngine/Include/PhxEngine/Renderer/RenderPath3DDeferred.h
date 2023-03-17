@@ -46,6 +46,7 @@ namespace PhxEngine::Renderer
 	{
 		enum
 		{
+			CullPass,
 			DeferredLightingPass,
 			Count
 		};
@@ -55,6 +56,7 @@ namespace PhxEngine::Renderer
 	{
 		enum
 		{
+			GBufferFillPass,
 			Count
 		};
 	}
@@ -72,6 +74,7 @@ namespace PhxEngine::Renderer
 			PS_Blit,
 			PS_ToneMapping,
 
+			CS_CullPass,
 			CS_DeferredLightingPass,
 
 			Count
@@ -128,6 +131,9 @@ namespace PhxEngine::Renderer
 		std::array<RHI::ShaderHandle, EShaders::Count> m_shaders;
 		std::array<RHI::RenderPassHandle, ERenderPasses::Count> m_renderPasses;
 
+		RHI::CommandSignatureHandle m_drawMeshCommandSignatureGfx;
+		RHI::CommandSignatureHandle m_drawMeshCommandSignatureMS;
+
 		GBufferRenderTargets m_gbuffer;
 		RHI::TextureHandle m_colourBuffer;
 
@@ -138,6 +144,7 @@ namespace PhxEngine::Renderer
 		struct Settings
 		{
 			bool EnableComputeDeferredLighting = false;
+			bool EnableMeshShaders = false;
 		} m_settings;
 		
 	};

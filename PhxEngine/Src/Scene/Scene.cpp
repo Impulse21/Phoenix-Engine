@@ -35,6 +35,9 @@ RHI::ExecutionReceipt PhxEngine::Scene::Scene::BuildRenderData(RHI::IGraphicsDev
 	this->BuildMaterialData(commandList, gfxDevice, resourcesToFree);
 	this->BuildMeshData(commandList, gfxDevice);
 	this->BuildGeometryData(commandList, gfxDevice, resourcesToFree);
+	this->BuildObjectInstances(commandList, gfxDevice, resourcesToFree);
+	this->BuildIndirectBuffers(commandList, gfxDevice);
+	this->BuildSceneData(commandList, gfxDevice);
 
 	RHI::ExecutionReceipt retVal = gfxDevice->ExecuteCommandLists({commandList});
 
@@ -716,6 +719,54 @@ void PhxEngine::Scene::Scene::BuildObjectInstances(RHI::ICommandList* commandLis
 		aabbComponent.BoundingData = mesh.Aabb.Transform(DirectX::XMLoadFloat4x4(&meshInstanceComponent.WorldMatrix));
 		this->m_sceneBounds = Core::AABB::Merge(this->m_sceneBounds, aabbComponent.BoundingData);
 	}
+}
+
+void PhxEngine::Scene::Scene::BuildIndirectBuffers(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice)
+{
+	auto view = this->GetAllEntitiesWith<MeshInstanceComponent>();
+
+	if (this->m_indirectDrawEarlyBuffer.IsValid())
+	{
+		gfxDevice->DeleteBuffer(this->m_indirectDrawEarlyBuffer);
+	}
+
+	this->m_indirectDrawEarlyBuffer = gfxDevice->CreateBuffer({
+			   .MiscFlags = BufferMiscFlags::Structured,
+			   .Binding = BindingFlags::UnorderedAccess,
+			   .InitialState = ResourceStates::IndirectArgument,
+			   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
+			   .SizeInBytes = sizeof(Shader::New::MeshDrawCommand) * view.size() + sizeof(uint32_t),
+			   .AllowUnorderedAccess = true });
+
+	if (this->m_indirectDrawCulledBuffer.IsValid())
+	{
+		gfxDevice->DeleteBuffer(this->m_indirectDrawCulledBuffer);
+	}
+	this->m_indirectDrawCulledBuffer = gfxDevice->CreateBuffer({
+			   .MiscFlags = BufferMiscFlags::Structured,
+			   .Binding = BindingFlags::UnorderedAccess,
+			   .InitialState = ResourceStates::IndirectArgument,
+			   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
+			   .SizeInBytes = sizeof(Shader::New::MeshDrawCommand) * view.size() + sizeof(uint32_t),
+			   .AllowUnorderedAccess = true });
+
+	if (this->m_indirectDrawLateBuffer.IsValid())
+	{
+		gfxDevice->DeleteBuffer(this->m_indirectDrawLateBuffer);
+	}
+	this->m_indirectDrawLateBuffer = gfxDevice->CreateBuffer({
+			   .MiscFlags = BufferMiscFlags::Structured,
+			   .Binding = BindingFlags::UnorderedAccess,
+			   .InitialState = ResourceStates::IndirectArgument,
+			   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
+			   .SizeInBytes = sizeof(Shader::New::MeshDrawCommand) * view.size() + sizeof(uint32_t),
+			   .AllowUnorderedAccess = true });
+}
+
+void PhxEngine::Scene::Scene::BuildSceneData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice)
+{
+	// TODO: Set Scene Data strcut
+	assert(false);
 }
 
 void PhxEngine::Scene::Scene::BuildMaterialData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice, std::vector<Renderer::ResourceUpload>& resourcesToFree)

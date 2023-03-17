@@ -7,6 +7,7 @@
 #include <PhxEngine/Core/Math.h>
 #include <PhxEngine/Core/Profiler.h>
 #include <taskflow/taskflow.hpp>
+#include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
 
 #include "DrawQueue.h"
 #include <PhxEngine/Renderer/RenderPath3DDeferred.h>
@@ -49,7 +50,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Initialize(DirectX::XMFLOAT2 con
 		RHI::BufferDesc bufferDesc = {};
 		bufferDesc.Usage = RHI::Usage::Default;
 		bufferDesc.Binding = RHI::BindingFlags::ConstantBuffer;
-		bufferDesc.SizeInBytes = sizeof(Shader::Frame);
+		bufferDesc.SizeInBytes = sizeof(Shader::New::Frame);
 		bufferDesc.InitialState = RHI::ResourceStates::ConstantBuffer;
 
 		bufferDesc.DebugName = "Frame Constant Buffer";
@@ -57,11 +58,13 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Initialize(DirectX::XMFLOAT2 con
 	}
 
 	loadFuture.wait();
+
+	// Create Command Signatre
 }
 
 void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scene::CameraComponent& mainCamera)
 {
-	Shader::Camera cameraData = {};
+	Shader::New::Camera cameraData = {};
 	cameraData.ViewProjection = mainCamera.ViewProjection;
 	cameraData.ViewProjectionInv = mainCamera.ViewProjectionInv;
 	cameraData.ProjInv = mainCamera.ProjectionInv;
@@ -74,35 +77,73 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 		if (this->m_gfxDevice->CheckCapability(DeviceCapability::RayTracing))
 		{
-			this->UpdateRTAccelerationStructures(commandList, scene);
+			// Disable Raytracing for now.
+			// this->UpdateRTAccelerationStructures(commandList, scene);
 		}
 		this->m_frameProfiler->EndRangeGPU(rangeId);
 	}
 
 	RHI::Viewport v(this->m_canvasSize.x, this->m_canvasSize.y);
 	RHI::Rect rec(LONG_MAX, LONG_MAX);
+	auto instanceView = scene.GetAllEntitiesWith<Scene::MeshInstanceComponent>();
 
-	// Fill Draw Queue
-	static thread_local DrawQueue drawQueue;
-	drawQueue.Reset();
-	// Look through Meshes and instances?
-	auto view = scene.GetAllEntitiesWith<Scene::MeshInstanceComponent, Scene::AABBComponent>();
-	for (auto e : view)
+	// TODO: Bind Indirect Buffers
+	assert(false);
+	auto _ = commandList->BeginScopedMarker("Cull Pass");
 	{
-		auto [instanceComponent, aabbComp] = view.get<Scene::MeshInstanceComponent, Scene::AABBComponent>(e);
-
-		auto& meshComponent = scene.GetRegistry().get<Scene::MeshComponent>(instanceComponent.Mesh);
-
-		const float distance = Core::Math::Distance(mainCamera.Eye, aabbComp.BoundingData.GetCenter());
-
-		drawQueue.Push((uint32_t)instanceComponent.Mesh, (uint32_t)e, distance);
+		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::CullPass]);
+		commandList->Dispatch(
+			instanceView.size() / 64,
+			1,
+			1);
 	}
 
-	drawQueue.SortOpaque();
-
+	if (this->m_settings.EnableMeshShaders)
 	{
-		auto rangeId = this->m_frameProfiler->BeginRangeGPU("GBuffer Fill Pass", commandList);
-		auto _ = commandList->BeginScopedMarker("GBuffer Fill Pass");
+		if (!this->m_drawMeshCommandSignatureMS.IsValid())
+		{
+			this->m_drawMeshCommandSignatureMS = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshDrawCommand>({
+						   .ArgDesc =
+							   {
+								   {.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+								   {.Type = IndirectArgumentType::DispatchMesh }
+							   },
+						   .PipelineType = PipelineType::Mesh,
+						   .MeshHandle = this->m_meshStates[EMeshPipelineStates::GBufferFillPass]
+				});
+		}
+
+		// Dispatch Mesh
+		commandList->SetMeshPipeline(this->m_meshStates[EMeshPipelineStates::GBufferFillPass]);
+		commandList->BindConstantBuffer(1, this->m_frameCB);
+		commandList->BindDynamicConstantBuffer(2, cameraData);
+
+		commandList->ExecuteIndirect(
+			this->m_drawMeshCommandSignatureMS,
+			scene.GetIndirectDrawEarlyBuffer(),
+			offsetof(Shader::New::MeshDrawCommand, IndirectMS),
+			scene.GetIndirectDrawEarlyBuffer(),
+			this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).SizeInBytes - sizeof(uint32_t),
+			instanceView.size());
+		// Bind Data
+	}
+	else
+	{
+		if (!this->m_drawMeshCommandSignatureGfx.IsValid())
+		{
+			// Create Command Signature
+			this->m_drawMeshCommandSignatureGfx = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshDrawCommand>({
+							.ArgDesc =
+								{
+									{.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+									{.Type = IndirectArgumentType::DrawIndex }
+								},
+							.PipelineType = PipelineType::Gfx,
+							.GfxHandle = this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]
+				});
+		}
+
+		commandList->SetMeshPipeline(this->m_meshStates[EMeshPipelineStates::GBufferFillPass]);
 		commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::GBufferFillPass]);
 		commandList->SetViewports(&v, 1);
 		commandList->SetScissors(&rec, 1);
@@ -110,10 +151,16 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 		commandList->BindConstantBuffer(1, this->m_frameCB);
 		commandList->BindDynamicConstantBuffer(2, cameraData);
 
-		this->RenderGeometry(commandList, scene, drawQueue, true);
+
+		commandList->ExecuteIndirect(
+			this->m_drawMeshCommandSignatureGfx,
+			scene.GetIndirectDrawEarlyBuffer(),
+			offsetof(Shader::New::MeshDrawCommand, IndirectMS),
+			scene.GetIndirectDrawEarlyBuffer(),
+			this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).SizeInBytes - sizeof(uint32_t),
+			instanceView.size());
 
 		commandList->EndRenderPass();
-		this->m_frameProfiler->EndRangeGPU(rangeId);
 	}
 
 	if (this->m_settings.EnableComputeDeferredLighting)
@@ -250,6 +297,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::WindowResize(DirectX::XMFLOAT2 c
 
 void PhxEngine::Renderer::RenderPath3DDeferred::BuildUI()
 {
+	// TODO: Set up UI
 }
 
 tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadShaders(tf::Taskflow& taskflow)
@@ -401,14 +449,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 {
 	auto _ = commandList->BeginScopedMarker("Prepare Frame Data");
 
-	Shader::Frame frameData = {};
-	// Move to Renderer...
-	frameData.BrdfLUTTexIndex = scene.GetBrdfLutDescriptorIndex();
-	frameData.LightEntityDescritporIndex = RHI::cInvalidDescriptorIndex;
-	frameData.LightDataOffset = 0;
-	frameData.LightCount = 0;
-	frameData.MatricesDescritporIndex = RHI::cInvalidDescriptorIndex;
-	frameData.MatricesDataOffset = 0;
+	Shader::New::Frame frameData = {};
 	frameData.SceneData = scene.GetShaderData();
 
 	assert(false); // TODO: Do this else where
