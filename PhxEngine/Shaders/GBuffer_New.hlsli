@@ -1,7 +1,7 @@
 #ifndef __GBUFFER_HLSL__
 #define __GBUFFER_HLSL__
 
-#include "Lighting.hlsli"
+#include "Lighting_New.hlsli"
 
 
 #define NUM_GBUFFER_CHANNELS 4

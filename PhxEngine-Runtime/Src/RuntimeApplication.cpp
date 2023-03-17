@@ -110,25 +110,10 @@ public:
             commandList,
             this->m_scene);
 
-        Scene::Entity worldE = this->m_scene.CreateEntity("WorldComponent");
-        auto& worldComponent = worldE.AddComponent<Scene::WorldEnvironmentComponent>();
-
-        // Load IBL Textures
-        std::filesystem::path texturePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Textures/IBL/PaperMill_Ruins_E/PaperMill_IrradianceMap.dds";
-        worldComponent.IblTextures[Scene::WorldEnvironmentComponent::IBLTextures::IrradanceMap] = m_textureCache->LoadTexture(texturePath, true, commandList);
-
-        texturePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Textures/IBL/PaperMill_Ruins_E/PaperMill_Skybox.dds";
-        worldComponent.IblTextures[Scene::WorldEnvironmentComponent::IBLTextures::EnvMap] = m_textureCache->LoadTexture(texturePath, true, commandList);
-
-        texturePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Textures/IBL/PaperMill_Ruins_E/PaperMill_RadianceMap.dds";
-        worldComponent.IblTextures[Scene::WorldEnvironmentComponent::IBLTextures::PreFilteredEnvMap] = m_textureCache->LoadTexture(texturePath, true, commandList);
-
-        texturePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Textures/IBL/BrdfLut.dds";
-        auto brdfLut = m_textureCache->LoadTexture(texturePath, true, commandList);
-        this->m_scene.SetBrdfLut(brdfLut);
-
         commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList }, true);
+
+        this->m_scene.BuildRenderData(this->GetGfxDevice());
 
         return retVal;
     }

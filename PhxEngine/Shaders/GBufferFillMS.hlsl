@@ -1,22 +1,14 @@
 #pragma pack_matrix(row_major)
 
-#include "Globals.hlsli"
-#include "Defines.hlsli"
-#include "GBuffer.hlsli"
+#include "../Include/PhxEngine/Shaders/ShaderInterop.h"
+#include "Globals_NEW.hlsli"
+#include "GBuffer_New.hlsli"
 #include "VertexBuffer.hlsli"
 
-#define ROOT_SIG \
-	"RootFlags(CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED), " \
-	"RootConstants(num32BitConstants=22, b999), " \
-	"CBV(b0), " \
-	"CBV(b1), " \
-
-#define MAX_PRIMS_PER_MESHLET 128
-#define MAX_VERTICES_PER_MESHLET 128
-#define MAX_THREAD_COUNT 128
-
-PUSH_CONSTANT(push, MeshletPushConstants);
-
+struct Payload
+{
+    uint MeshletIndices[AS_GROUP_SIZE];
+};
 
 struct VertexOut
 {
@@ -26,9 +18,11 @@ struct VertexOut
     float4 Position : SV_Position;
 };
 
+PUSH_CONSTANT(push, GeometryPushConstant);
+
 inline uint LoadPrimitiveIndices(uint index)
 {
-    StructuredBuffer<uint> primitiveIndices = ResourceDescriptorHeap[push.PrimitiveIndicesIdx];
+    StructuredBuffer<uint> primitiveIndices = ResourceDescriptorHeap[GetScene().MeshletPrimitiveIdx];
     return primitiveIndices[index];
 }
 
@@ -36,9 +30,9 @@ inline uint LoadUniqueVertexIB(uint index)
 {
     return ResourceHeap_GetBuffer(push.UniqueVertexIBIdx).Load(index * 4);
 }
-inline Meshlet_NEW LoadMeshlet(uint index)
+inline Meshlet LoadMeshlet(uint index)
 {
-    StructuredBuffer<Meshlet_NEW> meshletBuffer = ResourceDescriptorHeap[push.MeshletsBufferIdx];
+    StructuredBuffer<Meshlet> meshletBuffer = ResourceDescriptorHeap[push.MeshletsBufferIdx];
     return meshletBuffer[index];
 }
 
@@ -48,14 +42,14 @@ uint3 UnpackPrimitive(uint primitive)
     return uint3(primitive & 0x3FF, (primitive >> 10) & 0x3FF, (primitive >> 20) & 0x3FF);
 }
 
-uint3 GetPrimitive(Meshlet_NEW m, uint index)
+uint3 GetPrimitive(Meshlet m, uint index)
 {
     uint primitive = LoadPrimitiveIndices(m.PrimOffset + index);
     uint3 unpackedPrimitive = UnpackPrimitive(primitive);
     return unpackedPrimitive;
 }
 
-uint GetVertexIndex(Meshlet_NEW m, uint localIndex)
+uint GetVertexIndex(Meshlet m, uint localIndex)
 {
     localIndex = m.VertOffset + localIndex;
     
@@ -84,10 +78,22 @@ VertexOut GetVertexAttributes(uint meshletIndex, uint vertexIndex)
 void main(
     uint gtid : SV_GroupThreadID,
     uint gid : SV_GroupID,
-    out indices uint3 tris[MAX_PRIMS_PER_MESHLET],
-    out vertices VertexOut verts[MAX_VERTICES_PER_MESHLET])
+    in payload Payload payload,
+    out indices uint3 tris[MAX_PRIMS],
+    out vertices VertexOut verts[MAX_VERTS])
 {
-    Meshlet_NEW m = LoadMeshlet(push.SubsetOffset + gid);
+    ObjectInstance objectInstance = LoadObjectInstnace(push.DrawId);
+    Geometry geometryData = LoadGeometry(objectInstance.GeometryIndex);
+    
+    uint meshletIndex = payload.MeshletIndices[gid];
+    
+      // Catch any out-of-range indices (in case too many MS threadgroups were dispatched from AS)
+    if (meshletIndex >= geometryData.MeshletCount)
+    {
+        return;
+    }
+    
+    Meshlet m = LoadMeshlet(geometryData.MeshletOffset + gid);
 
     SetMeshOutputCounts(m.VertCount, m.PrimCount);
 

@@ -3073,6 +3073,11 @@ int PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateUnorderedAccessView(Buffer
 			uavDesc.Buffer.FirstElement = (UINT)offset / bufferImpl->Desc.StrideInBytes;
 			uavDesc.Buffer.NumElements = (UINT)std::min(size, bufferImpl->Desc.SizeInBytes - offset) / bufferImpl->Desc.StrideInBytes;
 			uavDesc.Buffer.StructureByteStride = bufferImpl->Desc.StrideInBytes;
+			
+			if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::HasCounter) != 0)
+			{
+				uavDesc.Buffer.CounterOffsetInBytes = bufferImpl->Desc.UavCounterOffsetInBytes;
+			}
 		}
 	}
 	else

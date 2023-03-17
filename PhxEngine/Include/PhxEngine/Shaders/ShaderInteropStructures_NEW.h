@@ -31,7 +31,7 @@ namespace Shader::New
 	{
 		uint32_t GroupCountX;
 		uint32_t GroupCountY;
-		uint32_t mGroupCountZ;
+		uint32_t GroupCountZ;
 	};
 
 	struct MeshDrawCommand
@@ -50,16 +50,27 @@ namespace Shader::New
 		uint ObjectBufferIdx;
 		uint GeometryBufferIdx;
 		uint MaterialBufferIdx;
-		uint MeshletBufferIndex;
+		uint GlobalVertexBufferIdx;
 
 		// -- 16 byte boundary ----
-		uint GlobalVertexBufferIdx;
-		uint GlobalIndexxBufferIdx;
-		uint DrawPacketBufferIdx;
+		uint GlobalIndexBufferIdx;
+		uint MeshletCullDataBufferIdx;
+		uint MeshletBufferIdx;
+		uint MeshletPrimitiveIdx;
+
+		// -- 16 byte boundary ----
+		uint UniqueVertexUBIdx;
+		uint IndirectEarlyBufferIdx;
+		uint IndirectLateBufferIdx;
+		uint IndirectCullBufferIdx;
 	};
+
+
+	static const uint FRAME_FLAGS_DISABLE_CULL_MESHLET = 1 << 0;
 
 	struct Frame
 	{
+		uint Flags;
 		Scene SceneData;
 	};
 
@@ -81,6 +92,7 @@ namespace Shader::New
 		float4x4 ShadowViewProjection;
 
 		// -- 16 byte boundary ----
+		float4 Planes[6];
 
 #ifndef __cplusplus
 		inline float3 GetPosition()
@@ -95,7 +107,7 @@ namespace Shader::New
 		float4x4 WorldMatrix;
 		// -- 16 byte boundary ----
 
-		uint GeometryOffset;
+		uint GeometryIndex;
 		uint Colour;
 		uint Emissive;
 		uint MeshletOffset;
@@ -175,6 +187,33 @@ namespace Shader::New
 		uint PrimOffset;
 	};
 
+	struct CullData
+	{
+		float4 BoundingSphere; // xyz = center, w = radius
+		uint NormalCone;     // axis : 24, w = -cos(a + 90)
+		float ApexOffset;     // apex = center - axis * offset
+
+#ifndef __cplusplus
+		float4 UnpackCone()
+		{
+			float4 v;
+			v.x = float((NormalCone >> 0) & 0xFF);
+			v.y = float((NormalCone >> 8) & 0xFF);
+			v.z = float((NormalCone >> 16) & 0xFF);
+			v.w = float((NormalCone >> 24) & 0xFF);
+
+			v = v / 255.0;
+			v.xyz = v.xyz * 2.0 - 1.0;
+
+			return v;
+		}
+		bool IsConeDegenerate()
+		{
+			return (NormalCone >> 24) == 0xff;
+		}
+#endif
+	};
+
 	struct MeshletVertexPositions
 	{
 		float3 Position;
@@ -249,6 +288,11 @@ namespace Shader::New
 	struct CullPushConstants
 	{
 
+	};
+
+	struct GeometryPushConstant
+	{
+		uint DrawId;
 	};
 
 #ifdef __cplusplus

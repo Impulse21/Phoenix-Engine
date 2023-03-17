@@ -175,7 +175,6 @@ namespace Shader
 
 		float4x4 ShadowViewProjection;
 
-		// -- 16 byte boundary ----
 
 #ifndef __cplusplus
 		inline float3 GetPosition()

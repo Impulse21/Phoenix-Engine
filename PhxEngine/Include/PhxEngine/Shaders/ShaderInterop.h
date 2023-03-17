@@ -41,9 +41,21 @@ namespace DefaultRootParameters
 #define RS_PUSH_CONSTANT "CBV(b999, space = 1, flags = DATA_STATIC)"
 
 #endif
+#define MAX(x, y) (x > y ? x : y)
+#define ROUNDUP(x, y) ((x + y - 1) & ~(y - 1))
 
 #define DEFERRED_BLOCK_SIZE_X 16
 #define DEFERRED_BLOCK_SIZE_Y 16
+
+#define MAX_VERTS 64
+#define MAX_PRIMS 124
+#define MAX_LOD_LEVELS 8
+
+#define THREADS_PER_WAVE 64 // Assumes availability of wave size of 64 threads
+
+// Pre-defined threadgroup sizes for AS & MS stages
+#define AS_GROUP_SIZE THREADS_PER_WAVE
+#define MS_GROUP_SIZE ROUNDUP(MAX(MAX_VERTS, MAX_PRIMS), THREADS_PER_WAVE)
 
 
 #define RESOURCE_HEAP_BUFFER_SPACE			space100

@@ -731,36 +731,39 @@ void PhxEngine::Scene::Scene::BuildIndirectBuffers(RHI::ICommandList* commandLis
 	}
 
 	this->m_indirectDrawEarlyBuffer = gfxDevice->CreateBuffer({
-			   .MiscFlags = BufferMiscFlags::Structured,
+			   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter,
 			   .Binding = BindingFlags::UnorderedAccess,
 			   .InitialState = ResourceStates::IndirectArgument,
 			   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
 			   .SizeInBytes = sizeof(Shader::New::MeshDrawCommand) * view.size() + sizeof(uint32_t),
-			   .AllowUnorderedAccess = true });
+			   .AllowUnorderedAccess = true,
+			   .UavCounterOffsetInBytes = sizeof(Shader::New::MeshDrawCommand) * view.size() });
 
 	if (this->m_indirectDrawCulledBuffer.IsValid())
 	{
 		gfxDevice->DeleteBuffer(this->m_indirectDrawCulledBuffer);
 	}
 	this->m_indirectDrawCulledBuffer = gfxDevice->CreateBuffer({
-			   .MiscFlags = BufferMiscFlags::Structured,
+			   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter,
 			   .Binding = BindingFlags::UnorderedAccess,
 			   .InitialState = ResourceStates::IndirectArgument,
 			   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
 			   .SizeInBytes = sizeof(Shader::New::MeshDrawCommand) * view.size() + sizeof(uint32_t),
-			   .AllowUnorderedAccess = true });
+			   .AllowUnorderedAccess = true,
+			   .UavCounterOffsetInBytes = sizeof(Shader::New::MeshDrawCommand) * view.size() });
 
 	if (this->m_indirectDrawLateBuffer.IsValid())
 	{
 		gfxDevice->DeleteBuffer(this->m_indirectDrawLateBuffer);
 	}
 	this->m_indirectDrawLateBuffer = gfxDevice->CreateBuffer({
-			   .MiscFlags = BufferMiscFlags::Structured,
+			   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter,
 			   .Binding = BindingFlags::UnorderedAccess,
 			   .InitialState = ResourceStates::IndirectArgument,
 			   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
 			   .SizeInBytes = sizeof(Shader::New::MeshDrawCommand) * view.size() + sizeof(uint32_t),
-			   .AllowUnorderedAccess = true });
+			   .AllowUnorderedAccess = true,
+			   .UavCounterOffsetInBytes = sizeof(Shader::New::MeshDrawCommand) * view.size() });
 }
 
 void PhxEngine::Scene::Scene::BuildSceneData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice)

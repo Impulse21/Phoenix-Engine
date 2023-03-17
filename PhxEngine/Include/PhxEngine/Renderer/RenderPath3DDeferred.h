@@ -77,6 +77,10 @@ namespace PhxEngine::Renderer
 			CS_CullPass,
 			CS_DeferredLightingPass,
 
+			AS_MeshletCull,
+
+			MS_MeshletGBufferFull,
+
 			Count
 		};
 	}

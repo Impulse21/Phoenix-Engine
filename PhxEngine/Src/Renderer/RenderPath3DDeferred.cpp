@@ -8,6 +8,7 @@
 #include <PhxEngine/Core/Profiler.h>
 #include <taskflow/taskflow.hpp>
 #include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
+#include <PhxEngine/Shaders/ShaderInterop.h>
 
 #include "DrawQueue.h"
 #include <PhxEngine/Renderer/RenderPath3DDeferred.h>
@@ -93,7 +94,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 	{
 		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::CullPass]);
 		commandList->Dispatch(
-			instanceView.size() / 64,
+			(int)std::ceilf(instanceView.size() / THREADS_PER_WAVE),
 			1,
 			1);
 	}
@@ -328,6 +329,15 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadShaders(tf::Taskflow& ta
 		subflow.emplace([&]() {
 			this->m_shaders[EShaders::PS_ToneMapping] = this->m_shaderFactory->CreateShader("PhxEngine/ToneMappingPS.hlsl", { .Stage = RHI::ShaderStage::Pixel, .DebugName = "ToneMappingPS", });
 			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::CS_CullPass] = this->m_shaderFactory->CreateShader("PhxEngine/CullPassCS.hlsl", { .Stage = RHI::ShaderStage::Compute, .DebugName = "CullPassCS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::AS_MeshletCull] = this->m_shaderFactory->CreateShader("PhxEngine/MeshletCullAS.hlsl", { .Stage = RHI::ShaderStage::Mesh, .DebugName = "MeshletCullAS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::MS_MeshletGBufferFull] = this->m_shaderFactory->CreateShader("PhxEngine/GBufferFillMS.hlsl", { .Stage = RHI::ShaderStage::Mesh, .DebugName = "GBufferFillMS", });
+			});
 		});
 	return shaderLoadTask;
 }
@@ -356,6 +366,11 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadPipelineStates(tf::Taskf
 		subflow.emplace([&]() {
 			this->m_computeStates[EComputePipelineStates::DeferredLightingPass] = this->m_gfxDevice->CreateComputePipeline({
 					.ComputeShader = this->m_shaders[EShaders::CS_DeferredLightingPass],
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_computeStates[EComputePipelineStates::CullPass] = this->m_gfxDevice->CreateComputePipeline({
+					.ComputeShader = this->m_shaders[EShaders::CS_CullPass],
 				});
 			});
 		subflow.emplace([&]() {

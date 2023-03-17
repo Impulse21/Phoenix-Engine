@@ -9,6 +9,7 @@
 #include <PhxEngine/Core/VirtualFileSystem.h>
 #include "PhxEngine/Scene/Components.h"
 #include <DirectXMesh.h>
+#include <PhxEngine/Shaders/ShaderInterop.h>
 
 #include <filesystem>
 
@@ -954,8 +955,6 @@ void GltfSceneLoader::LoadMeshData(
 			// Calculate Meshlet Data
 
 			// Recomended for NVIDA, which is the GPU I am testing.
-			const size_t maxVertices = 64;
-			const size_t maxTriangles = 124;
 			auto hr = DirectX::ComputeMeshlets(
 				mesh.Indices, mesh.TotalIndices / 3,
 				mesh.Positions, mesh.TotalVertices,
@@ -963,8 +962,8 @@ void GltfSceneLoader::LoadMeshData(
 				mesh.Meshlets,
 				mesh.UniqueVertexIB,
 				mesh.MeshletTriangles,
-				maxVertices,
-				maxVertices);
+				MAX_VERTS,
+				MAX_PRIMS);
 			assert(SUCCEEDED(hr));
 
 			mesh.PackedVertexData = reinterpret_cast<Shader::New::MeshletPackedVertexData*>(scene.GetAllocator()->Allocate(sizeof(Shader::New::MeshletPackedVertexData) * mesh.TotalVertices, 0));
