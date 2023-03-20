@@ -454,7 +454,7 @@ void PhxEngine::Renderer::RenderPath3DForward::RenderGeometry(RHI::ICommandList*
 		commandList->DrawIndexed(
 			meshComponent.TotalIndices,
 			instanceBatch.NumInstance,
-			meshComponent.GlobalByteOffsetIndexBuffer);
+			meshComponent.GlobalIndexOffsetGeometryBuffer);
 	};
 
 	commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());

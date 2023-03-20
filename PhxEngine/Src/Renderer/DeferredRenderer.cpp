@@ -711,7 +711,7 @@ void PhxEngine::Renderer::DeferredRenderer::DrawMeshes(
         commandList->DrawIndexed(
             meshComponent.TotalIndices,
             instanceBatch.NumInstance,
-            meshComponent.GlobalByteOffsetIndexBuffer);
+            meshComponent.GlobalOffsetIndexBuffer);
     };
 
     commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());

@@ -57,7 +57,7 @@ void PhxEngine::Renderer::RenderViews(RHI::ICommandList* commandList, IGeometryP
 		commandList->DrawIndexed(
 			meshComponent.TotalIndices,
 			instanceBatch.NumInstance,
-			meshComponent.GlobalByteOffsetIndexBuffer);
+			meshComponent.GlobalOffsetIndexBuffer);
 	};
 
     commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());
