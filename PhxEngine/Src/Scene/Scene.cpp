@@ -46,6 +46,19 @@ RHI::ExecutionReceipt PhxEngine::Scene::Scene::BuildRenderData(RHI::IGraphicsDev
 		resource.Free();
 	}
 
+	this->m_shaderData.ObjectBufferIdx = gfxDevice->GetDescriptorIndex(this->m_instanceGpuBuffer, SubresouceType::SRV);
+	this->m_shaderData.GeometryBufferIdx = gfxDevice->GetDescriptorIndex(this->m_geometryGpuBuffer, SubresouceType::SRV);
+	this->m_shaderData.MaterialBufferIdx = gfxDevice->GetDescriptorIndex(this->m_materialGpuBuffer, SubresouceType::SRV);
+	this->m_shaderData.GlobalVertexBufferIdx = gfxDevice->GetDescriptorIndex(this->m_globalVertexBuffer, SubresouceType::SRV);
+	this->m_shaderData.GlobalIndexBufferIdx = gfxDevice->GetDescriptorIndex(this->m_globalIndexBuffer, SubresouceType::SRV);
+	this->m_shaderData.MeshletCullDataBufferIdx = gfxDevice->GetDescriptorIndex(this->m_globalMeshletCullDataBuffer, SubresouceType::SRV);
+	this->m_shaderData.MeshletBufferIdx = gfxDevice->GetDescriptorIndex(this->m_globalMeshletBuffer, SubresouceType::SRV);
+	this->m_shaderData.MeshletPrimitiveIdx = gfxDevice->GetDescriptorIndex(this->m_globalMeshletPrimitiveBuffer, SubresouceType::SRV);
+	this->m_shaderData.UniqueVertexIBIdx = gfxDevice->GetDescriptorIndex(this->m_globalUniqueVertexIBBuffer, SubresouceType::SRV);
+	this->m_shaderData.IndirectEarlyBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawEarlyBuffer, SubresouceType::SRV);
+	this->m_shaderData.IndirectLateBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawLateBuffer, SubresouceType::SRV);
+	this->m_shaderData.IndirectCullBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawCulledBuffer, SubresouceType::SRV);
+
 	return retVal;
 }
 
@@ -662,7 +675,7 @@ void PhxEngine::Scene::Scene::BuildGeometryData(RHI::ICommandList* commandList, 
 
 		geometryShaderData->NumIndices = mesh.TotalIndices;
 		geometryShaderData->NumVertices = mesh.TotalVertices;
-		geometryShaderData->IndexByteOffset = mesh.GlobalByteOffsetIndexBuffer;
+		geometryShaderData->IndexByteOffset = mesh.GlobalOffsetIndexBuffer;
 
 		geometryShaderData->VertexBufferIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_globalIndexBuffer, RHI::SubresouceType::SRV);
 		geometryShaderData->PositionOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Position).ByteOffset;
@@ -701,12 +714,14 @@ void PhxEngine::Scene::Scene::BuildObjectInstances(RHI::ICommandList* commandLis
 	for (auto e : instanceTransformView)
 	{
 		auto [meshInstanceComponent, transformComponent] = instanceTransformView.get<MeshInstanceComponent, TransformComponent>(e);
+
+		assert(false); 
 		Shader::New::ObjectInstance* shaderMeshInstance = instancePtr + currInstanceIndex;
 
 		auto& mesh = this->GetRegistry().get<MeshComponent>(meshInstanceComponent.Mesh);
-		shaderMeshInstance->GeometryIndex = mesh.GlobalIndexOffsetGeometryBuffer;
 		shaderMeshInstance->WorldMatrix = transformComponent.WorldMatrix;
-		shaderMeshInstance->MeshletOffset = mesh.GlobalIndexOffsetMeshletBuffer;
+		shaderMeshInstance->GeometryIndex = mesh.GlobalIndexOffsetGeometryBuffer;
+		shaderMeshInstance->MeshletOffset = mesh.GlobalOffsetMeshletBuffer;
 		meshInstanceComponent.GlobalBufferIndex = currInstanceIndex++;
 	}
 
@@ -845,7 +860,7 @@ void PhxEngine::Scene::Scene::BuildMeshData(RHI::ICommandList* commandList, RHI:
 {
 	// Construct Mesh Render Data
 	auto meshView = this->GetAllEntitiesWith<MeshComponent>();
-	size_t totalVertexCount = 0;
+	size_t totalVertexByteCount = 0;
 	size_t totalIndexCount = 0;
 	size_t totalMeshletCount = 0;
 	size_t totalUniqueVertexIBCount = 0;
@@ -854,16 +869,16 @@ void PhxEngine::Scene::Scene::BuildMeshData(RHI::ICommandList* commandList, RHI:
 	{
 		auto& mesh = meshView.get<MeshComponent>(e);
 
-		mesh.GlobalByteOffsetIndexBuffer = totalIndexCount;
-		mesh.GlobalByteOffsetVertexBuffer = totalVertexCount;
+		mesh.GlobalOffsetIndexBuffer = totalIndexCount;
+		mesh.GlobalByteOffsetVertexBuffer = totalVertexByteCount;
 
-		mesh.GlobalIndexOffsetMeshletBuffer = totalMeshletCount;
-		mesh.GlobalIndexOffsetUnqiueVertexIBBuffer = totalUniqueVertexIBCount;
-		mesh.GlobalIndexOffsetMeshletPrimitiveBuffer = totalMeshletPrimitiveCount;
-		mesh.GlobalIndexOffsetMeshletCullDataBuffer = totalMeshletCount;
+		mesh.GlobalOffsetMeshletBuffer = totalMeshletCount;
+		mesh.GlobalOffsetUnqiueVertexIBBuffer = totalUniqueVertexIBCount;
+		mesh.GlobalOffsetMeshletPrimitiveBuffer = totalMeshletPrimitiveCount;
+		mesh.GlobalOffsetMeshletCullDataBuffer = totalMeshletCount;
 
-		totalIndexCount += gfxDevice->GetBufferDesc(mesh.IndexBuffer).SizeInBytes;
-		totalVertexCount += gfxDevice->GetBufferDesc(mesh.VertexBuffer).SizeInBytes;
+		totalIndexCount += totalIndexCount;
+		totalVertexByteCount += gfxDevice->GetBufferDesc(mesh.VertexBuffer).SizeInBytes;
 
 		totalMeshletCount += mesh.Meshlets.size();
 		totalUniqueVertexIBCount += mesh.UniqueVertexIB.size();
@@ -872,14 +887,14 @@ void PhxEngine::Scene::Scene::BuildMeshData(RHI::ICommandList* commandList, RHI:
 
 	this->m_globalIndexBuffer = gfxDevice->CreateIndexBuffer({
 			.StrideInBytes = sizeof(uint32_t),
-			.SizeInBytes = totalIndexCount,
+			.SizeInBytes = totalIndexCount * sizeof(uint32_t),
 			.DebugName = "Scene Index Buffer" });
 
 	this->m_globalVertexBuffer = gfxDevice->CreateIndexBuffer({
 			.MiscFlags = RHI::BufferMiscFlags::Raw | RHI::BufferMiscFlags::Bindless,
 			.Binding = RHI::BindingFlags::VertexBuffer | RHI::BindingFlags::ShaderResource,
 			.StrideInBytes = sizeof(float),
-			.SizeInBytes = totalVertexCount,
+			.SizeInBytes = totalVertexByteCount,
 			.DebugName = "Scene Vertex Buffer" });
 
 	this->m_globalMeshletBuffer = gfxDevice->CreateBuffer({
@@ -940,7 +955,7 @@ void PhxEngine::Scene::Scene::BuildMeshData(RHI::ICommandList* commandList, RHI:
 
 		commandList->CopyBuffer(
 			this->m_globalIndexBuffer,
-			mesh.GlobalByteOffsetIndexBuffer,
+			mesh.GlobalOffsetIndexBuffer,
 			mesh.IndexBuffer,
 			0,
 			gfxDevice->GetBufferDesc(mesh.IndexBuffer).SizeInBytes);
@@ -954,28 +969,28 @@ void PhxEngine::Scene::Scene::BuildMeshData(RHI::ICommandList* commandList, RHI:
 
 		commandList->CopyBuffer(
 			this->m_globalMeshletBuffer,
-			mesh.GlobalIndexOffsetMeshletBuffer * meshletBufferStride,
+			mesh.GlobalOffsetMeshletBuffer * meshletBufferStride,
 			mesh.MeshletBuffer,
 			0,
 			gfxDevice->GetBufferDesc(mesh.MeshletBuffer).SizeInBytes);
 
 		commandList->CopyBuffer(
 			this->m_globalUniqueVertexIBBuffer,
-			mesh.GlobalIndexOffsetUnqiueVertexIBBuffer * uniqueVertexIBStride,
+			mesh.GlobalOffsetUnqiueVertexIBBuffer * uniqueVertexIBStride,
 			mesh.UniqueVertexIBBuffer,
 			0,
 			gfxDevice->GetBufferDesc(mesh.UniqueVertexIBBuffer).SizeInBytes);
 
 		commandList->CopyBuffer(
 			this->m_globalMeshletPrimitiveBuffer,
-			mesh.GlobalIndexOffsetMeshletPrimitiveBuffer * meshletPrimtiveStide,
+			mesh.GlobalOffsetMeshletPrimitiveBuffer * meshletPrimtiveStide,
 			mesh.MeshletPrimitivesBuffer,
 			0,
 			gfxDevice->GetBufferDesc(mesh.MeshletPrimitivesBuffer).SizeInBytes);
 
 		commandList->CopyBuffer(
 			this->m_globalMeshletCullDataBuffer,
-			mesh.GlobalIndexOffsetMeshletCullDataBuffer * meshletCullDataStride,
+			mesh.GlobalOffsetMeshletCullDataBuffer * meshletCullDataStride,
 			mesh.MeshletCullDataBuffer,
 			0,
 			gfxDevice->GetBufferDesc(mesh.MeshletCullDataBuffer).SizeInBytes);

@@ -468,12 +468,12 @@ namespace PhxEngine::Scene
 
 		// -- GPU Data --
 		size_t GlobalByteOffsetVertexBuffer;
-		size_t GlobalByteOffsetIndexBuffer;
+		size_t GlobalOffsetIndexBuffer;
 
-		size_t GlobalIndexOffsetMeshletBuffer;
-		size_t GlobalIndexOffsetUnqiueVertexIBBuffer;
-		size_t GlobalIndexOffsetMeshletPrimitiveBuffer;
-		size_t GlobalIndexOffsetMeshletCullDataBuffer;
+		size_t GlobalOffsetMeshletBuffer;
+		size_t GlobalOffsetUnqiueVertexIBBuffer;
+		size_t GlobalOffsetMeshletPrimitiveBuffer;
+		size_t GlobalOffsetMeshletCullDataBuffer;
 
 		size_t GlobalIndexOffsetGeometryBuffer;
 

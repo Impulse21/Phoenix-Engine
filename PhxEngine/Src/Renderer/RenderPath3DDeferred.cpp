@@ -477,7 +477,6 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 	Shader::New::Frame frameData = {};
 	frameData.SceneData = scene.GetShaderData();
 
-	assert(false); // TODO: Do this else where
 	// Upload data
 	RHI::GpuBarrier preCopyBarriers[] =
 	{
