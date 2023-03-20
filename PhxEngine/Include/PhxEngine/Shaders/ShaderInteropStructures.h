@@ -214,14 +214,14 @@ namespace Shader
 #ifndef __cplusplus
 		inline float4 GetColour()
 		{
-			float4 refVal;
+			float4 retVal;
 
-			refVal.x = (float)((ColorPacked >> 0) & 0xFF) / 255.0f;
-			refVal.y = (float)((ColorPacked >> 8) & 0xFF) / 255.0f;
-			refVal.z = (float)((ColorPacked >> 16) & 0xFF) / 255.0f;
-			refVal.w = (float)((ColorPacked >> 24) & 0xFF) / 255.0f;
+			retVal.x = (float)((ColorPacked >> 0) & 0xFF) / 255.0f;
+			retVal.y = (float)((ColorPacked >> 8) & 0xFF) / 255.0f;
+			retVal.z = (float)((ColorPacked >> 16) & 0xFF) / 255.0f;
+			retVal.w = (float)((ColorPacked >> 24) & 0xFF) / 255.0f;
 
-			return refVal;
+			return retVal;
 		}
 
 		inline float3 GetDirection()
@@ -415,14 +415,14 @@ namespace Shader
 #ifndef __cplusplus
 		inline float4 GetColour()
 		{
-			float4 refVal;
+			float4 retVal;
 
-			refVal.x = (float)((ColorPacked >> 0) & 0xFF) / 255.0f;
-			refVal.y = (float)((ColorPacked >> 8) & 0xFF) / 255.0f;
-			refVal.z = (float)((ColorPacked >> 16) & 0xFF) / 255.0f;
-			refVal.w = (float)((ColorPacked >> 24) & 0xFF) / 255.0f;
+			retVal.x = (float)((ColorPacked >> 0) & 0xFF) / 255.0f;
+			retVal.y = (float)((ColorPacked >> 8) & 0xFF) / 255.0f;
+			retVal.z = (float)((ColorPacked >> 16) & 0xFF) / 255.0f;
+			retVal.w = (float)((ColorPacked >> 24) & 0xFF) / 255.0f;
 
-			return refVal;
+			return retVal;
 		}
 #endif
 	};
@@ -455,14 +455,14 @@ namespace Shader
 #ifndef __cplusplus
 		inline float4 GetEmissiveColour()
 		{
-			float4 refVal;
+			float4 retVal;
 
-			refVal.x = (float)((EmissiveColourPacked >> 0) & 0xFF) / 255.0f;
-			refVal.y = (float)((EmissiveColourPacked >> 8) & 0xFF) / 255.0f;
-			refVal.z = (float)((EmissiveColourPacked >> 16) & 0xFF) / 255.0f;
-			refVal.w = (float)((EmissiveColourPacked >> 24) & 0xFF) / 255.0f;
+			retVal.x = (float)((EmissiveColourPacked >> 0) & 0xFF) / 255.0f;
+			retVal.y = (float)((EmissiveColourPacked >> 8) & 0xFF) / 255.0f;
+			retVal.z = (float)((EmissiveColourPacked >> 16) & 0xFF) / 255.0f;
+			retVal.w = (float)((EmissiveColourPacked >> 24) & 0xFF) / 255.0f;
 
-			return refVal;
+			return retVal;
 		}
 #endif
 	};

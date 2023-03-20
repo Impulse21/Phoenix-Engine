@@ -2,4 +2,4 @@
 
 #define COMPILE_PS
 
-#include "GBufferFillPass.hlsli"
+#include "GBufferFillPass_New.hlsli"

@@ -23,7 +23,7 @@ inline VertexData FetchVertexData(in uint vertexId, in Geometry geometry)
     ByteAddressBuffer vertexBuffer = ResourceHeap_GetBuffer(geometry.VertexBufferIndex);
     
     VertexData output;
-    output.Position = RetrieveVertexPosition(vertexId, geometry);
+    output.Position = FetchVertexPosition(vertexId, geometry);
     output.Normal = geometry.NormalOffset == ~0u ? 0 : asfloat(vertexBuffer.Load3(geometry.NormalOffset + vertexId * 12));
     output.TexCoord = geometry.TexCoordOffset == ~0u ? 0 : asfloat(vertexBuffer.Load2(geometry.TexCoordOffset + vertexId * 8));
     output.Tangent = geometry.TangentOffset == ~0u ? 0 : asfloat(vertexBuffer.Load4(geometry.TangentOffset + vertexId * 16));

@@ -18,6 +18,13 @@
 namespace Shader::New
 {
 #endif
+	static const uint ENTITY_TYPE_DIRECTIONALLIGHT = 0;
+	static const uint ENTITY_TYPE_OMNILIGHT = 1;
+	static const uint ENTITY_TYPE_SPOTLIGHT = 2;
+
+	static const uint SHADER_LIGHT_ENTITY_COUNT = 256;
+
+	static const uint MATRIX_COUNT = 128;
 	struct IndirectDrawArgsIndexedInstanced
 	{
 		uint32_t IndexCount;
@@ -45,6 +52,182 @@ namespace Shader::New
 	static_assert(sizeof(MeshDrawCommand) % sizeof(uint32_t) == 0);
 #endif
 
+	// -- Common Buffers END --- 
+	struct ShaderLight
+	{
+		float3 Position;
+		uint Type8_Flags8_Range16; // <Range_16><flags_8><type_8>
+
+		// -- 16 byte boundary ----
+		uint2 Direction16_ConeAngleCos16;
+		uint Intensity16_X16; // <free_16><range_8>
+		uint ColorPacked;
+		uint Indices16_Cascades16; // Not current packed
+
+		// -- 16 byte boundary ----
+		float4 ShadowAtlasMulAdd;
+
+		// -- 16 byte boundary ----
+		// Near first 16 bits, far being the lather
+		uint CubemapDepthRemapPacked;
+		float Intensity;
+		float Range;
+		float ConeAngleCos;
+		// -- 16 byte boundary ----
+
+		float AngleScale;
+		float AngleOffset;
+		uint CascadeTextureIndex;
+
+#ifndef __cplusplus
+		inline float4 GetColour()
+		{
+			float4 retVal;
+
+			retVal.x = (float)((ColorPacked >> 0) & 0xFF) / 255.0f;
+			retVal.y = (float)((ColorPacked >> 8) & 0xFF) / 255.0f;
+			retVal.z = (float)((ColorPacked >> 16) & 0xFF) / 255.0f;
+			retVal.w = (float)((ColorPacked >> 24) & 0xFF) / 255.0f;
+
+			return retVal;
+		}
+
+		inline float3 GetDirection()
+		{
+			return float3(
+				f16tof32(Direction16_ConeAngleCos16.x & 0xFFFF),
+				f16tof32((Direction16_ConeAngleCos16.x >> 16) & 0xFFFF),
+				f16tof32(Direction16_ConeAngleCos16.y & 0xFFFF)
+			);
+		}
+
+		inline float GetConeAngleCos()
+		{
+			// return f16tof32((Direction16_ConeAngleCos16.y >> 16) & 0xFFFF);
+			return ConeAngleCos;
+		}
+
+		inline uint GetType()
+		{
+			return Type8_Flags8_Range16 & 0xFF;
+		}
+
+		inline uint GetFlags()
+		{
+			return (Type8_Flags8_Range16 >> 8) & 0xFF;
+		}
+
+		inline uint GetIndices()
+		{
+			return Indices16_Cascades16 & 0xFFFF;
+		}
+
+		inline uint GetNumCascades()
+		{
+			return (Indices16_Cascades16 >> 16u) & 0xFFFF;
+		}
+
+		inline float GetRange()
+		{
+			// return f16tof32((Type8_Flags8_Range16 >> 16) & 0xFFFF);
+			return Range;
+		}
+
+		inline float GetIntensity()
+		{
+			// return f16tof32(Energy16_X16 & 0xFFFF);
+			return Intensity;
+		}
+
+		inline float GetAngleScale()
+		{
+			// return f16tof32(remap);
+			return AngleScale;
+		}
+
+		inline float GetAngleOffset()
+		{
+			return AngleOffset;
+		}
+
+		inline float GetCubemapDepthRemapNear(float value)
+		{
+			return f16tof32((CubemapDepthRemapPacked) & 0xFFFF);
+		}
+
+		inline float GetCubemapDepthRemapFar(float value)
+		{
+			return f16tof32((CubemapDepthRemapPacked >> 16u) & 0xFFFF);
+		}
+
+#else
+		inline void SetType(uint type)
+		{
+			Type8_Flags8_Range16 |= type & 0xFF;
+		}
+
+		inline void SetFlags(uint flags)
+		{
+			Type8_Flags8_Range16 |= (flags & 0xFF) << 8;
+		}
+
+		inline void SetRange(float value)
+		{
+			// Type8_Flags8_Range16 |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16;
+			Range = value;
+		}
+
+		inline void SetIntensity(float value)
+		{
+			// Intensity16_X16 |= DirectX::PackedVector::XMConvertFloatToHalf(value);
+			Intensity = value;
+		}
+
+		inline void SetDirection(float3 value)
+		{
+			Direction16_ConeAngleCos16.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.x);
+			Direction16_ConeAngleCos16.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.y) << 16u;
+			Direction16_ConeAngleCos16.y |= DirectX::PackedVector::XMConvertFloatToHalf(value.z);
+		}
+
+		inline void SetConeAngleCos(float value)
+		{
+			Direction16_ConeAngleCos16.y |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16u;
+			ConeAngleCos = value;
+		}
+
+		inline void SetAngleScale(float value)
+		{
+			AngleScale = value;
+		}
+
+		inline void SetAngleOffset(float value)
+		{
+			AngleOffset = value;
+		}
+
+		inline void SetCubemapDepthRemapNear(float value)
+		{
+			CubemapDepthRemapPacked |= DirectX::PackedVector::XMConvertFloatToHalf(value);
+		}
+
+		inline void SetCubemapDepthRemapFar(float value)
+		{
+			CubemapDepthRemapPacked |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16u;
+		}
+
+		inline void SetIndices(uint value)
+		{
+			this->Indices16_Cascades16 |= (value & 0xFFFF);
+		}
+
+		inline void SetNumCascades(uint value)
+		{
+			this->Indices16_Cascades16 |= (value & 0xFFFF) << 16u;
+		}
+#endif
+	};
+
 	struct Scene
 	{
 		uint ObjectBufferIdx;
@@ -59,7 +242,7 @@ namespace Shader::New
 		uint MeshletPrimitiveIdx;
 
 		// -- 16 byte boundary ----
-		uint UniqueVertexUBIdx;
+		uint UniqueVertexIBIdx;
 		uint IndirectEarlyBufferIdx;
 		uint IndirectLateBufferIdx;
 		uint IndirectCullBufferIdx;
@@ -143,14 +326,14 @@ namespace Shader::New
 #ifndef __cplusplus
 		inline float4 GetEmissiveColour()
 		{
-			float4 refVal;
+			float4 retVal;
 
-			refVal.x = (float)((EmissiveColourPacked >> 0) & 0xFF) / 255.0f;
-			refVal.y = (float)((EmissiveColourPacked >> 8) & 0xFF) / 255.0f;
-			refVal.z = (float)((EmissiveColourPacked >> 16) & 0xFF) / 255.0f;
-			refVal.w = (float)((EmissiveColourPacked >> 24) & 0xFF) / 255.0f;
+			retVal.x = (float)((EmissiveColourPacked >> 0) & 0xFF) / 255.0f;
+			retVal.y = (float)((EmissiveColourPacked >> 8) & 0xFF) / 255.0f;
+			retVal.z = (float)((EmissiveColourPacked >> 16) & 0xFF) / 255.0f;
+			retVal.w = (float)((EmissiveColourPacked >> 24) & 0xFF) / 255.0f;
 
-			return refVal;
+			return retVal;
 		}
 #endif
 	};
@@ -238,7 +421,7 @@ namespace Shader::New
 			retVal.z = (float)((Normal >> 16) & 0xFF) / 127.0f;
 			retVal.w = (float)((Normal >> 24) & 0xFF) / 127.0f;
 
-			return refVal;
+			return retVal;
 		}
 
 		float4 GetTanget()
@@ -250,7 +433,7 @@ namespace Shader::New
 			retVal.z = (float)((Tanget >> 16) & 0xFF) / 127.0f;
 			retVal.w = (float)((Tanget >> 24) & 0xFF) / 127.0f;
 
-			return refVal;
+			return retVal;
 		}
 
 		float2 GetTexCoord()
@@ -288,6 +471,12 @@ namespace Shader::New
 	struct CullPushConstants
 	{
 
+	};
+
+	struct DefferedLightingCSConstants
+	{
+		uint2 DipatchGridDim; // // Arguments of the Dispatch call
+		uint MaxTileWidth; // 8, 16 or 32.
 	};
 
 	struct GeometryPushConstant

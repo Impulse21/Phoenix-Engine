@@ -36,6 +36,7 @@ namespace PhxEngine::Renderer
 		enum
 		{
 			GBufferFillPass,
+			GBufferFillPass_Mesh,
 			DeferredLightingPass,
 			ToneMappingPass,
 			Count
@@ -79,7 +80,7 @@ namespace PhxEngine::Renderer
 
 			AS_MeshletCull,
 
-			MS_MeshletGBufferFull,
+			MS_MeshletGBufferFill,
 
 			Count
 		};

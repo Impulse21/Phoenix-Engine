@@ -99,62 +99,62 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			1);
 	}
 
-	if (this->m_settings.EnableMeshShaders)
 	{
-		if (!this->m_drawMeshCommandSignatureMS.IsValid())
-		{
-			this->m_drawMeshCommandSignatureMS = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshDrawCommand>({
-						   .ArgDesc =
-							   {
-								   {.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
-								   {.Type = IndirectArgumentType::DispatchMesh }
-							   },
-						   .PipelineType = PipelineType::Mesh,
-						   .MeshHandle = this->m_meshStates[EMeshPipelineStates::GBufferFillPass]
-				});
-		}
-
-		// Dispatch Mesh
-		commandList->SetMeshPipeline(this->m_meshStates[EMeshPipelineStates::GBufferFillPass]);
-		commandList->BindConstantBuffer(1, this->m_frameCB);
-		commandList->BindDynamicConstantBuffer(2, cameraData);
-
-		commandList->ExecuteIndirect(
-			this->m_drawMeshCommandSignatureMS,
-			scene.GetIndirectDrawEarlyBuffer(),
-			offsetof(Shader::New::MeshDrawCommand, IndirectMS),
-			scene.GetIndirectDrawEarlyBuffer(),
-			this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).SizeInBytes - sizeof(uint32_t),
-			instanceView.size());
-		// Bind Data
-	}
-	else
-	{
-		if (!this->m_drawMeshCommandSignatureGfx.IsValid())
-		{
-			// Create Command Signature
-			this->m_drawMeshCommandSignatureGfx = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshDrawCommand>({
-							.ArgDesc =
-								{
-									{.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
-									{.Type = IndirectArgumentType::DrawIndex }
-								},
-							.PipelineType = PipelineType::Gfx,
-							.GfxHandle = this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]
-				});
-		}
-
-		commandList->SetMeshPipeline(this->m_meshStates[EMeshPipelineStates::GBufferFillPass]);
+		auto _ = commandList->BeginScopedMarker("GBuffer Fill Pass");
 		commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::GBufferFillPass]);
+		if (this->m_settings.EnableMeshShaders)
+		{
+			if (!this->m_drawMeshCommandSignatureMS.IsValid())
+			{
+				this->m_drawMeshCommandSignatureMS = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshDrawCommand>({
+							   .ArgDesc =
+								   {
+									   {.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+									   {.Type = IndirectArgumentType::DispatchMesh }
+								   },
+							   .PipelineType = PipelineType::Mesh,
+							   .MeshHandle = this->m_meshStates[EMeshPipelineStates::GBufferFillPass]
+					});
+			}
+
+			// Dispatch Mesh
+			commandList->SetMeshPipeline(this->m_meshStates[EMeshPipelineStates::GBufferFillPass]);
+		}
+		else
+		{
+			if (!this->m_drawMeshCommandSignatureGfx.IsValid())
+			{
+				// Create Command Signature
+				this->m_drawMeshCommandSignatureGfx = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshDrawCommand>({
+								.ArgDesc =
+									{
+										{.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+										{.Type = IndirectArgumentType::DrawIndex }
+									},
+								.PipelineType = PipelineType::Gfx,
+								.GfxHandle = this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]
+					});
+			}
+
+			commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]);
+
+
+			commandList->ExecuteIndirect(
+				this->m_drawMeshCommandSignatureGfx,
+				scene.GetIndirectDrawEarlyBuffer(),
+				offsetof(Shader::New::MeshDrawCommand, IndirectMS),
+				scene.GetIndirectDrawEarlyBuffer(),
+				this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).SizeInBytes - sizeof(uint32_t),
+				instanceView.size());
+		}
+
 		commandList->SetViewports(&v, 1);
 		commandList->SetScissors(&rec, 1);
-		commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]);
 		commandList->BindConstantBuffer(1, this->m_frameCB);
 		commandList->BindDynamicConstantBuffer(2, cameraData);
 
-
 		commandList->ExecuteIndirect(
-			this->m_drawMeshCommandSignatureGfx,
+			this->m_settings.EnableMeshShaders ? this->m_drawMeshCommandSignatureMS : this->m_drawMeshCommandSignatureGfx,
 			scene.GetIndirectDrawEarlyBuffer(),
 			offsetof(Shader::New::MeshDrawCommand, IndirectMS),
 			scene.GetIndirectDrawEarlyBuffer(),
@@ -336,7 +336,7 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadShaders(tf::Taskflow& ta
 			this->m_shaders[EShaders::AS_MeshletCull] = this->m_shaderFactory->CreateShader("PhxEngine/MeshletCullAS.hlsl", { .Stage = RHI::ShaderStage::Mesh, .DebugName = "MeshletCullAS", });
 			});
 		subflow.emplace([&]() {
-			this->m_shaders[EShaders::MS_MeshletGBufferFull] = this->m_shaderFactory->CreateShader("PhxEngine/GBufferFillMS.hlsl", { .Stage = RHI::ShaderStage::Mesh, .DebugName = "GBufferFillMS", });
+			this->m_shaders[EShaders::MS_MeshletGBufferFill] = this->m_shaderFactory->CreateShader("PhxEngine/GBufferFillMS.hlsl", { .Stage = RHI::ShaderStage::Mesh, .DebugName = "GBufferFillMS", });
 			});
 		});
 	return shaderLoadTask;
@@ -382,6 +382,16 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadPipelineStates(tf::Taskf
 					.DepthStencilRenderState = {.DepthTestEnable = false, .StencilEnable = false },
 					.RasterRenderState = {.CullMode = RHI::RasterCullMode::None },
 					.RtvFormats = { this->m_gfxDevice->GetTextureDesc(this->m_gfxDevice->GetBackBuffer()).Format }
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_meshStates[EGfxPipelineStates::GBufferFillPass_Mesh] = this->m_gfxDevice->CreateMeshPipeline(
+				{
+					.AmpShader = this->m_shaders[EShaders::AS_MeshletCull],
+					.MeshShader = this->m_shaders[EShaders::MS_MeshletGBufferFill],
+					.PixelShader = this->m_shaders[EShaders::PS_GBufferFill],
+					.RtvFormats = this->m_gbuffer.GBufferFormats,
+					.DsvFormat = this->m_gbuffer.DepthFormat
 				});
 			});
 		});
@@ -559,87 +569,4 @@ void PhxEngine::Renderer::RenderPath3DDeferred::UpdateRTAccelerationStructures(I
 		commandList->TransitionBarriers(Core::Span(postBarriers, ARRAYSIZE(postBarriers)));
 	}
 #endif
-}
-
-void PhxEngine::Renderer::RenderPath3DDeferred::RenderGeometry(RHI::ICommandList* commandList, Scene::Scene& scene, DrawQueue& drawQueue, bool markMeshes)
-{
-	auto _ = commandList->BeginScopedMarker("Render Meshes");
-
-	GPUAllocation instanceBufferAlloc =
-		commandList->AllocateGpu(
-			sizeof(Shader::ShaderMeshInstancePointer) * drawQueue.Size(),
-			sizeof(Shader::ShaderMeshInstancePointer));
-
-	// See how this data is copied over.
-	const DescriptorIndex instanceBufferDescriptorIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(instanceBufferAlloc.GpuBuffer, SubresouceType::SRV);
-	Shader::ShaderMeshInstancePointer* pInstancePointerData = (Shader::ShaderMeshInstancePointer*)instanceBufferAlloc.CpuData;
-
-	struct InstanceBatch
-	{
-		entt::entity MeshEntity = entt::null;
-		uint32_t NumInstance;
-		uint32_t DataOffset;
-	} instanceBatch = {};
-
-	auto batchFlush = [&]()
-	{
-		if (instanceBatch.NumInstance == 0)
-		{
-			return;
-		}
-
-		auto [meshComponent, nameComponent] = scene.GetRegistry().get<Scene::MeshComponent, Scene::NameComponent>(instanceBatch.MeshEntity);
-
-		std::string modelName = nameComponent.Name;
-		auto scrope = commandList->BeginScopedMarker(modelName);
-
-		auto& materiaComp = scene.GetRegistry().get<Scene::MaterialComponent>(meshComponent.Material);
-
-		Shader::GeometryPassPushConstants pushConstant = {};
-		pushConstant.GeometryIndex = meshComponent.GlobalIndexOffsetGeometryBuffer;
-		pushConstant.MaterialIndex = materiaComp.GlobalBufferIndex;
-		pushConstant.InstancePtrBufferDescriptorIndex = instanceBufferDescriptorIndex;
-		pushConstant.InstancePtrDataOffset = instanceBatch.DataOffset;
-
-		commandList->BindPushConstant(0, pushConstant);
-		commandList->DrawIndexed(
-			meshComponent.TotalIndices,
-			instanceBatch.NumInstance,
-			meshComponent.GlobalByteOffsetIndexBuffer);
-	};
-
-	commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());
-	uint32_t instanceCount = 0;
-	for (const DrawBatch& drawBatch : drawQueue.DrawItems)
-	{
-		entt::entity meshEntityHandle = (entt::entity)drawBatch.GetMeshEntityHandle();
-
-		// Flush if we are dealing with a new Mesh
-		if (instanceBatch.MeshEntity != meshEntityHandle)
-		{
-			// TODO: Flush draw
-			batchFlush();
-
-			instanceBatch.MeshEntity = meshEntityHandle;
-			instanceBatch.NumInstance = 0;
-			instanceBatch.DataOffset = (uint32_t)(instanceBufferAlloc.Offset + instanceCount * sizeof(Shader::ShaderMeshInstancePointer));
-		}
-
-		auto& instanceComp = scene.GetRegistry().get<Scene::MeshInstanceComponent>((entt::entity)drawBatch.GetInstanceEntityHandle());
-
-		for (uint32_t renderCamIndex = 0; renderCamIndex < 1; renderCamIndex++)
-		{
-			Shader::ShaderMeshInstancePointer shaderMeshPtr = {};
-			shaderMeshPtr.Create(instanceComp.GlobalBufferIndex, renderCamIndex);
-
-			// Write into actual GPU-buffer:
-			std::memcpy(pInstancePointerData + instanceCount, &shaderMeshPtr, sizeof(shaderMeshPtr)); // memcpy whole structure into mapped pointer to avoid read from uncached memory
-
-			instanceBatch.NumInstance++;
-			instanceCount++;
-		}
-	}
-
-	// Flush what ever is left over.
-	batchFlush();
 }

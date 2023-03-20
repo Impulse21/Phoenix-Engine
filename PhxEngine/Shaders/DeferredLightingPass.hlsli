@@ -1,10 +1,10 @@
 #ifndef __DEFERRED_LIGHTING_PASS_HLSL__
 #define __DEFERRED_LIGHTING_PASS_HLSL__
 
-#include "Globals.hlsli"
+#include "Globals_New.hlsli"
+#include "Lighting_New.hlsli"
 #include "GBuffer.hlsli"
 #include "FullScreenHelpers.hlsli"
-#include "Lighting.hlsli"
 #include "Shadows.hlsli"
 
 // Helpers
@@ -139,6 +139,7 @@ float4 main(PSInput input) : SV_TARGET
     
     DirectLightContribution(GetScene(), brdfSurfaceData, surface, lightingTerms);
     
+/*
     IndirectLightContribution_IBL(
         GetScene(),
         brdfSurfaceData,
@@ -148,6 +149,11 @@ float4 main(PSInput input) : SV_TARGET
         ResourceHeap_GetTexture2D(FrameCB.BrdfLUTTexIndex),
         SamplerDefault,
         SamplerLinearClamped,
+        lightingTerms);
+*/
+    IndirectLightContribution_Flat(
+        0.4,
+        0.0,
         lightingTerms);
 
 	float3 finalColour = ApplyLighting(lightingTerms, brdfSurfaceData, surface);

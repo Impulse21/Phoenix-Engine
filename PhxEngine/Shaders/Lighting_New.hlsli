@@ -79,6 +79,15 @@ void IndirectLightContribution_IBL(
     lightingTerms.Indirect.Specular = prefilteredColour * (brdfSurfaceData.F * envBrdf.x + envBrdf.y);
 }
 
+void IndirectLightContribution_Flat(
+    float3 ambientTerm,
+    float3 specularTerm,
+    inout Lighting lightingTerms)
+{
+    lightingTerms.Indirect.Diffuse = ambientTerm;
+    lightingTerms.Indirect.Specular = specularTerm;
+}
+
 float3 ApplyLighting(Lighting lightingTerms, BRDFDataPerSurface brdfSurfaceData, Surface surface)
 {
     // input diffuse contains Kd * (Cdiff). Now we finally apply PI to complete Lambert's equation.

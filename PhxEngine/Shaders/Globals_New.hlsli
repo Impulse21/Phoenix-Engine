@@ -68,7 +68,13 @@ inline ObjectInstance LoadObjectInstnace(uint index)
 
 inline CullData LoadMeshletCullData(uint index)
 {
-    StructuredBuffer<ObjectInstance> buffer = ResourceDescriptorHeap[GetScene().MeshletCullDataBufferIdx];
+    StructuredBuffer<CullData> buffer = ResourceDescriptorHeap[GetScene().MeshletCullDataBufferIdx];
     return buffer[index];
 }
+
+inline float4x4 LoadMatrix(uint matrixIndex)
+{
+    return 0;
+}
+
 #endif // __PHX_GLOBALS_HLSLI__

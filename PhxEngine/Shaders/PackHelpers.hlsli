@@ -1,4 +1,5 @@
 #ifndef __PACK_HELPERS_HLSLI__
+#define __PACK_HELPERS_HLSLI__
 
 inline uint PackHalf2(in float2 value)
 {

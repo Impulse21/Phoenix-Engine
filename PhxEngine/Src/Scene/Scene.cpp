@@ -704,7 +704,7 @@ void PhxEngine::Scene::Scene::BuildObjectInstances(RHI::ICommandList* commandLis
 		Shader::New::ObjectInstance* shaderMeshInstance = instancePtr + currInstanceIndex;
 
 		auto& mesh = this->GetRegistry().get<MeshComponent>(meshInstanceComponent.Mesh);
-		shaderMeshInstance->GeometryOffset = mesh.GlobalIndexOffsetGeometryBuffer;
+		shaderMeshInstance->GeometryIndex = mesh.GlobalIndexOffsetGeometryBuffer;
 		shaderMeshInstance->WorldMatrix = transformComponent.WorldMatrix;
 		shaderMeshInstance->MeshletOffset = mesh.GlobalIndexOffsetMeshletBuffer;
 		meshInstanceComponent.GlobalBufferIndex = currInstanceIndex++;
