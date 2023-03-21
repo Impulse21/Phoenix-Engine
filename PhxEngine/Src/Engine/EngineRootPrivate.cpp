@@ -8,6 +8,8 @@
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
 
+constexpr static bool sPixCapture = false;
+
 std::unique_ptr<PhxEngine::IPhxEngineRoot> PhxEngine::CreateEngineRoot()
 {
 	return std::make_unique<PhxEngineRoot>();
@@ -74,6 +76,13 @@ void PhxEngine::PhxEngineRoot::Run()
 		TimeStep deltaTime = this->m_frameTimer.Elapsed();
 		this->m_frameTimer.Begin();
 
+		if (sPixCapture)
+		{
+			wchar_t wcsbuf[200];
+			swprintf(wcsbuf, 200, L"C:\\Users\\dipao\\OneDrive\\Documents\\Pix Captures\\PhxEngine_Debug\\PHXENGINE_CrashFrame_%d.wpix", (int)this->m_frameCount + 1);
+			this->m_gfxDevice->BeginCapture(std::wstring(wcsbuf));
+		}
+
 		// polls events.
 		this->m_window->OnUpdate();
 		
@@ -90,6 +99,12 @@ void PhxEngine::PhxEngineRoot::Run()
 		}
 
 		this->m_profile.UpdateAverageFrameTime(deltaTime);
+
+		if (sPixCapture)
+		{
+			this->m_gfxDevice->EndCapture();
+		}
+
 		this->m_frameProfiler->EndFrame();
 		this->m_frameCount++;
 	}

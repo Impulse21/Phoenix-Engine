@@ -382,6 +382,8 @@ void GltfSceneLoader::LoadNode(
 {
 	PhxEngine::Scene::Entity entity;
 
+	// TODO: Use temp allocator
+	std::vector<Entity> childEntities;
 	if (gltfNode.mesh)
 	{
 		// Create a mesh instance
@@ -390,6 +392,7 @@ void GltfSceneLoader::LoadNode(
 		std::string nodeName = gltfNode.name ? gltfNode.name : "Scene Node " + std::to_string(meshId++);
 		entity = scene.CreateEntity(nodeName);
 
+		childEntities.reserve(this->m_meshEntityMap[gltfNode.mesh].size());
 		uint32_t meshInstance = 0;
 		for (auto& mesh : this->m_meshEntityMap[gltfNode.mesh])
 		{
@@ -401,7 +404,7 @@ void GltfSceneLoader::LoadNode(
 
 			subEntity.AddComponent<AABBComponent>();
 
-			scene.AttachToParent(subEntity, entity);
+			childEntities.push_back(subEntity);
 		}
 	}
 
@@ -515,6 +518,11 @@ void GltfSceneLoader::LoadNode(
 		transform.LocalRotation.y *= 1.0f;
 		transform.SetDirty();
 		transform.UpdateTransform();
+	}
+
+	for (auto& child : childEntities)
+	{
+		child.AttachToParent(entity, true);
 	}
 
 	if (parent)

@@ -246,6 +246,9 @@ namespace Shader::New
 		uint IndirectEarlyBufferIdx;
 		uint IndirectLateBufferIdx;
 		uint IndirectCullBufferIdx;
+
+		// -- 16 byte boundary ----
+		uint InstanceCount;
 	};
 
 
@@ -254,6 +257,11 @@ namespace Shader::New
 	struct Frame
 	{
 		uint Flags;
+		uint _padding;
+		uint __padding;
+		uint ___padding;
+
+		// -- 16 byte boundary ----
 		Scene SceneData;
 	};
 
@@ -343,7 +351,7 @@ namespace Shader::New
 		uint MaterialIndex;
 		uint NumIndices;
 		uint NumVertices;
-		uint IndexByteOffset;
+		uint IndexOffset;
 
 		// -- 16 byte boundary ---
 		uint VertexBufferIndex;

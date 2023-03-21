@@ -70,7 +70,8 @@ public:
             this->GetRoot()->GetFrameProfiler());
 
 #ifdef SIMPLE_SCENE
-        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza/Sponza.gltf";
+        // std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza/Sponza.gltf";
+        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/TestScenes/VisibilityBufferScene.gltf";
 #else
         std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza_Intel/Main/NewSponza_Main_glTF.gltf";
 #endif

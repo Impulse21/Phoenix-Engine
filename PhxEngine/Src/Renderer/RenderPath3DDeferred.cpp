@@ -88,8 +88,8 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 	RHI::Rect rec(LONG_MAX, LONG_MAX);
 	auto instanceView = scene.GetAllEntitiesWith<Scene::MeshInstanceComponent>();
 
-	auto _ = commandList->BeginScopedMarker("Cull Pass");
 	{
+		auto _ = commandList->BeginScopedMarker("Cull Pass");
 		RHI::GpuBarrier preBarriers[] =
 		{
 			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
@@ -99,8 +99,11 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
 
 		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::CullPass]);
+		commandList->BindConstantBuffer(1, this->m_frameCB);
+		commandList->BindDynamicConstantBuffer(2, cameraData);
+		const int numThreadGroups = (int)std::ceilf(instanceView.size() / (float)THREADS_PER_WAVE);
 		commandList->Dispatch(
-			(int)std::ceilf(instanceView.size() / THREADS_PER_WAVE),
+			numThreadGroups,
 			1,
 			1);
 
@@ -153,15 +156,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			}
 
 			commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]);
-
-
-			commandList->ExecuteIndirect(
-				this->m_drawMeshCommandSignatureGfx,
-				scene.GetIndirectDrawEarlyBuffer(),
-				offsetof(Shader::New::MeshDrawCommand, IndirectMS),
-				scene.GetIndirectDrawEarlyBuffer(),
-				this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).SizeInBytes - sizeof(uint32_t),
-				instanceView.size());
+			commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());
 		}
 
 		commandList->SetViewports(&v, 1);
@@ -172,7 +167,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 		commandList->ExecuteIndirect(
 			this->m_settings.EnableMeshShaders ? this->m_drawMeshCommandSignatureMS : this->m_drawMeshCommandSignatureGfx,
 			scene.GetIndirectDrawEarlyBuffer(),
-			offsetof(Shader::New::MeshDrawCommand, IndirectMS),
+			this->m_settings.EnableMeshShaders ? offsetof(Shader::New::MeshDrawCommand, IndirectMS) : 0,
 			scene.GetIndirectDrawEarlyBuffer(),
 			this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).SizeInBytes - sizeof(uint32_t),
 			instanceView.size());
@@ -497,13 +492,23 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 	RHI::GpuBarrier preCopyBarriers[] =
 	{
 		RHI::GpuBarrier::CreateBuffer(this->m_frameCB, RHI::ResourceStates::ConstantBuffer, RHI::ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).InitialState, RHI::ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState, RHI::ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawCulledBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawCulledBuffer()).InitialState, RHI::ResourceStates::CopyDest),
 	};
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
 
 	commandList->WriteBuffer(this->m_frameCB, frameData);
+	commandList->WriteBuffer<uint32_t>(scene.GetIndirectDrawEarlyBuffer(), 0, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawCulledBuffer()).SizeInBytes - sizeof(uint32_t));
+	commandList->WriteBuffer<uint32_t>(scene.GetIndirectDrawLateBuffer(), 0, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawCulledBuffer()).SizeInBytes - sizeof(uint32_t));
+	commandList->WriteBuffer<uint32_t>(scene.GetIndirectDrawCulledBuffer(), 0, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawCulledBuffer()).SizeInBytes - sizeof(uint32_t));
+
 	RHI::GpuBarrier postCopyBarriers[] =
 	{
 		RHI::GpuBarrier::CreateBuffer(this->m_frameCB, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ConstantBuffer),
+		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).InitialState),
+		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState),
+		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawCulledBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawCulledBuffer()).InitialState),
 	};
 
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));

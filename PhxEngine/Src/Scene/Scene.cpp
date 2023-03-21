@@ -662,18 +662,27 @@ void PhxEngine::Scene::Scene::BuildGeometryData(RHI::ICommandList* commandList, 
 
 		geometryShaderData->NumIndices = mesh.TotalIndices;
 		geometryShaderData->NumVertices = mesh.TotalVertices;
-		geometryShaderData->IndexByteOffset = mesh.GlobalOffsetIndexBuffer;
+		geometryShaderData->IndexOffset = mesh.GlobalOffsetIndexBuffer;
 		geometryShaderData->MeshletOffset = mesh.GlobalOffsetMeshletBuffer;
 		geometryShaderData->MeshletCount = mesh.Meshlets.size();
 
-		geometryShaderData->VertexBufferIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_globalIndexBuffer, RHI::SubresouceType::SRV);
-		geometryShaderData->PositionOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Position).ByteOffset;
-		geometryShaderData->TexCoordOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::TexCoord).ByteOffset;
-		geometryShaderData->NormalOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Normal).ByteOffset;
-		geometryShaderData->TangentOffset = mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Tangent).ByteOffset;
+		geometryShaderData->VertexBufferIndex = gfxDevice->GetDescriptorIndex(this->m_globalVertexBuffer, RHI::SubresouceType::SRV);
+		geometryShaderData->PositionOffset = mesh.GlobalByteOffsetVertexBuffer + mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Position).ByteOffset;
+		geometryShaderData->TexCoordOffset = mesh.GlobalByteOffsetVertexBuffer + mesh.GetVertexAttribute(MeshComponent::VertexAttribute::TexCoord).ByteOffset;
+		geometryShaderData->NormalOffset = mesh.GlobalByteOffsetVertexBuffer + mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Normal).ByteOffset;
+		geometryShaderData->TangentOffset = mesh.GlobalByteOffsetVertexBuffer + mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Tangent).ByteOffset;
 	}
 
-	// Upload Meshlet Data
+	// Do meshlet data
+	commandList->TransitionBarrier(this->m_geometryGpuBuffer, ResourceStates::ShaderResource, ResourceStates::CopyDest);
+	commandList->CopyBuffer(
+		this->m_geometryGpuBuffer,
+		0,
+		geometryUploadBuffer.UploadBuffer,
+		0,
+		geometryBufferSize);
+
+	commandList->TransitionBarrier(this->m_geometryGpuBuffer, ResourceStates::CopyDest, ResourceStates::ShaderResource);
 }
 
 void PhxEngine::Scene::Scene::BuildObjectInstances(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice, std::vector<Renderer::ResourceUpload>& resourcesToFree)
@@ -697,7 +706,6 @@ void PhxEngine::Scene::Scene::BuildObjectInstances(RHI::ICommandList* commandLis
 
 	Renderer::ResourceUpload& uploadBuffer = resourcesToFree.emplace_back(Renderer::CreateResourceUpload(instanceBufferSizeInBytes));
 	Shader::New::ObjectInstance* instancePtr = (Shader::New::ObjectInstance*)uploadBuffer.Data;
-
 
 	auto instanceTransformView = this->GetAllEntitiesWith<MeshInstanceComponent, TransformComponent>();
 
@@ -724,6 +732,16 @@ void PhxEngine::Scene::Scene::BuildObjectInstances(RHI::ICommandList* commandLis
 		aabbComponent.BoundingData = mesh.Aabb.Transform(DirectX::XMLoadFloat4x4(&meshInstanceComponent.WorldMatrix));
 		this->m_sceneBounds = Core::AABB::Merge(this->m_sceneBounds, aabbComponent.BoundingData);
 	}
+
+	commandList->TransitionBarrier(this->m_instanceGpuBuffer, ResourceStates::ShaderResource, ResourceStates::CopyDest);
+	commandList->CopyBuffer(
+		this->m_instanceGpuBuffer,
+		0,
+		uploadBuffer.UploadBuffer,
+		0,
+		instanceBufferSizeInBytes);
+
+	commandList->TransitionBarrier(this->m_instanceGpuBuffer, ResourceStates::CopyDest, ResourceStates::ShaderResource);
 }
 
 void PhxEngine::Scene::Scene::BuildIndirectBuffers(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice)
@@ -787,6 +805,9 @@ void PhxEngine::Scene::Scene::BuildSceneData(RHI::ICommandList* commandList, RHI
 	this->m_shaderData.IndirectEarlyBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawEarlyBuffer, SubresouceType::UAV);
 	this->m_shaderData.IndirectLateBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawLateBuffer, SubresouceType::UAV);
 	this->m_shaderData.IndirectCullBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawCulledBuffer, SubresouceType::UAV);
+
+	auto instanceView = this->GetAllEntitiesWith<MeshInstanceComponent>();
+	this->m_shaderData.InstanceCount = instanceView.size();
 
 }
 
@@ -857,6 +878,16 @@ void PhxEngine::Scene::Scene::BuildMaterialData(RHI::ICommandList* commandList, 
 
 		mat.GlobalBufferIndex = currMat++;
 	}
+
+	commandList->TransitionBarrier(this->m_materialGpuBuffer, ResourceStates::ShaderResource, ResourceStates::CopyDest);
+	commandList->CopyBuffer(
+		this->m_materialGpuBuffer,
+		0,
+		uploadBuffer.UploadBuffer,
+		0,
+		mtlBufferSize);
+
+	commandList->TransitionBarrier(this->m_materialGpuBuffer, ResourceStates::CopyDest, ResourceStates::ShaderResource);
 }
 
 void PhxEngine::Scene::Scene::BuildMeshData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice)
@@ -959,7 +990,7 @@ void PhxEngine::Scene::Scene::BuildMeshData(RHI::ICommandList* commandList, RHI:
 
 		commandList->CopyBuffer(
 			this->m_globalIndexBuffer,
-			mesh.GlobalOffsetIndexBuffer,
+			mesh.GlobalOffsetIndexBuffer * sizeof(uint32_t),
 			mesh.IndexBuffer,
 			0,
 			gfxDevice->GetBufferDesc(mesh.IndexBuffer).SizeInBytes);

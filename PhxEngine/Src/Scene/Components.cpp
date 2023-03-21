@@ -33,13 +33,13 @@ void MeshComponent::BuildRenderData(
 	if (this->Indices && !this->IndexBuffer.IsValid())
 	{
 		RHI::BufferDesc indexBufferDesc = {};
-		indexBufferDesc.SizeInBytes = sizeof(uint32_t) * TotalIndices;
+		indexBufferDesc.SizeInBytes = sizeof(uint32_t) * this->TotalIndices;
 		indexBufferDesc.StrideInBytes = sizeof(uint32_t);
 		indexBufferDesc.DebugName = "Index Buffer";
 		this->IndexBuffer = gfxDevice->CreateIndexBuffer(indexBufferDesc);
 
 		commandList->TransitionBarrier(this->IndexBuffer, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
-		commandList->WriteBuffer(this->IndexBuffer, this->Indices);
+		commandList->WriteBuffer(this->IndexBuffer, Core::Span(this->Indices, this->TotalIndices));
 
 		commandList->TransitionBarrier(
 			this->IndexBuffer,

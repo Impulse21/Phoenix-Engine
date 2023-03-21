@@ -1301,6 +1301,12 @@ namespace PhxEngine::RHI
             this->WriteBuffer(buffer, &data, sizeof(T), destOffsetBytes);
         }
 
+        template<typename T>
+        void WriteBuffer(BufferHandle buffer, Core::Span<T> data, uint64_t destOffsetBytes = 0)
+        {
+            this->WriteBuffer(buffer, data.begin(), sizeof(T) * data.Size(), destOffsetBytes);
+        }
+
         // TODO: Take ownership of the data
         virtual void WriteBuffer(BufferHandle buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes = 0) = 0;
 
