@@ -11,7 +11,7 @@ using namespace PhxEngine;
 using namespace PhxEngine::Core;
 using namespace PhxEngine::Scene;
 
-constexpr uint64_t kVertexBufferAlignment = 16ull;
+constexpr static uint64_t kVertexBufferAlignment = 16ull;
 
 namespace
 {
@@ -48,22 +48,23 @@ void MeshComponent::BuildRenderData(
 	}
 
 	Renderer::ResourceUpload vertexUpload = {};
-	if (this->Positions && !this->IndexBuffer.IsValid())
+	if (this->Positions && !this->VertexBuffer.IsValid())
 	{
-		size_t vertexBufferSize = this->TotalVertices * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment;
-		if (this->Normals && (this->Flags & MeshComponent::Flags::kContainsNormals) == 1)
+		size_t vertexBufferSize = Helpers::AlignTo(this->TotalVertices * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment);
+
+		if (this->Normals && (this->Flags & MeshComponent::Flags::kContainsNormals) == MeshComponent::Flags::kContainsNormals)
 		{
-			vertexBufferSize += this->TotalVertices * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment;
+			vertexBufferSize += Helpers::AlignTo(this->TotalVertices * sizeof(DirectX::XMFLOAT3), kVertexBufferAlignment);
 		}
 
-		if (this->TexCoords && (this->Flags & MeshComponent::Flags::kContainsTexCoords) == 1)
+		if (this->TexCoords && (this->Flags & MeshComponent::Flags::kContainsTexCoords) == MeshComponent::Flags::kContainsTexCoords)
 		{
-			vertexBufferSize += this->TotalVertices * sizeof(DirectX::XMFLOAT2), kVertexBufferAlignment;
+			vertexBufferSize += Helpers::AlignTo(this->TotalVertices * sizeof(DirectX::XMFLOAT2), kVertexBufferAlignment);
 		}
 
-		if (this->Tangents && (this->Flags & MeshComponent::Flags::kContainsTangents) == 1)
+		if (this->Tangents && (this->Flags & MeshComponent::Flags::kContainsTangents) == MeshComponent::Flags::kContainsTangents)
 		{
-			vertexBufferSize += this->TotalVertices * sizeof(DirectX::XMFLOAT4), kVertexBufferAlignment;
+			vertexBufferSize += Helpers::AlignTo(this->TotalVertices * sizeof(DirectX::XMFLOAT4), kVertexBufferAlignment);
 		}
 
 		RHI::BufferDesc vertexDesc = {};
@@ -125,7 +126,7 @@ void MeshComponent::BuildRenderData(
 				this->TotalVertices * sizeof(DirectX::XMFLOAT4));
 		}
 
-		if (this->Colour)
+		if (false)
 		{
 			WriteDataToGpuBuffer(
 				VertexAttribute::Colour,
@@ -197,6 +198,8 @@ void MeshComponent::BuildRenderData(
 
 		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
 	}
+
+	commandList->Close();
 	gfxDevice->ExecuteCommandLists({ commandList });
 	/*
 	// Create RT BLAS object

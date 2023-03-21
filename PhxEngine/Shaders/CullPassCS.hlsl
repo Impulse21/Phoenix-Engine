@@ -10,6 +10,7 @@ bool IsFrustumVisible()
     return true;
 }
 
+[RootSignature(PHX_ENGINE_DEFAULT_ROOTSIGNATURE)]
 [numthreads(THREADS_PER_WAVE, 1, 1)]
 void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIndex : SV_GroupIndex)
 {

@@ -357,8 +357,8 @@ namespace Shader::New
 		// TODO: I am here
 		uint MeshletOffset;
 		uint MeshletCount;
-		uint _padding;
-
+		uint MeshletPrimtiveOffset;
+		uint MeshletUniqueVertexIBOffset;
 		// -- 16 byte boundary ---
 	};
 

@@ -36,7 +36,6 @@ namespace PhxEngine::Renderer
 		enum
 		{
 			GBufferFillPass,
-			GBufferFillPass_Mesh,
 			DeferredLightingPass,
 			ToneMappingPass,
 			Count

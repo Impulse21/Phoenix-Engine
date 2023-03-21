@@ -393,8 +393,8 @@ void GltfSceneLoader::LoadNode(
 		uint32_t meshInstance = 0;
 		for (auto& mesh : this->m_meshEntityMap[gltfNode.mesh])
 		{
-			std::string nodeName = nodeName + std::to_string(meshInstance++);
-			PhxEngine::Scene::Entity subEntity = scene.CreateEntity(nodeName);
+			std::string meshNodeName = nodeName + std::to_string(meshInstance++);
+			PhxEngine::Scene::Entity subEntity = scene.CreateEntity(meshNodeName);
 
 			auto& instanceComponent = subEntity.AddComponent<MeshInstanceComponent>();
 			instanceComponent.Mesh = mesh;
@@ -915,6 +915,7 @@ void GltfSceneLoader::LoadMeshData(
 			if ((mesh.Flags & Assets::Mesh::Flags::kContainsNormals) != 0 && (mesh.Flags & Assets::Mesh::Flags::kContainsTexCoords) != 0 && (mesh.Flags & Assets::Mesh::Flags::kContainsTangents) == 0)
 			{
 				ComputeTangentSpace(mesh);
+				mesh.Flags |= MeshComponent::Flags::kContainsTangents;
 			}
 
 			if (cReverseZ)

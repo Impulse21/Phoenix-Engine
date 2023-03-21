@@ -433,12 +433,13 @@ namespace PhxEngine::Scene
 			RenderType_All = RenderType_Opaque | RenderType_Transparent
 		};
 
-		enum Flags
+		enum Flags : uint8_t
 		{
 			kEmpty = 0,
 			kContainsNormals = 1 << 0,
 			kContainsTexCoords = 1 << 1,
 			kContainsTangents = 1 << 2,
+			kContainsColour = 1 << 3,
 		};
 
 		uint32_t Flags = kEmpty;

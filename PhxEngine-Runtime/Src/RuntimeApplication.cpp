@@ -103,6 +103,8 @@ public:
         std::unique_ptr<Scene::ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
         ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
 
+        this->m_scene.Initialize(&PhxEngine::Core::MemoryService::GetInstance().GetSystemAllocator());
+
         bool retVal = sceneLoader->LoadScene(
             fileSystem,
             this->m_textureCache,
@@ -245,5 +247,6 @@ int main(int __argc, const char** __argv)
     root.reset();
     RHI::ReportLiveObjects();
 
+    PhxEngine::Core::MemoryService::GetInstance().Finalize();
     return 0;
 }

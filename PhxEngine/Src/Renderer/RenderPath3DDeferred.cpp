@@ -88,20 +88,36 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 	RHI::Rect rec(LONG_MAX, LONG_MAX);
 	auto instanceView = scene.GetAllEntitiesWith<Scene::MeshInstanceComponent>();
 
-	// TODO: Bind Indirect Buffers
-	assert(false);
 	auto _ = commandList->BeginScopedMarker("Cull Pass");
 	{
+		RHI::GpuBarrier preBarriers[] =
+		{
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawCulledBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawCulledBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
+		};
+		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
+
 		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::CullPass]);
 		commandList->Dispatch(
 			(int)std::ceilf(instanceView.size() / THREADS_PER_WAVE),
 			1,
 			1);
+
+		RHI::GpuBarrier postBarriers[] =
+		{
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyBuffer(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).InitialState),
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState),
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawCulledBuffer(), RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawCulledBuffer()).InitialState),
+		};
+		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postBarriers, _countof(postBarriers)));
 	}
 
 	{
 		auto _ = commandList->BeginScopedMarker("GBuffer Fill Pass");
 		commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::GBufferFillPass]);
+
+
 		if (this->m_settings.EnableMeshShaders)
 		{
 			if (!this->m_drawMeshCommandSignatureMS.IsValid())
@@ -385,7 +401,7 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadPipelineStates(tf::Taskf
 				});
 			});
 		subflow.emplace([&]() {
-			this->m_meshStates[EGfxPipelineStates::GBufferFillPass_Mesh] = this->m_gfxDevice->CreateMeshPipeline(
+			this->m_meshStates[EMeshPipelineStates::GBufferFillPass] = this->m_gfxDevice->CreateMeshPipeline(
 				{
 					.AmpShader = this->m_shaders[EShaders::AS_MeshletCull],
 					.MeshShader = this->m_shaders[EShaders::MS_MeshletGBufferFill],

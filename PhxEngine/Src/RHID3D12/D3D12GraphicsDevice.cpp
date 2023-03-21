@@ -3057,6 +3057,7 @@ int PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateUnorderedAccessView(Buffer
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 
+	const bool hasCounter = (bufferImpl->Desc.MiscFlags & BufferMiscFlags::HasCounter) == BufferMiscFlags::HasCounter;
 	if (bufferImpl->Desc.Format == RHIFormat::UNKNOWN)
 	{
 		if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Raw) != 0)
@@ -3074,7 +3075,7 @@ int PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateUnorderedAccessView(Buffer
 			uavDesc.Buffer.NumElements = (UINT)std::min(size, bufferImpl->Desc.SizeInBytes - offset) / bufferImpl->Desc.StrideInBytes;
 			uavDesc.Buffer.StructureByteStride = bufferImpl->Desc.StrideInBytes;
 			
-			if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::HasCounter) != 0)
+			if (hasCounter)
 			{
 				uavDesc.Buffer.CounterOffsetInBytes = bufferImpl->Desc.UavCounterOffsetInBytes;
 			}
@@ -3100,7 +3101,7 @@ int PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateUnorderedAccessView(Buffer
 
 	this->GetD3D12Device2()->CreateUnorderedAccessView(
 		bufferImpl->D3D12Resource.Get(),
-		nullptr,
+		hasCounter ? bufferImpl->D3D12Resource.Get() : nullptr,
 		&uavDesc,
 		view.Allocation.GetCpuHandle());
 

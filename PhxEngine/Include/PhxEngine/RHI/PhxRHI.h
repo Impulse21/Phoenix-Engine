@@ -1597,6 +1597,8 @@ namespace PhxEngine::RHI
         virtual bool IsDevicedRemoved() = 0;
 
         virtual float GetAvgFrameTime() = 0;
+
+        virtual uint64_t GetUavCounterPlacementAlignment() = 0;
     };
 
     extern void ReportLiveObjects();

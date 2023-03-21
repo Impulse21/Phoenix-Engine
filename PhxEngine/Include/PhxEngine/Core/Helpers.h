@@ -121,5 +121,11 @@ namespace PhxEngine::Core
 
 			return ((value + alignment - 1) / alignment) * alignment;
 		}
+
+		constexpr uint64_t AlignUp(size_t value, size_t alignment)
+		{
+			uint64_t remainder = value % alignment;
+			return remainder ? value + (alignment - remainder) : value;
+		}
 	}
 }

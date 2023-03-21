@@ -98,13 +98,13 @@ void main(
 
     if (gtid < m.PrimCount)
     {
-        tris[gtid] = GetPrimitive(m, gtid);
+        tris[gtid] = GetPrimitive(m, gtid + geometryData.MeshletPrimtiveOffset);
     }
 
     if (gtid < m.VertCount)
     {
         matrix worldMatrix = objectInstance.WorldMatrix;
-        uint vertexID = GetVertexIndex(m, gtid);
+        uint vertexID = GetVertexIndex(m, gtid + geometryData.MeshletUniqueVertexIBOffset);
         verts[gtid] = PopulatePSInput(worldMatrix, geometryData, vertexID);
     }
 }
