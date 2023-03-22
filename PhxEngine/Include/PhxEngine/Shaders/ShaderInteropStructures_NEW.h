@@ -248,11 +248,15 @@ namespace Shader::New
 		uint IndirectCullBufferIdx;
 
 		// -- 16 byte boundary ----
+		uint GeometryBoundsBufferIdx;
 		uint InstanceCount;
+
 	};
 
 
 	static const uint FRAME_FLAGS_DISABLE_CULL_MESHLET = 1 << 0;
+	static const uint FRAME_FLAGS_DISABLE_CULL_FRUSTUM = 1 << 1;
+	static const uint FRAME_FLAGS_DISABLE_CULL_OCCLUSION = 1 << 2;
 
 	struct Frame
 	{
@@ -267,6 +271,9 @@ namespace Shader::New
 
 	struct Camera
 	{
+		float4x4 View;
+
+		// -- 16 byte boundary ----
 		float4x4 ViewProjection;
 
 		// -- 16 byte boundary ----

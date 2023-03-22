@@ -12,6 +12,7 @@
 
 #include "DrawQueue.h"
 #include <PhxEngine/Renderer/RenderPath3DDeferred.h>
+#include <imgui.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
@@ -66,10 +67,12 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Initialize(DirectX::XMFLOAT2 con
 void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scene::CameraComponent& mainCamera)
 {
 	Shader::New::Camera cameraData = {};
+	cameraData.View = mainCamera.View;
 	cameraData.ViewProjection = mainCamera.ViewProjection;
 	cameraData.ViewProjectionInv = mainCamera.ViewProjectionInv;
 	cameraData.ProjInv = mainCamera.ProjectionInv;
 	cameraData.ViewInv = mainCamera.ViewInv;
+	std::memcpy(&cameraData.Planes, &mainCamera.ViewFrustum.Planes, sizeof(DirectX::XMFLOAT4) * 6);
 
 	ICommandList* commandList = this->m_gfxDevice->BeginCommandRecording();
 	{
@@ -100,7 +103,14 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::CullPass]);
 		commandList->BindConstantBuffer(1, this->m_frameCB);
-		commandList->BindDynamicConstantBuffer(2, cameraData);
+
+		static Shader::New::Camera cullCamera = {};
+		if (!this->m_settings.FreezeCamera)
+		{
+			cullCamera = cameraData;
+		}
+
+		commandList->BindDynamicConstantBuffer(2, cullCamera);
 		const int numThreadGroups = (int)std::ceilf(instanceView.size() / (float)THREADS_PER_WAVE);
 		commandList->Dispatch(
 			numThreadGroups,
@@ -309,7 +319,15 @@ void PhxEngine::Renderer::RenderPath3DDeferred::WindowResize(DirectX::XMFLOAT2 c
 
 void PhxEngine::Renderer::RenderPath3DDeferred::BuildUI()
 {
-	// TODO: Set up UI
+	ImGui::Checkbox("Freeze Camera", &this->m_settings.FreezeCamera);
+	ImGui::Checkbox("Enable Frustra Culling", &this->m_settings.EnableFrustraCulling);
+	ImGui::Checkbox("Enable Occlusion Culling", &this->m_settings.EnableOcclusionCulling);
+	ImGui::Checkbox("Enable Meshlets", &this->m_settings.EnableMeshShaders);
+	if (this->m_settings.EnableMeshShaders)
+	{
+		ImGui::Checkbox("Enable Meshlet Culling", &this->m_settings.EnableMeshletCulling);
+	}
+	ImGui::Checkbox("Enable Compute Deferred Shading", &this->m_settings.EnableComputeDeferredLighting);
 }
 
 tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadShaders(tf::Taskflow& taskflow)
@@ -486,6 +504,19 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 	auto _ = commandList->BeginScopedMarker("Prepare Frame Data");
 
 	Shader::New::Frame frameData = {};
+	if (!this->m_settings.EnableFrustraCulling);
+	{
+		frameData.Flags |= Shader::New::FRAME_FLAGS_DISABLE_CULL_FRUSTUM;
+	}
+	if (!this->m_settings.EnableOcclusionCulling);
+	{
+		frameData.Flags |= Shader::New::FRAME_FLAGS_DISABLE_CULL_OCCLUSION;
+	}
+	if (!this->m_settings.EnableMeshletCulling);
+	{
+		frameData.Flags |= Shader::New::FRAME_FLAGS_DISABLE_CULL_MESHLET;
+	}
+
 	frameData.SceneData = scene.GetShaderData();
 
 	// Upload data

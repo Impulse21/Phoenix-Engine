@@ -54,6 +54,12 @@ inline Geometry LoadGeometry(uint index)
     return buffer[index];
 }
 
+inline float4 LoadGeometryBounds(uint index)
+{
+    StructuredBuffer<float4> buffer = ResourceDescriptorHeap[GetScene().GeometryBoundsBufferIdx];
+    return buffer[index];
+}
+
 inline Material LoadMaterial(uint index)
 {
     StructuredBuffer<Material> buffer = ResourceDescriptorHeap[GetScene().MaterialBufferIdx];

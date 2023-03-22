@@ -149,6 +149,10 @@ namespace PhxEngine::Renderer
 		{
 			bool EnableComputeDeferredLighting = false;
 			bool EnableMeshShaders = false;
+			bool EnableMeshletCulling = false;
+			bool EnableFrustraCulling = true;
+			bool EnableOcclusionCulling = true;
+			bool FreezeCamera = false;
 		} m_settings;
 		
 	};

@@ -128,6 +128,7 @@ namespace PhxEngine::Scene
 
 		RHI::BufferHandle m_geometryCullDataBuffer;
 		RHI::BufferHandle m_geometryGpuBuffer;
+		RHI::BufferHandle m_geometryBoundsGpuBuffer;
 		RHI::BufferHandle m_materialGpuBuffer;
 		RHI::BufferHandle m_instanceGpuBuffer;
 

@@ -225,6 +225,7 @@ namespace PhxEngine::Scene
 		DirectX::XMFLOAT4X4 ViewProjectionInv;
 
 		Core::Frustum ProjectionFrustum;
+		Core::Frustum ViewFrustum;
 		Core::Frustum ViewProjectionFrustum;
 
 		inline DirectX::XMMATRIX GetInvViewProjMatrix() const { return DirectX::XMLoadFloat4x4(&this->ViewProjectionInv); }
@@ -309,9 +310,10 @@ namespace PhxEngine::Scene
 
 			auto viewProjectionInv = DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix);
 			DirectX::XMStoreFloat4x4(&this->ViewProjectionInv, viewProjectionInv);
-
-			this->ProjectionFrustum = Core::Frustum(projectionMatrix, true);
-			this->ViewProjectionFrustum = Core::Frustum(viewProjectionMatrix, true);
+			
+			this->ViewFrustum = Core::Frustum(viewMatrix, false);
+			this->ProjectionFrustum = Core::Frustum(projectionMatrix, false);
+			this->ViewProjectionFrustum = Core::Frustum(viewProjectionMatrix, false);
 			DirectX::XMStoreFloat4x4(&this->ViewInv, DirectX::XMMatrixInverse(nullptr, viewMatrix));
 		}
 	};

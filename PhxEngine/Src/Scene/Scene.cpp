@@ -632,6 +632,8 @@ void PhxEngine::Scene::Scene::BuildGeometryData(RHI::ICommandList* commandList, 
 	auto meshView = this->GetAllEntitiesWith<MeshComponent>();
 	const size_t geometryBufferSize = sizeof(Shader::New::Geometry) * meshView.size();
 
+	const size_t geometryBoundsSize = sizeof(DirectX::XMFLOAT4) * meshView.size();
+
 	RHI::BufferDesc desc = {};
 	desc.DebugName = "Geometry Data";
 	desc.Binding = RHI::BindingFlags::ShaderResource;
@@ -647,8 +649,21 @@ void PhxEngine::Scene::Scene::BuildGeometryData(RHI::ICommandList* commandList, 
 	}
 	this->m_geometryGpuBuffer = IGraphicsDevice::GPtr->CreateBuffer(desc);
 
-	Renderer::ResourceUpload& geometryUploadBuffer = resourcesToFree.emplace_back(Renderer::CreateResourceUpload(geometryBufferSize));
+	desc.DebugName = "Geometry Bounds Data";
+	desc.StrideInBytes = sizeof(DirectX::XMFLOAT4);
+	desc.SizeInBytes = geometryBoundsSize;
+
+	if (this->m_geometryBoundsGpuBuffer.IsValid())
+	{
+		IGraphicsDevice::GPtr->DeleteBuffer(this->m_geometryBoundsGpuBuffer);
+	}
+	this->m_geometryBoundsGpuBuffer = IGraphicsDevice::GPtr->CreateBuffer(desc);
+
+	Renderer::ResourceUpload geometryUploadBuffer = Renderer::CreateResourceUpload(geometryBufferSize);
 	Shader::New::Geometry* geometryBufferMappedData = (Shader::New::Geometry*)geometryUploadBuffer.Data;
+
+	Renderer::ResourceUpload geometryBoundsUploadBuffer = Renderer::CreateResourceUpload(geometryBoundsSize);
+	DirectX::XMFLOAT4* geometryBoundsBufferMappedData = (DirectX::XMFLOAT4*)geometryBoundsUploadBuffer.Data;
 
 	uint32_t currGeoIndex = 0;
 	for (auto entity : meshView)
@@ -671,10 +686,24 @@ void PhxEngine::Scene::Scene::BuildGeometryData(RHI::ICommandList* commandList, 
 		geometryShaderData->TexCoordOffset = mesh.GlobalByteOffsetVertexBuffer + mesh.GetVertexAttribute(MeshComponent::VertexAttribute::TexCoord).ByteOffset;
 		geometryShaderData->NormalOffset = mesh.GlobalByteOffsetVertexBuffer + mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Normal).ByteOffset;
 		geometryShaderData->TangentOffset = mesh.GlobalByteOffsetVertexBuffer + mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Tangent).ByteOffset;
+
+		static_assert(sizeof(BoundingSphere) == sizeof(DirectX::XMFLOAT4));
+		DirectX::XMFLOAT4* boundsData = geometryBoundsBufferMappedData + mesh.GlobalIndexOffsetGeometryBuffer;
+		boundsData->x = mesh.BoundingSphere.Centre.x;
+		boundsData->y = mesh.BoundingSphere.Centre.y;
+		boundsData->z = mesh.BoundingSphere.Centre.z;
+		boundsData->w = mesh.BoundingSphere.Radius;
+		
 	}
 
 	// Do meshlet data
-	commandList->TransitionBarrier(this->m_geometryGpuBuffer, ResourceStates::ShaderResource, ResourceStates::CopyDest);
+	RHI::GpuBarrier preCopyBarriers[] =
+	{
+		RHI::GpuBarrier::CreateBuffer(this->m_geometryGpuBuffer, ResourceStates::ShaderResource, ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(this->m_geometryBoundsGpuBuffer, ResourceStates::ShaderResource, ResourceStates::CopyDest),
+	};
+	commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
+
 	commandList->CopyBuffer(
 		this->m_geometryGpuBuffer,
 		0,
@@ -682,13 +711,30 @@ void PhxEngine::Scene::Scene::BuildGeometryData(RHI::ICommandList* commandList, 
 		0,
 		geometryBufferSize);
 
-	commandList->TransitionBarrier(this->m_geometryGpuBuffer, ResourceStates::CopyDest, ResourceStates::ShaderResource);
+	commandList->CopyBuffer(
+		this->m_geometryBoundsGpuBuffer,
+		0,
+		geometryBoundsUploadBuffer.UploadBuffer,
+		0,
+		geometryBoundsSize);
+
+	RHI::GpuBarrier postCopyBarriers[] =
+	{
+		RHI::GpuBarrier::CreateBuffer(this->m_geometryGpuBuffer, ResourceStates::CopyDest, ResourceStates::ShaderResource),
+		RHI::GpuBarrier::CreateBuffer(this->m_geometryBoundsGpuBuffer, ResourceStates::CopyDest, ResourceStates::ShaderResource),
+	};
+
+	commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
+	
+	resourcesToFree.push_back(geometryUploadBuffer);
+	resourcesToFree.push_back(geometryBoundsUploadBuffer);
 }
 
 void PhxEngine::Scene::Scene::BuildObjectInstances(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice, std::vector<Renderer::ResourceUpload>& resourcesToFree)
 {
 	auto instanceView = this->GetAllEntitiesWith<MeshInstanceComponent>();
 	const size_t instanceBufferSizeInBytes = sizeof(Shader::New::ObjectInstance) * instanceView.size();
+
 	RHI::BufferDesc desc = {};
 	desc.DebugName = "Instance Data";
 	desc.Binding = RHI::BindingFlags::ShaderResource;
@@ -696,7 +742,7 @@ void PhxEngine::Scene::Scene::BuildObjectInstances(RHI::ICommandList* commandLis
 	desc.MiscFlags = RHI::BufferMiscFlags::Bindless | RHI::BufferMiscFlags::Structured;
 	desc.CreateBindless = true;
 	desc.StrideInBytes = sizeof(Shader::New::ObjectInstance);
-	desc.SizeInBytes = sizeof(Shader::New::ObjectInstance) * instanceView.size();
+	desc.SizeInBytes = instanceBufferSizeInBytes;
 
 	if (this->m_instanceGpuBuffer.IsValid())
 	{
@@ -796,6 +842,7 @@ void PhxEngine::Scene::Scene::BuildSceneData(RHI::ICommandList* commandList, RHI
 	this->m_shaderData = {};
 	this->m_shaderData.ObjectBufferIdx = gfxDevice->GetDescriptorIndex(this->m_instanceGpuBuffer, SubresouceType::SRV);
 	this->m_shaderData.GeometryBufferIdx = gfxDevice->GetDescriptorIndex(this->m_geometryGpuBuffer, SubresouceType::SRV);
+	this->m_shaderData.GeometryBoundsBufferIdx = gfxDevice->GetDescriptorIndex(this->m_geometryBoundsGpuBuffer, SubresouceType::SRV);
 	this->m_shaderData.MaterialBufferIdx = gfxDevice->GetDescriptorIndex(this->m_materialGpuBuffer, SubresouceType::SRV);
 	this->m_shaderData.GlobalVertexBufferIdx = gfxDevice->GetDescriptorIndex(this->m_globalVertexBuffer, SubresouceType::SRV);
 	this->m_shaderData.GlobalIndexBufferIdx = gfxDevice->GetDescriptorIndex(this->m_globalIndexBuffer, SubresouceType::SRV);
