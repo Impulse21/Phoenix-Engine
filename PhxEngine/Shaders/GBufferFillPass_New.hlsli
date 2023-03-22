@@ -13,6 +13,7 @@
 #include "VertexFetch.hlsli"
 #include "Defines.hlsli"
 #include "GBuffer_New.hlsli"
+#include "PackHelpers.hlsli"
 
 #ifdef COMPILE_MS
 #include "MeshletCommon.hlsli"
@@ -23,7 +24,7 @@ PUSH_CONSTANT(push, GeometryPushConstant);
 struct PSInput
 {
     float3 NormalWS : NORMAL;
-    float4 Colour : COLOUR;
+    float3 Colour : COLOUR;
     float2 TexCoord : TEXCOORD;
     float3 ShadowTexCoord : TEXCOORD1;
     float4 TangentWS : TANGENT;
@@ -34,9 +35,11 @@ struct PSInput
 };
 
 #if defined(COMPILE_VS) || defined(COMPILE_MS)
-PSInput PopulatePSInput(matrix worldMatrix, Geometry geometryData, uint vertexID)
+PSInput PopulatePSInput(ObjectInstance objectInstance, Geometry geometryData, uint vertexID)
 {
     VertexData vertexData = FetchVertexData(vertexID, geometryData);
+    
+    float4x4 worldMatrix = objectInstance.WorldMatrix;
     
     PSInput output;
     output.PositionWS = mul(vertexData.Position, worldMatrix).xyz;
@@ -44,7 +47,7 @@ PSInput PopulatePSInput(matrix worldMatrix, Geometry geometryData, uint vertexID
 
     output.NormalWS = mul(vertexData.Normal, (float3x3) worldMatrix).xyz;
     output.TexCoord = vertexData.TexCoord;
-    output.Colour = float4(1.0f, 1.0f, 1.0f, 1.0f);
+    output.Colour = UnpackRGBA(objectInstance.Colour).rgb;
 
     output.TangentWS = float4(mul(vertexData.Tangent.xyz, (float3x3) worldMatrix), vertexData.Tangent.w);
 
@@ -63,9 +66,8 @@ PSInput main(
 {
     ObjectInstance objectInstance = LoadObjectInstnace(push.DrawId);
     Geometry geometryData = LoadGeometry(objectInstance.GeometryIndex);
-    matrix worldMatrix = objectInstance.WorldMatrix;
 
-    return PopulatePSInput(worldMatrix, geometryData, vertexID);
+    return PopulatePSInput(objectInstance, geometryData, vertexID);
 }
 #endif // COMPILE_VS
 
@@ -103,9 +105,8 @@ void main(
 
     if (gtid < m.VertCount)
     {
-        matrix worldMatrix = objectInstance.WorldMatrix;
         uint vertexID = GetVertexIndex(m, gtid + geometryData.MeshletUniqueVertexIBOffset);
-        verts[gtid] = PopulatePSInput(worldMatrix, geometryData, vertexID);
+        verts[gtid] = PopulatePSInput(objectInstance, geometryData, vertexID);
     }
 }
 
@@ -117,7 +118,7 @@ inline Surface LoadSurfaceData(in PSInput input, in Material material)
 {
     Surface surface = DefaultSurface();
     surface.Albedo = 1.0f;
-    surface.Albedo *= material.AlbedoColour;
+    surface.Albedo *= material.AlbedoColour * input.Colour;
     if (material.AlbedoTexture != InvalidDescriptorIndex)
     {
         surface.Albedo *= ResourceHeap_GetTexture2D(material.AlbedoTexture).Sample(SamplerDefault, input.TexCoord).xyz;

@@ -720,6 +720,7 @@ void PhxEngine::Scene::Scene::BuildObjectInstances(RHI::ICommandList* commandLis
 		shaderMeshInstance->WorldMatrix = transformComponent.WorldMatrix;
 		shaderMeshInstance->GeometryIndex = mesh.GlobalIndexOffsetGeometryBuffer;
 		shaderMeshInstance->MeshletOffset = mesh.GlobalOffsetMeshletBuffer;
+		shaderMeshInstance->Colour = Core::Math::PackColour(meshInstanceComponent.Color);
 		meshInstanceComponent.GlobalBufferIndex = currInstanceIndex++;
 	}
 
