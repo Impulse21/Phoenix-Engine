@@ -21,9 +21,9 @@ namespace PhxEngine::Core
 			return generator;
 		}
 
-		inline int GetRandom(int minValue, int maxValue)
+		inline float GetRandom(float minValue, float maxValue)
 		{
-			std::uniform_int_distribution<int>  distr(minValue, maxValue);
+			std::uniform_real_distribution<float>  distr(minValue, maxValue);
 			return distr(Generator());
 		}
 	}

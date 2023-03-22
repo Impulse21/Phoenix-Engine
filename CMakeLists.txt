@@ -31,6 +31,7 @@ add_subdirectory(PhxEngine-Runtime)
 # Disabling Samples as I work through things
 add_subdirectory(Examples/BasicTriangle)
 add_subdirectory(Examples/ImGuiDemo)
+add_subdirectory(Examples/GPUCulling)
 
 #add_subdirectory(Examples/ThreadedRendering)
 #add_subdirectory(Examples/DeferredRendering)
