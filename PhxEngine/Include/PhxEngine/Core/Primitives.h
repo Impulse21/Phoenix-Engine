@@ -19,12 +19,16 @@ namespace PhxEngine::Core
 			DirectX::XMVECTOR maxV = XMLoadFloat3(&max);
 
 			DirectX::XMVECTOR centre = DirectX::XMVectorAdd(minV, maxV) / 2.0f;
-			DirectX::XMVECTOR radius = DirectX::XMVectorMax(DirectX::XMVector3Length(DirectX::XMVectorSubtract(maxV, centre)), DirectX::XMVectorSubtract(centre, minV));
+			DirectX::XMVECTOR radius = DirectX::XMVectorMax(DirectX::XMVector3Length(DirectX::XMVectorSubtract(maxV, centre)), DirectX::XMVector3Length(DirectX::XMVectorSubtract(centre, minV)));
+
+			DirectX::XMStoreFloat3(&this->Centre, centre);
+			DirectX::XMStoreFloat(&this->Radius, radius);
 		}
 
 		Sphere(DirectX::XMFLOAT3 const& c, float r)
-			: Centre(c),
-			Radius(r) {}
+			: Centre(c)
+			, Radius(r) 
+		{}
 
 	};
 

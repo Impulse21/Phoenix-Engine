@@ -17,7 +17,7 @@ void PhxEngine::Renderer::FrustumCull(Scene::Scene* scene, const Scene::CameraCo
 
 	if ((options & CullOptions::FreezeCamera) != CullOptions::FreezeCamera)
 	{
-		outCullResults.Frustum = cameraComp->ViewProjectionFrustum;
+		outCullResults.Frustum = cameraComp->FrustumVS;
 		outCullResults.Eye = cameraComp->Eye;
 		outCullResults.InvViewProj = cameraComp->GetInvViewProjMatrix();
 	}

@@ -290,7 +290,7 @@ namespace Shader::New
 		float4x4 ShadowViewProjection;
 
 		// -- 16 byte boundary ----
-		float4 Planes[6];
+		float4 PlanesWS[6];
 
 #ifndef __cplusplus
 		inline float3 GetPosition()

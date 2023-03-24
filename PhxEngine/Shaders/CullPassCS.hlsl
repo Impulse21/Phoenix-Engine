@@ -18,13 +18,15 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         
         // Transform into view projection space
         float4 boundCentreWS = mul(float4(geometryBoundingSphere.xyz, 1.0f), objectInstance.WorldMatrix);
-        float4 boundCentreVS = mul(boundCentreWS, GetCamera().View);
-        float radius = geometryBoundingSphere.w * 1.1;
+        float4 boundCentreVS = mul(boundCentreWS, GetCamera().ViewProjection);
+        // float radius = geometryBoundingSphere.w * 1.1;
+        float radius = geometryBoundingSphere.w;
         
         bool isVisibleFrustum = true;
         for (uint i = 0; i < 6; i++)
         {
-            isVisibleFrustum = isVisibleFrustum && (dot(GetCamera().Planes[i], boundCentreVS) > -radius);
+            float d = dot(GetCamera().PlanesWS[i], boundCentreWS);
+            isVisibleFrustum = isVisibleFrustum && (d > -radius);
         }
         
         bool isVisibileOcclusion = true;

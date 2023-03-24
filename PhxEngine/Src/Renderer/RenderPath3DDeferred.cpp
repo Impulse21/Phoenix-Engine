@@ -72,7 +72,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 	cameraData.ViewProjectionInv = mainCamera.ViewProjectionInv;
 	cameraData.ProjInv = mainCamera.ProjectionInv;
 	cameraData.ViewInv = mainCamera.ViewInv;
-	std::memcpy(&cameraData.Planes, &mainCamera.ViewFrustum.Planes, sizeof(DirectX::XMFLOAT4) * 6);
+	std::memcpy(&cameraData.PlanesWS, &mainCamera.FrustumWS.Planes, sizeof(DirectX::XMFLOAT4) * 6);
 
 	ICommandList* commandList = this->m_gfxDevice->BeginCommandRecording();
 	{

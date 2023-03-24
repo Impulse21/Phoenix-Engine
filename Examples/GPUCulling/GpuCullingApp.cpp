@@ -32,7 +32,12 @@ using namespace PhxEngine::RHI;
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Renderer;
 
+#if false
+constexpr static uint32_t kNumInstances = 0;
+#else
 constexpr static uint32_t kNumInstances = 100000;
+#endif
+
 constexpr static DirectX::XMFLOAT2 kSceneExtent = { -200.0, 200.0 };
 
 class GpuCullingApp : public ApplicationBase
@@ -131,13 +136,19 @@ public:
                 Core::Random::GetRandom(-1.0f, 1.0f),
                 0);
 
+            float scale = Core::Random::GetRandom(1.0f, 4.0f);
+            XMMATRIX scaleMatrix = XMMatrixScaling(
+                scale,
+                scale,
+                scale);
+
             axis = DirectX::XMVector3Normalize(axis);
             XMMATRIX translation = DirectX::XMMatrixTranslation(
                 Core::Random::GetRandom(kSceneExtent.x, kSceneExtent.y),
                 Core::Random::GetRandom(kSceneExtent.x, kSceneExtent.y),
                 Core::Random::GetRandom(kSceneExtent.x, kSceneExtent.y));
 
-            DirectX::XMStoreFloat4x4(&transform.WorldMatrix, DirectX::XMMatrixRotationAxis(axis, angle) * translation);
+            DirectX::XMStoreFloat4x4(&transform.WorldMatrix, scaleMatrix * DirectX::XMMatrixRotationAxis(axis, angle) * translation);
             transform.SetDirty();
 
             transform.ApplyTransform();
@@ -219,7 +230,7 @@ public:
         if (m_app->IsSceneLoaded())
         {
             ImGui::Begin("Renderer");
-            ImGui::Text("Currently rendering %d monkeys", kNumInstances);
+            ImGui::Text("Currently rendering %d monkeys", kNumInstances + 1);
             ImGui::Separator();
             this->m_app->GetRenderer()->BuildUI();
             ImGui::End();

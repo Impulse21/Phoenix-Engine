@@ -27,7 +27,7 @@ inline bool IsVisible(CullData cullData, Camera camera, float4x4 world, float sc
     // Do a plane check
     for (int i = 0; i < 6; ++i)
     {
-        if (dot(float4(centre, 1.0f), camera.Planes[i]) < -radius)
+        if (dot(float4(centre, 1.0f), camera.PlanesWS[i]) < -radius)
         {
             return false;
         }
