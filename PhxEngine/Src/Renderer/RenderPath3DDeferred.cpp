@@ -77,9 +77,11 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 	ICommandList* commandList = this->m_gfxDevice->BeginCommandRecording();
 
+	// TODO: Disabling for now as this work is incomplete
+#if false
 	if (!this->m_depthPyramid.IsValid())
 	{
-
+		
 		auto _ = commandList->BeginScopedMarker("Recreating depth PyramidPass");
 		DirectX::XMUINT2 texSize = CreateDepthPyramid();
 		/** these should have a memset to 0 just in case it's not keeping this code around
@@ -93,7 +95,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 		upload->WriteTexture(this->BlackTexture, 0, 1, &subResourceData);
 		*/
 	}
-
+#endif 
 	{
 		auto rangeId = this->m_frameProfiler->BeginRangeGPU("Prepare Render Data", commandList);
 		this->PrepareFrameRenderData(commandList, mainCamera, scene);

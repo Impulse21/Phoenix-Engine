@@ -73,6 +73,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         bool isVisibileOcclusion = true;
         if (isVisibleFrustum)
         {
+            // TODO: This logic in incomplete. I will revisit at a later time
 #if 0
             float4 aabb;
             if (ProjectSphere(boundCentreVS, radius, GetCamera().GetZNear(), GetCamera().Proj[0][0], GetCamera().Proj[1][1], aabb))
