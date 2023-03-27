@@ -57,11 +57,6 @@ public:
         this->m_shaderFactory = std::make_shared<Graphics::ShaderFactory>(this->GetGfxDevice(), rootFilePath, "/Shaders");
         this->m_commonPasses = std::make_shared<Renderer::CommonPasses>(this->GetGfxDevice(), *this->m_shaderFactory);
         this->m_textureCache = std::make_unique<Graphics::TextureCache>(nativeFS, this->GetGfxDevice());
-        this->m_forwardRenderer = std::make_unique<Renderer::RenderPath3DForward>(
-            this->GetGfxDevice(),
-            this->m_commonPasses,
-            this->m_shaderFactory,
-            this->GetRoot()->GetFrameProfiler());
 
         this->m_deferredRenderer = std::make_unique<Renderer::RenderPath3DDeferred>(
             this->GetGfxDevice(),
@@ -157,12 +152,12 @@ public:
     }
 
     std::shared_ptr<Graphics::ShaderFactory> GetShaderFactory() { return this->m_shaderFactory; }
+    std::shared_ptr<Renderer::RenderPath3DDeferred> GetRenderer() { return this->m_deferredRenderer; }
 
 private:
 
 private:
     std::shared_ptr<Graphics::ShaderFactory> m_shaderFactory;
-    std::shared_ptr<Renderer::RenderPath3DForward> m_forwardRenderer;
     std::shared_ptr<Renderer::RenderPath3DDeferred> m_deferredRenderer;
     RHI::TextureHandle m_splashScreenTexture;
 
@@ -191,8 +186,8 @@ public:
     {
         if (m_app->IsSceneLoaded())
         {
-            ImGui::Begin("Frame Stats");
-            this->GetRoot()->GetFrameProfiler()->BuildUI();
+            ImGui::Begin("Renderer");
+            this->m_app->GetRenderer()->BuildUI();
             ImGui::End();
         }
         else
@@ -235,12 +230,12 @@ int main(int __argc, const char** __argv)
             PhxEngineRuntimeUI userInterface(root.get(), &app);
             if (userInterface.Initialize(*app.GetShaderFactory()))
             {
-                // root->AddPassToBack(&userInterface);
+                root->AddPassToBack(&userInterface);
             }
 
             root->Run();
             root->RemovePass(&app);
-            // root->RemovePass(&userInterface);
+            root->RemovePass(&userInterface);
         }
     }
 
