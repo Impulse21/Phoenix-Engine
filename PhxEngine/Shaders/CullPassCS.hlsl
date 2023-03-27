@@ -110,27 +110,30 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         
         if (isVisibleFrustum && isVisibileOcclusion)
         {
-            MeshDrawCommand command;
-            command.DrawId = objectInstanceIdx;
-            command.Indirect.IndexCount = geometryData.NumIndices;
-            command.Indirect.InstanceCount = 1;
-            command.Indirect.StartIndex = geometryData.IndexOffset;
-            command.Indirect.VertexOffset = 0;
-            command.Indirect.StartInstance = 0;
-            command.IndirectMS.GroupCountX = ROUNDUP(geometryData.MeshletCount, AS_GROUP_SIZE);
-            command.IndirectMS.GroupCountY = 1;
-            command.IndirectMS.GroupCountZ = 1;
+            MeshDrawCommand meshDrawCommand;
+            meshDrawCommand.DrawId = objectInstanceIdx;
+            meshDrawCommand.Indirect.IndexCount = geometryData.NumIndices;
+            meshDrawCommand.Indirect.InstanceCount = 1;
+            meshDrawCommand.Indirect.StartIndex = geometryData.IndexOffset;
+            meshDrawCommand.Indirect.VertexOffset = 0;
+            meshDrawCommand.Indirect.StartInstance = 0;
     
-            AppendStructuredBuffer<MeshDrawCommand> drawMeshIndirectBuffer = ResourceDescriptorHeap[push.DrawBufferIdx];
-            drawMeshIndirectBuffer.Append(command);
+            AppendStructuredBuffer<MeshDrawCommand> drawMeshIndirectBuffer = ResourceDescriptorHeap[push.DrawBufferMeshIdx];
+            drawMeshIndirectBuffer.Append(meshDrawCommand);
+            
+            MeshletDrawCommand meshletDrawCommand;
+            meshletDrawCommand.DrawId = objectInstanceIdx;
+            meshletDrawCommand.Indirect.GroupCountX = ROUNDUP(geometryData.MeshletCount, AS_GROUP_SIZE);
+            meshletDrawCommand.Indirect.GroupCountY = 1;
+            meshletDrawCommand.Indirect.GroupCountZ = 1;
+            
+            AppendStructuredBuffer<MeshletDrawCommand> drawMeshletIndirectBuffer = ResourceDescriptorHeap[push.DrawBufferMeshletIdx];
+            drawMeshletIndirectBuffer.Append(meshletDrawCommand);
         }
         else if (push.IsLatePass == false)
         {
             MeshDrawCommand command;
             command.DrawId = objectInstanceIdx;
-            command.IndirectMS.GroupCountX = ROUNDUP(geometryData.MeshletCount, AS_GROUP_SIZE);
-            command.IndirectMS.GroupCountY = 1;
-            command.IndirectMS.GroupCountZ = 1;
             // AppendStructuredBuffer<MeshDrawCommand> culledIndirectBuffer = ResourceDescriptorHeap[GetScene().CulledInstancesBufferUavIdx];
             // culledIndirectBuffer.Append(command);
         }

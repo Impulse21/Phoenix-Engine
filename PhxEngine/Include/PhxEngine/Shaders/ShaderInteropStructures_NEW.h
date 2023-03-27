@@ -27,25 +27,30 @@ namespace Shader::New
 	static const uint MATRIX_COUNT = 128;
 	struct IndirectDrawArgsIndexedInstanced
 	{
-		uint32_t IndexCount;
-		uint32_t InstanceCount;
-		uint32_t StartIndex;
-		uint32_t VertexOffset;
-		uint32_t StartInstance;
+		uint IndexCount;
+		uint InstanceCount;
+		uint StartIndex;
+		uint VertexOffset;
+		uint StartInstance;
 	};
 
 	struct IndirectDispatchArgs
 	{
-		uint32_t GroupCountX;
-		uint32_t GroupCountY;
-		uint32_t GroupCountZ;
+		uint GroupCountX;
+		uint GroupCountY;
+		uint GroupCountZ;
 	};
 
 	struct MeshDrawCommand
 	{
 		uint DrawId;
 		IndirectDrawArgsIndexedInstanced Indirect;
-		IndirectDispatchArgs IndirectMS;
+	};
+
+	struct MeshletDrawCommand
+	{
+		uint DrawId;
+		IndirectDispatchArgs Indirect;
 	};
 
 #ifdef __cplusplus
@@ -243,14 +248,17 @@ namespace Shader::New
 
 		// -- 16 byte boundary ----
 		uint UniqueVertexIBIdx;
-		uint IndirectEarlyBufferIdx;
+		uint IndirectEarlyMeshBufferIdx;
+		uint IndirectEarlyMeshletBufferIdx;
 		uint IndirectLateBufferIdx;
-		uint CulledInstancesBufferUavIdx;
 
 		// -- 16 byte boundary ----
+		uint CulledInstancesBufferUavIdx;
 		uint CulledInstancesBufferSrvIdx;
 		uint CulledInstancesCounterBufferIdx;
 		uint GeometryBoundsBufferIdx;
+
+		// -- 16 byte boundary ----
 		uint InstanceCount;
 
 	};
@@ -501,7 +509,8 @@ namespace Shader::New
 
 	struct CullPushConstants
 	{
-		uint DrawBufferIdx;
+		uint DrawBufferMeshIdx;
+		uint DrawBufferMeshletIdx;
 		uint CulledDataSRVIdx;
 		uint CulledDataCounterSrcIdx;
 		bool IsLatePass;

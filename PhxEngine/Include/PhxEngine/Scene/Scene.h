@@ -86,7 +86,8 @@ namespace PhxEngine::Scene
 
 		RHI::BufferHandle GetGlobalIndexBuffer() const { return this->m_globalIndexBuffer; }
 
-		RHI::BufferHandle GetIndirectDrawEarlyBuffer() { return this->m_indirectDrawEarlyBuffer; }
+		RHI::BufferHandle GetIndirectDrawEarlyMeshBuffer() { return this->m_indirectDrawEarlyMeshBuffer; }
+		RHI::BufferHandle GetIndirectDrawEarlyMeshletBuffer() { return this->m_indirectDrawEarlyMeshletBuffer; }
 		RHI::BufferHandle GetCulledInstancesBuffer() { return this->m_culledInstancesBuffer; }
 		RHI::BufferHandle GetCulledInstancesCounterBuffer() { return this->m_culledInstancesCounterBuffer; }
 		RHI::BufferHandle GetIndirectDrawLateBuffer() { return this->m_indirectDrawLateBuffer; }
@@ -133,7 +134,8 @@ namespace PhxEngine::Scene
 		RHI::BufferHandle m_materialGpuBuffer;
 		RHI::BufferHandle m_instanceGpuBuffer;
 
-		RHI::BufferHandle m_indirectDrawEarlyBuffer;
+		RHI::BufferHandle m_indirectDrawEarlyMeshBuffer;
+		RHI::BufferHandle m_indirectDrawEarlyMeshletBuffer;
 		RHI::BufferHandle m_indirectDrawLateBuffer;
 
 		RHI::BufferHandle m_culledInstancesBuffer;

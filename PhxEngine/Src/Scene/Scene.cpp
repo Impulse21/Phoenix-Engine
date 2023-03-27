@@ -680,6 +680,8 @@ void PhxEngine::Scene::Scene::BuildGeometryData(RHI::ICommandList* commandList, 
 		geometryShaderData->IndexOffset = mesh.GlobalOffsetIndexBuffer;
 		geometryShaderData->MeshletOffset = mesh.GlobalOffsetMeshletBuffer;
 		geometryShaderData->MeshletCount = mesh.Meshlets.size();
+		geometryShaderData->MeshletPrimtiveOffset = mesh.GlobalOffsetMeshletPrimitiveBuffer;
+		geometryShaderData->MeshletUniqueVertexIBOffset = mesh.GlobalOffsetUnqiueVertexIBBuffer / sizeof(uint32_t);
 
 		geometryShaderData->VertexBufferIndex = gfxDevice->GetDescriptorIndex(this->m_globalVertexBuffer, RHI::SubresouceType::SRV);
 		geometryShaderData->PositionOffset = mesh.GlobalByteOffsetVertexBuffer + mesh.GetVertexAttribute(MeshComponent::VertexAttribute::Position).ByteOffset;
@@ -795,20 +797,37 @@ void PhxEngine::Scene::Scene::BuildIndirectBuffers(RHI::ICommandList* commandLis
 {
 	auto view = this->GetAllEntitiesWith<MeshInstanceComponent>();
 
-	const size_t indirectBufferByteSize = Core::Helpers::AlignUp(sizeof(Shader::New::MeshDrawCommand) * view.size(), gfxDevice->GetUavCounterPlacementAlignment()) + sizeof(uint32_t);
-	if (this->m_indirectDrawEarlyBuffer.IsValid())
+	const size_t indirectMeshBufferByteSize = Core::Helpers::AlignUp(sizeof(Shader::New::MeshDrawCommand) * view.size(), gfxDevice->GetUavCounterPlacementAlignment()) + sizeof(uint32_t);
+	if (this->m_indirectDrawEarlyMeshBuffer.IsValid())
 	{
-		gfxDevice->DeleteBuffer(this->m_indirectDrawEarlyBuffer);
+		gfxDevice->DeleteBuffer(this->m_indirectDrawEarlyMeshBuffer);
 	}
 
-	this->m_indirectDrawEarlyBuffer = gfxDevice->CreateBuffer({
+	this->m_indirectDrawEarlyMeshBuffer = gfxDevice->CreateBuffer({
 			   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter | BufferMiscFlags::Bindless,
 			   .Binding = BindingFlags::UnorderedAccess,
 			   .InitialState = ResourceStates::IndirectArgument,
 			   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
-			   .SizeInBytes = indirectBufferByteSize,
+			   .SizeInBytes = indirectMeshBufferByteSize,
 			   .AllowUnorderedAccess = true,
-			   .UavCounterOffsetInBytes = indirectBufferByteSize - sizeof(uint32_t) });
+			   .UavCounterOffsetInBytes = indirectMeshBufferByteSize - sizeof(uint32_t),
+			   .DebugName = "Indirect Draw Early (Mesh)"});
+
+	const size_t indirectMeshletBufferByteSize = Core::Helpers::AlignUp(sizeof(Shader::New::MeshletDrawCommand) * view.size(), gfxDevice->GetUavCounterPlacementAlignment()) + sizeof(uint32_t);
+	if (this->m_indirectDrawEarlyMeshletBuffer.IsValid())
+	{
+		gfxDevice->DeleteBuffer(this->m_indirectDrawEarlyMeshletBuffer);
+	}
+
+	this->m_indirectDrawEarlyMeshletBuffer = gfxDevice->CreateBuffer({
+			   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter | BufferMiscFlags::Bindless,
+			   .Binding = BindingFlags::UnorderedAccess,
+			   .InitialState = ResourceStates::IndirectArgument,
+			   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
+			   .SizeInBytes = indirectMeshletBufferByteSize,
+			   .AllowUnorderedAccess = true,
+			   .UavCounterOffsetInBytes = indirectMeshletBufferByteSize - sizeof(uint32_t),
+			   .DebugName = "Indirect Draw Early (Meshlet)" });
 
 	if (this->m_culledInstancesBuffer.IsValid())
 	{
@@ -847,9 +866,9 @@ void PhxEngine::Scene::Scene::BuildIndirectBuffers(RHI::ICommandList* commandLis
 			   .Binding = BindingFlags::UnorderedAccess,
 			   .InitialState = ResourceStates::IndirectArgument,
 			   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
-			   .SizeInBytes = indirectBufferByteSize,
+			   .SizeInBytes = indirectMeshBufferByteSize,
 			   .AllowUnorderedAccess = true,
-			   .UavCounterOffsetInBytes = indirectBufferByteSize - sizeof(uint32_t) });
+			   .UavCounterOffsetInBytes = indirectMeshBufferByteSize - sizeof(uint32_t) });
 }
 
 void PhxEngine::Scene::Scene::BuildSceneData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice)
@@ -865,7 +884,8 @@ void PhxEngine::Scene::Scene::BuildSceneData(RHI::ICommandList* commandList, RHI
 	this->m_shaderData.MeshletBufferIdx = gfxDevice->GetDescriptorIndex(this->m_globalMeshletBuffer, SubresouceType::SRV);
 	this->m_shaderData.MeshletPrimitiveIdx = gfxDevice->GetDescriptorIndex(this->m_globalMeshletPrimitiveBuffer, SubresouceType::SRV);
 	this->m_shaderData.UniqueVertexIBIdx = gfxDevice->GetDescriptorIndex(this->m_globalUniqueVertexIBBuffer, SubresouceType::SRV);
-	this->m_shaderData.IndirectEarlyBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawEarlyBuffer, SubresouceType::UAV);
+	this->m_shaderData.IndirectEarlyMeshBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawEarlyMeshBuffer, SubresouceType::UAV);
+	this->m_shaderData.IndirectEarlyMeshletBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawEarlyMeshletBuffer, SubresouceType::UAV);
 	this->m_shaderData.IndirectLateBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawLateBuffer, SubresouceType::UAV);
 	this->m_shaderData.CulledInstancesBufferUavIdx = gfxDevice->GetDescriptorIndex(this->m_culledInstancesBuffer, SubresouceType::UAV);
 	this->m_shaderData.CulledInstancesBufferSrvIdx = gfxDevice->GetDescriptorIndex(this->m_culledInstancesBuffer, SubresouceType::SRV);
@@ -1008,13 +1028,15 @@ void PhxEngine::Scene::Scene::BuildMeshData(RHI::ICommandList* commandList, RHI:
 	this->m_globalUniqueVertexIBBuffer = gfxDevice->CreateBuffer({
 			.MiscFlags = RHI::BufferMiscFlags::Raw | RHI::BufferMiscFlags::Bindless,
 			.Binding = RHI::BindingFlags::ShaderResource,
+			.StrideInBytes = sizeof(uint8_t),
 			.SizeInBytes = totalUniqueVertexIBCount * sizeof(uint8_t),
 			.DebugName = "Scene Meshlet Unique Vertex IB" });
 	const size_t uniqueVertexIBStride= gfxDevice->GetBufferDesc(this->m_globalUniqueVertexIBBuffer).StrideInBytes;
 
 	this->m_globalMeshletPrimitiveBuffer = gfxDevice->CreateBuffer({
-			.MiscFlags = RHI::BufferMiscFlags::Raw | RHI::BufferMiscFlags::Bindless,
+			.MiscFlags = RHI::BufferMiscFlags::Structured | RHI::BufferMiscFlags::Bindless,
 			.Binding = RHI::BindingFlags::ShaderResource,
+			.StrideInBytes = sizeof(DirectX::MeshletTriangle),
 			.SizeInBytes = totalMeshletPrimitiveCount * sizeof(DirectX::MeshletTriangle),
 			.DebugName = "Scene Meshlet Primitives" });
 	const size_t meshletPrimtiveStide = gfxDevice->GetBufferDesc(this->m_globalMeshletPrimitiveBuffer).StrideInBytes;

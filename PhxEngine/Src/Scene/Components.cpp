@@ -184,7 +184,7 @@ void MeshComponent::BuildRenderData(
 		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
 
 		commandList->WriteBuffer(this->MeshletBuffer, this->Meshlets);
-		commandList->WriteBuffer(this->UniqueVertexIBBuffer, this->UniqueVertexIBBuffer);
+		commandList->WriteBuffer(this->UniqueVertexIBBuffer, this->UniqueVertexIB);
 		commandList->WriteBuffer(this->MeshletPrimitivesBuffer, this->MeshletTriangles);
 		commandList->WriteBuffer(this->MeshletCullDataBuffer, this->MeshletCullData);
 

@@ -132,7 +132,8 @@ namespace PhxEngine::Renderer
 			Shader::New::Camera cameraData,
 			RHI::Viewport* v,
 			RHI::Rect* scissor,
-			RHI::BufferHandle indirectDrawBuffer);
+			RHI::BufferHandle indirectDrawMeshBuffer,
+			RHI::BufferHandle indirectDrawMeshletBuffer);
 
 		DirectX::XMUINT2 CreateDepthPyramid();
 	private:

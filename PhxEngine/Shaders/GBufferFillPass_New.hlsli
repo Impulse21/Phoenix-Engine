@@ -26,7 +26,6 @@ struct PSInput
     float3 NormalWS : NORMAL;
     float3 Colour : COLOUR;
     float2 TexCoord : TEXCOORD;
-    float3 ShadowTexCoord : TEXCOORD1;
     float4 TangentWS : TANGENT;
     uint MeshletIndex : COLOR0;
     uint MaterialID : MATERIAL;
@@ -71,6 +70,7 @@ PSInput main(
 }
 #endif // COMPILE_VS
 
+// #define COMPILE_MS
 #ifdef COMPILE_MS
 
 [RootSignature(PHX_ENGINE_DEFAULT_ROOTSIGNATURE)]
