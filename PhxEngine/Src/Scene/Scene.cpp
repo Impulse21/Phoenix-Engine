@@ -810,18 +810,33 @@ void PhxEngine::Scene::Scene::BuildIndirectBuffers(RHI::ICommandList* commandLis
 			   .AllowUnorderedAccess = true,
 			   .UavCounterOffsetInBytes = indirectBufferByteSize - sizeof(uint32_t) });
 
-	if (this->m_indirectDrawCulledBuffer.IsValid())
+	if (this->m_culledInstancesBuffer.IsValid())
 	{
-		gfxDevice->DeleteBuffer(this->m_indirectDrawCulledBuffer);
+		gfxDevice->DeleteBuffer(this->m_culledInstancesBuffer);
 	}
-	this->m_indirectDrawCulledBuffer = gfxDevice->CreateBuffer({
+
+	if (this->m_culledInstancesCounterBuffer.IsValid())
+	{
+		gfxDevice->DeleteBuffer(this->m_culledInstancesCounterBuffer);
+	}
+
+	this->m_culledInstancesCounterBuffer = gfxDevice->CreateBuffer({
+			   .MiscFlags = BufferMiscFlags::Raw | BufferMiscFlags::Bindless,
+			   .Binding = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
+			   .InitialState = ResourceStates::ShaderResource,
+			   .StrideInBytes = sizeof(uint32_t),
+			   .SizeInBytes = sizeof(uint32_t),
+			   .AllowUnorderedAccess = true });
+
+	this->m_culledInstancesBuffer = gfxDevice->CreateBuffer({
 			   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter | BufferMiscFlags::Bindless,
-			   .Binding = BindingFlags::UnorderedAccess,
-			   .InitialState = ResourceStates::IndirectArgument,
+			   .Binding = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
+			   .InitialState = ResourceStates::ShaderResource,
 			   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
-			   .SizeInBytes = indirectBufferByteSize,
+			   .SizeInBytes = sizeof(Shader::New::MeshDrawCommand) * view.size(),
 			   .AllowUnorderedAccess = true,
-			   .UavCounterOffsetInBytes = indirectBufferByteSize - sizeof(uint32_t) });
+			   .UavCounterOffsetInBytes = 0,
+			   .UavCounterBuffer = this->m_culledInstancesCounterBuffer });
 
 	if (this->m_indirectDrawLateBuffer.IsValid())
 	{
@@ -852,7 +867,9 @@ void PhxEngine::Scene::Scene::BuildSceneData(RHI::ICommandList* commandList, RHI
 	this->m_shaderData.UniqueVertexIBIdx = gfxDevice->GetDescriptorIndex(this->m_globalUniqueVertexIBBuffer, SubresouceType::SRV);
 	this->m_shaderData.IndirectEarlyBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawEarlyBuffer, SubresouceType::UAV);
 	this->m_shaderData.IndirectLateBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawLateBuffer, SubresouceType::UAV);
-	this->m_shaderData.IndirectCullBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawCulledBuffer, SubresouceType::UAV);
+	this->m_shaderData.CulledInstancesBufferUavIdx = gfxDevice->GetDescriptorIndex(this->m_culledInstancesBuffer, SubresouceType::UAV);
+	this->m_shaderData.CulledInstancesBufferSrvIdx = gfxDevice->GetDescriptorIndex(this->m_culledInstancesBuffer, SubresouceType::SRV);
+	this->m_shaderData.CulledInstancesCounterBufferIdx = gfxDevice->GetDescriptorIndex(this->m_culledInstancesCounterBuffer, SubresouceType::SRV);
 
 	auto instanceView = this->GetAllEntitiesWith<MeshInstanceComponent>();
 	this->m_shaderData.InstanceCount = instanceView.size();

@@ -868,6 +868,8 @@ namespace PhxEngine::RHI
         };
     };
 
+    struct Buffer;
+    using BufferHandle = Core::Handle<Buffer>;
     struct BufferDesc
     {
         BufferMiscFlags MiscFlags = BufferMiscFlags::None;
@@ -888,6 +890,7 @@ namespace PhxEngine::RHI
         bool CreateBindless = false;
 
         size_t UavCounterOffsetInBytes = 0;
+        BufferHandle UavCounterBuffer = {};
 
         std::string DebugName;
 
@@ -916,8 +919,6 @@ namespace PhxEngine::RHI
         }
     };
 
-    struct Buffer;
-    using BufferHandle = Core::Handle<Buffer>;
 
     struct GraphicsPipelineDesc
     {

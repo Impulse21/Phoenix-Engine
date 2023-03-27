@@ -4,6 +4,7 @@
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <DirectXMath.h>
 #include <PhxEngine/Renderer/GBuffer.h>
+#include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
 
 namespace tf
 {
@@ -47,6 +48,7 @@ namespace PhxEngine::Renderer
 		enum
 		{
 			CullPass,
+			DepthPyramidGen,
 			DeferredLightingPass,
 			Count
 		};
@@ -75,6 +77,7 @@ namespace PhxEngine::Renderer
 			PS_ToneMapping,
 
 			CS_CullPass,
+			CS_DepthPyramidGen,
 			CS_DeferredLightingPass,
 
 			AS_MeshletCull,
@@ -123,6 +126,15 @@ namespace PhxEngine::Renderer
 
 		void RenderGeometry(RHI::ICommandList* commandList, Scene::Scene& scene, DrawQueue& drawQueue, bool markMeshes);
 
+		void GBufferFillPass(
+			RHI::ICommandList* commandList,
+			Scene::Scene& scene,
+			Shader::New::Camera cameraData,
+			RHI::Viewport* v,
+			RHI::Rect* scissor,
+			RHI::BufferHandle indirectDrawBuffer);
+
+		DirectX::XMUINT2 CreateDepthPyramid();
 	private:
 		RHI::IGraphicsDevice* m_gfxDevice;
 		std::shared_ptr<Graphics::ShaderFactory> m_shaderFactory;
@@ -140,7 +152,8 @@ namespace PhxEngine::Renderer
 
 		GBufferRenderTargets m_gbuffer;
 		RHI::TextureHandle m_colourBuffer;
-
+		uint16_t m_depthPyramidNumMips = 1;
+		RHI::TextureHandle m_depthPyramid; 
 		RHI::BufferHandle m_frameCB;
 
 		DirectX::XMFLOAT2 m_canvasSize;

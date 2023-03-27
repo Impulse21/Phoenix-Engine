@@ -53,6 +53,9 @@ namespace DefaultRootParameters
 
 #define THREADS_PER_WAVE 64 // Assumes availability of wave size of 64 threads
 
+#define BLOCK_SIZE_X_DEPTH_PYRMAMID 8
+#define BLOCK_SIZE_Y_DEPTH_PYRMAMID 8
+
 // Pre-defined threadgroup sizes for AS & MS stages
 #define AS_GROUP_SIZE THREADS_PER_WAVE
 #define MS_GROUP_SIZE ROUNDUP(MAX(MAX_VERTS, MAX_PRIMS), THREADS_PER_WAVE)

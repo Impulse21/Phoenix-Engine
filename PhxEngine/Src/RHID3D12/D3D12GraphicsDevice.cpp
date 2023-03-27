@@ -3099,9 +3099,24 @@ int PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateUnorderedAccessView(Buffer
 			.UAVDesc = uavDesc,
 		};
 
+	ID3D12Resource* counterResource = nullptr;
+	if (hasCounter)
+	{
+		if (bufferImpl->Desc.UavCounterBuffer.IsValid())
+		{
+			D3D12Buffer* counterBuffer = this->m_bufferPool.Get(bufferImpl->Desc.UavCounterBuffer);
+			counterResource = counterBuffer->D3D12Resource.Get();
+
+		}
+		else
+		{
+			counterResource = bufferImpl->D3D12Resource.Get();
+		}
+	}
+
 	this->GetD3D12Device2()->CreateUnorderedAccessView(
 		bufferImpl->D3D12Resource.Get(),
-		hasCounter ? bufferImpl->D3D12Resource.Get() : nullptr,
+		counterResource,
 		&uavDesc,
 		view.Allocation.GetCpuHandle());
 

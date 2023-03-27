@@ -67,6 +67,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Initialize(DirectX::XMFLOAT2 con
 void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scene::CameraComponent& mainCamera)
 {
 	Shader::New::Camera cameraData = {};
+	cameraData.Proj = mainCamera.Projection;
 	cameraData.View = mainCamera.View;
 	cameraData.ViewProjection = mainCamera.ViewProjection;
 	cameraData.ViewProjectionInv = mainCamera.ViewProjectionInv;
@@ -75,6 +76,24 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 	std::memcpy(&cameraData.PlanesWS, &mainCamera.FrustumWS.Planes, sizeof(DirectX::XMFLOAT4) * 6);
 
 	ICommandList* commandList = this->m_gfxDevice->BeginCommandRecording();
+
+	if (!this->m_depthPyramid.IsValid())
+	{
+
+		auto _ = commandList->BeginScopedMarker("Recreating depth PyramidPass");
+		DirectX::XMUINT2 texSize = CreateDepthPyramid();
+		/** these should have a memset to 0 just in case it's not keeping this code around
+		RHI::SubresourceData subResourceData = {};
+		subResourceData.rowPitch = uint64_t(texSize.x) * 2u; // 2 bytes per pixel 
+		subResourceData.slicePitch = subResourceData.rowPitch * texSize.y;
+		subResourceData.slicePitch = 0;
+
+		const uint64_t blackImage = 0u;
+		subResourceData.pData = &blackImage;
+		upload->WriteTexture(this->BlackTexture, 0, 1, &subResourceData);
+		*/
+	}
+
 	{
 		auto rangeId = this->m_frameProfiler->BeginRangeGPU("Prepare Render Data", commandList);
 		this->PrepareFrameRenderData(commandList, mainCamera, scene);
@@ -91,17 +110,32 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 	RHI::Rect rec(LONG_MAX, LONG_MAX);
 	auto instanceView = scene.GetAllEntitiesWith<Scene::MeshInstanceComponent>();
 
+	static Shader::New::Camera cullCamera = {};
+	if (!this->m_settings.FreezeCamera)
 	{
-		auto _ = commandList->BeginScopedMarker("Cull Pass");
+		cullCamera = cameraData;
+	}
+
+	{
+		auto _ = commandList->BeginScopedMarker("Culling Pass (Early)");
 		RHI::GpuBarrier preBarriers[] =
 		{
 			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
-			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
-			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawCulledBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawCulledBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
+			RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
+			RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesCounterBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesCounterBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
 		};
 		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
 
 		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::CullPass]);
+
+		Shader::New::CullPushConstants push = {};
+		push.IsLatePass = false;
+		push.DrawBufferIdx = scene.GetShaderData().IndirectEarlyBufferIdx;
+		push.CulledDataCounterSrcIdx = RHI::cInvalidDescriptorIndex;
+		push.CulledDataSRVIdx = RHI::cInvalidDescriptorIndex;
+
+		commandList->BindPushConstant(0, push);
+
 		commandList->BindConstantBuffer(1, this->m_frameCB);
 
 		static Shader::New::Camera cullCamera = {};
@@ -120,70 +154,110 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 		RHI::GpuBarrier postBarriers[] =
 		{
 			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyBuffer(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).InitialState),
-			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState),
-			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawCulledBuffer(), RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawCulledBuffer()).InitialState),
+			RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesBuffer(), RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesBuffer()).InitialState),
+			RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesCounterBuffer(), RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesCounterBuffer()).InitialState),
 		};
 		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postBarriers, _countof(postBarriers)));
 	}
 
 	{
-		auto _ = commandList->BeginScopedMarker("GBuffer Fill Pass");
-		commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::GBufferFillPass]);
-
-
-		if (this->m_settings.EnableMeshShaders)
-		{
-			if (!this->m_drawMeshCommandSignatureMS.IsValid())
-			{
-				this->m_drawMeshCommandSignatureMS = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshDrawCommand>({
-							   .ArgDesc =
-								   {
-									   {.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
-									   {.Type = IndirectArgumentType::DispatchMesh }
-								   },
-							   .PipelineType = PipelineType::Mesh,
-							   .MeshHandle = this->m_meshStates[EMeshPipelineStates::GBufferFillPass]
-					});
-			}
-
-			// Dispatch Mesh
-			commandList->SetMeshPipeline(this->m_meshStates[EMeshPipelineStates::GBufferFillPass]);
-		}
-		else
-		{
-			if (!this->m_drawMeshCommandSignatureGfx.IsValid())
-			{
-				// Create Command Signature
-				this->m_drawMeshCommandSignatureGfx = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshDrawCommand>({
-								.ArgDesc =
-									{
-										{.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
-										{.Type = IndirectArgumentType::DrawIndex }
-									},
-								.PipelineType = PipelineType::Gfx,
-								.GfxHandle = this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]
-					});
-			}
-
-			commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]);
-			commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());
-		}
-
-		commandList->SetViewports(&v, 1);
-		commandList->SetScissors(&rec, 1);
-		commandList->BindConstantBuffer(1, this->m_frameCB);
-		commandList->BindDynamicConstantBuffer(2, cameraData);
-
-		commandList->ExecuteIndirect(
-			this->m_settings.EnableMeshShaders ? this->m_drawMeshCommandSignatureMS : this->m_drawMeshCommandSignatureGfx,
-			scene.GetIndirectDrawEarlyBuffer(),
-			this->m_settings.EnableMeshShaders ? offsetof(Shader::New::MeshDrawCommand, IndirectMS) : 0,
-			scene.GetIndirectDrawEarlyBuffer(),
-			this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).SizeInBytes - sizeof(uint32_t),
-			instanceView.size());
-
-		commandList->EndRenderPass();
+		auto _ = commandList->BeginScopedMarker("GBuffer Fill Pass (Early)");
+		this->GBufferFillPass(
+			commandList,
+			scene,
+			cameraData,
+			&v, &rec,
+			scene.GetIndirectDrawEarlyBuffer());
 	}
+
+	// Disabling occlussion stuff for now. Will implement it at a later time.
+#if false
+	// Update depth Pyramid
+	{
+		auto _ = commandList->BeginScopedMarker("Generate Depth Pyramid Chain");
+		commandList->SetComputeState(this->m_computeStates[PsoComputeType::PSO_GenerateMipMaps_TextureCubeArray]);
+
+		TextureDesc textureDesc = this->m_gfxDevice->GetTextureDesc(this->m_depthPyramid);
+
+		uint32_t width = textureDesc.Width;
+		uint32_t height = textureDesc.Width;
+		Shader::New::DepthPyrmidPushConstnats push = {};
+		for (int i = 0; i < textureDesc.MipLevels - 1; i++)
+		{
+			GpuBarrier preBarriers[] =
+			{
+				GpuBarrier::CreateTexture(this->m_depthPyramid, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1),
+			};
+
+			commandList->TransitionBarriers(Core::Span<GpuBarrier>(preBarriers, ARRAYSIZE(preBarriers)));
+
+			width = std::max(1u, width / 2);
+			height = std::max(1u, height / 2);
+
+			push.inputTextureIdx = this->m_gfxDevice->GetDescriptorIndex(this->m_depthPyramid, SubresouceType::UAV, i);
+			push.outputTextureIdx = this->m_gfxDevice->GetDescriptorIndex(this->m_depthPyramid, SubresouceType::UAV, i + 1);
+			commandList->BindPushConstant(0, push);
+
+			commandList->Dispatch(
+				std::max(1u, (textureDesc.Width + BLOCK_SIZE_X_DEPTH_PYRMAMID - 1) / BLOCK_SIZE_X_DEPTH_PYRMAMID),
+				std::max(1u, (textureDesc.Height + BLOCK_SIZE_Y_DEPTH_PYRMAMID - 1) / BLOCK_SIZE_Y_DEPTH_PYRMAMID),
+				1);
+
+			// Cannot continue 
+			GpuBarrier postBarriers[] =
+			{
+				GpuBarrier::CreateMemory(),
+				GpuBarrier::CreateTexture(this->m_depthPyramid, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1),
+			};
+
+			commandList->TransitionBarriers(Core::Span<GpuBarrier>(postBarriers, ARRAYSIZE(postBarriers)));
+		}
+	}
+
+	{
+		auto _ = commandList->BeginScopedMarker("Culling Pass (Late)");
+		RHI::GpuBarrier preBarriers[] =
+		{
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
+		};
+		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
+
+		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::CullPass]);
+
+		Shader::New::CullPushConstants push = {};
+		push.IsLatePass = true;
+		push.DrawBufferIdx = scene.GetShaderData().IndirectLateBufferIdx;
+		push.CulledDataCounterSrcIdx = this->m_gfxDevice->GetDescriptorIndex(scene.GetCulledInstancesCounterBuffer(), SubresouceType::SRV);
+		push.CulledDataSRVIdx = this->m_gfxDevice->GetDescriptorIndex(scene.GetCulledInstancesBuffer(), SubresouceType::SRV);
+
+		commandList->BindPushConstant(0, push);
+		commandList->BindConstantBuffer(1, this->m_frameCB);
+
+		commandList->BindDynamicConstantBuffer(2, cullCamera);
+		const int numThreadGroups = (int)std::ceilf(instanceView.size() / (float)THREADS_PER_WAVE);
+		commandList->Dispatch(
+			numThreadGroups,
+			1,
+			1);
+
+		RHI::GpuBarrier postBarriers[] =
+		{
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState),
+		};
+		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postBarriers, _countof(postBarriers)));
+	}
+
+	{
+		auto _ = commandList->BeginScopedMarker("GBuffer Fill Pass (Late)");
+		this->GBufferFillPass(
+			commandList,
+			scene,
+			cameraData,
+			&v, &rec,
+			scene.GetIndirectDrawLateBuffer());
+	}
+
+#endif
 
 	if (this->m_settings.EnableComputeDeferredLighting)
 	{
@@ -312,6 +386,12 @@ void PhxEngine::Renderer::RenderPath3DDeferred::WindowResize(DirectX::XMFLOAT2 c
 			this->m_gfxDevice->DeleteTexture(this->m_colourBuffer);
 		}
 		this->m_colourBuffer = this->m_gfxDevice->CreateTexture(desc);
+	}
+
+	this->m_depthPyramidNumMips = 0;
+	if (this->m_depthPyramid.IsValid())
+	{
+		this->m_gfxDevice->DeleteTexture(this->m_depthPyramid);
 	}
 
 	this->CreateRenderPasses();
@@ -518,6 +598,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 	}
 
 	frameData.SceneData = scene.GetShaderData();
+	frameData.DepthPyramidIndex = this->m_gfxDevice->GetDescriptorIndex(this->m_depthPyramid, SubresouceType::SRV);
 
 	// Upload data
 	RHI::GpuBarrier preCopyBarriers[] =
@@ -525,21 +606,21 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 		RHI::GpuBarrier::CreateBuffer(this->m_frameCB, RHI::ResourceStates::ConstantBuffer, RHI::ResourceStates::CopyDest),
 		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).InitialState, RHI::ResourceStates::CopyDest),
 		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState, RHI::ResourceStates::CopyDest),
-		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawCulledBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawCulledBuffer()).InitialState, RHI::ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesCounterBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesCounterBuffer()).InitialState, RHI::ResourceStates::CopyDest),
 	};
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
 
 	commandList->WriteBuffer(this->m_frameCB, frameData);
-	commandList->WriteBuffer<uint32_t>(scene.GetIndirectDrawEarlyBuffer(), 0, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawCulledBuffer()).SizeInBytes - sizeof(uint32_t));
-	commandList->WriteBuffer<uint32_t>(scene.GetIndirectDrawLateBuffer(), 0, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawCulledBuffer()).SizeInBytes - sizeof(uint32_t));
-	commandList->WriteBuffer<uint32_t>(scene.GetIndirectDrawCulledBuffer(), 0, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawCulledBuffer()).SizeInBytes - sizeof(uint32_t));
+	commandList->WriteBuffer<uint32_t>(scene.GetIndirectDrawEarlyBuffer(), 0, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).SizeInBytes - sizeof(uint32_t));
+	commandList->WriteBuffer<uint32_t>(scene.GetIndirectDrawLateBuffer(), 0, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).SizeInBytes - sizeof(uint32_t));
+	commandList->WriteBuffer<uint32_t>(scene.GetCulledInstancesCounterBuffer(), 0);
 
 	RHI::GpuBarrier postCopyBarriers[] =
 	{
 		RHI::GpuBarrier::CreateBuffer(this->m_frameCB, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ConstantBuffer),
 		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).InitialState),
 		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState),
-		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawCulledBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawCulledBuffer()).InitialState),
+		RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesCounterBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesCounterBuffer()).InitialState),
 	};
 
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
@@ -620,4 +701,122 @@ void PhxEngine::Renderer::RenderPath3DDeferred::UpdateRTAccelerationStructures(I
 		commandList->TransitionBarriers(Core::Span(postBarriers, ARRAYSIZE(postBarriers)));
 	}
 #endif
+}
+
+
+void PhxEngine::Renderer::RenderPath3DDeferred::GBufferFillPass(
+	RHI::ICommandList* commandList,
+	Scene::Scene& scene,
+	Shader::New::Camera cameraData,
+	RHI::Viewport* v,
+	RHI::Rect* scissor,
+	RHI::BufferHandle indirectDrawBuffer)
+{
+	commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::GBufferFillPass]);
+
+	if (this->m_settings.EnableMeshShaders)
+	{
+		if (!this->m_drawMeshCommandSignatureMS.IsValid())
+		{
+			this->m_drawMeshCommandSignatureMS = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshDrawCommand>({
+						   .ArgDesc =
+							   {
+								   {.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+								   {.Type = IndirectArgumentType::DispatchMesh }
+							   },
+						   .PipelineType = PipelineType::Mesh,
+						   .MeshHandle = this->m_meshStates[EMeshPipelineStates::GBufferFillPass]
+				});
+		}
+
+		// Dispatch Mesh
+		commandList->SetMeshPipeline(this->m_meshStates[EMeshPipelineStates::GBufferFillPass]);
+	}
+	else
+	{
+		if (!this->m_drawMeshCommandSignatureGfx.IsValid())
+		{
+			// Create Command Signature
+			this->m_drawMeshCommandSignatureGfx = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshDrawCommand>({
+							.ArgDesc =
+								{
+									{.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+									{.Type = IndirectArgumentType::DrawIndex }
+								},
+							.PipelineType = PipelineType::Gfx,
+							.GfxHandle = this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]
+				});
+		}
+
+		commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]);
+		commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());
+	}
+
+	commandList->SetViewports(v, 1);
+	commandList->SetScissors(scissor, 1);
+	commandList->BindConstantBuffer(1, this->m_frameCB);
+	commandList->BindDynamicConstantBuffer(2, cameraData);
+
+	auto instanceView = scene.GetAllEntitiesWith<Scene::MeshInstanceComponent>();
+	commandList->ExecuteIndirect(
+		this->m_settings.EnableMeshShaders ? this->m_drawMeshCommandSignatureMS : this->m_drawMeshCommandSignatureGfx,
+		indirectDrawBuffer,
+		this->m_settings.EnableMeshShaders ? offsetof(Shader::New::MeshDrawCommand, IndirectMS) : 0,
+		indirectDrawBuffer,
+		this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyBuffer()).SizeInBytes - sizeof(uint32_t),
+		instanceView.size());
+
+	commandList->EndRenderPass();
+}
+
+DirectX::XMUINT2 PhxEngine::Renderer::RenderPath3DDeferred::CreateDepthPyramid()
+{
+	// Construct Depth Pyramid
+	this->m_depthPyramidNumMips = 0;
+	const RHI::TextureDesc& depthBufferDesc = this->m_gfxDevice->GetTextureDesc(this->m_gbuffer.DepthTex);
+	uint32_t width = depthBufferDesc.Width / 2;
+	uint32_t height = depthBufferDesc.Height / 2;
+	this->m_depthPyramidNumMips = 0;
+	while (width > 1 || height > 1)
+	{
+		this->m_depthPyramidNumMips++;
+		width /= 2;
+		height /= 2;
+	}
+	this->m_depthPyramid = this->m_gfxDevice->CreateTexture({
+			.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::UnorderedAccess,
+			.Dimension = TextureDimension::Texture2D,
+			.InitialState = RHI::ResourceStates::ShaderResource,
+			.Format = RHIFormat::R32_FLOAT,
+			.IsBindless = true,
+			.Width = depthBufferDesc.Width,
+			.Height = depthBufferDesc.Height,
+			.MipLevels = this->m_depthPyramidNumMips,
+			.OptmizedClearValue = { .Colour = {0.0f, 0.0f, 0.0f, 0.0f} },
+			.DebugName = "Depth Pyramid",
+		});
+
+	// Create UAV views
+	for (uint16_t i = 0; i < this->m_depthPyramidNumMips; i++)
+	{
+		int subIndex = IGraphicsDevice::GPtr->CreateSubresource(
+			this->m_depthPyramid,
+			RHI::SubresouceType::SRV,
+			0,
+			1,
+			i,
+			1);
+		assert(i == subIndex);
+
+		subIndex = this->m_gfxDevice->CreateSubresource(
+			this->m_depthPyramid,
+			RHI::SubresouceType::UAV,
+			0,
+			1,
+			i,
+			1);
+		assert(i == subIndex);
+	}
+
+	return { depthBufferDesc.Width, depthBufferDesc.Height };
 }

@@ -87,7 +87,8 @@ namespace PhxEngine::Scene
 		RHI::BufferHandle GetGlobalIndexBuffer() const { return this->m_globalIndexBuffer; }
 
 		RHI::BufferHandle GetIndirectDrawEarlyBuffer() { return this->m_indirectDrawEarlyBuffer; }
-		RHI::BufferHandle GetIndirectDrawCulledBuffer() { return this->m_indirectDrawCulledBuffer; }
+		RHI::BufferHandle GetCulledInstancesBuffer() { return this->m_culledInstancesBuffer; }
+		RHI::BufferHandle GetCulledInstancesCounterBuffer() { return this->m_culledInstancesCounterBuffer; }
 		RHI::BufferHandle GetIndirectDrawLateBuffer() { return this->m_indirectDrawLateBuffer; }
 
 	public:
@@ -133,8 +134,10 @@ namespace PhxEngine::Scene
 		RHI::BufferHandle m_instanceGpuBuffer;
 
 		RHI::BufferHandle m_indirectDrawEarlyBuffer;
-		RHI::BufferHandle m_indirectDrawCulledBuffer;
 		RHI::BufferHandle m_indirectDrawLateBuffer;
+
+		RHI::BufferHandle m_culledInstancesBuffer;
+		RHI::BufferHandle m_culledInstancesCounterBuffer;
 
 		PhxEngine::RHI::RTAccelerationStructureHandle m_tlas;
 		std::vector<PhxEngine::RHI::BufferHandle> m_tlasUploadBuffers;

@@ -245,9 +245,11 @@ namespace Shader::New
 		uint UniqueVertexIBIdx;
 		uint IndirectEarlyBufferIdx;
 		uint IndirectLateBufferIdx;
-		uint IndirectCullBufferIdx;
+		uint CulledInstancesBufferUavIdx;
 
 		// -- 16 byte boundary ----
+		uint CulledInstancesBufferSrvIdx;
+		uint CulledInstancesCounterBufferIdx;
 		uint GeometryBoundsBufferIdx;
 		uint InstanceCount;
 
@@ -261,7 +263,7 @@ namespace Shader::New
 	struct Frame
 	{
 		uint Flags;
-		uint _padding;
+		uint DepthPyramidIndex;
 		uint __padding;
 		uint ___padding;
 
@@ -271,6 +273,9 @@ namespace Shader::New
 
 	struct Camera
 	{
+		float4x4 Proj;
+
+		// -- 16 byte boundary ----
 		float4x4 View;
 
 		// -- 16 byte boundary ----
@@ -292,10 +297,21 @@ namespace Shader::New
 		// -- 16 byte boundary ----
 		float4 PlanesWS[6];
 
+		// -- 16 byte boundary ----
 #ifndef __cplusplus
 		inline float3 GetPosition()
 		{
 			return ViewInv[3].xyz;
+		}
+		inline float GetZNear()
+		{
+			return 0.0f;
+			// Proj.elements[14] / (Proj.elements[10] - 1.0);
+		}
+		inline float GetZFar()
+		{
+			return 0.0f;
+			// Proj.elements[14] / (Proj.elements[10] - 1.0);
 		}
 #endif 
 	};
@@ -485,7 +501,16 @@ namespace Shader::New
 
 	struct CullPushConstants
 	{
+		uint DrawBufferIdx;
+		uint CulledDataSRVIdx;
+		uint CulledDataCounterSrcIdx;
+		bool IsLatePass;
+	};
 
+	struct DepthPyrmidPushConstnats
+	{
+		uint inputTextureIdx;
+		uint outputTextureIdx;
 	};
 
 	struct DefferedLightingCSConstants
