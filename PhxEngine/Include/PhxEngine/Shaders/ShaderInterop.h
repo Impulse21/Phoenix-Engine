@@ -51,7 +51,7 @@ namespace DefaultRootParameters
 #define MAX_PRIMS 124
 #define MAX_LOD_LEVELS 8
 
-#define THREADS_PER_WAVE 64 // Assumes availability of wave size of 64 threads
+#define THREADS_PER_WAVE 32 // Assumes availability of wave size of 64 threads
 
 #define BLOCK_SIZE_X_DEPTH_PYRMAMID 8
 #define BLOCK_SIZE_Y_DEPTH_PYRMAMID 8
