@@ -1,14 +1,14 @@
-include(../PhxEngine/compileshaders.cmake)
 
-file(GLOB sources "Src/*.cpp" "Src/*.h")
+include(../../PhxEngine/compileshaders.cmake)
 
-set(project PhxEngine-Runtime)
-set(folder "Applications/Runtime")
+file(GLOB shaders "*.hlsl")
+file(GLOB sources "*.cpp" "*.h")
 
+set(project GpuCulling)
+set(folder "Examples/GPUCulling")
 
 add_executable(${project} WIN32 ${sources})
 target_link_libraries(${project} PhxEngine)
-# add_dependencies(${project} ${project}_shaders)
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 
 if (MSVC)

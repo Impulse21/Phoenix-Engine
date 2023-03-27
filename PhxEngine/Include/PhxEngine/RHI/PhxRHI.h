@@ -484,6 +484,7 @@ namespace PhxEngine::RHI
         Raw = 1 << 1,
         Structured = 1 << 2,
         Typed = 1 << 3,
+        HasCounter = 1 << 4,
     };
 
     PHXRHI_ENUM_CLASS_FLAG_OPERATORS(BufferMiscFlags);
@@ -867,6 +868,8 @@ namespace PhxEngine::RHI
         };
     };
 
+    struct Buffer;
+    using BufferHandle = Core::Handle<Buffer>;
     struct BufferDesc
     {
         BufferMiscFlags MiscFlags = BufferMiscFlags::None;
@@ -883,9 +886,11 @@ namespace PhxEngine::RHI
         RHIFormat Format = RHIFormat::UNKNOWN;
 
         bool AllowUnorderedAccess = false;
-
         // TODO: Remove
         bool CreateBindless = false;
+
+        size_t UavCounterOffsetInBytes = 0;
+        BufferHandle UavCounterBuffer = {};
 
         std::string DebugName;
 
@@ -914,8 +919,6 @@ namespace PhxEngine::RHI
         }
     };
 
-    struct Buffer;
-    using BufferHandle = Core::Handle<Buffer>;
 
     struct GraphicsPipelineDesc
     {
@@ -1299,6 +1302,12 @@ namespace PhxEngine::RHI
             this->WriteBuffer(buffer, &data, sizeof(T), destOffsetBytes);
         }
 
+        template<typename T>
+        void WriteBuffer(BufferHandle buffer, Core::Span<T> data, uint64_t destOffsetBytes = 0)
+        {
+            this->WriteBuffer(buffer, data.begin(), sizeof(T) * data.Size(), destOffsetBytes);
+        }
+
         // TODO: Take ownership of the data
         virtual void WriteBuffer(BufferHandle buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes = 0) = 0;
 
@@ -1595,6 +1604,8 @@ namespace PhxEngine::RHI
         virtual bool IsDevicedRemoved() = 0;
 
         virtual float GetAvgFrameTime() = 0;
+
+        virtual uint64_t GetUavCounterPlacementAlignment() = 0;
     };
 
     extern void ReportLiveObjects();

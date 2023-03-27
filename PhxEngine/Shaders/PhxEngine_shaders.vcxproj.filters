@@ -124,6 +124,9 @@
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Include\PhxEngine\Shaders\ShaderInteropStructures.h">
       <Filter>Shaders\Include</Filter>
     </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Include\PhxEngine\Shaders\ShaderInteropStructures_NEW.h">
+      <Filter>Shaders\Include</Filter>
+    </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\BRDF.hlsli">
       <Filter>Shaders\Include</Filter>
     </None>
@@ -169,6 +172,9 @@
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\Lighting.hlsli">
       <Filter>Shaders\Include</Filter>
     </None>
+    <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\PackHelpers.hlsli">
+      <Filter>Shaders\Include</Filter>
+    </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\PhxEngine\Shaders\ResourceHeapTables.hlsli">
       <Filter>Shaders\Include</Filter>
     </None>
@@ -197,9 +203,6 @@
       <Filter>Shaders\Include</Filter>
     </None>
     <None Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\PhxEngine\Shaders\CMakeFiles\PhxEngine_shaders" />
-    <None Include="..\..\..\PhxEngine\Shaders\PackHelpers.hlsli">
-      <Filter>Shaders\Include</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">

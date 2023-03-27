@@ -1,5 +1,5 @@
 #include <PhxEngine/PhxEngine.h>
- 
+
 #include <PhxEngine/Graphics/ShaderFactory.h>
 #include <PhxEngine/Core/Helpers.h>
 #include <PhxEngine/Core/Platform.h>
@@ -32,14 +32,20 @@ using namespace PhxEngine::RHI;
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Renderer;
 
-#define SIMPLE_SCENE
+#if false
+constexpr static uint32_t kNumInstances = 0;
+#else
+constexpr static uint32_t kNumInstances = 100000;
+#endif
 
-class PhxEngineRuntimeApp : public ApplicationBase
+constexpr static DirectX::XMFLOAT2 kSceneExtent = { -200.0, 200.0 };
+
+class GpuCullingApp : public ApplicationBase
 {
 private:
 
 public:
-    PhxEngineRuntimeApp(IPhxEngineRoot* root)
+    GpuCullingApp(IPhxEngineRoot* root)
         : ApplicationBase(root)
     {
     }
@@ -57,19 +63,14 @@ public:
         this->m_shaderFactory = std::make_shared<Graphics::ShaderFactory>(this->GetGfxDevice(), rootFilePath, "/Shaders");
         this->m_commonPasses = std::make_shared<Renderer::CommonPasses>(this->GetGfxDevice(), *this->m_shaderFactory);
         this->m_textureCache = std::make_unique<Graphics::TextureCache>(nativeFS, this->GetGfxDevice());
-
         this->m_deferredRenderer = std::make_unique<Renderer::RenderPath3DDeferred>(
             this->GetGfxDevice(),
             this->m_commonPasses,
             this->m_shaderFactory,
             this->GetRoot()->GetFrameProfiler());
 
-#ifdef SIMPLE_SCENE
         // std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza/Sponza.gltf";
-        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/TestScenes/VisibilityBufferScene.gltf";
-#else
-        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza_Intel/Main/NewSponza_Main_glTF.gltf";
-#endif
+        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/TestScenes/Monkey.gltf";
 
 #ifdef ASYNC_LOADING
         this->m_loadAsync = true; // race condition when loading textures
@@ -111,6 +112,49 @@ public:
         commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList }, true);
 
+        auto meshView = this->m_scene.GetAllEntitiesWith<Scene::MeshComponent>();
+
+        // Spawn a ton of instances
+        for (int i = 0; i < kNumInstances; i++)
+        {
+            static size_t emptyNode = 0;
+            auto entity = this->m_scene.CreateEntity("Scene Node " + std::to_string(emptyNode++));
+            auto& instanceComponent = entity.AddComponent<Scene::MeshInstanceComponent>();
+            instanceComponent.Mesh = meshView.front();
+            instanceComponent.Color = {
+                Core::Random::GetRandom(0.0f, 1.0f),
+                Core::Random::GetRandom(0.0f, 1.0f),
+                Core::Random::GetRandom(0.0f, 1.0f),
+                1.0f };
+
+            auto& transform = entity.GetComponent<Scene::TransformComponent>();
+
+            float angle = Core::Random::GetRandom(0.0f, 1.0f) * DirectX::XM_2PI;
+            XMVECTOR axis = XMVectorSet(
+                Core::Random::GetRandom(-1.0f, 1.0f),
+                Core::Random::GetRandom(-1.0f, 1.0f),
+                Core::Random::GetRandom(-1.0f, 1.0f),
+                0);
+
+            float scale = Core::Random::GetRandom(1.0f, 4.0f);
+            XMMATRIX scaleMatrix = XMMatrixScaling(
+                scale,
+                scale,
+                scale);
+
+            axis = DirectX::XMVector3Normalize(axis);
+            XMMATRIX translation = DirectX::XMMatrixTranslation(
+                Core::Random::GetRandom(kSceneExtent.x, kSceneExtent.y),
+                Core::Random::GetRandom(kSceneExtent.x, kSceneExtent.y),
+                Core::Random::GetRandom(kSceneExtent.x, kSceneExtent.y));
+
+            DirectX::XMStoreFloat4x4(&transform.WorldMatrix, scaleMatrix * DirectX::XMMatrixRotationAxis(axis, angle) * translation);
+            transform.SetDirty();
+
+            transform.ApplyTransform();
+            transform.UpdateTransform();
+        }
+
         this->m_scene.BuildRenderData(this->GetGfxDevice());
 
         return retVal;
@@ -118,12 +162,12 @@ public:
 
     void OnWindowResize(WindowResizeEvent const& e) override
     {
-        this->m_deferredRenderer->WindowResize({(float)e.GetWidth(), (float)e.GetHeight()});
+        this->m_deferredRenderer->WindowResize({ (float)e.GetWidth(), (float)e.GetHeight() });
     }
 
     void Update(Core::TimeStep const& deltaTime) override
     {
-        this->GetRoot()->SetInformativeWindowTitle("PhxEngine Runtime", {});
+        this->GetRoot()->SetInformativeWindowTitle("PhxEngine Exampe: GPU Culling", {});
         this->m_cameraController.OnUpdate(this->GetRoot()->GetWindow(), deltaTime, this->m_mainCamera);
 
         if (this->IsSceneLoaded())
@@ -153,7 +197,6 @@ public:
 
     std::shared_ptr<Graphics::ShaderFactory> GetShaderFactory() { return this->m_shaderFactory; }
     std::shared_ptr<Renderer::RenderPath3DDeferred> GetRenderer() { return this->m_deferredRenderer; }
-
 private:
 
 private:
@@ -171,12 +214,12 @@ private:
 };
 
 
-class PhxEngineRuntimeUI : public PhxEngine::ImGuiRenderer
+class GpuCullingAppUI : public PhxEngine::ImGuiRenderer
 {
 private:
 
 public:
-    PhxEngineRuntimeUI(IPhxEngineRoot* root, PhxEngineRuntimeApp* app)
+    GpuCullingAppUI(IPhxEngineRoot* root, GpuCullingApp* app)
         : ImGuiRenderer(root)
         , m_app(app)
     {
@@ -187,6 +230,8 @@ public:
         if (m_app->IsSceneLoaded())
         {
             ImGui::Begin("Renderer");
+            ImGui::Text("Currently rendering %d monkeys", kNumInstances + 1);
+            ImGui::Separator();
             this->m_app->GetRenderer()->BuildUI();
             ImGui::End();
         }
@@ -199,7 +244,7 @@ public:
     }
 
 private:
-    PhxEngineRuntimeApp* m_app;
+    GpuCullingApp* m_app;
 };
 
 #ifdef WIN32
@@ -215,19 +260,19 @@ int main(int __argc, const char** __argv)
         });
 
     EngineParam params = {};
-    params.Name = "PhxEngine Example: Shadows";
+    params.Name = "PhxEngine Example: GPU Culling";
     params.GraphicsAPI = RHI::GraphicsAPI::DX12;
     params.WindowWidth = 2000;
     params.WindowHeight = 1200;
     root->Initialize(params);
 
     {
-        PhxEngineRuntimeApp app(root.get());
+        GpuCullingApp app(root.get());
         if (app.Initialize())
         {
             root->AddPassToBack(&app);
 
-            PhxEngineRuntimeUI userInterface(root.get(), &app);
+            GpuCullingAppUI userInterface(root.get(), &app);
             if (userInterface.Initialize(*app.GetShaderFactory()))
             {
                 root->AddPassToBack(&userInterface);

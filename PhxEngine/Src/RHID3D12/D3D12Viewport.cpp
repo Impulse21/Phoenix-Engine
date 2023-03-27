@@ -132,7 +132,6 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::BeginFrame()
 
 	// If the fence is max uint64, that might indicate that the device has been removed as fences get reset in this case
 	assert(completedFrame != UINT64_MAX);
-
 	uint32_t bufferCount = this->m_activeViewport->Desc.BufferCount;
 	// Since our frame count is 1 based rather then 0, increment the number of buffers by 1 so we don't have to wait on the first 3 frames
 	// that are kicked off.
@@ -163,6 +162,7 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::EndFrame()
 				? this->GetD3D12Device()->GetDeviceRemovedReason()
 				: hr));
 		OutputDebugStringA(buff);
+		this->EndCapture();
 #endif
 
 		// TODO: Handle device lost

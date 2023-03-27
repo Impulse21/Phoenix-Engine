@@ -4,6 +4,7 @@
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <DirectXMath.h>
 #include <PhxEngine/Renderer/GBuffer.h>
+#include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
 
 namespace tf
 {
@@ -46,6 +47,8 @@ namespace PhxEngine::Renderer
 	{
 		enum
 		{
+			CullPass,
+			DepthPyramidGen,
 			DeferredLightingPass,
 			Count
 		};
@@ -55,6 +58,7 @@ namespace PhxEngine::Renderer
 	{
 		enum
 		{
+			GBufferFillPass,
 			Count
 		};
 	}
@@ -72,7 +76,13 @@ namespace PhxEngine::Renderer
 			PS_Blit,
 			PS_ToneMapping,
 
+			CS_CullPass,
+			CS_DepthPyramidGen,
 			CS_DeferredLightingPass,
+
+			AS_MeshletCull,
+
+			MS_MeshletGBufferFill,
 
 			Count
 		};
@@ -116,6 +126,16 @@ namespace PhxEngine::Renderer
 
 		void RenderGeometry(RHI::ICommandList* commandList, Scene::Scene& scene, DrawQueue& drawQueue, bool markMeshes);
 
+		void GBufferFillPass(
+			RHI::ICommandList* commandList,
+			Scene::Scene& scene,
+			Shader::New::Camera cameraData,
+			RHI::Viewport* v,
+			RHI::Rect* scissor,
+			RHI::BufferHandle indirectDrawMeshBuffer,
+			RHI::BufferHandle indirectDrawMeshletBuffer);
+
+		DirectX::XMUINT2 CreateDepthPyramid();
 	private:
 		RHI::IGraphicsDevice* m_gfxDevice;
 		std::shared_ptr<Graphics::ShaderFactory> m_shaderFactory;
@@ -128,9 +148,13 @@ namespace PhxEngine::Renderer
 		std::array<RHI::ShaderHandle, EShaders::Count> m_shaders;
 		std::array<RHI::RenderPassHandle, ERenderPasses::Count> m_renderPasses;
 
+		RHI::CommandSignatureHandle m_drawMeshCommandSignatureGfx;
+		RHI::CommandSignatureHandle m_drawMeshCommandSignatureMS;
+
 		GBufferRenderTargets m_gbuffer;
 		RHI::TextureHandle m_colourBuffer;
-
+		uint16_t m_depthPyramidNumMips = 1;
+		RHI::TextureHandle m_depthPyramid; 
 		RHI::BufferHandle m_frameCB;
 
 		DirectX::XMFLOAT2 m_canvasSize;
@@ -138,6 +162,11 @@ namespace PhxEngine::Renderer
 		struct Settings
 		{
 			bool EnableComputeDeferredLighting = false;
+			bool EnableMeshShaders = false;
+			bool EnableMeshletCulling = false;
+			bool EnableFrustraCulling = true;
+			bool EnableOcclusionCulling = true;
+			bool FreezeCamera = false;
 		} m_settings;
 		
 	};

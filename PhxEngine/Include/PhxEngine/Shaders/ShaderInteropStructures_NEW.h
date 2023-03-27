@@ -1,5 +1,5 @@
-#ifndef __PHX_SHADER_INTEROP_STRUCTURES_HLSLI__
-#define __PHX_SHADER_INTEROP_STRUCTURES_HLSLI__
+#ifndef __PHX_SHADER_INTEROP_STRUCTURES_NEW_HLSLI__
+#define __PHX_SHADER_INTEROP_STRUCTURES_NEW_HLSLI__
 
 #ifdef __cplusplus
 
@@ -15,11 +15,9 @@
 
 #include <Directxpackedvector.h>
 
-namespace Shader
+namespace Shader::New
 {
 #endif
-
-	// -- Enums ---
 	static const uint ENTITY_TYPE_DIRECTIONALLIGHT = 0;
 	static const uint ENTITY_TYPE_OMNILIGHT = 1;
 	static const uint ENTITY_TYPE_SPOTLIGHT = 2;
@@ -27,162 +25,37 @@ namespace Shader
 	static const uint SHADER_LIGHT_ENTITY_COUNT = 256;
 
 	static const uint MATRIX_COUNT = 128;
-
-	// This is restricted to 256 as the Visbuffer is only able to store upt to 256 PrimIDs
-	static const uint MESHLET_TRIANGLE_COUNT = 256u; 
-
-	// -- Groups ---
-	static const uint GENERATE_MIP_CHAIN_2D_BLOCK_SIZE = 8;
-
-	// -- Frame Options ---
-	static const uint FRAME_OPTION_BIT_SIMPLE_SKY = 1 << 0;
-	static const uint FRAME_OPTION_BIT_IBL = 1 << 1;
-
-	struct Atmosphere
+	struct IndirectDrawArgsIndexedInstanced
 	{
-		float3 SunColour;
-		uint _padding;
-		// -- 16 byte boundary ----
-
-		float3 SunDirection;
-		uint _padding1;
-		// -- 16 byte boundary ----
-
-		float3 HorizonColour;
-		uint _padding2;
-		// -- 16 byte boundary ----
-
-		float3 ZenithColour;
-		uint _padding3;
-		// -- 16 byte boundary ----
-
-		float3 AmbientColour;
-		uint _padding4;
-		// -- 16 byte boundary ----
+		uint IndexCount;
+		uint InstanceCount;
+		uint StartIndex;
+		uint VertexOffset;
+		uint StartInstance;
 	};
 
-	/*
-	struct DDGI
+	struct IndirectDispatchArgs
 	{
-		float3 GridStartPosition;
-		float MaxDepth;
-		// -- 16 byte boundary ----
-
-		float3 GridStep;
-		float DepthSharpness;
-		// -- 16 byte boundary ----
-
-		uint3 ProbeCounts;
-		float Hysteresis;
-		// -- 16 byte boundary ----
-
-		float NormalBias;
-		float EnergyPreservation;
-		uint IrradianceProbeSideLength;
-		uint IrradianceTextureWidth;
-		// -- 16 byte boundary ----
-
-		uint IrradianceTextureHeight;
-		uint DepthProbeSideLength;
-		uint DepthTextureWidth;
-		uint DepthTextureHeight;
-		// -- 16 byte boundary ----
-
-		uint RaysPerProbe;
-		uint VisibilityTest;
-		uint _padding;
-		uint __padding;
-		// -- 16 byte boundary ----
-	};
-	*/
-
-	struct Scene
-	{
-		uint MeshInstanceBufferIndex;
-		uint GeometryBufferIndex;
-		uint MaterialBufferIndex;
-		uint MeshletBufferIndex;
-
-		// -- 16 byte boundary ----
-
-		uint PreFilteredEnvMapTexIndex;
-		uint EnvMapArray;
-		uint EnvMap_NumMips;
-		uint RT_TlasIndex;
-
-		// --- 16 byte boundary ---
-		uint IrradianceMapTexIndex;
-		uint GlobalIndexBufferIdx;
-		uint __pading;
-		uint ___padding;
-
-		// -- 16 byte boundary ----
-		Atmosphere AtmosphereData;
+		uint GroupCountX;
+		uint GroupCountY;
+		uint GroupCountZ;
 	};
 
-
-	struct Scene_NEW
+	struct MeshDrawCommand
 	{
-		uint ObjectBufferIdx;
-		uint GeometryBufferIdx;
-		uint MaterialBufferIdx;
-		uint MeshletBufferIndex;
-
-		// -- 16 byte boundary ----
-		uint GlobalVertexBufferIdx;
-		uint GlobalIndexxBufferIdx;
-		uint DrawPacketBufferIdx;
+		uint DrawId;
+		IndirectDrawArgsIndexedInstanced Indirect;
 	};
 
-	// -- Common Structurs ---
-	struct Frame_NEW
+	struct MeshletDrawCommand
 	{
-		// -- 16 byte boundary ----
-		Scene_NEW SceneData;
+		uint DrawId;
+		IndirectDispatchArgs Indirect;
 	};
 
-	struct Frame
-	{
-		uint Option;
-		uint BrdfLUTTexIndex;
-		uint LightEntityDescritporIndex;
-		uint LightDataOffset;
-
-		// -- 16 byte boundary ----
-		uint LightCount;
-		uint MatricesDescritporIndex;
-		uint MatricesDataOffset;
-		uint _padding;
-
-		// -- 16 byte boundary ----
-		Scene SceneData;
-	};
-
-	struct Camera
-	{
-		float4x4 ViewProjection;
-
-		// -- 16 byte boundary ----
-		float4x4 ViewProjectionInv;
-
-		// -- 16 byte boundary ----
-		float4x4 ProjInv;
-
-		// -- 16 byte boundary ----
-		float4x4 ViewInv;
-
-		// -- 16 byte boundary ----
-
-		float4x4 ShadowViewProjection;
-
-
-#ifndef __cplusplus
-		inline float3 GetPosition()
-		{
-			return ViewInv[3].xyz;
-		}
-#endif 
-	};
+#ifdef __cplusplus
+	static_assert(sizeof(MeshDrawCommand) % sizeof(uint32_t) == 0);
+#endif
 
 	// -- Common Buffers END --- 
 	struct ShaderLight
@@ -360,74 +233,111 @@ namespace Shader
 #endif
 	};
 
-	struct ShaderTransform
+	struct Scene
 	{
-		float4 Mat0;
-		float4 Mat1;
-		float4 Mat2;
-
-		void init()
-		{
-			Mat0 = float4(1, 0, 0, 0);
-			Mat1 = float4(0, 1, 0, 0);
-			Mat2 = float4(0, 0, 1, 0);
-		}
-		void Create(float4x4 mat)
-		{
-			Mat0 = float4(mat._11, mat._21, mat._31, mat._41);
-			Mat1 = float4(mat._12, mat._22, mat._32, mat._42);
-			Mat2 = float4(mat._13, mat._23, mat._33, mat._43);
-		}
-		float4x4 GetMatrix()
-#ifdef __cplusplus
-			const
-#endif // __cplusplus
-		{
-			return float4x4(
-				Mat0.x, Mat0.y, Mat0.z, Mat0.w,
-				Mat1.x, Mat1.y, Mat1.z, Mat1.w,
-				Mat2.x, Mat2.y, Mat2.z, Mat2.w,
-				0, 0, 0, 1
-			);
-		}
-	};
-
-	struct ImguiDrawInfo
-	{
-		float4x4 Mvp;
-		uint TextureIndex;
-	};
-
-	struct FontVertex
-	{
-		float2 Position;
-		float2 TexCoord;
-	};
-
-	struct FontDrawInfo
-	{
-		float4x4 Mvp;
+		uint ObjectBufferIdx;
+		uint GeometryBufferIdx;
+		uint MaterialBufferIdx;
+		uint GlobalVertexBufferIdx;
 
 		// -- 16 byte boundary ----
-		uint ColorPacked;
-		uint TextureIndex;
+		uint GlobalIndexBufferIdx;
+		uint MeshletCullDataBufferIdx;
+		uint MeshletBufferIdx;
+		uint MeshletPrimitiveIdx;
 
-#ifndef __cplusplus
-		inline float4 GetColour()
-		{
-			float4 retVal;
+		// -- 16 byte boundary ----
+		uint UniqueVertexIBIdx;
+		uint IndirectEarlyMeshBufferIdx;
+		uint IndirectEarlyMeshletBufferIdx;
+		uint IndirectLateBufferIdx;
 
-			retVal.x = (float)((ColorPacked >> 0) & 0xFF) / 255.0f;
-			retVal.y = (float)((ColorPacked >> 8) & 0xFF) / 255.0f;
-			retVal.z = (float)((ColorPacked >> 16) & 0xFF) / 255.0f;
-			retVal.w = (float)((ColorPacked >> 24) & 0xFF) / 255.0f;
+		// -- 16 byte boundary ----
+		uint CulledInstancesBufferUavIdx;
+		uint CulledInstancesBufferSrvIdx;
+		uint CulledInstancesCounterBufferIdx;
+		uint GeometryBoundsBufferIdx;
 
-			return retVal;
-		}
-#endif
+		// -- 16 byte boundary ----
+		uint InstanceCount;
+
 	};
 
-	struct MaterialData
+
+	static const uint FRAME_FLAGS_DISABLE_CULL_MESHLET = 1 << 0;
+	static const uint FRAME_FLAGS_DISABLE_CULL_FRUSTUM = 1 << 1;
+	static const uint FRAME_FLAGS_DISABLE_CULL_OCCLUSION = 1 << 2;
+
+	struct Frame
+	{
+		uint Flags;
+		uint DepthPyramidIndex;
+		uint __padding;
+		uint ___padding;
+
+		// -- 16 byte boundary ----
+		Scene SceneData;
+	};
+
+	struct Camera
+	{
+		float4x4 Proj;
+
+		// -- 16 byte boundary ----
+		float4x4 View;
+
+		// -- 16 byte boundary ----
+		float4x4 ViewProjection;
+
+		// -- 16 byte boundary ----
+		float4x4 ViewProjectionInv;
+
+		// -- 16 byte boundary ----
+		float4x4 ProjInv;
+
+		// -- 16 byte boundary ----
+		float4x4 ViewInv;
+
+		// -- 16 byte boundary ----
+
+		float4x4 ShadowViewProjection;
+
+		// -- 16 byte boundary ----
+		float4 PlanesWS[6];
+
+		// -- 16 byte boundary ----
+#ifndef __cplusplus
+		inline float3 GetPosition()
+		{
+			return ViewInv[3].xyz;
+		}
+		inline float GetZNear()
+		{
+			return 0.0f;
+			// Proj.elements[14] / (Proj.elements[10] - 1.0);
+		}
+		inline float GetZFar()
+		{
+			return 0.0f;
+			// Proj.elements[14] / (Proj.elements[10] - 1.0);
+		}
+#endif 
+	};
+
+	struct ObjectInstance
+	{
+		float4x4 WorldMatrix;
+		// -- 16 byte boundary ----
+
+		uint GeometryIndex;
+		uint Colour;
+		uint Emissive;
+		uint MeshletOffset;
+
+		// -- 16 byte boundary ----
+	};
+
+	struct Material
 	{
 		float3 AlbedoColour;
 		uint AlbedoTexture;
@@ -467,20 +377,6 @@ namespace Shader
 #endif
 	};
 
-	struct MeshInstance
-	{
-		float4x4 WorldMatrix;
-		// -- 16 byte boundary ----
-
-		uint GeometryOffset;
-		uint GeometryCount;
-		uint Colour;
-		uint Emissive;
-
-		// -- 16 byte boundary ----
-		uint MeshletOffset;
-	};
-
 	struct Geometry
 	{
 		uint MaterialIndex;
@@ -496,32 +392,48 @@ namespace Shader
 
 		// -- 16 byte boundary ---
 		uint TangentOffset;
+
+		// TODO: I am here
 		uint MeshletOffset;
 		uint MeshletCount;
-		uint _padding;
-
+		uint MeshletPrimtiveOffset;
+		uint MeshletUniqueVertexIBOffset;
 		// -- 16 byte boundary ---
 	};
 
 	struct Meshlet
 	{
-		uint MeshInstanceIdx;
-		uint GeometryIdx;
-		uint PrimitiveOffset;
-	};
-
-	struct Subset
-	{
-		uint32_t Offset;
-		uint32_t Count;
-	};
-
-	struct Meshlet_NEW
-	{
 		uint VertCount;
 		uint VertOffset;
 		uint PrimCount;
 		uint PrimOffset;
+	};
+
+	struct CullData
+	{
+		float4 BoundingSphere; // xyz = center, w = radius
+		uint NormalCone;     // axis : 24, w = -cos(a + 90)
+		float ApexOffset;     // apex = center - axis * offset
+
+#ifndef __cplusplus
+		float4 UnpackCone()
+		{
+			float4 v;
+			v.x = float((NormalCone >> 0) & 0xFF);
+			v.y = float((NormalCone >> 8) & 0xFF);
+			v.z = float((NormalCone >> 16) & 0xFF);
+			v.w = float((NormalCone >> 24) & 0xFF);
+
+			v = v / 255.0;
+			v.xyz = v.xyz * 2.0 - 1.0;
+
+			return v;
+		}
+		bool IsConeDegenerate()
+		{
+			return (NormalCone >> 24) == 0xff;
+		}
+#endif
 	};
 
 	struct MeshletVertexPositions
@@ -593,67 +505,21 @@ namespace Shader
 			TexCoords = x || y << 16u;
 		}
 #endif
-
 	};
 
-	struct DrawPacket
+	struct CullPushConstants
 	{
-		uint InstanceIdx;
-		uint GeometryIdx;
+		uint DrawBufferMeshIdx;
+		uint DrawBufferMeshletIdx;
+		uint CulledDataSRVIdx;
+		uint CulledDataCounterSrcIdx;
+		bool IsLatePass;
 	};
 
-	struct VisibilityFillPushConstant
+	struct DepthPyrmidPushConstnats
 	{
-		uint DrawPacketIndex;
-	};
-
-	struct MeshletPushConstants
-	{
-		float4x4 WorldMatrix;
-		uint VerticesBufferIdx;
-		uint MeshletsBufferIdx;
-		uint UniqueVertexIBIdx;
-		uint PrimitiveIndicesIdx;
-
-		uint GeometryIdx;
-		uint SubsetOffset;
-	};
-
-	struct RenderCams
-	{
-		float4x4 ViewProjection[6];
-		// -- 16 byte boundary ---
-		uint RtIndex[6];
-	};
-
-#define DRAW_FLAG_ALBEDO        0x001
-#define DRAW_FLAG_NORMAL        0x002
-#define DRAW_FLAG_ROUGHNESS     0x004
-#define DRAW_FLAG_METALLIC      0x008
-#define DRAW_FLAG_AO            0x010
-#define DRAW_FLAG_TANGENT       0x020
-#define DRAW_FLAG_BITANGENT     0x040
-#define DRAW_FLAG_EMISSIVE		0x080
-#define DRAW_FLAGS_DISABLE_IBL  0x100
-
-	struct GeometryPassPushConstants
-	{
-		uint GeometryIndex;
-		uint MaterialIndex;
-		uint InstancePtrBufferDescriptorIndex;
-		uint InstancePtrDataOffset;
-		uint DrawFlags;
-	};
-
-	struct MiscPushConstants
-	{
-		float4x4 Transform;
-		float4 Colour;
-	};
-
-	struct ImagePassPushConstants
-	{
-		uint Index;
+		uint inputTextureIdx;
+		uint outputTextureIdx;
 	};
 
 	struct DefferedLightingCSConstants
@@ -662,101 +528,10 @@ namespace Shader
 		uint MaxTileWidth; // 8, 16 or 32.
 	};
 
-	struct GenerateMipChainPushConstants
+	struct GeometryPushConstant
 	{
-		uint TextureInput;
-		uint TextureOutput;
-		uint ArrayIndex;
-		uint _Padding;
-		// -- 16 byte boundary ---
-
-		float2 OutputResolution;
-		float2 OutputResolutionRcp;
+		uint DrawId;
 	};
-
-	struct FilterEnvMapPushConstants
-	{
-		uint TextureInput;
-		uint TextureOutput;
-		uint ArrayIndex;
-		uint NumSamples;
-		// -- 16 byte boundary ---
-
-		float2 FilteredResolution;
-		float2 FilteredResolutionRcp;
-		// -- 16 byte boundary ---
-
-		uint FilterRoughness;
-	};
-
-	struct ShaderMeshInstancePointer
-	{
-		uint Data;
-
-		void Create(uint instanceIndex, uint frustumIndex)
-		{
-			Data = 0;
-			Data |= instanceIndex & 0xFFFFFF;
-			Data |= (frustumIndex & 0xF) << 24u;
-		};
-
-		uint GetInstanceIndex()
-		{
-			return Data & 0xFFFFFF;
-		}
-
-		uint GetFrustumIndex()
-		{
-			return (Data >> 24u) & 0xF;
-		}
-	};
-
-#ifdef __cplusplus
-	namespace DDGI
-	{
-#endif
-		struct PushConstants
-		{
-			uint InstanceInclusionMask;
-			uint FrameIndex;
-			uint RayCount;
-			float BlendSpeed;
-		};
-
-		struct RayData
-		{
-			float3 Direction;
-			float Depth;
-			float4 Radiance;
-		};
-
-		struct PackedRayData
-		{
-			uint4 Data;
-
-#ifndef __cplusplus
-
-			inline void Store(RayData rayData)
-			{
-				Data.xy = PackHalf4(float4(rayData.Direction, rayData.Depth));
-				Data.zw = PackHalf4(rayData.Radiance);
-			}
-
-			inline RayData Load()
-			{
-				RayData rayData;
-				float4 unpk = UnpackHalf4(Data.xy);
-				rayData.Direction = unpk.xyz;
-				rayData.Depth = unpk.w;
-				rayData.Radiance = UnpackHalf4(Data.zw);
-				return rayData;
-			}
-#endif
-		};
-
-#ifdef __cplusplus
-	}
-#endif
 
 #ifdef __cplusplus
 }

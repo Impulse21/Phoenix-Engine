@@ -11,8 +11,6 @@ using namespace PhxEngine;
 
 class BasicTriangle : public EngineRenderPass
 {
-private:
-
 public:
     BasicTriangle(IPhxEngineRoot* root)
         : EngineRenderPass(root)

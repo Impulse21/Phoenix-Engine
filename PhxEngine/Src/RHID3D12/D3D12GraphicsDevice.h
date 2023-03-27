@@ -407,6 +407,7 @@ namespace PhxEngine::RHI::D3D12
 
         float GetAvgFrameTime() override { return this->m_frameStats.GetAvg(); };
 
+        virtual uint64_t GetUavCounterPlacementAlignment() { return D3D12_UAV_COUNTER_PLACEMENT_ALIGNMENT; }
         // -- Dx12 Specific functions ---
     public:
         void DeleteD3DResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource);

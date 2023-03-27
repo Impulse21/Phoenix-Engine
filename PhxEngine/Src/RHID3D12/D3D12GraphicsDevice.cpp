@@ -3057,6 +3057,7 @@ int PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateUnorderedAccessView(Buffer
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 
+	const bool hasCounter = (bufferImpl->Desc.MiscFlags & BufferMiscFlags::HasCounter) == BufferMiscFlags::HasCounter;
 	if (bufferImpl->Desc.Format == RHIFormat::UNKNOWN)
 	{
 		if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Raw) != 0)
@@ -3073,6 +3074,11 @@ int PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateUnorderedAccessView(Buffer
 			uavDesc.Buffer.FirstElement = (UINT)offset / bufferImpl->Desc.StrideInBytes;
 			uavDesc.Buffer.NumElements = (UINT)std::min(size, bufferImpl->Desc.SizeInBytes - offset) / bufferImpl->Desc.StrideInBytes;
 			uavDesc.Buffer.StructureByteStride = bufferImpl->Desc.StrideInBytes;
+			
+			if (hasCounter)
+			{
+				uavDesc.Buffer.CounterOffsetInBytes = bufferImpl->Desc.UavCounterOffsetInBytes;
+			}
 		}
 	}
 	else
@@ -3093,9 +3099,24 @@ int PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateUnorderedAccessView(Buffer
 			.UAVDesc = uavDesc,
 		};
 
+	ID3D12Resource* counterResource = nullptr;
+	if (hasCounter)
+	{
+		if (bufferImpl->Desc.UavCounterBuffer.IsValid())
+		{
+			D3D12Buffer* counterBuffer = this->m_bufferPool.Get(bufferImpl->Desc.UavCounterBuffer);
+			counterResource = counterBuffer->D3D12Resource.Get();
+
+		}
+		else
+		{
+			counterResource = bufferImpl->D3D12Resource.Get();
+		}
+	}
+
 	this->GetD3D12Device2()->CreateUnorderedAccessView(
 		bufferImpl->D3D12Resource.Get(),
-		nullptr,
+		counterResource,
 		&uavDesc,
 		view.Allocation.GetCpuHandle());
 

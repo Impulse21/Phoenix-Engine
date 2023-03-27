@@ -7,8 +7,15 @@
 #include <PhxEngine/Core/Helpers.h>
 #include <PhxEngine/Scene/Assets.h>
 #include <PhxEngine/Core/Primitives.h>
+#include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
+#include <DirectXMesh.h>
 
 #define LH
+
+namespace PhxEngine::Core
+{
+	class IAllocator;
+}
 
 // Required for Operators - Move to CPP please
 using namespace DirectX;
@@ -217,8 +224,8 @@ namespace PhxEngine::Scene
 		DirectX::XMFLOAT4X4 ProjectionInv;
 		DirectX::XMFLOAT4X4 ViewProjectionInv;
 
-		Core::Frustum ProjectionFrustum;
-		Core::Frustum ViewProjectionFrustum;
+		Core::Frustum FrustumWS;
+		Core::Frustum FrustumVS;
 
 		inline DirectX::XMMATRIX GetInvViewProjMatrix() const { return DirectX::XMLoadFloat4x4(&this->ViewProjectionInv); }
 
@@ -302,9 +309,9 @@ namespace PhxEngine::Scene
 
 			auto viewProjectionInv = DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix);
 			DirectX::XMStoreFloat4x4(&this->ViewProjectionInv, viewProjectionInv);
-
-			this->ProjectionFrustum = Core::Frustum(projectionMatrix, true);
-			this->ViewProjectionFrustum = Core::Frustum(viewProjectionMatrix, true);
+			
+			this->FrustumWS = Core::Frustum(viewProjectionMatrix, false);
+			this->FrustumVS = Core::Frustum(projectionMatrix, false);
 			DirectX::XMStoreFloat4x4(&this->ViewInv, DirectX::XMMatrixInverse(nullptr, viewMatrix));
 		}
 	};
@@ -426,81 +433,60 @@ namespace PhxEngine::Scene
 			RenderType_All = RenderType_Opaque | RenderType_Transparent
 		};
 
-		enum Flags
+		enum Flags : uint8_t
 		{
 			kEmpty = 0,
 			kContainsNormals = 1 << 0,
 			kContainsTexCoords = 1 << 1,
 			kContainsTangents = 1 << 2,
+			kContainsColour = 1 << 3,
 		};
 
 		uint32_t Flags = kEmpty;
 
-		struct SurfaceDesc
-		{
-			entt::entity Material;
-			uint32_t IndexOffsetInMesh = 0;
-			uint32_t VertexOffsetInMesh = 0;
-			uint32_t NumVertices = 0;
-			uint32_t NumIndices = 0;
+		// -- CPU Data ---
+		entt::entity Material;
 
-			// For debug purposes.
-			size_t GlobalGeometryBufferIndex = 0;
-		};
-		std::vector<SurfaceDesc> Surfaces;
+		Core::AABB Aabb;
+		Core::Sphere BoundingSphere;
 
-		size_t GlobalGeometryBufferIndex = 0;
-		size_t MeshletCount = 0;
-
-		RHI::BufferHandle GeneralGpuBuffer;
-		RHI::BufferHandle VertexGpuBuffer;
-		RHI::BufferHandle IndexGpuBuffer;
-		RHI::BufferHandle Meshlets;
-		RHI::BufferHandle UniqueVertexIndices;
-		RHI::BufferHandle PrimitiveIndices;
-		size_t MeshletsCount = 0;
-
-		struct BufferViews
-		{
-			uint64_t Offset = ~0ull;
-			uint64_t Size = 0ull;
-			int SubresourceSRV = -1;
-			int DescriptorSRV = -1;
-			int SubresourceUAV = -1;
-			int DescriptorUAV = -1;
-
-			constexpr bool IsValid() const
-			{
-				return this->Offset != ~0ull;
-			}
-		};
-
-		uint32_t RenderBucketMask = RenderType::RenderType_Opaque;
-
-		uint64_t GlobalIndexBufferOffset = 0;
-		uint64_t GlobalVertexBufferOffset = 0;
+		uint32_t TotalVertices = 0;
+		DirectX::XMFLOAT3* Positions = nullptr;
+		DirectX::XMFLOAT2* TexCoords = nullptr;
+		DirectX::XMFLOAT3* Normals = nullptr;
+		DirectX::XMFLOAT4* Tangents = nullptr;
+		DirectX::XMFLOAT3* Colour = nullptr;
 
 		uint32_t TotalIndices = 0;
-		uint32_t TotalVertices = 0;
+		uint32_t* Indices = nullptr;
+		
+		std::vector<DirectX::Meshlet> Meshlets;
+		std::vector<uint8_t> UniqueVertexIB;
+		std::vector<DirectX::MeshletTriangle> MeshletTriangles;
 
-		enum class BLASState
-		{
-			Rebuild = 0,
-			Refit,
-			Complete,
-		};
-		BLASState BlasState = BLASState::Rebuild;
-		RHI::RTAccelerationStructureHandle Blas;
+		Shader::New::MeshletPackedVertexData* PackedVertexData = nullptr;
+		DirectX::CullData* MeshletCullData = nullptr;
 
-		// -- CPU Data ---
-		std::vector<DirectX::XMFLOAT3> VertexPositions;
-		std::vector<DirectX::XMFLOAT2> VertexTexCoords;
-		std::vector<DirectX::XMFLOAT3> VertexNormals;
-		std::vector<DirectX::XMFLOAT4> VertexTangents;
-		std::vector< DirectX::XMFLOAT3> VertexColour;
-		std::vector<uint32_t> Indices;
-		std::vector<Shader::Subset> MeshletSubsets;
-		std::vector<Shader::Subset> indexSubsets;
+		// -- GPU Data --
+		size_t GlobalByteOffsetVertexBuffer;
+		size_t GlobalOffsetIndexBuffer;
+
+		size_t GlobalOffsetMeshletBuffer;
+		size_t GlobalOffsetUnqiueVertexIBBuffer;
+		size_t GlobalOffsetMeshletPrimitiveBuffer;
+		size_t GlobalOffsetMeshletCullDataBuffer;
+
+		size_t GlobalIndexOffsetGeometryBuffer;
+
+		RHI::BufferHandle IndexBuffer;
+		RHI::BufferHandle VertexBuffer;
+		RHI::BufferHandle MeshletBuffer;
+		RHI::BufferHandle UniqueVertexIBBuffer;
+		RHI::BufferHandle MeshletPrimitivesBuffer;
+		RHI::BufferHandle MeshletCullDataBuffer;
+
+		// TODO: Is this needed or is there a better way to do this.
+		RHI::BufferHandle PackedVertexDataBuffer;
 
 		enum class VertexAttribute : uint8_t
 		{
@@ -514,96 +500,14 @@ namespace PhxEngine::Scene
 
 		std::array<RHI::BufferRange, (int)VertexAttribute::Count> BufferRanges;
 
-		Core::AABB Aabb;
-
+		// -- Helper Functions ---
 		[[nodiscard]] bool HasVertexAttribuite(VertexAttribute attr) const { return this->BufferRanges[(int)attr].SizeInBytes != 0; }
 		RHI::BufferRange& GetVertexAttribute(VertexAttribute attr) { return this->BufferRanges[(int)attr]; }
 		[[nodiscard]] const RHI::BufferRange& GetVertexAttribute(VertexAttribute attr) const { return this->BufferRanges[(int)attr]; }
 
-		void ReverseWinding()
-		{
-			assert(this->IsTriMesh());
-			for (auto iter = this->Indices.begin(); iter != this->Indices.end(); iter += 3)
-			{
-				std::swap(*(iter + 1), *(iter + 2));
-			}
-		}
-		
-		void ComputeTangents()
-		{
-			// http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-13-normal-mapping/#tangent-and-bitangent
-
-			assert(this->IsTriMesh());
-			assert(!this->VertexPositions.empty());
-
-			const size_t vertexCount = this->VertexPositions.size();
-			this->VertexTangents.resize(vertexCount);
-
-			std::vector<XMVECTOR> tangents(vertexCount);
-			std::vector<XMVECTOR> bitangents(vertexCount);
-
-			for (int i = 0; i < this->Indices.size(); i += 3)
-			{
-				auto& index0 = this->Indices[i + 0];
-				auto& index1 = this->Indices[i + 1];
-				auto& index2 = this->Indices[i + 2];
-
-				// Vertices
-				XMVECTOR pos0 = XMLoadFloat3(&this->VertexPositions[index0]);
-				XMVECTOR pos1 = XMLoadFloat3(&this->VertexPositions[index1]);
-				XMVECTOR pos2 = XMLoadFloat3(&this->VertexPositions[index2]);
-
-				// UVs
-				XMVECTOR uvs0 = XMLoadFloat2(&this->VertexTexCoords[index0]);
-				XMVECTOR uvs1 = XMLoadFloat2(&this->VertexTexCoords[index1]);
-				XMVECTOR uvs2 = XMLoadFloat2(&this->VertexTexCoords[index2]);
-
-				XMVECTOR deltaPos1 = pos1 - pos0;
-				XMVECTOR deltaPos2 = pos2 - pos0;
-
-				XMVECTOR deltaUV1 = uvs1 - uvs0;
-				XMVECTOR deltaUV2 = uvs2 - uvs0;
-
-				// TODO: Take advantage of SIMD better here
-				float r = 1.0f / (XMVectorGetX(deltaUV1) * XMVectorGetY(deltaUV2) - XMVectorGetY(deltaUV1) * XMVectorGetX(deltaUV2));
-
-				XMVECTOR tangent = (deltaPos1 * XMVectorGetY(deltaUV2) - deltaPos2 * XMVectorGetY(deltaUV1)) * r;
-				XMVECTOR bitangent = (deltaPos2 * XMVectorGetX(deltaUV1) - deltaPos1 * XMVectorGetX(deltaUV2)) * r;
-
-				tangents[index0] += tangent;
-				tangents[index1] += tangent;
-				tangents[index2] += tangent;
-
-				bitangents[index0] += bitangent;
-				bitangents[index1] += bitangent;
-				bitangents[index2] += bitangent;
-			}
-
-			assert(this->VertexNormals.size() == vertexCount);
-			for (int i = 0; i < vertexCount; i++)
-			{
-				const XMVECTOR normal = XMLoadFloat3(&this->VertexNormals[i]);
-				const XMVECTOR& tangent = tangents[i];
-				const XMVECTOR& bitangent = bitangents[i];
-
-				// Gram-Schmidt orthogonalize
-
-				DirectX::XMVECTOR orthTangent = DirectX::XMVector3Normalize(tangent - normal * DirectX::XMVector3Dot(normal, tangent));
-				float sign = DirectX::XMVectorGetX(DirectX::XMVector3Dot(DirectX::XMVector3Cross(normal, tangent), bitangent)) > 0
-					? -1.0f
-					: 1.0f;
-
-				XMVectorSetW(tangent, sign);
-				DirectX::XMStoreFloat4(&this->VertexTangents[i], orthTangent);
-			}
-		}
-
-		bool IsTriMesh() const { return (this->Indices.size() % 3) == 0; }
-
-		void CreateRenderData(RHI::ICommandList* commandList, Renderer::ResourceUpload& indexUploader, Renderer::ResourceUpload& vertexUploader);
-		void ComputeMeshlets(RHI::IGraphicsDevice* gfxDevice, RHI::ICommandList* commandList);
-		uint64_t GetIndexBufferSizeInBytes() const;
-		uint64_t GetVertexBufferSizeInBytes() const;
+		void BuildRenderData(
+			Core::IAllocator* allocator,
+			RHI::IGraphicsDevice* gfxDevice);
 	};
 
 	struct MeshInstanceComponent

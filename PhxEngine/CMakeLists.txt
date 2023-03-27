@@ -197,7 +197,8 @@ target_link_libraries(${project} PUBLIC
 	entt
 	cereal
 	rapidjson
-	taskflow)
+	taskflow
+	tlsf)
     
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 
@@ -206,13 +207,6 @@ if(WIN32)
 endif()
 
 #INCLUDE_EXTERNAL_MSPROJECT(ShadersSource ${CMAKE_SOURCE_DIR}/PhxEngine/Shaders/ShadersSource.vcitems)
-
-# Copy the shader library next to the executable
-add_custom_command(
-		TARGET ${project} POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_SOURCE_DIR}/PhxEngine/Shaders ${CMAKE_CURRENT_BINARY_DIR}/Shaders
-)
-
 
 # D3D12 Agility SDK
 message("Fetching D3D12 Agility SDK")

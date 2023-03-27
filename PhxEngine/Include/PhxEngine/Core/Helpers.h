@@ -3,6 +3,7 @@
 #include <string>
 #include <fstream>
 #include <filesystem>
+#include <random>
 
 #ifdef _WIN32
 #include <stringapiset.h>
@@ -20,9 +21,9 @@ namespace PhxEngine::Core
 			return generator;
 		}
 
-		int GetRandom(int minValue, int maxValue)
+		inline float GetRandom(float minValue, float maxValue)
 		{
-			std::uniform_int_distribution<int>  distr(minValue, maxValue);
+			std::uniform_real_distribution<float>  distr(minValue, maxValue);
 			return distr(Generator());
 		}
 	}
@@ -119,6 +120,12 @@ namespace PhxEngine::Core
 			}
 
 			return ((value + alignment - 1) / alignment) * alignment;
+		}
+
+		constexpr uint64_t AlignUp(size_t value, size_t alignment)
+		{
+			uint64_t remainder = value % alignment;
+			return remainder ? value + (alignment - remainder) : value;
 		}
 	}
 }

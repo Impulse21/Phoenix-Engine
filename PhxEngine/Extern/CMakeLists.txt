@@ -91,3 +91,11 @@ file (GLOB stb_src
 
 add_library(stb INTERFACE ${stb_src})
 set_target_properties(stb  PROPERTIES FOLDER ${extern_folder})
+
+file (GLOB tlsf_src
+    ${CMAKE_CURRENT_SOURCE_DIR}/tlsf/tlsf.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/tlsf/tlsf.c)
+
+add_library(tlsf STATIC ${CMAKE_CURRENT_SOURCE_DIR}/tlsf/tlsf.c)
+target_include_directories(tlsf PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/tlsf)
+set_target_properties(tlsf PROPERTIES FOLDER ${extern_folder})

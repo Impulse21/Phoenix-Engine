@@ -7,9 +7,12 @@
 #include <PhxEngine/Core/Math.h>
 #include <PhxEngine/Core/Profiler.h>
 #include <taskflow/taskflow.hpp>
+#include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
+#include <PhxEngine/Shaders/ShaderInterop.h>
 
 #include "DrawQueue.h"
 #include <PhxEngine/Renderer/RenderPath3DDeferred.h>
+#include <imgui.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
@@ -49,7 +52,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Initialize(DirectX::XMFLOAT2 con
 		RHI::BufferDesc bufferDesc = {};
 		bufferDesc.Usage = RHI::Usage::Default;
 		bufferDesc.Binding = RHI::BindingFlags::ConstantBuffer;
-		bufferDesc.SizeInBytes = sizeof(Shader::Frame);
+		bufferDesc.SizeInBytes = sizeof(Shader::New::Frame);
 		bufferDesc.InitialState = RHI::ResourceStates::ConstantBuffer;
 
 		bufferDesc.DebugName = "Frame Constant Buffer";
@@ -57,68 +60,210 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Initialize(DirectX::XMFLOAT2 con
 	}
 
 	loadFuture.wait();
+
+	// Create Command Signatre
 }
 
 void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scene::CameraComponent& mainCamera)
 {
-	Shader::Camera cameraData = {};
+	Shader::New::Camera cameraData = {};
+	cameraData.Proj = mainCamera.Projection;
+	cameraData.View = mainCamera.View;
 	cameraData.ViewProjection = mainCamera.ViewProjection;
 	cameraData.ViewProjectionInv = mainCamera.ViewProjectionInv;
 	cameraData.ProjInv = mainCamera.ProjectionInv;
 	cameraData.ViewInv = mainCamera.ViewInv;
+	std::memcpy(&cameraData.PlanesWS, &mainCamera.FrustumWS.Planes, sizeof(DirectX::XMFLOAT4) * 6);
 
 	ICommandList* commandList = this->m_gfxDevice->BeginCommandRecording();
+
+	// TODO: Disabling for now as this work is incomplete
+#if false
+	if (!this->m_depthPyramid.IsValid())
+	{
+		
+		auto _ = commandList->BeginScopedMarker("Recreating depth PyramidPass");
+		DirectX::XMUINT2 texSize = CreateDepthPyramid();
+		/** these should have a memset to 0 just in case it's not keeping this code around
+		RHI::SubresourceData subResourceData = {};
+		subResourceData.rowPitch = uint64_t(texSize.x) * 2u; // 2 bytes per pixel 
+		subResourceData.slicePitch = subResourceData.rowPitch * texSize.y;
+		subResourceData.slicePitch = 0;
+
+		const uint64_t blackImage = 0u;
+		subResourceData.pData = &blackImage;
+		upload->WriteTexture(this->BlackTexture, 0, 1, &subResourceData);
+		*/
+	}
+#endif 
 	{
 		auto rangeId = this->m_frameProfiler->BeginRangeGPU("Prepare Render Data", commandList);
 		this->PrepareFrameRenderData(commandList, mainCamera, scene);
 
 		if (this->m_gfxDevice->CheckCapability(DeviceCapability::RayTracing))
 		{
-			this->UpdateRTAccelerationStructures(commandList, scene);
+			// Disable Raytracing for now.
+			// this->UpdateRTAccelerationStructures(commandList, scene);
 		}
 		this->m_frameProfiler->EndRangeGPU(rangeId);
 	}
 
 	RHI::Viewport v(this->m_canvasSize.x, this->m_canvasSize.y);
 	RHI::Rect rec(LONG_MAX, LONG_MAX);
+	auto instanceView = scene.GetAllEntitiesWith<Scene::MeshInstanceComponent>();
 
-	// Fill Draw Queue
-	static thread_local DrawQueue drawQueue;
-	drawQueue.Reset();
-	// Look through Meshes and instances?
-	auto view = scene.GetAllEntitiesWith<Scene::MeshInstanceComponent, Scene::AABBComponent>();
-	for (auto e : view)
+	static Shader::New::Camera cullCamera = {};
+	if (!this->m_settings.FreezeCamera)
 	{
-		auto [instanceComponent, aabbComp] = view.get<Scene::MeshInstanceComponent, Scene::AABBComponent>(e);
+		cullCamera = cameraData;
+	}
 
-		auto& meshComponent = scene.GetRegistry().get<Scene::MeshComponent>(instanceComponent.Mesh);
-		if (meshComponent.RenderBucketMask & Scene::MeshComponent::RenderType_Transparent)
+	{
+		auto _ = commandList->BeginScopedMarker("Culling Pass (Early)");
+		RHI::GpuBarrier preBarriers[] =
 		{
-			continue;
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyMeshBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyMeshBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyMeshletBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyMeshletBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
+			RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
+			RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesCounterBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesCounterBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
+		};
+		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
+
+		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::CullPass]);
+
+		Shader::New::CullPushConstants push = {};
+		push.IsLatePass = false;
+		push.DrawBufferMeshIdx = scene.GetShaderData().IndirectEarlyMeshBufferIdx;
+		push.DrawBufferMeshletIdx = scene.GetShaderData().IndirectEarlyMeshletBufferIdx;
+		push.CulledDataCounterSrcIdx = RHI::cInvalidDescriptorIndex;
+		push.CulledDataSRVIdx = RHI::cInvalidDescriptorIndex;
+
+		commandList->BindPushConstant(0, push);
+
+		commandList->BindConstantBuffer(1, this->m_frameCB);
+
+		static Shader::New::Camera cullCamera = {};
+		if (!this->m_settings.FreezeCamera)
+		{
+			cullCamera = cameraData;
 		}
 
-		const float distance = Core::Math::Distance(mainCamera.Eye, aabbComp.BoundingData.GetCenter());
+		commandList->BindDynamicConstantBuffer(2, cullCamera);
+		const int numThreadGroups = (int)std::ceilf(instanceView.size() / (float)THREADS_PER_WAVE);
+		commandList->Dispatch(
+			numThreadGroups,
+			1,
+			1);
 
-		drawQueue.Push((uint32_t)instanceComponent.Mesh, (uint32_t)e, distance);
+		RHI::GpuBarrier postBarriers[] =
+		{
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyMeshBuffer(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyMeshBuffer()).InitialState),
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyMeshletBuffer(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyMeshletBuffer()).InitialState),
+			RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesBuffer(), RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesBuffer()).InitialState),
+			RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesCounterBuffer(), RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesCounterBuffer()).InitialState),
+		};
+		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postBarriers, _countof(postBarriers)));
 	}
-
-	drawQueue.SortOpaque();
 
 	{
-		auto rangeId = this->m_frameProfiler->BeginRangeGPU("GBuffer Fill Pass", commandList);
-		auto _ = commandList->BeginScopedMarker("GBuffer Fill Pass");
-		commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::GBufferFillPass]);
-		commandList->SetViewports(&v, 1);
-		commandList->SetScissors(&rec, 1);
-		commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]);
-		commandList->BindConstantBuffer(1, this->m_frameCB);
-		commandList->BindDynamicConstantBuffer(2, cameraData);
-
-		this->RenderGeometry(commandList, scene, drawQueue, true);
-
-		commandList->EndRenderPass();
-		this->m_frameProfiler->EndRangeGPU(rangeId);
+		auto _ = commandList->BeginScopedMarker("GBuffer Fill Pass (Early)");
+		this->GBufferFillPass(
+			commandList,
+			scene,
+			cameraData,
+			&v, &rec,
+			scene.GetIndirectDrawEarlyMeshBuffer(),
+			scene.GetIndirectDrawEarlyMeshletBuffer());
 	}
+
+	// Disabling occlussion stuff for now. Will implement it at a later time.
+#if false
+	// Update depth Pyramid
+	{
+		auto _ = commandList->BeginScopedMarker("Generate Depth Pyramid Chain");
+		commandList->SetComputeState(this->m_computeStates[PsoComputeType::PSO_GenerateMipMaps_TextureCubeArray]);
+
+		TextureDesc textureDesc = this->m_gfxDevice->GetTextureDesc(this->m_depthPyramid);
+
+		uint32_t width = textureDesc.Width;
+		uint32_t height = textureDesc.Width;
+		Shader::New::DepthPyrmidPushConstnats push = {};
+		for (int i = 0; i < textureDesc.MipLevels - 1; i++)
+		{
+			GpuBarrier preBarriers[] =
+			{
+				GpuBarrier::CreateTexture(this->m_depthPyramid, textureDesc.InitialState, ResourceStates::UnorderedAccess, i + 1),
+			};
+
+			commandList->TransitionBarriers(Core::Span<GpuBarrier>(preBarriers, ARRAYSIZE(preBarriers)));
+
+			width = std::max(1u, width / 2);
+			height = std::max(1u, height / 2);
+
+			push.inputTextureIdx = this->m_gfxDevice->GetDescriptorIndex(this->m_depthPyramid, SubresouceType::UAV, i);
+			push.outputTextureIdx = this->m_gfxDevice->GetDescriptorIndex(this->m_depthPyramid, SubresouceType::UAV, i + 1);
+			commandList->BindPushConstant(0, push);
+
+			commandList->Dispatch(
+				std::max(1u, (textureDesc.Width + BLOCK_SIZE_X_DEPTH_PYRMAMID - 1) / BLOCK_SIZE_X_DEPTH_PYRMAMID),
+				std::max(1u, (textureDesc.Height + BLOCK_SIZE_Y_DEPTH_PYRMAMID - 1) / BLOCK_SIZE_Y_DEPTH_PYRMAMID),
+				1);
+
+			// Cannot continue 
+			GpuBarrier postBarriers[] =
+			{
+				GpuBarrier::CreateMemory(),
+				GpuBarrier::CreateTexture(this->m_depthPyramid, ResourceStates::UnorderedAccess, textureDesc.InitialState, i + 1),
+			};
+
+			commandList->TransitionBarriers(Core::Span<GpuBarrier>(postBarriers, ARRAYSIZE(postBarriers)));
+		}
+	}
+
+	{
+		auto _ = commandList->BeginScopedMarker("Culling Pass (Late)");
+		RHI::GpuBarrier preBarriers[] =
+		{
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
+		};
+		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
+
+		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::CullPass]);
+
+		Shader::New::CullPushConstants push = {};
+		push.IsLatePass = true;
+		push.DrawBufferIdx = scene.GetShaderData().IndirectLateBufferIdx;
+		push.CulledDataCounterSrcIdx = this->m_gfxDevice->GetDescriptorIndex(scene.GetCulledInstancesCounterBuffer(), SubresouceType::SRV);
+		push.CulledDataSRVIdx = this->m_gfxDevice->GetDescriptorIndex(scene.GetCulledInstancesBuffer(), SubresouceType::SRV);
+
+		commandList->BindPushConstant(0, push);
+		commandList->BindConstantBuffer(1, this->m_frameCB);
+
+		commandList->BindDynamicConstantBuffer(2, cullCamera);
+		const int numThreadGroups = (int)std::ceilf(instanceView.size() / (float)THREADS_PER_WAVE);
+		commandList->Dispatch(
+			numThreadGroups,
+			1,
+			1);
+
+		RHI::GpuBarrier postBarriers[] =
+		{
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState),
+		};
+		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postBarriers, _countof(postBarriers)));
+	}
+
+	{
+		auto _ = commandList->BeginScopedMarker("GBuffer Fill Pass (Late)");
+		this->GBufferFillPass(
+			commandList,
+			scene,
+			cameraData,
+			&v, &rec,
+			scene.GetIndirectDrawLateBuffer());
+	}
+
+#endif
 
 	if (this->m_settings.EnableComputeDeferredLighting)
 	{
@@ -249,11 +394,26 @@ void PhxEngine::Renderer::RenderPath3DDeferred::WindowResize(DirectX::XMFLOAT2 c
 		this->m_colourBuffer = this->m_gfxDevice->CreateTexture(desc);
 	}
 
+	this->m_depthPyramidNumMips = 0;
+	if (this->m_depthPyramid.IsValid())
+	{
+		this->m_gfxDevice->DeleteTexture(this->m_depthPyramid);
+	}
+
 	this->CreateRenderPasses();
 }
 
 void PhxEngine::Renderer::RenderPath3DDeferred::BuildUI()
 {
+	ImGui::Checkbox("Freeze Camera", &this->m_settings.FreezeCamera);
+	ImGui::Checkbox("Enable Frustra Culling", &this->m_settings.EnableFrustraCulling);
+	ImGui::Checkbox("Enable Occlusion Culling", &this->m_settings.EnableOcclusionCulling);
+	ImGui::Checkbox("Enable Meshlets", &this->m_settings.EnableMeshShaders);
+	if (this->m_settings.EnableMeshShaders)
+	{
+		ImGui::Checkbox("Enable Meshlet Culling", &this->m_settings.EnableMeshletCulling);
+	}
+	ImGui::Checkbox("Enable Compute Deferred Shading", &this->m_settings.EnableComputeDeferredLighting);
 }
 
 tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadShaders(tf::Taskflow& taskflow)
@@ -283,6 +443,15 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadShaders(tf::Taskflow& ta
 			});
 		subflow.emplace([&]() {
 			this->m_shaders[EShaders::PS_ToneMapping] = this->m_shaderFactory->CreateShader("PhxEngine/ToneMappingPS.hlsl", { .Stage = RHI::ShaderStage::Pixel, .DebugName = "ToneMappingPS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::CS_CullPass] = this->m_shaderFactory->CreateShader("PhxEngine/CullPassCS.hlsl", { .Stage = RHI::ShaderStage::Compute, .DebugName = "CullPassCS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::AS_MeshletCull] = this->m_shaderFactory->CreateShader("PhxEngine/MeshletCullAS.hlsl", { .Stage = RHI::ShaderStage::Mesh, .DebugName = "MeshletCullAS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::MS_MeshletGBufferFill] = this->m_shaderFactory->CreateShader("PhxEngine/GBufferFillMS.hlsl", { .Stage = RHI::ShaderStage::Mesh, .DebugName = "GBufferFillMS", });
 			});
 		});
 	return shaderLoadTask;
@@ -315,6 +484,11 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadPipelineStates(tf::Taskf
 				});
 			});
 		subflow.emplace([&]() {
+			this->m_computeStates[EComputePipelineStates::CullPass] = this->m_gfxDevice->CreateComputePipeline({
+					.ComputeShader = this->m_shaders[EShaders::CS_CullPass],
+				});
+			});
+		subflow.emplace([&]() {
 			this->m_gfxStates[EGfxPipelineStates::ToneMappingPass] = this->m_gfxDevice->CreateGraphicsPipeline(
 				{
 					.PrimType = RHI::PrimitiveType::TriangleStrip,
@@ -323,6 +497,16 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadPipelineStates(tf::Taskf
 					.DepthStencilRenderState = {.DepthTestEnable = false, .StencilEnable = false },
 					.RasterRenderState = {.CullMode = RHI::RasterCullMode::None },
 					.RtvFormats = { this->m_gfxDevice->GetTextureDesc(this->m_gfxDevice->GetBackBuffer()).Format }
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_meshStates[EMeshPipelineStates::GBufferFillPass] = this->m_gfxDevice->CreateMeshPipeline(
+				{
+					.AmpShader = this->m_shaders[EShaders::AS_MeshletCull],
+					.MeshShader = this->m_shaders[EShaders::MS_MeshletGBufferFill],
+					.PixelShader = this->m_shaders[EShaders::PS_GBufferFill],
+					.RtvFormats = this->m_gbuffer.GBufferFormats,
+					.DsvFormat = this->m_gbuffer.DepthFormat
 				});
 			});
 		});
@@ -405,55 +589,47 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 {
 	auto _ = commandList->BeginScopedMarker("Prepare Frame Data");
 
-	Shader::Frame frameData = {};
-	// Move to Renderer...
-	frameData.BrdfLUTTexIndex = scene.GetBrdfLutDescriptorIndex();
-	frameData.LightEntityDescritporIndex = RHI::cInvalidDescriptorIndex;
-	frameData.LightDataOffset = 0;
-	frameData.LightCount = 0;
-	frameData.MatricesDescritporIndex = RHI::cInvalidDescriptorIndex;
-	frameData.MatricesDataOffset = 0;
+	Shader::New::Frame frameData = {};
+	if (!this->m_settings.EnableFrustraCulling);
+	{
+		frameData.Flags |= Shader::New::FRAME_FLAGS_DISABLE_CULL_FRUSTUM;
+	}
+	if (!this->m_settings.EnableOcclusionCulling);
+	{
+		frameData.Flags |= Shader::New::FRAME_FLAGS_DISABLE_CULL_OCCLUSION;
+	}
+	if (!this->m_settings.EnableMeshletCulling);
+	{
+		frameData.Flags |= Shader::New::FRAME_FLAGS_DISABLE_CULL_MESHLET;
+	}
+
 	frameData.SceneData = scene.GetShaderData();
+	frameData.DepthPyramidIndex = this->m_gfxDevice->GetDescriptorIndex(this->m_depthPyramid, SubresouceType::SRV);
 
 	// Upload data
 	RHI::GpuBarrier preCopyBarriers[] =
 	{
 		RHI::GpuBarrier::CreateBuffer(this->m_frameCB, RHI::ResourceStates::ConstantBuffer, RHI::ResourceStates::CopyDest),
-		RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
-		RHI::GpuBarrier::CreateBuffer(scene.GetGeometryBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
-		RHI::GpuBarrier::CreateBuffer(scene.GetMaterialBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyMeshBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyMeshBuffer()).InitialState, RHI::ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyMeshletBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyMeshletBuffer()).InitialState, RHI::ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState, RHI::ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesCounterBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesCounterBuffer()).InitialState, RHI::ResourceStates::CopyDest),
 	};
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
 
 	commandList->WriteBuffer(this->m_frameCB, frameData);
-
-	commandList->CopyBuffer(
-		scene.GetInstanceBuffer(),
-		0,
-		scene.GetInstanceUploadBuffer(),
-		0,
-		scene.GetNumInstances() * sizeof(Shader::MeshInstance));
-
-	commandList->CopyBuffer(
-		scene.GetGeometryBuffer(),
-		0,
-		scene.GetGeometryUploadBuffer(),
-		0,
-		scene.GetNumGeometryEntries() * sizeof(Shader::Geometry));
-
-	commandList->CopyBuffer(
-		scene.GetMaterialBuffer(),
-		0,
-		scene.GetMaterialUploadBuffer(),
-		0,
-		scene.GetNumMaterialEntries() * sizeof(Shader::MaterialData));
+	commandList->WriteBuffer<uint32_t>(scene.GetIndirectDrawEarlyMeshBuffer(), 0, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyMeshBuffer()).SizeInBytes - sizeof(uint32_t));
+	commandList->WriteBuffer<uint32_t>(scene.GetIndirectDrawEarlyMeshletBuffer(), 0, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyMeshletBuffer()).SizeInBytes - sizeof(uint32_t));
+	commandList->WriteBuffer<uint32_t>(scene.GetIndirectDrawLateBuffer(), 0, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).SizeInBytes - sizeof(uint32_t));
+	commandList->WriteBuffer<uint32_t>(scene.GetCulledInstancesCounterBuffer(), 0);
 
 	RHI::GpuBarrier postCopyBarriers[] =
 	{
 		RHI::GpuBarrier::CreateBuffer(this->m_frameCB, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ConstantBuffer),
-		RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
-		RHI::GpuBarrier::CreateBuffer(scene.GetGeometryBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
-		RHI::GpuBarrier::CreateBuffer(scene.GetMaterialBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
+		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyMeshBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyMeshBuffer()).InitialState),
+		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyMeshletBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyMeshletBuffer()).InitialState),
+		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState),
+		RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesCounterBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesCounterBuffer()).InitialState),
 	};
 
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
@@ -465,7 +641,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::UpdateRTAccelerationStructures(I
 	{
 		return;
 	}
-
+#ifdef false
 	auto __ = commandList->BeginScopedMarker("Prepare Frame RT Structures");
 	BufferHandle instanceBuffer = this->m_gfxDevice->GetRTAccelerationStructureDesc(scene.GetTlas()).TopLevel.InstanceBuffer;
 	{
@@ -533,90 +709,126 @@ void PhxEngine::Renderer::RenderPath3DDeferred::UpdateRTAccelerationStructures(I
 
 		commandList->TransitionBarriers(Core::Span(postBarriers, ARRAYSIZE(postBarriers)));
 	}
+#endif
 }
 
-void PhxEngine::Renderer::RenderPath3DDeferred::RenderGeometry(RHI::ICommandList* commandList, Scene::Scene& scene, DrawQueue& drawQueue, bool markMeshes)
+
+void PhxEngine::Renderer::RenderPath3DDeferred::GBufferFillPass(
+	RHI::ICommandList* commandList,
+	Scene::Scene& scene,
+	Shader::New::Camera cameraData,
+	RHI::Viewport* v,
+	RHI::Rect* scissor,
+	RHI::BufferHandle indirectDrawMeshBuffer,
+	RHI::BufferHandle indirectDrawMeshletBuffer)
 {
-	auto _ = commandList->BeginScopedMarker("Render Meshes");
+	commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::GBufferFillPass]);
 
-	GPUAllocation instanceBufferAlloc =
-		commandList->AllocateGpu(
-			sizeof(Shader::ShaderMeshInstancePointer) * drawQueue.Size(),
-			sizeof(Shader::ShaderMeshInstancePointer));
-
-	// See how this data is copied over.
-	const DescriptorIndex instanceBufferDescriptorIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(instanceBufferAlloc.GpuBuffer, SubresouceType::SRV);
-	Shader::ShaderMeshInstancePointer* pInstancePointerData = (Shader::ShaderMeshInstancePointer*)instanceBufferAlloc.CpuData;
-
-	struct InstanceBatch
+	if (this->m_settings.EnableMeshShaders)
 	{
-		entt::entity MeshEntity = entt::null;
-		uint32_t NumInstance;
-		uint32_t DataOffset;
-	} instanceBatch = {};
+		if (!this->m_drawMeshCommandSignatureMS.IsValid())
+		{
+			this->m_drawMeshCommandSignatureMS = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshletDrawCommand>({
+						   .ArgDesc =
+							   {
+								   {.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+								   {.Type = IndirectArgumentType::DispatchMesh }
+							   },
+						   .PipelineType = PipelineType::Mesh,
+						   .MeshHandle = this->m_meshStates[EMeshPipelineStates::GBufferFillPass]
+				});
+		}
 
-	auto batchFlush = [&]()
+		// Dispatch Mesh
+		commandList->SetMeshPipeline(this->m_meshStates[EMeshPipelineStates::GBufferFillPass]);
+	}
+	else
 	{
-		if (instanceBatch.NumInstance == 0)
+		if (!this->m_drawMeshCommandSignatureGfx.IsValid())
 		{
-			return;
+			// Create Command Signature
+			this->m_drawMeshCommandSignatureGfx = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshDrawCommand>({
+							.ArgDesc =
+								{
+									{.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+									{.Type = IndirectArgumentType::DrawIndex }
+								},
+							.PipelineType = PipelineType::Gfx,
+							.GfxHandle = this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]
+				});
 		}
 
-		auto [meshComponent, nameComponent] = scene.GetRegistry().get<Scene::MeshComponent, Scene::NameComponent>(instanceBatch.MeshEntity);
-
-		std::string modelName = nameComponent.Name;
-		auto scrope = commandList->BeginScopedMarker(modelName);
-
-		for (size_t i = 0; i < meshComponent.Surfaces.size(); i++)
-		{
-			auto& materiaComp = scene.GetRegistry().get<Scene::MaterialComponent>(meshComponent.Surfaces[i].Material);
-
-			Shader::GeometryPassPushConstants pushConstant = {};
-			pushConstant.GeometryIndex = meshComponent.GlobalGeometryBufferIndex + i;
-			pushConstant.MaterialIndex = materiaComp.GlobalBufferIndex;
-			pushConstant.InstancePtrBufferDescriptorIndex = instanceBufferDescriptorIndex;
-			pushConstant.InstancePtrDataOffset = instanceBatch.DataOffset;
-
-			commandList->BindPushConstant(0, pushConstant);
-			commandList->DrawIndexed(
-				meshComponent.Surfaces[i].NumIndices,
-				instanceBatch.NumInstance,
-				meshComponent.GlobalIndexBufferOffset + meshComponent.Surfaces[i].IndexOffsetInMesh);
-		}
-	};
-
-	commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());
-	uint32_t instanceCount = 0;
-	for (const DrawBatch& drawBatch : drawQueue.DrawItems)
-	{
-		entt::entity meshEntityHandle = (entt::entity)drawBatch.GetMeshEntityHandle();
-
-		// Flush if we are dealing with a new Mesh
-		if (instanceBatch.MeshEntity != meshEntityHandle)
-		{
-			// TODO: Flush draw
-			batchFlush();
-
-			instanceBatch.MeshEntity = meshEntityHandle;
-			instanceBatch.NumInstance = 0;
-			instanceBatch.DataOffset = (uint32_t)(instanceBufferAlloc.Offset + instanceCount * sizeof(Shader::ShaderMeshInstancePointer));
-		}
-
-		auto& instanceComp = scene.GetRegistry().get<Scene::MeshInstanceComponent>((entt::entity)drawBatch.GetInstanceEntityHandle());
-
-		for (uint32_t renderCamIndex = 0; renderCamIndex < 1; renderCamIndex++)
-		{
-			Shader::ShaderMeshInstancePointer shaderMeshPtr = {};
-			shaderMeshPtr.Create(instanceComp.GlobalBufferIndex, renderCamIndex);
-
-			// Write into actual GPU-buffer:
-			std::memcpy(pInstancePointerData + instanceCount, &shaderMeshPtr, sizeof(shaderMeshPtr)); // memcpy whole structure into mapped pointer to avoid read from uncached memory
-
-			instanceBatch.NumInstance++;
-			instanceCount++;
-		}
+		commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]);
+		commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());
 	}
 
-	// Flush what ever is left over.
-	batchFlush();
+	commandList->SetViewports(v, 1);
+	commandList->SetScissors(scissor, 1);
+	commandList->BindConstantBuffer(1, this->m_frameCB);
+	commandList->BindDynamicConstantBuffer(2, cameraData);
+
+	BufferHandle indirectBuffer = this->m_settings.EnableMeshShaders ? indirectDrawMeshletBuffer : indirectDrawMeshBuffer;
+
+	auto instanceView = scene.GetAllEntitiesWith<Scene::MeshInstanceComponent>();
+	commandList->ExecuteIndirect(
+		this->m_settings.EnableMeshShaders ? this->m_drawMeshCommandSignatureMS : this->m_drawMeshCommandSignatureGfx,
+		indirectBuffer,
+		0,
+		indirectBuffer,
+		this->m_gfxDevice->GetBufferDesc(indirectBuffer).SizeInBytes - sizeof(uint32_t),
+		instanceView.size());
+
+	commandList->EndRenderPass();
+}
+
+DirectX::XMUINT2 PhxEngine::Renderer::RenderPath3DDeferred::CreateDepthPyramid()
+{
+	// Construct Depth Pyramid
+	this->m_depthPyramidNumMips = 0;
+	const RHI::TextureDesc& depthBufferDesc = this->m_gfxDevice->GetTextureDesc(this->m_gbuffer.DepthTex);
+	uint32_t width = depthBufferDesc.Width / 2;
+	uint32_t height = depthBufferDesc.Height / 2;
+	this->m_depthPyramidNumMips = 0;
+	while (width > 1 || height > 1)
+	{
+		this->m_depthPyramidNumMips++;
+		width /= 2;
+		height /= 2;
+	}
+	this->m_depthPyramid = this->m_gfxDevice->CreateTexture({
+			.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::UnorderedAccess,
+			.Dimension = TextureDimension::Texture2D,
+			.InitialState = RHI::ResourceStates::ShaderResource,
+			.Format = RHIFormat::R32_FLOAT,
+			.IsBindless = true,
+			.Width = depthBufferDesc.Width,
+			.Height = depthBufferDesc.Height,
+			.MipLevels = this->m_depthPyramidNumMips,
+			.OptmizedClearValue = { .Colour = {0.0f, 0.0f, 0.0f, 0.0f} },
+			.DebugName = "Depth Pyramid",
+		});
+
+	// Create UAV views
+	for (uint16_t i = 0; i < this->m_depthPyramidNumMips; i++)
+	{
+		int subIndex = IGraphicsDevice::GPtr->CreateSubresource(
+			this->m_depthPyramid,
+			RHI::SubresouceType::SRV,
+			0,
+			1,
+			i,
+			1);
+		assert(i == subIndex);
+
+		subIndex = this->m_gfxDevice->CreateSubresource(
+			this->m_depthPyramid,
+			RHI::SubresouceType::UAV,
+			0,
+			1,
+			i,
+			1);
+		assert(i == subIndex);
+	}
+
+	return { depthBufferDesc.Width, depthBufferDesc.Height };
 }
