@@ -94,7 +94,7 @@ void main(
         return;
     }
     
-    Meshlet m = LoadMeshlet(geometryData.MeshletOffset + gid);
+    Meshlet m = LoadMeshlet(geometryData.MeshletOffset + meshletIndex);
 
     SetMeshOutputCounts(m.VertCount, m.PrimCount);
 
