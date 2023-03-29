@@ -31,6 +31,77 @@ struct Lighting
     }
 };
 
+inline float AttenuationOmni(in float dist2, in float range2)
+{
+    // GLTF recommendation: https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_lights_punctual#range-property
+    // saturate(1 - pow(dist / range, 4)) / dist2;
+    
+    // Credit Wicked Engine:
+    // Removed pow(x, 4), and avoid zero divisions:
+    float distPerRange = dist2 / max(0.0001, range2); // pow2
+    distPerRange *= distPerRange; // pow4
+    return saturate(1 - distPerRange) / max(0.0001, dist2);
+}
+
+inline float3 ApplyOmniLight(in Light light, in BRDFDataPerSurface brdfSurfaceData, inout Lighting lighting)
+{
+    const float3 L = normalize(brdfSurfaceData.P - light.Position);
+    const float dist2 = dot(L, L);
+    const float range = light.GetRange();
+    const float range2 = range * range;
+    
+    [branch]
+    if (dist2 < range2)
+    {
+        BRDFDataPerLight brdfLightData = CreatePerLightBRDFData(L, brdfSurfaceData);
+        
+        [branch]
+        if (any(brdfLightData.NdotL))
+        {const float dist = sqrt(dist2);
+            float3 shadow = 1.0f;
+            
+            // If completely in shadow, nothing more to do.
+            if (any(shadow))
+            {
+                float3 lightColour = light.GetColour().rgb * shadow;
+                lightColour *= AttenuationOmni(dist2, range2);
+                
+                // Calculate lighting
+                lighting.Direct.Diffuse = mad(lightColour, BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData), lighting.Direct.Diffuse);
+                lighting.Direct.Specular = mad(lightColour, BRDF_DirectSpecular(brdfSurfaceData, brdfLightData), lighting.Direct.Specular);
+            }
+        }
+    }
+}
+
+inline void ApplyDirectionalLight(in Light light, in BRDFDataPerSurface brdfSurfaceData, inout Lighting lighting)
+{
+    const float3 L = normalize(light.GetDirection());
+    BRDFDataPerLight brdfLightData = CreatePerLightBRDFData(L, brdfSurfaceData);
+    
+    // No point in doing anything if the light doesn't contribute anything.
+    [branch]
+    if (any(brdfLightData.NdotL))
+    {
+        float3 shadow = 1.0f;
+        
+        // If completely in shadow, nothing more to do.
+        if (any(shadow))
+        {
+            const float3 lightColour = light.GetColour().rgb * shadow;
+
+            // Calculate lighting
+            lighting.Direct.Diffuse = mad(lightColour, BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData), lighting.Direct.Diffuse);
+            lighting.Direct.Specular = mad(lightColour, BRDF_DirectSpecular(brdfSurfaceData, brdfLightData), lighting.Direct.Specular);
+        }
+    }
+}
+
+inline float3 ApplySpotLight()
+{
+    // TODO:   
+}
+
 void DirectLightContribution(in Scene scene, in BRDFDataPerSurface brdfSurfaceData, in Surface surface, inout Lighting lightingTerms)
 {
     // TODO Handle Lights in some way

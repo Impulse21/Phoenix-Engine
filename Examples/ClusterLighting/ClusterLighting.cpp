@@ -34,7 +34,11 @@ using namespace PhxEngine::Renderer;
 
 constexpr static uint32_t kNumLightInstances = 256;
 
-constexpr static DirectX::XMFLOAT2 kSceneExtent = { -200.0, 200.0 };
+struct AppSettings
+{
+    uint32_t NumPointLights = 128;
+    uint32_t NumSpotLights = 128;
+};
 
 class GpuCullingApp : public ApplicationBase
 {
@@ -107,20 +111,24 @@ public:
         commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList }, true);
 
-        auto meshView = this->m_scene.GetAllEntitiesWith<Scene::MeshComponent>();
+		auto spawnLight = [&](Scene::LightComponent& light) {
 
+            light.Colour = {
+				Core::Random::GetRandom(0.0f, 1.0f),
+				Core::Random::GetRandom(0.0f, 1.0f),
+				Core::Random::GetRandom(0.0f, 1.0f),
+				1.0f };
+            light.
+		};
         // Spawn a ton of instances
         for (int i = 0; i < kNumLightInstances; i++)
         {
+
             static size_t emptyNode = 0;
-            auto entity = this->m_scene.CreateEntity("Scene Node " + std::to_string(emptyNode++));
-            auto& instanceComponent = entity.AddComponent<Scene::MeshInstanceComponent>();
-            instanceComponent.Mesh = meshView.front();
-            instanceComponent.Color = {
-                Core::Random::GetRandom(0.0f, 1.0f),
-                Core::Random::GetRandom(0.0f, 1.0f),
-                Core::Random::GetRandom(0.0f, 1.0f),
-                1.0f };
+            auto entity = this->m_scene.CreateEntity("Light Node " + std::to_string(emptyNode++));
+            auto& lightComp = entity.AddComponent<Scene::LightComponent>();
+
+
 
             auto& transform = entity.GetComponent<Scene::TransformComponent>();
 
@@ -192,6 +200,8 @@ public:
 
     std::shared_ptr<Graphics::ShaderFactory> GetShaderFactory() { return this->m_shaderFactory; }
     std::shared_ptr<Renderer::RenderPath3DDeferred> GetRenderer() { return this->m_deferredRenderer; }
+
+    
 private:
 
 private:
