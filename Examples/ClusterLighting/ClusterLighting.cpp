@@ -27,6 +27,7 @@
 #include <PhxEngine/Core/Memory.h>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::Graphics;
@@ -34,6 +35,205 @@ using namespace PhxEngine::Renderer;
 
 constexpr static uint32_t kNumLightInstances = 256;
 
+// TODO: Move to a healper
+
+namespace
+{
+template<typename T, typename UIFunc>
+static void DrawComponent(std::string const& name, Scene::Entity entity, UIFunc uiFunc)
+{
+    const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+
+    if (!entity.HasComponent<T>())
+    {
+        return;
+    }
+
+    auto& component = entity.GetComponent<T>();
+    ImVec2 contentRegionAvailable = ImGui::GetContentRegionAvail();
+
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
+    float lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
+    ImGui::Separator();
+
+    bool open = ImGui::TreeNodeEx((void*)typeid(T).hash_code(), treeNodeFlags, name.c_str());
+    ImGui::PopStyleVar();
+
+    ImGui::SameLine(contentRegionAvailable.x - lineHeight * 0.5f);
+    if (ImGui::Button("+", ImVec2{ lineHeight, lineHeight }))
+    {
+        ImGui::OpenPopup("ComponentSettings");
+    }
+
+    bool removeComponent = false;
+    if (ImGui::BeginPopup("ComponentSettings"))
+    {
+        if (ImGui::MenuItem("Remove component"))
+        {
+            removeComponent = true;
+        }
+
+        ImGui::EndPopup();
+    }
+
+    if (open)
+    {
+        uiFunc(component);
+        ImGui::TreePop();
+    }
+
+    if (removeComponent)
+    {
+        entity.RemoveComponent<T>();
+    }
+}
+
+static void DrawFloat3Control(const std::string& label, DirectX::XMFLOAT3& values, float resetValue = 0.0f, float columnWidth = 100.0f)
+{
+    ImGuiIO& io = ImGui::GetIO();
+    auto boldFont = io.Fonts->Fonts[0];
+
+    ImGui::PushID(label.c_str());
+
+    ImGui::Columns(2);
+    ImGui::SetColumnWidth(0, columnWidth);
+    ImGui::Text(label.c_str());
+    ImGui::NextColumn();
+
+    ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
+
+    // float lineHeight = io.fonts->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
+    // ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.9f, 0.2f, 0.2f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
+    ImGui::PushFont(boldFont);
+    if (ImGui::Button("X"))
+        values.x = resetValue;
+    ImGui::PopFont();
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine();
+    ImGui::DragFloat("##X", &values.x, 0.1f, 0.0f, 0.0f, "%.2f");
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.2f, 0.7f, 0.2f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.3f, 0.8f, 0.3f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.2f, 0.7f, 0.2f, 1.0f });
+    ImGui::PushFont(boldFont);
+    if (ImGui::Button("Y"))
+        values.y = resetValue;
+    ImGui::PopFont();
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine();
+    ImGui::DragFloat("##Y", &values.y, 0.1f, 0.0f, 0.0f, "%.2f");
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.2f, 0.35f, 0.9f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
+    ImGui::PushFont(boldFont);
+    if (ImGui::Button("Z"))
+        values.z = resetValue;
+    ImGui::PopFont();
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine();
+    ImGui::DragFloat("##Z", &values.z, 0.1f, 0.0f, 0.0f, "%.2f");
+    ImGui::PopItemWidth();
+
+    ImGui::PopStyleVar();
+
+    ImGui::Columns(1);
+
+    ImGui::PopID();
+}
+
+static void DrawFloat4Control(const std::string& label, DirectX::XMFLOAT4& values, float resetValue = 0.0f, float columnWidth = 100.0f)
+{
+    ImGuiIO& io = ImGui::GetIO();
+    auto boldFont = io.Fonts->Fonts[0];
+
+    ImGui::PushID(label.c_str());
+
+    ImGui::Columns(2);
+    ImGui::SetColumnWidth(0, columnWidth);
+    ImGui::Text(label.c_str());
+    ImGui::NextColumn();
+
+    ImGui::PushMultiItemsWidths(4, ImGui::CalcItemWidth());
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
+
+    // float lineHeight = io.fonts->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
+    // ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.9f, 0.2f, 0.2f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
+    ImGui::PushFont(boldFont);
+    if (ImGui::Button("X"))
+        values.x = resetValue;
+    ImGui::PopFont();
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine();
+    ImGui::DragFloat("##X", &values.x, 0.1f, 0.0f, 0.0f, "%.2f");
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.2f, 0.7f, 0.2f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.3f, 0.8f, 0.3f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.2f, 0.7f, 0.2f, 1.0f });
+    ImGui::PushFont(boldFont);
+    if (ImGui::Button("Y"))
+        values.y = resetValue;
+    ImGui::PopFont();
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine();
+    ImGui::DragFloat("##Y", &values.y, 0.1f, 0.0f, 0.0f, "%.2f");
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.2f, 0.35f, 0.9f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
+    ImGui::PushFont(boldFont);
+    if (ImGui::Button("Z"))
+        values.z = resetValue;
+    ImGui::PopFont();
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine();
+    ImGui::DragFloat("##Z", &values.z, 0.1f, 0.0f, 0.0f, "%.2f");
+    ImGui::PopItemWidth();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.2f, 0.35f, 0.9f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
+    ImGui::PushFont(boldFont);
+    if (ImGui::Button("W"))
+        values.w = resetValue;
+    ImGui::PopFont();
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine();
+    ImGui::DragFloat("##W", &values.w, 0.1f, 0.0f, 0.0f, "%.2f");
+    ImGui::PopItemWidth();
+
+    ImGui::PopStyleVar();
+
+    ImGui::Columns(1);
+
+    ImGui::PopID();
+}
+
+}
 struct AppSettings
 {
     uint32_t NumPointLights = 128;
@@ -84,7 +284,8 @@ public:
         this->m_mainCamera.FoV = DirectX::XMConvertToRadians(60);
 
         Scene::TransformComponent t = {};
-        t.LocalTranslation = { 0.0f, 2.0f, -10.0f };
+        t.LocalTranslation = { 0.0f, 2.0f, 0.3f };
+        t.RotateRollPitchYaw({ 0.0f, DirectX::XMConvertToRadians(90), 0.0f});
         t.SetDirty();
         t.UpdateTransform();
 
@@ -111,6 +312,32 @@ public:
         commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList }, true);
 
+        this->m_editableLightComponent = this->m_scene.CreateEntity("Custom Light Node");
+        auto& lightComp = this->m_editableLightComponent.AddComponent<Scene::LightComponent>();
+
+        lightComp.Type = Scene::LightComponent::kDirectionalLight;
+        lightComp.Colour = {
+                1.0f,
+                1.0f,
+                1.0f,
+                1.0f };
+        lightComp.Intensity = 1.0f;
+        lightComp.Range = 100.0f;
+        lightComp.InnerConeAngle = 0.785398163397448f;
+        lightComp.InnerConeAngle = 1.57079632679f;
+
+
+        // Place the light in the centre
+        auto& transform = this->m_editableLightComponent.GetComponent<Scene::TransformComponent>();
+
+        transform.LocalTranslation = { 0.0f, 0.0f, 0.0f };
+        transform.RotateRollPitchYaw({ DirectX::XMConvertToRadians(-90), 0.0f, 0.0f });
+        transform.SetDirty();
+
+        transform.ApplyTransform();
+        transform.UpdateTransform();
+
+        /*
 		auto spawnLight = [&](Scene::LightComponent& light) {
 
             light.Colour = {
@@ -120,6 +347,7 @@ public:
 				1.0f };
             light.
 		};
+
         // Spawn a ton of instances
         for (int i = 0; i < kNumLightInstances; i++)
         {
@@ -157,7 +385,7 @@ public:
             transform.ApplyTransform();
             transform.UpdateTransform();
         }
-
+        */
         this->m_scene.BuildRenderData(this->GetGfxDevice());
 
         return retVal;
@@ -170,7 +398,7 @@ public:
 
     void Update(Core::TimeStep const& deltaTime) override
     {
-        this->GetRoot()->SetInformativeWindowTitle("PhxEngine Exampe: GPU Culling", {});
+        this->GetRoot()->SetInformativeWindowTitle("PhxEngine Exampe: Cluster Lighting", {});
         this->m_cameraController.OnUpdate(this->GetRoot()->GetWindow(), deltaTime, this->m_mainCamera);
 
         if (this->IsSceneLoaded())
@@ -200,7 +428,7 @@ public:
 
     std::shared_ptr<Graphics::ShaderFactory> GetShaderFactory() { return this->m_shaderFactory; }
     std::shared_ptr<Renderer::RenderPath3DDeferred> GetRenderer() { return this->m_deferredRenderer; }
-
+    Scene::Entity& GetLightEntity() { return this->m_editableLightComponent; }
     
 private:
 
@@ -208,14 +436,13 @@ private:
     std::shared_ptr<Graphics::ShaderFactory> m_shaderFactory;
     std::shared_ptr<Renderer::RenderPath3DDeferred> m_deferredRenderer;
     RHI::TextureHandle m_splashScreenTexture;
-
     Scene::Scene m_scene;
     Scene::CameraComponent m_mainCamera;
     PhxEngine::FirstPersonCameraController m_cameraController;
 
     std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
 
-    float m_rotation = 0.0f;
+    Scene::Entity m_editableLightComponent;
 };
 
 
@@ -234,10 +461,17 @@ public:
     {
         if (m_app->IsSceneLoaded())
         {
-            ImGui::Begin("Renderer");
-            ImGui::Text("Currently rendering %d monkeys", kNumInstances + 1);
-            ImGui::Separator();
-            this->m_app->GetRenderer()->BuildUI();
+            ImGui::Begin("Options");
+            if (ImGui::CollapsingHeader("Renderer"))
+            {
+                this->m_app->GetRenderer()->BuildUI();
+            }
+
+            if (ImGui::CollapsingHeader("Light"))
+            {
+                this->DrawEntityComponent(this->m_app->GetLightEntity());
+            }
+
             ImGui::End();
         }
         else
@@ -248,6 +482,74 @@ public:
         }
     }
 
+    void DrawEntityComponent(Scene::Entity entity)
+    {
+        if (entity.HasComponent<Scene::NameComponent>())
+        {
+            auto& name = entity.GetComponent<Scene::NameComponent>().Name;
+
+            ImGui::Text(name.c_str());
+        }
+
+        ImGui::SameLine();
+        ImGui::PushItemWidth(-1);
+
+        if (ImGui::Button("Add Component"))
+        {
+            ImGui::OpenPopup("AddComponent");
+        }
+
+        if (ImGui::BeginPopup("AddComponent"))
+        {
+            ImGui::EndPopup();
+        }
+
+        ImGui::PopItemWidth();
+
+
+        DrawComponent<Scene::TransformComponent>("Transform", entity, [](auto& component) {
+                DrawFloat3Control("Translation", component.LocalTranslation);
+                DrawFloat4Control("Rotation", component.LocalRotation);
+                DrawFloat3Control("Scale", component.LocalScale, 1.0f);
+            });
+
+
+        DrawComponent<Scene::LightComponent>("Light Component", entity, [](auto& component) {
+           
+                const char* items[] = { "Directional", "Omni", "Spot" };
+
+                ImGui::Combo("Type", (int*)&component.Type, items, IM_ARRAYSIZE(items));
+                bool isEnabled = component.IsEnabled();
+                ImGui::Checkbox("Enabled", &isEnabled);
+                component.SetEnabled(isEnabled);
+
+                ImGui::ColorPicker3("Light Colour", &component.Colour.x, ImGuiColorEditFlags_NoSidePreview);
+                
+
+                ImGui::SliderFloat("Intensity", &component.Intensity, 0.0f, 100.0f);
+                ImGui::SliderFloat("Range", &component.Range, 0.0f, (float)std::numeric_limits<uint16_t>().max(), "%e");
+
+                if (component.Type == Scene::LightComponent::kDirectionalLight || component.Type == Scene::LightComponent::kSpotLight)
+                {
+                    ImGui::InputFloat3("Direction", &component.Direction.x, "%.3f");
+                }
+
+                if (component.Type == Scene::LightComponent::kSpotLight)
+                {
+                    ImGui::SliderFloat("Inner Cone Angle", &component.InnerConeAngle, 0.0f, XM_2PI, "%e");
+                    ImGui::SliderFloat("Outer Cone Angle", &component.OuterConeAngle, 0.0f, XM_2PI, "%e");
+                }
+
+                // Direction is starting from origin, so we need to negate it
+                // Vec3 light(lightComponent.Direction.x, lightComponent.Direction.y, -lightComponent.Direction.z);
+                // get/setLigth are helper funcs that you have ideally defined to manage your global/member objs
+                // ImGui::Text("This is not working as expected. Do Not Use");
+                // if (ImGui::gizmo3D("##Dir1", light /*, size,  mode */))
+                {
+                    //  lightComponent.Direction = { light.x, light.y, -light.z };
+                }
+            });
+    }
 private:
     GpuCullingApp* m_app;
 };
@@ -265,7 +567,7 @@ int main(int __argc, const char** __argv)
         });
 
     EngineParam params = {};
-    params.Name = "PhxEngine Example: GPU Culling";
+    params.Name = "PhxEngine";
     params.GraphicsAPI = RHI::GraphicsAPI::DX12;
     params.WindowWidth = 2000;
     params.WindowHeight = 1200;

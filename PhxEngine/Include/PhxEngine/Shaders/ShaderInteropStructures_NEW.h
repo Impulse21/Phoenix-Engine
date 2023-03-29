@@ -18,9 +18,9 @@
 namespace Shader::New
 {
 #endif
-	static const uint ENTITY_TYPE_DIRECTIONALLIGHT = 0;
-	static const uint ENTITY_TYPE_OMNILIGHT = 1;
-	static const uint ENTITY_TYPE_SPOTLIGHT = 2;
+	static const uint LIGHT_TYPE_DIRECTIONAL = 0;
+	static const uint LIGHT_TYPE_OMNI = 1;
+	static const uint LIGHT_TYPE_SPOT = 2;
 
 	static const uint SHADER_LIGHT_ENTITY_COUNT = 256;
 
@@ -66,6 +66,7 @@ namespace Shader::New
 		// -- 16 byte boundary ----
 		uint2 Direction16_ConeAngleCos16;
 		uint2 ColourPacked; // half4 packed
+		uint AngleOffset16_AngleScale_16;
 
 #ifndef __cplusplus
 		inline uint GetType()
@@ -101,7 +102,6 @@ namespace Shader::New
 		{
 			float4 retVal;
 
-			float4 retVal;
 			retVal.x = f16tof32(ColourPacked.x);
 			retVal.y = f16tof32(ColourPacked.x >> 16u);
 			retVal.z = f16tof32(ColourPacked.y);
@@ -109,39 +109,60 @@ namespace Shader::New
 			return retVal;
 		}
 
+		inline float GetAngleScale()
+		{
+			return f16tof32(AngleOffset16_AngleScale_16);
+		}
+
+		inline float GetAngleOffset()
+		{
+			return f16tof32(AngleOffset16_AngleScale_16 >> 16u);
+		}
+
 #else
 		inline void SetType(uint type)
 		{
-			Type8_Flags8_Range16 |= type & 0xFF;
+			this->Type8_Flags8_Range16 |= type & 0xFF;
 		}
 
 		inline void SetFlags(uint flags)
 		{
-			Type8_Flags8_Range16 |= (flags & 0xFF) << 8u;
+			this->Type8_Flags8_Range16 |= (flags & 0xFF) << 8u;
 		}
 
 		inline void SetRange(float value)
 		{
-			Type8_Flags8_Range16 |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16u;
+			this->Type8_Flags8_Range16 |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16u;
 		}
+
 		inline void SetColor(float4 value)
 		{
-			ColourPacked.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.x);
-			ColourPacked.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.y) << 16u;
-			ColourPacked.y |= DirectX::PackedVector::XMConvertFloatToHalf(value.z);
-			ColourPacked.y |= DirectX::PackedVector::XMConvertFloatToHalf(value.w) << 16u;
+			this->ColourPacked.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.x);
+			this->ColourPacked.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.y) << 16u;
+			this->ColourPacked.y |= DirectX::PackedVector::XMConvertFloatToHalf(value.z);
+			this->ColourPacked.y |= DirectX::PackedVector::XMConvertFloatToHalf(value.w) << 16u;
 		}
 
 		inline void SetDirection(float3 value)
 		{
-			Direction16_ConeAngleCos16.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.x);
-			Direction16_ConeAngleCos16.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.y) << 16u;
-			Direction16_ConeAngleCos16.y |= DirectX::PackedVector::XMConvertFloatToHalf(value.z);
+			this->Direction16_ConeAngleCos16.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.x);
+			this->Direction16_ConeAngleCos16.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.y) << 16u;
+			this->Direction16_ConeAngleCos16.y |= DirectX::PackedVector::XMConvertFloatToHalf(value.z);
 		}
 
 		inline void SetConeAngleCos(float value)
 		{
-			Direction16_ConeAngleCos16.y |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16u;
+			this->Direction16_ConeAngleCos16.y |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16u;
+		}
+
+		inline void SetAngleScale(float value)
+		{
+			this->AngleOffset16_AngleScale_16 |= DirectX::PackedVector::XMConvertFloatToHalf(value);
+		}
+
+		inline void SetAngleOffset(float value)
+		{
+			this->AngleOffset16_AngleScale_16 |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16u;
 		}
 #endif
 	};
@@ -173,6 +194,8 @@ namespace Shader::New
 
 		// -- 16 byte boundary ----
 		uint InstanceCount;
+		uint LightBufferIdx;
+		uint LightCount;
 
 	};
 

@@ -1619,7 +1619,6 @@ void D3D12GraphicsDevice::DeleteBuffer(BufferHandle handle)
 		return;
 	}
 	D3D12Buffer* bufferImpl = this->m_bufferPool.Get(handle);
-	assert(bufferImpl->Desc.DebugName != "");
 
 	DeleteItem d =
 	{

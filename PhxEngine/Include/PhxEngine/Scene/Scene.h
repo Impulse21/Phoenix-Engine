@@ -92,6 +92,11 @@ namespace PhxEngine::Scene
 		RHI::BufferHandle GetCulledInstancesCounterBuffer() { return this->m_culledInstancesCounterBuffer; }
 		RHI::BufferHandle GetIndirectDrawLateBuffer() { return this->m_indirectDrawLateBuffer; }
 
+		void UpdateBounds();
+
+		PhxEngine::RHI::BufferHandle GetLightBuffer() const { return this->m_lightBuffer; }
+		PhxEngine::RHI::BufferHandle GetLightUploadBuffer() const { return this->m_lightUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
+
 	public:
 		void OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses);
 
@@ -143,6 +148,10 @@ namespace PhxEngine::Scene
 
 		PhxEngine::RHI::RTAccelerationStructureHandle m_tlas;
 		std::vector<PhxEngine::RHI::BufferHandle> m_tlasUploadBuffers;
+
+		RHI::BufferHandle m_lightBuffer;
+		// TODO: Introduce Per frame GPU scratch data.
+		std::vector<RHI::BufferHandle> m_lightUploadBuffers;
 
 		entt::entity m_activeSun;
 
