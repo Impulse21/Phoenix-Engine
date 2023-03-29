@@ -2894,7 +2894,8 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::TranslateRasterState(RasterRend
 size_t PhxEngine::RHI::D3D12::D3D12GraphicsDevice::GetCurrentBackBufferIndex() const
 {
 	assert(this->m_activeViewport);
-	return (size_t)this->m_activeViewport->NativeSwapchain4->GetCurrentBackBufferIndex();
+	auto retVal = this->m_activeViewport->NativeSwapchain4->GetCurrentBackBufferIndex();
+	return (size_t)retVal;
 }
 
 void D3D12GraphicsDevice::CreateBufferInternal(BufferDesc const& desc, D3D12Buffer& outBuffer)

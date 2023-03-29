@@ -284,7 +284,7 @@ public:
         this->m_mainCamera.FoV = DirectX::XMConvertToRadians(60);
 
         Scene::TransformComponent t = {};
-        t.LocalTranslation = { 0.0f, 2.0f, 0.3f };
+        t.LocalTranslation = { -4.0f, 2.0f, 0.3f };
         t.RotateRollPitchYaw({ 0.0f, DirectX::XMConvertToRadians(90), 0.0f});
         t.SetDirty();
         t.UpdateTransform();
@@ -321,20 +321,19 @@ public:
                 1.0f,
                 1.0f,
                 1.0f };
-        lightComp.Intensity = 1.0f;
-        lightComp.Range = 100.0f;
-        lightComp.InnerConeAngle = 0.785398163397448f;
-        lightComp.InnerConeAngle = 1.57079632679f;
+        lightComp.Intensity = 6.0f;
+        lightComp.Range = 60.0f;
+        lightComp.InnerConeAngle = 0;
+        lightComp.OuterConeAngle = DirectX::XM_PIDIV4;
 
 
         // Place the light in the centre
         auto& transform = this->m_editableLightComponent.GetComponent<Scene::TransformComponent>();
 
-        transform.LocalTranslation = { 0.0f, 0.0f, 0.0f };
-        transform.RotateRollPitchYaw({ DirectX::XMConvertToRadians(-90), 0.0f, 0.0f });
+        transform.LocalTranslation = { 4.0f, 3.0f, 0.0f };
+        transform.RotateRollPitchYaw({ DirectX::XMConvertToRadians(180), 0.0f, 0.0f });
         transform.SetDirty();
 
-        transform.ApplyTransform();
         transform.UpdateTransform();
 
         /*
@@ -526,8 +525,8 @@ public:
                 ImGui::ColorPicker3("Light Colour", &component.Colour.x, ImGuiColorEditFlags_NoSidePreview);
                 
 
-                ImGui::SliderFloat("Intensity", &component.Intensity, 0.0f, 100.0f);
-                ImGui::SliderFloat("Range", &component.Range, 0.0f, (float)std::numeric_limits<uint16_t>().max(), "%e");
+                ImGui::SliderFloat("Intensity", &component.Intensity, 0.0f, 1000.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+                ImGui::SliderFloat("Range", &component.Range, 0.0f, 1000.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
 
                 if (component.Type == Scene::LightComponent::kDirectionalLight || component.Type == Scene::LightComponent::kSpotLight)
                 {
@@ -536,8 +535,8 @@ public:
 
                 if (component.Type == Scene::LightComponent::kSpotLight)
                 {
-                    ImGui::SliderFloat("Inner Cone Angle", &component.InnerConeAngle, 0.0f, XM_2PI, "%e");
-                    ImGui::SliderFloat("Outer Cone Angle", &component.OuterConeAngle, 0.0f, XM_2PI, "%e");
+                    ImGui::SliderFloat("Inner Cone Angle", &component.InnerConeAngle, 0.0f, XM_PIDIV2 - 0.01f, "%e");
+                    ImGui::SliderFloat("Outer Cone Angle", &component.OuterConeAngle, 0.0f, XM_PIDIV2 - 0.01f, "%e");
                 }
 
                 // Direction is starting from origin, so we need to negate it

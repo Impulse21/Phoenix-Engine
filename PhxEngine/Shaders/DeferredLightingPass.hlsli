@@ -152,7 +152,7 @@ float4 main(PSInput input) : SV_TARGET
         lightingTerms);
 */
     IndirectLightContribution_Flat(
-        0.4,
+        0.2,
         0.0,
         lightingTerms);
 

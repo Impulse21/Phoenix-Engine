@@ -346,7 +346,7 @@ namespace PhxEngine::Scene
 		// end Helper data
 
 		float Intensity = 10.0f;
-		float Range = 10.0f;
+		float Range = 60.0f;
 		float OuterConeAngle = DirectX::XM_PIDIV4;
 		float InnerConeAngle = 0;
 

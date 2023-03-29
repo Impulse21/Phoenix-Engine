@@ -66,6 +66,8 @@ namespace Shader::New
 		// -- 16 byte boundary ----
 		uint2 Direction16_ConeAngleCos16;
 		uint2 ColourPacked; // half4 packed
+
+		// -- 16 byte boundary ----
 		uint AngleOffset16_AngleScale_16;
 
 #ifndef __cplusplus
@@ -135,7 +137,7 @@ namespace Shader::New
 			this->Type8_Flags8_Range16 |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16u;
 		}
 
-		inline void SetColor(float4 value)
+		inline void SetColor(float4 const& value)
 		{
 			this->ColourPacked.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.x);
 			this->ColourPacked.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.y) << 16u;
@@ -143,7 +145,7 @@ namespace Shader::New
 			this->ColourPacked.y |= DirectX::PackedVector::XMConvertFloatToHalf(value.w) << 16u;
 		}
 
-		inline void SetDirection(float3 value)
+		inline void SetDirection(float3 const& value)
 		{
 			this->Direction16_ConeAngleCos16.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.x);
 			this->Direction16_ConeAngleCos16.x |= DirectX::PackedVector::XMConvertFloatToHalf(value.y) << 16u;

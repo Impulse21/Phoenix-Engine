@@ -454,6 +454,7 @@ void PhxEngine::Scene::Scene::RunLightUpdateSystem()
 		}
 
 		Shader::New::Light* shaderData = pBufferData + currLight;
+		*shaderData = {};
 
 		shaderData->SetType(light.Type);
 		shaderData->Position = light.Position;
