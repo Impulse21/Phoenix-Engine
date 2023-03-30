@@ -82,5 +82,10 @@ inline float4x4 LoadMatrix(uint matrixIndex)
 {
     return 0;
 }
+inline Light LoadLight(uint index)
+{
+    StructuredBuffer<Light> buffer = ResourceDescriptorHeap[GetScene().LightBufferIdx];
+    return buffer[index];
+}
 
 #endif // __PHX_GLOBALS_HLSLI__

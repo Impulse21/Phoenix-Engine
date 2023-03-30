@@ -342,13 +342,17 @@ namespace PhxEngine::Scene
 		DirectX::XMFLOAT3 Position;
 		DirectX::XMFLOAT4 Rotation;
 		DirectX::XMFLOAT3 Scale;
-
+		uint32_t GlobalBufferIndex = 0;
 		// end Helper data
+
 		float Intensity = 10.0f;
-		float Range = 10.0f;
-		float FoV = DirectX::XM_PIDIV4;
+		float Range = 60.0f;
 		float OuterConeAngle = DirectX::XM_PIDIV4;
 		float InnerConeAngle = 0;
+
+		// TODO: Remove
+		float FoV = DirectX::XM_PIDIV4;
+		// End TODO
 
 		bool CastShadows() const { return Flags & Flags::kCastShadow; }
 		inline void SetCastShadows(bool value = true)

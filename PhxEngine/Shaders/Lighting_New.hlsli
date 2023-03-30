@@ -3,9 +3,10 @@
 
 #include "../Include/PhxEngine/Shaders/ShaderInterop.h"
 #include "../Include/PhxEngine/Shaders/ShaderInteropStructures_New.h"
+#include "Globals_New.hlsli"
 #include "BRDF.hlsli"
 
-#include "Shadows.hlsli"
+#include "Shadows_New.hlsli"
 
 struct LightingPart
 {
@@ -31,8 +32,128 @@ struct Lighting
     }
 };
 
+
+inline void ApplyDirectionalLight(in Light light, in BRDFDataPerSurface brdfSurfaceData, inout Lighting lighting)
+{
+    const float3 L = normalize(light.GetDirection());
+    BRDFDataPerLight brdfLightData = CreatePerLightBRDFData(L, brdfSurfaceData);
+    
+    // No point in doing anything if the light doesn't contribute anything.
+    [branch]
+    if (any(brdfLightData.NdotL))
+    {
+        float3 shadow = 1.0f;
+        
+        // If completely in shadow, nothing more to do.
+        if (any(shadow))
+        {
+            const float3 lightColour = light.GetColour().rgb * shadow;
+
+            // Calculate lighting
+            lighting.Direct.Diffuse = mad(lightColour, BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData), lighting.Direct.Diffuse);
+            lighting.Direct.Specular = mad(lightColour, BRDF_DirectSpecular(brdfSurfaceData, brdfLightData), lighting.Direct.Specular);
+        }
+    }
+}
+
+inline float AttenuationOmni(in float dist2, in float range2)
+{
+    // GLTF recommendation: https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_lights_punctual#range-property
+    // saturate(1 - pow(dist / range, 4)) / dist2;
+    
+    // Credit Wicked Engine:
+    // Removed pow(x, 4), and avoid zero divisions:
+    float distPerRange = dist2 / max(0.0001, range2); // pow2
+    distPerRange *= distPerRange; // pow4
+    return saturate(1 - distPerRange) / max(0.0001, dist2);
+}
+
+inline void ApplyOmniLight(in Light light, in BRDFDataPerSurface brdfSurfaceData, inout Lighting lighting)
+{
+    float3 L = brdfSurfaceData.P - light.Position;
+    const float dist2 = dot(L, L);
+    const float range = light.GetRange();
+    const float range2 = range * range;
+    
+    [branch]
+    if (dist2 < range2)
+    {
+        L = normalize(L);
+        BRDFDataPerLight brdfLightData = CreatePerLightBRDFData(L, brdfSurfaceData);
+        
+        [branch]
+        if (any(brdfLightData.NdotL))
+        {
+            float3 shadow = 1.0f;
+            
+            // If completely in shadow, nothing more to do.
+            if (any(shadow))
+            {
+                float3 lightColour = light.GetColour().rgb * shadow;
+                lightColour *= AttenuationOmni(dist2, range2);
+                
+                // Calculate lighting
+                lighting.Direct.Diffuse = mad(lightColour, BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData), lighting.Direct.Diffuse);
+                lighting.Direct.Specular = mad(lightColour, BRDF_DirectSpecular(brdfSurfaceData, brdfLightData), lighting.Direct.Specular);
+            }
+        }
+    }
+}
+
+float AttenuationSpot(in float dist2, in float range2, in float spotFactor, in float angleScale, in float angleOffset)
+{
+
+    float attenuation = AttenuationOmni(dist2, range2);
+    float angularAttenuation = saturate(mad(spotFactor, angleScale, angleOffset));
+    angularAttenuation *= angularAttenuation;
+    attenuation *= angularAttenuation;
+    return attenuation;
+}
+
+inline void ApplySpotLight(in Light light, in BRDFDataPerSurface brdfSurfaceData, inout Lighting lighting)
+{
+    float3 L = brdfSurfaceData.P - light.Position;
+    const float dist2 = dot(L, L);
+    const float range = light.GetRange();
+    const float range2 = range * range;
+    
+    [branch]
+    if (dist2 < range2)
+    {
+        L = normalize(L);
+        BRDFDataPerLight brdfLightData = CreatePerLightBRDFData(L, brdfSurfaceData);
+        
+        [branch]
+        if (any(brdfLightData.NdotL))
+        {
+            const float spotFactor = dot(L, light.GetDirection());
+            const float spotCutoff = light.GetConeAngleCos();
+            [branch]
+            if (spotFactor > spotCutoff)
+            {
+                float3 shadow = 1.0f;
+            
+                // If completely in shadow, nothing more to do.
+                if (any(shadow))
+                {
+                    float3 lightColour = light.GetColour().rgb * shadow;
+                    lightColour *= AttenuationSpot(dist2, range2, spotFactor, light.GetAngleScale(), light.GetAngleOffset());
+                
+                    // Calculate lighting
+                    lighting.Direct.Diffuse = mad(lightColour, BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData), lighting.Direct.Diffuse);
+                    lighting.Direct.Specular = mad(lightColour, BRDF_DirectSpecular(brdfSurfaceData, brdfLightData), lighting.Direct.Specular);
+                }
+            }
+        }
+    }
+}
+
 void DirectLightContribution(in Scene scene, in BRDFDataPerSurface brdfSurfaceData, in Surface surface, inout Lighting lightingTerms)
 {
+    
+    lightingTerms.Direct.Init(0, 0);
+    
+    #ifdef USE_HARD_CODED_LIGHT
     // TODO Handle Lights in some way
     float shadow = 1.0;
     float3 lightDirection = normalize(float3(0.70711, -0.70711, 0));
@@ -47,9 +168,32 @@ void DirectLightContribution(in Scene scene, in BRDFDataPerSurface brdfSurfaceDa
     float3 specularLightContribution = BRDF_DirectSpecular(brdfSurfaceData, brdfLightData) * 9.0f;
 
     float3 lightColour = 1.0f;
-    lightingTerms.Direct.Init(0, 0);
     lightingTerms.Direct.Diffuse += (shadow * directLightContribution) * lightColour;
     lightingTerms.Direct.Specular += (shadow * specularLightContribution) * lightColour;
+#else
+    
+    [loop]
+    for (int iLight = 0; iLight < GetScene().LightCount; iLight++)
+    {
+        Light light = LoadLight(iLight);
+        const uint lightType = light.GetType();
+        
+        switch (light.GetType())
+        {
+            case LIGHT_TYPE_DIRECTIONAL:
+                ApplyDirectionalLight(light, brdfSurfaceData, lightingTerms);
+                break;
+            case LIGHT_TYPE_OMNI:
+                ApplyOmniLight(light, brdfSurfaceData, lightingTerms);
+                break;
+            case LIGHT_TYPE_SPOT:
+                ApplySpotLight(light, brdfSurfaceData, lightingTerms);
+                break;
+            default:
+                continue;
+        }
+    }
+#endif
 }
 
 void IndirectLightContribution_IBL(
@@ -100,183 +244,5 @@ float3 ApplyLighting(Lighting lightingTerms, BRDFDataPerSurface brdfSurfaceData,
     return colour;
     
 }
-
-void Light_Directional(
-    in ShaderLight light,
-    in BRDFDataPerSurface brdfSurfaceData,
-    inout LightingPart outDirectRadiance)
-{
-    float3 lightIncident = normalize(light.GetDirection());
-    float lightIrradance = light.GetIntensity();
-
-    BRDFDataPerLight brdfLightData = CreatePerLightBRDFData(lightIncident, brdfSurfaceData);
-
-    // No point in doing anything if the light doesn't contribute anything.
-    [branch]
-    if (any(brdfLightData.NdotL))
-    {
-        // TODO: Move light colour to here!!
-        // The Direct Equation: Lo += (kD * albedo / PI + specular) * radiance * NdotL;
-        // 
-        // LoDiffuse = (kD * albedo / PI) * radiance * NdotL
-        //           = ((1 - F) (1 - metalness) * albedo / PI)  * radiance * NdotL
-        //  DiffuseReflectance = (1-metalness) * albedo.
-        //           = ((1 - F) * DiffuseReflectance / PI)  * radiance * NdotL
-        // Moved Diffuse reflectance / PI out to Apply lighting. Consider moving it back for read ability.
-        //
-        outDirectRadiance.Diffuse = BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData) * lightIrradance;
-
-        // LoSpecular = (Specular) * radiance * NdotL
-        outDirectRadiance.Specular = BRDF_DirectSpecular(brdfSurfaceData, brdfLightData) * lightIrradance;
-    }
-}
-
-float CalculateAttenuation_Omni(float dist2, float range2)
-{
-    // GLTF recommendation: https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_lights_punctual#range-property
-    // saturate(1 - pow(dist / range, 4)) / dist2;
-    
-    // Credit Wicked Engine:
-    // Removed pow(x, 4), and avoid zero divisions:
-    float distPerRange = dist2 / max(0.0001, range2); // pow2
-    distPerRange *= distPerRange; // pow4
-    return saturate(1 - distPerRange) / max(0.0001, dist2);
-}
-
-
-void Light_Omni(
-    in ShaderLight light,
-    in BRDFDataPerSurface brdfSurfaceData,
-    inout LightingPart outDirectRadiance)
-{
-    const float3 lightIncident = brdfSurfaceData.P - light.Position;
-    const float dist2 = dot(lightIncident, lightIncident);
-    const float range = light.GetRange();
-    const float range2 = range * range;
-
-    [branch]
-    if (dist2 < range2)
-    {
-        BRDFDataPerLight brdfLightData = CreatePerLightBRDFData(lightIncident, brdfSurfaceData);
-
-        [branch]
-        if (any(brdfLightData.NdotL))
-        {
-            const float attenuation = CalculateAttenuation_Omni(dist2, range2);
-            const float lightIrradance = light.GetIntensity() * attenuation;
-
-            // TODO: Move light colour to here!!
-            // The Direct Equation: Lo += (kD * albedo / PI + specular) * radiance * NdotL;
-            // 
-            // LoDiffuse = (kD * albedo / PI) * radiance * NdotL
-            //           = ((1 - F) (1 - metalness) * albedo / PI)  * radiance * NdotL
-            //  DiffuseReflectance = (1-metalness) * albedo.
-            //           = ((1 - F) * DiffuseReflectance / PI)  * radiance * NdotL
-            // Moved Diffuse reflectance / PI out to Apply lighting. Consider moving it back for read ability.
-            //
-            outDirectRadiance.Diffuse = BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData) * lightIrradance;
-
-            // LoSpecular = (Specular) * radiance * NdotL
-            outDirectRadiance.Specular = BRDF_DirectSpecular(brdfSurfaceData, brdfLightData) * lightIrradance;
-        }
-    }
-
-}
-float CalculateAttenuation_Spot(
-    float spotFactor,
-    float angleScale,
-    float angleOffset,
-    float dist2,
-    float range2)
-{
-
-    float attenuation = CalculateAttenuation_Omni(dist2, range2);
-    float angularAttenuation = saturate(mad(spotFactor, angleScale, angleOffset));
-    angularAttenuation *= angularAttenuation;
-    attenuation *= angularAttenuation;
-    return attenuation;
-}
-
-
-void Light_Spot(
-    in ShaderLight light,
-    in BRDFDataPerSurface brdfSurfaceData,
-    inout LightingPart outDirectRadiance)
-{
-    const float3 lightIncident = brdfSurfaceData.P - light.Position;
-    const float dist2 = dot(lightIncident, lightIncident);
-    const float range = light.GetRange();
-    const float range2 = range * range;
-
-    [branch]
-    if (dist2 < range2)
-    {
-        BRDFDataPerLight brdfLightData = CreatePerLightBRDFData(lightIncident, brdfSurfaceData);
-
-        [branch]
-        if (any(brdfLightData.NdotL))
-        {
-            const float spotFactor = dot(brdfLightData.L, light.GetDirection());
-            const float spotCutoff = light.GetConeAngleCos();
-
-            [branch]
-            if (spotFactor > spotCutoff)
-            {
-                const float attenuation = CalculateAttenuation_Spot(spotFactor, light.GetAngleScale(), light.GetAngleOffset(), dist2, range2);
-                const float lightIrradance = light.GetIntensity() * attenuation;
-
-                // TODO: Move light colour to here!!
-                // The Direct Equation: Lo += (kD * albedo / PI + specular) * radiance * NdotL;
-                // 
-                // LoDiffuse = (kD * albedo / PI) * radiance * NdotL
-                //           = ((1 - F) (1 - metalness) * albedo / PI)  * radiance * NdotL
-                //  DiffuseReflectance = (1-metalness) * albedo.
-                //           = ((1 - F) * DiffuseReflectance / PI)  * radiance * NdotL
-                // Moved Diffuse reflectance / PI out to Apply lighting. Consider moving it back for read ability.
-                //
-                outDirectRadiance.Diffuse = BRDF_DirectDiffuse(brdfSurfaceData, brdfLightData) * lightIrradance;
-
-                // LoSpecular = (Specular) * radiance * NdotL
-                outDirectRadiance.Specular = BRDF_DirectSpecular(brdfSurfaceData, brdfLightData) * lightIrradance;
-            }
-        }
-    }
-
-}
-
-void ShadeSurface_Direct(
-    in ShaderLight light,
-    in BRDFDataPerSurface brdfSurfaceData,
-    inout LightingPart outDirectRadiance)
-{
-    float lightIrradance;
-    BRDFDataPerLight brdfLightData;
-    // TODO: Revisit lighting model
-    const uint lightType = light.GetType();
-    switch (light.GetType())
-    {
-    case ENTITY_TYPE_DIRECTIONALLIGHT:
-    {
-        Light_Directional(light, brdfSurfaceData, outDirectRadiance);
-    }
-    break;
-    case ENTITY_TYPE_OMNILIGHT:
-    {
-        Light_Omni(light, brdfSurfaceData, outDirectRadiance);
-    }
-    break;
-    case ENTITY_TYPE_SPOTLIGHT:
-    {
-        Light_Spot(light, brdfSurfaceData, outDirectRadiance);
-    }
-    break;
-    default:
-    {
-        return;
-    }
-    }
-}
-
-
 
 #endif // __LIGHTING__HLSLI__

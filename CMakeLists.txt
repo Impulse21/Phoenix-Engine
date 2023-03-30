@@ -32,6 +32,8 @@ add_subdirectory(PhxEngine-Runtime)
 add_subdirectory(Examples/BasicTriangle)
 add_subdirectory(Examples/ImGuiDemo)
 add_subdirectory(Examples/GPUCulling)
+add_subdirectory(Examples/DirectLighting)
+add_subdirectory(Examples/ClusterLighting)
 
 #add_subdirectory(Examples/ThreadedRendering)
 #add_subdirectory(Examples/DeferredRendering)
@@ -39,3 +41,4 @@ add_subdirectory(Examples/GPUCulling)
 #add_subdirectory(Examples/VisibilityBufferRendering)
 #add_subdirectory(Examples/Meshlet)
 #add_subdirectory(Examples/IndirectDraw)
+

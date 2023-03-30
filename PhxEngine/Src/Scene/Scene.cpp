@@ -20,6 +20,7 @@ constexpr uint64_t kVertexBufferAlignment = 16ull;
 PhxEngine::Scene::Scene::Scene()
 {
 	this->m_tlasUploadBuffers.resize(IGraphicsDevice::GPtr->GetMaxInflightFrames());
+	this->m_lightUploadBuffers.resize(IGraphicsDevice::GPtr->GetMaxInflightFrames());
 }
 
 void PhxEngine::Scene::Scene::Initialize(Core::IAllocator* allocator)
@@ -97,8 +98,25 @@ RHI::DescriptorIndex PhxEngine::Scene::Scene::GetBrdfLutDescriptorIndex()
 	return IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_brdfLut->GetRenderHandle(), RHI::SubresouceType::SRV);
 }
 
+void PhxEngine::Scene::Scene::UpdateBounds()
+{
+	auto aabbView = this->GetAllEntitiesWith<MeshInstanceComponent, AABBComponent>();
+	for (auto e : aabbView)
+	{
+		auto [meshInstanceComponent, aabbComponent] = aabbView.get<MeshInstanceComponent, AABBComponent>(e);
+		auto& mesh = this->GetRegistry().get<MeshComponent>(meshInstanceComponent.Mesh);
+
+		aabbComponent.BoundingData = mesh.Aabb.Transform(DirectX::XMLoadFloat4x4(&meshInstanceComponent.WorldMatrix));
+		this->m_sceneBounds = Core::AABB::Merge(this->m_sceneBounds, aabbComponent.BoundingData);
+	}
+}
+
 void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses)
 {
+	// Update Light Data
+
+	this->RunLightUpdateSystem();
+
 #ifdef false
 	this->m_numMeshlets = 0;
 
@@ -350,18 +368,22 @@ void PhxEngine::Scene::Scene::RunProbeUpdateSystem()
 
 void PhxEngine::Scene::Scene::RunLightUpdateSystem()
 {
-#ifdef false
+	uint32_t numActiveLights = 0;
 	auto view = this->GetAllEntitiesWith<LightComponent, TransformComponent>();
 	for (auto e : view)
 	{
 		auto [lightComponent, transformComponent] = view.get<LightComponent, TransformComponent>(e);
+
+		if (lightComponent.IsEnabled())
+		{
+			numActiveLights++;
+		}
 
 		XMMATRIX worldMatrix = XMLoadFloat4x4(&transformComponent.WorldMatrix);
 		XMVECTOR vScale;
 		XMVECTOR vRot;
 		XMVECTOR vTranslation;
 		XMMatrixDecompose(&vScale, &vRot, &vTranslation, worldMatrix);
-
 
 		XMStoreFloat3(&lightComponent.Position, vTranslation);
 		XMStoreFloat4(&lightComponent.Rotation, vRot);
@@ -375,7 +397,105 @@ void PhxEngine::Scene::Scene::RunLightUpdateSystem()
 			this->m_activeSun = e;
 		}
 	}
-#endif
+
+	this->m_shaderData.LightCount = numActiveLights;
+
+	auto lightView = this->GetAllEntitiesWith<LightComponent>();
+	if (!this->m_lightBuffer.IsValid() || 
+		(RHI::IGraphicsDevice::GPtr->GetBufferDesc(this->m_lightBuffer).SizeInBytes / sizeof(Shader::New::Light)) < lightView.size())
+	{
+		// Create Buffers
+		RHI::BufferDesc desc = {};
+		desc.Binding = BindingFlags::ShaderResource;
+		desc.InitialState = ResourceStates::ShaderResource;
+		desc.MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::Bindless;
+		desc.SizeInBytes = sizeof(Shader::New::Light) * (lightView.size() == 0 ? 10 : lightView.size());
+		desc.StrideInBytes = sizeof(Shader::New::Light);
+		desc.DebugName = "Light Buffer";
+
+		if (this->m_lightBuffer.IsValid())
+		{
+			RHI::IGraphicsDevice::GPtr->DeleteBuffer(this->m_lightBuffer);
+		}
+		this->m_lightBuffer = RHI::IGraphicsDevice::GPtr->CreateBuffer(desc);
+		this->m_shaderData.LightBufferIdx = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_lightBuffer, SubresouceType::SRV);
+
+		desc.CreateBindless = false;
+		desc.DebugName = "Light Upload Data";
+		desc.Usage = RHI::Usage::Upload;
+		desc.Binding = RHI::BindingFlags::None;
+		desc.MiscFlags = RHI::BufferMiscFlags::None;
+		desc.InitialState = ResourceStates::CopySource;
+		for (int i = 0; i < this->m_lightUploadBuffers.size(); i++)
+		{
+			if (this->m_lightUploadBuffers[i].IsValid())
+			{
+				RHI::IGraphicsDevice::GPtr->DeleteBuffer(this->m_lightUploadBuffers[i]);
+			}
+			this->m_lightUploadBuffers[i] = RHI::IGraphicsDevice::GPtr->CreateBuffer(desc);
+		}
+	}
+
+	if (numActiveLights == 0)
+	{
+		return;
+	}
+
+
+	// Fill Active Buffer
+	Shader::New::Light* pBufferData = (Shader::New::Light*)IGraphicsDevice::GPtr->GetBufferMappedData(this->GetLightUploadBuffer());
+	uint32_t currLight = 0;
+	for (auto entity : lightView)
+	{
+		auto& light = view.get<LightComponent>(entity);
+		if (!light.IsEnabled())
+		{
+			continue;
+		}
+
+		Shader::New::Light* shaderData = pBufferData + currLight;
+		*shaderData = {};
+
+		shaderData->SetType(light.Type);
+		shaderData->Position = light.Position;
+		shaderData->SetRange(light.Range);
+		
+		shaderData->SetColor({ light.Colour.x * light.Intensity, light.Colour.y * light.Intensity, light.Colour.z * light.Intensity, 1 });
+
+		switch (light.Type)
+		{
+		case LightComponent::kDirectionalLight:
+		{
+			shaderData->SetDirection(light.Direction);
+			break;
+		}
+
+		case LightComponent::kSpotLight:
+		{
+			const float outerConeAngle = light.OuterConeAngle;
+			const float innerConeAngle = std::min(light.InnerConeAngle, outerConeAngle);
+			const float outerConeAngleCos = std::cos(outerConeAngle);
+			const float innerConeAngleCos = std::cos(innerConeAngle);
+
+			// https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_lights_punctual#inner-and-outer-cone-angles
+			const float lightAngleScale = 1.0f / std::max(0.001f, innerConeAngleCos - outerConeAngleCos);
+			const float lightAngleOffset = -outerConeAngleCos * lightAngleScale;
+
+			shaderData->SetConeAngleCos(outerConeAngleCos);
+			shaderData->SetAngleScale(lightAngleScale);
+			shaderData->SetAngleOffset(lightAngleOffset);
+			shaderData->SetDirection(light.Direction);
+			break;
+		}
+
+		case LightComponent::kOmniLight:
+		default:
+		{
+			// No-op
+		}
+		}
+		light.GlobalBufferIndex = currLight++;
+	}
 }
 
 void PhxEngine::Scene::Scene::RunMeshInstanceUpdateSystem()
@@ -400,6 +520,14 @@ void PhxEngine::Scene::Scene::FreeResources()
 		if (this->m_tlasUploadBuffers[i].IsValid())
 		{
 			IGraphicsDevice::GPtr->DeleteBuffer(this->m_tlasUploadBuffers[i]);
+		}
+	}
+
+	for (int i = 0; i < this->m_lightUploadBuffers.size(); i++)
+	{
+		if (this->m_lightUploadBuffers[i].IsValid())
+		{
+			IGraphicsDevice::GPtr->DeleteBuffer(this->m_lightUploadBuffers[i]);
 		}
 	}
 
@@ -772,16 +900,6 @@ void PhxEngine::Scene::Scene::BuildObjectInstances(RHI::ICommandList* commandLis
 		meshInstanceComponent.GlobalBufferIndex = currInstanceIndex++;
 	}
 
-	auto aabbView = this->GetAllEntitiesWith<MeshInstanceComponent, AABBComponent>();
-	for (auto e : aabbView)
-	{
-		auto [meshInstanceComponent, aabbComponent] = aabbView.get<MeshInstanceComponent, AABBComponent>(e);
-		auto& mesh = this->GetRegistry().get<MeshComponent>(meshInstanceComponent.Mesh);
-
-		aabbComponent.BoundingData = mesh.Aabb.Transform(DirectX::XMLoadFloat4x4(&meshInstanceComponent.WorldMatrix));
-		this->m_sceneBounds = Core::AABB::Merge(this->m_sceneBounds, aabbComponent.BoundingData);
-	}
-
 	commandList->TransitionBarrier(this->m_instanceGpuBuffer, ResourceStates::ShaderResource, ResourceStates::CopyDest);
 	commandList->CopyBuffer(
 		this->m_instanceGpuBuffer,
@@ -890,6 +1008,8 @@ void PhxEngine::Scene::Scene::BuildSceneData(RHI::ICommandList* commandList, RHI
 	this->m_shaderData.CulledInstancesBufferUavIdx = gfxDevice->GetDescriptorIndex(this->m_culledInstancesBuffer, SubresouceType::UAV);
 	this->m_shaderData.CulledInstancesBufferSrvIdx = gfxDevice->GetDescriptorIndex(this->m_culledInstancesBuffer, SubresouceType::SRV);
 	this->m_shaderData.CulledInstancesCounterBufferIdx = gfxDevice->GetDescriptorIndex(this->m_culledInstancesCounterBuffer, SubresouceType::SRV);
+	this->m_shaderData.LightCount = 0;
+	this->m_shaderData.LightBufferIdx = RHI::cInvalidDescriptorIndex;
 
 	auto instanceView = this->GetAllEntitiesWith<MeshInstanceComponent>();
 	this->m_shaderData.InstanceCount = instanceView.size();

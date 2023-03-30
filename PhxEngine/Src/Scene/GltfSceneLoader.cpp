@@ -371,6 +371,7 @@ bool GltfSceneLoader::LoadSceneInternal(
 		this->LoadNode(*gltfData->scene->nodes[i], this->m_rootNode, scene);
 	}
 	
+	scene.UpdateBounds();
 	scene.SetBrdfLut(this->m_textureCache->LoadTexture("Assets\\Textures\\IBL\\BrdfLut.dds", true, commandList));
 	return true;
 }
