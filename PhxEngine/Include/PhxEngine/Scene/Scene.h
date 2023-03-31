@@ -112,6 +112,14 @@ namespace PhxEngine::Scene
 			float diameter = 1,
 			size_t tessellation = 16,
 			bool rhcoords = false);
+
+		Entity CreatePlane(
+			RHI::IGraphicsDevice* gfxDevice,
+			entt::entity matId = entt::null,
+			float width = 1,
+			float height = 1,
+			bool rhCoords = false);
+
 	public:
 		void OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses);
 
