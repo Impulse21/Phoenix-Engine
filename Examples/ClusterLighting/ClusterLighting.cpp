@@ -433,7 +433,12 @@ public:
 
             auto& debugMeshInst = entity.AddComponent<Scene::MeshInstanceComponent>();
             debugMeshInst.Color = { 0.0f, 0.0f, 0.0f, 1.0f };
-            debugMeshInst.EmissiveColor = lightComp.Colour;
+            debugMeshInst.EmissiveColor = {
+                lightComp.Colour.x * lightComp.Intensity,
+                lightComp.Colour.y * lightComp.Intensity,
+                lightComp.Colour.z * lightComp.Intensity,
+                1.0f };
+
             debugMeshInst.Mesh = lightComp.Type == Scene::LightComponent::kOmniLight
                 ? this->m_debugLightOmniMesh
                 : this->m_debugLightSpotMesh;

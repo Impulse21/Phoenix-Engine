@@ -424,7 +424,12 @@ public:
                 }
 
                 debugInstance->Color = { 0.0f, 0.0f, 0.0f, 1.0f };
-                debugInstance->EmissiveColor = lightComp.Colour;
+                debugInstance->EmissiveColor = {
+                    lightComp.Colour.x * lightComp.Intensity,
+                    lightComp.Colour.y * lightComp.Intensity,
+                    lightComp.Colour.z * lightComp.Intensity,
+                    1.0f };
+
                 debugInstance->Mesh = lightComp.Type == Scene::LightComponent::kOmniLight
                     ? this->m_debugLightOmniMesh
                     : this->m_debugLightSpotMesh;
