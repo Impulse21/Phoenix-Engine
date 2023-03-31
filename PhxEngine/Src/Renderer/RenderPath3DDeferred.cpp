@@ -288,6 +288,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 				this->m_gbuffer.NormalTex,
 				this->m_gbuffer.SurfaceTex,
 				this->m_gbuffer.SpecularTex,
+				this->m_gbuffer.EmissiveTex,
 			});
 
 		commandList->BindDynamicUavDescriptorTable(4, { this->m_colourBuffer });
@@ -336,6 +337,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 				this->m_gbuffer.NormalTex,
 				this->m_gbuffer.SurfaceTex,
 				this->m_gbuffer.SpecularTex,
+				this->m_gbuffer.EmissiveTex,
 			});
 
 		commandList->Draw(3, 1, 0, 0);
@@ -553,6 +555,13 @@ void PhxEngine::Renderer::RenderPath3DDeferred::CreateRenderPasses()
 					.FinalLayout = RHI::ResourceStates::ShaderResource
 				},
 				{
+					.LoadOp = RenderPassAttachment::LoadOpType::Clear,
+					.Texture = this->m_gbuffer.EmissiveTex,
+					.InitialLayout = RHI::ResourceStates::ShaderResource,
+					.SubpassLayout = RHI::ResourceStates::RenderTarget,
+					.FinalLayout = RHI::ResourceStates::ShaderResource
+				},
+				{
 					.Type = RenderPassAttachment::Type::DepthStencil,
 					.LoadOp = RenderPassAttachment::LoadOpType::Clear,
 					.Texture = this->m_gbuffer.DepthTex,
@@ -615,6 +624,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState, RHI::ResourceStates::CopyDest),
 		RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesCounterBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesCounterBuffer()).InitialState, RHI::ResourceStates::CopyDest),
 		RHI::GpuBarrier::CreateBuffer(scene.GetLightBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetLightBuffer()).InitialState, RHI::ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetInstanceBuffer()).InitialState, RHI::ResourceStates::CopyDest),
 	};
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
 
@@ -629,6 +639,12 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 		scene.GetLightUploadBuffer(),
 		0,
 		this->m_gfxDevice->GetBufferDesc(scene.GetLightUploadBuffer()).SizeInBytes);
+	commandList->CopyBuffer(
+		scene.GetInstanceBuffer(),
+		0,
+		scene.GetInstanceUploadBuffer(),
+		0,
+		this->m_gfxDevice->GetBufferDesc(scene.GetInstanceUploadBuffer()).SizeInBytes);
 
 	RHI::GpuBarrier postCopyBarriers[] =
 	{
@@ -638,6 +654,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState),
 		RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesCounterBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesCounterBuffer()).InitialState),
 		RHI::GpuBarrier::CreateBuffer(scene.GetLightBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetLightBuffer()).InitialState),
+		RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetInstanceBuffer()).InitialState),
 	};
 
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));

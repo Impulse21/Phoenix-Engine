@@ -97,6 +97,21 @@ namespace PhxEngine::Scene
 		PhxEngine::RHI::BufferHandle GetLightBuffer() const { return this->m_lightBuffer; }
 		PhxEngine::RHI::BufferHandle GetLightUploadBuffer() const { return this->m_lightUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
 
+		PhxEngine::RHI::BufferHandle GetInstanceBuffer() const { return this->m_instanceGpuBuffer; }
+		PhxEngine::RHI::BufferHandle GetInstanceUploadBuffer() const { return this->m_instanceUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
+
+		Entity CreateCube(
+			RHI::IGraphicsDevice* gfxDevice,
+			entt::entity matId = entt::null,
+			float size = 1,
+			bool rhsCoord = false);
+
+		Entity CreateSphere(
+			RHI::IGraphicsDevice* gfxDevice,
+			entt::entity matId = entt::null,
+			float diameter = 1,
+			size_t tessellation = 16,
+			bool rhcoords = false);
 	public:
 		void OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses);
 
@@ -111,10 +126,12 @@ namespace PhxEngine::Scene
 		void UpdateGpuBufferSizes();
 
 	private:
+		void OnConstructOrUpdate(entt::registry& registry, entt::entity entity);
+
+	private:
 		void BuildMaterialData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice, std::vector<Renderer::ResourceUpload>& resourcesToFree);
 		void BuildMeshData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice);
 		void BuildGeometryData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice, std::vector<Renderer::ResourceUpload>& resourcesToFree);
-		void BuildObjectInstances(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice, std::vector<Renderer::ResourceUpload>& resourcesToFree);
 		void BuildIndirectBuffers(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice);
 		void BuildSceneData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice);
 
@@ -137,7 +154,10 @@ namespace PhxEngine::Scene
 		RHI::BufferHandle m_geometryGpuBuffer;
 		RHI::BufferHandle m_geometryBoundsGpuBuffer;
 		RHI::BufferHandle m_materialGpuBuffer;
+
+		bool m_isDirtyMeshInstances = false;
 		RHI::BufferHandle m_instanceGpuBuffer;
+		std::vector<PhxEngine::RHI::BufferHandle> m_instanceUploadBuffers;
 
 		RHI::BufferHandle m_indirectDrawEarlyMeshBuffer;
 		RHI::BufferHandle m_indirectDrawEarlyMeshletBuffer;
@@ -149,6 +169,7 @@ namespace PhxEngine::Scene
 		PhxEngine::RHI::RTAccelerationStructureHandle m_tlas;
 		std::vector<PhxEngine::RHI::BufferHandle> m_tlasUploadBuffers;
 
+		bool m_isDirtyLights = false;
 		RHI::BufferHandle m_lightBuffer;
 		// TODO: Introduce Per frame GPU scratch data.
 		std::vector<RHI::BufferHandle> m_lightUploadBuffers;
@@ -157,5 +178,4 @@ namespace PhxEngine::Scene
 
 		Core::AABB m_sceneBounds;
 	};
-
 }

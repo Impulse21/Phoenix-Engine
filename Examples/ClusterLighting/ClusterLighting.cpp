@@ -309,6 +309,14 @@ public:
             commandList,
             this->m_scene);
 
+        Scene::Entity matEntity = this->m_scene.CreateEntity("Light Mat");
+        auto& mat = matEntity.AddComponent<Scene::MaterialComponent>();
+        mat.BaseColour = { 0.0f, 0.0f, 0.0f, 1.0f };
+        mat.Emissive = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+        this->m_debugLightOmniMesh = this->m_scene.CreateSphere(this->GetGfxDevice(), matEntity, 0.2f, 10u);
+        this->m_debugLightSpotMesh = this->m_scene.CreateCube(this->GetGfxDevice(), matEntity, 0.2f);
+
         commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList }, true);
 
@@ -356,6 +364,7 @@ public:
     {
         int NumLights = 0;
     };
+
     void GenerateLights(GeneratorSettings const& settings)
     {
         auto& sceneBoundingBox = this->m_scene.GetBoundingBox();
@@ -366,6 +375,8 @@ public:
 
         const auto& boundingBoxAABB = this->m_scene.GetBoundingBox();
         const auto& centre = boundingBoxAABB.GetCenter();
+
+        // TODO: Remove
         Scene::TransformComponent t = {};
         t.LocalTranslation = centre;
         t.SetDirty();
@@ -419,6 +430,13 @@ public:
 
             transform.ApplyTransform();
             transform.UpdateTransform();
+
+            auto& debugMeshInst = entity.AddComponent<Scene::MeshInstanceComponent>();
+            debugMeshInst.Color = { 0.0f, 0.0f, 0.0f, 1.0f };
+            debugMeshInst.EmissiveColor = lightComp.Colour;
+            debugMeshInst.Mesh = lightComp.Type == Scene::LightComponent::kOmniLight
+                ? this->m_debugLightOmniMesh
+                : this->m_debugLightSpotMesh;
         }
     }
 
@@ -434,6 +452,9 @@ private:
     Scene::Scene m_scene;
     Scene::CameraComponent m_mainCamera;
     PhxEngine::FirstPersonCameraController m_cameraController;
+
+    Scene::Entity m_debugLightOmniMesh;
+    Scene::Entity m_debugLightSpotMesh;
 
     std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
 };

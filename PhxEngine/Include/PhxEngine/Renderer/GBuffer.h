@@ -12,6 +12,7 @@ namespace PhxEngine::Renderer
         RHI::TextureHandle NormalTex;
         RHI::TextureHandle SurfaceTex;
         RHI::TextureHandle SpecularTex;
+        RHI::TextureHandle EmissiveTex;
 
         RHI::RenderPassHandle RenderPass;
         DirectX::XMFLOAT2 CanvasSize;
