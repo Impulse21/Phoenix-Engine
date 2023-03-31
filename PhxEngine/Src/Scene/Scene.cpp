@@ -49,7 +49,7 @@ RHI::ExecutionReceipt PhxEngine::Scene::Scene::BuildRenderData(RHI::IGraphicsDev
 	this->BuildMaterialData(commandList, gfxDevice, resourcesToFree);
 	this->BuildMeshData(commandList, gfxDevice);
 	this->BuildGeometryData(commandList, gfxDevice, resourcesToFree);
-	this->BuildIndirectBuffers(commandList, gfxDevice);
+	this->BuildIndirectBuffers(gfxDevice);
 
 	commandList->Close();
 	RHI::ExecutionReceipt retVal = gfxDevice->ExecuteCommandLists({commandList});
@@ -552,6 +552,8 @@ void PhxEngine::Scene::Scene::RunMeshInstanceUpdateSystem()
 
 	}
 
+	this->BuildIndirectBuffers(RHI::IGraphicsDevice::GPtr);
+
 	Shader::New::ObjectInstance* instancePtr = (Shader::New::ObjectInstance*)IGraphicsDevice::GPtr->GetBufferMappedData(this->GetInstanceUploadBuffer());
 	uint32_t currInstanceIndex = 0;
 	auto instanceTransformView = this->GetAllEntitiesWith<MeshInstanceComponent, TransformComponent>();
@@ -952,82 +954,99 @@ void PhxEngine::Scene::Scene::BuildGeometryData(RHI::ICommandList* commandList, 
 	resourcesToFree.push_back(geometryBoundsUploadBuffer);
 }
 
-void PhxEngine::Scene::Scene::BuildIndirectBuffers(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice)
+void PhxEngine::Scene::Scene::BuildIndirectBuffers(RHI::IGraphicsDevice* gfxDevice)
 {
 	auto view = this->GetAllEntitiesWith<MeshInstanceComponent>();
 
 	const size_t indirectMeshBufferByteSize = Core::Helpers::AlignUp(sizeof(Shader::New::MeshDrawCommand) * view.size(), gfxDevice->GetUavCounterPlacementAlignment()) + sizeof(uint32_t);
-	if (this->m_indirectDrawEarlyMeshBuffer.IsValid())
-	{
-		gfxDevice->DeleteBuffer(this->m_indirectDrawEarlyMeshBuffer);
-	}
 
-	this->m_indirectDrawEarlyMeshBuffer = gfxDevice->CreateBuffer({
-			   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter | BufferMiscFlags::Bindless,
-			   .Binding = BindingFlags::UnorderedAccess,
-			   .InitialState = ResourceStates::IndirectArgument,
-			   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
-			   .SizeInBytes = indirectMeshBufferByteSize,
-			   .AllowUnorderedAccess = true,
-			   .UavCounterOffsetInBytes = indirectMeshBufferByteSize - sizeof(uint32_t),
-			   .DebugName = "Indirect Draw Early (Mesh)"});
+	if (!this->m_indirectDrawEarlyMeshBuffer.IsValid() ||
+		gfxDevice->GetBufferDesc(this->m_indirectDrawEarlyMeshBuffer).SizeInBytes < indirectMeshBufferByteSize)
+	{
+		if (this->m_indirectDrawEarlyMeshBuffer.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->m_indirectDrawEarlyMeshBuffer);
+		}
+
+		this->m_indirectDrawEarlyMeshBuffer = gfxDevice->CreateBuffer({
+				   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter | BufferMiscFlags::Bindless,
+				   .Binding = BindingFlags::UnorderedAccess,
+				   .InitialState = ResourceStates::IndirectArgument,
+				   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
+				   .SizeInBytes = indirectMeshBufferByteSize,
+				   .AllowUnorderedAccess = true,
+				   .UavCounterOffsetInBytes = indirectMeshBufferByteSize - sizeof(uint32_t),
+				   .DebugName = "Indirect Draw Early (Mesh)" });
+
+	}
 
 	const size_t indirectMeshletBufferByteSize = Core::Helpers::AlignUp(sizeof(Shader::New::MeshletDrawCommand) * view.size(), gfxDevice->GetUavCounterPlacementAlignment()) + sizeof(uint32_t);
-	if (this->m_indirectDrawEarlyMeshletBuffer.IsValid())
+
+	if (!this->m_indirectDrawEarlyMeshletBuffer.IsValid() ||
+		gfxDevice->GetBufferDesc(this->m_indirectDrawEarlyMeshletBuffer).SizeInBytes < indirectMeshletBufferByteSize)
 	{
-		gfxDevice->DeleteBuffer(this->m_indirectDrawEarlyMeshletBuffer);
+		if (this->m_indirectDrawEarlyMeshletBuffer.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->m_indirectDrawEarlyMeshletBuffer);
+		}
+		this->m_indirectDrawEarlyMeshletBuffer = gfxDevice->CreateBuffer({
+				   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter | BufferMiscFlags::Bindless,
+				   .Binding = BindingFlags::UnorderedAccess,
+				   .InitialState = ResourceStates::IndirectArgument,
+				   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
+				   .SizeInBytes = indirectMeshletBufferByteSize,
+				   .AllowUnorderedAccess = true,
+				   .UavCounterOffsetInBytes = indirectMeshletBufferByteSize - sizeof(uint32_t),
+				   .DebugName = "Indirect Draw Early (Meshlet)" });
 	}
 
-	this->m_indirectDrawEarlyMeshletBuffer = gfxDevice->CreateBuffer({
-			   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter | BufferMiscFlags::Bindless,
-			   .Binding = BindingFlags::UnorderedAccess,
-			   .InitialState = ResourceStates::IndirectArgument,
-			   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
-			   .SizeInBytes = indirectMeshletBufferByteSize,
-			   .AllowUnorderedAccess = true,
-			   .UavCounterOffsetInBytes = indirectMeshletBufferByteSize - sizeof(uint32_t),
-			   .DebugName = "Indirect Draw Early (Meshlet)" });
-
-	if (this->m_culledInstancesBuffer.IsValid())
+	if (!this->m_culledInstancesCounterBuffer.IsValid())
 	{
-		gfxDevice->DeleteBuffer(this->m_culledInstancesBuffer);
+		this->m_culledInstancesCounterBuffer = gfxDevice->CreateBuffer({
+				   .MiscFlags = BufferMiscFlags::Raw | BufferMiscFlags::Bindless,
+				   .Binding = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
+				   .InitialState = ResourceStates::ShaderResource,
+				   .StrideInBytes = sizeof(uint32_t),
+				   .SizeInBytes = sizeof(uint32_t),
+				   .AllowUnorderedAccess = true });
 	}
 
-	if (this->m_culledInstancesCounterBuffer.IsValid())
+	const size_t cullInstanceBufferSizeInBytes = sizeof(Shader::New::MeshDrawCommand) * view.size();
+	if (!this->m_culledInstancesBuffer.IsValid() ||
+		gfxDevice->GetBufferDesc(this->m_culledInstancesBuffer).SizeInBytes < cullInstanceBufferSizeInBytes)
 	{
-		gfxDevice->DeleteBuffer(this->m_culledInstancesCounterBuffer);
+		if (this->m_culledInstancesBuffer.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->m_culledInstancesBuffer);
+		}
+		this->m_culledInstancesBuffer = gfxDevice->CreateBuffer({
+				   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter | BufferMiscFlags::Bindless,
+				   .Binding = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
+				   .InitialState = ResourceStates::ShaderResource,
+				   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
+				   .SizeInBytes = cullInstanceBufferSizeInBytes,
+				   .AllowUnorderedAccess = true,
+				   .UavCounterOffsetInBytes = 0,
+				   .UavCounterBuffer = this->m_culledInstancesCounterBuffer });
 	}
 
-	this->m_culledInstancesCounterBuffer = gfxDevice->CreateBuffer({
-			   .MiscFlags = BufferMiscFlags::Raw | BufferMiscFlags::Bindless,
-			   .Binding = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
-			   .InitialState = ResourceStates::ShaderResource,
-			   .StrideInBytes = sizeof(uint32_t),
-			   .SizeInBytes = sizeof(uint32_t),
-			   .AllowUnorderedAccess = true });
 
-	this->m_culledInstancesBuffer = gfxDevice->CreateBuffer({
-			   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter | BufferMiscFlags::Bindless,
-			   .Binding = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
-			   .InitialState = ResourceStates::ShaderResource,
-			   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
-			   .SizeInBytes = sizeof(Shader::New::MeshDrawCommand) * view.size(),
-			   .AllowUnorderedAccess = true,
-			   .UavCounterOffsetInBytes = 0,
-			   .UavCounterBuffer = this->m_culledInstancesCounterBuffer });
-
-	if (this->m_indirectDrawLateBuffer.IsValid())
+	if (!this->m_indirectDrawLateBuffer.IsValid() ||
+		gfxDevice->GetBufferDesc(this->m_indirectDrawLateBuffer).SizeInBytes < indirectMeshBufferByteSize)
 	{
-		gfxDevice->DeleteBuffer(this->m_indirectDrawLateBuffer);
+		if (this->m_indirectDrawLateBuffer.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->m_indirectDrawLateBuffer);
+		}
+		this->m_indirectDrawLateBuffer = gfxDevice->CreateBuffer({
+				   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter | BufferMiscFlags::Bindless,
+				   .Binding = BindingFlags::UnorderedAccess,
+				   .InitialState = ResourceStates::IndirectArgument,
+				   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
+				   .SizeInBytes = indirectMeshBufferByteSize,
+				   .AllowUnorderedAccess = true,
+				   .UavCounterOffsetInBytes = indirectMeshBufferByteSize - sizeof(uint32_t) });
 	}
-	this->m_indirectDrawLateBuffer = gfxDevice->CreateBuffer({
-			   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter | BufferMiscFlags::Bindless,
-			   .Binding = BindingFlags::UnorderedAccess,
-			   .InitialState = ResourceStates::IndirectArgument,
-			   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
-			   .SizeInBytes = indirectMeshBufferByteSize,
-			   .AllowUnorderedAccess = true,
-			   .UavCounterOffsetInBytes = indirectMeshBufferByteSize - sizeof(uint32_t) });
 }
 
 void PhxEngine::Scene::Scene::BuildSceneData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice)

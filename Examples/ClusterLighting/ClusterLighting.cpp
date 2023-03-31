@@ -35,6 +35,8 @@ using namespace PhxEngine::Renderer;
 
 constexpr static uint32_t kNumLightInstances = 256;
 
+
+#define DebugLights
 // TODO: Move to a healper
 
 namespace
@@ -363,6 +365,7 @@ public:
     struct GeneratorSettings
     {
         int NumLights = 0;
+        bool AddDebugMeshes = false;
     };
 
     void GenerateLights(GeneratorSettings const& settings)
@@ -375,14 +378,6 @@ public:
 
         const auto& boundingBoxAABB = this->m_scene.GetBoundingBox();
         const auto& centre = boundingBoxAABB.GetCenter();
-
-        // TODO: Remove
-        Scene::TransformComponent t = {};
-        t.LocalTranslation = centre;
-        t.SetDirty();
-        t.UpdateTransform();
-
-        this->m_mainCamera.TransformCamera(t);
 
         // Spawn a ton of instances
         for (int i = 0; i < settings.NumLights; i++)
@@ -420,10 +415,11 @@ public:
                 scale);
 
             axis = DirectX::XMVector3Normalize(axis);
+            const float Bias = 2.0f;
             XMMATRIX translation = DirectX::XMMatrixTranslation(
-                Core::Random::GetRandom(sceneBoundingBox.Min.x, sceneBoundingBox.Max.x),
-                Core::Random::GetRandom(sceneBoundingBox.Min.y, sceneBoundingBox.Max.y),
-                Core::Random::GetRandom(sceneBoundingBox.Min.z, sceneBoundingBox.Max.z));
+                Core::Random::GetRandom(sceneBoundingBox.Min.x + Bias, sceneBoundingBox.Max.x - Bias),
+                Core::Random::GetRandom(sceneBoundingBox.Min.y + Bias, sceneBoundingBox.Max.y - Bias),
+                Core::Random::GetRandom(sceneBoundingBox.Min.z + Bias, sceneBoundingBox.Max.z - Bias));
 
             DirectX::XMStoreFloat4x4(&transform.WorldMatrix, scaleMatrix * DirectX::XMMatrixRotationAxis(axis, angle) * translation);
             transform.SetDirty();
@@ -431,17 +427,20 @@ public:
             transform.ApplyTransform();
             transform.UpdateTransform();
 
-            auto& debugMeshInst = entity.AddComponent<Scene::MeshInstanceComponent>();
-            debugMeshInst.Color = { 0.0f, 0.0f, 0.0f, 1.0f };
-            debugMeshInst.EmissiveColor = {
-                lightComp.Colour.x * lightComp.Intensity,
-                lightComp.Colour.y * lightComp.Intensity,
-                lightComp.Colour.z * lightComp.Intensity,
-                1.0f };
+            if (settings.AddDebugMeshes)
+            {
+                auto& debugMeshInst = entity.AddComponent<Scene::MeshInstanceComponent>();
+                debugMeshInst.Color = { 0.0f, 0.0f, 0.0f, 1.0f };
+                debugMeshInst.EmissiveColor = {
+                    lightComp.Colour.x * lightComp.Intensity,
+                    lightComp.Colour.y * lightComp.Intensity,
+                    lightComp.Colour.z * lightComp.Intensity,
+                    1.0f };
 
-            debugMeshInst.Mesh = lightComp.Type == Scene::LightComponent::kOmniLight
-                ? this->m_debugLightOmniMesh
-                : this->m_debugLightSpotMesh;
+                debugMeshInst.Mesh = lightComp.Type == Scene::LightComponent::kOmniLight
+                    ? this->m_debugLightOmniMesh
+                    : this->m_debugLightSpotMesh;
+            }
         }
     }
 
@@ -490,6 +489,7 @@ public:
             {
                 static ClusterLightingApp::GeneratorSettings settings = {};
                 ImGui::SliderInt("Num Lights", &settings.NumLights, 0, kNumLightInstances);
+                ImGui::Checkbox("Add Debug Meshes", &settings.AddDebugMeshes);
 
                 if (ImGui::Button("Generate"))
                 {
