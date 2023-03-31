@@ -1543,3 +1543,58 @@ Entity PhxEngine::Scene::Scene::CreateSphere(
 	mesh.BuildRenderData(this->GetAllocator(), gfxDevice);
 	return retVal;
 }
+
+Entity PhxEngine::Scene::Scene::CreatePlane(RHI::IGraphicsDevice* gfxDevice, entt::entity matId, float width, float height, bool rhcoords)
+{
+	constexpr uint32_t PlaneIndices[] =
+	{
+		0, 3, 1, 1, 3, 2
+	};
+
+	Entity retVal = this->CreateEntity("Plane Mesh");
+	MeshComponent& mesh = retVal.AddComponent<MeshComponent>();
+	mesh.Material = matId;
+
+	mesh.TotalVertices = 4;
+	mesh.TotalIndices = _ARRAYSIZE(PlaneIndices);
+	mesh.InitializeCpuBuffers(this->GetAllocator());
+
+	mesh.Positions[0] = { -0.5f * width, 0.0f, 0.5f * height };
+	mesh.Positions[1] = { 0.5f * width, 0.0f,  0.5f * height };
+	mesh.Positions[2] = { 0.5f * width, 0.0f, -0.5f * height };
+	mesh.Positions[3] = { -0.5f * width, 0.0f, -0.5f * height };
+
+	mesh.Normals[0] = { 0.0f, 1.0f, 0.0f };
+	mesh.Normals[1] = { 0.0f, 1.0f, 0.0f };
+	mesh.Normals[2] = { 0.0f, 1.0f, 0.0f };
+	mesh.Normals[3] = { 0.0f, 1.0f, 0.0f };
+
+	mesh.TexCoords[0] = { 0, 0 };
+	mesh.TexCoords[1] = { 1, 0 };
+	mesh.TexCoords[2] = { 1, 1 };
+	mesh.TexCoords[3] = { 0, 1 };
+
+	std::memcpy(mesh.Indices, &PlaneIndices, _ARRAYSIZE(PlaneIndices) * sizeof(uint32_t));
+
+
+	mesh.ComputeTangentSpace();
+
+	mesh.Flags =
+		MeshComponent::Flags::kContainsNormals |
+		MeshComponent::Flags::kContainsTexCoords |
+		MeshComponent::Flags::kContainsTangents |
+		MeshComponent::Flags::kContainsColour;
+
+	if (rhcoords)
+	{
+		mesh.ReverseWinding();
+		mesh.FlipZ();
+	}
+
+	mesh.ComputeBounds();
+	mesh.ComputeMeshletData(this->GetAllocator());
+
+	mesh.BuildRenderData(this->GetAllocator(), gfxDevice);
+
+	return retVal;
+}
