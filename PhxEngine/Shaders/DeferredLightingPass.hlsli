@@ -140,16 +140,16 @@ float4 main(PSInput input) : SV_TARGET
     lightingTerms.Init();
 
     
-    if (GetFrame().Flags & FRAME_FLAGS_USE_SIMPLE_LIGHT_LOOP)
-    {
-        DirectLightContribution_Simple(GetScene(), brdfSurfaceData, surface, lightingTerms);
-    }
-    else
+    if (GetFrame().Flags & FRAME_FLAGS_ENABLE_CLUSTER_LIGHTING)
     {
         uint2 tileIndex = uint2(floor(pixelPosition / TILE_SIZE));
         uint stride = uint(NUM_WORDS) / uint(TILE_SIZE);
         uint address = tileIndex.y * stride + tileIndex.x;
         DirectLightContribution_Cluster(GetScene(), brdfSurfaceData, surface, address, lightingTerms);
+    }
+    else
+    {
+        DirectLightContribution_Simple(GetScene(), brdfSurfaceData, surface, lightingTerms);
     }
     
 /*

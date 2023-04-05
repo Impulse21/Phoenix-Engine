@@ -86,7 +86,7 @@ void PhxEngine::Renderer::ClusterLighting::Update(
 	DirectX::XMMATRIX projM = DirectX::XMLoadFloat4x4(&camera.Projection);
 	for (auto e : lightView)
 	{
-		if (numLights < kNumLights)
+		if (numLights >= kNumLights)
 		{
 			break;
 		}
@@ -104,9 +104,9 @@ void PhxEngine::Renderer::ClusterLighting::Update(
 		sortedLight.GlobalLightIndex = light.GlobalBufferIndex;
 		sortedLight.Position = positionV;
 		sortedLight.Range = light.Range;
-		sortedLight.ProjectedZ = ((DirectX::XMVectorGetZ(positionVS) - camera.ZNear) / (camera.ZFar - camera.ZFar));
-		sortedLight.ProjectedZMin = ((DirectX::XMVectorGetZ(positionMinVS) - camera.ZNear) / (camera.ZFar - camera.ZFar));
-		sortedLight.ProjectedZMax = ((DirectX::XMVectorGetZ(positionMaxVS) - camera.ZNear) / (camera.ZFar - camera.ZFar));
+		sortedLight.ProjectedZ = ((DirectX::XMVectorGetZ(positionVS) - camera.ZNear) / (camera.ZFar - camera.ZNear));
+		sortedLight.ProjectedZMin = ((DirectX::XMVectorGetZ(positionMinVS) - camera.ZNear) / (camera.ZFar - camera.ZNear));
+		sortedLight.ProjectedZMax = ((DirectX::XMVectorGetZ(positionMaxVS) - camera.ZNear) / (camera.ZFar - camera.ZNear));
 	}
 
 	std::sort(sortedLights, sortedLights + numLights, [](SortedLight& elemA, SortedLight const& elemB) {
@@ -133,6 +133,7 @@ void PhxEngine::Renderer::ClusterLighting::Update(
 	{
 		uint32_t minLightId = kNumLights + 1;
 		uint32_t maxLightId = 0;
+		pLightLut[iBin] = minLightId | (maxLightId << 16u);
 
 		float binMin = binSize * iBin;
 		float binMax = binMin + binSize;

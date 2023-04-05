@@ -206,7 +206,7 @@ namespace Shader::New
 	static const uint FRAME_FLAGS_DISABLE_CULL_MESHLET = 1 << 0;
 	static const uint FRAME_FLAGS_DISABLE_CULL_FRUSTUM = 1 << 1;
 	static const uint FRAME_FLAGS_DISABLE_CULL_OCCLUSION = 1 << 2;
-	static const uint FRAME_FLAGS_USE_SIMPLE_LIGHT_LOOP = 1 << 3;
+	static const uint FRAME_FLAGS_ENABLE_CLUSTER_LIGHTING = 1 << 3;
 
 	struct Frame
 	{

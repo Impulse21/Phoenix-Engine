@@ -418,7 +418,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::BuildUI()
 		ImGui::Checkbox("Enable Meshlet Culling", &this->m_settings.EnableMeshletCulling);
 	}
 	ImGui::Checkbox("Enable Compute Deferred Shading", &this->m_settings.EnableComputeDeferredLighting);
-	ImGui::Checkbox("Enable Simple Light Loop", &this->m_settings.EnableSimpleLightLoop);
+	ImGui::Checkbox("Enable Cluster Lighting", &this->m_settings.EnableClusterLightLighting);
 }
 
 tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadShaders(tf::Taskflow& taskflow)
@@ -614,9 +614,9 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 	{
 		frameData.Flags |= Shader::New::FRAME_FLAGS_DISABLE_CULL_MESHLET;
 	}
-	if (this->m_settings.EnableSimpleLightLoop)
+	if (this->m_settings.EnableClusterLightLighting)
 	{
-		frameData.Flags |= Shader::New::FRAME_FLAGS_USE_SIMPLE_LIGHT_LOOP;
+		frameData.Flags |= Shader::New::FRAME_FLAGS_ENABLE_CLUSTER_LIGHTING;
 	}
 	
 	frameData.SortedLightBufferIndex = this->m_gfxDevice->GetDescriptorIndex(this->m_clusterLighting.SortedLightBuffer, SubresouceType::SRV);
@@ -660,7 +660,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 		0,
 		this->m_gfxDevice->GetBufferDesc(scene.GetInstanceUploadBuffer()).SizeInBytes);
 
-	if (!this->m_settings.EnableSimpleLightLoop)
+	if (this->m_settings.EnableClusterLightLighting)
 	{
 		this->m_clusterLighting.Update(this->m_gfxDevice, commandList, scene, mainCamera);
 	}
