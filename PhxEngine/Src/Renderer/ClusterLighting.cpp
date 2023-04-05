@@ -191,8 +191,8 @@ void PhxEngine::Renderer::ClusterLighting::Update(
 
 
 	RHI::GPUAllocation lightTileBits = commandList->AllocateGpu(bufferSize, sizeof(uint32_t));
-	uint32_t* pLightTileBits = static_cast<uint32_t*>(lightLutAllocation.CpuData);
-	std::memset(pLightIndices, 0, bufferSize);
+	uint32_t* pLightTileBits = static_cast<uint32_t*>(lightTileBits.CpuData);
+	std::memset(pLightTileBits, 0, bufferSize);
 	for (uint32_t i = 0; i < sortedLightSpan.Size(); ++i)
 	{
 		const SortedLight& light = sortedLightSpan[i];
@@ -299,7 +299,6 @@ void PhxEngine::Renderer::ClusterLighting::Update(
 			}
 		}
 	}
-
 
 	commandList->CopyBuffer(
 		this->LightTilesBuffer,
