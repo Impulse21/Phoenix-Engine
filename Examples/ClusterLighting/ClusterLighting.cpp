@@ -304,7 +304,7 @@ public:
 
         this->m_scene.Initialize(&PhxEngine::Core::MemoryService::GetInstance().GetSystemAllocator());
 
-        bool retVal = sceneLoader->LoadScene(
+         bool retVal = sceneLoader->LoadScene(
             fileSystem,
             this->m_textureCache,
             sceneFilename,

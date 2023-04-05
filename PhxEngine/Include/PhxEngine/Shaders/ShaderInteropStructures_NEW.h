@@ -198,6 +198,7 @@ namespace Shader::New
 		uint InstanceCount;
 		uint LightBufferIdx;
 		uint LightCount;
+		uint _padding;
 
 	};
 
@@ -205,11 +206,18 @@ namespace Shader::New
 	static const uint FRAME_FLAGS_DISABLE_CULL_MESHLET = 1 << 0;
 	static const uint FRAME_FLAGS_DISABLE_CULL_FRUSTUM = 1 << 1;
 	static const uint FRAME_FLAGS_DISABLE_CULL_OCCLUSION = 1 << 2;
+	static const uint FRAME_FLAGS_USE_SIMPLE_LIGHT_LOOP = 1 << 3;
 
 	struct Frame
 	{
 		uint Flags;
 		uint DepthPyramidIndex;
+		uint SortedLightBufferIndex;
+		uint LightLutBufferIndex;
+
+		// -- 16 byte boundary ----
+		uint LightTilesBufferIndex;
+		uint _padding;
 		uint __padding;
 		uint ___padding;
 
@@ -251,13 +259,11 @@ namespace Shader::New
 		}
 		inline float GetZNear()
 		{
-			return 0.0f;
-			// Proj.elements[14] / (Proj.elements[10] - 1.0);
+			return -Proj._43 / Proj._33;
 		}
 		inline float GetZFar()
 		{
-			return 0.0f;
-			// Proj.elements[14] / (Proj.elements[10] - 1.0);
+			return -Proj._43 / (Proj._33 - 1.0f);
 		}
 #endif 
 	};

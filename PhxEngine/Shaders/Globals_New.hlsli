@@ -88,4 +88,21 @@ inline Light LoadLight(uint index)
     return buffer[index];
 }
 
+inline uint GetLightBin(uint index)
+{
+    StructuredBuffer<uint> buffer = ResourceDescriptorHeap[GetFrame().LightLutBufferIndex];
+    return buffer[index];
+}
+
+inline uint GetLightTile(uint index)
+{
+    StructuredBuffer<uint> buffer = ResourceDescriptorHeap[GetFrame().LightTilesBufferIndex];
+    return buffer[index];
+}
+
+inline uint GetLightIndex(uint index)
+{
+    StructuredBuffer<uint> buffer = ResourceDescriptorHeap[GetFrame().SortedLightBufferIndex];
+    return buffer[index];
+}
 #endif // __PHX_GLOBALS_HLSLI__

@@ -1,13 +1,12 @@
 #pragma once
 
 
-#include <PhxEngine/RHI/PhxRHI.h>B
-#include <PhxEngine/Core/Math.h>
+#include <PhxEngine/RHI/PhxRHI.h>
+#include <PhxEngine/Core/Memory.h>
 #include "D3D12Common.h"
 
 #include <deque>
 #include <memory>
-
 
 namespace PhxEngine::RHI::D3D12
 {
@@ -23,7 +22,7 @@ namespace PhxEngine::RHI::D3D12
 			size_t Offset;
 		};
 
-		explicit UploadBuffer(D3D12GraphicsDevice& device, size_t pageSize = MBToBytes(10));
+		explicit UploadBuffer(D3D12GraphicsDevice& device, size_t pageSize = PhxMB(100));
 
 		Allocation Allocate(size_t sizeInBytes, size_t alignment);
 

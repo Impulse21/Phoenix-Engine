@@ -59,6 +59,8 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Initialize(DirectX::XMFLOAT2 con
 		this->m_frameCB = RHI::IGraphicsDevice::GPtr->CreateBuffer(bufferDesc);
 	}
 
+	this->m_clusterLighting.Initialize(this->m_gfxDevice, canvasSize);
+
 	loadFuture.wait();
 
 	// Create Command Signatre
@@ -416,6 +418,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::BuildUI()
 		ImGui::Checkbox("Enable Meshlet Culling", &this->m_settings.EnableMeshletCulling);
 	}
 	ImGui::Checkbox("Enable Compute Deferred Shading", &this->m_settings.EnableComputeDeferredLighting);
+	ImGui::Checkbox("Enable Simple Light Loop", &this->m_settings.EnableSimpleLightLoop);
 }
 
 tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadShaders(tf::Taskflow& taskflow)
@@ -611,6 +614,14 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 	{
 		frameData.Flags |= Shader::New::FRAME_FLAGS_DISABLE_CULL_MESHLET;
 	}
+	if (this->m_settings.EnableSimpleLightLoop);
+	{
+		frameData.Flags |= Shader::New::FRAME_FLAGS_USE_SIMPLE_LIGHT_LOOP;
+	}
+	
+	frameData.SortedLightBufferIndex = this->m_gfxDevice->GetDescriptorIndex(this->m_clusterLighting.SortedLightBuffer, SubresouceType::SRV);
+	frameData.LightLutBufferIndex = this->m_gfxDevice->GetDescriptorIndex(this->m_clusterLighting.LightLutBuffer, SubresouceType::SRV);
+	frameData.LightTilesBufferIndex = this->m_gfxDevice->GetDescriptorIndex(this->m_clusterLighting.LightTilesBuffer, SubresouceType::SRV);
 
 	frameData.SceneData = scene.GetShaderData();
 	frameData.DepthPyramidIndex = this->m_gfxDevice->GetDescriptorIndex(this->m_depthPyramid, SubresouceType::SRV);
@@ -625,6 +636,9 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 		RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesCounterBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesCounterBuffer()).InitialState, RHI::ResourceStates::CopyDest),
 		RHI::GpuBarrier::CreateBuffer(scene.GetLightBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetLightBuffer()).InitialState, RHI::ResourceStates::CopyDest),
 		RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetInstanceBuffer()).InitialState, RHI::ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(this->m_clusterLighting.SortedLightBuffer, this->m_gfxDevice->GetBufferDesc(this->m_clusterLighting.SortedLightBuffer).InitialState, RHI::ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(this->m_clusterLighting.LightLutBuffer, this->m_gfxDevice->GetBufferDesc(this->m_clusterLighting.LightLutBuffer).InitialState, RHI::ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(this->m_clusterLighting.LightTilesBuffer, this->m_gfxDevice->GetBufferDesc(this->m_clusterLighting.LightTilesBuffer).InitialState, RHI::ResourceStates::CopyDest),
 	};
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
 
@@ -646,6 +660,11 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 		0,
 		this->m_gfxDevice->GetBufferDesc(scene.GetInstanceUploadBuffer()).SizeInBytes);
 
+	if (!this->m_settings.EnableSimpleLightLoop)
+	{
+		this->m_clusterLighting.Update(this->m_gfxDevice, commandList, scene, mainCamera);
+	}
+
 	RHI::GpuBarrier postCopyBarriers[] =
 	{
 		RHI::GpuBarrier::CreateBuffer(this->m_frameCB, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ConstantBuffer),
@@ -655,6 +674,9 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 		RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesCounterBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesCounterBuffer()).InitialState),
 		RHI::GpuBarrier::CreateBuffer(scene.GetLightBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetLightBuffer()).InitialState),
 		RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetInstanceBuffer()).InitialState),
+		RHI::GpuBarrier::CreateBuffer(this->m_clusterLighting.SortedLightBuffer, RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(this->m_clusterLighting.SortedLightBuffer).InitialState),
+		RHI::GpuBarrier::CreateBuffer(this->m_clusterLighting.LightLutBuffer, RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(this->m_clusterLighting.LightLutBuffer).InitialState),
+		RHI::GpuBarrier::CreateBuffer(this->m_clusterLighting.LightTilesBuffer, RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(this->m_clusterLighting.LightTilesBuffer).InitialState),
 	};
 
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));

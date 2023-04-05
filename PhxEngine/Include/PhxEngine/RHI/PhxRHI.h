@@ -1225,6 +1225,7 @@ namespace PhxEngine::RHI
         void* CpuData;
         BufferHandle GpuBuffer;
         size_t Offset;
+        size_t SizeInBytes;
     };
 
     struct CommandSignatureDesc
