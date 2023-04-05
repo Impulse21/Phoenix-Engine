@@ -39,6 +39,7 @@ namespace PhxEngine::Renderer
 		{
 			GBufferFillPass,
 			DeferredLightingPass,
+			ClusterLightsDebugPass,
 			ToneMappingPass,
 			Count
 		};
@@ -51,6 +52,7 @@ namespace PhxEngine::Renderer
 			CullPass,
 			DepthPyramidGen,
 			DeferredLightingPass,
+			ClusterLightsDebugPass,
 			Count
 		};
 	}
@@ -70,16 +72,19 @@ namespace PhxEngine::Renderer
 		{
 			VS_GBufferFill,
 			VS_DeferredLightingPass,
+			VS_ClusterLightsDebugPass,
 			VS_Rect,
 
 			PS_GBufferFill,
 			PS_DeferredLightingPass,
+			PS_ClusterLightsDebugPass,
 			PS_Blit,
 			PS_ToneMapping,
 
 			CS_CullPass,
 			CS_DepthPyramidGen,
 			CS_DeferredLightingPass,
+			CS_ClusterLightsDebugPass,
 
 			AS_MeshletCull,
 
@@ -172,6 +177,7 @@ namespace PhxEngine::Renderer
 			bool EnableOcclusionCulling = true;
 			bool FreezeCamera = false;
 			bool EnableClusterLightLighting = false;
+			bool EnableClusterLightDebugView = false;
 		} m_settings;
 		
 	};
