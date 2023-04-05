@@ -389,7 +389,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::WindowResize(DirectX::XMFLOAT2 c
 		desc.IsTypeless = true;
 		desc.Format = RHI::RHIFormat::RGBA16_FLOAT;
 		desc.DebugName = "Colour Buffer";
-		desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::RenderTarget;
+		desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::RenderTarget | RHI::BindingFlags::UnorderedAccess;
 
 		if (this->m_colourBuffer.IsValid())
 		{
@@ -602,19 +602,19 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 	auto _ = commandList->BeginScopedMarker("Prepare Frame Data");
 
 	Shader::New::Frame frameData = {};
-	if (!this->m_settings.EnableFrustraCulling);
+	if (!this->m_settings.EnableFrustraCulling)
 	{
 		frameData.Flags |= Shader::New::FRAME_FLAGS_DISABLE_CULL_FRUSTUM;
 	}
-	if (!this->m_settings.EnableOcclusionCulling);
+	if (!this->m_settings.EnableOcclusionCulling)
 	{
 		frameData.Flags |= Shader::New::FRAME_FLAGS_DISABLE_CULL_OCCLUSION;
 	}
-	if (!this->m_settings.EnableMeshletCulling);
+	if (!this->m_settings.EnableMeshletCulling)
 	{
 		frameData.Flags |= Shader::New::FRAME_FLAGS_DISABLE_CULL_MESHLET;
 	}
-	if (this->m_settings.EnableSimpleLightLoop);
+	if (this->m_settings.EnableSimpleLightLoop)
 	{
 		frameData.Flags |= Shader::New::FRAME_FLAGS_USE_SIMPLE_LIGHT_LOOP;
 	}
