@@ -444,6 +444,7 @@ GPUAllocation D3D12CommandList::AllocateGpu(size_t bufferSize, size_t stride)
     gpuAlloc.GpuBuffer = heapAllocation.BufferHandle;
     gpuAlloc.CpuData = heapAllocation.CpuData;
     gpuAlloc.Offset = heapAllocation.Offset;
+    gpuAlloc.SizeInBytes = bufferSize;
 
     return gpuAlloc;
 }

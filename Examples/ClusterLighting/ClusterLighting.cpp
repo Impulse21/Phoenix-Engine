@@ -35,6 +35,8 @@ using namespace PhxEngine::Renderer;
 
 constexpr static uint32_t kNumLightInstances = 256;
 
+
+#define DebugLights
 // TODO: Move to a healper
 
 namespace
@@ -240,12 +242,12 @@ struct AppSettings
     uint32_t NumSpotLights = 128;
 };
 
-class GpuCullingApp : public ApplicationBase
+class ClusterLightingApp : public ApplicationBase
 {
 private:
 
 public:
-    GpuCullingApp(IPhxEngineRoot* root)
+    ClusterLightingApp(IPhxEngineRoot* root)
         : ApplicationBase(root)
     {
     }
@@ -302,89 +304,24 @@ public:
 
         this->m_scene.Initialize(&PhxEngine::Core::MemoryService::GetInstance().GetSystemAllocator());
 
-        bool retVal = sceneLoader->LoadScene(
+         bool retVal = sceneLoader->LoadScene(
             fileSystem,
             this->m_textureCache,
             sceneFilename,
             commandList,
             this->m_scene);
 
+        Scene::Entity matEntity = this->m_scene.CreateEntity("Light Mat");
+        auto& mat = matEntity.AddComponent<Scene::MaterialComponent>();
+        mat.BaseColour = { 0.0f, 0.0f, 0.0f, 1.0f };
+        mat.Emissive = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+        this->m_debugLightOmniMesh = this->m_scene.CreateSphere(this->GetGfxDevice(), matEntity, 0.2f, 10u);
+        this->m_debugLightSpotMesh = this->m_scene.CreateCube(this->GetGfxDevice(), matEntity, 0.2f);
+
         commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList }, true);
 
-        this->m_editableLightComponent = this->m_scene.CreateEntity("Custom Light Node");
-        auto& lightComp = this->m_editableLightComponent.AddComponent<Scene::LightComponent>();
-
-        lightComp.Type = Scene::LightComponent::kDirectionalLight;
-        lightComp.Colour = {
-                1.0f,
-                1.0f,
-                1.0f,
-                1.0f };
-        lightComp.Intensity = 6.0f;
-        lightComp.Range = 60.0f;
-        lightComp.InnerConeAngle = 0;
-        lightComp.OuterConeAngle = DirectX::XM_PIDIV4;
-
-
-        // Place the light in the centre
-        auto& transform = this->m_editableLightComponent.GetComponent<Scene::TransformComponent>();
-
-        transform.LocalTranslation = { 4.0f, 3.0f, 0.0f };
-        transform.RotateRollPitchYaw({ DirectX::XMConvertToRadians(180), 0.0f, 0.0f });
-        transform.SetDirty();
-
-        transform.UpdateTransform();
-
-        /*
-		auto spawnLight = [&](Scene::LightComponent& light) {
-
-            light.Colour = {
-				Core::Random::GetRandom(0.0f, 1.0f),
-				Core::Random::GetRandom(0.0f, 1.0f),
-				Core::Random::GetRandom(0.0f, 1.0f),
-				1.0f };
-            light.
-		};
-
-        // Spawn a ton of instances
-        for (int i = 0; i < kNumLightInstances; i++)
-        {
-
-            static size_t emptyNode = 0;
-            auto entity = this->m_scene.CreateEntity("Light Node " + std::to_string(emptyNode++));
-            auto& lightComp = entity.AddComponent<Scene::LightComponent>();
-
-
-
-            auto& transform = entity.GetComponent<Scene::TransformComponent>();
-
-            float angle = Core::Random::GetRandom(0.0f, 1.0f) * DirectX::XM_2PI;
-            XMVECTOR axis = XMVectorSet(
-                Core::Random::GetRandom(-1.0f, 1.0f),
-                Core::Random::GetRandom(-1.0f, 1.0f),
-                Core::Random::GetRandom(-1.0f, 1.0f),
-                0);
-
-            float scale = Core::Random::GetRandom(1.0f, 4.0f);
-            XMMATRIX scaleMatrix = XMMatrixScaling(
-                scale,
-                scale,
-                scale);
-
-            axis = DirectX::XMVector3Normalize(axis);
-            XMMATRIX translation = DirectX::XMMatrixTranslation(
-                Core::Random::GetRandom(kSceneExtent.x, kSceneExtent.y),
-                Core::Random::GetRandom(kSceneExtent.x, kSceneExtent.y),
-                Core::Random::GetRandom(kSceneExtent.x, kSceneExtent.y));
-
-            DirectX::XMStoreFloat4x4(&transform.WorldMatrix, scaleMatrix * DirectX::XMMatrixRotationAxis(axis, angle) * translation);
-            transform.SetDirty();
-
-            transform.ApplyTransform();
-            transform.UpdateTransform();
-        }
-        */
         this->m_scene.BuildRenderData(this->GetGfxDevice());
 
         return retVal;
@@ -425,9 +362,90 @@ public:
         this->m_deferredRenderer->Render(this->m_scene, this->m_mainCamera);
     }
 
+    struct GeneratorSettings
+    {
+        int NumLights = 0;
+        bool AddDebugMeshes = false;
+    };
+
+    void GenerateLights(GeneratorSettings const& settings)
+    {
+        auto& sceneBoundingBox = this->m_scene.GetBoundingBox();
+
+        // Clear Existing
+        this->m_scene.GetRegistry().clear<Scene::LightComponent>();
+        assert(this->m_scene.GetAllEntitiesWith<Scene::LightComponent>().size() == 0);
+
+        const auto& boundingBoxAABB = this->m_scene.GetBoundingBox();
+        const auto& centre = boundingBoxAABB.GetCenter();
+
+        // Spawn a ton of instances
+        for (int i = 0; i < settings.NumLights; i++)
+        {
+            static size_t emptyNode = 0;
+            auto entity = this->m_scene.CreateEntity("Light Node " + std::to_string(emptyNode++));
+
+            auto& lightComp = entity.AddComponent<Scene::LightComponent>();
+            lightComp.SetEnabled(true);
+            lightComp.Type = (Scene::LightComponent::LightType)Core::Random::GetRandom(1, 2);
+            lightComp.Colour = {
+                Core::Random::GetRandom(0.0f, 1.0f),
+                Core::Random::GetRandom(0.0f, 1.0f),
+                Core::Random::GetRandom(0.0f, 1.0f),
+                1.0f };
+
+            lightComp.Intensity = Core::Random::GetRandom(0.0f, 100.0f);
+            lightComp.Range = Core::Random::GetRandom(0.0f, 100.0f);
+            lightComp.InnerConeAngle = Core::Random::GetRandom(0.0f, XM_PIDIV2 - 0.01f);
+            lightComp.OuterConeAngle = Core::Random::GetRandom(lightComp.InnerConeAngle, XM_PIDIV2 - 0.01f);
+
+            auto& transform = entity.GetComponent<Scene::TransformComponent>();
+
+            float angle = Core::Random::GetRandom(0.0f, 1.0f) * DirectX::XM_2PI;
+            XMVECTOR axis = XMVectorSet(
+                Core::Random::GetRandom(-1.0f, 1.0f),
+                Core::Random::GetRandom(-1.0f, 1.0f),
+                Core::Random::GetRandom(-1.0f, 1.0f),
+                0);
+
+            float scale = Core::Random::GetRandom(1.0f, 4.0f);
+            XMMATRIX scaleMatrix = XMMatrixScaling(
+                scale,
+                scale,
+                scale);
+
+            axis = DirectX::XMVector3Normalize(axis);
+            const float Bias = 2.0f;
+            XMMATRIX translation = DirectX::XMMatrixTranslation(
+                Core::Random::GetRandom(sceneBoundingBox.Min.x + Bias, sceneBoundingBox.Max.x - Bias),
+                Core::Random::GetRandom(sceneBoundingBox.Min.y + Bias, sceneBoundingBox.Max.y - Bias),
+                Core::Random::GetRandom(sceneBoundingBox.Min.z + Bias, sceneBoundingBox.Max.z - Bias));
+
+            DirectX::XMStoreFloat4x4(&transform.WorldMatrix, scaleMatrix * DirectX::XMMatrixRotationAxis(axis, angle) * translation);
+            transform.SetDirty();
+
+            transform.ApplyTransform();
+            transform.UpdateTransform();
+
+            if (settings.AddDebugMeshes)
+            {
+                auto& debugMeshInst = entity.AddComponent<Scene::MeshInstanceComponent>();
+                debugMeshInst.Color = { 0.0f, 0.0f, 0.0f, 1.0f };
+                debugMeshInst.EmissiveColor = {
+                    lightComp.Colour.x * lightComp.Intensity,
+                    lightComp.Colour.y * lightComp.Intensity,
+                    lightComp.Colour.z * lightComp.Intensity,
+                    1.0f };
+
+                debugMeshInst.Mesh = lightComp.Type == Scene::LightComponent::kOmniLight
+                    ? this->m_debugLightOmniMesh
+                    : this->m_debugLightSpotMesh;
+            }
+        }
+    }
+
     std::shared_ptr<Graphics::ShaderFactory> GetShaderFactory() { return this->m_shaderFactory; }
     std::shared_ptr<Renderer::RenderPath3DDeferred> GetRenderer() { return this->m_deferredRenderer; }
-    Scene::Entity& GetLightEntity() { return this->m_editableLightComponent; }
     
 private:
 
@@ -439,18 +457,19 @@ private:
     Scene::CameraComponent m_mainCamera;
     PhxEngine::FirstPersonCameraController m_cameraController;
 
-    std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
+    Scene::Entity m_debugLightOmniMesh;
+    Scene::Entity m_debugLightSpotMesh;
 
-    Scene::Entity m_editableLightComponent;
+    std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
 };
 
 
-class GpuCullingAppUI : public PhxEngine::ImGuiRenderer
+class ClusterLightingAppUI : public PhxEngine::ImGuiRenderer
 {
 private:
 
 public:
-    GpuCullingAppUI(IPhxEngineRoot* root, GpuCullingApp* app)
+    ClusterLightingAppUI(IPhxEngineRoot* root, ClusterLightingApp* app)
         : ImGuiRenderer(root)
         , m_app(app)
     {
@@ -466,9 +485,16 @@ public:
                 this->m_app->GetRenderer()->BuildUI();
             }
 
-            if (ImGui::CollapsingHeader("Light"))
+            if (ImGui::CollapsingHeader("Light Generation"))
             {
-                this->DrawEntityComponent(this->m_app->GetLightEntity());
+                static ClusterLightingApp::GeneratorSettings settings = {};
+                ImGui::SliderInt("Num Lights", &settings.NumLights, 0, kNumLightInstances);
+                ImGui::Checkbox("Add Debug Meshes", &settings.AddDebugMeshes);
+
+                if (ImGui::Button("Generate"))
+                {
+                    this->m_app->GenerateLights(settings);
+                }
             }
 
             ImGui::End();
@@ -550,7 +576,7 @@ public:
             });
     }
 private:
-    GpuCullingApp* m_app;
+    ClusterLightingApp* m_app;
 };
 
 #ifdef WIN32
@@ -573,12 +599,12 @@ int main(int __argc, const char** __argv)
     root->Initialize(params);
 
     {
-        GpuCullingApp app(root.get());
+        ClusterLightingApp app(root.get());
         if (app.Initialize())
         {
             root->AddPassToBack(&app);
 
-            GpuCullingAppUI userInterface(root.get(), &app);
+            ClusterLightingAppUI userInterface(root.get(), &app);
             if (userInterface.Initialize(*app.GetShaderFactory()))
             {
                 root->AddPassToBack(&userInterface);

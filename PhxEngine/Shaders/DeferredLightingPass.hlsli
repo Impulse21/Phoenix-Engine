@@ -3,7 +3,7 @@
 
 #include "Globals_New.hlsli"
 #include "Lighting_New.hlsli"
-#include "GBuffer.hlsli"
+#include "GBuffer_New.hlsli"
 #include "FullScreenHelpers.hlsli"
 #include "Shadows.hlsli"
 
@@ -22,7 +22,7 @@
 	"RootFlags(CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED), " \
 	"CBV(b0), " \
 	"CBV(b1), " \
-    "DescriptorTable(SRV(t1, numDescriptors = 5)), " \
+    "DescriptorTable(SRV(t1, numDescriptors = 6)), " \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s52, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, comparisonFunc = COMPARISON_GREATER_EQUAL),"
@@ -34,7 +34,7 @@
 	"RootConstants(num32BitConstants=3, b999), " \
 	"CBV(b0), " \
 	"CBV(b1), " \
-    "DescriptorTable(SRV(t1, numDescriptors = 5)), " \
+    "DescriptorTable(SRV(t1, numDescriptors = 6)), " \
     "DescriptorTable( UAV(u0, numDescriptors = 1) )," \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
@@ -54,6 +54,7 @@ Texture2D GBuffer_0     : register(t2);
 Texture2D GBuffer_1     : register(t3);
 Texture2D GBuffer_2     : register(t4);
 Texture2D GBuffer_3     : register(t5);
+Texture2D GBuffer_4     : register(t6);
 
 SamplerState DefaultSampler: register(s50);
 
@@ -118,12 +119,14 @@ float4 main(PSInput input) : SV_TARGET
     gbufferChannels[1] = GBuffer_1[pixelPosition];
     gbufferChannels[2] = GBuffer_2[pixelPosition];
     gbufferChannels[3] = GBuffer_3[pixelPosition];
+    gbufferChannels[4] = GBuffer_4[pixelPosition];
 
 #else
     gbufferChannels[0] = GBuffer_0.Sample(SamplerDefault, pixelPosition);
     gbufferChannels[1] = GBuffer_1.Sample(SamplerDefault, pixelPosition);
     gbufferChannels[2] = GBuffer_2.Sample(SamplerDefault, pixelPosition);
     gbufferChannels[3] = GBuffer_3.Sample(SamplerDefault, pixelPosition);
+    gbufferChannels[4] = GBuffer_4.Sample(SamplerDefault, pixelPosition);
 #endif
 
     Surface surface = DecodeGBuffer(gbufferChannels);
@@ -137,7 +140,17 @@ float4 main(PSInput input) : SV_TARGET
     lightingTerms.Init();
 
     
-    DirectLightContribution(GetScene(), brdfSurfaceData, surface, lightingTerms);
+    if (GetFrame().Flags & FRAME_FLAGS_USE_SIMPLE_LIGHT_LOOP)
+    {
+        DirectLightContribution_Simple(GetScene(), brdfSurfaceData, surface, lightingTerms);
+    }
+    else
+    {
+        uint2 tileIndex = uint2(floor(pixelPosition / TILE_SIZE));
+        uint stride = uint(NUM_WORDS) / uint(TILE_SIZE);
+        uint address = tileIndex.y * stride + tileIndex.x;
+        DirectLightContribution_Cluster(GetScene(), brdfSurfaceData, surface, address, lightingTerms);
+    }
     
 /*
     IndirectLightContribution_IBL(

@@ -68,4 +68,10 @@ namespace DefaultRootParameters
 #define RESOURCE_HEAP_RWTEX2DARRAY_SPACE	space104
 #define RESOURCE_HEAP_RT_ACCEL_STRUCTURE    space110
 
+#define NUM_BINS 16.0
+#define BIN_WIDTH ( 1.0 / NUM_BINS )
+#define TILE_SIZE 8
+#define NUM_LIGHTS 256
+
+#define NUM_WORDS ( ( NUM_LIGHTS + 31 ) / 32 )
 #endif // __PHX_SHADER_INTEROP_HLSLI__

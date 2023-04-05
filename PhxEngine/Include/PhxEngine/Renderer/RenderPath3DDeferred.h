@@ -5,6 +5,7 @@
 #include <DirectXMath.h>
 #include <PhxEngine/Renderer/GBuffer.h>
 #include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
+#include <PhxEngine/Renderer/ClusterLighting.h>
 
 namespace tf
 {
@@ -148,6 +149,8 @@ namespace PhxEngine::Renderer
 		std::array<RHI::ShaderHandle, EShaders::Count> m_shaders;
 		std::array<RHI::RenderPassHandle, ERenderPasses::Count> m_renderPasses;
 
+		ClusterLighting m_clusterLighting;
+
 		RHI::CommandSignatureHandle m_drawMeshCommandSignatureGfx;
 		RHI::CommandSignatureHandle m_drawMeshCommandSignatureMS;
 
@@ -161,12 +164,14 @@ namespace PhxEngine::Renderer
 
 		struct Settings
 		{
+			// TODO: Use a bit field
 			bool EnableComputeDeferredLighting = false;
 			bool EnableMeshShaders = false;
 			bool EnableMeshletCulling = false;
 			bool EnableFrustraCulling = true;
 			bool EnableOcclusionCulling = true;
 			bool FreezeCamera = false;
+			bool EnableSimpleLightLoop = true;
 		} m_settings;
 		
 	};

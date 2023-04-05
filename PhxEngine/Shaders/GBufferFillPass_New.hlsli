@@ -24,15 +24,17 @@ PUSH_CONSTANT(push, GeometryPushConstant);
 struct PSInput
 {
     float3 NormalWS : NORMAL;
-    float3 Colour : COLOUR;
     float2 TexCoord : TEXCOORD;
     float4 TangentWS : TANGENT;
-    uint MeshletIndex : COLOR0;
+    float3 Colour : COLOR0;
+    float3 EmissiveColour : COLOR1;
+    uint MeshletIndex : COLOR2;
     uint MaterialID : MATERIAL;
     float3 PositionWS : Position;
     float4 Position : SV_POSITION;
 };
 
+// #define COMPILE_VS
 #if defined(COMPILE_VS) || defined(COMPILE_MS)
 PSInput PopulatePSInput(ObjectInstance objectInstance, Geometry geometryData, uint vertexID)
 {
@@ -47,7 +49,8 @@ PSInput PopulatePSInput(ObjectInstance objectInstance, Geometry geometryData, ui
     output.NormalWS = mul(vertexData.Normal, (float3x3) worldMatrix).xyz;
     output.TexCoord = vertexData.TexCoord;
     output.Colour = UnpackRGBA(objectInstance.Colour).rgb;
-
+    output.EmissiveColour = UnpackRGBA(objectInstance.Emissive).rgb;
+    
     output.TangentWS = float4(mul(vertexData.Tangent.xyz, (float3x3) worldMatrix), vertexData.Tangent.w);
 
     output.MaterialID = geometryData.MaterialIndex;
@@ -112,6 +115,7 @@ void main(
 
 #endif // COMPILE_MS
 
+// #define COMPILE_PS
 #ifdef COMPILE_PS
 
 inline Surface LoadSurfaceData(in PSInput input, in Material material)
@@ -123,6 +127,8 @@ inline Surface LoadSurfaceData(in PSInput input, in Material material)
     {
         surface.Albedo *= ResourceHeap_GetTexture2D(material.AlbedoTexture).Sample(SamplerDefault, input.TexCoord).xyz;
     }
+    
+    surface.Emissive = UnpackRGBA(material.EmissiveColourPacked).rgb * input.EmissiveColour;
     
     surface.Metalness = material.Metalness;
     surface.Roughness = material.Roughness;
@@ -164,6 +170,7 @@ struct PSOutput
     float4 Channel_1    : SV_Target1;
     float4 Channel_2    : SV_Target2;
     float4 Channel_3    : SV_Target3;
+    float4 Channel_4    : SV_Target4;
 };
 
 [RootSignature(PHX_ENGINE_DEFAULT_ROOTSIGNATURE)]
@@ -181,6 +188,7 @@ PSOutput main(PSInput input)
     output.Channel_1 = channelData[1];
     output.Channel_2 = channelData[2];
     output.Channel_3 = channelData[3];
+    output.Channel_4 = channelData[4];
 
     return output;
 }

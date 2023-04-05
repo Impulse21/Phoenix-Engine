@@ -26,6 +26,12 @@ namespace PhxEngine::Core
 			std::uniform_real_distribution<float>  distr(minValue, maxValue);
 			return distr(Generator());
 		}
+
+		inline int GetRandom(int minValue, int maxValue)
+		{
+			std::uniform_int_distribution<int>  distr(minValue, maxValue);
+			return distr(Generator());
+		}
 	}
 
 	namespace Helpers

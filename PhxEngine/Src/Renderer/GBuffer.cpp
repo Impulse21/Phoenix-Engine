@@ -51,11 +51,16 @@ void GBufferRenderTargets::Initialize(
     desc.DebugName = "Specular Buffer";
     this->SpecularTex = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
 
+    desc.Format = RHI::RHIFormat::RGBA16_FLOAT;
+    desc.DebugName = "Emissive Buffer";
+    this->EmissiveTex = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
+
     this->GBufferFormats = {
                     IGraphicsDevice::GPtr->GetTextureDesc(this->AlbedoTex).Format,
                     IGraphicsDevice::GPtr->GetTextureDesc(this->NormalTex).Format,
                     IGraphicsDevice::GPtr->GetTextureDesc(this->SurfaceTex).Format,
-                    IGraphicsDevice::GPtr->GetTextureDesc(this->SpecularTex).Format };
+                    IGraphicsDevice::GPtr->GetTextureDesc(this->SpecularTex).Format,
+                    IGraphicsDevice::GPtr->GetTextureDesc(this->EmissiveTex).Format };
 
     this->DepthFormat = IGraphicsDevice::GPtr->GetTextureDesc(this->DepthTex).Format;
 
@@ -87,6 +92,13 @@ void GBufferRenderTargets::Initialize(
                 {
                     .LoadOp = RenderPassAttachment::LoadOpType::Clear,
                     .Texture = this->SpecularTex,
+                    .InitialLayout = RHI::ResourceStates::ShaderResource,
+                    .SubpassLayout = RHI::ResourceStates::RenderTarget,
+                    .FinalLayout = RHI::ResourceStates::ShaderResource
+                },
+                {
+                    .LoadOp = RenderPassAttachment::LoadOpType::Clear,
+                    .Texture = this->EmissiveTex,
                     .InitialLayout = RHI::ResourceStates::ShaderResource,
                     .SubpassLayout = RHI::ResourceStates::RenderTarget,
                     .FinalLayout = RHI::ResourceStates::ShaderResource

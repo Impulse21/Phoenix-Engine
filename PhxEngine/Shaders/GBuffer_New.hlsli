@@ -4,7 +4,7 @@
 #include "Lighting_New.hlsli"
 
 
-#define NUM_GBUFFER_CHANNELS 4
+#define NUM_GBUFFER_CHANNELS 5
 Surface DecodeGBuffer(float4 channels[NUM_GBUFFER_CHANNELS])
 {
     Surface surface = DefaultSurface();
@@ -17,10 +17,8 @@ Surface DecodeGBuffer(float4 channels[NUM_GBUFFER_CHANNELS])
     surface.AO = channels[2].r;
     surface.Roughness = channels[2].g;
     surface.Metalness = channels[2].b;
-    surface.Specular = channels[3].rgb; 
-
-    // TODO: Put into G Buffer;
-    surface.Emissive = 0;
+    surface.Specular = channels[3].rgb;
+    surface.Emissive = channels[4].rgb;
 
     return surface;
 }
@@ -31,6 +29,7 @@ void EncodeGBuffer(in Surface surface, inout float4 channels[NUM_GBUFFER_CHANNEL
     channels[1] = float4(surface.Normal, 1.0f);
     channels[2] = float4(surface.AO, surface.Roughness, surface.Metalness, 1.0f);
     channels[3] = float4(lerp(Fdielectric, surface.Albedo, surface.Metalness), 1.0f);
+    channels[4] = float4(surface.Emissive, 1.0f);
 }
 
 float4 ReconstructClipPosition(float2 pixelPosition, float depth)

@@ -8,7 +8,6 @@
 #include "PhxEngine/Core/Helpers.h"
 #include <PhxEngine/Core/VirtualFileSystem.h>
 #include "PhxEngine/Scene/Components.h"
-#include <DirectXMesh.h>
 #include <PhxEngine/Shaders/ShaderInterop.h>
 
 #include <filesystem>
@@ -156,74 +155,6 @@ static std::pair<const uint8_t*, size_t> CgltfBufferAccessor(const cgltf_accesso
 	const uint8_t* Data = (uint8_t*)view->buffer->data + view->offset + accessor->offset;
 	const size_t stride = view->stride ? view->stride : defaultStride;
 	return std::make_pair(Data, stride);
-}
-
-static void ReverseWinding(uint32_t* indices, size_t numIndices)
-{
-	assert((numIndices % 3) == 0);
-	for (size_t i = 0; i < numIndices; i += 3)
-	{
-		std::swap(indices[i + 1], indices[i + 2]);
-	}
-}
-
-static void ComputeTangentSpace(MeshComponent& mesh)
-{
-	std::vector<DirectX::XMVECTOR> computedTangents(mesh.TotalVertices);
-	std::vector<DirectX::XMVECTOR> computedBitangents(mesh.TotalVertices);
-
-	for (int i = 0; i < mesh.TotalIndices; i += 3)
-	{
-		auto& index0 = mesh.Indices[i + 0];
-		auto& index1 = mesh.Indices[i + 1];
-		auto& index2 = mesh.Indices[i + 2];
-
-		// Vertices
-		DirectX::XMVECTOR pos0 = DirectX::XMLoadFloat3(&mesh.Positions[index0]);
-		DirectX::XMVECTOR pos1 = DirectX::XMLoadFloat3(&mesh.Positions[index1]);
-		DirectX::XMVECTOR pos2 = DirectX::XMLoadFloat3(&mesh.Positions[index2]);
-
-		// UVs
-		DirectX::XMVECTOR uvs0 = DirectX::XMLoadFloat2(&mesh.TexCoords[index0]);
-		DirectX::XMVECTOR uvs1 = DirectX::XMLoadFloat2(&mesh.TexCoords[index1]);
-		DirectX::XMVECTOR uvs2 = DirectX::XMLoadFloat2(&mesh.TexCoords[index2]);
-
-		DirectX::XMVECTOR deltaPos1 = DirectX::XMVectorSubtract(pos1, pos0);
-		DirectX::XMVECTOR deltaPos2 = DirectX::XMVectorSubtract(pos2, pos0);
-
-		DirectX::XMVECTOR deltaUV1 = DirectX::XMVectorSubtract(uvs1, uvs0);
-		DirectX::XMVECTOR deltaUV2 = DirectX::XMVectorSubtract(uvs2, uvs0);
-
-		// TODO: Take advantage of SIMD better here
-		float r = 1.0f / (DirectX::XMVectorGetX(deltaUV1) * DirectX::XMVectorGetY(deltaUV2) - DirectX::XMVectorGetY(deltaUV1) * DirectX::XMVectorGetX(deltaUV2));
-
-		DirectX::XMVECTOR tangent = (deltaPos1 * DirectX::XMVectorGetY(deltaUV2) - deltaPos2 * DirectX::XMVectorGetY(deltaUV1)) * r;
-		DirectX::XMVECTOR bitangent = (deltaPos2 * DirectX::XMVectorGetX(deltaUV1) - deltaPos1 * DirectX::XMVectorGetX(deltaUV2)) * r;
-
-		computedTangents[index0] += tangent;
-		computedTangents[index1] += tangent;
-		computedTangents[index2] += tangent;
-
-		computedBitangents[index0] += bitangent;
-		computedBitangents[index1] += bitangent;
-		computedBitangents[index2] += bitangent;
-	}
-
-	for (int i = 0; i < mesh.TotalVertices; i++)
-	{
-		const DirectX::XMVECTOR normal = DirectX::XMLoadFloat3(&mesh.Normals[i]);
-		const DirectX::XMVECTOR& tangent = computedTangents[i];
-		const DirectX::XMVECTOR& bitangent = computedBitangents[i];
-
-		// Gram-Schmidt orthogonalize
-		DirectX::XMVECTOR orthTangent = DirectX::XMVector3Normalize(tangent - normal * DirectX::XMVector3Dot(normal, tangent));
-		float sign = DirectX::XMVectorGetX(DirectX::XMVector3Dot(DirectX::XMVector3Cross(normal, tangent), bitangent)) > 0
-			? -1.0f
-			: 1.0f;
-
-		orthTangent = DirectX::XMVectorSetW(orthTangent, sign);
-		DirectX::XMStoreFloat4(&mesh.Tangents[i], orthTangent);
-	}
 }
 
 struct CgltfContext
@@ -724,12 +655,7 @@ void GltfSceneLoader::LoadMeshData(
 			mesh.TotalVertices = cgltfPrim.attributes->data->count;
 
 			// Allocate Require data.
-			mesh.Positions = reinterpret_cast<DirectX::XMFLOAT3*>(scene.GetAllocator()->Allocate(sizeof(float) * 3 * mesh.TotalVertices, 0));
-			mesh.TexCoords = reinterpret_cast<DirectX::XMFLOAT2*>(scene.GetAllocator()->Allocate(sizeof(float) * 2 * mesh.TotalVertices, 0));
-			mesh.Normals = reinterpret_cast<DirectX::XMFLOAT3*>(scene.GetAllocator()->Allocate(sizeof(float) * 3 * mesh.TotalVertices, 0));
-			mesh.Tangents = reinterpret_cast<DirectX::XMFLOAT4*>(scene.GetAllocator()->Allocate(sizeof(float) * 4 * mesh.TotalVertices, 0));
-			mesh.Colour = reinterpret_cast<DirectX::XMFLOAT3*>(scene.GetAllocator()->Allocate(sizeof(float) * 3 * mesh.TotalVertices, 0));
-			mesh.Indices = reinterpret_cast<uint32_t*>(scene.GetAllocator()->Allocate(sizeof(uint32_t) * mesh.TotalIndices, 0));
+			mesh.InitializeCpuBuffers(scene.GetAllocator());
 
 			if (cgltfPrim.indices)
 			{
@@ -917,83 +843,26 @@ void GltfSceneLoader::LoadMeshData(
 			// something to consider to change.
 			if (cReverseWinding)
 			{
-				ReverseWinding(mesh.Indices, mesh.TotalIndices);
+				mesh.ReverseWinding();
 			}
 
 			// Generate Tangents
 			if ((mesh.Flags & Assets::Mesh::Flags::kContainsNormals) != 0 && (mesh.Flags & Assets::Mesh::Flags::kContainsTexCoords) != 0 && (mesh.Flags & Assets::Mesh::Flags::kContainsTangents) == 0)
 			{
-				ComputeTangentSpace(mesh);
+				mesh.ComputeTangentSpace();
 				mesh.Flags |= MeshComponent::Flags::kContainsTangents;
 			}
 
 			if (cReverseZ)
 			{
-				// Flip Z
-				for (int i = 0; i < mesh.TotalVertices; i++)
-				{
-					mesh.Positions[i].z *= -1.0f;
-				}
-				for (int i = 0; i < mesh.TotalVertices; i++)
-				{
-					mesh.Normals[i].z *= -1.0f;
-				}
-				for (int i = 0; i < mesh.TotalVertices; i++)
-				{
-					mesh.Tangents[i].z *= -1.0f;
-				}
+				mesh.FlipZ();
 			}
 
 			// Calculate AABB
-			{
-				DirectX::XMFLOAT3 minBounds = DirectX::XMFLOAT3(Math::cMaxFloat, Math::cMaxFloat, Math::cMaxFloat);
-				DirectX::XMFLOAT3 maxBounds = DirectX::XMFLOAT3(Math::cMinFloat, Math::cMinFloat, Math::cMinFloat);
-
-				if (mesh.Positions)
-				{
-					for (int i = 0; i < mesh.TotalVertices; i++)
-					{
-						minBounds = Math::Min(minBounds, mesh.Positions[i]);
-						maxBounds = Math::Max(maxBounds, mesh.Positions[i]);
-					}
-				}
-
-				mesh.Aabb = AABB(minBounds, maxBounds);
-				mesh.BoundingSphere = Sphere(minBounds, maxBounds);
-			}
+			mesh.ComputeBounds();
 
 			// Calculate Meshlet Data
-
-			// Recomended for NVIDA, which is the GPU I am testing.
-			auto hr = DirectX::ComputeMeshlets(
-				mesh.Indices, mesh.TotalIndices / 3,
-				mesh.Positions, mesh.TotalVertices,
-				nullptr,
-				mesh.Meshlets,
-				mesh.UniqueVertexIB,
-				mesh.MeshletTriangles,
-				MAX_VERTS,
-				MAX_PRIMS);
-			assert(SUCCEEDED(hr));
-
-			mesh.PackedVertexData = reinterpret_cast<Shader::New::MeshletPackedVertexData*>(scene.GetAllocator()->Allocate(sizeof(Shader::New::MeshletPackedVertexData) * mesh.TotalVertices, 0));
-			for (int i = 0; i < mesh.TotalVertices; i++)
-			{
-				Shader::New::MeshletPackedVertexData& vertex = mesh.PackedVertexData[i];
-				vertex.SetNormal({ mesh.Normals[i].x, mesh.Normals[i].y, mesh.Normals[i].z, 1.0f });
-				vertex.SetTangent(mesh.Tangents[i]);
-				vertex.SetTexCoord(mesh.TexCoords[i]);
-			}
-
-			mesh.MeshletCullData = reinterpret_cast<DirectX::CullData*>(scene.GetAllocator()->Allocate(sizeof(DirectX::CullData) * mesh.Meshlets.size(), 0));
-
-			// Get Meshlet Culling data
-			DirectX::ComputeCullData(
-				mesh.Positions, mesh.TotalVertices,
-				mesh.Meshlets.data(), mesh.Meshlets.size(),
-				reinterpret_cast<const uint16_t*>(mesh.UniqueVertexIB.data()), mesh.UniqueVertexIB.size() / sizeof(uint16_t),
-				mesh.MeshletTriangles.data(), mesh.MeshletTriangles.size(),
-				mesh.MeshletCullData);
+			mesh.ComputeMeshletData(scene.GetAllocator());
 
 			mesh.BuildRenderData(scene.GetAllocator(), RHI::IGraphicsDevice::GPtr);
 		}

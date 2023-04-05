@@ -309,6 +309,14 @@ public:
             commandList,
             this->m_scene);
 
+        Scene::Entity matEntity = this->m_scene.CreateEntity("Light Mat");
+        auto& mat = matEntity.AddComponent<Scene::MaterialComponent>();
+        mat.BaseColour = { 0.0f, 0.0f, 0.0f, 1.0f };
+        mat.Emissive = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+        this->m_debugLightOmniMesh = this->m_scene.CreateSphere(this->GetGfxDevice(), matEntity, 0.2f, 10u);
+        this->m_debugLightSpotMesh = this->m_scene.CreateCube(this->GetGfxDevice(), matEntity, 0.2f);
+
         commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList }, true);
 
@@ -402,6 +410,31 @@ public:
 
         if (this->IsSceneLoaded())
         {
+            auto& lightComp = this->m_editableLightComponent.GetComponent<Scene::LightComponent>();
+            if (lightComp.IsEnabled() && lightComp.Type != Scene::LightComponent::kDirectionalLight)
+            {
+                Scene::MeshInstanceComponent* debugInstance = nullptr;
+                if (this->m_editableLightComponent.HasComponent<Scene::MeshInstanceComponent>())
+                {
+                    debugInstance = &this->m_editableLightComponent.GetComponent<Scene::MeshInstanceComponent>();
+                }
+                else
+                {
+                    debugInstance = &this->m_editableLightComponent.AddComponent<Scene::MeshInstanceComponent>();
+                }
+
+                debugInstance->Color = { 0.0f, 0.0f, 0.0f, 1.0f };
+                debugInstance->EmissiveColor = {
+                    lightComp.Colour.x,
+                    lightComp.Colour.y,
+                    lightComp.Colour.z,
+                    1.0f };
+
+                debugInstance->Mesh = lightComp.Type == Scene::LightComponent::kOmniLight
+                    ? this->m_debugLightOmniMesh
+                    : this->m_debugLightSpotMesh;
+            }
+
             this->m_scene.OnUpdate(this->m_commonPasses);
         }
     }
@@ -440,6 +473,9 @@ private:
     PhxEngine::FirstPersonCameraController m_cameraController;
 
     std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
+
+    Scene::Entity m_debugLightOmniMesh;
+    Scene::Entity m_debugLightSpotMesh;
 
     Scene::Entity m_editableLightComponent;
 };

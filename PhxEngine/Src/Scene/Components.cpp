@@ -1,6 +1,7 @@
 #include "C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Build/PhxEngine/CMakeFiles/PhxEngine.dir/Debug/cmake_pch.hxx"
 #include <PhxEngine/Scene/Components.h>
 #include <PhxEngine/Core/Math.h>
+#include <PhxEngine/Core/Memory.h>
 
 #include <PhxEngine/Core/Helpers.h>
 #include <DirectXMesh.h>
@@ -232,4 +233,152 @@ void MeshComponent::BuildRenderData(
 		this->Blas = gfxDevice->CreateRTAccelerationStructure(rtDesc);
 	}
 	*/
+}
+
+void PhxEngine::Scene::MeshComponent::ReverseWinding()
+{
+	assert((this->TotalIndices % 3) == 0);
+	for (size_t i = 0; i < this->TotalIndices; i += 3)
+	{
+		std::swap(this->Indices[i + 1], this->Indices[i + 2]);
+	}
+}
+
+void PhxEngine::Scene::MeshComponent::InitializeCpuBuffers(IAllocator* allocator)
+{
+	this->Positions = reinterpret_cast<DirectX::XMFLOAT3*>(allocator->Allocate(sizeof(float) * 3 * this->TotalVertices, 0));
+	this->TexCoords = reinterpret_cast<DirectX::XMFLOAT2*>(allocator->Allocate(sizeof(float) * 2 * this->TotalVertices, 0));
+	this->Normals = reinterpret_cast<DirectX::XMFLOAT3*>(allocator->Allocate(sizeof(float) * 3 * this->TotalVertices, 0));
+	this->Tangents = reinterpret_cast<DirectX::XMFLOAT4*>(allocator->Allocate(sizeof(float) * 4 * this->TotalVertices, 0));
+	this->Colour = reinterpret_cast<DirectX::XMFLOAT3*>(allocator->Allocate(sizeof(float) * 3 * this->TotalVertices, 0));
+	this->Indices = reinterpret_cast<uint32_t*>(allocator->Allocate(sizeof(uint32_t) * this->TotalIndices, 0));
+}
+
+void PhxEngine::Scene::MeshComponent::ComputeTangentSpace()
+{
+	std::vector<DirectX::XMVECTOR> computedTangents(this->TotalVertices);
+	std::vector<DirectX::XMVECTOR> computedBitangents(this->TotalVertices);
+
+	for (int i = 0; i < this->TotalIndices; i += 3)
+	{
+		auto& index0 = this->Indices[i + 0];
+		auto& index1 = this->Indices[i + 1];
+		auto& index2 = this->Indices[i + 2];
+
+		// Vertices
+		DirectX::XMVECTOR pos0 = DirectX::XMLoadFloat3(&this->Positions[index0]);
+		DirectX::XMVECTOR pos1 = DirectX::XMLoadFloat3(&this->Positions[index1]);
+		DirectX::XMVECTOR pos2 = DirectX::XMLoadFloat3(&this->Positions[index2]);
+
+		// UVs
+		DirectX::XMVECTOR uvs0 = DirectX::XMLoadFloat2(&this->TexCoords[index0]);
+		DirectX::XMVECTOR uvs1 = DirectX::XMLoadFloat2(&this->TexCoords[index1]);
+		DirectX::XMVECTOR uvs2 = DirectX::XMLoadFloat2(&this->TexCoords[index2]);
+
+		DirectX::XMVECTOR deltaPos1 = DirectX::XMVectorSubtract(pos1, pos0);
+		DirectX::XMVECTOR deltaPos2 = DirectX::XMVectorSubtract(pos2, pos0);
+
+		DirectX::XMVECTOR deltaUV1 = DirectX::XMVectorSubtract(uvs1, uvs0);
+		DirectX::XMVECTOR deltaUV2 = DirectX::XMVectorSubtract(uvs2, uvs0);
+
+		// TODO: Take advantage of SIMD better here
+		float r = 1.0f / (DirectX::XMVectorGetX(deltaUV1) * DirectX::XMVectorGetY(deltaUV2) - DirectX::XMVectorGetY(deltaUV1) * DirectX::XMVectorGetX(deltaUV2));
+
+		DirectX::XMVECTOR tangent = (deltaPos1 * DirectX::XMVectorGetY(deltaUV2) - deltaPos2 * DirectX::XMVectorGetY(deltaUV1)) * r;
+		DirectX::XMVECTOR bitangent = (deltaPos2 * DirectX::XMVectorGetX(deltaUV1) - deltaPos1 * DirectX::XMVectorGetX(deltaUV2)) * r;
+
+		computedTangents[index0] += tangent;
+		computedTangents[index1] += tangent;
+		computedTangents[index2] += tangent;
+
+		computedBitangents[index0] += bitangent;
+		computedBitangents[index1] += bitangent;
+		computedBitangents[index2] += bitangent;
+	}
+
+	for (int i = 0; i < this->TotalVertices; i++)
+	{
+		const DirectX::XMVECTOR normal = DirectX::XMLoadFloat3(&this->Normals[i]);
+		const DirectX::XMVECTOR& tangent = computedTangents[i];
+		const DirectX::XMVECTOR& bitangent = computedBitangents[i];
+
+		// Gram-Schmidt orthogonalize
+		DirectX::XMVECTOR orthTangent = DirectX::XMVector3Normalize(tangent - normal * DirectX::XMVector3Dot(normal, tangent));
+		float sign = DirectX::XMVectorGetX(DirectX::XMVector3Dot(DirectX::XMVector3Cross(normal, tangent), bitangent)) > 0
+			? -1.0f
+			: 1.0f;
+
+		orthTangent = DirectX::XMVectorSetW(orthTangent, sign);
+		DirectX::XMStoreFloat4(&this->Tangents[i], orthTangent);
+	}
+}
+
+void PhxEngine::Scene::MeshComponent::FlipZ()
+{
+	// Flip Z
+	for (int i = 0; i < this->TotalVertices; i++)
+	{
+		this->Positions[i].z *= -1.0f;
+	}
+	for (int i = 0; i < this->TotalVertices; i++)
+	{
+		this->Normals[i].z *= -1.0f;
+	}
+	for (int i = 0; i < this->TotalVertices; i++)
+	{
+		this->Tangents[i].z *= -1.0f;
+	}
+}
+
+void PhxEngine::Scene::MeshComponent::ComputeMeshletData(IAllocator* allocator)
+{
+	// Recomended for NVIDA, which is the GPU I am testing.
+	auto hr = DirectX::ComputeMeshlets(
+		this->Indices, this->TotalIndices / 3,
+		this->Positions, this->TotalVertices,
+		nullptr,
+		this->Meshlets,
+		this->UniqueVertexIB,
+		this->MeshletTriangles,
+		MAX_VERTS,
+		MAX_PRIMS);
+	assert(SUCCEEDED(hr));
+
+	this->PackedVertexData = reinterpret_cast<Shader::New::MeshletPackedVertexData*>(allocator->Allocate(sizeof(Shader::New::MeshletPackedVertexData) * this->TotalVertices, 0));
+	for (int i = 0; i < this->TotalVertices; i++)
+	{
+		Shader::New::MeshletPackedVertexData& vertex = this->PackedVertexData[i];
+		vertex.SetNormal({ this->Normals[i].x, this->Normals[i].y, this->Normals[i].z, 1.0f });
+		vertex.SetTangent(this->Tangents[i]);
+		vertex.SetTexCoord(this->TexCoords[i]);
+	}
+
+	this->MeshletCullData = reinterpret_cast<DirectX::CullData*>(allocator->Allocate(sizeof(DirectX::CullData) * this->Meshlets.size(), 0));
+
+	// Get Meshlet Culling data
+	DirectX::ComputeCullData(
+		this->Positions, this->TotalVertices,
+		this->Meshlets.data(), this->Meshlets.size(),
+		reinterpret_cast<const uint16_t*>(this->UniqueVertexIB.data()), this->UniqueVertexIB.size() / sizeof(uint16_t),
+		this->MeshletTriangles.data(), this->MeshletTriangles.size(),
+		this->MeshletCullData);
+
+}
+
+void PhxEngine::Scene::MeshComponent::ComputeBounds()
+{
+	DirectX::XMFLOAT3 minBounds = DirectX::XMFLOAT3(Math::cMaxFloat, Math::cMaxFloat, Math::cMaxFloat);
+	DirectX::XMFLOAT3 maxBounds = DirectX::XMFLOAT3(Math::cMinFloat, Math::cMinFloat, Math::cMinFloat);
+
+	if (this->Positions)
+	{
+		for (int i = 0; i < this->TotalVertices; i++)
+		{
+			minBounds = Math::Min(minBounds, this->Positions[i]);
+			maxBounds = Math::Max(maxBounds, this->Positions[i]);
+		}
+	}
+
+	this->Aabb = AABB(minBounds, maxBounds);
+	this->BoundingSphere = Sphere(minBounds, maxBounds);
 }

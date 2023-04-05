@@ -512,6 +512,15 @@ namespace PhxEngine::Scene
 		void BuildRenderData(
 			Core::IAllocator* allocator,
 			RHI::IGraphicsDevice* gfxDevice);
+
+
+		// Helpers
+		void InitializeCpuBuffers(Core::IAllocator* allocator);
+		void ReverseWinding();
+		void ComputeTangentSpace();
+		void FlipZ();
+		void ComputeBounds();
+		void ComputeMeshletData(Core::IAllocator* allocator);
 	};
 
 	struct MeshInstanceComponent
@@ -529,7 +538,6 @@ namespace PhxEngine::Scene
 		DirectX::XMFLOAT4 Color = DirectX::XMFLOAT4(1, 1, 1, 1);
 		DirectX::XMFLOAT4 EmissiveColor = DirectX::XMFLOAT4(1, 1, 1, 1);
 
-		DirectX::XMFLOAT4X4 WorldMatrix = cIdentityMatrix;
 		size_t GlobalBufferIndex = ~0ull;
 	};
 
