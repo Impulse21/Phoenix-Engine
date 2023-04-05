@@ -171,7 +171,7 @@ namespace PhxEngine::Renderer
 			bool EnableFrustraCulling = true;
 			bool EnableOcclusionCulling = true;
 			bool FreezeCamera = false;
-			bool EnableSimpleLightLoop = false;
+			bool EnableSimpleLightLoop = true;
 		} m_settings;
 		
 	};
