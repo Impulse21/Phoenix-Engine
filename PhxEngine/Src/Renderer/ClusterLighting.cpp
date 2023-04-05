@@ -49,7 +49,7 @@ void PhxEngine::Renderer::ClusterLighting::Initialize(
 			.DebugName = "Light LUT Buffer"
 		});
 
-	this->Canvas;
+	this->Canvas = canvas;
 	this->TileXCount = canvas.x / kTileSize;
 	this->TileYCount = canvas.y / kTileSize;
 	this->TilesEntryCount = this->TileXCount * this->TileYCount * kNumWords;
@@ -234,9 +234,10 @@ void PhxEngine::Renderer::ClusterLighting::Update(
 		}
 
 		lightBoundingVS.x = minBoundVS.x;
-		lightBoundingVS.z = minBoundVS.x;
+		lightBoundingVS.z = maxBoundVS.x;
+
 		// Inverted Y aabb
-		lightBoundingVS.w = -1 * maxBoundVS.y;
+		lightBoundingVS.w = -1 * minBoundVS.y;
 		lightBoundingVS.y = -1 * maxBoundVS.y;
 		// Collect light Data.
 
