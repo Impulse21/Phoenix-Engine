@@ -269,82 +269,129 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 	if (this->m_settings.EnableComputeDeferredLighting)
 	{
-		auto _ = commandList->BeginScopedMarker("Deferred Lighting Pass (Compute)");
-		auto rangeId = this->m_frameProfiler->BeginRangeGPU("Deferred Lighting Pass (Compute)", commandList);
-
-		RHI::GpuBarrier preBarriers[] =
+		if (this->m_settings.EnableClusterLightDebugView)
 		{
-			RHI::GpuBarrier::CreateTexture(this->m_colourBuffer, this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).InitialState, RHI::ResourceStates::UnorderedAccess),
-		};
-		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
+			auto _ = commandList->BeginScopedMarker("Cluster Light Debug View (Compute)");
 
-		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DeferredLightingPass]);
-		
-		commandList->BindConstantBuffer(1, this->m_frameCB);
-		commandList->BindDynamicConstantBuffer(2, cameraData);
-		commandList->BindDynamicDescriptorTable(
-			3,
+			RHI::GpuBarrier preBarriers[] =
 			{
-				this->m_gbuffer.DepthTex,
-				this->m_gbuffer.AlbedoTex,
-				this->m_gbuffer.NormalTex,
-				this->m_gbuffer.SurfaceTex,
-				this->m_gbuffer.SpecularTex,
-				this->m_gbuffer.EmissiveTex,
-			});
+				RHI::GpuBarrier::CreateTexture(this->m_colourBuffer, this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).InitialState, RHI::ResourceStates::UnorderedAccess),
+			};
+			commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
 
-		commandList->BindDynamicUavDescriptorTable(4, { this->m_colourBuffer });
+			commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::ClusterLightsDebugPass]);
+			commandList->BindConstantBuffer(1, this->m_frameCB);
+			commandList->BindDynamicConstantBuffer(2, cameraData);
+			commandList->BindDynamicUavDescriptorTable(3, { this->m_colourBuffer });
+			auto& outputDesc = this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer);
 
-		auto& outputDesc = this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer);
+			commandList->Dispatch(
+				outputDesc.Width / DEFERRED_BLOCK_SIZE_X,
+				outputDesc.Height / DEFERRED_BLOCK_SIZE_Y,
+				1);
 
-		Shader::DefferedLightingCSConstants push = {};
-		push.DipatchGridDim =
+			RHI::GpuBarrier postTransition[] =
+			{
+				RHI::GpuBarrier::CreateTexture(this->m_colourBuffer, RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).InitialState),
+			};
+
+			commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
+
+		}
+		else
 		{
-			outputDesc.Width / DEFERRED_BLOCK_SIZE_X,
-			outputDesc.Height / DEFERRED_BLOCK_SIZE_Y,
-		};
-		push.MaxTileWidth = 16;
+			auto _ = commandList->BeginScopedMarker("Deferred Lighting Pass (Compute)");
+			auto rangeId = this->m_frameProfiler->BeginRangeGPU("Deferred Lighting Pass (Compute)", commandList);
 
-		commandList->BindPushConstant(0, push);
+			RHI::GpuBarrier preBarriers[] =
+			{
+				RHI::GpuBarrier::CreateTexture(this->m_colourBuffer, this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).InitialState, RHI::ResourceStates::UnorderedAccess),
+			};
+			commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
 
-		commandList->Dispatch(
-			push.DipatchGridDim.x,
-			push.DipatchGridDim.y,
-			1);
+			commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DeferredLightingPass]);
 
-		RHI::GpuBarrier postTransition[] =
-		{
-			RHI::GpuBarrier::CreateTexture(this->m_colourBuffer, RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).InitialState),
-		};
+			commandList->BindConstantBuffer(1, this->m_frameCB);
+			commandList->BindDynamicConstantBuffer(2, cameraData);
+			commandList->BindDynamicDescriptorTable(
+				3,
+				{
+					this->m_gbuffer.DepthTex,
+					this->m_gbuffer.AlbedoTex,
+					this->m_gbuffer.NormalTex,
+					this->m_gbuffer.SurfaceTex,
+					this->m_gbuffer.SpecularTex,
+					this->m_gbuffer.EmissiveTex,
+				});
 
-		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
+			commandList->BindDynamicUavDescriptorTable(4, { this->m_colourBuffer });
 
-		this->m_frameProfiler->EndRangeGPU(rangeId);
+			auto& outputDesc = this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer);
+
+			Shader::DefferedLightingCSConstants push = {};
+			push.DipatchGridDim =
+			{
+				outputDesc.Width / DEFERRED_BLOCK_SIZE_X,
+				outputDesc.Height / DEFERRED_BLOCK_SIZE_Y,
+			};
+			push.MaxTileWidth = 16;
+
+			commandList->BindPushConstant(0, push);
+
+			commandList->Dispatch(
+				push.DipatchGridDim.x,
+				push.DipatchGridDim.y,
+				1);
+
+			RHI::GpuBarrier postTransition[] =
+			{
+				RHI::GpuBarrier::CreateTexture(this->m_colourBuffer, RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).InitialState),
+			};
+
+			commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
+
+			this->m_frameProfiler->EndRangeGPU(rangeId);
+		}
 	}
 	else
 	{
-		auto _ = commandList->BeginScopedMarker("Deferred Lighting Pass");
-		auto rangeId = this->m_frameProfiler->BeginRangeGPU("Deferred Lighting Pass", commandList);
-		commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::DeferredLightingPass]);
-		commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::DeferredLightingPass]);
-		commandList->SetViewports(&v, 1);
-		commandList->SetScissors(&rec, 1);
-		commandList->BindConstantBuffer(0, this->m_frameCB);
-		commandList->BindDynamicConstantBuffer(1, cameraData);
-		commandList->BindDynamicDescriptorTable(
-			2,
-			{
-				this->m_gbuffer.DepthTex,
-				this->m_gbuffer.AlbedoTex,
-				this->m_gbuffer.NormalTex,
-				this->m_gbuffer.SurfaceTex,
-				this->m_gbuffer.SpecularTex,
-				this->m_gbuffer.EmissiveTex,
-			});
+		if (this->m_settings.EnableClusterLightDebugView)
+		{
+			auto _ = commandList->BeginScopedMarker("Cluster Lighting Debug pass");
+			commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::DeferredLightingPass]);
+			commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::ClusterLightsDebugPass]);
+			commandList->SetViewports(&v, 1);
+			commandList->SetScissors(&rec, 1);
+			commandList->BindConstantBuffer(0, this->m_frameCB);
+			commandList->BindDynamicConstantBuffer(1, cameraData);
+			commandList->Draw(3, 1, 0, 0);
+			commandList->EndRenderPass();
+		}
+		else
+		{
+			auto _ = commandList->BeginScopedMarker("Deferred Lighting Pass");
+			auto rangeId = this->m_frameProfiler->BeginRangeGPU("Deferred Lighting Pass", commandList);
+			commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::DeferredLightingPass]);
+			commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::DeferredLightingPass]);
+			commandList->SetViewports(&v, 1);
+			commandList->SetScissors(&rec, 1);
+			commandList->BindConstantBuffer(0, this->m_frameCB);
+			commandList->BindDynamicConstantBuffer(1, cameraData);
+			commandList->BindDynamicDescriptorTable(
+				2,
+				{
+					this->m_gbuffer.DepthTex,
+					this->m_gbuffer.AlbedoTex,
+					this->m_gbuffer.NormalTex,
+					this->m_gbuffer.SurfaceTex,
+					this->m_gbuffer.SpecularTex,
+					this->m_gbuffer.EmissiveTex,
+				});
 
-		commandList->Draw(3, 1, 0, 0);
-		commandList->EndRenderPass();
-		this->m_frameProfiler->EndRangeGPU(rangeId);
+			commandList->Draw(3, 1, 0, 0);
+			commandList->EndRenderPass();
+			this->m_frameProfiler->EndRangeGPU(rangeId);
+		}
 	}
 
 	{
@@ -419,6 +466,10 @@ void PhxEngine::Renderer::RenderPath3DDeferred::BuildUI()
 	}
 	ImGui::Checkbox("Enable Compute Deferred Shading", &this->m_settings.EnableComputeDeferredLighting);
 	ImGui::Checkbox("Enable Cluster Lighting", &this->m_settings.EnableClusterLightLighting);
+	if (this->m_settings.EnableClusterLightLighting)
+	{
+		ImGui::Checkbox("View Cluster Light Heat Map", &this->m_settings.EnableClusterLightDebugView);
+	}
 }
 
 tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadShaders(tf::Taskflow& taskflow)
@@ -457,6 +508,15 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadShaders(tf::Taskflow& ta
 			});
 		subflow.emplace([&]() {
 			this->m_shaders[EShaders::MS_MeshletGBufferFill] = this->m_shaderFactory->CreateShader("PhxEngine/GBufferFillMS.hlsl", { .Stage = RHI::ShaderStage::Mesh, .DebugName = "GBufferFillMS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::VS_ClusterLightsDebugPass] = this->m_shaderFactory->CreateShader("PhxEngine/ClusterLightingDebugPassVS.hlsl", { .Stage = RHI::ShaderStage::Vertex, .DebugName = "ClusterLightsDebugPassVS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::PS_ClusterLightsDebugPass] = this->m_shaderFactory->CreateShader("PhxEngine/ClusterLightingDebugPassPS.hlsl", { .Stage = RHI::ShaderStage::Pixel, .DebugName = "ClusterLightsDebugPassPS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::CS_ClusterLightsDebugPass] = this->m_shaderFactory->CreateShader("PhxEngine/ClusterLightingDebugPassCS.hlsl", { .Stage = RHI::ShaderStage::Compute, .DebugName = "ClusterLightsDebugPassCS", });
 			});
 		});
 	return shaderLoadTask;
@@ -512,6 +572,21 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadPipelineStates(tf::Taskf
 					.PixelShader = this->m_shaders[EShaders::PS_GBufferFill],
 					.RtvFormats = this->m_gbuffer.GBufferFormats,
 					.DsvFormat = this->m_gbuffer.DepthFormat
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_gfxStates[EGfxPipelineStates::ClusterLightsDebugPass] = this->m_gfxDevice->CreateGraphicsPipeline({
+					.VertexShader = this->m_shaders[EShaders::VS_ClusterLightsDebugPass],
+					.PixelShader = this->m_shaders[EShaders::PS_ClusterLightsDebugPass],
+					.DepthStencilRenderState = {
+						.DepthTestEnable = false,
+					},
+					.RtvFormats = { IGraphicsDevice::GPtr->GetTextureDesc(this->m_colourBuffer).Format },
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_computeStates[EComputePipelineStates::ClusterLightsDebugPass] = this->m_gfxDevice->CreateComputePipeline({
+					.ComputeShader = this->m_shaders[EShaders::CS_ClusterLightsDebugPass],
 				});
 			});
 		});
