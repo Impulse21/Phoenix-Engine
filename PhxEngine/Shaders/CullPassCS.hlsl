@@ -116,9 +116,6 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
             meshDrawCommand.Indirect.StartIndex = geometryData.IndexOffset;
             meshDrawCommand.Indirect.VertexOffset = 0;
             meshDrawCommand.Indirect.StartInstance = 0;
-    
-            AppendStructuredBuffer<MeshDrawCommand> drawMeshIndirectBuffer = ResourceDescriptorHeap[push.DrawBufferMeshIdx];
-            drawMeshIndirectBuffer.Append(meshDrawCommand);
             
             MeshletDrawCommand meshletDrawCommand;
             meshletDrawCommand.DrawId = objectInstanceIdx;
@@ -126,7 +123,14 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
             meshletDrawCommand.Indirect.GroupCountY = 1;
             meshletDrawCommand.Indirect.GroupCountZ = 1;
             
-            AppendStructuredBuffer<MeshletDrawCommand> drawMeshletIndirectBuffer = ResourceDescriptorHeap[push.DrawBufferMeshletIdx];
+            // TODO: Seperate the passes for Alpha and Opaque to limit the amount of branching
+            uint drawBufferMeshIdx = (geometryData.DrawFlags & DRAW_FLAGS_TRANSPARENT) ? push.DrawBufferTransparentMeshIdx : push.DrawBufferMeshIdx;
+            uint drawBufferMeshletIdx = (geometryData.DrawFlags & DRAW_FLAGS_TRANSPARENT) ? push.DrawBufferTransparentMeshletIdx : push.DrawBufferMeshletIdx;
+    
+            AppendStructuredBuffer<MeshDrawCommand> drawMeshIndirectBuffer = ResourceDescriptorHeap[drawBufferMeshIdx];
+            drawMeshIndirectBuffer.Append(meshDrawCommand);
+            
+            AppendStructuredBuffer<MeshletDrawCommand> drawMeshletIndirectBuffer = ResourceDescriptorHeap[drawBufferMeshletIdx];
             drawMeshletIndirectBuffer.Append(meshletDrawCommand);
         }
         else if (push.IsLatePass == false)

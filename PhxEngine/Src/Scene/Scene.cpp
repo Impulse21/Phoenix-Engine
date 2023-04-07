@@ -549,7 +549,6 @@ void PhxEngine::Scene::Scene::RunMeshInstanceUpdateSystem()
 			}
 			this->m_instanceUploadBuffers[i] = RHI::IGraphicsDevice::GPtr->CreateBuffer(desc);
 		}
-
 	}
 
 	this->BuildIndirectBuffers(RHI::IGraphicsDevice::GPtr);
@@ -896,6 +895,11 @@ void PhxEngine::Scene::Scene::BuildGeometryData(RHI::ICommandList* commandList, 
 		Shader::New::Geometry* geometryShaderData = geometryBufferMappedData + mesh.GlobalIndexOffsetGeometryBuffer;
 		auto& material = this->GetRegistry().get<MaterialComponent>(mesh.Material);
 		geometryShaderData->MaterialIndex = material.GlobalBufferIndex;
+		geometryShaderData->DrawFlags = 0;
+		if (material.BlendMode == PhxEngine::Renderer::BlendMode::Alpha)
+		{
+			geometryShaderData->DrawFlags |= Shader::New::DRAW_FLAGS_TRANSPARENT;
+		}
 
 		geometryShaderData->NumIndices = mesh.TotalIndices;
 		geometryShaderData->NumVertices = mesh.TotalVertices;
@@ -980,6 +984,26 @@ void PhxEngine::Scene::Scene::BuildIndirectBuffers(RHI::IGraphicsDevice* gfxDevi
 
 	}
 
+	if (!this->m_indirectDrawEarlyTransparentMeshBuffer.IsValid() ||
+		gfxDevice->GetBufferDesc(this->m_indirectDrawEarlyTransparentMeshBuffer).SizeInBytes < indirectMeshBufferByteSize)
+	{
+		if (this->m_indirectDrawEarlyTransparentMeshBuffer.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->m_indirectDrawEarlyTransparentMeshBuffer);
+		}
+
+		this->m_indirectDrawEarlyTransparentMeshBuffer = gfxDevice->CreateBuffer({
+				   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter | BufferMiscFlags::Bindless,
+				   .Binding = BindingFlags::UnorderedAccess,
+				   .InitialState = ResourceStates::IndirectArgument,
+				   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
+				   .SizeInBytes = indirectMeshBufferByteSize,
+				   .AllowUnorderedAccess = true,
+				   .UavCounterOffsetInBytes = indirectMeshBufferByteSize - sizeof(uint32_t),
+				   .DebugName = "Indirect Draw Early (Transparent Mesh)" });
+
+	}
+
 	const size_t indirectMeshletBufferByteSize = Core::Helpers::AlignUp(sizeof(Shader::New::MeshletDrawCommand) * view.size(), gfxDevice->GetUavCounterPlacementAlignment()) + sizeof(uint32_t);
 
 	if (!this->m_indirectDrawEarlyMeshletBuffer.IsValid() ||
@@ -998,6 +1022,24 @@ void PhxEngine::Scene::Scene::BuildIndirectBuffers(RHI::IGraphicsDevice* gfxDevi
 				   .AllowUnorderedAccess = true,
 				   .UavCounterOffsetInBytes = indirectMeshletBufferByteSize - sizeof(uint32_t),
 				   .DebugName = "Indirect Draw Early (Meshlet)" });
+	}
+
+	if (!this->m_indirectDrawEarlyTransparentMeshBuffer.IsValid() ||
+		gfxDevice->GetBufferDesc(this->m_indirectDrawEarlyTransparentMeshBuffer).SizeInBytes < indirectMeshletBufferByteSize)
+	{
+		if (this->m_indirectDrawEarlyTransparentMeshBuffer.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->m_indirectDrawEarlyTransparentMeshBuffer);
+		}
+		this->m_indirectDrawEarlyTransparentMeshBuffer = gfxDevice->CreateBuffer({
+				   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter | BufferMiscFlags::Bindless,
+				   .Binding = BindingFlags::UnorderedAccess,
+				   .InitialState = ResourceStates::IndirectArgument,
+				   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
+				   .SizeInBytes = indirectMeshletBufferByteSize,
+				   .AllowUnorderedAccess = true,
+				   .UavCounterOffsetInBytes = indirectMeshletBufferByteSize - sizeof(uint32_t),
+				   .DebugName = "Indirect Draw Early (Transparent Meshlet)" });
 	}
 
 	if (!this->m_culledInstancesCounterBuffer.IsValid())
@@ -1064,6 +1106,8 @@ void PhxEngine::Scene::Scene::BuildSceneData(RHI::ICommandList* commandList, RHI
 	this->m_shaderData.UniqueVertexIBIdx = gfxDevice->GetDescriptorIndex(this->m_globalUniqueVertexIBBuffer, SubresouceType::SRV);
 	this->m_shaderData.IndirectEarlyMeshBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawEarlyMeshBuffer, SubresouceType::UAV);
 	this->m_shaderData.IndirectEarlyMeshletBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawEarlyMeshletBuffer, SubresouceType::UAV);
+	this->m_shaderData.IndirectEarlyTransparentMeshBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawEarlyTransparentMeshBuffer, SubresouceType::UAV);
+	this->m_shaderData.IndirectEarlyTransparentMeshletBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawEarlyTransparentMeshletBuffer, SubresouceType::UAV);
 	this->m_shaderData.IndirectLateBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawLateBuffer, SubresouceType::UAV);
 	this->m_shaderData.CulledInstancesBufferUavIdx = gfxDevice->GetDescriptorIndex(this->m_culledInstancesBuffer, SubresouceType::UAV);
 	this->m_shaderData.CulledInstancesBufferSrvIdx = gfxDevice->GetDescriptorIndex(this->m_culledInstancesBuffer, SubresouceType::SRV);

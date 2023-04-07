@@ -174,7 +174,9 @@ namespace PhxEngine::Scene
 		std::vector<PhxEngine::RHI::BufferHandle> m_instanceUploadBuffers;
 
 		RHI::BufferHandle m_indirectDrawEarlyMeshBuffer;
+		RHI::BufferHandle m_indirectDrawEarlyTransparentMeshBuffer;
 		RHI::BufferHandle m_indirectDrawEarlyMeshletBuffer;
+		RHI::BufferHandle m_indirectDrawEarlyTransparentMeshletBuffer;
 		RHI::BufferHandle m_indirectDrawLateBuffer;
 
 		RHI::BufferHandle m_culledInstancesBuffer;

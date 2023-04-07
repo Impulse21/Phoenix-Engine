@@ -137,6 +137,8 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 		push.IsLatePass = false;
 		push.DrawBufferMeshIdx = scene.GetShaderData().IndirectEarlyMeshBufferIdx;
 		push.DrawBufferMeshletIdx = scene.GetShaderData().IndirectEarlyMeshletBufferIdx;
+		push.DrawBufferTransparentMeshIdx = scene.GetShaderData().IndirectEarlyTransparentMeshBufferIdx;
+		push.DrawBufferTransparentMeshletIdx = scene.GetShaderData().IndirectEarlyTransparentMeshletBufferIdx;
 		push.CulledDataCounterSrcIdx = RHI::cInvalidDescriptorIndex;
 		push.CulledDataSRVIdx = RHI::cInvalidDescriptorIndex;
 

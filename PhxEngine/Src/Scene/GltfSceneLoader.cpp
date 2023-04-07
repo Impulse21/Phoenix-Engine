@@ -559,7 +559,7 @@ void GltfSceneLoader::LoadMaterialData(
 
 		MaterialComponent& mtl = mtlEntity.AddComponent<MaterialComponent>();
 
-		if (cgltfMtl.alpha_mode == cgltf_alpha_mode_blend)
+		if (cgltfMtl.alpha_mode != cgltf_alpha_mode_opaque)
 		{
 			mtl.BlendMode = Renderer::BlendMode::Alpha;
 		}

@@ -25,6 +25,9 @@ namespace Shader::New
 	static const uint SHADER_LIGHT_ENTITY_COUNT = 256;
 
 	static const uint MATRIX_COUNT = 128;
+
+	static const uint DRAW_FLAGS_TRANSPARENT = 1 << 0;
+
 	struct IndirectDrawArgsIndexedInstanced
 	{
 		uint IndexCount;
@@ -189,6 +192,12 @@ namespace Shader::New
 		uint IndirectLateBufferIdx;
 
 		// -- 16 byte boundary ----
+		uint IndirectEarlyTransparentMeshBufferIdx;
+		uint IndirectEarlyTransparentMeshletBufferIdx;
+		uint __padding;
+		uint ___padding;
+
+		// -- 16 byte boundary ----
 		uint CulledInstancesBufferUavIdx;
 		uint CulledInstancesBufferSrvIdx;
 		uint CulledInstancesCounterBufferIdx;
@@ -336,12 +345,13 @@ namespace Shader::New
 
 		// -- 16 byte boundary ---
 		uint TangentOffset;
-
-		// TODO: I am here
 		uint MeshletOffset;
 		uint MeshletCount;
 		uint MeshletPrimtiveOffset;
+		// -- 16 byte boundary ---
+
 		uint MeshletUniqueVertexIBOffset;
+		uint DrawFlags;
 		// -- 16 byte boundary ---
 	};
 
@@ -455,6 +465,8 @@ namespace Shader::New
 	{
 		uint DrawBufferMeshIdx;
 		uint DrawBufferMeshletIdx;
+		uint DrawBufferTransparentMeshIdx;
+		uint DrawBufferTransparentMeshletIdx;
 		uint CulledDataSRVIdx;
 		uint CulledDataCounterSrcIdx;
 		bool IsLatePass;
