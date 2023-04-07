@@ -8,6 +8,10 @@
 #define PhxMB(size)                 (size * 1024 * 1024)
 #define PhxGB(size)                 (size * 1024 * 1024 * 1024)
 
+#define PhxToKB(x)	((size_t) (x) >> 10)
+#define PhxToMB(x)	((size_t) (x) >> 20)
+#define PhxToGB(x)	((size_t) (x) >> 30)
+
 namespace PhxEngine::Core
 {
 	struct MemoryStatistics 

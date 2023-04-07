@@ -387,6 +387,16 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::Initialize()
 	this->m_bindlessResourceDescriptorTable = std::make_unique<BindlessDescriptorTable>(
 		this->GetResourceGpuHeap()->Allocate(NUM_BINDLESS_RESOURCES));
 
+	D3D12MA::ALLOCATOR_DESC allocatorDesc = {};
+	allocatorDesc.pDevice = this->m_rootDevice.Get();
+	allocatorDesc.pAdapter = this->m_gpuAdapter.NativeAdapter.Get();
+	//allocatorDesc.PreferredBlockSize = 256 * 1024 * 1024;
+	//allocatorDesc.Flags |= D3D12MA::ALLOCATOR_FLAG_ALWAYS_COMMITTED;
+	allocatorDesc.Flags = (D3D12MA::ALLOCATOR_FLAGS)(D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED);
+
+	ThrowIfFailed(
+		D3D12MA::CreateAllocator(&allocatorDesc, &this->m_d3d12MemAllocator));
+
 	// TODO: Data drive device create info
 	this->CreateGpuTimestampQueryHeap(this->kTimestampQueryHeapSize);
 
@@ -1291,7 +1301,9 @@ TextureHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateTexture(TextureD
 	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
 	d3d12OptimizedClearValue.Format = dxgiFormatMapping.RtvFormat;
 
-	auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+	D3D12MA::ALLOCATION_DESC allocationDesc = {};
+	allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+
 	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
 
 	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
@@ -1366,19 +1378,18 @@ TextureHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateTexture(TextureD
 		((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget) || 
 		((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil);
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> d3d12Resource;
+	D3D12Texture textureImpl = {};
+	textureImpl.Desc = desc;
+
 	ThrowIfFailed(
-		this->GetD3D12Device2()->CreateCommittedResource(
-			&heapProperties,
-			D3D12_HEAP_FLAG_NONE,
+		this->m_d3d12MemAllocator->CreateResource(
+			&allocationDesc,
 			&resourceDesc,
 			ConvertResourceStates(desc.InitialState),
 			useClearValue ? &d3d12OptimizedClearValue : nullptr,
-			IID_PPV_ARGS(&d3d12Resource)));
+			&textureImpl.Allocation,
+			IID_PPV_ARGS(&textureImpl.D3D12Resource)));
 
-	D3D12Texture textureImpl = {};
-	textureImpl.Desc = desc;
-	textureImpl.D3D12Resource = d3d12Resource;
 	std::wstring debugName;
 	Helpers::StringConvert(desc.DebugName, debugName);
 	textureImpl.D3D12Resource->SetName(debugName.c_str());
@@ -1791,14 +1802,15 @@ RTAccelerationStructureHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::Create
 	D3D12_RESOURCE_STATES resourceState = D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
 
 
-	CD3DX12_HEAP_PROPERTIES heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+	D3D12MA::ALLOCATION_DESC allocationDesc = {};
+	allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
 	ThrowIfFailed(
-		this->GetD3D12Device5()->CreateCommittedResource(
-			&heapProperties,
-			D3D12_HEAP_FLAG_NONE,
+		this->m_d3d12MemAllocator->CreateResource(
+			&allocationDesc,
 			&resourceDesc,
 			resourceState,
 			nullptr,
+			&rtAccelerationStructureImpl.Allocation,
 			IID_PPV_ARGS(&rtAccelerationStructureImpl.D3D12Resource)));
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -2907,25 +2919,26 @@ void D3D12GraphicsDevice::CreateBufferInternal(BufferDesc const& desc, D3D12Buff
 	{
 		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 	}
-	
-	CD3DX12_HEAP_PROPERTIES heapProperties;
+
+	D3D12MA::ALLOCATION_DESC allocationDesc = {};
 	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
 
 	switch (desc.Usage)
 	{
 	case Usage::ReadBack:
-		heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK);
+		allocationDesc.HeapType = D3D12_HEAP_TYPE_READBACK;
+
 		initialState = D3D12_RESOURCE_STATE_COPY_DEST;
 		break;
 
 	case Usage::Upload:
-		heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+		allocationDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
 		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
 		break;
 
 	case Usage::Default:
 	default:
-		heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+		allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
 		initialState = D3D12_RESOURCE_STATE_COMMON;
 	}
 
@@ -2937,14 +2950,35 @@ void D3D12GraphicsDevice::CreateBufferInternal(BufferDesc const& desc, D3D12Buff
 
 	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(desc.SizeInBytes, resourceFlags, alignedSize);
 
+	/* TODO: Add Sparse stuff
+	if (resource_heap_tier >= D3D12_RESOURCE_HEAP_TIER_2)
+	{
+		// tile pool memory can be used for sparse buffers and textures alike (requires resource heap tier 2):
+		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
+	}
+	else if (has_flag(desc->misc_flags, ResourceMiscFlag::SPARSE_TILE_POOL_BUFFER))
+	{
+		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+	}
+	else if (has_flag(desc->misc_flags, ResourceMiscFlag::SPARSE_TILE_POOL_TEXTURE_NON_RT_DS))
+	{
+		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
+	}
+	else if (has_flag(desc->misc_flags, ResourceMiscFlag::SPARSE_TILE_POOL_TEXTURE_RT_DS))
+	{
+		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
+	}
+	*/
+
 	// Create a committed resource for the GPU resource in a default heap.
+
 	ThrowIfFailed(
-		this->GetD3D12Device2()->CreateCommittedResource(
-			&heapProperties,
-			D3D12_HEAP_FLAG_NONE,
+		this->m_d3d12MemAllocator->CreateResource(
+			&allocationDesc,
 			&resourceDesc,
 			initialState,
 			nullptr,
+			&outBuffer.Allocation,
 			IID_PPV_ARGS(&outBuffer.D3D12Resource)));
 
 	switch (desc.Usage)

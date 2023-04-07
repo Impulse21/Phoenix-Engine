@@ -44,3 +44,6 @@
 [submodule "PhxEngine/Extern/EASTL"]
 	path = PhxEngine/Extern/EASTL
 	url = https://github.com/electronicarts/EASTL.git
+[submodule "PhxEngine/Extern/D3D12MemoryAllocator"]
+	path = PhxEngine/Extern/D3D12MemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git

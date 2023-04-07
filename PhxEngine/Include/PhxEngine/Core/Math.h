@@ -3,11 +3,6 @@
 #include <DirectXMath.h>
 #include <algorithm>
 
-#define KBToBytes(x)	((size_t) (x) << 10)
-#define MBToBytes(x)	((size_t) (x) << 20)
-
-#define BytesKB(x)		((size_t) (x) >> 10)
-#define BytesToMB(x)	((size_t) (x) >> 20)
 
 namespace PhxEngine::Core::Math
 {

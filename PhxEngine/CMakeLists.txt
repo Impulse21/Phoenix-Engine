@@ -198,7 +198,8 @@ target_link_libraries(${project} PUBLIC
 	cereal
 	rapidjson
 	taskflow
-	tlsf)
+	tlsf
+	D3D12MemoryAllocator)
     
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 

@@ -12,6 +12,7 @@
 #include <PhxEngine/Core/Pool.h>
 #include "CommandList.h"
 #include <PhxEngine/Core/Profiler.h>
+#include <D3D12MemAlloc.h>
 
 
 // Teir 1 limit is 1,000,000
@@ -143,6 +144,7 @@ namespace PhxEngine::RHI::D3D12
     {
         TextureDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
+        Microsoft::WRL::ComPtr<D3D12MA::Allocation> Allocation;
 
         // -- The views ---
         DescriptorView RtvAllocation;
@@ -199,6 +201,7 @@ namespace PhxEngine::RHI::D3D12
     {
         BufferDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
+        Microsoft::WRL::ComPtr<D3D12MA::Allocation> Allocation;
 
         void* MappedData = nullptr;
         uint32_t MappedSizeInBytes = 0;
@@ -246,6 +249,7 @@ namespace PhxEngine::RHI::D3D12
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO Info = {};
         BufferHandle SratchBuffer;
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
+        Microsoft::WRL::ComPtr<D3D12MA::Allocation> Allocation;
         DescriptorView Srv;
 
         D3D12RTAccelerationStructure() = default;
@@ -407,6 +411,16 @@ namespace PhxEngine::RHI::D3D12
 
         float GetAvgFrameTime() override { return this->m_frameStats.GetAvg(); };
 
+        MemoryUsage GetMemoryUsage() const override
+        {
+            MemoryUsage retval;
+            D3D12MA::Budget budget;
+            this->m_d3d12MemAllocator->GetBudget(&budget, nullptr);
+            retval.Budget = budget.BudgetBytes;
+            retval.Usage = budget.UsageBytes;
+            return retval;
+        }
+
         virtual uint64_t GetUavCounterPlacementAlignment() { return D3D12_UAV_COUNTER_PLACEMENT_ALIGNMENT; }
         // -- Dx12 Specific functions ---
     public:
@@ -506,6 +520,8 @@ namespace PhxEngine::RHI::D3D12
         Microsoft::WRL::ComPtr<ID3D12CommandSignature> m_drawInstancedIndirectCommandSignature;
         Microsoft::WRL::ComPtr<ID3D12CommandSignature> m_drawIndexedInstancedIndirectCommandSignature;
         Microsoft::WRL::ComPtr<ID3D12CommandSignature> m_dispatchMeshIndirectCommandSignature;
+
+        Microsoft::WRL::ComPtr<D3D12MA::Allocator> m_d3d12MemAllocator;
 
 		// std::shared_ptr<IDxcUtils> dxcUtils;
 		D3D12Adapter m_gpuAdapter;
