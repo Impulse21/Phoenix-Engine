@@ -1476,6 +1476,12 @@ namespace PhxEngine::RHI
     struct Viewport;
     using ViewportHandle = Core::Handle<Viewport>;
 
+    struct MemoryUsage
+    {
+        uint64_t Budget = 0ull;
+        uint64_t Usage = 0ull;
+    };
+
     class IGraphicsDevice
     {
     public:
@@ -1607,6 +1613,8 @@ namespace PhxEngine::RHI
         virtual float GetAvgFrameTime() = 0;
 
         virtual uint64_t GetUavCounterPlacementAlignment() = 0;
+
+        virtual MemoryUsage GetMemoryUsage() const = 0;
     };
 
     extern void ReportLiveObjects();

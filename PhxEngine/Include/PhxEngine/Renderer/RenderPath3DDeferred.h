@@ -142,6 +142,9 @@ namespace PhxEngine::Renderer
 			RHI::BufferHandle indirectDrawMeshletBuffer);
 
 		DirectX::XMUINT2 CreateDepthPyramid();
+
+		void DispatchCull(Shader::New::CullPushConstants const& push);
+
 	private:
 		RHI::IGraphicsDevice* m_gfxDevice;
 		std::shared_ptr<Graphics::ShaderFactory> m_shaderFactory;

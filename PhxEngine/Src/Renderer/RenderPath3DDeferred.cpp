@@ -954,3 +954,7 @@ DirectX::XMUINT2 PhxEngine::Renderer::RenderPath3DDeferred::CreateDepthPyramid()
 
 	return { depthBufferDesc.Width, depthBufferDesc.Height };
 }
+
+void PhxEngine::Renderer::RenderPath3DDeferred::DispatchCull(Shader::New::CullPushConstants const& push)
+{
+}

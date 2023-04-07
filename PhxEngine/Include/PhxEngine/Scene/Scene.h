@@ -23,6 +23,12 @@ namespace PhxEngine::Scene
 	class Entity;
 	class ISceneWriter;
 
+	struct MeshRenderPass
+	{
+		RHI::BufferHandle IndirectDrawMeshBuffer;
+		RHI::BufferHandle IndirectDrawMeshletBuffer;
+	};
+
 	class Scene
 	{
 		friend Entity;

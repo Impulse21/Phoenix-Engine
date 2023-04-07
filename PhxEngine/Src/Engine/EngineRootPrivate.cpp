@@ -3,6 +3,7 @@
 #include "EngineRootPrivate.h"
 #include <PhxEngine/Core/Window.h>
 #include <PhxEngine/Engine/ApplicationEvents.h>
+#include <PhxEngine/Core/Memory.h>
 
 
 using namespace PhxEngine;
@@ -140,7 +141,9 @@ void PhxEngine::PhxEngineRoot::SetInformativeWindowTitle(std::string_view appNam
 		// ss << "=>" << std::setprecision(4) << frameTime << " CPU (ms) - " << std::setprecision(4) << (1.0f / frameTime) << " FPS";
 		ss << "- " << std::setprecision(4) << (1.0f / frameTime) << " FPS";
 	}
+	const RHI::MemoryUsage memoryUsage = this->m_gfxDevice->GetMemoryUsage();
 
+	ss << " [ " << PhxToMB(memoryUsage.Usage) << "/" << PhxToMB(memoryUsage.Budget) << " (MB) ]";
 	if (!extraInfo.empty())
 	{
 		ss << extraInfo;
