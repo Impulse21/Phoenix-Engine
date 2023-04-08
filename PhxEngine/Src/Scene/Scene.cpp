@@ -23,6 +23,7 @@ using namespace DirectX;
 constexpr uint64_t kVertexBufferAlignment = 16ull;
 
 
+// #define ENABLE_ALIASED_BUFFER
 PhxEngine::Scene::Scene::Scene()
 {
 	this->m_tlasUploadBuffers.resize(IGraphicsDevice::GPtr->GetMaxInflightFrames());
@@ -965,6 +966,58 @@ void PhxEngine::Scene::Scene::BuildIndirectBuffers(RHI::IGraphicsDevice* gfxDevi
 	auto view = this->GetAllEntitiesWith<MeshInstanceComponent>();
 
 	const size_t indirectMeshBufferByteSize = Core::Helpers::AlignUp(sizeof(Shader::New::MeshDrawCommand) * view.size(), gfxDevice->GetUavCounterPlacementAlignment()) + sizeof(uint32_t);
+	const size_t indirectMeshletBufferByteSize = Core::Helpers::AlignUp(sizeof(Shader::New::MeshletDrawCommand) * view.size(), gfxDevice->GetUavCounterPlacementAlignment()) + sizeof(uint32_t);
+
+	// Times it by two as well will use the same backing buffer for both Opaque and Transparent
+#ifdef ENABLE_ALIASED_BUFFER
+	const size_t backingBufferSize = std::max(indirectMeshBufferByteSize, indirectMeshletBufferByteSize);
+	if (!this->m_indirectDrawEarlyBackingBuffer.IsValid() ||
+		gfxDevice->GetBufferDesc(this->m_indirectDrawEarlyBackingBuffer).SizeInBytes < backingBufferSize)
+	{
+		// Ensure we delete the other aliased resources first.
+		if (this->m_indirectDrawEarlyMeshBuffer.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->m_indirectDrawEarlyMeshBuffer);
+		}
+		if (this->m_indirectDrawEarlyMeshletBuffer.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->m_indirectDrawEarlyMeshletBuffer);
+		}
+
+		if (this->m_indirectDrawEarlyBackingBuffer.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->m_indirectDrawEarlyBackingBuffer);
+		}
+
+		this->m_indirectDrawEarlyBackingBuffer = gfxDevice->CreateBuffer({
+					.MiscFlags = BufferMiscFlags::IsAliasedResource,
+				   .SizeInBytes = backingBufferSize,
+				   .DebugName = "Backing Buffer" });
+	}	
+	
+	if (!this->m_indirectDrawEarlyTransparentBackingBuffer.IsValid() ||
+		gfxDevice->GetBufferDesc(this->m_indirectDrawEarlyTransparentBackingBuffer).SizeInBytes < backingBufferSize)
+	{
+		if (this->m_indirectDrawEarlyTransparentMeshBuffer.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->m_indirectDrawEarlyMeshBuffer);
+		}
+		if (this->m_indirectDrawEarlyTransparentMeshletBuffer.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->m_indirectDrawEarlyMeshletBuffer);
+		}
+
+		if (this->m_indirectDrawEarlyTransparentBackingBuffer.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->m_indirectDrawEarlyTransparentBackingBuffer);
+		}
+
+		this->m_indirectDrawEarlyTransparentBackingBuffer = gfxDevice->CreateBuffer({
+					.MiscFlags = BufferMiscFlags::IsAliasedResource,
+				   .SizeInBytes = backingBufferSize,
+				   .DebugName = "Backing Buffer" });
+	}
+#endif
 
 	if (!this->m_indirectDrawEarlyMeshBuffer.IsValid() ||
 		gfxDevice->GetBufferDesc(this->m_indirectDrawEarlyMeshBuffer).SizeInBytes < indirectMeshBufferByteSize)
@@ -982,6 +1035,9 @@ void PhxEngine::Scene::Scene::BuildIndirectBuffers(RHI::IGraphicsDevice* gfxDevi
 				   .SizeInBytes = indirectMeshBufferByteSize,
 				   .AllowUnorderedAccess = true,
 				   .UavCounterOffsetInBytes = indirectMeshBufferByteSize - sizeof(uint32_t),
+#ifdef ENABLE_ALIASED_BUFFER
+				   .AliasedBuffer = this->m_indirectDrawEarlyBackingBuffer,
+#endif
 				   .DebugName = "Indirect Draw Early (Mesh)" });
 
 	}
@@ -1002,11 +1058,12 @@ void PhxEngine::Scene::Scene::BuildIndirectBuffers(RHI::IGraphicsDevice* gfxDevi
 				   .SizeInBytes = indirectMeshBufferByteSize,
 				   .AllowUnorderedAccess = true,
 				   .UavCounterOffsetInBytes = indirectMeshBufferByteSize - sizeof(uint32_t),
+#ifdef ENABLE_ALIASED_BUFFER
+				   .AliasedBuffer = this->m_indirectDrawEarlyTransparentBackingBuffer,
+#endif
 				   .DebugName = "Indirect Draw Early (Transparent Mesh)" });
-
 	}
 
-	const size_t indirectMeshletBufferByteSize = Core::Helpers::AlignUp(sizeof(Shader::New::MeshletDrawCommand) * view.size(), gfxDevice->GetUavCounterPlacementAlignment()) + sizeof(uint32_t);
 
 	if (!this->m_indirectDrawEarlyMeshletBuffer.IsValid() ||
 		gfxDevice->GetBufferDesc(this->m_indirectDrawEarlyMeshletBuffer).SizeInBytes < indirectMeshletBufferByteSize)
@@ -1023,6 +1080,9 @@ void PhxEngine::Scene::Scene::BuildIndirectBuffers(RHI::IGraphicsDevice* gfxDevi
 				   .SizeInBytes = indirectMeshletBufferByteSize,
 				   .AllowUnorderedAccess = true,
 				   .UavCounterOffsetInBytes = indirectMeshletBufferByteSize - sizeof(uint32_t),
+#ifdef ENABLE_ALIASED_BUFFER
+				   .AliasedBuffer = this->m_indirectDrawEarlyBackingBuffer,
+#endif
 				   .DebugName = "Indirect Draw Early (Meshlet)" });
 	}
 
@@ -1041,6 +1101,9 @@ void PhxEngine::Scene::Scene::BuildIndirectBuffers(RHI::IGraphicsDevice* gfxDevi
 				   .SizeInBytes = indirectMeshletBufferByteSize,
 				   .AllowUnorderedAccess = true,
 				   .UavCounterOffsetInBytes = indirectMeshletBufferByteSize - sizeof(uint32_t),
+#ifdef ENABLE_ALIASED_BUFFER
+				   .AliasedBuffer = this->m_indirectDrawEarlyTransparentBackingBuffer,
+#endif
 				   .DebugName = "Indirect Draw Early (Transparent Meshlet)" });
 	}
 

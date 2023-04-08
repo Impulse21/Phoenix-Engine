@@ -485,6 +485,7 @@ namespace PhxEngine::RHI
         Structured = 1 << 2,
         Typed = 1 << 3,
         HasCounter = 1 << 4,
+        IsAliasedResource = 1 << 5,
     };
 
     PHXRHI_ENUM_CLASS_FLAG_OPERATORS(BufferMiscFlags);
@@ -891,6 +892,8 @@ namespace PhxEngine::RHI
 
         size_t UavCounterOffsetInBytes = 0;
         BufferHandle UavCounterBuffer = {};
+
+        BufferHandle AliasedBuffer = {};
 
         std::string DebugName;
 
