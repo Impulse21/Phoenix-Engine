@@ -239,7 +239,7 @@ void DirectLightContribution_Cluster(in Scene scene, in BRDFDataPerSurface brdfS
     // NOTE(marco): this version has been implemented following:
     // https://www.activision.com/cdn/research/2017_Sig_Improved_Culling_final.pdf
     // See the presentation for more details
-    if (minLightId != NUM_LIGHTS + 1)
+    if (minLightId != MAX_NUM_LIGHTS + 1)
     {
         for (uint lightID = minLightId; lightID <= maxLightId; ++lightID)
         {

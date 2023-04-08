@@ -194,8 +194,8 @@ namespace Shader::New
 		// -- 16 byte boundary ----
 		uint IndirectEarlyTransparentMeshBufferIdx;
 		uint IndirectEarlyTransparentMeshletBufferIdx;
-		uint __padding;
-		uint ___padding;
+		uint IndirectShadowPassMeshBufferIdx;
+		uint IndirectShadowPassMeshletBufferIdx;
 
 		// -- 16 byte boundary ----
 		uint CulledInstancesBufferUavIdx;
@@ -207,7 +207,8 @@ namespace Shader::New
 		uint InstanceCount;
 		uint LightBufferIdx;
 		uint LightCount;
-		uint _padding;
+		uint PerLightMeshInstances;
+		uint LightMeshletInstances;
 
 	};
 
@@ -470,6 +471,12 @@ namespace Shader::New
 		uint CulledDataSRVIdx;
 		uint CulledDataCounterSrcIdx;
 		bool IsLatePass;
+	};
+
+	struct LightCullPushConstants
+	{
+		uint PerLightMeshUavIdx;
+		uint LightMeshletUavIdx;
 	};
 
 	struct DepthPyrmidPushConstnats

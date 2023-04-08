@@ -94,7 +94,7 @@ float4 main(PSInput input) : SV_TARGET
         const uint binValue = GetLightBin(iBin);
         const uint minLightId = binValue & 0xFFFF;
         const uint maxLightId = (binValue >> 16) & 0xFFFF;
-        if (minLightId != NUM_LIGHTS + 1)
+        if (minLightId != MAX_NUM_LIGHTS + 1)
         {
             for (uint lightID = minLightId; lightID <= maxLightId; ++lightID)
             {

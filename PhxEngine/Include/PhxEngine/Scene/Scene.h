@@ -148,6 +148,7 @@ namespace PhxEngine::Scene
 		void BuildGeometryData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice, std::vector<Renderer::ResourceUpload>& resourcesToFree);
 		void BuildIndirectBuffers(RHI::IGraphicsDevice* gfxDevice);
 		void BuildSceneData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice);
+		void BuildLightBuffers(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice);
 
 	private:
 		Core::IAllocator* m_sceneAllocator;
@@ -177,6 +178,12 @@ namespace PhxEngine::Scene
 		RHI::BufferHandle m_indirectDrawEarlyTransparentMeshBuffer;
 		RHI::BufferHandle m_indirectDrawEarlyMeshletBuffer;
 		RHI::BufferHandle m_indirectDrawEarlyTransparentMeshletBuffer;
+		RHI::BufferHandle m_indirectDrawShadowPassMeshBuffer;
+		RHI::BufferHandle m_indirectDrawShadowPassMeshletBuffer;
+
+		RHI::BufferHandle m_perlightMeshInstances;
+		RHI::BufferHandle m_lightMeshletInstances;
+
 		RHI::BufferHandle m_indirectDrawLateBuffer;
 
 		RHI::BufferHandle m_culledInstancesBuffer;

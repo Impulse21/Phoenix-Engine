@@ -7,6 +7,7 @@
 #include <PhxEngine/Scene/Entity.h>
 #include <PhxEngine/Scene/Components.h>
 #include <PhxEngine/Renderer/CommonPasses.h>
+#include <PhxEngine/Shaders/ShaderInterop.h>
 
 
 #include <DirectXMath.h>
@@ -50,6 +51,7 @@ RHI::ExecutionReceipt PhxEngine::Scene::Scene::BuildRenderData(RHI::IGraphicsDev
 	this->BuildMeshData(commandList, gfxDevice);
 	this->BuildGeometryData(commandList, gfxDevice, resourcesToFree);
 	this->BuildIndirectBuffers(gfxDevice);
+	this->BuildLightBuffers(commandList, gfxDevice);
 
 	commandList->Close();
 	RHI::ExecutionReceipt retVal = gfxDevice->ExecuteCommandLists({commandList});
@@ -1089,6 +1091,44 @@ void PhxEngine::Scene::Scene::BuildIndirectBuffers(RHI::IGraphicsDevice* gfxDevi
 				   .AllowUnorderedAccess = true,
 				   .UavCounterOffsetInBytes = indirectMeshBufferByteSize - sizeof(uint32_t) });
 	}
+
+	const size_t indirectMeshLightBufferByteSize = Core::Helpers::AlignUp(sizeof(Shader::New::MeshDrawCommand) * view.size() * 6, gfxDevice->GetUavCounterPlacementAlignment()) + sizeof(uint32_t);
+	if (!this->m_indirectDrawShadowPassMeshBuffer.IsValid() ||
+		gfxDevice->GetBufferDesc(this->m_indirectDrawShadowPassMeshBuffer).SizeInBytes < indirectMeshLightBufferByteSize)
+	{
+		if (this->m_indirectDrawShadowPassMeshBuffer.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->m_indirectDrawShadowPassMeshBuffer);
+		}
+		this->m_indirectDrawShadowPassMeshBuffer = gfxDevice->CreateBuffer({
+				   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter | BufferMiscFlags::Bindless,
+				   .Binding = BindingFlags::UnorderedAccess,
+				   .InitialState = ResourceStates::IndirectArgument,
+				   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
+				   .SizeInBytes = indirectMeshLightBufferByteSize,
+				   .AllowUnorderedAccess = true,
+				   .UavCounterOffsetInBytes = indirectMeshLightBufferByteSize - sizeof(uint32_t),
+				   .DebugName = "Indirect Draw Shadow (Meshes)" });
+	}
+
+	const size_t indirectMeshletLightBufferByteSize = Core::Helpers::AlignUp(sizeof(Shader::New::MeshletDrawCommand) * view.size() * 6, gfxDevice->GetUavCounterPlacementAlignment()) + sizeof(uint32_t);
+	if (!this->m_indirectDrawShadowPassMeshletBuffer.IsValid() ||
+		gfxDevice->GetBufferDesc(this->m_indirectDrawShadowPassMeshletBuffer).SizeInBytes < indirectMeshletLightBufferByteSize)
+	{
+		if (this->m_indirectDrawShadowPassMeshletBuffer.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->m_indirectDrawShadowPassMeshletBuffer);
+		}
+		this->m_indirectDrawShadowPassMeshletBuffer = gfxDevice->CreateBuffer({
+				   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::HasCounter | BufferMiscFlags::Bindless,
+				   .Binding = BindingFlags::UnorderedAccess,
+				   .InitialState = ResourceStates::IndirectArgument,
+				   .StrideInBytes = sizeof(Shader::New::MeshletDrawCommand),
+				   .SizeInBytes = indirectMeshletLightBufferByteSize,
+				   .AllowUnorderedAccess = true,
+				   .UavCounterOffsetInBytes = indirectMeshletLightBufferByteSize - sizeof(uint32_t),
+				   .DebugName = "Indirect Draw Shadow Pass (Meshlet)" });
+	}
 }
 
 void PhxEngine::Scene::Scene::BuildSceneData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice)
@@ -1108,6 +1148,8 @@ void PhxEngine::Scene::Scene::BuildSceneData(RHI::ICommandList* commandList, RHI
 	this->m_shaderData.IndirectEarlyMeshletBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawEarlyMeshletBuffer, SubresouceType::UAV);
 	this->m_shaderData.IndirectEarlyTransparentMeshBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawEarlyTransparentMeshBuffer, SubresouceType::UAV);
 	this->m_shaderData.IndirectEarlyTransparentMeshletBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawEarlyTransparentMeshletBuffer, SubresouceType::UAV);
+	this->m_shaderData.IndirectShadowPassMeshBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawShadowPassMeshBuffer, SubresouceType::UAV);
+	this->m_shaderData.IndirectShadowPassMeshletBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawEarlyMeshletBuffer, SubresouceType::UAV);
 	this->m_shaderData.IndirectLateBufferIdx = gfxDevice->GetDescriptorIndex(this->m_indirectDrawLateBuffer, SubresouceType::UAV);
 	this->m_shaderData.CulledInstancesBufferUavIdx = gfxDevice->GetDescriptorIndex(this->m_culledInstancesBuffer, SubresouceType::UAV);
 	this->m_shaderData.CulledInstancesBufferSrvIdx = gfxDevice->GetDescriptorIndex(this->m_culledInstancesBuffer, SubresouceType::SRV);
@@ -1115,7 +1157,49 @@ void PhxEngine::Scene::Scene::BuildSceneData(RHI::ICommandList* commandList, RHI
 	this->m_shaderData.LightCount = 0;
 	this->m_shaderData.LightBufferIdx = RHI::cInvalidDescriptorIndex;
 	this->m_shaderData.InstanceCount = 0;
+	this->m_shaderData.LightMeshletInstances = gfxDevice->GetDescriptorIndex(this->m_lightMeshletInstances, SubresouceType::SRV);
+	this->m_shaderData.PerLightMeshInstances = gfxDevice->GetDescriptorIndex(this->m_perlightMeshInstances, SubresouceType::SRV);
+}
 
+void PhxEngine::Scene::Scene::BuildLightBuffers(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice)
+{
+	const size_t perlightMeshInstancesSize = MAX_NUM_LIGHTS * sizeof(uint32_t);
+	if (!this->m_perlightMeshInstances.IsValid() ||
+		gfxDevice->GetBufferDesc(this->m_perlightMeshInstances).SizeInBytes < perlightMeshInstancesSize)
+	{
+		if (this->m_perlightMeshInstances.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->m_perlightMeshInstances);
+		}
+
+		this->m_perlightMeshInstances = gfxDevice->CreateBuffer({
+				   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::Bindless,
+				   .Binding = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
+				   .InitialState = ResourceStates::ShaderResource,
+				   .StrideInBytes = sizeof(uint32_t),
+				   .SizeInBytes = perlightMeshInstancesSize,
+				   .AllowUnorderedAccess = true,
+					.DebugName = "Per-Light Mesh Instances"});
+	}
+
+	const size_t lightMeshletInstancesSize = MAX_NUM_LIGHTS * MAX_MESHLETS_PER_LIGHT * sizeof(DirectX::XMUINT2);
+	if (!this->m_lightMeshletInstances.IsValid() ||
+		gfxDevice->GetBufferDesc(this->m_lightMeshletInstances).SizeInBytes < lightMeshletInstancesSize)
+	{
+		if (this->m_lightMeshletInstances.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->m_lightMeshletInstances);
+		}
+
+		this->m_lightMeshletInstances = gfxDevice->CreateBuffer({
+				   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::Bindless,
+				   .Binding = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
+				   .InitialState = ResourceStates::ShaderResource,
+				   .StrideInBytes = sizeof(DirectX::XMUINT2),
+				   .SizeInBytes = lightMeshletInstancesSize,
+				   .AllowUnorderedAccess = true,
+					.DebugName = "Light Meshet Instances"});
+	}
 }
 
 void PhxEngine::Scene::Scene::BuildMaterialData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice, std::vector<Renderer::ResourceUpload>& resourcesToFree)
@@ -1363,7 +1447,6 @@ void PhxEngine::Scene::Scene::BuildMeshData(RHI::ICommandList* commandList, RHI:
 		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
 	}
 }
-
 
 Entity PhxEngine::Scene::Scene::CreateCube(
 	RHI::IGraphicsDevice* gfxDevice,
