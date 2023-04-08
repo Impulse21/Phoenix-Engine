@@ -2,6 +2,7 @@
 
 #include "Globals_NEW.hlsli"
 #include "../Include/PhxEngine/Shaders/ShaderInterop.h"
+#include "IndirectDraw.hlsli"
 
 PUSH_CONSTANT(push, CullPushConstants);
 
@@ -109,19 +110,8 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         
         if (isVisibleFrustum && isVisibileOcclusion)
         {
-            MeshDrawCommand meshDrawCommand;
-            meshDrawCommand.DrawId = objectInstanceIdx;
-            meshDrawCommand.Indirect.IndexCount = geometryData.NumIndices;
-            meshDrawCommand.Indirect.InstanceCount = 1;
-            meshDrawCommand.Indirect.StartIndex = geometryData.IndexOffset;
-            meshDrawCommand.Indirect.VertexOffset = 0;
-            meshDrawCommand.Indirect.StartInstance = 0;
-            
-            MeshletDrawCommand meshletDrawCommand;
-            meshletDrawCommand.DrawId = objectInstanceIdx;
-            meshletDrawCommand.Indirect.GroupCountX = ROUNDUP(geometryData.MeshletCount, AS_GROUP_SIZE);
-            meshletDrawCommand.Indirect.GroupCountY = 1;
-            meshletDrawCommand.Indirect.GroupCountZ = 1;
+            MeshDrawCommand meshDrawCommand = CreateMeshCommand(geometryData, objectInstanceIdx);
+            MeshletDrawCommand meshletDrawCommand = CreateMeshletCommand(geometryData, objectInstanceIdx);
             
             // TODO: Seperate the passes for Alpha and Opaque to limit the amount of branching
             uint drawBufferMeshIdx = (geometryData.DrawFlags & DRAW_FLAGS_TRANSPARENT) ? push.DrawBufferTransparentMeshIdx : push.DrawBufferMeshIdx;

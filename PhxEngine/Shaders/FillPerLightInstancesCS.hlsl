@@ -13,7 +13,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
 {
     RWStructuredBuffer<uint> perLightInstances = ResourceDescriptorHeap[push.PerLightMeshUavIdx];
     RWStructuredBuffer<uint2> lightMeshletInstances = ResourceDescriptorHeap[push.LightMeshletUavIdx];
-    if (Gid.x == 0)
+    if (DTid.x == 0)
     {
         // Reset Counts
         for (int i = 0; i < MAX_NUM_LIGHTS; i++)
@@ -24,14 +24,14 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
     
     GroupMemoryBarrierWithGroupSync();
     
-    uint lightIndex = Gid.x % GetScene().LightCount;
+    uint lightIndex = DTid.x % GetScene().LightCount;
     if (lightIndex >= GetScene().LightCount)
     {
         return;
     }
     const Light light = LoadLight(lightIndex);
     
-    uint objectInstanceIdx = Gid.x & GetScene().InstanceCount;
+    uint objectInstanceIdx = DTid.x & GetScene().InstanceCount;
     if (objectInstanceIdx >= GetScene().InstanceCount)
     {
         return;
@@ -50,7 +50,8 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         return;
     }
     
-    const uint perLightOffset = InterlockedAdd(perLightInstances[lightIndex], geometryData.MeshletCount);
+    uint perLightOffset = 0;
+    InterlockedAdd(perLightInstances[lightIndex], geometryData.MeshletCount, perLightOffset);
     
     // Add the meshlet instances
     for (uint m = 0; m < geometryData.MeshletCount; m++)

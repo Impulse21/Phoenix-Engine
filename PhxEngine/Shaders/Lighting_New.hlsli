@@ -151,8 +151,7 @@ inline void ApplySpotLight(in Light light, in BRDFDataPerSurface brdfSurfaceData
 void ProcessLight(in Light light, in BRDFDataPerSurface brdfSurfaceData, inout Lighting lightingTerms)
 {
     const uint lightType = light.GetType();
-        
-    switch (light.GetType())
+    switch (lightType)
     {
         case LIGHT_TYPE_DIRECTIONAL:
             ApplyDirectionalLight(light, brdfSurfaceData, lightingTerms);

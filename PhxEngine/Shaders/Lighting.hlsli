@@ -244,7 +244,7 @@ void ShadeSurface_Direct(
     BRDFDataPerLight brdfLightData;
     // TODO: Revisit lighting model
     const uint lightType = light.GetType();
-    switch (light.GetType())
+    switch (lightType)
     {
     case ENTITY_TYPE_DIRECTIONALLIGHT:
     {
