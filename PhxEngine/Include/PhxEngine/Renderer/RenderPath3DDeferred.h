@@ -6,6 +6,7 @@
 #include <PhxEngine/Renderer/GBuffer.h>
 #include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
 #include <PhxEngine/Renderer/ClusterLighting.h>
+#include <PhxEngine/Renderer/Shadows.h>
 
 namespace tf
 {
@@ -37,6 +38,7 @@ namespace PhxEngine::Renderer
 	{
 		enum
 		{
+			ShadowPass,
 			GBufferFillPass,
 			DeferredLightingPass,
 			ClusterLightsDebugPass,
@@ -53,6 +55,8 @@ namespace PhxEngine::Renderer
 			DepthPyramidGen,
 			DeferredLightingPass,
 			ClusterLightsDebugPass,
+			FillPerLightInstances,
+			FillLightDrawBuffers,
 			Count
 		};
 	}
@@ -61,6 +65,7 @@ namespace PhxEngine::Renderer
 	{
 		enum
 		{
+			ShadowPass,
 			GBufferFillPass,
 			Count
 		};
@@ -73,6 +78,7 @@ namespace PhxEngine::Renderer
 			VS_GBufferFill,
 			VS_DeferredLightingPass,
 			VS_ClusterLightsDebugPass,
+			VS_ShadowPass,
 			VS_Rect,
 
 			PS_GBufferFill,
@@ -85,6 +91,8 @@ namespace PhxEngine::Renderer
 			CS_DepthPyramidGen,
 			CS_DeferredLightingPass,
 			CS_ClusterLightsDebugPass,
+			CS_FillPerLightInstances,
+			CS_FillLightDrawBuffers,
 
 			AS_MeshletCull,
 
@@ -127,7 +135,13 @@ namespace PhxEngine::Renderer
 		void CreateRenderPasses();
 
 	private:
-		void PrepareFrameRenderData(RHI::ICommandList * commandList, Scene::CameraComponent const& mainCamera, Scene::Scene& scen);
+		void PrepareFrameRenderData(RHI::ICommandList * commandList, Scene::CameraComponent const& mainCamera, Scene::Scene& scene);
+		void PrepareFrameLightData(
+			RHI::ICommandList* commandList,
+			Scene::CameraComponent const& mainCamera,
+			Scene::Scene& scene,
+			RHI::GPUAllocation& outLights,
+			RHI::GPUAllocation& outMatrices);
 		void UpdateRTAccelerationStructures(RHI::ICommandList* commandList, Scene::Scene& scene);
 
 		void RenderGeometry(RHI::ICommandList* commandList, Scene::Scene& scene, DrawQueue& drawQueue, bool markMeshes);
@@ -169,6 +183,10 @@ namespace PhxEngine::Renderer
 		RHI::BufferHandle m_frameCB;
 
 		DirectX::XMFLOAT2 m_canvasSize;
+
+		Renderer::ShadowsAtlas m_shadowAtlas;
+		RHI::BufferHandle m_lightBuffer;
+		RHI::BufferHandle m_lightMatrixBuffer;
 
 		struct Settings
 		{

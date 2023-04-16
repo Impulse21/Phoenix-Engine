@@ -60,7 +60,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Initialize(DirectX::XMFLOAT2 con
 	}
 
 	this->m_clusterLighting.Initialize(this->m_gfxDevice, canvasSize);
-
+	this->m_shadowAtlas.Initialize(this->m_gfxDevice);
 	loadFuture.wait();
 
 	// Create Command Signatre
@@ -78,6 +78,32 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 	std::memcpy(&cameraData.PlanesWS, &mainCamera.FrustumWS.Planes, sizeof(DirectX::XMFLOAT4) * 6);
 
 	ICommandList* commandList = this->m_gfxDevice->BeginCommandRecording();
+
+	if (!this->m_drawMeshCommandSignatureMS.IsValid())
+	{
+		this->m_drawMeshCommandSignatureMS = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshletDrawCommand>({
+					   .ArgDesc =
+						   {
+							   {.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+							   {.Type = IndirectArgumentType::DispatchMesh }
+						   },
+					   .PipelineType = PipelineType::Mesh,
+					   .MeshHandle = this->m_meshStates[EMeshPipelineStates::GBufferFillPass]
+			});
+	}
+	if (!this->m_drawMeshCommandSignatureGfx.IsValid())
+	{
+		// Create Command Signature
+		this->m_drawMeshCommandSignatureGfx = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshDrawCommand>({
+						.ArgDesc =
+							{
+								{.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+								{.Type = IndirectArgumentType::DrawIndex }
+							},
+						.PipelineType = PipelineType::Gfx,
+						.GfxHandle = this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]
+				});
+	}
 
 	// TODO: Disabling for now as this work is incomplete
 #if false
@@ -118,6 +144,93 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 	if (!this->m_settings.FreezeCamera)
 	{
 		cullCamera = cameraData;
+	}
+
+	if (scene.GetShaderData().LightCount > 0)
+	{
+		auto _ = commandList->BeginScopedMarker("Fill Per Lighting Buffer");
+		RHI::GpuBarrier preBarriers[] =
+		{
+			RHI::GpuBarrier::CreateBuffer(scene.GetPerlightMeshInstances(), this->m_gfxDevice->GetBufferDesc(scene.GetPerlightMeshInstances()).InitialState, RHI::ResourceStates::UnorderedAccess),
+			RHI::GpuBarrier::CreateBuffer(scene.GetPerlightMeshInstancesCounts(), this->m_gfxDevice->GetBufferDesc(scene.GetPerlightMeshInstancesCounts()).InitialState, RHI::ResourceStates::UnorderedAccess),
+		};
+		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
+
+		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::FillPerLightInstances]);
+
+		Shader::New::FillPerLightListConstants push = {};
+		push.UseMeshlets = this->m_settings.EnableMeshShaders;
+		push.PerLightMeshCountsUavIdx = this->m_gfxDevice->GetDescriptorIndex(scene.GetPerlightMeshInstancesCounts(), RHI::SubresouceType::UAV);
+		push.PerLightMeshInstancesUavIdx = this->m_gfxDevice->GetDescriptorIndex(scene.GetPerlightMeshInstances(), RHI::SubresouceType::UAV);
+
+		commandList->BindPushConstant(0, push);
+		commandList->BindConstantBuffer(1, this->m_frameCB);
+
+		static Shader::New::Camera cullCamera = {};
+		if (!this->m_settings.FreezeCamera)
+		{
+			cullCamera = cameraData;
+		}
+
+		commandList->BindDynamicConstantBuffer(2, cullCamera);
+		const int numThreadGroups = (int)std::ceilf(scene.GetShaderData().InstanceCount * scene.GetShaderData().LightCount / (float)THREADS_PER_WAVE);
+		commandList->Dispatch(
+			numThreadGroups,
+			1,
+			1);
+
+		RHI::GpuBarrier postBarriers[] =
+		{
+			RHI::GpuBarrier::CreateBuffer(scene.GetPerlightMeshInstances(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetPerlightMeshInstances()).InitialState),
+			RHI::GpuBarrier::CreateBuffer(scene.GetPerlightMeshInstancesCounts(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetPerlightMeshInstancesCounts()).InitialState),
+		};
+		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postBarriers, _countof(postBarriers)));
+	}
+
+	if (scene.GetShaderData().LightCount > 0)
+	{
+		auto _ = commandList->BeginScopedMarker("Fill Shadow Indirect Draw Buffers");
+		RHI::GpuBarrier preBarriers[] =
+		{
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawShadowMeshBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawShadowMeshletBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshletBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawPerLightCountBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawPerLightCountBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
+		};
+		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
+
+		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::FillPerLightInstances]);
+
+		Shader::New::FillLightDrawBuffers push = {};
+		push.UseMeshlets = this->m_settings.EnableMeshShaders;
+		push.DrawBufferIdx = push.UseMeshlets
+			? this->m_gfxDevice->GetDescriptorIndex(scene.GetIndirectDrawShadowMeshletBuffer(), RHI::SubresouceType::UAV)
+			: this->m_gfxDevice->GetDescriptorIndex(scene.GetIndirectDrawShadowMeshBuffer(), RHI::SubresouceType::UAV);
+
+		push.DrawBufferCounterIdx = this->m_gfxDevice->GetDescriptorIndex(scene.GetIndirectDrawPerLightCountBuffer(), RHI::SubresouceType::UAV);
+
+		commandList->BindPushConstant(0, push);
+		commandList->BindConstantBuffer(1, this->m_frameCB);
+
+		static Shader::New::Camera cullCamera = {};
+		if (!this->m_settings.FreezeCamera)
+		{
+			cullCamera = cameraData;
+		}
+
+		commandList->BindDynamicConstantBuffer(2, cullCamera);
+		const int numThreadGroups = (int)std::ceilf(scene.GetShaderData().LightCount / (float)THREADS_PER_WAVE);
+		commandList->Dispatch(
+			numThreadGroups,
+			1,
+			1);
+
+		RHI::GpuBarrier postBarriers[] =
+		{
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawShadowMeshBuffer(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshBuffer()).InitialState),
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawShadowMeshletBuffer(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshletBuffer()).InitialState),
+			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawPerLightCountBuffer(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawPerLightCountBuffer()).InitialState),
+		};
+		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postBarriers, _countof(postBarriers)));
 	}
 
 	{
@@ -167,6 +280,88 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesCounterBuffer(), RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesCounterBuffer()).InitialState),
 		};
 		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postBarriers, _countof(postBarriers)));
+	}
+
+	if (this->m_shadowAtlas.ShadowRenderPass.IsValid() || !this->m_settings.EnableMeshShaders)
+	{
+		auto _ = commandList->BeginScopedMarker("Shadow Pass");
+
+		commandList->BeginRenderPass(this->m_shadowAtlas.ShadowRenderPass);
+		if (this->m_settings.EnableMeshShaders)
+		{
+			commandList->SetMeshPipeline(this->m_meshStates[EMeshPipelineStates::ShadowPass]);
+		}
+		else
+		{
+			commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::ShadowPass]);
+		}
+
+		commandList->BindConstantBuffer(1, this->m_frameCB);
+		commandList->BindDynamicConstantBuffer(2, cameraData);
+		auto lightView = scene.GetAllEntitiesWith<Scene::LightComponent>();
+		for (auto e : lightView)
+		{
+			auto light = lightView.get<Scene::LightComponent>(e);
+
+			switch (light.Type)
+			{
+			case Shader::New::LIGHT_TYPE_DIRECTIONAL:
+			{
+				std::array<Viewport, kNumCascades> cascadeViews;
+				for (int i = 0; i < cascadeViews.size(); i++)
+				{
+					Viewport& vp = cascadeViews[i];
+					vp.MinX = float(light.ShadowRect.x + i * light.ShadowRect.w);
+					vp.MaxX = float(light.ShadowRect.w + vp.MinX);
+					vp.MinY = float(light.ShadowRect.y);
+					vp.MaxY = float(light.ShadowRect.y + light.ShadowRect.h);
+					vp.MinZ = 0.0f;
+					vp.MinX = 1.0f;
+				}
+				commandList->SetViewports(cascadeViews.data(), cascadeViews.size());
+				break;
+			}
+			case Shader::New::LIGHT_TYPE_OMNI:
+			{
+				std::array<Viewport, 6> cubeViews;
+				for (int i = 0; i < cubeViews.size(); i++)
+				{
+					Viewport& vp = cubeViews[i];
+					vp.MinX = float(light.ShadowRect.x + i * light.ShadowRect.w);
+					vp.MaxX = float(light.ShadowRect.w + vp.MinX);
+					vp.MinY = float(light.ShadowRect.y);
+					vp.MaxY = float(light.ShadowRect.y + light.ShadowRect.h);
+					vp.MinZ = 0.0f;
+					vp.MinX = 1.0f;
+				}
+				commandList->SetViewports(cubeViews.data(), cubeViews.size());
+				break;
+			}
+
+			case Shader::New::LIGHT_TYPE_SPOT:
+			{
+				Viewport vp;
+				vp.MinX = float(light.ShadowRect.x);
+				vp.MaxX = float(light.ShadowRect.w + light.ShadowRect.x);
+				vp.MinY = float(light.ShadowRect.y);
+				vp.MaxY = float(light.ShadowRect.y + light.ShadowRect.h);
+				vp.MinZ = 0.0f;
+				vp.MinX = 1.0f;
+				commandList->SetViewports(&vp, 1);
+				break;
+			}
+			}
+
+			commandList->ExecuteIndirect(
+				this->m_settings.EnableMeshShaders ? this->m_drawMeshCommandSignatureMS : this->m_drawMeshCommandSignatureGfx,
+				this->m_settings.EnableMeshShaders ? scene.GetIndirectDrawShadowMeshletBuffer() : scene.GetIndirectDrawShadowMeshBuffer(),
+				this->m_settings.EnableMeshShaders ? sizeof(Shader::New::MeshletDrawCommand) * light.GlobalBufferIndex : sizeof(Shader::New::MeshDrawCommand) * light.GlobalBufferIndex,
+				scene.GetPerlightMeshInstancesCounts(),
+				sizeof(uint32_t) * light.GlobalBufferIndex,
+				MAX_MESHLETS_PER_LIGHT * MAX_NUM_LIGHTS);
+		}
+
+		commandList->EndRenderPass();
 	}
 
 	{
@@ -520,6 +715,15 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadShaders(tf::Taskflow& ta
 		subflow.emplace([&]() {
 			this->m_shaders[EShaders::CS_ClusterLightsDebugPass] = this->m_shaderFactory->CreateShader("PhxEngine/ClusterLightingDebugPassCS.hlsl", { .Stage = RHI::ShaderStage::Compute, .DebugName = "ClusterLightsDebugPassCS", });
 			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::CS_FillPerLightInstances] = this->m_shaderFactory->CreateShader("PhxEngine/FillPerLightInstancesCS.hlsl", { .Stage = RHI::ShaderStage::Compute, .DebugName = "FillPerLightInstancesCS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::CS_FillLightDrawBuffers] = this->m_shaderFactory->CreateShader("PhxEngine/FillLightDrawBuffersCS.hlsl", { .Stage = RHI::ShaderStage::Compute, .DebugName = "FillLightDrawBuffersCS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::VS_ShadowPass] = this->m_shaderFactory->CreateShader("PhxEngine/ShadowPassVS.hlsl", { .Stage = RHI::ShaderStage::Vertex, .DebugName = "ShadowPassVS", });
+			});
 		});
 	return shaderLoadTask;
 }
@@ -533,6 +737,12 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadPipelineStates(tf::Taskf
 					.PixelShader = this->m_shaders[EShaders::PS_GBufferFill],
 					.RtvFormats = this->m_gbuffer.GBufferFormats,
 					.DsvFormat = this->m_gbuffer.DepthFormat
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_gfxStates[EGfxPipelineStates::ShadowPass] = this->m_gfxDevice->CreateGraphicsPipeline({
+					.VertexShader = this->m_shaders[EShaders::VS_ShadowPass],
+					.DsvFormat = this->m_shadowAtlas.Format
 				});
 			});
 		subflow.emplace([&]() {
@@ -589,6 +799,16 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadPipelineStates(tf::Taskf
 		subflow.emplace([&]() {
 			this->m_computeStates[EComputePipelineStates::ClusterLightsDebugPass] = this->m_gfxDevice->CreateComputePipeline({
 					.ComputeShader = this->m_shaders[EShaders::CS_ClusterLightsDebugPass],
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_computeStates[EComputePipelineStates::FillPerLightInstances] = this->m_gfxDevice->CreateComputePipeline({
+					.ComputeShader = this->m_shaders[EShaders::CS_FillPerLightInstances],
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_computeStates[EComputePipelineStates::FillLightDrawBuffers] = this->m_gfxDevice->CreateComputePipeline({
+					.ComputeShader = this->m_shaders[EShaders::CS_FillLightDrawBuffers],
 				});
 			});
 		});
@@ -703,6 +923,20 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 	frameData.SceneData = scene.GetShaderData();
 	frameData.DepthPyramidIndex = this->m_gfxDevice->GetDescriptorIndex(this->m_depthPyramid, SubresouceType::SRV);
 
+	// Update light Info 
+	RHI::GPUAllocation lightAllocation;
+	RHI::GPUAllocation lightMatricesAllocation;
+	this->PrepareFrameLightData(commandList, mainCamera, scene, lightAllocation, lightMatricesAllocation);
+
+	frameData.LightBufferIdx = this->m_gfxDevice->GetDescriptorIndex(this->m_lightBuffer, SubresouceType::SRV);
+	frameData.LightMatrixBufferIdx = this->m_gfxDevice->GetDescriptorIndex(this->m_lightMatrixBuffer, SubresouceType::SRV);
+	frameData.ShadowAtlasIdx = this->m_gfxDevice->GetDescriptorIndex(this->m_shadowAtlas.Texture, SubresouceType::SRV);
+	frameData.ShadowAtlasRes.x = this->m_shadowAtlas.Width;
+	frameData.ShadowAtlasRes.y = this->m_shadowAtlas.Height;
+	frameData.ShadowAtlasRes.x = 1.0f / (float)this->m_shadowAtlas.Width;
+	frameData.ShadowAtlasResRCP.y = 1.0f / (float)this->m_shadowAtlas.Height;
+	frameData.SceneData = scene.GetShaderData();
+
 	// Upload data
 	RHI::GpuBarrier preCopyBarriers[] =
 	{
@@ -710,8 +944,11 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyMeshBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyMeshBuffer()).InitialState, RHI::ResourceStates::CopyDest),
 		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyMeshletBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyMeshletBuffer()).InitialState, RHI::ResourceStates::CopyDest),
 		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState, RHI::ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawShadowMeshBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshBuffer()).InitialState, RHI::ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawShadowMeshletBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshletBuffer()).InitialState, RHI::ResourceStates::CopyDest),
 		RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesCounterBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesCounterBuffer()).InitialState, RHI::ResourceStates::CopyDest),
-		RHI::GpuBarrier::CreateBuffer(scene.GetLightBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetLightBuffer()).InitialState, RHI::ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(this->m_lightBuffer, this->m_gfxDevice->GetBufferDesc(this->m_lightBuffer).InitialState, RHI::ResourceStates::CopyDest),
+		RHI::GpuBarrier::CreateBuffer(this->m_lightMatrixBuffer, this->m_gfxDevice->GetBufferDesc(this->m_lightMatrixBuffer).InitialState, RHI::ResourceStates::CopyDest),
 		RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetInstanceBuffer()).InitialState, RHI::ResourceStates::CopyDest),
 		RHI::GpuBarrier::CreateBuffer(this->m_clusterLighting.SortedLightBuffer, this->m_gfxDevice->GetBufferDesc(this->m_clusterLighting.SortedLightBuffer).InitialState, RHI::ResourceStates::CopyDest),
 		RHI::GpuBarrier::CreateBuffer(this->m_clusterLighting.LightLutBuffer, this->m_gfxDevice->GetBufferDesc(this->m_clusterLighting.LightLutBuffer).InitialState, RHI::ResourceStates::CopyDest),
@@ -720,16 +957,28 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
 
 	commandList->WriteBuffer(this->m_frameCB, frameData);
+	// TODO: Movies these to within the shaders that right them.
 	commandList->WriteBuffer<uint32_t>(scene.GetIndirectDrawEarlyMeshBuffer(), 0, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyMeshBuffer()).SizeInBytes - sizeof(uint32_t));
 	commandList->WriteBuffer<uint32_t>(scene.GetIndirectDrawEarlyMeshletBuffer(), 0, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyMeshletBuffer()).SizeInBytes - sizeof(uint32_t));
 	commandList->WriteBuffer<uint32_t>(scene.GetIndirectDrawLateBuffer(), 0, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).SizeInBytes - sizeof(uint32_t));
 	commandList->WriteBuffer<uint32_t>(scene.GetCulledInstancesCounterBuffer(), 0);
+	commandList->WriteBuffer<uint32_t>(scene.GetIndirectDrawShadowMeshBuffer(), 0, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshBuffer()).SizeInBytes - sizeof(uint32_t));
+	commandList->WriteBuffer<uint32_t>(scene.GetIndirectDrawShadowMeshletBuffer(), 0, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshletBuffer()).SizeInBytes - sizeof(uint32_t));
+
 	commandList->CopyBuffer(
-		scene.GetLightBuffer(),
+		this->m_lightBuffer,
 		0,
-		scene.GetLightUploadBuffer(),
+		lightAllocation.GpuBuffer,
+		lightAllocation.Offset,
+		lightAllocation.SizeInBytes);
+
+	commandList->CopyBuffer(
+		this->m_lightMatrixBuffer,
 		0,
-		this->m_gfxDevice->GetBufferDesc(scene.GetLightUploadBuffer()).SizeInBytes);
+		lightMatricesAllocation.GpuBuffer,
+		lightMatricesAllocation.Offset,
+		lightMatricesAllocation.SizeInBytes);
+
 	commandList->CopyBuffer(
 		scene.GetInstanceBuffer(),
 		0,
@@ -749,7 +998,10 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawEarlyMeshletBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawEarlyMeshletBuffer()).InitialState),
 		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawLateBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawLateBuffer()).InitialState),
 		RHI::GpuBarrier::CreateBuffer(scene.GetCulledInstancesCounterBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetCulledInstancesCounterBuffer()).InitialState),
-		RHI::GpuBarrier::CreateBuffer(scene.GetLightBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetLightBuffer()).InitialState),
+		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawShadowMeshBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshBuffer()).InitialState),
+		RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawShadowMeshletBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshletBuffer()).InitialState),
+		RHI::GpuBarrier::CreateBuffer(this->m_lightBuffer, RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(this->m_lightBuffer).InitialState),
+		RHI::GpuBarrier::CreateBuffer(this->m_lightMatrixBuffer, RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(this->m_lightMatrixBuffer).InitialState),
 		RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(scene.GetInstanceBuffer()).InitialState),
 		RHI::GpuBarrier::CreateBuffer(this->m_clusterLighting.SortedLightBuffer, RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(this->m_clusterLighting.SortedLightBuffer).InitialState),
 		RHI::GpuBarrier::CreateBuffer(this->m_clusterLighting.LightLutBuffer, RHI::ResourceStates::CopyDest, this->m_gfxDevice->GetBufferDesc(this->m_clusterLighting.LightLutBuffer).InitialState),
@@ -757,6 +1009,159 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 	};
 
 	commandList->TransitionBarriers(Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
+}
+
+void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameLightData(
+	RHI::ICommandList* commandList,
+	Scene::CameraComponent const& mainCamera,
+	Scene::Scene& scene,
+	RHI::GPUAllocation& outLights,
+	RHI::GPUAllocation& outMatrices)
+{
+	if (!this->m_lightBuffer.IsValid())
+	{
+		if (this->m_lightBuffer.IsValid())
+		{
+			RHI::IGraphicsDevice::GPtr->DeleteBuffer(this->m_lightBuffer);
+		}
+		this->m_lightBuffer = RHI::IGraphicsDevice::GPtr->CreateBuffer({
+				.MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::Bindless,
+				.Binding = BindingFlags::ShaderResource,
+				.InitialState = ResourceStates::ShaderResource,
+				.StrideInBytes = sizeof(Shader::New::Light),
+				.SizeInBytes = sizeof(Shader::New::Light) * MAX_NUM_LIGHTS,
+				.DebugName = "Light Buffer",
+			});
+
+	}
+
+	if (!this->m_lightMatrixBuffer.IsValid())
+	{
+		if (this->m_lightMatrixBuffer.IsValid())
+		{
+			RHI::IGraphicsDevice::GPtr->DeleteBuffer(this->m_lightMatrixBuffer);
+		}
+		this->m_lightMatrixBuffer = RHI::IGraphicsDevice::GPtr->CreateBuffer({
+				.MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::Bindless,
+				.Binding = BindingFlags::ShaderResource,
+				.InitialState = ResourceStates::ShaderResource,
+				.StrideInBytes = sizeof(DirectX::XMFLOAT4X4),
+				.SizeInBytes = sizeof(DirectX::XMFLOAT4X4) * MAX_NUM_LIGHTS,
+				.DebugName = "Light Matrix Buffer",
+			});
+	}
+
+	this->m_shadowAtlas.UpdatePerFrameData(commandList, scene, mainCamera.Eye);
+
+	// Upload GPU data
+	const auto& lightBufferDesc = this->m_gfxDevice->GetBufferDesc(this->m_lightBuffer);
+	outLights = commandList->AllocateGpu(lightBufferDesc.SizeInBytes, lightBufferDesc.StrideInBytes);
+	Shader::New::Light* plightBufferData = (Shader::New::Light*)outLights.CpuData;
+
+
+	const auto& matrixBufferDesc = this->m_gfxDevice->GetBufferDesc(this->m_lightMatrixBuffer);
+	outMatrices = commandList->AllocateGpu(matrixBufferDesc.SizeInBytes, matrixBufferDesc.StrideInBytes);
+	DirectX::XMMATRIX* pMatrixBufferData = (DirectX::XMMATRIX*)outMatrices.CpuData;
+
+	uint32_t currLight = 0;
+	uint32_t matrixCounter = 0;
+	auto lightView = scene.GetAllEntitiesWith<Scene::LightComponent>();;
+	const XMFLOAT2 atlasDimRcp  = XMFLOAT2(1.0f / float(this->m_shadowAtlas.Width), 1.0f / float(this->m_shadowAtlas.Height));
+	for (auto entity : lightView)
+	{
+		auto& light = lightView.get<Scene::LightComponent>(entity);
+		if (!light.IsEnabled())
+		{
+			continue;
+		}
+
+		Shader::New::Light* shaderData = plightBufferData + currLight;
+		*shaderData = {};
+
+		shaderData->SetType(light.Type);
+		shaderData->Position = light.Position;
+		shaderData->SetRange(light.Range);
+
+		shaderData->SetColor({ light.Colour.x * light.Intensity, light.Colour.y * light.Intensity, light.Colour.z * light.Intensity, 1 });
+
+		if (light.CastShadows())
+		{
+			shaderData->ShadowAtlasMulAdd.x = light.ShadowRect.w * atlasDimRcp.x;
+			shaderData->ShadowAtlasMulAdd.y = light.ShadowRect.h * atlasDimRcp.y;
+			shaderData->ShadowAtlasMulAdd.z = light.ShadowRect.x * atlasDimRcp.x;
+			shaderData->ShadowAtlasMulAdd.w = light.ShadowRect.y * atlasDimRcp.y;
+			shaderData->GlobalMatrixIndex = matrixCounter;
+		}
+
+		switch (light.Type)
+		{
+		case Scene::LightComponent::kDirectionalLight:
+		{
+			shaderData->SetDirection(light.Direction);
+
+			if (light.CastShadows())
+			{
+				std::array<ShadowCam, kNumCascades> shadowCams;
+				Renderer::CreateDirectionLightShadowCams(
+					mainCamera,
+					light,
+					500.0f,
+					shadowCams.data());
+
+				// Set Cascade Matrices
+				for (auto& shCam : shadowCams)
+				{
+					std::memcpy(pMatrixBufferData + matrixCounter++, &shCam.ViewProjection, sizeof(XMMATRIX));
+				}
+			}
+			break;
+		}
+
+		case Scene::LightComponent::kSpotLight:
+		{
+			const float outerConeAngle = light.OuterConeAngle;
+			const float innerConeAngle = std::min(light.InnerConeAngle, outerConeAngle);
+			const float outerConeAngleCos = std::cos(outerConeAngle);
+			const float innerConeAngleCos = std::cos(innerConeAngle);
+
+			// https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_lights_punctual#inner-and-outer-cone-angles
+			const float lightAngleScale = 1.0f / std::max(0.001f, innerConeAngleCos - outerConeAngleCos);
+			const float lightAngleOffset = -outerConeAngleCos * lightAngleScale;
+
+			shaderData->SetConeAngleCos(outerConeAngleCos);
+			shaderData->SetAngleScale(lightAngleScale);
+			shaderData->SetAngleOffset(lightAngleOffset);
+			shaderData->SetDirection(light.Direction);
+
+			if (light.CastShadows())
+			{
+				ShadowCam shCam = {};
+				CreateSpotLightShadowCam(mainCamera, light, shCam);
+				std::memcpy(pMatrixBufferData + matrixCounter++, &shCam.ViewProjection, sizeof(XMMATRIX));
+			}
+			break;
+		}
+
+		case Scene::LightComponent::kOmniLight:
+		{
+			if (light.CastShadows())
+			{
+				const float nearZ = 0.1f;
+				const float farZ = std::max(1.0f, light.Range);
+				const float fRange = farZ / (farZ - nearZ);
+				const float cubemapDepthRemapNear = fRange;
+				const float cubemapDepthRemapFar = fRange * farZ;
+				shaderData->SetCubeNearZ(cubemapDepthRemapNear);
+				shaderData->SetCubeFarZ(cubemapDepthRemapFar);
+			}
+		}
+		default:
+		{
+			// No-op
+		}
+		}
+		light.GlobalBufferIndex = currLight++;
+	}
 }
 
 void PhxEngine::Renderer::RenderPath3DDeferred::UpdateRTAccelerationStructures(ICommandList* commandList, PhxEngine::Scene::Scene& scene)
@@ -850,37 +1255,11 @@ void PhxEngine::Renderer::RenderPath3DDeferred::GBufferFillPass(
 
 	if (this->m_settings.EnableMeshShaders)
 	{
-		if (!this->m_drawMeshCommandSignatureMS.IsValid())
-		{
-			this->m_drawMeshCommandSignatureMS = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshletDrawCommand>({
-						   .ArgDesc =
-							   {
-								   {.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
-								   {.Type = IndirectArgumentType::DispatchMesh }
-							   },
-						   .PipelineType = PipelineType::Mesh,
-						   .MeshHandle = this->m_meshStates[EMeshPipelineStates::GBufferFillPass]
-				});
-		}
-
 		// Dispatch Mesh
 		commandList->SetMeshPipeline(this->m_meshStates[EMeshPipelineStates::GBufferFillPass]);
 	}
 	else
 	{
-		if (!this->m_drawMeshCommandSignatureGfx.IsValid())
-		{
-			// Create Command Signature
-			this->m_drawMeshCommandSignatureGfx = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshDrawCommand>({
-							.ArgDesc =
-								{
-									{.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
-									{.Type = IndirectArgumentType::DrawIndex }
-								},
-							.PipelineType = PipelineType::Gfx,
-							.GfxHandle = this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]
-				});
-		}
 
 		commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]);
 		commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());

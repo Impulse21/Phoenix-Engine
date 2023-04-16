@@ -4,13 +4,13 @@
 #include "../Include/PhxEngine/Shaders/ShaderInterop.h"
 #include "../Include/PhxEngine/Shaders/ShaderInteropStructures_New.h"
 
-MeshDrawCommand CreateMeshCommand(Geometry geometryData, uint drawId, uint miscData)
+MeshDrawCommand CreateMeshCommand(Geometry geometryData, uint drawId, uint instanceCount)
 {
     MeshDrawCommand meshDrawCommand;
     meshDrawCommand.DrawId = drawId;
     //meshDrawCommand.MiscData = miscData;
     meshDrawCommand.Indirect.IndexCount = geometryData.NumIndices;
-    meshDrawCommand.Indirect.InstanceCount = 1;
+    meshDrawCommand.Indirect.InstanceCount = instanceCount;
     meshDrawCommand.Indirect.StartIndex = geometryData.IndexOffset;
     meshDrawCommand.Indirect.VertexOffset = 0;
     meshDrawCommand.Indirect.StartInstance = 0;
@@ -32,12 +32,12 @@ MeshletDrawCommand CreateMeshletCommand(Geometry geometryData, uint drawId, uint
 }
 MeshDrawCommand CreateMeshCommand(Geometry geometryData, uint drawId)
 {
-    return CreateMeshCommand(geometryData, drawId, 0);
+    return CreateMeshCommand(geometryData, drawId, 1);
 }
+
 
 MeshletDrawCommand CreateMeshletCommand(Geometry geometryData, uint drawId)
 {
-    return CreateMeshletCommand(geometryData, drawId, 0);
-    
+    return CreateMeshletCommand(geometryData, drawId, 0);\
 }
 #endif

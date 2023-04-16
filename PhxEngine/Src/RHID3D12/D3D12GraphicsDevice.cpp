@@ -265,7 +265,7 @@ PhxEngine::RHI::D3D12::D3D12GraphicsDevice::D3D12GraphicsDevice(D3D12Adapter con
 	, m_computePipelinePool(10)
 	, m_meshPipelinePool(10)
 	, m_inputLayoutPool(10)
-	, m_shaderPool(20)
+	, m_shaderPool(40)
 	, m_commandSignaturePool(10)
 	, m_timerQueryPool(this->kTimestampQueryHeapSize / 2)
 {

@@ -9,6 +9,7 @@
 #include <PhxEngine/Core/Primitives.h>
 #include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
 #include <DirectXMesh.h>
+#include <PhxEngine/Graphics/RectPacker.h>
 
 #define LH
 
@@ -336,6 +337,7 @@ namespace PhxEngine::Scene
 		} Type = kOmniLight;
 
 		DirectX::XMFLOAT4 Colour = { 1.0f, 1.0f, 1.0f, 1.0f };
+		PhxEngine::Graphics::PackerRect ShadowRect;
 
 		// helper data
 		DirectX::XMFLOAT3 Direction;

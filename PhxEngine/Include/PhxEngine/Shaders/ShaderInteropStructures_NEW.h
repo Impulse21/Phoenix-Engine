@@ -71,7 +71,13 @@ namespace Shader::New
 		uint2 ColourPacked; // half4 packed
 
 		// -- 16 byte boundary ----
+		float4 ShadowAtlasMulAdd;
+
+		// -- 16 byte boundary ----
 		uint AngleOffset16_AngleScale_16;
+		uint CubemapFar16_CubemapNear_16;
+		uint GlobalMatrixIndex;
+
 
 #ifndef __cplusplus
 		inline uint GetType()
@@ -124,6 +130,15 @@ namespace Shader::New
 			return f16tof32(AngleOffset16_AngleScale_16 >> 16u);
 		}
 
+		inline float GetCubeNearZ()
+		{
+			return f16tof32(CubemapFar16_CubemapNear_16);
+		}
+
+		inline float GetCubeFarZ()
+		{
+			return f16tof32(CubemapFar16_CubemapNear_16 >> 16u);
+		}
 #else
 		inline void SetType(uint type)
 		{
@@ -169,6 +184,16 @@ namespace Shader::New
 		{
 			this->AngleOffset16_AngleScale_16 |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16u;
 		}
+
+		inline void SetCubeNearZ(float value)
+		{
+			this->CubemapFar16_CubemapNear_16 |= DirectX::PackedVector::XMConvertFloatToHalf(value);
+		}
+
+		inline void SetCubeFarZ(float value)
+		{
+			this->CubemapFar16_CubemapNear_16 |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16u;
+		}
 #endif
 	};
 
@@ -208,7 +233,7 @@ namespace Shader::New
 		uint LightBufferIdx;
 		uint LightCount;
 		uint PerLightMeshInstances;
-		uint LightMeshletInstances;
+		uint PerLightMeshInstanceCounts;
 
 	};
 
@@ -227,9 +252,13 @@ namespace Shader::New
 
 		// -- 16 byte boundary ----
 		uint LightTilesBufferIndex;
-		uint _padding;
-		uint __padding;
-		uint ___padding;
+		uint LightBufferIdx;
+		uint LightMatrixBufferIdx;
+		uint ShadowAtlasIdx;
+
+		// -- 16 byte boundary ----
+		uint2 ShadowAtlasRes;
+		float2 ShadowAtlasResRCP;
 
 		// -- 16 byte boundary ----
 		Scene SceneData;
@@ -473,10 +502,18 @@ namespace Shader::New
 		bool IsLatePass;
 	};
 
-	struct LightCullPushConstants
+	struct FillPerLightListConstants
 	{
-		uint PerLightMeshUavIdx;
-		uint LightMeshletUavIdx;
+		bool UseMeshlets;
+		uint PerLightMeshCountsUavIdx;
+		uint PerLightMeshInstancesUavIdx;
+	};
+
+	struct FillLightDrawBuffers
+	{
+		bool UseMeshlets;
+		uint DrawBufferIdx;
+		uint DrawBufferCounterIdx;
 	};
 
 	struct DepthPyrmidPushConstnats
@@ -496,6 +533,10 @@ namespace Shader::New
 		uint DrawId;
 	};
 
+	struct ShadowCams
+	{
+		float4x4 ViewProjection[6];
+	};
 #ifdef __cplusplus
 }
 #endif
