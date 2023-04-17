@@ -282,7 +282,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postBarriers, _countof(postBarriers)));
 	}
 
-	if (this->m_shadowAtlas.ShadowRenderPass.IsValid() || !this->m_settings.EnableMeshShaders)
+	if (this->m_shadowAtlas.ShadowRenderPass.IsValid() && !this->m_settings.EnableMeshShaders)
 	{
 		auto _ = commandList->BeginScopedMarker("Shadow Pass");
 
@@ -302,6 +302,11 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 		for (auto e : lightView)
 		{
 			auto light = lightView.get<Scene::LightComponent>(e);
+
+			if (light.CastShadows() == false)
+			{
+				continue;
+			}
 
 			switch (light.Type)
 			{
