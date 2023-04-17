@@ -558,6 +558,10 @@ public:
                 ImGui::Checkbox("Enabled", &isEnabled);
                 component.SetEnabled(isEnabled);
 
+                bool castShadows = component.CastShadows();
+                ImGui::Checkbox("Cast Shadows", &castShadows);
+                component.SetCastShadows(castShadows);
+
                 ImGui::ColorPicker3("Light Colour", &component.Colour.x, ImGuiColorEditFlags_NoSidePreview);
                 
 

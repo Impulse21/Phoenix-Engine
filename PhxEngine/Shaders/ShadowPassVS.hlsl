@@ -27,7 +27,7 @@ void main(
 	out float4 outPosition : SV_POSITION,
 	out uint outViewportId : SV_ViewportArrayIndex)
 {
-    ObjectInstance objectInstance = LoadObjectInstnace(push.DrawId >> 16);
+    ObjectInstance objectInstance = LoadObjectInstnace(push.DrawId);
     Geometry geometryData = LoadGeometry(objectInstance.GeometryIndex);
 	
     VertexData vertexData = FetchVertexData(inVertexID, geometryData);

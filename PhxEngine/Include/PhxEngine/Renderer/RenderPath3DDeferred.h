@@ -112,6 +112,20 @@ namespace PhxEngine::Renderer
 		};
 	}
 
+	namespace ECommandSignatures
+	{
+		enum
+		{
+			GBufferFill_Gfx,
+			GBufferFill_MS,
+
+			Shadows_Gfx,
+			Shadows_MS,
+
+			Count,
+		};
+	}
+
 	class RenderPath3DDeferred
 	{
 	public:
@@ -132,6 +146,7 @@ namespace PhxEngine::Renderer
 	private:
 		tf::Task LoadShaders(tf::Taskflow& taskFlow);
 		tf::Task LoadPipelineStates(tf::Taskflow& taskFlow);
+		tf::Task CreateCommandSignatures(tf::Taskflow& taskFlow);
 		void CreateRenderPasses();
 
 	private:
@@ -170,11 +185,9 @@ namespace PhxEngine::Renderer
 		std::array<RHI::MeshPipelineHandle, EMeshPipelineStates::Count> m_meshStates;
 		std::array<RHI::ShaderHandle, EShaders::Count> m_shaders;
 		std::array<RHI::RenderPassHandle, ERenderPasses::Count> m_renderPasses;
+		std::array<RHI::CommandSignatureHandle, ECommandSignatures::Count> m_commandSignatures;
 
 		ClusterLighting m_clusterLighting;
-
-		RHI::CommandSignatureHandle m_drawMeshCommandSignatureGfx;
-		RHI::CommandSignatureHandle m_drawMeshCommandSignatureMS;
 
 		GBufferRenderTargets m_gbuffer;
 		RHI::TextureHandle m_colourBuffer;

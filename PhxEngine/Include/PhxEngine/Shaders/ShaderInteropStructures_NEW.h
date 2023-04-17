@@ -230,7 +230,6 @@ namespace Shader::New
 
 		// -- 16 byte boundary ----
 		uint InstanceCount;
-		uint LightBufferIdx;
 		uint LightCount;
 		uint PerLightMeshInstances;
 		uint PerLightMeshInstanceCounts;

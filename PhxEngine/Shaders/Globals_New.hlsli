@@ -84,7 +84,7 @@ inline float4x4 LoadMatrix(uint matrixIndex)
 }
 inline Light LoadLight(uint index)
 {
-    StructuredBuffer<Light> buffer = ResourceDescriptorHeap[GetScene().LightBufferIdx];
+    StructuredBuffer<Light> buffer = ResourceDescriptorHeap[GetFrame().LightBufferIdx];
     return buffer[index];
 }
 

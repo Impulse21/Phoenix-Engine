@@ -33,7 +33,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
     
     // Check if light even intersects the camera at all?
     
-    uint objectInstanceIdx = DTid.x & GetScene().InstanceCount;
+    uint objectInstanceIdx = DTid.x / GetScene().LightCount;
     if (objectInstanceIdx >= GetScene().InstanceCount)
     {
         return;

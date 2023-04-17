@@ -41,9 +41,10 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Initialize(DirectX::XMFLOAT2 con
 	this->WindowResize(canvasSize);
 	tf::Task shaderLoadTask = this->LoadShaders(taskflow);
 	tf::Task createPipelineStates = this->LoadPipelineStates(taskflow);
-
+	// tf::Task createCommandSignatures = this->CreateCommandSignatures(taskflow);
+	
 	shaderLoadTask.precede(createPipelineStates);  // A runs before B and C
-
+	// createCommandSignatures.succeed(createPipelineStates);
 	tf::Future loadFuture = executor.run(taskflow);
 
 
@@ -61,7 +62,8 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Initialize(DirectX::XMFLOAT2 con
 
 	this->m_clusterLighting.Initialize(this->m_gfxDevice, canvasSize);
 	this->m_shadowAtlas.Initialize(this->m_gfxDevice);
-	loadFuture.wait();
+	loadFuture.wait(); 
+	this->CreateCommandSignatures(taskflow);
 
 	// Create Command Signatre
 }
@@ -79,31 +81,6 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 	ICommandList* commandList = this->m_gfxDevice->BeginCommandRecording();
 
-	if (!this->m_drawMeshCommandSignatureMS.IsValid())
-	{
-		this->m_drawMeshCommandSignatureMS = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshletDrawCommand>({
-					   .ArgDesc =
-						   {
-							   {.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
-							   {.Type = IndirectArgumentType::DispatchMesh }
-						   },
-					   .PipelineType = PipelineType::Mesh,
-					   .MeshHandle = this->m_meshStates[EMeshPipelineStates::GBufferFillPass]
-			});
-	}
-	if (!this->m_drawMeshCommandSignatureGfx.IsValid())
-	{
-		// Create Command Signature
-		this->m_drawMeshCommandSignatureGfx = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshDrawCommand>({
-						.ArgDesc =
-							{
-								{.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
-								{.Type = IndirectArgumentType::DrawIndex }
-							},
-						.PipelineType = PipelineType::Gfx,
-						.GfxHandle = this->m_gfxStates[EGfxPipelineStates::GBufferFillPass]
-				});
-	}
 
 	// TODO: Disabling for now as this work is incomplete
 #if false
@@ -198,7 +175,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 		};
 		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
 
-		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::FillPerLightInstances]);
+		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::FillLightDrawBuffers]);
 
 		Shader::New::FillLightDrawBuffers push = {};
 		push.UseMeshlets = this->m_settings.EnableMeshShaders;
@@ -294,7 +271,12 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 		else
 		{
 			commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::ShadowPass]);
+			commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());
 		}
+
+		Shader::New::GeometryPushConstant push = {};
+		push.DrawId = -1;
+		commandList->BindPushConstant(0, push);
 
 		commandList->BindConstantBuffer(1, this->m_frameCB);
 		commandList->BindDynamicConstantBuffer(2, cameraData);
@@ -313,6 +295,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			case Shader::New::LIGHT_TYPE_DIRECTIONAL:
 			{
 				std::array<Viewport, kNumCascades> cascadeViews;
+				std::array<RHI::Rect, kNumCascades> scissors;
 				for (int i = 0; i < cascadeViews.size(); i++)
 				{
 					Viewport& vp = cascadeViews[i];
@@ -321,14 +304,30 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 					vp.MinY = float(light.ShadowRect.y);
 					vp.MaxY = float(light.ShadowRect.y + light.ShadowRect.h);
 					vp.MinZ = 0.0f;
-					vp.MinX = 1.0f;
+					vp.MaxZ = 1.0f;
+					scissors[i] = rec;
 				}
 				commandList->SetViewports(cascadeViews.data(), cascadeViews.size());
+				commandList->SetScissors(scissors.data(), scissors.size());
+				std::array<ShadowCam, kNumCascades> shadowCams;
+				Renderer::CreateDirectionLightShadowCams(
+					mainCamera,
+					light,
+					500.0f,
+					shadowCams.data());
+
+				Shader::New::ShadowCams shaderSCams;
+				for (int i = 0; i < shadowCams.size(); i++)
+				{
+					std::memcpy(&shaderSCams.ViewProjection[i], &shadowCams[i].ViewProjection, sizeof(DirectX::XMFLOAT4X4));
+				}
+				commandList->BindDynamicConstantBuffer(3, shaderSCams);
 				break;
 			}
 			case Shader::New::LIGHT_TYPE_OMNI:
 			{
 				std::array<Viewport, 6> cubeViews;
+				std::array<RHI::Rect, 6> scissors;
 				for (int i = 0; i < cubeViews.size(); i++)
 				{
 					Viewport& vp = cubeViews[i];
@@ -337,9 +336,25 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 					vp.MinY = float(light.ShadowRect.y);
 					vp.MaxY = float(light.ShadowRect.y + light.ShadowRect.h);
 					vp.MinZ = 0.0f;
-					vp.MinX = 1.0f;
+					vp.MaxZ = 1.0f;
+					scissors[i] = rec;
 				}
 				commandList->SetViewports(cubeViews.data(), cubeViews.size());
+				commandList->SetScissors(scissors.data(), scissors.size());
+
+				std::array<ShadowCam, 6> shadowCams;
+				Renderer::CreateDirectionLightShadowCams(
+					mainCamera,
+					light,
+					500.0f,
+					shadowCams.data());
+
+				Shader::New::ShadowCams shaderSCams;
+				for (int i = 0; i < shadowCams.size(); i++)
+				{
+					std::memcpy(&shaderSCams.ViewProjection[i], &shadowCams[i].ViewProjection, sizeof(DirectX::XMFLOAT4X4));
+				}
+				commandList->BindDynamicConstantBuffer(3, shaderSCams);
 				break;
 			}
 
@@ -351,19 +366,29 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 				vp.MinY = float(light.ShadowRect.y);
 				vp.MaxY = float(light.ShadowRect.y + light.ShadowRect.h);
 				vp.MinZ = 0.0f;
-				vp.MinX = 1.0f;
+				vp.MaxZ = 1.0f;
 				commandList->SetViewports(&vp, 1);
+				commandList->SetScissors(&rec, 1);
+				ShadowCam shadowCam;
+				Renderer::CreateSpotLightShadowCam(
+					mainCamera,
+					light,
+					shadowCam);
+
+				Shader::New::ShadowCams shaderSCams;
+				std::memcpy(&shaderSCams.ViewProjection[0], &shadowCam.ViewProjection, sizeof(DirectX::XMFLOAT4X4));
+				commandList->BindDynamicConstantBuffer(3, shaderSCams);
 				break;
 			}
 			}
 
 			commandList->ExecuteIndirect(
-				this->m_settings.EnableMeshShaders ? this->m_drawMeshCommandSignatureMS : this->m_drawMeshCommandSignatureGfx,
+				this->m_settings.EnableMeshShaders ? this->m_commandSignatures[ECommandSignatures::Shadows_MS] : this->m_commandSignatures[ECommandSignatures::Shadows_Gfx],
 				this->m_settings.EnableMeshShaders ? scene.GetIndirectDrawShadowMeshletBuffer() : scene.GetIndirectDrawShadowMeshBuffer(),
-				this->m_settings.EnableMeshShaders ? sizeof(Shader::New::MeshletDrawCommand) * light.GlobalBufferIndex : sizeof(Shader::New::MeshDrawCommand) * light.GlobalBufferIndex,
+				(this->m_settings.EnableMeshShaders ? sizeof(Shader::New::MeshletDrawCommand) : sizeof(Shader::New::MeshDrawCommand)) * light.GlobalBufferIndex,
 				scene.GetPerlightMeshInstancesCounts(),
 				sizeof(uint32_t) * light.GlobalBufferIndex,
-				MAX_MESHLETS_PER_LIGHT * MAX_NUM_LIGHTS);
+				scene.GetShaderData().InstanceCount * MAX_NUM_LIGHTS);
 		}
 
 		commandList->EndRenderPass();
@@ -819,6 +844,52 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadPipelineStates(tf::Taskf
 		});
 
 	return createPipelineStatesTask;
+}
+
+tf::Task PhxEngine::Renderer::RenderPath3DDeferred::CreateCommandSignatures(tf::Taskflow& taskFlow)
+{
+	this->m_commandSignatures[ECommandSignatures::GBufferFill_MS] = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshletDrawCommand>({
+				   .ArgDesc =
+					   {
+						   {.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+						   {.Type = IndirectArgumentType::DispatchMesh }
+					   },
+				   .PipelineType = PipelineType::Mesh,
+				   .MeshHandle = this->m_meshStates[EMeshPipelineStates::GBufferFillPass] });
+	this->m_commandSignatures[ECommandSignatures::GBufferFill_Gfx] = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshDrawCommand>({
+				.ArgDesc =
+					{
+						{.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+						{.Type = IndirectArgumentType::DrawIndex }
+					},
+				.PipelineType = PipelineType::Gfx,
+				.GfxHandle = this->m_gfxStates[EGfxPipelineStates::GBufferFillPass] });
+
+	this->m_commandSignatures[ECommandSignatures::Shadows_Gfx] = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshDrawCommand>({
+				.ArgDesc =
+					{
+						{.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+						{.Type = IndirectArgumentType::DrawIndex }
+					},
+				.PipelineType = PipelineType::Gfx,
+				.GfxHandle = this->m_gfxStates[EGfxPipelineStates::ShadowPass] });
+
+	/* TODO Mesh shader isn't ready yet
+	subflow.emplace([&]() {
+		this->m_commandSignatures[ECommandSignatures::Shadows_MS] = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshletDrawCommand>({
+					   .ArgDesc =
+						   {
+							   {.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+							   {.Type = IndirectArgumentType::DispatchMesh }
+						   },
+					   .PipelineType = PipelineType::Mesh,
+					   .MeshHandle = this->m_meshStates[EMeshPipelineStates::ShadowPass] });
+		});
+		*/
+
+		tf::Task createCommandSignaturesTask = taskFlow.emplace([&](tf::Subflow& subflow) {});
+
+	return createCommandSignaturesTask;
 }
 
 void PhxEngine::Renderer::RenderPath3DDeferred::CreateRenderPasses()
@@ -1279,7 +1350,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::GBufferFillPass(
 
 	auto instanceView = scene.GetAllEntitiesWith<Scene::MeshInstanceComponent>();
 	commandList->ExecuteIndirect(
-		this->m_settings.EnableMeshShaders ? this->m_drawMeshCommandSignatureMS : this->m_drawMeshCommandSignatureGfx,
+		this->m_settings.EnableMeshShaders ? this->m_commandSignatures[ECommandSignatures::GBufferFill_MS] : this->m_commandSignatures[ECommandSignatures::GBufferFill_Gfx],
 		indirectBuffer,
 		0,
 		indirectBuffer,
