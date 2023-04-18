@@ -152,7 +152,7 @@ namespace PhxEngine::Scene
 		void BuildGeometryData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice, std::vector<Renderer::ResourceUpload>& resourcesToFree);
 		void BuildIndirectBuffers(RHI::IGraphicsDevice* gfxDevice);
 		void BuildSceneData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice);
-		void BuildLightBuffers(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice);
+		void BuildLightBuffers(RHI::IGraphicsDevice* gfxDevice);
 
 	private:
 		Core::IAllocator* m_sceneAllocator;

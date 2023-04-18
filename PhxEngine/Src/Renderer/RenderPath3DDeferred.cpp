@@ -382,6 +382,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			}
 			}
 
+#if true
 			commandList->ExecuteIndirect(
 				this->m_settings.EnableMeshShaders ? this->m_commandSignatures[ECommandSignatures::Shadows_MS] : this->m_commandSignatures[ECommandSignatures::Shadows_Gfx],
 				this->m_settings.EnableMeshShaders ? scene.GetIndirectDrawShadowMeshletBuffer() : scene.GetIndirectDrawShadowMeshBuffer(),
@@ -389,6 +390,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 				scene.GetPerlightMeshInstancesCounts(),
 				sizeof(uint32_t) * light.GlobalBufferIndex,
 				scene.GetShaderData().InstanceCount * MAX_NUM_LIGHTS);
+#endif
 		}
 
 		commandList->EndRenderPass();

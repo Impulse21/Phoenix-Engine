@@ -51,7 +51,7 @@ RHI::ExecutionReceipt PhxEngine::Scene::Scene::BuildRenderData(RHI::IGraphicsDev
 	this->BuildMeshData(commandList, gfxDevice);
 	this->BuildGeometryData(commandList, gfxDevice, resourcesToFree);
 	this->BuildIndirectBuffers(gfxDevice);
-	this->BuildLightBuffers(commandList, gfxDevice);
+	this->BuildLightBuffers(gfxDevice);
 
 	commandList->Close();
 	RHI::ExecutionReceipt retVal = gfxDevice->ExecuteCommandLists({commandList});
@@ -382,6 +382,7 @@ void PhxEngine::Scene::Scene::RunProbeUpdateSystem()
 
 void PhxEngine::Scene::Scene::RunLightUpdateSystem()
 {
+	this->BuildLightBuffers(RHI::IGraphicsDevice::GPtr);
 	auto lightView = this->GetAllEntitiesWith<LightComponent>();
 
 
@@ -1144,7 +1145,7 @@ void PhxEngine::Scene::Scene::BuildSceneData(RHI::ICommandList* commandList, RHI
 	this->m_shaderData.PerLightMeshInstanceCounts = gfxDevice->GetDescriptorIndex(this->m_perlightMeshInstancesCounts, SubresouceType::SRV);
 }
 
-void PhxEngine::Scene::Scene::BuildLightBuffers(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice)
+void PhxEngine::Scene::Scene::BuildLightBuffers(RHI::IGraphicsDevice* gfxDevice)
 {
 	constexpr static size_t perLightMeshInstanceCountSize = MAX_NUM_LIGHTS * sizeof(uint32_t);
 	if (!this->m_perlightMeshInstancesCounts.IsValid())
@@ -1183,7 +1184,9 @@ void PhxEngine::Scene::Scene::BuildLightBuffers(RHI::ICommandList* commandList, 
 	}
 
 	const size_t instanceCount = this->GetAllEntitiesWith<MeshInstanceComponent>().size();
-	const size_t indirectMeshBufferByteSize = Core::Helpers::AlignUp(sizeof(Shader::New::MeshDrawCommand) * instanceCount * MAX_NUM_LIGHTS, gfxDevice->GetUavCounterPlacementAlignment()) + sizeof(uint32_t);
+	const size_t indirectMeshBufferByteSize = Core::Helpers::AlignUp(sizeof(Shader::New::MeshDrawCommand) * instanceCount * MAX_NUM_LIGHTS , gfxDevice->GetUavCounterPlacementAlignment()) + sizeof(uint32_t);
+	// const size_t indirectMeshBufferByteSize = Core::Helpers::AlignUp(PhxMB(200), gfxDevice->GetUavCounterPlacementAlignment()) + sizeof(uint32_t);
+	
 	if (!this->m_indirectDrawShadowMeshBuffer.IsValid() ||
 		gfxDevice->GetBufferDesc(this->m_indirectDrawShadowMeshBuffer).SizeInBytes < indirectMeshBufferByteSize)
 	{
