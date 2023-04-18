@@ -342,11 +342,13 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 				commandList->SetViewports(cubeViews.data(), cubeViews.size());
 				commandList->SetScissors(scissors.data(), scissors.size());
 
+				const float zNearP = 0.1f;
+				const float zFarP = std::max(1.0f, light.Range);
 				std::array<ShadowCam, 6> shadowCams;
-				Renderer::CreateDirectionLightShadowCams(
-					mainCamera,
-					light,
-					500.0f,
+				Renderer::CreateCubemapCameras(
+					light.Position,
+					zNearP,
+					zFarP,
 					shadowCams.data());
 
 				Shader::New::ShadowCams shaderSCams;

@@ -48,14 +48,14 @@ void PhxEngine::Renderer::ShadowsAtlas::UpdatePerFrameData(RHI::ICommandList* co
 		{
 		case Scene::LightComponent::kDirectionalLight:
 			rect.w = kMaxShadowRes_2D * kNumCascades;
-			rect.h = kMaxShadowRes_2D * kNumCascades;
+			rect.h = kMaxShadowRes_2D;
 			break;
 		case Scene::LightComponent::kOmniLight:
-			rect.w = int(kMaxShadowRes_2D * amount);
+			rect.w = int(kMaxShadowRes_2D * amount) * 6;
 			rect.h = int(kMaxShadowRes_2D * amount);
 			break;
 		case Scene::LightComponent::kSpotLight:
-			rect.w = int(kMaxShadowRes_Cube * amount) * 6;
+			rect.w = int(kMaxShadowRes_Cube * amount);
 			rect.h = int(kMaxShadowRes_Cube * amount);
 			break;
 		}
@@ -89,7 +89,7 @@ void PhxEngine::Renderer::ShadowsAtlas::UpdatePerFrameData(RHI::ICommandList* co
 			case Scene::LightComponent::kDirectionalLight:
 				lightComponent.ShadowRect.w /= kNumCascades;
 				break;
-			case Scene::LightComponent::kSpotLight:
+			case Scene::LightComponent::kOmniLight:
 				lightComponent.ShadowRect.w /= 6;
 				break;
 			}
@@ -283,4 +283,14 @@ void PhxEngine::Renderer::CreateSpotLightShadowCam(
 {
 	shadowCam = ShadowCam(lightComponent.Position, lightComponent.Rotation, 0.1f, lightComponent.Range, lightComponent.OuterConeAngle * 2);
 	shadowCam.Frustum = Core::Frustum(shadowCam.ViewProjection);
+}
+
+void PhxEngine::Renderer::CreateCubemapCameras(DirectX::XMFLOAT3 position, float nearZ, float farZ, ShadowCam* shadowCams)
+{
+	shadowCams[0] = ShadowCam(position, DirectX::XMFLOAT4(0, -0.707f, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // +x
+	shadowCams[1] = ShadowCam(position, DirectX::XMFLOAT4(0, 0.707f, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // -x
+	shadowCams[2] = ShadowCam(position, DirectX::XMFLOAT4(0.707f, 0, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // +y
+	shadowCams[3] = ShadowCam(position, DirectX::XMFLOAT4(-0.707f, 0, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // -y
+	shadowCams[4] = ShadowCam(position, DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f), nearZ, farZ, DirectX::XM_PIDIV2); // +z
+	shadowCams[5] = ShadowCam(position, DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), nearZ, farZ, DirectX::XM_PIDIV2); // -z
 }

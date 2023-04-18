@@ -68,5 +68,7 @@ namespace PhxEngine::Renderer
 		Scene::LightComponent& lightComponent,
 		ShadowCam& shadowCam,
 		bool reverseZ = false);
+
+	void CreateCubemapCameras(DirectX::XMFLOAT3 position, float nearZ, float farZ, ShadowCam* shadowCams);
 }
 
