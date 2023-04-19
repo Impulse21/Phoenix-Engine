@@ -287,10 +287,20 @@ void PhxEngine::Renderer::CreateSpotLightShadowCam(
 
 void PhxEngine::Renderer::CreateCubemapCameras(DirectX::XMFLOAT3 position, float nearZ, float farZ, ShadowCam* shadowCams)
 {
+#if false
+	shadowCams[0] = ShadowCam(position, DirectX::XMFLOAT4(0.5f, -0.5f, -0.5f, -0.5f), nearZ, farZ, DirectX::XM_PIDIV2); // +x
+	shadowCams[1] = ShadowCam(position, DirectX::XMFLOAT4(0.5f, 0.5f, 0.5f, -0.5f), nearZ, farZ, DirectX::XM_PIDIV2); // -x
+	shadowCams[2] = ShadowCam(position, DirectX::XMFLOAT4(1.0f, 0.0f, 0.0f, 0.0f), nearZ, farZ, DirectX::XM_PIDIV2); // +y
+	shadowCams[3] = ShadowCam(position, DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, -1.0f), nearZ, farZ, DirectX::XM_PIDIV2); // -y
+	shadowCams[4] = ShadowCam(position, DirectX::XMFLOAT4(0.707f, 0.0f, 0.0f, -0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // +z
+	shadowCams[5] = ShadowCam(position, DirectX::XMFLOAT4(0.0f, 0.707f, 0.707f, 0.0f), nearZ, farZ, DirectX::XM_PIDIV2); // -z
+#else
+
 	shadowCams[0] = ShadowCam(position, DirectX::XMFLOAT4(0, -0.707f, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // +x
 	shadowCams[1] = ShadowCam(position, DirectX::XMFLOAT4(0, 0.707f, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // -x
 	shadowCams[2] = ShadowCam(position, DirectX::XMFLOAT4(0.707f, 0, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // +y
 	shadowCams[3] = ShadowCam(position, DirectX::XMFLOAT4(-0.707f, 0, 0, 0.707f), nearZ, farZ, DirectX::XM_PIDIV2); // -y
 	shadowCams[4] = ShadowCam(position, DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f), nearZ, farZ, DirectX::XM_PIDIV2); // +z
 	shadowCams[5] = ShadowCam(position, DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), nearZ, farZ, DirectX::XM_PIDIV2); // -z
+#endif
 }

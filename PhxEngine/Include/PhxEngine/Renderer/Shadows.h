@@ -48,10 +48,10 @@ namespace PhxEngine::Renderer
 			const DirectX::XMMATRIX rot = DirectX::XMMatrixRotationQuaternion(qRot);
 			const DirectX::XMVECTOR to = DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.0f, 0.0f, -1.0f, 0.0f), rot);
 			const DirectX::XMVECTOR up = DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), rot);
-			const DirectX::XMMATRIX V = DirectX::XMMatrixLookToRH(eye, to, up);
+			const DirectX::XMMATRIX V = DirectX::XMMatrixLookToLH(eye, to, up);
 
 			// Note the farPlane is passed in as near, this is to support reverseZ
-			const DirectX::XMMATRIX P = DirectX::XMMatrixPerspectiveFovRH(fov, 1, farPlane, nearPlane);
+			const DirectX::XMMATRIX P = DirectX::XMMatrixPerspectiveFovLH(fov, 1, nearPlane, farPlane);
 			this->ViewProjection = XMMatrixMultiply(V, P);
 		}
 	};
