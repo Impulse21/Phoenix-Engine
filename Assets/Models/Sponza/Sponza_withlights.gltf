@@ -18,7 +18,7 @@
                         0.7203077077865601,
                         0.15092414617538452
                     ],
-                  "intensity": 15.0,
+                    "intensity" : 15.0,
                     "range": 4.25,
                     "type" : "point",
                     "name" : "Light_2nd_floor"
@@ -30,6 +30,7 @@
                         0.15092414617538452
                     ],
                     "intensity" : 15.0,
+                    "range": 4.25,
                     "type" : "point",
                     "name" : "Light_2nd_floor.001"
                 },
@@ -40,6 +41,7 @@
                         0.15092414617538452
                     ],
                     "intensity" : 15.0,
+                    "range": 4.25,
                     "type" : "point",
                     "name" : "Light_2nd_floor.002"
                 },
@@ -50,6 +52,7 @@
                         0.15092414617538452
                     ],
                     "intensity" : 15.0,
+                    "range": 4.25,
                     "type" : "point",
                     "name" : "Light_2nd_floor.003"
                 },
@@ -60,6 +63,7 @@
                         0.15092414617538452
                     ],
                     "intensity" : 15.0,
+                    "range": 4.25,
                     "type" : "point",
                     "name" : "Light_1nd_floor"
                 },
@@ -70,6 +74,7 @@
                         0.15092414617538452
                     ],
                     "intensity" : 15.0,
+                    "range": 4.25,
                     "type" : "point",
                     "name" : "Light_1nd_floor.001"
                 },
@@ -80,6 +85,7 @@
                         0.15092414617538452
                     ],
                     "intensity" : 15.0,
+                    "range": 4.25,
                     "type" : "point",
                     "name" : "Light_1nd_floor.002"
                 },
@@ -90,6 +96,7 @@
                         0.15092414617538452
                     ],
                     "intensity" : 15.0,
+                    "range": 4.25,
                     "type" : "point",
                     "name" : "Light_1nd_floor.003"
                 },
@@ -100,6 +107,7 @@
                         0.15092414617538452
                     ],
                     "intensity" : 15.0,
+                    "range": 4.25,
                     "type" : "point",
                     "name" : "Light_1nd_floor.004"
                 },
@@ -110,6 +118,7 @@
                         0.15092414617538452
                     ],
                     "intensity" : 15.0,
+                    "range": 4.25,
                     "type" : "point",
                     "name" : "Light_1nd_floor.005"
                 },
@@ -120,6 +129,7 @@
                         0.15092414617538452
                     ],
                     "intensity" : 15.0,
+                    "range": 4.25,
                     "type" : "point",
                     "name" : "Light_1nd_floor.006"
                 },
@@ -130,6 +140,7 @@
                         0.15092414617538452
                     ],
                     "intensity" : 15.0,
+                    "range": 4.25,
                     "type" : "point",
                     "name" : "Light_1nd_floor.007"
                 },
@@ -139,7 +150,8 @@
                         1,
                         1
                     ],
-                    "intensity" : 15.0,
+                    "intensity" : 108.0,
+                    "range": 6.00,
                     "spot" : {
                         "innerConeAngle" : 0.388684813932918,
                         "outerConeAngle" : 0.45727625489234924
@@ -154,6 +166,7 @@
                         1
                     ],
                     "intensity" : 6.0,
+                    "range": 4.25,
                     "type" : "directional",
                     "name" : "Sun"
                 }
