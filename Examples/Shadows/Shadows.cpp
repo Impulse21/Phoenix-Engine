@@ -1,5 +1,5 @@
 #include <PhxEngine/PhxEngine.h>
- 
+
 #include <PhxEngine/Graphics/ShaderFactory.h>
 #include <PhxEngine/Core/Helpers.h>
 #include <PhxEngine/Core/Platform.h>
@@ -20,51 +20,235 @@
 #include <PhxEngine/Engine/ApplicationBase.h>
 #include <PhxEngine/Renderer/GBuffer.h>
 #include <PhxEngine/Engine/CameraControllers.h>
+#include <PhxEngine/Renderer/RenderPath3DDeferred.h>
+#include <PhxEngine/Renderer/RenderPath3DForward.h>
+#include <PhxEngine/Core/Profiler.h>
+#include <PhxEngine/Engine/ImguiRenderer.h>
+#include <PhxEngine/Core/Memory.h>
 
+#include <imgui.h>
+#include <imgui_internal.h>
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Renderer;
 
-struct RenderTargets : public GBufferRenderTargets
+constexpr static uint32_t kNumLightInstances = 256;
+
+// TODO: Move to a healper
+
+#define USE_SIMPLE_SPONZA 1
+
+namespace
 {
-    // Extra
-    RHI::TextureHandle ColourBuffer;
 
-    void Initialize(
-        RHI::IGraphicsDevice* gfxDevice,
-        DirectX::XMFLOAT2 const& size)
+template<typename T, typename UIFunc>
+static void DrawComponent(std::string const& name, Scene::Entity entity, UIFunc uiFunc)
+{
+    const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+
+    if (!entity.HasComponent<T>())
     {
-        GBufferRenderTargets::Initialize(gfxDevice, size);
-
-        RHI::TextureDesc desc = {};
-        desc.Width = std::max(size.x, 1.0f);
-        desc.Height = std::max(size.y, 1.0f);
-        desc.Dimension = RHI::TextureDimension::Texture2D;
-        desc.OptmizedClearValue.Colour = { 0.0f, 0.0f, 0.0f, 1.0f };
-        desc.InitialState = RHI::ResourceStates::ShaderResource;
-        desc.IsBindless = true;
-        desc.IsTypeless = true;
-        desc.Format = RHI::RHIFormat::RGBA16_FLOAT;
-        desc.DebugName = "Colour Buffer";
-        desc.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::ShaderResource | BindingFlags::UnorderedAccess;
-
-        this->ColourBuffer = RHI::IGraphicsDevice::GPtr->CreateTexture(desc);
+        return;
     }
 
-    void Free(RHI::IGraphicsDevice* gfxDevice) override
+    auto& component = entity.GetComponent<T>();
+    ImVec2 contentRegionAvailable = ImGui::GetContentRegionAvail();
+
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 4, 4 });
+    float lineHeight = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
+    ImGui::Separator();
+
+    bool open = ImGui::TreeNodeEx((void*)typeid(T).hash_code(), treeNodeFlags, name.c_str());
+    ImGui::PopStyleVar();
+
+    ImGui::SameLine(contentRegionAvailable.x - lineHeight * 0.5f);
+    if (ImGui::Button("+", ImVec2{ lineHeight, lineHeight }))
     {
-        GBufferRenderTargets::Free(gfxDevice);
-        gfxDevice->DeleteTexture(this->ColourBuffer);
+        ImGui::OpenPopup("ComponentSettings");
     }
+
+    bool removeComponent = false;
+    if (ImGui::BeginPopup("ComponentSettings"))
+    {
+        if (ImGui::MenuItem("Remove component"))
+        {
+            removeComponent = true;
+        }
+
+        ImGui::EndPopup();
+    }
+
+    if (open)
+    {
+        uiFunc(component);
+        ImGui::TreePop();
+    }
+
+    if (removeComponent)
+    {
+        entity.RemoveComponent<T>();
+    }
+}
+
+static void DrawFloat3Control(const std::string& label, DirectX::XMFLOAT3& values, float resetValue = 0.0f, float columnWidth = 100.0f)
+{
+    ImGuiIO& io = ImGui::GetIO();
+    auto boldFont = io.Fonts->Fonts[0];
+
+    ImGui::PushID(label.c_str());
+
+    ImGui::Columns(2);
+    ImGui::SetColumnWidth(0, columnWidth);
+    ImGui::Text(label.c_str());
+    ImGui::NextColumn();
+
+    ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
+
+    // float lineHeight = io.fonts->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
+    // ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.9f, 0.2f, 0.2f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
+    ImGui::PushFont(boldFont);
+    if (ImGui::Button("X"))
+        values.x = resetValue;
+    ImGui::PopFont();
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine();
+    ImGui::DragFloat("##X", &values.x, 0.1f, 0.0f, 0.0f, "%.2f");
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.2f, 0.7f, 0.2f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.3f, 0.8f, 0.3f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.2f, 0.7f, 0.2f, 1.0f });
+    ImGui::PushFont(boldFont);
+    if (ImGui::Button("Y"))
+        values.y = resetValue;
+    ImGui::PopFont();
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine();
+    ImGui::DragFloat("##Y", &values.y, 0.1f, 0.0f, 0.0f, "%.2f");
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.2f, 0.35f, 0.9f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
+    ImGui::PushFont(boldFont);
+    if (ImGui::Button("Z"))
+        values.z = resetValue;
+    ImGui::PopFont();
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine();
+    ImGui::DragFloat("##Z", &values.z, 0.1f, 0.0f, 0.0f, "%.2f");
+    ImGui::PopItemWidth();
+
+    ImGui::PopStyleVar();
+
+    ImGui::Columns(1);
+
+    ImGui::PopID();
+}
+
+static void DrawFloat4Control(const std::string& label, DirectX::XMFLOAT4& values, float resetValue = 0.0f, float columnWidth = 100.0f)
+{
+    ImGuiIO& io = ImGui::GetIO();
+    auto boldFont = io.Fonts->Fonts[0];
+
+    ImGui::PushID(label.c_str());
+
+    ImGui::Columns(2);
+    ImGui::SetColumnWidth(0, columnWidth);
+    ImGui::Text(label.c_str());
+    ImGui::NextColumn();
+
+    ImGui::PushMultiItemsWidths(4, ImGui::CalcItemWidth());
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
+
+    // float lineHeight = io.fonts->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
+    // ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.9f, 0.2f, 0.2f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
+    ImGui::PushFont(boldFont);
+    if (ImGui::Button("X"))
+        values.x = resetValue;
+    ImGui::PopFont();
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine();
+    ImGui::DragFloat("##X", &values.x, 0.1f, 0.0f, 0.0f, "%.2f");
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.2f, 0.7f, 0.2f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.3f, 0.8f, 0.3f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.2f, 0.7f, 0.2f, 1.0f });
+    ImGui::PushFont(boldFont);
+    if (ImGui::Button("Y"))
+        values.y = resetValue;
+    ImGui::PopFont();
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine();
+    ImGui::DragFloat("##Y", &values.y, 0.1f, 0.0f, 0.0f, "%.2f");
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.2f, 0.35f, 0.9f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
+    ImGui::PushFont(boldFont);
+    if (ImGui::Button("Z"))
+        values.z = resetValue;
+    ImGui::PopFont();
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine();
+    ImGui::DragFloat("##Z", &values.z, 0.1f, 0.0f, 0.0f, "%.2f");
+    ImGui::PopItemWidth();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.2f, 0.35f, 0.9f, 1.0f });
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{ 0.1f, 0.25f, 0.8f, 1.0f });
+    ImGui::PushFont(boldFont);
+    if (ImGui::Button("W"))
+        values.w = resetValue;
+    ImGui::PopFont();
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine();
+    ImGui::DragFloat("##W", &values.w, 0.1f, 0.0f, 0.0f, "%.2f");
+    ImGui::PopItemWidth();
+
+    ImGui::PopStyleVar();
+
+    ImGui::Columns(1);
+
+    ImGui::PopID();
+}
+
+}
+struct AppSettings
+{
+    uint32_t NumPointLights = 128;
+    uint32_t NumSpotLights = 128;
 };
 
-class Shadows : public ApplicationBase
+class ShadowsApp : public ApplicationBase
 {
 private:
 
 public:
-    Shadows(IPhxEngineRoot* root)
+    ShadowsApp(IPhxEngineRoot* root)
         : ApplicationBase(root)
     {
     }
@@ -79,37 +263,37 @@ public:
         std::shared_ptr<Core::IRootFileSystem> rootFilePath = Core::CreateRootFileSystem();
         rootFilePath->Mount("/Shaders/PhxEngine", appShadersRoot);
 
-        this->m_shaderFactory = std::make_unique<Graphics::ShaderFactory>(this->GetGfxDevice(), rootFilePath, "/Shaders");
+        this->m_shaderFactory = std::make_shared<Graphics::ShaderFactory>(this->GetGfxDevice(), rootFilePath, "/Shaders");
         this->m_commonPasses = std::make_shared<Renderer::CommonPasses>(this->GetGfxDevice(), *this->m_shaderFactory);
         this->m_textureCache = std::make_unique<Graphics::TextureCache>(nativeFS, this->GetGfxDevice());
+        this->m_deferredRenderer = std::make_unique<Renderer::RenderPath3DDeferred>(
+            this->GetGfxDevice(),
+            this->m_commonPasses,
+            this->m_shaderFactory,
+            this->GetRoot()->GetFrameProfiler());
 
-        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza/Sponza.gltf";
+#if USE_SIMPLE_SPONZA
+        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza/Sponza_withlights.gltf";
+#else
+        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza_Intel/Main/NewSponza_Main_glTF.gltf";
+#endif
+
+#ifdef ASYNC_LOADING
+        this->m_loadAsync = true; // race condition when loading textures
+#else
+        this->m_loadAsync = false; // race condition when loading textures
+#endif
+
         this->BeginLoadingScene(nativeFS, scenePath);
 
-        this->m_renderTargets.Initialize(this->GetGfxDevice(), this->GetRoot()->GetCanvasSize());
-
-        this->m_gbufferFillPass = std::make_unique<GBufferFillPass>(this->GetGfxDevice(), this->m_commonPasses);
-        this->m_gbufferFillPass->Initialize(*this->m_shaderFactory);
-
-        this->m_deferredLightingPass = std::make_shared<DeferredLightingPass>(this->GetGfxDevice(), this->m_commonPasses);
-        this->m_deferredLightingPass->Initialize(*this->m_shaderFactory);
-
-        this->m_toneMappingPass = std::make_unique<Renderer::ToneMappingPass>(this->GetGfxDevice(), this->m_commonPasses);
-        this->m_toneMappingPass->Initialize(*this->m_shaderFactory);
-
-        this->m_frameConstantBuffer = RHI::IGraphicsDevice::GPtr->CreateBuffer({
-            .Usage = RHI::Usage::Default,
-            .Binding = RHI::BindingFlags::ConstantBuffer,
-            .InitialState = RHI::ResourceStates::ConstantBuffer,
-            .SizeInBytes = sizeof(Shader::Frame),
-            .DebugName = "Frame Constant Buffer",
-            });
+        this->m_deferredRenderer->Initialize(this->GetRoot()->GetCanvasSize());
 
         this->m_mainCamera.FoV = DirectX::XMConvertToRadians(60);
 
         Scene::TransformComponent t = {};
-        t.LocalTranslation = { -5.0f, 2.0f, 0.0f };
-        t.RotateRollPitchYaw({ 0.0f, DirectX::XMConvertToRadians(90), 0.0f });
+        t.LocalTranslation = { -4.0f, 2.0f, 0.3f };
+        t.RotateRollPitchYaw({ 0.0f, DirectX::XMConvertToRadians(90), 0.0f});
+        t.SetDirty();
         t.UpdateTransform();
 
         this->m_mainCamera.TransformCamera(t);
@@ -123,43 +307,52 @@ public:
         std::unique_ptr<Scene::ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
         ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
 
+        this->m_scene.Initialize(&PhxEngine::Core::MemoryService::GetInstance().GetSystemAllocator());
+
         bool retVal = sceneLoader->LoadScene(
             fileSystem,
             this->m_textureCache,
             sceneFilename,
             commandList,
             this->m_scene);
-
-        if (retVal)
-        {
-            Renderer::ResourceUpload indexUpload;
-            Renderer::ResourceUpload vertexUpload;
-            this->m_scene.ConstructRenderData(commandList, indexUpload, vertexUpload);
-
-            indexUpload.Free();
-            vertexUpload.Free();
-        }
-
         commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList }, true);
+
+        auto viewLights = this->m_scene.GetAllEntitiesWith<Scene::LightComponent>();
+        for (auto e : viewLights)
+        {
+            viewLights.get<Scene::LightComponent>(e).SetCastShadows(true);
+        }
+
+        this->m_scene.BuildRenderData(this->GetGfxDevice());
 
         return retVal;
     }
 
     void OnWindowResize(WindowResizeEvent const& e) override
     {
-        this->GetGfxDevice()->DeleteGraphicsPipeline(this->m_pipeline);
-        this->m_pipeline = {};
-        this->m_renderTargets.Free(this->GetGfxDevice());
-        this->m_renderTargets.Initialize(this->GetGfxDevice(), this->GetRoot()->GetCanvasSize());
-        this->m_gbufferFillPass->WindowResized();
+        this->m_deferredRenderer->WindowResize({ (float)e.GetWidth(), (float)e.GetHeight() });
     }
 
     void Update(Core::TimeStep const& deltaTime) override
     {
-        this->m_rotation += deltaTime.GetSeconds() * 1.1f;
-        this->GetRoot()->SetInformativeWindowTitle("Example: Deferred Rendering", {});
+        this->GetRoot()->SetInformativeWindowTitle("PhxEngine Exampe: Direct Lighting", {});
         this->m_cameraController.OnUpdate(this->GetRoot()->GetWindow(), deltaTime, this->m_mainCamera);
+
+        if (this->IsSceneLoaded())
+        {
+            this->m_scene.OnUpdate(this->m_commonPasses);
+        }
+    }
+
+    void RenderSplashScreen() override
+    {
+        ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
+        commandList->BeginRenderPassBackBuffer();
+        // TODO: Render Splash Screen or some text about loading.
+        commandList->EndRenderPass();
+        commandList->Close();
+        this->GetGfxDevice()->ExecuteCommandLists({ commandList });
     }
 
     void RenderScene() override
@@ -168,167 +361,228 @@ public:
         this->m_mainCamera.Height = this->GetRoot()->GetCanvasSize().y;
         this->m_mainCamera.UpdateCamera();
 
-        ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
-
-        {
-            auto _ = commandList->BeginScopedMarker("Preare Frame Data");
-            this->PrepareRenderData(commandList, this->m_scene);
-        }
-
-        // The camera data doesn't match whats in the CPU and what's in the GPU.
-        Shader::Camera cameraData = {};
-        cameraData.ViewProjection = this->m_mainCamera.ViewProjection;
-        cameraData.ViewProjectionInv = this->m_mainCamera.ViewProjectionInv;
-        cameraData.ProjInv = this->m_mainCamera.ProjectionInv;
-        cameraData.ViewInv = this->m_mainCamera.ViewInv;
-
-        {
-            auto _ = commandList->BeginScopedMarker("GBuffer Fill");
-
-            this->m_gbufferFillPass->BeginPass(commandList, this->m_frameConstantBuffer, cameraData, this->m_renderTargets);
-            static thread_local DrawQueue drawQueue;
-            drawQueue.Reset();
-
-            // Look through Meshes and instances?
-            auto view = this->m_scene.GetAllEntitiesWith<Scene::MeshInstanceComponent, Scene::AABBComponent>();
-            for (auto e : view)
-            {
-                auto [instanceComponent, aabbComp] = view.get<Scene::MeshInstanceComponent, Scene::AABBComponent>(e);
-
-                auto& meshComponent = this->m_scene.GetRegistry().get<Scene::MeshComponent>(instanceComponent.Mesh);
-                if (meshComponent.RenderBucketMask & Scene::MeshComponent::RenderType_Transparent)
-                {
-                    continue;
-                }
-
-                const float distance = Core::Math::Distance(this->m_mainCamera.Eye, aabbComp.BoundingData.GetCenter());
-
-                drawQueue.Push((uint32_t)instanceComponent.Mesh, (uint32_t)e, distance);
-            }
-
-            drawQueue.SortOpaque();
-
-            RenderViews(commandList, this->m_gbufferFillPass.get(), this->m_scene, drawQueue, true);
-        }
-
-		DeferredLightingPass::Input input = {};
-		input.FillGBuffer(this->m_renderTargets);
-		input.OutputTexture = this->m_renderTargets.ColourBuffer;
-        input.FrameBuffer = this->m_frameConstantBuffer;
-        input.CameraData = &cameraData;
-
-		this->m_deferredLightingPass->Render(commandList, input);
-
-        this->m_toneMappingPass->Render(
-            commandList,
-            this->m_renderTargets.ColourBuffer,
-            commandList->GetRenderPassBackBuffer(),
-            this->GetRoot()->GetCanvasSize());
-
-        commandList->Close();
-        this->GetGfxDevice()->ExecuteCommandLists({ commandList });
+        this->m_deferredRenderer->Render(this->m_scene, this->m_mainCamera);
     }
 
-private:
-    void PrepareRenderData(ICommandList* commandList, Scene::Scene& scene)
-    {
-        scene.OnUpdate(this->m_commonPasses);
-
-        GPUAllocation lightBufferAlloc =
-            commandList->AllocateGpu(
-                sizeof(Shader::ShaderLight) * Shader::SHADER_LIGHT_ENTITY_COUNT,
-                sizeof(Shader::ShaderLight));
-        GPUAllocation matrixBufferAlloc =
-            commandList->AllocateGpu(
-                sizeof(DirectX::XMMATRIX) * Shader::MATRIX_COUNT,
-                sizeof(DirectX::XMMATRIX));
-
-        Shader::ShaderLight* lightArray = (Shader::ShaderLight*)lightBufferAlloc.CpuData;
-        DirectX::XMMATRIX* matrixArray = (DirectX::XMMATRIX*)matrixBufferAlloc.CpuData;
-
-        Shader::ShaderLight* renderLight = lightArray;
-        renderLight->SetType(Scene::LightComponent::kDirectionalLight);
-        renderLight->SetRange(10.0f);
-        renderLight->SetIntensity(10.0f);
-        renderLight->SetFlags(Scene::LightComponent::kEnabled);
-        renderLight->SetDirection({ 0.0, -1.0f, 0.0f });
-        renderLight->ColorPacked = Core::Math::PackColour({ 1.0f, 1.0f, 1.0f, 1.0f });
-        renderLight->SetIndices(0);
-        renderLight->SetNumCascades(0);
-        renderLight->Position = { 0.0f, 0.0f, 0.0f };
-
-        Shader::Frame frameData = {};
-        // Move to Renderer...
-        frameData.BrdfLUTTexIndex = scene.GetBrdfLutDescriptorIndex();
-        frameData.LightEntityDescritporIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(lightBufferAlloc.GpuBuffer, RHI::SubresouceType::SRV);
-        frameData.LightDataOffset = lightBufferAlloc.Offset;
-        frameData.LightCount = 1;
-
-        frameData.MatricesDescritporIndex = RHI::cInvalidDescriptorIndex;
-        frameData.MatricesDataOffset = 0;
-        frameData.SceneData = scene.GetShaderData();
-
-        frameData.SceneData.AtmosphereData.AmbientColour = float3(0.0f, 0.0f, 0.0f);
-
-        // Upload data
-        RHI::GpuBarrier preCopyBarriers[] =
-        {
-            RHI::GpuBarrier::CreateBuffer(this->m_frameConstantBuffer, RHI::ResourceStates::ConstantBuffer, RHI::ResourceStates::CopyDest),
-            RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
-            RHI::GpuBarrier::CreateBuffer(scene.GetGeometryBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
-            RHI::GpuBarrier::CreateBuffer(scene.GetMaterialBuffer(), RHI::ResourceStates::ShaderResource, RHI::ResourceStates::CopyDest),
-        };
-        commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preCopyBarriers, _countof(preCopyBarriers)));
-
-        commandList->WriteBuffer(this->m_frameConstantBuffer, frameData);
-
-        commandList->CopyBuffer(
-            scene.GetInstanceBuffer(),
-            0,
-            scene.GetInstanceUploadBuffer(),
-            0,
-            scene.GetNumInstances() * sizeof(Shader::MeshInstance));
-
-        commandList->CopyBuffer(
-            scene.GetGeometryBuffer(),
-            0,
-            scene.GetGeometryUploadBuffer(),
-            0,
-            scene.GetNumGeometryEntries() * sizeof(Shader::Geometry));
-
-        commandList->CopyBuffer(
-            scene.GetMaterialBuffer(),
-            0,
-            scene.GetMaterialUploadBuffer(),
-            0,
-            scene.GetNumMaterialEntries() * sizeof(Shader::MaterialData));
-
-        RHI::GpuBarrier postCopyBarriers[] =
-        {
-            RHI::GpuBarrier::CreateBuffer(this->m_frameConstantBuffer, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ConstantBuffer),
-            RHI::GpuBarrier::CreateBuffer(scene.GetInstanceBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
-            RHI::GpuBarrier::CreateBuffer(scene.GetGeometryBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
-            RHI::GpuBarrier::CreateBuffer(scene.GetMaterialBuffer(), RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource),
-        };
-
-        commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postCopyBarriers, _countof(postCopyBarriers)));
-    }
+    std::shared_ptr<Graphics::ShaderFactory> GetShaderFactory() { return this->m_shaderFactory; }
+    std::shared_ptr<Renderer::RenderPath3DDeferred> GetRenderer() { return this->m_deferredRenderer; }
+    
+    Scene::Scene& GetScene() { return this->m_scene; };
 
 private:
-    std::unique_ptr<Graphics::ShaderFactory> m_shaderFactory;
-    RHI::GraphicsPipelineHandle m_pipeline;
+
+private:
+    std::shared_ptr<Graphics::ShaderFactory> m_shaderFactory;
+    std::shared_ptr<Renderer::RenderPath3DDeferred> m_deferredRenderer;
+    RHI::TextureHandle m_splashScreenTexture;
     Scene::Scene m_scene;
     Scene::CameraComponent m_mainCamera;
     PhxEngine::FirstPersonCameraController m_cameraController;
-    RHI::BufferHandle m_frameConstantBuffer;
 
-    RenderTargets m_renderTargets;
-    std::unique_ptr<GBufferFillPass> m_gbufferFillPass;
-    std::shared_ptr<DeferredLightingPass> m_deferredLightingPass;
     std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
-    std::unique_ptr<Renderer::ToneMappingPass> m_toneMappingPass;
 
-    float m_rotation = 0.0f;
+    Scene::Entity m_debugLightOmniMesh;
+    Scene::Entity m_debugLightSpotMesh;
+};
+
+
+class ShadowsAppUI : public PhxEngine::ImGuiRenderer
+{
+private:
+
+public:
+    ShadowsAppUI(IPhxEngineRoot* root, ShadowsApp* app)
+        : ImGuiRenderer(root)
+        , m_app(app)
+    {
+    }
+
+    void BuildUI() override
+    {
+        if (m_app->IsSceneLoaded())
+        {
+            ImGui::Begin("Options");
+            if (ImGui::CollapsingHeader("Renderer"))
+            {
+                this->m_app->GetRenderer()->BuildUI();
+            }
+            ImGui::End();
+
+            ImGui::Begin("Scene");
+            if (ImGui::Button("Enable All Lights"))
+            {
+                auto viewLights = this->m_app->GetScene().GetAllEntitiesWith<Scene::LightComponent>();
+                for (auto e : viewLights)
+                {
+                    viewLights.get<Scene::LightComponent>(e).SetEnabled(true);
+                }
+            }
+
+            if (ImGui::Button("Disable All Lights"))
+            {
+                auto viewLights = this->m_app->GetScene().GetAllEntitiesWith<Scene::LightComponent>();
+                for (auto e : viewLights)
+                {
+                    viewLights.get<Scene::LightComponent>(e).SetEnabled(false);
+                }
+            }
+
+            if (ImGui::CollapsingHeader("Scene Lights"))
+            {
+                // Draw the entity nodes
+                this->m_app->GetScene().GetRegistry().each([&](entt::entity entityId)
+                    {
+                        Scene::Entity entity = { entityId, &this->m_app->GetScene() };
+                if (!entity.HasComponent<Scene::HierarchyComponent>() || entity.HasComponent<Scene::LightComponent>())
+                {
+                    this->DrawEntityNode(entity);
+                }
+                    });
+            }
+
+            if (this->m_selectedEntity)
+            {
+                this->DrawEntityComponent(this->m_selectedEntity);
+            }
+            ImGui::End();
+        }
+        else
+        {
+            ImGui::Begin("Loading Scene");
+            ImGui::Text("The Scene Is currently Loading...");
+            ImGui::End();
+        }
+    }
+
+    void DrawEntityNode(Scene::Entity entity)
+    {
+        auto& name = entity.GetComponent<Scene::NameComponent>().Name;
+
+        ImGuiTreeNodeFlags flags = ((this->m_selectedEntity == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow;
+        flags |= ImGuiTreeNodeFlags_SpanAvailWidth;
+        bool opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)entity, flags, name.c_str());
+        if (ImGui::IsItemClicked())
+        {
+            this->m_selectedEntity = entity;
+        }
+
+        bool entityDeleted = false;
+        if (ImGui::BeginPopupContextItem())
+        {
+            if (ImGui::MenuItem("Delete Entity"))
+                entityDeleted = true;
+
+            ImGui::EndPopup();
+        }
+
+        if (opened)
+        {
+            auto view = this->m_app->GetScene().GetAllEntitiesWith<Scene::HierarchyComponent>();
+            view.each([&](entt::entity entityId)
+                {
+                    // Draw only top level nodes
+                    if (view.get<Scene::HierarchyComponent>(entityId).ParentID == (entt::entity)entity)
+                    {
+                        Scene::Entity entity = { entityId, &this->m_app->GetScene() };
+                        this->DrawEntityNode(entity);
+                    }
+                });
+            /*
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+            bool opened = ImGui::TreeNodeEx((void*)9817239, flags, name.c_str());
+            if (opened)
+            {
+                ImGui::TreePop();
+            }
+            */
+            ImGui::TreePop();
+        }
+
+        if (entityDeleted)
+        {
+            this->m_app->GetScene().DestroyEntity(entity);
+            if (this->m_selectedEntity == entity)
+            {
+                this->m_selectedEntity = {};
+            }
+        }
+    }
+
+    void DrawEntityComponent(Scene::Entity entity)
+    {
+        if (entity.HasComponent<Scene::NameComponent>())
+        {
+            auto& name = entity.GetComponent<Scene::NameComponent>().Name;
+
+            ImGui::Text(name.c_str());
+        }
+
+        ImGui::SameLine();
+        ImGui::PushItemWidth(-1);
+
+        if (ImGui::Button("Add Component"))
+        {
+            ImGui::OpenPopup("AddComponent");
+        }
+
+        if (ImGui::BeginPopup("AddComponent"))
+        {
+            ImGui::EndPopup();
+        }
+
+        ImGui::PopItemWidth();
+
+
+        DrawComponent<Scene::TransformComponent>("Transform", entity, [](auto& component) {
+                DrawFloat3Control("Translation", component.LocalTranslation);
+                DrawFloat4Control("Rotation", component.LocalRotation);
+                DrawFloat3Control("Scale", component.LocalScale, 1.0f);
+            });
+
+
+        DrawComponent<Scene::LightComponent>("Light Component", entity, [](auto& component) {
+           
+                const char* items[] = { "Directional", "Omni", "Spot" };
+
+                ImGui::Combo("Type", (int*)&component.Type, items, IM_ARRAYSIZE(items));
+                bool isEnabled = component.IsEnabled();
+                ImGui::Checkbox("Enabled", &isEnabled);
+                component.SetEnabled(isEnabled);
+
+                bool castShadows = component.CastShadows();
+                ImGui::Checkbox("Cast Shadows", &castShadows);
+                component.SetCastShadows(castShadows);
+
+                ImGui::ColorPicker3("Light Colour", &component.Colour.x, ImGuiColorEditFlags_NoSidePreview);
+                
+
+                ImGui::SliderFloat("Intensity", &component.Intensity, 0.0f, 1000.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+                ImGui::SliderFloat("Range", &component.Range, 0.0f, 1000.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+
+                if (component.Type == Scene::LightComponent::kDirectionalLight || component.Type == Scene::LightComponent::kSpotLight)
+                {
+                    ImGui::InputFloat3("Direction", &component.Direction.x, "%.3f");
+                }
+
+                if (component.Type == Scene::LightComponent::kSpotLight)
+                {
+                    ImGui::SliderFloat("Inner Cone Angle", &component.InnerConeAngle, 0.0f, XM_PIDIV2 - 0.01f, "%e");
+                    ImGui::SliderFloat("Outer Cone Angle", &component.OuterConeAngle, 0.0f, XM_PIDIV2 - 0.01f, "%e");
+                }
+
+                // Direction is starting from origin, so we need to negate it
+                // Vec3 light(lightComponent.Direction.x, lightComponent.Direction.y, -lightComponent.Direction.z);
+                // get/setLigth are helper funcs that you have ideally defined to manage your global/member objs
+                // ImGui::Text("This is not working as expected. Do Not Use");
+                // if (ImGui::gizmo3D("##Dir1", light /*, size,  mode */))
+                {
+                    //  lightComponent.Direction = { light.x, light.y, -light.z };
+                }
+            });
+    }
+private:
+    ShadowsApp* m_app;
+    Scene::Entity m_selectedEntity;
 };
 
 #ifdef WIN32
@@ -339,20 +593,32 @@ int main(int __argc, const char** __argv)
 {
     std::unique_ptr<IPhxEngineRoot> root = CreateEngineRoot();
 
+    PhxEngine::Core::MemoryService::GetInstance().Initialize({
+            .MaximumDynamicSize = PhxGB(1)
+        });
+
     EngineParam params = {};
-    params.Name = "PhxEngine Example: Shadows";
+    params.Name = "PhxEngine";
     params.GraphicsAPI = RHI::GraphicsAPI::DX12;
     params.WindowWidth = 2000;
     params.WindowHeight = 1200;
     root->Initialize(params);
 
     {
-        Shadows example(root.get());
-        if (example.Initialize())
+        ShadowsApp app(root.get());
+        if (app.Initialize())
         {
-            root->AddPassToBack(&example);
+            root->AddPassToBack(&app);
+
+            ShadowsAppUI userInterface(root.get(), &app);
+            if (userInterface.Initialize(*app.GetShaderFactory()))
+            {
+                root->AddPassToBack(&userInterface);
+            }
+
             root->Run();
-            root->RemovePass(&example);
+            root->RemovePass(&app);
+            root->RemovePass(&userInterface);
         }
     }
 
@@ -360,5 +626,6 @@ int main(int __argc, const char** __argv)
     root.reset();
     RHI::ReportLiveObjects();
 
+    PhxEngine::Core::MemoryService::GetInstance().Finalize();
     return 0;
 }

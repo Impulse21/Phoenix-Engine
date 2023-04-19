@@ -359,17 +359,17 @@ void GltfSceneLoader::LoadNode(
 		{
 		case cgltf_light_type_directional:
 			lightComponent.Type = LightComponent::kDirectionalLight;
-			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 9.0f;
+			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 6.0f;
 			break;
 
 		case cgltf_light_type_point:
 			lightComponent.Type = LightComponent::kOmniLight;
-			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 420.0f;
+			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 6.0f;
 			break;
 
 		case cgltf_light_type_spot:
 			lightComponent.Type = LightComponent::kSpotLight;
-			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 420.0f;
+			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 6.0f;
 			break;
 
 		case cgltf_light_type_invalid:

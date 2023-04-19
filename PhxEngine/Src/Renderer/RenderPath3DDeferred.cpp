@@ -280,11 +280,10 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 		commandList->BindConstantBuffer(1, this->m_frameCB);
 		commandList->BindDynamicConstantBuffer(2, cameraData);
-		auto lightView = scene.GetAllEntitiesWith<Scene::LightComponent>();
+		auto lightView = scene.GetAllEntitiesWith<Scene::LightComponent, Scene::NameComponent>();
 		for (auto e : lightView)
 		{
-			auto light = lightView.get<Scene::LightComponent>(e);
-
+			auto [light, name] = lightView.get<Scene::LightComponent, Scene::NameComponent>(e);
 			if (light.CastShadows() == false)
 			{
 				continue;
@@ -385,6 +384,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			}
 
 #if true
+			auto nameScope = commandList->BeginScopedMarker(name.Name);
 			commandList->ExecuteIndirect(
 				this->m_settings.EnableMeshShaders ? this->m_commandSignatures[ECommandSignatures::Shadows_MS] : this->m_commandSignatures[ECommandSignatures::Shadows_Gfx],
 				this->m_settings.EnableMeshShaders ? scene.GetIndirectDrawShadowMeshletBuffer() : scene.GetIndirectDrawShadowMeshBuffer(),
