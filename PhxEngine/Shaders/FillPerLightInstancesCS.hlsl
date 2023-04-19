@@ -39,6 +39,13 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         return;
     }
     ObjectInstance objectInstance = LoadObjectInstnace(objectInstanceIdx);
+    
+    // TODO: Remove once we have proper bucket support.
+    if (objectInstance.CastShadows == false)
+    {
+        return;
+    }
+    
     Geometry geometryData = LoadGeometry(objectInstance.GeometryIndex);
     
     float4 geometryBoundingSphere = LoadGeometryBounds(objectInstance.GeometryIndex);

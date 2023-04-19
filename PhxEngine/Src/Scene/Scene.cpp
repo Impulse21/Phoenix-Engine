@@ -483,6 +483,7 @@ void PhxEngine::Scene::Scene::RunMeshInstanceUpdateSystem()
 		shaderMeshInstance->MeshletOffset = mesh.GlobalOffsetMeshletBuffer;
 		shaderMeshInstance->Colour = Core::Math::PackColour(meshInstanceComponent.Color);
 		shaderMeshInstance->Emissive = Core::Math::PackColour(meshInstanceComponent.EmissiveColor);
+		shaderMeshInstance->CastShadows = (meshInstanceComponent.RenderBucketMask & MeshInstanceComponent::RenderType_CastShadows) == MeshInstanceComponent::RenderType_CastShadows;
 		meshInstanceComponent.GlobalBufferIndex = currInstanceIndex++;
 	}
 

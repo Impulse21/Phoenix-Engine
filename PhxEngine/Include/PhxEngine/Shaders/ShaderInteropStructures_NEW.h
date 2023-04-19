@@ -317,6 +317,7 @@ namespace Shader::New
 		uint MeshletOffset;
 
 		// -- 16 byte boundary ----
+		bool CastShadows; // TODO: remove once proper render buckets are sorted out
 	};
 
 	struct Material

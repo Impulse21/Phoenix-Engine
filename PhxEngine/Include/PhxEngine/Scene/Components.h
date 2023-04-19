@@ -532,9 +532,10 @@ namespace PhxEngine::Scene
 			RenderType_Void = 0,
 			RenderType_Opaque = 1 << 0,
 			RenderType_Transparent = 1 << 1,
-			RenderType_All = RenderType_Opaque | RenderType_Transparent
+			RenderType_CastShadows = 1 << 2,
+			RenderType_All = RenderType_Opaque | RenderType_CastShadows
 		};
-		uint32_t RenderBucketMask = RenderType::RenderType_Opaque;
+		uint32_t RenderBucketMask = RenderType::RenderType_All;
 
 		entt::entity Mesh = entt::null;
 		DirectX::XMFLOAT4 Color = DirectX::XMFLOAT4(1, 1, 1, 1);
