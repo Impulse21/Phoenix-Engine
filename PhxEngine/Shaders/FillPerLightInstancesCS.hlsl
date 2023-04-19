@@ -47,6 +47,11 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
     }
     
     Geometry geometryData = LoadGeometry(objectInstance.GeometryIndex);
+    // TODO: Remove once we have proper bucket support
+    if (geometryData.DrawFlags & DRAW_FLAGS_TRANSPARENT)
+    {
+        return;
+    }
     
     float4 geometryBoundingSphere = LoadGeometryBounds(objectInstance.GeometryIndex);
     float4 boundCentreWS = mul(float4(geometryBoundingSphere.xyz, 1.0f), objectInstance.WorldMatrix);

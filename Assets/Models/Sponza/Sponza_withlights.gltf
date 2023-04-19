@@ -131,6 +131,16 @@
                     "intensity" : 15.0,
                     "type" : "point",
                     "name" : "Light_1nd_floor.007"
+                },
+                {
+                    "color" : [
+                        1,
+                        0.7203077077865601,
+                        0.15092414617538452
+                    ],
+                    "intensity" : 15.0,
+                    "type" : "point",
+                    "name" : "Debug_point_light"
                 }
             ]
         }
@@ -152,7 +162,8 @@
                 9,
                 10,
                 11,
-                12
+                12,
+                13
             ]
         }
     ],
@@ -392,6 +403,25 @@
                 3.8894202709198,
                 1.264435052871704,
                 1.1470717191696167
+            ]
+        },
+        {
+            "extensions" : {
+                "KHR_lights_punctual" : {
+                    "light" : 12
+                }
+            },
+            "name" : "Point.012",
+            "rotation" : [
+                -0.7071068286895752,
+                0,
+                0,
+                0.7071068286895752
+            ],
+            "translation" : [
+                0.6895012855529785,
+                3.074455976486206,
+                -0.1787097454071045
             ]
         }
     ],
@@ -3225,7 +3255,7 @@
     "buffers" : [
         {
             "byteLength" : 8361924,
-            "uri" : "Sponza_withlights.bin"
+            "uri" : "Sponza_withLights.bin"
         }
     ]
 }

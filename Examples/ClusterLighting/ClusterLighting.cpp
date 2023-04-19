@@ -395,7 +395,7 @@ public:
                 1.0f };
 
             lightComp.Intensity = Core::Random::GetRandom(0.0f, 100.0f);
-            lightComp.Range = Core::Random::GetRandom(0.0f, 100.0f);
+            lightComp.GetRange() = Core::Random::GetRandom(0.0f, 100.0f);
             lightComp.InnerConeAngle = Core::Random::GetRandom(0.0f, XM_PIDIV2 - 0.01f);
             lightComp.OuterConeAngle = Core::Random::GetRandom(lightComp.InnerConeAngle, XM_PIDIV2 - 0.01f);
 
@@ -553,7 +553,7 @@ public:
                 
 
                 ImGui::SliderFloat("Intensity", &component.Intensity, 0.0f, 1000.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
-                ImGui::SliderFloat("Range", &component.Range, 0.0f, 1000.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+                ImGui::SliderFloat("Range", &component.GetRange(), 0.0f, 1000.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
 
                 if (component.Type == Scene::LightComponent::kDirectionalLight || component.Type == Scene::LightComponent::kSpotLight)
                 {

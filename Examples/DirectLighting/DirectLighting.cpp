@@ -330,7 +330,7 @@ public:
                 1.0f,
                 1.0f };
         lightComp.Intensity = 6.0f;
-        lightComp.Range = 60.0f;
+        lightComp.GetRange() = 60.0f;
         lightComp.InnerConeAngle = 0;
         lightComp.OuterConeAngle = DirectX::XM_PIDIV4;
 
@@ -567,7 +567,7 @@ public:
                 
 
                 ImGui::SliderFloat("Intensity", &component.Intensity, 0.0f, 1000.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
-                ImGui::SliderFloat("Range", &component.Range, 0.0f, 1000.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+                ImGui::SliderFloat("Range", &component.GetRange(), 0.0f, 1000.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
 
                 if (component.Type == Scene::LightComponent::kDirectionalLight || component.Type == Scene::LightComponent::kSpotLight)
                 {

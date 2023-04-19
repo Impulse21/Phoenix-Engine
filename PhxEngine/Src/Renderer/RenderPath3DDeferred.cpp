@@ -342,7 +342,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 				commandList->SetScissors(scissors.data(), scissors.size());
 
 				const float zNearP = 0.1f;
-				const float zFarP = std::max(1.0f, light.Range);
+				const float zFarP = std::max(1.0f, light.GetRange());
 				std::array<ShadowCam, 6> shadowCams;
 				Renderer::CreateCubemapCameras(
 					light.Position,
@@ -353,7 +353,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 				Shader::New::ShadowCams shaderSCams;
 				for (int i = 0; i < shadowCams.size(); i++)
 				{
-					std::memcpy(&shaderSCams.ViewProjection[i], &shadowCams[i].ViewProjection, sizeof(DirectX::XMFLOAT4X4));
+					DirectX::XMStoreFloat4x4(&shaderSCams.ViewProjection[i], shadowCams[i].ViewProjection);
 				}
 				commandList->BindDynamicConstantBuffer(3, shaderSCams);
 				break;
@@ -388,10 +388,10 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			commandList->ExecuteIndirect(
 				this->m_settings.EnableMeshShaders ? this->m_commandSignatures[ECommandSignatures::Shadows_MS] : this->m_commandSignatures[ECommandSignatures::Shadows_Gfx],
 				this->m_settings.EnableMeshShaders ? scene.GetIndirectDrawShadowMeshletBuffer() : scene.GetIndirectDrawShadowMeshBuffer(),
-				(this->m_settings.EnableMeshShaders ? sizeof(Shader::New::MeshletDrawCommand) : sizeof(Shader::New::MeshDrawCommand)) * light.GlobalBufferIndex,
-				scene.GetPerlightMeshInstancesCounts(),
+				(this->m_settings.EnableMeshShaders ? sizeof(Shader::New::MeshletDrawCommand) : sizeof(Shader::New::MeshDrawCommand)) * light.GlobalBufferIndex * scene.GetShaderData().InstanceCount,
+				scene.GetIndirectDrawPerLightCountBuffer(),
 				sizeof(uint32_t) * light.GlobalBufferIndex,
-				scene.GetShaderData().InstanceCount * MAX_NUM_LIGHTS);
+				scene.GetShaderData().InstanceCount);
 #endif
 		}
 
@@ -1160,7 +1160,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameLightData(
 
 		shaderData->SetType(light.Type);
 		shaderData->Position = light.Position;
-		shaderData->SetRange(light.Range);
+		shaderData->SetRange(light.GetRange());
 
 		shaderData->SetColor({ light.Colour.x * light.Intensity, light.Colour.y * light.Intensity, light.Colour.z * light.Intensity, 1 });
 
@@ -1227,7 +1227,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameLightData(
 			if (light.CastShadows())
 			{
 				const float nearZ = 0.1f;
-				const float farZ = std::max(1.0f, light.Range);
+				const float farZ = std::max(1.0f, light.GetRange());
 				const float fRange = farZ / (farZ - nearZ);
 				const float cubemapDepthRemapNear = fRange;
 				const float cubemapDepthRemapFar = fRange * farZ;

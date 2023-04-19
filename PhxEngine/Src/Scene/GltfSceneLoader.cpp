@@ -383,7 +383,7 @@ void GltfSceneLoader::LoadNode(
 			&gltfNode.light->color[0],
 			sizeof(float) * 3);
 
-		lightComponent.Range = gltfNode.light->range > 0 ? (float)gltfNode.light->range : std::numeric_limits<float>().max();
+		lightComponent.GetRange() = gltfNode.light->range > 0 ? (float)gltfNode.light->range : std::numeric_limits<float>().max();
 		lightComponent.InnerConeAngle = (float)gltfNode.light->spot_inner_cone_angle;
 		lightComponent.OuterConeAngle = (float)gltfNode.light->spot_outer_cone_angle;
 	}

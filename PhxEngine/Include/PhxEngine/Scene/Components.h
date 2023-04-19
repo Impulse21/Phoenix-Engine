@@ -371,6 +371,14 @@ namespace PhxEngine::Scene
 
 		bool IsEnabled() const { return Flags & Flags::kEnabled; }
 
+		inline float GetRange()
+		{
+			float retval = this->Range;
+			retval = std::max(0.001f, retval);
+			retval = std::min(retval, 65504.0f); // clamp to 16-bit float max value
+			return retval;
+		}
+
 		inline void SetEnabled(bool value = true)
 		{
 			if (value)

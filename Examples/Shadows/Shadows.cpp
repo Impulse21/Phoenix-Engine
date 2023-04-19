@@ -557,7 +557,7 @@ public:
                 
 
                 ImGui::SliderFloat("Intensity", &component.Intensity, 0.0f, 1000.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
-                ImGui::SliderFloat("Range", &component.Range, 0.0f, 1000.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+                ImGui::SliderFloat("Range", &component.GetRange(), 0.0f, 1000.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
 
                 if (component.Type == Scene::LightComponent::kDirectionalLight || component.Type == Scene::LightComponent::kSpotLight)
                 {

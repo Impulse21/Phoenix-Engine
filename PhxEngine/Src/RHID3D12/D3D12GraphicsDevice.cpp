@@ -2714,7 +2714,7 @@ RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(Gr
 			switch (bindlessParam.Type)
 			{
 			case ResourceType::BindlessSRV:
-				range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+				range.GetRange()Type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 				break;
 			default:
 				throw std::exception("Not implemented yet");

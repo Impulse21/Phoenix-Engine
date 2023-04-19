@@ -1185,9 +1185,8 @@ void PhxEngine::Scene::Scene::BuildLightBuffers(RHI::IGraphicsDevice* gfxDevice)
 	}
 
 	const size_t instanceCount = this->GetAllEntitiesWith<MeshInstanceComponent>().size();
-	const size_t indirectMeshBufferByteSize = Core::Helpers::AlignUp(sizeof(Shader::New::MeshDrawCommand) * instanceCount * MAX_NUM_LIGHTS , gfxDevice->GetUavCounterPlacementAlignment()) + sizeof(uint32_t);
-	// const size_t indirectMeshBufferByteSize = Core::Helpers::AlignUp(PhxMB(200), gfxDevice->GetUavCounterPlacementAlignment()) + sizeof(uint32_t);
-	
+	const size_t indirectMeshBufferByteSize = sizeof(Shader::New::MeshDrawCommand) * instanceCount * MAX_NUM_LIGHTS;
+		
 	if (!this->m_indirectDrawShadowMeshBuffer.IsValid() ||
 		gfxDevice->GetBufferDesc(this->m_indirectDrawShadowMeshBuffer).SizeInBytes < indirectMeshBufferByteSize)
 	{
@@ -1197,13 +1196,12 @@ void PhxEngine::Scene::Scene::BuildLightBuffers(RHI::IGraphicsDevice* gfxDevice)
 		}
 
 		this->m_indirectDrawShadowMeshBuffer = gfxDevice->CreateBuffer({
-				   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::Bindless | BufferMiscFlags::HasCounter,
+				   .MiscFlags = BufferMiscFlags::Structured | BufferMiscFlags::Bindless,
 				   .Binding = BindingFlags::UnorderedAccess,
 				   .InitialState = ResourceStates::IndirectArgument,
 				   .StrideInBytes = sizeof(Shader::New::MeshDrawCommand),
 				   .SizeInBytes = indirectMeshBufferByteSize,
 				   .AllowUnorderedAccess = true,
-				   .UavCounterOffsetInBytes = indirectMeshBufferByteSize - sizeof(uint32_t),
 				   .DebugName = "Indirect Draw Shadow (Mesh)" });
 	}
 

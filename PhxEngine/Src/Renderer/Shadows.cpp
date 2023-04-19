@@ -39,7 +39,7 @@ void PhxEngine::Renderer::ShadowsAtlas::UpdatePerFrameData(RHI::ICommandList* co
 		auto lightComponent = lightView.get<Scene::LightComponent>(e);
 
 		const float dist = Math::Distance(camPosition, lightComponent.Position);
-		const float range = lightComponent.Range;
+		const float range = lightComponent.GetRange();
 		const float amount = std::min(1.0f, range / std::max(0.001f, dist));
 
 		PackerRect rect = {};
@@ -281,7 +281,7 @@ void PhxEngine::Renderer::CreateSpotLightShadowCam(
 	ShadowCam& shadowCam,
 	bool reverseZ)
 {
-	shadowCam = ShadowCam(lightComponent.Position, lightComponent.Rotation, 0.1f, lightComponent.Range, lightComponent.OuterConeAngle * 2);
+	shadowCam = ShadowCam(lightComponent.Position, lightComponent.Rotation, 0.1f, lightComponent.GetRange(), lightComponent.OuterConeAngle * 2);
 	shadowCam.Frustum = Core::Frustum(shadowCam.ViewProjection);
 }
 

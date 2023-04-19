@@ -53,16 +53,16 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         else
         {
             StructuredBuffer<uint2> perLightMeshInstances = ResourceDescriptorHeap[GetScene().PerLightMeshInstances];
-            AppendStructuredBuffer<MeshDrawCommand> drawMeshIndirectBuffer = ResourceDescriptorHeap[push.DrawBufferIdx];
+            RWStructuredBuffer<MeshDrawCommand> drawMeshIndirectBuffer = ResourceDescriptorHeap[push.DrawBufferIdx];
             InterlockedAdd(drawCounterBuffer[lightIndex], numVisibleMeshlets);
+            Light l = LoadLight(lightIndex);
+            const int drawBufferOffset = GetScene().InstanceCount * lightIndex;
             for (int i = 0; i < numVisibleMeshlets; i++)
             {
                 uint objectInstanceIdx = perLightMeshInstances[i].x;
                 ObjectInstance objectInstance = LoadObjectInstnace(objectInstanceIdx);
                 Geometry geometryData = LoadGeometry(objectInstance.GeometryIndex);
-                
-                Light l = LoadLight(lightIndex);
-                
+                                
                 uint numInstances = 1;
                 switch (l.GetType())
                 {
@@ -78,8 +78,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                         numInstances = 1;
                         break;
                 }
-                MeshDrawCommand meshDrawCommand = CreateMeshCommand(geometryData, objectInstanceIdx, numInstances);
-                drawMeshIndirectBuffer.Append(meshDrawCommand);
+                drawMeshIndirectBuffer[drawBufferOffset + i] = CreateMeshCommand(geometryData, objectInstanceIdx, numInstances);
             }
         }
     }
