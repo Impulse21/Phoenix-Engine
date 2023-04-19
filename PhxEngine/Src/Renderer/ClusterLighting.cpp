@@ -103,7 +103,7 @@ void PhxEngine::Renderer::ClusterLighting::Update(
 		SortedLight& sortedLight = sortedLights[numLights++];
 		sortedLight.GlobalLightIndex = light.GlobalBufferIndex;
 		sortedLight.Position = positionV;
-		sortedLight.GetRange() = light.GetRange();
+		sortedLight.Range = light.GetRange();
 		sortedLight.ProjectedZ = ((DirectX::XMVectorGetZ(positionVS) - camera.ZNear) / (camera.ZFar - camera.ZNear));
 		sortedLight.ProjectedZMin = ((DirectX::XMVectorGetZ(positionMinVS) - camera.ZNear) / (camera.ZFar - camera.ZNear));
 		sortedLight.ProjectedZMax = ((DirectX::XMVectorGetZ(positionMaxVS) - camera.ZNear) / (camera.ZFar - camera.ZNear));
@@ -211,7 +211,7 @@ void PhxEngine::Renderer::ClusterLighting::Update(
 				(c & 4) ? 1.0f : -1.0f,
 				1.0f);
 
-			corner = DirectX::XMVectorScale(corner, light.GetRange());
+			corner = DirectX::XMVectorScale(corner, light.Range);
 			corner = DirectX::XMVectorAdd(corner, light.Position);
 			DirectX::XMVectorSetW(corner, 1.0f);
 
@@ -242,7 +242,7 @@ void PhxEngine::Renderer::ClusterLighting::Update(
 		// Collect light Data.
 
 		float positionLen = DirectX::XMVectorGetZ(DirectX::XMVector3Length(light.Position));
-		const bool cameraInside = (positionLen - light.GetRange()) < camera.ZFar;
+		const bool cameraInside = (positionLen - light.Range) < camera.ZFar;
 
 		DirectX::XMFLOAT4 aabbScreen ={
 			(lightBoundingVS.x * 0.5f + 0.5f) * (this->Canvas.x - 1),
