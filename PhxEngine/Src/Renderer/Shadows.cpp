@@ -37,6 +37,10 @@ void PhxEngine::Renderer::ShadowsAtlas::UpdatePerFrameData(RHI::ICommandList* co
 	for (auto e : lightView)
 	{
 		auto lightComponent = lightView.get<Scene::LightComponent>(e);
+		if (!lightComponent.IsEnabled() || !lightComponent.CastShadows())
+		{
+			continue;
+		}
 
 		const float dist = Math::Distance(camPosition, lightComponent.Position);
 		const float range = lightComponent.GetRange();

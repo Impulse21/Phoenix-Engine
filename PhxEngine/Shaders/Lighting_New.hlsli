@@ -62,7 +62,7 @@ inline float AttenuationOmni(in float dist2, in float range2)
     // GLTF recommendation: https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_lights_punctual#range-property
     // saturate(1 - pow(dist / range, 4)) / dist2;
     
-    // Credit Wicked Engine:
+    // Credit Wicked Engine: https://wickedengine.net/
     // Removed pow(x, 4), and avoid zero divisions:
     float distPerRange = dist2 / max(0.0001, range2); // pow2
     distPerRange *= distPerRange; // pow4
@@ -79,6 +79,7 @@ inline void ApplyOmniLight(in Light light, in BRDFDataPerSurface brdfSurfaceData
     [branch]
     if (dist2 < range2)
     {
+        const float3 Lunnormalized = L;
         L = normalize(L);
         BRDFDataPerLight brdfLightData = CreatePerLightBRDFData(L, brdfSurfaceData);
         
@@ -86,6 +87,22 @@ inline void ApplyOmniLight(in Light light, in BRDFDataPerSurface brdfSurfaceData
         if (any(brdfLightData.NdotL))
         {
             float3 shadow = 1.0f;
+            
+            if (light.IsCastingShadows())
+            {
+            // Calculate Shadow
+            [branch]
+                if (GetFrame().Flags & FRAME_FLAGS_DISABLE_CULL_FRUSTUM)
+                {
+#ifdef RT_SHADOWS
+                CalculateShadowRT(lightDirection, brdfSurfaceData.P, scene.RT_TlasIndex, shadow);
+#endif
+                }
+                else
+                {
+                    shadow *= ShadowCube(light, Lunnormalized);
+                }
+            }
             
             // If completely in shadow, nothing more to do.
             if (any(shadow))

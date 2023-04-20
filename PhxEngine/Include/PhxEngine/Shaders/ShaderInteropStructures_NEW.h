@@ -139,6 +139,10 @@ namespace Shader::New
 		{
 			return f16tof32(CubemapFar16_CubemapNear_16 >> 16u);
 		}
+		inline bool IsCastingShadows()
+		{
+			return GlobalMatrixIndex != ~0u;
+		}
 #else
 		inline void SetType(uint type)
 		{
@@ -241,6 +245,7 @@ namespace Shader::New
 	static const uint FRAME_FLAGS_DISABLE_CULL_FRUSTUM = 1 << 1;
 	static const uint FRAME_FLAGS_DISABLE_CULL_OCCLUSION = 1 << 2;
 	static const uint FRAME_FLAGS_ENABLE_CLUSTER_LIGHTING = 1 << 3;
+	static const uint FRAME_FLAGS_RT_SHADOWS = 1 << 4;
 
 	struct Frame
 	{

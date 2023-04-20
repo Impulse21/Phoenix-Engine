@@ -13,7 +13,7 @@
 	"CBV(b1), " \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
-	"StaticSampler(s52, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, comparisonFunc = COMPARISON_GREATER_EQUAL),"
+	"StaticSampler(s52, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, comparisonFunc = COMPARISON_LESS_EQUAL),"
 
 
 ConstantBuffer<Frame> FrameCB : register(b0);
@@ -104,5 +104,38 @@ inline uint GetLightIndex(uint index)
 {
     StructuredBuffer<uint> buffer = ResourceDescriptorHeap[GetFrame().SortedLightBufferIndex];
     return buffer[index];
+}
+
+// Convert texture coordinates on a cubemap face to cubemap sampling coordinates:
+// direction	: direction that is usable for cubemap sampling
+// returns float3 that has uv in .xy components, and face index in Z component
+//	https://stackoverflow.com/questions/53115467/how-to-implement-texturecube-using-6-sampler2d
+inline float3 CubemapToUv(in float3 r)
+{
+    float faceIndex = 0;
+    float3 absr = abs(r);
+    float3 uvw = 0;
+    if (absr.x > absr.y && absr.x > absr.z)
+    {
+		// x major
+        float negx = step(r.x, 0.0);
+        uvw = float3(r.zy, absr.x) * float3(lerp(-1.0, 1.0, negx), -1, 1);
+        faceIndex = negx;
+    }
+    else if (absr.y > absr.z)
+    {
+		// y major
+        float negy = step(r.y, 0.0);
+        uvw = float3(r.xz, absr.y) * float3(1.0, lerp(1.0, -1.0, negy), 1.0);
+        faceIndex = 2.0 + negy;
+    }
+    else
+    {
+		// z major
+        float negz = step(r.z, 0.0);
+        uvw = float3(r.xy, absr.z) * float3(lerp(1.0, -1.0, negz), -1, 1);
+        faceIndex = 4.0 + negz;
+    }
+    return float3((uvw.xy / uvw.z + 1) * 0.5, faceIndex);
 }
 #endif // __PHX_GLOBALS_HLSLI__

@@ -284,7 +284,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 		for (auto e : lightView)
 		{
 			auto [light, name] = lightView.get<Scene::LightComponent, Scene::NameComponent>(e);
-			if (light.CastShadows() == false)
+			if (!light.IsEnabled() || !light.CastShadows())
 			{
 				continue;
 			}
@@ -1013,7 +1013,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 	frameData.ShadowAtlasIdx = this->m_gfxDevice->GetDescriptorIndex(this->m_shadowAtlas.Texture, SubresouceType::SRV);
 	frameData.ShadowAtlasRes.x = this->m_shadowAtlas.Width;
 	frameData.ShadowAtlasRes.y = this->m_shadowAtlas.Height;
-	frameData.ShadowAtlasRes.x = 1.0f / (float)this->m_shadowAtlas.Width;
+	frameData.ShadowAtlasResRCP.x = 1.0f / (float)this->m_shadowAtlas.Width;
 	frameData.ShadowAtlasResRCP.y = 1.0f / (float)this->m_shadowAtlas.Height;
 	frameData.SceneData = scene.GetShaderData();
 
@@ -1171,6 +1171,10 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameLightData(
 			shaderData->ShadowAtlasMulAdd.z = light.ShadowRect.x * atlasDimRcp.x;
 			shaderData->ShadowAtlasMulAdd.w = light.ShadowRect.y * atlasDimRcp.y;
 			shaderData->GlobalMatrixIndex = matrixCounter;
+		}
+		else
+		{
+			shaderData->GlobalMatrixIndex = ~0u;
 		}
 
 		switch (light.Type)
