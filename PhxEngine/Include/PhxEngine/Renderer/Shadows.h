@@ -46,8 +46,8 @@ namespace PhxEngine::Renderer
 			const DirectX::XMVECTOR eye = DirectX::XMLoadFloat3(&eyePos);
 			const DirectX::XMVECTOR qRot = DirectX::XMQuaternionNormalize(DirectX::XMLoadFloat4(&rotation));
 			const DirectX::XMMATRIX rot = DirectX::XMMatrixRotationQuaternion(qRot);
-			const DirectX::XMVECTOR to = DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.0f, 0.0f, -1.0f, 0.0f), rot);
-			const DirectX::XMVECTOR up = DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), rot);
+			const DirectX::XMVECTOR to = DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f), rot);
+			const DirectX::XMVECTOR up = DirectX::XMVector3TransformNormal(DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rot);
 			const DirectX::XMMATRIX V = DirectX::XMMatrixLookToLH(eye, to, up);
 
 			// Note the farPlane is passed in as near, this is to support reverseZ
