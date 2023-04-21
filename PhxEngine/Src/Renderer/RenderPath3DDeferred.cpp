@@ -1234,7 +1234,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameLightData(
 				const float farZ = std::max(1.0f, light.GetRange());
 				const float fRange = farZ / (farZ - nearZ);
 				const float cubemapDepthRemapNear = fRange;
-				const float cubemapDepthRemapFar = fRange * farZ;
+				const float cubemapDepthRemapFar = -fRange * nearZ;
 				shaderData->SetCubeNearZ(cubemapDepthRemapNear);
 				shaderData->SetCubeFarZ(cubemapDepthRemapFar);
 			}

@@ -70,7 +70,7 @@ inline void shadowBorderShrink(in Light light, inout float2 shadowUV)
 inline float ShadowCube(in Light light, float3 Lunnormalized)
 {
     const float remappedDistance = light.GetCubeNearZ() + light.GetCubeFarZ() / (max(max(abs(Lunnormalized.x), abs(Lunnormalized.y)), abs(Lunnormalized.z)) * 0.989); // little bias to avoid artifact
-    const float3 uvSlice = CubemapToUv(-Lunnormalized);
+    const float3 uvSlice = CubemapToUv(Lunnormalized);
     float2 shadowUV = uvSlice.xy;
     shadowBorderShrink(light, shadowUV);
     shadowUV.x += uvSlice.z;
