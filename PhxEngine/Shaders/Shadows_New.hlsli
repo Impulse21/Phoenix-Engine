@@ -77,6 +77,7 @@ inline float ShadowCube(in Light light, float3 Lunnormalized)
     shadowUV = mad(shadowUV, light.ShadowAtlasMulAdd.xy, light.ShadowAtlasMulAdd.zw);
     return sampleShadow(shadowUV, remappedDistance);
 }
+
 #ifdef RT_SHADOWS
 
 inline void CalculateShadowRT(float3 lightDir, float3 surfacePosition, uint tlasIndex, inout float shadow)

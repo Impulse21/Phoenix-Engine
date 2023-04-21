@@ -151,7 +151,7 @@
                         1
                     ],
                     "intensity" : 108.0,
-                    "range": 6.00Fix,
+                    "range": 6.00,
                     "spot" : {
                         "innerConeAngle" : 0.388684813932918,
                         "outerConeAngle" : 0.45727625489234924
