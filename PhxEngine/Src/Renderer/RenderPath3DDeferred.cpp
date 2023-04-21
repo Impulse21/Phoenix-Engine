@@ -776,7 +776,8 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadPipelineStates(tf::Taskf
 		subflow.emplace([&]() {
 			this->m_gfxStates[EGfxPipelineStates::ShadowPass] = this->m_gfxDevice->CreateGraphicsPipeline({
 					.VertexShader = this->m_shaders[EShaders::VS_ShadowPass],
-					.DsvFormat = this->m_shadowAtlas.Format
+					// .RasterRenderState = {.DepthClipEnable = true, .DepthBias = -1, .SlopeScaledDepthBias = -4},
+					.DsvFormat = this->m_shadowAtlas.Format,
 				});
 			});
 		subflow.emplace([&]() {

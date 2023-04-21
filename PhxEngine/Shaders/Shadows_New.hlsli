@@ -66,6 +66,14 @@ inline void shadowBorderShrink(in Light light, inout float2 shadowUV)
     shadowUV /= shadowResolution;
 }
 
+inline float Shadow2D(in Light light, in float3 shadowPos, in float2 shadowUV, in uint cascade)
+{
+    shadowBorderShrink(light, shadowUV);
+    shadowUV.x += cascade;
+    shadowUV = mad(shadowUV, light.ShadowAtlasMulAdd.xy, light.ShadowAtlasMulAdd.zw);
+    return sampleShadow(shadowUV, shadowPos.z);
+}
+
 // Credit: Wicked Engine  https://wickedengine.net/
 inline float ShadowCube(in Light light, float3 Lunnormalized)
 {

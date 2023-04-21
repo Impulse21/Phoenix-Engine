@@ -45,6 +45,37 @@ inline void ApplyDirectionalLight(in Light light, in BRDFDataPerSurface brdfSurf
     {
         float3 shadow = 1.0f;
         
+        if (light.IsCastingShadows())
+        {
+            // Calculate Shadow
+            [branch]
+            if (GetFrame().Flags & FRAME_FLAGS_RT_SHADOWS)
+            {
+#ifdef RT_SHADOWS
+                CalculateShadowRT(lightDirection, brdfSurfaceData.P, scene.RT_TlasIndex, shadow);
+#endif
+            }
+            else
+            {
+                [loop]
+                for (uint cascade = 0; cascade < 3; ++cascade)
+                {
+                    matrix shadowMatrx = GetLightMatrix(light.GlobalMatrixIndex + cascade);
+                    float3 shadowPos = mul(float4(brdfSurfaceData.P, 1.0f), shadowMatrx).xyz;
+                    float3 shadowUv = ClipSpaceToUV(shadowPos);
+                    
+					[branch]
+                    if (IsSaturated(shadowUv))
+                    {
+                        const float3 shadowMain = Shadow2D(light, shadowPos.xyz, shadowUv.xy, cascade);
+                        shadow *= shadowMain;
+                        
+                        break;
+                    }
+                }
+            }
+        }
+        
         // If completely in shadow, nothing more to do.
         if (any(shadow))
         {
@@ -92,7 +123,7 @@ inline void ApplyOmniLight(in Light light, in BRDFDataPerSurface brdfSurfaceData
             {
             // Calculate Shadow
             [branch]
-                if (GetFrame().Flags & FRAME_FLAGS_DISABLE_CULL_FRUSTUM)
+                if (GetFrame().Flags & FRAME_FLAGS_RT_SHADOWS)
                 {
 #ifdef RT_SHADOWS
                 CalculateShadowRT(lightDirection, brdfSurfaceData.P, scene.RT_TlasIndex, shadow);
@@ -151,6 +182,31 @@ inline void ApplySpotLight(in Light light, in BRDFDataPerSurface brdfSurfaceData
             {
                 float3 shadow = 1.0f;
             
+                if (light.IsCastingShadows())
+                {
+                    // Calculate Shadow
+                    [branch]
+                    if (GetFrame().Flags & FRAME_FLAGS_RT_SHADOWS)
+                    {
+        #ifdef RT_SHADOWS
+                        CalculateShadowRT(lightDirection, brdfSurfaceData.P, scene.RT_TlasIndex, shadow);
+        #endif
+                    }
+                    else
+                    {
+                        const matrix shadowMatrx = GetLightMatrix(light.GlobalMatrixIndex + 0);
+                        float4 shadowPos = mul(float4(brdfSurfaceData.P, 1.0f), shadowMatrx);
+                        shadowPos.xyz /= shadowPos.w;
+                        float2 shadowUv = ClipSpaceToUV(shadowPos.xy);
+                        
+                        [branch]
+                        if (IsSaturated(shadowUv))
+                        {
+                            shadow *= Shadow2D(light, shadowPos.xyz, shadowUv, 0);
+                        }
+                    }
+                }
+                
                 // If completely in shadow, nothing more to do.
                 if (any(shadow))
                 {

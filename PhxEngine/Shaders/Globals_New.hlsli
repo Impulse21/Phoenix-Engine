@@ -23,6 +23,23 @@ SamplerState SamplerDefault : register(s50);
 SamplerState SamplerLinearClamped : register(s51);
 SamplerComparisonState ShadowSampler : register(s52);
 
+inline bool IsSaturated(float a)
+{
+    return a == saturate(a);
+}
+inline bool IsSaturated(float2 a)
+{
+    return all(a == saturate(a));
+}
+inline bool IsSaturated(float3 a)
+{
+    return all(a == saturate(a));
+}
+inline bool IsSaturated(float4 a)
+{
+    return all(a == saturate(a));
+}
+
 inline float2 ClipSpaceToUV(in float2 clipspace)
 {
 	return clipspace * float2(0.5, -0.5) + 0.5;
@@ -103,6 +120,12 @@ inline uint GetLightTile(uint index)
 inline uint GetLightIndex(uint index)
 {
     StructuredBuffer<uint> buffer = ResourceDescriptorHeap[GetFrame().SortedLightBufferIndex];
+    return buffer[index];
+}
+
+inline matrix GetLightMatrix(uint index)
+{
+    StructuredBuffer<matrix> buffer = ResourceDescriptorHeap[GetFrame().LightMatrixBufferIdx];
     return buffer[index];
 }
 
