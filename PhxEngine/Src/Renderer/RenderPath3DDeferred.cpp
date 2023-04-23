@@ -312,13 +312,12 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 				Renderer::CreateDirectionLightShadowCams(
 					mainCamera,
 					light,
-					500.0f,
 					shadowCams.data());
 
 				Shader::New::ShadowCams shaderSCams;
 				for (int i = 0; i < shadowCams.size(); i++)
 				{
-					std::memcpy(&shaderSCams.ViewProjection[i], &shadowCams[i].ViewProjection, sizeof(DirectX::XMFLOAT4X4));
+					DirectX::XMStoreFloat4x4(&shaderSCams.ViewProjection[i], shadowCams[i].ViewProjection);
 				}
 				commandList->BindDynamicConstantBuffer(3, shaderSCams);
 				break;
@@ -377,7 +376,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 					shadowCam);
 
 				Shader::New::ShadowCams shaderSCams;
-				std::memcpy(&shaderSCams.ViewProjection[0], &shadowCam.ViewProjection, sizeof(DirectX::XMFLOAT4X4));
+				DirectX::XMStoreFloat4x4(&shaderSCams.ViewProjection[0], shadowCam.ViewProjection);
 				commandList->BindDynamicConstantBuffer(3, shaderSCams);
 				break;
 			}
@@ -1190,7 +1189,6 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameLightData(
 				Renderer::CreateDirectionLightShadowCams(
 					mainCamera,
 					light,
-					500.0f,
 					shadowCams.data());
 
 				// Set Cascade Matrices

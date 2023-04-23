@@ -60,8 +60,9 @@ inline void ApplyDirectionalLight(in Light light, in BRDFDataPerSurface brdfSurf
                 [loop]
                 for (uint cascade = 0; cascade < 3; ++cascade)
                 {
+                    // No need to divide by w since it's an ortho projection
                     matrix shadowMatrx = GetLightMatrix(light.GlobalMatrixIndex + cascade);
-                    float3 shadowPos = mul(float4(brdfSurfaceData.P, 1.0f), shadowMatrx).xyz;
+                    float3 shadowPos = mul(shadowMatrx, float4(brdfSurfaceData.P, 1.0f)).xyz;
                     float3 shadowUv = ClipSpaceToUV(shadowPos);
                     
 					[branch]

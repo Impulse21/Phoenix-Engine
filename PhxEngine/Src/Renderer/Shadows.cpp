@@ -147,7 +147,6 @@ void PhxEngine::Renderer::ShadowsAtlas::UpdatePerFrameData(RHI::ICommandList* co
 void PhxEngine::Renderer::CreateDirectionLightShadowCams(
 	Scene::CameraComponent const& cameraComponent,
 	Scene::LightComponent& lightComponent,
-	float maxZDepth,
 	ShadowCam* shadowCams,
 	bool reverseZ)
 {
@@ -185,7 +184,7 @@ void PhxEngine::Renderer::CreateDirectionLightShadowCams(
 			up);
 
 
-	float splitDepthClamp = std::min(1.0f, maxZDepth / cameraComponent.ZFar);
+	const float splitDepthClamp = cameraComponent.ZFar;
 
 	std::array<float, kNumCascades + 1> cascadeSplits
 	{

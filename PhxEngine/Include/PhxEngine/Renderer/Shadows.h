@@ -59,7 +59,6 @@ namespace PhxEngine::Renderer
 	void CreateDirectionLightShadowCams(
 		Scene::CameraComponent const& cameraComponent,
 		Scene::LightComponent& lightComponent,
-		float maxZDepth,
 		ShadowCam* shadowCams,
 		bool reverseZ = false);
 
