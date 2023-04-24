@@ -174,11 +174,11 @@ void PhxEngine::Renderer::CreateDirectionLightShadowCams(
 
 	// The light view matrix, the UP cannot be parrell, and in the opposite direction as we wll get a zero vector, which fucks everything up. Need to determine based on rotation.
 	const XMMATRIX vLightRotation = XMMatrixRotationQuaternion(XMLoadFloat4(&lightComponent.Rotation));
-	const XMVECTOR to = XMVector3TransformNormal(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), vLightRotation);
+	const XMVECTOR to = XMVector3TransformNormal(XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f), vLightRotation);
 	const XMVECTOR up = XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), vLightRotation);
 
 	const DirectX::XMMATRIX lightView =
-		DirectX::XMMatrixLookToRH(
+		DirectX::XMMatrixLookToLH(
 			DirectX::XMVectorZero(),
 			to,
 			up);
@@ -264,7 +264,7 @@ void PhxEngine::Renderer::CreateDirectionLightShadowCams(
 
 
 		const DirectX::XMMATRIX lightProjection =
-			DirectX::XMMatrixOrthographicOffCenterRH(
+			DirectX::XMMatrixOrthographicOffCenterLH(
 				min.x,
 				max.x,
 				min.y,
