@@ -62,7 +62,7 @@ inline void ApplyDirectionalLight(in Light light, in BRDFDataPerSurface brdfSurf
                 {
                     // No need to divide by w since it's an ortho projection
                     matrix shadowMatrx = GetLightMatrix(light.GlobalMatrixIndex + cascade);
-                    float3 shadowPos = mul(float4(brdfSurfaceData.P, 1.0f), shadowMatrx).xyz;
+                    float3 shadowPos = mul(shadowMatrx, float4(brdfSurfaceData.P, 1.0f)).xyz;
                     float3 shadowUv = ClipSpaceToUV(shadowPos);
                     
 					[branch]
@@ -196,7 +196,7 @@ inline void ApplySpotLight(in Light light, in BRDFDataPerSurface brdfSurfaceData
                     else
                     {
                         const matrix shadowMatrx = GetLightMatrix(light.GlobalMatrixIndex + 0);
-                        float4 shadowPos = mul(float4(brdfSurfaceData.P, 1.0f), shadowMatrx);
+                        float4 shadowPos = mul(shadowMatrx, float4(brdfSurfaceData.P, 1.0f));
                         shadowPos.xyz /= shadowPos.w;
                         float2 shadowUv = ClipSpaceToUV(shadowPos.xy);
                         
