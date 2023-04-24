@@ -188,7 +188,7 @@ BRDFDataPerLight CreatePerLightBRDFData(
 {
     BRDFDataPerLight output;
 
-    output.L = -normalize(lightIncident);
+    output.L = normalize(lightIncident);
     output.H = normalize(brdfSurface.V + output.L);
 
     output.NdotL = saturate(dot(brdfSurface.N, output.L));

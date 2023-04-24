@@ -438,7 +438,7 @@ void GltfSceneLoader::LoadNode(
 	// GLTF default light Direciton is forward - I want this to be downwards.
 	if (gltfNode.light)
 	{
-		transform.RotateRollPitchYaw(XMFLOAT3(-XM_PIDIV2, 0, 0));
+		transform.RotateRollPitchYaw(XMFLOAT3(XM_PIDIV2, 0, 0));
 	}
 
 	transform.UpdateTransform();

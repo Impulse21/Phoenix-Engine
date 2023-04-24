@@ -62,7 +62,7 @@ inline void ApplyDirectionalLight(in Light light, in BRDFDataPerSurface brdfSurf
                 {
                     // No need to divide by w since it's an ortho projection
                     matrix shadowMatrx = GetLightMatrix(light.GlobalMatrixIndex + cascade);
-                    float3 shadowPos = mul(shadowMatrx, float4(brdfSurfaceData.P, 1.0f)).xyz;
+                    float3 shadowPos = mul(float4(brdfSurfaceData.P, 1.0f), shadowMatrx).xyz;
                     float3 shadowUv = ClipSpaceToUV(shadowPos);
                     
 					[branch]
@@ -103,7 +103,7 @@ inline float AttenuationOmni(in float dist2, in float range2)
 
 inline void ApplyOmniLight(in Light light, in BRDFDataPerSurface brdfSurfaceData, inout Lighting lighting)
 {
-    float3 L = brdfSurfaceData.P - light.Position;
+    float3 L = light.Position - brdfSurfaceData.P;
     const float dist2 = dot(L, L);
     const float range = light.GetRange();
     const float range2 = range * range;
@@ -132,7 +132,7 @@ inline void ApplyOmniLight(in Light light, in BRDFDataPerSurface brdfSurfaceData
                 }
                 else
                 {
-                    shadow *= ShadowCube(light, Lunnormalized);
+                    shadow *= ShadowCube(light, -Lunnormalized);
                 }
             }
             
@@ -162,7 +162,7 @@ float AttenuationSpot(in float dist2, in float range2, in float spotFactor, in f
 
 inline void ApplySpotLight(in Light light, in BRDFDataPerSurface brdfSurfaceData, inout Lighting lighting)
 {
-    float3 L = brdfSurfaceData.P - light.Position;
+    float3 L = light.Position - brdfSurfaceData.P;
     const float dist2 = dot(L, L);
     const float range = light.GetRange();
     const float range2 = range * range;
