@@ -173,7 +173,9 @@ void PhxEngine::Renderer::CreateDirectionLightShadowCams(
 	};
 
 	// The light view matrix, the UP cannot be parrell, and in the opposite direction as we wll get a zero vector, which fucks everything up. Need to determine based on rotation.
-	const XMMATRIX vLightRotation = XMMatrixRotationQuaternion(XMLoadFloat4(&lightComponent.Rotation));
+	// TODO Fix-me: Added a little hack to correct the y axis on the quaternion - I don't know why this is required and I need to do more digging. I suspect the loader isn't loading this data correctly
+	// const XMMATRIX vLightRotation = XMMatrixRotationQuaternion(XMLoadFloat4(&lightComponent.Rotation));
+	const XMMATRIX vLightRotation = XMMatrixRotationQuaternion(XMLoadFloat4(&lightComponent.Rotation) * XMVectorSet(1.0f, -1.0f, 1.0f, 1.0f));
 	const XMVECTOR to = XMVector3TransformNormal(XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f), vLightRotation);
 	const XMVECTOR up = XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), vLightRotation);
 
@@ -184,14 +186,14 @@ void PhxEngine::Renderer::CreateDirectionLightShadowCams(
 			up);
 
 
-	const float splitDepthClamp = cameraComponent.ZFar;
+	const float farPlane = cameraComponent.ZFar;
 
-	std::array<float, kNumCascades + 1> cascadeSplits
+	// TODO: Make this configurable.
+	std::array<float, kNumCascades> cascadeDistances =
 	{
-		splitDepthClamp * 0.0f,		// near plane
-		splitDepthClamp * 0.01f,	// near-mid split
-		splitDepthClamp * 0.1f,		// mid-far split
-		splitDepthClamp * 1.0f,		// far plane
+		20,
+		120,
+		1200
 	};
 
 	// const float splitClamp = std::min(1.0f, (float)maxZDepth / cameraComponent.ZFar);
@@ -199,8 +201,8 @@ void PhxEngine::Renderer::CreateDirectionLightShadowCams(
 
 	for (int i = 0; i < kNumCascades; i++)
 	{
-		float nearSplit = cascadeSplits[i];
-		float farSplit = cascadeSplits[i + 1];
+		const float nearSplit = i == 0 ? 0.0f : cascadeDistances[i - 1] / farPlane;
+		const float farSplit = cascadeDistances[i] / farPlane;
 
 		// Adjust the frustrum corders to the split and move to light space.
 		const DirectX::XMVECTOR cascadeCornersLS[] =

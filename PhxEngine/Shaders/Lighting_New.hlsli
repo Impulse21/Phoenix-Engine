@@ -57,8 +57,9 @@ inline void ApplyDirectionalLight(in Light light, in BRDFDataPerSurface brdfSurf
             }
             else
             {
+                const uint cascadeCount = 3;
                 [loop]
-                for (uint cascade = 0; cascade < 3; ++cascade)
+                for (uint cascade = 0; cascade < cascadeCount; ++cascade)
                 {
                     // No need to divide by w since it's an ortho projection
                     matrix shadowMatrx = GetLightMatrix(light.GlobalMatrixIndex + cascade);
@@ -68,8 +69,30 @@ inline void ApplyDirectionalLight(in Light light, in BRDFDataPerSurface brdfSurf
 					[branch]
                     if (IsSaturated(shadowUv))
                     {
+                        
                         const float3 shadowMain = Shadow2D(light, shadowPos.xyz, shadowUv.xy, cascade);
-                        shadow *= shadowMain;
+                        
+ #if false
+                        const float3 cascadeEdgeFactor = saturate(saturate(abs(shadowPos)) - 0.8) * 5.0; // face with be on edge and inwards;
+                        const float cascadeFade = max(cascadeEdgeFactor.x, max(cascadeEdgeFactor.y, cascadeEdgeFactor.z));
+                        
+                        if (cascadeFade > 0 && cascade < cascadeCount - 1)
+                        {
+                            cascade += 1;
+                            matrix shadowMatrxNext = GetLightMatrix(light.GlobalMatrixIndex + cascade);
+                            float3 shadowPosNext = mul(shadowMatrxNext, float4(brdfSurfaceData.P, 1.0f)).xyz;
+                            float3 shadowUvNext = ClipSpaceToUV(shadowPosNext);
+                            const float3 shadowFallback = Shadow2D(light, shadowPosNext.xyz, shadowUvNext.xy, cascade);
+                            
+                            shadow *= lerp(shadowMain, shadowFallback, cascadeFade);
+                        }
+                        else
+                        {
+                            shadow *= shadowMain;
+                        }
+#else                     
+                            shadow *= shadowMain;
+#endif
                         
                         break;
                     }
