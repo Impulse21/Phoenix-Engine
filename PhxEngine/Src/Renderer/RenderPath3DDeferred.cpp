@@ -123,93 +123,6 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 		cullCamera = cameraData;
 	}
 
-	if (scene.GetShaderData().LightCount > 0)
-	{
-		auto _ = commandList->BeginScopedMarker("Fill Per Lighting Buffer");
-		RHI::GpuBarrier preBarriers[] =
-		{
-			RHI::GpuBarrier::CreateBuffer(scene.GetPerlightMeshInstances(), this->m_gfxDevice->GetBufferDesc(scene.GetPerlightMeshInstances()).InitialState, RHI::ResourceStates::UnorderedAccess),
-			RHI::GpuBarrier::CreateBuffer(scene.GetPerlightMeshInstancesCounts(), this->m_gfxDevice->GetBufferDesc(scene.GetPerlightMeshInstancesCounts()).InitialState, RHI::ResourceStates::UnorderedAccess),
-		};
-		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
-
-		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::FillPerLightInstances]);
-
-		Shader::New::FillPerLightListConstants push = {};
-		push.UseMeshlets = this->m_settings.EnableMeshShaders;
-		push.PerLightMeshCountsUavIdx = this->m_gfxDevice->GetDescriptorIndex(scene.GetPerlightMeshInstancesCounts(), RHI::SubresouceType::UAV);
-		push.PerLightMeshInstancesUavIdx = this->m_gfxDevice->GetDescriptorIndex(scene.GetPerlightMeshInstances(), RHI::SubresouceType::UAV);
-
-		commandList->BindPushConstant(0, push);
-		commandList->BindConstantBuffer(1, this->m_frameCB);
-
-		static Shader::New::Camera cullCamera = {};
-		if (!this->m_settings.FreezeCamera)
-		{
-			cullCamera = cameraData;
-		}
-
-		commandList->BindDynamicConstantBuffer(2, cullCamera);
-		const int numThreadGroups = (int)std::ceilf(scene.GetShaderData().InstanceCount * scene.GetShaderData().LightCount / (float)THREADS_PER_WAVE);
-		commandList->Dispatch(
-			numThreadGroups,
-			1,
-			1);
-
-		RHI::GpuBarrier postBarriers[] =
-		{
-			RHI::GpuBarrier::CreateBuffer(scene.GetPerlightMeshInstances(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetPerlightMeshInstances()).InitialState),
-			RHI::GpuBarrier::CreateBuffer(scene.GetPerlightMeshInstancesCounts(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetPerlightMeshInstancesCounts()).InitialState),
-		};
-		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postBarriers, _countof(postBarriers)));
-	}
-
-	if (scene.GetShaderData().LightCount > 0)
-	{
-		auto _ = commandList->BeginScopedMarker("Fill Shadow Indirect Draw Buffers");
-		RHI::GpuBarrier preBarriers[] =
-		{
-			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawShadowMeshBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
-			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawShadowMeshletBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshletBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
-			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawPerLightCountBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawPerLightCountBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
-		};
-		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
-
-		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::FillLightDrawBuffers]);
-
-		Shader::New::FillLightDrawBuffers push = {};
-		push.UseMeshlets = this->m_settings.EnableMeshShaders;
-		push.DrawBufferIdx = push.UseMeshlets
-			? this->m_gfxDevice->GetDescriptorIndex(scene.GetIndirectDrawShadowMeshletBuffer(), RHI::SubresouceType::UAV)
-			: this->m_gfxDevice->GetDescriptorIndex(scene.GetIndirectDrawShadowMeshBuffer(), RHI::SubresouceType::UAV);
-
-		push.DrawBufferCounterIdx = this->m_gfxDevice->GetDescriptorIndex(scene.GetIndirectDrawPerLightCountBuffer(), RHI::SubresouceType::UAV);
-
-		commandList->BindPushConstant(0, push);
-		commandList->BindConstantBuffer(1, this->m_frameCB);
-
-		static Shader::New::Camera cullCamera = {};
-		if (!this->m_settings.FreezeCamera)
-		{
-			cullCamera = cameraData;
-		}
-
-		commandList->BindDynamicConstantBuffer(2, cullCamera);
-		const int numThreadGroups = (int)std::ceilf(scene.GetShaderData().LightCount / (float)THREADS_PER_WAVE);
-		commandList->Dispatch(
-			numThreadGroups,
-			1,
-			1);
-
-		RHI::GpuBarrier postBarriers[] =
-		{
-			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawShadowMeshBuffer(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshBuffer()).InitialState),
-			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawShadowMeshletBuffer(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshletBuffer()).InitialState),
-			RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawPerLightCountBuffer(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawPerLightCountBuffer()).InitialState),
-		};
-		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postBarriers, _countof(postBarriers)));
-	}
-
 	{
 		auto _ = commandList->BeginScopedMarker("Culling Pass (Early)");
 		RHI::GpuBarrier preBarriers[] =
@@ -259,142 +172,246 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postBarriers, _countof(postBarriers)));
 	}
 
-	if (this->m_shadowAtlas.ShadowRenderPass.IsValid() && !this->m_settings.EnableMeshShaders)
+	if (this->m_settings.EnableShadowPass)
 	{
-		auto _ = commandList->BeginScopedMarker("Shadow Pass");
-
-		commandList->BeginRenderPass(this->m_shadowAtlas.ShadowRenderPass);
-		if (this->m_settings.EnableMeshShaders)
+		auto shadow = commandList->BeginScopedMarker("Shadow Passes");
+		if (scene.GetShaderData().LightCount > 0)
 		{
-			commandList->SetMeshPipeline(this->m_meshStates[EMeshPipelineStates::ShadowPass]);
-		}
-		else
-		{
-			commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::ShadowPass]);
-			commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());
-		}
-
-		Shader::New::GeometryPushConstant push = {};
-		push.DrawId = -1;
-		commandList->BindPushConstant(0, push);
-
-		commandList->BindConstantBuffer(1, this->m_frameCB);
-		commandList->BindDynamicConstantBuffer(2, cameraData);
-		auto lightView = scene.GetAllEntitiesWith<Scene::LightComponent, Scene::NameComponent>();
-		for (auto e : lightView)
-		{
-			auto [light, name] = lightView.get<Scene::LightComponent, Scene::NameComponent>(e);
-			if (!light.IsEnabled() || !light.CastShadows())
+			auto _ = commandList->BeginScopedMarker("Fill Per Lighting Buffer");
+			RHI::GpuBarrier preBarriers[] =
 			{
-				continue;
+				RHI::GpuBarrier::CreateBuffer(scene.GetPerlightMeshInstances(), this->m_gfxDevice->GetBufferDesc(scene.GetPerlightMeshInstances()).InitialState, RHI::ResourceStates::UnorderedAccess),
+				RHI::GpuBarrier::CreateBuffer(scene.GetPerlightMeshInstancesCounts(), this->m_gfxDevice->GetBufferDesc(scene.GetPerlightMeshInstancesCounts()).InitialState, RHI::ResourceStates::UnorderedAccess),
+			};
+			commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
+
+			commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::FillPerLightInstances]);
+
+			Shader::New::FillPerLightListConstants push = {};
+			push.UseMeshlets = this->m_settings.EnableShadowMeshShaders;
+			push.PerLightMeshCountsUavIdx = this->m_gfxDevice->GetDescriptorIndex(scene.GetPerlightMeshInstancesCounts(), RHI::SubresouceType::UAV);
+			push.PerLightMeshInstancesUavIdx = this->m_gfxDevice->GetDescriptorIndex(scene.GetPerlightMeshInstances(), RHI::SubresouceType::UAV);
+
+			commandList->BindPushConstant(0, push);
+			commandList->BindConstantBuffer(1, this->m_frameCB);
+
+			static Shader::New::Camera cullCamera = {};
+			if (!this->m_settings.FreezeCamera)
+			{
+				cullCamera = cameraData;
 			}
 
-			switch (light.Type)
+			commandList->BindDynamicConstantBuffer(2, cullCamera);
+			const int numThreadGroups = (int)std::ceilf(scene.GetShaderData().InstanceCount * scene.GetShaderData().LightCount / (float)THREADS_PER_WAVE);
+			commandList->Dispatch(
+				numThreadGroups,
+				1,
+				1);
+
+			RHI::GpuBarrier postBarriers[] =
 			{
-			case Shader::New::LIGHT_TYPE_DIRECTIONAL:
+				RHI::GpuBarrier::CreateBuffer(scene.GetPerlightMeshInstances(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetPerlightMeshInstances()).InitialState),
+				RHI::GpuBarrier::CreateBuffer(scene.GetPerlightMeshInstancesCounts(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetPerlightMeshInstancesCounts()).InitialState),
+			};
+			commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postBarriers, _countof(postBarriers)));
+		}
+
+		if (scene.GetShaderData().LightCount > 0)
+		{
+			auto _ = commandList->BeginScopedMarker(this->m_settings.EnableShadowMeshShaders ? "Fill Shadow Indirect Draw Buffers (Meshlets)" : "Fill Shadow Indirect Draw Buffer");
+			RHI::GpuBarrier preBarriers[] =
 			{
-				std::array<Viewport, kNumCascades> cascadeViews;
-				std::array<RHI::Rect, kNumCascades> scissors;
-				for (int i = 0; i < cascadeViews.size(); i++)
+				RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawShadowMeshBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
+				RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawShadowMeshletBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshletBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
+				RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawPerLightCountBuffer(), this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawPerLightCountBuffer()).InitialState, RHI::ResourceStates::UnorderedAccess),
+			};
+			commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
+
+			commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::FillLightDrawBuffers]);
+
+			Shader::New::FillLightDrawBuffers push = {};
+			push.UseMeshlets = this->m_settings.EnableShadowMeshShaders;
+			push.DrawBufferIdx = push.UseMeshlets
+				? this->m_gfxDevice->GetDescriptorIndex(scene.GetIndirectDrawShadowMeshletBuffer(), RHI::SubresouceType::UAV)
+				: this->m_gfxDevice->GetDescriptorIndex(scene.GetIndirectDrawShadowMeshBuffer(), RHI::SubresouceType::UAV);
+
+			push.DrawBufferCounterIdx = this->m_gfxDevice->GetDescriptorIndex(scene.GetIndirectDrawPerLightCountBuffer(), RHI::SubresouceType::UAV);
+
+			commandList->BindPushConstant(0, push);
+			commandList->BindConstantBuffer(1, this->m_frameCB);
+
+			static Shader::New::Camera cullCamera = {};
+			if (!this->m_settings.FreezeCamera)
+			{
+				cullCamera = cameraData;
+			}
+
+			commandList->BindDynamicConstantBuffer(2, cullCamera);
+			const int numThreadGroups = (int)std::ceilf(scene.GetShaderData().LightCount / (float)THREADS_PER_WAVE);
+			commandList->Dispatch(
+				numThreadGroups,
+				1,
+				1);
+
+			RHI::GpuBarrier postBarriers[] =
+			{
+				RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawShadowMeshBuffer(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshBuffer()).InitialState),
+				RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawShadowMeshletBuffer(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawShadowMeshletBuffer()).InitialState),
+				RHI::GpuBarrier::CreateBuffer(scene.GetIndirectDrawPerLightCountBuffer(),RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetIndirectDrawPerLightCountBuffer()).InitialState),
+			};
+			commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postBarriers, _countof(postBarriers)));
+		}
+
+		if (this->m_shadowAtlas.ShadowRenderPass.IsValid())
+		{
+			auto _ = commandList->BeginScopedMarker("Fill Shadow Atlas Pass");
+
+			commandList->BeginRenderPass(this->m_shadowAtlas.ShadowRenderPass);
+			if (this->m_settings.EnableShadowMeshShaders)
+			{
+				commandList->SetMeshPipeline(this->m_meshStates[EMeshPipelineStates::ShadowPass]);
+			}
+			else
+			{
+				commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::ShadowPass]);
+				commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());
+			}
+
+			Shader::New::GeometryPushConstant push = {};
+			push.DrawId = -1;
+			commandList->BindPushConstant(0, push);
+
+			commandList->BindConstantBuffer(1, this->m_frameCB);
+			commandList->BindDynamicConstantBuffer(2, cameraData);
+			auto lightView = scene.GetAllEntitiesWith<Scene::LightComponent, Scene::NameComponent>();
+			for (auto e : lightView)
+			{
+				auto [light, name] = lightView.get<Scene::LightComponent, Scene::NameComponent>(e);
+				if (!light.IsEnabled() || !light.CastShadows())
 				{
-					Viewport& vp = cascadeViews[i];
-					vp.MinX = float(light.ShadowRect.x + i * light.ShadowRect.w);
-					vp.MaxX = float(light.ShadowRect.w + vp.MinX);
+					continue;
+				}
+
+				switch (light.Type)
+				{
+				case Shader::New::LIGHT_TYPE_DIRECTIONAL:
+				{
+					std::array<Viewport, kNumCascades> cascadeViews;
+					std::array<RHI::Rect, kNumCascades> scissors;
+					for (int i = 0; i < cascadeViews.size(); i++)
+					{
+						Viewport& vp = cascadeViews[i];
+						vp.MinX = float(light.ShadowRect.x + i * light.ShadowRect.w);
+						vp.MaxX = float(light.ShadowRect.w + vp.MinX);
+						vp.MinY = float(light.ShadowRect.y);
+						vp.MaxY = float(light.ShadowRect.y + light.ShadowRect.h);
+						vp.MinZ = 0.0f;
+						vp.MaxZ = 1.0f;
+						scissors[i] = rec;
+					}
+					commandList->SetViewports(cascadeViews.data(), cascadeViews.size());
+					commandList->SetScissors(scissors.data(), scissors.size());
+					std::array<ShadowCam, kNumCascades> shadowCams;
+					Renderer::CreateDirectionLightShadowCams(
+						mainCamera,
+						light,
+						shadowCams.data());
+
+					Shader::New::ShadowCams shaderSCams;
+					for (int i = 0; i < shadowCams.size(); i++)
+					{
+						DirectX::XMStoreFloat4x4(&shaderSCams.ViewProjection[i], shadowCams[i].ViewProjection);
+					}
+					commandList->BindDynamicConstantBuffer(3, shaderSCams);
+					break;
+				}
+				case Shader::New::LIGHT_TYPE_OMNI:
+				{
+					std::array<Viewport, 6> cubeViews;
+					std::array<RHI::Rect, 6> scissors;
+					for (int i = 0; i < cubeViews.size(); i++)
+					{
+						Viewport& vp = cubeViews[i];
+						vp.MinX = float(light.ShadowRect.x + i * light.ShadowRect.w);
+						vp.MaxX = float(light.ShadowRect.w + vp.MinX);
+						vp.MinY = float(light.ShadowRect.y);
+						vp.MaxY = float(light.ShadowRect.y + light.ShadowRect.h);
+						vp.MinZ = 0.0f;
+						vp.MaxZ = 1.0f;
+						scissors[i] = rec;
+					}
+					commandList->SetViewports(cubeViews.data(), cubeViews.size());
+					commandList->SetScissors(scissors.data(), scissors.size());
+
+					const float zNearP = 0.1f;
+					const float zFarP = std::max(1.0f, light.GetRange());
+					std::array<ShadowCam, 6> shadowCams;
+					Renderer::CreateCubemapCameras(
+						light.Position,
+						zNearP,
+						zFarP,
+						shadowCams.data());
+
+					Shader::New::ShadowCams shaderSCams;
+					for (int i = 0; i < shadowCams.size(); i++)
+					{
+						DirectX::XMStoreFloat4x4(&shaderSCams.ViewProjection[i], shadowCams[i].ViewProjection);
+					}
+					commandList->BindDynamicConstantBuffer(3, shaderSCams);
+					break;
+				}
+
+				case Shader::New::LIGHT_TYPE_SPOT:
+				{
+					Viewport vp;
+					vp.MinX = float(light.ShadowRect.x);
+					vp.MaxX = float(light.ShadowRect.w + light.ShadowRect.x);
 					vp.MinY = float(light.ShadowRect.y);
 					vp.MaxY = float(light.ShadowRect.y + light.ShadowRect.h);
 					vp.MinZ = 0.0f;
 					vp.MaxZ = 1.0f;
-					scissors[i] = rec;
+					commandList->SetViewports(&vp, 1);
+					commandList->SetScissors(&rec, 1);
+					ShadowCam shadowCam;
+					Renderer::CreateSpotLightShadowCam(
+						mainCamera,
+						light,
+						shadowCam);
+
+					Shader::New::ShadowCams shaderSCams;
+					DirectX::XMStoreFloat4x4(&shaderSCams.ViewProjection[0], shadowCam.ViewProjection);
+					commandList->BindDynamicConstantBuffer(3, shaderSCams);
+					break;
 				}
-				commandList->SetViewports(cascadeViews.data(), cascadeViews.size());
-				commandList->SetScissors(scissors.data(), scissors.size());
-				std::array<ShadowCam, kNumCascades> shadowCams;
-				Renderer::CreateDirectionLightShadowCams(
-					mainCamera,
-					light,
-					shadowCams.data());
-
-				Shader::New::ShadowCams shaderSCams;
-				for (int i = 0; i < shadowCams.size(); i++)
-				{
-					DirectX::XMStoreFloat4x4(&shaderSCams.ViewProjection[i], shadowCams[i].ViewProjection);
 				}
-				commandList->BindDynamicConstantBuffer(3, shaderSCams);
-				break;
-			}
-			case Shader::New::LIGHT_TYPE_OMNI:
-			{
-				std::array<Viewport, 6> cubeViews;
-				std::array<RHI::Rect, 6> scissors;
-				for (int i = 0; i < cubeViews.size(); i++)
-				{
-					Viewport& vp = cubeViews[i];
-					vp.MinX = float(light.ShadowRect.x + i * light.ShadowRect.w);
-					vp.MaxX = float(light.ShadowRect.w + vp.MinX);
-					vp.MinY = float(light.ShadowRect.y);
-					vp.MaxY = float(light.ShadowRect.y + light.ShadowRect.h);
-					vp.MinZ = 0.0f;
-					vp.MaxZ = 1.0f;
-					scissors[i] = rec;
-				}
-				commandList->SetViewports(cubeViews.data(), cubeViews.size());
-				commandList->SetScissors(scissors.data(), scissors.size());
-
-				const float zNearP = 0.1f;
-				const float zFarP = std::max(1.0f, light.GetRange());
-				std::array<ShadowCam, 6> shadowCams;
-				Renderer::CreateCubemapCameras(
-					light.Position,
-					zNearP,
-					zFarP,
-					shadowCams.data());
-
-				Shader::New::ShadowCams shaderSCams;
-				for (int i = 0; i < shadowCams.size(); i++)
-				{
-					DirectX::XMStoreFloat4x4(&shaderSCams.ViewProjection[i], shadowCams[i].ViewProjection);
-				}
-				commandList->BindDynamicConstantBuffer(3, shaderSCams);
-				break;
-			}
-
-			case Shader::New::LIGHT_TYPE_SPOT:
-			{
-				Viewport vp;
-				vp.MinX = float(light.ShadowRect.x);
-				vp.MaxX = float(light.ShadowRect.w + light.ShadowRect.x);
-				vp.MinY = float(light.ShadowRect.y);
-				vp.MaxY = float(light.ShadowRect.y + light.ShadowRect.h);
-				vp.MinZ = 0.0f;
-				vp.MaxZ = 1.0f;
-				commandList->SetViewports(&vp, 1);
-				commandList->SetScissors(&rec, 1);
-				ShadowCam shadowCam;
-				Renderer::CreateSpotLightShadowCam(
-					mainCamera,
-					light,
-					shadowCam);
-
-				Shader::New::ShadowCams shaderSCams;
-				DirectX::XMStoreFloat4x4(&shaderSCams.ViewProjection[0], shadowCam.ViewProjection);
-				commandList->BindDynamicConstantBuffer(3, shaderSCams);
-				break;
-			}
-			}
 
 #if true
-			auto nameScope = commandList->BeginScopedMarker(name.Name);
-			commandList->ExecuteIndirect(
-				this->m_settings.EnableMeshShaders ? this->m_commandSignatures[ECommandSignatures::Shadows_MS] : this->m_commandSignatures[ECommandSignatures::Shadows_Gfx],
-				this->m_settings.EnableMeshShaders ? scene.GetIndirectDrawShadowMeshletBuffer() : scene.GetIndirectDrawShadowMeshBuffer(),
-				(this->m_settings.EnableMeshShaders ? sizeof(Shader::New::MeshletDrawCommand) : sizeof(Shader::New::MeshDrawCommand)) * light.GlobalBufferIndex * scene.GetShaderData().InstanceCount,
-				scene.GetIndirectDrawPerLightCountBuffer(),
-				sizeof(uint32_t) * light.GlobalBufferIndex,
-				scene.GetShaderData().InstanceCount);
+				auto nameScope = commandList->BeginScopedMarker(name.Name);
+				if (this->m_settings.EnableShadowMeshShaders)
+				{
+					commandList->ExecuteIndirect(
+						this->m_commandSignatures[ECommandSignatures::Shadows_MS],
+						scene.GetIndirectDrawShadowMeshletBuffer(),
+						sizeof(Shader::New::MeshletDrawCommand) * light.GlobalBufferIndex,
+						scene.GetIndirectDrawPerLightCountBuffer(),
+						sizeof(uint32_t) * light.GlobalBufferIndex, 
+						1);
+				}
+				else
+				{
+					commandList->ExecuteIndirect(
+						this->m_commandSignatures[ECommandSignatures::Shadows_Gfx],
+						scene.GetIndirectDrawShadowMeshBuffer(),
+						sizeof(Shader::New::MeshDrawCommand) * light.GlobalBufferIndex * scene.GetShaderData().InstanceCount,
+						scene.GetIndirectDrawPerLightCountBuffer(),
+						sizeof(uint32_t) * light.GlobalBufferIndex,
+						scene.GetShaderData().InstanceCount);
+				}
 #endif
-		}
+			}
 
-		commandList->EndRenderPass();
+			commandList->EndRenderPass();
+		}
 	}
 
 	{
@@ -684,17 +701,44 @@ void PhxEngine::Renderer::RenderPath3DDeferred::WindowResize(DirectX::XMFLOAT2 c
 	this->CreateRenderPasses();
 }
 
+namespace {
+
+	template <typename Func>
+	void BrokenSetting(Func f)
+	{
+		ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
+		f();
+		ImGui::PopStyleColor();
+	}
+}
 void PhxEngine::Renderer::RenderPath3DDeferred::BuildUI()
 {
 	ImGui::Checkbox("Freeze Camera", &this->m_settings.FreezeCamera);
 	ImGui::Checkbox("Enable Frustra Culling", &this->m_settings.EnableFrustraCulling);
 	ImGui::Checkbox("Enable Occlusion Culling", &this->m_settings.EnableOcclusionCulling);
-	ImGui::Checkbox("Enable Meshlets", &this->m_settings.EnableMeshShaders);
-	if (this->m_settings.EnableMeshShaders)
+	ImGui::Checkbox("Enable Meshlets (GBuffer Fill)", &this->m_settings.EnableGBufferMeshShaders);
+	ImGui::Checkbox("Enable Shadow Pass", &this->m_settings.EnableShadowPass);
+	if (this->m_settings.EnableShadowPass)
 	{
-		ImGui::Checkbox("Enable Meshlet Culling", &this->m_settings.EnableMeshletCulling);
+		ImGui::Indent();
+		BrokenSetting([&] {
+			ImGui::Checkbox("Enable Meshlets (Shadow Atlas Fill)", &this->m_settings.EnableShadowMeshShaders);
+			});
+
+		ImGui::Unindent();
 	}
-	ImGui::Checkbox("Enable Compute Deferred Shading", &this->m_settings.EnableComputeDeferredLighting);
+	
+	if (this->m_settings.EnableGBufferMeshShaders || this->m_settings.EnableShadowMeshShaders)
+	{
+		BrokenSetting([&] {
+			ImGui::Checkbox("Enable Meshlet Culling", &this->m_settings.EnableMeshletCulling);
+			});
+	}
+
+	BrokenSetting([&] {
+		ImGui::Checkbox("Enable Compute Deferred Shading", &this->m_settings.EnableComputeDeferredLighting);
+		});
+
 	ImGui::Checkbox("Enable Cluster Lighting", &this->m_settings.EnableClusterLightLighting);
 	if (this->m_settings.EnableClusterLightLighting)
 	{
@@ -756,6 +800,12 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadShaders(tf::Taskflow& ta
 			});
 		subflow.emplace([&]() {
 			this->m_shaders[EShaders::VS_ShadowPass] = this->m_shaderFactory->CreateShader("PhxEngine/ShadowPassVS.hlsl", { .Stage = RHI::ShaderStage::Vertex, .DebugName = "ShadowPassVS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::AS_MeshletShadowCull] = this->m_shaderFactory->CreateShader("PhxEngine/MeshletShadowCullAS.hlsl", { .Stage = RHI::ShaderStage::Amplification, .DebugName = "ShadowPassAS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::MS_MeshletShadowPass] = this->m_shaderFactory->CreateShader("PhxEngine/ShadowPassMS.hlsl", { .Stage = RHI::ShaderStage::Mesh, .DebugName = "ShadowPassMS", });
 			});
 		});
 	return shaderLoadTask;
@@ -821,6 +871,14 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadPipelineStates(tf::Taskf
 				});
 			});
 		subflow.emplace([&]() {
+			this->m_meshStates[EMeshPipelineStates::ShadowPass] = this->m_gfxDevice->CreateMeshPipeline(
+				{
+					.AmpShader = this->m_shaders[EShaders::AS_MeshletShadowCull],
+					.MeshShader = this->m_shaders[EShaders::MS_MeshletShadowPass],
+					.DsvFormat = this->m_shadowAtlas.Format,
+				});
+			});
+		subflow.emplace([&]() {
 			this->m_gfxStates[EGfxPipelineStates::ClusterLightsDebugPass] = this->m_gfxDevice->CreateGraphicsPipeline({
 					.VertexShader = this->m_shaders[EShaders::VS_ClusterLightsDebugPass],
 					.PixelShader = this->m_shaders[EShaders::PS_ClusterLightsDebugPass],
@@ -878,20 +936,17 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::CreateCommandSignatures(tf::
 				.PipelineType = PipelineType::Gfx,
 				.GfxHandle = this->m_gfxStates[EGfxPipelineStates::ShadowPass] });
 
-	/* TODO Mesh shader isn't ready yet
-	subflow.emplace([&]() {
-		this->m_commandSignatures[ECommandSignatures::Shadows_MS] = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshletDrawCommand>({
-					   .ArgDesc =
-						   {
-							   {.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
-							   {.Type = IndirectArgumentType::DispatchMesh }
-						   },
-					   .PipelineType = PipelineType::Mesh,
-					   .MeshHandle = this->m_meshStates[EMeshPipelineStates::ShadowPass] });
-		});
-		*/
 
-		tf::Task createCommandSignaturesTask = taskFlow.emplace([&](tf::Subflow& subflow) {});
+	this->m_commandSignatures[ECommandSignatures::Shadows_MS] = this->m_gfxDevice->CreateCommandSignature<Shader::New::MeshletDrawCommand>({
+				   .ArgDesc =
+					   {
+						   {.Type = IndirectArgumentType::Constant, .Constant = {.RootParameterIndex = 0, .DestOffsetIn32BitValues = 0, .Num32BitValuesToSet = 1} },
+						   {.Type = IndirectArgumentType::DispatchMesh }
+					   },
+				   .PipelineType = PipelineType::Mesh,
+				   .MeshHandle = this->m_meshStates[EMeshPipelineStates::ShadowPass] });
+
+	tf::Task createCommandSignaturesTask = taskFlow.emplace([&](tf::Subflow& subflow) {});
 
 	return createCommandSignaturesTask;
 }
@@ -1336,7 +1391,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::GBufferFillPass(
 {
 	commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::GBufferFillPass]);
 
-	if (this->m_settings.EnableMeshShaders)
+	if (this->m_settings.EnableGBufferMeshShaders)
 	{
 		// Dispatch Mesh
 		commandList->SetMeshPipeline(this->m_meshStates[EMeshPipelineStates::GBufferFillPass]);
@@ -1353,11 +1408,11 @@ void PhxEngine::Renderer::RenderPath3DDeferred::GBufferFillPass(
 	commandList->BindConstantBuffer(1, this->m_frameCB);
 	commandList->BindDynamicConstantBuffer(2, cameraData);
 
-	BufferHandle indirectBuffer = this->m_settings.EnableMeshShaders ? indirectDrawMeshletBuffer : indirectDrawMeshBuffer;
+	BufferHandle indirectBuffer = this->m_settings.EnableGBufferMeshShaders ? indirectDrawMeshletBuffer : indirectDrawMeshBuffer;
 
 	auto instanceView = scene.GetAllEntitiesWith<Scene::MeshInstanceComponent>();
 	commandList->ExecuteIndirect(
-		this->m_settings.EnableMeshShaders ? this->m_commandSignatures[ECommandSignatures::GBufferFill_MS] : this->m_commandSignatures[ECommandSignatures::GBufferFill_Gfx],
+		this->m_settings.EnableGBufferMeshShaders ? this->m_commandSignatures[ECommandSignatures::GBufferFill_MS] : this->m_commandSignatures[ECommandSignatures::GBufferFill_Gfx],
 		indirectBuffer,
 		0,
 		indirectBuffer,

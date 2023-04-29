@@ -5,12 +5,12 @@
 #include "MeshletCommon.hlsli"
 #include "Culling.hlsli"
 
-groupshared MeshletPayload s_payload;
+groupshared MeshletShadowPayload s_payload;
 
 PUSH_CONSTANT(push, GeometryPushConstant);
 
 // DirectX Samples 
-inline bool IsVisible(CullData cullData, Light light, float4x4 world, float scale, uint faceIndex)
+inline bool IsLightVisible(CullData cullData, Light light, float4x4 world, float scale)
 {
     // TODO: Check if culling is enabled otherwise skip
     if (GetFrame().Flags & FRAME_FLAGS_DISABLE_CULL_MESHLET)
@@ -48,8 +48,13 @@ inline bool IsVisible(CullData cullData, Light light, float4x4 world, float scal
         return false;
     }
     
-    // Check against Frustra faces
-    
+    return true;
+}
+
+inline bool IsLightFaceVisible(CullData cullData, Light light, float scale, uint faceIndex)
+{
+    const float3 centre = mul(cullData.BoundingSphere.xyz, light.Position);
+    const float radius = cullData.BoundingSphere.w * scale;
     uint visibleFaces = GetCubeFaceMask(light.Position, centre - float3(radius, radius, radius), centre + float3(radius, radius, radius));
     
     bool accept = false;
@@ -86,9 +91,7 @@ uint2 LoadPerLightMeshletInstance(uint index)
 
 [numthreads(AS_GROUP_SIZE, 1, 1)]
 void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIndex : SV_GroupIndex)
-{
-    bool isVisibile = false;
-    
+{    
     const uint lightIndex = push.DrawId;
     // Load instance and meshlet
     const uint meshletIndex = DTid.x;
@@ -105,21 +108,32 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
    
     CullData cullData = LoadMeshletCullData(globalMeshletIndex);
     
+    bool isVisibile = IsLightVisible(cullData, light, objectInstance.WorldMatrix, 1.1);
+    
+    uint numFaces = 1;
     switch (light.GetType())
     {
         case LIGHT_TYPE_DIRECTIONAL:
-        case
-            
-        
+            numFaces = 3;
+            break;
+        case LIGHT_TYPE_OMNI:
+            numFaces = 6;
+            break;
     }
-    isVisibile = IsVisible(cullData, light, objectInstance.WorldMatrix, 1);
-        
+    
     if (isVisibile)
     {
-        uint index = WavePrefixCountBits(isVisibile);
-        s_payload.MeshletIndices[index] = DTid.x;
+        for (int i = 0; i < numFaces; i++)
+        {
+            bool isFaceVisibile = IsLightFaceVisible(cullData, light, 1.1, i);
+            if (isFaceVisibile)
+            {
+                uint index = WavePrefixCountBits(isVisibile);
+                s_payload.MeshletIndices[i][index] = DTid.x;
+            }
+        }
     }
     
     uint visibleCount = WaveActiveCountBits(isVisibile);
-    DispatchMesh(visibleCount, 1, 1, s_payload);
+    DispatchMesh(visibleCount, numFaces, 1, s_payload);
 }

@@ -8,7 +8,7 @@
 #include "VertexFetch.hlsli"
 #include "Defines.hlsli"
 
-#define COMPILE_MS
+// #define COMPILE_MS
 #ifdef COMPILE_MS
 #include "MeshletCommon.hlsli"
 #endif
@@ -26,79 +26,73 @@ PUSH_CONSTANT(push, GeometryPushConstant);
 // TODO: Consider switching this so we bind a global buffer.
 ConstantBuffer<ShadowCams> SCam : register(b2);
 
+#ifdef COMPILE_MS
 
-struct PSInput
+struct VertexAttributes
 {
-    float4 Position : SV_ViewportArrayIndex;
+    float4 Position : SV_POSITION;
+};
+
+struct PrimitiveAttributes
+{
+    uint ViewportId : SV_ViewportArrayIndex;
 };
     
-
-struct PrimitiveOutput
-{
-    uint viewportId : SV_ViewportArrayIndex;
-};
-    
-PSInput PopulatePSInput(ObjectInstance objectInstance, Geometry geometryData, uint vertexID)
+VertexAttributes PopulateVertexAttributes(ObjectInstance objectInstance, Geometry geometryData, uint vertexID, float4x4 viewProjection)
 {
     VertexData vertexData = FetchVertexData(vertexID, geometryData);
     
     float4x4 worldMatrix = objectInstance.WorldMatrix;
     
     // TODO: USE THE CAMERA FACE 
-    PSInput output;
-    output.Position = mul(vertexData.Position, worldMatrix).xyz;
-    output.Position = mul(float4(output.Position.xyz, 1.0f), GetCamera().ViewProjection);
+    VertexAttributes output;
+    output.Position = mul(vertexData.Position, worldMatrix);
+    output.Position = mul(output.Position, viewProjection);
 
     return output;
 }
 
-[RootSignature(PHX_ENGINE_DEFAULT_ROOTSIGNATURE)]
+[RootSignature(ShadowPassRS)]
 [numthreads(128, 1, 1)]
 [outputtopology("triangle")]
 void main(
-    uint2 gtid : SV_GroupThreadID,
-    uint gid : SV_GroupID,
-    in payload MeshletPayload payload,
+    uint gtid : SV_GroupThreadID,
+    uint2 gid : SV_GroupID,
+    in payload MeshletShadowPayload payload,
     out indices uint3 tris[MAX_PRIMS],
-    out primitives PrimitiveOutput prims[MAX_PRIMS],
-    out vertices PSInput verts[MAX_VERTS])
+    out primitives PrimitiveAttributes sharedPrimitives[MAX_PRIMS],
+    out vertices VertexAttributes verts[MAX_VERTS])
 {
     ObjectInstance objectInstance = LoadObjectInstnace(push.DrawId);
     Geometry geometryData = LoadGeometry(objectInstance.GeometryIndex);
     
-    uint meshletIndex = payload.MeshletIndices[gid.x];
-    
-      // Catch any out-of-range indices (in case too many MS threadgroups were dispatched from AS)
+    uint meshletIndex = payload.MeshletIndices[gid.y][gid.x];
     if (meshletIndex >= geometryData.MeshletCount)
     {
         return;
     }
     
     Meshlet m = LoadMeshlet(geometryData.MeshletOffset + meshletIndex);
-
     SetMeshOutputCounts(m.VertCount, m.PrimCount);
-
-    // TODO: I AM HERE SET THE VEIEWPORT PASED ON Y OR Z THREAD ID.
-    // TODO: Check if I am using the thread ID right.
-    if (gtid.x < m.PrimCount)
+    
+    if (gtid < m.PrimCount)
     {
-        tris[gtid.x] = GetPrimitive(m, gtid.x + geometryData.MeshletPrimtiveOffset);
-        PrimitiveOutput primOutput;
-        primOutput.viewportId = gtid.y;
-        prims[gtid.x] = primOutput;
+        tris[gtid] = GetPrimitive(m, gtid + geometryData.MeshletPrimtiveOffset);
+        PrimitiveAttributes primAttr;
+        primAttr.ViewportId = gid.y;
+        sharedPrimitives[gtid] = primAttr;
 
     }
 
     if (gtid < m.VertCount)
     {
-        uint vertexID = GetVertexIndex(m, gtid.x + geometryData.MeshletUniqueVertexIBOffset);
-        verts[gtid.x] = PopulatePSInput(objectInstance, geometryData, vertexID);
+        uint vertexID = GetVertexIndex(m, gtid + geometryData.MeshletUniqueVertexIBOffset);
+        verts[gtid] = PopulateVertexAttributes(objectInstance, geometryData, vertexID, SCam.ViewProjection[gid.y]);
     }
 }
 
 #endif
 
-#define COMPILE_VS
 #ifdef COMPILE_VS
 [RootSignature(ShadowPassRS)]
 void main(

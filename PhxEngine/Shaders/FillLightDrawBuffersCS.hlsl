@@ -37,20 +37,23 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
     
     if (numVisibleMeshlets > 0)
     {
+        RWStructuredBuffer<uint> drawCounterBuffer = ResourceDescriptorHeap[push.DrawBufferCounterIdx];
         if (push.UseMeshlets)
         {
+            InterlockedAdd(drawCounterBuffer[lightIndex], 1);
+            const int drawBufferOffset = lightIndex;
+            
             MeshletDrawCommand meshletDrawCommand;
             meshletDrawCommand.DrawId = lightIndex;
             meshletDrawCommand.Indirect.GroupCountX = ROUNDUP(numVisibleMeshlets, AS_GROUP_SIZE);
             meshletDrawCommand.Indirect.GroupCountY = 1;
             meshletDrawCommand.Indirect.GroupCountZ = 1;
             
-            AppendStructuredBuffer<MeshletDrawCommand> drawMeshletIndirectBuffer = ResourceDescriptorHeap[push.DrawBufferIdx];
-            drawMeshletIndirectBuffer.Append(meshletDrawCommand);
+            RWStructuredBuffer<MeshletDrawCommand> drawMeshletIndirectBuffer = ResourceDescriptorHeap[push.DrawBufferIdx];
+            drawMeshletIndirectBuffer[lightIndex] = meshletDrawCommand;
         }
         else
         {
-            RWStructuredBuffer<uint> drawCounterBuffer = ResourceDescriptorHeap[push.DrawBufferCounterIdx];
             StructuredBuffer<uint2> perLightMeshInstances = ResourceDescriptorHeap[GetScene().PerLightMeshInstances];
             RWStructuredBuffer<MeshDrawCommand> drawMeshIndirectBuffer = ResourceDescriptorHeap[push.DrawBufferIdx];
             InterlockedAdd(drawCounterBuffer[lightIndex], numVisibleMeshlets);

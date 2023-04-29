@@ -95,8 +95,10 @@ namespace PhxEngine::Renderer
 			CS_FillLightDrawBuffers,
 
 			AS_MeshletCull,
+			AS_MeshletShadowCull,
 
 			MS_MeshletGBufferFill,
+			MS_MeshletShadowPass,
 
 			Count
 		};
@@ -205,7 +207,9 @@ namespace PhxEngine::Renderer
 		{
 			// TODO: Use a bit field
 			bool EnableComputeDeferredLighting = false;
-			bool EnableMeshShaders = false;
+			bool EnableShadowPass = true;
+			bool EnableGBufferMeshShaders = false;
+			bool EnableShadowMeshShaders = false;
 			bool EnableMeshletCulling = false;
 			bool EnableFrustraCulling = true;
 			bool EnableOcclusionCulling = true;
