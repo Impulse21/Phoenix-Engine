@@ -359,17 +359,17 @@ void GltfSceneLoader::LoadNode(
 		{
 		case cgltf_light_type_directional:
 			lightComponent.Type = LightComponent::kDirectionalLight;
-			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 9.0f;
+			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 6.0f;
 			break;
 
 		case cgltf_light_type_point:
 			lightComponent.Type = LightComponent::kOmniLight;
-			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 420.0f;
+			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 6.0f;
 			break;
 
 		case cgltf_light_type_spot:
 			lightComponent.Type = LightComponent::kSpotLight;
-			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 420.0f;
+			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 6.0f;
 			break;
 
 		case cgltf_light_type_invalid:
@@ -438,7 +438,7 @@ void GltfSceneLoader::LoadNode(
 	// GLTF default light Direciton is forward - I want this to be downwards.
 	if (gltfNode.light)
 	{
-		transform.RotateRollPitchYaw(XMFLOAT3(-XM_PIDIV2, 0, 0));
+		transform.RotateRollPitchYaw(XMFLOAT3(XM_PIDIV2, 0, 0));
 	}
 
 	transform.UpdateTransform();
@@ -559,7 +559,7 @@ void GltfSceneLoader::LoadMaterialData(
 
 		MaterialComponent& mtl = mtlEntity.AddComponent<MaterialComponent>();
 
-		if (cgltfMtl.alpha_mode == cgltf_alpha_mode_blend)
+		if (cgltfMtl.alpha_mode != cgltf_alpha_mode_opaque)
 		{
 			mtl.BlendMode = Renderer::BlendMode::Alpha;
 		}

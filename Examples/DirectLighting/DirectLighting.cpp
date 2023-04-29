@@ -430,6 +430,7 @@ public:
                     lightComp.Colour.z,
                     1.0f };
 
+                debugInstance->RenderBucketMask = Scene::MeshInstanceComponent::RenderType_Opaque;
                 debugInstance->Mesh = lightComp.Type == Scene::LightComponent::kOmniLight
                     ? this->m_debugLightOmniMesh
                     : this->m_debugLightSpotMesh;
@@ -557,6 +558,10 @@ public:
                 bool isEnabled = component.IsEnabled();
                 ImGui::Checkbox("Enabled", &isEnabled);
                 component.SetEnabled(isEnabled);
+
+                bool castShadows = component.CastShadows();
+                ImGui::Checkbox("Cast Shadows", &castShadows);
+                component.SetCastShadows(castShadows);
 
                 ImGui::ColorPicker3("Light Colour", &component.Colour.x, ImGuiColorEditFlags_NoSidePreview);
                 

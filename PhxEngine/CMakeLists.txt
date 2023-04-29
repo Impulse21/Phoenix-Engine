@@ -238,7 +238,7 @@ message("D3D12 Agility SDK fetched")
 
 # DXC
 message("Fetching DirectXShaderCompiler")
-FetchContent_Declare(dxc URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.7.2207/dxc_2022_07_18.zip)
+FetchContent_Declare(dxc URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.7.2212.1/dxc_2023_03_01.zip)
 FetchContent_MakeAvailable(dxc)
 file(MAKE_DIRECTORY ${dxc_SOURCE_DIR}/include)
 file(COPY ${dxc_SOURCE_DIR}/inc/d3d12shader.h DESTINATION ${dxc_SOURCE_DIR}/include/dxc)

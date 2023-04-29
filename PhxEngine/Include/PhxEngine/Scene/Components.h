@@ -9,6 +9,7 @@
 #include <PhxEngine/Core/Primitives.h>
 #include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
 #include <DirectXMesh.h>
+#include <PhxEngine/Graphics/RectPacker.h>
 
 #define LH
 
@@ -336,6 +337,7 @@ namespace PhxEngine::Scene
 		} Type = kOmniLight;
 
 		DirectX::XMFLOAT4 Colour = { 1.0f, 1.0f, 1.0f, 1.0f };
+		PhxEngine::Graphics::PackerRect ShadowRect;
 
 		// helper data
 		DirectX::XMFLOAT3 Direction;
@@ -368,6 +370,14 @@ namespace PhxEngine::Scene
 		}
 
 		bool IsEnabled() const { return Flags & Flags::kEnabled; }
+
+		inline float GetRange()
+		{
+			float retval = this->Range;
+			retval = std::max(0.001f, retval);
+			retval = std::min(retval, 65504.0f); // clamp to 16-bit float max value
+			return retval;
+		}
 
 		inline void SetEnabled(bool value = true)
 		{
@@ -530,9 +540,10 @@ namespace PhxEngine::Scene
 			RenderType_Void = 0,
 			RenderType_Opaque = 1 << 0,
 			RenderType_Transparent = 1 << 1,
-			RenderType_All = RenderType_Opaque | RenderType_Transparent
+			RenderType_CastShadows = 1 << 2,
+			RenderType_All = RenderType_Opaque | RenderType_CastShadows
 		};
-		uint32_t RenderBucketMask = RenderType::RenderType_Opaque;
+		uint32_t RenderBucketMask = RenderType::RenderType_All;
 
 		entt::entity Mesh = entt::null;
 		DirectX::XMFLOAT4 Color = DirectX::XMFLOAT4(1, 1, 1, 1);

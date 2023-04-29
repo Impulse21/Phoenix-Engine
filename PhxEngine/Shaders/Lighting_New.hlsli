@@ -45,6 +45,61 @@ inline void ApplyDirectionalLight(in Light light, in BRDFDataPerSurface brdfSurf
     {
         float3 shadow = 1.0f;
         
+        if (light.IsCastingShadows())
+        {
+            // Calculate Shadow
+            [branch]
+            if (GetFrame().Flags & FRAME_FLAGS_RT_SHADOWS)
+            {
+#ifdef RT_SHADOWS
+                CalculateShadowRT(lightDirection, brdfSurfaceData.P, scene.RT_TlasIndex, shadow);
+#endif
+            }
+            else
+            {
+                const uint cascadeCount = 3;
+                [loop]
+                for (uint cascade = 0; cascade < cascadeCount; ++cascade)
+                {
+                    // No need to divide by w since it's an ortho projection
+                    matrix shadowMatrx = GetLightMatrix(light.GlobalMatrixIndex + cascade);
+                    float3 shadowPos = mul(shadowMatrx, float4(brdfSurfaceData.P, 1.0f)).xyz;
+                    float3 shadowUv = ClipSpaceToUV(shadowPos);
+                    
+					[branch]
+                    if (IsSaturated(shadowUv))
+                    {
+                        
+                        const float3 shadowMain = Shadow2D(light, shadowPos.xyz, shadowUv.xy, cascade);
+                        
+ #if false
+                        const float3 cascadeEdgeFactor = saturate(saturate(abs(shadowPos)) - 0.8) * 5.0; // face with be on edge and inwards;
+                        const float cascadeFade = max(cascadeEdgeFactor.x, max(cascadeEdgeFactor.y, cascadeEdgeFactor.z));
+                        
+                        if (cascadeFade > 0 && cascade < cascadeCount - 1)
+                        {
+                            cascade += 1;
+                            matrix shadowMatrxNext = GetLightMatrix(light.GlobalMatrixIndex + cascade);
+                            float3 shadowPosNext = mul(shadowMatrxNext, float4(brdfSurfaceData.P, 1.0f)).xyz;
+                            float3 shadowUvNext = ClipSpaceToUV(shadowPosNext);
+                            const float3 shadowFallback = Shadow2D(light, shadowPosNext.xyz, shadowUvNext.xy, cascade);
+                            
+                            shadow *= lerp(shadowMain, shadowFallback, cascadeFade);
+                        }
+                        else
+                        {
+                            shadow *= shadowMain;
+                        }
+#else                     
+                            shadow *= shadowMain;
+#endif
+                        
+                        break;
+                    }
+                }
+            }
+        }
+        
         // If completely in shadow, nothing more to do.
         if (any(shadow))
         {
@@ -62,7 +117,7 @@ inline float AttenuationOmni(in float dist2, in float range2)
     // GLTF recommendation: https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_lights_punctual#range-property
     // saturate(1 - pow(dist / range, 4)) / dist2;
     
-    // Credit Wicked Engine:
+    // Credit Wicked Engine: https://wickedengine.net/
     // Removed pow(x, 4), and avoid zero divisions:
     float distPerRange = dist2 / max(0.0001, range2); // pow2
     distPerRange *= distPerRange; // pow4
@@ -71,7 +126,7 @@ inline float AttenuationOmni(in float dist2, in float range2)
 
 inline void ApplyOmniLight(in Light light, in BRDFDataPerSurface brdfSurfaceData, inout Lighting lighting)
 {
-    float3 L = brdfSurfaceData.P - light.Position;
+    float3 L = light.Position - brdfSurfaceData.P;
     const float dist2 = dot(L, L);
     const float range = light.GetRange();
     const float range2 = range * range;
@@ -79,6 +134,7 @@ inline void ApplyOmniLight(in Light light, in BRDFDataPerSurface brdfSurfaceData
     [branch]
     if (dist2 < range2)
     {
+        const float3 Lunnormalized = L;
         L = normalize(L);
         BRDFDataPerLight brdfLightData = CreatePerLightBRDFData(L, brdfSurfaceData);
         
@@ -86,6 +142,22 @@ inline void ApplyOmniLight(in Light light, in BRDFDataPerSurface brdfSurfaceData
         if (any(brdfLightData.NdotL))
         {
             float3 shadow = 1.0f;
+            
+            if (light.IsCastingShadows())
+            {
+            // Calculate Shadow
+            [branch]
+                if (GetFrame().Flags & FRAME_FLAGS_RT_SHADOWS)
+                {
+#ifdef RT_SHADOWS
+                CalculateShadowRT(lightDirection, brdfSurfaceData.P, scene.RT_TlasIndex, shadow);
+#endif
+                }
+                else
+                {
+                    shadow *= ShadowCube(light, -Lunnormalized);
+                }
+            }
             
             // If completely in shadow, nothing more to do.
             if (any(shadow))
@@ -113,7 +185,7 @@ float AttenuationSpot(in float dist2, in float range2, in float spotFactor, in f
 
 inline void ApplySpotLight(in Light light, in BRDFDataPerSurface brdfSurfaceData, inout Lighting lighting)
 {
-    float3 L = brdfSurfaceData.P - light.Position;
+    float3 L = light.Position - brdfSurfaceData.P;
     const float dist2 = dot(L, L);
     const float range = light.GetRange();
     const float range2 = range * range;
@@ -134,6 +206,31 @@ inline void ApplySpotLight(in Light light, in BRDFDataPerSurface brdfSurfaceData
             {
                 float3 shadow = 1.0f;
             
+                if (light.IsCastingShadows())
+                {
+                    // Calculate Shadow
+                    [branch]
+                    if (GetFrame().Flags & FRAME_FLAGS_RT_SHADOWS)
+                    {
+        #ifdef RT_SHADOWS
+                        CalculateShadowRT(lightDirection, brdfSurfaceData.P, scene.RT_TlasIndex, shadow);
+        #endif
+                    }
+                    else
+                    {
+                        const matrix shadowMatrx = GetLightMatrix(light.GlobalMatrixIndex + 0);
+                        float4 shadowPos = mul(shadowMatrx, float4(brdfSurfaceData.P, 1.0f));
+                        shadowPos.xyz /= shadowPos.w;
+                        float2 shadowUv = ClipSpaceToUV(shadowPos.xy);
+                        
+                        [branch]
+                        if (IsSaturated(shadowUv))
+                        {
+                            shadow *= Shadow2D(light, shadowPos.xyz, shadowUv, 0);
+                        }
+                    }
+                }
+                
                 // If completely in shadow, nothing more to do.
                 if (any(shadow))
                 {
@@ -151,8 +248,7 @@ inline void ApplySpotLight(in Light light, in BRDFDataPerSurface brdfSurfaceData
 void ProcessLight(in Light light, in BRDFDataPerSurface brdfSurfaceData, inout Lighting lightingTerms)
 {
     const uint lightType = light.GetType();
-        
-    switch (light.GetType())
+    switch (lightType)
     {
         case LIGHT_TYPE_DIRECTIONAL:
             ApplyDirectionalLight(light, brdfSurfaceData, lightingTerms);
@@ -239,7 +335,7 @@ void DirectLightContribution_Cluster(in Scene scene, in BRDFDataPerSurface brdfS
     // NOTE(marco): this version has been implemented following:
     // https://www.activision.com/cdn/research/2017_Sig_Improved_Culling_final.pdf
     // See the presentation for more details
-    if (minLightId != NUM_LIGHTS + 1)
+    if (minLightId != MAX_NUM_LIGHTS + 1)
     {
         for (uint lightID = minLightId; lightID <= maxLightId; ++lightID)
         {

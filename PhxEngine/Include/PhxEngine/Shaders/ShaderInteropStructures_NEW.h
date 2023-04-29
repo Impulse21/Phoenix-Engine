@@ -25,6 +25,9 @@ namespace Shader::New
 	static const uint SHADER_LIGHT_ENTITY_COUNT = 256;
 
 	static const uint MATRIX_COUNT = 128;
+
+	static const uint DRAW_FLAGS_TRANSPARENT = 1 << 0;
+
 	struct IndirectDrawArgsIndexedInstanced
 	{
 		uint IndexCount;
@@ -68,7 +71,13 @@ namespace Shader::New
 		uint2 ColourPacked; // half4 packed
 
 		// -- 16 byte boundary ----
+		float4 ShadowAtlasMulAdd;
+
+		// -- 16 byte boundary ----
 		uint AngleOffset16_AngleScale_16;
+		uint CubemapFar16_CubemapNear_16;
+		uint GlobalMatrixIndex;
+
 
 #ifndef __cplusplus
 		inline uint GetType()
@@ -121,6 +130,19 @@ namespace Shader::New
 			return f16tof32(AngleOffset16_AngleScale_16 >> 16u);
 		}
 
+		inline float GetCubeNearZ()
+		{
+			return f16tof32(CubemapFar16_CubemapNear_16);
+		}
+
+		inline float GetCubeFarZ()
+		{
+			return f16tof32(CubemapFar16_CubemapNear_16 >> 16u);
+		}
+		inline bool IsCastingShadows()
+		{
+			return GlobalMatrixIndex != ~0u;
+		}
 #else
 		inline void SetType(uint type)
 		{
@@ -166,6 +188,16 @@ namespace Shader::New
 		{
 			this->AngleOffset16_AngleScale_16 |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16u;
 		}
+
+		inline void SetCubeNearZ(float value)
+		{
+			this->CubemapFar16_CubemapNear_16 |= DirectX::PackedVector::XMConvertFloatToHalf(value);
+		}
+
+		inline void SetCubeFarZ(float value)
+		{
+			this->CubemapFar16_CubemapNear_16 |= DirectX::PackedVector::XMConvertFloatToHalf(value) << 16u;
+		}
 #endif
 	};
 
@@ -189,6 +221,12 @@ namespace Shader::New
 		uint IndirectLateBufferIdx;
 
 		// -- 16 byte boundary ----
+		uint IndirectEarlyTransparentMeshBufferIdx;
+		uint IndirectEarlyTransparentMeshletBufferIdx;
+		uint IndirectShadowPassMeshBufferIdx;
+		uint IndirectShadowPassMeshletBufferIdx;
+
+		// -- 16 byte boundary ----
 		uint CulledInstancesBufferUavIdx;
 		uint CulledInstancesBufferSrvIdx;
 		uint CulledInstancesCounterBufferIdx;
@@ -196,9 +234,9 @@ namespace Shader::New
 
 		// -- 16 byte boundary ----
 		uint InstanceCount;
-		uint LightBufferIdx;
 		uint LightCount;
-		uint _padding;
+		uint PerLightMeshInstances;
+		uint PerLightMeshInstanceCounts;
 
 	};
 
@@ -207,6 +245,7 @@ namespace Shader::New
 	static const uint FRAME_FLAGS_DISABLE_CULL_FRUSTUM = 1 << 1;
 	static const uint FRAME_FLAGS_DISABLE_CULL_OCCLUSION = 1 << 2;
 	static const uint FRAME_FLAGS_ENABLE_CLUSTER_LIGHTING = 1 << 3;
+	static const uint FRAME_FLAGS_RT_SHADOWS = 1 << 4;
 
 	struct Frame
 	{
@@ -217,9 +256,13 @@ namespace Shader::New
 
 		// -- 16 byte boundary ----
 		uint LightTilesBufferIndex;
-		uint _padding;
-		uint __padding;
-		uint ___padding;
+		uint LightBufferIdx;
+		uint LightMatrixBufferIdx;
+		uint ShadowAtlasIdx;
+
+		// -- 16 byte boundary ----
+		uint2 ShadowAtlasRes;
+		float2 ShadowAtlasResRCP;
 
 		// -- 16 byte boundary ----
 		Scene SceneData;
@@ -279,6 +322,7 @@ namespace Shader::New
 		uint MeshletOffset;
 
 		// -- 16 byte boundary ----
+		bool CastShadows; // TODO: remove once proper render buckets are sorted out
 	};
 
 	struct Material
@@ -336,12 +380,13 @@ namespace Shader::New
 
 		// -- 16 byte boundary ---
 		uint TangentOffset;
-
-		// TODO: I am here
 		uint MeshletOffset;
 		uint MeshletCount;
 		uint MeshletPrimtiveOffset;
+		// -- 16 byte boundary ---
+
 		uint MeshletUniqueVertexIBOffset;
+		uint DrawFlags;
 		// -- 16 byte boundary ---
 	};
 
@@ -455,9 +500,25 @@ namespace Shader::New
 	{
 		uint DrawBufferMeshIdx;
 		uint DrawBufferMeshletIdx;
+		uint DrawBufferTransparentMeshIdx;
+		uint DrawBufferTransparentMeshletIdx;
 		uint CulledDataSRVIdx;
 		uint CulledDataCounterSrcIdx;
 		bool IsLatePass;
+	};
+
+	struct FillPerLightListConstants
+	{
+		bool UseMeshlets;
+		uint PerLightMeshCountsUavIdx;
+		uint PerLightMeshInstancesUavIdx;
+	};
+
+	struct FillLightDrawBuffers
+	{
+		bool UseMeshlets;
+		uint DrawBufferIdx;
+		uint DrawBufferCounterIdx;
 	};
 
 	struct DepthPyrmidPushConstnats
@@ -477,6 +538,10 @@ namespace Shader::New
 		uint DrawId;
 	};
 
+	struct ShadowCams
+	{
+		float4x4 ViewProjection[6];
+	};
 #ifdef __cplusplus
 }
 #endif

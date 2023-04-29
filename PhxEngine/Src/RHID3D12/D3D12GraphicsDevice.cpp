@@ -6,6 +6,7 @@
 #include "BiindlessDescriptorTable.h"
 #include "CommandList.h"
 #include <PhxEngine/Core/Log.h>
+#include <PhxEngine/Core/Helpers.h>
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -264,7 +265,7 @@ PhxEngine::RHI::D3D12::D3D12GraphicsDevice::D3D12GraphicsDevice(D3D12Adapter con
 	, m_computePipelinePool(10)
 	, m_meshPipelinePool(10)
 	, m_inputLayoutPool(10)
-	, m_shaderPool(20)
+	, m_shaderPool(40)
 	, m_commandSignaturePool(10)
 	, m_timerQueryPool(this->kTimestampQueryHeapSize / 2)
 {
@@ -1390,6 +1391,7 @@ TextureHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateTexture(TextureD
 			&textureImpl.Allocation,
 			IID_PPV_ARGS(&textureImpl.D3D12Resource)));
 
+
 	std::wstring debugName;
 	Helpers::StringConvert(desc.DebugName, debugName);
 	textureImpl.D3D12Resource->SetName(debugName.c_str());
@@ -1553,6 +1555,11 @@ BufferHandle PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateBuffer(BufferDesc
 	BufferHandle buffer = this->m_bufferPool.Emplace();
 	D3D12Buffer& bufferImpl = *this->m_bufferPool.Get(buffer);
 	this->CreateBufferInternal(desc, bufferImpl);
+
+	if ((desc.MiscFlags & BufferMiscFlags::IsAliasedResource) == BufferMiscFlags::IsAliasedResource)
+	{
+		return buffer;
+	}
 
 	if ((desc.Binding & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
@@ -2707,7 +2714,7 @@ RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(Gr
 			switch (bindlessParam.Type)
 			{
 			case ResourceType::BindlessSRV:
-				range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+				range.GetRange()Type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 				break;
 			default:
 				throw std::exception("Not implemented yet");
@@ -2970,16 +2977,45 @@ void D3D12GraphicsDevice::CreateBufferInternal(BufferDesc const& desc, D3D12Buff
 	}
 	*/
 
-	// Create a committed resource for the GPU resource in a default heap.
+	if ((outBuffer.Desc.MiscFlags & BufferMiscFlags::IsAliasedResource) == BufferMiscFlags::IsAliasedResource)
+	{
+		D3D12_RESOURCE_ALLOCATION_INFO finalAllocInfo = {};
+		finalAllocInfo.Alignment = 0;
+		finalAllocInfo.SizeInBytes = Core::Helpers::AlignTo(
+			outBuffer.Desc.SizeInBytes,
+			D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT * 1024);
 
-	ThrowIfFailed(
-		this->m_d3d12MemAllocator->CreateResource(
-			&allocationDesc,
-			&resourceDesc,
-			initialState,
-			nullptr,
-			&outBuffer.Allocation,
-			IID_PPV_ARGS(&outBuffer.D3D12Resource)));
+		ThrowIfFailed(
+			this->m_d3d12MemAllocator->AllocateMemory(
+				&allocationDesc,
+				&finalAllocInfo,
+				&outBuffer.Allocation));
+		return;
+	}
+	else if (outBuffer.Desc.AliasedBuffer.IsValid())
+	{
+		D3D12Buffer* aliasedBuffer = this->m_bufferPool.Get(outBuffer.Desc.AliasedBuffer);
+
+		ThrowIfFailed(
+			this->m_d3d12MemAllocator->CreateAliasingResource(
+				aliasedBuffer->Allocation.Get(),
+				0,
+				&resourceDesc,
+				initialState,
+				nullptr,
+				IID_PPV_ARGS(&outBuffer.D3D12Resource)));
+	}
+	else
+	{
+		ThrowIfFailed(
+			this->m_d3d12MemAllocator->CreateResource(
+				&allocationDesc,
+				&resourceDesc,
+				initialState,
+				nullptr,
+				&outBuffer.Allocation,
+				IID_PPV_ARGS(&outBuffer.D3D12Resource)));
+	}
 
 	switch (desc.Usage)
 	{

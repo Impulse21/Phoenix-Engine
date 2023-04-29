@@ -6,6 +6,7 @@
 #include <PhxEngine/Renderer/GBuffer.h>
 #include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
 #include <PhxEngine/Renderer/ClusterLighting.h>
+#include <PhxEngine/Renderer/Shadows.h>
 
 namespace tf
 {
@@ -37,6 +38,7 @@ namespace PhxEngine::Renderer
 	{
 		enum
 		{
+			ShadowPass,
 			GBufferFillPass,
 			DeferredLightingPass,
 			ClusterLightsDebugPass,
@@ -53,6 +55,8 @@ namespace PhxEngine::Renderer
 			DepthPyramidGen,
 			DeferredLightingPass,
 			ClusterLightsDebugPass,
+			FillPerLightInstances,
+			FillLightDrawBuffers,
 			Count
 		};
 	}
@@ -61,6 +65,7 @@ namespace PhxEngine::Renderer
 	{
 		enum
 		{
+			ShadowPass,
 			GBufferFillPass,
 			Count
 		};
@@ -73,6 +78,7 @@ namespace PhxEngine::Renderer
 			VS_GBufferFill,
 			VS_DeferredLightingPass,
 			VS_ClusterLightsDebugPass,
+			VS_ShadowPass,
 			VS_Rect,
 
 			PS_GBufferFill,
@@ -85,10 +91,14 @@ namespace PhxEngine::Renderer
 			CS_DepthPyramidGen,
 			CS_DeferredLightingPass,
 			CS_ClusterLightsDebugPass,
+			CS_FillPerLightInstances,
+			CS_FillLightDrawBuffers,
 
 			AS_MeshletCull,
+			AS_MeshletShadowCull,
 
 			MS_MeshletGBufferFill,
+			MS_MeshletShadowPass,
 
 			Count
 		};
@@ -101,6 +111,20 @@ namespace PhxEngine::Renderer
 			GBufferFillPass,
 			DeferredLightingPass,
 			Count
+		};
+	}
+
+	namespace ECommandSignatures
+	{
+		enum
+		{
+			GBufferFill_Gfx,
+			GBufferFill_MS,
+
+			Shadows_Gfx,
+			Shadows_MS,
+
+			Count,
 		};
 	}
 
@@ -124,10 +148,17 @@ namespace PhxEngine::Renderer
 	private:
 		tf::Task LoadShaders(tf::Taskflow& taskFlow);
 		tf::Task LoadPipelineStates(tf::Taskflow& taskFlow);
+		tf::Task CreateCommandSignatures(tf::Taskflow& taskFlow);
 		void CreateRenderPasses();
 
 	private:
-		void PrepareFrameRenderData(RHI::ICommandList * commandList, Scene::CameraComponent const& mainCamera, Scene::Scene& scen);
+		void PrepareFrameRenderData(RHI::ICommandList * commandList, Scene::CameraComponent const& mainCamera, Scene::Scene& scene);
+		void PrepareFrameLightData(
+			RHI::ICommandList* commandList,
+			Scene::CameraComponent const& mainCamera,
+			Scene::Scene& scene,
+			RHI::GPUAllocation& outLights,
+			RHI::GPUAllocation& outMatrices);
 		void UpdateRTAccelerationStructures(RHI::ICommandList* commandList, Scene::Scene& scene);
 
 		void RenderGeometry(RHI::ICommandList* commandList, Scene::Scene& scene, DrawQueue& drawQueue, bool markMeshes);
@@ -156,11 +187,9 @@ namespace PhxEngine::Renderer
 		std::array<RHI::MeshPipelineHandle, EMeshPipelineStates::Count> m_meshStates;
 		std::array<RHI::ShaderHandle, EShaders::Count> m_shaders;
 		std::array<RHI::RenderPassHandle, ERenderPasses::Count> m_renderPasses;
+		std::array<RHI::CommandSignatureHandle, ECommandSignatures::Count> m_commandSignatures;
 
 		ClusterLighting m_clusterLighting;
-
-		RHI::CommandSignatureHandle m_drawMeshCommandSignatureGfx;
-		RHI::CommandSignatureHandle m_drawMeshCommandSignatureMS;
 
 		GBufferRenderTargets m_gbuffer;
 		RHI::TextureHandle m_colourBuffer;
@@ -170,11 +199,17 @@ namespace PhxEngine::Renderer
 
 		DirectX::XMFLOAT2 m_canvasSize;
 
+		Renderer::ShadowsAtlas m_shadowAtlas;
+		RHI::BufferHandle m_lightBuffer;
+		RHI::BufferHandle m_lightMatrixBuffer;
+
 		struct Settings
 		{
 			// TODO: Use a bit field
 			bool EnableComputeDeferredLighting = false;
-			bool EnableMeshShaders = false;
+			bool EnableShadowPass = true;
+			bool EnableGBufferMeshShaders = false;
+			bool EnableShadowMeshShaders = false;
 			bool EnableMeshletCulling = false;
 			bool EnableFrustraCulling = true;
 			bool EnableOcclusionCulling = true;

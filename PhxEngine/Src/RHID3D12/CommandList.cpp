@@ -522,11 +522,17 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::ExecuteIndirect(RHI::CommandSignat
         1);
 }
 
-void PhxEngine::RHI::D3D12::D3D12CommandList::ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount)
+void PhxEngine::RHI::D3D12::D3D12CommandList::ExecuteIndirect(
+    RHI::CommandSignatureHandle commandSignature,
+    RHI::BufferHandle args,
+    size_t argsOffsetInBytes,
+    RHI::BufferHandle count,
+    size_t countOffsetInBytes,
+    uint32_t maxCount)
 {
     D3D12CommandSignature* commandSignatureImpl = this->m_graphicsDevice.GetCommandSignaturePool().Get(commandSignature);
     D3D12Buffer* argBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
-    D3D12Buffer* countBufferBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(args);
+    D3D12Buffer* countBufferBufferImpl = this->m_graphicsDevice.GetBufferPool().Get(count);
     this->m_d3d12CommandList6->ExecuteIndirect(
         commandSignatureImpl->NativeSignature.Get(),
         maxCount,

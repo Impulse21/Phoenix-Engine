@@ -97,13 +97,13 @@ void PhxEngine::Renderer::ClusterLighting::Update(
 		DirectX::XMVectorSetW(positionV, 1.0f);
 		DirectX::XMVECTOR positionVS = DirectX::XMVector4Transform(positionV, viewM);
 
-		DirectX::XMVECTOR positionMinVS = DirectX::XMVectorAdd(positionVS, DirectX::XMVectorSet(0.0f, 0.0f, -light.Range, 0.0f));
-		DirectX::XMVECTOR positionMaxVS = DirectX::XMVectorAdd(positionVS, DirectX::XMVectorSet(0.0f, 0.0f, light.Range, 0.0f));
+		DirectX::XMVECTOR positionMinVS = DirectX::XMVectorAdd(positionVS, DirectX::XMVectorSet(0.0f, 0.0f, -light.GetRange(), 0.0f));
+		DirectX::XMVECTOR positionMaxVS = DirectX::XMVectorAdd(positionVS, DirectX::XMVectorSet(0.0f, 0.0f, light.GetRange(), 0.0f));
 
 		SortedLight& sortedLight = sortedLights[numLights++];
 		sortedLight.GlobalLightIndex = light.GlobalBufferIndex;
 		sortedLight.Position = positionV;
-		sortedLight.Range = light.Range;
+		sortedLight.Range = light.GetRange();
 		sortedLight.ProjectedZ = ((DirectX::XMVectorGetZ(positionVS) - camera.ZNear) / (camera.ZFar - camera.ZNear));
 		sortedLight.ProjectedZMin = ((DirectX::XMVectorGetZ(positionMinVS) - camera.ZNear) / (camera.ZFar - camera.ZNear));
 		sortedLight.ProjectedZMax = ((DirectX::XMVectorGetZ(positionMaxVS) - camera.ZNear) / (camera.ZFar - camera.ZNear));

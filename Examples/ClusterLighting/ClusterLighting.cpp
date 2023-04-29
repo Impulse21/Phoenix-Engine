@@ -430,6 +430,7 @@ public:
             if (settings.AddDebugMeshes)
             {
                 auto& debugMeshInst = entity.AddComponent<Scene::MeshInstanceComponent>();
+                debugMeshInst.RenderBucketMask = Scene::MeshInstanceComponent::RenderType_Opaque;
                 debugMeshInst.Color = { 0.0f, 0.0f, 0.0f, 1.0f };
                 debugMeshInst.EmissiveColor = {
                     lightComp.Colour.x * lightComp.Intensity,

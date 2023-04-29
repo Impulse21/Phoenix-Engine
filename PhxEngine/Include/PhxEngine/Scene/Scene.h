@@ -7,6 +7,7 @@
 #include <PhxEngine/Scene/Assets.h>
 #include <PhxEngine/Shaders/ShaderInteropStructures.h>
 #include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
+#include <PhxEngine/Renderer/Shadows.h>
 #include <entt.hpp>
 #include <PhxEngine/Core/Memory.h>
 
@@ -100,11 +101,14 @@ namespace PhxEngine::Scene
 
 		void UpdateBounds();
 
-		PhxEngine::RHI::BufferHandle GetLightBuffer() const { return this->m_lightBuffer; }
-		PhxEngine::RHI::BufferHandle GetLightUploadBuffer() const { return this->m_lightUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
-
 		PhxEngine::RHI::BufferHandle GetInstanceBuffer() const { return this->m_instanceGpuBuffer; }
 		PhxEngine::RHI::BufferHandle GetInstanceUploadBuffer() const { return this->m_instanceUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
+
+		RHI::BufferHandle GetPerlightMeshInstancesCounts() const { return this->m_perlightMeshInstancesCounts; }
+		RHI::BufferHandle GetPerlightMeshInstances() const { return this->m_perlightMeshInstances; }
+		RHI::BufferHandle GetIndirectDrawShadowMeshBuffer() const { return this->m_indirectDrawShadowMeshBuffer; }
+		RHI::BufferHandle GetIndirectDrawShadowMeshletBuffer() const { return this->m_indirectDrawShadowMeshletBuffer; }
+		RHI::BufferHandle GetIndirectDrawPerLightCountBuffer() const { return this->m_indirectDrawPerLightCountBuffer; }
 
 		Entity CreateCube(
 			RHI::IGraphicsDevice* gfxDevice,
@@ -148,6 +152,7 @@ namespace PhxEngine::Scene
 		void BuildGeometryData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice, std::vector<Renderer::ResourceUpload>& resourcesToFree);
 		void BuildIndirectBuffers(RHI::IGraphicsDevice* gfxDevice);
 		void BuildSceneData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice);
+		void BuildLightBuffers(RHI::IGraphicsDevice* gfxDevice);
 
 	private:
 		Core::IAllocator* m_sceneAllocator;
@@ -173,8 +178,22 @@ namespace PhxEngine::Scene
 		RHI::BufferHandle m_instanceGpuBuffer;
 		std::vector<PhxEngine::RHI::BufferHandle> m_instanceUploadBuffers;
 
+		RHI::BufferHandle m_indirectDrawEarlyBackingBuffer;
+		RHI::BufferHandle m_indirectDrawEarlyTransparentBackingBuffer;
 		RHI::BufferHandle m_indirectDrawEarlyMeshBuffer;
+		RHI::BufferHandle m_indirectDrawEarlyTransparentMeshBuffer;
 		RHI::BufferHandle m_indirectDrawEarlyMeshletBuffer;
+		RHI::BufferHandle m_indirectDrawEarlyTransparentMeshletBuffer;
+
+		RHI::BufferHandle m_indirectDrawShadowPassMeshBuffer;
+		RHI::BufferHandle m_indirectDrawShadowPassMeshletBuffer;
+		RHI::BufferHandle m_indirectDrawPerLightCountBuffer;
+
+		RHI::BufferHandle m_perlightMeshInstancesCounts;
+		RHI::BufferHandle m_perlightMeshInstances;
+		RHI::BufferHandle m_indirectDrawShadowMeshBuffer;
+		RHI::BufferHandle m_indirectDrawShadowMeshletBuffer;
+
 		RHI::BufferHandle m_indirectDrawLateBuffer;
 
 		RHI::BufferHandle m_culledInstancesBuffer;
@@ -184,12 +203,9 @@ namespace PhxEngine::Scene
 		std::vector<PhxEngine::RHI::BufferHandle> m_tlasUploadBuffers;
 
 		bool m_isDirtyLights = false;
-		RHI::BufferHandle m_lightBuffer;
-		// TODO: Introduce Per frame GPU scratch data.
-		std::vector<RHI::BufferHandle> m_lightUploadBuffers;
-
 		entt::entity m_activeSun;
 
 		Core::AABB m_sceneBounds;
+
 	};
 }

@@ -10,6 +10,11 @@ struct MeshletPayload
     uint MeshletIndices[AS_GROUP_SIZE];
 };
 
+struct MeshletShadowPayload
+{
+    uint MeshletIndices[6][AS_GROUP_SIZE];
+};
+
 inline uint LoadPrimitiveIndices(uint index)
 {
     StructuredBuffer<uint> primitiveIndices = ResourceDescriptorHeap[GetScene().MeshletPrimitiveIdx];

@@ -3,15 +3,11 @@
 #include "Globals_NEW.hlsli"
 #include "../Include/PhxEngine/Shaders/ShaderInterop.h"
 #include "MeshletCommon.hlsli"
+#include "Culling.hlsli"
 
 groupshared MeshletPayload s_payload;
 
 PUSH_CONSTANT(push, GeometryPushConstant);
-
-bool IsConeDegenerate(CullData c)
-{
-    return (c.NormalCone >> 24) == 0xff;
-}
 
 // DirectX Samples 
 inline bool IsVisible(CullData cullData, Camera camera, float4x4 world, float scale)
