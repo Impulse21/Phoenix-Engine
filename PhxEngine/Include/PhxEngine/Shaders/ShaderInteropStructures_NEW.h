@@ -246,6 +246,8 @@ namespace Shader::New
 	static const uint FRAME_FLAGS_DISABLE_CULL_OCCLUSION = 1 << 2;
 	static const uint FRAME_FLAGS_ENABLE_CLUSTER_LIGHTING = 1 << 3;
 	static const uint FRAME_FLAGS_RT_SHADOWS = 1 << 4;
+	static const uint FRAME_FLAGS_FLAT_INDIRECT = 1 << 5;
+
 
 	struct Frame
 	{

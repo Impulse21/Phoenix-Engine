@@ -713,36 +713,44 @@ namespace {
 }
 void PhxEngine::Renderer::RenderPath3DDeferred::BuildUI()
 {
-	ImGui::Checkbox("Freeze Camera", &this->m_settings.FreezeCamera);
-	ImGui::Checkbox("Enable Frustra Culling", &this->m_settings.EnableFrustraCulling);
-	ImGui::Checkbox("Enable Occlusion Culling", &this->m_settings.EnableOcclusionCulling);
-	ImGui::Checkbox("Enable Meshlets (GBuffer Fill)", &this->m_settings.EnableGBufferMeshShaders);
-	ImGui::Checkbox("Enable Shadow Pass", &this->m_settings.EnableShadowPass);
-	if (this->m_settings.EnableShadowPass)
+	if (ImGui::CollapsingHeader("General Options"))
 	{
-		ImGui::Indent();
+		ImGui::Checkbox("Freeze Camera", &this->m_settings.FreezeCamera);
+		ImGui::Checkbox("Enable Frustra Culling", &this->m_settings.EnableFrustraCulling);
+		ImGui::Checkbox("Enable Occlusion Culling", &this->m_settings.EnableOcclusionCulling);
+		ImGui::Checkbox("Enable Meshlets (GBuffer Fill)", &this->m_settings.EnableGBufferMeshShaders);
+		ImGui::Checkbox("Enable Shadow Pass", &this->m_settings.EnableShadowPass);
+		if (this->m_settings.EnableShadowPass)
+		{
+			ImGui::Indent();
+			BrokenSetting([&] {
+				ImGui::Checkbox("Enable Meshlets (Shadow Atlas Fill)", &this->m_settings.EnableShadowMeshShaders);
+				});
+
+			ImGui::Unindent();
+		}
+
+		if (this->m_settings.EnableGBufferMeshShaders || this->m_settings.EnableShadowMeshShaders)
+		{
+			BrokenSetting([&] {
+				ImGui::Checkbox("Enable Meshlet Culling", &this->m_settings.EnableMeshletCulling);
+				});
+		}
+
 		BrokenSetting([&] {
-			ImGui::Checkbox("Enable Meshlets (Shadow Atlas Fill)", &this->m_settings.EnableShadowMeshShaders);
+			ImGui::Checkbox("Enable Compute Deferred Shading", &this->m_settings.EnableComputeDeferredLighting);
 			});
 
-		ImGui::Unindent();
-	}
-	
-	if (this->m_settings.EnableGBufferMeshShaders || this->m_settings.EnableShadowMeshShaders)
-	{
-		BrokenSetting([&] {
-			ImGui::Checkbox("Enable Meshlet Culling", &this->m_settings.EnableMeshletCulling);
-			});
+		ImGui::Checkbox("Enable Cluster Lighting", &this->m_settings.EnableClusterLightLighting);
+		if (this->m_settings.EnableClusterLightLighting)
+		{
+			ImGui::Checkbox("View Cluster Light Heat Map", &this->m_settings.EnableClusterLightDebugView);
+		}
 	}
 
-	BrokenSetting([&] {
-		ImGui::Checkbox("Enable Compute Deferred Shading", &this->m_settings.EnableComputeDeferredLighting);
-		});
-
-	ImGui::Checkbox("Enable Cluster Lighting", &this->m_settings.EnableClusterLightLighting);
-	if (this->m_settings.EnableClusterLightLighting)
+	if (ImGui::CollapsingHeader("Indirect Lighting Options"))
 	{
-		ImGui::Checkbox("View Cluster Light Heat Map", &this->m_settings.EnableClusterLightDebugView);
+		ImGui::Checkbox("Enable GI", &this->m_settings.GISettings.EnableDDGI);
 	}
 }
 
@@ -1049,6 +1057,11 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 	if (this->m_settings.EnableClusterLightLighting)
 	{
 		frameData.Flags |= Shader::New::FRAME_FLAGS_ENABLE_CLUSTER_LIGHTING;
+	}
+
+	if (!this->m_settings.GISettings.EnableDDGI)
+	{
+		frameData.Flags |= Shader::New::FRAME_FLAGS_FLAT_INDIRECT;
 	}
 	
 	frameData.SortedLightBufferIndex = this->m_gfxDevice->GetDescriptorIndex(this->m_clusterLighting.SortedLightBuffer, SubresouceType::SRV);

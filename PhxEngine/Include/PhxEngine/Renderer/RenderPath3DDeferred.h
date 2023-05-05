@@ -216,6 +216,11 @@ namespace PhxEngine::Renderer
 			bool FreezeCamera = false;
 			bool EnableClusterLightLighting = false;
 			bool EnableClusterLightDebugView = false;
+
+			struct GI
+			{
+				bool EnableDDGI = false;
+			} GISettings;
 		} m_settings;
 		
 	};

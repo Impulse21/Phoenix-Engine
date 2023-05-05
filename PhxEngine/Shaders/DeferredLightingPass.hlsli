@@ -168,13 +168,21 @@ float4 main(PSInput input) : SV_TARGET
         SamplerLinearClamped,
         lightingTerms);
 */
-    IndirectLightContribution_Flat(
-        0.2,
-        0.0,
-        lightingTerms);
+    if (GetFrame().Flags & FRAME_FLAGS_FLAT_INDIRECT)
+    {
+        IndirectLightContribution_Flat(
+            0.2,
+            0.0,
+            lightingTerms);
+    }
+    else // DDGI
+    {
+        // TODO:
+        lightingTerms.Indirect.Diffuse = 0.0f;
+        lightingTerms.Indirect.Specular = 0.0f;
+    }
 
-	float3 finalColour = ApplyLighting(lightingTerms, brdfSurfaceData, surface);
-    
+    float3 finalColour = ApplyLighting(lightingTerms, brdfSurfaceData, surface);
 #ifdef COMPILE_CS
     OutputBuffer[pixelPosition] = float4(finalColour, 1.0f);
 #else
