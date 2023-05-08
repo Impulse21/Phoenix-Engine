@@ -32,6 +32,7 @@ namespace PhxEngine::Scene
 namespace PhxEngine::Renderer
 {
 	class CommonPasses;
+	class DDGI;
 	struct DrawQueue;
 
 	namespace EGfxPipelineStates
@@ -145,6 +146,28 @@ namespace PhxEngine::Renderer
 
 		void BuildUI();
 
+		struct Settings
+		{
+			// TODO: Use a bit field
+			bool EnableComputeDeferredLighting = false;
+			bool EnableShadowPass = true;
+			bool EnableGBufferMeshShaders = false;
+			bool EnableShadowMeshShaders = false;
+			bool EnableMeshletCulling = false;
+			bool EnableFrustraCulling = true;
+			bool EnableOcclusionCulling = true;
+			bool FreezeCamera = false;
+			bool EnableClusterLightLighting = false;
+			bool EnableClusterLightDebugView = false;
+
+			struct GI
+			{
+				bool EnableDDGI = false;
+			} GISettings;
+		};
+
+		const Settings& GetSettings() { return this->m_settings; }
+
 	private:
 		tf::Task LoadShaders(tf::Taskflow& taskFlow);
 		tf::Task LoadPipelineStates(tf::Taskflow& taskFlow);
@@ -180,6 +203,7 @@ namespace PhxEngine::Renderer
 		RHI::IGraphicsDevice* m_gfxDevice;
 		std::shared_ptr<Graphics::ShaderFactory> m_shaderFactory;
 		std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
+		// std::unique_ptr<DDGI> m_ddgi;
 		std::shared_ptr<Core::FrameProfiler> m_frameProfiler;
 
 		std::array<RHI::GraphicsPipelineHandle, EGfxPipelineStates::Count> m_gfxStates;
@@ -203,25 +227,7 @@ namespace PhxEngine::Renderer
 		RHI::BufferHandle m_lightBuffer;
 		RHI::BufferHandle m_lightMatrixBuffer;
 
-		struct Settings
-		{
-			// TODO: Use a bit field
-			bool EnableComputeDeferredLighting = false;
-			bool EnableShadowPass = true;
-			bool EnableGBufferMeshShaders = false;
-			bool EnableShadowMeshShaders = false;
-			bool EnableMeshletCulling = false;
-			bool EnableFrustraCulling = true;
-			bool EnableOcclusionCulling = true;
-			bool FreezeCamera = false;
-			bool EnableClusterLightLighting = false;
-			bool EnableClusterLightDebugView = false;
-
-			struct GI
-			{
-				bool EnableDDGI = false;
-			} GISettings;
-		} m_settings;
+		Settings m_settings;
 		
 	};
 }

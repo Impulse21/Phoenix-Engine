@@ -11,6 +11,7 @@
 #include <PhxEngine/Shaders/ShaderInterop.h>
 
 #include "DrawQueue.h"
+
 #include <PhxEngine/Renderer/RenderPath3DDeferred.h>
 #include <imgui.h>
 
@@ -30,6 +31,7 @@ PhxEngine::Renderer::RenderPath3DDeferred::RenderPath3DDeferred(
 	, m_commonPasses(commonPasses)
 	, m_shaderFactory(shaderFactory)
 	, m_frameProfiler(frameProfiler)
+	// , m_ddgi(std::make_unique<DDGI>())
 {
 }
 
@@ -47,7 +49,6 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Initialize(DirectX::XMFLOAT2 con
 	// createCommandSignatures.succeed(createPipelineStates);
 	tf::Future loadFuture = executor.run(taskflow);
 
-
 	// -- Create Constant Buffers ---
 	{
 		RHI::BufferDesc bufferDesc = {};
@@ -60,6 +61,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Initialize(DirectX::XMFLOAT2 con
 		this->m_frameCB = RHI::IGraphicsDevice::GPtr->CreateBuffer(bufferDesc);
 	}
 
+	//this->m_ddgi->Initialize();
 	this->m_clusterLighting.Initialize(this->m_gfxDevice, canvasSize);
 	this->m_shadowAtlas.Initialize(this->m_gfxDevice);
 	loadFuture.wait(); 
@@ -741,7 +743,9 @@ void PhxEngine::Renderer::RenderPath3DDeferred::BuildUI()
 			ImGui::Checkbox("Enable Compute Deferred Shading", &this->m_settings.EnableComputeDeferredLighting);
 			});
 
-		ImGui::Checkbox("Enable Cluster Lighting", &this->m_settings.EnableClusterLightLighting);
+		BrokenSetting([&] {
+			ImGui::Checkbox("Enable Cluster Lighting", &this->m_settings.EnableClusterLightLighting);
+			});
 		if (this->m_settings.EnableClusterLightLighting)
 		{
 			ImGui::Checkbox("View Cluster Light Heat Map", &this->m_settings.EnableClusterLightDebugView);

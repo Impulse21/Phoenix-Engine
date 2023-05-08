@@ -72,6 +72,8 @@ namespace DefaultRootParameters
 #define BIN_WIDTH ( 1.0 / NUM_BINS )
 #define TILE_SIZE 8
 #define MAX_NUM_LIGHTS 256
+#define MAX_RAY_COUNT 400
+#define MIN_RAY_COUNT 100
 
 // point ligths are worse case senario.
 #define MAX_MESHLETS_PER_LIGHT 45000

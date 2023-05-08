@@ -28,6 +28,7 @@
 
 #include <imgui.h>
 #include <imgui_internal.h>
+
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::Graphics;
@@ -341,7 +342,7 @@ public:
 
         if (this->IsSceneLoaded())
         {
-            this->m_scene.OnUpdate(this->m_commonPasses);
+            this->m_scene.OnUpdate(this->m_commonPasses, this->m_deferredRenderer->GetSettings().GISettings.EnableDDGI);
         }
     }
 
@@ -405,7 +406,16 @@ public:
             if (ImGui::CollapsingHeader("Renderer"))
             {
                 this->m_app->GetRenderer()->BuildUI();
+				if (this->m_app->GetRenderer()->GetSettings().GISettings.EnableDDGI)
+				{
+					if (ImGui::TreeNode("DDGI"))
+					{
+                        this->m_app->GetScene().GetDDGI().BuildUI();
+						ImGui::TreePop();
+					}
+				}
             }
+
             ImGui::End();
 
             ImGui::Begin("Scene");
@@ -427,16 +437,23 @@ public:
                 }
             }
 
+            if (ImGui::CollapsingHeader("Scene Info"))
+            {
+                const PhxEngine::Core::AABB& sceneBounds = this->m_app->GetScene().GetBoundingBox();
+                ImGui::Text("Centre: (%.6f, %.6f. %.6f)", sceneBounds.GetCenter().x, sceneBounds.GetCenter().y, sceneBounds.GetCenter().z);
+                ImGui::Text("Min Extents: (%.6f, %.6f. %.6f)", sceneBounds.Min.x, sceneBounds.Min.y, sceneBounds.Min.z);
+                ImGui::Text("Max Extents: (%.6f, %.6f. %.6f)", sceneBounds.Max.x, sceneBounds.Max.y, sceneBounds.Max.z);
+            }
             if (ImGui::CollapsingHeader("Scene Lights"))
             {
                 // Draw the entity nodes
                 this->m_app->GetScene().GetRegistry().each([&](entt::entity entityId)
                     {
                         Scene::Entity entity = { entityId, &this->m_app->GetScene() };
-                if (!entity.HasComponent<Scene::HierarchyComponent>() || entity.HasComponent<Scene::LightComponent>())
-                {
-                    this->DrawEntityNode(entity);
-                }
+                        if (!entity.HasComponent<Scene::HierarchyComponent>() || entity.HasComponent<Scene::LightComponent>())
+                        {
+                            this->DrawEntityNode(entity);
+                        }
                     });
             }
 

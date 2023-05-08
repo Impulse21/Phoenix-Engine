@@ -436,7 +436,7 @@ public:
                     : this->m_debugLightSpotMesh;
             }
 
-            this->m_scene.OnUpdate(this->m_commonPasses);
+            this->m_scene.OnUpdate(this->m_commonPasses, this->m_deferredRenderer->GetSettings().GISettings.EnableDDGI);
         }
     }
 

@@ -125,12 +125,51 @@ void PhxEngine::Scene::Scene::UpdateBounds()
 	}
 }
 
-void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses)
+void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses, bool ddgiEnabled)
 {
 	// Update Light Data
 	this->RunMeshInstanceUpdateSystem();
 	this->RunLightUpdateSystem();
 
+	this->UpdateBounds();
+
+	// Update DDGI if Enabled
+	if (ddgiEnabled)
+	{
+		this->m_ddgi.GridMin = this->GetBoundingBox().Min;
+		// Add an extra space to push probe grid outisde
+		this->m_ddgi.GridMin.x -= 1;
+		this->m_ddgi.GridMin.y -= 1;
+		this->m_ddgi.GridMin.z -= 1;
+
+		this->m_ddgi.GridMax = this->GetBoundingBox().Max;
+		// Add an extra space to push probe grid outisde
+		this->m_ddgi.GridMax.x += 1;
+		this->m_ddgi.GridMax.y += 1;
+		this->m_ddgi.GridMax.z += 1;
+
+		this->m_shaderData.DDGI.GridDimensions = this->m_ddgi.GridDimensions;
+
+		this->m_shaderData.DDGI.GridExtents.x = abs(this->m_ddgi.GridMax.x - this->m_ddgi.GridMin.x);
+		this->m_shaderData.DDGI.GridExtents.y = abs(this->m_ddgi.GridMax.y - this->m_ddgi.GridMin.y);
+		this->m_shaderData.DDGI.GridExtents.z = abs(this->m_ddgi.GridMax.z - this->m_ddgi.GridMin.z);
+		this->m_shaderData.DDGI.GridExtentsRcp.x = 1.0f / this->m_shaderData.DDGI.GridExtents.x;
+		this->m_shaderData.DDGI.GridExtentsRcp.y = 1.0f / this->m_shaderData.DDGI.GridExtents.y;
+		this->m_shaderData.DDGI.GridExtentsRcp.z = 1.0f / this->m_shaderData.DDGI.GridExtents.z;
+
+		this->m_shaderData.DDGI.CellSize.x = this->m_shaderData.DDGI.GridExtents.x / (this->m_ddgi.GridDimensions.x - 1);
+		this->m_shaderData.DDGI.CellSize.y = this->m_shaderData.DDGI.GridExtents.y / (this->m_ddgi.GridDimensions.y - 1);
+		this->m_shaderData.DDGI.CellSize.z = this->m_shaderData.DDGI.GridExtents.z / (this->m_ddgi.GridDimensions.z - 1);
+		this->m_shaderData.DDGI.CellSizeRcp.x = 1.0f / this->m_shaderData.DDGI.CellSize.x;
+		this->m_shaderData.DDGI.CellSizeRcp.y = 1.0f / this->m_shaderData.DDGI.CellSize.y;
+		this->m_shaderData.DDGI.CellSizeRcp.z = 1.0f / this->m_shaderData.DDGI.CellSize.z;
+
+		this->m_shaderData.DDGI.GridStartPosition = this->m_ddgi.GridMin;
+		this->m_shaderData.DDGI.MaxDistance =
+			std::max(
+				this->m_shaderData.DDGI.CellSize.x,
+				std::max(this->m_shaderData.DDGI.CellSize.y, this->m_shaderData.DDGI.CellSize.z));
+	}
 #ifdef false
 	this->m_numMeshlets = 0;
 

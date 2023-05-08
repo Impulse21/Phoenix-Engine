@@ -8,6 +8,7 @@
 #include <PhxEngine/Shaders/ShaderInteropStructures.h>
 #include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
 #include <PhxEngine/Renderer/Shadows.h>
+#include <PhxEngine/Renderer/DDGI.h>
 #include <entt.hpp>
 #include <PhxEngine/Core/Memory.h>
 
@@ -29,6 +30,7 @@ namespace PhxEngine::Scene
 		RHI::BufferHandle IndirectDrawMeshBuffer;
 		RHI::BufferHandle IndirectDrawMeshletBuffer;
 	};
+
 
 	class Scene
 	{
@@ -131,7 +133,9 @@ namespace PhxEngine::Scene
 			bool rhCoords = false);
 
 	public:
-		void OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses);
+		void OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses, bool ddgiEnabled);
+
+		Renderer::DDGI& GetDDGI() { return this->m_ddgi; }
 
 	private:
 		void RunMaterialUpdateSystem(std::shared_ptr<Renderer::CommonPasses>& commonPasses);
@@ -158,6 +162,7 @@ namespace PhxEngine::Scene
 		Core::IAllocator* m_sceneAllocator;
 		Shader::New::Scene m_shaderData;
 
+		Renderer::DDGI m_ddgi;
 		entt::registry m_registry;
 		std::shared_ptr<Assets::Texture> m_brdfLut;
 
@@ -207,5 +212,6 @@ namespace PhxEngine::Scene
 
 		Core::AABB m_sceneBounds;
 
+		// DDGI stuff
 	};
 }

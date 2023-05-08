@@ -21,6 +21,19 @@ namespace tf
 
 namespace PhxEngine::Renderer
 {
+	struct DDGI
+	{
+		DirectX::XMUINT3 GridDimensions = { 32, 8, 32 };
+		DirectX::XMFLOAT3 GridMin = { -1, -1, -1 };
+		DirectX::XMFLOAT3 GridMax = { 1, 1, 1 };
+		uint32_t IrradianceOctSize = 8;
+		uint32_t DepthOctSize = 16;
+		int32_t RayCount = 192;
+
+		void BuildUI();
+	};
+
+#if false
 	class DDGI
 	{
 	public:
@@ -51,11 +64,8 @@ namespace PhxEngine::Renderer
 		{
 			float ProbeDistance = 1.0f;
 			uint32_t RaysPerProbe = 256;
-			DirectX::XMFLOAT3 GridStartPosition;
 			DirectX::XMINT3 ProbeCount;
 			float ProbeMaxDistance = 4.0f; 
-			uint32_t IrradianceOctSize = 8;
-			uint32_t DepthOctSize = 16;
 		} m_probeGrid;
 
 		RHI::ShaderHandle m_rayTraceComputeShader;
@@ -68,5 +78,7 @@ namespace PhxEngine::Renderer
 		std::vector<RHI::TextureHandle> m_depthTextures;
 		RHI::BufferHandle m_rayBuffer;
 	};
+#endif
+
 }
 

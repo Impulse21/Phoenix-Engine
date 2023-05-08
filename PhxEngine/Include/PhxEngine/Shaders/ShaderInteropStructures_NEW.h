@@ -201,6 +201,7 @@ namespace Shader::New
 #endif
 	};
 
+
 	struct Scene
 	{
 		uint ObjectBufferIdx;
@@ -238,6 +239,34 @@ namespace Shader::New
 		uint PerLightMeshInstances;
 		uint PerLightMeshInstanceCounts;
 
+		struct DDGI
+		{
+			uint3 GridDimensions;
+			uint ProbCount;
+
+			// -- 16 byte boundary ----
+			float3 GridStartPosition;
+			uint _padding;
+
+			// -- 16 byte boundary ----
+			float3 GridExtents;
+			uint __padding;
+
+			// -- 16 byte boundary ----
+			float3 GridExtentsRcp;
+			uint ___padding;
+
+			// -- 16 byte boundary ----
+
+			float3 CellSize;
+			float MaxDistance;
+
+			// -- 16 byte boundary ----
+			float3 CellSizeRcp;
+
+			// -- 16 byte boundary ----
+
+		} DDGI;
 	};
 
 

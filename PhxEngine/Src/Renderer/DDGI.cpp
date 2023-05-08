@@ -1,16 +1,30 @@
 #include "C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Build/PhxEngine/CMakeFiles/PhxEngine.dir/Debug/cmake_pch.hxx"
-#include "DDGIPass.h"
+
 #include <taskflow/taskflow.hpp>
 #include <PhxEngine/Graphics/ShaderFactory.h>
 #include <PhxEngine/Scene/Scene.h>
 #include <PhxEngine/Shaders/ShaderInteropStructures.h>
 #include <PhxEngine/Core/Helpers.h>
+#include <PhxEngine/Renderer/DDGI.h>
+#include <imgui.h>
 
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Renderer;
 using namespace PhxEngine::RHI;
 using namespace DirectX;
 
+
+void PhxEngine::Renderer::DDGI::BuildUI()
+{
+	ImGui::InputInt3("Grid Dimensions", reinterpret_cast<int32_t*>(&this->GridDimensions.x));
+	ImGui::InputInt("Ray Count", &this->RayCount);
+	ImGui::Text("Grid Min: (%.6f, %.6f. %.6f)", this->GridMin.x, this->GridMin.y, this->GridMin.z);
+	ImGui::Text("Grid Max: (% .6f, % .6f. % .6f", this->GridMax.x, this->GridMax.y, this->GridMax.z);
+	ImGui::Text("Irradiance OctSize: %d", this->IrradianceOctSize);
+	ImGui::Text("Depth OctSize: %d", this->DepthOctSize);
+}						   
+
+#if false
 void DDGI::Initialize(tf::Taskflow& taskflow, ShaderFactory& shaderFactory)
 {
 	this->m_rayTraceComputeShader = shaderFactory.CreateShader(
@@ -69,6 +83,10 @@ void PhxEngine::Renderer::DDGI::Render(RHI::ICommandList* commandList, Scene::Sc
 
 		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
 	}
+}
+
+void PhxEngine::Renderer::DDGI::BuidUI()
+{
 }
 
 void PhxEngine::Renderer::DDGI::InitializeProbeGrid(Scene::Scene const& scene)
@@ -198,4 +216,4 @@ void PhxEngine::Renderer::DDGI::RecreateProbeGrideResources()
 		});
 
 }
-
+#endif
