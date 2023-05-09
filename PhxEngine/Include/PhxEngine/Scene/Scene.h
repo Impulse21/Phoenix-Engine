@@ -106,6 +106,7 @@ namespace PhxEngine::Scene
 		PhxEngine::RHI::BufferHandle GetInstanceBuffer() const { return this->m_instanceGpuBuffer; }
 		PhxEngine::RHI::BufferHandle GetInstanceUploadBuffer() const { return this->m_instanceUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
 
+		RHI::BufferHandle GetTlasUploadBuffer() const { return this->m_tlasUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
 		RHI::BufferHandle GetPerlightMeshInstancesCounts() const { return this->m_perlightMeshInstancesCounts; }
 		RHI::BufferHandle GetPerlightMeshInstances() const { return this->m_perlightMeshInstances; }
 		RHI::BufferHandle GetIndirectDrawShadowMeshBuffer() const { return this->m_indirectDrawShadowMeshBuffer; }
@@ -143,6 +144,7 @@ namespace PhxEngine::Scene
 		void RunProbeUpdateSystem();
 		void RunLightUpdateSystem();
 		void RunMeshInstanceUpdateSystem();
+		void UpdateRTBuffers();
 		void FreeResources();
 
 		void UpdateGpuBufferSizes();
@@ -157,6 +159,7 @@ namespace PhxEngine::Scene
 		void BuildIndirectBuffers(RHI::IGraphicsDevice* gfxDevice);
 		void BuildSceneData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice);
 		void BuildLightBuffers(RHI::IGraphicsDevice* gfxDevice);
+		void BuildRTBuffers(RHI::IGraphicsDevice* gfxDevice);
 
 	private:
 		Core::IAllocator* m_sceneAllocator;

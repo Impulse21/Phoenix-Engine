@@ -202,7 +202,7 @@ void MeshComponent::BuildRenderData(
 
 	commandList->Close();
 	gfxDevice->ExecuteCommandLists({ commandList });
-	/*
+
 	// Create RT BLAS object
 	if (gfxDevice->CheckCapability(RHI::DeviceCapability::RayTracing))
 	{
@@ -213,26 +213,20 @@ void MeshComponent::BuildRenderData(
 		rtDesc.Type = RHI::RTAccelerationStructureDesc::Type::BottomLevel;
 		rtDesc.Flags == RHI::RTAccelerationStructureDesc::kPreferFastTrace;
 
-		for (int i = 0; i < this->Surfaces.size(); i++)
-		{
-			auto& surface = this->Surfaces[i];
+		auto& geometry = rtDesc.ButtomLevel.Geometries.emplace_back();
+		geometry.Type = RHI::RTAccelerationStructureDesc::BottomLevelDesc::Geometry::Type::Triangles;
+		geometry.Triangles.VertexBuffer = this->VertexBuffer;
+		geometry.Triangles.VertexStride = sizeof(DirectX::XMFLOAT3);
+		geometry.Triangles.VertexByteOffset = 0;
+		geometry.Triangles.VertexCount = TotalVertices;
+		geometry.Triangles.VertexFormat = RHI::RHIFormat::RGB32_FLOAT;
 
-			auto& geometry = rtDesc.ButtomLevel.Geometries.emplace_back();
-			geometry.Type = RHI::RTAccelerationStructureDesc::BottomLevelDesc::Geometry::Type::Triangles;
-			geometry.Triangles.VertexBuffer = this->VertexGpuBuffer;
-			geometry.Triangles.VertexStride = sizeof(DirectX::XMFLOAT3);
-			geometry.Triangles.VertexByteOffset = 0;
-			geometry.Triangles.VertexCount = (uint32_t)this->VertexPositions.size();
-			geometry.Triangles.VertexFormat = RHI::RHIFormat::RGB32_FLOAT;
-
-			geometry.Triangles.IndexBuffer = this->IndexGpuBuffer;
-			geometry.Triangles.IndexCount = surface.NumIndices;
-			geometry.Triangles.IndexOffset = surface.IndexOffsetInMesh;
-		}
-
+		geometry.Triangles.IndexBuffer = this->IndexBuffer;
+		geometry.Triangles.IndexCount = TotalIndices;
+		geometry.Triangles.IndexOffset = 0;
+	
 		this->Blas = gfxDevice->CreateRTAccelerationStructure(rtDesc);
 	}
-	*/
 }
 
 void PhxEngine::Scene::MeshComponent::ReverseWinding()

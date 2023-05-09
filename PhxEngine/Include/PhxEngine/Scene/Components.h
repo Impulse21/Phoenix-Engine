@@ -502,6 +502,15 @@ namespace PhxEngine::Scene
 		// TODO: Is this needed or is there a better way to do this.
 		RHI::BufferHandle PackedVertexDataBuffer;
 
+		enum class BLASState
+		{
+			Rebuild = 0,
+			Refit,
+			Complete,
+		};
+		BLASState BlasState = BLASState::Rebuild;
+		RHI::RTAccelerationStructureHandle Blas;
+
 		enum class VertexAttribute : uint8_t
 		{
 			Position = 0,

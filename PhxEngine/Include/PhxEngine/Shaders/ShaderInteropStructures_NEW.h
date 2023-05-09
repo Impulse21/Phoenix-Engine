@@ -239,6 +239,11 @@ namespace Shader::New
 		uint PerLightMeshInstances;
 		uint PerLightMeshInstanceCounts;
 
+
+		uint RT_TlasIndex;
+		uint3 _Padding;
+		// -- 16 byte boundary ----
+
 		struct DDGI
 		{
 			uint3 GridDimensions;

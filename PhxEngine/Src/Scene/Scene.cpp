@@ -52,7 +52,7 @@ RHI::ExecutionReceipt PhxEngine::Scene::Scene::BuildRenderData(RHI::IGraphicsDev
 	this->BuildGeometryData(commandList, gfxDevice, resourcesToFree);
 	this->BuildIndirectBuffers(gfxDevice);
 	this->BuildLightBuffers(gfxDevice);
-
+	this->BuildRTBuffers(gfxDevice);
 	commandList->Close();
 	RHI::ExecutionReceipt retVal = gfxDevice->ExecuteCommandLists({commandList});
 
@@ -132,6 +132,7 @@ void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> c
 	this->RunLightUpdateSystem();
 
 	this->UpdateBounds();
+	this->UpdateRTBuffers();
 
 	// Update DDGI if Enabled
 	if (ddgiEnabled)
@@ -170,6 +171,8 @@ void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> c
 				this->m_shaderData.DDGI.CellSize.x,
 				std::max(this->m_shaderData.DDGI.CellSize.y, this->m_shaderData.DDGI.CellSize.z));
 	}
+
+	this->m_shaderData.RT_TlasIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_tlas);
 #ifdef false
 	this->m_numMeshlets = 0;
 
@@ -527,6 +530,64 @@ void PhxEngine::Scene::Scene::RunMeshInstanceUpdateSystem()
 	}
 
 	this->m_shaderData.InstanceCount = instanceView.size();
+}
+
+void PhxEngine::Scene::Scene::UpdateRTBuffers()
+{
+	if (!IGraphicsDevice::GPtr->CheckCapability(DeviceCapability::RayTracing))
+	{
+		return;
+	}
+
+	BufferHandle currentTlasUploadBuffer = this->GetTlasUploadBuffer();
+	void* pTlasUploadBufferData = IGraphicsDevice::GPtr->GetBufferMappedData(currentTlasUploadBuffer);
+
+	if (pTlasUploadBufferData)
+	{
+		// Ensure we remove any old data
+		std::memset(pTlasUploadBufferData, 0, IGraphicsDevice::GPtr->GetBufferDesc(currentTlasUploadBuffer).SizeInBytes);
+
+		int instanceId = 0;
+		auto viewMeshTranslation = this->GetAllEntitiesWith<MeshInstanceComponent, TransformComponent>();
+		for (auto e : viewMeshTranslation)
+		{
+			auto [meshInstanceComponent, transformComponent] = viewMeshTranslation.get<MeshInstanceComponent, TransformComponent>(e);
+
+			RTAccelerationStructureDesc::TopLevelDesc::Instance instance = {};
+			for (int i = 0; i < ARRAYSIZE(instance.Transform); ++i)
+			{
+				for (int j = 0; j < ARRAYSIZE(instance.Transform[i]); ++j)
+				{
+					instance.Transform[i][j] = transformComponent.WorldMatrix.m[j][i];
+				}
+			}
+
+			auto& meshComponent = this->m_registry.get<MeshComponent>(meshInstanceComponent.Mesh);
+			instance.InstanceId = instanceId++;
+			instance.InstanceMask = 0xff;
+			instance.BottomLevel = meshComponent.Blas;
+			instance.InstanceContributionToHitGroupIndex = 0;
+			instance.Flags = 0;
+
+			// TODO: Disable cull for Two-sided materials.
+			/*
+			if (meshComponent)
+			{
+				instance.flags |= RaytracingAccelerationStructureDesc::TopLevel::Instance::FLAG_TRIANGLE_CULL_DISABLE;
+			}
+			if (XMVectorGetX(XMMatrixDeterminant(W)) > 0)
+			{
+				// There is a mismatch between object space winding and BLAS winding:
+				//	https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_raytracing_instance_flags
+				// instance.flags |= RaytracingAccelerationStructureDesc::TopLevel::Instance::FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
+			}
+			*/
+
+			void* dest = (void*)((size_t)pTlasUploadBufferData + (size_t)instance.InstanceId * IGraphicsDevice::GPtr->GetRTTopLevelAccelerationStructureInstanceSize());
+			IGraphicsDevice::GPtr->WriteRTTopLevelAccelerationStructureInstance(instance, dest);
+		}
+	}
+
 }
 
 void PhxEngine::Scene::Scene::FreeResources()
@@ -1259,6 +1320,58 @@ void PhxEngine::Scene::Scene::BuildLightBuffers(RHI::IGraphicsDevice* gfxDevice)
 				   .SizeInBytes = indirectMeshletBufferByteSize,
 				   .AllowUnorderedAccess = true,
 				   .DebugName = "Indirect Draw Shadow (Meshlet)" });
+	}
+}
+
+void PhxEngine::Scene::Scene::BuildRTBuffers(RHI::IGraphicsDevice* gfxDevice)
+{
+	if (!gfxDevice->CheckCapability(DeviceCapability::RayTracing))
+	{
+		return;
+	}
+
+	const size_t numInstances = this->GetAllEntitiesWith<MeshInstanceComponent>().size();
+
+	BufferDesc desc;
+	desc.StrideInBytes = IGraphicsDevice::GPtr->GetRTTopLevelAccelerationStructureInstanceSize();
+	desc.SizeInBytes = desc.StrideInBytes * numInstances; // *2 to grow fast
+	desc.Usage = Usage::Upload;
+	desc.DebugName = "TLAS Upload Buffer";
+
+	if (!this->m_tlasUploadBuffers.front().IsValid() || IGraphicsDevice::GPtr->GetBufferDesc(this->m_tlasUploadBuffers.front()).SizeInBytes < desc.SizeInBytes)
+	{
+		for (int i = 0; i < this->m_tlasUploadBuffers.size(); i++)
+		{
+			if (this->m_tlasUploadBuffers[i].IsValid())
+			{
+				IGraphicsDevice::GPtr->DeleteBuffer(this->m_tlasUploadBuffers[i]);
+			}
+			this->m_tlasUploadBuffers[i] = IGraphicsDevice::GPtr->CreateBuffer(desc);
+		}
+	}
+
+	if (!this->m_tlas.IsValid() || IGraphicsDevice::GPtr->GetRTAccelerationStructureDesc(this->m_tlas).TopLevel.Count < numInstances)
+	{
+		RHI::RTAccelerationStructureDesc desc;
+		desc.Flags = RHI::RTAccelerationStructureDesc::kPreferFastBuild;
+		desc.Type = RHI::RTAccelerationStructureDesc::Type::TopLevel;
+		desc.TopLevel.Count = (uint32_t)numInstances; // *2 to grow fast
+
+		RHI::BufferDesc bufferDesc = {};
+		bufferDesc.MiscFlags = BufferMiscFlags::Structured; // TODO: RayTracing
+		bufferDesc.StrideInBytes = IGraphicsDevice::GPtr->GetRTTopLevelAccelerationStructureInstanceSize();
+		bufferDesc.SizeInBytes = bufferDesc.StrideInBytes * desc.TopLevel.Count;
+		bufferDesc.DebugName = "TLAS::InstanceBuffer";
+
+		if (this->m_tlas.IsValid())
+		{
+			IGraphicsDevice::GPtr->DeleteBuffer(IGraphicsDevice::GPtr->GetRTAccelerationStructureDesc(this->m_tlas).TopLevel.InstanceBuffer);
+		}
+
+		desc.TopLevel.InstanceBuffer = IGraphicsDevice::GPtr->CreateBuffer(bufferDesc);
+
+		IGraphicsDevice::GPtr->DeleteRtAccelerationStructure(this->m_tlas);
+		this->m_tlas = IGraphicsDevice::GPtr->CreateRTAccelerationStructure(desc);
 	}
 }
 

@@ -182,7 +182,7 @@ namespace PhxEngine::Renderer
 			Scene::Scene& scene,
 			RHI::GPUAllocation& outLights,
 			RHI::GPUAllocation& outMatrices);
-		void UpdateRTAccelerationStructures(RHI::ICommandList* commandList, Scene::Scene& scene);
+		void UploadRTData(RHI::ICommandList* commandList, Scene::Scene& scene);
 
 		void RenderGeometry(RHI::ICommandList* commandList, Scene::Scene& scene, DrawQueue& drawQueue, bool markMeshes);
 

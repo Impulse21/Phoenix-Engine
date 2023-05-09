@@ -109,8 +109,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 		if (this->m_gfxDevice->CheckCapability(DeviceCapability::RayTracing))
 		{
-			// Disable Raytracing for now.
-			// this->UpdateRTAccelerationStructures(commandList, scene);
+			this->UploadRTData(commandList, scene);
 		}
 		this->m_frameProfiler->EndRangeGPU(rangeId);
 	}
@@ -1319,13 +1318,13 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameLightData(
 	}
 }
 
-void PhxEngine::Renderer::RenderPath3DDeferred::UpdateRTAccelerationStructures(ICommandList* commandList, PhxEngine::Scene::Scene& scene)
+void PhxEngine::Renderer::RenderPath3DDeferred::UploadRTData(ICommandList* commandList, PhxEngine::Scene::Scene& scene)
 {
 	if (!scene.GetTlas().IsValid())
 	{
 		return;
 	}
-#ifdef false
+
 	auto __ = commandList->BeginScopedMarker("Prepare Frame RT Structures");
 	BufferHandle instanceBuffer = this->m_gfxDevice->GetRTAccelerationStructureDesc(scene.GetTlas()).TopLevel.InstanceBuffer;
 	{
@@ -1393,7 +1392,6 @@ void PhxEngine::Renderer::RenderPath3DDeferred::UpdateRTAccelerationStructures(I
 
 		commandList->TransitionBarriers(Core::Span(postBarriers, ARRAYSIZE(postBarriers)));
 	}
-#endif
 }
 
 
