@@ -149,16 +149,6 @@ inline uint3 DDGI_ProbeCoordToPosition(uint3 probeCoord)
     return pos;
 }
 
-vec2 uv0 = uv_buffer[i0].v;
-vec2 uv1 = uv_buffer[i1].v;
-vec2 uv2 = uv_buffer[i2].v;
-
-float b = barycentric_weights.x;
-float c = barycentric_weights.y;
-float a = 1 - b - c;
-
-vec2 uv = (a * uv0 + b * uv1 + c * uv2);
-
 // https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html#rayquery-committedtrianglebarycentrics
 // w is computed as 1 - u - w
 // p0 * w + p1 * u + p2 * v

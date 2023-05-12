@@ -129,10 +129,37 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			auto _ = commandList->BeginScopedMarker("DDGI - Ray Trace (Step 1)");
 			commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DDGI_Raytrace]);
 
-			// TODO: FILL and Set Push Data
-			static_assert(false, "Fill and set push Data");
+			Shader::New::DDGIPushConstants push = {};
+			push.NumRays = scene.GetDDGI().RayCount;
 
+			// Get a Random angle
+			float angle = Random::GetRandom(0.0f, 1.0f) * DirectX::XM_2PI;
+			// Get a random axis
+			DirectX::XMVECTOR axis = DirectX::XMVectorSet(
+				Random::GetRandom(-1.0f, 1.0f),
+				Random::GetRandom(-1.0f, 1.0f),
+				Random::GetRandom(-1.0f, 1.0f),
+				0.0f);
+
+			axis = DirectX::XMVector3Normalize(axis);
+			DirectX::XMStoreFloat3x3(&push.RandRotation, DirectX::XMMatrixRotationAxis(axis, angle));
+			commandList->BindPushConstant(0, push);
+
+			static_assert(false, "Need to bind UAV textures or Buffer");
 			commandList->Dispatch(scene.GetShaderData().DDGI.ProbCount, 1, 1);
+
+			// Result, barrier for resulting data?
+		}
+
+
+		{
+			GPUBarrier barriers[] = {
+				GPUBarrier::Memory(),
+				GPUBarrier::Buffer(&scene.ddgi.ray_buffer, ResourceState::UNORDERED_ACCESS, ResourceState::SHADER_RESOURCE_COMPUTE),
+				GPUBarrier::Image(&scene.ddgi.depth_texture[1], ResourceState::SHADER_RESOURCE_COMPUTE, ResourceState::UNORDERED_ACCESS),
+				GPUBarrier::Buffer(&scene.ddgi.offset_buffer, ResourceState::SHADER_RESOURCE_COMPUTE, ResourceState::UNORDERED_ACCESS),
+			};
+			device->Barrier(barriers, arraysize(barriers), cmd);
 		}
 	}
 

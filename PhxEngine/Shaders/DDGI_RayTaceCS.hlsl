@@ -3,6 +3,8 @@
 #include "Globals_NEW.hlsli"
 #include "Defines.hlsli"
 #include "VertexFetch.hlsli"
+#include "BRDF.hlsli"
+#include "Lighting_New.hlsli"
 #include "../Include/PhxEngine/Shaders/ShaderInterop.h"
 #include "../Include/PhxEngine/Shaders/ShaderInteropStructures_New.h"
 
@@ -47,7 +49,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
 			ray);
         
         while (rayQuery.Proceed());
-        if (rayQuery.ComittedStatus() != COMMITTED_TRIANGLE_HIT)
+        if (rayQuery.CommittedStatus() != COMMITTED_TRIANGLE_HIT)
         {
             // Set radiance for sky colour
             // Set this to zero
@@ -83,13 +85,158 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
             // Now we can calculate the position using the baryCentric weights
             // https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html#rayquery-committedinstanceid
             const float2 barycentricWeights = rayQuery.CommittedTriangleBarycentrics();
-            BarycentricInterpolation(v0.Position, v1.Position, v2.Position, barycentricWeights);
+            float2 uv = BarycentricInterpolation(v0.TexCoord, v1.TexCoord, v2.TexCoord, barycentricWeights);
             
-            const uint subsetIndex = rayQuery.CommittedGeometryIndex();
+            // Sample Albedo for colour info
+            
+            Material material = LoadMaterial(geometryData.MaterialIndex);
+            Surface surface = DefaultSurface();
+            surface.Albedo = 1.0f;
+            surface.Albedo *= material.AlbedoColour * objectInstance.Colour;
+            if (material.AlbedoTexture != InvalidDescriptorIndex)
+            {
+                // Sample a LOD version for better performance
+                surface.Albedo *= ResourceHeap_GetTexture2D(material.AlbedoTexture).Sample(SamplerDefault, uv).xyz;
+            }
+    
+            surface.Emissive = UnpackRGBA(material.EmissiveColourPacked).rgb * UnpackRGBA(objectInstance.Emissive).rgb;
+            
+            // Since we are not storing much info, just use the surface normal for now and see how things look
+            float2 normal = BarycentricInterpolation(v0.Normal, v1.Normal, v2.Normal, barycentricWeights);
+            float3 normalWS = mul(normal, (float3x3) objectInstance.WorldMatrix).xyz;;
+            
+            /*
+            float3 positionWS = BarycentricInterpolation(v0.Position, v1.Position, v2.Position, barycentricWeights);
+            positionWS = mul(float4(positionWS, 1.0f), objectInstance.WorldMatrix);
+            */
+            
+            const float3 P = ray.Origin;
+            // const float3 L = -ray.Direction;
+            
+            float3 hitResult = 0.0f;
+            
+             [loop]
+            for (int iLight = 0; iLight < GetScene().LightCount; iLight++)
+            {
+                
+                Light light = LoadLight(iLight);
+                float L = 0.0f;
+                float dist = 0.0f;
+                float NdotL = 0.0f;
+                
+                Lighting lighting;
+                lighting.Init();
+                const uint lightType = light.GetType();
+                switch (lightType)
+                {
+                    case LIGHT_TYPE_DIRECTIONAL:
+                        {
+                            dist = FLT_MAX;
+                            L = normalize(light.GetDirection());
+                            NdotL = saturate(dot(L, normalWS));
+                        
+                            [branch]
+                            if (NdotL > 0)
+                            {
+                                lighting.Direct.Diffuse = light.GetColour();
+                            }
+                        }
+                        break;
+                    case LIGHT_TYPE_OMNI:
+                        {
+                            L = light.Position - P;
+                    
+                            const float dist2 = dot(L, L);
+                            const float range = light.GetRange();
+                            const float range2 = range * range;
+                    
+                            [branch]
+                            if (dist2 < range2)
+                            {
+                                dist = sqrt(dist2);
+                                L /= dist;
+                                NdotL = saturate(dot(L, normalWS));
+                        
+                                [branch]
+                                if (NdotL > 0)
+                                {
+                                    lighting.Direct.Diffuse = light.GetColour() * AttenuationOmni(dist2, range2);
+                                }
+                            }
+                        }
+                        break;
+                    
+                    case LIGHT_TYPE_SPOT:
+                        {
+                            L = light.Position - P;
+                    
+                            const float dist2 = dot(L, L);
+                            const float range = light.GetRange();
+                            const float range2 = range * range;
+                    
+                            [branch]
+                            if (dist2 < range2)
+                            {
+                                dist = sqrt(dist2);
+                                L /= dist;
+                                NdotL = saturate(dot(L, normalWS));
+                        
+                                [branch]
+                                if (NdotL > 0)
+                                {
+                                    const float spotFactor = dot(L, light.GetDirection());
+                                    const float spotCutoff = light.GetConeAngleCos();
+                                    
+                                    [branch]
+                                    if (spotFactor > spotCutoff)
+                                    {
+                                        const float3 lightColor = light.GetColour().rgb;
 
-
-            // calculate the position and 
-            // TODO: Construct surface.
+                                        lighting.Direct.Diffuse = light.GetColour() * AttenuationSpot(dist2, range2, spotFactor, light.GetAngleScale(), light.GetAngleOffset());
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                    default:
+                        break;
+                }
+                
+                if (NdotL > 0 && dist > 0)
+                {
+                    float3 shadow = 1.0f;
+                    RayDesc shadowRay;
+                    shadowRay.Origin = P;
+                    shadowRay.Direction = L;
+                    shadowRay.TMin = 0.001;
+                    shadowRay.TMax = dist;
+                    
+                    rayQuery.TraceRayInline(
+						ResourceHeap_GetRTAccelStructure(GetScene().RT_TlasIndex),
+						RAY_FLAG_CULL_FRONT_FACING_TRIANGLES | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, // uint RayFlags
+						0xFF, // uint InstanceInclusionMask
+						shadowRay // RayDesc Ray
+					);
+                    while (rayQuery.Proceed());
+                    if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
+                    {
+                        shadow = 0.0f;
+                    }
+                    
+                    if (any(shadow))
+                    {
+                        hitResult += max(0, shadow * lighting.Direct.Diffuse * NdotL / PI);
+                    }
+                }
+            }
+            
+            // if INfinit Bounce, sample the irradnace map for the probe.
+            
+            hitResult *= surface.Albedo;
+            hitResult += surface.Emissive;
+            
+            // Store this data
+            // Sore the data
         }
 
     }

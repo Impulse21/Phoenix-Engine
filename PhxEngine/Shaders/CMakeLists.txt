@@ -29,7 +29,6 @@ file (GLOB PhxEngine_Shader_MS_Src
 	${PhxEngine_Shader_AS_Src}
 	${PhxEngine_Shader_MS_Src})
 
-
 source_group("Shaders/Include"		    FILES ${PhxEngine_Shader_Inc})
 source_group("Shaders/VS"			    FILES ${PhxEngine_Shader_VS_Src})
 source_group("Shaders/PS"			    FILES ${PhxEngine_Shader_PS_Src})
