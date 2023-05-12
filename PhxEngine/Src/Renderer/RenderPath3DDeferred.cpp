@@ -145,7 +145,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			DirectX::XMStoreFloat3x3(&push.RandRotation, DirectX::XMMatrixRotationAxis(axis, angle));
 			commandList->BindPushConstant(0, push);
 
-			static_assert(false, "Need to bind UAV textures or Buffer");
+			static_assert(false, "Need to bind UAV textures or Buffer and need to write to them in the shader still..");
 			commandList->Dispatch(scene.GetShaderData().DDGI.ProbCount, 1, 1);
 
 			// Result, barrier for resulting data?
