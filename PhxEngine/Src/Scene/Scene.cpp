@@ -547,7 +547,6 @@ void PhxEngine::Scene::Scene::UpdateRTBuffers()
 		// Ensure we remove any old data
 		std::memset(pTlasUploadBufferData, 0, IGraphicsDevice::GPtr->GetBufferDesc(currentTlasUploadBuffer).SizeInBytes);
 
-		int instanceId = 0;
 		auto viewMeshTranslation = this->GetAllEntitiesWith<MeshInstanceComponent, TransformComponent>();
 		for (auto e : viewMeshTranslation)
 		{
@@ -563,7 +562,7 @@ void PhxEngine::Scene::Scene::UpdateRTBuffers()
 			}
 
 			auto& meshComponent = this->m_registry.get<MeshComponent>(meshInstanceComponent.Mesh);
-			instance.InstanceId = instanceId++;
+			instance.InstanceId = meshInstanceComponent.GlobalBufferIndex;
 			instance.InstanceMask = 0xff;
 			instance.BottomLevel = meshComponent.Blas;
 			instance.InstanceContributionToHitGroupIndex = 0;

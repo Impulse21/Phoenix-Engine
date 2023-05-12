@@ -82,8 +82,6 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 	std::memcpy(&cameraData.PlanesWS, &mainCamera.FrustumWS.Planes, sizeof(DirectX::XMFLOAT4) * 6);
 
 	ICommandList* commandList = this->m_gfxDevice->BeginCommandRecording();
-
-
 	// TODO: Disabling for now as this work is incomplete
 #if false
 	if (!this->m_depthPyramid.IsValid())
@@ -122,6 +120,20 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 	if (!this->m_settings.FreezeCamera)
 	{
 		cullCamera = cameraData;
+	}
+
+	// TODO: Add Async
+	if (this->m_settings.GISettings.EnableDDGI && scene.GetTlas().IsValid())
+	{
+		{
+			auto _ = commandList->BeginScopedMarker("DDGI - Ray Trace (Step 1)");
+			commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DDGI_Raytrace]);
+
+			// TODO: FILL and Set Push Data
+			static_assert(false, "Fill and set push Data");
+
+			commandList->Dispatch(scene.GetShaderData().DDGI.ProbCount, 1, 1);
+		}
 	}
 
 	{
@@ -818,6 +830,9 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadShaders(tf::Taskflow& ta
 		subflow.emplace([&]() {
 			this->m_shaders[EShaders::MS_MeshletShadowPass] = this->m_shaderFactory->CreateShader("PhxEngine/ShadowPassMS.hlsl", { .Stage = RHI::ShaderStage::Mesh, .DebugName = "ShadowPassMS", });
 			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::CS_DDGI_RayTrace] = this->m_shaderFactory->CreateShader("PhxEngine/DDGI_RayTaceCS.hlsl", { .Stage = RHI::ShaderStage::Compute, .DebugName = "DDGI_RayTaceCS", });
+			});
 		});
 	return shaderLoadTask;
 }
@@ -858,6 +873,11 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadPipelineStates(tf::Taskf
 		subflow.emplace([&]() {
 			this->m_computeStates[EComputePipelineStates::CullPass] = this->m_gfxDevice->CreateComputePipeline({
 					.ComputeShader = this->m_shaders[EShaders::CS_CullPass],
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_computeStates[EComputePipelineStates::DDGI_Raytrace] = this->m_gfxDevice->CreateComputePipeline({
+					.ComputeShader = this->m_shaders[EShaders::CS_DDGI_RayTrace],
 				});
 			});
 		subflow.emplace([&]() {

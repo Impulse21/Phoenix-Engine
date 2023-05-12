@@ -129,6 +129,58 @@ inline matrix GetLightMatrix(uint index)
     return buffer[index];
 }
 
+inline uint3 DDGI_GetProbeCoord(uint probeIndex)
+{
+    uint3 gridDimensions = GetScene().DDGI.GridDimensions;
+    
+    // To 3D: https://stackoverflow.com/questions/7367770/how-to-flatten-or-index-3d-array-in-1d-array
+    const uint z = probeIndex / (gridDimensions.x * gridDimensions.y);
+    probeIndex -= (z * gridDimensions.x * gridDimensions.y);
+    const uint y = probeIndex / gridDimensions.x;
+    const uint x = probeIndex % gridDimensions.x;
+
+    return uint3(x, y, z);
+}
+
+inline uint3 DDGI_ProbeCoordToPosition(uint3 probeCoord)
+{
+    float3 pos = GetScene().DDGI.GridStartPosition + probeCoord * GetScene().DDGI.CellSize;
+    // Add offset adjustment
+    return pos;
+}
+
+vec2 uv0 = uv_buffer[i0].v;
+vec2 uv1 = uv_buffer[i1].v;
+vec2 uv2 = uv_buffer[i2].v;
+
+float b = barycentric_weights.x;
+float c = barycentric_weights.y;
+float a = 1 - b - c;
+
+vec2 uv = (a * uv0 + b * uv1 + c * uv2);
+
+// https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html#rayquery-committedtrianglebarycentrics
+// w is computed as 1 - u - w
+// p0 * w + p1 * u + p2 * v
+inline float BarycentricInterpolation(in float a0, in float a1, in float a2, float2 bary)
+{
+    return mad(a0, 1 - bary.x - bary.y, mad(a1, bary.x, a2 * bary.y));
+}
+
+inline float2 BarycentricInterpolation(in float2 a0, in float2 a1, in float2 a2, float2 bary)
+{
+    return mad(a0, 1 - bary.x - bary.y, mad(a1, bary.x, a2 * bary.y));
+}
+inline float3 BarycentricInterpolation(in float3 a0, in float3 a1, in float3 a2, float2 bary)
+{
+    return mad(a0, 1 - bary.x - bary.y, mad(a1, bary.x, a2 * bary.y));
+}
+
+inline float4 BarycentricInterpolation(in float4 a0, in float4 a1, in float4 a2, float2 bary)
+{
+    return mad(a0, 1 - bary.x - bary.y, mad(a1, bary.x, a2 * bary.y));
+}
+
 // Convert texture coordinates on a cubemap face to cubemap sampling coordinates:
 // direction	: direction that is usable for cubemap sampling
 // returns float3 that has uv in .xy components, and face index in Z component

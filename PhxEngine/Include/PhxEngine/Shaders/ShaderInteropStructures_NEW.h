@@ -578,6 +578,12 @@ namespace Shader::New
 	{
 		float4x4 ViewProjection[6];
 	};
+
+	struct DDGIPushConstants
+	{
+		float3x3 RandRotation;
+		uint NumRays;
+	};
 #ifdef __cplusplus
 }
 #endif

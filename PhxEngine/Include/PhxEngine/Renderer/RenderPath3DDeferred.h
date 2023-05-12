@@ -58,6 +58,7 @@ namespace PhxEngine::Renderer
 			ClusterLightsDebugPass,
 			FillPerLightInstances,
 			FillLightDrawBuffers,
+			DDGI_Raytrace,
 			Count
 		};
 	}
@@ -94,6 +95,8 @@ namespace PhxEngine::Renderer
 			CS_ClusterLightsDebugPass,
 			CS_FillPerLightInstances,
 			CS_FillLightDrawBuffers,
+			CS_DDGI_RayTrace,
+			CS_DDGI_Update,
 
 			AS_MeshletCull,
 			AS_MeshletShadowCull,

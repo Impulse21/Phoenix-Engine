@@ -10,4 +10,5 @@
 
 #define PI 3.14159265358979323846
 #define PI_INV 1/PI
+#define FLT_MAX 3.402823466e+38
 #endif
