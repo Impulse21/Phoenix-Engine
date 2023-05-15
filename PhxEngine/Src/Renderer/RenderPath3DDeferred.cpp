@@ -145,7 +145,10 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			DirectX::XMStoreFloat3x3(&push.RandRotation, DirectX::XMMatrixRotationAxis(axis, angle));
 			commandList->BindPushConstant(0, push);
 
-			static_assert(false, "Need to bind UAV textures or Buffer and need to write to them in the shader still..");
+			commandList->BindConstantBuffer(1, this->m_frameCB);
+			commandList->BindDynamicConstantBuffer(2, cameraData);
+			commandList->BindDynamicUavDescriptorTable(3, { scene.GetDDGI().RTRadianceOutput });
+
 			commandList->Dispatch(scene.GetShaderData().DDGI.ProbCount, 1, 1);
 
 			// Result, barrier for resulting data?
@@ -153,13 +156,14 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 
 		{
-			GPUBarrier barriers[] = {
-				GPUBarrier::Memory(),
-				GPUBarrier::Buffer(&scene.ddgi.ray_buffer, ResourceState::UNORDERED_ACCESS, ResourceState::SHADER_RESOURCE_COMPUTE),
-				GPUBarrier::Image(&scene.ddgi.depth_texture[1], ResourceState::SHADER_RESOURCE_COMPUTE, ResourceState::UNORDERED_ACCESS),
-				GPUBarrier::Buffer(&scene.ddgi.offset_buffer, ResourceState::SHADER_RESOURCE_COMPUTE, ResourceState::UNORDERED_ACCESS),
+			RHI::GpuBarrier barriers[] =
+			{
+				RHI::GpuBarrier::CreateMemory(),
+				RHI::GpuBarrier::CreateTexture(scene.GetDDGI().RTRadianceOutput, RHI::ResourceStates::UnorderedAccess, RHI::ResourceStates::ShaderResourceNonPixel),
+				RHI::GpuBarrier::CreateTexture(scene.GetDDGI().ProbeIrradiance, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::UnorderedAccess),
+				RHI::GpuBarrier::CreateTexture(scene.GetDDGI().ProbeVisibility, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::UnorderedAccess),
 			};
-			device->Barrier(barriers, arraysize(barriers), cmd);
+			commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
 		}
 	}
 

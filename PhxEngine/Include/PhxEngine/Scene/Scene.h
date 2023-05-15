@@ -160,6 +160,7 @@ namespace PhxEngine::Scene
 		void BuildSceneData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice);
 		void BuildLightBuffers(RHI::IGraphicsDevice* gfxDevice);
 		void BuildRTBuffers(RHI::IGraphicsDevice* gfxDevice);
+		void UpdateProbes(RHI::IGraphicsDevice* gfxDevice);
 
 	private:
 		Core::IAllocator* m_sceneAllocator;

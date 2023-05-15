@@ -137,6 +137,8 @@ void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> c
 	// Update DDGI if Enabled
 	if (ddgiEnabled)
 	{
+		this->m_ddgi.UpdateResources(RHI::IGraphicsDevice::GPtr);
+
 		this->m_ddgi.GridMin = this->GetBoundingBox().Min;
 		// Add an extra space to push probe grid outisde
 		this->m_ddgi.GridMin.x -= 1;

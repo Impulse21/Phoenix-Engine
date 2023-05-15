@@ -26,9 +26,17 @@ namespace PhxEngine::Renderer
 		DirectX::XMUINT3 GridDimensions = { 32, 8, 32 };
 		DirectX::XMFLOAT3 GridMin = { -1, -1, -1 };
 		DirectX::XMFLOAT3 GridMax = { 1, 1, 1 };
-		uint32_t IrradianceOctSize = 8;
-		uint32_t DepthOctSize = 16;
+		uint32_t IrradianceOctSize = 6;
+		uint32_t DepthOctSize = 6;
 		int32_t RayCount = 192;
+
+		RHI::TextureHandle RTRadianceOutput;
+		RHI::TextureHandle ProbeIrradiance;
+		RHI::TextureHandle ProbeVisibility;
+		RHI::TextureHandle ProbeOffsets;
+
+		uint32_t GetProbeCount() const { return this->GridDimensions.x + this->GridDimensions.y + this->GridDimensions.z; }
+		void UpdateResources(RHI::IGraphicsDevice* gfxDevice);
 
 		void BuildUI();
 	};
