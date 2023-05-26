@@ -59,6 +59,9 @@ namespace PhxEngine::Renderer
 			FillPerLightInstances,
 			FillLightDrawBuffers,
 			DDGI_Raytrace,
+			DDGI_UpdateVisibility,
+			DDGI_UpdateIrradiance,
+			DDGI_SampleIrradiance,
 			Count
 		};
 	}
@@ -96,7 +99,9 @@ namespace PhxEngine::Renderer
 			CS_FillPerLightInstances,
 			CS_FillLightDrawBuffers,
 			CS_DDGI_RayTrace,
-			CS_DDGI_Update,
+			CS_DDGI_UpdateIrradiance,
+			CS_DDGI_UpdateVisibility,
+			CS_DDGI_SampleIrradiance,
 
 			AS_MeshletCull,
 			AS_MeshletShadowCull,

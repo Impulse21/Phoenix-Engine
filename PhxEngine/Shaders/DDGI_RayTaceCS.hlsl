@@ -13,12 +13,13 @@
 	"RootConstants(num32BitConstants=16, b999), " \
 	"CBV(b0), " \
 	"CBV(b1), " \
-    "DescriptorTable( UAV(u0, numDescriptors = 1) )," \
+    "DescriptorTable( UAV(u0, numDescriptors = 2) )," \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s52, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, comparisonFunc = COMPARISON_LESS_EQUAL),"
 
 RWTexture2D<float4> RadianceOutput : register(u0);
+RWTexture2D<float4> DistanceDirectionOutput : register(u1);
 
 PUSH_CONSTANT(push, DDGIPushConstants);
 
@@ -258,6 +259,8 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
             
             
             RadianceOutput[float2(rayIndex, probeIndex)] = float4(radiance.rgb, depth);
+            DistanceDirectionOutput[float2(rayIndex, probeIndex)] = float4(ray.Direction.xyz, depth);
+
         }
 
     }

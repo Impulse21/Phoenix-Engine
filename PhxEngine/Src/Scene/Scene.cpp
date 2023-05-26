@@ -172,6 +172,8 @@ void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> c
 			std::max(
 				this->m_shaderData.DDGI.CellSize.x,
 				std::max(this->m_shaderData.DDGI.CellSize.y, this->m_shaderData.DDGI.CellSize.z));
+		this->m_shaderData.DDGI.RTRadianceTexId = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_ddgi.RTRadianceOutput, SubresouceType::SRV);
+		this->m_shaderData.DDGI.RTDirectionDepthTexId = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_ddgi.RTDirectionDepthOutput, SubresouceType::SRV);
 	}
 
 	this->m_shaderData.RT_TlasIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_tlas);

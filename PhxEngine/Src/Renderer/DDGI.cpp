@@ -42,9 +42,31 @@ void PhxEngine::Renderer::DDGI::UpdateResources(RHI::IGraphicsDevice* gfxDevice)
 			});
 	}
 
+	// -- Create RT Output texture that stored the Distance and depth data ---
+	if (!this->RTDirectionDepthOutput.IsValid() ||
+		gfxDevice->GetTextureDesc(this->RTDirectionDepthOutput).Width < width ||
+		gfxDevice->GetTextureDesc(this->RTDirectionDepthOutput).Height < height)
+	{
+		if (this->RTDirectionDepthOutput.IsValid())
+		{
+			gfxDevice->DeleteTexture(this->RTRadianceOutput);
+		}
+
+		this->RTDirectionDepthOutput = gfxDevice->CreateTexture({
+			.BindingFlags = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
+			.Dimension = RHI::TextureDimension::Texture2D,
+			.InitialState = RHI::ResourceStates::UnorderedAccess,
+			.Format = RHI::RHIFormat::RGBA16_FLOAT,
+			.Width = width,
+			.Height = height,
+			.MipLevels = 1,
+			.DebugName = "RTDirectionDepthOutput",
+			});
+	}
+
 	// -- Create the probe data ---
 	// Add 2 pixel border to allow for bilinear interpolation
-	const uint32_t octahedralIrradianceSize = this->IrradianceOctSize + 2;
+	const uint32_t octahedralIrradianceSize = Shader::New::DDGI_COLOUR_TEXELS;
 	width = octahedralIrradianceSize * this->GridDimensions.x * this->GridDimensions.y;
 	height = octahedralIrradianceSize * this->GridDimensions.z;
 
@@ -66,12 +88,12 @@ void PhxEngine::Renderer::DDGI::UpdateResources(RHI::IGraphicsDevice* gfxDevice)
 			.Width = width,
 			.Height = height,
 			.MipLevels = 1,
-			.DebugName = "Probe Atals (Irradiance)",
+			.DebugName = "Probe Atlas (Irradiance)",
 			});
 	}
 
 	// Visibility Texture
-	const uint32_t octahedralVisibilitySize = this->DepthOctSize + 2;
+	const uint32_t octahedralVisibilitySize = Shader::New::DDGI_DEPTH_TEXELS;
 	width = octahedralVisibilitySize * this->GridDimensions.x * this->GridDimensions.y;
 	height = octahedralVisibilitySize * this->GridDimensions.z;
 
@@ -93,7 +115,7 @@ void PhxEngine::Renderer::DDGI::UpdateResources(RHI::IGraphicsDevice* gfxDevice)
 			.Width = width,
 			.Height = height,
 			.MipLevels = 1,
-			.DebugName = "Probe Atals (Visibility)",
+			.DebugName = "Probe Atlas (Visibility)",
 			});
 	}
 

@@ -147,7 +147,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 			commandList->BindConstantBuffer(1, this->m_frameCB);
 			commandList->BindDynamicConstantBuffer(2, cameraData);
-			commandList->BindDynamicUavDescriptorTable(3, { scene.GetDDGI().RTRadianceOutput });
+			commandList->BindDynamicUavDescriptorTable(3, { scene.GetDDGI().RTRadianceOutput, scene.GetDDGI().RTDirectionDepthOutput });
 
 			commandList->Dispatch(scene.GetShaderData().DDGI.ProbCount, 1, 1);
 
@@ -160,6 +160,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			{
 				RHI::GpuBarrier::CreateMemory(),
 				RHI::GpuBarrier::CreateTexture(scene.GetDDGI().RTRadianceOutput, RHI::ResourceStates::UnorderedAccess, RHI::ResourceStates::ShaderResourceNonPixel),
+				RHI::GpuBarrier::CreateTexture(scene.GetDDGI().RTDirectionDepthOutput, RHI::ResourceStates::UnorderedAccess, RHI::ResourceStates::ShaderResourceNonPixel),
 				RHI::GpuBarrier::CreateTexture(scene.GetDDGI().ProbeIrradiance, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::UnorderedAccess),
 				RHI::GpuBarrier::CreateTexture(scene.GetDDGI().ProbeVisibility, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::UnorderedAccess),
 			};

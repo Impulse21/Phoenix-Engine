@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxEngine/RHI/PhxRHI.h>
+#include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
 #include <DirectXMath.h>
 
 namespace PhxEngine::Graphics
@@ -26,11 +27,12 @@ namespace PhxEngine::Renderer
 		DirectX::XMUINT3 GridDimensions = { 32, 8, 32 };
 		DirectX::XMFLOAT3 GridMin = { -1, -1, -1 };
 		DirectX::XMFLOAT3 GridMax = { 1, 1, 1 };
-		uint32_t IrradianceOctSize = 6;
-		uint32_t DepthOctSize = 6;
+		uint32_t IrradianceOctSize = Shader::New::DDGI_COLOUR_RESOLUTION;
+		uint32_t DepthOctSize = Shader::New::DDGI_DEPTH_RESOLUTION;
 		int32_t RayCount = 192;
 
 		RHI::TextureHandle RTRadianceOutput;
+		RHI::TextureHandle RTDirectionDepthOutput;
 		RHI::TextureHandle ProbeIrradiance;
 		RHI::TextureHandle ProbeVisibility;
 		RHI::TextureHandle ProbeOffsets;

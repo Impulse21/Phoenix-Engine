@@ -203,4 +203,24 @@ inline float3 CubemapToUv(in float3 r)
     }
     return float3((uvw.xy / uvw.z + 1) * 0.5, faceIndex);
 }
+
+
+
+// Returns +/-1
+float2 SignNotZero(float2 v)
+{
+    return float2((v.x >= 0.0) ? +1.0 : -1.0, (v.y >= 0.0) ? +1.0 : -1.0);
+}
+
+float3 DecodeOct(float2 e)
+{
+    float3 v = float3(e.xy, 1.0f - abs((e.x) - abs(e.y)));
+    if (v.z < 0)
+    {
+        v.xy = (1.0f - abs(v.yx)) * SignNotZero(v.xy);
+    }
+	
+    return normalize(v);
+
+}
 #endif // __PHX_GLOBALS_HLSLI__

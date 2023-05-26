@@ -28,6 +28,14 @@ namespace Shader::New
 
 	static const uint DRAW_FLAGS_TRANSPARENT = 1 << 0;
 
+
+	static const uint DDGI_MAX_RAY_COUNT = 512;
+	static const uint DDGI_COLOUR_RESOLUTION = 8;
+	static const uint DDGI_COLOUR_TEXELS = 1 + DDGI_COLOUR_RESOLUTION + 1; // with norder;
+	static const uint DDGI_DEPTH_RESOLUTION = 16;
+	static const uint DDGI_DEPTH_TEXELS = 1 + DDGI_DEPTH_RESOLUTION + 1;
+	static const float DDGI_KEEP_DISTANCE = 0.1f;
+
 	struct IndirectDrawArgsIndexedInstanced
 	{
 		uint IndexCount;
@@ -251,15 +259,15 @@ namespace Shader::New
 
 			// -- 16 byte boundary ----
 			float3 GridStartPosition;
-			uint _padding;
+			uint RTRadianceTexId;
 
 			// -- 16 byte boundary ----
 			float3 GridExtents;
-			uint __padding;
+			uint RTDirectionDepthTexId;
 
 			// -- 16 byte boundary ----
 			float3 GridExtentsRcp;
-			uint ___padding;
+			uint IrradianceTextureId;
 
 			// -- 16 byte boundary ----
 
@@ -268,6 +276,7 @@ namespace Shader::New
 
 			// -- 16 byte boundary ----
 			float3 CellSizeRcp;
+			uint DepthTextureId;
 
 			// -- 16 byte boundary ----
 
@@ -299,6 +308,10 @@ namespace Shader::New
 		// -- 16 byte boundary ----
 		uint2 ShadowAtlasRes;
 		float2 ShadowAtlasResRCP;
+
+		// -- 16 byte boundary ----
+		uint2 Resolution;
+		uint2 _Padding;
 
 		// -- 16 byte boundary ----
 		Scene SceneData;
@@ -583,6 +596,10 @@ namespace Shader::New
 	{
 		float3x3 RandRotation;
 		uint NumRays;
+		uint FirstFrame;
+		float BlendSpeed;
+		uint HalfResolution;
+		uint GiBoost;
 	};
 #ifdef __cplusplus
 }
