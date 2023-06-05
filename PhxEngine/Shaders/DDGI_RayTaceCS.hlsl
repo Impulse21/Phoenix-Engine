@@ -40,7 +40,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
 {
     const uint probeIndex = Gid.x;
     const uint3 probeCoord = DDGI_GetProbeCoord(probeIndex);
-    const uint3 probePos = DDGI_ProbeCoordToPosition(probeCoord);
+    const float3 probePos = DDGI_ProbeCoordToPosition(probeCoord);
     
     const uint rayCount = push.NumRays;
     const float3x3 randomRotation = (float3x3) push.RandRotation;

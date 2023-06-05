@@ -170,7 +170,7 @@ void main(uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID, uint groupIndex
 {
     const uint probeIndex = Gid.x;
     const uint3 probeCoord = DDGI_GetProbeCoord(probeIndex);
-    const uint3 probePos = DDGI_ProbeCoordToPosition(probeCoord);
+    const float3 probePos = DDGI_ProbeCoordToPosition(probeCoord);
     const float maxDistance = GetScene().DDGI.MaxDistance;
     
     // TODO: Handle probe offsets for depth updates
