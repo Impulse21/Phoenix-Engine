@@ -269,8 +269,11 @@ public:
             this->m_shaderFactory,
             this->GetRoot()->GetFrameProfiler());
 
+#if 0
+        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza/Sponza_withlights.gltf";
+#else
         std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/TestScenes/GITestRoom.gltf";
-
+#endif
 #ifdef ASYNC_LOADING
         this->m_loadAsync = true; // race condition when loading textures
 #else
@@ -309,6 +312,8 @@ public:
             commandList,
             this->m_scene);
         commandList->Close();
+
+        assert(retVal);
         this->GetGfxDevice()->ExecuteCommandLists({ commandList }, true);
 
         auto viewLights = this->m_scene.GetAllEntitiesWith<Scene::LightComponent>();

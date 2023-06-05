@@ -44,6 +44,7 @@ namespace PhxEngine::Renderer
 			DeferredLightingPass,
 			ClusterLightsDebugPass,
 			ToneMappingPass,
+			DDGI_DebugPass,
 			Count
 		};
 	}
@@ -85,12 +86,14 @@ namespace PhxEngine::Renderer
 			VS_ClusterLightsDebugPass,
 			VS_ShadowPass,
 			VS_Rect,
+			VS_DDGI_Debug,
 
 			PS_GBufferFill,
 			PS_DeferredLightingPass,
 			PS_ClusterLightsDebugPass,
 			PS_Blit,
 			PS_ToneMapping,
+			PS_DDGI_Debug,
 
 			CS_CullPass,
 			CS_DepthPyramidGen,
@@ -119,6 +122,7 @@ namespace PhxEngine::Renderer
 		{
 			GBufferFillPass,
 			DeferredLightingPass,
+			DebugPass,
 			Count
 		};
 	}
@@ -171,6 +175,7 @@ namespace PhxEngine::Renderer
 			struct GI
 			{
 				bool EnableDDGI = false;
+				bool DebugDrawProbes = false;
 			} GISettings;
 		};
 

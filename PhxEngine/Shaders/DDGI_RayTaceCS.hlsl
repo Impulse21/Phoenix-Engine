@@ -10,7 +10,7 @@
 
 #define RS_DDGI_RT \
 	"RootFlags(CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED), " \
-	"RootConstants(num32BitConstants=16, b999), " \
+	"RootConstants(num32BitConstants=20, b999), " \
 	"CBV(b0), " \
 	"CBV(b1), " \
     "DescriptorTable( UAV(u0, numDescriptors = 2) )," \
@@ -42,7 +42,9 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
     const uint3 probeCoord = DDGI_GetProbeCoord(probeIndex);
     const uint3 probePos = DDGI_ProbeCoordToPosition(probeCoord);
     
-    for (uint rayIndex = groupIndex; rayIndex < push.NumRays; rayIndex += THREADS_PER_WAVE)
+    const uint rayCount = push.NumRays;
+    const float3x3 randomRotation = (float3x3) push.RandRotation;
+    for (uint rayIndex = groupIndex; rayIndex < rayCount; rayIndex += THREADS_PER_WAVE)
     {
         float3 radiance = 0;
         float depth = 0;
@@ -52,9 +54,10 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         ray.TMax = FLT_MAX;
         
         // Select a random location along the spherical Fibonacci and a random orientation matrix.
-        ray.Direction = normalize(mul(push.RandRotation, SphericalFibonacci(rayIndex, push.NumRays)));
+        ray.Direction = normalize(mul(randomRotation, SphericalFibonacci(rayIndex, push.NumRays)));
 
-        RayQuery<RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_FORCE_OPAQUE> rayQuery;
+        ray.Direction = normalize(float3(((rayIndex % 2) ? 1.0 : -1.0f), 0.0f, 0.0f));
+        RayQuery < RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_FORCE_OPAQUE > rayQuery;
         
         rayQuery.TraceRayInline(
 			ResourceHeap_GetRTAccelStructure(GetScene().RT_TlasIndex),
@@ -91,7 +94,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                 const uint primitiveIndex = rayQuery.CommittedPrimitiveIndex();
                 const uint startIndex = primitiveIndex * 3 + geometryData.IndexOffset;
             
-                Buffer<uint> indexBuffer = ResourceDescriptorHeap[GetScene().GlobalIndexBufferIdx];
+                StructuredBuffer<uint> indexBuffer = ResourceDescriptorHeap[GetScene().GlobalIndexBufferIdx];
                 uint i0 = indexBuffer[startIndex + 0];
                 uint i1 = indexBuffer[startIndex + 1];
                 uint i2 = indexBuffer[startIndex + 2];
@@ -121,8 +124,8 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                 surface.Emissive = UnpackRGBA(material.EmissiveColourPacked).rgb * UnpackRGBA(objectInstance.Emissive).rgb;
             
                 // Since we are not storing much info, just use the surface normal for now and see how things look
-                float2 normal = BarycentricInterpolation(v0.Normal, v1.Normal, v2.Normal, barycentricWeights);
-                float3 normalWS = mul(normal, (float3x3) objectInstance.WorldMatrix).xyz;;
+                float3 normal = BarycentricInterpolation(v0.Normal, v1.Normal, v2.Normal, barycentricWeights);
+                float3 normalWS = mul(normal, (float3x3) objectInstance.WorldMatrix).xyz;
             
                 /*
                 float3 positionWS = BarycentricInterpolation(v0.Position, v1.Position, v2.Position, barycentricWeights);
@@ -133,13 +136,12 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                 // const float3 L = -ray.Direction;
             
                 float3 hitResult = 0.0f;
-            
-                [loop]
+                 [loop]
                 for (int iLight = 0; iLight < GetScene().LightCount; iLight++)
                 {
                 
                     Light light = LoadLight(iLight);
-                    float L = 0.0f;
+                    float3 L = 0.0f;
                     float dist = 0.0f;
                     float NdotL = 0.0f;
                 
@@ -157,7 +159,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                             [branch]
                                 if (NdotL > 0)
                                 {
-                                    lighting.Direct.Diffuse = light.GetColour();
+                                    lighting.Direct.Diffuse = light.GetColour().rgb;
                                 }
                             }
                             break;
@@ -179,7 +181,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                                 [branch]
                                     if (NdotL > 0)
                                     {
-                                        lighting.Direct.Diffuse = light.GetColour() * AttenuationOmni(dist2, range2);
+                                        lighting.Direct.Diffuse = (light.GetColour() * AttenuationOmni(dist2, range2)).rgb;
                                     }
                                 }
                             }
@@ -211,7 +213,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                                         {
                                             const float3 lightColor = light.GetColour().rgb;
 
-                                            lighting.Direct.Diffuse = light.GetColour() * AttenuationSpot(dist2, range2, spotFactor, light.GetAngleScale(), light.GetAngleOffset());
+                                            lighting.Direct.Diffuse = (light.GetColour() * AttenuationSpot(dist2, range2, spotFactor, light.GetAngleScale(), light.GetAngleOffset())).rgb;
                                         }
                                     }
                                 }
@@ -256,7 +258,6 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                 
                 radiance = hitResult;
             }
-            
             
             RadianceOutput[float2(rayIndex, probeIndex)] = float4(radiance.rgb, depth);
             DistanceDirectionOutput[float2(rayIndex, probeIndex)] = float4(ray.Direction.xyz, depth);

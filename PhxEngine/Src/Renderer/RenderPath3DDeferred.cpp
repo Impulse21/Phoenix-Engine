@@ -64,6 +64,8 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Initialize(DirectX::XMFLOAT2 con
 	//this->m_ddgi->Initialize();
 	this->m_clusterLighting.Initialize(this->m_gfxDevice, canvasSize);
 	this->m_shadowAtlas.Initialize(this->m_gfxDevice);
+
+	// Construct Debug Mesh
 	loadFuture.wait(); 
 	this->CreateCommandSignatures(taskflow);
 
@@ -142,7 +144,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 				0.0f);
 
 			axis = DirectX::XMVector3Normalize(axis);
-			DirectX::XMStoreFloat3x3(&push.RandRotation, DirectX::XMMatrixRotationAxis(axis, angle));
+			DirectX::XMStoreFloat4x4(&push.RandRotation, DirectX::XMMatrixRotationAxis(axis, angle));
 			commandList->BindPushConstant(0, push);
 
 			commandList->BindConstantBuffer(1, this->m_frameCB);
@@ -154,7 +156,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			// Result, barrier for resulting data?
 		}
 
-
+/*
 		{
 			RHI::GpuBarrier barriers[] =
 			{
@@ -166,6 +168,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			};
 			commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
 		}
+		*/
 	}
 
 	{
@@ -686,6 +689,26 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 		}
 	}
 
+	// Debug Draw
+	if (this->m_settings.GISettings.EnableDDGI && this->m_settings.GISettings.DebugDrawProbes)
+	{
+		auto _ = commandList->BeginScopedMarker("DDGI Debug Draw");
+
+		commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::DebugPass]);
+
+
+		commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::DDGI_DebugPass]);
+		commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());
+		commandList->SetViewports(&v, 1);
+		commandList->SetScissors(&rec, 1);
+		commandList->BindConstantBuffer(1, this->m_frameCB);
+		commandList->BindDynamicConstantBuffer(2, cameraData);
+
+		commandList->Draw(2880, scene.GetDDGI().GetProbeCount());
+
+		commandList->EndRenderPass();
+	}
+
 	{
 		auto __ = commandList->BeginScopedMarker("Post Process");
 		{
@@ -798,6 +821,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::BuildUI()
 	if (ImGui::CollapsingHeader("Indirect Lighting Options"))
 	{
 		ImGui::Checkbox("Enable GI", &this->m_settings.GISettings.EnableDDGI);
+		ImGui::Checkbox("Draw Probes", &this->m_settings.GISettings.DebugDrawProbes);
 	}
 }
 
@@ -865,6 +889,21 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadShaders(tf::Taskflow& ta
 		subflow.emplace([&]() {
 			this->m_shaders[EShaders::CS_DDGI_RayTrace] = this->m_shaderFactory->CreateShader("PhxEngine/DDGI_RayTaceCS.hlsl", { .Stage = RHI::ShaderStage::Compute, .DebugName = "DDGI_RayTaceCS", });
 			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::CS_DDGI_UpdateIrradiance] = this->m_shaderFactory->CreateShader("PhxEngine/DDGI_UpdateIrradianceAtlasCS.hlsl", { .Stage = RHI::ShaderStage::Compute, .DebugName = "DDGI_UpdateIrradianceAtlasCS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::CS_DDGI_UpdateVisibility] = this->m_shaderFactory->CreateShader("PhxEngine/DDGI_UpdateVisibilityAtlasCS.hlsl", { .Stage = RHI::ShaderStage::Compute, .DebugName = "DDGI_UpdateVisibilityAtlasCS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::CS_DDGI_SampleIrradiance] = this->m_shaderFactory->CreateShader("PhxEngine/DDGI_SampleIrradianceCS.hlsl", { .Stage = RHI::ShaderStage::Compute, .DebugName = "DDGI_SampleIrradianceCSs", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::VS_DDGI_Debug] = this->m_shaderFactory->CreateShader("PhxEngine/DDGI_DebugVS.hlsl", { .Stage = RHI::ShaderStage::Vertex, .DebugName = "DDGI_DebugVS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::PS_DDGI_Debug] = this->m_shaderFactory->CreateShader("PhxEngine/DDGI_DebugPS.hlsl", { .Stage = RHI::ShaderStage::Pixel, .DebugName = "DDGI_DebugPS", });
+			});
 		});
 	return shaderLoadTask;
 }
@@ -905,11 +944,6 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadPipelineStates(tf::Taskf
 		subflow.emplace([&]() {
 			this->m_computeStates[EComputePipelineStates::CullPass] = this->m_gfxDevice->CreateComputePipeline({
 					.ComputeShader = this->m_shaders[EShaders::CS_CullPass],
-				});
-			});
-		subflow.emplace([&]() {
-			this->m_computeStates[EComputePipelineStates::DDGI_Raytrace] = this->m_gfxDevice->CreateComputePipeline({
-					.ComputeShader = this->m_shaders[EShaders::CS_DDGI_RayTrace],
 				});
 			});
 		subflow.emplace([&]() {
@@ -964,6 +998,34 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadPipelineStates(tf::Taskf
 		subflow.emplace([&]() {
 			this->m_computeStates[EComputePipelineStates::FillLightDrawBuffers] = this->m_gfxDevice->CreateComputePipeline({
 					.ComputeShader = this->m_shaders[EShaders::CS_FillLightDrawBuffers],
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_computeStates[EComputePipelineStates::DDGI_Raytrace] = this->m_gfxDevice->CreateComputePipeline({
+					.ComputeShader = this->m_shaders[EShaders::CS_DDGI_RayTrace],
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_computeStates[EComputePipelineStates::DDGI_UpdateIrradiance] = this->m_gfxDevice->CreateComputePipeline({
+					.ComputeShader = this->m_shaders[EShaders::CS_DDGI_UpdateIrradiance],
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_computeStates[EComputePipelineStates::DDGI_UpdateVisibility] = this->m_gfxDevice->CreateComputePipeline({
+					.ComputeShader = this->m_shaders[EShaders::CS_DDGI_UpdateVisibility],
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_computeStates[EComputePipelineStates::DDGI_SampleIrradiance] = this->m_gfxDevice->CreateComputePipeline({
+					.ComputeShader = this->m_shaders[EShaders::CS_DDGI_SampleIrradiance],
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_gfxStates[EGfxPipelineStates::DDGI_DebugPass] = this->m_gfxDevice->CreateGraphicsPipeline({
+					.VertexShader = this->m_shaders[EShaders::VS_DDGI_Debug],
+					.PixelShader = this->m_shaders[EShaders::PS_DDGI_Debug],
+					.RtvFormats = { IGraphicsDevice::GPtr->GetTextureDesc(this->m_colourBuffer).Format },
+					.DsvFormat = this->m_gbuffer.DepthFormat
 				});
 			});
 		});
@@ -1083,6 +1145,33 @@ void PhxEngine::Renderer::RenderPath3DDeferred::CreateRenderPasses()
 					.Texture = this->m_colourBuffer,
 					.InitialLayout = RHI::ResourceStates::ShaderResource,
 					.SubpassLayout = RHI::ResourceStates::RenderTarget,
+					.FinalLayout = RHI::ResourceStates::ShaderResource
+				},
+			}
+		});
+
+	if (this->m_renderPasses[ERenderPasses::DebugPass].IsValid())
+	{
+		this->m_gfxDevice->DeleteRenderPass(this->m_renderPasses[ERenderPasses::DebugPass]);
+	}
+
+	this->m_renderPasses[ERenderPasses::DebugPass] = this->m_gfxDevice->CreateRenderPass(
+		{
+			.Attachments =
+			{
+				{
+					.LoadOp = RenderPassAttachment::LoadOpType::Load,
+					.Texture = this->m_colourBuffer,
+					.InitialLayout = RHI::ResourceStates::ShaderResource,
+					.SubpassLayout = RHI::ResourceStates::RenderTarget,
+					.FinalLayout = RHI::ResourceStates::ShaderResource
+				},
+				{
+					.Type = RenderPassAttachment::Type::DepthStencil,
+					.LoadOp = RenderPassAttachment::LoadOpType::Load,
+					.Texture = this->m_gbuffer.DepthTex,
+					.InitialLayout = RHI::ResourceStates::ShaderResource,
+					.SubpassLayout = RHI::ResourceStates::DepthWrite,
 					.FinalLayout = RHI::ResourceStates::ShaderResource
 				},
 			}

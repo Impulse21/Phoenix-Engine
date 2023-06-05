@@ -279,6 +279,7 @@ namespace Shader::New
 			uint DepthTextureId;
 
 			// -- 16 byte boundary ----
+			uint FrameIndex;
 
 		} DDGI;
 	};
@@ -594,12 +595,11 @@ namespace Shader::New
 
 	struct DDGIPushConstants
 	{
-		float3x3 RandRotation;
 		uint NumRays;
 		uint FirstFrame;
 		float BlendSpeed;
-		uint HalfResolution;
 		uint GiBoost;
+		float4x4 RandRotation;
 	};
 #ifdef __cplusplus
 }

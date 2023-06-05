@@ -151,14 +151,15 @@ void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> c
 		this->m_ddgi.GridMax.y += 1;
 		this->m_ddgi.GridMax.z += 1;
 
+		this->m_shaderData.DDGI.FrameIndex = this->m_ddgi.FrameIndex++;
 		this->m_shaderData.DDGI.GridDimensions = this->m_ddgi.GridDimensions;
-
 		this->m_shaderData.DDGI.GridExtents.x = abs(this->m_ddgi.GridMax.x - this->m_ddgi.GridMin.x);
 		this->m_shaderData.DDGI.GridExtents.y = abs(this->m_ddgi.GridMax.y - this->m_ddgi.GridMin.y);
 		this->m_shaderData.DDGI.GridExtents.z = abs(this->m_ddgi.GridMax.z - this->m_ddgi.GridMin.z);
 		this->m_shaderData.DDGI.GridExtentsRcp.x = 1.0f / this->m_shaderData.DDGI.GridExtents.x;
 		this->m_shaderData.DDGI.GridExtentsRcp.y = 1.0f / this->m_shaderData.DDGI.GridExtents.y;
 		this->m_shaderData.DDGI.GridExtentsRcp.z = 1.0f / this->m_shaderData.DDGI.GridExtents.z;
+		this->m_shaderData.DDGI.ProbCount = this->m_ddgi.GridDimensions.x + this->m_ddgi.GridDimensions.y + this->m_ddgi.GridDimensions.z;
 
 		this->m_shaderData.DDGI.CellSize.x = this->m_shaderData.DDGI.GridExtents.x / (this->m_ddgi.GridDimensions.x - 1);
 		this->m_shaderData.DDGI.CellSize.y = this->m_shaderData.DDGI.GridExtents.y / (this->m_ddgi.GridDimensions.y - 1);
@@ -171,7 +172,7 @@ void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> c
 		this->m_shaderData.DDGI.MaxDistance =
 			std::max(
 				this->m_shaderData.DDGI.CellSize.x,
-				std::max(this->m_shaderData.DDGI.CellSize.y, this->m_shaderData.DDGI.CellSize.z));
+				std::max(this->m_shaderData.DDGI.CellSize.y, this->m_shaderData.DDGI.CellSize.z)) * 1.5f;
 		this->m_shaderData.DDGI.RTRadianceTexId = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_ddgi.RTRadianceOutput, SubresouceType::SRV);
 		this->m_shaderData.DDGI.RTDirectionDepthTexId = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_ddgi.RTDirectionDepthOutput, SubresouceType::SRV);
 	}
@@ -1488,11 +1489,13 @@ void PhxEngine::Scene::Scene::BuildMeshData(RHI::ICommandList* commandList, RHI:
 	}
 
 	this->m_globalIndexBuffer = gfxDevice->CreateIndexBuffer({
+			.MiscFlags = RHI::BufferMiscFlags::Structured | RHI::BufferMiscFlags::Bindless,
+			.Binding = RHI::BindingFlags::IndexBuffer | RHI::BindingFlags::ShaderResource,
 			.StrideInBytes = sizeof(uint32_t),
 			.SizeInBytes = totalIndexCount * sizeof(uint32_t),
 			.DebugName = "Scene Index Buffer" });
 
-	this->m_globalVertexBuffer = gfxDevice->CreateIndexBuffer({
+	this->m_globalVertexBuffer = gfxDevice->CreateVertexBuffer({
 			.MiscFlags = RHI::BufferMiscFlags::Raw | RHI::BufferMiscFlags::Bindless,
 			.Binding = RHI::BindingFlags::VertexBuffer | RHI::BindingFlags::ShaderResource,
 			.StrideInBytes = sizeof(float),

@@ -142,7 +142,7 @@ inline uint3 DDGI_GetProbeCoord(uint probeIndex)
     return uint3(x, y, z);
 }
 
-inline uint3 DDGI_ProbeCoordToPosition(uint3 probeCoord)
+inline float3 DDGI_ProbeCoordToPosition(uint3 probeCoord)
 {
     float3 pos = GetScene().DDGI.GridStartPosition + probeCoord * GetScene().DDGI.CellSize;
     // Add offset adjustment

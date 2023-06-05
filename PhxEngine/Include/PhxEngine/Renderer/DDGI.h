@@ -24,6 +24,7 @@ namespace PhxEngine::Renderer
 {
 	struct DDGI
 	{
+		uint32_t FrameIndex = 0;
 		DirectX::XMUINT3 GridDimensions = { 32, 8, 32 };
 		DirectX::XMFLOAT3 GridMin = { -1, -1, -1 };
 		DirectX::XMFLOAT3 GridMax = { 1, 1, 1 };
@@ -37,7 +38,7 @@ namespace PhxEngine::Renderer
 		RHI::TextureHandle ProbeVisibility;
 		RHI::TextureHandle ProbeOffsets;
 
-		uint32_t GetProbeCount() const { return this->GridDimensions.x + this->GridDimensions.y + this->GridDimensions.z; }
+		uint32_t GetProbeCount() const { return this->GridDimensions.x * this->GridDimensions.y * this->GridDimensions.z; }
 		void UpdateResources(RHI::IGraphicsDevice* gfxDevice);
 
 		void BuildUI();
