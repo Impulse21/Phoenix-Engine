@@ -255,7 +255,7 @@ namespace Shader::New
 		struct DDGI
 		{
 			uint3 GridDimensions;
-			uint ProbCount;
+			uint ProbeCount;
 
 			// -- 16 byte boundary ----
 			float3 GridStartPosition;

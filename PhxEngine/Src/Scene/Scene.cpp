@@ -159,7 +159,7 @@ void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> c
 		this->m_shaderData.DDGI.GridExtentsRcp.x = 1.0f / this->m_shaderData.DDGI.GridExtents.x;
 		this->m_shaderData.DDGI.GridExtentsRcp.y = 1.0f / this->m_shaderData.DDGI.GridExtents.y;
 		this->m_shaderData.DDGI.GridExtentsRcp.z = 1.0f / this->m_shaderData.DDGI.GridExtents.z;
-		this->m_shaderData.DDGI.ProbCount = this->m_ddgi.GridDimensions.x + this->m_ddgi.GridDimensions.y + this->m_ddgi.GridDimensions.z;
+		this->m_shaderData.DDGI.ProbeCount = this->m_ddgi.GetProbeCount();
 
 		this->m_shaderData.DDGI.CellSize.x = this->m_shaderData.DDGI.GridExtents.x / (this->m_ddgi.GridDimensions.x - 1);
 		this->m_shaderData.DDGI.CellSize.y = this->m_shaderData.DDGI.GridExtents.y / (this->m_ddgi.GridDimensions.y - 1);

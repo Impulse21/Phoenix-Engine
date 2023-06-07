@@ -151,7 +151,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			commandList->BindDynamicConstantBuffer(2, cameraData);
 			commandList->BindDynamicUavDescriptorTable(3, { scene.GetDDGI().RTRadianceOutput, scene.GetDDGI().RTDirectionDepthOutput });
 
-			commandList->Dispatch(scene.GetShaderData().DDGI.ProbCount, 1, 1);
+			commandList->Dispatch(scene.GetDDGI().GetProbeCount(), 1, 1);
 
 			// Result, barrier for resulting data?
 		}

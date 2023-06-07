@@ -56,7 +56,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         // Select a random location along the spherical Fibonacci and a random orientation matrix.
         ray.Direction = normalize(mul(randomRotation, SphericalFibonacci(rayIndex, push.NumRays)));
 
-        ray.Direction = normalize(float3(((rayIndex % 2) ? 1.0 : -1.0f), 0.0f, 0.0f));
+        ray.Direction = normalize(float3(0.0f, 0.0f, ((rayIndex % 2) ? 1.0 : -1.0f)));
         RayQuery < RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_FORCE_OPAQUE > rayQuery;
         
         rayQuery.TraceRayInline(
@@ -114,7 +114,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                 Material material = LoadMaterial(geometryData.MaterialIndex);
                 Surface surface = DefaultSurface();
                 surface.Albedo = 1.0f;
-                surface.Albedo *= material.AlbedoColour * objectInstance.Colour;
+                surface.Albedo *= material.AlbedoColour * UnpackRGBA(objectInstance.Colour).rgb;
                 if (material.AlbedoTexture != InvalidDescriptorIndex)
                 {
                 // Sample a LOD version for better performance
@@ -259,11 +259,10 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                 radiance = hitResult;
             }
             
-            RadianceOutput[float2(rayIndex, probeIndex)] = float4(radiance.rgb, depth);
-            DistanceDirectionOutput[float2(rayIndex, probeIndex)] = float4(ray.Direction.xyz, depth);
-
         }
-
+        
+        RadianceOutput[float2(rayIndex, probeIndex)] = float4(radiance.rgb, depth);
+        DistanceDirectionOutput[float2(rayIndex, probeIndex)] = float4(ray.Direction.xyz, depth);
     }
 
 }
