@@ -15,17 +15,20 @@
 
 #define RS_DDGI_UPDATE \
 	"RootFlags(CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED), " \
-	"RootConstants(num32BitConstants=16, b999), " \
+	"RootConstants(num32BitConstants=20, b999), " \
 	"CBV(b0), " \
 	"CBV(b1), " \
-    "DescriptorTable( UAV(u0, numDescriptors = 2) )," \
+    "DescriptorTable( UAV(u0, numDescriptors = 1) )," \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s52, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, comparisonFunc = COMPARISON_LESS_EQUAL),"
 
 PUSH_CONSTANT(push, DDGIPushConstants);
+#ifdef DDGI_UPDATE_DEPTH
+RWTexture2D<float2> OutputVisibilityAtlas : register(u0);
+#else
 RWTexture2D<float4> OutputIrradianceAtlas : register(u0);
-RWTexture2D<float2> OutputVisibilityAtlas : register(u1);
+#endif
 
 inline uint2 ProbeColourPixel(uint3 probeCoord)
 {
@@ -195,10 +198,12 @@ void main(uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID, uint groupIndex
         
         if (groupIndex < numRays)
         {
-            // RayCacheDirectionDepth[groupIndex] = ResourceHeap_GetTexture2D(GetScene().DDGI.RTDirectionDepthTexId)[probeIndex * DDGI_MAX_RAY_COUNT + groupIndex + offset];
+            float2 pixelCoord = float2(groupIndex + offset, probeIndex);
+            RayCacheDirectionDepth[groupIndex] = ResourceHeap_GetTexture2D(GetScene().DDGI.RTDirectionDepthTexId)[pixelCoord];
             
 #if !defined(DDGI_UPDATE_DEPTH)
-            // RayCacheRadiance[groupIndex] = ResourceHeap_GetTexture2D(GetScene().DDGI.RTRadianceTexId)[probeIndex * DDGI_MAX_RAY_COUNT + groupIndex + offset].rgb;
+            pixelCoord = float2(groupIndex + offset, probeIndex);
+            RayCacheRadiance[groupIndex] = ResourceHeap_GetTexture2D(GetScene().DDGI.RTRadianceTexId)[pixelCoord].rgb;
 #endif
         }
         
@@ -272,6 +277,7 @@ void main(uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID, uint groupIndex
         uint2 srcCoord = copyCoord + DDGI_DEPTH_BORDER_OFFSETS[index].xy;
         uint2 dstCoord = copyCoord + DDGI_DEPTH_BORDER_OFFSETS[index].zw;
         OutputVisibilityAtlas[dstCoord] = OutputVisibilityAtlas[srcCoord];
+        OutputVisibilityAtlas[dstCoord] = float4(1.0f, 0.0f, 0.0f, 1.0f);
     }
 
     // TODO: Probe Offset
@@ -286,6 +292,7 @@ void main(uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID, uint groupIndex
 		uint2 srcCoord = copyCoord + DDGI_COLOR_BORDER_OFFSETS[index].xy;
 		uint2 dstCoord = copyCoord + DDGI_COLOR_BORDER_OFFSETS[index].zw;
         OutputIrradianceAtlas[dstCoord] = OutputIrradianceAtlas[srcCoord];
+        OutputIrradianceAtlas[dstCoord] = float4(1.0f, 0.0f, 0.0f, 1.0f);
     }
 #endif
     

@@ -133,6 +133,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 			Shader::New::DDGIPushConstants push = {};
 			push.NumRays = scene.GetDDGI().RayCount;
+			push.FirstFrame = scene.GetDDGI().FrameIndex;
 
 			// Get a Random angle
 			float angle = Random::GetRandom(0.0f, 1.0f) * DirectX::XM_2PI;
@@ -169,6 +170,46 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
 		}
 		*/
+		{
+			auto _ = commandList->BeginScopedMarker("DDGI - Update Irradiance Atlas (Step 2)");
+			commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DDGI_UpdateIrradiance]);
+
+			Shader::New::DDGIPushConstants push = {};
+			push.NumRays = scene.GetDDGI().RayCount;
+			push.FirstFrame = scene.GetDDGI().FrameIndex;
+			push.BlendSpeed = 0.02f;
+
+			// TODO: Clean up Push constant struct
+			commandList->BindPushConstant(0, push);
+
+			commandList->BindConstantBuffer(1, this->m_frameCB);
+			commandList->BindDynamicConstantBuffer(2, cameraData);
+			commandList->BindDynamicUavDescriptorTable(3, { scene.GetDDGI().ProbeIrradiance});
+
+			commandList->Dispatch(scene.GetDDGI().GetProbeCount(), 1, 1);
+
+			// Result, barrier for resulting data?
+
+		}
+		{
+			auto _ = commandList->BeginScopedMarker("DDGI - Update Visibility Atlas (Step 2)");
+			commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DDGI_UpdateVisibility]);
+
+			Shader::New::DDGIPushConstants push = {};
+			push.NumRays = scene.GetDDGI().RayCount;
+
+			// TODO: Clean up Push constant struct
+			commandList->BindPushConstant(0, push);
+
+			commandList->BindConstantBuffer(1, this->m_frameCB);
+			commandList->BindDynamicConstantBuffer(2, cameraData);
+			commandList->BindDynamicUavDescriptorTable(3, { scene.GetDDGI().ProbeVisibility });
+
+			commandList->Dispatch(scene.GetDDGI().GetProbeCount(), 1, 1);
+
+			// Result, barrier for resulting data?
+
+		}
 	}
 
 	{

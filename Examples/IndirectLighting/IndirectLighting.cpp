@@ -403,14 +403,12 @@ public:
             if (ImGui::CollapsingHeader("Renderer"))
             {
                 this->m_app->GetRenderer()->BuildUI();
-				if (this->m_app->GetRenderer()->GetSettings().GISettings.EnableDDGI)
-				{
-					if (ImGui::TreeNode("DDGI"))
-					{
-                        this->m_app->GetScene().GetDDGI().BuildUI();
-						ImGui::TreePop();
-					}
-				}
+
+                if (ImGui::TreeNode("DDGI"))
+                {
+                    this->m_app->GetScene().GetDDGI().BuildUI();
+                    ImGui::TreePop();
+                }
             }
 
             ImGui::End();

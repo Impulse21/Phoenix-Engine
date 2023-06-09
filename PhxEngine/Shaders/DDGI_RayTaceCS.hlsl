@@ -55,8 +55,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         
         // Select a random location along the spherical Fibonacci and a random orientation matrix.
         ray.Direction = normalize(mul(randomRotation, SphericalFibonacci(rayIndex, push.NumRays)));
-
-        ray.Direction = normalize(float3(0.0f, 0.0f, ((rayIndex % 2) ? 1.0 : -1.0f)));
+        
         RayQuery < RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_FORCE_OPAQUE > rayQuery;
         
         rayQuery.TraceRayInline(
