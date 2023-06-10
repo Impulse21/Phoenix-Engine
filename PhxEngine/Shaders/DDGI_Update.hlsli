@@ -255,14 +255,14 @@ void main(uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID, uint groupIndex
     // Obtain previous frames results  
 #if defined(DDGI_UPDATE_DEPTH)
     // TODO: Determine what textures these are
-    const float2 prevResult = ResourceHeap_GetTexture2D(GetScene().DDGI.DepthTextureId)[pixelCurrent].xy;
+    const float2 prevResult = ResourceHeap_GetTexture2D(GetScene().DDGI.VisibilityAtlasTextureIdPrev)[pixelCurrent].xy;
 #else
-    const float3 prevResult = ResourceHeap_GetTexture2D(GetScene().DDGI.IrradianceTextureId)[pixelCurrent].xyz;
+    const float3 prevResult = ResourceHeap_GetTexture2D(GetScene().DDGI.IrradianceAtlasTextureIdPrev)[pixelCurrent].xyz;
 #endif
     
     if (push.FirstFrame > 0)
     {
-        result = lerp(prevResult, result, push.BlendSpeed);
+        result = lerp(prevResult, result, push.Hysteresis);
     }
     
     // Obtain previous frames results  

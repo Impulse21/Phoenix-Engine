@@ -127,6 +127,7 @@ void PhxEngine::Scene::Scene::UpdateBounds()
 
 void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses, bool ddgiEnabled)
 {
+	this->m_pingPing = !this->m_pingPing;
 	// Update Light Data
 	this->RunMeshInstanceUpdateSystem();
 	this->RunLightUpdateSystem();
@@ -175,6 +176,14 @@ void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> c
 				std::max(this->m_shaderData.DDGI.CellSize.y, this->m_shaderData.DDGI.CellSize.z)) * 1.5f;
 		this->m_shaderData.DDGI.RTRadianceTexId = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_ddgi.RTRadianceOutput, SubresouceType::SRV);
 		this->m_shaderData.DDGI.RTDirectionDepthTexId = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_ddgi.RTDirectionDepthOutput, SubresouceType::SRV);
+
+		const uint32_t readIdx = static_cast<uint32_t>(!this->m_pingPing);
+		const uint32_t writeIdx = static_cast<uint32_t>(this->m_pingPing);
+		this->m_shaderData.DDGI.IrradianceAtlasTextureId = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_ddgi.ProbeIrradianceAtlas[writeIdx], SubresouceType::SRV);
+		this->m_shaderData.DDGI.IrradianceAtlasTextureIdPrev = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_ddgi.ProbeIrradianceAtlas[readIdx], SubresouceType::SRV);
+		this->m_shaderData.DDGI.VisibilityTextureAtlasId = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_ddgi.ProbeVisibilityAtlas[writeIdx], SubresouceType::SRV);
+		this->m_shaderData.DDGI.VisibilityAtlasTextureIdPrev = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_ddgi.ProbeVisibilityAtlas[readIdx], SubresouceType::SRV);
+
 	}
 
 	this->m_shaderData.RT_TlasIndex = IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_tlas);

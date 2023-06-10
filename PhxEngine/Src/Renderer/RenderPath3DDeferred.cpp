@@ -146,6 +146,9 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 			axis = DirectX::XMVector3Normalize(axis);
 			DirectX::XMStoreFloat4x4(&push.RandRotation, DirectX::XMMatrixRotationAxis(axis, angle));
+#ifdef DISABLE_RANDOM_DIR
+			DirectX::XMStoreFloat4x4(&push.RandRotation, DirectX::XMMatrixIdentity());
+#endif
 			commandList->BindPushConstant(0, push);
 
 			commandList->BindConstantBuffer(1, this->m_frameCB);
@@ -177,14 +180,14 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			Shader::New::DDGIPushConstants push = {};
 			push.NumRays = scene.GetDDGI().RayCount;
 			push.FirstFrame = scene.GetDDGI().FrameIndex;
-			push.BlendSpeed = 0.02f;
+			push.Hysteresis = 0.02f;
 
 			// TODO: Clean up Push constant struct
 			commandList->BindPushConstant(0, push);
 
 			commandList->BindConstantBuffer(1, this->m_frameCB);
 			commandList->BindDynamicConstantBuffer(2, cameraData);
-			commandList->BindDynamicUavDescriptorTable(3, { scene.GetDDGI().ProbeIrradiance});
+			commandList->BindDynamicUavDescriptorTable(3, { scene.GetDDGI_IrradianceAtlasTexture()});
 
 			commandList->Dispatch(scene.GetDDGI().GetProbeCount(), 1, 1);
 
@@ -203,11 +206,29 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 			commandList->BindConstantBuffer(1, this->m_frameCB);
 			commandList->BindDynamicConstantBuffer(2, cameraData);
-			commandList->BindDynamicUavDescriptorTable(3, { scene.GetDDGI().ProbeVisibility });
+			commandList->BindDynamicUavDescriptorTable(3, { scene.GetDDGI_VisibilityAtlasTexture() });
 
 			commandList->Dispatch(scene.GetDDGI().GetProbeCount(), 1, 1);
 
-			// Result, barrier for resulting data?
+		}
+
+
+		{
+			// TODO: I am here.
+			auto _ = commandList->BeginScopedMarker("DDGI - Sample Probe Grid (Step 3)");
+			commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DDGI_SampleIrradiance]);
+
+			Shader::New::DDGIPushConstants push = {};
+			push.NumRays = scene.GetDDGI().RayCount;
+
+			// TODO: Clean up Push constant struct
+			commandList->BindPushConstant(0, push);
+
+			commandList->BindConstantBuffer(1, this->m_frameCB);
+			commandList->BindDynamicConstantBuffer(2, cameraData);
+			commandList->BindDynamicUavDescriptorTable(3, { scene.GetDDGI_VisibilityAtlasTexture() });
+
+			commandList->Dispatch(scene.GetDDGI().GetProbeCount(), 1, 1);
 
 		}
 	}

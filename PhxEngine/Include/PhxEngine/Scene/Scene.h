@@ -137,6 +137,17 @@ namespace PhxEngine::Scene
 		void OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses, bool ddgiEnabled);
 
 		Renderer::DDGI& GetDDGI() { return this->m_ddgi; }
+		RHI::TextureHandle GetDDGI_IrradianceAtlasTexture() 
+		{
+			const uint32_t writeIdx = static_cast<uint32_t>(this->m_pingPing);
+			return this->m_ddgi.ProbeIrradianceAtlas[writeIdx];
+		}
+
+		RHI::TextureHandle GetDDGI_VisibilityAtlasTexture()
+		{
+			const uint32_t writeIdx = static_cast<uint32_t>(this->m_pingPing);
+			return this->m_ddgi.ProbeVisibilityAtlas[writeIdx];
+		}
 
 	private:
 		void RunMaterialUpdateSystem(std::shared_ptr<Renderer::CommonPasses>& commonPasses);
@@ -216,6 +227,7 @@ namespace PhxEngine::Scene
 
 		Core::AABB m_sceneBounds;
 
+		bool m_pingPing = false;
 		// DDGI stuff
 	};
 }

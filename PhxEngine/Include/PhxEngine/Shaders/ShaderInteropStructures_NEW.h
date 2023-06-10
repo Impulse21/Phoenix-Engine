@@ -267,7 +267,7 @@ namespace Shader::New
 
 			// -- 16 byte boundary ----
 			float3 GridExtentsRcp;
-			uint IrradianceTextureId;
+			uint IrradianceAtlasTextureId;
 
 			// -- 16 byte boundary ----
 
@@ -276,10 +276,12 @@ namespace Shader::New
 
 			// -- 16 byte boundary ----
 			float3 CellSizeRcp;
-			uint DepthTextureId;
+			uint VisibilityTextureAtlasId;
 
 			// -- 16 byte boundary ----
 			uint FrameIndex;
+			uint IrradianceAtlasTextureIdPrev;
+			uint VisibilityAtlasTextureIdPrev;
 
 		} DDGI;
 	};
@@ -597,7 +599,7 @@ namespace Shader::New
 	{
 		uint NumRays;
 		uint FirstFrame;
-		float BlendSpeed;
+		float Hysteresis;
 		uint GiBoost;
 		float4x4 RandRotation;
 	};

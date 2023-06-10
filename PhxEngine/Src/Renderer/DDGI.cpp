@@ -71,25 +71,28 @@ void PhxEngine::Renderer::DDGI::UpdateResources(RHI::IGraphicsDevice* gfxDevice)
 	height = octahedralIrradianceSize * this->GridDimensions.z;
 
 	// -- Create RT Output texture that stored the Radiance data ---
-	if (!this->ProbeIrradiance.IsValid() ||
-		gfxDevice->GetTextureDesc(this->ProbeIrradiance).Width < width ||
-		gfxDevice->GetTextureDesc(this->ProbeIrradiance).Height < height)
+	if (!this->ProbeIrradianceAtlas[0].IsValid() ||
+		gfxDevice->GetTextureDesc(this->ProbeIrradianceAtlas[0]).Width < width ||
+		gfxDevice->GetTextureDesc(this->ProbeIrradianceAtlas[0]).Height < height)
 	{
-		if (this->ProbeIrradiance.IsValid())
+		for (int i = 0; i < this->ProbeIrradianceAtlas.size(); i++)
 		{
-			gfxDevice->DeleteTexture(this->ProbeIrradiance);
-		}
+			if (this->ProbeIrradianceAtlas[i].IsValid())
+			{
+				gfxDevice->DeleteTexture(this->ProbeIrradianceAtlas[i]);
+			}
 
-		this->ProbeIrradiance = gfxDevice->CreateTexture({
-			.BindingFlags = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
-			.Dimension = RHI::TextureDimension::Texture2D,
-			.InitialState = RHI::ResourceStates::ShaderResource,
-			.Format = RHI::RHIFormat::RGBA16_FLOAT,
-			.Width = width,
-			.Height = height,
-			.MipLevels = 1,
-			.DebugName = "Probe Atlas (Irradiance)",
-			});
+			this->ProbeIrradianceAtlas[i] = gfxDevice->CreateTexture({
+				.BindingFlags = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
+				.Dimension = RHI::TextureDimension::Texture2D,
+				.InitialState = RHI::ResourceStates::ShaderResource,
+				.Format = RHI::RHIFormat::RGBA16_FLOAT,
+				.Width = width,
+				.Height = height,
+				.MipLevels = 1,
+				.DebugName = "Probe Atlas (Irradiance)",
+				});
+		}
 	}
 
 	// Visibility Texture
@@ -98,25 +101,28 @@ void PhxEngine::Renderer::DDGI::UpdateResources(RHI::IGraphicsDevice* gfxDevice)
 	height = octahedralVisibilitySize * this->GridDimensions.z;
 
 	// -- Create RT Output texture that stored the Radiance data ---
-	if (!this->ProbeVisibility.IsValid() ||
-		gfxDevice->GetTextureDesc(this->ProbeVisibility).Width < width ||
-		gfxDevice->GetTextureDesc(this->ProbeVisibility).Height < height)
+	if (!this->ProbeVisibilityAtlas[0].IsValid() ||
+		gfxDevice->GetTextureDesc(this->ProbeVisibilityAtlas[0]).Width < width ||
+		gfxDevice->GetTextureDesc(this->ProbeVisibilityAtlas[0]).Height < height)
 	{
-		if (this->ProbeVisibility.IsValid())
+		for (int i = 0; i < this->ProbeVisibilityAtlas.size(); i++)
 		{
-			gfxDevice->DeleteTexture(this->ProbeVisibility);
-		}
+			if (this->ProbeVisibilityAtlas[i].IsValid())
+			{
+				gfxDevice->DeleteTexture(this->ProbeVisibilityAtlas[i]);
+			}
 
-		this->ProbeVisibility = gfxDevice->CreateTexture({
-			.BindingFlags = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
-			.Dimension = RHI::TextureDimension::Texture2D,
-			.InitialState = RHI::ResourceStates::ShaderResource,
-			.Format = RHI::RHIFormat::RG16_FLOAT,
-			.Width = width,
-			.Height = height,
-			.MipLevels = 1,
-			.DebugName = "Probe Atlas (Visibility)",
-			});
+			this->ProbeVisibilityAtlas[i] = gfxDevice->CreateTexture({
+				.BindingFlags = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
+				.Dimension = RHI::TextureDimension::Texture2D,
+				.InitialState = RHI::ResourceStates::ShaderResource,
+				.Format = RHI::RHIFormat::RG16_FLOAT,
+				.Width = width,
+				.Height = height,
+				.MipLevels = 1,
+				.DebugName = "Probe Atlas (Visibility)",
+				});
+		}
 	}
 
 	width = this->GridDimensions.x * this->GridDimensions.y;
