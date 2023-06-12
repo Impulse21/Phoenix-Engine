@@ -211,26 +211,6 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			commandList->Dispatch(scene.GetDDGI().GetProbeCount(), 1, 1);
 
 		}
-
-
-		{
-			// TODO: I am here.
-			auto _ = commandList->BeginScopedMarker("DDGI - Sample Probe Grid (Step 3)");
-			commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DDGI_SampleIrradiance]);
-
-			Shader::New::DDGIPushConstants push = {};
-			push.NumRays = scene.GetDDGI().RayCount;
-
-			// TODO: Clean up Push constant struct
-			commandList->BindPushConstant(0, push);
-
-			commandList->BindConstantBuffer(1, this->m_frameCB);
-			commandList->BindDynamicConstantBuffer(2, cameraData);
-			commandList->BindDynamicUavDescriptorTable(3, { scene.GetDDGI_VisibilityAtlasTexture() });
-
-			commandList->Dispatch(scene.GetDDGI().GetProbeCount(), 1, 1);
-
-		}
 	}
 
 	{
@@ -535,6 +515,59 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			scene.GetIndirectDrawEarlyMeshletBuffer());
 	}
 
+	if (this->m_settings.GISettings.EnableDDGI && scene.GetTlas().IsValid())
+	{
+		// TODO: I am here.
+		auto _ = commandList->BeginScopedMarker("DDGI - Sample Irradiance Grid (Step 3)");
+
+		{
+			RHI::GpuBarrier barriers[] =
+			{
+				RHI::GpuBarrier::CreateTexture(scene.GetDDGI().SampleProbeGrid, this->m_gfxDevice->GetTextureDesc(scene.GetDDGI().SampleProbeGrid).InitialState , RHI::ResourceStates::UnorderedAccess),
+			};
+			commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
+		}
+		commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DDGI_SampleIrradiance]);
+
+		Shader::New::DDGIPushConstants push = {};
+		push.NumRays = scene.GetDDGI().RayCount;
+		push.GiBoost = 1.0f;
+
+		// TODO: Clean up Push constant struct
+		commandList->BindPushConstant(0, push);
+		commandList->BindConstantBuffer(1, this->m_frameCB);
+		commandList->BindDynamicConstantBuffer(2, cameraData);
+		commandList->BindDynamicDescriptorTable(
+			3,
+			{
+				this->m_gbuffer.DepthTex,
+				this->m_gbuffer.AlbedoTex,
+				this->m_gbuffer.NormalTex,
+				this->m_gbuffer.SurfaceTex,
+				this->m_gbuffer.SpecularTex,
+				this->m_gbuffer.EmissiveTex,
+			});
+		commandList->BindDynamicUavDescriptorTable(4, { scene.GetDDGI().SampleProbeGrid });
+
+		const int kNumThreadsX = 32;
+		const int kNumThreadsY = 32;
+		const DirectX::XMUINT2 sampleImageDim =
+		{
+			this->m_gfxDevice->GetTextureDesc(scene.GetDDGI().SampleProbeGrid).Width,
+			this->m_gfxDevice->GetTextureDesc(scene.GetDDGI().SampleProbeGrid).Height,
+		};
+
+		commandList->Dispatch(std::ceil(float(sampleImageDim.x) / kNumThreadsX), std::ceil(float(sampleImageDim.y) / kNumThreadsY), 1);
+
+		{
+			RHI::GpuBarrier barriers[] =
+			{
+				RHI::GpuBarrier::CreateMemory(),
+				RHI::GpuBarrier::CreateTexture(scene.GetDDGI().SampleProbeGrid, RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetTextureDesc(scene.GetDDGI().SampleProbeGrid).InitialState),
+			};
+			commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
+		}
+	}
 	// Disabling occlussion stuff for now. Will implement it at a later time.
 #if false
 	// Update depth Pyramid

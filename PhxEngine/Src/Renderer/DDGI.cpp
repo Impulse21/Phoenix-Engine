@@ -90,7 +90,7 @@ void PhxEngine::Renderer::DDGI::UpdateResources(RHI::IGraphicsDevice* gfxDevice)
 				.Width = width,
 				.Height = height,
 				.MipLevels = 1,
-				.DebugName = "Probe Atlas (Irradiance)",
+				.DebugName = "Probe Atlas (Irradiance) [" + std::to_string(i) + "]",
 				});
 		}
 	}
@@ -120,7 +120,7 @@ void PhxEngine::Renderer::DDGI::UpdateResources(RHI::IGraphicsDevice* gfxDevice)
 				.Width = width,
 				.Height = height,
 				.MipLevels = 1,
-				.DebugName = "Probe Atlas (Visibility)",
+				.DebugName = "Probe Atlas (Visibility) [" + std::to_string(i) + "]",
 				});
 		}
 	}
@@ -147,6 +147,30 @@ void PhxEngine::Renderer::DDGI::UpdateResources(RHI::IGraphicsDevice* gfxDevice)
 			.Height = height,
 			.MipLevels = 1,
 			.DebugName = "Probe Offsets",
+			});
+	}
+
+	width = gfxDevice->GetViewportDesc().Width;
+	height = gfxDevice->GetViewportDesc().Height;
+	// -- Create RT Output texture that stored the Radiance data ---
+	if (!this->SampleProbeGrid.IsValid() ||
+		gfxDevice->GetTextureDesc(this->SampleProbeGrid).Width < width ||
+		gfxDevice->GetTextureDesc(this->SampleProbeGrid).Height < height)
+	{
+		if (this->SampleProbeGrid.IsValid())
+		{
+			gfxDevice->DeleteTexture(this->SampleProbeGrid);
+		}
+
+		this->SampleProbeGrid = gfxDevice->CreateTexture({
+			.BindingFlags = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
+			.Dimension = RHI::TextureDimension::Texture2D,
+			.InitialState = RHI::ResourceStates::ShaderResource,
+			.Format = RHI::RHIFormat::RGBA16_FLOAT,
+			.Width = width,
+			.Height = height,
+			.MipLevels = 1,
+			.DebugName = "Sample Probe Grid",
 			});
 	}
 }

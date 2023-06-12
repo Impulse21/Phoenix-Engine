@@ -223,4 +223,13 @@ float3 DecodeOct(float2 e)
     return normalize(v);
 
 }
+// Assume normalized input. Output is on [-1, 1] for each component.
+float2 EncodeOct(in float3 v)
+{
+	// Project the sphere onto the octahedron, and then onto the xy plane
+    float2 p = v.xy * (1.0 / (abs(v.x) + abs(v.y) + abs(v.z)));
+	// Reflect the folds of the lower hemisphere over the diagonals
+    return (v.z <= 0.0) ? ((1.0 - abs(p.yx)) * SignNotZero(p)) : p;
+}
+
 #endif // __PHX_GLOBALS_HLSLI__

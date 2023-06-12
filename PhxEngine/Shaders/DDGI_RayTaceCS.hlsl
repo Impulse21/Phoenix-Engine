@@ -1,6 +1,7 @@
 #pragma pack_matrix(row_major)
 
-#include "Globals_NEW.hlsli"
+
+#include "DDGI_Common.hlsli"
 #include "Defines.hlsli"
 #include "VertexFetch.hlsli"
 #include "BRDF.hlsli"
@@ -67,7 +68,8 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         while (rayQuery.Proceed());
         if (rayQuery.CommittedStatus() != COMMITTED_TRIANGLE_HIT)
         {
-            radiance = float3(0.529, 0.807, 0.921);
+            // radiance = float3(0.529, 0.807, 0.921);
+            radiance = 0;
             depth = FLT_MAX;
         }
         else
@@ -124,7 +126,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
             
                 // Since we are not storing much info, just use the surface normal for now and see how things look
                 float3 normal = BarycentricInterpolation(v0.Normal, v1.Normal, v2.Normal, barycentricWeights);
-                float3 normalWS = mul(normal, (float3x3) objectInstance.WorldMatrix).xyz;
+                surface.Normal = mul(normal, (float3x3) objectInstance.WorldMatrix).xyz;
             
                 /*
                 float3 positionWS = BarycentricInterpolation(v0.Position, v1.Position, v2.Position, barycentricWeights);
@@ -138,7 +140,6 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                  [loop]
                 for (int iLight = 0; iLight < GetScene().LightCount; iLight++)
                 {
-                
                     Light light = LoadLight(iLight);
                     float3 L = 0.0f;
                     float dist = 0.0f;
@@ -153,7 +154,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                         {
                                 dist = FLT_MAX;
                                 L = normalize(light.GetDirection());
-                                NdotL = saturate(dot(L, normalWS));
+                                NdotL = saturate(dot(L, surface.Normal));
                         
                             [branch]
                                 if (NdotL > 0)
@@ -175,7 +176,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                                 {
                                     dist = sqrt(dist2);
                                     L /= dist;
-                                    NdotL = saturate(dot(L, normalWS));
+                                    NdotL = saturate(dot(L, surface.Normal));
                         
                                 [branch]
                                     if (NdotL > 0)
@@ -199,7 +200,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                                 {
                                     dist = sqrt(dist2);
                                     L /= dist;
-                                    NdotL = saturate(dot(L, normalWS));
+                                    NdotL = saturate(dot(L, surface.Normal));
                         
                                 [branch]
                                     if (NdotL > 0)
@@ -250,8 +251,13 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                     }
                 }
             
-                // TODO: Add inf bounce by sampling last frames irradance buffer.
-            
+            	// Infinite bounces based on previous frame probe sampling:
+                if (push.FirstFrame > 0)
+                {
+                    const float energyConservation = 0.95;
+                    hitResult += SampleIrradiance(P, surface.Normal) * energyConservation;
+                }
+                
                 hitResult *= surface.Albedo;
                 hitResult += surface.Emissive;
                 

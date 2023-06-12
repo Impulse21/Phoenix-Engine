@@ -60,8 +60,8 @@ SamplerState DefaultSampler: register(s50);
 
 struct PSInput
 {
-	float2 UV : TEXCOORD;
-	float4 Position : SV_POSITION;
+    float2 UV : TEXCOORD;
+    float4 Position : SV_POSITION;
 };
 
 #ifdef COMPILE_VS
@@ -177,9 +177,11 @@ float4 main(PSInput input) : SV_TARGET
     }
     else // DDGI
     {
-        // TODO:
-        lightingTerms.Indirect.Diffuse = 0.0f;
-        lightingTerms.Indirect.Specular = 0.0f;
+        IndirectLightContribution_GI(
+            GetScene(),
+            pixelPosition,
+            0.0,
+            lightingTerms);
     }
 
     float3 finalColour = ApplyLighting(lightingTerms, brdfSurfaceData, surface);

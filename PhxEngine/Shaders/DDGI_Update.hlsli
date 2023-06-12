@@ -277,7 +277,7 @@ void main(uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID, uint groupIndex
         uint2 srcCoord = copyCoord + DDGI_DEPTH_BORDER_OFFSETS[index].xy;
         uint2 dstCoord = copyCoord + DDGI_DEPTH_BORDER_OFFSETS[index].zw;
         OutputVisibilityAtlas[dstCoord] = OutputVisibilityAtlas[srcCoord];
-        OutputVisibilityAtlas[dstCoord] = float4(1.0f, 0.0f, 0.0f, 1.0f);
+        // OutputVisibilityAtlas[dstCoord] = float4(1.0f, 0.0f, 0.0f, 1.0f);
     }
 
     // TODO: Probe Offset
@@ -292,7 +292,7 @@ void main(uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID, uint groupIndex
 		uint2 srcCoord = copyCoord + DDGI_COLOR_BORDER_OFFSETS[index].xy;
 		uint2 dstCoord = copyCoord + DDGI_COLOR_BORDER_OFFSETS[index].zw;
         OutputIrradianceAtlas[dstCoord] = OutputIrradianceAtlas[srcCoord];
-        OutputIrradianceAtlas[dstCoord] = float4(1.0f, 0.0f, 0.0f, 1.0f);
+        // OutputIrradianceAtlas[dstCoord] = float4(1.0f, 0.0f, 0.0f, 1.0f);
     }
 #endif
     

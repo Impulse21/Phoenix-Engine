@@ -282,6 +282,12 @@ namespace Shader::New
 			uint FrameIndex;
 			uint IrradianceAtlasTextureIdPrev;
 			uint VisibilityAtlasTextureIdPrev;
+			uint IrradianceSampleTextureId;
+
+			// -- 16 byte Boundary ---
+
+			float2 VisibilityTextureResolutionRCP; 
+			float2 IrradianceTextureResolutionRCP;
 
 		} DDGI;
 	};

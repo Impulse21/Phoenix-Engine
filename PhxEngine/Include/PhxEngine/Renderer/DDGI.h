@@ -38,6 +38,8 @@ namespace PhxEngine::Renderer
 		// TODO: maybe make this match the number of inflight frames
 		std::array<RHI::TextureHandle, 2> ProbeIrradianceAtlas;
 		std::array<RHI::TextureHandle, 2> ProbeVisibilityAtlas;
+
+		RHI::TextureHandle SampleProbeGrid;
 		RHI::TextureHandle ProbeOffsets;
 
 		uint32_t GetProbeCount() const { return this->GridDimensions.x * this->GridDimensions.y * this->GridDimensions.z; }
