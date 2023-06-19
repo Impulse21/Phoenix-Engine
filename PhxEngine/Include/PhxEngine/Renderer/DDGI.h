@@ -39,8 +39,8 @@ namespace PhxEngine::Renderer
 		std::array<RHI::TextureHandle, 2> ProbeIrradianceAtlas;
 		std::array<RHI::TextureHandle, 2> ProbeVisibilityAtlas;
 
-		RHI::TextureHandle SampleProbeGrid;
-		RHI::TextureHandle ProbeOffsets;
+		RHI::TextureHandle SampleProbeGrid;;
+		RHI::BufferHandle ProbeOffsetBuffer;
 
 		uint32_t GetProbeCount() const { return this->GridDimensions.x * this->GridDimensions.y * this->GridDimensions.z; }
 		void UpdateResources(RHI::IGraphicsDevice* gfxDevice);

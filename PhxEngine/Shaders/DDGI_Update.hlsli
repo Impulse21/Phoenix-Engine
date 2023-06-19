@@ -18,14 +18,15 @@
 	"RootConstants(num32BitConstants=20, b999), " \
 	"CBV(b0), " \
 	"CBV(b1), " \
-    "DescriptorTable( UAV(u0, numDescriptors = 1) )," \
+    "DescriptorTable( UAV(u0, numDescriptors = 2, flags = DESCRIPTORS_VOLATILE | DATA_STATIC_WHILE_SET_AT_EXECUTE) )," \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s52, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, comparisonFunc = COMPARISON_LESS_EQUAL),"
 
 PUSH_CONSTANT(push, DDGIPushConstants);
 #ifdef DDGI_UPDATE_DEPTH
-RWTexture2D<float2> OutputVisibilityAtlas : register(u0);
+RWByteAddressBuffer OutputOffsetBuffer : register(u0);
+RWTexture2D<float2> OutputVisibilityAtlas : register(u1);
 #else
 RWTexture2D<float4> OutputIrradianceAtlas : register(u0);
 #endif
@@ -172,11 +173,25 @@ void main(uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID, uint groupIndex
 {
     const uint probeIndex = Gid.x;
     const uint3 probeCoord = DDGI_GetProbeCoord(probeIndex);
-    const float3 probePos = DDGI_ProbeCoordToPosition(probeCoord);
     const float maxDistance = GetScene().DDGI.MaxDistance;
     
     // TODO: Handle probe offsets for depth updates
     
+#ifdef DDGI_UPDATE_DEPTH
+	[branch]
+    if (groupIndex == 0 && push.FirstFrame == 0)
+    {
+        DDGIProbeOffset ofs;
+        ofs.Store(float3(0, 0, 0));
+        OutputOffsetBuffer.Store<DDGIProbeOffset> (probeIndex * sizeof(DDGIProbeOffset), ofs);
+    }
+	
+    float3 probeOffset = OutputOffsetBuffer.Load<DDGIProbeOffset>(probeIndex * sizeof(DDGIProbeOffset)).load();
+    float3 probeOffsetNew = 0;
+    const float probeOffsetDistance = maxDistance * DDGI_KEEP_DISTANCE;
+	
+#endif 
+	
 #ifdef DDGI_UPDATE_DEPTH
     float2 result = 0.0f;
     const uint2 pixelTopLeft = ProbeDepthPixel(probeCoord);
@@ -215,10 +230,21 @@ void main(uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID, uint groupIndex
             float3 rayDirection = rayDirectionDepth.xyz;
 
 #if defined(DDGI_UPDATE_DEPTH)
-            float rayProbeDistance = min(GetScene().DDGI.MaxDistance, rayDirectionDepth.w);
-            if (rayProbeDistance == FLT_MAX)
+			float rayDepth = rayDirectionDepth.w;
+			
+			float depth;
+			if (rayDepth > 0)
+			{
+                depth = clamp(rayDepth - 0.01, 0, maxDistance);
+            }
+            else
             {
-                rayProbeDistance = rayDirectionDepth.w;
+                depth = maxDistance;
+            }
+			
+            if (depth < probeOffsetDistance)
+            {
+                probeOffsetNew -= rayDirection * (probeOffsetDistance - depth);
             }
 #else
             float3 rayProbeRadiance = RayCacheRadiance[r];
@@ -231,7 +257,7 @@ void main(uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID, uint groupIndex
             if (weight > kWeightEpsilon)
             {
 #if defined(DDGI_UPDATE_DEPTH)
-                result += float2(rayProbeDistance, rayProbeDistance * rayProbeDistance) * weight;
+                result += float2(depth, SQR(depth)) * weight;
 #else
                 result += rayProbeRadiance * weight;
 #endif
@@ -280,6 +306,16 @@ void main(uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID, uint groupIndex
     }
 
     // TODO: Probe Offset
+	if (groupIndex == 0)
+	{
+        probeOffset = lerp(probeOffset, probeOffsetNew, 0.01);
+        const float3 limit = GetScene().DDGI.CellSize * 0.5;
+        probeOffset = clamp(probeOffset, -limit, limit);
+        DDGIProbeOffset ofs;
+        ofs.Store(probeOffset);
+        OutputOffsetBuffer.Store<DDGIProbeOffset>(probeIndex * sizeof(DDGIProbeOffset), ofs);
+
+    }
 	
 #else
     OutputIrradianceAtlas[pixelCurrent] = float4(result, 1.0f);
@@ -291,7 +327,7 @@ void main(uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID, uint groupIndex
 		uint2 srcCoord = copyCoord + DDGI_COLOR_BORDER_OFFSETS[index].xy;
 		uint2 dstCoord = copyCoord + DDGI_COLOR_BORDER_OFFSETS[index].zw;
         OutputIrradianceAtlas[dstCoord] = OutputIrradianceAtlas[srcCoord];
-        // OutputIrradianceAtlas[dstCoord] = float4(1.0f, 1.0f, 1.0f, 1.0f);
+        // OutputIrradianceAtlas[dstCoord] = float4(1.0f, 0.0f, 0.0f, 1.0f);
     }
 #endif
     

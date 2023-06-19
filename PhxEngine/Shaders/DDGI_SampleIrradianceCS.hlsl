@@ -34,7 +34,8 @@ void main(uint3 DTid : SV_DispatchThreadID, uint2 GTid : SV_GroupThreadID, uint2
     const uint2 pixelPosition = DTid.xy;
     const float depth = GBuffer_Depth[pixelPosition].r;
     const float2 pixelCentre = float2(pixelPosition) + 0.5;
-    const float2 texCoord = pixelCentre / GetFrame().GBufferRes;
+    // const float2 texUV = pixelCentre / GetFrame().GBufferRes;
+    const float2 texUV = float2(pixelPosition.x / float(GetFrame().GBufferRes.x - 1), pixelPosition.y / float(GetFrame().GBufferRes.y - 1));
     
     if (depth == 1.0f)
     {
@@ -42,7 +43,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint2 GTid : SV_GroupThreadID, uint2
         return;
     }
     
-    const float3 P = ReconstructWorldPosition(GetCamera(), texCoord, depth);
+    const float3 P = ReconstructWorldPosition(GetCamera(), texUV, depth);
     const float3 N = GBuffer_1[pixelPosition].xyz;
     const float Wo = normalize(GetCamera().GetPosition() - P);
     float3 irradiance = push.GiBoost * SampleIrradiance(P, N, Wo);

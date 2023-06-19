@@ -87,7 +87,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         {
             // radiance = float3(0.529, 0.807, 0.921);
             radiance = 0;
-            depth = FLT_MAX;
+            depth = -1;
         }
         else
         {

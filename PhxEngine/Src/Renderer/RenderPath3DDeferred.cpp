@@ -196,6 +196,15 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 		}
 		{
 			auto _ = commandList->BeginScopedMarker("DDGI - Update Visibility Atlas (Step 2)");
+			{
+				RHI::GpuBarrier barriers[] =
+				{
+					RHI::GpuBarrier::CreateBuffer(scene.GetDDGI().ProbeOffsetBuffer, this->m_gfxDevice->GetBufferDesc(scene.GetDDGI().ProbeOffsetBuffer).InitialState , RHI::ResourceStates::UnorderedAccess),
+				};
+				commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
+			}
+			commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DDGI_SampleIrradiance]);
+
 			commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DDGI_UpdateVisibility]);
 
 			Shader::New::DDGIPushConstants push = {};
@@ -206,10 +215,20 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 			commandList->BindConstantBuffer(1, this->m_frameCB);
 			commandList->BindDynamicConstantBuffer(2, cameraData);
-			commandList->BindDynamicUavDescriptorTable(3, { scene.GetDDGI_VisibilityAtlasTexture() });
+			commandList->BindDynamicUavDescriptorTable(3,
+				{ scene.GetDDGI().ProbeOffsetBuffer },
+				{ scene.GetDDGI_VisibilityAtlasTexture() });
 
 			commandList->Dispatch(scene.GetDDGI().GetProbeCount(), 1, 1);
 
+			{
+				RHI::GpuBarrier barriers[] =
+				{
+					RHI::GpuBarrier::CreateMemory(),
+					RHI::GpuBarrier::CreateBuffer(scene.GetDDGI().ProbeOffsetBuffer, RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetDDGI().ProbeOffsetBuffer).InitialState),
+				};
+				commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
+			}
 		}
 	}
 

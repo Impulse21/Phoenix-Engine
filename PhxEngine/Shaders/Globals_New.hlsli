@@ -141,10 +141,19 @@ inline uint3 DDGI_GetProbeCoord(uint probeIndex)
 
     return uint3(x, y, z);
 }
+inline uint DDGI_GetProbeIndex(uint3 probeCoord)
+{
+    uint3 dimensions = GetScene().DDGI.GridDimensions;
+    return (probeCoord.z * dimensions.x * dimensions.y) + (probeCoord.y * dimensions.x) + probeCoord.x;
+}
 
 inline float3 DDGI_ProbeCoordToPosition(uint3 probeCoord)
 {
     float3 pos = GetScene().DDGI.GridStartPosition + probeCoord * GetScene().DDGI.CellSize;
+    if (GetScene().DDGI.OffsetBufferId >= 0)
+    {
+        pos += ResourceHeap_GetBuffer(GetScene().DDGI.OffsetBufferId).Load<DDGIProbeOffset> (DDGI_GetProbeIndex(probeCoord) * sizeof(DDGIProbeOffset)).load();
+    }
     // Add offset adjustment
     return pos;
 }

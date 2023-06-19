@@ -3,7 +3,7 @@
 #include <taskflow/taskflow.hpp>
 #include <PhxEngine/Graphics/ShaderFactory.h>
 #include <PhxEngine/Scene/Scene.h>
-#include <PhxEngine/Shaders/ShaderInteropStructures.h>
+#include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
 #include <PhxEngine/Core/Helpers.h>
 #include <PhxEngine/Renderer/DDGI.h>
 #include <imgui.h>
@@ -19,6 +19,27 @@ void PhxEngine::Renderer::DDGI::UpdateResources(RHI::IGraphicsDevice* gfxDevice)
 	// Construct data
 	uint32_t width = this->RayCount;
 	uint32_t height = this->GetProbeCount();
+
+	// -- Create Buffer Offset data ---
+	if (!this->ProbeOffsetBuffer.IsValid() ||
+		gfxDevice->GetBufferDesc(this->ProbeOffsetBuffer).SizeInBytes < sizeof(Shader::New::DDGIProbeOffset) * this->GetProbeCount())
+	{
+		if (this->ProbeOffsetBuffer.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->ProbeOffsetBuffer);
+		}
+
+		this->ProbeOffsetBuffer = gfxDevice->CreateBuffer({
+			.MiscFlags = RHI::BufferMiscFlags::Raw| RHI::BufferMiscFlags::Bindless,
+			.Binding = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::UnorderedAccess,
+			.InitialState = RHI::ResourceStates::ShaderResource,
+			.StrideInBytes = sizeof(Shader::New::DDGIProbeOffset),
+			.SizeInBytes = sizeof(Shader::New::DDGIProbeOffset) * this->GetProbeCount(),
+			.DebugName = "ProbeOffsetBuffer"
+			});
+
+		this->FrameIndex = 0;
+	}
 
 	// -- Create RT Output texture that stored the Radiance data ---
 	if (!this->RTRadianceOutput.IsValid() || 
@@ -40,6 +61,7 @@ void PhxEngine::Renderer::DDGI::UpdateResources(RHI::IGraphicsDevice* gfxDevice)
 			.MipLevels = 1,
 			.DebugName = "RTRadianceOutput",
 			});
+		this->FrameIndex = 0;
 	}
 
 	// -- Create RT Output texture that stored the Distance and depth data ---
@@ -62,6 +84,7 @@ void PhxEngine::Renderer::DDGI::UpdateResources(RHI::IGraphicsDevice* gfxDevice)
 			.MipLevels = 1,
 			.DebugName = "RTDirectionDepthOutput",
 			});
+		this->FrameIndex = 0;
 	}
 
 	// -- Create the probe data ---
@@ -93,6 +116,7 @@ void PhxEngine::Renderer::DDGI::UpdateResources(RHI::IGraphicsDevice* gfxDevice)
 				.DebugName = "Probe Atlas (Irradiance) [" + std::to_string(i) + "]",
 				});
 		}
+		this->FrameIndex = 0;
 	}
 
 	// Visibility Texture
@@ -123,31 +147,7 @@ void PhxEngine::Renderer::DDGI::UpdateResources(RHI::IGraphicsDevice* gfxDevice)
 				.DebugName = "Probe Atlas (Visibility) [" + std::to_string(i) + "]",
 				});
 		}
-	}
-
-	width = this->GridDimensions.x * this->GridDimensions.y;
-	height = this->GridDimensions.z;
-
-	// -- Create RT Output texture that stored the Radiance data ---
-	if (!this->ProbeOffsets.IsValid() ||
-		gfxDevice->GetTextureDesc(this->ProbeOffsets).Width < width ||
-		gfxDevice->GetTextureDesc(this->ProbeOffsets).Height < height)
-	{
-		if (this->ProbeOffsets.IsValid())
-		{
-			gfxDevice->DeleteTexture(this->ProbeOffsets);
-		}
-
-		this->ProbeOffsets = gfxDevice->CreateTexture({
-			.BindingFlags = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
-			.Dimension = RHI::TextureDimension::Texture2D,
-			.InitialState = RHI::ResourceStates::ShaderResource,
-			.Format = RHI::RHIFormat::RGBA16_FLOAT,
-			.Width = width,
-			.Height = height,
-			.MipLevels = 1,
-			.DebugName = "Probe Offsets",
-			});
+		this->FrameIndex = 0;
 	}
 
 	width = gfxDevice->GetViewportDesc().Width;

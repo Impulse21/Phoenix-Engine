@@ -2922,7 +2922,7 @@ void D3D12GraphicsDevice::CreateBufferInternal(BufferDesc const& desc, D3D12Buff
 	outBuffer.Desc = desc;
 
 	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
-	if (desc.AllowUnorderedAccess)
+	if (desc.AllowUnorderedAccess || (desc.Binding & RHI::BindingFlags::UnorderedAccess) == RHI::BindingFlags::UnorderedAccess)
 	{
 		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 	}

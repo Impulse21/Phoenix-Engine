@@ -184,6 +184,7 @@ void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> c
 		this->m_shaderData.DDGI.VisibilityTextureAtlasId = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_ddgi.ProbeVisibilityAtlas[writeIdx], SubresouceType::SRV);
 		this->m_shaderData.DDGI.VisibilityAtlasTextureIdPrev = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_ddgi.ProbeVisibilityAtlas[readIdx], SubresouceType::SRV);
 		this->m_shaderData.DDGI.IrradianceSampleTextureId = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_ddgi.SampleProbeGrid, SubresouceType::SRV);
+		this->m_shaderData.DDGI.OffsetBufferId = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_ddgi.ProbeOffsetBuffer, SubresouceType::SRV);
 		this->m_shaderData.DDGI.VisibilityTextureResolutionRCP =
 		{
 			1.0f / RHI::IGraphicsDevice::GPtr->GetTextureDesc(this->m_ddgi.ProbeVisibilityAtlas[readIdx]).Width,
