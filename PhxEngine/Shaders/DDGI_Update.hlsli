@@ -40,7 +40,6 @@ inline uint2 ProbeDepthPixel(uint3 probeCoord)
     return probeCoord.xz * DDGI_DEPTH_TEXELS + uint2(probeCoord.y * GetScene().DDGI.GridDimensions.x * DDGI_DEPTH_TEXELS, 0) + 1;
 }
 
-
 // Border offsets from: https://github.com/diharaw/hybrid-rendering/blob/master/src/shaders/gi/gi_border_update.glsl
 #ifdef DDGI_UPDATE_DEPTH
 static const uint4 DDGI_DEPTH_BORDER_OFFSETS[68] =
@@ -292,7 +291,7 @@ void main(uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID, uint groupIndex
 		uint2 srcCoord = copyCoord + DDGI_COLOR_BORDER_OFFSETS[index].xy;
 		uint2 dstCoord = copyCoord + DDGI_COLOR_BORDER_OFFSETS[index].zw;
         OutputIrradianceAtlas[dstCoord] = OutputIrradianceAtlas[srcCoord];
-        // OutputIrradianceAtlas[dstCoord] = float4(1.0f, 0.0f, 0.0f, 1.0f);
+        // OutputIrradianceAtlas[dstCoord] = float4(1.0f, 1.0f, 1.0f, 1.0f);
     }
 #endif
     

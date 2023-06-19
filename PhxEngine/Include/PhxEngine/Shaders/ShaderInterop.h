@@ -45,8 +45,10 @@ namespace DefaultRootParameters
 #define MAX(x, y) (x > y ? x : y)
 #define ROUNDUP(x, y) ((x + y - 1) & ~(y - 1))
 #define SQR(a)		((a)*(a))
-#define DEFERRED_BLOCK_SIZE_X 16
-#define DEFERRED_BLOCK_SIZE_Y 16
+#define DEFERRED_BLOCK_SIZE_X 8
+#define DEFERRED_BLOCK_SIZE_Y 8
+#define DDGI_SAMPLE_BLOCK_SIZE_X 8
+#define DDGI_SAMPLE_BLOCK_SIZE_Y 8
 
 #define MAX_VERTS 64
 #define MAX_PRIMS 124

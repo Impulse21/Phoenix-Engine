@@ -6,6 +6,7 @@
 #include "Globals_New.hlsli"
 #include "BRDF.hlsli"
 #include "ResourceHeapTables.hlsli"
+#include "DDGI_Common.hlsli"
 
 #include "Shadows_New.hlsli"
 
@@ -392,10 +393,16 @@ void IndirectLightContribution_Flat(
 void IndirectLightContribution_GI(
     in Scene scene,
     in float2 uv,
+    in float3 P,
+    in Surface surface,
     float3 specularTerm,
     inout Lighting lightingTerms)
 {
+#if 0
     float4 irradiance = ResourceHeap_GetTexture2D(scene.DDGI.IrradianceSampleTextureId).SampleLevel(SamplerDefault, uv, 0);
+#else
+    float4 irradiance = float4(1.0f * SampleIrradiance(P, surface.Normal, 0.0f), 1.0f);
+#endif 
     lightingTerms.Indirect.Diffuse = irradiance;
     lightingTerms.Indirect.Specular = specularTerm;
 }

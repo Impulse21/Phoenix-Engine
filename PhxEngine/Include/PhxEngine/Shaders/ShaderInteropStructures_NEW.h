@@ -319,8 +319,8 @@ namespace Shader::New
 		float2 ShadowAtlasResRCP;
 
 		// -- 16 byte boundary ----
-		uint2 Resolution;
-		uint2 _Padding;
+		uint2 GBufferRes;
+		float2 GBufferRes_RCP;
 
 		// -- 16 byte boundary ----
 		Scene SceneData;

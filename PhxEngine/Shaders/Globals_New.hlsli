@@ -214,11 +214,9 @@ float2 SignNotZero(float2 v)
 
 float3 DecodeOct(float2 e)
 {
-    float3 v = float3(e.xy, 1.0f - abs((e.x) - abs(e.y)));
+    float3 v = float3(e.xy, 1.0 - abs(e.x) - abs(e.y));
     if (v.z < 0)
-    {
-        v.xy = (1.0f - abs(v.yx)) * SignNotZero(v.xy);
-    }
+        v.xy = (1.0 - abs(v.yx)) * SignNotZero(v.xy);
 	
     return normalize(v);
 

@@ -146,7 +146,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 			axis = DirectX::XMVector3Normalize(axis);
 			DirectX::XMStoreFloat4x4(&push.RandRotation, DirectX::XMMatrixRotationAxis(axis, angle));
-#ifdef DISABLE_RANDOM_DIR
+#if 0
 			DirectX::XMStoreFloat4x4(&push.RandRotation, DirectX::XMMatrixIdentity());
 #endif
 			commandList->BindPushConstant(0, push);
@@ -549,15 +549,16 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			});
 		commandList->BindDynamicUavDescriptorTable(4, { scene.GetDDGI().SampleProbeGrid });
 
-		const int kNumThreadsX = 32;
-		const int kNumThreadsY = 32;
 		const DirectX::XMUINT2 sampleImageDim =
 		{
 			this->m_gfxDevice->GetTextureDesc(scene.GetDDGI().SampleProbeGrid).Width,
 			this->m_gfxDevice->GetTextureDesc(scene.GetDDGI().SampleProbeGrid).Height,
 		};
 
-		commandList->Dispatch(std::ceil(float(sampleImageDim.x) / kNumThreadsX), std::ceil(float(sampleImageDim.y) / kNumThreadsY), 1);
+		commandList->Dispatch(
+			std::ceil(sampleImageDim.x / DDGI_SAMPLE_BLOCK_SIZE_X),
+			std::ceil(sampleImageDim.y / DDGI_SAMPLE_BLOCK_SIZE_Y),
+			1);
 
 		{
 			RHI::GpuBarrier barriers[] =
@@ -1119,6 +1120,7 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadPipelineStates(tf::Taskf
 			this->m_gfxStates[EGfxPipelineStates::DDGI_DebugPass] = this->m_gfxDevice->CreateGraphicsPipeline({
 					.VertexShader = this->m_shaders[EShaders::VS_DDGI_Debug],
 					.PixelShader = this->m_shaders[EShaders::PS_DDGI_Debug],
+					.RasterRenderState = { .FrontCounterClockwise = true },
 					.RtvFormats = { IGraphicsDevice::GPtr->GetTextureDesc(this->m_colourBuffer).Format },
 					.DsvFormat = this->m_gbuffer.DepthFormat
 				});
@@ -1322,6 +1324,10 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 	frameData.ShadowAtlasRes.y = this->m_shadowAtlas.Height;
 	frameData.ShadowAtlasResRCP.x = 1.0f / (float)this->m_shadowAtlas.Width;
 	frameData.ShadowAtlasResRCP.y = 1.0f / (float)this->m_shadowAtlas.Height;
+	frameData.GBufferRes.x = static_cast<uint32_t>(this->m_gbuffer.CanvasSize.x);
+	frameData.GBufferRes.y = static_cast<uint32_t>(this->m_gbuffer.CanvasSize.y);
+	frameData.GBufferRes_RCP.x = 1.0f / this->m_gbuffer.CanvasSize.x;
+	frameData.GBufferRes_RCP.y = 1.0f / this->m_gbuffer.CanvasSize.y;
 	frameData.SceneData = scene.GetShaderData();
 
 	// Upload data

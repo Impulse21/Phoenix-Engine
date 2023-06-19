@@ -35,6 +35,19 @@ float3 SphericalFibonacci(float i, float n)
     return float3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
 }
 
+// DEBUG
+// #define DEBUG_RAYS
+#ifdef DEBUG_RAYS
+static const float3 DEBUG_RAYs[6] =
+{
+    float3(0, 0, 1),
+    float3(0, 0, -1),
+    float3(0, 1, 0),
+    float3(0, -1, 0),
+    float3(1, 0, 0),
+    float3(-1, 0, 0)
+};
+#endif 
 [RootSignature(RS_DDGI_RT)]
 [numthreads(THREADS_PER_WAVE, 1, 1)]
 void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIndex : SV_GroupIndex)
@@ -56,6 +69,10 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         
         // Select a random location along the spherical Fibonacci and a random orientation matrix.
         ray.Direction = normalize(mul(randomRotation, SphericalFibonacci(rayIndex, push.NumRays)));
+#ifdef DEBUG_RAYS
+        ray.Direction = DEBUG_RAYs[rayIndex];
+#endif
+        
         
         RayQuery < RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_FORCE_OPAQUE > rayQuery;
         
@@ -255,7 +272,8 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                 if (push.FirstFrame > 0)
                 {
                     const float energyConservation = 0.95;
-                    hitResult += SampleIrradiance(P, surface.Normal) * energyConservation;
+                    const float3 Wo = -ray.Direction;
+                    hitResult += SampleIrradiance(P, surface.Normal, Wo) * energyConservation;
                 }
                 
                 hitResult *= surface.Albedo;
@@ -269,5 +287,4 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         RadianceOutput[float2(rayIndex, probeIndex)] = float4(radiance.rgb, depth);
         DistanceDirectionOutput[float2(rayIndex, probeIndex)] = float4(ray.Direction.xyz, depth);
     }
-
 }

@@ -5,7 +5,6 @@
 
 #include "GBuffer_New.hlsli"
 
-#define THREAD_COUNT 32
 #define RS_DDGI_UPDATE \
 	"RootFlags(CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED), " \
 	"RootConstants(num32BitConstants=20, b999), " \
@@ -29,22 +28,24 @@ Texture2D GBuffer_3 : register(t5);
 Texture2D GBuffer_4 : register(t6);
 
 [RootSignature(RS_DDGI_UPDATE)]
-[numthreads(THREAD_COUNT, THREAD_COUNT, 1)]
+[numthreads(DDGI_SAMPLE_BLOCK_SIZE_X, DDGI_SAMPLE_BLOCK_SIZE_Y, 1)]
 void main(uint3 DTid : SV_DispatchThreadID, uint2 GTid : SV_GroupThreadID, uint2 GroupId : SV_GroupID)
 {
-    float2 pixelPosition = DTid.xy;
-    const float depth = GBuffer_Depth.Sample(SamplerDefault, pixelPosition).x;
+    const uint2 pixelPosition = DTid.xy;
+    const float depth = GBuffer_Depth[pixelPosition].r;
+    const float2 pixelCentre = float2(pixelPosition) + 0.5;
+    const float2 texCoord = pixelCentre / GetFrame().GBufferRes;
     
     if (depth == 1.0f)
     {
         OutputIrradianceSample[pixelPosition] = 0.0f;
+        return;
     }
     
-    const float3 P = ReconstructWorldPosition(GetCamera(), pixelPosition, depth);
+    const float3 P = ReconstructWorldPosition(GetCamera(), texCoord, depth);
     const float3 N = GBuffer_1[pixelPosition].xyz;
+    const float Wo = normalize(GetCamera().GetPosition() - P);
+    float3 irradiance = push.GiBoost * SampleIrradiance(P, N, Wo);
     
-    float3 irradiance = push.GiBoost * SampleIrradiance(P, N);
-
-    // Store
     OutputIrradianceSample[pixelPosition] = float4(irradiance, 1.0f);
 }

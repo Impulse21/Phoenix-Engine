@@ -38,7 +38,7 @@ inline float2 ProbeColourUV(uint3 probeCoord, float3 direction)
     return pixel * GetScene().DDGI.IrradianceTextureResolutionRCP;
 }
  // Based on: https://github.com/diharaw/hybrid-rendering/blob/master/src/shaders/gi/gi_common.glsl
-float3 SampleIrradiance(float3 P, float3 N) // ,float3 cameraPosition)
+float3 SampleIrradiance(float3 P, float3 N, float3 Wo)
 {
     // const float3 Wo = normalize(cameraPosition - P);
     uint3 baseGridCoord = BaseProbeCoord(P);
@@ -68,7 +68,9 @@ float3 SampleIrradiance(float3 P, float3 N) // ,float3 cameraPosition)
         // angerous location because that is exactly the line between shawed and unshadowed,
         // If the normal bias is tow small, there will be light and dark leaks. if it's to large,
         // then samples can pass through
-        float3 probeToPoint = P - probePos + N * 0.001;
+        const float NormalBias = 0.25;
+        float3 probeToPoint = P - probePos + (N + 3.0 * Wo) * NormalBias;
+        // float3 probe_to_point = P - probePos + N * 0.001;
         float3 dir = normalize(-probeToPoint);
         
         // comute the trilinear weights based on the gride cell vertex to smoothly
