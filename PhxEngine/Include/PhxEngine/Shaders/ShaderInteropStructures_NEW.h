@@ -607,7 +607,6 @@ namespace Shader::New
 	struct DDGIPushConstants
 	{
 		uint NumRays;
-		uint FirstFrame;
 		float Hysteresis;
 		uint GiBoost;
 		float4x4 RandRotation;

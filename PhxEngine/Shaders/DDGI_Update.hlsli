@@ -179,7 +179,7 @@ void main(uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID, uint groupIndex
     
 #ifdef DDGI_UPDATE_DEPTH
 	[branch]
-    if (groupIndex == 0 && push.FirstFrame == 0)
+    if (groupIndex == 0 && GetScene().DDGI.FrameIndex == 0)
     {
         DDGIProbeOffset ofs;
         ofs.Store(float3(0, 0, 0));
@@ -285,7 +285,7 @@ void main(uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID, uint groupIndex
     const float3 prevResult = ResourceHeap_GetTexture2D(GetScene().DDGI.IrradianceAtlasTextureIdPrev)[pixelCurrent].xyz;
 #endif
     
-    if (push.FirstFrame > 0)
+    if (GetScene().DDGI.FrameIndex > 0)
     {
         result = lerp(prevResult, result, push.Hysteresis);
     }

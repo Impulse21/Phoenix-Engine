@@ -133,7 +133,6 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 			Shader::New::DDGIPushConstants push = {};
 			push.NumRays = scene.GetDDGI().RayCount;
-			push.FirstFrame = scene.GetDDGI().FrameIndex;
 
 			// Get a Random angle
 			float angle = Random::GetRandom(0.0f, 1.0f) * DirectX::XM_2PI;
@@ -142,7 +141,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 				Random::GetRandom(-1.0f, 1.0f),
 				Random::GetRandom(-1.0f, 1.0f),
 				Random::GetRandom(-1.0f, 1.0f),
-				0.0f);
+				0.0f);		
 
 			axis = DirectX::XMVector3Normalize(axis);
 			DirectX::XMStoreFloat4x4(&push.RandRotation, DirectX::XMMatrixRotationAxis(axis, angle));
@@ -179,7 +178,6 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 			Shader::New::DDGIPushConstants push = {};
 			push.NumRays = scene.GetDDGI().RayCount;
-			push.FirstFrame = scene.GetDDGI().FrameIndex;
 			push.Hysteresis = 0.02f;
 
 			// TODO: Clean up Push constant struct
@@ -203,12 +201,11 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 				};
 				commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
 			}
-			commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DDGI_SampleIrradiance]);
-
 			commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DDGI_UpdateVisibility]);
 
 			Shader::New::DDGIPushConstants push = {};
 			push.NumRays = scene.GetDDGI().RayCount;
+			push.Hysteresis = 0.02f;
 
 			// TODO: Clean up Push constant struct
 			commandList->BindPushConstant(0, push);

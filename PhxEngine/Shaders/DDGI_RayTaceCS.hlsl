@@ -269,7 +269,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                 }
             
             	// Infinite bounces based on previous frame probe sampling:
-                if (push.FirstFrame > 0)
+                if (GetScene().DDGI.FrameIndex > 0)
                 {
                     const float energyConservation = 0.95;
                     const float3 Wo = -ray.Direction;

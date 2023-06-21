@@ -34,8 +34,8 @@ void main(uint3 DTid : SV_DispatchThreadID, uint2 GTid : SV_GroupThreadID, uint2
     const uint2 pixelPosition = DTid.xy;
     const float depth = GBuffer_Depth[pixelPosition].r;
     const float2 pixelCentre = float2(pixelPosition) + 0.5;
-    // const float2 texUV = pixelCentre / GetFrame().GBufferRes;
-    const float2 texUV = float2(pixelPosition.x / float(GetFrame().GBufferRes.x - 1), pixelPosition.y / float(GetFrame().GBufferRes.y - 1));
+    const float2 texUV = pixelCentre * GetFrame().GBufferRes_RCP;
+    
     
     if (depth == 1.0f)
     {

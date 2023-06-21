@@ -152,7 +152,9 @@ inline float3 DDGI_ProbeCoordToPosition(uint3 probeCoord)
     float3 pos = GetScene().DDGI.GridStartPosition + probeCoord * GetScene().DDGI.CellSize;
     if (GetScene().DDGI.OffsetBufferId >= 0)
     {
-        pos += ResourceHeap_GetBuffer(GetScene().DDGI.OffsetBufferId).Load<DDGIProbeOffset> (DDGI_GetProbeIndex(probeCoord) * sizeof(DDGIProbeOffset)).load();
+        const uint probeIdx = DDGI_GetProbeIndex(probeCoord);
+        const float3 offset = ResourceHeap_GetBuffer(GetScene().DDGI.OffsetBufferId).Load<DDGIProbeOffset>( probeIdx * sizeof(DDGIProbeOffset)).load();
+        pos += offset;
     }
     // Add offset adjustment
     return pos;
