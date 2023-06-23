@@ -87,20 +87,18 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         {
             // radiance = float3(0.529, 0.807, 0.921);
             radiance = 0;
-            depth = -1;
+            depth = 1000.0f;
         }
         else
         {
+            depth = rayQuery.CommittedRayT();
             // We hit a surface
             if (!rayQuery.CommittedTriangleFrontFace())
             {
-                depth = rayQuery.CommittedRayT();
                 depth *= -0.2;
             }
             else
             {
-                depth = rayQuery.CommittedRayT();
-                
                 ray.Origin = rayQuery.WorldRayOrigin() + rayQuery.WorldRayDirection() * rayQuery.CommittedRayT();
                 const uint instanceIndex = rayQuery.CommittedInstanceID();
                 // Load the instance data
