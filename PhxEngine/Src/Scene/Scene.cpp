@@ -185,13 +185,18 @@ void PhxEngine::Scene::Scene::OnUpdate(std::shared_ptr<Renderer::CommonPasses> c
 		this->m_shaderData.DDGI.VisibilityAtlasTextureIdPrev = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_ddgi.ProbeVisibilityAtlas[readIdx], SubresouceType::SRV);
 		this->m_shaderData.DDGI.IrradianceSampleTextureId = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_ddgi.SampleProbeGrid, SubresouceType::SRV);
 		this->m_shaderData.DDGI.OffsetBufferId = RHI::IGraphicsDevice::GPtr->GetDescriptorIndex(this->m_ddgi.ProbeOffsetBuffer, SubresouceType::SRV);
-		this->m_shaderData.DDGI.VisibilityTextureResolutionRCP =
+		this->m_shaderData.DDGI.VisibilityTextureResolution =
 		{
+			static_cast<float>(RHI::IGraphicsDevice::GPtr->GetTextureDesc(this->m_ddgi.ProbeVisibilityAtlas[readIdx]).Width),
+			static_cast<float>(RHI::IGraphicsDevice::GPtr->GetTextureDesc(this->m_ddgi.ProbeVisibilityAtlas[readIdx]).Height),
 			1.0f / RHI::IGraphicsDevice::GPtr->GetTextureDesc(this->m_ddgi.ProbeVisibilityAtlas[readIdx]).Width,
 			1.0f / RHI::IGraphicsDevice::GPtr->GetTextureDesc(this->m_ddgi.ProbeVisibilityAtlas[readIdx]).Height
 		};
-		this->m_shaderData.DDGI.IrradianceTextureResolutionRCP =
+
+		this->m_shaderData.DDGI.IrradianceTextureResolution =
 		{
+			static_cast<float>(RHI::IGraphicsDevice::GPtr->GetTextureDesc(this->m_ddgi.ProbeIrradianceAtlas[readIdx]).Width),
+			static_cast<float>(RHI::IGraphicsDevice::GPtr->GetTextureDesc(this->m_ddgi.ProbeIrradianceAtlas[readIdx]).Height),
 			1.0f / RHI::IGraphicsDevice::GPtr->GetTextureDesc(this->m_ddgi.ProbeIrradianceAtlas[readIdx]).Width,
 			1.0f / RHI::IGraphicsDevice::GPtr->GetTextureDesc(this->m_ddgi.ProbeIrradianceAtlas[readIdx]).Height
 		};

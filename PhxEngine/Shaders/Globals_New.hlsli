@@ -147,17 +147,23 @@ inline uint DDGI_GetProbeIndex(uint3 probeCoord)
     return (probeCoord.z * dimensions.x * dimensions.y) + (probeCoord.y * dimensions.x) + probeCoord.x;
 }
 
-inline float3 DDGI_ProbeCoordToPosition(uint3 probeCoord)
+inline float3 DDGI_ProbeCoordToPosition(uint3 probeCoord, bool useOffsets)
 {
     float3 pos = GetScene().DDGI.GridStartPosition + probeCoord * GetScene().DDGI.CellSize;
-    if (GetScene().DDGI.OffsetBufferId >= 0)
+    if (useOffsets && GetScene().DDGI.OffsetBufferId >= 0)
     {
         const uint probeIdx = DDGI_GetProbeIndex(probeCoord);
-        const float3 offset = ResourceHeap_GetBuffer(GetScene().DDGI.OffsetBufferId).Load<DDGIProbeOffset>( probeIdx * sizeof(DDGIProbeOffset)).load();
+        const float3 offset = ResourceHeap_GetBuffer(GetScene().DDGI.OffsetBufferId).Load < DDGIProbeOffset > (probeIdx * sizeof(DDGIProbeOffset)).load();
         pos += offset;
     }
     // Add offset adjustment
     return pos;
+}
+
+inline float3 DDGI_ProbeCoordToPosition(uint3 probeCoord)
+{
+    return DDGI_ProbeCoordToPosition(probeCoord, true);
+
 }
 
 // https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html#rayquery-committedtrianglebarycentrics
@@ -241,4 +247,17 @@ float2 EncodeOct(in float3 v)
     return (v.z <= 0.0) ? ((1.0 - abs(p.yx)) * SignNotZero(p)) : p;
 }
 
+// Compute normalized oct coord, mapping top left of top left pixel to (-1,-1) and bottom right to (1,1)
+float2 NormalizedOctCoord(int2 fragCoord, int probeSideLength)
+{
+
+    int probeWithBorderSide = probeSideLength + 2;
+    float2 octahedralTexelCoordinates = int2((fragCoord.x - 1) % probeWithBorderSide, (fragCoord.y - 1) % probeWithBorderSide);
+
+    octahedralTexelCoordinates += 0.5f;
+    octahedralTexelCoordinates *= (2.0f / float(probeSideLength));
+    octahedralTexelCoordinates -= 1.0f;
+
+    return octahedralTexelCoordinates;
+}
 #endif // __PHX_GLOBALS_HLSLI__

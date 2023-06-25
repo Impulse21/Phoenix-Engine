@@ -44,6 +44,7 @@ set_source_files_properties(${PhxEngine_Shader_CS_Src} PROPERTIES VS_TOOL_OVERRI
 set_source_files_properties(${PhxEngine_Shader_AS_Src} PROPERTIES VS_TOOL_OVERRIDE "None" ShaderType "as" ShaderModel "6_6" EntryPoint "main")
 set_source_files_properties(${PhxEngine_Shader_MS_Src} PROPERTIES VS_TOOL_OVERRIDE "None" ShaderType "ms" ShaderModel "6_6" EntryPoint "main")
 
+
 message("Fetching DirectXShaderCompiler")
 FetchContent_Declare(dxc URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.7.2212.1/dxc_2023_03_01.zip)
 FetchContent_MakeAvailable(dxc)

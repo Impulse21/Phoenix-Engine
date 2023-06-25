@@ -2,16 +2,12 @@
 #define __DDGI_UPDATE_HLSLI__
 
 #include "Globals_NEW.hlsli"
+#include "DDGI_Common.hlsli"
 #include "../Include/PhxEngine/Shaders/ShaderInterop.h"
 #include "../Include/PhxEngine/Shaders/ShaderInteropStructures_New.h"
 #include "Defines.hlsli"
 
-
-#ifdef DDGI_UPDATE_DEPTH
-#define THREAD_COUNT DDGI_DEPTH_RESOLUTION
-#else
-#define THREAD_COUNT DDGI_COLOUR_RESOLUTION
-#endif
+#define THREAD_COUNT 8
 
 #define RS_DDGI_UPDATE \
 	"RootFlags(CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED), " \
@@ -25,312 +21,212 @@
 
 PUSH_CONSTANT(push, DDGIPushConstants);
 #ifdef DDGI_UPDATE_DEPTH
-RWByteAddressBuffer OutputOffsetBuffer : register(u0);
-RWTexture2D<float2> OutputVisibilityAtlas : register(u1);
+RWTexture2D<float2> OutputVisibilityAtlas : register(u0);
 #else
 RWTexture2D<float4> OutputIrradianceAtlas : register(u0);
 #endif
 
-inline uint2 ProbeColourPixel(uint3 probeCoord)
-{
-    return probeCoord.xz * DDGI_COLOUR_TEXELS + uint2(probeCoord.y * GetScene().DDGI.GridDimensions.x * DDGI_COLOUR_TEXELS, 0) + 1;
-}
-
-inline uint2 ProbeDepthPixel(uint3 probeCoord)
-{
-    return probeCoord.xz * DDGI_DEPTH_TEXELS + uint2(probeCoord.y * GetScene().DDGI.GridDimensions.x * DDGI_DEPTH_TEXELS, 0) + 1;
-}
-
-// Border offsets from: https://github.com/diharaw/hybrid-rendering/blob/master/src/shaders/gi/gi_border_update.glsl
-#ifdef DDGI_UPDATE_DEPTH
-static const uint4 DDGI_DEPTH_BORDER_OFFSETS[68] =
-{
-    uint4(16, 1, 1, 0),
-	uint4(15, 1, 2, 0),
-	uint4(14, 1, 3, 0),
-	uint4(13, 1, 4, 0),
-	uint4(12, 1, 5, 0),
-	uint4(11, 1, 6, 0),
-	uint4(10, 1, 7, 0),
-	uint4(9, 1, 8, 0),
-	uint4(8, 1, 9, 0),
-	uint4(7, 1, 10, 0),
-	uint4(6, 1, 11, 0),
-	uint4(5, 1, 12, 0),
-	uint4(4, 1, 13, 0),
-	uint4(3, 1, 14, 0),
-	uint4(2, 1, 15, 0),
-	uint4(1, 1, 16, 0),
-	uint4(16, 16, 1, 17),
-	uint4(15, 16, 2, 17),
-	uint4(14, 16, 3, 17),
-	uint4(13, 16, 4, 17),
-	uint4(12, 16, 5, 17),
-	uint4(11, 16, 6, 17),
-	uint4(10, 16, 7, 17),
-	uint4(9, 16, 8, 17),
-	uint4(8, 16, 9, 17),
-	uint4(7, 16, 10, 17),
-	uint4(6, 16, 11, 17),
-	uint4(5, 16, 12, 17),
-	uint4(4, 16, 13, 17),
-	uint4(3, 16, 14, 17),
-	uint4(2, 16, 15, 17),
-	uint4(1, 16, 16, 17),
-	uint4(1, 16, 0, 1),
-	uint4(1, 15, 0, 2),
-	uint4(1, 14, 0, 3),
-	uint4(1, 13, 0, 4),
-	uint4(1, 12, 0, 5),
-	uint4(1, 11, 0, 6),
-	uint4(1, 10, 0, 7),
-	uint4(1, 9, 0, 8),
-	uint4(1, 8, 0, 9),
-	uint4(1, 7, 0, 10),
-	uint4(1, 6, 0, 11),
-	uint4(1, 5, 0, 12),
-	uint4(1, 4, 0, 13),
-	uint4(1, 3, 0, 14),
-	uint4(1, 2, 0, 15),
-	uint4(1, 1, 0, 16),
-	uint4(16, 16, 17, 1),
-	uint4(16, 15, 17, 2),
-	uint4(16, 14, 17, 3),
-	uint4(16, 13, 17, 4),
-	uint4(16, 12, 17, 5),
-	uint4(16, 11, 17, 6),
-	uint4(16, 10, 17, 7),
-	uint4(16, 9, 17, 8),
-	uint4(16, 8, 17, 9),
-	uint4(16, 7, 17, 10),
-	uint4(16, 6, 17, 11),
-	uint4(16, 5, 17, 12),
-	uint4(16, 4, 17, 13),
-	uint4(16, 3, 17, 14),
-	uint4(16, 2, 17, 15),
-	uint4(16, 1, 17, 16),
-	uint4(16, 16, 0, 0),
-	uint4(1, 16, 17, 0),
-	uint4(16, 1, 0, 17),
-	uint4(1, 1, 17, 17)
-};
-#else
-static const uint4 DDGI_COLOR_BORDER_OFFSETS[36] =
-{
-    uint4(8, 1, 1, 0),
-	uint4(7, 1, 2, 0),
-	uint4(6, 1, 3, 0),
-	uint4(5, 1, 4, 0),
-	uint4(4, 1, 5, 0),
-	uint4(3, 1, 6, 0),
-	uint4(2, 1, 7, 0),
-	uint4(1, 1, 8, 0),
-	uint4(8, 8, 1, 9),
-	uint4(7, 8, 2, 9),
-	uint4(6, 8, 3, 9),
-	uint4(5, 8, 4, 9),
-	uint4(4, 8, 5, 9),
-	uint4(3, 8, 6, 9),
-	uint4(2, 8, 7, 9),
-	uint4(1, 8, 8, 9),
-	uint4(1, 8, 0, 1),
-	uint4(1, 7, 0, 2),
-	uint4(1, 6, 0, 3),
-	uint4(1, 5, 0, 4),
-	uint4(1, 4, 0, 5),
-	uint4(1, 3, 0, 6),
-	uint4(1, 2, 0, 7),
-	uint4(1, 1, 0, 8),
-	uint4(8, 8, 9, 1),
-	uint4(8, 7, 9, 2),
-	uint4(8, 6, 9, 3),
-	uint4(8, 5, 9, 4),
-	uint4(8, 4, 9, 5),
-	uint4(8, 3, 9, 6),
-	uint4(8, 2, 9, 7),
-	uint4(8, 1, 9, 8),
-	uint4(8, 8, 0, 0),
-	uint4(1, 8, 9, 0),
-	uint4(8, 1, 0, 9),
-	uint4(1, 1, 9, 9)
-};
-#endif
-
-
+static const int kReadTable[6] = { 5, 3, 1, -1, -3, -5 };
 static const float kWeightEpsilon = 0.0001;
-
-static const uint kCacheSize = THREAD_COUNT * THREAD_COUNT;
-
-groupshared float4 RayCacheDirectionDepth[kCacheSize];
-
-#if !defined(DDGI_UPDATE_DEPTH)
-groupshared float3 RayCacheRadiance[kCacheSize];
-#endif
 
 [RootSignature(RS_DDGI_UPDATE)]
 [numthreads(THREAD_COUNT, THREAD_COUNT, 1)]
-void main(uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID, uint groupIndex : SV_GroupIndex)
+void main(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID, uint3 Gid : SV_GroupID, uint groupIndex : SV_GroupIndex)
 {
-    const uint probeIndex = Gid.x;
-    const uint3 probeCoord = DDGI_GetProbeCoord(probeIndex);
-    const float maxDistance = GetScene().DDGI.MaxDistance;
+    /* Data Drive these variables */
+    const bool useBackFaceBlending = true;
+    const bool showBorderVSInside = false;
+    const bool usePerceptualEncoding = false;
+    const bool showBorderType = false;
+    const bool showBorderSourceCoordinates = false;
+    /*END */
+    
+    uint2 coords = DTid.xy;
     
     // TODO: Handle probe offsets for depth updates
-    
 #ifdef DDGI_UPDATE_DEPTH
-	[branch]
-    if (groupIndex == 0 && GetScene().DDGI.FrameIndex == 0)
-    {
-        DDGIProbeOffset ofs;
-        ofs.Store(float3(0, 0, 0));
-        OutputOffsetBuffer.Store<DDGIProbeOffset> (probeIndex * sizeof(DDGIProbeOffset), ofs);
-    }
-	
-    float3 probeOffset = OutputOffsetBuffer.Load<DDGIProbeOffset>(probeIndex * sizeof(DDGIProbeOffset)).load();
-    float3 probeOffsetNew = 0;
-    const float probeOffsetDistance = maxDistance * DDGI_KEEP_DISTANCE;
-	
+    const int probeTextureWidth = GetScene().DDGI.VisibilityTextureResolution.x;
+    const int probeTextureHeight = GetScene().DDGI.VisibilityTextureResolution.y;
+    const uint probeSideLength = DDGI_DEPTH_RESOLUTION;
+#else
+    const int probeTextureWidth = GetScene().DDGI.IrradianceTextureResolution.x;
+    const int probeTextureHeight = GetScene().DDGI.IrradianceTextureResolution.y;
+    const uint probeSideLength = DDGI_COLOUR_RESOLUTION;
 #endif 
+    // Early out for 1 pixel border around all image and outside bound pixels.
+    if (coords.x >= probeTextureWidth || coords.y >= probeTextureHeight)
+    {
+        return;
+    }
+    
+    const uint probeWithBorderSide = probeSideLength + 2;
+    const uint probeLastPixel = probeSideLength + 1;
+    int probeIndex = ProbeIndexFromPixels(coords.xy, int(probeWithBorderSide), probeTextureWidth);
+    
+    bool borderPixel = ((DTid.x % probeWithBorderSide) == 0) || ((DTid.x % probeWithBorderSide) == probeLastPixel);
+    borderPixel = borderPixel || ((DTid.y % probeWithBorderSide) == 0) || ((DTid.y % probeWithBorderSide) == probeLastPixel);
 	
+	// Perform Calculations
+	if (!borderPixel)
+    {
+        const uint maxBackFaces = uint(push.NumRays * 0.1f);
+		
+        float4 result = 0.0f;
+        const float energyConservation = 0.95;
+        uint backFaces = 0;
+        const float3x3 randomRotation = (float3x3) push.RandRotation;
+        for (int rayIndex = 0; rayIndex < push.NumRays; ++rayIndex)
+        {
+            const float2 samplePosition = float2(rayIndex, probeIndex);
+            const float3 rayDirection = normalize(mul(randomRotation, SphericalFibonacci(rayIndex, push.NumRays)));
+            const float3 texelDirection = DecodeOct(NormalizedOctCoord(coords.xy, probeSideLength));
+            
+            float weight = max(0.0, dot(texelDirection, rayDirection));
+            
+            float distance = ResourceHeap_GetTexture2D(GetScene().DDGI.RTRadianceTexId)[samplePosition].a;
+            if (distance < 0.0f && useBackFaceBlending)
+            {
+                ++backFaces;
+                // Only blend if the max number of backfaces threshold hasn't been exceeded
+                if (backFaces >= maxBackFaces)
+                {
+                    return;
+                }
+                
+                continue;
+            }
+         
 #ifdef DDGI_UPDATE_DEPTH
-    float2 result = 0.0f;
-    const uint2 pixelTopLeft = ProbeDepthPixel(probeCoord);
+            const float maxDistance = GetScene().DDGI.MaxDistance;
+            // increase or decresse the filtered distance value's "sharpness"
+            weight = pow(weight, 2.5f);
+            if (weight >= kWeightEpsilon)
+            {
+                distance = min(abs(distance), maxDistance);
+                float3 value = float3(distance, SQR(distance), 0.0f);
+                // Store total weight in Alpha.
+                result += float4(value * weight, weight);
+            }
 #else
-    float3 result = 0.0f;
-    const uint2 pixelTopLeft = ProbeColourPixel(probeCoord);
-#endif
-    float totalWeight = 0.0f;
-    const uint2 pixelCurrent = pixelTopLeft + GTid.xy;
-    const uint2 copyCoord = pixelTopLeft - 1;
-    
-    const float3 texelDirection = DecodeOct(((GTid.xy + 0.5) / (float2) THREAD_COUNT) * 2 - 1);
-    uint remainingRays = push.NumRays;
-    uint offset = 0;
-    while (remainingRays > 0)
-    {
-        uint numRays = min(kCacheSize, remainingRays);
-        
-        if (groupIndex < numRays)
-        {
-            float2 pixelCoord = float2(groupIndex + offset, probeIndex);
-            RayCacheDirectionDepth[groupIndex] = ResourceHeap_GetTexture2D(GetScene().DDGI.RTDirectionDepthTexId)[pixelCoord];
-            
-#if !defined(DDGI_UPDATE_DEPTH)
-            pixelCoord = float2(groupIndex + offset, probeIndex);
-            RayCacheRadiance[groupIndex] = ResourceHeap_GetTexture2D(GetScene().DDGI.RTRadianceTexId)[pixelCoord].rgb;
+            if (weight >= kWeightEpsilon)
+            {
+                float3 radiance = ResourceHeap_GetTexture2D(GetScene().DDGI.RTRadianceTexId)[samplePosition].rgb;
+                radiance *= energyConservation;
+                
+                // storing the sum of the weights in alpha temporarily
+                result += float4(radiance * weight, weight);
+            }
 #endif
         }
         
-        GroupMemoryBarrierWithGroupSync();
-        
-        // Gather Ray data
-        for (uint r = 0; r < numRays; ++r)
+        if (result.w > kWeightEpsilon)
         {
-            float4 rayDirectionDepth = RayCacheDirectionDepth[r];
-            float3 rayDirection = rayDirectionDepth.xyz;
-
-#if defined(DDGI_UPDATE_DEPTH)
-			float rayDepth = rayDirectionDepth.w;
-			
-			float depth;
-			if (rayDepth > 0)
-			{
-                depth = clamp(rayDepth - 0.01, 0, maxDistance);
-            }
-            else
-            {
-                depth = maxDistance;
-            }
-			
-            if (depth < probeOffsetDistance)
-            {
-                probeOffsetNew -= rayDirection * (probeOffsetDistance - depth);
-            }
-#else
-            float3 rayProbeRadiance = RayCacheRadiance[r];
-#endif
-            float weight = saturate(dot(texelDirection, rayDirection));
-            
-#if defined(DDGI_UPDATE_DEPTH)
-            weight = pow(weight, 64);
-#endif
-            if (weight > kWeightEpsilon)
-            {
-#if defined(DDGI_UPDATE_DEPTH)
-                result += float2(depth, SQR(depth)) * weight;
-#else
-                result += rayProbeRadiance * weight;
-#endif
-                totalWeight += weight;
-
-            }
+            result.xyz /= result.w;
+            result.w = 1.0f;
         }
         
-        GroupMemoryBarrierWithGroupSync();
-        
-        remainingRays -= numRays;
-        offset += numRays;
-    }
-    
-    if (totalWeight > kWeightEpsilon)
-    {
-        result /= totalWeight;
-    }
-    
     // Obtain previous frames results  
 #if defined(DDGI_UPDATE_DEPTH)
-    // TODO: Determine what textures these are
-    const float2 prevResult = ResourceHeap_GetTexture2D(GetScene().DDGI.VisibilityAtlasTextureIdPrev)[pixelCurrent].xy;
+        const float2 prevResult = ResourceHeap_GetTexture2D(GetScene().DDGI.VisibilityAtlasTextureIdPrev)[coords.xy].rg;
 #else
-    const float3 prevResult = ResourceHeap_GetTexture2D(GetScene().DDGI.IrradianceAtlasTextureIdPrev)[pixelCurrent].xyz;
+        const float3 prevResult = ResourceHeap_GetTexture2D(GetScene().DDGI.IrradianceAtlasTextureIdPrev)[coords.xy].rgb;
 #endif
     
-    if (GetScene().DDGI.FrameIndex > 0)
-    {
-        result = lerp(prevResult, result, push.Hysteresis);
-    }
-    
-    // Obtain previous frames results  
+        // Debug inside with color green
+        if (showBorderVSInside)
+        {
+            result = float4(0, 1, 0, 1);
+        }
+           // Obtain previous frames results  
 #if defined(DDGI_UPDATE_DEPTH)
-    OutputVisibilityAtlas[pixelCurrent] = result;
-    
-    GroupMemoryBarrierWithGroupSync();
-    
-	// Copy depth borders:
-    for (uint index = groupIndex; index < 68; index += THREAD_COUNT * THREAD_COUNT)
-    {
-        uint2 srcCoord = copyCoord + DDGI_DEPTH_BORDER_OFFSETS[index].xy;
-        uint2 dstCoord = copyCoord + DDGI_DEPTH_BORDER_OFFSETS[index].zw;
-        OutputVisibilityAtlas[dstCoord] = OutputVisibilityAtlas[srcCoord];
-        // OutputVisibilityAtlas[dstCoord] = float4(1.0f, 0.0f, 0.0f, 1.0f);
-    }
-
-    // TODO: Probe Offset
-	if (groupIndex == 0)
-	{
-        probeOffset = lerp(probeOffset, probeOffsetNew, 0.01);
-        const float3 limit = GetScene().DDGI.CellSize * 0.5;
-        probeOffset = clamp(probeOffset, -limit, limit);
-        DDGIProbeOffset ofs;
-        ofs.Store(probeOffset);
-        OutputOffsetBuffer.Store<DDGIProbeOffset>(probeIndex * sizeof(DDGIProbeOffset), ofs);
-
-    }
-	
+        if (GetScene().DDGI.FrameIndex > 0)
+        {
+            result = float4(lerp(result.rg, prevResult, push.Hysteresis), result.b, result.w);
+        }
+        OutputVisibilityAtlas[coords.xy] = float4(result.rg, 0.0f, 1.0f);
 #else
-    OutputIrradianceAtlas[pixelCurrent] = float4(result, 1.0f);
+        if (usePerceptualEncoding)
+        {
+            const float3 exp = 1.0f / 5.0f;
+            result.rbg = pow(result.rgb, exp);
+        }
+        
+        if (GetScene().DDGI.FrameIndex > 0)
+        {
+            result = float4(lerp(result.rgb, prevResult, push.Hysteresis), result.w);
+        }
+        OutputIrradianceAtlas[coords.xy] = result;
+#endif  
+        
+        return;
+    }
+    
 	DeviceMemoryBarrierWithGroupSync();
-
-	// Copy color borders:
-	for (uint index = groupIndex; index < 36; index += THREAD_COUNT * THREAD_COUNT)
-	{
-		uint2 srcCoord = copyCoord + DDGI_COLOR_BORDER_OFFSETS[index].xy;
-		uint2 dstCoord = copyCoord + DDGI_COLOR_BORDER_OFFSETS[index].zw;
-        OutputIrradianceAtlas[dstCoord] = OutputIrradianceAtlas[srcCoord];
-        // OutputIrradianceAtlas[dstCoord] = float4(1.0f, 0.0f, 0.0f, 1.0f);
-    }
-#endif
+	
     
+    // Copy border pixel calculating source pixels.
+    const uint probePixelX = DTid.x % probeWithBorderSide;
+    const uint probePixelY = DTid.y % probeWithBorderSide;
+    bool cornerPixel = (probePixelX == 0 || probePixelX == probeLastPixel) &&
+                        (probePixelY == 0 || probePixelY == probeLastPixel);
+    bool rowPixel = (probePixelX > 0 && probePixelX < probeLastPixel);
+
+    int2 sourcePixelCoordinate = coords.xy;
+
+    if (cornerPixel)
+    {
+        sourcePixelCoordinate.x += probePixelX == 0 ? probeSideLength : -probeSideLength;
+        sourcePixelCoordinate.y += probePixelY == 0 ? probeSideLength : -probeSideLength;
+
+        if (showBorderType)
+        {
+            sourcePixelCoordinate = int2(2, 2);
+        }
+    }
+    else if (rowPixel)
+    {
+        sourcePixelCoordinate.x += kReadTable[probePixelX - 1];
+        sourcePixelCoordinate.y += (probePixelY > 0) ? -1 : 1;
+
+        if (showBorderType)
+        {
+            sourcePixelCoordinate = int2(3, 3);
+        }
+    }
+    else
+    {
+        sourcePixelCoordinate.x += (probePixelX > 0) ? -1 : 1;
+        sourcePixelCoordinate.y += kReadTable[probePixelY - 1];
+
+        if (showBorderType)
+        {
+            sourcePixelCoordinate = int2(4, 4);
+        }
+    }
+
+#if defined(DDGI_UPDATE_DEPTH)
+    float4 copiedData = float4(OutputVisibilityAtlas[sourcePixelCoordinate], 0, 1);
+#else
+    float4 copiedData = OutputIrradianceAtlas[sourcePixelCoordinate];
+#endif
+
+    // Debug border source coordinates
+    if (showBorderSourceCoordinates)
+    {
+        copiedData = float4(coords.xy, sourcePixelCoordinate);
+    }
+
+    // Debug border with color red
+    if (showBorderVSInside)
+    {
+        copiedData = float4(1, 0, 0, 1);
+    }
+    
+#if defined(DDGI_UPDATE_DEPTH)
+    OutputVisibilityAtlas[coords] = copiedData;
+#else
+    OutputIrradianceAtlas[coords] = copiedData;
+#endif
 }
 
 #endif 

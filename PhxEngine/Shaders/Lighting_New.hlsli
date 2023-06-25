@@ -401,7 +401,7 @@ void IndirectLightContribution_GI(
 #if 0
     float4 irradiance = ResourceHeap_GetTexture2D(scene.DDGI.IrradianceSampleTextureId).SampleLevel(SamplerDefault, uv, 0);
 #else
-    float4 irradiance = float4(1.0f * SampleIrradiance(P, surface.Normal, 0.0f), 1.0f);
+    float4 irradiance = float4(1.0f * SampleIrradiance(P, surface.Normal, GetCamera().GetPosition()), 1.0f);
 #endif 
     lightingTerms.Indirect.Diffuse = irradiance;
     lightingTerms.Indirect.Specular = specularTerm;

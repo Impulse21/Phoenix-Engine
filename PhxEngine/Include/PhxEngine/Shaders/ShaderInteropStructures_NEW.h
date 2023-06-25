@@ -30,9 +30,9 @@ namespace Shader::New
 
 
 	static const uint DDGI_MAX_RAY_COUNT = 512;
-	static const uint DDGI_COLOUR_RESOLUTION = 8;
+	static const uint DDGI_COLOUR_RESOLUTION = 6;
 	static const uint DDGI_COLOUR_TEXELS = 1 + DDGI_COLOUR_RESOLUTION + 1; // with norder;
-	static const uint DDGI_DEPTH_RESOLUTION = 16;
+	static const uint DDGI_DEPTH_RESOLUTION = 6;
 	static const uint DDGI_DEPTH_TEXELS = 1 + DDGI_DEPTH_RESOLUTION + 1;
 	static const float DDGI_KEEP_DISTANCE = 0.1f;
 
@@ -285,9 +285,10 @@ namespace Shader::New
 			uint IrradianceSampleTextureId;
 
 			// -- 16 byte Boundary ---
+			float4 VisibilityTextureResolution;
 
-			float2 VisibilityTextureResolutionRCP; 
-			float2 IrradianceTextureResolutionRCP;
+			// -- 16 byte Boundary ---
+			float4 IrradianceTextureResolution;
 
 			// -- 16 byte Boundary ---
 			uint OffsetBufferId;
@@ -606,10 +607,10 @@ namespace Shader::New
 
 	struct DDGIPushConstants
 	{
+		float4x4 RandRotation;
 		uint NumRays;
 		float Hysteresis;
 		uint GiBoost;
-		float4x4 RandRotation;
 	};
 
 	struct DDGIProbeOffset

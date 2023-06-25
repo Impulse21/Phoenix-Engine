@@ -2,7 +2,6 @@
 
 
 #include "DDGI_Common.hlsli"
-#include "Defines.hlsli"
 #include "VertexFetch.hlsli"
 #include "BRDF.hlsli"
 #include "Lighting_New.hlsli"
@@ -14,45 +13,36 @@
 	"RootConstants(num32BitConstants=20, b999), " \
 	"CBV(b0), " \
 	"CBV(b1), " \
-    "DescriptorTable( UAV(u0, numDescriptors = 2) )," \
+    "DescriptorTable( UAV(u0, numDescriptors = 1, flags = DESCRIPTORS_VOLATILE | DATA_STATIC_WHILE_SET_AT_EXECUTE) )," \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s52, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, comparisonFunc = COMPARISON_LESS_EQUAL),"
 
 RWTexture2D<float4> RadianceOutput : register(u0);
-RWTexture2D<float4> DistanceDirectionOutput : register(u1);
 
 PUSH_CONSTANT(push, DDGIPushConstants);
 
-// spherical fibonacci: https://github.com/diharaw/hybrid-rendering/blob/master/src/shaders/gi/gi_ray_trace.rgen
-#define madfrac(A, B) ((A) * (B)-floor((A) * (B)))
-static const float PHI = sqrt(5) * 0.5 + 0.5;
-float3 SphericalFibonacci(float i, float n)
-{
-    float phi = 2.0 * PI * madfrac(i, PHI - 1);
-    float cos_theta = 1.0 - (2.0 * i + 1.0) * (1.0 / n);
-    float sin_theta = sqrt(clamp(1.0 - cos_theta * cos_theta, 0.0f, 1.0f));
-    return float3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
-}
-
-// DEBUG
-// #define DEBUG_RAYS
-#ifdef DEBUG_RAYS
-static const float3 DEBUG_RAYs[6] =
-{
-    float3(0, 0, 1),
-    float3(0, 0, -1),
-    float3(0, 1, 0),
-    float3(0, -1, 0),
-    float3(1, 0, 0),
-    float3(-1, 0, 0)
-};
-#endif 
 [RootSignature(RS_DDGI_RT)]
 [numthreads(THREADS_PER_WAVE, 1, 1)]
 void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIndex : SV_GroupIndex)
 {
+    // TODO: Move top options
+    const bool useInfiniteBounces = true;
+    
     const uint probeIndex = Gid.x;
+    
+    if (probeIndex >= GetScene().DDGI.ProbeCount)
+    {
+        return;
+    }
+    
+    // TODO: Check the status of the probe. if it's on, or active.
+    const bool skipProbe = false;
+    if (skipProbe)
+    {
+        return;
+    }
+    
     const uint3 probeCoord = DDGI_GetProbeCoord(probeIndex);
     const float3 probePos = DDGI_ProbeCoordToPosition(probeCoord);
     
@@ -69,13 +59,8 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         
         // Select a random location along the spherical Fibonacci and a random orientation matrix.
         ray.Direction = normalize(mul(randomRotation, SphericalFibonacci(rayIndex, push.NumRays)));
-#ifdef DEBUG_RAYS
-        ray.Direction = DEBUG_RAYs[rayIndex];
-#endif
-        
-        
-        RayQuery < RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_FORCE_OPAQUE > rayQuery;
-        
+      
+        RayQuery < RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_FORCE_OPAQUE > rayQuery;        
         rayQuery.TraceRayInline(
 			ResourceHeap_GetRTAccelStructure(GetScene().RT_TlasIndex),
 			RAY_FLAG_NONE, // OR'd with flags above
@@ -140,17 +125,13 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                 surface.Emissive = UnpackRGBA(material.EmissiveColourPacked).rgb * UnpackRGBA(objectInstance.Emissive).rgb;
             
                 // Since we are not storing much info, just use the surface normal for now and see how things look
-                float3 normal = BarycentricInterpolation(v0.Normal, v1.Normal, v2.Normal, barycentricWeights);
+                const float3 normal = BarycentricInterpolation(v0.Normal, v1.Normal, v2.Normal, barycentricWeights);
                 surface.Normal = mul(normal, (float3x3) objectInstance.WorldMatrix).xyz;
             
-                /*
-                float3 positionWS = BarycentricInterpolation(v0.Position, v1.Position, v2.Position, barycentricWeights);
-                positionWS = mul(float4(positionWS, 1.0f), objectInstance.WorldMatrix);
-                */
-            
-                const float3 P = ray.Origin;
-                // const float3 L = -ray.Direction;
-            
+                float3 surfacePosition = BarycentricInterpolation(v0.Position, v1.Position, v2.Position, barycentricWeights);
+                const float3 P = mul(float4(surfacePosition, 1.0f), objectInstance.WorldMatrix).xyz;
+                // const float3 P = ray.Origin;
+                
                 float3 hitResult = 0.0f;
                  [loop]
                 for (int iLight = 0; iLight < GetScene().LightCount; iLight++)
@@ -243,7 +224,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                         float3 shadow = 1.0f;
                         RayDesc shadowRay;
                         shadowRay.Origin = P;
-                        shadowRay.Direction = L;
+                        shadowRay.Direction = -L;
                         shadowRay.TMin = 0.001;
                         shadowRay.TMax = dist;
                     
@@ -256,7 +237,8 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                         while (rayQuery.Proceed());
                         if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
                         {
-                            shadow = 0.0f;
+                            // TODO: FIX ME
+                            // shadow = 0.0f;
                         }
                     
                         if (any(shadow))
@@ -267,11 +249,10 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                 }
             
             	// Infinite bounces based on previous frame probe sampling:
-                if (GetScene().DDGI.FrameIndex > 0)
+                if (useInfiniteBounces && GetScene().DDGI.FrameIndex > 0)
                 {
                     const float energyConservation = 0.95;
-                    const float3 Wo = -ray.Direction;
-                    hitResult += SampleIrradiance(P, surface.Normal, Wo) * energyConservation;
+                    //hitResult += SampleIrradiance(P, surface.Normal, GetCamera().GetPosition()) * energyConservation;
                 }
                 
                 hitResult *= surface.Albedo;
@@ -279,10 +260,9 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                 
                 radiance = hitResult;
             }
-            
         }
         
+        // TODO: Merge these textures, can recalulate Direction in a later pass.
         RadianceOutput[float2(rayIndex, probeIndex)] = float4(radiance.rgb, depth);
-        DistanceDirectionOutput[float2(rayIndex, probeIndex)] = float4(ray.Direction.xyz, depth);
     }
 }

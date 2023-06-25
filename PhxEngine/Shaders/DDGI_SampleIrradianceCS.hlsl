@@ -11,7 +11,7 @@
 	"CBV(b0), " \
 	"CBV(b1), " \
     "DescriptorTable(SRV(t1, numDescriptors = 6)), " \
-    "DescriptorTable( UAV(u0, numDescriptors = 2) )," \
+    "DescriptorTable( UAV(u0, numDescriptors = 2, flags = DESCRIPTORS_VOLATILE | DATA_STATIC_WHILE_SET_AT_EXECUTE) )," \
 	"StaticSampler(s50, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, addressW = TEXTURE_ADDRESS_WRAP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s51, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_MIN_MAG_MIP_LINEAR)," \
     "StaticSampler(s52, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, comparisonFunc = COMPARISON_LESS_EQUAL),"
@@ -36,7 +36,6 @@ void main(uint3 DTid : SV_DispatchThreadID, uint2 GTid : SV_GroupThreadID, uint2
     const float2 pixelCentre = float2(pixelPosition) + 0.5;
     const float2 texUV = pixelCentre * GetFrame().GBufferRes_RCP;
     
-    
     if (depth == 1.0f)
     {
         OutputIrradianceSample[pixelPosition] = 0.0f;
@@ -45,8 +44,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint2 GTid : SV_GroupThreadID, uint2
     
     const float3 P = ReconstructWorldPosition(GetCamera(), texUV, depth);
     const float3 N = GBuffer_1[pixelPosition].xyz;
-    const float Wo = normalize(GetCamera().GetPosition() - P);
-    float3 irradiance = push.GiBoost * SampleIrradiance(P, N, Wo);
+    float3 irradiance = push.GiBoost * SampleIrradiance(P, N, GetCamera().GetPosition());
     
     OutputIrradianceSample[pixelPosition] = float4(irradiance, 1.0f);
 }
