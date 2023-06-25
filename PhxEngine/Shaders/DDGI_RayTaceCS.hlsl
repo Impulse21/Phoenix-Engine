@@ -70,8 +70,11 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         while (rayQuery.Proceed());
         if (rayQuery.CommittedStatus() != COMMITTED_TRIANGLE_HIT)
         {
-            // radiance = float3(0.529, 0.807, 0.921);
+#if 1
+            radiance = float3(0.529, 0.807, 0.921);
+#else
             radiance = 0;
+#endif
             depth = 1000.0f;
         }
         else
@@ -252,7 +255,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                 if (useInfiniteBounces && GetScene().DDGI.FrameIndex > 0)
                 {
                     const float energyConservation = 0.95;
-                    //hitResult += SampleIrradiance(P, surface.Normal, GetCamera().GetPosition()) * energyConservation;
+                    hitResult += SampleIrradiance(P, surface.Normal, GetCamera().GetPosition()) * energyConservation;
                 }
                 
                 hitResult *= surface.Albedo;

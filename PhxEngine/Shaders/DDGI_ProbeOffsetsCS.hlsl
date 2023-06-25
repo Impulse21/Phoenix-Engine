@@ -134,5 +134,6 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
     
     DDGIProbeOffset ofs;
     ofs.Store(currentOffset);
+    ofs.Store(0);
     OutputOffsetBuffer.Store<DDGIProbeOffset>(probeIndex * sizeof(DDGIProbeOffset), ofs);
 }
