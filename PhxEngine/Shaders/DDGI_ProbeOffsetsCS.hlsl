@@ -33,12 +33,13 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
     {
         return;
     }
-    
+ 
+    #if 0 
     int closestBackFaceIndex = -1;
     float closestBackFaceDistance = 100000000.f;
 
     int closestFrontFaceIndex = -1;
-    float closest_frontface_distance = 100000000.f;
+    float closestFrontFaceDistance = 100000000.f;
 
     int farthestFrontfaceIndex = -1;
     float farthestFrontfaceDistance = 0;
@@ -67,7 +68,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
             // Cache either closest or farther distance and indices for this ray.
             if (rayDistance < closestFrontFaceIndex)
             {
-                closestFrontFaceIndex = rayDistance;
+                closestFrontFaceDistance = rayDistance;
                 closestFrontFaceIndex = rayIndex;
             }
             else if (rayDistance > farthestFrontfaceDistance)
@@ -87,12 +88,12 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
     {
         currentOffset = OutputOffsetBuffer.Load<DDGIProbeOffset>(probeIndex * sizeof(DDGIProbeOffset)).load();
     }
-
+    
+    const float3x3 randomRotation = (float3x3) push.RandRotation;
     // Check if a fourth of the rays was a backface, we can assume the probe is inside a geometry.
     const bool insideGeometry = (float(backfacesCount) / push.NumRays) > 0.25f;
     if (insideGeometry && (closestBackFaceIndex != -1))
     {
-        const float3x3 randomRotation = (float3x3) push.RandRotation;
         // Calculate the backface direction.
         // NOTE: Distance is always positive
         const float3 closestBackfaceDirection = closestBackFaceDistance * normalize(mul(randomRotation, SphericalFibonacci(closestBackFaceIndex, push.NumRays)));
@@ -114,8 +115,6 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
 
         // Ensure that we never move through the farthest frontface
         // Move minimum distance to ensure not moving on a future iteration.
-        
-        const float3x3 randomRotation = (float3x3) push.RandRotation;
         const float3 farthestDirection = min(0.2f, farthestFrontfaceDistance) * normalize(mul(randomRotation, SphericalFibonacci(farthestFrontfaceIndex, push.NumRays)));
         const float3 closestDirection = normalize(mul(randomRotation, SphericalFibonacci(closestFrontFaceIndex, push.NumRays)));
         // The farthest frontface may also be the closest if the probe can only 
@@ -134,6 +133,45 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
     
     DDGIProbeOffset ofs;
     ofs.Store(currentOffset);
-    ofs.Store(0);
     OutputOffsetBuffer.Store<DDGIProbeOffset>(probeIndex * sizeof(DDGIProbeOffset), ofs);
+#else
+    
+    float3 probeOffsetNew = 0;
+    const float probeOffsetDistance = GetScene().DDGI.MaxDistance * DDGI_KEEP_DISTANCE;
+    const float3x3 randomRotation = (float3x3) push.RandRotation;
+    for (int rayIndex = 0; rayIndex < push.NumRays; ++rayIndex)
+    {
+        float2 samplePosition = float2(rayIndex, probeIndex);
+        float rayDistance = ResourceHeap_GetTexture2D(GetScene().DDGI.RTRadianceTexId)[samplePosition].a;
+        
+        
+        // Negative distance is stored for backface hits in the Ray-Tracing shader.
+        if (rayDistance <= 0.0f)
+        {
+            rayDistance = -rayDistance;
+        }
+        
+        if (rayDistance < probeOffsetDistance)
+        {
+            const float3 rayDirection = normalize(mul(randomRotation, SphericalFibonacci(rayIndex, push.NumRays)));
+            probeOffsetNew -= rayDirection * (probeOffsetDistance - rayDistance);
+        }
+    }
+    
+    float3 currentOffset = 0;
+    // Read previous offset after the first frame.
+    if (GetScene().DDGI.FrameIndex > 0)
+    {
+        currentOffset = OutputOffsetBuffer.Load < DDGIProbeOffset > (probeIndex * sizeof(DDGIProbeOffset)).load();
+    }
+    
+    currentOffset = lerp(currentOffset, probeOffsetNew, 0.01);
+    const float3 limit = GetScene().DDGI.CellSize * 0.5;
+    currentOffset = clamp(currentOffset, -limit, limit);
+    
+    DDGIProbeOffset ofs;
+    ofs.Store(currentOffset);
+    OutputOffsetBuffer.Store < DDGIProbeOffset > (probeIndex * sizeof(DDGIProbeOffset), ofs);
+    
+#endif 
 }

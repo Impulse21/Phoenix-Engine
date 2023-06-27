@@ -70,7 +70,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
         while (rayQuery.Proceed());
         if (rayQuery.CommittedStatus() != COMMITTED_TRIANGLE_HIT)
         {
-#if 1
+#if 0
             radiance = float3(0.529, 0.807, 0.921);
 #else
             radiance = 0;
