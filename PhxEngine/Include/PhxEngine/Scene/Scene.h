@@ -8,6 +8,7 @@
 #include <PhxEngine/Shaders/ShaderInteropStructures.h>
 #include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
 #include <PhxEngine/Renderer/Shadows.h>
+#include <PhxEngine/Renderer/DDGI.h>
 #include <entt.hpp>
 #include <PhxEngine/Core/Memory.h>
 
@@ -29,6 +30,7 @@ namespace PhxEngine::Scene
 		RHI::BufferHandle IndirectDrawMeshBuffer;
 		RHI::BufferHandle IndirectDrawMeshletBuffer;
 	};
+
 
 	class Scene
 	{
@@ -104,6 +106,7 @@ namespace PhxEngine::Scene
 		PhxEngine::RHI::BufferHandle GetInstanceBuffer() const { return this->m_instanceGpuBuffer; }
 		PhxEngine::RHI::BufferHandle GetInstanceUploadBuffer() const { return this->m_instanceUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
 
+		RHI::BufferHandle GetTlasUploadBuffer() const { return this->m_tlasUploadBuffers[RHI::IGraphicsDevice::GPtr->GetFrameIndex()]; }
 		RHI::BufferHandle GetPerlightMeshInstancesCounts() const { return this->m_perlightMeshInstancesCounts; }
 		RHI::BufferHandle GetPerlightMeshInstances() const { return this->m_perlightMeshInstances; }
 		RHI::BufferHandle GetIndirectDrawShadowMeshBuffer() const { return this->m_indirectDrawShadowMeshBuffer; }
@@ -131,7 +134,20 @@ namespace PhxEngine::Scene
 			bool rhCoords = false);
 
 	public:
-		void OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses);
+		void OnUpdate(std::shared_ptr<Renderer::CommonPasses> commonPasses, bool ddgiEnabled);
+
+		Renderer::DDGI& GetDDGI() { return this->m_ddgi; }
+		RHI::TextureHandle GetDDGI_IrradianceAtlasTexture() 
+		{
+			const uint32_t writeIdx = static_cast<uint32_t>(this->m_pingPing);
+			return this->m_ddgi.ProbeIrradianceAtlas[writeIdx];
+		}
+
+		RHI::TextureHandle GetDDGI_VisibilityAtlasTexture()
+		{
+			const uint32_t writeIdx = static_cast<uint32_t>(this->m_pingPing);
+			return this->m_ddgi.ProbeVisibilityAtlas[writeIdx];
+		}
 
 	private:
 		void RunMaterialUpdateSystem(std::shared_ptr<Renderer::CommonPasses>& commonPasses);
@@ -139,6 +155,7 @@ namespace PhxEngine::Scene
 		void RunProbeUpdateSystem();
 		void RunLightUpdateSystem();
 		void RunMeshInstanceUpdateSystem();
+		void UpdateRTBuffers();
 		void FreeResources();
 
 		void UpdateGpuBufferSizes();
@@ -153,11 +170,14 @@ namespace PhxEngine::Scene
 		void BuildIndirectBuffers(RHI::IGraphicsDevice* gfxDevice);
 		void BuildSceneData(RHI::ICommandList* commandList, RHI::IGraphicsDevice* gfxDevice);
 		void BuildLightBuffers(RHI::IGraphicsDevice* gfxDevice);
+		void BuildRTBuffers(RHI::IGraphicsDevice* gfxDevice);
+		void UpdateProbes(RHI::IGraphicsDevice* gfxDevice);
 
 	private:
 		Core::IAllocator* m_sceneAllocator;
 		Shader::New::Scene m_shaderData;
 
+		Renderer::DDGI m_ddgi;
 		entt::registry m_registry;
 		std::shared_ptr<Assets::Texture> m_brdfLut;
 
@@ -207,5 +227,7 @@ namespace PhxEngine::Scene
 
 		Core::AABB m_sceneBounds;
 
+		bool m_pingPing = false;
+		// DDGI stuff
 	};
 }

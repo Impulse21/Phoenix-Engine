@@ -91,5 +91,4 @@ inline MeshInstance LoadMeshInstance(uint meshInstanceIndex)
 {
 	return ResourceHeap_GetBuffer(GetScene().MeshInstanceBufferIndex).Load<MeshInstance>(meshInstanceIndex * sizeof(MeshInstance));
 }
-
 #endif // __PHX_GLOBALS_HLSLI__

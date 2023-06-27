@@ -36,10 +36,6 @@ using namespace PhxEngine::Renderer;
 
 constexpr static uint32_t kNumLightInstances = 256;
 
-// TODO: Move to a healper
-
-#define USE_SIMPLE_SPONZA 1
-
 namespace
 {
 
@@ -244,12 +240,12 @@ struct AppSettings
     uint32_t NumSpotLights = 128;
 };
 
-class ShadowsApp : public ApplicationBase
+class IndirectLightingApp : public ApplicationBase
 {
 private:
 
 public:
-    ShadowsApp(IPhxEngineRoot* root)
+    IndirectLightingApp(IPhxEngineRoot* root)
         : ApplicationBase(root)
     {
     }
@@ -273,12 +269,11 @@ public:
             this->m_shaderFactory,
             this->GetRoot()->GetFrameProfiler());
 
-#if USE_SIMPLE_SPONZA
+#if 0
         std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza/Sponza_withlights.gltf";
 #else
-        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza_Intel/Main/NewSponza_Main_glTF.gltf";
+        std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/TestScenes/GITestRoom.gltf";
 #endif
-
 #ifdef ASYNC_LOADING
         this->m_loadAsync = true; // race condition when loading textures
 #else
@@ -317,6 +312,8 @@ public:
             commandList,
             this->m_scene);
         commandList->Close();
+
+        assert(retVal);
         this->GetGfxDevice()->ExecuteCommandLists({ commandList }, true);
 
         auto viewLights = this->m_scene.GetAllEntitiesWith<Scene::LightComponent>();
@@ -387,12 +384,12 @@ private:
 };
 
 
-class ShadowsAppUI : public PhxEngine::ImGuiRenderer
+class IndirectLightingAppUI : public PhxEngine::ImGuiRenderer
 {
 private:
 
 public:
-    ShadowsAppUI(IPhxEngineRoot* root, ShadowsApp* app)
+    IndirectLightingAppUI(IPhxEngineRoot* root, IndirectLightingApp* app)
         : ImGuiRenderer(root)
         , m_app(app)
     {
@@ -406,14 +403,12 @@ public:
             if (ImGui::CollapsingHeader("Renderer"))
             {
                 this->m_app->GetRenderer()->BuildUI();
-				if (this->m_app->GetRenderer()->GetSettings().GISettings.EnableDDGI)
-				{
-					if (ImGui::TreeNode("DDGI"))
-					{
-                        this->m_app->GetScene().GetDDGI().BuildUI();
-						ImGui::TreePop();
-					}
-				}
+
+                if (ImGui::TreeNode("DDGI"))
+                {
+                    this->m_app->GetScene().GetDDGI().BuildUI();
+                    ImGui::TreePop();
+                }
             }
 
             ImGui::End();
@@ -598,7 +593,7 @@ public:
             });
     }
 private:
-    ShadowsApp* m_app;
+    IndirectLightingApp* m_app;
     Scene::Entity m_selectedEntity;
 };
 
@@ -622,12 +617,12 @@ int main(int __argc, const char** __argv)
     root->Initialize(params);
 
     {
-        ShadowsApp app(root.get());
+        IndirectLightingApp app(root.get());
         if (app.Initialize())
         {
             root->AddPassToBack(&app);
 
-            ShadowsAppUI userInterface(root.get(), &app);
+            IndirectLightingAppUI userInterface(root.get(), &app);
             if (userInterface.Initialize(*app.GetShaderFactory()))
             {
                 root->AddPassToBack(&userInterface);

@@ -1018,7 +1018,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BindDynamicUavDescriptorTable(
 {
     // Request Descriptoprs for table
     // Validate with Root Signature. Maybe an improvment in the future.
-    DescriptorHeapAllocation descriptorTable = this->m_activeDynamicSubAllocator->Allocate(textures.Size());
+    DescriptorHeapAllocation descriptorTable = this->m_activeDynamicSubAllocator->Allocate(buffers.Size() + textures.Size());
     for (int i = 0; i < buffers.Size(); i++)
     {
         auto impl = this->m_graphicsDevice.GetBufferPool().Get(buffers[i]);
@@ -1035,7 +1035,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::BindDynamicUavDescriptorTable(
         auto textureImpl = this->m_graphicsDevice.GetTexturePool().Get(textures[i]);
         this->m_graphicsDevice.GetD3D12Device2()->CopyDescriptorsSimple(
             1,
-            descriptorTable.GetCpuHandle(i),
+            descriptorTable.GetCpuHandle(i + buffers.Size()),
             textureImpl->UavAllocation.Allocation.GetCpuHandle(),
             D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 

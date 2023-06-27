@@ -32,6 +32,7 @@ namespace PhxEngine::Scene
 namespace PhxEngine::Renderer
 {
 	class CommonPasses;
+	class DDGI;
 	struct DrawQueue;
 
 	namespace EGfxPipelineStates
@@ -43,6 +44,7 @@ namespace PhxEngine::Renderer
 			DeferredLightingPass,
 			ClusterLightsDebugPass,
 			ToneMappingPass,
+			DDGI_DebugPass,
 			Count
 		};
 	}
@@ -57,6 +59,11 @@ namespace PhxEngine::Renderer
 			ClusterLightsDebugPass,
 			FillPerLightInstances,
 			FillLightDrawBuffers,
+			DDGI_Raytrace,
+			DDGI_UpdateProbeOffset,
+			DDGI_UpdateVisibility,
+			DDGI_UpdateIrradiance,
+			DDGI_SampleIrradiance,
 			Count
 		};
 	}
@@ -80,12 +87,14 @@ namespace PhxEngine::Renderer
 			VS_ClusterLightsDebugPass,
 			VS_ShadowPass,
 			VS_Rect,
+			VS_DDGI_Debug,
 
 			PS_GBufferFill,
 			PS_DeferredLightingPass,
 			PS_ClusterLightsDebugPass,
 			PS_Blit,
 			PS_ToneMapping,
+			PS_DDGI_Debug,
 
 			CS_CullPass,
 			CS_DepthPyramidGen,
@@ -93,6 +102,11 @@ namespace PhxEngine::Renderer
 			CS_ClusterLightsDebugPass,
 			CS_FillPerLightInstances,
 			CS_FillLightDrawBuffers,
+			CS_DDGI_RayTrace,
+			CS_DDGI_UpdateProbeOffsets,
+			CS_DDGI_UpdateIrradiance,
+			CS_DDGI_UpdateVisibility,
+			CS_DDGI_SampleIrradiance,
 
 			AS_MeshletCull,
 			AS_MeshletShadowCull,
@@ -110,6 +124,7 @@ namespace PhxEngine::Renderer
 		{
 			GBufferFillPass,
 			DeferredLightingPass,
+			DebugPass,
 			Count
 		};
 	}
@@ -145,6 +160,29 @@ namespace PhxEngine::Renderer
 
 		void BuildUI();
 
+		struct Settings
+		{
+			// TODO: Use a bit field
+			bool EnableComputeDeferredLighting = false;
+			bool EnableShadowPass = true;
+			bool EnableGBufferMeshShaders = false;
+			bool EnableShadowMeshShaders = false;
+			bool EnableMeshletCulling = false;
+			bool EnableFrustraCulling = true;
+			bool EnableOcclusionCulling = true;
+			bool FreezeCamera = false;
+			bool EnableClusterLightLighting = false;
+			bool EnableClusterLightDebugView = false;
+
+			struct GI
+			{
+				bool EnableDDGI = false;
+				bool DebugDrawProbes = false;
+			} GISettings;
+		};
+
+		const Settings& GetSettings() { return this->m_settings; }
+
 	private:
 		tf::Task LoadShaders(tf::Taskflow& taskFlow);
 		tf::Task LoadPipelineStates(tf::Taskflow& taskFlow);
@@ -159,7 +197,7 @@ namespace PhxEngine::Renderer
 			Scene::Scene& scene,
 			RHI::GPUAllocation& outLights,
 			RHI::GPUAllocation& outMatrices);
-		void UpdateRTAccelerationStructures(RHI::ICommandList* commandList, Scene::Scene& scene);
+		void UploadRTData(RHI::ICommandList* commandList, Scene::Scene& scene);
 
 		void RenderGeometry(RHI::ICommandList* commandList, Scene::Scene& scene, DrawQueue& drawQueue, bool markMeshes);
 
@@ -180,6 +218,7 @@ namespace PhxEngine::Renderer
 		RHI::IGraphicsDevice* m_gfxDevice;
 		std::shared_ptr<Graphics::ShaderFactory> m_shaderFactory;
 		std::shared_ptr<Renderer::CommonPasses> m_commonPasses;
+		// std::unique_ptr<DDGI> m_ddgi;
 		std::shared_ptr<Core::FrameProfiler> m_frameProfiler;
 
 		std::array<RHI::GraphicsPipelineHandle, EGfxPipelineStates::Count> m_gfxStates;
@@ -203,20 +242,7 @@ namespace PhxEngine::Renderer
 		RHI::BufferHandle m_lightBuffer;
 		RHI::BufferHandle m_lightMatrixBuffer;
 
-		struct Settings
-		{
-			// TODO: Use a bit field
-			bool EnableComputeDeferredLighting = false;
-			bool EnableShadowPass = true;
-			bool EnableGBufferMeshShaders = false;
-			bool EnableShadowMeshShaders = false;
-			bool EnableMeshletCulling = false;
-			bool EnableFrustraCulling = true;
-			bool EnableOcclusionCulling = true;
-			bool FreezeCamera = false;
-			bool EnableClusterLightLighting = false;
-			bool EnableClusterLightDebugView = false;
-		} m_settings;
+		Settings m_settings;
 		
 	};
 }

@@ -28,6 +28,14 @@ namespace Shader::New
 
 	static const uint DRAW_FLAGS_TRANSPARENT = 1 << 0;
 
+
+	static const uint DDGI_MAX_RAY_COUNT = 512;
+	static const uint DDGI_COLOUR_RESOLUTION = 6;
+	static const uint DDGI_COLOUR_TEXELS = 1 + DDGI_COLOUR_RESOLUTION + 1; // with norder;
+	static const uint DDGI_DEPTH_RESOLUTION = 6;
+	static const uint DDGI_DEPTH_TEXELS = 1 + DDGI_DEPTH_RESOLUTION + 1;
+	static const float DDGI_KEEP_DISTANCE = 0.1f;
+
 	struct IndirectDrawArgsIndexedInstanced
 	{
 		uint IndexCount;
@@ -201,6 +209,7 @@ namespace Shader::New
 #endif
 	};
 
+
 	struct Scene
 	{
 		uint ObjectBufferIdx;
@@ -238,6 +247,53 @@ namespace Shader::New
 		uint PerLightMeshInstances;
 		uint PerLightMeshInstanceCounts;
 
+
+		uint RT_TlasIndex;
+		uint3 _Padding;
+		// -- 16 byte boundary ----
+
+		struct DDGI
+		{
+			uint3 GridDimensions;
+			uint ProbeCount;
+
+			// -- 16 byte boundary ----
+			float3 GridStartPosition;
+			uint RTRadianceTexId;
+
+			// -- 16 byte boundary ----
+			float3 GridExtents;
+			uint RTDirectionDepthTexId;
+
+			// -- 16 byte boundary ----
+			float3 GridExtentsRcp;
+			uint IrradianceAtlasTextureId;
+
+			// -- 16 byte boundary ----
+
+			float3 CellSize;
+			float MaxDistance;
+
+			// -- 16 byte boundary ----
+			float3 CellSizeRcp;
+			uint VisibilityTextureAtlasId;
+
+			// -- 16 byte boundary ----
+			uint FrameIndex;
+			uint IrradianceAtlasTextureIdPrev;
+			uint VisibilityAtlasTextureIdPrev;
+			uint IrradianceSampleTextureId;
+
+			// -- 16 byte Boundary ---
+			float4 VisibilityTextureResolution;
+
+			// -- 16 byte Boundary ---
+			float4 IrradianceTextureResolution;
+
+			// -- 16 byte Boundary ---
+			uint OffsetBufferId;
+
+		} DDGI;
 	};
 
 
@@ -246,6 +302,8 @@ namespace Shader::New
 	static const uint FRAME_FLAGS_DISABLE_CULL_OCCLUSION = 1 << 2;
 	static const uint FRAME_FLAGS_ENABLE_CLUSTER_LIGHTING = 1 << 3;
 	static const uint FRAME_FLAGS_RT_SHADOWS = 1 << 4;
+	static const uint FRAME_FLAGS_FLAT_INDIRECT = 1 << 5;
+
 
 	struct Frame
 	{
@@ -263,6 +321,10 @@ namespace Shader::New
 		// -- 16 byte boundary ----
 		uint2 ShadowAtlasRes;
 		float2 ShadowAtlasResRCP;
+
+		// -- 16 byte boundary ----
+		uint2 GBufferRes;
+		float2 GBufferRes_RCP;
 
 		// -- 16 byte boundary ----
 		Scene SceneData;
@@ -541,6 +603,30 @@ namespace Shader::New
 	struct ShadowCams
 	{
 		float4x4 ViewProjection[6];
+	};
+
+	struct DDGIPushConstants
+	{
+		float4x4 RandRotation;
+		uint NumRays;
+		float Hysteresis;
+		uint GiBoost;
+	};
+
+	struct DDGIProbeOffset
+	{
+		uint2 Data;
+
+#ifndef __cplusplus
+		inline void Store(float3 offset)
+		{
+			Data = PackHalf3(offset);
+		}
+		inline float3 load()
+		{
+			return UnpackHalf3(Data);
+		}
+#endif
 	};
 #ifdef __cplusplus
 }

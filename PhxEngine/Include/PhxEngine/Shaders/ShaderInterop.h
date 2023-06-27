@@ -7,6 +7,7 @@
 #include <DirectXMath.h>
 
 using float4x4 = DirectX::XMFLOAT4X4;
+using float3x3 = DirectX::XMFLOAT3X3;
 using float2 = DirectX::XMFLOAT2;
 using float3 = DirectX::XMFLOAT3;
 using float4 = DirectX::XMFLOAT4;
@@ -43,9 +44,11 @@ namespace DefaultRootParameters
 #endif
 #define MAX(x, y) (x > y ? x : y)
 #define ROUNDUP(x, y) ((x + y - 1) & ~(y - 1))
-
-#define DEFERRED_BLOCK_SIZE_X 16
-#define DEFERRED_BLOCK_SIZE_Y 16
+#define SQR(a)		((a)*(a))
+#define DEFERRED_BLOCK_SIZE_X 8
+#define DEFERRED_BLOCK_SIZE_Y 8
+#define DDGI_SAMPLE_BLOCK_SIZE_X 8
+#define DDGI_SAMPLE_BLOCK_SIZE_Y 8
 
 #define MAX_VERTS 64
 #define MAX_PRIMS 124
@@ -72,6 +75,8 @@ namespace DefaultRootParameters
 #define BIN_WIDTH ( 1.0 / NUM_BINS )
 #define TILE_SIZE 8
 #define MAX_NUM_LIGHTS 256
+#define MAX_RAY_COUNT 400
+#define MIN_RAY_COUNT 100
 
 // point ligths are worse case senario.
 #define MAX_MESHLETS_PER_LIGHT 45000

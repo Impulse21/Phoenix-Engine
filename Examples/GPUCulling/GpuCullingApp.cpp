@@ -172,7 +172,7 @@ public:
 
         if (this->IsSceneLoaded())
         {
-            this->m_scene.OnUpdate(this->m_commonPasses);
+            this->m_scene.OnUpdate(this->m_commonPasses, this->m_deferredRenderer->GetSettings().GISettings.EnableDDGI);
         }
     }
 

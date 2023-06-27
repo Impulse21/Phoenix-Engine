@@ -60,8 +60,8 @@ SamplerState DefaultSampler: register(s50);
 
 struct PSInput
 {
-	float2 UV : TEXCOORD;
-	float4 Position : SV_POSITION;
+    float2 UV : TEXCOORD;
+    float4 Position : SV_POSITION;
 };
 
 #ifdef COMPILE_VS
@@ -120,6 +120,11 @@ float4 main(PSInput input) : SV_TARGET
     gbufferChannels[2] = GBuffer_2[pixelPosition];
     gbufferChannels[3] = GBuffer_3[pixelPosition];
     gbufferChannels[4] = GBuffer_4[pixelPosition];
+    const float depth = GBuffer_Depth[pixelPosition].x;
+
+    const float2 pixelCentre = float2(pixelPosition) + 0.5;
+    const float2 texCoord = pixelCentre * GetFrame().GBufferRes_RCP;
+    float3 surfacePosition = ReconstructWorldPosition(camera, texCoord, depth);
 
 #else
     gbufferChannels[0] = GBuffer_0.Sample(SamplerDefault, pixelPosition);
@@ -127,11 +132,11 @@ float4 main(PSInput input) : SV_TARGET
     gbufferChannels[2] = GBuffer_2.Sample(SamplerDefault, pixelPosition);
     gbufferChannels[3] = GBuffer_3.Sample(SamplerDefault, pixelPosition);
     gbufferChannels[4] = GBuffer_4.Sample(SamplerDefault, pixelPosition);
+    const float depth = GBuffer_Depth.Sample(SamplerDefault, pixelPosition).x;
+    float3 surfacePosition = ReconstructWorldPosition(camera, pixelPosition, depth);
 #endif
 
     Surface surface = DecodeGBuffer(gbufferChannels);
-    const float depth = GBuffer_Depth.Sample(SamplerDefault, pixelPosition).x;
-    float3 surfacePosition = ReconstructWorldPosition(camera, pixelPosition, depth);
 
     const float3 viewIncident = surfacePosition - (float3)GetCamera().GetPosition();
     BRDFDataPerSurface brdfSurfaceData = CreatePerSurfaceBRDFData(surface, surfacePosition, viewIncident);
@@ -168,13 +173,25 @@ float4 main(PSInput input) : SV_TARGET
         SamplerLinearClamped,
         lightingTerms);
 */
-    IndirectLightContribution_Flat(
-        0.2,
-        0.0,
-        lightingTerms);
+    if (GetFrame().Flags & FRAME_FLAGS_FLAT_INDIRECT)
+    {
+        IndirectLightContribution_Flat(
+            0.2,
+            0.0,
+            lightingTerms);
+    }
+    else // DDGI
+    {
+        IndirectLightContribution_GI(
+            GetScene(),
+            pixelPosition,
+            surfacePosition,
+            surface,
+            0.0,
+            lightingTerms);
+    }
 
-	float3 finalColour = ApplyLighting(lightingTerms, brdfSurfaceData, surface);
-    
+    float3 finalColour = ApplyLighting(lightingTerms, brdfSurfaceData, surface);
 #ifdef COMPILE_CS
     OutputBuffer[pixelPosition] = float4(finalColour, 1.0f);
 #else

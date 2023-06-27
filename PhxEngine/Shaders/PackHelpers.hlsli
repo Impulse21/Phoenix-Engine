@@ -14,7 +14,24 @@ inline float2 UnpackHalf2(in uint value)
     return retVal;
 }
 
-    
+inline uint2 PackHalf3(in float3 value)
+{
+    uint2 retVal = 0;
+    retVal.x = f32tof16(value.x) | (f32tof16(value.y) << 16u);
+    retVal.y = f32tof16(value.z);
+    return retVal;
+}
+
+
+inline float3 UnpackHalf3(in uint2 value)
+{
+    float3 retVal;
+    retVal.x = f16tof32(value.x);
+    retVal.y = f16tof32(value.x >> 16u);
+    retVal.z = f16tof32(value.y);
+    return retVal;
+}
+
 inline uint2 PackHalf4(in float4 value)
 {
     uint2 retVal = 0;

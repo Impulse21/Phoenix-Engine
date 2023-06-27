@@ -11,6 +11,7 @@
 #include <PhxEngine/Shaders/ShaderInterop.h>
 
 #include "DrawQueue.h"
+
 #include <PhxEngine/Renderer/RenderPath3DDeferred.h>
 #include <imgui.h>
 
@@ -30,6 +31,7 @@ PhxEngine::Renderer::RenderPath3DDeferred::RenderPath3DDeferred(
 	, m_commonPasses(commonPasses)
 	, m_shaderFactory(shaderFactory)
 	, m_frameProfiler(frameProfiler)
+	// , m_ddgi(std::make_unique<DDGI>())
 {
 }
 
@@ -47,7 +49,6 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Initialize(DirectX::XMFLOAT2 con
 	// createCommandSignatures.succeed(createPipelineStates);
 	tf::Future loadFuture = executor.run(taskflow);
 
-
 	// -- Create Constant Buffers ---
 	{
 		RHI::BufferDesc bufferDesc = {};
@@ -60,8 +61,11 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Initialize(DirectX::XMFLOAT2 con
 		this->m_frameCB = RHI::IGraphicsDevice::GPtr->CreateBuffer(bufferDesc);
 	}
 
+	//this->m_ddgi->Initialize();
 	this->m_clusterLighting.Initialize(this->m_gfxDevice, canvasSize);
 	this->m_shadowAtlas.Initialize(this->m_gfxDevice);
+
+	// Construct Debug Mesh
 	loadFuture.wait(); 
 	this->CreateCommandSignatures(taskflow);
 
@@ -80,8 +84,6 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 	std::memcpy(&cameraData.PlanesWS, &mainCamera.FrustumWS.Planes, sizeof(DirectX::XMFLOAT4) * 6);
 
 	ICommandList* commandList = this->m_gfxDevice->BeginCommandRecording();
-
-
 	// TODO: Disabling for now as this work is incomplete
 #if false
 	if (!this->m_depthPyramid.IsValid())
@@ -107,8 +109,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 		if (this->m_gfxDevice->CheckCapability(DeviceCapability::RayTracing))
 		{
-			// Disable Raytracing for now.
-			// this->UpdateRTAccelerationStructures(commandList, scene);
+			this->UploadRTData(commandList, scene);
 		}
 		this->m_frameProfiler->EndRangeGPU(rangeId);
 	}
@@ -122,6 +123,7 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 	{
 		cullCamera = cameraData;
 	}
+
 
 	{
 		auto _ = commandList->BeginScopedMarker("Culling Pass (Early)");
@@ -424,7 +426,6 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 			scene.GetIndirectDrawEarlyMeshBuffer(),
 			scene.GetIndirectDrawEarlyMeshletBuffer());
 	}
-
 	// Disabling occlussion stuff for now. Will implement it at a later time.
 #if false
 	// Update depth Pyramid
@@ -514,131 +515,332 @@ void PhxEngine::Renderer::RenderPath3DDeferred::Render(Scene::Scene& scene, Scen
 
 #endif
 
-	if (this->m_settings.EnableComputeDeferredLighting)
+
 	{
-		if (this->m_settings.EnableClusterLightDebugView)
+		auto lightingMarker = commandList->BeginScopedMarker("Lighting");
+
+		// TODO: Add Async
+		if (this->m_settings.GISettings.EnableDDGI && scene.GetTlas().IsValid())
 		{
-			auto _ = commandList->BeginScopedMarker("Cluster Light Debug View (Compute)");
+			Shader::New::DDGIPushConstants ddgiPush = {};
+			ddgiPush.NumRays = scene.GetDDGI().RayCount;
+			ddgiPush.Hysteresis = 0.95f;
+			ddgiPush.GiBoost = 1.0f;
 
-			RHI::GpuBarrier preBarriers[] =
+			// Get a Random angle
+			float angle = Random::GetRandom(0.0f, 1.0f) * DirectX::XM_2PI;
+			// Get a random axis
+			DirectX::XMVECTOR axis = DirectX::XMVectorSet(
+				Random::GetRandom(-1.0f, 1.0f),
+				Random::GetRandom(-1.0f, 1.0f),
+				Random::GetRandom(-1.0f, 1.0f),
+				0.0f);
+
+			axis = DirectX::XMVector3Normalize(axis);
+			DirectX::XMStoreFloat4x4(&ddgiPush.RandRotation, DirectX::XMMatrixRotationAxis(axis, angle));
+#if 0
+			DirectX::XMStoreFloat4x4(&ddgiPush.RandRotation, DirectX::XMMatrixIdentity());
+#endif
+
 			{
-				RHI::GpuBarrier::CreateTexture(this->m_colourBuffer, this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).InitialState, RHI::ResourceStates::UnorderedAccess),
-			};
-			commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
+				auto _ = commandList->BeginScopedMarker("DDGI - Ray Trace (Step 1)");
+				commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DDGI_Raytrace]);
+				commandList->BindPushConstant(0, ddgiPush);
+				commandList->BindConstantBuffer(1, this->m_frameCB);
+				commandList->BindDynamicConstantBuffer(2, cameraData);
+				commandList->BindDynamicUavDescriptorTable(
+					3,
+					{ scene.GetDDGI().RTRadianceOutput, scene.GetDDGI().RTDirectionDepthOutput });
 
-			commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::ClusterLightsDebugPass]);
-			commandList->BindConstantBuffer(1, this->m_frameCB);
-			commandList->BindDynamicConstantBuffer(2, cameraData);
-			commandList->BindDynamicUavDescriptorTable(3, { this->m_colourBuffer });
-			auto& outputDesc = this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer);
+				commandList->Dispatch(scene.GetDDGI().GetProbeCount(), 1, 1);
 
-			commandList->Dispatch(
-				outputDesc.Width / DEFERRED_BLOCK_SIZE_X,
-				outputDesc.Height / DEFERRED_BLOCK_SIZE_Y,
-				1);
+				// Result, barrier for resulting data?
+			}
 
-			RHI::GpuBarrier postTransition[] =
+			/*
+					{
+						RHI::GpuBarrier barriers[] =
+						{
+							RHI::GpuBarrier::CreateMemory(),
+							RHI::GpuBarrier::CreateTexture(scene.GetDDGI().RTRadianceOutput, RHI::ResourceStates::UnorderedAccess, RHI::ResourceStates::ShaderResourceNonPixel),
+							RHI::GpuBarrier::CreateTexture(scene.GetDDGI().RTDirectionDepthOutput, RHI::ResourceStates::UnorderedAccess, RHI::ResourceStates::ShaderResourceNonPixel),
+							RHI::GpuBarrier::CreateTexture(scene.GetDDGI().ProbeIrradiance, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::UnorderedAccess),
+							RHI::GpuBarrier::CreateTexture(scene.GetDDGI().ProbeVisibility, RHI::ResourceStates::ShaderResource, RHI::ResourceStates::UnorderedAccess),
+						};
+						commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
+					}
+					*/
+
+
+			static int32_t offsetCalculationCount = 24;
+			if (offsetCalculationCount >= 0)
 			{
-				RHI::GpuBarrier::CreateTexture(this->m_colourBuffer, RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).InitialState),
-			};
+				--offsetCalculationCount;
+				auto _ = commandList->BeginScopedMarker("DDGI - Probe Offset Update (Step 1.2)"); 
+				
+				{
+					RHI::GpuBarrier barriers[] =
+					{
+						RHI::GpuBarrier::CreateBuffer(scene.GetDDGI().ProbeOffsetBuffer, this->m_gfxDevice->GetBufferDesc(scene.GetDDGI().ProbeOffsetBuffer).InitialState , RHI::ResourceStates::UnorderedAccess),
+					};
+					commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
+				}
 
-			commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
+				commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DDGI_UpdateProbeOffset]);
+				commandList->BindPushConstant(0, ddgiPush);
+				commandList->BindConstantBuffer(1, this->m_frameCB);
+				commandList->BindDynamicConstantBuffer(2, cameraData);
+				commandList->BindDynamicUavDescriptorTable(
+					3,
+					{ scene.GetDDGI().ProbeOffsetBuffer });
 
+				commandList->Dispatch(scene.GetDDGI().GetProbeCount(), 1, 1);
+
+
+				{
+					RHI::GpuBarrier barriers[] =
+					{
+						RHI::GpuBarrier::CreateMemory(),
+						RHI::GpuBarrier::CreateBuffer(scene.GetDDGI().ProbeOffsetBuffer, RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetBufferDesc(scene.GetDDGI().ProbeOffsetBuffer).InitialState),
+					};
+					commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
+				}
+				// Result, barrier for resulting data?
+			}
+
+			{
+				auto _ = commandList->BeginScopedMarker("DDGI - Update Irradiance Atlas (Step 2)");
+				commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DDGI_UpdateIrradiance]);
+
+				// TODO: Clean up Push constant struct
+				commandList->BindPushConstant(0, ddgiPush);
+
+				commandList->BindConstantBuffer(1, this->m_frameCB);
+				commandList->BindDynamicConstantBuffer(2, cameraData);
+				commandList->BindDynamicUavDescriptorTable(3, { scene.GetDDGI_IrradianceAtlasTexture() });
+
+				const uint32_t width = this->m_gfxDevice->GetTextureDesc(scene.GetDDGI_IrradianceAtlasTexture()).Width;
+				const uint32_t height = this->m_gfxDevice->GetTextureDesc(scene.GetDDGI_IrradianceAtlasTexture()).Height;
+				commandList->Dispatch(
+					width / 8,
+					height / 8,
+					1);
+
+				// Result, barrier for resulting data?
+
+			}
+			{
+				auto _ = commandList->BeginScopedMarker("DDGI - Update Visibility Atlas (Step 2)");
+	
+				commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DDGI_UpdateVisibility]);
+				commandList->BindPushConstant(0, ddgiPush);
+
+				commandList->BindConstantBuffer(1, this->m_frameCB);
+				commandList->BindDynamicConstantBuffer(2, cameraData);
+				commandList->BindDynamicUavDescriptorTable(3,
+					{ scene.GetDDGI_VisibilityAtlasTexture() });
+
+				const uint32_t width = this->m_gfxDevice->GetTextureDesc(scene.GetDDGI_VisibilityAtlasTexture()).Width;
+				const uint32_t height = this->m_gfxDevice->GetTextureDesc(scene.GetDDGI_VisibilityAtlasTexture()).Height;
+				commandList->Dispatch(
+					width / 8,
+					height / 8,
+					1);
+			}
+			{
+				auto _ = commandList->BeginScopedMarker("DDGI - Sample Irradiance Grid (Step 3)");
+
+				{
+					RHI::GpuBarrier barriers[] =
+					{
+						RHI::GpuBarrier::CreateTexture(scene.GetDDGI().SampleProbeGrid, this->m_gfxDevice->GetTextureDesc(scene.GetDDGI().SampleProbeGrid).InitialState , RHI::ResourceStates::UnorderedAccess),
+					};
+					commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
+				}
+				commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DDGI_SampleIrradiance]);
+				commandList->BindPushConstant(0, ddgiPush);
+				commandList->BindConstantBuffer(1, this->m_frameCB);
+				commandList->BindDynamicConstantBuffer(2, cameraData);
+				commandList->BindDynamicDescriptorTable(
+					3,
+					{
+						this->m_gbuffer.DepthTex,
+						this->m_gbuffer.AlbedoTex,
+						this->m_gbuffer.NormalTex,
+						this->m_gbuffer.SurfaceTex,
+						this->m_gbuffer.SpecularTex,
+						this->m_gbuffer.EmissiveTex,
+					});
+				commandList->BindDynamicUavDescriptorTable(4, { scene.GetDDGI().SampleProbeGrid });
+
+				const DirectX::XMUINT2 sampleImageDim =
+				{
+					this->m_gfxDevice->GetTextureDesc(scene.GetDDGI().SampleProbeGrid).Width,
+					this->m_gfxDevice->GetTextureDesc(scene.GetDDGI().SampleProbeGrid).Height,
+				};
+
+				commandList->Dispatch(
+					std::ceil(sampleImageDim.x / DDGI_SAMPLE_BLOCK_SIZE_X),
+					std::ceil(sampleImageDim.y / DDGI_SAMPLE_BLOCK_SIZE_Y),
+					1);
+
+				{
+					RHI::GpuBarrier barriers[] =
+					{
+						RHI::GpuBarrier::CreateMemory(),
+						RHI::GpuBarrier::CreateTexture(scene.GetDDGI().SampleProbeGrid, RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetTextureDesc(scene.GetDDGI().SampleProbeGrid).InitialState),
+					};
+					commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
+				}
+			}
+		}
+
+		if (this->m_settings.EnableComputeDeferredLighting)
+		{
+			if (this->m_settings.EnableClusterLightDebugView)
+			{
+				auto _ = commandList->BeginScopedMarker("Cluster Light Debug View (Compute)");
+
+				RHI::GpuBarrier preBarriers[] =
+				{
+					RHI::GpuBarrier::CreateTexture(this->m_colourBuffer, this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).InitialState, RHI::ResourceStates::UnorderedAccess),
+				};
+				commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
+
+				commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::ClusterLightsDebugPass]);
+				commandList->BindConstantBuffer(1, this->m_frameCB);
+				commandList->BindDynamicConstantBuffer(2, cameraData);
+				commandList->BindDynamicUavDescriptorTable(3, { this->m_colourBuffer });
+				auto& outputDesc = this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer);
+
+				commandList->Dispatch(
+					outputDesc.Width / DEFERRED_BLOCK_SIZE_X,
+					outputDesc.Height / DEFERRED_BLOCK_SIZE_Y,
+					1);
+
+				RHI::GpuBarrier postTransition[] =
+				{
+					RHI::GpuBarrier::CreateTexture(this->m_colourBuffer, RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).InitialState),
+				};
+
+				commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
+
+			}
+			else
+			{
+				auto _ = commandList->BeginScopedMarker("Deferred Lighting Pass (Compute)");
+				auto rangeId = this->m_frameProfiler->BeginRangeGPU("Deferred Lighting Pass (Compute)", commandList);
+
+				RHI::GpuBarrier preBarriers[] =
+				{
+					RHI::GpuBarrier::CreateTexture(this->m_colourBuffer, this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).InitialState, RHI::ResourceStates::UnorderedAccess),
+				};
+				commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
+
+				commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DeferredLightingPass]);
+
+				commandList->BindConstantBuffer(1, this->m_frameCB);
+				commandList->BindDynamicConstantBuffer(2, cameraData);
+				commandList->BindDynamicDescriptorTable(
+					3,
+					{
+						this->m_gbuffer.DepthTex,
+						this->m_gbuffer.AlbedoTex,
+						this->m_gbuffer.NormalTex,
+						this->m_gbuffer.SurfaceTex,
+						this->m_gbuffer.SpecularTex,
+						this->m_gbuffer.EmissiveTex,
+					});
+
+				commandList->BindDynamicUavDescriptorTable(4, { this->m_colourBuffer });
+
+				auto& outputDesc = this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer);
+
+				Shader::DefferedLightingCSConstants push = {};
+				push.DipatchGridDim =
+				{
+					outputDesc.Width / DEFERRED_BLOCK_SIZE_X,
+					outputDesc.Height / DEFERRED_BLOCK_SIZE_Y,
+				};
+				push.MaxTileWidth = 16;
+
+				commandList->BindPushConstant(0, push);
+
+				commandList->Dispatch(
+					push.DipatchGridDim.x,
+					push.DipatchGridDim.y,
+					1);
+
+				RHI::GpuBarrier postTransition[] =
+				{
+					RHI::GpuBarrier::CreateTexture(this->m_colourBuffer, RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).InitialState),
+				};
+
+				commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
+
+				this->m_frameProfiler->EndRangeGPU(rangeId);
+			}
 		}
 		else
 		{
-			auto _ = commandList->BeginScopedMarker("Deferred Lighting Pass (Compute)");
-			auto rangeId = this->m_frameProfiler->BeginRangeGPU("Deferred Lighting Pass (Compute)", commandList);
-
-			RHI::GpuBarrier preBarriers[] =
+			if (this->m_settings.EnableClusterLightDebugView)
 			{
-				RHI::GpuBarrier::CreateTexture(this->m_colourBuffer, this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).InitialState, RHI::ResourceStates::UnorderedAccess),
-			};
-			commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(preBarriers, _countof(preBarriers)));
-
-			commandList->SetComputeState(this->m_computeStates[EComputePipelineStates::DeferredLightingPass]);
-
-			commandList->BindConstantBuffer(1, this->m_frameCB);
-			commandList->BindDynamicConstantBuffer(2, cameraData);
-			commandList->BindDynamicDescriptorTable(
-				3,
-				{
-					this->m_gbuffer.DepthTex,
-					this->m_gbuffer.AlbedoTex,
-					this->m_gbuffer.NormalTex,
-					this->m_gbuffer.SurfaceTex,
-					this->m_gbuffer.SpecularTex,
-					this->m_gbuffer.EmissiveTex,
-				});
-
-			commandList->BindDynamicUavDescriptorTable(4, { this->m_colourBuffer });
-
-			auto& outputDesc = this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer);
-
-			Shader::DefferedLightingCSConstants push = {};
-			push.DipatchGridDim =
+				auto _ = commandList->BeginScopedMarker("Cluster Lighting Debug pass");
+				commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::DeferredLightingPass]);
+				commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::ClusterLightsDebugPass]);
+				commandList->SetViewports(&v, 1);
+				commandList->SetScissors(&rec, 1);
+				commandList->BindConstantBuffer(0, this->m_frameCB);
+				commandList->BindDynamicConstantBuffer(1, cameraData);
+				commandList->Draw(3, 1, 0, 0);
+				commandList->EndRenderPass();
+			}
+			else
 			{
-				outputDesc.Width / DEFERRED_BLOCK_SIZE_X,
-				outputDesc.Height / DEFERRED_BLOCK_SIZE_Y,
-			};
-			push.MaxTileWidth = 16;
+				auto _ = commandList->BeginScopedMarker("Deferred Lighting Pass");
+				auto rangeId = this->m_frameProfiler->BeginRangeGPU("Deferred Lighting Pass", commandList);
+				commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::DeferredLightingPass]);
+				commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::DeferredLightingPass]);
+				commandList->SetViewports(&v, 1);
+				commandList->SetScissors(&rec, 1);
+				commandList->BindConstantBuffer(0, this->m_frameCB);
+				commandList->BindDynamicConstantBuffer(1, cameraData);
+				commandList->BindDynamicDescriptorTable(
+					2,
+					{
+						this->m_gbuffer.DepthTex,
+						this->m_gbuffer.AlbedoTex,
+						this->m_gbuffer.NormalTex,
+						this->m_gbuffer.SurfaceTex,
+						this->m_gbuffer.SpecularTex,
+						this->m_gbuffer.EmissiveTex,
+					});
 
-			commandList->BindPushConstant(0, push);
-
-			commandList->Dispatch(
-				push.DipatchGridDim.x,
-				push.DipatchGridDim.y,
-				1);
-
-			RHI::GpuBarrier postTransition[] =
-			{
-				RHI::GpuBarrier::CreateTexture(this->m_colourBuffer, RHI::ResourceStates::UnorderedAccess, this->m_gfxDevice->GetTextureDesc(this->m_colourBuffer).InitialState),
-			};
-
-			commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(postTransition, _countof(postTransition)));
-
-			this->m_frameProfiler->EndRangeGPU(rangeId);
+				commandList->Draw(3, 1, 0, 0);
+				commandList->EndRenderPass();
+				this->m_frameProfiler->EndRangeGPU(rangeId);
+			}
 		}
 	}
-	else
-	{
-		if (this->m_settings.EnableClusterLightDebugView)
-		{
-			auto _ = commandList->BeginScopedMarker("Cluster Lighting Debug pass");
-			commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::DeferredLightingPass]);
-			commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::ClusterLightsDebugPass]);
-			commandList->SetViewports(&v, 1);
-			commandList->SetScissors(&rec, 1);
-			commandList->BindConstantBuffer(0, this->m_frameCB);
-			commandList->BindDynamicConstantBuffer(1, cameraData);
-			commandList->Draw(3, 1, 0, 0);
-			commandList->EndRenderPass();
-		}
-		else
-		{
-			auto _ = commandList->BeginScopedMarker("Deferred Lighting Pass");
-			auto rangeId = this->m_frameProfiler->BeginRangeGPU("Deferred Lighting Pass", commandList);
-			commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::DeferredLightingPass]);
-			commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::DeferredLightingPass]);
-			commandList->SetViewports(&v, 1);
-			commandList->SetScissors(&rec, 1);
-			commandList->BindConstantBuffer(0, this->m_frameCB);
-			commandList->BindDynamicConstantBuffer(1, cameraData);
-			commandList->BindDynamicDescriptorTable(
-				2,
-				{
-					this->m_gbuffer.DepthTex,
-					this->m_gbuffer.AlbedoTex,
-					this->m_gbuffer.NormalTex,
-					this->m_gbuffer.SurfaceTex,
-					this->m_gbuffer.SpecularTex,
-					this->m_gbuffer.EmissiveTex,
-				});
 
-			commandList->Draw(3, 1, 0, 0);
-			commandList->EndRenderPass();
-			this->m_frameProfiler->EndRangeGPU(rangeId);
-		}
+	// Debug Draw
+	if (this->m_settings.GISettings.EnableDDGI && this->m_settings.GISettings.DebugDrawProbes)
+	{
+		auto _ = commandList->BeginScopedMarker("DDGI Debug Draw");
+
+		commandList->BeginRenderPass(this->m_renderPasses[ERenderPasses::DebugPass]);
+
+
+		commandList->SetGraphicsPipeline(this->m_gfxStates[EGfxPipelineStates::DDGI_DebugPass]);
+		commandList->BindIndexBuffer(scene.GetGlobalIndexBuffer());
+		commandList->SetViewports(&v, 1);
+		commandList->SetScissors(&rec, 1);
+		commandList->BindConstantBuffer(1, this->m_frameCB);
+		commandList->BindDynamicConstantBuffer(2, cameraData);
+
+		commandList->Draw(2880, scene.GetDDGI().GetProbeCount());
+
+		commandList->EndRenderPass();
 	}
 
 	{
@@ -713,36 +915,47 @@ namespace {
 }
 void PhxEngine::Renderer::RenderPath3DDeferred::BuildUI()
 {
-	ImGui::Checkbox("Freeze Camera", &this->m_settings.FreezeCamera);
-	ImGui::Checkbox("Enable Frustra Culling", &this->m_settings.EnableFrustraCulling);
-	ImGui::Checkbox("Enable Occlusion Culling", &this->m_settings.EnableOcclusionCulling);
-	ImGui::Checkbox("Enable Meshlets (GBuffer Fill)", &this->m_settings.EnableGBufferMeshShaders);
-	ImGui::Checkbox("Enable Shadow Pass", &this->m_settings.EnableShadowPass);
-	if (this->m_settings.EnableShadowPass)
+	if (ImGui::CollapsingHeader("General Options"))
 	{
-		ImGui::Indent();
+		ImGui::Checkbox("Freeze Camera", &this->m_settings.FreezeCamera);
+		ImGui::Checkbox("Enable Frustra Culling", &this->m_settings.EnableFrustraCulling);
+		ImGui::Checkbox("Enable Occlusion Culling", &this->m_settings.EnableOcclusionCulling);
+		ImGui::Checkbox("Enable Meshlets (GBuffer Fill)", &this->m_settings.EnableGBufferMeshShaders);
+		ImGui::Checkbox("Enable Shadow Pass", &this->m_settings.EnableShadowPass);
+		if (this->m_settings.EnableShadowPass)
+		{
+			ImGui::Indent();
+			BrokenSetting([&] {
+				ImGui::Checkbox("Enable Meshlets (Shadow Atlas Fill)", &this->m_settings.EnableShadowMeshShaders);
+				});
+
+			ImGui::Unindent();
+		}
+
+		if (this->m_settings.EnableGBufferMeshShaders || this->m_settings.EnableShadowMeshShaders)
+		{
+			BrokenSetting([&] {
+				ImGui::Checkbox("Enable Meshlet Culling", &this->m_settings.EnableMeshletCulling);
+				});
+		}
+
 		BrokenSetting([&] {
-			ImGui::Checkbox("Enable Meshlets (Shadow Atlas Fill)", &this->m_settings.EnableShadowMeshShaders);
+			ImGui::Checkbox("Enable Compute Deferred Shading", &this->m_settings.EnableComputeDeferredLighting);
 			});
 
-		ImGui::Unindent();
-	}
-	
-	if (this->m_settings.EnableGBufferMeshShaders || this->m_settings.EnableShadowMeshShaders)
-	{
 		BrokenSetting([&] {
-			ImGui::Checkbox("Enable Meshlet Culling", &this->m_settings.EnableMeshletCulling);
+			ImGui::Checkbox("Enable Cluster Lighting", &this->m_settings.EnableClusterLightLighting);
 			});
+		if (this->m_settings.EnableClusterLightLighting)
+		{
+			ImGui::Checkbox("View Cluster Light Heat Map", &this->m_settings.EnableClusterLightDebugView);
+		}
 	}
 
-	BrokenSetting([&] {
-		ImGui::Checkbox("Enable Compute Deferred Shading", &this->m_settings.EnableComputeDeferredLighting);
-		});
-
-	ImGui::Checkbox("Enable Cluster Lighting", &this->m_settings.EnableClusterLightLighting);
-	if (this->m_settings.EnableClusterLightLighting)
+	if (ImGui::CollapsingHeader("Indirect Lighting Options"))
 	{
-		ImGui::Checkbox("View Cluster Light Heat Map", &this->m_settings.EnableClusterLightDebugView);
+		ImGui::Checkbox("Enable GI", &this->m_settings.GISettings.EnableDDGI);
+		ImGui::Checkbox("Draw Probes", &this->m_settings.GISettings.DebugDrawProbes);
 	}
 }
 
@@ -806,6 +1019,27 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadShaders(tf::Taskflow& ta
 			});
 		subflow.emplace([&]() {
 			this->m_shaders[EShaders::MS_MeshletShadowPass] = this->m_shaderFactory->CreateShader("PhxEngine/ShadowPassMS.hlsl", { .Stage = RHI::ShaderStage::Mesh, .DebugName = "ShadowPassMS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::CS_DDGI_RayTrace] = this->m_shaderFactory->CreateShader("PhxEngine/DDGI_RayTaceCS.hlsl", { .Stage = RHI::ShaderStage::Compute, .DebugName = "DDGI_RayTaceCS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::CS_DDGI_UpdateProbeOffsets] = this->m_shaderFactory->CreateShader("PhxEngine/DDGI_ProbeOffsetsCS.hlsl", { .Stage = RHI::ShaderStage::Compute, .DebugName = "DDGI_ProbeOffsetsCS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::CS_DDGI_UpdateIrradiance] = this->m_shaderFactory->CreateShader("PhxEngine/DDGI_UpdateIrradianceAtlasCS.hlsl", { .Stage = RHI::ShaderStage::Compute, .DebugName = "DDGI_UpdateIrradianceAtlasCS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::CS_DDGI_UpdateVisibility] = this->m_shaderFactory->CreateShader("PhxEngine/DDGI_UpdateVisibilityAtlasCS.hlsl", { .Stage = RHI::ShaderStage::Compute, .DebugName = "DDGI_UpdateVisibilityAtlasCS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::CS_DDGI_SampleIrradiance] = this->m_shaderFactory->CreateShader("PhxEngine/DDGI_SampleIrradianceCS.hlsl", { .Stage = RHI::ShaderStage::Compute, .DebugName = "DDGI_SampleIrradianceCSs", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::VS_DDGI_Debug] = this->m_shaderFactory->CreateShader("PhxEngine/DDGI_DebugVS.hlsl", { .Stage = RHI::ShaderStage::Vertex, .DebugName = "DDGI_DebugVS", });
+			});
+		subflow.emplace([&]() {
+			this->m_shaders[EShaders::PS_DDGI_Debug] = this->m_shaderFactory->CreateShader("PhxEngine/DDGI_DebugPS.hlsl", { .Stage = RHI::ShaderStage::Pixel, .DebugName = "DDGI_DebugPS", });
 			});
 		});
 	return shaderLoadTask;
@@ -901,6 +1135,40 @@ tf::Task PhxEngine::Renderer::RenderPath3DDeferred::LoadPipelineStates(tf::Taskf
 		subflow.emplace([&]() {
 			this->m_computeStates[EComputePipelineStates::FillLightDrawBuffers] = this->m_gfxDevice->CreateComputePipeline({
 					.ComputeShader = this->m_shaders[EShaders::CS_FillLightDrawBuffers],
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_computeStates[EComputePipelineStates::DDGI_Raytrace] = this->m_gfxDevice->CreateComputePipeline({
+					.ComputeShader = this->m_shaders[EShaders::CS_DDGI_RayTrace],
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_computeStates[EComputePipelineStates::DDGI_UpdateIrradiance] = this->m_gfxDevice->CreateComputePipeline({
+					.ComputeShader = this->m_shaders[EShaders::CS_DDGI_UpdateIrradiance],
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_computeStates[EComputePipelineStates::DDGI_UpdateProbeOffset] = this->m_gfxDevice->CreateComputePipeline({
+					.ComputeShader = this->m_shaders[EShaders::CS_DDGI_UpdateProbeOffsets],
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_computeStates[EComputePipelineStates::DDGI_UpdateVisibility] = this->m_gfxDevice->CreateComputePipeline({
+					.ComputeShader = this->m_shaders[EShaders::CS_DDGI_UpdateVisibility],
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_computeStates[EComputePipelineStates::DDGI_SampleIrradiance] = this->m_gfxDevice->CreateComputePipeline({
+					.ComputeShader = this->m_shaders[EShaders::CS_DDGI_SampleIrradiance],
+				});
+			});
+		subflow.emplace([&]() {
+			this->m_gfxStates[EGfxPipelineStates::DDGI_DebugPass] = this->m_gfxDevice->CreateGraphicsPipeline({
+					.VertexShader = this->m_shaders[EShaders::VS_DDGI_Debug],
+					.PixelShader = this->m_shaders[EShaders::PS_DDGI_Debug],
+					.RasterRenderState = { .FrontCounterClockwise = true },
+					.RtvFormats = { IGraphicsDevice::GPtr->GetTextureDesc(this->m_colourBuffer).Format },
+					.DsvFormat = this->m_gbuffer.DepthFormat
 				});
 			});
 		});
@@ -1024,6 +1292,33 @@ void PhxEngine::Renderer::RenderPath3DDeferred::CreateRenderPasses()
 				},
 			}
 		});
+
+	if (this->m_renderPasses[ERenderPasses::DebugPass].IsValid())
+	{
+		this->m_gfxDevice->DeleteRenderPass(this->m_renderPasses[ERenderPasses::DebugPass]);
+	}
+
+	this->m_renderPasses[ERenderPasses::DebugPass] = this->m_gfxDevice->CreateRenderPass(
+		{
+			.Attachments =
+			{
+				{
+					.LoadOp = RenderPassAttachment::LoadOpType::Load,
+					.Texture = this->m_colourBuffer,
+					.InitialLayout = RHI::ResourceStates::ShaderResource,
+					.SubpassLayout = RHI::ResourceStates::RenderTarget,
+					.FinalLayout = RHI::ResourceStates::ShaderResource
+				},
+				{
+					.Type = RenderPassAttachment::Type::DepthStencil,
+					.LoadOp = RenderPassAttachment::LoadOpType::Load,
+					.Texture = this->m_gbuffer.DepthTex,
+					.InitialLayout = RHI::ResourceStates::ShaderResource,
+					.SubpassLayout = RHI::ResourceStates::DepthWrite,
+					.FinalLayout = RHI::ResourceStates::ShaderResource
+				},
+			}
+		});
 }
 
 void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
@@ -1050,6 +1345,11 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 	{
 		frameData.Flags |= Shader::New::FRAME_FLAGS_ENABLE_CLUSTER_LIGHTING;
 	}
+
+	if (!this->m_settings.GISettings.EnableDDGI)
+	{
+		frameData.Flags |= Shader::New::FRAME_FLAGS_FLAT_INDIRECT;
+	}
 	
 	frameData.SortedLightBufferIndex = this->m_gfxDevice->GetDescriptorIndex(this->m_clusterLighting.SortedLightBuffer, SubresouceType::SRV);
 	frameData.LightLutBufferIndex = this->m_gfxDevice->GetDescriptorIndex(this->m_clusterLighting.LightLutBuffer, SubresouceType::SRV);
@@ -1070,6 +1370,10 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameRenderData(
 	frameData.ShadowAtlasRes.y = this->m_shadowAtlas.Height;
 	frameData.ShadowAtlasResRCP.x = 1.0f / (float)this->m_shadowAtlas.Width;
 	frameData.ShadowAtlasResRCP.y = 1.0f / (float)this->m_shadowAtlas.Height;
+	frameData.GBufferRes.x = static_cast<uint32_t>(this->m_gbuffer.CanvasSize.x);
+	frameData.GBufferRes.y = static_cast<uint32_t>(this->m_gbuffer.CanvasSize.y);
+	frameData.GBufferRes_RCP.x = 1.0f / this->m_gbuffer.CanvasSize.x;
+	frameData.GBufferRes_RCP.y = 1.0f / this->m_gbuffer.CanvasSize.y;
 	frameData.SceneData = scene.GetShaderData();
 
 	// Upload data
@@ -1302,13 +1606,13 @@ void PhxEngine::Renderer::RenderPath3DDeferred::PrepareFrameLightData(
 	}
 }
 
-void PhxEngine::Renderer::RenderPath3DDeferred::UpdateRTAccelerationStructures(ICommandList* commandList, PhxEngine::Scene::Scene& scene)
+void PhxEngine::Renderer::RenderPath3DDeferred::UploadRTData(ICommandList* commandList, PhxEngine::Scene::Scene& scene)
 {
 	if (!scene.GetTlas().IsValid())
 	{
 		return;
 	}
-#ifdef false
+
 	auto __ = commandList->BeginScopedMarker("Prepare Frame RT Structures");
 	BufferHandle instanceBuffer = this->m_gfxDevice->GetRTAccelerationStructureDesc(scene.GetTlas()).TopLevel.InstanceBuffer;
 	{
@@ -1376,7 +1680,6 @@ void PhxEngine::Renderer::RenderPath3DDeferred::UpdateRTAccelerationStructures(I
 
 		commandList->TransitionBarriers(Core::Span(postBarriers, ARRAYSIZE(postBarriers)));
 	}
-#endif
 }
 
 

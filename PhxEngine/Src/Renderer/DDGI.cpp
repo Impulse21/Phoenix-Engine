@@ -1,16 +1,191 @@
 #include "C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Build/PhxEngine/CMakeFiles/PhxEngine.dir/Debug/cmake_pch.hxx"
-#include "DDGIPass.h"
+
 #include <taskflow/taskflow.hpp>
 #include <PhxEngine/Graphics/ShaderFactory.h>
 #include <PhxEngine/Scene/Scene.h>
-#include <PhxEngine/Shaders/ShaderInteropStructures.h>
+#include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
 #include <PhxEngine/Core/Helpers.h>
+#include <PhxEngine/Renderer/DDGI.h>
+#include <imgui.h>
 
 using namespace PhxEngine::Graphics;
 using namespace PhxEngine::Renderer;
 using namespace PhxEngine::RHI;
 using namespace DirectX;
 
+
+void PhxEngine::Renderer::DDGI::UpdateResources(RHI::IGraphicsDevice* gfxDevice)
+{
+	// Construct data
+	uint32_t width = this->RayCount;
+	uint32_t height = this->GetProbeCount();
+
+	// -- Create Buffer Offset data ---
+	if (!this->ProbeOffsetBuffer.IsValid() ||
+		gfxDevice->GetBufferDesc(this->ProbeOffsetBuffer).SizeInBytes < sizeof(Shader::New::DDGIProbeOffset) * this->GetProbeCount())
+	{
+		if (this->ProbeOffsetBuffer.IsValid())
+		{
+			gfxDevice->DeleteBuffer(this->ProbeOffsetBuffer);
+		}
+
+		this->ProbeOffsetBuffer = gfxDevice->CreateBuffer({
+			.MiscFlags = RHI::BufferMiscFlags::Raw| RHI::BufferMiscFlags::Bindless,
+			.Binding = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::UnorderedAccess,
+			.InitialState = RHI::ResourceStates::ShaderResource,
+			.StrideInBytes = sizeof(Shader::New::DDGIProbeOffset),
+			.SizeInBytes = sizeof(Shader::New::DDGIProbeOffset) * this->GetProbeCount(),
+			.DebugName = "ProbeOffsetBuffer"
+			});
+
+		this->FrameIndex = 0;
+	}
+
+	// -- Create RT Output texture that stored the Radiance data ---
+	if (!this->RTRadianceOutput.IsValid() || 
+		gfxDevice->GetTextureDesc(this->RTRadianceOutput).Width < width ||
+		gfxDevice->GetTextureDesc(this->RTRadianceOutput).Height < height)
+	{
+		if (this->RTRadianceOutput.IsValid())
+		{
+			gfxDevice->DeleteTexture(this->RTRadianceOutput);
+		}
+
+		this->RTRadianceOutput = gfxDevice->CreateTexture({
+			.BindingFlags = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
+			.Dimension = RHI::TextureDimension::Texture2D,
+			.InitialState = RHI::ResourceStates::UnorderedAccess,
+			.Format = RHI::RHIFormat::RGBA16_FLOAT,
+			.Width = width,
+			.Height = height,
+			.MipLevels = 1,
+			.DebugName = "RTRadianceOutput",
+			});
+		this->FrameIndex = 0;
+	}
+
+	// -- Create RT Output texture that stored the Distance and depth data ---
+	if (!this->RTDirectionDepthOutput.IsValid() ||
+		gfxDevice->GetTextureDesc(this->RTDirectionDepthOutput).Width < width ||
+		gfxDevice->GetTextureDesc(this->RTDirectionDepthOutput).Height < height)
+	{
+		if (this->RTDirectionDepthOutput.IsValid())
+		{
+			gfxDevice->DeleteTexture(this->RTRadianceOutput);
+		}
+
+		this->RTDirectionDepthOutput = gfxDevice->CreateTexture({
+			.BindingFlags = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
+			.Dimension = RHI::TextureDimension::Texture2D,
+			.InitialState = RHI::ResourceStates::UnorderedAccess,
+			.Format = RHI::RHIFormat::RGBA16_FLOAT,
+			.Width = width,
+			.Height = height,
+			.MipLevels = 1,
+			.DebugName = "RTDirectionDepthOutput",
+			});
+		this->FrameIndex = 0;
+	}
+
+	// -- Create the probe data ---
+	// Add 2 pixel border to allow for bilinear interpolation
+	const uint32_t octahedralIrradianceSize = Shader::New::DDGI_COLOUR_TEXELS;
+	width = octahedralIrradianceSize * this->GridDimensions.x * this->GridDimensions.y;
+	height = octahedralIrradianceSize * this->GridDimensions.z;
+
+	// -- Create RT Output texture that stored the Radiance data ---
+	if (!this->ProbeIrradianceAtlas[0].IsValid() ||
+		gfxDevice->GetTextureDesc(this->ProbeIrradianceAtlas[0]).Width < width ||
+		gfxDevice->GetTextureDesc(this->ProbeIrradianceAtlas[0]).Height < height)
+	{
+		for (int i = 0; i < this->ProbeIrradianceAtlas.size(); i++)
+		{
+			if (this->ProbeIrradianceAtlas[i].IsValid())
+			{
+				gfxDevice->DeleteTexture(this->ProbeIrradianceAtlas[i]);
+			}
+
+			this->ProbeIrradianceAtlas[i] = gfxDevice->CreateTexture({
+				.BindingFlags = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
+				.Dimension = RHI::TextureDimension::Texture2D,
+				.InitialState = RHI::ResourceStates::ShaderResource,
+				.Format = RHI::RHIFormat::RGBA16_FLOAT,
+				.Width = width,
+				.Height = height,
+				.MipLevels = 1,
+				.DebugName = "Probe Atlas (Irradiance) [" + std::to_string(i) + "]",
+				});
+		}
+		this->FrameIndex = 0;
+	}
+
+	// Visibility Texture
+	const uint32_t octahedralVisibilitySize = Shader::New::DDGI_DEPTH_TEXELS;
+	width = octahedralVisibilitySize * this->GridDimensions.x * this->GridDimensions.y;
+	height = octahedralVisibilitySize * this->GridDimensions.z;
+
+	// -- Create RT Output texture that stored the Radiance data ---
+	if (!this->ProbeVisibilityAtlas[0].IsValid() ||
+		gfxDevice->GetTextureDesc(this->ProbeVisibilityAtlas[0]).Width < width ||
+		gfxDevice->GetTextureDesc(this->ProbeVisibilityAtlas[0]).Height < height)
+	{
+		for (int i = 0; i < this->ProbeVisibilityAtlas.size(); i++)
+		{
+			if (this->ProbeVisibilityAtlas[i].IsValid())
+			{
+				gfxDevice->DeleteTexture(this->ProbeVisibilityAtlas[i]);
+			}
+
+			this->ProbeVisibilityAtlas[i] = gfxDevice->CreateTexture({
+				.BindingFlags = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
+				.Dimension = RHI::TextureDimension::Texture2D,
+				.InitialState = RHI::ResourceStates::ShaderResource,
+				.Format = RHI::RHIFormat::RG16_FLOAT,
+				.Width = width,
+				.Height = height,
+				.MipLevels = 1,
+				.DebugName = "Probe Atlas (Visibility) [" + std::to_string(i) + "]",
+				});
+		}
+		this->FrameIndex = 0;
+	}
+
+	width = gfxDevice->GetViewportDesc().Width;
+	height = gfxDevice->GetViewportDesc().Height;
+	// -- Create RT Output texture that stored the Radiance data ---
+	if (!this->SampleProbeGrid.IsValid() ||
+		gfxDevice->GetTextureDesc(this->SampleProbeGrid).Width < width ||
+		gfxDevice->GetTextureDesc(this->SampleProbeGrid).Height < height)
+	{
+		if (this->SampleProbeGrid.IsValid())
+		{
+			gfxDevice->DeleteTexture(this->SampleProbeGrid);
+		}
+
+		this->SampleProbeGrid = gfxDevice->CreateTexture({
+			.BindingFlags = BindingFlags::UnorderedAccess | BindingFlags::ShaderResource,
+			.Dimension = RHI::TextureDimension::Texture2D,
+			.InitialState = RHI::ResourceStates::ShaderResource,
+			.Format = RHI::RHIFormat::RGBA16_FLOAT,
+			.Width = width,
+			.Height = height,
+			.MipLevels = 1,
+			.DebugName = "Sample Probe Grid",
+			});
+	}
+}
+
+void PhxEngine::Renderer::DDGI::BuildUI()
+{
+	ImGui::InputInt3("Grid Dimensions", reinterpret_cast<int32_t*>(&this->GridDimensions.x));
+	ImGui::InputInt("Ray Count", &this->RayCount);
+	ImGui::Text("Grid Min: (%.6f, %.6f. %.6f)", this->GridMin.x, this->GridMin.y, this->GridMin.z);
+	ImGui::Text("Grid Max: (% .6f, % .6f. % .6f", this->GridMax.x, this->GridMax.y, this->GridMax.z);
+	ImGui::Text("Irradiance OctSize: %d", this->IrradianceOctSize);
+	ImGui::Text("Depth OctSize: %d", this->DepthOctSize);
+}						   
+
+#if false
 void DDGI::Initialize(tf::Taskflow& taskflow, ShaderFactory& shaderFactory)
 {
 	this->m_rayTraceComputeShader = shaderFactory.CreateShader(
@@ -69,6 +244,10 @@ void PhxEngine::Renderer::DDGI::Render(RHI::ICommandList* commandList, Scene::Sc
 
 		commandList->TransitionBarriers(Core::Span<RHI::GpuBarrier>(barriers, _countof(barriers)));
 	}
+}
+
+void PhxEngine::Renderer::DDGI::BuidUI()
+{
 }
 
 void PhxEngine::Renderer::DDGI::InitializeProbeGrid(Scene::Scene const& scene)
@@ -198,4 +377,4 @@ void PhxEngine::Renderer::DDGI::RecreateProbeGrideResources()
 		});
 
 }
-
+#endif

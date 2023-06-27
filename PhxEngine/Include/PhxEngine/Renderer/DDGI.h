@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxEngine/RHI/PhxRHI.h>
+#include <PhxEngine/Shaders/ShaderInteropStructures_NEW.h>
 #include <DirectXMath.h>
 
 namespace PhxEngine::Graphics
@@ -21,6 +22,33 @@ namespace tf
 
 namespace PhxEngine::Renderer
 {
+	struct DDGI
+	{
+		uint32_t FrameIndex = 0;
+		DirectX::XMUINT3 GridDimensions = { 32, 8, 32 };
+		DirectX::XMFLOAT3 GridMin = { -1, -1, -1 };
+		DirectX::XMFLOAT3 GridMax = { 1, 1, 1 };
+		uint32_t IrradianceOctSize = Shader::New::DDGI_COLOUR_RESOLUTION;
+		uint32_t DepthOctSize = Shader::New::DDGI_DEPTH_RESOLUTION;
+		int32_t RayCount = 192;
+
+		RHI::TextureHandle RTRadianceOutput;
+		RHI::TextureHandle RTDirectionDepthOutput;
+
+		// TODO: maybe make this match the number of inflight frames
+		std::array<RHI::TextureHandle, 2> ProbeIrradianceAtlas;
+		std::array<RHI::TextureHandle, 2> ProbeVisibilityAtlas;
+
+		RHI::TextureHandle SampleProbeGrid;;
+		RHI::BufferHandle ProbeOffsetBuffer;
+
+		uint32_t GetProbeCount() const { return this->GridDimensions.x * this->GridDimensions.y * this->GridDimensions.z; }
+		void UpdateResources(RHI::IGraphicsDevice* gfxDevice);
+
+		void BuildUI();
+	};
+
+#if false
 	class DDGI
 	{
 	public:
@@ -51,11 +79,8 @@ namespace PhxEngine::Renderer
 		{
 			float ProbeDistance = 1.0f;
 			uint32_t RaysPerProbe = 256;
-			DirectX::XMFLOAT3 GridStartPosition;
 			DirectX::XMINT3 ProbeCount;
 			float ProbeMaxDistance = 4.0f; 
-			uint32_t IrradianceOctSize = 8;
-			uint32_t DepthOctSize = 16;
 		} m_probeGrid;
 
 		RHI::ShaderHandle m_rayTraceComputeShader;
@@ -68,5 +93,7 @@ namespace PhxEngine::Renderer
 		std::vector<RHI::TextureHandle> m_depthTextures;
 		RHI::BufferHandle m_rayBuffer;
 	};
+#endif
+
 }
 
