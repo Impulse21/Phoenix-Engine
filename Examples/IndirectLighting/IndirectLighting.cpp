@@ -269,7 +269,7 @@ public:
             this->m_shaderFactory,
             this->GetRoot()->GetFrameProfiler());
 
-#if 0
+#if 1
         std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/Sponza/Sponza_withlights.gltf";
 #else
         std::filesystem::path scenePath = Core::Platform::GetExcecutableDir().parent_path().parent_path() / "Assets/Models/TestScenes/GITestRoom.gltf";
