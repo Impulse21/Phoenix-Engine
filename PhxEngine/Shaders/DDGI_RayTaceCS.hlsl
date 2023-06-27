@@ -121,7 +121,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                 surface.Albedo *= material.AlbedoColour * UnpackRGBA(objectInstance.Colour).rgb;
                 if (material.AlbedoTexture != InvalidDescriptorIndex)
                 {
-                // Sample a LOD version for better performance
+                    // Sample a LOD version for better performance
                     surface.Albedo *= ResourceHeap_GetTexture2D(material.AlbedoTexture).Sample(SamplerDefault, uv).xyz;
                 }
     
@@ -130,7 +130,18 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint groupIn
                 // Since we are not storing much info, just use the surface normal for now and see how things look
                 const float3 normal = BarycentricInterpolation(v0.Normal, v1.Normal, v2.Normal, barycentricWeights);
                 surface.Normal = mul(normal, (float3x3) objectInstance.WorldMatrix).xyz;
-            
+#if 0
+                // Construct Plane Normals.
+                float4 p0_world = mul(v0.Position, objectInstance.WorldMatrix);
+                float4 p1_world = mul(v1.Position, objectInstance.WorldMatrix);
+                float4 p2_world = mul(v2.Position, objectInstance.WorldMatrix);
+                
+                // Compute plane normal
+                float3 v0_v1 = p1_world.xyz - p0_world.xyz;
+                float3 v0_v2 = p2_world.xyz - p0_world.xyz;
+                surface.Normal = normalize(cross(v0_v1, v0_v2));
+#endif
+                
                 float3 surfacePosition = BarycentricInterpolation(v0.Position, v1.Position, v2.Position, barycentricWeights);
                 const float3 P = mul(float4(surfacePosition, 1.0f), objectInstance.WorldMatrix).xyz;
                 // const float3 P = ray.Origin;

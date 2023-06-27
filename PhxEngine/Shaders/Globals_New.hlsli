@@ -176,7 +176,15 @@ inline float BarycentricInterpolation(in float a0, in float a1, in float a2, flo
 
 inline float2 BarycentricInterpolation(in float2 a0, in float2 a1, in float2 a2, float2 bary)
 {
+#if 1
     return mad(a0, 1 - bary.x - bary.y, mad(a1, bary.x, a2 * bary.y));
+#else
+    const float b = bary.x;
+    const float c = bary.y;
+    const float a = 1 - b - c;
+    
+    return (a * a0 + b * a1 + c * a2);
+#endif
 }
 inline float3 BarycentricInterpolation(in float3 a0, in float3 a1, in float3 a2, float2 bary)
 {
