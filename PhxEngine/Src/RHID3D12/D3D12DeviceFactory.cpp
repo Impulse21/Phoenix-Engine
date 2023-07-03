@@ -58,7 +58,7 @@ bool D3D12GraphicsDeviceFactory::IsSupported(FeatureLevel requestedFeatureLevel)
     return true;
 }
 
-std::unique_ptr<PhxEngine::RHI::IGraphicsDevice> PhxEngine::RHI::D3D12::D3D12GraphicsDeviceFactory::CreateDevice()
+std::unique_ptr<PhxEngine::RHI::IGraphicsDevice> PhxEngine::RHI::D3D12::D3D12GraphicsDeviceFactory::CreateDevice(PhxEngine::Core::IAllocator* allocator)
 {
     Microsoft::WRL::ComPtr<IDXGIFactory6> factory = this->CreateDXGIFactory6();
 
@@ -73,7 +73,7 @@ std::unique_ptr<PhxEngine::RHI::IGraphicsDevice> PhxEngine::RHI::D3D12::D3D12Gra
         }
     }
 
-    auto device = std::make_unique<D3D12GraphicsDevice>(adapter, factory);
+    auto device = std::make_unique<D3D12GraphicsDevice>(adapter, factory, allocator);
 
     return device;
 }

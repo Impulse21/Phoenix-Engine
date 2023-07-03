@@ -119,7 +119,10 @@ private:
     {
         if (e.GetEventType() == WindowCloseEvent::GetStaticType())
         {
+            this->m_shuttingDown = true;
             e.IsHandled = true;
+
+            return;
         }
 
         if (e.GetEventType() == WindowResizeEvent::GetStaticType())

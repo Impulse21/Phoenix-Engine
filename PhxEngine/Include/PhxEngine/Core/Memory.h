@@ -35,6 +35,18 @@ namespace PhxEngine::Core
 	public:
 		virtual ~IAllocator() = default;
 
+		template<class _T>
+		_T* AllocateArray(size_t numElements, size_t alignment)
+		{
+			return static_cast<_T*>(this->Allocate(numElements * sizeof(_T), alignment));
+		};
+
+		template<class _T>
+		_T* Allocate(size_t alignment)
+		{
+			return static_cast<_T*>(this->Allocate(sizeof(_T), alignment));
+		};
+
 		virtual void* Allocate(size_t size, size_t alignment) = 0;
 		virtual void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) = 0;
 

@@ -305,7 +305,7 @@ namespace PhxEngine::RHI::D3D12
         inline static D3D12GraphicsDevice* sSingleton = nullptr;
 
 	public:
-		D3D12GraphicsDevice(D3D12Adapter const& adapter, Microsoft::WRL::ComPtr<IDXGIFactory6> factory);
+		D3D12GraphicsDevice(D3D12Adapter const& adapter, Microsoft::WRL::ComPtr<IDXGIFactory6> factory, Core::IAllocator* allocator);
 		~D3D12GraphicsDevice();
 
         // -- Interface Functions ---

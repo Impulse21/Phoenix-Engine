@@ -12,7 +12,7 @@ namespace PhxEngine::RHI::D3D12
 	class D3D12GraphicsDeviceFactory : public IGraphicsDeviceFactory
 	{
 	public:
-		std::unique_ptr<IGraphicsDevice> CreateDevice() override;
+		std::unique_ptr<IGraphicsDevice> CreateDevice(PhxEngine::Core::IAllocator* allocator) override;
 
 	private:
 		void FindAdapter(Microsoft::WRL::ComPtr<IDXGIFactory6> factory, D3D12Adapter& outAdapter);

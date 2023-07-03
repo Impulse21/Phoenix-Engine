@@ -11,7 +11,7 @@ namespace PhxEngine::RHI
 	public:
 		virtual bool IsSupported() = 0;
 		virtual bool IsSupported(FeatureLevel requestedFeatureLevel) = 0;
-		virtual std::unique_ptr<IGraphicsDevice> CreateDevice() = 0;
+		virtual std::unique_ptr<IGraphicsDevice> CreateDevice(PhxEngine::Core::IAllocator* allocator) = 0;
 	};
 
 	enum class RHIType

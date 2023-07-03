@@ -252,22 +252,22 @@ UINT ConvertSamplerReductionType(SamplerReductionType reductionType)
 	}
 }
 
-PhxEngine::RHI::D3D12::D3D12GraphicsDevice::D3D12GraphicsDevice(D3D12Adapter const& adapter, Microsoft::WRL::ComPtr<IDXGIFactory6> factory)
+PhxEngine::RHI::D3D12::D3D12GraphicsDevice::D3D12GraphicsDevice(D3D12Adapter const& adapter, Microsoft::WRL::ComPtr<IDXGIFactory6> factory, Core::IAllocator* allocator)
 	: m_gpuAdapter(adapter)
 	, m_factory(factory)
 	, m_frameCount(1)
 	, m_timerQueryIndexPool(kTimestampQueryHeapSize)
-	, m_texturePool(kResourcePoolSize)
-	, m_bufferPool(kResourcePoolSize)
-	, m_renderPassPool(200)
-	, m_rtAccelerationStructurePool(kResourcePoolSize)
-	, m_graphicsPipelinePool(10)
-	, m_computePipelinePool(10)
-	, m_meshPipelinePool(10)
-	, m_inputLayoutPool(10)
-	, m_shaderPool(40)
-	, m_commandSignaturePool(10)
-	, m_timerQueryPool(this->kTimestampQueryHeapSize / 2)
+	, m_texturePool(allocator, kResourcePoolSize)
+	, m_bufferPool(allocator, kResourcePoolSize)
+	, m_renderPassPool(allocator, 200)
+	, m_rtAccelerationStructurePool(allocator, kResourcePoolSize)
+	, m_graphicsPipelinePool(allocator, 10)
+	, m_computePipelinePool(allocator, 10)
+	, m_meshPipelinePool(allocator, 10)
+	, m_inputLayoutPool(allocator, 10)
+	, m_shaderPool(allocator, 40)
+	, m_commandSignaturePool(allocator, 10)
+	, m_timerQueryPool(allocator, this->kTimestampQueryHeapSize / 2)
 {
 	sSingleton = this;
 	GfxDevice::Impl = this;
@@ -3371,9 +3371,9 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::InitializeD3D12Device(IDXGIAdap
 }
 
 // TODO:: pass in Memory
-void PhxEngine::RHI::Initialize(RHI::DeviceParams params)
+void PhxEngine::RHI::Initialize(RHI::DeviceParams params, PhxEngine::Core::IAllocator* allocator)
 {
-	GfxDevice::Impl = CreatePlatformGfxDevice().release();
+	GfxDevice::Impl = CreatePlatformGfxDevice(allocator).release();
 	GfxDevice::Impl->Initialize();
 }
 

@@ -19,7 +19,7 @@ bool PhxEngine::EngineInitialize(EngineParam const& params)
 			.MaximumDynamicSize = params.MaximumDynamicSize
 		});
 
-	RHI::Initialize({});
+	RHI::Initialize({}, &PhxEngine::Core::MemoryService::GetInstance().GetSystemAllocator());
 
 	// Initialize Subsystems
 	Renderer::Initialize();

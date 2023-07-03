@@ -6,7 +6,7 @@
 using namespace PhxEngine::RHI;
 
 
-std::unique_ptr<IGraphicsDevice> PhxEngine::RHI::CreatePlatformGfxDevice()
+std::unique_ptr<IGraphicsDevice> PhxEngine::RHI::CreatePlatformGfxDevice(PhxEngine::Core::IAllocator* allocator)
 {
 	LOG_CORE_INFO("Initializing RHI on Windows platform");
 
@@ -16,5 +16,5 @@ std::unique_ptr<IGraphicsDevice> PhxEngine::RHI::CreatePlatformGfxDevice()
 	GfxDeviceFactoryProvider provider;
 	std::unique_ptr<IGraphicsDeviceFactory> factory = provider.CreatGfxDeviceFactory(RHIType::D3D12);
 
-	return factory->CreateDevice();
+	return factory->CreateDevice(allocator);
 }

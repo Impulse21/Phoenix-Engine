@@ -4,6 +4,7 @@
 #include "PhxEngine/Core/TimeStep.h"
 #include "PhxEngine/Core/Span.h"
 #include "PhxEngine/Core/Handle.h"
+#include <PhxEngine/Core/Memory.h>
 
 #include <stdint.h>
 #include <optional>
@@ -31,7 +32,7 @@ namespace PhxEngine::RHI
         // Heap Sizes
     };
 
-    void Initialize(RHI::DeviceParams params);
+    void Initialize(RHI::DeviceParams params, Core::IAllocator* allocator);
     void Finalize();
 
     typedef uint32_t DescriptorIndex;
@@ -1634,10 +1635,10 @@ namespace PhxEngine::RHI
     
     namespace DeviceFactory
     {
-        extern GfxDevice* CreateDx12Device();
+        extern GfxDevice* CreateDx12Device(PhxEngine::Core::IAllocator* allocator);
     }
 
-    std::unique_ptr<GfxDevice> CreatePlatformGfxDevice();
+    std::unique_ptr<GfxDevice> CreatePlatformGfxDevice(PhxEngine::Core::IAllocator* allocator);
 
     using IGraphicsDevice = GfxDevice;
 
