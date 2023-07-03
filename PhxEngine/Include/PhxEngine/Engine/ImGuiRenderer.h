@@ -17,17 +17,17 @@ namespace PhxEngine
 		class ShaderFactory;
 	}
 
-	class ImGuiRenderer : public EngineRenderPass
+	class ImGuiRenderer
 	{
 	public:
-		ImGuiRenderer(IPhxEngineRoot* root);
+		ImGuiRenderer();
 
 		bool Initialize(Graphics::ShaderFactory& shaderFactory);
-		void Update(Core::TimeStep const& timeStep) override;
+		void Update(Core::TimeStep const& timeStep);
 
-		void Render() override;
+		void Render();
 
-		void OnWindowResize(WindowResizeEvent const& e) override;
+		void OnWindowResize(WindowResizeEvent const& e);
 
 	protected:
 		void EnableDarkThemeColours();

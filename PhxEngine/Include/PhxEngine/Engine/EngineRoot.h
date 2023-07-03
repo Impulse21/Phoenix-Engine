@@ -5,6 +5,8 @@
 #include <PhxEngine/Engine/ApplicationEvents.h>
 #include <PhxEngine/Core/Profiler.h>
 #include <DirectXMath.h>
+#include <PhxEngine/Core/Memory.h>
+
 
 namespace PhxEngine
 {
@@ -25,48 +27,22 @@ namespace PhxEngine
 		bool VSync = false;
 		bool EnableImGui = false;
 		bool AllowWindowResize = true;
+
+		size_t MaximumDynamicSize = PhxMB(32);
 	};
 
-	class EngineRenderPass;
-	class IPhxEngineRoot
+	class IEngineApplication
 	{
 	public:
-		virtual ~IPhxEngineRoot() = default;
+		virtual bool Initialize() = 0;
+		virtual bool Finalize() = 0;
+		virtual bool RunFrame() = 0;
+		virtual bool ShuttingDown() const = 0;
 
-		virtual void Initialize(EngineParam const& params) = 0;
-		virtual void Finalizing() = 0;
-
-		virtual void Run() = 0;
-		virtual void AddPassToBack(EngineRenderPass* pass) = 0;
-		virtual void RemovePass(EngineRenderPass* pass) = 0;
-
-		virtual RHI::IGraphicsDevice* GetGfxDevice() = 0;
-		virtual const DirectX::XMFLOAT2& GetCanvasSize() const = 0;
-		virtual void SetInformativeWindowTitle(std::string_view appName, std::string_view extraInfo) = 0;
-
-		virtual std::shared_ptr<Core::FrameProfiler> GetFrameProfiler() = 0;
-		virtual Core::IWindow* GetWindow() = 0;
+		virtual ~IEngineApplication() = default;
 	};
 
-	class EngineRenderPass
-	{
-	public:
-		explicit EngineRenderPass(IPhxEngineRoot* root)
-			: m_root(root) {}
-
-		virtual void Update(Core::TimeStep const& delta) {};
-		virtual void Render() {};
-
-		virtual void OnWindowResize(WindowResizeEvent const& resizeEvent) {};
-
-	public:
-		IPhxEngineRoot* GetRoot() { return this->m_root; }
-		RHI::IGraphicsDevice* GetGfxDevice() { return this->m_root->GetGfxDevice(); }
-
-	private:
-		IPhxEngineRoot* m_root;
-	};
-
-
-	std::unique_ptr<IPhxEngineRoot> CreateEngineRoot();
+	bool EngineInitialize(EngineParam const& params);
+	bool EngineRun(IEngineApplication& app);
+	bool EngineFinalize();
 }

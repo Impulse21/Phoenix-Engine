@@ -10,6 +10,7 @@ namespace PhxEngine::Core
 	{
 	public:
 		static void Initialize();
+		static void Finalize();
 
 		inline static std::shared_ptr<spdlog::logger>& GetCoreLogger() { return s_CoreLogger; }
 		inline static std::shared_ptr<spdlog::logger>& GetClientLogger() { return s_ClientLogger; }
@@ -33,3 +34,16 @@ namespace PhxEngine::Core
 #define LOG_WARN(...)	::PhxEngine::Core::Log::GetClientLogger()->warn(__VA_ARGS__)
 #define LOG_ERROR(...)	::PhxEngine::Core::Log::GetClientLogger()->error(__VA_ARGS__)
 #define LOG_FATAL(...)	::PhxEngine::Core::Log::GetClientLogger()->critical(__VA_ARGS__)
+
+// -- Core log macros ----
+#define PHX_LOG_CORE_TRACE(...) ::PhxEngine::Core::Log::GetCoreLogger()->trace(__VA_ARGS__)
+#define PHX_LOG_CORE_INFO(...)	::PhxEngine::Core::Log::GetCoreLogger()->info(__VA_ARGS__)
+#define PHX_LOG_CORE_WARN(...)	::PhxEngine::Core::Log::GetCoreLogger()->warn(__VA_ARGS__)
+#define PHX_LOG_CORE_ERROR(...) ::PhxEngine::Core::Log::GetCoreLogger()->error(__VA_ARGS__)
+#define PHX_LOG_CORE_FATAL(...) ::PhxEngine::Core::Log::GetCoreLogger()->critical(__VA_ARGS__)
+
+#define PHX_LOG_TRACE(...)	::PhxEngine::Core::Log::GetClientLogger()->trace(__VA_ARGS__)
+#define PHX_LOG_INFO(...)	::PhxEngine::Core::Log::GetClientLogger()->info(__VA_ARGS__)
+#define PHX_LOG_WARN(...)	::PhxEngine::Core::Log::GetClientLogger()->warn(__VA_ARGS__)
+#define PHX_LOG_ERROR(...)	::PhxEngine::Core::Log::GetClientLogger()->error(__VA_ARGS__)
+#define PHX_LOG_FATAL(...)	::PhxEngine::Core::Log::GetClientLogger()->critical(__VA_ARGS__)

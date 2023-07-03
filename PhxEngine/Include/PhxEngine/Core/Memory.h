@@ -108,6 +108,7 @@ namespace PhxEngine::Core
 		size_t MaximumDynamicSize = PhxMB(32);
 	};
 
+	// Move to Namesapce maybe
 	class MemoryService
 	{
 	public:

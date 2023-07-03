@@ -22,13 +22,13 @@ namespace
     };
 }
 
-PhxEngine::ImGuiRenderer::ImGuiRenderer(IPhxEngineRoot* root)
-    : EngineRenderPass(root)
+PhxEngine::ImGuiRenderer::ImGuiRenderer()
 {
     this->m_imguiContext = ImGui::CreateContext();
     ImGui::SetCurrentContext(this->m_imguiContext);
     
-    auto* glfwWindow = static_cast<GLFWwindow*>(root->GetWindow()->GetNativeWindow());
+    // auto* glfwWindow = static_cast<GLFWwindow*>(root->GetWindow()->GetNativeWindow());
+    GLFWwindow* glfwWindow = nullptr;
 
     if (!ImGui_ImplGlfw_InitForVulkan(glfwWindow, true))
     {
@@ -57,7 +57,7 @@ PhxEngine::ImGuiRenderer::ImGuiRenderer(IPhxEngineRoot* root)
     desc.MipLevels = 1;
     desc.DebugName = "IMGUI Font Texture";
 
-    this->m_fontTexture = this->GetGfxDevice()->CreateTexture(desc);
+    this->m_fontTexture = GfxDevice::Impl->CreateTexture(desc);
     io.Fonts->SetTexID(static_cast<void*>(&this->m_fontTexture));
     RHI::SubresourceData subResourceData = {};
 
@@ -66,7 +66,7 @@ PhxEngine::ImGuiRenderer::ImGuiRenderer(IPhxEngineRoot* root)
     subResourceData.slicePitch = subResourceData.rowPitch * height;
     subResourceData.pData = pixelData;
 
-    ICommandList* uploadCommandList = this->GetGfxDevice()->BeginCommandRecording();
+    ICommandList* uploadCommandList = GfxDevice::Impl->BeginCommandRecording();
 
     uploadCommandList->TransitionBarrier(this->m_fontTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
     uploadCommandList->WriteTexture(this->m_fontTexture, 0, 1, &subResourceData);
@@ -74,7 +74,7 @@ PhxEngine::ImGuiRenderer::ImGuiRenderer(IPhxEngineRoot* root)
 
     uploadCommandList->Close();
 
-    this->GetGfxDevice()->ExecuteCommandLists({ uploadCommandList }, true);
+    GfxDevice::Impl->ExecuteCommandLists({ uploadCommandList }, true);
 }
 
 bool PhxEngine::ImGuiRenderer::Initialize(Graphics::ShaderFactory& shaderFactory)
@@ -94,7 +94,6 @@ bool PhxEngine::ImGuiRenderer::Initialize(Graphics::ShaderFactory& shaderFactory
             .DebugName = "ImGuiPS",
         });
 
-
     std::vector<VertexAttributeDesc> attributeDesc =
     {
         { "POSITION",   0, RHIFormat::RG32_FLOAT,  0, VertexAttributeDesc::SAppendAlignedElement, false},
@@ -102,7 +101,7 @@ bool PhxEngine::ImGuiRenderer::Initialize(Graphics::ShaderFactory& shaderFactory
         { "COLOR",      0, RHIFormat::RGBA8_UNORM, 0, VertexAttributeDesc::SAppendAlignedElement, false},
     };
 
-    this->m_inputLayout = this->GetGfxDevice()->CreateInputLayout(attributeDesc.data(), attributeDesc.size());
+    this->m_inputLayout = GfxDevice::Impl->CreateInputLayout(attributeDesc.data(), attributeDesc.size());
     return true;
 }
 
@@ -123,7 +122,7 @@ void PhxEngine::ImGuiRenderer::Render()
         psoDesc.InputLayout = this->m_inputLayout;
         // TODO: Render to it's own resource, then compose image.
         // TODO: Set it's own Format
-        psoDesc.RtvFormats = { this->GetGfxDevice()->GetTextureDesc(this->GetGfxDevice()->GetBackBuffer()).Format};
+        psoDesc.RtvFormats = { GfxDevice::Impl->GetTextureDesc(GfxDevice::Impl->GetBackBuffer()).Format};
 
         auto& blendTarget = psoDesc.BlendRenderState.Targets[0];
         blendTarget.BlendEnable = true;
@@ -144,7 +143,7 @@ void PhxEngine::ImGuiRenderer::Render()
         psoDesc.DepthStencilRenderState.DepthFunc = ComparisonFunc::Always;
 
 
-        this->m_pipeline = this->GetGfxDevice()->CreateGraphicsPipeline(psoDesc);
+        this->m_pipeline = GfxDevice::Impl->CreateGraphicsPipeline(psoDesc);
     }
 
     this->BuildUI();
@@ -164,7 +163,7 @@ void PhxEngine::ImGuiRenderer::Render()
 
     ImVec2 displayPos = drawData->DisplayPos;
 
-    ICommandList* cmd = this->GetGfxDevice()->BeginCommandRecording();
+    ICommandList* cmd = GfxDevice::Impl->BeginCommandRecording();
     {
         auto scrope = cmd->BeginScopedMarker("ImGui");
         cmd->BeginRenderPassBackBuffer(false);
@@ -224,7 +223,7 @@ void PhxEngine::ImGuiRenderer::Render()
                         // Ensure 
                         auto textureHandle = static_cast<RHI::TextureHandle*>(drawCmd.GetTexID());
                         push.TextureIndex = textureHandle
-                            ? IGraphicsDevice::GPtr->GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
+                            ? GfxDevice::Impl->GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
                             : RHI::cInvalidDescriptorIndex;
 
                         cmd->BindPushConstant(RootParameters::PushConstant, push);
@@ -242,13 +241,13 @@ void PhxEngine::ImGuiRenderer::Render()
     }
     cmd->Close();
 
-    this->GetGfxDevice()->ExecuteCommandLists({ cmd });
+    GfxDevice::Impl->ExecuteCommandLists({ cmd });
 }
 
 void PhxEngine::ImGuiRenderer::OnWindowResize(WindowResizeEvent const& e)
 {
-    this->GetGfxDevice()->DeleteGraphicsPipeline(this->m_pipeline);
-    this->GetGfxDevice()->DeleteRenderPass(this->RenderPass);
+    GfxDevice::Impl->DeleteGraphicsPipeline(this->m_pipeline);
+    GfxDevice::Impl->DeleteRenderPass(this->RenderPass);
     this->m_pipeline = {};
     this->RenderPass = {};
 }

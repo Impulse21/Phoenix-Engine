@@ -44,7 +44,10 @@ void PhxEngine::Core::HeapAllocator::Finalize()
 
 	// TODO: Add logging
 	assert(stats.AllocatedBytes == 0);
-
+	if (stats.AllocatedBytes != 0)
+	{
+		LOG_CORE_WARN("Memory leak");
+	}
 	tlsf_destroy(this->m_tlsfHandle);
 	free(this->m_memory);
 }

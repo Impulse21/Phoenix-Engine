@@ -3,7 +3,6 @@
 #include "Graphics/ImGui/ImGuiRenderer.h"
 #include <PhxEngine/Graphics/ShaderStore.h>
 #include <PhxEngine/Shaders/ShaderInteropStructures.h>
-#include <PhxEngine/Engine/EngineApp.h>
 #include <PhxEngine/Core/Window.h>
 
 #include <imgui.h>
@@ -28,7 +27,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnAttach()
     this->m_imguiContext = ImGui::CreateContext();
     ImGui::SetCurrentContext(this->m_imguiContext);
 
-    IWindow* window = EngineApp::GPtr->GetWindow();
+    IWindow* window = nullptr;
     auto* glfwWindow = static_cast<GLFWwindow*>(window->GetNativeWindow());
 
     if (!ImGui_ImplGlfw_InitForVulkan(glfwWindow, true))
@@ -61,7 +60,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnAttach()
     desc.MipLevels = 1;
     desc.DebugName = "IMGUI Font Texture";
 
-    this->m_fontTexture = IGraphicsDevice::GPtr->CreateTexture(desc);
+    this->m_fontTexture = GfxDevice::Impl->CreateTexture(desc);
     io.Fonts->SetTexID(static_cast<void*>(&this->m_fontTexture));
     RHI::SubresourceData subResourceData = {};
 
@@ -70,7 +69,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnAttach()
     subResourceData.slicePitch = subResourceData.rowPitch * height;
     subResourceData.pData = pixelData;
 
-    CommandListHandle uploadCommandList = IGraphicsDevice::GPtr->CreateCommandList();
+    CommandListHandle uploadCommandList = GfxDevice::Impl->CreateCommandList();
 
     uploadCommandList->Open();
     uploadCommandList->TransitionBarrier(this->m_fontTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest);
@@ -79,13 +78,13 @@ void PhxEngine::Graphics::ImGuiRenderer::OnAttach()
 
     uploadCommandList->Close();
 
-    IGraphicsDevice::GPtr->ExecuteCommandLists({ uploadCommandList.get() }, true);
-    this->CreatePipelineStateObject(IGraphicsDevice::GPtr);
+    GfxDevice::Impl->ExecuteCommandLists({ uploadCommandList.get() }, true);
+    this->CreatePipelineStateObject(GfxDevice::Impl);
 }
 
 void PhxEngine::Graphics::ImGuiRenderer::OnDetach()
 {
-    IGraphicsDevice::GPtr->DeleteTexture(this->m_fontTexture);
+    GfxDevice::Impl->DeleteTexture(this->m_fontTexture);
 
     if (this->m_imguiContext)
     {
@@ -176,7 +175,7 @@ void PhxEngine::Graphics::ImGuiRenderer::OnCompose(RHI::CommandListHandle cmd)
                     // Ensure 
                     auto textureHandle = static_cast<RHI::TextureHandle*>(drawCmd.GetTexID());
                     push.TextureIndex = textureHandle
-                        ? IGraphicsDevice::GPtr->GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
+                        ? GfxDevice::Impl->GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
                         : RHI::cInvalidDescriptorIndex;
 
                     cmd->BindPushConstant(RootParameters::PushConstant, push);

@@ -21,3 +21,11 @@ void Log::Initialize()
 	s_ClientLogger->set_level(spdlog::level::trace);
 
 }
+
+void PhxEngine::Core::Log::Finalize()
+{
+	s_CoreLogger.reset();
+	s_ClientLogger.reset();
+
+	spdlog::shutdown();
+}

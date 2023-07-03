@@ -20,9 +20,8 @@ namespace
 	}
 }
 
-WindowGlfw::WindowGlfw(PhxEngine::IPhxEngineRoot* engRoot, WindowSpecification const& spec)
-	: m_root(engRoot)
-	, m_spec(spec)
+WindowGlfw::WindowGlfw(WindowSpecification const& spec)
+	: m_spec(spec)
 	, m_glfwWindow(nullptr)
 {
 }

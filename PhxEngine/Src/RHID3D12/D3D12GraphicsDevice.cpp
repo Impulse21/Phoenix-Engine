@@ -270,7 +270,7 @@ PhxEngine::RHI::D3D12::D3D12GraphicsDevice::D3D12GraphicsDevice(D3D12Adapter con
 	, m_timerQueryPool(this->kTimestampQueryHeapSize / 2)
 {
 	sSingleton = this;
-	IGraphicsDevice::GPtr = this;
+	GfxDevice::Impl = this;
 }
 
 PhxEngine::RHI::D3D12::D3D12GraphicsDevice::~D3D12GraphicsDevice()
@@ -279,7 +279,7 @@ PhxEngine::RHI::D3D12::D3D12GraphicsDevice::~D3D12GraphicsDevice()
 	FreeLibrary(this->m_pixCaptureModule);
 #endif
 	sSingleton = nullptr;
-	IGraphicsDevice::GPtr = nullptr;
+	GfxDevice::Impl = nullptr;
 }
 
 void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::Initialize()
@@ -3368,6 +3368,24 @@ void PhxEngine::RHI::D3D12::D3D12GraphicsDevice::InitializeD3D12Device(IDXGIAdap
 	// ThrowIfFailed(
 		// DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&context.dxcUtils)));
 
+}
+
+// TODO:: pass in Memory
+void PhxEngine::RHI::Initialize(RHI::DeviceParams params)
+{
+	GfxDevice::Impl = CreatePlatformGfxDevice().release();
+	GfxDevice::Impl->Initialize();
+}
+
+void PhxEngine::RHI::Finalize()
+{
+	if (GfxDevice::Impl)
+	{
+		GfxDevice::Impl->Finalize();
+		delete GfxDevice::Impl;
+		GfxDevice::Impl = nullptr;
+	}
+	
 }
 
 void PhxEngine::RHI::ReportLiveObjects()

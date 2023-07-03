@@ -1,6 +1,5 @@
 #pragma
 
-#include <PhxEngine/Scene/Components.h>
 #include <PhxEngine/Core/TimeStep.h>
 
 
@@ -17,6 +16,7 @@ namespace PhxEngine
 		FirstPersonCameraController() = default;
 		~FirstPersonCameraController() = default;
 
+		/*
 		void OnUpdate(
 			Core::IWindow* window,
 			PhxEngine::Core::TimeStep const& timestep,
@@ -27,7 +27,7 @@ namespace PhxEngine
 		void Strafe(float d, PhxEngine::Scene::CameraComponent& camera);
 		void Pitch(float angle, PhxEngine::Scene::CameraComponent& camera);
 		void RotateY(float angle, PhxEngine::Scene::CameraComponent& camera);
-
+		*/
 
 	};
 }

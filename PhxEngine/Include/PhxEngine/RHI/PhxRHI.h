@@ -23,6 +23,17 @@
 
 namespace PhxEngine::RHI
 {
+    struct DeviceParams
+    {
+        enum class GraphicsAPI Api;
+        uint32_t NumFrames;
+
+        // Heap Sizes
+    };
+
+    void Initialize(RHI::DeviceParams params);
+    void Finalize();
+
     typedef uint32_t DescriptorIndex;
 
     static constexpr DescriptorIndex cInvalidDescriptorIndex = ~0u;
@@ -1485,14 +1496,13 @@ namespace PhxEngine::RHI
         uint64_t Usage = 0ull;
     };
 
-    class IGraphicsDevice
+    class GfxDevice
     {
     public:
-        virtual ~IGraphicsDevice() = default;
+        virtual ~GfxDevice() = default;
 
         // Global Singleton not ideal as we can only have one device per application, however, it simplifies a lot when passing the object around
-        // TODO: Remove. Only around for compiling.
-        inline static IGraphicsDevice* GPtr;
+        inline static GfxDevice* Impl;
 
     public:
         virtual void Initialize() = 0;
@@ -1624,11 +1634,12 @@ namespace PhxEngine::RHI
     
     namespace DeviceFactory
     {
-        extern IGraphicsDevice* CreateDx12Device();
+        extern GfxDevice* CreateDx12Device();
     }
 
-    std::unique_ptr<IGraphicsDevice> CreatePlatformGfxDevice();
+    std::unique_ptr<GfxDevice> CreatePlatformGfxDevice();
 
+    using IGraphicsDevice = GfxDevice;
 
     template <class T>
     void HashCombine(size_t& seed, const T& v)

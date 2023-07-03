@@ -52,7 +52,7 @@ namespace PhxEngine::Core
 
 	namespace WindowFactory
 	{
-		std::unique_ptr<IWindow> CreateGlfwWindow(IPhxEngineRoot* engRoot, WindowSpecification const& spec);
+		std::unique_ptr<IWindow> CreateGlfwWindow(WindowSpecification const& spec);
 	}
 
 }
