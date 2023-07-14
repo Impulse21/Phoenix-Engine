@@ -42,7 +42,7 @@ namespace PhxEngine::Core
 		};
 
 		template<class _T>
-		_T* Allocate(size_t alignment)
+		_T* Allocate(size_t alignment = 0)
 		{
 			return static_cast<_T*>(this->Allocate(sizeof(_T), alignment));
 		};
@@ -130,8 +130,8 @@ namespace PhxEngine::Core
 
 		void BuildUI();
 
-		LinearAllocator& GetScratchAllocator() { return this->m_scratchAllocator; }
-		HeapAllocator& GetSystemAllocator() { return this->m_systemAllocator; }
+		IAllocator& GetScratchAllocator() { return this->m_scratchAllocator; }
+		IAllocator& GetSystemAllocator() { return this->m_systemAllocator; }
 
 	private:
 		MemoryService() = default;

@@ -5,15 +5,15 @@ using namespace PhxEngine::Renderer;
 
 bool PhxEngine::Renderer::Initialize()
 {
-    Renderer::RendererModule::Impl = new RendererModule();
+    Renderer::IRenderService::Impl = nullptr;
 
     return true;
 }
 bool PhxEngine::Renderer::Finialize()
 {
-    if (RendererModule::Impl)
+    if (IRenderService::Impl)
     {
-        delete RendererModule::Impl;
+        delete IRenderService::Impl;
 
     }
     return true;
