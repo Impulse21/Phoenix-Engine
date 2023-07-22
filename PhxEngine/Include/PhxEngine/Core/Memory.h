@@ -2,7 +2,12 @@
 
 // Credit to Raptor Engine: Using it for learning.
 
+#define phx_new(allocator, ...) new (PhxEngine::NewPlaceholder(), allocator.Allocate(sizeof(__VA_ARGS__), alignof(__VA_ARGS__))) __VA_ARGS__
+#define phx_delete(allocator, var) allocator.Deallocate(var);
 
+namespace PhxEngine { struct NewPlaceholder {}; };
+inline void* operator new (size_t, PhxEngine::NewPlaceholder, void* where) { return where; }
+inline void operator delete(void*, PhxEngine::NewPlaceholder, void*) {};
 
 #define PhxKB(size)                 (size * 1024)
 #define PhxMB(size)                 (size * 1024 * 1024)
@@ -118,7 +123,7 @@ namespace PhxEngine::Core
 		void BuildUI();
 
 		LinearAllocator& GetScratchAllocator() { return this->m_scratchAllocator; }
-		HeapAllocator& GetSystemAllocator() { return this->m_systemAllocator; }
+		IAllocator& GetSystemAllocator() { return this->m_systemAllocator; }
 
 	private:
 		MemoryService() = default;

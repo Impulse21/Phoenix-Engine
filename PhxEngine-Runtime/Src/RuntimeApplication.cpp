@@ -46,6 +46,7 @@ public:
 
     bool Initialize()
     {
+#if 0
         // Load Data in seperate thread?
         // Create File Sustem
         std::shared_ptr<Core::IFileSystem> nativeFS = Core::CreateNativeFileSystem();
@@ -90,12 +91,13 @@ public:
 
         this->m_mainCamera.TransformCamera(t);
         this->m_mainCamera.UpdateCamera();
-
+#endif
         return true;
     }
 
     bool LoadScene(std::shared_ptr< Core::IFileSystem> fileSystem, std::filesystem::path sceneFilename) override
     {
+#if 0
         std::unique_ptr<Scene::ISceneLoader> sceneLoader = PhxEngine::Scene::CreateGltfSceneLoader();
         ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
 
@@ -112,8 +114,10 @@ public:
         this->GetGfxDevice()->ExecuteCommandLists({ commandList }, true);
 
         this->m_scene.BuildRenderData(this->GetGfxDevice());
-
         return retVal;
+#else
+        return true;
+#endif
     }
 
     void OnWindowResize(WindowResizeEvent const& e) override
@@ -123,6 +127,7 @@ public:
 
     void Update(Core::TimeStep const& deltaTime) override
     {
+#if 0
         this->GetRoot()->SetInformativeWindowTitle("PhxEngine Runtime", {});
         this->m_cameraController.OnUpdate(this->GetRoot()->GetWindow(), deltaTime, this->m_mainCamera);
 
@@ -130,25 +135,30 @@ public:
         {
             this->m_scene.OnUpdate(this->m_commonPasses, this->m_deferredRenderer->GetSettings().GISettings.EnableDDGI);
         }
+#endif
     }
 
     void RenderSplashScreen() override
     {
+#if 0
         ICommandList* commandList = this->GetGfxDevice()->BeginCommandRecording();
         commandList->BeginRenderPassBackBuffer();
         // TODO: Render Splash Screen or some text about loading.
         commandList->EndRenderPass();
         commandList->Close();
         this->GetGfxDevice()->ExecuteCommandLists({ commandList });
+#endif 
     }
 
     void RenderScene() override
     {
+#if 0
         this->m_mainCamera.Width = this->GetRoot()->GetCanvasSize().x;
         this->m_mainCamera.Height = this->GetRoot()->GetCanvasSize().y;
         this->m_mainCamera.UpdateCamera();
 
         this->m_deferredRenderer->Render(this->m_scene, this->m_mainCamera);
+#endif
     }
 
     std::shared_ptr<Graphics::ShaderFactory> GetShaderFactory() { return this->m_shaderFactory; }
@@ -202,6 +212,14 @@ private:
     PhxEngineRuntimeApp* m_app;
 };
 
+struct Testing
+{
+    float a;
+    float b;
+    int c;
+};
+
+using namespace PhxEngine;
 #ifdef WIN32
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 #else
@@ -214,6 +232,19 @@ int main(int __argc, const char** __argv)
             .MaximumDynamicSize = PhxGB(1)
         });
 
+
+    PhxEngine::Core::IAllocator& allocator = Core::MemoryService::GetInstance().GetSystemAllocator();
+
+    Testing* testing = phx_new(allocator, Testing);
+
+    testing->a = 1.0f;
+    testing->b = 2.0f;
+    testing->c = 1;
+
+
+    phx_delete(allocator, testing);
+
+#if 0
     EngineParam params = {};
     params.Name = "PhxEngine Example: Shadows";
     params.GraphicsAPI = RHI::GraphicsAPI::DX12;
@@ -242,7 +273,8 @@ int main(int __argc, const char** __argv)
     root->Finalizing();
     root.reset();
     RHI::ReportLiveObjects();
-
+#endif
     PhxEngine::Core::MemoryService::GetInstance().Finalize();
+
     return 0;
 }
