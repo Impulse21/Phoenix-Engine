@@ -17,7 +17,7 @@ namespace PhxEngine::Core
 	class WindowGlfw : public IWindow
 	{
 	public:
-		WindowGlfw(PhxEngine::IPhxEngineRoot* engRoot, WindowSpecification const& spec);
+		WindowGlfw(WindowSpecification const& spec);
 		~WindowGlfw();
 
 		void Initialize() override;
@@ -46,8 +46,6 @@ namespace PhxEngine::Core
 		void SetWindowTitle(std::string_view strView) override;
 
 	private:
-		PhxEngine::IPhxEngineRoot* m_root;
-
 		const WindowSpecification m_spec;
 		GLFWwindow* m_glfwWindow;
 

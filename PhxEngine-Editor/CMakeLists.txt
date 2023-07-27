@@ -10,3 +10,8 @@ target_link_libraries(PhxEngine-Editor PhxEngine)
 
 set_target_properties(PhxEngine-Editor  PROPERTIES FOLDER "Applications/Editor")
 set_target_properties(PhxEngine-Editor PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+
+# Set the subsystem to "windows"
+if(WIN32)
+    target_link_options(PhxEngine-Editor PRIVATE "/SUBSYSTEM:WINDOWS")
+endif()

@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\dipao\source\repos\Impulse21\Phoenix-Engine\Build\CMakeFiles\9faf3254ab7a4c5213b2427c89cb46ca\INSTALL_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{53A2016A-75FE-3175-806B-6B64AEC48584}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

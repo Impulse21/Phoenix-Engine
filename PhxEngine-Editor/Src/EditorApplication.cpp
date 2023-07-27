@@ -1,34 +1,74 @@
 
 #include <PhxEngine/PhxEngine.h>
-#include <PhxEngine/Engine/EntryPoint.h>
+#include <PhxEngine/Core/CommandLineArgs.h>
+#include <PhxEngine/Core/Window.h>
 
-#include "EditorLayer.h"
-#include "SceneRenderLayer.h"
+#ifdef _MSC_VER // Windows
+#include <shellapi.h>
+#endif 
 
-class EditorApplication : public PhxEngine::EngineApp
+using namespace PhxEngine;
+using namespace PhxEngine::Core;
+
+class EditorApplication : public IEngineApp
 {
 public:
-	EditorApplication(PhxEngine::ApplicationSpecification const& spec)
-		: EngineApp(spec)
-	{};
+	void Startup();
+	void Shutdown() {};
+	bool IsShuttingDown() { return false; }
 
-	void OnInit() override
-	{
-		auto sceneRenderLayer = std::make_shared<SceneRenderLayer>();
-		this->PushLayer(std::make_shared<EditorLayer>(sceneRenderLayer));
-		this->PushLayer(sceneRenderLayer);
-	}
+	void OnTick();
+
+private:
+	std::unique_ptr<IWindow> m_editorWindow;
+	RHI::SwapChain m_swapChain;
 };
 
-PhxEngine::EngineApp* PhxEngine::CreateApplication(int argc, char** argv)
+
+#ifdef _MSC_VER // Windows
+#include <Windows.h>
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+#else // Linux
+int main(int argc, char** argv)
+#endif
 {
-	ApplicationSpecification spec;
+	// Engine Parameters?
+	int argCount = 0;
+#ifdef _MSC_VER
+	// CommandLineArgs args(lpCmdLine);
+#endif
+	
+	EngineCore::Initialize();
+	{
+		EditorApplication editor;
+		EngineCore::RunApplication(editor);
+	}
+	EngineCore::Finalize();}
 
-	spec.Name = "PhxEngine Editor";
-	spec.FullScreen = false;
-	spec.EnableImGui = true;
-	spec.VSync = false;
-	spec.AllowWindowResize = false;
+void EditorApplication::Startup()
+{
+	this->m_editorWindow = WindowFactory::CreateGlfwWindow({
+		.Width = 2000,
+		.Height = 1200,
+		.VSync = false,
+		.Fullscreen = false,
+		});
 
-	return new EditorApplication(spec);
+	RHI::SwapChainDesc swapchainDesc = {
+		.Width = this->m_editorWindow->GetWidth(),
+		.Height = this->m_editorWindow->GetHeight(),
+		.Fullscreen = false,
+		.VSync = this->m_editorWindow->GetVSync(),
+	};
+
+	// Construct the swapchain
+	// TODO: move to renderer
+	RHI::Factory::CreateSwapChain(swapchainDesc, this->m_editorWindow->GetNativeWindow(), this->m_swapChain);
 }
+
+void EditorApplication::OnTick()
+{
+	// TODO: Move to renderer
+	RHI::Present(this->m_swapChain);
+}
+

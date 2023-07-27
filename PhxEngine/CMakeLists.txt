@@ -173,14 +173,14 @@ source_group("Src/Scene"                FILES ${PhxEngine_Scene_Src})
 source_group("Src/Renderer"             FILES ${PhxEngine_Renderer_Src})
 source_group("Src/Renderer/Dx12"        FILES ${PhxEngine_Renderer_DX12_Src})
 
-add_subdirectory(Shaders)
+#add_subdirectory(Shaders)
 
-add_dependencies(${project} ${project}_shaders)
+#add_dependencies(${project} ${project}_shaders)
 target_include_directories(${project} 
 	PUBLIC  "Include"
 	PRIVATE "Src")
 
-target_precompile_headers(${project} PRIVATE Src/phxpch.h)
+# target_precompile_headers(${project} PRIVATE Src/phxpch.h)
 
 add_subdirectory(Extern)
 
@@ -234,7 +234,6 @@ add_custom_command(
 	DEPENDS D3D12AgilitySDK)
 
 message("D3D12 Agility SDK fetched")
-
 
 # DXC
 message("Fetching DirectXShaderCompiler")

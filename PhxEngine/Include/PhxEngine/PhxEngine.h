@@ -1,5 +1,5 @@
 #pragma once
 
 #include <PhxEngine/Core/Log.h>
-#include "Engine/EngineApp.h"
-#include "Engine/EngineRoot.h"
+#include <PhxEngine/Engine/EngineCore.h>
+#include <PhxEngine/RHI/RHI.h>

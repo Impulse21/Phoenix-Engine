@@ -6,18 +6,13 @@
 
 namespace PhxEngine::Core
 {
-	class Log
+	namespace Log
 	{
-	public:
-		static void Initialize();
+		void Initialize();
 
-		inline static std::shared_ptr<spdlog::logger>& GetCoreLogger() { return s_CoreLogger; }
-		inline static std::shared_ptr<spdlog::logger>& GetClientLogger() { return s_ClientLogger; }
-
-	private:
-		static std::shared_ptr<spdlog::logger> s_CoreLogger;
-		static std::shared_ptr<spdlog::logger> s_ClientLogger;
-	};
+		std::shared_ptr<spdlog::logger>& GetCoreLogger();
+		std::shared_ptr<spdlog::logger>& GetClientLogger();
+	}
 }
 
 // -- Core log macros ----

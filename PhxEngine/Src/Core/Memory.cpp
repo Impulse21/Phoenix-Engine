@@ -1,5 +1,4 @@
-#include "C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Build/PhxEngine/CMakeFiles/PhxEngine.dir/Debug/cmake_pch.hxx"
-
+#include <assert.h>
 #include <PhxEngine/Core/Memory.h>
 #include <tlsf.h>
 
@@ -10,6 +9,9 @@ using namespace PhxEngine::Core;
 
 namespace
 {
+	LinearAllocator m_scratchAllocator;
+	HeapAllocator m_systemAllocator;
+
 	void ExitWalker(void* ptr, size_t size, int used, void* user)
 	{
 		MemoryStatistics* stats = (MemoryStatistics*)user;
@@ -22,6 +24,7 @@ namespace
 		const size_t alignmentMask = alignment - 1;
 		return (size + alignmentMask) & ~alignmentMask;
 	}
+
 }
 void PhxEngine::Core::HeapAllocator::Initialize(size_t size)
 {
@@ -196,23 +199,15 @@ void PhxEngine::Core::LinearAllocator::Clear()
 	this->m_allocatedSize = 0;
 }
 
-MemoryService& PhxEngine::Core::MemoryService::GetInstance()
-{
-	static MemoryService instance;
-	return instance;
-}
-
 void PhxEngine::Core::MemoryService::Initialize(PhxEngine::Core::MemoryServiceConfiguration const& config)
 {
-	this->m_systemAllocator.Initialize(config.MaximumDynamicSize);
+	m_systemAllocator.Initialize(config.MaximumDynamicSize);
 }
 
 void PhxEngine::Core::MemoryService::Finalize()
 {
-	this->m_systemAllocator.Finalize();
+	m_systemAllocator.Finalize();
 }
 
-void PhxEngine::Core::MemoryService::BuildUI()
-{
-	// TODO:
-}
+IAllocator& PhxEngine::Core::MemoryService::GetScratchAllocator() { return m_scratchAllocator; }
+IAllocator& PhxEngine::Core::MemoryService::GetSystemAllocator() { return m_systemAllocator; }
