@@ -17,9 +17,9 @@ namespace PhxEngine::RHI
 
 	};
 
-	void Initialize(RHIParmaeters const& parameters);
+	bool Initialize(RHIParmaeters const& parameters);
 	void Finalize();
-
+	
 	void Present(const SwapChain& Swapchain);
 	void RunGarbageCollection();
 

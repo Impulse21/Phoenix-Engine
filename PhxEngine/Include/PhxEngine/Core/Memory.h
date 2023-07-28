@@ -1,6 +1,8 @@
 #pragma once
 
 #include <string>
+#include <atomic>
+
 // Credit to Raptor Engine: Using it for learning.
 
 #define phx_new(allocator, ...) new (PhxEngine::NewPlaceholder(), allocator.Allocate(sizeof(__VA_ARGS__), alignof(__VA_ARGS__))) __VA_ARGS__

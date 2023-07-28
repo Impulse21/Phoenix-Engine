@@ -24,7 +24,7 @@ namespace PhxEngine::Core
 
 		void SetEventCallback(EventCallBackFn eventCallback) override { this->m_data.EventCallback = eventCallback; };
 
-		void OnUpdate() override;
+		void OnTick() override;
 
 		uint32_t GetWidth() const override { return this->m_spec.Width; }
 		uint32_t GetHeight() const override { return this->m_spec.Height; };

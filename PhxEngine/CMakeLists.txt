@@ -58,11 +58,6 @@ file(GLOB PhxEngine_Renderer_Src
 	Src/Renderer/*.h
 	Src/Renderer/*.cpp
 )
-# -- Renderer DX12
-file(GLOB PhxEngine_Renderer_DX12_Src
-	Src/Renderer/Dx12/*.h
-	Src/Renderer/Dx12/*.cpp
-)
 
 #-- RHI
 file(GLOB PhxEngine_Graphics_RHI_Inc
@@ -80,8 +75,8 @@ file(GLOB PhxEngine_Graphics_RHI_Windows_Src
 )
 
 file(GLOB PhxEngine_Graphics_RHI_DX12_Src
-    Src/RHID3D12/*.h
-    Src/RHID3D12/*.cpp
+    Src/RHI/D3D12/*.h
+    Src/RHI/D3D12/*.cpp
 )
 
 #-- Graphics IMGUI
@@ -166,7 +161,7 @@ source_group("Src/Core"                 FILES ${PhxEngine_Core_Src})
 source_group("Src/Graphics"             FILES ${PhxEngine_Graphics_Src})
 source_group("Src/RHI"					FILES ${PhxEngine_Graphics_RHI_Src})
 source_group("Src/RHI/Windows"			FILES ${PhxEngine_Graphics_RHI_Windows_Src})
-source_group("Src/RHID3D12"			    FILES ${PhxEngine_Graphics_RHI_DX12_Src})
+source_group("Src/RHI/RHID3D12"			FILES ${PhxEngine_Graphics_RHI_DX12_Src})
 source_group("Src/Graphics/ImGui"       FILES ${PhxEngine_Graphics_ImGui_Src})
 source_group("Src/System"               FILES ${PhxEngine_System_Src})
 source_group("Src/Scene"                FILES ${PhxEngine_Scene_Src})

@@ -2,4 +2,4 @@
 
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Engine/EngineCore.h>
-#include <PhxEngine/RHI/RHI.h>
+#include <PhxEngine/RHI/RHICore.h>

@@ -101,7 +101,7 @@ void PhxEngine::Core::WindowGlfw::Initialize()
 		});
 }
 
-void PhxEngine::Core::WindowGlfw::OnUpdate()
+void PhxEngine::Core::WindowGlfw::OnTick()
 {
 	glfwPollEvents();
 }

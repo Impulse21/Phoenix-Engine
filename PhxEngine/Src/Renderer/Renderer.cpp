@@ -1,6 +1,6 @@
 #include <PhxEngine/Renderer/Renderer.h>
 
-#include <PhxEngine/RHI/RHI.h>
+#include <PhxEngine/RHI/RHICore.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::Renderer;
@@ -19,4 +19,16 @@ void PhxEngine::Renderer::Initialize(RendererParameters const& parameters)
 
 	m_enableImgui = parameters.EnableImgui;
 
+}
+
+void PhxEngine::Renderer::Finalize()
+{
+}
+
+void PhxEngine::Renderer::BeginFrame()
+{
+}
+
+void PhxEngine::Renderer::Present()
+{
 }

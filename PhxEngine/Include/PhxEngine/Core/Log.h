@@ -22,6 +22,12 @@ namespace PhxEngine::Core
 #define LOG_CORE_ERROR(...) ::PhxEngine::Core::Log::GetCoreLogger()->error(__VA_ARGS__)
 #define LOG_CORE_FATAL(...) ::PhxEngine::Core::Log::GetCoreLogger()->critical(__VA_ARGS__)
 
+#define LOG_RHI_TRACE(...)	// ::PhxEngine::Core::Log::GetCoreLogger()->trace(__VA_ARGS__)
+#define LOG_RHI_INFO(...)	// ::PhxEngine::Core::Log::GetCoreLogger()->info(__VA_ARGS__)
+#define LOG_RHI_WARN(...)	// ::PhxEngine::Core::Log::GetCoreLogger()->warn(__VA_ARGS__)
+#define LOG_RHI_ERROR(...)	// ::PhxEngine::Core::Log::GetCoreLogger()->error(__VA_ARGS__)
+#define LOG_RHI_FATAL(...)	// ::PhxEngine::Core::Log::GetCoreLogger()->critical(__VA_ARGS__)
+
 
 #define LOG_TRACE(...)	::PhxEngine::Core::Log::GetClientLogger()->trace(__VA_ARGS__)
 #define LOG_INFO(...)	::PhxEngine::Core::Log::GetClientLogger()->info(__VA_ARGS__)
