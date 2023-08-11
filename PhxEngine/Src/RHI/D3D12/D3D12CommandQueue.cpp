@@ -1,7 +1,5 @@
 #include "D3D12CommandQueue.h"
-#include "D3D12Driver.h"
-
-#include "D3D12CommandContext.h"
+#include "D3D12GfxDevice.h"
 
 using namespace Microsoft::WRL;
 using namespace PhxEngine::RHI::D3D12;
@@ -55,6 +53,7 @@ void PhxEngine::RHI::D3D12::D3D12CommandQueue::Finailize()
 	CloseHandle(this->m_fenceEvent);
 }
 
+#if 0
 D3D12CommandContext* PhxEngine::RHI::D3D12::D3D12CommandQueue::RequestCommandContext()
 {
 	auto _ = std::scoped_lock(this->m_commandListMutx);
@@ -72,13 +71,12 @@ D3D12CommandContext* PhxEngine::RHI::D3D12::D3D12CommandQueue::RequestCommandCon
 
 	return retVal;
 }
-
 uint64_t PhxEngine::RHI::D3D12::D3D12CommandQueue::ExecuteCommandContexts(Core::Span<D3D12CommandContext*> contexts)
 {
 	auto _ = std::scoped_lock(this->m_commandListMutx);
 	static thread_local std::vector<ID3D12CommandList*> d3d12CommandLists;
 	d3d12CommandLists.clear();
-	
+
 	for (auto commandList : contexts)
 	{
 		d3d12CommandLists.push_back(commandList->GetD3D12CommandList());
@@ -94,10 +92,11 @@ uint64_t PhxEngine::RHI::D3D12::D3D12CommandQueue::ExecuteCommandContexts(Core::
 
 	return fenceVal;
 }
+#endif 
 
-uint64_t PhxEngine::RHI::D3D12::D3D12CommandQueue::ExecuteCommandLists(std::vector<ID3D12CommandList*> const& commandLists)
+uint64_t PhxEngine::RHI::D3D12::D3D12CommandQueue::ExecuteCommandLists(Core::Span<ID3D12CommandList*>  commandLists)
 {
-	this->m_d3d12CommandQueue->ExecuteCommandLists(commandLists.size(), commandLists.data());
+	this->m_d3d12CommandQueue->ExecuteCommandLists(commandLists.Size(), commandLists.begin());
 
 	return this->IncrementFence();
 }
@@ -106,6 +105,14 @@ ID3D12CommandAllocator* PhxEngine::RHI::D3D12::D3D12CommandQueue::RequestAllocat
 {
 	auto lastCompletedFence = this->GetLastCompletedFence();
 	return this->m_allocatorPool.RequestAllocator(lastCompletedFence);
+}
+
+void PhxEngine::RHI::D3D12::D3D12CommandQueue::DiscardAllocators(uint64_t fence, Core::Span<ID3D12CommandAllocator*> allocators)
+{
+	for (auto* allocator : allocators)
+	{
+		this->DiscardAllocator(fence, allocator);
+	}
 }
 
 void PhxEngine::RHI::D3D12::D3D12CommandQueue::DiscardAllocator(uint64_t fence, ID3D12CommandAllocator* allocator)

@@ -1,13 +1,10 @@
 #include <PhxEngine/Renderer/Renderer.h>
 
-#include <PhxEngine/RHI/RHICore.h>
-
 using namespace PhxEngine;
 using namespace PhxEngine::Renderer;
 
 namespace
 {
-	RHI::SwapChain m_swapchain;
 	bool m_enableImgui;
 };
 

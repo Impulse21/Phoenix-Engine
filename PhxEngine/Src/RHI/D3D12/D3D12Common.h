@@ -1,5 +1,6 @@
 #pragma once
 
+#define NOMINMAX
 #include <assert.h>
 #include <locale>
 #include <iostream>
@@ -25,9 +26,8 @@
 #include "d3d12shader.h"
 #include <dxgi1_6.h>
 
-#include <PhxEngine/RHI/RHITypes.h>
+#include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Core/Log.h>
-#include "D3D12RHITypes.h"
 
 namespace PhxEngine::RHI::D3D12
 {
@@ -111,4 +111,17 @@ namespace PhxEngine::RHI::D3D12
 #endif
    }
    
+   struct NonMoveable
+   {
+       NonMoveable() = default;
+       NonMoveable(NonMoveable&&) = delete;
+       NonMoveable& operator = (NonMoveable&&) = delete;
+   };
+
+   struct NonCopyable
+   {
+       NonCopyable() = default;
+       NonCopyable(const NonCopyable&) = delete;
+       NonCopyable& operator=(const NonCopyable&) = delete;
+   };
 }

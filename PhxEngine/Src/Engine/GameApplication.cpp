@@ -7,10 +7,6 @@ using namespace PhxEngine::Core;
 void GameApplication::Startup()
 {
 	// Initialize MemoryService?
-	
-	// Single RHI Interface, or use some sort of global Objects
-	RHI::Initialize({});
-
 	this->m_window = WindowFactory::CreateGlfwWindow({
 		.Width = 2000,
 		.Height = 1200,
@@ -19,6 +15,7 @@ void GameApplication::Startup()
 		});
 	this->m_window->SetEventCallback([this](Event& e) { EventDispatcher::DispatchEvent(e); });
 
+	// Will initialize RHI on first time the window is created
 	EventDispatcher::AddEventListener(EventType::WindowResize, [this](Event const& e) {
 
 			const WindowResizeEvent& resizeEvent = static_cast<const WindowResizeEvent&>(e);
@@ -29,7 +26,17 @@ void GameApplication::Startup()
 				.VSync = this->m_window->GetVSync(),
 			};
 
-			RHI::Factory::CreateSwapChain(swapchainDesc, this->m_window->GetNativeWindow(), this->m_swapchain);
+			if (!RHI::GetGfxDevice())
+			{
+				RHI::Setup::Initialize({
+					.Api = RHI::GraphicsAPI::DX12,
+					.SwapChainDesc = swapchainDesc,
+					.WindowHandle = this->m_window->GetNativeWindowHandle() });
+			}
+			else
+			{
+				RHI::GetGfxDevice()->ResizeSwapchain(swapchainDesc);
+			}
 		});
 
 	this->m_window->Initialize();
@@ -37,17 +44,16 @@ void GameApplication::Startup()
 
 void PhxEngine::GameApplication::Shutdown()
 {
-	RHI::WaitForIdle();
-
-	RHI::Finalize();
+	RHI::Setup::Finalize();
 }
 
 bool PhxEngine::GameApplication::IsShuttingDown()
 {
-	return this->m_window->ShouldClose();;
+	return this->m_window->ShouldClose();
 }
 
 void PhxEngine::GameApplication::OnTick()
 {
-	RHI::Present(this->m_swapchain);
+	this->m_window->OnTick();
+
 }

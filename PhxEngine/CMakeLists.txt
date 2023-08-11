@@ -161,7 +161,7 @@ source_group("Src/Core"                 FILES ${PhxEngine_Core_Src})
 source_group("Src/Graphics"             FILES ${PhxEngine_Graphics_Src})
 source_group("Src/RHI"					FILES ${PhxEngine_Graphics_RHI_Src})
 source_group("Src/RHI/Windows"			FILES ${PhxEngine_Graphics_RHI_Windows_Src})
-source_group("Src/RHI/RHID3D12"			FILES ${PhxEngine_Graphics_RHI_DX12_Src})
+source_group("Src/RHI/D3D12"			FILES ${PhxEngine_Graphics_RHI_DX12_Src})
 source_group("Src/Graphics/ImGui"       FILES ${PhxEngine_Graphics_ImGui_Src})
 source_group("Src/System"               FILES ${PhxEngine_System_Src})
 source_group("Src/Scene"                FILES ${PhxEngine_Scene_Src})
@@ -197,10 +197,6 @@ target_link_libraries(${project} PUBLIC
 	D3D12MemoryAllocator)
     
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
-
-if(WIN32)
-    target_compile_definitions(${project} PUBLIC NOMINMAX _CRT_SECURE_NO_WARNINGS)
-endif()
 
 #INCLUDE_EXTERNAL_MSPROJECT(ShadersSource ${CMAKE_SOURCE_DIR}/PhxEngine/Shaders/ShadersSource.vcitems)
 

@@ -38,10 +38,40 @@ namespace PhxEngine::Core
 		}
 	};
 
+    template <typename T>
+    inline constexpr T RoundDiv(T x, T y)
+    {
+        return (x + y / (T)2) / y;
+    }
+
+    template <typename T>
+    inline constexpr T AlignUp(T val, T align)
+    {
+        return (val + align - 1) / align * align;
+    }
+
+    constexpr uint64_t AlignTo(uint64_t value, uint64_t alignment)
+    {
+        return ((value + alignment - 1) / alignment) * alignment;
+    }
+
 	class IAllocator
 	{
 	public:
 		virtual ~IAllocator() = default;
+
+        template<class _T>
+        _T* AllocateArray(size_t numElements, size_t alignment)
+        {
+            return static_cast<_T*>(this->Allocate(numElements * sizeof(_T), alignment));
+        };
+
+        template<class _T>
+        _T* Allocate(size_t alignment = 0)
+        {
+            return static_cast<_T*>(this->Allocate(sizeof(_T), alignment));
+        };
+
 
 		virtual void* Allocate(size_t size, size_t alignment) = 0;
 		virtual void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) = 0;

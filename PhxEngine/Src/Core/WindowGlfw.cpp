@@ -99,6 +99,13 @@ void PhxEngine::Core::WindowGlfw::Initialize()
 		}
 			
 		});
+
+	// Dispatch a resize event
+	WindowResizeEvent event(this->m_spec.Width, this->m_spec.Height);
+	if (this->m_data.EventCallback)
+	{
+		this->m_data.EventCallback(event);
+	}
 }
 
 void PhxEngine::Core::WindowGlfw::OnTick()

@@ -24,7 +24,7 @@ namespace PhxEngine::Core
 			: Span(v.begin(), v.size(), 0)
 		{};
 
-		Span(std::vector<T>& v)
+		Span(std::vector<T> const& v)
 			: Span(v.data(), v.size(), 0)
 		{}
 

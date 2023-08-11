@@ -3,7 +3,7 @@
 #include <memory>
 
 #include <PhxEngine/Engine/EngineCore.h>
-#include <PhxEngine/RHI/RHICore.h>
+#include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Core/EventDispatcher.h>
 #include <PhxEngine/Core/Window.h>
 
@@ -23,9 +23,7 @@ namespace PhxEngine
 	private:
 		// TODO, put Graphics Device at this level?
 		std::unique_ptr<Core::IWindow> m_window;
-		RHI::SwapChain m_swapchain;
 
 		// Add World
 	};
 }
-
