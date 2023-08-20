@@ -27,6 +27,7 @@ namespace PhxEngine::Core
 
 		void Initialize(std::shared_ptr<Core::IAllocator> allocator, size_t initCapacity)
 		{
+			assert(allocator);
 			this->m_allocator = allocator;
 			this->m_size = initCapacity;
 			this->m_numActiveEntries = 0;
@@ -47,32 +48,6 @@ namespace PhxEngine::Core
 			for (size_t i = 0; i < this->m_size; i++)
 			{
 				this->m_freeList[i] = static_cast<uint32_t>((this->m_size - 1) - i);
-			}
-		}
-
-		void Finalize()
-		{
-			if (this->m_data)
-			{
-				for (int i = 0; i < this->m_size; i++)
-				{
-					this->m_data[i].~ImplT();
-				}
-
-				this->m_allocator->Deallocate(this->m_data);
-				this->m_data = nullptr;
-			}
-
-			if (this->m_freeList)
-			{
-				this->m_allocator->Deallocate(this->m_freeList);
-				this->m_freeList = nullptr;
-			}
-
-			if (this->m_generations)
-			{
-				this->m_allocator->Deallocate(this->m_generations);
-				this->m_generations = nullptr;
 			}
 		}
 
@@ -146,6 +121,35 @@ namespace PhxEngine::Core
 		bool IsEmpty() const { return this->m_numActiveEntries == 0; }
 
 	private:
+
+
+		void Finalize()
+		{
+			if (this->m_data)
+			{
+				for (int i = 0; i < this->m_size; i++)
+				{
+					this->m_data[i].~ImplT();
+				}
+
+				assert(this->m_allocator);
+				this->m_allocator->Deallocate(this->m_data);
+				this->m_data = nullptr;
+			}
+
+			if (this->m_freeList)
+			{
+				this->m_allocator->Deallocate(this->m_freeList);
+				this->m_freeList = nullptr;
+			}
+
+			if (this->m_generations)
+			{
+				this->m_allocator->Deallocate(this->m_generations);
+				this->m_generations = nullptr;
+			}
+		}
+
 		void Resize()
 		{
 			// RESIZING STILL DOESN"T WORK

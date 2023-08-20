@@ -7,7 +7,7 @@ using namespace PhxEngine;
 namespace
 {
 	std::unique_ptr<RHI::GfxDevice> gSingleton;
-	std::shared_ptr<Core::HeapAllocator> gResourceMemoryAllocator;
+	std::shared_ptr<Core::IAllocator> gResourceMemoryAllocator;
 
 	std::unique_ptr<RHI::GfxDevice> CreateDevice_Windows(RHI::GraphicsAPI api)
 	{
@@ -24,7 +24,7 @@ namespace
 
 void PhxEngine::RHI::Setup::Initialize(RhiParameters const& parameters)
 {
-	gResourceMemoryAllocator = std::make_shared<Core::HeapAllocator>();
+	gResourceMemoryAllocator = std::shared_ptr<Core::IAllocator>(new Core::HeapAllocator);
 	gResourceMemoryAllocator->Initialize(parameters.DynamicMemoryPoolSize);
 
 	gSingleton = CreateDevice_Windows(parameters.Api);

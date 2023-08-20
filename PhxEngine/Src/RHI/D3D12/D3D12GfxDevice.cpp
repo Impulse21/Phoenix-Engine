@@ -1644,7 +1644,6 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::DeleteTexture(TextureHandle handle)
 
 BufferHandle PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateBuffer(BufferDesc const& desc)
 {
-	assert(false); // TODO: Handle new desc setup
 	BufferHandle buffer = this->m_bufferPool.Emplace();
 	D3D12Buffer& bufferImpl = *this->m_bufferPool.Get(buffer);
 	this->CreateBufferInternal(desc, bufferImpl);
@@ -3235,6 +3234,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::InitializeResourcePools(std::shared_
 	this->m_computePipelinePool.Initialize(allocator, kInitPoolSize);
 	this->m_meshPipelinePool.Initialize(allocator, kInitPoolSize);
 	this->m_timerQueryPool.Initialize(allocator, kInitPoolSize);
+	this->m_commandListPool.Initialize(allocator, kInitPoolSize);
 }
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::InitializeD3D12NativeResources(IDXGIAdapter* gpuAdapter)

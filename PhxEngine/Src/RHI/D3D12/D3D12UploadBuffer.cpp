@@ -23,7 +23,6 @@ struct Allocation
 
 UploadBuffer::Allocation UploadBuffer::Allocate(size_t sizeInBytes, size_t alignment)
 {
-	std::scoped_lock(this->m_mutex);
 	if (sizeInBytes > this->m_pageSize)
 	{
 		throw std::bad_alloc();
@@ -55,7 +54,6 @@ std::shared_ptr<UploadBuffer::Page> UploadBuffer::RequestPage()
 }
 void UploadBuffer::Reset()
 {
-	std::scoped_lock(this->m_mutex);
 	this->m_currentPage.reset();
 
 	this->m_availablePages = this->m_pagePool;

@@ -73,6 +73,9 @@ namespace PhxEngine::Core
         };
 
 
+        virtual void Initialize(size_t size) = 0;
+        virtual void Finalize() = 0;
+
 		virtual void* Allocate(size_t size, size_t alignment) = 0;
 		virtual void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) = 0;
 
@@ -82,8 +85,8 @@ namespace PhxEngine::Core
 	class HeapAllocator : public IAllocator
 	{
 	public:
-		void Initialize(size_t size);
-		void Finalize();
+		void Initialize(size_t size) override;
+		void Finalize() override;
 
 		void BuildIU();
 
@@ -125,8 +128,8 @@ namespace PhxEngine::Core
 	class LinearAllocator: public IAllocator
 	{
 	public:
-		void Initialize(size_t size);
-		void Finalize();
+		void Initialize(size_t size) override;
+		void Finalize() override;
 
 		void* Allocate(size_t size, size_t alignment) override;
 		void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) override;

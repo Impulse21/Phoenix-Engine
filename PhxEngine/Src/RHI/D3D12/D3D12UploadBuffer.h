@@ -58,7 +58,6 @@ namespace PhxEngine::RHI::D3D12
 		std::shared_ptr<Page> m_currentPage;
 
 		size_t m_pageSize;
-		std::mutex m_mutex;
 	};
 
 }

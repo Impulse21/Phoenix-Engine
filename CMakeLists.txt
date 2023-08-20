@@ -29,7 +29,6 @@ add_subdirectory(PhxEngine)
 #add_subdirectory(PhxEngine-AssetBaker)
 add_subdirectory(PhxEngine-Editor)
 
-
 # Disabling Samples as I work through things
 #add_subdirectory(Examples/BasicTriangle)
 #add_subdirectory(Examples/ImGuiDemo)
