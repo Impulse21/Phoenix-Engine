@@ -450,6 +450,20 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::Finalize()
 
 	this->m_swapChain.BackBuffers.clear();
 
+
+	this->m_texturePool.Finalize();
+	this->m_commandSignaturePool.Finalize();
+	this->m_shaderPool.Finalize();
+	this->m_inputLayoutPool.Finalize();
+	this->m_bufferPool.Finalize();
+	this->m_renderPassPool.Finalize();
+	this->m_rtAccelerationStructurePool.Finalize();
+	this->m_gfxPipelinePool.Finalize();
+	this->m_computePipelinePool.Finalize();
+	this->m_meshPipelinePool.Finalize();
+	this->m_timerQueryPool.Finalize();
+	this->m_commandListPool.Finalize();
+
 #if ENABLE_PIX_CAPUTRE
 	FreeLibrary(this->m_pixCaptureModule);
 #endif

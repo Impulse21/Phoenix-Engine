@@ -51,6 +51,33 @@ namespace PhxEngine::Core
 			}
 		}
 
+		void Finalize()
+		{
+			if (this->m_data)
+			{
+				for (int i = 0; i < this->m_size; i++)
+				{
+					this->m_data[i].~ImplT();
+				}
+
+				assert(this->m_allocator);
+				this->m_allocator->Deallocate(this->m_data);
+				this->m_data = nullptr;
+			}
+
+			if (this->m_freeList)
+			{
+				this->m_allocator->Deallocate(this->m_freeList);
+				this->m_freeList = nullptr;
+			}
+
+			if (this->m_generations)
+			{
+				this->m_allocator->Deallocate(this->m_generations);
+				this->m_generations = nullptr;
+			}
+		}
+
 		ImplT* Get(Handle<HT> handle)
 		{
 			if (!this->Contains(handle))
@@ -114,42 +141,11 @@ namespace PhxEngine::Core
 
 			this->m_freeList[++this->m_freeListPosition] = handle.m_index;
 			this->m_numActiveEntries--;
-
-			this->m_allocator.reset();
 		}
 
 		bool IsEmpty() const { return this->m_numActiveEntries == 0; }
 
 	private:
-
-
-		void Finalize()
-		{
-			if (this->m_data)
-			{
-				for (int i = 0; i < this->m_size; i++)
-				{
-					this->m_data[i].~ImplT();
-				}
-
-				assert(this->m_allocator);
-				this->m_allocator->Deallocate(this->m_data);
-				this->m_data = nullptr;
-			}
-
-			if (this->m_freeList)
-			{
-				this->m_allocator->Deallocate(this->m_freeList);
-				this->m_freeList = nullptr;
-			}
-
-			if (this->m_generations)
-			{
-				this->m_allocator->Deallocate(this->m_generations);
-				this->m_generations = nullptr;
-			}
-		}
-
 		void Resize()
 		{
 			// RESIZING STILL DOESN"T WORK
