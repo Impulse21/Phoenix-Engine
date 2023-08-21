@@ -20,6 +20,8 @@ namespace PhxEngine
 		virtual bool IsShuttingDown() override;
 		virtual void OnTick() override;
 
+		virtual void OnRender() {};
+
 	private:
 		// TODO, put Graphics Device at this level?
 		std::unique_ptr<Core::IWindow> m_window;

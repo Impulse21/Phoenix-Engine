@@ -445,7 +445,7 @@ namespace PhxEngine::RHI::D3D12
         // -- Utility ---
     public:
         TextureHandle GetBackBuffer() override;
-        size_t GetBackBufferIndex() const { return this->m_frameCount % this->m_swapChain.Desc.BufferCount; }
+        size_t GetBackBufferIndex() const;
         size_t GetNumBindlessDescriptors() const override { return NUM_BINDLESS_RESOURCES; }
 
         ShaderModel GetMinShaderModel() const override { return this->m_minShaderModel; };
@@ -782,7 +782,7 @@ namespace PhxEngine::RHI::D3D12
         D3D12BindlessDescriptorTable m_bindlessResourceDescriptorTable;
 
         // -- Frame Frences --
-        Microsoft::WRL::ComPtr<ID3D12Fence> m_frameFence;
+        std::array<Microsoft::WRL::ComPtr<ID3D12Fence>, (int)CommandQueueType::Count> m_frameFences;
         uint64_t m_frameCount = 1;
 
         struct DeleteItem

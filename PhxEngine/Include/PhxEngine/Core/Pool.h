@@ -148,8 +148,6 @@ namespace PhxEngine::Core
 	private:
 		void Resize()
 		{
-			// RESIZING STILL DOESN"T WORK
-			assert(false);
 			size_t newSize = this->m_size * 2;
 
 			auto* newDataArray = this->m_allocator->AllocateArray<ImplT>(newSize, 16);

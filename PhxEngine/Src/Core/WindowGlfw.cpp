@@ -21,6 +21,7 @@ namespace
 WindowGlfw::WindowGlfw(WindowSpecification const& spec)
 	: m_spec(spec)
 	, m_glfwWindow(nullptr)
+	, m_vsyncEnabled(false)
 {
 }
 

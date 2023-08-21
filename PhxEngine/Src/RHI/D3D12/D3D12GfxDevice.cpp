@@ -437,6 +437,20 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::Initialize(std::shared_ptr<Core::IAl
 		.DebugName = "Timestamp Query Buffer"});
 
 	this->CreateSwapChain(swapchainDesc, windowHandle);
+
+	for (int i = 0; i < this->m_frameCommandListHandles.size(); i++)
+	{
+		this->m_frameCommandListHandles[i] = this->m_commandListPool.Emplace();
+	}
+
+
+	// -- Mark Queues for completion ---
+	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
+	{
+		ThrowIfFailed(
+			this->GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_frameFences[q])));
+	}
+
 }
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::Finalize()
@@ -450,6 +464,10 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::Finalize()
 
 	this->m_swapChain.BackBuffers.clear();
 
+	for (int i = 0; i < this->m_frameCommandListHandles.size(); i++)
+	{
+		this->m_commandListPool.Release(this->m_frameCommandListHandles[i]);
+	}
 
 	this->m_texturePool.Finalize();
 	this->m_commandSignaturePool.Finalize();
@@ -477,8 +495,13 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::ResizeSwapchain(SwapChainDesc const&
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 {
 	static std::array<std::vector<ID3D12CommandList*>, (size_t)CommandQueueType::Count> submitCommandLists;
-	static std::array<std::vector<ID3D12CommandAllocator*>, (size_t)CommandQueueType::Count> submitCommandListAllocators;
 	for (auto& v : submitCommandLists)
+	{
+		v.clear();
+	}
+
+	static std::array<std::vector<ID3D12CommandAllocator*>, (size_t)CommandQueueType::Count> submitCommandListAllocators;
+	for (auto& v : submitCommandListAllocators)
 	{
 		v.clear();
 	}
@@ -543,12 +566,13 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 
 			if (!submitCommands.empty())
 			{
-				queue.ExecuteCommandLists(Core::Span(submitCommands));
+				uint64_t waitOnFenceValue = queue.ExecuteCommandLists(Core::Span(submitCommands));
+				queue.DiscardAllocators(waitOnFenceValue, Core::Span(submitAllocators));
 				submitCommands.clear();
 			}
 
 			// Single Frame Fence
-			queue.GetD3D12CommandQueue()->Signal(this->m_frameFence.Get(), this->m_frameCount);
+			queue.GetD3D12CommandQueue()->Signal(this->m_frameFences[q].Get(), this->m_frameCount);
 		}
 	}
 
@@ -560,7 +584,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 		{
 			presentFlags = DXGI_PRESENT_ALLOW_TEARING;
 		}
-		HRESULT hr = this->m_swapChain.NativeSwapchain4->Present(this->m_swapChain.Desc.VSync, presentFlags);
+		HRESULT hr = this->m_swapChain.NativeSwapchain4->Present((UINT)this->m_swapChain.Desc.VSync, presentFlags);
 
 		// If the device was reset we must completely reinitialize the renderer.
 		if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
@@ -584,21 +608,24 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 
 	// Wait for next frame
 	{
-		const UINT64 completedFrame = this->m_frameFence->GetCompletedValue();
-
-		// If the fence is max uint64, that might indicate that the device has been removed as fences get reset in this case
-		assert(completedFrame != UINT64_MAX);
-		uint32_t bufferCount = this->m_swapChain.Desc.BufferCount;
-
-		// Since our frame count is 1 based rather then 0, increment the number of buffers by 1 so we don't have to wait on the first 3 frames
-		// that are kicked off.
-		if (this->m_frameCount >= (bufferCount + 1) && completedFrame < this->m_frameCount)
+		for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
 		{
-			// Wait on the frames last value?
-			// NULL event handle will simply wait immediately:
-			//	https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12fence-seteventoncompletion#remarks
-			ThrowIfFailed(
-				this->m_frameFence->SetEventOnCompletion(this->m_frameCount - bufferCount, NULL));
+			const UINT64 completedFrame = this->m_frameFences[q]->GetCompletedValue();
+
+			// If the fence is max uint64, that might indicate that the device has been removed as fences get reset in this case
+			assert(completedFrame != UINT64_MAX);
+			uint32_t bufferCount = this->m_swapChain.Desc.BufferCount;
+
+			// Since our frame count is 1 based rather then 0, increment the number of buffers by 1 so we don't have to wait on the first 3 frames
+			// that are kicked off.
+			if (this->m_frameCount >= (bufferCount + 1) && completedFrame < this->m_frameCount)
+			{
+				// Wait on the frames last value?
+				// NULL event handle will simply wait immediately:
+				//	https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12fence-seteventoncompletion#remarks
+				ThrowIfFailed(
+					this->m_frameFences[q]->SetEventOnCompletion(this->m_frameCount - bufferCount, nullptr));
+			}
 		}
 	}
 }
@@ -2173,6 +2200,12 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::ResetTimerQuery(TimerQueryHandle que
 inline TextureHandle  PhxEngine::RHI::D3D12::D3D12GfxDevice::D3D12GfxDevice::GetBackBuffer()
 {
 	return this->m_swapChain.BackBuffers[this->GetBackBufferIndex()];
+}
+
+size_t PhxEngine::RHI::D3D12::D3D12GfxDevice::GetBackBufferIndex() const
+{
+	auto retVal = this->m_swapChain.NativeSwapchain4->GetCurrentBackBufferIndex();
+	return (size_t)retVal;
 }
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::BeginCapture(std::wstring const& filename)

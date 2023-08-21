@@ -56,4 +56,24 @@ void PhxEngine::GameApplication::OnTick()
 {
 	this->m_window->OnTick();
 
+	auto* gfxDevice = RHI::GetGfxDevice();
+
+	RHI::CommandListHandle frameCmd = gfxDevice->BeginCommandList();
+	gfxDevice->TransitionBarriers(
+		{ 
+			RHI::GpuBarrier::CreateTexture(gfxDevice->GetBackBuffer(), RHI::ResourceStates::Present, RHI::ResourceStates::RenderTarget)
+		},
+		frameCmd);
+
+	this->OnRender();
+
+	RHI::Color clearColour = {};
+	RHI::GetGfxDevice()->ClearTextureFloat(gfxDevice->GetBackBuffer(), clearColour, frameCmd);
+
+	gfxDevice->TransitionBarriers(
+		{
+			RHI::GpuBarrier::CreateTexture(gfxDevice->GetBackBuffer(), RHI::ResourceStates::RenderTarget, RHI::ResourceStates::Present)
+		},
+		frameCmd);
+	gfxDevice->SubmitFrame();
 }
