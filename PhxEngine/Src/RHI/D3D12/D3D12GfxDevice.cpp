@@ -632,12 +632,21 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::WaitForIdle()
 {
-	for (auto& queue : this->m_commandQueues)
+	Microsoft::WRL::ComPtr<ID3D12Fence> fence;
+	HRESULT hr = this->GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+	assert(SUCCEEDED(hr));
+
+	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
 	{
-		if (queue)
+		D3D12CommandQueue& queue = this->m_commandQueues[q];
+		hr = queue.GetD3D12CommandQueue()->Signal(fence.Get(), 1);
+		assert(SUCCEEDED(hr));
+		if (fence->GetCompletedValue() < 1)
 		{
-			queue.WaitForIdle();
+			hr = fence->SetEventOnCompletion(1, NULL);
+			assert(SUCCEEDED(hr));
 		}
+		fence->Signal(0);
 	}
 }
 
@@ -3502,6 +3511,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateSwapChain(SwapChainDesc const&
 			this->DeleteTexture(this->m_swapChain.BackBuffers[i]);
 		}
 
+		this->RunGarbageCollection(this->m_frameCount + 1);
 		this->m_swapChain.BackBuffers.clear();
 
 		hr = this->m_swapChain.NativeSwapchain4->ResizeBuffers(
