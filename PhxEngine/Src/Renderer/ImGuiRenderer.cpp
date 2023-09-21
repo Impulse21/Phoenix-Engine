@@ -22,7 +22,7 @@ PhxEngine::ImGuiRenderer::ImGuiRenderer()
 {
     this->m_imguiContext = ImGui::CreateContext();
     ImGui::SetCurrentContext(this->m_imguiContext);
-    
+#if false
     auto* glfwWindow = static_cast<GLFWwindow*>(root->GetWindow()->GetNativeWindow());
 
     if (!ImGui_ImplGlfw_InitForVulkan(glfwWindow, true))
@@ -68,12 +68,12 @@ PhxEngine::ImGuiRenderer::ImGuiRenderer()
     device->TransitionBarrier(this->m_fontTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest, uploadCommandList);
     device->WriteTexture(this->m_fontTexture, 0, 1, &subResourceData, uploadCommandList);
     device->TransitionBarrier(this->m_fontTexture, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource, uploadCommandList);
-
+#endif
 }
 
 bool PhxEngine::ImGuiRenderer::Initialize()
 {
-
+#if false
     this->m_vertexShader = shaderFactory.CreateShader(
         "PhxEngine/ImGuiVS.hlsl",
         {
@@ -97,6 +97,7 @@ bool PhxEngine::ImGuiRenderer::Initialize()
     };
 
     this->m_inputLayout = this->GetGfxDevice()->CreateInputLayout(attributeDesc.data(), attributeDesc.size());
+#endif
     return true;
 }
 
@@ -109,6 +110,7 @@ void PhxEngine::ImGuiRenderer::Tick(Core::TimeStep const& timeStep)
 
 void PhxEngine::ImGuiRenderer::Render()
 {
+#if false
     if (!this->m_pipeline.IsValid())
     {
         GraphicsPipelineDesc psoDesc = {};
@@ -237,14 +239,7 @@ void PhxEngine::ImGuiRenderer::Render()
     cmd->Close();
 
     this->GetGfxDevice()->ExecuteCommandLists({ cmd });
-}
-
-void PhxEngine::ImGuiRenderer::OnWindowResize(WindowResizeEvent const& e)
-{
-    this->GetGfxDevice()->DeleteGraphicsPipeline(this->m_pipeline);
-    this->GetGfxDevice()->DeleteRenderPass(this->RenderPass);
-    this->m_pipeline = {};
-    this->RenderPass = {};
+#endif
 }
 
 void PhxEngine::ImGuiRenderer::EnableDarkThemeColours()

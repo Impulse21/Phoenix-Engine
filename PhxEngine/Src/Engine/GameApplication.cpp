@@ -1,5 +1,7 @@
 #include <PhxEngine/Engine/GameApplication.h>
 #include <PhxEngine/Core/Window.h>
+#include <PhxEngine/RHI/PhxShaderCompiler.h>
+
 
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
@@ -40,6 +42,8 @@ void GameApplication::Initialize()
 		});
 
 	this->m_window->Initialize();
+
+	this->Startup();
 }
 
 void PhxEngine::GameApplication::Finalize()
@@ -81,6 +85,10 @@ void PhxEngine::GameApplication::OnTick()
 
 void PhxEngine::GameApplication::Startup()
 {
+	RHI::ShaderCompiler::Compile("Testing");
 	this->m_imguiRenderer = std::make_unique<ImGuiRenderer>();
 	this->m_imguiRenderer->Initialize();
+}
+void PhxEngine::GameApplication::Shutdown()
+{
 }

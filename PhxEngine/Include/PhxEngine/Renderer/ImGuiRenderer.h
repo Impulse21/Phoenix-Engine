@@ -19,7 +19,7 @@ namespace PhxEngine
 	class ImGuiRenderer
 	{
 	public:
-		ImGuiRenderer() = default;
+		ImGuiRenderer();
 
 		bool Initialize();
 		void Tick(Core::TimeStep const& timeStep);
