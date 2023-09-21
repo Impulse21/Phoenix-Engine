@@ -13,12 +13,12 @@ namespace
 	{
 		// Initialize SubSystems
 		Core::Log::Initialize();
-		app.Startup();
+		app.Initialize();
 	}
 
 	void FinalizeApplication(IEngineApp& app)
 	{
-		app.Shutdown();
+		app.Finalize();
 	}
 }
 

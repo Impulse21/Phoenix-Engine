@@ -7,6 +7,8 @@
 #include <PhxEngine/Core/EventDispatcher.h>
 #include <PhxEngine/Core/Window.h>
 
+#include <PhxEngine/Renderer/ImGuiRenderer.h>
+
 namespace PhxEngine
 {
 	class GameApplication : public IEngineApp
@@ -14,18 +16,19 @@ namespace PhxEngine
 	public:
 		GameApplication() = default;
 
-		virtual void Startup() override;
-		virtual void Shutdown() override;
+		virtual void Initialize() override;
+		virtual void Finalize() override;
 
 		virtual bool IsShuttingDown() override;
 		virtual void OnTick() override;
 
+		virtual void Startup();
+		virtual void Shutdown();
 		virtual void OnRender() {};
 
 	private:
-		// TODO, put Graphics Device at this level?
 		std::unique_ptr<Core::IWindow> m_window;
-
+		std::unique_ptr<ImGuiRenderer> m_imguiRenderer;
 		// Add World
 	};
 }

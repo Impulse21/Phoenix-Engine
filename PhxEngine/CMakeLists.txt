@@ -79,14 +79,9 @@ file(GLOB PhxEngine_Graphics_RHI_DX12_Src
     Src/RHI/D3D12/*.cpp
 )
 
-#-- Graphics IMGUI
-file(GLOB PhxEngine_Graphics_ImGui_Inc
-	Include/PhxEngine/Graphics/ImGui/*.h
-)
-
 file(GLOB PhxEngine_Graphics_ImGui_Src
-    Src/Graphics/ImGui/*.h
-    Src/Graphics/ImGui/*.cpp
+    Src/Renderer/ImGui/*.h
+    Src/Renderer/ImGui/*.cpp
 )
 
 #-- System
@@ -162,11 +157,10 @@ source_group("Src/Graphics"             FILES ${PhxEngine_Graphics_Src})
 source_group("Src/RHI"					FILES ${PhxEngine_Graphics_RHI_Src})
 source_group("Src/RHI/Windows"			FILES ${PhxEngine_Graphics_RHI_Windows_Src})
 source_group("Src/RHI/D3D12"			FILES ${PhxEngine_Graphics_RHI_DX12_Src})
-source_group("Src/Graphics/ImGui"       FILES ${PhxEngine_Graphics_ImGui_Src})
 source_group("Src/System"               FILES ${PhxEngine_System_Src})
 source_group("Src/Scene"                FILES ${PhxEngine_Scene_Src})
 source_group("Src/Renderer"             FILES ${PhxEngine_Renderer_Src})
-source_group("Src/Renderer/Dx12"        FILES ${PhxEngine_Renderer_DX12_Src})
+source_group("Src/Renderer/ImGui"       FILES ${PhxEngine_Graphics_ImGui_Src})
 
 #add_subdirectory(Shaders)
 
@@ -243,7 +237,7 @@ add_library(
 target_include_directories(DirectXShaderCompiler INTERFACE "${dxc_SOURCE_DIR}/include")
 target_link_libraries(DirectXShaderCompiler INTERFACE "${dxc_SOURCE_DIR}/lib/x64/dxcompiler.lib")
 set_target_properties(DirectXShaderCompiler  PROPERTIES FOLDER ${extern_folder})
-# target_link_libraries(${project} PUBLIC DirectXShaderCompiler)
+target_link_libraries(${project} PUBLIC DirectXShaderCompiler)
 
 # Copy DLLs
 #add_custom_command(

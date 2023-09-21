@@ -7,8 +7,8 @@ namespace PhxEngine
 	public:
 		virtual ~IEngineApp() = default;
 
-		virtual void Startup() = 0;
-		virtual void Shutdown() = 0;
+		virtual void Initialize() = 0;
+		virtual void Finalize() = 0;
 
 		virtual bool IsShuttingDown() = 0;
 		virtual void OnTick() = 0;

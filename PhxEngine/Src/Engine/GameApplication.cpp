@@ -4,7 +4,7 @@
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
 
-void GameApplication::Startup()
+void GameApplication::Initialize()
 {
 	// Initialize MemoryService?
 	this->m_window = WindowFactory::CreateGlfwWindow({
@@ -42,7 +42,7 @@ void GameApplication::Startup()
 	this->m_window->Initialize();
 }
 
-void PhxEngine::GameApplication::Shutdown()
+void PhxEngine::GameApplication::Finalize()
 {
 	RHI::Setup::Finalize();
 }
@@ -54,6 +54,7 @@ bool PhxEngine::GameApplication::IsShuttingDown()
 
 void PhxEngine::GameApplication::OnTick()
 {
+	// Have we initialized yet?
 	this->m_window->OnTick();
 
 	auto* gfxDevice = RHI::GetGfxDevice();
@@ -76,4 +77,10 @@ void PhxEngine::GameApplication::OnTick()
 		},
 		frameCmd);
 	gfxDevice->SubmitFrame();
+}
+
+void PhxEngine::GameApplication::Startup()
+{
+	this->m_imguiRenderer = std::make_unique<ImGuiRenderer>();
+	this->m_imguiRenderer->Initialize();
 }
