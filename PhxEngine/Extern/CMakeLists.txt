@@ -103,3 +103,11 @@ file (GLOB tlsf_src
 add_library(tlsf STATIC ${CMAKE_CURRENT_SOURCE_DIR}/tlsf/tlsf.c)
 target_include_directories(tlsf PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/tlsf)
 set_target_properties(tlsf PROPERTIES FOLDER ${extern_folder})
+
+set(MI_USE_CXX      ON)
+set(MI_BUILD_SHARED OFF)
+set(MI_BUILD_STATIC ON)
+set(MI_BUILD_OBJECT OFF)
+set(MI_BUILD_TESTS  OFF)
+add_subdirectory(mimalloc)
+set_target_properties(mimalloc-static PROPERTIES FOLDER ${extern_folder})

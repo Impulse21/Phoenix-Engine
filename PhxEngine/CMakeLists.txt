@@ -188,7 +188,8 @@ target_link_libraries(${project} PUBLIC
 	rapidjson
 	taskflow
 	tlsf
-	D3D12MemoryAllocator)
+	D3D12MemoryAllocator
+	mimalloc-static)
     
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 
