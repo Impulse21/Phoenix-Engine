@@ -47,3 +47,6 @@
 [submodule "PhxEngine/Extern/D3D12MemoryAllocator"]
 	path = PhxEngine/Extern/D3D12MemoryAllocator
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
+[submodule "PhxEngine/Extern/mimalloc"]
+	path = PhxEngine/Extern/mimalloc
+	url = https://github.com/microsoft/mimalloc.git
