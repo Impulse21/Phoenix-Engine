@@ -1,4 +1,4 @@
-#include <PhxEngine/Engine/EngineCore.h>
+#include <PhxEngine/Engine/EngineLoop.h>
 
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/Memory.h>
@@ -22,7 +22,7 @@ namespace
 	}
 }
 
-void EngineCore::RunApplication(IEngineApp& app)
+void EngineLoop::Run(IEngineApp& app)
 {
 	InitializeApplication(app);
 	while (!app.IsShuttingDown())

@@ -1,9 +1,11 @@
 #pragma once
 
+#include <PhxEngine/Core/Memory.h>
+
 #include <cstring>
 #include <utility>
 #include <limits>
-
+#include <assert.h>
 #include "Handle.h"
 
 #include <iostream>
@@ -14,8 +16,7 @@ namespace PhxEngine::Core
 	{
 	public:
 		Pool()
-			: m_allocator(nullptr)
-			, m_size(0)
+			: m_size(0)
 			, m_numActiveEntries(0)
 		{
 		}
@@ -25,16 +26,14 @@ namespace PhxEngine::Core
 			this->Finalize();
 		}
 
-		void Initialize(std::shared_ptr<Core::IAllocator> allocator, size_t initCapacity)
+		void Initialize(size_t initCapacity)
 		{
-			assert(allocator);
-			this->m_allocator = allocator;
 			this->m_size = initCapacity;
 			this->m_numActiveEntries = 0;
 
-			this->m_data = this->m_allocator->AllocateArray<ImplT>(this->m_size, 16);
-			this->m_generations = this->m_allocator->AllocateArray<uint32_t>(this->m_size, 16);
-			this->m_freeList = this->m_allocator->AllocateArray<uint32_t>(this->m_size, 16);
+			this->m_data = phx_new_arr(ImplT, this->m_size);
+			this->m_generations = phx_new_arr(uint32_t, this->m_size);
+			this->m_freeList = phx_new_arr(uint32_t, this->m_size);
 
 			std::memset(this->m_data, 0, this->m_size * sizeof(ImplT));
 			std::memset(this->m_freeList, 0, this->m_size * sizeof(uint32_t));
@@ -55,25 +54,19 @@ namespace PhxEngine::Core
 		{
 			if (this->m_data)
 			{
-				for (int i = 0; i < this->m_size; i++)
-				{
-					this->m_data[i].~ImplT();
-				}
-
-				assert(this->m_allocator);
-				this->m_allocator->Deallocate(this->m_data);
+				phx_delete_arr(this->m_data);
 				this->m_data = nullptr;
 			}
 
 			if (this->m_freeList)
 			{
-				this->m_allocator->Deallocate(this->m_freeList);
+				phx_delete_arr(this->m_freeList);
 				this->m_freeList = nullptr;
 			}
 
 			if (this->m_generations)
 			{
-				this->m_allocator->Deallocate(this->m_generations);
+				phx_delete_arr(this->m_generations);
 				this->m_generations = nullptr;
 			}
 		}
@@ -148,11 +141,17 @@ namespace PhxEngine::Core
 	private:
 		void Resize()
 		{
+			if (this->m_size == 0)
+			{
+				this->Initialize(16);
+				return;
+			}
+
 			size_t newSize = this->m_size * 2;
 
-			auto* newDataArray = this->m_allocator->AllocateArray<ImplT>(newSize, 16);
-			auto* newFreeListArray = this->m_allocator->AllocateArray<uint32_t>(newSize, 16);
-			auto* newGenerations = this->m_allocator->AllocateArray<uint32_t>(newSize, 16);
+			auto* newDataArray = phx_new_arr(ImplT, newSize);
+			auto* newFreeListArray = phx_new_arr(uint32_t, newSize);
+			auto* newGenerations = phx_new_arr(uint32_t, newSize);
 
 			std::memset(newDataArray, 0, newSize * sizeof(ImplT));
 			std::memset(newFreeListArray, 0, newSize * sizeof(uint32_t));
@@ -164,9 +163,9 @@ namespace PhxEngine::Core
 			// std::memcpy(newFreeListArray, this->m_freeList, this->m_size * sizeof(uint32_t));
 			std::memcpy(newGenerations, this->m_generations, this->m_size * sizeof(uint32_t));
 
-			this->m_allocator->Deallocate(this->m_data);
-			this->m_allocator->Deallocate(this->m_freeList);
-			this->m_allocator->Deallocate(this->m_generations);
+			phx_delete_arr(this->m_data);
+			phx_delete_arr(this->m_freeList);
+			phx_delete_arr(this->m_generations);
 
 			this->m_data = newDataArray;
 			this->m_freeList = newFreeListArray;
@@ -197,7 +196,5 @@ namespace PhxEngine::Core
 
 		// Data Array
 		ImplT* m_data;
-
-		std::shared_ptr<Core::IAllocator> m_allocator;
 	};
 }

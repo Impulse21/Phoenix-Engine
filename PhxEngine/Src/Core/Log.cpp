@@ -22,3 +22,7 @@ void Log::Initialize()
 	m_ClientLogger->set_level(spdlog::level::trace);
 
 }
+
+
+std::shared_ptr<spdlog::logger>& Log::GetCoreLogger() { return m_CoreLogger; }
+std::shared_ptr<spdlog::logger>& Log::GetClientLogger() { return m_ClientLogger; }

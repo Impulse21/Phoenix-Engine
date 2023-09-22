@@ -7,9 +7,36 @@
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
 
+void* operator new(size_t p_size, const char* p_description) 
+{
+	return SystemMemory::GetAllocator().Allocate(p_size, 1);
+}
+
+void* operator new(size_t p_size, void* (*p_allocfunc)(size_t p_size, size_t alignment)) 
+{
+	return p_allocfunc(p_size, 1);
+}
+
+#ifdef _MSC_VER
+void operator delete(void* p_mem, const char* p_description) 
+{
+	assert(0);
+}
+
+void operator delete(void* p_mem, void* (*p_allocfunc)(size_t p_size)) 
+{
+	assert(0);
+}
+
+void operator delete(void* p_mem, void* p_pointer, size_t check, const char* p_description) 
+{
+	assert(0);
+}
+
+#endif
+
 namespace
 {
-	LinearAllocator m_scratchAllocator;
 	HeapAllocator m_systemAllocator;
 
 	void ExitWalker(void* ptr, size_t size, int used, void* user)
@@ -26,6 +53,8 @@ namespace
 	}
 
 }
+
+
 void PhxEngine::Core::HeapAllocator::Initialize(size_t size)
 {
 	this->m_memory = malloc(size);
@@ -199,15 +228,14 @@ void PhxEngine::Core::LinearAllocator::Clear()
 	this->m_allocatedSize = 0;
 }
 
-void PhxEngine::Core::MemoryService::Initialize(PhxEngine::Core::MemoryServiceConfiguration const& config)
+void PhxEngine::Core::SystemMemory::Initialize(PhxEngine::Core::MemoryServiceConfiguration const& config)
 {
 	m_systemAllocator.Initialize(config.MaximumDynamicSize);
 }
 
-void PhxEngine::Core::MemoryService::Finalize()
+void PhxEngine::Core::SystemMemory::Finalize()
 {
 	m_systemAllocator.Finalize();
 }
 
-IAllocator& PhxEngine::Core::MemoryService::GetScratchAllocator() { return m_scratchAllocator; }
-IAllocator& PhxEngine::Core::MemoryService::GetSystemAllocator() { return m_systemAllocator; }
+IAllocator& PhxEngine::Core::SystemMemory::GetAllocator() { return m_systemAllocator; }

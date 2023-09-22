@@ -1277,7 +1277,7 @@ namespace PhxEngine::RHI
 
         // -- Frame Functions ---
     public:
-        virtual void Initialize(std::shared_ptr<Core::IAllocator> allocator, SwapChainDesc const& desc, void* windowHandle) = 0;
+        virtual void Initialize(SwapChainDesc const& desc, void* windowHandle) = 0;
         virtual void Finalize() = 0;
 
         // -- Resizes swapchain ---

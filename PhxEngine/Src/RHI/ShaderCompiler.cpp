@@ -1,5 +1,6 @@
 #include <PhxEngine/RHI/PhxShaderCompiler.h>
 #include <PhxEngine/Core/Log.h>
+#include <PhxEngine/Core/String.h>
 
 #include <wrl.h>
 #include <dxc/dxcapi.h>
@@ -8,13 +9,48 @@ using namespace PhxEngine::RHI;
 using namespace Microsoft::WRL;
 namespace
 {
-	DxcCreateInstance2Proc m_dxcCreateInstance = nullptr;
+	struct IncludeHandler : public IDxcIncludeHandler
+	{
+		const ShaderCompiler::CompilerInput* Input = nullptr;
+		ShaderCompiler::CompilerResult* Result = nullptr;
+		Microsoft::WRL::ComPtr<IDxcIncludeHandler> dxcIncludeHandler;
+
+		HRESULT STDMETHODCALLTYPE LoadSource(
+			_In_z_ LPCWSTR pFilename,                                 // Candidate filename.
+			_COM_Outptr_result_maybenull_ IDxcBlob** ppIncludeSource  // Resultant source object for included file, nullptr if not found.
+		) override
+		{
+			HRESULT hr = dxcIncludeHandler->LoadSource(pFilename, ppIncludeSource);
+			if (SUCCEEDED(hr))
+			{
+				std::string& filename = Result->Dependencies.emplace_back();
+				StringConvert(pFilename, filename);
+			}
+			return hr;
+		}
+		HRESULT STDMETHODCALLTYPE QueryInterface(
+			/* [in] */ REFIID riid,
+			/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject) override
+		{
+			return dxcIncludeHandler->QueryInterface(riid, ppvObject);
+		}
+
+		ULONG STDMETHODCALLTYPE AddRef(void) override
+		{
+			return 0;
+		}
+		ULONG STDMETHODCALLTYPE Release(void) override
+		{
+			return 0;
+		}
+	};
 }
 
-void ShaderCompiler::Compile(std::string const& filename, PhxEngine::Core::IFileSystem* fileSystem)
+ShaderCompiler::CompilerResult ShaderCompiler::Compile(std::string const& filename, CompilerInput const& input)
 {
-	ComPtr<IDxcUtils> dxcUtils;
+	CompilerResult result;
 
+	ComPtr<IDxcUtils> dxcUtils;
 	ComPtr<IDxcUtils> pUtils;
 	assert(
 		SUCCEEDED(
@@ -29,36 +65,38 @@ void ShaderCompiler::Compile(std::string const& filename, PhxEngine::Core::IFile
 
 	if (dxcCompiler == nullptr)
 	{
-		return;
+		return result;
 	}
 
 
 	ComPtr<IDxcBlobEncoding> pSource;
 
+	IFileSystem* fileSystem = input.FileSystem;
+	assert(fileSystem);
+
 	if (!fileSystem->FileExists(filename))
 	{
-		return;
+		return result;
 	}
 
-	std::unique_ptr<IBlob> shaderSrcData= fileSystem->ReadFile(filename);
+	std::unique_ptr<IBlob> shaderSrcData = fileSystem->ReadFile(filename);
 	// pUtils->CreateBlob(pShaderSource, shaderSourceSize, CP_UTF8, pSource.GetAddressOf());
 
 	// https://github.com/microsoft/DirectXShaderCompiler/wiki/Using-dxc.exe-and-dxcompiler.dll#dxcompiler-dll-interface
 	std::vector<LPCWSTR> args = {
 		DXC_ARG_DEBUG,
-		L"/Qembed_debug"
-		//L"-res-may-alias",
-		//L"-flegacy-macro-expansion",
-		//L"-no-legacy-cbuf-layout",
-		//L"-pack-optimized", // this has problem with tessellation shaders: https://github.com/microsoft/DirectXShaderCompiler/issues/3362
-		//L"-all-resources-bound",
-		//L"-Gis", // Force IEEE strictness
-		//L"-Gec", // Enable backward compatibility mode
-		//L"-Ges", // Enable strict mode
-		//L"-O0", // Optimization Level 0
+		L"-res-may-alias",
+		L"-flegacy-macro-expansion",
+		L"-no-legacy-cbuf-layout",
+		L"-pack-optimized", // this has problem with tessellation shaders: https://github.com/microsoft/DirectXShaderCompiler/issues/3362
+		L"-all-resources-bound",
+		L"-Gis", // Force IEEE strictness
+		L"-Gec", // Enable backward compatibility mode
+		L"-Ges", // Enable strict mode
+		L"-O0", // Optimization Level 0
 	};
 
-	if (has_flag(input.flags, Flags::DISABLE_OPTIMIZATION))
+	if (input.Flags & CompilerFlags::DisableOptimization)
 	{
 		args.push_back(L"-Od");
 	}
@@ -67,33 +105,27 @@ void ShaderCompiler::Compile(std::string const& filename, PhxEngine::Core::IFile
 		args.push_back(L"-Od");
 	}
 
-	switch (input.format)
+	if (input.Flags & CompilerFlags::EmbedDebug)
 	{
-	case ShaderFormat::HLSL6:
+		args.push_back(L"/Qembed_debug");
+	}
+
+	switch (input.ShaderType)
+	{
+	case ShaderType::HLSL6:
 		args.push_back(L"-D"); args.push_back(L"HLSL6");
-		args.push_back(L"-rootsig-define"); args.push_back(L"WICKED_ENGINE_DEFAULT_ROOTSIGNATURE");
-		break;
-	case ShaderFormat::SPIRV:
-		args.push_back(L"-D"); args.push_back(L"SPIRV");
-		args.push_back(L"-spirv");
-		args.push_back(L"-fspv-target-env=vulkan1.2");
-		args.push_back(L"-fvk-use-dx-layout");
-		args.push_back(L"-fvk-use-dx-position-w");
-		//args.push_back(L"-fvk-b-shift"); args.push_back(L"0"); args.push_back(L"0");
-		args.push_back(L"-fvk-t-shift"); args.push_back(L"1000"); args.push_back(L"0");
-		args.push_back(L"-fvk-u-shift"); args.push_back(L"2000"); args.push_back(L"0");
-		args.push_back(L"-fvk-s-shift"); args.push_back(L"3000"); args.push_back(L"0");
+		args.push_back(L"-rootsig-define"); args.push_back(L"PHX_ENGINE_DEFAULT_ROOTSIGNATURE");
 		break;
 	default:
 		assert(0);
-		return;
+		return result;
 	}
 
 	args.push_back(L"-T");
-	switch (input.stage)
+	switch (input.ShaderStage)
 	{
-	case ShaderStage::MS:
-		switch (input.minshadermodel)
+	case ShaderStage::Mesh:
+		switch (input.ShaderModel)
 		{
 		default:
 			args.push_back(L"ms_6_5");
@@ -106,8 +138,8 @@ void ShaderCompiler::Compile(std::string const& filename, PhxEngine::Core::IFile
 			break;
 		}
 		break;
-	case ShaderStage::AS:
-		switch (input.minshadermodel)
+	case ShaderStage::Amplification:
+		switch (input.ShaderModel)
 		{
 		default:
 			args.push_back(L"as_6_5");
@@ -120,8 +152,8 @@ void ShaderCompiler::Compile(std::string const& filename, PhxEngine::Core::IFile
 			break;
 		}
 		break;
-	case ShaderStage::VS:
-		switch (input.minshadermodel)
+	case ShaderStage::Vertex:
+		switch (input.ShaderModel)
 		{
 		default:
 			args.push_back(L"vs_6_0");
@@ -149,8 +181,8 @@ void ShaderCompiler::Compile(std::string const& filename, PhxEngine::Core::IFile
 			break;
 		}
 		break;
-	case ShaderStage::HS:
-		switch (input.minshadermodel)
+	case ShaderStage::Hull:
+		switch (input.ShaderModel)
 		{
 		default:
 			args.push_back(L"hs_6_0");
@@ -178,8 +210,8 @@ void ShaderCompiler::Compile(std::string const& filename, PhxEngine::Core::IFile
 			break;
 		}
 		break;
-	case ShaderStage::DS:
-		switch (input.minshadermodel)
+	case ShaderStage::Domain:
+		switch (input.ShaderModel)
 		{
 		default:
 			args.push_back(L"ds_6_0");
@@ -207,8 +239,8 @@ void ShaderCompiler::Compile(std::string const& filename, PhxEngine::Core::IFile
 			break;
 		}
 		break;
-	case ShaderStage::GS:
-		switch (input.minshadermodel)
+	case ShaderStage::Geometry:
+		switch (input.ShaderModel)
 		{
 		default:
 			args.push_back(L"gs_6_0");
@@ -236,8 +268,8 @@ void ShaderCompiler::Compile(std::string const& filename, PhxEngine::Core::IFile
 			break;
 		}
 		break;
-	case ShaderStage::PS:
-		switch (input.minshadermodel)
+	case ShaderStage::Pixel:
+		switch (input.ShaderModel)
 		{
 		default:
 			args.push_back(L"ps_6_0");
@@ -265,8 +297,8 @@ void ShaderCompiler::Compile(std::string const& filename, PhxEngine::Core::IFile
 			break;
 		}
 		break;
-	case ShaderStage::CS:
-		switch (input.minshadermodel)
+	case ShaderStage::Compute:
+		switch (input.ShaderModel)
 		{
 		default:
 			args.push_back(L"cs_6_0");
@@ -294,23 +326,124 @@ void ShaderCompiler::Compile(std::string const& filename, PhxEngine::Core::IFile
 			break;
 		}
 		break;
-	case ShaderStage::LIB:
-		switch (input.minshadermodel)
-		{
-		default:
-			args.push_back(L"lib_6_5");
-			break;
-		case ShaderModel::SM_6_6:
-			args.push_back(L"lib_6_6");
-			break;
-		case ShaderModel::SM_6_7:
-			args.push_back(L"lib_6_7");
-			break;
-		}
-		break;
 	default:
 		assert(0);
-		return;
+		return result;
 	}
 
+	std::vector<std::wstring> wstrings;
+	wstrings.reserve(input.Defines.Size() + input.IncludeDirs.Size());
+
+	for (auto& x : input.Defines)
+	{
+		std::wstring& wstr = wstrings.emplace_back();
+		StringConvert(x, wstr);
+		args.push_back(L"-D");
+		args.push_back(wstr.c_str());
+	}
+
+	for (auto& x : input.IncludeDirs)
+	{
+		std::wstring& wstr = wstrings.emplace_back();
+		StringConvert(x, wstr);
+		args.push_back(L"-I");
+		args.push_back(wstr.c_str());
+	}
+
+	// Entry point parameter:
+	std::wstring wentry;
+	StringConvert(input.EntryPoint, wentry);
+	args.push_back(L"-E");
+	args.push_back(wentry.c_str());
+
+	// Add source file name as last parameter. This will be displayed in error messages
+	std::wstring wsource;
+	std::filesystem::path filenamePath = filename;
+	StringConvert(filenamePath.filename().string(), wsource);
+	args.push_back(wsource.c_str());
+
+
+	DxcBuffer Source;
+	Source.Ptr = shaderSrcData->Data();
+	Source.Size = shaderSrcData->Size();
+	Source.Encoding = DXC_CP_ACP;
+
+	IncludeHandler includehandler = {};
+	includehandler.Input = &input;
+	includehandler.Result = &result;
+
+	assert(SUCCEEDED(
+		dxcUtils->CreateDefaultIncludeHandler(&includehandler.dxcIncludeHandler)));
+
+	Microsoft::WRL::ComPtr<IDxcResult> pResults;
+	assert(SUCCEEDED(
+		dxcCompiler->Compile(
+			&Source,                // Source buffer.
+			args.data(),            // Array of pointers to arguments.
+			(uint32_t)args.size(),	// Number of arguments.
+			&includehandler,		// User-provided interface to handle #include directives (optional).
+			IID_PPV_ARGS(&pResults) // Compiler output status, buffer, and errors.
+	)));
+
+	Microsoft::WRL::ComPtr<IDxcBlobUtf8> pErrors = nullptr;
+	assert(SUCCEEDED(
+		pResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&pErrors), nullptr)));
+
+	if (pErrors != nullptr && pErrors->GetStringLength() != 0)
+	{
+		result.ErrorMessage = pErrors->GetStringPointer();
+	}
+
+	HRESULT hrStatus;
+	assert(SUCCEEDED(
+		pResults->GetStatus(&hrStatus)));
+
+	if (FAILED(hrStatus))
+	{
+		return result;
+	}
+
+	Microsoft::WRL::ComPtr<IDxcBlob> pShader = nullptr;
+	assert(SUCCEEDED(
+		pResults->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&pShader), nullptr)));
+	if (pShader != nullptr)
+	{
+		result.Dependencies.push_back(filename);
+		result.ShaderData = Core::Span((const uint8_t*)pShader->GetBufferPointer(), pShader->GetBufferSize());
+
+		// keep the blob alive == keep shader pointer valid!
+		auto internalState = std::make_shared<Microsoft::WRL::ComPtr<IDxcBlob>>();
+		*internalState = pShader;
+		result.InternalResource = internalState;
+	}
+
+	Microsoft::WRL::ComPtr<IDxcBlob> pShaderSymbols = nullptr;
+	assert(SUCCEEDED(
+		pResults->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&pShaderSymbols), nullptr)));
+	if (pShaderSymbols != nullptr)
+	{
+		result.ShaderSymbols = Core::Span((const uint8_t*)pShaderSymbols->GetBufferPointer(), pShaderSymbols->GetBufferSize());
+
+		// keep the blob alive == keep shader pointer valid!
+		auto internalState = std::make_shared<Microsoft::WRL::ComPtr<IDxcBlob>>();
+		*internalState = pShaderSymbols;
+		result.InternalResourceSymbols = internalState;
+	}
+
+	if (input.ShaderType == ShaderType::HLSL6)
+	{
+		Microsoft::WRL::ComPtr<IDxcBlob> pHash = nullptr;
+		assert(SUCCEEDED(
+			pResults->GetOutput(DXC_OUT_SHADER_HASH, IID_PPV_ARGS(&pHash), nullptr)));
+		if (pHash != nullptr)
+		{
+			DxcShaderHash* pHashBuf = (DxcShaderHash*)pHash->GetBufferPointer();
+			for (int i = 0; i < _countof(pHashBuf->HashDigest); i++)
+			{
+				result.ShaderHash.push_back(pHashBuf->HashDigest[i]);
+			}
+		}
+	}
+
+	return result;
 }

@@ -15,9 +15,9 @@ namespace PhxEngine
 
 	};
 
-	namespace EngineCore
+	namespace EngineLoop
 	{
-		void RunApplication(IEngineApp& engingApp);
+		void Run(IEngineApp& engingApp);
 	}
 }
 
@@ -32,6 +32,6 @@ namespace PhxEngine
     MainFunc								\
     {										\
         class_name app;						\
-        EngineCore::RunApplication(app);    \
+        EngineLoop::Run(app);    \
 		return 0;							\
     }

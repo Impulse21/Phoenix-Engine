@@ -319,9 +319,9 @@ PhxEngine::RHI::D3D12::D3D12GfxDevice::D3D12GfxDevice()
 {
 }
 
-void PhxEngine::RHI::D3D12::D3D12GfxDevice::Initialize(std::shared_ptr<Core::IAllocator> allocator, SwapChainDesc const& swapchainDesc, void* windowHandle)
+void PhxEngine::RHI::D3D12::D3D12GfxDevice::Initialize(SwapChainDesc const& swapchainDesc, void* windowHandle)
 {
-	this->InitializeResourcePools(allocator);
+	this->InitializeResourcePools();
 	this->InitializeD3D12NativeResources(this->m_gpuAdapter.NativeAdapter.Get());
 
 #if ENABLE_PIX_CAPUTRE
@@ -3276,21 +3276,21 @@ void D3D12GfxDevice::CreateGpuTimestampQueryHeap(uint32_t queryCount)
 			IID_PPV_ARGS(&this->m_gpuTimestampQueryHeap)));
 }
 
-void PhxEngine::RHI::D3D12::D3D12GfxDevice::InitializeResourcePools(std::shared_ptr<Core::IAllocator> allocator)
+void PhxEngine::RHI::D3D12::D3D12GfxDevice::InitializeResourcePools()
 {
 	constexpr uint32_t kInitPoolSize = 16;
-	this->m_texturePool.Initialize(allocator, kInitPoolSize);
-	this->m_commandSignaturePool.Initialize(allocator, kInitPoolSize);
-	this->m_shaderPool.Initialize(allocator, kInitPoolSize);
-	this->m_inputLayoutPool.Initialize(allocator, kInitPoolSize);
-	this->m_bufferPool.Initialize(allocator, kInitPoolSize);
-	this->m_renderPassPool.Initialize(allocator, kInitPoolSize);
-	this->m_rtAccelerationStructurePool.Initialize(allocator, kInitPoolSize);
-	this->m_gfxPipelinePool.Initialize(allocator, kInitPoolSize);
-	this->m_computePipelinePool.Initialize(allocator, kInitPoolSize);
-	this->m_meshPipelinePool.Initialize(allocator, kInitPoolSize);
-	this->m_timerQueryPool.Initialize(allocator, kInitPoolSize);
-	this->m_commandListPool.Initialize(allocator, kInitPoolSize);
+	this->m_texturePool.Initialize(kInitPoolSize);
+	this->m_commandSignaturePool.Initialize(kInitPoolSize);
+	this->m_shaderPool.Initialize(kInitPoolSize);
+	this->m_inputLayoutPool.Initialize(kInitPoolSize);
+	this->m_bufferPool.Initialize(kInitPoolSize);
+	this->m_renderPassPool.Initialize(kInitPoolSize);
+	this->m_rtAccelerationStructurePool.Initialize(kInitPoolSize);
+	this->m_gfxPipelinePool.Initialize(kInitPoolSize);
+	this->m_computePipelinePool.Initialize(kInitPoolSize);
+	this->m_meshPipelinePool.Initialize(kInitPoolSize);
+	this->m_timerQueryPool.Initialize(kInitPoolSize);
+	this->m_commandListPool.Initialize(kInitPoolSize);
 }
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::InitializeD3D12NativeResources(IDXGIAdapter* gpuAdapter)

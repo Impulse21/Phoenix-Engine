@@ -364,7 +364,7 @@ namespace PhxEngine::RHI::D3D12
         // -- Interface Functions ---
         // -- Frame Functions ---
     public:
-        void Initialize(std::shared_ptr<Core::IAllocator> allocator, SwapChainDesc const& desc, void* windowHandle) override;
+        void Initialize(SwapChainDesc const& desc, void* windowHandle) override;
         void Finalize() override;
 
         // -- Resizes swapchain ---
@@ -708,7 +708,7 @@ namespace PhxEngine::RHI::D3D12
 
         // -- Dx12 API creation ---
     private:
-        void InitializeResourcePools(std::shared_ptr<Core::IAllocator> allocator);
+        void InitializeResourcePools();
 
         void InitializeD3D12NativeResources(IDXGIAdapter* gpuAdapter);
         void CreateSwapChain(SwapChainDesc const& desc, void* windowHandle);

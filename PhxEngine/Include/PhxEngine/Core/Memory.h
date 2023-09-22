@@ -5,9 +5,6 @@
 
 // Credit to Raptor Engine: Using it for learning.
 
-#define phx_new(allocator, ...) new (PhxEngine::NewPlaceholder(), allocator.Allocate(sizeof(__VA_ARGS__), alignof(__VA_ARGS__))) __VA_ARGS__
-#define phx_delete(allocator, var) allocator.Deallocate(var);
-
 namespace PhxEngine { struct NewPlaceholder {}; };
 inline void* operator new (size_t, PhxEngine::NewPlaceholder, void* where) { return where; }
 inline void operator delete(void*, PhxEngine::NewPlaceholder, void*) {};
@@ -20,8 +17,40 @@ inline void operator delete(void*, PhxEngine::NewPlaceholder, void*) {};
 #define PhxToMB(x)	((size_t) (x) >> 20)
 #define PhxToGB(x)	((size_t) (x) >> 30)
 
+void* operator new(size_t p_size, const char* p_description); ///< operator new that takes a description and uses MemoryStaticPool
+void* operator new(size_t p_size, void* (*p_allocfunc)(size_t p_size)); ///< operator new that takes a description and uses MemoryStaticPool
+
+void* operator new(size_t p_size, void* p_pointer, size_t check, const char* p_description); ///< operator new that takes a description and uses a pointer to the preallocated memory
+
+#ifdef _MSC_VER
+// When compiling with VC++ 2017, the above declarations of placement new generate many irrelevant warnings (C4291).
+// The purpose of the following definitions is to muffle these warnings, not to provide a usable implementation of placement delete.
+void operator delete(void* p_mem, const char* p_description);
+void operator delete(void* p_mem, void* (*p_allocfunc)(size_t p_size));
+void operator delete(void* p_mem, void* p_pointer, size_t check, const char* p_description);
+#endif
+
+#define phx_new(m_class) new ("") m_class
+#define phx_delete(m_v) PhxEngine::Core::MemDelete(m_v)
+
+#define phx_new_allocator(m_class, m_allocator) new (m_allocator::Allocate) m_class
+#define phx_new_placement(m_placement, m_class) new (m_placement) m_class
+
+#define phx_delete_notnull(m_v) \
+	{                           \
+		if (m_v)                \
+        {                       \
+			MemDelete(m_v);  \
+		}                       \
+	}                           \
+
+#define phx_new_arr(m_class, m_count) PhxEngine::Core::MemNew_Arr_Template<m_class>(m_count)
+#define phx_arr_len(m_v) PhxEngine::Core::NemArr_Len(m_v)
+#define phx_delete_arr(m_v) PhxEngine::Core::MemDelete_Arr(m_v)
+
 namespace PhxEngine::Core
 {
+
 	struct MemoryStatistics 
 	{
 		size_t AllocatedBytes;
@@ -149,13 +178,12 @@ namespace PhxEngine::Core
 		size_t MaximumDynamicSize = PhxMB(32);
 	};
 
-	namespace MemoryService
+	namespace SystemMemory
 	{
 		void Initialize(PhxEngine::Core::MemoryServiceConfiguration const& config);
 		void Finalize();
 
-		IAllocator& GetScratchAllocator();
-		IAllocator& GetSystemAllocator();
+		IAllocator& GetAllocator();
 	}
 
 
@@ -424,5 +452,89 @@ namespace PhxEngine::Core
             return result;
         }
     };
+
+
+    template <class T>
+    void MemDelete(T* p_class)
+    {
+        if (!std::is_trivially_destructible<T>::value)
+        {
+            p_class->~T();
+        }
+
+        SystemMemory::GetAllocator().Deallocate(p_class);
+    }
+
+    template <class T, class A>
+    void MemDelete_Allocator(T* p_class)
+    {
+        if (!std::is_trivially_destructible<T>::value)
+        {
+            p_class->~T();
+        }
+
+        A::free(p_class);
+    }
+
+    template <typename T>
+    T* MemNew_Arr_Template(size_t p_elements, size_t padding = 1) 
+    {
+        if (p_elements == 0) 
+        {
+            return nullptr;
+        }
+
+        /** overloading operator new[] cannot be done , because it may not return the real allocated address (it may pad the 'element count' before the actual array). Because of that, it must be done by hand. This is the
+        same strategy used by std::vector, and the Vector class, so it should be safe.*/
+
+        size_t len = sizeof(T) * p_elements;
+        uint64_t* mem = (uint64_t*)SystemMemory::GetAllocator().Allocate(len, padding);
+        T* failptr = nullptr; //get rid of a warning
+        *(mem - 1) = p_elements;
+
+        if (!std::is_trivially_constructible<T>::value) 
+        {
+            T* elems = (T*)mem;
+
+            /* call operator new */
+            for (size_t i = 0; i < p_elements; i++) 
+            {
+                new (&elems[i]) T;
+            }
+        }
+
+        return (T*)mem;
+    }
+
+    /**
+     * Wonders of having own array functions, you can actually check the length of
+     * an allocated-with memnew_arr() array
+     */
+
+    template <typename T>
+    size_t NemArr_Len(const T* p_class) 
+    {
+        uint64_t* ptr = (uint64_t*)p_class;
+        return *(ptr - 1);
+    }
+
+    template <typename T>
+    void MemDelete_Arr(T* p_class) 
+    {
+        uint64_t* ptr = (uint64_t*)p_class;
+
+        if (!std::is_trivially_destructible<T>::value)
+        {
+            uint64_t elem_count = *(ptr - 1);
+
+            for (uint64_t i = 0; i < elem_count; i++)
+            {
+                p_class[i].~T();
+            }
+        }
+
+        SystemMemory::GetAllocator().Deallocate(ptr);
+    }
+
 }
 

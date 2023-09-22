@@ -16,6 +16,10 @@ namespace PhxEngine::Core
 	class Span
 	{
 	public:
+		Span()
+			: Span(nullptr, 0)
+		{ }
+
 		Span(const T* array, size_t length)
 			: Span(array, length, 0)
 		{}

@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include <PhxEngine/Engine/EngineCore.h>
+#include <PhxEngine/Engine/EngineLoop.h>
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Core/EventDispatcher.h>
 #include <PhxEngine/Core/Window.h>
