@@ -22,18 +22,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	// Engine will use one GB
 	Core::Log::Initialize();
 
-	PHX_LOG_INFO("Intiializing 1GB of Engine Memory");
-	Core::SystemMemory::Initialize({ .MaximumDynamicSize = PhxGB(1) });
-
 	// Test Allocating an object
 	Foo* foo = phx_new(Foo);
 
 	phx_delete(foo);
 	
-	size_t newSize = 16;
-	auto* data = phx_new_arr(Foo, newSize);
-	auto* data1 = phx_new_arr(uint32_t, newSize);
-	auto* data2 = phx_new_arr(uint32_t, newSize);
+	size_t newSize = PhxGB(1);
+	auto* data = phx_new_arr(Foo, newSize / sizeof(Foo));
+	auto* data1 = phx_new_arr(uint32_t, newSize / sizeof(uint32_t));
+	auto* data2 = phx_new_arr(uint32_t, newSize / sizeof(uint32_t));
 
 	size_t data0Size = phx_arr_len(data);
 	size_t data1Size = phx_arr_len(data1);
@@ -43,17 +40,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	phx_delete_arr(data1);
 	phx_delete_arr(data2);
 
-	newSize *= 2;
-	auto* newData = phx_new_arr(Foo, newSize);
-	auto* newData1 = phx_new_arr(uint32_t, newSize);
-	auto* newData2 = phx_new_arr(uint32_t, newSize);
+	Core::ObjectTracker::Finalize();
 
-	data = newData;
-	data1 = newData1;
-	data2 = newData2;
-
-	Core::ObjectTracker::CleanUp();
-
-	Core::SystemMemory::Finalize();
+	assert(0 == SystemMemory::GetMemUsage());
+	SystemMemory::Cleanup();
 
 }

@@ -30,7 +30,6 @@ using namespace PhxEngine::Core::ObjectTracker;
 
 PhxEngine::Core::Handle<ObjectId> ObjectTracker::RegisterInstance(Object* object)
 {
-	return {};
 	if (!object)
 		return {};
 
@@ -42,7 +41,6 @@ PhxEngine::Core::Handle<ObjectId> ObjectTracker::RegisterInstance(Object* object
 }
 void ObjectTracker::RemoveInstance(Handle<ObjectId> handle)
 {
-	return;
 	if (!handle.IsValid())
 		return;
 
@@ -50,10 +48,14 @@ void ObjectTracker::RemoveInstance(Handle<ObjectId> handle)
 	m_trackedObjects.Release(handle);
 }
 
-void ObjectTracker::CleanUp()
+void ObjectTracker::Finalize()
 {
 	ScopedSpinLock _(m_spinLock);
 	if (!m_trackedObjects.IsEmpty())
+	{
 		PHX_LOG_CORE_ERROR("Memory Leak Detected: Objects are still active.");
+	}
+
+	m_trackedObjects.Finalize();
 }
 

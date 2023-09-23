@@ -31,12 +31,9 @@ namespace PhxEngine::Core
 			this->m_size = initCapacity;
 			this->m_numActiveEntries = 0;
 
-			this->m_data = phx_new_arr(ImplT, this->m_size);
-			this->m_generations = phx_new_arr(uint32_t, this->m_size);
-			this->m_freeList = phx_new_arr(uint32_t, this->m_size);
-
-			std::memset(this->m_data, 0, this->m_size * sizeof(ImplT));
-			std::memset(this->m_freeList, 0, this->m_size * sizeof(uint32_t));
+			this->m_data = this->m_allocator.AllocateArray<ImplT>(this->m_size, 16);
+			this->m_generations = this->m_allocator.AllocateArray<uint32_t>(this->m_size, 16);
+			this->m_freeList = this->m_allocator.AllocateArray<uint32_t>(this->m_size, 16);
 
 			for (size_t i = 0; i < this->m_size; i++)
 			{
@@ -54,19 +51,19 @@ namespace PhxEngine::Core
 		{
 			if (this->m_data)
 			{
-				phx_delete_arr(this->m_data);
+				this->m_allocator.Free(this->m_data);
 				this->m_data = nullptr;
 			}
 
 			if (this->m_freeList)
 			{
-				phx_delete_arr(this->m_freeList);
+				this->m_allocator.Free(this->m_freeList);
 				this->m_freeList = nullptr;
 			}
 
 			if (this->m_generations)
 			{
-				phx_delete_arr(this->m_generations);
+				this->m_allocator.Free(this->m_generations);
 				this->m_generations = nullptr;
 			}
 		}
@@ -149,13 +146,10 @@ namespace PhxEngine::Core
 
 			size_t newSize = this->m_size * 2;
 
-			auto* newDataArray = phx_new_arr(ImplT, newSize);
-			auto* newFreeListArray = phx_new_arr(uint32_t, newSize);
-			auto* newGenerations = phx_new_arr(uint32_t, newSize);
-
-			std::memset(newDataArray, 0, newSize * sizeof(ImplT));
-			std::memset(newFreeListArray, 0, newSize * sizeof(uint32_t));
-			std::memset(newGenerations, 0, newSize * sizeof(uint32_t));
+			// TODO: USE REALLOC INSTREAD for better performance.
+			ImplT* newDataArray = this->m_allocator.AllocateArray<ImplT>(newSize, 16);
+			uint32_t* newFreeListArray = this->m_allocator.AllocateArray<uint32_t>(newSize, 16);
+			uint32_t* newGenerations = this->m_allocator.AllocateArray<uint32_t>(newSize, 16);
 
 			// Copy data over
 			std::memcpy(newDataArray, this->m_data, this->m_size * sizeof(ImplT));
@@ -163,9 +157,9 @@ namespace PhxEngine::Core
 			// std::memcpy(newFreeListArray, this->m_freeList, this->m_size * sizeof(uint32_t));
 			std::memcpy(newGenerations, this->m_generations, this->m_size * sizeof(uint32_t));
 
-			phx_delete_arr(this->m_data);
-			phx_delete_arr(this->m_freeList);
-			phx_delete_arr(this->m_generations);
+			this->m_allocator.Free(this->m_data);
+			this->m_allocator.Free(this->m_freeList);
+			this->m_allocator.Free(this->m_generations);
 
 			this->m_data = newDataArray;
 			this->m_freeList = newFreeListArray;
@@ -184,6 +178,7 @@ namespace PhxEngine::Core
 		bool HasSpace() const { return this->m_numActiveEntries < this->m_size; }
 
 	private:
+		DefaultAllocator m_allocator;
 		size_t m_size;
 		size_t m_numActiveEntries;
 		size_t m_freeListPosition;

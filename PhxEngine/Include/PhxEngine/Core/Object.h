@@ -21,7 +21,7 @@ namespace PhxEngine::Core
 		Core::Handle<ObjectId> RegisterInstance(Object* object);
 		void RemoveInstance(Core::Handle<ObjectId> handle);
 
-		void CleanUp();
+		void Finalize();
 	}
 }
 

@@ -17,10 +17,10 @@ inline void operator delete(void*, PhxEngine::NewPlaceholder, void*) {};
 #define PhxToMB(x)	((size_t) (x) >> 20)
 #define PhxToGB(x)	((size_t) (x) >> 30)
 
-void* operator new(size_t p_size, const char* p_description); ///< operator new that takes a description and uses MemoryStaticPool
-void* operator new(size_t p_size, void* (*p_allocfunc)(size_t p_size)); ///< operator new that takes a description and uses MemoryStaticPool
+void* operator new(size_t p_size, const char* p_description);
+void* operator new(size_t p_size, void* (*p_allocfunc)(size_t p_size)); 
 
-void* operator new(size_t p_size, void* p_pointer, size_t check, const char* p_description); ///< operator new that takes a description and uses a pointer to the preallocated memory
+void* operator new(size_t p_size, void* p_pointer, size_t check, const char* p_description); 
 
 #ifdef _MSC_VER
 // When compiling with VC++ 2017, the above declarations of placement new generate many irrelevant warnings (C4291).
@@ -44,12 +44,26 @@ void operator delete(void* p_mem, void* p_pointer, size_t check, const char* p_d
 		}                       \
 	}                           \
 
-#define phx_new_arr(m_class, m_count) PhxEngine::Core::MemNew_Arr_Template<m_class>(m_count)
+#define phx_new_arr(m_class, m_count) PhxEngine::Core::MemNew_Arr<m_class>(m_count)
 #define phx_arr_len(m_v) PhxEngine::Core::NemArr_Len(m_v)
 #define phx_delete_arr(m_v) PhxEngine::Core::MemDelete_Arr(m_v)
 
+
 namespace PhxEngine::Core
 {
+    namespace SystemMemory
+    {
+        void* Alloc(size_t bytes, bool padAlign = false);
+        void* Alloc(size_t size, size_t count, bool padAlign = false);
+        void* Realloc(void* memory, size_t p_bytes, bool padAlign = false);
+        void Free(void* ptr, bool padAlign = false);
+        void Cleanup();
+
+        uint64_t GetMemoryAvailable();
+        uint64_t GetMemUsage();
+        uint64_t GetMemMaxUsage();
+        uint64_t GetNumActiveAllocations();
+    }
 
 	struct MemoryStatistics 
 	{
@@ -92,7 +106,7 @@ namespace PhxEngine::Core
         template<class _T>
         _T* AllocateArray(size_t numElements, size_t alignment)
         {
-            return static_cast<_T*>(this->Allocate(numElements * sizeof(_T), alignment));
+            return static_cast<_T*>(this->Allocate(sizeof(_T), numElements, alignment));
         };
 
         template<class _T>
@@ -106,10 +120,24 @@ namespace PhxEngine::Core
         virtual void Finalize() = 0;
 
 		virtual void* Allocate(size_t size, size_t alignment) = 0;
+        virtual void* Allocate(size_t size, size_t count, size_t alignment) = 0;
 		virtual void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) = 0;
 
-		virtual void Deallocate(void* pointer) = 0;
+		virtual void Free(void* pointer) = 0;
 	};
+
+    class DefaultAllocator : public IAllocator
+    {
+    public:
+        void Initialize(size_t size) override {};
+        void Finalize() override {};
+
+        void* Allocate(size_t size, size_t alignment) override { return SystemMemory::Alloc(size); };
+        void* Allocate(size_t size, size_t count, size_t alignment) override { return SystemMemory::Alloc(size, count); };
+        void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) override { return SystemMemory::Alloc(size); }
+
+        void Free(void* ptr) override { SystemMemory::Free(ptr); }
+    };
 
 	class HeapAllocator : public IAllocator
 	{
@@ -121,9 +149,10 @@ namespace PhxEngine::Core
 
 
 		void* Allocate(size_t size, size_t alignment) override;
+        void* Allocate(size_t size, size_t count, size_t alignment) override {};
 		void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) override;
 
-		void Deallocate(void* pointer) override;
+		void Free(void* pointer) override;
 
 	private:
 		void* m_tlsfHandle;
@@ -139,9 +168,10 @@ namespace PhxEngine::Core
 		void Finalize();
 
 		void* Allocate(size_t size, size_t alignment) override;
+        void* Allocate(size_t size, size_t count, size_t alignment) override {};
 		void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) override;
 
-		void Deallocate(void* pointer) override;
+		void Free(void* pointer) override;
 
 		size_t GetMarker();
 		void FreeMarker(size_t marker);
@@ -161,9 +191,10 @@ namespace PhxEngine::Core
 		void Finalize() override;
 
 		void* Allocate(size_t size, size_t alignment) override;
+        void* Allocate(size_t size, size_t count, size_t alignment) override {};
 		void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) override;
 
-		void Deallocate(void* pointer) override;
+		void Free(void* pointer) override;
 
 		void Clear();
 
@@ -177,15 +208,6 @@ namespace PhxEngine::Core
 	{
 		size_t MaximumDynamicSize = PhxMB(32);
 	};
-
-	namespace SystemMemory
-	{
-		void Initialize(PhxEngine::Core::MemoryServiceConfiguration const& config);
-		void Finalize();
-
-		IAllocator& GetAllocator();
-	}
-
 
     //////////////////////////////////////////////////////////////////////////
     // RefCountPtr
@@ -462,7 +484,7 @@ namespace PhxEngine::Core
             p_class->~T();
         }
 
-        SystemMemory::GetAllocator().Deallocate(p_class);
+        SystemMemory::Free(p_class);
     }
 
     template <class T, class A>
@@ -473,11 +495,11 @@ namespace PhxEngine::Core
             p_class->~T();
         }
 
-        A::free(p_class);
+        A::Free(p_class);
     }
 
     template <typename T>
-    T* MemNew_Arr_Template(size_t p_elements, size_t padding = 1) 
+    T* MemNew_Arr(size_t p_elements, size_t padding = 1) 
     {
         if (p_elements == 0) 
         {
@@ -487,8 +509,7 @@ namespace PhxEngine::Core
         /** overloading operator new[] cannot be done , because it may not return the real allocated address (it may pad the 'element count' before the actual array). Because of that, it must be done by hand. This is the
         same strategy used by std::vector, and the Vector class, so it should be safe.*/
 
-        size_t len = sizeof(T) * p_elements;
-        uint64_t* mem = (uint64_t*)SystemMemory::GetAllocator().Allocate(len, padding);
+        uint64_t* mem = (uint64_t*)SystemMemory::Alloc(sizeof(T), p_elements);
         T* failptr = nullptr; //get rid of a warning
         *(mem - 1) = p_elements;
 
@@ -533,8 +554,25 @@ namespace PhxEngine::Core
             }
         }
 
-        SystemMemory::GetAllocator().Deallocate(ptr);
+        SystemMemory::Free(ptr);
     }
 
+    template <class T, class A>
+    void MemDelete_Arr_Allocator(T* p_class)
+    {
+        uint64_t* ptr = (uint64_t*)p_class;
+
+        if (!std::is_trivially_destructible<T>::value)
+        {
+            uint64_t elem_count = *(ptr - 1);
+
+            for (uint64_t i = 0; i < elem_count; i++)
+            {
+                p_class[i].~T();
+            }
+        }
+
+        A::Free(p_class);
+    }
 }
 
