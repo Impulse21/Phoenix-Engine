@@ -54,8 +54,9 @@ namespace PhxEngine::Core
     namespace SystemMemory
     {
         void* Alloc(size_t bytes, bool padAlign = false);
-        void* Alloc(size_t size, size_t count, bool padAlign = false);
+        void* AllocArray(size_t size, size_t count, bool padAlign = false);
         void* Realloc(void* memory, size_t p_bytes, bool padAlign = false);
+        void* ReallocArray(void* memory, size_t size, size_t newCount, bool padAlign = false);
         void Free(void* ptr, bool padAlign = false);
         void Cleanup();
 
@@ -106,7 +107,7 @@ namespace PhxEngine::Core
         template<class _T>
         _T* AllocateArray(size_t numElements, size_t alignment)
         {
-            return static_cast<_T*>(this->Allocate(sizeof(_T), numElements, alignment));
+            return static_cast<_T*>(this->AllocArray(sizeof(_T), numElements, alignment));
         };
 
         template<class _T>
@@ -120,7 +121,7 @@ namespace PhxEngine::Core
         virtual void Finalize() = 0;
 
 		virtual void* Allocate(size_t size, size_t alignment) = 0;
-        virtual void* Allocate(size_t size, size_t count, size_t alignment) = 0;
+        virtual void* AllocArray(size_t size, size_t count, size_t alignment) = 0;
 		virtual void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) = 0;
 
 		virtual void Free(void* pointer) = 0;
@@ -133,7 +134,7 @@ namespace PhxEngine::Core
         void Finalize() override {};
 
         void* Allocate(size_t size, size_t alignment) override { return SystemMemory::Alloc(size); };
-        void* Allocate(size_t size, size_t count, size_t alignment) override { return SystemMemory::Alloc(size, count); };
+        void* AllocArray(size_t size, size_t count, size_t alignment) override { return SystemMemory::AllocArray(size, count); };
         void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) override { return SystemMemory::Alloc(size); }
 
         void Free(void* ptr) override { SystemMemory::Free(ptr); }
@@ -149,7 +150,7 @@ namespace PhxEngine::Core
 
 
 		void* Allocate(size_t size, size_t alignment) override;
-        void* Allocate(size_t size, size_t count, size_t alignment) override {};
+        void* AllocArray(size_t size, size_t count, size_t alignment) override {};
 		void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) override;
 
 		void Free(void* pointer) override;
@@ -168,7 +169,7 @@ namespace PhxEngine::Core
 		void Finalize();
 
 		void* Allocate(size_t size, size_t alignment) override;
-        void* Allocate(size_t size, size_t count, size_t alignment) override {};
+        void* AllocArray(size_t size, size_t count, size_t alignment) override {};
 		void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) override;
 
 		void Free(void* pointer) override;
@@ -191,7 +192,7 @@ namespace PhxEngine::Core
 		void Finalize() override;
 
 		void* Allocate(size_t size, size_t alignment) override;
-        void* Allocate(size_t size, size_t count, size_t alignment) override {};
+        void* AllocArray(size_t size, size_t count, size_t alignment) override {};
 		void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) override;
 
 		void Free(void* pointer) override;
@@ -509,7 +510,7 @@ namespace PhxEngine::Core
         /** overloading operator new[] cannot be done , because it may not return the real allocated address (it may pad the 'element count' before the actual array). Because of that, it must be done by hand. This is the
         same strategy used by std::vector, and the Vector class, so it should be safe.*/
 
-        uint64_t* mem = (uint64_t*)SystemMemory::Alloc(sizeof(T), p_elements);
+        uint64_t* mem = (uint64_t*)SystemMemory::AllocArray(sizeof(T), p_elements);
         T* failptr = nullptr; //get rid of a warning
         *(mem - 1) = p_elements;
 

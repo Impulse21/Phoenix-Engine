@@ -76,7 +76,7 @@ void* PhxEngine::Core::SystemMemory::Alloc(size_t bytes, bool padAlign)
 	return mem;
 }
 
-void* PhxEngine::Core::SystemMemory::Alloc(size_t size, size_t count, bool padAlign)
+void* PhxEngine::Core::SystemMemory::AllocArray(size_t size, size_t count, bool padAlign)
 {
 	void* mem = mi_calloc(count, size);
 
@@ -112,6 +112,27 @@ void* PhxEngine::Core::SystemMemory::Realloc(void* memory, size_t bytes, bool pa
 #endif
 
 	return newMem;
+}
+
+void* PhxEngine::Core::SystemMemory::ReallocArray(void* memory, size_t size, size_t newCount, bool padAlign)
+{
+#ifdef _DEBUG
+	size_t previousSize = mi_malloc_size(memory);
+#endif
+
+	int retVal = mi_reallocarr(memory, size, newCount);
+	assert(retVal);
+
+#ifdef _DEBUG
+	m_memUsage.fetch_sub(previousSize);
+	size_t bytes = mi_malloc_size(memory);
+	uint64_t newMemUsage = m_memUsage.fetch_add(bytes);
+
+	uint64_t current = m_memUsage.load();
+	m_maxUsage.compare_exchange_strong(current, newMemUsage);
+#endif
+
+	return memory;
 }
 
 void PhxEngine::Core::SystemMemory::Free(void* ptr, bool padAlign)

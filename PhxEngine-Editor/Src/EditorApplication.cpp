@@ -25,8 +25,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	// Test Allocating an object
 	Foo* foo = phx_new(Foo);
 
+	assert(0 != SystemMemory::GetMemUsage());
 	phx_delete(foo);
-	
+
+
 	size_t newSize = PhxGB(1);
 	auto* data = phx_new_arr(Foo, newSize / sizeof(Foo));
 	auto* data1 = phx_new_arr(uint32_t, newSize / sizeof(uint32_t));
