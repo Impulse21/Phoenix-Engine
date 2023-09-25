@@ -55,8 +55,8 @@ namespace PhxEngine::Core
     {
         void* Alloc(size_t bytes, bool padAlign = false);
         void* AllocArray(size_t size, size_t count, bool padAlign = false);
-        void* Realloc(void* memory, size_t p_bytes, bool padAlign = false);
         void* ReallocArray(void* memory, size_t size, size_t newCount, bool padAlign = false);
+        void* Realloc(void* memory, size_t p_bytes, bool padAlign = false);
         void Free(void* ptr, bool padAlign = false);
         void Cleanup();
 
@@ -116,6 +116,17 @@ namespace PhxEngine::Core
             return static_cast<_T*>(this->Allocate(sizeof(_T), alignment));
         };
 
+        template<class _T>
+        _T* RellocateArray(_T* memory, size_t numElements, size_t alignment)
+        {
+            return static_cast<_T*>(this->ReallocArray(memory, sizeof(_T), numElements, alignment));
+        };
+
+        template<class _T>
+        _T* Reallocate(_T* memory, size_t alignment = 0)
+        {
+            return static_cast<_T*>(this->Allocate(memory, sizeof(_T), alignment));
+        };
 
         virtual void Initialize(size_t size) = 0;
         virtual void Finalize() = 0;
@@ -123,6 +134,9 @@ namespace PhxEngine::Core
 		virtual void* Allocate(size_t size, size_t alignment) = 0;
         virtual void* AllocArray(size_t size, size_t count, size_t alignment) = 0;
 		virtual void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) = 0;
+
+        virtual void* Rellocate(void* ptr, size_t size, size_t alignment) = 0;
+        virtual void* ReallocArray(void* ptr, size_t size, size_t count, size_t alignment) = 0;
 
 		virtual void Free(void* pointer) = 0;
 	};
@@ -136,6 +150,9 @@ namespace PhxEngine::Core
         void* Allocate(size_t size, size_t alignment) override { return SystemMemory::Alloc(size); };
         void* AllocArray(size_t size, size_t count, size_t alignment) override { return SystemMemory::AllocArray(size, count); };
         void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) override { return SystemMemory::Alloc(size); }
+
+        void* Rellocate(void* ptr, size_t size, size_t alignment) override { return SystemMemory::Realloc(ptr, size); };
+        void* ReallocArray(void* ptr, size_t size, size_t count, size_t alignment) override { return SystemMemory::ReallocArray(ptr, size, count); };
 
         void Free(void* ptr) override { SystemMemory::Free(ptr); }
     };
@@ -152,6 +169,9 @@ namespace PhxEngine::Core
 		void* Allocate(size_t size, size_t alignment) override;
         void* AllocArray(size_t size, size_t count, size_t alignment) override {};
 		void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) override;
+
+        void* Rellocate(void* ptr, size_t size, size_t alignment);
+        void* ReallocArray(void* ptr, size_t size, size_t count, size_t alignment);
 
 		void Free(void* pointer) override;
 
@@ -171,6 +191,9 @@ namespace PhxEngine::Core
 		void* Allocate(size_t size, size_t alignment) override;
         void* AllocArray(size_t size, size_t count, size_t alignment) override {};
 		void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) override;
+
+        void* Rellocate(void* ptr, size_t size, size_t alignment);
+        void* ReallocArray(void* ptr, size_t size, size_t count, size_t alignment);
 
 		void Free(void* pointer) override;
 
@@ -194,6 +217,9 @@ namespace PhxEngine::Core
 		void* Allocate(size_t size, size_t alignment) override;
         void* AllocArray(size_t size, size_t count, size_t alignment) override {};
 		void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) override;
+
+        void* Rellocate(void* ptr, size_t size, size_t alignment);
+        void* ReallocArray(void* ptr, size_t size, size_t count, size_t alignment);
 
 		void Free(void* pointer) override;
 

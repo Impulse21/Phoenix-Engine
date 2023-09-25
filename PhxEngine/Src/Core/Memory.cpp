@@ -100,7 +100,7 @@ void* PhxEngine::Core::SystemMemory::Realloc(void* memory, size_t bytes, bool pa
 	size_t previousSize = mi_malloc_size(memory);
 #endif
 
-	void* newMem= mi_realloc(memory, bytes);
+	void* newMem = mi_realloc(memory, bytes);
 	assert(newMem);
 
 #ifdef _DEBUG
@@ -120,19 +120,19 @@ void* PhxEngine::Core::SystemMemory::ReallocArray(void* memory, size_t size, siz
 	size_t previousSize = mi_malloc_size(memory);
 #endif
 
-	int retVal = mi_reallocarr(memory, size, newCount);
-	assert(retVal);
+	void* newMem = mi_reallocn(memory, newCount, size);
+	assert(newMem);
 
 #ifdef _DEBUG
 	m_memUsage.fetch_sub(previousSize);
-	size_t bytes = mi_malloc_size(memory);
+	size_t bytes = mi_malloc_size(newMem);
 	uint64_t newMemUsage = m_memUsage.fetch_add(bytes);
 
 	uint64_t current = m_memUsage.load();
 	m_maxUsage.compare_exchange_strong(current, newMemUsage);
 #endif
 
-	return memory;
+	return newMem;
 }
 
 void PhxEngine::Core::SystemMemory::Free(void* ptr, bool padAlign)

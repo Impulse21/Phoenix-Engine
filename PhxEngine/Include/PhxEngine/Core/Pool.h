@@ -147,23 +147,9 @@ namespace PhxEngine::Core
 			size_t newSize = this->m_size * 2;
 
 			// TODO: USE REALLOC INSTREAD for better performance.
-			ImplT* newDataArray = this->m_allocator.AllocateArray<ImplT>(newSize, 16);
-			uint32_t* newFreeListArray = this->m_allocator.AllocateArray<uint32_t>(newSize, 16);
-			uint32_t* newGenerations = this->m_allocator.AllocateArray<uint32_t>(newSize, 16);
-
-			// Copy data over
-			std::memcpy(newDataArray, this->m_data, this->m_size * sizeof(ImplT));
-			// No need to copy the free list as we need to re-populate it.
-			// std::memcpy(newFreeListArray, this->m_freeList, this->m_size * sizeof(uint32_t));
-			std::memcpy(newGenerations, this->m_generations, this->m_size * sizeof(uint32_t));
-
-			this->m_allocator.Free(this->m_data);
-			this->m_allocator.Free(this->m_freeList);
-			this->m_allocator.Free(this->m_generations);
-
-			this->m_data = newDataArray;
-			this->m_freeList = newFreeListArray;
-			this->m_generations = newGenerations;
+			this->m_data = this->m_allocator.RellocateArray<ImplT>(this->m_data, newSize, 16);
+			this->m_freeList = this->m_allocator.RellocateArray<uint32_t>(this->m_freeList, newSize, 16);
+			this->m_generations = this->m_allocator.RellocateArray<uint32_t>(this->m_generations, newSize, 16);
 
 			this->m_freeListPosition = this->m_size - 1;
 
