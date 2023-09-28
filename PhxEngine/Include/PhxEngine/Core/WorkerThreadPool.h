@@ -1,12 +1,13 @@
 #pragma once
 
 #include <stdint.h>
+#include <functional>
 
 namespace PhxEngine::Core
 {
-	using TaskID = uint64_t;
 	namespace WorkerThreadPool
 	{
+		using TaskID = uint64_t;
 		struct TaskArgs
 		{
 
@@ -18,7 +19,9 @@ namespace PhxEngine::Core
 		uint32_t GetThreadCount();
 
 		// void Run(context& ctx, const std::function<void(JobArgs)>& task);
-		TaskID Dispatch(uint32_t numTasks, uint32_t groupSize, std::function<void(TaskArgs)>& callback);
+		TaskID Dispatch(uint32_t numTasks, uint32_t groupSize, std::function<void(TaskArgs)> const& callback);
+
+		void WaitAll();
 	}
 }
 

@@ -42,7 +42,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	{
 
 	}
-	Core::WorkerThreadPool::Dispatch()
+	Core::WorkerThreadPool::Dispatch(numElems, 1, [](WorkerThreadPool::TaskArgs) {
+
+		});
 
 	// -- Finalize Block ---
 	{
