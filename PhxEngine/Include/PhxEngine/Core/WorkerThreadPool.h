@@ -10,7 +10,12 @@ namespace PhxEngine::Core
 		using TaskID = uint64_t;
 		struct TaskArgs
 		{
-
+			uint32_t JobIndex;		// job index relative to dispatch (like SV_DispatchThreadID in HLSL)
+			uint32_t GroupID;		// group index relative to dispatch (like SV_GroupID in HLSL)
+			uint32_t GroupIndex;	// job index relative to group (like SV_GroupIndex in HLSL)
+			bool IsFirstJobInGroup;	// is the current job the first one in the group?
+			bool IsLastJobInGroup;	// is the current job the last one in the group?
+			void* SharedMemory = nullptr;
 		};
 
 		void Initialize(uint32_t maxThreadCount = ~0u);
@@ -18,8 +23,8 @@ namespace PhxEngine::Core
 
 		uint32_t GetThreadCount();
 
-		// void Run(context& ctx, const std::function<void(JobArgs)>& task);
-		TaskID Dispatch(uint32_t numTasks, uint32_t groupSize, std::function<void(TaskArgs)> const& callback);
+		TaskID Run(std::function<void(TaskArgs)>const& callback);
+		TaskID Dispatch(uint32_t taskCount, uint32_t groupSize, std::function<void(TaskArgs)> const& callback);
 
 		void WaitAll();
 	}
