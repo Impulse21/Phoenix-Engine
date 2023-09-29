@@ -201,7 +201,7 @@ namespace
 }
 
 
-void Initialize(uint32_t maxThreadCount = ~0u)
+void PhxEngine::Core::WorkerThreadPool::Initialize(uint32_t maxThreadCount)
 {
 	if (m_impl.IsInitialized() > 0u)
 		return;
@@ -210,12 +210,12 @@ void Initialize(uint32_t maxThreadCount = ~0u)
 
 
 }
-void Finalize()
+void PhxEngine::Core::WorkerThreadPool::Finalize()
 {
 	m_impl.Finalize();
 }
 
-WorkerThreadPool::TaskID PhxEngine::Core::WorkerThreadPool::Run(std::function<void(TaskArgs)> const& callback)
+WorkerThreadPool::TaskID PhxEngine::Core::WorkerThreadPool::Dispatch(std::function<void(TaskArgs)> const& callback)
 {
 	Task task;
 	task.Callback = callback;

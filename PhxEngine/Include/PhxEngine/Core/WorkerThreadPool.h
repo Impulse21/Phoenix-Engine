@@ -23,7 +23,7 @@ namespace PhxEngine::Core
 
 		uint32_t GetThreadCount();
 
-		TaskID Run(std::function<void(TaskArgs)>const& callback);
+		TaskID Dispatch(std::function<void(TaskArgs)>const& callback);
 		TaskID Dispatch(uint32_t taskCount, uint32_t groupSize, std::function<void(TaskArgs)> const& callback);
 
 		void WaitAll();
