@@ -5,6 +5,7 @@
 
 namespace PhxEngine::Core
 {
+	// -- Implementation taken from Wicked Engine https://wickedengine.net/---
 	namespace WorkerThreadPool
 	{
 		using TaskID = uint64_t;
@@ -23,10 +24,16 @@ namespace PhxEngine::Core
 
 		uint32_t GetThreadCount();
 
-		TaskID Dispatch(std::function<void(TaskArgs)>const& callback);
-		TaskID Dispatch(uint32_t taskCount, uint32_t groupSize, std::function<void(TaskArgs)> const& callback);
+		struct DispatchContext
+		{
+			std::atomic_uint32_t counter = 0;
+		};
 
-		void WaitAll();
+		TaskID Dispatch(DispatchContext& ctx, std::function<void(TaskArgs)>const& callback);
+		TaskID Dispatch(DispatchContext& ctx, uint32_t taskCount, uint32_t groupSize, std::function<void(TaskArgs)> const& callback);
+
+		bool IsBusy(DispatchContext& ctx);
+		void Wait(DispatchContext& ctx);
 	}
 }
 

@@ -19,6 +19,7 @@ using namespace PhxEngine::Core;
 class Foo : public Core::Object
 {
 public:
+	Foo() = default;
 	uint32_t a = 0;
 	uint32_t b = 0;
 };
@@ -30,13 +31,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		Core::Log::Initialize();
 		Core::WorkerThreadPool::Initialize();
 	}
-
-	// Test Allocating an object
-	Foo* foo = phx_new(Foo);
-
-	assert(0 != SystemMemory::GetMemUsage());
-	phx_delete(foo);
-
 	const size_t memSize = PhxGB(1);
 	const size_t numElems = memSize / sizeof(Foo);
 	auto* data = phx_new_arr(Foo, numElems);
@@ -56,14 +50,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	std:memset(data, 0, memSize);
 
 	stopWatch.Begin();
-	Core::WorkerThreadPool::Dispatch(numElems, 100, [&](WorkerThreadPool::TaskArgs args) {
+	WorkerThreadPool::DispatchContext ctx;
+	Core::WorkerThreadPool::Dispatch(ctx, numElems, numElems * 0.25, [&](WorkerThreadPool::TaskArgs args) {
 
-			data[args.JobIndex + args.GroupIndex].a = args.JobIndex + args.GroupIndex;
-			data[args.JobIndex + args.GroupIndex].b =  1;
+			data[args.JobIndex + args.GroupID].a = args.JobIndex + args.GroupIndex;
+			data[args.JobIndex + args.GroupID].b =  1;
 		});
-	elapsedTime = stopWatch.Elapsed();
+	Core::WorkerThreadPool::Wait(ctx);
 
-	PHX_LOG_INFO("Fill Array (Threaded) {0}ms", elapsedTime.GetMilliseconds());
+	TimeStep elapsedTime2 = stopWatch.Elapsed();
+
+	PHX_LOG_INFO("Fill Array (Threaded) {0}ms", elapsedTime2.GetMilliseconds());
 	// -- Finalize Block ---
 	{
 		Core::WorkerThreadPool::Finalize();

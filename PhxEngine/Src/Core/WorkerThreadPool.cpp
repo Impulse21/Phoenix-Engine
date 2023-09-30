@@ -20,6 +20,7 @@ namespace
 {
 	struct Task
 	{
+		WorkerThreadPool::DispatchContext* CtxPtr;
 		uint32_t GroupId = 0;
 		uint32_t GroupJobOffset;
 		uint32_t GroupJobEnd;
@@ -67,8 +68,11 @@ namespace
 		std::mutex WakeMutex;
 		std::atomic_bool IsAlive;
 
+		WorkerThreadPoolImpl() = default;
+
 		void Initialize(uint32_t maxThreadCount)
 		{
+			this->IsAlive.store(true);
 			this->MaxThreadCount = std::max(1u, maxThreadCount);
 			this->NumCores = std::thread::hardware_concurrency();
 			this->NumThreads = std::min(this->MaxThreadCount, std::max(1u, this->NumCores - 1));
@@ -102,7 +106,7 @@ namespace
 				//assert(priority_result != 0);
 
 				// Name the thread:
-				std::wstring wthreadname = L"PhxEngine::WorkerThreadPool::Worker[" + std::to_wstring(threadId) + L"i]";
+				std::wstring wthreadname = L"PhxEngine::WorkerThreadPool::Worker[" + std::to_wstring(threadId) + L"]";
 				HRESULT hr = SetThreadDescription(handle, wthreadname.c_str());
 				assert(SUCCEEDED(hr));
 #else
@@ -149,7 +153,7 @@ namespace
 		{
 			for (size_t i = 0; i < this->NumThreads; i++)
 			{
-				TaskQueue& queue = this->TaskQueues[startingQueue % this->MaxThreadCount];
+				TaskQueue& queue = this->TaskQueues[startingQueue % this->NumThreads];
 
 				Task task = {};
 				while (queue.PopFront(task))
@@ -175,8 +179,7 @@ namespace
 						task.Callback(taskArgs);
 					}
 
-					// TODO Wait for task to be done.
-					// job.ctx->counter.fetch_sub(1);
+					task.CtxPtr->counter.fetch_sub(1);
 				}
 
 				// Move to next queue to steal work
@@ -215,9 +218,11 @@ void PhxEngine::Core::WorkerThreadPool::Finalize()
 	m_impl.Finalize();
 }
 
-WorkerThreadPool::TaskID PhxEngine::Core::WorkerThreadPool::Dispatch(std::function<void(TaskArgs)> const& callback)
+WorkerThreadPool::TaskID PhxEngine::Core::WorkerThreadPool::Dispatch(DispatchContext& ctx, std::function<void(TaskArgs)> const& callback)
 {
+	ctx.counter.fetch_add(1);
 	Task task;
+	task.CtxPtr = &ctx;
 	task.Callback = callback;
 	task.GroupId = 0;
 	task.GroupJobOffset = 0;
@@ -229,7 +234,7 @@ WorkerThreadPool::TaskID PhxEngine::Core::WorkerThreadPool::Dispatch(std::functi
 	return 0;
 }
 
-WorkerThreadPool::TaskID WorkerThreadPool::Dispatch(uint32_t taskCount, uint32_t groupSize, std::function<void(WorkerThreadPool::TaskArgs)> const& callback)
+WorkerThreadPool::TaskID WorkerThreadPool::Dispatch(DispatchContext& ctx, uint32_t taskCount, uint32_t groupSize, std::function<void(WorkerThreadPool::TaskArgs)> const& callback)
 {
 	if (taskCount == 0 || groupSize == 0)
 	{
@@ -237,11 +242,10 @@ WorkerThreadPool::TaskID WorkerThreadPool::Dispatch(uint32_t taskCount, uint32_t
 	}
 
 	const uint32_t groupCount = m_impl.DispatchGroupCount(taskCount, groupSize);
-
-	// Context state is updated:
-	// ctx.counter.fetch_add(groupCount);
+	ctx.counter.fetch_add(groupCount);
 
 	Task task;
+	task.CtxPtr = &ctx;
 	task.Callback = callback;
 	task.SharedMemorySize = (uint32_t)0;
 
@@ -260,9 +264,30 @@ WorkerThreadPool::TaskID WorkerThreadPool::Dispatch(uint32_t taskCount, uint32_t
 	return 0;
 }
 
-void WorkerThreadPool::WaitAll()
+bool WorkerThreadPool::IsBusy(DispatchContext& ctx)
 {
-	// TODO
+	return ctx.counter.load() > 0;
+}
+
+void WorkerThreadPool::Wait(DispatchContext& ctx)
+{
+	if (IsBusy(ctx))
+	{
+		// Wake any threads that might be sleeping:
+		m_impl.WakeCondition.notify_all();
+
+		// work() will pick up any jobs that are on stand by and execute them on this thread:
+		m_impl.Work(NextQueue.fetch_add(1) % m_impl.NumThreads);
+
+		while (IsBusy(ctx))
+		{
+			// If we are here, then there are still remaining jobs that work() couldn't pick up.
+			//	In this case those jobs are not standing by on a queue but currently executing
+			//	on other threads, so they cannot be picked up by this thread.
+			//	Allow to swap out this thread by OS to not spin endlessly for nothing
+			std::this_thread::yield();
+		}
+	}
 }
 
 uint32_t WorkerThreadPool::GetThreadCount()
