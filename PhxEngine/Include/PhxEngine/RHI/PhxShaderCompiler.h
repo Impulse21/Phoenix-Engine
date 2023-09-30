@@ -13,10 +13,12 @@ namespace PhxEngine::RHI::ShaderCompiler
 			None = 0,
 			DisableOptimization = 1 << 0,
 			EmbedDebug = 1 << 2,
+			CreateHeaderFile = 1 << 3,
 		};
 	}
 	struct CompilerInput
 	{
+		std::string Filename;
 		PhxEngine::Core::IFileSystem* FileSystem;
 		uint32_t Flags = CompilerFlags::None;
 
@@ -41,6 +43,6 @@ namespace PhxEngine::RHI::ShaderCompiler
 		std::shared_ptr<void> InternalResourceSymbols;
 	};
 
-	CompilerResult Compile(std::string const& filename, CompilerInput const& input);
+	CompilerResult Compile(CompilerInput const& input);
 }
 

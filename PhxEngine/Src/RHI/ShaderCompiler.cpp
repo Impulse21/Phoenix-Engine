@@ -46,21 +46,20 @@ namespace
 	};
 }
 
-ShaderCompiler::CompilerResult ShaderCompiler::Compile(std::string const& filename, CompilerInput const& input)
+ShaderCompiler::CompilerResult ShaderCompiler::Compile(CompilerInput const& input)
 {
 	CompilerResult result;
 
 	ComPtr<IDxcUtils> dxcUtils;
-	ComPtr<IDxcUtils> pUtils;
 	assert(
 		SUCCEEDED(
-			DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(pUtils.GetAddressOf()))
+			DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(dxcUtils.GetAddressOf()))
 		));
 
 	ComPtr<IDxcCompiler3> dxcCompiler;
 	assert(
 		SUCCEEDED(
-			DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(pUtils.GetAddressOf()))
+			DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(dxcCompiler.GetAddressOf()))
 		));
 
 	if (dxcCompiler == nullptr)
@@ -74,12 +73,12 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(std::string const& filena
 	IFileSystem* fileSystem = input.FileSystem;
 	assert(fileSystem);
 
-	if (!fileSystem->FileExists(filename))
+	if (!fileSystem->FileExists(input.Filename))
 	{
 		return result;
 	}
 
-	std::unique_ptr<IBlob> shaderSrcData = fileSystem->ReadFile(filename);
+	std::unique_ptr<IBlob> shaderSrcData = fileSystem->ReadFile(input.Filename);
 	// pUtils->CreateBlob(pShaderSource, shaderSourceSize, CP_UTF8, pSource.GetAddressOf());
 
 	// https://github.com/microsoft/DirectXShaderCompiler/wiki/Using-dxc.exe-and-dxcompiler.dll#dxcompiler-dll-interface
@@ -108,6 +107,11 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(std::string const& filena
 	if (input.Flags & CompilerFlags::EmbedDebug)
 	{
 		args.push_back(L"/Qembed_debug");
+	}
+
+	if (input.Flags & CompilerFlags::EmbedDebug)
+	{
+		args.push_back(L"-Fh");
 	}
 
 	switch (input.ShaderType)
@@ -358,7 +362,7 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(std::string const& filena
 
 	// Add source file name as last parameter. This will be displayed in error messages
 	std::wstring wsource;
-	std::filesystem::path filenamePath = filename;
+	std::filesystem::path filenamePath = input.Filename;
 	StringConvert(filenamePath.filename().string(), wsource);
 	args.push_back(wsource.c_str());
 
@@ -408,7 +412,7 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(std::string const& filena
 		pResults->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&pShader), nullptr)));
 	if (pShader != nullptr)
 	{
-		result.Dependencies.push_back(filename);
+		result.Dependencies.push_back(input.Filename);
 		result.ShaderData = Core::Span((const uint8_t*)pShader->GetBufferPointer(), pShader->GetBufferSize());
 
 		// keep the blob alive == keep shader pointer valid!

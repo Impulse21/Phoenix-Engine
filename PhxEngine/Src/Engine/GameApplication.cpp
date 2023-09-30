@@ -88,7 +88,6 @@ void PhxEngine::GameApplication::Startup()
 {
 	std::shared_ptr<IFileSystem> fileSystem = CreateNativeFileSystem();
 	CreateRelativeFileSystem(fileSystem, "");
-	RHI::ShaderCompiler::Compile("Testing", {});
 
 	this->m_imguiRenderer = std::make_unique<ImGuiRenderer>();
 	this->m_imguiRenderer->Initialize();

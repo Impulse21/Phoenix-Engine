@@ -8,7 +8,7 @@
 #include <PhxEngine/Core/Containers.h>
 
 // -- Temp
-#include <PhxEngine/Core/StopWatch.h>
+#include <PhxEngine/RHI/PhxShaderCompiler.h>
 
 #ifdef _MSC_VER // Windows
 #include <shellapi.h>
@@ -34,23 +34,30 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		Core::WorkerThreadPool::Initialize();
 	}
 	{
-		const size_t memSize = PhxGB(1);
-		const size_t numElems = memSize / sizeof(Foo);
-		FlexArray<Foo> data;
-		data.resize(numElems);
+		// Compile IMGUI shader to header file
+		std::string path = "C:\\Users\\dipao\\source\\repos\\Impulse21\\Phoenix - Engine\\PhxEngine_old\\Shaders\\";
+		std::shared_ptr<IFileSystem> fileSystem = CreateNativeFileSystem();
 
-		Core::StopWatch stopWatch;
-		stopWatch.Begin();
-		for (int i = 0; i < numElems; i++)
-		{
-			data[i].a = i;
-			data[i].b = i + 1;
-		}
+		std::shared_ptr<IFileSystem> relative = CreateRelativeFileSystem(fileSystem, path);
+		RHI::ShaderCompiler::CompilerResult result = RHI::ShaderCompiler::Compile({
+				.Filename = "ImGuiVS.hlsl",
+				.FileSystem = relative.get(),
+				.Flags = RHI::ShaderCompiler::CompilerFlags::CreateHeaderFile,
+				.ShaderStage = RHI::ShaderStage::Vertex,
+				.IncludeDirs = { path }
+			});
 
-		TimeStep elapsedTime = stopWatch.Elapsed();
+		assert(result.ErrorMessage.empty());
 
-		PHX_LOG_INFO("Fill Array took {0}ms", elapsedTime.GetMilliseconds());
+		result = RHI::ShaderCompiler::Compile({
+				.Filename = "ImGuiPS.hlsl",
+				.FileSystem = relative.get(),
+				.Flags = RHI::ShaderCompiler::CompilerFlags::CreateHeaderFile,
+				.ShaderStage = RHI::ShaderStage::Pixel,
+				.IncludeDirs = { path }
+			});
 
+		assert(result.ErrorMessage.empty());
 	}
 	// -- Finalize Block ---
 	{
