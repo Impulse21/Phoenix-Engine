@@ -107,6 +107,8 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(CompilerInput const& inpu
 
 	if (input.Flags & CompilerFlags::EmbedDebug)
 	{
+		// std::filesystem::path p = input.Filename;
+		// args.push_back(std::wstring(L"-Fh " + p.stem().wstring() + L".h").);
 	}
 
 	switch (input.ShaderType)
