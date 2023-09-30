@@ -6,6 +6,9 @@
 // -- Add to engine ---
 #include <PhxEngine/Core/WorkerThreadPool.h>
 
+// -- Temp
+#include <PhxEngine/Core/StopWatch.h>
+
 #ifdef _MSC_VER // Windows
 #include <shellapi.h>
 #endif 
@@ -38,18 +41,33 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	const size_t numElems = memSize / sizeof(Foo);
 	auto* data = phx_new_arr(Foo, numElems);
 
+	Core::StopWatch stopWatch;
+	stopWatch.Begin();
 	for (int i = 0; i < numElems; i++)
 	{
-
+		data[i].a = i;
+		data[i].b = i + 1;
 	}
-	Core::WorkerThreadPool::Dispatch(numElems, 1, [](WorkerThreadPool::TaskArgs) {
 
+	TimeStep elapsedTime = stopWatch.Elapsed();
+
+	PHX_LOG_INFO("Fill Array took {0}ms", elapsedTime.GetMilliseconds());
+
+	std:memset(data, 0, memSize);
+
+	stopWatch.Begin();
+	Core::WorkerThreadPool::Dispatch(numElems, 100, [&](WorkerThreadPool::TaskArgs args) {
+
+			data[args.JobIndex + args.GroupIndex].a = args.JobIndex + args.GroupIndex;
+			data[args.JobIndex + args.GroupIndex].b =  1;
 		});
+	elapsedTime = stopWatch.Elapsed();
 
+	PHX_LOG_INFO("Fill Array (Threaded) {0}ms", elapsedTime.GetMilliseconds());
 	// -- Finalize Block ---
 	{
-		Core::ObjectTracker::Finalize();
 		Core::WorkerThreadPool::Finalize();
+		Core::ObjectTracker::Finalize();
 		assert(0 == SystemMemory::GetMemUsage());
 		SystemMemory::Cleanup();
 	}
