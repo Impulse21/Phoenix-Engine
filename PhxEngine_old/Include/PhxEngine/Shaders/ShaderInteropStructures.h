@@ -512,8 +512,8 @@ namespace Shader
 
 	struct Subset
 	{
-		uint32_t Offset;
-		uint32_t Count;
+		uint Offset;
+		uint Count;
 	};
 
 	struct Meshlet_NEW

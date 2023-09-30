@@ -99,10 +99,6 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(CompilerInput const& inpu
 	{
 		args.push_back(L"-Od");
 	}
-	else
-	{
-		args.push_back(L"-Od");
-	}
 
 	if (input.Flags & CompilerFlags::EmbedDebug)
 	{
@@ -111,7 +107,6 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(CompilerInput const& inpu
 
 	if (input.Flags & CompilerFlags::EmbedDebug)
 	{
-		args.push_back(L"-Fh");
 	}
 
 	switch (input.ShaderType)

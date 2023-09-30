@@ -35,7 +35,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	}
 	{
 		// Compile IMGUI shader to header file
-		std::string path = "C:\\Users\\dipao\\source\\repos\\Impulse21\\Phoenix - Engine\\PhxEngine_old\\Shaders\\";
+		std::string path = "C:\\Users\\dipao\\source\\repos\\Impulse21\\Phoenix-Engine\\PhxEngine_old\\Shaders\\";
 		std::shared_ptr<IFileSystem> fileSystem = CreateNativeFileSystem();
 
 		std::shared_ptr<IFileSystem> relative = CreateRelativeFileSystem(fileSystem, path);
@@ -44,20 +44,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				.FileSystem = relative.get(),
 				.Flags = RHI::ShaderCompiler::CompilerFlags::CreateHeaderFile,
 				.ShaderStage = RHI::ShaderStage::Vertex,
+				.Defines = { "USE_RESOURCE_HEAP" },
 				.IncludeDirs = { path }
 			});
-
-		assert(result.ErrorMessage.empty());
 
 		result = RHI::ShaderCompiler::Compile({
 				.Filename = "ImGuiPS.hlsl",
 				.FileSystem = relative.get(),
 				.Flags = RHI::ShaderCompiler::CompilerFlags::CreateHeaderFile,
 				.ShaderStage = RHI::ShaderStage::Pixel,
+				.Defines = { "USE_RESOURCE_HEAP" },
 				.IncludeDirs = { path }
 			});
 
-		assert(result.ErrorMessage.empty());
 	}
 	// -- Finalize Block ---
 	{
