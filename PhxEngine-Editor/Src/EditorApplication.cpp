@@ -5,6 +5,7 @@
 
 // -- Add to engine ---
 #include <PhxEngine/Core/WorkerThreadPool.h>
+#include <PhxEngine/Core/Containers.h>
 
 // -- Temp
 #include <PhxEngine/Core/StopWatch.h>
@@ -20,6 +21,7 @@ class Foo : public Core::Object
 {
 public:
 	Foo() = default;
+	~Foo() { a = ~0u; b = ~0u; }
 	uint32_t a = 0;
 	uint32_t b = 0;
 };
@@ -31,36 +33,25 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		Core::Log::Initialize();
 		Core::WorkerThreadPool::Initialize();
 	}
-	const size_t memSize = PhxGB(1);
-	const size_t numElems = memSize / sizeof(Foo);
-	auto* data = phx_new_arr(Foo, numElems);
-
-	Core::StopWatch stopWatch;
-	stopWatch.Begin();
-	for (int i = 0; i < numElems; i++)
 	{
-		data[i].a = i;
-		data[i].b = i + 1;
+		const size_t memSize = PhxGB(1);
+		const size_t numElems = memSize / sizeof(Foo);
+		FlexArray<Foo> data;
+		data.resize(numElems);
+
+		Core::StopWatch stopWatch;
+		stopWatch.Begin();
+		for (int i = 0; i < numElems; i++)
+		{
+			data[i].a = i;
+			data[i].b = i + 1;
+		}
+
+		TimeStep elapsedTime = stopWatch.Elapsed();
+
+		PHX_LOG_INFO("Fill Array took {0}ms", elapsedTime.GetMilliseconds());
+
 	}
-
-	TimeStep elapsedTime = stopWatch.Elapsed();
-
-	PHX_LOG_INFO("Fill Array took {0}ms", elapsedTime.GetMilliseconds());
-
-	std:memset(data, 0, memSize);
-
-	stopWatch.Begin();
-	WorkerThreadPool::DispatchContext ctx;
-	Core::WorkerThreadPool::Dispatch(ctx, numElems, numElems * 0.25, [&](WorkerThreadPool::TaskArgs args) {
-
-			data[args.JobIndex + args.GroupID].a = args.JobIndex + args.GroupIndex;
-			data[args.JobIndex + args.GroupID].b =  1;
-		});
-	Core::WorkerThreadPool::Wait(ctx);
-
-	TimeStep elapsedTime2 = stopWatch.Elapsed();
-
-	PHX_LOG_INFO("Fill Array (Threaded) {0}ms", elapsedTime2.GetMilliseconds());
 	// -- Finalize Block ---
 	{
 		Core::WorkerThreadPool::Finalize();

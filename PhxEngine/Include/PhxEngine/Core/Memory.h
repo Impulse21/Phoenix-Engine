@@ -2,6 +2,7 @@
 
 #include <string>
 #include <atomic>
+#include <limits>
 
 // Credit to Raptor Engine: Using it for learning.
 
@@ -230,7 +231,6 @@ namespace PhxEngine::Core
 		size_t m_totalSize = 0;
 		size_t m_allocatedSize = 0;
 	};
-
 	struct MemoryServiceConfiguration
 	{
 		size_t MaximumDynamicSize = PhxMB(32);
@@ -601,5 +601,67 @@ namespace PhxEngine::Core
 
         A::Free(p_class);
     }
+
+    template <typename T>
+    class PhxStlAllocator {
+    public:
+        // Type Definitions
+        typedef size_t    size_type;
+        typedef ptrdiff_t difference_type;
+        typedef T* pointer;
+        typedef const T* const_pointer;
+        typedef T& reference;
+        typedef const T& const_reference;
+        typedef T         value_type;
+
+        // Constructor (if needed)
+        PhxStlAllocator() {}
+        PhxStlAllocator(const PhxStlAllocator&) {}
+
+        // Member Functions
+        pointer allocate(size_type n)
+        {
+            // Allocate memory for n objects of type T
+            return phx_new_arr(T, n);
+        }
+
+        void deallocate(pointer p, size_type n) noexcept
+        {
+            if (p)
+            {
+                phx_delete_arr(p);
+            }
+        }
+
+        void construct(pointer p, const_reference val)
+        {
+            new (p) T(val);
+        }
+
+        void destroy(pointer p)
+        {
+            // p->~T();
+        }
+
+        size_type max_size() const noexcept
+        {
+            return size_t(-1);
+        }
+
+        pointer           address(reference x) const { return &x; }
+        const_pointer     address(const_reference x) const { return &x; }
+        PhxStlAllocator<T>& operator=(const PhxStlAllocator&) { return *this; }
+
+        // Rebind Member Type
+        template <class U>
+        struct rebind { typedef PhxStlAllocator<U> other; };
+
+        template <class U>
+        PhxStlAllocator(const PhxStlAllocator<U>&) {}
+
+        template <class U>
+        PhxStlAllocator& operator=(const PhxStlAllocator<U>&) { return *this; }
+    };
+
 }
 
