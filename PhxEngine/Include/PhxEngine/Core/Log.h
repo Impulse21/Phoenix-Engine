@@ -2,25 +2,49 @@
 
 #include <string>
 #include <memory>
-#include "spdlog/spdlog.h"
+#include <string_view>
+#include <PhxEngine/Core/Span.h>
 
 namespace PhxEngine::Core
 {
 	namespace Log
 	{
-		void Initialize();
+		enum class LogLevel
+		{
+			None,
+			Info,
+			Warning,
+			Error,
+		};
+		struct LogEntry
+		{
+			Log::LogLevel Level = Log::LogLevel::None;
+			std::string_view Msg;
+		};
 
-		std::shared_ptr<spdlog::logger>& GetCoreLogger();
-		std::shared_ptr<spdlog::logger>& GetClientLogger();
+		class ILogTarget
+		{
+		public:
+			virtual ~ILogTarget() = default;
+
+			virtual void Flush(Core::Span<LogEntry> logEntries) = 0;
+		};
+
+		void Initialize();
+		void Finialize();
+
+		void RegisterTarget(std::unique_ptr<ILogTarget>&& logTarget);
+		void Log(LogLevel logLEvel, std::string_view msg);
+		void Flush();
 	}
 }
 
 // -- Core log macros ----
-#define LOG_CORE_TRACE(...) ::PhxEngine::Core::Log::GetCoreLogger()->trace(__VA_ARGS__)
-#define LOG_CORE_INFO(...)	::PhxEngine::Core::Log::GetCoreLogger()->info(__VA_ARGS__)
-#define LOG_CORE_WARN(...)	::PhxEngine::Core::Log::GetCoreLogger()->warn(__VA_ARGS__)
-#define LOG_CORE_ERROR(...) ::PhxEngine::Core::Log::GetCoreLogger()->error(__VA_ARGS__)
-#define LOG_CORE_FATAL(...) ::PhxEngine::Core::Log::GetCoreLogger()->critical(__VA_ARGS__)
+#define LOG_CORE_TRACE(...) //::PhxEngine::Core::Log::GetCoreLogger()->trace(__VA_ARGS__)
+#define LOG_CORE_INFO(...)	//::PhxEngine::Core::Log::GetCoreLogger()->info(__VA_ARGS__)
+#define LOG_CORE_WARN(...)	//::PhxEngine::Core::Log::GetCoreLogger()->warn(__VA_ARGS__)
+#define LOG_CORE_ERROR(...) //::PhxEngine::Core::Log::GetCoreLogger()->error(__VA_ARGS__)
+#define LOG_CORE_FATAL(...) //::PhxEngine::Core::Log::GetCoreLogger()->critical(__VA_ARGS__)
 
 #define LOG_RHI_TRACE(...)	// ::PhxEngine::Core::Log::GetCoreLogger()->trace(__VA_ARGS__)
 #define LOG_RHI_INFO(...)	// ::PhxEngine::Core::Log::GetCoreLogger()->info(__VA_ARGS__)
@@ -29,19 +53,19 @@ namespace PhxEngine::Core
 #define LOG_RHI_FATAL(...)	// ::PhxEngine::Core::Log::GetCoreLogger()->critical(__VA_ARGS__)
 
 
-#define LOG_TRACE(...)	::PhxEngine::Core::Log::GetClientLogger()->trace(__VA_ARGS__)
-#define LOG_INFO(...)	::PhxEngine::Core::Log::GetClientLogger()->info(__VA_ARGS__)
-#define LOG_WARN(...)	::PhxEngine::Core::Log::GetClientLogger()->warn(__VA_ARGS__)
-#define LOG_ERROR(...)	::PhxEngine::Core::Log::GetClientLogger()->error(__VA_ARGS__)
-#define LOG_FATAL(...)	::PhxEngine::Core::Log::GetClientLogger()->critical(__VA_ARGS__)
+#define LOG_TRACE(...)	//::PhxEngine::Core::Log::GetClientLogger()->trace(__VA_ARGS__)
+#define LOG_INFO(...)	//::PhxEngine::Core::Log::GetClientLogger()->info(__VA_ARGS__)
+#define LOG_WARN(...)	//::PhxEngine::Core::Log::GetClientLogger()->warn(__VA_ARGS__)
+#define LOG_ERROR(...)	//::PhxEngine::Core::Log::GetClientLogger()->error(__VA_ARGS__)
+#define LOG_FATAL(...)	//::PhxEngine::Core::Log::GetClientLogger()->critical(__VA_ARGS__)
 
 
 
-#define PHX_LOG_CORE_TRACE(...) ::PhxEngine::Core::Log::GetCoreLogger()->trace(__VA_ARGS__)
-#define PHX_LOG_CORE_INFO(...)	::PhxEngine::Core::Log::GetCoreLogger()->info(__VA_ARGS__)
-#define PHX_LOG_CORE_WARN(...)	::PhxEngine::Core::Log::GetCoreLogger()->warn(__VA_ARGS__)
-#define PHX_LOG_CORE_ERROR(...) ::PhxEngine::Core::Log::GetCoreLogger()->error(__VA_ARGS__)
-#define PHX_LOG_CORE_FATAL(...) ::PhxEngine::Core::Log::GetCoreLogger()->critical(__VA_ARGS__)
+#define PHX_LOG_CORE_TRACE(...) //::PhxEngine::Core::Log::GetCoreLogger()->trace(__VA_ARGS__)
+#define PHX_LOG_CORE_INFO(...)	//::PhxEngine::Core::Log::GetCoreLogger()->info(__VA_ARGS__)
+#define PHX_LOG_CORE_WARN(...)	//::PhxEngine::Core::Log::GetCoreLogger()->warn(__VA_ARGS__)
+#define PHX_LOG_CORE_ERROR(...) //::PhxEngine::Core::Log::GetCoreLogger()->error(__VA_ARGS__)
+#define PHX_LOG_CORE_FATAL(...) //::PhxEngine::Core::Log::GetCoreLogger()->critical(__VA_ARGS__)
 
 #define PHX_LOG_TRACE(...)	::PhxEngine::Core::Log::GetClientLogger()->trace(__VA_ARGS__)
 #define PHX_LOG_INFO(...)	::PhxEngine::Core::Log::GetClientLogger()->info(__VA_ARGS__)
