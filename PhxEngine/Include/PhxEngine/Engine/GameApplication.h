@@ -28,7 +28,6 @@ namespace PhxEngine
 
 	private:
 		std::unique_ptr<Core::IWindow> m_window;
-		std::unique_ptr<ImGuiRenderer> m_imguiRenderer;
 		// Add World
 	};
 }

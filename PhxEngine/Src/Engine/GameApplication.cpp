@@ -89,8 +89,8 @@ void PhxEngine::GameApplication::Startup()
 	std::shared_ptr<IFileSystem> fileSystem = CreateNativeFileSystem();
 	CreateRelativeFileSystem(fileSystem, "");
 
-	this->m_imguiRenderer = std::make_unique<ImGuiRenderer>();
-	this->m_imguiRenderer->Initialize();
+	// this->m_imguiRenderer = std::make_unique<ImGuiRenderer>();
+	// this->m_imguiRenderer->Initialize();
 }
 void PhxEngine::GameApplication::Shutdown()
 {

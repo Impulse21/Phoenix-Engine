@@ -6,6 +6,8 @@
 // -- Add to engine ---
 #include <PhxEngine/Core/WorkerThreadPool.h>
 #include <PhxEngine/Core/Containers.h>
+#include <PhxEngine/Renderer/ImGuiRenderer.h>
+#include <imgui.h>
 
 // -- Temp
 #include <PhxEngine/RHI/PhxShaderCompiler.h>
@@ -17,15 +19,6 @@
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
 
-class Foo : public Core::Object
-{
-public:
-	Foo() = default;
-	~Foo() { a = ~0u; b = ~0u; }
-	uint32_t a = 0;
-	uint32_t b = 0;
-};
-
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	// -- Engine Start-up ---
@@ -33,30 +26,78 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		Core::Log::Initialize();
 		Core::WorkerThreadPool::Initialize();
 	}
-	{
-		// Compile IMGUI shader to header file
-		std::string path = "C:\\Users\\dipao\\source\\repos\\Impulse21\\Phoenix-Engine\\PhxEngine_old\\Shaders\\";
-		std::shared_ptr<IFileSystem> fileSystem = CreateNativeFileSystem();
-
-		std::shared_ptr<IFileSystem> relative = CreateRelativeFileSystem(fileSystem, path);
-		RHI::ShaderCompiler::CompilerResult result = RHI::ShaderCompiler::Compile({
-				.Filename = "ImGuiVS.hlsl",
-				.FileSystem = relative.get(),
-				.Flags = RHI::ShaderCompiler::CompilerFlags::CreateHeaderFile,
-				.ShaderStage = RHI::ShaderStage::Vertex,
-				.Defines = { "USE_RESOURCE_HEAP" },
-				.IncludeDirs = { path }
+	{ 
+		// Initialize MemoryService?
+		std::unique_ptr<IWindow> window = WindowFactory::CreateGlfwWindow({
+			.Width = 2000,
+			.Height = 1200,
+			.VSync = false,
+			.Fullscreen = false,
 			});
 
-		result = RHI::ShaderCompiler::Compile({
-				.Filename = "ImGuiPS.hlsl",
-				.FileSystem = relative.get(),
-				.Flags = RHI::ShaderCompiler::CompilerFlags::CreateHeaderFile,
-				.ShaderStage = RHI::ShaderStage::Pixel,
-				.Defines = { "USE_RESOURCE_HEAP" },
-				.IncludeDirs = { path }
+		window->SetEventCallback([](Event& e) { EventDispatcher::DispatchEvent(e); });
+
+		// Will initialize RHI on first time the window is created
+		EventDispatcher::AddEventListener(EventType::WindowResize, [&](Event const& e) {
+
+			const WindowResizeEvent& resizeEvent = static_cast<const WindowResizeEvent&>(e);
+			RHI::SwapChainDesc swapchainDesc = {
+				.Width = resizeEvent.GetWidth(),
+				.Height = resizeEvent.GetHeight(),
+				.Fullscreen = false,
+				.VSync = window->GetVSync(),
+			};
+
+			if (!RHI::GetGfxDevice())
+			{
+				RHI::Setup::Initialize({
+					.Api = RHI::GraphicsAPI::DX12,
+					.SwapChainDesc = swapchainDesc,
+					.WindowHandle = window->GetNativeWindowHandle() });
+			}
+			else
+			{
+				RHI::GetGfxDevice()->ResizeSwapchain(swapchainDesc);
+			}
 			});
 
+		window->Initialize();
+
+		RHI::GfxDevice* gfxDevice = RHI::GetGfxDevice();
+		ImGuiRenderer::Initialize(window.get(), gfxDevice);
+		
+		while (!window->ShouldClose())
+		{
+			ImGuiRenderer::BeginFrame();
+			RHI::CommandListHandle frameCmd = gfxDevice->BeginCommandList();
+
+			gfxDevice->TransitionBarriers(
+				{
+				RHI::GpuBarrier::CreateTexture(gfxDevice->GetBackBuffer(), RHI::ResourceStates::Present, RHI::ResourceStates::RenderTarget)
+				},
+				frameCmd);
+
+			RHI::Color clearColour = {};
+			RHI::GetGfxDevice()->ClearTextureFloat(gfxDevice->GetBackBuffer(), clearColour, frameCmd);
+
+			// Write Test to IMGUI Window
+			static bool windowOpen = false;
+			ImGui::Begin("text", &windowOpen, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoInputs);
+
+			ImGui::Text("Hello World");
+			ImGui::End();
+			ImGuiRenderer::Render();
+
+			gfxDevice->TransitionBarriers(
+				{
+					RHI::GpuBarrier::CreateTexture(gfxDevice->GetBackBuffer(), RHI::ResourceStates::RenderTarget, RHI::ResourceStates::Present)
+				},
+				frameCmd);
+
+			RHI::GetGfxDevice()->SubmitFrame();
+		}
+
+		ImGuiRenderer::Finalize();
 	}
 	// -- Finalize Block ---
 	{

@@ -1,9 +1,13 @@
 #include <PhxEngine/Renderer/ImGuiRenderer.h>
 
 #include <PhxEngine/Core/Window.h>
-
+#include <stdexcept>
+#include <DirectXMath.h>
 #include <imgui.h>
 #include "ImGui/imgui_impl_glfw.h"
+
+#include "ImGui/ImguiVS.h"
+#include "ImGui/ImguiPS.h"
 
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
@@ -16,14 +20,23 @@ namespace
         BindlessResources,
         NumRootParameters
     };
+
+    ImGuiContext* m_imguiContext;
+
+    RHI::TextureHandle m_fontTexture;
+    RHI::ShaderHandle m_vertexShader;
+    RHI::ShaderHandle m_pixelShader;
+    RHI::InputLayoutHandle m_inputLayout;
+    RHI::GfxPipelineHandle m_pipeline;
+    RHI::GfxDevice* m_gfxDevice;
 }
 
-PhxEngine::ImGuiRenderer::ImGuiRenderer()
+void PhxEngine::ImGuiRenderer::Initialize(Core::IWindow* window, RHI::GfxDevice* gfxDevice)
 {
-    this->m_imguiContext = ImGui::CreateContext();
-    ImGui::SetCurrentContext(this->m_imguiContext);
-#if false
-    auto* glfwWindow = static_cast<GLFWwindow*>(root->GetWindow()->GetNativeWindow());
+    m_gfxDevice = gfxDevice;
+    m_imguiContext = ImGui::CreateContext();
+    ImGui::SetCurrentContext(m_imguiContext);
+    auto* glfwWindow = static_cast<GLFWwindow*>(window->GetNativeWindow());
 
     if (!ImGui_ImplGlfw_InitForVulkan(glfwWindow, true))
     {
@@ -52,10 +65,8 @@ PhxEngine::ImGuiRenderer::ImGuiRenderer()
     desc.MipLevels = 1;
     desc.DebugName = "IMGUI Font Texture";
 
-    RHI::GfxDevice* device = RHI::GetGfxDevice();
-
-    this->m_fontTexture = device->CreateTexture(desc);
-    io.Fonts->SetTexID(static_cast<void*>(&this->m_fontTexture));
+    m_fontTexture = gfxDevice->CreateTexture(desc);
+    io.Fonts->SetTexID(static_cast<void*>(&m_fontTexture));
     RHI::SubresourceData subResourceData = {};
 
     // Bytes per pixel * width of the image. Since we are using an RGBA8, there is 4 bytes per pixel.
@@ -63,30 +74,25 @@ PhxEngine::ImGuiRenderer::ImGuiRenderer()
     subResourceData.slicePitch = subResourceData.rowPitch * height;
     subResourceData.pData = pixelData;
 
-    CommandListHandle uploadCommandList = device->BeginCommandList();
+    CommandListHandle uploadCommandList = gfxDevice->BeginCommandList();
 
-    device->TransitionBarrier(this->m_fontTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest, uploadCommandList);
-    device->WriteTexture(this->m_fontTexture, 0, 1, &subResourceData, uploadCommandList);
-    device->TransitionBarrier(this->m_fontTexture, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource, uploadCommandList);
-#endif
-}
+    gfxDevice->TransitionBarrier(m_fontTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest, uploadCommandList);
+    gfxDevice->WriteTexture(m_fontTexture, 0, 1, &subResourceData, uploadCommandList);
+    gfxDevice->TransitionBarrier(m_fontTexture, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource, uploadCommandList);
 
-bool PhxEngine::ImGuiRenderer::Initialize()
-{
-#if false
-    this->m_vertexShader = shaderFactory.CreateShader(
-        "PhxEngine/ImGuiVS.hlsl",
-        {
+
+    m_vertexShader = gfxDevice->CreateShader( {
             .Stage = RHI::ShaderStage::Vertex,
             .DebugName = "ImGuiVS",
-        });
+        },
+        Core::Span<uint8_t>(static_cast<const uint8_t*>(g_mainVS), sizeof(g_mainVS) / sizeof(unsigned char)));
 
-    this->m_pixelShader = shaderFactory.CreateShader(
-        "PhxEngine/ImGuiPS.hlsl",
+    m_pixelShader = gfxDevice->CreateShader(
         {
             .Stage = RHI::ShaderStage::Pixel,
             .DebugName = "ImGuiPS",
-        });
+        },
+        Core::Span<uint8_t>(static_cast<const uint8_t*>(g_mainPS), sizeof(g_mainPS) / sizeof(unsigned char)));
 
 
     std::vector<VertexAttributeDesc> attributeDesc =
@@ -96,56 +102,64 @@ bool PhxEngine::ImGuiRenderer::Initialize()
         { "COLOR",      0, RHI::Format::RGBA8_UNORM, 0, VertexAttributeDesc::SAppendAlignedElement, false},
     };
 
-    this->m_inputLayout = this->GetGfxDevice()->CreateInputLayout(attributeDesc.data(), attributeDesc.size());
-#endif
-    return true;
+    m_inputLayout = gfxDevice->CreateInputLayout(attributeDesc.data(), attributeDesc.size());
 }
 
-void PhxEngine::ImGuiRenderer::Tick(Core::TimeStep const& timeStep)
+void PhxEngine::ImGuiRenderer::Finalize()
 {
-    ImGui::SetCurrentContext(this->m_imguiContext);
+    m_gfxDevice->DeleteGfxPipeline(m_pipeline);
+    // m_gfxDevice->DeleteInputLayout(m_inputLayout);
+    // m_gfxDevice->DeleteShader(m_pixelShader);
+    // m_gfxDevice->DeleteShader(m_vertexShader);
+    m_gfxDevice->DeleteTexture(m_fontTexture);
+}
+
+void PhxEngine::ImGuiRenderer::BeginFrame()
+{
+    ImGui::SetCurrentContext(m_imguiContext);
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 }
 
 void PhxEngine::ImGuiRenderer::Render()
 {
-#if false
-    if (!this->m_pipeline.IsValid())
+    if (!m_pipeline.IsValid())
     {
-        GraphicsPipelineDesc psoDesc = {};
-        psoDesc.VertexShader = this->m_vertexShader;
-        psoDesc.PixelShader = this->m_pixelShader;
-        psoDesc.InputLayout = this->m_inputLayout;
-        // TODO: Render to it's own resource, then compose image.
-        // TODO: Set it's own Format
-        psoDesc.RtvFormats = { this->GetGfxDevice()->GetTextureDesc(this->GetGfxDevice()->GetBackBuffer()).Format};
+        GfxPipelineDesc psoDesc = {
+            .InputLayout = m_inputLayout,
+            .VertexShader = m_vertexShader,
+            .PixelShader = m_pixelShader,
+            .BlendRenderState = {
+                .Targets {
+                    {
+                        .BlendEnable = true,
+                        .SrcBlend = BlendFactor::SrcAlpha,
+                        .DestBlend = BlendFactor::InvSrcAlpha,
+                        .BlendOp = EBlendOp::Add,
+                        .SrcBlendAlpha = BlendFactor::One,
+                        .DestBlendAlpha = BlendFactor::InvSrcAlpha,
+                        .BlendOpAlpha = EBlendOp::Add,
+                        .ColorWriteMask = ColorMask::All,
+                    }
+                }
+            },
+            .DepthStencilRenderState = {
+                .DepthTestEnable = false,
+                .DepthFunc = ComparisonFunc::Always,
+                .StencilEnable = false,
+            },
+            .RasterRenderState = {
+                .CullMode = RasterCullMode::None,
+                .DepthClipEnable = true,
+                .ScissorEnable = true,
+            },
+            .RtvFormats = { m_gfxDevice->GetTextureDesc(m_gfxDevice->GetBackBuffer()).Format },
+        };
 
-        auto& blendTarget = psoDesc.BlendRenderState.Targets[0];
-        blendTarget.BlendEnable = true;
-        blendTarget.SrcBlend = BlendFactor::SrcAlpha;
-        blendTarget.DestBlend = BlendFactor::InvSrcAlpha;
-        blendTarget.BlendOp = EBlendOp::Add;
-        blendTarget.SrcBlendAlpha = BlendFactor::One;
-        blendTarget.DestBlendAlpha = BlendFactor::InvSrcAlpha;
-        blendTarget.BlendOpAlpha = EBlendOp::Add;
-        blendTarget.ColorWriteMask = ColorMask::All;
-
-        psoDesc.RasterRenderState.CullMode = RasterCullMode::None;
-        psoDesc.RasterRenderState.ScissorEnable = true;
-        psoDesc.RasterRenderState.DepthClipEnable = true;
-
-        psoDesc.DepthStencilRenderState.DepthTestEnable = false;
-        psoDesc.DepthStencilRenderState.StencilEnable = false;
-        psoDesc.DepthStencilRenderState.DepthFunc = ComparisonFunc::Always;
-
-
-        this->m_pipeline = this->GetGfxDevice()->CreateGraphicsPipeline(psoDesc);
+        m_pipeline = m_gfxDevice->CreateGfxPipeline(psoDesc);
     }
 
-    this->BuildUI();
-
-    ImGui::SetCurrentContext(this->m_imguiContext);
+    ImGui::SetCurrentContext(m_imguiContext);
     ImGui::Render();
 
 
@@ -160,11 +174,10 @@ void PhxEngine::ImGuiRenderer::Render()
 
     ImVec2 displayPos = drawData->DisplayPos;
 
-    ICommandList* cmd = this->GetGfxDevice()->BeginCommandRecording();
+    RHI::CommandListHandle cmd = m_gfxDevice->BeginCommandList();
     {
-        auto scrope = cmd->BeginScopedMarker("ImGui");
-        cmd->BeginRenderPassBackBuffer(false);
-        cmd->SetGraphicsPipeline(this->m_pipeline);
+        m_gfxDevice->BeginMarker("ImGui", cmd);
+        m_gfxDevice->SetGfxPipeline(m_pipeline, cmd);
 
         // Set root arguments.
         //    DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixOrthographicRH( drawData->DisplaySize.x, drawData->DisplaySize.y, 0.0f, 1.0f );
@@ -180,20 +193,25 @@ void PhxEngine::ImGuiRenderer::Render()
             { (R + L) / (L - R),  (T + B) / (B - T),    0.5f,       1.0f },
         };
 
-        Shader::ImguiDrawInfo push = {};
+        struct ImguiDrawInfo
+        {
+            DirectX::XMFLOAT4X4 Mvp;
+            uint32_t TextureIndex;
+        } push = {};
         push.Mvp = DirectX::XMFLOAT4X4(&mvp[0][0]);
 
         Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
-        cmd->SetViewports(&v, 1);
-
-        const RHIFormat indexFormat = sizeof(ImDrawIdx) == 2 ? RHIFormat::R16_UINT : RHIFormat::R32_UINT;
+        m_gfxDevice->SetViewports(&v, 1, cmd);
+        
+        m_gfxDevice->SetRenderTargets({ m_gfxDevice->GetBackBuffer() }, {}, cmd);
+        const RHI::Format indexFormat = sizeof(ImDrawIdx) == 2 ? RHI::Format::R16_UINT : RHI::Format::R32_UINT;
 
         for (int i = 0; i < drawData->CmdListsCount; ++i)
         {
             const ImDrawList* drawList = drawData->CmdLists[i];
 
-            cmd->BindDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data);
-            cmd->BindDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data);
+            m_gfxDevice->BindDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data, cmd);
+            m_gfxDevice->BindDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data, cmd);
 
             int indexOffset = 0;
             for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
@@ -220,12 +238,17 @@ void PhxEngine::ImGuiRenderer::Render()
                         // Ensure 
                         auto textureHandle = static_cast<RHI::TextureHandle*>(drawCmd.GetTexID());
                         push.TextureIndex = textureHandle
-                            ? IGraphicsDevice::GPtr->GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
+                            ? m_gfxDevice->GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
                             : RHI::cInvalidDescriptorIndex;
 
-                        cmd->BindPushConstant(RootParameters::PushConstant, push);
-                        cmd->SetScissors(&scissorRect, 1);
-                        cmd->DrawIndexed(drawCmd.ElemCount, 1, indexOffset);
+                        m_gfxDevice->BindPushConstant(RootParameters::PushConstant, push, cmd);
+                        m_gfxDevice->SetScissors(&scissorRect, 1, cmd);
+                        m_gfxDevice->DrawIndexed({
+                                .IndexCount = drawCmd.ElemCount,
+                                .InstanceCount = 1,
+                                .StartIndex = static_cast<uint32_t>(indexOffset),
+                            },
+                            cmd);
                     }
                 }
                 indexOffset += drawCmd.ElemCount;
@@ -233,13 +256,9 @@ void PhxEngine::ImGuiRenderer::Render()
         }
 
         // cmd->TransitionBarriers(Span<GpuBarrier>(postBarriers.data(), postBarriers.size()));
-        cmd->EndRenderPass();
+        m_gfxDevice->EndMarker(cmd);
         ImGui::EndFrame();
     }
-    cmd->Close();
-
-    this->GetGfxDevice()->ExecuteCommandLists({ cmd });
-#endif
 }
 
 void PhxEngine::ImGuiRenderer::EnableDarkThemeColours()

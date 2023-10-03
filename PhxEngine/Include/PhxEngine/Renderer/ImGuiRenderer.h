@@ -16,6 +16,16 @@ namespace PhxEngine
 		class ShaderFactory;
 	}
 
+	namespace ImGuiRenderer
+	{
+		void Initialize(Core::IWindow* window, RHI::GfxDevice* gfxDevice);
+		void Finalize();
+		void EnableDarkThemeColours();
+		
+		void BeginFrame();
+		void Render();
+	}
+#if 0
 	class ImGuiRenderer
 	{
 	public:
@@ -42,5 +52,6 @@ namespace PhxEngine
 		RHI::InputLayoutHandle m_inputLayout;
 		RHI::GfxPipelineHandle m_pipeline;
 	};
+#endif
 }
 
