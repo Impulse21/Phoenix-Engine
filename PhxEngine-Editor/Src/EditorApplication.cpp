@@ -22,6 +22,7 @@ namespace
 		void Initialize() override
 		{
 			Renderer::ImGuiRenderer::Initialize(GetWindow(), GetGfxDevice(), true);
+            Renderer::ImGuiRenderer::EnableDarkThemeColours();
 		}
 
 		void Finalize() override
