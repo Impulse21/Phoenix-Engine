@@ -43,9 +43,12 @@ namespace
 		void OnRender() override
 		{
 			Renderer::ImGuiRenderer::BeginFrame();
-            this->BeginWindow();
+            bool mainWindowBegun = this->BeginWindow();
 
-            if (this->m_editorBegin)
+            // TODO: Render Viewport
+
+
+            if (mainWindowBegun)
                 ImGui::End();
 		}
 
@@ -55,7 +58,7 @@ namespace
 		}
 
 	private:
-        void BeginWindow()
+        bool BeginWindow()
         {
 
             const auto window_flags =
@@ -86,11 +89,11 @@ namespace
             // Begin window
             std::string name = "##main_window";
             bool open = true;
-            this->m_editorBegin = ImGui::Begin(name.c_str(), &open, window_flags);
+            bool windowBegun = ImGui::Begin(name.c_str(), &open, window_flags);
             ImGui::PopStyleVar(3);
 
             // Begin dock space
-            if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable && this->m_editorBegin)
+            if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable && windowBegun)
             {
                 // Dock space
                 const auto window_id = ImGui::GetID(name.c_str());
@@ -122,10 +125,11 @@ namespace
                 ImGui::DockSpace(window_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
                 ImGui::PopStyleVar();
             }
+
+            return windowBegun;
         }
 
         private:
-            bool m_editorBegin= false;
 	};
 }
 
