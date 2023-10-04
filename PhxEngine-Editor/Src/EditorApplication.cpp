@@ -84,7 +84,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 			// Write Test to IMGUI Window
 			static bool windowOpen = false;
-			ImGui::ShowDemoWindow();
+			ImGui::Begin("Testing", &windowOpen, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoInputs);
+
+			ImGui::Text("Hello World");
+			ImGui::End();
 			ImGuiRenderer::Render(frameCmd);
 
 			gfxDevice->TransitionBarriers(
@@ -105,6 +108,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		RHI::GetGfxDevice()->Finalize();
 
 		Core::WorkerThreadPool::Finalize();
+		Core::Log::Finialize();
+
 		Core::ObjectTracker::Finalize();
 		assert(0 == SystemMemory::GetMemUsage());
 		SystemMemory::Cleanup();

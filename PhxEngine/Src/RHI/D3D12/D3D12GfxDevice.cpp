@@ -460,8 +460,6 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::Finalize()
 		auto* commandlistImpl = this->m_commandListPool.Get(this->m_frameCommandListHandles[i]);
 		commandlistImpl->UploadBuffer.Finialize();
 	}
-
-	this->RunGarbageCollection(~0u);
 	this->DeleteBuffer(this->m_timestampQueryBuffer);
 
 	for (auto handle : this->m_swapChain.BackBuffers)
@@ -475,6 +473,9 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::Finalize()
 	{
 		this->m_commandListPool.Release(this->m_frameCommandListHandles[i]);
 	}
+
+
+	this->RunGarbageCollection(~0u);
 
 	this->m_texturePool.Finalize();
 	this->m_commandSignaturePool.Finalize();
