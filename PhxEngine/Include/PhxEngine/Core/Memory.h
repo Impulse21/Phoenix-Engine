@@ -555,36 +555,6 @@ namespace PhxEngine::Core
         return (T*)mem;
     }
 
-    template <typename T>
-    T* MemRealloc_Arr(T* p_class, size_t newSize)
-    {
-        if (newSize == 0)
-        {
-            MemDelete_Arr(p_class);
-            return nullptr;
-        }
-
-        /** overloading operator new[] cannot be done , because it may not return the real allocated address (it may pad the 'element count' before the actual array). Because of that, it must be done by hand. This is the
-        same strategy used by std::vector, and the Vector class, so it should be safe.*/
-        size_t prevLength = NemArr_Len<T>(p_class);
-        uint64_t* mem = (uint64_t*)SystemMemory::ReallocArray(p_class, sizeof(T), newSize);
-        T* failptr = nullptr; //get rid of a warning
-        *(mem - 1) = newSize;
-
-        if (!std::is_trivially_constructible<T>::value)
-        {
-            T* elems = (T*)mem;
-
-            /* call operator new */
-            for (size_t i = prevLength; i < p_elements; i++)
-            {
-                new (&elems[i]) T;
-            }
-        }
-
-        return (T*)mem;
-    }
-
     /**
      * Wonders of having own array functions, you can actually check the length of
      * an allocated-with memnew_arr() array
@@ -631,6 +601,36 @@ namespace PhxEngine::Core
         }
 
         A::Free(p_class);
+    }
+
+    template <typename T>
+    T* MemRealloc_Arr(T* p_class, size_t newSize)
+    {
+        if (newSize == 0)
+        {
+            MemDelete_Arr(p_class);
+            return nullptr;
+        }
+
+        /** overloading operator new[] cannot be done , because it may not return the real allocated address (it may pad the 'element count' before the actual array). Because of that, it must be done by hand. This is the
+        same strategy used by std::vector, and the Vector class, so it should be safe.*/
+        size_t prevLength = NemArr_Len<T>(p_class);
+        uint64_t* mem = (uint64_t*)SystemMemory::ReallocArray(p_class, sizeof(T), newSize);
+        T* failptr = nullptr; //get rid of a warning
+        *(mem - 1) = newSize;
+
+        if (!std::is_trivially_constructible<T>::value)
+        {
+            T* elems = (T*)mem;
+
+            /* call operator new */
+            for (size_t i = prevLength; i < newSize; i++)
+            {
+                new (&elems[i]) T;
+            }
+        }
+
+        return (T*)mem;
     }
 
     template <typename T>

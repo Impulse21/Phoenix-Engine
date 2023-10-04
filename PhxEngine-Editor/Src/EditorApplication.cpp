@@ -68,12 +68,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		
 		while (!window->ShouldClose())
 		{
+			window->OnTick();
+
 			ImGuiRenderer::BeginFrame();
 			RHI::CommandListHandle frameCmd = gfxDevice->BeginCommandList();
 
 			gfxDevice->TransitionBarriers(
 				{
-				RHI::GpuBarrier::CreateTexture(gfxDevice->GetBackBuffer(), RHI::ResourceStates::Present, RHI::ResourceStates::RenderTarget)
+					RHI::GpuBarrier::CreateTexture(gfxDevice->GetBackBuffer(), RHI::ResourceStates::Present, RHI::ResourceStates::RenderTarget)
 				},
 				frameCmd);
 
@@ -82,11 +84,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 			// Write Test to IMGUI Window
 			static bool windowOpen = false;
-			ImGui::Begin("text", &windowOpen, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoInputs);
-
-			ImGui::Text("Hello World");
-			ImGui::End();
-			ImGuiRenderer::Render();
+			ImGui::ShowDemoWindow();
+			ImGuiRenderer::Render(frameCmd);
 
 			gfxDevice->TransitionBarriers(
 				{
@@ -98,9 +97,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 
 		ImGuiRenderer::Finalize();
+
 	}
 	// -- Finalize Block ---
 	{
+		RHI::GetGfxDevice()->WaitForIdle();
+		RHI::GetGfxDevice()->Finalize();
+
 		Core::WorkerThreadPool::Finalize();
 		Core::ObjectTracker::Finalize();
 		assert(0 == SystemMemory::GetMemUsage());

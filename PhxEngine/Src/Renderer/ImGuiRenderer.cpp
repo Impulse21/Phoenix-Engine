@@ -112,6 +112,8 @@ void PhxEngine::ImGuiRenderer::Finalize()
     // m_gfxDevice->DeleteShader(m_pixelShader);
     // m_gfxDevice->DeleteShader(m_vertexShader);
     m_gfxDevice->DeleteTexture(m_fontTexture);
+
+    ImGui::DestroyContext(m_imguiContext);
 }
 
 void PhxEngine::ImGuiRenderer::BeginFrame()
@@ -121,7 +123,7 @@ void PhxEngine::ImGuiRenderer::BeginFrame()
     ImGui::NewFrame();
 }
 
-void PhxEngine::ImGuiRenderer::Render()
+void PhxEngine::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
 {
     if (!m_pipeline.IsValid())
     {
@@ -174,7 +176,6 @@ void PhxEngine::ImGuiRenderer::Render()
 
     ImVec2 displayPos = drawData->DisplayPos;
 
-    RHI::CommandListHandle cmd = m_gfxDevice->BeginCommandList();
     {
         m_gfxDevice->BeginMarker("ImGui", cmd);
         m_gfxDevice->SetGfxPipeline(m_pipeline, cmd);

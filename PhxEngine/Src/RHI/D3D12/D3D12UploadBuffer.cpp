@@ -21,7 +21,7 @@ struct Allocation
 	size_t Offset;
 };
 
-UploadBuffer::Allocation UploadBuffer::Allocate(size_t sizeInBytes, size_t alignment)
+UploadAllocation UploadBuffer::Allocate(size_t sizeInBytes, size_t alignment)
 {
 	if (sizeInBytes > this->m_pageSize)
 	{
@@ -103,7 +103,7 @@ bool UploadBuffer::Page::HasSpace(size_t sizeInBytes, size_t alignment) const
 	return (alignedOffset + sizeInBytesAligned) <= this->m_pageSize;
 }
 
-UploadBuffer::Allocation UploadBuffer::Page::Allocate(size_t sizeInBytes, size_t alignment)
+UploadAllocation UploadBuffer::Page::Allocate(size_t sizeInBytes, size_t alignment)
 {
 	if (!this->HasSpace(sizeInBytes, alignment))
 	{
@@ -113,7 +113,7 @@ UploadBuffer::Allocation UploadBuffer::Page::Allocate(size_t sizeInBytes, size_t
 	size_t sizeInBytesAligned = Core::AlignUp(sizeInBytes, alignment);
 
 	this->m_offset = Core::AlignUp(this->m_offset, alignment);
-	Allocation allocation = {};
+	UploadAllocation allocation = {};
 	allocation.CpuData = static_cast<uint8_t*>(bufferImpl->MappedData) + this->m_offset;
 	allocation.Gpu = this->m_gpuPtr + this->m_offset;
 	allocation.Offset = this->m_offset;
@@ -129,3 +129,55 @@ void UploadBuffer::Page::Reset()
 	this->m_offset = 0;
 }
 
+void PhxEngine::RHI::D3D12::UploadRingBuffer::Initialize(D3D12GfxDevice* device, size_t capacity)
+{
+	this->m_capacity = capacity;
+	this->m_gfxDevice = device;
+
+	BufferDesc desc = {};
+	desc.Usage = Usage::Upload;
+	desc.Stride = this->m_capacity;
+	desc.NumElements = 1;
+	desc.InitialState = ResourceStates::CopySource | ResourceStates::GenericRead;
+	desc.Binding |= BindingFlags::ShaderResource;
+	desc.MiscFlags |= BufferMiscFlags::Bindless | BufferMiscFlags::Raw;
+	desc.DebugName = "Frame Upload Ring Buffer";
+	this->m_buffer = this->m_gfxDevice->CreateBuffer(desc);
+
+	D3D12Buffer* bufferImpl = this->m_gfxDevice->GetBufferPool().Get(this->m_buffer);
+
+	this->m_gpuHeadPtr = bufferImpl->D3D12Resource->GetGPUVirtualAddress();
+	this->m_tailOffset = 0;
+}
+
+void PhxEngine::RHI::D3D12::UploadRingBuffer::Finialize()
+{
+	if (this->m_buffer.IsValid())
+		this->m_gfxDevice->DeleteBuffer(this->m_buffer);
+
+	this->m_gpuHeadPtr = D3D12_GPU_VIRTUAL_ADDRESS(0);
+	this->m_tailOffset = 0;
+}
+
+UploadAllocation PhxEngine::RHI::D3D12::UploadRingBuffer::Allocate(size_t sizeInBytes, size_t alignment)
+{
+	size_t sizeInBytesAligned = Core::AlignUp(sizeInBytes, alignment);
+	size_t alignedOffset = Core::AlignUp(this->m_tailOffset, alignment);
+	if (alignedOffset + sizeInBytesAligned >= this->m_capacity)
+	{
+		this->m_tailOffset = 0;
+	}
+
+	D3D12Buffer* bufferImpl = this->m_gfxDevice->GetBufferPool().Get(this->m_buffer);
+
+
+	this->m_tailOffset = alignedOffset;
+	UploadAllocation allocation = {};
+	allocation.CpuData = static_cast<uint8_t*>(bufferImpl->MappedData) + this->m_tailOffset;
+	allocation.Gpu = this->m_gpuHeadPtr + this->m_tailOffset;
+	allocation.Offset = this->m_tailOffset;
+	allocation.BufferHandle = this->m_buffer;
+
+	this->m_tailOffset += sizeInBytesAligned;
+	return allocation;
+}

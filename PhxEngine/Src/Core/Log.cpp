@@ -13,7 +13,7 @@ using namespace PhxEngine::Core;
 
 namespace
 {
-	constexpr std::unordered_map<Log::LogEntry, const char*> LogLevelTag =
+	std::unordered_map<Log::LogLevel, std::string> LogLevelTag =
 	{
 		{ Log::LogLevel::None, ""},
 		{ Log::LogLevel::Info, "[Info]"},
@@ -35,7 +35,7 @@ namespace
 		{
 			for (auto& entry : logEntries)
 			{
-				std::count << LogLevelTag[entry.Level] << " - " << entry.Msg.data() << std::endl;
+				std::cout << LogLevelTag[entry.Level].c_str() << " - " << entry.Msg.data() << std::endl;
 			}
 		}
 	};

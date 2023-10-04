@@ -441,8 +441,8 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::Initialize(SwapChainDesc const& swap
 	for (int i = 0; i < this->m_frameCommandListHandles.size(); i++)
 	{
 		this->m_frameCommandListHandles[i] = this->m_commandListPool.Emplace();
+		auto* commandlistImpl = this->m_commandListPool.Get(this->m_frameCommandListHandles[i]);
 	}
-
 
 	// -- Mark Queues for completion ---
 	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
@@ -455,6 +455,13 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::Initialize(SwapChainDesc const& swap
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::Finalize()
 {
+	for (int i = 0; i < this->m_frameCommandListHandles.size(); i++)
+	{
+		auto* commandlistImpl = this->m_commandListPool.Get(this->m_frameCommandListHandles[i]);
+		commandlistImpl->UploadBuffer.Finialize();
+	}
+
+	this->RunGarbageCollection(~0u);
 	this->DeleteBuffer(this->m_timestampQueryBuffer);
 
 	for (auto handle : this->m_swapChain.BackBuffers)
@@ -557,23 +564,23 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 				assert(nextFenceValue);
 			}
 		}
+	}
+	// -- Mark Queues for completion ---
+	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
+	{
+		D3D12CommandQueue& queue = this->m_commandQueues[q];
+		auto& submitCommands = submitCommandLists[q];
+		auto& submitAllocators = submitCommandListAllocators[q];
 
-		// -- Mark Queues for completion ---
-		for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
+		if (!submitCommands.empty())
 		{
-			D3D12CommandQueue& queue = this->m_commandQueues[q];
-			auto& submitCommands = submitCommandLists[q];
-
-			if (!submitCommands.empty())
-			{
-				uint64_t waitOnFenceValue = queue.ExecuteCommandLists(Core::Span(submitCommands));
-				queue.DiscardAllocators(waitOnFenceValue, Core::Span(submitAllocators));
-				submitCommands.clear();
-			}
-
-			// Single Frame Fence
-			queue.GetD3D12CommandQueue()->Signal(this->m_frameFences[q].Get(), this->m_frameCount);
+			uint64_t waitOnFenceValue = queue.ExecuteCommandLists(Core::Span(submitCommands));
+			queue.DiscardAllocators(waitOnFenceValue, Core::Span(submitAllocators));
+			submitCommands.clear();
 		}
+
+		// Single Frame Fence
+		queue.GetD3D12CommandQueue()->Signal(this->m_frameFences[q].Get(), this->m_frameCount);
 	}
 
 	// -- Present SwapChain ---
@@ -607,6 +614,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 	this->m_frameCount++;
 
 	// Wait for next frame
+	this->RunGarbageCollection(this->m_frameCount);
 	{
 		for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
 		{
@@ -3725,7 +3733,10 @@ CommandListHandle PhxEngine::RHI::D3D12::D3D12GfxDevice::BeginCommandList(Comman
 	internalCmd.Waits.clear();
 	internalCmd.IsWaitedOn.store(false);
 
-	// TODO: Set up upload Buffer 
+	if (internalCmd.UploadBuffer.GetCapacity() == 0)
+	{
+		internalCmd.UploadBuffer.Initialize(this);
+	}
 
 	// Bind Heaps
 	std::array<ID3D12DescriptorHeap*, 2> heaps;
@@ -3980,7 +3991,7 @@ void D3D12GfxDevice::ClearTextureFloat(TextureHandle texture, Color const& clear
 GPUAllocation D3D12GfxDevice::AllocateGpu(size_t bufferSize, size_t stride, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	assert(bufferSize <= internalCmd.UploadBuffer.GetPageSize());
+	assert(bufferSize <= internalCmd.UploadBuffer.GetCapacity());
 
 	auto heapAllocation = internalCmd.UploadBuffer.Allocate(bufferSize, stride);
 
@@ -4373,7 +4384,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::BindConstantBuffer(size_t rootParame
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	UploadBuffer::Allocation alloc = internalCmd.UploadBuffer.Allocate(sizeInBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+	UploadAllocation alloc = internalCmd.UploadBuffer.Allocate(sizeInBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 	std::memcpy(alloc.CpuData, bufferData, sizeInBytes);
 
 	if (internalCmd.ActivePipelineType == D3D12CommandList::PipelineType::Compute)
@@ -4440,7 +4451,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::BindDynamicStructuredBuffer(uint32_t
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
 	size_t sizeInBytes = numElements * elementSize;
-	UploadBuffer::Allocation alloc = internalCmd.UploadBuffer.Allocate(sizeInBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+	UploadAllocation alloc = internalCmd.UploadBuffer.Allocate(sizeInBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 	std::memcpy(alloc.CpuData, bufferData, sizeInBytes);
 
 	if (internalCmd.ActivePipelineType == D3D12CommandList::PipelineType::Compute)

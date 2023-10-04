@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <stdexcept>
 #include <PhxEngine/Core/Memory.h>
 
 namespace PhxEngine::Core
@@ -58,7 +59,7 @@ namespace PhxEngine::Core
             {
                 if (!std::is_trivially_destructible<T>::value)
                 {
-                    this->m_data[i]->~T();
+                    this->m_data[i].~T();
                 }
             }
             std::memset(this->m_data, 0, sizeof(T) * this->m_size);

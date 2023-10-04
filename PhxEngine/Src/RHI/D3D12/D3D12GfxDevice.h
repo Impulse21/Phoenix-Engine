@@ -5,6 +5,7 @@
 #include <deque>
 #include <tuple>
 #include <unordered_map>
+#include <functional>
 
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Core/BitSetAllocator.h>
@@ -34,7 +35,6 @@ namespace PhxEngine::RHI::D3D12
     constexpr size_t kNumConcurrentRenderTargets = 8;
 
     class D3D12GfxDevice;
-    class UploadBuffer;
 
     enum class DescriptorHeapTypes : uint8_t
     {
@@ -301,6 +301,7 @@ namespace PhxEngine::RHI::D3D12
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> NativeCommandList;
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList6> NativeCommandList6;
         ID3D12CommandAllocator* NativeCommandAllocator;
+        UploadRingBuffer UploadBuffer;
 
         // An Array of Memory, perferanle from Allocator Internal
         std::atomic_bool IsWaitedOn;
@@ -310,7 +311,6 @@ namespace PhxEngine::RHI::D3D12
         std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> BuildGeometries;
         std::vector<D3D12_RESOURCE_BARRIER> BarrierMemoryPool;
         std::deque<Microsoft::WRL::ComPtr<ID3D12Resource>> TrackedResources;
-        UploadBuffer UploadBuffer;
 
         DynamicSuballocator* ActiveDynamicSubAllocator;
 
