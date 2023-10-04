@@ -1,5 +1,12 @@
 #pragma once
 
+#include <PhxEngine/RHI/PhxRHI.h>
+#include <PhxEngine/Core/Window.h>
+
+#include <PhxEngine/Core/Log.h>
+#include <PhxEngine/Core/Object.h>
+#include <PhxEngine/Core/Memory.h>
+
 namespace PhxEngine
 {
 	class IEngineApp
@@ -11,14 +18,17 @@ namespace PhxEngine
 		virtual void Finalize() = 0;
 
 		virtual bool IsShuttingDown() = 0;
-		virtual void OnTick() = 0;
+		virtual void OnUpdate() = 0;
+		virtual void OnRender() = 0;
+		virtual void OnCompose(RHI::CommandListHandle composeCmdList) = 0;
 
 	};
 
-	namespace EngineLoop
-	{
-		void Run(IEngineApp& engingApp);
-	}
+	void Run(IEngineApp& engingApp);
+	
+	RHI::GfxDevice* GetGfxDevice();
+	Core::IWindow* GetWindow();
+
 }
 
 #ifdef _MSC_VER // Windows
@@ -28,10 +38,10 @@ namespace PhxEngine
 #define MainFunc int main(int argc, char** argv)
 #endif
 
-#define PHX_DECLARE_MAIN(class_name)        \
+#define PHX_CREATE_APPLICATION(class_name)        \
     MainFunc								\
     {										\
         class_name app;						\
-        EngineLoop::Run(app);    \
+        PhxEngine::Run(app);				\
 		return 0;							\
     }

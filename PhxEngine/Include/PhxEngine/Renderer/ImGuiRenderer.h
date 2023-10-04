@@ -15,10 +15,13 @@ namespace PhxEngine
 	{
 		class ShaderFactory;
 	}
+}
 
+namespace PhxEngine::Renderer
+{
 	namespace ImGuiRenderer
 	{
-		void Initialize(Core::IWindow* window, RHI::GfxDevice* gfxDevice);
+		void Initialize(Core::IWindow* window, RHI::GfxDevice* gfxDevice, bool enableDocking = false);
 		void Finalize();
 		void EnableDarkThemeColours();
 		

@@ -1,6 +1,7 @@
 #include <PhxEngine/Renderer/ImGuiRenderer.h>
 
 #include <PhxEngine/Core/Window.h>
+#include <PhxEngine/Core/Span.h>
 #include <stdexcept>
 #include <DirectXMath.h>
 #include <imgui.h>
@@ -10,7 +11,9 @@
 #include "ImGui/ImguiPS.h"
 
 using namespace PhxEngine;
+using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI;
+using namespace PhxEngine::Renderer;
 
 namespace
 {
@@ -31,7 +34,7 @@ namespace
     RHI::GfxDevice* m_gfxDevice;
 }
 
-void PhxEngine::ImGuiRenderer::Initialize(Core::IWindow* window, RHI::GfxDevice* gfxDevice)
+void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* window, RHI::GfxDevice* gfxDevice, bool enableDocking)
 {
     m_gfxDevice = gfxDevice;
     m_imguiContext = ImGui::CreateContext();
@@ -47,7 +50,11 @@ void PhxEngine::ImGuiRenderer::Initialize(Core::IWindow* window, RHI::GfxDevice*
     ImGuiIO& io = ImGui::GetIO();
     io.FontAllowUserScaling = true;
     // Drive this based on configuration
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    if (enableDocking)
+    {
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    }
+
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows
 
     unsigned char* pixelData = nullptr;
@@ -85,14 +92,14 @@ void PhxEngine::ImGuiRenderer::Initialize(Core::IWindow* window, RHI::GfxDevice*
             .Stage = RHI::ShaderStage::Vertex,
             .DebugName = "ImGuiVS",
         },
-        Core::Span<uint8_t>(static_cast<const uint8_t*>(g_mainVS), sizeof(g_mainVS) / sizeof(unsigned char)));
+        PhxEngine::Core::Span<uint8_t>(static_cast<const uint8_t*>(g_mainVS), sizeof(g_mainVS) / sizeof(unsigned char)));
 
     m_pixelShader = gfxDevice->CreateShader(
         {
             .Stage = RHI::ShaderStage::Pixel,
             .DebugName = "ImGuiPS",
         },
-        Core::Span<uint8_t>(static_cast<const uint8_t*>(g_mainPS), sizeof(g_mainPS) / sizeof(unsigned char)));
+        PhxEngine::Core::Span<uint8_t>(static_cast<const uint8_t*>(g_mainPS), sizeof(g_mainPS) / sizeof(unsigned char)));
 
 
     std::vector<VertexAttributeDesc> attributeDesc =
@@ -105,7 +112,7 @@ void PhxEngine::ImGuiRenderer::Initialize(Core::IWindow* window, RHI::GfxDevice*
     m_inputLayout = gfxDevice->CreateInputLayout(attributeDesc.data(), attributeDesc.size());
 }
 
-void PhxEngine::ImGuiRenderer::Finalize()
+void PhxEngine::Renderer::ImGuiRenderer::Finalize()
 {
     m_gfxDevice->DeleteGfxPipeline(m_pipeline);
     // m_gfxDevice->DeleteInputLayout(m_inputLayout);
@@ -116,14 +123,14 @@ void PhxEngine::ImGuiRenderer::Finalize()
     ImGui::DestroyContext(m_imguiContext);
 }
 
-void PhxEngine::ImGuiRenderer::BeginFrame()
+void PhxEngine::Renderer::ImGuiRenderer::BeginFrame()
 {
     ImGui::SetCurrentContext(m_imguiContext);
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 }
 
-void PhxEngine::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
+void PhxEngine::Renderer::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
 {
     if (!m_pipeline.IsValid())
     {
@@ -262,7 +269,7 @@ void PhxEngine::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
     }
 }
 
-void PhxEngine::ImGuiRenderer::EnableDarkThemeColours()
+void PhxEngine::Renderer::ImGuiRenderer::EnableDarkThemeColours()
 {
 
     auto& colors = ImGui::GetStyle().Colors;

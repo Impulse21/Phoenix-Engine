@@ -6,8 +6,6 @@ using namespace PhxEngine;
 
 namespace
 {
-	std::unique_ptr<RHI::GfxDevice> gSingleton;
-
 	std::unique_ptr<RHI::GfxDevice> CreateDevice_Windows(RHI::GraphicsAPI api)
 	{
 		switch (api)
@@ -21,20 +19,7 @@ namespace
 	}
 }
 
-void PhxEngine::RHI::Setup::Initialize(RhiParameters const& parameters)
+std::unique_ptr<RHI::GfxDevice> PhxEngine::RHI::Factory::CreateD3D12Device()
 {
-	gSingleton = CreateDevice_Windows(parameters.Api);
-	gSingleton->Initialize(parameters.SwapChainDesc, parameters.WindowHandle);
-}
-
-void PhxEngine::RHI::Setup::Finalize()
-{
-	gSingleton->WaitForIdle();
-	gSingleton->Finalize();
-	gSingleton.reset();
-}
-
-RHI::GfxDevice* PhxEngine::RHI::GetGfxDevice()
-{
-	return gSingleton.get();
+	return CreateDevice_Windows(RHI::GraphicsAPI::DX12);
 }

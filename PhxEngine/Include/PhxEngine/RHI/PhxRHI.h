@@ -1545,21 +1545,10 @@ namespace PhxEngine::RHI
         seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     }
 
-    namespace Setup
+    namespace Factory
     {
-        struct RhiParameters
-        {
-            GraphicsAPI Api = GraphicsAPI::DX12;
-            SwapChainDesc SwapChainDesc = {};
-            void* WindowHandle;
-            uint32_t DynamicMemoryPoolSize = PhxMB(100);
-        };
-
-        void Initialize(RhiParameters const& parameters);
-        void Finalize();
+        std::unique_ptr<GfxDevice> CreateD3D12Device();
     }
-
-    GfxDevice* GetGfxDevice();
 }
 
 namespace std
