@@ -46,7 +46,22 @@ namespace
             bool mainWindowBegun = this->BeginWindow();
 
             // TODO: Render Viewport
+            ImGui::Begin("World", &mainWindowBegun);
+            ImGui::Text("World");
+            ImGui::End();
 
+            ImGui::Begin("Properties", &mainWindowBegun);
+            ImGui::Text("Properties");
+            ImGui::End();
+            ImGui::Begin("Console", &mainWindowBegun);
+            ImGui::Text("Console");
+            ImGui::End();
+            ImGui::Begin("Assets", &mainWindowBegun);
+            ImGui::Text("Assets");
+            ImGui::End();
+            ImGui::Begin("Viewport", &mainWindowBegun);
+            ImGui::Text("Viewport");
+            ImGui::End();
 
             if (mainWindowBegun)
                 ImGui::End();
