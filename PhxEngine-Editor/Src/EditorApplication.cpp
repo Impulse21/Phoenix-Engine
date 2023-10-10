@@ -3,9 +3,10 @@
 #include <PhxEngine/Core/CommandLineArgs.h>
 #include <PhxEngine/Core/Containers.h>
 #include <PhxEngine/Renderer/ImGuiRenderer.h>
+#include "Widgets.h"
+
 #include <imgui.h>
 #include <imgui_internal.h>
-
 
 #ifdef _MSC_VER // Windows
 #include <shellapi.h>
@@ -23,6 +24,9 @@ namespace
 		{
 			Renderer::ImGuiRenderer::Initialize(GetWindow(), GetGfxDevice(), true);
             Renderer::ImGuiRenderer::EnableDarkThemeColours();
+
+            this->m_widgets.emplace_back(std::make_shared<Editor::ConsoleLogWidget>());
+
 		}
 
 		void Finalize() override
@@ -45,6 +49,11 @@ namespace
 			Renderer::ImGuiRenderer::BeginFrame();
             bool mainWindowBegun = this->BeginWindow();
 
+            for (auto& widget : this->m_widgets)
+            {
+                widget->OnRender(mainWindowBegun);
+            }
+
             // TODO: Render Viewport
             ImGui::Begin("World", &mainWindowBegun);
             ImGui::Text("World");
@@ -52,9 +61,6 @@ namespace
 
             ImGui::Begin("Properties", &mainWindowBegun);
             ImGui::Text("Properties");
-            ImGui::End();
-            ImGui::Begin("Console", &mainWindowBegun);
-            ImGui::Text("Console");
             ImGui::End();
             ImGui::Begin("Assets", &mainWindowBegun);
             ImGui::Text("Assets");
@@ -129,7 +135,7 @@ namespace
                     // Dock windows
                     ImGui::DockBuilderDockWindow("World", dock_right_id);
                     ImGui::DockBuilderDockWindow("Properties", dock_right_down_id);
-                    ImGui::DockBuilderDockWindow("Console", dock_down_id);
+                    ImGui::DockBuilderDockWindow(Editor::ConsoleLogWidget::WidgetName.data(), dock_down_id);
                     ImGui::DockBuilderDockWindow("Assets", dock_down_right_id);
                     ImGui::DockBuilderDockWindow("Viewport", dock_main_id);
 
@@ -144,7 +150,9 @@ namespace
             return windowBegun;
         }
 
-        private:
+    private:
+        std::vector<std::shared_ptr<Editor::IWidgets>> m_widgets;
+
 	};
 }
 

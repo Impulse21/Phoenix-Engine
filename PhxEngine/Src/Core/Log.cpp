@@ -9,76 +9,92 @@
 #include <PhxEngine/Core/Span.h>
 #include <PhxEngine/Core/Object.h>
 
+#ifdef WIN32
+#include <Windows.h>
+#endif
 using namespace PhxEngine::Core;
 
 namespace
 {
-	std::unordered_map<Log::LogLevel, std::string> LogLevelTag =
-	{
-		{ Log::LogLevel::None, ""},
-		{ Log::LogLevel::Info, "[Info]"},
-		{ Log::LogLevel::Error, "[Error]"},
-	};
+	std::vector<Log::LogCallbackFn> m_logCallbaclks;
 
-	std::vector<std::unique_ptr<Log::ILogTarget>> m_logTargets;
-	
-	// An array of data or an allocator
-	FlexArray<Log::LogEntry> m_logEntires;
 	std::mutex m_logLock;
-
-	class CoutLogTarget : public Log::ILogTarget, public Object
-	{
-	public:
-		CoutLogTarget() = default;
-
-		void Flush(Span<Log::LogEntry> logEntries) override
-		{
-			for (auto& entry : logEntries)
-			{
-				std::cout << LogLevelTag[entry.Level].c_str() << " - " << entry.Msg.data() << std::endl;
-			}
-		}
-	};
 }
 
 void Log::Initialize()
 {
 #ifdef _DEBUG
-	m_logTargets.push_back(std::make_unique<CoutLogTarget>());
+
+	m_logCallbaclks.emplace_back([](Log::LogEntry const& entry) {
+
+		switch (entry.Level)
+		{
+		default:
+		case LogLevel::None:
+		case LogLevel::Info:
+			std::cout << entry.Msg;
+			break;
+		case LogLevel::Warning:
+			std::clog << entry.Msg;
+			break;
+		case LogLevel::Error:
+			std::cerr << entry.Msg;
+			break;
+		}
+	});
+
+#ifdef WIN32
+	m_logCallbaclks.emplace_back([](Log::LogEntry const& entry) {
+		OutputDebugStringA(entry.Msg.data());
+	});
+
+#endif
 #endif
 
 }
 
 void PhxEngine::Core::Log::Finialize()
 {
-	Log::Flush();
-	m_logTargets.clear();
+	m_logCallbaclks.clear();
 }
 
-void PhxEngine::Core::Log::RegisterTarget(std::unique_ptr<ILogTarget>&& logTarget)
+void PhxEngine::Core::Log::RegisterLogCallback(Log::LogCallbackFn const& logTarget)
 {
 	std::scoped_lock _(m_logLock);
-	m_logTargets.push_back(std::move(logTarget));
+	m_logCallbaclks.push_back(logTarget);
 }
 
-void PhxEngine::Core::Log::Log(LogLevel logLEvel, std::string_view msg)
+void PhxEngine::Core::Log::PostMsg(LogLevel logLevel, std::string_view msg)
 {
+	std::scoped_lock lock(m_logLock);
+
 	LogEntry e = {
-		.Level = logLEvel,
-		.Msg = msg
+		.Level = logLevel,
 	};
 
-	m_logEntires.push_back(e);
-}
-
-void PhxEngine::Core::Log::Flush()
-{
-	std::scoped_lock _(m_logLock);
-	Core::Span<LogEntry> entires(m_logEntires.data(), m_logEntires.size());
-	for (auto& target : m_logTargets)
+	std::string& msgStr = e.Msg;
+	switch (logLevel)
 	{
-		target->Flush(entires);
+	default:
+	case LogLevel::None:
+		msgStr = "";
+		break;
+	case LogLevel::Info:
+		msgStr = "[Info] ";
+		break;
+	case LogLevel::Warning:
+		msgStr = "[Warning] ";
+		break;
+	case LogLevel::Error:
+		msgStr = "[Error] ";
+		break;
 	}
+	msgStr += msg;
+	msgStr += '\n';
 
-	m_logEntires.clear();
+
+	for (auto& callback : m_logCallbaclks)
+	{
+		callback(e);
+	}
 }
