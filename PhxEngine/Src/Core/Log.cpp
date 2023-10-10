@@ -19,6 +19,43 @@ namespace
 	std::vector<Log::LogCallbackFn> m_logCallbaclks;
 
 	std::mutex m_logLock;
+
+
+	void PostMsgInternal(Log::LogLevel logLevel, std::string_view category, std::string_view msg)
+	{
+		std::scoped_lock lock(m_logLock);
+
+		Log::LogEntry e = {
+			.Level = logLevel,
+		};
+
+		std::string& msgStr = e.Msg;
+		switch (logLevel)
+		{
+		default:
+		case Log::LogLevel::None:
+			msgStr = "";
+			break;
+		case Log::LogLevel::Info:
+			msgStr = "[Info] ";
+			break;
+		case Log::LogLevel::Warning:
+			msgStr = "[Warning] ";
+			break;
+		case Log::LogLevel::Error:
+			msgStr = "[Error] ";
+			break;
+		}
+		msgStr += "[" + std::string(category) + "] ";
+		msgStr += msg;
+		msgStr += '\n';
+
+
+		for (auto& callback : m_logCallbaclks)
+		{
+			callback(e);
+		}
+	}
 }
 
 void Log::Initialize()
@@ -64,37 +101,14 @@ void PhxEngine::Core::Log::RegisterLogCallback(Log::LogCallbackFn const& logTarg
 	m_logCallbaclks.push_back(logTarget);
 }
 
-void PhxEngine::Core::Log::PostMsg(LogLevel logLevel, std::string_view msg)
+void PhxEngine::Core::Log::PostMsg(std::string_view categroy, LogLevel logLEvel, std::string_view msg, ...)
 {
-	std::scoped_lock lock(m_logLock);
+	char buffer[1024];
+	va_list args;
+	va_start(args, msg);
+	auto w = vsnprintf(buffer, sizeof(buffer), msg.data(), args);
+	va_end(args);
 
-	LogEntry e = {
-		.Level = logLevel,
-	};
-
-	std::string& msgStr = e.Msg;
-	switch (logLevel)
-	{
-	default:
-	case LogLevel::None:
-		msgStr = "";
-		break;
-	case LogLevel::Info:
-		msgStr = "[Info] ";
-		break;
-	case LogLevel::Warning:
-		msgStr = "[Warning] ";
-		break;
-	case LogLevel::Error:
-		msgStr = "[Error] ";
-		break;
-	}
-	msgStr += msg;
-	msgStr += '\n';
-
-
-	for (auto& callback : m_logCallbaclks)
-	{
-		callback(e);
-	}
+	std::string_view v = buffer;
+	PostMsgInternal(logLEvel, categroy, v);
 }

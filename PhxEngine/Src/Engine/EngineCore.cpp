@@ -1,6 +1,5 @@
 #include <PhxEngine/Engine/EngineCore.h>
 
-
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/Memory.h>
 #include <PhxEngine/Renderer/Renderer.h>
@@ -16,51 +15,15 @@ namespace
 	std::unique_ptr<Core::IWindow> m_window;
 	std::unique_ptr<RHI::GfxDevice> m_gfxDevice;
 
-	void EngineInitialize()
+	void EnginePreInitialize()
 	{
 		Core::Log::Initialize();
 		Core::WorkerThreadPool::Initialize();
 
-		// TODO: dataDrive this somehow
-		m_window = WindowFactory::CreateGlfwWindow({
-			.Width = 2000,
-			.Height = 1200,
-			.VSync = false,
-			.Fullscreen = false,
-			});
-
-		m_window->SetEventCallback([](Event& e) { EventDispatcher::DispatchEvent(e); });
-
-		EventDispatcher::AddEventListener(EventType::WindowResize, [&](Event const& e) {
-
-			const WindowResizeEvent& resizeEvent = static_cast<const WindowResizeEvent&>(e);
-			// TODO: Data Drive this
-			RHI::SwapChainDesc swapchainDesc = {
-				.Width = resizeEvent.GetWidth(),
-				.Height = resizeEvent.GetHeight(),
-				.Fullscreen = false,
-				.VSync = m_window->GetVSync(),
-			};
-
-			if (!m_gfxDevice)
-			{
-				m_gfxDevice = RHI::Factory::CreateD3D12Device();
-				m_gfxDevice->Initialize(swapchainDesc, m_window->GetNativeWindowHandle());
-			}
-			else
-			{
-				m_gfxDevice->ResizeSwapchain(swapchainDesc);
-			}
-		});
-
-		m_window->Initialize();
 	}
 
-	void EngineFinalize()
+	void EnginePostFinalize()
 	{
-		m_gfxDevice->WaitForIdle();
-		m_gfxDevice->Finalize();
-
 		Core::WorkerThreadPool::Finalize();
 		Core::Log::Finialize();
 
@@ -70,9 +33,46 @@ namespace
 	}
 }
 
+void PhxEngine::Initialize()
+{
+	PHX_LOG_CORE_INFO("Initailizing Engine Core");
+	m_window = WindowFactory::CreateGlfwWindow({
+		.Width = 2000,
+		.Height = 1200,
+		.VSync = false,
+		.Fullscreen = false,
+		});
+
+	m_window->SetEventCallback([](Event& e) { EventDispatcher::DispatchEvent(e); });
+
+	EventDispatcher::AddEventListener(EventType::WindowResize, [&](Event const& e) {
+
+		const WindowResizeEvent& resizeEvent = static_cast<const WindowResizeEvent&>(e);
+	// TODO: Data Drive this
+	RHI::SwapChainDesc swapchainDesc = {
+		.Width = resizeEvent.GetWidth(),
+		.Height = resizeEvent.GetHeight(),
+		.Fullscreen = false,
+		.VSync = m_window->GetVSync(),
+	};
+
+	if (!m_gfxDevice)
+	{
+		m_gfxDevice = RHI::Factory::CreateD3D12Device();
+		m_gfxDevice->Initialize(swapchainDesc, m_window->GetNativeWindowHandle());
+	}
+	else
+	{
+		m_gfxDevice->ResizeSwapchain(swapchainDesc);
+	}
+		});
+
+	m_window->Initialize();
+}
+
 void PhxEngine::Run(IEngineApp& app)
 {
-	EngineInitialize();
+	EnginePreInitialize();
 
 	app.Initialize();
 	while (!app.IsShuttingDown())
@@ -112,7 +112,16 @@ void PhxEngine::Run(IEngineApp& app)
 
 	app.Finalize();
 
-	EngineFinalize();
+	EnginePostFinalize();
+}
+
+void PhxEngine::Finalize()
+{
+	m_gfxDevice->WaitForIdle();
+	m_gfxDevice->Finalize();
+
+	m_gfxDevice.reset();
+	m_window.reset();
 }
 
 RHI::GfxDevice* PhxEngine::GetGfxDevice()

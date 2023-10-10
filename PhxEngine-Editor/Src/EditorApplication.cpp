@@ -22,17 +22,21 @@ namespace
 	public:
 		void Initialize() override
 		{
+            this->m_widgets.emplace_back(std::make_shared<Editor::ConsoleLogWidget>());
+
+            PhxEngine::Initialize();
+
+            PHX_LOG_INFO("Initailizing Editor");
+
 			Renderer::ImGuiRenderer::Initialize(GetWindow(), GetGfxDevice(), true);
             Renderer::ImGuiRenderer::EnableDarkThemeColours();
-
-            this->m_widgets.emplace_back(std::make_shared<Editor::ConsoleLogWidget>());
 
 		}
 
 		void Finalize() override
 		{
 			Renderer::ImGuiRenderer::Finalize();
-
+            PhxEngine::Finalize();
 		}
 
 		bool IsShuttingDown() override

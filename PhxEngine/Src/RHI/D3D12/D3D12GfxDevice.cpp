@@ -321,6 +321,7 @@ PhxEngine::RHI::D3D12::D3D12GfxDevice::D3D12GfxDevice()
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::Initialize(SwapChainDesc const& swapchainDesc, void* windowHandle)
 {
+	LOG_RHI_INFO("Initialize DirectX 12 Graphics Device");
 	this->InitializeResourcePools();
 	this->InitializeD3D12NativeResources(this->m_gpuAdapter.NativeAdapter.Get());
 
@@ -3638,9 +3639,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::FindAdapter(Microsoft::WRL::ComPtr<I
 
 		if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
 		{
-			// TODO: FIXLOG
-			// LOG_RHI_INFO("GPU '{0}' is a software adapter. Skipping consideration as this is not supported.", name.c_str());
-			LOG_RHI_INFO("GPU '{0}' is a software adapter. Skipping consideration as this is not supported.");
+			LOG_RHI_INFO("GPU '%s' is a software adapter. Skipping consideration as this is not supported.", name.c_str());
 			continue;
 		}
 
@@ -3652,9 +3651,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::FindAdapter(Microsoft::WRL::ComPtr<I
 
 		if (basicDeviceInfo.NumDeviceNodes > 1)
 		{
-			// TODO: FIXLOG
-			// LOG_RHI_INFO("GPU '{0}' has one or more device nodes. Currently only support one device ndoe.", name.c_str());
-			LOG_RHI_INFO("GPU '{0}' has one or more device nodes. Currently only support one device ndoe.");
+			LOG_RHI_INFO("GPU '%s' has one or more device nodes. Currently only support one device ndoe.", name.c_str());
 		}
 
 		if (!selectedAdapter || selectedGPUVideoMemeory < dedicatedVideoMemory)
@@ -3680,25 +3677,17 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::FindAdapter(Microsoft::WRL::ComPtr<I
 	size_t sharedSystemMemory = desc.SharedSystemMemory;
 
 	// TODO: FIXLOG
-#if false
 	LOG_RHI_INFO(
-		"Found Suitable D3D12 Adapter {0}",
+		"Found Suitable D3D12 Adapter '%s'",
 		name.c_str());
 
 	// TODO: FIXLOG
 	LOG_RHI_INFO(
-		"Adapter has {0}MB of dedicated video memory, {1}MB of dedicated system memory, and {2}MB of shared system memory.",
+		"Adapter has %dMB of dedicated video memory, %dMB of dedicated system memory, and %dMB of shared system memory.",
 		dedicatedVideoMemory / (1024 * 1024),
 		dedicatedSystemMemory / (1024 * 1024),
 		sharedSystemMemory / (1024 * 1024));
-#else
-	LOG_RHI_INFO(
-		"Found Suitable D3D12 Adapter {0}");
 
-	// TODO: FIXLOG
-	LOG_RHI_INFO(
-		"Adapter has {0}MB of dedicated video memory, {1}MB of dedicated system memory, and {2}MB of shared system memory.");
-#endif
 	outAdapter.Name = NarrowString(desc.Description);
 	outAdapter.BasicDeviceInfo = selectedBasicDeviceInfo;
 	outAdapter.NativeDesc = desc;

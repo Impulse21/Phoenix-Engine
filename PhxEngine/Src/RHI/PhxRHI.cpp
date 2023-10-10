@@ -11,6 +11,7 @@ namespace
 		switch (api)
 		{
 		case RHI::GraphicsAPI::DX12:
+			LOG_RHI_INFO("Creating DirectX 12 Graphics Device");
 			return std::make_unique<RHI::D3D12::D3D12GfxDevice>();
 
 		default:

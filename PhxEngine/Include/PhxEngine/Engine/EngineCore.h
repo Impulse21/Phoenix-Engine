@@ -24,8 +24,10 @@ namespace PhxEngine
 
 	};
 
+	void Initialize();
 	void Run(IEngineApp& engingApp);
-	
+	void Finalize();
+
 	RHI::GfxDevice* GetGfxDevice();
 	Core::IWindow* GetWindow();
 

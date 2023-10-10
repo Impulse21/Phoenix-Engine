@@ -184,9 +184,8 @@ void RootFileSystem::Mount(const std::filesystem::path& path, std::shared_ptr<IF
 {
     if (this->FindMountPoint(path, nullptr, nullptr))
     {
-        // TODO: FIXLOG
-        // LOG_CORE_ERROR("Cannot mount a filesystem at {0}: there is another FS that includes this path", path.generic_string().c_str());
-        LOG_CORE_ERROR("Cannot mount a filesystem at {0}: there is another FS that includes this path");
+        LOG_CORE_ERROR("Cannot mount a filesystem at %s: there is another FS that includes this path", path.generic_string().c_str());
+        
         return;
     }
 
