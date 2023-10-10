@@ -12,6 +12,25 @@ namespace PhxEngine::Editor
 		virtual ~IWidgets() = default;
 
 		virtual void OnRender(bool displayWindow) = 0;
+		virtual const std::string& GetName() = 0;
+		virtual bool IsVisible() = 0;
+	};
+
+	class MenuBar : public IWidgets
+	{
+	public:
+		MenuBar();
+		void OnRender(bool displayWindow) override;
+
+		const std::string& GetName() override { return "MenuBar"; }
+		bool IsVisible() override { return true; }
+	};
+
+	class ProfilerWidget : public IWidgets
+	{
+	public:
+		const std::string& GetName() override { return "Profiler"; }
+		bool IsVisible() override { return true; }
 	};
 
 	class ConsoleLogWidget : public IWidgets
@@ -23,6 +42,8 @@ namespace PhxEngine::Editor
 	public:
 		ConsoleLogWidget();
 		void OnRender(bool displayWindow) override;
+		const std::string& GetName() override { return "Console"; }
+		bool IsVisible() override { return true; }
 
 	private:
 		void LogCallback(PhxEngine::Core::Log::LogEntry const& e);

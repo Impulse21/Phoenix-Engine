@@ -23,7 +23,8 @@ namespace
 		void Initialize() override
 		{
             this->m_widgets.emplace_back(std::make_shared<Editor::ConsoleLogWidget>());
-
+            this->m_widgets.emplace_back(std::make_shared<Editor::MenuBar>());
+            this->m_widgets.emplace_back(std::make_shared<Editor::ProfilerWidget>());
             PhxEngine::Initialize();
 
             PHX_LOG_INFO("Initailizing Editor");
@@ -81,6 +82,21 @@ namespace
 		{
 			Renderer::ImGuiRenderer::Render(composeCmdList);
 		}
+
+        template<typename _TWidget>
+        std::shared_ptr<_TWidget> GetWidget()
+        {
+            for (const auto& widget : this->m_widgets)
+            {
+                if (_TWidget* retVal = std::dynamic_pointer_cast<_TWidget>(widget))
+                {
+                    return retVal;
+                }
+            }
+
+            return nullptr;
+
+        }
 
 	private:
         bool BeginWindow()

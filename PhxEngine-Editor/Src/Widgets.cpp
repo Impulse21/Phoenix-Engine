@@ -73,3 +73,11 @@ void PhxEngine::Editor::ConsoleLogWidget::LogCallback(PhxEngine::Core::Log::LogE
 
 	this->m_logEntries.push_back(e);
 }
+
+PhxEngine::Editor::MenuBar::MenuBar()
+{
+}
+
+void PhxEngine::Editor::MenuBar::OnRender(bool displayWindow)
+{
+}
