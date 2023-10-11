@@ -29,3 +29,6 @@
 [submodule "PhxEngine/Extern/mimalloc"]
 	path = PhxEngine/Extern/mimalloc
 	url = https://github.com/microsoft/mimalloc.git
+[submodule "PhxEngine/Extern/enkiTS"]
+	path = PhxEngine/Extern/enkiTS
+	url = https://github.com/dougbinks/enkiTS.git
