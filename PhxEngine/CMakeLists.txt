@@ -187,7 +187,8 @@ target_link_libraries(${project} PUBLIC
 	rapidjson
 	tlsf
 	D3D12MemoryAllocator
-	mimalloc-static)
+	mimalloc-static
+	enkiTS)
     
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 
