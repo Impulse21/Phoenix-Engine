@@ -6,9 +6,6 @@ include(FetchContent)
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
-add_library(spdlog INTERFACE)
-target_include_directories(spdlog INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/spdlog/include)
-
 # GLFW Library
 option(GLFW_BUILD_EXAMPLES "" OFF)
 option(GLFW_BUILD_TESTS "" OFF)
@@ -32,9 +29,6 @@ add_library(entt INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/entt/entt.hpp)
 target_include_directories(entt INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/entt)
 set_target_properties(entt PROPERTIES FOLDER ${extern_folder})
-
- add_library(taskflow INTERFACE)
- target_include_directories(taskflow INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/taskflow)
 
 option(BUILD_TOOLS "" OFF)
 option(BUILD_DX11 "" OFF)

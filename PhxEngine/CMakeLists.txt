@@ -174,7 +174,6 @@ target_include_directories(${project}
 add_subdirectory(Extern)
 
 target_link_libraries(${project} PUBLIC
-	spdlog
 	glfw
 	DirectX-Headers
 	DirectX-Guids
@@ -186,7 +185,6 @@ target_link_libraries(${project} PUBLIC
 	entt
 	cereal
 	rapidjson
-	taskflow
 	tlsf
 	D3D12MemoryAllocator
 	mimalloc-static)
