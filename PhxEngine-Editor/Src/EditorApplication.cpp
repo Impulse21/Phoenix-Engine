@@ -67,7 +67,24 @@ namespace
             Renderer::ImGuiRenderer::BeginFrame();
             if (!this->m_isInitialize.load())
             {
-                ImGui::Begin("Intializing");
+                ImGuiIO& io = ImGui::GetIO();
+                const ImGuiViewport* viewport = ImGui::GetMainViewport();
+                ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+                ImGui::SetNextWindowViewport(viewport->ID);
+                ImGui::SetNextWindowBgAlpha(0.35f); // Transparent backgroundconst float PAD = 10.0f;
+
+                static bool showWindow = true;
+                ImGui::Begin(
+                    "Intializing",
+                    &showWindow, 
+                    ImGuiWindowFlags_NoDecoration   | 
+                    ImGuiWindowFlags_NoDocking      | 
+                    ImGuiWindowFlags_AlwaysAutoResize | 
+                    ImGuiWindowFlags_NoSavedSettings | 
+                    ImGuiWindowFlags_NoFocusOnAppearing |
+                    ImGuiWindowFlags_NoNav|
+                    ImGuiWindowFlags_NoMove |
+                    ImGuiWindowFlags_NoBackground);
                 ImGui::Text("Initializing Application");
                 ImGui::End();
                 return;
