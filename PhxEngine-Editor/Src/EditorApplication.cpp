@@ -25,6 +25,8 @@ namespace
             this->m_widgets.emplace_back(std::make_shared<Editor::ConsoleLogWidget>());
             this->m_widgets.emplace_back(std::make_shared<Editor::MenuBar>());
             this->m_widgets.emplace_back(std::make_shared<Editor::ProfilerWidget>());
+
+            // Initialize Engine
             PhxEngine::Initialize();
 
             PHX_LOG_INFO("Initailizing Editor");

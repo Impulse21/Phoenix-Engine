@@ -3,7 +3,6 @@
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/Memory.h>
 #include <PhxEngine/Renderer/Renderer.h>
-#include <PhxEngine/Core/WorkerThreadPool.h>
 #include <PhxEngine/Core/EventDispatcher.h>
 #include <assert.h>
 
@@ -12,19 +11,63 @@ using namespace PhxEngine::Core;
 
 namespace
 {
+	// -- Globals ---
 	std::unique_ptr<Core::IWindow> m_window;
 	std::unique_ptr<RHI::GfxDevice> m_gfxDevice;
+	enki::TaskScheduler m_taskScheduler;
+
+	// -- IO Tasks --
+	struct RunPinnedTaskLoopTask : enki::IPinnedTask 
+	{
+		void Execute() override 
+		{
+			auto& taskScheduler = PhxEngine::GetTaskScheduler();
+			while (taskScheduler.GetIsRunning() && execute)
+			{
+				taskScheduler.WaitForNewPinnedTasks(); // this thread will 'sleep' until there are new pinned tasks
+				taskScheduler.RunPinnedTasks();
+			}
+		}
+
+		bool execute = true;
+	} m_runPinnedTaskLoopTask;
+
+	//
+	//
+	struct AsynchronousLoadTask : enki::IPinnedTask 
+	{
+		void Execute() override 
+		{
+			// Do file IO
+			while (execute) 
+			{
+				// TODO: async_loader->update(nullptr);
+			}
+		}
+
+		// AsynchronousLoader* async_loader;
+		bool execute = true;
+	} m_asynchronousLoadTask;
 
 	void EnginePreInitialize()
 	{
 		Core::Log::Initialize();
-		Core::WorkerThreadPool::Initialize();
 
+		enki::TaskSchedulerConfig config;
+		// for pinned async loader
+		config.numTaskThreadsToCreate += 1;
+		m_taskScheduler.Initialize(config);
+
+		m_runPinnedTaskLoopTask.threadNum = m_taskScheduler.GetNumTaskThreads() - 1;
+		m_taskScheduler.AddPinnedTask(&m_runPinnedTaskLoopTask);
+
+		m_asynchronousLoadTask.threadNum = m_runPinnedTaskLoopTask.threadNum;
+		m_taskScheduler.AddPinnedTask(&m_asynchronousLoadTask);
 	}
 
 	void EnginePostFinalize()
 	{
-		Core::WorkerThreadPool::Finalize();
+		m_taskScheduler.WaitforAllAndShutdown();
 		Core::Log::Finialize();
 
 		Core::ObjectTracker::Finalize();
@@ -132,4 +175,9 @@ RHI::GfxDevice* PhxEngine::GetGfxDevice()
 Core::IWindow* PhxEngine::GetWindow()
 {
 	return m_window.get();
+}
+
+enki::TaskScheduler& PhxEngine::GetTaskScheduler()
+{
+	return m_taskScheduler;
 }

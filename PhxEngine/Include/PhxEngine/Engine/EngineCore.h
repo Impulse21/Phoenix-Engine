@@ -7,6 +7,8 @@
 #include <PhxEngine/Core/Object.h>
 #include <PhxEngine/Core/Memory.h>
 
+#include <TaskScheduler.h>
+
 namespace PhxEngine
 {
 	class IEngineApp
@@ -30,6 +32,7 @@ namespace PhxEngine
 
 	RHI::GfxDevice* GetGfxDevice();
 	Core::IWindow* GetWindow();
+	enki::TaskScheduler& GetTaskScheduler();
 
 }
 

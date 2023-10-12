@@ -29,6 +29,8 @@ namespace PhxEngine::Editor
 	class ProfilerWidget : public IWidgets
 	{
 	public:
+		void OnRender(bool displayWindow) override {};
+
 		const std::string& GetName() override { return "Profiler"; }
 		bool IsVisible() override { return true; }
 	};
