@@ -49,8 +49,9 @@ namespace
 		bool execute = true;
 	} m_asynchronousLoadTask;
 
-	void EnginePreInitialize()
+	void EngineInitialize()
 	{
+		PHX_LOG_CORE_INFO("Initailizing Engine Core");
 		Core::Log::Initialize();
 
 		enki::TaskSchedulerConfig config;
@@ -63,11 +64,53 @@ namespace
 
 		m_asynchronousLoadTask.threadNum = m_runPinnedTaskLoopTask.threadNum;
 		m_taskScheduler.AddPinnedTask(&m_asynchronousLoadTask);
+
+		m_window = WindowFactory::CreateGlfwWindow({
+			.Width = 2000,
+			.Height = 1200,
+			.VSync = false,
+			.Fullscreen = false,
+			});
+		m_window->SetEventCallback([](Event& e) { EventDispatcher::DispatchEvent(e); });
+		m_window->Initialize();
+
+		m_gfxDevice = RHI::Factory::CreateD3D12Device();
+		RHI::SwapChainDesc swapchainDesc = {
+			.Width = m_window->GetWidth(),
+			.Height = m_window->GetHeight(),
+			.Fullscreen = false,
+			.VSync = m_window->GetVSync(),
+		};
+
+		m_gfxDevice->Initialize(swapchainDesc, m_window->GetNativeWindowHandle());
+
+		EventDispatcher::AddEventListener(EventType::WindowResize, [&](Event const& e) {
+
+			const WindowResizeEvent& resizeEvent = static_cast<const WindowResizeEvent&>(e);
+			// TODO: Data Drive this
+			RHI::SwapChainDesc swapchainDesc = {
+				.Width = resizeEvent.GetWidth(),
+				.Height = resizeEvent.GetHeight(),
+				.Fullscreen = false,
+				.VSync = m_window->GetVSync(),
+			};
+
+			m_gfxDevice->ResizeSwapchain(swapchainDesc); 
+		});
 	}
 
-	void EnginePostFinalize()
+	void EngineFinalize()
 	{
+		m_asynchronousLoadTask.execute = false;
+		m_runPinnedTaskLoopTask.execute = false;
 		m_taskScheduler.WaitforAllAndShutdown();
+
+		m_gfxDevice->WaitForIdle();
+		m_gfxDevice->Finalize();
+
+		m_gfxDevice.reset();
+		m_window.reset();
+
 		Core::Log::Finialize();
 
 		Core::ObjectTracker::Finalize();
@@ -76,48 +119,19 @@ namespace
 	}
 }
 
-void PhxEngine::Initialize()
-{
-	PHX_LOG_CORE_INFO("Initailizing Engine Core");
-	m_window = WindowFactory::CreateGlfwWindow({
-		.Width = 2000,
-		.Height = 1200,
-		.VSync = false,
-		.Fullscreen = false,
-		});
-
-	m_window->SetEventCallback([](Event& e) { EventDispatcher::DispatchEvent(e); });
-
-	EventDispatcher::AddEventListener(EventType::WindowResize, [&](Event const& e) {
-
-		const WindowResizeEvent& resizeEvent = static_cast<const WindowResizeEvent&>(e);
-	// TODO: Data Drive this
-	RHI::SwapChainDesc swapchainDesc = {
-		.Width = resizeEvent.GetWidth(),
-		.Height = resizeEvent.GetHeight(),
-		.Fullscreen = false,
-		.VSync = m_window->GetVSync(),
-	};
-
-	if (!m_gfxDevice)
-	{
-		m_gfxDevice = RHI::Factory::CreateD3D12Device();
-		m_gfxDevice->Initialize(swapchainDesc, m_window->GetNativeWindowHandle());
-	}
-	else
-	{
-		m_gfxDevice->ResizeSwapchain(swapchainDesc);
-	}
-		});
-
-	m_window->Initialize();
-}
-
 void PhxEngine::Run(IEngineApp& app)
 {
-	EnginePreInitialize();
+	EngineInitialize();
 
 	app.Initialize();
+
+	// Engine Initialization
+	enki::TaskSet initializeAppAsyncTask([&app](enki::TaskSetPartition range_, uint32_t threadnum_) {
+		app.InitializeAsync();
+	});
+
+	PhxEngine::GetTaskScheduler().AddTaskSetToPipe(&initializeAppAsyncTask);
+
 	while (!app.IsShuttingDown())
 	{
 		m_window->OnTick();
@@ -155,17 +169,9 @@ void PhxEngine::Run(IEngineApp& app)
 
 	app.Finalize();
 
-	EnginePostFinalize();
+	EngineFinalize();
 }
 
-void PhxEngine::Finalize()
-{
-	m_gfxDevice->WaitForIdle();
-	m_gfxDevice->Finalize();
-
-	m_gfxDevice.reset();
-	m_window.reset();
-}
 
 RHI::GfxDevice* PhxEngine::GetGfxDevice()
 {

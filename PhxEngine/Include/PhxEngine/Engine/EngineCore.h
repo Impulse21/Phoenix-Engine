@@ -17,6 +17,7 @@ namespace PhxEngine
 		virtual ~IEngineApp() = default;
 
 		virtual void Initialize() = 0;
+		virtual void InitializeAsync() = 0;
 		virtual void Finalize() = 0;
 
 		virtual bool IsShuttingDown() = 0;
@@ -26,9 +27,7 @@ namespace PhxEngine
 
 	};
 
-	void Initialize();
 	void Run(IEngineApp& engingApp);
-	void Finalize();
 
 	RHI::GfxDevice* GetGfxDevice();
 	Core::IWindow* GetWindow();
@@ -43,10 +42,10 @@ namespace PhxEngine
 #define MainFunc int main(int argc, char** argv)
 #endif
 
-#define PHX_CREATE_APPLICATION(class_name)        \
-    MainFunc								\
-    {										\
-        class_name app;						\
-        PhxEngine::Run(app);				\
-		return 0;							\
+#define PHX_CREATE_APPLICATION(class_name)		\
+    MainFunc									\
+    {											\
+        class_name app;							\
+        PhxEngine::Run(app);					\
+		return 0;								\
     }

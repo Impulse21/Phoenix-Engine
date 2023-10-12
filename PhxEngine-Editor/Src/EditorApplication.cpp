@@ -20,26 +20,33 @@ namespace
 	class EditorApplication : public IEngineApp
 	{
 	public:
+        EditorApplication()
+        {
+
+        }
+
 		void Initialize() override
 		{
-            this->m_widgets.emplace_back(std::make_shared<Editor::ConsoleLogWidget>());
-            this->m_widgets.emplace_back(std::make_shared<Editor::MenuBar>());
-            this->m_widgets.emplace_back(std::make_shared<Editor::ProfilerWidget>());
-
-            // Initialize Engine
-            PhxEngine::Initialize();
-
-            PHX_LOG_INFO("Initailizing Editor");
-
-			Renderer::ImGuiRenderer::Initialize(GetWindow(), GetGfxDevice(), true);
+            Renderer::ImGuiRenderer::Initialize(GetWindow(), GetGfxDevice(), true);
             Renderer::ImGuiRenderer::EnableDarkThemeColours();
 
 		}
 
+        void InitializeAsync() override
+        {
+            // do something here
+            PHX_LOG_INFO("Initailizing Editor");
+            this->m_widgets.emplace_back(std::make_shared<Editor::ConsoleLogWidget>());
+            this->m_widgets.emplace_back(std::make_shared<Editor::MenuBar>());
+            this->m_widgets.emplace_back(std::make_shared<Editor::ProfilerWidget>());
+
+            std::this_thread::sleep_for((std::chrono::seconds(5)));
+            this->m_isInitialize.store(true);
+        }
+
 		void Finalize() override
 		{
 			Renderer::ImGuiRenderer::Finalize();
-            PhxEngine::Finalize();
 		}
 
 		bool IsShuttingDown() override
@@ -49,13 +56,24 @@ namespace
 
 		void OnUpdate() override
 		{
+            if (!this->m_isInitialize.load())
+            {
+                return;
+            }
 		}
 
 		void OnRender() override
 		{
-			Renderer::ImGuiRenderer::BeginFrame();
-            bool mainWindowBegun = this->BeginWindow();
+            Renderer::ImGuiRenderer::BeginFrame();
+            if (!this->m_isInitialize.load())
+            {
+                ImGui::Begin("Intializing");
+                ImGui::Text("Initializing Application");
+                ImGui::End();
+                return;
+            }
 
+            bool mainWindowBegun = this->BeginWindow();
             for (auto& widget : this->m_widgets)
             {
                 widget->OnRender(mainWindowBegun);
@@ -174,7 +192,7 @@ namespace
 
     private:
         std::vector<std::shared_ptr<Editor::IWidgets>> m_widgets;
-
+        std::atomic_bool m_isInitialize = false;
 	};
 }
 
