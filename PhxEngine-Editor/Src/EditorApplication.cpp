@@ -17,6 +17,44 @@ using namespace PhxEngine::Core;
 
 namespace
 {
+    class LoadingScreen
+    {
+    public:
+        void SetCaption(std::string_view view)
+        {
+            std::scoped_lock _(this->m_lock);
+            this->m_caption = view;
+        }
+
+        void OnRender()
+        {
+            ImGuiIO& io = ImGui::GetIO();
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+            ImGui::SetNextWindowViewport(viewport->ID);
+            ImGui::SetNextWindowBgAlpha(0.35f); // Transparent backgroundconst float PAD = 10.0f;
+
+            static bool showWindow = true;
+            ImGui::Begin(
+                "Intializing",
+                &showWindow,
+                ImGuiWindowFlags_NoDecoration |
+                ImGuiWindowFlags_NoDocking |
+                ImGuiWindowFlags_AlwaysAutoResize |
+                ImGuiWindowFlags_NoSavedSettings |
+                ImGuiWindowFlags_NoFocusOnAppearing |
+                ImGuiWindowFlags_NoNav |
+                ImGuiWindowFlags_NoMove |
+                ImGuiWindowFlags_NoBackground);
+            ImGui::Text("Loading...");
+            ImGui::Text(this->m_caption.c_str());
+            ImGui::End();
+        }
+
+    private:
+        std::string m_caption;
+        std::mutex m_lock;
+    };
 	class EditorApplication : public IEngineApp
 	{
 	public:
@@ -34,13 +72,29 @@ namespace
 
         void InitializeAsync() override
         {
-            // do something here
-            PHX_LOG_INFO("Initailizing Editor");
+            auto postMsgWithLog = [this](const char* msg) {
+                PHX_LOG_INFO(msg);
+                this->m_loadingScreen.SetCaption(msg);
+            };
+
+            postMsgWithLog("Initializing Widgets");
             this->m_widgets.emplace_back(std::make_shared<Editor::ConsoleLogWidget>());
             this->m_widgets.emplace_back(std::make_shared<Editor::MenuBar>());
             this->m_widgets.emplace_back(std::make_shared<Editor::ProfilerWidget>());
 
-            std::this_thread::sleep_for((std::chrono::seconds(5)));
+            std::string world;
+            if (CommandLineArgs::GetString("world", world))
+            {
+                // Load World
+                postMsgWithLog("Loading Scene");
+                PHX_LOG_INFO("Loading Scene '%s'", world.c_str());
+                std::this_thread::sleep_for((std::chrono::seconds(5)));
+            }
+            else
+            {
+                postMsgWithLog("Loading Default World");
+            }
+
             this->m_isInitialize.store(true);
         }
 
@@ -67,26 +121,7 @@ namespace
             Renderer::ImGuiRenderer::BeginFrame();
             if (!this->m_isInitialize.load())
             {
-                ImGuiIO& io = ImGui::GetIO();
-                const ImGuiViewport* viewport = ImGui::GetMainViewport();
-                ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-                ImGui::SetNextWindowViewport(viewport->ID);
-                ImGui::SetNextWindowBgAlpha(0.35f); // Transparent backgroundconst float PAD = 10.0f;
-
-                static bool showWindow = true;
-                ImGui::Begin(
-                    "Intializing",
-                    &showWindow, 
-                    ImGuiWindowFlags_NoDecoration   | 
-                    ImGuiWindowFlags_NoDocking      | 
-                    ImGuiWindowFlags_AlwaysAutoResize | 
-                    ImGuiWindowFlags_NoSavedSettings | 
-                    ImGuiWindowFlags_NoFocusOnAppearing |
-                    ImGuiWindowFlags_NoNav|
-                    ImGuiWindowFlags_NoMove |
-                    ImGuiWindowFlags_NoBackground);
-                ImGui::Text("Initializing Application");
-                ImGui::End();
+                m_loadingScreen.OnRender();
                 return;
             }
 
@@ -208,6 +243,7 @@ namespace
         }
 
     private:
+        LoadingScreen m_loadingScreen;
         std::vector<std::shared_ptr<Editor::IWidgets>> m_widgets;
         std::atomic_bool m_isInitialize = false;
 	};

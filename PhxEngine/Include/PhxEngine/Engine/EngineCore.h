@@ -6,6 +6,7 @@
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/Object.h>
 #include <PhxEngine/Core/Memory.h>
+#include <PhxEngine/Renderer/AsyncGpuUploader.h>
 
 #include <TaskScheduler.h>
 
@@ -32,6 +33,7 @@ namespace PhxEngine
 	RHI::GfxDevice* GetGfxDevice();
 	Core::IWindow* GetWindow();
 	enki::TaskScheduler& GetTaskScheduler();
+	PhxEngine::Renderer::AsyncGpuUploader& GetAsyncLoader();
 
 }
 
