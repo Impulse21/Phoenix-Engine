@@ -2,6 +2,7 @@
 
 #include <deque>
 #include <filesystem>
+#include <mutex>
 
 #include <PhxEngine/RHI/PhxRHI.h>
 

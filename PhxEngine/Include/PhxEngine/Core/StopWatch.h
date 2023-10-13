@@ -15,7 +15,7 @@ namespace PhxEngine::Core
 		}
 
 		// Elapsed time in milliseconds since the wi::Timer creation or last call to record()
-		inline TimeStep Elapsed()
+		[[nodiscard]]inline TimeStep Elapsed()
 		{
 			auto timestamp2 = std::chrono::high_resolution_clock::now();
 			std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(timestamp2 - this->m_timestamp);

@@ -84,25 +84,6 @@ file(GLOB PhxEngine_Graphics_ImGui_Src
     Src/Renderer/ImGui/*.cpp
 )
 
-#-- System
-file(GLOB PhxEngine_System_Inc
-	Include/PhxEngine/Systems/*.h
-)
-
-
-file(GLOB PhxEngine_System_Src
-    Src/Systems/*.h
-    Src/Systems/*.cpp
-)
-
-#-- Scene
-file (GLOB PhxEngine_Scene_Inc
-	Include/PhxEngine/Scene/*.h)
-
-file (GLOB PhxEngine_Scene_Src
-    Src/Scene/*.h
-    Src/Scene/*.cpp)
-
 file (GLOB PhxEngine_Inc
     Include/PhxEngine/*.h)
 	
@@ -130,10 +111,6 @@ add_library(PhxEngine STATIC EXCLUDE_FROM_ALL
 	${PhxEngine_Renderer_Inc}
 	${PhxEngine_Renderer_Src}
 	${PhxEngine_Renderer_DX12_Src}
-    ${PhxEngine_System_Inc}
-    ${PhxEngine_System_Src}
-    ${PhxEngine_Scene_Inc}
-    ${PhxEngine_Scene_Src}
 	${PhxEngine_Shader_Interop_Inc}
     ${PhxEngine_Inc}
     ${PhxEngine_Src})
@@ -146,7 +123,6 @@ source_group("Include/RHI"				FILES ${PhxEngine_Graphics_RHI_Inc})
 source_group("Include/Graphics/ImGui"   FILES ${PhxEngine_Graphics_ImGui_Inc})
 source_group("Include/Graphics"         FILES ${PhxEngine_Graphics_Inc})
 source_group("Include/System"           FILES ${PhxEngine_System_Inc})
-source_group("Include/Scene"			FILES ${PhxEngine_Scene_Inc})
 source_group("Include/Renderer"			FILES ${PhxEngine_Renderer_Inc})
 source_group("Include/Interop"			FILES ${PhxEngine_Shader_Interop_Inc})
 
@@ -157,8 +133,6 @@ source_group("Src/Graphics"             FILES ${PhxEngine_Graphics_Src})
 source_group("Src/RHI"					FILES ${PhxEngine_Graphics_RHI_Src})
 source_group("Src/RHI/Windows"			FILES ${PhxEngine_Graphics_RHI_Windows_Src})
 source_group("Src/RHI/D3D12"			FILES ${PhxEngine_Graphics_RHI_DX12_Src})
-source_group("Src/System"               FILES ${PhxEngine_System_Src})
-source_group("Src/Scene"                FILES ${PhxEngine_Scene_Src})
 source_group("Src/Renderer"             FILES ${PhxEngine_Renderer_Src})
 source_group("Src/Renderer/ImGui"       FILES ${PhxEngine_Graphics_ImGui_Src})
 

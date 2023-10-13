@@ -1,8 +1,9 @@
-
 #include <PhxEngine/PhxEngine.h>
 #include <PhxEngine/Core/CommandLineArgs.h>
 #include <PhxEngine/Core/Containers.h>
+#include <PhxEngine/Core/StopWatch.h>
 #include <PhxEngine/Renderer/ImGuiRenderer.h>
+#include <PhxEngine/Engine/World.h>
 #include "Widgets.h"
 
 #include <imgui.h>
@@ -72,6 +73,8 @@ namespace
 
         void InitializeAsync() override
         {
+            std::unique_ptr<IFileSystem> fileSystem = CreateNativeFileSystem();
+
             auto postMsgWithLog = [this](const char* msg) {
                 PHX_LOG_INFO(msg);
                 this->m_loadingScreen.SetCaption(msg);
@@ -82,12 +85,21 @@ namespace
             this->m_widgets.emplace_back(std::make_shared<Editor::MenuBar>());
             this->m_widgets.emplace_back(std::make_shared<Editor::ProfilerWidget>());
 
-            std::string world;
-            if (CommandLineArgs::GetString("world", world))
+            std::string worldFilename;
+            if (CommandLineArgs::GetString("world", worldFilename))
             {
                 // Load World
                 postMsgWithLog("Loading Scene");
-                PHX_LOG_INFO("Loading Scene '%s'", world.c_str());
+                PHX_LOG_INFO("Loading Scene '%s'", worldFilename.c_str());
+                if (std::filesystem::path(worldFilename).extension() == ".gltf")
+                {
+                    Core::StopWatch stopWatch;
+                    std::unique_ptr<IWorldLoader> loader = WorldLoaderFactory::CreateGltfWorldLoader();
+                    loader->LoadWorld(worldFilename, fileSystem.get(), this->m_activeWorld);
+
+                    Core::TimeStep loadTime = stopWatch.Elapsed();
+                    PHX_LOG_INFO("Loading scene took %dms", loadTime.GetMilliseconds());
+                }
                 std::this_thread::sleep_for((std::chrono::seconds(5)));
             }
             else
@@ -246,6 +258,7 @@ namespace
         LoadingScreen m_loadingScreen;
         std::vector<std::shared_ptr<Editor::IWidgets>> m_widgets;
         std::atomic_bool m_isInitialize = false;
+        PhxEngine::World m_activeWorld;
 	};
 }
 
