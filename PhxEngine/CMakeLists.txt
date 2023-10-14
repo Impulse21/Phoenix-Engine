@@ -59,6 +59,16 @@ file(GLOB PhxEngine_Renderer_Src
 	Src/Renderer/*.cpp
 )
 
+#-- Assets
+file(GLOB PhxEngine_Assets_Inc
+	Include/PhxEngine/Assets/*.h
+)
+
+file(GLOB PhxEngine_Assets_Src
+    Src/Assets/*.h
+    Src/Assets/*.cpp
+)
+
 #-- RHI
 file(GLOB PhxEngine_Graphics_RHI_Inc
 	Include/PhxEngine/RHI/*.h
@@ -102,6 +112,8 @@ add_library(PhxEngine STATIC EXCLUDE_FROM_ALL
     ${PhxEngine_Core_Src}
     ${PhxEngine_Graphics_Inc}
     ${PhxEngine_Graphics_Src}
+    ${PhxEngine_Assets_Inc}
+    ${PhxEngine_Assets_Src}
     ${PhxEngine_Graphics_RHI_Inc}
     ${PhxEngine_Graphics_RHI_Src}
 	${PhxEngine_Graphics_RHI_Windows_Src}
@@ -125,6 +137,7 @@ source_group("Include/Graphics"         FILES ${PhxEngine_Graphics_Inc})
 source_group("Include/System"           FILES ${PhxEngine_System_Inc})
 source_group("Include/Renderer"			FILES ${PhxEngine_Renderer_Inc})
 source_group("Include/Interop"			FILES ${PhxEngine_Shader_Interop_Inc})
+source_group("Include/Assets"			FILES ${PhxEngine_Assets_Inc})
 
 source_group("Src"						FILES ${PhxEngine_Src})
 source_group("Src/Engine"               FILES ${PhxEngine_Engine_Src})
@@ -135,6 +148,7 @@ source_group("Src/RHI/Windows"			FILES ${PhxEngine_Graphics_RHI_Windows_Src})
 source_group("Src/RHI/D3D12"			FILES ${PhxEngine_Graphics_RHI_DX12_Src})
 source_group("Src/Renderer"             FILES ${PhxEngine_Renderer_Src})
 source_group("Src/Renderer/ImGui"       FILES ${PhxEngine_Graphics_ImGui_Src})
+source_group("Src/Assets"				FILES ${PhxEngine_Assets_Src})
 
 #add_subdirectory(Shaders)
 

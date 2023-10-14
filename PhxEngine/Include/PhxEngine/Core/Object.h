@@ -2,6 +2,7 @@
 
 #include "Handle.h"
 #include <PhxEngine/Core/Memory.h>
+#include <PhxEngine/Core/RefCountPtr.h>
 
 namespace PhxEngine::Core
 {
