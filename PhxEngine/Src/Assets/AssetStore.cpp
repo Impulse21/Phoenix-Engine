@@ -24,3 +24,4 @@ void AssetStore::Finalize()
 	m_materialStore.clear();
 	m_textureStore.clear();
 }
+
