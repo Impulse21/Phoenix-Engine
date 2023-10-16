@@ -5,6 +5,7 @@
 #include <PhxEngine/Renderer/ImGuiRenderer.h>
 #include <PhxEngine/Engine/World.h>
 #include "Widgets.h"
+#include "GltfWorldLoader.h"
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -66,49 +67,53 @@ namespace
 
 		void Initialize() override
 		{
-            Renderer::ImGuiRenderer::Initialize(GetWindow(), GetGfxDevice(), true);
-            Renderer::ImGuiRenderer::EnableDarkThemeColours();
 
 		}
 
-        void InitializeAsync() override
-        {
-            std::unique_ptr<IFileSystem> fileSystem = CreateNativeFileSystem();
+		void Initialize() override
+		{
+			PhxEngine::GetTaskExecutor().silent_async([this]() {
+				Renderer::ImGuiRenderer::Initialize(GetWindow(), GetGfxDevice(), true);
+			    Renderer::ImGuiRenderer::EnableDarkThemeColours();
+			    std::unique_ptr<IFileSystem> fileSystem = CreateNativeFileSystem();
 
-            auto postMsgWithLog = [this](const char* msg) {
-                PHX_LOG_INFO(msg);
-                this->m_loadingScreen.SetCaption(msg);
-            };
+			    auto postMsgWithLog = [this](const char* msg) {
+			    	PHX_LOG_INFO(msg);
+			    	this->m_loadingScreen.SetCaption(msg);
+			    };
 
-            postMsgWithLog("Initializing Widgets");
-            this->m_widgets.emplace_back(std::make_shared<Editor::ConsoleLogWidget>());
-            this->m_widgets.emplace_back(std::make_shared<Editor::MenuBar>());
-            this->m_widgets.emplace_back(std::make_shared<Editor::ProfilerWidget>());
+			    postMsgWithLog("Initializing Widgets");
+			    this->m_widgets.emplace_back(std::make_shared<Editor::ConsoleLogWidget>());
+			    this->m_widgets.emplace_back(std::make_shared<Editor::MenuBar>());
+			    this->m_widgets.emplace_back(std::make_shared<Editor::ProfilerWidget>());
 
-            std::string worldFilename;
-            if (CommandLineArgs::GetString("world", worldFilename))
-            {
-                // Load World
-                postMsgWithLog("Loading Scene");
-                PHX_LOG_INFO("Loading Scene '%s'", worldFilename.c_str());
-                if (std::filesystem::path(worldFilename).extension() == ".gltf")
-                {
-                    Core::StopWatch stopWatch;
-                    std::unique_ptr<IWorldLoader> loader = WorldLoaderFactory::CreateGltfWorldLoader();
-                    loader->LoadWorld(worldFilename, fileSystem.get(), this->m_activeWorld);
+			    std::string worldFilename;
+			    if (CommandLineArgs::GetString("world", worldFilename))
+			    {
+			    	// Load World
+			    	postMsgWithLog("Loading Scene");
+			    	PHX_LOG_INFO("Loading Scene '%s'", worldFilename.c_str());
+			    	if (std::filesystem::path(worldFilename).extension() == ".gltf")
+			    	{
+			    		Core::StopWatch stopWatch;
 
-                    Core::TimeStep loadTime = stopWatch.Elapsed();
-                    PHX_LOG_INFO("Loading scene took %dms", loadTime.GetMilliseconds());
-                }
-                std::this_thread::sleep_for((std::chrono::seconds(5)));
-            }
-            else
-            {
-                postMsgWithLog("Loading Default World");
-            }
+			    		Editor::GltfWorldLoader loader;
 
-            this->m_isInitialize.store(true);
-        }
+			    		loader.LoadWorld(worldFilename, fileSystem.get(), this->m_activeWorld);
+
+			    		Core::TimeStep loadTime = stopWatch.Elapsed();
+			    		PHX_LOG_INFO("Loading scene took %dms", loadTime.GetMilliseconds());
+			    	}
+			    	std::this_thread::sleep_for((std::chrono::seconds(5)));
+			    }
+			    else
+			    {
+			    	postMsgWithLog("Loading Default World");
+			    }
+
+			    this->m_isInitialize.store(true);
+			});
+		}
 
 		void Finalize() override
 		{
@@ -185,7 +190,6 @@ namespace
 	private:
         bool BeginWindow()
         {
-
             const auto window_flags =
                 ImGuiWindowFlags_MenuBar |
                 ImGuiWindowFlags_NoDocking |

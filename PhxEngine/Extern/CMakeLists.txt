@@ -30,6 +30,9 @@ add_library(entt INTERFACE
 target_include_directories(entt INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/entt)
 set_target_properties(entt PROPERTIES FOLDER ${extern_folder})
 
+add_library(taskflow INTERFACE)
+target_include_directories(taskflow INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/taskflow)
+
 option(BUILD_TOOLS "" OFF)
 option(BUILD_DX11 "" OFF)
 option(BUILD_DX12 "" OFF)
@@ -106,10 +109,3 @@ set(MI_BUILD_TESTS  OFF)
 add_subdirectory(mimalloc)
 set_target_properties(mimalloc-static PROPERTIES FOLDER ${extern_folder})
 
-
-set( ENKITS_BUILD_C_INTERFACE  OFF )
-set( ENKITS_BUILD_EXAMPLES     OFF )
-set( ENKITS_BUILD_SHARED       OFF )
-set( ENKITS_INSTALL            OFF )
-add_subdirectory(enkiTS)
-set_target_properties(enkiTS PROPERTIES FOLDER ${extern_folder})

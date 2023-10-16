@@ -56,8 +56,4 @@ namespace PhxEngine
 		virtual bool LoadWorld(std::string const& filename, Core::IFileSystem* fileSystem, World& outWorld) = 0;
 	};
 
-	namespace WorldLoaderFactory
-	{
-		std::unique_ptr<IWorldLoader> CreateGltfWorldLoader();
-	}
 }

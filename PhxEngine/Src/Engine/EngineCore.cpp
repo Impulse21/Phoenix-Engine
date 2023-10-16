@@ -15,39 +15,10 @@ namespace
 	// -- Globals ---
 	std::unique_ptr<Core::IWindow> m_window;
 	std::unique_ptr<RHI::GfxDevice> m_gfxDevice;
-	enki::TaskScheduler m_taskScheduler;
+	tf::Executor m_taskExecutor;
 	Renderer::AsyncGpuUploader m_asyncLoader;
 
 	std::atomic_bool m_engineRunning = false;
-
-	// -- IO Tasks --
-	struct RunPinnedTaskLoopTask : enki::IPinnedTask 
-	{
-		void Execute() override 
-		{
-			auto& taskScheduler = PhxEngine::GetTaskScheduler();
-			while (taskScheduler.GetIsRunning() && m_engineRunning.load())
-			{
-				taskScheduler.WaitForNewPinnedTasks(); // this thread will 'sleep' until there are new pinned tasks
-				taskScheduler.RunPinnedTasks();
-			}
-		}
-	} m_runPinnedTaskLoopTask;
-
-	//
-	//
-	struct AsynchronousLoadTask : enki::IPinnedTask 
-	{
-		void Execute() override 
-		{
-			// Do file IO
-			while (m_engineRunning.load())
-			{
-				PhxEngine::GetAsyncLoader().OnTick();
-			}
-		}
-
-	} m_asynchronousLoadTask;
 
 	void EngineInitialize()
 	{
@@ -57,10 +28,7 @@ namespace
 		PhxEngine::Core::CommandLineArgs::Initialize();
 
 		// -- Initialize Task Scheduler ---
-		enki::TaskSchedulerConfig config;
-		// for pinned async loader
-		config.numTaskThreadsToCreate += 1;
-		m_taskScheduler.Initialize(config);
+		PHX_LOG_CORE_INFO("Engine has %d workers ", m_taskExecutor.num_workers());
 
 		// -- Create Window ---
 		m_window = WindowFactory::CreateGlfwWindow({
@@ -98,19 +66,12 @@ namespace
 			m_gfxDevice->ResizeSwapchain(swapchainDesc); 
 		});
 
-		// -- Create Threads for IO and Uploading to the GPU ---
-		m_runPinnedTaskLoopTask.threadNum = m_taskScheduler.GetNumTaskThreads() - 1;
-		m_taskScheduler.AddPinnedTask(&m_runPinnedTaskLoopTask);
-
-		m_asyncLoader.Initialize();
-		m_asynchronousLoadTask.threadNum = m_runPinnedTaskLoopTask.threadNum;
-		m_taskScheduler.AddPinnedTask(&m_asynchronousLoadTask);
 	}
 
 	void EngineFinalize()
 	{
 		m_engineRunning.store(false);
-		m_taskScheduler.WaitforAllAndShutdown();
+		m_taskExecutor.wait_for_all();
 
 		m_gfxDevice->WaitForIdle();
 		m_gfxDevice->Finalize();
@@ -131,13 +92,6 @@ void PhxEngine::Run(IEngineApp& app)
 	EngineInitialize();
 
 	app.Initialize();
-
-	// Engine Initialization
-	enki::TaskSet initializeAppAsyncTask([&app](enki::TaskSetPartition range_, uint32_t threadnum_) {
-		app.InitializeAsync();
-	});
-
-	PhxEngine::GetTaskScheduler().AddTaskSetToPipe(&initializeAppAsyncTask);
 
 	while (!app.IsShuttingDown())
 	{
@@ -190,9 +144,9 @@ Core::IWindow* PhxEngine::GetWindow()
 	return m_window.get();
 }
 
-enki::TaskScheduler& PhxEngine::GetTaskScheduler()
+tf::Executor& PhxEngine::GetTaskExecutor()
 {
-	return m_taskScheduler;
+	return m_taskExecutor;
 }
 
 PhxEngine::Renderer::AsyncGpuUploader& PhxEngine::GetAsyncLoader()

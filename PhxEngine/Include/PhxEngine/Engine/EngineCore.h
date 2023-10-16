@@ -7,8 +7,7 @@
 #include <PhxEngine/Core/Object.h>
 #include <PhxEngine/Core/Memory.h>
 #include <PhxEngine/Renderer/AsyncGpuUploader.h>
-
-#include <TaskScheduler.h>
+#include <taskflow/taskflow.hpp>
 
 namespace PhxEngine
 {
@@ -18,7 +17,6 @@ namespace PhxEngine
 		virtual ~IEngineApp() = default;
 
 		virtual void Initialize() = 0;
-		virtual void InitializeAsync() = 0;
 		virtual void Finalize() = 0;
 
 		virtual bool IsShuttingDown() = 0;
@@ -32,7 +30,7 @@ namespace PhxEngine
 
 	RHI::GfxDevice* GetGfxDevice();
 	Core::IWindow* GetWindow();
-	enki::TaskScheduler& GetTaskScheduler();
+	tf::Executor& GetTaskExecutor();
 	PhxEngine::Renderer::AsyncGpuUploader& GetAsyncLoader();
 
 }

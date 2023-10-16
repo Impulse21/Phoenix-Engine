@@ -27,17 +27,23 @@ namespace PhxEngine::Assets
 		AssetType GetType() { return _AssetType; }
 	};
 
-
-	class ITexture : TypedAsset<AssetType::Texture>
+	class ILoadedTexture : TypedAsset<AssetType::Texture>
 	{
 	public:
-		virtual ~ITexture() = default;
+		virtual ~ILoadedTexture() = default;
 	};
+	using LoadedTextureHandle = std::shared_ptr<ILoadedTexture>;
 
 	class IMesh : TypedAsset<AssetType::Mesh>
 	{
 	public:
 		virtual ~IMesh() = default;
+	};
+	using MeshHandle = std::shared_ptr<IMesh>;
+
+	struct MaterialDesc
+	{
+
 	};
 
 	class IMaterial : TypedAsset<AssetType::Material>
@@ -45,6 +51,7 @@ namespace PhxEngine::Assets
 	public:
 		virtual ~IMaterial() = default;
 	};
+	using MaterialHandle = std::shared_ptr<IMaterial>;
 
 	class IAssetLoader
 	{
@@ -55,9 +62,9 @@ namespace PhxEngine::Assets
 	};
 
 
-	namespace AssetLoaderFactory
+	namespace AssetFactory
 	{
-		std::unique_ptr<IAssetLoader> CreateMeshLoader();
+		std::unique_ptr<IMaterial> CreateMaterialAsset(MaterialDesc desc);
 		std::unique_ptr<IAssetLoader> CreateMaterialLoader();
 		std::unique_ptr<IAssetLoader> CreateTextureLoader();
 	}
