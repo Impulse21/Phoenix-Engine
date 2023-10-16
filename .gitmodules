@@ -32,3 +32,6 @@
 [submodule "PhxEngine/Extern/enkiTS"]
 	path = PhxEngine/Extern/enkiTS
 	url = https://github.com/dougbinks/enkiTS.git
+[submodule "PhxEngine/Extern/taskflow"]
+	path = PhxEngine/Extern/taskflow
+	url = https://github.com/taskflow/taskflow.git
