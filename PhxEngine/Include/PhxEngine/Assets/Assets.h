@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxEngine/Core/RefCountPtr.h>
+#include <filesystem>
 
 namespace PhxEngine::Assets
 {
@@ -33,17 +34,32 @@ namespace PhxEngine::Assets
 		virtual ~ITexture() = default;
 	};
 
-	class IMesh : TypedAsset<AssetType::Texture>
+	class IMesh : TypedAsset<AssetType::Mesh>
 	{
 	public:
 		virtual ~IMesh() = default;
 	};
 
-	class IMaterial : TypedAsset<AssetType::Texture>
+	class IMaterial : TypedAsset<AssetType::Material>
 	{
 	public:
 		virtual ~IMaterial() = default;
 	};
 
+	class IAssetLoader
+	{
+	public:
+		virtual ~IAssetLoader() = default;
+
+		virtual bool Load(std::filesystem::path path) = 0;
+	};
+
+
+	namespace AssetLoaderFactory
+	{
+		std::unique_ptr<IAssetLoader> CreateMeshLoader();
+		std::unique_ptr<IAssetLoader> CreateMaterialLoader();
+		std::unique_ptr<IAssetLoader> CreateTextureLoader();
+	}
 }
 
