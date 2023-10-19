@@ -1,11 +1,16 @@
 cmake_minimum_required(VERSION 3.16)
 
-# set the project name and version
-set(project PhxEngine)
 
-project(${project})
+if (WIN32)
+	# TODO: Choose whether to use SDL2 on windows as well
+	set(TARGET_NAME PhxEngine_Windows)
+else ()
+	message( FATAL_ERROR "Only Windows is currently supported" )
+endif()
 
-set(folder "PhxEngine")
+project(${TARGET_NAME})
+
+set(folder ${TARGET_NAME})
 
 set_property( GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -17,151 +22,83 @@ string(APPEND CMAKE_CXX_FLAGS_DEBUG " -D_DEBUG")
 
 include(CMakeDependentOption)
 
-set(extern_folder "PhxEngine/External Libraries")
-
-#-- App
-file(GLOB PhxEngine_Engine_Inc
-	Include/PhxEngine/Engine/*.h
-)
+set(extern_folder "${TARGET_NAME}/External Libraries")
 
 file(GLOB PhxEngine_Engine_Src
-    Src/Engine/*.h
-    Src/Engine/*.cpp
-)
-
-#-- Core
-file(GLOB PhxEngine_Core_Inc
-	Include/PhxEngine/Core/*.h
+    Engine/*.h
+    Engine/*.cpp
 )
 
 file(GLOB PhxEngine_Core_Src
-    Src/Core/*.h
-    Src/Core/*.cpp
-)
-
-#-- Graphics
-file(GLOB PhxEngine_Graphics_Inc
-	Include/PhxEngine/Graphics/*.h
-)
-
-file(GLOB PhxEngine_Graphics_Src
-    Src/Graphics/*.h
-    Src/Graphics/*.cpp
-)
-
-#-- Renderer
-file(GLOB PhxEngine_Renderer_Inc
-	Include/PhxEngine/Renderer/*.h
+    Core/*.h
+    Core/*.cpp
 )
 
 file(GLOB PhxEngine_Renderer_Src
-	Src/Renderer/*.h
-	Src/Renderer/*.cpp
-)
-
-#-- Assets
-file(GLOB PhxEngine_Assets_Inc
-	Include/PhxEngine/Assets/*.h
+	Renderer/*.h
+	Renderer/*.cpp
 )
 
 file(GLOB PhxEngine_Assets_Src
-    Src/Assets/*.h
-    Src/Assets/*.cpp
+    Assets/*.h
+    Assets/*.cpp
 )
 
-#-- RHI
-file(GLOB PhxEngine_Graphics_RHI_Inc
-	Include/PhxEngine/RHI/*.h
+file(GLOB PhxEngine_RHI_Src
+    RHI/*.h
+    RHI/*.cpp
 )
 
-file(GLOB PhxEngine_Graphics_RHI_Src
-    Src/RHI/*.h
-    Src/RHI/*.cpp
-)
-
-file(GLOB PhxEngine_Graphics_RHI_Windows_Src
-    Src/RHI/Windows/*.h
-    Src/RHI/Windows/*.cpp
-)
-
-file(GLOB PhxEngine_Graphics_RHI_DX12_Src
-    Src/RHI/D3D12/*.h
-    Src/RHI/D3D12/*.cpp
+file(GLOB PhxEngine_RHI_DX12_Src
+    RHI/D3D12/*.h
+    RHI/D3D12/*.cpp
 )
 
 file(GLOB PhxEngine_Graphics_ImGui_Src
-    Src/Renderer/ImGui/*.h
-    Src/Renderer/ImGui/*.cpp
+    Renderer/ImGui/*.h
+    Renderer/ImGui/*.cpp
 )
 
 file (GLOB PhxEngine_Inc
-    Include/PhxEngine/*.h)
-	
-file (GLOB PhxEngine_Src
-    Src/*.h
-	Src/*.cpp)
+    *.h)
 	
 file (GLOB PhxEngine_Shader_Interop_Inc
-	Include/PhxEngine/Shaders/*.h)
+	Shaders/*.h)
 
 
-add_library(PhxEngine STATIC EXCLUDE_FROM_ALL  
-    ${PhxEngine_Engine_Inc}
+add_library(${TARGET_NAME} STATIC  
     ${PhxEngine_Engine_Src}
-    ${PhxEngine_Core_Inc}
     ${PhxEngine_Core_Src}
-    ${PhxEngine_Graphics_Inc}
-    ${PhxEngine_Graphics_Src}
-    ${PhxEngine_Assets_Inc}
     ${PhxEngine_Assets_Src}
-    ${PhxEngine_Graphics_RHI_Inc}
-    ${PhxEngine_Graphics_RHI_Src}
-	${PhxEngine_Graphics_RHI_Windows_Src}
-    ${PhxEngine_Graphics_RHI_DX12_Src}
-    ${PhxEngine_Graphics_ImGui_Inc}
+    ${PhxEngine_RHI_Src}
+    ${PhxEngine_RHI_DX12_Src}
     ${PhxEngine_Graphics_ImGui_Src}
-	${PhxEngine_Renderer_Inc}
 	${PhxEngine_Renderer_Src}
-	${PhxEngine_Renderer_DX12_Src}
 	${PhxEngine_Shader_Interop_Inc}
-    ${PhxEngine_Inc}
     ${PhxEngine_Src})
+	
+add_library(PhxEngine ALIAS ${TARGET_NAME})
 
-source_group("Include"					FILES ${PhxEngine_Inc})
-source_group("Include/Engine"           FILES ${PhxEngine_Engine_Inc})
-source_group("Include/Core"             FILES ${PhxEngine_Core_Inc})
-source_group("Include/Graphics"         FILES ${PhxEngine_Graphics_Inc})
-source_group("Include/RHI"				FILES ${PhxEngine_Graphics_RHI_Inc})
-source_group("Include/Graphics/ImGui"   FILES ${PhxEngine_Graphics_ImGui_Inc})
-source_group("Include/Graphics"         FILES ${PhxEngine_Graphics_Inc})
-source_group("Include/System"           FILES ${PhxEngine_System_Inc})
-source_group("Include/Renderer"			FILES ${PhxEngine_Renderer_Inc})
-source_group("Include/Interop"			FILES ${PhxEngine_Shader_Interop_Inc})
-source_group("Include/Assets"			FILES ${PhxEngine_Assets_Inc})
+set_target_properties(${TARGET_NAME} PROPERTIES PUBLIC_HEADER 
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+)
 
-source_group("Src"						FILES ${PhxEngine_Src})
-source_group("Src/Engine"               FILES ${PhxEngine_Engine_Src})
-source_group("Src/Core"                 FILES ${PhxEngine_Core_Src})
-source_group("Src/Graphics"             FILES ${PhxEngine_Graphics_Src})
-source_group("Src/RHI"					FILES ${PhxEngine_Graphics_RHI_Src})
-source_group("Src/RHI/Windows"			FILES ${PhxEngine_Graphics_RHI_Windows_Src})
-source_group("Src/RHI/D3D12"			FILES ${PhxEngine_Graphics_RHI_DX12_Src})
-source_group("Src/Renderer"             FILES ${PhxEngine_Renderer_Src})
-source_group("Src/Renderer/ImGui"       FILES ${PhxEngine_Graphics_ImGui_Src})
-source_group("Src/Assets"				FILES ${PhxEngine_Assets_Src})
+target_include_directories(${TARGET_NAME} SYSTEM PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/RHI/D3D12
+)
 
-#add_subdirectory(Shaders)
-
-#add_dependencies(${project} ${project}_shaders)
-target_include_directories(${project} 
-	PUBLIC  "Include"
-	PRIVATE "Src")
-
-# target_precompile_headers(${project} PRIVATE Src/phxpch.h)
+source_group("Engine"               FILES ${PhxEngine_Engine_Src})
+source_group("Core"                 FILES ${PhxEngine_Core_Src})
+source_group("RHI"					FILES ${PhxEngine_RHI_Src})
+source_group("RHI/D3D12"			FILES ${PhxEngine_RHI_DX12_Src})
+source_group("Renderer"             FILES ${PhxEngine_Renderer_Src})
+source_group("Renderer/ImGui"       FILES ${PhxEngine_Graphics_ImGui_Src})
+source_group("Assets"				FILES ${PhxEngine_Assets_Src})
 
 add_subdirectory(Extern)
 
-target_link_libraries(${project} PUBLIC
+target_link_libraries(${TARGET_NAME} PUBLIC
 	glfw
 	DirectX-Headers
 	DirectX-Guids
@@ -179,7 +116,7 @@ target_link_libraries(${project} PUBLIC
 	taskflow
 	enkiTS)
     
-set_target_properties(${project} PROPERTIES FOLDER ${folder})
+set_target_properties(${TARGET_NAME} PROPERTIES FOLDER ${folder})
 
 #INCLUDE_EXTERNAL_MSPROJECT(ShadersSource ${CMAKE_SOURCE_DIR}/PhxEngine/Shaders/ShadersSource.vcitems)
 
@@ -196,11 +133,11 @@ add_library(
 target_include_directories(D3D12AgilitySDK INTERFACE "${d3d12-agility-sdk_SOURCE_DIR}/build/native/include")
 target_link_libraries(D3D12AgilitySDK INTERFACE "d3d12.lib" "dxgi.lib")
 set_target_properties(D3D12AgilitySDK  PROPERTIES FOLDER ${extern_folder})
-target_link_libraries(${project} PUBLIC D3D12AgilitySDK)
+target_link_libraries(${TARGET_NAME} PUBLIC D3D12AgilitySDK)
 
 # Copy DLLs
 add_custom_command(
-	TARGET ${project} POST_BUILD
+	TARGET ${TARGET_NAME} POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy_directory
 	"${d3d12-agility-sdk_SOURCE_DIR}/build/native/bin/x64"
 
@@ -226,7 +163,7 @@ add_library(
 target_include_directories(DirectXShaderCompiler INTERFACE "${dxc_SOURCE_DIR}/include")
 target_link_libraries(DirectXShaderCompiler INTERFACE "${dxc_SOURCE_DIR}/lib/x64/dxcompiler.lib")
 set_target_properties(DirectXShaderCompiler  PROPERTIES FOLDER ${extern_folder})
-target_link_libraries(${project} PUBLIC DirectXShaderCompiler)
+target_link_libraries(${TARGET_NAME} PUBLIC DirectXShaderCompiler)
 
 # Copy DLLs
 #add_custom_command(
@@ -251,11 +188,11 @@ add_library(
 target_include_directories(PIX INTERFACE "${pix_SOURCE_DIR}/Include/WinPixEventRuntime")
 target_link_libraries(PIX INTERFACE "${pix_SOURCE_DIR}/bin/x64/WinPixEventRuntime.lib")
 set_target_properties(PIX  PROPERTIES FOLDER ${extern_folder})
-target_link_libraries(${project} PUBLIC PIX)
+target_link_libraries(${TARGET_NAME} PUBLIC PIX)
 
 # Copy DLLs
 add_custom_command(
-	TARGET ${project} POST_BUILD
+	TARGET ${TARGET_NAME} POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy
 	"${pix_SOURCE_DIR}/bin/x64/WinPixEventRuntime.dll"
 

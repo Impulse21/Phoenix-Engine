@@ -1,7 +1,7 @@
 #pragma once
 
-#include <PhxEngine/Engine/World.h>
-#include <PhxEngine/Assets/Assets.h>
+#include <Engine/World.h>
+#include <Assets/Assets.h>
 #include <future>
 
 #define CGLTF_IMPLEMENTATION

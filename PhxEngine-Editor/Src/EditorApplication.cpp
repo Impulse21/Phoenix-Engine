@@ -1,9 +1,9 @@
-#include <PhxEngine/PhxEngine.h>
-#include <PhxEngine/Core/CommandLineArgs.h>
-#include <PhxEngine/Core/Containers.h>
-#include <PhxEngine/Core/StopWatch.h>
-#include <PhxEngine/Renderer/ImGuiRenderer.h>
-#include <PhxEngine/Engine/World.h>
+#include <PhxEngine.h>
+#include <Core/CommandLineArgs.h>
+#include <Core/Containers.h>
+#include <Core/StopWatch.h>
+#include <Renderer/ImGuiRenderer.h>
+#include <Engine/World.h>
 #include "Widgets.h"
 #include "GltfModelLoader.h"
 

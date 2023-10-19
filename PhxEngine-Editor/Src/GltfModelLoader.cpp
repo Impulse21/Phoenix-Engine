@@ -1,8 +1,8 @@
 #include "GltfModelLoader.h"
 
 #include <taskflow/taskflow.hpp>
-#include <PhxEngine/Engine/EngineCore.h>
-#include <PhxEngine/Assets/AssetStore.h>
+#include <Engine/EngineCore.h>
+#include <Assets/AssetStore.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::Editor;
