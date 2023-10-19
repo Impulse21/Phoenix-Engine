@@ -5,7 +5,7 @@
 #include <PhxEngine/Renderer/ImGuiRenderer.h>
 #include <PhxEngine/Engine/World.h>
 #include "Widgets.h"
-#include "GltfWorldLoader.h"
+#include "GltfModelLoader.h"
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -97,14 +97,15 @@ namespace
 			    	{
 			    		Core::StopWatch stopWatch;
 
-			    		Editor::GltfWorldLoader loader;
+			    		Editor::GltfModelLoader loader;
 
-			    		loader.LoadWorld(worldFilename, fileSystem.get(), this->m_activeWorld);
+			    		std::future<bool> loadTask = loader.LoadModelAsync(worldFilename, fileSystem.get(), this->m_activeWorld);
+
+                        loadTask.wait();
 
 			    		Core::TimeStep loadTime = stopWatch.Elapsed();
 			    		PHX_LOG_INFO("Loading scene took %dms", loadTime.GetMilliseconds());
 			    	}
-			    	std::this_thread::sleep_for((std::chrono::seconds(5)));
 			    }
 			    else
 			    {

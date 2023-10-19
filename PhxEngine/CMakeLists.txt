@@ -176,7 +176,8 @@ target_link_libraries(${project} PUBLIC
 	tlsf
 	D3D12MemoryAllocator
 	mimalloc-static
-	taskflow)
+	taskflow
+	enkiTS)
     
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 

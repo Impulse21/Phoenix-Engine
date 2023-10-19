@@ -80,24 +80,59 @@ LoadedTextureHandle PhxEngine::Assets::TextureAssetStore::LoadTextureFromFileAsy
 	loadedTexture->ForceSRGB = sRGB;
 	loadedTexture->Path = path.generic_string();
 
-	PhxEngine::GetTaskExecutor().async([this, sRGB, loadedTexture, path, filesystem]() {
+	PhxEngine::GetTaskExecutor().silent_async([this, sRGB, loadedTexture, path, filesystem]() {
 			std::shared_ptr<IBlob> fileData = filesystem->ReadFile(path);
 			if (fileData)
 			{
 				if (FillTextureData(fileData, loadedTexture, path.extension().generic_string(), ""))
 				{
-					// LOG Texture Loaded
 					// TODO: I am here
-					std::lock_guard<std::mutex> guard(m_TexturesToFinalizeMutex);
-
-					m_TexturesToFinalize.push(texture);
+					loadedTexture->RHITexture = PhxEngine::GetGfxDevice()->CreateTexture(
+						{
+						},
+						loadedTexture->m_subresourceData.data());
 				}
+				loadedTexture->IsLoaded.store(true);
 			}
 
 			++this->m_texturesLoaded;
 		});
 
 	return loadedTexture;
+}
+
+LoadedTextureHandle PhxEngine::Assets::TextureAssetStore::LoadTextureFromMemoryAsync(const std::shared_ptr<Core::IBlob>& data, std::string_view& name, const std::string& mimeType, bool sRGB)
+{
+	std::shared_ptr<TextureData> texture = std::make_shared<TextureData>();
+
+	texture->ForceSRGB = sRGB;
+	texture->Path = name;
+	texture->MimeType = mimeType;
+
+	PhxEngine::GetTaskExecutor().silent_async([this, sRGB, texture, data, mimeType]()
+		{
+			if (FillTextureData(data, texture, "", mimeType))
+			{
+				// TODO: I am here
+				texture->RHITexture = PhxEngine::GetGfxDevice()->CreateTexture(
+					{
+						.meta
+					},
+					texture->m_subresourceData.data());
+				texture->IsLoaded.store(true);
+			}
+
+			++this->m_texturesLoaded;
+		});
+
+	return texture;
+}
+
+bool PhxEngine::Assets::TextureAssetStore::UploadPendingTextures(RHI::GfxDevice* gfxDevice, float timeLimitMs)
+{
+	gfxDevice->BeginCommandList(RHI::CommandQueueType::Copy);
+	gfxDevice->BeginMarker("Texture Upload queue", cmd)
+	return false;
 }
 
 bool PhxEngine::Assets::TextureAssetStore::FindInStore(Core::StringHash hash, std::shared_ptr<TextureData>& outTexture)

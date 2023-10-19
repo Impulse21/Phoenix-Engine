@@ -43,6 +43,7 @@ std::future<bool> GltfModelLoader::LoadModelAsync(std::string const& filename, C
 				return false;
 			}
 
+			// Assert Wait for textures to load
 			this->LoadMaterials(
 				Core::Span<cgltf_material>(objects->materials, objects->materials_count),
 				objects,
@@ -66,6 +67,7 @@ std::future<bool> GltfModelLoader::LoadModelAsync(std::string const& filename, C
 
 void PhxEngine::Editor::GltfModelLoader::LoadMaterials(Core::Span<cgltf_material> cgltfMateirals, const cgltf_data* objects, CgltfContext& context, World& outWorld)
 {
+#if false
 	for (int i = 0; i < cgltfMateirals.Size(); i++)
 	{
 		const auto& cgltfMtl = cgltfMateirals[i];
@@ -120,6 +122,7 @@ void PhxEngine::Editor::GltfModelLoader::LoadMaterials(Core::Span<cgltf_material
 
 		// TODO: Emmisive
 		mtl.IsDoubleSided = cgltfMtl.double_sided;
+#endif
 }
 
 cgltf_result PhxEngine::Editor::GltfModelLoader::CgltfReadFile(const cgltf_memory_options* memory_options, const cgltf_file_options* file_options, const char* path, cgltf_size* size, void** Data)

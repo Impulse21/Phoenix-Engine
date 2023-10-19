@@ -2,13 +2,16 @@
 
 #include <PhxEngine/Assets/Assets.h>
 #include <PhxEngine/Core/StringHash.h>
-#include <memory>
-
 #include <PhxEngine/Core/VirtualFileSystem.h>
+#include <PhxEngine/RHI/PhxRHI.h>
+
+#include <memory>
+#include <mutex>
 #include <shared_mutex>
 #include <atomic>
-#include <PhxEngine/RHI/PhxRHI.h>
+#include <deque>
 #include <DirectXTex.h>
+
 namespace PhxEngine::Assets
 {
 	namespace AssetStore
@@ -25,7 +28,14 @@ namespace PhxEngine::Assets
 	class TextureData : public Assets::ILoadedTexture
 	{
 	public:
+		RHI::TextureHandle RHITexture;
 		std::shared_ptr<Core::IBlob> Data;
+		std::atomic_bool IsLoaded = false;
+		std::string Path;
+		std::string MimeType;
+		DirectX::TexMetadata Metadata;
+		DirectX::ScratchImage ScratchImage;
+		std::vector<RHI::SubresourceData> m_subresourceData;
 
 		RHI::Format Format = RHI::Format::UNKNOWN;
 		uint32_t Width = 1;
@@ -36,11 +46,6 @@ namespace PhxEngine::Assets
 		RHI::TextureDimension Dimension = RHI::TextureDimension::Unknown;
 		bool IsRenderTarget = false;
 		bool ForceSRGB = false;
-		std::string Path;
-
-		DirectX::TexMetadata Metadata;
-		DirectX::ScratchImage ScratchImage;
-		std::vector<RHI::SubresourceData> m_subresourceData;
 	};
 
 	class TextureAssetStore
@@ -53,7 +58,7 @@ namespace PhxEngine::Assets
 
 		void UnloadTexture(LoadedTextureHandle const& texture);
 
-		bool EnableMipmapGeneration(bool isEnabled);
+		bool EnableMipmapGeneration(bool isEnabled) {};
 
 	private:
 		bool FindInStore(Core::StringHash hash, std::shared_ptr<TextureData>& outTexture);

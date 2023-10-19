@@ -21,6 +21,7 @@ namespace PhxEngine::Editor
 			Core::IFileSystem* FileSystem;
 			std::vector<std::shared_ptr<Core::IBlob>> Blobs;
 		};
+
 	private:
 		void LoadMaterials(
 			Core::Span<cgltf_material> cgltfMateirals,
