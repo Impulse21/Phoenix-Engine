@@ -4,7 +4,7 @@
 #include <Core/Window.h>
 #include <Core/Memory.h>
 
-#include <PlatformGpuBuffer.h>
+#include <PlatformTypes.h>
 namespace PhxEngine::RHI
 {
 	struct RHIParams
@@ -109,7 +109,7 @@ namespace PhxEngine::RHI
 	{
 	public:
 	private:
-		PlatformGpuBuffer m_platformBuffer;
+		Platform m_platformBuffer;
 	};
 
 	class Texture
