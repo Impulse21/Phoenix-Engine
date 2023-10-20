@@ -1549,8 +1549,89 @@ namespace PhxEngine::RHI
     {
         std::unique_ptr<GfxDevice> CreateD3D12Device();
     }
+
+    struct SyncHandle
+    {
+    };
+
+    class CommandContext
+    {
+    public:
+
+    };
+
+    class GfxContext : public CommandContext
+    {
+
+    };
+
+    class ComputeContext : public CommandContext
+    {
+
+    };
+
+    class CopyContext : public CommandContext
+    {
+
+    };
 }
 
+namespace PhxEngine::RHI::New
+{
+    bool Initialize();
+    bool Finalize();
+
+    GfxContext& BeginGfxCtx();
+    ComputeContext& BeginComputeCtx();
+    CopyContext& BeginCopyCtx();
+
+    SyncHandle Submit();
+
+    // Resource Creation Functions
+    template<typename T>
+    CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc)
+    {
+        static_assert(sizeof(T) % sizeof(uint32_t) == 0);
+        return this->CreateCommandSignature(desc, sizeof(T));
+    }
+
+    CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride);
+    ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode);
+    InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount);
+    GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
+    ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc);
+    MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc);
+    BufferHandle CreateBuffer(BufferDesc const& desc, void* initalData);
+    TextureHandle CreateTexture(TextureDesc const& desc, void* initalData);
+
+    void DeleteResource(ShaderHandle handle);
+    void DeleteResource(InputLayoutHandle handle);
+    void DeleteResource(GfxPipelineHandle handle);
+    void DeleteResource(ComputePipelineHandle handle);
+    void DeleteResource(MeshPipelineHandle handle);
+    void DeleteResource(TextureHandle handle);
+    void DeleteResource(BufferHandle handle);
+
+    const ShaderDesc& GetResourceDesc(ShaderHandle handle);
+    const InputLayoutHandle& GetResourceDesc(InputLayoutHandle handle);
+    const GfxPipelineHandle& GetResourceDesc(GfxPipelineHandle handle);
+    const ComputePipelineHandle& GetResourceDesc(ComputePipelineHandle handle);
+    const MeshPipelineHandle& GetResourceDesc(MeshPipelineHandle handle);
+    const BufferHandle& GetResourceDesc(TextureHandle handle);
+    const TextureHandle& GetResourceDesc(BufferHandle handle);
+
+    DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource = -1);
+    DescriptorIndex GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource = -1);
+
+    template<typename T>
+    T* GetBufferMappedData(BufferHandle handle)
+    {
+        return static_cast<T*>(this->GetBufferMappedData(handle));
+    };
+
+    void* Lock(BufferHandle handle);
+    void UnLock(BufferHandle handle);
+}
 namespace std
 {
     // TODO: Custom Hashes
