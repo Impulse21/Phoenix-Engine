@@ -1,127 +1,38 @@
 #pragma once
-#include <assert.h>
 
-#include <Core/Window.h>
+#include <RHI/RHIResources.h>
 #include <Core/Memory.h>
+#include <Core/Span.h>
 
-#include <PlatformTypes.h>
 namespace PhxEngine::RHI
 {
 	struct RHIParams
 	{
-		uint32_t NumBuffers;
-		IWindow* Window;
 		size_t ResourcePoolSize = PhxKB(1);
 	};
+	bool Initialize(RHIParams const& params);
+	bool Finalize();
+	void RunGarbageCollection();
 
-	void Initialize(RHIParams const& params);
-	void Finialize();
+	GfxContext& BeginGfxCtx();
+	ComputeContext& BeginComputeCtx();
+	CopyContext& BeginCopyCtx();
 
-	enum class CommandContextType : uint8_t
+	SubmitRecipt Submit(Core::Span<CommandContext> context);
+
+	// Resource Creation Functions
+	template<typename T>
+	bool CreateCommandSignature(CommandSignatureDesc const& desc, CommandSignature& out)
 	{
-		Graphics = 0,
-		Compute,
-		Copy,
-
-		Count
-	};
-
-	struct NonCopyable
-	{
-		NonCopyable() = default;
-		NonCopyable(const NonCopyable&) = delete;
-		NonCopyable& operator=(const NonCopyable&) = delete;
-	};
-
-	struct PlatformContext {}; // TODO:
-
-	class GfxContext;
-	class ComputeContext;
-	class CopyContext;
-	class CommandContext : NonCopyable
-	{
-	public:
-		static CommandContext& Begin();
-
-		GfxContext& GetGraphicsContext() 
-		{
-			assert(this->m_type == CommandContextType::Graphics, "Cannot convert to graphics");
-			return reinterpret_cast<GfxContext&>(*this);
-		}
-
-		ComputeContext& GetComputeContext() 
-		{
-			assert(this->m_type == CommandContextType::Compute, "Cannot convert to compute");
-			return reinterpret_cast<ComputeContext&>(*this);
-		}
-
-		CopyContext& GetCopyContext()
-		{
-			assert(this->m_type == CommandContextType::Copy, "Cannot convert to compute");
-			return reinterpret_cast<CopyContext&>(*this);
-		}
-
-	public:
-		// TODO: Interface functions
-
-	private:
-		CommandContext(CommandContextType type)
-			: m_type(type)
-		{
-		}
-
-	protected:
-		PlatformContext m_platformContext;
-		CommandContextType m_type;
-	};
-
-	class GfxContext : public CommandContext
-	{
-	public:
-
-		static GfxContext& Begin()
-		{
-			return CommandContext::Begin().GetGraphicsContext();
-		}
-	};
-
-	class ComputeContext : public CommandContext
-	{
-	public:
-
-		static GfxContext& Begin()
-		{
-			return CommandContext::Begin().GetGraphicsContext();
-		}
-	};
-
-	class CopyContext : public CommandContext
-	{
-	public:
-
-		static GfxContext& Begin()
-		{
-			return CommandContext::Begin().GetGraphicsContext();
-		}
-	};
-
-	class GpuBuffer
-	{
-	public:
-	private:
-		Platform m_platformBuffer;
-	};
-
-	class Texture
-	{
-	public:
-	private:
-	};
-
-	class ResourceFactory
-	{
-	public:
-		bool CreateGpuBuffer(GpuBuffer& buffer);
-		// Create Resoruces
-	};
+		static_assert(sizeof(T) % sizeof(uint32_t) == 0);
+		return this->CreateCommandSignature(desc, sizeof(T), out);
+	}
+	bool CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride, CommandSignature& out);
+	bool CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode, Shader& out);
+	bool CreateInputLayout(InputLayoutDesc const& desc, uint32_t attributeCount, InputLayout& out);
+	bool CreateGfxPipeline(GfxPipelineDesc const& desc, Texture& out);
+	bool CreateComputePipeline(ComputePipelineDesc const& desc, Texture& out);
+	bool CreateMeshPipeline(MeshPipelineDesc const& desc, Texture& out);
+	bool CreateGpuBuffer(GpuBufferDesc const& desc, Texture& out, void* initalData = nullptr);
+	bool CreateTexture(TextureDesc const& desc, Texture& out, void* initalData = nullptr);
 }
