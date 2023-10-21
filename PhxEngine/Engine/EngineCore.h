@@ -28,7 +28,6 @@ namespace PhxEngine
 
 	void Run(IEngineApp& engingApp);
 
-	RHI::GfxDevice* GetGfxDevice();
 	Core::IWindow* GetWindow();
 	tf::Executor& GetTaskExecutor();
 	PhxEngine::Renderer::AsyncGpuUploader& GetAsyncLoader();

@@ -73,10 +73,8 @@ namespace
 		m_engineRunning.store(false);
 		m_taskExecutor.wait_for_all();
 
-		m_gfxDevice->WaitForIdle();
-		m_gfxDevice->Finalize();
+		RHI::Finalize();
 
-		m_gfxDevice.reset();
 		m_window.reset();
 
 		Core::Log::Finialize();

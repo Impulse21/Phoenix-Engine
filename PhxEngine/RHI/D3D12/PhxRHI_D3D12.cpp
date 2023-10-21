@@ -147,52 +147,201 @@ SubmitRecipt PhxEngine::RHI::Submit(Core::Span<CommandContext> context)
 
 // Resource Creation Functions
 template<typename T>
-bool PhxEngine::RHI::CreateCommandSignature(CommandSignatureDesc const& desc, CommandSignature& out)
+bool PhxEngine::RHI::Factory::CreateCommandSignature(CommandSignatureDesc const& desc, CommandSignature& out)
 {
 	static_assert(sizeof(T) % sizeof(uint32_t) == 0);
 	return this->CreateCommandSignature(desc, sizeof(T), out);
 }
-bool PhxEngine::RHI::CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride, CommandSignature& out)
+bool PhxEngine::RHI::Factory::Factory::CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride, CommandSignature& out)
 {
     return false;
 }
 
-bool PhxEngine::RHI::CreateSwapChain(SwapchainDesc desc, SwapChain& out)
+bool PhxEngine::RHI::Factory::Factory::CreateSwapChain(SwapchainDesc desc, SwapChain& out)
 {
+	out.m_desc = desc;
+	HRESULT hr;
+
+	UINT swapChainFlags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+	swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+
+	const auto& formatMapping = GetDxgiFormatMapping(desc.Format);
+	if (this->m_swapChain.NativeSwapchain == nullptr)
+	{
+		// Create swapchain:
+		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+		swapChainDesc.Width = desc.Width;
+		swapChainDesc.Height = desc.Height;
+		swapChainDesc.Format = formatMapping.RtvFormat;
+		swapChainDesc.Stereo = false;
+		swapChainDesc.SampleDesc.Count = 1;
+		swapChainDesc.SampleDesc.Quality = 0;
+		swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swapChainDesc.BufferCount = desc.BufferCount;
+		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+		swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+		swapChainDesc.Flags = swapChainFlags;
+
+		swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+
+		DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreenDesc = {};
+		fullscreenDesc.Windowed = !desc.Fullscreen;
+
+		hr = this->m_factory->CreateSwapChainForHwnd(
+			this->GetGfxQueue().GetD3D12CommandQueue(),
+			static_cast<HWND>(windowHandle),
+			&swapChainDesc,
+			&fullscreenDesc,
+			nullptr,
+			this->m_swapChain.NativeSwapchain.GetAddressOf()
+		);
+
+		if (FAILED(hr))
+		{
+			throw std::exception();
+		}
+
+		hr = this->m_swapChain.NativeSwapchain.As(&this->m_swapChain.NativeSwapchain4);
+		if (FAILED(hr))
+		{
+			throw std::exception();
+		}
+	}
+	else
+	{
+		// Resize swapchain:
+		this->WaitForIdle();
+
+		// Delete back buffers
+		for (int i = 0; i < this->m_swapChain.BackBuffers.size(); i++)
+		{
+			this->DeleteTexture(this->m_swapChain.BackBuffers[i]);
+		}
+
+		this->RunGarbageCollection(this->m_frameCount + 1);
+		this->m_swapChain.BackBuffers.clear();
+
+		hr = this->m_swapChain.NativeSwapchain4->ResizeBuffers(
+			desc.BufferCount,
+			desc.Width,
+			desc.Height,
+			formatMapping.RtvFormat,
+			swapChainFlags
+		);
+
+		assert(SUCCEEDED(hr));
+	}
+
+	// -- From Wicked Engine
+#ifdef ENABLE_HDR
+	const bool hdr = desc->allow_hdr && IsSwapChainSupportsHDR(swapchain);
+
+	// Ensure correct color space:
+	//	https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/Samples/Desktop/D3D12HDR/src/D3D12HDR.cpp
+	{
+		internal_state->colorSpace = ColorSpace::SRGB; // reset to SDR, in case anything below fails to set HDR state
+		DXGI_COLOR_SPACE_TYPE colorSpace = {};
+
+		switch (desc->format)
+		{
+		case Format::R10G10B10A2_UNORM:
+			// This format is either HDR10 (ST.2084), or SDR (SRGB)
+			colorSpace = hdr ? DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 : DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+			break;
+		case Format::R16G16B16A16_FLOAT:
+			// This format is HDR (Linear):
+			colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+			break;
+		default:
+			// Anything else will be SDR (SRGB):
+			colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+			break;
+		}
+
+		UINT colorSpaceSupport = 0;
+		if (SUCCEEDED(internal_state->swapChain->CheckColorSpaceSupport(colorSpace, &colorSpaceSupport)))
+		{
+			if (colorSpaceSupport & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT)
+			{
+				hr = internal_state->swapChain->SetColorSpace1(colorSpace);
+				assert(SUCCEEDED(hr));
+				if (SUCCEEDED(hr))
+				{
+					switch (colorSpace)
+					{
+					default:
+					case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709:
+						internal_state->colorSpace = ColorSpace::SRGB;
+						break;
+					case DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709:
+						internal_state->colorSpace = ColorSpace::HDR_LINEAR;
+						break;
+					case DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020:
+						internal_state->colorSpace = ColorSpace::HDR10_ST2084;
+						break;
+					}
+				}
+			}
+		}
+	}
+#endif
+
+	this->m_swapChain.BackBuffers.resize(desc.BufferCount);
+
+	for (UINT i = 0; i < this->m_swapChain.Desc.BufferCount; i++)
+	{
+		Microsoft::WRL::ComPtr<ID3D12Resource> backBuffer;
+		ThrowIfFailed(
+			this->m_swapChain.NativeSwapchain4->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
+
+		char allocatorName[32];
+		sprintf_s(allocatorName, "Back Buffer %iu", i);
+
+		this->m_swapChain.BackBuffers[i] = this->CreateTexture(
+			{
+				.BindingFlags = BindingFlags::RenderTarget,
+				.Dimension = TextureDimension::Texture2D,
+				.Format = this->m_swapChain.Desc.Format,
+				.Width = this->m_swapChain.Desc.Width,
+				.Height = this->m_swapChain.Desc.Height,
+				.DebugName = std::string(allocatorName)
+			},
+			backBuffer);
+	}
 	return false;
 }
 
-bool PhxEngine::RHI::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode, Shader& out)
+bool PhxEngine::RHI::Factory::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode, Shader& out)
 {
     return false;
 }
 
-bool PhxEngine::RHI::CreateInputLayout(InputLayoutDesc const& desc, uint32_t attributeCount, InputLayout& out)
+bool PhxEngine::RHI::Factory::CreateInputLayout(InputLayoutDesc const& desc, uint32_t attributeCount, InputLayout& out)
 {
     return false;
 }
 
-bool PhxEngine::RHI::CreateGfxPipeline(GfxPipelineDesc const& desc, Texture& out)
+bool PhxEngine::RHI::Factory::CreateGfxPipeline(GfxPipelineDesc const& desc, Texture& out)
 {
     return false;
 }
 
-bool PhxEngine::RHI::CreateComputePipeline(ComputePipelineDesc const& desc, Texture& out)
+bool PhxEngine::RHI::Factory::CreateComputePipeline(ComputePipelineDesc const& desc, Texture& out)
 {
     return false;
 }
 
-bool PhxEngine::RHI::CreateMeshPipeline(MeshPipelineDesc const& desc, Texture& out)
+bool PhxEngine::RHI::Factory::CreateMeshPipeline(MeshPipelineDesc const& desc, Texture& out)
 {
     return false;
 }
 
-bool PhxEngine::RHI::CreateGpuBuffer(GpuBufferDesc const& desc, Texture& out, void* initalData = nullptr)
+bool PhxEngine::RHI::Factory::CreateGpuBuffer(GpuBufferDesc const& desc, Texture& out, void* initalData = nullptr)
 {
     return false;
 }
 
-bool PhxEngine::RHI::CreateTexture(TextureDesc const& desc, Texture& out, void* initalData = nullptr)
+bool PhxEngine::RHI::Factory::CreateTexture(TextureDesc const& desc, Texture& out, void* initalData = nullptr)
 {
     return false;
 }

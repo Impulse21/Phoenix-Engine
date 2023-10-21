@@ -3,16 +3,45 @@
 #include <assert.h>
 // -- Switches based on backend ---
 #include <PlatformTypes.h>
+#include <RHI/RHIEnums.h>
 
 namespace PhxEngine::RHI
 {
-	enum class CommandContextType : uint8_t
-	{
-		Graphics = 0,
-		Compute,
-		Copy,
+	// forward delclare for friend factory
+	class Factory;
 
-		Count
+	struct Color
+	{
+		float R;
+		float G;
+		float B;
+		float A;
+
+		Color()
+			: R(0.f), G(0.f), B(0.f), A(0.f)
+		{ }
+
+		Color(float c)
+			: R(c), G(c), B(c), A(c)
+		{ }
+
+		Color(float r, float g, float b, float a)
+			: R(r), G(g), B(b), A(a) { }
+
+		bool operator ==(const Color& other) const { return R == other.R && G == other.G && B == other.B && A == other.A; }
+		bool operator !=(const Color& other) const { return !(*this == other); }
+	};
+
+	union ClearValue
+	{
+		// TODO: Change to be a flat array
+		// float Colour[4];
+		Color Colour;
+		struct ClearDepthStencil
+		{
+			float Depth;
+			uint32_t Stencil;
+		} DepthStencil;
 	};
 
 	struct NonCopyable
@@ -100,6 +129,7 @@ namespace PhxEngine::RHI
 	};
 	class GpuBuffer
 	{
+		friend Factory;
 	public:
 	private:
 		PlatformGpuBuffer m_platformImpl;
@@ -112,6 +142,7 @@ namespace PhxEngine::RHI
 
 	class Texture
 	{
+		friend Factory;
 	public:
 	private:
 	};
@@ -128,6 +159,7 @@ namespace PhxEngine::RHI
 	};
 	class GfxPipeline
 	{
+		friend Factory;
 	private:
 	};
 
@@ -137,6 +169,7 @@ namespace PhxEngine::RHI
 	};
 	class ComputePipeline
 	{
+		friend Factory;
 	private:
 	};
 
@@ -146,6 +179,7 @@ namespace PhxEngine::RHI
 	};
 	class MeshPipeline
 	{
+		friend Factory;
 	private:
 	};
 
@@ -155,6 +189,7 @@ namespace PhxEngine::RHI
 	};
 	class InputLayout
 	{
+		friend Factory;
 	private:
 	};
 
@@ -164,15 +199,18 @@ namespace PhxEngine::RHI
 	};
 	class Shader
 	{
+		friend Factory;
 	private:
 	};
 
 	struct CommandSignatureDesc
 	{
+		friend Factory;
 
 	};
 	class CommandSignature
 	{
+		friend Factory;
 
 	};
 
@@ -180,14 +218,30 @@ namespace PhxEngine::RHI
 	{
 		uint32_t Width = 1u;
 		uint32_t Height = 1u;
-		void* WindowHandle = nullptr;
-		size_t NumBackBuffers = 3;
-		bool VSync = false;
+		uint32_t BufferCount = 3;
+		RHI::Format Format = RHI::Format::R10G10B10A2_UNORM;
 		bool Fullscreen = false;
+		bool VSync = false;
+		bool EnableHDR = false;
+		RHI::ClearValue OptmizedClearValue =
+		{
+			.Colour =
+			{
+				0.0f,
+				0.0f,
+				0.0f,
+				1.0f,
+			}
+		};
 	};
+
 	class SwapChain
 	{
+		friend Factory;
+	public:
+
 	private:
+		SwapchainDesc m_desc;
 	};
 
 }

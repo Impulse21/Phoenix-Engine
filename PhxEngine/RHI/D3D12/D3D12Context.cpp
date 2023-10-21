@@ -16,20 +16,23 @@ using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::D3D12;
 
+static D3D12Adapter							D3D12Context::GpuAdapter = {};
+static RefCountPtr<IDXGIFactory6>			D3D12Context::DxgiFctory6;
+static RefCountPtr<ID3D12Device>			D3D12Context::D3D12Device;
+static RefCountPtr<ID3D12Device2>			D3D12Context::D3D12Device2;
+static RefCountPtr<ID3D12Device5>			D3D12Context::D3D12Device5;
+
+static RHICapability						D3D12Context::RHICapabilities;
+static D3D12_FEATURE_DATA_ROOT_SIGNATURE	D3D12Context::FeatureDataRootSignature = {};
+static D3D12_FEATURE_DATA_SHADER_MODEL		D3D12Context::FeatureDataShaderModel = {};
+
+static ShaderModel							D3D12Context::MinShaderModel = ShaderModel::SM_6_0;
+static bool									D3D12Context::IsUnderGraphicsDebugger = false;
+
 namespace
 {
-	RHICapability RHICapabilities; D3D12_FEATURE_DATA_ROOT_SIGNATURE FeatureDataRootSignature = {};
-	D3D12_FEATURE_DATA_SHADER_MODEL   FeatureDataShaderModel = {};
-	ShaderModel MinShaderModel = ShaderModel::SM_6_0;
 	static const bool sDebugEnabled = IsDebuggerPresent();
-	D3D12Adapter GpuAdapter;
 
-	RefCountPtr<IDXGIFactory6> DxgiFctory6;
-	RefCountPtr<ID3D12Device>  D3D12Device;
-	RefCountPtr<ID3D12Device2> D3D12Device2;
-	RefCountPtr<ID3D12Device5> D3D12Device5;
-
-	bool IsUnderGraphicsDebugger = false;
 	DWORD CallbackCookie;
 	// Define a global function to handle the messages
 	void CALLBACK DebugCallback(D3D12_MESSAGE_CATEGORY Category, D3D12_MESSAGE_SEVERITY Severity, D3D12_MESSAGE_ID ID, LPCSTR pDescription, void* pContext)
@@ -165,7 +168,7 @@ void PhxEngine::RHI::D3D12::D3D12Context::Initialize(D3D12Adapter const& gpuAdap
 		D3D12_FEATURE_DATA_D3D12_OPTIONS7 featureSupport7 = {};
 		bool hasOptions7 = SUCCEEDED(D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureSupport7, sizeof(featureSupport7)));
 
-		if (SUCCEEDED(D3D12Device->QueryInterface(&D3D12Context::GetD3D12Device2())) && hasOptions7)
+		if (SUCCEEDED(D3D12Device->QueryInterface(&D3D12Device2)) && hasOptions7)
 		{
 			if (featureSupport7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1)
 			{
@@ -248,28 +251,4 @@ void PhxEngine::RHI::D3D12::D3D12Context::Finalize()
 	D3D12Device.Reset();
 	DxgiFctory6.Reset();
 	GpuAdapter = {};
-}
-
-const D3D12Adapter& PhxEngine::RHI::D3D12::D3D12Context::GetGpuAdapter()
-{
-	return GpuAdapter;
-}
-
-RefCountPtr<IDXGIFactory6> PhxEngine::RHI::D3D12::D3D12Context::GetDxgiFctory6()
-{
-	return DxgiFctory6;
-}
-
-Core::RefCountPtr<ID3D12Device> PhxEngine::RHI::D3D12::D3D12Context::GetD3D12Device()
-{
-	return D3D12Device;
-}
-
-Core::RefCountPtr<ID3D12Device2> PhxEngine::RHI::D3D12::D3D12Context::GetD3D12Device2()
-{
-	return D3D12Device2;
-}
-Core::RefCountPtr<ID3D12Device5> PhxEngine::RHI::D3D12::D3D12Context::GetD3D12Device5()
-{
-	return D3D12Device5;
 }

@@ -29,13 +29,19 @@ namespace PhxEngine::RHI
 		static_assert(sizeof(T) % sizeof(uint32_t) == 0);
 		return this->CreateCommandSignature(desc, sizeof(T), out);
 	}
-	bool CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride, CommandSignature& out);
-	bool CreateSwapChain(SwapchainDesc desc, SwapChain& out);
-	bool CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode, Shader& out);
-	bool CreateInputLayout(InputLayoutDesc const& desc, uint32_t attributeCount, InputLayout& out);
-	bool CreateGfxPipeline(GfxPipelineDesc const& desc, Texture& out);
-	bool CreateComputePipeline(ComputePipelineDesc const& desc, Texture& out);
-	bool CreateMeshPipeline(MeshPipelineDesc const& desc, Texture& out);
-	bool CreateGpuBuffer(GpuBufferDesc const& desc, Texture& out, void* initalData = nullptr);
-	bool CreateTexture(TextureDesc const& desc, Texture& out, void* initalData = nullptr);
+	
+	// Use static class so we can get internals of the passed in types via friend
+	class Factory
+	{
+	public:
+		static bool CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride, CommandSignature& out);
+		static bool CreateSwapChain(SwapchainDesc desc, SwapChain& out);
+		static bool CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode, Shader& out);
+		static bool CreateInputLayout(InputLayoutDesc const& desc, uint32_t attributeCount, InputLayout& out);
+		static bool CreateGfxPipeline(GfxPipelineDesc const& desc, Texture& out);
+		static bool CreateComputePipeline(ComputePipelineDesc const& desc, Texture& out);
+		static bool CreateMeshPipeline(MeshPipelineDesc const& desc, Texture& out);
+		static bool CreateGpuBuffer(GpuBufferDesc const& desc, Texture& out, void* initalData = nullptr);
+		static bool CreateTexture(TextureDesc const& desc, Texture& out, void* initalData = nullptr);
+	};
 }
