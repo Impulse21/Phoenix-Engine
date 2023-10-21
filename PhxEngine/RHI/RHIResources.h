@@ -178,10 +178,12 @@ namespace PhxEngine::RHI
 
 	struct SwapchainDesc
 	{
-		void* WindowHandle;
-		size_t NumBackBuffers;
+		uint32_t Width = 1u;
+		uint32_t Height = 1u;
+		void* WindowHandle = nullptr;
+		size_t NumBackBuffers = 3;
 		bool VSync = false;
-		bool IsFullscreen;
+		bool Fullscreen = false;
 	};
 	class SwapChain
 	{

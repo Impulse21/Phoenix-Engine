@@ -14,7 +14,7 @@ namespace
 {
 	// -- Globals ---
 	std::unique_ptr<Core::IWindow> m_window;
-	std::unique_ptr<RHI::GfxDevice> m_gfxDevice;
+	RHI::SwapChain m_swapchain;
 	tf::Executor m_taskExecutor;
 	Renderer::AsyncGpuUploader m_asyncLoader;
 
@@ -41,29 +41,29 @@ namespace
 		m_window->Initialize();
 
 		// -- Create GFX Device ---
-		m_gfxDevice = RHI::Factory::CreateD3D12Device();
-		RHI::SwapChainDesc swapchainDesc = {
+
+		RHI::Initialize({});
+
+		RHI::CreateSwapChain({
 			.Width = m_window->GetWidth(),
 			.Height = m_window->GetHeight(),
-			.Fullscreen = false,
+			.WindowHandle = m_window->GetNativeWindow(),
 			.VSync = m_window->GetVSync(),
-		};
-
-		m_gfxDevice->Initialize(swapchainDesc, m_window->GetNativeWindowHandle());
+			.Fullscreen = false 
+			},
+			m_swapchain);
 
 		// -- Add on resize Event ---
 		EventDispatcher::AddEventListener(EventType::WindowResize, [&](Event const& e) {
 
 			const WindowResizeEvent& resizeEvent = static_cast<const WindowResizeEvent&>(e);
-			// TODO: Data Drive this
-			RHI::SwapChainDesc swapchainDesc = {
+			RHI::CreateSwapChain({
 				.Width = resizeEvent.GetWidth(),
 				.Height = resizeEvent.GetHeight(),
-				.Fullscreen = false,
 				.VSync = m_window->GetVSync(),
-			};
-
-			m_gfxDevice->ResizeSwapchain(swapchainDesc); 
+				.Fullscreen = false
+				},
+				m_swapchain);
 		});
 
 	}

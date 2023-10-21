@@ -265,15 +265,9 @@ namespace PhxEngine::Core
             unsigned long result = --m_refCount;
             if (result == 0) 
             {
-                this->InternalDelete();
+                delete this;
             }
             return result;
-        }
-
-    protected:
-        virtual void InternalDelete() override
-        {
-            delete this;
         }
     };
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <RHI/RHIResources.h>
+#include <RHI/RHIEnums.h>
 #include <Core/Memory.h>
 #include <Core/Span.h>
 
@@ -10,6 +11,7 @@ namespace PhxEngine::RHI
 	{
 		size_t ResourcePoolSize = PhxKB(1);
 	};
+
 	bool Initialize(RHIParams const& params);
 	bool Finalize();
 	void RunGarbageCollection();
@@ -28,6 +30,7 @@ namespace PhxEngine::RHI
 		return this->CreateCommandSignature(desc, sizeof(T), out);
 	}
 	bool CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride, CommandSignature& out);
+	bool CreateSwapChain(SwapchainDesc desc, SwapChain& out);
 	bool CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode, Shader& out);
 	bool CreateInputLayout(InputLayoutDesc const& desc, uint32_t attributeCount, InputLayout& out);
 	bool CreateGfxPipeline(GfxPipelineDesc const& desc, Texture& out);
