@@ -22,11 +22,12 @@
 
 #include <Core/Log.h>
 
+#include <deque>
 #include "D3D12Adapter.h"
 #include "DxgiFormatMapping.h"
+#include "Core/SpinLock.h"
 namespace PhxEngine::RHI::D3D12
 {
-
     inline D3D12_RESOURCE_STATES ConvertResourceStates(ResourceStates stateBits)
     {
         if (stateBits == ResourceStates::Common)
@@ -68,25 +69,41 @@ namespace PhxEngine::RHI::D3D12
             throw std::exception();
         }
     }
-	namespace D3D12Context
-	{
-		void Initialize(D3D12Adapter const& gpuAdapter);
-		void Finalize();
 
-		static D3D12Adapter GpuAdapter;
-		static Core::RefCountPtr<IDXGIFactory6> DxgiFctory6;
-		static Core::RefCountPtr<ID3D12Device>  D3D12Device;
-		static Core::RefCountPtr<ID3D12Device2> D3D12Device2;
-		static Core::RefCountPtr<ID3D12Device5> D3D12Device5;
+    struct DeleteItem
+    {
+        uint64_t Frame;
+        std::function<void()> DeleteFn;
+    };
 
-		static RHICapability RHICapabilities;
-		static D3D12_FEATURE_DATA_ROOT_SIGNATURE FeatureDataRootSignature;
-		static D3D12_FEATURE_DATA_SHADER_MODEL   FeatureDataShaderModel;
 
-		static ShaderModel MinShaderModel;
+    struct DeleteQueue
+    {
+        Core::SpinLock Lock;
+        std::deque<DeleteItem> Queue;
+    };
 
-		static bool IsUnderGraphicsDebugger;
-	}
-#define Dx12Ctx D3D12Context;
+    class D3D12Context
+    {
+    public:
+        D3D12Context(D3D12Adapter const& gpuAdapter);
+        ~D3D12Context();
+
+    private:
+        const D3D12Adapter m_gpuAdapter;
+
+        inline static D3D12Context* Singleton; 
+        Core::RefCountPtr<IDXGIFactory6> m_dxgiFctory6;
+        Core::RefCountPtr<ID3D12Device>  m_d3d12Device;
+        Core::RefCountPtr<ID3D12Device2> m_d3d12Device2;
+        Core::RefCountPtr<ID3D12Device5> m_d3d12Device5;
+
+        RHICapability m_rhiCapabilities;
+        D3D12_FEATURE_DATA_ROOT_SIGNATURE m_featureDataRootSignature;
+        D3D12_FEATURE_DATA_SHADER_MODEL   m_featureDataShaderModel; 
+        ShaderModel m_minShaderModel;
+        DeleteQueue m_deferredDeleteQueue;
+        bool m_isUnderGraphicsDebugger;
+    };
 }
 

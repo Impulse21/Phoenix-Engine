@@ -9,12 +9,16 @@ namespace PhxEngine::RHI
 {
 	struct RHIParams
 	{
+		size_t NumInflightFrames = 3;
 		size_t ResourcePoolSize = PhxKB(1);
 	};
 
 	bool Initialize(RHIParams const& params);
 	bool Finalize();
-	void RunGarbageCollection();
+
+	// Singles the end of the frame.
+	// Presents provided swapchains,
+	void EndFrame(Core::Span<SwapChain> swapchainsToPresent);
 
 	GfxContext& BeginGfxCtx();
 	ComputeContext& BeginComputeCtx();
@@ -35,7 +39,7 @@ namespace PhxEngine::RHI
 	{
 	public:
 		static bool CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride, CommandSignature& out);
-		static bool CreateSwapChain(SwapchainDesc desc, SwapChain& out);
+		static bool CreateSwapChain(SwapchainDesc desc, void* windowHandle, SwapChain& out);
 		static bool CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode, Shader& out);
 		static bool CreateInputLayout(InputLayoutDesc const& desc, uint32_t attributeCount, InputLayout& out);
 		static bool CreateGfxPipeline(GfxPipelineDesc const& desc, Texture& out);

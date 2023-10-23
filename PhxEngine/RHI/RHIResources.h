@@ -1,6 +1,8 @@
 #pragma once
 
 #include <assert.h>
+#include <Core/RefCountPtr.h>
+
 // -- Switches based on backend ---
 #include <PlatformTypes.h>
 #include <RHI/RHIEnums.h>
@@ -123,16 +125,22 @@ namespace PhxEngine::RHI
 		}
 	};
 
+
 	struct GpuBufferDesc
 	{
 
 	};
-	class GpuBuffer
+	class GpuBuffer final
 	{
 		friend Factory;
+
 	public:
+		const GpuBufferDesc& GetDesc() const { return this->m_desc; };
+		const PlatformGpuBuffer& GetPlatform() const { return this->m_platformImpl; };
+
 	private:
 		PlatformGpuBuffer m_platformImpl;
+		GpuBufferDesc m_desc;
 	};
 
 	struct TextureDesc
@@ -140,11 +148,17 @@ namespace PhxEngine::RHI
 
 	};
 
-	class Texture
+	class Texture final
 	{
 		friend Factory;
+
 	public:
+		const SwapchainDesc& GetDesc() const { return this->m_desc; };
+		const PlatformSwapChain& GetPlatform() const { return this->m_platformImpl; };
+
 	private:
+		PlatformSwapChain m_platformImpl;
+		SwapchainDesc m_desc;
 	};
 
 	class SubmitRecipt
@@ -157,61 +171,102 @@ namespace PhxEngine::RHI
 	{
 
 	};
-	class GfxPipeline
+	class GfxPipeline final
 	{
 		friend Factory;
+
+	public:
+		const GfxPipelineDesc& GetDesc() const { return this->m_desc; };
+		const PlatformGfxPipeline& GetPlatform() const { return this->m_platformImpl; };
+
 	private:
+		PlatformGfxPipeline m_platformImpl;
+		GfxPipelineDesc m_desc;
 	};
 
 	struct ComputePipelineDesc
 	{
 
 	};
-	class ComputePipeline
+	class ComputePipeline final
 	{
 		friend Factory;
+
+	public:
+		const ComputePipelineDesc& GetDesc() const { return this->m_desc; };
+		const PlatformComputePipeline& GetPlatform() const { return this->m_platformImpl; };
+
 	private:
+		PlatformComputePipeline m_platformImpl;
+		ComputePipelineDesc m_desc;
 	};
 
 	struct MeshPipelineDesc
 	{
 
 	};
-	class MeshPipeline
+	class MeshPipeline final
 	{
 		friend Factory;
+
+	public:
+		const MeshPipelineDesc& GetDesc() const { return this->m_desc; };
+		const PlatformMeshPipeline& GetPlatform() const { return this->m_platformImpl; };
+
 	private:
+		PlatformMeshPipeline m_platformImpl;
+		MeshPipelineDesc m_desc;
 	};
 
 	struct InputLayoutDesc
 	{
 
 	};
-	class InputLayout
+	class InputLayout final
 	{
 		friend Factory;
+
+	public:
+		const InputLayoutDesc& GetDesc() const { return this->m_desc; };
+		const PlatformInputLayout& GetPlatform() const { return this->m_platformImpl; };
+
 	private:
+		PlatformInputLayout m_platformImpl;
+		InputLayoutDesc m_desc;
 	};
 
 	struct ShaderDesc
 	{
 
 	};
-	class Shader
+	class Shader final
 	{
 		friend Factory;
+
+	public:
+		const ShaderDesc& GetDesc() const { return this->m_desc; };
+		const PlatformShader& GetPlatform() const { return this->m_platformImpl; };
+
 	private:
+		PlatformShader m_platformImpl;
+		ShaderDesc m_desc;
 	};
 
 	struct CommandSignatureDesc
 	{
-		friend Factory;
 
 	};
-	class CommandSignature
+	class CommandSignature final
 	{
 		friend Factory;
 
+	public:
+		const CommandSignatureDesc& GetDesc() const { return this->m_desc; };
+		const PlatformCommandSignature& GetPlatform() const { return this->m_platformImpl; };
+
+	private:
+		PlatformCommandSignature m_platformImpl;
+		CommandSignatureDesc m_desc;
 	};
 
 	struct SwapchainDesc
@@ -235,12 +290,16 @@ namespace PhxEngine::RHI
 		};
 	};
 
-	class SwapChain
+	class SwapChain final
 	{
 		friend Factory;
+
 	public:
+		const SwapchainDesc& GetDesc() const { return this->m_desc; };
+		const Core::RefCountPtr<PlatformSwapChain>& GetPlatform() const { return this->m_platformImpl; };
 
 	private:
+		Core::RefCountPtr<PlatformSwapChain> m_platformImpl;
 		SwapchainDesc m_desc;
 	};
 

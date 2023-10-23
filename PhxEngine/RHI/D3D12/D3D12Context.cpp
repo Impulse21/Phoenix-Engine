@@ -16,19 +16,6 @@ using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::D3D12;
 
-static D3D12Adapter							D3D12Context::GpuAdapter = {};
-static RefCountPtr<IDXGIFactory6>			D3D12Context::DxgiFctory6;
-static RefCountPtr<ID3D12Device>			D3D12Context::D3D12Device;
-static RefCountPtr<ID3D12Device2>			D3D12Context::D3D12Device2;
-static RefCountPtr<ID3D12Device5>			D3D12Context::D3D12Device5;
-
-static RHICapability						D3D12Context::RHICapabilities;
-static D3D12_FEATURE_DATA_ROOT_SIGNATURE	D3D12Context::FeatureDataRootSignature = {};
-static D3D12_FEATURE_DATA_SHADER_MODEL		D3D12Context::FeatureDataShaderModel = {};
-
-static ShaderModel							D3D12Context::MinShaderModel = ShaderModel::SM_6_0;
-static bool									D3D12Context::IsUnderGraphicsDebugger = false;
-
 namespace
 {
 	static const bool sDebugEnabled = IsDebuggerPresent();
@@ -94,109 +81,109 @@ namespace
 	}
 }
 
-void PhxEngine::RHI::D3D12::D3D12Context::Initialize(D3D12Adapter const& gpuAdapter)
+PhxEngine::RHI::D3D12::D3D12Context::D3D12Context(D3D12Adapter const& gpuAdapter)
+	: m_gpuAdapter(gpuAdapter)
 {
-	GpuAdapter = gpuAdapter;
-	DxgiFctory6 = CreateDXGIFactory6();
+	this->m_dxgiFctory6 = CreateDXGIFactory6();
 
 	ThrowIfFailed(
 		D3D12CreateDevice(
-			GpuAdapter.NativeAdapter,
+			this->m_gpuAdapter.NativeAdapter,
 			D3D_FEATURE_LEVEL_11_1,
-			IID_PPV_ARGS(&D3D12Device)));
+			IID_PPV_ARGS(&this->m_d3d12Device)));
 
-	D3D12Device->SetName(L"RHI::D3D12::D3D12Device");
+	this->m_d3d12Device->SetName(L"RHI::D3D12::D3D12Device");
 	{
 		// Ref counter isn't working so use ComPtr for this - to lazy to fight with
 		// this right now.
 		Microsoft::WRL::ComPtr<IUnknown> renderdoc;
 		if (SUCCEEDED(DXGIGetDebugInterface1(0, RenderdocUUID, &renderdoc)))
 		{
-			IsUnderGraphicsDebugger |= !!renderdoc;
+			this->m_isUnderGraphicsDebugger |= !!renderdoc;
 		}
 
 		Microsoft::WRL::ComPtr<IUnknown> pix;
 		if (SUCCEEDED(DXGIGetDebugInterface1(0, PixUUID, &pix)))
 		{
-			IsUnderGraphicsDebugger |= !!pix;
+			this->m_isUnderGraphicsDebugger |= !!pix;
 		}
 	}
 
 	{
 		D3D12_FEATURE_DATA_D3D12_OPTIONS featureOpptions = {};
 
-		bool hasOptions = SUCCEEDED(D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &featureOpptions, sizeof(featureOpptions)));
+		bool hasOptions = SUCCEEDED(this->m_d3d12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &featureOpptions, sizeof(featureOpptions)));
 
 		if (hasOptions)
 		{
 			if (featureOpptions.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation)
 			{
-				RHICapabilities |= RHICapability::RT_VT_ArrayIndex_Without_GS;
+				this->m_rhiCapabilities |= RHICapability::RT_VT_ArrayIndex_Without_GS;
 			}
 		}
 
 		// TODO: Move to acability array
 		D3D12_FEATURE_DATA_D3D12_OPTIONS5 featureSupport5 = {};
-		bool hasOptions5 = SUCCEEDED(D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureSupport5, sizeof(featureSupport5)));
+		bool hasOptions5 = SUCCEEDED(this->m_d3d12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureSupport5, sizeof(featureSupport5)));
 
-		if (SUCCEEDED(D3D12Device->QueryInterface(IID_PPV_ARGS(&D3D12Device5))) && hasOptions5)
+		if (SUCCEEDED(this->m_d3d12Device->QueryInterface(IID_PPV_ARGS(&this->m_d3d12Device5))) && hasOptions5)
 		{
 			if (featureSupport5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0)
 			{
-				RHICapabilities |= RHICapability::RayTracing;
+				this->m_rhiCapabilities |= RHICapability::RayTracing;
 			}
 			if (featureSupport5.RenderPassesTier >= D3D12_RENDER_PASS_TIER_0)
 			{
-				RHICapabilities |= RHICapability::RenderPass;
+				this->m_rhiCapabilities |= RHICapability::RenderPass;
 			}
 			if (featureSupport5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_1)
 			{
-				RHICapabilities |= RHICapability::RayQuery;
+				this->m_rhiCapabilities |= RHICapability::RayQuery;
 			}
 		}
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS6 featureSupport6 = {};
-		bool hasOptions6 = SUCCEEDED(D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &featureSupport6, sizeof(featureSupport6)));
+		bool hasOptions6 = SUCCEEDED(this->m_d3d12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &featureSupport6, sizeof(featureSupport6)));
 		if (hasOptions6)
 		{
 			if (featureSupport6.VariableShadingRateTier >= D3D12_VARIABLE_SHADING_RATE_TIER_2)
 			{
-				RHICapabilities |= RHICapability::VariableRateShading;
+				this->m_rhiCapabilities |= RHICapability::VariableRateShading;
 			}
 		}
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS7 featureSupport7 = {};
-		bool hasOptions7 = SUCCEEDED(D3D12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureSupport7, sizeof(featureSupport7)));
+		bool hasOptions7 = SUCCEEDED(this->m_d3d12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureSupport7, sizeof(featureSupport7)));
 
-		if (SUCCEEDED(D3D12Device->QueryInterface(&D3D12Device2)) && hasOptions7)
+		if (SUCCEEDED(this->m_d3d12Device->QueryInterface(&this->m_d3d12Device2)) && hasOptions7)
 		{
 			if (featureSupport7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1)
 			{
-				RHICapabilities |= RHICapability::MeshShading;
+				this->m_rhiCapabilities |= RHICapability::MeshShading;
 			}
-			RHICapabilities |= RHICapability::CreateNoteZeroed;
+			this->m_rhiCapabilities |= RHICapability::CreateNoteZeroed;
 		}
 
-		FeatureDataRootSignature.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
-		if (FAILED(D3D12Device2->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &FeatureDataRootSignature, sizeof(FeatureDataRootSignature))))
+		this->m_featureDataRootSignature.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
+		if (FAILED(this->m_d3d12Device2->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &this->m_featureDataRootSignature, sizeof(this->m_featureDataRootSignature))))
 		{
-			FeatureDataRootSignature.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
+			this->m_featureDataRootSignature.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
 		}
 
 		// Check shader model support
-		FeatureDataShaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_6;
-		MinShaderModel = ShaderModel::SM_6_6;
-		if (FAILED(D3D12Device2->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &FeatureDataShaderModel, sizeof(FeatureDataShaderModel))))
+		this->m_featureDataShaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_6;
+		this->m_minShaderModel = ShaderModel::SM_6_6;
+		if (FAILED(this->m_d3d12Device2->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &this->m_featureDataShaderModel, sizeof(this->m_featureDataShaderModel))))
 		{
-			FeatureDataShaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_5;
-			MinShaderModel = ShaderModel::SM_6_5;
+			this->m_featureDataShaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_5;
+			this->m_minShaderModel = ShaderModel::SM_6_5;
 		}
 	}
 
 	if (sDebugEnabled)
 	{
 		RefCountPtr<ID3D12InfoQueue1> infoQueue;
-		if (SUCCEEDED(D3D12Device->QueryInterface<ID3D12InfoQueue1>(&infoQueue)))
+		if (SUCCEEDED(this->m_d3d12Device->QueryInterface<ID3D12InfoQueue1>(&infoQueue)))
 		{
 			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
 			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
@@ -238,17 +225,13 @@ void PhxEngine::RHI::D3D12::D3D12Context::Initialize(D3D12Adapter const& gpuAdap
 	}
 }
 
-void PhxEngine::RHI::D3D12::D3D12Context::Finalize()
+PhxEngine::RHI::D3D12::D3D12Context::~D3D12Context()
 {
+	assert(false, "PROCESS DELETE QUEUE PLEASE");
 	RefCountPtr<ID3D12InfoQueue1> infoQueue;
-	if (SUCCEEDED(D3D12Device->QueryInterface<ID3D12InfoQueue1>(&infoQueue)))
+	if (SUCCEEDED(this->m_d3d12Device->QueryInterface<ID3D12InfoQueue1>(&infoQueue)))
 	{
 		infoQueue->UnregisterMessageCallback(CallbackCookie);
 	}
 
-	D3D12Device2.Reset();
-	D3D12Device5.Reset();
-	D3D12Device.Reset();
-	DxgiFctory6.Reset();
-	GpuAdapter = {};
 }

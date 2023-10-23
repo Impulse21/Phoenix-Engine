@@ -11,7 +11,7 @@ using namespace PhxEngine::RHI::D3D12;
 
 namespace
 {
-
+	std::shared_ptr<D3D12::D3D12Context> gContext;
 	bool SafeTestD3D12CreateDevice(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL minFeatureLevel, D3D12DeviceBasicInfo& outInfo)
 	{
 #pragma warning(disable:6322)
@@ -121,9 +121,10 @@ bool PhxEngine::RHI::Finalize()
     return false;
 }
 
-void PhxEngine::RHI::RunGarbageCollection()
+void PhxEngine::RHI::EndFrame(Core::Span<SwapChain> swapchainsToPresent)
 {
 }
+
 
 GfxContext& PhxEngine::RHI::BeginGfxCtx()
 {
@@ -145,19 +146,12 @@ SubmitRecipt PhxEngine::RHI::Submit(Core::Span<CommandContext> context)
     return SubmitRecipt();
 }
 
-// Resource Creation Functions
-template<typename T>
-bool PhxEngine::RHI::Factory::CreateCommandSignature(CommandSignatureDesc const& desc, CommandSignature& out)
-{
-	static_assert(sizeof(T) % sizeof(uint32_t) == 0);
-	return this->CreateCommandSignature(desc, sizeof(T), out);
-}
 bool PhxEngine::RHI::Factory::Factory::CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride, CommandSignature& out)
 {
     return false;
 }
 
-bool PhxEngine::RHI::Factory::Factory::CreateSwapChain(SwapchainDesc desc, SwapChain& out)
+bool PhxEngine::RHI::Factory::Factory::CreateSwapChain(SwapchainDesc desc, void* windowHandle, SwapChain& out)
 {
 	out.m_desc = desc;
 	HRESULT hr;
@@ -166,8 +160,11 @@ bool PhxEngine::RHI::Factory::Factory::CreateSwapChain(SwapchainDesc desc, SwapC
 	swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 
 	const auto& formatMapping = GetDxgiFormatMapping(desc.Format);
-	if (this->m_swapChain.NativeSwapchain == nullptr)
+	
+	if (out.m_platformImpl == nullptr)
 	{
+		out.m_platformImpl = Core::RefCountPtr<PlatformSwapChain>::Create(phx_new(PlatformSwapChain));
+
 		// Create swapchain:
 		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
 		swapChainDesc.Width = desc.Width;
@@ -187,7 +184,7 @@ bool PhxEngine::RHI::Factory::Factory::CreateSwapChain(SwapchainDesc desc, SwapC
 		DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreenDesc = {};
 		fullscreenDesc.Windowed = !desc.Fullscreen;
 
-		hr = this->m_factory->CreateSwapChainForHwnd(
+		hr = D3D12Context::DxgiFctory6->CreateSwapChainForHwnd(
 			this->GetGfxQueue().GetD3D12CommandQueue(),
 			static_cast<HWND>(windowHandle),
 			&swapChainDesc,
