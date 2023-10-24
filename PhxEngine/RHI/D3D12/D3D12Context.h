@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Core/RefCountPtr.h>
+#include <Core/Pool.h>
 
 #define NOMINMAX
 #include <assert.h>
@@ -26,6 +27,7 @@
 #include "D3D12Adapter.h"
 #include "DxgiFormatMapping.h"
 #include "Core/SpinLock.h"
+
 namespace PhxEngine::RHI::D3D12
 {
     inline D3D12_RESOURCE_STATES ConvertResourceStates(ResourceStates stateBits)
@@ -44,7 +46,7 @@ namespace PhxEngine::RHI::D3D12
         if ((stateBits & ResourceStates::RenderTarget) != 0) result |= D3D12_RESOURCE_STATE_RENDER_TARGET;
         if ((stateBits & ResourceStates::DepthWrite) != 0) result |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
         if ((stateBits & ResourceStates::DepthRead) != 0) result |= D3D12_RESOURCE_STATE_DEPTH_READ;
-        if ((stateBits & ResourceStates::StreamOut) != 0) result |= D3D12_RESOURCE_STATE_STREAM_OUT;
+        if ((stateBits & ResourceStates::StreamOut) != 0) result |= D3D12_RESOURCE_STATE_STREAOUT;
         if ((stateBits & ResourceStates::CopyDest) != 0) result |= D3D12_RESOURCE_STATE_COPY_DEST;
         if ((stateBits & ResourceStates::CopySource) != 0) result |= D3D12_RESOURCE_STATE_COPY_SOURCE;
         if ((stateBits & ResourceStates::ResolveDest) != 0) result |= D3D12_RESOURCE_STATE_RESOLVE_DEST;
@@ -83,27 +85,23 @@ namespace PhxEngine::RHI::D3D12
         std::deque<DeleteItem> Queue;
     };
 
-    class D3D12Context
+    namespace D3D12Context
     {
-    public:
-        D3D12Context(D3D12Adapter const& gpuAdapter);
-        ~D3D12Context();
+        void Initialize(D3D12Adapter const& gpuAdapter);
+        void Finalize();
 
-    private:
-        const D3D12Adapter m_gpuAdapter;
+        static D3D12Adapter                         GpuAdapter;
+        static Core::RefCountPtr<IDXGIFactory6>     DxgiFctory6;
+        static Core::RefCountPtr<ID3D12Device>      D3D12Device;
+        static Core::RefCountPtr<ID3D12Device2>     D3D12Device2;
+        static Core::RefCountPtr<ID3D12Device5>     D3D12Device5;
 
-        inline static D3D12Context* Singleton; 
-        Core::RefCountPtr<IDXGIFactory6> m_dxgiFctory6;
-        Core::RefCountPtr<ID3D12Device>  m_d3d12Device;
-        Core::RefCountPtr<ID3D12Device2> m_d3d12Device2;
-        Core::RefCountPtr<ID3D12Device5> m_d3d12Device5;
-
-        RHICapability m_rhiCapabilities;
-        D3D12_FEATURE_DATA_ROOT_SIGNATURE m_featureDataRootSignature;
-        D3D12_FEATURE_DATA_SHADER_MODEL   m_featureDataShaderModel; 
-        ShaderModel m_minShaderModel;
-        DeleteQueue m_deferredDeleteQueue;
-        bool m_isUnderGraphicsDebugger;
+        static RHICapability                        RhiCapabilities;
+        static D3D12_FEATURE_DATA_ROOT_SIGNATURE    FeatureDataRootSignature;
+        static D3D12_FEATURE_DATA_SHADER_MODEL      FeatureDataShaderModel; 
+        static ShaderModel                          MinShaderModel;
+        static DeleteQueue                          DeferredDeleteQueue;
+        static bool                                 IsUnderGraphicsDebugger;
     };
 }
 

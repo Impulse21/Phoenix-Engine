@@ -1,14 +1,24 @@
 #pragma once
 
 #include <assert.h>
-#include <Core/RefCountPtr.h>
-
-// -- Switches based on backend ---
-#include <PlatformTypes.h>
+#include <Core/Handle.h>
 #include <RHI/RHIEnums.h>
 
 namespace PhxEngine::RHI
 {
+	typedef uint32_t DescriptorIndex;
+
+	static constexpr DescriptorIndex cInvalidDescriptorIndex = ~0u;
+
+	static constexpr uint32_t cMaxRenderTargets = 8;
+	static constexpr uint32_t cMaxViewports = 16;
+	static constexpr uint32_t cMaxVertexAttributes = 16;
+	static constexpr uint32_t cMaxBindingLayouts = 5;
+	static constexpr uint32_t cMaxBindingsPerLayout = 128;
+	static constexpr uint32_t cMaxVolatileConstantBuffersPerLayout = 6;
+	static constexpr uint32_t cMaxVolatileConstantBuffers = 32;
+	static constexpr uint32_t cMaxPushConstantSize = 128;      // D3D12: root signature is 256 bytes max., Vulkan: 128 bytes of push constants guaranteed
+
 	// forward delclare for friend factory
 	class Factory;
 
@@ -46,14 +56,595 @@ namespace PhxEngine::RHI
 		} DepthStencil;
 	};
 
+	struct SubresourceData
+	{
+		const void* pData = nullptr;
+		uint32_t rowPitch = 0;
+		uint32_t slicePitch = 0;
+	};
+
+	struct SubmitRecipt
+	{
+	};
+
+	// -- Pipeline State objects ---
+	struct BlendRenderState
+	{
+		struct RenderTarget
+		{
+			bool        BlendEnable = false;
+			BlendFactor SrcBlend = BlendFactor::One;
+			BlendFactor DestBlend = BlendFactor::Zero;
+			EBlendOp    BlendOp = EBlendOp::Add;
+			BlendFactor SrcBlendAlpha = BlendFactor::One;
+			BlendFactor DestBlendAlpha = BlendFactor::Zero;
+			EBlendOp    BlendOpAlpha = EBlendOp::Add;
+			ColorMask   ColorWriteMask = ColorMask::All;
+		};
+
+		RenderTarget Targets[cMaxRenderTargets];
+		bool alphaToCoverageEnable = false;
+	};
+
+	struct DepthStencilRenderState
+	{
+		struct StencilOpDesc
+		{
+			StencilOp FailOp = StencilOp::Keep;
+			StencilOp DepthFailOp = StencilOp::Keep;
+			StencilOp PassOp = StencilOp::Keep;
+			ComparisonFunc StencilFunc = ComparisonFunc::Always;
+
+			constexpr StencilOpDesc& setFailOp(StencilOp value) { FailOp = value; return *this; }
+			constexpr StencilOpDesc& setDepthFailOp(StencilOp value) { DepthFailOp = value; return *this; }
+			constexpr StencilOpDesc& setPassOp(StencilOp value) { PassOp = value; return *this; }
+			constexpr StencilOpDesc& setStencilFunc(ComparisonFunc value) { StencilFunc = value; return *this; }
+		};
+
+		bool            DepthTestEnable = true;
+		bool            DepthWriteEnable = true;
+		ComparisonFunc  DepthFunc = ComparisonFunc::Less;
+		bool            StencilEnable = false;
+		uint8_t         StencilReadMask = 0xff;
+		uint8_t         StencilWriteMask = 0xff;
+		uint8_t         stencilRefValue = 0;
+		StencilOpDesc   FrontFaceStencil;
+		StencilOpDesc   BackFaceStencil;
+	};
+
+	struct RasterRenderState
+	{
+		RasterFillMode FillMode = RasterFillMode::Solid;
+		RasterCullMode CullMode = RasterCullMode::Back;
+		bool FrontCounterClockwise = false;
+		bool DepthClipEnable = false;
+		bool ScissorEnable = false;
+		bool MultisampleEnable = false;
+		bool AntialiasedLineEnable = false;
+		int DepthBias = 0;
+		float DepthBiasClamp = 0.f;
+		float SlopeScaledDepthBias = 0.f;
+
+		uint8_t ForcedSampleCount = 0;
+		bool programmableSamplePositionsEnable = false;
+		bool ConservativeRasterEnable = false;
+		bool quadFillEnable = false;
+		char samplePositionsX[16]{};
+		char samplePositionsY[16]{};
+	};
+	// -- Pipeline State Objects End ---
+
+	struct Shader;
+	using ShaderHandle = Core::Handle<Shader>;
+	struct ShaderDesc
+	{
+		ShaderStage Stage = ShaderStage::None;
+		std::string DebugName = "";
+	};
+
+
+	struct InputLayout;
+	using InputLayoutHandle = Core::Handle<InputLayout>;
+	struct VertexAttributeDesc
+	{
+		static const uint32_t SAppendAlignedElement = 0xffffffff; // automatically figure out AlignedByteOffset depending on Format
+
+		std::string SemanticName;
+		uint32_t SemanticIndex = 0;
+		RHI::Format Format = RHI::Format::UNKNOWN;
+		uint32_t InputSlot = 0;
+		uint32_t AlignedByteOffset = SAppendAlignedElement;
+		bool IsInstanced = false;
+	};
+
+	struct Texture;
+	using TextureHandle = Core::Handle<Texture>;
+	struct TextureDesc
+	{
+		TextureMiscFlags MiscFlags = TextureMiscFlags::None;
+		BindingFlags BindingFlags = BindingFlags::ShaderResource;
+		TextureDimension Dimension = TextureDimension::Texture2D;
+		ResourceStates InitialState = ResourceStates::Common;
+		RHI::Format Format = RHI::Format::UNKNOWN;
+
+		uint32_t Width;
+		uint32_t Height;
+
+		union
+		{
+			uint16_t ArraySize = 1;
+			uint16_t Depth;
+		};
+
+		uint16_t MipLevels = 1;
+
+		RHI::ClearValue OptmizedClearValue = {};
+		std::string DebugName;
+	};
+
+	struct Buffer;
+	using BufferHandle = Core::Handle<Buffer>;
+	struct BufferDesc
+	{
+		BufferMiscFlags MiscFlags = BufferMiscFlags::None;
+		Usage Usage = Usage::Default;
+		BindingFlags Binding = BindingFlags::None;
+		ResourceStates InitialState = ResourceStates::Common;
+		RHI::Format Format = RHI::Format::UNKNOWN;
+
+		uint64_t Stride = 0;
+		uint64_t NumElements = 0;
+		size_t UavCounterOffset = 0;
+		BufferHandle UavCounterBuffer = {};
+		BufferHandle AliasedBuffer = {};
+
+		std::string DebugName;
+	};
+
+	// This is just a workaround for now
+	class IRootSignatureBuilder
+	{
+	public:
+		virtual ~IRootSignatureBuilder() = default;
+	};
+
+	struct StaticSamplerParameter
+	{
+		uint32_t Slot;
+		Color BorderColor = 1.f;
+		float MaxAnisotropy = 1.f;
+		float MipBias = 0.f;
+
+		bool MinFilter = true;
+		bool MagFilter = true;
+		bool MipFilter = true;
+		SamplerAddressMode AddressU = SamplerAddressMode::Clamp;
+		SamplerAddressMode AddressV = SamplerAddressMode::Clamp;
+		SamplerAddressMode AddressW = SamplerAddressMode::Clamp;
+		ComparisonFunc ComparisonFunc = ComparisonFunc::LessOrEqual;
+		SamplerReductionType ReductionType = SamplerReductionType::Standard;
+	};
+	struct ShaderParameter
+	{
+		uint32_t Slot;
+		ResourceType Type : 8;
+		bool IsVolatile : 8;
+		uint16_t Size : 16;
+
+	};
+
+	struct BindlessShaderParameter
+	{
+		ResourceType Type : 8;
+		uint16_t RegisterSpace : 16;
+	};
+
+	// Shader Binding Layout
+	struct ShaderParameterLayout
+	{
+		ShaderStage Visibility = ShaderStage::None;
+		uint32_t RegisterSpace = 0;
+		std::vector<ShaderParameter> Parameters;
+		std::vector<BindlessShaderParameter> BindlessParameters;
+		std::vector<StaticSamplerParameter> StaticSamplers;
+
+		ShaderParameterLayout& AddPushConstantParmaeter(uint32_t shaderRegister, size_t size)
+		{
+			ShaderParameter p = {};
+			p.Size = size;
+			p.Slot = shaderRegister;
+			p.Type = ResourceType::PushConstants;
+
+			this->AddParameter(std::move(p));
+
+			return *this;
+		}
+
+		ShaderParameterLayout& AddCBVParameter(uint32_t shaderRegister, bool IsVolatile = false)
+		{
+			ShaderParameter p = {};
+			p.Size = 0;
+			p.Slot = shaderRegister;
+			p.IsVolatile = IsVolatile;
+			p.Type = ResourceType::ConstantBuffer;
+
+			this->AddParameter(std::move(p));
+
+			return *this;
+		}
+
+		ShaderParameterLayout& AddSRVParameter(uint32_t shaderRegister)
+		{
+			ShaderParameter p = {};
+			p.Size = 0;
+			p.Slot = shaderRegister;
+			p.Type = ResourceType::SRVBuffer;
+
+			this->AddParameter(std::move(p));
+
+			return *this;
+		}
+
+		ShaderParameterLayout AddBindlessSRV(uint32_t shaderSpace)
+		{
+			BindlessShaderParameter p = {};
+			p.RegisterSpace = shaderSpace;
+			p.Type = ResourceType::BindlessSRV;
+
+			this->AddBindlessParameter(std::move(p));
+
+			return *this;
+		}
+
+		ShaderParameterLayout& AddStaticSampler(
+			uint32_t shaderRegister,
+			bool minFilter,
+			bool magFilter,
+			bool mipFilter,
+			SamplerAddressMode         addressUVW,
+			uint32_t				   maxAnisotropy = 16U,
+			ComparisonFunc             comparisonFunc = ComparisonFunc::LessOrEqual,
+			Color                      borderColor = { 1.0f , 1.0f, 1.0f, 0.0f })
+		{
+			StaticSamplerParameter& desc = this->StaticSamplers.emplace_back();
+			desc.Slot = shaderRegister;
+			desc.MinFilter = minFilter;
+			desc.MagFilter = magFilter;
+			desc.MagFilter = mipFilter;
+			desc.AddressU = addressUVW;
+			desc.AddressV = addressUVW;
+			desc.AddressW = addressUVW;
+			desc.MaxAnisotropy = static_cast<float>(maxAnisotropy);
+			desc.ComparisonFunc = comparisonFunc;
+			desc.BorderColor = borderColor;
+
+			return *this;
+		}
+
+		void AddParameter(ShaderParameter&& parameter)
+		{
+			this->Parameters.emplace_back(parameter);
+		}
+
+		void AddBindlessParameter(BindlessShaderParameter&& bindlessParameter)
+		{
+			this->BindlessParameters.emplace_back(bindlessParameter);
+		}
+	};
+
+	struct GfxPipeline;
+	using GfxPipelineHandle = Core::Handle<GfxPipeline>;
+	struct GfxPipelineDesc
+	{
+		PrimitiveType PrimType = PrimitiveType::TriangleList;
+		InputLayoutHandle InputLayout;
+
+		IRootSignatureBuilder* RootSignatureBuilder = nullptr;
+		ShaderParameterLayout ShaderParameters;
+
+		ShaderHandle VertexShader;
+		ShaderHandle HullShader;
+		ShaderHandle DomainShader;
+		ShaderHandle GeometryShader;
+		ShaderHandle PixelShader;
+
+		BlendRenderState BlendRenderState = {};
+		DepthStencilRenderState DepthStencilRenderState = {};
+		RasterRenderState RasterRenderState = {};
+
+		std::vector<RHI::Format> RtvFormats;
+		std::optional<RHI::Format> DsvFormat;
+
+		uint32_t SampleCount = 1;
+		uint32_t SampleQuality = 0;
+	};
+
+	struct ComputePipeline;
+	using ComputePipelineHandle = Core::Handle<ComputePipeline>;
+	struct ComputePipelineDesc
+	{
+		ShaderHandle ComputeShader;
+	};
+
+	struct MeshPipeline;
+	using MeshPipelineHandle = Core::Handle<MeshPipeline>;
+	struct MeshPipelineDesc
+	{
+		PrimitiveType PrimType = PrimitiveType::TriangleList;
+
+		ShaderHandle AmpShader;
+		ShaderHandle MeshShader;
+		ShaderHandle PixelShader;
+
+		BlendRenderState BlendRenderState = {};
+		DepthStencilRenderState DepthStencilRenderState = {};
+		RasterRenderState RasterRenderState = {};
+
+		std::vector<RHI::Format> RtvFormats;
+		std::optional<RHI::Format> DsvFormat;
+
+		uint32_t SampleCount = 1;
+		uint32_t SampleQuality = 0;
+	};
+
+	struct SwapChain;
+	using SwapChainHandle = Core::Handle<SwapChain>;
+	struct SwapchainDesc
+	{
+		uint32_t Width = 1u;
+		uint32_t Height = 1u;
+		uint32_t BufferCount = 3;
+		RHI::Format Format = RHI::Format::R10G10B10A2_UNORM;
+		bool Fullscreen = false;
+		bool VSync = false;
+		bool EnableHDR = false;
+		RHI::ClearValue OptmizedClearValue =
+		{
+			.Colour =
+			{
+				0.0f,
+				0.0f,
+				0.0f,
+				1.0f,
+			}
+		};
+	};
+
+	struct RTAccelerationStructure;
+	using RTAccelerationStructureHandle = Core::Handle<RTAccelerationStructure>;
+
+	struct RTAccelerationStructureDesc
+	{
+		enum FLAGS
+		{
+			kEmpty = 0,
+			kAllowUpdate = 1 << 0,
+			kAllowCompaction = 1 << 1,
+			kPreferFastTrace = 1 << 2,
+			kPreferFastBuild = 1 << 3,
+			kMinimizeMemory = 1 << 4,
+		};
+		uint32_t Flags = kEmpty;
+
+		enum class Type
+		{
+			BottomLevel = 0,
+			TopLevel
+		} Type;
+
+		struct BottomLevelDesc
+		{
+			struct Geometry
+			{
+				enum FLAGS
+				{
+					kEmpty = 0,
+					kOpaque = 1 << 0,
+					kNoduplicateAnyHitInvocation = 1 << 1,
+					kUseTransform = 1 << 2,
+				};
+				uint32_t Flags = kEmpty;
+
+				enum class Type
+				{
+					Triangles,
+					ProceduralAABB,
+				} Type = Type::Triangles;
+
+				struct TrianglesDesc
+				{
+					BufferHandle VertexBuffer;
+					BufferHandle IndexBuffer;
+					uint32_t IndexCount = 0;
+					uint64_t IndexOffset = 0;
+					uint32_t VertexCount = 0;
+					uint64_t VertexByteOffset = 0;
+					uint32_t VertexStride = 0;
+					RHI::Format IndexFormat = RHI::Format::R32_UINT;
+					RHI::Format VertexFormat = RHI::Format::RGB32_FLOAT;
+					BufferHandle Transform3x4Buffer;
+					uint32_t Transform3x4BufferOffset = 0;
+				} Triangles;
+
+				struct ProceduralAABBsDesc
+				{
+					BufferHandle AABBBuffer;
+					uint32_t Offset = 0;
+					uint32_t Count = 0;
+					uint32_t Stride = 0;
+				} AABBs;
+			};
+
+			std::vector<Geometry> Geometries;
+		} ButtomLevel;
+
+		struct TopLevelDesc
+		{
+			struct Instance
+			{
+				enum FLAGS
+				{
+					kEmpty = 0,
+					kTriangleCullDisable = 1 << 0,
+					kTriangleFrontCounterClockwise = 1 << 1,
+					kForceOpaque = 1 << 2,
+					kForceNowOpaque = 1 << 3,
+				};
+
+				float Transform[3][4];
+				uint32_t InstanceId : 24;
+				uint32_t InstanceMask : 8;
+				uint32_t InstanceContributionToHitGroupIndex : 24;
+				uint32_t Flags : 8;
+				RTAccelerationStructureHandle BottomLevel = {};
+			};
+
+			BufferHandle InstanceBuffer = {};
+			uint32_t Offset = 0;
+			uint32_t Count = 0;
+		} TopLevel;
+	};
+
+	struct TimerQuery;
+	using TimerQueryHandle = Core::Handle<TimerQuery>;
+
+	struct GpuBarrier
+	{
+		struct BufferBarrier
+		{
+			RHI::BufferHandle Buffer;
+			RHI::ResourceStates BeforeState;
+			RHI::ResourceStates AfterState;
+		};
+
+		struct TextureBarrier
+		{
+			RHI::TextureHandle Texture;
+			RHI::ResourceStates BeforeState;
+			RHI::ResourceStates AfterState;
+			int Mip;
+			int Slice;
+		};
+
+		struct MemoryBarrier
+		{
+			std::variant<TextureHandle, BufferHandle> Resource;
+		};
+
+		std::variant<BufferBarrier, TextureBarrier, GpuBarrier::MemoryBarrier> Data;
+
+		static GpuBarrier CreateMemory()
+		{
+			GpuBarrier barrier = {};
+			barrier.Data = GpuBarrier::MemoryBarrier{};
+
+			return barrier;
+		}
+
+		static GpuBarrier CreateMemory(TextureHandle texture)
+		{
+			GpuBarrier barrier = {};
+			barrier.Data = GpuBarrier::MemoryBarrier{ .Resource = texture };
+
+			return barrier;
+		}
+
+		static GpuBarrier CreateMemory(BufferHandle buffer)
+		{
+			GpuBarrier barrier = {};
+			barrier.Data = GpuBarrier::MemoryBarrier{ .Resource = buffer };
+
+			return barrier;
+		}
+
+		static GpuBarrier CreateTexture(
+			TextureHandle texture,
+			ResourceStates beforeState,
+			ResourceStates afterState,
+			int mip = -1,
+			int slice = -1)
+		{
+			GpuBarrier::TextureBarrier t = {};
+			t.Texture = texture;
+			t.BeforeState = beforeState;
+			t.AfterState = afterState;
+			t.Mip = mip;
+			t.Slice = slice;
+
+			GpuBarrier barrier = {};
+			barrier.Data = t;
+
+			return barrier;
+		}
+
+		static GpuBarrier CreateBuffer(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState)
+		{
+			GpuBarrier::BufferBarrier b = {};
+			b.Buffer = buffer;
+			b.BeforeState = beforeState;
+			b.AfterState = afterState;
+
+			GpuBarrier barrier = {};
+			barrier.Data = b;
+
+			return barrier;
+		}
+	};
+
+	struct IndirectArgumnetDesc
+	{
+		IndirectArgumentType Type;
+		union
+		{
+			struct
+			{
+				uint32_t Slot;
+			} 	VertexBuffer;
+			struct
+			{
+				uint32_t RootParameterIndex;
+				uint32_t DestOffsetIn32BitValues;
+				uint32_t Num32BitValuesToSet;
+			} 	Constant;
+			struct
+			{
+				uint32_t RootParameterIndex;
+			} 	ConstantBufferView;
+			struct
+			{
+				uint32_t RootParameterIndex;
+			} 	ShaderResourceView;
+			struct
+			{
+				uint32_t RootParameterIndex;
+			} 	UnorderedAccessView;
+		};
+	};
+	struct CommandSignatureDesc
+	{
+		Core::Span<IndirectArgumnetDesc> ArgDesc;
+
+		PipelineType PipelineType;
+		union
+		{
+			RHI::GfxPipelineHandle GfxHandle;
+			RHI::ComputePipelineHandle ComputeHandle;
+			RHI::MeshPipelineHandle MeshHandle;
+		};
+	};
+
+	struct CommandSignature;
+	using CommandSignatureHandle = Core::Handle<CommandSignature>;
+
+	// -- Context Stuff
+	struct PlatformContext {}; // TODO:
+
 	struct NonCopyable
 	{
 		NonCopyable() = default;
 		NonCopyable(const NonCopyable&) = delete;
 		NonCopyable& operator=(const NonCopyable&) = delete;
 	};
-
-	struct PlatformContext {}; // TODO:
 
 	class GfxContext;
 	class ComputeContext;
@@ -125,182 +716,5 @@ namespace PhxEngine::RHI
 		}
 	};
 
-
-	struct GpuBufferDesc
-	{
-
-	};
-	class GpuBuffer final
-	{
-		friend Factory;
-
-	public:
-		const GpuBufferDesc& GetDesc() const { return this->m_desc; };
-		const PlatformGpuBuffer& GetPlatform() const { return this->m_platformImpl; };
-
-	private:
-		PlatformGpuBuffer m_platformImpl;
-		GpuBufferDesc m_desc;
-	};
-
-	struct TextureDesc
-	{
-
-	};
-
-	class Texture final
-	{
-		friend Factory;
-
-	public:
-		const SwapchainDesc& GetDesc() const { return this->m_desc; };
-		const PlatformSwapChain& GetPlatform() const { return this->m_platformImpl; };
-
-	private:
-		PlatformSwapChain m_platformImpl;
-		SwapchainDesc m_desc;
-	};
-
-	class SubmitRecipt
-	{
-	private:
-		PlatformSubmitRecipt m_platformImpl;
-	};
-
-	struct GfxPipelineDesc
-	{
-
-	};
-	class GfxPipeline final
-	{
-		friend Factory;
-
-	public:
-		const GfxPipelineDesc& GetDesc() const { return this->m_desc; };
-		const PlatformGfxPipeline& GetPlatform() const { return this->m_platformImpl; };
-
-	private:
-		PlatformGfxPipeline m_platformImpl;
-		GfxPipelineDesc m_desc;
-	};
-
-	struct ComputePipelineDesc
-	{
-
-	};
-	class ComputePipeline final
-	{
-		friend Factory;
-
-	public:
-		const ComputePipelineDesc& GetDesc() const { return this->m_desc; };
-		const PlatformComputePipeline& GetPlatform() const { return this->m_platformImpl; };
-
-	private:
-		PlatformComputePipeline m_platformImpl;
-		ComputePipelineDesc m_desc;
-	};
-
-	struct MeshPipelineDesc
-	{
-
-	};
-	class MeshPipeline final
-	{
-		friend Factory;
-
-	public:
-		const MeshPipelineDesc& GetDesc() const { return this->m_desc; };
-		const PlatformMeshPipeline& GetPlatform() const { return this->m_platformImpl; };
-
-	private:
-		PlatformMeshPipeline m_platformImpl;
-		MeshPipelineDesc m_desc;
-	};
-
-	struct InputLayoutDesc
-	{
-
-	};
-	class InputLayout final
-	{
-		friend Factory;
-
-	public:
-		const InputLayoutDesc& GetDesc() const { return this->m_desc; };
-		const PlatformInputLayout& GetPlatform() const { return this->m_platformImpl; };
-
-	private:
-		PlatformInputLayout m_platformImpl;
-		InputLayoutDesc m_desc;
-	};
-
-	struct ShaderDesc
-	{
-
-	};
-	class Shader final
-	{
-		friend Factory;
-
-	public:
-		const ShaderDesc& GetDesc() const { return this->m_desc; };
-		const PlatformShader& GetPlatform() const { return this->m_platformImpl; };
-
-	private:
-		PlatformShader m_platformImpl;
-		ShaderDesc m_desc;
-	};
-
-	struct CommandSignatureDesc
-	{
-
-	};
-	class CommandSignature final
-	{
-		friend Factory;
-
-	public:
-		const CommandSignatureDesc& GetDesc() const { return this->m_desc; };
-		const PlatformCommandSignature& GetPlatform() const { return this->m_platformImpl; };
-
-	private:
-		PlatformCommandSignature m_platformImpl;
-		CommandSignatureDesc m_desc;
-	};
-
-	struct SwapchainDesc
-	{
-		uint32_t Width = 1u;
-		uint32_t Height = 1u;
-		uint32_t BufferCount = 3;
-		RHI::Format Format = RHI::Format::R10G10B10A2_UNORM;
-		bool Fullscreen = false;
-		bool VSync = false;
-		bool EnableHDR = false;
-		RHI::ClearValue OptmizedClearValue =
-		{
-			.Colour =
-			{
-				0.0f,
-				0.0f,
-				0.0f,
-				1.0f,
-			}
-		};
-	};
-
-	class SwapChain final
-	{
-		friend Factory;
-
-	public:
-		const SwapchainDesc& GetDesc() const { return this->m_desc; };
-		const Core::RefCountPtr<PlatformSwapChain>& GetPlatform() const { return this->m_platformImpl; };
-
-	private:
-		Core::RefCountPtr<PlatformSwapChain> m_platformImpl;
-		SwapchainDesc m_desc;
-	};
 
 }

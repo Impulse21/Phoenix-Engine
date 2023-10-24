@@ -414,4 +414,21 @@ namespace PhxEngine::RHI
         RTV,
         DSV,
     };
+
+    enum class IndirectArgumentType
+    {
+        Draw = 0,
+        DrawIndex,
+        Dispatch,
+        DispatchMesh,
+        Constant,
+    };
+
+    enum class PipelineType
+    {
+        None = 0,
+        Gfx,
+        Compute,
+        Mesh,
+    };
 }

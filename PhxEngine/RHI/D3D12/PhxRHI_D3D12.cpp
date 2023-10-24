@@ -1,17 +1,21 @@
 #include <PhxEngine.h>
 
 #include "D3D12Context.h"
+#include "D3D12Resources.h"
+
 #include "Core/String.h"
 #include <stdexcept>
 
 
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::D3D12;
+
 // -- D3D12 Implementation
 
 namespace
 {
-	std::shared_ptr<D3D12::D3D12Context> gContext;
+	ResourcePools ResPools;
+
 	bool SafeTestD3D12CreateDevice(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL minFeatureLevel, D3D12DeviceBasicInfo& outInfo)
 	{
 #pragma warning(disable:6322)
@@ -36,7 +40,7 @@ namespace
 		}
 #pragma warning(default:6322)
 
-		return false;
+		return {};
 	}
 
 }
@@ -94,7 +98,7 @@ bool PhxEngine::RHI::Initialize(RHIParams const& params)
 		if (!selectedAdapter.NativeAdapter)
 		{
 			LOG_RHI_ERROR("No suitable adapters were found - Unable to initialize RHI.");
-			return false;
+			return {};
 		}
     }
 
@@ -110,15 +114,15 @@ bool PhxEngine::RHI::Initialize(RHIParams const& params)
 
 	
 	D3D12Context::Initialize(selectedAdapter);
-
-
+	ResPools.Initialize(1);
     return true;
 }
 
 bool PhxEngine::RHI::Finalize()
 {
+	ResPools.Finialize();
 	D3D12Context::Finalize();
-    return false;
+    return {};
 }
 
 void PhxEngine::RHI::EndFrame(Core::Span<SwapChain> swapchainsToPresent)
@@ -146,12 +150,12 @@ SubmitRecipt PhxEngine::RHI::Submit(Core::Span<CommandContext> context)
     return SubmitRecipt();
 }
 
-bool PhxEngine::RHI::Factory::Factory::CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride, CommandSignature& out)
+CommandSignatureHandle PhxEngine::RHI::CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride)
 {
-    return false;
+    return {};
 }
 
-bool PhxEngine::RHI::Factory::Factory::CreateSwapChain(SwapchainDesc desc, void* windowHandle, SwapChain& out)
+SwapChainHandle PhxEngine::RHI::CreateSwapChain(SwapchainDesc desc, void* windowHandle)
 {
 	out.m_desc = desc;
 	HRESULT hr;
@@ -305,40 +309,40 @@ bool PhxEngine::RHI::Factory::Factory::CreateSwapChain(SwapchainDesc desc, void*
 			},
 			backBuffer);
 	}
-	return false;
+	return {};
 }
 
-bool PhxEngine::RHI::Factory::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode, Shader& out)
+ShaderHandle PhxEngine::RHI::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
 {
-    return false;
+    return {};
 }
 
-bool PhxEngine::RHI::Factory::CreateInputLayout(InputLayoutDesc const& desc, uint32_t attributeCount, InputLayout& out)
+InputLayoutHandle PhxEngine::RHI::CreateInputLayout(VertexAttributeDesc const& desc, uint32_t attributeCount)
 {
-    return false;
+    return {};
 }
 
-bool PhxEngine::RHI::Factory::CreateGfxPipeline(GfxPipelineDesc const& desc, Texture& out)
+GfxPipelineHandle PhxEngine::RHI::CreateGfxPipeline(GfxPipelineDesc const& desc)
 {
-    return false;
+    return {};
 }
 
-bool PhxEngine::RHI::Factory::CreateComputePipeline(ComputePipelineDesc const& desc, Texture& out)
+ComputePipelineHandle PhxEngine::RHI::CreateComputePipeline(ComputePipelineDesc const& desc)
 {
-    return false;
+    return {};
 }
 
-bool PhxEngine::RHI::Factory::CreateMeshPipeline(MeshPipelineDesc const& desc, Texture& out)
+MeshPipelineHandle PhxEngine::RHI::CreateMeshPipeline(MeshPipelineDesc const& desc)
 {
-    return false;
+    return {};
 }
 
-bool PhxEngine::RHI::Factory::CreateGpuBuffer(GpuBufferDesc const& desc, Texture& out, void* initalData = nullptr)
+BufferHandle PhxEngine::RHI::CreateGpuBuffer(BufferDesc const& desc, void* initalData = nullptr)
 {
-    return false;
+    return {};
 }
 
-bool PhxEngine::RHI::Factory::CreateTexture(TextureDesc const& desc, Texture& out, void* initalData = nullptr)
+TextureHandle PhxEngine::RHI::CreateTexture(TextureDesc const& desc, void* initalData = nullptr)
 {
-    return false;
+    return {};
 }

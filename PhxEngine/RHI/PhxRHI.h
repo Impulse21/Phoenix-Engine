@@ -35,17 +35,15 @@ namespace PhxEngine::RHI
 	}
 	
 	// Use static class so we can get internals of the passed in types via friend
-	class Factory
-	{
-	public:
-		static bool CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride, CommandSignature& out);
-		static bool CreateSwapChain(SwapchainDesc desc, void* windowHandle, SwapChain& out);
-		static bool CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode, Shader& out);
-		static bool CreateInputLayout(InputLayoutDesc const& desc, uint32_t attributeCount, InputLayout& out);
-		static bool CreateGfxPipeline(GfxPipelineDesc const& desc, Texture& out);
-		static bool CreateComputePipeline(ComputePipelineDesc const& desc, Texture& out);
-		static bool CreateMeshPipeline(MeshPipelineDesc const& desc, Texture& out);
-		static bool CreateGpuBuffer(GpuBufferDesc const& desc, Texture& out, void* initalData = nullptr);
-		static bool CreateTexture(TextureDesc const& desc, Texture& out, void* initalData = nullptr);
-	};
+	CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride);
+	SwapChainHandle CreateSwapChain(SwapchainDesc desc, void* windowHandle);
+	ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode);
+	InputLayoutHandle CreateInputLayout(VertexAttributeDesc const& desc, uint32_t attributeCount);
+	GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
+	ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc);
+	MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc);
+	BufferHandle CreateGpuBuffer(BufferDesc const& desc, void* initalData = nullptr);
+	TextureHandle CreateTexture(TextureDesc const& desc, void* initalData = nullptr);
+
+	void ResizeSwapChain(SwapChainHandle handle);
 }
