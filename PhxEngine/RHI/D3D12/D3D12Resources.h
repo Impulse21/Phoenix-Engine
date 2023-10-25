@@ -78,14 +78,14 @@ namespace PhxEngine::RHI::D3D12
         D3D12InputLayout() = default;
     };
 
-    struct D3D12GraphicsPipeline
+    struct D3D12GfxPipeline
     {
         GfxPipelineDesc Desc;
 
         Core::RefCountPtr<ID3D12RootSignature> RootSignature;
         Core::RefCountPtr<ID3D12PipelineState> D3D12PipelineState;
 
-        D3D12GraphicsPipeline() = default;
+        D3D12GfxPipeline() = default;
     };
 
     struct D3D12ComputePipeline
@@ -260,62 +260,5 @@ namespace PhxEngine::RHI::D3D12
         D3D12RTAccelerationStructure() = default;
     };
 
-    struct D3D12RenderPass final
-    {
-        RenderPassDesc Desc = {};
-
-        D3D12_RENDER_PASS_FLAGS D12RenderFlags = D3D12_RENDER_PASS_FLAG_NONE;
-
-        size_t NumRenderTargets = 0;
-        std::array<D3D12_RENDER_PASS_RENDER_TARGET_DESC, kNumConcurrentRenderTargets> RTVs = {};
-        D3D12_RENDER_PASS_DEPTH_STENCIL_DESC DSV = {};
-
-        std::vector<D3D12_RESOURCE_BARRIER> BarrierDescBegin;
-        std::vector<D3D12_RESOURCE_BARRIER> BarrierDescEnd;
-
-        D3D12RenderPass() = default;
-    };
-
-    struct ResourcePools
-    {
-        Core::Pool<D3D12Texture, Texture> TexturePool;
-        Core::Pool<D3D12CommandSignature, CommandSignature> CommandSignaturePool;
-        Core::Pool<D3D12Shader, RHI::Shader> ShaderPool;
-        Core::Pool<D3D12InputLayout, InputLayout> InputLayoutPool;
-        Core::Pool<D3D12Buffer, Buffer> BufferPool;
-        Core::Pool<D3D12RTAccelerationStructure, RTAccelerationStructure> RtAccelerationStructurePool;
-        Core::Pool<D3D12GraphicsPipeline, GfxPipeline> GfxPipelinePool;
-        Core::Pool<D3D12ComputePipeline, ComputePipeline> ComputePipelinePool;
-        Core::Pool<D3D12MeshPipeline, MeshPipeline> MeshPipelinePool;
-        Core::Pool<D3D12TimerQuery, TimerQuery> TimerQueryPool;
-
-        void Initialize(size_t initializeSize)
-        {
-            this->TexturePool.Initialize(initializeSize);
-            this->CommandSignaturePool.Initialize(initializeSize);
-            this->ShaderPool.Initialize(initializeSize);
-            this->InputLayoutPool.Initialize(initializeSize);
-            this->BufferPool.Initialize(initializeSize);
-            this->RtAccelerationStructurePool.Initialize(initializeSize);
-            this->GfxPipelinePool.Initialize(initializeSize);
-            this->ComputePipelinePool.Initialize(initializeSize);
-            this->MeshPipelinePool.Initialize(initializeSize);
-            this->TimerQueryPool.Initialize(initializeSize);
-        };
-
-        void Finialize()
-        {
-            this->TexturePool.Finalize();
-            this->CommandSignaturePool.Finalize();
-            this->ShaderPool.Finalize();
-            this->InputLayoutPool.Finalize();
-            this->BufferPool.Finalize();
-            this->RtAccelerationStructurePool.Finalize();
-            this->GfxPipelinePool.Finalize();
-            this->ComputePipelinePool.Finalize();
-            this->MeshPipelinePool.Finalize();
-            this->TimerQueryPool.Finalize();
-        }
-    }
 }
 

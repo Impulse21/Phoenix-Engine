@@ -1,16 +1,15 @@
 #pragma once
 
-#include <Core/RefCountPtr.h>
-#include <Core/Pool.h>
+#define NOMINMAX
+#include <assert.h>
 
+#include "d3d12.h"
+#include "d3dx12.h"
+#include <dxgi1_6.h>
+#ifdef _DEBUG
+#include <dxgidebug.h>
 
-#include <Core/Log.h>
-
-#include <deque>
-#include "D3D12Adapter.h"
-#include "DxgiFormatMapping.h"
-#include "Core/SpinLock.h"
-
+#endif
 namespace PhxEngine::RHI::D3D12
 {
     inline D3D12_RESOURCE_STATES ConvertResourceStates(ResourceStates stateBits)
@@ -69,10 +68,9 @@ namespace PhxEngine::RHI::D3D12
 
         static RHICapability                        RhiCapabilities;
         static D3D12_FEATURE_DATA_ROOT_SIGNATURE    FeatureDataRootSignature;
-        static D3D12_FEATURE_DATA_SHADER_MODEL      FeatureDataShaderModel; 
+        static D3D12_FEATURE_DATA_SHADER_MODEL      FeatureDataShaderModel;
         static ShaderModel                          MinShaderModel;
         static DeleteQueue                          DeferredDeleteQueue;
         static bool                                 IsUnderGraphicsDebugger;
     };
 }
-
