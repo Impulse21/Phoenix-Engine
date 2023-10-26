@@ -1,5 +1,8 @@
 #pragma once
 
+#include <RHI/RHIEnums.h>
+#include <Core/RefCountPtr.h>
+
 #define NOMINMAX
 #include <assert.h>
 
@@ -10,9 +13,11 @@
 #include <dxgidebug.h>
 
 #endif
+
+#include "D3D12Adapter.h"
 namespace PhxEngine::RHI::D3D12
 {
-    inline D3D12_RESOURCE_STATES ConvertResourceStates(ResourceStates stateBits)
+    inline D3D12_RESOURCE_STATES ConvertResourceStates(RHI::ResourceStates stateBits)
     {
         if (stateBits == ResourceStates::Common)
             return D3D12_RESOURCE_STATE_COMMON;
@@ -55,22 +60,40 @@ namespace PhxEngine::RHI::D3D12
     }
 
 
-    namespace D3D12Context
+    class D3D12Device final
     {
-        void Initialize(D3D12Adapter const& gpuAdapter);
-        void Finalize();
+    public:
+        D3D12Device(D3D12Adapter const& adapter);
+        ~D3D12Device();
 
-        static D3D12Adapter                         GpuAdapter;
-        static Core::RefCountPtr<IDXGIFactory6>     DxgiFctory6;
-        static Core::RefCountPtr<ID3D12Device>      D3D12Device;
-        static Core::RefCountPtr<ID3D12Device2>     D3D12Device2;
-        static Core::RefCountPtr<ID3D12Device5>     D3D12Device5;
+        const D3D12Adapter&                         GetGpuAdapter()         const { return this->m_gpuAdapter; }
+        Core::RefCountPtr<IDXGIFactory6>            GetNativeFactoryRef()   const { return this->m_dxgiFctory6; }
+        Core::RefCountPtr<ID3D12Device>             GetNativeDeviceRef()    const { return this->m_d3d12Device; }
+        Core::RefCountPtr<ID3D12Device2>            GetNativeDevice2Ref()   const { return this->m_d3d12Device2; }
+        Core::RefCountPtr<ID3D12Device5>            GetNativeDevice5Ref()   const { return this->m_d3d12Device5; }
 
-        static RHICapability                        RhiCapabilities;
-        static D3D12_FEATURE_DATA_ROOT_SIGNATURE    FeatureDataRootSignature;
-        static D3D12_FEATURE_DATA_SHADER_MODEL      FeatureDataShaderModel;
-        static ShaderModel                          MinShaderModel;
-        static DeleteQueue                          DeferredDeleteQueue;
-        static bool                                 IsUnderGraphicsDebugger;
+        IDXGIFactory6*                              GetNativeFactory()  { return this->m_dxgiFctory6.Get(); }
+        ID3D12Device*                               GetNativeDevice()   { return this->m_d3d12Device.Get(); }
+        ID3D12Device2*                              GetNativeDevice2()  { return this->m_d3d12Device2.Get(); }
+        ID3D12Device5*                              GetNativeDevice5()  { return this->m_d3d12Device5.Get(); }
+
+        RHICapability                               GetRhiCapabilities()            const { return this->m_rhiCapabilities; }
+        const D3D12_FEATURE_DATA_ROOT_SIGNATURE&    GetFeatureDataRootSignature()   const { return this->m_featureDataRootSignature; }
+        const D3D12_FEATURE_DATA_SHADER_MODEL&      GetFeatureDataShaderModel()     const { return this->m_featureDataShaderModel; }
+        ShaderModel                                 GetMinShaderModel()             const { return this->m_minShaderModel; }
+        bool                                        GetIsUnderGraphicsDebugger()    const { return this->m_isUnderGraphicsDebugger; }
+
+    private:
+        D3D12Adapter                         m_gpuAdapter;
+        Core::RefCountPtr<IDXGIFactory6>     m_dxgiFctory6;
+        Core::RefCountPtr<ID3D12Device>      m_d3d12Device;
+        Core::RefCountPtr<ID3D12Device2>     m_d3d12Device2;
+        Core::RefCountPtr<ID3D12Device5>     m_d3d12Device5;
+
+        RHICapability                        m_rhiCapabilities;
+        D3D12_FEATURE_DATA_ROOT_SIGNATURE    m_featureDataRootSignature;
+        D3D12_FEATURE_DATA_SHADER_MODEL      m_featureDataShaderModel;
+        ShaderModel                          m_minShaderModel;
+        bool                                 m_isUnderGraphicsDebugger;
     };
 }

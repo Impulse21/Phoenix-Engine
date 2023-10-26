@@ -1,20 +1,21 @@
 #pragma once
 
+#include <Core/Span.h>
+#include <Core/Pool.h>
+#include <Core/SpinLock.h>
 #include <RHI/RHIResources.h>
 #include <D3D12Resources.h>
 
 namespace PhxEngine::RHI::D3D12
 {
+    class D3D12Device;
+    class D3D12GpuAllocator;
     class D3D12ResourceManager final
     {
     public:
-        // Global Pointer
-        inline static D3D12ResourceManager* gPtr;
-
-    public:
-        D3D12ResourceManager();
+        D3D12ResourceManager(std::shared_ptr<D3D12Device> device, std::shared_ptr<D3D12GpuAllocator> gpuAllocator);
         ~D3D12ResourceManager();
-        void RunGrabageCollection(size_t completedFrame);
+        void RunGrabageCollection(size_t completedFrame = ~0u);
 
         CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride);
         SwapChainHandle CreateSwapChain(SwapchainDesc const& desc, void* windowHandle);
@@ -63,6 +64,9 @@ namespace PhxEngine::RHI::D3D12
         Core::Pool<D3D12SwapChain, SwapChain>& GetSwapChainPool() { return this->m_swapChainPool; }
 
     private:
+        std::shared_ptr<D3D12Device> m_device;
+        std::shared_ptr<D3D12GpuAllocator> m_gpuAllocator;
+
         Core::Pool<D3D12Texture, Texture> m_texturePool;
         Core::Pool<D3D12CommandSignature, CommandSignature> m_commandSignaturePool;
         Core::Pool<D3D12Shader, RHI::Shader> m_shaderPool;

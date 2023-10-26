@@ -1,6 +1,11 @@
 #pragma once
 
 #include <assert.h>
+#include <string>
+#include <variant>
+#include <optional>
+
+#include <Core/Span.h>
 #include <Core/Handle.h>
 #include <RHI/RHIEnums.h>
 
@@ -638,6 +643,12 @@ namespace PhxEngine::RHI
 
 	// -- Context Stuff
 	struct PlatformContext {}; // TODO:
+
+	struct GpuMemoryUsage
+	{
+		uint64_t Budget = 0ull;
+		uint64_t Usage = 0ull;
+	};
 
 	struct NonCopyable
 	{

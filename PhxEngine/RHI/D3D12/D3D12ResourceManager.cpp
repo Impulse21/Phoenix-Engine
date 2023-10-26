@@ -18,6 +18,12 @@ PhxEngine::RHI::D3D12::D3D12ResourceManager::D3D12ResourceManager()
     this->m_timerQueryPool.Initialize(1);
 }
 
+PhxEngine::RHI::D3D12::D3D12ResourceManager::D3D12ResourceManager(std::shared_ptr<D3D12Device> device, std::shared_ptr<D3D12GpuAllocator> gpuAllocator)
+	: m_device(device)
+	, m_gpuAllocator(gpuAllocator)
+{
+}
+
 PhxEngine::RHI::D3D12::D3D12ResourceManager::~D3D12ResourceManager()
 {
     this->m_texturePool.Finalize();

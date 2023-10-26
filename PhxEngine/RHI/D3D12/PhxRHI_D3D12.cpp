@@ -1,7 +1,8 @@
 #include <PhxEngine.h>
 
 #include <Core/Memory.h>
-#include "D3D12Context.h"
+#include "D3D12Device.h"
+#include "D3D12GpuMemoryAllocator.h"
 #include "D3D12Resources.h"
 #include "D3D12ResourceManager.h"
 
@@ -16,6 +17,11 @@ using namespace PhxEngine::RHI::D3D12;
 
 namespace
 {
+	// -- Globals
+	std::shared_ptr<D3D12Device> Device;
+	std::shared_ptr<D3D12GpuMemoryAllocator> GpuAllocator;
+	std::shared_ptr<D3D12ResourceManager> ResourceManager;
+
 	bool SafeTestD3D12CreateDevice(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL minFeatureLevel, D3D12DeviceBasicInfo& outInfo)
 	{
 #pragma warning(disable:6322)
@@ -113,18 +119,18 @@ bool PhxEngine::RHI::Initialize(RHIParams const& params)
 		selectedAdapter.SharedSystemMemory / (1024 * 1024));
 
 	
-	D3D12Context::Initialize(selectedAdapter);
+	Device = std::make_shared<D3D12Device>(selectedAdapter);
+	GpuAllocator = std::make_shared<D3D12GpuMemoryAllocator>(Device);
+	ResourceManager = std::make_shared<D3D12ResourceManager>(Device, GpuAllocator);
 
-	D3D12ResourceManager::gPtr = phx_new(D3D12ResourceManager);
     return true;
 }
 
 bool PhxEngine::RHI::Finalize()
 {
-	phx_delete(D3D12ResourceManager::gPtr);
-	D3D12ResourceManager::gPtr = nullptr;
-	
-	D3D12Context::Finalize();
+	ResourceManager->RunGrabageCollection();
+	ResourceManager.reset();
+	Device.reset();
 
     return {};
 }
