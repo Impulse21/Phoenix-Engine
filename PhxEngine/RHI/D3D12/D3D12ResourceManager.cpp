@@ -1,27 +1,28 @@
 #include "D3D12ResourceManager.h"
 
+#include "DxgiFormatMapping.h"
+
+#include "D3D12Device.h"
+#include "D3D12GpuMemoryAllocator.h"
+
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::D3D12;
-
-PhxEngine::RHI::D3D12::D3D12ResourceManager::D3D12ResourceManager()
-{
-    this->m_texturePool.Initialize(1);
-    this->m_commandSignaturePool.Initialize(1);
-    this->m_shaderPool.Initialize(1);
-    this->m_inputLayoutPool.Initialize(1);
-    this->m_bufferPool.Initialize(1);
-    this->m_rtAccelerationStructurePool.Initialize(1);
-    this->m_gfxPipelinePool.Initialize(1);
-    this->m_computePipelinePool.Initialize(1);
-    this->m_meshPipelinePool.Initialize(1);
-    this->m_timerQueryPool.Initialize(1);
-}
 
 PhxEngine::RHI::D3D12::D3D12ResourceManager::D3D12ResourceManager(std::shared_ptr<D3D12Device> device, std::shared_ptr<D3D12GpuAllocator> gpuAllocator)
 	: m_device(device)
 	, m_gpuAllocator(gpuAllocator)
 {
+	this->m_texturePool.Initialize(1);
+	this->m_commandSignaturePool.Initialize(1);
+	this->m_shaderPool.Initialize(1);
+	this->m_inputLayoutPool.Initialize(1);
+	this->m_bufferPool.Initialize(1);
+	this->m_rtAccelerationStructurePool.Initialize(1);
+	this->m_gfxPipelinePool.Initialize(1);
+	this->m_computePipelinePool.Initialize(1);
+	this->m_meshPipelinePool.Initialize(1);
+	this->m_timerQueryPool.Initialize(1);
 }
 
 PhxEngine::RHI::D3D12::D3D12ResourceManager::~D3D12ResourceManager()
@@ -59,7 +60,6 @@ void PhxEngine::RHI::D3D12::D3D12ResourceManager::RunGrabageCollection(size_t fr
 
 CommandSignatureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride)
 {
-
 	CommandSignatureHandle handle = this->m_commandSignaturePool.Emplace();
 	D3D12CommandSignature* signature = this->m_commandSignaturePool.Get(handle);
 
@@ -117,7 +117,7 @@ CommandSignatureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateComman
 	}
 
 	ThrowIfFailed(
-		this->GetD3D12Device()->CreateCommandSignature(
+		this->m_device->GetNativeDevice()->CreateCommandSignature(
 			&cmdDesc,
 			rootSig,
 			IID_PPV_ARGS(&signature->NativeSignature)));
@@ -155,7 +155,7 @@ SwapChainHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateSwapChain(Swa
 	DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreenDesc = {};
 	fullscreenDesc.Windowed = !desc.Fullscreen;
 
-	hr = this->m_factory->CreateSwapChainForHwnd(
+	hr = this->m_device->GetNativeFactory()->CreateSwapChainForHwnd(
 		this->GetGfxQueue().GetD3D12CommandQueue(),
 		static_cast<HWND>(windowHandle),
 		&swapChainDesc,
@@ -193,8 +193,8 @@ ShaderHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateShader(ShaderDes
 		{
 			assert(shaderImpl->RootSignatureDesc->Version == D3D_ROOT_SIGNATURE_VERSION_1_1);
 
-			Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSig;
-			hr = this->m_rootDevice->CreateRootSignature(
+			Core::RefCountPtr<ID3D12RootSignature> rootSig;
+			hr = this->m_device->GetNativeDevice2()->CreateRootSignature(
 				0,
 				shaderImpl->ByteCode.data(),
 				shaderImpl->ByteCode.size(),
@@ -211,7 +211,7 @@ ShaderHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateShader(ShaderDes
 	return handle;
 }
 
-InputLayoutHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateInputLayout(VertexAttributeDesc const& desc, uint32_t attributeCount)
+InputLayoutHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateInputLayout(Core::Span<VertexAttributeDesc> descriptions, uint32_t attributeCount)
 {
 	InputLayoutHandle handle = this->m_inputLayoutPool.Emplace();
 	D3D12InputLayout* inputLayoutImpl = this->m_inputLayoutPool.Get(handle);
@@ -222,7 +222,7 @@ InputLayoutHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateInputLayout
 		VertexAttributeDesc& attr = inputLayoutImpl->Attributes[index];
 
 		// Copy the description to get a stable name pointer in desc
-		attr = desc[index];
+		attr = descriptions[index];
 
 		D3D12_INPUT_ELEMENT_DESC& dx12Desc = inputLayoutImpl->InputElements.emplace_back();
 
@@ -357,7 +357,7 @@ GfxPipelineHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateGfxPipeline
 	d3d12Desc.SampleMask = ~0u;
 
 	ThrowIfFailed(
-		this->GetD3D12Device2()->CreateGraphicsPipelineState(&d3d12Desc, IID_PPV_ARGS(&pipeline.D3D12PipelineState)));
+		this->m_device->GetNativeDevice2()->CreateGraphicsPipelineState(&d3d12Desc, IID_PPV_ARGS(&pipeline.D3D12PipelineState)));
 
 	return this->m_gfxPipelinePool.Insert(pipeline);
 }
@@ -379,7 +379,7 @@ ComputePipelineHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateCompute
 	d3d12Desc.CS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
 
 	ThrowIfFailed(
-		this->GetD3D12Device2()->CreateComputePipelineState(&d3d12Desc, IID_PPV_ARGS(&pipeline.D3D12PipelineState)));
+		this->m_device->GetNativeDevice()->CreateComputePipelineState(&d3d12Desc, IID_PPV_ARGS(&pipeline.D3D12PipelineState)));
 
 	return this->m_computePipelinePool.Insert(pipeline);
 }
@@ -513,7 +513,7 @@ MeshPipelineHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateMeshPipeli
 	streamDesc.SizeInBytes = sizeof(psoDesc);
 
 	ThrowIfFailed(
-		this->GetD3D12Device2()->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pipeline.D3D12PipelineState)));
+		this->m_device->GetNativeDevice2()->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pipeline.D3D12PipelineState)));
 
 	return this->m_meshPipelinePool.Insert(pipeline);
 }
@@ -574,7 +574,7 @@ TextureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateTexture(Texture
 		.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV
 	};
 
-	this->GetD3D12Device2()->CreateRenderTargetView(
+	this->m_device->GetNativeDevice2()->CreateRenderTargetView(
 		texture.D3D12Resource.Get(),
 		nullptr,
 		texture.RtvAllocation.Allocation.GetCpuHandle());
@@ -712,7 +712,7 @@ RTAccelerationStructureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::Creat
 		return {};
 	}
 
-	this->GetD3D12Device5()->GetRaytracingAccelerationStructurePrebuildInfo(
+	this->m_device->GetNativeDevice5()->GetRaytracingAccelerationStructurePrebuildInfo(
 		&rtAccelerationStructureImpl.Dx12Desc,
 		&rtAccelerationStructureImpl.Info);
 
@@ -759,7 +759,7 @@ RTAccelerationStructureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::Creat
 			.SRVDesc = srvDesc,
 	};
 
-	this->GetD3D12Device5()->CreateShaderResourceView(
+	this->m_device->GetNativeDevice5()->CreateShaderResourceView(
 		nullptr,
 		&srvDesc,
 		rtAccelerationStructureImpl.Srv.Allocation.GetCpuHandle());
@@ -768,7 +768,7 @@ RTAccelerationStructureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::Creat
 	rtAccelerationStructureImpl.Srv.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
 	if (rtAccelerationStructureImpl.Srv.BindlessIndex != cInvalidDescriptorIndex)
 	{
-		this->GetD3D12Device5()->CopyDescriptorsSimple(
+		this->m_device->GetNativeDevice5()->CopyDescriptorsSimple(
 			1,
 			this->m_bindlessResourceDescriptorTable.GetCpuHandle(rtAccelerationStructureImpl.Srv.BindlessIndex),
 			rtAccelerationStructureImpl.Srv.Allocation.GetCpuHandle(),
@@ -910,19 +910,6 @@ void PhxEngine::RHI::D3D12::D3D12ResourceManager::DeleteGpuBuffer(BufferHandle h
 	m_deleteQueue.push_back({
 		.Frame = this->m_frame,
 		.DeleteFn = [&]() {
-			this->GetInputLayoutPool().Release(handle);
-		} });
-}
-
-void PhxEngine::RHI::D3D12::D3D12ResourceManager::DeleteTexture(TextureHandle handle)
-{
-	if (!handle.IsValid())
-		return;
-
-	Core::ScopedSpinLock _(this->m_deleteQueueGuard);
-	m_deleteQueue.push_back({
-		.Frame = this->m_frame,
-		.DeleteFn = [&]() {
 			D3D12Buffer* bufferImpl = this->m_bufferPool.Get(handle);
 			for (auto& view : bufferImpl->SrvSubresourcesAlloc)
 			{
@@ -942,6 +929,37 @@ void PhxEngine::RHI::D3D12::D3D12ResourceManager::DeleteTexture(TextureHandle ha
 
 			bufferImpl->DisposeViews();
 			this->GetBufferPool().Release(handle);
+		} });
+}
+
+void PhxEngine::RHI::D3D12::D3D12ResourceManager::DeleteTexture(TextureHandle handle)
+{
+	if (!handle.IsValid())
+		return;
+
+	Core::ScopedSpinLock _(this->m_deleteQueueGuard);
+	m_deleteQueue.push_back({
+		.Frame = this->m_frame,
+		.DeleteFn = [&]() {
+			D3D12Texture* texture = this->m_texturePool.Get(handle);
+			for (auto& view : texture->SrvSubresourcesAlloc)
+			{
+				if (view.BindlessIndex != cInvalidDescriptorIndex)
+				{
+					this->m_bindlessResourceDescriptorTable.Free(view.BindlessIndex);
+				}
+			}
+
+			for (auto& view : texture->UavSubresourcesAlloc)
+			{
+				if (view.BindlessIndex != cInvalidDescriptorIndex)
+				{
+					this->m_bindlessResourceDescriptorTable.Free(view.BindlessIndex);
+				}
+			}
+
+			texture->DisposeViews();
+			this->GetTexturePool().Release(handle);
 		} });
 }
 
@@ -990,7 +1008,7 @@ void PhxEngine::RHI::D3D12::D3D12ResourceManager::DeleteTimerQuery(TimerQueryHan
 void PhxEngine::RHI::D3D12::D3D12ResourceManager::ResizeSwapChain(SwapChainHandle handle, SwapchainDesc const& desc)
 {
 	// Resize swapchain:
-	this->WaitForIdle();
+	this->m_device->WaitForIdle();
 
 	D3D12SwapChain* impl = this->m_swapChainPool.Get(handle);
 	impl->Desc = desc;

@@ -14,8 +14,11 @@ namespace PhxEngine::RHI::D3D12
 		D3D12GpuMemoryAllocator(std::shared_ptr<D3D12Device> device);
 		~D3D12GpuMemoryAllocator() = default;
 		
-		GpuMemoryUsage GetMemoryUsage() const;
+	public:
+		void AllocateBuffer(BufferDesc const& desc);
 
+	public:
+		GpuMemoryUsage GetMemoryUsage() const;
 		Core::RefCountPtr<D3D12MA::Allocator> GetNativeAllocator() const { return this->m_d3d12MemAllocator; }
 
 	private:

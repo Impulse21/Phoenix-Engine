@@ -1,5 +1,8 @@
 #pragma once
 
+#include <functional>
+#include <deque>
+
 #include <Core/Span.h>
 #include <Core/Pool.h>
 #include <Core/SpinLock.h>
@@ -20,7 +23,7 @@ namespace PhxEngine::RHI::D3D12
         CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride);
         SwapChainHandle CreateSwapChain(SwapchainDesc const& desc, void* windowHandle);
         ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode);
-        InputLayoutHandle CreateInputLayout(VertexAttributeDesc const& desc, uint32_t attributeCount);
+        InputLayoutHandle CreateInputLayout(Core::Span<VertexAttributeDesc> descriptions, uint32_t attributeCount);
         GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
         ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc);
         MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc);

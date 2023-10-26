@@ -66,6 +66,9 @@ namespace PhxEngine::RHI::D3D12
         D3D12Device(D3D12Adapter const& adapter);
         ~D3D12Device();
 
+        void WaitForIdle();
+
+    public:
         const D3D12Adapter&                         GetGpuAdapter()         const { return this->m_gpuAdapter; }
         Core::RefCountPtr<IDXGIFactory6>            GetNativeFactoryRef()   const { return this->m_dxgiFctory6; }
         Core::RefCountPtr<ID3D12Device>             GetNativeDeviceRef()    const { return this->m_d3d12Device; }
