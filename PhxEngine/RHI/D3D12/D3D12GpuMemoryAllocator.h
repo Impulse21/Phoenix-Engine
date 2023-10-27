@@ -4,6 +4,7 @@
 #include <Core/RefCountPtr.h>
 #include <D3D12MemAlloc.h>
 #include <memory>
+#include "d3dx12.h"
 
 namespace PhxEngine::RHI::D3D12
 {
@@ -15,7 +16,23 @@ namespace PhxEngine::RHI::D3D12
 		~D3D12GpuMemoryAllocator() = default;
 		
 	public:
-		void AllocateBuffer(BufferDesc const& desc);
+		void AllocateResource(
+			D3D12MA::ALLOCATION_DESC const& allocationDesc,
+			CD3DX12_RESOURCE_DESC const& resourceDesc,
+			D3D12_RESOURCE_STATES initialState,
+			D3D12MA::Allocation** outAllocation,
+			Core::RefCountPtr<ID3D12Resource> d3d12Resource);
+
+		void AllocateAliasingResource(
+			D3D12MA::Allocation* aliasedResourceAllocation,
+			CD3DX12_RESOURCE_DESC const& resourceDesc,
+			D3D12_RESOURCE_STATES initialState, 
+			Core::RefCountPtr<ID3D12Resource> d3d12Resource);
+
+		void AllocateAliasedResource(
+			D3D12MA::ALLOCATION_DESC const& allocationDesc,
+			D3D12_RESOURCE_ALLOCATION_INFO const& finalAllocInfo,
+			D3D12MA::Allocation** outAllocation);
 
 	public:
 		GpuMemoryUsage GetMemoryUsage() const;

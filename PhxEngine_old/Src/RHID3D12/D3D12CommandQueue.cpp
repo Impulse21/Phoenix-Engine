@@ -1,5 +1,5 @@
-#include "C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Build/PhxEngine/CMakeFiles/PhxEngine.dir/Debug/cmake_pch.hxx"
-#include "CommandQueue.h"
+
+#include "D3D12CommandQueue.h"
 #include "D3D12GraphicsDevice.h"
 
 using namespace Microsoft::WRL;

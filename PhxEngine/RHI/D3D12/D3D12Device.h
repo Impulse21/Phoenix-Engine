@@ -3,6 +3,7 @@
 #include <RHI/RHIEnums.h>
 #include <Core/RefCountPtr.h>
 
+#include <array>
 #define NOMINMAX
 #include <assert.h>
 
@@ -14,6 +15,7 @@
 
 #endif
 
+#include "D3D12CommandQueue.h"
 #include "D3D12Adapter.h"
 namespace PhxEngine::RHI::D3D12
 {
@@ -86,6 +88,8 @@ namespace PhxEngine::RHI::D3D12
         ShaderModel                                 GetMinShaderModel()             const { return this->m_minShaderModel; }
         bool                                        GetIsUnderGraphicsDebugger()    const { return this->m_isUnderGraphicsDebugger; }
 
+        D3D12CommandQueue&                          GetQueue(RHI::CommandContextType type) { return this->m_queues[static_cast<size_t>(type)]; }
+
     private:
         D3D12Adapter                         m_gpuAdapter;
         Core::RefCountPtr<IDXGIFactory6>     m_dxgiFctory6;
@@ -98,5 +102,7 @@ namespace PhxEngine::RHI::D3D12
         D3D12_FEATURE_DATA_SHADER_MODEL      m_featureDataShaderModel;
         ShaderModel                          m_minShaderModel;
         bool                                 m_isUnderGraphicsDebugger;
+
+        std::array<D3D12CommandQueue, (size_t)RHI::CommandContextType::Count> m_queues;
     };
 }

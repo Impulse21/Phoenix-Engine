@@ -12,11 +12,11 @@
 namespace PhxEngine::RHI::D3D12
 {
     class D3D12Device;
-    class D3D12GpuAllocator;
+    class D3D12GpuMemoryAllocator;
     class D3D12ResourceManager final
     {
     public:
-        D3D12ResourceManager(std::shared_ptr<D3D12Device> device, std::shared_ptr<D3D12GpuAllocator> gpuAllocator);
+        D3D12ResourceManager(std::shared_ptr<D3D12Device> device, std::shared_ptr<D3D12GpuMemoryAllocator> gpuAllocator);
         ~D3D12ResourceManager();
         void RunGrabageCollection(size_t completedFrame = ~0u);
 
@@ -29,6 +29,7 @@ namespace PhxEngine::RHI::D3D12
         MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc);
         BufferHandle CreateGpuBuffer(BufferDesc const& desc, void* initalData = nullptr);
         TextureHandle CreateTexture(TextureDesc const& desc, void* initalData = nullptr);
+        TextureHandle CreateTexture(TextureDesc const& desc, Core::RefCountPtr<ID3D12Resource> resource);
         RTAccelerationStructureHandle CreateRTAccelerationStructure(RTAccelerationStructureDesc const& desc);
         TimerQueryHandle CreateTimerQuery();
 
@@ -68,7 +69,7 @@ namespace PhxEngine::RHI::D3D12
 
     private:
         std::shared_ptr<D3D12Device> m_device;
-        std::shared_ptr<D3D12GpuAllocator> m_gpuAllocator;
+        std::shared_ptr<D3D12GpuMemoryAllocator> m_gpuAllocator;
 
         Core::Pool<D3D12Texture, Texture> m_texturePool;
         Core::Pool<D3D12CommandSignature, CommandSignature> m_commandSignaturePool;

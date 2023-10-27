@@ -1,15 +1,16 @@
 #include "D3D12ResourceManager.h"
 
+#include "D3D12Device.h"
 #include "DxgiFormatMapping.h"
 
-#include "D3D12Device.h"
 #include "D3D12GpuMemoryAllocator.h"
+#include "Core/String.h"
 
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::D3D12;
 
-PhxEngine::RHI::D3D12::D3D12ResourceManager::D3D12ResourceManager(std::shared_ptr<D3D12Device> device, std::shared_ptr<D3D12GpuAllocator> gpuAllocator)
+PhxEngine::RHI::D3D12::D3D12ResourceManager::D3D12ResourceManager(std::shared_ptr<D3D12Device> device, std::shared_ptr<D3D12GpuMemoryAllocator> gpuAllocator)
 	: m_device(device)
 	, m_gpuAllocator(gpuAllocator)
 {
@@ -522,7 +523,97 @@ BufferHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateGpuBuffer(Buffer
 {
 	BufferHandle buffer = this->m_bufferPool.Emplace();
 	D3D12Buffer& bufferImpl = *this->m_bufferPool.Get(buffer);
-	this->CreateBufferInternal(desc, bufferImpl);
+
+	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
+	if ((desc.Binding & RHI::BindingFlags::UnorderedAccess) == RHI::BindingFlags::UnorderedAccess)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	}
+
+	D3D12MA::ALLOCATION_DESC allocationDesc = {};
+	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
+
+	switch (desc.Usage)
+	{
+	case Usage::ReadBack:
+		allocationDesc.HeapType = D3D12_HEAP_TYPE_READBACK;
+
+		initialState = D3D12_RESOURCE_STATE_COPY_DEST;
+		break;
+
+	case Usage::Upload:
+		allocationDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
+		break;
+
+	case Usage::Default:
+	default:
+		allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+		initialState = D3D12_RESOURCE_STATE_COMMON;
+	}
+
+	UINT64 alignedSize = 0;
+	if ((desc.Binding & BindingFlags::ConstantBuffer) == BindingFlags::ConstantBuffer)
+	{
+		alignedSize = Core::AlignTo(alignedSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+	}
+
+	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(desc.Stride * desc.NumElements, resourceFlags, alignedSize);
+
+	/* TODO: Add Sparse stuff
+	if (resource_heap_tier >= D3D12_RESOURCE_HEAP_TIER_2)
+	{
+		// tile pool memory can be used for sparse buffers and textures alike (requires resource heap tier 2):
+		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
+	}
+	else if (has_flag(desc->misc_flags, ResourceMiscFlag::SPARSE_TILE_POOL_BUFFER))
+	{
+		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+	}
+	else if (has_flag(desc->misc_flags, ResourceMiscFlag::SPARSE_TILE_POOL_TEXTURE_NON_RT_DS))
+	{
+		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
+	}
+	else if (has_flag(desc->misc_flags, ResourceMiscFlag::SPARSE_TILE_POOL_TEXTURE_RT_DS))
+	{
+		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
+	}
+	*/
+
+	if ((bufferImpl.Desc.MiscFlags & BufferMiscFlags::IsAliasedResource) == BufferMiscFlags::IsAliasedResource)
+	{
+		D3D12_RESOURCE_ALLOCATION_INFO finalAllocInfo = {};
+		finalAllocInfo.Alignment = 0;
+		finalAllocInfo.SizeInBytes = Core::AlignTo(
+			bufferImpl.Desc.Stride * bufferImpl.Desc.NumElements,
+			D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT * 1024);
+
+		this->m_gpuAllocator->AllocateAliasedResource(
+			allocationDesc,
+			finalAllocInfo,
+			&bufferImpl.Allocation);
+
+		return;
+	}
+	else if (bufferImpl.Desc.AliasedBuffer.IsValid())
+	{
+		D3D12Buffer* aliasedBuffer = this->m_bufferPool.Get(bufferImpl.Desc.AliasedBuffer);
+
+		this->m_gpuAllocator->AllocateAliasingResource(
+				aliasedBuffer->Allocation.Get(),
+				resourceDesc,
+				initialState,
+				bufferImpl.D3D12Resource);
+	}
+	else
+	{
+		this->m_gpuAllocator->AllocateResource(
+				allocationDesc,
+				resourceDesc,
+				initialState,
+				&bufferImpl.Allocation,
+				&bufferImpl.D3D12Resource);
+	}
 
 
 	// Issue data copy on request:
@@ -563,54 +654,230 @@ BufferHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateGpuBuffer(Buffer
 
 TextureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateTexture(TextureDesc const& desc, void* initalData)
 {
+	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
+	d3d12OptimizedClearValue.Color[0] = desc.OptmizedClearValue.Colour.R;
+	d3d12OptimizedClearValue.Color[1] = desc.OptmizedClearValue.Colour.G;
+	d3d12OptimizedClearValue.Color[2] = desc.OptmizedClearValue.Colour.B;
+	d3d12OptimizedClearValue.Color[3] = desc.OptmizedClearValue.Colour.A;
+	d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.DepthStencil.Depth;
+	d3d12OptimizedClearValue.DepthStencil.Stencil = desc.OptmizedClearValue.DepthStencil.Stencil;
 
-	// Construct Texture
-	D3D12Texture texture = {};
-	texture.Desc = desc;
-	texture.D3D12Resource = d3d12Resource;
-	texture.RtvAllocation =
+	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
+	d3d12OptimizedClearValue.Format = dxgiFormatMapping.RtvFormat;
+
+	D3D12MA::ALLOCATION_DESC allocationDesc = {};
+	allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+
+	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
+
+	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
 	{
-		.Allocation = this->GetRtvCpuHeap().Allocate(1),
-		.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV
-	};
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		if ((desc.BindingFlags & BindingFlags::ShaderResource) != BindingFlags::ShaderResource)
+		{
+			resourceFlags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+		}
+	}
+	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+	}
+	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	}
 
-	this->m_device->GetNativeDevice2()->CreateRenderTargetView(
-		texture.D3D12Resource.Get(),
-		nullptr,
-		texture.RtvAllocation.Allocation.GetCpuHandle());
+	CD3DX12_RESOURCE_DESC resourceDesc = {};
 
-	// Set debug name
-	std::wstring debugName(texture.Desc.DebugName.begin(), texture.Desc.DebugName.end());
-	texture.D3D12Resource->SetName(debugName.c_str());
+	const bool isTypeless = (desc.MiscFlags | RHI::TextureMiscFlags::Typeless) == RHI::TextureMiscFlags::Typeless;
+	switch (desc.Dimension)
+	{
+	case TextureDimension::Texture1D:
+	case TextureDimension::Texture1DArray:
+	{
+		resourceDesc =
+			CD3DX12_RESOURCE_DESC::Tex1D(
+				isTypeless ? dxgiFormatMapping.ResourceFormat : dxgiFormatMapping.RtvFormat,
+				desc.Width,
+				desc.ArraySize,
+				desc.MipLevels,
+				resourceFlags);
+		break;
+	}
+	case TextureDimension::Texture2D:
+	case TextureDimension::Texture2DArray:
+	case TextureDimension::TextureCube:
+	case TextureDimension::TextureCubeArray:
+	case TextureDimension::Texture2DMS:
+	case TextureDimension::Texture2DMSArray:
+	{
+		resourceDesc =
+			CD3DX12_RESOURCE_DESC::Tex2D(
+				isTypeless ? dxgiFormatMapping.ResourceFormat : dxgiFormatMapping.RtvFormat,
+				desc.Width,
+				desc.Height,
+				desc.ArraySize,
+				desc.MipLevels,
+				1,
+				0,
+				resourceFlags);
+		break;
+	}
+	case TextureDimension::Texture3D:
+	{
+		resourceDesc =
+			CD3DX12_RESOURCE_DESC::Tex3D(
+				isTypeless ? dxgiFormatMapping.ResourceFormat : dxgiFormatMapping.RtvFormat,
+				desc.Width,
+				desc.Height,
+				desc.ArraySize,
+				desc.MipLevels,
+				resourceFlags);
+		break;
+	}
+	default:
+		throw std::runtime_error("Unsupported texture dimension");
+	}
 
-	TextureHandle textureHande = this->m_texturePool.Insert(texture);
+	const bool useClearValue =
+		((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget) ||
+		((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil);
+
+	D3D12Texture textureImpl = {};
+	textureImpl.Desc = desc;
+
+	textureImpl.TotalSize = 0;
+	textureImpl.Footprints.resize(desc.ArraySize * std::max(uint16_t(1u), desc.MipLevels));
+	textureImpl.RowSizesInBytes.resize(textureImpl.Footprints.size());
+	textureImpl.NumRows.resize(textureImpl.Footprints.size());
+	this->m_device->GetNativeDevice2()->GetCopyableFootprints(
+		&resourceDesc,
+		0,
+		(UINT)textureImpl.Footprints.size(),
+		0,
+		textureImpl.Footprints.data(),
+		textureImpl.NumRows.data(),
+		textureImpl.RowSizesInBytes.data(),
+		&textureImpl.TotalSize
+	);
+
+	ThrowIfFailed(
+		this->m_gpuAllocator->GetNativeAllocator()->CreateResource(
+			&allocationDesc,
+			&resourceDesc,
+			ConvertResourceStates(desc.InitialState),
+			useClearValue ? &d3d12OptimizedClearValue : nullptr,
+			&textureImpl.Allocation,
+			IID_PPV_ARGS(&textureImpl.D3D12Resource)));
+
+
+	std::wstring debugName;
+	Core::StringConvert(desc.DebugName, debugName);
+	textureImpl.D3D12Resource->SetName(debugName.c_str());
+
+	TextureHandle texture = this->m_texturePool.Insert(textureImpl);
 
 	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
-		this->CreateSubresource(textureHande, RHI::SubresouceType::SRV, 0, ~0u, 0, ~0u);
+		this->CreateSubresource(texture, RHI::SubresouceType::SRV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
 	{
-		this->CreateSubresource(textureHande, RHI::SubresouceType::RTV, 0, ~0u, 0, ~0u);
+		this->CreateSubresource(texture, RHI::SubresouceType::RTV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
 	{
-		this->CreateSubresource(textureHande, RHI::SubresouceType::DSV, 0, ~0u, 0, ~0u);
+		this->CreateSubresource(texture, RHI::SubresouceType::DSV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
 	{
-		this->CreateSubresource(textureHande, RHI::SubresouceType::UAV, 0, ~0u, 0, ~0u);
+		this->CreateSubresource(texture, RHI::SubresouceType::UAV, 0, ~0u, 0, ~0u);
 	}
 
-	return textureHande;
+	if (initalData != nullptr)
+	{
+		std::vector<D3D12_SUBRESOURCE_DATA> data(textureImpl.Footprints.size());
+		for (size_t i = 0; i < textureImpl.Footprints.size(); ++i)
+		{
+			data[i] = _ConvertSubresourceData(initalData[i]);
+		}
+
+		auto cmd = this->m_copyCtxAllocator.Allocate(textureImpl.TotalSize);
+
+		for (size_t i = 0; i < textureImpl.Footprints.size(); ++i)
+		{
+			void* mappedUploadData = this->GetBufferMappedData(cmd.UploadBuffer);
+			if (textureImpl.RowSizesInBytes[i] > (SIZE_T)-1)
+				continue;
+			D3D12_MEMCPY_DEST DestData = {};
+			DestData.pData = (void*)((UINT64)mappedUploadData + textureImpl.Footprints[i].Offset);
+			DestData.RowPitch = (SIZE_T)textureImpl.Footprints[i].Footprint.RowPitch;
+			DestData.SlicePitch = (SIZE_T)textureImpl.Footprints[i].Footprint.RowPitch * (SIZE_T)textureImpl.NumRows[i];
+			MemcpySubresource(&DestData, &data[i], (SIZE_T)textureImpl.RowSizesInBytes[i], textureImpl.NumRows[i], textureImpl.Footprints[i].Footprint.Depth);
+		}
+
+		for (UINT i = 0; i < textureImpl.Footprints.size(); ++i)
+		{
+			CD3DX12_TEXTURE_COPY_LOCATION Dst(textureImpl.D3D12Resource.Get(), i);
+			auto& uploadBuffer = *this->m_bufferPool.Get(cmd.UploadBuffer);
+			CD3DX12_TEXTURE_COPY_LOCATION Src(uploadBuffer.D3D12Resource.Get(), textureImpl.Footprints[i]);
+			cmd.NativeCmdList->CopyTextureRegion(
+				&Dst,
+				0,
+				0,
+				0,
+				&Src,
+				nullptr
+			);
+		}
+
+		// Blocking call
+		this->m_copyCtxAllocator.Submit(cmd);
+	}
+
+	return texture;
+}
+
+TextureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateTexture(TextureDesc const& desc, Core::RefCountPtr<ID3D12Resource> resource)
+{
+	D3D12Texture textureImpl = {};
+	textureImpl.Desc = desc;
+	textureImpl.D3D12Resource = resource;
+
+	std::wstring debugName;
+	Core::StringConvert(desc.DebugName, debugName);
+	textureImpl.D3D12Resource->SetName(debugName.c_str());
+
+	TextureHandle texture = this->m_texturePool.Insert(textureImpl);
+
+	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
+	{
+		this->CreateSubresource(texture, RHI::SubresouceType::SRV, 0, ~0u, 0, ~0u);
+	}
+
+	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
+	{
+		this->CreateSubresource(texture, RHI::SubresouceType::RTV, 0, ~0u, 0, ~0u);
+	}
+
+	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
+	{
+		this->CreateSubresource(texture, RHI::SubresouceType::DSV, 0, ~0u, 0, ~0u);
+	}
+
+	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+	{
+		this->CreateSubresource(texture, RHI::SubresouceType::UAV, 0, ~0u, 0, ~0u);
+	}
+
+	return texture;
 }
 
 RTAccelerationStructureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateRTAccelerationStructure(RTAccelerationStructureDesc const& desc)
 {
-
 	RTAccelerationStructureHandle handle = this->m_rtAccelerationStructurePool.Emplace();
 	D3D12RTAccelerationStructure& rtAccelerationStructureImpl = *this->m_rtAccelerationStructurePool.Get(handle);
 	rtAccelerationStructureImpl.Desc = desc;
@@ -663,7 +930,7 @@ RTAccelerationStructureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::Creat
 				assert(dx12IndexBuffer);
 
 				D3D12_RAYTRACING_GEOMETRY_TRIANGLES_DESC& trianglesDesc = dx12GeometryDesc.Triangles;
-				trianglesDesc.VertexFormat = ConvertFormat(g.Triangles.VertexFormat);
+				trianglesDesc.VertexFormat = D3D12::GetDxgiFormatMapping(g.Triangles.VertexFormat).SrvFormat;
 				trianglesDesc.VertexCount = (UINT)g.Triangles.VertexCount;
 				trianglesDesc.VertexBuffer.StartAddress = dx12VertexBuffer->VertexView.BufferLocation + (D3D12_GPU_VIRTUAL_ADDRESS)g.Triangles.VertexByteOffset;
 				trianglesDesc.VertexBuffer.StrideInBytes = g.Triangles.VertexStride;
@@ -739,7 +1006,7 @@ RTAccelerationStructureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::Creat
 	D3D12MA::ALLOCATION_DESC allocationDesc = {};
 	allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
 	ThrowIfFailed(
-		this->m_d3d12MemAllocator->CreateResource(
+		this->m_gpuAllocator->GetNativeAllocator()->CreateResource(
 			&allocationDesc,
 			&resourceDesc,
 			resourceState,
@@ -780,7 +1047,7 @@ RTAccelerationStructureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::Creat
 	scratchBufferDesc.Stride = (uint32_t)std::max(rtAccelerationStructureImpl.Info.ScratchDataSizeInBytes, rtAccelerationStructureImpl.Info.UpdateScratchDataSizeInBytes);
 	scratchBufferDesc.NumElements = 1;
 	scratchBufferDesc.DebugName = "RT Scratch Buffer";
-	rtAccelerationStructureImpl.SratchBuffer = this->CreateBuffer(scratchBufferDesc);
+	rtAccelerationStructureImpl.SratchBuffer = this->CreateGpuBuffer(scratchBufferDesc);
 
 	return handle;
 }
