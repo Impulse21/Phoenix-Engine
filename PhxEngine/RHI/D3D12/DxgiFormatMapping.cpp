@@ -1,5 +1,6 @@
 
 #include "DxgiFormatMapping.h"
+#include <assert.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::RHI::D3D12;

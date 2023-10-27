@@ -11,7 +11,7 @@ namespace PhxEngine::RHI::D3D12
 	{
 	public:
 
-		void Initialize(DescriptorHeapAllocation&& allocation)
+		void Initialize(D3D12DescriptorHeapAllocation&& allocation)
 		{
 			this->m_allocation = std::move(allocation);
 		}
@@ -62,7 +62,7 @@ namespace PhxEngine::RHI::D3D12
 		};
 
 	private:
-		DescriptorHeapAllocation m_allocation;
+		D3D12DescriptorHeapAllocation m_allocation;
 		DescriptorIndexPool m_descriptorIndexPool;
 
 	};

@@ -3,6 +3,7 @@
 #include <Core/RefCountPtr.h>
 #include <filesystem>
 
+#if false
 namespace PhxEngine::Assets
 {
 	enum class AssetType
@@ -69,4 +70,4 @@ namespace PhxEngine::Assets
 		std::unique_ptr<IAssetLoader> CreateTextureLoader();
 	}
 }
-
+#endif

@@ -18,6 +18,291 @@ using namespace PhxEngine;
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::D3D12;
 
+namespace
+{
+
+	D3D12_SHADER_VISIBILITY ConvertShaderStage(ShaderStage s)
+	{
+		switch (s)  // NOLINT(clang-diagnostic-switch-enum)
+		{
+		case ShaderStage::Vertex:
+			return D3D12_SHADER_VISIBILITY_VERTEX;
+		case ShaderStage::Hull:
+			return D3D12_SHADER_VISIBILITY_HULL;
+		case ShaderStage::Domain:
+			return D3D12_SHADER_VISIBILITY_DOMAIN;
+		case ShaderStage::Geometry:
+			return D3D12_SHADER_VISIBILITY_GEOMETRY;
+		case ShaderStage::Pixel:
+			return D3D12_SHADER_VISIBILITY_PIXEL;
+		case ShaderStage::Amplification:
+			return D3D12_SHADER_VISIBILITY_AMPLIFICATION;
+		case ShaderStage::Mesh:
+			return D3D12_SHADER_VISIBILITY_MESH;
+
+		default:
+			// catch-all case - actually some of the bitfield combinations are unrepresentable in DX12
+			return D3D12_SHADER_VISIBILITY_ALL;
+		}
+	}
+
+	D3D12_BLEND ConvertBlendValue(BlendFactor value)
+	{
+		switch (value)
+		{
+		case BlendFactor::Zero:
+			return D3D12_BLEND_ZERO;
+		case BlendFactor::One:
+			return D3D12_BLEND_ONE;
+		case BlendFactor::SrcColor:
+			return D3D12_BLEND_SRC_COLOR;
+		case BlendFactor::InvSrcColor:
+			return D3D12_BLEND_INV_SRC_COLOR;
+		case BlendFactor::SrcAlpha:
+			return D3D12_BLEND_SRC_ALPHA;
+		case BlendFactor::InvSrcAlpha:
+			return D3D12_BLEND_INV_SRC_ALPHA;
+		case BlendFactor::DstAlpha:
+			return D3D12_BLEND_DEST_ALPHA;
+		case BlendFactor::InvDstAlpha:
+			return D3D12_BLEND_INV_DEST_ALPHA;
+		case BlendFactor::DstColor:
+			return D3D12_BLEND_DEST_COLOR;
+		case BlendFactor::InvDstColor:
+			return D3D12_BLEND_INV_DEST_COLOR;
+		case BlendFactor::SrcAlphaSaturate:
+			return D3D12_BLEND_SRC_ALPHA_SAT;
+		case BlendFactor::ConstantColor:
+			return D3D12_BLEND_BLEND_FACTOR;
+		case BlendFactor::InvConstantColor:
+			return D3D12_BLEND_INV_BLEND_FACTOR;
+		case BlendFactor::Src1Color:
+			return D3D12_BLEND_SRC1_COLOR;
+		case BlendFactor::InvSrc1Color:
+			return D3D12_BLEND_INV_SRC1_COLOR;
+		case BlendFactor::Src1Alpha:
+			return D3D12_BLEND_SRC1_ALPHA;
+		case BlendFactor::InvSrc1Alpha:
+			return D3D12_BLEND_INV_SRC1_ALPHA;
+		default:
+			return D3D12_BLEND_ZERO;
+		}
+	}
+
+	D3D12_BLEND_OP ConvertBlendOp(EBlendOp value)
+	{
+		switch (value)
+		{
+		case EBlendOp::Add:
+			return D3D12_BLEND_OP_ADD;
+		case EBlendOp::Subrtact:
+			return D3D12_BLEND_OP_SUBTRACT;
+		case EBlendOp::ReverseSubtract:
+			return D3D12_BLEND_OP_REV_SUBTRACT;
+		case EBlendOp::Min:
+			return D3D12_BLEND_OP_MIN;
+		case EBlendOp::Max:
+			return D3D12_BLEND_OP_MAX;
+		default:
+			return D3D12_BLEND_OP_ADD;
+		}
+	}
+
+	D3D12_STENCIL_OP ConvertStencilOp(StencilOp value)
+	{
+		switch (value)
+		{
+		case StencilOp::Keep:
+			return D3D12_STENCIL_OP_KEEP;
+		case StencilOp::Zero:
+			return D3D12_STENCIL_OP_ZERO;
+		case StencilOp::Replace:
+			return D3D12_STENCIL_OP_REPLACE;
+		case StencilOp::IncrementAndClamp:
+			return D3D12_STENCIL_OP_INCR_SAT;
+		case StencilOp::DecrementAndClamp:
+			return D3D12_STENCIL_OP_DECR_SAT;
+		case StencilOp::Invert:
+			return D3D12_STENCIL_OP_INVERT;
+		case StencilOp::IncrementAndWrap:
+			return D3D12_STENCIL_OP_INCR;
+		case StencilOp::DecrementAndWrap:
+			return D3D12_STENCIL_OP_DECR;
+		default:
+			return D3D12_STENCIL_OP_KEEP;
+		}
+	}
+
+	D3D12_COMPARISON_FUNC ConvertComparisonFunc(ComparisonFunc value)
+	{
+		switch (value)
+		{
+		case ComparisonFunc::Never:
+			return D3D12_COMPARISON_FUNC_NEVER;
+		case ComparisonFunc::Less:
+			return D3D12_COMPARISON_FUNC_LESS;
+		case ComparisonFunc::Equal:
+			return D3D12_COMPARISON_FUNC_EQUAL;
+		case ComparisonFunc::LessOrEqual:
+			return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		case ComparisonFunc::Greater:
+			return D3D12_COMPARISON_FUNC_GREATER;
+		case ComparisonFunc::NotEqual:
+			return D3D12_COMPARISON_FUNC_NOT_EQUAL;
+		case ComparisonFunc::GreaterOrEqual:
+			return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+		case ComparisonFunc::Always:
+			return D3D12_COMPARISON_FUNC_ALWAYS;
+		default:
+			return D3D12_COMPARISON_FUNC_NEVER;
+		}
+	}
+	D3D_PRIMITIVE_TOPOLOGY ConvertPrimitiveType(PrimitiveType pt, uint32_t controlPoints)
+	{
+		switch (pt)
+		{
+		case PrimitiveType::PointList:
+			return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+		case PrimitiveType::LineList:
+			return D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
+		case PrimitiveType::TriangleList:
+			return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		case PrimitiveType::TriangleStrip:
+			return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+		case PrimitiveType::TriangleFan:
+			return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+		case PrimitiveType::TriangleListWithAdjacency:
+			return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ;
+		case PrimitiveType::TriangleStripWithAdjacency:
+			return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ;
+		case PrimitiveType::PatchList:
+			if (controlPoints == 0 || controlPoints > 32)
+			{
+				return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+			}
+			return D3D_PRIMITIVE_TOPOLOGY(D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST + (controlPoints - 1));
+		default:
+			return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+		}
+	}
+
+	D3D12_TEXTURE_ADDRESS_MODE ConvertSamplerAddressMode(SamplerAddressMode mode)
+	{
+		switch (mode)
+		{
+		case SamplerAddressMode::Clamp:
+			return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		case SamplerAddressMode::Wrap:
+			return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		case SamplerAddressMode::Border:
+			return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+		case SamplerAddressMode::Mirror:
+			return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+		case SamplerAddressMode::MirrorOnce:
+			return D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
+		default:
+			return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		}
+	}
+
+	UINT ConvertSamplerReductionType(SamplerReductionType reductionType)
+	{
+		switch (reductionType)
+		{
+		case SamplerReductionType::Standard:
+			return D3D12_FILTER_REDUCTION_TYPE_STANDARD;
+		case SamplerReductionType::Comparison:
+			return D3D12_FILTER_REDUCTION_TYPE_COMPARISON;
+		case SamplerReductionType::Minimum:
+			return D3D12_FILTER_REDUCTION_TYPE_MINIMUM;
+		case SamplerReductionType::Maximum:
+			return D3D12_FILTER_REDUCTION_TYPE_MAXIMUM;
+		default:
+			return D3D12_FILTER_REDUCTION_TYPE_STANDARD;
+		}
+	}
+
+	void TranslateBlendState(BlendRenderState const& inState, D3D12_BLEND_DESC& outState)
+	{
+		outState.AlphaToCoverageEnable = inState.alphaToCoverageEnable;
+		outState.IndependentBlendEnable = true;
+
+		for (uint32_t i = 0; i < cMaxRenderTargets; i++)
+		{
+			const auto& src = inState.Targets[i];
+			auto& dst = outState.RenderTarget[i];
+
+
+			dst.BlendEnable = src.BlendEnable ? TRUE : FALSE;
+			dst.SrcBlend = ConvertBlendValue(src.SrcBlend);
+			dst.DestBlend = ConvertBlendValue(src.DestBlend);
+			dst.BlendOp = ConvertBlendOp(src.BlendOp);
+			dst.SrcBlendAlpha = ConvertBlendValue(src.SrcBlendAlpha);
+			dst.DestBlendAlpha = ConvertBlendValue(src.DestBlendAlpha);
+			dst.BlendOpAlpha = ConvertBlendOp(src.BlendOpAlpha);
+			dst.RenderTargetWriteMask = (D3D12_COLOR_WRITE_ENABLE)src.ColorWriteMask;
+		}
+	}
+
+	void TranslateDepthStencilState(DepthStencilRenderState const& inState, D3D12_DEPTH_STENCIL_DESC& outState)
+	{
+		outState.DepthEnable = inState.DepthTestEnable ? TRUE : FALSE;
+		outState.DepthWriteMask = inState.DepthWriteEnable ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
+		outState.DepthFunc = ConvertComparisonFunc(inState.DepthFunc);
+		outState.StencilEnable = inState.StencilEnable ? TRUE : FALSE;
+		outState.StencilReadMask = (UINT8)inState.StencilReadMask;
+		outState.StencilWriteMask = (UINT8)inState.StencilWriteMask;
+		outState.FrontFace.StencilFailOp = ConvertStencilOp(inState.FrontFaceStencil.FailOp);
+		outState.FrontFace.StencilDepthFailOp = ConvertStencilOp(inState.FrontFaceStencil.DepthFailOp);
+		outState.FrontFace.StencilPassOp = ConvertStencilOp(inState.FrontFaceStencil.PassOp);
+		outState.FrontFace.StencilFunc = ConvertComparisonFunc(inState.FrontFaceStencil.StencilFunc);
+		outState.BackFace.StencilFailOp = ConvertStencilOp(inState.BackFaceStencil.FailOp);
+		outState.BackFace.StencilDepthFailOp = ConvertStencilOp(inState.BackFaceStencil.DepthFailOp);
+		outState.BackFace.StencilPassOp = ConvertStencilOp(inState.BackFaceStencil.PassOp);
+		outState.BackFace.StencilFunc = ConvertComparisonFunc(inState.BackFaceStencil.StencilFunc);
+	}
+
+	void TranslateRasterState(RasterRenderState const& inState, D3D12_RASTERIZER_DESC& outState)
+	{
+		switch (inState.FillMode)
+		{
+		case RasterFillMode::Solid:
+			outState.FillMode = D3D12_FILL_MODE_SOLID;
+			break;
+		case RasterFillMode::Wireframe:
+			outState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+			break;
+		default:
+			break;
+		}
+
+		switch (inState.CullMode)
+		{
+		case RasterCullMode::Back:
+			outState.CullMode = D3D12_CULL_MODE_BACK;
+			break;
+		case RasterCullMode::Front:
+			outState.CullMode = D3D12_CULL_MODE_FRONT;
+			break;
+		case RasterCullMode::None:
+			outState.CullMode = D3D12_CULL_MODE_NONE;
+			break;
+		default:
+			break;
+		}
+
+		outState.FrontCounterClockwise = inState.FrontCounterClockwise ? TRUE : FALSE;
+		outState.DepthBias = inState.DepthBias;
+		outState.DepthBiasClamp = inState.DepthBiasClamp;
+		outState.SlopeScaledDepthBias = inState.SlopeScaledDepthBias;
+		outState.DepthClipEnable = inState.DepthClipEnable ? TRUE : FALSE;
+		outState.MultisampleEnable = inState.MultisampleEnable ? TRUE : FALSE;
+		outState.AntialiasedLineEnable = inState.AntialiasedLineEnable ? TRUE : FALSE;
+		outState.ConservativeRaster = inState.ConservativeRasterEnable ? D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON : D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+		outState.ForcedSampleCount = inState.ForcedSampleCount;
+	}
+}
+
 PhxEngine::RHI::D3D12::D3D12ResourceManager::D3D12ResourceManager(std::shared_ptr<D3D12Device> device, std::shared_ptr<D3D12GpuMemoryAllocator> gpuAllocator)
 	: m_device(device)
 	, m_gpuAllocator(gpuAllocator)
@@ -173,7 +458,7 @@ CommandSignatureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateComman
 	return handle;
 }
 
-SwapChainHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateSwapChain(SwapchainDesc const& desc, void* windowHandle)
+SwapChainHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateSwapChain(SwapchainDesc const& desc)
 {
 	SwapChainHandle handle = this->m_swapChainPool.Emplace();
 	D3D12SwapChain* impl = this->m_swapChainPool.Get(handle);
@@ -205,7 +490,7 @@ SwapChainHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateSwapChain(Swa
 
 	hr = this->m_device->GetNativeFactory()->CreateSwapChainForHwnd(
 		this->m_device->GetQueue(CommandContextType::Graphics).GetD3D12CommandQueue(),
-		static_cast<HWND>(windowHandle),
+		static_cast<HWND>(desc.WindowHandle),
 		&swapChainDesc,
 		&fullscreenDesc,
 		nullptr,
@@ -259,11 +544,11 @@ ShaderHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateShader(ShaderDes
 	return handle;
 }
 
-InputLayoutHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateInputLayout(Core::Span<VertexAttributeDesc> descriptions, uint32_t attributeCount)
+InputLayoutHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateInputLayout(Core::Span<VertexAttributeDesc> descriptions)
 {
 	InputLayoutHandle handle = this->m_inputLayoutPool.Emplace();
 	D3D12InputLayout* inputLayoutImpl = this->m_inputLayoutPool.Get(handle);
-	inputLayoutImpl->Attributes.resize(attributeCount);
+	inputLayoutImpl->Attributes.resize(descriptions.Size());
 
 	for (uint32_t index = 0; index < attributeCount; index++)
 	{
@@ -360,9 +645,9 @@ GfxPipelineHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateGfxPipeline
 		d3d12Desc.PS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
 	}
 
-	this->TranslateBlendState(desc.BlendRenderState, d3d12Desc.BlendState);
-	this->TranslateDepthStencilState(desc.DepthStencilRenderState, d3d12Desc.DepthStencilState);
-	this->TranslateRasterState(desc.RasterRenderState, d3d12Desc.RasterizerState);
+	TranslateBlendState(desc.BlendRenderState, d3d12Desc.BlendState);
+	TranslateDepthStencilState(desc.DepthStencilRenderState, d3d12Desc.DepthStencilState);
+	TranslateRasterState(desc.RasterRenderState, d3d12Desc.RasterizerState);
 
 	switch (desc.PrimType)
 	{
@@ -520,9 +805,9 @@ MeshPipelineHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateMeshPipeli
 		psoDesc.PixelShader = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
 	}
 
-	this->TranslateBlendState(desc.BlendRenderState, psoDesc.BlendState);
-	this->TranslateDepthStencilState(desc.DepthStencilRenderState, psoDesc.DepthStencilState);
-	this->TranslateRasterState(desc.RasterRenderState, psoDesc.RasterizerState);
+	TranslateBlendState(desc.BlendRenderState, psoDesc.BlendState);
+	TranslateDepthStencilState(desc.DepthStencilRenderState, psoDesc.DepthStencilState);
+	TranslateRasterState(desc.RasterRenderState, psoDesc.RasterizerState);
 
 	switch (desc.PrimType)
 	{
@@ -691,12 +976,12 @@ BufferHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateGpuBuffer(Buffer
 
 	if ((desc.Binding & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
-		this->CreateSubresource(buffer, RHI::SubresouceType::SRV, 0u);
+		this->CreateShaderResourceView(buffer, 0u);
 	}
 
 	if ((desc.Binding & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
 	{
-		this->CreateSubresource(buffer, RHI::SubresouceType::UAV, 0u);
+		this->CreateUnorderedAccessView(buffer, 0u);
 	}
 
 	return buffer;
@@ -829,22 +1114,22 @@ TextureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateTexture(Texture
 
 	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
-		this->CreateSubresource(texture, RHI::SubresouceType::SRV, 0, ~0u, 0, ~0u);
+		this->CreateShaderResourceView(texture, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
 	{
-		this->CreateSubresource(texture, RHI::SubresouceType::RTV, 0, ~0u, 0, ~0u);
+		this->CreateRenderTargetView(texture, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
 	{
-		this->CreateSubresource(texture, RHI::SubresouceType::DSV, 0, ~0u, 0, ~0u);
+		this->CreateDepthStencilView(texture, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
 	{
-		this->CreateSubresource(texture, RHI::SubresouceType::UAV, 0, ~0u, 0, ~0u);
+		this->CreateUnorderedAccessView(texture, 0, ~0u, 0, ~0u);
 	}
 
 	if (initalData != nullptr)
@@ -908,22 +1193,22 @@ TextureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateTexture(Texture
 
 	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
-		this->CreateSubresource(texture, RHI::SubresouceType::SRV, 0, ~0u, 0, ~0u);
+		this->CreateShaderResourceView(texture, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
 	{
-		this->CreateSubresource(texture, RHI::SubresouceType::RTV, 0, ~0u, 0, ~0u);
+		this->CreateRenderTargetView(texture, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
 	{
-		this->CreateSubresource(texture, RHI::SubresouceType::DSV, 0, ~0u, 0, ~0u);
+		this->CreateDepthStencilView(texture, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
 	{
-		this->CreateSubresource(texture, RHI::SubresouceType::UAV, 0, ~0u, 0, ~0u);
+		this->CreateUnorderedAccessView(texture, 0, ~0u, 0, ~0u);
 	}
 
 	return texture;
@@ -1436,4 +1721,526 @@ DescriptorIndex PhxEngine::RHI::D3D12::D3D12ResourceManager::GetDescriptorIndex(
 	default:
 		throw std::runtime_error("Unsupported enum type");
 	}
+}
+
+void PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateShaderResourceView(BufferHandle handle, size_t offset, size_t size)
+{
+	D3D12Buffer* bufferImpl = this->m_bufferPool.Get(handle);
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+	const uint32_t stideInBytes = bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements;
+	if (bufferImpl->Desc.Format == RHI::Format::UNKNOWN)
+	{
+		if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Raw) != 0)
+		{
+			srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+			srvDesc.Buffer.FirstElement = (UINT)offset / sizeof(uint32_t);
+			srvDesc.Buffer.NumElements = (UINT)std::min(size, stideInBytes - offset) / sizeof(uint32_t);
+		}
+		else if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Structured) != 0)
+		{
+			uint32_t strideInBytes = (bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements);
+			// This is a Structured Buffer
+			srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+			srvDesc.Buffer.FirstElement = (UINT)offset / strideInBytes;
+			srvDesc.Buffer.NumElements = (UINT)std::min(size, stideInBytes - offset) / strideInBytes;
+			srvDesc.Buffer.StructureByteStride = strideInBytes;
+		}
+	}
+	else
+	{
+		throw std::runtime_error("Unsupported at this time.");
+#if false
+		uint32_t stride = GetFormatStride(format);
+		srv_desc.Format = _ConvertFormat(format);
+		srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+		srv_desc.Buffer.FirstElement = offset / stride;
+		srv_desc.Buffer.NumElements = (UINT)std::min(size, desc.size - offset) / stride;
+#endif
+	}
+
+	DescriptorView view = {
+			.Allocation = this->GetResourceCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.SRVDesc = srvDesc,
+	};
+
+	this->m_device->GetNativeDevice()->CreateShaderResourceView(
+		bufferImpl->D3D12Resource.Get(),
+		&srvDesc,
+		view.Allocation.GetCpuHandle());
+
+	const bool isBindless = (bufferImpl->GetDesc().MiscFlags & RHI::BufferMiscFlags::Bindless) == RHI::BufferMiscFlags::Bindless;
+	if (isBindless)
+	{
+		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+		view.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
+		if (view.BindlessIndex != cInvalidDescriptorIndex)
+		{
+			this->m_device->GetNativeDevice()->CopyDescriptorsSimple(
+				1,
+				this->m_bindlessResourceDescriptorTable.GetCpuHandle(view.BindlessIndex),
+				view.Allocation.GetCpuHandle(),
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
+
+	if (bufferImpl->Srv.Allocation.IsNull())
+	{
+		bufferImpl->Srv = view;
+	}
+
+	bufferImpl->SrvSubresourcesAlloc.push_back(view);
+}
+
+void PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateUnorderedAccessView(BufferHandle handle, size_t offset, size_t size)
+{
+	D3D12Buffer* bufferImpl = this->m_bufferPool.Get(handle);
+
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+
+	const uint32_t stideInBytes = bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements;
+	const bool hasCounter = (bufferImpl->Desc.MiscFlags & BufferMiscFlags::HasCounter) == BufferMiscFlags::HasCounter;
+	if (bufferImpl->Desc.Format == RHI::Format::UNKNOWN)
+	{
+		if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Raw) != 0)
+		{
+			uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+			uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+			uavDesc.Buffer.FirstElement = (UINT)offset / sizeof(uint32_t);
+			uavDesc.Buffer.NumElements = (UINT)std::min(size, stideInBytes - offset) / sizeof(uint32_t);
+		}
+		else if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Structured) != 0)
+		{
+			uint32_t strideInBytes = (bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements);
+			// This is a Structured Buffer
+			uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+			uavDesc.Buffer.FirstElement = (UINT)offset / strideInBytes;
+			uavDesc.Buffer.NumElements = (UINT)std::min(size, stideInBytes - offset) / strideInBytes;
+			uavDesc.Buffer.StructureByteStride = strideInBytes;
+
+			if (hasCounter)
+			{
+				uavDesc.Buffer.CounterOffsetInBytes = bufferImpl->Desc.UavCounterOffset;
+			}
+		}
+	}
+	else
+	{
+		throw std::runtime_error("Unsupported at this time.");
+#if false
+		uint32_t stride = GetFormatStride(format);
+		uavDesc.Format = _ConvertFormat(format);
+		uavDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+		uavDesc.Buffer.FirstElement = offset / stride;
+		uavDesc.Buffer.NumElements = (UINT)std::min(size, desc.size - offset) / stride;
+#endif
+	}
+
+	DescriptorView view = {
+			.Allocation = this->GetResourceCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.UAVDesc = uavDesc,
+	};
+
+	ID3D12Resource* counterResource = nullptr;
+	if (hasCounter)
+	{
+		if (bufferImpl->Desc.UavCounterBuffer.IsValid())
+		{
+			D3D12Buffer* counterBuffer = this->m_bufferPool.Get(bufferImpl->Desc.UavCounterBuffer);
+			counterResource = counterBuffer->D3D12Resource.Get();
+
+		}
+		else
+		{
+			counterResource = bufferImpl->D3D12Resource.Get();
+		}
+	}
+
+	this->m_device->GetNativeDevice()->CreateUnorderedAccessView(
+		bufferImpl->D3D12Resource.Get(),
+		counterResource,
+		&uavDesc,
+		view.Allocation.GetCpuHandle());
+
+	const bool isBindless = (bufferImpl->GetDesc().MiscFlags & RHI::BufferMiscFlags::Bindless) == RHI::BufferMiscFlags::Bindless;
+	if (isBindless)
+	{
+		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+		view.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
+		if (view.BindlessIndex != cInvalidDescriptorIndex)
+		{
+			this->m_device->GetNativeDevice()->CopyDescriptorsSimple(
+				1,
+				this->m_bindlessResourceDescriptorTable.GetCpuHandle(view.BindlessIndex),
+				view.Allocation.GetCpuHandle(),
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
+
+	if (bufferImpl->UavAllocation.Allocation.IsNull())
+	{
+		bufferImpl->UavAllocation = view;
+		return;
+	}
+
+	bufferImpl->UavSubresourcesAlloc.push_back(view);
+}
+
+void PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateShaderResourceView(TextureHandle handle, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+{
+	D3D12Texture* textureImpl = this->m_texturePool.Get(handle);
+
+	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = dxgiFormatMapping.SrvFormat;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+	uint32_t planeSlice = (srvDesc.Format == DXGI_FORMAT_X24_TYPELESS_G8_UINT) ? 1 : 0;
+
+	if (textureImpl->Desc.Dimension == TextureDimension::TextureCube)
+	{
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;  // Only 2D textures are supported (this was checked in the calling function).
+		srvDesc.TextureCube.MipLevels = mipCount;
+		srvDesc.TextureCube.MostDetailedMip = firstMip;
+	}
+	else
+	{
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;  // Only 2D textures are supported (this was checked in the calling function).
+		srvDesc.Texture2D.MipLevels = mipCount;
+	}
+	switch (textureImpl->Desc.Dimension)
+	{
+	case TextureDimension::Texture1D:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
+		srvDesc.Texture1D.MostDetailedMip = firstMip; // Subresource data
+		srvDesc.Texture1D.MipLevels = mipCount;// Subresource data
+		break;
+	case TextureDimension::Texture1DArray:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1DARRAY;
+		srvDesc.Texture1DArray.FirstArraySlice = firstSlice;
+		srvDesc.Texture1DArray.ArraySize = sliceCount;// Subresource data
+		srvDesc.Texture1DArray.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.Texture1DArray.MipLevels = mipCount;// Subresource data
+		break;
+	case TextureDimension::Texture2D:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.Texture2D.MipLevels = mipCount;// Subresource data
+		srvDesc.Texture2D.PlaneSlice = planeSlice;
+		break;
+	case TextureDimension::Texture2DArray:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+		srvDesc.Texture2DArray.FirstArraySlice = firstSlice;// Subresource data
+		srvDesc.Texture2DArray.ArraySize = sliceCount;// Subresource data
+		srvDesc.Texture2DArray.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.Texture2DArray.MipLevels = mipCount;// Subresource data
+		srvDesc.Texture2DArray.PlaneSlice = planeSlice;
+		break;
+	case TextureDimension::TextureCube:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+		srvDesc.TextureCube.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.TextureCube.MipLevels = mipCount;// Subresource data
+		break;
+	case TextureDimension::TextureCubeArray:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
+		srvDesc.TextureCubeArray.First2DArrayFace = 0;// Subresource data
+		srvDesc.TextureCubeArray.NumCubes = textureImpl->Desc.ArraySize / 6;// Subresource data
+		srvDesc.TextureCubeArray.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.TextureCubeArray.MipLevels = mipCount;// Subresource data
+		break;
+	case TextureDimension::Texture2DMS:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
+		break;
+	case TextureDimension::Texture2DMSArray:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
+		srvDesc.Texture2DMSArray.FirstArraySlice = firstSlice;// Subresource data
+		srvDesc.Texture2DMSArray.ArraySize = sliceCount;// Subresource data
+		break;
+	case TextureDimension::Texture3D:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
+		srvDesc.Texture3D.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.Texture3D.MipLevels = mipCount;// Subresource data
+		break;
+	case TextureDimension::Unknown:
+	default:
+		throw std::runtime_error("Unsupported Enum");
+	}
+
+	DescriptorView view = {
+			.Allocation = this->GetResourceCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.SRVDesc = srvDesc,
+			.FirstMip = firstMip,
+			.MipCount = mipCount,
+			.FirstSlice = firstSlice,
+			.SliceCount = sliceCount
+	};
+
+	this->m_device->GetNativeDevice()->CreateShaderResourceView(
+		textureImpl->D3D12Resource.Get(),
+		&srvDesc,
+		view.Allocation.GetCpuHandle());
+
+	if ((textureImpl->Desc.MiscFlags | TextureMiscFlags::Bindless) == TextureMiscFlags::Bindless)
+	{
+		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+		view.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
+		if (view.BindlessIndex != cInvalidDescriptorIndex)
+		{
+			this->m_device->GetNativeDevice()->CopyDescriptorsSimple(
+				1,
+				this->m_bindlessResourceDescriptorTable.GetCpuHandle(view.BindlessIndex),
+				view.Allocation.GetCpuHandle(),
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
+
+	if (textureImpl->Srv.Allocation.IsNull())
+	{
+		textureImpl->Srv = view;
+		return;
+	}
+
+	textureImpl->SrvSubresourcesAlloc.push_back(view);
+}
+
+void PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateUnorderedAccessView(TextureHandle handle, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+{
+	D3D12Texture* textureImpl = this->m_texturePool.Get(handle);
+
+	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.Format = dxgiFormatMapping.SrvFormat;
+
+	switch (textureImpl->Desc.Dimension)
+	{
+	case TextureDimension::Texture1D:
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1D;
+		uavDesc.Texture1D.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture1DArray:
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1DARRAY;
+		uavDesc.Texture1DArray.FirstArraySlice = firstSlice;
+		uavDesc.Texture1DArray.ArraySize = sliceCount;
+		uavDesc.Texture1DArray.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2D:
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+		uavDesc.Texture2D.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2DArray:
+	case TextureDimension::TextureCube:
+	case TextureDimension::TextureCubeArray:
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+		uavDesc.Texture2DArray.FirstArraySlice = firstSlice;
+		uavDesc.Texture2DArray.ArraySize = sliceCount;
+		uavDesc.Texture2DArray.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture3D:
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
+		uavDesc.Texture3D.FirstWSlice = 0;
+		uavDesc.Texture3D.WSize = textureImpl->Desc.Depth;
+		uavDesc.Texture3D.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2DMS:
+	case TextureDimension::Texture2DMSArray:
+	{
+		throw std::runtime_error("Unsupported Dimension");
+	}
+	case TextureDimension::Unknown:
+	default:
+		throw std::runtime_error("Unsupported Enum");
+	}
+
+	DescriptorView view = {
+			.Allocation = this->GetResourceCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.UAVDesc = uavDesc,
+			.FirstMip = firstMip,
+			.MipCount = mipCount,
+			.FirstSlice = firstSlice,
+			.SliceCount = sliceCount
+	};
+
+	this->m_device->GetNativeDevice()->CreateUnorderedAccessView(
+		textureImpl->D3D12Resource.Get(),
+		nullptr,
+		&uavDesc,
+		view.Allocation.GetCpuHandle());
+
+	if ((textureImpl->Desc.MiscFlags | TextureMiscFlags::Bindless) == TextureMiscFlags::Bindless)
+	{
+		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+		view.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
+		if (view.BindlessIndex != cInvalidDescriptorIndex)
+		{
+			this->m_device->GetNativeDevice()->CopyDescriptorsSimple(
+				1,
+				this->m_bindlessResourceDescriptorTable.GetCpuHandle(view.BindlessIndex),
+				view.Allocation.GetCpuHandle(),
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
+
+	if (textureImpl->UavAllocation.Allocation.IsNull())
+	{
+		textureImpl->UavAllocation = view;
+		return;
+	}
+
+	textureImpl->UavSubresourcesAlloc.push_back(view);
+}
+
+void PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateRenderTargetView(TextureHandle handle, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+{
+	D3D12Texture* textureImpl = this->m_texturePool.Get(handle);
+
+	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+	rtvDesc.Format = dxgiFormatMapping.RtvFormat;
+
+	switch (textureImpl->Desc.Dimension)
+	{
+	case TextureDimension::Texture1D:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1D;
+		rtvDesc.Texture1D.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture1DArray:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
+		rtvDesc.Texture1DArray.FirstArraySlice = firstSlice;
+		rtvDesc.Texture1DArray.ArraySize = sliceCount;
+		rtvDesc.Texture1DArray.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2D:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+		rtvDesc.Texture2D.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2DArray:
+	case TextureDimension::TextureCube:
+	case TextureDimension::TextureCubeArray:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+		rtvDesc.Texture2DArray.ArraySize = sliceCount;
+		rtvDesc.Texture2DArray.FirstArraySlice = firstSlice;
+		rtvDesc.Texture2DArray.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2DMS:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
+		break;
+	case TextureDimension::Texture2DMSArray:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
+		rtvDesc.Texture2DMSArray.FirstArraySlice = firstSlice;
+		rtvDesc.Texture2DMSArray.ArraySize = sliceCount;
+		break;
+	case TextureDimension::Texture3D:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
+		rtvDesc.Texture3D.FirstWSlice = 0;
+		rtvDesc.Texture3D.WSize = textureImpl->Desc.ArraySize;
+		rtvDesc.Texture3D.MipSlice = firstMip;
+		break;
+	case TextureDimension::Unknown:
+	default:
+		throw std::runtime_error("Unsupported Enum");
+	}
+
+	DescriptorView view = {
+			.Allocation = this->GetRtvCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+			.RTVDesc = rtvDesc,
+			.FirstMip = firstMip,
+			.MipCount = mipCount,
+			.FirstSlice = firstSlice,
+			.SliceCount = sliceCount
+	};
+
+	this->m_device->GetNativeDevice()->CreateRenderTargetView(
+		textureImpl->D3D12Resource.Get(),
+		&rtvDesc,
+		view.Allocation.GetCpuHandle());
+
+	if (textureImpl->RtvAllocation.Allocation.IsNull())
+	{
+		textureImpl->RtvAllocation = view;
+		return;
+	}
+
+	textureImpl->RtvSubresourcesAlloc.push_back(view);
+}
+
+void PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateDepthStencilView(TextureHandle handle, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+{
+	D3D12Texture* textureImpl = this->m_texturePool.Get(handle);
+
+	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->Desc.Format);
+	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+	dsvDesc.Format = dxgiFormatMapping.RtvFormat;
+	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+
+	switch (textureImpl->Desc.Dimension)
+	{
+	case TextureDimension::Texture1D:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1D;
+		dsvDesc.Texture1D.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture1DArray:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
+		dsvDesc.Texture1DArray.FirstArraySlice = firstSlice;
+		dsvDesc.Texture1DArray.ArraySize = sliceCount;
+		dsvDesc.Texture1DArray.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2D:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+		dsvDesc.Texture2D.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2DArray:
+	case TextureDimension::TextureCube:
+	case TextureDimension::TextureCubeArray:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+		dsvDesc.Texture2DArray.ArraySize = sliceCount;
+		dsvDesc.Texture2DArray.FirstArraySlice = firstSlice;
+		dsvDesc.Texture2DArray.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2DMS:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
+		break;
+	case TextureDimension::Texture2DMSArray:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
+		dsvDesc.Texture2DMSArray.FirstArraySlice = firstSlice;
+		dsvDesc.Texture2DMSArray.ArraySize = sliceCount;
+		break;
+	case TextureDimension::Texture3D:
+	{
+		throw std::runtime_error("Unsupported Dimension");
+	}
+	case TextureDimension::Unknown:
+	default:
+		throw std::runtime_error("Unsupported Enum");
+	}
+
+	DescriptorView view = {
+			.Allocation = this->GetDsvCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
+			.DSVDesc = dsvDesc,
+			.FirstMip = firstMip,
+			.MipCount = mipCount,
+			.FirstSlice = firstSlice,
+			.SliceCount = sliceCount
+	};
+
+	this->m_device->GetNativeDevice()->CreateDepthStencilView(
+		textureImpl->D3D12Resource.Get(),
+		&dsvDesc,
+		view.Allocation.GetCpuHandle());
+
+	if (textureImpl->DsvAllocation.Allocation.IsNull())
+	{
+		textureImpl->DsvAllocation = view;
+	}
+
+	textureImpl->DsvSubresourcesAlloc.push_back(view);
 }

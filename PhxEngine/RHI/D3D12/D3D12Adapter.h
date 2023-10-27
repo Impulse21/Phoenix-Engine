@@ -1,6 +1,6 @@
 #pragma once
 
-#include "D3D12Context.h"
+#include "D3D12Common.h"
 
 namespace PhxEngine::RHI::D3D12
 {

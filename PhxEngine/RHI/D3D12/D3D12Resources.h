@@ -1,11 +1,14 @@
 #pragma once
 
 #include <Core/Memory.h>
-#include <D3D12Context.h>
 #include <RHI/RHIResources.h>
+#include <D3D12MemAlloc.h>
+#include <D3D12Common.h>
+#include <Core/TimeStep.h>
 
 namespace PhxEngine::RHI::D3D12
 {
+    class D3D12DescriptorHeapAllocation;
 	struct D3D12RHIResource
 	{
 	private:
@@ -45,7 +48,7 @@ namespace PhxEngine::RHI::D3D12
 
     struct D3D12SwapChain
     {
-        SwapChainDesc Desc;
+        RHI::SwapchainDesc Desc;
 
         Core::RefCountPtr<IDXGISwapChain1> NativeSwapchain;
         Core::RefCountPtr<IDXGISwapChain4> NativeSwapchain4;
@@ -108,7 +111,7 @@ namespace PhxEngine::RHI::D3D12
 
     struct DescriptorView
     {
-        DescriptorHeapAllocation Allocation;
+        D3D12DescriptorHeapAllocation Allocation;
         DescriptorIndex BindlessIndex = cInvalidDescriptorIndex;
         D3D12_DESCRIPTOR_HEAP_TYPE Type = {};
         union

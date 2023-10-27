@@ -1,5 +1,6 @@
 #include <Assets/AssetStore.h>
 
+#if false
 #include <Engine/EngineCore.h>
 #include <unordered_map>
 #include <mutex>
@@ -212,3 +213,4 @@ bool PhxEngine::Assets::TextureAssetStore::FillTextureData(
 	}
     return true;
 }
+#endif

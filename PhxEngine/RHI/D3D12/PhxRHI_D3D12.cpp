@@ -135,224 +135,140 @@ bool PhxEngine::RHI::Finalize()
     return {};
 }
 
-void PhxEngine::RHI::EndFrame(Core::Span<SwapChain> swapchainsToPresent)
+void PhxEngine::RHI::EndFrame(Core::Span<SwapChainHandle> swapchainsToPresent)
 {
 }
 
-
-GfxContext& PhxEngine::RHI::BeginGfxCtx()
+CommandList* PhxEngine::RHI::BeginCommandList(RHI::CommandListType type)
 {
-    return {};
+	return nullptr;
 }
 
-ComputeContext& PhxEngine::RHI::BeginComputeCtx()
+uint64_t PhxEngine::RHI::SubmitCommands(CommandList* commandList)
 {
-    return {};
+	return 0;
 }
-
-CopyContext& PhxEngine::RHI::BeginCopyCtx()
-{
-    return {};
-}
-
-SubmitRecipt PhxEngine::RHI::Submit(Core::Span<CommandContext> context)
-{
-    return SubmitRecipt();
-}
-
 CommandSignatureHandle PhxEngine::RHI::CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride)
 {
-    return {};
+	ResourceManager->CreateCommandSignature(desc, byteStride);
 }
 
-SwapChainHandle PhxEngine::RHI::CreateSwapChain(SwapchainDesc desc, void* windowHandle)
+SwapChainHandle PhxEngine::RHI::CreateSwapChain(SwapchainDesc const& desc)
 {
-	out.m_desc = desc;
-	HRESULT hr;
-
-	UINT swapChainFlags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-	swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-
-	const auto& formatMapping = GetDxgiFormatMapping(desc.Format);
-	
-	if (out.m_platformImpl == nullptr)
-	{
-		out.m_platformImpl = Core::RefCountPtr<PlatformSwapChain>::Create(phx_new(PlatformSwapChain));
-
-		// Create swapchain:
-		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-		swapChainDesc.Width = desc.Width;
-		swapChainDesc.Height = desc.Height;
-		swapChainDesc.Format = formatMapping.RtvFormat;
-		swapChainDesc.Stereo = false;
-		swapChainDesc.SampleDesc.Count = 1;
-		swapChainDesc.SampleDesc.Quality = 0;
-		swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swapChainDesc.BufferCount = desc.BufferCount;
-		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-		swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
-		swapChainDesc.Flags = swapChainFlags;
-
-		swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
-
-		DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreenDesc = {};
-		fullscreenDesc.Windowed = !desc.Fullscreen;
-
-		hr = D3D12Context::DxgiFctory6->CreateSwapChainForHwnd(
-			this->GetGfxQueue().GetD3D12CommandQueue(),
-			static_cast<HWND>(windowHandle),
-			&swapChainDesc,
-			&fullscreenDesc,
-			nullptr,
-			this->m_swapChain.NativeSwapchain.GetAddressOf()
-		);
-
-		if (FAILED(hr))
-		{
-			throw std::exception();
-		}
-
-		hr = this->m_swapChain.NativeSwapchain.As(&this->m_swapChain.NativeSwapchain4);
-		if (FAILED(hr))
-		{
-			throw std::exception();
-		}
-	}
-	else
-	{
-		// Resize swapchain:
-		this->WaitForIdle();
-
-		// Delete back buffers
-		for (int i = 0; i < this->m_swapChain.BackBuffers.size(); i++)
-		{
-			this->DeleteTexture(this->m_swapChain.BackBuffers[i]);
-		}
-
-		this->RunGarbageCollection(this->m_frameCount + 1);
-		this->m_swapChain.BackBuffers.clear();
-
-		hr = this->m_swapChain.NativeSwapchain4->ResizeBuffers(
-			desc.BufferCount,
-			desc.Width,
-			desc.Height,
-			formatMapping.RtvFormat,
-			swapChainFlags
-		);
-
-		assert(SUCCEEDED(hr));
-	}
-
-	// -- From Wicked Engine
-#ifdef ENABLE_HDR
-	const bool hdr = desc->allow_hdr && IsSwapChainSupportsHDR(swapchain);
-
-	// Ensure correct color space:
-	//	https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/Samples/Desktop/D3D12HDR/src/D3D12HDR.cpp
-	{
-		internal_state->colorSpace = ColorSpace::SRGB; // reset to SDR, in case anything below fails to set HDR state
-		DXGI_COLOR_SPACE_TYPE colorSpace = {};
-
-		switch (desc->format)
-		{
-		case Format::R10G10B10A2_UNORM:
-			// This format is either HDR10 (ST.2084), or SDR (SRGB)
-			colorSpace = hdr ? DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 : DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
-			break;
-		case Format::R16G16B16A16_FLOAT:
-			// This format is HDR (Linear):
-			colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
-			break;
-		default:
-			// Anything else will be SDR (SRGB):
-			colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
-			break;
-		}
-
-		UINT colorSpaceSupport = 0;
-		if (SUCCEEDED(internal_state->swapChain->CheckColorSpaceSupport(colorSpace, &colorSpaceSupport)))
-		{
-			if (colorSpaceSupport & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT)
-			{
-				hr = internal_state->swapChain->SetColorSpace1(colorSpace);
-				assert(SUCCEEDED(hr));
-				if (SUCCEEDED(hr))
-				{
-					switch (colorSpace)
-					{
-					default:
-					case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709:
-						internal_state->colorSpace = ColorSpace::SRGB;
-						break;
-					case DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709:
-						internal_state->colorSpace = ColorSpace::HDR_LINEAR;
-						break;
-					case DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020:
-						internal_state->colorSpace = ColorSpace::HDR10_ST2084;
-						break;
-					}
-				}
-			}
-		}
-	}
-#endif
-
-	this->m_swapChain.BackBuffers.resize(desc.BufferCount);
-
-	for (UINT i = 0; i < this->m_swapChain.Desc.BufferCount; i++)
-	{
-		Microsoft::WRL::ComPtr<ID3D12Resource> backBuffer;
-		ThrowIfFailed(
-			this->m_swapChain.NativeSwapchain4->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
-
-		char allocatorName[32];
-		sprintf_s(allocatorName, "Back Buffer %iu", i);
-
-		this->m_swapChain.BackBuffers[i] = this->CreateTexture(
-			{
-				.BindingFlags = BindingFlags::RenderTarget,
-				.Dimension = TextureDimension::Texture2D,
-				.Format = this->m_swapChain.Desc.Format,
-				.Width = this->m_swapChain.Desc.Width,
-				.Height = this->m_swapChain.Desc.Height,
-				.DebugName = std::string(allocatorName)
-			},
-			backBuffer);
-	}
-	return {};
+	ResourceManager->CreateSwapChain(desc);
 }
 
 ShaderHandle PhxEngine::RHI::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
 {
-    return {};
+	ResourceManager->CreateShader(desc, shaderByteCode);
 }
 
-InputLayoutHandle PhxEngine::RHI::CreateInputLayout(VertexAttributeDesc const& desc, uint32_t attributeCount)
+InputLayoutHandle PhxEngine::RHI::CreateInputLayout(Core::Span<VertexAttributeDesc> descs)
 {
-    return {};
+	ResourceManager->CreateInputLayout(descs);
 }
 
 GfxPipelineHandle PhxEngine::RHI::CreateGfxPipeline(GfxPipelineDesc const& desc)
 {
-    return {};
+	ResourceManager->CreateGfxPipeline(desc);
 }
 
 ComputePipelineHandle PhxEngine::RHI::CreateComputePipeline(ComputePipelineDesc const& desc)
 {
-    return {};
+	ResourceManager->CreateComputePipeline(desc);
 }
 
 MeshPipelineHandle PhxEngine::RHI::CreateMeshPipeline(MeshPipelineDesc const& desc)
 {
-    return {};
+	ResourceManager->CreateMeshPipeline(desc);
 }
 
 BufferHandle PhxEngine::RHI::CreateGpuBuffer(BufferDesc const& desc, void* initalData = nullptr)
 {
-    return {};
+	ResourceManager->CreateGpuBuffer(desc);
 }
 
 TextureHandle PhxEngine::RHI::CreateTexture(TextureDesc const& desc, void* initalData = nullptr)
 {
-    return {};
+	ResourceManager->CreateTexture(desc);
+}
+
+void PhxEngine::RHI::DeleteCommandSignature(CommandSignatureHandle handle)
+{
+	ResourceManager->DeleteCommandSignature(handle);
+}
+
+void PhxEngine::RHI::DeleteSwapChain(SwapChainHandle handle)
+{
+	ResourceManager->DeleteSwapChain(handle);
+}
+
+void PhxEngine::RHI::DeleteShader(ShaderHandle handle)
+{
+	ResourceManager->DeleteShader(handle);
+}
+
+void PhxEngine::RHI::DeleteInputLayout(InputLayoutHandle handle)
+{
+	ResourceManager->DeleteInputLayout(handle);
+}
+
+void PhxEngine::RHI::DeleteGfxPipeline(GfxPipelineHandle handle)
+{
+	ResourceManager->DeleteGfxPipeline(handle);
+}
+
+void PhxEngine::RHI::DeleteComputePipeline(ComputePipelineHandle handle)
+{
+	ResourceManager->DeleteComputePipeline(handle);
+}
+
+void PhxEngine::RHI::DeleteMeshPipeline(MeshPipelineHandle handle)
+{
+	ResourceManager->DeleteMeshPipeline(handle);
+}
+
+void PhxEngine::RHI::DeleteGpuBuffer(BufferHandle handle)
+{
+	ResourceManager->DeleteGpuBuffer(handle);
+}
+
+void PhxEngine::RHI::DeleteTexture(TextureHandle handle)
+{
+	ResourceManager->DeleteTexture(handle);
+}
+
+void PhxEngine::RHI::DeleteRTAccelerationStructure(RTAccelerationStructureHandle handle)
+{
+	ResourceManager->DeleteRTAccelerationStructure(handle);
+}
+
+void PhxEngine::RHI::DeleteTimerQuery(TimerQueryHandle handle)
+{
+	ResourceManager->DeleteTimerQuery(handle);
+}
+
+void PhxEngine::RHI::ResizeSwapChain(SwapChainHandle handle, SwapchainDesc const& desc)
+{
+	ResourceManager->ResizeSwapChain(handle, desc);
+}
+
+const TextureDesc& PhxEngine::RHI::GetTextureDesc(TextureHandle handle)
+{
+	return ResourceManager->GetTextureDesc(handle);
+}
+
+const BufferDesc& PhxEngine::RHI::GetBufferDesc(BufferHandle handle)
+{
+	return ResourceManager->GetBufferDesc(handle);
+}
+
+DescriptorIndex PhxEngine::RHI::GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource)
+{
+	return ResourceManager->GetDescriptorIndex(handle, type, subResource);
+}
+
+DescriptorIndex PhxEngine::RHI::GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource)
+{
+	return ResourceManager->GetDescriptorIndex(handle, type, subResource);
 }

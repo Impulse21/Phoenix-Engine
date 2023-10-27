@@ -175,7 +175,7 @@ namespace PhxEngine::RHI
         Upload
     };
 
-    enum class CommandContextType : uint8_t
+    enum class CommandListType : uint8_t
     {
         Graphics = 0,
         Compute,

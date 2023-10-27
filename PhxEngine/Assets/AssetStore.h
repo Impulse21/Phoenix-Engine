@@ -12,6 +12,7 @@
 #include <deque>
 #include <DirectXTex.h>
 
+#if false
 namespace PhxEngine::Assets
 {
 	namespace AssetStore
@@ -73,3 +74,4 @@ namespace PhxEngine::Assets
 	};
 }
 
+#endif

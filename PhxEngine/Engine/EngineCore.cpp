@@ -14,7 +14,7 @@ namespace
 {
 	// -- Globals ---
 	std::unique_ptr<Core::IWindow> m_window;
-	RHI::SwapChain m_swapchain;
+	RHI::SwapChainHandle m_swapchain;
 	tf::Executor m_taskExecutor;
 	Renderer::AsyncGpuUploader m_asyncLoader;
 
@@ -44,26 +44,26 @@ namespace
 
 		RHI::Initialize({});
 
-		RHI::CreateSwapChain({
-			.Width = m_window->GetWidth(),
-			.Height = m_window->GetHeight(),
-			.WindowHandle = m_window->GetNativeWindow(),
-			.VSync = m_window->GetVSync(),
-			.Fullscreen = false 
-			},
-			m_swapchain);
+		m_swapchain = RHI::CreateSwapChain({
+				.WindowHandle = m_window->GetNativeWindow(),
+				.Width = m_window->GetWidth(),
+				.Height = m_window->GetHeight(),
+				.Fullscreen = false,
+				.VSync = m_window->GetVSync(),
+			});
 
 		// -- Add on resize Event ---
 		EventDispatcher::AddEventListener(EventType::WindowResize, [&](Event const& e) {
 
 			const WindowResizeEvent& resizeEvent = static_cast<const WindowResizeEvent&>(e);
-			RHI::CreateSwapChain({
-				.Width = resizeEvent.GetWidth(),
-				.Height = resizeEvent.GetHeight(),
-				.VSync = m_window->GetVSync(),
-				.Fullscreen = false
-				},
-				m_swapchain);
+			RHI::ResizeSwapChain(
+				m_swapchain,
+				{
+					.Width = resizeEvent.GetWidth(),
+					.Height = resizeEvent.GetHeight(),
+					.Fullscreen = false,
+					.VSync = m_window->GetVSync(),
+				});
 		});
 
 	}
@@ -73,6 +73,7 @@ namespace
 		m_engineRunning.store(false);
 		m_taskExecutor.wait_for_all();
 
+		RHI::DeleteSwapChain(m_swapchain);
 		RHI::Finalize();
 
 		m_window.reset();
@@ -100,10 +101,15 @@ void PhxEngine::Run(IEngineApp& app)
 		app.OnRender();
 
 		// Compose final frame
-		RHI::GfxDevice* gfxDevice = GetGfxDevice();
 		{
-			RHI::CommandListHandle composeCmdList = gfxDevice->BeginCommandList();
+			RHI::CommandList* composeCmdList = RHI::BeginCommandList();
 
+			RHI::SubmitCommands(composeCmdList);
+		}
+
+		RHI::EndFrame({ m_swapchain });
+
+#if 0
 			gfxDevice->TransitionBarriers(
 				{
 					RHI::GpuBarrier::CreateTexture(gfxDevice->GetBackBuffer(), RHI::ResourceStates::Present, RHI::ResourceStates::RenderTarget)
@@ -124,6 +130,7 @@ void PhxEngine::Run(IEngineApp& app)
 
 		// Submit command lists and present
 		gfxDevice->SubmitFrame();
+#endif
 	}
 
 	app.Finalize();
@@ -131,11 +138,6 @@ void PhxEngine::Run(IEngineApp& app)
 	EngineFinalize();
 }
 
-
-RHI::GfxDevice* PhxEngine::GetGfxDevice()
-{
-	return m_gfxDevice.get();
-}
 
 Core::IWindow* PhxEngine::GetWindow()
 {

@@ -396,6 +396,7 @@ namespace PhxEngine::RHI
 	using SwapChainHandle = Core::Handle<SwapChain>;
 	struct SwapchainDesc
 	{
+		void* WindowHandle;
 		uint32_t Width = 1u;
 		uint32_t Height = 1u;
 		uint32_t BufferCount = 3;
@@ -667,72 +668,9 @@ namespace PhxEngine::RHI
 	class GfxContext;
 	class ComputeContext;
 	class CopyContext;
-	class CommandContext : NonCopyable
-	{
-	public:
-		static CommandContext& Begin();
-
-		GfxContext& GetGraphicsContext()
-		{
-			assert(this->m_type == CommandContextType::Graphics, "Cannot convert to graphics");
-			return reinterpret_cast<GfxContext&>(*this);
-		}
-
-		ComputeContext& GetComputeContext()
-		{
-			assert(this->m_type == CommandContextType::Compute, "Cannot convert to compute");
-			return reinterpret_cast<ComputeContext&>(*this);
-		}
-
-		CopyContext& GetCopyContext()
-		{
-			assert(this->m_type == CommandContextType::Copy, "Cannot convert to compute");
-			return reinterpret_cast<CopyContext&>(*this);
-		}
-
-	public:
-		// TODO: Interface functions
-
-	private:
-		CommandContext(CommandContextType type)
-			: m_type(type)
-		{
-		}
-
-	protected:
-		PlatformContext m_platformContext;
-		CommandContextType m_type;
-	};
-
-	class GfxContext : public CommandContext
+	class CommandList : NonCopyable, NonMoveable
 	{
 	public:
 
-		static GfxContext& Begin()
-		{
-			return CommandContext::Begin().GetGraphicsContext();
-		}
 	};
-
-	class ComputeContext : public CommandContext
-	{
-	public:
-
-		static GfxContext& Begin()
-		{
-			return CommandContext::Begin().GetGraphicsContext();
-		}
-	};
-
-	class CopyContext : public CommandContext
-	{
-	public:
-
-		static GfxContext& Begin()
-		{
-			return CommandContext::Begin().GetGraphicsContext();
-		}
-	};
-
-
 }

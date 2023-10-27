@@ -23,9 +23,9 @@ namespace PhxEngine::RHI::D3D12
         void RunGrabageCollection(size_t completedFrame = ~0u);
 
         CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride);
-        SwapChainHandle CreateSwapChain(SwapchainDesc const& desc, void* windowHandle);
+        SwapChainHandle CreateSwapChain(SwapchainDesc const& desc);
         ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode);
-        InputLayoutHandle CreateInputLayout(Core::Span<VertexAttributeDesc> descriptions, uint32_t attributeCount);
+        InputLayoutHandle CreateInputLayout(Core::Span<VertexAttributeDesc> descriptions);
         GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
         ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc);
         MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc);
@@ -55,6 +55,13 @@ namespace PhxEngine::RHI::D3D12
         DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource = -1);
         DescriptorIndex GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource = -1);
 
+        void CreateShaderResourceView(BufferHandle handle, size_t offset, size_t size = ~0u);
+        void CreateUnorderedAccessView(BufferHandle handle, size_t offset, size_t size = ~0u);
+
+        void CreateShaderResourceView(TextureHandle handle, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip = 0, uint32_t mipCount = ~0);
+        void CreateUnorderedAccessView(TextureHandle handle, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip = 0, uint32_t mipCount = ~0);
+        void CreateRenderTargetView(TextureHandle handle, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip = 0, uint32_t mipCount = ~0);
+        void CreateDepthStencilView(TextureHandle handle, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip = 0, uint32_t mipCount = ~0);
 
     public:
         Core::Pool<D3D12Texture, Texture>& GetTexturePool() { return this->m_texturePool; }
