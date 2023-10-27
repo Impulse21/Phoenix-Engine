@@ -657,6 +657,13 @@ namespace PhxEngine::RHI
 		NonCopyable& operator=(const NonCopyable&) = delete;
 	};
 
+	struct NonMoveable
+	{
+		NonMoveable() = default;
+		NonMoveable(NonMoveable&&) = delete;
+		NonMoveable& operator=(NonMoveable&&) = delete;
+	};
+
 	class GfxContext;
 	class ComputeContext;
 	class CopyContext;

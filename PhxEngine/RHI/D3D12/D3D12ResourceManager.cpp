@@ -6,6 +6,14 @@
 #include "D3D12GpuMemoryAllocator.h"
 #include "Core/String.h"
 
+
+// Teir 1 limit is 1,000,000
+// https://docs.microsoft.com/en-us/windows/win32/direct3d12/hardware-support
+#define TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE 1000000
+
+#define NUM_BINDLESS_RESOURCES TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE / 2
+
+
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::D3D12;
@@ -14,6 +22,45 @@ PhxEngine::RHI::D3D12::D3D12ResourceManager::D3D12ResourceManager(std::shared_pt
 	: m_device(device)
 	, m_gpuAllocator(gpuAllocator)
 {
+
+	// Create Descriptor Heaps
+	this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::CBV_SRV_UAV].Initialize(
+		this->m_device,
+		1024,
+		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler].Initialize(
+		this->m_device,
+		1024,
+		D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+
+	this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::RTV].Initialize(
+		this->m_device,
+		1024,
+		D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+	this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::DSV].Initialize(
+		this->m_device,
+		1024,
+		D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+
+
+	this->m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::CBV_SRV_UAV].Initialize(
+		this->m_device,
+		NUM_BINDLESS_RESOURCES,
+		TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE - NUM_BINDLESS_RESOURCES,
+		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
+
+	this->m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler].Initialize(
+		this->m_device,
+		10,
+		100,
+		D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
+		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
+
+	this->m_bindlessResourceDescriptorTable.Initialize(this->GetResourceGpuHeap().Allocate(NUM_BINDLESS_RESOURCES));
+
 	this->m_texturePool.Initialize(1);
 	this->m_commandSignaturePool.Initialize(1);
 	this->m_shaderPool.Initialize(1);
@@ -157,7 +204,7 @@ SwapChainHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateSwapChain(Swa
 	fullscreenDesc.Windowed = !desc.Fullscreen;
 
 	hr = this->m_device->GetNativeFactory()->CreateSwapChainForHwnd(
-		this->GetGfxQueue().GetD3D12CommandQueue(),
+		this->m_device->GetQueue(CommandContextType::Graphics).GetD3D12CommandQueue(),
 		static_cast<HWND>(windowHandle),
 		&swapChainDesc,
 		&fullscreenDesc,
@@ -619,6 +666,8 @@ BufferHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateGpuBuffer(Buffer
 	// Issue data copy on request:
 	if (initalData != nullptr)
 	{
+		assert(false);
+#if 0
 		auto cmd = this->m_copyCtxAllocator.Allocate(desc.Size());
 
 		auto& internalUploadBuffer = *this->m_bufferPool.Get(cmd.UploadBuffer);
@@ -632,6 +681,7 @@ BufferHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateGpuBuffer(Buffer
 			desc.Size());
 
 		this->m_copyCtxAllocator.Finalize();
+#endif
 	}
 
 	if ((desc.MiscFlags & BufferMiscFlags::IsAliasedResource) == BufferMiscFlags::IsAliasedResource)
@@ -799,6 +849,8 @@ TextureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateTexture(Texture
 
 	if (initalData != nullptr)
 	{
+		assert(false);
+#if 0
 		std::vector<D3D12_SUBRESOURCE_DATA> data(textureImpl.Footprints.size());
 		for (size_t i = 0; i < textureImpl.Footprints.size(); ++i)
 		{
@@ -836,6 +888,7 @@ TextureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateTexture(Texture
 
 		// Blocking call
 		this->m_copyCtxAllocator.Submit(cmd);
+#endif
 	}
 
 	return texture;
@@ -1054,6 +1107,8 @@ RTAccelerationStructureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::Creat
 
 TimerQueryHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateTimerQuery()
 {
+	assert(false);
+#if 0
 	int queryIndex = this->m_timerQueryIndexPool.Allocate();
 	if (queryIndex < 0)
 	{
@@ -1071,6 +1126,9 @@ TimerQueryHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateTimerQuery()
 	timerQuery.Time = {};
 
 	return handle;
+#else
+	return {};
+#endif
 }
 
 void PhxEngine::RHI::D3D12::D3D12ResourceManager::DeleteCommandSignature(CommandSignatureHandle handle)
@@ -1259,6 +1317,8 @@ void PhxEngine::RHI::D3D12::D3D12ResourceManager::DeleteRTAccelerationStructure(
 
 void PhxEngine::RHI::D3D12::D3D12ResourceManager::DeleteTimerQuery(TimerQueryHandle handle)
 {
+	assert(false);
+#if false
 	if (!handle.IsValid())
 		return;
 
@@ -1270,6 +1330,7 @@ void PhxEngine::RHI::D3D12::D3D12ResourceManager::DeleteTimerQuery(TimerQueryHan
 			this->m_timerQueryIndexPool.Release(static_cast<int>(impl->BeginQueryIndex) / 2);
 			this->GetTimerQueryPool().Release(handle);
 		} });
+#endif
 }
 
 void PhxEngine::RHI::D3D12::D3D12ResourceManager::ResizeSwapChain(SwapChainHandle handle, SwapchainDesc const& desc)

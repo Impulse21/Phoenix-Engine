@@ -1,19 +1,7 @@
 #pragma once
 
+#include "D3D12Common.h"
 #include <RHI/RHIEnums.h>
-#include <Core/RefCountPtr.h>
-
-#include <array>
-#define NOMINMAX
-#include <assert.h>
-
-#include "d3d12.h"
-#include "d3dx12.h"
-#include <dxgi1_6.h>
-#ifdef _DEBUG
-#include <dxgidebug.h>
-
-#endif
 
 #include "D3D12CommandQueue.h"
 #include "D3D12Adapter.h"
@@ -50,15 +38,6 @@ namespace PhxEngine::RHI::D3D12
         if ((stateBits & ResourceStates::ShaderResourceNonPixel) != 0) result |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 
         return result;
-    }
-
-
-    inline void ThrowIfFailed(HRESULT hr)
-    {
-        if (FAILED(hr))
-        {
-            throw std::exception();
-        }
     }
 
 

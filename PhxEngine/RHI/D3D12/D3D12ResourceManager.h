@@ -8,6 +8,8 @@
 #include <Core/SpinLock.h>
 #include <RHI/RHIResources.h>
 #include <D3D12Resources.h>
+#include <D3D12DescriptorHeap.h>
+#include <D3D12BiindlessDescriptorTable.h>
 
 namespace PhxEngine::RHI::D3D12
 {
@@ -67,6 +69,14 @@ namespace PhxEngine::RHI::D3D12
         Core::Pool<D3D12TimerQuery, TimerQuery>& GetTimerQueryPool() { return this->m_timerQueryPool; }
         Core::Pool<D3D12SwapChain, SwapChain>& GetSwapChainPool() { return this->m_swapChainPool; }
 
+        D3D12CpuDescriptorHeap& GetResourceCpuHeap() { return this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::CBV_SRV_UAV]; }
+        D3D12CpuDescriptorHeap& GetSamplerCpuHeap() { return this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler]; }
+        D3D12CpuDescriptorHeap& GetRtvCpuHeap() { return this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::RTV]; }
+        D3D12CpuDescriptorHeap& GetDsvCpuHeap() { return this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::DSV]; }
+
+        D3D12GpuDescriptorHeap& GetResourceGpuHeap() { return this->m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::CBV_SRV_UAV]; }
+        D3D12GpuDescriptorHeap& GetSamplerGpuHeap() { return this->m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler]; }
+
     private:
         std::shared_ptr<D3D12Device> m_device;
         std::shared_ptr<D3D12GpuMemoryAllocator> m_gpuAllocator;
@@ -82,6 +92,10 @@ namespace PhxEngine::RHI::D3D12
         Core::Pool<D3D12MeshPipeline, MeshPipeline> m_meshPipelinePool;
         Core::Pool<D3D12TimerQuery, TimerQuery> m_timerQueryPool;
         Core::Pool<D3D12SwapChain, SwapChain> m_swapChainPool;
+
+        std::array<D3D12CpuDescriptorHeap, (int)DescriptorHeapTypes::Count> m_cpuDescriptorHeaps;
+        std::array<D3D12GpuDescriptorHeap, 2> m_gpuDescriptorHeaps;
+        D3D12BindlessDescriptorTable m_bindlessResourceDescriptorTable;
 
         struct DeleteItem
         {
