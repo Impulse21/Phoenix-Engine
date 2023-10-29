@@ -22,7 +22,7 @@ namespace PhxEngine
 		virtual bool IsShuttingDown() = 0;
 		virtual void OnUpdate() = 0;
 		virtual void OnRender() = 0;
-		virtual void OnCompose(RHI::CommandListHandle composeCmdList) = 0;
+		virtual void OnCompose(RHI::CommandList* composeCmdList) = 0;
 
 	};
 

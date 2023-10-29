@@ -1,5 +1,7 @@
 #include <Renderer/ImGuiRenderer.h>
 
+#include <RHI/PhxRHI.h>
+
 #include <Core/Window.h>
 #include <Core/Span.h>
 #include <stdexcept>
@@ -31,12 +33,12 @@ namespace
     RHI::ShaderHandle m_pixelShader;
     RHI::InputLayoutHandle m_inputLayout;
     RHI::GfxPipelineHandle m_pipeline;
-    RHI::GfxDevice* m_gfxDevice;
+    RHI::SwapChainHandle m_swapchainHandle;
 }
 
-void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* window, RHI::GfxDevice* gfxDevice, bool enableDocking)
+void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* window, RHI::SwapChainHandle handle, bool enableDocking)
 {
-    m_gfxDevice = gfxDevice;
+    m_swapchainHandle = handle;
     m_imguiContext = ImGui::CreateContext();
     ImGui::SetCurrentContext(m_imguiContext);
     auto* glfwWindow = static_cast<GLFWwindow*>(window->GetNativeWindow());
@@ -72,7 +74,7 @@ void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* wi
     desc.MipLevels = 1;
     desc.DebugName = "IMGUI Font Texture";
 
-    m_fontTexture = gfxDevice->CreateTexture(desc);
+    m_fontTexture = RHI::CreateTexture(desc);
     io.Fonts->SetTexID(static_cast<void*>(&m_fontTexture));
     RHI::SubresourceData subResourceData = {};
 
@@ -81,8 +83,8 @@ void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* wi
     subResourceData.slicePitch = subResourceData.rowPitch * height;
     subResourceData.pData = pixelData;
 
-    CommandListHandle uploadCommandList = gfxDevice->BeginCommandList();
-
+    CommandList* uploadCommandList = RHI::BeginCommandList();
+#if 0
     gfxDevice->TransitionBarrier(m_fontTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest, uploadCommandList);
     gfxDevice->WriteTexture(m_fontTexture, 0, 1, &subResourceData, uploadCommandList);
     gfxDevice->TransitionBarrier(m_fontTexture, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource, uploadCommandList);
@@ -110,15 +112,16 @@ void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* wi
     };
 
     m_inputLayout = gfxDevice->CreateInputLayout(attributeDesc.data(), attributeDesc.size());
+#endif
 }
 
 void PhxEngine::Renderer::ImGuiRenderer::Finalize()
 {
-    m_gfxDevice->DeleteGfxPipeline(m_pipeline);
-    // m_gfxDevice->DeleteInputLayout(m_inputLayout);
-    // m_gfxDevice->DeleteShader(m_pixelShader);
-    // m_gfxDevice->DeleteShader(m_vertexShader);
-    m_gfxDevice->DeleteTexture(m_fontTexture);
+    RHI::DeleteGfxPipeline(m_pipeline);
+    // cmd->DeleteInputLayout(m_inputLayout);
+    // cmd->DeleteShader(m_pixelShader);
+    // cmd->DeleteShader(m_vertexShader);
+    RHI::DeleteTexture(m_fontTexture);
 
     ImGui::DestroyContext(m_imguiContext);
 }
@@ -130,7 +133,7 @@ void PhxEngine::Renderer::ImGuiRenderer::BeginFrame()
     ImGui::NewFrame();
 }
 
-void PhxEngine::Renderer::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
+void PhxEngine::Renderer::ImGuiRenderer::Render(RHI::CommandList* cmd)
 {
     if (!m_pipeline.IsValid())
     {
@@ -162,10 +165,10 @@ void PhxEngine::Renderer::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
                 .DepthClipEnable = true,
                 .ScissorEnable = true,
             },
-            .RtvFormats = { m_gfxDevice->GetTextureDesc(m_gfxDevice->GetBackBuffer()).Format },
+            .RtvFormats = {  RHI::GetSwapChainFormat(m_swapchainHandle) },
         };
 
-        m_pipeline = m_gfxDevice->CreateGfxPipeline(psoDesc);
+        m_pipeline = RHI::CreateGfxPipeline(psoDesc);
     }
 
     ImGui::SetCurrentContext(m_imguiContext);
@@ -182,10 +185,9 @@ void PhxEngine::Renderer::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
     }
 
     ImVec2 displayPos = drawData->DisplayPos;
-
     {
-        m_gfxDevice->BeginMarker("ImGui", cmd);
-        m_gfxDevice->SetGfxPipeline(m_pipeline, cmd);
+        cmd->BeginMarker("ImGui");
+        cmd->SetGfxPipeline(m_pipeline);
 
         // Set root arguments.
         //    DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixOrthographicRH( drawData->DisplaySize.x, drawData->DisplaySize.y, 0.0f, 1.0f );
@@ -209,17 +211,17 @@ void PhxEngine::Renderer::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
         push.Mvp = DirectX::XMFLOAT4X4(&mvp[0][0]);
 
         Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
-        m_gfxDevice->SetViewports(&v, 1, cmd);
+        cmd->SetViewports(&v, 1);
         
-        m_gfxDevice->SetRenderTargets({ m_gfxDevice->GetBackBuffer() }, {}, cmd);
+        cmd->SetRenderTargets({ m_swapchainHandle });
         const RHI::Format indexFormat = sizeof(ImDrawIdx) == 2 ? RHI::Format::R16_UINT : RHI::Format::R32_UINT;
 
         for (int i = 0; i < drawData->CmdListsCount; ++i)
         {
             const ImDrawList* drawList = drawData->CmdLists[i];
 
-            m_gfxDevice->BindDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data, cmd);
-            m_gfxDevice->BindDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data, cmd);
+            cmd->BindDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data);
+            cmd->BindDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data);
 
             int indexOffset = 0;
             for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
@@ -246,17 +248,16 @@ void PhxEngine::Renderer::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
                         // Ensure 
                         auto textureHandle = static_cast<RHI::TextureHandle*>(drawCmd.GetTexID());
                         push.TextureIndex = textureHandle
-                            ? m_gfxDevice->GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
+                            ? RHI::GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
                             : RHI::cInvalidDescriptorIndex;
 
-                        m_gfxDevice->BindPushConstant(RootParameters::PushConstant, push, cmd);
-                        m_gfxDevice->SetScissors(&scissorRect, 1, cmd);
-                        m_gfxDevice->DrawIndexed({
+                        cmd->BindPushConstant(RootParameters::PushConstant, push);
+                        cmd->SetScissors(&scissorRect, 1);
+                        cmd->DrawIndexed({
                                 .IndexCount = drawCmd.ElemCount,
                                 .InstanceCount = 1,
                                 .StartIndex = static_cast<uint32_t>(indexOffset),
-                            },
-                            cmd);
+                            });
                     }
                 }
                 indexOffset += drawCmd.ElemCount;
@@ -264,7 +265,7 @@ void PhxEngine::Renderer::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
         }
 
         // cmd->TransitionBarriers(Span<GpuBarrier>(postBarriers.data(), postBarriers.size()));
-        m_gfxDevice->EndMarker(cmd);
+        cmd->EndMarker();
         ImGui::EndFrame();
     }
 }

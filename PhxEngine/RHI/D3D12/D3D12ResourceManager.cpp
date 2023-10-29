@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include "D3D12ResourceManager.h"
 
 #include "D3D12Device.h"
@@ -489,7 +490,7 @@ SwapChainHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateSwapChain(Swa
 	fullscreenDesc.Windowed = !desc.Fullscreen;
 
 	hr = this->m_device->GetNativeFactory()->CreateSwapChainForHwnd(
-		this->m_device->GetQueue(CommandContextType::Graphics).GetD3D12CommandQueue(),
+		this->m_device->GetQueue(CommandListType::Graphics).GetD3D12CommandQueue(),
 		static_cast<HWND>(desc.WindowHandle),
 		&swapChainDesc,
 		&fullscreenDesc,
@@ -550,7 +551,7 @@ InputLayoutHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateInputLayout
 	D3D12InputLayout* inputLayoutImpl = this->m_inputLayoutPool.Get(handle);
 	inputLayoutImpl->Attributes.resize(descriptions.Size());
 
-	for (uint32_t index = 0; index < attributeCount; index++)
+	for (uint32_t index = 0; index < descriptions.Size(); index++)
 	{
 		VertexAttributeDesc& attr = inputLayoutImpl->Attributes[index];
 
@@ -925,7 +926,6 @@ BufferHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateGpuBuffer(Buffer
 			finalAllocInfo,
 			&bufferImpl.Allocation);
 
-		return;
 	}
 	else if (bufferImpl.Desc.AliasedBuffer.IsValid())
 	{
@@ -944,7 +944,7 @@ BufferHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateGpuBuffer(Buffer
 				resourceDesc,
 				initialState,
 				&bufferImpl.Allocation,
-				&bufferImpl.D3D12Resource);
+				bufferImpl.D3D12Resource);
 	}
 
 
@@ -1373,7 +1373,7 @@ RTAccelerationStructureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::Creat
 	rtAccelerationStructureImpl.Srv.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
 	if (rtAccelerationStructureImpl.Srv.BindlessIndex != cInvalidDescriptorIndex)
 	{
-		this->m_device->GetNativeDevice5()->CopyDescriptorsSimple(
+		this->m_device->GetNativeDevice()->CopyDescriptorsSimple(
 			1,
 			this->m_bindlessResourceDescriptorTable.GetCpuHandle(rtAccelerationStructureImpl.Srv.BindlessIndex),
 			rtAccelerationStructureImpl.Srv.Allocation.GetCpuHandle(),

@@ -6,9 +6,11 @@
 #include <D3D12Common.h>
 #include <Core/TimeStep.h>
 
+#include <D3D12DescriptorHeap.h>
+
 namespace PhxEngine::RHI::D3D12
 {
-    class D3D12DescriptorHeapAllocation;
+    class D3D12CommandQueue;
 	struct D3D12RHIResource
 	{
 	private:

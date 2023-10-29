@@ -72,6 +72,60 @@ namespace PhxEngine::RHI
 	{
 	};
 
+	struct Viewport
+	{
+		float MinX, MaxX;
+		float MinY, MaxY;
+		float MinZ, MaxZ;
+
+		Viewport() : MinX(0.f), MaxX(0.f), MinY(0.f), MaxY(0.f), MinZ(0.f), MaxZ(1.f) { }
+
+		Viewport(float width, float height) : MinX(0.f), MaxX(width), MinY(0.f), MaxY(height), MinZ(0.f), MaxZ(1.f) { }
+
+		Viewport(float _minX, float _maxX, float _minY, float _maxY, float _minZ, float _maxZ)
+			: MinX(_minX), MaxX(_maxX), MinY(_minY), MaxY(_maxY), MinZ(_minZ), MaxZ(_maxZ)
+		{ }
+
+		bool operator ==(const Viewport& b) const
+		{
+			return MinX == b.MinX
+				&& MinY == b.MinY
+				&& MinZ == b.MinZ
+				&& MaxX == b.MaxX
+				&& MaxY == b.MaxY
+				&& MaxZ == b.MaxZ;
+		}
+		bool operator !=(const Viewport& b) const { return !(*this == b); }
+
+		float GetWidth() const { return MaxX - MinX; }
+		float GetHeight() const { return MaxY - MinY; }
+	};
+
+	struct Rect
+	{
+		int MinX, MaxX;
+		int MinY, MaxY;
+
+		Rect() : MinX(0), MaxX(0), MinY(0), MaxY(0) { }
+		Rect(int width, int height) : MinX(0), MaxX(width), MinY(0), MaxY(height) { }
+		Rect(int _minX, int _maxX, int _minY, int _maxY) : MinX(_minX), MaxX(_maxX), MinY(_minY), MaxY(_maxY) { }
+		explicit Rect(const Viewport& viewport)
+			: MinX(int(floorf(viewport.MinX)))
+			, MaxX(int(ceilf(viewport.MaxX)))
+			, MinY(int(floorf(viewport.MinY)))
+			, MaxY(int(ceilf(viewport.MaxY)))
+		{
+		}
+
+		bool operator ==(const Rect& b) const {
+			return MinX == b.MinX && MinY == b.MinY && MaxX == b.MaxX && MaxY == b.MaxY;
+		}
+		bool operator !=(const Rect& b) const { return !(*this == b); }
+
+		int GetWidth() const { return MaxX - MinX; }
+		int GetHeight() const { return MaxY - MinY; }
+	};
+
 	// -- Pipeline State objects ---
 	struct BlendRenderState
 	{
@@ -210,7 +264,7 @@ namespace PhxEngine::RHI
 	class IRootSignatureBuilder
 	{
 	public:
-		virtual ~IRootSignatureBuilder() = default;
+		~IRootSignatureBuilder() = default;
 	};
 
 	struct StaticSamplerParameter
@@ -642,6 +696,14 @@ namespace PhxEngine::RHI
 	struct CommandSignature;
 	using CommandSignatureHandle = Core::Handle<CommandSignature>;
 
+	struct RenderPass;
+	using RenderPassHandle = Core::Handle<RenderPass>;
+	struct RenderPassDesc
+	{
+		Core::Span<RHI::TextureHandle> RenderTargets;
+		RHI::TextureHandle DepthTarget;
+	};
+
 	// -- Context Stuff
 	struct PlatformContext {}; // TODO:
 
@@ -665,12 +727,186 @@ namespace PhxEngine::RHI
 		NonMoveable& operator=(NonMoveable&&) = delete;
 	};
 
+	class RenderPassContext
+	{
+
+	};
+
+	struct DrawArgs
+	{
+		union
+		{
+			uint32_t VertexCount = 1;
+			uint32_t IndexCount;
+		};
+
+		uint32_t InstanceCount = 1;
+		union
+		{
+			uint32_t StartVertex = 0;
+			uint32_t StartIndex;
+		};
+		uint32_t StartInstance = 0;
+
+		uint32_t BaseVertex = 0;
+	};
+
+
 	class GfxContext;
 	class ComputeContext;
 	class CopyContext;
 	class CommandList : NonCopyable, NonMoveable
 	{
 	public:
+		void BeginMarker(std::string const& handle){ /*no-op*/ }
+		void EndMarker(){ /*no-op*/ }
 
+		// -- Ray Trace stuff       ---
+		void RTBuildAccelerationStructure(RHI::RTAccelerationStructureHandle accelStructure){ /*no-op*/ }
+		// GPUAllocation AllocateGpu(size_t bufferSize, size_t stride){ /*no-op*/ }
+
+		void TransitionBarrier(TextureHandle texture, ResourceStates beforeState, ResourceStates afterState){ /*no-op*/ }
+		void TransitionBarrier(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState){ /*no-op*/ }
+		void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers){ /*no-op*/ }
+		void ClearTextureFloat(TextureHandle texture, Color const& clearColour){ /*no-op*/ }
+		void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil){ /*no-op*/ }
+
+		void Draw(DrawArgs const& args){ /*no-op*/ }
+		void DrawIndexed(DrawArgs const& args){ /*no-op*/ }
+
+		void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
+		void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
+
+		void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
+		void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
+
+		void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
+		void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
+
+		template<typename T>
+		void WriteBuffer(BufferHandle buffer, std::vector<T> const& data, uint64_t destOffsetBytes)
+		{
+			this->WriteBuffer(buffer, data.data(), sizeof(T) * data.size(), destOffsetBytes);
+		}
+
+		template<typename T>
+		void WriteBuffer(BufferHandle buffer, T const& data, uint64_t destOffsetBytes)
+		{
+			this->WriteBuffer(buffer, &data, sizeof(T), destOffsetBytes);
+		}
+
+		template<typename T>
+		void WriteBuffer(BufferHandle buffer, Core::Span<T> data, uint64_t destOffsetBytes)
+		{
+			this->WriteBuffer(buffer, data.begin(), sizeof(T) * data.Size(), destOffsetBytes);
+		}
+
+		void WriteBuffer(BufferHandle buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes){ /*no-op*/ }
+
+		void CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHandle src, uint64_t srcOffset, size_t sizeInBytes){ /*no-op*/ }
+
+		void WriteTexture(TextureHandle texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData){ /*no-op*/ }
+		void WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* Data, size_t rowPitch, size_t depthPitch){ /*no-op*/ }
+
+		void SetGfxPipeline(GfxPipelineHandle gfxPipeline){ /*no-op*/ }
+		void SetViewports(Viewport* viewports, size_t numViewports){ /*no-op*/ }
+		void SetScissors(Rect* scissor, size_t numScissors){ /*no-op*/ }
+		void SetRenderTargets(Core::Span<TextureHandle> renderTargets, TextureHandle depthStenc = {}){ /*no-op*/ }
+		void SetRenderTargets(Core::Span<SwapChainHandle> renderTargets, TextureHandle depthStenc = {}){ /*no-op*/ }
+
+		// -- Comptute Stuff ---
+		void SetComputeState(ComputePipelineHandle state){ /*no-op*/ }
+		void Dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ){ /*no-op*/ }
+		void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
+		void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
+
+		// -- Mesh Stuff ---
+		void SetMeshPipeline(MeshPipelineHandle meshPipeline){ /*no-op*/ }
+		void DispatchMesh(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ){ /*no-op*/ }
+		void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
+		void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
+
+		void BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants){ /*no-op*/ }
+		template<typename T>
+		void BindPushConstant(uint32_t rootParameterIndex, const T& constants)
+		{
+			static_assert(sizeof(T) % sizeof(uint32_t) == 0, "Size of type must be a multiple of 4 bytes");
+			this->BindPushConstant(rootParameterIndex, sizeof(T), &constants);
+		}
+
+		void BindConstantBuffer(size_t rootParameterIndex, BufferHandle constantBuffer){ /*no-op*/ }
+		void BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData){ /*no-op*/ }
+		template<typename T>
+		void BindDynamicConstantBuffer(size_t rootParameterIndex, T const& bufferData)
+		{
+			this->BindDynamicConstantBuffer(rootParameterIndex, sizeof(T), &bufferData);
+		}
+
+		void BindVertexBuffer(uint32_t slot, BufferHandle vertexBuffer){ /*no-op*/ }
+
+		/**
+		 * Set dynamic vertex buffer data to the rendering pipeline.
+		 */
+		void BindDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData){ /*no-op*/ }
+
+		template<typename T>
+		void BindDynamicVertexBuffer(uint32_t slot, const std::vector<T>& vertexBufferData)
+		{
+			this->BindDynamicVertexBuffer(slot, vertexBufferData.size(), sizeof(T), vertexBufferData.data());
+		}
+
+		void BindIndexBuffer(BufferHandle bufferHandle){ /*no-op*/ }
+
+		/**
+		 * Bind dynamic index buffer data to the rendering pipeline.
+		 */
+		void BindDynamicIndexBuffer(size_t numIndicies, RHI::Format indexFormat, const void* indexBufferData);
+
+		template<typename T>
+		void BindDynamicIndexBuffer(const std::vector<T>& indexBufferData)
+		{
+			static_assert(sizeof(T) == 2 || sizeof(T) == 4);
+
+			RHI::Format indexFormat = (sizeof(T) == 2) ? RHI::Format::R16_UINT : RHI::Format::R32_UINT;
+			this->BindDynamicIndexBuffer(indexBufferData.size(), indexFormat, indexBufferData.Data());
+		}
+
+		/**
+		 * Set dynamic structured buffer contents.
+		 */
+		void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, size_t numElements, size_t elementSize, const void* bufferData){ /*no-op*/ }
+
+		template<typename T>
+		void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, std::vector<T> const& bufferData)
+		{
+			this->BindDynamicStructuredBuffer(rootParameterIndex, bufferData.size(), sizeof(T), bufferData.Data());
+		}
+
+		void BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer){ /*no-op*/ }
+
+		void BindDynamicDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures){ /*no-op*/ }
+		void BindDynamicUavDescriptorTable(
+			size_t rootParameterIndex,
+			Core::Span<BufferHandle> buffers)
+		{
+			this->BindDynamicUavDescriptorTable(rootParameterIndex, buffers, {});
+		}
+		void BindDynamicUavDescriptorTable(
+			size_t rootParameterIndex,
+			Core::Span<TextureHandle> textures)
+		{
+			this->BindDynamicUavDescriptorTable(rootParameterIndex, {}, textures);
+		}
+
+		void BindDynamicUavDescriptorTable(
+			size_t rootParameterIndex,
+			Core::Span<BufferHandle> buffers,
+			Core::Span<TextureHandle> textures){ /*no-op*/ }
+
+		void BindResourceTable(size_t rootParameterIndex){ /*no-op*/ }
+		void BindSamplerTable(size_t rootParameterIndex){ /*no-op*/ }
+
+		void BeginTimerQuery(TimerQueryHandle query){ /*no-op*/ }
+		void EndTimerQuery(TimerQueryHandle query){ /*no-op*/ }
 	};
 }

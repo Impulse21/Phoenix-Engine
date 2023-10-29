@@ -1,4 +1,7 @@
-#include <PhxEngine.h>
+#define NOMINMAX
+#include <RHI/PhxRHI.h>
+
+#include <Core/Log.h>
 
 #include <Core/Memory.h>
 #include "D3D12Device.h"
@@ -9,7 +12,7 @@
 #include "Core/String.h"
 #include <stdexcept>
 
-
+using namespace PhxEngine;
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::D3D12;
 
@@ -150,47 +153,52 @@ uint64_t PhxEngine::RHI::SubmitCommands(CommandList* commandList)
 }
 CommandSignatureHandle PhxEngine::RHI::CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride)
 {
-	ResourceManager->CreateCommandSignature(desc, byteStride);
+	return ResourceManager->CreateCommandSignature(desc, byteStride);
 }
 
 SwapChainHandle PhxEngine::RHI::CreateSwapChain(SwapchainDesc const& desc)
 {
-	ResourceManager->CreateSwapChain(desc);
+	return ResourceManager->CreateSwapChain(desc);
 }
 
 ShaderHandle PhxEngine::RHI::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
 {
-	ResourceManager->CreateShader(desc, shaderByteCode);
+	return ResourceManager->CreateShader(desc, shaderByteCode);
 }
 
 InputLayoutHandle PhxEngine::RHI::CreateInputLayout(Core::Span<VertexAttributeDesc> descs)
 {
-	ResourceManager->CreateInputLayout(descs);
+	return ResourceManager->CreateInputLayout(descs);
 }
 
 GfxPipelineHandle PhxEngine::RHI::CreateGfxPipeline(GfxPipelineDesc const& desc)
 {
-	ResourceManager->CreateGfxPipeline(desc);
+	return ResourceManager->CreateGfxPipeline(desc);
 }
 
 ComputePipelineHandle PhxEngine::RHI::CreateComputePipeline(ComputePipelineDesc const& desc)
 {
-	ResourceManager->CreateComputePipeline(desc);
+	return ResourceManager->CreateComputePipeline(desc);
 }
 
 MeshPipelineHandle PhxEngine::RHI::CreateMeshPipeline(MeshPipelineDesc const& desc)
 {
-	ResourceManager->CreateMeshPipeline(desc);
+	return ResourceManager->CreateMeshPipeline(desc);
 }
 
-BufferHandle PhxEngine::RHI::CreateGpuBuffer(BufferDesc const& desc, void* initalData = nullptr)
+BufferHandle PhxEngine::RHI::CreateGpuBuffer(BufferDesc const& desc, void* initalData)
 {
-	ResourceManager->CreateGpuBuffer(desc);
+	return ResourceManager->CreateGpuBuffer(desc, initalData);
 }
 
-TextureHandle PhxEngine::RHI::CreateTexture(TextureDesc const& desc, void* initalData = nullptr)
+TextureHandle PhxEngine::RHI::CreateTexture(TextureDesc const& desc, void* initalData)
 {
-	ResourceManager->CreateTexture(desc);
+	return ResourceManager->CreateTexture(desc, initalData);
+}
+
+RenderPassHandle PhxEngine::RHI::CreateRenderPass(RenderPassDesc desc)
+{
+	return {};
 }
 
 void PhxEngine::RHI::DeleteCommandSignature(CommandSignatureHandle handle)
@@ -251,6 +259,18 @@ void PhxEngine::RHI::DeleteTimerQuery(TimerQueryHandle handle)
 void PhxEngine::RHI::ResizeSwapChain(SwapChainHandle handle, SwapchainDesc const& desc)
 {
 	ResourceManager->ResizeSwapChain(handle, desc);
+}
+
+RHI::Format PhxEngine::RHI::GetSwapChainFormat(SwapChainHandle handle)
+{
+	D3D12SwapChain* swapChain = ResourceManager->GetSwapChainPool().Get(handle);
+
+	if (!swapChain)
+	{
+		return RHI::Format::UNKNOWN;
+	}
+
+	return swapChain->Desc.Format;
 }
 
 const TextureDesc& PhxEngine::RHI::GetTextureDesc(TextureHandle handle)

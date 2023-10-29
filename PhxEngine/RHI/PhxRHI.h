@@ -43,6 +43,7 @@ namespace PhxEngine::RHI
 	MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc);
 	BufferHandle CreateGpuBuffer(BufferDesc const& desc, void* initalData = nullptr);
 	TextureHandle CreateTexture(TextureDesc const& desc, void* initalData = nullptr);
+	RenderPassHandle CreateRenderPass(RenderPassDesc desc);
 
 	void DeleteCommandSignature(CommandSignatureHandle  handle);
 	void DeleteSwapChain(SwapChainHandle handle);
@@ -57,6 +58,7 @@ namespace PhxEngine::RHI
 	void DeleteTimerQuery(TimerQueryHandle handle);
 
 	void ResizeSwapChain(SwapChainHandle handle, SwapchainDesc const& desc);
+	RHI::Format GetSwapChainFormat(SwapChainHandle handle);
 
 	const TextureDesc& GetTextureDesc(TextureHandle handle);
 	const BufferDesc& GetBufferDesc(BufferHandle handle);

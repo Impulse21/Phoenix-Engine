@@ -21,12 +21,12 @@ namespace PhxEngine::Renderer
 {
 	namespace ImGuiRenderer
 	{
-		void Initialize(Core::IWindow* window, RHI::GfxDevice* gfxDevice, bool enableDocking = false);
+		void Initialize(Core::IWindow* window, RHI::SwapChainHandle swapchain, bool enableDocking = false);
 		void Finalize();
 		void EnableDarkThemeColours();
 		
 		void BeginFrame();
-		void Render(RHI::CommandListHandle cmd);
+		void Render(RHI::CommandList* cmd);
 	}
 #if 0
 	class ImGuiRenderer

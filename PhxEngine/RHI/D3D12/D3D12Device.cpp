@@ -1,5 +1,7 @@
 #include "D3D12Device.h"
 
+#include <Core/Log.h>
+
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3d12.lib")
 #ifdef _DEBUG
@@ -221,9 +223,9 @@ PhxEngine::RHI::D3D12::D3D12Device::D3D12Device(D3D12Adapter const& adapter)
 		}
 	}
 
-	this->m_queues[(size_t)RHI::CommandContextType::Graphics].Initialize(this, D3D12_COMMAND_LIST_TYPE_DIRECT);
-	this->m_queues[(size_t)RHI::CommandContextType::Copy].Initialize(this, D3D12_COMMAND_LIST_TYPE_COPY);
-	this->m_queues[(size_t)RHI::CommandContextType::Compute].Initialize(this, D3D12_COMMAND_LIST_TYPE_COMPUTE);
+	this->m_queues[(size_t)RHI::CommandListType::Graphics].Initialize(this, D3D12_COMMAND_LIST_TYPE_DIRECT);
+	this->m_queues[(size_t)RHI::CommandListType::Copy].Initialize(this, D3D12_COMMAND_LIST_TYPE_COPY);
+	this->m_queues[(size_t)RHI::CommandListType::Compute].Initialize(this, D3D12_COMMAND_LIST_TYPE_COMPUTE);
 
 }
 
@@ -235,9 +237,9 @@ PhxEngine::RHI::D3D12::D3D12Device::~D3D12Device()
 	{
 		infoQueue->UnregisterMessageCallback(CallbackCookie);
 	}
-	this->m_queues[(size_t)RHI::CommandContextType::Graphics].Finalize();
-	this->m_queues[(size_t)RHI::CommandContextType::Copy].Finalize();
-	this->m_queues[(size_t)RHI::CommandContextType::Compute].Finalize();
+	this->m_queues[(size_t)RHI::CommandListType::Graphics].Finalize();
+	this->m_queues[(size_t)RHI::CommandListType::Copy].Finalize();
+	this->m_queues[(size_t)RHI::CommandListType::Compute].Finalize();
 }
 
 void PhxEngine::RHI::D3D12::D3D12Device::WaitForIdle()

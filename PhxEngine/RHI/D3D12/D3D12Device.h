@@ -23,7 +23,7 @@ namespace PhxEngine::RHI::D3D12
         if ((stateBits & ResourceStates::RenderTarget) != 0) result |= D3D12_RESOURCE_STATE_RENDER_TARGET;
         if ((stateBits & ResourceStates::DepthWrite) != 0) result |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
         if ((stateBits & ResourceStates::DepthRead) != 0) result |= D3D12_RESOURCE_STATE_DEPTH_READ;
-        if ((stateBits & ResourceStates::StreamOut) != 0) result |= D3D12_RESOURCE_STATE_STREAOUT;
+        if ((stateBits & ResourceStates::StreamOut) != 0) result |= D3D12_RESOURCE_STATE_STREAM_OUT;
         if ((stateBits & ResourceStates::CopyDest) != 0) result |= D3D12_RESOURCE_STATE_COPY_DEST;
         if ((stateBits & ResourceStates::CopySource) != 0) result |= D3D12_RESOURCE_STATE_COPY_SOURCE;
         if ((stateBits & ResourceStates::ResolveDest) != 0) result |= D3D12_RESOURCE_STATE_RESOLVE_DEST;
@@ -67,7 +67,7 @@ namespace PhxEngine::RHI::D3D12
         ShaderModel                                 GetMinShaderModel()             const { return this->m_minShaderModel; }
         bool                                        GetIsUnderGraphicsDebugger()    const { return this->m_isUnderGraphicsDebugger; }
 
-        D3D12CommandQueue&                          GetQueue(RHI::CommandContextType type) { return this->m_queues[static_cast<size_t>(type)]; }
+        D3D12CommandQueue&                          GetQueue(RHI::CommandListType type) { return this->m_queues[static_cast<size_t>(type)]; }
 
     private:
         D3D12Adapter                         m_gpuAdapter;
@@ -82,6 +82,6 @@ namespace PhxEngine::RHI::D3D12
         ShaderModel                          m_minShaderModel;
         bool                                 m_isUnderGraphicsDebugger;
 
-        std::array<D3D12CommandQueue, (size_t)RHI::CommandContextType::Count> m_queues;
+        std::array<D3D12CommandQueue, (size_t)RHI::CommandListType::Count> m_queues;
     };
 }
