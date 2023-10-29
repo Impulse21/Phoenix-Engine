@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Core/Memory.h>
-#include <RHI/RHIResources.h>
 #include <D3D12MemAlloc.h>
 #include <D3D12Common.h>
 #include <Core/TimeStep.h>

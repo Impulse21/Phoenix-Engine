@@ -9,6 +9,8 @@
 #include <Core/Handle.h>
 #include <RHI/RHIEnums.h>
 
+// -- Exposes Internal Platform Type alias Trick to avoid virtuals ---
+#include <PlatformTypes.h>
 namespace PhxEngine::RHI
 {
 	typedef uint32_t DescriptorIndex;
@@ -908,5 +910,8 @@ namespace PhxEngine::RHI
 
 		void BeginTimerQuery(TimerQueryHandle query){ /*no-op*/ }
 		void EndTimerQuery(TimerQueryHandle query){ /*no-op*/ }
+
+	private:
+		PlatformCommandList m_platformCmdList;
 	};
 }
