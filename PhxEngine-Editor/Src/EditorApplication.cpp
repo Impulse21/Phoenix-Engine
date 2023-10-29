@@ -67,13 +67,8 @@ namespace
 
 		void Initialize() override
 		{
-
-		}
-
-		void Initialize() override
-		{
 			PhxEngine::GetTaskExecutor().silent_async([this]() {
-				Renderer::ImGuiRenderer::Initialize(GetWindow(), GetGfxDevice(), true);
+				Renderer::ImGuiRenderer::Initialize(GetWindow(), GetSwapChain(), true);
 			    Renderer::ImGuiRenderer::EnableDarkThemeColours();
 			    std::unique_ptr<IFileSystem> fileSystem = CreateNativeFileSystem();
 
@@ -95,6 +90,7 @@ namespace
 			    	PHX_LOG_INFO("Loading Scene '%s'", worldFilename.c_str());
 			    	if (std::filesystem::path(worldFilename).extension() == ".gltf")
 			    	{
+#if 0
 			    		Core::StopWatch stopWatch;
 
 			    		Editor::GltfModelLoader loader;
@@ -105,6 +101,7 @@ namespace
 
 			    		Core::TimeStep loadTime = stopWatch.Elapsed();
 			    		PHX_LOG_INFO("Loading scene took %dms", loadTime.GetMilliseconds());
+#endif
 			    	}
 			    }
 			    else
@@ -157,9 +154,6 @@ namespace
             ImGui::Begin("Properties", &mainWindowBegun);
             ImGui::Text("Properties");
             ImGui::End();
-            ImGui::Begin("Assets", &mainWindowBegun);
-            ImGui::Text("Assets");
-            ImGui::End();
             ImGui::Begin("Viewport", &mainWindowBegun);
             ImGui::Text("Viewport");
             ImGui::End();
@@ -168,7 +162,7 @@ namespace
                 ImGui::End();
 		}
 
-		void OnCompose(RHI::CommandListHandle composeCmdList) override
+		void OnCompose(RHI::CommandList* composeCmdList) override
 		{
 			Renderer::ImGuiRenderer::Render(composeCmdList);
 		}

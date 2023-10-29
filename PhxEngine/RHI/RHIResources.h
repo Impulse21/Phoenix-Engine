@@ -862,7 +862,7 @@ namespace PhxEngine::RHI
 		/**
 		 * Bind dynamic index buffer data to the rendering pipeline.
 		 */
-		void BindDynamicIndexBuffer(size_t numIndicies, RHI::Format indexFormat, const void* indexBufferData);
+		void BindDynamicIndexBuffer(size_t numIndicies, RHI::Format indexFormat, const void* indexBufferData) { /*no-op*/ }
 
 		template<typename T>
 		void BindDynamicIndexBuffer(const std::vector<T>& indexBufferData)

@@ -10,6 +10,7 @@
 #include <functional>
 namespace PhxEngine::Editor
 {
+#if false
 	class GltfModelLoader
 	{
 	public:
@@ -59,6 +60,7 @@ namespace PhxEngine::Editor
 		std::unordered_map<const cgltf_mesh*, Assets::MeshHandle> m_meshEntityMap;
 		std::function<void(std::string_view, uint32_t, uint32_t)> m_progressCallback;
 	};
+#endif
 }
 
 

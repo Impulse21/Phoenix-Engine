@@ -123,3 +123,56 @@ uint64_t PhxEngine::RHI::D3D12::D3D12CommandQueue::GetLastCompletedFence()
 	std::scoped_lock _(this->m_fenceMutex);
 	return this->m_d3d12Fence->GetCompletedValue();
 }
+
+void PhxEngine::RHI::D3D12::D3D12CommandQueue::CommandAllocatorPool::Initialize(D3D12Device* device, D3D12_COMMAND_LIST_TYPE type)
+{
+	this->m_type = type;
+	this->m_device = device;
+}
+
+
+ID3D12CommandAllocator* PhxEngine::RHI::D3D12::D3D12CommandQueue::CommandAllocatorPool::RequestAllocator(uint64_t completedFenceValue)
+{
+	std::scoped_lock _(this->m_allocatonMutex);
+
+	ID3D12CommandAllocator* pAllocator = nullptr;
+	if (!this->m_availableAllocators.empty())
+	{
+		auto& allocatorPair = this->m_availableAllocators.front();
+		if (allocatorPair.first <= completedFenceValue)
+		{
+			pAllocator = allocatorPair.second;
+			ThrowIfFailed(
+				pAllocator->Reset());
+
+			this->m_availableAllocators.pop();
+		}
+	}
+
+	if (!pAllocator)
+	{
+		Core::RefCountPtr<ID3D12CommandAllocator> newAllocator;
+		ThrowIfFailed(
+			this->m_device->GetNativeDevice()->CreateCommandAllocator(
+				this->m_type,
+				IID_PPV_ARGS(&newAllocator)));
+
+		// TODO: std::shared_ptr is leaky
+		wchar_t allocatorName[32];
+		swprintf(allocatorName, 32, L"CommandAllocator %zu", this->m_allocatorPool.size());
+		newAllocator->SetName(allocatorName);
+		this->m_allocatorPool.emplace_back(newAllocator);
+		pAllocator = this->m_allocatorPool.back().Get();
+	}
+
+	return pAllocator;
+}
+
+
+void PhxEngine::RHI::D3D12::D3D12CommandQueue::CommandAllocatorPool::DiscardAllocator(uint64_t fence, ID3D12CommandAllocator* allocator)
+{
+	std::scoped_lock _(this->m_allocatonMutex);
+
+	assert(allocator);
+	this->m_availableAllocators.push(std::make_pair(fence, allocator));
+}

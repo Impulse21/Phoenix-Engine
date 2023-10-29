@@ -149,6 +149,12 @@ tf::Executor& PhxEngine::GetTaskExecutor()
 	return m_taskExecutor;
 }
 
+PhxEngine::RHI::SwapChainHandle PhxEngine::GetSwapChain()
+{
+	return m_swapchain;
+}
+
+
 PhxEngine::Renderer::AsyncGpuUploader& PhxEngine::GetAsyncLoader()
 {
 	return m_asyncLoader;
