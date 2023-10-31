@@ -24,6 +24,10 @@ namespace
 	std::shared_ptr<D3D12Device> Device;
 	std::shared_ptr<D3D12GpuMemoryAllocator> GpuAllocator;
 	std::shared_ptr<D3D12ResourceManager> ResourceManager;
+	uint64_t FrameCount = 0;
+	uint64_t BufferCount = 0;
+
+	std::array<Core::RefCountPtr<ID3D12Fence>, (int)RHI::CommandListType::Count> FrameFences;
 
 	bool SafeTestD3D12CreateDevice(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL minFeatureLevel, D3D12DeviceBasicInfo& outInfo)
 	{
@@ -55,6 +59,8 @@ namespace
 
 bool PhxEngine::RHI::Initialize(RHIParams const& params)
 {
+	FrameCount = 0;
+	BufferCount = params.NumInflightFrames;
     D3D12Adapter selectedAdapter = {};
     {
         Core::RefCountPtr<IDXGIFactory6> factory;
@@ -126,6 +132,14 @@ bool PhxEngine::RHI::Initialize(RHIParams const& params)
 	GpuAllocator = std::make_shared<D3D12GpuMemoryAllocator>(Device);
 	ResourceManager = std::make_shared<D3D12ResourceManager>(Device, GpuAllocator);
 
+	// Create Frame Fences
+	for (size_t q = 0; q < FrameFences.size(); q++)
+	{
+		// Create a frame fence per queue;
+		ThrowIfFailed(
+			Device->GetNativeDevice()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&FrameFences[q])));
+	}
+
     return true;
 }
 
@@ -138,8 +152,87 @@ bool PhxEngine::RHI::Finalize()
     return {};
 }
 
-void PhxEngine::RHI::EndFrame(Core::Span<SwapChainHandle> swapchainsToPresent)
+void PhxEngine::RHI::Present(Core::Span<SwapChainHandle> swapchainsToPresent)
 {
+	// -- Mark Queues for completion ---
+	for (size_t q = 0; q < (size_t)CommandListType::Count; ++q)
+	{
+		D3D12CommandQueue& queue = Device->GetQueue(static_cast<CommandListType>(q));
+
+		// Single Frame Fence to the frame it's currently doing work for.
+		queue.GetD3D12CommandQueue()->Signal(FrameFences[q].Get(), FrameCount);
+	}
+
+	// -- Present SwapChain ---
+	{
+		for (const SwapChainHandle& handle : swapchainsToPresent)
+		{
+			D3D12SwapChain* swapchain = ResourceManager->GetSwapChainPool().Get(handle);
+			if (swapchain == nullptr)
+			{
+				continue;
+			}
+
+			UINT presentFlags = 0;
+			const bool enableVSync = swapchain->Desc.VSync;
+
+			if (!enableVSync && !swapchain->Desc.Fullscreen)
+			{
+				presentFlags = DXGI_PRESENT_ALLOW_TEARING;
+			}
+			HRESULT hr = swapchain->NativeSwapchain4->Present((UINT)enableVSync, presentFlags);
+
+			// If the device was reset we must completely reinitialize the renderer.
+			if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+			{
+
+#ifdef _DEBUG
+				char buff[64] = {};
+				sprintf_s(buff, "Device Lost on Present: Reason code 0x%08X\n",
+					static_cast<unsigned int>((hr == DXGI_ERROR_DEVICE_REMOVED)
+						? Device->GetNativeDevice()->GetDeviceRemovedReason()
+						: hr));
+
+				LOG_RHI_ERROR(buff);
+#endif
+
+				// TODO: Handle device lost
+				// HandleDeviceLost();
+			}
+		}
+	}
+	// Begin the next frame - this affects the GetCurrentBackBufferIndex()
+	FrameCount++;
+
+	// -- Wait for next frame ---
+	{
+		for (size_t q = 0; q < (size_t)CommandListType::Count; ++q)
+		{
+			const UINT64 completedFrame = FrameFences[q]->GetCompletedValue();
+
+			// If the fence is max uint64, that might indicate that the device has been removed as fences get reset in this case
+			assert(completedFrame != UINT64_MAX);
+			const uint64_t bufferCount = BufferCount;
+
+			// Since our frame count is 1 based rather then 0, increment the number of buffers by 1 so we don't have to wait on the first 3 frames
+			// that are kicked off.
+			if (FrameCount >= (bufferCount + 1) && completedFrame < FrameCount)
+			{
+				// Wait on the frames last value?
+				// NULL event handle will simply wait immediately:
+				//	https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12fence-seteventoncompletion#remarks
+				ThrowIfFailed(
+					FrameFences[q]->SetEventOnCompletion(FrameCount - bufferCount, nullptr));
+			}
+		}
+
+		ResourceManager->RunGrabageCollection(FrameCount);
+	}
+}
+
+void PhxEngine::RHI::WaitForIdle()
+{
+	Device->WaitForIdle();
 }
 
 CommandList* PhxEngine::RHI::BeginCommandList(RHI::CommandListType type)
@@ -158,7 +251,7 @@ CommandSignatureHandle PhxEngine::RHI::CreateCommandSignature(CommandSignatureDe
 
 SwapChainHandle PhxEngine::RHI::CreateSwapChain(SwapchainDesc const& desc)
 {
-	return ResourceManager->CreateSwapChain(desc);
+	return ResourceManager->CreateSwapChain(desc, BufferCount);
 }
 
 ShaderHandle PhxEngine::RHI::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
@@ -258,7 +351,7 @@ void PhxEngine::RHI::DeleteTimerQuery(TimerQueryHandle handle)
 
 void PhxEngine::RHI::ResizeSwapChain(SwapChainHandle handle, SwapchainDesc const& desc)
 {
-	ResourceManager->ResizeSwapChain(handle, desc);
+	ResourceManager->ResizeSwapChain(handle, desc, BufferCount);
 }
 
 RHI::Format PhxEngine::RHI::GetSwapChainFormat(SwapChainHandle handle)

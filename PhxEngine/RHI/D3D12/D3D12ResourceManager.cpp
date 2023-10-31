@@ -459,7 +459,7 @@ CommandSignatureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateComman
 	return handle;
 }
 
-SwapChainHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateSwapChain(SwapchainDesc const& desc)
+SwapChainHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateSwapChain(SwapchainDesc const& desc, size_t bufferCount)
 {
 	SwapChainHandle handle = this->m_swapChainPool.Emplace();
 	D3D12SwapChain* impl = this->m_swapChainPool.Get(handle);
@@ -479,7 +479,7 @@ SwapChainHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateSwapChain(Swa
 	swapChainDesc.SampleDesc.Count = 1;
 	swapChainDesc.SampleDesc.Quality = 0;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swapChainDesc.BufferCount = desc.BufferCount;
+	swapChainDesc.BufferCount = bufferCount;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
 	swapChainDesc.Flags = swapChainFlags;
@@ -1618,7 +1618,7 @@ void PhxEngine::RHI::D3D12::D3D12ResourceManager::DeleteTimerQuery(TimerQueryHan
 #endif
 }
 
-void PhxEngine::RHI::D3D12::D3D12ResourceManager::ResizeSwapChain(SwapChainHandle handle, SwapchainDesc const& desc)
+void PhxEngine::RHI::D3D12::D3D12ResourceManager::ResizeSwapChain(SwapChainHandle handle, SwapchainDesc const& desc, size_t bufferCount)
 {
 	// Resize swapchain:
 	this->m_device->WaitForIdle();
@@ -1640,7 +1640,7 @@ void PhxEngine::RHI::D3D12::D3D12ResourceManager::ResizeSwapChain(SwapChainHandl
 
 	ThrowIfFailed(
 		impl->NativeSwapchain4->ResizeBuffers(
-			desc.BufferCount,
+			bufferCount,
 			desc.Width,
 			desc.Height,
 			formatMapping.RtvFormat,

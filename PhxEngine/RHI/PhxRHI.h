@@ -18,12 +18,11 @@ namespace PhxEngine::RHI
 
 	// Singles the end of the frame.
 	// Presents provided swapchains,
-	void EndFrame(Core::Span<SwapChainHandle> swapchainsToPresent);
+	void Present(Core::Span<SwapChainHandle> swapchainsToPresent);
+	void WaitForIdle();
 
 	CommandList* BeginCommandList(RHI::CommandListType type = RHI::CommandListType::Graphics);
 	uint64_t SubmitCommands(CommandList* commandList);
-
-	// SubmitRecipt Submit(Core::Span<CommandContext> context);
 
 	// Resource Creation Functions
 	template<typename T>

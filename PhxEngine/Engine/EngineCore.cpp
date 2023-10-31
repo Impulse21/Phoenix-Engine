@@ -73,6 +73,7 @@ namespace
 		m_engineRunning.store(false);
 		m_taskExecutor.wait_for_all();
 
+		RHI::WaitForIdle();
 		RHI::DeleteSwapChain(m_swapchain);
 		RHI::Finalize();
 
@@ -107,7 +108,7 @@ void PhxEngine::Run(IEngineApp& app)
 			RHI::SubmitCommands(composeCmdList);
 		}
 
-		RHI::EndFrame({ m_swapchain });
+		RHI::Present({ m_swapchain });
 
 #if 0
 			gfxDevice->TransitionBarriers(

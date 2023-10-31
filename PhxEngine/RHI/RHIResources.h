@@ -455,7 +455,6 @@ namespace PhxEngine::RHI
 		void* WindowHandle;
 		uint32_t Width = 1u;
 		uint32_t Height = 1u;
-		uint32_t BufferCount = 3;
 		RHI::Format Format = RHI::Format::R10G10B10A2_UNORM;
 		bool Fullscreen = false;
 		bool VSync = false;

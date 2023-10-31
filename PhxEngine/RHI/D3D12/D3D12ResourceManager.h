@@ -23,7 +23,7 @@ namespace PhxEngine::RHI::D3D12
         void RunGrabageCollection(size_t completedFrame = ~0u);
 
         CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride);
-        SwapChainHandle CreateSwapChain(SwapchainDesc const& desc);
+        SwapChainHandle CreateSwapChain(SwapchainDesc const& desc, uint64_t bufferCount);
         ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode);
         InputLayoutHandle CreateInputLayout(Core::Span<VertexAttributeDesc> descriptions);
         GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
@@ -47,7 +47,7 @@ namespace PhxEngine::RHI::D3D12
         void DeleteRTAccelerationStructure(RTAccelerationStructureHandle  handle);
         void DeleteTimerQuery(TimerQueryHandle handle);
 
-        void ResizeSwapChain(SwapChainHandle handle, SwapchainDesc const& desc);
+        void ResizeSwapChain(SwapChainHandle handle, SwapchainDesc const& desc, size_t bufferCount);
 
         const TextureDesc& GetTextureDesc(TextureHandle handle);
         const BufferDesc& GetBufferDesc(BufferHandle handle);
