@@ -3,6 +3,8 @@
 #include "D3D12CommandQueue.h"
 #include "D3D12Device.h"
 
+using namespace PhxEngine;
+using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI::D3D12;
 
 void D3D12CommandQueue::Initialize(D3D12Device* device, D3D12_COMMAND_LIST_TYPE type)
@@ -59,18 +61,68 @@ void D3D12CommandQueue::Finalize()
 #endif
 }
 
-uint64_t PhxEngine::RHI::D3D12::D3D12CommandQueue::ExecuteCommandLists(Core::Span<ID3D12CommandList*> commandLists, bool waitForComplete)
+D3D12CommandList* PhxEngine::RHI::D3D12::D3D12CommandQueue::RequestCommandList(ID3D12CommandAllocator* allocator)
 {
-	this->m_d3d12CommandQueue->ExecuteCommandLists(commandLists.Size(), commandLists.begin());
-	uint64_t fenceValue = this->IncrementFence();
+	std::scoped_lock _(this->m_commandListMutex);
 
-	if (waitForComplete)
+	D3D12CommandList* commandList = nullptr;
+	if (!this->m_commandListQueue.empty())
 	{
-		this->WaitForFence(fenceValue);
+		commandList = this->m_commandListQueue.front();
+		this->m_commandListQueue.pop_front();
 	}
 
-	return fenceValue;
+	if (commandList == nullptr)
+	{
+		RefCountPtr<ID3D12GraphicsCommandList> commandList = nullptr;
+		this->m_device->GetNativeDevice5()->CreateCommandList1(
+			0,
+			this->m_type,
+			D3D12_COMMAND_LIST_FLAG_NONE,
+			IID_PPV_ARGS(&commandList));
+		commandList->SetName(L"D3D12GfxDevice::CommandList");
+
+		commandList->Close();
+		commandList = this->m_commandListPool.emplace_back(std::make_unique<D3D12CommandList>(commandList, this)).get();
+	}
+
+	commandList->Reset(allocator);
+	return commandList;
 }
+
+D3D12CommandList& PhxEngine::RHI::D3D12::D3D12CommandQueue::BeginCommandList()
+{
+	ID3D12CommandAllocator* allocator = this->RequestAllocator();
+	return *this->RequestCommandList(allocator);
+}
+
+uint64_t PhxEngine::RHI::D3D12::D3D12CommandQueue::ExecuteCommandLists(Core::Span<D3D12CommandList*> commandLists, bool waitForComplete)
+{
+	// Allocate and submit data
+	static thread_local std::vector<ID3D12CommandList*> d3d12CommandLists;
+	d3d12CommandLists.clear();
+
+	for (auto commandList : commandLists)
+	{
+		d3d12CommandLists.push_back(commandList->NativeCmdList);
+	}
+
+	this->m_d3d12CommandQueue->ExecuteCommandLists(d3d12CommandLists.size(), d3d12CommandLists.data());
+	uint64_t fenceVal = this->IncrementFence();
+
+	for (auto commandList : commandLists)
+	{
+		this->m_commandListQueue.push_back(commandList);
+	}
+
+	return fenceVal;
+}
+
+uint64_t PhxEngine::RHI::D3D12::D3D12CommandQueue::ExecuteCommandList(D3D12CommandList& commandList, bool waitForComplete)
+{
+	return this->ExecuteCommandLists({ &commandList }, waitForComplete);
+}
+
 
 ID3D12CommandAllocator* PhxEngine::RHI::D3D12::D3D12CommandQueue::RequestAllocator()
 {

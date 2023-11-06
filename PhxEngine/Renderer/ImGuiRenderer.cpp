@@ -41,7 +41,7 @@ void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* wi
     m_swapchainHandle = handle;
     m_imguiContext = ImGui::CreateContext();
     ImGui::SetCurrentContext(m_imguiContext);
-    auto* glfwWindow = static_cast<GLFWwindow*>(window->GetNativeWindow());
+    auto* glfwWindow = static_cast<GLFWwindow*>(window->GetInternalWindow());
 
     if (!ImGui_ImplGlfw_InitForVulkan(glfwWindow, true))
     {
@@ -74,29 +74,21 @@ void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* wi
     desc.MipLevels = 1;
     desc.DebugName = "IMGUI Font Texture";
 
-    m_fontTexture = RHI::CreateTexture(desc);
-    io.Fonts->SetTexID(static_cast<void*>(&m_fontTexture));
     RHI::SubresourceData subResourceData = {};
-
-    // Bytes per pixel * width of the image. Since we are using an RGBA8, there is 4 bytes per pixel.
     subResourceData.rowPitch = width * 4;
     subResourceData.slicePitch = subResourceData.rowPitch * height;
     subResourceData.pData = pixelData;
 
-    CommandList* uploadCommandList = RHI::BeginCommandList();
-#if 0
-    gfxDevice->TransitionBarrier(m_fontTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest, uploadCommandList);
-    gfxDevice->WriteTexture(m_fontTexture, 0, 1, &subResourceData, uploadCommandList);
-    gfxDevice->TransitionBarrier(m_fontTexture, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource, uploadCommandList);
-
-
-    m_vertexShader = gfxDevice->CreateShader( {
+    m_fontTexture = RHI::CreateTexture(desc, &subResourceData);
+    io.Fonts->SetTexID(static_cast<void*>(&m_fontTexture));
+    
+    m_vertexShader = RHI::CreateShader( {
             .Stage = RHI::ShaderStage::Vertex,
             .DebugName = "ImGuiVS",
         },
         PhxEngine::Core::Span<uint8_t>(static_cast<const uint8_t*>(g_mainVS), sizeof(g_mainVS) / sizeof(unsigned char)));
 
-    m_pixelShader = gfxDevice->CreateShader(
+    m_pixelShader = RHI::CreateShader(
         {
             .Stage = RHI::ShaderStage::Pixel,
             .DebugName = "ImGuiPS",
@@ -111,8 +103,7 @@ void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* wi
         { "COLOR",      0, RHI::Format::RGBA8_UNORM, 0, VertexAttributeDesc::SAppendAlignedElement, false},
     };
 
-    m_inputLayout = gfxDevice->CreateInputLayout(attributeDesc.data(), attributeDesc.size());
-#endif
+    m_inputLayout = RHI::CreateInputLayout(attributeDesc);
 }
 
 void PhxEngine::Renderer::ImGuiRenderer::Finalize()

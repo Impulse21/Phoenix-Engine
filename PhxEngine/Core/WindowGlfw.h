@@ -39,7 +39,7 @@ namespace PhxEngine::Core
 		void CentreWindow() override;
 
 		void* GetNativeWindowHandle() override;
-		void* GetNativeWindow() override { return this->m_glfwWindow; }
+		void* GetInternalWindow() override { return this->m_glfwWindow; }
 
 		bool ShouldClose() override;
 

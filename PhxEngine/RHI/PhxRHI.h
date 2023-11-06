@@ -34,14 +34,14 @@ namespace PhxEngine::RHI
 	
 	// Use static class so we can get internals of the passed in types via friend
 	CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride);
-	SwapChainHandle CreateSwapChain(SwapchainDesc const& desc);
+	SwapChainHandle CreateSwapChain(SwapchainDesc const& desc, void* windowHandle);
 	ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode);
 	InputLayoutHandle CreateInputLayout(Core::Span<VertexAttributeDesc> descs);
 	GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
 	ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc);
 	MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc);
 	BufferHandle CreateGpuBuffer(BufferDesc const& desc, void* initalData = nullptr);
-	TextureHandle CreateTexture(TextureDesc const& desc, void* initalData = nullptr);
+	TextureHandle CreateTexture(TextureDesc const& desc, const SubresourceData* initalData = nullptr);
 	RenderPassHandle CreateRenderPass(RenderPassDesc desc);
 
 	void DeleteCommandSignature(CommandSignatureHandle  handle);

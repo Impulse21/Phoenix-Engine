@@ -6,11 +6,12 @@
 #include <d3d12.h>
 #include <Core/RefCountPtr.h>
 #include <Core/Span.h>
-
+#include <RHI/D3D12/D3D12CommandList.h>
 namespace PhxEngine::RHI::D3D12
 {
+	struct D3D12CommandList;
 	class D3D12Device;
-	class D3D12CommandQueue
+	class D3D12CommandQueue final
 	{
 	public:
 		D3D12CommandQueue() = default;
@@ -21,10 +22,9 @@ namespace PhxEngine::RHI::D3D12
 
 		D3D12_COMMAND_LIST_TYPE GetType() const { return this->m_type; }
 
-		uint64_t ExecuteCommandLists(Core::Span<ID3D12CommandList*> commandLists, bool waitForComplete = false);
-
-		ID3D12CommandAllocator* RequestAllocator();
-		void DiscardAllocator(uint64_t fence, ID3D12CommandAllocator* allocator);
+		D3D12CommandList& BeginCommandList();
+		uint64_t ExecuteCommandLists(Core::Span<D3D12CommandList*> commandLists, bool waitForComplete = false);
+		uint64_t ExecuteCommandList(D3D12CommandList& commandList, bool waitForComplete = false);
 
 		uint64_t IncrementFence();
 		bool IsFenceComplete(uint64_t fenceValue);
@@ -37,12 +37,23 @@ namespace PhxEngine::RHI::D3D12
 		ID3D12Fence* GetFence() { return this->m_d3d12Fence.Get(); }
 		uint64_t GetLastCompletedFence();
 
+	protected:
+		D3D12CommandList* RequestCommandList(ID3D12CommandAllocator* allocator);
+		ID3D12CommandAllocator* RequestAllocator();
+		void DiscardAllocator(uint64_t fence, ID3D12CommandAllocator* allocator);
+
 	private:
 		D3D12_COMMAND_LIST_TYPE m_type;
 		D3D12Device* m_device;
 
 		Core::RefCountPtr<ID3D12CommandQueue> m_d3d12CommandQueue;
 		Core::RefCountPtr<ID3D12Fence> m_d3d12Fence;
+
+		using CommandListPool = std::vector<std::unique_ptr<D3D12CommandList>>;
+		using CommandListQueue = std::deque<D3D12CommandList*>;
+		std::mutex m_commandListMutex;
+		CommandListPool m_commandListPool;
+		CommandListQueue m_commandListQueue;
 
 		class CommandAllocatorPool
 		{

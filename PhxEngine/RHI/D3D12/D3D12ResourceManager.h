@@ -15,22 +15,27 @@ namespace PhxEngine::RHI::D3D12
 {
     class D3D12Device;
     class D3D12GpuMemoryAllocator;
+    class D3D12TempAllocator;
     class D3D12ResourceManager final
     {
     public:
-        D3D12ResourceManager(std::shared_ptr<D3D12Device> device, std::shared_ptr<D3D12GpuMemoryAllocator> gpuAllocator);
+        // Internal Global Pointer to simplify things.
+        inline static D3D12ResourceManager* GPtr;
+
+    public:
+        D3D12ResourceManager(std::shared_ptr<D3D12Device> device, std::shared_ptr<D3D12GpuMemoryAllocator> gpuAllocator, D3D12TempAllocator* tempAllocator);
         ~D3D12ResourceManager();
         void RunGrabageCollection(size_t completedFrame = ~0u);
 
         CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride);
-        SwapChainHandle CreateSwapChain(SwapchainDesc const& desc, uint64_t bufferCount);
+        SwapChainHandle CreateSwapChain(SwapchainDesc const& desc, uint64_t bufferCount, void* windowHandle);
         ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode);
         InputLayoutHandle CreateInputLayout(Core::Span<VertexAttributeDesc> descriptions);
         GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
         ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc);
         MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc);
         BufferHandle CreateGpuBuffer(BufferDesc const& desc, void* initalData = nullptr);
-        TextureHandle CreateTexture(TextureDesc const& desc, void* initalData = nullptr);
+        TextureHandle CreateTexture(TextureDesc const& desc, const SubresourceData* initalData = nullptr);
         TextureHandle CreateTexture(TextureDesc const& desc, Core::RefCountPtr<ID3D12Resource> resource);
         RTAccelerationStructureHandle CreateRTAccelerationStructure(RTAccelerationStructureDesc const& desc);
         TimerQueryHandle CreateTimerQuery();
@@ -85,6 +90,7 @@ namespace PhxEngine::RHI::D3D12
         D3D12GpuDescriptorHeap& GetSamplerGpuHeap() { return this->m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler]; }
 
     private:
+        D3D12TempAllocator* m_tempAllocator;
         std::shared_ptr<D3D12Device> m_device;
         std::shared_ptr<D3D12GpuMemoryAllocator> m_gpuAllocator;
 

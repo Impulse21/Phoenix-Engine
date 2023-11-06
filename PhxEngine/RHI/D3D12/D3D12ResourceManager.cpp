@@ -5,6 +5,7 @@
 #include "DxgiFormatMapping.h"
 
 #include "D3D12GpuMemoryAllocator.h"
+#include "D3D12TempAllocator.h"
 #include "Core/String.h"
 
 
@@ -21,6 +22,15 @@ using namespace PhxEngine::RHI::D3D12;
 
 namespace
 {
+	constexpr D3D12_SUBRESOURCE_DATA _ConvertSubresourceData(const SubresourceData& pInitialData)
+	{
+		D3D12_SUBRESOURCE_DATA data = {};
+		data.pData = pInitialData.pData;
+		data.RowPitch = pInitialData.rowPitch;
+		data.SlicePitch = pInitialData.slicePitch;
+
+		return data;
+	}
 
 	D3D12_SHADER_VISIBILITY ConvertShaderStage(ShaderStage s)
 	{
@@ -304,9 +314,13 @@ namespace
 	}
 }
 
-PhxEngine::RHI::D3D12::D3D12ResourceManager::D3D12ResourceManager(std::shared_ptr<D3D12Device> device, std::shared_ptr<D3D12GpuMemoryAllocator> gpuAllocator)
+PhxEngine::RHI::D3D12::D3D12ResourceManager::D3D12ResourceManager(
+	std::shared_ptr<D3D12Device> device,
+	std::shared_ptr<D3D12GpuMemoryAllocator> gpuAllocator,
+	D3D12TempAllocator* tempAllocator)
 	: m_device(device)
 	, m_gpuAllocator(gpuAllocator)
+	, m_tempAllocator(tempAllocator)
 {
 
 	// Create Descriptor Heaps
@@ -459,7 +473,7 @@ CommandSignatureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateComman
 	return handle;
 }
 
-SwapChainHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateSwapChain(SwapchainDesc const& desc, size_t bufferCount)
+SwapChainHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateSwapChain(SwapchainDesc const& desc, size_t bufferCount, void* windowHandle)
 {
 	SwapChainHandle handle = this->m_swapChainPool.Emplace();
 	D3D12SwapChain* impl = this->m_swapChainPool.Get(handle);
@@ -491,7 +505,7 @@ SwapChainHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateSwapChain(Swa
 
 	hr = this->m_device->GetNativeFactory()->CreateSwapChainForHwnd(
 		this->m_device->GetQueue(CommandListType::Graphics).GetD3D12CommandQueue(),
-		static_cast<HWND>(desc.WindowHandle),
+		static_cast<HWND>(windowHandle),
 		&swapChainDesc,
 		&fullscreenDesc,
 		nullptr,
@@ -987,7 +1001,7 @@ BufferHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateGpuBuffer(Buffer
 	return buffer;
 }
 
-TextureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateTexture(TextureDesc const& desc, void* initalData)
+TextureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateTexture(TextureDesc const& desc, const SubresourceData* initalData)
 {
 	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
 	d3d12OptimizedClearValue.Color[0] = desc.OptmizedClearValue.Colour.R;
@@ -1134,23 +1148,21 @@ TextureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateTexture(Texture
 
 	if (initalData != nullptr)
 	{
-		assert(false);
-#if 0
 		std::vector<D3D12_SUBRESOURCE_DATA> data(textureImpl.Footprints.size());
 		for (size_t i = 0; i < textureImpl.Footprints.size(); ++i)
 		{
 			data[i] = _ConvertSubresourceData(initalData[i]);
 		}
 
-		auto cmd = this->m_copyCtxAllocator.Allocate(textureImpl.TotalSize);
-
+		// Create a command to be executed
+		D3D12CommandList commandList = this->m_device->GetQueue(CommandListType::Copy).BeginCommandList();
+		TempAllocation tempAllocation = this->m_tempAllocator->Allocate(textureImpl.TotalSize, 1);
 		for (size_t i = 0; i < textureImpl.Footprints.size(); ++i)
 		{
-			void* mappedUploadData = this->GetBufferMappedData(cmd.UploadBuffer);
 			if (textureImpl.RowSizesInBytes[i] > (SIZE_T)-1)
 				continue;
 			D3D12_MEMCPY_DEST DestData = {};
-			DestData.pData = (void*)((UINT64)mappedUploadData + textureImpl.Footprints[i].Offset);
+			DestData.pData = (void*)((UINT64)tempAllocation.Data + textureImpl.Footprints[i].Offset);
 			DestData.RowPitch = (SIZE_T)textureImpl.Footprints[i].Footprint.RowPitch;
 			DestData.SlicePitch = (SIZE_T)textureImpl.Footprints[i].Footprint.RowPitch * (SIZE_T)textureImpl.NumRows[i];
 			MemcpySubresource(&DestData, &data[i], (SIZE_T)textureImpl.RowSizesInBytes[i], textureImpl.NumRows[i], textureImpl.Footprints[i].Footprint.Depth);
@@ -1159,9 +1171,9 @@ TextureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateTexture(Texture
 		for (UINT i = 0; i < textureImpl.Footprints.size(); ++i)
 		{
 			CD3DX12_TEXTURE_COPY_LOCATION Dst(textureImpl.D3D12Resource.Get(), i);
-			auto& uploadBuffer = *this->m_bufferPool.Get(cmd.UploadBuffer);
+			auto& uploadBuffer = *this->m_bufferPool.Get(tempAllocation.BufferHandle);
 			CD3DX12_TEXTURE_COPY_LOCATION Src(uploadBuffer.D3D12Resource.Get(), textureImpl.Footprints[i]);
-			cmd.NativeCmdList->CopyTextureRegion(
+			commandList.NativeCmdList->CopyTextureRegion(
 				&Dst,
 				0,
 				0,
@@ -1171,9 +1183,8 @@ TextureHandle PhxEngine::RHI::D3D12::D3D12ResourceManager::CreateTexture(Texture
 			);
 		}
 
-		// Blocking call
-		this->m_copyCtxAllocator.Submit(cmd);
-#endif
+		// Execute
+		commandList.Queue->ExecuteCommandList(commandList, true);
 	}
 
 	return texture;

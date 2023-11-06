@@ -8,6 +8,7 @@
 #include "D3D12GpuMemoryAllocator.h"
 #include "D3D12Resources.h"
 #include "D3D12ResourceManager.h"
+#include "D3D12TempAllocator.h"
 
 #include "Core/String.h"
 #include <stdexcept>
@@ -24,6 +25,7 @@ namespace
 	std::shared_ptr<D3D12Device> Device;
 	std::shared_ptr<D3D12GpuMemoryAllocator> GpuAllocator;
 	std::shared_ptr<D3D12ResourceManager> ResourceManager;
+	D3D12TempAllocator TempAllocator;
 	uint64_t FrameCount = 0;
 	uint64_t BufferCount = 0;
 
@@ -130,7 +132,9 @@ bool PhxEngine::RHI::Initialize(RHIParams const& params)
 	
 	Device = std::make_shared<D3D12Device>(selectedAdapter);
 	GpuAllocator = std::make_shared<D3D12GpuMemoryAllocator>(Device);
-	ResourceManager = std::make_shared<D3D12ResourceManager>(Device, GpuAllocator);
+	TempAllocator.Initialize();
+	ResourceManager = std::make_shared<D3D12ResourceManager>(Device, GpuAllocator, &TempAllocator);
+	D3D12ResourceManager::GPtr = ResourceManager.get();
 
 	// Create Frame Fences
 	for (size_t q = 0; q < FrameFences.size(); q++)
@@ -146,6 +150,10 @@ bool PhxEngine::RHI::Initialize(RHIParams const& params)
 bool PhxEngine::RHI::Finalize()
 {
 	ResourceManager->RunGrabageCollection();
+
+	// TODO: Make sure temp is removed before this.
+	TempAllocator.Finalize();
+	D3D12ResourceManager::GPtr = nullptr;
 	ResourceManager.reset();
 	Device.reset();
 
@@ -249,9 +257,9 @@ CommandSignatureHandle PhxEngine::RHI::CreateCommandSignature(CommandSignatureDe
 	return ResourceManager->CreateCommandSignature(desc, byteStride);
 }
 
-SwapChainHandle PhxEngine::RHI::CreateSwapChain(SwapchainDesc const& desc)
+SwapChainHandle PhxEngine::RHI::CreateSwapChain(SwapchainDesc const& desc, void* windowHandle)
 {
-	return ResourceManager->CreateSwapChain(desc, BufferCount);
+	return ResourceManager->CreateSwapChain(desc, BufferCount, windowHandle);
 }
 
 ShaderHandle PhxEngine::RHI::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
@@ -284,7 +292,7 @@ BufferHandle PhxEngine::RHI::CreateGpuBuffer(BufferDesc const& desc, void* inita
 	return ResourceManager->CreateGpuBuffer(desc, initalData);
 }
 
-TextureHandle PhxEngine::RHI::CreateTexture(TextureDesc const& desc, void* initalData)
+TextureHandle PhxEngine::RHI::CreateTexture(TextureDesc const& desc, const SubresourceData* initalData)
 {
 	return ResourceManager->CreateTexture(desc, initalData);
 }

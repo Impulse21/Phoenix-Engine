@@ -193,6 +193,7 @@ namespace PhxEngine::RHI
 		char samplePositionsX[16]{};
 		char samplePositionsY[16]{};
 	};
+
 	// -- Pipeline State Objects End ---
 
 	struct Shader;
@@ -452,7 +453,6 @@ namespace PhxEngine::RHI
 	using SwapChainHandle = Core::Handle<SwapChain>;
 	struct SwapchainDesc
 	{
-		void* WindowHandle;
 		uint32_t Width = 1u;
 		uint32_t Height = 1u;
 		RHI::Format Format = RHI::Format::R10G10B10A2_UNORM;

@@ -45,12 +45,12 @@ namespace
 		RHI::Initialize({});
 
 		m_swapchain = RHI::CreateSwapChain({
-				.WindowHandle = m_window->GetNativeWindow(),
 				.Width = m_window->GetWidth(),
 				.Height = m_window->GetHeight(),
 				.Fullscreen = false,
 				.VSync = m_window->GetVSync(),
-			});
+			}, 
+			m_window->GetNativeWindowHandle());
 
 		// -- Add on resize Event ---
 		EventDispatcher::AddEventListener(EventType::WindowResize, [&](Event const& e) {
