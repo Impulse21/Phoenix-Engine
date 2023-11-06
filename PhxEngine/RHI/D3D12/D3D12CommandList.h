@@ -2,10 +2,23 @@
 
 #include "D3D12Common.h"
 #include <Core/RefCountPtr.h>
-#include <RHI/RHIResources.h>
 
 namespace PhxEngine::RHI::D3D12
 {
+	struct NonCopyable
+	{
+		NonCopyable() = default;
+		NonCopyable(const NonCopyable&) = delete;
+		NonCopyable& operator=(const NonCopyable&) = delete;
+	};
+
+	struct NonMoveable
+	{
+		NonMoveable() = default;
+		NonMoveable(NonMoveable&&) = delete;
+		NonMoveable& operator=(NonMoveable&&) = delete;
+	};
+
 	class D3D12CommandQueue;
 	struct D3D12CommandList : NonCopyable, NonMoveable
 	{
