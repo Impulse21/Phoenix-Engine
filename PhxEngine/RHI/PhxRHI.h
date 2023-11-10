@@ -18,50 +18,33 @@ namespace PhxEngine::RHI
 
 	// Singles the end of the frame.
 	// Presents provided swapchains,
-	void Present(Core::Span<SwapChainHandle> swapchainsToPresent);
+	void Present(SwapChain const& swapchainsToPresent);
 	void WaitForIdle();
 
 	CommandList* BeginCommandList(RHI::CommandListType type = RHI::CommandListType::Graphics);
 	uint64_t SubmitCommands(CommandList* commandList);
 
-	// Resource Creation Functions
-	template<typename T>
-	bool CreateCommandSignature(CommandSignatureDesc const& desc, CommandSignature& out)
+	class Factory
 	{
-		static_assert(sizeof(T) % sizeof(uint32_t) == 0);
-		return this->CreateCommandSignature(desc, sizeof(T), out);
-	}
-	
-	// Use static class so we can get internals of the passed in types via friend
-	CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride);
-	SwapChainHandle CreateSwapChain(SwapchainDesc const& desc, void* windowHandle);
-	ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode);
-	InputLayoutHandle CreateInputLayout(Core::Span<VertexAttributeDesc> descs);
-	GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
-	ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc);
-	MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc);
-	BufferHandle CreateGpuBuffer(BufferDesc const& desc, void* initalData = nullptr);
-	TextureHandle CreateTexture(TextureDesc const& desc, const SubresourceData* initalData = nullptr);
-	RenderPassHandle CreateRenderPass(RenderPassDesc desc);
+	public:
 
-	void DeleteCommandSignature(CommandSignatureHandle  handle);
-	void DeleteSwapChain(SwapChainHandle handle);
-	void DeleteShader(ShaderHandle handle);
-	void DeleteInputLayout(InputLayoutHandle handle);
-	void DeleteGfxPipeline(GfxPipelineHandle handle);
-	void DeleteComputePipeline(ComputePipelineHandle handle);
-	void DeleteMeshPipeline(MeshPipelineHandle handle);
-	void DeleteGpuBuffer(BufferHandle handle);
-	void DeleteTexture(TextureHandle handle);
-	void DeleteRTAccelerationStructure(RTAccelerationStructureHandle  handle);
-	void DeleteTimerQuery(TimerQueryHandle handle);
+		static bool CreateSwapChain(SwapchainDesc const& desc, void* windowHandle, SwapChain& out);
+		static bool CreateTexture(TextureDesc const& desc, Texture& out);
+		static bool CreateGpuBuffer(BufferDesc const& desc, Buffer& out);
 
-	void ResizeSwapChain(SwapChainHandle handle, SwapchainDesc const& desc);
-	RHI::Format GetSwapChainFormat(SwapChainHandle handle);
+		template<typename T>
+		static bool CreateCommandSignature(CommandSignatureDesc const& desc, CommandSignature& out)
+		{
+			static_assert(sizeof(T) % sizeof(uint32_t) == 0);
+			return Factory::CreateCommandSignature(desc, sizeof(T), out);
+		}
 
-	const TextureDesc& GetTextureDesc(TextureHandle handle);
-	const BufferDesc& GetBufferDesc(BufferHandle handle);
-
-	DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource = -1);
-	DescriptorIndex GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource = -1);
+		// Use static class so we can get internals of the passed in types via friend
+		static bool CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride);
+		static bool CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode);
+		static bool CreateInputLayout(Core::Span<VertexAttributeDesc> descs);
+		static bool CreateGfxPipeline(GfxPipelineDesc const& desc);
+		static bool CreateComputePipeline(ComputePipelineDesc const& desc);
+		static bool CreateMeshPipeline(MeshPipelineDesc const& desc);
+	};
 }

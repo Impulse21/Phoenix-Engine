@@ -1,7 +1,6 @@
 #pragma once
 
 #include <D3D12Common.h>
-#include <RHI/RHIResources.h>
 #include <Core/Memory.h>
 #include <memory>
 
@@ -14,7 +13,7 @@ namespace PhxEngine::RHI::D3D12
 	{
 		void* Data;
 		size_t ByteOffset;
-		BufferHandle BufferHandle;
+		// BufferHandle BufferHandle;
 		D3D12_GPU_VIRTUAL_ADDRESS Gpu;
 	};
 
@@ -41,7 +40,7 @@ namespace PhxEngine::RHI::D3D12
 			void Reset();
 
 		private:
-			BufferHandle m_buffer;
+			// BufferHandle m_buffer;
 			D3D12_GPU_VIRTUAL_ADDRESS m_gpuPtr;
 
 			size_t m_pageSize;

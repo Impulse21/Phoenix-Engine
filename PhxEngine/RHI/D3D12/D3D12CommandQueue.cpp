@@ -1,13 +1,13 @@
 
 #define NOMINMAX
 #include "D3D12CommandQueue.h"
-#include "D3D12Device.h"
+#include "D3D12Context.h"
 
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI::D3D12;
 
-void D3D12CommandQueue::Initialize(D3D12Device* device, D3D12_COMMAND_LIST_TYPE type)
+void D3D12CommandQueue::Initialize(Core::RefCountPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE type)
 {
 	this->m_device = device;
 	this->m_type = type;
@@ -21,11 +21,11 @@ void D3D12CommandQueue::Initialize(D3D12Device* device, D3D12_COMMAND_LIST_TYPE 
 	queueDesc.NodeMask = 0;
 
 	ThrowIfFailed(
-		this->m_device->GetNativeDevice()->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&this->m_d3d12CommandQueue)));
+		this->m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&this->m_d3d12CommandQueue)));
 
 	// Create Fence
 	ThrowIfFailed(
-		this->m_device->GetNativeDevice()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_d3d12Fence)));
+		this->m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_d3d12Fence)));
 	this->m_d3d12Fence->SetName(L"D3D12CommandQueue::Fence");
 
 	switch (type)
@@ -63,6 +63,7 @@ void D3D12CommandQueue::Finalize()
 
 D3D12CommandList* PhxEngine::RHI::D3D12::D3D12CommandQueue::RequestCommandList(ID3D12CommandAllocator* allocator)
 {
+#if 0
 	std::scoped_lock _(this->m_commandListMutex);
 
 	D3D12CommandList* commandList = nullptr;
@@ -75,7 +76,7 @@ D3D12CommandList* PhxEngine::RHI::D3D12::D3D12CommandQueue::RequestCommandList(I
 	if (commandList == nullptr)
 	{
 		RefCountPtr<ID3D12GraphicsCommandList> commandList = nullptr;
-		this->m_device->GetNativeDevice5()->CreateCommandList1(
+		this->m_device5->CreateCommandList1(
 			0,
 			this->m_type,
 			D3D12_COMMAND_LIST_FLAG_NONE,
@@ -88,6 +89,9 @@ D3D12CommandList* PhxEngine::RHI::D3D12::D3D12CommandQueue::RequestCommandList(I
 
 	commandList->Reset(allocator);
 	return commandList;
+#else
+	return nullptr;
+#endif
 }
 
 D3D12CommandList& PhxEngine::RHI::D3D12::D3D12CommandQueue::BeginCommandList()
@@ -176,7 +180,7 @@ uint64_t PhxEngine::RHI::D3D12::D3D12CommandQueue::GetLastCompletedFence()
 	return this->m_d3d12Fence->GetCompletedValue();
 }
 
-void PhxEngine::RHI::D3D12::D3D12CommandQueue::CommandAllocatorPool::Initialize(D3D12Device* device, D3D12_COMMAND_LIST_TYPE type)
+void PhxEngine::RHI::D3D12::D3D12CommandQueue::CommandAllocatorPool::Initialize(Core::RefCountPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE type)
 {
 	this->m_type = type;
 	this->m_device = device;
@@ -205,7 +209,7 @@ ID3D12CommandAllocator* PhxEngine::RHI::D3D12::D3D12CommandQueue::CommandAllocat
 	{
 		Core::RefCountPtr<ID3D12CommandAllocator> newAllocator;
 		ThrowIfFailed(
-			this->m_device->GetNativeDevice()->CreateCommandAllocator(
+			this->m_device->CreateCommandAllocator(
 				this->m_type,
 				IID_PPV_ARGS(&newAllocator)));
 

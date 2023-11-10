@@ -2,13 +2,12 @@
 
 #include <memory>
 
-#include "D3D12Device.h"
+#include "D3D12Context.h"
 #include "D3D12DescriptorHeap.h"
 
 using namespace PhxEngine::RHI::D3D12;
 
 void PhxEngine::RHI::D3D12::D3D12CpuDescriptorHeap::Initialize(
-	std::shared_ptr<D3D12Device> device,
 	uint32_t numDesctiptors,
 	D3D12_DESCRIPTOR_HEAP_TYPE type,
 	D3D12_DESCRIPTOR_HEAP_FLAGS flags)
@@ -21,16 +20,15 @@ void PhxEngine::RHI::D3D12::D3D12CpuDescriptorHeap::Initialize(
 		1 // node mask
 	};
 
-	this->m_descriptorSize = device->GetNativeDevice()->GetDescriptorHandleIncrementSize(type);
+	this->m_descriptorSize = D3D12::Context::D3d12Device()->GetDescriptorHandleIncrementSize(type);
 	this->m_numDescriptorsPerHeap = numDesctiptors;
-	this->m_device = device;
 }
 
-D3D12DescriptorHeapAllocation D3D12CpuDescriptorHeap::Allocate(uint32_t numDescriptors)
+D3D12DescriptorAllocation D3D12CpuDescriptorHeap::Allocate(uint32_t numDescriptors)
 {
 	std::scoped_lock _(this->m_heapPoolMutex);
 
-	D3D12DescriptorHeapAllocation allocation;
+	D3D12DescriptorAllocation allocation;
 	for (auto iter = this->m_availableHeaps.begin(); iter != this->m_availableHeaps.end(); iter++)
 	{
 		auto allocationPage = this->m_heapPool[*iter];
@@ -62,7 +60,7 @@ D3D12DescriptorHeapAllocation D3D12CpuDescriptorHeap::Allocate(uint32_t numDescr
 	return allocation;
 }
 
-void D3D12CpuDescriptorHeap::Free(D3D12DescriptorHeapAllocation&& allocation)
+void D3D12CpuDescriptorHeap::Free(D3D12DescriptorAllocation&& allocation)
 {
 	this->FreeAllocation(std::move(allocation));
 }
@@ -72,7 +70,7 @@ std::shared_ptr<D3D12DescriptorHeapAllocationPage> D3D12CpuDescriptorHeap::Creat
 	auto newPage = std::make_shared<D3D12DescriptorHeapAllocationPage>(
 		this->m_heapPool.size(),
 		this,
-		this->m_device->GetNativeDevice2(),
+		D3D12::Context::D3d12Device2(),
 		this->m_heapDesc,
 		this->m_numDescriptorsPerHeap);
 
@@ -82,7 +80,7 @@ std::shared_ptr<D3D12DescriptorHeapAllocationPage> D3D12CpuDescriptorHeap::Creat
 	return newPage;
 }
 
-void D3D12CpuDescriptorHeap::FreeAllocation(D3D12DescriptorHeapAllocation&& allocation)
+void D3D12CpuDescriptorHeap::FreeAllocation(D3D12DescriptorAllocation&& allocation)
 {
 	uint32_t pageId = allocation.GetPageId();
 	if (pageId >= this->m_heapPool.size())
@@ -150,19 +148,19 @@ D3D12DescriptorHeapAllocationPage::D3D12DescriptorHeapAllocationPage(
 	this->AddNewBlock(0, this->m_numFreeHandles);
 }
 
-D3D12DescriptorHeapAllocation D3D12DescriptorHeapAllocationPage::Allocate(uint32_t numDescriptors)
+D3D12DescriptorAllocation D3D12DescriptorHeapAllocationPage::Allocate(uint32_t numDescriptors)
 {
 	std::scoped_lock _(this->m_allocationMutex);
 	if (numDescriptors > this->m_numFreeHandles)
 	{
-		return D3D12DescriptorHeapAllocation();
+		return D3D12DescriptorAllocation();
 	}
 
 	// get the first block that is larget enough to statisfy
 	auto smallestBlockIter = this->m_freeListBySize.lower_bound(numDescriptors);
 	if (smallestBlockIter == this->m_freeListBySize.end())
 	{
-		return D3D12DescriptorHeapAllocation();
+		return D3D12DescriptorAllocation();
 	}
 
 	auto blockSize = smallestBlockIter->first;
@@ -192,7 +190,7 @@ D3D12DescriptorHeapAllocation D3D12DescriptorHeapAllocationPage::Allocate(uint32
 		gpuHandle.ptr += offset * this->m_descritporSize;
 	}
 
-	return D3D12DescriptorHeapAllocation(
+	return D3D12DescriptorAllocation(
 		this->m_id,
 		this->m_allocator,
 		cpuHandle,
@@ -200,7 +198,7 @@ D3D12DescriptorHeapAllocation D3D12DescriptorHeapAllocationPage::Allocate(uint32
 		numDescriptors);
 }
 
-void D3D12DescriptorHeapAllocationPage::Free(D3D12DescriptorHeapAllocation&& allocation)
+void D3D12DescriptorHeapAllocationPage::Free(D3D12DescriptorAllocation&& allocation)
 {
 	std::scoped_lock _(this->m_allocationMutex);
 
@@ -291,14 +289,12 @@ void D3D12DescriptorHeapAllocationPage::FreeBlock(uint32_t offset, uint32_t numD
 }
 
 void PhxEngine::RHI::D3D12::D3D12GpuDescriptorHeap::Initialize(
-	std::shared_ptr<D3D12Device> device,
 	uint32_t numDesctiptors,
 	uint32_t numDynamicDesciprotrs,
 	D3D12_DESCRIPTOR_HEAP_TYPE type,
 	D3D12_DESCRIPTOR_HEAP_FLAGS flags)
 {
-	this->m_device = device;
-	this->m_descriptorSize = this->m_device->GetNativeDevice()->GetDescriptorHandleIncrementSize(type);
+	this->m_descriptorSize = D3D12::Context::D3d12Device()->GetDescriptorHandleIncrementSize(type);
 
 	this->m_heapDesc =
 	{
@@ -309,7 +305,7 @@ void PhxEngine::RHI::D3D12::D3D12GpuDescriptorHeap::Initialize(
 	};
 
 	ThrowIfFailed(
-		this->m_device->GetNativeDevice()->CreateDescriptorHeap(
+		D3D12::Context::D3d12Device()->CreateDescriptorHeap(
 			&this->m_heapDesc,
 			IID_PPV_ARGS(&this->m_d3dHeap)));
 
@@ -317,7 +313,7 @@ void PhxEngine::RHI::D3D12::D3D12GpuDescriptorHeap::Initialize(
 	this->m_staticPage = std::make_unique<D3D12DescriptorHeapAllocationPage>(
 		0,
 		this,
-		this->m_device->GetNativeDevice2(),
+		D3D12::Context::D3d12Device2(),
 		this->m_heapDesc,
 		this->m_d3dHeap,
 		numDesctiptors,
@@ -326,29 +322,29 @@ void PhxEngine::RHI::D3D12::D3D12GpuDescriptorHeap::Initialize(
 	this->m_dynamicPage = std::make_unique<D3D12DescriptorHeapAllocationPage>(
 		1,
 		this,
-		this->m_device->GetNativeDevice2(),
+		D3D12::Context::D3d12Device2(),
 		this->m_heapDesc,
 		this->m_d3dHeap,
 		numDynamicDesciprotrs,
 		numDesctiptors + 1);
 }
 
-D3D12DescriptorHeapAllocation D3D12GpuDescriptorHeap::Allocate(uint32_t numDescriptors)
+D3D12DescriptorAllocation D3D12GpuDescriptorHeap::Allocate(uint32_t numDescriptors)
 {
 	return this->m_staticPage->Allocate(numDescriptors);
 }
 
-void D3D12GpuDescriptorHeap::Free(D3D12DescriptorHeapAllocation&& allocation)
+void D3D12GpuDescriptorHeap::Free(D3D12DescriptorAllocation&& allocation)
 {
 	this->FreeAllocation(std::move(allocation));
 }
 
-D3D12DescriptorHeapAllocation D3D12GpuDescriptorHeap::AllocateDynamic(uint32_t numDescriptors)
+D3D12DescriptorAllocation D3D12GpuDescriptorHeap::AllocateDynamic(uint32_t numDescriptors)
 {
 	return this->m_dynamicPage->Allocate(numDescriptors);
 }
 
-void D3D12GpuDescriptorHeap::FreeAllocation(D3D12DescriptorHeapAllocation&& allocation)
+void D3D12GpuDescriptorHeap::FreeAllocation(D3D12DescriptorAllocation&& allocation)
 {
 	auto pageId = allocation.GetPageId();
 
@@ -376,7 +372,7 @@ void DynamicSuballocator::ReleaseAllocations()
 	this->m_currentSuballocationTotalSize = 0;
 }
 
-D3D12DescriptorHeapAllocation DynamicSuballocator::Allocate(uint32_t numDescriptors)
+D3D12DescriptorAllocation DynamicSuballocator::Allocate(uint32_t numDescriptors)
 {
 
 	if (this->m_subAllocations.empty() ||
@@ -401,7 +397,7 @@ D3D12DescriptorHeapAllocation DynamicSuballocator::Allocate(uint32_t numDescript
 
 	uint32_t pageId = currentAllocation.GetPageId();
 
-	D3D12DescriptorHeapAllocation allocation(
+	D3D12DescriptorAllocation allocation(
 		pageId,
 		this,
 		currentAllocation.GetCpuHandle(this->m_currentSuballocationOffset),
@@ -415,7 +411,7 @@ D3D12DescriptorHeapAllocation DynamicSuballocator::Allocate(uint32_t numDescript
 	return std::move(allocation);
 }
 
-void DynamicSuballocator::Free(D3D12DescriptorHeapAllocation&& allocation)
+void DynamicSuballocator::Free(D3D12DescriptorAllocation&& allocation)
 {
 	allocation.Reset();
 }

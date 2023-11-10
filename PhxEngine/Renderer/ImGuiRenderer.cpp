@@ -17,6 +17,9 @@ using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::Renderer;
 
+
+
+#if 0
 namespace
 {
     enum RootParameters
@@ -35,7 +38,6 @@ namespace
     RHI::GfxPipelineHandle m_pipeline;
     RHI::SwapChainHandle m_swapchainHandle;
 }
-
 void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* window, RHI::SwapChainHandle handle, bool enableDocking)
 {
     m_swapchainHandle = handle;
@@ -108,11 +110,11 @@ void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* wi
 
 void PhxEngine::Renderer::ImGuiRenderer::Finalize()
 {
-    RHI::DeleteGfxPipeline(m_pipeline);
+    // RHI::DeleteGfxPipeline(m_pipeline);
     // cmd->DeleteInputLayout(m_inputLayout);
     // cmd->DeleteShader(m_pixelShader);
     // cmd->DeleteShader(m_vertexShader);
-    RHI::DeleteTexture(m_fontTexture);
+    // RHI::DeleteTexture(m_fontTexture);
 
     ImGui::DestroyContext(m_imguiContext);
 }
@@ -294,3 +296,26 @@ void PhxEngine::Renderer::ImGuiRenderer::EnableDarkThemeColours()
     colors[ImGuiCol_TitleBgActive] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
     colors[ImGuiCol_TitleBgCollapsed] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
 }
+#else
+
+void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* window, RHI::SwapChain const& handle, bool enableDocking)
+{
+}
+
+void PhxEngine::Renderer::ImGuiRenderer::Finalize()
+{
+}
+
+void PhxEngine::Renderer::ImGuiRenderer::BeginFrame()
+{
+}
+
+void PhxEngine::Renderer::ImGuiRenderer::Render(RHI::CommandList* cmd)
+{
+}
+
+void PhxEngine::Renderer::ImGuiRenderer::EnableDarkThemeColours()
+{
+}
+
+#endif

@@ -14,10 +14,8 @@ namespace
 {
 	// -- Globals ---
 	std::unique_ptr<Core::IWindow> m_window;
-	RHI::SwapChainHandle m_swapchain;
+	RHI::SwapChain m_swapchain;
 	tf::Executor m_taskExecutor;
-	Renderer::AsyncGpuUploader m_asyncLoader;
-
 	std::atomic_bool m_engineRunning = false;
 
 	void EngineInitialize()
@@ -44,26 +42,27 @@ namespace
 
 		RHI::Initialize({});
 
-		m_swapchain = RHI::CreateSwapChain({
+		RHI::Factory::CreateSwapChain({
 				.Width = m_window->GetWidth(),
 				.Height = m_window->GetHeight(),
 				.Fullscreen = false,
 				.VSync = m_window->GetVSync(),
 			}, 
-			m_window->GetNativeWindowHandle());
+			m_window->GetNativeWindowHandle(),
+			m_swapchain);
 
 		// -- Add on resize Event ---
 		EventDispatcher::AddEventListener(EventType::WindowResize, [&](Event const& e) {
 
 			const WindowResizeEvent& resizeEvent = static_cast<const WindowResizeEvent&>(e);
-			RHI::ResizeSwapChain(
-				m_swapchain,
-				{
+			RHI::Factory::CreateSwapChain({
 					.Width = resizeEvent.GetWidth(),
 					.Height = resizeEvent.GetHeight(),
 					.Fullscreen = false,
 					.VSync = m_window->GetVSync(),
-				});
+				},
+				m_window->GetNativeWindowHandle(),
+				m_swapchain);
 		});
 
 	}
@@ -74,7 +73,6 @@ namespace
 		m_taskExecutor.wait_for_all();
 
 		RHI::WaitForIdle();
-		RHI::DeleteSwapChain(m_swapchain);
 		RHI::Finalize();
 
 		m_window.reset();
@@ -150,13 +148,7 @@ tf::Executor& PhxEngine::GetTaskExecutor()
 	return m_taskExecutor;
 }
 
-PhxEngine::RHI::SwapChainHandle PhxEngine::GetSwapChain()
+PhxEngine::RHI::SwapChain& PhxEngine::GetSwapChain()
 {
 	return m_swapchain;
-}
-
-
-PhxEngine::Renderer::AsyncGpuUploader& PhxEngine::GetAsyncLoader()
-{
-	return m_asyncLoader;
 }

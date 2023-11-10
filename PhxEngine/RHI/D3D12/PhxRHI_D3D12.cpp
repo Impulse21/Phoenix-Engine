@@ -1,15 +1,15 @@
 #define NOMINMAX
 #include <RHI/PhxRHI.h>
 
+#include "D3D12Common.h"
+
 #include <Core/Log.h>
 
 #include <Core/Memory.h>
-#include "D3D12Device.h"
-#include "D3D12GpuMemoryAllocator.h"
-#include "D3D12Resources.h"
-#include "D3D12ResourceManager.h"
-#include "D3D12TempAllocator.h"
+#include "D3D12Context.h"
+#include "DxgiFormatMapping.h"
 
+#include "D3D12Resources.h"
 #include "Core/String.h"
 #include <stdexcept>
 
@@ -22,10 +22,6 @@ using namespace PhxEngine::RHI::D3D12;
 namespace
 {
 	// -- Globals
-	std::shared_ptr<D3D12Device> Device;
-	std::shared_ptr<D3D12GpuMemoryAllocator> GpuAllocator;
-	std::shared_ptr<D3D12ResourceManager> ResourceManager;
-	D3D12TempAllocator TempAllocator;
 	uint64_t FrameCount = 0;
 	uint64_t BufferCount = 0;
 
@@ -56,6 +52,49 @@ namespace
 #pragma warning(default:6322)
 
 		return {};
+	}
+
+	inline D3D12_RESOURCE_STATES ConvertResourceStates(RHI::ResourceStates stateBits)
+	{
+		if (stateBits == ResourceStates::Common)
+			return D3D12_RESOURCE_STATE_COMMON;
+
+		D3D12_RESOURCE_STATES result = D3D12_RESOURCE_STATE_COMMON; // also 0
+
+		if ((stateBits & ResourceStates::ConstantBuffer) != 0) result |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+		if ((stateBits & ResourceStates::VertexBuffer) != 0) result |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+		if ((stateBits & ResourceStates::IndexGpuBuffer) != 0) result |= D3D12_RESOURCE_STATE_INDEX_BUFFER;
+		if ((stateBits & ResourceStates::IndirectArgument) != 0) result |= D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+		if ((stateBits & ResourceStates::ShaderResource) != 0) result |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+		if ((stateBits & ResourceStates::UnorderedAccess) != 0) result |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+		if ((stateBits & ResourceStates::RenderTarget) != 0) result |= D3D12_RESOURCE_STATE_RENDER_TARGET;
+		if ((stateBits & ResourceStates::DepthWrite) != 0) result |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
+		if ((stateBits & ResourceStates::DepthRead) != 0) result |= D3D12_RESOURCE_STATE_DEPTH_READ;
+		if ((stateBits & ResourceStates::StreamOut) != 0) result |= D3D12_RESOURCE_STATE_STREAM_OUT;
+		if ((stateBits & ResourceStates::CopyDest) != 0) result |= D3D12_RESOURCE_STATE_COPY_DEST;
+		if ((stateBits & ResourceStates::CopySource) != 0) result |= D3D12_RESOURCE_STATE_COPY_SOURCE;
+		if ((stateBits & ResourceStates::ResolveDest) != 0) result |= D3D12_RESOURCE_STATE_RESOLVE_DEST;
+		if ((stateBits & ResourceStates::ResolveSource) != 0) result |= D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+		if ((stateBits & ResourceStates::Present) != 0) result |= D3D12_RESOURCE_STATE_PRESENT;
+		if ((stateBits & ResourceStates::AccelStructRead) != 0) result |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+		if ((stateBits & ResourceStates::AccelStructWrite) != 0) result |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+		if ((stateBits & ResourceStates::AccelStructBuildInput) != 0) result |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+		if ((stateBits & ResourceStates::AccelStructBuildBlas) != 0) result |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+		if ((stateBits & ResourceStates::ShadingRateSurface) != 0) result |= D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE;
+		if ((stateBits & ResourceStates::GenericRead) != 0) result |= D3D12_RESOURCE_STATE_GENERIC_READ;
+		if ((stateBits & ResourceStates::ShaderResourceNonPixel) != 0) result |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
+		return result;
+	}
+
+	constexpr D3D12_SUBRESOURCE_DATA _ConvertSubresourceData(const SubresourceData& pInitialData)
+	{
+		D3D12_SUBRESOURCE_DATA data = {};
+		data.pData = pInitialData.pData;
+		data.RowPitch = pInitialData.rowPitch;
+		data.SlicePitch = pInitialData.slicePitch;
+
+		return data;
 	}
 }
 
@@ -130,18 +169,15 @@ bool PhxEngine::RHI::Initialize(RHIParams const& params)
 		selectedAdapter.SharedSystemMemory / (1024 * 1024));
 
 	
-	Device = std::make_shared<D3D12Device>(selectedAdapter);
-	GpuAllocator = std::make_shared<D3D12GpuMemoryAllocator>(Device);
-	TempAllocator.Initialize();
-	ResourceManager = std::make_shared<D3D12ResourceManager>(Device, GpuAllocator, &TempAllocator);
-	D3D12ResourceManager::GPtr = ResourceManager.get();
+	// Could be a static interface.
+	Context::Initialize(selectedAdapter, BufferCount);
 
 	// Create Frame Fences
 	for (size_t q = 0; q < FrameFences.size(); q++)
 	{
 		// Create a frame fence per queue;
 		ThrowIfFailed(
-			Device->GetNativeDevice()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&FrameFences[q])));
+			Context::D3d12Device()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&FrameFences[q])));
 	}
 
     return true;
@@ -149,23 +185,16 @@ bool PhxEngine::RHI::Initialize(RHIParams const& params)
 
 bool PhxEngine::RHI::Finalize()
 {
-	ResourceManager->RunGrabageCollection();
-
-	// TODO: Make sure temp is removed before this.
-	TempAllocator.Finalize();
-	D3D12ResourceManager::GPtr = nullptr;
-	ResourceManager.reset();
-	Device.reset();
-
+	Context::Finalize();
     return {};
 }
 
-void PhxEngine::RHI::Present(Core::Span<SwapChainHandle> swapchainsToPresent)
+void PhxEngine::RHI::Present(SwapChain const& swapchainToPresent)
 {
 	// -- Mark Queues for completion ---
 	for (size_t q = 0; q < (size_t)CommandListType::Count; ++q)
 	{
-		D3D12CommandQueue& queue = Device->GetQueue(static_cast<CommandListType>(q));
+		D3D12CommandQueue& queue = Context::Queue(static_cast<CommandListType>(q));
 
 		// Single Frame Fence to the frame it's currently doing work for.
 		queue.GetD3D12CommandQueue()->Signal(FrameFences[q].Get(), FrameCount);
@@ -173,40 +202,32 @@ void PhxEngine::RHI::Present(Core::Span<SwapChainHandle> swapchainsToPresent)
 
 	// -- Present SwapChain ---
 	{
-		for (const SwapChainHandle& handle : swapchainsToPresent)
+		UINT presentFlags = 0;
+		const bool enableVSync = swapchainToPresent.Desc().VSync;
+
+		if (!enableVSync && !swapchainToPresent.Desc().Fullscreen)
 		{
-			D3D12SwapChain* swapchain = ResourceManager->GetSwapChainPool().Get(handle);
-			if (swapchain == nullptr)
-			{
-				continue;
-			}
+			presentFlags = DXGI_PRESENT_ALLOW_TEARING;
+		}
+		const D3D12SwapChain& platformSwapChain = swapchainToPresent.PlatformResource();
+		HRESULT hr = platformSwapChain.NativeSwapchain4->Present((UINT)enableVSync, presentFlags);
 
-			UINT presentFlags = 0;
-			const bool enableVSync = swapchain->Desc.VSync;
-
-			if (!enableVSync && !swapchain->Desc.Fullscreen)
-			{
-				presentFlags = DXGI_PRESENT_ALLOW_TEARING;
-			}
-			HRESULT hr = swapchain->NativeSwapchain4->Present((UINT)enableVSync, presentFlags);
-
-			// If the device was reset we must completely reinitialize the renderer.
-			if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
-			{
+		// If the device was reset we must completely reinitialize the renderer.
+		if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+		{
 
 #ifdef _DEBUG
-				char buff[64] = {};
-				sprintf_s(buff, "Device Lost on Present: Reason code 0x%08X\n",
-					static_cast<unsigned int>((hr == DXGI_ERROR_DEVICE_REMOVED)
-						? Device->GetNativeDevice()->GetDeviceRemovedReason()
-						: hr));
+			char buff[64] = {};
+			sprintf_s(buff, "Device Lost on Present: Reason code 0x%08X\n",
+				static_cast<unsigned int>((hr == DXGI_ERROR_DEVICE_REMOVED)
+					? Context::D3d12Device()->GetDeviceRemovedReason()
+					: hr));
 
-				LOG_RHI_ERROR(buff);
+			LOG_RHI_ERROR(buff);
 #endif
 
-				// TODO: Handle device lost
-				// HandleDeviceLost();
-			}
+			// TODO: Handle device lost
+			// HandleDeviceLost();
 		}
 	}
 	// Begin the next frame - this affects the GetCurrentBackBufferIndex()
@@ -234,13 +255,13 @@ void PhxEngine::RHI::Present(Core::Span<SwapChainHandle> swapchainsToPresent)
 			}
 		}
 
-		ResourceManager->RunGrabageCollection(FrameCount);
+		
 	}
 }
 
 void PhxEngine::RHI::WaitForIdle()
 {
-	Device->WaitForIdle();
+	Context::WaitForIdle();
 }
 
 CommandList* PhxEngine::RHI::BeginCommandList(RHI::CommandListType type)
@@ -252,144 +273,252 @@ uint64_t PhxEngine::RHI::SubmitCommands(CommandList* commandList)
 {
 	return 0;
 }
-CommandSignatureHandle PhxEngine::RHI::CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride)
-{
-	return ResourceManager->CreateCommandSignature(desc, byteStride);
-}
 
-SwapChainHandle PhxEngine::RHI::CreateSwapChain(SwapchainDesc const& desc, void* windowHandle)
+bool PhxEngine::RHI::Factory::CreateSwapChain(SwapchainDesc const& desc, void* windowHandle, SwapChain& out)
 {
-	return ResourceManager->CreateSwapChain(desc, BufferCount, windowHandle);
-}
+	PlatformSwapChain& impl = out.PlatformResource();
 
-ShaderHandle PhxEngine::RHI::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
-{
-	return ResourceManager->CreateShader(desc, shaderByteCode);
-}
-
-InputLayoutHandle PhxEngine::RHI::CreateInputLayout(Core::Span<VertexAttributeDesc> descs)
-{
-	return ResourceManager->CreateInputLayout(descs);
-}
-
-GfxPipelineHandle PhxEngine::RHI::CreateGfxPipeline(GfxPipelineDesc const& desc)
-{
-	return ResourceManager->CreateGfxPipeline(desc);
-}
-
-ComputePipelineHandle PhxEngine::RHI::CreateComputePipeline(ComputePipelineDesc const& desc)
-{
-	return ResourceManager->CreateComputePipeline(desc);
-}
-
-MeshPipelineHandle PhxEngine::RHI::CreateMeshPipeline(MeshPipelineDesc const& desc)
-{
-	return ResourceManager->CreateMeshPipeline(desc);
-}
-
-BufferHandle PhxEngine::RHI::CreateGpuBuffer(BufferDesc const& desc, void* initalData)
-{
-	return ResourceManager->CreateGpuBuffer(desc, initalData);
-}
-
-TextureHandle PhxEngine::RHI::CreateTexture(TextureDesc const& desc, const SubresourceData* initalData)
-{
-	return ResourceManager->CreateTexture(desc, initalData);
-}
-
-RenderPassHandle PhxEngine::RHI::CreateRenderPass(RenderPassDesc desc)
-{
-	return {};
-}
-
-void PhxEngine::RHI::DeleteCommandSignature(CommandSignatureHandle handle)
-{
-	ResourceManager->DeleteCommandSignature(handle);
-}
-
-void PhxEngine::RHI::DeleteSwapChain(SwapChainHandle handle)
-{
-	ResourceManager->DeleteSwapChain(handle);
-}
-
-void PhxEngine::RHI::DeleteShader(ShaderHandle handle)
-{
-	ResourceManager->DeleteShader(handle);
-}
-
-void PhxEngine::RHI::DeleteInputLayout(InputLayoutHandle handle)
-{
-	ResourceManager->DeleteInputLayout(handle);
-}
-
-void PhxEngine::RHI::DeleteGfxPipeline(GfxPipelineHandle handle)
-{
-	ResourceManager->DeleteGfxPipeline(handle);
-}
-
-void PhxEngine::RHI::DeleteComputePipeline(ComputePipelineHandle handle)
-{
-	ResourceManager->DeleteComputePipeline(handle);
-}
-
-void PhxEngine::RHI::DeleteMeshPipeline(MeshPipelineHandle handle)
-{
-	ResourceManager->DeleteMeshPipeline(handle);
-}
-
-void PhxEngine::RHI::DeleteGpuBuffer(BufferHandle handle)
-{
-	ResourceManager->DeleteGpuBuffer(handle);
-}
-
-void PhxEngine::RHI::DeleteTexture(TextureHandle handle)
-{
-	ResourceManager->DeleteTexture(handle);
-}
-
-void PhxEngine::RHI::DeleteRTAccelerationStructure(RTAccelerationStructureHandle handle)
-{
-	ResourceManager->DeleteRTAccelerationStructure(handle);
-}
-
-void PhxEngine::RHI::DeleteTimerQuery(TimerQueryHandle handle)
-{
-	ResourceManager->DeleteTimerQuery(handle);
-}
-
-void PhxEngine::RHI::ResizeSwapChain(SwapChainHandle handle, SwapchainDesc const& desc)
-{
-	ResourceManager->ResizeSwapChain(handle, desc, BufferCount);
-}
-
-RHI::Format PhxEngine::RHI::GetSwapChainFormat(SwapChainHandle handle)
-{
-	D3D12SwapChain* swapChain = ResourceManager->GetSwapChainPool().Get(handle);
-
-	if (!swapChain)
+	const auto& formatMapping = GetDxgiFormatMapping(desc.Format);
+	if (impl.NativeSwapchain)
 	{
-		return RHI::Format::UNKNOWN;
+		D3D12::Context::WaitForIdle();
+
+		UINT swapChainFlags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+		swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+		ThrowIfFailed(
+			impl.NativeSwapchain->ResizeBuffers(
+				D3D12::Context::MaxFramesInflight(),
+				desc.Width,
+				desc.Height,
+				formatMapping.RtvFormat,
+				swapChainFlags));
+	}
+	else
+	{
+		HRESULT hr;
+		UINT swapChainFlags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+		swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+
+		// Create swapchain:
+		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+		swapChainDesc.Width = desc.Width;
+		swapChainDesc.Height = desc.Height;
+		swapChainDesc.Format = formatMapping.RtvFormat;
+		swapChainDesc.Stereo = false;
+		swapChainDesc.SampleDesc.Count = 1;
+		swapChainDesc.SampleDesc.Quality = 0;
+		swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swapChainDesc.BufferCount = Context::MaxFramesInflight();
+		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+		swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+		swapChainDesc.Flags = swapChainFlags;
+
+		swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+
+		DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreenDesc = {};
+		fullscreenDesc.Windowed = !desc.Fullscreen;
+
+		hr = Context::DxgiFctory6()->CreateSwapChainForHwnd(
+			Context::Queue(CommandListType::Graphics).GetD3D12CommandQueue(),
+			static_cast<HWND>(windowHandle),
+			&swapChainDesc,
+			&fullscreenDesc,
+			nullptr,
+			impl.NativeSwapchain.GetAddressOf()
+		);
+
+		if (FAILED(hr))
+		{
+			return false;
+		}
+
+		if (FAILED(impl.NativeSwapchain->QueryInterface(IID_PPV_ARGS(&impl.NativeSwapchain4))))
+		{
+			return false;
+		}
 	}
 
-	return swapChain->Desc.Format;
+	impl.BackBuffers.resize(Context::MaxFramesInflight());
+	impl.BackBuferViews.resize(Context::MaxFramesInflight());
+
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+	rtvDesc.Format = D3D12::GetDxgiFormatMapping(desc.Format).RtvFormat;
+	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+	for (int i = 0; i < impl.BackBuffers.size(); i++)
+	{
+		PlatformTexture& backBuffer = impl.BackBuffers[i].PlatformResource();
+		ThrowIfFailed(
+			impl.NativeSwapchain4->GetBuffer(i, IID_PPV_ARGS(&backBuffer.D3D12Resource)));
+
+		// TODO: Create Handle 
+		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+		rtvDesc.Format = formatMapping.RtvFormat;
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+
+		// backBuffer.CreateRenderTargetView(rtvDesc, impl.BackBuferViews[i]);
+	}
+
+	return true;
 }
 
-const TextureDesc& PhxEngine::RHI::GetTextureDesc(TextureHandle handle)
+bool PhxEngine::RHI::Factory::CreateTexture(TextureDesc const& desc, Texture& out)
 {
-	return ResourceManager->GetTextureDesc(handle);
+	out.m_desc = desc;
+	PlatformTexture& textureImpl = out.PlatformResource();
+
+	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
+	d3d12OptimizedClearValue.Color[0] = desc.OptmizedClearValue.Colour.R;
+	d3d12OptimizedClearValue.Color[1] = desc.OptmizedClearValue.Colour.G;
+	d3d12OptimizedClearValue.Color[2] = desc.OptmizedClearValue.Colour.B;
+	d3d12OptimizedClearValue.Color[3] = desc.OptmizedClearValue.Colour.A;
+	d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.DepthStencil.Depth;
+	d3d12OptimizedClearValue.DepthStencil.Stencil = desc.OptmizedClearValue.DepthStencil.Stencil;
+
+	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
+	d3d12OptimizedClearValue.Format = dxgiFormatMapping.RtvFormat;
+
+	D3D12MA::ALLOCATION_DESC allocationDesc = {};
+	allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+
+	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
+
+	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		if ((desc.BindingFlags & BindingFlags::ShaderResource) != BindingFlags::ShaderResource)
+		{
+			resourceFlags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+		}
+	}
+	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+	}
+	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	}
+
+	CD3DX12_RESOURCE_DESC resourceDesc = {};
+
+	const bool isTypeless = (desc.MiscFlags | RHI::TextureMiscFlags::Typeless) == RHI::TextureMiscFlags::Typeless;
+	switch (desc.Dimension)
+	{
+	case TextureDimension::Texture1D:
+	case TextureDimension::Texture1DArray:
+	{
+		resourceDesc =
+			CD3DX12_RESOURCE_DESC::Tex1D(
+				isTypeless ? dxgiFormatMapping.ResourceFormat : dxgiFormatMapping.RtvFormat,
+				desc.Width,
+				desc.ArraySize,
+				desc.MipLevels,
+				resourceFlags);
+		break;
+	}
+	case TextureDimension::Texture2D:
+	case TextureDimension::Texture2DArray:
+	case TextureDimension::TextureCube:
+	case TextureDimension::TextureCubeArray:
+	case TextureDimension::Texture2DMS:
+	case TextureDimension::Texture2DMSArray:
+	{
+		resourceDesc =
+			CD3DX12_RESOURCE_DESC::Tex2D(
+				isTypeless ? dxgiFormatMapping.ResourceFormat : dxgiFormatMapping.RtvFormat,
+				desc.Width,
+				desc.Height,
+				desc.ArraySize,
+				desc.MipLevels,
+				1,
+				0,
+				resourceFlags);
+		break;
+	}
+	case TextureDimension::Texture3D:
+	{
+		resourceDesc =
+			CD3DX12_RESOURCE_DESC::Tex3D(
+				isTypeless ? dxgiFormatMapping.ResourceFormat : dxgiFormatMapping.RtvFormat,
+				desc.Width,
+				desc.Height,
+				desc.ArraySize,
+				desc.MipLevels,
+				resourceFlags);
+		break;
+	}
+	default:
+		throw std::runtime_error("Unsupported texture dimension");
+	}
+
+	const bool useClearValue =
+		((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget) ||
+		((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil);
+
+	textureImpl.TotalSize = 0;
+	textureImpl.Footprints.resize(desc.ArraySize * std::max(uint16_t(1u), desc.MipLevels));
+	textureImpl.RowSizesInBytes.resize(textureImpl.Footprints.size());
+	textureImpl.NumRows.resize(textureImpl.Footprints.size());
+	Context::D3d12Device2()->GetCopyableFootprints(
+		&resourceDesc,
+		0,
+		(UINT)textureImpl.Footprints.size(),
+		0,
+		textureImpl.Footprints.data(),
+		textureImpl.NumRows.data(),
+		textureImpl.RowSizesInBytes.data(),
+		&textureImpl.TotalSize
+	);
+
+	ThrowIfFailed(
+		Context::D3d12MemAllocator()->CreateResource(
+			&allocationDesc,
+			&resourceDesc,
+			ConvertResourceStates(desc.InitialState),
+			useClearValue ? &d3d12OptimizedClearValue : nullptr,
+			&textureImpl.Allocation,
+			IID_PPV_ARGS(&textureImpl.D3D12Resource)));
+
+
+	std::wstring debugName;
+	Core::StringConvert(desc.DebugName, debugName);
+	textureImpl.D3D12Resource->SetName(debugName.c_str());
+
+	// Create Data
+	return true;
 }
 
-const BufferDesc& PhxEngine::RHI::GetBufferDesc(BufferHandle handle)
+bool PhxEngine::RHI::Factory::CreateGpuBuffer(BufferDesc const& desc, Buffer& out)
 {
-	return ResourceManager->GetBufferDesc(handle);
+	return false;
 }
 
-DescriptorIndex PhxEngine::RHI::GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource)
+bool PhxEngine::RHI::Factory::CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride)
 {
-	return ResourceManager->GetDescriptorIndex(handle, type, subResource);
+	return false;
 }
 
-DescriptorIndex PhxEngine::RHI::GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource)
+bool PhxEngine::RHI::Factory::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
 {
-	return ResourceManager->GetDescriptorIndex(handle, type, subResource);
+	return false;
+}
+
+bool PhxEngine::RHI::Factory::CreateInputLayout(Core::Span<VertexAttributeDesc> descs)
+{
+	return false;
+}
+
+bool PhxEngine::RHI::Factory::CreateGfxPipeline(GfxPipelineDesc const& desc)
+{
+	return false;
+}
+
+bool PhxEngine::RHI::Factory::CreateComputePipeline(ComputePipelineDesc const& desc)
+{
+	return false;
+}
+
+bool PhxEngine::RHI::Factory::CreateMeshPipeline(MeshPipelineDesc const& desc)
+{
+	return false;
 }

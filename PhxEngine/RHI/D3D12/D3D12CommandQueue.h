@@ -10,14 +10,14 @@
 namespace PhxEngine::RHI::D3D12
 {
 	struct D3D12CommandList;
-	class D3D12Device;
+	class D3D12Context;
 	class D3D12CommandQueue final
 	{
 	public:
 		D3D12CommandQueue() = default;
 		~D3D12CommandQueue() = default;
 
-		void Initialize(D3D12Device* device, D3D12_COMMAND_LIST_TYPE type);
+		void Initialize(Core::RefCountPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE type);
 		void Finalize();
 
 		D3D12_COMMAND_LIST_TYPE GetType() const { return this->m_type; }
@@ -44,7 +44,7 @@ namespace PhxEngine::RHI::D3D12
 
 	private:
 		D3D12_COMMAND_LIST_TYPE m_type;
-		D3D12Device* m_device;
+		Core::RefCountPtr<ID3D12Device> m_device;
 
 		Core::RefCountPtr<ID3D12CommandQueue> m_d3d12CommandQueue;
 		Core::RefCountPtr<ID3D12Fence> m_d3d12Fence;
@@ -58,7 +58,7 @@ namespace PhxEngine::RHI::D3D12
 		class CommandAllocatorPool
 		{
 		public:
-			void Initialize(D3D12Device* device, D3D12_COMMAND_LIST_TYPE type);
+			void Initialize(Core::RefCountPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE type);
 			ID3D12CommandAllocator* RequestAllocator(uint64_t completedFenceValue);
 			void DiscardAllocator(uint64_t fence, ID3D12CommandAllocator* allocator);
 
@@ -66,7 +66,7 @@ namespace PhxEngine::RHI::D3D12
 			std::vector<Core::RefCountPtr<ID3D12CommandAllocator>> m_allocatorPool;
 			std::queue<std::pair<uint64_t, ID3D12CommandAllocator*>> m_availableAllocators;
 			std::mutex m_allocatonMutex;
-			D3D12Device* m_device;
+			Core::RefCountPtr<ID3D12Device> m_device;
 			D3D12_COMMAND_LIST_TYPE m_type;
 		} m_allocatorPool;
 

@@ -6,7 +6,6 @@
 #include <Core/Log.h>
 #include <Core/Object.h>
 #include <Core/Memory.h>
-#include <Renderer/AsyncGpuUploader.h>
 #include <taskflow/taskflow.hpp>
 
 namespace PhxEngine
@@ -29,9 +28,8 @@ namespace PhxEngine
 	void Run(IEngineApp& engingApp);
 
 	Core::IWindow* GetWindow();
-	RHI::SwapChainHandle GetSwapChain();
+	RHI::SwapChain& GetSwapChain();
 	tf::Executor& GetTaskExecutor();
-	PhxEngine::Renderer::AsyncGpuUploader& GetAsyncLoader();
 
 }
 

@@ -11,6 +11,8 @@
 
 // -- Exposes Internal Platform Type alias Trick to avoid virtuals ---
 #include <PlatformTypes.h>
+
+
 namespace PhxEngine::RHI
 {
 	typedef uint32_t DescriptorIndex;
@@ -196,17 +198,40 @@ namespace PhxEngine::RHI
 
 	// -- Pipeline State Objects End ---
 
-	struct Shader;
-	using ShaderHandle = Core::Handle<Shader>;
+	template<typename TPlatform, typename TDesc>
+	class TypedPlatformResource
+	{
+	public:
+		virtual ~TypedPlatformResource() = default;
+
+		const TDesc& Desc() const { return this->m_desc; }
+		TPlatform& PlatformResource() { return this->m_platform; }
+		const TPlatform& PlatformResource() const { return this->m_platform; }
+
+		explicit operator bool() const
+		{
+			return !!this->m_platform;
+		}
+
+	protected:
+		TPlatform m_platform;
+		TDesc m_desc;
+	};
+
 	struct ShaderDesc
 	{
 		ShaderStage Stage = ShaderStage::None;
 		std::string DebugName = "";
 	};
 
+	class Shader final : public TypedPlatformResource<RHI::PlatformShader, ShaderDesc>
+	{
+		friend Factory;
+	public:
+		Shader() = default;
+	};
 
-	struct InputLayout;
-	using InputLayoutHandle = Core::Handle<InputLayout>;
+
 	struct VertexAttributeDesc
 	{
 		static const uint32_t SAppendAlignedElement = 0xffffffff; // automatically figure out AlignedByteOffset depending on Format
@@ -219,8 +244,13 @@ namespace PhxEngine::RHI
 		bool IsInstanced = false;
 	};
 
-	struct Texture;
-	using TextureHandle = Core::Handle<Texture>;
+	class InputLayout final : public TypedPlatformResource<RHI::PlatformInputLayout, VertexAttributeDesc>
+	{
+		friend Factory;
+	public:
+		InputLayout() = default;
+	};
+
 	struct TextureDesc
 	{
 		TextureMiscFlags MiscFlags = TextureMiscFlags::None;
@@ -244,8 +274,14 @@ namespace PhxEngine::RHI
 		std::string DebugName;
 	};
 
-	struct Buffer;
-	using BufferHandle = Core::Handle<Buffer>;
+	class Texture final : public TypedPlatformResource<RHI::PlatformTexture, TextureDesc>
+	{
+		friend Factory;
+	public:
+		Texture() = default;
+	};
+
+	class Buffer;
 	struct BufferDesc
 	{
 		BufferMiscFlags MiscFlags = BufferMiscFlags::None;
@@ -257,17 +293,17 @@ namespace PhxEngine::RHI
 		uint64_t Stride = 0;
 		uint64_t NumElements = 0;
 		size_t UavCounterOffset = 0;
-		BufferHandle UavCounterBuffer = {};
-		BufferHandle AliasedBuffer = {};
+		Buffer* UavCounterBuffer = {};
+		Buffer* AliasedBuffer = {};
 
 		std::string DebugName;
 	};
 
-	// This is just a workaround for now
-	class IRootSignatureBuilder
+	class Buffer final : public TypedPlatformResource<RHI::PlatformBuffer, BufferDesc>
 	{
+		friend Factory;
 	public:
-		~IRootSignatureBuilder() = default;
+		Buffer() = default;
 	};
 
 	struct StaticSamplerParameter
@@ -394,21 +430,16 @@ namespace PhxEngine::RHI
 		}
 	};
 
-	struct GfxPipeline;
-	using GfxPipelineHandle = Core::Handle<GfxPipeline>;
 	struct GfxPipelineDesc
 	{
 		PrimitiveType PrimType = PrimitiveType::TriangleList;
-		InputLayoutHandle InputLayout;
-
-		IRootSignatureBuilder* RootSignatureBuilder = nullptr;
 		ShaderParameterLayout ShaderParameters;
 
-		ShaderHandle VertexShader;
-		ShaderHandle HullShader;
-		ShaderHandle DomainShader;
-		ShaderHandle GeometryShader;
-		ShaderHandle PixelShader;
+		Shader* VertexShader;
+		Shader* HullShader;
+		Shader* DomainShader;
+		Shader* GeometryShader;
+		Shader* PixelShader;
 
 		BlendRenderState BlendRenderState = {};
 		DepthStencilRenderState DepthStencilRenderState = {};
@@ -421,22 +452,32 @@ namespace PhxEngine::RHI
 		uint32_t SampleQuality = 0;
 	};
 
-	struct ComputePipeline;
-	using ComputePipelineHandle = Core::Handle<ComputePipeline>;
-	struct ComputePipelineDesc
+	class GfxPipeline final : public TypedPlatformResource<RHI::PlatformGfxPipeline, GfxPipelineDesc>
 	{
-		ShaderHandle ComputeShader;
+		friend Factory;
+	public:
+		GfxPipeline() = default;
 	};
 
-	struct MeshPipeline;
-	using MeshPipelineHandle = Core::Handle<MeshPipeline>;
+	struct ComputePipelineDesc
+	{
+		Shader* ComputeShader;
+	};
+
+	class ComputePipeline final : public TypedPlatformResource<RHI::PlatformComputePipeline, ComputePipelineDesc>
+	{
+		friend Factory;
+	public:
+		ComputePipeline() = default;
+	};
+
 	struct MeshPipelineDesc
 	{
 		PrimitiveType PrimType = PrimitiveType::TriangleList;
 
-		ShaderHandle AmpShader;
-		ShaderHandle MeshShader;
-		ShaderHandle PixelShader;
+		Shader* AmpShader;
+		Shader* MeshShader;
+		Shader* PixelShader;
 
 		BlendRenderState BlendRenderState = {};
 		DepthStencilRenderState DepthStencilRenderState = {};
@@ -449,8 +490,13 @@ namespace PhxEngine::RHI
 		uint32_t SampleQuality = 0;
 	};
 
-	struct SwapChain;
-	using SwapChainHandle = Core::Handle<SwapChain>;
+	class MeshPipeline final : public TypedPlatformResource<RHI::PlatformMeshPipeline, MeshPipelineDesc>
+	{
+		friend Factory;
+	public:
+		MeshPipeline() = default;
+	};
+
 	struct SwapchainDesc
 	{
 		uint32_t Width = 1u;
@@ -471,8 +517,18 @@ namespace PhxEngine::RHI
 		};
 	};
 
-	struct RTAccelerationStructure;
-	using RTAccelerationStructureHandle = Core::Handle<RTAccelerationStructure>;
+	class SwapChain final : public TypedPlatformResource<RHI::PlatformSwapChain, SwapchainDesc>
+	{
+		friend Factory;
+	public:
+		SwapChain() = default;
+
+	public:
+		const Texture& GetCurrentBackBuffer()
+		{
+			this->m_platform.GetCurrentBackBuffer();
+		}
+	};
 
 	struct RTAccelerationStructureDesc
 	{
@@ -514,8 +570,8 @@ namespace PhxEngine::RHI
 
 				struct TrianglesDesc
 				{
-					BufferHandle VertexBuffer;
-					BufferHandle IndexBuffer;
+					Buffer* VertexBuffer;
+					Buffer* IndexBuffer;
 					uint32_t IndexCount = 0;
 					uint64_t IndexOffset = 0;
 					uint32_t VertexCount = 0;
@@ -523,13 +579,13 @@ namespace PhxEngine::RHI
 					uint32_t VertexStride = 0;
 					RHI::Format IndexFormat = RHI::Format::R32_UINT;
 					RHI::Format VertexFormat = RHI::Format::RGB32_FLOAT;
-					BufferHandle Transform3x4Buffer;
+					Buffer* Transform3x4Buffer;
 					uint32_t Transform3x4BufferOffset = 0;
 				} Triangles;
 
 				struct ProceduralAABBsDesc
 				{
-					BufferHandle AABBBuffer;
+					Buffer* AABBBuffer;
 					uint32_t Offset = 0;
 					uint32_t Count = 0;
 					uint32_t Stride = 0;
@@ -539,6 +595,7 @@ namespace PhxEngine::RHI
 			std::vector<Geometry> Geometries;
 		} ButtomLevel;
 
+		class RTAccelerationStructure;
 		struct TopLevelDesc
 		{
 			struct Instance
@@ -557,30 +614,41 @@ namespace PhxEngine::RHI
 				uint32_t InstanceMask : 8;
 				uint32_t InstanceContributionToHitGroupIndex : 24;
 				uint32_t Flags : 8;
-				RTAccelerationStructureHandle BottomLevel = {};
+				RTAccelerationStructure* BottomLevel = {};
 			};
 
-			BufferHandle InstanceBuffer = {};
+			Buffer* InstanceBuffer = {};
 			uint32_t Offset = 0;
 			uint32_t Count = 0;
 		} TopLevel;
 	};
+	class RTAccelerationStructure final : public TypedPlatformResource<RHI::PlatformRTAccelerationStructure, RTAccelerationStructureDesc>
+	{
+		friend Factory;
+	public:
+		RTAccelerationStructure() = default;
+	};
 
-	struct TimerQuery;
-	using TimerQueryHandle = Core::Handle<TimerQuery>;
+	struct TimerQueryDesc {};
+	class TimerQuery final : public TypedPlatformResource<RHI::PlatformTimerQuery, TimerQueryDesc>
+	{
+		friend Factory;
+	public:
+		TimerQuery() = default;
+	};
 
 	struct GpuBarrier
 	{
 		struct BufferBarrier
 		{
-			RHI::BufferHandle Buffer;
+			RHI::Buffer* Buffer;
 			RHI::ResourceStates BeforeState;
 			RHI::ResourceStates AfterState;
 		};
 
 		struct TextureBarrier
 		{
-			RHI::TextureHandle Texture;
+			RHI::Texture* Texture;
 			RHI::ResourceStates BeforeState;
 			RHI::ResourceStates AfterState;
 			int Mip;
@@ -589,7 +657,7 @@ namespace PhxEngine::RHI
 
 		struct MemoryBarrier
 		{
-			std::variant<TextureHandle, BufferHandle> Resource;
+			std::variant<Texture*, Buffer*> Resource;
 		};
 
 		std::variant<BufferBarrier, TextureBarrier, GpuBarrier::MemoryBarrier> Data;
@@ -602,7 +670,7 @@ namespace PhxEngine::RHI
 			return barrier;
 		}
 
-		static GpuBarrier CreateMemory(TextureHandle texture)
+		static GpuBarrier CreateMemory(Texture* texture)
 		{
 			GpuBarrier barrier = {};
 			barrier.Data = GpuBarrier::MemoryBarrier{ .Resource = texture };
@@ -610,7 +678,7 @@ namespace PhxEngine::RHI
 			return barrier;
 		}
 
-		static GpuBarrier CreateMemory(BufferHandle buffer)
+		static GpuBarrier CreateMemory(Buffer* buffer)
 		{
 			GpuBarrier barrier = {};
 			barrier.Data = GpuBarrier::MemoryBarrier{ .Resource = buffer };
@@ -619,7 +687,7 @@ namespace PhxEngine::RHI
 		}
 
 		static GpuBarrier CreateTexture(
-			TextureHandle texture,
+			Texture* texture,
 			ResourceStates beforeState,
 			ResourceStates afterState,
 			int mip = -1,
@@ -638,7 +706,7 @@ namespace PhxEngine::RHI
 			return barrier;
 		}
 
-		static GpuBarrier CreateBuffer(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState)
+		static GpuBarrier CreateBuffer(Buffer* buffer, ResourceStates beforeState, ResourceStates afterState)
 		{
 			GpuBarrier::BufferBarrier b = {};
 			b.Buffer = buffer;
@@ -688,22 +756,14 @@ namespace PhxEngine::RHI
 		PipelineType PipelineType;
 		union
 		{
-			RHI::GfxPipelineHandle GfxHandle;
-			RHI::ComputePipelineHandle ComputeHandle;
-			RHI::MeshPipelineHandle MeshHandle;
+			RHI::GfxPipeline* GfxHandle;
+			RHI::ComputePipeline* ComputeHandle;
+			RHI::MeshPipeline* MeshHandle;
 		};
 	};
 
 	struct CommandSignature;
 	using CommandSignatureHandle = Core::Handle<CommandSignature>;
-
-	struct RenderPass;
-	using RenderPassHandle = Core::Handle<RenderPass>;
-	struct RenderPassDesc
-	{
-		Core::Span<RHI::TextureHandle> RenderTargets;
-		RHI::TextureHandle DepthTarget;
-	};
 
 	// -- Context Stuff
 	struct PlatformContext {}; // TODO:
@@ -752,165 +812,8 @@ namespace PhxEngine::RHI
 		uint32_t BaseVertex = 0;
 	};
 
-
-	class GfxContext;
-	class ComputeContext;
-	class CopyContext;
-	class CommandList : NonCopyable, NonMoveable
+	class CommandList
 	{
 	public:
-		void BeginMarker(std::string const& handle){ /*no-op*/ }
-		void EndMarker(){ /*no-op*/ }
-
-		// -- Ray Trace stuff       ---
-		void RTBuildAccelerationStructure(RHI::RTAccelerationStructureHandle accelStructure){ /*no-op*/ }
-		// GPUAllocation AllocateGpu(size_t bufferSize, size_t stride){ /*no-op*/ }
-
-		void TransitionBarrier(TextureHandle texture, ResourceStates beforeState, ResourceStates afterState){ /*no-op*/ }
-		void TransitionBarrier(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState){ /*no-op*/ }
-		void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers){ /*no-op*/ }
-		void ClearTextureFloat(TextureHandle texture, Color const& clearColour){ /*no-op*/ }
-		void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil){ /*no-op*/ }
-
-		void Draw(DrawArgs const& args){ /*no-op*/ }
-		void DrawIndexed(DrawArgs const& args){ /*no-op*/ }
-
-		void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
-		void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
-
-		void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
-		void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
-
-		void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
-		void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
-
-		template<typename T>
-		void WriteBuffer(BufferHandle buffer, std::vector<T> const& data, uint64_t destOffsetBytes)
-		{
-			this->WriteBuffer(buffer, data.data(), sizeof(T) * data.size(), destOffsetBytes);
-		}
-
-		template<typename T>
-		void WriteBuffer(BufferHandle buffer, T const& data, uint64_t destOffsetBytes)
-		{
-			this->WriteBuffer(buffer, &data, sizeof(T), destOffsetBytes);
-		}
-
-		template<typename T>
-		void WriteBuffer(BufferHandle buffer, Core::Span<T> data, uint64_t destOffsetBytes)
-		{
-			this->WriteBuffer(buffer, data.begin(), sizeof(T) * data.Size(), destOffsetBytes);
-		}
-
-		void WriteBuffer(BufferHandle buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes){ /*no-op*/ }
-
-		void CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHandle src, uint64_t srcOffset, size_t sizeInBytes){ /*no-op*/ }
-
-		void WriteTexture(TextureHandle texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData){ /*no-op*/ }
-		void WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* Data, size_t rowPitch, size_t depthPitch){ /*no-op*/ }
-
-		void SetGfxPipeline(GfxPipelineHandle gfxPipeline){ /*no-op*/ }
-		void SetViewports(Viewport* viewports, size_t numViewports){ /*no-op*/ }
-		void SetScissors(Rect* scissor, size_t numScissors){ /*no-op*/ }
-		void SetRenderTargets(Core::Span<TextureHandle> renderTargets, TextureHandle depthStenc = {}){ /*no-op*/ }
-		void SetRenderTargets(Core::Span<SwapChainHandle> renderTargets, TextureHandle depthStenc = {}){ /*no-op*/ }
-
-		// -- Comptute Stuff ---
-		void SetComputeState(ComputePipelineHandle state){ /*no-op*/ }
-		void Dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ){ /*no-op*/ }
-		void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
-		void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
-
-		// -- Mesh Stuff ---
-		void SetMeshPipeline(MeshPipelineHandle meshPipeline){ /*no-op*/ }
-		void DispatchMesh(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ){ /*no-op*/ }
-		void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
-		void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount){ /*no-op*/ }
-
-		void BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants){ /*no-op*/ }
-		template<typename T>
-		void BindPushConstant(uint32_t rootParameterIndex, const T& constants)
-		{
-			static_assert(sizeof(T) % sizeof(uint32_t) == 0, "Size of type must be a multiple of 4 bytes");
-			this->BindPushConstant(rootParameterIndex, sizeof(T), &constants);
-		}
-
-		void BindConstantBuffer(size_t rootParameterIndex, BufferHandle constantBuffer){ /*no-op*/ }
-		void BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData){ /*no-op*/ }
-		template<typename T>
-		void BindDynamicConstantBuffer(size_t rootParameterIndex, T const& bufferData)
-		{
-			this->BindDynamicConstantBuffer(rootParameterIndex, sizeof(T), &bufferData);
-		}
-
-		void BindVertexBuffer(uint32_t slot, BufferHandle vertexBuffer){ /*no-op*/ }
-
-		/**
-		 * Set dynamic vertex buffer data to the rendering pipeline.
-		 */
-		void BindDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData){ /*no-op*/ }
-
-		template<typename T>
-		void BindDynamicVertexBuffer(uint32_t slot, const std::vector<T>& vertexBufferData)
-		{
-			this->BindDynamicVertexBuffer(slot, vertexBufferData.size(), sizeof(T), vertexBufferData.data());
-		}
-
-		void BindIndexBuffer(BufferHandle bufferHandle){ /*no-op*/ }
-
-		/**
-		 * Bind dynamic index buffer data to the rendering pipeline.
-		 */
-		void BindDynamicIndexBuffer(size_t numIndicies, RHI::Format indexFormat, const void* indexBufferData) { /*no-op*/ }
-
-		template<typename T>
-		void BindDynamicIndexBuffer(const std::vector<T>& indexBufferData)
-		{
-			static_assert(sizeof(T) == 2 || sizeof(T) == 4);
-
-			RHI::Format indexFormat = (sizeof(T) == 2) ? RHI::Format::R16_UINT : RHI::Format::R32_UINT;
-			this->BindDynamicIndexBuffer(indexBufferData.size(), indexFormat, indexBufferData.Data());
-		}
-
-		/**
-		 * Set dynamic structured buffer contents.
-		 */
-		void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, size_t numElements, size_t elementSize, const void* bufferData){ /*no-op*/ }
-
-		template<typename T>
-		void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, std::vector<T> const& bufferData)
-		{
-			this->BindDynamicStructuredBuffer(rootParameterIndex, bufferData.size(), sizeof(T), bufferData.Data());
-		}
-
-		void BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer){ /*no-op*/ }
-
-		void BindDynamicDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures){ /*no-op*/ }
-		void BindDynamicUavDescriptorTable(
-			size_t rootParameterIndex,
-			Core::Span<BufferHandle> buffers)
-		{
-			this->BindDynamicUavDescriptorTable(rootParameterIndex, buffers, {});
-		}
-		void BindDynamicUavDescriptorTable(
-			size_t rootParameterIndex,
-			Core::Span<TextureHandle> textures)
-		{
-			this->BindDynamicUavDescriptorTable(rootParameterIndex, {}, textures);
-		}
-
-		void BindDynamicUavDescriptorTable(
-			size_t rootParameterIndex,
-			Core::Span<BufferHandle> buffers,
-			Core::Span<TextureHandle> textures){ /*no-op*/ }
-
-		void BindResourceTable(size_t rootParameterIndex){ /*no-op*/ }
-		void BindSamplerTable(size_t rootParameterIndex){ /*no-op*/ }
-
-		void BeginTimerQuery(TimerQueryHandle query){ /*no-op*/ }
-		void EndTimerQuery(TimerQueryHandle query){ /*no-op*/ }
-
-	private:
-		PlatformCommandList m_platformCmdList;
 	};
 }

@@ -150,13 +150,13 @@ message("D3D12 Agility SDK fetched")
 message("Fetching D3D12 Storage SDK")
 FetchContent_Declare(d3d12-storage-sdk URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.DirectStorage/1.2.1)
 FetchContent_MakeAvailable(d3d12-storage-sdk)
-file(GLOB_RECURSE d3d12-storage-sdk_include "${d3d12-storage-sdk_SOURCE_DIR}/build/native/include/*.h")
+file(GLOB_RECURSE d3d12-storage-sdk_include "${d3d12-storage-sdk_SOURCE_DIR}/native/include/*.h")
 add_library(
 	D3D12StorageSDK INTERFACE
 	${d3d12-storage-sdk_include}
-	"${d3d12-storage-sdk_SOURCE_DIR}/build/native/bin/x64/dstorage.dll"
-	"${d3d12-storage-sdk_SOURCE_DIR}/build/native/bin/x64/dstoragecore.dll")
-target_include_directories(D3D12StorageSDK INTERFACE "${d3d12-storage-sdk_SOURCE_DIR}/build/native/include")
+	"${d3d12-storage-sdk_SOURCE_DIR}/native/bin/x64/dstorage.dll"
+	"${d3d12-storage-sdk_SOURCE_DIR}/native/bin/x64/dstoragecore.dll")
+target_include_directories(D3D12StorageSDK INTERFACE "${d3d12-storage-sdk_SOURCE_DIR}/native/include")
 set_target_properties(D3D12StorageSDK  PROPERTIES FOLDER ${extern_folder})
 target_link_libraries(${TARGET_NAME} PUBLIC D3D12StorageSDK)
 
@@ -164,7 +164,7 @@ target_link_libraries(${TARGET_NAME} PUBLIC D3D12StorageSDK)
 add_custom_command(
 	TARGET ${TARGET_NAME} POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy_directory
-	"${d3d12-storage-sdk_SOURCE_DIR}/build/native/bin/x64"
+	"${d3d12-storage-sdk_SOURCE_DIR}/native/bin/x64"
 
 	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/D3D12
 	DEPENDS D3D12StorageSDK)

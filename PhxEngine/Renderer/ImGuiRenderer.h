@@ -21,7 +21,7 @@ namespace PhxEngine::Renderer
 {
 	namespace ImGuiRenderer
 	{
-		void Initialize(Core::IWindow* window, RHI::SwapChainHandle swapchain, bool enableDocking = false);
+		void Initialize(Core::IWindow* window, RHI::SwapChain const& swapChain, bool enableDocking = false);
 		void Finalize();
 		void EnableDarkThemeColours();
 		
