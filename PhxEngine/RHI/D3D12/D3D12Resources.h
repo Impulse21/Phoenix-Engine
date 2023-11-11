@@ -4,6 +4,9 @@
 #include <D3D12MemAlloc.h>
 #include <D3D12Common.h>
 #include <Core/TimeStep.h>
+#include <Core/NonCopyable.h>
+#include "D3D12DescriptorHeap.h"
+#include <RHI/DeferedReleaseQueue.h>
 
 namespace PhxEngine::RHI
 {
@@ -12,16 +15,48 @@ namespace PhxEngine::RHI
 
 namespace PhxEngine::RHI::D3D12
 {
-    struct D3D12TypedCPUDescriptorHandle : public D3D12_CPU_DESCRIPTOR_HANDLE
+    struct D3D12Descriptor : Core::NonCopyable
     {
-        D3D12TypedCPUDescriptorHandle() {}
-        D3D12TypedCPUDescriptorHandle(const D3D12TypedCPUDescriptorHandle& other) { ptr = other.ptr; }
-        D3D12TypedCPUDescriptorHandle(const D3D12_CPU_DESCRIPTOR_HANDLE& other) { ptr = other.ptr; }
+        D3D12DescriptorAllocation Allocation = {};
+        DescriptorIndex Index = cInvalidDescriptorIndex;
 
-        D3D12TypedCPUDescriptorHandle operator =(const D3D12TypedCPUDescriptorHandle& other)
+        D3D12_CPU_DESCRIPTOR_HANDLE GetView() { return this->Allocation.GetCpuHandle(); }
+    };
+
+    struct D3D12SwapChain
+    {
+        Core::RefCountPtr<IDXGISwapChain1> NativeSwapchain;
+        Core::RefCountPtr<IDXGISwapChain4> NativeSwapchain4;
+        std::vector<ID3D12Resource*> BackBuffers;
+        std::vector<D3D12Descriptor> BackBuferViews;
+
+        explicit operator bool() const
         {
-            ptr = other.ptr;
-            return *this;
+            return !!NativeSwapchain;
+        }
+
+        ~D3D12SwapChain()
+        {
+            this->DeferredRelease();
+        }
+
+        void DeferredRelease()
+        {
+            for (auto& resource : BackBuffers)
+            {
+                DeferedReleaseQueue::Enqueue([resource]()
+                    {
+                        resource->Release();
+                    });
+            }
+
+            for (auto& resource : BackBuffers)
+            {
+                DeferedReleaseQueue::Enqueue([resource]()
+                    {
+                        resource->Release();
+                    });
+            }
         }
     };
 
@@ -48,7 +83,7 @@ namespace PhxEngine::RHI::D3D12
 		}
 	};
 
-    struct D3D12GPUResource
+    struct D3D12GPUResource : Core::NonCopyable
     {
         Core::RefCountPtr<ID3D12Resource> D3D12Resource;
         Core::RefCountPtr<D3D12MA::Allocation> Allocation;
@@ -58,7 +93,22 @@ namespace PhxEngine::RHI::D3D12
             return !!D3D12Resource;
         }
 
+        D3D12GPUResource() = default;
         virtual ~D3D12GPUResource() = default;
+        D3D12GPUResource(D3D12GPUResource&& other) noexcept
+            : D3D12Resource(std::move(other.D3D12Resource))
+            , Allocation(std::move(other.Allocation)) 
+        {
+        }
+
+        D3D12GPUResource& operator=(D3D12GPUResource&& other)
+        {
+            this->D3D12Resource = std::move(other.D3D12Resource);
+            this->Allocation = std::move(other.Allocation);
+
+            return *this;
+        }
+
     };
 
     struct D3D12TimerQuery

@@ -13,6 +13,15 @@ static const GUID PixUUID = { 0x9f251514, 0x9d4d, 0x4902, { 0x9d, 0x60, 0x18, 0x
 // DirectX Aligily SDK
 extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 608; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
+// https://docs.microsoft.com/en-us/windows/win32/direct3d12/hardware-support
+
+
+// Teir 1 limit is 1,000,000
+// https://docs.microsoft.com/en-us/windows/win32/direct3d12/hardware-support
+#define TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE 1000000
+
+#define NUM_BINDLESS_RESOURCES TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE / 2
+
 namespace
 {
 	const bool sDebugEnabled = IsDebuggerPresent();
@@ -24,7 +33,9 @@ namespace
 	Core::RefCountPtr<ID3D12Device5>		m_D3d12Device5;
 
 	D3D12CommandQueue						m_Queues[(size_t)RHI::CommandListType::Count];
-
+	// -- Descriptor Heaps ---
+	std::array<D3D12CpuDescriptorHeap, (int)DescriptorHeapTypes::Count> m_cpuDescriptorHeaps;
+	std::array<D3D12GpuDescriptorHeap, 2> m_gpuDescriptorHeaps;
 
 	Core::RefCountPtr<IDStorageFactory>		m_DStorageFactory;
 	Core::RefCountPtr<IDStorageQueue>		m_DStorageQueues[2];
@@ -284,6 +295,35 @@ void PhxEngine::RHI::D3D12::Context::Initialize(D3D12Adapter const& adapter, siz
 	m_Queues[(size_t)RHI::CommandListType::Graphics].Initialize(m_D3d12Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
 	m_Queues[(size_t)RHI::CommandListType::Copy].Initialize(m_D3d12Device, D3D12_COMMAND_LIST_TYPE_COPY);
 	m_Queues[(size_t)RHI::CommandListType::Compute].Initialize(m_D3d12Device, D3D12_COMMAND_LIST_TYPE_COMPUTE);
+
+	// Create Descriptor Heaps
+	m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::CBV_SRV_UAV].Initialize(
+		1024,
+		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler].Initialize(
+		1024,
+		D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+
+	m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::RTV].Initialize(
+		1024,
+		D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+	m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::DSV].Initialize(
+		1024,
+		D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+
+	m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::CBV_SRV_UAV].Initialize(
+		NUM_BINDLESS_RESOURCES,
+		TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE - NUM_BINDLESS_RESOURCES,
+		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
+
+	m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler].Initialize(
+		10,
+		100,
+		D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
+		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
 }
 
 void PhxEngine::RHI::D3D12::Context::Finalize()
@@ -397,6 +437,36 @@ bool PhxEngine::RHI::D3D12::Context::IsUnderGraphicsDebugger()
 bool PhxEngine::RHI::D3D12::Context::DebugEnabled()
 {
 	return sDebugEnabled;
+}
+
+ID3D12DescriptorAllocator& PhxEngine::RHI::D3D12::Context::CpuResourceHeap()
+{
+	return m_cpuDescriptorHeaps[(size_t)DescriptorHeapTypes::CBV_SRV_UAV];
+}
+
+ID3D12DescriptorAllocator& PhxEngine::RHI::D3D12::Context::CpuSamplerHeap()
+{
+	return m_cpuDescriptorHeaps[(size_t)DescriptorHeapTypes::Sampler];
+}
+
+ID3D12DescriptorAllocator& PhxEngine::RHI::D3D12::Context::CpuRenderTargetHeap()
+{
+	return m_cpuDescriptorHeaps[(size_t)DescriptorHeapTypes::RTV];
+}
+
+ID3D12DescriptorAllocator& PhxEngine::RHI::D3D12::Context::CpuDepthStencilHeap()
+{
+	return m_cpuDescriptorHeaps[(size_t)DescriptorHeapTypes::DSV];
+}
+
+ID3D12DescriptorAllocator& PhxEngine::RHI::D3D12::Context::GpuResourceHeap()
+{
+	return m_gpuDescriptorHeaps[0];
+}
+
+ID3D12DescriptorAllocator& PhxEngine::RHI::D3D12::Context::GpuSamplerHeap()
+{
+	return m_gpuDescriptorHeaps[1];
 }
 
 size_t PhxEngine::RHI::D3D12::Context::MaxFramesInflight()

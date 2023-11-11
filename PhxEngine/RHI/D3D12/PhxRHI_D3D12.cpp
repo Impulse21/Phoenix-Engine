@@ -5,6 +5,7 @@
 
 #include <Core/Log.h>
 
+
 #include <Core/Memory.h>
 #include "D3D12Context.h"
 #include "DxgiFormatMapping.h"
@@ -338,24 +339,24 @@ bool PhxEngine::RHI::Factory::CreateSwapChain(SwapchainDesc const& desc, void* w
 		}
 	}
 
+	impl.Release();
+
 	impl.BackBuffers.resize(Context::MaxFramesInflight());
 	impl.BackBuferViews.resize(Context::MaxFramesInflight());
 
+	assert(false); // Deferred Release
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 	rtvDesc.Format = D3D12::GetDxgiFormatMapping(desc.Format).RtvFormat;
 	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 	for (int i = 0; i < impl.BackBuffers.size(); i++)
 	{
-		PlatformTexture& backBuffer = impl.BackBuffers[i].PlatformResource();
 		ThrowIfFailed(
-			impl.NativeSwapchain4->GetBuffer(i, IID_PPV_ARGS(&backBuffer.D3D12Resource)));
+			impl.NativeSwapchain4->GetBuffer(i, IID_PPV_ARGS(&impl.BackBuffers[i])));
 
-		// TODO: Create Handle 
-		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-		rtvDesc.Format = formatMapping.RtvFormat;
-		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+		D3D12Descriptor& descriptor = impl.BackBuferViews[i];
+		descriptor.Allocation = D3D12::Context::CpuRenderTargetHeap().Allocate(1);
 
-		// backBuffer.CreateRenderTargetView(rtvDesc, impl.BackBuferViews[i]);
+		Context::D3d12Device()->CreateRenderTargetView(impl.BackBuffers[i].Get(), &rtvDesc, descriptor.GetView());
 	}
 
 	return true;

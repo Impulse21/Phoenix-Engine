@@ -7,6 +7,7 @@
 
 #include <Core/Span.h>
 #include <Core/Handle.h>
+#include <Core/NonCopyable.h>
 #include <RHI/RHIEnums.h>
 
 // -- Exposes Internal Platform Type alias Trick to avoid virtuals ---
@@ -199,10 +200,26 @@ namespace PhxEngine::RHI
 	// -- Pipeline State Objects End ---
 
 	template<typename TPlatform, typename TDesc>
-	class TypedPlatformResource
+	class TypedPlatformResource : public Core::NonCopyable
 	{
 	public:
+		TypedPlatformResource() = default;
+		TypedPlatformResource(TypedPlatformResource&& other)
+			: m_platform(std::move(other.m_platform))
+			, m_desc(std::move(other.m_desc))
+		{
+		}
+
+		TypedPlatformResource& operator=(TypedPlatformResource&& other)
+		{
+			this->m_platform = std::move(other.m_platform);
+			this->m_desc = std::move(other.m_desc);
+
+			return *this;
+		}
+
 		virtual ~TypedPlatformResource() = default;
+	public:
 
 		const TDesc& Desc() const { return this->m_desc; }
 		TPlatform& PlatformResource() { return this->m_platform; }

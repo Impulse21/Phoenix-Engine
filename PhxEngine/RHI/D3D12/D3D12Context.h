@@ -7,6 +7,7 @@
 #include "D3D12Adapter.h"
 
 #include "D3D12CommandQueue.h"
+#include "D3D12DescriptorHeap.h"
 #include "RHI/RHIEnums.h"
 #include "RHI/RHIResources.h"
 
@@ -41,6 +42,14 @@ namespace PhxEngine::RHI::D3D12
         [[nodiscard]] ShaderModel                               MinShaderModel();
         [[nodiscard]] bool                                      IsUnderGraphicsDebugger();
         [[nodiscard]] bool                                      DebugEnabled();
+
+        [[nodiscard]] ID3D12DescriptorAllocator&                 CpuResourceHeap();
+        [[nodiscard]] ID3D12DescriptorAllocator&                 CpuSamplerHeap();
+        [[nodiscard]] ID3D12DescriptorAllocator&                 CpuRenderTargetHeap();
+        [[nodiscard]] ID3D12DescriptorAllocator&                 CpuDepthStencilHeap();
+                                               
+        [[nodiscard]] ID3D12DescriptorAllocator&                 GpuResourceHeap();
+        [[nodiscard]] ID3D12DescriptorAllocator&                 GpuSamplerHeap();
 
         size_t MaxFramesInflight();
     }
