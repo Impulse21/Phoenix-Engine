@@ -1,11 +1,7 @@
 #pragma once
 
 #include <PhxEngine/Engine/World.h>
-#include <PhxEngine/Assets/Assets.h>
 #include <future>
-
-#define CGLTF_IMPLEMENTATION
-#include <cgltf.h>
 
 #include <functional>
 namespace PhxEngine::Editor
@@ -23,6 +19,7 @@ namespace PhxEngine::Editor
 		};
 
 	private:
+#if 0 
 		void LoadMaterials(
 			Core::Span<cgltf_material> cgltfMateirals,
 			const cgltf_data* objects,
@@ -53,10 +50,9 @@ namespace PhxEngine::Editor
 		{
 			// do nothing
 		}
+#endif
 	private:
 		std::string m_filename;
-		std::unordered_map<const cgltf_material*, Assets::MaterialHandle> m_materialEntityMap;
-		std::unordered_map<const cgltf_mesh*, Assets::MeshHandle> m_meshEntityMap;
 		std::function<void(std::string_view, uint32_t, uint32_t)> m_progressCallback;
 	};
 }

@@ -475,7 +475,6 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::Initialize(SwapChainDesc const& swap
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::Finalize()
 {
-	this->m_copyCtxAllocator.Finalize();
 	for (int i = 0; i < this->m_frameCommandListHandles.size(); i++)
 	{
 		auto* commandlistImpl = this->m_commandListPool.Get(this->m_frameCommandListHandles[i]);
@@ -1503,7 +1502,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::DeleteRenderPass(RenderPassHandle ha
 	this->m_deleteQueue.push_back(d);
 }
 
-TextureHandle PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateTexture(TextureDesc const& desc, const SubresourceData* initalData)
+TextureHandle PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateTexture(TextureDesc const& desc)
 {
 	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
 	d3d12OptimizedClearValue.Color[0] = desc.OptmizedClearValue.Colour.R;
@@ -1648,47 +1647,6 @@ TextureHandle PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateTexture(TextureDesc c
 		this->CreateSubresource(texture, RHI::SubresouceType::UAV, 0, ~0u, 0, ~0u);
 	}
 
-	if (initalData != nullptr)
-	{
-		std::vector<D3D12_SUBRESOURCE_DATA> data(textureImpl.Footprints.size());
-		for (size_t i = 0; i < textureImpl.Footprints.size(); ++i)
-		{
-			data[i] = _ConvertSubresourceData(initalData[i]);
-		}
-
-		auto cmd = this->m_copyCtxAllocator.Allocate(textureImpl.TotalSize);
-
-		for (size_t i = 0; i < textureImpl.Footprints.size(); ++i)
-		{
-			void* mappedUploadData = this->GetBufferMappedData(cmd.UploadBuffer);
-			if (textureImpl.RowSizesInBytes[i] > (SIZE_T)-1)
-				continue;
-			D3D12_MEMCPY_DEST DestData = {};
-			DestData.pData = (void*)((UINT64)mappedUploadData + textureImpl.Footprints[i].Offset);
-			DestData.RowPitch = (SIZE_T)textureImpl.Footprints[i].Footprint.RowPitch;
-			DestData.SlicePitch = (SIZE_T)textureImpl.Footprints[i].Footprint.RowPitch * (SIZE_T)textureImpl.NumRows[i];
-			MemcpySubresource(&DestData, &data[i], (SIZE_T)textureImpl.RowSizesInBytes[i], textureImpl.NumRows[i], textureImpl.Footprints[i].Footprint.Depth);
-		}
-
-		for (UINT i = 0; i < textureImpl.Footprints.size(); ++i)
-		{
-			CD3DX12_TEXTURE_COPY_LOCATION Dst(textureImpl.D3D12Resource.Get(), i);
-			auto& uploadBuffer = *this->m_bufferPool.Get(cmd.UploadBuffer);
-			CD3DX12_TEXTURE_COPY_LOCATION Src(uploadBuffer.D3D12Resource.Get(), textureImpl.Footprints[i]);
-			cmd.NativeCmdList->CopyTextureRegion(
-				&Dst,
-				0,
-				0,
-				0,
-				&Src,
-				nullptr
-			);
-		}
-
-		// Blocking call
-		this->m_copyCtxAllocator.Submit(cmd);
-	}
-
 	return texture;
 }
 
@@ -1778,30 +1736,11 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::DeleteTexture(TextureHandle handle)
 	this->m_deleteQueue.push_back(d);
 }
 
-BufferHandle PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateBuffer(BufferDesc const& desc, void* initalData)
+BufferHandle PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateBuffer(BufferDesc const& desc)
 {
 	BufferHandle buffer = this->m_bufferPool.Emplace();
 	D3D12Buffer& bufferImpl = *this->m_bufferPool.Get(buffer);
 	this->CreateBufferInternal(desc, bufferImpl);
-
-
-	// Issue data copy on request:
-	if (initalData != nullptr)
-	{
-		auto cmd = this->m_copyCtxAllocator.Allocate(desc.Size());
-
-		auto& internalUploadBuffer = *this->m_bufferPool.Get(cmd.UploadBuffer);
-		std::memcpy(internalUploadBuffer.MappedData, initalData, desc.Size());
-
-		cmd.NativeCmdList->CopyBufferRegion(
-			bufferImpl.D3D12Resource.Get(),
-			0,
-			internalUploadBuffer.D3D12Resource.Get(),
-			0,
-			desc.Size());
-
-		this->m_copyCtxAllocator.Finalize();
-	}
 
 	if ((desc.MiscFlags & BufferMiscFlags::IsAliasedResource) == BufferMiscFlags::IsAliasedResource)
 	{

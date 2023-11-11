@@ -67,11 +67,6 @@ namespace
 
 		void Initialize() override
 		{
-
-		}
-
-		void Initialize() override
-		{
 			PhxEngine::GetTaskExecutor().silent_async([this]() {
 				Renderer::ImGuiRenderer::Initialize(GetWindow(), GetGfxDevice(), true);
 			    Renderer::ImGuiRenderer::EnableDarkThemeColours();

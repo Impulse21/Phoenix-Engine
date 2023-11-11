@@ -1,15 +1,17 @@
 #include "GltfModelLoader.h"
 
+#define CGLTF_IMPLEMENTATION
+#include <cgltf.h>
+
 #include <taskflow/taskflow.hpp>
 #include <PhxEngine/Engine/EngineCore.h>
-#include <PhxEngine/Assets/AssetStore.h>
-
 using namespace PhxEngine;
 using namespace PhxEngine::Editor;
 
 std::future<bool> GltfModelLoader::LoadModelAsync(std::string const& filename, Core::IFileSystem* fileSystem, World& world)
 {
 	return PhxEngine::GetTaskExecutor().async([&]() {
+#if 0 
 			this->m_filename = std::filesystem::path(filename).lexically_normal().generic_string();
 			CgltfContext cgltfContext =
 			{
@@ -62,8 +64,12 @@ std::future<bool> GltfModelLoader::LoadModelAsync(std::string const& filename, C
 				// Load Node Data
 				this->LoadNodeRec(*objects->scene->nodes[i], rootNode, world);
 			}
+#endif
+			return true;
 		});
 }
+
+#if 0
 
 void PhxEngine::Editor::GltfModelLoader::LoadMaterials(Core::Span<cgltf_material> cgltfMateirals, const cgltf_data* objects, CgltfContext& context, World& outWorld)
 {
@@ -149,4 +155,4 @@ cgltf_result PhxEngine::Editor::GltfModelLoader::CgltfReadFile(const cgltf_memor
 
 	return cgltf_result_success;
 }
-;
+#endif

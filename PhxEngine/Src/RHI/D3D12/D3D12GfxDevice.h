@@ -361,105 +361,6 @@ namespace PhxEngine::RHI::D3D12
         static HRESULT EnumAdapters(uint32_t adapterIndex, IDXGIFactory6* factory6, IDXGIAdapter1** outAdapter);
     };
 
-    struct CopyContext
-    {
-        Microsoft::WRL::ComPtr<ID3D12CommandAllocator> NativeAllocator;
-        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> NativeCmdList;
-        Microsoft::WRL::ComPtr<ID3D12Fence> NativeFence;
-        BufferHandle UploadBuffer;
-    };
-
-    struct CopyContextAllocator
-    {
-    public:
-        void Finalize()
-        {
-            for (auto& data : this->m_freeList)
-            {
-                D3D12GfxDevice::GPtr->DeleteBuffer(data.UploadBuffer);
-            }
-            this->m_freeList.clear();
-        }
-        CopyContext Allocate(size_t requiredUploadSpace)
-        {
-            CopyContext selectedCtx;
-            {
-                std::scoped_lock _(this->m_lock);
-                if (this->m_freeList.empty())
-                {
-                    CopyContext& ctx = this->m_freeList.emplace_back();
-                    ThrowIfFailed(
-                        D3D12GfxDevice::GPtr->GetD3D12Device2()->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(&ctx.NativeAllocator)));
-                    ThrowIfFailed(
-                        D3D12GfxDevice::GPtr->GetD3D12Device2()->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COPY, ctx.NativeAllocator.Get(), nullptr, IID_PPV_ARGS(&ctx.NativeCmdList)));
-                    ThrowIfFailed(
-                        ctx.NativeCmdList->Close());
-                    ThrowIfFailed(
-                        D3D12GfxDevice::GPtr->GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&ctx.NativeFence)));
-                    this->m_freeList.push_back(ctx);
-                }
-
-                selectedCtx = this->m_freeList.front();
-                BufferDesc desc = D3D12GfxDevice::GPtr->GetBufferDesc(selectedCtx.UploadBuffer);
-                if (desc.Size() < requiredUploadSpace)
-                {
-                    // Try to search for a staging buffer that can fit the request:
-                    for (size_t i = 1; i < this->m_freeList.size(); ++i)
-                    {
-                        desc = D3D12GfxDevice::GPtr->GetBufferDesc(this->m_freeList[i].UploadBuffer);
-                        if (desc.Size() >= requiredUploadSpace)
-                        {
-                            selectedCtx = this->m_freeList[i];
-                            std::swap(this->m_freeList[i], m_freeList.front());
-                            break;
-                        }
-                    }
-                }
-            }
-
-            BufferDesc desc = D3D12GfxDevice::GPtr->GetBufferDesc(selectedCtx.UploadBuffer);
-            if (desc.Size() < requiredUploadSpace)
-            {
-                selectedCtx.UploadBuffer = D3D12GfxDevice::GPtr->CreateBuffer({
-                    .Usage = Usage::Upload,
-                    .Stride = Core::Math::GetNextPowerOfTwo(requiredUploadSpace),
-                    .NumElements = 1,
-                    .DebugName = "CopyContxt::UploadBuffer"
-                    });
-            }
-
-            // begin command list in valid state:
-            ThrowIfFailed(
-                selectedCtx.NativeAllocator->Reset());
-            ThrowIfFailed(
-                selectedCtx.NativeCmdList->Reset(selectedCtx.NativeAllocator.Get(), nullptr));
-
-            return selectedCtx;
-        }
-        void Submit(CopyContext const& ctx)
-        {
-            HRESULT hr;
-
-            ctx.NativeCmdList->Close();
-
-            D3D12CommandQueue& queue = D3D12GfxDevice::GPtr->GetCopyQueue();
-            queue.ExecuteCommandLists({ ctx.NativeCmdList.Get() });
-            ThrowIfFailed(
-                queue.GetD3D12CommandQueue()->Signal(ctx.NativeFence.Get(), 1));
-            ThrowIfFailed(
-                ctx.NativeFence->SetEventOnCompletion(1, nullptr));
-            ThrowIfFailed(
-                ctx.NativeFence->Signal(0));
-
-            std::scoped_lock _(this->m_lock);
-            m_freeList.push_back(ctx);
-        }
-
-    private:
-        std::deque<CopyContext> m_freeList;
-        std::mutex m_lock;
-    };
-
 	class D3D12GfxDevice final : public RHI::GfxDevice
 	{
 	public:
@@ -497,9 +398,9 @@ namespace PhxEngine::RHI::D3D12
         GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc) override;
         ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc) override;
         MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc) override;
-        TextureHandle CreateTexture(TextureDesc const& desc, const SubresourceData* initalData = nullptr) override;
+        TextureHandle CreateTexture(TextureDesc const& desc) override;
         RenderPassHandle CreateRenderPass(RenderPassDesc const& desc) override;
-        BufferHandle CreateBuffer(BufferDesc const& desc, void* initalData = nullptr) override;
+        BufferHandle CreateBuffer(BufferDesc const& desc) override;
         int CreateSubresource(TextureHandle texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip = 0, uint32_t mpCount = ~0) override;
         int CreateSubresource(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size = ~0u) override;
         RTAccelerationStructureHandle CreateRTAccelerationStructure(RTAccelerationStructureDesc const& desc) override;
@@ -899,7 +800,6 @@ namespace PhxEngine::RHI::D3D12
         };
         std::deque<DeleteItem> m_deleteQueue;
 
-        CopyContextAllocator m_copyCtxAllocator;
 #ifdef ENABLE_PIX_CAPUTRE
         HMODULE m_pixCaptureModule;
 #endif
