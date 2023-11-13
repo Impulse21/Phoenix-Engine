@@ -51,7 +51,8 @@ namespace PhxEngine::RHI::D3D12
                                                
         [[nodiscard]] ID3D12DescriptorAllocator&                GpuResourceHeap();
         [[nodiscard]] ID3D12DescriptorAllocator&                GpuSamplerHeap();
-        [[nodiscard]] RHI::DeferedReleaseQueue&                 ReleaseQeueu();
+        [[nodiscard]] RHI::DeferedReleaseQueue&                 ReleaseQueue();
+
         size_t MaxFramesInflight();
     }
 

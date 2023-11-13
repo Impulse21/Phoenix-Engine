@@ -1,6 +1,7 @@
 #pragma once
 
 #include <RHI/RHIResources.h>
+#include <PlatformTypes.h>
 #include <RHI/RHIEnums.h>
 #include <Core/Memory.h>
 #include <Core/Span.h>

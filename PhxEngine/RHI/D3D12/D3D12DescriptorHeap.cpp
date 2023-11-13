@@ -94,9 +94,9 @@ void D3D12CpuDescriptorHeap::FreeAllocation(D3D12DescriptorAllocation&& allocati
 D3D12DescriptorHeapAllocationPage::D3D12DescriptorHeapAllocationPage(
 	uint32_t id,
 	ID3D12DescriptorAllocator* allocator,
-	Microsoft::WRL::ComPtr<ID3D12Device2> d3dDevice,
+	Core::RefCountPtr<ID3D12Device2> d3dDevice,
 	D3D12_DESCRIPTOR_HEAP_DESC const& heapDesc,
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> d3dHeap,
+	Core::RefCountPtr<ID3D12DescriptorHeap> d3dHeap,
 	uint32_t numDescriptorsInHeap,
 	uint32_t initOffset)
 	: m_id(id)
@@ -121,7 +121,7 @@ D3D12DescriptorHeapAllocationPage::D3D12DescriptorHeapAllocationPage(
 D3D12DescriptorHeapAllocationPage::D3D12DescriptorHeapAllocationPage(
 	uint32_t id,
 	ID3D12DescriptorAllocator* allocator,
-	Microsoft::WRL::ComPtr<ID3D12Device2> d3dDevice,
+	Core::RefCountPtr<ID3D12Device2> d3dDevice,
 	D3D12_DESCRIPTOR_HEAP_DESC const& heapDesc,
 	uint32_t numDescriptorsInHeap)
 	: m_id(id)

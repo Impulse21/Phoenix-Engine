@@ -339,8 +339,7 @@ bool PhxEngine::RHI::Factory::CreateSwapChain(SwapchainDesc const& desc, void* w
 		}
 	}
 
-	impl.Release();
-
+	// impl.Release();
 	impl.BackBuffers.resize(Context::MaxFramesInflight());
 	impl.BackBuferViews.resize(Context::MaxFramesInflight());
 
@@ -356,7 +355,7 @@ bool PhxEngine::RHI::Factory::CreateSwapChain(SwapchainDesc const& desc, void* w
 		D3D12Descriptor& descriptor = impl.BackBuferViews[i];
 		descriptor.Allocation = D3D12::Context::CpuRenderTargetHeap().Allocate(1);
 
-		Context::D3d12Device()->CreateRenderTargetView(impl.BackBuffers[i].Get(), &rtvDesc, descriptor.GetView());
+		Context::D3d12Device()->CreateRenderTargetView(impl.BackBuffers[i], &rtvDesc, descriptor.GetView());
 	}
 
 	return true;

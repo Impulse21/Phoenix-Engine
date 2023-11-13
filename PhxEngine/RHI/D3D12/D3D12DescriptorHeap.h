@@ -1,10 +1,11 @@
 #pragma once
 
-#include "RHI/RHIResources.h"
 #include "D3D12Common.h"
 #include <set>
 #include <map>
 #include <mutex>
+#include <Core/NonCopyable.h>
+#include <Core/NonMoveable.h>
 
 namespace PhxEngine::RHI::D3D12
 {
@@ -157,16 +158,16 @@ namespace PhxEngine::RHI::D3D12
 		D3D12DescriptorHeapAllocationPage(
 			uint32_t id,
 			ID3D12DescriptorAllocator* allocator,
-			Microsoft::WRL::ComPtr<ID3D12Device2> d3dDevice,
+			Core::RefCountPtr<ID3D12Device2> d3dDevice,
 			D3D12_DESCRIPTOR_HEAP_DESC const& heapDesc,
-			Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> d3dHeap,
+			Core::RefCountPtr<ID3D12DescriptorHeap> d3dHeap,
 			uint32_t numDescriptorsInHeap,
 			uint32_t initOffset);
 
 		D3D12DescriptorHeapAllocationPage(
 			uint32_t id,
 			ID3D12DescriptorAllocator* allocator,
-			Microsoft::WRL::ComPtr<ID3D12Device2> d3dDevice,
+			Core::RefCountPtr<ID3D12Device2> d3dDevice,
 			D3D12_DESCRIPTOR_HEAP_DESC const& heapDesc,
 			uint32_t numDescriptorsInHeap);
 
@@ -215,7 +216,7 @@ namespace PhxEngine::RHI::D3D12
 		FreeListByOffset m_freeListByOffset;
 		FreeListBySize m_freeListBySize;
 
-		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_d3d12Heap;
+		Core::RefCountPtr<ID3D12DescriptorHeap> m_d3d12Heap;
 
 		CD3DX12_CPU_DESCRIPTOR_HANDLE m_baseCpuDescritpor;
 		CD3DX12_GPU_DESCRIPTOR_HANDLE m_baseGpuDescritpor;
@@ -227,7 +228,7 @@ namespace PhxEngine::RHI::D3D12
 		std::mutex m_allocationMutex;
 	};
 
-	class D3D12CpuDescriptorHeap final : public ID3D12DescriptorAllocator, NonCopyable, NonMoveable
+	class D3D12CpuDescriptorHeap final : public ID3D12DescriptorAllocator, Core::NonCopyable, Core::NonMoveable
 	{
 	public:
 		void Initialize(
@@ -258,7 +259,7 @@ namespace PhxEngine::RHI::D3D12
 		std::set<size_t> m_availableHeaps;
 	};
 
-	class D3D12GpuDescriptorHeap : public ID3D12DescriptorAllocator, NonCopyable, NonMoveable
+	class D3D12GpuDescriptorHeap : public ID3D12DescriptorAllocator, Core::NonCopyable, Core::NonMoveable
 	{
 	public:
 		void Initialize(
@@ -283,7 +284,7 @@ namespace PhxEngine::RHI::D3D12
 		uint32_t m_descriptorSize;
 
 		D3D12_DESCRIPTOR_HEAP_DESC m_heapDesc;
-		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_d3dHeap;
+		Core::RefCountPtr<ID3D12DescriptorHeap> m_d3dHeap;
 
 		// Memory pages
 		std::unique_ptr<D3D12DescriptorHeapAllocationPage> m_staticPage;

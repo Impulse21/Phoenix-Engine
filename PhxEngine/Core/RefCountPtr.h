@@ -38,7 +38,7 @@ namespace PhxEngine::Core
             }
         }
 
-        unsigned long InternalRelease() noexcept
+        virtual unsigned long InternalRelease() noexcept
         {
             unsigned long ref = 0;
             T* temp = ptr_;

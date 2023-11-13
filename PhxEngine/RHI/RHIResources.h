@@ -543,7 +543,7 @@ namespace PhxEngine::RHI
 	public:
 		const Texture& GetCurrentBackBuffer()
 		{
-			this->m_platform.GetCurrentBackBuffer();
+			return {};
 		}
 	};
 
@@ -798,12 +798,6 @@ namespace PhxEngine::RHI
 		NonCopyable& operator=(const NonCopyable&) = delete;
 	};
 
-	struct NonMoveable
-	{
-		NonMoveable() = default;
-		NonMoveable(NonMoveable&&) = delete;
-		NonMoveable& operator=(NonMoveable&&) = delete;
-	};
 
 	class RenderPassContext
 	{

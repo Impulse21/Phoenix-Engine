@@ -17,8 +17,12 @@ namespace PhxEngine::RHI::D3D12
 {
     struct D3D12Descriptor : Core::NonCopyable
     {
+        D3D12Descriptor() = default;
+        D3D12Descriptor(D3D12Descriptor&& other) noexcept
+            : Allocation(std::move(other.Allocation)) 
+        {};
+
         D3D12DescriptorAllocation Allocation = {};
-        DescriptorIndex Index = cInvalidDescriptorIndex;
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetView() { return this->Allocation.GetCpuHandle(); }
     };
@@ -35,29 +39,7 @@ namespace PhxEngine::RHI::D3D12
             return !!NativeSwapchain;
         }
 
-        ~D3D12SwapChain()
-        {
-            this->DeferredRelease();
-        }
-
-        void DeferredRelease()
-        {
-            for (auto& resource : BackBuffers)
-            {
-                DeferedReleaseQueue::Enqueue([resource]()
-                    {
-                        resource->Release();
-                    });
-            }
-
-            for (auto& resource : BackBuffers)
-            {
-                DeferedReleaseQueue::Enqueue([resource]()
-                    {
-                        resource->Release();
-                    });
-            }
-        }
+        ~D3D12SwapChain();
     };
 
     class D3D12CommandQueue;
@@ -94,7 +76,7 @@ namespace PhxEngine::RHI::D3D12
         }
 
         D3D12GPUResource() = default;
-        virtual ~D3D12GPUResource() = default;
+        virtual ~D3D12GPUResource();
         D3D12GPUResource(D3D12GPUResource&& other) noexcept
             : D3D12Resource(std::move(other.D3D12Resource))
             , Allocation(std::move(other.Allocation)) 

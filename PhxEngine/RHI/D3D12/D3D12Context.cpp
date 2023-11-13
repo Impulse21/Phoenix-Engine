@@ -470,7 +470,7 @@ ID3D12DescriptorAllocator& PhxEngine::RHI::D3D12::Context::GpuSamplerHeap()
 	return m_gpuDescriptorHeaps[1];
 }
 
-RHI::DeferedReleaseQueue& PhxEngine::RHI::D3D12::Context::ReleaseQeueu()
+RHI::DeferedReleaseQueue& PhxEngine::RHI::D3D12::Context::ReleaseQueue()
 {
 	return m_ReleaseQueue;
 }
