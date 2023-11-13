@@ -10,6 +10,7 @@
 #include "D3D12DescriptorHeap.h"
 #include "RHI/RHIEnums.h"
 #include "RHI/RHIResources.h"
+#include "RHI/DeferedReleaseQueue.h"
 
 namespace PhxEngine::RHI::D3D12
 {
@@ -43,14 +44,14 @@ namespace PhxEngine::RHI::D3D12
         [[nodiscard]] bool                                      IsUnderGraphicsDebugger();
         [[nodiscard]] bool                                      DebugEnabled();
 
-        [[nodiscard]] ID3D12DescriptorAllocator&                 CpuResourceHeap();
-        [[nodiscard]] ID3D12DescriptorAllocator&                 CpuSamplerHeap();
-        [[nodiscard]] ID3D12DescriptorAllocator&                 CpuRenderTargetHeap();
-        [[nodiscard]] ID3D12DescriptorAllocator&                 CpuDepthStencilHeap();
+        [[nodiscard]] ID3D12DescriptorAllocator&                CpuResourceHeap();
+        [[nodiscard]] ID3D12DescriptorAllocator&                CpuSamplerHeap();
+        [[nodiscard]] ID3D12DescriptorAllocator&                CpuRenderTargetHeap();
+        [[nodiscard]] ID3D12DescriptorAllocator&                CpuDepthStencilHeap();
                                                
-        [[nodiscard]] ID3D12DescriptorAllocator&                 GpuResourceHeap();
-        [[nodiscard]] ID3D12DescriptorAllocator&                 GpuSamplerHeap();
-
+        [[nodiscard]] ID3D12DescriptorAllocator&                GpuResourceHeap();
+        [[nodiscard]] ID3D12DescriptorAllocator&                GpuSamplerHeap();
+        [[nodiscard]] RHI::DeferedReleaseQueue&                 ReleaseQeueu();
         size_t MaxFramesInflight();
     }
 

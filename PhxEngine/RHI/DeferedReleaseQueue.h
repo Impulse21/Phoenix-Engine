@@ -8,9 +8,8 @@ namespace PhxEngine::RHI
 	class DeferedReleaseQueue
 	{
 	public:
-		static void Enqueue(std::function<void()> const& releaseFn);
-
-		static void Process(uint64_t completedFrame);
+		void Enqueue(std::function<void()> const& releaseFn);
+		void Process(uint64_t completedFrame);
 
 	private:
 		struct ReleaseItem
@@ -19,8 +18,8 @@ namespace PhxEngine::RHI
 			std::function<void()> ReleaseFn;
 		};
 
-		static uint64_t m_processedFrame;
-		static std::deque<ReleaseItem> m_deleteQueue;
+		uint64_t m_processedFrame = 0;
+		std::deque<ReleaseItem> m_deleteQueue;
 	};
 }
 

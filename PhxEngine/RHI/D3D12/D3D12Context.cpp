@@ -43,6 +43,7 @@ namespace
 
 	Core::RefCountPtr<D3D12MA::Allocator>	m_D3d12MemAllocator;
 
+	DeferedReleaseQueue						m_ReleaseQueue;
 	RHICapability							m_RhiCapabilities;
 	D3D12_FEATURE_DATA_ROOT_SIGNATURE		m_FeatureDataRootSignature;
 	D3D12_FEATURE_DATA_SHADER_MODEL			m_FeatureDataShaderModel;
@@ -467,6 +468,11 @@ ID3D12DescriptorAllocator& PhxEngine::RHI::D3D12::Context::GpuResourceHeap()
 ID3D12DescriptorAllocator& PhxEngine::RHI::D3D12::Context::GpuSamplerHeap()
 {
 	return m_gpuDescriptorHeaps[1];
+}
+
+RHI::DeferedReleaseQueue& PhxEngine::RHI::D3D12::Context::ReleaseQeueu()
+{
+	return m_ReleaseQueue;
 }
 
 size_t PhxEngine::RHI::D3D12::Context::MaxFramesInflight()

@@ -2,9 +2,6 @@
 
 using namespace PhxEngine::RHI;
 
-uint64_t DeferedReleaseQueue::m_processedFrame = 0;
-std::deque<DeferedReleaseQueue::ReleaseItem> DeferedReleaseQueue::m_deleteQueue;
-
 void PhxEngine::RHI::DeferedReleaseQueue::Enqueue(std::function<void()> const& releaseFn)
 {
 	m_deleteQueue.push_back(
