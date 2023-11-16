@@ -101,9 +101,9 @@ void PhxEngine::Run(IEngineApp& app)
 
 		// Compose final frame
 		{
-			RHI::CommandList* composeCmdList = RHI::BeginCommandList();
+			// RHI::CommandList* composeCmdList = RHI::BeginCommandList();
 
-			RHI::SubmitCommands(composeCmdList);
+			// RHI::SubmitCommands(composeCmdList);
 		}
 
 		RHI::Present({ m_swapchain });

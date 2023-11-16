@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "D3D12Context.h"
+#include "D3D12GfxDevice.h"
 #include "D3D12DescriptorHeap.h"
 
 using namespace PhxEngine::RHI::D3D12;
@@ -20,7 +20,7 @@ void PhxEngine::RHI::D3D12::D3D12CpuDescriptorHeap::Initialize(
 		1 // node mask
 	};
 
-	this->m_descriptorSize = D3D12::Context::D3d12Device()->GetDescriptorHandleIncrementSize(type);
+	this->m_descriptorSize = D3D12::D3D12GfxDevice::D3d12Device()->GetDescriptorHandleIncrementSize(type);
 	this->m_numDescriptorsPerHeap = numDesctiptors;
 }
 
@@ -70,7 +70,7 @@ std::shared_ptr<D3D12DescriptorHeapAllocationPage> D3D12CpuDescriptorHeap::Creat
 	auto newPage = std::make_shared<D3D12DescriptorHeapAllocationPage>(
 		this->m_heapPool.size(),
 		this,
-		D3D12::Context::D3d12Device2(),
+		D3D12::D3D12GfxDevice::D3d12Device2(),
 		this->m_heapDesc,
 		this->m_numDescriptorsPerHeap);
 
@@ -294,7 +294,7 @@ void PhxEngine::RHI::D3D12::D3D12GpuDescriptorHeap::Initialize(
 	D3D12_DESCRIPTOR_HEAP_TYPE type,
 	D3D12_DESCRIPTOR_HEAP_FLAGS flags)
 {
-	this->m_descriptorSize = D3D12::Context::D3d12Device()->GetDescriptorHandleIncrementSize(type);
+	this->m_descriptorSize = D3D12::D3D12GfxDevice::D3d12Device()->GetDescriptorHandleIncrementSize(type);
 
 	this->m_heapDesc =
 	{
@@ -305,7 +305,7 @@ void PhxEngine::RHI::D3D12::D3D12GpuDescriptorHeap::Initialize(
 	};
 
 	ThrowIfFailed(
-		D3D12::Context::D3d12Device()->CreateDescriptorHeap(
+		D3D12::D3D12GfxDevice::D3d12Device()->CreateDescriptorHeap(
 			&this->m_heapDesc,
 			IID_PPV_ARGS(&this->m_d3dHeap)));
 
@@ -313,7 +313,7 @@ void PhxEngine::RHI::D3D12::D3D12GpuDescriptorHeap::Initialize(
 	this->m_staticPage = std::make_unique<D3D12DescriptorHeapAllocationPage>(
 		0,
 		this,
-		D3D12::Context::D3d12Device2(),
+		D3D12::D3D12GfxDevice::D3d12Device2(),
 		this->m_heapDesc,
 		this->m_d3dHeap,
 		numDesctiptors,
@@ -322,7 +322,7 @@ void PhxEngine::RHI::D3D12::D3D12GpuDescriptorHeap::Initialize(
 	this->m_dynamicPage = std::make_unique<D3D12DescriptorHeapAllocationPage>(
 		1,
 		this,
-		D3D12::Context::D3d12Device2(),
+		D3D12::D3D12GfxDevice::D3d12Device2(),
 		this->m_heapDesc,
 		this->m_d3dHeap,
 		numDynamicDesciprotrs,
