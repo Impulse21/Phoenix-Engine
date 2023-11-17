@@ -41,7 +41,7 @@ namespace
 		m_window->Initialize();
 
 		// -- Create GFX Device ---
-		m_gfxDevice = RHI::Factory::CreateD3D12Device();
+		m_gfxDevice = RHI::FactoryLegacy::CreateD3D12Device();
 		RHI::SwapChainDesc swapchainDesc = {
 			.Width = m_window->GetWidth(),
 			.Height = m_window->GetHeight(),

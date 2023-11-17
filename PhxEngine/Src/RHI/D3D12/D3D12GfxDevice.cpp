@@ -340,6 +340,27 @@ PhxEngine::RHI::D3D12::D3D12GfxDevice::~D3D12GfxDevice()
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::Initialize(SwapChainDesc const& swapchainDesc, void* windowHandle)
 {
+	this->Initialize();
+
+	this->CreateSwapChainInternal(swapchainDesc, windowHandle);
+
+	for (int i = 0; i < this->m_frameCommandListHandles.size(); i++)
+	{
+		this->m_frameCommandListHandles[i] = this->m_commandListPool.Emplace();
+		auto* commandlistImpl = this->m_commandListPool.Get(this->m_frameCommandListHandles[i]);
+	}
+
+	// -- Mark Queues for completion ---
+	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
+	{
+		ThrowIfFailed(
+			this->GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_frameFences[q])));
+	}
+
+}
+
+void PhxEngine::RHI::D3D12::D3D12GfxDevice::Initialize()
+{
 	LOG_RHI_INFO("Initialize DirectX 12 Graphics Device");
 	this->InitializeResourcePools();
 	this->InitializeD3D12NativeResources(this->m_gpuAdapter.NativeAdapter.Get());
@@ -398,40 +419,40 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::Initialize(SwapChainDesc const& swap
 
 	// Create Descriptor Heaps
 	this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::CBV_SRV_UAV].Initialize(
-			this,
-			1024,
-			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		this,
+		1024,
+		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler].Initialize(
-			this,
-			1024,
-			D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+		this,
+		1024,
+		D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
 
 	this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::RTV].Initialize(
-			this,
-			1024,
-			D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		this,
+		1024,
+		D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
 	this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::DSV].Initialize(
-			this,
-			1024,
-			D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+		this,
+		1024,
+		D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
 
 	this->m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::CBV_SRV_UAV].Initialize(
-			this,
-			NUM_BINDLESS_RESOURCES,
-			TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE - NUM_BINDLESS_RESOURCES,
-			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-			D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
+		this,
+		NUM_BINDLESS_RESOURCES,
+		TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE - NUM_BINDLESS_RESOURCES,
+		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
 
 
 	this->m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler].Initialize(
-			this,
-			10,
-			100,
-			D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
-			D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
+		this,
+		10,
+		100,
+		D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
+		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
 
 
 	this->m_bindlessResourceDescriptorTable.Initialize(this->GetResourceGpuHeap().Allocate(NUM_BINDLESS_RESOURCES));
@@ -454,22 +475,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::Initialize(SwapChainDesc const& swap
 		.Usage = Usage::ReadBack,
 		.Stride = sizeof(uint64_t),
 		.NumElements = this->kTimestampQueryHeapSize,
-		.DebugName = "Timestamp Query Buffer"});
-
-	this->CreateSwapChain(swapchainDesc, windowHandle);
-
-	for (int i = 0; i < this->m_frameCommandListHandles.size(); i++)
-	{
-		this->m_frameCommandListHandles[i] = this->m_commandListPool.Emplace();
-		auto* commandlistImpl = this->m_commandListPool.Get(this->m_frameCommandListHandles[i]);
-	}
-
-	// -- Mark Queues for completion ---
-	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
-	{
-		ThrowIfFailed(
-			this->GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_frameFences[q])));
-	}
+		.DebugName = "Timestamp Query Buffer" });
 
 }
 
@@ -517,7 +523,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::Finalize()
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::ResizeSwapchain(SwapChainDesc const& desc)
 {
-	this->CreateSwapChain(desc, nullptr);
+	this->CreateSwapChainInternal(desc, nullptr);
 }
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
@@ -2148,6 +2154,11 @@ TimerQueryHandle PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateTimerQuery()
 	return handle;
 }
 
+SwapChainRef PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateSwapChain(SwapChainDesc const& desc, void* windowsHandle)
+{
+	return SwapChainRef();
+}
+
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::DeleteTimerQuery(TimerQueryHandle query)
 {
 	if (!query.IsValid())
@@ -3493,7 +3504,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::InitializeD3D12NativeResources(IDXGI
 
 }
 
-void PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateSwapChain(SwapChainDesc const& desc, void* windowHandle)
+void PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateSwapChainInternal(SwapChainDesc const& desc, void* windowHandle)
 {
 	this->m_swapChain.Desc = desc;
 

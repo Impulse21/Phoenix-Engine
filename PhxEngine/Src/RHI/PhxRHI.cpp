@@ -2,6 +2,7 @@
 
 #include "D3D12/D3D12GfxDevice.h"
 #include <PhxEngine/Core/Memory.h>
+
 using namespace PhxEngine;
 
 namespace
@@ -18,9 +19,25 @@ namespace
 			return nullptr;
 		}
 	}
+
+	std::unique_ptr<RHI::DynamicRHI> m_dynamicRHI;
 }
 
-std::unique_ptr<RHI::GfxDevice> PhxEngine::RHI::Factory::CreateD3D12Device()
+std::unique_ptr<RHI::GfxDevice> PhxEngine::RHI::FactoryLegacy::CreateD3D12Device()
 {
 	return CreateDevice_Windows(RHI::GraphicsAPI::DX12);
+}
+
+void PhxEngine::RHI::Initialize()
+{
+}
+
+void PhxEngine::RHI::Finiailize()
+{
+	m_dynamicRHI->Finalize();
+}
+
+RHI::DynamicRHI* PhxEngine::RHI::GetRHI()
+{
+	return m_dynamicRHI.get();
 }
