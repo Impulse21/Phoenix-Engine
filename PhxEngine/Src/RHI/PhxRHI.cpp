@@ -1,43 +1,34 @@
 #include <PhxEngine/RHI/PhxRHI.h>
 
-#include "D3D12/D3D12GfxDevice.h"
 #include <PhxEngine/Core/Memory.h>
+#include <RHI/DynamicRHIFactory.h>
+
+#include <memory>
 
 using namespace PhxEngine;
 
 namespace
 {
-	std::unique_ptr<RHI::GfxDevice> CreateDevice_Windows(RHI::GraphicsAPI api)
-	{
-		switch (api)
-		{
-		case RHI::GraphicsAPI::DX12:
-			LOG_RHI_INFO("Creating DirectX 12 Graphics Device");
-			return std::make_unique<RHI::D3D12::D3D12GfxDevice>();
-
-		default:
-			return nullptr;
-		}
-	}
-
 	std::unique_ptr<RHI::DynamicRHI> m_dynamicRHI;
 }
 
-std::unique_ptr<RHI::GfxDevice> PhxEngine::RHI::FactoryLegacy::CreateD3D12Device()
+void PhxEngine::RHI::Initialize(RHI::GraphicsAPI api)
 {
-	return CreateDevice_Windows(RHI::GraphicsAPI::DX12);
-}
-
-void PhxEngine::RHI::Initialize()
-{
+	assert(!m_dynamicRHI);
+	m_dynamicRHI.reset(RHI::DynamicRHIFactory::Create(api));
+	m_dynamicRHI->Initialize();
 }
 
 void PhxEngine::RHI::Finiailize()
 {
-	m_dynamicRHI->Finalize();
+	assert(m_dynamicRHI);
+	if (m_dynamicRHI)
+	{
+		m_dynamicRHI->Finalize();
+	}
 }
 
-RHI::DynamicRHI* PhxEngine::RHI::GetRHI()
+RHI::DynamicRHI* PhxEngine::RHI::GetDynamic()
 {
 	return m_dynamicRHI.get();
 }

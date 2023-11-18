@@ -5,10 +5,10 @@
 
 namespace PhxEngine::RHI
 {
-    void Initialize();
+    void Initialize(RHI::GraphicsAPI api);
     void Finiailize();
 
-    DynamicRHI* GetRHI();
+    DynamicRHI* GetDynamic();
 }
 
 namespace std
