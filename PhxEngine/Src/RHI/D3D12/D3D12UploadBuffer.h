@@ -7,6 +7,7 @@
 
 namespace PhxEngine::RHI::D3D12
 {
+#if false
     class D3D12GfxDevice;
 
 	struct UploadAllocation
@@ -78,5 +79,5 @@ namespace PhxEngine::RHI::D3D12
 
 		size_t m_pageSize;
 	};
-
+#endif 
 }

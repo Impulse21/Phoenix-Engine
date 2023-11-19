@@ -8,6 +8,7 @@ using namespace PhxEngine;
 namespace
 {
 	std::unique_ptr<Core::IWindow> window;
+	RHI::SwapChainRef swapChain = nullptr;
 	void Initialize()
 	{
 		Core::Log::Initialize();
@@ -23,7 +24,13 @@ namespace
 		window->SetEventCallback([](Core::Event& e) { Core::EventDispatcher::DispatchEvent(e); });
 		window->Initialize();
 
-		RHI::DynamicRHI* rhi = RHI::GetDynamic();
+		swapChain = RHI::GetDynamic()->CreateSwapChain({
+					.Width = window->GetWidth(),
+					.Height = window->GetHeight(),
+					.Fullscreen = false,
+					.VSync = window->GetVSync() },
+					window->GetNativeWindowHandle());
+
 		Core::EventDispatcher::AddEventListener(Core::EventType::WindowResize, [&](Core::Event const& e) 
 			{
 				const Core::WindowResizeEvent& resizeEvent = static_cast<const Core::WindowResizeEvent&>(e);
@@ -32,12 +39,13 @@ namespace
 					.Height = resizeEvent.GetHeight(),
 					.Fullscreen = false,
 					.VSync = window->GetVSync() };
-				rhi->ResizeSwapchain(swapchainDesc);
+				RHI::GetDynamic()->ResizeSwapChain(swapChain, swapchainDesc);
 			});
 	}
 
 	void Finalize()
 	{
+		swapChain.Reset();
 		RHI::Finiailize();
 		Core::Log::Finialize();
 	}
@@ -48,8 +56,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 {
 	Initialize();
 
-	RHI::DynamicRHI* rhi = RHI::GetDynamic();
-
+	while (!window->ShouldClose())
+	{
+		window->OnTick();
+		RHI::DynamicRHI* rhi = RHI::GetDynamic();
+		rhi->Present(swapChain);
+	}
 
 	Finalize();
 	// Create SwapChain

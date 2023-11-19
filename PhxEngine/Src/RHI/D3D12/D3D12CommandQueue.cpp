@@ -1,5 +1,4 @@
 #include "D3D12CommandQueue.h"
-#include "D3D12GfxDevice.h"
 
 using namespace Microsoft::WRL;
 using namespace PhxEngine::RHI::D3D12;

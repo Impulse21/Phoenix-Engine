@@ -1,15 +1,23 @@
 #include <PhxEngine/RHI/PhxRHI.h>
 
+#include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/Memory.h>
 #include <RHI/DynamicRHIFactory.h>
 
 #include <memory>
+#include <functional>
 
 using namespace PhxEngine;
 
+using UniqueDynamicRHIPtr = std::unique_ptr<RHI::DynamicRHI, void (*)(RHI::DynamicRHI*)>;
 namespace
 {
-	std::unique_ptr<RHI::DynamicRHI> m_dynamicRHI;
+	void CustomDeleter(RHI::DynamicRHI* ptr)
+	{
+		PHX_LOG_CORE_INFO("Tearing down RHI");
+		phx_delete_notnull(ptr);
+	}
+	UniqueDynamicRHIPtr m_dynamicRHI(nullptr, CustomDeleter);
 }
 
 void PhxEngine::RHI::Initialize(RHI::GraphicsAPI api)

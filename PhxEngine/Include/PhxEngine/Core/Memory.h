@@ -37,13 +37,13 @@ void operator delete(void* p_mem, void* p_pointer, size_t check, const char* p_d
 #define phx_new_allocator(m_class, m_allocator) new (m_allocator::Allocate) m_class
 #define phx_new_placement(m_placement, m_class) new (m_placement) m_class
 
-#define phx_delete_notnull(m_v) \
-	{                           \
-		if (m_v)                \
-        {                       \
-			MemDelete(m_v);  \
-		}                       \
-	}                           \
+#define phx_delete_notnull(m_v)                 \
+	{                                           \
+		if (m_v)                                \
+        {                                       \
+			PhxEngine::Core::MemDelete(m_v);    \
+		}                                       \
+	}                                           \
 
 #define phx_new_arr(m_class, m_count) PhxEngine::Core::MemNew_Arr<m_class>(m_count)
 #define phx_realloc_arr(m_class, data, m_count) PhxEngine::Core::MemRealloc_Arr<m_class>(data, m_count)

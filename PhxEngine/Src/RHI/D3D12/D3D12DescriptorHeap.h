@@ -9,7 +9,7 @@ namespace PhxEngine::RHI::D3D12
 {
 	class DescriptorHeapAllocation;
 	class DescriptorHeapAllocationPage;
-	class D3D12GfxDevice;
+	class D3D12DynamicRHI;
 
 	class IDescriptorAllocator
 	{
@@ -236,7 +236,7 @@ namespace PhxEngine::RHI::D3D12
 	{
 	public:
 		void Initialize(
-			D3D12GfxDevice* device,
+			D3D12DynamicRHI* dynamicRHI,
 			uint32_t numDesctiptors,
 			D3D12_DESCRIPTOR_HEAP_TYPE type,
 			D3D12_DESCRIPTOR_HEAP_FLAGS flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE);
@@ -253,7 +253,7 @@ namespace PhxEngine::RHI::D3D12
 
 	private:
 		uint32_t m_descriptorSize;
-		D3D12GfxDevice* m_device;
+		D3D12DynamicRHI* m_dynamicRHI;
 
 		D3D12_DESCRIPTOR_HEAP_DESC m_heapDesc;
 		uint32_t m_numDescriptorsPerHeap;
@@ -269,7 +269,7 @@ namespace PhxEngine::RHI::D3D12
 	{
 	public:
 		void Initialize(
-			D3D12GfxDevice* device,
+			D3D12DynamicRHI* dynamicRHI,
 			uint32_t numDesctiptors,
 			uint32_t numDynamicDesciprotrs,
 			D3D12_DESCRIPTOR_HEAP_TYPE type,
@@ -289,7 +289,7 @@ namespace PhxEngine::RHI::D3D12
 
 	private:
 		uint32_t m_descriptorSize;
-		D3D12GfxDevice* m_device;
+		D3D12DynamicRHI* m_dynamicRHI;
 
 		D3D12_DESCRIPTOR_HEAP_DESC m_heapDesc;
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_d3dHeap;

@@ -1,5 +1,6 @@
 #include "D3D12UploadBuffer.h"
 
+#if false
 #include "D3D12GfxDevice.h"
 
 using namespace PhxEngine::RHI;
@@ -181,3 +182,4 @@ UploadAllocation PhxEngine::RHI::D3D12::UploadRingBuffer::Allocate(size_t sizeIn
 	this->m_tailOffset += sizeInBytesAligned;
 	return allocation;
 }
+#endif

@@ -17,6 +17,7 @@ namespace PhxEngine
 	}
 }
 
+#if 0
 namespace PhxEngine::Renderer
 {
 	namespace ImGuiRenderer
@@ -28,7 +29,6 @@ namespace PhxEngine::Renderer
 		void BeginFrame();
 		void Render(RHI::CommandListHandle cmd);
 	}
-#if 0
 	class ImGuiRenderer
 	{
 	public:
@@ -55,6 +55,6 @@ namespace PhxEngine::Renderer
 		RHI::InputLayoutHandle m_inputLayout;
 		RHI::GfxPipelineHandle m_pipeline;
 	};
-#endif
 }
+#endif
 

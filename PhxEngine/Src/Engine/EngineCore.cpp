@@ -3,9 +3,10 @@
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/CommandLineArgs.h>
 #include <PhxEngine/Core/Memory.h>
-#include <PhxEngine/Renderer/Renderer.h>
 #include <PhxEngine/Core/EventDispatcher.h>
 #include <assert.h>
+
+#include <PhxEngine/RHI/PhxRHI.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
@@ -14,9 +15,7 @@ namespace
 {
 	// -- Globals ---
 	std::unique_ptr<Core::IWindow> m_window;
-	std::unique_ptr<RHI::GfxDevice> m_gfxDevice;
 	tf::Executor m_taskExecutor;
-	Renderer::AsyncGpuUploader m_asyncLoader;
 
 	std::atomic_bool m_engineRunning = false;
 
@@ -41,7 +40,8 @@ namespace
 		m_window->Initialize();
 
 		// -- Create GFX Device ---
-		m_gfxDevice = RHI::FactoryLegacy::CreateD3D12Device();
+		RHI::Initialize(RHI::GraphicsAPI::DX12);
+
 		RHI::SwapChainDesc swapchainDesc = {
 			.Width = m_window->GetWidth(),
 			.Height = m_window->GetHeight(),
@@ -49,8 +49,7 @@ namespace
 			.VSync = m_window->GetVSync(),
 		};
 
-		m_gfxDevice->Initialize(swapchainDesc, m_window->GetNativeWindowHandle());
-
+		assert(false); // TODO Set up swapChain
 		// -- Add on resize Event ---
 		EventDispatcher::AddEventListener(EventType::WindowResize, [&](Event const& e) {
 
@@ -63,7 +62,6 @@ namespace
 				.VSync = m_window->GetVSync(),
 			};
 
-			m_gfxDevice->ResizeSwapchain(swapchainDesc); 
 		});
 
 	}
@@ -73,10 +71,9 @@ namespace
 		m_engineRunning.store(false);
 		m_taskExecutor.wait_for_all();
 
-		m_gfxDevice->WaitForIdle();
-		m_gfxDevice->Finalize();
+		RHI::GetDynamic()->WaitForIdle();
+		RHI::Finiailize();
 
-		m_gfxDevice.reset();
 		m_window.reset();
 
 		Core::Log::Finialize();
@@ -101,6 +98,7 @@ void PhxEngine::Run(IEngineApp& app)
 		app.OnUpdate();
 		app.OnRender();
 
+#if false
 		// Compose final frame
 		RHI::GfxDevice* gfxDevice = GetGfxDevice();
 		{
@@ -123,20 +121,14 @@ void PhxEngine::Run(IEngineApp& app)
 				},
 				composeCmdList);
 		}
-
 		// Submit command lists and present
 		gfxDevice->SubmitFrame();
+#endif
 	}
 
 	app.Finalize();
 
 	EngineFinalize();
-}
-
-
-RHI::GfxDevice* PhxEngine::GetGfxDevice()
-{
-	return m_gfxDevice.get();
 }
 
 Core::IWindow* PhxEngine::GetWindow()
@@ -147,9 +139,4 @@ Core::IWindow* PhxEngine::GetWindow()
 tf::Executor& PhxEngine::GetTaskExecutor()
 {
 	return m_taskExecutor;
-}
-
-PhxEngine::Renderer::AsyncGpuUploader& PhxEngine::GetAsyncLoader()
-{
-	return m_asyncLoader;
 }

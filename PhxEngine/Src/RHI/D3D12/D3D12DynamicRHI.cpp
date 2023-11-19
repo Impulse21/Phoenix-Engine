@@ -37,7 +37,27 @@ extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\
 // Come up with a better reporting system for resources
 #define TRACK_RESOURCES 0
 namespace
-{    
+{
+
+	// Define a global function to handle the messages
+	void CALLBACK DebugCallback(D3D12_MESSAGE_CATEGORY Category, D3D12_MESSAGE_SEVERITY Severity, D3D12_MESSAGE_ID ID, LPCSTR pDescription, void* pContext)
+	{
+		switch (Severity)
+		{
+		case D3D12_MESSAGE_SEVERITY_MESSAGE:
+		case D3D12_MESSAGE_SEVERITY_INFO:
+			LOG_RHI_INFO(pDescription);
+			break;
+		case D3D12_MESSAGE_SEVERITY_WARNING:
+			LOG_RHI_WARN(pDescription);
+			break;
+		case D3D12_MESSAGE_SEVERITY_ERROR:
+		case D3D12_MESSAGE_SEVERITY_CORRUPTION:
+			LOG_RHI_ERROR(pDescription);
+			break;
+		}
+	}
+
 	// helper function for texture subresource calculations
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/dn705766(v=vs.85).aspx
 	uint32_t CalcSubresource(uint32_t mipSlice, uint32_t arraySlice, uint32_t planeSlice, uint32_t mipLevels, uint32_t arraySize)
@@ -330,7 +350,7 @@ PhxEngine::RHI::D3D12::D3D12DynamicRHI::D3D12DynamicRHI()
 	: m_timerQueryIndexPool(kTimestampQueryHeapSize)
 {
 	assert(D3D12DynamicRHI::SingleD3D12RHI == nullptr);
-	D3D12DynamicRHI::SingleD3D12RHI == this;
+	D3D12DynamicRHI::SingleD3D12RHI = this;
 }
 
 PhxEngine::RHI::D3D12::D3D12DynamicRHI::~D3D12DynamicRHI()
@@ -465,15 +485,17 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::Initialize()
 
 void PhxEngine::RHI::D3D12::D3D12DynamicRHI::Finalize()
 {
+	this->WaitForIdle();
+
 #if 0
 	this->DeleteBuffer(this->m_timestampQueryBuffer);
 
-	for (auto handle : this->m_swapChain.BackBuffers)
+	for (auto handle : impl->BackBuffers)
 	{
 		this->m_texturePool.Release(handle);
 	}
 
-	this->m_swapChain.BackBuffers.clear();
+	impl->BackBuffers.clear();
 
 	for (int i = 0; i < this->m_frameCommandListHandles.size(); i++)
 	{
@@ -484,16 +506,18 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::Finalize()
 
 	this->RunGarbageCollection(~0u);
 
+	RefCountPtr<ID3D12InfoQueue1> infoQueue;
+	if (SUCCEEDED(this->m_rootDevice->QueryInterface<ID3D12InfoQueue1>(&infoQueue)))
+	{
+		infoQueue->UnregisterMessageCallback(this->m_CallbackCookie);
+	}
+
 #if ENABLE_PIX_CAPUTRE
 	FreeLibrary(this->m_pixCaptureModule);
 #endif
 }
 
-void PhxEngine::RHI::D3D12::D3D12DynamicRHI::ResizeSwapchain(SwapChainDesc const& desc)
-{
-}
-
-void PhxEngine::RHI::D3D12::D3D12DynamicRHI::SubmitFrame()
+void PhxEngine::RHI::D3D12::D3D12DynamicRHI::Present(SwapChain* swapChain)
 {
 	// -- Mark Queues for completion ---
 	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
@@ -505,13 +529,14 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::SubmitFrame()
 
 	// -- Present SwapChain ---
 
+	D3D12SwapChain* impl = ResourceCast(swapChain);
 	{
 		UINT presentFlags = 0;
-		if (!this->m_swapChain.Desc.VSync && !this->m_swapChain.Desc.Fullscreen)
+		if (!impl->Desc().VSync && !impl->Desc().Fullscreen)
 		{
 			presentFlags = DXGI_PRESENT_ALLOW_TEARING;
 		}
-		HRESULT hr = this->m_swapChain.NativeSwapchain4->Present((UINT)this->m_swapChain.Desc.VSync, presentFlags);
+		HRESULT hr = impl->NativeSwapchain4->Present((UINT)impl->Desc().VSync, presentFlags);
 
 		// If the device was reset we must completely reinitialize the renderer.
 		if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
@@ -539,7 +564,7 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::SubmitFrame()
 
 			// If the fence is max uint64, that might indicate that the device has been removed as fences get reset in this case
 			assert(completedFrame != UINT64_MAX);
-			uint32_t bufferCount = this->m_swapChain.Desc.BufferCount;
+			uint32_t bufferCount = impl->Desc().BufferCount;
 
 			// Since our frame count is 1 based rather then 0, increment the number of buffers by 1 so we don't have to wait on the first 3 frames
 			// that are kicked off.
@@ -575,16 +600,16 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::WaitForIdle()
 	}
 }
 
-bool PhxEngine::RHI::D3D12::D3D12DynamicRHI::IsHdrSwapchainSupported()
+bool PhxEngine::RHI::D3D12::D3D12DynamicRHI::IsHdrSwapchainSupported(D3D12SwapChain* swapChain)
 {
-	if (!this->m_swapChain.NativeSwapchain)
+	if (!swapChain->NativeSwapchain)
 	{
 		return false;
 	}
 
 	// HDR display query: https://docs.microsoft.com/en-us/windows/win32/direct3darticles/high-dynamic-range
 	Microsoft::WRL::ComPtr<IDXGIOutput> dxgiOutput;
-	if (SUCCEEDED(this->m_swapChain.NativeSwapchain->GetContainingOutput(&dxgiOutput)))
+	if (SUCCEEDED(swapChain->NativeSwapchain->GetContainingOutput(&dxgiOutput)))
 	{
 		Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
 		if (SUCCEEDED(dxgiOutput.As(&output6)))
@@ -613,6 +638,81 @@ bool PhxEngine::RHI::D3D12::D3D12DynamicRHI::IsDevicedRemoved()
 bool PhxEngine::RHI::D3D12::D3D12DynamicRHI::CheckCapability(DeviceCapability deviceCapability)
 {
 	return (this->m_capabilities & deviceCapability) == deviceCapability;
+}
+
+SwapChainRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateSwapChain(SwapChainDesc const& desc, void* windowHandle)
+{
+	HRESULT hr;
+	UINT swapChainFlags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+	swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+
+	const DxgiFormatMapping& formatMapping = GetDxgiFormatMapping(desc.Format);
+
+	// Create swapchain:
+	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+	swapChainDesc.Width = desc.Width;
+	swapChainDesc.Height = desc.Height;
+	swapChainDesc.Format = formatMapping.RtvFormat;
+	swapChainDesc.Stereo = false;
+	swapChainDesc.SampleDesc.Count = 1;
+	swapChainDesc.SampleDesc.Quality = 0;
+	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	swapChainDesc.BufferCount = desc.BufferCount;
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+	swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+	swapChainDesc.Flags = swapChainFlags;
+
+	swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+
+	DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreenDesc = {};
+	fullscreenDesc.Windowed = !desc.Fullscreen;
+
+	SwapChainRef swapChain = SwapChainRef::Create(phx_new(D3D12SwapChain));
+	D3D12SwapChain* d3D12SwapChain = ResourceCast(swapChain.Get());
+
+	hr = this->GetDxgiFactory()->CreateSwapChainForHwnd(
+		this->GetQueue(RHI::CommandQueueType::Graphics).GetD3D12CommandQueue(),
+		static_cast<HWND>(windowHandle),
+		&swapChainDesc,
+		&fullscreenDesc,
+		nullptr,
+		d3D12SwapChain->NativeSwapchain.GetAddressOf()
+	);
+
+	ThrowIfFailed(hr);
+	hr = d3D12SwapChain->NativeSwapchain->QueryInterface(IID_PPV_ARGS(&d3D12SwapChain->NativeSwapchain4));
+	ThrowIfFailed(hr);
+
+	this->CreateSwapChainResources(d3D12SwapChain);
+
+	return swapChain;
+}
+
+void PhxEngine::RHI::D3D12::D3D12DynamicRHI::ResizeSwapChain(SwapChain* swapChain, SwapChainDesc const& desc)
+{
+	if (!swapChain)
+	{
+		return;
+	}
+
+	WaitForIdle();
+
+	D3D12SwapChain* impl = ResourceCast(swapChain);
+	impl->BackBuferViews.clear();
+	impl->BackBuffers.clear();
+
+	const auto& formatMapping = GetDxgiFormatMapping(desc.Format);
+	UINT swapChainFlags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+	swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+
+	ThrowIfFailed(
+		impl->NativeSwapchain4->ResizeBuffers(
+			desc.BufferCount,
+			desc.Width,
+			desc.Height,
+			formatMapping.RtvFormat,
+			swapChainFlags));
+	this->CreateSwapChainResources(impl);
 }
 
 void PhxEngine::RHI::D3D12::D3D12DynamicRHI::RunGarbageCollection(uint64_t completedFrame)
@@ -724,6 +824,28 @@ void D3D12DynamicRHI::CreateGpuTimestampQueryHeap(uint32_t queryCount)
 			IID_PPV_ARGS(&this->m_gpuTimestampQueryHeap)));
 }
 
+void PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateSwapChainResources(D3D12SwapChain* swapChain)
+{
+	swapChain->BackBuffers.resize(swapChain->Desc().BufferCount);
+	swapChain->BackBuferViews.resize(swapChain->Desc().BufferCount);
+
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+	rtvDesc.Format = D3D12::GetDxgiFormatMapping(swapChain->Desc().Format).RtvFormat;
+	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+	for (int i = 0; i < swapChain->BackBuffers.size(); i++)
+	{
+		ThrowIfFailed(
+			swapChain->NativeSwapchain4->GetBuffer(i, IID_PPV_ARGS(&swapChain->BackBuffers[i])));
+
+		DescriptorView& view = swapChain->BackBuferViews[i];
+		view.Allocation = this->GetRtvCpuHeap().Allocate(1);
+		view.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+		view.RTVDesc = rtvDesc;
+
+		this->GetD3D12Device()->CreateRenderTargetView(swapChain->BackBuffers[i], &rtvDesc, view.Allocation.GetCpuHandle());
+	}
+}
+
 void PhxEngine::RHI::D3D12::D3D12DynamicRHI::InitializeD3D12NativeResources(IDXGIAdapter* gpuAdapter)
 {
 	this->m_factory = CreateDXGIFactory6();
@@ -833,12 +955,13 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::InitializeD3D12NativeResources(IDXG
 	static const bool debugEnabled = IsDebuggerPresent();
 	if (debugEnabled)
 	{
-		Microsoft::WRL::ComPtr<ID3D12InfoQueue> infoQueue;
-		if (SUCCEEDED(this->m_rootDevice->QueryInterface<ID3D12InfoQueue>(&infoQueue)))
+		Microsoft::WRL::ComPtr<ID3D12InfoQueue1> infoQueue;
+		if (SUCCEEDED(this->m_rootDevice->QueryInterface<ID3D12InfoQueue1>(&infoQueue)))
 		{
 			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
 			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
 			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, false);
+			infoQueue->RegisterMessageCallback(DebugCallback, D3D12_MESSAGE_CALLBACK_FLAG_NONE, nullptr, &this->m_CallbackCookie);
 
 			D3D12_MESSAGE_SEVERITY severities[] =
 			{
@@ -900,7 +1023,8 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::FindAdapter(Microsoft::WRL::ComPtr<
 		DXGI_ADAPTER_DESC1 desc = {};
 		tempAdapter->GetDesc1(&desc);
 
-		std::string name = NarrowString(desc.Description);
+		std::string name;
+		Core::StringConvert(desc.Description, name);
 		size_t dedicatedVideoMemory = desc.DedicatedVideoMemory;
 		size_t dedicatedSystemMemory = desc.DedicatedSystemMemory;
 		size_t sharedSystemMemory = desc.SharedSystemMemory;
@@ -939,7 +1063,8 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::FindAdapter(Microsoft::WRL::ComPtr<
 	DXGI_ADAPTER_DESC desc = {};
 	selectedAdapter->GetDesc(&desc);
 
-	std::string name = NarrowString(desc.Description);
+	std::string name;
+	Core::StringConvert(desc.Description, name);
 	size_t dedicatedVideoMemory = desc.DedicatedVideoMemory;
 	size_t dedicatedSystemMemory = desc.DedicatedSystemMemory;
 	size_t sharedSystemMemory = desc.SharedSystemMemory;
@@ -956,7 +1081,7 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::FindAdapter(Microsoft::WRL::ComPtr<
 		dedicatedSystemMemory / (1024 * 1024),
 		sharedSystemMemory / (1024 * 1024));
 
-	outAdapter.Name = NarrowString(desc.Description);
+	outAdapter.Name = name;
 	outAdapter.BasicDeviceInfo = selectedBasicDeviceInfo;
 	outAdapter.NativeDesc = desc;
 	outAdapter.NativeAdapter = selectedAdapter;

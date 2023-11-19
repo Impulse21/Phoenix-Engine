@@ -2,13 +2,13 @@
 
 #include <memory>
 
-#include "D3D12GfxDevice.h"
+#include "D3D12DynamicRHI.h"
 #include "D3D12DescriptorHeap.h"
 
 using namespace PhxEngine::RHI::D3D12;
 
 void PhxEngine::RHI::D3D12::CpuDescriptorHeap::Initialize(
-	D3D12GfxDevice* device,
+	D3D12DynamicRHI* dynamicRHI,
 	uint32_t numDesctiptors,
 	D3D12_DESCRIPTOR_HEAP_TYPE type,
 	D3D12_DESCRIPTOR_HEAP_FLAGS flags)
@@ -21,9 +21,9 @@ void PhxEngine::RHI::D3D12::CpuDescriptorHeap::Initialize(
 		1 // node mask
 	};
 
-	this->m_descriptorSize = device->GetD3D12Device()->GetDescriptorHandleIncrementSize(type);
+	this->m_descriptorSize = dynamicRHI->GetD3D12Device()->GetDescriptorHandleIncrementSize(type);
 	this->m_numDescriptorsPerHeap = numDesctiptors;
-	this->m_device = device;
+	this->m_dynamicRHI = dynamicRHI;
 }
 
 DescriptorHeapAllocation CpuDescriptorHeap::Allocate(uint32_t numDescriptors)
@@ -73,7 +73,7 @@ std::shared_ptr<DescriptorHeapAllocationPage> CpuDescriptorHeap::CreateAllocatio
 	auto newPage = std::make_shared<DescriptorHeapAllocationPage>(
 		this->m_heapPool.size(),
 		this,
-		this->m_device->GetD3D12Device2(),
+		this->m_dynamicRHI->GetD3D12Device2(),
 		this->m_heapDesc,
 		this->m_numDescriptorsPerHeap);
 
@@ -292,14 +292,14 @@ void DescriptorHeapAllocationPage::FreeBlock(uint32_t offset, uint32_t numDescri
 }
 
 void PhxEngine::RHI::D3D12::GpuDescriptorHeap::Initialize(
-	D3D12GfxDevice* device,
+	D3D12DynamicRHI* dynamicRHI,
 	uint32_t numDesctiptors,
 	uint32_t numDynamicDesciprotrs,
 	D3D12_DESCRIPTOR_HEAP_TYPE type,
 	D3D12_DESCRIPTOR_HEAP_FLAGS flags)
 {
-	this->m_device = device;
-	this->m_descriptorSize = this->m_device->GetD3D12Device()->GetDescriptorHandleIncrementSize(type);
+	this->m_dynamicRHI = dynamicRHI;
+	this->m_descriptorSize = this->m_dynamicRHI->GetD3D12Device()->GetDescriptorHandleIncrementSize(type);
 
 	this->m_heapDesc =
 	{
@@ -310,7 +310,7 @@ void PhxEngine::RHI::D3D12::GpuDescriptorHeap::Initialize(
 	};
 
 	ThrowIfFailed(
-		this->m_device->GetD3D12Device()->CreateDescriptorHeap(
+		this->m_dynamicRHI->GetD3D12Device()->CreateDescriptorHeap(
 			&this->m_heapDesc,
 			IID_PPV_ARGS(&this->m_d3dHeap)));
 
@@ -318,7 +318,7 @@ void PhxEngine::RHI::D3D12::GpuDescriptorHeap::Initialize(
 	this->m_staticPage = std::make_unique<DescriptorHeapAllocationPage>(
 		0,
 		this,
-		this->m_device->GetD3D12Device2(),
+		this->m_dynamicRHI->GetD3D12Device2(),
 		this->m_heapDesc,
 		this->m_d3dHeap,
 		numDesctiptors,
@@ -327,7 +327,7 @@ void PhxEngine::RHI::D3D12::GpuDescriptorHeap::Initialize(
 	this->m_dynamicPage = std::make_unique<DescriptorHeapAllocationPage>(
 		1,
 		this,
-		this->m_device->GetD3D12Device2(),
+		this->m_dynamicRHI->GetD3D12Device2(),
 		this->m_heapDesc,
 		this->m_d3dHeap,
 		numDynamicDesciprotrs,

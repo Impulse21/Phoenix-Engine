@@ -6,7 +6,6 @@
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/Object.h>
 #include <PhxEngine/Core/Memory.h>
-#include <PhxEngine/Renderer/AsyncGpuUploader.h>
 #include <taskflow/taskflow.hpp>
 
 namespace PhxEngine
@@ -22,16 +21,12 @@ namespace PhxEngine
 		virtual bool IsShuttingDown() = 0;
 		virtual void OnUpdate() = 0;
 		virtual void OnRender() = 0;
-		virtual void OnCompose(RHI::CommandListHandle composeCmdList) = 0;
-
 	};
 
 	void Run(IEngineApp& engingApp);
 
-	RHI::GfxDevice* GetGfxDevice();
 	Core::IWindow* GetWindow();
 	tf::Executor& GetTaskExecutor();
-	PhxEngine::Renderer::AsyncGpuUploader& GetAsyncLoader();
 
 }
 

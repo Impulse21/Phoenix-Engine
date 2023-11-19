@@ -8,39 +8,10 @@ namespace PhxEngine::RHI
 {
     class ScopedMarker;
 
-    struct GPUAllocation
-    {
-        void* CpuData;
-        BufferHandle GpuBuffer;
-        size_t Offset;
-        size_t SizeInBytes;
-    };
-
     struct ExecutionReceipt
     {
         uint64_t FenceValue;
         CommandQueueType CommandQueue;
-    };
-
-    struct SwapChainDesc
-    {
-        uint32_t Width = 0;
-        uint32_t Height = 0;
-        uint32_t BufferCount = 3;
-        RHI::Format Format = RHI::Format::R10G10B10A2_UNORM;
-        bool Fullscreen = false;
-        bool VSync = false;
-        bool EnableHDR = false;
-        RHI::ClearValue OptmizedClearValue =
-        {
-            .Colour =
-            {
-                0.0f,
-                0.0f,
-                0.0f,
-                1.0f,
-            }
-        };
     };
 
     struct MemoryUsage
@@ -60,11 +31,8 @@ namespace PhxEngine::RHI
         virtual void Initialize() = 0;
         virtual void Finalize() = 0;
 
-        // -- Resizes swapchain ---
-        virtual void ResizeSwapchain(SwapChainDesc const& desc) = 0;
-
         // -- Submits Command lists and presents ---
-        virtual void SubmitFrame() = 0;
+        virtual void Present(SwapChain* swapChain) = 0;
         virtual void WaitForIdle() = 0;
 
         virtual bool IsDevicedRemoved() = 0;
@@ -74,7 +42,7 @@ namespace PhxEngine::RHI
         // -- Resouce Functions ---
     public:
         virtual SwapChainRef CreateSwapChain(SwapChainDesc const& desc, void* windowsHandle) = 0;
-
+        virtual void ResizeSwapChain(SwapChain* swapChain, SwapChainDesc const& desc) = 0;
     };
 
     template <class T>

@@ -18,7 +18,7 @@
 #include "D3D12BiindlessDescriptorTable.h"
 #include "D3D12UploadBuffer.h"
 #include "D3D12Resources.h"
-
+#include <functional>
 
 // Teir 1 limit is 1,000,000
 // https://docs.microsoft.com/en-us/windows/win32/direct3d12/hardware-support
@@ -43,18 +43,18 @@ namespace PhxEngine::RHI::D3D12
 		~D3D12DynamicRHI();
 
         static D3D12DynamicRHI* GetD3D12RHI() { return SingleD3D12RHI;  }
+        template<typename TRHIType, typename TReturnType = typename TD3D12ResourceTraits<TRHIType>::TConcreteType>
+        static FORCEINLINE TReturnType* ResourceCast(TRHIType* Resource)
+        {
+            return static_cast<TReturnType*>(Resource);
+        }
 
-        // -- Interface Functions ---
-        // -- Frame Functions ---
     public:
         void Initialize() override;
         void Finalize() override;
 
-        // -- Resizes swapchain ---
-        void ResizeSwapchain(SwapChainDesc const& desc) override;
-
         // -- Submits Command lists and presents ---
-        void SubmitFrame() override;
+        void Present(SwapChain* swapChain) override;
         void WaitForIdle() override;
 
         bool IsDevicedRemoved() override;
@@ -62,6 +62,8 @@ namespace PhxEngine::RHI::D3D12
 
         // -- Resouce Functions ---
     public:
+        SwapChainRef CreateSwapChain(SwapChainDesc const& desc, void* windowsHandle) override;
+        void ResizeSwapChain(SwapChain* swapChain, SwapChainDesc const& desc) override;
 
         // -- Dx12 Specific functions ---
     public:
@@ -98,14 +100,21 @@ namespace PhxEngine::RHI::D3D12
         GpuDescriptorHeap& GetSamplerGpuHeap() { return this->m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler]; }
 
         ID3D12QueryHeap* GetQueryHeap() { return this->m_gpuTimestampQueryHeap.Get(); }
-        BufferHandle GetTimestampQueryBuffer() { return this->m_timestampQueryBuffer; }
+        // BufferHandle GetTimestampQueryBuffer() { return this->m_timestampQueryBuffer; }
         const D3D12BindlessDescriptorTable& GetBindlessTable() const { return this->m_bindlessResourceDescriptorTable; }
 
-    private:
-        bool IsHdrSwapchainSupported();
+        inline void EnqueueDelete(std::function<void()>&& function)
+        {
+            this->m_deleteQueue.push_back({
+                    .Frame = this->m_frameCount,
+                    .DeleteFn = std::move(function)
+                });
+        }
 
     private:
         void CreateGpuTimestampQueryHeap(uint32_t queryCount);
+        void CreateSwapChainResources(D3D12SwapChain* swapChain);
+        bool IsHdrSwapchainSupported(D3D12SwapChain* swapChain);
 
         // -- Dx12 API creation ---
     private:
@@ -117,7 +126,6 @@ namespace PhxEngine::RHI::D3D12
         void TranslateBlendState(BlendRenderState const& inState, D3D12_BLEND_DESC& outState);
         void TranslateDepthStencilState(DepthStencilRenderState const& inState, D3D12_DEPTH_STENCIL_DESC& outState);
         void TranslateRasterState(RasterRenderState const& inState, D3D12_RASTERIZER_DESC& outState);
-
 	private:
         const uint32_t kTimestampQueryHeapSize = 1024;
         
@@ -144,8 +152,6 @@ namespace PhxEngine::RHI::D3D12
 		bool IsUnderGraphicsDebugger = false;
         RHI::DeviceCapability m_capabilities;
 
-        D3D12SwapChain m_swapChain;
-
         // -- Command Queues ---
 		std::array<D3D12CommandQueue, (int)CommandQueueType::Count> m_commandQueues;
 
@@ -155,7 +161,7 @@ namespace PhxEngine::RHI::D3D12
 
         // -- Query Heaps ---
         Microsoft::WRL::ComPtr<ID3D12QueryHeap> m_gpuTimestampQueryHeap;
-        BufferHandle m_timestampQueryBuffer;
+        
         Core::BitSetAllocator m_timerQueryIndexPool;
 
         D3D12BindlessDescriptorTable m_bindlessResourceDescriptorTable;
@@ -174,6 +180,8 @@ namespace PhxEngine::RHI::D3D12
 #ifdef ENABLE_PIX_CAPUTRE
         HMODULE m_pixCaptureModule;
 #endif
+
+        DWORD m_CallbackCookie;
 	};
 
 }

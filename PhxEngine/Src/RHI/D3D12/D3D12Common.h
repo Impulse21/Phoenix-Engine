@@ -39,16 +39,11 @@ namespace PhxEngine::RHI::D3D12
         }
     }
 
-    inline std::string NarrowString(const wchar_t* WideStr)
+    // Template helper class for converting RHI resource types to D3D12RHI resource types
+    template<class T>
+    struct TD3D12ResourceTraits
     {
-        std::string NarrowStr;
-
-        const std::ctype<wchar_t>& ctfacet = std::use_facet<std::ctype<wchar_t>>(std::wstringstream().getloc());
-        for (auto CurrWChar = WideStr; *CurrWChar != 0; ++CurrWChar)
-            NarrowStr.push_back(ctfacet.narrow(*CurrWChar, 0));
-
-        return NarrowStr;
-    }
+    };
 
     struct DxgiFormatMapping
     {

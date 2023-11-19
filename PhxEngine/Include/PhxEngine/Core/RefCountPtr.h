@@ -2,6 +2,9 @@
 
 #include <type_traits>
 #include <atomic>
+#include <assert.h>
+#include <PhxEngine/Core/Memory.h>
+
 namespace PhxEngine::Core
 {
     //////////////////////////////////////////////////////////////////////////
@@ -255,25 +258,19 @@ namespace PhxEngine::Core
         std::atomic<unsigned long> m_refCount = 1;
 
     public:
-        virtual unsigned long AddRef() override
+        unsigned long AddRef() override
         {
             return ++m_refCount;
         }
 
-        virtual unsigned long Release() override
+        unsigned long Release() override
         {
             unsigned long result = --m_refCount;
             if (result == 0) 
             {
-                this->InternalDelete();
+                phx_delete(this);;
             }
             return result;
-        }
-
-    protected:
-        virtual void InternalDelete() override
-        {
-            delete this;
         }
     };
 }

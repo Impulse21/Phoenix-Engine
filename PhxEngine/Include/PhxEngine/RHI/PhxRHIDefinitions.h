@@ -641,4 +641,11 @@ namespace PhxEngine::RHI
 
         uint32_t BaseVertex = 0;
     };
+
+    struct SubresourceData
+    {
+        const void* pData = nullptr;
+        uint32_t rowPitch = 0;
+        uint32_t slicePitch = 0;
+    };
 }
