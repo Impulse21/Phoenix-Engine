@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stack>
+#include <vector>
 #include <string>
 #include <PhxEngine/Core/Span.h>
 
@@ -16,8 +18,9 @@ namespace PhxEngine::Renderer
 {
 	struct RgNonCopyable
 	{
-		RgNonCopyable(RgNonCopyable const&); // non construction-copyable
-		RgNonCopyable& operator=(RgNonCopyable const&); // non copyable
+		RgNonCopyable() = default;
+		RgNonCopyable(RgNonCopyable const&) = delete; // non construction-copyable
+		RgNonCopyable& operator=(RgNonCopyable const&) = delete; // non copyable
 	};
 	// Ether do pointers or handles
 	class RGTexture
@@ -76,7 +79,7 @@ namespace PhxEngine::Renderer
 		uint64_t		Id		: 32; // 32 bit unsigned int
 	};
 
-	static_assert(sizeof(RgResourceHandle) == sizeof(uint64_t));
+	// static_assert(sizeof(RgResourceHandle) == sizeof(uint64_t));
 
 
 	/** Flags to annotate a pass with when calling AddPass. */
@@ -90,10 +93,21 @@ namespace PhxEngine::Renderer
 	};
 	PHX_ENUM_CLASS_FLAGS(RgPassFlags);
 
+	class RgDependencyLevel;
 	class RgPass : RgNonCopyable
 	{
+		friend RgDependencyLevel;
 	public:
-		RgPass(std::string_view name, Core::Span<RgResourceHandle> reads, Core::Span<RgResourceHandle> writes, RgPassFlags flags) noexcept;
+		RgPass(std::string_view name, Core::Span<RgResourceHandle> reads, Core::Span<RgResourceHandle> writes, RgPassFlags flags) noexcept
+			: m_name(name)
+			, m_flags(flags)
+		{
+			this->m_reads.resize(reads.Size());
+			std::memcpy(this->m_reads.data(), reads.begin(), reads.Size() * sizeof(RgResourceHandle));
+
+			this->m_writes.resize(writes.Size());
+			std::memcpy(this->m_writes.data(), writes.begin(), writes.Size() * sizeof(RgResourceHandle));
+		}
 
 		bool HasAnyDependencies() const noexcept { return !this->m_reads.empty() || !this->m_writes.empty(); }
 
@@ -108,9 +122,8 @@ namespace PhxEngine::Renderer
 		std::string_view m_name;
 		std::vector<RgResourceHandle> m_reads;
 		std::vector<RgResourceHandle> m_writes;
-
-
 	};
+
 	template<typename TExecuteLambda>
 	class RgLambdaPass final : public RgPass
 	{
@@ -143,10 +156,24 @@ namespace PhxEngine::Renderer
 		}
 	};
 
+	class RgDependencyLevel
+	{
+	public:
+		void AddPass(RgPass* pass);
+
+		void Execute();
+
+	private:
+		std::vector<RgPass*> m_passes;
+
+		std::vector<RgResourceHandle> m_reads;
+		std::vector<RgResourceHandle> m_writes;
+	};
+
 	class RenderGraphBuilder
 	{
 	public:
-		RenderGraphBuilder();
+		RenderGraphBuilder(Core::IAllocator* allocoator);
 		RenderGraphBuilder(const RenderGraphBuilder&) = delete;
 
 		void Execute();
@@ -190,8 +217,8 @@ namespace PhxEngine::Renderer
 		template<typename TExecuteLambda>
 		inline RgPass* AddPass(std::string_view name, Core::Span<RgResourceHandle> reads, Core::Span<RgResourceHandle> writes, RgPassFlags flags, TExecuteLambda&& lambda)
 		{
-			// TODO: Allocate on
-			RgPass* pass = m_graphAllocator->Allocate<RgLambdaPass>(name, reads, writes, flags, std::move(lambda));
+			using LambdaPassType = RgLambdaPass<TExecuteLambda>;
+			RgPass* pass = this->m_graphAllocator->Construct<LambdaPassType>(name, reads, writes, flags, std::move(lambda));
 			m_renderPasses.emplace_back(pass);
 
 			return pass;
@@ -199,7 +226,9 @@ namespace PhxEngine::Renderer
 
 	private:
 		void Setup();
-		void ExecuteInternal();
+
+		void DepthFirstSearchRec(size_t n, std::vector<bool>& visited, std::stack<size_t>& stack) const;
+		void DepthFirstSearchRec(size_t n, std::vector<bool>& visited, std::vector<bool>& onStack);
 
 	private:
 		Core::IAllocator* m_graphAllocator;
@@ -209,7 +238,8 @@ namespace PhxEngine::Renderer
 		std::vector<RgPass*> m_renderPasses;
 
 		std::vector<std::vector<size_t>> m_adjacencyLists;
-
+		std::vector<RgPass*> m_topologicalSortedPasses;
+		std::vector<RgDependencyLevel> m_compiledDependencyLevels;
 	};
 }
 

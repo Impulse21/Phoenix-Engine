@@ -57,12 +57,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 {
 	Initialize();
 
+	Core::LinearAllocator graphAllocator;
+	graphAllocator.Initialize(PhxMB(1));
 	while (!window->ShouldClose())
 	{
+		graphAllocator.Clear();
 		window->OnTick();
 		RHI::DynamicRHI* rhi = RHI::GetDynamic();
 
-		Renderer::RenderGraphBuilder graph;
+		Renderer::RenderGraphBuilder graph(&graphAllocator);
 		
 		// - Just testing API
 		Renderer::RgResourceHandle albedoTex	= graph.CreateTexture();
@@ -70,6 +73,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		Renderer::RgResourceHandle specularTex	= graph.CreateTexture();
 		Renderer::RgResourceHandle emissiveTex	= graph.CreateTexture();
 
+		const size_t size = sizeof(Renderer::RgResourceHandle);
+		const size_t size1 = sizeof(uint64_t);
 		graph.AddPass(
 			"FillGBuffer",
 			{},
@@ -104,8 +109,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 		graph.Execute();
 		rhi->Present(swapChain);
+		break;
 	}
 
+	graphAllocator.Finalize();
 	::Finalize();
 	// Create SwapChain
 }
