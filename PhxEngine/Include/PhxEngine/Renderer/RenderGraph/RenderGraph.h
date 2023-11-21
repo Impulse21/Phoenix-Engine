@@ -97,7 +97,7 @@ namespace PhxEngine::Renderer
 
 		bool HasAnyDependencies() const noexcept { return !this->m_reads.empty() || !this->m_writes.empty(); }
 
-		std::vector<RgResourceHandle> GetWrites() const noexcept { return this->m_writes; }
+		Core::Span<RgResourceHandle> GetWrites() const noexcept { return this->m_writes; }
 		Core::Span<RgResourceHandle> GetReads() const noexcept { return this->m_writes; }
 
 	protected:
