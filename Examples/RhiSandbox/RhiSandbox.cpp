@@ -2,6 +2,7 @@
 
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Core/EventDispatcher.h>
+#include <PhxEngine/Renderer/RenderGraph/RenderGraph.h>
 
 using namespace PhxEngine;
 
@@ -60,9 +61,51 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	{
 		window->OnTick();
 		RHI::DynamicRHI* rhi = RHI::GetDynamic();
+
+		Renderer::RenderGraphBuilder graph;
+		
+		// - Just testing API
+		Renderer::RgResourceHandle albedoTex	= graph.CreateTexture();
+		Renderer::RgResourceHandle normalTex	= graph.CreateTexture();
+		Renderer::RgResourceHandle specularTex	= graph.CreateTexture();
+		Renderer::RgResourceHandle emissiveTex	= graph.CreateTexture();
+
+		graph.AddPass(
+			"FillGBuffer",
+			{},
+			{ albedoTex, normalTex, specularTex, emissiveTex },
+			Renderer::RgPassFlags::Raster,
+			[](Renderer::RgRegistry const& registry, RHI::CommandListRef commandList)
+			{
+				LOG_INFO("FillGBuffer");
+			});
+
+		Renderer::RgResourceHandle lightingBuffer = graph.CreateTexture();
+		graph.AddPass(
+			"LightingPasss",
+			{ albedoTex, normalTex, specularTex, emissiveTex },
+			{ lightingBuffer },
+			Renderer::RgPassFlags::Raster,
+			[](Renderer::RgRegistry const& registry, RHI::CommandListRef commandList)
+			{
+				LOG_INFO("LightingPasss");
+			});
+
+		Renderer::RgResourceHandle backBuffer = graph.RegisterExternalTexture(nullptr);
+		graph.AddPass(
+			"TonMapping",
+			{ lightingBuffer },
+			{ backBuffer },
+			Renderer::RgPassFlags::Raster,
+			[](Renderer::RgRegistry const& registry, RHI::CommandListRef commandList)
+			{
+				LOG_INFO("TonMapping");
+			});
+
+		graph.Execute();
 		rhi->Present(swapChain);
 	}
 
-	Finalize();
+	::Finalize();
 	// Create SwapChain
 }

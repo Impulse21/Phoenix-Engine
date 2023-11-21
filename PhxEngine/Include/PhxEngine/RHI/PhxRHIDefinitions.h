@@ -2,15 +2,7 @@
 
 #include <stdint.h>
 #include <string>
-
-#define PHXRHI_ENUM_CLASS_FLAG_OPERATORS(T) \
-    inline T operator | (T a, T b) { return T(uint32_t(a) | uint32_t(b)); } \
-    inline T& operator |=(T& a, T b) { return a = a | b; }\
-    inline T operator & (T a, T b) { return T(uint32_t(a) & uint32_t(b)); } /* NOLINT(bugprone-macro-parentheses) */ \
-    inline T operator ~ (T a) { return T(~uint32_t(a)); } /* NOLINT(bugprone-macro-parentheses) */ \
-    inline bool operator !(T a) { return uint32_t(a) == 0; } \
-    inline bool operator ==(T a, uint32_t b) { return uint32_t(a) == b; } \
-    inline bool operator !=(T a, uint32_t b) { return uint32_t(a) != b; }
+#include <PhxEngine/Core/EnumClassFlags.h>
 
 namespace PhxEngine::RHI
 {
@@ -40,7 +32,7 @@ namespace PhxEngine::RHI
         Bindless = 1 << 7,
     };
 
-    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(DeviceCapability);
+    PHX_ENUM_CLASS_FLAGS(DeviceCapability);
 
     enum class GraphicsAPI
     {
@@ -73,7 +65,7 @@ namespace PhxEngine::RHI
 
         All = 0x3FFF,
     };
-    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(ShaderStage)
+    PHX_ENUM_CLASS_FLAGS(ShaderStage)
 
         enum class ColourSpace
     {
@@ -316,7 +308,7 @@ namespace PhxEngine::RHI
         ShaderResourceNonPixel = 1 << 22,
     };
 
-    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(ResourceStates)
+    PHX_ENUM_CLASS_FLAGS(ResourceStates)
 
         enum class ShaderType
     {
@@ -494,7 +486,7 @@ namespace PhxEngine::RHI
         IsAliasedResource = 1 << 5,
     };
 
-    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(BufferMiscFlags);
+    PHX_ENUM_CLASS_FLAGS(BufferMiscFlags);
 
     enum class TextureMiscFlags
     {
@@ -503,7 +495,7 @@ namespace PhxEngine::RHI
         Typeless = 1 << 1,
     };
 
-    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(TextureMiscFlags);
+    PHX_ENUM_CLASS_FLAGS(TextureMiscFlags);
 
     enum class BindingFlags
     {
@@ -518,7 +510,7 @@ namespace PhxEngine::RHI
         ShadingRate = 1 << 7,
     };
 
-    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(BindingFlags);
+    PHX_ENUM_CLASS_FLAGS(BindingFlags);
 
     enum class SubresouceType
     {

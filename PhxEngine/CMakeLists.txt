@@ -59,6 +59,16 @@ file(GLOB PhxEngine_Renderer_Src
 	Src/Renderer/*.cpp
 )
 
+#-- Render Graph
+file(GLOB PhxEngine_Render_Graph_Inc
+	Include/PhxEngine/Renderer/RenderGraph/*.h
+)
+
+file(GLOB PhxEngine_Render_Graph_Src
+	Src/Renderer/RenderGraph/*.h
+	Src/Renderer/RenderGraph/*.cpp
+)
+
 #-- Assets
 file(GLOB PhxEngine_Assets_Inc
 	Include/PhxEngine/Assets/*.h
@@ -122,33 +132,37 @@ add_library(PhxEngine STATIC EXCLUDE_FROM_ALL
     ${PhxEngine_Graphics_ImGui_Src}
 	${PhxEngine_Renderer_Inc}
 	${PhxEngine_Renderer_Src}
+	${PhxEngine_Render_Graph_Inc}
+	${PhxEngine_Render_Graph_Src}
 	${PhxEngine_Renderer_DX12_Src}
 	${PhxEngine_Shader_Interop_Inc}
     ${PhxEngine_Inc}
     ${PhxEngine_Src})
 
-source_group("Include"					FILES ${PhxEngine_Inc})
-source_group("Include/Engine"           FILES ${PhxEngine_Engine_Inc})
-source_group("Include/Core"             FILES ${PhxEngine_Core_Inc})
-source_group("Include/Graphics"         FILES ${PhxEngine_Graphics_Inc})
-source_group("Include/RHI"				FILES ${PhxEngine_Graphics_RHI_Inc})
-source_group("Include/Graphics/ImGui"   FILES ${PhxEngine_Graphics_ImGui_Inc})
-source_group("Include/Graphics"         FILES ${PhxEngine_Graphics_Inc})
-source_group("Include/System"           FILES ${PhxEngine_System_Inc})
-source_group("Include/Renderer"			FILES ${PhxEngine_Renderer_Inc})
-source_group("Include/Interop"			FILES ${PhxEngine_Shader_Interop_Inc})
-source_group("Include/Assets"			FILES ${PhxEngine_Assets_Inc})
+source_group("Include"						FILES ${PhxEngine_Inc})
+source_group("Include/Engine"				FILES ${PhxEngine_Engine_Inc})
+source_group("Include/Core"					FILES ${PhxEngine_Core_Inc})
+source_group("Include/Graphics"				FILES ${PhxEngine_Graphics_Inc})
+source_group("Include/RHI"					FILES ${PhxEngine_Graphics_RHI_Inc})
+source_group("Include/Graphics/ImGui"		FILES ${PhxEngine_Graphics_ImGui_Inc})
+source_group("Include/Graphics"				FILES ${PhxEngine_Graphics_Inc})
+source_group("Include/System"				FILES ${PhxEngine_System_Inc})
+source_group("Include/Renderer"				FILES ${PhxEngine_Renderer_Inc})
+source_group("Include/Renderer/RenderGraph"	FILES ${PhxEngine_Render_Graph_Inc})
+source_group("Include/Interop"				FILES ${PhxEngine_Shader_Interop_Inc})
+source_group("Include/Assets"				FILES ${PhxEngine_Assets_Inc})
 
-source_group("Src"						FILES ${PhxEngine_Src})
-source_group("Src/Engine"               FILES ${PhxEngine_Engine_Src})
-source_group("Src/Core"                 FILES ${PhxEngine_Core_Src})
-source_group("Src/Graphics"             FILES ${PhxEngine_Graphics_Src})
-source_group("Src/RHI"					FILES ${PhxEngine_Graphics_RHI_Src})
-source_group("Src/RHI/Windows"			FILES ${PhxEngine_Graphics_RHI_Windows_Src})
-source_group("Src/RHI/D3D12"			FILES ${PhxEngine_Graphics_RHI_DX12_Src})
-source_group("Src/Renderer"             FILES ${PhxEngine_Renderer_Src})
-source_group("Src/Renderer/ImGui"       FILES ${PhxEngine_Graphics_ImGui_Src})
-source_group("Src/Assets"				FILES ${PhxEngine_Assets_Src})
+source_group("Src"							FILES ${PhxEngine_Src})
+source_group("Src/Engine"					FILES ${PhxEngine_Engine_Src})
+source_group("Src/Core"						FILES ${PhxEngine_Core_Src})
+source_group("Src/Graphics"					FILES ${PhxEngine_Graphics_Src})
+source_group("Src/RHI"						FILES ${PhxEngine_Graphics_RHI_Src})
+source_group("Src/RHI/Windows"				FILES ${PhxEngine_Graphics_RHI_Windows_Src})
+source_group("Src/RHI/D3D12"				FILES ${PhxEngine_Graphics_RHI_DX12_Src})
+source_group("Src/Renderer"					FILES ${PhxEngine_Renderer_Src})
+source_group("Src/Renderer/ImGui"			FILES ${PhxEngine_Graphics_ImGui_Src})
+source_group("Src/Renderer/RenderGraph"		FILES ${PhxEngine_Render_Graph_Src})
+source_group("Src/Assets"					FILES ${PhxEngine_Assets_Src})
 
 #add_subdirectory(Shaders)
 

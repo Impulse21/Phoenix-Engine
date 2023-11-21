@@ -56,4 +56,11 @@ namespace PhxEngine::RHI
     };
     using SwapChainRef = Core::RefCountPtr<SwapChain>;
 
+    class CommandList : public RHIResource
+    {
+    public:
+        CommandList() = default;
+
+    };
+    using CommandListRef = Core::RefCountPtr<CommandList>;
 }

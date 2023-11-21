@@ -130,6 +130,19 @@ namespace PhxEngine::Core
             return static_cast<_T*>(this->Allocate(memory, sizeof(_T), alignment));
         };
 
+        template<typename T, typename... TArgs>
+        T* Construct(TArgs&&... Args)
+        {
+            void* Memory = this->Allocate(sizeof(T), 16);
+            return new (Memory) T(std::forward<TArgs>(Args)...);
+        }
+
+        template<typename T>
+        static void Destruct(T* Ptr)
+        {
+            Ptr->~T();
+        }
+
         virtual void Initialize(size_t size) = 0;
         virtual void Finalize() = 0;
 
