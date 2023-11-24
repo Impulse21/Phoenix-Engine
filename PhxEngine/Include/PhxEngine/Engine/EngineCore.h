@@ -6,7 +6,9 @@
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/Object.h>
 #include <PhxEngine/Core/Memory.h>
+#include <PhxEngine/Renderer/RenderGraph/RenderGraph.h>
 #include <taskflow/taskflow.hpp>
+
 
 namespace PhxEngine
 {
@@ -20,7 +22,7 @@ namespace PhxEngine
 
 		virtual bool IsShuttingDown() = 0;
 		virtual void OnUpdate() = 0;
-		virtual void OnRender() = 0;
+		virtual void OnRender(Renderer::RgBuilder& rgBuilder) = 0;
 	};
 
 	void Run(IEngineApp& engingApp);

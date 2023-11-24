@@ -4,7 +4,6 @@
 
 // Forward Declares
 struct ImGuiContext;
-
 namespace PhxEngine
 {
 	namespace Core
@@ -15,20 +14,24 @@ namespace PhxEngine
 	{
 		class ShaderFactory;
 	}
+	namespace Renderer
+	{
+		class RgBuilder;
+	}
 }
 
-#if 0
 namespace PhxEngine::Renderer
 {
 	namespace ImGuiRenderer
 	{
-		void Initialize(Core::IWindow* window, RHI::GfxDevice* gfxDevice, bool enableDocking = false);
+		void Initialize(Core::IWindow* window, bool enableDocking = false);
 		void Finalize();
 		void EnableDarkThemeColours();
 		
 		void BeginFrame();
-		void Render(RHI::CommandListHandle cmd);
+		void Render(RgBuilder& builder);
 	}
+#if 0
 	class ImGuiRenderer
 	{
 	public:
@@ -44,8 +47,6 @@ namespace PhxEngine::Renderer
 
 		virtual void BuildUI() {}
 
-		RHI::RenderPassHandle RenderPass;
-
 	private:
 		ImGuiContext* m_imguiContext;
 
@@ -54,7 +55,7 @@ namespace PhxEngine::Renderer
 		RHI::ShaderHandle m_pixelShader;
 		RHI::InputLayoutHandle m_inputLayout;
 		RHI::GfxPipelineHandle m_pipeline;
+#endif
 	};
 }
-#endif
 

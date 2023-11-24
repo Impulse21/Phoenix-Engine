@@ -12,10 +12,6 @@ namespace
 	RHI::SwapChainRef swapChain = nullptr;
 	void Initialize()
 	{
-		Renderer::RG::PassResult result(1);
-		const Renderer::RG::Reference f = result.Colour(0, true);
-		
-
 		Core::Log::Initialize();
 		RHI::Initialize(RHI::GraphicsAPI::DX12);
 
@@ -68,50 +64,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		graphAllocator.Clear();
 		window->OnTick();
 		RHI::DynamicRHI* rhi = RHI::GetDynamic();
+		{
+			Renderer::RgBuilder graph(&graphAllocator);
 
-		Renderer::RenderGraphBuilder graph(&graphAllocator);
-		
-		// - Just testing API
-		Renderer::RgResourceHandle albedoTex	= graph.CreateTexture();
-		Renderer::RgResourceHandle normalTex	= graph.CreateTexture();
-		Renderer::RgResourceHandle specularTex	= graph.CreateTexture();
-		Renderer::RgResourceHandle emissiveTex	= graph.CreateTexture();
-
-		const size_t size = sizeof(Renderer::RgResourceHandle);
-		const size_t size1 = sizeof(uint64_t);
-		graph.AddPass(
-			"FillGBuffer",
-			{},
-			{ albedoTex, normalTex, specularTex, emissiveTex },
-			Renderer::RgPassFlags::Raster,
-			[](Renderer::RgRegistry const& registry, RHI::CommandListRef commandList)
-			{
-				LOG_INFO("FillGBuffer");
-			});
-
-		Renderer::RgResourceHandle lightingBuffer = graph.CreateTexture();
-		graph.AddPass(
-			"LightingPasss",
-			{ albedoTex, normalTex, specularTex, emissiveTex },
-			{ lightingBuffer },
-			Renderer::RgPassFlags::Raster,
-			[](Renderer::RgRegistry const& registry, RHI::CommandListRef commandList)
-			{
-				LOG_INFO("LightingPasss");
-			});
-
-		Renderer::RgResourceHandle backBuffer = graph.RegisterExternalTexture(nullptr);
-		graph.AddPass(
-			"TonMapping",
-			{ lightingBuffer },
-			{ backBuffer },
-			Renderer::RgPassFlags::Raster,
-			[](Renderer::RgRegistry const& registry, RHI::CommandListRef commandList)
-			{
-				LOG_INFO("TonMapping");
-			});
-
-		graph.Execute();
+		}
 		rhi->Present(swapChain);
 		break;
 	}

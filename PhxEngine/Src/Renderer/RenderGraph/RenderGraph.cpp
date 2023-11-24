@@ -8,14 +8,14 @@
 
 using namespace PhxEngine::Renderer;
 
-PhxEngine::Renderer::RenderGraphBuilder::RenderGraphBuilder(Core::IAllocator* allocoator)
+PhxEngine::Renderer::RgBuilder::RgBuilder(Core::IAllocator* allocoator)
 	: m_graphAllocator(allocoator)
 {
 	this->m_prologuePass = this->m_graphAllocator->Construct<RgSentinelPass>("Prologue");
 	this->m_epiloguePass = this->m_graphAllocator->Construct<RgSentinelPass>("Epilogue");
 	this->m_renderPasses.emplace_back(this->m_prologuePass);
 }
-void PhxEngine::Renderer::RenderGraphBuilder::Execute()
+void PhxEngine::Renderer::RgBuilder::Execute()
 {
 	this->m_renderPasses.emplace_back(this->m_epiloguePass);
 	this->Setup();
@@ -27,10 +27,44 @@ void PhxEngine::Renderer::RenderGraphBuilder::Execute()
 	}
 }
 
-void PhxEngine::Renderer::RenderGraphBuilder::Setup()
+void PhxEngine::Renderer::RgBuilder::Setup()
 {
+	// https://poniesandlight.co.uk/reflect/island_rendergraph_1/
 	// https://levelup.gitconnected.com/organizing-gpu-work-with-directed-acyclic-graphs-f3fd5f2c2af3
+	// TODO: Validate graph
+	// The graph is implicily created topologcly sorted because of the Pass Results. 
+	// The dependent graph would already be added prior to it's dependencies.
+	std::vector<int> distance(this->m_renderPasses.size(), 0);
+
+	for (int u = this->m_renderPasses.size() - 1; u --> 0 ; )
+	{
+		for (RgReference reference : m_renderPasses[u]->GetReads())
+		{
+			if (reference.Type != RgReferenceType::PassResult)
+			{
+				continue;
+			}
+
+			if (distance[reference.Index] < distance[u] + 1)
+			{
+				distance[reference.Index] = distance[u] + 1;
+			}
+		}
+	}
+
+	this->m_compiledDependencyLevels.resize(*std::ranges::max_element(distance) + 1);
+	for (int i = this->m_renderPasses.size() - 1; i --> 0; )
+	{
+		int level = distance[i];
+		this->m_compiledDependencyLevels[level].AddPass(this->m_renderPasses[i]);
+	}
+
+	std::reverse(this->m_compiledDependencyLevels.begin(), this->m_compiledDependencyLevels.end());
+
+#if 0
+
 	this->m_adjacencyLists.resize(this->m_renderPasses.size());
+
 
 	for (size_t i = 0; i < this->m_renderPasses.size(); ++i)
 	{
@@ -55,21 +89,13 @@ void PhxEngine::Renderer::RenderGraphBuilder::Setup()
 			}
 
 			RgPass* neigbour = this->m_renderPasses[j];
-			for (const RgResourceHandle& writeResources : node->GetWrites())
+			bool found = false;
+			for (const RgReference& neibourReadRef : node->GetReads())
 			{
-				bool found = false;
-				for (const RgResourceHandle& neigbourReads : node->GetReads())
+				if (neibourReadRef.Type == RgReferenceType::PassResult && neibourReadRef.Index == i)
 				{
-					if (writeResources == neigbourReads)
-					{
-						indices.push_back(j);
-						found = true;
-						break;
-					}
-				}
-
-				if (found)
-				{
+					indices.push_back(j);
+					found = true;
 					break;
 				}
 			}
@@ -112,9 +138,10 @@ void PhxEngine::Renderer::RenderGraphBuilder::Setup()
 		int level = distance[i];
 		this->m_compiledDependencyLevels[level].AddPass(this->m_topologicalSortedPasses[i]);
 	}
+#endif
 }
 
-void PhxEngine::Renderer::RenderGraphBuilder::DepthFirstSearchRec(size_t n, std::vector<bool>& visited, std::stack<size_t>& stack) const
+void PhxEngine::Renderer::RgBuilder::DepthFirstSearchRec(size_t n, std::vector<bool>& visited, std::stack<size_t>& stack) const
 {
 	visited[n] = true;
 
@@ -129,7 +156,7 @@ void PhxEngine::Renderer::RenderGraphBuilder::DepthFirstSearchRec(size_t n, std:
 	stack.push(n);
 }
 
-void PhxEngine::Renderer::RenderGraphBuilder::DepthFirstSearchRec(size_t n, std::vector<bool>& visited, std::vector<bool>& onStack)
+void PhxEngine::Renderer::RgBuilder::DepthFirstSearchRec(size_t n, std::vector<bool>& visited, std::vector<bool>& onStack)
 {
 	visited[n] = true;
 	onStack[n] = true;

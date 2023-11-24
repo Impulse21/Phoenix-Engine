@@ -16,7 +16,7 @@ namespace
 	// -- Globals ---
 	std::unique_ptr<Core::IWindow> m_window;
 	tf::Executor m_taskExecutor;
-
+	LinearAllocator m_scratchAllocator;
 	std::atomic_bool m_engineRunning = false;
 
 	void EngineInitialize()
@@ -64,6 +64,7 @@ namespace
 
 		});
 
+		m_scratchAllocator.Initialize(PhxMB(1));
 	}
 
 	void EngineFinalize()
@@ -75,6 +76,7 @@ namespace
 		RHI::Finiailize();
 
 		m_window.reset();
+		m_scratchAllocator.Finalize();
 
 		Core::Log::Finialize();
 
@@ -92,11 +94,14 @@ void PhxEngine::Run(IEngineApp& app)
 
 	while (!app.IsShuttingDown())
 	{
+		m_scratchAllocator.Clear();
 		m_window->OnTick();
 
 		// TODO: Add Delta Time
 		app.OnUpdate();
-		app.OnRender();
+
+		Renderer::RgBuilder rgBuilder(&m_scratchAllocator);
+		app.OnRender(rgBuilder);
 
 #if false
 		// Compose final frame

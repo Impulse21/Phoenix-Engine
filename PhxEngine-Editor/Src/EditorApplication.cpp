@@ -16,6 +16,7 @@
 
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
+using namespace PhxEngine::Renderer;
 
 namespace
 {
@@ -127,10 +128,7 @@ namespace
             {
                 return;
             }
-		}
 
-		void OnRender() override
-		{
             Renderer::ImGuiRenderer::BeginFrame();
             if (!this->m_isInitialize.load())
             {
@@ -163,9 +161,9 @@ namespace
                 ImGui::End();
 		}
 
-		void OnCompose(RHI::CommandListHandle composeCmdList) override
+		void OnRender(RgBuilder& rgBuilder) override
 		{
-			Renderer::ImGuiRenderer::Render(composeCmdList);
+            Renderer::ImGuiRenderer::Render(rgBuilder);
 		}
 
         template<typename _TWidget>

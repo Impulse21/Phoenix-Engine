@@ -14,7 +14,6 @@ using namespace PhxEngine;
 using namespace PhxEngine::Core;
 using namespace PhxEngine::RHI;
 
-#if false
 namespace
 {
     enum RootParameters
@@ -26,17 +25,16 @@ namespace
 
     ImGuiContext* m_imguiContext;
 
-    RHI::TextureHandle m_fontTexture;
-    RHI::ShaderHandle m_vertexShader;
-    RHI::ShaderHandle m_pixelShader;
-    RHI::InputLayoutHandle m_inputLayout;
-    RHI::GfxPipelineHandle m_pipeline;
-    RHI::GfxDevice* m_gfxDevice;
+    RHI::TextureRef m_fontTexture;
+    // TODO: Drop these, they are not needed.
+    RHI::ShaderRef m_vertexShader;
+    RHI::ShaderRef m_pixelShader;
+    RHI::InputLayoutRef m_inputLayout;
+    RHI::GfxPipelineRef m_pipeline;
 }
 
-void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* window, RHI::GfxDevice* gfxDevice, bool enableDocking)
+void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* window, bool enableDocking)
 {
-    m_gfxDevice = gfxDevice;
     m_imguiContext = ImGui::CreateContext();
     ImGui::SetCurrentContext(m_imguiContext);
     auto* glfwWindow = static_cast<GLFWwindow*>(window->GetNativeWindow());
@@ -72,7 +70,8 @@ void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* wi
     desc.MipLevels = 1;
     desc.DebugName = "IMGUI Font Texture";
 
-    m_fontTexture = gfxDevice->CreateTexture(desc);
+    DynamicRHI* rhi = RHI::GetDynamic();
+    m_fontTexture = rhi->CreateTexture(desc);
     io.Fonts->SetTexID(static_cast<void*>(&m_fontTexture));
     RHI::SubresourceData subResourceData = {};
 
@@ -81,20 +80,22 @@ void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* wi
     subResourceData.slicePitch = subResourceData.rowPitch * height;
     subResourceData.pData = pixelData;
 
+    // TODO - Upload Font Textures
+#if 0
     CommandListHandle uploadCommandList = gfxDevice->BeginCommandList();
 
     gfxDevice->TransitionBarrier(m_fontTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest, uploadCommandList);
     gfxDevice->WriteTexture(m_fontTexture, 0, 1, &subResourceData, uploadCommandList);
     gfxDevice->TransitionBarrier(m_fontTexture, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource, uploadCommandList);
 
-
-    m_vertexShader = gfxDevice->CreateShader( {
+#endif
+    m_vertexShader = rhi->CreateShader( {
             .Stage = RHI::ShaderStage::Vertex,
             .DebugName = "ImGuiVS",
         },
         PhxEngine::Core::Span<uint8_t>(static_cast<const uint8_t*>(g_mainVS), sizeof(g_mainVS) / sizeof(unsigned char)));
 
-    m_pixelShader = gfxDevice->CreateShader(
+    m_pixelShader = rhi->CreateShader(
         {
             .Stage = RHI::ShaderStage::Pixel,
             .DebugName = "ImGuiPS",
@@ -109,17 +110,16 @@ void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* wi
         { "COLOR",      0, RHI::Format::RGBA8_UNORM, 0, VertexAttributeDesc::SAppendAlignedElement, false},
     };
 
-    m_inputLayout = gfxDevice->CreateInputLayout(attributeDesc.data(), attributeDesc.size());
+    m_inputLayout = rhi->CreateInputLayout(attributeDesc.data(), attributeDesc.size());
 }
 
 void PhxEngine::Renderer::ImGuiRenderer::Finalize()
 {
-    m_gfxDevice->DeleteGfxPipeline(m_pipeline);
-    // m_gfxDevice->DeleteInputLayout(m_inputLayout);
-    // m_gfxDevice->DeleteShader(m_pixelShader);
-    // m_gfxDevice->DeleteShader(m_vertexShader);
-    m_gfxDevice->DeleteTexture(m_fontTexture);
-
+    m_fontTexture.Reset();
+    m_vertexShader.Reset();
+    m_pixelShader.Reset();
+    m_inputLayout.Reset();
+    m_pipeline.Reset();
     ImGui::DestroyContext(m_imguiContext);
 }
 
@@ -130,9 +130,10 @@ void PhxEngine::Renderer::ImGuiRenderer::BeginFrame()
     ImGui::NewFrame();
 }
 
-void PhxEngine::Renderer::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
+void PhxEngine::Renderer::ImGuiRenderer::Render(Renderer::RgBuilder& builder)
 {
-    if (!m_pipeline.IsValid())
+    DynamicRHI* rhi = RHI::GetDynamic();
+    if (m_pipeline == nullptr)
     {
         GfxPipelineDesc psoDesc = {
             .InputLayout = m_inputLayout,
@@ -162,10 +163,10 @@ void PhxEngine::Renderer::ImGuiRenderer::Render(RHI::CommandListHandle cmd)
                 .DepthClipEnable = true,
                 .ScissorEnable = true,
             },
-            .RtvFormats = { m_gfxDevice->GetTextureDesc(m_gfxDevice->GetBackBuffer()).Format },
+            .RtvFormats = { m_gfxDevice->GetTextureDesc(m_gfxDevice->GetBackBuffer()).Format }, // TODO;
         };
 
-        m_pipeline = m_gfxDevice->CreateGfxPipeline(psoDesc);
+        m_pipeline = rhi->CreateGfxPipeline(psoDesc);
     }
 
     ImGui::SetCurrentContext(m_imguiContext);
@@ -302,4 +303,3 @@ void PhxEngine::Renderer::ImGuiRenderer::EnableDarkThemeColours()
     colors[ImGuiCol_TitleBgActive] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
     colors[ImGuiCol_TitleBgCollapsed] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
 }
-#endif

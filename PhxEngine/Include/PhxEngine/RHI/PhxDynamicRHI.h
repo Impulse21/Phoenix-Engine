@@ -41,8 +41,19 @@ namespace PhxEngine::RHI
 
         // -- Resouce Functions ---
     public:
-        virtual SwapChainRef CreateSwapChain(SwapChainDesc const& desc, void* windowsHandle) = 0;
+        virtual SwapChainRef CreateSwapChain(SwapChainDesc const& desc, void* windowsRef) = 0;
+
+        virtual ShaderRef CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) = 0;
+        virtual InputLayoutRef CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) = 0;
+        virtual GfxPipelineRef CreateGfxPipeline(GfxPipelineDesc const& desc) = 0;
+        virtual ComputePipelineRef CreateComputePipeline(ComputePipelineDesc const& desc) = 0;
+        virtual MeshPipelineRef CreateMeshPipeline(MeshPipelineDesc const& desc) = 0;
+        virtual TextureRef CreateTexture(TextureDesc const& desc) = 0;
+        virtual BufferRef CreateBuffer(BufferDesc const& desc) = 0;
+
         virtual void ResizeSwapChain(SwapChain* swapChain, SwapChainDesc const& desc) = 0;
+
+        // Create the other stuff
     };
 
     template <class T>
