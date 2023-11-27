@@ -69,7 +69,7 @@ namespace
 		void Initialize() override
 		{
 			PhxEngine::GetTaskExecutor().silent_async([this]() {
-				Renderer::ImGuiRenderer::Initialize(GetWindow(), GetGfxDevice(), true);
+				Renderer::ImGuiRenderer::Initialize(GetWindow(), GetSwapChain()->GetDesc().Format, true);
 			    Renderer::ImGuiRenderer::EnableDarkThemeColours();
 			    std::unique_ptr<IFileSystem> fileSystem = CreateNativeFileSystem();
 

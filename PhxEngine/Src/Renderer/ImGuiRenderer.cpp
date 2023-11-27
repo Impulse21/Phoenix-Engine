@@ -6,11 +6,15 @@
 
 #include <stdexcept>
 #include <DirectXMath.h>
+
+
 #include <imgui.h>
 #include "ImGui/imgui_impl_glfw.h"
 
 #include "ImGui/ImguiVS.h"
 #include "ImGui/ImguiPS.h"
+
+#include <dstorage.h>
 
 using namespace PhxEngine;
 using namespace PhxEngine::Core;
@@ -86,15 +90,18 @@ void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* wi
     subResourceData.slicePitch = subResourceData.rowPitch * height;
     subResourceData.pData = pixelData;
 
-    // TODO - Upload Font Textures
-#if 0
-    CommandListHandle uploadCommandList = gfxDevice->BeginCommandList();
 
-    gfxDevice->TransitionBarrier(m_fontTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest, uploadCommandList);
-    gfxDevice->WriteTexture(m_fontTexture, 0, 1, &subResourceData, uploadCommandList);
-    gfxDevice->TransitionBarrier(m_fontTexture, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource, uploadCommandList);
+    // Enqueue a request to read the file contents into a destination D3D12 buffer resource.
+    // Note: The example request below is performing a single read of the entire file contents.
+    StorageRequest request = {};
+    request.InternalRequest.Options.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
+    request.InternalRequest.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_MULTIPLE_SUBRESOURCES;
+    request.InternalRequest.Source.Memory.Size = subResourceData.rowPitch * subResourceData.slicePitch;
+    request.InternalRequest.Source.Memory.Source = pixelData;
+    request.InternalRequest.Destination.MultipleSubresources.FirstSubresource = 0;
+    request.DestinationTexture = m_fontTexture;
+    rhi->GetDirectStorage()->EnqueueRequest(request);
 
-#endif
     m_vertexShader = rhi->CreateShader( {
             .Stage = RHI::ShaderStage::Vertex,
             .DebugName = "ImGuiVS",
@@ -117,6 +124,8 @@ void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* wi
     };
 
     m_inputLayout = rhi->CreateInputLayout(attributeDesc.data(), attributeDesc.size());
+
+    rhi->GetDirectStorage()->Submit(true);
 }
 
 void PhxEngine::Renderer::ImGuiRenderer::Finalize()

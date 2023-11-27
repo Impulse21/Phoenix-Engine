@@ -1,5 +1,7 @@
 #pragma once
 
+#define NOMINMAX
+
 #include <memory>
 #include <array>
 #include <deque>
@@ -20,6 +22,8 @@
 #include "D3D12Resources.h"
 #include <functional>
 
+#include <dstorage.h>
+
 // Teir 1 limit is 1,000,000
 // https://docs.microsoft.com/en-us/windows/win32/direct3d12/hardware-support
 #define TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE 1000000
@@ -33,6 +37,21 @@ namespace PhxEngine::RHI::D3D12
     constexpr size_t kNumCommandListPerFrame = 32;
     constexpr size_t kResourcePoolSize = 100000; // 1 KB of handles
     constexpr size_t kNumConcurrentRenderTargets = 8;
+
+    class DirectStorage final : public Core::RefCounter<IDirectStorage>
+    {
+    public:
+        DirectStorage(ID3D12Device* device);
+
+        void EnqueueRequest(StorageRequest const& request) override;
+        SubmitReceipt Submit(bool waitForComplete = false) override;
+
+    private:
+        Core::RefCountPtr<IDStorageFactory> m_factory;
+        Core::RefCountPtr<IDStorageQueue> m_queue[2];
+        Core::RefCountPtr<ID3D12Fence> m_fence;
+        uint32_t m_fenceValue = 0;
+    };
 
 	class D3D12DynamicRHI final : public RHI::DynamicRHI
 	{
@@ -59,6 +78,9 @@ namespace PhxEngine::RHI::D3D12
 
         bool IsDevicedRemoved() override;
         bool CheckCapability(DeviceCapability deviceCapability) override;
+
+        IDirectStorage* GetDirectStorage() override { return this->m_directStorage.Get(); }
+        void Wait(SubmitReceipt const& reciet) override;
 
         // -- Resouce Functions ---
     public:
@@ -189,6 +211,8 @@ namespace PhxEngine::RHI::D3D12
         // -- Frame Frences --
         std::array<Microsoft::WRL::ComPtr<ID3D12Fence>, (int)CommandQueueType::Count> m_frameFences;
         uint64_t m_frameCount = 1;
+
+        Core::RefCountPtr<DirectStorage> m_directStorage;
 
         struct DeleteItem
         {

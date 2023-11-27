@@ -1,3 +1,4 @@
+#define NOMINMAX
 
 #include "D3D12DynamicRHI.h"
 
@@ -281,6 +282,20 @@ namespace
 		}
 	}
 
+	constexpr DSTORAGE_REQUEST_DESTINATION_TYPE ConvertStorageDestinationType(RequestDesntination const& dest)
+	{
+		switch (dest)
+		{
+		case RequestDesntination::Buffer:
+			return DSTORAGE_REQUEST_DESTINATION_BUFFER;
+		case RequestDesntination::TextureRegion:
+			return DSTORAGE_REQUEST_DESTINATION_TEXTURE_REGION;
+		case RequestDesntination::TextureAllSubResources:
+			return DSTORAGE_REQUEST_DESTINATION_MULTIPLE_SUBRESOURCES;
+		default:
+			return DSTORAGE_REQUEST_DESTINATION_BUFFER;
+		}
+	}
 
 	Microsoft::WRL::ComPtr<IDXGIFactory6> CreateDXGIFactory6()
 	{
@@ -345,6 +360,66 @@ namespace
 
 
 }
+
+
+DirectStorage::DirectStorage(ID3D12Device* device)
+{
+	ThrowIfFailed(
+		DStorageGetFactory(IID_PPV_ARGS(this->m_factory.ReleaseAndGetAddressOf())));
+
+	// buffer on the GPU.
+	DSTORAGE_QUEUE_DESC queueDesc{};
+	queueDesc.Capacity = DSTORAGE_MAX_QUEUE_CAPACITY;
+	queueDesc.Priority = DSTORAGE_PRIORITY_NORMAL;
+	queueDesc.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
+	queueDesc.Device = device;
+
+	ThrowIfFailed(
+		this->m_factory->CreateQueue(&queueDesc, IID_PPV_ARGS(this->m_queue[DSTORAGE_REQUEST_SOURCE_FILE].ReleaseAndGetAddressOf())));
+
+
+	queueDesc.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
+	ThrowIfFailed(
+		this->m_factory->CreateQueue(&queueDesc, IID_PPV_ARGS(this->m_queue[DSTORAGE_REQUEST_SOURCE_MEMORY].ReleaseAndGetAddressOf())));
+
+	queueDesc.SourceType = DSTORAGE_REQUEST_SOURCE_MEMORY;
+	ThrowIfFailed(
+		this->m_factory->CreateQueue(&queueDesc, IID_PPV_ARGS(this->m_queue[DSTORAGE_REQUEST_SOURCE_MEMORY].ReleaseAndGetAddressOf())));
+
+	ThrowIfFailed(
+		device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_fence)));
+}
+
+void DirectStorage::EnqueueRequest(StorageRequest const& request)
+{
+	DSTORAGE_REQUEST r = request.InternalRequest;
+
+	if (r.Options.DestinationType == DSTORAGE_REQUEST_DESTINATION_MULTIPLE_SUBRESOURCES && request.DestinationTexture)
+	{
+		r.Destination.MultipleSubresources.Resource = D3D12DynamicRHI::ResourceCast(request.DestinationTexture)->D3D12Resource.Get();
+		r.Destination.MultipleSubresources.FirstSubresource = 0;
+	}
+
+	this->m_queue[r.Options.SourceType]->EnqueueRequest(&r);
+}
+
+SubmitReceipt DirectStorage::Submit(bool waitForComplete)
+{
+	this->m_queue[DSTORAGE_REQUEST_SOURCE_MEMORY]->EnqueueSignal(this->m_fence.Get(), ++this->m_fenceValue);
+	this->m_queue[DSTORAGE_REQUEST_SOURCE_MEMORY]->Submit();
+
+	if (waitForComplete)
+	{
+		// Wait on the frames last value?
+		// NULL event handle will simply wait immediately:
+		//	https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12fence-seteventoncompletion#remarks
+		ThrowIfFailed(
+			this->m_fence->SetEventOnCompletion(this->m_fenceValue, nullptr));
+	}
+
+	return {};
+}
+
 
 PhxEngine::RHI::D3D12::D3D12DynamicRHI::D3D12DynamicRHI()
 	: m_timerQueryIndexPool(kTimestampQueryHeapSize)
@@ -481,6 +556,8 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::Initialize()
 		ThrowIfFailed(
 			this->GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_frameFences[q])));
 	}
+
+	this->m_directStorage = Core::RefCountPtr<DirectStorage>::Create(phx_new(DirectStorage(this->m_rootDevice.Get())));
 }
 
 void PhxEngine::RHI::D3D12::D3D12DynamicRHI::Finalize()
@@ -515,6 +592,9 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::Finalize()
 #if ENABLE_PIX_CAPUTRE
 	FreeLibrary(this->m_pixCaptureModule);
 #endif
+}
+void D3D12DynamicRHI::Wait(SubmitReceipt const& reciet)
+{
 }
 
 void PhxEngine::RHI::D3D12::D3D12DynamicRHI::Present(ISwapChain* swapChain)
@@ -1201,7 +1281,7 @@ bool PhxEngine::RHI::D3D12::D3D12DynamicRHI::IsDevicedRemoved()
 
 bool PhxEngine::RHI::D3D12::D3D12DynamicRHI::CheckCapability(DeviceCapability deviceCapability)
 {
-	return (this->m_capabilities & deviceCapability) == deviceCapability;
+	return EnumHasAllFlags(this->m_capabilities, deviceCapability);
 }
 
 SwapChainRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateSwapChain(SwapChainDesc const& desc, void* windowHandle)

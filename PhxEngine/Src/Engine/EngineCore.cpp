@@ -15,6 +15,7 @@ namespace
 {
 	// -- Globals ---
 	std::unique_ptr<Core::IWindow> m_window;
+	RHI::SwapChainRef m_swapChain;
 	tf::Executor m_taskExecutor;
 	LinearAllocator m_scratchAllocator;
 	std::atomic_bool m_engineRunning = false;
@@ -49,7 +50,8 @@ namespace
 			.VSync = m_window->GetVSync(),
 		};
 
-		assert(false); // TODO Set up swapChain
+		m_swapChain = RHI::GetDynamic()->CreateSwapChain(swapchainDesc, m_window->GetNativeWindowHandle());
+
 		// -- Add on resize Event ---
 		EventDispatcher::AddEventListener(EventType::WindowResize, [&](Event const& e) {
 
@@ -62,6 +64,7 @@ namespace
 				.VSync = m_window->GetVSync(),
 			};
 
+			RHI::GetDynamic()->ResizeSwapChain(m_swapChain, swapchainDesc);
 		});
 
 		m_scratchAllocator.Initialize(PhxMB(1));
@@ -73,6 +76,7 @@ namespace
 		m_taskExecutor.wait_for_all();
 
 		RHI::GetDynamic()->WaitForIdle();
+		m_swapChain.Reset();
 		RHI::Finiailize();
 
 		m_window.reset();
@@ -139,6 +143,11 @@ void PhxEngine::Run(IEngineApp& app)
 Core::IWindow* PhxEngine::GetWindow()
 {
 	return m_window.get();
+}
+
+RHI::ISwapChain* PhxEngine::GetSwapChain()
+{
+	return m_swapChain.Get();
 }
 
 tf::Executor& PhxEngine::GetTaskExecutor()

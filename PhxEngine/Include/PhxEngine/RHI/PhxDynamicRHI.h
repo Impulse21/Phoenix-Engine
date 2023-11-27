@@ -4,6 +4,9 @@
 #include <PhxEngine/Core/Span.h>
 #include <PhxEngine/RHI/PhxRHIResources.h>
 
+#define NOMINMAX
+#include <dstorage.h>
+
 namespace PhxEngine::RHI
 {
     class ScopedMarker;
@@ -18,6 +21,45 @@ namespace PhxEngine::RHI
     {
         uint64_t Budget = 0ull;
         uint64_t Usage = 0ull;
+    };
+
+    struct SubmitReceipt
+    {
+        uint64_t FenceValue;
+        void* Internal;
+    };
+
+    enum class RequestSourceType
+    {
+        File,
+        Memory
+    };
+
+    enum class RequestDesntination
+    {
+        Buffer,
+        TextureRegion,
+        TextureAllSubResources
+    };
+
+    struct StorageRequest
+    {
+        DSTORAGE_REQUEST InternalRequest;
+
+        union
+        {
+            IBuffer* DestinationBuffer;
+            ITexture* DestinationTexture;
+        };
+    };
+
+    class IDirectStorage
+    {
+    public:
+        virtual void EnqueueRequest(StorageRequest const& request) = 0;
+        virtual SubmitReceipt Submit(bool waitForComplete = false) = 0;
+
+        virtual ~IDirectStorage() = default;
     };
 
     class DynamicRHI
@@ -37,6 +79,10 @@ namespace PhxEngine::RHI
         virtual bool IsDevicedRemoved() = 0;
 
         virtual bool CheckCapability(DeviceCapability deviceCapability) = 0;
+
+        virtual IDirectStorage* GetDirectStorage() = 0;
+
+        virtual void Wait(SubmitReceipt const& reciet) = 0;
 
         // -- Resouce Functions ---
     public:

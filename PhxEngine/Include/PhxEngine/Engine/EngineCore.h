@@ -28,7 +28,8 @@ namespace PhxEngine
 	void Run(IEngineApp& engingApp);
 
 	Core::IWindow* GetWindow();
-	tf::Executor& GetTaskExecutor();
+	tf::Executor& GetTaskExecutor(); 
+	RHI::ISwapChain* GetSwapChain();
 
 }
 

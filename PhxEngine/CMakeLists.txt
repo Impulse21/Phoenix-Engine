@@ -223,6 +223,30 @@ add_custom_command(
 
 message("D3D12 Agility SDK fetched")
 
+# Direct Storage
+message("Direct Storage")
+FetchContent_Declare(direct-storage-sdk URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.DirectStorage/1.2.2)
+FetchContent_MakeAvailable(direct-storage-sdk)
+file(GLOB_RECURSE direct-storage-sdk_include "${direct-storage_SOURCE_DIR}/native/include/*.h")
+add_library(
+	DirectStorageSDK INTERFACE
+	${direct-storage-sdk_include}
+	"${direct-storage-sdk_SOURCE_DIR}/native/bin/x64/dstorage.dll"
+	"${direct-storage-sdk_SOURCE_DIR}/native/bin/x64/dstoragecore.dll")
+target_include_directories(DirectStorageSDK INTERFACE "${direct-storage-sdk_SOURCE_DIR}/native/include")
+target_link_libraries(DirectStorageSDK INTERFACE "${direct-storage-sdk_SOURCE_DIR}/native/lib/x64/dstorage.lib")
+set_target_properties(DirectStorageSDK  PROPERTIES FOLDER ${extern_folder})
+target_link_libraries(${project} PUBLIC DirectStorageSDK)
+
+add_custom_command(
+	TARGET ${project} POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_directory
+	"${direct-storage-sdk_SOURCE_DIR}/native/bin/x64"
+
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+	DEPENDS DirectStorageSDK)
+message("Direct Storage")
+
 # DXC
 message("Fetching DirectXShaderCompiler")
 FetchContent_Declare(dxc URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.7.2308/dxc_2023_08_14.zip )
