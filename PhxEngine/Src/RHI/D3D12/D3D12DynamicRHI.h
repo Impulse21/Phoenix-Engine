@@ -54,7 +54,7 @@ namespace PhxEngine::RHI::D3D12
         void Finalize() override;
 
         // -- Submits Command lists and presents ---
-        void Present(SwapChain* swapChain) override;
+        void Present(ISwapChain* swapChain) override;
         void WaitForIdle() override;
 
         bool IsDevicedRemoved() override;
@@ -63,7 +63,17 @@ namespace PhxEngine::RHI::D3D12
         // -- Resouce Functions ---
     public:
         SwapChainRef CreateSwapChain(SwapChainDesc const& desc, void* windowsHandle) override;
-        void ResizeSwapChain(SwapChain* swapChain, SwapChainDesc const& desc) override;
+        ShaderRef CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) override;
+        InputLayoutRef CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) override;
+        GfxPipelineRef CreateGfxPipeline(GfxPipelineDesc const& desc) override;
+        ComputePipelineRef CreateComputePipeline(ComputePipelineDesc const& desc) override;
+        MeshPipelineRef CreateMeshPipeline(MeshPipelineDesc const& desc) override;
+        TextureRef CreateTexture(TextureDesc const& desc) override;
+        BufferRef CreateBuffer(BufferDesc const& desc) override;
+        CommandListRef CreateCommandList(RHI::CommandQueueType type = CommandQueueType::Graphics) override;
+
+    public:
+        void ResizeSwapChain(ISwapChain* swapChain, SwapChainDesc const& desc) override;
 
         // -- Dx12 Specific functions ---
     public:
@@ -115,6 +125,16 @@ namespace PhxEngine::RHI::D3D12
         void CreateGpuTimestampQueryHeap(uint32_t queryCount);
         void CreateSwapChainResources(D3D12SwapChain* swapChain);
         bool IsHdrSwapchainSupported(D3D12SwapChain* swapChain);
+        int CreateSubresource(D3D12Texture* texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip = 0, uint32_t mpCount = ~0);
+        int CreateSubresource(D3D12Buffer* buffer, SubresouceType subresourceType, size_t offset, size_t size = ~0u);
+
+        int CreateShaderResourceView(D3D12Buffer* buffer, size_t offset, size_t size);
+        int CreateUnorderedAccessView(D3D12Buffer* buffer, size_t offset, size_t size);
+
+        int CreateShaderResourceView(D3D12Texture* texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+        int CreateRenderTargetView(D3D12Texture* texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+        int CreateDepthStencilView(D3D12Texture* texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+        int CreateUnorderedAccessView(D3D12Texture* texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
 
         // -- Dx12 API creation ---
     private:

@@ -2,6 +2,8 @@
 
 #include <PhxEngine/Core/Window.h>
 #include <PhxEngine/Core/Span.h>
+#include <PhxEngine/Renderer/RenderGraph/RenderGraph.h>
+
 #include <stdexcept>
 #include <DirectXMath.h>
 #include <imgui.h>
@@ -26,15 +28,19 @@ namespace
     ImGuiContext* m_imguiContext;
 
     RHI::TextureRef m_fontTexture;
+    RHI::SwapChainRef m_swapChain;
     // TODO: Drop these, they are not needed.
     RHI::ShaderRef m_vertexShader;
     RHI::ShaderRef m_pixelShader;
     RHI::InputLayoutRef m_inputLayout;
-    RHI::GfxPipelineRef m_pipeline;
+    RHI::GfxPipelineRef m_pipeline; 
+    RHI::Format m_swapChainFormat;
 }
 
-void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* window, bool enableDocking)
+void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* window, RHI::Format swapChainFormat, bool enableDocking)
 {
+    m_swapChainFormat = swapChainFormat;
+
     m_imguiContext = ImGui::CreateContext();
     ImGui::SetCurrentContext(m_imguiContext);
     auto* glfwWindow = static_cast<GLFWwindow*>(window->GetNativeWindow());
@@ -163,7 +169,7 @@ void PhxEngine::Renderer::ImGuiRenderer::Render(Renderer::RgBuilder& builder)
                 .DepthClipEnable = true,
                 .ScissorEnable = true,
             },
-            .RtvFormats = { m_gfxDevice->GetTextureDesc(m_gfxDevice->GetBackBuffer()).Format }, // TODO;
+            .RtvFormats = { m_swapChainFormat },
         };
 
         m_pipeline = rhi->CreateGfxPipeline(psoDesc);
@@ -182,92 +188,95 @@ void PhxEngine::Renderer::ImGuiRenderer::Render(Renderer::RgBuilder& builder)
         return;
     }
 
-    ImVec2 displayPos = drawData->DisplayPos;
+    builder.AddPass(
+        "ImGui Pass",
+        {},
+        {},
+        RgPassFlags::Raster,
+        [=](RgRegistry const& registry, RHI::CommandListRef commandList)
+		{
+			ImVec2 displayPos = drawData->DisplayPos;
+	        commandList->SetGfxPipeline(m_pipeline);
 
-    {
-        m_gfxDevice->BeginMarker("ImGui", cmd);
-        m_gfxDevice->SetGfxPipeline(m_pipeline, cmd);
+	        // Set root arguments.
+	        //    DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixOrthographicRH( drawData->DisplaySize.x, drawData->DisplaySize.y, 0.0f, 1.0f );
+	        float L = drawData->DisplayPos.x;
+	        float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
+	        float T = drawData->DisplayPos.y;
+	        float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
+	        static const float mvp[4][4] =
+	        {
+		        { 2.0f / (R - L),   0.0f,           0.0f,       0.0f },
+		        { 0.0f,         2.0f / (T - B),     0.0f,       0.0f },
+		        { 0.0f,         0.0f,           0.5f,       0.0f },
+		        { (R + L) / (L - R),  (T + B) / (B - T),    0.5f,       1.0f },
+	        };
 
-        // Set root arguments.
-        //    DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixOrthographicRH( drawData->DisplaySize.x, drawData->DisplaySize.y, 0.0f, 1.0f );
-        float L = drawData->DisplayPos.x;
-        float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
-        float T = drawData->DisplayPos.y;
-        float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
-        static const float mvp[4][4] =
-        {
-            { 2.0f / (R - L),   0.0f,           0.0f,       0.0f },
-            { 0.0f,         2.0f / (T - B),     0.0f,       0.0f },
-            { 0.0f,         0.0f,           0.5f,       0.0f },
-            { (R + L) / (L - R),  (T + B) / (B - T),    0.5f,       1.0f },
-        };
+	        struct ImguiDrawInfo
+	        {
+		        DirectX::XMFLOAT4X4 Mvp;
+		        uint32_t TextureIndex;
+	        } push = {};
+	        push.Mvp = DirectX::XMFLOAT4X4(&mvp[0][0]);
 
-        struct ImguiDrawInfo
-        {
-            DirectX::XMFLOAT4X4 Mvp;
-            uint32_t TextureIndex;
-        } push = {};
-        push.Mvp = DirectX::XMFLOAT4X4(&mvp[0][0]);
+	        Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
+	        commandList->SetViewports(&v, 1);
+	        const RHI::Format indexFormat = sizeof(ImDrawIdx) == 2 ? RHI::Format::R16_UINT : RHI::Format::R32_UINT;
 
-        Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
-        m_gfxDevice->SetViewports(&v, 1, cmd);
-        
-        m_gfxDevice->SetRenderTargets({ m_gfxDevice->GetBackBuffer() }, {}, cmd);
-        const RHI::Format indexFormat = sizeof(ImDrawIdx) == 2 ? RHI::Format::R16_UINT : RHI::Format::R32_UINT;
+	        for (int i = 0; i < drawData->CmdListsCount; ++i)
+	        {
+		        const ImDrawList* drawList = drawData->CmdLists[i];
 
-        for (int i = 0; i < drawData->CmdListsCount; ++i)
-        {
-            const ImDrawList* drawList = drawData->CmdLists[i];
+		        commandList->BindDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data);
+		        commandList->BindDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data);
 
-            m_gfxDevice->BindDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data, cmd);
-            m_gfxDevice->BindDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data, cmd);
+		        int indexOffset = 0;
+		        for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
+		        {
+			        const ImDrawCmd& drawCmd = drawList->CmdBuffer[j];
 
-            int indexOffset = 0;
-            for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
-            {
-                const ImDrawCmd& drawCmd = drawList->CmdBuffer[j];
+			        if (drawCmd.UserCallback)
+			        {
+				        drawCmd.UserCallback(drawList, &drawCmd);
+			        }
+			        else
+			        {
+				        ImVec4 clipRect = drawCmd.ClipRect;
+				        Rect scissorRect;
+				        // TODO: Validate
+				        scissorRect.MinX = static_cast<int>(clipRect.x - displayPos.x);
+				        scissorRect.MinY = static_cast<int>(clipRect.y - displayPos.y);
+				        scissorRect.MaxX = static_cast<int>(clipRect.z - displayPos.x);
+				        scissorRect.MaxY = static_cast<int>(clipRect.w - displayPos.y);
 
-                if (drawCmd.UserCallback)
-                {
-                    drawCmd.UserCallback(drawList, &drawCmd);
-                }
-                else
-                {
-                    ImVec4 clipRect = drawCmd.ClipRect;
-                    Rect scissorRect;
-                    // TODO: Validate
-                    scissorRect.MinX = static_cast<int>(clipRect.x - displayPos.x);
-                    scissorRect.MinY = static_cast<int>(clipRect.y - displayPos.y);
-                    scissorRect.MaxX = static_cast<int>(clipRect.z - displayPos.x);
-                    scissorRect.MaxY = static_cast<int>(clipRect.w - displayPos.y);
+				        if (scissorRect.MaxX - scissorRect.MinX > 0.0f &&
+					        scissorRect.MaxY - scissorRect.MinY > 0.0)
+				        {
+					        // Ensure 
+					        auto textureHandle = static_cast<RHI::TextureRef*>(drawCmd.GetTexID());
+#if 0
+					        push.TextureIndex = textureHandle
+						        ? commandList->GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
+						        : RHI::cInvalidDescriptorIndex;
+#else
+                            push.TextureIndex = RHI::cInvalidDescriptorIndex;
+#endif
 
-                    if (scissorRect.MaxX - scissorRect.MinX > 0.0f &&
-                        scissorRect.MaxY - scissorRect.MinY > 0.0)
-                    {
-                        // Ensure 
-                        auto textureHandle = static_cast<RHI::TextureHandle*>(drawCmd.GetTexID());
-                        push.TextureIndex = textureHandle
-                            ? m_gfxDevice->GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
-                            : RHI::cInvalidDescriptorIndex;
+					        commandList->BindPushConstant(RootParameters::PushConstant, push);
+					        commandList->SetScissors(&scissorRect, 1);
+					        commandList->DrawIndexed({
+							        .IndexCount = drawCmd.ElemCount,
+							        .InstanceCount = 1,
+							        .StartIndex = static_cast<uint32_t>(indexOffset),
+						        });
+				        }
+			        }
+			        indexOffset += drawCmd.ElemCount;
+		        }
+	        }
+        });
 
-                        m_gfxDevice->BindPushConstant(RootParameters::PushConstant, push, cmd);
-                        m_gfxDevice->SetScissors(&scissorRect, 1, cmd);
-                        m_gfxDevice->DrawIndexed({
-                                .IndexCount = drawCmd.ElemCount,
-                                .InstanceCount = 1,
-                                .StartIndex = static_cast<uint32_t>(indexOffset),
-                            },
-                            cmd);
-                    }
-                }
-                indexOffset += drawCmd.ElemCount;
-            }
-        }
-
-        // cmd->TransitionBarriers(Span<GpuBarrier>(postBarriers.data(), postBarriers.size()));
-        m_gfxDevice->EndMarker(cmd);
-        ImGui::EndFrame();
-    }
+    ImGui::EndFrame();
 }
 
 void PhxEngine::Renderer::ImGuiRenderer::EnableDarkThemeColours()

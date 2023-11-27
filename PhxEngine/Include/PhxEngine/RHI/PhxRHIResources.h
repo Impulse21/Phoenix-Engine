@@ -2,6 +2,9 @@
 
 #include <vector>
 #include <optional>
+#include <variant>
+
+#include <PhxEngine/Core/Span.h>
 #include <PhxEngine/RHI/PhxRHIDefinitions.h>
 #include <PhxEngine/Core/RefCountPtr.h>
 
@@ -51,16 +54,14 @@ namespace PhxEngine::RHI
         std::string DebugName = "";
     };
 
-    class Shader : public RHIResource
+    class IShader : public RHIResource
     {
     public:
-        Shader() = default;
-        const ShaderDesc& Desc() const { return this->m_desc; }
+        virtual const ShaderDesc& GetDesc() const = 0;
 
-    protected:
-        ShaderDesc m_desc;
+        virtual ~IShader() = default;
     };
-    using ShaderRef = Core::RefCountPtr<Shader>;
+    using ShaderRef = Core::RefCountPtr<IShader>;
 
     struct VertexAttributeDesc
     {
@@ -74,20 +75,19 @@ namespace PhxEngine::RHI
         bool IsInstanced = false;
     };
     
-    class InputLayout : public RHIResource
+    class IInputLayout : public RHIResource
     {
     public:
-        InputLayout() = default;
-        const Core::Span<VertexAttributeDesc>& Desc() const { return this->m_desc; }
+        virtual const PhxEngine::Core::Span<VertexAttributeDesc> GetDesc() const = 0;
 
-    protected:
-        std::vector<VertexAttributeDesc> m_desc;
+        virtual ~IInputLayout() = default;
     };
 
-    using InputLayoutRef = Core::RefCountPtr<InputLayout>;
+    using InputLayoutRef = Core::RefCountPtr<IInputLayout>;
 
     struct TextureDesc
     {
+        TextureMiscFlags MiscFlags = TextureMiscFlags::None;
         BindingFlags BindingFlags = BindingFlags::ShaderResource;
         TextureDimension Dimension = TextureDimension::Texture2D;
         ResourceStates InitialState = ResourceStates::Common;
@@ -111,16 +111,15 @@ namespace PhxEngine::RHI
         std::string DebugName;
     };
 
-    class Texture : public RHIResource
+    class ITexture : public RHIResource
     {
     public:
-        Texture() = default;
-        const TextureDesc& Desc() const { return this->m_desc; }
+        virtual const TextureDesc& GetDesc() const = 0;
 
-    protected:
-        TextureDesc m_desc;
+        virtual ~ITexture() = default;
     };
-    using TextureRef = Core::RefCountPtr<Texture>;
+
+    using TextureRef = Core::RefCountPtr<ITexture>;
 
     struct BufferDesc
     {
@@ -149,16 +148,15 @@ namespace PhxEngine::RHI
         std::string DebugName;
     };
 
-    class Buffer : public RHIResource
+    class IBuffer : public RHIResource
     {
     public:
-        Buffer() = default;
-        const BufferDesc& Desc() const { return this->m_desc; }
+        virtual const BufferDesc& GetDesc() const = 0;
 
-    protected:
-        BufferDesc m_desc;
+        virtual ~IBuffer() = default;
     };
-    using BufferRef = Core::RefCountPtr<Buffer>;
+
+    using BufferRef = Core::RefCountPtr<IBuffer>;
 
     // This is just a workaround for now
     class IRootSignatureBuilder
@@ -191,32 +189,29 @@ namespace PhxEngine::RHI
         uint32_t SampleQuality = 0;
     };
 
-    class GfxPipeline : public RHIResource
+    class IGfxPipeline : public RHIResource
     {
     public:
-        GfxPipeline() = default;
-        const GfxPipelineDesc& Desc() const { return this->m_desc; }
+        virtual const GfxPipelineDesc& GetDesc() const = 0;
 
-    protected:
-        GfxPipelineDesc m_desc;
+        virtual ~IGfxPipeline() = default;
     };
-    using GfxPipelineRef = Core::RefCountPtr<GfxPipeline>;
+
+    using GfxPipelineRef = Core::RefCountPtr<IGfxPipeline>;
 
     struct ComputePipelineDesc
     {
         ShaderRef ComputeShader;
     };
 
-    class ComputePipeline : public RHIResource
+    class IComputePipeline : public RHIResource
     {
     public:
-        ComputePipeline() = default;
-        const ComputePipelineDesc& Desc() const { return this->m_desc; }
+        virtual const ComputePipelineDesc& GetDesc() const = 0;
 
-    protected:
-        ComputePipelineDesc m_desc;
+        virtual ~IComputePipeline() = default;
     };
-    using ComputePipelineRef = Core::RefCountPtr<ComputePipeline>;
+    using ComputePipelineRef = Core::RefCountPtr<IComputePipeline>;
 
     struct MeshPipelineDesc
     {
@@ -238,33 +233,260 @@ namespace PhxEngine::RHI
 
     };
 
-    class MeshPipeline : public RHIResource
+    class IMeshPipeline : public RHIResource
     {
     public:
-        MeshPipeline() = default;
-        const MeshPipelineDesc& Desc() const { return this->m_desc; }
+        virtual const MeshPipelineDesc& GetDesc() const = 0;
 
-    protected:
-        MeshPipelineDesc m_desc;
+        virtual ~IMeshPipeline() = default;
     };
-    using MeshPipelineRef = Core::RefCountPtr<MeshPipeline>;
+    using MeshPipelineRef = Core::RefCountPtr<IMeshPipeline>;
 
-    class SwapChain : public RHIResource
+    class ISwapChain : public RHIResource
     {
     public:
-        SwapChain() = default;
-        const SwapChainDesc& Desc() const { return this->m_desc; }
+        virtual const SwapChainDesc& GetDesc() const = 0;
 
-    protected:
-        SwapChainDesc m_desc;
+        virtual ~ISwapChain() = default;
     };
-    using SwapChainRef = Core::RefCountPtr<SwapChain>;
+    using SwapChainRef = Core::RefCountPtr<ISwapChain>;
+    struct GpuBarrier
+    {
+        struct BufferBarrier
+        {
+            RHI::IBuffer* Buffer;
+            RHI::ResourceStates BeforeState;
+            RHI::ResourceStates AfterState;
+        };
 
-    class CommandList : public RHIResource
+        struct TextureBarrier
+        {
+            RHI::ITexture* Texture;
+            RHI::ResourceStates BeforeState;
+            RHI::ResourceStates AfterState;
+            int Mip;
+            int Slice;
+        };
+
+        struct MemoryBarrier
+        {
+            std::variant<ITexture*, IBuffer*> Resource;
+        };
+
+        std::variant<BufferBarrier, TextureBarrier, GpuBarrier::MemoryBarrier> Data;
+
+        static GpuBarrier CreateMemory()
+        {
+            GpuBarrier barrier = {};
+            barrier.Data = GpuBarrier::MemoryBarrier{};
+
+            return barrier;
+        }
+
+        static GpuBarrier CreateMemory(ITexture* texture)
+        {
+            GpuBarrier barrier = {};
+            barrier.Data = GpuBarrier::MemoryBarrier{ .Resource = texture };
+
+            return barrier;
+        }
+
+        static GpuBarrier CreateMemory(IBuffer* buffer)
+        {
+            GpuBarrier barrier = {};
+            barrier.Data = GpuBarrier::MemoryBarrier{ .Resource = buffer };
+
+            return barrier;
+        }
+
+        static GpuBarrier CreateTexture(
+            ITexture* texture,
+            ResourceStates beforeState,
+            ResourceStates afterState,
+            int mip = -1,
+            int slice = -1)
+        {
+            GpuBarrier::TextureBarrier t = {};
+            t.Texture = texture;
+            t.BeforeState = beforeState;
+            t.AfterState = afterState;
+            t.Mip = mip;
+            t.Slice = slice;
+
+            GpuBarrier barrier = {};
+            barrier.Data = t;
+
+            return barrier;
+        }
+
+        static GpuBarrier CreateBuffer(IBuffer* buffer, ResourceStates beforeState, ResourceStates afterState)
+        {
+            GpuBarrier::BufferBarrier b = {};
+            b.Buffer = buffer;
+            b.BeforeState = beforeState;
+            b.AfterState = afterState;
+
+            GpuBarrier barrier = {};
+            barrier.Data = b;
+
+            return barrier;
+        }
+    };
+
+    class ICommandList : public RHIResource
     {
     public:
-        CommandList() = default;
+        virtual ~ICommandList() = default;
 
+        // -- Ray Trace stuff       ---
+        // virtual void RTBuildAccelerationStructure(RHI::RTAccelerationStructureHandle accelStructure) = 0;
+        // -- Ray Trace Stuff END   ---
+
+        virtual void BeginMarker(std::string_view name) = 0;
+        virtual void EndMarker() = 0;
+       //  virtual GPUAllocation AllocateGpu(size_t bufferSize, size_t stride) = 0;
+
+        virtual void TransitionBarrier(ITexture* texture, ResourceStates beforeState, ResourceStates afterState) = 0;
+        virtual void TransitionBarrier(IBuffer* buffer, ResourceStates beforeState, ResourceStates afterState) = 0;
+        virtual void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers) = 0;
+        virtual void ClearTextureFloat(ITexture* texture, Color const& clearColour) = 0;
+        virtual void ClearDepthStencilTexture(ITexture* depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) = 0;
+
+        virtual void Draw(DrawArgs const& args) = 0;
+        virtual void DrawIndexed(DrawArgs const& args) = 0;
+
+        // virtual void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, IBuffer* args, size_t argsOffsetInBytes, uint32_t maxCount) = 0;
+        // virtual void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, IBuffer* args, size_t argsOffsetInBytes, IBuffer* count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
+
+        virtual void DrawIndirect(IBuffer* args, size_t argsOffsetInBytes, uint32_t maxCount) = 0;
+        virtual void DrawIndirect(IBuffer* args, size_t argsOffsetInBytes, IBuffer* count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
+
+        virtual void DrawIndexedIndirect(IBuffer* args, size_t argsOffsetInBytes, uint32_t maxCount) = 0;
+        virtual void DrawIndexedIndirect(IBuffer* args, size_t argsOffsetInBytes, IBuffer* count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
+
+        template<typename T>
+        void WriteBuffer(IBuffer* buffer, std::vector<T> const& data, uint64_t destOffsetBytes)
+        {
+            this->WriteBuffer(buffer, data.data(), sizeof(T) * data.size(), destOffsetBytes);
+        }
+
+        template<typename T>
+        void WriteBuffer(IBuffer* buffer, T const& data, uint64_t destOffsetBytes)
+        {
+            this->WriteBuffer(buffer, &data, sizeof(T), destOffsetBytes);
+        }
+
+        template<typename T>
+        void WriteBuffer(IBuffer* buffer, Core::Span<T> data, uint64_t destOffsetBytes)
+        {
+            this->WriteBuffer(buffer, data.begin(), sizeof(T) * data.Size(), destOffsetBytes);
+        }
+
+        virtual void WriteBuffer(IBuffer* buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes) = 0;
+
+        virtual void CopyBuffer(IBuffer* dst, uint64_t dstOffset, IBuffer* src, uint64_t srcOffset, size_t sizeInBytes) = 0;
+
+        virtual void WriteTexture(ITexture* texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData) = 0;
+        virtual void WriteTexture(ITexture* texture, uint32_t arraySlice, uint32_t mipLevel, const void* Data, size_t rowPitch, size_t depthPitch) = 0;
+
+        virtual void SetGfxPipeline(GfxPipelineRef const& gfxPipeline) = 0;
+        virtual void SetViewports(Viewport* viewports, size_t numViewports) = 0;
+        virtual void SetScissors(Rect* scissor, size_t numScissors) = 0;
+        virtual void SetRenderTargets(Core::Span<ITexture*> renderTargets, ITexture* depthStenc) = 0;
+
+        // -- Comptute Stuff ---
+        virtual void SetComputeState(ComputePipelineRef const& state) = 0;
+        virtual void Dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ) = 0;
+        virtual void DispatchIndirect(IBuffer* args, uint32_t argsOffsetInBytes, uint32_t maxCount) = 0;
+        virtual void DispatchIndirect(IBuffer* args, uint32_t argsOffsetInBytes, IBuffer* count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
+
+        // -- Mesh Stuff ---
+        virtual void SetMeshPipeline(MeshPipelineRef const& meshPipeline) = 0;
+        virtual void DispatchMesh(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ) = 0;
+        virtual void DispatchMeshIndirect(IBuffer* args, uint32_t argsOffsetInBytes, uint32_t maxCount) = 0;
+        virtual void DispatchMeshIndirect(IBuffer* args, uint32_t argsOffsetInBytes, IBuffer* count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
+
+        virtual void BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants) = 0;
+        template<typename T>
+        void BindPushConstant(uint32_t rootParameterIndex, const T& constants)
+        {
+            static_assert(sizeof(T) % sizeof(uint32_t) == 0, "Size of type must be a multiple of 4 bytes");
+            this->BindPushConstant(rootParameterIndex, sizeof(T), &constants);
+        }
+
+        virtual void BindConstantBuffer(size_t rootParameterIndex, IBuffer* constantBuffer) = 0;
+        virtual void BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData) = 0;
+        template<typename T>
+        void BindDynamicConstantBuffer(size_t rootParameterIndex, T const& bufferData)
+        {
+            this->BindDynamicConstantBuffer(rootParameterIndex, sizeof(T), &bufferData);
+        }
+
+        virtual void BindVertexBuffer(uint32_t slot, IBuffer* vertexBuffer) = 0;
+
+        /**
+         * Set dynamic vertex buffer data to the rendering pipeline.
+         */
+        virtual void BindDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData) = 0;
+
+        template<typename T>
+        void BindDynamicVertexBuffer(uint32_t slot, const std::vector<T>& vertexBufferData)
+        {
+            this->BindDynamicVertexBuffer(slot, vertexBufferData.size(), sizeof(T), vertexBufferData.data());
+        }
+
+        virtual void BindIndexBuffer(IBuffer* bufferHandle) = 0;
+
+        /**
+         * Bind dynamic index buffer data to the rendering pipeline.
+         */
+        virtual void BindDynamicIndexBuffer(size_t numIndicies, RHI::Format indexFormat, const void* indexBufferData) = 0;
+
+        template<typename T>
+        void BindDynamicIndexBuffer(const std::vector<T>& indexBufferData)
+        {
+            staticassert(sizeof(T) == 2 || sizeof(T) == 4);
+
+            RHI::Format indexFormat = (sizeof(T) == 2) ? RHI::Format::R16_UINT : RHI::Format::R32_UINT;
+            this->BindDynamicIndexBuffer(indexBufferData.size(), indexFormat, indexBufferData.Data());
+        }
+
+        /**
+         * Set dynamic structured buffer contents.
+         */
+        virtual void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, size_t numElements, size_t elementSize, const void* bufferData) = 0;
+
+        template<typename T>
+        void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, std::vector<T> const& bufferData)
+        {
+            this->BindDynamicStructuredBuffer(rootParameterIndex, bufferData.size(), sizeof(T), bufferData.Data());
+        }
+
+        virtual void BindStructuredBuffer(size_t rootParameterIndex, IBuffer* buffer) = 0;
+
+        virtual void BindDynamicDescriptorTable(size_t rootParameterIndex, Core::Span<ITexture*> textures) = 0;
+        void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Core::Span<IBuffer*> buffers)
+        {
+            this->BindDynamicUavDescriptorTable(rootParameterIndex, buffers, {});
+        }
+        void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Core::Span<ITexture*> textures)
+        {
+            this->BindDynamicUavDescriptorTable(rootParameterIndex, {}, textures);
+        }
+        virtual void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Core::Span<IBuffer*> buffers,
+            Core::Span<ITexture*> textures) = 0;
+
+        virtual void BindResourceTable(size_t rootParameterIndex) = 0;
+        virtual void BindSamplerTable(size_t rootParameterIndex) = 0;
+
+        // virtual void BeginTimerQuery(TimerQueryHandle query) = 0;
+        // virtual void EndTimerQuery(TimerQueryHandle query) = 0;
     };
-    using CommandListRef = Core::RefCountPtr<CommandList>;
+    using CommandListRef = Core::RefCountPtr<ICommandList>;
 }

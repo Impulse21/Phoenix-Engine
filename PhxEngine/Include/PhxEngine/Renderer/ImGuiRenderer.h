@@ -24,7 +24,7 @@ namespace PhxEngine::Renderer
 {
 	namespace ImGuiRenderer
 	{
-		void Initialize(Core::IWindow* window, bool enableDocking = false);
+		void Initialize(Core::IWindow* window, RHI::Format swapChainFormat, bool enableDocking = false);
 		void Finalize();
 		void EnableDarkThemeColours();
 		
@@ -55,7 +55,7 @@ namespace PhxEngine::Renderer
 		RHI::ShaderHandle m_pixelShader;
 		RHI::InputLayoutHandle m_inputLayout;
 		RHI::GfxPipelineHandle m_pipeline;
+};
 #endif
-	};
 }
 

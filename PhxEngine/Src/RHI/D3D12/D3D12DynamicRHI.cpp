@@ -517,7 +517,7 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::Finalize()
 #endif
 }
 
-void PhxEngine::RHI::D3D12::D3D12DynamicRHI::Present(SwapChain* swapChain)
+void PhxEngine::RHI::D3D12::D3D12DynamicRHI::Present(ISwapChain* swapChain)
 {
 	// -- Mark Queues for completion ---
 	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
@@ -532,11 +532,11 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::Present(SwapChain* swapChain)
 	D3D12SwapChain* impl = ResourceCast(swapChain);
 	{
 		UINT presentFlags = 0;
-		if (!impl->Desc().VSync && !impl->Desc().Fullscreen)
+		if (!impl->GetDesc().VSync && !impl->GetDesc().Fullscreen)
 		{
 			presentFlags = DXGI_PRESENT_ALLOW_TEARING;
 		}
-		HRESULT hr = impl->NativeSwapchain4->Present((UINT)impl->Desc().VSync, presentFlags);
+		HRESULT hr = impl->NativeSwapchain4->Present((UINT)impl->GetDesc().VSync, presentFlags);
 
 		// If the device was reset we must completely reinitialize the renderer.
 		if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
@@ -564,7 +564,7 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::Present(SwapChain* swapChain)
 
 			// If the fence is max uint64, that might indicate that the device has been removed as fences get reset in this case
 			assert(completedFrame != UINT64_MAX);
-			uint32_t bufferCount = impl->Desc().BufferCount;
+			uint32_t bufferCount = impl->GetDesc().BufferCount;
 
 			// Since our frame count is 1 based rather then 0, increment the number of buffers by 1 so we don't have to wait on the first 3 frames
 			// that are kicked off.
@@ -628,6 +628,570 @@ bool PhxEngine::RHI::D3D12::D3D12DynamicRHI::IsHdrSwapchainSupported(D3D12SwapCh
 	return false;
 }
 
+int PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateSubresource(D3D12Texture* texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+{
+	switch (subresourceType)
+	{
+	case SubresouceType::SRV:
+		return this->CreateShaderResourceView(texture, firstSlice, sliceCount, firstMip, mipCount);
+	case SubresouceType::UAV:
+		return this->CreateUnorderedAccessView(texture, firstSlice, sliceCount, firstMip, mipCount);
+	case SubresouceType::RTV:
+		return this->CreateRenderTargetView(texture, firstSlice, sliceCount, firstMip, mipCount);
+	case SubresouceType::DSV:
+		return this->CreateDepthStencilView(texture, firstSlice, sliceCount, firstMip, mipCount);
+	default:
+		throw std::runtime_error("Unknown sub resource type");
+	}
+}
+
+int PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateSubresource(D3D12Buffer* buffer, SubresouceType subresourceType, size_t offset, size_t size)
+{
+	switch (subresourceType)
+	{
+	case SubresouceType::SRV:
+		return this->CreateShaderResourceView(buffer, offset, size);
+	case SubresouceType::UAV:
+		return this->CreateUnorderedAccessView(buffer, offset, size);
+	default:
+		throw std::runtime_error("Unknown sub resource type");
+	}
+}
+
+int PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateShaderResourceView(D3D12Buffer* buffer, size_t offset, size_t size)
+{
+	D3D12Buffer* bufferImpl = buffer;
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+	const uint32_t stideInBytes = bufferImpl->GetDesc().SizeInBytes;
+	if (bufferImpl->GetDesc().Format == RHI::Format::UNKNOWN)
+	{
+		if ((bufferImpl->GetDesc().MiscFlags & BufferMiscFlags::Raw) == BufferMiscFlags::Raw)
+		{
+			srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+			srvDesc.Buffer.FirstElement = (UINT)offset / sizeof(uint32_t);
+			srvDesc.Buffer.NumElements = (UINT)std::min(size, stideInBytes - offset) / sizeof(uint32_t);
+		}
+		else if ((bufferImpl->GetDesc().MiscFlags & BufferMiscFlags::Structured) == BufferMiscFlags::Structured)
+		{
+			uint32_t strideInBytes = (bufferImpl->GetDesc().SizeInBytes);
+			// This is a Structured Buffer
+			srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+			srvDesc.Buffer.FirstElement = (UINT)offset / strideInBytes;
+			srvDesc.Buffer.NumElements = (UINT)std::min(size, stideInBytes - offset) / strideInBytes;
+			srvDesc.Buffer.StructureByteStride = strideInBytes;
+		}
+	}
+	else
+	{
+		throw std::runtime_error("Unsupported at this time.");
+#if false
+		uint32_t stride = GetFormatStride(format);
+		srv_desc.Format = _ConvertFormat(format);
+		srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+		srv_desc.Buffer.FirstElement = offset / stride;
+		srv_desc.Buffer.NumElements = (UINT)std::min(size, desc.size - offset) / stride;
+#endif
+	}
+
+	DescriptorView view = {
+			.Allocation = this->GetResourceCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.SRVDesc = srvDesc,
+	};
+
+	this->GetD3D12Device2()->CreateShaderResourceView(
+		bufferImpl->D3D12Resource.Get(),
+		&srvDesc,
+		view.Allocation.GetCpuHandle());
+
+	const bool isBindless = (bufferImpl->GetDesc().MiscFlags & RHI::BufferMiscFlags::Bindless) == RHI::BufferMiscFlags::Bindless;
+	if (isBindless)
+	{
+		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+		view.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
+		if (view.BindlessIndex != cInvalidDescriptorIndex)
+		{
+			this->GetD3D12Device2()->CopyDescriptorsSimple(
+				1,
+				this->m_bindlessResourceDescriptorTable.GetCpuHandle(view.BindlessIndex),
+				view.Allocation.GetCpuHandle(),
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
+
+	if (bufferImpl->Srv.Allocation.IsNull())
+	{
+		bufferImpl->Srv = view;
+		return -1;
+	}
+
+	bufferImpl->SrvSubresourcesAlloc.push_back(view);
+	return bufferImpl->SrvSubresourcesAlloc.size() - 1;
+}
+
+int PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateUnorderedAccessView(D3D12Buffer* buffer, size_t offset, size_t size)
+{
+	D3D12Buffer* bufferImpl = buffer;
+
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+
+	const uint32_t stideInBytes = bufferImpl->GetDesc().SizeInBytes;
+	const bool hasCounter = (bufferImpl->GetDesc().MiscFlags & BufferMiscFlags::HasCounter) == BufferMiscFlags::HasCounter;
+	if (bufferImpl->GetDesc().Format == RHI::Format::UNKNOWN)
+	{
+		if ((bufferImpl->GetDesc().MiscFlags & BufferMiscFlags::Raw) == BufferMiscFlags::Raw)
+		{
+			uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+			uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+			uavDesc.Buffer.FirstElement = (UINT)offset / sizeof(uint32_t);
+			uavDesc.Buffer.NumElements = (UINT)std::min(size, stideInBytes - offset) / sizeof(uint32_t);
+		}
+		else if ((bufferImpl->GetDesc().MiscFlags & BufferMiscFlags::Structured) == BufferMiscFlags::Structured)
+		{
+			uint32_t strideInBytes = (bufferImpl->GetDesc().SizeInBytes);
+			// This is a Structured Buffer
+			uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+			uavDesc.Buffer.FirstElement = (UINT)offset / strideInBytes;
+			uavDesc.Buffer.NumElements = (UINT)std::min(size, stideInBytes - offset) / strideInBytes;
+			uavDesc.Buffer.StructureByteStride = strideInBytes;
+
+			if (hasCounter)
+			{
+				assert(false);
+				// uavDesc.Buffer.CounterOffsetInBytes = bufferImpl->GetDesc().UavCounterOffset;
+			}
+		}
+	}
+	else
+	{
+		throw std::runtime_error("Unsupported at this time.");
+#if false
+		uint32_t stride = GetFormatStride(format);
+		uavDesc.Format = _ConvertFormat(format);
+		uavDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+		uavDesc.Buffer.FirstElement = offset / stride;
+		uavDesc.Buffer.NumElements = (UINT)std::min(size, desc.size - offset) / stride;
+#endif
+	}
+
+	DescriptorView view = {
+			.Allocation = this->GetResourceCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.UAVDesc = uavDesc,
+	};
+
+	ID3D12Resource* counterResource = nullptr;
+	if (hasCounter)
+	{
+		assert(false);
+#if 0
+		if (bufferImpl->GetDesc().UavCounterBuffer.IsValid())
+		{
+			D3D12Buffer* counterBuffer = this->m_bufferPool.Get(bufferImpl->GetDesc().UavCounterBuffer);
+			counterResource = counterBuffer->D3D12Resource.Get();
+
+		}
+		else
+		{
+			counterResource = bufferImpl->D3D12Resource.Get();
+		}
+#endif
+	}
+
+	this->GetD3D12Device2()->CreateUnorderedAccessView(
+		bufferImpl->D3D12Resource.Get(),
+		counterResource,
+		&uavDesc,
+		view.Allocation.GetCpuHandle());
+
+	const bool isBindless = (bufferImpl->GetDesc().MiscFlags & RHI::BufferMiscFlags::Bindless) == RHI::BufferMiscFlags::Bindless;
+	if (isBindless)
+	{
+		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+		view.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
+		if (view.BindlessIndex != cInvalidDescriptorIndex)
+		{
+			this->GetD3D12Device2()->CopyDescriptorsSimple(
+				1,
+				this->m_bindlessResourceDescriptorTable.GetCpuHandle(view.BindlessIndex),
+				view.Allocation.GetCpuHandle(),
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
+
+	if (bufferImpl->UavAllocation.Allocation.IsNull())
+	{
+		bufferImpl->UavAllocation = view;
+
+		return -1;
+	}
+
+	bufferImpl->UavSubresourcesAlloc.push_back(view);
+	return bufferImpl->UavSubresourcesAlloc.size() - 1;
+}
+
+int PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateShaderResourceView(D3D12Texture* texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+{
+	D3D12Texture* textureImpl = texture;
+
+	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->GetDesc().Format);
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = dxgiFormatMapping.SrvFormat;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+	uint32_t planeSlice = (srvDesc.Format == DXGI_FORMAT_X24_TYPELESS_G8_UINT) ? 1 : 0;
+
+	if (textureImpl->GetDesc().Dimension == TextureDimension::TextureCube)
+	{
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;  // Only 2D textures are supported (this was checked in the calling function).
+		srvDesc.TextureCube.MipLevels = mipCount;
+		srvDesc.TextureCube.MostDetailedMip = firstMip;
+	}
+	else
+	{
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;  // Only 2D textures are supported (this was checked in the calling function).
+		srvDesc.Texture2D.MipLevels = mipCount;
+	}
+	switch (textureImpl->GetDesc().Dimension)
+	{
+	case TextureDimension::Texture1D:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
+		srvDesc.Texture1D.MostDetailedMip = firstMip; // Subresource data
+		srvDesc.Texture1D.MipLevels = mipCount;// Subresource data
+		break;
+	case TextureDimension::Texture1DArray:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1DARRAY;
+		srvDesc.Texture1DArray.FirstArraySlice = firstSlice;
+		srvDesc.Texture1DArray.ArraySize = sliceCount;// Subresource data
+		srvDesc.Texture1DArray.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.Texture1DArray.MipLevels = mipCount;// Subresource data
+		break;
+	case TextureDimension::Texture2D:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.Texture2D.MipLevels = mipCount;// Subresource data
+		srvDesc.Texture2D.PlaneSlice = planeSlice;
+		break;
+	case TextureDimension::Texture2DArray:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+		srvDesc.Texture2DArray.FirstArraySlice = firstSlice;// Subresource data
+		srvDesc.Texture2DArray.ArraySize = sliceCount;// Subresource data
+		srvDesc.Texture2DArray.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.Texture2DArray.MipLevels = mipCount;// Subresource data
+		srvDesc.Texture2DArray.PlaneSlice = planeSlice;
+		break;
+	case TextureDimension::TextureCube:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+		srvDesc.TextureCube.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.TextureCube.MipLevels = mipCount;// Subresource data
+		break;
+	case TextureDimension::TextureCubeArray:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
+		srvDesc.TextureCubeArray.First2DArrayFace = 0;// Subresource data
+		srvDesc.TextureCubeArray.NumCubes = textureImpl->GetDesc().ArraySize / 6;// Subresource data
+		srvDesc.TextureCubeArray.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.TextureCubeArray.MipLevels = mipCount;// Subresource data
+		break;
+	case TextureDimension::Texture2DMS:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
+		break;
+	case TextureDimension::Texture2DMSArray:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
+		srvDesc.Texture2DMSArray.FirstArraySlice = firstSlice;// Subresource data
+		srvDesc.Texture2DMSArray.ArraySize = sliceCount;// Subresource data
+		break;
+	case TextureDimension::Texture3D:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
+		srvDesc.Texture3D.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.Texture3D.MipLevels = mipCount;// Subresource data
+		break;
+	case TextureDimension::Unknown:
+	default:
+		throw std::runtime_error("Unsupported Enum");
+	}
+
+	DescriptorView view = {
+			.Allocation = this->GetResourceCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.SRVDesc = srvDesc,
+			.FirstMip = firstMip,
+			.MipCount = mipCount,
+			.FirstSlice = firstSlice,
+			.SliceCount = sliceCount
+	};
+
+	this->GetD3D12Device2()->CreateShaderResourceView(
+		textureImpl->D3D12Resource.Get(),
+		&srvDesc,
+		view.Allocation.GetCpuHandle());
+
+	if ((textureImpl->GetDesc().MiscFlags | TextureMiscFlags::Bindless) == TextureMiscFlags::Bindless)
+	{
+		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+		view.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
+		if (view.BindlessIndex != cInvalidDescriptorIndex)
+		{
+			this->GetD3D12Device2()->CopyDescriptorsSimple(
+				1,
+				this->m_bindlessResourceDescriptorTable.GetCpuHandle(view.BindlessIndex),
+				view.Allocation.GetCpuHandle(),
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
+
+	if (textureImpl->Srv.Allocation.IsNull())
+	{
+		textureImpl->Srv = view;
+		return -1;
+	}
+
+	textureImpl->SrvSubresourcesAlloc.push_back(view);
+	return textureImpl->SrvSubresourcesAlloc.size() - 1;
+}
+
+int PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateRenderTargetView(D3D12Texture* texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+{
+	D3D12Texture* textureImpl = texture;
+
+	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->GetDesc().Format);
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+	rtvDesc.Format = dxgiFormatMapping.RtvFormat;
+
+	switch (textureImpl->GetDesc().Dimension)
+	{
+	case TextureDimension::Texture1D:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1D;
+		rtvDesc.Texture1D.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture1DArray:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
+		rtvDesc.Texture1DArray.FirstArraySlice = firstSlice;
+		rtvDesc.Texture1DArray.ArraySize = sliceCount;
+		rtvDesc.Texture1DArray.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2D:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+		rtvDesc.Texture2D.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2DArray:
+	case TextureDimension::TextureCube:
+	case TextureDimension::TextureCubeArray:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+		rtvDesc.Texture2DArray.ArraySize = sliceCount;
+		rtvDesc.Texture2DArray.FirstArraySlice = firstSlice;
+		rtvDesc.Texture2DArray.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2DMS:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
+		break;
+	case TextureDimension::Texture2DMSArray:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
+		rtvDesc.Texture2DMSArray.FirstArraySlice = firstSlice;
+		rtvDesc.Texture2DMSArray.ArraySize = sliceCount;
+		break;
+	case TextureDimension::Texture3D:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
+		rtvDesc.Texture3D.FirstWSlice = 0;
+		rtvDesc.Texture3D.WSize = textureImpl->GetDesc().ArraySize;
+		rtvDesc.Texture3D.MipSlice = firstMip;
+		break;
+	case TextureDimension::Unknown:
+	default:
+		throw std::runtime_error("Unsupported Enum");
+	}
+
+	DescriptorView view = {
+			.Allocation = this->GetRtvCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+			.RTVDesc = rtvDesc,
+			.FirstMip = firstMip,
+			.MipCount = mipCount,
+			.FirstSlice = firstSlice,
+			.SliceCount = sliceCount
+	};
+
+	this->GetD3D12Device2()->CreateRenderTargetView(
+		textureImpl->D3D12Resource.Get(),
+		&rtvDesc,
+		view.Allocation.GetCpuHandle());
+
+	if (textureImpl->RtvAllocation.Allocation.IsNull())
+	{
+		textureImpl->RtvAllocation = view;
+		return -1;
+	}
+
+	textureImpl->RtvSubresourcesAlloc.push_back(view);
+	return textureImpl->RtvSubresourcesAlloc.size() - 1;
+}
+
+int PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateDepthStencilView(D3D12Texture* texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+{
+	D3D12Texture* textureImpl = texture;
+
+	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->GetDesc().Format);
+	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+	dsvDesc.Format = dxgiFormatMapping.RtvFormat;
+	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+
+	switch (textureImpl->GetDesc().Dimension)
+	{
+	case TextureDimension::Texture1D:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1D;
+		dsvDesc.Texture1D.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture1DArray:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
+		dsvDesc.Texture1DArray.FirstArraySlice = firstSlice;
+		dsvDesc.Texture1DArray.ArraySize = sliceCount;
+		dsvDesc.Texture1DArray.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2D:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+		dsvDesc.Texture2D.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2DArray:
+	case TextureDimension::TextureCube:
+	case TextureDimension::TextureCubeArray:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+		dsvDesc.Texture2DArray.ArraySize = sliceCount;
+		dsvDesc.Texture2DArray.FirstArraySlice = firstSlice;
+		dsvDesc.Texture2DArray.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2DMS:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
+		break;
+	case TextureDimension::Texture2DMSArray:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
+		dsvDesc.Texture2DMSArray.FirstArraySlice = firstSlice;
+		dsvDesc.Texture2DMSArray.ArraySize = sliceCount;
+		break;
+	case TextureDimension::Texture3D:
+	{
+		throw std::runtime_error("Unsupported Dimension");
+	}
+	case TextureDimension::Unknown:
+	default:
+		throw std::runtime_error("Unsupported Enum");
+	}
+
+	DescriptorView view = {
+			.Allocation = this->GetDsvCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
+			.DSVDesc = dsvDesc,
+			.FirstMip = firstMip,
+			.MipCount = mipCount,
+			.FirstSlice = firstSlice,
+			.SliceCount = sliceCount
+	};
+
+	this->GetD3D12Device2()->CreateDepthStencilView(
+		textureImpl->D3D12Resource.Get(),
+		&dsvDesc,
+		view.Allocation.GetCpuHandle());
+
+	if (textureImpl->DsvAllocation.Allocation.IsNull())
+	{
+		textureImpl->DsvAllocation = view;
+		return -1;
+	}
+
+	textureImpl->DsvSubresourcesAlloc.push_back(view);
+	return textureImpl->DsvSubresourcesAlloc.size() - 1;
+}
+
+int PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateUnorderedAccessView(D3D12Texture* texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+{
+	D3D12Texture* textureImpl = texture;
+
+	auto dxgiFormatMapping = GetDxgiFormatMapping(textureImpl->GetDesc().Format);
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.Format = dxgiFormatMapping.SrvFormat;
+
+	switch (textureImpl->GetDesc().Dimension)
+	{
+	case TextureDimension::Texture1D:
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1D;
+		uavDesc.Texture1D.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture1DArray:
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1DARRAY;
+		uavDesc.Texture1DArray.FirstArraySlice = firstSlice;
+		uavDesc.Texture1DArray.ArraySize = sliceCount;
+		uavDesc.Texture1DArray.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2D:
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+		uavDesc.Texture2D.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2DArray:
+	case TextureDimension::TextureCube:
+	case TextureDimension::TextureCubeArray:
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+		uavDesc.Texture2DArray.FirstArraySlice = firstSlice;
+		uavDesc.Texture2DArray.ArraySize = sliceCount;
+		uavDesc.Texture2DArray.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture3D:
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
+		uavDesc.Texture3D.FirstWSlice = 0;
+		uavDesc.Texture3D.WSize = textureImpl->GetDesc().Depth;
+		uavDesc.Texture3D.MipSlice = firstMip;
+		break;
+	case TextureDimension::Texture2DMS:
+	case TextureDimension::Texture2DMSArray:
+	{
+		throw std::runtime_error("Unsupported Dimension");
+	}
+	case TextureDimension::Unknown:
+	default:
+		throw std::runtime_error("Unsupported Enum");
+	}
+
+	DescriptorView view = {
+			.Allocation = this->GetResourceCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.UAVDesc = uavDesc,
+			.FirstMip = firstMip,
+			.MipCount = mipCount,
+			.FirstSlice = firstSlice,
+			.SliceCount = sliceCount
+	};
+
+	this->GetD3D12Device2()->CreateUnorderedAccessView(
+		textureImpl->D3D12Resource.Get(),
+		nullptr,
+		&uavDesc,
+		view.Allocation.GetCpuHandle());
+
+	if ((textureImpl->GetDesc().MiscFlags | TextureMiscFlags::Bindless) == TextureMiscFlags::Bindless)
+	{
+		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+		view.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
+		if (view.BindlessIndex != cInvalidDescriptorIndex)
+		{
+			this->GetD3D12Device2()->CopyDescriptorsSimple(
+				1,
+				this->m_bindlessResourceDescriptorTable.GetCpuHandle(view.BindlessIndex),
+				view.Allocation.GetCpuHandle(),
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
+
+	if (textureImpl->UavAllocation.Allocation.IsNull())
+	{
+		textureImpl->UavAllocation = view;
+		return -1;
+	}
+
+	textureImpl->UavSubresourcesAlloc.push_back(view);
+	return textureImpl->UavSubresourcesAlloc.size() - 1;
+}
 
 bool PhxEngine::RHI::D3D12::D3D12DynamicRHI::IsDevicedRemoved()
 {
@@ -688,7 +1252,655 @@ SwapChainRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateSwapChain(SwapChainDe
 	return swapChain;
 }
 
-void PhxEngine::RHI::D3D12::D3D12DynamicRHI::ResizeSwapChain(SwapChain* swapChain, SwapChainDesc const& desc)
+ShaderRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
+{
+	ShaderRef retVal = ShaderRef::Create(phx_new(D3D12Shader));
+	D3D12Shader* shaderImpl = ResourceCast(retVal.Get());
+	shaderImpl->Desc = desc;
+
+	auto hr = D3D12CreateVersionedRootSignatureDeserializer(
+		shaderImpl->ByteCode.data(),
+		shaderImpl->ByteCode.size(),
+		IID_PPV_ARGS(&shaderImpl->RootSignatureDeserializer));
+
+	if (SUCCEEDED(hr))
+	{
+		hr = shaderImpl->RootSignatureDeserializer->GetRootSignatureDescAtVersion(D3D_ROOT_SIGNATURE_VERSION_1_1, &shaderImpl->RootSignatureDesc);
+		if (SUCCEEDED(hr))
+		{
+			assert(shaderImpl->RootSignatureDesc->Version == D3D_ROOT_SIGNATURE_VERSION_1_1);
+
+			Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSig;
+			hr = this->m_rootDevice->CreateRootSignature(
+				0,
+				shaderImpl->ByteCode.data(),
+				shaderImpl->ByteCode.size(),
+				IID_PPV_ARGS(&rootSig)
+			);
+			assert(SUCCEEDED(hr));
+			if (SUCCEEDED(hr))
+			{
+				shaderImpl->RootSignature = rootSig;
+			}
+		}
+	}
+
+	return retVal;
+}
+
+InputLayoutRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount)
+{
+	InputLayoutRef retVal = InputLayoutRef::Create(phx_new(D3D12InputLayout));
+	D3D12InputLayout* inputLayoutImpl = ResourceCast(retVal.Get());
+
+	inputLayoutImpl->Attributes.resize(attributeCount);
+
+	for (uint32_t index = 0; index < attributeCount; index++)
+	{
+		VertexAttributeDesc& attr = inputLayoutImpl->Attributes[index];
+
+		// Copy the description to get a stable name pointer in desc
+		attr = desc[index];
+
+		D3D12_INPUT_ELEMENT_DESC& dx12Desc = inputLayoutImpl->InputElements.emplace_back();
+
+		dx12Desc.SemanticName = attr.SemanticName.c_str();
+		dx12Desc.SemanticIndex = attr.SemanticIndex;
+
+
+		const DxgiFormatMapping& formatMapping = GetDxgiFormatMapping(attr.Format);
+		dx12Desc.Format = formatMapping.SrvFormat;
+		dx12Desc.InputSlot = attr.InputSlot;
+		dx12Desc.AlignedByteOffset = attr.AlignedByteOffset;
+		if (dx12Desc.AlignedByteOffset == VertexAttributeDesc::SAppendAlignedElement)
+		{
+			dx12Desc.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+		}
+
+		if (attr.IsInstanced)
+		{
+			dx12Desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
+			dx12Desc.InstanceDataStepRate = 1;
+		}
+		else
+		{
+			dx12Desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+			dx12Desc.InstanceDataStepRate = 0;
+		}
+	}
+
+	return retVal;
+}
+
+GfxPipelineRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateGfxPipeline(GfxPipelineDesc const& desc)
+{
+	GfxPipelineRef retVal = GfxPipelineRef::Create(phx_new(D3D12GfxPipeline));
+	D3D12GfxPipeline* pipeline = ResourceCast(retVal.Get());
+	pipeline->Desc = desc;
+
+	if (desc.VertexShader)
+	{
+		D3D12Shader* shaderImpl = ResourceCast(desc.VertexShader.Get());
+		if (pipeline->RootSignature == nullptr)
+		{
+			pipeline->RootSignature = shaderImpl->RootSignature;
+		}
+	}
+
+	if (desc.PixelShader)
+	{
+		D3D12Shader* shaderImpl = ResourceCast(desc.PixelShader.Get());
+		if (pipeline->RootSignature == nullptr)
+		{
+			pipeline->RootSignature = shaderImpl->RootSignature;
+		}
+	}
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC d3d12Desc = {};
+	d3d12Desc.pRootSignature = pipeline->RootSignature.Get();
+
+	D3D12Shader* shaderImpl = nullptr;
+	shaderImpl = ResourceCast(desc.VertexShader.Get());
+	if (shaderImpl)
+	{
+		d3d12Desc.VS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+	}
+
+	shaderImpl = ResourceCast(desc.HullShader.Get());
+	if (shaderImpl)
+	{
+		d3d12Desc.HS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+	}
+
+	shaderImpl = ResourceCast(desc.DomainShader.Get());
+	if (shaderImpl)
+	{
+		d3d12Desc.DS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+	}
+
+	shaderImpl = ResourceCast(desc.GeometryShader.Get());
+	if (shaderImpl)
+	{
+		d3d12Desc.GS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+	}
+	;
+	shaderImpl = ResourceCast(desc.PixelShader.Get());
+	if (shaderImpl)
+	{
+		d3d12Desc.PS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+	}
+
+	this->TranslateBlendState(desc.BlendRenderState, d3d12Desc.BlendState);
+	this->TranslateDepthStencilState(desc.DepthStencilRenderState, d3d12Desc.DepthStencilState);
+	this->TranslateRasterState(desc.RasterRenderState, d3d12Desc.RasterizerState);
+
+	switch (desc.PrimType)
+	{
+	case PrimitiveType::PointList:
+		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		break;
+	case PrimitiveType::LineList:
+		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+		break;
+	case PrimitiveType::TriangleList:
+	case PrimitiveType::TriangleStrip:
+		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		break;
+	case PrimitiveType::PatchList:
+		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+		break;
+	}
+
+	if (desc.DsvFormat.has_value())
+	{
+		d3d12Desc.DSVFormat = GetDxgiFormatMapping(desc.DsvFormat.value()).RtvFormat;
+	}
+
+	d3d12Desc.SampleDesc.Count = desc.SampleCount;
+	d3d12Desc.SampleDesc.Quality = desc.SampleQuality;
+
+	for (size_t i = 0; i < desc.RtvFormats.size(); i++)
+	{
+		d3d12Desc.RTVFormats[i] = GetDxgiFormatMapping(desc.RtvFormats[i]).RtvFormat;
+	}
+
+	D3D12InputLayout* inputLayout = ResourceCast(desc.InputLayout.Get());
+	if (inputLayout && !inputLayout->InputElements.empty())
+	{
+		d3d12Desc.InputLayout.NumElements = uint32_t(inputLayout->InputElements.size());
+		d3d12Desc.InputLayout.pInputElementDescs = &(inputLayout->InputElements[0]);
+	}
+
+	d3d12Desc.NumRenderTargets = (uint32_t)desc.RtvFormats.size();
+	d3d12Desc.SampleMask = ~0u;
+
+	ThrowIfFailed(
+		this->GetD3D12Device2()->CreateGraphicsPipelineState(&d3d12Desc, IID_PPV_ARGS(&pipeline->D3D12PipelineState)));
+
+	return retVal;
+}
+
+ComputePipelineRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateComputePipeline(ComputePipelineDesc const& desc)
+{
+	ComputePipelineRef retVal = ComputePipelineRef::Create(phx_new(D3D12ComputePipeline));
+	D3D12ComputePipeline* pipeline = ResourceCast(retVal.Get());
+	pipeline->Desc = desc;
+
+	assert(desc.ComputeShader);
+	D3D12Shader* shaderImpl = ResourceCast(desc.ComputeShader.Get());
+	if (pipeline->RootSignature == nullptr)
+	{
+		pipeline->RootSignature = shaderImpl->RootSignature;
+	}
+
+	D3D12_COMPUTE_PIPELINE_STATE_DESC d3d12Desc = {};
+	d3d12Desc.pRootSignature = pipeline->RootSignature.Get();
+	d3d12Desc.CS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+
+	ThrowIfFailed(
+		this->GetD3D12Device2()->CreateComputePipelineState(&d3d12Desc, IID_PPV_ARGS(&pipeline->D3D12PipelineState)));
+
+	return retVal;
+}
+
+MeshPipelineRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateMeshPipeline(MeshPipelineDesc const& desc)
+{
+	MeshPipelineRef retVal = MeshPipelineRef::Create(phx_new(D3D12MeshPipeline));
+	D3D12MeshPipeline* pipeline = ResourceCast(retVal.Get());
+	pipeline->Desc = desc;
+
+	if (desc.AmpShader)
+	{
+		D3D12Shader* shaderImpl = ResourceCast(desc.AmpShader.Get());
+		if (pipeline->RootSignature == nullptr)
+		{
+			pipeline->RootSignature = shaderImpl->RootSignature;
+		}
+	}
+
+	if (desc.MeshShader)
+	{
+		D3D12Shader* shaderImpl = ResourceCast(desc.MeshShader.Get());
+		if (pipeline->RootSignature == nullptr)
+		{
+			pipeline->RootSignature = shaderImpl->RootSignature;
+		}
+	}
+
+	if (desc.PixelShader)
+	{
+		D3D12Shader* shaderImpl = ResourceCast(desc.PixelShader.Get());
+		if (pipeline->RootSignature == nullptr)
+		{
+			pipeline->RootSignature = shaderImpl->RootSignature;
+		}
+	}
+
+#pragma warning(push)
+#pragma warning(disable: 4324) // structure was padded due to alignment specifier
+	struct PSO_STREAM
+	{
+		typedef __declspec(align(sizeof(void*))) D3D12_PIPELINE_STATE_SUBOBJECT_TYPE ALIGNED_TYPE;
+
+		ALIGNED_TYPE RootSignature_Type;        ID3D12RootSignature* RootSignature;
+		ALIGNED_TYPE PrimitiveTopology_Type;    D3D12_PRIMITIVE_TOPOLOGY_TYPE PrimitiveTopologyType;
+		ALIGNED_TYPE AmplificationShader_Type;  D3D12_SHADER_BYTECODE AmplificationShader;
+		ALIGNED_TYPE MeshShader_Type;           D3D12_SHADER_BYTECODE MeshShader;
+		ALIGNED_TYPE PixelShader_Type;          D3D12_SHADER_BYTECODE PixelShader;
+		ALIGNED_TYPE RasterizerState_Type;      D3D12_RASTERIZER_DESC RasterizerState;
+		ALIGNED_TYPE DepthStencilState_Type;    D3D12_DEPTH_STENCIL_DESC DepthStencilState;
+		ALIGNED_TYPE BlendState_Type;           D3D12_BLEND_DESC BlendState;
+		ALIGNED_TYPE SampleDesc_Type;           DXGI_SAMPLE_DESC SampleDesc;
+		ALIGNED_TYPE SampleMask_Type;           UINT SampleMask;
+		ALIGNED_TYPE RenderTargets_Type;        D3D12_RT_FORMAT_ARRAY RenderTargets;
+		ALIGNED_TYPE DSVFormat_Type;            DXGI_FORMAT DSVFormat;
+	} psoDesc = { };
+#pragma warning(pop)
+
+	psoDesc.RootSignature_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE;
+	psoDesc.PrimitiveTopology_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PRIMITIVE_TOPOLOGY;
+	psoDesc.AmplificationShader_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_AS;
+	psoDesc.MeshShader_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_MS;
+	psoDesc.PixelShader_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PS;
+	psoDesc.RasterizerState_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER;
+	psoDesc.DepthStencilState_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL;
+	psoDesc.BlendState_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_BLEND;
+	psoDesc.SampleDesc_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_DESC;
+	psoDesc.SampleMask_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_MASK;
+	psoDesc.RenderTargets_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RENDER_TARGET_FORMATS;
+	psoDesc.DSVFormat_Type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL_FORMAT;
+
+	psoDesc.RootSignature = pipeline->RootSignature.Get();
+
+	D3D12Shader* shaderImpl = nullptr;
+	shaderImpl = ResourceCast(desc.AmpShader.Get());
+	if (shaderImpl)
+	{
+		psoDesc.AmplificationShader = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+	}
+
+	shaderImpl = ResourceCast(desc.MeshShader.Get());
+	if (shaderImpl)
+	{
+		psoDesc.MeshShader = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+	}
+
+	shaderImpl = ResourceCast(desc.PixelShader.Get());
+	if (shaderImpl)
+	{
+		psoDesc.PixelShader = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+	}
+
+	this->TranslateBlendState(desc.BlendRenderState, psoDesc.BlendState);
+	this->TranslateDepthStencilState(desc.DepthStencilRenderState, psoDesc.DepthStencilState);
+	this->TranslateRasterState(desc.RasterRenderState, psoDesc.RasterizerState);
+
+	switch (desc.PrimType)
+	{
+	case PrimitiveType::PointList:
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		break;
+	case PrimitiveType::LineList:
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+		break;
+	case PrimitiveType::TriangleList:
+	case PrimitiveType::TriangleStrip:
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		break;
+	case PrimitiveType::PatchList:
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+		break;
+	}
+	psoDesc.SampleDesc.Count = desc.SampleCount;
+	psoDesc.SampleDesc.Quality = desc.SampleQuality;
+	psoDesc.SampleMask = ~0u;
+
+	psoDesc.RenderTargets.NumRenderTargets = desc.RtvFormats.size();
+
+	for (size_t i = 0; i < desc.RtvFormats.size(); i++)
+	{
+		psoDesc.RenderTargets.RTFormats[i] = GetDxgiFormatMapping(desc.RtvFormats[i]).RtvFormat;
+	}
+
+	if (desc.DsvFormat.has_value())
+	{
+		psoDesc.DSVFormat = GetDxgiFormatMapping(desc.DsvFormat.value()).RtvFormat;
+	}
+
+	D3D12_PIPELINE_STATE_STREAM_DESC streamDesc;
+	streamDesc.pPipelineStateSubobjectStream = &psoDesc;
+	streamDesc.SizeInBytes = sizeof(psoDesc);
+
+	ThrowIfFailed(
+		this->GetD3D12Device2()->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pipeline->D3D12PipelineState)));
+
+	return retVal;
+}
+
+TextureRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateTexture(TextureDesc const& desc)
+{
+	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
+	d3d12OptimizedClearValue.Color[0] = desc.OptmizedClearValue.Colour.R;
+	d3d12OptimizedClearValue.Color[1] = desc.OptmizedClearValue.Colour.G;
+	d3d12OptimizedClearValue.Color[2] = desc.OptmizedClearValue.Colour.B;
+	d3d12OptimizedClearValue.Color[3] = desc.OptmizedClearValue.Colour.A;
+	d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.DepthStencil.Depth;
+	d3d12OptimizedClearValue.DepthStencil.Stencil = desc.OptmizedClearValue.DepthStencil.Stencil;
+
+	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
+	d3d12OptimizedClearValue.Format = dxgiFormatMapping.RtvFormat;
+
+	D3D12MA::ALLOCATION_DESC allocationDesc = {};
+	allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+
+	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
+
+	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		if ((desc.BindingFlags & BindingFlags::ShaderResource) != BindingFlags::ShaderResource)
+		{
+			resourceFlags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+		}
+	}
+	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+	}
+	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	}
+
+	CD3DX12_RESOURCE_DESC resourceDesc = {};
+
+	const bool isTypeless = (desc.MiscFlags | RHI::TextureMiscFlags::Typeless) == RHI::TextureMiscFlags::Typeless;
+	switch (desc.Dimension)
+	{
+	case TextureDimension::Texture1D:
+	case TextureDimension::Texture1DArray:
+	{
+		resourceDesc =
+			CD3DX12_RESOURCE_DESC::Tex1D(
+				isTypeless ? dxgiFormatMapping.ResourceFormat : dxgiFormatMapping.RtvFormat,
+				desc.Width,
+				desc.ArraySize,
+				desc.MipLevels,
+				resourceFlags);
+		break;
+	}
+	case TextureDimension::Texture2D:
+	case TextureDimension::Texture2DArray:
+	case TextureDimension::TextureCube:
+	case TextureDimension::TextureCubeArray:
+	case TextureDimension::Texture2DMS:
+	case TextureDimension::Texture2DMSArray:
+	{
+		resourceDesc =
+			CD3DX12_RESOURCE_DESC::Tex2D(
+				isTypeless ? dxgiFormatMapping.ResourceFormat : dxgiFormatMapping.RtvFormat,
+				desc.Width,
+				desc.Height,
+				desc.ArraySize,
+				desc.MipLevels,
+				1,
+				0,
+				resourceFlags);
+		break;
+	}
+	case TextureDimension::Texture3D:
+	{
+		resourceDesc =
+			CD3DX12_RESOURCE_DESC::Tex3D(
+				isTypeless ? dxgiFormatMapping.ResourceFormat : dxgiFormatMapping.RtvFormat,
+				desc.Width,
+				desc.Height,
+				desc.ArraySize,
+				desc.MipLevels,
+				resourceFlags);
+		break;
+	}
+	default:
+		throw std::runtime_error("Unsupported texture dimension");
+	}
+
+	const bool useClearValue =
+		((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget) ||
+		((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil);
+
+
+	TextureRef retVal = TextureRef::Create(phx_new(D3D12Texture));
+	D3D12Texture* textureImpl = ResourceCast(retVal.Get());
+	textureImpl->Desc = desc;
+
+	textureImpl->TotalSize = 0;
+	textureImpl->Footprints.resize(desc.ArraySize * std::max(uint16_t(1u), desc.MipLevels));
+	textureImpl->RowSizesInBytes.resize(textureImpl->Footprints.size());
+	textureImpl->NumRows.resize(textureImpl->Footprints.size());
+	this->GetD3D12Device2()->GetCopyableFootprints(
+		&resourceDesc,
+		0,
+		(UINT)textureImpl->Footprints.size(),
+		0,
+		textureImpl->Footprints.data(),
+		textureImpl->NumRows.data(),
+		textureImpl->RowSizesInBytes.data(),
+		&textureImpl->TotalSize
+	);
+
+	ThrowIfFailed(
+		this->m_d3d12MemAllocator->CreateResource(
+			&allocationDesc,
+			&resourceDesc,
+			ConvertResourceStates(desc.InitialState),
+			useClearValue ? &d3d12OptimizedClearValue : nullptr,
+			&textureImpl->Allocation,
+			IID_PPV_ARGS(&textureImpl->D3D12Resource)));
+
+
+	std::wstring debugName;
+	Core::StringConvert(desc.DebugName, debugName);
+	textureImpl->D3D12Resource->SetName(debugName.c_str());
+
+	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
+	{
+		this->CreateSubresource(textureImpl, RHI::SubresouceType::SRV, 0, ~0u, 0, ~0u);
+	}
+
+	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
+	{
+		this->CreateSubresource(textureImpl, RHI::SubresouceType::RTV, 0, ~0u, 0, ~0u);
+	}
+
+	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
+	{
+		this->CreateSubresource(textureImpl, RHI::SubresouceType::DSV, 0, ~0u, 0, ~0u);
+	}
+
+	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+	{
+		this->CreateSubresource(textureImpl, RHI::SubresouceType::UAV, 0, ~0u, 0, ~0u);
+	}
+
+	return retVal;
+}
+
+BufferRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateBuffer(BufferDesc const& desc)
+{
+	BufferRef retVal = BufferRef::Create(phx_new(D3D12Buffer));
+	D3D12Buffer* bufferImpl = ResourceCast(retVal.Get());
+	bufferImpl->Desc = desc;
+
+	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
+	if ((desc.Binding & RHI::BindingFlags::UnorderedAccess) == RHI::BindingFlags::UnorderedAccess)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	}
+
+	D3D12MA::ALLOCATION_DESC allocationDesc = {};
+	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
+
+	switch (desc.Usage)
+	{
+	case Usage::ReadBack:
+		allocationDesc.HeapType = D3D12_HEAP_TYPE_READBACK;
+
+		initialState = D3D12_RESOURCE_STATE_COPY_DEST;
+		break;
+
+	case Usage::Upload:
+		allocationDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
+		break;
+
+	case Usage::Default:
+	default:
+		allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+		initialState = D3D12_RESOURCE_STATE_COMMON;
+	}
+
+	UINT64 alignedSize = 0;
+	if ((desc.Binding & BindingFlags::ConstantBuffer) == BindingFlags::ConstantBuffer)
+	{
+		alignedSize = Core::AlignTo(alignedSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+	}
+
+	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(desc.SizeInBytes, resourceFlags, alignedSize);
+
+	/* TODO: Add Sparse stuff
+	if (resource_heap_tier >= D3D12_RESOURCE_HEAP_TIER_2)
+	{
+		// tile pool memory can be used for sparse buffers and textures alike (requires resource heap tier 2):
+		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
+	}
+	else if (has_flag(desc->misc_flags, ResourceMiscFlag::SPARSE_TILE_POOL_BUFFER))
+	{
+		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+	}
+	else if (has_flag(desc->misc_flags, ResourceMiscFlag::SPARSE_TILE_POOL_TEXTURE_NON_RT_DS))
+	{
+		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
+	}
+	else if (has_flag(desc->misc_flags, ResourceMiscFlag::SPARSE_TILE_POOL_TEXTURE_RT_DS))
+	{
+		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
+	}
+	*/
+
+	if ((desc.MiscFlags & BufferMiscFlags::IsAliasedResource) == BufferMiscFlags::IsAliasedResource)
+	{
+		D3D12_RESOURCE_ALLOCATION_INFO finalAllocInfo = {};
+		finalAllocInfo.Alignment = 0;
+		finalAllocInfo.SizeInBytes = Core::AlignTo(
+			desc.SizeInBytes,
+			D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT * 1024);
+
+		ThrowIfFailed(
+			this->m_d3d12MemAllocator->AllocateMemory(
+				&allocationDesc,
+				&finalAllocInfo,
+				&bufferImpl->Allocation));
+		return retVal;
+	}
+#if 0
+	else if (desc.AliasedBuffer.IsValid())
+	{
+		D3D12Buffer* aliasedBuffer = this->m_bufferPool.Get(desc.AliasedBuffer);
+
+		ThrowIfFailed(
+			this->m_d3d12MemAllocator->CreateAliasingResource(
+				aliasedBuffer->Allocation.Get(),
+				0,
+				&resourceDesc,
+				initialState,
+				nullptr,
+				IID_PPV_ARGS(&bufferImpl->D3D12Resource)));
+	}
+#endif
+	else
+	{
+		ThrowIfFailed(
+			this->m_d3d12MemAllocator->CreateResource(
+				&allocationDesc,
+				&resourceDesc,
+				initialState,
+				nullptr,
+				&bufferImpl->Allocation,
+				IID_PPV_ARGS(&bufferImpl->D3D12Resource)));
+	}
+
+	switch (desc.Usage)
+	{
+	case Usage::ReadBack:
+	{
+		ThrowIfFailed(
+			bufferImpl->D3D12Resource->Map(0, nullptr, &bufferImpl->MappedData));
+		bufferImpl->MappedSizeInBytes = static_cast<uint32_t>(desc.SizeInBytes);
+
+		break;
+	}
+
+	case Usage::Upload:
+	{
+		D3D12_RANGE readRange = {};
+		ThrowIfFailed(
+			bufferImpl->D3D12Resource->Map(0, &readRange, &bufferImpl->MappedData));
+
+		bufferImpl->MappedSizeInBytes = static_cast<uint32_t>(desc.SizeInBytes);
+		break;
+	}
+	case Usage::Default:
+	default:
+		break;
+	}
+
+	std::wstring debugName(desc.DebugName.begin(), desc.DebugName.end());
+	bufferImpl->D3D12Resource->SetName(debugName.c_str());
+
+	if ((desc.MiscFlags & BufferMiscFlags::IsAliasedResource) == BufferMiscFlags::IsAliasedResource)
+	{
+		return retVal;
+	}
+
+	if ((desc.Binding & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
+	{
+		this->CreateSubresource(bufferImpl, RHI::SubresouceType::SRV, 0u);
+	}
+
+	if ((desc.Binding & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+	{
+		this->CreateSubresource(bufferImpl, RHI::SubresouceType::UAV, 0u);
+	}
+
+	return retVal;
+}
+
+CommandListRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateCommandList(RHI::CommandQueueType type)
+{
+	return CommandListRef();
+}
+
+void PhxEngine::RHI::D3D12::D3D12DynamicRHI::ResizeSwapChain(ISwapChain* swapChain, SwapChainDesc const& desc)
 {
 	if (!swapChain)
 	{
@@ -826,11 +2038,11 @@ void D3D12DynamicRHI::CreateGpuTimestampQueryHeap(uint32_t queryCount)
 
 void PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateSwapChainResources(D3D12SwapChain* swapChain)
 {
-	swapChain->BackBuffers.resize(swapChain->Desc().BufferCount);
-	swapChain->BackBuferViews.resize(swapChain->Desc().BufferCount);
+	swapChain->BackBuffers.resize(swapChain->GetDesc().BufferCount);
+	swapChain->BackBuferViews.resize(swapChain->GetDesc().BufferCount);
 
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-	rtvDesc.Format = D3D12::GetDxgiFormatMapping(swapChain->Desc().Format).RtvFormat;
+	rtvDesc.Format = D3D12::GetDxgiFormatMapping(swapChain->GetDesc().Format).RtvFormat;
 	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 	for (int i = 0; i < swapChain->BackBuffers.size(); i++)
 	{

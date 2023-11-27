@@ -20,7 +20,6 @@ namespace PhxEngine::RHI
         uint64_t Usage = 0ull;
     };
 
-
     class DynamicRHI
     {
     public:
@@ -32,7 +31,7 @@ namespace PhxEngine::RHI
         virtual void Finalize() = 0;
 
         // -- Submits Command lists and presents ---
-        virtual void Present(SwapChain* swapChain) = 0;
+        virtual void Present(ISwapChain* swapChain) = 0;
         virtual void WaitForIdle() = 0;
 
         virtual bool IsDevicedRemoved() = 0;
@@ -50,8 +49,9 @@ namespace PhxEngine::RHI
         virtual MeshPipelineRef CreateMeshPipeline(MeshPipelineDesc const& desc) = 0;
         virtual TextureRef CreateTexture(TextureDesc const& desc) = 0;
         virtual BufferRef CreateBuffer(BufferDesc const& desc) = 0;
+        virtual CommandListRef CreateCommandList(RHI::CommandQueueType type = CommandQueueType::Graphics) = 0;
 
-        virtual void ResizeSwapChain(SwapChain* swapChain, SwapChainDesc const& desc) = 0;
+        virtual void ResizeSwapChain(ISwapChain* swapChain, SwapChainDesc const& desc) = 0;
 
         // Create the other stuff
     };

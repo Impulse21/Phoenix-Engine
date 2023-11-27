@@ -258,17 +258,17 @@ namespace PhxEngine::Core
         std::atomic<unsigned long> m_refCount = 1;
 
     public:
-        unsigned long AddRef() override
+        virtual unsigned long AddRef()
         {
             return ++m_refCount;
         }
 
-        unsigned long Release() override
+        virtual unsigned long Release()
         {
             unsigned long result = --m_refCount;
             if (result == 0) 
             {
-                phx_delete(this);;
+                phx_delete(this);
             }
             return result;
         }
