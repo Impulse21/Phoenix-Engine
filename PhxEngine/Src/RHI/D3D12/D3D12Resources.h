@@ -17,10 +17,10 @@ namespace PhxEngine::RHI::D3D12
         Count,
     };
 
-    struct D3D12Shader final : public Core::RefCounter<IShader>
+    struct D3D12Shader final : Core::RefCounter<IShader>
     {
         ShaderDesc Desc = {};
-        std::vector<uint8_t> ByteCode;
+        Phx::FlexArray<uint8_t> ByteCode;
         Microsoft::WRL::ComPtr<ID3D12VersionedRootSignatureDeserializer> RootSignatureDeserializer;
         const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* RootSignatureDesc = nullptr;
         Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
@@ -42,10 +42,10 @@ namespace PhxEngine::RHI::D3D12
         typedef D3D12Shader TConcreteType;
     };
 
-    struct D3D12InputLayout final : public Core::RefCounter<IInputLayout>
+    struct D3D12InputLayout final : Core::RefCounter<IInputLayout>
     {
-        std::vector<VertexAttributeDesc> Attributes;
-        std::vector<D3D12_INPUT_ELEMENT_DESC> InputElements;
+        Phx::FlexArray<VertexAttributeDesc> Attributes;
+        Phx::FlexArray<D3D12_INPUT_ELEMENT_DESC> InputElements;
 
         D3D12InputLayout() = default;
 
@@ -58,7 +58,7 @@ namespace PhxEngine::RHI::D3D12
         typedef D3D12InputLayout TConcreteType;
     };
 
-    struct D3D12GfxPipeline final : public Core::RefCounter<IGfxPipeline>
+    struct D3D12GfxPipeline final : Core::RefCounter<IGfxPipeline>
     {
         GfxPipelineDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
@@ -75,7 +75,7 @@ namespace PhxEngine::RHI::D3D12
         typedef D3D12GfxPipeline TConcreteType;
     };
 
-    struct D3D12ComputePipeline final : public Core::RefCounter<IComputePipeline>
+    struct D3D12ComputePipeline final : Core::RefCounter<IComputePipeline>
     {
         ComputePipelineDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
@@ -91,7 +91,7 @@ namespace PhxEngine::RHI::D3D12
         typedef D3D12ComputePipeline TConcreteType;
     };
 
-    struct D3D12MeshPipeline final : public Core::RefCounter<IMeshPipeline>
+    struct D3D12MeshPipeline final : Core::RefCounter<IMeshPipeline>
     {
         MeshPipelineDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
@@ -131,9 +131,9 @@ namespace PhxEngine::RHI::D3D12
     class ICommandSignature
     {};
 
-    struct D3D12CommandSignature final : public Core::RefCounter<ICommandSignature>
+    struct D3D12CommandSignature final : Core::RefCounter<ICommandSignature>
     {
-        std::vector<D3D12_INDIRECT_ARGUMENT_DESC> D3D12Descs;
+        Phx::FlexArray<D3D12_INDIRECT_ARGUMENT_DESC> D3D12Descs;
         Microsoft::WRL::ComPtr<ID3D12CommandSignature> NativeSignature;
     };
 
@@ -143,7 +143,7 @@ namespace PhxEngine::RHI::D3D12
         typedef D3D12CommandSignature TConcreteType;
     };
 
-    struct D3D12Texture final : public Core::RefCounter<ITexture>
+    struct D3D12Texture final : Core::RefCounter<ITexture>
     {
         TextureDesc Desc = {};
 
@@ -151,22 +151,22 @@ namespace PhxEngine::RHI::D3D12
         Microsoft::WRL::ComPtr<D3D12MA::Allocation> Allocation;
 
         UINT64 TotalSize = 0;
-        std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> Footprints;
-        std::vector<UINT64> RowSizesInBytes;
-        std::vector<UINT> NumRows;
+        Phx::FlexArray<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> Footprints;
+        Phx::FlexArray<UINT64> RowSizesInBytes;
+        Phx::FlexArray<UINT> NumRows;
 
         // -- The views ---
         DescriptorView RtvAllocation;
-        std::vector<DescriptorView> RtvSubresourcesAlloc = {};
+        Phx::FlexArray<DescriptorView> RtvSubresourcesAlloc = {};
 
         DescriptorView DsvAllocation;
-        std::vector<DescriptorView> DsvSubresourcesAlloc = {};
+        Phx::FlexArray<DescriptorView> DsvSubresourcesAlloc = {};
 
         DescriptorView Srv;
-        std::vector<DescriptorView> SrvSubresourcesAlloc = {};
+        Phx::FlexArray<DescriptorView> SrvSubresourcesAlloc = {};
 
         DescriptorView UavAllocation;
-        std::vector<DescriptorView> UavSubresourcesAlloc = {};
+        Phx::FlexArray<DescriptorView> UavSubresourcesAlloc = {};
 
         void DisposeViews()
         {
@@ -212,7 +212,7 @@ namespace PhxEngine::RHI::D3D12
         typedef D3D12Texture TConcreteType;
     };
 
-    struct D3D12Buffer final : public Core::RefCounter<IBuffer>
+    struct D3D12Buffer final : Core::RefCounter<IBuffer>
     {
         BufferDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
@@ -223,10 +223,10 @@ namespace PhxEngine::RHI::D3D12
 
         // -- Views ---
         DescriptorView Srv;
-        std::vector<DescriptorView> SrvSubresourcesAlloc = {};
+        Phx::FlexArray<DescriptorView> SrvSubresourcesAlloc = {};
 
         DescriptorView UavAllocation;
-        std::vector<DescriptorView> UavSubresourcesAlloc = {};
+        Phx::FlexArray<DescriptorView> UavSubresourcesAlloc = {};
 
 
         D3D12_VERTEX_BUFFER_VIEW VertexView = {};
@@ -267,7 +267,7 @@ namespace PhxEngine::RHI::D3D12
     {
         // RTAccelerationStructureDesc Desc = {};
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS Dx12Desc = {};
-        std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> Geometries;
+        Phx::FlexArray<D3D12_RAYTRACING_GEOMETRY_DESC> Geometries;
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO Info = {};
         // BufferHandle SratchBuffer;
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
@@ -290,7 +290,7 @@ namespace PhxEngine::RHI::D3D12
     };
 #endif 
 #if 0
-    struct D3D12TimerQuery final : public Core::RefCounter<Tim>
+    struct D3D12TimerQuery final : Core::RefCounter<Tim>
     {
         size_t BeginQueryIndex = 0;
         size_t EndQueryIndex = 0;
@@ -306,14 +306,14 @@ namespace PhxEngine::RHI::D3D12
     };
 #endif
 
-    struct D3D12SwapChain final : public Core::RefCounter<ISwapChain>
+    struct D3D12SwapChain final : Core::RefCounter<ISwapChain>
     {
         SwapChainDesc Desc = {};
         Core::RefCountPtr<IDXGISwapChain1> NativeSwapchain;
         Core::RefCountPtr<IDXGISwapChain4> NativeSwapchain4;
 
-        std::vector<Core::RefCountPtr<ID3D12Resource>> BackBuffers;
-        std::vector<DescriptorView> BackBuferViews;
+        Phx::FlexArray<Core::RefCountPtr<ID3D12Resource>> BackBuffers;
+        Phx::FlexArray<DescriptorView> BackBuferViews;
 
         ~D3D12SwapChain()
         {
@@ -348,6 +348,152 @@ namespace PhxEngine::RHI::D3D12
         Microsoft::WRL::ComPtr<IDXGIAdapter1> NativeAdapter;
 
         static HRESULT EnumAdapters(uint32_t adapterIndex, IDXGIFactory6* factory6, IDXGIAdapter1** outAdapter);
+    };
+
+    class UploadBuffer;
+    struct D3D12CommandList final : public Core::RefCounter<ICommandList>
+    {
+        CommandQueueType QueueType = CommandQueueType::Graphics;
+        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> NativeCommandList;
+        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList6> NativeCommandList6;
+        ID3D12CommandAllocator* NativeCommandAllocator;
+        std::unique_ptr<D3D12:: UploadBuffer> UploadBuffer;
+
+        // -- Supplimentry data
+        std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> BuildGeometries;
+        std::vector<D3D12_RESOURCE_BARRIER> BarrierMemoryPool;
+
+        DynamicSuballocator* ActiveDynamicSubAllocator;
+
+        enum class PipelineType
+        {
+            Gfx,
+            Compute,
+            Mesh,
+        } ActivePipelineType;
+
+        union
+        {
+            D3D12ComputePipeline* ActiveComputePipeline;
+            D3D12MeshPipeline* ActiveMeshPipeline;
+        };
+#if 0 
+        std::vector<RHI::TimerQueryHandle> TimerQueries;
+#endif
+
+        // -- Helper Functions ---
+        void TransitionBarrier(Microsoft::WRL::ComPtr<ID3D12Resource> d3d12Resource, D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState)
+        {
+            CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                d3d12Resource.Get(),
+                beforeState, afterState);
+
+            // TODO: Batch Barrier
+            this->NativeCommandList->ResourceBarrier(1, &barrier);
+        }
+
+        void Reset() override;
+
+        // -- Ray Trace stuff       ---
+        // void RTBuildAccelerationStructure(RHI::RTAccelerationStructureHandle accelStructure) override;
+        // -- Ray Trace Stuff END   ---
+
+        void BeginMarker(std::string_view name) override;
+        void EndMarker() override;
+        //  GPUAllocation AllocateGpu(size_t bufferSize, size_t stride) override;
+
+        void TransitionBarrier(ITexture* texture, ResourceStates beforeState, ResourceStates afterState) override;
+        void TransitionBarrier(IBuffer* buffer, ResourceStates beforeState, ResourceStates afterState) override;
+        void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers) override;
+        void ClearTextureFloat(ITexture* texture, Color const& clearColour) override;
+        void ClearDepthStencilTexture(ITexture* depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) override;
+
+        void Draw(DrawArgs const& args) override;
+        void DrawIndexed(DrawArgs const& args) override;
+#if 0
+        // void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, IBuffer* args, size_t argsOffsetInBytes, uint32_t maxCount) override;
+        // void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, IBuffer* args, size_t argsOffsetInBytes, IBuffer* count, size_t countOffsetInBytes, uint32_t maxCount) override;
+
+        void DrawIndirect(IBuffer* args, size_t argsOffsetInBytes, uint32_t maxCount) override;
+        void DrawIndirect(IBuffer* args, size_t argsOffsetInBytes, IBuffer* count, size_t countOffsetInBytes, uint32_t maxCount) override;
+
+        void DrawIndexedIndirect(IBuffer* args, size_t argsOffsetInBytes, uint32_t maxCount) override;
+        void DrawIndexedIndirect(IBuffer* args, size_t argsOffsetInBytes, IBuffer* count, size_t countOffsetInBytes, uint32_t maxCount) override;
+#endif
+        void WriteBuffer(IBuffer* buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes) override;
+
+        void CopyBuffer(IBuffer* dst, uint64_t dstOffset, IBuffer* src, uint64_t srcOffset, size_t sizeInBytes) override;
+
+        void WriteTexture(ITexture* texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData) override;
+        void WriteTexture(ITexture* texture, uint32_t arraySlice, uint32_t mipLevel, const void* Data, size_t rowPitch, size_t depthPitch) override;
+
+        void SetGfxPipeline(IGfxPipeline* gfxPipeline) override;
+        void SetViewports(Viewport* viewports, size_t numViewports) override;
+        void SetScissors(Rect* scissor, size_t numScissors) override;
+        void SetRenderTargets(Core::Span<ITexture*> renderTargets, ITexture* depthStenc) override;
+
+        // -- Comptute Stuff ---
+        void SetComputeState(IComputePipeline* state) override;
+        void Dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ) override;
+        void DispatchIndirect(IBuffer* args, uint32_t argsOffsetInBytes, uint32_t maxCount) override;
+        void DispatchIndirect(IBuffer* args, uint32_t argsOffsetInBytes, IBuffer* count, size_t countOffsetInBytes, uint32_t maxCount) override;
+
+        // -- Mesh Stuff ---
+        void SetMeshPipeline(IMeshPipeline* meshPipeline) override;
+        void DispatchMesh(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ) override;
+        void DispatchMeshIndirect(IBuffer* args, uint32_t argsOffsetInBytes, uint32_t maxCount) override;
+        void DispatchMeshIndirect(IBuffer* args, uint32_t argsOffsetInBytes, IBuffer* count, size_t countOffsetInBytes, uint32_t maxCount) override;
+
+        void BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants) override;
+        void BindConstantBuffer(size_t rootParameterIndex, IBuffer* constantBuffer) override;
+        void BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData) override;
+        void BindVertexBuffer(uint32_t slot, IBuffer* vertexBuffer) override;
+
+        /**
+         * Set dynamic vertex buffer data to the rendering pipeline.
+         */
+        void BindDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData) override;
+        void BindIndexBuffer(IBuffer* bufferHandle) override;
+
+        /**
+         * Bind dynamic index buffer data to the rendering pipeline.
+         */
+        void BindDynamicIndexBuffer(size_t numIndicies, RHI::Format indexFormat, const void* indexBufferData) override;
+        /**
+         * Set dynamic structured buffer contents.
+         */
+        void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, size_t numElements, size_t elementSize, const void* bufferData) override;
+        void BindStructuredBuffer(size_t rootParameterIndex, IBuffer* buffer) override;
+
+        void BindDynamicDescriptorTable(size_t rootParameterIndex, Core::Span<ITexture*> textures) override;
+        void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Core::Span<IBuffer*> buffers)
+        {
+            this->BindDynamicUavDescriptorTable(rootParameterIndex, buffers, {});
+        }
+        void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Core::Span<ITexture*> textures)
+        {
+            this->BindDynamicUavDescriptorTable(rootParameterIndex, {}, textures);
+        }
+        void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Core::Span<IBuffer*> buffers,
+            Core::Span<ITexture*> textures) override;
+
+        void BindResourceTable(size_t rootParameterIndex) override;
+        void BindSamplerTable(size_t rootParameterIndex) override;
+
+        // void BeginTimerQuery(TimerQueryHandle query) override;
+        // void EndTimerQuery(TimerQueryHandle query) override;
+    };
+
+    template<>
+    struct TD3D12ResourceTraits<ICommandList>
+    {
+        typedef D3D12CommandList TConcreteType;
     };
 
 }

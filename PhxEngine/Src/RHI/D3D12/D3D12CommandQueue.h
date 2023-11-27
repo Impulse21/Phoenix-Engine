@@ -49,7 +49,7 @@ namespace PhxEngine::RHI::D3D12
 		Microsoft::WRL::ComPtr<ID3D12Fence> m_d3d12Fence;
 		
 #if 0
-		std::vector<std::unique_ptr<D3D12CommandContext>> m_commandListsPool;
+		Phx::FlexArray<std::unique_ptr<D3D12CommandContext>> m_commandListsPool;
 		std::queue<D3D12CommandContext*> m_availableCommandLists;
 #endif
 		std::mutex m_commandListMutx;
@@ -61,7 +61,7 @@ namespace PhxEngine::RHI::D3D12
 			void DiscardAllocator(uint64_t fence, ID3D12CommandAllocator* allocator);
 
 		private:
-			std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> m_allocatorPool;
+			Phx::FlexArray<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> m_allocatorPool;
 			std::queue<std::pair<uint64_t, ID3D12CommandAllocator*>> m_availableAllocators;
 			std::mutex m_allocatonMutex;
 			ID3D12Device* m_nativeDevice;

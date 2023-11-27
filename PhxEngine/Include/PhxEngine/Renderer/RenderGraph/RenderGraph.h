@@ -150,8 +150,8 @@ namespace PhxEngine::Renderer
 	private:
 		RgPassFlags m_flags;
 		std::string_view m_name;
-		std::vector<RgReference> m_reads;
-		std::vector<RgReference> m_writes;
+		Phx::FlexArray<RgReference> m_reads;
+		Phx::FlexArray<RgReference> m_writes;
 	};
 
 	template<typename TExecuteLambda>
@@ -238,10 +238,10 @@ namespace PhxEngine::Renderer
 		void Execute();
 
 	private:
-		std::vector<RgPass*> m_passes;
+		Phx::FlexArray<RgPass*> m_passes;
 
-		std::vector<RgReference> m_reads;
-		std::vector<RgReference> m_writes;
+		Phx::FlexArray<RgReference> m_reads;
+		Phx::FlexArray<RgReference> m_writes;
 	};
 
 	class RgBuilder
@@ -284,23 +284,23 @@ namespace PhxEngine::Renderer
 	private:
 		void Setup();
 
-		void DepthFirstSearchRec(size_t n, std::vector<bool>& visited, std::stack<size_t>& stack) const;
-		void DepthFirstSearchRec(size_t n, std::vector<bool>& visited, std::vector<bool>& onStack);
+		void DepthFirstSearchRec(size_t n, Phx::FlexArray<bool>& visited, std::stack<size_t>& stack) const;
+		void DepthFirstSearchRec(size_t n, Phx::FlexArray<bool>& visited, Phx::FlexArray<bool>& onStack);
 
 	private:
 		Core::IAllocator* m_graphAllocator;
 		// TODO: avoid These sort of allocations
 		RgPass* m_prologuePass;
 		RgPass* m_epiloguePass;
-		std::vector<RgPass*> m_renderPasses;
+		Phx::FlexArray<RgPass*> m_renderPasses;
 
-		std::vector<std::vector<size_t>> m_adjacencyLists;
-		std::vector<RgPass*> m_topologicalSortedPasses;
-		std::vector<RgDependencyLevel> m_compiledDependencyLevels;
+		Phx::FlexArray<Phx::FlexArray<size_t>> m_adjacencyLists;
+		Phx::FlexArray<RgPass*> m_topologicalSortedPasses;
+		Phx::FlexArray<RgDependencyLevel> m_compiledDependencyLevels;
 
 		// Graph Resources
-		std::vector<RHI::Texture*> m_externalRenderTargetTextures;
-		std::vector<RgResourceDesc> m_targetDescriptions;
+		Phx::FlexArray<RHI::Texture*> m_externalRenderTargetTextures;
+		Phx::FlexArray<RgResourceDesc> m_targetDescriptions;
 	};
 }
 

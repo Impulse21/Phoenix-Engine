@@ -3,10 +3,10 @@
 #include <memory>
 #include <vector>
 
-#include <mimalloc-override.h>
+#include <mimalloc.h>
 
 namespace Phx
 {
 	template<typename T>
-	using vector = std::vector<T, mi_stl_allocator<T>>;
+	using FlexArray = std::vector<T, mi_stl_allocator<T>>;
 }

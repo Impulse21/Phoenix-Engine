@@ -33,11 +33,11 @@ namespace PhxEngine::RHI::ShaderCompiler
 	struct CompilerResult
 	{
 		std::string ErrorMessage;
-		std::vector<std::string> Dependencies;
+		Phx::FlexArray<std::string> Dependencies;
 		PhxEngine::Core::Span<uint8_t> ShaderData;
 		PhxEngine::Core::Span<uint8_t> ShaderSymbols;
 
-		std::vector<uint8_t> ShaderHash;
+		Phx::FlexArray<uint8_t> ShaderHash;
 
 		std::shared_ptr<void> InternalResource;
 		std::shared_ptr<void> InternalResourceSymbols;

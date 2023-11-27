@@ -34,7 +34,7 @@ void PhxEngine::Renderer::RgBuilder::Setup()
 	// TODO: Validate graph
 	// The graph is implicily created topologcly sorted because of the Pass Results. 
 	// The dependent graph would already be added prior to it's dependencies.
-	std::vector<int> distance(this->m_renderPasses.size(), 0);
+	Phx::FlexArray<int> distance(this->m_renderPasses.size(), 0);
 
 	for (int u = this->m_renderPasses.size() - 1; u --> 0 ; )
 	{
@@ -76,7 +76,7 @@ void PhxEngine::Renderer::RgBuilder::Setup()
 			continue;
 		}
 
-		std::vector<size_t>& indices = this->m_adjacencyLists[i];
+		Phx::FlexArray<size_t>& indices = this->m_adjacencyLists[i];
 
 		// Reverse iterate the render passes here, because often or not, the adjacency list should be built upon
 		// the latest changes to the render passes since those pass are more likely to change the resource we are writing to from other passes
@@ -103,8 +103,8 @@ void PhxEngine::Renderer::RgBuilder::Setup()
 	}
 
 	// Topological Sort
-	std::vector<bool> visited(this->m_renderPasses.size(), false);
-	std::vector<bool> onStack(this->m_renderPasses.size(), false);
+	Phx::FlexArray<bool> visited(this->m_renderPasses.size(), false);
+	Phx::FlexArray<bool> onStack(this->m_renderPasses.size(), false);
 
 	this->m_topologicalSortedPasses.reserve(this->m_renderPasses.size());
 	for (size_t i = 0; i < this->m_renderPasses.size(); i++)
@@ -119,7 +119,7 @@ void PhxEngine::Renderer::RgBuilder::Setup()
 	std::reverse(this->m_topologicalSortedPasses.begin(), this->m_topologicalSortedPasses.end());
 
 	// Calculate Dependency Levels
-	std::vector<int> distance(this->m_topologicalSortedPasses.size(), 0);
+	Phx::FlexArray<int> distance(this->m_topologicalSortedPasses.size(), 0);
 
 	for (int u = 0; u < this->m_topologicalSortedPasses.size(); u++)
 	{
@@ -141,7 +141,7 @@ void PhxEngine::Renderer::RgBuilder::Setup()
 #endif
 }
 
-void PhxEngine::Renderer::RgBuilder::DepthFirstSearchRec(size_t n, std::vector<bool>& visited, std::stack<size_t>& stack) const
+void PhxEngine::Renderer::RgBuilder::DepthFirstSearchRec(size_t n, Phx::FlexArray<bool>& visited, std::stack<size_t>& stack) const
 {
 	visited[n] = true;
 
@@ -156,7 +156,7 @@ void PhxEngine::Renderer::RgBuilder::DepthFirstSearchRec(size_t n, std::vector<b
 	stack.push(n);
 }
 
-void PhxEngine::Renderer::RgBuilder::DepthFirstSearchRec(size_t n, std::vector<bool>& visited, std::vector<bool>& onStack)
+void PhxEngine::Renderer::RgBuilder::DepthFirstSearchRec(size_t n, Phx::FlexArray<bool>& visited, Phx::FlexArray<bool>& onStack)
 {
 	visited[n] = true;
 	onStack[n] = true;

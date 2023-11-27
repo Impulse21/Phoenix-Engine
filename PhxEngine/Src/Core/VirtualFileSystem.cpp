@@ -75,7 +75,7 @@ namespace
         bool FindMountPoint(const std::filesystem::path& path, std::filesystem::path* pRelativePath, IFileSystem** ppFS);
 
     private:
-        std::vector<std::pair<std::string, std::shared_ptr<IFileSystem>>> m_mountPoints;
+        Phx::FlexArray<std::pair<std::string, std::shared_ptr<IFileSystem>>> m_mountPoints;
     };
 }
 

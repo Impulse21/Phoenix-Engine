@@ -1,7 +1,7 @@
 #pragma once
 
 #include <initializer_list>
-#include <vector>
+#include <PhxEngine/Core/Vector.h>
 #include <assert.h>
 
 namespace PhxEngine::Core
@@ -28,7 +28,7 @@ namespace PhxEngine::Core
 			: Span(v.begin(), v.size(), 0)
 		{};
 
-		Span(std::vector<T> const& v)
+		Span(Phx::FlexArray<T> const& v)
 			: Span(v.data(), v.size(), 0)
 		{}
 

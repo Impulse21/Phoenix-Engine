@@ -73,7 +73,7 @@ D3D12CommandContext* PhxEngine::RHI::D3D12::D3D12CommandQueue::RequestCommandCon
 uint64_t PhxEngine::RHI::D3D12::D3D12CommandQueue::ExecuteCommandContexts(Core::Span<D3D12CommandContext*> contexts)
 {
 	auto _ = std::scoped_lock(this->m_commandListMutx);
-	static thread_local std::vector<ID3D12CommandList*> d3d12CommandLists;
+	static thread_local Phx::FlexArray<ID3D12CommandList*> d3d12CommandLists;
 	d3d12CommandLists.clear();
 
 	for (auto commandList : contexts)

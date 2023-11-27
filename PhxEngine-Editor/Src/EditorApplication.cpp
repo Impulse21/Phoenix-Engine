@@ -161,9 +161,9 @@ namespace
                 ImGui::End();
 		}
 
-		void OnRender(RgBuilder& rgBuilder) override
+		void OnRender(RgBuilder& rgBuilder, RHI::ICommandList* gfxCmdList) override
 		{
-            Renderer::ImGuiRenderer::Render(rgBuilder);
+            Renderer::ImGuiRenderer::Render(rgBuilder, gfxCmdList);
 		}
 
         template<typename _TWidget>

@@ -7,6 +7,56 @@
 
 namespace PhxEngine::RHI::D3D12
 {
+	struct UploadAllocation
+	{
+		void* CpuData;
+		D3D12_GPU_VIRTUAL_ADDRESS Gpu;
+		BufferRef Buffer;
+		size_t Offset;
+	};
+
+	class UploadBuffer
+	{
+	public:
+		void Initialize(size_t pageSize = PhxMB(100));
+
+		UploadAllocation Allocate(size_t sizeInBytes, size_t alignment);
+
+		void Reset();
+
+		size_t GetPageSize() { return this->m_pageSize; }
+
+	private:
+		struct Page
+		{
+			Page(size_t sizeInBytes);
+			~Page();
+			bool HasSpace(size_t sizeInBytes, size_t alignment) const;
+			UploadAllocation Allocate(size_t sizeInBytes, size_t alignment);
+
+			void Reset();
+
+		private:
+			BufferRef m_buffer;
+			D3D12_GPU_VIRTUAL_ADDRESS m_gpuPtr;
+
+			size_t m_pageSize;
+			size_t m_offset;
+		};
+
+	private:
+		using PagePool = std::deque<std::shared_ptr<Page>>;
+		std::shared_ptr<Page> RequestPage();
+
+	private:
+		PagePool m_pagePool;
+		PagePool m_availablePages;
+
+		std::shared_ptr<Page> m_currentPage;
+
+		size_t m_pageSize;
+	};
+
 #if false
     class D3D12GfxDevice;
 

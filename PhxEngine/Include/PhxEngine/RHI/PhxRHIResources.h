@@ -5,6 +5,7 @@
 #include <variant>
 
 #include <PhxEngine/Core/Span.h>
+#include <PhxEngine/Core/Vector.h>
 #include <PhxEngine/RHI/PhxRHIDefinitions.h>
 #include <PhxEngine/Core/RefCountPtr.h>
 
@@ -182,7 +183,7 @@ namespace PhxEngine::RHI
         DepthStencilRenderState DepthStencilRenderState = {};
         RasterRenderState RasterRenderState = {};
 
-        std::vector<RHI::Format> RtvFormats;
+        Phx::FlexArray<RHI::Format> RtvFormats;
         std::optional<RHI::Format> DsvFormat;
 
         uint32_t SampleCount = 1;
@@ -225,7 +226,7 @@ namespace PhxEngine::RHI
         DepthStencilRenderState DepthStencilRenderState = {};
         RasterRenderState RasterRenderState = {};
 
-        std::vector<RHI::Format> RtvFormats;
+        Phx::FlexArray<RHI::Format> RtvFormats;
         std::optional<RHI::Format> DsvFormat;
 
         uint32_t SampleCount = 1;
@@ -338,6 +339,8 @@ namespace PhxEngine::RHI
     public:
         virtual ~ICommandList() = default;
 
+        virtual void Reset() = 0;
+
         // -- Ray Trace stuff       ---
         // virtual void RTBuildAccelerationStructure(RHI::RTAccelerationStructureHandle accelStructure) = 0;
         // -- Ray Trace Stuff END   ---
@@ -354,18 +357,18 @@ namespace PhxEngine::RHI
 
         virtual void Draw(DrawArgs const& args) = 0;
         virtual void DrawIndexed(DrawArgs const& args) = 0;
-
-        // virtual void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, IBuffer* args, size_t argsOffsetInBytes, uint32_t maxCount) = 0;
-        // virtual void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, IBuffer* args, size_t argsOffsetInBytes, IBuffer* count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
+#if 0
+        virtual void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, IBuffer* args, size_t argsOffsetInBytes, uint32_t maxCount) = 0;
+        virtual void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, IBuffer* args, size_t argsOffsetInBytes, IBuffer* count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
 
         virtual void DrawIndirect(IBuffer* args, size_t argsOffsetInBytes, uint32_t maxCount) = 0;
         virtual void DrawIndirect(IBuffer* args, size_t argsOffsetInBytes, IBuffer* count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
 
         virtual void DrawIndexedIndirect(IBuffer* args, size_t argsOffsetInBytes, uint32_t maxCount) = 0;
         virtual void DrawIndexedIndirect(IBuffer* args, size_t argsOffsetInBytes, IBuffer* count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
-
+#endif
         template<typename T>
-        void WriteBuffer(IBuffer* buffer, std::vector<T> const& data, uint64_t destOffsetBytes)
+        void WriteBuffer(IBuffer* buffer, Phx::FlexArray<T> const& data, uint64_t destOffsetBytes)
         {
             this->WriteBuffer(buffer, data.data(), sizeof(T) * data.size(), destOffsetBytes);
         }
@@ -389,19 +392,19 @@ namespace PhxEngine::RHI
         virtual void WriteTexture(ITexture* texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData) = 0;
         virtual void WriteTexture(ITexture* texture, uint32_t arraySlice, uint32_t mipLevel, const void* Data, size_t rowPitch, size_t depthPitch) = 0;
 
-        virtual void SetGfxPipeline(GfxPipelineRef const& gfxPipeline) = 0;
+        virtual void SetGfxPipeline(IGfxPipeline* gfxPipeline) = 0;
         virtual void SetViewports(Viewport* viewports, size_t numViewports) = 0;
         virtual void SetScissors(Rect* scissor, size_t numScissors) = 0;
         virtual void SetRenderTargets(Core::Span<ITexture*> renderTargets, ITexture* depthStenc) = 0;
 
         // -- Comptute Stuff ---
-        virtual void SetComputeState(ComputePipelineRef const& state) = 0;
+        virtual void SetComputeState(IComputePipeline* state) = 0;
         virtual void Dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ) = 0;
         virtual void DispatchIndirect(IBuffer* args, uint32_t argsOffsetInBytes, uint32_t maxCount) = 0;
         virtual void DispatchIndirect(IBuffer* args, uint32_t argsOffsetInBytes, IBuffer* count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
 
         // -- Mesh Stuff ---
-        virtual void SetMeshPipeline(MeshPipelineRef const& meshPipeline) = 0;
+        virtual void SetMeshPipeline(IMeshPipeline* meshPipeline) = 0;
         virtual void DispatchMesh(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ) = 0;
         virtual void DispatchMeshIndirect(IBuffer* args, uint32_t argsOffsetInBytes, uint32_t maxCount) = 0;
         virtual void DispatchMeshIndirect(IBuffer* args, uint32_t argsOffsetInBytes, IBuffer* count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
@@ -430,7 +433,7 @@ namespace PhxEngine::RHI
         virtual void BindDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData) = 0;
 
         template<typename T>
-        void BindDynamicVertexBuffer(uint32_t slot, const std::vector<T>& vertexBufferData)
+        void BindDynamicVertexBuffer(uint32_t slot, const Phx::FlexArray<T>& vertexBufferData)
         {
             this->BindDynamicVertexBuffer(slot, vertexBufferData.size(), sizeof(T), vertexBufferData.data());
         }
@@ -443,7 +446,7 @@ namespace PhxEngine::RHI
         virtual void BindDynamicIndexBuffer(size_t numIndicies, RHI::Format indexFormat, const void* indexBufferData) = 0;
 
         template<typename T>
-        void BindDynamicIndexBuffer(const std::vector<T>& indexBufferData)
+        void BindDynamicIndexBuffer(const Phx::FlexArray<T>& indexBufferData)
         {
             staticassert(sizeof(T) == 2 || sizeof(T) == 4);
 
@@ -457,7 +460,7 @@ namespace PhxEngine::RHI
         virtual void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, size_t numElements, size_t elementSize, const void* bufferData) = 0;
 
         template<typename T>
-        void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, std::vector<T> const& bufferData)
+        void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, Core::Span<T> const& bufferData)
         {
             this->BindDynamicStructuredBuffer(rootParameterIndex, bufferData.size(), sizeof(T), bufferData.Data());
         }

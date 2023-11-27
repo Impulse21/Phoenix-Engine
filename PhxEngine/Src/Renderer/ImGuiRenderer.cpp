@@ -116,7 +116,7 @@ void PhxEngine::Renderer::ImGuiRenderer::Initialize(PhxEngine::Core::IWindow* wi
         PhxEngine::Core::Span<uint8_t>(static_cast<const uint8_t*>(g_mainPS), sizeof(g_mainPS) / sizeof(unsigned char)));
 
 
-    std::vector<VertexAttributeDesc> attributeDesc =
+    Phx::FlexArray<VertexAttributeDesc> attributeDesc =
     {
         { "POSITION",   0, RHI::Format::RG32_FLOAT,  0, VertexAttributeDesc::SAppendAlignedElement, false},
         { "TEXCOORD",   0, RHI::Format::RG32_FLOAT,  0, VertexAttributeDesc::SAppendAlignedElement, false},
@@ -145,7 +145,7 @@ void PhxEngine::Renderer::ImGuiRenderer::BeginFrame()
     ImGui::NewFrame();
 }
 
-void PhxEngine::Renderer::ImGuiRenderer::Render(Renderer::RgBuilder& builder)
+void PhxEngine::Renderer::ImGuiRenderer::Render(Renderer::RgBuilder& builder, RHI::ICommandList* gfxCmdList)
 {
     DynamicRHI* rhi = RHI::GetDynamic();
     if (m_pipeline == nullptr)

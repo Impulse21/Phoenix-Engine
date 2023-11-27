@@ -10,8 +10,3 @@ namespace PhxEngine::RHI
 
     DynamicRHI* GetDynamic();
 }
-
-namespace std
-{
-    // TODO: Custom Hashes
-}

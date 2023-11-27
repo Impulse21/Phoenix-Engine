@@ -29,7 +29,7 @@ namespace PhxEngine::Renderer
 		void EnableDarkThemeColours();
 		
 		void BeginFrame();
-		void Render(RgBuilder& builder);
+		void Render(RgBuilder& builder, RHI::ICommandList* gfxCmdList);
 	}
 #if 0
 	class ImGuiRenderer

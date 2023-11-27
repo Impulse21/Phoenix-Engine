@@ -1,26 +1,15 @@
 #include "D3D12UploadBuffer.h"
+#include <memory>
 
-#if false
-#include "D3D12GfxDevice.h"
+#include "D3D12DynamicRHI.h"
 
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::D3D12;
 
-
-
-void UploadBuffer::Initialize(D3D12GfxDevice* device, size_t pageSize)
+void UploadBuffer::Initialize(size_t pageSize)
 {
-	this->m_gfxDevice = device;
 	this->m_pageSize = pageSize;
 }
-
-struct Allocation
-{
-	void* CpuData;
-	D3D12_GPU_VIRTUAL_ADDRESS Gpu;
-	BufferHandle BufferHandle;
-	size_t Offset;
-};
 
 UploadAllocation UploadBuffer::Allocate(size_t sizeInBytes, size_t alignment)
 {
@@ -47,7 +36,7 @@ std::shared_ptr<UploadBuffer::Page> UploadBuffer::RequestPage()
 	}
 	else
 	{
-		page = std::make_shared<Page>(this->m_gfxDevice, this->m_pageSize);
+		page = std::make_shared<Page>(this->m_pageSize);
 		this->m_pagePool.push_back(page);
 	}
 
@@ -65,34 +54,27 @@ void UploadBuffer::Reset()
 }
 
 
-UploadBuffer::Page::Page(D3D12GfxDevice* device, size_t sizeInBytes)
-	: m_gfxDevice(device)
-	, m_offset(0)
+UploadBuffer::Page::Page(size_t sizeInBytes)
+	: m_offset(0)
 	, m_pageSize(sizeInBytes)
 	, m_gpuPtr(D3D12_GPU_VIRTUAL_ADDRESS(0))
 {
 	BufferDesc desc = {};
 	desc.Usage = Usage::Upload;
-	desc.Stride = sizeInBytes;
-	desc.NumElements = 1;
+	desc.SizeInBytes = sizeInBytes;
 	desc.InitialState = ResourceStates::CopySource | ResourceStates::GenericRead;
 	desc.Binding |= BindingFlags::ShaderResource;
 	desc.MiscFlags |= BufferMiscFlags::Bindless | BufferMiscFlags::Raw;
 	desc.DebugName = "Frame Upload Buffer";
-	this->m_buffer = device->CreateBuffer(desc);
+	this->m_buffer = D3D12DynamicRHI::GetD3D12RHI()->CreateBuffer(desc);
 
-	D3D12Buffer* bufferImpl = device->GetBufferPool().Get(this->m_buffer);
+	D3D12Buffer* bufferImpl = D3D12DynamicRHI::ResourceCast(this->m_buffer.Get());
 
 	this->m_gpuPtr = bufferImpl->D3D12Resource->GetGPUVirtualAddress();
 }
 
 PhxEngine::RHI::D3D12::UploadBuffer::Page::~Page()
 {
-	if (this->m_buffer.IsValid())
-	{
-		this->m_gfxDevice->DeleteBuffer(this->m_buffer);
-	}
-
 	this->m_gpuPtr = D3D12_GPU_VIRTUAL_ADDRESS(0);
 }
 
@@ -110,7 +92,7 @@ UploadAllocation UploadBuffer::Page::Allocate(size_t sizeInBytes, size_t alignme
 	{
 		throw std::bad_alloc();
 	}
-	D3D12Buffer* bufferImpl = this->m_gfxDevice->GetBufferPool().Get(this->m_buffer);
+	D3D12Buffer* bufferImpl = D3D12DynamicRHI::ResourceCast(this->m_buffer.Get());
 	size_t sizeInBytesAligned = Core::AlignUp(sizeInBytes, alignment);
 
 	this->m_offset = Core::AlignUp(this->m_offset, alignment);
@@ -118,7 +100,7 @@ UploadAllocation UploadBuffer::Page::Allocate(size_t sizeInBytes, size_t alignme
 	allocation.CpuData = static_cast<uint8_t*>(bufferImpl->MappedData) + this->m_offset;
 	allocation.Gpu = this->m_gpuPtr + this->m_offset;
 	allocation.Offset = this->m_offset;
-	allocation.BufferHandle = this->m_buffer;
+	allocation.Buffer = this->m_buffer;
 
 	this->m_offset += sizeInBytesAligned;
 
@@ -129,6 +111,11 @@ void UploadBuffer::Page::Reset()
 {
 	this->m_offset = 0;
 }
+
+#if false
+#include "D3D12GfxDevice.h"
+
+
 
 void PhxEngine::RHI::D3D12::UploadRingBuffer::Initialize(D3D12GfxDevice* device, size_t capacity)
 {

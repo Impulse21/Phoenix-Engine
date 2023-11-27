@@ -282,7 +282,7 @@ namespace PhxEngine::Core
         }
 
         /** overloading operator new[] cannot be done , because it may not return the real allocated address (it may pad the 'element count' before the actual array). Because of that, it must be done by hand. This is the
-        same strategy used by std::vector, and the Vector class, so it should be safe.*/
+        same strategy used by Phx::FlexArray, and the Vector class, so it should be safe.*/
 
         uint64_t* mem = (uint64_t*)SystemMemory::AllocArray(sizeof(T), p_elements);
         T* failptr = nullptr; //get rid of a warning
@@ -360,7 +360,7 @@ namespace PhxEngine::Core
         }
 
         /** overloading operator new[] cannot be done , because it may not return the real allocated address (it may pad the 'element count' before the actual array). Because of that, it must be done by hand. This is the
-        same strategy used by std::vector, and the Vector class, so it should be safe.*/
+        same strategy used by Phx::FlexArray, and the Vector class, so it should be safe.*/
         size_t prevLength = NemArr_Len<T>(p_class);
         uint64_t* mem = (uint64_t*)SystemMemory::ReallocArray(p_class, sizeof(T), newSize);
         T* failptr = nullptr; //get rid of a warning

@@ -1,10 +1,12 @@
 #define NOMINMAX
 
 #include "D3D12DynamicRHI.h"
+#include <PhxEngine/Core/Vector.h>
 
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/String.h>
 #include <PhxEngine/Core/Math.h>
+#include "D3D12Common.h"
 
 #include <variant>
 
@@ -14,7 +16,6 @@
 #pragma comment(lib, "dxgi.lib")
 
 #include <pix3.h>
-
 #ifdef _DEBUG
 #pragma comment(lib, "dxguid.lib")
 #endif
@@ -57,13 +58,6 @@ namespace
 			LOG_RHI_ERROR(pDescription);
 			break;
 		}
-	}
-
-	// helper function for texture subresource calculations
-	// https://msdn.microsoft.com/en-us/library/windows/desktop/dn705766(v=vs.85).aspx
-	uint32_t CalcSubresource(uint32_t mipSlice, uint32_t arraySlice, uint32_t planeSlice, uint32_t mipLevels, uint32_t arraySize)
-	{
-		return mipSlice + (arraySlice * mipLevels) + (planeSlice * mipLevels * arraySize);
 	}
 
 	constexpr D3D12_SUBRESOURCE_DATA _ConvertSubresourceData(const SubresourceData& pInitialData)
@@ -658,6 +652,76 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::Present(ISwapChain* swapChain)
 			}
 		}
 	}
+}
+SubmitReceipt D3D12DynamicRHI::ExecuteCommandLists(Core::Span<ICommandList*> commandLists, CommandQueueType executionQueue)
+{
+	D3D12CommandQueue& queue = this->GetQueue(executionQueue);
+
+	static thread_local Phx::FlexArray<ID3D12CommandList*> d3d12CommandLists;
+	d3d12CommandLists.clear();
+
+	for (ICommandList* commandList : commandLists)
+	{
+		auto impl = ResourceCast(commandList);
+		assert(impl);
+		impl->NativeCommandList->Close();
+		d3d12CommandLists.push_back(impl->NativeCommandList.Get());
+	}
+
+	auto fenceValue = queue.ExecuteCommandLists(d3d12CommandLists);
+
+
+	for (auto commandList : commandLists)
+	{
+		auto cmdImpl = ResourceCast(commandList);
+		queue.DiscardAllocator(fenceValue, cmdImpl->NativeCommandAllocator);
+	}
+
+	bool waitForCompletion = false;
+	if (waitForCompletion)
+	{
+		queue.WaitForFence(fenceValue);
+
+#if 0
+		for (auto commandList : commandLists)
+		{
+			auto cmdImpl = ResourceCast(commandList);
+
+			for (auto timerQueryHandle : cmdImpl->GetTimerQueries())
+			{
+				auto timerQuery = this->GetTimerQueryPool().Get(timerQueryHandle);
+				if (timerQuery)
+				{
+					timerQuery->Started = true;
+					timerQuery->Resolved = false;
+				}
+			}
+		}
+#endif
+	}
+	else
+	{
+#if 0
+		for (auto commandList : commandLists)
+		{
+			auto cmdImpl = SafeCast<D3D12CommandList*>(commandList);
+
+			for (auto timerQueryHandle : cmdImpl->GetTimerQueries())
+			{
+				auto timerQuery = this->GetTimerQueryPool().Get(timerQueryHandle);
+				if (timerQuery)
+				{
+					timerQuery->Started = true;
+					timerQuery->Resolved = false;
+					timerQuery->CommandQueue = queue;
+					timerQuery->FenceCount = fenceValue;
+				}
+			}
+		}
+#endif
+	}
+
+	return { fenceValue, queue.GetFence()};
 }
 
 void PhxEngine::RHI::D3D12::D3D12DynamicRHI::WaitForIdle()
@@ -1977,7 +2041,29 @@ BufferRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateBuffer(BufferDesc const&
 
 CommandListRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateCommandList(RHI::CommandQueueType type)
 {
-	return CommandListRef();
+	CommandListRef retVal = CommandListRef::Create(phx_new(D3D12CommandList));
+	D3D12CommandList* commandList = ResourceCast(retVal.Get());
+
+	commandList->QueueType = type;
+	commandList->NativeCommandAllocator = this->GetQueue(type).RequestAllocator();
+
+	this->GetD3D12Device()->CreateCommandList(
+		0,
+		this->GetQueue(type).GetType(),
+		commandList->NativeCommandAllocator,
+		nullptr,
+		IID_PPV_ARGS(&commandList->NativeCommandList));
+
+	commandList->NativeCommandList->SetName(L"D3D12GfxDevice::CommandList");
+	ThrowIfFailed(
+		commandList->NativeCommandList->QueryInterface<ID3D12GraphicsCommandList6>(&commandList->NativeCommandList6));
+
+	commandList->UploadBuffer = std::make_unique<D3D12::UploadBuffer>();
+	commandList->UploadBuffer->Initialize();
+
+	commandList->NativeCommandList->Close();
+
+	return retVal;
 }
 
 void PhxEngine::RHI::D3D12::D3D12DynamicRHI::ResizeSwapChain(ISwapChain* swapChain, SwapChainDesc const& desc)

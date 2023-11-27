@@ -76,6 +76,7 @@ namespace PhxEngine::RHI::D3D12
         void Present(ISwapChain* swapChain) override;
         void WaitForIdle() override;
 
+        SubmitReceipt ExecuteCommandLists(Core::Span<ICommandList*> commandLists, CommandQueueType executionQueue = CommandQueueType::Graphics) override;
         bool IsDevicedRemoved() override;
         bool CheckCapability(DeviceCapability deviceCapability) override;
 

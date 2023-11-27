@@ -1,6 +1,8 @@
 #include <PhxEngine/RHI/PhxShaderCompiler.h>
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/String.h>
+#include <PhxEngine/Core/Vector.h>
+#include <PhxEngine/Core/Span.h>
 
 #include <wrl.h>
 #include <dxc/dxcapi.h>
@@ -82,7 +84,7 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(CompilerInput const& inpu
 	// pUtils->CreateBlob(pShaderSource, shaderSourceSize, CP_UTF8, pSource.GetAddressOf());
 
 	// https://github.com/microsoft/DirectXShaderCompiler/wiki/Using-dxc.exe-and-dxcompiler.dll#dxcompiler-dll-interface
-	std::vector<LPCWSTR> args = {
+	Phx::FlexArray<LPCWSTR> args = {
 		DXC_ARG_DEBUG,
 		L"-res-may-alias",
 		L"-flegacy-macro-expansion",
@@ -332,7 +334,7 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(CompilerInput const& inpu
 		return result;
 	}
 
-	std::vector<std::wstring> wstrings;
+	Phx::FlexArray<std::wstring> wstrings;
 	wstrings.reserve(input.Defines.Size() + input.IncludeDirs.Size());
 
 	for (auto& x : input.Defines)

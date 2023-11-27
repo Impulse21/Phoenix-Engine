@@ -1,7 +1,7 @@
 #pragma once
 
 #include <mutex>
-#include <vector>
+#include <PhxEngine/Core/Vector.h>
 
 namespace PhxEngine::Core
 {
@@ -16,7 +16,7 @@ namespace PhxEngine::Core
 
 	private:
 		int m_nextAvailable;
-		std::vector<bool> m_allocated;
+		Phx::FlexArray<bool> m_allocated;
 		std::mutex m_mutex;
 
 	};

@@ -258,7 +258,7 @@ namespace PhxEngine::RHI::D3D12
 		D3D12_DESCRIPTOR_HEAP_DESC m_heapDesc;
 		uint32_t m_numDescriptorsPerHeap;
 
-		using DescriptorHeapPool = std::vector<std::shared_ptr<DescriptorHeapAllocationPage>>;
+		using DescriptorHeapPool = Phx::FlexArray<std::shared_ptr<DescriptorHeapAllocationPage>>;
 
 		std::mutex m_heapPoolMutex;
 		DescriptorHeapPool m_heapPool;
@@ -322,7 +322,7 @@ namespace PhxEngine::RHI::D3D12
 
 	private:
 		GpuDescriptorHeap& m_parentGpuHeap;
-		std::vector<DescriptorHeapAllocation> m_subAllocations;
+		Phx::FlexArray<DescriptorHeapAllocation> m_subAllocations;
 
 		uint32_t m_currentSuballocationOffset = 0;
 		uint32_t m_dynamicChunkSize = 0;

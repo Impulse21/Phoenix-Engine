@@ -1,13 +1,13 @@
 #include <PhxEngine/Core/EventDispatcher.h>
 
 #include <unordered_map>
-#include <vector>
+#include <PhxEngine/Core/Vector.h>
 
 using namespace PhxEngine::Core;
 
 namespace
 {
-	std::unordered_map<EventType, std::vector<EventListener>> m_events;
+	std::unordered_map<EventType, Phx::FlexArray<EventListener>> m_events;
 }
 
 void EventDispatcher::AddEventListener(EventType type, EventListener listener)

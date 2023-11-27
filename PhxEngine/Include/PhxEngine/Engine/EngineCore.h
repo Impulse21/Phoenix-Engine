@@ -22,7 +22,7 @@ namespace PhxEngine
 
 		virtual bool IsShuttingDown() = 0;
 		virtual void OnUpdate() = 0;
-		virtual void OnRender(Renderer::RgBuilder& rgBuilder) = 0;
+		virtual void OnRender(Renderer::RgBuilder& rgBuilder, RHI::ICommandList* gfxCmdList) = 0;
 	};
 
 	void Run(IEngineApp& engingApp);

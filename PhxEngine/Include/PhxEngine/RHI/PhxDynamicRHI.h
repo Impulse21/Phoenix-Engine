@@ -82,6 +82,7 @@ namespace PhxEngine::RHI
 
         virtual IDirectStorage* GetDirectStorage() = 0;
 
+        virtual SubmitReceipt ExecuteCommandLists(Core::Span<ICommandList*> commandLists, CommandQueueType executionQueue = CommandQueueType::Graphics) = 0;
         virtual void Wait(SubmitReceipt const& reciet) = 0;
 
         // -- Resouce Functions ---

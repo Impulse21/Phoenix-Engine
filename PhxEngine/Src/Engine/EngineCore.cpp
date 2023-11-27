@@ -96,6 +96,7 @@ void PhxEngine::Run(IEngineApp& app)
 
 	app.Initialize();
 
+	RHI::CommandListRef gfxCmdList = RHI::GetDynamic()->CreateCommandList();
 	while (!app.IsShuttingDown())
 	{
 		m_scratchAllocator.Clear();
@@ -104,8 +105,12 @@ void PhxEngine::Run(IEngineApp& app)
 		// TODO: Add Delta Time
 		app.OnUpdate();
 
+		gfxCmdList->Reset();
 		Renderer::RgBuilder rgBuilder(&m_scratchAllocator);
-		app.OnRender(rgBuilder);
+		app.OnRender(rgBuilder, gfxCmdList.Get());
+
+		RHI::GetDynamic()->ExecuteCommandLists({ gfxCmdList });
+		RHI::GetDynamic()->Present(m_swapChain.Get());
 
 #if false
 		// Compose final frame
