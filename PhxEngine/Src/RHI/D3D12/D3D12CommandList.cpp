@@ -231,6 +231,20 @@ void PhxEngine::RHI::D3D12::D3D12CommandList::TransitionBarriers(Core::Span<GpuB
 	}
 }
 
+void PhxEngine::RHI::D3D12::D3D12CommandList::ClearBackBuffer(ISwapChain* swapChain, Color const& clearColour)
+{
+	D3D12SwapChain* swapChainImpl = D3D12DynamicRHI::ResourceCast(swapChain);
+	size_t currentBackbufferIndex = swapChainImpl->NativeSwapchain4->GetCurrentBackBufferIndex();
+
+	this->TransitionBarrier(swapChainImpl->BackBuffers[currentBackbufferIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+	NativeCommandList->ClearRenderTargetView(
+		swapChainImpl->BackBuferViews[currentBackbufferIndex].Allocation.GetCpuHandle(),
+		&clearColour.R,
+		0,
+		nullptr);
+}
+
 void D3D12CommandList::ClearTextureFloat(ITexture* texture, Color const& clearColour)
 {
 	auto textureImpl = D3D12DynamicRHI::ResourceCast(texture);

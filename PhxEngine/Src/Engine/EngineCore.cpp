@@ -107,6 +107,9 @@ void PhxEngine::Run(IEngineApp& app)
 
 		gfxCmdList->Reset();
 		Renderer::RgBuilder rgBuilder(&m_scratchAllocator);
+
+		RHI::Color clearColour = {};
+		gfxCmdList->ClearBackBuffer(m_swapChain.Get(), clearColour);
 		app.OnRender(rgBuilder, gfxCmdList.Get());
 
 		RHI::GetDynamic()->ExecuteCommandLists({ gfxCmdList });

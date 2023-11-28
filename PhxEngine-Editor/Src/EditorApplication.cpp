@@ -68,9 +68,10 @@ namespace
 
 		void Initialize() override
 		{
+            Renderer::ImGuiRenderer::Initialize(GetWindow(), GetSwapChain()->GetDesc().Format, true);
+            Renderer::ImGuiRenderer::EnableDarkThemeColours();
+
 			PhxEngine::GetTaskExecutor().silent_async([this]() {
-				Renderer::ImGuiRenderer::Initialize(GetWindow(), GetSwapChain()->GetDesc().Format, true);
-			    Renderer::ImGuiRenderer::EnableDarkThemeColours();
 			    std::unique_ptr<IFileSystem> fileSystem = CreateNativeFileSystem();
 
 			    auto postMsgWithLog = [this](const char* msg) {
@@ -107,7 +108,7 @@ namespace
 			    {
 			    	postMsgWithLog("Loading Default World");
 			    }
-
+                std::this_thread::sleep_for(std::chrono::seconds(3));
 			    this->m_isInitialize.store(true);
 			});
 		}
@@ -124,12 +125,8 @@ namespace
 
 		void OnUpdate() override
 		{
-            if (!this->m_isInitialize.load())
-            {
-                return;
-            }
-
             Renderer::ImGuiRenderer::BeginFrame();
+
             if (!this->m_isInitialize.load())
             {
                 m_loadingScreen.OnRender();

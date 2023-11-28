@@ -675,6 +675,7 @@ SubmitReceipt D3D12DynamicRHI::ExecuteCommandLists(Core::Span<ICommandList*> com
 	{
 		auto cmdImpl = ResourceCast(commandList);
 		queue.DiscardAllocator(fenceValue, cmdImpl->NativeCommandAllocator);
+		cmdImpl->NativeCommandAllocator = nullptr;
 	}
 
 	bool waitForCompletion = false;
@@ -1398,7 +1399,7 @@ SwapChainRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateSwapChain(SwapChainDe
 
 ShaderRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
 {
-	ShaderRef retVal = ShaderRef::Create(phx_new(D3D12Shader));
+	ShaderRef retVal = ShaderRef::Create(phx_new(D3D12Shader(desc, shaderByteCode.begin(), shaderByteCode.Size())));
 	D3D12Shader* shaderImpl = ResourceCast(retVal.Get());
 	shaderImpl->Desc = desc;
 

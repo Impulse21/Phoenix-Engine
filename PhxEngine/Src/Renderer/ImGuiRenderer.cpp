@@ -197,94 +197,86 @@ void PhxEngine::Renderer::ImGuiRenderer::Render(Renderer::RgBuilder& builder, RH
         return;
     }
 
-    builder.AddPass(
-        "ImGui Pass",
-        {},
-        {},
-        RgPassFlags::Raster,
-        [=](RgRegistry const& registry, RHI::CommandListRef commandList)
-		{
-			ImVec2 displayPos = drawData->DisplayPos;
-	        commandList->SetGfxPipeline(m_pipeline);
 
-	        // Set root arguments.
-	        //    DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixOrthographicRH( drawData->DisplaySize.x, drawData->DisplaySize.y, 0.0f, 1.0f );
-	        float L = drawData->DisplayPos.x;
-	        float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
-	        float T = drawData->DisplayPos.y;
-	        float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
-	        static const float mvp[4][4] =
-	        {
-		        { 2.0f / (R - L),   0.0f,           0.0f,       0.0f },
-		        { 0.0f,         2.0f / (T - B),     0.0f,       0.0f },
-		        { 0.0f,         0.0f,           0.5f,       0.0f },
-		        { (R + L) / (L - R),  (T + B) / (B - T),    0.5f,       1.0f },
-	        };
+    ImVec2 displayPos = drawData->DisplayPos;
+    gfxCmdList->SetGfxPipeline(m_pipeline);
 
-	        struct ImguiDrawInfo
-	        {
-		        DirectX::XMFLOAT4X4 Mvp;
-		        uint32_t TextureIndex;
-	        } push = {};
-	        push.Mvp = DirectX::XMFLOAT4X4(&mvp[0][0]);
+    // Set root arguments.
+    //    DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixOrthographicRH( drawData->DisplaySize.x, drawData->DisplaySize.y, 0.0f, 1.0f );
+    float L = drawData->DisplayPos.x;
+    float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
+    float T = drawData->DisplayPos.y;
+    float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
+    static const float mvp[4][4] =
+    {
+        { 2.0f / (R - L),   0.0f,           0.0f,       0.0f },
+        { 0.0f,         2.0f / (T - B),     0.0f,       0.0f },
+        { 0.0f,         0.0f,           0.5f,       0.0f },
+        { (R + L) / (L - R),  (T + B) / (B - T),    0.5f,       1.0f },
+    };
 
-	        Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
-	        commandList->SetViewports(&v, 1);
-	        const RHI::Format indexFormat = sizeof(ImDrawIdx) == 2 ? RHI::Format::R16_UINT : RHI::Format::R32_UINT;
+    struct ImguiDrawInfo
+    {
+        DirectX::XMFLOAT4X4 Mvp;
+        uint32_t TextureIndex;
+    } push = {};
+    push.Mvp = DirectX::XMFLOAT4X4(&mvp[0][0]);
 
-	        for (int i = 0; i < drawData->CmdListsCount; ++i)
-	        {
-		        const ImDrawList* drawList = drawData->CmdLists[i];
+    Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
+    gfxCmdList->SetViewports(&v, 1);
+    const RHI::Format indexFormat = sizeof(ImDrawIdx) == 2 ? RHI::Format::R16_UINT : RHI::Format::R32_UINT;
 
-		        commandList->BindDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data);
-		        commandList->BindDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data);
+    for (int i = 0; i < drawData->CmdListsCount; ++i)
+    {
+        const ImDrawList* drawList = drawData->CmdLists[i];
 
-		        int indexOffset = 0;
-		        for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
-		        {
-			        const ImDrawCmd& drawCmd = drawList->CmdBuffer[j];
+        gfxCmdList->BindDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data);
+        gfxCmdList->BindDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data);
 
-			        if (drawCmd.UserCallback)
-			        {
-				        drawCmd.UserCallback(drawList, &drawCmd);
-			        }
-			        else
-			        {
-				        ImVec4 clipRect = drawCmd.ClipRect;
-				        Rect scissorRect;
-				        // TODO: Validate
-				        scissorRect.MinX = static_cast<int>(clipRect.x - displayPos.x);
-				        scissorRect.MinY = static_cast<int>(clipRect.y - displayPos.y);
-				        scissorRect.MaxX = static_cast<int>(clipRect.z - displayPos.x);
-				        scissorRect.MaxY = static_cast<int>(clipRect.w - displayPos.y);
+        int indexOffset = 0;
+        for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
+        {
+            const ImDrawCmd& drawCmd = drawList->CmdBuffer[j];
 
-				        if (scissorRect.MaxX - scissorRect.MinX > 0.0f &&
-					        scissorRect.MaxY - scissorRect.MinY > 0.0)
-				        {
-					        // Ensure 
-					        auto textureHandle = static_cast<RHI::TextureRef*>(drawCmd.GetTexID());
+            if (drawCmd.UserCallback)
+            {
+                drawCmd.UserCallback(drawList, &drawCmd);
+            }
+            else
+            {
+                ImVec4 clipRect = drawCmd.ClipRect;
+                Rect scissorRect;
+                // TODO: Validate
+                scissorRect.MinX = static_cast<int>(clipRect.x - displayPos.x);
+                scissorRect.MinY = static_cast<int>(clipRect.y - displayPos.y);
+                scissorRect.MaxX = static_cast<int>(clipRect.z - displayPos.x);
+                scissorRect.MaxY = static_cast<int>(clipRect.w - displayPos.y);
+
+                if (scissorRect.MaxX - scissorRect.MinX > 0.0f &&
+                    scissorRect.MaxY - scissorRect.MinY > 0.0)
+                {
+                    // Ensure 
+                    auto textureHandle = static_cast<RHI::TextureRef*>(drawCmd.GetTexID());
 #if 0
-					        push.TextureIndex = textureHandle
-						        ? commandList->GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
-						        : RHI::cInvalidDescriptorIndex;
+                    push.TextureIndex = textureHandle
+                        ? commandList->GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
+                        : RHI::cInvalidDescriptorIndex;
 #else
-                            push.TextureIndex = RHI::cInvalidDescriptorIndex;
+                    push.TextureIndex = RHI::cInvalidDescriptorIndex;
 #endif
 
-					        commandList->BindPushConstant(RootParameters::PushConstant, push);
-					        commandList->SetScissors(&scissorRect, 1);
-					        commandList->DrawIndexed({
-							        .IndexCount = drawCmd.ElemCount,
-							        .InstanceCount = 1,
-							        .StartIndex = static_cast<uint32_t>(indexOffset),
-						        });
-				        }
-			        }
-			        indexOffset += drawCmd.ElemCount;
-		        }
-	        }
-        });
-
+                    gfxCmdList->BindPushConstant(RootParameters::PushConstant, push);
+                    gfxCmdList->SetScissors(&scissorRect, 1);
+                    gfxCmdList->DrawIndexed({
+                            .IndexCount = drawCmd.ElemCount,
+                            .InstanceCount = 1,
+                            .StartIndex = static_cast<uint32_t>(indexOffset),
+                        });
+                }
+            }
+            indexOffset += drawCmd.ElemCount;
+        }
+    }
     ImGui::EndFrame();
 }
 
