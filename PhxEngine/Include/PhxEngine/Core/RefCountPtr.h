@@ -41,7 +41,7 @@ namespace PhxEngine::Core
             }
         }
 
-        unsigned long InternalRelease() noexcept
+        virtual unsigned long InternalRelease() noexcept
         {
             unsigned long ref = 0;
             T* temp = ptr_;
@@ -101,7 +101,7 @@ namespace PhxEngine::Core
             other.ptr_ = nullptr;
         }
 
-        ~RefCountPtr() noexcept
+        virtual ~RefCountPtr() noexcept
         {
             InternalRelease();
         }

@@ -247,6 +247,7 @@ namespace PhxEngine::RHI
     {
     public:
         virtual const SwapChainDesc& GetDesc() const = 0;
+        virtual ITexture* GetBackBuffer() const = 0;
 
         virtual ~ISwapChain() = default;
     };
@@ -352,7 +353,6 @@ namespace PhxEngine::RHI
         virtual void TransitionBarrier(ITexture* texture, ResourceStates beforeState, ResourceStates afterState) = 0;
         virtual void TransitionBarrier(IBuffer* buffer, ResourceStates beforeState, ResourceStates afterState) = 0;
         virtual void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers) = 0;
-        virtual void ClearBackBuffer(ISwapChain* swapChain, Color const& clearColour) = 0;
         virtual void ClearTextureFloat(ITexture* texture, Color const& clearColour) = 0;
         virtual void ClearDepthStencilTexture(ITexture* depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) = 0;
 

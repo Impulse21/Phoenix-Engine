@@ -5,6 +5,7 @@
 #include <PhxEngine/Core/Memory.h>
 #include <PhxEngine/Core/EventDispatcher.h>
 #include <assert.h>
+#include <PhxEngine/Core/TaskSystem.h>
 
 #include <PhxEngine/RHI/PhxRHI.h>
 
@@ -16,7 +17,6 @@ namespace
 	// -- Globals ---
 	std::unique_ptr<Core::IWindow> m_window;
 	RHI::SwapChainRef m_swapChain;
-	tf::Executor m_taskExecutor;
 	LinearAllocator m_scratchAllocator;
 	std::atomic_bool m_engineRunning = false;
 
@@ -28,7 +28,7 @@ namespace
 		PhxEngine::Core::CommandLineArgs::Initialize();
 
 		// -- Initialize Task Scheduler ---
-		PHX_LOG_CORE_INFO("Engine has %d workers ", m_taskExecutor.num_workers());
+		PHX_LOG_CORE_INFO("Engine has %d workers ", TaskSystem::GetExecutor().num_workers());
 
 		// -- Create Window ---
 		m_window = WindowFactory::CreateGlfwWindow({
@@ -73,7 +73,7 @@ namespace
 	void EngineFinalize()
 	{
 		m_engineRunning.store(false);
-		m_taskExecutor.wait_for_all();
+		TaskSystem::WaitForIdle();
 
 		RHI::GetDynamic()->WaitForIdle();
 		m_swapChain.Reset();
@@ -108,9 +108,26 @@ void PhxEngine::Run(IEngineApp& app)
 		gfxCmdList->Reset();
 		Renderer::RgBuilder rgBuilder(&m_scratchAllocator);
 
-		RHI::Color clearColour = {};
-		gfxCmdList->ClearBackBuffer(m_swapChain.Get(), clearColour);
 		app.OnRender(rgBuilder, gfxCmdList.Get());
+
+		{
+			RHI::ITexture* backBuffer = m_swapChain->GetBackBuffer();
+			gfxCmdList->TransitionBarriers(
+				{
+					RHI::GpuBarrier::CreateTexture(backBuffer, RHI::ResourceStates::Present, RHI::ResourceStates::RenderTarget)
+				});
+
+			RHI::Color clearColour = {};
+			gfxCmdList->ClearTextureFloat(backBuffer, clearColour);
+			gfxCmdList->SetRenderTargets({ backBuffer }, nullptr);
+
+			app.OnCompose(rgBuilder, gfxCmdList);
+
+			gfxCmdList->TransitionBarriers(
+				{
+					RHI::GpuBarrier::CreateTexture(backBuffer, RHI::ResourceStates::RenderTarget, RHI::ResourceStates::Present)
+				});
+		}
 
 		RHI::GetDynamic()->ExecuteCommandLists({ gfxCmdList });
 		RHI::GetDynamic()->Present(m_swapChain.Get());
@@ -121,22 +138,6 @@ void PhxEngine::Run(IEngineApp& app)
 		{
 			RHI::CommandListHandle composeCmdList = gfxDevice->BeginCommandList();
 
-			gfxDevice->TransitionBarriers(
-				{
-					RHI::GpuBarrier::CreateTexture(gfxDevice->GetBackBuffer(), RHI::ResourceStates::Present, RHI::ResourceStates::RenderTarget)
-				},
-				composeCmdList);
-
-			RHI::Color clearColour = {};
-			gfxDevice->ClearTextureFloat(gfxDevice->GetBackBuffer(), clearColour, composeCmdList);
-
-			app.OnCompose(composeCmdList);
-
-			gfxDevice->TransitionBarriers(
-				{
-					RHI::GpuBarrier::CreateTexture(gfxDevice->GetBackBuffer(), RHI::ResourceStates::RenderTarget, RHI::ResourceStates::Present)
-				},
-				composeCmdList);
 		}
 		// Submit command lists and present
 		gfxDevice->SubmitFrame();
@@ -160,5 +161,5 @@ RHI::ISwapChain* PhxEngine::GetSwapChain()
 
 tf::Executor& PhxEngine::GetTaskExecutor()
 {
-	return m_taskExecutor;
+	return TaskSystem::GetExecutor();
 }

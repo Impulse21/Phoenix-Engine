@@ -312,19 +312,12 @@ namespace PhxEngine::RHI::D3D12
         Core::RefCountPtr<IDXGISwapChain1> NativeSwapchain;
         Core::RefCountPtr<IDXGISwapChain4> NativeSwapchain4;
 
-        Phx::FlexArray<Core::RefCountPtr<ID3D12Resource>> BackBuffers;
-        Phx::FlexArray<DescriptorView> BackBuferViews;
+        Phx::FlexArray<Core::RefCountPtr<D3D12Texture>> BackBuffers;
 
         D3D12Texture CurrentBackBuffer = {};
 
-        ~D3D12SwapChain()
-        {
-            this->DefereDeleteResources();
-        }
-
-        void DefereDeleteResources();
-
         SwapChainDesc const& GetDesc() const override{ return this->Desc; }
+        ITexture* GetBackBuffer() const override{ return this->BackBuffers[NativeSwapchain4->GetCurrentBackBufferIndex()].Get(); }
     };
 
     template<>
@@ -407,7 +400,6 @@ namespace PhxEngine::RHI::D3D12
         void TransitionBarrier(ITexture* texture, ResourceStates beforeState, ResourceStates afterState) override;
         void TransitionBarrier(IBuffer* buffer, ResourceStates beforeState, ResourceStates afterState) override;
         void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers) override;
-        void ClearBackBuffer(ISwapChain* swapChain, Color const& clearColour) override;
         void ClearTextureFloat(ITexture* texture, Color const& clearColour) override;
         void ClearDepthStencilTexture(ITexture* depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) override;
 

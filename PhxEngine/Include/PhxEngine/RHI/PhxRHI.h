@@ -1,6 +1,5 @@
 #pragma once
 
-#include <PhxEngine/RHI/PhxRHIResources.h>
 #include <PhxEngine/RHI/PhxDynamicRHI.h>
 
 namespace PhxEngine::RHI

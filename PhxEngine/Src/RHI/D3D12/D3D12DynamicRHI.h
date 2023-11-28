@@ -83,6 +83,14 @@ namespace PhxEngine::RHI::D3D12
         IDirectStorage* GetDirectStorage() override { return this->m_directStorage.Get(); }
         void Wait(SubmitReceipt const& reciet) override;
 
+        inline void EnqueueDelete(std::function<void()>&& function) override
+        {
+            this->m_deleteQueue.push_back({
+                    .Frame = this->m_frameCount,
+                    .DeleteFn = std::move(function)
+                });
+        }
+
         // -- Resouce Functions ---
     public:
         SwapChainRef CreateSwapChain(SwapChainDesc const& desc, void* windowsHandle) override;
@@ -135,14 +143,6 @@ namespace PhxEngine::RHI::D3D12
         ID3D12QueryHeap* GetQueryHeap() { return this->m_gpuTimestampQueryHeap.Get(); }
         // BufferHandle GetTimestampQueryBuffer() { return this->m_timestampQueryBuffer; }
         const D3D12BindlessDescriptorTable& GetBindlessTable() const { return this->m_bindlessResourceDescriptorTable; }
-
-        inline void EnqueueDelete(std::function<void()>&& function)
-        {
-            this->m_deleteQueue.push_back({
-                    .Frame = this->m_frameCount,
-                    .DeleteFn = std::move(function)
-                });
-        }
 
     private:
         void CreateGpuTimestampQueryHeap(uint32_t queryCount);

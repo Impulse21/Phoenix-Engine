@@ -629,7 +629,7 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::Present(ISwapChain* swapChain)
 	// Begin the next frame - this affects the GetCurrentBackBufferIndex()
 	this->m_frameCount++;
 
-	// Wait for next frame
+	// Wait for next frame, run this in a worker thread.
 	this->RunGarbageCollection(this->m_frameCount);
 	{
 		for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
@@ -1376,6 +1376,7 @@ SwapChainRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateSwapChain(SwapChainDe
 	DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreenDesc = {};
 	fullscreenDesc.Windowed = !desc.Fullscreen;
 
+
 	SwapChainRef swapChain = SwapChainRef::Create(phx_new(D3D12SwapChain));
 	D3D12SwapChain* d3D12SwapChain = ResourceCast(swapChain.Get());
 
@@ -2077,9 +2078,7 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::ResizeSwapChain(ISwapChain* swapCha
 	WaitForIdle();
 
 	D3D12SwapChain* impl = ResourceCast(swapChain);
-	impl->BackBuferViews.clear();
-	impl->BackBuffers.clear();
-
+	
 	const auto& formatMapping = GetDxgiFormatMapping(desc.Format);
 	UINT swapChainFlags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 	swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
@@ -2091,11 +2090,13 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::ResizeSwapChain(ISwapChain* swapCha
 			desc.Height,
 			formatMapping.RtvFormat,
 			swapChainFlags));
+
 	this->CreateSwapChainResources(impl);
 }
 
 void PhxEngine::RHI::D3D12::D3D12DynamicRHI::RunGarbageCollection(uint64_t completedFrame)
 {
+	// TODO: Do this on a worker thread.
 	while (!this->m_deleteQueue.empty())
 	{
 		DeleteItem& deleteItem = this->m_deleteQueue.front();
@@ -2205,23 +2206,32 @@ void D3D12DynamicRHI::CreateGpuTimestampQueryHeap(uint32_t queryCount)
 
 void PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateSwapChainResources(D3D12SwapChain* swapChain)
 {
+	swapChain->BackBuffers.clear();
 	swapChain->BackBuffers.resize(swapChain->GetDesc().BufferCount);
-	swapChain->BackBuferViews.resize(swapChain->GetDesc().BufferCount);
 
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 	rtvDesc.Format = D3D12::GetDxgiFormatMapping(swapChain->GetDesc().Format).RtvFormat;
 	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 	for (int i = 0; i < swapChain->BackBuffers.size(); i++)
 	{
+		RefCountPtr<ID3D12Resource> resource;
 		ThrowIfFailed(
-			swapChain->NativeSwapchain4->GetBuffer(i, IID_PPV_ARGS(&swapChain->BackBuffers[i])));
+			swapChain->NativeSwapchain4->GetBuffer(i, IID_PPV_ARGS(&resource)));
 
-		DescriptorView& view = swapChain->BackBuferViews[i];
+
+		// Create a back buffer Texture
+		swapChain->BackBuffers[i] = RefCountPtr<D3D12Texture>::Create(phx_new(D3D12Texture));
+
+		swapChain->BackBuffers[i]->D3D12Resource = resource;
+		DescriptorView& view = swapChain->BackBuffers[i]->RtvAllocation;
 		view.Allocation = this->GetRtvCpuHeap().Allocate(1);
 		view.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		view.RTVDesc = rtvDesc;
 
-		this->GetD3D12Device()->CreateRenderTargetView(swapChain->BackBuffers[i], &rtvDesc, view.Allocation.GetCpuHandle());
+		this->GetD3D12Device()->CreateRenderTargetView(
+			swapChain->BackBuffers[i]->D3D12Resource.Get(),
+			&rtvDesc,
+			view.Allocation.GetCpuHandle());
 	}
 }
 

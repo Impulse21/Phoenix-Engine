@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <PhxEngine/Core/TimeStep.h>
 #include <PhxEngine/Core/Span.h>
 #include <PhxEngine/RHI/PhxRHIResources.h>
@@ -84,6 +85,8 @@ namespace PhxEngine::RHI
 
         virtual SubmitReceipt ExecuteCommandLists(Core::Span<ICommandList*> commandLists, CommandQueueType executionQueue = CommandQueueType::Graphics) = 0;
         virtual void Wait(SubmitReceipt const& reciet) = 0;
+
+        virtual void EnqueueDelete(std::function<void()>&& function) = 0;
 
         // -- Resouce Functions ---
     public:

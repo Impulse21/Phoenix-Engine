@@ -160,9 +160,12 @@ namespace
 
 		void OnRender(RgBuilder& rgBuilder, RHI::ICommandList* gfxCmdList) override
 		{
-            Renderer::ImGuiRenderer::Render(rgBuilder, gfxCmdList);
 		}
 
+        void OnCompose(RgBuilder& rgBuilder, RHI::ICommandList* gfxCmdList) override
+        {
+            Renderer::ImGuiRenderer::Render(rgBuilder, gfxCmdList);
+        }
         template<typename _TWidget>
         std::shared_ptr<_TWidget> GetWidget()
         {

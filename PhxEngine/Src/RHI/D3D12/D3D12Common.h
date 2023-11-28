@@ -26,7 +26,7 @@
 #include "d3d12shader.h"
 #include <dxgi1_6.h>
 
-#include <PhxEngine/RHI/PhxRHI.h>
+#include <PhxEngine/RHI/PhxRHIResources.h>
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/Vector.h>
 
@@ -53,8 +53,6 @@ namespace PhxEngine::RHI::D3D12
         DXGI_FORMAT SrvFormat;
         DXGI_FORMAT RtvFormat;
     };
-
-   const DxgiFormatMapping& GetDxgiFormatMapping(RHI::Format abstractFormat);
 
    const DxgiFormatMapping& GetDxgiFormatMapping(RHI::Format abstractFormat);
 
