@@ -46,7 +46,7 @@ namespace PhxEngine::RHI::D3D12
         Count,
     };
 
-    struct D3D12TimerQuery
+    struct D3D12TimerQuery final
     {
         size_t BeginQueryIndex = 0;
         size_t EndQueryIndex = 0;
@@ -61,7 +61,7 @@ namespace PhxEngine::RHI::D3D12
 
     };
 
-    struct D3D12SwapChain
+    struct D3D12SwapChain final
     {
         SwapChainDesc Desc;
 
@@ -71,7 +71,7 @@ namespace PhxEngine::RHI::D3D12
         std::vector<TextureHandle> BackBuffers;
     };
 
-    struct D3D12Shader
+    struct D3D12Shader final
     {
         std::vector<uint8_t> ByteCode;
         const ShaderDesc Desc;
@@ -88,7 +88,7 @@ namespace PhxEngine::RHI::D3D12
         }
     };
 
-    struct D3D12InputLayout
+    struct D3D12InputLayout final
     {
         std::vector<VertexAttributeDesc> Attributes;
         std::vector<D3D12_INPUT_ELEMENT_DESC> InputElements;
@@ -96,7 +96,7 @@ namespace PhxEngine::RHI::D3D12
         D3D12InputLayout() = default;
     };
 
-    struct D3D12GraphicsPipeline
+    struct D3D12GraphicsPipeline final
     {
         GfxPipelineDesc Desc;
 
@@ -106,7 +106,7 @@ namespace PhxEngine::RHI::D3D12
         D3D12GraphicsPipeline() = default;
     };
 
-    struct D3D12ComputePipeline
+    struct D3D12ComputePipeline final
     {
         Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
         Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
@@ -115,7 +115,7 @@ namespace PhxEngine::RHI::D3D12
         D3D12ComputePipeline() = default;
     };
 
-    struct D3D12MeshPipeline
+    struct D3D12MeshPipeline final
     {
         Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
         Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
@@ -124,7 +124,7 @@ namespace PhxEngine::RHI::D3D12
         D3D12MeshPipeline() = default;
     };
 
-    struct DescriptorView
+    struct DescriptorView final
     {
         DescriptorHeapAllocation Allocation;
         DescriptorIndex BindlessIndex = cInvalidDescriptorIndex;
@@ -300,7 +300,7 @@ namespace PhxEngine::RHI::D3D12
     };
 
     class UploadBuffer;
-    struct D3D12CommandList
+    struct D3D12CommandList final
     {
         uint32_t Id;
         CommandQueueType QueueType = CommandQueueType::Graphics;
@@ -361,7 +361,7 @@ namespace PhxEngine::RHI::D3D12
         static HRESULT EnumAdapters(uint32_t adapterIndex, IDXGIFactory6* factory6, IDXGIAdapter1** outAdapter);
     };
 
-	class D3D12GfxDevice final : public RHI::GfxDevice
+	class D3D12GfxDevice final : public RHI::IGfxDevice
 	{
 	public:
         D3D12GfxDevice();

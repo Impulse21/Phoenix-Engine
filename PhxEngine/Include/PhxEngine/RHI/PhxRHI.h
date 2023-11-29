@@ -1261,10 +1261,10 @@ namespace PhxEngine::RHI
         uint32_t BaseVertex = 0;
     };
 
-    class GfxDevice
+    class IGfxDevice
     {
     public:
-        virtual ~GfxDevice() = default;
+        virtual ~IGfxDevice() = default;
 
         // -- Frame Functions ---
     public:
@@ -1529,6 +1529,7 @@ namespace PhxEngine::RHI
 
     };
 
+    using GfxDevice = IGfxDevice;
     class GfxDeviceFactory
     {
     public:
