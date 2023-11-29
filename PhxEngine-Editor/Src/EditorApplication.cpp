@@ -105,6 +105,9 @@ namespace
 			    else
 			    {
 			    	postMsgWithLog("Loading Default World");
+
+                    postMsgWithLog("Checking if meshes are on disk, if not loaded");
+
 			    }
 
 			    this->m_isInitialize.store(true);
@@ -151,9 +154,6 @@ namespace
 
             ImGui::Begin("Properties", &mainWindowBegun);
             ImGui::Text("Properties");
-            ImGui::End();
-            ImGui::Begin("Assets", &mainWindowBegun);
-            ImGui::Text("Assets");
             ImGui::End();
             ImGui::Begin("Viewport", &mainWindowBegun);
             ImGui::Text("Viewport");

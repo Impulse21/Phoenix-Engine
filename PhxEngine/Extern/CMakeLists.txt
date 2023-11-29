@@ -43,6 +43,9 @@ set_target_properties(DirectXTex PROPERTIES FOLDER ${extern_folder})
 add_subdirectory(DirectXMesh)
 set_target_properties(DirectXMesh PROPERTIES FOLDER ${extern_folder})
 
+add_subdirectory(meshoptimizer)
+set_target_properties(meshoptimizer PROPERTIES FOLDER ${extern_folder})
+
 add_subdirectory(D3D12MemoryAllocator)
 set_target_properties(D3D12MemoryAllocator PROPERTIES FOLDER ${extern_folder})
  target_include_directories(D3D12MemoryAllocator INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/D3D12MemoryAllocator/include)
