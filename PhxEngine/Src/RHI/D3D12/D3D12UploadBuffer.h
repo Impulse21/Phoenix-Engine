@@ -17,24 +17,6 @@ namespace PhxEngine::RHI::D3D12
 		size_t Offset;
 	};
 
-	class UploadRingBuffer
-	{
-	public:
-		void Initialize(D3D12GfxDevice* device, size_t capacity = PhxMB(100));
-		void Finialize();
-
-		UploadAllocation Allocate(size_t sizeInBytes, size_t alignment);
-
-		size_t GetCapacity() const { return this->m_capacity; }
-
-	private:
-		D3D12GfxDevice* m_gfxDevice;
-		size_t m_capacity = 0;
-		size_t m_tailOffset;
-		BufferHandle m_buffer;
-		D3D12_GPU_VIRTUAL_ADDRESS m_gpuHeadPtr;
-	};
-
 	class UploadBuffer
 	{
 	public:

@@ -462,6 +462,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::Initialize(SwapChainDesc const& swap
 	{
 		this->m_frameCommandListHandles[i] = this->m_commandListPool.Emplace();
 		auto* commandlistImpl = this->m_commandListPool.Get(this->m_frameCommandListHandles[i]);
+		commandlistImpl->UploadBuffer.Initialize(this, PhxMB(100));
 	}
 
 	// -- Mark Queues for completion ---
@@ -475,11 +476,6 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::Initialize(SwapChainDesc const& swap
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::Finalize()
 {
-	for (int i = 0; i < this->m_frameCommandListHandles.size(); i++)
-	{
-		auto* commandlistImpl = this->m_commandListPool.Get(this->m_frameCommandListHandles[i]);
-		commandlistImpl->UploadBuffer.Finialize();
-	}
 	this->DeleteBuffer(this->m_timestampQueryBuffer);
 
 	for (auto handle : this->m_swapChain.BackBuffers)
@@ -3743,7 +3739,6 @@ CommandListHandle PhxEngine::RHI::D3D12::D3D12GfxDevice::BeginCommandList(Comman
 
 	CommandListHandle cmdHandle = this->m_frameCommandListHandles[currentCmdIndex];
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmdHandle);
-
 	internalCmd.NativeCommandAllocator = this->GetQueue(queueType).RequestAllocator();
 
 	if (internalCmd.NativeCommandList == nullptr)
@@ -3770,11 +3765,7 @@ CommandListHandle PhxEngine::RHI::D3D12::D3D12GfxDevice::BeginCommandList(Comman
 	internalCmd.QueueType = queueType;
 	internalCmd.Waits.clear();
 	internalCmd.IsWaitedOn.store(false);
-
-	if (internalCmd.UploadBuffer.GetCapacity() == 0)
-	{
-		internalCmd.UploadBuffer.Initialize(this);
-	}
+	internalCmd.UploadBuffer.Reset();
 
 	// Bind Heaps
 	std::array<ID3D12DescriptorHeap*, 2> heaps;
@@ -4029,7 +4020,7 @@ void D3D12GfxDevice::ClearTextureFloat(TextureHandle texture, Color const& clear
 GPUAllocation D3D12GfxDevice::AllocateGpu(size_t bufferSize, size_t stride, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	assert(bufferSize <= internalCmd.UploadBuffer.GetCapacity());
+	assert(bufferSize <= internalCmd.UploadBuffer.GetPageSize());
 
 	auto heapAllocation = internalCmd.UploadBuffer.Allocate(bufferSize, stride);
 

@@ -16,7 +16,6 @@ namespace
 	std::unique_ptr<Core::IWindow> m_window;
 	std::unique_ptr<RHI::GfxDevice> m_gfxDevice;
 	tf::Executor m_taskExecutor;
-	Renderer::AsyncGpuUploader m_asyncLoader;
 
 	std::atomic_bool m_engineRunning = false;
 
@@ -147,9 +146,4 @@ Core::IWindow* PhxEngine::GetWindow()
 tf::Executor& PhxEngine::GetTaskExecutor()
 {
 	return m_taskExecutor;
-}
-
-PhxEngine::Renderer::AsyncGpuUploader& PhxEngine::GetAsyncLoader()
-{
-	return m_asyncLoader;
 }

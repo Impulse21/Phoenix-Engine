@@ -174,7 +174,7 @@ uint64_t PhxEngine::Core::SystemMemory::GetNumActiveAllocations()
 
 void PhxEngine::Core::HeapAllocator::Initialize(size_t size)
 {
-	this->m_memory = malloc(size);
+	this->m_memory = mi_malloc(size);
 	this->m_maxSize = size;
 	this->m_allocatedSize = 0;
 	this->m_tlsfHandle = tlsf_create_with_pool(this->m_memory, size);
@@ -195,7 +195,7 @@ void PhxEngine::Core::HeapAllocator::Finalize()
 	assert(stats.AllocatedBytes == 0);
 
 	tlsf_destroy(this->m_tlsfHandle);
-	free(this->m_memory);
+	mi_free(this->m_memory);
 }
 
 void PhxEngine::Core::HeapAllocator::BuildIU()
@@ -236,14 +236,14 @@ void PhxEngine::Core::HeapAllocator::Free(void* pointer)
 
 void PhxEngine::Core::StackAllocator::Initialize(size_t size)
 {
-	this->m_memory = static_cast<uint8_t*>(malloc(size));
+	this->m_memory = static_cast<uint8_t*>(mi_malloc(size));
 	this->m_totalSize = size;
 	this->m_allocatedSize = 0;
 }
 
 void PhxEngine::Core::StackAllocator::Finalize()
 {
-	free(this->m_memory);
+	mi_free(this->m_memory);
 }
 
 void* PhxEngine::Core::StackAllocator::Allocate(size_t size, size_t alignment)
@@ -301,7 +301,7 @@ void PhxEngine::Core::StackAllocator::Clear()
 
 void PhxEngine::Core::LinearAllocator::Initialize(size_t size)
 {
-	this->m_memory = static_cast<uint8_t*>(malloc(size));
+	this->m_memory = static_cast<uint8_t*>(mi_malloc(size));
 	this->m_totalSize = size;
 	this->m_allocatedSize = 0;
 }
@@ -309,7 +309,7 @@ void PhxEngine::Core::LinearAllocator::Initialize(size_t size)
 void PhxEngine::Core::LinearAllocator::Finalize()
 {
 	this->Clear();
-	free(this->m_memory);
+	mi_free(this->m_memory);
 }
 
 void* PhxEngine::Core::LinearAllocator::Allocate(size_t size, size_t alignment)

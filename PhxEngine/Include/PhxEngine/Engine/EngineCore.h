@@ -6,7 +6,6 @@
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/Object.h>
 #include <PhxEngine/Core/Memory.h>
-#include <PhxEngine/Renderer/AsyncGpuUploader.h>
 #include <taskflow/taskflow.hpp>
 
 namespace PhxEngine
@@ -31,7 +30,6 @@ namespace PhxEngine
 	RHI::GfxDevice* GetGfxDevice();
 	Core::IWindow* GetWindow();
 	tf::Executor& GetTaskExecutor();
-	PhxEngine::Renderer::AsyncGpuUploader& GetAsyncLoader();
 
 }
 

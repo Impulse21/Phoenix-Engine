@@ -307,7 +307,7 @@ namespace PhxEngine::RHI::D3D12
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> NativeCommandList;
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList6> NativeCommandList6;
         ID3D12CommandAllocator* NativeCommandAllocator;
-        UploadRingBuffer UploadBuffer;
+        UploadBuffer UploadBuffer;
 
         // An Array of Memory, perferanle from Allocator Internal
         std::atomic_bool IsWaitedOn;
