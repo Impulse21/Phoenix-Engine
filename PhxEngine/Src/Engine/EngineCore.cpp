@@ -14,7 +14,8 @@ namespace
 {
 	// -- Globals ---
 	std::unique_ptr<Core::IWindow> m_window;
-	std::unique_ptr<RHI::GfxDevice> m_gfxDevice;
+	// TODO: THis should be a unique_ptr, however, due to custom allocation, I require a deleter
+	RHI::GfxDevice* m_gfxDevice;
 	tf::Executor m_taskExecutor;
 
 	std::atomic_bool m_engineRunning = false;
@@ -40,7 +41,7 @@ namespace
 		m_window->Initialize();
 
 		// -- Create GFX Device ---
-		m_gfxDevice = RHI::Factory::CreateD3D12Device();
+		m_gfxDevice = RHI::GfxDeviceFactory::Create(RHI::GraphicsAPI::DX12);
 		RHI::SwapChainDesc swapchainDesc = {
 			.Width = m_window->GetWidth(),
 			.Height = m_window->GetHeight(),
@@ -75,7 +76,9 @@ namespace
 		m_gfxDevice->WaitForIdle();
 		m_gfxDevice->Finalize();
 
-		m_gfxDevice.reset();
+
+		phx_delete(m_gfxDevice);
+		m_gfxDevice = nullptr;
 		m_window.reset();
 
 		Core::Log::Finialize();
@@ -135,7 +138,7 @@ void PhxEngine::Run(IEngineApp& app)
 
 RHI::GfxDevice* PhxEngine::GetGfxDevice()
 {
-	return m_gfxDevice.get();
+	return m_gfxDevice;
 }
 
 Core::IWindow* PhxEngine::GetWindow()

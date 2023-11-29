@@ -1529,10 +1529,11 @@ namespace PhxEngine::RHI
 
     };
 
-    namespace Factory
+    class GfxDeviceFactory
     {
-        std::unique_ptr<GfxDevice> CreateD3D12Device();
-    }
+    public:
+        static GfxDevice* Create(RHI::GraphicsAPI preferedAPI);
+    };
 }
 
 namespace std
