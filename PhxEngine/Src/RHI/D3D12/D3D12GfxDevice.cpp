@@ -3141,14 +3141,14 @@ int PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateShaderResourceView(BufferHandle
 	const uint32_t stideInBytes = bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements;
 	if (bufferImpl->Desc.Format == RHI::Format::UNKNOWN)
 	{
-		if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Raw) != 0)
+		if (EnumHasAllFlags(bufferImpl->Desc.MiscFlags,BufferMiscFlags::Raw))
 		{
 			srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
 			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
 			srvDesc.Buffer.FirstElement = (UINT)offset / sizeof(uint32_t);
 			srvDesc.Buffer.NumElements = (UINT)std::min(size, stideInBytes - offset) / sizeof(uint32_t);
 		}
-		else if((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Structured) != 0)
+		else if(EnumHasAllFlags(bufferImpl->Desc.MiscFlags, BufferMiscFlags::Structured))
 		{
 			uint32_t strideInBytes = (bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements);
 			// This is a Structured Buffer
@@ -3217,14 +3217,14 @@ int PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateUnorderedAccessView(BufferHandl
 	const bool hasCounter = (bufferImpl->Desc.MiscFlags & BufferMiscFlags::HasCounter) == BufferMiscFlags::HasCounter;
 	if (bufferImpl->Desc.Format == RHI::Format::UNKNOWN)
 	{
-		if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Raw) != 0)
+		if (EnumHasAllFlags(bufferImpl->Desc.MiscFlags, BufferMiscFlags::Raw))
 		{
 			uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
 			uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
 			uavDesc.Buffer.FirstElement = (UINT)offset / sizeof(uint32_t);
 			uavDesc.Buffer.NumElements = (UINT)std::min(size, stideInBytes - offset) / sizeof(uint32_t);
 		}
-		else if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Structured) != 0)
+		else if (EnumHasAllFlags(bufferImpl->Desc.MiscFlags, BufferMiscFlags::Structured))
 		{
 			uint32_t strideInBytes = (bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements);
 			// This is a Structured Buffer
