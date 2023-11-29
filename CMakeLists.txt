@@ -25,7 +25,7 @@ add_definitions(-DUNICODE)
 add_definitions(-D_UNICODE)
 
 add_subdirectory(PhxEngine)
-#add_subdirectory(PhxEngine-Runtime)
+add_subdirectory(PhxEngine-Runtime)
 #add_subdirectory(PhxEngine-AssetBaker)
 add_subdirectory(PhxEngine-Editor)
 
