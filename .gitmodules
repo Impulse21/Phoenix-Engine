@@ -35,3 +35,6 @@
 [submodule "PhxEngine/Extern/enkiTS"]
 	path = PhxEngine/Extern/enkiTS
 	url = https://github.com/dougbinks/enkiTS.git
+[submodule "PhxEngine/Extern/meshoptimizer"]
+	path = PhxEngine/Extern/meshoptimizer
+	url = https://github.com/zeux/meshoptimizer.git
