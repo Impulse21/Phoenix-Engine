@@ -638,7 +638,7 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::Present(ISwapChain* swapChain)
 
 			// If the fence is max uint64, that might indicate that the device has been removed as fences get reset in this case
 			assert(completedFrame != UINT64_MAX);
-			uint32_t bufferCount = impl->GetDesc().BufferCount;
+			const uint32_t bufferCount = MaxFramesInflgiht;
 
 			// Since our frame count is 1 based rather then 0, increment the number of buffers by 1 so we don't have to wait on the first 3 frames
 			// that are kicked off.
@@ -734,14 +734,7 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::WaitForIdle()
 	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
 	{
 		D3D12CommandQueue& queue = this->m_commandQueues[q];
-		hr = queue.GetD3D12CommandQueue()->Signal(fence.Get(), 1);
-		assert(SUCCEEDED(hr));
-		if (fence->GetCompletedValue() < 1)
-		{
-			hr = fence->SetEventOnCompletion(1, NULL);
-			assert(SUCCEEDED(hr));
-		}
-		fence->Signal(0);
+		queue.WaitForIdle();
 	}
 }
 
@@ -1366,7 +1359,7 @@ SwapChainRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateSwapChain(SwapChainDe
 	swapChainDesc.SampleDesc.Count = 1;
 	swapChainDesc.SampleDesc.Quality = 0;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swapChainDesc.BufferCount = desc.BufferCount;
+	swapChainDesc.BufferCount = MaxFramesInflgiht;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
 	swapChainDesc.Flags = swapChainFlags;
@@ -1867,6 +1860,7 @@ TextureRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateTexture(TextureDesc con
 	std::wstring debugName;
 	Core::StringConvert(desc.DebugName, debugName);
 	textureImpl->D3D12Resource->SetName(debugName.c_str());
+	textureImpl->Allocation->SetName(debugName.c_str());
 
 	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
@@ -2022,6 +2016,7 @@ BufferRef PhxEngine::RHI::D3D12::D3D12DynamicRHI::CreateBuffer(BufferDesc const&
 
 	std::wstring debugName(desc.DebugName.begin(), desc.DebugName.end());
 	bufferImpl->D3D12Resource->SetName(debugName.c_str());
+	bufferImpl->Allocation->SetName(debugName.c_str());
 
 	if ((desc.MiscFlags & BufferMiscFlags::IsAliasedResource) == BufferMiscFlags::IsAliasedResource)
 	{
@@ -2076,9 +2071,14 @@ void PhxEngine::RHI::D3D12::D3D12DynamicRHI::ResizeSwapChain(ISwapChain* swapCha
 	}
 
 	WaitForIdle();
-
 	D3D12SwapChain* impl = ResourceCast(swapChain);
 	
+	// We need to release resources prior to calling resize
+	impl->BackBuffers.clear();
+	impl->Desc = desc;
+
+	this->RunGarbageCollection(~0u);
+
 	const auto& formatMapping = GetDxgiFormatMapping(desc.Format);
 	UINT swapChainFlags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 	swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;

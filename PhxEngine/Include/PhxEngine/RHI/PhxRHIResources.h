@@ -3,6 +3,7 @@
 #include <vector>
 #include <optional>
 #include <variant>
+#include <atomic>
 
 #include <PhxEngine/Core/Span.h>
 #include <PhxEngine/Core/Vector.h>
@@ -32,22 +33,42 @@ namespace PhxEngine::RHI
         };
     };
 
-    class RHIResource
-    {
-    protected:
-        RHIResource() = default;
+	class RHIResource
+	{
+    public:
         virtual ~RHIResource() = default;
 
-    public:
-        virtual unsigned long AddRef() = 0;
-        virtual unsigned long Release() = 0;
+	protected:
+		RHIResource() = default;
 
         // Non-copyable and non-movable
         RHIResource(const RHIResource&) = delete;
         RHIResource(const RHIResource&&) = delete;
         RHIResource& operator=(const RHIResource&) = delete;
         RHIResource& operator=(const RHIResource&&) = delete;
-    };
+
+	public:
+		virtual unsigned long AddRef()
+		{
+			return ++m_refCount;
+		}
+
+		virtual unsigned long Release()
+		{
+			unsigned long result = --m_refCount;
+			if (result == 0)
+			{
+                this->Destroy();
+			}
+			return result;
+		}
+
+	private:
+		void Destroy();
+
+	private:
+		std::atomic<unsigned long> m_refCount = 1;
+	};
 
     struct ShaderDesc
     {

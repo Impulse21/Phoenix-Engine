@@ -96,52 +96,54 @@ void PhxEngine::Run(IEngineApp& app)
 
 	app.Initialize();
 
-	RHI::CommandListRef gfxCmdList = RHI::GetDynamic()->CreateCommandList();
-	while (!app.IsShuttingDown())
 	{
-		m_scratchAllocator.Clear();
-		m_window->OnTick();
-
-		// TODO: Add Delta Time
-		app.OnUpdate();
-
-		gfxCmdList->Reset();
-		Renderer::RgBuilder rgBuilder(&m_scratchAllocator);
-
-		app.OnRender(rgBuilder, gfxCmdList.Get());
-
+		RHI::CommandListRef gfxCmdList = RHI::GetDynamic()->CreateCommandList();
+		while (!app.IsShuttingDown())
 		{
-			RHI::ITexture* backBuffer = m_swapChain->GetBackBuffer();
-			gfxCmdList->TransitionBarriers(
-				{
-					RHI::GpuBarrier::CreateTexture(backBuffer, RHI::ResourceStates::Present, RHI::ResourceStates::RenderTarget)
-				});
+			m_scratchAllocator.Clear();
+			m_window->OnTick();
 
-			RHI::Color clearColour = {};
-			gfxCmdList->ClearTextureFloat(backBuffer, clearColour);
-			gfxCmdList->SetRenderTargets({ backBuffer }, nullptr);
+			// TODO: Add Delta Time
+			app.OnUpdate();
 
-			app.OnCompose(rgBuilder, gfxCmdList);
+			gfxCmdList->Reset();
+			Renderer::RgBuilder rgBuilder(&m_scratchAllocator);
 
-			gfxCmdList->TransitionBarriers(
-				{
-					RHI::GpuBarrier::CreateTexture(backBuffer, RHI::ResourceStates::RenderTarget, RHI::ResourceStates::Present)
-				});
-		}
+			app.OnRender(rgBuilder, gfxCmdList.Get());
 
-		RHI::GetDynamic()->ExecuteCommandLists({ gfxCmdList });
-		RHI::GetDynamic()->Present(m_swapChain.Get());
+			{
+				RHI::ITexture* backBuffer = m_swapChain->GetBackBuffer();
+				gfxCmdList->TransitionBarriers(
+					{
+						RHI::GpuBarrier::CreateTexture(backBuffer, RHI::ResourceStates::Present, RHI::ResourceStates::RenderTarget)
+					});
+
+				RHI::Color clearColour = {};
+				gfxCmdList->ClearTextureFloat(backBuffer, clearColour);
+				gfxCmdList->SetRenderTargets({ backBuffer }, nullptr);
+
+				app.OnCompose(rgBuilder, gfxCmdList);
+
+				gfxCmdList->TransitionBarriers(
+					{
+						RHI::GpuBarrier::CreateTexture(backBuffer, RHI::ResourceStates::RenderTarget, RHI::ResourceStates::Present)
+					});
+			}
+
+			RHI::GetDynamic()->ExecuteCommandLists({ gfxCmdList });
+			RHI::GetDynamic()->Present(m_swapChain.Get());
 
 #if false
-		// Compose final frame
-		RHI::GfxDevice* gfxDevice = GetGfxDevice();
-		{
-			RHI::CommandListHandle composeCmdList = gfxDevice->BeginCommandList();
+			// Compose final frame
+			RHI::GfxDevice* gfxDevice = GetGfxDevice();
+			{
+				RHI::CommandListHandle composeCmdList = gfxDevice->BeginCommandList();
 
-		}
-		// Submit command lists and present
-		gfxDevice->SubmitFrame();
+			}
+			// Submit command lists and present
+			gfxDevice->SubmitFrame();
 #endif
+		}
 	}
 
 	app.Finalize();

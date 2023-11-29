@@ -32,8 +32,10 @@
 
 #define ENABLE_PIX_CAPUTRE 1
 
+
 namespace PhxEngine::RHI::D3D12
 {
+    constexpr size_t MaxFramesInflgiht = 3;
     constexpr size_t kNumCommandListPerFrame = 32;
     constexpr size_t kResourcePoolSize = 100000; // 1 KB of handles
     constexpr size_t kNumConcurrentRenderTargets = 8;
@@ -86,7 +88,7 @@ namespace PhxEngine::RHI::D3D12
         inline void EnqueueDelete(std::function<void()>&& function) override
         {
             this->m_deleteQueue.push_back({
-                    .Frame = this->m_frameCount,
+                    .Frame = this->m_frameCount + (MaxFramesInflgiht - 1),
                     .DeleteFn = std::move(function)
                 });
         }

@@ -301,7 +301,7 @@ void PhxEngine::Core::StackAllocator::Clear()
 
 void PhxEngine::Core::LinearAllocator::Initialize(size_t size)
 {
-	this->m_memory = static_cast<uint8_t*>(malloc(size));
+	this->m_memory = static_cast<uint8_t*>(mi_malloc(size));
 	this->m_totalSize = size;
 	this->m_allocatedSize = 0;
 }
@@ -309,7 +309,7 @@ void PhxEngine::Core::LinearAllocator::Initialize(size_t size)
 void PhxEngine::Core::LinearAllocator::Finalize()
 {
 	this->Clear();
-	free(this->m_memory);
+	mi_free(this->m_memory);
 }
 
 void* PhxEngine::Core::LinearAllocator::Allocate(size_t size, size_t alignment)

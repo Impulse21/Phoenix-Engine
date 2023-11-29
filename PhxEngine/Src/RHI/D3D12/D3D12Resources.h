@@ -3,6 +3,8 @@
 #include "D3D12Common.h"
 #include <D3D12MemAlloc.h>
 #include <RHI/D3D12/D3D12DescriptorHeap.h>
+#include <PhxEngine/Core/RefCountPtr.h>
+
 namespace PhxEngine::RHI::D3D12
 {
     class D3D12GfxDevice;
@@ -17,7 +19,7 @@ namespace PhxEngine::RHI::D3D12
         Count,
     };
 
-    struct D3D12Shader final : Core::RefCounter<IShader>
+    struct D3D12Shader final : public IShader
     {
         ShaderDesc Desc = {};
         Phx::FlexArray<uint8_t> ByteCode;
@@ -42,7 +44,7 @@ namespace PhxEngine::RHI::D3D12
         typedef D3D12Shader TConcreteType;
     };
 
-    struct D3D12InputLayout final : Core::RefCounter<IInputLayout>
+    struct D3D12InputLayout final : public IInputLayout
     {
         Phx::FlexArray<VertexAttributeDesc> Attributes;
         Phx::FlexArray<D3D12_INPUT_ELEMENT_DESC> InputElements;
@@ -58,7 +60,7 @@ namespace PhxEngine::RHI::D3D12
         typedef D3D12InputLayout TConcreteType;
     };
 
-    struct D3D12GfxPipeline final : Core::RefCounter<IGfxPipeline>
+    struct D3D12GfxPipeline final : public IGfxPipeline
     {
         GfxPipelineDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
@@ -75,7 +77,7 @@ namespace PhxEngine::RHI::D3D12
         typedef D3D12GfxPipeline TConcreteType;
     };
 
-    struct D3D12ComputePipeline final : Core::RefCounter<IComputePipeline>
+    struct D3D12ComputePipeline final : public IComputePipeline
     {
         ComputePipelineDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
@@ -91,7 +93,7 @@ namespace PhxEngine::RHI::D3D12
         typedef D3D12ComputePipeline TConcreteType;
     };
 
-    struct D3D12MeshPipeline final : Core::RefCounter<IMeshPipeline>
+    struct D3D12MeshPipeline final : public IMeshPipeline
     {
         MeshPipelineDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
@@ -131,7 +133,7 @@ namespace PhxEngine::RHI::D3D12
     class ICommandSignature
     {};
 
-    struct D3D12CommandSignature final : Core::RefCounter<ICommandSignature>
+    struct D3D12CommandSignature final : public ICommandSignature
     {
         Phx::FlexArray<D3D12_INDIRECT_ARGUMENT_DESC> D3D12Descs;
         Microsoft::WRL::ComPtr<ID3D12CommandSignature> NativeSignature;
@@ -143,7 +145,7 @@ namespace PhxEngine::RHI::D3D12
         typedef D3D12CommandSignature TConcreteType;
     };
 
-    struct D3D12Texture final : Core::RefCounter<ITexture>
+    struct D3D12Texture final : public ITexture
     {
         TextureDesc Desc = {};
 
@@ -212,7 +214,7 @@ namespace PhxEngine::RHI::D3D12
         typedef D3D12Texture TConcreteType;
     };
 
-    struct D3D12Buffer final : Core::RefCounter<IBuffer>
+    struct D3D12Buffer final : public IBuffer
     {
         BufferDesc Desc = {};
         Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
@@ -290,7 +292,7 @@ namespace PhxEngine::RHI::D3D12
     };
 #endif 
 #if 0
-    struct D3D12TimerQuery final : Core::RefCounter<Tim>
+    struct D3D12TimerQuery final : public Tim>
     {
         size_t BeginQueryIndex = 0;
         size_t EndQueryIndex = 0;
@@ -306,7 +308,7 @@ namespace PhxEngine::RHI::D3D12
     };
 #endif
 
-    struct D3D12SwapChain final : Core::RefCounter<ISwapChain>
+    struct D3D12SwapChain final : public ISwapChain
     {
         SwapChainDesc Desc = {};
         Core::RefCountPtr<IDXGISwapChain1> NativeSwapchain;
@@ -346,7 +348,7 @@ namespace PhxEngine::RHI::D3D12
     };
 
     class UploadBuffer;
-    struct D3D12CommandList final : public Core::RefCounter<ICommandList>
+    struct D3D12CommandList final : public ICommandList
     {
         CommandQueueType QueueType = CommandQueueType::Graphics;
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> NativeCommandList;
