@@ -1,9 +1,10 @@
 #pragma once
 
-#include "PhxEngine/Core/Platform.h"
-#include "PhxEngine/Core/TimeStep.h"
-#include "PhxEngine/Core/Span.h"
-#include "PhxEngine/Core/Handle.h"
+#include <PhxEngine/Core/Memory.h>
+
+#include <PhxEngine/Core/TimeStep.h>
+#include <PhxEngine/Core/Span.h>
+#include <PhxEngine/Core/Handle.h>
 
 #include <stdint.h>
 #include <optional>
@@ -11,15 +12,7 @@
 #include <vector>
 #include <memory>
 #include <variant>
-
-#define PHXRHI_ENUM_CLASS_FLAG_OPERATORS(T) \
-    inline T operator | (T a, T b) { return T(uint32_t(a) | uint32_t(b)); } \
-    inline T& operator |=(T& a, T b) { return a = a | b; }\
-    inline T operator & (T a, T b) { return T(uint32_t(a) & uint32_t(b)); } /* NOLINT(bugprone-macro-parentheses) */ \
-    inline T operator ~ (T a) { return T(~uint32_t(a)); } /* NOLINT(bugprone-macro-parentheses) */ \
-    inline bool operator !(T a) { return uint32_t(a) == 0; } \
-    inline bool operator ==(T a, uint32_t b) { return uint32_t(a) == b; } \
-    inline bool operator !=(T a, uint32_t b) { return uint32_t(a) != b; }
+#include <PhxEngine/Core/EnumClassFlags.h>
 
 namespace PhxEngine::RHI
 {
@@ -67,16 +60,16 @@ namespace PhxEngine::RHI
 
         All = 0x3FFF,
     };
-    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(ShaderStage)
+    PHX_ENUM_CLASS_FLAGS(ShaderStage)
 
     enum class ColourSpace
-    {
-        SRGB,
-        HDR_LINEAR,
-        HDR10_ST2084
+	{
+		SRGB,
+		HDR_LINEAR,
+		HDR10_ST2084
     };
 
-    enum class RHIFormat : uint8_t
+    enum class Format : uint8_t
     {
         UNKNOWN = 0,
         R8_UINT,
@@ -174,7 +167,7 @@ namespace PhxEngine::RHI
         bool operator !=(const Color& other) const { return !(*this == other); }
     };
 
-    union RHIClearValue
+    union ClearValue
     {
         // TODO: Change to be a flat array
         // float Colour[4];
@@ -284,35 +277,35 @@ namespace PhxEngine::RHI
 
     enum class ResourceStates : uint32_t
     {
-        Unknown                 = 0,
-        Common                  = 1 << 0,
-        ConstantBuffer          = 1 << 1,
-        VertexBuffer            = 1 << 2,
-        IndexGpuBuffer          = 1 << 3,
-        IndirectArgument        = 1 << 4,
-        ShaderResource          = 1 << 5,
-        UnorderedAccess         = 1 << 6,
-        RenderTarget            = 1 << 7,
-        DepthWrite              = 1 << 8,
-        DepthRead               = 1 << 9,
-        StreamOut               = 1 << 10,
-        CopyDest                = 1 << 11,
-        CopySource              = 1 << 12,
-        ResolveDest             = 1 << 13,
-        ResolveSource           = 1 << 14,
-        Present                 = 1 << 15,
-        AccelStructRead         = 1 << 16,
-        AccelStructWrite        = 1 << 17,
-        AccelStructBuildInput   = 1 << 18,
-        AccelStructBuildBlas    = 1 << 19,
-        ShadingRateSurface      = 1 << 20,
-        GenericRead             = 1 << 21,
-        ShaderResourceNonPixel  = 1 << 22,
+        Unknown = 0,
+        Common = 1 << 0,
+        ConstantBuffer = 1 << 1,
+        VertexBuffer = 1 << 2,
+        IndexGpuBuffer = 1 << 3,
+        IndirectArgument = 1 << 4,
+        ShaderResource = 1 << 5,
+        UnorderedAccess = 1 << 6,
+        RenderTarget = 1 << 7,
+        DepthWrite = 1 << 8,
+        DepthRead = 1 << 9,
+        StreamOut = 1 << 10,
+        CopyDest = 1 << 11,
+        CopySource = 1 << 12,
+        ResolveDest = 1 << 13,
+        ResolveSource = 1 << 14,
+        Present = 1 << 15,
+        AccelStructRead = 1 << 16,
+        AccelStructWrite = 1 << 17,
+        AccelStructBuildInput = 1 << 18,
+        AccelStructBuildBlas = 1 << 19,
+        ShadingRateSurface = 1 << 20,
+        GenericRead = 1 << 21,
+        ShaderResourceNonPixel = 1 << 22,
     };
 
-    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(ResourceStates)
+    PHX_ENUM_CLASS_FLAGS(ResourceStates)
 
-    enum class ShaderType
+        enum class ShaderType
     {
         None,
         HLSL6,
@@ -488,7 +481,16 @@ namespace PhxEngine::RHI
         IsAliasedResource = 1 << 5,
     };
 
-    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(BufferMiscFlags);
+    PHX_ENUM_CLASS_FLAGS(BufferMiscFlags);
+
+    enum class TextureMiscFlags
+    {
+        None = 0,
+        Bindless = 1 << 0,
+        Typeless = 1 << 1,
+    };
+
+    PHX_ENUM_CLASS_FLAGS(TextureMiscFlags);
 
     enum class BindingFlags
     {
@@ -503,7 +505,7 @@ namespace PhxEngine::RHI
         ShadingRate = 1 << 7,
     };
 
-    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(BindingFlags);
+    PHX_ENUM_CLASS_FLAGS(BindingFlags);
 
     enum class SubresouceType
     {
@@ -608,29 +610,14 @@ namespace PhxEngine::RHI
     };
     // -- Pipeline State Objects End ---
 
-    class IRHIResource
-    {
-    public:
-        // Non-copyable and non-movable
-        IRHIResource(const IRHIResource&) = delete;
-        IRHIResource(const IRHIResource&&) = delete;
-        IRHIResource& operator=(const IRHIResource&) = delete;
-        IRHIResource& operator=(const IRHIResource&&) = delete;
-
-    protected:
-        IRHIResource() = default;
-        virtual ~IRHIResource() = default;
-
-    };
-
     struct ShaderDesc
     {
         ShaderStage Stage = ShaderStage::None;
         std::string DebugName = "";
     };
 
-    struct RHIShader;
-    using ShaderHandle = Core::Handle<RHIShader>;
+    struct Shader;
+    using ShaderHandle = Core::Handle<Shader>;
 
     struct VertexAttributeDesc
     {
@@ -638,7 +625,7 @@ namespace PhxEngine::RHI
 
         std::string SemanticName;
         uint32_t SemanticIndex = 0;
-        RHIFormat Format = RHIFormat::UNKNOWN;
+        RHI::Format Format = RHI::Format::UNKNOWN;
         uint32_t InputSlot = 0;
         uint32_t AlignedByteOffset = SAppendAlignedElement;
         bool IsInstanced = false;
@@ -668,7 +655,7 @@ namespace PhxEngine::RHI
     {
         uint32_t Slot;
         ResourceType Type : 8;
-        bool IsVolatile: 8;
+        bool IsVolatile : 8;
         uint16_t Size : 16;
 
     };
@@ -751,7 +738,7 @@ namespace PhxEngine::RHI
             SamplerAddressMode         addressUVW,
             uint32_t				   maxAnisotropy = 16U,
             ComparisonFunc             comparisonFunc = ComparisonFunc::LessOrEqual,
-            Color                      borderColor = {1.0f , 1.0f, 1.0f, 0.0f} )
+            Color                      borderColor = { 1.0f , 1.0f, 1.0f, 0.0f })
         {
             StaticSamplerParameter& desc = this->StaticSamplers.emplace_back();
             desc.Slot = shaderRegister;
@@ -781,13 +768,11 @@ namespace PhxEngine::RHI
 
     struct TextureDesc
     {
+        TextureMiscFlags MiscFlags = TextureMiscFlags::None;
         BindingFlags BindingFlags = BindingFlags::ShaderResource;
         TextureDimension Dimension = TextureDimension::Texture2D;
         ResourceStates InitialState = ResourceStates::Common;
-
-        RHIFormat Format = RHIFormat::UNKNOWN;
-        bool IsTypeless = false;
-        bool IsBindless = true;
+        RHI::Format Format = RHI::Format::UNKNOWN;
 
         uint32_t Width;
         uint32_t Height;
@@ -800,7 +785,7 @@ namespace PhxEngine::RHI
 
         uint16_t MipLevels = 1;
 
-        RHIClearValue OptmizedClearValue = {};
+        RHI::ClearValue OptmizedClearValue = {};
         std::string DebugName;
     };
 
@@ -874,56 +859,21 @@ namespace PhxEngine::RHI
     struct BufferDesc
     {
         BufferMiscFlags MiscFlags = BufferMiscFlags::None;
-        // TODO: Change to usage
         Usage Usage = Usage::Default;
-
         BindingFlags Binding = BindingFlags::None;
         ResourceStates InitialState = ResourceStates::Common;
+        RHI::Format Format = RHI::Format::UNKNOWN;
 
-        // Stride is required for structured buffers
-        uint64_t StrideInBytes = 0;
-        uint64_t SizeInBytes = 0;
-
-        RHIFormat Format = RHIFormat::UNKNOWN;
-
-        bool AllowUnorderedAccess = false;
-        // TODO: Remove
-        bool CreateBindless = false;
-
-        size_t UavCounterOffsetInBytes = 0;
+        uint64_t Stride = 0;
+        uint64_t NumElements = 0;
+        size_t UavCounterOffset = 0;
         BufferHandle UavCounterBuffer = {};
-
         BufferHandle AliasedBuffer = {};
 
         std::string DebugName;
-
-        BufferDesc& EnableBindless()
-        {
-            this->MiscFlags = this->MiscFlags | BufferMiscFlags::Bindless;
-            return *this;
-        }
-
-        BufferDesc& IsRawBuffer()
-        {
-            this->MiscFlags = this->MiscFlags | BufferMiscFlags::Raw;
-            return *this;
-        }
-
-        BufferDesc& IsStructuredBuffer()
-        {
-            this->MiscFlags = this->MiscFlags | BufferMiscFlags::Structured;
-            return *this;
-        }
-
-        BufferDesc& IsTypedBuffer()
-        {
-            this->MiscFlags = this->MiscFlags | BufferMiscFlags::Typed;
-            return *this;
-        }
     };
 
-
-    struct GraphicsPipelineDesc
+    struct GfxPipelineDesc
     {
         PrimitiveType PrimType = PrimitiveType::TriangleList;
         InputLayoutHandle InputLayout;
@@ -936,20 +886,20 @@ namespace PhxEngine::RHI
         ShaderHandle DomainShader;
         ShaderHandle GeometryShader;
         ShaderHandle PixelShader;
-        
+
         BlendRenderState BlendRenderState = {};
         DepthStencilRenderState DepthStencilRenderState = {};
         RasterRenderState RasterRenderState = {};
 
-        std::vector<RHIFormat> RtvFormats;
-        std::optional<RHIFormat> DsvFormat;
+        std::vector<RHI::Format> RtvFormats;
+        std::optional<RHI::Format> DsvFormat;
 
         uint32_t SampleCount = 1;
         uint32_t SampleQuality = 0;
     };
 
-    struct GraphicsPipeline;
-    using GraphicsPipelineHandle = Core::Handle<GraphicsPipeline>;
+    struct GfxPipeline;
+    using GfxPipelineHandle = Core::Handle<GfxPipeline>;
 
     struct ComputePipelineDesc
     {
@@ -971,8 +921,8 @@ namespace PhxEngine::RHI
         DepthStencilRenderState DepthStencilRenderState = {};
         RasterRenderState RasterRenderState = {};
 
-        std::vector<RHIFormat> RtvFormats;
-        std::optional<RHIFormat> DsvFormat;
+        std::vector<RHI::Format> RtvFormats;
+        std::optional<RHI::Format> DsvFormat;
 
         uint32_t SampleCount = 1;
         uint32_t SampleQuality = 0;
@@ -1039,8 +989,8 @@ namespace PhxEngine::RHI
                     uint32_t VertexCount = 0;
                     uint64_t VertexByteOffset = 0;
                     uint32_t VertexStride = 0;
-                    RHI::RHIFormat IndexFormat = RHI::RHIFormat::R32_UINT;
-                    RHI::RHIFormat VertexFormat = RHI::RHIFormat::RGB32_FLOAT;
+                    RHI::Format IndexFormat = RHI::Format::R32_UINT;
+                    RHI::Format VertexFormat = RHI::Format::RGB32_FLOAT;
                     BufferHandle Transform3x4Buffer;
                     uint32_t Transform3x4BufferOffset = 0;
                 } Triangles;
@@ -1132,12 +1082,6 @@ namespace PhxEngine::RHI
 
     struct TimerQuery;
     using TimerQueryHandle = Core::Handle<TimerQuery>;
-
-    struct CommandListDesc
-    {
-        CommandQueueType QueueType = CommandQueueType::Graphics;
-        std::string DebugName;
-    };
 
     struct GpuBarrier
     {
@@ -1238,7 +1182,7 @@ namespace PhxEngine::RHI
         PipelineType PipelineType;
         union
         {
-            RHI::GraphicsPipelineHandle GfxHandle;
+            RHI::GfxPipelineHandle GfxHandle;
             RHI::ComputePipelineHandle ComputeHandle;
             RHI::MeshPipelineHandle MeshHandle;
         };
@@ -1247,192 +1191,8 @@ namespace PhxEngine::RHI
     struct CommandSignature;
     using CommandSignatureHandle = Core::Handle<CommandSignature>;
 
-    class ICommandList : public IRHIResource
-    {
-    public:
-        virtual ~ICommandList() = default;
-
-        virtual void Open() = 0;
-        virtual void Close() = 0;
-
-        // -- Ray Trace stuff       ---
-        virtual void RTBuildAccelerationStructure(RHI::RTAccelerationStructureHandle accelStructure) = 0;
-
-        // -- Ray Trace Stuff END   ---
-
-        virtual ScopedMarker BeginScopedMarker(std::string_view name) = 0;
-        virtual void BeginMarker(std::string_view name) = 0;
-        virtual void EndMarker() = 0;
-        virtual GPUAllocation AllocateGpu(size_t bufferSize, size_t stride) = 0;
-
-        virtual void TransitionBarrier(TextureHandle texture, ResourceStates beforeState, ResourceStates afterState) = 0;
-        virtual void TransitionBarrier(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState) = 0;
-        virtual void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers) = 0;
-        virtual void ClearTextureFloat(TextureHandle texture, Color const& clearColour) = 0 ;
-        virtual void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) = 0;
-
-        virtual void BeginRenderPassBackBuffer(bool clear = true) = 0;
-        virtual RenderPassHandle GetRenderPassBackBuffer() = 0;
-        virtual void BeginRenderPass(RenderPassHandle renderPass) = 0;
-        virtual void EndRenderPass() = 0;
-
-        virtual void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t startVertex = 0, uint32_t startInstance = 0) = 0;
-
-        virtual void DrawIndexed(
-            uint32_t indexCount,
-            uint32_t instanceCount = 1,
-            uint32_t startIndex = 0,
-            int32_t baseVertex = 0,
-            uint32_t startInstance = 0) = 0;
-
-        virtual void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount = 1) = 0;
-        virtual void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
-
-        virtual void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount = 1) = 0;
-        virtual void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
-
-        virtual void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount = 1) = 0;
-        virtual void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
-
-        template<typename T>
-        void WriteBuffer(BufferHandle buffer, std::vector<T> const& data, uint64_t destOffsetBytes = 0)
-        {
-            this->WriteBuffer(buffer, data.data(), sizeof(T) * data.size(), destOffsetBytes);
-        }
-
-        template<typename T>
-        void WriteBuffer(BufferHandle buffer, T const& data, uint64_t destOffsetBytes = 0)
-        {
-            this->WriteBuffer(buffer, &data, sizeof(T), destOffsetBytes);
-        }
-
-        template<typename T>
-        void WriteBuffer(BufferHandle buffer, Core::Span<T> data, uint64_t destOffsetBytes = 0)
-        {
-            this->WriteBuffer(buffer, data.begin(), sizeof(T) * data.Size(), destOffsetBytes);
-        }
-
-        // TODO: Take ownership of the data
-        virtual void WriteBuffer(BufferHandle buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes = 0) = 0;
-
-        virtual void CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHandle src, uint64_t srcOffset, size_t sizeInBytes) = 0;
-
-        virtual void WriteTexture(TextureHandle texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData) = 0;
-        virtual void WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* Data, size_t rowPitch, size_t depthPitch) = 0;
-
-        virtual void SetGraphicsPipeline(GraphicsPipelineHandle graphisPSO) = 0;
-        virtual void SetViewports(Viewport* viewports, size_t numViewports) = 0;
-        virtual void SetScissors(Rect* scissor, size_t numScissors) = 0;
-        virtual void SetRenderTargets(std::vector<TextureHandle> const& renderTargets, TextureHandle depthStencil) = 0;
-
-        // -- Comptute Stuff ---
-        virtual void SetComputeState(ComputePipelineHandle state) = 0;
-        virtual void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1) = 0;
-        virtual void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount = 1) = 0;
-        virtual void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
-
-        // -- Mesh Stuff ---
-        virtual void SetMeshPipeline(MeshPipelineHandle meshPipeline) = 0;
-        virtual void DispatchMesh(uint32_t groupsX, uint32_t groupsY = 1u, uint32_t groupsZ = 1u) = 0;
-        virtual void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount = 1) = 0;
-        virtual void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) = 0;
-
-        virtual void BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants) = 0;
-        template<typename T>
-        void BindPushConstant(uint32_t rootParameterIndex, const T& constants)
-        {
-            static_assert(sizeof(T) % sizeof(uint32_t) == 0, "Size of type must be a multiple of 4 bytes");
-            this->BindPushConstant(rootParameterIndex, sizeof(T), &constants);
-        }
-
-        virtual void BindConstantBuffer(size_t rootParameterIndex, BufferHandle constantBuffer) = 0;
-        virtual void BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData) = 0;
-        template<typename T>
-        void BindDynamicConstantBuffer(size_t rootParameterIndex, T const& bufferData)
-        {
-            this->BindDynamicConstantBuffer(rootParameterIndex, sizeof(T), &bufferData);
-        }
-
-        virtual void BindVertexBuffer(uint32_t slot, BufferHandle vertexBuffer) = 0;
-
-        /**
-         * Set dynamic vertex buffer data to the rendering pipeline.
-         */
-        virtual void BindDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData) = 0;
-
-        template<typename T>
-        void BindDynamicVertexBuffer(uint32_t slot, const std::vector<T>& vertexBufferData)
-        {
-            this->BindDynamicVertexBuffer(slot, vertexBufferData.size(), sizeof(T), vertexBufferData.data());
-        }
-
-        virtual void BindIndexBuffer(BufferHandle bufferHandle) = 0;
-
-        /**
-         * Bind dynamic index buffer data to the rendering pipeline.
-         */
-        virtual void BindDynamicIndexBuffer(size_t numIndicies, RHIFormat indexFormat, const void* indexBufferData) = 0;
-
-        template<typename T>
-        void BindDynamicIndexBuffer(const std::vector<T>& indexBufferData)
-        {
-            staticassert(sizeof(T) == 2 || sizeof(T) == 4);
-
-            RHIFormat indexFormat = (sizeof(T) == 2) ? RHIFormat::R16_UINT : RHIFormat::R32_UINT;
-            this->BindDynamicIndexBuffer(indexBufferData.size(), indexFormat, indexBufferData.Data());
-        }
-
-        /**
-         * Set dynamic structured buffer contents.
-         */
-        virtual void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, size_t numElements, size_t elementSize, const void* bufferData) = 0;
-
-        template<typename T>
-        void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, std::vector<T> const& bufferData)
-        {
-            this->BindDynamicStructuredBuffer(rootParameterIndex, bufferData.size(), sizeof(T), bufferData.Data());
-        }
-
-        virtual void BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer) = 0;
-
-        virtual void BindDynamicDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures) = 0;
-        void BindDynamicUavDescriptorTable(
-            size_t rootParameterIndex,
-            Core::Span<BufferHandle> buffers)
-        {
-            this->BindDynamicUavDescriptorTable(rootParameterIndex, buffers, {});
-        }
-        void BindDynamicUavDescriptorTable(
-            size_t rootParameterIndex,
-            Core::Span<TextureHandle> textures)
-        {
-            this->BindDynamicUavDescriptorTable(rootParameterIndex, {}, textures);
-        }
-        virtual void BindDynamicUavDescriptorTable(
-            size_t rootParameterIndex,
-            Core::Span<BufferHandle> buffers,
-            Core::Span<TextureHandle> textures) = 0;
-
-        virtual void BindResourceTable (size_t rootParameterIndex) = 0;
-        virtual void BindSamplerTable(size_t rootParameterIndex) = 0;
-
-        virtual void BeginTimerQuery(TimerQueryHandle query) = 0;
-        virtual void EndTimerQuery(TimerQueryHandle query) = 0;
-    };
-
-    using CommandListHandle = std::shared_ptr<ICommandList>;
-
-    class ScopedMarker
-    {
-    public:
-        ScopedMarker(ICommandList* context)
-            : m_commandList(context) {}
-
-        ~ScopedMarker() { this->m_commandList->EndMarker(); }
-
-    private:
-        ICommandList* m_commandList;
-    };
+    struct CommandList;
+    using CommandListHandle = Core::Handle<CommandList>;
 
     struct ExecutionReceipt
     {
@@ -1443,28 +1203,28 @@ namespace PhxEngine::RHI
     enum class DeviceCapability
     {
         None = 0,
-        RT_VT_ArrayIndex_Without_GS     = 1 << 0,
-        RayTracing                      = 1 << 1,
-        RenderPass                      = 1 << 2,
-        RayQuery                        = 1 << 3,
-        VariableRateShading             = 1 << 4,
-        MeshShading                     = 1 << 5,
-        CreateNoteZeroed                = 1 << 6,
-        Bindless                        = 1 << 7,
+        RT_VT_ArrayIndex_Without_GS = 1 << 0,
+        RayTracing = 1 << 1,
+        RenderPass = 1 << 2,
+        RayQuery = 1 << 3,
+        VariableRateShading = 1 << 4,
+        MeshShading = 1 << 5,
+        CreateNoteZeroed = 1 << 6,
+        Bindless = 1 << 7,
     };
 
-    PHXRHI_ENUM_CLASS_FLAG_OPERATORS(DeviceCapability);
+    PHX_ENUM_CLASS_FLAGS(DeviceCapability);
 
-    struct ViewportDesc
+    struct SwapChainDesc
     {
-        Core::Platform::WindowHandle WindowHandle;
-        uint32_t Width;
-        uint32_t Height;
+        uint32_t Width = 0;
+        uint32_t Height = 0;
         uint32_t BufferCount = 3;
-        RHIFormat Format = RHIFormat::UNKNOWN;
+        RHI::Format Format = RHI::Format::R10G10B10A2_UNORM;
+        bool Fullscreen = false;
         bool VSync = false;
         bool EnableHDR = false;
-        RHIClearValue OptmizedClearValue =
+        RHI::ClearValue OptmizedClearValue =
         {
             .Colour =
             {
@@ -1476,81 +1236,90 @@ namespace PhxEngine::RHI
         };
     };
 
-    struct Viewport;
-    using ViewportHandle = Core::Handle<Viewport>;
-
     struct MemoryUsage
     {
         uint64_t Budget = 0ull;
         uint64_t Usage = 0ull;
     };
 
-    class IGraphicsDevice
+    struct DrawArgs
+    {
+        union
+        {
+            uint32_t VertexCount = 1;
+            uint32_t IndexCount;
+        };
+
+        uint32_t InstanceCount = 1;
+        union
+        {
+            uint32_t StartVertex = 0;
+            uint32_t StartIndex;
+        };
+        uint32_t StartInstance = 0;
+
+        uint32_t BaseVertex = 0;
+    };
+
+    class IGfxDevice
     {
     public:
-        virtual ~IGraphicsDevice() = default;
+        virtual ~IGfxDevice() = default;
 
-        // Global Singleton not ideal as we can only have one device per application, however, it simplifies a lot when passing the object around
-        // TODO: Remove. Only around for compiling.
-        inline static IGraphicsDevice* GPtr;
-
+        // -- Frame Functions ---
     public:
-        virtual void Initialize() = 0;
+        virtual void Initialize(SwapChainDesc const& desc, void* windowHandle) = 0;
         virtual void Finalize() = 0;
 
-        // -- Create Functions ---
+        // -- Resizes swapchain ---
+        virtual void ResizeSwapchain(SwapChainDesc const& desc) = 0;
+
+        // -- Submits Command lists and presents ---
+        virtual void SubmitFrame() = 0;
+        virtual void WaitForIdle() = 0;
+
+        virtual bool IsDevicedRemoved() = 0;
+
+        // -- Resouce Functions ---
     public:
-        virtual void CreateViewport(ViewportDesc const& desc) = 0;
-        virtual const ViewportDesc& GetViewportDesc() = 0;
-        virtual void ResizeViewport(ViewportDesc const desc) = 0;
-        virtual void BeginFrame() = 0;
-        virtual void EndFrame() = 0;
-
-        // TODO: Change to a new pattern so we don't require a command list stored on an object. Instread, request from a pool of objects
-        virtual CommandListHandle CreateCommandList(CommandListDesc const& desc = {}) = 0;
-        virtual ICommandList* BeginCommandRecording(CommandQueueType QueueType = CommandQueueType::Graphics) = 0;
-
         template<typename T>
         CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc)
         {
             static_assert(sizeof(T) % sizeof(uint32_t) == 0);
             return this->CreateCommandSignature(desc, sizeof(T));
         }
-
         virtual CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride) = 0;
-        virtual void DeleteCommandSignature(CommandSignatureHandle handle) = 0;
         virtual ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) = 0;
         virtual InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) = 0;
-        virtual GraphicsPipelineHandle CreateGraphicsPipeline(GraphicsPipelineDesc const& desc) = 0;
-        virtual const GraphicsPipelineDesc& GetGfxPipelineDesc(GraphicsPipelineHandle handle) = 0;
-        virtual void DeleteGraphicsPipeline(GraphicsPipelineHandle handle) = 0;
+        virtual GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc) = 0;
         virtual ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc) = 0;
-
-
         virtual MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc) = 0;
+        virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
+        virtual RenderPassHandle CreateRenderPass(RenderPassDesc const& desc) = 0;
+        virtual BufferHandle CreateBuffer(BufferDesc const& desc) = 0;
+        virtual int CreateSubresource(TextureHandle texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip = 0, uint32_t mpCount = ~0) = 0;
+        virtual int CreateSubresource(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size = ~0u) = 0;
+        virtual RTAccelerationStructureHandle CreateRTAccelerationStructure(RTAccelerationStructureDesc const& desc) = 0;
+        virtual TimerQueryHandle CreateTimerQuery() = 0;
+
+
+        virtual void DeleteCommandSignature(CommandSignatureHandle handle) = 0;
+        virtual const GfxPipelineDesc& GetGfxPipelineDesc(GfxPipelineHandle handle) = 0;
+        virtual void DeleteGfxPipeline(GfxPipelineHandle handle) = 0;
+
+
         virtual void DeleteMeshPipeline(MeshPipelineHandle handle) = 0;
 
-        virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
         virtual const TextureDesc& GetTextureDesc(TextureHandle handle) = 0;
         virtual DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource = -1) = 0;
         virtual void DeleteTexture(TextureHandle handle) = 0;
 
-        virtual RenderPassHandle CreateRenderPass(RenderPassDesc const& desc) = 0;
-        virtual void GetRenderPassFormats(RenderPassHandle handle, std::vector<RHIFormat>& outRtvFormats, RHIFormat& depthFormat) = 0;
+        virtual void GetRenderPassFormats(RenderPassHandle handle, std::vector<RHI::Format>& outRtvFormats, RHI::Format& depthFormat) = 0;
         virtual RenderPassDesc GetRenderPassDesc(RenderPassHandle) = 0;
         virtual void DeleteRenderPass(RenderPassHandle handle) = 0;
 
-        virtual int CreateSubresource(TextureHandle texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip = 0, uint32_t mpCount = ~0) = 0;
-        virtual int CreateSubresource(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size = ~0u) = 0;
-
-        // TODO: I don't think is this a clear interface as to what desc data is required
-        // Consider cleaning this up eventually.
-        // -- TODO: Remove
-        virtual BufferHandle CreateIndexBuffer(BufferDesc const& desc) = 0;
-        virtual BufferHandle CreateVertexBuffer(BufferDesc const& desc) = 0;
         // -- TODO: End Remove
 
-        virtual BufferHandle CreateBuffer(BufferDesc const& desc) = 0;
         virtual const BufferDesc& GetBufferDesc(BufferHandle handle) = 0;
         virtual DescriptorIndex GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource = -1) = 0;
 
@@ -1565,7 +1334,6 @@ namespace PhxEngine::RHI
         virtual void DeleteBuffer(BufferHandle handle) = 0;
 
         // -- Ray Tracing ---
-        virtual RTAccelerationStructureHandle CreateRTAccelerationStructure(RTAccelerationStructureDesc const& desc) = 0;
         virtual size_t GetRTTopLevelAccelerationStructureInstanceSize() = 0;
         virtual void WriteRTTopLevelAccelerationStructureInstance(RTAccelerationStructureDesc::TopLevelDesc::Instance const& instance, void* dest) = 0;
         virtual const RTAccelerationStructureDesc& GetRTAccelerationStructureDesc(RTAccelerationStructureHandle handle) = 0;
@@ -1573,29 +1341,14 @@ namespace PhxEngine::RHI
         virtual DescriptorIndex GetDescriptorIndex(RTAccelerationStructureHandle handle) = 0;
 
         // -- Query Stuff ---
-        virtual TimerQueryHandle CreateTimerQuery() = 0;
         virtual void DeleteTimerQuery(TimerQueryHandle query) = 0;
         virtual bool PollTimerQuery(TimerQueryHandle query) = 0;
         virtual Core::TimeStep GetTimerQueryTime(TimerQueryHandle query) = 0;
         virtual void ResetTimerQuery(TimerQueryHandle query) = 0;
 
-        // -- Create Functions End ---
+        // -- Utility ---
+    public:
         virtual TextureHandle GetBackBuffer() = 0;
-
-        virtual void WaitForIdle() = 0;
-        virtual void QueueWaitForCommandList(CommandQueueType waitQueue, ExecutionReceipt waitOnRecipt) = 0;
-
-        virtual void RunGarbageCollection(uint64_t completedFrame = std::numeric_limits<uint64_t>::max()) = 0;
-
-        virtual ExecutionReceipt ExecuteCommandLists(
-            Core::Span<ICommandList*> commandLists,
-            CommandQueueType executionQueue = CommandQueueType::Graphics) = 0;
-
-        virtual ExecutionReceipt ExecuteCommandLists(
-            Core::Span<ICommandList*> commandLists,
-            bool waitForCompletion,
-            CommandQueueType executionQueue = CommandQueueType::Graphics) = 0;
-
         virtual size_t GetNumBindlessDescriptors() const = 0;
 
         virtual ShaderModel GetMinShaderModel() const = 0;
@@ -1608,36 +1361,181 @@ namespace PhxEngine::RHI
 
         virtual size_t GetFrameIndex() = 0;
         virtual size_t GetMaxInflightFrames() = 0;
-
         virtual bool CheckCapability(DeviceCapability deviceCapability) = 0;
 
-        virtual bool IsDevicedRemoved() = 0;
-
         virtual float GetAvgFrameTime() = 0;
-
         virtual uint64_t GetUavCounterPlacementAlignment() = 0;
-
         virtual MemoryUsage GetMemoryUsage() const = 0;
+
+        // -- Command list Functions ---
+        // These are not thread Safe
+    public:
+        // TODO: Change to a new pattern so we don't require a command list stored on an object. Instread, request from a pool of objects
+        virtual CommandListHandle BeginCommandList(CommandQueueType queueType = CommandQueueType::Graphics) = 0;
+        virtual void WaitCommandList(CommandListHandle cmd, CommandListHandle WaitOn) = 0;
+
+        // -- Ray Trace stuff       ---
+        virtual void RTBuildAccelerationStructure(RHI::RTAccelerationStructureHandle accelStructure, CommandListHandle cmd) = 0;
+
+        // -- Ray Trace Stuff END   ---
+        virtual void BeginMarker(std::string_view name, CommandListHandle cmd) = 0;
+        virtual void EndMarker(CommandListHandle cmd) = 0;
+        virtual GPUAllocation AllocateGpu(size_t bufferSize, size_t stride, CommandListHandle cmd) = 0;
+
+        virtual void TransitionBarrier(TextureHandle texture, ResourceStates beforeState, ResourceStates afterState, CommandListHandle cmd) = 0;
+        virtual void TransitionBarrier(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState, CommandListHandle cmd) = 0;
+        virtual void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers, CommandListHandle cmd) = 0;
+        virtual void ClearTextureFloat(TextureHandle texture, Color const& clearColour, CommandListHandle cmd) = 0;
+        virtual void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil, CommandListHandle cmd) = 0;
+
+        virtual void Draw(DrawArgs const& args, CommandListHandle cmd) = 0;
+        virtual void DrawIndexed(DrawArgs const& args, CommandListHandle cmd) = 0;
+
+        virtual void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+        virtual void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+
+        virtual void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+        virtual void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+
+        virtual void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+        virtual void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+
+        template<typename T>
+        void WriteBuffer(BufferHandle buffer, std::vector<T> const& data, uint64_t destOffsetBytes, CommandListHandle cmd)
+        {
+            this->WriteBuffer(buffer, data.data(), sizeof(T) * data.size(), destOffsetBytes, cmd);
+        }
+
+        template<typename T>
+        void WriteBuffer(BufferHandle buffer, T const& data, uint64_t destOffsetBytes, CommandListHandle cmd)
+        {
+            this->WriteBuffer(buffer, &data, sizeof(T), destOffsetBytes, cmd);
+        }
+
+        template<typename T>
+        void WriteBuffer(BufferHandle buffer, Core::Span<T> data, uint64_t destOffsetBytes, CommandListHandle cmd)
+        {
+            this->WriteBuffer(buffer, data.begin(), sizeof(T) * data.Size(), destOffsetBytes, cmd);
+        }
+
+        virtual void WriteBuffer(BufferHandle buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes, CommandListHandle cmd) = 0;
+
+        virtual void CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHandle src, uint64_t srcOffset, size_t sizeInBytes, CommandListHandle cmd) = 0;
+
+        virtual void WriteTexture(TextureHandle texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData, CommandListHandle cmd) = 0;
+        virtual void WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* Data, size_t rowPitch, size_t depthPitch, CommandListHandle cmd) = 0;
+
+        virtual void SetGfxPipeline(GfxPipelineHandle gfxPipeline, CommandListHandle cmd) = 0;
+        virtual void SetViewports(Viewport* viewports, size_t numViewports, CommandListHandle cmd) = 0;
+        virtual void SetScissors(Rect* scissor, size_t numScissors, CommandListHandle cmd) = 0;
+        virtual void SetRenderTargets(Core::Span<TextureHandle> renderTargets, TextureHandle depthStenc, CommandListHandle cmd) = 0;
+
+        // -- Comptute Stuff ---
+        virtual void SetComputeState(ComputePipelineHandle state, CommandListHandle cmd) = 0;
+        virtual void Dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ, CommandListHandle cmd) = 0;
+        virtual void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+        virtual void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+
+        // -- Mesh Stuff ---
+        virtual void SetMeshPipeline(MeshPipelineHandle meshPipeline, CommandListHandle cmd) = 0;
+        virtual void DispatchMesh(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ, CommandListHandle cmd) = 0;
+        virtual void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+        virtual void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+
+        virtual void BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants, CommandListHandle cmd) = 0;
+        template<typename T>
+        void BindPushConstant(uint32_t rootParameterIndex, const T& constants, CommandListHandle cmd)
+        {
+            static_assert(sizeof(T) % sizeof(uint32_t) == 0, "Size of type must be a multiple of 4 bytes");
+            this->BindPushConstant(rootParameterIndex, sizeof(T), &constants, cmd);
+        }
+
+        virtual void BindConstantBuffer(size_t rootParameterIndex, BufferHandle constantBuffer, CommandListHandle cmd) = 0;
+        virtual void BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData, CommandListHandle cmd) = 0;
+        template<typename T>
+        void BindDynamicConstantBuffer(size_t rootParameterIndex, T const& bufferData, CommandListHandle cmd)
+        {
+            this->BindDynamicConstantBuffer(rootParameterIndex, sizeof(T), &bufferData, cmd);
+        }
+
+        virtual void BindVertexBuffer(uint32_t slot, BufferHandle vertexBuffer, CommandListHandle cmd) = 0;
+
+        /**
+         * Set dynamic vertex buffer data to the rendering pipeline.
+         */
+        virtual void BindDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData, CommandListHandle cmd) = 0;
+
+        template<typename T>
+        void BindDynamicVertexBuffer(uint32_t slot, const std::vector<T>& vertexBufferData, CommandListHandle cmd)
+        {
+            this->BindDynamicVertexBuffer(slot, vertexBufferData.size(), sizeof(T), vertexBufferData.data(), cmd);
+        }
+
+        virtual void BindIndexBuffer(BufferHandle bufferHandle, CommandListHandle cmd) = 0;
+
+        /**
+         * Bind dynamic index buffer data to the rendering pipeline.
+         */
+        virtual void BindDynamicIndexBuffer(size_t numIndicies, RHI::Format indexFormat, const void* indexBufferData, CommandListHandle cmd) = 0;
+
+        template<typename T>
+        void BindDynamicIndexBuffer(const std::vector<T>& indexBufferData, CommandListHandle cmd)
+        {
+            staticassert(sizeof(T) == 2 || sizeof(T) == 4);
+
+            RHI::Format indexFormat = (sizeof(T) == 2) ? RHI::Format::R16_UINT : RHI::Format::R32_UINT;
+            this->BindDynamicIndexBuffer(indexBufferData.size(), indexFormat, indexBufferData.Data(), cmd);
+        }
+
+        /**
+         * Set dynamic structured buffer contents.
+         */
+        virtual void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, size_t numElements, size_t elementSize, const void* bufferData, CommandListHandle cmd) = 0;
+
+        template<typename T>
+        void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, std::vector<T> const& bufferData, CommandListHandle cmd)
+        {
+            this->BindDynamicStructuredBuffer(rootParameterIndex, bufferData.size(), sizeof(T), bufferData.Data(), cmd);
+        }
+
+        virtual void BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer, CommandListHandle cmd) = 0;
+
+        virtual void BindDynamicDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures, CommandListHandle cmd) = 0;
+        void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Core::Span<BufferHandle> buffers,
+            CommandListHandle cmd)
+        {
+            this->BindDynamicUavDescriptorTable(rootParameterIndex, buffers, {}, cmd);
+        }
+        void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Core::Span<TextureHandle> textures,
+            CommandListHandle cmd)
+        {
+            this->BindDynamicUavDescriptorTable(rootParameterIndex, {}, textures, cmd);
+        }
+        virtual void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Core::Span<BufferHandle> buffers,
+            Core::Span<TextureHandle> textures,
+            CommandListHandle cmd) = 0;
+
+        virtual void BindResourceTable(size_t rootParameterIndex, CommandListHandle cmd) = 0;
+        virtual void BindSamplerTable(size_t rootParameterIndex, CommandListHandle cmd) = 0;
+
+        virtual void BeginTimerQuery(TimerQueryHandle query, CommandListHandle cmd) = 0;
+        virtual void EndTimerQuery(TimerQueryHandle query, CommandListHandle cmd) = 0;
+
     };
 
-    extern void ReportLiveObjects();
-    
-    namespace DeviceFactory
+    using GfxDevice = IGfxDevice;
+    class GfxDeviceFactory
     {
-        extern IGraphicsDevice* CreateDx12Device();
-    }
-
-    std::unique_ptr<IGraphicsDevice> CreatePlatformGfxDevice();
-
-
-    template <class T>
-    void HashCombine(size_t& seed, const T& v)
-    {
-        std::hash<T> hasher;
-        seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    }
+    public:
+        static GfxDevice* Create(RHI::GraphicsAPI preferedAPI);
+    };
 }
-
 
 namespace std
 {

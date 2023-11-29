@@ -1,4 +1,3 @@
-#include "phxpch.h"
 #include "PhxEngine\Core\BitSetAllocator.h"
 
 PhxEngine::Core::BitSetAllocator::BitSetAllocator(size_t capacity)

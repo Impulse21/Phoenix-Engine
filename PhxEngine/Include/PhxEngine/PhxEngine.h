@@ -1,4 +1,3 @@
 #pragma once
 
-#include "Engine/EngineApp.h"
-#include "Engine/EngineRoot.h"
+#include <PhxEngine/Engine/EngineCore.h>

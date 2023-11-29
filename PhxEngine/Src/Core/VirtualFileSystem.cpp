@@ -1,6 +1,5 @@
-#include "C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Build/PhxEngine/CMakeFiles/PhxEngine.dir/Debug/cmake_pch.hxx"
 #include <PhxEngine/Core/VirtualFileSystem.h>
-
+#include <PhxEngine/Core/Log.h>
 #include <fstream>
 
 using namespace PhxEngine::Core;
@@ -185,7 +184,8 @@ void RootFileSystem::Mount(const std::filesystem::path& path, std::shared_ptr<IF
 {
     if (this->FindMountPoint(path, nullptr, nullptr))
     {
-        LOG_CORE_ERROR("Cannot mount a filesystem at {0}: there is another FS that includes this path", path.generic_string().c_str());
+        LOG_CORE_ERROR("Cannot mount a filesystem at %s: there is another FS that includes this path", path.generic_string().c_str());
+        
         return;
     }
 

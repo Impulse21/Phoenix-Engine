@@ -16,6 +16,10 @@ namespace PhxEngine::Core
 	class Span
 	{
 	public:
+		Span()
+			: Span(nullptr, 0)
+		{ }
+
 		Span(const T* array, size_t length)
 			: Span(array, length, 0)
 		{}
@@ -24,7 +28,7 @@ namespace PhxEngine::Core
 			: Span(v.begin(), v.size(), 0)
 		{};
 
-		Span(std::vector<T>& v)
+		Span(std::vector<T> const& v)
 			: Span(v.data(), v.size(), 0)
 		{}
 

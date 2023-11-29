@@ -6,9 +6,6 @@ include(FetchContent)
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
-add_library(spdlog INTERFACE)
-target_include_directories(spdlog INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/spdlog/include)
-
 # GLFW Library
 option(GLFW_BUILD_EXAMPLES "" OFF)
 option(GLFW_BUILD_TESTS "" OFF)
@@ -33,8 +30,8 @@ add_library(entt INTERFACE
 target_include_directories(entt INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/entt)
 set_target_properties(entt PROPERTIES FOLDER ${extern_folder})
 
- add_library(taskflow INTERFACE)
- target_include_directories(taskflow INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/taskflow)
+add_library(taskflow INTERFACE)
+target_include_directories(taskflow INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/taskflow)
 
 option(BUILD_TOOLS "" OFF)
 option(BUILD_DX11 "" OFF)
@@ -103,3 +100,18 @@ file (GLOB tlsf_src
 add_library(tlsf STATIC ${CMAKE_CURRENT_SOURCE_DIR}/tlsf/tlsf.c)
 target_include_directories(tlsf PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/tlsf)
 set_target_properties(tlsf PROPERTIES FOLDER ${extern_folder})
+
+set(MI_USE_CXX      ON)
+set(MI_BUILD_SHARED OFF)
+set(MI_BUILD_STATIC ON)
+set(MI_BUILD_OBJECT OFF)
+set(MI_BUILD_TESTS  OFF)
+add_subdirectory(mimalloc)
+set_target_properties(mimalloc-static PROPERTIES FOLDER ${extern_folder})
+
+set( ENKITS_BUILD_C_INTERFACE  OFF )
+set( ENKITS_BUILD_EXAMPLES     OFF )
+set( ENKITS_BUILD_SHARED       OFF )
+set( ENKITS_INSTALL            OFF )
+add_subdirectory(enkiTS)
+set_target_properties(enkiTS PROPERTIES FOLDER ${extern_folder})

@@ -17,14 +17,14 @@ namespace PhxEngine::Core
 	class WindowGlfw : public IWindow
 	{
 	public:
-		WindowGlfw(PhxEngine::IPhxEngineRoot* engRoot, WindowSpecification const& spec);
+		WindowGlfw(WindowSpecification const& spec);
 		~WindowGlfw();
 
 		void Initialize() override;
 
 		void SetEventCallback(EventCallBackFn eventCallback) override { this->m_data.EventCallback = eventCallback; };
 
-		void OnUpdate() override;
+		void OnTick() override;
 
 		uint32_t GetWidth() const override { return this->m_spec.Width; }
 		uint32_t GetHeight() const override { return this->m_spec.Height; };
@@ -46,8 +46,6 @@ namespace PhxEngine::Core
 		void SetWindowTitle(std::string_view strView) override;
 
 	private:
-		PhxEngine::IPhxEngineRoot* m_root;
-
 		const WindowSpecification m_spec;
 		GLFWwindow* m_glfwWindow;
 

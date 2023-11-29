@@ -1,30 +1,39 @@
 #pragma once
 
+#include <PhxEngine/Core/Memory.h>
+
 #include <cstring>
 #include <utility>
 #include <limits>
-
+#include <assert.h>
 #include "Handle.h"
 
 #include <iostream>
-#include <PhxEngine/Core/Helpers.h>
-
 namespace PhxEngine::Core
 {
 	template<typename ImplT, typename HT>
 	class Pool
 	{
 	public:
-		Pool(size_t initialCapcity)
-			: m_size(initialCapcity)
+		Pool()
+			: m_size(0)
 			, m_numActiveEntries(0)
 		{
-			this->m_data = new ImplT[this->m_size];
-			this->m_generations = new uint32_t[this->m_size];
-			this->m_freeList = new uint32_t[this->m_size];
+		}
 
-			std::memset(this->m_data, 0, this->m_size * sizeof(ImplT));
-			std::memset(this->m_freeList, 0, this->m_size * sizeof(uint32_t));
+		~Pool()
+		{
+			this->Finalize();
+		}
+
+		void Initialize(size_t initCapacity)
+		{
+			this->m_size = initCapacity;
+			this->m_numActiveEntries = 0;
+
+			this->m_data = this->m_allocator.AllocateArray<ImplT>(this->m_size, 16);
+			this->m_generations = this->m_allocator.AllocateArray<uint32_t>(this->m_size, 16);
+			this->m_freeList = this->m_allocator.AllocateArray<uint32_t>(this->m_size, 16);
 
 			for (size_t i = 0; i < this->m_size; i++)
 			{
@@ -36,19 +45,27 @@ namespace PhxEngine::Core
 			{
 				this->m_freeList[i] = static_cast<uint32_t>((this->m_size - 1) - i);
 			}
-
 		}
 
-		~Pool()
+		void Finalize()
 		{
-			for (int i = 0; i < this->m_size; i++)
+			if (this->m_data)
 			{
-				this->m_data[i].~ImplT();
+				this->m_allocator.Free(this->m_data);
+				this->m_data = nullptr;
 			}
 
-			delete[] this->m_data;
-			delete[] this->m_freeList;
-			delete[] this->m_generations;
+			if (this->m_freeList)
+			{
+				this->m_allocator.Free(this->m_freeList);
+				this->m_freeList = nullptr;
+			}
+
+			if (this->m_generations)
+			{
+				this->m_allocator.Free(this->m_generations);
+				this->m_generations = nullptr;
+			}
 		}
 
 		ImplT* Get(Handle<HT> handle)
@@ -121,36 +138,24 @@ namespace PhxEngine::Core
 	private:
 		void Resize()
 		{
-			// RESIZING STILL DOESN"T WORK
-			assert(false);
+			if (this->m_size == 0)
+			{
+				this->Initialize(16);
+				return;
+			}
+
 			size_t newSize = this->m_size * 2;
-			auto* newDataArray = new ImplT[newSize];
-			auto* newFreeListArray = new uint32_t[newSize];
-			auto* newGenerations = new uint32_t[newSize];
 
-			std::memset(newDataArray, 0, newSize * sizeof(ImplT));
-			std::memset(newFreeListArray, 0, newSize * sizeof(uint32_t));
-			std::memset(newGenerations, 0, newSize * sizeof(uint32_t));
-
-			// Copy data over
-			std::memcpy(newDataArray, this->m_data, this->m_size * sizeof(ImplT));
-			// No need to copy the free list as we need to re-populate it.
-			// std::memcpy(newFreeListArray, this->m_freeList, this->m_size * sizeof(uint32_t));
-			std::memcpy(newGenerations, this->m_generations, this->m_size * sizeof(uint32_t));
-
-			delete[] this->m_data;
-			delete[] this->m_freeList;
-			delete[] this->m_generations;
-
-			this->m_data = newDataArray;
-			this->m_freeList = newFreeListArray;
-			this->m_generations = newGenerations;
+			// TODO: USE REALLOC INSTREAD for better performance.
+			this->m_data = this->m_allocator.RellocateArray<ImplT>(this->m_data, newSize, 16);
+			this->m_freeList = this->m_allocator.RellocateArray<uint32_t>(this->m_freeList, newSize, 16);
+			this->m_generations = this->m_allocator.RellocateArray<uint32_t>(this->m_generations, newSize, 16);
 
 			this->m_freeListPosition = this->m_size - 1;
 
 			this->m_size = newSize;
 
-			for (size_t i = 0; i < this->m_size -1; i++)
+			for (size_t i = 0; i < this->m_size - 1; i++)
 			{
 				this->m_freeList[i] = (this->m_size - 1) - i;
 			}
@@ -159,6 +164,7 @@ namespace PhxEngine::Core
 		bool HasSpace() const { return this->m_numActiveEntries < this->m_size; }
 
 	private:
+		DefaultAllocator m_allocator;
 		size_t m_size;
 		size_t m_numActiveEntries;
 		size_t m_freeListPosition;

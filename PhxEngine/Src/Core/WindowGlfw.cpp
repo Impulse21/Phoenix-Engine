@@ -1,12 +1,10 @@
-#include <phxpch.h>
+
 #include "WindowGlfw.h"
 
 #include "GLFW/glfw3.h"
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include "GLFW/glfw3native.h"
-#include "PhxEngine/Engine/ApplicationEvents.h"
-#include "PhxEngine/Engine/EngineRoot.h"
 
 using namespace PhxEngine::Core;
 
@@ -20,10 +18,10 @@ namespace
 	}
 }
 
-WindowGlfw::WindowGlfw(PhxEngine::IPhxEngineRoot* engRoot, WindowSpecification const& spec)
-	: m_root(engRoot)
-	, m_spec(spec)
+WindowGlfw::WindowGlfw(WindowSpecification const& spec)
+	: m_spec(spec)
 	, m_glfwWindow(nullptr)
+	, m_vsyncEnabled(false)
 {
 }
 
@@ -102,9 +100,16 @@ void PhxEngine::Core::WindowGlfw::Initialize()
 		}
 			
 		});
+
+	// Dispatch a resize event
+	WindowResizeEvent event(this->m_spec.Width, this->m_spec.Height);
+	if (this->m_data.EventCallback)
+	{
+		this->m_data.EventCallback(event);
+	}
 }
 
-void PhxEngine::Core::WindowGlfw::OnUpdate()
+void PhxEngine::Core::WindowGlfw::OnTick()
 {
 	glfwPollEvents();
 }

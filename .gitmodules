@@ -1,24 +1,6 @@
-[submodule "ThirdParty/DirectX-Headers"]
-	path = ThirdParty/DirectX-Headers
-	url = https://github.com/microsoft/DirectX-Headers.git
-[submodule "ThirdParty/glfw"]
-	path = ThirdParty/glfw
-	url = https://github.com/glfw/glfw.git
-[submodule "ThirdParty/imgui"]
-	path = ThirdParty/imgui
-	url = https://github.com/ocornut/imgui.git
-[submodule "ThirdParty/spdlog"]
-	path = ThirdParty/spdlog
-	url = https://github.com/gabime/spdlog.git
-[submodule "ThirdParty/DirectXTex"]
-	path = ThirdParty/DirectXTex
-	url = https://github.com/microsoft/DirectXTex.git
 [submodule "PhxEngine/Extern/glfw"]
 	path = PhxEngine/Extern/glfw
 	url = https://github.com/glfw/glfw.git
-[submodule "PhxEngine/Extern/spdlog"]
-	path = PhxEngine/Extern/spdlog
-	url = https://github.com/gabime/spdlog.git
 [submodule "PhxEngine/Extern/imgui"]
 	path = PhxEngine/Extern/imgui
 	url = https://github.com/ocornut/imgui.git
@@ -35,9 +17,6 @@
 [submodule "PhxEngine/Extern/stb"]
 	path = PhxEngine/Extern/stb
 	url = https://github.com/nothings/stb.git
-[submodule "Extern/taskflow"]
-	path = PhxEngine/Extern/taskflow
-	url = https://github.com/taskflow/taskflow.git
 [submodule "PhxEngine/Extern/DirectXMesh"]
 	path = PhxEngine/Extern/DirectXMesh
 	url = https://github.com/microsoft/DirectXMesh.git
@@ -47,3 +26,12 @@
 [submodule "PhxEngine/Extern/D3D12MemoryAllocator"]
 	path = PhxEngine/Extern/D3D12MemoryAllocator
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
+[submodule "PhxEngine/Extern/mimalloc"]
+	path = PhxEngine/Extern/mimalloc
+	url = https://github.com/microsoft/mimalloc.git
+[submodule "PhxEngine/Extern/taskflow"]
+	path = PhxEngine/Extern/taskflow
+	url = https://github.com/taskflow/taskflow.git
+[submodule "PhxEngine/Extern/enkiTS"]
+	path = PhxEngine/Extern/enkiTS
+	url = https://github.com/dougbinks/enkiTS.git

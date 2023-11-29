@@ -58,10 +58,15 @@ file(GLOB PhxEngine_Renderer_Src
 	Src/Renderer/*.h
 	Src/Renderer/*.cpp
 )
-# -- Renderer DX12
-file(GLOB PhxEngine_Renderer_DX12_Src
-	Src/Renderer/Dx12/*.h
-	Src/Renderer/Dx12/*.cpp
+
+#-- Assets
+file(GLOB PhxEngine_Assets_Inc
+	Include/PhxEngine/Assets/*.h
+)
+
+file(GLOB PhxEngine_Assets_Src
+    Src/Assets/*.h
+    Src/Assets/*.cpp
 )
 
 #-- RHI
@@ -75,43 +80,19 @@ file(GLOB PhxEngine_Graphics_RHI_Src
 )
 
 file(GLOB PhxEngine_Graphics_RHI_Windows_Src
-    Src/RHI/Windows/*.h
-    Src/RHI/Windows/*.cpp
+    Src/RHI/Platform/Windows/*.h
+    Src/RHI/Platform/Windows/*.cpp
 )
 
 file(GLOB PhxEngine_Graphics_RHI_DX12_Src
-    Src/RHID3D12/*.h
-    Src/RHID3D12/*.cpp
-)
-
-#-- Graphics IMGUI
-file(GLOB PhxEngine_Graphics_ImGui_Inc
-	Include/PhxEngine/Graphics/ImGui/*.h
+    Src/RHI/D3D12/*.h
+    Src/RHI/D3D12/*.cpp
 )
 
 file(GLOB PhxEngine_Graphics_ImGui_Src
-    Src/Graphics/ImGui/*.h
-    Src/Graphics/ImGui/*.cpp
+    Src/Renderer/ImGui/*.h
+    Src/Renderer/ImGui/*.cpp
 )
-
-#-- System
-file(GLOB PhxEngine_System_Inc
-	Include/PhxEngine/Systems/*.h
-)
-
-
-file(GLOB PhxEngine_System_Src
-    Src/Systems/*.h
-    Src/Systems/*.cpp
-)
-
-#-- Scene
-file (GLOB PhxEngine_Scene_Inc
-	Include/PhxEngine/Scene/*.h)
-
-file (GLOB PhxEngine_Scene_Src
-    Src/Scene/*.h
-    Src/Scene/*.cpp)
 
 file (GLOB PhxEngine_Inc
     Include/PhxEngine/*.h)
@@ -131,6 +112,8 @@ add_library(PhxEngine STATIC EXCLUDE_FROM_ALL
     ${PhxEngine_Core_Src}
     ${PhxEngine_Graphics_Inc}
     ${PhxEngine_Graphics_Src}
+    ${PhxEngine_Assets_Inc}
+    ${PhxEngine_Assets_Src}
     ${PhxEngine_Graphics_RHI_Inc}
     ${PhxEngine_Graphics_RHI_Src}
 	${PhxEngine_Graphics_RHI_Windows_Src}
@@ -140,10 +123,6 @@ add_library(PhxEngine STATIC EXCLUDE_FROM_ALL
 	${PhxEngine_Renderer_Inc}
 	${PhxEngine_Renderer_Src}
 	${PhxEngine_Renderer_DX12_Src}
-    ${PhxEngine_System_Inc}
-    ${PhxEngine_System_Src}
-    ${PhxEngine_Scene_Inc}
-    ${PhxEngine_Scene_Src}
 	${PhxEngine_Shader_Interop_Inc}
     ${PhxEngine_Inc}
     ${PhxEngine_Src})
@@ -156,36 +135,34 @@ source_group("Include/RHI"				FILES ${PhxEngine_Graphics_RHI_Inc})
 source_group("Include/Graphics/ImGui"   FILES ${PhxEngine_Graphics_ImGui_Inc})
 source_group("Include/Graphics"         FILES ${PhxEngine_Graphics_Inc})
 source_group("Include/System"           FILES ${PhxEngine_System_Inc})
-source_group("Include/Scene"			FILES ${PhxEngine_Scene_Inc})
 source_group("Include/Renderer"			FILES ${PhxEngine_Renderer_Inc})
 source_group("Include/Interop"			FILES ${PhxEngine_Shader_Interop_Inc})
+source_group("Include/Assets"			FILES ${PhxEngine_Assets_Inc})
 
 source_group("Src"						FILES ${PhxEngine_Src})
 source_group("Src/Engine"               FILES ${PhxEngine_Engine_Src})
 source_group("Src/Core"                 FILES ${PhxEngine_Core_Src})
 source_group("Src/Graphics"             FILES ${PhxEngine_Graphics_Src})
 source_group("Src/RHI"					FILES ${PhxEngine_Graphics_RHI_Src})
-source_group("Src/RHI/Windows"			FILES ${PhxEngine_Graphics_RHI_Windows_Src})
-source_group("Src/RHID3D12"			    FILES ${PhxEngine_Graphics_RHI_DX12_Src})
-source_group("Src/Graphics/ImGui"       FILES ${PhxEngine_Graphics_ImGui_Src})
-source_group("Src/System"               FILES ${PhxEngine_System_Src})
-source_group("Src/Scene"                FILES ${PhxEngine_Scene_Src})
+source_group("Src/RHI/Platform/Windows"	FILES ${PhxEngine_Graphics_RHI_Windows_Src})
+source_group("Src/RHI/D3D12"			FILES ${PhxEngine_Graphics_RHI_DX12_Src})
 source_group("Src/Renderer"             FILES ${PhxEngine_Renderer_Src})
-source_group("Src/Renderer/Dx12"        FILES ${PhxEngine_Renderer_DX12_Src})
+source_group("Src/Renderer/ImGui"       FILES ${PhxEngine_Graphics_ImGui_Src})
+source_group("Src/Assets"				FILES ${PhxEngine_Assets_Src})
 
-add_subdirectory(Shaders)
 
-add_dependencies(${project} ${project}_shaders)
+#add_subdirectory(Shaders)
+
+#add_dependencies(${project} ${project}_shaders)
 target_include_directories(${project} 
 	PUBLIC  "Include"
 	PRIVATE "Src")
 
-target_precompile_headers(${project} PRIVATE Src/phxpch.h)
+# target_precompile_headers(${project} PRIVATE Src/phxpch.h)
 
 add_subdirectory(Extern)
 
 target_link_libraries(${project} PUBLIC
-	spdlog
 	glfw
 	DirectX-Headers
 	DirectX-Guids
@@ -197,15 +174,13 @@ target_link_libraries(${project} PUBLIC
 	entt
 	cereal
 	rapidjson
-	taskflow
 	tlsf
-	D3D12MemoryAllocator)
+	D3D12MemoryAllocator
+	mimalloc-static
+	taskflow
+	enkiTS)
     
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
-
-if(WIN32)
-    target_compile_definitions(${project} PUBLIC NOMINMAX _CRT_SECURE_NO_WARNINGS)
-endif()
 
 #INCLUDE_EXTERNAL_MSPROJECT(ShadersSource ${CMAKE_SOURCE_DIR}/PhxEngine/Shaders/ShadersSource.vcitems)
 
@@ -235,10 +210,9 @@ add_custom_command(
 
 message("D3D12 Agility SDK fetched")
 
-
 # DXC
 message("Fetching DirectXShaderCompiler")
-FetchContent_Declare(dxc URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.7.2212.1/dxc_2023_03_01.zip)
+FetchContent_Declare(dxc URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.7.2308/dxc_2023_08_14.zip )
 FetchContent_MakeAvailable(dxc)
 file(MAKE_DIRECTORY ${dxc_SOURCE_DIR}/include)
 file(COPY ${dxc_SOURCE_DIR}/inc/d3d12shader.h DESTINATION ${dxc_SOURCE_DIR}/include/dxc)
@@ -253,7 +227,7 @@ add_library(
 target_include_directories(DirectXShaderCompiler INTERFACE "${dxc_SOURCE_DIR}/include")
 target_link_libraries(DirectXShaderCompiler INTERFACE "${dxc_SOURCE_DIR}/lib/x64/dxcompiler.lib")
 set_target_properties(DirectXShaderCompiler  PROPERTIES FOLDER ${extern_folder})
-# target_link_libraries(${project} PUBLIC DirectXShaderCompiler)
+target_link_libraries(${project} PUBLIC DirectXShaderCompiler)
 
 # Copy DLLs
 #add_custom_command(

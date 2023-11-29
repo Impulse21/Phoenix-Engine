@@ -2,15 +2,10 @@
 
 #include <memory>
 #include <functional>
-#include "PhxEngine/Core/Event.h"
+#include <PhxEngine/Core/Events.h>
 
-namespace PhxEngine
-{
-	class IPhxEngineRoot;
-}
 namespace PhxEngine::Core
 {
-
 	class IWindow
 	{
 	public:
@@ -18,7 +13,7 @@ namespace PhxEngine::Core
 		virtual ~IWindow() = default;
 
 		virtual void Initialize() = 0;
-		virtual void OnUpdate() = 0;
+		virtual void OnTick() = 0;
 
 		virtual void SetEventCallback(EventCallBackFn eventCallback) = 0;
 		virtual uint32_t GetWidth() const = 0;
@@ -52,7 +47,7 @@ namespace PhxEngine::Core
 
 	namespace WindowFactory
 	{
-		std::unique_ptr<IWindow> CreateGlfwWindow(IPhxEngineRoot* engRoot, WindowSpecification const& spec);
+		std::unique_ptr<IWindow> CreateGlfwWindow(WindowSpecification const& spec);
 	}
 
 }
