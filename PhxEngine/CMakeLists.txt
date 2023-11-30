@@ -180,6 +180,7 @@ target_link_libraries(${project} PUBLIC
 	taskflow
 	enkiTS)
     
+
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 
 #INCLUDE_EXTERNAL_MSPROJECT(ShadersSource ${CMAKE_SOURCE_DIR}/PhxEngine/Shaders/ShadersSource.vcitems)

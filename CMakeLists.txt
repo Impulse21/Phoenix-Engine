@@ -26,7 +26,7 @@ add_definitions(-D_UNICODE)
 
 add_subdirectory(PhxEngine)
 add_subdirectory(PhxEngine-Runtime)
-#add_subdirectory(PhxEngine-AssetBaker)
+add_subdirectory(PhxEngine-AssetBaker)
 add_subdirectory(PhxEngine-Editor)
 
 # Disabling Samples as I work through things
