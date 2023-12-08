@@ -59,15 +59,17 @@ namespace PhxEngine::Assets
 	// A regions that is loaded into GPU memory
 	using GPURegion = Region<void>; 
 
-	template<class TCpuMetadata, class TCpuData>
+	//
+	// The Header is the fixed sized part of the file that contains references
+	// to the three main regions.
+	//
 	struct AssetFile
 	{
 		char ID[4];
 		uint16_t Version;
-
+		Region<std::string> Metadata;
 		GPURegion UnstructuredGpuData;
-		Region<TCpuMetadata> CpuMetadata;
-		Region<TCpuData> CpuData;
 	};
+
 }
 

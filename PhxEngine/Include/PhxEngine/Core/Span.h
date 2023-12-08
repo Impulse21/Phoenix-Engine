@@ -60,4 +60,43 @@ namespace PhxEngine::Core
 		size_t m_length;
 	};
 
+
+	template<typename T>
+	class MutableSpan
+	{
+	public:
+		MutableSpan()
+			: Span(nullptr, 0)
+		{ }
+
+		MutableSpan(const T* array, size_t length)
+			: Span(array, length, 0)
+		{}
+
+		MutableSpan(std::vector<T>& v)
+			: Span(v.data(), v.size(), 0)
+		{}
+
+		MutableSpan(const T* array, size_t length, size_t skip)
+			: m_array(array + skip)
+			, m_length(length)
+		{
+		}
+
+		T& operator[](size_t index)
+		{
+			assert(index < this->m_length);
+			return this->m_array[index];
+		}
+
+		size_t Size() const { return this->m_length; }
+
+		// -- Use lower case here so we can use the for each loop ---
+		T* begin() const { return this->m_array; }
+		T* end() const { return this->m_array + this->m_length; }
+
+	private:
+		T* m_array;
+		size_t m_length;
+	};
 }

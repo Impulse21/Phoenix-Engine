@@ -172,8 +172,7 @@ target_link_libraries(${project} PUBLIC
 	imgui
 	stb
 	entt
-	cereal
-	rapidjson
+	json
 	tlsf
 	D3D12MemoryAllocator
 	mimalloc-static

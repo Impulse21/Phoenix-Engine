@@ -1,3 +1,4 @@
+#define NOMINMAX 
 #include <PhxEngine/PhxEngine.h>
 #include <stdint.h>
 #include <PhxEngine/Core/CommandLineArgs.h>
@@ -11,7 +12,12 @@
 #include <cgltf.h>
 #include <PhxEngine/Assets/AssetFile.h>
 
-#include "MeshBuilderData.h"
+#include "ModelInfoBuilder.h"
+#include "AssetPacker.h"
+
+#include <deque>
+#include <mutex>
+#include <functional>
 
 namespace GltfHelpers
 {
@@ -208,10 +214,6 @@ namespace
 		return std::make_pair(Data, stride);
 	}
 
-	void ProcessData(cgltf_material const& gltfMaterial)
-	{
-	}
-
 	struct MeshProcessDataOptions
 	{
 		bool ReverseWinding = true;
@@ -225,10 +227,117 @@ namespace
 		float ConeWeight = 0.0f;
 	};
 
-
-	void ProcessData(cgltf_mesh const& cgltfMesh, std::string filename, MeshProcessDataOptions options = {})
+	template<typename _TKey>
+	class NameRegistry
 	{
-		MeshBuildData meshBuildData;
+	public:
+		void Add(_TKey key, std::string const& name)
+		{
+			std::scoped_lock _(this->m_lock);
+			
+			this->m_registry[key] = name;
+		}
+
+		const std::string& GetName(_TKey key)
+		{
+			std::scoped_lock _(this->m_lock);
+			auto itr = this->m_registry.find(key);
+
+			return itr->second;
+		}
+
+	private:
+		std::mutex m_lock;
+		std::unordered_map<_TKey, std::string> m_registry;
+	};
+
+	class GltfRegistry
+	{
+	public:
+		void SetName(const cgltf_material* key, std::string const& name)
+		{
+			return this->m_materialNameRegistry.Add(key, name);
+		}
+
+		void SetName(const cgltf_mesh* key, std::string const& name)
+		{
+			return this->m_meshNameRegistry.Add(key, name);
+		}
+
+		void SetName(const cgltf_texture* key, std::string const& name)
+		{
+			return this->m_textureNameRegistry.Add(key, name);
+		}
+
+		std::string_view GetName(const cgltf_material* key)
+		{
+			return this->m_materialNameRegistry.GetName(key);
+		}
+
+		std::string_view GetName(const cgltf_mesh* key)
+		{
+			return this->m_meshNameRegistry.GetName(key);
+		}
+
+		std::string_view GetName(const cgltf_texture* key)
+		{
+			return this->m_textureNameRegistry.GetName(key);
+		}
+
+	private:
+		NameRegistry<const cgltf_material*> m_materialNameRegistry;
+		NameRegistry<const cgltf_mesh*> m_meshNameRegistry;
+		NameRegistry<const cgltf_texture*> m_textureNameRegistry;
+	};
+
+	class GltfAssetFixUpQueue
+	{
+	public:
+		using FixupCallback = std::function<void(GltfRegistry const& registry)>;
+		void Enqeue(FixupCallback&& callback)
+		{
+			std::scoped_lock _(this->m_lock);
+			this->m_queuedFuncs.emplace_back(callback);
+		}
+
+		void Process(GltfRegistry const& registry)
+		{
+			std::scoped_lock _(this->m_lock);
+			while (!this->m_queuedFuncs.empty())
+			{
+				auto& func = this->m_queuedFuncs.front();
+				func(registry);
+				this->m_queuedFuncs.pop_front();
+			}
+		}
+
+	private:
+		std::mutex m_lock;
+		std::deque<FixupCallback> m_queuedFuncs;
+	};
+
+	constexpr std::string BuildMeshNameString(const char* name, int index)
+	{
+		return name ? name : "Mesh_" + std::to_string(index);
+	}
+
+	constexpr std::string BuildMtlNameString(const char* name, int index)
+	{
+		return name ? name : "Material_" + std::to_string(index);
+	}
+
+	constexpr std::string BuildTextureNameString(const char* name, int index)
+	{
+		return name ? name : "Texture_" + std::to_string(index);
+	}
+
+	void ProcessData(cgltf_data* objects, cgltf_material const& gltfMaterial, GltfRegistry& registry)
+	{
+	}
+
+	void ProcessData(cgltf_data* objects, cgltf_mesh const& cgltfMesh, GltfRegistry& registry, MeshProcessDataOptions options = {})
+	{
+		MeshInfo meshInfo(registry.GetName(&cgltfMesh));
 
 		for (int iPrim = 0; iPrim < cgltfMesh.primitives_count; iPrim++)
 		{
@@ -239,24 +348,23 @@ namespace
 				continue;
 			}
 
+			MeshPartInfo& partInfo = meshInfo.MeshPart.emplace_back();
 			if (cgltfPrim.indices)
 			{
-				meshBuildData.TotalIndices = cgltfPrim.indices->count;
+				partInfo.IndexCount = cgltfPrim.indices->count;
 			}
 			else
 			{
-				meshBuildData.TotalIndices = cgltfPrim.attributes->data->count;
+				partInfo.IndexCount = cgltfPrim.attributes->data->count;
 			}
 
-			meshBuildData.TotalVertices = cgltfPrim.attributes->data->count;
+			partInfo.IndexOffset = meshInfo.Indices.size();
+			const size_t vertexOffset = meshInfo.VertexStreams.Positions.size();
 
 			// Allocate Require data.
-			meshBuildData.Positions = reinterpret_cast<DirectX::XMFLOAT3*>(allocator->Allocate(sizeof(float) * 3 * meshBuildData.TotalVertices, 0));
-			meshBuildData.TexCoords = reinterpret_cast<DirectX::XMFLOAT2*>(allocator->Allocate(sizeof(float) * 2 * meshBuildData.TotalVertices, 0));
-			meshBuildData.Normals = reinterpret_cast<DirectX::XMFLOAT3*>(allocator->Allocate(sizeof(float) * 3 * meshBuildData.TotalVertices, 0));
-			meshBuildData.Tangents = reinterpret_cast<DirectX::XMFLOAT4*>(allocator->Allocate(sizeof(float) * 4 * meshBuildData.TotalVertices, 0));
-			meshBuildData.Colour = reinterpret_cast<DirectX::XMFLOAT3*>(allocator->Allocate(sizeof(float) * 3 * meshBuildData.TotalVertices, 0));
-			meshBuildData.Indices = reinterpret_cast<uint32_t*>(allocator->Allocate(sizeof(uint32_t) * meshBuildData.TotalIndices, 0));
+			const size_t totalVertices = cgltfPrim.attributes->data->count;
+			meshInfo.AddVertexStreamSpace(totalVertices);
+			meshInfo.AddIndexSpace(partInfo.IndexCount);
 
 			if (cgltfPrim.indices)
 			{
@@ -270,6 +378,7 @@ namespace
 			const cgltf_accessor* cgltfTangentsAccessor = nullptr;
 			const cgltf_accessor* cgltfNormalsAccessor = nullptr;
 			const cgltf_accessor* cgltfTexCoordsAccessor = nullptr;
+			const cgltf_accessor* cgltfTexCoordsAccessor1 = nullptr;
 
 			// Collect intreasted attributes
 			for (int iAttr = 0; iAttr < cgltfPrim.attributes_count; iAttr++)
@@ -303,6 +412,12 @@ namespace
 						assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
 						cgltfTexCoordsAccessor = cgltfAttribute.data;
 					}
+					else if (std::strcmp(cgltfAttribute.name, "TEXCOORD_1") == 0)
+					{
+						assert(cgltfAttribute.data->type == cgltf_type_vec2);
+						assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
+						cgltfTexCoordsAccessor1 = cgltfAttribute.data;
+					}
 					break;
 				}
 			}
@@ -315,7 +430,7 @@ namespace
 				// copy the indices
 				auto [indexSrc, indexStride] = CgltfBufferAccessor(cgltfPrim.indices, 0);
 
-				uint32_t* indexDst = meshBuildData.Indices;
+				uint32_t* indexDst = &meshInfo.Indices[partInfo.IndexOffset];
 				switch (cgltfPrim.indices->component_type)
 				{
 				case cgltf_component_type_r_8u:
@@ -324,12 +439,11 @@ namespace
 						indexStride = sizeof(uint8_t);
 					}
 
-					for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
+					for (size_t iIdx = 0; iIdx < indexCount; iIdx+=3)
 					{
-						*indexDst = *(const uint8_t*)indexSrc;
-
-						indexSrc += indexStride;
-						indexDst++;
+						indexDst[partInfo.IndexOffset + iIdx + 0] =  vertexOffset + indexSrc[iIdx + options.IndexRemap[0]];
+						indexDst[partInfo.IndexOffset + iIdx + 0] = vertexOffset + indexSrc[iIdx + options.IndexRemap[1]];
+						indexDst[partInfo.IndexOffset + iIdx + 0] = vertexOffset + indexSrc[iIdx + options.IndexRemap[2]];
 					}
 					break;
 
@@ -339,12 +453,12 @@ namespace
 						indexStride = sizeof(uint16_t);
 					}
 
-					for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
+					for (size_t iIdx = 0; iIdx < indexCount; iIdx += 3)
 					{
-						*indexDst = *(const uint16_t*)indexSrc;
+						indexDst[partInfo.IndexOffset + iIdx + 0] = vertexOffset + ((uint16_t*)indexSrc)[iIdx + options.IndexRemap[0]];
+						indexDst[partInfo.IndexOffset + iIdx + 0] = vertexOffset + ((uint16_t*)indexSrc)[iIdx + options.IndexRemap[1]];
+						indexDst[partInfo.IndexOffset + iIdx + 0] = vertexOffset + ((uint16_t*)indexSrc)[iIdx + options.IndexRemap[2]];
 
-						indexSrc += indexStride;
-						indexDst++;
 					}
 					break;
 
@@ -354,12 +468,12 @@ namespace
 						indexStride = sizeof(uint32_t);
 					}
 
-					for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
+					for (size_t iIdx = 0; iIdx < indexCount; iIdx += 3)
 					{
-						*indexDst = *(const uint32_t*)indexSrc;
+						indexDst[partInfo.IndexOffset + iIdx + 0] = vertexOffset + ((uint32_t*)indexSrc)[iIdx + options.IndexRemap[0]];
+						indexDst[partInfo.IndexOffset + iIdx + 0] = vertexOffset + ((uint32_t*)indexSrc)[iIdx + options.IndexRemap[1]];
+						indexDst[partInfo.IndexOffset + iIdx + 0] = vertexOffset + ((uint32_t*)indexSrc)[iIdx + options.IndexRemap[2]];
 
-						indexSrc += indexStride;
-						indexDst++;
 					}
 					break;
 
@@ -369,14 +483,13 @@ namespace
 			}
 			else
 			{
-				size_t indexCount = cgltfPositionsAccessor->count;
-
-				// generate the indices
-				uint32_t* indexDst = meshBuildData.Indices;
-				for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
+				// Autogen indices:
+				//	Note: this is not common, so it is simpler to create a dummy index buffer here than rewrite engine to support this case
+				for (size_t vi = 0; vi < partInfo.IndexCount; vi += 3)
 				{
-					*indexDst = (uint32_t)iIdx;
-					indexDst++;
+					meshInfo.Indices[partInfo.IndexOffset + vi + 0] = uint32_t(vertexOffset + vi + options.IndexRemap[0]);
+					meshInfo.Indices[partInfo.IndexOffset + vi + 1] = uint32_t(vertexOffset + vi + options.IndexRemap[1]);
+					meshInfo.Indices[partInfo.IndexOffset + vi + 2] = uint32_t(vertexOffset + vi + options.IndexRemap[2]);
 				}
 			}
 
@@ -387,112 +500,82 @@ namespace
 
 				// Do a mem copy?
 				std::memcpy(
-					meshBuildData.Positions,
+					&meshInfo.VertexStreams.Positions[vertexOffset],
 					positionSrc,
 					positionStride * cgltfPositionsAccessor->count);
 			}
 
 			if (cgltfNormalsAccessor)
 			{
-				meshBuildData.VertexFlags |= MeshVertexFlags::kContainsNormals;
 				auto [normalSrc, normalStride] = CgltfBufferAccessor(cgltfNormalsAccessor, sizeof(float) * 3);
-
+				meshInfo.VertexStreamFlags &= VertexStreamFlags::kContainsNormals;
 				// Do a mem copy?
 				std::memcpy(
-					meshBuildData.Normals,
+					&meshInfo.VertexStreams.Normals[vertexOffset],
 					normalSrc,
-					normalStride * cgltfNormalsAccessor->count);
+					normalStride* cgltfNormalsAccessor->count);
 			}
 
 			if (cgltfTangentsAccessor)
 			{
-				meshBuildData.VertexFlags |= MeshVertexFlags::kContainsTangents;
 				auto [tangentSrc, tangentStride] = CgltfBufferAccessor(cgltfTangentsAccessor, sizeof(float) * 4);
+				meshInfo.VertexStreamFlags &= VertexStreamFlags::kContainsTangents;
 
 				// Do a mem copy?
 				std::memcpy(
-					meshBuildData.Tangents,
+					&meshInfo.VertexStreams.Tangents[vertexOffset],
 					tangentSrc,
 					tangentStride * cgltfTangentsAccessor->count);
+				// Do a mem copy?
 			}
 
 			if (cgltfTexCoordsAccessor)
 			{
-				meshBuildData.VertexFlags |= MeshVertexFlags::kContainsTexCoords;
 				assert(cgltfTexCoordsAccessor->count == cgltfPositionsAccessor->count);
+				meshInfo.VertexStreamFlags &= VertexStreamFlags::kContainsTexCoords;
 
 				auto [texcoordSrc, texcoordStride] = CgltfBufferAccessor(cgltfTexCoordsAccessor, sizeof(float) * 2);
 
+				// Do a mem copy?
 				std::memcpy(
-					meshBuildData.TexCoords,
+					&meshInfo.VertexStreams.TexCoords[vertexOffset],
+					texcoordSrc,
+					texcoordStride* cgltfTexCoordsAccessor->count);
+			}
+
+
+			if (cgltfTexCoordsAccessor1)
+			{
+				assert(cgltfTexCoordsAccessor1->count == cgltfTexCoordsAccessor1->count);
+				meshInfo.VertexStreamFlags &= VertexStreamFlags::kContainsTexCoords1;
+
+				auto [texcoordSrc, texcoordStride] = CgltfBufferAccessor(cgltfTexCoordsAccessor1, sizeof(float) * 2);
+
+				// Do a mem copy?
+				std::memcpy(
+					&meshInfo.VertexStreams.TexCoords[vertexOffset],
 					texcoordSrc,
 					texcoordStride * cgltfTexCoordsAccessor->count);
 			}
-			else
-			{
-				std::memset(
-					meshBuildData.TexCoords,
-					0.0f,
-					cgltfPositionsAccessor->count * sizeof(float) * 2);
-			}
 
+			partInfo.Material = cgltfPrim.material->name;
 
-			// GLTF 2.0 front face is CCW, I currently use CW as front face.
-			// something to consider to change.
-			if (options.ReverseWinding)
-			{
-				for (size_t i = 0; i < meshBuildData.TotalIndices; i += 3)
-				{
-					std::swap(meshBuildData.Indices[i + 1], meshBuildData.Indices[i + 2]);
-				}
-			}
-
-			// Generate Tangents
-			if (EnumHasAllFlags(meshBuildData.VertexFlags, (MeshVertexFlags::kContainsNormals | MeshVertexFlags::kContainsTexCoords | MeshVertexFlags::kContainsTangents)))
-			{
-				meshBuildData.ComputeTangentSpace();
-				meshBuildData.VertexFlags |= MeshVertexFlags::kContainsTangents;
-			}
-
-			if (options.ReverseZ)
-			{
-				// Flip Z
-				for (int i = 0; i < meshBuildData.TotalVertices; i++)
-				{
-					meshBuildData.Positions[i].z *= -1.0f;
-				}
-				for (int i = 0; i < meshBuildData.TotalVertices; i++)
-				{
-					meshBuildData.Normals[i].z *= -1.0f;
-				}
-				for (int i = 0; i < meshBuildData.TotalVertices; i++)
-				{
-					meshBuildData.Tangents[i].z *= -1.0f;
-				}
-			}
-
-			// Calculate AABB
-			DirectX::XMFLOAT3 minBounds = DirectX::XMFLOAT3(Math::cMaxFloat, Math::cMaxFloat, Math::cMaxFloat);
-			DirectX::XMFLOAT3 maxBounds = DirectX::XMFLOAT3(Math::cMinFloat, Math::cMinFloat, Math::cMinFloat);
-
-			if (meshBuildData.Positions)
-			{
-				for (int i = 0; i < meshBuildData.TotalVertices; i++)
-				{
-					minBounds = Math::Min(minBounds, meshBuildData.Positions[i]);
-					maxBounds = Math::Max(maxBounds, meshBuildData.Positions[i]);
-				}
-			}
-
-			meshBuildData.Aabb = AABB(minBounds, maxBounds);
-			meshBuildData.BoundingSphere = Sphere(minBounds, maxBounds);
-
-
-			mesh.BuildRenderData(scene.GetAllocator(), RHI::IGraphicsDevice::GPtr);
 		}
+
+		meshInfo.ComputeTangentSpace();
+
+		if (options.ReverseZ)
+		{
+			meshInfo.ReverseZ();
+		}
+
+		meshInfo.OptmizeMesh()
+				.GenerateMeshletData(options.MaxVertices, options.MaxTriangles, options.ConeWeight)
+				.ComputeBounds();
+
 	}
 
-	void ProcessData(cgltf_texture const& gltfTextures)
+	void ProcessData(cgltf_data* objects, cgltf_texture const& gltfTextures, GltfRegistry& registry)
 	{
 
 	}
@@ -557,27 +640,56 @@ int main(int argc, const char** argv)
 	tf::Executor executor;
 	tf::Taskflow taskflow;
 
-	taskflow.for_each_index(0, static_cast<int>(objects->meshes_count), 1,
-		[objects](int i)
+	GltfRegistry registry;
+
+	tf::Task registryMeshNames = taskflow.for_each_index(0, static_cast<int>(objects->meshes_count), 1,
+		[objects, &registry](int i)
+		{
+			registry.SetName(&objects->meshes[i], BuildMeshNameString(objects->meshes[i].name, i));
+		});
+
+	tf::Task registryMtlNames = taskflow.for_each_index(0, static_cast<int>(objects->materials_count), 1,
+		[objects, &registry](int i)
+		{
+			registry.SetName(&objects->materials[i], BuildMtlNameString(objects->materials[i].name, i));
+		});
+
+	tf::Task registryTextureNames = taskflow.for_each_index(0, static_cast<int>(objects->textures_count), 1,
+		[objects, &registry](int i)
+		{
+			registry.SetName(&objects->textures[i], BuildTextureNameString(objects->textures[i].name, i));
+		});
+
+	tf::Task meshTask = taskflow.for_each_index(0, static_cast<int>(objects->meshes_count), 1,
+		[objects, &registry](int i)
 		{
 			ProcessData(
+				objects,
 				objects->meshes[i],
-				objects->meshes[i].name 
-					? objects->meshes[i].name 
-					: "Mesh " + std::to_string(i));
+				registry);
 		});
 
-	taskflow.for_each_index(0, static_cast<int>(objects->materials_count), 1,
-		[objects](int i)
+	tf::Task mtlTask = taskflow.for_each_index(0, static_cast<int>(objects->materials_count), 1,
+		[objects, &registry](int i)
 		{
-			ProcessData(objects->materials[i]);
+			ProcessData(
+				objects,
+				objects->materials[i],
+				registry);
 		});
 
-	taskflow.for_each_index(0, static_cast<int>(objects->textures_count), 1,
-		[objects](int i)
+	tf::Task textureTask = taskflow.for_each_index(0, static_cast<int>(objects->textures_count), 1,
+		[objects, &registry](int i)
 		{
-			ProcessData(objects->textures[i]);
+			ProcessData(
+				objects,
+				objects->textures[i],
+				registry);
 		});
+
+	meshTask.succeed(registryMeshNames, registryMtlNames);
+	mtlTask.succeed(registryMtlNames, registryTextureNames);
+	textureTask.succeed(registryTextureNames);
 
 	executor.run(std::move(taskflow));
 

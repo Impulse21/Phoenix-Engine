@@ -255,12 +255,12 @@ namespace PhxEngine::Core
         std::atomic<unsigned long> m_refCount = 1;
 
     public:
-        virtual unsigned long AddRef() override
+        virtual unsigned long AddRef()
         {
             return ++m_refCount;
         }
 
-        virtual unsigned long Release() override
+        virtual unsigned long Release()
         {
             unsigned long result = --m_refCount;
             if (result == 0) 
@@ -271,7 +271,7 @@ namespace PhxEngine::Core
         }
 
     protected:
-        virtual void InternalDelete() override
+        virtual void InternalDelete()
         {
             delete this;
         }
