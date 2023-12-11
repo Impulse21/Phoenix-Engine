@@ -87,6 +87,8 @@ struct MeshInfo
 		const size_t currentSpace = this->Indices.size();
 		const size_t newSpace = currentSpace + indexCount;
 		this->Indices.resize(newSpace, {});
+
+		return *this;
 	}
 
 	MeshInfo& ComputeTangentSpace();
@@ -120,6 +122,30 @@ struct MeshInfo
 		}
 
 		return *this;
+	}
+};
+
+
+struct MaterialInfo
+{
+	std::string_view Name;
+	DirectX::XMFLOAT4 BaseColour = { 0.0f, 0.0f, 0.0f, 1.0f };
+	DirectX::XMFLOAT4 Emissive = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+	float Metalness = 1.0f;
+	float Roughness = 1.0f;
+	float Ao = 1.0f;
+	bool IsDoubleSided = false;
+
+	std::string_view BaseColourTexture; 
+	std::string_view MetalRoughnessTexture;
+	std::string_view AoTexture;
+	std::string_view NormalMapTexture;
+
+	MaterialInfo(std::string_view const& name)
+		: Name(name)
+	{
+
 	}
 };
 

@@ -3,6 +3,7 @@
 #include <PhxEngine/Core/Memory.h>
 #include <PhxEngine/Assets/StaticMesh.h>
 
+#include <PhxEngine/Core/Log.h>
 
 #include <string>
 #include <fstream>      // std::ofstream
@@ -10,6 +11,55 @@
 using namespace PhxEngine::Assets;
 namespace
 {
+	class MtlAssetPacker : public AssetPacker
+	{
+		const MaterialInfo* m_mtlInfo;
+	public:
+		MtlAssetPacker(const MaterialInfo* mtlInfo)
+			: AssetPacker()
+			, m_mtlInfo(mtlInfo)
+		{
+		}
+
+		AssetFile Pack()
+		{
+			AssetFile file = {};
+			file.ID[0] = 'M';
+			file.ID[1] = 'A';
+			file.ID[2] = 'T';
+			file.ID[3] = 'E';
+			file.Version = cCurrentAssetFileVersion;
+			nlohmann::json metadata;
+
+			std::array<float, 4> baseColourV;
+			baseColourV[0] = this->m_mtlInfo->BaseColour.x;
+			baseColourV[1] = this->m_mtlInfo->BaseColour.y;
+			baseColourV[2] = this->m_mtlInfo->BaseColour.z;
+			baseColourV[3] = this->m_mtlInfo->BaseColour.w;
+			metadata["base_color"] = baseColourV;
+
+			std::array<float, 4> emissiveV;
+			emissiveV[0] = this->m_mtlInfo->Emissive.x;
+			emissiveV[1] = this->m_mtlInfo->Emissive.y;
+			emissiveV[2] = this->m_mtlInfo->Emissive.z;
+			emissiveV[3] = this->m_mtlInfo->Emissive.w;
+			metadata["emissive_color"] = emissiveV;
+
+			metadata["metalness"] = this->m_mtlInfo->Metalness;
+			metadata["roughness"] = this->m_mtlInfo->Roughness;
+			metadata["ao"] = emissiveV;
+			metadata["is_double_sided"] = emissiveV;
+
+			metadata["albedo_texture"] = emissiveV;
+			metadata["material_texture"] = emissiveV;
+			metadata["ao_texture"] = emissiveV;
+			metadata["normal_texture"] = emissiveV;
+			file.Metadata = metadata.dump();
+
+			return file;
+		}
+
+	};
 
 	class MeshAssetPacker : public AssetPacker
 	{
@@ -38,35 +88,87 @@ namespace
 			} Steams[static_cast<size_t>(VertexStreamsTypes::Count)];
 		};
 
+		struct MeshletBufferHeader
+		{
+			uint64_t MeshletOffset			: 28;
+			uint64_t MeshletStride			: 4;
+			uint64_t MeshletVerticesOffset	: 28;
+			uint64_t MeshletVerticesStride	: 4;
+			uint64_t MeshletTrianglesOffset : 28;
+			uint64_t MeshletTrianglesStride : 4;
+			uint64_t MeshletBoundsOffsets	: 28;
+			uint64_t MeshletBoundsStride	: 4;
+
+		};
+
 		const MeshInfo* m_meshInfo;
 
 	public:
-		MeshAssetPacker(std::ostream& out, const MeshInfo* meshInfo)
-			: AssetPacker(out)
+		MeshAssetPacker(const MeshInfo* meshInfo)
+			: AssetPacker()
 			, m_meshInfo(meshInfo)
 		{
 		}
 
 		AssetFile Pack()
 		{
-			AssetFile header= {};
-			header.ID[0] = 'M';
-			header.ID[1] = 'E';
-			header.ID[2] = 'S';
-			header.ID[3] = 'H';
-			header.Version = cCurrentAssetFileVersion;
+			AssetFile file= {};
+			file.ID[0] = 'M';
+			file.ID[1] = 'E';
+			file.ID[2] = 'S';
+			file.ID[3] = 'H';
+			file.Version = cCurrentAssetFileVersion;
+			nlohmann::json metadata;
+			metadata["num_indices"] = this->m_meshInfo->GetTotalIndices();
+			metadata["num_vertices"] = this->m_meshInfo->GetTotalVertices();
 
-			auto [fixupHeader] = WriteStruct(this->m_out, &header, &header);
+			const size_t geometryBufferSize = this->BuildGeometryBufferData();
+			metadata["geometry_buffer_size"] = geometryBufferSize;
 
-			this->BuildGeometryBufferData();
-			this->BuildMeshletBufferData();
-			
-			// Construct GPU data
+			const size_t meshletBufferSize = this->BuildMeshletBufferData();
+			metadata["meshet_buffer_size"] = meshletBufferSize;
 
-			// Construct Metadata string
+			std::array<float, 4> boundingSphere;
+			boundingSphere[0] = this->m_meshInfo->BoundingSphere.Centre.x;
+			boundingSphere[1] = this->m_meshInfo->BoundingSphere.Centre.y;
+			boundingSphere[2] = this->m_meshInfo->BoundingSphere.Centre.z;
+			boundingSphere[3] = this->m_meshInfo->BoundingSphere.Radius;
 
-			// Save
+			metadata["bounding_box"] = boundingSphere;
 
+			std::array<float, 6> boundingBox;
+			boundingBox[0] = this->m_meshInfo->BoundingBox.Min.x;
+			boundingBox[1] = this->m_meshInfo->BoundingBox.Min.y;
+			boundingBox[2] = this->m_meshInfo->BoundingBox.Min.z;
+			boundingBox[3] = this->m_meshInfo->BoundingBox.Max.x;
+			boundingBox[4] = this->m_meshInfo->BoundingBox.Max.y;
+			boundingBox[5] = this->m_meshInfo->BoundingBox.Max.z;
+
+			metadata["bounding_box"] = boundingBox;
+
+			metadata["compression"] = "None";
+
+			for (auto& meshPart : m_meshInfo->MeshPart)
+			{
+				nlohmann::json meshPartMetadata;
+				meshPartMetadata["material_name"] = meshPart.Material.c_str();
+				meshPartMetadata["index_offset"] = meshPart.IndexOffset;
+				meshPartMetadata["index_count"] = meshPart.IndexCount;
+
+				metadata["mesh_part"].push_back(meshPartMetadata);
+			}
+
+			file.Metadata = metadata.dump();
+
+			file.UnstructuredGpuData.resize(geometryBufferSize + meshletBufferSize);
+			std::memcpy(file.UnstructuredGpuData.data(), this->m_geometryBuffer.data(), geometryBufferSize);
+
+			std::memcpy(
+				file.UnstructuredGpuData.data() + geometryBufferSize,
+				this->m_meshletBuffer.data(),
+				meshletBufferSize);
+
+			return file;
 		}
 
 	private:
@@ -76,7 +178,7 @@ namespace
 		}
 
 	private:
-		void BuildGeometryBufferData()
+		size_t BuildGeometryBufferData()
 		{
 			const size_t alignment = 16llu;
 
@@ -180,14 +282,17 @@ namespace
 				dataEntrySize = this->m_meshInfo->VertexStreams.Colour.size() * sizeof(this->m_meshInfo->VertexStreams.Colour[0]);
 				std::memcpy(this->m_geometryBuffer.data() + offset, this->m_meshInfo->VertexStreams.Colour.data(), dataEntrySize);
 			}
+
+			return sizeInBytes;
 		}
 
-		void BuildMeshletBufferData()
+		size_t BuildMeshletBufferData()
 		{
 			const size_t alignment = 16llu;
 
 			// Calculate size in bytes
 			const size_t sizeInBytes =
+				AlignTo(sizeof(MeshletBufferHeader), alignment) +
 				AlignTo(this->m_meshInfo->MeshletData.Meshlets.size() * sizeof(this->m_meshInfo->MeshletData.Meshlets.front()), alignment) +
 				AlignTo(this->m_meshInfo->MeshletData.MeshletTriangles.size() * sizeof(this->m_meshInfo->MeshletData.MeshletTriangles.front()), alignment) +
 				AlignTo(this->m_meshInfo->MeshletData.MeshletVertices.size() * sizeof(this->m_meshInfo->MeshletData.MeshletVertices.front()), alignment) +
@@ -196,20 +301,35 @@ namespace
 			this->m_meshletBuffer.resize(sizeInBytes);
 			size_t offset = 0ull;
 
+			MeshletBufferHeader* header = reinterpret_cast<MeshletBufferHeader*>(this->m_meshletBuffer.data());
+			header->MeshletOffset = offset;
+			header->MeshletStride = sizeof(meshopt_Meshlet);
+
+			offset += sizeof(MeshletBufferHeader);
+
 			size_t dataEntrySize = this->m_meshInfo->MeshletData.Meshlets.size() * sizeof(this->m_meshInfo->MeshletData.Meshlets.front());
 			std::memcpy(this->m_meshletBuffer.data() + offset, this->m_meshInfo->MeshletData.Meshlets.data(), dataEntrySize);
 
 			offset += dataEntrySize;
+			header->MeshletTrianglesOffset = offset;
+			header->MeshletTrianglesStride= sizeof(uint8_t);
+
 			dataEntrySize = this->m_meshInfo->MeshletData.MeshletTriangles.size() * sizeof(this->m_meshInfo->MeshletData.MeshletTriangles.front());
 			std::memcpy(this->m_meshletBuffer.data() + offset, this->m_meshInfo->MeshletData.MeshletTriangles.data(), dataEntrySize);
 
 			offset += dataEntrySize;
+			header->MeshletVerticesOffset= offset;
+			header->MeshletVerticesStride = sizeof(uint32_t);
 			dataEntrySize = this->m_meshInfo->MeshletData.MeshletVertices.size() * sizeof(this->m_meshInfo->MeshletData.MeshletVertices.front());
 			std::memcpy(this->m_meshletBuffer.data() + offset, this->m_meshInfo->MeshletData.MeshletVertices.data(), dataEntrySize);
 
 			offset += dataEntrySize;
+			header->MeshletBoundsOffsets = offset;
+			header->MeshletBoundsStride = sizeof(meshopt_Bounds);
 			dataEntrySize = this->m_meshInfo->MeshletData.MeshletBounds.size() * sizeof(this->m_meshInfo->MeshletData.MeshletBounds.front());
 			std::memcpy(this->m_meshletBuffer.data() + offset, this->m_meshInfo->MeshletData.MeshletBounds.data(), dataEntrySize);
+
+			return sizeInBytes;
 		}
 
 	private:
@@ -217,12 +337,52 @@ namespace
 		std::vector<uint8_t> m_meshletBuffer;
 
 	};
+
+
 }
 
-void AssetPacker::Pack(const char* filename, MeshInfo& meshInfo)
+AssetFile AssetPacker::Pack(MeshInfo& meshInfo)
+{
+	MeshAssetPacker exporter(&meshInfo);
+	return exporter.Pack();
+}
+
+PhxEngine::Assets::AssetFile AssetPacker::Pack(MaterialInfo& mtlInfo)
+{
+	MtlAssetPacker exporter(&mtlInfo);
+	return exporter.Pack();
+}
+
+bool AssetPacker::SaveBinary(IFileSystem* fs, const char* filename, AssetFile const& assetFile)
 {
 	std::ofstream outStream(filename, std::ios::out | std::ios::trunc | std::ios::binary);
-	MeshAssetPacker exporter(outStream, &meshInfo);
-	exporter.Pack();
+
+	if (!outStream.is_open())
+	{
+		PHX_LOG_ERROR("Failed to open file %s", filename);
+		return false;
+	}
+
+	outStream.write(assetFile.ID, 4);
+	uint32_t version = assetFile.Version;
+
+	//version
+	outStream.write((const char*)&version, sizeof(uint32_t));
+
+	//json lenght
+	uint32_t lenght = static_cast<uint32_t>(assetFile.Metadata.size());
+	outStream.write((const char*)&lenght, sizeof(uint32_t));
+
+	//blob lenght
+	uint32_t bloblenght = static_cast<uint32_t>(assetFile.UnstructuredGpuData.size());
+	outStream.write((const char*)&bloblenght, sizeof(uint32_t));
+
+	//json stream
+	outStream.write(assetFile.Metadata.data(), lenght);
+
+	//Gpu Data 
+	outStream.write((const char*)assetFile.UnstructuredGpuData.data(), bloblenght);
+
 	outStream.close();
+	return false;
 }

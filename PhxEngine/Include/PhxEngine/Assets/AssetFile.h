@@ -67,8 +67,8 @@ namespace PhxEngine::Assets
 	{
 		char ID[4];
 		uint16_t Version;
-		Region<std::string> Metadata;
-		GPURegion UnstructuredGpuData;
+		std::string Metadata;
+		std::vector<uint8_t> UnstructuredGpuData;
 	};
 
 }

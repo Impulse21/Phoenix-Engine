@@ -2,6 +2,8 @@
 
 #include <meshoptimizer.h>
 #include <PhxEngine/Core/Memory.h>
+#include <PhxEngine/Core/Log.h>
+#include <PhxEngine/Core/StopWatch.h>
 
 using namespace DirectX;
 
@@ -147,6 +149,8 @@ MeshInfo& MeshInfo::ComputeTangentSpace()
 
 MeshInfo& MeshInfo::GenerateMeshletData(size_t maxVertices, size_t maxTris, float coneWeight)
 {
+	PHX_LOG_INFO("Generating meshlet data for '%s'", this->Name);
+	PhxEngine::Core::StopWatch timer;
 	MeshInfo& meshInfo = *this;
 	size_t maxMeshlets = meshopt_buildMeshletsBound(meshInfo.Indices.size(), maxVertices, maxTris);
 	meshInfo.MeshletData.Meshlets.resize(maxMeshlets);
@@ -186,5 +190,7 @@ MeshInfo& MeshInfo::GenerateMeshletData(size_t maxVertices, size_t maxTris, floa
 		meshInfo.MeshletData.MeshletBounds.push_back(bounds);
 	}
 
+	PhxEngine::Core::TimeStep elapsedTime = timer.Elapsed();
+	PHX_LOG_INFO("Generating meshlet data for '%s' took %f s [%f ms]", this->Name, elapsedTime.GetSeconds(), elapsedTime.GetMilliseconds());
 	return meshInfo;
 }

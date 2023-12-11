@@ -4,7 +4,7 @@
 #include <PhxEngine/Core/CommandLineArgs.h>
 #include <PhxEngine/Core/VirtualFileSystem.h>
 #include <PhxEngine/Core/Memory.h>
-
+#include <PhxEngine/Core/StopWatch.h>
 #include <taskflow/taskflow.hpp>
 #include <taskflow/algorithm/for_each.hpp>
 
@@ -19,9 +19,12 @@
 #include <mutex>
 #include <functional>
 
+namespace
+{
+	constexpr const char* EmptyString = "";
+}
 namespace GltfHelpers
 {
-
 	// glTF only support DDS images through the MSFT_texture_dds extension.
 	// Since cgltf does not support this extension, we parse the custom extension string as json here.
 	// See https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Vendor/MSFT_texture_dds 
@@ -61,13 +64,13 @@ namespace GltfHelpers
 			int numParsed = jsmn_parse(&parser, ext.data, extensionLength, tokens, numTokens);
 			if (numParsed != numTokens)
 			{
-				// // LOG_CORE_WARN("Failed to parse the DDS glTF extension: %s", ext.data);
+				// // LOG_CORE_WARN("Failed to parse the DDS glTF extension '%s'", ext.data);
 				return nullptr;
 			}
 
 			if (tokens[0].type != JSMN_OBJECT)
 			{
-				// // LOG_CORE_WARN("Failed to parse the DDS glTF extension: %s", ext.data);
+				// // LOG_CORE_WARN("Failed to parse the DDS glTF extension '%s'", ext.data);
 				return nullptr;
 			}
 
@@ -75,7 +78,7 @@ namespace GltfHelpers
 			{
 				if (tokens[k].type != JSMN_STRING)
 				{
-					// // LOG_CORE_WARN("Failed to parse the DDS glTF extension: %s", ext.data);
+					// // LOG_CORE_WARN("Failed to parse the DDS glTF extension '%s'", ext.data);
 					return nullptr;
 				}
 
@@ -85,7 +88,7 @@ namespace GltfHelpers
 					int index = cgltf_json_to_int(tokens + k, (const uint8_t*)ext.data);
 					if (index < 0)
 					{
-						// // LOG_CORE_WARN("Failed to parse the DDS glTF extension: %s", ext.data);
+						// // LOG_CORE_WARN("Failed to parse the DDS glTF extension '%s'", ext.data);
 						return nullptr;
 					}
 
@@ -240,13 +243,24 @@ namespace
 
 		const std::string& GetName(_TKey key)
 		{
+			if (key == nullptr)
+			{
+				return EmptyString;
+			}
+
 			std::scoped_lock _(this->m_lock);
 			auto itr = this->m_registry.find(key);
+
+			if (itr == this->m_registry.end())
+			{
+				return EmptyString;
+			}
 
 			return itr->second;
 		}
 
 	private:
+	
 		std::mutex m_lock;
 		std::unordered_map<_TKey, std::string> m_registry;
 	};
@@ -331,11 +345,43 @@ namespace
 		return name ? name : "Texture_" + std::to_string(index);
 	}
 
-	void ProcessData(cgltf_data* objects, cgltf_material const& gltfMaterial, GltfRegistry& registry)
+	void ProcessData(cgltf_data* objects, cgltf_material const& gltfMaterial, GltfRegistry& registry, std::filesystem::path outputDir)
 	{
+		MaterialInfo mtlInfo(registry.GetName(&gltfMaterial));
+
+		if (gltfMaterial.has_pbr_specular_glossiness)
+		{
+			LOG_WARN("Material %s contains unsupported extension 'PBR Specular_Glossiness' workflow ", mtlInfo.Name);
+		}
+		else if (gltfMaterial.has_pbr_metallic_roughness)
+		{
+			mtlInfo.BaseColourTexture = registry.GetName(gltfMaterial.pbr_metallic_roughness.base_color_texture.texture);
+			mtlInfo.BaseColour =
+			{
+				gltfMaterial.pbr_metallic_roughness.base_color_factor[0],
+				gltfMaterial.pbr_metallic_roughness.base_color_factor[1],
+				gltfMaterial.pbr_metallic_roughness.base_color_factor[2],
+				gltfMaterial.pbr_metallic_roughness.base_color_factor[3]
+			};
+
+			mtlInfo.MetalRoughnessTexture = registry.GetName(gltfMaterial.pbr_metallic_roughness.metallic_roughness_texture.texture);
+
+			mtlInfo.Metalness = gltfMaterial.pbr_metallic_roughness.metallic_factor;
+			mtlInfo.Roughness = gltfMaterial.pbr_metallic_roughness.roughness_factor;
+		}
+
+		// Load Normal map
+		mtlInfo.NormalMapTexture = registry.GetName(gltfMaterial.normal_texture.texture);
+		mtlInfo.IsDoubleSided = gltfMaterial.double_sided;
+
+		PhxEngine::Assets::AssetFile file = AssetPacker::Pack(mtlInfo);
+
+		std::string filename = std::string(mtlInfo.Name) + ".phxasset";
+		std::filesystem::path outputFilename = (outputDir / filename);
+		AssetPacker::SaveBinary(nullptr, outputFilename.generic_string().c_str(), file);
 	}
 
-	void ProcessData(cgltf_data* objects, cgltf_mesh const& cgltfMesh, GltfRegistry& registry, MeshProcessDataOptions options = {})
+	void ProcessData(cgltf_data* objects, cgltf_mesh const& cgltfMesh, GltfRegistry& registry, std::filesystem::path outputDir, MeshProcessDataOptions options = {})
 	{
 		MeshInfo meshInfo(registry.GetName(&cgltfMesh));
 
@@ -573,6 +619,11 @@ namespace
 				.GenerateMeshletData(options.MaxVertices, options.MaxTriangles, options.ConeWeight)
 				.ComputeBounds();
 
+		PhxEngine::Assets::AssetFile file = AssetPacker::Pack(meshInfo);
+
+		std::string filename = std::string(meshInfo.Name) + ".phxasset";
+		std::filesystem::path outputFilename = (outputDir / filename);
+		AssetPacker::SaveBinary(nullptr, outputFilename.generic_string().c_str(), file);
 	}
 
 	void ProcessData(cgltf_data* objects, cgltf_texture const& gltfTextures, GltfRegistry& registry)
@@ -661,30 +712,44 @@ int main(int argc, const char** argv)
 		});
 
 	tf::Task meshTask = taskflow.for_each_index(0, static_cast<int>(objects->meshes_count), 1,
-		[objects, &registry](int i)
+		[objects, &registry, outputDirectory](int i)
 		{
+			PHX_LOG_INFO("Processing Mesh '%s'", objects->meshes[i].name);
+			PhxEngine::Core::StopWatch timer;
 			ProcessData(
 				objects,
 				objects->meshes[i],
-				registry);
+				registry,
+				outputDirectory);
+			PhxEngine::Core::TimeStep elapsedTime = timer.Elapsed();
+			PHX_LOG_INFO("Proccessing Mesh %s took %f s [%f ms]", objects->meshes[i].name, elapsedTime.GetSeconds(), elapsedTime.GetMilliseconds());
 		});
 
 	tf::Task mtlTask = taskflow.for_each_index(0, static_cast<int>(objects->materials_count), 1,
-		[objects, &registry](int i)
+		[objects, &registry, outputDirectory](int i)
 		{
+			PHX_LOG_INFO("Processing Materials '%s'", objects->materials[i].name);
+			PhxEngine::Core::StopWatch timer;
 			ProcessData(
 				objects,
 				objects->materials[i],
-				registry);
+				registry,
+				outputDirectory);
+			PhxEngine::Core::TimeStep elapsedTime = timer.Elapsed();
+			PHX_LOG_INFO("Proccessing Materials '%s' took %f s [%f ms]", objects->materials[i].name, elapsedTime.GetSeconds(), elapsedTime.GetMilliseconds());
 		});
 
 	tf::Task textureTask = taskflow.for_each_index(0, static_cast<int>(objects->textures_count), 1,
 		[objects, &registry](int i)
 		{
+			PHX_LOG_INFO("Processing Texture '%s'", objects->textures[i].name);
+			PhxEngine::Core::StopWatch timer;
 			ProcessData(
 				objects,
 				objects->textures[i],
 				registry);
+			PhxEngine::Core::TimeStep elapsedTime = timer.Elapsed();
+			PHX_LOG_INFO("Proccessing Texture '%s' took %f s [%f ms]", objects->textures[i].name, elapsedTime.GetSeconds(), elapsedTime.GetMilliseconds());
 		});
 
 	meshTask.succeed(registryMeshNames, registryMtlNames);
@@ -693,5 +758,6 @@ int main(int argc, const char** argv)
 
 	executor.run(std::move(taskflow));
 
+	executor.wait_for_all();
     return 0;
 }
