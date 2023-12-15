@@ -258,7 +258,7 @@ namespace
         LoadingScreen m_loadingScreen;
         std::vector<std::shared_ptr<Editor::IWidgets>> m_widgets;
         std::atomic_bool m_isInitialize = false;
-        PhxEngine::World m_activeWorld;
+        PhxEngine::World::World m_activeWorld;
 	};
 }
 

@@ -8,7 +8,6 @@
 #include <PhxEngine/Core/EnumClassFlags.h>
 #include <PhxEngine/Core/Math.h>
 #include <PhxEngine/Core/Primitives.h>
-#include <PhxEngine/Core/FlexArray.h>
 #include <PhxEngine/Core/Span.h>
 
 using namespace PhxEngine;

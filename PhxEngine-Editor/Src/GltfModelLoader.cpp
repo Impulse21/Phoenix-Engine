@@ -8,7 +8,7 @@
 using namespace PhxEngine;
 using namespace PhxEngine::Editor;
 
-std::future<bool> GltfModelLoader::LoadModelAsync(std::string const& filename, Core::IFileSystem* fileSystem, World& world)
+std::future<bool> GltfModelLoader::LoadModelAsync(std::string const& filename, Core::IFileSystem* fileSystem, World::World& world)
 {
 	return PhxEngine::GetTaskExecutor().async([&]() {
 #if 0 

@@ -9,7 +9,7 @@ namespace PhxEngine::Editor
 	class GltfModelLoader
 	{
 	public:
-		std::future<bool> LoadModelAsync(std::string const& filename, Core::IFileSystem* fileSystem, World& world);
+		std::future<bool> LoadModelAsync(std::string const& filename, Core::IFileSystem* fileSystem, World::World & world);
 
 		void SetProgressCallback(std::function<void(std::string_view, uint32_t, uint32_t)>& func) { this->m_progressCallback = func; }
 		struct CgltfContext

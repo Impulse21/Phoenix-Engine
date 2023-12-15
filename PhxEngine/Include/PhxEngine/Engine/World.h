@@ -1,51 +1,52 @@
 #pragma once
 
 #include <PhxEngine/Core/Object.h>
+#include <PhxEngine/Engine/Components.h>
 #include <PhxEngine/Core/VirtualFileSystem.h>
 
 #include <DirectXMath.h>
 #include <memory>
-namespace PhxEngine
+#include <entt.hpp>
+
+namespace PhxEngine::World
 {
-
-	class Node : public Core::Object, public std::enable_shared_from_this<Node>
-	{
-	public:
-		Node() = default;
-		virtual ~Node() = default;
-
-		const DirectX::XMFLOAT3& GetPostion() const { return this->m_position; };
-		const DirectX::XMFLOAT4& GetRotation() const { return this->m_rotation; };
-		const DirectX::XMFLOAT3& GetScale() const { return this->m_scale; };
-
-	protected:
-		std::weak_ptr<Node> m_parent;
-		std::shared_ptr<Node> m_children;
-
-		DirectX::XMFLOAT3 m_position;
-		DirectX::XMFLOAT4 m_rotation;
-		DirectX::XMFLOAT3 m_scale;
-	};
-
-	class MeshInstanceNode : public Node
-	{
-	public:
-
-	private:
-
-	};
+	class Entity;
 
 	class World
 	{
+		friend Entity;
 	public:
 		World() = default;
 		~World() = default; 
 
 	public:
-		void AttachRoot(std::shared_ptr<Node> root);
+
+		Entity CreateEntity(std::string const& name = std::string());
+		Entity CreateEntity(Core::UUID uuid, std::string const& name = std::string());
+
+		void DestroyEntity(Entity entity);
+
+		void AttachToParent(Entity entity, Entity parent, bool childInLocalSpace = false);
+		void DetachFromParent(Entity entity);
+		void DetachChildren(Entity parent);
+
+		template<typename... Components>
+		auto GetAllEntitiesWith()
+		{
+			return this->m_registry.view<Components...>();
+		}
+
+		template<typename... Components>
+		auto GetAllEntitiesWith() const
+		{
+			return this->m_registry.view<Components...>();
+		}
+
+		entt::registry& GetRegistry() { return this->m_registry; }
+		const entt::registry& GetRegistry() const { return this->m_registry; }
 
 	private:
-		std::shared_ptr<Node> RootNode;
+		entt::registry m_registry;
 	};
 
 	class IWorldLoader
@@ -56,4 +57,9 @@ namespace PhxEngine
 		virtual bool LoadWorld(std::string const& filename, Core::IFileSystem* fileSystem, World& outWorld) = 0;
 	};
 
+	class WorldLoaderFactory
+	{
+	public:
+		static std::unique_ptr<IWorldLoader> Create();
+	};
 }
