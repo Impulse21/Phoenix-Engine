@@ -4,7 +4,7 @@
 #include <DirectXMath.h>
 #include <PhxEngine/Core/UUID.h>
 #include <PhxEngine/Core/Primitives.h>
-#include <PhxEngine/Assets/Mesh.h>
+#include <PhxEngine/Assets/Assets.h>
 #include <entt.hpp>
 
 namespace PhxEngine::World
@@ -323,4 +323,40 @@ namespace PhxEngine::World
 		size_t GlobalBufferIndex = ~0ull;
 	};
 
+	struct LightComponent
+	{
+		enum Flags
+		{
+			kEmpty = 0,
+			kCastShadow = 1 << 0,
+			kEnabled = 1 << 1,
+		};
+
+		uint32_t Flags = kEmpty;
+
+		enum LightType : uint32_t
+		{
+			kDirectionalLight = 0,
+			kOmniLight,
+			kSpotLight,
+			kLightTypeCount
+		} Type = kOmniLight;
+
+		DirectX::XMFLOAT4 Colour = { 1.0f, 1.0f, 1.0f, 1.0f };
+		// PhxEngine::Graphics::PackerRect ShadowRect;
+
+		// helper data
+		DirectX::XMFLOAT3 Direction;
+		DirectX::XMFLOAT3 Position;
+		DirectX::XMFLOAT4 Rotation;
+		DirectX::XMFLOAT3 Scale;
+		uint32_t GlobalBufferIndex = 0;
+		// end Helper data
+
+		float Intensity = 10.0f;
+		float Range = 60.0f;
+		float OuterConeAngle = DirectX::XM_PIDIV4;
+		float InnerConeAngle = 0;
+
+	};
 }

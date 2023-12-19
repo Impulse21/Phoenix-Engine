@@ -45,6 +45,11 @@ namespace PhxEngine::Core
 		virtual bool Unmount(const std::filesystem::path& path) = 0;
 	};
 
+	namespace FileSystem
+	{
+		std::string GetFileNameWithoutExt(std::string const& path);
+	}
+
 	std::unique_ptr<IFileSystem> CreateNativeFileSystem();
 	std::unique_ptr<IFileSystem> CreateRelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::filesystem::path& baseBath);
 	std::unique_ptr<IRootFileSystem> CreateRootFileSystem();

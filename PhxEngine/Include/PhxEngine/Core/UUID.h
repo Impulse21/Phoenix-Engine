@@ -4,7 +4,6 @@
 #include <cstddef>
 namespace PhxEngine::Core 
 {
-
 	class UUID
 	{
 	public:
@@ -16,7 +15,6 @@ namespace PhxEngine::Core
 	private:
 		uint64_t m_uuid;
 	};
-
 }
 
 namespace std 

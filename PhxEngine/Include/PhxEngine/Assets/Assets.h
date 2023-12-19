@@ -1,33 +1,64 @@
 #pragma once
 
+#include <memory>
 #include <PhxEngine/Core/Object.h>
-
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Core/FlexArray.h>
-#include <PhxEngine/Core/RefCountPtr.h>
+#include <PhxEngine/Core/UUID.h>
 #include <json.hpp>
 
 namespace PhxEngine::Assets
 {
-	class IAsset : public Core::Object
+    enum class AssetType
+    {
+        Unkown,
+        Texture,
+        Material,
+        Mesh,
+        Unknown,
+    };
+
+	class Asset : public Core::Object
 	{
 	public:
-		virtual ~IAsset() = default;
+		Asset(AssetType type)
+			: m_assetType(type)
+		{}
+
+		virtual ~Asset() = default;
+
+		Core::UUID GetObjectId() { return this->m_objectId; } 
+		Asset GetResourceType() const { return this->m_assetType; }
+
+	public:
+		template <typename T>
+		static constexpr AssetType TypeToEnum();
+
+	private:
+		AssetType m_assetType;
+		Core::UUID m_objectId;
 	};
 
-	class Material : public Core::RefCounter<IAsset>
+	using AssetRef = std::shared_ptr<Asset>;
+
+	template<class T>
+	using TypedAssetRef = std::shared_ptr<T>;
+
+	class Material : public Asset
 	{
 	public:
-		Material() = default;
+		Material()
+			: Asset(AssetType::Material)
+		{}
 	};
 
-	using MaterialRef = Core::RefCountPtr<Material>;
-
+	using MaterialRef = std::shared_ptr<Material>;
 
 	using MeshMetadata = nlohmann::json;
-	class Mesh : public Core::RefCounter<IAsset>
+	class Mesh : public Asset
 	{
 	public:
+		Mesh();
 		Mesh(MeshMetadata const& metdata);
 
 		struct MeshPart
@@ -68,7 +99,7 @@ namespace PhxEngine::Assets
 			// -- 16 byte boundary ---
 			uint32_t MeshletCullOffset;
 		} m_bufferOffsets;
-		
+
 
 		Core::FlexArray<Geometry> m_geometry;
 		size_t m_numGeometries;
@@ -76,6 +107,5 @@ namespace PhxEngine::Assets
 		// index + vertex + meshlets + meshletCull data
 		RHI::BufferHandle m_generalGpuBuffer;
 	};
-	using MeshRef = Core::RefCountPtr<Mesh>;
+	using MeshRef = std::shared_ptr<Mesh>;
 }
-

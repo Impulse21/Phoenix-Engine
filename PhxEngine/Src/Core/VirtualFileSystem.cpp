@@ -310,3 +310,8 @@ std::unique_ptr<IBlob> PhxEngine::Core::CreateBlob(void* Data, size_t size)
 {
     return std::make_unique<Blob>(Data, size);
 }
+
+std::string PhxEngine::Core::FileSystem::GetFileNameWithoutExt(std::string const& path)
+{
+    return std::filesystem::path(path).stem().generic_string();
+}

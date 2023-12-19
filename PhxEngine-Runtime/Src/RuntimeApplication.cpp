@@ -75,6 +75,7 @@ namespace
                 PHX_LOG_INFO(msg);
                 this->m_loadingScreen.SetCaption(msg);
             };
+            PhxEngine::Assets::AssetsRegistry assetRegisty;
 
             std::string worldFilename;
             if (CommandLineArgs::GetString("world", worldFilename))
@@ -84,15 +85,11 @@ namespace
                 PHX_LOG_INFO("Loading Scene '%s'", worldFilename.c_str());
                 if (std::filesystem::path(worldFilename).extension() == ".gltf")
                 {
+                    std::unique_ptr<PhxEngine::World::IWorldLoader> worldLoader = PhxEngine::World::WorldLoaderFactory::Create();
                     Core::StopWatch stopWatch;
 
-                    /*
-                    Editor::GltfModelLoader loader;
+                    worldLoader->LoadWorld(worldFilename, fileSystem.get(), assetRegisty, this->m_activeWorld);
 
-                    std::future<bool> loadTask = loader.LoadModelAsync(worldFilename, fileSystem.get(), this->m_activeWorld);
-
-                    loadTask.wait();
-                    */
                     Core::TimeStep loadTime = stopWatch.Elapsed();
                     PHX_LOG_INFO("Loading scene took %dms", loadTime.GetMilliseconds());
                 }

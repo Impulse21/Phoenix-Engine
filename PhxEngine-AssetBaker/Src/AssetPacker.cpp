@@ -1,7 +1,7 @@
 #include "AssetPacker.h"
 #include <PhxEngine/Assets/AssetFile.h>
 #include <PhxEngine/Core/Memory.h>
-#include <PhxEngine/Assets/Mesh.h>
+#include <PhxEngine/Assets/Assets.h>
 
 #include <PhxEngine/Core/Log.h>
 
