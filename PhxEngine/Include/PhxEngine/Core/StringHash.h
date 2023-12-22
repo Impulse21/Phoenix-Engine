@@ -45,6 +45,8 @@ namespace PhxEngine::Core
 
 		StringHash(const StringHash& other) = default;
 
+		StringHash()
+			: computedHash(0) {};
 		constexpr operator uint32_t()noexcept { return computedHash; }
 	};
 }

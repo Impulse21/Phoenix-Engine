@@ -5,6 +5,7 @@
 #include <PhxEngine/Core/Memory.h>
 #include <PhxEngine/Renderer/Renderer.h>
 #include <PhxEngine/Core/EventDispatcher.h>
+#include <PhxEngine/Core/Threading.h>
 #include <assert.h>
 
 using namespace PhxEngine;
@@ -26,6 +27,8 @@ namespace
 		PHX_LOG_CORE_INFO("Initailizing Engine Core");
 		
 		PhxEngine::Core::CommandLineArgs::Initialize();
+
+		PhxEngine::Core::Threading::SetMainThread();
 
 		// -- Initialize Task Scheduler ---
 		PHX_LOG_CORE_INFO("Engine has %d workers ", m_taskExecutor.num_workers());

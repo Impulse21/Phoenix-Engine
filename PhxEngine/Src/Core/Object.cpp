@@ -16,6 +16,16 @@ PhxEngine::Core::Object::~Object()
 		ObjectTracker::RemoveInstance(this->m_trackerId);
 }
 
+bool PhxEngine::Core::Object::IsInstanceOf(StringHash type) const
+{
+	return this->GetTypeInfo()->IsTypeOf(type);
+}
+
+bool PhxEngine::Core::Object::IsInstanceOf(const TypeInfo* typeInfo) const
+{
+	return this->GetTypeInfo()->IsTypeOf(typeInfo);
+}
+
 namespace
 {
 	struct ObjectIdImpl
@@ -59,3 +69,40 @@ void ObjectTracker::Finalize()
 	m_trackedObjects.Finalize();
 }
 
+PhxEngine::Core::TypeInfo::TypeInfo(const char* typeName, const TypeInfo* baseTypeInfo)
+	: m_type(typeName)
+	, m_typeName(typeName)
+	, m_baseTypeInfo(baseTypeInfo)
+{
+}
+
+bool PhxEngine::Core::TypeInfo::IsTypeOf(StringHash type) const
+{
+	const TypeInfo* current = this;
+	while (current)
+	{
+		if (current->GetType() == type)
+			return true;
+
+		current = current->GetBaseTypeInfo();
+	}
+
+	return false;
+}
+
+bool PhxEngine::Core::TypeInfo::IsTypeOf(const TypeInfo* typeInfo) const
+{
+	if (typeInfo == nullptr)
+		return false;
+
+	const TypeInfo* current = this;
+	while (current)
+	{
+		if (current == typeInfo || current->GetType() == typeInfo->GetType())
+			return true;
+
+		current = current->GetBaseTypeInfo();
+	}
+
+	return false;
+}
