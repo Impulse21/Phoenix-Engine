@@ -3,6 +3,7 @@
 #include <PhxEngine/Assets/Assets.h>
 #include <PhxEngine/Core/VirtualFileSystem.h>
 #include <PhxEngine/Core/Log.h>
+#include <PhxEngine/Core/HashMap.h>
 
 #include <mutex>
 #include <memory>
@@ -111,7 +112,7 @@ namespace PhxEngine::Assets
 
 	private:
 		std::mutex m_registryMutex;
-		std::unordered_map<Core::StringHash, AssetGroup> m_assetGroups;
+		PhxEngine::Core::unordered_map<Core::StringHash, AssetGroup> m_assetGroups;
 		Core::FlexArray<std::string> m_AssetDirectories;
 
 		// TODO: Async loader
