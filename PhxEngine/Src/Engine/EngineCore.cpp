@@ -19,6 +19,9 @@ namespace
 	RHI::GfxDevice* m_gfxDevice;
 	tf::Executor m_taskExecutor;
 
+	std::unordered_map<Core::StringHash, std::unique_ptr<Object>> m_subSystems;
+	// TODO: Object Factories;
+
 	std::atomic_bool m_engineRunning = false;
 
 	void EngineInitialize()
@@ -94,6 +97,8 @@ namespace
 
 void PhxEngine::Run(IEngineApp& app)
 {
+	app.PreInitialize();
+
 	EngineInitialize();
 
 	app.Initialize();

@@ -23,6 +23,7 @@ namespace PhxEngine::Assets
 		/// BeginLoad() failed.
 		Failed,
 	};
+
 	class Asset : public Core::Object
 	{
 		PHX_OBJECT(Asset, Object);

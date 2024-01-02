@@ -15,6 +15,7 @@ namespace PhxEngine
 	public:
 		virtual ~IEngineApp() = default;
 
+		virtual void PreInitialize() {};
 		virtual void Initialize() = 0;
 		virtual void Finalize() = 0;
 

@@ -316,7 +316,7 @@ namespace PhxEngine::World
 		};
 		uint32_t RenderBucketMask = RenderType::RenderType_All;
 
-		Assets::MeshRef Mesh = nullptr;
+		// Assets::MeshRef Mesh = nullptr;
 		DirectX::XMFLOAT4 Color = DirectX::XMFLOAT4(1, 1, 1, 1);
 		DirectX::XMFLOAT4 EmissiveColor = DirectX::XMFLOAT4(1, 1, 1, 1);
 

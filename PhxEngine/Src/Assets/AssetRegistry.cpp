@@ -1,5 +1,8 @@
 #include <PhxEngine/Assets/AssetRegistry.h>
 
+#include <PhxEngine/Core/Threading.h>
+
+using namespace PhxEngine;
 using namespace PhxEngine::Assets;
 
 
@@ -13,11 +16,6 @@ void AssetsRegistry::ReleaseAssets(std::string const& partialName, bool force)
 
 void AssetsRegistry::ReleaseAllAssets(bool force)
 {
-}
-
-Asset* AssetsRegistry::GetAsset(Core::StringHash type, std::string const& name, bool sendEventOnFailure)
-{
-	return nullptr;
 }
 
 std::shared_ptr<Asset> AssetsRegistry::GetTempAsset(Core::StringHash type, std::string const& name, bool sendEventOnFailure)
@@ -122,6 +120,7 @@ const std::shared_ptr<Asset>& AssetsRegistry::FindAsset(Core::StringHash nameHas
 
     return nullptr;
 }
+
 void AssetsRegistry::UpdateResourceGroup(Core::StringHash type)
 {
     auto groupItr = this->m_assetGroups.find(type);

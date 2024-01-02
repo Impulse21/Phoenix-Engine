@@ -23,6 +23,7 @@ set(CMAKE_CXX_EXTENSIONS ON)
 
 add_definitions(-DUNICODE)
 add_definitions(-D_UNICODE)
+add_compile_definitions(NOMINMAX)
 
 add_subdirectory(PhxEngine)
 add_subdirectory(PhxEngine-Runtime)

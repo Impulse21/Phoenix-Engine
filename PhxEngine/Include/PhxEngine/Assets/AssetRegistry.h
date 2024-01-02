@@ -42,6 +42,32 @@ namespace PhxEngine::Assets
 
 		Asset* GetAsset(Core::StringHash type, std::string const& name, bool sendEventOnFailure = true);
 
+		template<typename T>
+		T* GetAsset(std::string const& name, bool sendEventOnFailure = true)
+		{
+			if (!Core::Threading::IsMainThread())
+			{
+				PHX_LOG_CORE_ERROR("Attempting to load Asset from out side of the main thread %s", name.c_str());
+				return nullptr;
+			}
+
+			Core::StringHash nameHash(name);
+			const std::shared_ptr<Asset>& existing = this->FindAsset(T::GetTypeNameStatic(), nameHash);
+			if (existing)
+			{
+				return existing.get();
+			}
+
+			// Construct the resource
+			if (!T::GetTypeInfoStatic()->IsTypeOf<Asset>());
+			{
+				PHX_LOG_CORE_ERROR("Could not load unknown asset type");
+				return nullptr;
+			}
+
+			return nullptr;
+		}
+
 		std::shared_ptr<Asset> GetTempAsset(Core::StringHash type, std::string const& name, bool sendEventOnFailure = true);
 		bool BackgroundLoadAsset(Core::StringHash type, std::string const& name, bool sendEventOnFailure = true, Asset* caller = nullptr);
 
@@ -61,9 +87,10 @@ namespace PhxEngine::Assets
 
 		template<class T> T* GetExistingAsset(Core::StringHash type, std::string const& name)
 		{
-			return static_cast<T*>(this->GetExistingAsset(T::GetStaticType(), name);
+			// return static_cast<T*>(this->GetExistingAsset(T::GetTypeStatic(), name);
+			return nullptr
 		}
-		template<class T> T* GetAsset(std::string const& name, bool sendEventOnFailure = true)
+		template<class T> T* GetAsset(std::string const& name, bool sendEventOnFailure)
 		{
 			return static_cast<T*>(this->GetAsset(T::GetTypeStatic(), name, sendEventOnFailure));
 		}

@@ -105,6 +105,7 @@ file (GLOB PhxEngine_Shader_Interop_Inc
 	Include/PhxEngine/Shaders/*.h)
 
 
+
 add_library(PhxEngine STATIC EXCLUDE_FROM_ALL  
     ${PhxEngine_Engine_Inc}
     ${PhxEngine_Engine_Src}
@@ -177,8 +178,8 @@ target_link_libraries(${project} PUBLIC
 	D3D12MemoryAllocator
 	mimalloc-static
 	taskflow
-	enkiTS)
-    
+	enkiTS
+	ankerl)
 
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 

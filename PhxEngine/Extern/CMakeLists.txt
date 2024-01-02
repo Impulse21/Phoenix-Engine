@@ -25,6 +25,16 @@ add_library(cgltf INTERFACE
 target_include_directories(cgltf INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/cgltf)
 set_target_properties(cgltf PROPERTIES FOLDER ${extern_folder})
 
+add_library(wyhash INTERFACE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/wyhash/wyhash.h)
+target_include_directories(wyhash INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/wyhash)
+set_target_properties(wyhash PROPERTIES FOLDER ${extern_folder})
+
+add_library(ankerl INTERFACE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/ankerl/unordered_dense.h)
+target_include_directories(ankerl INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/ankerl)
+set_target_properties(ankerl PROPERTIES FOLDER ${extern_folder})
+
 add_library(entt INTERFACE 
     ${CMAKE_CURRENT_SOURCE_DIR}/entt/entt.hpp)
 target_include_directories(entt INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/entt)
