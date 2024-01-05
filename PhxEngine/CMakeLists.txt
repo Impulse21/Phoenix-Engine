@@ -151,7 +151,6 @@ source_group("Src/Renderer"             FILES ${PhxEngine_Renderer_Src})
 source_group("Src/Renderer/ImGui"       FILES ${PhxEngine_Graphics_ImGui_Src})
 source_group("Src/Assets"				FILES ${PhxEngine_Assets_Src})
 
-
 #add_subdirectory(Shaders)
 
 #add_dependencies(${project} ${project}_shaders)
@@ -222,7 +221,7 @@ add_library(
 	"${dstorage-sdk_SOURCE_DIR}/native/bin/x64/dstorage.dll"
 	"${dstorage-sdk_SOURCE_DIR}/native/bin/x64/dstoragecore.dll")
 target_include_directories(DirectStorageSDK INTERFACE "${dstorage-sdk_SOURCE_DIR}/native/include")
-target_link_libraries(DirectStorageSDK INTERFACE "dstorage.lib")
+target_link_libraries(DirectStorageSDK INTERFACE "${dstorage-sdk_SOURCE_DIR}/native/lib/x64/dstorage.lib")
 set_target_properties(DirectStorageSDK  PROPERTIES FOLDER ${extern_folder})
 target_link_libraries(${project} PUBLIC DirectStorageSDK)
 
