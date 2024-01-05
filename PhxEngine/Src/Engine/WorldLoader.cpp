@@ -24,9 +24,8 @@ namespace
 	class GltfWorldLoader : public World::IWorldLoader
 	{
 	public:
-		bool LoadWorld(std::string const& filename, Core::IFileSystem* fileSystem, Assets::AssetsRegistry& assetRegistry, World::World& outWorld) override
+		bool LoadWorld(std::string const& filename, Core::IFileSystem* fileSystem, World::World& outWorld) override
 		{
-			this->m_assetRegistry = &assetRegistry;
 
 			CgltfContext cgltfContext =
 			{
@@ -87,7 +86,7 @@ namespace
 				static size_t meshId = 0;
 
 				auto meshRenderComponent = entity.AddComponent<World::MeshRendererComponent>();
-				meshRenderComponent.Mesh = this->m_assetRegistry->Load<Assets::Mesh>(gltfNode.mesh->name);
+				// meshRenderComponent.Mesh = this->m_assetRegistry->Load<Assets::Mesh>(gltfNode.mesh->name);
 			}
 
 			if (gltfNode.camera)
@@ -206,7 +205,6 @@ namespace
 		}
 
 	private:
-		Assets::AssetsRegistry* m_assetRegistry;
 	};
 }
 std::unique_ptr<World::IWorldLoader> PhxEngine::World::WorldLoaderFactory::Create()

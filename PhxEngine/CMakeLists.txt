@@ -178,7 +178,6 @@ target_link_libraries(${project} PUBLIC
 	D3D12MemoryAllocator
 	mimalloc-static
 	taskflow
-	enkiTS
 	ankerl)
 
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
@@ -211,6 +210,31 @@ add_custom_command(
 
 message("D3D12 Agility SDK fetched")
 
+# D3D12 Storage
+
+message("Fetching DirectStorage SDK")
+FetchContent_Declare(dstorage-sdk URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.DirectStorage/1.2.2)
+FetchContent_MakeAvailable(dstorage-sdk)
+file(GLOB_RECURSE dstorage-sdk_include "${dstorage-sdk_SOURCE_DIR}/native/include/*.h")
+add_library(
+	DirectStorageSDK INTERFACE
+	${dstorage-sdk_include}
+	"${dstorage-sdk_SOURCE_DIR}/native/bin/x64/dstorage.dll"
+	"${dstorage-sdk_SOURCE_DIR}/native/bin/x64/dstoragecore.dll")
+target_include_directories(DirectStorageSDK INTERFACE "${dstorage-sdk_SOURCE_DIR}/native/include")
+target_link_libraries(DirectStorageSDK INTERFACE "dstorage.lib")
+set_target_properties(DirectStorageSDK  PROPERTIES FOLDER ${extern_folder})
+target_link_libraries(${project} PUBLIC DirectStorageSDK)
+
+# Copy DLLs
+add_custom_command(
+	TARGET ${project} POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_directory
+	"${dstorage-sdk_SOURCE_DIR}/native/bin/x64"
+
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/DStorage
+	DEPENDS DirectStorageSDK)
+
 # DXC
 message("Fetching DirectXShaderCompiler")
 FetchContent_Declare(dxc URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.7.2308/dxc_2023_08_14.zip )
@@ -240,6 +264,7 @@ target_link_libraries(${project} PUBLIC DirectXShaderCompiler)
 #	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>
 #	DEPENDS DirectXShaderCompiler)
 message("DirectXShaderCompiler fetched")
+
 
 # PIX
 message("Fetching PIX")

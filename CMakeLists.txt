@@ -27,9 +27,8 @@ add_compile_definitions(NOMINMAX)
 
 add_subdirectory(PhxEngine)
 add_subdirectory(PhxEngine-Runtime)
-add_subdirectory(PhxEngine-AssetBaker)
+add_subdirectory(PhxEngine-AssetPacker)
 add_subdirectory(PhxEngine-Editor)
-add_subdirectory(PhxEngine-ModelViewer)
 
 # Disabling Samples as I work through things
 #add_subdirectory(Examples/BasicTriangle)

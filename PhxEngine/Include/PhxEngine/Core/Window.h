@@ -3,6 +3,7 @@
 #include <memory>
 #include <functional>
 #include <PhxEngine/Core/Events.h>
+#include <string>
 
 namespace PhxEngine::Core
 {

@@ -3,7 +3,6 @@
 #include <PhxEngine/Core/Object.h>
 #include <PhxEngine/Engine/Components.h>
 #include <PhxEngine/Core/VirtualFileSystem.h>
-#include <PhxEngine/Assets/AssetRegistry.h>
 
 #include <DirectXMath.h>
 #include <memory>
@@ -55,7 +54,7 @@ namespace PhxEngine::World
 	public:
 		virtual ~IWorldLoader() = default;
 		
-		virtual bool LoadWorld(std::string const& filename, Core::IFileSystem* fileSystem, Assets::AssetsRegistry& assetRegistry, World& outWorld) = 0;
+		virtual bool LoadWorld(std::string const& filename, Core::IFileSystem* fileSystem, World& outWorld) = 0;
 	};
 
 	class WorldLoaderFactory

@@ -75,7 +75,6 @@ namespace
                 PHX_LOG_INFO(msg);
                 this->m_loadingScreen.SetCaption(msg);
             };
-            PhxEngine::Assets::AssetsRegistry assetRegisty;
 
             std::string worldFilename;
             if (CommandLineArgs::GetString("world", worldFilename))
@@ -88,7 +87,7 @@ namespace
                     std::unique_ptr<PhxEngine::World::IWorldLoader> worldLoader = PhxEngine::World::WorldLoaderFactory::Create();
                     Core::StopWatch stopWatch;
 
-                    worldLoader->LoadWorld(worldFilename, fileSystem.get(), assetRegisty, this->m_activeWorld);
+                    // worldLoader->LoadWorld(worldFilename, fileSystem.get(), assetRegisty, this->m_activeWorld);
 
                     Core::TimeStep loadTime = stopWatch.Elapsed();
                     PHX_LOG_INFO("Loading scene took %dms", loadTime.GetMilliseconds());

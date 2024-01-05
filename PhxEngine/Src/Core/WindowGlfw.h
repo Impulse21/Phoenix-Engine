@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxEngine/Core/Window.h>
+#include <string>
 
 struct GLFWwindow;
 

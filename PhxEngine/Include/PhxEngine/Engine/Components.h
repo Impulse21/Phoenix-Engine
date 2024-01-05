@@ -4,7 +4,6 @@
 #include <DirectXMath.h>
 #include <PhxEngine/Core/UUID.h>
 #include <PhxEngine/Core/Primitives.h>
-#include <PhxEngine/Assets/Assets.h>
 #include <entt.hpp>
 
 namespace PhxEngine::World
