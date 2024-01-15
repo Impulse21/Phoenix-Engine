@@ -18,35 +18,67 @@ namespace PhxEngine::Core
 		return size;
 	}
 
-	struct StringHash
-	{
-		uint32_t computedHash;
+	using Hash32 = uint32_t;
 
+	class StringHash
+	{
+	public:
 		constexpr StringHash(uint32_t hash) noexcept 
-			: computedHash(hash)
+			: m_computedHash(hash)
 		{}
 
-		constexpr StringHash(const char* s) noexcept : computedHash(0)
+		constexpr StringHash(const char* s) noexcept : m_computedHash(0)
 		{
-			computedHash = fnv1a_32(s, const_strlen(s));
+			this->m_computedHash = Calculate(s, const_strlen(s));
 		}
 
 		constexpr StringHash(const char* s, std::size_t count) noexcept 
-			: computedHash(0)
+			: m_computedHash(0)
 		{
-			computedHash = fnv1a_32(s, count);
+			this->m_computedHash = Calculate(s, count);
 		}
 
 		constexpr StringHash(std::string_view s) noexcept
-			: computedHash(0)
+			: m_computedHash(0)
 		{
-			computedHash = fnv1a_32(s.data(), s.size());
+			this->m_computedHash = Calculate(s.data(), s.size());
 		}
 
 		StringHash(const StringHash& other) = default;
 
 		StringHash()
-			: computedHash(0) {};
-		constexpr operator uint32_t()noexcept { return computedHash; }
+			: m_computedHash(0) {};
+
+		constexpr operator Hash32()noexcept { return this->m_computedHash; }
+		explicit operator bool() const { return this->m_computedHash != 0; }
+		Hash32 Value() const { return this->m_computedHash; }
+		Hash32 ToHash() const { return this->m_computedHash; }
+
+		static constexpr Hash32 Calculate(const char* str, size_t count)
+		{
+			return Calculate(str, count);
+		}
+
+	private:
+		Hash32 m_computedHash;
+
+	};
+
+	constexpr StringHash operator ""_hash(const char* s, size_t)
+	{
+		return StringHash(s, const_strlen(s));
+	}
+
+}
+
+namespace std 
+{
+	template <>
+	struct hash<PhxEngine::Core::StringHash> 
+	{
+		size_t operator()(PhxEngine::Core::StringHash const& obj) const
+		{
+			return static_cast<size_t>(obj.ToHash());
+		}
 	};
 }

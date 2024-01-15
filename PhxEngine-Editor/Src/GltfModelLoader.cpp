@@ -4,13 +4,14 @@
 #include <cgltf.h>
 
 #include <taskflow/taskflow.hpp>
-#include <PhxEngine/Engine/EngineCore.h>
+#include <PhxEngine/Engine/EngineRoot.h>
+
 using namespace PhxEngine;
 using namespace PhxEngine::Editor;
 
 std::future<bool> GltfModelLoader::LoadModelAsync(std::string const& filename, Core::IFileSystem* fileSystem, World::World& world)
 {
-	return PhxEngine::GetTaskExecutor().async([&]() {
+	return Engine::GetTaskExecutor().async([&]() {
 #if 0 
 			this->m_filename = std::filesystem::path(filename).lexically_normal().generic_string();
 			CgltfContext cgltfContext =

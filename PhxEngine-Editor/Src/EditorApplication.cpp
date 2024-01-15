@@ -67,8 +67,8 @@ namespace
 
 		void Initialize() override
 		{
-			PhxEngine::GetTaskExecutor().silent_async([this]() {
-				Renderer::ImGuiRenderer::Initialize(GetWindow(), GetGfxDevice(), true);
+            Engine::GetTaskExecutor().silent_async([this]() {
+				Renderer::ImGuiRenderer::Initialize(Engine::GetWindow(), Engine::GetGfxDevice(), true);
 			    Renderer::ImGuiRenderer::EnableDarkThemeColours();
 			    std::unique_ptr<IFileSystem> fileSystem = CreateNativeFileSystem();
 
@@ -121,7 +121,7 @@ namespace
 
 		bool IsShuttingDown() override
 		{
-			return GetWindow()->ShouldClose();
+			return Engine::GetWindow()->ShouldClose();
 		}
 
 		void OnUpdate() override

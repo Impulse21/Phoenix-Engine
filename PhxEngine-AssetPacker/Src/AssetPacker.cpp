@@ -1,4 +1,5 @@
 #include "AssetPacker.h"
+#if false
 #include <PhxEngine/Assets/AssetFile.h>
 #include <PhxEngine/Core/Memory.h>
 #include <PhxEngine/Assets/Assets.h>
@@ -386,3 +387,4 @@ bool AssetPacker::SaveBinary(IFileSystem* fs, const char* filename, AssetFile co
 	outStream.close();
 	return false;
 }
+#endif

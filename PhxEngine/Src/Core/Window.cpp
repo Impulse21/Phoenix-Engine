@@ -1,10 +1,11 @@
 
 #include "PhxEngine/Core/Window.h"
 #include "WindowGlfw.h"
+#include <PhxEngine/Core/Memory.h>
 
 using namespace PhxEngine::Core;
 
-std::unique_ptr<IWindow> WindowFactory::CreateGlfwWindow(WindowSpecification const& spec)
+IWindow* WindowFactory::CreateGlfwWindow(WindowSpecification const& spec)
 {
-	return std::make_unique<WindowGlfw>(spec);
+	return phx_new(WindowGlfw)(spec);
 }

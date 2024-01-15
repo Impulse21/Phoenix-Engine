@@ -1,5 +1,5 @@
 #pragma once
-
+#if false
 #include <PhxEngine/Assets/AssetFile.h>
 #include "ModelInfoBuilder.h"
 #include <PhxEngine/Core/VirtualFileSystem.h>
@@ -18,3 +18,4 @@ protected:
 
 protected:
 };
+#endif

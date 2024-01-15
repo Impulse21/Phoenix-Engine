@@ -1,16 +1,13 @@
 #define NOMINMAX 
 #include <PhxEngine/PhxEngine.h>
+#if 0
 #include <stdint.h>
-#include <PhxEngine/Core/CommandLineArgs.h>
-#include <PhxEngine/Core/VirtualFileSystem.h>
 #include <PhxEngine/Core/Memory.h>
 #include <PhxEngine/Core/StopWatch.h>
 #include <taskflow/taskflow.hpp>
 #include <taskflow/algorithm/for_each.hpp>
 
-#define CGLTF_IMPLEMENTATION
-#include <cgltf.h>
-#include <PhxEngine/Assets/AssetFile.h>
+
 
 #include "ModelInfoBuilder.h"
 #include "AssetPacker.h"
@@ -19,10 +16,25 @@
 #include <mutex>
 #include <functional>
 
+#else
+#include <assert.h>
+
+#include <PhxEngine/Core/CommandLineArgs.h>
+#include <PhxEngine/Core/VirtualFileSystem.h>
+
+#define CGLTF_IMPLEMENTATION
+#include <cgltf.h>
+
+#include "ArchExporter.h"
+#endif
+
+using namespace PhxEngine;
+
 namespace
 {
 	constexpr const char* EmptyString = "";
 }
+
 namespace GltfHelpers
 {
 	// glTF only support DDS images through the MSFT_texture_dds extension.
@@ -125,8 +137,8 @@ namespace GltfHelpers
 
 	struct CgltfContext
 	{
-		std::shared_ptr<IFileSystem> FileSystem;
-		std::vector<std::shared_ptr<IBlob>> Blobs;
+		std::shared_ptr<Core::IFileSystem> FileSystem;
+		std::vector<std::shared_ptr<Core::IBlob>> Blobs;
 	};
 
 	static cgltf_result CgltfReadFile(
@@ -138,7 +150,7 @@ namespace GltfHelpers
 	{
 		CgltfContext* context = (CgltfContext*)file_options->user_data;
 
-		std::unique_ptr<IBlob> dataBlob = context->FileSystem->ReadFile(path);
+		std::unique_ptr<Core::IBlob> dataBlob = context->FileSystem->ReadFile(path);
 		if (!dataBlob)
 		{
 			return cgltf_result_file_not_found;
@@ -217,6 +229,7 @@ namespace
 		return std::make_pair(Data, stride);
 	}
 
+#if false
 	struct MeshProcessDataOptions
 	{
 		bool ReverseWinding = true;
@@ -630,28 +643,23 @@ namespace
 	{
 
 	}
-
-	class AssetFileExporter
-	{
-	public:
-		static void Export(IFileSystem* fs, std::string const& filename);
-	};
+#endif
 }
 
 int main(int argc, const char** argv)
 {
     Core::Log::Initialize();
-	CommandLineArgs::Initialize();
+	Core::CommandLineArgs::Initialize();
 
 	std::string gltfInput;
-	CommandLineArgs::GetString("input", gltfInput);
+	Core::CommandLineArgs::GetString("input", gltfInput);
 
 	std::string outputDirectory;
-	CommandLineArgs::GetString("output_dir", outputDirectory);
+	Core::CommandLineArgs::GetString("output_dir", outputDirectory);
 
 	PHX_LOG_INFO("Baking Assets from %s to %s", gltfInput.c_str(), outputDirectory.c_str());
 
-	std::unique_ptr<Core::IFileSystem> fileSystem = CreateNativeFileSystem();
+	std::unique_ptr<Core::IFileSystem> fileSystem = Core::CreateNativeFileSystem();
 	
 	// Load GLF File into memory
 	CgltfContext cgltfContext =
@@ -687,6 +695,7 @@ int main(int argc, const char** argv)
 		return false;
 	}
 
+#if false
 	// Dispatch Async work to construct data
 	tf::Executor executor;
 	tf::Taskflow taskflow;
@@ -757,7 +766,21 @@ int main(int argc, const char** argv)
 	textureTask.succeed(registryTextureNames);
 
 	executor.run(std::move(taskflow));
-
 	executor.wait_for_all();
+#endif
+	std::filesystem::path inputPath(gltfInput);
+	std::string filename = inputPath.stem().generic_string() + ".phxpkt";
+	std::ofstream outStream(filename, std::ios::out | std::ios::trunc | std::ios::binary);
+
+	if (!outStream.is_open())
+	{
+		PHX_LOG_ERROR("Failed to open file %s", filename);
+		return false;
+	}
+
+	ArchGltfExporter gltfExporter(outStream, objects);
+	gltfExporter.Export();
+	outStream.close();
+
     return 0;
 }
