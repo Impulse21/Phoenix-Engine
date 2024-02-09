@@ -14,6 +14,8 @@ public:
 };
 
 struct cgltf_data;
+struct cgltf_mesh;
+struct cgltf_material;
 
 class ArchGltfExporter : public IArchExporter
 {
@@ -26,7 +28,11 @@ public:
 	void Export() override;
 
 private:
-	PhxEngine::Assets::PhxArch::Region<PhxEngine::Assets::PhxArch::CpuMetadataHeader> WriteCpuMetadata();
+	PhxEngine::Assets::PhxArch::Region<PhxEngine::Assets::PhxArch::AssetEntriesHeader> WriteAssetEntries();
+    void ExportMesh(std::stringstream& s, PhxEngine::Assets::PhxArch::AssetEntry& entry, cgltf_mesh const& gltfMesh);
+    void ExportMtl(std::stringstream& s, PhxEngine::Assets::PhxArch::AssetEntry& entry, cgltf_material const& gltfMtl);
+
+private:
 
     template<typename T, typename C>
     PhxEngine::Assets::PhxArch::Region<T> WriteRegion(C uncompressedRegion, char const* name)

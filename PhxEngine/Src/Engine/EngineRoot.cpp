@@ -5,6 +5,9 @@
 #include <PhxEngine/Core/Log.h>
 #include <PhxEngine/Core/EventDispatcher.h>
 #include <PhxEngine/Core/Window.h>
+#include <PhxEngine/Core/StringHashTable.h>
+#include <PhxEngine/Assets/AssetModule.h>
+#include <json.hpp>
 
 using namespace PhxEngine::Core;
 
@@ -14,6 +17,8 @@ void PhxEngine::Engine::Initialize()
 	PHX_LOG_CORE_INFO("Initailizing Engine Core");
 
 	PhxEngine::Core::CommandLineArgs::Initialize();
+
+	PhxEngine::Core::StringHashTable::Import(StringHashTableFilePath);
 
 	PhxEngine::Core::Threading::SetMainThread();
 
@@ -55,10 +60,18 @@ void PhxEngine::Engine::Initialize()
 
 		m_gfxDevice->ResizeSwapchain(swapchainDesc);
 		});
+
+	const nlohmann::json config = nlohmann::json::parse(R"(
+		{
+		})");
+
+	Assets::AssetModule::InitializeWindows(m_gfxDevice, config);
 }
 
 void PhxEngine::Engine::Finalize()
 {
+	Assets::AssetModule::Finalize();
+
 	m_engineRunning.store(false);
 	m_taskExecutor.wait_for_all();
 

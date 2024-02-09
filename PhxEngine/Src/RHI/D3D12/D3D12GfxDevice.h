@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <functional>
 
-#include <PhxEngine/RHI/PhxRHI.h>
+#include <PhxEngine/RHI/PhxRHI_D3D12.h>
 #include <PhxEngine/Core/BitSetAllocator.h>
 #include <PhxEngine/Core/Pool.h>
 #include <PhxEngine/Core/Math.h>
@@ -361,7 +361,7 @@ namespace PhxEngine::RHI::D3D12
         static HRESULT EnumAdapters(uint32_t adapterIndex, IDXGIFactory6* factory6, IDXGIAdapter1** outAdapter);
     };
 
-	class D3D12GfxDevice final : public RHI::IGfxDevice
+	class D3D12GfxDevice final : public ID3D12GfxDevice
 	{
 	public:
         D3D12GfxDevice();
@@ -663,12 +663,12 @@ namespace PhxEngine::RHI::D3D12
 
         // -- Getters ---
     public:
-        Microsoft::WRL::ComPtr<ID3D12Device> GetD3D12Device() { return this->m_rootDevice; }
-        Microsoft::WRL::ComPtr<ID3D12Device2> GetD3D12Device2() { return this->m_rootDevice2; }
-        Microsoft::WRL::ComPtr<ID3D12Device5> GetD3D12Device5() { return this->m_rootDevice5; }
+        Microsoft::WRL::ComPtr<ID3D12Device> GetD3D12Device() override{ return this->m_rootDevice; }
+        Microsoft::WRL::ComPtr<ID3D12Device2> GetD3D12Device2() override { return this->m_rootDevice2; }
+        Microsoft::WRL::ComPtr<ID3D12Device5> GetD3D12Device5() override { return this->m_rootDevice5; }
 
-        Microsoft::WRL::ComPtr<IDXGIFactory6> GetDxgiFactory() { return this->m_factory; }
-        Microsoft::WRL::ComPtr<IDXGIAdapter> GetDxgiAdapter() { return this->m_gpuAdapter.NativeAdapter; }
+        Microsoft::WRL::ComPtr<IDXGIFactory6> GetDxgiFactory() override { return this->m_factory; }
+        Microsoft::WRL::ComPtr<IDXGIAdapter> GetDxgiAdapter() override { return this->m_gpuAdapter.NativeAdapter; }
 
     public:
         D3D12CommandQueue& GetGfxQueue() { return this->GetQueue(CommandQueueType::Graphics); }

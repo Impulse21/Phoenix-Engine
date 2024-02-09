@@ -1,7 +1,7 @@
 file(GLOB sources "Src/*.cpp" "Src/*.h")
 
-set(project PhxEngine-AssetPacker)
-set(folder "Applications/Offline")
+set(project PhxAssetConverter)
+set(folder "Applications/Tools")
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /ENTRY:mainCRTStartup")
 add_executable(${project} WIN32 ${sources})

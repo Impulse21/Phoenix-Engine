@@ -56,7 +56,7 @@ namespace PhxEngine::Core
 
 		static constexpr Hash32 Calculate(const char* str, size_t count)
 		{
-			return Calculate(str, count);
+			return fnv1a_32(str, count);
 		}
 
 	private:

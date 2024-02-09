@@ -1,13 +1,13 @@
 #define NOMINMAX 
 #include <PhxEngine/PhxEngine.h>
+#include <PhxEngine/Core/StringHashTable.h>
+
 #if 0
 #include <stdint.h>
 #include <PhxEngine/Core/Memory.h>
 #include <PhxEngine/Core/StopWatch.h>
 #include <taskflow/taskflow.hpp>
 #include <taskflow/algorithm/for_each.hpp>
-
-
 
 #include "ModelInfoBuilder.h"
 #include "AssetPacker.h"
@@ -26,6 +26,7 @@
 #include <cgltf.h>
 
 #include "ArchExporter.h"
+#include <PhxEngine/Assets/AssetFormats.h>
 #endif
 
 using namespace PhxEngine;
@@ -650,15 +651,15 @@ int main(int argc, const char** argv)
 {
     Core::Log::Initialize();
 	Core::CommandLineArgs::Initialize();
-
 	std::string gltfInput;
 	Core::CommandLineArgs::GetString("input", gltfInput);
+
 
 	std::string outputDirectory;
 	Core::CommandLineArgs::GetString("output_dir", outputDirectory);
 
 	PHX_LOG_INFO("Baking Assets from %s to %s", gltfInput.c_str(), outputDirectory.c_str());
-
+	Core::StringHashTable::Import(StringHashTableFilePath);
 	std::unique_ptr<Core::IFileSystem> fileSystem = Core::CreateNativeFileSystem();
 	
 	// Load GLF File into memory
@@ -769,8 +770,10 @@ int main(int argc, const char** argv)
 	executor.wait_for_all();
 #endif
 	std::filesystem::path inputPath(gltfInput);
-	std::string filename = inputPath.stem().generic_string() + ".phxpkt";
-	std::ofstream outStream(filename, std::ios::out | std::ios::trunc | std::ios::binary);
+	std::filesystem::path outputPath(outputDirectory);
+	std::filesystem::path filename = inputPath.stem().generic_string() + ".ppkt";
+	std::filesystem::path outputFilename = (outputDirectory / filename);
+	std::ofstream outStream(outputFilename.generic_string().c_str(), std::ios::out | std::ios::trunc | std::ios::binary);
 
 	if (!outStream.is_open())
 	{
@@ -782,5 +785,6 @@ int main(int argc, const char** argv)
 	gltfExporter.Export();
 	outStream.close();
 
+	Core::StringHashTable::Export(StringHashTableFilePath);
     return 0;
 }

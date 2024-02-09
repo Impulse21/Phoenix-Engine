@@ -4,6 +4,8 @@
 #include <PhxEngine/Core/StopWatch.h>
 #include <PhxEngine/Renderer/ImGuiRenderer.h>
 #include <PhxEngine/Engine/World.h>
+#include <PhxEngine/Assets/PhxPktFileManager.h>
+
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -68,41 +70,18 @@ namespace
             Engine::GetTaskExecutor().silent_async([this]() {
                 Renderer::ImGuiRenderer::Initialize(Engine::GetWindow(), Engine::GetGfxDevice(), true);
 
-            Renderer::ImGuiRenderer::EnableDarkThemeColours();
-            std::unique_ptr<IFileSystem> fileSystem = CreateNativeFileSystem();
+                Renderer::ImGuiRenderer::EnableDarkThemeColours();
+                std::unique_ptr<IFileSystem> fileSystem = CreateNativeFileSystem();
 
-            auto postMsgWithLog = [this](const char* msg) {
-                PHX_LOG_INFO(msg);
-                this->m_loadingScreen.SetCaption(msg);
-            };
+                auto postMsgWithLog = [this](const char* msg) {
+                    PHX_LOG_INFO(msg);
+                    this->m_loadingScreen.SetCaption(msg);
+                };
 
-            std::string worldFilename;
-            if (CommandLineArgs::GetString("world", worldFilename))
-            {
-                // Load World
-                postMsgWithLog("Loading Scene");
-                PHX_LOG_INFO("Loading Scene '%s'", worldFilename.c_str());
-                if (std::filesystem::path(worldFilename).extension() == ".gltf")
-                {
-                    std::unique_ptr<PhxEngine::World::IWorldLoader> worldLoader = PhxEngine::World::WorldLoaderFactory::Create();
-                    Core::StopWatch stopWatch;
-
-                    // worldLoader->LoadWorld(worldFilename, fileSystem.get(), assetRegisty, this->m_activeWorld);
-
-                    Core::TimeStep loadTime = stopWatch.Elapsed();
-                    PHX_LOG_INFO("Loading scene took %dms", loadTime.GetMilliseconds());
-                }
-            }
-            else
-            {
-                postMsgWithLog("Loading Default World");
-
-                postMsgWithLog("Checking if meshes are on disk, if not loaded");
-
-            }
-
-            this->m_isInitialize.store(true);
-                });
+                // Register Path
+                Assets::PhxPktFileManager::AddFile("C:\\Users\\dipao\\source\\repos\\Impulse21\\Phoenix-Engine\\Assets\\Baked\\NewSponza_Main_glTF.phxpkt");
+                this->m_isInitialize.store(true);
+            });
         }
 
         void Finalize() override
@@ -132,6 +111,9 @@ namespace
                 return;
             }
 
+            Assets::PhxPktFileManager::RenderDebugWindow();
+
+            // Render Registries
         }
 
         void OnCompose(RHI::CommandListHandle composeCmdList) override

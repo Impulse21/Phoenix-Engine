@@ -67,10 +67,11 @@ namespace
 
 		void Initialize() override
 		{
+            Renderer::ImGuiRenderer::Initialize(Engine::GetWindow(), Engine::GetGfxDevice(), true);
+            Renderer::ImGuiRenderer::EnableDarkThemeColours();
+
             Engine::GetTaskExecutor().silent_async([this]() {
-				Renderer::ImGuiRenderer::Initialize(Engine::GetWindow(), Engine::GetGfxDevice(), true);
-			    Renderer::ImGuiRenderer::EnableDarkThemeColours();
-			    std::unique_ptr<IFileSystem> fileSystem = CreateNativeFileSystem();
+			    std::shared_ptr<IFileSystem> fileSystem = CreateNativeFileSystem();
 
 			    auto postMsgWithLog = [this](const char* msg) {
 			    	PHX_LOG_INFO(msg);
@@ -104,8 +105,10 @@ namespace
 			    }
 			    else
 			    {
-			    	postMsgWithLog("Loading Default World");
+			    	postMsgWithLog("Mounting Phx Asset Packet");
+                    std::unique_ptr<IFileSystem> assetDir = CreateRelativeFileSystem(fileSystem, "C:\\Users\\dipao\\source\\repos\\Impulse21\\Phoenix-Engine\\Assets\\Baked");
 
+                    
                     postMsgWithLog("Checking if meshes are on disk, if not loaded");
 
 			    }

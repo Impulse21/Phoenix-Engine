@@ -27,7 +27,7 @@ add_compile_definitions(NOMINMAX)
 
 add_subdirectory(PhxEngine)
 add_subdirectory(PhxEngine-Runtime)
-add_subdirectory(PhxEngine-AssetPacker)
+add_subdirectory(Tools/PhxAssetConverter)
 add_subdirectory(PhxEngine-Editor)
 
 # Disabling Samples as I work through things
