@@ -192,6 +192,7 @@ bool PhxEngine::Pipeline::GltfAssetImporter::ImportMesh(cgltf_mesh* gltfMesh, Pi
 	{
 		const auto& cgltfPrim = gltfMesh->primitives[iPrim];
 		MeshPart& meshPart = outMesh.MeshParts[iPrim];
+		meshPart.MaterialHandle = this->m_materialIndexLut[cgltfPrim.material];
 		if (cgltfPrim.type != cgltf_primitive_type_triangles ||
 			cgltfPrim.attributes_count == 0)
 		{
@@ -325,7 +326,7 @@ bool PhxEngine::Pipeline::GltfAssetImporter::ImportMesh(cgltf_mesh* gltfMesh, Pi
 
 			auto [positionSrc, positionStride] = CgltfBufferAccessor(cgltfPositionsAccessor, sizeof(float) * stream.NumComponents);
 
-			stream.Data.resize(positionStride* cgltfPositionsAccessor->count);
+			stream.Data.resize(stream.NumComponents * cgltfPositionsAccessor->count);
 			std::memcpy(
 				stream.Data.data(),
 				positionSrc,
@@ -339,7 +340,7 @@ bool PhxEngine::Pipeline::GltfAssetImporter::ImportMesh(cgltf_mesh* gltfMesh, Pi
 
 			auto [normalSrc, normalStride] = CgltfBufferAccessor(cgltfNormalsAccessor, sizeof(float) * stream.NumComponents);
 
-			stream.Data.resize(normalStride* cgltfNormalsAccessor->count);
+			stream.Data.resize(stream.NumComponents* cgltfNormalsAccessor->count);
 			std::memcpy(
 				stream.Data.data(),
 				normalSrc,
@@ -348,39 +349,47 @@ bool PhxEngine::Pipeline::GltfAssetImporter::ImportMesh(cgltf_mesh* gltfMesh, Pi
 
 		if (cgltfTangentsAccessor)
 		{
-			VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::Normals)];
+			VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::Tangents)];
 			stream.NumComponents = 4;
 
-			mesh.Flags |= MeshComponent::Flags::kContainsTangents;
-			auto [tangentSrc, tangentStride] = CgltfBufferAccessor(cgltfTangentsAccessor, sizeof(float) * 4);
+			auto [tangentSrc, tangentStride] = CgltfBufferAccessor(cgltfTangentsAccessor, sizeof(float) * stream.NumComponents);
 
-			// Do a mem copy?
+			stream.Data.resize(stream.NumComponents * cgltfTangentsAccessor->count);
 			std::memcpy(
-				mesh.Tangents,
+				stream.Data.data(),
 				tangentSrc,
 				tangentStride * cgltfTangentsAccessor->count);
 		}
 
 		if (cgltfTexCoordsAccessor)
 		{
-			mesh.Flags |= MeshComponent::Flags::kContainsTexCoords;
 			assert(cgltfTexCoordsAccessor->count == cgltfPositionsAccessor->count);
 
-			auto [texcoordSrc, texcoordStride] = CgltfBufferAccessor(cgltfTexCoordsAccessor, sizeof(float) * 2);
+			VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::TexCoords)];
+			stream.NumComponents = 2;
+			auto [texcoordSrc, texcoordStride] = CgltfBufferAccessor(cgltfTexCoordsAccessor, sizeof(float) * stream.NumComponents);
 
+			stream.Data.resize(stream.NumComponents* cgltfTexCoordsAccessor->count);
 			std::memcpy(
-				mesh.TexCoords,
+				stream.Data.data(),
 				texcoordSrc,
 				texcoordStride * cgltfTexCoordsAccessor->count);
 		}
-		else
+
+		if (cgltfTexCoord2sAccessor)
 		{
-			std::memset(
-				mesh.TexCoords,
-				0.0f,
-				cgltfPositionsAccessor->count * sizeof(float) * 2);
+			VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::TexCoords1)];
+			stream.NumComponents = 2;
+			auto [texcoordSrc, texcoordStride] = CgltfBufferAccessor(cgltfTexCoord2sAccessor, sizeof(float) * stream.NumComponents);
+
+			stream.Data.resize(stream.NumComponents* cgltfTexCoord2sAccessor->count);
+			std::memcpy(
+				stream.Data.data(),
+				texcoordSrc,
+				texcoordStride * cgltfTexCoord2sAccessor->count);
 		}
 	}
+
 	return true;
 }
 
