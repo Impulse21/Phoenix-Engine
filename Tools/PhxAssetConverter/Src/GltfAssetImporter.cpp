@@ -199,14 +199,6 @@ bool PhxEngine::Pipeline::GltfAssetImporter::ImportMesh(cgltf_mesh* gltfMesh, Pi
 			continue;
 		}
 
-		if (cgltfPrim.indices)
-		{
-			assert(cgltfPrim.indices->component_type == cgltf_component_type_r_32u ||
-				cgltfPrim.indices->component_type == cgltf_component_type_r_16u ||
-				cgltfPrim.indices->component_type == cgltf_component_type_r_8u);
-			assert(cgltfPrim.indices->type == cgltf_type_scalar);
-		}
-
 		const cgltf_accessor* cgltfPositionsAccessor = nullptr;
 		const cgltf_accessor* cgltfTangentsAccessor = nullptr;
 		const cgltf_accessor* cgltfNormalsAccessor = nullptr;
@@ -255,138 +247,95 @@ bool PhxEngine::Pipeline::GltfAssetImporter::ImportMesh(cgltf_mesh* gltfMesh, Pi
 			}
 		}
 
-		
-		meshPart.Indices.resize(cgltfPrim.indices->count);
+		auto SetBufferDataFunc = [](uint32_t index, const cgltf_accessor* accessor, VertexStream& stream, float defaultValue = 1.0f){
+				if (accessor)
+				{
+					auto [data, dataStride] = CgltfBufferAccessor(accessor, sizeof(float) * stream.NumComponents);
+
+					for (int i = 0; i < stream.NumComponents; i++)
+					{
+						stream.Data.push_back(*(data + i + dataStride * index));
+					}
+				}
+				else
+				{
+					for (int i = 0; i < stream.NumComponents; i++)
+					{
+						stream.Data.push_back(defaultValue);
+					}
+				}
+			};
+		auto SetVertexStreamDataFunc = [&](uint32_t index){
+
+				if (cgltfPositionsAccessor)
+				{
+					VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::Position)];
+					SetBufferDataFunc(index, cgltfPositionsAccessor, stream);
+				}
+
+				{
+					VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::Normals)];
+					SetBufferDataFunc(index, cgltfNormalsAccessor, stream);
+				}
+
+				{
+					VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::Tangents)];
+					SetBufferDataFunc(index, cgltfTangentsAccessor, stream);
+				}
+
+				{
+					assert(cgltfTexCoordsAccessor->count == cgltfPositionsAccessor->count);
+
+					VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::TexCoords)];
+					SetBufferDataFunc(index, cgltfTexCoordsAccessor, stream);
+				}
+
+				{
+					VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::TexCoords1)];
+					SetBufferDataFunc(index, cgltfTexCoord2sAccessor, stream);
+				}
+
+				VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::Colour)];
+				SetBufferDataFunc(index, nullptr, stream);
+			};
 
 		assert(cgltfPositionsAccessor);
 		if (cgltfPrim.indices)
 		{
-			size_t indexCount = cgltfPrim.indices->count;
+			const size_t indexCount = cgltfPrim.indices->count;
+
+			for (size_t i = 0; i < static_cast<size_t>(VertexStreamType::NumStreams); i++)
+			{
+				meshPart.VertexStreams[i].Data.reserve(indexCount);
+			}
 
 			// copy the indices
 			auto [indexSrc, indexStride] = CgltfBufferAccessor(cgltfPrim.indices, 0);
 
-			uint32_t* indexDst = meshPart.Indices.data();
-			switch (cgltfPrim.indices->component_type)
+			if (!indexStride)
 			{
-			case cgltf_component_type_r_8u:
-				if (!indexStride)
+				switch (cgltfPrim.indices->component_type)
 				{
+				case cgltf_component_type_r_8u:
 					indexStride = sizeof(uint8_t);
-				}
 
-				for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
-				{
-					*indexDst = *(const uint8_t*)indexSrc;
+					break;
 
-					indexSrc += indexStride;
-					indexDst++;
-				}
-				break;
-
-			case cgltf_component_type_r_16u:
-				if (!indexStride)
-				{
+				case cgltf_component_type_r_16u:
 					indexStride = sizeof(uint16_t);
-				}
+					break;
 
-				for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
-				{
-					*indexDst = *(const uint16_t*)indexSrc;
-
-					indexSrc += indexStride;
-					indexDst++;
-				}
-				break;
-
-			case cgltf_component_type_r_32u:
-				if (!indexStride)
-				{
+				case cgltf_component_type_r_32u:
 					indexStride = sizeof(uint32_t);
+				default:
+					assert(false);
 				}
-
-				for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
-				{
-					*indexDst = *(const uint32_t*)indexSrc;
-
-					indexSrc += indexStride;
-					indexDst++;
-				}
-				break;
-
-			default:
-				assert(false);
 			}
-		}
 
-		if (cgltfPositionsAccessor)
-		{
-			VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::Position)];
-			stream.NumComponents = 3;
-
-			auto [positionSrc, positionStride] = CgltfBufferAccessor(cgltfPositionsAccessor, sizeof(float) * stream.NumComponents);
-
-			stream.Data.resize(stream.NumComponents * cgltfPositionsAccessor->count);
-			std::memcpy(
-				stream.Data.data(),
-				positionSrc,
-				positionStride * cgltfPositionsAccessor->count);
-		}
-
-		if (cgltfNormalsAccessor)
-		{
-			VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::Normals)];
-			stream.NumComponents = 3;
-
-			auto [normalSrc, normalStride] = CgltfBufferAccessor(cgltfNormalsAccessor, sizeof(float) * stream.NumComponents);
-
-			stream.Data.resize(stream.NumComponents* cgltfNormalsAccessor->count);
-			std::memcpy(
-				stream.Data.data(),
-				normalSrc,
-				normalStride * cgltfNormalsAccessor->count);
-		}
-
-		if (cgltfTangentsAccessor)
-		{
-			VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::Tangents)];
-			stream.NumComponents = 4;
-
-			auto [tangentSrc, tangentStride] = CgltfBufferAccessor(cgltfTangentsAccessor, sizeof(float) * stream.NumComponents);
-
-			stream.Data.resize(stream.NumComponents * cgltfTangentsAccessor->count);
-			std::memcpy(
-				stream.Data.data(),
-				tangentSrc,
-				tangentStride * cgltfTangentsAccessor->count);
-		}
-
-		if (cgltfTexCoordsAccessor)
-		{
-			assert(cgltfTexCoordsAccessor->count == cgltfPositionsAccessor->count);
-
-			VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::TexCoords)];
-			stream.NumComponents = 2;
-			auto [texcoordSrc, texcoordStride] = CgltfBufferAccessor(cgltfTexCoordsAccessor, sizeof(float) * stream.NumComponents);
-
-			stream.Data.resize(stream.NumComponents* cgltfTexCoordsAccessor->count);
-			std::memcpy(
-				stream.Data.data(),
-				texcoordSrc,
-				texcoordStride * cgltfTexCoordsAccessor->count);
-		}
-
-		if (cgltfTexCoord2sAccessor)
-		{
-			VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::TexCoords1)];
-			stream.NumComponents = 2;
-			auto [texcoordSrc, texcoordStride] = CgltfBufferAccessor(cgltfTexCoord2sAccessor, sizeof(float) * stream.NumComponents);
-
-			stream.Data.resize(stream.NumComponents* cgltfTexCoord2sAccessor->count);
-			std::memcpy(
-				stream.Data.data(),
-				texcoordSrc,
-				texcoordStride * cgltfTexCoord2sAccessor->count);
+			for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
+			{
+				SetVertexStreamDataFunc(*(indexSrc + iIdx * indexStride));
+			}
 		}
 	}
 

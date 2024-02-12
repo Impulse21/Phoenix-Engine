@@ -30,7 +30,10 @@ namespace PhxEngine::Pipeline
 		PhxEngine::Core::FlexArray<float> Data;
 		size_t NumComponents;
 
-		bool IsEmpty() const { return this->Data.empty(); }
+		[[nodiscard]] bool IsEmpty() const { return this->Data.empty(); }
+		[[nodiscard]] size_t GetNumElements() const { return this->Data.size() / NumComponents; }
+
+		operator float* () { return Data.data(); }
 	};
 
 	struct MeshPart
@@ -38,11 +41,36 @@ namespace PhxEngine::Pipeline
 		size_t MaterialHandle = ~0u;
 		std::array<VertexStream, static_cast<size_t>(VertexStreamType::NumStreams)> VertexStreams;
 		PhxEngine::Core::FlexArray<uint32_t> Indices;
+
+		MeshPart()
+		{
+			this->GetStream(VertexStreamType::Position).NumComponents = 3;
+			this->GetStream(VertexStreamType::Colour).NumComponents = 3;
+			this->GetStream(VertexStreamType::Tangents).NumComponents = 4;
+			this->GetStream(VertexStreamType::Normals).NumComponents = 3;
+			this->GetStream(VertexStreamType::TexCoords).NumComponents = 2;
+			this->GetStream(VertexStreamType::TexCoords1).NumComponents = 2;
+		}
+
+		[[nodiscard]] size_t GetNumVertices() const 
+		{ 
+			return this->VertexStreams[static_cast<size_t>(Pipeline::VertexStreamType::Position)].GetNumElements();
+		}
+
+		[[nodiscard]] size_t HasIndices() const
+		{
+			return !this->Indices.empty();
+		}
+
+		[[nodiscard]] VertexStream& GetStream(VertexStreamType type)
+		{
+			return this->VertexStreams[static_cast<size_t>(type)];
+		}
 	};
 
 	struct Mesh
 	{
-		std::string_view Name;
+		std::string Name;
 		Core::FlexArray<MeshPart> MeshParts;
 		Core::Sphere BoundingSphere;
 		Core::AABB BoundingBox;

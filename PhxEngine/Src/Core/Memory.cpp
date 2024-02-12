@@ -330,6 +330,11 @@ void* PhxEngine::Core::LinearAllocator::Allocate(size_t size, size_t alignment)
 	return this->m_memory + newStart;
 }
 
+void* PhxEngine::Core::LinearAllocator::AllocArray(size_t size, size_t count, size_t alignment)
+{
+	return this->Allocate(size * count, alignment);
+}
+
 void* PhxEngine::Core::LinearAllocator::Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum)
 {
 	return this->Allocate(size, alignment);

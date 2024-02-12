@@ -217,11 +217,11 @@ namespace PhxEngine::Core
 		void Finalize() override;
 
 		void* Allocate(size_t size, size_t alignment) override;
-        void* AllocArray(size_t size, size_t count, size_t alignment) override {};
+        void* AllocArray(size_t size, size_t count, size_t alignment) override;
 		void* Allocate(size_t size, size_t alignment, std::string file, int32_t lineNum) override;
 
-        void* Rellocate(void* ptr, size_t size, size_t alignment);
-        void* ReallocArray(void* ptr, size_t size, size_t count, size_t alignment);
+        void* Rellocate(void* ptr, size_t size, size_t alignment) override { return nullptr; };
+        void* ReallocArray(void* ptr, size_t size, size_t count, size_t alignment) override { return nullptr; }
 
 		void Free(void* pointer) override;
 
