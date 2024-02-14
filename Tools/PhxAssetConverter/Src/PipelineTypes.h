@@ -7,6 +7,9 @@
 #include <PhxEngine/Core/FlexArray.h>
 #include <PhxEngine/Core/Primitives.h>
 
+#include <meshoptimizer.h>
+
+
 namespace PhxEngine::Core
 {
 	class IBlob;
@@ -32,7 +35,7 @@ namespace PhxEngine::Pipeline
 
 		[[nodiscard]] bool IsEmpty() const { return this->Data.empty(); }
 		[[nodiscard]] size_t GetNumElements() const { return this->Data.size() / NumComponents; }
-
+		[[nodiscard]] size_t GetElementStride() const { return sizeof(float) * this->NumComponents; }
 		operator float* () { return Data.data(); }
 	};
 
@@ -41,6 +44,11 @@ namespace PhxEngine::Pipeline
 		size_t MaterialHandle = ~0u;
 		std::array<VertexStream, static_cast<size_t>(VertexStreamType::NumStreams)> VertexStreams;
 		PhxEngine::Core::FlexArray<uint32_t> Indices;
+
+		PhxEngine::Core::FlexArray<meshopt_Meshlet> Meshlets;
+		PhxEngine::Core::FlexArray<unsigned int> MeshletVertices;
+		PhxEngine::Core::FlexArray<unsigned char> MeshletTriangles;
+		PhxEngine::Core::FlexArray<meshopt_Bounds> MeshletBounds;
 
 		MeshPart()
 		{

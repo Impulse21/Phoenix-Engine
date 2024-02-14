@@ -5,7 +5,7 @@ set(folder "Applications/Tools")
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /ENTRY:mainCRTStartup")
 add_executable(${project} WIN32 ${sources})
-target_link_libraries(${project} PhxEngine)
+target_link_libraries(${project} PhxEngine DirectStorageSDK DirectXTex taskflow)
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 
 if (MSVC)
