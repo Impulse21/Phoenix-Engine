@@ -42,15 +42,27 @@ namespace PhxEngine::Pipeline
 	struct MeshPart
 	{
 		size_t MaterialHandle = ~0u;
-		std::array<VertexStream, static_cast<size_t>(VertexStreamType::NumStreams)> VertexStreams;
-		PhxEngine::Core::FlexArray<uint32_t> Indices;
+		uint32_t IndexOffset = 0;
+		uint32_t IndexCount = 0;
 
 		PhxEngine::Core::FlexArray<meshopt_Meshlet> Meshlets;
 		PhxEngine::Core::FlexArray<unsigned int> MeshletVertices;
 		PhxEngine::Core::FlexArray<unsigned char> MeshletTriangles;
 		PhxEngine::Core::FlexArray<meshopt_Bounds> MeshletBounds;
+	};
 
-		MeshPart()
+	struct Mesh
+	{
+		std::string Name;
+		Core::FlexArray<MeshPart> MeshParts;
+
+		std::array<VertexStream, static_cast<size_t>(VertexStreamType::NumStreams)> VertexStreams;
+		PhxEngine::Core::FlexArray<uint32_t> Indices;
+
+		Core::Sphere BoundingSphere;
+		Core::AABB BoundingBox;
+
+		Mesh()
 		{
 			this->GetStream(VertexStreamType::Position).NumComponents = 3;
 			this->GetStream(VertexStreamType::Colour).NumComponents = 3;
@@ -60,8 +72,8 @@ namespace PhxEngine::Pipeline
 			this->GetStream(VertexStreamType::TexCoords1).NumComponents = 2;
 		}
 
-		[[nodiscard]] size_t GetNumVertices() const 
-		{ 
+		[[nodiscard]] size_t GetNumVertices() const
+		{
 			return this->VertexStreams[static_cast<size_t>(Pipeline::VertexStreamType::Position)].GetNumElements();
 		}
 
@@ -74,14 +86,6 @@ namespace PhxEngine::Pipeline
 		{
 			return this->VertexStreams[static_cast<size_t>(type)];
 		}
-	};
-
-	struct Mesh
-	{
-		std::string Name;
-		Core::FlexArray<MeshPart> MeshParts;
-		Core::Sphere BoundingSphere;
-		Core::AABB BoundingBox;
 	};
 
 	struct Material
@@ -113,11 +117,21 @@ namespace PhxEngine::Pipeline
 
 	};
 
+	enum class TextureUsage
+	{
+		Default = 0,
+		Albedo,
+		NormalMap,
+	};
+
 	struct Texture
 	{
 		std::string Name;
 		std::string DataFile;
 		std::string MimeType;
+		bool isDDS = false;
+		bool forceSrgb = false;
+		TextureUsage Usage = TextureUsage::Default;
 		std::unique_ptr<Core::IBlob> DataBlob;
 		// TextureInfo
 	};

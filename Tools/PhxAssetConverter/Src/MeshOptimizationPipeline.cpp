@@ -12,35 +12,38 @@ void PhxEngine::Pipeline::MeshOptimizationPipeline::Optimize(Core::LinearAllocat
 	PHX_LOG_INFO("Optimizing Mesh %s", mesh.Name.c_str());
 
 	Core::StopWatch stopwatch;
-	for (auto& meshPart : mesh.MeshParts)
-	{
-		tempAllocator.Clear();
-		this->OptimizeMeshPart(tempAllocator, meshPart);
-	}
+
+	this->OptmizeInternal(tempAllocator, mesh);
+
 	Core::TimeStep timeStep = stopwatch.Elapsed();
 	PHX_LOG_INFO("Finished optimizng Mesh %s [%f seconds]", mesh.Name.c_str(), timeStep.GetSeconds());
 }
 
-void PhxEngine::Pipeline::MeshOptimizationPipeline::OptimizeMeshPart(Core::LinearAllocator& tempAllocator, Pipeline::MeshPart& meshPart) const
+void PhxEngine::Pipeline::MeshOptimizationPipeline::OptmizeInternal(Core::LinearAllocator& tempAllocator, Mesh& mesh) const
 {
 	// Copy vertex data and preocess
 	Core::StopWatch stopWatch;
 
+	// -- Make a copy of the original indices ---
 	float* unindexedStreams[static_cast<size_t>(Pipeline::VertexStreamType::NumStreams)];
 	for (size_t iStream = 0; iStream < static_cast<size_t>(Pipeline::VertexStreamType::NumStreams); iStream++)
 	{
-		Pipeline::VertexStream& stream = meshPart.VertexStreams[iStream];
+		Pipeline::VertexStream& stream = mesh.VertexStreams[iStream];
 		unindexedStreams[iStream] = tempAllocator.AllocateArray<float>(stream.Data.size(), 1);
 		std::memcpy(unindexedStreams[iStream], stream, sizeof(float) * stream.Data.size());
 	}
 
 	uint32_t* originalIndices = nullptr;
-	uint32_t totalIndices = meshPart.GetNumVertices();
-	if (meshPart.HasIndices())
+	uint32_t totalIndices = mesh.GetNumVertices();
+	if (mesh.HasIndices())
 	{
-		originalIndices = tempAllocator.AllocateArray<uint32_t>(meshPart.Indices.size(), 1);
-		totalIndices = meshPart.Indices.size();
-		std::memcpy(originalIndices, meshPart.Indices.data(), sizeof(uint32_t) * totalIndices);
+		originalIndices = tempAllocator.AllocateArray<uint32_t>(mesh.Indices.size(), 1);
+		totalIndices = mesh.Indices.size();
+		std::memcpy(originalIndices, mesh.Indices.data(), sizeof(uint32_t) * totalIndices);
+	}
+	else
+	{
+		mesh.Indices.resize(totalIndices);
 	}
 
 	uint32_t* remap = tempAllocator.AllocateArray<uint32_t>(totalIndices, 1);
@@ -48,23 +51,22 @@ void PhxEngine::Pipeline::MeshOptimizationPipeline::OptimizeMeshPart(Core::Linea
 
 	for (size_t iStream = 0; iStream < static_cast<size_t>(Pipeline::VertexStreamType::NumStreams); iStream++)
 	{
-		Pipeline::VertexStream& stream = meshPart.VertexStreams[iStream];
+		Pipeline::VertexStream& stream = mesh.VertexStreams[iStream];
 		meshOptStreams[iStream] = { unindexedStreams[iStream], sizeof(float) * stream.NumComponents, sizeof(float) * stream.NumComponents };
 	}
 
 	size_t totalVertices = meshopt_generateVertexRemapMulti(remap, originalIndices, totalIndices, totalIndices, meshOptStreams, sizeof(meshOptStreams) / sizeof(meshOptStreams[0]));
 
-	meshPart.Indices.resize(totalIndices);
 	for (size_t iStream = 0; iStream < static_cast<size_t>(Pipeline::VertexStreamType::NumStreams); iStream++)
 	{
-		Pipeline::VertexStream& stream = meshPart.VertexStreams[iStream];
+		Pipeline::VertexStream& stream = mesh.VertexStreams[iStream];
 		stream.Data.resize(totalVertices * stream.NumComponents);
 	}
 
-	meshopt_remapIndexBuffer(meshPart.Indices.data(), originalIndices, totalIndices, remap);
+	meshopt_remapIndexBuffer(mesh.Indices.data(), originalIndices, totalIndices, remap);
 	for (size_t iStream = 0; iStream < static_cast<size_t>(Pipeline::VertexStreamType::NumStreams); iStream++)
 	{
-		Pipeline::VertexStream& stream = meshPart.VertexStreams[iStream];
+		Pipeline::VertexStream& stream = mesh.VertexStreams[iStream];
 		meshopt_remapVertexBuffer(stream.Data.data(), unindexedStreams[iStream], totalIndices, sizeof(float) * stream.NumComponents, remap);
 	}
 
@@ -72,12 +74,12 @@ void PhxEngine::Pipeline::MeshOptimizationPipeline::OptimizeMeshPart(Core::Linea
 
 	stopWatch.Begin();
 
-	meshopt_optimizeVertexCache(meshPart.Indices.data(), meshPart.Indices.data(), meshPart.Indices.size(), meshPart.GetNumVertices());
+	meshopt_optimizeVertexCache(mesh.Indices.data(), mesh.Indices.data(), mesh.Indices.size(), mesh.GetNumVertices());
 	// meshopt_optimizeOverdraw(meshPart.Indices.data(), meshPart.Indices.data(), meshPart.Indices.size(), &vertices[0].x, vertex_count, sizeof(Vertex), 1.05f);
-	meshopt_optimizeVertexFetchRemap(remap, meshPart.Indices.data(), meshPart.Indices.size(), totalVertices);
+	meshopt_optimizeVertexFetchRemap(remap, mesh.Indices.data(), mesh.Indices.size(), totalVertices);
 	for (size_t iStream = 0; iStream < static_cast<size_t>(Pipeline::VertexStreamType::NumStreams); iStream++)
 	{
-		Pipeline::VertexStream& stream = meshPart.VertexStreams[iStream];
+		Pipeline::VertexStream& stream = mesh.VertexStreams[iStream];
 		meshopt_remapVertexBuffer(stream.Data.data(), unindexedStreams[iStream], totalIndices, sizeof(float) * stream.NumComponents, remap);
 	}
 

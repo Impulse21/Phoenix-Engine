@@ -26,6 +26,9 @@ using namespace PhxEngine;
 
 int main(int argc, const char** argv)
 {
+	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	assert(SUCCEEDED(hr));
+
     Core::Log::Initialize();
 	Core::CommandLineArgs::Initialize();
 	std::string gltfInput;
@@ -49,7 +52,7 @@ int main(int argc, const char** argv)
 	}
 
 	tf::Taskflow taskflow;
-	tf::Task MeshPipelineTasks = taskflow.emplace([&importedObjects](tf::Subflow& subflow) {
+	tf::Task meshPipelineTasks = taskflow.emplace([&importedObjects](tf::Subflow& subflow) {
 		tf::Task meshOptimiztionTask = subflow.emplace([&importedObjects]() {
 				Pipeline::MeshOptimizationPipeline pipeline;
 				Core::LinearAllocator tempAllocator;
@@ -62,16 +65,33 @@ int main(int argc, const char** argv)
 			}).name("Optimize Mesh");
 
 			tf::Task generateMeshletsTask = subflow.emplace([&importedObjects]() {
-				Pipeline::MeshletGenerationPipeline pipeline(64, 124);
-				for (auto& mesh : importedObjects.Meshes)
-				{
-					pipeline.GenerateMeshletData(mesh);
-				}
+					Pipeline::MeshletGenerationPipeline pipeline(64, 124);
+					for (auto& mesh : importedObjects.Meshes)
+					{
+						pipeline.GenerateMeshletData(mesh);
+					}
 				}).name("Generate Meshlets");
 
+				tf::Task serilizeMeshTask = subflow.emplace([&importedObjects]() {
+
+				}).name("Serilize Mesh");
+
 			meshOptimiztionTask.precede(generateMeshletsTask);
+		}).name("Mesh pipeline");
+		tf::Task texturePipeline = taskflow.emplace([&importedObjects](tf::Subflow& subflow) {
+			tf::Task meshOptimiztionTask = subflow.emplace([&importedObjects]() {
+					Pipeline::MeshOptimizationPipeline pipeline;
+					Core::LinearAllocator tempAllocator;
+					size_t tempBufferSize = PhxGB(1);
+					tempAllocator.Initialize(tempBufferSize);
+					for (auto& mesh : importedObjects.Meshes)
+					{
+						pipeline.Optimize(tempAllocator, mesh);
+					}
+				}).name("Texture Pipeline");
 		});
 
+	//  tf::Taskflow texturePipelineTask = taskflow.emplace([&importedObjects](tf::sub))
 
 	// Get the buffer compression interface for DSTORAGE_COMPRESSION_FORMAT_GDEFLATE
 	constexpr uint32_t NumCompressionThreads = 6;

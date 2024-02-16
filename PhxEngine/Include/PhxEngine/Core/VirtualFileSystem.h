@@ -48,6 +48,7 @@ namespace PhxEngine::Core
 	namespace FileSystem
 	{
 		std::string GetFileNameWithoutExt(std::string const& path);
+		std::string GetFileExt(std::string const& path);
 	}
 
 	std::unique_ptr<IFileSystem> CreateNativeFileSystem();

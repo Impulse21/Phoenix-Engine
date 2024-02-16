@@ -179,11 +179,27 @@ bool PhxEngine::Pipeline::GltfAssetImporter::Import(Core::IFileSystem* fileSyste
 		this->m_meshIndexLut[mesh] = i;
 	}
 
+	// Mark Texture Usage
+	for (const auto& mtl : importedObjects.Materials)
+	{
+		if (mtl.NormalMapHandle != ~0U)
+		{
+			importedObjects.Textures[mtl.NormalMapHandle].Usage = TextureUsage::NormalMap;
+		}
+		if (mtl.BaseColourTextureHandle != ~0U)
+		{
+			importedObjects.Textures[mtl.NormalMapHandle].Usage = TextureUsage::Albedo;
+		}
+	}
 	return true;
 }
 
 bool PhxEngine::Pipeline::GltfAssetImporter::ImportMesh(cgltf_mesh* gltfMesh, Pipeline::Mesh& outMesh)
 {
+	const size_t indexRemap[] = {
+		0,2,1
+	};
+
 	outMesh = {};
 	outMesh.Name = gltfMesh->name;
 
@@ -193,10 +209,19 @@ bool PhxEngine::Pipeline::GltfAssetImporter::ImportMesh(cgltf_mesh* gltfMesh, Pi
 		const auto& cgltfPrim = gltfMesh->primitives[iPrim];
 		MeshPart& meshPart = outMesh.MeshParts[iPrim];
 		meshPart.MaterialHandle = this->m_materialIndexLut[cgltfPrim.material];
+		const uint32_t vertexOffset = static_cast<uint32_t>(outMesh.GetStream(VertexStreamType::Position).Data.size());
+
 		if (cgltfPrim.type != cgltf_primitive_type_triangles ||
 			cgltfPrim.attributes_count == 0)
 		{
 			continue;
+		}
+		if (cgltfPrim.indices)
+		{
+			assert(cgltfPrim.indices->component_type == cgltf_component_type_r_32u ||
+				cgltfPrim.indices->component_type == cgltf_component_type_r_16u ||
+				cgltfPrim.indices->component_type == cgltf_component_type_r_8u);
+			assert(cgltfPrim.indices->type == cgltf_type_scalar);
 		}
 
 		const cgltf_accessor* cgltfPositionsAccessor = nullptr;
@@ -247,94 +272,113 @@ bool PhxEngine::Pipeline::GltfAssetImporter::ImportMesh(cgltf_mesh* gltfMesh, Pi
 			}
 		}
 
-		auto SetBufferDataFunc = [](uint32_t index, const cgltf_accessor* accessor, VertexStream& stream, float defaultValue = 1.0f){
-				if (accessor)
-				{
-					auto [data, dataStride] = CgltfBufferAccessor(accessor, sizeof(float) * stream.NumComponents);
 
-					for (int i = 0; i < stream.NumComponents; i++)
-					{
-						stream.Data.push_back(*(data + i + dataStride * index));
-					}
-				}
-				else
-				{
-					for (int i = 0; i < stream.NumComponents; i++)
-					{
-						stream.Data.push_back(defaultValue);
-					}
-				}
-			};
-		auto SetVertexStreamDataFunc = [&](uint32_t index){
-
-				if (cgltfPositionsAccessor)
-				{
-					VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::Position)];
-					SetBufferDataFunc(index, cgltfPositionsAccessor, stream);
-				}
-
-				{
-					VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::Normals)];
-					SetBufferDataFunc(index, cgltfNormalsAccessor, stream);
-				}
-
-				{
-					VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::Tangents)];
-					SetBufferDataFunc(index, cgltfTangentsAccessor, stream);
-				}
-
-				{
-					assert(cgltfTexCoordsAccessor->count == cgltfPositionsAccessor->count);
-
-					VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::TexCoords)];
-					SetBufferDataFunc(index, cgltfTexCoordsAccessor, stream);
-				}
-
-				{
-					VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::TexCoords1)];
-					SetBufferDataFunc(index, cgltfTexCoord2sAccessor, stream);
-				}
-
-				VertexStream& stream = meshPart.VertexStreams[static_cast<size_t>(VertexStreamType::Colour)];
-				SetBufferDataFunc(index, nullptr, stream);
-			};
-
-		assert(cgltfPositionsAccessor);
 		if (cgltfPrim.indices)
 		{
 			const size_t indexCount = cgltfPrim.indices->count;
+			const size_t indexOffset = outMesh.Indices.size();
+			outMesh.Indices.resize(indexOffset + indexCount);
+			meshPart.IndexOffset = indexOffset;
+			meshPart.IndexCount = indexCount;
 
-			for (size_t i = 0; i < static_cast<size_t>(VertexStreamType::NumStreams); i++)
-			{
-				meshPart.VertexStreams[i].Data.reserve(indexCount);
-			}
-
-			// copy the indices
 			auto [indexSrc, indexStride] = CgltfBufferAccessor(cgltfPrim.indices, 0);
-
-			if (!indexStride)
+			switch (indexStride)
 			{
-				switch (cgltfPrim.indices->component_type)
-				{
-				case cgltf_component_type_r_8u:
-					indexStride = sizeof(uint8_t);
-
-					break;
-
-				case cgltf_component_type_r_16u:
-					indexStride = sizeof(uint16_t);
-					break;
-
-				case cgltf_component_type_r_32u:
-					indexStride = sizeof(uint32_t);
+				case sizeof(uint8_t):
+					for (size_t i = 0; i < indexCount; i+= 3)
+					{
+						outMesh.Indices[indexOffset + i + 0] = vertexOffset + indexSrc[i + indexRemap[0]];
+						outMesh.Indices[indexOffset + i + 1] = vertexOffset + indexSrc[i + indexRemap[1]];
+						outMesh.Indices[indexOffset + i + 2] = vertexOffset + indexSrc[i + indexRemap[2]];
+					}
+				break;
+				case sizeof(uint16_t) :
+					for (size_t i = 0; i < indexCount; i += 3)
+					{
+						outMesh.Indices[indexOffset + i + 0] = vertexOffset + reinterpret_cast<const uint16_t*>(indexSrc)[i + indexRemap[0]];
+						outMesh.Indices[indexOffset + i + 1] = vertexOffset + reinterpret_cast<const uint16_t*>(indexSrc)[i + indexRemap[1]];
+						outMesh.Indices[indexOffset + i + 2] = vertexOffset + reinterpret_cast<const uint16_t*>(indexSrc)[i + indexRemap[2]];
+					}
+				break;
+				case sizeof(uint32_t) :
+					for (size_t i = 0; i < indexCount; i += 3)
+					{
+						outMesh.Indices[indexOffset + i + 0] = vertexOffset + reinterpret_cast<const uint32_t*>(indexSrc)[i + indexRemap[0]];
+						outMesh.Indices[indexOffset + i + 1] = vertexOffset + reinterpret_cast<const uint32_t*>(indexSrc)[i + indexRemap[1]];
+						outMesh.Indices[indexOffset + i + 2] = vertexOffset + reinterpret_cast<const uint32_t*>(indexSrc)[i + indexRemap[2]];
+					}
+				break;
 				default:
-					assert(false);
-				}
+					assert(0 && "unsupported index stride!");
 			}
 
-			for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
+			// Process Attributes
+			assert(cgltfPositionsAccessor);
+			const size_t vertexCount = cgltfPositionsAccessor->count;
+			if (meshPart.IndexCount == 0)
 			{
-				SetVertexStreamDataFunc(*(indexSrc + iIdx * indexStride));
+				// Autogen indices:
+				//	Note: this is not common, so it is simpler to create a dummy index buffer here than rewrite engine to support this case
+				const size_t indexOffset = outMesh.Indices.size();
+				outMesh.Indices.resize(indexOffset + vertexCount);
+				for (size_t vi = 0; vi < vertexCount; vi += 3)
+				{
+					outMesh.Indices[indexOffset + vi + 0] = static_cast<uint32_t>(vertexOffset + vi + indexRemap[0]);
+					outMesh.Indices[indexOffset + vi + 1] = static_cast<uint32_t>(vertexOffset + vi + indexRemap[1]);
+					outMesh.Indices[indexOffset + vi + 2] = static_cast<uint32_t>(vertexOffset + vi + indexRemap[2]);
+				}
+
+				meshPart.IndexOffset = static_cast<uint32_t>(indexOffset);
+				meshPart.IndexCount = static_cast<uint32_t>(vertexCount);
+			}			
+
+			auto SetBufferDataFunc = [](const cgltf_accessor* accessor, VertexStream& stream, size_t vertexOffset, size_t vertexCount, float defaultValue = 1.0f) {
+					stream.Data.resize(vertexOffset + vertexCount * stream.NumComponents, defaultValue);
+					if (accessor)
+					{
+						auto [data, dataStride] = CgltfBufferAccessor(accessor, sizeof(float) * stream.NumComponents);
+
+						std::memcpy(
+							stream.Data.data() + (vertexOffset * sizeof(float) * stream.NumComponents),
+							data,
+							dataStride * accessor->count);
+
+					}
+				};
+
+			{
+				VertexStream& stream = outMesh.VertexStreams[static_cast<size_t>(VertexStreamType::Position)];
+				SetBufferDataFunc(cgltfPositionsAccessor, stream, vertexOffset, vertexCount);
+			}
+
+			{
+				VertexStream& stream = outMesh.VertexStreams[static_cast<size_t>(VertexStreamType::Normals)];
+				SetBufferDataFunc(cgltfNormalsAccessor, stream, vertexOffset, vertexCount);
+			}
+
+			{
+				VertexStream& stream = outMesh.VertexStreams[static_cast<size_t>(VertexStreamType::Tangents)];
+				SetBufferDataFunc(cgltfTangentsAccessor, stream, vertexOffset, vertexCount);
+			}
+
+			{
+				VertexStream& stream = outMesh.VertexStreams[static_cast<size_t>(VertexStreamType::TexCoords)];
+				SetBufferDataFunc(cgltfTexCoordsAccessor, stream, vertexOffset, vertexCount);
+			}
+
+			{
+				VertexStream& stream = outMesh.VertexStreams[static_cast<size_t>(VertexStreamType::TexCoords1)];
+				SetBufferDataFunc(cgltfTexCoord2sAccessor, stream, vertexOffset, vertexCount);
+			}
+
+			{
+				VertexStream& stream = outMesh.VertexStreams[static_cast<size_t>(VertexStreamType::Colour)];
+				SetBufferDataFunc(nullptr, stream, vertexOffset, vertexCount);
+			}
+
+			if (cgltfTangentsAccessor == nullptr)
+			{
+				assert(0 && "Generate Tangents required");
 			}
 		}
 	}

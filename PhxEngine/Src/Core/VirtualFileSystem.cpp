@@ -315,3 +315,8 @@ std::string PhxEngine::Core::FileSystem::GetFileNameWithoutExt(std::string const
 {
     return std::filesystem::path(path).stem().generic_string();
 }
+
+std::string PhxEngine::Core::FileSystem::GetFileExt(std::string const& path)
+{
+    return std::filesystem::path(path).extension().generic_string();
+}

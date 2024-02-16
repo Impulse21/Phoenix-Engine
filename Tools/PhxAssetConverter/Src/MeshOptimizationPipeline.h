@@ -15,7 +15,7 @@ namespace PhxEngine::Pipeline
 		void Optimize(Core::LinearAllocator& tempAllocator, Mesh& mesh) const;
 
 	private:
-		void OptimizeMeshPart(Core::LinearAllocator& tempAllocator, Pipeline::MeshPart& meshPart) const;
+		void OptmizeInternal(Core::LinearAllocator& tempAllocator, Mesh& mesh) const;
 	};
 }
 

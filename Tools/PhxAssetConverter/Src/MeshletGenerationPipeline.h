@@ -16,8 +16,8 @@ namespace PhxEngine::Pipeline
 		void GenerateMeshletData(Mesh& mesh) const;
 
 	private:
-		void GenerateMeshletData(MeshPart& meshpart) const;
-		void GenerateMeshletBounds(MeshPart& meshpart) const;
+		void GenerateMeshletData(Mesh& mesh, MeshPart& meshpart) const;
+		void GenerateMeshletBounds(Mesh& mesh, MeshPart& meshpart) const;
 
 	private:
 		const size_t m_maxVertices;
