@@ -3,6 +3,8 @@
 #include <PhxEngine/Application.h>
 #include <PhxEngine/Core/StopWatch.h>
 #include <PhxEngine/Core/Profiler.h>
+#include <PhxEngine/EngineTuner.h>
+
 #include <thread>
 
 using namespace PhxEngine;
@@ -10,10 +12,7 @@ using namespace PhxEngine;
 // -- Engine Loop internals ---
 namespace
 {
-	struct LoopConfig
-	{
-		int TargetFPS = 60;
-	} m_loopConfig;
+	IntVar TargetFpsVar("Engine/Loop/Target Frame Rate", 60, 1);
 
 	bool m_isRunning = true;
 	float m_targetFrameRateInv = 0;
@@ -21,14 +20,11 @@ namespace
 
 	StopWatch m_gameClock = {};
 
-	void InitializeEngineServices()
-	{
-
-	}
-
 	void Startup(IApplication* app)
 	{
-		m_targetFrameRateInv = 1.0f / static_cast<float>(m_loopConfig.TargetFPS);
+		EngineTunerService::Startup();
+
+		m_targetFrameRateInv = 1.0f / static_cast<float>(TargetFpsVar);
 		app->Startup();
 	}
 
@@ -82,7 +78,6 @@ namespace
 
 void PhxEngine::EngineLoop::Run(IApplication* app)
 {
-	InitializeEngineServices();
 	Startup(app);
 
 	m_gameClock.Begin();

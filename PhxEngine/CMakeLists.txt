@@ -72,6 +72,7 @@ target_include_directories(${project}
 add_subdirectory(Extern)
 
 target_link_libraries(${project} PUBLIC
-    OptickCore)
+    OptickCore
+    json)
 
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
