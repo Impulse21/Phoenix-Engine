@@ -2,6 +2,8 @@
 
 #include <PhxEngine/Application.h>
 #include <PhxEngine/Core/StopWatch.h>
+#include <PhxEngine/Core/Profiler.h>
+#include <thread>
 
 using namespace PhxEngine;
 
@@ -13,7 +15,7 @@ namespace
 		int TargetFPS = 60;
 	} m_loopConfig;
 
-	bool m_isRunning = false;
+	bool m_isRunning = true;
 	float m_targetFrameRateInv = 0;
 	float m_deltaTimeAccumulator = 0.0f;
 
@@ -37,16 +39,17 @@ namespace
 
 	void FixedUpdate()
 	{
-
+		PHX_EVENT();
 	}
 
 	void Update(TimeStep const span)
 	{
-
+		PHX_EVENT();
 	}
 
 	void Render()
 	{
+		PHX_EVENT();
 
 	}
 
@@ -85,6 +88,8 @@ void PhxEngine::EngineLoop::Run(IApplication* app)
 	m_gameClock.Begin();
 	while (m_isRunning)
 	{
+		PHX_FRAME("MainThread");
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 		Tick();
 	}
 

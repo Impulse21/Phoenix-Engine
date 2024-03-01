@@ -3,8 +3,8 @@ file(GLOB sources "Src/*.cpp" "Src/*.h")
 set(project SandboxApp)
 set(folder "Tests/SandboxApp")
 
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /ENTRY:mainCRTStartup")
-add_executable(${project} WIN32 ${sources})
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
+add_executable(${project} ${sources})
 target_link_libraries(${project} PhxEngine)
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 
