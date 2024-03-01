@@ -1,0 +1,3 @@
+[submodule "PhxEngine/Extern/optick"]
+	path = PhxEngine/Extern/optick
+	url = https://github.com/bombomby/optick.git
