@@ -1,4 +1,0 @@
-[ X ] - Setup initial loop
-[ ] - Hook in Core Memory Service
-[ ] - Hook in Core Logger?
-[ ] - Hook in Profiler (3rd Party https://github.com/bombomby/optick)
