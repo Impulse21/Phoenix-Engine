@@ -26,23 +26,6 @@ add_definitions(-D_UNICODE)
 add_compile_definitions(NOMINMAX)
 
 add_subdirectory(PhxEngine)
-add_subdirectory(PhxEngine-Runtime)
-add_subdirectory(Tools/PhxAssetConverter)
-add_subdirectory(PhxEngine-Editor)
 
-# Disabling Samples as I work through things
-#add_subdirectory(Examples/BasicTriangle)
-#add_subdirectory(Examples/ImGuiDemo)
-#add_subdirectory(Examples/GPUCulling)
-#add_subdirectory(Examples/DirectLighting)
-#add_subdirectory(Examples/ClusterLighting)
-#add_subdirectory(Examples/Shadows)
-#add_subdirectory(Examples/IndirectLighting)
-
-#add_subdirectory(Examples/ThreadedRendering)
-#add_subdirectory(Examples/DeferredRendering)
-#add_subdirectory(Examples/VisibilityBufferRendering)
-#add_subdirectory(Examples/Meshlet)
-#add_subdirectory(Examples/IndirectDraw)
 
 
