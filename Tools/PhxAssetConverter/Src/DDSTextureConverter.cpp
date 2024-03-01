@@ -12,6 +12,7 @@ std::unique_ptr<DirectX::ScratchImage> PhxEngine::Pipeline::DDSTextureConverter:
 }
 
 
+// https://github.com/microsoft/DirectStorage/blob/main/Samples/BulkLoadDemo/README.md
 std::unique_ptr<DirectX::ScratchImage> PhxEngine::Pipeline::DDSTextureConverter::BuildDDS(Core::IBlob* blob, TextureType type, TexConversionFlags flags)
 {
     bool bInterpretAsSRGB = EnumHasAnyFlags(flags, TexConversionFlags::SRGB);
@@ -30,9 +31,6 @@ std::unique_ptr<DirectX::ScratchImage> PhxEngine::Pipeline::DDSTextureConverter:
     DirectX::TexMetadata info;
     std::unique_ptr<DirectX::ScratchImage> image = std::make_unique<DirectX::ScratchImage>();
 
-    bool isDDS = false;
-    bool isHDR = false;
-    
     switch (type)
     {
     case TextureType::DDS:

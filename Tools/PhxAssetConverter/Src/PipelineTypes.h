@@ -7,6 +7,7 @@
 #include <PhxEngine/Core/FlexArray.h>
 #include <PhxEngine/Core/Primitives.h>
 
+#include "DDSTextureConverter.h"
 #include <meshoptimizer.h>
 
 
@@ -116,23 +117,14 @@ namespace PhxEngine::Pipeline
 		float Roughness = 1.0f;
 
 	};
-
-	enum class TextureUsage
-	{
-		Default = 0,
-		Albedo,
-		NormalMap,
-	};
-
 	struct Texture
 	{
 		std::string Name;
 		std::string DataFile;
-		std::string MimeType;
-		bool isDDS = false;
-		bool forceSrgb = false;
-		TextureUsage Usage = TextureUsage::Default;
 		std::unique_ptr<Core::IBlob> DataBlob;
+		std::string MimeType;
+		TexConversionFlags ConvertFlags = TexConversionFlags::None;
+		std::unique_ptr<DirectX::ScratchImage> DDSImage;
 		// TextureInfo
 	};
 }

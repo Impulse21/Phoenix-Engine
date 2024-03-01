@@ -16,6 +16,7 @@ namespace PhxEngine::Pipeline
 {
     enum class TexConversionFlags : uint8_t
     {
+        None = 0,
         SRGB = 1 << 0,          // Texture contains sRGB colors
         PreserveAlpha = 1 << 2, // Keep four channels
         NormalMap = 1 << 3,     // Texture contains normals
@@ -24,6 +25,7 @@ namespace PhxEngine::Pipeline
         QualityBC = 1 << 6,     // Apply quality block compression (BC6H/7)
         FlipVertical = 1 << 7,
     };
+    PHX_ENUM_CLASS_FLAGS(TexConversionFlags)
 
     enum class TextureType
     {
@@ -34,8 +36,6 @@ namespace PhxEngine::Pipeline
         EXR,
         WIC
     };
-
-    PHX_ENUM_CLASS_FLAGS(TexConversionFlags)
 
     inline TextureType GetTextureType(std::string const& ext)
     {

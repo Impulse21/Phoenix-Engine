@@ -182,15 +182,16 @@ bool PhxEngine::Pipeline::GltfAssetImporter::Import(Core::IFileSystem* fileSyste
 	// Mark Texture Usage
 	for (const auto& mtl : importedObjects.Materials)
 	{
-		if (mtl.NormalMapHandle != ~0U)
-		{
-			importedObjects.Textures[mtl.NormalMapHandle].Usage = TextureUsage::NormalMap;
-		}
 		if (mtl.BaseColourTextureHandle != ~0U)
 		{
-			importedObjects.Textures[mtl.NormalMapHandle].Usage = TextureUsage::Albedo;
+			importedObjects.Textures[mtl.BaseColourTextureHandle].ConvertFlags = TexConversionFlags::SRGB;
+			if (mtl.BlendMode == Material::BlendMode::Alpha)
+			{
+				importedObjects.Textures[mtl.BaseColourTextureHandle].ConvertFlags = TexConversionFlags::PreserveAlpha;
+			}
 		}
 	}
+
 	return true;
 }
 

@@ -76,6 +76,8 @@ namespace PhxEngine
 	struct ResourceHeader
 	{
 		uint32_t Id;
+		uint16_t Version;
+
 		Region<TMetadata> Metadata;
 		Region<CpuData> CpuData;
 		GpuRegion UnstructuredGpuData;
@@ -87,8 +89,21 @@ namespace PhxEngine
 	{
 		struct Metadata
 		{
-
+			uint32_t VertexBufferOffset;
+			uint32_t VertexBufferSize;
+			uint32_t IndexBufferOffset;
+			uint32_t IndexBufferSize;
+			uint32_t VertexBufferStride;
+			uint32_t MeshletBufferOffset;
+			uint32_t MeshletBufferSize;
+			uint32_t NumMeshlets;
+			uint8_t IndexBufferFormat;
 		};
+
+		struct CpuData
+		{
+		};
+
 		using Header = ResourceHeader<Metadata>;
 	}
 
@@ -140,4 +155,27 @@ namespace PhxEngine
 		static constexpr uint32_t Value = MAKE_ID('P', 'T', 'E', 'X');
 	};
 
+	template<typename ResourceType>
+	struct ResourceVersion
+	{
+	};
+
+
+	template<>
+	struct ResourceVersion<MeshResource::Header>
+	{
+		static constexpr uint16_t Value = 1;
+	};
+
+	template<>
+	struct ResourceId<MaterialResource::Header>
+	{
+		static constexpr uint16_t Value = 1;
+	};
+
+	template<>
+	struct ResourceId<TextureResource::Header>
+	{
+		static constexpr uint16_t Value = 1;
+	};
 }
