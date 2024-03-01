@@ -30,7 +30,7 @@ namespace PhxEngine
 			Toggle
 		};
 
-		typedef std::function<void(ActionType)> ActionCallback;
+		using ActionCallback = std::function<void(ActionType)>;
 
 	protected:
 		EngineVar() = default;
@@ -103,8 +103,7 @@ namespace PhxEngine
 		int32_t m_stepSize;
 	};
 
-
-	namespace EngineTunerService
+	namespace EngineTuner
 	{
 		void Startup();
 		void SetValues(nlohmann::Json const& data);

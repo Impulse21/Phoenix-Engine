@@ -122,7 +122,7 @@ namespace PhxEngine
         RegisterVariable(path, *this);
     }
 
-    void EngineTunerService::Startup()
+    void EngineTuner::Startup()
     {
         for (int32_t i = 0; i < m_unregisteredVariablesCount; ++i)
         {
@@ -134,12 +134,12 @@ namespace PhxEngine
         m_unregisteredVariablesCount = -1;
     }
 
-    void EngineTunerService::SetValues(nlohmann::Json const& data)
+    void EngineTuner::SetValues(nlohmann::Json const& data)
     {
         assert(false);
     }
 
-    void EngineTunerService::Shutdown()
+    void EngineTuner::Shutdown()
     {
     }
 

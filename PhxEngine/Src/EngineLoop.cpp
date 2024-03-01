@@ -4,6 +4,7 @@
 #include <PhxEngine/Core/StopWatch.h>
 #include <PhxEngine/Core/Profiler.h>
 #include <PhxEngine/EngineTuner.h>
+#include <PhxEngine/Core/Logger.h>
 
 #include <thread>
 
@@ -20,11 +21,20 @@ namespace
 
 	StopWatch m_gameClock = {};
 
+	void StartupEngineServices()
+	{
+
+	}
+
 	void Startup(IApplication* app)
 	{
-		EngineTunerService::Startup();
+		Logger::Startup();
+		EngineTuner::Startup();
 
 		m_targetFrameRateInv = 1.0f / static_cast<float>(TargetFpsVar);
+
+		StartupEngineServices();
+
 		app->Startup();
 	}
 
