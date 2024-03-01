@@ -19,12 +19,20 @@ include(CMakeDependentOption)
 
 set(extern_folder "PhxEngine/External Libraries")
 
+#-- Root includes ---
 file (GLOB PhxEngine_Inc
     Include/PhxEngine/*.h)
 	
 file (GLOB PhxEngine_Src
     Src/*.h
 	Src/*.cpp)
+
+file (GLOB PhxEngine_Core_Inc
+    Include/PhxEngine/Core/*.h)
+	
+file (GLOB PhxEngine_Core_Src
+    Src/Core/*.h
+	Src/Core/*.cpp)
 	
 
 add_library(PhxEngine STATIC EXCLUDE_FROM_ALL  
@@ -52,8 +60,10 @@ add_library(PhxEngine STATIC EXCLUDE_FROM_ALL
     ${PhxEngine_Src})
 
 source_group("Include"					FILES ${PhxEngine_Inc})
+source_group("Include/Core"				FILES ${PhxEngine_Core_Inc})
 
 source_group("Src"						FILES ${PhxEngine_Src})
+source_group("Src/Core"					FILES ${PhxEngine_Core_Src})
 
 target_include_directories(${project} 
 	PUBLIC  "Include"
