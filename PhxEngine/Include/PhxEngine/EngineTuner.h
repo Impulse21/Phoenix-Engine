@@ -103,6 +103,25 @@ namespace PhxEngine
 		int32_t m_stepSize;
 	};
 
+	class SizeVar : public EngineVar
+	{
+	public:
+		SizeVar(const std::string& path, size_t val, size_t minValue = std::numeric_limits<size_t>::min(), size_t maxValue = std::numeric_limits<size_t>::max(), size_t stepSize = 1, ActionCallback pfnCallback = EngineVar::DefaultActionHandler);
+		SizeVar& operator=(int32_t val) { this->m_value = Clamp(val); return *this; }
+		operator size_t() const { return this->m_value; }
+
+		virtual void Increment() override { this->m_value = this->Clamp(this->m_value + this->m_stepSize); EngineVar::Increment(); }
+		virtual void Decrement() override { this->m_value = this->Clamp(this->m_value - this->m_stepSize); EngineVar::Decrement(); }
+
+	protected:
+		size_t Clamp(size_t val) { return val > this->m_maxValue ? this->m_maxValue : val < this->m_minValue ? this->m_minValue : val; }
+
+		size_t m_value;
+		size_t m_minValue;
+		size_t m_maxValue;
+		size_t m_stepSize;
+	};
+
 	namespace EngineTuner
 	{
 		void Startup();

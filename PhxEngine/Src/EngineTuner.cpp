@@ -232,4 +232,14 @@ namespace PhxEngine
 
         return lastVariable->second;
     }
+
+    SizeVar::SizeVar(const std::string& path, size_t val, size_t minValue, size_t maxValue, size_t stepSize, ActionCallback pfnCallback)
+        : EngineVar(path, pfnCallback)
+    {
+        assert(minValue <= maxValue);
+        this->m_minValue = minValue;
+        this->m_maxValue = maxValue;
+        this->m_value = this->Clamp(val);
+        this->m_stepSize = stepSize;
+    }
 }

@@ -1,10 +1,12 @@
 #include <PhxEngine/EngineLoop.h>
 
-#include <PhxEngine/Application.h>
 #include <PhxEngine/Core/StopWatch.h>
 #include <PhxEngine/Core/Profiler.h>
-#include <PhxEngine/EngineTuner.h>
 #include <PhxEngine/Core/Logger.h>
+
+#include <PhxEngine/Application.h>
+#include <PhxEngine/EngineTuner.h>
+#include <PhxEngine/EngineMemory.h>
 
 #include <thread>
 
@@ -30,6 +32,7 @@ namespace
 	{
 		Logger::Startup();
 		EngineTuner::Startup();
+		EngineMemory::Startup();
 
 		m_targetFrameRateInv = 1.0f / static_cast<float>(TargetFpsVar);
 
@@ -51,6 +54,8 @@ namespace
 	void Update(TimeStep const span)
 	{
 		PHX_EVENT();
+
+		EngineMemory::Update();
 	}
 
 	void Render()
