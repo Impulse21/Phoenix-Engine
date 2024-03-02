@@ -1,3 +1,6 @@
 [submodule "PhxEngine/Extern/optick"]
 	path = PhxEngine/Extern/optick
 	url = https://github.com/bombomby/optick.git
+[submodule "PhxEngine/Extern/glfw"]
+	path = PhxEngine/Extern/glfw
+	url = https://github.com/glfw/glfw.git
