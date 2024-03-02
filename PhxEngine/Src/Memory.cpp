@@ -48,7 +48,7 @@ PhxEngine::DoubleBufferedAllocator::DoubleBufferedAllocator(size_t stackSize)
 
 void* PhxEngine::DoubleBufferedAllocator::Allocate(size_t size, uint8_t alignment)
 {
-    this->m_stacks[this->m_curStackIndex].Allocate(size, alignment);
+    return this->m_stacks[this->m_curStackIndex].Allocate(size, alignment);
 }
 
 void PhxEngine::DoubleBufferedAllocator::Free(void* pointer)
