@@ -34,14 +34,18 @@ file (GLOB PhxEngine_Core_Src
     Src/Core/*.h
 	Src/Core/*.cpp)
 	
-
+file (GLOB PhxEngine_Renderer_Inc
+    Include/PhxEngine/Renderer/*.h)
+	
+file (GLOB PhxEngine_Renderer_Src
+    Src/Renderer/*.h
+	Src/Renderer/*.cpp)
+    
 add_library(PhxEngine STATIC EXCLUDE_FROM_ALL  
     ${PhxEngine_Engine_Inc}
     ${PhxEngine_Engine_Src}
     ${PhxEngine_Core_Inc}
     ${PhxEngine_Core_Src}
-    ${PhxEngine_Graphics_Inc}
-    ${PhxEngine_Graphics_Src}
     ${PhxEngine_Assets_Inc}
     ${PhxEngine_Assets_Src}
 	${PhxEngine_Resource_Inc}
@@ -61,9 +65,11 @@ add_library(PhxEngine STATIC EXCLUDE_FROM_ALL
 
 source_group("Include"					FILES ${PhxEngine_Inc})
 source_group("Include/Core"				FILES ${PhxEngine_Core_Inc})
+source_group("Include/Renderer"			FILES ${PhxEngine_Renderer_Inc})
 
 source_group("Src"						FILES ${PhxEngine_Src})
 source_group("Src/Core"					FILES ${PhxEngine_Core_Src})
+source_group("Src/Core"					FILES ${PhxEngine_Renderer_Src})
 
 target_include_directories(${project} 
 	PUBLIC  "Include"
@@ -73,6 +79,7 @@ add_subdirectory(Extern)
 
 target_link_libraries(${project} PUBLIC
     OptickCore
-    json)
+    json
+    glfw)
 
 set_target_properties(${project} PROPERTIES FOLDER ${folder})

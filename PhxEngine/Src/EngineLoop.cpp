@@ -8,6 +8,8 @@
 #include <PhxEngine/EngineTuner.h>
 #include <PhxEngine/EngineMemory.h>
 
+#include <PhxEngine/Renderer/DisplayService.h>
+
 #include <thread>
 
 using namespace PhxEngine;
@@ -25,18 +27,18 @@ namespace
 
 	void StartupEngineServices()
 	{
-
-	}
-
-	void Startup(IApplication* app)
-	{
 		Logger::Startup();
 		EngineTuner::Startup();
 		EngineMemory::Startup();
 
-		m_targetFrameRateInv = 1.0f / static_cast<float>(TargetFpsVar);
+		DisplayService::Ptr; // = EngineMemory::Allcate
+	}
 
+	void Startup(IApplication* app)
+	{
 		StartupEngineServices();
+
+		m_targetFrameRateInv = 1.0f / static_cast<float>(TargetFpsVar);
 
 		app->Startup();
 	}
