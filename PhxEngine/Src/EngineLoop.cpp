@@ -10,6 +10,7 @@
 #include <PhxEngine/EngineMemory.h>
 
 #include <Renderer/GltfDisplayService.h>
+#include <PhxEngine/RHI/PhxRHI.h>
 
 #include <thread>
 
@@ -66,6 +67,24 @@ namespace
 	void Render()
 	{
 		PHX_EVENT();
+
+		auto& gfxDevice = RHI::IGfxDevice::Ptr;
+		RHI::CommandListHandle composeCmdList = gfxDevice->BeginCommandList();
+
+		gfxDevice->TransitionBarriers(
+			{
+				RHI::GpuBarrier::CreateTexture(gfxDevice->GetBackBuffer(), RHI::ResourceStates::Present, RHI::ResourceStates::RenderTarget)
+			},
+			composeCmdList);
+
+		RHI::Color clearColour = {};
+		gfxDevice->ClearTextureFloat(gfxDevice->GetBackBuffer(), clearColour, composeCmdList);
+
+		gfxDevice->TransitionBarriers(
+			{
+				RHI::GpuBarrier::CreateTexture(gfxDevice->GetBackBuffer(), RHI::ResourceStates::RenderTarget, RHI::ResourceStates::Present)
+			},
+			composeCmdList);
 
 	}
 
