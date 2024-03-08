@@ -4,6 +4,8 @@
 #include <vector>
 #include <deque>
 
+#include <PhxEngine/Core/Profiler.h>
+
 using namespace PhxEngine;
 
 namespace
@@ -16,6 +18,7 @@ void PhxEngine::EventBus::Subscribe(
 	StringHash eventId,
 	std::unique_ptr<IEventHandlerWrapper>&& eventHandler)
 {
+	PHX_EVENT();
 	auto subscribersItr = m_subscribers.find(eventId);
 	if (subscribersItr == m_subscribers.end())
 	{
@@ -37,6 +40,7 @@ void PhxEngine::EventBus::Subscribe(
 
 void EventBus::Unsubscribe(StringHash eventId, StringHash handlerId)
 {
+	PHX_EVENT();
 	auto& handlers = m_subscribers[eventId];
 	for (auto itr = handlers.begin(); itr != handlers.end(); itr++)
 	{
@@ -51,6 +55,7 @@ void EventBus::Unsubscribe(StringHash eventId, StringHash handlerId)
 
 void EventBus::TriggerEvent(Event const& e)
 {
+	PHX_EVENT();
 	for (auto& handler : m_subscribers[e.GetEventType()])
 	{
 		handler->Invoke(e);
@@ -59,11 +64,13 @@ void EventBus::TriggerEvent(Event const& e)
 
 void EventBus::QueueEvent(std::unique_ptr<Event>&& e)
 {
+	PHX_EVENT();
 	m_eventQueue.emplace_back(std::move(e));
 }
 
 void EventBus::DispatchEvents()
 {
+	PHX_EVENT();
 	while(!m_eventQueue.empty())
 	{
 		auto& e = m_eventQueue.front();

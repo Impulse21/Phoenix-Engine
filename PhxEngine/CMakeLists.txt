@@ -40,7 +40,24 @@ file (GLOB PhxEngine_Renderer_Inc
 file (GLOB PhxEngine_Renderer_Src
     Src/Renderer/*.h
 	Src/Renderer/*.cpp)
+	
+file (GLOB PhxEngine_RHI_Inc
+    Include/PhxEngine/RHI/*.h)
+	
+file (GLOB PhxEngine_RHI_Src
+    Src/RHI/*.h
+	Src/RHI/*.cpp)
     
+file(GLOB PhxEngine_RHI_Windows_Src
+    Src/RHI/Platform/Windows/*.h
+    Src/RHI/Platform/Windows/*.cpp
+)
+
+file(GLOB PhxEngine_RHI_DX12_Src
+    Src/RHI/D3D12/*.h
+    Src/RHI/D3D12/*.cpp
+)
+
 add_library(PhxEngine STATIC EXCLUDE_FROM_ALL  
     ${PhxEngine_Engine_Inc}
     ${PhxEngine_Engine_Src}
@@ -50,10 +67,10 @@ add_library(PhxEngine STATIC EXCLUDE_FROM_ALL
     ${PhxEngine_Assets_Src}
 	${PhxEngine_Resource_Inc}
 	${PhxEngine_Resource_Src}
-    ${PhxEngine_Graphics_RHI_Inc}
-    ${PhxEngine_Graphics_RHI_Src}
-	${PhxEngine_Graphics_RHI_Windows_Src}
-    ${PhxEngine_Graphics_RHI_DX12_Src}
+    ${PhxEngine_RHI_Inc}
+    ${PhxEngine_RHI_Src}
+	${PhxEngine_RHI_Windows_Src}
+    ${PhxEngine_RHI_DX12_Src}
     ${PhxEngine_Graphics_ImGui_Inc}
     ${PhxEngine_Graphics_ImGui_Src}
 	${PhxEngine_Renderer_Inc}
@@ -66,10 +83,14 @@ add_library(PhxEngine STATIC EXCLUDE_FROM_ALL
 source_group("Include"					FILES ${PhxEngine_Inc})
 source_group("Include/Core"				FILES ${PhxEngine_Core_Inc})
 source_group("Include/Renderer"			FILES ${PhxEngine_Renderer_Inc})
+source_group("Include/RHI"				FILES ${PhxEngine_RHI_Inc})
 
 source_group("Src"						FILES ${PhxEngine_Src})
 source_group("Src/Core"					FILES ${PhxEngine_Core_Src})
 source_group("Src/Core"					FILES ${PhxEngine_Renderer_Src})
+source_group("Src/RHI"					FILES ${PhxEngine_RHI_Src})
+source_group("Src/RHI/Platform/Windows"	FILES ${PhxEngine_RHI_Windows_Src})
+source_group("Src/RHI/D3D12"			FILES ${PhxEngine_RHI_DX12_Src})
 
 target_include_directories(${project} 
 	PUBLIC  "Include"

@@ -3,12 +3,13 @@
 #include <PhxEngine/Core/StopWatch.h>
 #include <PhxEngine/Core/Profiler.h>
 #include <PhxEngine/Core/Logger.h>
+#include <PhxEngine/Core/EventBus.h>
 
 #include <PhxEngine/Application.h>
 #include <PhxEngine/EngineTuner.h>
 #include <PhxEngine/EngineMemory.h>
 
-#include <PhxEngine/Renderer/DisplayService.h>
+#include <Renderer/GltfDisplayService.h>
 
 #include <thread>
 
@@ -31,7 +32,8 @@ namespace
 		EngineTuner::Startup();
 		EngineMemory::Startup();
 
-		DisplayService::Ptr; // = EngineMemory::Allcate
+		DisplayService::Ptr = new GltfDisplayService();
+		DisplayService::Ptr->Startup();
 	}
 
 	void Startup(IApplication* app)
@@ -46,6 +48,9 @@ namespace
 	void Shutdown(IApplication* app)
 	{
 		app->Shutdown();
+
+		DisplayService::Ptr->Shutdown();
+		delete DisplayService::Ptr;
 	}
 
 	void FixedUpdate()
@@ -56,7 +61,6 @@ namespace
 	void Update(TimeStep const span)
 	{
 		PHX_EVENT();
-
 		EngineMemory::Update();
 	}
 
@@ -68,6 +72,9 @@ namespace
 
 	void Tick()
 	{
+		DisplayService::Ptr->Update();
+		EventBus::DispatchEvents();
+
 		TimeStep deltaTimeSpan = m_gameClock.Elapsed();
 
 		// Fixed update calculation
@@ -90,6 +97,7 @@ namespace
 		Render();
 
 		// -- Present Screen ---
+		DisplayService::Ptr->Present();
 	}
 }
 
@@ -105,5 +113,5 @@ void PhxEngine::EngineLoop::Run(IApplication* app)
 		Tick();
 	}
 
-	app->Shutdown();
+	Shutdown(app);
 }
