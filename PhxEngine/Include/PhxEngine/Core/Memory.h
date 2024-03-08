@@ -2,16 +2,21 @@
 
 #include <stdint.h>
 #include <array>
+#include <mutex>
+#include <vector>
 
 #define PhxKB(size)                 (size * 1024)
 #define PhxMB(size)                 (size * 1024 * 1024)
 #define PhxGB(size)                 (size * 1024 * 1024 * 1024)
 
+#define phx_new					new
+#define phx_delete				delete
+
 namespace PhxEngine
 {
 	constexpr uint8_t DefaultAligment = 16;
 
-	size_t MemoryAlign(size_t size, size_t alignment) 
+	inline size_t MemoryAlign(size_t size, size_t alignment) 
 	{
 		const size_t alignmentMask = alignment - 1;
 		return (size + alignmentMask) & ~alignmentMask;
@@ -83,6 +88,21 @@ namespace PhxEngine
 
 		std::array<StackAllocator, 2> m_stacks;
 		uint8_t m_curStackIndex;
+	};
+
+	class BitSetAllocator
+	{
+	public:
+		explicit BitSetAllocator(size_t capacity);
+
+		int Allocate();
+		void Release(int index);
+
+	private:
+		int m_nextAvailable;
+		std::vector<bool> m_allocated;
+		std::mutex m_mutex;
+
 	};
 }
 

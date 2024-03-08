@@ -71,7 +71,7 @@ D3D12CommandContext* PhxEngine::RHI::D3D12::D3D12CommandQueue::RequestCommandCon
 
 	return retVal;
 }
-uint64_t PhxEngine::RHI::D3D12::D3D12CommandQueue::ExecuteCommandContexts(Core::Span<D3D12CommandContext*> contexts)
+uint64_t PhxEngine::RHI::D3D12::D3D12CommandQueue::ExecuteCommandContexts(Span<D3D12CommandContext*> contexts)
 {
 	auto _ = std::scoped_lock(this->m_commandListMutx);
 	static thread_local std::vector<ID3D12CommandList*> d3d12CommandLists;
@@ -94,7 +94,7 @@ uint64_t PhxEngine::RHI::D3D12::D3D12CommandQueue::ExecuteCommandContexts(Core::
 }
 #endif 
 
-uint64_t PhxEngine::RHI::D3D12::D3D12CommandQueue::ExecuteCommandLists(Core::Span<ID3D12CommandList*>  commandLists)
+uint64_t PhxEngine::RHI::D3D12::D3D12CommandQueue::ExecuteCommandLists(Span<ID3D12CommandList*>  commandLists)
 {
 	this->m_d3d12CommandQueue->ExecuteCommandLists(commandLists.Size(), commandLists.begin());
 
@@ -107,7 +107,7 @@ ID3D12CommandAllocator* PhxEngine::RHI::D3D12::D3D12CommandQueue::RequestAllocat
 	return this->m_allocatorPool.RequestAllocator(lastCompletedFence);
 }
 
-void PhxEngine::RHI::D3D12::D3D12CommandQueue::DiscardAllocators(uint64_t fence, Core::Span<ID3D12CommandAllocator*> allocators)
+void PhxEngine::RHI::D3D12::D3D12CommandQueue::DiscardAllocators(uint64_t fence, Span<ID3D12CommandAllocator*> allocators)
 {
 	for (auto* allocator : allocators)
 	{

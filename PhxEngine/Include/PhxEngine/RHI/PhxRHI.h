@@ -617,7 +617,7 @@ namespace PhxEngine::RHI
     };
 
     struct Shader;
-    using ShaderHandle = Core::Handle<Shader>;
+    using ShaderHandle = Handle<Shader>;
 
     struct VertexAttributeDesc
     {
@@ -632,7 +632,7 @@ namespace PhxEngine::RHI
     };
 
     struct InputLayout;
-    using InputLayoutHandle = Core::Handle<InputLayout>;
+    using InputLayoutHandle = Handle<InputLayout>;
 
     struct StaticSamplerParameter
     {
@@ -793,7 +793,7 @@ namespace PhxEngine::RHI
     struct Texture;
 
     // using TextureHandle = std::shared_ptr<ITexture>;
-    using TextureHandle = Core::Handle<Texture>;
+    using TextureHandle = Handle<Texture>;
 
     struct BufferRange
     {
@@ -855,7 +855,7 @@ namespace PhxEngine::RHI
     };
 
     struct Buffer;
-    using BufferHandle = Core::Handle<Buffer>;
+    using BufferHandle = Handle<Buffer>;
     struct BufferDesc
     {
         BufferMiscFlags MiscFlags = BufferMiscFlags::None;
@@ -899,7 +899,7 @@ namespace PhxEngine::RHI
     };
 
     struct GfxPipeline;
-    using GfxPipelineHandle = Core::Handle<GfxPipeline>;
+    using GfxPipelineHandle = Handle<GfxPipeline>;
 
     struct ComputePipelineDesc
     {
@@ -907,7 +907,7 @@ namespace PhxEngine::RHI
     };
 
     struct ComputePipeline;
-    using ComputePipelineHandle = Core::Handle<ComputePipeline>;
+    using ComputePipelineHandle = Handle<ComputePipeline>;
 
     struct MeshPipelineDesc
     {
@@ -930,7 +930,7 @@ namespace PhxEngine::RHI
     };
 
     struct MeshPipeline;
-    using MeshPipelineHandle = Core::Handle<MeshPipeline>;
+    using MeshPipelineHandle = Handle<MeshPipeline>;
 
     struct SubresourceData
     {
@@ -940,7 +940,7 @@ namespace PhxEngine::RHI
     };
 
     struct RTAccelerationStructure;
-    using RTAccelerationStructureHandle = Core::Handle<RTAccelerationStructure>;
+    using RTAccelerationStructureHandle = Handle<RTAccelerationStructure>;
 
     struct RTAccelerationStructureDesc
     {
@@ -1078,10 +1078,10 @@ namespace PhxEngine::RHI
 
     // Forward Declare, no real implementation
     struct RenderPass;
-    using RenderPassHandle = Core::Handle<RenderPass>;
+    using RenderPassHandle = Handle<RenderPass>;
 
     struct TimerQuery;
-    using TimerQueryHandle = Core::Handle<TimerQuery>;
+    using TimerQueryHandle = Handle<TimerQuery>;
 
     struct GpuBarrier
     {
@@ -1177,7 +1177,7 @@ namespace PhxEngine::RHI
 
     struct CommandSignatureDesc
     {
-        Core::Span<IndirectArgumnetDesc> ArgDesc;
+        Span<IndirectArgumnetDesc> ArgDesc;
 
         PipelineType PipelineType;
         union
@@ -1189,10 +1189,10 @@ namespace PhxEngine::RHI
     };
 
     struct CommandSignature;
-    using CommandSignatureHandle = Core::Handle<CommandSignature>;
+    using CommandSignatureHandle = Handle<CommandSignature>;
 
     struct CommandList;
-    using CommandListHandle = Core::Handle<CommandList>;
+    using CommandListHandle = Handle<CommandList>;
 
     struct ExecutionReceipt
     {
@@ -1289,7 +1289,7 @@ namespace PhxEngine::RHI
             return this->CreateCommandSignature(desc, sizeof(T));
         }
         virtual CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride) = 0;
-        virtual ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) = 0;
+        virtual ShaderHandle CreateShader(ShaderDesc const& desc, Span<uint8_t> shaderByteCode) = 0;
         virtual InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) = 0;
         virtual GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc) = 0;
         virtual ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc) = 0;
@@ -1343,7 +1343,7 @@ namespace PhxEngine::RHI
         // -- Query Stuff ---
         virtual void DeleteTimerQuery(TimerQueryHandle query) = 0;
         virtual bool PollTimerQuery(TimerQueryHandle query) = 0;
-        virtual Core::TimeStep GetTimerQueryTime(TimerQueryHandle query) = 0;
+        virtual TimeStep GetTimerQueryTime(TimerQueryHandle query) = 0;
         virtual void ResetTimerQuery(TimerQueryHandle query) = 0;
 
         // -- Utility ---
@@ -1384,7 +1384,7 @@ namespace PhxEngine::RHI
 
         virtual void TransitionBarrier(TextureHandle texture, ResourceStates beforeState, ResourceStates afterState, CommandListHandle cmd) = 0;
         virtual void TransitionBarrier(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState, CommandListHandle cmd) = 0;
-        virtual void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers, CommandListHandle cmd) = 0;
+        virtual void TransitionBarriers(Span<GpuBarrier> gpuBarriers, CommandListHandle cmd) = 0;
         virtual void ClearTextureFloat(TextureHandle texture, Color const& clearColour, CommandListHandle cmd) = 0;
         virtual void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil, CommandListHandle cmd) = 0;
 
@@ -1413,7 +1413,7 @@ namespace PhxEngine::RHI
         }
 
         template<typename T>
-        void WriteBuffer(BufferHandle buffer, Core::Span<T> data, uint64_t destOffsetBytes, CommandListHandle cmd)
+        void WriteBuffer(BufferHandle buffer, Span<T> data, uint64_t destOffsetBytes, CommandListHandle cmd)
         {
             this->WriteBuffer(buffer, data.begin(), sizeof(T) * data.Size(), destOffsetBytes, cmd);
         }
@@ -1428,7 +1428,7 @@ namespace PhxEngine::RHI
         virtual void SetGfxPipeline(GfxPipelineHandle gfxPipeline, CommandListHandle cmd) = 0;
         virtual void SetViewports(Viewport* viewports, size_t numViewports, CommandListHandle cmd) = 0;
         virtual void SetScissors(Rect* scissor, size_t numScissors, CommandListHandle cmd) = 0;
-        virtual void SetRenderTargets(Core::Span<TextureHandle> renderTargets, TextureHandle depthStenc, CommandListHandle cmd) = 0;
+        virtual void SetRenderTargets(Span<TextureHandle> renderTargets, TextureHandle depthStenc, CommandListHandle cmd) = 0;
 
         // -- Comptute Stuff ---
         virtual void SetComputeState(ComputePipelineHandle state, CommandListHandle cmd) = 0;
@@ -1500,25 +1500,25 @@ namespace PhxEngine::RHI
 
         virtual void BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer, CommandListHandle cmd) = 0;
 
-        virtual void BindDynamicDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures, CommandListHandle cmd) = 0;
+        virtual void BindDynamicDescriptorTable(size_t rootParameterIndex, Span<TextureHandle> textures, CommandListHandle cmd) = 0;
         void BindDynamicUavDescriptorTable(
             size_t rootParameterIndex,
-            Core::Span<BufferHandle> buffers,
+            Span<BufferHandle> buffers,
             CommandListHandle cmd)
         {
             this->BindDynamicUavDescriptorTable(rootParameterIndex, buffers, {}, cmd);
         }
         void BindDynamicUavDescriptorTable(
             size_t rootParameterIndex,
-            Core::Span<TextureHandle> textures,
+            Span<TextureHandle> textures,
             CommandListHandle cmd)
         {
             this->BindDynamicUavDescriptorTable(rootParameterIndex, {}, textures, cmd);
         }
         virtual void BindDynamicUavDescriptorTable(
             size_t rootParameterIndex,
-            Core::Span<BufferHandle> buffers,
-            Core::Span<TextureHandle> textures,
+            Span<BufferHandle> buffers,
+            Span<TextureHandle> textures,
             CommandListHandle cmd) = 0;
 
         virtual void BindResourceTable(size_t rootParameterIndex, CommandListHandle cmd) = 0;

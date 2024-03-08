@@ -21,11 +21,11 @@ namespace PhxEngine::RHI::D3D12
 
 #if 0 
 		RequestCommandContext();
-		uint64_t ExecuteCommandContexts(Core::Span<D3D12CommandContext*> contexts);
+		uint64_t ExecuteCommandContexts(Span<D3D12CommandContext*> contexts);
 #endif
 
 		ID3D12CommandAllocator* RequestAllocator();
-		void DiscardAllocators(uint64_t fence, Core::Span<ID3D12CommandAllocator*> allocators);
+		void DiscardAllocators(uint64_t fence, Span<ID3D12CommandAllocator*> allocators);
 		void DiscardAllocator(uint64_t fence, ID3D12CommandAllocator* allocator);
 
 		uint64_t IncrementFence();
@@ -40,7 +40,7 @@ namespace PhxEngine::RHI::D3D12
 		ID3D12Fence* GetFence() { return this->m_d3d12Fence.Get(); }
 		uint64_t GetLastCompletedFence();
 				
-		uint64_t ExecuteCommandLists(Core::Span<ID3D12CommandList*> commandLists);
+		uint64_t ExecuteCommandLists(Span<ID3D12CommandList*> commandLists);
 
 	private:
 		D3D12_COMMAND_LIST_TYPE m_type;

@@ -1,9 +1,8 @@
 
 #include "D3D12GfxDevice.h"
 
-#include <PhxEngine/Core/Log.h>
-#include <PhxEngine/Core/String.h>
-#include <PhxEngine/Core/Math.h>
+#include <PhxEngine/Core/Logger.h>
+#include <PhxEngine/Core/StringUtils.h>
 
 #include <variant>
 
@@ -21,7 +20,7 @@
 #undef MemoryBarrier
 
 using namespace PhxEngine;
-using namespace PhxEngine::Core;
+using namespace PhxEngine;
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::D3D12;
 
@@ -312,7 +311,7 @@ namespace
 			}
 			else
 			{
-				LOG_RHI_WARN("D3D12CreateDevice failed.");
+				PHX_LOG_CORE_WARN("D3D12CreateDevice failed.");
 			}
 		}
 		catch (...)
@@ -340,7 +339,7 @@ PhxEngine::RHI::D3D12::D3D12GfxDevice::~D3D12GfxDevice()
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::Initialize(SwapChainDesc const& swapchainDesc, void* windowHandle)
 {
-	LOG_RHI_INFO("Initialize DirectX 12 Graphics Device");
+	PHX_LOG_CORE_INFO("Initialize DirectX 12 Graphics Device");
 	this->InitializeResourcePools();
 	this->InitializeD3D12NativeResources(this->m_gpuAdapter.NativeAdapter.Get());
 
@@ -573,8 +572,8 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 
 			if (!submitCommands.empty())
 			{
-				uint64_t waitOnFenceValue = this->GetQueue(commandList.QueueType).ExecuteCommandLists(Core::Span(submitCommands));
-				queue.DiscardAllocators(waitOnFenceValue, Core::Span(submitAllocators));
+				uint64_t waitOnFenceValue = this->GetQueue(commandList.QueueType).ExecuteCommandLists(Span(submitCommands));
+				queue.DiscardAllocators(waitOnFenceValue, Span(submitAllocators));
 
 				submitCommands.clear();
 				submitAllocators.clear();
@@ -591,8 +590,8 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 
 		if (!submitCommands.empty())
 		{
-			uint64_t waitOnFenceValue = queue.ExecuteCommandLists(Core::Span(submitCommands));
-			queue.DiscardAllocators(waitOnFenceValue, Core::Span(submitAllocators));
+			uint64_t waitOnFenceValue = queue.ExecuteCommandLists(Span(submitCommands));
+			queue.DiscardAllocators(waitOnFenceValue, Span(submitAllocators));
 			submitCommands.clear();
 		}
 
@@ -792,7 +791,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::DeleteCommandSignature(CommandSignat
 	this->m_deleteQueue.push_back(d);
 }
 
-ShaderHandle PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
+ShaderHandle PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateShader(ShaderDesc const& desc, Span<uint8_t> shaderByteCode)
 {
 	ShaderHandle handle = this->m_shaderPool.Emplace(desc, shaderByteCode.begin(), shaderByteCode.Size());
 	D3D12Shader* shaderImpl = this->m_shaderPool.Get(handle);
@@ -1618,7 +1617,7 @@ TextureHandle PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateTexture(TextureDesc c
 
 
 	std::wstring debugName;
-	Core::StringConvert(desc.DebugName, debugName);
+	StringConvert(desc.DebugName, debugName);
 	textureImpl.D3D12Resource->SetName(debugName.c_str());
 
 	TextureHandle texture = this->m_texturePool.Insert(textureImpl);
@@ -1951,7 +1950,7 @@ RTAccelerationStructureHandle PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateRTAcc
 
 
 	UINT64 alignment = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
-	UINT64 alignedSize = Core::AlignTo(rtAccelerationStructureImpl.Info.ResultDataMaxSizeInBytes, alignment);
+	UINT64 alignedSize = MemoryAlign(rtAccelerationStructureImpl.Info.ResultDataMaxSizeInBytes, alignment);
 
 	D3D12_RESOURCE_DESC resourceDesc;
 	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
@@ -3037,7 +3036,7 @@ void D3D12GfxDevice::CreateBufferInternal(BufferDesc const& desc, D3D12Buffer& o
 	UINT64 alignedSize = 0;
 	if ((desc.Binding & BindingFlags::ConstantBuffer) == BindingFlags::ConstantBuffer)
 	{
-		alignedSize = Core::AlignTo(alignedSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+		alignedSize = MemoryAlign(alignedSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 	}
 
 	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(desc.Stride * desc.NumElements, resourceFlags, alignedSize);
@@ -3066,7 +3065,7 @@ void D3D12GfxDevice::CreateBufferInternal(BufferDesc const& desc, D3D12Buffer& o
 	{
 		D3D12_RESOURCE_ALLOCATION_INFO finalAllocInfo = {};
 		finalAllocInfo.Alignment = 0;
-		finalAllocInfo.SizeInBytes = Core::AlignTo(
+		finalAllocInfo.SizeInBytes = MemoryAlign(
 			outBuffer.Desc.Stride * outBuffer.Desc.NumElements,
 			D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT * 1024);
 
@@ -3645,7 +3644,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::CreateSwapChain(SwapChainDesc const&
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::FindAdapter(Microsoft::WRL::ComPtr<IDXGIFactory6> factory, D3D12Adapter& outAdapter)
 {
-	LOG_RHI_INFO("Finding a suitable adapter");
+	PHX_LOG_CORE_INFO("Finding a suitable adapter");
 
 	// Create factory
 	Microsoft::WRL::ComPtr<IDXGIAdapter1> selectedAdapter;
@@ -3669,7 +3668,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::FindAdapter(Microsoft::WRL::ComPtr<I
 
 		if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
 		{
-			LOG_RHI_INFO("GPU '%s' is a software adapter. Skipping consideration as this is not supported.", name.c_str());
+			PHX_LOG_CORE_INFO("GPU '%s' is a software adapter. Skipping consideration as this is not supported.", name.c_str());
 			continue;
 		}
 
@@ -3681,7 +3680,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::FindAdapter(Microsoft::WRL::ComPtr<I
 
 		if (basicDeviceInfo.NumDeviceNodes > 1)
 		{
-			LOG_RHI_INFO("GPU '%s' has one or more device nodes. Currently only support one device ndoe.", name.c_str());
+			PHX_LOG_CORE_INFO("GPU '%s' has one or more device nodes. Currently only support one device ndoe.", name.c_str());
 		}
 
 		if (!selectedAdapter || selectedGPUVideoMemeory < dedicatedVideoMemory)
@@ -3694,7 +3693,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::FindAdapter(Microsoft::WRL::ComPtr<I
 
 	if (!selectedAdapter)
 	{
-		LOG_RHI_WARN("No suitable adapters were found.");
+		PHX_LOG_CORE_WARN("No suitable adapters were found.");
 		return;
 	}
 
@@ -3707,12 +3706,12 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::FindAdapter(Microsoft::WRL::ComPtr<I
 	size_t sharedSystemMemory = desc.SharedSystemMemory;
 
 	// TODO: FIXLOG
-	LOG_RHI_INFO(
+	PHX_LOG_CORE_INFO(
 		"Found Suitable D3D12 Adapter '%s'",
 		name.c_str());
 
 	// TODO: FIXLOG
-	LOG_RHI_INFO(
+	PHX_LOG_CORE_INFO(
 		"Adapter has %dMB of dedicated video memory, %dMB of dedicated system memory, and %dMB of shared system memory.",
 		dedicatedVideoMemory / (1024 * 1024),
 		dedicatedSystemMemory / (1024 * 1024),
@@ -3924,7 +3923,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::TransitionBarrier(
 		ConvertResourceStates(afterState));
 }
 
-void PhxEngine::RHI::D3D12::D3D12GfxDevice::TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers, CommandListHandle cmd)
+void PhxEngine::RHI::D3D12::D3D12GfxDevice::TransitionBarriers(Span<GpuBarrier> gpuBarriers, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
 	for (const PhxEngine::RHI::GpuBarrier& gpuBarrier : gpuBarriers)
@@ -4184,7 +4183,7 @@ void D3D12GfxDevice::WriteBuffer(BufferHandle buffer, const void* Data, size_t d
 	const D3D12Buffer* bufferImpl = this->GetBufferPool().Get(buffer);
 	if ((bufferImpl->GetDesc().Binding & BindingFlags::ConstantBuffer) == BindingFlags::ConstantBuffer)
 	{
-		alignedSize = AlignTo(alignedSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+		alignedSize = MemoryAlign(alignedSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 	}
 
 	auto heapAllocation = internalCmd.UploadBuffer.Allocate(dataSize, alignedSize);
@@ -4283,17 +4282,9 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::WriteTexture(TextureHandle texture, 
 {
 	// LOG_CORE_FATAL("NOT IMPLEMENTED FUNCTION CALLED: CommandList::WriteTexture");
 	assert(false);
-	auto textureImpl = this->GetTexturePool().Get(texture);
-	uint32_t subresource = CalcSubresource(mipLevel, arraySlice, 0, textureImpl->Desc.MipLevels, textureImpl->Desc.ArraySize);
-
-	D3D12_RESOURCE_DESC resourceDesc = textureImpl->D3D12Resource->GetDesc();
-	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
-	uint32_t numRows;
-	uint64_t rowSizeInBytes;
-	uint64_t totalBytes;
 }
 
-void PhxEngine::RHI::D3D12::D3D12GfxDevice::SetRenderTargets(Core::Span<TextureHandle> renderTargets, TextureHandle depthStencil, CommandListHandle cmd)
+void PhxEngine::RHI::D3D12::D3D12GfxDevice::SetRenderTargets(Span<TextureHandle> renderTargets, TextureHandle depthStencil, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
 	std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> renderTargetViews(renderTargets.Size());
@@ -4538,7 +4529,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::BindSamplerTable(size_t rootParamete
 	assert(false);
 }
 
-void D3D12GfxDevice::BindDynamicDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures, CommandListHandle cmd)
+void D3D12GfxDevice::BindDynamicDescriptorTable(size_t rootParameterIndex, Span<TextureHandle> textures, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
 	// Request Descriptoprs for table
@@ -4566,8 +4557,8 @@ void D3D12GfxDevice::BindDynamicDescriptorTable(size_t rootParameterIndex, Core:
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::BindDynamicUavDescriptorTable(
 	size_t rootParameterIndex,
-	Core::Span<BufferHandle> buffers,
-	Core::Span<TextureHandle> textures,
+	Span<BufferHandle> buffers,
+	Span<TextureHandle> textures,
 	CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);

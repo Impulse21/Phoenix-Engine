@@ -8,9 +8,8 @@
 #include <functional>
 
 #include <PhxEngine/RHI/PhxRHI_D3D12.h>
-#include <PhxEngine/Core/BitSetAllocator.h>
+#include <PhxEngine/EngineMemory.h>
 #include <PhxEngine/Core/Pool.h>
-#include <PhxEngine/Core/Math.h>
 
 #include "D3D12Common.h"
 #include "D3D12CommandQueue.h"
@@ -57,7 +56,7 @@ namespace PhxEngine::RHI::D3D12
 
         bool Started = false;
         bool Resolved = false;
-        Core::TimeStep Time;
+        TimeStep Time;
 
     };
 
@@ -393,7 +392,7 @@ namespace PhxEngine::RHI::D3D12
             return this->CreateCommandSignature(desc, sizeof(T));
         }
         CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride) override;
-        ShaderHandle CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode) override;
+        ShaderHandle CreateShader(ShaderDesc const& desc, Span<uint8_t> shaderByteCode) override;
         InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) override;
         GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc) override;
         ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc) override;
@@ -447,7 +446,7 @@ namespace PhxEngine::RHI::D3D12
         // -- Query Stuff ---
         void DeleteTimerQuery(TimerQueryHandle query) override;
         bool PollTimerQuery(TimerQueryHandle query) override;
-        Core::TimeStep GetTimerQueryTime(TimerQueryHandle query) override;
+        TimeStep GetTimerQueryTime(TimerQueryHandle query) override;
         void ResetTimerQuery(TimerQueryHandle query) override;
 
         // -- Utility ---
@@ -498,7 +497,7 @@ namespace PhxEngine::RHI::D3D12
 
         void TransitionBarrier(TextureHandle texture, ResourceStates beforeState, ResourceStates afterState, CommandListHandle cmd) override;
         void TransitionBarrier(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState, CommandListHandle cmd) override;
-        void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers, CommandListHandle cmd) override;
+        void TransitionBarriers(Span<GpuBarrier> gpuBarriers, CommandListHandle cmd) override;
         void ClearTextureFloat(TextureHandle texture, Color const& clearColour, CommandListHandle cmd) override;
         void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil, CommandListHandle cmd) override;
 
@@ -527,7 +526,7 @@ namespace PhxEngine::RHI::D3D12
         }
 
         template<typename T>
-        void WriteBuffer(BufferHandle buffer, Core::Span<T> data, uint64_t destOffsetBytes, CommandListHandle cmd)
+        void WriteBuffer(BufferHandle buffer, Span<T> data, uint64_t destOffsetBytes, CommandListHandle cmd)
         {
             this->WriteBuffer(buffer, data.begin(), sizeof(T) * data.Size(), destOffsetBytes, cmd);
         }
@@ -542,7 +541,7 @@ namespace PhxEngine::RHI::D3D12
         void SetGfxPipeline(GfxPipelineHandle gfxPipeline, CommandListHandle cmd) override;
         void SetViewports(Viewport* viewports, size_t numViewports, CommandListHandle cmd) override;
         void SetScissors(Rect* scissor, size_t numScissors, CommandListHandle cmd) override;
-        void SetRenderTargets(Core::Span<TextureHandle> renderTargets, TextureHandle depthStenc, CommandListHandle cmd) override;
+        void SetRenderTargets(Span<TextureHandle> renderTargets, TextureHandle depthStenc, CommandListHandle cmd) override;
 
         // -- Comptute Stuff ---
         void SetComputeState(ComputePipelineHandle state, CommandListHandle cmd) override;
@@ -614,25 +613,25 @@ namespace PhxEngine::RHI::D3D12
 
         void BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer, CommandListHandle cmd) override;
 
-        void BindDynamicDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures, CommandListHandle cmd) override;
+        void BindDynamicDescriptorTable(size_t rootParameterIndex, Span<TextureHandle> textures, CommandListHandle cmd) override;
         void BindDynamicUavDescriptorTable(
             size_t rootParameterIndex,
-            Core::Span<BufferHandle> buffers,
+            Span<BufferHandle> buffers,
             CommandListHandle cmd)
         {
             this->BindDynamicUavDescriptorTable(rootParameterIndex, buffers, {}, cmd);
         }
         void BindDynamicUavDescriptorTable(
             size_t rootParameterIndex,
-            Core::Span<TextureHandle> textures,
+            Span<TextureHandle> textures,
             CommandListHandle cmd)
         {
             this->BindDynamicUavDescriptorTable(rootParameterIndex, {}, textures, cmd);
         }
         void BindDynamicUavDescriptorTable(
             size_t rootParameterIndex,
-            Core::Span<BufferHandle> buffers,
-            Core::Span<TextureHandle> textures,
+            Span<BufferHandle> buffers,
+            Span<TextureHandle> textures,
             CommandListHandle cmd) override;
 
         void BindResourceTable(size_t rootParameterIndex, CommandListHandle cmd) override;
@@ -696,15 +695,15 @@ namespace PhxEngine::RHI::D3D12
         const D3D12BindlessDescriptorTable& GetBindlessTable() const { return this->m_bindlessResourceDescriptorTable; }
 
         // Maybe better encapulate this.
-        Core::Pool<D3D12Texture, Texture>& GetTexturePool() { return this->m_texturePool; };
-        Core::Pool<D3D12Buffer, Buffer>& GetBufferPool() { return this->m_bufferPool; };
-        Core::Pool<D3D12RenderPass, RenderPass>& GetRenderPassPool() { return this->m_renderPassPool; };
-        Core::Pool<D3D12GraphicsPipeline, GfxPipeline>& GetGraphicsPipelinePool() { return this->m_gfxPipelinePool; }
-        Core::Pool<D3D12ComputePipeline, ComputePipeline>& GetComputePipelinePool() { return this->m_computePipelinePool; }
-        Core::Pool<D3D12MeshPipeline, MeshPipeline>& GetMeshPipelinePool() { return this->m_meshPipelinePool; }
-        Core::Pool<D3D12RTAccelerationStructure, RTAccelerationStructure>& GetRTAccelerationStructurePool() { return this->m_rtAccelerationStructurePool; }
-        Core::Pool<D3D12CommandSignature, CommandSignature>& GetCommandSignaturePool() { return this->m_commandSignaturePool; }
-        Core::Pool<D3D12TimerQuery, TimerQuery>& GetTimerQueryPool() { return this->m_timerQueryPool; }
+        Pool<D3D12Texture, Texture>& GetTexturePool() { return this->m_texturePool; };
+        Pool<D3D12Buffer, Buffer>& GetBufferPool() { return this->m_bufferPool; };
+        Pool<D3D12RenderPass, RenderPass>& GetRenderPassPool() { return this->m_renderPassPool; };
+        Pool<D3D12GraphicsPipeline, GfxPipeline>& GetGraphicsPipelinePool() { return this->m_gfxPipelinePool; }
+        Pool<D3D12ComputePipeline, ComputePipeline>& GetComputePipelinePool() { return this->m_computePipelinePool; }
+        Pool<D3D12MeshPipeline, MeshPipeline>& GetMeshPipelinePool() { return this->m_meshPipelinePool; }
+        Pool<D3D12RTAccelerationStructure, RTAccelerationStructure>& GetRTAccelerationStructurePool() { return this->m_rtAccelerationStructurePool; }
+        Pool<D3D12CommandSignature, CommandSignature>& GetCommandSignaturePool() { return this->m_commandSignaturePool; }
+        Pool<D3D12TimerQuery, TimerQuery>& GetTimerQueryPool() { return this->m_timerQueryPool; }
 
     private:
         bool IsHdrSwapchainSupported();
@@ -758,18 +757,18 @@ namespace PhxEngine::RHI::D3D12
         D3D12SwapChain m_swapChain;
 
         // -- Resouce Pool ---
-        Core::Pool<D3D12Texture, Texture> m_texturePool;
-        Core::Pool<D3D12CommandSignature, CommandSignature> m_commandSignaturePool;
-        Core::Pool<D3D12Shader, RHI::Shader> m_shaderPool;
-        Core::Pool<D3D12InputLayout, InputLayout> m_inputLayoutPool;
-        Core::Pool<D3D12Buffer, Buffer> m_bufferPool;
-        Core::Pool<D3D12RenderPass, RenderPass> m_renderPassPool;
-        Core::Pool<D3D12RTAccelerationStructure, RTAccelerationStructure> m_rtAccelerationStructurePool;
-        Core::Pool<D3D12GraphicsPipeline, GfxPipeline> m_gfxPipelinePool;
-        Core::Pool<D3D12ComputePipeline, ComputePipeline> m_computePipelinePool;
-        Core::Pool<D3D12MeshPipeline, MeshPipeline> m_meshPipelinePool;
-        Core::Pool<D3D12TimerQuery, TimerQuery> m_timerQueryPool;
-        Core::Pool<D3D12CommandList, CommandList> m_commandListPool;
+        Pool<D3D12Texture, Texture> m_texturePool;
+        Pool<D3D12CommandSignature, CommandSignature> m_commandSignaturePool;
+        Pool<D3D12Shader, RHI::Shader> m_shaderPool;
+        Pool<D3D12InputLayout, InputLayout> m_inputLayoutPool;
+        Pool<D3D12Buffer, Buffer> m_bufferPool;
+        Pool<D3D12RenderPass, RenderPass> m_renderPassPool;
+        Pool<D3D12RTAccelerationStructure, RTAccelerationStructure> m_rtAccelerationStructurePool;
+        Pool<D3D12GraphicsPipeline, GfxPipeline> m_gfxPipelinePool;
+        Pool<D3D12ComputePipeline, ComputePipeline> m_computePipelinePool;
+        Pool<D3D12MeshPipeline, MeshPipeline> m_meshPipelinePool;
+        Pool<D3D12TimerQuery, TimerQuery> m_timerQueryPool;
+        Pool<D3D12CommandList, CommandList> m_commandListPool;
 
         // -- Command Queues ---
 		std::array<D3D12CommandQueue, (int)CommandQueueType::Count> m_commandQueues;
@@ -785,7 +784,7 @@ namespace PhxEngine::RHI::D3D12
         // -- Query Heaps ---
         Microsoft::WRL::ComPtr<ID3D12QueryHeap> m_gpuTimestampQueryHeap;
         BufferHandle m_timestampQueryBuffer;
-        Core::BitSetAllocator m_timerQueryIndexPool;
+        BitSetAllocator m_timerQueryIndexPool;
 
         D3D12BindlessDescriptorTable m_bindlessResourceDescriptorTable;
 

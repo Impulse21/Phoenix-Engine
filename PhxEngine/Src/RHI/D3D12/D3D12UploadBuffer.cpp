@@ -1,11 +1,10 @@
 #include "D3D12UploadBuffer.h"
 
 #include "D3D12GfxDevice.h"
+#include <PhxEngine/Core/Memory.h>
 
 using namespace PhxEngine::RHI;
 using namespace PhxEngine::RHI::D3D12;
-
-
 
 void UploadBuffer::Initialize(D3D12GfxDevice* device, size_t pageSize)
 {
@@ -97,8 +96,8 @@ PhxEngine::RHI::D3D12::UploadBuffer::Page::~Page()
 
 bool UploadBuffer::Page::HasSpace(size_t sizeInBytes, size_t alignment) const
 {
-	size_t sizeInBytesAligned = Core::AlignUp(sizeInBytes, alignment);
-	size_t alignedOffset = Core::AlignUp(this->m_offset, alignment);
+	size_t sizeInBytesAligned = MemoryAlign(sizeInBytes, alignment);
+	size_t alignedOffset = MemoryAlign(this->m_offset, alignment);
 
 	return (alignedOffset + sizeInBytesAligned) <= this->m_pageSize;
 }
@@ -110,9 +109,9 @@ UploadAllocation UploadBuffer::Page::Allocate(size_t sizeInBytes, size_t alignme
 		throw std::bad_alloc();
 	}
 	D3D12Buffer* bufferImpl = this->m_gfxDevice->GetBufferPool().Get(this->m_buffer);
-	size_t sizeInBytesAligned = Core::AlignUp(sizeInBytes, alignment);
+	size_t sizeInBytesAligned = MemoryAlign(sizeInBytes, alignment);
 
-	this->m_offset = Core::AlignUp(this->m_offset, alignment);
+	this->m_offset = MemoryAlign(this->m_offset, alignment);
 	UploadAllocation allocation = {};
 	allocation.CpuData = static_cast<uint8_t*>(bufferImpl->MappedData) + this->m_offset;
 	allocation.Gpu = this->m_gpuPtr + this->m_offset;

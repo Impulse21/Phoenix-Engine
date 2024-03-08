@@ -21,13 +21,13 @@
 
 // D3D12
 #include "d3d12.h"
-#include "d3dx12.h"
+#include <d3dx12/d3dx12.h>
 #include "d3d12sdklayers.h"
 #include "d3d12shader.h"
 #include <dxgi1_6.h>
 
 #include <PhxEngine/RHI/PhxRHI.h>
-#include <PhxEngine/Core/Log.h>
+#include <PhxEngine/Core/Logger.h>
 
 namespace PhxEngine::RHI::D3D12
 {

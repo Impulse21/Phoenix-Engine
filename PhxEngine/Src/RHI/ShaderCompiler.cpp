@@ -1,10 +1,10 @@
 #include <PhxEngine/RHI/PhxShaderCompiler.h>
-#include <PhxEngine/Core/Log.h>
-#include <PhxEngine/Core/String.h>
+#include <PhxEngine/Core/Logger.h>
+#include <PhxEngine/Core/StringUtils.h>
 
 #include <wrl.h>
 #include <dxc/dxcapi.h>
-using namespace PhxEngine::Core;
+using namespace PhxEngine;
 using namespace PhxEngine::RHI;
 using namespace Microsoft::WRL;
 namespace
@@ -410,7 +410,7 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(CompilerInput const& inpu
 	if (pShader != nullptr)
 	{
 		result.Dependencies.push_back(input.Filename);
-		result.ShaderData = Core::Span((const uint8_t*)pShader->GetBufferPointer(), pShader->GetBufferSize());
+		result.ShaderData = Span((const uint8_t*)pShader->GetBufferPointer(), pShader->GetBufferSize());
 
 		// keep the blob alive == keep shader pointer valid!
 		auto internalState = std::make_shared<Microsoft::WRL::ComPtr<IDxcBlob>>();
@@ -423,7 +423,7 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(CompilerInput const& inpu
 		pResults->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&pShaderSymbols), nullptr)));
 	if (pShaderSymbols != nullptr)
 	{
-		result.ShaderSymbols = Core::Span((const uint8_t*)pShaderSymbols->GetBufferPointer(), pShaderSymbols->GetBufferSize());
+		result.ShaderSymbols = Span((const uint8_t*)pShaderSymbols->GetBufferPointer(), pShaderSymbols->GetBufferSize());
 
 		// keep the blob alive == keep shader pointer valid!
 		auto internalState = std::make_shared<Microsoft::WRL::ComPtr<IDxcBlob>>();

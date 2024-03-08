@@ -19,14 +19,14 @@ namespace PhxEngine::RHI::ShaderCompiler
 	struct CompilerInput
 	{
 		std::string Filename;
-		PhxEngine::Core::IFileSystem* FileSystem;
+		PhxEngine::IFileSystem* FileSystem;
 		uint32_t Flags = CompilerFlags::None;
 
 		RHI::ShaderType ShaderType = ShaderType::HLSL6;
 		RHI::ShaderModel ShaderModel = ShaderModel::SM_6_6;
 		RHI::ShaderStage ShaderStage = ShaderStage::Vertex;
-		Core::Span<std::string> Defines;
-		Core::Span<std::string> IncludeDirs;
+		PhxEngine::Span<std::string> Defines;
+		PhxEngine::Span<std::string> IncludeDirs;
 		std::string EntryPoint = "main";
 	};
 
@@ -34,8 +34,8 @@ namespace PhxEngine::RHI::ShaderCompiler
 	{
 		std::string ErrorMessage;
 		std::vector<std::string> Dependencies;
-		PhxEngine::Core::Span<uint8_t> ShaderData;
-		PhxEngine::Core::Span<uint8_t> ShaderSymbols;
+		PhxEngine::Span<uint8_t> ShaderData;
+		PhxEngine::Span<uint8_t> ShaderSymbols;
 
 		std::vector<uint8_t> ShaderHash;
 
