@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
+include(FetchContent)
+
 # set the project name and version
 set(project PhxEngine)
 
@@ -104,3 +106,73 @@ target_link_libraries(${project} PUBLIC
     glfw)
 
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
+
+
+# D3D12 Agility SDK
+message("Fetching D3D12 Agility SDK")
+FetchContent_Declare(d3d12-agility-sdk URL https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.608.2)
+FetchContent_MakeAvailable(d3d12-agility-sdk)
+file(GLOB_RECURSE d3d12-agility-sdk_include "${d3d12-agility-sdk_SOURCE_DIR}/build/native/include/*.h")
+add_library(
+	D3D12AgilitySDK INTERFACE
+	${d3d12-agility-sdk_include}
+	"${d3d12-agility-sdk_SOURCE_DIR}/build/native/bin/x64/D3D12Core.dll"
+	"${d3d12-agility-sdk_SOURCE_DIR}/build/native/bin/x64/d3d12SDKLayers.dll")
+target_include_directories(D3D12AgilitySDK INTERFACE "${d3d12-agility-sdk_SOURCE_DIR}/build/native/include")
+target_link_libraries(D3D12AgilitySDK INTERFACE "d3d12.lib" "dxgi.lib")
+set_target_properties(D3D12AgilitySDK  PROPERTIES FOLDER ${extern_folder})
+target_link_libraries(${project} PUBLIC D3D12AgilitySDK)
+
+# Copy DLLs
+add_custom_command(
+	TARGET ${project} POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_directory
+	"${d3d12-agility-sdk_SOURCE_DIR}/build/native/bin/x64"
+
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/D3D12
+	DEPENDS D3D12AgilitySDK)
+
+message("D3D12 Agility SDK fetched")
+
+# DXC
+message("Fetching DirectXShaderCompiler")
+FetchContent_Declare(dxc URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.7.2308/dxc_2023_08_14.zip )
+FetchContent_MakeAvailable(dxc)
+file(MAKE_DIRECTORY ${dxc_SOURCE_DIR}/include)
+file(COPY ${dxc_SOURCE_DIR}/inc/d3d12shader.h DESTINATION ${dxc_SOURCE_DIR}/include/dxc)
+file(COPY ${dxc_SOURCE_DIR}/inc/dxcapi.h DESTINATION ${dxc_SOURCE_DIR}/include/dxc)
+add_library(
+	DirectXShaderCompiler
+	INTERFACE
+	"${dxc_SOURCE_DIR}/include/dxc/d3d12shader.h"
+	"${dxc_SOURCE_DIR}/include/dxc/dxcapi.h"
+	"${dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll"
+	"${dxc_SOURCE_DIR}/bin/x64/dxil.dll")
+target_include_directories(DirectXShaderCompiler INTERFACE "${dxc_SOURCE_DIR}/include")
+target_link_libraries(DirectXShaderCompiler INTERFACE "${dxc_SOURCE_DIR}/lib/x64/dxcompiler.lib")
+set_target_properties(DirectXShaderCompiler  PROPERTIES FOLDER ${extern_folder})
+target_link_libraries(${project} PUBLIC DirectXShaderCompiler)
+
+# PIX
+message("Fetching PIX")
+FetchContent_Declare(pix URL https://www.nuget.org/api/v2/package/WinPixEventRuntime/1.0.220124001)
+FetchContent_MakeAvailable(pix)
+file(GLOB_RECURSE pix_include "${pix_SOURCE_DIR}/Include/WinPixEventRuntime/*.h")
+add_library(
+	PIX INTERFACE
+	${pix_include}
+	"${pix_SOURCE_DIR}/bin/x64/WinPixEventRuntime.dll")
+target_include_directories(PIX INTERFACE "${pix_SOURCE_DIR}/Include/WinPixEventRuntime")
+target_link_libraries(PIX INTERFACE "${pix_SOURCE_DIR}/bin/x64/WinPixEventRuntime.lib")
+set_target_properties(PIX  PROPERTIES FOLDER ${extern_folder})
+target_link_libraries(${project} PUBLIC PIX)
+
+# Copy DLLs
+add_custom_command(
+	TARGET ${project} POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy
+	"${pix_SOURCE_DIR}/bin/x64/WinPixEventRuntime.dll"
+
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+	DEPENDS PIX)
+message("PIX fetched")
