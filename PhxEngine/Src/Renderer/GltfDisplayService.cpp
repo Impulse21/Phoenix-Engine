@@ -40,7 +40,7 @@ void PhxEngine::GltfDisplayService::Startup()
 				.Height = e.Height,
 			};
 
-			if (RHI::IGfxDevice::Ptr)
+			if (RHI::IGfxDevice::Ptr == nullptr)
 			{
 				RHI::IGfxDevice::Ptr = RHI::GfxDeviceFactory::Create(RHI::GraphicsAPI::DX12);
 				RHI::IGfxDevice::Ptr->Initialize(desc, this->GetNativeWindowHandle());

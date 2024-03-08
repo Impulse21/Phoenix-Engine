@@ -35,6 +35,10 @@ namespace PhxEngine
 			this->m_generations = phx_new uint32_t[this->m_size];
 			this->m_freeList = phx_new uint32_t[this->m_size];
 
+			std::memset(this->m_data, 0, this->m_size * sizeof(ImplT));
+			std::memset(this->m_generations, 0, this->m_size * sizeof(uint32_t));
+			std::memset(this->m_freeList, 0, this->m_size * sizeof(uint32_t));
+
 			for (size_t i = 0; i < this->m_size; i++)
 			{
 				this->m_generations[i] = 1;
@@ -142,7 +146,11 @@ namespace PhxEngine
 
 			std::memset(newDataArray, 0, newSize * sizeof(ImplT));
 			std::memset(newFreeListArray, 0, newSize * sizeof(uint32_t));
-			std::memset(newGenerations, 0, newSize * sizeof(uint32_t));
+
+			for (size_t i = 0; i < newSize; i++)
+			{
+				newGenerations[i] = 1;
+			}
 
 			// Copy data over
 			std::memcpy(newDataArray, this->m_data, this->m_size * sizeof(ImplT));
