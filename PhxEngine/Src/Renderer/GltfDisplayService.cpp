@@ -2,6 +2,7 @@
 
 #include <PhxEngine/EngineTuner.h>
 #include <PhxEngine/Core/Profiler.h>
+#include <PhxEngine/RHI/PhxRHI.h>
 #include "GLFW/glfw3.h"
 
 #define GLFW_EXPOSE_NATIVE_WIN32
@@ -32,6 +33,23 @@ void PhxEngine::GltfDisplayService::Startup()
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	// glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+	this->m_windowResizeHandler = [this](WindowResizeEvent const& e) {
+			RHI::SwapChainDesc desc = {
+				.Width = e.Width,
+				.Height = e.Height,
+			};
+
+			if (RHI::IGfxDevice::Ptr)
+			{
+				RHI::IGfxDevice::Ptr = RHI::GfxDeviceFactory::Create(RHI::GraphicsAPI::DX12);
+				RHI::IGfxDevice::Ptr->Initialize(desc, this->GetNativeWindowHandle());
+			}
+			else
+			{
+				RHI::IGfxDevice::Ptr->ResizeSwapchain(desc);
+			}
+		};
 
 	this->m_data.Width = WindowWidth;
 	this->m_data.Height = WindowHeight;
@@ -65,11 +83,22 @@ void PhxEngine::GltfDisplayService::Startup()
 
 		});
 
+	EventBus::Subscribe<WindowResizeEvent>(this->m_windowResizeHandler);
+
 	EventBus::TriggerEvent(WindowResizeEvent(this->m_data.Width, this->m_data.Height));
 }
 
 void PhxEngine::GltfDisplayService::Shutdown()
 {
+	PHX_EVENT();
+	EventBus::Unsubscribe<WindowResizeEvent>(this->m_windowResizeHandler);
+
+	if (RHI::IGfxDevice::Ptr)
+	{
+		RHI::IGfxDevice::Ptr->Finalize();
+		delete RHI::IGfxDevice::Ptr;
+	}
+	
 	if (this->m_glfwWindow)
 	{
 		glfwDestroyWindow(this->m_glfwWindow);
@@ -85,11 +114,14 @@ void PhxEngine::GltfDisplayService::Shutdown()
 
 void PhxEngine::GltfDisplayService::Update()
 {
+	PHX_EVENT();
 	glfwPollEvents();
 }
 
 void PhxEngine::GltfDisplayService::Present()
 {
+	PHX_EVENT();
+	RHI::IGfxDevice::Ptr->SubmitFrame();
 }
 
 void* PhxEngine::GltfDisplayService::GetNativeWindowHandle()

@@ -50,7 +50,6 @@ namespace
 		app->Shutdown();
 
 		DisplayService::Ptr->Shutdown();
-		delete DisplayService::Ptr;
 	}
 
 	void FixedUpdate()

@@ -34,6 +34,7 @@ namespace PhxEngine
 		GLFWwindow* GetGltfWindow() { return this->m_glfwWindow; }
 
 	private:
+		EventHandler<WindowResizeEvent> m_windowResizeHandler;
 		GLFWwindow* m_glfwWindow;
 		WindowData m_data;
 	};

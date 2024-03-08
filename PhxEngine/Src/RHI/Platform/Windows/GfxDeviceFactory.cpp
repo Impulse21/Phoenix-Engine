@@ -14,7 +14,7 @@ GfxDevice* GfxDeviceFactory::Create(RHI::GraphicsAPI preferedAPI)
 	{
 	case RHI::GraphicsAPI::DX12:
 		PHX_LOG_CORE_ERROR("Creating DirectX 12 Graphics Device");
-		return phx_new(D3D12::D3D12GfxDevice);
+		return phx_new D3D12::D3D12GfxDevice;
 
 	default:
 		return nullptr;

@@ -1264,6 +1264,9 @@ namespace PhxEngine::RHI
     class IGfxDevice
     {
     public:
+        inline static IGfxDevice* Ptr = nullptr;
+
+    public:
         virtual ~IGfxDevice() = default;
 
         // -- Frame Functions ---

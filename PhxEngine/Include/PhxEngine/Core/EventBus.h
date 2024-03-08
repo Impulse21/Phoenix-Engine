@@ -70,22 +70,20 @@ namespace PhxEngine
 	namespace EventBus
 	{
 		void Subscribe(StringHash eventId, std::unique_ptr<IEventHandlerWrapper>&& eventHandler);
-
 		template<typename EventType>
 		void Subscribe(EventHandler<EventType> const& callback)
 		{
 			auto handler = PHX_HANDLER(EventType, callback);
 			Subscribe(EventType::GetStaticEventType(), std::move(handler));
 		}
-		
+
+		void Unsubscribe(StringHash eventId, StringHash handlerId);
 		template<typename EventType>
 		void Unsubscribe(EventHandler<EventType> const& callback)
 		{
 			StringHash handlerName = StringHash(callback.target_type().name());
 			Unsubscribe(EventType::GetStaticEventType(), handlerName);
 		}
-
-		void Unsubscribe(StringHash eventId, StringHash handlerId);
 		void TriggerEvent( Event const& e);
 		void QueueEvent(std::unique_ptr<Event>&& e);
 		void DispatchEvents();
