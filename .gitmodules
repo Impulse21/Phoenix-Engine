@@ -7,3 +7,6 @@
 [submodule "PhxEngine/Extern/D3D12MemoryAllocator"]
 	path = PhxEngine/Extern/D3D12MemoryAllocator
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
+[submodule "PhxEngine/Extern/DirectX-Headers"]
+	path = PhxEngine/Extern/DirectX-Headers
+	url = https://github.com/microsoft/DirectX-Headers.git
