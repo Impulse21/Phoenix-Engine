@@ -4,3 +4,6 @@
 [submodule "PhxEngine/Extern/glfw"]
 	path = PhxEngine/Extern/glfw
 	url = https://github.com/glfw/glfw.git
+[submodule "PhxEngine/Extern/D3D12MemoryAllocator"]
+	path = PhxEngine/Extern/D3D12MemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
