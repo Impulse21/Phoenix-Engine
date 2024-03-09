@@ -44,6 +44,8 @@ namespace
 		m_targetFrameRateInv = 1.0f / static_cast<float>(TargetFpsVar);
 
 		app->Startup();
+
+		EventBus::Subscribe<WindowCloseEvent>([](WindowCloseEvent const& e) { m_isRunning = false; });
 	}
 
 	void Shutdown(IApplication* app)
@@ -69,6 +71,7 @@ namespace
 		PHX_EVENT();
 
 		auto& gfxDevice = RHI::IGfxDevice::Ptr;
+		/*
 		RHI::CommandListHandle composeCmdList = gfxDevice->BeginCommandList();
 
 		gfxDevice->TransitionBarriers(
@@ -85,7 +88,7 @@ namespace
 				RHI::GpuBarrier::CreateTexture(gfxDevice->GetBackBuffer(), RHI::ResourceStates::RenderTarget, RHI::ResourceStates::Present)
 			},
 			composeCmdList);
-
+			*/
 	}
 
 	void Tick()

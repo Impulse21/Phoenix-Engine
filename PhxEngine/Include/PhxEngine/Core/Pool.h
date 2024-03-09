@@ -53,14 +53,30 @@ namespace PhxEngine
 
 		void Finalize()
 		{
-			for (int i = 0; i < this->m_size; i++)
+			if (this->m_data)
 			{
-				this->m_data[i].~ImplT();
+				for (int i = 0; i < this->m_size; i++)
+				{
+					this->m_data[i].~ImplT();
+				}
+
+				phx_delete[] this->m_data;
+				this->m_data = nullptr;
 			}
 
-			phx_delete[] this->m_data;
-			phx_delete[] this->m_freeList;
-			phx_delete[] this->m_generations;
+			if (this->m_freeList)
+			{
+				phx_delete[] this->m_freeList;
+				this->m_freeList = nullptr;
+			}
+
+			if (this->m_generations)
+			{
+				phx_delete[] this->m_generations;
+				this->m_generations = nullptr;
+			}
+
+			this->m_size = 0;
 		}
 
 		ImplT* Get(Handle<HT> handle)
@@ -140,9 +156,9 @@ namespace PhxEngine
 			}
 
 			size_t newSize = this->m_size * 2;
-			auto* newDataArray = phx_new ImplT[newSize];
-			auto* newFreeListArray = phx_new uint32_t[newSize];
-			auto* newGenerations = phx_new uint32_t[newSize];
+			auto* newDataArray = new ImplT[newSize];
+			auto* newFreeListArray = new uint32_t[newSize];
+			auto* newGenerations = new uint32_t[newSize];
 
 			std::memset(newDataArray, 0, newSize * sizeof(ImplT));
 			std::memset(newFreeListArray, 0, newSize * sizeof(uint32_t));
@@ -158,9 +174,9 @@ namespace PhxEngine
 			// std::memcpy(newFreeListArray, this->m_freeList, this->m_size * sizeof(uint32_t));
 			std::memcpy(newGenerations, this->m_generations, this->m_size * sizeof(uint32_t));
 
-			phx_delete[] this->m_data;
-			phx_delete[] this->m_freeList;
-			phx_delete[] this->m_generations;
+			delete[] this->m_data;
+			delete[] this->m_freeList;
+			delete[] this->m_generations;
 
 			this->m_data = newDataArray;
 			this->m_freeList = newFreeListArray;

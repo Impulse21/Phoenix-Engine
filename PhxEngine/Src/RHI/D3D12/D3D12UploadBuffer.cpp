@@ -10,6 +10,7 @@ void UploadBuffer::Initialize(D3D12GfxDevice* device, size_t pageSize)
 {
 	this->m_gfxDevice = device;
 	this->m_pageSize = pageSize;
+	this->m_currentPage = nullptr;
 }
 
 struct Allocation
@@ -53,7 +54,8 @@ std::shared_ptr<UploadBuffer::Page> UploadBuffer::RequestPage()
 }
 void UploadBuffer::Reset()
 {
-	this->m_currentPage.reset();
+	if (this->m_currentPage)
+		this->m_currentPage.reset();
 
 	this->m_availablePages = this->m_pagePool;
 	for (auto page : this->m_availablePages)

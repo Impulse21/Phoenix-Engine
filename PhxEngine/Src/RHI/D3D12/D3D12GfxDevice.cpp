@@ -475,6 +475,8 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::Initialize(SwapChainDesc const& swap
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::Finalize()
 {
+	this->WaitForIdle();
+
 	this->DeleteBuffer(this->m_timestampQueryBuffer);
 
 	for (auto handle : this->m_swapChain.BackBuffers)
@@ -3317,7 +3319,7 @@ void D3D12GfxDevice::CreateGpuTimestampQueryHeap(uint32_t queryCount)
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::InitializeResourcePools()
 {
-	constexpr uint32_t kInitPoolSize = 16;
+	constexpr uint32_t kInitPoolSize = 100;
 	this->m_texturePool.Initialize(kInitPoolSize);
 	this->m_commandSignaturePool.Initialize(kInitPoolSize);
 	this->m_shaderPool.Initialize(kInitPoolSize);
@@ -3764,7 +3766,7 @@ CommandListHandle PhxEngine::RHI::D3D12::D3D12GfxDevice::BeginCommandList(Comman
 	internalCmd.QueueType = queueType;
 	internalCmd.Waits.clear();
 	internalCmd.IsWaitedOn.store(false);
-	internalCmd.UploadBuffer.Reset();
+	// internalCmd.UploadBuffer.Reset();
 
 	// Bind Heaps
 	std::array<ID3D12DescriptorHeap*, 2> heaps;
