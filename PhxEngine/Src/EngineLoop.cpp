@@ -71,7 +71,6 @@ namespace
 		PHX_EVENT();
 
 		auto& gfxDevice = RHI::IGfxDevice::Ptr;
-		/*
 		RHI::CommandListHandle composeCmdList = gfxDevice->BeginCommandList();
 
 		gfxDevice->TransitionBarriers(
@@ -88,7 +87,6 @@ namespace
 				RHI::GpuBarrier::CreateTexture(gfxDevice->GetBackBuffer(), RHI::ResourceStates::RenderTarget, RHI::ResourceStates::Present)
 			},
 			composeCmdList);
-			*/
 	}
 
 	void Tick()
