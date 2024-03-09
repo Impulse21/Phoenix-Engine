@@ -18,6 +18,9 @@ namespace PhxEngine
 		Pool()
 			: m_size(0)
 			, m_numActiveEntries(0)
+			, m_data(nullptr)
+			, m_generations(nullptr)
+			, m_freeList(nullptr)
 		{
 		}
 
