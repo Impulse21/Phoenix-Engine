@@ -59,6 +59,14 @@ file(GLOB PhxEngine_RHI_DX12_Src
     Src/RHI/D3D12/*.h
     Src/RHI/D3D12/*.cpp
 )
+	
+file (GLOB PhxEngine_Scene_Inc
+    Include/PhxEngine/Scene/*.h)
+	
+file (GLOB PhxEngine_Scene_Src
+    Src/Scene/*.h
+	Src/Scene/*.cpp)
+    
 
 add_library(PhxEngine STATIC EXCLUDE_FROM_ALL  
     ${PhxEngine_Engine_Inc}
@@ -79,6 +87,8 @@ add_library(PhxEngine STATIC EXCLUDE_FROM_ALL
 	${PhxEngine_Renderer_Src}
 	${PhxEngine_Renderer_DX12_Src}
 	${PhxEngine_Shader_Interop_Inc}
+	${PhxEngine_Scene_Inc}
+	${PhxEngine_Scene_Src}
     ${PhxEngine_Inc}
     ${PhxEngine_Src})
 
@@ -86,10 +96,12 @@ source_group("Include"					FILES ${PhxEngine_Inc})
 source_group("Include/Core"				FILES ${PhxEngine_Core_Inc})
 source_group("Include/Renderer"			FILES ${PhxEngine_Renderer_Inc})
 source_group("Include/RHI"				FILES ${PhxEngine_RHI_Inc})
+source_group("Include/Scene"			FILES ${PhxEngine_Scene_Inc})
 
 source_group("Src"						FILES ${PhxEngine_Src})
 source_group("Src/Core"					FILES ${PhxEngine_Core_Src})
-source_group("Src/Core"					FILES ${PhxEngine_Renderer_Src})
+source_group("Src/Renderer"				FILES ${PhxEngine_Renderer_Src})
+source_group("Src/Scene"				FILES ${PhxEngine_Scene_Src})
 source_group("Src/RHI"					FILES ${PhxEngine_RHI_Src})
 source_group("Src/RHI/Platform/Windows"	FILES ${PhxEngine_RHI_Windows_Src})
 source_group("Src/RHI/D3D12"			FILES ${PhxEngine_RHI_DX12_Src})
@@ -106,7 +118,8 @@ target_link_libraries(${project} PUBLIC
     glfw
 	D3D12MemoryAllocator
 	DirectX-Headers
-	DirectX-Guids)
+	DirectX-Guids
+	entt)
 
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 

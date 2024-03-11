@@ -18,7 +18,7 @@ namespace PhxEngine
 		bool IsVisible = false;
 	};
 
-	class GltfDisplayService : public DisplayService
+	class GlfWDisplayService : public DisplayService
 	{
 	public:
 		void Startup();

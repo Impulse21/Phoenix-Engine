@@ -9,7 +9,7 @@
 #include <PhxEngine/EngineTuner.h>
 #include <PhxEngine/EngineMemory.h>
 
-#include <Renderer/GltfDisplayService.h>
+#include <Renderer/GlfWDisplayService.h>
 #include <PhxEngine/RHI/PhxRHI.h>
 
 #include <thread>
@@ -33,7 +33,7 @@ namespace
 		EngineTuner::Startup();
 		EngineMemory::Startup();
 
-		DisplayService::Ptr = new GltfDisplayService();
+		DisplayService::Ptr = new GlfWDisplayService();
 		DisplayService::Ptr->Startup();
 	}
 

@@ -1,4 +1,4 @@
-#include "GltfDisplayService.h"
+#include "GlfWDisplayService.h"
 
 #include <PhxEngine/EngineTuner.h>
 #include <PhxEngine/Core/Profiler.h>
@@ -22,7 +22,7 @@ namespace
 IntVar WindowWidth("Engine/Display Service/Window/Height", 2000, 1);
 IntVar WindowHeight("Engine/Display Service/Window/Widith", 1200, 1);
 
-void PhxEngine::GltfDisplayService::Startup()
+void PhxEngine::GlfWDisplayService::Startup()
 {
 	PHX_EVENT();
 	if (gGlfwNumActiveWindows == 0)
@@ -88,7 +88,7 @@ void PhxEngine::GltfDisplayService::Startup()
 	EventBus::TriggerEvent(WindowResizeEvent(this->m_data.Width, this->m_data.Height));
 }
 
-void PhxEngine::GltfDisplayService::Shutdown()
+void PhxEngine::GlfWDisplayService::Shutdown()
 {
 	PHX_EVENT();
 	EventBus::Unsubscribe<WindowResizeEvent>(this->m_windowResizeHandler);
@@ -112,19 +112,19 @@ void PhxEngine::GltfDisplayService::Shutdown()
 	}
 }
 
-void PhxEngine::GltfDisplayService::Update()
+void PhxEngine::GlfWDisplayService::Update()
 {
 	PHX_EVENT();
 	glfwPollEvents();
 }
 
-void PhxEngine::GltfDisplayService::Present()
+void PhxEngine::GlfWDisplayService::Present()
 {
 	PHX_EVENT();
 	RHI::IGfxDevice::Ptr->SubmitFrame();
 }
 
-void* PhxEngine::GltfDisplayService::GetNativeWindowHandle()
+void* PhxEngine::GlfWDisplayService::GetNativeWindowHandle()
 {
 	return glfwGetWin32Window(this->m_glfwWindow);
 }
