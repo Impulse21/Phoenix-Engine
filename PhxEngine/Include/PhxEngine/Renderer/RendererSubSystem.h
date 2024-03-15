@@ -5,12 +5,13 @@
 
 namespace PhxEngine
 {
-	struct DrawableDesc
+	struct DrawableInstanceDesc
 	{
+		StringHash DrawableId;
 		DirectX::XMFLOAT4X4 TransformMatrix;
 	};
 
-	using DrawableHandle = Handle<struct Drawable>;
+	using DrawableInstanceHandle = Handle<struct DrawableInstance>;
 
 	struct MaterialDesc
 	{
@@ -31,15 +32,14 @@ namespace PhxEngine
 		virtual void Render() = 0;
 
 	public:
-		virtual DrawableHandle DrawableCreate(DrawableDesc const& desc) = 0;
-		virtual void DrawableUpdateTransform(DirectX::XMFLOAT4X4 transformMatrix) = 0;
-		virtual void DrawableOverrideMaterial(MaterialHandle handle) = 0;
-		virtual void DrawableDelete(DrawableHandle handle) = 0;
+		virtual DrawableInstanceHandle DrawableInstanceCreate(DrawableInstanceDesc const& desc) = 0;
+		virtual void DrawableInstanceUpdateTransform(DirectX::XMFLOAT4X4 transformMatrix) = 0;
+		virtual void DrawableInstanceOverrideMaterial(MaterialHandle handle) = 0;
+		virtual void DrawableInstanceDelete(DrawableInstanceHandle handle) = 0;
 
 		virtual void MaterialCreate(MaterialDesc const& desc) = 0;
 		virtual void MaterialUpdate(MaterialHandle handle, MaterialDesc const& desc) = 0;
 		virtual void MaterialDelete(MaterialHandle handle) = 0;
-
 	};
 
 }

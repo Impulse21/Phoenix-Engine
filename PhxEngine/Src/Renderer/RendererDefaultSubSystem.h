@@ -21,10 +21,10 @@ namespace PhxEngine
 		void OnWindowResize(WindowResizeEvent const& e);
 
 	public:
-		DrawableHandle DrawableCreate(DrawableDesc const& desc) override;
-		void DrawableUpdateTransform(DirectX::XMFLOAT4X4 transformMatrix) override;
-		void DrawableOverrideMaterial(MaterialHandle handle) override;
-		void DrawableDelete(DrawableHandle handle) override;
+		DrawableInstanceHandle DrawableInstanceCreate(DrawableInstanceDesc const& desc) override;
+		void DrawableInstanceUpdateTransform(DirectX::XMFLOAT4X4 transformMatrix) override;
+		void DrawableInstanceOverrideMaterial(MaterialHandle handle) override;
+		void DrawableInstanceDelete(DrawableInstanceHandle handle) override;
 
 		void MaterialCreate(MaterialDesc const& desc) override;
 		void MaterialUpdate(MaterialHandle handle, MaterialDesc const& desc) override;

@@ -34,20 +34,20 @@ void PhxEngine::RendererDefaultSubSystem::OnWindowResize(WindowResizeEvent const
     // TODO:
 }
 
-DrawableHandle PhxEngine::RendererDefaultSubSystem::DrawableCreate(DrawableDesc const& desc)
+DrawableInstanceHandle PhxEngine::RendererDefaultSubSystem::DrawableInstanceCreate(DrawableInstanceDesc const& desc)
 {
-    return DrawableHandle();
+	return DrawableInstanceHandle();
 }
 
-void PhxEngine::RendererDefaultSubSystem::DrawableUpdateTransform(DirectX::XMFLOAT4X4 transformMatrix)
-{
-}
-
-void PhxEngine::RendererDefaultSubSystem::DrawableOverrideMaterial(MaterialHandle handle)
+void PhxEngine::RendererDefaultSubSystem::DrawableInstanceUpdateTransform(DirectX::XMFLOAT4X4 transformMatrix)
 {
 }
 
-void PhxEngine::RendererDefaultSubSystem::DrawableDelete(DrawableHandle handle)
+void PhxEngine::RendererDefaultSubSystem::DrawableInstanceOverrideMaterial(MaterialHandle handle)
+{
+}
+
+void PhxEngine::RendererDefaultSubSystem::DrawableInstanceDelete(DrawableInstanceHandle handle)
 {
 }
 
