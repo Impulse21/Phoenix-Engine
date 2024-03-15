@@ -1,12 +1,11 @@
 #pragma once
 
 #include <PhxEngine/Core/UUID.h>
-#include <DirectXMath.h>
+#include <PhxEngine/Core/Math.h>
 
 namespace PhxEngine
 {
 	// TODO: Move to a math library
-	static constexpr DirectX::XMFLOAT4X4 cIdentityMatrix = DirectX::XMFLOAT4X4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
 
 	struct IDComponent
 	{
@@ -44,5 +43,10 @@ namespace PhxEngine
 	struct HierarchyComponent
 	{
 		entt::entity ParentID = entt::null;
+	};
+
+	struct RendererComponent
+	{
+
 	};
 }

@@ -18,7 +18,7 @@ namespace PhxEngine
 		bool IsVisible = false;
 	};
 
-	class GlfWDisplaySubSystem : public DisplaySubSystem
+	class GlfWDisplaySubSystem final : public DisplaySubSystem
 	{
 	public:
 		void Startup();

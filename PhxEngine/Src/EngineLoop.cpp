@@ -9,6 +9,7 @@
 #include <PhxEngine/EngineTuner.h>
 #include <PhxEngine/EngineMemory.h>
 
+#include <Renderer/RendererDefaultSubSystem.h>
 #include <Renderer/GlfWDisplaySubSystem.h>
 #include <PhxEngine/RHI/PhxRHI.h>
 
@@ -33,8 +34,13 @@ namespace
 		EngineTuner::Startup();
 		EngineMemory::Startup();
 
+		// TODO: Introduce dependecy injectiong for things like the Graphics Device...
 		DisplaySubSystem::Ptr = new GlfWDisplaySubSystem();
 		DisplaySubSystem::Ptr->Startup();
+
+		RendererSubSystem::Ptr = new RendererDefaultSubSystem();
+		RendererSubSystem::Ptr->Startup();
+
 	}
 
 	void Startup(IApplication* app)
@@ -52,6 +58,7 @@ namespace
 	{
 		app->Shutdown();
 
+		RendererSubSystem::Ptr->Shutdown();
 		DisplaySubSystem::Ptr->Shutdown();
 	}
 
@@ -64,6 +71,7 @@ namespace
 	{
 		PHX_EVENT();
 		EngineMemory::Update();
+		RendererSubSystem::Ptr->Update();
 	}
 
 	void Render()

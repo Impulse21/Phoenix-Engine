@@ -67,6 +67,13 @@ file (GLOB PhxEngine_Scene_Src
     Src/Scene/*.h
 	Src/Scene/*.cpp)
     
+	
+file (GLOB PhxEngine_Resource_Inc
+    Include/PhxEngine/Resource/*.h)
+	
+file (GLOB PhxEngine_Resource_Src
+    Src/Resource/*.h
+	Src/Resource/*.cpp)
 
 add_library(PhxEngine STATIC EXCLUDE_FROM_ALL  
     ${PhxEngine_Engine_Inc}
@@ -97,11 +104,13 @@ source_group("Include/Core"				FILES ${PhxEngine_Core_Inc})
 source_group("Include/Renderer"			FILES ${PhxEngine_Renderer_Inc})
 source_group("Include/RHI"				FILES ${PhxEngine_RHI_Inc})
 source_group("Include/Scene"			FILES ${PhxEngine_Scene_Inc})
+source_group("Include/Resource"			FILES ${PhxEngine_Resource_Inc})
 
 source_group("Src"						FILES ${PhxEngine_Src})
 source_group("Src/Core"					FILES ${PhxEngine_Core_Src})
 source_group("Src/Renderer"				FILES ${PhxEngine_Renderer_Src})
 source_group("Src/Scene"				FILES ${PhxEngine_Scene_Src})
+source_group("Src/Resource"			FILES ${PhxEngine_Resource_Src})
 source_group("Src/RHI"					FILES ${PhxEngine_RHI_Src})
 source_group("Src/RHI/Platform/Windows"	FILES ${PhxEngine_RHI_Windows_Src})
 source_group("Src/RHI/D3D12"			FILES ${PhxEngine_RHI_DX12_Src})
