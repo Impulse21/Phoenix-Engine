@@ -4,11 +4,11 @@
 
 namespace PhxEngine
 {
-	class DisplayService
+	class DisplaySubSystem
 	{
 	public:
-		inline static DisplayService* Ptr;
-		virtual ~DisplayService() = default;
+		inline static DisplaySubSystem* Ptr;
+		virtual ~DisplaySubSystem() = default;
 
 	public:
 		virtual void Startup() = 0;

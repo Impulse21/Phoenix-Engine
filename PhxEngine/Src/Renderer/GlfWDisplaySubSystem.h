@@ -1,6 +1,6 @@
 #pragma once
 
-#include <PhxEngine/Renderer/DisplayService.h>
+#include <PhxEngine/Renderer/DisplaySubSystem.h>
 #include <stdint.h>
 
 struct GLFWwindow;
@@ -18,7 +18,7 @@ namespace PhxEngine
 		bool IsVisible = false;
 	};
 
-	class GlfWDisplayService : public DisplayService
+	class GlfWDisplaySubSystem : public DisplaySubSystem
 	{
 	public:
 		void Startup();

@@ -9,7 +9,7 @@
 #include <PhxEngine/EngineTuner.h>
 #include <PhxEngine/EngineMemory.h>
 
-#include <Renderer/GlfWDisplayService.h>
+#include <Renderer/GlfWDisplaySubSystem.h>
 #include <PhxEngine/RHI/PhxRHI.h>
 
 #include <thread>
@@ -33,8 +33,8 @@ namespace
 		EngineTuner::Startup();
 		EngineMemory::Startup();
 
-		DisplayService::Ptr = new GlfWDisplayService();
-		DisplayService::Ptr->Startup();
+		DisplaySubSystem::Ptr = new GlfWDisplaySubSystem();
+		DisplaySubSystem::Ptr->Startup();
 	}
 
 	void Startup(IApplication* app)
@@ -52,7 +52,7 @@ namespace
 	{
 		app->Shutdown();
 
-		DisplayService::Ptr->Shutdown();
+		DisplaySubSystem::Ptr->Shutdown();
 	}
 
 	void FixedUpdate()
@@ -91,7 +91,7 @@ namespace
 
 	void Tick()
 	{
-		DisplayService::Ptr->Update();
+		DisplaySubSystem::Ptr->Update();
 		EventBus::DispatchEvents();
 
 		TimeStep deltaTimeSpan = m_gameClock.Elapsed();
@@ -116,7 +116,7 @@ namespace
 		Render();
 
 		// -- Present Screen ---
-		DisplayService::Ptr->Present();
+		DisplaySubSystem::Ptr->Present();
 	}
 }
 
