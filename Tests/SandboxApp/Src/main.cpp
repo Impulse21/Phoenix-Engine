@@ -12,7 +12,7 @@ public:
 	void Shutdown() override;
 
 private:
-	PhxEngine::DrawableHandle m_sphereDrawable;
+	PhxEngine::DrawableInstanceHandle m_sphereDrawable;
 };
 
 PHX_CREATE_APPLICATION(SandboxApp);
@@ -20,12 +20,12 @@ PHX_CREATE_APPLICATION(SandboxApp);
 void SandboxApp::Startup()
 {
 	// Load  mesh and render it.
-	this->m_sphereDrawable = PhxEngine::RendererSubSystem::Ptr->DrawableCreate({
+	this->m_sphereDrawable = PhxEngine::RendererSubSystem::Ptr->DrawableInstanceCreate({
 			.TransformMatrix = PhxEngine::cIdentityMatrix
 		});
 }
 
 void SandboxApp::Shutdown()
 {
-	PhxEngine::RendererSubSystem::Ptr->DrawableDelete(this->m_sphereDrawable);
+	PhxEngine::RendererSubSystem::Ptr->DrawableInstanceDelete(this->m_sphereDrawable);
 }

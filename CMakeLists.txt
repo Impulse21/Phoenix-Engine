@@ -27,3 +27,4 @@ add_compile_definitions(NOMINMAX)
 
 add_subdirectory(PhxEngine)
 add_subdirectory(Tests)
+add_subdirectory(Tools/PhxAssetConverter)

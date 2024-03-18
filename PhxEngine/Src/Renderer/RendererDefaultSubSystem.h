@@ -1,10 +1,10 @@
 #pragma once
 
 #include <PhxEngine/Renderer/RendererSubSystem.h>
+#include <PhxEngine/Renderer/DisplaySubSystem.h>
 
 namespace PhxEngine
 {
-	struct WindowResizeEvent;
 
 	class RendererDefaultSubSystem final : public RendererSubSystem
 	{

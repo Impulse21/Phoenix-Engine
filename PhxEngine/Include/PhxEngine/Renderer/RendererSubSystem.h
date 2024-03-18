@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxEngine/Core/Handle.h>
+#include <PhxEngine/Core/StringHash.h>
 #include <DirectXMath.h>
 
 namespace PhxEngine

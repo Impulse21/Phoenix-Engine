@@ -1,1 +1,1 @@
-#include "Resource.h"
+#include <PhxEngine/Resource/Resource.h>
