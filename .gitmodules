@@ -10,3 +10,12 @@
 [submodule "PhxEngine/Extern/DirectX-Headers"]
 	path = PhxEngine/Extern/DirectX-Headers
 	url = https://github.com/microsoft/DirectX-Headers.git
+[submodule "Tools/PhxAssetConverter/Extern/cgltf"]
+	path = Tools/PhxAssetConverter/Extern/cgltf
+	url = https://github.com/jkuhlmann/cgltf.git
+[submodule "Tools/PhxAssetConverter/Extern/meshoptimizer"]
+	path = Tools/PhxAssetConverter/Extern/meshoptimizer
+	url = https://github.com/zeux/meshoptimizer.git
+[submodule "Tools/PhxAssetConverter/Extern/DirectXTex"]
+	path = Tools/PhxAssetConverter/Extern/DirectXTex
+	url = https://github.com/microsoft/DirectXTex.git
