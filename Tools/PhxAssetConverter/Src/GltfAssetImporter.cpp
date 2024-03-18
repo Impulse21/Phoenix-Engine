@@ -283,7 +283,7 @@ bool PhxEngine::Pipeline::GltfAssetImporter::ImportMesh(cgltf_mesh* gltfMesh, Pi
 			meshPart.IndexCount = indexCount;
 
 			auto [indexSrc, indexStride] = CgltfBufferAccessor(cgltfPrim.indices, 0);
-			switch (indexStride)
+			switch (cgltfPrim.indices->stride)
 			{
 				case sizeof(uint8_t):
 					for (size_t i = 0; i < indexCount; i+= 3)
