@@ -89,7 +89,7 @@ int main(int argc, const char** argv)
 		PHX_LOG_INFO("Generating Meshlets for '%s' mesh ", mesh.Name.c_str());
 		elapsedTime.Begin();
 		pipeline.GenerateMeshletData(mesh);
-		PHX_LOG_INFO("Generating Meshlets for '%s' mesh took %f seconds", elapsedTime.Elapsed().GetSeconds());
+		PHX_LOG_INFO("Generating Meshlets for '%s' mesh took %f seconds", , mesh.Name.c_str(), elapsedTime.Elapsed().GetSeconds());
 	}
 
 	// Create and save Drawable.

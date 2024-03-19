@@ -210,7 +210,7 @@ bool PhxEngine::Pipeline::GltfAssetImporter::ImportMesh(cgltf_mesh* gltfMesh, Pi
 		const auto& cgltfPrim = gltfMesh->primitives[iPrim];
 		MeshPart& meshPart = outMesh.MeshParts[iPrim];
 		meshPart.MaterialHandle = this->m_materialIndexLut[cgltfPrim.material];
-		const uint32_t vertexOffset = static_cast<uint32_t>(outMesh.GetStream(VertexStreamType::Position).Data.size());
+		const uint32_t vertexOffset = static_cast<uint32_t>(outMesh.GetStream(VertexStreamType::Position).Data.size() / outMesh.GetStream(VertexStreamType::Position).NumComponents);
 
 		if (cgltfPrim.type != cgltf_primitive_type_triangles ||
 			cgltfPrim.attributes_count == 0)
@@ -334,13 +334,12 @@ bool PhxEngine::Pipeline::GltfAssetImporter::ImportMesh(cgltf_mesh* gltfMesh, Pi
 			}			
 
 			auto SetBufferDataFunc = [](const cgltf_accessor* accessor, VertexStream& stream, size_t vertexOffset, size_t vertexCount, float defaultValue = 1.0f) {
-					stream.Data.resize(vertexOffset + vertexCount * stream.NumComponents, defaultValue);
+					stream.Data.resize(stream.Data.size() + vertexCount * stream.NumComponents, defaultValue);
 					if (accessor)
 					{
 						auto [data, dataStride] = CgltfBufferAccessor(accessor, sizeof(float) * stream.NumComponents);
-
 						std::memcpy(
-							stream.Data.data() + (vertexOffset * sizeof(float) * stream.NumComponents),
+							stream.Data.data() + (vertexOffset * stream.NumComponents),
 							data,
 							dataStride * accessor->count);
 
