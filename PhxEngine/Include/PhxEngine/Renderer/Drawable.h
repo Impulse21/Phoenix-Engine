@@ -2,6 +2,7 @@
 
 #include <PhxEngine/Resource/Resource.h>
 #include <PhxEngine/RHI/PhxRHI.h>
+#include <PhxEngine/Core/Primitives.h>
 
 namespace PhxEngine
 {

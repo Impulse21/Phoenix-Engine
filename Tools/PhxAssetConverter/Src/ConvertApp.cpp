@@ -4,6 +4,7 @@
 #include <PhxEngine/Core/Logger.h>
 #include <PhxEngine/Core/StopWatch.h>
 #include <PhxEngine/Core/RefCountPtr.h>
+#include <PhxEngine/Renderer/Drawable.h>
 
 #include <PhxEngine/Core/Memory.h>
 
@@ -88,6 +89,13 @@ int main(int argc, const char** argv)
 
 	// Create and save Drawable.
 	
+	// Create Drawable
+	for (auto& mesh : importedObjects.Meshes)
+	{
+		std::vector<uint8_t> bufferMemory;
+		t
+	}
+
 	// Get the buffer compression interface for DSTORAGE_COMPRESSION_FORMAT_GDEFLATE
 	constexpr uint32_t NumCompressionThreads = 6;
 	RefCountPtr<IDStorageCompressionCodec> bufferCompression;
