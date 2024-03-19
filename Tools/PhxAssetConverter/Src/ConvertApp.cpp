@@ -76,20 +76,14 @@ int main(int argc, const char** argv)
 	Pipeline::MeshOptimizationPipeline optmizationPipeline;
 	for (auto& mesh : importedObjects.Meshes)
 	{
-		PHX_LOG_INFO("Optmizing '%s' mesh ", mesh.Name.c_str());
-		elapsedTime.Begin();
 		optmizationPipeline.Optimize(tempAllocator, mesh);
-		PHX_LOG_INFO("Optmizing '%s' mesh took %f seconds", mesh.Name.c_str(), elapsedTime.Elapsed().GetSeconds());
 	}
 
 	elapsedTime.Begin();
 	Pipeline::MeshletGenerationPipeline pipeline(64, 124);
 	for (auto& mesh : importedObjects.Meshes)
 	{
-		PHX_LOG_INFO("Generating Meshlets for '%s' mesh ", mesh.Name.c_str());
-		elapsedTime.Begin();
 		pipeline.GenerateMeshletData(mesh);
-		PHX_LOG_INFO("Generating Meshlets for '%s' mesh took %f seconds", mesh.Name.c_str(), elapsedTime.Elapsed().GetSeconds());
 	}
 
 	// Create and save Drawable.
