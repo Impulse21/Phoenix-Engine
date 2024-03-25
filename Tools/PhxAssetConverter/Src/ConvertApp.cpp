@@ -93,7 +93,6 @@ int main(int argc, const char** argv)
 	for (auto& mesh : importedObjects.Meshes)
 	{
 		std::vector<uint8_t> bufferMemory;
-		t
 	}
 
 	// Get the buffer compression interface for DSTORAGE_COMPRESSION_FORMAT_GDEFLATE

@@ -51,6 +51,38 @@ namespace PhxEngine::Pipeline
 		std::vector<meshopt_Bounds> MeshletBounds;
 	};
 
+	struct CompiledMesh
+	{
+		uint32_t Name;
+		std::vector<uint8_t> GeometryData;
+		struct Geometry
+		{
+			uint32_t Material;
+			uint32_t IndexOffset = 0;
+			uint32_t IndexCount = 0;
+			uint32_t MeshletOffset = 0;
+			uint32_t MeshletCount = 0;
+		};
+
+		std::vector<Geometry> Geometry;
+
+		PhxEngine::Sphere BoundingSphere;
+		PhxEngine::AABB BoundingBox;
+
+		// Offsets
+		uint32_t VBOffset;
+		uint32_t VBSize;
+		uint32_t IBOffset;
+		uint32_t IBSize;
+		uint32_t MeshletOffset;
+		uint32_t MeshletSize;
+		uint32_t MeshletVBOffset;
+		uint32_t MeshletVBSize;
+		uint32_t MeshletBoundsOffset;
+		uint32_t MeshletBoundsSize;
+		uint8_t IBFormat;
+	};
+
 	struct Mesh
 	{
 		std::string Name;

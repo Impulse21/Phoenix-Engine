@@ -31,7 +31,7 @@ namespace PhxEngine
 		{
 			this->m_offset = static_cast<OffsetType>((char*)ptr - ((char*)this));
 		}
-
+		
 		operator T* () { return this->Get(); }
 		operator const T* () const { return this->Get(); }
 		T* operator=(const T* ptr)
@@ -45,6 +45,13 @@ namespace PhxEngine
 				this->m_offset = 0;
 			}
 		}
+
+		uint32_t operator=(uint32_t offset)
+		{
+			this->m_offset = static_cast<OffsetType>(offset - ((char*)this));
+		}
+
+		operator uint32_t() { return this->m_offset; }
 
 	private:
 		OffsetType m_offset;
@@ -75,8 +82,24 @@ namespace PhxEngine
 		uint32_t CompressedSize;
 		uint32_t UncompressedSize;
 	};
-
 	using GpuRegion = Region<void>;
 
 
+	struct DependenciesHeader
+	{
+		Array<RelativePtr<char>> Dependencies;
+	};
+	using DependenciesRegion = Region<DependenciesHeader>;
+
+	struct StringHashTableHeader
+	{
+		struct StringHash
+		{
+			uint32_t Hash;
+			RelativePtr<char> Str;
+		};
+
+		Array<StringHash> StringHashTable;
+	};
+	using StringHashTableHeader = Region<StringHashTableHeader>;
 }
