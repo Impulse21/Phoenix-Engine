@@ -11,6 +11,10 @@ public:
 	void Startup() override;
 	void Shutdown() override;
 
+	void PreRender(tf::Subflow& subflow) override {};
+	void FixedUpdate(tf::Subflow& subflow) override {};
+	void Update(PhxEngine::TimeStep const deltaTime, tf::Subflow& subflow) override {};
+	void Render(tf::Subflow& subflow) override {};
 private:
 	PhxEngine::DrawableInstanceHandle m_sphereDrawable;
 };
