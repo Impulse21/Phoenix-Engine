@@ -3,6 +3,7 @@
 
 #include <PhxEngine/Core/Logger.h>
 #include <PhxEngine/Core/StringUtils.h>
+#include <PhxEngine/Core/Profiler.h>
 
 #include <variant>
 
@@ -471,6 +472,9 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::Initialize(SwapChainDesc const& swap
 			this->GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_frameFences[q])));
 	}
 
+	ID3D12Device* pDevice = this->m_rootDevice.Get();
+	ID3D12CommandQueue* pCommandQueue = this->GetGfxQueue();
+	OPTICK_GPU_INIT_D3D12(pDevice, &pCommandQueue, 1);
 }
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::Finalize()
@@ -519,6 +523,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::ResizeSwapchain(SwapChainDesc const&
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 {
+	PHX_EVENT();
 	static std::array<std::vector<ID3D12CommandList*>, (size_t)CommandQueueType::Count> submitCommandLists;
 	for (auto& v : submitCommandLists)
 	{
@@ -609,6 +614,9 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 		{
 			presentFlags = DXGI_PRESENT_ALLOW_TEARING;
 		}
+
+		OPTICK_GPU_FLIP(this->m_swapChain.NativeSwapchain4.Get());
+		OPTICK_CATEGORY("Present", Optick::Category::Wait);
 		HRESULT hr = this->m_swapChain.NativeSwapchain4->Present((UINT)this->m_swapChain.Desc.VSync, presentFlags);
 
 		// If the device was reset we must completely reinitialize the renderer.
@@ -2908,6 +2916,8 @@ RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(Gr
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::RunGarbageCollection(uint64_t completedFrame)
 {
+	PHX_EVENT();
+	OPTICK_TAG("Delete Queue Size", this->m_deleteQueue.size());
 	while (!this->m_deleteQueue.empty())
 	{
 		DeleteItem& deleteItem = this->m_deleteQueue.front();
@@ -3777,6 +3787,7 @@ CommandListHandle PhxEngine::RHI::D3D12::D3D12GfxDevice::BeginCommandList(Comman
 
 	// TODO: NOT VALID FOR COPY
 	internalCmd.NativeCommandList6->SetDescriptorHeaps(heaps.size(), heaps.data());
+	OPTICK_GPU_CONTEXT(internalCmd.NativeCommandList.Get());
 	return cmdHandle;
 }
 
@@ -3885,6 +3896,8 @@ void D3D12GfxDevice::BeginMarker(std::string_view name, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
 	PIXBeginEvent(internalCmd.NativeCommandList.Get(), 0, std::wstring(name.begin(), name.end()).c_str());
+	const char* tag = std::string(name.begin(), name.end()).c_str();
+	OPTICK_GPU_EVENT(tag);
 }
 
 void D3D12GfxDevice::EndMarker(CommandListHandle cmd)
