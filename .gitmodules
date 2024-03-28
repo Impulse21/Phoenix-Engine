@@ -19,3 +19,6 @@
 [submodule "Tools/PhxAssetConverter/Extern/DirectXTex"]
 	path = Tools/PhxAssetConverter/Extern/DirectXTex
 	url = https://github.com/microsoft/DirectXTex.git
+[submodule "PhxEngine/Extern/taskflow"]
+	path = PhxEngine/Extern/taskflow
+	url = https://github.com/taskflow/taskflow.git
