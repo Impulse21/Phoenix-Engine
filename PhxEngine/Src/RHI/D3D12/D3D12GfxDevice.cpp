@@ -525,7 +525,6 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 {
 	PHX_EVENT();
 	static std::array<std::vector<ID3D12CommandList*>, (size_t)CommandQueueType::Count> submitCommandLists;
-	OPTICK_PUSH("Clearing Submit Lists");
 	for (auto& v : submitCommandLists)
 	{
 		v.clear();
@@ -537,14 +536,11 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 		v.clear();
 	}
 
-	OPTICK_POP();
-
 	// Submit Commandlists
 	uint32_t numActiveCommandLists = this->m_activeCmdCount.load();
 	this->m_activeCmdCount.store(0);
 
 
-	OPTICK_PUSH("Collecting lists to Submit");
 	for (uint32_t iCmd = 0; iCmd < numActiveCommandLists; ++iCmd)
 	{
 		CommandListHandle cmdHandle = this->m_frameCommandListHandles[iCmd];
@@ -593,11 +589,9 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 			}
 		}
 	}
-	OPTICK_POP();
 
 
 	// -- Mark Queues for completion ---
-	OPTICK_PUSH("Marking queus for complition");
 	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
 	{
 		D3D12CommandQueue& queue = this->m_commandQueues[q];
@@ -614,11 +608,9 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 		// Single Frame Fence
 		queue.GetD3D12CommandQueue()->Signal(this->m_frameFences[q].Get(), this->m_frameCount);
 	}
-	OPTICK_POP();
 
 	// -- Present SwapChain ---
 	{
-		OPTICK_PUSH_DYNAMIC("Presenting Swapchain");
 		UINT presentFlags = 0;
 		if (!this->m_swapChain.Desc.VSync && !this->m_swapChain.Desc.Fullscreen)
 		{
@@ -626,7 +618,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 		}
 
 		OPTICK_GPU_FLIP(this->m_swapChain.NativeSwapchain4.Get());
-		OPTICK_CATEGORY("Present", Optick::Category::Wait);
+		OPTICK_CATEGORY("Swapchain Present", Optick::Category::Wait);
 		HRESULT hr = this->m_swapChain.NativeSwapchain4->Present((UINT)this->m_swapChain.Desc.VSync, presentFlags);
 
 		// If the device was reset we must completely reinitialize the renderer.
@@ -652,7 +644,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 	// Wait for next frame
 	this->RunGarbageCollection(this->m_frameCount);
 	{
-		OPTICK_PUSH_DYNAMIC("Wait on queues to finish");
+		OPTICK_EVENT("Wait on queues to finish");
 		for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
 		{
 			const UINT64 completedFrame = this->m_frameFences[q]->GetCompletedValue();
@@ -665,6 +657,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 			// that are kicked off.
 			if (this->m_frameCount >= (bufferCount + 1) && completedFrame < this->m_frameCount)
 			{
+				OPTICK_CATEGORY("Waiting For Last frame", Optick::Category::Wait);
 				// Wait on the frames last value?
 				// NULL event handle will simply wait immediately:
 				//	https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12fence-seteventoncompletion#remarks
