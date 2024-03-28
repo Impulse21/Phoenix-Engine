@@ -62,19 +62,25 @@ namespace
 		DisplaySubSystem::Ptr->Shutdown();
 	}
 
-	void FixedUpdate()
+	void PreRender(IApplication* app)
+	{
+		PHX_EVENT();
+		app->PreRender();
+	}
+
+	void FixedUpdate(IApplication* app)
 	{
 		PHX_EVENT();
 	}
 
-	void Update(TimeStep const span)
+	void Update(TimeStep const span, IApplication* app)
 	{
 		PHX_EVENT();
 		EngineMemory::Update();
 		RendererSubSystem::Ptr->Update();
 	}
 
-	void Render()
+	void Render(IApplication* app)
 	{
 		PHX_EVENT();
 
@@ -97,34 +103,43 @@ namespace
 			composeCmdList);
 	}
 
-	void Tick()
+	void Tick(IApplication* app)
 	{
 		DisplaySubSystem::Ptr->Update();
 		EventBus::DispatchEvents();
 
 		TimeStep deltaTimeSpan = m_gameClock.Elapsed();
 
-		// Fixed update calculation
 		{
-			m_deltaTimeAccumulator += deltaTimeSpan.GetSeconds();
-			if (m_deltaTimeAccumulator > 10)
-			{
-				// application probably lost control, fixed update would take too long
-				m_deltaTimeAccumulator = 0;
-			}
-
-			while (m_deltaTimeAccumulator >= m_targetFrameRateInv)
-			{
-				FixedUpdate();
-				m_deltaTimeAccumulator -= m_targetFrameRateInv;
-			}
+			PreRender(app);
 		}
 
-		Update(deltaTimeSpan);
-		Render();
+		// Update
+		{
+			{
+				m_deltaTimeAccumulator += deltaTimeSpan.GetSeconds();
+				if (m_deltaTimeAccumulator > 10)
+				{
+					// application probably lost control, fixed update would take too long
+					m_deltaTimeAccumulator = 0;
+				}
 
-		// -- Present Screen ---
-		DisplaySubSystem::Ptr->Present();
+				while (m_deltaTimeAccumulator >= m_targetFrameRateInv)
+				{
+					FixedUpdate(app);
+					m_deltaTimeAccumulator -= m_targetFrameRateInv;
+				}
+			}
+
+			Update(deltaTimeSpan, app);
+		}
+
+		// Render
+		{
+			Render(app);
+			// -- Present Screen ---
+			DisplaySubSystem::Ptr->Present();
+		}
 	}
 }
 
@@ -137,7 +152,7 @@ void PhxEngine::EngineLoop::Run(IApplication* app)
 	{
 		PHX_FRAME("MainThread");
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
-		Tick();
+		Tick(app);
 	}
 
 	Shutdown(app);

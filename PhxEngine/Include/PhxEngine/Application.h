@@ -11,10 +11,10 @@ namespace PhxEngine
         virtual void Startup() = 0;
         virtual void Shutdown() = 0;
 
-        virtual void PreRender(tf::Subflow& subflow) = 0;
-        virtual void FixedUpdate(tf::Subflow& subflow) = 0;
-        virtual void Update(TimeStep const deltaTime, tf::Subflow& subflow) = 0;
-        virtual void Render(tf::Subflow& subflow) = 0;
+        virtual void PreRender() = 0;
+        virtual void FixedUpdate() = 0;
+        virtual void Update(TimeStep const deltaTime) = 0;
+        virtual void Render() = 0;
 
         virtual ~IApplication() = default;
     };
