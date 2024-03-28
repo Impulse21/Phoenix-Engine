@@ -3,7 +3,10 @@
 
 #include <PhxEngine/Core/Math.h>
 #include <PhxEngine/Renderer/RendererSubSystem.h>
-
+#include <PhxEngine/World/World.h>
+#include <PhxEngine/World/Entity.h>
+#include <PhxEngine/Resource/ResourceManager.h>
+#include <PhxEngine/Resource/Mesh.h>
 
 class SandboxApp : public PhxEngine::IApplication
 {
@@ -15,21 +18,26 @@ public:
 	void FixedUpdate() override {};
 	void Update(PhxEngine::TimeStep const deltaTime) override {};
 	void Render() override {};
+
 private:
 	PhxEngine::DrawableInstanceHandle m_sphereDrawable;
+	PhxEngine::World m_world;
 };
 
 PHX_CREATE_APPLICATION(SandboxApp);
 
+using namespace PhxEngine;
+
 void SandboxApp::Startup()
 {
-	// Load  mesh and render it.
-	this->m_sphereDrawable = PhxEngine::RendererSubSystem::Ptr->DrawableInstanceCreate({
-			.TransformMatrix = PhxEngine::cIdentityMatrix
-		});
+	ResourceManager::RegisterPath("C:\\Users\\dipao\\source\\repos\\Impulse21\\Phoenix-Engine\\Assets\\Projects\\Sandbox");
+
+
+	Entity cubeEntity = this->m_world.CreateEntity("Rotating Cube");
+	auto& meshComponent = cubeEntity.AddComponent<MeshComponent>();
+	meshComponent.Mesh = MeshResourceRegistry::Ptr->Retrieve(StringHash("CubeMesh"));
 }
 
 void SandboxApp::Shutdown()
 {
-	PhxEngine::RendererSubSystem::Ptr->DrawableInstanceDelete(this->m_sphereDrawable);
 }

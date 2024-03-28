@@ -2,10 +2,90 @@
 #include <PhxEngine/Core/Logger.h>
 #include <fstream>
 
+#ifdef WIN32
+#include <Shlwapi.h>
+#else
+extern "C" {
+#include <glob.h>
+}
+#endif // _WIN32
+
 using namespace PhxEngine;
 
 namespace
 {
+
+    static int EnumerateNativeFiles(const char* pattern, bool directories, EnumCallback callback)
+    {
+#ifdef WIN32
+
+        WIN32_FIND_DATAA findData;
+        HANDLE hFind = FindFirstFileA(pattern, &findData);
+
+        if (hFind == INVALID_HANDLE_VALUE)
+        {
+            if (GetLastError() == ERROR_FILE_NOT_FOUND)
+                return 0;
+
+            return FileStatus::Failed;
+        }
+
+        int numEntries = 0;
+
+        do
+        {
+            bool isDirectory = (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+            bool isDot = strcmp(findData.cFileName, ".") == 0;
+            bool isDotDot = strcmp(findData.cFileName, "..") == 0;
+
+            if ((isDirectory == directories) && !isDot && !isDotDot)
+            {
+                callback(findData.cFileName);
+                ++numEntries;
+            }
+        } while (FindNextFileA(hFind, &findData) != 0);
+
+        FindClose(hFind);
+
+        return numEntries;
+
+#else // WIN32
+
+        glob64_t glob_matches;
+        int globResult = glob64(pattern, 0 /*flags*/, nullptr /*errfunc*/, &glob_matches);
+
+        if (globResult == 0)
+        {
+            int numEntries = 0;
+
+            for (int i = 0; i < glob_matches.gl_pathc; ++i)
+            {
+                const char* globentry = (glob_matches.gl_pathv)[i];
+                std::error_code ec, ec2;
+                std::filesystem::directory_entry entry(globentry, ec);
+                if (!ec)
+                {
+                    if (directories == entry.is_directory(ec2) && !ec2)
+                    {
+                        callback(entry.path().filename().native());
+                        ++numEntries;
+                    }
+                }
+            }
+            globfree64(&glob_matches);
+
+            return numEntries;
+        }
+
+        if (globResult == GLOB_NOMATCH)
+            return 0;
+
+        return status::Failed;
+
+#endif // WIN32
+    }
+
+
 	class Blob : public IBlob
 	{
 	public:
@@ -32,51 +112,6 @@ namespace
 		void* m_data;
 		size_t m_size;
 	};
-
-    class NativeFileSystem : public IFileSystem
-    {
-    public:
-        bool FileExists(std::filesystem::path const& name) override;
-        bool FolderExists(std::filesystem::path const& name) override;
-        std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
-        bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
-    };
-
-    class RelativeFileSystem : public IFileSystem
-    {
-    public:
-        RelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::filesystem::path& baseBath);
-
-        [[nodiscard]] std::filesystem::path const& GetBasePath() const { return this->m_basePath; }
-
-        bool FileExists(std::filesystem::path const& name) override;
-        bool FolderExists(std::filesystem::path const& name) override;
-        std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
-        bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
-
-    private:
-        std::shared_ptr<IFileSystem> m_underlyingFS;
-        std::filesystem::path m_basePath;
-    };
-
-    class RootFileSystem : public IRootFileSystem
-    {
-    public:
-        void Mount(const std::filesystem::path& path, std::shared_ptr<IFileSystem> fs) override;
-        void Mount(const std::filesystem::path& path, const std::filesystem::path& nativePath) override;
-        bool Unmount(const std::filesystem::path& path) override;
-
-        bool FileExists(std::filesystem::path const& name) override;
-        bool FolderExists(std::filesystem::path const& name) override;
-        std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
-        bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
-
-    private:
-        bool FindMountPoint(const std::filesystem::path& path, std::filesystem::path* pRelativePath, IFileSystem** ppFS);
-
-    private:
-        std::vector<std::pair<std::string, std::shared_ptr<IFileSystem>>> m_mountPoints;
-    };
 }
 
 
@@ -154,6 +189,39 @@ bool NativeFileSystem::WriteFile(std::filesystem::path const& name, Span<char> D
     return true;
 }
 
+int NativeFileSystem::EnumerateFiles(const std::filesystem::path& path, const std::vector<std::string>& extensions, EnumCallback callback, bool allowDuplicates)
+{
+    (void)allowDuplicates;
+
+    if (extensions.empty())
+    {
+        std::string pattern = (path / "*").generic_string();
+        return EnumerateNativeFiles(pattern.c_str(), false, callback);
+    }
+
+    int numEntries = 0;
+    for (const auto& ext : extensions)
+    {
+        std::string pattern = (path / ("*" + ext)).generic_string();
+        int result = EnumerateNativeFiles(pattern.c_str(), false, callback);
+
+        if (result < 0)
+            return result;
+
+        numEntries += result;
+    }
+
+    return numEntries;
+}
+
+int NativeFileSystem::EnumerateDirectories(const std::filesystem::path& path, EnumCallback callback, bool allowDuplicates)
+{
+    (void)allowDuplicates;
+
+    std::string pattern = (path / "*").generic_string();
+    return EnumerateNativeFiles(pattern.c_str(), true, callback);
+}
+
 RelativeFileSystem::RelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::filesystem::path& baseBath)
     : m_underlyingFS(std::move(fs))
     , m_basePath(baseBath.lexically_normal())
@@ -178,6 +246,16 @@ std::unique_ptr<IBlob> RelativeFileSystem::ReadFile(std::filesystem::path const&
 bool RelativeFileSystem::WriteFile(std::filesystem::path const& name, Span<char> Data)
 {
     return this->m_underlyingFS->WriteFile(this->m_basePath / name.relative_path(), Data);
+}
+
+int RelativeFileSystem::EnumerateFiles(const std::filesystem::path& path, const std::vector<std::string>& extensions, EnumCallback callback, bool allowDuplicates)
+{
+    return this->m_underlyingFS->EnumerateFiles(this->m_basePath / path.relative_path(), extensions, callback, allowDuplicates);
+}
+
+int RelativeFileSystem::EnumerateDirectories(const std::filesystem::path& path, EnumCallback callback, bool allowDuplicates)
+{
+    return this->m_underlyingFS->EnumerateDirectories(this->m_basePath / path.relative_path(), callback, allowDuplicates);
 }
 
 void RootFileSystem::Mount(const std::filesystem::path& path, std::shared_ptr<IFileSystem> fs)
@@ -265,6 +343,32 @@ bool RootFileSystem::WriteFile(std::filesystem::path const& name, Span<char> Dat
     return false;
 }
 
+int RootFileSystem::EnumerateFiles(const std::filesystem::path& path, const std::vector<std::string>& extensions, EnumCallback callback, bool allowDuplicates)
+{
+    std::filesystem::path relativePath;
+    IFileSystem* fs = nullptr;
+
+    if (this->FindMountPoint(path, &relativePath, &fs))
+    {
+        return fs->EnumerateFiles(relativePath, extensions, callback, allowDuplicates);
+    }
+
+    return FileStatus::PathNotFound;
+}
+
+int RootFileSystem::EnumerateDirectories(const std::filesystem::path& path, EnumCallback callback, bool allowDuplicates)
+{
+    std::filesystem::path relativePath;
+    IFileSystem* fs = nullptr;
+
+    if (this->FindMountPoint(path, &relativePath, &fs))
+    {
+        return fs->EnumerateDirectories(relativePath, callback, allowDuplicates);
+    }
+
+    return FileStatus::PathNotFound;
+}
+
 bool RootFileSystem::FindMountPoint(const std::filesystem::path& path, std::filesystem::path* pRelativePath, IFileSystem** ppFS)
 {
     std::string spath = path.lexically_normal().generic_string();
@@ -317,6 +421,11 @@ std::string PhxEngine::FileSystem::GetFileNameWithoutExt(std::string const& path
 }
 
 std::string PhxEngine::FileSystem::GetFileExt(std::string const& path)
+{
+    return std::filesystem::path(path).extension().generic_string();
+}
+
+std::string PhxEngine::FileSystem::GetFileExt(std::string_view path)
 {
     return std::filesystem::path(path).extension().generic_string();
 }

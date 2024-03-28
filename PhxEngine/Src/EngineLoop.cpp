@@ -12,6 +12,8 @@
 #include <Renderer/RendererDefaultSubSystem.h>
 #include <Renderer/GlfWDisplaySubSystem.h>
 #include <PhxEngine/RHI/PhxRHI.h>
+#include <PhxEngine/Resource/ResourceManager.h>
+#include <PhxEngine/Resource/Mesh.h>
 
 #include <thread>
 
@@ -33,6 +35,7 @@ namespace
 		Logger::Startup();
 		EngineTuner::Startup();
 		EngineMemory::Startup();
+		ResourceManager::Startup();
 
 		// TODO: Introduce dependecy injectiong for things like the Graphics Device...
 		DisplaySubSystem::Ptr = new GlfWDisplaySubSystem();
@@ -60,6 +63,7 @@ namespace
 
 		RendererSubSystem::Ptr->Shutdown();
 		DisplaySubSystem::Ptr->Shutdown();
+		ResourceManager::Shutdown();
 	}
 
 	void PreRender(IApplication* app)

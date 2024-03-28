@@ -7,12 +7,12 @@ namespace PhxEngine
 {
 	class Entity;
 
-	class Scene
+	class World
 	{
 		friend Entity;
 	public:
-		Scene() = default;
-		~Scene() = default;
+		World() = default;
+		~World() = default;
 
 	public:
 		Entity CreateEntity(std::string const& name = std::string());

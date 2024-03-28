@@ -1,7 +1,7 @@
 #pragma once
 
-#include <PhxEngine/Scene/Scene.h>
-#include <PhxEngine/Scene/Components.h>
+#include <PhxEngine/World/World.h>
+#include <PhxEngine/World/Components.h>
 #include <entt.hpp>
 
 namespace PhxEngine
@@ -10,7 +10,7 @@ namespace PhxEngine
 	{
 	public:
 		Entity() = default;
-		Entity(entt::entity handle, Scene* scene);
+		Entity(entt::entity handle, World* world);
 		Entity(Entity const& other) = default;
 
 		// Wrappers
@@ -18,14 +18,14 @@ namespace PhxEngine
 		T& AddComponent(Args&&... args)
 		{
 			assert(!this->HasComponent<T>());
-			T& component = this->m_scene->m_registry.emplace<T>(this->m_entityHandle, std::forward<Args>(args)...);
+			T& component = this->m_world->m_registry.emplace<T>(this->m_entityHandle, std::forward<Args>(args)...);
 			return component;
 		}
 
 		template<typename T, typename... Args>
 		T& AddOrReplaceComponent(Args&&... args)
 		{
-			T& component = this->m_scene->m_registry.emplace_or_replace<T>(this->m_entityHandle, std::forward<Args>(args)...);
+			T& component = this->m_world->m_registry.emplace_or_replace<T>(this->m_entityHandle, std::forward<Args>(args)...);
 			return component;
 		}
 
@@ -33,20 +33,20 @@ namespace PhxEngine
 		T& GetComponent()
 		{
 			assert(this->HasComponent<T>());
-			return this->m_scene->m_registry.get<T>(this->m_entityHandle);
+			return this->m_world->m_registry.get<T>(this->m_entityHandle);
 		}
 
 		template<typename T>
 		const T& GetComponent() const
 		{
 			assert(this->HasComponent<T>());
-			return this->m_scene->m_registry.get<T>(this->m_entityHandle);
+			return this->m_world->m_registry.get<T>(this->m_entityHandle);
 		}
 
 		template<typename T>
 		bool HasComponent() const
 		{
-			return this->m_scene->m_registry.all_of<T>(this->m_entityHandle);
+			return this->m_world->m_registry.all_of<T>(this->m_entityHandle);
 		}
 
 		template<typename T>
@@ -54,7 +54,7 @@ namespace PhxEngine
 		{
 			assert(this->HasComponent<T>());
 
-			this->m_scene->m_registry.remove<T>(this->m_entityHandle);
+			this->m_world->m_registry.remove<T>(this->m_entityHandle);
 		}
 
 		operator bool() const { return this->m_entityHandle != entt::null; }
@@ -66,7 +66,7 @@ namespace PhxEngine
 
 		bool operator==(const Entity& other) const
 		{
-			return this->m_entityHandle == other.m_entityHandle && this->m_scene == other.m_scene;
+			return this->m_entityHandle == other.m_entityHandle && this->m_world == other.m_world;
 		}
 
 		bool operator!=(const Entity& other) const
@@ -76,7 +76,7 @@ namespace PhxEngine
 
 	private:
 		entt::entity m_entityHandle = entt::null;
-		Scene* m_scene;
+		World* m_world;
 	};
 }
 

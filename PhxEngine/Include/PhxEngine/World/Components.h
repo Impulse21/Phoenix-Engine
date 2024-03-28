@@ -2,11 +2,14 @@
 
 #include <PhxEngine/Core/UUID.h>
 #include <PhxEngine/Core/Math.h>
+#include <PhxEngine/Core/RefCountPtr.h>
 
 namespace PhxEngine
 {
-	// TODO: Move to a math library
+	class Mesh;
 
+	// TODO: Move to a math library
+	
 	struct IDComponent
 	{
 		UUID ID;
@@ -45,8 +48,8 @@ namespace PhxEngine
 		entt::entity ParentID = entt::null;
 	};
 
-	struct RendererComponent
+	struct MeshComponent
 	{
-
+		RefCountPtr<Mesh> Mesh;
 	};
 }
