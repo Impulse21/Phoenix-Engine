@@ -474,7 +474,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::Initialize(SwapChainDesc const& swap
 
 	ID3D12Device* pDevice = this->m_rootDevice.Get();
 	ID3D12CommandQueue* pCommandQueue = this->GetGfxQueue();
-	OPTICK_GPU_INIT_D3D12(pDevice, &pCommandQueue, 1);
+	// OPTICK_GPU_INIT_D3D12(pDevice, &pCommandQueue, 1);
 }
 
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::Finalize()
@@ -617,8 +617,8 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 			presentFlags = DXGI_PRESENT_ALLOW_TEARING;
 		}
 
-		OPTICK_GPU_FLIP(this->m_swapChain.NativeSwapchain4.Get());
-		OPTICK_CATEGORY("Swapchain Present", Optick::Category::Wait);
+		// OPTICK_GPU_FLIP(this->m_swapChain.NativeSwapchain4.Get());
+		// OPTICK_CATEGORY("Swapchain Present", Optick::Category::Wait);
 		HRESULT hr = this->m_swapChain.NativeSwapchain4->Present((UINT)this->m_swapChain.Desc.VSync, presentFlags);
 
 		// If the device was reset we must completely reinitialize the renderer.
@@ -644,7 +644,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 	// Wait for next frame
 	this->RunGarbageCollection(this->m_frameCount);
 	{
-		OPTICK_EVENT("Wait on queues to finish");
+		// OPTICK_EVENT("Wait on queues to finish");
 		for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
 		{
 			const UINT64 completedFrame = this->m_frameFences[q]->GetCompletedValue();
@@ -657,7 +657,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 			// that are kicked off.
 			if (this->m_frameCount >= (bufferCount + 1) && completedFrame < this->m_frameCount)
 			{
-				OPTICK_CATEGORY("Waiting For Last frame", Optick::Category::Wait);
+				// OPTICK_CATEGORY("Waiting For Last frame", Optick::Category::Wait);
 				// Wait on the frames last value?
 				// NULL event handle will simply wait immediately:
 				//	https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12fence-seteventoncompletion#remarks
@@ -2921,7 +2921,7 @@ RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(Gr
 void PhxEngine::RHI::D3D12::D3D12GfxDevice::RunGarbageCollection(uint64_t completedFrame)
 {
 	PHX_EVENT();
-	OPTICK_TAG("Delete Queue Size", this->m_deleteQueue.size());
+	// OPTICK_TAG("Delete Queue Size", this->m_deleteQueue.size());
 	while (!this->m_deleteQueue.empty())
 	{
 		DeleteItem& deleteItem = this->m_deleteQueue.front();

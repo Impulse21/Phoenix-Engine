@@ -137,7 +137,7 @@ namespace
 
 		// Render
 		{
-			// Render(app);
+			Render(app);
 			DisplaySubSystem::Ptr->Present();
 		}
 	}
