@@ -525,6 +525,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 {
 	PHX_EVENT();
 	static std::array<std::vector<ID3D12CommandList*>, (size_t)CommandQueueType::Count> submitCommandLists;
+	OPTICK_PUSH("Clearing Submit Lists");
 	for (auto& v : submitCommandLists)
 	{
 		v.clear();
@@ -536,10 +537,14 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 		v.clear();
 	}
 
+	OPTICK_POP();
+
 	// Submit Commandlists
 	uint32_t numActiveCommandLists = this->m_activeCmdCount.load();
 	this->m_activeCmdCount.store(0);
 
+
+	OPTICK_PUSH("Collecting lists to Submit");
 	for (uint32_t iCmd = 0; iCmd < numActiveCommandLists; ++iCmd)
 	{
 		CommandListHandle cmdHandle = this->m_frameCommandListHandles[iCmd];
@@ -588,7 +593,11 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 			}
 		}
 	}
+	OPTICK_POP();
+
+
 	// -- Mark Queues for completion ---
+	OPTICK_PUSH("Marking queus for complition");
 	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
 	{
 		D3D12CommandQueue& queue = this->m_commandQueues[q];
@@ -605,10 +614,11 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 		// Single Frame Fence
 		queue.GetD3D12CommandQueue()->Signal(this->m_frameFences[q].Get(), this->m_frameCount);
 	}
+	OPTICK_POP();
 
 	// -- Present SwapChain ---
-
 	{
+		OPTICK_PUSH_DYNAMIC("Presenting Swapchain");
 		UINT presentFlags = 0;
 		if (!this->m_swapChain.Desc.VSync && !this->m_swapChain.Desc.Fullscreen)
 		{
@@ -642,6 +652,7 @@ void PhxEngine::RHI::D3D12::D3D12GfxDevice::SubmitFrame()
 	// Wait for next frame
 	this->RunGarbageCollection(this->m_frameCount);
 	{
+		OPTICK_PUSH_DYNAMIC("Wait on queues to finish");
 		for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
 		{
 			const UINT64 completedFrame = this->m_frameFences[q]->GetCompletedValue();
@@ -3787,7 +3798,6 @@ CommandListHandle PhxEngine::RHI::D3D12::D3D12GfxDevice::BeginCommandList(Comman
 
 	// TODO: NOT VALID FOR COPY
 	internalCmd.NativeCommandList6->SetDescriptorHeaps(heaps.size(), heaps.data());
-	OPTICK_GPU_CONTEXT(internalCmd.NativeCommandList.Get());
 	return cmdHandle;
 }
 
@@ -3897,7 +3907,7 @@ void D3D12GfxDevice::BeginMarker(std::string_view name, CommandListHandle cmd)
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
 	PIXBeginEvent(internalCmd.NativeCommandList.Get(), 0, std::wstring(name.begin(), name.end()).c_str());
 	const char* tag = std::string(name.begin(), name.end()).c_str();
-	OPTICK_GPU_EVENT(tag);
+	// OPTICK_GPU_EVENT(tag);
 }
 
 void D3D12GfxDevice::EndMarker(CommandListHandle cmd)

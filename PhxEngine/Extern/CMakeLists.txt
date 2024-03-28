@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 
+set(OPTICK_USE_D3D12 ON)
 add_subdirectory(optick)
 set_target_properties(OptickCore PROPERTIES FOLDER ${extern_folder})
 
@@ -38,3 +39,4 @@ set_target_properties(entt PROPERTIES FOLDER ${extern_folder})
 
 add_library(taskflow INTERFACE)
 target_include_directories(taskflow INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/taskflow)
+set_target_properties(taskflow PROPERTIES FOLDER ${extern_folder})

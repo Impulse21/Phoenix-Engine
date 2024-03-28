@@ -87,6 +87,7 @@ namespace
 		auto& gfxDevice = RHI::IGfxDevice::Ptr;
 		RHI::CommandListHandle composeCmdList = gfxDevice->BeginCommandList();
 
+		RHI::ScopedMarker("Clear Back Buffer", composeCmdList);
 		gfxDevice->TransitionBarriers(
 			{
 				RHI::GpuBarrier::CreateTexture(gfxDevice->GetBackBuffer(), RHI::ResourceStates::Present, RHI::ResourceStates::RenderTarget)
@@ -136,8 +137,7 @@ namespace
 
 		// Render
 		{
-			Render(app);
-			// -- Present Screen ---
+			// Render(app);
 			DisplaySubSystem::Ptr->Present();
 		}
 	}
@@ -151,7 +151,6 @@ void PhxEngine::EngineLoop::Run(IApplication* app)
 	while (m_isRunning)
 	{
 		PHX_FRAME("MainThread");
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 		Tick(app);
 	}
 

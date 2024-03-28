@@ -1165,7 +1165,7 @@ namespace PhxEngine::RHI
             return barrier;
         }
     };
-    class ScopedMarker;
+
 
     struct GPUAllocation
     {
@@ -1537,6 +1537,23 @@ namespace PhxEngine::RHI
     {
     public:
         static GfxDevice* Create(RHI::GraphicsAPI preferedAPI);
+    };
+
+    class ScopedMarker
+    {
+    public:
+        ScopedMarker(const char* name, RHI::CommandListHandle cmd)
+            : m_cmd(cmd)
+        {
+            RHI::IGfxDevice::Ptr->BeginMarker(name, this->m_cmd);
+        }
+        ~ScopedMarker()
+        {
+
+            RHI::IGfxDevice::Ptr->EndMarker(this->m_cmd);
+        }
+    private:
+        RHI::CommandListHandle m_cmd;
     };
 }
 
