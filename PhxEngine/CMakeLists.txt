@@ -128,7 +128,8 @@ target_link_libraries(${project} PUBLIC
 	D3D12MemoryAllocator
 	DirectX-Headers
 	DirectX-Guids
-	entt)
+	entt
+	taskflow)
 
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 
@@ -227,4 +228,3 @@ add_custom_command(
 
 	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/DStorage
 	DEPENDS DirectStorageSDK)
-

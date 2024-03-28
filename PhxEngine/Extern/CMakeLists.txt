@@ -34,3 +34,7 @@ add_library(entt INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/entt/entt.hpp)
 target_include_directories(entt INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/entt)
 set_target_properties(entt PROPERTIES FOLDER ${extern_folder})
+
+
+add_library(taskflow INTERFACE)
+target_include_directories(taskflow INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/taskflow)

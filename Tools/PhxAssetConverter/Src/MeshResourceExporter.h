@@ -4,6 +4,11 @@
 #include <PhxEngine/Resource/MeshFileFormat.h>
 #include "PipelineTypes.h"
 
+namespace PhxEngine
+{
+	class BinaryBuilder;
+}
+
 namespace PhxEngine::Pipeline
 {
 	class MeshResourceExporter

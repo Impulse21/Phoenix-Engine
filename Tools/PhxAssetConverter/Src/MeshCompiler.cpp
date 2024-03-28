@@ -15,6 +15,5 @@ void PhxEngine::Pipeline::MeshCompiler::CompileGeometryData()
 
 	for (auto& meshPart : this->m_mesh.MeshParts)
 	{
-		this->m_ge
 	}
 }

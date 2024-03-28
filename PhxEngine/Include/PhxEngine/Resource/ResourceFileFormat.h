@@ -48,7 +48,8 @@ namespace PhxEngine
 
 		uint32_t operator=(uint32_t offset)
 		{
-			this->m_offset = static_cast<OffsetType>(offset - ((char*)this));
+			// this->m_offset = static_cast<OffsetType>(offset - ((char*)this));
+			return 0;
 		}
 
 		operator uint32_t() { return this->m_offset; }
@@ -101,5 +102,5 @@ namespace PhxEngine
 
 		Array<StringHash> StringHashTable;
 	};
-	using StringHashTableHeader = Region<StringHashTableHeader>;
+	using StringHashTableRegion= Region<StringHashTableHeader>;
 }

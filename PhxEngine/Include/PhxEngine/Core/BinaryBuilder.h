@@ -15,7 +15,7 @@ namespace PhxEngine
 		template<typename T>
 		size_t Reserve(size_t count = 1)
 		{
-			const size_t newStart = MemoryAlign(this->m_allocationSize, AlighnMemalignof(T));
+			const size_t newStart = MemoryAlign(this->m_allocationSize, alignof(T));
 			this->m_allocationSize = newStart + sizeof(T) * count;
 			return newStart;
 		}
@@ -38,7 +38,7 @@ namespace PhxEngine
 		{
 			for (int i = 0; i < numObjects; ++i)
 			{
-				new (&m_memory.get()) T(std::forward<Args>(args)...);
+				new (m_memory.get() + offset * i) T(std::forward<Args>(args)...);
 			}
 
 			return  reinterpret_cast<T*>(this->m_memory.get() + offset);
@@ -49,7 +49,7 @@ namespace PhxEngine
 		{
 			for (int i = 0; i < numObjects; ++i)
 			{
-				new (&m_memory.get()) T;
+				new (m_memory.get() + offset * i) T;
 			}
 
 			return  reinterpret_cast<T*>(this->m_memory.get() + offset);

@@ -3,6 +3,8 @@
 
 #include <PhxEngine/Core/BinaryBuilder.h>
 
+using namespace PhxEngine;
+
 void PhxEngine::Pipeline::MeshResourceExporter::Export()
 {
 	// Prepare memory for export
@@ -45,7 +47,12 @@ void PhxEngine::Pipeline::MeshResourceExporter::Export()
 	this->m_out.write(fileBuilder.Data(), fileBuilder.Size());
 }
 
-GpuRegion PhxEngine::Pipeline::MeshResourceExporter::CreateGpuRegion(BinaryBuilder& regionBuilder, )
+Region<MeshFileFormat::MeshMetadataHeader> PhxEngine::Pipeline::MeshResourceExporter::CreateMeshMetadataRegion(BinaryBuilder& regionBuilder)
+{
+	return Region<MeshFileFormat::MeshMetadataHeader>();
+}
+
+GpuRegion PhxEngine::Pipeline::MeshResourceExporter::CreateGpuRegion(BinaryBuilder& regionBuilder)
 {
 	return GpuRegion();
 }
