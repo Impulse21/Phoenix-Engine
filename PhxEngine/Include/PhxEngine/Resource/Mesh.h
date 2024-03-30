@@ -15,7 +15,7 @@ namespace PhxEngine
 
 	};
 
-	class MeshResourceRegistry : public ResourceRegistry<Mesh>
+	class MeshResourceRegistry : public ResourceRegistry<Mesh>, public IResourceFileHanlder
 	{
 	public:
 		inline static MeshResourceRegistry* Ptr = nullptr;
@@ -24,7 +24,20 @@ namespace PhxEngine
 		MeshResourceRegistry() = default;
 
 		RefCountPtr<Mesh> Retrieve(StringHash meshId) override;
+
+		std::string_view GetFileExtension() const override { return ".pmesh"; }
+
+		void RegisterResourceFile(std::string_view file);
+
+	private:
+		struct File
+		{
+			std::string Filename;
+		};
+
+		std::vector<File> m_files;
 	};
+
 
 	class MeshResourceFileHandler final : public IResourceFileHanlder
 	{

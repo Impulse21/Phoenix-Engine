@@ -14,29 +14,30 @@ using namespace PhxEngine;
 namespace
 {
 	std::vector<std::string> m_registeredExtension;
-	std::unordered_map<StringHash, std::unique_ptr<IResourceFileHanlder>> m_handlerLUT;
+	std::unordered_map<StringHash, IResourceFileHanlder*> m_handlerLUT;
 	RootFileSystem m_rootFs;
 }
 
 void PhxEngine::ResourceManager::Startup()
 {
 	MeshResourceRegistry::Ptr = new MeshResourceRegistry;
-	ResourceManager::RegisterResourceHandler(std::make_unique<MeshResourceFileHandler>());
+	ResourceManager::RegisterResourceHandler(MeshResourceRegistry::Ptr);
 }
 
 void PhxEngine::ResourceManager::Shutdown()
 {
+	m_handlerLUT.clear();
 	delete MeshResourceRegistry::Ptr;
 }
 
-void PhxEngine::ResourceManager::RegisterResourceHandler(std::unique_ptr<IResourceFileHanlder>&& resourceHandler)
+void PhxEngine::ResourceManager::RegisterResourceHandler(IResourceFileHanlder* resourceHandler)
 {
 	std::string_view fileExten = resourceHandler->GetFileExtension();
 	StringHash extensionHash = StringHash(fileExten);
 	auto itr = m_handlerLUT.find(extensionHash);
 	if (itr == m_handlerLUT.end())
 	{
-		m_handlerLUT[extensionHash] = std::move(resourceHandler);
+		m_handlerLUT[extensionHash] = resourceHandler;
 		m_registeredExtension.push_back(std::string(fileExten));
 	}
 }
@@ -45,7 +46,7 @@ void PhxEngine::ResourceManager::MountPath(std::string const& path)
 {
 }
 
-void PhxEngine::ResourceManager::RegisterPath(std::string const& directory)
+void PhxEngine::ResourceManager::RegisterDir(std::string const& directory)
 {
 	NativeFileSystem fs;
 	fs.EnumerateFiles(directory, m_registeredExtension, [](std::string_view file) {
@@ -53,7 +54,7 @@ void PhxEngine::ResourceManager::RegisterPath(std::string const& directory)
 		StringHash extensionHash(FileSystem::GetFileExt(file));
 		auto itr = m_handlerLUT.find(extensionHash);
 		if (itr != m_handlerLUT.end())
-		{
+		{ 
 			m_handlerLUT[extensionHash]->RegisterResourceFile(file);
 		}
 	});
