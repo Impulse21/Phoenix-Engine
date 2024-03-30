@@ -30,8 +30,7 @@ using namespace PhxEngine;
 
 void SandboxApp::Startup()
 {
-	ResourceManager::RegisterPath("C:\\Users\\dipao\\source\\repos\\Impulse21\\Phoenix-Engine\\Assets\\Projects\\Sandbox");
-
+	ResourceManager::RegisterPath("..\\resources");
 
 	Entity cubeEntity = this->m_world.CreateEntity("Rotating Cube");
 	auto& meshComponent = cubeEntity.AddComponent<MeshComponent>();

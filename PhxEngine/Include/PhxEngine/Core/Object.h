@@ -12,7 +12,6 @@ namespace PhxEngine
 
 	struct ObjectId;
 
-
     /// Type info.
     /// @nobind
     class TypeInfo
@@ -51,7 +50,6 @@ namespace PhxEngine
         static const std::string& GetTypeNameStatic() { return GetTypeInfoStatic()->GetTypeName(); } \
         static const PhxEngine::TypeInfo* GetTypeInfoStatic() { static const PhxEngine::TypeInfo typeInfoStatic(#typeName, BaseClassName::GetTypeInfoStatic()); return &typeInfoStatic; }
 
-    class EventHandler;
     class Object
     {
     public:
@@ -61,7 +59,6 @@ namespace PhxEngine
         virtual StringHash GetType() const = 0;
         virtual const std::string& GetTypeName() const = 0;
         virtual const TypeInfo* GetTypeInfo() const = 0;
-        virtual void OnEvent(Object* sender, StringHash eventType, VariantMap& eventData);
 
         /// Return type info static.
         static const TypeInfo* GetTypeInfoStatic() { return nullptr; }

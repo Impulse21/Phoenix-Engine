@@ -23,7 +23,7 @@ namespace PhxEngine
 		
 		MeshResourceRegistry() = default;
 
-		RefCountPtr<Mesh> Retrieve(StringHash meshId);
+		RefCountPtr<Mesh> Retrieve(StringHash meshId) override;
 	};
 
 	class MeshResourceFileHandler final : public IResourceFileHanlder
