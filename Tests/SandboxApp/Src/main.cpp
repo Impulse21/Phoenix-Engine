@@ -30,7 +30,7 @@ using namespace PhxEngine;
 
 void SandboxApp::Startup()
 {
-	ResourceManager::RegisterPath("..\\resources");
+	ResourceManager::RegisterPath("..\\..\\..\\Output\\resources");
 
 	Entity cubeEntity = this->m_world.CreateEntity("Rotating Cube");
 	auto& meshComponent = cubeEntity.AddComponent<MeshComponent>();

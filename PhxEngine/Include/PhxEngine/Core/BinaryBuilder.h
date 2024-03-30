@@ -30,7 +30,7 @@ namespace PhxEngine
 
 		void Commit()
 		{
-			std::make_unique<char[]>(this->m_allocationSize);
+			this->m_memory = std::make_unique<char[]>(this->m_allocationSize);
 		}
 
 		template<typename T, typename... Args>
@@ -74,6 +74,6 @@ namespace PhxEngine
 
 	private:
 		std::unique_ptr<char[]> m_memory;
-		size_t m_allocationSize;
+		size_t m_allocationSize = 0;
 	};
 }

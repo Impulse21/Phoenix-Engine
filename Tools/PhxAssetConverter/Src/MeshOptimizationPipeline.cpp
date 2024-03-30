@@ -29,8 +29,11 @@ void PhxEngine::Pipeline::MeshOptimizationPipeline::OptmizeInternal(StackAllocat
 	for (size_t iStream = 0; iStream < static_cast<size_t>(Pipeline::VertexStreamType::NumStreams); iStream++)
 	{
 		Pipeline::VertexStream& stream = mesh.VertexStreams[iStream];
-		unindexedStreams[iStream] = tempAllocator.NewArr<float>(stream.Data.size(), 1);
-		std::memcpy(unindexedStreams[iStream], stream, sizeof(float) * stream.Data.size());
+		if (!stream.IsEmpty())
+		{
+			unindexedStreams[iStream] = tempAllocator.NewArr<float>(stream.Data.size(), 1);
+			std::memcpy(unindexedStreams[iStream], stream, sizeof(float) * stream.Data.size());
+		}
 	}
 
 	uint32_t* originalIndices = nullptr;
@@ -47,27 +50,31 @@ void PhxEngine::Pipeline::MeshOptimizationPipeline::OptmizeInternal(StackAllocat
 	}
 
 	uint32_t* remap = tempAllocator.NewArr<uint32_t>(totalIndices, 1);
-	meshopt_Stream meshOptStreams[static_cast<size_t>(Pipeline::VertexStreamType::NumStreams)];
+	std::vector<meshopt_Stream> meshOptStreams;
+	meshOptStreams.reserve(static_cast<size_t>(Pipeline::VertexStreamType::NumStreams));
 
 	for (size_t iStream = 0; iStream < static_cast<size_t>(Pipeline::VertexStreamType::NumStreams); iStream++)
 	{
 		Pipeline::VertexStream& stream = mesh.VertexStreams[iStream];
-		meshOptStreams[iStream] = { unindexedStreams[iStream], sizeof(float) * stream.NumComponents, sizeof(float) * stream.NumComponents };
+		if (!stream.IsEmpty())
+			meshOptStreams.push_back({ unindexedStreams[iStream], sizeof(float) * stream.NumComponents, sizeof(float) * stream.NumComponents });
 	}
 
-	size_t totalVertices = meshopt_generateVertexRemapMulti(remap, originalIndices, totalIndices, totalIndices, meshOptStreams, sizeof(meshOptStreams) / sizeof(meshOptStreams[0]));
+	size_t totalVertices = meshopt_generateVertexRemapMulti(remap, originalIndices, totalIndices, totalIndices, meshOptStreams.data(), meshOptStreams.size());
 
 	for (size_t iStream = 0; iStream < static_cast<size_t>(Pipeline::VertexStreamType::NumStreams); iStream++)
 	{
 		Pipeline::VertexStream& stream = mesh.VertexStreams[iStream];
-		stream.Data.resize(totalVertices * stream.NumComponents);
+		if (!stream.IsEmpty())
+			stream.Data.resize(totalVertices * stream.NumComponents);
 	}
 
 	meshopt_remapIndexBuffer(mesh.Indices.data(), originalIndices, totalIndices, remap);
 	for (size_t iStream = 0; iStream < static_cast<size_t>(Pipeline::VertexStreamType::NumStreams); iStream++)
 	{
 		Pipeline::VertexStream& stream = mesh.VertexStreams[iStream];
-		meshopt_remapVertexBuffer(stream.Data.data(), unindexedStreams[iStream], totalIndices, sizeof(float) * stream.NumComponents, remap);
+		if (!stream.IsEmpty())
+			meshopt_remapVertexBuffer(stream.Data.data(), unindexedStreams[iStream], totalIndices, sizeof(float) * stream.NumComponents, remap);
 	}
 
 	TimeStep reindexTimeSpan = stopWatch.Elapsed();
@@ -80,7 +87,8 @@ void PhxEngine::Pipeline::MeshOptimizationPipeline::OptmizeInternal(StackAllocat
 	for (size_t iStream = 0; iStream < static_cast<size_t>(Pipeline::VertexStreamType::NumStreams); iStream++)
 	{
 		Pipeline::VertexStream& stream = mesh.VertexStreams[iStream];
-		meshopt_remapVertexBuffer(stream.Data.data(), unindexedStreams[iStream], totalIndices, sizeof(float) * stream.NumComponents, remap);
+		if (!stream.IsEmpty())
+			meshopt_remapVertexBuffer(stream.Data.data(), unindexedStreams[iStream], totalIndices, sizeof(float) * stream.NumComponents, remap);
 	}
 
 	TimeStep optimizeTimestep = stopWatch.Elapsed();

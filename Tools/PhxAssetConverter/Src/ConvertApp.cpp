@@ -11,9 +11,14 @@
 #include "GltfAssetImporter.h"
 #include "MeshOptimizationPipeline.h"
 #include "MeshletGenerationPipeline.h"
+#include "MeshCompiler.h"
+#include "MeshResourceExporter.h"
+
 #include <json.hpp>
 
 #include <dstorage.h>
+#include <fstream>
+
 using namespace PhxEngine;
 using namespace nlohmann;
 
@@ -24,7 +29,7 @@ using namespace nlohmann;
         }
 
 // "{ \"input\" : \"C:\\Users\\dipao\\source\\repos\\Impulse21\\Phoenix-Engine\\Assets\\Main.1_Sponza\\NewSponza_Main_glTF_002.gltf\", \"output_dir\": \"C:\\Users\\dipao\\source\\repos\\Impulse21\\Phoenix-Engine\\Assets\\Main.1_Sponza_Baked\" }"
-// "{ \"input\" : \"C:\\Users\\dipao\\source\\repos\\Impulse21\\Phoenix-Engine\\Assets\\Monkey.gltf\", \"output_dir\": \"C:\\Users\\dipao\\source\\repos\\Impulse21\\Phoenix-Engine\\Assets\" }"
+// "{ \"input\" : \"..\\..\\..\\Assets\\Box.gltf\", \"output_dir\": \"..\\..\\..\\Output\\resources\",  \"compression\" : \"None\" }"
 int main(int argc, const char** argv)
 {
 	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
@@ -41,6 +46,7 @@ int main(int argc, const char** argv)
 
 	const std::string inputTag = "input";
 	const std::string outputTag = "output_dir";
+	const std::string compressionTag = "compression";
 	if (!inputSettings.contains(inputTag))
 	{
 		PHX_LOG_ERROR("Input is required");
@@ -55,6 +61,14 @@ int main(int argc, const char** argv)
 
 	const std::string& gltfInput = inputSettings[inputTag];
 	const std::string& outputDirectory = inputSettings[outputTag];
+
+	Compression compression = Compression::None;
+	if (inputSettings.contains(compressionTag))
+	{
+		const std::string& compressionStr = inputSettings[compressionTag];
+		if (compressionStr == "gdeflate")
+			compression = Compression::GDeflate;
+	}
 
 	PHX_LOG_INFO("Baking Assets from %s to %s", gltfInput.c_str(), outputDirectory.c_str());
 	std::unique_ptr<IFileSystem> fileSystem = FileSystemFactory::CreateNativeFileSystem();
@@ -89,18 +103,27 @@ int main(int argc, const char** argv)
 
 	// Create and save Drawable.
 	
-	// Create Drawable
-	for (auto& mesh : importedObjects.Meshes)
-	{
-		std::vector<uint8_t> bufferMemory;
-	}
-
 	// Get the buffer compression interface for DSTORAGE_COMPRESSION_FORMAT_GDEFLATE
 	constexpr uint32_t NumCompressionThreads = 6;
 	RefCountPtr<IDStorageCompressionCodec> bufferCompression;
 	ASSERT_SUCCEEDED(
 		DStorageCreateCompressionCodec(DSTORAGE_COMPRESSION_FORMAT_GDEFLATE, NumCompressionThreads, IID_PPV_ARGS(&bufferCompression)));
 
+
+	// Create Drawable
+	for (auto& mesh : importedObjects.Meshes)
+	{
+
+		std::filesystem::path destPath(outputDirectory);
+		destPath /= mesh.Name + ".pmesh";
+		destPath.make_preferred();
+
+		PHX_LOG_INFO("Saving out Mesh Resources '%s'", destPath.generic_string().c_str());
+
+		std::ofstream outStream(destPath, std::ios::out | std::ios::trunc | std::ios::binary);
+
+		Pipeline::MeshResourceExporter::Export(outStream, compression, mesh);
+	}
 
     return 0;
 }

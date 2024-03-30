@@ -5,6 +5,14 @@
 
 using namespace PhxEngine;
 
+
+PhxEngine::Pipeline::MeshResourceExporter::MeshResourceExporter(std::ostream& out, Compression compression, Mesh const& mesh)
+	: m_out(out)
+	, m_compression(compression)
+	, m_mesh(mesh)
+{
+}
+
 void PhxEngine::Pipeline::MeshResourceExporter::Export()
 {
 	// Prepare memory for export

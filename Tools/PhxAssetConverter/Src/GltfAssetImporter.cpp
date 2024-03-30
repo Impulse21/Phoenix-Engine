@@ -5,6 +5,7 @@
 
 #include <PhxEngine/Core/Logger.h>
 #include <PhxEngine/Core/VirtualFileSystem.h>
+#include <PhxEngine/Core/Math.h>
 
 using namespace PhxEngine;
 
@@ -19,6 +20,25 @@ namespace PhxEngine::Pipeline
 
 namespace
 {
+	void ComputeBounds(Pipeline::Mesh& mesh)
+	{
+		DirectX::XMFLOAT3 minBounds = DirectX::XMFLOAT3(cMaxFloat, cMaxFloat, cMaxFloat);
+		DirectX::XMFLOAT3 maxBounds = DirectX::XMFLOAT3(cMinFloat, cMinFloat, cMinFloat);
+		Pipeline::VertexStream& posStream = mesh.GetStream(Pipeline::VertexStreamType::Position);
+		if (!posStream.IsEmpty())
+		{
+			for (int i = 0; i < posStream.NumComponents; i++)
+			{
+				DirectX::XMFLOAT3* pos = reinterpret_cast<DirectX::XMFLOAT3*>(posStream.Data.data());
+				minBounds = Min(minBounds, *pos);
+				maxBounds = Max(maxBounds, *pos);
+			}
+		}
+
+		mesh.BoundingBox = AABB(minBounds, maxBounds);
+		mesh.BoundingSphere = Sphere(minBounds, maxBounds);
+	}
+
 	namespace GltfHelpers
 	{
 		static std::pair<const uint8_t*, size_t> CgltfBufferAccessor(const cgltf_accessor* accessor, size_t defaultStride)
@@ -334,9 +354,9 @@ bool PhxEngine::Pipeline::GltfAssetImporter::ImportMesh(cgltf_mesh* gltfMesh, Pi
 			}			
 
 			auto SetBufferDataFunc = [](const cgltf_accessor* accessor, VertexStream& stream, size_t vertexOffset, size_t vertexCount, float defaultValue = 1.0f) {
-					stream.Data.resize(stream.Data.size() + vertexCount * stream.NumComponents, defaultValue);
 					if (accessor)
 					{
+						stream.Data.resize(stream.Data.size() + vertexCount * stream.NumComponents, defaultValue);
 						auto [data, dataStride] = CgltfBufferAccessor(accessor, sizeof(float) * stream.NumComponents);
 						std::memcpy(
 							stream.Data.data() + (vertexOffset * stream.NumComponents),
@@ -345,7 +365,6 @@ bool PhxEngine::Pipeline::GltfAssetImporter::ImportMesh(cgltf_mesh* gltfMesh, Pi
 
 					}
 				};
-
 			{
 				VertexStream& stream = outMesh.VertexStreams[static_cast<size_t>(VertexStreamType::Position)];
 				SetBufferDataFunc(cgltfPositionsAccessor, stream, vertexOffset, vertexCount);
@@ -375,14 +394,10 @@ bool PhxEngine::Pipeline::GltfAssetImporter::ImportMesh(cgltf_mesh* gltfMesh, Pi
 				VertexStream& stream = outMesh.VertexStreams[static_cast<size_t>(VertexStreamType::Colour)];
 				SetBufferDataFunc(nullptr, stream, vertexOffset, vertexCount);
 			}
-
-			if (cgltfTangentsAccessor == nullptr)
-			{
-				assert(0 && "Generate Tangents required");
-			}
 		}
 	}
 
+	ComputeBounds(outMesh);
 	return true;
 }
 
