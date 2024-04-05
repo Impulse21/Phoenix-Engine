@@ -20,8 +20,6 @@ namespace
 
 void PhxEngine::ResourceManager::Startup()
 {
-	MeshResourceRegistry::Ptr = new MeshResourceRegistry;
-	ResourceManager::RegisterResourceHandler(MeshResourceRegistry::Ptr);
 }
 
 void PhxEngine::ResourceManager::Shutdown()
