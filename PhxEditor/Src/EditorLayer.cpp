@@ -5,14 +5,32 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+void PhxEditor::EditorLayer::OnAttach()
+{
+	this->RegisterWidget<ConsoleLogWidget>();
+}
+
 void PhxEditor::EditorLayer::OnImGuiRender()
 {
 	bool mainWindowBegun = this->BeginWindow();
 
 	for (auto& widget : this->m_widgets)
 	{
-		widget->OnRender(mainWindowBegun);
+		widget->OnImGuiRender(mainWindowBegun);
 	}
+
+	// TODO: Render Viewport
+	ImGui::Begin("World", &mainWindowBegun);
+	ImGui::Text("World");
+	ImGui::End();
+
+	ImGui::Begin("Properties", &mainWindowBegun);
+	ImGui::Text("Properties");
+	ImGui::End();
+	ImGui::Begin("Viewport", &mainWindowBegun);
+	ImGui::Text("Viewport");
+	ImGui::End();
+
 	if (mainWindowBegun)
 		ImGui::End();
 }

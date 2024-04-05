@@ -14,6 +14,7 @@ namespace PhxEditor
 			: Layer("EditorLayer")
 		{}
 
+		void OnAttach() override;
 		void OnImGuiRender() override;
 
 	private:
@@ -21,7 +22,7 @@ namespace PhxEditor
 		std::shared_ptr<T> RegisterWidget()
 		{
 			auto widget = std::make_shared<T>();
-			this->m_widgets.emplace_back();
+			this->m_widgets.emplace_back(widget);
 			return widget;
 		}
 

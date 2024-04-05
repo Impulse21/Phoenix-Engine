@@ -8,7 +8,6 @@
 #include <functional>
 
 #include <PhxEngine/RHI/PhxRHI_D3D12.h>
-#include <PhxEngine/EngineMemory.h>
 #include <PhxEngine/Core/Pool.h>
 
 #include "D3D12Common.h"
