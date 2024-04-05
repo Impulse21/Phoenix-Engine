@@ -19,9 +19,9 @@ namespace PhxEngine
 		void Startup();
 		void Shutdown();
 
-		void RegisterResourceHandler(std::unique_ptr<IResourceFileHanlder>&& resourceHandler);
+		void RegisterResourceHandler(IResourceFileHanlder* resourceHandler);
 		void MountPath(std::string const& path);
-		void RegisterPath(std::string const& directory);
+		void RegisterDir(std::string const& directory);
 		void RegisterPack(std::string const& filename);
 
 	}
