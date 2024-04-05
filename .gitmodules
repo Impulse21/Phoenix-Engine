@@ -25,3 +25,4 @@
 [submodule "PhxEngine/Extern/imgui"]
 	path = PhxEngine/Extern/imgui
 	url = https://github.com/ocornut/imgui.git
+    branch = docking
