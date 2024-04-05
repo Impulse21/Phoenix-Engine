@@ -1,6 +1,7 @@
 #include "EditorLayer.h"
 
 #include "Widgets.h"
+#include "ViewportWidget.h"
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -26,9 +27,6 @@ void PhxEditor::EditorLayer::OnImGuiRender()
 
 	ImGui::Begin("Properties", &mainWindowBegun);
 	ImGui::Text("Properties");
-	ImGui::End();
-	ImGui::Begin("Viewport", &mainWindowBegun);
-	ImGui::Text("Viewport");
 	ImGui::End();
 
 	if (mainWindowBegun)
@@ -90,9 +88,9 @@ bool PhxEditor::EditorLayer::BeginWindow()
 			// Dock windows
 			ImGui::DockBuilderDockWindow("World", dock_right_id);
 			ImGui::DockBuilderDockWindow("Properties", dock_right_down_id);
-			ImGui::DockBuilderDockWindow(WidgetTitle<ConsoleLogWidget>::name(), dock_down_id);
+			ImGui::DockBuilderDockWindow(WidgetTitle<ConsoleLogWidget>::Name(), dock_down_id);
 			ImGui::DockBuilderDockWindow("Assets", dock_down_right_id);
-			ImGui::DockBuilderDockWindow("Viewport", dock_main_id);
+			ImGui::DockBuilderDockWindow(WidgetTitle<ViewportWidget>::Name(), dock_main_id);
 
 			ImGui::DockBuilderFinish(dock_main_id);
 		}

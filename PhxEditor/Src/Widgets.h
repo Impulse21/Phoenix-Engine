@@ -5,6 +5,11 @@
 #include <mutex>
 #include <deque>
 
+#define WidgetTitle(Type, Title)										\
+	template <>														\
+	struct WidgetTitle<Type> {										\
+		static constexpr const char* Name() { return #Title; } }
+
 namespace PhxEditor
 {
 	class IWidget
@@ -22,7 +27,7 @@ namespace PhxEditor
 	};
 
 
-	class ConsoleLogWidget : public IWidget
+	class ConsoleLogWidget final : public IWidget
 	{
 	public:
 		static constexpr size_t MaxLogMsgs = 1000;
@@ -40,13 +45,7 @@ namespace PhxEditor
 		std::mutex m_entriesLock;
 	};
 
-	template <>
-	struct WidgetTitle<ConsoleLogWidget> {
-		static constexpr const char* name()
-		{
-			return "Console";
-		}
-	};
+	WidgetTitle(ConsoleLogWidget, Console);
 
 }
 

@@ -21,7 +21,7 @@ void PhxEditor::ConsoleLogWidget::OnImGuiRender(bool displayWindow)
 
 	static const ImVec2 size = ImVec2(-1.0f, -1.0f);
 
-	ImGui::Begin(WidgetTitle<ConsoleLogWidget>::name(), &displayWindow);
+	ImGui::Begin(WidgetTitle<ConsoleLogWidget>::Name(), &displayWindow);
 	if (ImGui::BeginTable("##widget_console_content", 1, table_flags, size))
 	{
 		std::scoped_lock _(this->m_entriesLock);
