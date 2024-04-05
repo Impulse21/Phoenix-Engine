@@ -7,9 +7,29 @@
 #include <PhxEngine/Resource/ResourceManager.h>
 #include <PhxEngine/Resource/Mesh.h>
 
+#include <imgui.h>
+
+class DemoLayer : public PhxEngine::Layer
+{
+public:
+	DemoLayer()
+		: Layer("DemoLayer")
+	{}
+
+
+	void OnImGuiRender() override 
+	{
+		ImGui::ShowDemoWindow();
+	}
+};
+
 class PhxEditor : public PhxEngine::Application
 {
 public:
+	PhxEditor()
+	{
+		this->PushOverlay<DemoLayer>();
+	}
 };
 
 PhxEngine::Application* PhxEngine::CreateApplication(ApplicationCommandLineArgs args)

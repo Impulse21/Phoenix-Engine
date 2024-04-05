@@ -132,7 +132,29 @@ void PhxEngine::Application::Run()
 				for (Layer* layer : this->m_layerStack)
 					layer->OnImGuiRender();
 			}
-			this->m_imGuiLayer->End();
+
+			{
+				PHX_EVENT("LayerStack Compose");
+				RHI::CommandListHandle composeCmdList = this->m_gfxDevice->BeginCommandList();
+
+				RHI::ScopedMarker composeMarker("Compose", composeCmdList);
+				this->m_gfxDevice->TransitionBarriers(
+					{
+						RHI::GpuBarrier::CreateTexture(this->m_gfxDevice->GetBackBuffer(), RHI::ResourceStates::Present, RHI::ResourceStates::RenderTarget)
+					},
+					composeCmdList);
+
+				RHI::Color clearColour = {};
+				this->m_gfxDevice->ClearTextureFloat(this->m_gfxDevice->GetBackBuffer(), clearColour, composeCmdList);
+
+				this->m_imGuiLayer->End(composeCmdList);
+
+				this->m_gfxDevice->TransitionBarriers(
+					{
+						RHI::GpuBarrier::CreateTexture(this->m_gfxDevice->GetBackBuffer(), RHI::ResourceStates::RenderTarget, RHI::ResourceStates::Present)
+					},
+					composeCmdList);
+			}
 		}
 
 		this->m_gfxDevice->SubmitFrame();

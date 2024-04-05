@@ -94,7 +94,7 @@ void PhxEngine::ImGuiLayer::OnAttach()
 	subResourceData.slicePitch = subResourceData.rowPitch * height;
 	subResourceData.pData = pixelData;
 
-	RHI::CommandListHandle uploadCommandList = gfxDevice.BeginCommandList(RHI::CommandQueueType::Copy);
+	RHI::CommandListHandle uploadCommandList = gfxDevice.BeginCommandList();
 	gfxDevice.TransitionBarrier(this->m_fontTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest, uploadCommandList);
 	gfxDevice.WriteTexture(this->m_fontTexture, 0, 1, &subResourceData, uploadCommandList);
 	gfxDevice.TransitionBarrier(this->m_fontTexture, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource, uploadCommandList);
@@ -125,7 +125,7 @@ void PhxEngine::ImGuiLayer::Begin()
 	ImGui::NewFrame();
 }
 
-void PhxEngine::ImGuiLayer::End()
+void PhxEngine::ImGuiLayer::End(RHI::CommandListHandle cmd)
 {
 	PHX_EVENT();
 	using namespace RHI;
@@ -184,7 +184,6 @@ void PhxEngine::ImGuiLayer::End()
 
 	ImVec2 displayPos = drawData->DisplayPos;
 
-	RHI::CommandListHandle cmd = gfxDevice.BeginCommandList();
 	{
 		RHI::ScopedMarker marker("ImGui", cmd);
 		gfxDevice.SetGfxPipeline(this->m_pipeline, cmd);

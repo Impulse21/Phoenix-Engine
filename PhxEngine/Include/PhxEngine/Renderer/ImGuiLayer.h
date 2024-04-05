@@ -18,7 +18,7 @@ namespace PhxEngine
 		void OnDetach() override;
 
 		void Begin();
-		void End();
+		void End(RHI::CommandListHandle cmd);
 
 		void SetDarkThemeColors();
 
