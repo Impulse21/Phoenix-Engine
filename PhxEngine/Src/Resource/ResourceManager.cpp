@@ -51,15 +51,6 @@ void PhxEngine::ResourceManager::RegisterDir(std::string const& directory)
 	NativeFileSystem fs;
 	fs.EnumerateFiles(directory, m_registeredExtension, [](std::string_view file) {
 		
-<<<<<<< HEAD
-=======
-		StringHash extensionHash(FileSystem::GetFileExt(file));
-		auto itr = m_handlerLUT.find(extensionHash);
-		if (itr != m_handlerLUT.end())
-		{ 
-			m_handlerLUT[extensionHash]->RegisterResourceFile(file);
-		}
->>>>>>> 8d2fe7dec955811e26b5f03ccb5823f18f62bc49
 	});
 }
 
