@@ -1,6 +1,6 @@
 #pragma once
 
-#include <PhxEngine/Renderer/DisplaySubSystem.h>
+#include <PhxEngine/Renderer/Window.h>
 #include <stdint.h>
 
 struct GLFWwindow;
@@ -18,23 +18,25 @@ namespace PhxEngine
 		bool IsVisible = false;
 	};
 
-	class GlfWDisplaySubSystem final : public DisplaySubSystem
+	class GlfWWindow final : public IWindow
 	{
 	public:
-		void Startup();
-		void Shutdown();
+		GlfWWindow();
+		~GlfWWindow() override;
 
-		void Update();
-
-		void Present();
+		void StartUp() override;
+		void OnUpdate() override;
 
 		void* GetNativeWindowHandle() override;
-		void* GetDisplayServiceImpl() override { return this; }
+		void* GetWindowImpl() override { return this; }
 
 		GLFWwindow* GetGltfWindow() { return this->m_glfwWindow; }
 
 	private:
-		EventHandler<WindowResizeEvent> m_windowResizeHandler;
+		void Initialize();
+		void Finalize();
+
+	private:
 		GLFWwindow* m_glfwWindow;
 		WindowData m_data;
 	};

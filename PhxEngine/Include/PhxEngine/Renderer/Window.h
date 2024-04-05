@@ -4,23 +4,23 @@
 
 namespace PhxEngine
 {
-	class DisplaySubSystem
+	class IWindow
 	{
 	public:
-		inline static DisplaySubSystem* Ptr;
-		virtual ~DisplaySubSystem() = default;
+		virtual ~IWindow() = default;
 
 	public:
-		virtual void Startup() = 0;
-		virtual void Shutdown() = 0;
-
-		virtual void Update() = 0;
-
-		virtual void Present() = 0;
+		virtual void StartUp() = 0;
+		virtual void OnUpdate() = 0;
 
 		virtual void* GetNativeWindowHandle() = 0;
-		virtual void* GetDisplayServiceImpl() = 0;
+		virtual void* GetWindowImpl() = 0;
 	};
+
+	namespace WindowFactory
+	{
+		std::unique_ptr<IWindow> Create();
+	}
 
 	struct WindowResizeEvent : public Event
 	{

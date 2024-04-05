@@ -7,7 +7,8 @@
 #include <vector>
 
 #include <PhxEngine/Core/Span.h>
-
+#include <PhxEngine/Core/RefCountPtr.h>
+#include <PhxEngine/Core/EnumArray.h>
 namespace PhxEngine
 {
 	namespace FileStatus
@@ -125,4 +126,48 @@ namespace PhxEngine
 		std::unique_ptr<IRootFileSystem> CreateRootFileSystem();
 		std::unique_ptr<IBlob> CreateBlob(void* Data, size_t size);
 	}
+
+	class FileAccess : public RefCounted
+	{
+	public:
+		FileAccess() = default;
+		virtual ~FileAccess() = default;
+
+		enum class Type
+		{
+			Resource,
+			Count,
+		};
+
+		// -- Interface ---
+	public:
+		virtual std::string FixPath(std::string const& path) const;
+
+		// -- Static Interface ---
+	public:
+		template<typename T>
+		static void MakeDefault(Type type)
+		{
+			sCreateFuncs[type] = BuiltInCreate<T>;
+		}
+
+	private:
+		template<class T>
+		static RefCountPtr<T> BuiltInCreate()
+		{
+			return RefCountPtr<T>::Create(phx_new(T));
+		}
+
+	private:
+		static EnumArray<Type, std::function<void()>> sCreateFuncs;
+
+	private:
+		Type m_accessType;
+	};
+
+	class FileAccessWindows : public FileAccess
+	{
+	public:
+
+	};
 }

@@ -26,5 +26,6 @@ add_definitions(-D_UNICODE)
 add_compile_definitions(NOMINMAX)
 
 add_subdirectory(PhxEngine)
-add_subdirectory(Tests)
-add_subdirectory(Tools/PhxAssetConverter)
+add_subdirectory(PhxEditor)
+# add_subdirectory(Tests)
+# add_subdirectory(Tools/PhxAssetConverter)

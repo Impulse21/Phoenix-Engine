@@ -1,5 +1,6 @@
 #include <PhxEngine/Core/VirtualFileSystem.h>
 #include <PhxEngine/Core/Logger.h>
+#include <algorithm>
 #include <fstream>
 
 #ifdef WIN32
@@ -428,4 +429,38 @@ std::string PhxEngine::FileSystem::GetFileExt(std::string const& path)
 std::string PhxEngine::FileSystem::GetFileExt(std::string_view path)
 {
     return std::filesystem::path(path).extension().generic_string();
+}
+
+std::string PhxEngine::FileAccess::FixPath(std::string const& path) const
+{
+    std::string retVal = path;
+    // std::replace(retVal.begin(), retVal.end(), "\\", "/");
+
+    switch (this->m_accessType) 
+    {
+    case Type::Resource: 
+    {
+        /*
+        if (ProjectSettings::get_singleton()) 
+        {
+            if (r_path.begins_with("res://")) 
+            {
+                String resource_path = ProjectSettings::get_singleton()->get_resource_path();
+                if (!resource_path.is_empty()) 
+                {
+                    return std::replace(retVal.begin(), retVal.end(), "res:/", resource_path);
+                }
+
+                std::replace(retVal.begin(), retVal.end(), "res://", "");
+            }
+        }
+        */
+        break;
+    } 
+    case Type::Count:
+    default:
+        break; // Can't happen, but silences warning
+    }
+
+    return retVal;
 }

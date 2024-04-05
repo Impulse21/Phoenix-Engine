@@ -2,10 +2,11 @@
 
 using namespace PhxEngine;
 
-void PhxEngine::MeshResourceFileHandler::RegisterResourceFile(std::string_view file)
+void PhxEngine::MeshResourceFileHandler::RegisterResourceFile(std::string_view directory, std::string_view file)
 {
     File f = {
         .Filename = std::string(file),
+        .Directory = std::string(directory)
     };
 
     const auto id = this->m_files.size();
@@ -14,5 +15,6 @@ void PhxEngine::MeshResourceFileHandler::RegisterResourceFile(std::string_view f
 
 RefCountPtr<Mesh> PhxEngine::MeshResourceRegistry::Retrieve(StringHash id)
 {
+
 	return RefCountPtr<Mesh>();
 }

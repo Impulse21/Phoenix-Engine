@@ -11,7 +11,7 @@ namespace PhxEngine
 		virtual ~IResourceFileHanlder() = default;
 
 		virtual std::string_view GetFileExtension() const = 0;
-		virtual void RegisterResourceFile(std::string_view file) = 0;
+		virtual void RegisterResourceFile(std::string_view directory, std::string_view file) = 0;
 	};
 
 	namespace ResourceManager

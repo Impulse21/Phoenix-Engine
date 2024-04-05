@@ -33,12 +33,13 @@ namespace PhxEngine
 
 		std::string_view GetFileExtension() const override { return ".pmesh"; }
 
-		void RegisterResourceFile(std::string_view file);
+		void RegisterResourceFile(std::string_view directory, std::string_view file) override;
 
 	private:
 		struct File
 		{
 			std::string Filename;
+			std::string Directory;
 		};
 
 		std::vector<File> m_files;
