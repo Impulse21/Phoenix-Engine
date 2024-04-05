@@ -14,7 +14,8 @@ namespace PhxEngine
 		virtual void OnUpdate() = 0;
 
 		virtual void* GetNativeWindowHandle() = 0;
-		virtual void* GetWindowImpl() = 0;
+		virtual void* GetNativeWindow() = 0;
+		virtual void* GetImpl() = 0;
 	};
 
 	namespace WindowFactory

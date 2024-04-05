@@ -28,7 +28,8 @@ namespace PhxEngine
 		void OnUpdate() override;
 
 		void* GetNativeWindowHandle() override;
-		void* GetWindowImpl() override { return this; }
+		void* GetNativeWindow() override { return this->GetGltfWindow(); }
+		void* GetImpl() override { return this; }
 
 		GLFWwindow* GetGltfWindow() { return this->m_glfwWindow; }
 

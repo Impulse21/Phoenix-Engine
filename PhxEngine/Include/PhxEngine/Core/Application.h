@@ -6,12 +6,13 @@
 #include <PhxEngine/Core/TimeStep.h>
 #include <PhxEngine/Renderer/Window.h>
 #include <PhxEngine/RHI/PhxRHI.h>
+#include <PhxEngine/Core/EventBus.h>
 
 int main(int argc, char** argv);
 
 namespace PhxEngine
 {
-
+    class ImGuiLayer;
     struct ApplicationCommandLineArgs
     {
         int Count = 0;
@@ -69,18 +70,41 @@ namespace PhxEngine
     class Application 
     {
     public:
+        static Application& GetInstance() { return *s_singleton; }
+
+    public:
         Application();
         virtual ~Application();
 
         void PushLayer(Layer* layer);
         void PushOverlay(Layer* layer);
-        
+
+        template<typename T>
+        T* PushLayer()
+        {
+            auto* retVal = phx_new(T);
+            this->PushLayer(retVal);
+            return retVal;
+        }
+
+        template<typename T>
+        T* PushOverlay()
+        {
+            auto* retVal = phx_new(T);
+            this->PushOverlay(retVal);
+            return retVal;
+
+        }
+
         void Close() { this->m_running = false; }
+
+    public:
+        IWindow& GetWindow() { return *this->m_window; }
+        RHI::GfxDevice& GetGfxDevice() { return *this->m_gfxDevice; }
 
     private:
         void Run();
 
-        IWindow* GetWindow() { return this->m_window.get(); }
 
     private:
         std::unique_ptr<IWindow> m_window;
@@ -93,6 +117,7 @@ namespace PhxEngine
         TimeStep m_lastFrameTime = 0.0f;
         EventHandler<WindowResizeEvent> m_windowResizeHandler;
 
+        ImGuiLayer* m_imGuiLayer;
     private:
         inline static Application* s_singleton = nullptr;
         friend int ::main(int argc, char** argv);

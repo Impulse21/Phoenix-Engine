@@ -42,6 +42,10 @@ file (GLOB PhxEngine_Renderer_Inc
 file (GLOB PhxEngine_Renderer_Src
     Src/Renderer/*.h
 	Src/Renderer/*.cpp)
+
+file (GLOB PhxEngine_Renderer_ImGui_Src
+    Src/Renderer/ImGui/*.h
+	Src/Renderer/ImGui/*.cpp)
 	
 file (GLOB PhxEngine_RHI_Inc
     Include/PhxEngine/RHI/*.h)
@@ -88,10 +92,10 @@ add_library(PhxEngine STATIC EXCLUDE_FROM_ALL
     ${PhxEngine_RHI_Src}
 	${PhxEngine_RHI_Windows_Src}
     ${PhxEngine_RHI_DX12_Src}
-    ${PhxEngine_Graphics_ImGui_Inc}
-    ${PhxEngine_Graphics_ImGui_Src}
 	${PhxEngine_Renderer_Inc}
 	${PhxEngine_Renderer_Src}
+    ${PhxEngine_Renderer_ImGui_Inc}
+    ${PhxEngine_Renderer_ImGui_Src}
 	${PhxEngine_Renderer_DX12_Src}
 	${PhxEngine_Shader_Interop_Inc}
 	${PhxEngine_World_Inc}
@@ -109,8 +113,9 @@ source_group("Include/Resource"			FILES ${PhxEngine_Resource_Inc})
 source_group("Src"						FILES ${PhxEngine_Src})
 source_group("Src/Core"					FILES ${PhxEngine_Core_Src})
 source_group("Src/Renderer"				FILES ${PhxEngine_Renderer_Src})
+source_group("Src/Renderer/ImGui"		FILES ${PhxEngine_Renderer_ImGui_Src})
 source_group("Src/World"				FILES ${PhxEngine_World_Src})
-source_group("Src/Resource"			FILES ${PhxEngine_Resource_Src})
+source_group("Src/Resource"				FILES ${PhxEngine_Resource_Src})
 source_group("Src/RHI"					FILES ${PhxEngine_RHI_Src})
 source_group("Src/RHI/Platform/Windows"	FILES ${PhxEngine_RHI_Windows_Src})
 source_group("Src/RHI/D3D12"			FILES ${PhxEngine_RHI_DX12_Src})
@@ -129,7 +134,8 @@ target_link_libraries(${project} PUBLIC
 	DirectX-Headers
 	DirectX-Guids
 	entt
-	taskflow)
+	taskflow
+	imgui)
 
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 

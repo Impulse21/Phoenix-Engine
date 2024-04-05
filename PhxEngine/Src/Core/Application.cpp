@@ -1,6 +1,7 @@
 #include <PhxEngine/Core/Application.h>
 #include <PhxEngine/Core/StopWatch.h>
 
+#include <PhxEngine/Renderer/ImGuiLayer.h>
 
 using namespace PhxEngine;
 
@@ -22,6 +23,7 @@ void LayerStack::PushLayer(Layer* layer)
 {
 	this->m_layers.emplace(this->m_layers.begin() + this->m_layerInsertIndex, layer);
 	this->m_layerInsertIndex++;
+
 }
 
 void LayerStack::PushOverlay(Layer* overlay)
@@ -49,7 +51,6 @@ void LayerStack::PopOverlay(Layer* overlay)
 		this->m_layers.erase(it);
 	}
 }
-
 
 PhxEngine::Application::Application()
 {
@@ -80,6 +81,8 @@ PhxEngine::Application::Application()
 	EventBus::Subscribe<WindowCloseEvent>([this](WindowCloseEvent const& e) { this->m_running = false; });
 	this->m_window = WindowFactory::Create();
 	this->m_window->StartUp();
+
+	this->m_imGuiLayer = this->PushOverlay<ImGuiLayer>();
 }
 
 PhxEngine::Application::~Application()
@@ -122,16 +125,14 @@ void PhxEngine::Application::Run()
 					layer->OnUpdate(deltaTime);
 			}
 
-#if false
-			m_ImGuiLayer->Begin();
+			this->m_imGuiLayer->Begin();
 			{
-				HZ_PROFILE_SCOPE("LayerStack OnImGuiRender");
+				PHX_EVENT("LayerStack OnImGuiRender");
 
-				for (Layer* layer : m_LayerStack)
+				for (Layer* layer : this->m_layerStack)
 					layer->OnImGuiRender();
 			}
-			m_ImGuiLayer->End();
-#endif
+			this->m_imGuiLayer->End();
 		}
 
 		this->m_gfxDevice->SubmitFrame();
