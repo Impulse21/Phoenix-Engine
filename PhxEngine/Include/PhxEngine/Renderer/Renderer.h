@@ -1,22 +1,27 @@
 #pragma once
 
+#include <PhxEngine/Core/Math.h>
 #include <PhxEngine/RHI/PhxRHI.h>
+#include <PhxEngine/Core/Handle.h>
 
 namespace PhxEngine
 {
-	class Renderer final
+	struct Viewport;
+	using ViewportHandle = Handle<Viewport>;
+
+	class IRenderer
 	{
 	public:
-		Renderer() = default;
-		~Renderer() = default;
+		// Global Pointer to implementation
+		inline static IRenderer* Ptr = nullptr;
 
-		void CreateViewport();
-		void ResizeViewport();
+	public:
+		virtual ~IRenderer() = default;
 
-		RHI::TextureHandle GetColourBuffer();
+		virtual ViewportHandle CreateViewport() = 0;
+		virtual void ResizeViewport(uint32_t width, uint32_t height, ViewportHandle viewport) = 0;
 
-	private:
-		RHI::TextureHandle m_colourBuffers;
+		virtual RHI::TextureHandle GetColourBuffer(ViewportHandle handle) = 0;
 	};
 }
 
