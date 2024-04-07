@@ -1,6 +1,8 @@
 #include <PhxEngine/Core/EntryPoint.h>
 #include <PhxEngine/Core/Application.h>
 
+#include "Renderer.h"
+
 #include "EditorLayer.h"
 
 #include <imgui.h>

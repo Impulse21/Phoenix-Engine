@@ -2,13 +2,30 @@
 
 #include <PhxEngine/Renderer/Renderer.h>
 
+#include <PhxEngine/Core/Pool.h>
+
 namespace PhxEditor
 {
-	class Renderer : public PhxEngine::IRenderer
+	struct ViewportImpl
+	{
+		PhxEngine::RHI::TextureHandle ColourBuffer;
+	};
+
+	class Renderer final : public PhxEngine::IRenderer
 	{
 	public:
 		Renderer() = default;
 		~Renderer() override = default;
+
+		PhxEngine::ViewportHandle ViewportCreate() override;
+		void ViewportResize(uint32_t width, uint32_t height, PhxEngine::ViewportHandle viewport) override;
+		DirectX::XMFLOAT2 ViewportGetSize(ViewportHandle viewport) override;
+		PhxEngine::RHI::TextureHandle ViewportGetColourBuffer(PhxEngine::ViewportHandle handle) override;
+
+		// Register Systems for Updating
+
+	private:
+
 	};
 }
 

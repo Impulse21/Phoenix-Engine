@@ -5,10 +5,20 @@
 
 #include <imgui.h>
 #include <imgui_internal.h>
+#include "Renderer.h"
 
 void PhxEditor::EditorLayer::OnAttach()
 {
+	PHX_EVENT();
+	PhxEngine::IRenderer::Ptr = phx_new(Renderer);
 	this->RegisterWidget<ConsoleLogWidget>();
+}
+
+void PhxEditor::EditorLayer::OnDetach()
+{
+	PHX_EVENT();
+	phx_delete PhxEngine::IRenderer::Ptr;
+	PhxEngine::IRenderer::Ptr = nullptr;
 }
 
 void PhxEditor::EditorLayer::OnImGuiRender()

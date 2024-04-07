@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Widgets.h"
+#include <PhxEngine/Renderer/Renderer.h>
 
 namespace PhxEditor
 {
@@ -12,6 +13,7 @@ namespace PhxEditor
 		void OnImGuiRender();
 
 	private:
+		PhxEngine::ViewportHandle m_viewportHandle;
 	};
 
 	WidgetTitle(ViewportWidget, Viewport);
