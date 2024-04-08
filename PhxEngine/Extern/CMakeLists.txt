@@ -29,6 +29,7 @@ set_target_properties(D3D12MemoryAllocator PROPERTIES FOLDER ${extern_folder})
 
  
 add_subdirectory(DirectX-Headers)
+set_target_properties(DirectX-Headers PROPERTIES FOLDER ${extern_folder})
 set_target_properties(DirectX-Guids PROPERTIES FOLDER ${extern_folder})
 
 add_library(entt INTERFACE 
@@ -40,6 +41,12 @@ set_target_properties(entt PROPERTIES FOLDER ${extern_folder})
 add_library(taskflow INTERFACE)
 target_include_directories(taskflow INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/taskflow)
 set_target_properties(taskflow PROPERTIES FOLDER ${extern_folder})
+
+add_subdirectory(yaml-cpp)
+set_target_properties(yaml-cpp PROPERTIES FOLDER ${extern_folder})
+set_target_properties(yaml-cpp-sandbox PROPERTIES FOLDER ${extern_folder})
+set_target_properties(yaml-cpp-parse PROPERTIES FOLDER ${extern_folder})
+set_target_properties(yaml-cpp-read PROPERTIES FOLDER ${extern_folder})
 
 set(imgui_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imconfig.h

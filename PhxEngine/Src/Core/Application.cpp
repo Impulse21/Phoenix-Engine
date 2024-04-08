@@ -52,6 +52,12 @@ void LayerStack::PopOverlay(Layer* overlay)
 	}
 }
 
+std::filesystem::path PhxEngine::Application::GetCurrentWorkingDirectory()
+{
+	auto path = std::filesystem::current_path();
+	return path;
+}
+
 PhxEngine::Application::Application()
 {
 	PHX_CORE_ASSERT(!s_singleton, "Application already exists!");

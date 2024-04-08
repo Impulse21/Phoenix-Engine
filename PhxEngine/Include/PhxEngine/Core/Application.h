@@ -8,6 +8,8 @@
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Core/EventBus.h>
 
+#include <filesystem>
+
 int main(int argc, char** argv);
 
 namespace PhxEngine
@@ -73,6 +75,8 @@ namespace PhxEngine
         static Application& GetInstance() { return *s_singleton; }
         static IWindow& Window() { return s_singleton->GetWindow(); }
         static RHI::GfxDevice& GfxDevice() { return s_singleton->GetGfxDevice(); }
+
+        static std::filesystem::path GetCurrentWorkingDirectory();
 
     public:
         Application();

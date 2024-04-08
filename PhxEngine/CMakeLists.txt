@@ -125,6 +125,7 @@ target_include_directories(${project}
 	PRIVATE "Src")
 
 add_subdirectory(Extern)
+add_subdirectory(Shaders)
 
 target_link_libraries(${project} PUBLIC
     OptickCore
@@ -135,8 +136,9 @@ target_link_libraries(${project} PUBLIC
 	DirectX-Guids
 	entt
 	taskflow
-	imgui)
-
+	imgui
+	yaml-cpp::yaml-cpp)
+	
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 
 
