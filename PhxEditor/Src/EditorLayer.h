@@ -16,6 +16,7 @@ namespace PhxEditor
 
 		void OnAttach() override;
 		void OnDetach() override;
+		void OnUpdate(PhxEngine::TimeStep ts);
 		void OnImGuiRender() override;
 
 	private:

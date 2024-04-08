@@ -19,9 +19,10 @@ namespace PhxEditor
 
 		PhxEngine::ViewportHandle ViewportCreate() override;
 		void ViewportResize(uint32_t width, uint32_t height, PhxEngine::ViewportHandle viewport) override;
-		DirectX::XMFLOAT2 ViewportGetSize(ViewportHandle viewport) override;
+		DirectX::XMFLOAT2 ViewportGetSize(PhxEngine::ViewportHandle viewport) override;
 		PhxEngine::RHI::TextureHandle ViewportGetColourBuffer(PhxEngine::ViewportHandle handle) override;
 
+		void OnUpdate() override;
 		// Register Systems for Updating
 
 	private:

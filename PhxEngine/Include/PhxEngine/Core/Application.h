@@ -71,8 +71,8 @@ namespace PhxEngine
     {
     public:
         static Application& GetInstance() { return *s_singleton; }
-        static IWindow& GetWindow() { return s_singleton->GetWindow(); }
-        static RHI::GfxDevice& GetGfxDevice() { return s_singleton->GetGfxDevice(); }
+        static IWindow& Window() { return s_singleton->GetWindow(); }
+        static RHI::GfxDevice& GfxDevice() { return s_singleton->GetGfxDevice(); }
 
     public:
         Application();

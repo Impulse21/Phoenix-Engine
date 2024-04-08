@@ -22,6 +22,8 @@ namespace PhxEngine
 		virtual void ViewportResize(uint32_t width, uint32_t height, ViewportHandle viewport) = 0;
 		virtual DirectX::XMFLOAT2 ViewportGetSize(ViewportHandle viewport) = 0;
 		virtual RHI::TextureHandle ViewportGetColourBuffer(ViewportHandle handle) = 0;
+
+		virtual void OnUpdate() = 0;
 	};
 }
 

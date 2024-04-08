@@ -21,6 +21,11 @@ void PhxEditor::EditorLayer::OnDetach()
 	PhxEngine::IRenderer::Ptr = nullptr;
 }
 
+void PhxEditor::EditorLayer::OnUpdate(PhxEngine::TimeStep ts)
+{
+	PhxEngine::IRenderer::Ptr->OnUpdate();
+}
+
 void PhxEditor::EditorLayer::OnImGuiRender()
 {
 	bool mainWindowBegun = this->BeginWindow();
