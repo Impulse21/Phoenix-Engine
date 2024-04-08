@@ -26,3 +26,6 @@
 	path = PhxEngine/Extern/imgui
 	url = https://github.com/ocornut/imgui.git
     branch = docking
+[submodule "PhxEngine/Extern/yaml-cpp"]
+	path = PhxEngine/Extern/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp.git
