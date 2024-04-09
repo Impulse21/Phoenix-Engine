@@ -52,10 +52,9 @@ void LayerStack::PopOverlay(Layer* overlay)
 	}
 }
 
-std::filesystem::path PhxEngine::Application::GetCurrentWorkingDirectory()
+std::filesystem::path PhxEngine::Application::GetCurrentDir()
 {
-	auto path = std::filesystem::current_path();
-	return path;
+	return std::filesystem::current_path();
 }
 
 PhxEngine::Application::Application()

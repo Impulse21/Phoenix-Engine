@@ -1,9 +1,11 @@
 #pragma once
 
 #include <PhxEngine/Renderer/Renderer.h>
+#include <PhxEngine/Core/EnumArray.h>
 
 #include <PhxEngine/Core/Pool.h>
-
+#include <PhxEngine/Core/VirtualFileSystem.h>
+#include <filesystem>
 namespace PhxEditor
 {
 	struct ViewportImpl
@@ -11,10 +13,21 @@ namespace PhxEditor
 		PhxEngine::RHI::TextureHandle ColourBuffer;
 	};
 
+	enum class ShaderTypes
+	{
+		VS_Triangle,
+		PS_Triangle,
+
+		VS_FullScreenQuad,
+		PS_FullScreenQuad,
+
+		Count,
+	};
+
 	class Renderer final : public PhxEngine::IRenderer
 	{
 	public:
-		Renderer() = default;
+		Renderer();
 		~Renderer() override = default;
 
 		PhxEngine::ViewportHandle ViewportCreate() override;
@@ -25,7 +38,13 @@ namespace PhxEditor
 		void OnUpdate() override;
 		// Register Systems for Updating
 
+		void LoadShaders();
+
+		PhxEngine::Span<PhxEngine::RHI::ShaderHandle> GetShaderList() const override;
+
 	private:
+		std::unique_ptr<PhxEngine::IFileSystem> m_shaderFileSystem;
+		PhxEngine::EnumArray<ShaderTypes, PhxEngine::RHI::ShaderHandle> m_loadedShaders;
 
 	};
 }

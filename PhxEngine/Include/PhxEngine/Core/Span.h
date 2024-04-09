@@ -3,6 +3,8 @@
 #include <initializer_list>
 #include <vector>
 #include <assert.h>
+#include <PhxEngine/Core/EnumArray.h>
+
 
 namespace PhxEngine
 {
@@ -30,6 +32,11 @@ namespace PhxEngine
 
 		Span(std::vector<T> const& v)
 			: Span(v.data(), v.size(), 0)
+		{}
+
+		template<typename E>
+		Span(EnumArray<E, T>& a)
+			: Span(a.data(), a.size(), 0)
 		{}
 
 		Span(const T* array, size_t length, size_t skip)

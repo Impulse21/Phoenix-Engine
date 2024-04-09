@@ -76,7 +76,7 @@ namespace PhxEngine
         static IWindow& Window() { return s_singleton->GetWindow(); }
         static RHI::GfxDevice& GfxDevice() { return s_singleton->GetGfxDevice(); }
 
-        static std::filesystem::path GetCurrentWorkingDirectory();
+        static std::filesystem::path GetCurrentDir();
 
     public:
         Application();

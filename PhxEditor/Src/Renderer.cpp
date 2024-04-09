@@ -1,6 +1,15 @@
 #include "Renderer.h"
 
+#include <PhxEngine/Core/Application.h>
+
 using namespace PhxEngine;
+
+PhxEditor::Renderer::Renderer()
+{
+    auto shaderPath = PhxEngine::Application::GetCurrentDir().parent_path().parent_path() / "PhxEditor" / "Assets" / "Shaders";
+    std::shared_ptr<IFileSystem> baseSystem = FileSystemFactory::CreateNativeFileSystem();
+    this->m_shaderFileSystem = FileSystemFactory::CreateRelativeFileSystem(baseSystem, shaderPath);
+}
 
 PhxEngine::ViewportHandle PhxEditor::Renderer::ViewportCreate()
 {
@@ -24,4 +33,15 @@ PhxEngine::RHI::TextureHandle PhxEditor::Renderer::ViewportGetColourBuffer(PhxEn
 void PhxEditor::Renderer::OnUpdate()
 {
     // Draw a triangle
+}
+
+void PhxEditor::Renderer::LoadShaders()
+{
+    PHX_EVENT();
+
+}
+
+PhxEngine::Span<PhxEngine::RHI::ShaderHandle> PhxEditor::Renderer::GetShaderList() const
+{
+    return PhxEngine::Span<PhxEngine::RHI::ShaderHandle>();
 }

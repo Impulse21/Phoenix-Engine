@@ -12,7 +12,7 @@ namespace PhxEngine
 			return std::array<T, N>::operator[]((std::size_t)e);
 		}
 
-		const T& operator[] (E e)
+		const T& operator[] (E e) const
 		{
 			return std::array<T, N>::operator[]((std::size_t)e);
 		}

@@ -1,16 +1,22 @@
 #include "EditorLayer.h"
 
-#include "Widgets.h"
-#include "ViewportWidget.h"
-
 #include <imgui.h>
 #include <imgui_internal.h>
+
+#include <PhxEngine/Resource/ResourceLoader.h>
+
+#include "Widgets.h"
+#include "ViewportWidget.h"
 #include "Renderer.h"
+
+using namespace PhxEngine;
 
 void PhxEditor::EditorLayer::OnAttach()
 {
 	PHX_EVENT();
 	PhxEngine::IRenderer::Ptr = phx_new(Renderer);
+	PhxEngine::IRenderer::Ptr->LoadShaders();
+
 	this->RegisterWidget<ConsoleLogWidget>();
 }
 
@@ -29,6 +35,8 @@ void PhxEditor::EditorLayer::OnUpdate(PhxEngine::TimeStep ts)
 void PhxEditor::EditorLayer::OnImGuiRender()
 {
 	bool mainWindowBegun = this->BeginWindow();
+
+	auto dir = Application::GetCurrentWorkingDirectory();
 
 	for (auto& widget : this->m_widgets)
 	{

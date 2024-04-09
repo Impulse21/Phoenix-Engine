@@ -125,7 +125,6 @@ target_include_directories(${project}
 	PRIVATE "Src")
 
 add_subdirectory(Extern)
-add_subdirectory(Shaders)
 
 target_link_libraries(${project} PUBLIC
     OptickCore

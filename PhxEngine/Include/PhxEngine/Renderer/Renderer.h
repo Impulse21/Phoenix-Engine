@@ -24,6 +24,10 @@ namespace PhxEngine
 		virtual RHI::TextureHandle ViewportGetColourBuffer(ViewportHandle handle) = 0;
 
 		virtual void OnUpdate() = 0;
+
+		virtual void LoadShaders() = 0;
+		virtual PhxEngine::Span<RHI::ShaderHandle> GetShaderList() const = 0;
+
 	};
 }
 
