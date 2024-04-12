@@ -40,4 +40,18 @@ namespace PhxEngine
 		to = cv.to_bytes(from);
 #endif // _WIN32
 	}
+
+	inline std::string StringReplace(std::string const& str, std::string_view oldSubstr, std::string_view newSubStr)
+	{
+		std::string retVal = str;
+		// Find the position of the substring
+		size_t pos = str.find(oldSubstr);
+		if (pos != std::string::npos)
+		{
+			retVal.replace(pos, oldSubstr.size(), newSubStr);
+		}
+
+		return retVal;
+		
+	}
 }

@@ -57,11 +57,15 @@ std::filesystem::path PhxEngine::Application::GetCurrentDir()
 	return std::filesystem::current_path();
 }
 
-PhxEngine::Application::Application()
+PhxEngine::Application::Application(ApplicationCommandLineArgs const& args)
 {
 	PHX_CORE_ASSERT(!s_singleton, "Application already exists!");
 	s_singleton = this;
 
+	this->m_projectSettings = std::make_unique<ProjectSettings>();
+
+	PHX_CORE_ASSERT(args.Count == 2, "Require Project");
+	this->m_projectSettings->Startup(args.Args[1]);
 
 	this->m_windowResizeHandler = [this](WindowResizeEvent const& e) {
 		RHI::SwapChainDesc desc = {
@@ -95,7 +99,9 @@ PhxEngine::Application::~Application()
 	this->m_gfxDevice->WaitForIdle();
 	RHI::GfxDevice::Ptr = nullptr;
 
-	// DO shutdown;
+	this->m_window.reset();
+	this->m_gfxDevice.reset();
+	this->m_projectSettings.reset();
 }
 
 void PhxEngine::Application::PushLayer(Layer* layer)

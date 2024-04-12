@@ -3,8 +3,11 @@
 #include <memory>
 #include <string>
 #include <filesystem>
+#include <fstream>
 #include <functional>
 #include <vector>
+
+#include <PhxEngine/Core/Object.h>
 
 #include <PhxEngine/Core/Span.h>
 #include <PhxEngine/Core/RefCountPtr.h>
@@ -32,6 +35,16 @@ namespace PhxEngine
 			return blob.Data() == nullptr || blob.Size() == 0;
 		}
 	};
+
+	struct BlobStream : public std::streambuf
+	{
+		BlobStream(IBlob* blob)
+		{
+			char* start = (char*)blob->Data();
+			setg(start, start, start + blob->Size());
+		}
+	};
+
 
 
 	using EnumCallback = const std::function<void(std::string_view)>&;
@@ -127,10 +140,27 @@ namespace PhxEngine
 		std::unique_ptr<IBlob> CreateBlob(void* Data, size_t size);
 	}
 
+
+	enum class AccessFlags 
+	{
+		Read = 0,
+		Write = 1,
+		ReadWrite = 2,
+	};
+
+	enum class AccessType
+	{
+		Resources,
+		Engine,
+		FileSystem
+	};
+
 	class FileAccess : public RefCounted
 	{
+		PHX_OBJECT(FileAccess, RefCounted)
+
 	public:
-		FileAccess() = default;
+		FileAccess(AccessType type);
 		virtual ~FileAccess() = default;
 
 		enum class Type
@@ -141,33 +171,26 @@ namespace PhxEngine
 
 		// -- Interface ---
 	public:
-		virtual std::string FixPath(std::string const& path) const;
+		virtual std::unique_ptr<IBlob> ReadFile();
 
 		// -- Static Interface ---
 	public:
-		template<typename T>
-		static void MakeDefault(Type type)
-		{
-			sCreateFuncs[type] = BuiltInCreate<T>;
-		}
+		static RefCountPtr<FileAccess> Open(std::filesystem::path const& path, AccessFlags accessFlags);
+		static std::string GetDirectory(std::string_view path);
+		static std::string NormalizePath(std::string_view path);
+	private:
+		static RefCountPtr<FileAccess> Create(std::string_view path);
+		static RefCountPtr<FileAccess> Create(AccessType type);
 
 	private:
-		template<class T>
-		static RefCountPtr<T> BuiltInCreate()
-		{
-			return RefCountPtr<T>::Create(phx_new(T));
-		}
+		std::filesystem::path FixPath(std::string_view path) const;
+		bool OpenInternal(std::filesystem::path const& path, AccessFlags accessFlags);
 
 	private:
 		static EnumArray<Type, std::function<void()>> sCreateFuncs;
 
 	private:
-		Type m_accessType;
-	};
-
-	class FileAccessWindows : public FileAccess
-	{
-	public:
-
+		AccessType m_accessType;
+		std::ifstream  m_fileStream;
 	};
 }

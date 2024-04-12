@@ -1,5 +1,6 @@
 #include <PhxEngine/Core/EntryPoint.h>
 #include <PhxEngine/Core/Application.h>
+#include <PhxEngine/Core/ProjectSettings.h>
 
 #include "Renderer.h"
 
@@ -9,13 +10,13 @@
 #include <imgui_internal.h>
 
 using namespace PhxEngine;
-
 namespace PhxEditor
 {
 	class PhxEditor : public PhxEngine::Application
 	{
 	public:
-		PhxEditor()
+		PhxEditor(ApplicationCommandLineArgs const& args)
+			: Application(args)
 		{
 			this->PushOverlay<EditorLayer>();
 		}
@@ -24,6 +25,6 @@ namespace PhxEditor
 
 PhxEngine::Application* PhxEngine::CreateApplication(ApplicationCommandLineArgs args)
 {
-	return new PhxEditor::PhxEditor();
+	return new PhxEditor::PhxEditor(args);
 }
 

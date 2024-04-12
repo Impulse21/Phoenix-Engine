@@ -36,7 +36,7 @@ void PhxEditor::EditorLayer::OnImGuiRender()
 {
 	bool mainWindowBegun = this->BeginWindow();
 
-	auto dir = Application::GetCurrentWorkingDirectory();
+	auto dir = Application::GetCurrentDir();
 
 	for (auto& widget : this->m_widgets)
 	{

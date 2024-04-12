@@ -1,6 +1,8 @@
 #include <PhxEngine/Core/VirtualFileSystem.h>
 #include <PhxEngine/Core/Logger.h>
-#include <algorithm>
+#include <PhxEngine/Core/StringUtils.h>
+#include <PhxEngine/Core/ProjectSettings.h>
+
 #include <fstream>
 
 #ifdef WIN32
@@ -431,36 +433,160 @@ std::string PhxEngine::FileSystem::GetFileExt(std::string_view path)
     return std::filesystem::path(path).extension().generic_string();
 }
 
-std::string PhxEngine::FileAccess::FixPath(std::string const& path) const
+PhxEngine::FileAccess::FileAccess(AccessType type)
+    : m_accessType(type)
 {
-    std::string retVal = path;
-    // std::replace(retVal.begin(), retVal.end(), "\\", "/");
+}
+
+std::filesystem::path PhxEngine::FileAccess::FixPath(std::string_view path) const
+{;
+    std::string retVal = FileAccess::NormalizePath(path);
 
     switch (this->m_accessType) 
     {
-    case Type::Resource: 
+    case AccessType::Resources: 
     {
-        /*
-        if (ProjectSettings::get_singleton()) 
+        if (ProjectSettings::Instance()) 
         {
-            if (r_path.begins_with("res://")) 
+            if (retVal.starts_with("res://")) 
             {
-                String resource_path = ProjectSettings::get_singleton()->get_resource_path();
-                if (!resource_path.is_empty()) 
+                const std::string& resourcePath = ProjectSettings::Instance()->GetResourcePath();
+                if (!resourcePath.empty())
                 {
-                    return std::replace(retVal.begin(), retVal.end(), "res:/", resource_path);
+                    return StringReplace(retVal, "rex:/", resourcePath);
                 }
-
-                std::replace(retVal.begin(), retVal.end(), "res://", "");
             }
         }
-        */
-        break;
+        return retVal;
     } 
-    case Type::Count:
+    case AccessType::Engine:
+    case AccessType::FileSystem:
     default:
-        break; // Can't happen, but silences warning
+        return retVal;
+    }
+}
+
+std::unique_ptr<IBlob> PhxEngine::FileAccess::ReadFile()
+{
+    auto& file = this->m_fileStream;
+
+    file.seekg(0, std::ios::end);
+    uint64_t size = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    if (size > static_cast<uint64_t>(std::numeric_limits<size_t>::max()))
+    {
+        PHX_LOG_CORE_ERROR("File larger then size_t");
+        return nullptr;
+    }
+
+    char* data = static_cast<char*>(malloc(size));
+
+    if (data == nullptr)
+    {
+        PHX_LOG_CORE_ERROR("Out of memory");
+        return nullptr;
+    }
+
+    file.read(data, size);
+
+    if (!file.good())
+    {
+        PHX_LOG_CORE_ERROR("Reading error");
+        free(data);
+        return nullptr;
+    }
+
+    return std::make_unique<Blob>(data, size);
+}
+
+RefCountPtr<FileAccess> PhxEngine::FileAccess::Open(std::filesystem::path const& path, AccessFlags accessFlags)
+{
+    // Create
+
+    return RefCountPtr<FileAccess>();
+}
+
+std::string PhxEngine::FileAccess::GetDirectory(std::string_view path)
+{
+    std::string retVal;
+    size_t lastSlashIdx = path.rfind('\\');
+    if (std::string::npos != lastSlashIdx)
+    {
+        lastSlashIdx = path.rfind('/');
+    }
+
+    if (std::string::npos != lastSlashIdx)
+    {
+        retVal = path.substr(0, lastSlashIdx);
     }
 
     return retVal;
+}
+
+std::string PhxEngine::FileAccess::NormalizePath(std::string_view path)
+{
+    std::string formattedPath;
+    formattedPath.reserve(path.size());
+
+    for (char c : path) 
+    {
+        if (c == '\\') 
+        {
+            formattedPath += '/';
+        }
+        else 
+        {
+            formattedPath += c;
+        }
+    }
+
+    return formattedPath;
+}
+
+RefCountPtr<FileAccess> PhxEngine::FileAccess::Create(std::string_view path)
+{
+    RefCountPtr<FileAccess> retVal;
+    if (path.starts_with("res://"))
+    {
+        return Create(AccessType::Resources);
+    }
+    else if (path.starts_with("eng://"))
+    {
+
+    }
+    return nullptr;
+}
+
+RefCountPtr<FileAccess> PhxEngine::FileAccess::Create(AccessType type)
+{
+    return RefCountPtr<FileAccess>::Create(phx_new FileAccess(type));
+}
+
+bool PhxEngine::FileAccess::OpenInternal(std::filesystem::path const& path, AccessFlags accessFlags)
+{
+    std::filesystem::path fixedPath = FileAccess::FixPath(path.generic_string());
+        
+    std::ios::openmode mode = std::ios::binary;
+    switch (accessFlags)
+    {
+    case AccessFlags::Read:
+        mode |= std::ios::in;
+        break;
+    case AccessFlags::Write:
+        mode |= std::ios::out;
+        break;
+    case AccessFlags::ReadWrite:
+        mode |= std::ios::in | std::ios::out;
+        break;
+    }
+    this->m_fileStream.open(fixedPath, mode);
+
+    if (!this->m_fileStream.is_open())
+    {
+        // file does not exist or is locked
+        return false;
+    }
+
+    return true;
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include <PhxEngine/Core/Object.h>
+#include <PhxEngine/Core/Memory.h>
 
 namespace PhxEngine
 {

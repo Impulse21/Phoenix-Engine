@@ -7,6 +7,8 @@
 #include <PhxEngine/Renderer/Window.h>
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Core/EventBus.h>
+#include <PhxEngine/Core/ProjectSettings.h>
+
 
 #include <filesystem>
 
@@ -79,7 +81,7 @@ namespace PhxEngine
         static std::filesystem::path GetCurrentDir();
 
     public:
-        Application();
+        Application(ApplicationCommandLineArgs const& args);
         virtual ~Application();
 
         void PushLayer(Layer* layer);
@@ -114,6 +116,7 @@ namespace PhxEngine
     private:
         std::unique_ptr<IWindow> m_window;
         std::unique_ptr<RHI::GfxDevice> m_gfxDevice;
+        std::unique_ptr<ProjectSettings> m_projectSettings;
 
     private:
         LayerStack m_layerStack;
