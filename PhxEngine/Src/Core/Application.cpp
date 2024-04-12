@@ -101,10 +101,6 @@ PhxEngine::Application::~Application()
 {
 	this->m_gfxDevice->WaitForIdle();
 	RHI::GfxDevice::Ptr = nullptr;
-
-	this->m_window.reset();
-	this->m_gfxDevice.reset();
-	this->m_projectSettings.reset();
 }
 
 void PhxEngine::Application::PushLayer(Layer* layer)

@@ -8,6 +8,8 @@
 #include <PhxEngine/RHI/PhxRHI.h>
 #include <PhxEngine/Core/EventBus.h>
 #include <PhxEngine/Core/ProjectSettings.h>
+#include <taskflow/taskflow.hpp>
+
 
 
 #include <filesystem>
@@ -77,6 +79,7 @@ namespace PhxEngine
         static Application& GetInstance() { return *s_singleton; }
         static IWindow& Window() { return s_singleton->GetWindow(); }
         static RHI::GfxDevice& GfxDevice() { return s_singleton->GetGfxDevice(); }
+        static tf::Executor& Executor() { return s_singleton->GetExecutor(); }
 
         static std::filesystem::path GetCurrentDir();
 
@@ -109,6 +112,7 @@ namespace PhxEngine
     public:
         IWindow& GetWindow() { return *this->m_window; }
         RHI::GfxDevice& GetGfxDevice() { return *this->m_gfxDevice; }
+        tf::Executor& GetExecutor() { return this->m_executor; }
 
     private:
         void Run();
@@ -117,6 +121,7 @@ namespace PhxEngine
         std::unique_ptr<IWindow> m_window;
         std::unique_ptr<RHI::GfxDevice> m_gfxDevice;
         std::unique_ptr<ProjectSettings> m_projectSettings;
+        tf::Executor m_executor;
 
     private:
         LayerStack m_layerStack;

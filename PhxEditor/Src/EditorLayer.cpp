@@ -3,7 +3,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-#include <PhxEngine/Resource/ResourceLoader.h>
+#include "ShaderResourceHandler.h"
 
 #include "Widgets.h"
 #include "ViewportWidget.h"
@@ -14,6 +14,8 @@ using namespace PhxEngine;
 void PhxEditor::EditorLayer::OnAttach()
 {
 	PHX_EVENT();
+	ResourceLoader::RegisterHandler<PhxEditor::ShaderResourceHandler>();
+
 	PhxEngine::IRenderer::Ptr = phx_new(Renderer);
 	PhxEngine::IRenderer::Ptr->LoadShaders();
 

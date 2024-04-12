@@ -550,6 +550,30 @@ std::string PhxEngine::FileAccess::NormalizePath(std::string_view path)
     return formattedPath;
 }
 
+std::string PhxEngine::FileAccess::GetFileExtension(std::string_view path)
+{
+    std::string retVal;
+    const size_t lastSlashIdx = path.rfind('.');
+    if (std::string::npos != lastSlashIdx)
+    {
+        retVal = path.substr(0, lastSlashIdx);
+    }
+
+    return retVal;
+}
+
+StringHash PhxEngine::FileAccess::GetFileExtensionId(std::string_view path)
+{
+    StringHash retVal;
+    const size_t lastSlashIdx = path.rfind('.');
+    if (std::string::npos != lastSlashIdx)
+    {
+        retVal = path.substr(0, lastSlashIdx);
+    }
+
+    return retVal;
+}
+
 RefCountPtr<FileAccess> PhxEngine::FileAccess::Create(std::string_view path)
 {
     RefCountPtr<FileAccess> retVal;

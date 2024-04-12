@@ -2,26 +2,34 @@
 
 #include <memory>
 #include <string>
+#include <PhxEngine/Core/StringHash.h>
+#include <PhxEngine/Core/Object.h>
 
 namespace PhxEngine
 {
-	class ResourceHandler
+	class ResourceHandler : public Object
 	{
+		PHX_OBJECT(ResourceHandler, Object);
+
 	public:
-		virtual ~ResourceHandler() = 0;
+		virtual ~ResourceHandler() = default;
+
+		virtual StringHash GetResourceExt() = 0;
+
 	};
 
 	namespace ResourceLoader
 	{
-		template<typename T>
-		void RegisterHandler()
+		void RegisterHandler(std::unique_ptr<ResourceHandler>&& handler);
+		template<typename T, typename... Args>
+		void RegisterHandler(Args&&... args)
 		{
-			RegisterHandler(std::make_unique<T>());
+			RegisterHandler(std::make_unique<T>(std::forward<Args>(args)...));
 		}
 
-		void RegisterHandler(std::unique_ptr<ResourceHandler>&& handler) {};
-		void Exists(std::string const& exists) {};
-		void Load(std::string const& exists) {};
+		bool RegonizedPath(std::string_view path);
+		void Exists(std::string const& exists);
+		void Load(std::string const& exists);
 
 	}
 }

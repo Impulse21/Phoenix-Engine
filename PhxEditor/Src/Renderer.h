@@ -6,6 +6,7 @@
 #include <PhxEngine/Core/Pool.h>
 #include <PhxEngine/Core/VirtualFileSystem.h>
 #include <filesystem>
+
 namespace PhxEditor
 {
 	struct ViewportImpl
@@ -38,12 +39,12 @@ namespace PhxEditor
 		void OnUpdate() override;
 		// Register Systems for Updating
 
+		void LoadShadersAsync();
 		void LoadShaders();
 
 		PhxEngine::Span<PhxEngine::RHI::ShaderHandle> GetShaderList() const override;
 
 	private:
-		std::unique_ptr<PhxEngine::IFileSystem> m_shaderFileSystem;
 		PhxEngine::EnumArray<ShaderTypes, PhxEngine::RHI::ShaderHandle> m_loadedShaders;
 
 	};

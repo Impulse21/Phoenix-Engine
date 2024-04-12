@@ -178,6 +178,9 @@ namespace PhxEngine
 		static RefCountPtr<FileAccess> Open(std::filesystem::path const& path, AccessFlags accessFlags);
 		static std::string GetDirectory(std::string_view path);
 		static std::string NormalizePath(std::string_view path);
+		static std::string GetFileExtension(std::string_view path);
+		static StringHash GetFileExtensionId(std::string_view path);
+
 	private:
 		static RefCountPtr<FileAccess> Create(std::string_view path);
 		static RefCountPtr<FileAccess> Create(AccessType type);
