@@ -1,5 +1,5 @@
 #include <PhxEngine/Resource/ResourceLoader.h>
-#include <PhxEngine/Core/Logger.h>
+#include <PhxEngine/Core/Base.h>
 
 #include <unordered_map>
 #include <PhxEngine/Core/VirtualFileSystem.h>
@@ -22,19 +22,32 @@ namespace
 
 bool PhxEngine::ResourceLoader::RegonizedPath(std::string_view path)
 {
+	PHX_EVENT();
 	return GetLoader(FileAccess::GetFileExtensionId(path));
 }
 
 void PhxEngine::ResourceLoader::Exists(std::string const& exists)
 {
+	PHX_EVENT();
 }
 
-void PhxEngine::ResourceLoader::Load(std::string const& exists)
+RefCountPtr<Resource> PhxEngine::ResourceLoader::Load(std::string const& path)
 {
+	PHX_EVENT();
+	ResourceHandler* handler = GetLoader(path.c_str());
+	if (!handler)
+	{
+		PHX_LOG_CORE_ERROR("Unable to locate a resource handler for '%s'", path.c_str());
+		return nullptr;
+	}
+
+	// Begin Loading the Asset
+	return handler->Load(path);
 }
 
 void PhxEngine::ResourceLoader::RegisterHandler(std::unique_ptr<ResourceHandler>&& handler)
 {
+	PHX_EVENT();
 	if (GetLoader(handler->GetResourceExt()))
 	{
 		PHX_LOG_CORE_WARN("Replacing an existing Resource Extension");

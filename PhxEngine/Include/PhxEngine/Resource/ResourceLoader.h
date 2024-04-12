@@ -4,6 +4,7 @@
 #include <string>
 #include <PhxEngine/Core/StringHash.h>
 #include <PhxEngine/Core/Object.h>
+#include <PhxEngine/Resource/Resource.h>
 
 namespace PhxEngine
 {
@@ -16,6 +17,7 @@ namespace PhxEngine
 
 		virtual StringHash GetResourceExt() = 0;
 
+		virtual RefCountPtr<Resource> Load(std::string_view load) = 0;
 	};
 
 	namespace ResourceLoader
@@ -28,8 +30,8 @@ namespace PhxEngine
 		}
 
 		bool RegonizedPath(std::string_view path);
-		void Exists(std::string const& exists);
-		void Load(std::string const& exists);
+		void Exists(std::string const& path);
+		RefCountPtr<Resource> Load(std::string const& exists);
 
 	}
 }

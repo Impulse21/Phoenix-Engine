@@ -12,7 +12,9 @@ namespace PhxEditor
 		ShaderResourceHandler() = default;
 		~ShaderResourceHandler() = default;
 
-		inline PhxEngine::StringHash GetResourceExt() { return this->m_extId; }
+		RefCountPtr<Resource> Load(std::string_view load) override;
+
+		inline PhxEngine::StringHash GetResourceExt() override { return this->m_extId; }
 
 	private:
 		PhxEngine::StringHash m_extId = PhxEngine::StringHash(".hlsl");
