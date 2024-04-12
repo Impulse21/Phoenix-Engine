@@ -33,9 +33,6 @@ void PhxEngine::ProjectSettings::Shutdown()
 
 bool PhxEngine::ProjectSettings::LoadSettings(std::string const& path)
 {
-	// Load  Settings file
-
-	// TODO: File Accessing
 	RefCountPtr<FileAccess> settingsFile = FileAccess::Open(path, AccessFlags::Read);
 
 	if (settingsFile == nullptr)
@@ -58,4 +55,6 @@ bool PhxEngine::ProjectSettings::LoadSettings(std::string const& path)
 	}
 
 	this->m_name = n["name"].as<std::string>();
+
+	return true;
 }

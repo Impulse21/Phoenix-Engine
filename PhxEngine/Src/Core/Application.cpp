@@ -65,7 +65,10 @@ PhxEngine::Application::Application(ApplicationCommandLineArgs const& args)
 	this->m_projectSettings = std::make_unique<ProjectSettings>();
 
 	PHX_CORE_ASSERT(args.Count == 2, "Require Project");
-	this->m_projectSettings->Startup(args.Args[1]);
+	bool retVal = this->m_projectSettings->Startup(args.Args[1]);
+	PHX_CORE_ASSERT(retVal, "Failed to startup project");
+	if (!retVal)
+		throw std::runtime_error("Failed to load project settings");
 
 	this->m_windowResizeHandler = [this](WindowResizeEvent const& e) {
 		RHI::SwapChainDesc desc = {

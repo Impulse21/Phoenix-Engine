@@ -503,17 +503,23 @@ std::unique_ptr<IBlob> PhxEngine::FileAccess::ReadFile()
 RefCountPtr<FileAccess> PhxEngine::FileAccess::Open(std::filesystem::path const& path, AccessFlags accessFlags)
 {
     // Create
+    RefCountPtr<FileAccess> retVal = Create(path.generic_string());
+    if (!retVal->OpenInternal(path, accessFlags))
+    {
+        PHX_LOG_CORE_ERROR("Failed to open file 'path'", path.generic_string());
+        return nullptr;
+    }
 
-    return RefCountPtr<FileAccess>();
+    return retVal;
 }
 
 std::string PhxEngine::FileAccess::GetDirectory(std::string_view path)
 {
     std::string retVal;
-    size_t lastSlashIdx = path.rfind('\\');
-    if (std::string::npos != lastSlashIdx)
+    size_t lastSlashIdx = path.rfind('/');
+    if (std::string::npos == lastSlashIdx)
     {
-        lastSlashIdx = path.rfind('/');
+        lastSlashIdx = path.rfind('\\');
     }
 
     if (std::string::npos != lastSlashIdx)
@@ -553,9 +559,10 @@ RefCountPtr<FileAccess> PhxEngine::FileAccess::Create(std::string_view path)
     }
     else if (path.starts_with("eng://"))
     {
-
+        return Create(AccessType::Engine);
     }
-    return nullptr;
+
+    return Create(AccessType::FileSystem);
 }
 
 RefCountPtr<FileAccess> PhxEngine::FileAccess::Create(AccessType type)
