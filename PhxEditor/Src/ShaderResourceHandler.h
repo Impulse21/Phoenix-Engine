@@ -1,6 +1,7 @@
 #pragma once
 
-#include <PhxEngine/Resource/ResourceLoader.h>
+#include <PhxEngine/Resource/ResourceStore.h>
+#include <PhxEngine/Resource/Shader.h>
 
 namespace PhxEditor
 {
@@ -12,9 +13,13 @@ namespace PhxEditor
 		ShaderResourceHandler() = default;
 		~ShaderResourceHandler() = default;
 
-		RefCountPtr<Resource> Load(std::string_view load) override;
-
 		inline PhxEngine::StringHash GetResourceExt() override { return this->m_extId; }
+		inline PhxEngine::StringHash GetResourceType() override { return PhxEngine::Shader::GetTypeStatic(); }
+
+		PhxEngine::RefCountPtr<PhxEngine::Resource> Load(std::unique_ptr<PhxEngine::IBlob>&& fileData) override;
+
+		void LoadDispatch(std::string const& path) override;
+		
 
 	private:
 		PhxEngine::StringHash m_extId = PhxEngine::StringHash(".hlsl");

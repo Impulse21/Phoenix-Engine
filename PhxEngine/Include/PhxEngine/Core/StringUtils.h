@@ -41,9 +41,9 @@ namespace PhxEngine
 #endif // _WIN32
 	}
 
-	inline std::string StringReplace(std::string const& str, std::string_view oldSubstr, std::string_view newSubStr)
+	inline std::string StringReplace(std::string_view str, std::string_view oldSubstr, std::string_view newSubStr)
 	{
-		std::string retVal = str;
+		std::string retVal = std::string(str);
 		// Find the position of the substring
 		size_t pos = str.find(oldSubstr);
 		if (pos != std::string::npos)

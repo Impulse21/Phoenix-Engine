@@ -14,7 +14,7 @@ using namespace PhxEngine;
 void PhxEditor::EditorLayer::OnAttach()
 {
 	PHX_EVENT();
-	ResourceLoader::RegisterHandler<PhxEditor::ShaderResourceHandler>();
+	ResourceStore::RegisterHandler<PhxEditor::ShaderResourceHandler>();
 
 	PhxEngine::IRenderer::Ptr = phx_new(Renderer);
 	PhxEngine::IRenderer::Ptr->LoadShaders();
