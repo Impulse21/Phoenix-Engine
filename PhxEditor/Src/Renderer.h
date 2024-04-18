@@ -1,11 +1,18 @@
 #pragma once
 
+#include <PhxEngine/Core/Base.h>
+#include <PhxEngine/Core/RefCountPtr.h>
 #include <PhxEngine/Renderer/Renderer.h>
 #include <PhxEngine/Core/EnumArray.h>
 
 #include <PhxEngine/Core/Pool.h>
 #include <PhxEngine/Core/VirtualFileSystem.h>
 #include <filesystem>
+
+namespace PhxEngine
+{
+	class Shader;
+}
 
 namespace PhxEditor
 {
@@ -45,7 +52,7 @@ namespace PhxEditor
 		PhxEngine::Span<PhxEngine::RHI::ShaderHandle> GetShaderList() const override;
 
 	private:
-		PhxEngine::EnumArray<ShaderTypes, PhxEngine::RHI::ShaderHandle> m_loadedShaders;
+		PhxEngine::EnumArray<ShaderTypes, PhxEngine::RefCountPtr<PhxEngine::Shader>> m_loadedShaders;
 
 	};
 }

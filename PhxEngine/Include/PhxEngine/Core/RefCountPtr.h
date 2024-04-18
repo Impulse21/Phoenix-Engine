@@ -97,6 +97,14 @@ namespace PhxEngine
             InternalRelease();
         }
 
+        template<typename U>
+        RefCountPtr<U> As()
+        {
+            U* ptr = static_cast<U*>(this->ptr_);
+            return RefCountPtr<U>(ptr);
+
+        }
+
         RefCountPtr& operator=(std::nullptr_t) noexcept
         {
             InternalRelease();

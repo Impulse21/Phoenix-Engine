@@ -15,6 +15,7 @@ void PhxEditor::EditorLayer::OnAttach()
 {
 	PHX_EVENT();
 	ResourceStore::RegisterHandler<PhxEditor::ShaderResourceHandler>();
+	ResourceStore::MountResourceDir(ProjectSettings::Instance()->GetResourcePath());
 
 	PhxEngine::IRenderer::Ptr = phx_new(Renderer);
 	PhxEngine::IRenderer::Ptr->LoadShaders();

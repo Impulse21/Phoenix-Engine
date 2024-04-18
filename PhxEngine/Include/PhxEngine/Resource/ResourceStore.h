@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <filesystem>
 #include <PhxEngine/Core/StringHash.h>
 #include <PhxEngine/Core/Object.h>
 #include <PhxEngine/Resource/Resource.h>
@@ -35,6 +36,7 @@ namespace PhxEngine
 		}
 
 		void MountResourceDir(std::string const& path);
+		void MountResourceDir(std::filesystem::path const& path);
 		// void MountResourcePack(std::string const& path);
 
 		RefCountPtr<Resource> GetResource(StringHash type, std::string const& name);
@@ -42,8 +44,8 @@ namespace PhxEngine
 		template<typename T>
 		RefCountPtr<T> GetResource(std::string const& name)
 		{
-			static_assert(std::is_base_of(Object, T), "T must extend Object");
-			return RefCountPtr<T>(GetResource(T::GetTypeStatic(), name));
+			static_assert(std::is_base_of_v<Object, T>, "T must extend Object");
+			return GetResource(T::GetTypeStatic(), name).As<T>();
 		}
 
 		void RunGarbageCollection();

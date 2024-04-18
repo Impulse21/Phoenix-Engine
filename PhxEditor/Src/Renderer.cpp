@@ -2,7 +2,8 @@
 
 #include <PhxEngine/Core/Application.h>
 #include <PhxEngine/Core/VirtualFileSystem.h>
-
+#include <PhxEngine/Resource/ResourceStore.h>
+#include <PhxEngine/Resource/Shader.h>
 
 using namespace PhxEngine;
 
@@ -47,8 +48,12 @@ void PhxEditor::Renderer::LoadShaders()
     PHX_EVENT();
 
     std::filesystem::path shaderSourcePath = PhxEngine::Application::GetCurrentDir().parent_path().parent_path() / "PhxEditor" / "Assets" / "Shaders";
-    RefCountPtr<FileAccess> triangleVS = FileAccess::Open(shaderSourcePath / "DrawTriangleVS.hlsl", AccessFlags::Read);
-    RefCountPtr<FileAccess> trianglePS = FileAccess::Open(shaderSourcePath / "DrawTrianglePS.hlsl", AccessFlags::Read);
+
+    // Mount the the source Directory for shaders
+    ResourceStore::MountResourceDir(shaderSourcePath);
+
+    this->m_loadedShaders[ShaderTypes::VS_Triangle] = ResourceStore::GetResource<Shader>("DrawTriangleVS.hlsl");
+    this->m_loadedShaders[ShaderTypes::PS_Triangle] = ResourceStore::GetResource<Shader>("DrawTrianglePS.hlsl");
 
     // Check the Compile Directory to see if Shaders time stamp have changes
 

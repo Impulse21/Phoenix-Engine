@@ -88,6 +88,11 @@ void PhxEngine::ResourceStore::RegisterHandler(std::unique_ptr<ResourceHandler>&
 
 void PhxEngine::ResourceStore::MountResourceDir(std::string const& path)
 {
+	MountResourceDir(path);
+}
+
+void PhxEngine::ResourceStore::MountResourceDir(std::filesystem::path const& path)
+{
 	if (!m_nativeFileSystem)
 		m_nativeFileSystem = FileSystemFactory::CreateNativeFileSystem();
 
