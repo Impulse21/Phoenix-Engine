@@ -1,5 +1,6 @@
 #include <PhxEngine/RHI/PhxShaderCompiler.h>
-#include <PhxEngine/Core/Logger.h>
+#include <PhxEngine/Core/Base.h>
+
 #include <PhxEngine/Core/StringUtils.h>
 
 #include <wrl.h>
@@ -67,19 +68,7 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(CompilerInput const& inpu
 		return result;
 	}
 
-
 	ComPtr<IDxcBlobEncoding> pSource;
-
-	IFileSystem* fileSystem = input.FileSystem;
-	assert(fileSystem);
-
-	if (!fileSystem->FileExists(input.Filename))
-	{
-		return result;
-	}
-
-	std::unique_ptr<IBlob> shaderSrcData = fileSystem->ReadFile(input.Filename);
-	// pUtils->CreateBlob(pShaderSource, shaderSourceSize, CP_UTF8, pSource.GetAddressOf());
 
 	// https://github.com/microsoft/DirectXShaderCompiler/wiki/Using-dxc.exe-and-dxcompiler.dll#dxcompiler-dll-interface
 	std::vector<LPCWSTR> args = {
@@ -357,16 +346,19 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(CompilerInput const& inpu
 	args.push_back(L"-E");
 	args.push_back(wentry.c_str());
 
+#ifdef false
 	// Add source file name as last parameter. This will be displayed in error messages
 	std::wstring wsource;
 	std::filesystem::path filenamePath = input.Filename;
 	StringConvert(filenamePath.filename().string(), wsource);
 	args.push_back(wsource.c_str());
+#endif
 
+	PHX_ASSERT(input.ShaderSrcData, "Source data is nu,,");
 
 	DxcBuffer Source;
-	Source.Ptr = shaderSrcData->Data();
-	Source.Size = shaderSrcData->Size();
+	Source.Ptr = input.ShaderSrcData->Data();
+	Source.Size = input.ShaderSrcData->Size();
 	Source.Encoding = DXC_CP_ACP;
 
 	IncludeHandler includehandler = {};
@@ -409,7 +401,7 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(CompilerInput const& inpu
 		pResults->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&pShader), nullptr)));
 	if (pShader != nullptr)
 	{
-		result.Dependencies.push_back(input.Filename);
+		// result.Dependencies.push_back(input.Filename);
 		result.ShaderData = Span((const uint8_t*)pShader->GetBufferPointer(), pShader->GetBufferSize());
 
 		// keep the blob alive == keep shader pointer valid!
