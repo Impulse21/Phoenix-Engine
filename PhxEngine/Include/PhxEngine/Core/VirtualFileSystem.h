@@ -64,6 +64,8 @@ namespace PhxEngine
 	class IRootFileSystem : public IFileSystem
 	{
 	public:
+		inline static IRootFileSystem* Ptr = nullptr;
+	public:
 		virtual ~IRootFileSystem() = default;
 
 		virtual void Mount(const std::filesystem::path& path, std::shared_ptr<IFileSystem> fs) = 0;
@@ -139,7 +141,6 @@ namespace PhxEngine
 		std::unique_ptr<IRootFileSystem> CreateRootFileSystem();
 		std::unique_ptr<IBlob> CreateBlob(void* Data, size_t size);
 	}
-
 
 	enum class AccessFlags 
 	{

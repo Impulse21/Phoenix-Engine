@@ -82,6 +82,7 @@ namespace PhxEngine
         static tf::Executor& Executor() { return s_singleton->GetExecutor(); }
 
         static std::filesystem::path GetCurrentDir();
+        static std::filesystem::path GetShaderTypeName(RHI::GraphicsAPI api);
 
     public:
         Application(ApplicationCommandLineArgs const& args);

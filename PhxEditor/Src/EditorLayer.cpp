@@ -14,8 +14,15 @@ using namespace PhxEngine;
 void PhxEditor::EditorLayer::OnAttach()
 {
 	PHX_EVENT();
-	ResourceStore::RegisterHandler<PhxEditor::ShaderResourceHandler>();
-	ResourceStore::MountResourceDir(ProjectSettings::Instance()->GetResourcePath());
+
+	std::filesystem::path shaderSourcePath = PhxEngine::Application::GetCurrentDir() / "shaders" / PhxEngine::Application::GetShaderTypeName(RHI::IGfxDevice::Ptr->GetApi());
+
+	IRootFileSystem::Ptr->Mount("/resources", ProjectSettings::Instance()->GetResourcePath());
+	IRootFileSystem::Ptr->Mount("/shaders/phx_engine", shaderSourcePath);
+	IRootFileSystem::Ptr->Mount("/native", std::make_shared<NativeFileSystem>());
+
+	// ResourceStore::RegisterHandler<PhxEditor::ShaderResourceHandler>();
+	// ResourceStore::MountResourceDir(ProjectSettings::Instance()->GetResourcePath());
 
 	PhxEngine::IRenderer::Ptr = phx_new(Renderer);
 	PhxEngine::IRenderer::Ptr->LoadShaders();

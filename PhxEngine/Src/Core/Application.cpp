@@ -1,6 +1,8 @@
 #include <PhxEngine/Core/Application.h>
 #include <PhxEngine/Core/StopWatch.h>
 
+#include <PhxEngine/Core/VirtualFileSystem.h>
+
 #include <PhxEngine/Renderer/ImGuiLayer.h>
 
 using namespace PhxEngine;
@@ -57,10 +59,24 @@ std::filesystem::path PhxEngine::Application::GetCurrentDir()
 	return std::filesystem::current_path();
 }
 
+std::filesystem::path PhxEngine::Application::GetShaderTypeName(RHI::GraphicsAPI api)
+{
+	switch (api)
+	{
+	case RHI::GraphicsAPI::DX12:
+		return "dxil";
+	default:
+		PHX_ASSERT(!"Unknown graphics API");
+		return "";
+	}
+}
+
 PhxEngine::Application::Application(ApplicationCommandLineArgs const& args)
 {
 	PHX_CORE_ASSERT(!s_singleton, "Application already exists!");
 	s_singleton = this;
+
+	IRootFileSystem::Ptr = phx_new RootFileSystem();
 
 	this->m_projectSettings = std::make_unique<ProjectSettings>();
 
@@ -101,6 +117,9 @@ PhxEngine::Application::~Application()
 {
 	this->m_gfxDevice->WaitForIdle();
 	RHI::GfxDevice::Ptr = nullptr;
+
+	phx_delete IRootFileSystem::Ptr;
+	IRootFileSystem::Ptr = nullptr;
 }
 
 void PhxEngine::Application::PushLayer(Layer* layer)

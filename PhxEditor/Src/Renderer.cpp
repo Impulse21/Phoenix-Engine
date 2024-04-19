@@ -47,13 +47,7 @@ void PhxEditor::Renderer::LoadShaders()
 {
     PHX_EVENT();
 
-    std::filesystem::path shaderSourcePath = PhxEngine::Application::GetCurrentDir().parent_path().parent_path() / "PhxEditor" / "Assets" / "Shaders";
-
-    // Mount the the source Directory for shaders
-    ResourceStore::MountResourceDir(shaderSourcePath);
-
-    this->m_loadedShaders[ShaderTypes::VS_Triangle] = ResourceStore::GetResource<Shader>("DrawTriangleVS.hlsl");
-    this->m_loadedShaders[ShaderTypes::PS_Triangle] = ResourceStore::GetResource<Shader>("DrawTrianglePS.hlsl");
+    this->m_loadedShaders[ShaderTypes::VS_Triangle] = ResourceStore::GetResource<Shader>("DrawTriangle");
 
     // Check the Compile Directory to see if Shaders time stamp have changes
 
