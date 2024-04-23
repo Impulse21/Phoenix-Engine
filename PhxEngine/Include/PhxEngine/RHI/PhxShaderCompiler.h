@@ -19,7 +19,6 @@ namespace PhxEngine::RHI::ShaderCompiler
 	struct CompilerInput
 	{
 		std::string Filename;
-		IBlob* ShaderSrcData = nullptr;
 		uint32_t Flags = CompilerFlags::None;
 
 		RHI::ShaderType ShaderType = ShaderType::HLSL6;
