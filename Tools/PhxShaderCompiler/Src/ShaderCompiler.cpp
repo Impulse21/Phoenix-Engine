@@ -3,29 +3,33 @@
 #include <yaml-cpp/yaml.h>
 #include <filesystem>
 #include <fstream>
+#include <string>
 #include <stdexcept>
+#include <csignal>
 #include <PhxEngine/Core/Logger.h>
 #include <PhxEngine/RHI/PhxShaderCompiler.h>
-
+#include <PhxEngine/Core/CommandLineArgs.h>
 
 namespace fs = std::filesystem;
 
+using namespace PhxEngine;
 using namespace PhxEngine::RHI;
 
 namespace
 {
-	YAML::Node gOptions;
+	std::string gInputFile;
+	std::string gOutputPath;
 	std::vector<std::string> gIncludeDirs;
-	fs::file_time_type gConfigWriteTime; 
+	fs::file_time_type gConfigWriteTime;
+
+	std::mutex gReportMutex;
+	std::mutex gTaskMutex;
+	bool gTerminate = false;
 
 	struct CompileTask
 	{
-		std::string SourceFile;
-		std::string ShaderName;
-		std::string EntryPoint;
-		std::string CombinedDefines;
-		std::string CommandLine;
 		ShaderCompiler::CompilerInput Input;
+		std::string OutputPath;
 	};
 
 	std::vector<CompileTask> gCompileTasks;
@@ -48,53 +52,105 @@ namespace
 
 	bool ProcessShaderConfig(const YAML::Node& shaderCompile)
 	{
-		ShaderCompiler::CompilerInput input;
-		input.Filename = shaderCompile["file_path"].as<std::string>();
+		std::string filepath = shaderCompile["file_path"].as<std::string>();
+		fs::path compiledShaderName = filepath.substr(0, filepath.find_last_of('.')) + ".pso";
+
+		fs::path sourceFile = fs::path(gInputFile).parent_path() / shaderCompile["file_path"].as<std::string>();
+		fs::path compiledShaderFile = gOutputPath / compiledShaderName;
+
+		CompileTask& task = gCompileTasks.emplace_back();
+
+		ShaderCompiler::CompilerInput& input = task.Input;
+		input.Filename = sourceFile.generic_string();
 		input.ShaderType = ShaderType::HLSL6;
 		input.ShaderStage = ParseShaderStage(shaderCompile["stage"].as<std::string>());
 		input.ShaderModel = ShaderModel::SM_6_7;
 		input.EntryPoint = "main";
 		input.IncludeDirs = gIncludeDirs;
-		if (!gOptions["debug"].IsNull() && gOptions["debug"].as<bool>())
+		if (!CommandLineArgs::HasArg("debug"))
 			input.Flags |= ShaderCompiler::CompilerFlags::DisableOptimization | ShaderCompiler::CompilerFlags::EmbedDebug;
 
-		
 		return true;
 	}
+
+	void SignalHandler(int sig)
+	{
+		(void)sig;
+		gTerminate = true;
+
+		std::scoped_lock guard(gReportMutex);
+		PHX_LOG_CORE_ERROR("SIGINT received, terminating");
+	}
+
 }
 
+void CompileThreadProc()
+{
+	while (!gTerminate)
+	{
+		CompileTask task;
+		{
+			std::scoped_lock guard(gTaskMutex);
+			if (gCompileTasks.empty())
+				return;
+
+			task = gCompileTasks[gCompileTasks.size() - 1];
+			gCompileTasks.pop_back();
+		}
+
+		ShaderCompiler::CompilerResult result = ShaderCompiler::Compile(task.Input);
+		if (!result.ErrorMessage.empty())
+		{
+			std::stringstream ss;
+			ss << "Failed to compile shader " << task.Input.Filename << "\n";
+			ss << "\t" << result.ErrorMessage;
+			PHX_LOG_ERROR("'%s'", ss.str().c_str());
+		}
+	}
+}
 
 
 int main(int argc, char** argv)
 {
 	PhxEngine::Logger::Startup();
-	gOptions= YAML::Load(argv[1]);
+	PhxEngine::CommandLineArgs::Initialize();
 
-	std::string inputFile = gOptions["input_file"].as<std::string>();
-	if (inputFile.empty() || !fs::exists(inputFile))
-		throw std::runtime_error("unable to find input file");
 
-	std::string outputPath = gOptions["output_path"].as<std::string>();
-	bool packShaders = gOptions["pack_shaders"].as<bool>();
-
-	auto includeDirNode = gOptions["include_dir"];
-	if (!includeDirNode.IsNull() && includeDirNode.IsSequence())
+	if (!PhxEngine::CommandLineArgs::GetString("input_file", gInputFile))
 	{
-		gIncludeDirs.reserve(includeDirNode.size());
-		// Iterate over each element of the sequence
-		for (std::size_t i = 0; i < includeDirNode.size(); ++i)
+		throw std::runtime_error("Missing Arg: 'input_file'");
+	}
+
+	if (!fs::exists(gInputFile))
+	{
+		PHX_LOG_ERROR("Unable to locate config file %s", gInputFile.c_str());
+		return -1;
+	}
+
+	if (!PhxEngine::CommandLineArgs::GetString("output_path", gOutputPath))
+	{
+		throw std::runtime_error("Missing Arg: 'output_path'");
+	}
+
+	bool packShaders = PhxEngine::CommandLineArgs::HasArg("pack");
+
+	std::string includerDirs;
+	if (PhxEngine::CommandLineArgs::GetString("include_dir", includerDirs))
+	{
+		std::istringstream f(includerDirs);
+		std::string val;
+		while (std::getline(f, val, ';'))
 		{
-			// Push each element into the vector
-			gIncludeDirs.push_back(includeDirNode[i].as<std::string>());
+			gIncludeDirs.push_back(val);
 		}
 	}
 
 	// If we have updated this binary, we should recompile everything
-	gConfigWriteTime = fs::last_write_time(inputFile);
+	gConfigWriteTime = fs::last_write_time(gInputFile);
 	gConfigWriteTime = std::max(gConfigWriteTime, fs::last_write_time(argv[0]));
 
 
-	std::ifstream configFile(inputFile);
+	std::ifstream configFile(gInputFile);
 	YAML::Node configNode = YAML::Load(configFile);
 
 	const YAML::Node& shaders = configNode["shaders"];
@@ -105,6 +161,28 @@ int main(int argc, char** argv)
 			return 1;
 	}
 
+
+	unsigned int threadCount = std::thread::hardware_concurrency();
+	if (threadCount == 0)
+	{
+		threadCount = 1;
+	}
+
+	std::signal(SIGINT, SignalHandler);
+
+	std::vector<std::thread> threads;
+	threads.resize(threadCount);
+	for (unsigned int threadIndex = 0; threadIndex < threadCount; threadIndex++)
+	{
+		threads[threadIndex] = std::thread(CompileThreadProc);
+	}
+	for (unsigned int threadIndex = 0; threadIndex < threadCount; threadIndex++)
+	{
+		threads[threadIndex].join();
+	}
+
+
+	// Execite
 
 	PhxEngine::Logger::Shutdown();
 #if false

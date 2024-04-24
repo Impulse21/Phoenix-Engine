@@ -5,6 +5,7 @@
 
 #include <wrl.h>
 #include <dxc/dxcapi.h>
+#include <d3d12shader.h>
 using namespace PhxEngine;
 using namespace PhxEngine::RHI;
 using namespace Microsoft::WRL;
@@ -346,6 +347,13 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(CompilerInput const& inpu
 	args.push_back(L"-E");
 	args.push_back(wentry.c_str());
 
+
+	std::wstring wsource;
+	StringConvert(input.Filename, wsource);
+
+	ComPtr<IDxcBlobEncoding> sourceBlob{};
+	dxcUtils->LoadFile(wsource.data(), nullptr, &sourceBlob);
+
 #ifdef false
 	// Add source file name as last parameter. This will be displayed in error messages
 	std::wstring wsource;
@@ -354,12 +362,12 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(CompilerInput const& inpu
 	args.push_back(wsource.c_str());
 #endif
 
-	PHX_ASSERT(input.ShaderSrcData, "Source data is nu,,");
-
-	DxcBuffer Source;
-	Source.Ptr = input.ShaderSrcData->Data();
-	Source.Size = input.ShaderSrcData->Size();
-	Source.Encoding = DXC_CP_ACP;
+	DxcBuffer sourceBuffer
+	{
+		.Ptr = sourceBlob->GetBufferPointer(),
+		.Size = sourceBlob->GetBufferSize(),
+		.Encoding = DXC_CP_ACP,
+	};
 
 	IncludeHandler includehandler = {};
 	includehandler.Input = &input;
@@ -371,7 +379,7 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(CompilerInput const& inpu
 	Microsoft::WRL::ComPtr<IDxcResult> pResults;
 	assert(SUCCEEDED(
 		dxcCompiler->Compile(
-			&Source,                // Source buffer.
+			&sourceBuffer,          // Source buffer.
 			args.data(),            // Array of pointers to arguments.
 			(uint32_t)args.size(),	// Number of arguments.
 			&includehandler,		// User-provided interface to handle #include directives (optional).
@@ -436,6 +444,27 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(CompilerInput const& inpu
 				result.ShaderHash.push_back(pHashBuf->HashDigest[i]);
 			}
 		}
+	}
+
+	// -- Get Shader Reflection ---
+	// Get shader reflection data.
+	ComPtr<IDxcBlob> reflectionBlob{};
+	assert(SUCCEEDED(
+		pResults->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&reflectionBlob), nullptr)));
+
+	if (reflectionBlob != nullptr)
+	{
+		const DxcBuffer reflectionBuffer
+		{
+			.Ptr = reflectionBlob->GetBufferPointer(),
+			.Size = reflectionBlob->GetBufferSize(),
+			.Encoding = 0,
+		};
+
+		ComPtr<ID3D12ShaderReflection> shaderReflection{};
+		dxcUtils->CreateReflection(&reflectionBuffer, IID_PPV_ARGS(&shaderReflection));
+		D3D12_SHADER_DESC shaderDesc{};
+		shaderReflection->GetDesc(&shaderDesc);
 	}
 
 	return result;
