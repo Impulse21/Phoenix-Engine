@@ -9,6 +9,10 @@
 #include <PhxEngine/Core/Logger.h>
 #include <PhxEngine/RHI/PhxShaderCompiler.h>
 #include <PhxEngine/Core/CommandLineArgs.h>
+#include <PhxEngine/Core/BinaryBuilder.h>
+#include <PhxEngine/Resource/ResourceFileFormat.h>
+
+
 
 namespace fs = std::filesystem;
 
@@ -99,13 +103,33 @@ void CompileThreadProc()
 		}
 
 		ShaderCompiler::CompilerResult result = ShaderCompiler::Compile(task.Input);
-		if (!result.ErrorMessage.empty())
+		if (!result.InternalResource)
 		{
 			std::stringstream ss;
-			ss << "Failed to compile shader " << task.Input.Filename << "\n";
+			ss << "Compiling shader " << task.Input.Filename << " Messages \n";
 			ss << "\t" << result.ErrorMessage;
 			PHX_LOG_ERROR("'%s'", ss.str().c_str());
 		}
+
+		BinaryBuilder binaryBuilder;
+		size_t headerOffset = binaryBuilder.Reserve<ShaderFileFormat::Header>();
+		size_t metadataHeaderOffset = binaryBuilder.Reserve<ShaderFileFormat::MetadataHeader>();
+		size_t dataOffset = binaryBuilder.Reserve<uint8_t>(result.ShaderData.Size());
+
+		binaryBuilder.Commit();
+
+		auto* dataPtr = binaryBuilder.Place<uint8_t>(dataOffset);
+		std::memcpy(dataPtr, result.ShaderData.begin(), result.ShaderData.Size());
+		
+		auto* metadataHeader = binaryBuilder.Place<ShaderFileFormat::MetadataHeader>(metadataHeaderOffset);
+		metadataHeader->shaderStage = task.Input.ShaderStage;
+
+		auto header = binaryBuilder.Place<ShaderFileFormat::Header>(headerOffset);
+		header->ID = ShaderFileFormat::ResourceId;
+		header->Version = ShaderFileFormat::CurrentVersion;
+
+		// TODO: I am here writing out the file.
+
 	}
 }
 
@@ -144,6 +168,7 @@ int main(int argc, char** argv)
 			gIncludeDirs.push_back(val);
 		}
 	}
+	gIncludeDirs.push_back(fs::path(gInputFile).parent_path().generic_string());
 
 	// If we have updated this binary, we should recompile everything
 	gConfigWriteTime = fs::last_write_time(gInputFile);

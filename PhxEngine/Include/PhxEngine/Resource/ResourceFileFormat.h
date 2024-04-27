@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-
+#include <PhxEngine/RHI/PhxRHI.h>
 
 #define MAKE_ID(a,b,c,d)		(((d) << 24) | ((c) << 16) | ((b) << 8) | ((a)))
 
@@ -103,4 +103,26 @@ namespace PhxEngine
 		Array<StringHash> StringHashTable;
 	};
 	using StringHashTableRegion= Region<StringHashTableHeader>;
+
+
+	namespace ShaderFileFormat
+	{
+		constexpr uint16_t CurrentVersion = 1;
+		constexpr uint32_t ResourceId = MAKE_ID('P', 'S', 'B', 'C');
+		constexpr const char* FileExt = ".psbc";
+		using ShaderDataRegion = Region<void>;
+		struct Header
+		{
+			uint32_t ID;
+			uint16_t Version;
+			Region<struct MetadataHeader> MetadataHeader;
+			ShaderDataRegion ShaderData;
+		};
+
+		struct MetadataHeader
+		{
+			RHI::ShaderStage shaderStage;
+			// TODO: Reflection Data
+		};
+	}
 }
