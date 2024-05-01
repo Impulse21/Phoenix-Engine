@@ -8,14 +8,6 @@ namespace PhxEngine
 {
 	constexpr uint16_t CurrentVersion = 1;
 
-	struct ShaderFileFormat
-	{
-		uint32_t ID;
-		uint32_t Version;
-
-		Region<void> ByteCode;
-	};
-
 	class Shader : public Resource
 	{
 	public:

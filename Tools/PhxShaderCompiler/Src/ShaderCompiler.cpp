@@ -11,7 +11,7 @@
 #include <PhxEngine/Core/CommandLineArgs.h>
 #include <PhxEngine/Core/BinaryBuilder.h>
 #include <PhxEngine/Resource/ResourceFileFormat.h>
-
+#include <PhxEngine/Core/VirtualFileSystem.h>
 
 
 namespace fs = std::filesystem;
@@ -23,6 +23,7 @@ namespace
 {
 	std::string gInputFile;
 	std::string gOutputPath;
+	std::unique_ptr<IFileSystem> gOutputFS;
 	std::vector<std::string> gIncludeDirs;
 	fs::file_time_type gConfigWriteTime;
 
@@ -33,7 +34,7 @@ namespace
 	struct CompileTask
 	{
 		ShaderCompiler::CompilerInput Input;
-		std::string OutputPath;
+		fs::path OutputFile;
 	};
 
 	std::vector<CompileTask> gCompileTasks;
@@ -60,7 +61,6 @@ namespace
 		fs::path compiledShaderName = filepath.substr(0, filepath.find_last_of('.')) + ".pso";
 
 		fs::path sourceFile = fs::path(gInputFile).parent_path() / shaderCompile["file_path"].as<std::string>();
-		fs::path compiledShaderFile = gOutputPath / compiledShaderName;
 
 		CompileTask& task = gCompileTasks.emplace_back();
 
@@ -74,6 +74,7 @@ namespace
 		if (!CommandLineArgs::HasArg("debug"))
 			input.Flags |= ShaderCompiler::CompilerFlags::DisableOptimization | ShaderCompiler::CompilerFlags::EmbedDebug;
 
+		task.OutputFile = compiledShaderName;
 		return true;
 	}
 
@@ -118,18 +119,24 @@ void CompileThreadProc()
 
 		binaryBuilder.Commit();
 
+		// -- Set data ---
 		auto* dataPtr = binaryBuilder.Place<uint8_t>(dataOffset);
 		std::memcpy(dataPtr, result.ShaderData.begin(), result.ShaderData.Size());
 		
+		// -- Set metadata ---
 		auto* metadataHeader = binaryBuilder.Place<ShaderFileFormat::MetadataHeader>(metadataHeaderOffset);
-		metadataHeader->shaderStage = task.Input.ShaderStage;
+		metadataHeader->ShaderStage = task.Input.ShaderStage;
 
+		// -- Fill in header ---
 		auto header = binaryBuilder.Place<ShaderFileFormat::Header>(headerOffset);
 		header->ID = ShaderFileFormat::ResourceId;
 		header->Version = ShaderFileFormat::CurrentVersion;
+		header->MetadataHeader.UncompressedSize = sizeof(ShaderFileFormat::MetadataHeader);
+		header->MetadataHeader.CompressedSize = header->MetadataHeader.UncompressedSize;
+		header->MetadataHeader.Offset = metadataHeaderOffset;
+		header->ShaderData.Offset = dataOffset;
 
-		// TODO: I am here writing out the file.
-
+		gOutputFS->WriteFile(task.OutputFile, binaryBuilder.GetSpan());
 	}
 }
 
@@ -158,6 +165,11 @@ int main(int argc, char** argv)
 
 	bool packShaders = PhxEngine::CommandLineArgs::HasArg("pack");
 
+	std::filesystem::create_directories(gOutputPath);
+
+	std::shared_ptr<IFileSystem> nativeFS = FileSystemFactory::CreateNativeFileSystem();
+	gOutputFS = FileSystemFactory::CreateRelativeFileSystem(nativeFS, gOutputPath);
+
 	std::string includerDirs;
 	if (PhxEngine::CommandLineArgs::GetString("include_dir", includerDirs))
 	{
@@ -168,6 +180,7 @@ int main(int argc, char** argv)
 			gIncludeDirs.push_back(val);
 		}
 	}
+
 	gIncludeDirs.push_back(fs::path(gInputFile).parent_path().generic_string());
 
 	// If we have updated this binary, we should recompile everything

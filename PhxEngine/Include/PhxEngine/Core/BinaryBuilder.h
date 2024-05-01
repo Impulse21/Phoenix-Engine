@@ -72,6 +72,7 @@ namespace PhxEngine
 			return this->m_allocationSize;
 		}
 
+		Span<char> GetSpan() const { return Span<char>(this->m_memory.get(), this->m_allocationSize); }
 	private:
 		std::unique_ptr<char[]> m_memory;
 		size_t m_allocationSize = 0;

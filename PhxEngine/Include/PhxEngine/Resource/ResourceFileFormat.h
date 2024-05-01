@@ -79,7 +79,7 @@ namespace PhxEngine
 	struct Region
 	{
 		Compression Compression;
-		RelativePtr<T> Data;
+		size_t Offset;
 		uint32_t CompressedSize;
 		uint32_t UncompressedSize;
 	};
@@ -121,7 +121,7 @@ namespace PhxEngine
 
 		struct MetadataHeader
 		{
-			RHI::ShaderStage shaderStage;
+			RHI::ShaderStage ShaderStage;
 			// TODO: Reflection Data
 		};
 	}
