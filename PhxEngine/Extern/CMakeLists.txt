@@ -13,6 +13,13 @@ target_include_directories(json INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/nlohmann_
 set_target_properties(json PROPERTIES FOLDER ${extern_folder})
 
 
+file (GLOB CmdParser
+    ${CMAKE_CURRENT_SOURCE_DIR}/CmdParser/*.hpp)
+
+add_library(CmdParser INTERFACE ${CmdParser})
+target_include_directories(CmdParser INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/CmdParser" )
+set_target_properties(CmdParser PROPERTIES FOLDER ${extern_folder})
+
 # GLFW Library
 option(GLFW_BUILD_EXAMPLES "" OFF)
 option(GLFW_BUILD_TESTS "" OFF)

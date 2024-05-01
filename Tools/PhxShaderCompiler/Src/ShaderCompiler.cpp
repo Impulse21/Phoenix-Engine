@@ -12,6 +12,7 @@
 #include <PhxEngine/Core/BinaryBuilder.h>
 #include <PhxEngine/Resource/ResourceFileFormat.h>
 #include <PhxEngine/Core/VirtualFileSystem.h>
+#include <cmdparser.hpp>
 
 
 namespace fs = std::filesystem;
@@ -145,7 +146,24 @@ int main(int argc, char** argv)
 {
 	PhxEngine::Logger::Startup();
 	PhxEngine::CommandLineArgs::Initialize();
+	cli::Parser parser(argc, argv);
 
+	// TODO: I am here;
+	parser.set_required<std::string>("i", "input", "Input File.");
+	parser.set_optional<std::string>("o", "output", "data", "Strings are naturally included.");
+	parser.set_optional<int>("n", "number", 8, "Integers in all forms, e.g., unsigned int, long long, ..., are possible. Hexadecimal and Ocatl numbers parsed as well");
+	parser.set_optional<cli::NumericalBase<int, 10>>("t", "temp", 0, "integer parsing restricted only to numerical base 10");
+	parser.set_optional<double>("b", "beta", 11.0, "Also floating point values are possible.");
+	parser.set_optional<bool>("a", "all", false, "Boolean arguments are simply switched when encountered, i.e. false to true if provided.");
+
+	--infile ${ params_CONFIG }
+		--parallel
+		--out ${ params_DXIL }
+		--platform dxil
+		--cflags "${CFLAGS}"
+		- I ${ DONUT_SHADER_INCLUDE_DIR }
+		--compiler ${ DXC_DXIL_EXECUTABLE })
+	parser.run_and_exit_if_error();
 
 	if (!PhxEngine::CommandLineArgs::GetString("input_file", gInputFile))
 	{

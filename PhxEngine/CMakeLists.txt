@@ -136,7 +136,8 @@ target_link_libraries(${project} PUBLIC
 	entt
 	taskflow
 	imgui
-	yaml-cpp::yaml-cpp)
+	yaml-cpp::yaml-cpp
+	CmdParser)
 	
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 

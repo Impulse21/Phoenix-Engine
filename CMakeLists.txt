@@ -1,5 +1,5 @@
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.22)
 
 # Group CMakePredefinedTargets into a folder filter
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -20,6 +20,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_RUNTIME_OUTPUT_DIRECT
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
+
+include(CMakeDependentOption)
+cmake_dependent_option(PHX_WITH_DX12 "Enable the DX12 version of Donut" ON "WIN32" OFF)
 
 add_definitions(-DUNICODE)
 add_definitions(-D_UNICODE)

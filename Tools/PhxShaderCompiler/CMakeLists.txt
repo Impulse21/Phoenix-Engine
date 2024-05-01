@@ -6,7 +6,7 @@ set(extern_folder_name "Extern")
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /ENTRY:mainCRTStartup")
 add_executable(${project} WIN32 ${sources})
-target_link_libraries(${project} PUBLIC PhxEngine DirectXShaderCompiler yaml-cpp::yaml-cpp)
+target_link_libraries(${project} PUBLIC PhxEngine DirectXShaderCompiler yaml-cpp::yaml-cpp CmdParser)
 set_target_properties(${project} PROPERTIES FOLDER "${folder}")
 
 if (MSVC)
