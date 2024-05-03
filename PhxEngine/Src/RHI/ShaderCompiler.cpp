@@ -53,16 +53,12 @@ ShaderCompiler::CompilerResult ShaderCompiler::Compile(CompilerInput const& inpu
 	CompilerResult result;
 
 	ComPtr<IDxcUtils> dxcUtils;
-	assert(
-		SUCCEEDED(
-			DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(dxcUtils.GetAddressOf()))
-		));
+	HRESULT hr = DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(dxcUtils.GetAddressOf()));
+	assert( SUCCEEDED(hr) );
 
 	ComPtr<IDxcCompiler3> dxcCompiler;
-	assert(
-		SUCCEEDED(
-			DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(dxcCompiler.GetAddressOf()))
-		));
+	hr = DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(dxcCompiler.GetAddressOf()));
+	assert(SUCCEEDED(hr));
 
 	if (dxcCompiler == nullptr)
 	{

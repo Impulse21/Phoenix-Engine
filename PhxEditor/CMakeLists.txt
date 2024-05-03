@@ -8,6 +8,7 @@ add_executable(${project} ${sources})
 target_link_libraries(${project} PhxEngine)
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 
+add_dependencies(${project} PhxEngineShaders)
 if (MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /MP")
 endif()

@@ -8,7 +8,7 @@
 
 function(phx_compile_shaders)
     set(options "")
-    set(oneValueArgs TARGET CONFIG FOLDER DXIL SPIRV_DXC CFLAGS)
+    set(oneValueArgs TARGET CONFIG FOLDER DXIL SPIRV_DXC)
     set(multiValueArgs SOURCES)
     cmake_parse_arguments(params "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -35,13 +35,9 @@ function(phx_compile_shaders)
 
         add_custom_command(TARGET ${params_TARGET} PRE_BUILD
                           COMMAND PhxShaderCompiler
-                                   --infile ${params_CONFIG}
+                                   --inFile ${params_CONFIG}
                                    --parallel
-                                   --out ${params_DXIL}
-                                   --platform dxil
-                                   --cflags "${CFLAGS}"
-                                   -I ${DONUT_SHADER_INCLUDE_DIR}
-                                   --compiler ${DXC_DXIL_EXECUTABLE})
+                                   --outputDir ${params_DXIL})
     endif()
 
     if (params_SPIRV_DXC AND PHX_WITH_VULKAN)
@@ -60,7 +56,7 @@ endfunction()
 
 function(phx_compile_shaders_all_platforms)
     set(options "")
-    set(oneValueArgs TARGET CONFIG FOLDER OUTPUT_BASE CFLAGS)
+    set(oneValueArgs TARGET CONFIG FOLDER OUTPUT_BASE)
     set(multiValueArgs SOURCES)
     cmake_parse_arguments(params "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -74,10 +70,9 @@ function(phx_compile_shaders_all_platforms)
         message(FATAL_ERROR "phx_compile_shaders_all_platforms: OUTPUT_BASE argument missing")
     endif()
 
-    phx_compile_shaders(TARGET ${params_TARGET}
+    phx_compile_shaders(  TARGET ${params_TARGET}
                           CONFIG ${params_CONFIG}
                           FOLDER ${params_FOLDER}
-                          CFLAGS ${params_CFLAGS}
                           DXIL ${params_OUTPUT_BASE}/dxil
                           SPIRV_DXC ${params_OUTPUT_BASE}/spirv
                           SOURCES ${params_SOURCES})

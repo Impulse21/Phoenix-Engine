@@ -125,6 +125,7 @@ target_include_directories(${project}
 	PRIVATE "Src")
 
 add_subdirectory(Extern)
+add_subdirectory(Shaders)
 
 target_link_libraries(${project} PUBLIC
     OptickCore
@@ -138,7 +139,8 @@ target_link_libraries(${project} PUBLIC
 	imgui
 	yaml-cpp::yaml-cpp
 	CmdParser)
-	
+
+set_target_properties(PhxEngineShaders PROPERTIES FOLDER ${folder})	
 set_target_properties(${project} PROPERTIES FOLDER ${folder})
 
 
