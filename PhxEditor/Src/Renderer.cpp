@@ -4,11 +4,13 @@
 #include <PhxEngine/Core/VirtualFileSystem.h>
 #include <PhxEngine/Resource/ResourceStore.h>
 #include <PhxEngine/Resource/Shader.h>
+#include "ShaderResourceHandler.h"
 
 using namespace PhxEngine;
 
 PhxEditor::Renderer::Renderer()
 {
+    ResourceStore::RegisterHandler<ShaderResourceHandler>();
 }
 
 PhxEngine::ViewportHandle PhxEditor::Renderer::ViewportCreate()
@@ -47,7 +49,8 @@ void PhxEditor::Renderer::LoadShaders()
 {
     PHX_EVENT();
 
-    this->m_loadedShaders[ShaderTypes::VS_Triangle] = ResourceStore::GetResource<Shader>("DrawTriangle");
+    this->m_loadedShaders[ShaderTypes::VS_Triangle] = ResourceStore::GetResource<Shader>("/shaders/phx_engine/DrawTriangleVS.pso");
+    this->m_loadedShaders[ShaderTypes::PS_Triangle] = ResourceStore::GetResource<Shader>("/shaders/phx_engine/DrawTrianglePS.pso");
 
     // Check the Compile Directory to see if Shaders time stamp have changes
 

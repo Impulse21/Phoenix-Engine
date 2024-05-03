@@ -53,7 +53,6 @@ namespace PhxEditor
 
 	private:
 		PhxEngine::EnumArray<ShaderTypes, PhxEngine::RefCountPtr<PhxEngine::Shader>> m_loadedShaders;
-
 	};
 }
 

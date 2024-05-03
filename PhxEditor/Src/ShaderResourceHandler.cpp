@@ -7,6 +7,8 @@ using namespace PhxEngine;
 
 PhxEngine::RefCountPtr<PhxEngine::Resource> PhxEditor::ShaderResourceHandler::Load(std::unique_ptr<PhxEngine::IBlob>&& fileData)
 {
+
+
 #if false
 	std::string shaderPath = this->m_shaderPath + shaderFilename;
 	std::filesystem::path absoluteFilePath = std::filesystem::absolute(shaderPath);

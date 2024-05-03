@@ -56,22 +56,9 @@ namespace
 		return FileAccess::NormalizePath(name);
 	}
 
-	std::unique_ptr<IBlob> LoadFileFromMountedPaths(std::string const& path)
-	{
-		for (auto& mountedPath : m_mountedResourcePaths)
-		{
-			if (mountedPath->FileExists(path))
-			{
-				return mountedPath->ReadFile(path);
-			}
-		}
-
-		return nullptr;
-	}
-
 	std::unique_ptr<IBlob> LoadFile(std::string const& path)
 	{
-		return LoadFileFromMountedPaths(path);
+		return IRootFileSystem::Ptr->ReadFile(path);
 	}
 }
 
@@ -83,7 +70,7 @@ void PhxEngine::ResourceStore::RegisterHandler(std::unique_ptr<ResourceHandler>&
 		PHX_LOG_CORE_WARN("Replacing an existing Resource Extension");
 	}
 
-	m_resourceHandlers[handler->GetResourceExt()] = std::move(handler);
+	m_resourceHandlers[handler->GetResourceType()] = std::move(handler);
 }
 
 void PhxEngine::ResourceStore::MountResourceDir(std::string const& path)
