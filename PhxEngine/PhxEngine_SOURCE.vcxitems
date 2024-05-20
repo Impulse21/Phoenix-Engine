@@ -1,0 +1,41 @@
+<<<<<<< HEAD
+﻿<?xml version="1.0" encoding="utf-8"?>
+=======
+<?xml version="1.0" encoding="utf-8"?>
+>>>>>>> c44c559ccb372caf73938f28953663abf1e0a85f
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <ItemsProjectGuid>{bfe2526e-28d8-4380-8c9f-9e6890818845}</ItemsProjectGuid>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectCapability Include="SourceItemsFromImports" />
+  </ItemGroup>
+<<<<<<< HEAD
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\CommonInclude.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\EnumArray.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\EnumClasssFlags.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\Platform.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\D3D12TypeTranslations.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\d3dx12.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\PhxRHI_D3D12.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\PlatformTypes.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\IDeviceNotify.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\PhxRHI.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\PhxRHIDescriptors.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\PhxRHIEnums.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\PhxRHI_D3D12.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)RHI\PhxRHI.cpp" />
+  </ItemGroup>
+=======
+>>>>>>> c44c559ccb372caf73938f28953663abf1e0a85f
+</Project>

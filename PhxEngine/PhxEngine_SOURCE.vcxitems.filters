@@ -1,0 +1,63 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Engine">
+      <UniqueIdentifier>{736bf04d-dd97-4459-8ba7-4d7871d33da9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\RHI">
+      <UniqueIdentifier>{514169d4-f139-45d3-b40f-9d5566617aec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\RHI\D3D12">
+      <UniqueIdentifier>{9bc7f54a-3eed-4547-89ca-2ff3d2c1d2c2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Core">
+      <UniqueIdentifier>{4c5fe5a1-e525-48db-a987-fdd937754e2e}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\PhxRHI.h">
+      <Filter>Engine\RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\PlatformTypes.h">
+      <Filter>Engine\RHI\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\CommonInclude.h">
+      <Filter>Engine\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\PhxRHI_D3D12.h">
+      <Filter>Engine\RHI\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\d3dx12.h">
+      <Filter>Engine\RHI\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\IDeviceNotify.h">
+      <Filter>Engine\RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\PhxRHIDescriptors.h">
+      <Filter>Engine\RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\Platform.h">
+      <Filter>Engine\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\PhxRHIEnums.h">
+      <Filter>Engine\RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\EnumArray.h">
+      <Filter>Engine\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\EnumClasssFlags.h">
+      <Filter>Engine\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\D3D12TypeTranslations.h">
+      <Filter>Engine\RHI\D3D12</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)RHI\PhxRHI.cpp">
+      <Filter>Engine\RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\PhxRHI_D3D12.cpp">
+      <Filter>Engine\RHI\D3D12</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

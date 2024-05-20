@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<<<<<<< HEAD
+  <Import Project="..\packages\Microsoft.Direct3D.D3D12.1.613.3\build\native\Microsoft.Direct3D.D3D12.props" Condition="Exists('..\packages\Microsoft.Direct3D.D3D12.1.613.3\build\native\Microsoft.Direct3D.D3D12.props')" />
+=======
+>>>>>>> c44c559ccb372caf73938f28953663abf1e0a85f
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|Gaming.Desktop.x64">
+      <Configuration>Release</Configuration>
+      <Platform>Gaming.Desktop.x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile|Gaming.Desktop.x64">
+      <Configuration>Profile</Configuration>
+      <Platform>Gaming.Desktop.x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Gaming.Desktop.x64">
+      <Configuration>Debug</Configuration>
+      <Platform>Gaming.Desktop.x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <RootNamespace>PhxEditor_WindowsDx12</RootNamespace>
+    <ProjectGuid>{a15f68bd-3b6c-4345-869a-8d206d496c4f}</ProjectGuid>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <Keyword>Win32Proj</Keyword>
+    <!-- - - - -->
+    <MinimumVisualStudioVersion>15.0</MinimumVisualStudioVersion>
+    <TargetRuntime>Native</TargetRuntime>
+    <WindowsTargetPlatformVersion>$([Microsoft.Build.Utilities.ToolLocationHelper]::GetLatestSDKTargetPlatformVersion('Windows', '10.0'))</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+    <Import Project="PhxEditor_SOURCE.vcxitems" Label="Shared" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">
+    <LibraryPath>$(Console_SdkLibPath);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(Console_SdkIncludeRoot);$(IncludePath)</IncludePath>
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)\Bin\$(Platform)\$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">
+    <LibraryPath>$(Console_SdkLibPath);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(Console_SdkIncludeRoot);$(IncludePath)</IncludePath>
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)\Bin\$(Platform)\$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">
+    <LibraryPath>$(Console_SdkLibPath);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(Console_SdkIncludeRoot);$(IncludePath)</IncludePath>
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)\Bin\$(Platform)\$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>$(Console_Libs);%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <Optimization>MaxSpeed</Optimization>
+<<<<<<< HEAD
+      <PreprocessorDefinitions>USING_D3D12_AGILITY_SDK;NDEBUG;__WRL_NO_DEFAULT_LIB__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+=======
+      <PreprocessorDefinitions>NDEBUG;__WRL_NO_DEFAULT_LIB__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+>>>>>>> c44c559ccb372caf73938f28953663abf1e0a85f
+      <WarningLevel>Level4</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
+<<<<<<< HEAD
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\PhxEngine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+=======
+>>>>>>> c44c559ccb372caf73938f28953663abf1e0a85f
+    </ClCompile>
+    <FXCompile>
+      <ShaderModel>6.0</ShaderModel>
+      <EnableDebuggingInformation>true</EnableDebuggingInformation>
+      <AdditionalOptions>/Fd "$(OutDir)%(Filename).pdb" %(AdditionalOptions)</AdditionalOptions>
+    </FXCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>$(Console_Libs);%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <Optimization>MaxSpeed</Optimization>
+<<<<<<< HEAD
+      <PreprocessorDefinitions>USING_D3D12_AGILITY_SDK;NDEBUG;__WRL_NO_DEFAULT_LIB__;PROFILE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+=======
+      <PreprocessorDefinitions>NDEBUG;__WRL_NO_DEFAULT_LIB__;PROFILE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+>>>>>>> c44c559ccb372caf73938f28953663abf1e0a85f
+      <WarningLevel>Level4</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
+<<<<<<< HEAD
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\PhxEngine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+=======
+>>>>>>> c44c559ccb372caf73938f28953663abf1e0a85f
+    </ClCompile>
+    <FXCompile>
+      <ShaderModel>6.0</ShaderModel>
+      <EnableDebuggingInformation>true</EnableDebuggingInformation>
+      <AdditionalOptions>/Fd "$(OutDir)%(Filename).pdb" %(AdditionalOptions)</AdditionalOptions>
+    </FXCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>$(Console_Libs);%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <ClCompile>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <MinimalRebuild>false</MinimalRebuild>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>Disabled</Optimization>
+<<<<<<< HEAD
+      <PreprocessorDefinitions>USING_D3D12_AGILITY_SDK;_DEBUG;__WRL_NO_DEFAULT_LIB__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\PhxEngine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+=======
+      <PreprocessorDefinitions>_DEBUG;__WRL_NO_DEFAULT_LIB__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
+>>>>>>> c44c559ccb372caf73938f28953663abf1e0a85f
+    </ClCompile>
+    <FXCompile>
+      <ShaderModel>6.0</ShaderModel>
+      <EnableDebuggingInformation>true</EnableDebuggingInformation>
+      <AdditionalOptions>/Fd "$(OutDir)%(Filename).pdb" %(AdditionalOptions)</AdditionalOptions>
+    </FXCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="pch.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <MGCCompile Include="MicrosoftGameConfig.mgc" />
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="GraphicsLogo.png">
+      <DeploymentContent>true</DeploymentContent>
+      <DestinationFileName>%(Filename)%(Extension)</DestinationFileName>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="LargeLogo.png">
+      <DeploymentContent>true</DeploymentContent>
+      <DestinationFileName>%(Filename)%(Extension)</DestinationFileName>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="SmallLogo.png">
+      <DeploymentContent>true</DeploymentContent>
+      <DestinationFileName>%(Filename)%(Extension)</DestinationFileName>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="SplashScreen.png">
+      <DeploymentContent>true</DeploymentContent>
+      <DestinationFileName>%(Filename)%(Extension)</DestinationFileName>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="StoreLogo.png">
+      <DeploymentContent>true</DeploymentContent>
+      <DestinationFileName>%(Filename)%(Extension)</DestinationFileName>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+<<<<<<< HEAD
+=======
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+>>>>>>> c44c559ccb372caf73938f28953663abf1e0a85f
+    <ProjectReference Include="..\PhxEngine\PhxEngine_WIndowsDx12.vcxproj">
+      <Project>{2207063e-5627-4dc7-b6e0-6f3b01ce3de2}</Project>
+    </ProjectReference>
+  </ItemGroup>
+<<<<<<< HEAD
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets" Condition="Exists('..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets')" />
+    <Import Project="..\packages\Microsoft.Direct3D.D3D12.1.613.3\build\native\Microsoft.Direct3D.D3D12.targets" Condition="Exists('..\packages\Microsoft.Direct3D.D3D12.1.613.3\build\native\Microsoft.Direct3D.D3D12.targets')" />
+=======
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\packages\WinPixEventRuntime.1.0.230302001\build\WinPixEventRuntime.targets" Condition="Exists('..\packages\WinPixEventRuntime.1.0.230302001\build\WinPixEventRuntime.targets')" />
+>>>>>>> c44c559ccb372caf73938f28953663abf1e0a85f
+  </ImportGroup>
+  <Target Name="EnsureGDK" BeforeTargets="_CheckForInvalidConfigurationAndPlatform" Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(Platform)', 'Gaming\..+\.x64'))">
+    <PropertyGroup>
+      <ErrorText>This project requires the Microsoft GDK to be installed. If you have already installed the GDK, then run Repair to ensure proper integration with Visual Studio. The missing platform is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(VCTargetsPath)\Platforms\$(Platform)\Platform.props')" Text="$([System.String]::Format('$(ErrorText)', '$(Platform)'))" />
+  </Target>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+<<<<<<< HEAD
+    <Error Condition="!Exists('..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.Direct3D.D3D12.1.613.3\build\native\Microsoft.Direct3D.D3D12.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Direct3D.D3D12.1.613.3\build\native\Microsoft.Direct3D.D3D12.props'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.Direct3D.D3D12.1.613.3\build\native\Microsoft.Direct3D.D3D12.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Direct3D.D3D12.1.613.3\build\native\Microsoft.Direct3D.D3D12.targets'))" />
+=======
+    <Error Condition="!Exists('..\packages\WinPixEventRuntime.1.0.230302001\build\WinPixEventRuntime.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\WinPixEventRuntime.1.0.230302001\build\WinPixEventRuntime.targets'))" />
+>>>>>>> c44c559ccb372caf73938f28953663abf1e0a85f
+  </Target>
+</Project>
