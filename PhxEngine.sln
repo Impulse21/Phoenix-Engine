@@ -11,7 +11,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Application", "Application"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhxEditor_Source", "PhxEditor\PhxEditor_Source.vcxitems", "{DE728E30-D4D7-4CF0-BDF0-853CE4276417}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhxEditor_Windows", "PhxEditor\PhxEditor_Windows.vcxproj", "{4F4E68FB-C942-43E6-B9AE-06C8EE3EB8FF}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhxEditor_Windows", "PhxEditor\PhxEditor_Windows.vcxproj", "{3C781A6F-0F6C-45FC-ABCB-1928EFD17660}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhxEngine_Windows", "PhxEngine\PhxEngine_Windows.vcxproj", "{11561D58-ABCB-4FFE-95DD-EDE1F0BA2E0A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -20,12 +22,18 @@ Global
 		Release|Gaming.Desktop.x64 = Release|Gaming.Desktop.x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{4F4E68FB-C942-43E6-B9AE-06C8EE3EB8FF}.Debug|Gaming.Desktop.x64.ActiveCfg = Debug|Gaming.Desktop.x64
-		{4F4E68FB-C942-43E6-B9AE-06C8EE3EB8FF}.Debug|Gaming.Desktop.x64.Build.0 = Debug|Gaming.Desktop.x64
-		{4F4E68FB-C942-43E6-B9AE-06C8EE3EB8FF}.Profile|Gaming.Desktop.x64.ActiveCfg = Profile|Gaming.Desktop.x64
-		{4F4E68FB-C942-43E6-B9AE-06C8EE3EB8FF}.Profile|Gaming.Desktop.x64.Build.0 = Profile|Gaming.Desktop.x64
-		{4F4E68FB-C942-43E6-B9AE-06C8EE3EB8FF}.Release|Gaming.Desktop.x64.ActiveCfg = Release|Gaming.Desktop.x64
-		{4F4E68FB-C942-43E6-B9AE-06C8EE3EB8FF}.Release|Gaming.Desktop.x64.Build.0 = Release|Gaming.Desktop.x64
+		{3C781A6F-0F6C-45FC-ABCB-1928EFD17660}.Debug|Gaming.Desktop.x64.ActiveCfg = Debug|Gaming.Desktop.x64
+		{3C781A6F-0F6C-45FC-ABCB-1928EFD17660}.Debug|Gaming.Desktop.x64.Build.0 = Debug|Gaming.Desktop.x64
+		{3C781A6F-0F6C-45FC-ABCB-1928EFD17660}.Profile|Gaming.Desktop.x64.ActiveCfg = Profile|Gaming.Desktop.x64
+		{3C781A6F-0F6C-45FC-ABCB-1928EFD17660}.Profile|Gaming.Desktop.x64.Build.0 = Profile|Gaming.Desktop.x64
+		{3C781A6F-0F6C-45FC-ABCB-1928EFD17660}.Release|Gaming.Desktop.x64.ActiveCfg = Release|Gaming.Desktop.x64
+		{3C781A6F-0F6C-45FC-ABCB-1928EFD17660}.Release|Gaming.Desktop.x64.Build.0 = Release|Gaming.Desktop.x64
+		{11561D58-ABCB-4FFE-95DD-EDE1F0BA2E0A}.Debug|Gaming.Desktop.x64.ActiveCfg = Debug|Gaming.Desktop.x64
+		{11561D58-ABCB-4FFE-95DD-EDE1F0BA2E0A}.Debug|Gaming.Desktop.x64.Build.0 = Debug|Gaming.Desktop.x64
+		{11561D58-ABCB-4FFE-95DD-EDE1F0BA2E0A}.Profile|Gaming.Desktop.x64.ActiveCfg = Profile|Gaming.Desktop.x64
+		{11561D58-ABCB-4FFE-95DD-EDE1F0BA2E0A}.Profile|Gaming.Desktop.x64.Build.0 = Profile|Gaming.Desktop.x64
+		{11561D58-ABCB-4FFE-95DD-EDE1F0BA2E0A}.Release|Gaming.Desktop.x64.ActiveCfg = Release|Gaming.Desktop.x64
+		{11561D58-ABCB-4FFE-95DD-EDE1F0BA2E0A}.Release|Gaming.Desktop.x64.Build.0 = Release|Gaming.Desktop.x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -33,13 +41,13 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{7C6FF1B8-FEA9-481C-8772-228148EC793D} = {08BF99A1-FB59-4156-AA6F-8609F398FD3B}
 		{DE728E30-D4D7-4CF0-BDF0-853CE4276417} = {7F4F3042-D8EB-4462-8640-156A8FC5BEB3}
-		{4F4E68FB-C942-43E6-B9AE-06C8EE3EB8FF} = {7F4F3042-D8EB-4462-8640-156A8FC5BEB3}
+		{3C781A6F-0F6C-45FC-ABCB-1928EFD17660} = {7F4F3042-D8EB-4462-8640-156A8FC5BEB3}
+		{11561D58-ABCB-4FFE-95DD-EDE1F0BA2E0A} = {08BF99A1-FB59-4156-AA6F-8609F398FD3B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {930367CB-B352-4A6D-8277-2D97E95F837C}
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
-		PhxEditor\PhxEditor_Source.vcxitems*{4f4e68fb-c942-43e6-b9ae-06c8ee3eb8ff}*SharedItemsImports = 4
 		PhxEngine\PhxEngine_Source.vcxitems*{7c6ff1b8-fea9-481c-8772-228148ec793d}*SharedItemsImports = 9
 		PhxEditor\PhxEditor_Source.vcxitems*{de728e30-d4d7-4cf0-bdf0-853ce4276417}*SharedItemsImports = 9
 	EndGlobalSection
