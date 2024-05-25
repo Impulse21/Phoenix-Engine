@@ -48,6 +48,8 @@ Global
 		SolutionGuid = {930367CB-B352-4A6D-8277-2D97E95F837C}
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		PhxEngine\PhxEngine_Source.vcxitems*{11561d58-abcb-4ffe-95dd-ede1f0ba2e0a}*SharedItemsImports = 4
+		PhxEditor\PhxEditor_Source.vcxitems*{3c781a6f-0f6c-45fc-abcb-1928efd17660}*SharedItemsImports = 4
 		PhxEngine\PhxEngine_Source.vcxitems*{7c6ff1b8-fea9-481c-8772-228148ec793d}*SharedItemsImports = 9
 		PhxEditor\PhxEditor_Source.vcxitems*{de728e30-d4d7-4cf0-bdf0-853ce4276417}*SharedItemsImports = 9
 	EndGlobalSection

@@ -27,3 +27,8 @@
 #define NOHELP
 
 #include <windows.h>
+
+#include "BaseInclude.h"
+#include <string>
+#include <vector>
+#include <memory>
