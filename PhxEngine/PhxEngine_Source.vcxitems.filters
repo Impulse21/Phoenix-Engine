@@ -6,9 +6,10 @@
       <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)phxEngineCore.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)BaseInclude.h">
+    <ClInclude Include="$(MSBuildThisFileDirectory)phxBaseInclude.h">
       <Filter>Core</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxLog.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
@@ -17,5 +18,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)phxEngineCore.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxLog.cpp" />
   </ItemGroup>
 </Project>

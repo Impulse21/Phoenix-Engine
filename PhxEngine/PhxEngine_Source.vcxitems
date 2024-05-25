@@ -14,12 +14,14 @@
     <ProjectCapability Include="SourceItemsFromImports" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="$(MSBuildThisFileDirectory)BaseInclude.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)phxBaseInclude.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxLog.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxPlatform.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)phxApplication.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)phxEngineCore.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxLog.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)phxEngineCore.cpp" />
   </ItemGroup>
 </Project>

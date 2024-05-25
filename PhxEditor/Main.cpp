@@ -6,6 +6,7 @@
 #include "Game.h"
 #include "Editor.h"
 #include "phxEngineCore.h"
+#include "Core/phxLog.h"
 
 using namespace DirectX;
 using namespace phx::editor;
@@ -107,6 +108,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
                 .WindowWidth = rc.right - rc.left,
                 .WindowHeight = rc.bottom - rc.top,
             });
+        PHX_INFO("Startup Completed");
     }
 
     // Main message loop
