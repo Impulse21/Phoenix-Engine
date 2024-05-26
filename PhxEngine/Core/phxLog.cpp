@@ -6,10 +6,39 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
+using namespace phx::core;
+
 namespace
 {
 	std::shared_ptr<spdlog::logger> g_coreLogger;
 	std::shared_ptr<spdlog::logger> g_clientLogger;
+	void LogInternal(spdlog::logger& logger, Log::Level level, std::string_view msg)
+	{
+		using namespace phx::core::Log;
+
+		switch (level)
+		{
+		case Log::Level::Trace:
+			logger.trace(msg);
+			break;
+		case Log::Level::Info:
+			logger.info(msg);
+			break;
+		case Log::Level::Debug:
+			logger.debug(msg);
+			break;
+		case Log::Level::Warn:
+			logger.warn(msg);
+			break;
+		case Log::Level::Error:
+			logger.error(msg);
+			break;
+		case Log::Level::Critical:
+		default:
+			logger.critical(msg);
+			break;
+		}
+	}
 }
 
 void phx::core::Log::Initialize()
@@ -30,4 +59,18 @@ void phx::core::Log::Initialize()
 	spdlog::register_logger(g_clientLogger);
 	g_clientLogger->set_level(spdlog::level::trace);
 	g_clientLogger->flush_on(spdlog::level::trace);
+}
+
+void phx::core::Log::Log(LogType type, Level level, std::string_view msg)
+{
+	switch (type)
+	{
+	case LogType::App:
+		LogInternal(*g_clientLogger, level, msg);
+		break;
+	case LogType::Engine:
+	default:
+		LogInternal(*g_coreLogger, level, msg);
+		break;
+	};
 }
