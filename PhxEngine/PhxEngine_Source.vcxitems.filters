@@ -9,15 +9,61 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)phxBaseInclude.h">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxLog.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxLog.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Graphics\phxGfxCore.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Graphics\phxGfxDescriptors.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Graphics\D3D12\phxGfxPlatformTypes.h">
+      <Filter>Graphics\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Graphics\phxGfxEnums.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxEnumArray.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxEnumClassFlags.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Graphics\phxGfxDeviceNotify.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Graphics\D3D12\phxGfxCore_D3D12.h">
+      <Filter>Graphics\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Graphics\D3D12\D3D12TypeTranslators.h">
+      <Filter>Graphics\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Graphics\D3D12\d3dx12.h">
+      <Filter>Graphics\D3D12</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
       <UniqueIdentifier>{c338938b-6c44-4f0b-9b04-318a1bb5b4d9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Graphics">
+      <UniqueIdentifier>{a8ba7d6c-bcc9-4a92-a2d7-f22089dbc6d4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\D3D12">
+      <UniqueIdentifier>{a4932dca-1e91-402d-a8d2-a7521eb86a15}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)phxEngineCore.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxLog.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxLog.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Graphics\phxGfxCore.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Graphics\D3D12\phxGfxCore_D3D12.cpp">
+      <Filter>Graphics\D3D12</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

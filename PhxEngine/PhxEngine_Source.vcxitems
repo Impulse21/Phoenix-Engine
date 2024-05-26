@@ -14,6 +14,16 @@
     <ProjectCapability Include="SourceItemsFromImports" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxEnumArray.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxEnumClassFlags.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Graphics\D3D12\D3D12TypeTranslators.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Graphics\D3D12\d3dx12.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Graphics\D3D12\phxGfxCore_D3D12.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Graphics\D3D12\phxGfxPlatformTypes.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Graphics\phxGfxCore.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Graphics\phxGfxDescriptors.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Graphics\phxGfxDeviceNotify.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Graphics\phxGfxEnums.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)phxBaseInclude.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxLog.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxPlatform.h" />
@@ -22,6 +32,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxLog.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Graphics\D3D12\phxGfxCore_D3D12.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Graphics\phxGfxCore.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)phxEngineCore.cpp" />
   </ItemGroup>
 </Project>
