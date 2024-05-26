@@ -2,4 +2,4 @@
 
 #include "Core/phxLog.h"
 
-#define UNUSED [[maybe_unused]]
+#define PHX_UNUSED [[maybe_unused]]

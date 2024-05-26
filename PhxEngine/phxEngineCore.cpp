@@ -15,13 +15,13 @@ namespace
 
 namespace
 {
-	void ThreadedTick(UNUSED IApplication& app)
+	void ThreadedTick(IApplication& app)
 	{
 		tf::Taskflow taskflow;
 		auto [PreRenderTask, UpdateTask, RenderTask] = taskflow.emplace(  // create four tasks
-			[&]() { app.OnPreRender(); },
-			[&]() { app.OnUpdate(); },
-			[&]() { app.OnRender(); }
+			[&](tf::Subflow& subflow) { app.OnPreRender(&subflow); },
+			[&](tf::Subflow& subflow) { app.OnUpdate(&subflow); },
+			[&](tf::Subflow& subflow) { app.OnRender(&subflow); }
 		);
 
 		PreRenderTask.precede(UpdateTask, RenderTask);
@@ -37,7 +37,7 @@ namespace
 	}
 }
 
-void phx::EngineCore::InitializeApplication(IApplication& app, UNUSED EngineParams const& desc)
+void phx::EngineCore::InitializeApplication(IApplication& app, PHX_UNUSED EngineParams const& desc)
 {
 	core::Log::Initialize();
 

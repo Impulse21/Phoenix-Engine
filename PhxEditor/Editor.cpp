@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Editor.h"
 
+#include "phxBaseInclude.h"
+
 void phx::editor::Editor::OnStartup()
 {
 }
@@ -9,14 +11,14 @@ void phx::editor::Editor::OnShutdown()
 {
 }
 
-void phx::editor::Editor::OnPreRender()
+void phx::editor::Editor::OnPreRender(PHX_UNUSED Subflow* subflow)
 {
 }
 
-void phx::editor::Editor::OnRender()
+void phx::editor::Editor::OnRender(PHX_UNUSED Subflow* subflow)
 {
 }
 
-void phx::editor::Editor::OnUpdate()
+void phx::editor::Editor::OnUpdate(PHX_UNUSED Subflow* subflow)
 {
 }

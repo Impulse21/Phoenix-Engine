@@ -12,9 +12,9 @@ namespace phx::editor
 		void OnStartup() override;
 		void OnShutdown() override;
 
-		void OnPreRender() override;
-		void OnRender() override;
-		void OnUpdate() override;
+		void OnPreRender(Subflow* subflow) override;
+		void OnRender(Subflow* subflow) override;
+		void OnUpdate(Subflow* subflow) override;
 
 		bool EnableMultiThreading() override { return true; }
 	};
