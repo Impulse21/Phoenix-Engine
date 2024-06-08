@@ -6,6 +6,7 @@
 #include "Game.h"
 #include "Editor.h"
 #include "phxEngineCore.h"
+#include "Graphics/phxGfxCore.h"
 #include "Core/phxLog.h"
 
 using namespace DirectX;
@@ -17,18 +18,8 @@ using namespace phx::editor;
 
 #pragma warning(disable : 4061)
 
-#ifdef USING_D3D12_AGILITY_SDK
-extern "C"
-{
-    // Used to enable the "Agility SDK" components
-    __declspec(dllexport) extern const UINT D3D12SDKVersion = D3D12_SDK_VERSION;
-    __declspec(dllexport) extern const char* D3D12SDKPath = u8".\\D3D12\\";
-}
-#endif
-
 namespace
 {
-    std::unique_ptr<Game> g_game;
     std::unique_ptr<Editor> g_editor;
 }
 
@@ -59,7 +50,6 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     }
 
     g_editor = std::make_unique<Editor>();
-    g_game = std::make_unique<Game>();
 
     // Register class and create window
     {
@@ -78,8 +68,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
             return 1;
 
         // Create window
-        int w, h;
-        g_game->GetDefaultSize(w, h);
+        uint32_t w, h;
+        g_editor->GetDefaultWindowSize(w, h);
 
         RECT rc = { 0, 0, static_cast<LONG>(w), static_cast<LONG>(h) };
 
@@ -88,7 +78,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
         HWND hwnd = CreateWindowExW(0, L"PhxEditor_WindowsWindowClass", g_szAppName, WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top,
             nullptr, nullptr, hInstance,
-            g_game.get());
+            g_editor.get());
         // TODO: Change to CreateWindowExW(WS_EX_TOPMOST, L"PhxEditor_WindowsWindowClass", g_szAppName, WS_POPUP,
         // to default to fullscreen.
 
@@ -100,8 +90,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
         GetClientRect(hwnd, &rc);
 
-        g_game->Initialize(hwnd, rc.right - rc.left, rc.bottom - rc.top);
-        phx::EngineCore::InitializeApplication(
+        phx::Engine::Initialize(
             *g_editor, 
             {
                 .Window = hwnd,
@@ -122,18 +111,19 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
         }
         else
         {
-            phx::EngineCore::Tick(*g_editor);
-            g_game->Tick();
+            phx::Engine::Tick(*g_editor);
         }
     }
 
-    phx::EngineCore::FinializeApplcation(*g_editor);
+    phx::Engine::Finialize(*g_editor);
     XGameRuntimeUninitialize();
-
-    g_game.reset();
+    
+    g_editor.reset();
 
     return static_cast<int>(msg.wParam);
 }
+
+#define ENABLE_ENGINE true
 
 // Windows procedure
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -158,9 +148,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_PAINT:
-        if (s_in_sizemove && game)
+        if (s_in_sizemove && editor)
         {
-            phx::EngineCore::Tick(*editor);
+            phx::Engine::Tick(*editor);
         }
         else
         {
@@ -171,16 +161,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_DISPLAYCHANGE:
-        if (game)
-        {
-            game->OnDisplayChange();
-        }
+        phx::gfx::UpdateColourSpace();
         break;
 
     case WM_MOVE:
-        if (game)
+        if (editor)
         {
-            game->OnWindowMoved();
+            // game->OnWindowMoved();
         }
         break;
 
@@ -190,21 +177,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (!s_minimized)
             {
                 s_minimized = true;
-                if (!s_in_suspend && game)
-                    game->OnSuspending();
+                if (!s_in_suspend && editor)
+                    editor->OnSuspend();
                 s_in_suspend = true;
             }
         }
         else if (s_minimized)
         {
             s_minimized = false;
-            if (s_in_suspend && game)
-                game->OnResuming();
+            if (s_in_suspend && editor)
+                editor->OnResume();
             s_in_suspend = false;
         }
-        else if (!s_in_sizemove && game)
+        else if (!s_in_sizemove)
         {
-            game->OnWindowSizeChanged(LOWORD(lParam), HIWORD(lParam));
+            phx::gfx::ResizeSwapchain(LOWORD(lParam), HIWORD(lParam));
         }
         break;
 
@@ -214,13 +201,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_EXITSIZEMOVE:
         s_in_sizemove = false;
-        if (game)
-        {
-            RECT rc;
-            GetClientRect(hWnd, &rc);
 
-            game->OnWindowSizeChanged(rc.right - rc.left, rc.bottom - rc.top);
-        }
+        RECT rc;
+        GetClientRect(hWnd, &rc);
+
+        phx::gfx::ResizeSwapchain(rc.right - rc.left, rc.bottom - rc.top);
         break;
 
     case WM_GETMINMAXINFO:
@@ -232,34 +217,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
 
-    case WM_ACTIVATEAPP:
-        if (game)
-        {
-            if (wParam)
-            {
-                game->OnActivated();
-            }
-            else
-            {
-                game->OnDeactivated();
-            }
-        }
-        break;
-
     case WM_POWERBROADCAST:
         switch (wParam)
         {
         case PBT_APMQUERYSUSPEND:
-            if (!s_in_suspend && game)
-                game->OnSuspending();
+            if (!s_in_suspend && editor)
+                editor->OnSuspend();
             s_in_suspend = true;
             return TRUE;
 
         case PBT_APMRESUMESUSPEND:
             if (!s_minimized)
             {
-                if (s_in_suspend && game)
-                    game->OnResuming();
+                if (s_in_suspend && editor)
+                    editor->OnResume();
                 s_in_suspend = false;
             }
             return TRUE;
@@ -279,10 +250,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 SetWindowLongPtr(hWnd, GWL_STYLE, WS_OVERLAPPEDWINDOW);
                 SetWindowLongPtr(hWnd, GWL_EXSTYLE, 0);
 
-                int width = 800;
-                int height = 600;
-                if (game)
-                    game->GetDefaultSize(width, height);
+                uint32_t width = 800;
+                uint32_t height = 600;
+                if (editor)
+                    editor->GetDefaultWindowSize(width, height);
 
                 ShowWindow(hWnd, SW_SHOWNORMAL);
 

@@ -1,11 +1,11 @@
 #include "pch.h"
 #include "phxEngineCore.h"
 #include "phxApplication.h"
+#include "RHI/phxRHI.h"
 
 #include <taskflow/taskflow.hpp>
 
 using namespace phx;
-using namespace phx::EngineCore;
 
 namespace
 {
@@ -37,17 +37,20 @@ namespace
 	}
 }
 
-void phx::EngineCore::InitializeApplication(IApplication& app, PHX_UNUSED EngineParams const& desc)
+void phx::Engine::Initialize(IApplication& app, PHX_UNUSED EngineParams const& desc)
 {
 	core::Log::Initialize();
 
 	PHX_CORE_INFO("Engine Initializing");
 
+	rhi::InitDesc rhiInit = {};
+	rhi::Initialize(rhiInit);
+
 	// Display number of Executor Tasks
 	app.OnStartup();
 }
 
-void phx::EngineCore::Tick(IApplication& app)
+void phx::Engine::Tick(IApplication& app)
 {
 	if (app.EnableMultiThreading())
 		ThreadedTick(app);
@@ -55,7 +58,9 @@ void phx::EngineCore::Tick(IApplication& app)
 		SyncTick(app);
 }
 
-void phx::EngineCore::FinializeApplcation(IApplication& app)
+void phx::Engine::Finialize(IApplication& app)
 {
 	app.OnShutdown();
+
+	rhi::Finalize();
 }

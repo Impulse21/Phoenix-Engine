@@ -5,7 +5,7 @@
 namespace phx
 {
 	class IApplication;
-	namespace EngineCore
+	namespace Engine
 	{
 		struct EngineParams
 		{
@@ -15,8 +15,8 @@ namespace phx
 
 		};
 
-		void InitializeApplication(IApplication& app, EngineParams const& desc);
+		void Initialize(IApplication& app, EngineParams const& desc);
 		void Tick(IApplication& app);
-		void FinializeApplcation(IApplication& app);
+		void Finialize(IApplication& app);
 	};
 }

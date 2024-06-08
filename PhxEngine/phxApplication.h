@@ -16,6 +16,10 @@ namespace phx
 		virtual void OnUpdate(Subflow* subflow = nullptr) = 0;
 
 		virtual bool EnableMultiThreading() = 0;
+		virtual void GetDefaultWindowSize(uint32_t& width, uint32_t& height) = 0;
+
+		virtual void OnSuspend() = 0;
+		virtual void OnResume() = 0;
 
 		virtual ~IApplication() = default;
 	};

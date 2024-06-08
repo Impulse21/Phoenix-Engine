@@ -9,5 +9,6 @@ namespace phx::core
 {
 #ifdef _WIN32
 	using WindowHandle = HWND;
+	constexpr WindowHandle InvalidWindowHandle = NULL;
 #endif
 }
