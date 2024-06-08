@@ -73,6 +73,9 @@
 #include <stdexcept>
 #include <system_error>
 #include <tuple>
+#include <array>
+#include <vector>
+#include <deque>
 
 #ifdef _DEBUG
 #include <dxgidebug.h>

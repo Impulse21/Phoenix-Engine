@@ -7,13 +7,13 @@
 #include "phxHandle.h"
 
 #include <iostream>
-namespace PhxEngine
+namespace phx
 {
 	template<typename ImplT, typename HT>
-	class Pool
+	class HandlePool
 	{
 	public:
-		Pool()
+		HandlePool()
 			: m_size(0)
 			, m_numActiveEntries(0)
 			, m_data(nullptr)
@@ -22,7 +22,7 @@ namespace PhxEngine
 		{
 		}
 
-		~Pool()
+		~HandlePool()
 		{
 			this->Finalize();
 		}

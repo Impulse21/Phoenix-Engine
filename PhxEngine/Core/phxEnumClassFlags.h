@@ -12,7 +12,7 @@
 	inline constexpr bool  operator! (Enum  E)             { return !(__underlying_type(Enum))E; } \
 	inline constexpr Enum  operator~ (Enum  E)             { return (Enum)~(__underlying_type(Enum))E; }
 
-namespace phx::core
+namespace phx
 {
 	template<typename Enum>
 	constexpr bool EnumHasAllFlags(Enum Flags, Enum Contains)

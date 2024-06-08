@@ -4,12 +4,14 @@
 #include "Core/phxHandle.h"
 #include "Core/phxSpan.h"
 #include "Core/phxPlatform.h"
+#include "Core/phxMemory.h"
 
 #include <cstdint>
 #include <string>
 #include <vector>
 #include <optional>
 #include <variant>
+#include <thread>
 
 namespace phx::rhi
 {
@@ -816,9 +818,9 @@ namespace phx::rhi
         {
             struct
             {
-                bool Raw : 1;
-                bool Structured : 1;
-                bool Typed : 1;
+                bool IsTypeRaw : 1;
+                bool IsTypeStructured : 1;
+                bool IsTypeTyped : 1;
                 bool HasCounter : 1;
                 bool IsAliasedResource : 3;
             };
@@ -1179,11 +1181,16 @@ namespace phx::rhi
 
     struct InitDesc
     {
+        SwapChainDesc SwapChain;
         core::WindowHandle Window = core::InvalidWindowHandle;
         uint32_t WindowWidth = 0;
         uint32_t WindowHeight = 0;
         rhi::Format BackBufferFormat = rhi::Format::RGBA8_UNORM;
         uint32_t BackBufferCount = 2;
+
+        uint32_t CommandListsPerFrame = std::thread::hardware_concurrency();
+        uint32_t ResourcePoolSize = 1_KiB;
+        uint32_t NumConcurrentRenderTargets = 8;
 
         union
         {
@@ -1198,18 +1205,15 @@ namespace phx::rhi
     };
 
 
-    struct CommandList;
-    using CommandListHandle = Handle<CommandList>;
+    using CommandListHandle = size_t;
 
     struct SwapChainDesc
     {
+        core::WindowHandle Window = core::InvalidWindowHandle;
         uint32_t Width = 0;
         uint32_t Height = 0;
-        uint32_t BufferCount = 3;
+        uint32_t BufferCount = 2;
         rhi::Format Format = rhi::Format::R10G10B10A2_UNORM;
-        bool Fullscreen = false;
-        bool VSync = false;
-        bool EnableHDR = false;
         rhi::ClearValue OptmizedClearValue =
         {
             .Colour =
@@ -1220,111 +1224,28 @@ namespace phx::rhi
                 1.0f,
             }
         };
+
+        union
+        {
+            struct
+            {
+                uint8_t AllowTearing : 1;
+                uint8_t EnableHdr : 1;
+                uint8_t RequresRaytracing : 6;
+            };
+            uint8_t Flags;
+        };
     };
 
-    class IGfxDevice
+    class RenderFrame : public NonCopyable
     {
     public:
-        inline static IGfxDevice* Ptr = nullptr;
+        virtual ~RenderFrame() = default;
 
-    public:
-        virtual ~IGfxDevice() = default;
-
-        // -- Frame Functions ---
-    public:
-        virtual void Initialize(SwapChainDesc const& desc, void* windowHandle) = 0;
-        virtual void Finalize() = 0;
-
-        // -- Resizes swapchain ---
-        virtual void ResizeSwapchain(SwapChainDesc const& desc) = 0;
-
-        // -- Submits Command lists and presents ---
-        virtual void SubmitFrame() = 0;
-        virtual void WaitForIdle() = 0;
-
-        virtual bool IsDevicedRemoved() = 0;
-
-        // -- Resouce Functions ---
-    public:
-        template<typename T>
-        CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc)
-        {
-            static_assert(sizeof(T) % sizeof(uint32_t) == 0);
-            return this->CreateCommandSignature(desc, sizeof(T));
-        }
-        virtual CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride) = 0;
-        virtual ShaderHandle CreateShader(ShaderDesc const& desc, Span<uint8_t> shaderByteCode) = 0;
-        virtual InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) = 0;
-        virtual GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc) = 0;
-        virtual ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc) = 0;
-        virtual MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc) = 0;
-        virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
-        virtual BufferHandle CreateBuffer(BufferDesc const& desc) = 0;
-        virtual int CreateSubresource(TextureHandle texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip = 0, uint32_t mpCount = ~0) = 0;
-        virtual int CreateSubresource(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size = ~0u) = 0;
-        virtual RTAccelerationStructureHandle CreateRTAccelerationStructure(RTAccelerationStructureDesc const& desc) = 0;
-        virtual TimerQueryHandle CreateTimerQuery() = 0;
-
-
-        virtual void DeleteCommandSignature(CommandSignatureHandle handle) = 0;
-        virtual const GfxPipelineDesc& GetGfxPipelineDesc(GfxPipelineHandle handle) = 0;
-        virtual void DeleteGfxPipeline(GfxPipelineHandle handle) = 0;
-
-
-        virtual void DeleteMeshPipeline(MeshPipelineHandle handle) = 0;
-
-        virtual const TextureDesc& GetTextureDesc(TextureHandle handle) = 0;
-        virtual DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource = -1) = 0;
-        virtual void DeleteTexture(TextureHandle handle) = 0;
-
-        // -- TODO: End Remove
-
-        virtual const BufferDesc& GetBufferDesc(BufferHandle handle) = 0;
-        virtual DescriptorIndex GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource = -1) = 0;
-
-        template<typename T>
-        T* GetBufferMappedData(BufferHandle handle)
-        {
-            return static_cast<T*>(this->GetBufferMappedData(handle));
-        };
-
-        virtual void* GetBufferMappedData(BufferHandle handle) = 0;
-        virtual uint32_t GetBufferMappedDataSizeInBytes(BufferHandle handle) = 0;
-        virtual void DeleteBuffer(BufferHandle handle) = 0;
-
-        // -- Ray Tracing ---
-        virtual size_t GetRTTopLevelAccelerationStructureInstanceSize() = 0;
-        virtual void WriteRTTopLevelAccelerationStructureInstance(RTAccelerationStructureDesc::TopLevelDesc::Instance const& instance, void* dest) = 0;
-        virtual const RTAccelerationStructureDesc& GetRTAccelerationStructureDesc(RTAccelerationStructureHandle handle) = 0;
-        virtual void DeleteRtAccelerationStructure(RTAccelerationStructureHandle handle) = 0;
-        virtual DescriptorIndex GetDescriptorIndex(RTAccelerationStructureHandle handle) = 0;
-
-
-        // -- Utility ---
-    public:
-        virtual TextureHandle GetBackBuffer() = 0;
-        virtual size_t GetNumBindlessDescriptors() const = 0;
-
-        virtual ShaderModel GetMinShaderModel() const = 0;
-        virtual ShaderType GetShaderType() const = 0;
-
-        virtual GraphicsAPI GetApi() const = 0;
-
-        virtual void BeginCapture(std::wstring const& filename) = 0;
-        virtual void EndCapture(bool discard = false) = 0;
-
-        virtual size_t GetFrameIndex() const = 0;
-        virtual size_t GetMaxInflightFrames() const = 0;
-        virtual const DeviceCapabilities& GetDeviceCapability() const = 0;
-
-        virtual float GetAvgFrameTime() = 0;
-        virtual uint64_t GetUavCounterPlacementAlignment() = 0;
-
-        // -- Command list Functions ---
-        // These are not thread Safe
-    public:
         // TODO: Change to a new pattern so we don't require a command list stored on an object. Instread, request from a pool of objects
         virtual CommandListHandle BeginCommandList(CommandQueueType queueType = CommandQueueType::Graphics) = 0;
+        virtual void Submit() = 0;
+
         virtual void WaitCommandList(CommandListHandle cmd, CommandListHandle WaitOn) = 0;
 
         // -- Ray Trace stuff       ---
@@ -1479,7 +1400,93 @@ namespace phx::rhi
 
         virtual void BeginTimerQuery(TimerQueryHandle query, CommandListHandle cmd) = 0;
         virtual void EndTimerQuery(TimerQueryHandle query, CommandListHandle cmd) = 0;
+    };
 
+    class IGfxDevice
+    {
+    public:
+        inline static IGfxDevice* Ptr = nullptr;
+
+    public:
+        virtual ~IGfxDevice() = default;
+
+        // -- Frame Functions ---
+    public:
+        virtual void Initialize() = 0;
+        virtual void Finalize() = 0;
+
+        // -- Resizes swapchain ---
+        virtual void ResizeSwapchain(SwapChainDesc const& desc) = 0;
+
+        // -- Submits Command lists and presents ---
+        virtual void SubmitFrame() = 0;
+        virtual void WaitForIdle() = 0;
+
+        virtual bool IsDevicedRemoved() = 0;
+
+        // -- Resouce Functions ---
+    public:
+        template<typename T>
+        CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc)
+        {
+            static_assert(sizeof(T) % sizeof(uint32_t) == 0);
+            return this->CreateCommandSignature(desc, sizeof(T));
+        }
+        virtual CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride) = 0;
+        virtual ShaderHandle CreateShader(ShaderDesc const& desc, Span<uint8_t> shaderByteCode) = 0;
+        virtual InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) = 0;
+        virtual GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc) = 0;
+        virtual ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc) = 0;
+        virtual MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc) = 0;
+        virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
+        virtual BufferHandle CreateBuffer(BufferDesc const& desc) = 0;
+        virtual int CreateSubresource(TextureHandle texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip = 0, uint32_t mpCount = ~0) = 0;
+        virtual int CreateSubresource(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size = ~0u) = 0;
+        virtual RTAccelerationStructureHandle CreateRTAccelerationStructure(RTAccelerationStructureDesc const& desc) = 0;
+        virtual TimerQueryHandle CreateTimerQuery() = 0;
+
+        virtual DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource = -1) = 0;
+        virtual DescriptorIndex GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource = -1) = 0;
+        virtual DescriptorIndex GetDescriptorIndex(RTAccelerationStructureHandle handle) = 0;
+
+        virtual void DeleteCommandSignature(CommandSignatureHandle handle) = 0;
+        virtual void DeleteGfxPipeline(GfxPipelineHandle handle) = 0;
+        virtual void DeleteMeshPipeline(MeshPipelineHandle handle) = 0;
+        virtual void DeleteTexture(TextureHandle handle) = 0;
+        virtual void DeleteBuffer(BufferHandle handle) = 0;
+        virtual void DeleteRtAccelerationStructure(RTAccelerationStructureHandle handle) = 0;
+
+        template<typename T>
+        T* GetBufferMappedData(BufferHandle handle)
+        {
+            return static_cast<T*>(this->GetBufferMappedData(handle));
+        };
+        virtual void* GetBufferMappedData(BufferHandle handle) = 0;
+        virtual uint32_t GetBufferMappedDataSizeInBytes(BufferHandle handle) = 0;
+
+
+        // -- Utility ---
+    public:
+        virtual TextureHandle GetBackBuffer() = 0;
+        virtual size_t GetNumBindlessDescriptors() const = 0;
+
+        virtual ShaderModel GetMinShaderModel() const = 0;
+        virtual ShaderType GetShaderType() const = 0;
+
+        virtual GraphicsAPI GetApi() const = 0;
+
+        virtual void BeginCapture(std::wstring const& filename) = 0;
+        virtual void EndCapture(bool discard = false) = 0;
+
+        virtual size_t GetFrameIndex() const = 0;
+        virtual size_t GetMaxInflightFrames() const = 0;
+        virtual const DeviceCapabilities& GetDeviceCapability() const = 0;
+        virtual uint64_t GetUavCounterPlacementAlignment() = 0;
+
+        // -- Command list Functions ---
+        // These are not thread Safe
+    public:
+        virtual RenderFrame BeginRenderFrame() = 0;
     };
 
     using GfxDevice = class IGfxDevice;
