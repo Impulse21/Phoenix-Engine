@@ -26,14 +26,6 @@
 
 namespace phx::rhi::d3d12
 {
-    inline void ThrowIfFailed(HRESULT hr)
-    {
-        if (FAILED(hr))
-        {
-            throw std::exception();
-        }
-    }
-
     inline std::string NarrowString(const wchar_t* WideStr)
     {
         std::string NarrowStr;
