@@ -1207,7 +1207,7 @@ TextureHandle phx::rhi::d3d12::D3D12GfxDevice::CreateTexture(TextureDesc const& 
 
 	CD3DX12_RESOURCE_DESC resourceDesc = {};
 
-	const bool isTypeless = (desc.MiscFlags | RHI::TextureMiscFlags::Typeless) == RHI::TextureMiscFlags::Typeless;
+	const bool isTypeless = desc.IsTypeless;
 	switch (desc.Dimension)
 	{
 	case TextureDimension::Texture1D:
@@ -1297,31 +1297,25 @@ TextureHandle phx::rhi::d3d12::D3D12GfxDevice::CreateTexture(TextureDesc const& 
 
 	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
-		this->CreateSubresource(texture, RHI::SubresouceType::SRV, 0, ~0u, 0, ~0u);
+		this->CreateSubresource(texture, rhi::SubresouceType::SRV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
 	{
-		this->CreateSubresource(texture, RHI::SubresouceType::RTV, 0, ~0u, 0, ~0u);
+		this->CreateSubresource(texture, rhi::SubresouceType::RTV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
 	{
-		this->CreateSubresource(texture, RHI::SubresouceType::DSV, 0, ~0u, 0, ~0u);
+		this->CreateSubresource(texture, rhi::SubresouceType::DSV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
 	{
-		this->CreateSubresource(texture, RHI::SubresouceType::UAV, 0, ~0u, 0, ~0u);
+		this->CreateSubresource(texture, rhi::SubresouceType::UAV, 0, ~0u, 0, ~0u);
 	}
 
 	return texture;
-}
-
-const TextureDesc& phx::rhi::d3d12::D3D12GfxDevice::GetTextureDesc(TextureHandle handle)
-{
-	const D3D12Texture* texture = this->m_texturePool.Get(handle);
-	return texture->Desc;
 }
 
 DescriptorIndex phx::rhi::d3d12::D3D12GfxDevice::GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource)
@@ -1410,27 +1404,22 @@ BufferHandle phx::rhi::d3d12::D3D12GfxDevice::CreateBuffer(BufferDesc const& des
 	D3D12Buffer& bufferImpl = *this->m_bufferPool.Get(buffer);
 	this->CreateBufferInternal(desc, bufferImpl);
 
-	if ((desc.MiscFlags & BufferMiscFlags::IsAliasedResource) == BufferMiscFlags::IsAliasedResource)
+	if (desc.IsAliasedResource)
 	{
 		return buffer;
 	}
 
 	if ((desc.Binding & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
-		this->CreateSubresource(buffer, RHI::SubresouceType::SRV, 0u);
+		this->CreateSubresource(buffer, rhi::SubresouceType::SRV, 0u);
 	}
 
 	if ((desc.Binding & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
 	{
-		this->CreateSubresource(buffer, RHI::SubresouceType::UAV, 0u);
+		this->CreateSubresource(buffer, rhi::SubresouceType::UAV, 0u);
 	}
 
 	return buffer;
-}
-
-const BufferDesc& D3D12GfxDevice::GetBufferDesc(BufferHandle handle)
-{
-	return this->m_bufferPool.Get(handle)->Desc;
 }
 
 DescriptorIndex D3D12GfxDevice::GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource)
@@ -1574,9 +1563,9 @@ RTAccelerationStructureHandle phx::rhi::d3d12::D3D12GfxDevice::CreateRTAccelerat
 				trianglesDesc.VertexBuffer.StrideInBytes = g.Triangles.VertexStride;
 				trianglesDesc.IndexBuffer =
 					dx12VertexBuffer->IndexView.BufferLocation +
-					(D3D12_GPU_VIRTUAL_ADDRESS)g.Triangles.IndexOffset * (g.Triangles.IndexFormat == RHI::Format::R16_UINT ? sizeof(uint16_t) : sizeof(uint32_t));
+					(D3D12_GPU_VIRTUAL_ADDRESS)g.Triangles.IndexOffset * (g.Triangles.IndexFormat == rhi::Format::R16_UINT ? sizeof(uint16_t) : sizeof(uint32_t));
 				trianglesDesc.IndexCount = g.Triangles.IndexCount;
-				trianglesDesc.IndexFormat = g.Triangles.IndexFormat == RHI::Format::R16_UINT ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+				trianglesDesc.IndexFormat = g.Triangles.IndexFormat == rhi::Format::R16_UINT ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 
 				if (g.Flags & RTAccelerationStructureDesc::BottomLevelDesc::Geometry::kUseTransform)
 				{
@@ -1690,32 +1679,6 @@ RTAccelerationStructureHandle phx::rhi::d3d12::D3D12GfxDevice::CreateRTAccelerat
 	return handle;
 }
 
-const RTAccelerationStructureDesc& phx::rhi::d3d12::D3D12GfxDevice::GetRTAccelerationStructureDesc(RTAccelerationStructureHandle handle)
-{
-	assert(handle.IsValid());
-	return this->m_rtAccelerationStructurePool.Get(handle)->Desc;
-}
-
-void phx::rhi::d3d12::D3D12GfxDevice::WriteRTTopLevelAccelerationStructureInstance(RTAccelerationStructureDesc::TopLevelDesc::Instance const& instance, void* dest)
-{
-	assert(instance.BottomLevel.IsValid());
-
-	D3D12_RAYTRACING_INSTANCE_DESC tmp;
-	tmp.AccelerationStructure = this->m_rtAccelerationStructurePool.Get(instance.BottomLevel)->D3D12Resource->GetGPUVirtualAddress();
-	std::memcpy(tmp.Transform, &instance.Transform, sizeof(tmp.Transform));
-	tmp.InstanceID = instance.InstanceId;
-	tmp.InstanceMask = instance.InstanceMask;
-	tmp.InstanceContributionToHitGroupIndex = instance.InstanceContributionToHitGroupIndex;
-	tmp.Flags = instance.Flags;
-	tmp.Flags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE;
-	std::memcpy(dest, &tmp, sizeof(D3D12_RAYTRACING_INSTANCE_DESC)); // memcpy whole structure into mapped pointer to avoid read from uncached memory
-}
-
-size_t phx::rhi::d3d12::D3D12GfxDevice::GetRTTopLevelAccelerationStructureInstanceSize()
-{
-	return sizeof(D3D12_RAYTRACING_INSTANCE_DESC);
-}
-
 void phx::rhi::d3d12::D3D12GfxDevice::DeleteRtAccelerationStructure(RTAccelerationStructureHandle handle)
 {
 	if (!handle.IsValid())
@@ -1795,7 +1758,7 @@ int phx::rhi::d3d12::D3D12GfxDevice::CreateSubresource(BufferHandle buffer, Subr
 
 TimerQueryHandle phx::rhi::d3d12::D3D12GfxDevice::CreateTimerQuery()
 {
-
+#if false
 	int queryIndex = this->m_timerQueryIndexPool.Allocate();
 	if (queryIndex < 0)
 	{
@@ -1814,108 +1777,9 @@ TimerQueryHandle phx::rhi::d3d12::D3D12GfxDevice::CreateTimerQuery()
 
 
 	return handle;
-}
-
-void phx::rhi::d3d12::D3D12GfxDevice::DeleteTimerQuery(TimerQueryHandle query)
-{
-	if (!query.IsValid())
-	{
-		return;
-	}
-
-	DeleteItem d =
-	{
-		this->m_frameCount,
-		[=]()
-		{
-			D3D12TimerQuery* impl = this->m_timerQueryPool.Get(query);
-
-			if (impl)
-			{
-				this->m_timerQueryIndexPool.Release(static_cast<int>(impl->BeginQueryIndex) / 2);
-				this->m_timerQueryPool.Release(query);
-			}
-		}
-	};
-
-	this->m_deleteQueue.push_back(d);
-}
-
-bool phx::rhi::d3d12::D3D12GfxDevice::PollTimerQuery(TimerQueryHandle query)
-{
-	assert(query.IsValid());
-	D3D12TimerQuery* queryImpl = this->m_timerQueryPool.Get(query);
-
-	if (!queryImpl->Started)
-	{
-		return false;
-	}
-
-	if (!queryImpl->CommandQueue)
-	{
-		return true;
-	}
-
-	if (queryImpl->CommandQueue->GetLastCompletedFence() >= queryImpl->FenceCount)
-	{
-		queryImpl->CommandQueue = nullptr;
-		return true;
-	}
-
-	return false;
-}
-
-TimeStep phx::rhi::d3d12::D3D12GfxDevice::GetTimerQueryTime(TimerQueryHandle query)
-{
-	assert(query.IsValid());
-	D3D12TimerQuery* queryImpl = this->m_timerQueryPool.Get(query);
-
-	if (queryImpl->Resolved)
-	{
-		return queryImpl->Time;
-	}
-
-	if (queryImpl->CommandQueue)
-	{
-		queryImpl->CommandQueue->WaitForFence(queryImpl->FenceCount);
-		queryImpl->CommandQueue = nullptr;
-	}
-
-	// Could use the queue that it was executued on
-	// The GPU timestamp counter frequency (in ticks/second)
-	uint64_t frequency;
-	this->GetGfxQueue().GetD3D12CommandQueue()->GetTimestampFrequency(&frequency);
-
-	D3D12_RANGE bufferReadRange = {
-	queryImpl->BeginQueryIndex * sizeof(uint64_t),
-	(queryImpl->BeginQueryIndex + 2) * sizeof(uint64_t) };
-
-	const D3D12Buffer* timestampQueryBuffer = this->m_bufferPool.Get(this->m_timestampQueryBuffer);
-	uint64_t* Data;
-	const HRESULT res = timestampQueryBuffer->D3D12Resource->Map(0, &bufferReadRange, (void**)&Data);
-
-	if (FAILED(res))
-	{
-		return TimeStep(0.0f);
-	}
-
-	queryImpl->Resolved = true;
-	queryImpl->Time = TimeStep(float(double(Data[queryImpl->EndQueryIndex] - Data[queryImpl->BeginQueryIndex]) / double(frequency)));
-
-	timestampQueryBuffer->D3D12Resource->Unmap(0, nullptr);
-
-	return queryImpl->Time;
-}
-
-void phx::rhi::d3d12::D3D12GfxDevice::ResetTimerQuery(TimerQueryHandle query)
-{
-	assert(query.IsValid());
-	D3D12TimerQuery* queryImpl = this->m_timerQueryPool.Get(query);
-
-	queryImpl->Started = false;
-	queryImpl->Resolved = false;
-	queryImpl->Time = 0.f;
-	queryImpl->CommandQueue = nullptr;
+#else
+	return {};
+#endif
 }
 
 inline TextureHandle  phx::rhi::d3d12::D3D12GfxDevice::D3D12GfxDevice::GetBackBuffer()
@@ -1949,16 +1813,6 @@ void phx::rhi::d3d12::D3D12GfxDevice::EndCapture(bool discard)
 		PIXEndCapture(discard);
 	}
 #endif
-}
-
-bool phx::rhi::d3d12::D3D12GfxDevice::CheckCapability(DeviceCapability deviceCapability)
-{
-	return (this->m_capabilities & deviceCapability) == deviceCapability;
-}
-
-float phx::rhi::d3d12::D3D12GfxDevice::GetAvgFrameTime()
-{
-	return 0.0f;
 }
 
 bool phx::rhi::d3d12::D3D12GfxDevice::IsDevicedRemoved()
@@ -2032,22 +1886,22 @@ TextureHandle phx::rhi::d3d12::D3D12GfxDevice::CreateTexture(TextureDesc const& 
 
 	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
-		this->CreateSubresource(textureHande, RHI::SubresouceType::SRV, 0, ~0u, 0, ~0u);
+		this->CreateSubresource(textureHande, rhi::SubresouceType::SRV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
 	{
-		this->CreateSubresource(textureHande, RHI::SubresouceType::RTV, 0, ~0u, 0, ~0u);
+		this->CreateSubresource(textureHande, rhi::SubresouceType::RTV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
 	{
-		this->CreateSubresource(textureHande, RHI::SubresouceType::DSV, 0, ~0u, 0, ~0u);
+		this->CreateSubresource(textureHande, rhi::SubresouceType::DSV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
 	{
-		this->CreateSubresource(textureHande, RHI::SubresouceType::UAV, 0, ~0u, 0, ~0u);
+		this->CreateSubresource(textureHande, rhi::SubresouceType::UAV, 0, ~0u, 0, ~0u);
 	}
 
 	return textureHande;
@@ -2149,18 +2003,15 @@ int phx::rhi::d3d12::D3D12GfxDevice::CreateShaderResourceView(TextureHandle text
 		&srvDesc,
 		view.Allocation.GetCpuHandle());
 
-	if ((textureImpl->Desc.MiscFlags | TextureMiscFlags::Bindless) == TextureMiscFlags::Bindless)
+	// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+	view.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
+	if (view.BindlessIndex != cInvalidDescriptorIndex)
 	{
-		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
-		view.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
-		if (view.BindlessIndex != cInvalidDescriptorIndex)
-		{
-			this->GetD3D12Device2()->CopyDescriptorsSimple(
-				1,
-				this->m_bindlessResourceDescriptorTable.GetCpuHandle(view.BindlessIndex),
-				view.Allocation.GetCpuHandle(),
-				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		}
+		this->GetD3D12Device2()->CopyDescriptorsSimple(
+			1,
+			this->m_bindlessResourceDescriptorTable.GetCpuHandle(view.BindlessIndex),
+			view.Allocation.GetCpuHandle(),
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	}
 
 	if (textureImpl->Srv.Allocation.IsNull())
@@ -2388,20 +2239,16 @@ int phx::rhi::d3d12::D3D12GfxDevice::CreateUnorderedAccessView(TextureHandle tex
 		&uavDesc,
 		view.Allocation.GetCpuHandle());
 
-	if ((textureImpl->Desc.MiscFlags | TextureMiscFlags::Bindless) == TextureMiscFlags::Bindless)
+	// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+	view.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
+	if (view.BindlessIndex != cInvalidDescriptorIndex)
 	{
-		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
-		view.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
-		if (view.BindlessIndex != cInvalidDescriptorIndex)
-		{
-			this->GetD3D12Device2()->CopyDescriptorsSimple(
-				1,
-				this->m_bindlessResourceDescriptorTable.GetCpuHandle(view.BindlessIndex),
-				view.Allocation.GetCpuHandle(),
-				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		}
+		this->GetD3D12Device2()->CopyDescriptorsSimple(
+			1,
+			this->m_bindlessResourceDescriptorTable.GetCpuHandle(view.BindlessIndex),
+			view.Allocation.GetCpuHandle(),
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	}
-
 	if (textureImpl->UavAllocation.Allocation.IsNull())
 	{
 		textureImpl->UavAllocation = view;
@@ -2411,8 +2258,7 @@ int phx::rhi::d3d12::D3D12GfxDevice::CreateUnorderedAccessView(TextureHandle tex
 	textureImpl->UavSubresourcesAlloc.push_back(view);
 	return textureImpl->UavSubresourcesAlloc.size() - 1;
 }
-
-/*
+#if false
 RootSignatureHandle phx::rhi::Dx12::GraphicsDevice::CreateRootSignature(GraphicsPipelineDesc const& desc)
 {
 	/*
@@ -2575,12 +2421,10 @@ RootSignatureHandle phx::rhi::Dx12::GraphicsDevice::CreateRootSignature(Graphics
 	return RootSignatureHandle::Create(rootSignatureImpl.release());
 }
 	*/
-
+#endif
 
 void phx::rhi::d3d12::D3D12GfxDevice::RunGarbageCollection(uint64_t completedFrame)
 {
-	PHX_EVENT();
-	// OPTICK_TAG("Delete Queue Size", this->m_deleteQueue.size());
 	while (!this->m_deleteQueue.empty())
 	{
 		DeleteItem& deleteItem = this->m_deleteQueue.front();
@@ -2601,7 +2445,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::TranslateBlendState(BlendRenderState const
 	outState.AlphaToCoverageEnable = inState.alphaToCoverageEnable;
 	outState.IndependentBlendEnable = true;
 
-	for (uint32_t i = 0; i < cMaxRenderTargets; i++)
+	for (uint32_t i = 0; i < kMaxRenderTargets; i++)
 	{
 		const auto& src = inState.Targets[i];
 		auto& dst = outState.RenderTarget[i];
@@ -2681,7 +2525,7 @@ void D3D12GfxDevice::CreateBufferInternal(BufferDesc const& desc, D3D12Buffer& o
 	outBuffer.Desc = desc;
 
 	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
-	if ((desc.Binding & RHI::BindingFlags::UnorderedAccess) == RHI::BindingFlags::UnorderedAccess)
+	if ((desc.Binding & rhi::BindingFlags::UnorderedAccess) == rhi::BindingFlags::UnorderedAccess)
 	{
 		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 	}
@@ -2736,7 +2580,7 @@ void D3D12GfxDevice::CreateBufferInternal(BufferDesc const& desc, D3D12Buffer& o
 	}
 	*/
 
-	if ((outBuffer.Desc.MiscFlags & BufferMiscFlags::IsAliasedResource) == BufferMiscFlags::IsAliasedResource)
+	if (outBuffer.Desc.IsAliasedResource)
 	{
 		D3D12_RESOURCE_ALLOCATION_INFO finalAllocInfo = {};
 		finalAllocInfo.Alignment = 0;
@@ -2813,16 +2657,16 @@ int phx::rhi::d3d12::D3D12GfxDevice::CreateShaderResourceView(BufferHandle buffe
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 	const uint32_t stideInBytes = bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements;
-	if (bufferImpl->Desc.Format == RHI::Format::UNKNOWN)
+	if (bufferImpl->Desc.Format == rhi::Format::UNKNOWN)
 	{
-		if (EnumHasAllFlags(bufferImpl->Desc.MiscFlags, BufferMiscFlags::Raw))
+		if (bufferImpl->Desc.IsTypeRaw)
 		{
 			srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
 			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
 			srvDesc.Buffer.FirstElement = (UINT)offset / sizeof(uint32_t);
 			srvDesc.Buffer.NumElements = (UINT)std::min(size, stideInBytes - offset) / sizeof(uint32_t);
 		}
-		else if (EnumHasAllFlags(bufferImpl->Desc.MiscFlags, BufferMiscFlags::Structured))
+		else if (bufferImpl->Desc.IsTypeStructured)
 		{
 			uint32_t strideInBytes = (bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements);
 			// This is a Structured Buffer
@@ -2855,19 +2699,16 @@ int phx::rhi::d3d12::D3D12GfxDevice::CreateShaderResourceView(BufferHandle buffe
 		&srvDesc,
 		view.Allocation.GetCpuHandle());
 
-	const bool isBindless = (bufferImpl->GetDesc().MiscFlags & RHI::BufferMiscFlags::Bindless) == RHI::BufferMiscFlags::Bindless;
-	if (isBindless)
+
+	// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+	view.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
+	if (view.BindlessIndex != cInvalidDescriptorIndex)
 	{
-		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
-		view.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
-		if (view.BindlessIndex != cInvalidDescriptorIndex)
-		{
-			this->GetD3D12Device2()->CopyDescriptorsSimple(
-				1,
-				this->m_bindlessResourceDescriptorTable.GetCpuHandle(view.BindlessIndex),
-				view.Allocation.GetCpuHandle(),
-				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		}
+		this->GetD3D12Device2()->CopyDescriptorsSimple(
+			1,
+			this->m_bindlessResourceDescriptorTable.GetCpuHandle(view.BindlessIndex),
+			view.Allocation.GetCpuHandle(),
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	}
 
 	if (bufferImpl->Srv.Allocation.IsNull())
@@ -2888,17 +2729,17 @@ int phx::rhi::d3d12::D3D12GfxDevice::CreateUnorderedAccessView(BufferHandle buff
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 
 	const uint32_t stideInBytes = bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements;
-	const bool hasCounter = (bufferImpl->Desc.MiscFlags & BufferMiscFlags::HasCounter) == BufferMiscFlags::HasCounter;
-	if (bufferImpl->Desc.Format == RHI::Format::UNKNOWN)
+	const bool hasCounter = bufferImpl->Desc.HasCounter;
+	if (bufferImpl->Desc.Format == rhi::Format::UNKNOWN)
 	{
-		if (EnumHasAllFlags(bufferImpl->Desc.MiscFlags, BufferMiscFlags::Raw))
+		if (bufferImpl->Desc.IsTypeRaw)
 		{
 			uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
 			uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
 			uavDesc.Buffer.FirstElement = (UINT)offset / sizeof(uint32_t);
 			uavDesc.Buffer.NumElements = (UINT)std::min(size, stideInBytes - offset) / sizeof(uint32_t);
 		}
-		else if (EnumHasAllFlags(bufferImpl->Desc.MiscFlags, BufferMiscFlags::Structured))
+		else if (bufferImpl->Desc.IsTypeStructured)
 		{
 			uint32_t strideInBytes = (bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements);
 			// This is a Structured Buffer
@@ -2952,19 +2793,15 @@ int phx::rhi::d3d12::D3D12GfxDevice::CreateUnorderedAccessView(BufferHandle buff
 		&uavDesc,
 		view.Allocation.GetCpuHandle());
 
-	const bool isBindless = (bufferImpl->GetDesc().MiscFlags & RHI::BufferMiscFlags::Bindless) == RHI::BufferMiscFlags::Bindless;
-	if (isBindless)
+	// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+	view.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
+	if (view.BindlessIndex != cInvalidDescriptorIndex)
 	{
-		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
-		view.BindlessIndex = this->m_bindlessResourceDescriptorTable.Allocate();
-		if (view.BindlessIndex != cInvalidDescriptorIndex)
-		{
-			this->GetD3D12Device2()->CopyDescriptorsSimple(
-				1,
-				this->m_bindlessResourceDescriptorTable.GetCpuHandle(view.BindlessIndex),
-				view.Allocation.GetCpuHandle(),
-				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		}
+		this->GetD3D12Device2()->CopyDescriptorsSimple(
+			1,
+			this->m_bindlessResourceDescriptorTable.GetCpuHandle(view.BindlessIndex),
+			view.Allocation.GetCpuHandle(),
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	}
 
 	if (bufferImpl->UavAllocation.Allocation.IsNull())
@@ -2998,13 +2835,10 @@ void phx::rhi::d3d12::D3D12GfxDevice::InitializeResourcePools()
 	this->m_shaderPool.Initialize(kInitPoolSize);
 	this->m_inputLayoutPool.Initialize(kInitPoolSize);
 	this->m_bufferPool.Initialize(kInitPoolSize);
-	this->m_renderPassPool.Initialize(kInitPoolSize);
 	this->m_rtAccelerationStructurePool.Initialize(kInitPoolSize);
 	this->m_gfxPipelinePool.Initialize(kInitPoolSize);
 	this->m_computePipelinePool.Initialize(kInitPoolSize);
 	this->m_meshPipelinePool.Initialize(kInitPoolSize);
-	this->m_timerQueryPool.Initialize(kInitPoolSize);
-	this->m_commandListPool.Initialize(kInitPoolSize);
 }
 
 void phx::rhi::d3d12::D3D12GfxDevice::InitializeD3D12NativeResources(IDXGIAdapter* gpuAdapter)
@@ -3047,10 +2881,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::InitializeD3D12NativeResources(IDXGIAdapte
 
 	if (hasOptions)
 	{
-		if (featureOpptions.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation)
-		{
-			this->m_capabilities |= DeviceCapability::RT_VT_ArrayIndex_Without_GS;
-		}
+		this->m_capabilities.RTVTArrayIndexWithoutGS = featureOpptions.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation;
 	}
 
 	// TODO: Move to acability array
@@ -3059,18 +2890,9 @@ void phx::rhi::d3d12::D3D12GfxDevice::InitializeD3D12NativeResources(IDXGIAdapte
 
 	if (SUCCEEDED(this->m_rootDevice.As(&this->m_rootDevice5)) && hasOptions5)
 	{
-		if (featureSupport5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0)
-		{
-			this->m_capabilities |= DeviceCapability::RayTracing;
-		}
-		if (featureSupport5.RenderPassesTier >= D3D12_RENDER_PASS_TIER_0)
-		{
-			this->m_capabilities |= DeviceCapability::RenderPass;
-		}
-		if (featureSupport5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_1)
-		{
-			this->m_capabilities |= DeviceCapability::RayQuery;
-		}
+		this->m_capabilities.RayTracing = featureSupport5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0;
+		this->m_capabilities.RenderPass = featureSupport5.RenderPassesTier >= D3D12_RENDER_PASS_TIER_0;
+		this->m_capabilities.RayQuery = featureSupport5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_1;
 	}
 
 
@@ -3081,7 +2903,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::InitializeD3D12NativeResources(IDXGIAdapte
 	{
 		if (featureSupport6.VariableShadingRateTier >= D3D12_VARIABLE_SHADING_RATE_TIER_2)
 		{
-			this->m_capabilities |= DeviceCapability::VariableRateShading;
+			this->m_capabilities.VariableRateShading = featureSupport6.VariableShadingRateTier >= D3D12_VARIABLE_SHADING_RATE_TIER_2;
 		}
 	}
 
@@ -3090,11 +2912,8 @@ void phx::rhi::d3d12::D3D12GfxDevice::InitializeD3D12NativeResources(IDXGIAdapte
 
 	if (SUCCEEDED(this->m_rootDevice.As(&this->m_rootDevice2)) && hasOptions7)
 	{
-		if (featureSupport7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1)
-		{
-			this->m_capabilities |= DeviceCapability::MeshShading;
-		}
-		this->m_capabilities |= DeviceCapability::CreateNoteZeroed;
+		this->m_capabilities.CreateNoteZeroed = true;
+		this->m_capabilities.MeshShading = featureSupport7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1;
 	}
 
 	this->FeatureDataRootSignature.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
@@ -3192,7 +3011,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::CreateSwapChain(SwapChainDesc const& desc,
 		swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
 
 		DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreenDesc = {};
-		fullscreenDesc.Windowed = !desc.Fullscreen;
+		fullscreenDesc.Windowed = !this->m_initDesc.AllowTearing;
 
 		hr = this->m_factory->CreateSwapChainForHwnd(
 			this->GetGfxQueue().GetD3D12CommandQueue(),
@@ -3319,7 +3138,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::CreateSwapChain(SwapChainDesc const& desc,
 
 void phx::rhi::d3d12::D3D12GfxDevice::FindAdapter(Microsoft::WRL::ComPtr<IDXGIFactory6> factory, D3D12Adapter& outAdapter)
 {
-	PHX_LOG_CORE_INFO("Finding a suitable adapter");
+	PHX_CORE_INFO("Finding a suitable adapter");
 
 	// Create factory
 	Microsoft::WRL::ComPtr<IDXGIAdapter1> selectedAdapter;
@@ -3460,7 +3279,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::WaitCommandList(CommandListHandle cmd, Com
 	internalCmd.IsWaitedOn.store(true);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::RTBuildAccelerationStructure(RHI::RTAccelerationStructureHandle accelStructure, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12GfxDevice::RTBuildAccelerationStructure(rhi::RTAccelerationStructureHandle accelStructure, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
 	D3D12RTAccelerationStructure* dx12AccelStructure = this->GetRTAccelerationStructurePool().Get(accelStructure);
@@ -3503,7 +3322,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::RTBuildAccelerationStructure(RHI::RTAccele
 				D3D12Buffer* indexBuffer = this->GetBufferPool().Get(geometry.Triangles.IndexBuffer);
 				assert(indexBuffer);
 				buildGeometry.Triangles.IndexBuffer = indexBuffer->D3D12Resource->GetGPUVirtualAddress() +
-					(D3D12_GPU_VIRTUAL_ADDRESS)geometry.Triangles.IndexOffset * (geometry.Triangles.IndexFormat == RHI::Format::R16_UINT ? sizeof(uint16_t) : sizeof(uint32_t));
+					(D3D12_GPU_VIRTUAL_ADDRESS)geometry.Triangles.IndexOffset * (geometry.Triangles.IndexFormat == rhi::Format::R16_UINT ? sizeof(uint16_t) : sizeof(uint32_t));
 
 				if (geometry.Flags & RTAccelerationStructureDesc::BottomLevelDesc::Geometry::kUseTransform)
 				{
@@ -3763,7 +3582,7 @@ void D3D12GfxDevice::DrawIndexed(DrawArgs const& args, CommandListHandle cmd)
 		args.StartInstance);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12GfxDevice::ExecuteIndirect(rhi::CommandSignatureHandle commandSignature, rhi::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
 	D3D12CommandSignature* commandSignatureImpl = this->GetCommandSignaturePool().Get(commandSignature);
@@ -3778,10 +3597,10 @@ void phx::rhi::d3d12::D3D12GfxDevice::ExecuteIndirect(RHI::CommandSignatureHandl
 }
 
 void phx::rhi::d3d12::D3D12GfxDevice::ExecuteIndirect(
-	RHI::CommandSignatureHandle commandSignature,
-	RHI::BufferHandle args,
+	rhi::CommandSignatureHandle commandSignature,
+	rhi::BufferHandle args,
 	size_t argsOffsetInBytes,
-	RHI::BufferHandle count,
+	rhi::BufferHandle count,
 	size_t countOffsetInBytes,
 	uint32_t maxCount,
 	CommandListHandle cmd)
@@ -3799,7 +3618,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::ExecuteIndirect(
 		countOffsetInBytes);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12GfxDevice::DrawIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
 	D3D12Buffer* bufferImpl = this->GetBufferPool().Get(args);
@@ -3812,7 +3631,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::DrawIndirect(RHI::BufferHandle args, size_
 		1);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12GfxDevice::DrawIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
 	D3D12Buffer* argBufferImpl = this->GetBufferPool().Get(args);
@@ -3826,7 +3645,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::DrawIndirect(RHI::BufferHandle args, size_
 		countOffsetInBytes);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12GfxDevice::DrawIndexedIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
 	D3D12Buffer* bufferImpl = this->GetBufferPool().Get(args);
@@ -3839,7 +3658,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::DrawIndexedIndirect(RHI::BufferHandle args
 		1);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12GfxDevice::DrawIndexedIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
 	D3D12Buffer* argBufferImpl = this->GetBufferPool().Get(args);
@@ -4125,10 +3944,10 @@ void phx::rhi::d3d12::D3D12GfxDevice::BindIndexBuffer(BufferHandle indexBuffer, 
 	internalCmd.NativeCommandList->IASetIndexBuffer(&bufferImpl->IndexView);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::BindDynamicIndexBuffer(size_t numIndicies, RHI::Format indexFormat, const void* indexBufferData, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12GfxDevice::BindDynamicIndexBuffer(size_t numIndicies, rhi::Format indexFormat, const void* indexBufferData, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	size_t indexSizeInBytes = indexFormat == RHI::Format::R16_UINT ? 2 : 4;
+	size_t indexSizeInBytes = indexFormat == rhi::Format::R16_UINT ? 2 : 4;
 	size_t bufferSize = numIndicies * indexSizeInBytes;
 
 	auto heapAllocation = internalCmd.UploadBuffer.Allocate(bufferSize, indexSizeInBytes);
@@ -4291,7 +4110,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::Dispatch(uint32_t groupsX, uint32_t groups
 	internalCmd.NativeCommandList->Dispatch(groupsX, groupsY, groupsZ);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12GfxDevice::DispatchIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
 	D3D12Buffer* bufferImpl = this->GetBufferPool().Get(args);
@@ -4304,7 +4123,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::DispatchIndirect(RHI::BufferHandle args, u
 		1);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12GfxDevice::DispatchIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
 	D3D12Buffer* argBufferImpl = this->GetBufferPool().Get(args);
@@ -4355,7 +4174,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::DispatchMesh(uint32_t groupsX, uint32_t gr
 	internalCmd.NativeCommandList6->DispatchMesh(groupsX, groupsY, groupsZ);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12GfxDevice::DispatchMeshIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
 	D3D12Buffer* bufferImpl = this->GetBufferPool().Get(args);
@@ -4368,7 +4187,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::DispatchMeshIndirect(RHI::BufferHandle arg
 		1);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12GfxDevice::DispatchMeshIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
 	D3D12Buffer* argBufferImpl = this->GetBufferPool().Get(args);

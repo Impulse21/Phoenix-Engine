@@ -788,6 +788,15 @@ namespace phx::rhi
 
     struct TextureDesc
     {
+        union
+        {
+            struct
+            {
+                bool IsTypeless : 8;
+            };
+            uint8_t MiscFlags;
+        };
+
         rhi::Format Format = rhi::Format::UNKNOWN;
         BindingFlags BindingFlags = BindingFlags::ShaderResource;
         ResourceStates InitialState = ResourceStates::Common;
