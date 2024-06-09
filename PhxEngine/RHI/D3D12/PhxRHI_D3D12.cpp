@@ -478,3 +478,164 @@ void phx::rhi::d3d12::D3D12GfxDevice::Initialize()
 	ID3D12CommandQueue* pCommandQueue = this->GetGfxQueue();
 	// OPTICK_GPU_INIT_D3D12(pDevice, &pCommandQueue, 1);
 }
+
+
+void phx::rhi::d3d12::D3D12GfxDevice::Initialize()
+{
+	PHX_CORE_INFO("Initialize DirectX 12 Graphics Device");
+	this->InitializeResourcePools();
+	this->InitializeD3D12NativeResources(this->m_gpuAdapter.NativeAdapter.Get());
+
+	// Create Queues
+	this->m_commandQueues[(int)CommandQueueType::Graphics].Initialize(this->GetD3D12Device().Get(), D3D12_COMMAND_LIST_TYPE_DIRECT);
+	this->m_commandQueues[(int)CommandQueueType::Compute].Initialize(this->GetD3D12Device().Get(), D3D12_COMMAND_LIST_TYPE_COMPUTE);
+	this->m_commandQueues[(int)CommandQueueType::Copy].Initialize(this->GetD3D12Device().Get(), D3D12_COMMAND_LIST_TYPE_COPY);
+
+	// -- Create Common indirect signatures --
+	// Create common indirect command signatures:
+	D3D12_INDIRECT_ARGUMENT_DESC dispatchArgs[1];
+	dispatchArgs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
+
+	D3D12_COMMAND_SIGNATURE_DESC cmdDesc = {};
+	cmdDesc.ByteStride = sizeof(IndirectDispatchArgs);
+	cmdDesc.NumArgumentDescs = 1;
+	cmdDesc.pArgumentDescs = dispatchArgs;
+	ThrowIfFailed(
+		this->GetD3D12Device()->CreateCommandSignature(&cmdDesc, nullptr, IID_PPV_ARGS(&this->m_dispatchIndirectCommandSignature)));
+
+
+	D3D12_INDIRECT_ARGUMENT_DESC drawInstancedArgs[1];
+	drawInstancedArgs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
+
+	cmdDesc.ByteStride = sizeof(IndirectDrawArgInstanced);
+	cmdDesc.NumArgumentDescs = 1;
+	cmdDesc.pArgumentDescs = drawInstancedArgs;
+	ThrowIfFailed(
+		this->GetD3D12Device()->CreateCommandSignature(&cmdDesc, nullptr, IID_PPV_ARGS(&this->m_drawInstancedIndirectCommandSignature)));
+
+	D3D12_INDIRECT_ARGUMENT_DESC drawIndexedInstancedArgs[1];
+	drawIndexedInstancedArgs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+
+	cmdDesc.ByteStride = sizeof(IndirectDrawArgsIndexedInstanced);
+	cmdDesc.NumArgumentDescs = 1;
+	cmdDesc.pArgumentDescs = drawIndexedInstancedArgs;
+	ThrowIfFailed(
+		this->GetD3D12Device()->CreateCommandSignature(&cmdDesc, nullptr, IID_PPV_ARGS(&this->m_drawIndexedInstancedIndirectCommandSignature)));
+
+	if (this->GetDeviceCapability().MeshShading)
+	{
+		D3D12_INDIRECT_ARGUMENT_DESC dispatchMeshArgs[1];
+		dispatchMeshArgs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH;
+
+		cmdDesc.ByteStride = sizeof(IndirectDispatchArgs);
+		cmdDesc.NumArgumentDescs = 1;
+		cmdDesc.pArgumentDescs = dispatchMeshArgs;
+		ThrowIfFailed(
+			this->GetD3D12Device()->CreateCommandSignature(&cmdDesc, nullptr, IID_PPV_ARGS(&this->m_dispatchMeshIndirectCommandSignature)));
+	}
+
+	// Create Descriptor Heaps
+	this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::CBV_SRV_UAV].Initialize(
+		this,
+		1024,
+		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler].Initialize(
+		this,
+		1024,
+		D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+
+	this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::RTV].Initialize(
+		this,
+		1024,
+		D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+	this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::DSV].Initialize(
+		this,
+		1024,
+		D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+
+
+	this->m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::CBV_SRV_UAV].Initialize(
+		this,
+		NUM_BINDLESS_RESOURCES,
+		TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE - NUM_BINDLESS_RESOURCES,
+		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
+
+
+	this->m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler].Initialize(
+		this,
+		10,
+		100,
+		D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
+		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
+
+
+	this->m_bindlessResourceDescriptorTable.Initialize(this->GetResourceGpuHeap().Allocate(NUM_BINDLESS_RESOURCES));
+
+	D3D12MA::ALLOCATOR_DESC allocatorDesc = {};
+	allocatorDesc.pDevice = this->m_rootDevice.Get();
+	allocatorDesc.pAdapter = this->m_gpuAdapter.NativeAdapter.Get();
+	//allocatorDesc.PreferredBlockSize = 256 * 1024 * 1024;
+	//allocatorDesc.Flags |= D3D12MA::ALLOCATOR_FLAG_ALWAYS_COMMITTED;
+	allocatorDesc.Flags = (D3D12MA::ALLOCATOR_FLAGS)(D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED);
+
+	ThrowIfFailed(
+		D3D12MA::CreateAllocator(&allocatorDesc, &this->m_d3d12MemAllocator));
+
+	// TODO: Data drive device create info
+	this->CreateGpuTimestampQueryHeap(this->kTimestampQueryHeapSize);
+
+	// Create GPU Buffer for timestamp readbacks
+	this->m_timestampQueryBuffer = this->CreateBuffer({
+		.Usage = Usage::ReadBack,
+		.Stride = sizeof(uint64_t),
+		.NumElements = this->kTimestampQueryHeapSize,
+		.DebugName = "Timestamp Query Buffer" });
+
+	this->CreateSwapChain(this->m_initDesc.SwapChain, this->m_initDesc.SwapChain.Window);
+
+	this->m_commandLists.resize(this->m_initDesc.CommandListsPerFrame);
+
+	// -- Mark Queues for completion ---
+	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
+	{
+		ThrowIfFailed(
+			this->GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_frameFences[q])));
+	}
+
+	ID3D12Device* pDevice = this->m_rootDevice.Get();
+	ID3D12CommandQueue* pCommandQueue = this->GetGfxQueue();
+	// OPTICK_GPU_INIT_D3D12(pDevice, &pCommandQueue, 1);
+}
+
+void phx::rhi::d3d12::D3D12GfxDevice::Finalize()
+{
+	this->WaitForIdle();
+
+	this->DeleteBuffer(this->m_timestampQueryBuffer);
+
+	for (auto handle : this->m_swapChain.BackBuffers)
+	{
+		this->m_texturePool.Release(handle);
+	}
+
+	this->m_swapChain.BackBuffers.clear();
+
+	this->RunGarbageCollection(~0u);
+
+	this->m_texturePool.Finalize();
+	this->m_commandSignaturePool.Finalize();
+	this->m_shaderPool.Finalize();
+	this->m_inputLayoutPool.Finalize();
+	this->m_bufferPool.Finalize();
+	this->m_rtAccelerationStructurePool.Finalize();
+	this->m_gfxPipelinePool.Finalize();
+	this->m_computePipelinePool.Finalize();
+	this->m_meshPipelinePool.Finalize();
+
+#if ENABLE_PIX_CAPUTRE
+	FreeLibrary(this->m_pixCaptureModule);
+#endif
+}
