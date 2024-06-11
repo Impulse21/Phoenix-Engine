@@ -9,6 +9,7 @@
 
 #include "D3D12CommandQueue.h"
 #include "D3D12BiindlessDescriptorTable.h"
+#include "D3D12UploadBuffer.h"
 
 // Teir 1 limit is 1,000,000
 // https://docs.microsoft.com/en-us/windows/win32/direct3d12/hardware-support
@@ -94,7 +95,7 @@ namespace phx::rhi::d3d12
     struct DescriptorView final
     {
         DescriptorHeapAllocation Allocation;
-        DescriptorIndex BindlessIndex = cInvalidDescriptorIndex;
+        DescriptorIndex BindlessIndex = kInvalidDescriptorIndex;
         D3D12_DESCRIPTOR_HEAP_TYPE Type = {};
         union
         {
@@ -257,6 +258,7 @@ namespace phx::rhi::d3d12
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> NativeCommandList;
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList6> NativeCommandList6;
         ID3D12CommandAllocator* NativeCommandAllocator;
+        UploadBuffer UploadBuffer;
 
         // An Array of Memory, perferanle from Allocator Internal
         std::atomic_bool IsWaitedOn;
@@ -306,9 +308,13 @@ namespace phx::rhi::d3d12
         static HRESULT EnumAdapters(uint32_t adapterIndex, IDXGIFactory6* factory6, IDXGIAdapter1** outAdapter);
     };
 
-    class D3D12RenderFrame : public RenderFrame
+    class D3D12RenderContext : public RenderContext
     {
     public:
+        D3D12RenderContext(D3D12GfxDevice& device)
+            : m_device(device)
+        {}
+
         // TODO: Change to a new pattern so we don't require a command list stored on an object. Instread, request from a pool of objects
         CommandListHandle BeginCommandList(CommandQueueType queueType = CommandQueueType::Graphics) override;
         void Submit() override;
@@ -470,8 +476,9 @@ namespace phx::rhi::d3d12
         void EndTimerQuery(TimerQueryHandle query, CommandListHandle cmd) override;
 
     private:
+        D3D12GfxDevice& m_device;
         std::atomic_uint32_t m_activeCmdCount;
-        Span<D3D12CommandList> m_frameCommandLists;
+        MutableSpan<D3D12CommandList> m_frameCommandLists;
     };
 
     class D3D12GfxDevice final : public IGfxDevice

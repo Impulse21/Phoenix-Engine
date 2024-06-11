@@ -3125,9 +3125,9 @@ void phx::rhi::d3d12::D3D12GfxDevice::CreateSwapChain(SwapChainDesc const& desc,
 
 		this->m_swapChain.BackBuffers[i] = this->CreateTexture(
 			{
+				.Format = this->m_swapChain.Desc.Format,
 				.BindingFlags = BindingFlags::RenderTarget,
 				.Dimension = TextureDimension::Texture2D,
-				.Format = this->m_swapChain.Desc.Format,
 				.Width = this->m_swapChain.Desc.Width,
 				.Height = this->m_swapChain.Desc.Height,
 				.DebugName = std::string(allocatorName)
@@ -3155,14 +3155,15 @@ void phx::rhi::d3d12::D3D12GfxDevice::FindAdapter(Microsoft::WRL::ComPtr<IDXGIFa
 		DXGI_ADAPTER_DESC1 desc = {};
 		tempAdapter->GetDesc1(&desc);
 
-		std::string name = NarrowString(desc.Description);
+		std::string name;
+		phx::StringConvert(desc.Description, name);
 		size_t dedicatedVideoMemory = desc.DedicatedVideoMemory;
 		size_t dedicatedSystemMemory = desc.DedicatedSystemMemory;
 		size_t sharedSystemMemory = desc.SharedSystemMemory;
 
 		if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
 		{
-			PHX_LOG_CORE_INFO("GPU '%s' is a software adapter. Skipping consideration as this is not supported.", name.c_str());
+			PHX_CORE_INFO("GPU '%s' is a software adapter. Skipping consideration as this is not supported.", name.c_str());
 			continue;
 		}
 
@@ -3174,7 +3175,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::FindAdapter(Microsoft::WRL::ComPtr<IDXGIFa
 
 		if (basicDeviceInfo.NumDeviceNodes > 1)
 		{
-			PHX_LOG_CORE_INFO("GPU '%s' has one or more device nodes. Currently only support one device ndoe.", name.c_str());
+			PHX_CORE_INFO("GPU '%s' has one or more device nodes. Currently only support one device ndoe.", name.c_str());
 		}
 
 		if (!selectedAdapter || selectedGPUVideoMemeory < dedicatedVideoMemory)
@@ -3187,31 +3188,32 @@ void phx::rhi::d3d12::D3D12GfxDevice::FindAdapter(Microsoft::WRL::ComPtr<IDXGIFa
 
 	if (!selectedAdapter)
 	{
-		PHX_LOG_CORE_WARN("No suitable adapters were found.");
+		PHX_CORE_WARN("No suitable adapters were found.");
 		return;
 	}
 
 	DXGI_ADAPTER_DESC desc = {};
 	selectedAdapter->GetDesc(&desc);
 
-	std::string name = NarrowString(desc.Description);
+	std::string name;
+	phx::StringConvert(desc.Description, name);
 	size_t dedicatedVideoMemory = desc.DedicatedVideoMemory;
 	size_t dedicatedSystemMemory = desc.DedicatedSystemMemory;
 	size_t sharedSystemMemory = desc.SharedSystemMemory;
 
 	// TODO: FIXLOG
-	PHX_LOG_CORE_INFO(
+	PHX_CORE_INFO(
 		"Found Suitable D3D12 Adapter '%s'",
 		name.c_str());
 
 	// TODO: FIXLOG
-	PHX_LOG_CORE_INFO(
+	PHX_CORE_INFO(
 		"Adapter has %dMB of dedicated video memory, %dMB of dedicated system memory, and %dMB of shared system memory.",
 		dedicatedVideoMemory / (1024 * 1024),
 		dedicatedSystemMemory / (1024 * 1024),
 		sharedSystemMemory / (1024 * 1024));
 
-	outAdapter.Name = NarrowString(desc.Description);
+	phx::StringConvert(desc.Description, outAdapter.Name);
 	outAdapter.BasicDeviceInfo = selectedBasicDeviceInfo;
 	outAdapter.NativeDesc = desc;
 	outAdapter.NativeAdapter = selectedAdapter;
@@ -3225,25 +3227,24 @@ HRESULT D3D12Adapter::EnumAdapters(uint32_t adapterIndex, IDXGIFactory6* factory
 		IID_PPV_ARGS(outAdapter));
 }
 
-CommandListHandle phx::rhi::d3d12::D3D12GfxDevice::BeginCommandList(CommandQueueType queueType)
+CommandListHandle phx::rhi::d3d12::D3D12RenderContext::BeginCommandList(CommandQueueType queueType)
 {
-	uint32_t currentCmdIndex = this->m_activeCmdCount++;
-	assert(currentCmdIndex < this->m_frameCommandListHandles.size());
+	uint32_t cmdHandle = this->m_activeCmdCount++;
+	assert(cmdHandle < this->m_frameCommandLists.Size());
 
-	CommandListHandle cmdHandle = this->m_frameCommandListHandles[currentCmdIndex];
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmdHandle);
-	internalCmd.NativeCommandAllocator = this->GetQueue(queueType).RequestAllocator();
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmdHandle];
+	internalCmd.NativeCommandAllocator = this->m_device.GetQueue(queueType).RequestAllocator();
 
 	if (internalCmd.NativeCommandList == nullptr)
 	{
-		this->GetD3D12Device()->CreateCommandList(
+		this->m_device.GetD3D12Device2()->CreateCommandList(
 			0,
-			this->GetQueue(queueType).GetType(),
+			this->m_device.GetQueue(queueType).GetType(),
 			internalCmd.NativeCommandAllocator,
 			nullptr,
 			IID_PPV_ARGS(&internalCmd.NativeCommandList));
 
-		internalCmd.NativeCommandList->SetName(L"D3D12GfxDevice::CommandList");
+		internalCmd.NativeCommandList->SetName(L"D3D12RenderContext::CommandList");
 		ThrowIfFailed(
 			internalCmd.NativeCommandList.As<ID3D12GraphicsCommandList6>(&internalCmd.NativeCommandList6));
 
@@ -3254,7 +3255,7 @@ CommandListHandle phx::rhi::d3d12::D3D12GfxDevice::BeginCommandList(CommandQueue
 	}
 
 
-	internalCmd.Id = currentCmdIndex;
+	internalCmd.Id = cmdHandle;
 	internalCmd.QueueType = queueType;
 	internalCmd.Waits.clear();
 	internalCmd.IsWaitedOn.store(false);
@@ -3262,27 +3263,24 @@ CommandListHandle phx::rhi::d3d12::D3D12GfxDevice::BeginCommandList(CommandQueue
 
 	// Bind Heaps
 	std::array<ID3D12DescriptorHeap*, 2> heaps;
-	for (int i = 0; i < this->m_gpuDescriptorHeaps.size(); i++)
-	{
-		heaps[i] = this->m_gpuDescriptorHeaps[i].GetNativeHeap();
-	}
+	heaps[0] = this->m_device.GetResourceGpuHeap().GetNativeHeap();
+	heaps[1] = this->m_device.GetSamplerGpuHeap().GetNativeHeap();
 
-	// TODO: NOT VALID FOR COPY
 	internalCmd.NativeCommandList6->SetDescriptorHeaps(heaps.size(), heaps.data());
 	return cmdHandle;
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::WaitCommandList(CommandListHandle cmd, CommandListHandle waitOn)
+void phx::rhi::d3d12::D3D12RenderContext::WaitCommandList(CommandListHandle cmd, CommandListHandle waitOn)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	internalCmd.Waits.push_back(waitOn);
 	internalCmd.IsWaitedOn.store(true);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::RTBuildAccelerationStructure(rhi::RTAccelerationStructureHandle accelStructure, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::RTBuildAccelerationStructure(rhi::RTAccelerationStructureHandle accelStructure, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	D3D12RTAccelerationStructure* dx12AccelStructure = this->GetRTAccelerationStructurePool().Get(accelStructure);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	D3D12RTAccelerationStructure* dx12AccelStructure = this->m_device.GetRTAccelerationStructurePool().Get(accelStructure);
 	assert(dx12AccelStructure);
 
 
@@ -3314,26 +3312,26 @@ void phx::rhi::d3d12::D3D12GfxDevice::RTBuildAccelerationStructure(rhi::RTAccele
 
 			if (geometry.Type == RTAccelerationStructureDesc::BottomLevelDesc::Geometry::Type::Triangles)
 			{
-				D3D12Buffer* vertexBuffer = this->GetBufferPool().Get(geometry.Triangles.VertexBuffer);
+				D3D12Buffer* vertexBuffer = this->m_device.GetBufferPool().Get(geometry.Triangles.VertexBuffer);
 				assert(vertexBuffer);
 				buildGeometry.Triangles.VertexBuffer.StartAddress = vertexBuffer->D3D12Resource->GetGPUVirtualAddress() + (D3D12_GPU_VIRTUAL_ADDRESS)geometry.Triangles.VertexByteOffset;
 
 
-				D3D12Buffer* indexBuffer = this->GetBufferPool().Get(geometry.Triangles.IndexBuffer);
+				D3D12Buffer* indexBuffer = this->m_device.GetBufferPool().Get(geometry.Triangles.IndexBuffer);
 				assert(indexBuffer);
 				buildGeometry.Triangles.IndexBuffer = indexBuffer->D3D12Resource->GetGPUVirtualAddress() +
 					(D3D12_GPU_VIRTUAL_ADDRESS)geometry.Triangles.IndexOffset * (geometry.Triangles.IndexFormat == rhi::Format::R16_UINT ? sizeof(uint16_t) : sizeof(uint32_t));
 
 				if (geometry.Flags & RTAccelerationStructureDesc::BottomLevelDesc::Geometry::kUseTransform)
 				{
-					D3D12Buffer* transform3x4Buffer = this->GetBufferPool().Get(geometry.Triangles.Transform3x4Buffer);
+					D3D12Buffer* transform3x4Buffer = this->m_device.GetBufferPool().Get(geometry.Triangles.Transform3x4Buffer);
 					assert(transform3x4Buffer);
 					buildGeometry.Triangles.Transform3x4 = transform3x4Buffer->D3D12Resource->GetGPUVirtualAddress() + (D3D12_GPU_VIRTUAL_ADDRESS)geometry.Triangles.Transform3x4BufferOffset;
 				}
 			}
 			else if (geometry.Type == RTAccelerationStructureDesc::BottomLevelDesc::Geometry::Type::ProceduralAABB)
 			{
-				D3D12Buffer* aabbBuffer = this->GetBufferPool().Get(geometry.AABBs.AABBBuffer);
+				D3D12Buffer* aabbBuffer = this->m_device.GetBufferPool().Get(geometry.AABBs.AABBBuffer);
 				assert(aabbBuffer);
 				buildGeometry.AABBs.AABBs.StartAddress = aabbBuffer->D3D12Resource->GetGPUVirtualAddress() + (D3D12_GPU_VIRTUAL_ADDRESS)geometry.AABBs.Offset;
 			}
@@ -3342,7 +3340,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::RTBuildAccelerationStructure(rhi::RTAccele
 	}
 	case RTAccelerationStructureDesc::Type::TopLevel:
 	{
-		D3D12Buffer* instanceBuffer = this->GetBufferPool().Get(dx12AccelStructure->Desc.TopLevel.InstanceBuffer);
+		D3D12Buffer* instanceBuffer = this->m_device.GetBufferPool().Get(dx12AccelStructure->Desc.TopLevel.InstanceBuffer);
 		assert(instanceBuffer);
 
 		dx12BuildDesc.Inputs.InstanceDescs = instanceBuffer->D3D12Resource->GetGPUVirtualAddress() +
@@ -3366,35 +3364,35 @@ void phx::rhi::d3d12::D3D12GfxDevice::RTBuildAccelerationStructure(rhi::RTAccele
 	dx12BuildDesc.DestAccelerationStructureData = dx12AccelStructure->D3D12Resource->GetGPUVirtualAddress();
 
 
-	D3D12Buffer* scratchBuffer = this->GetBufferPool().Get(dx12AccelStructure->SratchBuffer);
+	D3D12Buffer* scratchBuffer = this->m_device.GetBufferPool().Get(dx12AccelStructure->SratchBuffer);
 	assert(scratchBuffer);
 
 	dx12BuildDesc.ScratchAccelerationStructureData = scratchBuffer->D3D12Resource->GetGPUVirtualAddress();
 	internalCmd.NativeCommandList6->BuildRaytracingAccelerationStructure(&dx12BuildDesc, 0, nullptr);
 }
 
-void D3D12GfxDevice::BeginMarker(std::string_view name, CommandListHandle cmd)
+void D3D12RenderContext::BeginMarker(std::string_view name, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	PIXBeginEvent(internalCmd.NativeCommandList.Get(), 0, std::wstring(name.begin(), name.end()).c_str());
 	const char* tag = std::string(name.begin(), name.end()).c_str();
 	// OPTICK_GPU_EVENT(tag);
 }
 
-void D3D12GfxDevice::EndMarker(CommandListHandle cmd)
+void D3D12RenderContext::EndMarker(CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	PIXEndEvent(internalCmd.NativeCommandList.Get());
 }
 
-void D3D12GfxDevice::TransitionBarrier(
+void D3D12RenderContext::TransitionBarrier(
 	TextureHandle texture,
 	ResourceStates beforeState,
 	ResourceStates afterState,
 	CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	D3D12Texture* textureImpl = this->GetTexturePool().Get(texture);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	D3D12Texture* textureImpl = this->m_device.GetTexturePool().Get(texture);
 	assert(textureImpl);
 
 	internalCmd.TransitionBarrier(
@@ -3403,14 +3401,14 @@ void D3D12GfxDevice::TransitionBarrier(
 		ConvertResourceStates(afterState));
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::TransitionBarrier(
+void phx::rhi::d3d12::D3D12RenderContext::TransitionBarrier(
 	BufferHandle buffer,
 	ResourceStates beforeState,
 	ResourceStates afterState,
 	CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	D3D12Buffer* bufferImpl = this->GetBufferPool().Get(buffer);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	D3D12Buffer* bufferImpl = this->m_device.GetBufferPool().Get(buffer);
 	assert(bufferImpl);
 
 	internalCmd.TransitionBarrier(
@@ -3419,14 +3417,14 @@ void phx::rhi::d3d12::D3D12GfxDevice::TransitionBarrier(
 		ConvertResourceStates(afterState));
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::TransitionBarriers(Span<GpuBarrier> gpuBarriers, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::TransitionBarriers(Span<GpuBarrier> gpuBarriers, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	for (const phx::rhi::GpuBarrier& gpuBarrier : gpuBarriers)
 	{
 		if (const GpuBarrier::TextureBarrier* texBarrier = std::get_if<GpuBarrier::TextureBarrier>(&gpuBarrier.Data))
 		{
-			D3D12Texture* textureImpl = this->GetTexturePool().Get(texBarrier->Texture);
+			D3D12Texture* textureImpl = this->m_device.GetTexturePool().Get(texBarrier->Texture);
 			D3D12_RESOURCE_BARRIER barrier = {};
 			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -3467,7 +3465,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::TransitionBarriers(Span<GpuBarrier> gpuBar
 
 			if (const TextureHandle* texture = std::get_if<TextureHandle>(&memoryBarrier->Resource))
 			{
-				D3D12Texture* textureImpl = this->GetTexturePool().Get(*texture);
+				D3D12Texture* textureImpl = this->m_device.GetTexturePool().Get(*texture);
 				if (textureImpl && textureImpl->D3D12Resource != nullptr)
 				{
 					barrier.UAV.pResource = textureImpl->D3D12Resource.Get();
@@ -3475,7 +3473,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::TransitionBarriers(Span<GpuBarrier> gpuBar
 			}
 			else if (const BufferHandle* buffer = std::get_if<BufferHandle>(&memoryBarrier->Resource))
 			{
-				D3D12Buffer* bufferImpl = this->GetBufferPool().Get(*buffer);
+				D3D12Buffer* bufferImpl = this->m_device.GetBufferPool().Get(*buffer);
 				if (bufferImpl && bufferImpl->D3D12Resource != nullptr)
 				{
 					barrier.UAV.pResource = bufferImpl->D3D12Resource.Get();
@@ -3497,9 +3495,9 @@ void phx::rhi::d3d12::D3D12GfxDevice::TransitionBarriers(Span<GpuBarrier> gpuBar
 	}
 }
 
-void D3D12GfxDevice::ClearTextureFloat(TextureHandle texture, Color const& clearColour, CommandListHandle cmd)
+void D3D12RenderContext::ClearTextureFloat(TextureHandle texture, Color const& clearColour, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	auto textureImpl = this->GetTexturePool().Get(texture);
 	assert(textureImpl);
 
@@ -3512,9 +3510,10 @@ void D3D12GfxDevice::ClearTextureFloat(TextureHandle texture, Color const& clear
 }
 
 
-GPUAllocation D3D12GfxDevice::AllocateGpu(size_t bufferSize, size_t stride, CommandListHandle cmd)
+GPUAllocation D3D12RenderContext::AllocateGpu(size_t bufferSize, size_t stride, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+#if false
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	assert(bufferSize <= internalCmd.UploadBuffer.GetPageSize());
 
 	auto heapAllocation = internalCmd.UploadBuffer.Allocate(bufferSize, stride);
@@ -3526,9 +3525,13 @@ GPUAllocation D3D12GfxDevice::AllocateGpu(size_t bufferSize, size_t stride, Comm
 	gpuAlloc.SizeInBytes = bufferSize;
 
 	return gpuAlloc;
+#else
+	assert(false);
+	return {};
+#endif
 }
 
-void D3D12GfxDevice::ClearDepthStencilTexture(
+void D3D12RenderContext::ClearDepthStencilTexture(
 	TextureHandle depthStencil,
 	bool clearDepth,
 	float depth,
@@ -3536,8 +3539,8 @@ void D3D12GfxDevice::ClearDepthStencilTexture(
 	uint8_t stencil,
 	CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	auto textureImpl = this->GetTexturePool().Get(depthStencil);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	auto textureImpl = this->m_device.GetTexturePool().Get(depthStencil);
 	assert(textureImpl);
 
 	D3D12_CLEAR_FLAGS flags = {};
@@ -3561,9 +3564,9 @@ void D3D12GfxDevice::ClearDepthStencilTexture(
 		nullptr);
 }
 
-void D3D12GfxDevice::Draw(DrawArgs const& args, CommandListHandle cmd)
+void D3D12RenderContext::Draw(DrawArgs const& args, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	internalCmd.NativeCommandList->DrawInstanced(
 		args.VertexCount,
 		args.InstanceCount,
@@ -3571,9 +3574,9 @@ void D3D12GfxDevice::Draw(DrawArgs const& args, CommandListHandle cmd)
 		args.StartInstance);
 }
 
-void D3D12GfxDevice::DrawIndexed(DrawArgs const& args, CommandListHandle cmd)
+void D3D12RenderContext::DrawIndexed(DrawArgs const& args, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	internalCmd.NativeCommandList->DrawIndexedInstanced(
 		args.IndexCount,
 		args.InstanceCount,
@@ -3582,11 +3585,11 @@ void D3D12GfxDevice::DrawIndexed(DrawArgs const& args, CommandListHandle cmd)
 		args.StartInstance);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::ExecuteIndirect(rhi::CommandSignatureHandle commandSignature, rhi::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::ExecuteIndirect(rhi::CommandSignatureHandle commandSignature, rhi::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	D3D12CommandSignature* commandSignatureImpl = this->GetCommandSignaturePool().Get(commandSignature);
-	D3D12Buffer* bufferImpl = this->GetBufferPool().Get(args);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	D3D12CommandSignature* commandSignatureImpl = this->m_device.GetCommandSignaturePool().Get(commandSignature);
+	D3D12Buffer* bufferImpl = this->m_device.GetBufferPool().Get(args);
 	internalCmd.NativeCommandList6->ExecuteIndirect(
 		commandSignatureImpl->NativeSignature.Get(),
 		maxCount,
@@ -3596,7 +3599,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::ExecuteIndirect(rhi::CommandSignatureHandl
 		1);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::ExecuteIndirect(
+void phx::rhi::d3d12::D3D12RenderContext::ExecuteIndirect(
 	rhi::CommandSignatureHandle commandSignature,
 	rhi::BufferHandle args,
 	size_t argsOffsetInBytes,
@@ -3605,10 +3608,10 @@ void phx::rhi::d3d12::D3D12GfxDevice::ExecuteIndirect(
 	uint32_t maxCount,
 	CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	D3D12CommandSignature* commandSignatureImpl = this->GetCommandSignaturePool().Get(commandSignature);
-	D3D12Buffer* argBufferImpl = this->GetBufferPool().Get(args);
-	D3D12Buffer* countBufferBufferImpl = this->GetBufferPool().Get(count);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	D3D12CommandSignature* commandSignatureImpl = this->m_device.GetCommandSignaturePool().Get(commandSignature);
+	D3D12Buffer* argBufferImpl = this->m_device.GetBufferPool().Get(args);
+	D3D12Buffer* countBufferBufferImpl = this->m_device.GetBufferPool().Get(count);
 	internalCmd.NativeCommandList6->ExecuteIndirect(
 		commandSignatureImpl->NativeSignature.Get(),
 		maxCount,
@@ -3618,12 +3621,12 @@ void phx::rhi::d3d12::D3D12GfxDevice::ExecuteIndirect(
 		countOffsetInBytes);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::DrawIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::DrawIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	D3D12Buffer* bufferImpl = this->GetBufferPool().Get(args);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	D3D12Buffer* bufferImpl = this->m_device.GetBufferPool().Get(args);
 	internalCmd.NativeCommandList6->ExecuteIndirect(
-		this->GetDrawInstancedIndirectCommandSignature(),
+		this->m_device.GetDrawInstancedIndirectCommandSignature(),
 		maxCount,
 		bufferImpl->D3D12Resource.Get(),
 		argsOffsetInBytes,
@@ -3631,13 +3634,13 @@ void phx::rhi::d3d12::D3D12GfxDevice::DrawIndirect(rhi::BufferHandle args, size_
 		1);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::DrawIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::DrawIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	D3D12Buffer* argBufferImpl = this->GetBufferPool().Get(args);
-	D3D12Buffer* countBufferBufferImpl = this->GetBufferPool().Get(args);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	D3D12Buffer* argBufferImpl = this->m_device.GetBufferPool().Get(args);
+	D3D12Buffer* countBufferBufferImpl = this->m_device.GetBufferPool().Get(args);
 	internalCmd.NativeCommandList6->ExecuteIndirect(
-		this->GetDrawInstancedIndirectCommandSignature(),
+		this->m_device.GetDrawInstancedIndirectCommandSignature(),
 		maxCount,
 		argBufferImpl->D3D12Resource.Get(),
 		argsOffsetInBytes,
@@ -3645,12 +3648,12 @@ void phx::rhi::d3d12::D3D12GfxDevice::DrawIndirect(rhi::BufferHandle args, size_
 		countOffsetInBytes);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::DrawIndexedIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::DrawIndexedIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	D3D12Buffer* bufferImpl = this->GetBufferPool().Get(args);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	D3D12Buffer* bufferImpl = this->m_device.GetBufferPool().Get(args);
 	internalCmd.NativeCommandList6->ExecuteIndirect(
-		this->GetDrawIndexedInstancedIndirectCommandSignature(),
+		this->m_device.GetDrawIndexedInstancedIndirectCommandSignature(),
 		maxCount,
 		bufferImpl->D3D12Resource.Get(),
 		argsOffsetInBytes,
@@ -3658,13 +3661,13 @@ void phx::rhi::d3d12::D3D12GfxDevice::DrawIndexedIndirect(rhi::BufferHandle args
 		1);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::DrawIndexedIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::DrawIndexedIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	D3D12Buffer* argBufferImpl = this->GetBufferPool().Get(args);
-	D3D12Buffer* countBufferBufferImpl = this->GetBufferPool().Get(args);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	D3D12Buffer* argBufferImpl = this->m_device.GetBufferPool().Get(args);
+	D3D12Buffer* countBufferBufferImpl = this->m_device.GetBufferPool().Get(args);
 	internalCmd.NativeCommandList6->ExecuteIndirect(
-		this->GetDrawIndexedInstancedIndirectCommandSignature(),
+		this->m_device.GetDrawIndexedInstancedIndirectCommandSignature(),
 		maxCount,
 		argBufferImpl->D3D12Resource.Get(),
 		argsOffsetInBytes,
@@ -3672,18 +3675,18 @@ void phx::rhi::d3d12::D3D12GfxDevice::DrawIndexedIndirect(rhi::BufferHandle args
 		countOffsetInBytes);
 }
 
-void D3D12GfxDevice::WriteBuffer(BufferHandle buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes, CommandListHandle cmd)
+void D3D12RenderContext::WriteBuffer(BufferHandle buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	UINT64 alignedSize = dataSize;
-	const D3D12Buffer* bufferImpl = this->GetBufferPool().Get(buffer);
+	const D3D12Buffer* bufferImpl = this->m_device.GetBufferPool().Get(buffer);
 	if ((bufferImpl->GetDesc().Binding & BindingFlags::ConstantBuffer) == BindingFlags::ConstantBuffer)
 	{
 		alignedSize = MemoryAlign(alignedSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 	}
 
 	auto heapAllocation = internalCmd.UploadBuffer.Allocate(dataSize, alignedSize);
-	D3D12Buffer* uploadBufferImpl = this->GetBufferPool().Get(heapAllocation.BufferHandle);
+	D3D12Buffer* uploadBufferImpl = this->m_device.GetBufferPool().Get(heapAllocation.BufferHandle);
 	memcpy(heapAllocation.CpuData, Data, dataSize);
 	internalCmd.NativeCommandList->CopyBufferRegion(
 		bufferImpl->D3D12Resource.Get(),
@@ -3720,11 +3723,11 @@ void D3D12GfxDevice::WriteBuffer(BufferHandle buffer, const void* Data, size_t d
 	*/
 }
 
-void D3D12GfxDevice::CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHandle src, uint64_t srcOffset, size_t sizeInBytes, CommandListHandle cmd)
+void D3D12RenderContext::CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHandle src, uint64_t srcOffset, size_t sizeInBytes, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	const D3D12Buffer* srcBuffer = this->GetBufferPool().Get(src);
-	const D3D12Buffer* dstBuffer = this->GetBufferPool().Get(dst);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	const D3D12Buffer* srcBuffer = this->m_device.GetBufferPool().Get(src);
+	const D3D12Buffer* dstBuffer = this->m_device.GetBufferPool().Get(dst);
 
 	internalCmd.NativeCommandList->CopyBufferRegion(
 		dstBuffer->D3D12Resource.Get(),
@@ -3734,17 +3737,17 @@ void D3D12GfxDevice::CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHand
 		(UINT64)sizeInBytes);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::WriteTexture(TextureHandle texture, uint32_t firstSubresource, size_t numSubresources, SubresourceData* pSubresourceData, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::WriteTexture(TextureHandle texture, uint32_t firstSubresource, size_t numSubresources, SubresourceData* pSubresourceData, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	auto textureImpl = this->GetTexturePool().Get(texture);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	auto textureImpl = this->m_device.GetTexturePool().Get(texture);
 	UINT64 requiredSize = GetRequiredIntermediateSize(textureImpl->D3D12Resource.Get(), firstSubresource, numSubresources);
 
 	auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(requiredSize);
 	Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
 	ThrowIfFailed(
-		this->GetD3D12Device2()->CreateCommittedResource(
+		this->m_device.GetD3D12Device2()->CreateCommittedResource(
 			&heapProperties,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
@@ -3770,23 +3773,21 @@ void phx::rhi::d3d12::D3D12GfxDevice::WriteTexture(TextureHandle texture, uint32
 		firstSubresource,
 		subresources.size(),
 		subresources.data());
-
-	internalCmd.TrackedResources.push_back(intermediateResource);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* Data, size_t rowPitch, size_t depthPitch, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* Data, size_t rowPitch, size_t depthPitch, CommandListHandle cmd)
 {
 	// LOG_CORE_FATAL("NOT IMPLEMENTED FUNCTION CALLED: CommandList::WriteTexture");
 	assert(false);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::SetRenderTargets(Span<TextureHandle> renderTargets, TextureHandle depthStencil, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::SetRenderTargets(Span<TextureHandle> renderTargets, TextureHandle depthStencil, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> renderTargetViews(renderTargets.Size());
 	for (int i = 0; i < renderTargets.Size(); i++)
 	{
-		auto textureImpl = this->GetTexturePool().Get(renderTargets[i]);
+		auto textureImpl = this->m_device.GetTexturePool().Get(renderTargets[i]);
 		renderTargetViews[i] = textureImpl->RtvAllocation.Allocation.GetCpuHandle();
 	}
 
@@ -3794,7 +3795,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::SetRenderTargets(Span<TextureHandle> rende
 	bool hasDepth = depthStencil.IsValid();
 	if (hasDepth)
 	{
-		auto textureImpl = this->GetTexturePool().Get(depthStencil);
+		auto textureImpl = this->m_device.GetTexturePool().Get(depthStencil);
 		depthView = textureImpl->DsvAllocation.Allocation.GetCpuHandle();
 	}
 
@@ -3805,11 +3806,11 @@ void phx::rhi::d3d12::D3D12GfxDevice::SetRenderTargets(Span<TextureHandle> rende
 		hasDepth ? &depthView : nullptr);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::SetGfxPipeline(GfxPipelineHandle graphicsPiplineHandle, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::SetGfxPipeline(GfxPipelineHandle graphicsPiplineHandle, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	internalCmd.ActivePipelineType = D3D12CommandList::D3D12CommandList::PipelineType::Gfx;
-	D3D12GraphicsPipeline* graphisPipeline = this->GetGraphicsPipelinePool().Get(graphicsPiplineHandle);
+	D3D12GraphicsPipeline* graphisPipeline = this->m_device.GetGraphicsPipelinePool().Get(graphicsPiplineHandle);
 	internalCmd.NativeCommandList->SetPipelineState(graphisPipeline->D3D12PipelineState.Get());
 
 	internalCmd.NativeCommandList->SetGraphicsRootSignature(graphisPipeline->RootSignature.Get());
@@ -3833,9 +3834,9 @@ void phx::rhi::d3d12::D3D12GfxDevice::SetGfxPipeline(GfxPipelineHandle graphicsP
 	internalCmd.NativeCommandList->IASetPrimitiveTopology(topology);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::SetViewports(Viewport* viewports, size_t numViewports, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::SetViewports(Viewport* viewports, size_t numViewports, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	CD3DX12_VIEWPORT dx12Viewports[16] = {};
 	for (int i = 0; i < numViewports; i++)
 	{
@@ -3852,9 +3853,9 @@ void phx::rhi::d3d12::D3D12GfxDevice::SetViewports(Viewport* viewports, size_t n
 	internalCmd.NativeCommandList->RSSetViewports((UINT)numViewports, dx12Viewports);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::SetScissors(Rect* scissors, size_t numScissors, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::SetScissors(Rect* scissors, size_t numScissors, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	CD3DX12_RECT dx12Scissors[16] = {};
 	for (int i = 0; i < numScissors; i++)
 	{
@@ -3870,9 +3871,9 @@ void phx::rhi::d3d12::D3D12GfxDevice::SetScissors(Rect* scissors, size_t numScis
 	internalCmd.NativeCommandList->RSSetScissorRects((UINT)numScissors, dx12Scissors);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	if (internalCmd.ActivePipelineType == D3D12CommandList::PipelineType::Compute)
 	{
 		internalCmd.NativeCommandList->SetComputeRoot32BitConstants(rootParameterIndex, sizeInBytes / sizeof(uint32_t), constants, 0);
@@ -3883,10 +3884,10 @@ void phx::rhi::d3d12::D3D12GfxDevice::BindPushConstant(uint32_t rootParameterInd
 	}
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::BindConstantBuffer(size_t rootParameterIndex, BufferHandle constantBuffer, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::BindConstantBuffer(size_t rootParameterIndex, BufferHandle constantBuffer, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	const D3D12Buffer* constantBufferImpl = this->GetBufferPool().Get(constantBuffer);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	const D3D12Buffer* constantBufferImpl = this->m_device.GetBufferPool().Get(constantBuffer);
 	if (internalCmd.ActivePipelineType == D3D12CommandList::PipelineType::Compute)
 	{
 		internalCmd.NativeCommandList->SetComputeRootConstantBufferView(rootParameterIndex, constantBufferImpl->D3D12Resource->GetGPUVirtualAddress());
@@ -3897,9 +3898,9 @@ void phx::rhi::d3d12::D3D12GfxDevice::BindConstantBuffer(size_t rootParameterInd
 	}
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	UploadAllocation alloc = internalCmd.UploadBuffer.Allocate(sizeInBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 	std::memcpy(alloc.CpuData, bufferData, sizeInBytes);
 
@@ -3913,17 +3914,17 @@ void phx::rhi::d3d12::D3D12GfxDevice::BindDynamicConstantBuffer(size_t rootParam
 	}
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::BindVertexBuffer(uint32_t slot, BufferHandle vertexBuffer, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::BindVertexBuffer(uint32_t slot, BufferHandle vertexBuffer, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	const D3D12Buffer* vertexBufferImpl = this->GetBufferPool().Get(vertexBuffer);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	const D3D12Buffer* vertexBufferImpl = this->m_device.GetBufferPool().Get(vertexBuffer);
 
 	internalCmd.NativeCommandList->IASetVertexBuffers(slot, 1, &vertexBufferImpl->VertexView);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::BindDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::BindDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	size_t bufferSize = numVertices * vertexSize;
 	auto heapAllocation = internalCmd.UploadBuffer.Allocate(bufferSize, vertexSize);
 	memcpy(heapAllocation.CpuData, vertexBufferData, bufferSize);
@@ -3936,17 +3937,17 @@ void phx::rhi::d3d12::D3D12GfxDevice::BindDynamicVertexBuffer(uint32_t slot, siz
 	internalCmd.NativeCommandList->IASetVertexBuffers(slot, 1, &vertexBufferView);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::BindIndexBuffer(BufferHandle indexBuffer, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::BindIndexBuffer(BufferHandle indexBuffer, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	const D3D12Buffer* bufferImpl = this->GetBufferPool().Get(indexBuffer);
 
 	internalCmd.NativeCommandList->IASetIndexBuffer(&bufferImpl->IndexView);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::BindDynamicIndexBuffer(size_t numIndicies, rhi::Format indexFormat, const void* indexBufferData, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::BindDynamicIndexBuffer(size_t numIndicies, rhi::Format indexFormat, const void* indexBufferData, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	size_t indexSizeInBytes = indexFormat == rhi::Format::R16_UINT ? 2 : 4;
 	size_t bufferSize = numIndicies * indexSizeInBytes;
 
@@ -3963,9 +3964,9 @@ void phx::rhi::d3d12::D3D12GfxDevice::BindDynamicIndexBuffer(size_t numIndicies,
 	internalCmd.NativeCommandList->IASetIndexBuffer(&indexBufferView);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::BindDynamicStructuredBuffer(uint32_t rootParameterIndex, size_t numElements, size_t elementSize, const void* bufferData, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::BindDynamicStructuredBuffer(uint32_t rootParameterIndex, size_t numElements, size_t elementSize, const void* bufferData, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	size_t sizeInBytes = numElements * elementSize;
 	UploadAllocation alloc = internalCmd.UploadBuffer.Allocate(sizeInBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 	std::memcpy(alloc.CpuData, bufferData, sizeInBytes);
@@ -3980,10 +3981,10 @@ void phx::rhi::d3d12::D3D12GfxDevice::BindDynamicStructuredBuffer(uint32_t rootP
 	}
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	const D3D12Buffer* bufferImpl = this->GetBufferPool().Get(buffer);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	const D3D12Buffer* bufferImpl = this->m_device.GetBufferPool().Get(buffer);
 
 	if (internalCmd.ActivePipelineType == D3D12CommandList::PipelineType::Compute)
 	{
@@ -3999,42 +4000,42 @@ void phx::rhi::d3d12::D3D12GfxDevice::BindStructuredBuffer(size_t rootParameterI
 	}
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::BindResourceTable(size_t rootParameterIndex, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::BindResourceTable(size_t rootParameterIndex, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	if (this->GetMinShaderModel() < ShaderModel::SM_6_6)
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	if (this->m_device.GetMinShaderModel() < ShaderModel::SM_6_6)
 	{
 		if (internalCmd.ActivePipelineType == D3D12CommandList::PipelineType::Compute)
 		{
 			internalCmd.NativeCommandList->SetComputeRootDescriptorTable(
 				rootParameterIndex,
-				this->m_bindlessResourceDescriptorTable.GetGpuHandle(0));
+				this->m_device.GetBindlessTable().GetGpuHandle(0));
 		}
 		else
 		{
 			internalCmd.NativeCommandList->SetGraphicsRootDescriptorTable(
 				rootParameterIndex,
-				this->m_bindlessResourceDescriptorTable.GetGpuHandle(0));
+				this->m_device.GetBindlessTable().GetGpuHandle(0));
 		}
 	}
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::BindSamplerTable(size_t rootParameterIndex, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::BindSamplerTable(size_t rootParameterIndex, CommandListHandle cmd)
 {
 	// TODO:
 	assert(false);
 }
 
-void D3D12GfxDevice::BindDynamicDescriptorTable(size_t rootParameterIndex, Span<TextureHandle> textures, CommandListHandle cmd)
+void D3D12RenderContext::BindDynamicDescriptorTable(size_t rootParameterIndex, Span<TextureHandle> textures, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	// Request Descriptoprs for table
 	// Validate with Root Signature. Maybe an improvment in the future.
 	DescriptorHeapAllocation descriptorTable = internalCmd.ActiveDynamicSubAllocator->Allocate(textures.Size());
 	for (int i = 0; i < textures.Size(); i++)
 	{
-		auto textureImpl = this->GetTexturePool().Get(textures[i]);
-		this->GetD3D12Device2()->CopyDescriptorsSimple(
+		auto textureImpl = this->m_device.GetTexturePool().Get(textures[i]);
+		this->m_device.GetD3D12Device2()->CopyDescriptorsSimple(
 			1,
 			descriptorTable.GetCpuHandle(i),
 			textureImpl->Srv.Allocation.GetCpuHandle(),
@@ -4051,20 +4052,20 @@ void D3D12GfxDevice::BindDynamicDescriptorTable(size_t rootParameterIndex, Span<
 	}
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::BindDynamicUavDescriptorTable(
+void phx::rhi::d3d12::D3D12RenderContext::BindDynamicUavDescriptorTable(
 	size_t rootParameterIndex,
 	Span<BufferHandle> buffers,
 	Span<TextureHandle> textures,
 	CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	// Request Descriptoprs for table
 	// Validate with Root Signature. Maybe an improvment in the future.
 	DescriptorHeapAllocation descriptorTable = internalCmd.ActiveDynamicSubAllocator->Allocate(buffers.Size() + textures.Size());
 	for (int i = 0; i < buffers.Size(); i++)
 	{
-		auto impl = this->GetBufferPool().Get(buffers[i]);
-		this->GetD3D12Device2()->CopyDescriptorsSimple(
+		auto impl = this->m_device.GetBufferPool().Get(buffers[i]);
+		this->m_device.GetD3D12Device2()->CopyDescriptorsSimple(
 			1,
 			descriptorTable.GetCpuHandle(i),
 			impl->UavAllocation.Allocation.GetCpuHandle(),
@@ -4074,8 +4075,8 @@ void phx::rhi::d3d12::D3D12GfxDevice::BindDynamicUavDescriptorTable(
 
 	for (int i = 0; i < textures.Size(); i++)
 	{
-		auto textureImpl = this->GetTexturePool().Get(textures[i]);
-		this->GetD3D12Device2()->CopyDescriptorsSimple(
+		auto textureImpl = this->m_device.GetTexturePool().Get(textures[i]);
+		this->m_device.GetD3D12Device2()->CopyDescriptorsSimple(
 			1,
 			descriptorTable.GetCpuHandle(i + buffers.Size()),
 			textureImpl->UavAllocation.Allocation.GetCpuHandle(),
@@ -4093,29 +4094,29 @@ void phx::rhi::d3d12::D3D12GfxDevice::BindDynamicUavDescriptorTable(
 	}
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::SetComputeState(ComputePipelineHandle state, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::SetComputeState(ComputePipelineHandle state, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	internalCmd.ActivePipelineType = D3D12CommandList::PipelineType::Compute;
-	D3D12ComputePipeline* computePsoImpl = this->GetComputePipelinePool().Get(state);
+	D3D12ComputePipeline* computePsoImpl = this->m_device.GetComputePipelinePool().Get(state);
 	internalCmd.NativeCommandList->SetComputeRootSignature(computePsoImpl->RootSignature.Get());
 	internalCmd.NativeCommandList->SetPipelineState(computePsoImpl->D3D12PipelineState.Get());
 
 	internalCmd.ActiveComputePipeline = computePsoImpl;
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::Dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::Dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	internalCmd.NativeCommandList->Dispatch(groupsX, groupsY, groupsZ);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::DispatchIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::DispatchIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	D3D12Buffer* bufferImpl = this->GetBufferPool().Get(args);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	D3D12Buffer* bufferImpl = this->m_device.GetBufferPool().Get(args);
 	internalCmd.NativeCommandList6->ExecuteIndirect(
-		this->GetDispatchIndirectCommandSignature(),
+		this->m_device.GetDispatchIndirectCommandSignature(),
 		maxCount,
 		bufferImpl->D3D12Resource.Get(),
 		argsOffsetInBytes,
@@ -4123,13 +4124,13 @@ void phx::rhi::d3d12::D3D12GfxDevice::DispatchIndirect(rhi::BufferHandle args, u
 		1);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::DispatchIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::DispatchIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	D3D12Buffer* argBufferImpl = this->GetBufferPool().Get(args);
-	D3D12Buffer* countBufferBufferImpl = this->GetBufferPool().Get(args);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	D3D12Buffer* argBufferImpl = this->m_device.GetBufferPool().Get(args);
+	D3D12Buffer* countBufferBufferImpl = this->m_device.GetBufferPool().Get(args);
 	internalCmd.NativeCommandList6->ExecuteIndirect(
-		this->GetDispatchIndirectCommandSignature(),
+		this->m_device.GetDispatchIndirectCommandSignature(),
 		maxCount,
 		argBufferImpl->D3D12Resource.Get(),
 		argsOffsetInBytes,
@@ -4137,11 +4138,11 @@ void phx::rhi::d3d12::D3D12GfxDevice::DispatchIndirect(rhi::BufferHandle args, u
 		countOffsetInBytes);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::SetMeshPipeline(MeshPipelineHandle meshPipeline, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::SetMeshPipeline(MeshPipelineHandle meshPipeline, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	internalCmd.ActivePipelineType = D3D12CommandList::PipelineType::Mesh;
-	internalCmd.ActiveMeshPipeline = this->GetMeshPipelinePool().Get(meshPipeline);
+	internalCmd.ActiveMeshPipeline = this->m_device.GetMeshPipelinePool().Get(meshPipeline);
 	internalCmd.NativeCommandList->SetPipelineState(internalCmd.ActiveMeshPipeline->D3D12PipelineState.Get());
 
 	internalCmd.NativeCommandList->SetGraphicsRootSignature(internalCmd.ActiveMeshPipeline->RootSignature.Get());
@@ -4167,19 +4168,19 @@ void phx::rhi::d3d12::D3D12GfxDevice::SetMeshPipeline(MeshPipelineHandle meshPip
 	// TODO: Move viewport logic here as well...
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::DispatchMesh(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::DispatchMesh(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	assert(internalCmd.ActivePipelineType == D3D12CommandList::PipelineType::Mesh);
 	internalCmd.NativeCommandList6->DispatchMesh(groupsX, groupsY, groupsZ);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::DispatchMeshIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::DispatchMeshIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	D3D12Buffer* bufferImpl = this->GetBufferPool().Get(args);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	D3D12Buffer* bufferImpl = this->m_device.GetBufferPool().Get(args);
 	internalCmd.NativeCommandList6->ExecuteIndirect(
-		this->GetDispatchIndirectCommandSignature(),
+		this->m_device.GetDispatchIndirectCommandSignature(),
 		maxCount,
 		bufferImpl->D3D12Resource.Get(),
 		argsOffsetInBytes,
@@ -4187,13 +4188,13 @@ void phx::rhi::d3d12::D3D12GfxDevice::DispatchMeshIndirect(rhi::BufferHandle arg
 		1);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::DispatchMeshIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::DispatchMeshIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	D3D12Buffer* argBufferImpl = this->GetBufferPool().Get(args);
-	D3D12Buffer* countBufferBufferImpl = this->GetBufferPool().Get(args);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	D3D12Buffer* argBufferImpl = this->m_device.GetBufferPool().Get(args);
+	D3D12Buffer* countBufferBufferImpl = this->m_device.GetBufferPool().Get(args);
 	internalCmd.NativeCommandList6->ExecuteIndirect(
-		this->GetDispatchIndirectCommandSignature(),
+		this->m_device.GetDispatchIndirectCommandSignature(),
 		maxCount,
 		argBufferImpl->D3D12Resource.Get(),
 		argsOffsetInBytes,
@@ -4201,22 +4202,27 @@ void phx::rhi::d3d12::D3D12GfxDevice::DispatchMeshIndirect(rhi::BufferHandle arg
 		countOffsetInBytes);
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::BeginTimerQuery(TimerQueryHandle query, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::BeginTimerQuery(TimerQueryHandle query, CommandListHandle cmd)
 {
+#if false
 	assert(query.IsValid());
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
-	D3D12TimerQuery* queryImpl = this->GetTimerQueryPool().Get(query);
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
+	D3D12TimerQuery* queryImpl = this->m_device.GetTimerQueryPool().Get(query);
 
 	internalCmd.TimerQueries.push_back(query);
 	internalCmd.NativeCommandList->EndQuery(
 		this->GetQueryHeap(),
 		D3D12_QUERY_TYPE_TIMESTAMP,
 		queryImpl->BeginQueryIndex);
+#else
+	assert(false);
+#endif
 }
 
-void phx::rhi::d3d12::D3D12GfxDevice::EndTimerQuery(TimerQueryHandle query, CommandListHandle cmd)
+void phx::rhi::d3d12::D3D12RenderContext::EndTimerQuery(TimerQueryHandle query, CommandListHandle cmd)
 {
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmd);
+#if false
+	D3D12CommandList& internalCmd = this->m_frameCommandLists[cmd];
 	D3D12TimerQuery* queryImpl = this->GetTimerQueryPool().Get(query);
 
 	internalCmd.TimerQueries.push_back(query);
@@ -4235,4 +4241,7 @@ void phx::rhi::d3d12::D3D12GfxDevice::EndTimerQuery(TimerQueryHandle query, Comm
 		2,
 		timeStampQueryBuffer->D3D12Resource.Get(),
 		queryImpl->BeginQueryIndex * sizeof(uint64_t));
+#els
+	assert(false);
+#endif
 }

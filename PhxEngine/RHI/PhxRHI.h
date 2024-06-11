@@ -1246,10 +1246,10 @@ namespace phx::rhi
         };
     };
 
-    class RenderFrame : public NonCopyable
+    class RenderContext : public NonCopyable
     {
     public:
-        virtual ~RenderFrame() = default;
+        virtual ~RenderContext() = default;
 
         // TODO: Change to a new pattern so we don't require a command list stored on an object. Instread, request from a pool of objects
         virtual CommandListHandle BeginCommandList(CommandQueueType queueType = CommandQueueType::Graphics) = 0;
@@ -1495,7 +1495,7 @@ namespace phx::rhi
         // -- Command list Functions ---
         // These are not thread Safe
     public:
-        virtual RenderFrame BeginRenderFrame() = 0;
+        virtual RenderContext BeginRenderContext() = 0;
     };
 
     using GfxDevice = class IGfxDevice;
