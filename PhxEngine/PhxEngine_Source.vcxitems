@@ -27,24 +27,13 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxPlatform.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)phxApplication.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)phxEngineCore.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\D3D12BiindlessDescriptorTable.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\D3D12CommandQueue.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\D3D12Common.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\D3D12DescriptorHeap.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\D3D12UploadBuffer.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\d3dx12.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxRhi_D3D12.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\phxRHI.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)3rdParty\d3d12ma\D3D12MemAlloc.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxLog.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)phxEngineCore.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\D3D12CommandQueue.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\D3D12DescriptorHeap.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\D3D12UploadBuffer.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\DxgiFormatMapping.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxRhi_D3D12.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\phxRHI.cpp" />
   </ItemGroup>
 </Project>
