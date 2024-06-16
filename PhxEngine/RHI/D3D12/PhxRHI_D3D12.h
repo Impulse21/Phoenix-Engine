@@ -31,10 +31,17 @@ namespace phx::rhi
 	{
 	public:
 		static inline GfxDevice* Ptr = nullptr;
-		D3D12GfxDevice(Config const& desc);
+		D3D12GfxDevice(Config const& config);
+		~D3D12GfxDevice();
+
+	private:
+		void InitializeDeviceResources(Config const& config);
 
 	private:
 		D3D12ResourceManager m_resourceManager;
+
+		Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
+
 	};
 
 }
