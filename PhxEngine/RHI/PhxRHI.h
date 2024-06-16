@@ -540,15 +540,42 @@ namespace phx::rhi
     class GfxDevice
     {
     public:
+        inline static GfxDevice* Ptr = nullptr;
         virtual ~GfxDevice() = default;
+
+    public:
 
 
     };
 
+    class GpuMemoryAllocator
+    {
+    public:
+        virtual ~GpuMemoryAllocator() = default;
+    };
+
+    class ResourceManager
+    {
+    public:
+        virtual ~ResourceManager() = default;
+    };
+
+    class FrameRenderContext
+    {
+    public:
+        virtual ~FrameRenderContext() = default;
+    };
+
+    class RenderContext
+    {
+    public:
+        virtual ~RenderContext() = default;
+    };
 #pragma endregion
 
     struct Config
     {
+        GraphicsAPI Api = GraphicsAPI::DX12;
         core::WindowHandle Window;
         Rect WindowSize;
         uint8_t BufferCount = 3;
@@ -560,9 +587,9 @@ namespace phx::rhi
             {
                 bool Fullscreen : 1;
                 bool VSync      : 1;
-                bool EnableHDR  : 1;
+                bool EnableHDR  : 6;
             };
-            uint32_t Flags;
+            uint8_t Flags = 0;
         };
     };
 

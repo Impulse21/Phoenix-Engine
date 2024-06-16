@@ -28,12 +28,14 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)phxApplication.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)phxEngineCore.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\d3dx12.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxRHI_d3d12.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\phxRHI.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)3rdParty\d3d12ma\D3D12MemAlloc.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxLog.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)phxEngineCore.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxRHI_d3d12.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\phxRHI.cpp" />
   </ItemGroup>
 </Project>

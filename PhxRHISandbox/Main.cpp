@@ -3,8 +3,10 @@
 //
 
 #include "pch.h"
-using namespace DirectX;
+#include "RHI/phxRHI.h"
 
+using namespace DirectX;
+using namespace phx;
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wcovered-switch-default"
 #pragma clang diagnostic ignored "-Wswitch-enum"
@@ -55,9 +57,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
             return 1;
 
         // Create window
-        int w, h;
-        g_game->GetDefaultSize(w, h);
-
+        int w = 2000;
+        int h = 1200;
         RECT rc = { 0, 0, static_cast<LONG>(w), static_cast<LONG>(h) };
 
         AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
@@ -65,7 +66,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
         HWND hwnd = CreateWindowExW(0, L"PhxRHISandboxWindowClass", g_szAppName, WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top,
             nullptr, nullptr, hInstance,
-            g_game.get());
+            nullptr);
         // TODO: Change to CreateWindowExW(WS_EX_TOPMOST, L"PhxRHISandboxWindowClass", g_szAppName, WS_POPUP,
         // to default to fullscreen.
 
@@ -77,7 +78,11 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
         GetClientRect(hwnd, &rc);
 
-        g_game->Initialize(hwnd, rc.right - rc.left, rc.bottom - rc.top);
+        phx::rhi::InitializeWindows({
+                .Api = rhi::GraphicsAPI::DX12,
+                .Window = hwnd,
+                .WindowSize = rhi::Rect(rc.right - rc.left, rc.bottom - rc.top)
+            });
     }
 
     // Main message loop
@@ -95,6 +100,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
         }
     }
 
+    rhi::Finalize();
     XGameRuntimeUninitialize();
 
     return static_cast<int>(msg.wParam);
@@ -119,9 +125,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_PAINT:
-        if (s_in_sizemove && game)
+        if (s_in_sizemove)
         {
-            game->Tick();
         }
         else
         {

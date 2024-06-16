@@ -42,6 +42,9 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\d3dx12.h">
       <Filter>RHI\D3D12</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxRHI_d3d12.h">
+      <Filter>RHI\D3D12</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
@@ -70,6 +73,9 @@
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)3rdParty\d3d12ma\D3D12MemAlloc.cpp">
       <Filter>3rdParty\D3D12MemAlloc</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxRHI_d3d12.cpp">
+      <Filter>RHI\D3D12</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
