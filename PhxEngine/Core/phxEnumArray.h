@@ -4,16 +4,16 @@
 
 namespace phx::core
 {
-	template<typename E, class T, std::size_t N = (std::size_t)E::Count>
+	template<typename TEnum, class T, std::size_t N = (std::size_t)TEnum::Count>
 	class EnumArray : public std::array<T, N>
 	{
 	public:
-		T& operator[] (E e)
+		T& operator[] (TEnum e)
 		{
 			return std::array<T, N>::operator[]((std::size_t)e);
 		}
 
-		const T& operator[] (E e) const
+		const T& operator[] (TEnum e) const
 		{
 			return std::array<T, N>::operator[]((std::size_t)e);
 		}

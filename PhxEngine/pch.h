@@ -88,7 +88,7 @@
 #include "phxBaseInclude.h"
 #include "Core/phxLog.h"
 
-namespace phx::rhi::d3d12
+namespace phx::rhi
 {
     // Helper class for COM exceptions
     class com_exception : public std::exception

@@ -34,6 +34,25 @@ namespace phx::rhi
 #pragma region Generic Structures
 
 
+    struct DeviceCapabilities
+    {
+        union
+        {
+            uint8_t Flags = 0;
+            struct
+            {
+                uint8_t RTVTArrayIndexWithoutGS : 1;
+                uint8_t RayTracing : 1;
+                uint8_t RenderPass : 1;
+                uint8_t RayQuery : 1;
+                uint8_t VariableRateShading : 1;
+                uint8_t MeshShading : 1;
+                uint8_t CreateNoteZeroed : 1;
+                uint8_t Bindless : 1;
+            };
+        };
+    };
+
     struct SubresourceData
     {
         const void* pData = nullptr;
@@ -585,9 +604,10 @@ namespace phx::rhi
         {
             struct
             {
-                bool Fullscreen : 1;
-                bool VSync      : 1;
-                bool EnableHDR  : 6;
+                bool Fullscreen     : 1;
+                bool VSync          : 1;
+                bool AllowTearing   : 1;
+                bool EnableHDR      : 5;
             };
             uint8_t Flags = 0;
         };
