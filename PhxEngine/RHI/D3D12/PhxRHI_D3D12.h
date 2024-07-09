@@ -10,6 +10,7 @@ namespace phx::rhi
 {
 	struct DescriptorAllocationHanlder;
 	struct D3D12CommandQueue;
+	class D3D12ResourceManager;
 
 	class D3D12GfxDevice : public GfxDevice
 	{
@@ -34,16 +35,12 @@ namespace phx::rhi
 		void CreateDeviceResources(Config const& config);
 
 	private:
-		D3D12ResourceManager m_resourceManager;
-
-		Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
-
-	private:
 		DeviceCapabilities m_capabilities = {};
-		std::shared_ptr<DescriptorAllocator> m_descriptorAllocator;
+		std::unique_ptr<D3D12ResourceManager> m_resourceManager;
+		std::shared_ptr<DescriptorAllocationHanlder> m_descriptorAllocator;
 
 		// -- Device objects ---
-		core::EnumArray<rhi::CommandQueueType, D3D12CommandQueue> m_queues;
+		core::EnumArray<rhi::CommandQueueType, std::unique_ptr<D3D12CommandQueue>> m_queues;
 
 		// -- Direct3D objects ---
 		Microsoft::WRL::ComPtr<ID3D12Device> m_d3dDevice;

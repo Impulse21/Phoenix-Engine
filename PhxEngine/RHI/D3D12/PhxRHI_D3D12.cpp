@@ -104,6 +104,7 @@ namespace
 namespace phx::rhi
 {
 #pragma region DeviceChildren
+
 	class D3D12GfxDeviceChild
 	{
 	public:
@@ -132,11 +133,8 @@ namespace phx::rhi
 		Microsoft::WRL::Wrappers::Event FenceEvent;
 		D3D12_COMMAND_LIST_TYPE Type;
 
-		D3D12CommandQueue(D3D12GfxDevice* gfxDevice)
+		D3D12CommandQueue(D3D12GfxDevice* gfxDevice, D3D12_COMMAND_LIST_TYPE type)
 			: D3D12GfxDeviceChild(gfxDevice)
-		{}
-
-		void Initialize(D3D12_COMMAND_LIST_TYPE type)
 		{
 			// Create Command Queue
 			D3D12_COMMAND_QUEUE_DESC queueDesc = {};
@@ -272,13 +270,16 @@ namespace phx::rhi
 
 	struct DescriptorAllocationHandlerDesc
 	{
-		UINT BlockSizeRes			= 4096;
-		UINT BlockSizeSampler		= 256;
-		UINT BlockSizeRTV			= 512;
-		UINT BlockSizeResource		= 128;
-		UINT NumDescriptorsRes		= 1000000u; // tier 1 limit
-		UINT NumDescriptorsSampler	= 2048; // tier 1 limit
+		UINT BlockSizeRes					= 4096u;
+		UINT BlockSizeSampler				= 256u;
+		UINT BlockSizeRTV					= 512u;
+		UINT BlockSizeDsv					= 128u;
+		UINT NumDescriptorsRes				= 1000000u; // tier 1 limit
+		UINT NumBindlessDescriptorsRes		= 500000u;
+		UINT NumDescriptorsSampler			= 2048;		// tier 1 limit
+		UINT NumBindlessDescritorsSampler	= 256;
 	};
+
 	struct DescriptorAllocationHanlder : D3D12GfxDeviceChild
 	{
 		DescriptorAllocator AllocatorRes;
@@ -292,6 +293,8 @@ namespace phx::rhi
 		DescritporHeapGpu GpuHeapRes;
 		DescritporHeapGpu GpuHeapSampler;
 
+		DescriptorAllocationHandlerDesc Desc = {};
+
 		DescriptorAllocationHanlder(D3D12GfxDevice* gfxDevice, DescriptorAllocationHandlerDesc const& desc)
 			: D3D12GfxDeviceChild(gfxDevice)
 			, AllocatorRes(gfxDevice)
@@ -300,17 +303,27 @@ namespace phx::rhi
 			, AllocatorDSV(gfxDevice)
 			, GpuHeapRes(gfxDevice)
 			, GpuHeapSampler(gfxDevice)
+			, Desc(desc)
 		{
 			this->GpuHeapRes.Initialize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, desc.NumDescriptorsRes);
 			this->GpuHeapSampler.Initialize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, desc.NumDescriptorsSampler);
 
-			this->AllocatorRes;
-			this->AllocatorSampler;
-			this->AllocatorRTV;
-			this->AllocatorDSV;
+			this->AllocatorRes.Initialize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, desc.BlockSizeRes);
+			this->AllocatorSampler.Initialize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, desc.BlockSizeSampler);
+			this->AllocatorRTV.Initialize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, desc.BlockSizeRTV);
+			this->AllocatorDSV.Initialize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, desc.BlockSizeDsv);
 
-			this->FreeBindlessRes;
-			this->FreeBindlessSam;
+			this->FreeBindlessRes.reserve(desc.NumBindlessDescriptorsRes);
+			for (size_t i = 0; i < desc.NumBindlessDescriptorsRes; i++)
+			{
+				this->FreeBindlessRes.push_back(desc.NumBindlessDescriptorsRes - i - 1);
+			}
+
+			this->FreeBindlessSam.reserve(desc.NumBindlessDescritorsSampler);
+			for (size_t i = 0; i < desc.NumBindlessDescritorsSampler; i++)
+			{
+				this->FreeBindlessSam.push_back(desc.NumBindlessDescritorsSampler - i - 1);
+			}
 		}
 	};
 #pragma endregion
@@ -318,13 +331,11 @@ namespace phx::rhi
 
 #pragma region "GfxDevice Impl"
 phx::rhi::D3D12GfxDevice::D3D12GfxDevice(Config const& config)
-	: m_resourceManager(this)
-	, m_queues({ this, this, this})
 {
 	D3D12GfxDevice::Ptr = this;
 
 	this->CreateDevice(config);
-	this->CreateDevice(config);
+	this->CreateDeviceResources(config);
 }
 
 phx::rhi::D3D12GfxDevice::~D3D12GfxDevice()
@@ -529,12 +540,12 @@ void phx::rhi::D3D12GfxDevice::CreateDevice(Config const& config)
 
 void phx::rhi::D3D12GfxDevice::CreateDeviceResources(Config const& config)
 {
-	this->m_queues[CommandQueueType::Graphics].Initialize(D3D12_COMMAND_LIST_TYPE_DIRECT);
-	this->m_queues[CommandQueueType::Compute].Initialize(D3D12_COMMAND_LIST_TYPE_COMPUTE);
-	this->m_queues[CommandQueueType::Copy].Initialize(D3D12_COMMAND_LIST_TYPE_COPY);
+	this->m_queues[CommandQueueType::Graphics] = std::make_unique<D3D12CommandQueue>(this, D3D12_COMMAND_LIST_TYPE_DIRECT);
+	this->m_queues[CommandQueueType::Compute] = std::make_unique<D3D12CommandQueue>(this, D3D12_COMMAND_LIST_TYPE_COMPUTE);
+	this->m_queues[CommandQueueType::Copy] = std::make_unique<D3D12CommandQueue>(this, D3D12_COMMAND_LIST_TYPE_COPY);
 
 	// Create Heaps
-
+	this->m_descriptorAllocator = std::make_shared<DescriptorAllocationHanlder>(this);
 }
 
 #pragma endregion
