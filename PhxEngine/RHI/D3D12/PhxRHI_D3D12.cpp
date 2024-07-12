@@ -408,13 +408,12 @@ void phx::rhi::D3D12GfxDevice::CreateDevice(Config const& config)
 		}
 	}
 
-	ComPtr<IDXGIAdapter1> adapter;
-	FindAdapter(this->m_dxgiFactory, adapter.GetAddressOf());
+	FindAdapter(this->m_dxgiFactory, this->m_gpuAdapter.GetAddressOf());
 
 	auto device = this->m_d3dDevice;
 	// Create the DX12 API device object.
 	HRESULT hr = D3D12CreateDevice(
-		adapter.Get(),
+		this->m_gpuAdapter.Get(),
 		MIN_FEATURE_LEVEL,
 		IID_PPV_ARGS(device.ReleaseAndGetAddressOf())
 	);
@@ -546,6 +545,19 @@ void phx::rhi::D3D12GfxDevice::CreateDeviceResources(Config const& config)
 
 	// Create Heaps
 	this->m_descriptorAllocator = std::make_shared<DescriptorAllocationHanlder>(this);
+
+	// Create Allocator
+	D3D12MA::ALLOCATOR_DESC allocatorDesc = {};
+	allocatorDesc.pDevice = this->m_d3dDevice.Get();
+	allocatorDesc.pAdapter = this->m_gpuAdapter.Get();
+	//allocatorDesc.PreferredBlockSize = 256 * 1024 * 1024;
+	//allocatorDesc.Flags |= D3D12MA::ALLOCATOR_FLAG_ALWAYS_COMMITTED;
+	allocatorDesc.Flags = (D3D12MA::ALLOCATOR_FLAGS)(D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED);
+
+	ThrowIfFailed(
+		D3D12MA::CreateAllocator(&allocatorDesc, &this->m_gpuMemAllocator));
+
+	// Create Command Lists
 }
 
 #pragma endregion

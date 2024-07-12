@@ -3,6 +3,7 @@
 #include <mutex>
 
 #include "RHI/phxRHI.h"
+#include "d3d12ma/D3D12MemAlloc.h"
 #include "Core/phxHandlePool.h"
 #include "Core/phxEnumArray.h"
 
@@ -43,12 +44,16 @@ namespace phx::rhi
 		core::EnumArray<rhi::CommandQueueType, std::unique_ptr<D3D12CommandQueue>> m_queues;
 
 		// -- Direct3D objects ---
+		Microsoft::WRL::ComPtr<IDXGIAdapter1> m_gpuAdapter;
 		Microsoft::WRL::ComPtr<ID3D12Device> m_d3dDevice;
 		Microsoft::WRL::ComPtr<ID3D12Device2> m_d3dDevice2;
 		Microsoft::WRL::ComPtr<ID3D12Device5> m_d3dDevice5;
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
 		Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_commandQueue;
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_commandAllocators[MAX_BACK_BUFFER_COUNT];
+
+		// -- MA Objects ---
+		Microsoft::WRL::ComPtr<D3D12MA::Allocator> m_gpuMemAllocator;
 
 		// -- Swap chain objects ---
 		Microsoft::WRL::ComPtr<IDXGIFactory6> m_dxgiFactory;
