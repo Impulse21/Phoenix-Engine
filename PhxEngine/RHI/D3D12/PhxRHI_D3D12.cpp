@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "phxRHI_d3d12.h"
 
+
 using namespace phx;
 using namespace phx::rhi;
 using namespace Microsoft::WRL;
@@ -61,12 +62,14 @@ namespace
 			if (SUCCEEDED(D3D12CreateDevice(adapter.Get(), MIN_FEATURE_LEVEL, __uuidof(ID3D12Device), nullptr)))
 			{
 				const size_t dedicatedVideoMemory = desc.DedicatedVideoMemory;
-				PHX_CORE_INFO("Direct3D Adapter (%u): VID:%04X, PID:%04X, VRAM:%zuMB - %ls", adapterIndex, desc.VendorId, desc.DeviceId, desc.DedicatedVideoMemory / (1024 * 1024), desc.Description);
+				//PHX_CORE_INFO("Direct3D Adapter (%u): VID:%04X, PID:%04X, VRAM:%zuMB - %ls", adapterIndex, desc.VendorId, desc.DeviceId, desc.DedicatedVideoMemory / (1024 * 1024), desc.Description);
+#if false
 #ifdef _DEBUG
 				wchar_t buff[256] = {};
 				swprintf_s(buff, L"Direct3D Adapter (%u): VID:%04X, PID:%04X, VRAM:%zuMB - %ls\n",
 					adapterIndex, desc.VendorId, desc.DeviceId, desc.DedicatedVideoMemory / (1024 * 1024), desc.Description);
 				OutputDebugStringW(buff);
+#endif
 #endif
 				if (dedicatedVideoMemory > selectedGPUVideoMemeory)
 				{
@@ -126,11 +129,71 @@ namespace phx::rhi
 	private:
 	};
 
+	class CommandAllocatorPool : D3D12GfxDeviceChild
+	{
+	public:
+		CommandAllocatorPool(D3D12GfxDevice* gfxDevice, D3D12_COMMAND_LIST_TYPE type)
+			: D3D12GfxDeviceChild(gfxDevice)
+			, m_type(type)
+		{}
+
+		ID3D12CommandAllocator* RequestAllocator(uint64_t completedFenceValue)
+		{
+			std::scoped_lock _(this->m_allocatonMutex);
+
+			ID3D12CommandAllocator* pAllocator = nullptr;
+			if (!this->m_availableAllocators.empty())
+			{
+				auto& allocatorPair = this->m_availableAllocators.front();
+				if (allocatorPair.first <= completedFenceValue)
+				{
+					pAllocator = allocatorPair.second;
+					ThrowIfFailed(
+						pAllocator->Reset());
+
+					this->m_availableAllocators.pop_front();
+				}
+			}
+
+			if (!pAllocator)
+			{
+				Microsoft::WRL::ComPtr<ID3D12CommandAllocator> newAllocator;
+				ThrowIfFailed(
+					this->m_gfxDevice->GetD3D12Device2()->CreateCommandAllocator(
+						this->m_type,
+						IID_PPV_ARGS(&newAllocator)));
+
+				// TODO: std::shared_ptr is leaky
+				wchar_t allocatorName[32];
+				swprintf(allocatorName, 32, L"CommandAllocator %zu", this->m_allocatorPool.size());
+				newAllocator->SetName(allocatorName);
+				this->m_allocatorPool.emplace_back(newAllocator);
+				pAllocator = this->m_allocatorPool.back().Get();
+			}
+
+			return pAllocator;
+		}
+
+		void DiscardAllocator(uint64_t fenceValue, ID3D12CommandAllocator* allocator)
+		{
+			std::scoped_lock _(this->m_allocatonMutex);
+
+			assert(allocator);
+			this->m_availableAllocators.push_back(std::make_pair(fenceValue, allocator));
+		}
+	private:
+		const D3D12_COMMAND_LIST_TYPE m_type;
+		std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> m_allocatorPool;
+		std::deque<std::pair<uint64_t, ID3D12CommandAllocator*>> m_availableAllocators;
+		std::mutex m_allocatonMutex;
+	};
+
 	struct D3D12CommandQueue : D3D12GfxDeviceChild
 	{
 		Microsoft::WRL::ComPtr<ID3D12CommandQueue> Queue;
 		Microsoft::WRL::ComPtr<ID3D12Fence> Fence;
 		Microsoft::WRL::Wrappers::Event FenceEvent;
+		std::unique_ptr<CommandAllocatorPool> CmdAllocatorPool;
 		D3D12_COMMAND_LIST_TYPE Type;
 
 		D3D12CommandQueue(D3D12GfxDevice* gfxDevice, D3D12_COMMAND_LIST_TYPE type)
@@ -169,6 +232,8 @@ namespace phx::rhi
 			{
 				throw std::system_error(std::error_code(static_cast<int>(GetLastError()), std::system_category()), "CreateEventEx");
 			}
+
+			this->CmdAllocatorPool = std::make_unique<CommandAllocatorPool>(this->m_gfxDevice, this->Type);
 		}
 	};
 
@@ -316,16 +381,17 @@ namespace phx::rhi
 			this->FreeBindlessRes.reserve(desc.NumBindlessDescriptorsRes);
 			for (size_t i = 0; i < desc.NumBindlessDescriptorsRes; i++)
 			{
-				this->FreeBindlessRes.push_back(desc.NumBindlessDescriptorsRes - i - 1);
+				this->FreeBindlessRes.push_back(static_cast<DescriptorIndex>(desc.NumBindlessDescriptorsRes - i - 1));
 			}
 
 			this->FreeBindlessSam.reserve(desc.NumBindlessDescritorsSampler);
 			for (size_t i = 0; i < desc.NumBindlessDescritorsSampler; i++)
 			{
-				this->FreeBindlessSam.push_back(desc.NumBindlessDescritorsSampler - i - 1);
+				this->FreeBindlessSam.push_back(static_cast<DescriptorIndex>(desc.NumBindlessDescritorsSampler - i - 1));
 			}
 		}
 	};
+
 #pragma endregion
 }
 
@@ -537,14 +603,15 @@ void phx::rhi::D3D12GfxDevice::CreateDevice(Config const& config)
 	}
 }
 
-void phx::rhi::D3D12GfxDevice::CreateDeviceResources(Config const& config)
+void phx::rhi::D3D12GfxDevice::CreateDeviceResources(Config const&)
 {
 	this->m_queues[CommandQueueType::Graphics] = std::make_unique<D3D12CommandQueue>(this, D3D12_COMMAND_LIST_TYPE_DIRECT);
 	this->m_queues[CommandQueueType::Compute] = std::make_unique<D3D12CommandQueue>(this, D3D12_COMMAND_LIST_TYPE_COMPUTE);
 	this->m_queues[CommandQueueType::Copy] = std::make_unique<D3D12CommandQueue>(this, D3D12_COMMAND_LIST_TYPE_COPY);
 
 	// Create Heaps
-	this->m_descriptorAllocator = std::make_shared<DescriptorAllocationHanlder>(this);
+	DescriptorAllocationHandlerDesc desc = {};
+	this->m_descriptorAllocator = std::make_shared<DescriptorAllocationHanlder>(this, desc);
 
 	// Create Allocator
 	D3D12MA::ALLOCATOR_DESC allocatorDesc = {};

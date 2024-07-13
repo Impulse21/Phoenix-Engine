@@ -19,7 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-
+#include "pch.h"
 #include "D3D12MemAlloc.h"
 
 #include <combaseapi.h>
@@ -1677,6 +1677,8 @@ public:
     void Free(T* ptr);
 
 private:
+#pragma warning(push)
+#pragma warning( disable : 4324 )
     union Item
     {
         UINT NextFreeIndex; // UINT32_MAX means end of list.
@@ -1689,7 +1691,7 @@ private:
         UINT Capacity;
         UINT FirstFreeIndex;
     };
-
+#pragma warning( pop )
     const ALLOCATION_CALLBACKS& m_AllocationCallbacks;
     const UINT m_FirstBlockCapacity;
     Vector<ItemBlock> m_ItemBlocks;
@@ -3976,7 +3978,7 @@ bool BlockMetadata_Linear::CreateAllocationRequest(
     UINT64 allocSize,
     UINT64 allocAlignment,
     bool upperAddress,
-    UINT32 strategy,
+    UINT32,
     AllocationRequest* pAllocationRequest)
 {
     D3D12MA_ASSERT(allocSize > 0 && "Cannot allocate empty block!");
@@ -3992,7 +3994,7 @@ bool BlockMetadata_Linear::CreateAllocationRequest(
 
 void BlockMetadata_Linear::Alloc(
     const AllocationRequest& request,
-    UINT64 allocSize,
+    UINT64,
     void* privateData)
 {
     UINT64 offset = (UINT64)request.allocHandle - 1;
@@ -4164,14 +4166,14 @@ AllocHandle BlockMetadata_Linear::GetAllocationListBegin() const
     return (AllocHandle)0;
 }
 
-AllocHandle BlockMetadata_Linear::GetNextAllocation(AllocHandle prevAlloc) const
+AllocHandle BlockMetadata_Linear::GetNextAllocation(AllocHandle) const
 {
     // Function only used for defragmentation, which is disabled for this algorithm
     D3D12MA_ASSERT(0);
     return (AllocHandle)0;
 }
 
-UINT64 BlockMetadata_Linear::GetNextFreeRegionSize(AllocHandle alloc) const
+UINT64 BlockMetadata_Linear::GetNextFreeRegionSize(AllocHandle) const
 {
     // Function only used for defragmentation, which is disabled for this algorithm
     D3D12MA_ASSERT(0);
@@ -5365,7 +5367,7 @@ bool BlockMetadata_TLSF::CreateAllocationRequest(
 
 void BlockMetadata_TLSF::Alloc(
     const AllocationRequest& request,
-    UINT64 allocSize,
+    UINT64,
     void* privateData)
 {
     // Get block and pop it from the free list
@@ -7490,7 +7492,7 @@ void AllocatorPimpl::FreeStatsString(WCHAR* pStatsString)
 }
 
 template<typename D3D12_RESOURCE_DESC_T>
-bool AllocatorPimpl::PrefersCommittedAllocation(const D3D12_RESOURCE_DESC_T& resourceDesc)
+bool AllocatorPimpl::PrefersCommittedAllocation(const D3D12_RESOURCE_DESC_T&)
 {
     // Intentional. It may change in the future.
     return false;

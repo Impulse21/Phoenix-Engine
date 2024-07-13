@@ -3,7 +3,7 @@
 #include <initializer_list>
 #include <vector>
 #include <assert.h>
-
+#include "Core/phxEnumArray.h"
 
 namespace phx
 {
@@ -34,7 +34,7 @@ namespace phx
 		{}
 
 		template<typename E>
-		Span(EnumArray<E, T>& a)
+		Span(core::EnumArray<E, T>& a)
 			: Span(a.data(), a.size(), 0)
 		{}
 

@@ -43,8 +43,8 @@ void phx::Engine::Initialize(IApplication& app, PHX_UNUSED EngineParams const& d
 
 	PHX_CORE_INFO("Engine Initializing");
 
-	rhi::InitDesc rhiInit = {};
-	rhi::Initialize(rhiInit);
+	rhi::Config rhiConfig = {};
+	rhi::InitializeWindows(rhiConfig);
 
 	// Display number of Executor Tasks
 	app.OnStartup();

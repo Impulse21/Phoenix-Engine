@@ -12,6 +12,7 @@ namespace phx::rhi
 	struct DescriptorAllocationHanlder;
 	struct D3D12CommandQueue;
 	class D3D12ResourceManager;
+	class CommandAllocatorPool;
 
 	class D3D12GfxDevice : public GfxDevice
 	{
@@ -38,6 +39,7 @@ namespace phx::rhi
 	private:
 		DeviceCapabilities m_capabilities = {};
 		std::unique_ptr<D3D12ResourceManager> m_resourceManager;
+		std::unique_ptr<CommandAllocatorPool> m_commandAllocatorPool;
 		std::shared_ptr<DescriptorAllocationHanlder> m_descriptorAllocator;
 
 		// -- Device objects ---
@@ -50,7 +52,6 @@ namespace phx::rhi
 		Microsoft::WRL::ComPtr<ID3D12Device5> m_d3dDevice5;
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
 		Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_commandQueue;
-		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_commandAllocators[MAX_BACK_BUFFER_COUNT];
 
 		// -- MA Objects ---
 		Microsoft::WRL::ComPtr<D3D12MA::Allocator> m_gpuMemAllocator;
@@ -58,7 +59,7 @@ namespace phx::rhi
 		// -- Swap chain objects ---
 		Microsoft::WRL::ComPtr<IDXGIFactory6> m_dxgiFactory;
 		Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain;
-		Microsoft::WRL::ComPtr<ID3D12Resource> m_renderTargets[MAX_BACK_BUFFER_COUNT];
+		std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_renderTargets;
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_depthStencil;
 
 		// -- Cached device properties. ---
