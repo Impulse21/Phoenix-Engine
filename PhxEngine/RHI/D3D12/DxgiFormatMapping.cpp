@@ -1,8 +1,9 @@
+#include "pch.h"
 
-#include "D3D12Common.h"
+#include "phxRHI_d3d12.h"
 
-using namespace PhxEngine;
-using namespace phx::rhi::d3d12;
+using namespace phx;
+using namespace phx::rhi;
 
 // Format mapping table. The rows must be in the exactly same order as Format enum members are defined.
 static const DxgiFormatMapping c_FormatMappings[] = {

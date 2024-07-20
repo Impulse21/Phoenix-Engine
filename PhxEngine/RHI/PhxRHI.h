@@ -556,6 +556,10 @@ namespace phx::rhi
 #pragma endregion
 
 #pragma region Resources
+
+    struct Texture;
+    using TextureHandle = Handle<Texture>;
+
     class GfxDevice
     {
     public:
@@ -567,29 +571,6 @@ namespace phx::rhi
 
     };
 
-    class GpuMemoryAllocator
-    {
-    public:
-        virtual ~GpuMemoryAllocator() = default;
-    };
-
-    class ResourceManager
-    {
-    public:
-        virtual ~ResourceManager() = default;
-    };
-
-    class FrameRenderContext
-    {
-    public:
-        virtual ~FrameRenderContext() = default;
-    };
-
-    class RenderContext
-    {
-    public:
-        virtual ~RenderContext() = default;
-    };
 #pragma endregion
 
     struct Config

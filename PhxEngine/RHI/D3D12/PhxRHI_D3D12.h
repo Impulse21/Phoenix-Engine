@@ -12,7 +12,52 @@ namespace phx::rhi
 	struct DescriptorAllocationHanlder;
 	struct D3D12CommandQueue;
 	class D3D12ResourceManager;
-	class CommandAllocatorPool;
+	class CommandContextManager;;
+
+	struct DxgiFormatMapping
+	{
+		rhi::Format AbstractFormat;
+		DXGI_FORMAT ResourceFormat;
+		DXGI_FORMAT SrvFormat;
+		DXGI_FORMAT RtvFormat;
+	};
+
+	const DxgiFormatMapping& GetDxgiFormatMapping(rhi::Format abstractFormat);
+
+	const DxgiFormatMapping& GetDxgiFormatMapping(rhi::Format abstractFormat);
+
+	inline D3D12_RESOURCE_STATES ConvertResourceStates(ResourceStates stateBits)
+	{
+		if (stateBits == ResourceStates::Common)
+			return D3D12_RESOURCE_STATE_COMMON;
+
+		D3D12_RESOURCE_STATES result = D3D12_RESOURCE_STATE_COMMON; // also 0
+
+		if (EnumHasAnyFlags(stateBits, ResourceStates::ConstantBuffer)) result |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::VertexBuffer)) result |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::IndexGpuBuffer)) result |= D3D12_RESOURCE_STATE_INDEX_BUFFER;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::IndirectArgument)) result |= D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::ShaderResource)) result |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::UnorderedAccess)) result |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::RenderTarget)) result |= D3D12_RESOURCE_STATE_RENDER_TARGET;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::DepthWrite)) result |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::DepthRead)) result |= D3D12_RESOURCE_STATE_DEPTH_READ;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::StreamOut)) result |= D3D12_RESOURCE_STATE_STREAM_OUT;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::CopyDest)) result |= D3D12_RESOURCE_STATE_COPY_DEST;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::CopySource)) result |= D3D12_RESOURCE_STATE_COPY_SOURCE;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::ResolveDest)) result |= D3D12_RESOURCE_STATE_RESOLVE_DEST;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::ResolveSource)) result |= D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::Present)) result |= D3D12_RESOURCE_STATE_PRESENT;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::AccelStructRead)) result |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::AccelStructWrite)) result |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::AccelStructBuildInput)) result |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::AccelStructBuildBlas)) result |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::ShadingRateSurface)) result |= D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::GenericRead)) result |= D3D12_RESOURCE_STATE_GENERIC_READ;
+		if (EnumHasAnyFlags(stateBits, ResourceStates::ShaderResourceNonPixel)) result |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
+		return result;
+	}
 
 	class D3D12GfxDevice : public GfxDevice
 	{
@@ -35,11 +80,12 @@ namespace phx::rhi
 	private:
 		void CreateDevice(Config const& config);
 		void CreateDeviceResources(Config const& config);
+		void CreateSwapChain(uint32_t width, uint32_t height);
 
 	private:
 		DeviceCapabilities m_capabilities = {};
 		std::unique_ptr<D3D12ResourceManager> m_resourceManager;
-		std::unique_ptr<CommandAllocatorPool> m_commandAllocatorPool;
+		std::unique_ptr<CommandContextManager> m_commandContextManager;
 		std::shared_ptr<DescriptorAllocationHanlder> m_descriptorAllocator;
 
 		// -- Device objects ---
@@ -59,19 +105,26 @@ namespace phx::rhi
 		// -- Swap chain objects ---
 		Microsoft::WRL::ComPtr<IDXGIFactory6> m_dxgiFactory;
 		Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain;
+		std::vector<rhi::TextureHandle> m_backBuffers;
 		std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_renderTargets;
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_depthStencil;
 
 		// -- Cached device properties. ---
-		HWND m_window = NULL;
 		D3D_FEATURE_LEVEL m_d3dFeatureLevel;
 		D3D12_FEATURE_DATA_ROOT_SIGNATURE m_featureDataRootSignature = {};
 		D3D12_FEATURE_DATA_SHADER_MODEL	m_featureDataShaderModel = {};
 		ShaderModel m_minShaderModel = ShaderModel::SM_6_6;
 		DWORD m_dxgiFactoryFlags;
-		RECT m_outputSize;
+		core::WindowHandle m_window = NULL;
+		Rect m_outputSize;
+		DXGI_FORMAT m_backBufferFormat;
+		uint32_t m_backBufferCount = 3;
+
 		bool m_isUnderGraphicsDebugger = false;
 		D3D_FEATURE_LEVEL m_d3dMinFeatureLevel = {};
+		
+		bool m_allowTearing : 1;
+		bool m_vSyncEnabled : 1;
 	};
 
 }

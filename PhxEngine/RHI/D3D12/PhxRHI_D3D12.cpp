@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "phxRHI_d3d12.h"
+#include <thread>
 
 
 using namespace phx;
@@ -234,6 +235,30 @@ namespace phx::rhi
 			}
 
 			this->CmdAllocatorPool = std::make_unique<CommandAllocatorPool>(this->m_gfxDevice, this->Type);
+		}
+	};
+
+	struct D3D12CommandContext
+	{
+		D3D12_COMMAND_LIST_TYPE Type = {};
+		uint32_t Id = 0;
+		std::vector<D3D12CommandContext> Waits;
+		std::atomic_bool WaitedOn = false;
+		ID3D12CommandAllocator* Allocator;
+
+	};
+
+	struct CommandContextManager : D3D12GfxDeviceChild
+	{
+		std::mutex Mutex;
+		std::size_t CmdCount;
+		std::vector<std::unique_ptr<D3D12CommandContext>> CommandContextsPool;
+
+		CommandContextManager(D3D12GfxDevice* gfxDevice, size_t reservedCommandLists)
+			: D3D12GfxDeviceChild(gfxDevice)
+			, CmdCount(0)
+		{
+			CommandContextsPool.reserve(reservedCommandLists);
 		}
 	};
 
@@ -603,7 +628,7 @@ void phx::rhi::D3D12GfxDevice::CreateDevice(Config const& config)
 	}
 }
 
-void phx::rhi::D3D12GfxDevice::CreateDeviceResources(Config const&)
+void phx::rhi::D3D12GfxDevice::CreateDeviceResources(Config const& config)
 {
 	this->m_queues[CommandQueueType::Graphics] = std::make_unique<D3D12CommandQueue>(this, D3D12_COMMAND_LIST_TYPE_DIRECT);
 	this->m_queues[CommandQueueType::Compute] = std::make_unique<D3D12CommandQueue>(this, D3D12_COMMAND_LIST_TYPE_COMPUTE);
@@ -624,7 +649,102 @@ void phx::rhi::D3D12GfxDevice::CreateDeviceResources(Config const&)
 	ThrowIfFailed(
 		D3D12MA::CreateAllocator(&allocatorDesc, &this->m_gpuMemAllocator));
 
-	// Create Command Lists
+	this->m_commandContextManager = std::make_unique<CommandContextManager>(this, std::thread::hardware_concurrency());
+
+	this->m_window = config.Window;
+
+	const auto& formatMapping = GetDxgiFormatMapping(config.BufferFormat);
+	this->m_backBufferFormat = formatMapping.RtvFormat;
+	this->m_backBufferCount = config.BufferCount;
+
+	// Create Back Buffers
+	this->CreateSwapChain(
+		(uint32_t)config.WindowSize.GetWidth(),
+		(uint32_t)config.WindowSize.GetHeight());
+}
+
+void phx::rhi::D3D12GfxDevice::CreateSwapChain(uint32_t width, uint32_t height)
+{
+	if (!this->m_window)
+	{
+		throw std::logic_error("Requires a valid window");
+	}
+
+	this->m_outputSize = Rect(width, height);
+
+	const UINT backBufferWidth = std::max<UINT>(static_cast<UINT>(this->m_outputSize.GetWidth()), 1u);
+	const UINT backBufferHeight = std::max<UINT>(static_cast<UINT>(this->m_outputSize.GetHeight()), 1u);
+	const DXGI_FORMAT backBufferFormat = this->m_backBufferFormat;
+
+	if (this->m_swapChain)
+	{
+		// If the swap chain already exists, resize it.
+		HRESULT hr = m_swapChain->ResizeBuffers(
+			this->m_backBufferCount,
+			backBufferWidth,
+			backBufferHeight,
+			backBufferFormat,
+			this->m_allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0u
+		);
+
+		if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+		{
+			PHX_CORE_ERROR("Device Lost Resizing Buffers");
+#if false
+#ifdef _DEBUG
+			char buff[64] = {};
+			sprintf_s(buff, "Device Lost on ResizeBuffers: Reason code 0x%08X\n",
+				static_cast<unsigned int>((hr == DXGI_ERROR_DEVICE_REMOVED) ? m_d3dDevice->GetDeviceRemovedReason() : hr));
+			OutputDebugStringA(buff);
+#endif
+			// If the device was removed for any reason, a new device and swap chain will need to be created.
+			// HandleDeviceLost();
+
+			// Everything is set up now. Do not continue execution of this method. HandleDeviceLost will reenter this method
+			// and correctly set up the new device.
+#endif
+			return;
+		}
+		else
+		{
+			ThrowIfFailed(hr);
+		}
+	}
+	else
+	{
+		// Create a descriptor for the swap chain.
+		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+		swapChainDesc.Width = backBufferWidth;
+		swapChainDesc.Height = backBufferHeight;
+		swapChainDesc.Format = backBufferFormat;
+		swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swapChainDesc.BufferCount = m_backBufferCount;
+		swapChainDesc.SampleDesc.Count = 1;
+		swapChainDesc.SampleDesc.Quality = 0;
+		swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+		swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+		swapChainDesc.Flags = this->m_allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0u;
+
+		DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsSwapChainDesc = {};
+		fsSwapChainDesc.Windowed = TRUE;
+
+		// Create a swap chain for the window.
+		ComPtr<IDXGISwapChain1> swapChain;
+		ThrowIfFailed(m_dxgiFactory->CreateSwapChainForHwnd(
+			m_commandQueue.Get(),
+			m_window,
+			&swapChainDesc,
+			&fsSwapChainDesc,
+			nullptr,
+			swapChain.GetAddressOf()
+		));
+
+		ThrowIfFailed(swapChain.As(&m_swapChain));
+
+		// This class does not support exclusive full-screen mode and prevents DXGI from responding to the ALT+ENTER shortcut
+		ThrowIfFailed(m_dxgiFactory->MakeWindowAssociation(m_window, DXGI_MWA_NO_ALT_ENTER));
+	}
 }
 
 #pragma endregion
