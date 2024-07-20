@@ -732,19 +732,118 @@ void phx::rhi::D3D12GfxDevice::CreateSwapChain(uint32_t width, uint32_t height)
 		// Create a swap chain for the window.
 		ComPtr<IDXGISwapChain1> swapChain;
 		ThrowIfFailed(m_dxgiFactory->CreateSwapChainForHwnd(
-			m_commandQueue.Get(),
-			m_window,
+			this->GetQueueGfx()->Queue.Get(),
+			this->m_window,
 			&swapChainDesc,
 			&fsSwapChainDesc,
 			nullptr,
 			swapChain.GetAddressOf()
 		));
 
-		ThrowIfFailed(swapChain.As(&m_swapChain));
+		ThrowIfFailed(swapChain.As(&this->m_swapChain));
 
 		// This class does not support exclusive full-screen mode and prevents DXGI from responding to the ALT+ENTER shortcut
-		ThrowIfFailed(m_dxgiFactory->MakeWindowAssociation(m_window, DXGI_MWA_NO_ALT_ENTER));
+		ThrowIfFailed(m_dxgiFactory->MakeWindowAssociation(this->m_window, DXGI_MWA_NO_ALT_ENTER));
 	}
+
+
+	// Obtain the back buffers for this window which will be the final render targets
+	// and create render target views for each of them.
+	this->m_backBuffers.resize(this->m_backBufferCount);
+	for (UINT i = 0; i < this->m_backBuffers.size(); i++)
+	{
+		// TODO: I am here
+		this->m_resourceManager->
+		ThrowIfFailed(m_swapChain->GetBuffer(i, IID_PPV_ARGS(m_renderTargets[n].GetAddressOf())));
+
+		wchar_t name[25] = {};
+		swprintf_s(name, L"Render target %u", n);
+		m_renderTargets[n]->SetName(name);
+
+		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+		rtvDesc.Format = m_backBufferFormat;
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+
+		const CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptor(
+			m_rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+			static_cast<INT>(n), m_rtvDescriptorSize);
+		m_d3dDevice->CreateRenderTargetView(m_renderTargets[n].Get(), &rtvDesc, rtvDescriptor);
+	}
+
+#if false
+
+	// Handle color space settings for HDR
+	UpdateColorSpace();
+
+	// Obtain the back buffers for this window which will be the final render targets
+	// and create render target views for each of them.
+	for (UINT n = 0; n < m_backBufferCount; n++)
+	{
+		ThrowIfFailed(m_swapChain->GetBuffer(n, IID_PPV_ARGS(m_renderTargets[n].GetAddressOf())));
+
+		wchar_t name[25] = {};
+		swprintf_s(name, L"Render target %u", n);
+		m_renderTargets[n]->SetName(name);
+
+		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+		rtvDesc.Format = m_backBufferFormat;
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+
+		const CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptor(
+			m_rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+			static_cast<INT>(n), m_rtvDescriptorSize);
+		m_d3dDevice->CreateRenderTargetView(m_renderTargets[n].Get(), &rtvDesc, rtvDescriptor);
+	}
+
+	// Reset the index to the current back buffer.
+	m_backBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
+
+	if (m_depthBufferFormat != DXGI_FORMAT_UNKNOWN)
+	{
+		// Allocate a 2-D surface as the depth/stencil buffer and create a depth/stencil view
+		// on this surface.
+		const CD3DX12_HEAP_PROPERTIES depthHeapProperties(D3D12_HEAP_TYPE_DEFAULT);
+
+		D3D12_RESOURCE_DESC depthStencilDesc = CD3DX12_RESOURCE_DESC::Tex2D(
+			m_depthBufferFormat,
+			backBufferWidth,
+			backBufferHeight,
+			1, // Use a single array entry.
+			1  // Use a single mipmap level.
+		);
+		depthStencilDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+		const CD3DX12_CLEAR_VALUE depthOptimizedClearValue(m_depthBufferFormat, (m_options & c_ReverseDepth) ? 0.0f : 1.0f, 0u);
+
+		ThrowIfFailed(m_d3dDevice->CreateCommittedResource(
+			&depthHeapProperties,
+			D3D12_HEAP_FLAG_NONE,
+			&depthStencilDesc,
+			D3D12_RESOURCE_STATE_DEPTH_WRITE,
+			&depthOptimizedClearValue,
+			IID_PPV_ARGS(m_depthStencil.ReleaseAndGetAddressOf())
+		));
+
+		m_depthStencil->SetName(L"Depth stencil");
+
+		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+		dsvDesc.Format = m_depthBufferFormat;
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+
+		m_d3dDevice->CreateDepthStencilView(m_depthStencil.Get(), &dsvDesc, m_dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+	}
+
+	// Set the 3D rendering viewport and scissor rectangle to target the entire window.
+	m_screenViewport.TopLeftX = m_screenViewport.TopLeftY = 0.f;
+	m_screenViewport.Width = static_cast<float>(backBufferWidth);
+	m_screenViewport.Height = static_cast<float>(backBufferHeight);
+	m_screenViewport.MinDepth = D3D12_MIN_DEPTH;
+	m_screenViewport.MaxDepth = D3D12_MAX_DEPTH;
+
+	m_scissorRect.left = m_scissorRect.top = 0;
+	m_scissorRect.right = static_cast<LONG>(backBufferWidth);
+	m_scissorRect.bottom = static_cast<LONG>(backBufferHeight);
+#endif
 }
 
 #pragma endregion

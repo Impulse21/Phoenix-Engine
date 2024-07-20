@@ -72,6 +72,9 @@ namespace phx::rhi
 		Microsoft::WRL::ComPtr<ID3D12Device2>& GetD3D12Device2() { return this->m_d3dDevice2; }
 		Microsoft::WRL::ComPtr<ID3D12Device5>& GetD3D12Device5() { return this->m_d3dDevice5; }
 
+		D3D12CommandQueue* GetQueueGfx() { return this->m_queues[rhi::CommandQueueType::Graphics].get(); }
+		D3D12CommandQueue* GetQueueCompute() { return this->m_queues[rhi::CommandQueueType::Compute].get(); }
+		D3D12CommandQueue* GetQueueCopy() { return this->m_queues[rhi::CommandQueueType::Copy].get(); }
 	public:
 		operator ID3D12Device*() const { return this->m_d3dDevice.Get(); }
 		operator ID3D12Device2* () const { return this->m_d3dDevice2.Get(); }
@@ -88,16 +91,12 @@ namespace phx::rhi
 		std::unique_ptr<CommandContextManager> m_commandContextManager;
 		std::shared_ptr<DescriptorAllocationHanlder> m_descriptorAllocator;
 
-		// -- Device objects ---
-		core::EnumArray<rhi::CommandQueueType, std::unique_ptr<D3D12CommandQueue>> m_queues;
-
 		// -- Direct3D objects ---
 		Microsoft::WRL::ComPtr<IDXGIAdapter1> m_gpuAdapter;
 		Microsoft::WRL::ComPtr<ID3D12Device> m_d3dDevice;
 		Microsoft::WRL::ComPtr<ID3D12Device2> m_d3dDevice2;
 		Microsoft::WRL::ComPtr<ID3D12Device5> m_d3dDevice5;
-		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
-		Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_commandQueue;
+		core::EnumArray<rhi::CommandQueueType, std::unique_ptr<D3D12CommandQueue>> m_queues;
 
 		// -- MA Objects ---
 		Microsoft::WRL::ComPtr<D3D12MA::Allocator> m_gpuMemAllocator;
