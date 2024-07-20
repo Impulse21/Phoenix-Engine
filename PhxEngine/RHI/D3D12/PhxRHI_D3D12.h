@@ -11,8 +11,8 @@ namespace phx::rhi
 {
 	struct DescriptorAllocationHanlder;
 	struct D3D12CommandQueue;
-	class D3D12ResourceManager;
-	class CommandContextManager;;
+	class CommandContextManager;
+	struct D3D12Texture;
 
 	struct DxgiFormatMapping
 	{
@@ -84,10 +84,11 @@ namespace phx::rhi
 		void CreateDevice(Config const& config);
 		void CreateDeviceResources(Config const& config);
 		void CreateSwapChain(uint32_t width, uint32_t height);
+		void InitializeResoucePools();
+		void FinalizeResourcePools();
 
 	private:
 		DeviceCapabilities m_capabilities = {};
-		std::unique_ptr<D3D12ResourceManager> m_resourceManager;
 		std::unique_ptr<CommandContextManager> m_commandContextManager;
 		std::shared_ptr<DescriptorAllocationHanlder> m_descriptorAllocator;
 
@@ -105,8 +106,10 @@ namespace phx::rhi
 		Microsoft::WRL::ComPtr<IDXGIFactory6> m_dxgiFactory;
 		Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain;
 		std::vector<rhi::TextureHandle> m_backBuffers;
-		std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_renderTargets;
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_depthStencil;
+
+		// -- Resource Pools ---
+		HandlePool<D3D12Texture, Texture> m_texturePool;
 
 		// -- Cached device properties. ---
 		D3D_FEATURE_LEVEL m_d3dFeatureLevel;

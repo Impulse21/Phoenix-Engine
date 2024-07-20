@@ -9,7 +9,7 @@
 #include <iostream>
 namespace phx
 {
-	template<typename ImplT, typename HT>
+	template<typename ImplT, typename HT, size_t InitCapacity = 16>
 	class HandlePool
 	{
 	public:
@@ -27,7 +27,7 @@ namespace phx
 			this->Finalize();
 		}
 
-		void Initialize(size_t initCapacity)
+		void Initialize(size_t initCapacity = InitCapacity)
 		{
 			this->m_size = initCapacity;
 			this->m_numActiveEntries = 0;

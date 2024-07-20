@@ -107,6 +107,13 @@ namespace
 
 namespace phx::rhi
 {
+#pragma region Resource Defintions
+	struct D3D12Texture
+	{
+		Microsoft::WRL::ComPtr<ID3D12Resource> Resource;
+	};
+#pragma endregion
+
 #pragma region DeviceChildren
 
 	class D3D12GfxDeviceChild
@@ -118,16 +125,6 @@ namespace phx::rhi
 
 	protected:
 		D3D12GfxDevice* m_gfxDevice;
-	};
-
-	class D3D12ResourceManager final : D3D12GfxDeviceChild
-	{
-	public:
-		D3D12ResourceManager(D3D12GfxDevice* gfxDevice)
-			: D3D12GfxDeviceChild(gfxDevice)
-		{}
-
-	private:
 	};
 
 	class CommandAllocatorPool : D3D12GfxDeviceChild
@@ -426,12 +423,14 @@ phx::rhi::D3D12GfxDevice::D3D12GfxDevice(Config const& config)
 	D3D12GfxDevice::Ptr = this;
 
 	this->CreateDevice(config);
+	this->InitializeResoucePools();
 	this->CreateDeviceResources(config);
 }
 
 phx::rhi::D3D12GfxDevice::~D3D12GfxDevice()
 {
 	D3D12GfxDevice::Ptr = nullptr;
+	this->FinalizeResourcePools();
 }
 
 void phx::rhi::D3D12GfxDevice::CreateDevice(Config const& config)
@@ -752,13 +751,13 @@ void phx::rhi::D3D12GfxDevice::CreateSwapChain(uint32_t width, uint32_t height)
 	this->m_backBuffers.resize(this->m_backBufferCount);
 	for (UINT i = 0; i < this->m_backBuffers.size(); i++)
 	{
-		// TODO: I am here
-		this->m_resourceManager->
-		ThrowIfFailed(m_swapChain->GetBuffer(i, IID_PPV_ARGS(m_renderTargets[n].GetAddressOf())));
+		D3D12Texture backBuffer = {};
+		ThrowIfFailed(
+			this->m_swapChain->GetBuffer(i, IID_PPV_ARGS(backBuffer.Resource.GetAddressOf())));
 
 		wchar_t name[25] = {};
-		swprintf_s(name, L"Render target %u", n);
-		m_renderTargets[n]->SetName(name);
+		swprintf_s(name, L"Back Buffer %u", i);
+		backBuffer.Resource->SetName(name);
 
 		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 		rtvDesc.Format = m_backBufferFormat;
@@ -767,7 +766,9 @@ void phx::rhi::D3D12GfxDevice::CreateSwapChain(uint32_t width, uint32_t height)
 		const CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptor(
 			m_rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
 			static_cast<INT>(n), m_rtvDescriptorSize);
-		m_d3dDevice->CreateRenderTargetView(m_renderTargets[n].Get(), &rtvDesc, rtvDescriptor);
+		this->GetD3D12Device2()->CreateRenderTargetView(backBuffer.Resource.Get(), &rtvDesc, rtvDescriptor);
+
+		this->m_backBuffers[i] = this->m_texturePool.Insert(backBuffer);
 	}
 
 #if false
@@ -844,6 +845,16 @@ void phx::rhi::D3D12GfxDevice::CreateSwapChain(uint32_t width, uint32_t height)
 	m_scissorRect.right = static_cast<LONG>(backBufferWidth);
 	m_scissorRect.bottom = static_cast<LONG>(backBufferHeight);
 #endif
+}
+
+void phx::rhi::D3D12GfxDevice::InitializeResoucePools()
+{
+	this->m_texturePool.Initialize();
+}
+
+void phx::rhi::D3D12GfxDevice::FinalizeResourcePools()
+{
+	this->m_texturePool.Finalize();
 }
 
 #pragma endregion
