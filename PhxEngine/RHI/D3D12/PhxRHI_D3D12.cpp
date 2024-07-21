@@ -763,9 +763,8 @@ void phx::rhi::D3D12GfxDevice::CreateSwapChain(uint32_t width, uint32_t height)
 		rtvDesc.Format = m_backBufferFormat;
 		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
-		const CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptor(
-			m_rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
-			static_cast<INT>(n), m_rtvDescriptorSize);
+		D3D12_CPU_DESCRIPTOR_HANDLE handle =  this->m_descriptorAllocator->AllocatorRTV.Allocate();
+		const CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptor(handle);
 		this->GetD3D12Device2()->CreateRenderTargetView(backBuffer.Resource.Get(), &rtvDesc, rtvDescriptor);
 
 		this->m_backBuffers[i] = this->m_texturePool.Insert(backBuffer);

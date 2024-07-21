@@ -11,7 +11,7 @@ namespace phx::rhi
 {
 	struct DescriptorAllocationHanlder;
 	struct D3D12CommandQueue;
-	class CommandContextManager;
+	struct CommandContextManager;
 	struct D3D12Texture;
 
 	struct DxgiFormatMapping

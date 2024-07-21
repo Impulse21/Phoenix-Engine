@@ -30,7 +30,6 @@ namespace phx
 		uint32_t m_generation;
 
 		template<typename ImplT, typename HT>
-		friend class Pool;
-
+		friend class HandlePool;
 	};
 }
