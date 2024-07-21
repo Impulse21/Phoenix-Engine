@@ -433,6 +433,28 @@ phx::rhi::D3D12GfxDevice::~D3D12GfxDevice()
 	this->FinalizeResourcePools();
 }
 
+void phx::rhi::D3D12GfxDevice::ResizeSwapchain(Rect const& size)
+{
+}
+
+void phx::rhi::D3D12GfxDevice::SubmitFrame()
+{
+}
+
+void phx::rhi::D3D12GfxDevice::WaitForIdle()
+{
+}
+
+TextureHandle phx::rhi::D3D12GfxDevice::GetBackBuffer()
+{
+	return TextureHandle();
+}
+
+RenderContext& phx::rhi::D3D12GfxDevice::BeginContext()
+{
+	// TODO: insert return statement here
+}
+
 void phx::rhi::D3D12GfxDevice::CreateDevice(Config const& config)
 {
 #if defined(_DEBUG)

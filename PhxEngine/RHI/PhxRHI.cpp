@@ -37,5 +37,6 @@ void rhi::InitializeWindows(Config const& config)
 
 void rhi::Finalize()
 {
+	GfxDevice::Ptr->Wait();
 	delete GfxDevice::Ptr;
 }

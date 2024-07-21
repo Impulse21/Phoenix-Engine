@@ -59,12 +59,23 @@ namespace phx::rhi
 		return result;
 	}
 
-	class D3D12GfxDevice : public GfxDevice
+	class D3D12GfxDevice final : public GfxDevice
 	{
 	public:
 		static inline GfxDevice* Ptr = nullptr;
 		D3D12GfxDevice(Config const& config);
 		~D3D12GfxDevice();
+		
+		// -- Public Interface ---
+	public:
+		void ResizeSwapchain(Rect const& size) override;
+
+		void SubmitFrame() override;
+		void WaitForIdle() override;
+
+		TextureHandle GetBackBuffer() override;
+
+		RenderContext& BeginContext() override;
 
 		// -- Getters ---
 	public:

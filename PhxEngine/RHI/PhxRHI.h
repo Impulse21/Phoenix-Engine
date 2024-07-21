@@ -560,6 +560,12 @@ namespace phx::rhi
     struct Texture;
     using TextureHandle = Handle<Texture>;
 
+    class RenderContext
+    {
+    public:
+        virtual ~RenderContext() = default;
+    };
+
     class GfxDevice
     {
     public:
@@ -567,8 +573,14 @@ namespace phx::rhi
         virtual ~GfxDevice() = default;
 
     public:
+        virtual void ResizeSwapchain(Rect const& size) = 0;
 
+        virtual void SubmitFrame() = 0;
+        virtual void WaitForIdle() = 0;
 
+        virtual TextureHandle GetBackBuffer() = 0;
+
+        virtual RenderContext& BeginContext() = 0;
     };
 
 #pragma endregion
