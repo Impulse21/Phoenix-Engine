@@ -433,26 +433,229 @@ phx::rhi::D3D12GfxDevice::~D3D12GfxDevice()
 	this->FinalizeResourcePools();
 }
 
-void phx::rhi::D3D12GfxDevice::ResizeSwapchain(Rect const& size)
+void phx::rhi::D3D12GfxDevice::ResizeSwapchain(Rect const&)
 {
+	throw std::exception("Not implemented yet");
 }
 
 void phx::rhi::D3D12GfxDevice::SubmitFrame()
 {
+	static std::array<std::vector<ID3D12CommandList*>, (size_t)CommandQueueType::Count> submitCommandLists;
+	for (auto& v : submitCommandLists)
+	{
+		v.clear();
+	}
+
+	static std::array<std::vector<ID3D12CommandAllocator*>, (size_t)CommandQueueType::Count> submitCommandListAllocators;
+	for (auto& v : submitCommandListAllocators)
+	{
+		v.clear();
+	}
+
+	// Submit Commandlists
+	uint32_t numActiveCommandLists = this->m_activeCmdCount.load();
+	this->m_activeCmdCount.store(0);
+
+
+	for (uint32_t iCmd = 0; iCmd < numActiveCommandLists; ++iCmd)
+	{
+		CommandListHandle cmdHandle = this->m_frameCommandListHandles[iCmd];
+		if (!cmdHandle.IsValid())
+		{
+			continue;
+		}
+		// TODO: Determine how this logic should work....
+		D3D12CommandList& commandList = *this->m_commandListPool.Get(cmdHandle);
+		commandList.NativeCommandList6->Close();
+
+		auto& submitCommands = submitCommandLists[(size_t)commandList.QueueType];
+		submitCommands.push_back(commandList.NativeCommandList.Get());
+
+		auto& submitAllocators = submitCommandListAllocators[(size_t)commandList.QueueType];
+		submitAllocators.push_back(commandList.NativeCommandAllocator);
+
+		auto& queue = this->GetQueue(commandList.QueueType);
+
+		for (auto& resource : commandList.TrackedResources)
+		{
+			this->DeleteD3DResource(resource);
+		}
+
+		if (commandList.IsWaitedOn.load() || !commandList.Waits.empty())
+		{
+			uint64_t nextFenceValue = queue.GetNextFenceValue();
+			for (auto& wait : commandList.Waits)
+			{
+				// record wait for signal on a previous submit:
+				D3D12CommandList& waitCommandList = *this->m_commandListPool.Get(cmdHandle);
+				ThrowIfFailed(
+					this->GetQueue(waitCommandList.QueueType).GetD3D12CommandQueue()->Wait(
+						this->GetQueue(waitCommandList.QueueType).GetFence(),
+						nextFenceValue));
+			}
+
+			if (!submitCommands.empty())
+			{
+				uint64_t waitOnFenceValue = this->GetQueue(commandList.QueueType).ExecuteCommandLists(Span(submitCommands));
+				queue.DiscardAllocators(waitOnFenceValue, Span(submitAllocators));
+
+				submitCommands.clear();
+				submitAllocators.clear();
+				assert(nextFenceValue);
+			}
+		}
+	}
+
+
+	// -- Mark Queues for completion ---
+	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
+	{
+		D3D12CommandQueue& queue = this->m_commandQueues[q];
+		auto& submitCommands = submitCommandLists[q];
+		auto& submitAllocators = submitCommandListAllocators[q];
+
+		if (!submitCommands.empty())
+		{
+			uint64_t waitOnFenceValue = queue.ExecuteCommandLists(Span(submitCommands));
+			queue.DiscardAllocators(waitOnFenceValue, Span(submitAllocators));
+			submitCommands.clear();
+		}
+
+		// Single Frame Fence
+		queue.GetD3D12CommandQueue()->Signal(this->m_frameFences[q].Get(), this->m_frameCount);
+	}
+
+	// -- Present SwapChain ---
+	{
+		UINT presentFlags = 0;
+		if (!this->m_swapChain.Desc.VSync && !this->m_swapChain.Desc.Fullscreen)
+		{
+			presentFlags = DXGI_PRESENT_ALLOW_TEARING;
+		}
+
+		// OPTICK_GPU_FLIP(this->m_swapChain.NativeSwapchain4.Get());
+		// OPTICK_CATEGORY("Swapchain Present", Optick::Category::Wait);
+		HRESULT hr = this->m_swapChain.NativeSwapchain4->Present((UINT)this->m_swapChain.Desc.VSync, presentFlags);
+
+		// If the device was reset we must completely reinitialize the renderer.
+		if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+		{
+
+#ifdef _DEBUG
+			char buff[64] = {};
+			sprintf_s(buff, "Device Lost on Present: Reason code 0x%08X\n",
+				static_cast<unsigned int>((hr == DXGI_ERROR_DEVICE_REMOVED)
+					? this->GetD3D12Device()->GetDeviceRemovedReason()
+					: hr));
+			OutputDebugStringA(buff);
+#endif
+
+			// TODO: Handle device lost
+			// HandleDeviceLost();
+		}
+	}
+	// Begin the next frame - this affects the GetCurrentBackBufferIndex()
+	this->m_frameCount++;
+
+	// Wait for next frame
+	this->RunGarbageCollection(this->m_frameCount);
+	{
+		// OPTICK_EVENT("Wait on queues to finish");
+		for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
+		{
+			const UINT64 completedFrame = this->m_frameFences[q]->GetCompletedValue();
+
+			// If the fence is max uint64, that might indicate that the device has been removed as fences get reset in this case
+			assert(completedFrame != UINT64_MAX);
+			uint32_t bufferCount = this->m_swapChain.Desc.BufferCount;
+
+			// Since our frame count is 1 based rather then 0, increment the number of buffers by 1 so we don't have to wait on the first 3 frames
+			// that are kicked off.
+			if (this->m_frameCount >= (bufferCount + 1) && completedFrame < this->m_frameCount)
+			{
+				// OPTICK_CATEGORY("Waiting For Last frame", Optick::Category::Wait);
+				// Wait on the frames last value?
+				// NULL event handle will simply wait immediately:
+				//	https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12fence-seteventoncompletion#remarks
+				ThrowIfFailed(
+					this->m_frameFences[q]->SetEventOnCompletion(this->m_frameCount - bufferCount, nullptr));
+			}
+		}
+	}
 }
 
 void phx::rhi::D3D12GfxDevice::WaitForIdle()
 {
+	Microsoft::WRL::ComPtr<ID3D12Fence> fence;
+	HRESULT hr = this->GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+	assert(SUCCEEDED(hr));
+
+	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
+	{
+		std::unique_ptr<D3D12CommandQueue>& queue = this->m_queues[q];
+		hr = queue->Queue->Signal(fence.Get(), 1);
+		assert(SUCCEEDED(hr));
+		if (fence->GetCompletedValue() < 1)
+		{
+			hr = fence->SetEventOnCompletion(1, NULL);
+			assert(SUCCEEDED(hr));
+		}
+		fence->Signal(0);
+	}
 }
 
 TextureHandle phx::rhi::D3D12GfxDevice::GetBackBuffer()
 {
-	return TextureHandle();
+	auto currentBackBuffer = this->m_swapChain->GetCurrentBackBufferIndex();
+	return this->m_backBuffers[static_cast<size_t>(currentBackBuffer)];
 }
 
 RenderContext& phx::rhi::D3D12GfxDevice::BeginContext()
 {
-	// TODO: insert return statement here
+	// TODO: I am here.
+	uint32_t currentCmdIndex = this->m_activeCmdCount++;
+	assert(currentCmdIndex < this->m_frameCommandListHandles.size());
+
+	CommandListHandle cmdHandle = this->m_frameCommandListHandles[currentCmdIndex];
+	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmdHandle);
+	internalCmd.NativeCommandAllocator = this->GetQueue(queueType).RequestAllocator();
+
+	if (internalCmd.NativeCommandList == nullptr)
+	{
+		this->GetD3D12Device()->CreateCommandList(
+			0,
+			this->GetQueue(queueType).GetType(),
+			internalCmd.NativeCommandAllocator,
+			nullptr,
+			IID_PPV_ARGS(&internalCmd.NativeCommandList));
+
+		internalCmd.NativeCommandList->SetName(L"D3D12GfxDevice::CommandList");
+		ThrowIfFailed(
+			internalCmd.NativeCommandList.As<ID3D12GraphicsCommandList6>(&internalCmd.NativeCommandList6));
+
+	}
+	else
+	{
+		internalCmd.NativeCommandList->Reset(internalCmd.NativeCommandAllocator, nullptr);
+	}
+
+
+	internalCmd.Id = currentCmdIndex;
+	internalCmd.QueueType = queueType;
+	internalCmd.Waits.clear();
+	internalCmd.IsWaitedOn.store(false);
+	// internalCmd.UploadBuffer.Reset();
+
+	// Bind Heaps
+	std::array<ID3D12DescriptorHeap*, 2> heaps;
+	for (int i = 0; i < this->m_gpuDescriptorHeaps.size(); i++)
+	{
+		heaps[i] = this->m_gpuDescriptorHeaps[i].GetNativeHeap();
+	}
+
+	// TODO: NOT VALID FOR COPY
+	internalCmd.NativeCommandList6->SetDescriptorHeaps(heaps.size(), heaps.data());
+	return cmdHandle;
 }
 
 void phx::rhi::D3D12GfxDevice::CreateDevice(Config const& config)

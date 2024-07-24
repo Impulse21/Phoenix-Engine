@@ -17,5 +17,15 @@ namespace phx::core
 		{
 			return std::array<T, N>::operator[]((std::size_t)e);
 		}
+
+		T& operator[] (size_t i)
+		{
+			return std::array<T, N>::operator[](i);
+		}
+
+		const T& operator[] (size_t i) const
+		{
+			return std::array<T, N>::operator[](i);
+		}
 	};
 }
