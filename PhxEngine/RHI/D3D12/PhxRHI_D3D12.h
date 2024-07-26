@@ -98,7 +98,10 @@ namespace phx::rhi
 		void InitializeResoucePools();
 		void FinalizeResourcePools();
 
+		void RunGarbageCollection(size_t frameCount);
+
 	private:
+		uint32_t m_frameCount = 0;
 		DeviceCapabilities m_capabilities = {};
 		std::unique_ptr<CommandContextManager> m_commandContextManager;
 		std::shared_ptr<DescriptorAllocationHanlder> m_descriptorAllocator;

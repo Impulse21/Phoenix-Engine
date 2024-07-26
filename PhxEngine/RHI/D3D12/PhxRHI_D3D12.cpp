@@ -248,12 +248,12 @@ namespace phx::rhi
 	struct CommandContextManager : D3D12GfxDeviceChild
 	{
 		std::mutex Mutex;
-		std::size_t CmdCount;
+		std::atomic_uint32_t ActiveCmdCount;
 		std::vector<std::unique_ptr<D3D12CommandContext>> CommandContextsPool;
 
 		CommandContextManager(D3D12GfxDevice* gfxDevice, size_t reservedCommandLists)
 			: D3D12GfxDeviceChild(gfxDevice)
-			, CmdCount(0)
+			, ActiveCmdCount(0)
 		{
 			CommandContextsPool.reserve(reservedCommandLists);
 		}
@@ -453,8 +453,8 @@ void phx::rhi::D3D12GfxDevice::SubmitFrame()
 	}
 
 	// Submit Commandlists
-	uint32_t numActiveCommandLists = this->m_activeCmdCount.load();
-	this->m_activeCmdCount.store(0);
+	const uint32_t numActiveCommandLists = this->m_commandContextManager->ActiveCmdCount.load();
+	this->m_commandContextManager->ActiveCmdCount.store(0);
 
 
 	for (uint32_t iCmd = 0; iCmd < numActiveCommandLists; ++iCmd)
@@ -506,7 +506,6 @@ void phx::rhi::D3D12GfxDevice::SubmitFrame()
 		}
 	}
 
-
 	// -- Mark Queues for completion ---
 	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
 	{
@@ -528,14 +527,14 @@ void phx::rhi::D3D12GfxDevice::SubmitFrame()
 	// -- Present SwapChain ---
 	{
 		UINT presentFlags = 0;
-		if (!this->m_swapChain.Desc.VSync && !this->m_swapChain.Desc.Fullscreen)
+		if (!this->m_vSyncEnabled )//&& this->m_swapChain.Desc.Fullscreen)
 		{
 			presentFlags = DXGI_PRESENT_ALLOW_TEARING;
 		}
 
 		// OPTICK_GPU_FLIP(this->m_swapChain.NativeSwapchain4.Get());
 		// OPTICK_CATEGORY("Swapchain Present", Optick::Category::Wait);
-		HRESULT hr = this->m_swapChain.NativeSwapchain4->Present((UINT)this->m_swapChain.Desc.VSync, presentFlags);
+		HRESULT hr = this->m_swapChain->Present((UINT)this->m_vSyncEnabled, presentFlags);
 
 		// If the device was reset we must completely reinitialize the renderer.
 		if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
