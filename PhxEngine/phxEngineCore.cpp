@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "phxEngineCore.h"
 #include "phxApplication.h"
+#include "Core/phxMemory.h"
 #include "RHI/phxRHI.h"
 
 #include <taskflow/taskflow.hpp>
@@ -40,7 +41,7 @@ namespace
 void phx::Engine::Initialize(IApplication& app, PHX_UNUSED EngineParams const& desc)
 {
 	core::Log::Initialize();
-
+	core::Memory::Initialize();
 	PHX_CORE_INFO("Engine Initializing");
 
 	rhi::Config rhiConfig = {};

@@ -80,5 +80,8 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\DxgiFormatMapping.cpp">
       <Filter>RHI\D3D12</Filter>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxMemory.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

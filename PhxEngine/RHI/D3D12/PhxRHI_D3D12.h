@@ -11,7 +11,7 @@ namespace phx::rhi
 {
 	struct DescriptorAllocationHanlder;
 	struct D3D12CommandQueue;
-	struct CommandContextManager;
+	class CommandContextManager;
 	struct D3D12Texture;
 
 	struct DxgiFormatMapping
@@ -86,6 +86,8 @@ namespace phx::rhi
 		D3D12CommandQueue* GetQueueGfx() { return this->m_queues[rhi::CommandQueueType::Graphics].get(); }
 		D3D12CommandQueue* GetQueueCompute() { return this->m_queues[rhi::CommandQueueType::Compute].get(); }
 		D3D12CommandQueue* GetQueueCopy() { return this->m_queues[rhi::CommandQueueType::Copy].get(); }
+
+		D3D12CommandQueue* GetQueue(rhi::CommandQueueType queue) { return this->m_queues[queue].get(); }
 	public:
 		operator ID3D12Device*() const { return this->m_d3dDevice.Get(); }
 		operator ID3D12Device2* () const { return this->m_d3dDevice2.Get(); }

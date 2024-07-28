@@ -2,6 +2,7 @@
 #include "phxRHI_d3d12.h"
 #include <thread>
 
+#include "Core/phxMemory.h"
 
 using namespace phx;
 using namespace phx::rhi;
@@ -237,26 +238,102 @@ namespace phx::rhi
 
 	struct D3D12CommandContext
 	{
-		D3D12_COMMAND_LIST_TYPE Type = {};
+		rhi::CommandQueueType Type = {};
 		uint32_t Id = 0;
 		std::vector<D3D12CommandContext> Waits;
-		std::atomic_bool WaitedOn = false;
+		std::atomic_bool WaitedOn = false; 
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> CommandList;
+		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList6> CommandList6;
 		ID3D12CommandAllocator* Allocator;
 
 	};
 
-	struct CommandContextManager : D3D12GfxDeviceChild
+	class CommandContextManager : D3D12GfxDeviceChild
 	{
-		std::mutex Mutex;
-		std::atomic_uint32_t ActiveCmdCount;
-		std::vector<std::unique_ptr<D3D12CommandContext>> CommandContextsPool;
-
+	public:
 		CommandContextManager(D3D12GfxDevice* gfxDevice, size_t reservedCommandLists)
 			: D3D12GfxDeviceChild(gfxDevice)
-			, ActiveCmdCount(0)
+			, m_activeCmdCount(0)
 		{
-			CommandContextsPool.reserve(reservedCommandLists);
+			this->m_commandContextsPool.reserve(reservedCommandLists);
 		}
+
+	public:
+		void SubmitContexts()
+		{
+
+			// Submit Commandlists
+			const uint32_t numActiveCommandLists = this->m_activeCmdCount.load();
+			this->m_activeCmdCount.store(0);
+
+			ScopedScratchMarker _temp;
+			const size_t tempDataSize = (size_t)CommandQueueType::Count * numActiveCommandLists;
+			ID3D12CommandList** submitCommandLists = Memory::GetScratchAllocator().AllocArray<ID3D12CommandList*>(tempDataSize);
+			ID3D12CommandAllocator** submitCommandListAllocators = Memory::GetScratchAllocator().AllocArray<ID3D12CommandAllocator*>(tempDataSize);
+			
+
+
+			for (uint32_t iCmd = 0; iCmd < numActiveCommandLists; ++iCmd)
+			{
+				D3D12CommandContext* cmdContext = this->m_commandContextsPool[iCmd].get();
+				cmdContext->CommandList6->Close();
+
+				const size_t submitIndex = ((size_t)cmdContext->Type * numActiveCommandLists) + iCmd;
+				submitCommandLists[submitIndex] = cmdContext->CommandList.Get();
+
+				submitCommandListAllocators[submitIndex] = cmdContext->Allocator;
+				auto* queue = this->m_gfxDevice->GetQueue(cmdContext->Type);
+				// TODO: I am here
+				if (commandList.IsWaitedOn.load() || !commandList.Waits.empty())
+				{
+					uint64_t nextFenceValue = queue.GetNextFenceValue();
+					for (auto& wait : commandList.Waits)
+					{
+						// record wait for signal on a previous submit:
+						D3D12CommandList& waitCommandList = *this->m_commandListPool.Get(cmdHandle);
+						ThrowIfFailed(
+							this->GetQueue(waitCommandList.QueueType).GetD3D12CommandQueue()->Wait(
+								this->GetQueue(waitCommandList.QueueType).GetFence(),
+								nextFenceValue));
+					}
+
+					if (!submitCommands.empty())
+					{
+						uint64_t waitOnFenceValue = this->GetQueue(commandList.QueueType).ExecuteCommandLists(Span(submitCommands));
+						queue.DiscardAllocators(waitOnFenceValue, Span(submitAllocators));
+
+						submitCommands.clear();
+						submitAllocators.clear();
+						assert(nextFenceValue);
+					}
+				}
+			}
+
+			// -- Mark Queues for completion ---
+			for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
+			{
+				D3D12CommandQueue& queue = this->m_commandQueues[q];
+				auto& submitCommands = submitCommandLists[q];
+				auto& submitAllocators = submitCommandListAllocators[q];
+
+				if (!submitCommands.empty())
+				{
+					uint64_t waitOnFenceValue = queue.ExecuteCommandLists(Span(submitCommands));
+					queue.DiscardAllocators(waitOnFenceValue, Span(submitAllocators));
+					submitCommands.clear();
+				}
+
+				// Single Frame Fence
+				queue.GetD3D12CommandQueue()->Signal(this->m_frameFences[q].Get(), this->m_frameCount);
+			}
+		};
+
+	private:
+
+		std::mutex m_mutex;
+		std::atomic_uint32_t m_activeCmdCount;
+		std::vector<std::unique_ptr<D3D12CommandContext>> m_commandContextsPool;
+
 	};
 
 	class DescriptorAllocator : D3D12GfxDeviceChild
@@ -440,90 +517,6 @@ void phx::rhi::D3D12GfxDevice::ResizeSwapchain(Rect const&)
 
 void phx::rhi::D3D12GfxDevice::SubmitFrame()
 {
-	static std::array<std::vector<ID3D12CommandList*>, (size_t)CommandQueueType::Count> submitCommandLists;
-	for (auto& v : submitCommandLists)
-	{
-		v.clear();
-	}
-
-	static std::array<std::vector<ID3D12CommandAllocator*>, (size_t)CommandQueueType::Count> submitCommandListAllocators;
-	for (auto& v : submitCommandListAllocators)
-	{
-		v.clear();
-	}
-
-	// Submit Commandlists
-	const uint32_t numActiveCommandLists = this->m_commandContextManager->ActiveCmdCount.load();
-	this->m_commandContextManager->ActiveCmdCount.store(0);
-
-
-	for (uint32_t iCmd = 0; iCmd < numActiveCommandLists; ++iCmd)
-	{
-		CommandListHandle cmdHandle = this->m_frameCommandListHandles[iCmd];
-		if (!cmdHandle.IsValid())
-		{
-			continue;
-		}
-		// TODO: Determine how this logic should work....
-		D3D12CommandList& commandList = *this->m_commandListPool.Get(cmdHandle);
-		commandList.NativeCommandList6->Close();
-
-		auto& submitCommands = submitCommandLists[(size_t)commandList.QueueType];
-		submitCommands.push_back(commandList.NativeCommandList.Get());
-
-		auto& submitAllocators = submitCommandListAllocators[(size_t)commandList.QueueType];
-		submitAllocators.push_back(commandList.NativeCommandAllocator);
-
-		auto& queue = this->GetQueue(commandList.QueueType);
-
-		for (auto& resource : commandList.TrackedResources)
-		{
-			this->DeleteD3DResource(resource);
-		}
-
-		if (commandList.IsWaitedOn.load() || !commandList.Waits.empty())
-		{
-			uint64_t nextFenceValue = queue.GetNextFenceValue();
-			for (auto& wait : commandList.Waits)
-			{
-				// record wait for signal on a previous submit:
-				D3D12CommandList& waitCommandList = *this->m_commandListPool.Get(cmdHandle);
-				ThrowIfFailed(
-					this->GetQueue(waitCommandList.QueueType).GetD3D12CommandQueue()->Wait(
-						this->GetQueue(waitCommandList.QueueType).GetFence(),
-						nextFenceValue));
-			}
-
-			if (!submitCommands.empty())
-			{
-				uint64_t waitOnFenceValue = this->GetQueue(commandList.QueueType).ExecuteCommandLists(Span(submitCommands));
-				queue.DiscardAllocators(waitOnFenceValue, Span(submitAllocators));
-
-				submitCommands.clear();
-				submitAllocators.clear();
-				assert(nextFenceValue);
-			}
-		}
-	}
-
-	// -- Mark Queues for completion ---
-	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
-	{
-		D3D12CommandQueue& queue = this->m_commandQueues[q];
-		auto& submitCommands = submitCommandLists[q];
-		auto& submitAllocators = submitCommandListAllocators[q];
-
-		if (!submitCommands.empty())
-		{
-			uint64_t waitOnFenceValue = queue.ExecuteCommandLists(Span(submitCommands));
-			queue.DiscardAllocators(waitOnFenceValue, Span(submitAllocators));
-			submitCommands.clear();
-		}
-
-		// Single Frame Fence
-		queue.GetD3D12CommandQueue()->Signal(this->m_frameFences[q].Get(), this->m_frameCount);
-	}
-
 	// -- Present SwapChain ---
 	{
 		UINT presentFlags = 0;

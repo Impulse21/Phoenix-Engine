@@ -34,6 +34,7 @@
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)3rdParty\d3d12ma\D3D12MemAlloc.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxLog.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxMemory.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)phxEngineCore.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\DxgiFormatMapping.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxRHI_d3d12.cpp" />
