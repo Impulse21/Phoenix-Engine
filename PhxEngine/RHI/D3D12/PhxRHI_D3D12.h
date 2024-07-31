@@ -1,6 +1,10 @@
 #pragma once
 
 #include <mutex>
+#include <atomic>
+#include <vector>
+#include <functional>
+#include <deque>
 
 #include "RHI/phxRHI.h"
 #include "d3d12ma/D3D12MemAlloc.h"
@@ -88,6 +92,11 @@ namespace phx::rhi
 		D3D12CommandQueue* GetQueueCopy() { return this->m_queues[rhi::CommandQueueType::Copy].get(); }
 
 		D3D12CommandQueue* GetQueue(rhi::CommandQueueType queue) { return this->m_queues[queue].get(); }
+
+		size_t GetFrameCount() { return this->m_frameCount; }
+
+		UINT GetBufferIndex() const { return this->m_swapChain->GetCurrentBackBufferIndex(); }
+		ID3D12Fence* GetFrameFence(CommandQueueType type) { return this->m_frameFences[this->GetBufferIndex()][type].Get(); }
 	public:
 		operator ID3D12Device*() const { return this->m_d3dDevice.Get(); }
 		operator ID3D12Device2* () const { return this->m_d3dDevice2.Get(); }
@@ -100,12 +109,11 @@ namespace phx::rhi
 		void InitializeResoucePools();
 		void FinalizeResourcePools();
 
-		void RunGarbageCollection(size_t frameCount);
+		void RunGarbageCollection(size_t completedFrame);
 
 	private:
 		uint32_t m_frameCount = 0;
 		DeviceCapabilities m_capabilities = {};
-		std::unique_ptr<CommandContextManager> m_commandContextManager;
 		std::shared_ptr<DescriptorAllocationHanlder> m_descriptorAllocator;
 
 		// -- Direct3D objects ---
@@ -123,9 +131,21 @@ namespace phx::rhi
 		Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain;
 		std::vector<rhi::TextureHandle> m_backBuffers;
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_depthStencil;
+		std::vector<core::EnumArray<rhi::CommandQueueType, Microsoft::WRL::ComPtr<ID3D12Fence>>> m_frameFences;
+
+		// -- Command Context objects ---
+		std::atomic_uint32_t m_activeCmdCount;
+		std::vector<std::unique_ptr<D3D12CommandContext>> m_commandContextsPool;
 
 		// -- Resource Pools ---
 		HandlePool<D3D12Texture, Texture> m_texturePool;
+
+		struct DeleteItem
+		{
+			uint64_t Frame;
+			std::function<void()> DeleteFn;
+		};
+		std::deque<DeleteItem> m_deleteQueue;
 
 		// -- Cached device properties. ---
 		D3D_FEATURE_LEVEL m_d3dFeatureLevel;

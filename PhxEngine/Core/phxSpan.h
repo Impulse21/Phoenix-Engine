@@ -68,22 +68,22 @@ namespace phx
 
 
 	template<typename T>
-	class MutableSpan
+	class SpanMutable
 	{
 	public:
-		MutableSpan()
+		SpanMutable()
 			: Span(nullptr, 0)
 		{ }
 
-		MutableSpan(const T* array, size_t length)
+		SpanMutable(const T* array, size_t length)
 			: Span(array, length, 0)
 		{}
 
-		MutableSpan(std::vector<T>& v)
+		SpanMutable(std::vector<T>& v)
 			: Span(v.data(), v.size(), 0)
 		{}
 
-		MutableSpan(const T* array, size_t length, size_t skip)
+		SpanMutable(const T* array, size_t length, size_t skip)
 			: m_array(array + skip)
 			, m_length(length)
 		{
