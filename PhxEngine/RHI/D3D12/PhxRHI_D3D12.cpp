@@ -128,6 +128,7 @@ namespace phx::rhi
 		D3D12GfxDevice* m_gfxDevice;
 	};
 
+#if false // This is old code, not going to use this.
 	class CommandAllocatorPool : D3D12GfxDeviceChild
 	{
 	public:
@@ -186,13 +187,12 @@ namespace phx::rhi
 		std::deque<std::pair<uint64_t, ID3D12CommandAllocator*>> m_availableAllocators;
 		std::mutex m_allocatonMutex;
 	};
-
+#endif
 	struct D3D12CommandQueue : D3D12GfxDeviceChild
 	{
 		Microsoft::WRL::ComPtr<ID3D12CommandQueue> Queue;
 		Microsoft::WRL::ComPtr<ID3D12Fence> Fence;
 		Microsoft::WRL::Wrappers::Event FenceEvent;
-		std::unique_ptr<CommandAllocatorPool> CmdAllocatorPool;
 		D3D12_COMMAND_LIST_TYPE Type;
 		uint64_t NextFenceValue = 0;
 		uint64_t LastCompletedFenceValue = 0;
@@ -235,8 +235,6 @@ namespace phx::rhi
 			{
 				throw std::system_error(std::error_code(static_cast<int>(GetLastError()), std::system_category()), "CreateEventEx");
 			}
-
-			this->CmdAllocatorPool = std::make_unique<CommandAllocatorPool>(this->m_gfxDevice, this->Type);
 		}
 
 		void SubmitPendingLists()
@@ -256,7 +254,7 @@ namespace phx::rhi
 		std::atomic_bool IsWaitedOn = false;
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> CommandList;
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList6> CommandList6;
-		ID3D12CommandAllocator* Allocator;
+		Microsoft::WRL::ComPtr<ID3D12CommandAllocator>  Allocator;
 
 	};
 
@@ -453,7 +451,7 @@ void phx::rhi::D3D12GfxDevice::SubmitFrame()
 
 	for (uint32_t iCmd = 0; iCmd < numActiveCommandLists; ++iCmd)
 	{
-		D3D12CommandContext& cmdContext = *this->m_commandContextsPool[iCmd];
+		D3D12CommandContext& cmdContext = this->GetCmdPool()[iCmd];
 		cmdContext.CommandList6->Close();
 
 		auto* queue = this->GetQueue(cmdContext.Type);
@@ -467,7 +465,7 @@ void phx::rhi::D3D12GfxDevice::SubmitFrame()
 				ThrowIfFailed(
 					queue->Queue->Wait(
 						waitQueue->Fence.Get(),
-						this->GetFrameCount() * m_commandContextsPool.size() + waitCtx.Id));
+						this->GetFrameCount() * this->GetCmdPool().size() + waitCtx.Id));
 			}
 
 			if (!queue->PendingSubmitQueue.empty())
@@ -479,7 +477,7 @@ void phx::rhi::D3D12GfxDevice::SubmitFrame()
 			{
 				auto hr = queue->Queue->Signal(
 					queue->Fence.Get(),
-					this->GetFrameCount() * m_commandContextsPool.size() + cmdContext.Id);
+					this->GetFrameCount() * this->GetCmdPool().size() + cmdContext.Id);
 				assert(SUCCEEDED(hr));
 			}
 		}
@@ -587,52 +585,54 @@ TextureHandle phx::rhi::D3D12GfxDevice::GetBackBuffer()
 	return this->m_backBuffers[static_cast<size_t>(this->GetBufferIndex())];
 }
 
-RenderContext& phx::rhi::D3D12GfxDevice::BeginContext()
+CommandListHandle phx::rhi::D3D12GfxDevice::BeginContext(CommandQueueType queueType)
 {
-	// TODO: I am here.
-	uint32_t currentCmdIndex = this->m_activeCmdCount++;
-	assert(currentCmdIndex < this->m_frameCommandListHandles.size());
-
-	CommandListHandle cmdHandle = this->m_frameCommandListHandles[currentCmdIndex];
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmdHandle);
-	internalCmd.NativeCommandAllocator = this->GetQueue(queueType).RequestAllocator();
-
-	if (internalCmd.NativeCommandList == nullptr)
+	const uint32_t currentCmdIndex = this->m_activeCmdCount++;
+	D3D12CommandQueue* queue = this->GetQueue(queueType);
+	std::vector<D3D12CommandContext>& cmdPool = this->GetCmdPool();
+	if (currentCmdIndex <= cmdPool.size())
 	{
-		this->GetD3D12Device()->CreateCommandList(
-			0,
-			this->GetQueue(queueType).GetType(),
-			internalCmd.NativeCommandAllocator,
-			nullptr,
-			IID_PPV_ARGS(&internalCmd.NativeCommandList));
-
-		internalCmd.NativeCommandList->SetName(L"D3D12GfxDevice::CommandList");
+		D3D12CommandContext& cmdCtx = cmdPool.emplace_back();
 		ThrowIfFailed(
-			internalCmd.NativeCommandList.As<ID3D12GraphicsCommandList6>(&internalCmd.NativeCommandList6));
+			this->m_d3dDevice2->CreateCommandAllocator(
+				queue->Type,
+				IID_PPV_ARGS(&cmdCtx.Allocator)));
+
+		this->m_d3dDevice2->CreateCommandList(
+			0,
+			queue->Type,
+			cmdCtx.Allocator.Get(),
+			nullptr,
+			IID_PPV_ARGS(&cmdCtx.CommandList));
+
+		cmdCtx.CommandList->SetName(L"D3D12GfxDevice::CommandList");
+		ThrowIfFailed(
+			cmdCtx.CommandList.As<ID3D12GraphicsCommandList6>(&cmdCtx.CommandList6));
 
 	}
 	else
 	{
-		internalCmd.NativeCommandList->Reset(internalCmd.NativeCommandAllocator, nullptr);
+		cmdPool[currentCmdIndex].CommandList->Reset(cmdPool[currentCmdIndex].Allocator.Get(), nullptr);
 	}
 
-
-	internalCmd.Id = currentCmdIndex;
-	internalCmd.QueueType = queueType;
-	internalCmd.Waits.clear();
-	internalCmd.IsWaitedOn.store(false);
+	D3D12CommandContext& cmdCtx = cmdPool[currentCmdIndex];
+	cmdCtx.Id = currentCmdIndex;
+	cmdCtx.Type = queueType;
+	cmdCtx.Waits.clear();
+	cmdCtx.IsWaitedOn.store(false);
 	// internalCmd.UploadBuffer.Reset();
 
 	// Bind Heaps
-	std::array<ID3D12DescriptorHeap*, 2> heaps;
-	for (int i = 0; i < this->m_gpuDescriptorHeaps.size(); i++)
+	std::array<ID3D12DescriptorHeap*, 2> heaps = 
 	{
-		heaps[i] = this->m_gpuDescriptorHeaps[i].GetNativeHeap();
-	}
+		this->m_descriptorAllocator->GpuHeapRes.Heap.Get(),
+		this->m_descriptorAllocator->GpuHeapSampler.Heap.Get() 
+	};
 
 	// TODO: NOT VALID FOR COPY
-	internalCmd.NativeCommandList6->SetDescriptorHeaps(heaps.size(), heaps.data());
-	return cmdHandle;
+	cmdCtx.CommandList6->SetDescriptorHeaps(heaps.size(), heaps.data());
+
+	return currentCmdIndex;
 }
 
 void phx::rhi::D3D12GfxDevice::CreateDevice(Config const& config)
@@ -851,7 +851,7 @@ void phx::rhi::D3D12GfxDevice::CreateDeviceResources(Config const& config)
 		D3D12MA::CreateAllocator(&allocatorDesc, &this->m_gpuMemAllocator));
 
 	this->m_activeCmdCount = 0;
-	this->m_commandContextsPool.reserve(std::thread::hardware_concurrency());
+	this->m_cmdListPool.resize(this->m_backBufferCount);
 
 	this->m_window = config.Window;
 

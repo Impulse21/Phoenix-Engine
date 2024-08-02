@@ -560,11 +560,7 @@ namespace phx::rhi
     struct Texture;
     using TextureHandle = Handle<Texture>;
 
-    class RenderContext
-    {
-    public:
-        virtual ~RenderContext() = default;
-    };
+    using CommandListHandle = uint32_t;
 
     class GfxDevice
     {
@@ -580,7 +576,7 @@ namespace phx::rhi
 
         virtual TextureHandle GetBackBuffer() = 0;
 
-        virtual RenderContext& BeginContext() = 0;
+        virtual CommandListHandle BeginContext(CommandQueueType queueType = CommandQueueType::Graphics) = 0;
     };
 
 #pragma endregion

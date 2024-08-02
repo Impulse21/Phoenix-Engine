@@ -79,7 +79,7 @@ namespace phx::rhi
 
 		TextureHandle GetBackBuffer() override;
 
-		RenderContext& BeginContext() override;
+		CommandListHandle BeginContext(CommandQueueType queueType = CommandQueueType::Graphics) override;
 
 		// -- Getters ---
 	public:
@@ -97,6 +97,8 @@ namespace phx::rhi
 
 		UINT GetBufferIndex() const { return this->m_swapChain->GetCurrentBackBufferIndex(); }
 		ID3D12Fence* GetFrameFence(CommandQueueType type) { return this->m_frameFences[this->GetBufferIndex()][type].Get(); }
+		std::vector<D3D12CommandContext>& GetCmdPool() { return this->m_cmdListPool[this->GetBufferIndex()]; }
+
 	public:
 		operator ID3D12Device*() const { return this->m_d3dDevice.Get(); }
 		operator ID3D12Device2* () const { return this->m_d3dDevice2.Get(); }
@@ -131,11 +133,13 @@ namespace phx::rhi
 		Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain;
 		std::vector<rhi::TextureHandle> m_backBuffers;
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_depthStencil;
+
+		// -- Per Frame Data ---
 		std::vector<core::EnumArray<rhi::CommandQueueType, Microsoft::WRL::ComPtr<ID3D12Fence>>> m_frameFences;
+		std::vector<std::vector<D3D12CommandContext>> m_cmdListPool;
 
 		// -- Command Context objects ---
 		std::atomic_uint32_t m_activeCmdCount;
-		std::vector<std::unique_ptr<D3D12CommandContext>> m_commandContextsPool;
 
 		// -- Resource Pools ---
 		HandlePool<D3D12Texture, Texture> m_texturePool;
