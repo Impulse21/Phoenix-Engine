@@ -41,11 +41,11 @@ namespace
 void phx::Engine::Initialize(IApplication& app, PHX_UNUSED EngineParams const& desc)
 {
 	core::Log::Initialize();
-	core::Memory::Initialize();
+	Memory::Initialize({});
 	PHX_CORE_INFO("Engine Initializing");
 
 	rhi::Config rhiConfig = {};
-	rhi::InitializeWindows(rhiConfig);
+	rhi::Initialize_Windows(rhiConfig);
 
 	// Display number of Executor Tasks
 	app.OnStartup();

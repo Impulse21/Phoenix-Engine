@@ -45,6 +45,30 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxRHI_d3d12.h">
       <Filter>RHI\D3D12</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxTimeStep.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxBitSetAllocator.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxMath.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12BiindlessDescriptorTable.h">
+      <Filter>RHI\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12CommandQueue.h">
+      <Filter>RHI\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12Common.h">
+      <Filter>RHI\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12DescriptorHeap.h">
+      <Filter>RHI\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12UploadBuffer.h">
+      <Filter>RHI\D3D12</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
@@ -82,6 +106,18 @@
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxMemory.cpp">
       <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12CommandQueue.cpp">
+      <Filter>RHI\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12DescriptorHeap.cpp">
+      <Filter>RHI\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12UploadBuffer.cpp">
+      <Filter>RHI\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxDxgiFormatMapping.cpp">
+      <Filter>RHI\D3D12</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

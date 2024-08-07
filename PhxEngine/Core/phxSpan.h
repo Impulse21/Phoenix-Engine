@@ -72,18 +72,18 @@ namespace phx
 	{
 	public:
 		SpanMutable()
-			: Span(nullptr, 0)
+			: SpanMutable(nullptr, 0)
 		{ }
 
-		SpanMutable(const T* array, size_t length)
-			: Span(array, length, 0)
+		SpanMutable(T* array, size_t length)
+			: SpanMutable(array, length, 0)
 		{}
 
 		SpanMutable(std::vector<T>& v)
-			: Span(v.data(), v.size(), 0)
+			: SpanMutable(v.data(), v.size(), 0)
 		{}
 
-		SpanMutable(const T* array, size_t length, size_t skip)
+		SpanMutable(T* array, size_t length, size_t skip)
 			: m_array(array + skip)
 			, m_length(length)
 		{

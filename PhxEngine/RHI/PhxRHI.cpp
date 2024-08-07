@@ -24,7 +24,7 @@ namespace
 }
 
 #ifdef _WIN32
-void rhi::InitializeWindows(Config const& config)
+void rhi::Initialize_Windows(Config const& config)
 {
 	switch (config.Api)
 	{
@@ -37,6 +37,6 @@ void rhi::InitializeWindows(Config const& config)
 
 void rhi::Finalize()
 {
-	GfxDevice::Ptr->Wait();
+	GfxDevice::Ptr->WaitForIdle();
 	delete GfxDevice::Ptr;
 }

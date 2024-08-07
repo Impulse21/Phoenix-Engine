@@ -1,167 +1,32 @@
-#pragma once
 
-#include "Core/phxEnumClassFlags.h"
-#include "Core/phxHandle.h"
-#include "Core/phxSpan.h"
-#include "Core/phxPlatform.h"
 #include "Core/phxMemory.h"
+#include "Core/phxSpan.h"
+#include "Core/phxSpan.h"
+#include "Core/phxHandle.h"
+#include "Core/phxEnumClassFlags.h"
+#include "Core/phxTimeStep.h"
 
-#include <cstdint>
+#include <stdint.h>
+#include <optional>
 #include <string>
 #include <vector>
-#include <optional>
+#include <memory>
 #include <variant>
-#include <thread>
 
 namespace phx::rhi
 {
-#pragma region Constants
+    typedef uint32_t DescriptorIndex;
 
-    using DescriptorIndex = uint32_t;
+    static constexpr DescriptorIndex cInvalidDescriptorIndex = ~0u;
 
-    static constexpr DescriptorIndex kInvalidDescriptorIndex = ~0u;
-
-    static constexpr uint32_t kMaxRenderTargets = 8;
-    static constexpr uint32_t kMaxViewports = 16;
-    static constexpr uint32_t kMaxVertexAttributes = 16;
-    static constexpr uint32_t kMaxBindingLayouts = 5;
-    static constexpr uint32_t kMaxBindingsPerLayout = 128;
-    static constexpr uint32_t kMaxVolatileConstantBuffersPerLayout = 6;
-    static constexpr uint32_t kMaxVolatileConstantBuffers = 32;
-    static constexpr uint32_t kMaxPushConstantSize = 128;      // D3D12: root signature is 256 bytes max., Vulkan: 128 bytes of push constants guaranteed
-#pragma endregion
-
-#pragma region Generic Structures
-
-
-    struct DeviceCapabilities
-    {
-        union
-        {
-            uint8_t Flags = 0;
-            struct
-            {
-                uint8_t RTVTArrayIndexWithoutGS : 1;
-                uint8_t RayTracing : 1;
-                uint8_t RenderPass : 1;
-                uint8_t RayQuery : 1;
-                uint8_t VariableRateShading : 1;
-                uint8_t MeshShading : 1;
-                uint8_t CreateNoteZeroed : 1;
-                uint8_t Bindless : 1;
-            };
-        };
-    };
-
-    struct SubresourceData
-    {
-        const void* pData = nullptr;
-        uint32_t rowPitch = 0;
-        uint32_t slicePitch = 0;
-    };
-    struct Color
-    {
-        float R;
-        float G;
-        float B;
-        float A;
-
-        Color()
-            : R(0.f), G(0.f), B(0.f), A(0.f)
-        { }
-
-        Color(float c)
-            : R(c), G(c), B(c), A(c)
-        { }
-
-        Color(float r, float g, float b, float a)
-            : R(r), G(g), B(b), A(a) { }
-
-        bool operator ==(const Color& other) const { return R == other.R && G == other.G && B == other.B && A == other.A; }
-        bool operator !=(const Color& other) const { return !(*this == other); }
-    };
-
-    union ClearValue
-    {
-        // TODO: Change to be a flat array
-        // float Colour[4];
-        Color Colour;
-        struct ClearDepthStencil
-        {
-            float Depth;
-            uint32_t Stencil;
-        } DepthStencil;
-    };
-
-    struct Viewport
-    {
-        float MinX, MaxX;
-        float MinY, MaxY;
-        float MinZ, MaxZ;
-
-        Viewport() : MinX(0.f), MaxX(0.f), MinY(0.f), MaxY(0.f), MinZ(0.f), MaxZ(1.f) { }
-
-        Viewport(float width, float height) : MinX(0.f), MaxX(width), MinY(0.f), MaxY(height), MinZ(0.f), MaxZ(1.f) { }
-
-        Viewport(float _minX, float _maxX, float _minY, float _maxY, float _minZ, float _maxZ)
-            : MinX(_minX), MaxX(_maxX), MinY(_minY), MaxY(_maxY), MinZ(_minZ), MaxZ(_maxZ)
-        { }
-
-        bool operator ==(const Viewport& b) const
-        {
-            return MinX == b.MinX
-                && MinY == b.MinY
-                && MinZ == b.MinZ
-                && MaxX == b.MaxX
-                && MaxY == b.MaxY
-                && MaxZ == b.MaxZ;
-        }
-        bool operator !=(const Viewport& b) const { return !(*this == b); }
-
-        float GetWidth() const { return MaxX - MinX; }
-        float GetHeight() const { return MaxY - MinY; }
-    };
-
-    struct Rect
-    {
-        int MinX, MaxX;
-        int MinY, MaxY;
-
-        Rect() : MinX(0), MaxX(0), MinY(0), MaxY(0) { }
-        Rect(int width, int height) : MinX(0), MaxX(width), MinY(0), MaxY(height) { }
-        Rect(int _minX, int _maxX, int _minY, int _maxY) : MinX(_minX), MaxX(_maxX), MinY(_minY), MaxY(_maxY) { }
-        explicit Rect(const Viewport& viewport)
-            : MinX(int(floorf(viewport.MinX)))
-            , MaxX(int(ceilf(viewport.MaxX)))
-            , MinY(int(floorf(viewport.MinY)))
-            , MaxY(int(ceilf(viewport.MaxY)))
-        {
-        }
-
-        bool operator ==(const Rect& b) const {
-            return MinX == b.MinX && MinY == b.MinY && MaxX == b.MaxX && MaxY == b.MaxY;
-        }
-        bool operator !=(const Rect& b) const { return !(*this == b); }
-
-        int GetWidth() const { return MaxX - MinX; }
-        int GetHeight() const { return MaxY - MinY; }
-    };
-
-
-    struct BufferRange
-    {
-        uint64_t ByteOffset = 0;
-        uint64_t SizeInBytes = 0;
-
-        BufferRange() = default;
-
-        BufferRange(uint64_t byteOffset, uint64_t sizeInBytes)
-            : ByteOffset(byteOffset)
-            , SizeInBytes(sizeInBytes)
-        { }
-    };
-#pragma endregion
-#pragma region Enums
+    static constexpr uint32_t cMaxRenderTargets = 8;
+    static constexpr uint32_t cMaxViewports = 16;
+    static constexpr uint32_t cMaxVertexAttributes = 16;
+    static constexpr uint32_t cMaxBindingLayouts = 5;
+    static constexpr uint32_t cMaxBindingsPerLayout = 128;
+    static constexpr uint32_t cMaxVolatileConstantBuffersPerLayout = 6;
+    static constexpr uint32_t cMaxVolatileConstantBuffers = 32;
+    static constexpr uint32_t cMaxPushConstantSize = 128;      // D3D12: root signature is 256 bytes max., Vulkan: 128 bytes of push constants guaranteed
 
     enum class GraphicsAPI
     {
@@ -278,6 +143,96 @@ namespace phx::rhi
 
         COUNT,
     };
+
+    struct Color
+    {
+        float R;
+        float G;
+        float B;
+        float A;
+
+        Color()
+            : R(0.f), G(0.f), B(0.f), A(0.f)
+        { }
+
+        Color(float c)
+            : R(c), G(c), B(c), A(c)
+        { }
+
+        Color(float r, float g, float b, float a)
+            : R(r), G(g), B(b), A(a) { }
+
+        bool operator ==(const Color& other) const { return R == other.R && G == other.G && B == other.B && A == other.A; }
+        bool operator !=(const Color& other) const { return !(*this == other); }
+    };
+
+    union ClearValue
+    {
+        // TODO: Change to be a flat array
+        // float Colour[4];
+        Color Colour;
+        struct ClearDepthStencil
+        {
+            float Depth;
+            uint32_t Stencil;
+        } DepthStencil;
+    };
+
+    struct Viewport
+    {
+        float MinX, MaxX;
+        float MinY, MaxY;
+        float MinZ, MaxZ;
+
+        Viewport() : MinX(0.f), MaxX(0.f), MinY(0.f), MaxY(0.f), MinZ(0.f), MaxZ(1.f) { }
+
+        Viewport(float width, float height) : MinX(0.f), MaxX(width), MinY(0.f), MaxY(height), MinZ(0.f), MaxZ(1.f) { }
+
+        Viewport(float _minX, float _maxX, float _minY, float _maxY, float _minZ, float _maxZ)
+            : MinX(_minX), MaxX(_maxX), MinY(_minY), MaxY(_maxY), MinZ(_minZ), MaxZ(_maxZ)
+        { }
+
+        bool operator ==(const Viewport& b) const
+        {
+            return MinX == b.MinX
+                && MinY == b.MinY
+                && MinZ == b.MinZ
+                && MaxX == b.MaxX
+                && MaxY == b.MaxY
+                && MaxZ == b.MaxZ;
+        }
+        bool operator !=(const Viewport& b) const { return !(*this == b); }
+
+        float GetWidth() const { return MaxX - MinX; }
+        float GetHeight() const { return MaxY - MinY; }
+    };
+
+    struct Rect
+    {
+        int MinX, MaxX;
+        int MinY, MaxY;
+
+        Rect() : MinX(0), MaxX(0), MinY(0), MaxY(0) { }
+        Rect(int width, int height) : MinX(0), MaxX(width), MinY(0), MaxY(height) { }
+        Rect(int _minX, int _maxX, int _minY, int _maxY) : MinX(_minX), MaxX(_maxX), MinY(_minY), MaxY(_maxY) { }
+        explicit Rect(const Viewport& viewport)
+            : MinX(int(floorf(viewport.MinX)))
+            , MaxX(int(ceilf(viewport.MaxX)))
+            , MinY(int(floorf(viewport.MinY)))
+            , MaxY(int(ceilf(viewport.MaxY)))
+        {
+        }
+
+        bool operator ==(const Rect& b) const {
+            return MinX == b.MinX && MinY == b.MinY && MaxX == b.MaxX && MaxY == b.MaxY;
+        }
+        bool operator !=(const Rect& b) const { return !(*this == b); }
+
+        int GetWidth() const { return MaxX - MinX; }
+        int GetHeight() const { return MaxY - MinY; }
+    };
+
+#pragma region Enums
 
     enum class Usage
     {
@@ -514,6 +469,28 @@ namespace phx::rhi
         Maximum
     };
 
+    enum class BufferMiscFlags
+    {
+        None = 0,
+        Bindless = 1 << 0,
+        Raw = 1 << 1,
+        Structured = 1 << 2,
+        Typed = 1 << 3,
+        HasCounter = 1 << 4,
+        IsAliasedResource = 1 << 5,
+    };
+
+    PHX_ENUM_CLASS_FLAGS(BufferMiscFlags);
+
+    enum class TextureMiscFlags
+    {
+        None = 0,
+        Bindless = 1 << 0,
+        Typeless = 1 << 1,
+    };
+
+    PHX_ENUM_CLASS_FLAGS(TextureMiscFlags);
+
     enum class BindingFlags
     {
         None = 0,
@@ -537,6 +514,299 @@ namespace phx::rhi
         DSV,
     };
 
+#pragma endregion
+
+    // -- Indirect Objects ---
+    // 
+    struct IndirectDrawArgInstanced
+    {
+        uint32_t VertexCount;
+        uint32_t InstanceCount;
+        uint32_t StartVertex;
+        uint32_t StartInstance;
+    };
+
+    struct IndirectDrawArgsIndexedInstanced
+    {
+        uint32_t IndexCount;
+        uint32_t InstanceCount;
+        uint32_t StartIndex;
+        uint32_t VertexOffset;
+        uint32_t StartInstance;
+    };
+
+    struct IndirectDispatchArgs
+    {
+        uint32_t GroupCountX;
+        uint32_t GroupCountY;
+        uint32_t mGroupCountZ;
+    };
+
+    // -- Pipeline State objects ---
+    struct BlendRenderState
+    {
+        struct RenderTarget
+        {
+            bool        BlendEnable = false;
+            BlendFactor SrcBlend = BlendFactor::One;
+            BlendFactor DestBlend = BlendFactor::Zero;
+            EBlendOp    BlendOp = EBlendOp::Add;
+            BlendFactor SrcBlendAlpha = BlendFactor::One;
+            BlendFactor DestBlendAlpha = BlendFactor::Zero;
+            EBlendOp    BlendOpAlpha = EBlendOp::Add;
+            ColorMask   ColorWriteMask = ColorMask::All;
+        };
+
+        RenderTarget Targets[cMaxRenderTargets];
+        bool alphaToCoverageEnable = false;
+    };
+
+    struct DepthStencilRenderState
+    {
+        struct StencilOpDesc
+        {
+            StencilOp FailOp = StencilOp::Keep;
+            StencilOp DepthFailOp = StencilOp::Keep;
+            StencilOp PassOp = StencilOp::Keep;
+            ComparisonFunc StencilFunc = ComparisonFunc::Always;
+
+            constexpr StencilOpDesc& setFailOp(StencilOp value) { FailOp = value; return *this; }
+            constexpr StencilOpDesc& setDepthFailOp(StencilOp value) { DepthFailOp = value; return *this; }
+            constexpr StencilOpDesc& setPassOp(StencilOp value) { PassOp = value; return *this; }
+            constexpr StencilOpDesc& setStencilFunc(ComparisonFunc value) { StencilFunc = value; return *this; }
+        };
+
+        bool            DepthTestEnable = true;
+        bool            DepthWriteEnable = true;
+        ComparisonFunc  DepthFunc = ComparisonFunc::Less;
+        bool            StencilEnable = false;
+        uint8_t         StencilReadMask = 0xff;
+        uint8_t         StencilWriteMask = 0xff;
+        uint8_t         stencilRefValue = 0;
+        StencilOpDesc   FrontFaceStencil;
+        StencilOpDesc   BackFaceStencil;
+    };
+
+    struct RasterRenderState
+    {
+        RasterFillMode FillMode = RasterFillMode::Solid;
+        RasterCullMode CullMode = RasterCullMode::Back;
+        bool FrontCounterClockwise = false;
+        bool DepthClipEnable = false;
+        bool ScissorEnable = false;
+        bool MultisampleEnable = false;
+        bool AntialiasedLineEnable = false;
+        int DepthBias = 0;
+        float DepthBiasClamp = 0.f;
+        float SlopeScaledDepthBias = 0.f;
+
+        uint8_t ForcedSampleCount = 0;
+        bool programmableSamplePositionsEnable = false;
+        bool ConservativeRasterEnable = false;
+        bool quadFillEnable = false;
+        char samplePositionsX[16]{};
+        char samplePositionsY[16]{};
+    };
+    // -- Pipeline State Objects End ---
+
+    struct ShaderDesc
+    {
+        ShaderStage Stage = ShaderStage::None;
+        std::string DebugName = "";
+    };
+
+    struct Shader;
+    using ShaderHandle = Handle<Shader>;
+
+    struct VertexAttributeDesc
+    {
+        static const uint32_t SAppendAlignedElement = 0xffffffff; // automatically figure out AlignedByteOffset depending on Format
+
+        std::string SemanticName;
+        uint32_t SemanticIndex = 0;
+        rhi::Format Format = rhi::Format::UNKNOWN;
+        uint32_t InputSlot = 0;
+        uint32_t AlignedByteOffset = SAppendAlignedElement;
+        bool IsInstanced = false;
+    };
+
+    struct InputLayout;
+    using InputLayoutHandle = Handle<InputLayout>;
+
+    struct StaticSamplerParameter
+    {
+        uint32_t Slot;
+        Color BorderColor = 1.f;
+        float MaxAnisotropy = 1.f;
+        float MipBias = 0.f;
+
+        bool MinFilter = true;
+        bool MagFilter = true;
+        bool MipFilter = true;
+        SamplerAddressMode AddressU = SamplerAddressMode::Clamp;
+        SamplerAddressMode AddressV = SamplerAddressMode::Clamp;
+        SamplerAddressMode AddressW = SamplerAddressMode::Clamp;
+        ComparisonFunc ComparisonFunc = ComparisonFunc::LessOrEqual;
+        SamplerReductionType ReductionType = SamplerReductionType::Standard;
+    };
+
+    struct ShaderParameter
+    {
+        uint32_t Slot;
+        ResourceType Type : 8;
+        bool IsVolatile : 8;
+        uint16_t Size : 16;
+
+    };
+
+    struct BindlessShaderParameter
+    {
+        ResourceType Type : 8;
+        uint16_t RegisterSpace : 16;
+    };
+
+    // This is just a workaround for now
+    class IRootSignatureBuilder
+    {
+    public:
+        virtual ~IRootSignatureBuilder() = default;
+    };
+
+    // Shader Binding Layout
+    struct ShaderParameterLayout
+    {
+        ShaderStage Visibility = ShaderStage::None;
+        uint32_t RegisterSpace = 0;
+        std::vector<ShaderParameter> Parameters;
+        std::vector<BindlessShaderParameter> BindlessParameters;
+        std::vector<StaticSamplerParameter> StaticSamplers;
+
+        ShaderParameterLayout& AddPushConstantParmaeter(uint32_t shaderRegister, size_t size)
+        {
+            ShaderParameter p = {};
+            p.Size = size;
+            p.Slot = shaderRegister;
+            p.Type = ResourceType::PushConstants;
+
+            this->AddParameter(std::move(p));
+
+            return *this;
+        }
+
+        ShaderParameterLayout& AddCBVParameter(uint32_t shaderRegister, bool IsVolatile = false)
+        {
+            ShaderParameter p = {};
+            p.Size = 0;
+            p.Slot = shaderRegister;
+            p.IsVolatile = IsVolatile;
+            p.Type = ResourceType::ConstantBuffer;
+
+            this->AddParameter(std::move(p));
+
+            return *this;
+        }
+
+        ShaderParameterLayout& AddSRVParameter(uint32_t shaderRegister)
+        {
+            ShaderParameter p = {};
+            p.Size = 0;
+            p.Slot = shaderRegister;
+            p.Type = ResourceType::SRVBuffer;
+
+            this->AddParameter(std::move(p));
+
+            return *this;
+        }
+
+        ShaderParameterLayout AddBindlessSRV(uint32_t shaderSpace)
+        {
+            BindlessShaderParameter p = {};
+            p.RegisterSpace = shaderSpace;
+            p.Type = ResourceType::BindlessSRV;
+
+            this->AddBindlessParameter(std::move(p));
+
+            return *this;
+        }
+
+        ShaderParameterLayout& AddStaticSampler(
+            uint32_t shaderRegister,
+            bool minFilter,
+            bool magFilter,
+            bool mipFilter,
+            SamplerAddressMode         addressUVW,
+            uint32_t				   maxAnisotropy = 16U,
+            ComparisonFunc             comparisonFunc = ComparisonFunc::LessOrEqual,
+            Color                      borderColor = { 1.0f , 1.0f, 1.0f, 0.0f })
+        {
+            StaticSamplerParameter& desc = this->StaticSamplers.emplace_back();
+            desc.Slot = shaderRegister;
+            desc.MinFilter = minFilter;
+            desc.MagFilter = magFilter;
+            desc.MagFilter = mipFilter;
+            desc.AddressU = addressUVW;
+            desc.AddressV = addressUVW;
+            desc.AddressW = addressUVW;
+            desc.MaxAnisotropy = static_cast<float>(maxAnisotropy);
+            desc.ComparisonFunc = comparisonFunc;
+            desc.BorderColor = borderColor;
+
+            return *this;
+        }
+
+        void AddParameter(ShaderParameter&& parameter)
+        {
+            this->Parameters.emplace_back(parameter);
+        }
+
+        void AddBindlessParameter(BindlessShaderParameter&& bindlessParameter)
+        {
+            this->BindlessParameters.emplace_back(bindlessParameter);
+        }
+    };
+
+    struct TextureDesc
+    {
+        TextureMiscFlags MiscFlags = TextureMiscFlags::None;
+        BindingFlags BindingFlags = BindingFlags::ShaderResource;
+        TextureDimension Dimension = TextureDimension::Texture2D;
+        ResourceStates InitialState = ResourceStates::Common;
+        rhi::Format Format = rhi::Format::UNKNOWN;
+
+        uint32_t Width;
+        uint32_t Height;
+
+        union
+        {
+            uint16_t ArraySize = 1;
+            uint16_t Depth;
+        };
+
+        uint16_t MipLevels = 1;
+
+        rhi::ClearValue OptmizedClearValue = {};
+        std::string DebugName;
+    };
+
+    // New;
+    struct Texture;
+
+    // using TextureHandle = std::shared_ptr<ITexture>;
+    using TextureHandle = Handle<Texture>;
+
+    struct BufferRange
+    {
+        uint64_t ByteOffset = 0;
+        uint64_t SizeInBytes = 0;
+
+        BufferRange() = default;
+
+        BufferRange(uint64_t byteOffset, uint64_t sizeInBytes)
+            : ByteOffset(byteOffset)
+            , SizeInBytes(sizeInBytes)
+        { }
+    };
+
     enum class IndirectArgumentType
     {
         Draw = 0,
@@ -553,59 +823,721 @@ namespace phx::rhi
         Compute,
         Mesh,
     };
-#pragma endregion
-
-#pragma region Resources
-
-    struct Texture;
-    using TextureHandle = Handle<Texture>;
-
-    using CommandListHandle = uint32_t;
-
-    class GfxDevice
+    struct IndirectArgumnetDesc
     {
-    public:
-        inline static GfxDevice* Ptr = nullptr;
-        virtual ~GfxDevice() = default;
-
-    public:
-        virtual void ResizeSwapchain(Rect const& size) = 0;
-
-        virtual void SubmitFrame() = 0;
-        virtual void WaitForIdle() = 0;
-
-        virtual TextureHandle GetBackBuffer() = 0;
-
-        virtual CommandListHandle BeginContext(CommandQueueType queueType = CommandQueueType::Graphics) = 0;
-    };
-
-#pragma endregion
-
-    struct Config
-    {
-        GraphicsAPI Api = GraphicsAPI::DX12;
-        core::WindowHandle Window;
-        Rect WindowSize;
-        uint8_t BufferCount = 3;
-        rhi::Format BufferFormat = rhi::Format::R10G10B10A2_UNORM;
-
+        IndirectArgumentType Type;
         union
         {
             struct
             {
-                bool Fullscreen     : 1;
-                bool VSync          : 1;
-                bool AllowTearing   : 1;
-                bool EnableHDR      : 5;
-            };
-            uint8_t Flags = 0;
+                uint32_t Slot;
+            } 	VertexBuffer;
+            struct
+            {
+                uint32_t RootParameterIndex;
+                uint32_t DestOffsetIn32BitValues;
+                uint32_t Num32BitValuesToSet;
+            } 	Constant;
+            struct
+            {
+                uint32_t RootParameterIndex;
+            } 	ConstantBufferView;
+            struct
+            {
+                uint32_t RootParameterIndex;
+            } 	ShaderResourceView;
+            struct
+            {
+                uint32_t RootParameterIndex;
+            } 	UnorderedAccessView;
         };
     };
 
+    struct Buffer;
+    using BufferHandle = Handle<Buffer>;
+    struct BufferDesc
+    {
+        BufferMiscFlags MiscFlags = BufferMiscFlags::None;
+        Usage Usage = Usage::Default;
+        BindingFlags Binding = BindingFlags::None;
+        ResourceStates InitialState = ResourceStates::Common;
+        rhi::Format Format = rhi::Format::UNKNOWN;
+
+        uint64_t Stride = 0;
+        uint64_t NumElements = 0;
+        size_t UavCounterOffset = 0;
+        BufferHandle UavCounterBuffer = {};
+        BufferHandle AliasedBuffer = {};
+
+        std::string DebugName;
+    };
+
+    struct GfxPipelineDesc
+    {
+        PrimitiveType PrimType = PrimitiveType::TriangleList;
+        InputLayoutHandle InputLayout;
+
+        IRootSignatureBuilder* RootSignatureBuilder = nullptr;
+        ShaderParameterLayout ShaderParameters;
+
+        ShaderHandle VertexShader;
+        ShaderHandle HullShader;
+        ShaderHandle DomainShader;
+        ShaderHandle GeometryShader;
+        ShaderHandle PixelShader;
+
+        BlendRenderState BlendRenderState = {};
+        DepthStencilRenderState DepthStencilRenderState = {};
+        RasterRenderState RasterRenderState = {};
+
+        std::vector<rhi::Format> RtvFormats;
+        std::optional<rhi::Format> DsvFormat;
+
+        uint32_t SampleCount = 1;
+        uint32_t SampleQuality = 0;
+    };
+
+    struct GfxPipeline;
+    using GfxPipelineHandle = Handle<GfxPipeline>;
+
+    struct ComputePipelineDesc
+    {
+        ShaderHandle ComputeShader;
+    };
+
+    struct ComputePipeline;
+    using ComputePipelineHandle = Handle<ComputePipeline>;
+
+    struct MeshPipelineDesc
+    {
+        PrimitiveType PrimType = PrimitiveType::TriangleList;
+
+        ShaderHandle AmpShader;
+        ShaderHandle MeshShader;
+        ShaderHandle PixelShader;
+
+        BlendRenderState BlendRenderState = {};
+        DepthStencilRenderState DepthStencilRenderState = {};
+        RasterRenderState RasterRenderState = {};
+
+        std::vector<rhi::Format> RtvFormats;
+        std::optional<rhi::Format> DsvFormat;
+
+        uint32_t SampleCount = 1;
+        uint32_t SampleQuality = 0;
+
+    };
+
+    struct MeshPipeline;
+    using MeshPipelineHandle = Handle<MeshPipeline>;
+
+    struct SubresourceData
+    {
+        const void* pData = nullptr;
+        uint32_t rowPitch = 0;
+        uint32_t slicePitch = 0;
+    };
+
+    struct RTAccelerationStructure;
+    using RTAccelerationStructureHandle = Handle<RTAccelerationStructure>;
+
+    struct RTAccelerationStructureDesc
+    {
+        enum FLAGS
+        {
+            kEmpty = 0,
+            kAllowUpdate = 1 << 0,
+            kAllowCompaction = 1 << 1,
+            kPreferFastTrace = 1 << 2,
+            kPreferFastBuild = 1 << 3,
+            kMinimizeMemory = 1 << 4,
+        };
+        uint32_t Flags = kEmpty;
+
+        enum class Type
+        {
+            BottomLevel = 0,
+            TopLevel
+        } Type;
+
+        struct BottomLevelDesc
+        {
+            struct Geometry
+            {
+                enum FLAGS
+                {
+                    kEmpty = 0,
+                    kOpaque = 1 << 0,
+                    kNoduplicateAnyHitInvocation = 1 << 1,
+                    kUseTransform = 1 << 2,
+                };
+                uint32_t Flags = kEmpty;
+
+                enum class Type
+                {
+                    Triangles,
+                    ProceduralAABB,
+                } Type = Type::Triangles;
+
+                struct TrianglesDesc
+                {
+                    BufferHandle VertexBuffer;
+                    BufferHandle IndexBuffer;
+                    uint32_t IndexCount = 0;
+                    uint64_t IndexOffset = 0;
+                    uint32_t VertexCount = 0;
+                    uint64_t VertexByteOffset = 0;
+                    uint32_t VertexStride = 0;
+                    rhi::Format IndexFormat = rhi::Format::R32_UINT;
+                    rhi::Format VertexFormat = rhi::Format::RGB32_FLOAT;
+                    BufferHandle Transform3x4Buffer;
+                    uint32_t Transform3x4BufferOffset = 0;
+                } Triangles;
+
+                struct ProceduralAABBsDesc
+                {
+                    BufferHandle AABBBuffer;
+                    uint32_t Offset = 0;
+                    uint32_t Count = 0;
+                    uint32_t Stride = 0;
+                } AABBs;
+            };
+
+            std::vector<Geometry> Geometries;
+        } ButtomLevel;
+
+        struct TopLevelDesc
+        {
+            struct Instance
+            {
+                enum FLAGS
+                {
+                    kEmpty = 0,
+                    kTriangleCullDisable = 1 << 0,
+                    kTriangleFrontCounterClockwise = 1 << 1,
+                    kForceOpaque = 1 << 2,
+                    kForceNowOpaque = 1 << 3,
+                };
+
+                float Transform[3][4];
+                uint32_t InstanceId : 24;
+                uint32_t InstanceMask : 8;
+                uint32_t InstanceContributionToHitGroupIndex : 24;
+                uint32_t Flags : 8;
+                RTAccelerationStructureHandle BottomLevel = {};
+            };
+
+            BufferHandle InstanceBuffer = {};
+            uint32_t Offset = 0;
+            uint32_t Count = 0;
+        } TopLevel;
+    };
+
+
+    struct RenderPassAttachment
+    {
+        enum class Type
+        {
+            RenderTarget,
+            DepthStencil,
+        } Type = Type::RenderTarget;
+
+        enum class LoadOpType
+        {
+            Load,
+            Clear,
+            DontCare,
+        } LoadOp = LoadOpType::Load;
+
+        TextureHandle Texture;
+        int Subresource = -1;
+
+        enum class StoreOpType
+        {
+            Store,
+            DontCare,
+        } StoreOp = StoreOpType::Store;
+
+        ResourceStates InitialLayout = ResourceStates::Unknown;	// layout before the render pass
+        ResourceStates SubpassLayout = ResourceStates::Unknown;	// layout within the render pass
+        ResourceStates FinalLayout = ResourceStates::Unknown;   // layout after the render pass
+    };
+
+    struct RenderPassDesc
+    {
+        enum Flags
+        {
+            None = 0,
+            AllowUavWrites = 1 << 0,
+        };
+
+        uint32_t Flags = Flags::None;
+        std::vector<RenderPassAttachment> Attachments;
+    };
+
+    // Forward Declare, no real implementation
+    struct RenderPass;
+    using RenderPassHandle = Handle<RenderPass>;
+
+    struct TimerQuery;
+    using TimerQueryHandle = Handle<TimerQuery>;
+
+    struct GpuBarrier
+    {
+        struct BufferBarrier
+        {
+            rhi::BufferHandle Buffer;
+            rhi::ResourceStates BeforeState;
+            rhi::ResourceStates AfterState;
+        };
+
+        struct TextureBarrier
+        {
+            rhi::TextureHandle Texture;
+            rhi::ResourceStates BeforeState;
+            rhi::ResourceStates AfterState;
+            int Mip;
+            int Slice;
+        };
+
+        struct MemoryBarrier
+        {
+            std::variant<TextureHandle, BufferHandle> Resource;
+        };
+
+        std::variant<BufferBarrier, TextureBarrier, GpuBarrier::MemoryBarrier> Data;
+
+        static GpuBarrier CreateMemory()
+        {
+            GpuBarrier barrier = {};
+            barrier.Data = GpuBarrier::MemoryBarrier{};
+
+            return barrier;
+        }
+
+        static GpuBarrier CreateMemory(TextureHandle texture)
+        {
+            GpuBarrier barrier = {};
+            barrier.Data = GpuBarrier::MemoryBarrier{ .Resource = texture };
+
+            return barrier;
+        }
+
+        static GpuBarrier CreateMemory(BufferHandle buffer)
+        {
+            GpuBarrier barrier = {};
+            barrier.Data = GpuBarrier::MemoryBarrier{ .Resource = buffer };
+
+            return barrier;
+        }
+
+        static GpuBarrier CreateTexture(
+            TextureHandle texture,
+            ResourceStates beforeState,
+            ResourceStates afterState,
+            int mip = -1,
+            int slice = -1)
+        {
+            GpuBarrier::TextureBarrier t = {};
+            t.Texture = texture;
+            t.BeforeState = beforeState;
+            t.AfterState = afterState;
+            t.Mip = mip;
+            t.Slice = slice;
+
+            GpuBarrier barrier = {};
+            barrier.Data = t;
+
+            return barrier;
+        }
+
+        static GpuBarrier CreateBuffer(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState)
+        {
+            GpuBarrier::BufferBarrier b = {};
+            b.Buffer = buffer;
+            b.BeforeState = beforeState;
+            b.AfterState = afterState;
+
+            GpuBarrier barrier = {};
+            barrier.Data = b;
+
+            return barrier;
+        }
+    };
+    class ScopedMarker;
+
+    struct GPUAllocation
+    {
+        void* CpuData;
+        BufferHandle GpuBuffer;
+        size_t Offset;
+        size_t SizeInBytes;
+    };
+
+    struct CommandSignatureDesc
+    {
+        Span<IndirectArgumnetDesc> ArgDesc;
+
+        PipelineType PipelineType;
+        union
+        {
+            rhi::GfxPipelineHandle GfxHandle;
+            rhi::ComputePipelineHandle ComputeHandle;
+            rhi::MeshPipelineHandle MeshHandle;
+        };
+    };
+
+    struct CommandSignature;
+    using CommandSignatureHandle = Handle<CommandSignature>;
+
+    struct CommandList;
+    using CommandListHandle = Handle<CommandList>;
+
+    struct ExecutionReceipt
+    {
+        uint64_t FenceValue;
+        CommandQueueType CommandQueue;
+    };
+
+    enum class DeviceCapability
+    {
+        None = 0,
+        RT_VT_ArrayIndex_Without_GS = 1 << 0,
+        RayTracing = 1 << 1,
+        RenderPass = 1 << 2,
+        RayQuery = 1 << 3,
+        VariableRateShading = 1 << 4,
+        MeshShading = 1 << 5,
+        CreateNoteZeroed = 1 << 6,
+        Bindless = 1 << 7,
+    };
+
+    PHX_ENUM_CLASS_FLAGS(DeviceCapability);
+
+    struct SwapChainDesc
+    {
+        uint32_t Width = 0;
+        uint32_t Height = 0;
+        uint32_t BufferCount = 3;
+        rhi::Format Format = rhi::Format::R10G10B10A2_UNORM;
+        bool Fullscreen = false;
+        bool VSync = false;
+        bool EnableHDR = false;
+        rhi::ClearValue OptmizedClearValue =
+        {
+            .Colour =
+            {
+                0.0f,
+                0.0f,
+                0.0f,
+                1.0f,
+            }
+        };
+    };
+
+    struct MemoryUsage
+    {
+        uint64_t Budget = 0ull;
+        uint64_t Usage = 0ull;
+    };
+
+    struct DrawArgs
+    {
+        union
+        {
+            uint32_t VertexCount = 1;
+            uint32_t IndexCount;
+        };
+
+        uint32_t InstanceCount = 1;
+        union
+        {
+            uint32_t StartVertex = 0;
+            uint32_t StartIndex;
+        };
+        uint32_t StartInstance = 0;
+
+        uint32_t BaseVertex = 0;
+    };
+
+    class IGfxDevice
+    {
+    public:
+        virtual ~IGfxDevice() = default;
+
+        // -- Frame Functions ---
+    public:
+        virtual void Initialize(SwapChainDesc const& desc, void* windowHandle) = 0;
+        virtual void Finalize() = 0;
+
+        // -- Resizes swapchain ---
+        virtual void ResizeSwapchain(SwapChainDesc const& desc) = 0;
+
+        // -- Submits Command lists and presents ---
+        virtual void SubmitFrame() = 0;
+        virtual void WaitForIdle() = 0;
+
+        virtual bool IsDevicedRemoved() = 0;
+
+        // -- Resouce Functions ---
+    public:
+        template<typename T>
+        CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc)
+        {
+            static_assert(sizeof(T) % sizeof(uint32_t) == 0);
+            return this->CreateCommandSignature(desc, sizeof(T));
+        }
+        virtual CommandSignatureHandle CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride) = 0;
+        virtual ShaderHandle CreateShader(ShaderDesc const& desc, Span<uint8_t> shaderByteCode) = 0;
+        virtual InputLayoutHandle CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount) = 0;
+        virtual GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc) = 0;
+        virtual ComputePipelineHandle CreateComputePipeline(ComputePipelineDesc const& desc) = 0;
+        virtual MeshPipelineHandle CreateMeshPipeline(MeshPipelineDesc const& desc) = 0;
+        virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
+        virtual RenderPassHandle CreateRenderPass(RenderPassDesc const& desc) = 0;
+        virtual BufferHandle CreateBuffer(BufferDesc const& desc) = 0;
+        virtual int CreateSubresource(TextureHandle texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip = 0, uint32_t mpCount = ~0) = 0;
+        virtual int CreateSubresource(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size = ~0u) = 0;
+        virtual RTAccelerationStructureHandle CreateRTAccelerationStructure(RTAccelerationStructureDesc const& desc) = 0;
+        virtual TimerQueryHandle CreateTimerQuery() = 0;
+
+
+        virtual void DeleteCommandSignature(CommandSignatureHandle handle) = 0;
+        virtual const rhi::GfxPipelineDesc& GetGfxPipelineDesc(GfxPipelineHandle handle) = 0;
+        virtual void DeleteGfxPipeline(GfxPipelineHandle handle) = 0;
+
+
+        virtual void DeleteMeshPipeline(MeshPipelineHandle handle) = 0;
+
+        virtual const TextureDesc& GetTextureDesc(TextureHandle handle) = 0;
+        virtual DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource = -1) = 0;
+        virtual void DeleteTexture(TextureHandle handle) = 0;
+
+        virtual void GetRenderPassFormats(RenderPassHandle handle, std::vector<rhi::Format>& outRtvFormats, rhi::Format& depthFormat) = 0;
+        virtual RenderPassDesc GetRenderPassDesc(RenderPassHandle) = 0;
+        virtual void DeleteRenderPass(RenderPassHandle handle) = 0;
+
+        // -- TODO: End Remove
+
+        virtual const BufferDesc& GetBufferDesc(BufferHandle handle) = 0;
+        virtual DescriptorIndex GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource = -1) = 0;
+
+        template<typename T>
+        T* GetBufferMappedData(BufferHandle handle)
+        {
+            return static_cast<T*>(this->GetBufferMappedData(handle));
+        };
+
+        virtual void* GetBufferMappedData(BufferHandle handle) = 0;
+        virtual uint32_t GetBufferMappedDataSizeInBytes(BufferHandle handle) = 0;
+        virtual void DeleteBuffer(BufferHandle handle) = 0;
+
+        // -- Ray Tracing ---
+        virtual size_t GetRTTopLevelAccelerationStructureInstanceSize() = 0;
+        virtual void WriteRTTopLevelAccelerationStructureInstance(RTAccelerationStructureDesc::TopLevelDesc::Instance const& instance, void* dest) = 0;
+        virtual const RTAccelerationStructureDesc& GetRTAccelerationStructureDesc(RTAccelerationStructureHandle handle) = 0;
+        virtual void DeleteRtAccelerationStructure(RTAccelerationStructureHandle handle) = 0;
+        virtual DescriptorIndex GetDescriptorIndex(RTAccelerationStructureHandle handle) = 0;
+
+        // -- Query Stuff ---
+        virtual void DeleteTimerQuery(TimerQueryHandle query) = 0;
+        virtual bool PollTimerQuery(TimerQueryHandle query) = 0;
+        virtual TimeStep GetTimerQueryTime(TimerQueryHandle query) = 0;
+        virtual void ResetTimerQuery(TimerQueryHandle query) = 0;
+
+        // -- Utility ---
+    public:
+        virtual TextureHandle GetBackBuffer() = 0;
+        virtual size_t GetNumBindlessDescriptors() const = 0;
+
+        virtual ShaderModel GetMinShaderModel() const = 0;
+        virtual ShaderType GetShaderType() const = 0;
+
+        virtual GraphicsAPI GetApi() const = 0;
+
+        virtual void BeginCapture(std::wstring const& filename) = 0;
+        virtual void EndCapture(bool discard = false) = 0;
+
+        virtual size_t GetFrameIndex() = 0;
+        virtual size_t GetMaxInflightFrames() = 0;
+        virtual bool CheckCapability(DeviceCapability deviceCapability) = 0;
+
+        virtual float GetAvgFrameTime() = 0;
+        virtual uint64_t GetUavCounterPlacementAlignment() = 0;
+        virtual MemoryUsage GetMemoryUsage() const = 0;
+
+        // -- Command list Functions ---
+        // These are not thread Safe
+    public:
+        // TODO: Change to a new pattern so we don't require a command list stored on an object. Instread, request from a pool of objects
+        virtual CommandListHandle BeginCommandList(CommandQueueType queueType = CommandQueueType::Graphics) = 0;
+        virtual void WaitCommandList(CommandListHandle cmd, CommandListHandle WaitOn) = 0;
+
+        // -- Ray Trace stuff       ---
+        virtual void RTBuildAccelerationStructure(rhi::RTAccelerationStructureHandle accelStructure, CommandListHandle cmd) = 0;
+
+        // -- Ray Trace Stuff END   ---
+        virtual void BeginMarker(std::string_view name, CommandListHandle cmd) = 0;
+        virtual void EndMarker(CommandListHandle cmd) = 0;
+        virtual GPUAllocation AllocateGpu(size_t bufferSize, size_t stride, CommandListHandle cmd) = 0;
+
+        virtual void TransitionBarrier(TextureHandle texture, ResourceStates beforeState, ResourceStates afterState, CommandListHandle cmd) = 0;
+        virtual void TransitionBarrier(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState, CommandListHandle cmd) = 0;
+        virtual void TransitionBarriers(Span<GpuBarrier> gpuBarriers, CommandListHandle cmd) = 0;
+        virtual void ClearTextureFloat(TextureHandle texture, Color const& clearColour, CommandListHandle cmd) = 0;
+        virtual void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil, CommandListHandle cmd) = 0;
+
+        virtual void Draw(DrawArgs const& args, CommandListHandle cmd) = 0;
+        virtual void DrawIndexed(DrawArgs const& args, CommandListHandle cmd) = 0;
+
+        virtual void ExecuteIndirect(rhi::CommandSignatureHandle commandSignature, rhi::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+        virtual void ExecuteIndirect(rhi::CommandSignatureHandle commandSignature, rhi::BufferHandle args, size_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+
+        virtual void DrawIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+        virtual void DrawIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+
+        virtual void DrawIndexedIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+        virtual void DrawIndexedIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+
+        template<typename T>
+        void WriteBuffer(BufferHandle buffer, std::vector<T> const& data, uint64_t destOffsetBytes, CommandListHandle cmd)
+        {
+            this->WriteBuffer(buffer, data.data(), sizeof(T) * data.size(), destOffsetBytes, cmd);
+        }
+
+        template<typename T>
+        void WriteBuffer(BufferHandle buffer, T const& data, uint64_t destOffsetBytes, CommandListHandle cmd)
+        {
+            this->WriteBuffer(buffer, &data, sizeof(T), destOffsetBytes, cmd);
+        }
+
+        template<typename T>
+        void WriteBuffer(BufferHandle buffer, Span<T> data, uint64_t destOffsetBytes, CommandListHandle cmd)
+        {
+            this->WriteBuffer(buffer, data.begin(), sizeof(T) * data.Size(), destOffsetBytes, cmd);
+        }
+
+        virtual void WriteBuffer(BufferHandle buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes, CommandListHandle cmd) = 0;
+
+        virtual void CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHandle src, uint64_t srcOffset, size_t sizeInBytes, CommandListHandle cmd) = 0;
+
+        virtual void WriteTexture(TextureHandle texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData, CommandListHandle cmd) = 0;
+        virtual void WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* Data, size_t rowPitch, size_t depthPitch, CommandListHandle cmd) = 0;
+
+        virtual void SetGfxPipeline(GfxPipelineHandle gfxPipeline, CommandListHandle cmd) = 0;
+        virtual void SetViewports(Viewport* viewports, size_t numViewports, CommandListHandle cmd) = 0;
+        virtual void SetScissors(Rect* scissor, size_t numScissors, CommandListHandle cmd) = 0;
+        virtual void SetRenderTargets(Span<TextureHandle> renderTargets, TextureHandle depthStenc, CommandListHandle cmd) = 0;
+
+        // -- Comptute Stuff ---
+        virtual void SetComputeState(ComputePipelineHandle state, CommandListHandle cmd) = 0;
+        virtual void Dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ, CommandListHandle cmd) = 0;
+        virtual void DispatchIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+        virtual void DispatchIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+
+        // -- Mesh Stuff ---
+        virtual void SetMeshPipeline(MeshPipelineHandle meshPipeline, CommandListHandle cmd) = 0;
+        virtual void DispatchMesh(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ, CommandListHandle cmd) = 0;
+        virtual void DispatchMeshIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+        virtual void DispatchMeshIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd) = 0;
+
+        virtual void BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants, CommandListHandle cmd) = 0;
+        template<typename T>
+        void BindPushConstant(uint32_t rootParameterIndex, const T& constants, CommandListHandle cmd)
+        {
+            static_assert(sizeof(T) % sizeof(uint32_t) == 0, "Size of type must be a multiple of 4 bytes");
+            this->BindPushConstant(rootParameterIndex, sizeof(T), &constants, cmd);
+        }
+
+        virtual void BindConstantBuffer(size_t rootParameterIndex, BufferHandle constantBuffer, CommandListHandle cmd) = 0;
+        virtual void BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData, CommandListHandle cmd) = 0;
+        template<typename T>
+        void BindDynamicConstantBuffer(size_t rootParameterIndex, T const& bufferData, CommandListHandle cmd)
+        {
+            this->BindDynamicConstantBuffer(rootParameterIndex, sizeof(T), &bufferData, cmd);
+        }
+
+        virtual void BindVertexBuffer(uint32_t slot, BufferHandle vertexBuffer, CommandListHandle cmd) = 0;
+
+        /**
+         * Set dynamic vertex buffer data to the rendering pipeline.
+         */
+        virtual void BindDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData, CommandListHandle cmd) = 0;
+
+        template<typename T>
+        void BindDynamicVertexBuffer(uint32_t slot, const std::vector<T>& vertexBufferData, CommandListHandle cmd)
+        {
+            this->BindDynamicVertexBuffer(slot, vertexBufferData.size(), sizeof(T), vertexBufferData.data(), cmd);
+        }
+
+        virtual void BindIndexBuffer(BufferHandle bufferHandle, CommandListHandle cmd) = 0;
+
+        /**
+         * Bind dynamic index buffer data to the rendering pipeline.
+         */
+        virtual void BindDynamicIndexBuffer(size_t numIndicies, rhi::Format indexFormat, const void* indexBufferData, CommandListHandle cmd) = 0;
+
+        template<typename T>
+        void BindDynamicIndexBuffer(const std::vector<T>& indexBufferData, CommandListHandle cmd)
+        {
+            staticassert(sizeof(T) == 2 || sizeof(T) == 4);
+
+            rhi::Format indexFormat = (sizeof(T) == 2) ? rhi::Format::R16_UINT : rhi::Format::R32_UINT;
+            this->BindDynamicIndexBuffer(indexBufferData.size(), indexFormat, indexBufferData.Data(), cmd);
+        }
+
+        /**
+         * Set dynamic structured buffer contents.
+         */
+        virtual void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, size_t numElements, size_t elementSize, const void* bufferData, CommandListHandle cmd) = 0;
+
+        template<typename T>
+        void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, std::vector<T> const& bufferData, CommandListHandle cmd)
+        {
+            this->BindDynamicStructuredBuffer(rootParameterIndex, bufferData.size(), sizeof(T), bufferData.Data(), cmd);
+        }
+
+        virtual void BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer, CommandListHandle cmd) = 0;
+
+        virtual void BindDynamicDescriptorTable(size_t rootParameterIndex, Span<TextureHandle> textures, CommandListHandle cmd) = 0;
+        void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Span<BufferHandle> buffers,
+            CommandListHandle cmd)
+        {
+            this->BindDynamicUavDescriptorTable(rootParameterIndex, buffers, {}, cmd);
+        }
+        void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Span<TextureHandle> textures,
+            CommandListHandle cmd)
+        {
+            this->BindDynamicUavDescriptorTable(rootParameterIndex, {}, textures, cmd);
+        }
+        virtual void BindDynamicUavDescriptorTable(
+            size_t rootParameterIndex,
+            Span<BufferHandle> buffers,
+            Span<TextureHandle> textures,
+            CommandListHandle cmd) = 0;
+
+        virtual void BindResourceTable(size_t rootParameterIndex, CommandListHandle cmd) = 0;
+        virtual void BindSamplerTable(size_t rootParameterIndex, CommandListHandle cmd) = 0;
+
+        virtual void BeginTimerQuery(TimerQueryHandle query, CommandListHandle cmd) = 0;
+        virtual void EndTimerQuery(TimerQueryHandle query, CommandListHandle cmd) = 0;
+
+    };
+
+    using GfxDevice = IGfxDevice;
+
 #ifdef _WIN32
-    void InitializeWindows(rhi::Config const& config);
+    void Initialize_Windows(rhi::GraphicsAPI preferedAPI);
 #endif
 
     void Finalize();
+}
 
+namespace std
+{
+    // TODO: Custom Hashes
 }
