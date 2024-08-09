@@ -1,7 +1,7 @@
 #pragma once
 
-#include "D3D12Common.h"
-#include "D3D12DescriptorHeap.h"
+#include "phxD3D12Common.h"
+#include "phxD3D12DescriptorHeap.h"
 
 #include <queue>
 
@@ -51,15 +51,15 @@ namespace phx::rhi::d3d12
 				return NewIndex;
 			}
 
-			void Release(UINT Index)
+			void Release(UINT index)
 			{
 				std::scoped_lock Guard(this->IndexMutex);
-				IndexQueue.push(Index);
+				IndexQueue.push(index);
 			}
 
 			std::mutex IndexMutex;
 			std::queue<DescriptorIndex> IndexQueue;
-			size_t Index = 0;
+			UINT Index = 0;
 		};
 
 	private:

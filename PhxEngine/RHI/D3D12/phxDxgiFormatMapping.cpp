@@ -4,6 +4,7 @@
 
 using namespace phx;
 using namespace phx::rhi;
+using namespace phx::rhi::d3d12;
 
 // Format mapping table. The rows must be in the exactly same order as Format enum members are defined.
 static const DxgiFormatMapping c_FormatMappings[] = {
@@ -84,7 +85,7 @@ static const DxgiFormatMapping c_FormatMappings[] = {
     { rhi::Format::BC7_UNORM_SRGB,       DXGI_FORMAT_BC7_TYPELESS,           DXGI_FORMAT_BC7_UNORM_SRGB,           DXGI_FORMAT_BC7_UNORM_SRGB         },
 };
 
-const DxgiFormatMapping& phx::rhi::GetDxgiFormatMapping(rhi::Format abstractFormat)
+const DxgiFormatMapping& GetDxgiFormatMapping(rhi::Format abstractFormat)
 {
     static_assert(sizeof(c_FormatMappings) / sizeof(DxgiFormatMapping) == size_t(rhi::Format::COUNT),
         "The format mapping table doesn't have the right number of elements");

@@ -15,13 +15,10 @@
 
 
 // D3D12
-#include "d3d12.h"
 #include <d3dx12/d3dx12.h>
-#include "d3d12sdklayers.h"
-#include "d3d12shader.h"
 #include <dxgi1_6.h>
 
-#include "RHi/phxRHI.h"
+#include "RHI/phxRHI.h"
 #include "Core/phxEnumClassFlags.h"
 
 namespace phx::rhi::d3d12

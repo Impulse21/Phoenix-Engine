@@ -3,7 +3,7 @@
 #include <queue>
 #include <mutex>
 
-#include "D3D12Common.h"
+#include "phxD3D12Common.h"
 #include "Core/phxSpan.h"
 
 namespace phx::rhi::d3d12

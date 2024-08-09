@@ -1,3 +1,4 @@
+#pragma once
 
 #include "Core/phxMemory.h"
 #include "Core/phxSpan.h"
@@ -17,16 +18,16 @@ namespace phx::rhi
 {
     typedef uint32_t DescriptorIndex;
 
-    static constexpr DescriptorIndex cInvalidDescriptorIndex = ~0u;
+    constexpr DescriptorIndex cInvalidDescriptorIndex = ~0u;
 
-    static constexpr uint32_t cMaxRenderTargets = 8;
-    static constexpr uint32_t cMaxViewports = 16;
-    static constexpr uint32_t cMaxVertexAttributes = 16;
-    static constexpr uint32_t cMaxBindingLayouts = 5;
-    static constexpr uint32_t cMaxBindingsPerLayout = 128;
-    static constexpr uint32_t cMaxVolatileConstantBuffersPerLayout = 6;
-    static constexpr uint32_t cMaxVolatileConstantBuffers = 32;
-    static constexpr uint32_t cMaxPushConstantSize = 128;      // D3D12: root signature is 256 bytes max., Vulkan: 128 bytes of push constants guaranteed
+    constexpr uint32_t cMaxRenderTargets = 8;
+    constexpr uint32_t cMaxViewports = 16;
+    constexpr uint32_t cMaxVertexAttributes = 16;
+    constexpr uint32_t cMaxBindingLayouts = 5;
+    constexpr uint32_t cMaxBindingsPerLayout = 128;
+    constexpr uint32_t cMaxVolatileConstantBuffersPerLayout = 6;
+    constexpr uint32_t cMaxVolatileConstantBuffers = 32;
+    constexpr uint32_t cMaxPushConstantSize = 128;      // D3D12: root signature is 256 bytes max., Vulkan: 128 bytes of push constants guaranteed
 
     enum class GraphicsAPI
     {
@@ -1190,8 +1191,7 @@ namespace phx::rhi
     struct CommandSignature;
     using CommandSignatureHandle = Handle<CommandSignature>;
 
-    struct CommandList;
-    using CommandListHandle = Handle<CommandList>;
+    using CommandListHandle = uint32_t;
 
     struct ExecutionReceipt
     {

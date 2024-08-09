@@ -44,7 +44,6 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxLog.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxMemory.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)phxEngineCore.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\DxgiFormatMapping.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12CommandQueue.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12DescriptorHeap.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12UploadBuffer.cpp" />

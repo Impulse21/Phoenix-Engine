@@ -1527,7 +1527,7 @@ To use the library in your project:
 (3.) Include library header in each CPP file that needs to use the library.
 
 \code
-#include "D3D12MemAlloc.h"
+#include "phxD3D12MemAlloc.h"
 \endcode
 
 (4.) Right after you created `ID3D12Device`, fill D3D12MA::ALLOCATOR_DESC

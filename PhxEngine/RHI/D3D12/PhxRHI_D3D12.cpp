@@ -323,7 +323,7 @@ D3D12GfxDevice::D3D12GfxDevice()
 	: m_timerQueryIndexPool(kTimestampQueryHeapSize)
 {
 	assert(D3D12GfxDevice::GPtr == nullptr);
-	D3D12GfxDevice::GPtr == this;
+	D3D12GfxDevice::GPtr = this;
 }
 
 D3D12GfxDevice::~D3D12GfxDevice()
@@ -451,13 +451,6 @@ void D3D12GfxDevice::Initialize(SwapChainDesc const& swapchainDesc, void* window
 
 	this->CreateSwapChain(swapchainDesc, windowHandle);
 
-	for (int i = 0; i < this->m_frameCommandListHandles.size(); i++)
-	{
-		this->m_frameCommandListHandles[i] = this->m_commandListPool.Emplace();
-		auto* commandlistImpl = this->m_commandListPool.Get(this->m_frameCommandListHandles[i]);
-		commandlistImpl->UploadBuffer.Initialize(this, PhxMB(100));
-	}
-
 	// -- Mark Queues for completion ---
 	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
 	{
@@ -478,12 +471,6 @@ void D3D12GfxDevice::Finalize()
 
 	this->m_swapChain.BackBuffers.clear();
 
-	for (int i = 0; i < this->m_frameCommandListHandles.size(); i++)
-	{
-		this->m_commandListPool.Release(this->m_frameCommandListHandles[i]);
-	}
-
-
 	this->RunGarbageCollection(~0u);
 
 	this->m_texturePool.Finalize();
@@ -497,7 +484,6 @@ void D3D12GfxDevice::Finalize()
 	this->m_computePipelinePool.Finalize();
 	this->m_meshPipelinePool.Finalize();
 	this->m_timerQueryPool.Finalize();
-	this->m_commandListPool.Finalize();
 
 #if ENABLE_PIX_CAPUTRE
 	FreeLibrary(this->m_pixCaptureModule);
@@ -3727,39 +3713,40 @@ HRESULT D3D12Adapter::EnumAdapters(uint32_t adapterIndex, IDXGIFactory6* factory
 
 CommandListHandle D3D12GfxDevice::BeginCommandList(CommandQueueType queueType)
 {
-	static_assert(false);
-	uint32_t currentCmdIndex = this->m_activeCmdCount++;
-	assert(currentCmdIndex < this->m_frameCommandListHandles.size());
-
-	CommandListHandle cmdHandle = this->m_frameCommandListHandles[currentCmdIndex];
-	D3D12CommandList& internalCmd = *this->m_commandListPool.Get(cmdHandle);
-	internalCmd.NativeCommandAllocator = this->GetQueue(queueType).RequestAllocator();
-
-	if (internalCmd.NativeCommandList == nullptr)
+	const uint32_t currentCmdIndex = this->m_activeCmdCount++;
+	D3D12CommandQueue& queue = this->GetQueue(queueType);
+	D3D12CommandList* cmdList = nullptr;
+	ID3D12CommandAllocator* allocator = queue.RequestAllocator();
+	if (currentCmdIndex >= this->m_commandLists.size())
 	{
+		cmdList = &this->m_commandLists.emplace_back();
+		cmdList->NativeCommandAllocator = allocator;
+
 		this->GetD3D12Device()->CreateCommandList(
 			0,
 			this->GetQueue(queueType).GetType(),
-			internalCmd.NativeCommandAllocator,
+			cmdList->NativeCommandAllocator,
 			nullptr,
-			IID_PPV_ARGS(&internalCmd.NativeCommandList));
+			IID_PPV_ARGS(&cmdList->NativeCommandList));
 
-		internalCmd.NativeCommandList->SetName(L"D3D12GfxDevice::CommandList");
+		cmdList->NativeCommandList->SetName(L"D3D12GfxDevice::CommandList");
 		ThrowIfFailed(
-			internalCmd.NativeCommandList.As<ID3D12GraphicsCommandList6>(&internalCmd.NativeCommandList6));
+			cmdList->NativeCommandList.As<ID3D12GraphicsCommandList6>(
+				&cmdList->NativeCommandList6));
 
 	}
 	else
 	{
-		internalCmd.NativeCommandList->Reset(internalCmd.NativeCommandAllocator, nullptr);
+		cmdList = &this->m_commandLists[currentCmdIndex];
+		cmdList->NativeCommandAllocator = allocator;
+		cmdList->NativeCommandList->Reset(cmdList->NativeCommandAllocator, nullptr);
 	}
 
-
-	internalCmd.Id = currentCmdIndex;
-	internalCmd.QueueType = queueType;
-	internalCmd.Waits.clear();
-	internalCmd.IsWaitedOn.store(false);
-	internalCmd.UploadBuffer.Reset();
+	cmdList->Id = currentCmdIndex;
+	cmdList->QueueType = queueType;
+	cmdList->Waits.clear();
+	cmdList->IsWaitedOn.store(false);
+	cmdList->UploadBuffer.Reset();
 
 	// Bind Heaps
 	std::array<ID3D12DescriptorHeap*, 2> heaps;
@@ -3769,8 +3756,9 @@ CommandListHandle D3D12GfxDevice::BeginCommandList(CommandQueueType queueType)
 	}
 
 	// TODO: NOT VALID FOR COPY
-	internalCmd.NativeCommandList6->SetDescriptorHeaps(heaps.size(), heaps.data());
-	return cmdHandle;
+	cmdList->NativeCommandList6->SetDescriptorHeaps(heaps.size(), heaps.data());
+
+	return currentCmdIndex;
 }
 
 void D3D12GfxDevice::WaitCommandList(CommandListHandle cmd, CommandListHandle waitOn)

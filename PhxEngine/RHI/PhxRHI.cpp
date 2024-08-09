@@ -2,7 +2,7 @@
 #include "phxRHI.h"
 
 #ifdef _WIN32
-#include "D3D12/phxRHI_d3d12.h"
+#include "phxD3D12/phxRHI_d3d12.h"
 #endif
 
 using namespace phx;

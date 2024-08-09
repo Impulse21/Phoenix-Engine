@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "D3D12CommandQueue.h"
+#include "phxD3D12CommandQueue.h"
 #include "phxRhi_D3D12.h"
 
 using namespace Microsoft::WRL;
@@ -97,7 +97,7 @@ uint64_t phx::rhi::d3d12::D3D12CommandQueue::ExecuteCommandContexts(Span<D3D12Co
 
 uint64_t phx::rhi::d3d12::D3D12CommandQueue::ExecuteCommandLists(Span<ID3D12CommandList*>  commandLists)
 {
-	this->m_d3d12CommandQueue->ExecuteCommandLists(commandLists.Size(), commandLists.begin());
+	this->m_d3d12CommandQueue->ExecuteCommandLists(static_cast<UINT>(commandLists.Size()), commandLists.begin());
 
 	return this->IncrementFence();
 }

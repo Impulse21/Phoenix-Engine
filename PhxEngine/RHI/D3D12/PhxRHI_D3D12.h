@@ -776,7 +776,8 @@ namespace phx::rhi::d3d12
         std::array<D3D12CommandQueue, (int)CommandQueueType::Count> m_commandQueues;
 
         // -- Command lists ---
-        std::vector<CommandListHandle> m_frameCommandLists;
+        uint32_t m_activeCmdCount;
+        std::vector<D3D12CommandList> m_commandLists;
 
         // -- Descriptor Heaps ---
         std::array<CpuDescriptorHeap, (int)DescriptorHeapTypes::Count> m_cpuDescriptorHeaps;

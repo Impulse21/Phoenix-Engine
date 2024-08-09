@@ -1,4 +1,5 @@
-#include "D3D12UploadBuffer.h"
+#include "pch.h"
+#include "phxD3D12UploadBuffer.h"
 
 #include "phxRhi_D3D12.h"
 
@@ -76,7 +77,7 @@ UploadBuffer::Page::Page(D3D12GfxDevice* device, size_t sizeInBytes)
 	desc.NumElements = 1;
 	desc.InitialState = ResourceStates::CopySource | ResourceStates::GenericRead;
 	desc.Binding |= BindingFlags::ShaderResource;
-	desc.IsTypeRaw = true;
+	// desc.IsTypeRaw = true;
 	desc.DebugName = "Frame Upload Buffer";
 	this->m_buffer = device->CreateBuffer(desc);
 
