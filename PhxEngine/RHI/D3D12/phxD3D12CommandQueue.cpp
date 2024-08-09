@@ -54,6 +54,17 @@ void phx::rhi::d3d12::D3D12CommandQueue::Finailize()
 	CloseHandle(this->m_fenceEvent);
 }
 
+void phx::rhi::d3d12::D3D12CommandQueue::Submit()
+{
+	this->m_d3d12CommandQueue->ExecuteCommandLists(
+		(UINT)this->m_pendingCmdLists.size(),
+		this->m_pendingCmdLists.data());
+
+	this->m_pendingCmdLists.clear();
+
+	// Discard Allocators
+}
+
 #if 0
 D3D12CommandContext* phx::rhi::d3d12::D3D12CommandQueue::RequestCommandContext()
 {
@@ -72,6 +83,7 @@ D3D12CommandContext* phx::rhi::d3d12::D3D12CommandQueue::RequestCommandContext()
 
 	return retVal;
 }
+
 uint64_t phx::rhi::d3d12::D3D12CommandQueue::ExecuteCommandContexts(Span<D3D12CommandContext*> contexts)
 {
 	auto _ = std::scoped_lock(this->m_commandListMutx);

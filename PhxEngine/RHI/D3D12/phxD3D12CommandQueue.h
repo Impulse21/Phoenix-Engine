@@ -19,6 +19,14 @@ namespace phx::rhi::d3d12
 
 		D3D12_COMMAND_LIST_TYPE GetType() const { return this->m_type; }
 
+		void EnqueueCommandList(ID3D12CommandList* cmdList, ID3D12CommandAllocator* allocator)
+		{
+			this->m_pendingCmdLists.push_back(cmdList);
+			this->m_pendingAllocators.push_back(allocator);
+		}
+
+		void Submit();
+
 #if 0 
 		RequestCommandContext();
 		uint64_t ExecuteCommandContexts(Span<D3D12CommandContext*> contexts);
@@ -74,5 +82,8 @@ namespace phx::rhi::d3d12
 		std::mutex m_fenceMutex;
 		std::mutex m_eventMutex;
 		HANDLE m_fenceEvent;
+
+		std::vector<ID3D12CommandList*> m_pendingCmdLists;
+		std::vector<ID3D12CommandAllocator*> m_pendingAllocators;;
 	};
 }
