@@ -452,12 +452,15 @@ void D3D12GfxDevice::Initialize(SwapChainDesc const& swapchainDesc, void* window
 	this->CreateSwapChain(swapchainDesc, windowHandle);
 
 	// -- Mark Queues for completion ---
-	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
-	{
-		ThrowIfFailed(
-			this->GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_frameFences[q])));
-	}
 
+	for (uint32_t buffer = 0; buffer < this->m_swapChain.Desc.BufferCount; ++buffer)
+	{
+		for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
+		{
+			ThrowIfFailed(
+				this->GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&this->m_frameFences[buffer][q])));
+		}
+	}
 }
 
 void D3D12GfxDevice::Finalize()
@@ -504,10 +507,6 @@ void D3D12GfxDevice::SubmitFrame()
 	phx::ScopedScratchMarker submitMarker;
 	VirtualStackAllocator& allocator = Memory::GetScratchAllocator();
 
-	SpanMutable<ID3D12CommandList*> cmdQueue(allocator.AllocArray<ID3D12CommandList*>(numActiveCommandLists * numQueues), numActiveCommandLists * numQueues);
-	SpanMutable<ID3D12CommandList*> allocatorQueue(allocator.AllocArray<ID3D12CommandList*>(numActiveCommandLists * numQueues), numActiveCommandLists * numQueues);
-	SpanMutable<uint32_t> activeCounts(allocator.AllocArray<uint32_t>(numQueues), numQueues);
-
 	for (uint32_t iCmd = 0; iCmd < numActiveCommandLists; ++iCmd)
 	{
 		// TODO: Determine how this logic should work....
@@ -519,10 +518,16 @@ void D3D12GfxDevice::SubmitFrame()
 
 		if (dependency)
 		{
-			
+#if false
+			queue.Submit();
+#endif
 		}
+
+		queue.EnqueueCommandList(commandList.NativeCommandList.Get(), commandList.NativeCommandAllocator);
+
 		if (dependency)
 		{
+#if false
 			for (auto& wait : commandList.Waits)
 			{
 				// record wait for signal on a previous submit:
@@ -542,24 +547,17 @@ void D3D12GfxDevice::SubmitFrame()
 				submitAllocators.clear();
 				assert(nextFenceValue);
 			}
+#else
+			assert(false, "Queue Syncing isn't working");
+#endif
 		}
 	}
+
 	// -- Mark Queues for completion ---
 	for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
 	{
 		D3D12CommandQueue& queue = this->m_commandQueues[q];
-		auto& submitCommands = submitCommandLists[q];
-		auto& submitAllocators = submitCommandListAllocators[q];
-
-		if (!submitCommands.empty())
-		{
-			uint64_t waitOnFenceValue = queue.ExecuteCommandLists(Span(submitCommands));
-			queue.DiscardAllocators(waitOnFenceValue, Span(submitAllocators));
-			submitCommands.clear();
-		}
-
-		// Single Frame Fence
-		queue.GetD3D12CommandQueue()->Signal(this->m_frameFences[q].Get(), this->m_frameCount);
+		queue.Submit();
 	}
 
 	// -- Present SwapChain ---
@@ -595,23 +593,24 @@ void D3D12GfxDevice::SubmitFrame()
 	// Wait for next frame
 	this->RunGarbageCollection(this->m_frameCount);
 	{
+		const uint32_t bufferCount = this->m_swapChain.Desc.BufferCount;
+		const size_t bufferIndex = this->GetBackBufferIndex();
 		for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
 		{
-			const UINT64 completedFrame = this->m_frameFences[q]->GetCompletedValue();
+			const UINT64 completedFrame = this->m_frameFences[bufferIndex][q]->GetCompletedValue();
 
 			// If the fence is max uint64, that might indicate that the device has been removed as fences get reset in this case
 			assert(completedFrame != UINT64_MAX);
-			uint32_t bufferCount = this->m_swapChain.Desc.BufferCount;
 
 			// Since our frame count is 1 based rather then 0, increment the number of buffers by 1 so we don't have to wait on the first 3 frames
 			// that are kicked off.
-			if (this->m_frameCount >= (bufferCount + 1) && completedFrame < this->m_frameCount)
+			if (this->m_frameCount >= bufferCount && completedFrame < 1)
 			{
 				// Wait on the frames last value?
 				// NULL event handle will simply wait immediately:
 				//	https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12fence-seteventoncompletion#remarks
 				ThrowIfFailed(
-					this->m_frameFences[q]->SetEventOnCompletion(this->m_frameCount - bufferCount, nullptr));
+					this->m_frameFences[bufferIndex][q]->SetEventOnCompletion(1, nullptr));
 			}
 		}
 	}

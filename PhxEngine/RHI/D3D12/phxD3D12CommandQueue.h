@@ -25,7 +25,7 @@ namespace phx::rhi::d3d12
 			this->m_pendingAllocators.push_back(allocator);
 		}
 
-		void Submit();
+		uint64_t Submit();
 
 #if 0 
 		RequestCommandContext();

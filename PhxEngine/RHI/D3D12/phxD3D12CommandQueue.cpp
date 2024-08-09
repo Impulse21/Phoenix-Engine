@@ -54,15 +54,15 @@ void phx::rhi::d3d12::D3D12CommandQueue::Finailize()
 	CloseHandle(this->m_fenceEvent);
 }
 
-void phx::rhi::d3d12::D3D12CommandQueue::Submit()
+uint64_t phx::rhi::d3d12::D3D12CommandQueue::Submit()
 {
-	this->m_d3d12CommandQueue->ExecuteCommandLists(
-		(UINT)this->m_pendingCmdLists.size(),
-		this->m_pendingCmdLists.data());
-
+	const uint64_t fenceValue = this->ExecuteCommandLists(this->m_pendingCmdLists);
 	this->m_pendingCmdLists.clear();
 
-	// Discard Allocators
+	this->DiscardAllocators(fenceValue, this->m_pendingAllocators);
+	this->m_pendingAllocators.clear();
+
+	return fenceValue;
 }
 
 #if 0

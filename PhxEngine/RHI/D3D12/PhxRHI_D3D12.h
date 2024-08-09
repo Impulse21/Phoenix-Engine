@@ -13,6 +13,7 @@
 #include "Core/phxBitSetAllocator.h"
 #include "Core/phxHandlePool.h"
 #include "Core/phxMath.h"
+#include "Core/phxEnumArray.h"
 
 #include "phxD3D12Common.h"
 #include "phxD3D12CommandQueue.h"
@@ -791,7 +792,7 @@ namespace phx::rhi::d3d12
         D3D12BindlessDescriptorTable m_bindlessResourceDescriptorTable;
 
         // -- Frame Frences --
-        std::array<Microsoft::WRL::ComPtr<ID3D12Fence>, (int)CommandQueueType::Count> m_frameFences;
+        std::vector<phx::core::EnumArray<CommandQueueType, Microsoft::WRL::ComPtr<ID3D12Fence>>> m_frameFences;
         uint64_t m_frameCount = 1;
 
         struct DeleteItem
