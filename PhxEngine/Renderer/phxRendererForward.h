@@ -3,12 +3,13 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
+#include <type_traits>
 
+#include "phxRenderSystem.h"
 #include "Core/phxEnumClassFlags.h"
 
 namespace phx
 {
-	class IRenderSystem;
 	enum class RenderPassFlags
 	{
 		Geometry,
@@ -26,6 +27,7 @@ namespace phx
 		template<class TRenderSystem, class... _Types>
 		void RegisterRenderSystem(_Types&&... _Args)
 		{
+			static_assert(std::is_base_of_v<IRenderSystem, TRenderSystem>());
 			this->m_renderSystems.push_back(
 				std::make_unique<TRenderSystem>(
 					std::forward<_Types>(_Args)...));

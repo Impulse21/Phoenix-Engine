@@ -1,6 +1,6 @@
 #pragma once
 
-namespace phx::renderer
+namespace phx
 {
 	class IRenderSystem
 	{

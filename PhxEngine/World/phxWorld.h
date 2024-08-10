@@ -1,5 +1,7 @@
 #pragma once
 
+#include "entt/entt.hpp"
+
 namespace phx
 {
 	class World final
@@ -10,7 +12,7 @@ namespace phx
 
 
 	private:
-
+		entt::registry m_registry;
 	};
 }
 

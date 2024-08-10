@@ -69,15 +69,29 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12UploadBuffer.h">
       <Filter>RHI\D3D12</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\IRenderSystem.h">
+    <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxRenderSystem.h">
       <Filter>Renderer</Filter>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxRendererForward.h">
       <Filter>Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)World\phxWorld.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)3rdParty\entt\entt.hpp">
       <Filter>3rdParty\entt</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)World\phxWorld.h">
+      <Filter>World</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)World\phxEntity.h">
+      <Filter>World</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxUUID.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)World\phxComponents.h">
+      <Filter>World</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxStringHash.h">
+      <Filter>Core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -101,6 +115,9 @@
     </Filter>
     <Filter Include="3rdParty\entt">
       <UniqueIdentifier>{1997f0a2-3251-4d32-adaa-ba87f85f58bd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="World">
+      <UniqueIdentifier>{a106e905-17a7-4b4e-bf2b-06315c0ccd92}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -138,6 +155,14 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Renderer\phxRendererForward.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)World\phxWorld.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)World\phxWorld.cpp">
+      <Filter>World</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)World\phxEntity.cpp">
+      <Filter>World</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxUUID.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
