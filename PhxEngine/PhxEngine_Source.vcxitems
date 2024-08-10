@@ -15,6 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)3rdParty\d3d12ma\D3D12MemAlloc.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)3rdParty\entt\entt.hpp" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxBitSetAllocator.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxEnumArray.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxEnumClassFlags.h" />
@@ -31,6 +32,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)phxApplication.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)phxEngineCore.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\IRenderSystem.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxRendererForward.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\d3dx12.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12BiindlessDescriptorTable.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12CommandQueue.h" />
@@ -39,6 +41,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12UploadBuffer.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxRHI_d3d12.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\phxRHI.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)World\phxWorld.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)3rdParty\d3d12ma\D3D12MemAlloc.cpp" />
@@ -46,11 +49,13 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxLog.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxMemory.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)phxEngineCore.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Renderer\phxRendererForward.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12CommandQueue.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12DescriptorHeap.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12UploadBuffer.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxDxgiFormatMapping.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxRHI_d3d12.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\phxRHI.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)World\phxWorld.cpp" />
   </ItemGroup>
 </Project>

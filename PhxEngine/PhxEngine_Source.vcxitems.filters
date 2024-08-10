@@ -72,6 +72,13 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\IRenderSystem.h">
       <Filter>Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxRendererForward.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)World\phxWorld.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)3rdParty\entt\entt.hpp">
+      <Filter>3rdParty\entt</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
@@ -91,6 +98,9 @@
     </Filter>
     <Filter Include="Renderer">
       <UniqueIdentifier>{7799392d-ddcb-4ec1-a59d-78de5bb83d3a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty\entt">
+      <UniqueIdentifier>{1997f0a2-3251-4d32-adaa-ba87f85f58bd}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -125,5 +135,9 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\BitSetAllocator.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Renderer\phxRendererForward.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)World\phxWorld.cpp" />
   </ItemGroup>
 </Project>

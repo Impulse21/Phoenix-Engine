@@ -9,5 +9,7 @@ namespace phx::renderer
 
 		virtual void* CacheData() = 0;
 
+		virtual void Render() = 0;
+
 	};
 }
