@@ -503,9 +503,6 @@ void D3D12GfxDevice::SubmitFrame()
 	// Submit Commandlists
 	const uint32_t numActiveCommandLists = this->m_activeCmdCount;
 	this->m_activeCmdCount = 0;
-	const uint32_t numQueues = static_cast<uint32_t>(CommandQueueType::Count);
-	phx::ScopedScratchMarker submitMarker;
-	VirtualStackAllocator& allocator = Memory::GetScratchAllocator();
 
 	for (uint32_t iCmd = 0; iCmd < numActiveCommandLists; ++iCmd)
 	{
@@ -548,7 +545,7 @@ void D3D12GfxDevice::SubmitFrame()
 				assert(nextFenceValue);
 			}
 #else
-			assert(false, "Queue Syncing isn't working");
+			assert(false && "Queue Syncing isn't working");
 #endif
 		}
 	}
@@ -701,8 +698,8 @@ CommandSignatureHandle D3D12GfxDevice::CreateCommandSignature(CommandSignatureDe
 	}
 
 	D3D12_COMMAND_SIGNATURE_DESC cmdDesc = {};
-	cmdDesc.ByteStride = byteStride;
-	cmdDesc.NumArgumentDescs = signature->D3D12Descs.size();
+	cmdDesc.ByteStride = static_cast<UINT>(byteStride);
+	cmdDesc.NumArgumentDescs = static_cast<UINT>(signature->D3D12Descs.size());
 	cmdDesc.pArgumentDescs = signature->D3D12Descs.data();
 
 	ID3D12RootSignature* rootSig = nullptr;
@@ -938,11 +935,6 @@ GfxPipelineHandle D3D12GfxDevice::CreateGfxPipeline(GfxPipelineDesc const& desc)
 	return this->m_gfxPipelinePool.Insert(pipeline);
 }
 
-const rhi::GfxPipelineDesc& D3D12GfxDevice::GetGfxPipelineDesc(GfxPipelineHandle handle)
-{
-	return {};
-}
-
 void D3D12GfxDevice::DeleteGfxPipeline(GfxPipelineHandle handle)
 {
 	if (!handle.IsValid())
@@ -1099,7 +1091,7 @@ MeshPipelineHandle D3D12GfxDevice::CreateMeshPipeline(MeshPipelineDesc const& de
 	psoDesc.SampleDesc.Quality = desc.SampleQuality;
 	psoDesc.SampleMask = ~0u;
 
-	psoDesc.RenderTargets.NumRenderTargets = desc.RtvFormats.size();
+	psoDesc.RenderTargets.NumRenderTargets = static_cast<UINT>(desc.RtvFormats.size());
 
 	for (size_t i = 0; i < desc.RtvFormats.size(); i++)
 	{
@@ -1174,7 +1166,7 @@ RenderPassHandle D3D12GfxDevice::CreateRenderPass(RenderPassDesc const& desc)
 		clearValue.Color[2] = textureImpl->Desc.OptmizedClearValue.Colour.B;
 		clearValue.Color[3] = textureImpl->Desc.OptmizedClearValue.Colour.A;
 		clearValue.DepthStencil.Depth = textureImpl->Desc.OptmizedClearValue.DepthStencil.Depth;
-		clearValue.DepthStencil.Stencil = textureImpl->Desc.OptmizedClearValue.DepthStencil.Stencil;
+		clearValue.DepthStencil.Stencil = static_cast<UINT8>(textureImpl->Desc.OptmizedClearValue.DepthStencil.Stencil);
 		clearValue.Format = dxgiFormatMapping.RtvFormat;
 
 
@@ -1467,7 +1459,7 @@ TextureHandle D3D12GfxDevice::CreateTexture(TextureDesc const& desc)
 	d3d12OptimizedClearValue.Color[2] = desc.OptmizedClearValue.Colour.B;
 	d3d12OptimizedClearValue.Color[3] = desc.OptmizedClearValue.Colour.A;
 	d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.DepthStencil.Depth;
-	d3d12OptimizedClearValue.DepthStencil.Stencil = desc.OptmizedClearValue.DepthStencil.Stencil;
+	d3d12OptimizedClearValue.DepthStencil.Stencil = static_cast<UINT8>(desc.OptmizedClearValue.DepthStencil.Stencil);
 
 	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
 	d3d12OptimizedClearValue.Format = dxgiFormatMapping.RtvFormat;
@@ -1767,7 +1759,6 @@ void D3D12GfxDevice::DeleteBuffer(BufferHandle handle)
 	{
 		return;
 	}
-	D3D12Buffer* bufferImpl = this->m_bufferPool.Get(handle);
 
 	DeleteItem d =
 	{
@@ -2459,7 +2450,7 @@ int D3D12GfxDevice::CreateShaderResourceView(TextureHandle texture, uint32_t fir
 	}
 
 	textureImpl->SrvSubresourcesAlloc.push_back(view);
-	return textureImpl->SrvSubresourcesAlloc.size() - 1;
+	return static_cast<int>(textureImpl->SrvSubresourcesAlloc.size() - 1);
 }
 
 int D3D12GfxDevice::CreateRenderTargetView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
@@ -2535,7 +2526,7 @@ int D3D12GfxDevice::CreateRenderTargetView(TextureHandle texture, uint32_t first
 	}
 
 	textureImpl->RtvSubresourcesAlloc.push_back(view);
-	return textureImpl->RtvSubresourcesAlloc.size() - 1;
+	return static_cast<int>(textureImpl->RtvSubresourcesAlloc.size() - 1);
 }
 
 int D3D12GfxDevice::CreateDepthStencilView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
@@ -2610,7 +2601,7 @@ int D3D12GfxDevice::CreateDepthStencilView(TextureHandle texture, uint32_t first
 	}
 
 	textureImpl->DsvSubresourcesAlloc.push_back(view);
-	return textureImpl->DsvSubresourcesAlloc.size() - 1;
+	return static_cast<int>(textureImpl->DsvSubresourcesAlloc.size() - 1);
 }
 
 int D3D12GfxDevice::CreateUnorderedAccessView(TextureHandle texture, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
@@ -2698,7 +2689,7 @@ int D3D12GfxDevice::CreateUnorderedAccessView(TextureHandle texture, uint32_t fi
 	}
 
 	textureImpl->UavSubresourcesAlloc.push_back(view);
-	return textureImpl->UavSubresourcesAlloc.size() - 1;
+	return static_cast<int>(textureImpl->UavSubresourcesAlloc.size() - 1);
 }
 
 /*
@@ -3099,7 +3090,7 @@ int D3D12GfxDevice::CreateShaderResourceView(BufferHandle buffer, size_t offset,
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-	const uint32_t stideInBytes = bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements;
+	const uint32_t stideInBytes = static_cast<uint32_t>(bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements);
 	if (bufferImpl->Desc.Format == rhi::Format::UNKNOWN)
 	{
 		if (EnumHasAllFlags(bufferImpl->Desc.MiscFlags, BufferMiscFlags::Raw))
@@ -3111,7 +3102,7 @@ int D3D12GfxDevice::CreateShaderResourceView(BufferHandle buffer, size_t offset,
 		}
 		else if (EnumHasAllFlags(bufferImpl->Desc.MiscFlags, BufferMiscFlags::Structured))
 		{
-			uint32_t strideInBytes = (bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements);
+			const uint32_t strideInBytes = static_cast<uint32_t>(bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements);
 			// This is a Structured Buffer
 			srvDesc.Format = DXGI_FORMAT_UNKNOWN;
 			srvDesc.Buffer.FirstElement = (UINT)offset / strideInBytes;
@@ -3164,7 +3155,7 @@ int D3D12GfxDevice::CreateShaderResourceView(BufferHandle buffer, size_t offset,
 	}
 
 	bufferImpl->SrvSubresourcesAlloc.push_back(view);
-	return bufferImpl->SrvSubresourcesAlloc.size() - 1;
+	return static_cast<int>(bufferImpl->SrvSubresourcesAlloc.size() - 1);
 }
 
 int D3D12GfxDevice::CreateUnorderedAccessView(BufferHandle buffer, size_t offset, size_t size)
@@ -3174,7 +3165,7 @@ int D3D12GfxDevice::CreateUnorderedAccessView(BufferHandle buffer, size_t offset
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 
-	const uint32_t stideInBytes = bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements;
+	const uint32_t stideInBytes = static_cast<uint32_t>(bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements);
 	const bool hasCounter = (bufferImpl->Desc.MiscFlags & BufferMiscFlags::HasCounter) == BufferMiscFlags::HasCounter;
 	if (bufferImpl->Desc.Format == rhi::Format::UNKNOWN)
 	{
@@ -3187,7 +3178,7 @@ int D3D12GfxDevice::CreateUnorderedAccessView(BufferHandle buffer, size_t offset
 		}
 		else if (EnumHasAllFlags(bufferImpl->Desc.MiscFlags, BufferMiscFlags::Structured))
 		{
-			uint32_t strideInBytes = (bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements);
+			const uint32_t strideInBytes = static_cast<uint32_t>(bufferImpl->Desc.Stride * bufferImpl->Desc.NumElements);
 			// This is a Structured Buffer
 			uavDesc.Format = DXGI_FORMAT_UNKNOWN;
 			uavDesc.Buffer.FirstElement = (UINT)offset / strideInBytes;
@@ -3262,7 +3253,7 @@ int D3D12GfxDevice::CreateUnorderedAccessView(BufferHandle buffer, size_t offset
 	}
 
 	bufferImpl->UavSubresourcesAlloc.push_back(view);
-	return bufferImpl->UavSubresourcesAlloc.size() - 1;
+	return static_cast<int>(bufferImpl->UavSubresourcesAlloc.size() - 1);
 }
 
 void D3D12GfxDevice::CreateGpuTimestampQueryHeap(uint32_t queryCount)
@@ -3625,8 +3616,8 @@ void D3D12GfxDevice::FindAdapter(Microsoft::WRL::ComPtr<IDXGIFactory6> factory, 
 		std::string name;
 		StringConvert(desc.Description, name);
 		size_t dedicatedVideoMemory = desc.DedicatedVideoMemory;
-		size_t dedicatedSystemMemory = desc.DedicatedSystemMemory;
-		size_t sharedSystemMemory = desc.SharedSystemMemory;
+		// size_t dedicatedSystemMemory = desc.DedicatedSystemMemory;
+		// size_t sharedSystemMemory = desc.SharedSystemMemory;
 
 		if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
 		{
@@ -3697,39 +3688,38 @@ HRESULT D3D12Adapter::EnumAdapters(uint32_t adapterIndex, IDXGIFactory6* factory
 CommandListHandle D3D12GfxDevice::BeginCommandList(CommandQueueType queueType)
 {
 	const uint32_t currentCmdIndex = this->m_activeCmdCount++;
-	D3D12CommandQueue& queue = this->GetQueue(queueType);
-	D3D12CommandList* cmdList = nullptr;
-	ID3D12CommandAllocator* allocator = queue.RequestAllocator();
-	if (currentCmdIndex >= this->m_commandListPool.size())
-	{
-		cmdList = &this->m_commandListPool.emplace_back();
-		cmdList->NativeCommandAllocator = allocator;
+	assert(currentCmdIndex < this->m_commandListPool.size());
 
+	D3D12CommandQueue& queue = this->GetQueue(queueType);
+	D3D12CommandList& cmdList = this->m_commandListPool[currentCmdIndex];
+
+	cmdList.NativeCommandAllocator = nullptr;
+	cmdList.NativeCommandAllocator = queue.RequestAllocator();
+	if (cmdList.NativeCommandList == nullptr)
+	{
 		this->GetD3D12Device()->CreateCommandList(
 			0,
 			this->GetQueue(queueType).GetType(),
-			cmdList->NativeCommandAllocator,
+			cmdList.NativeCommandAllocator,
 			nullptr,
-			IID_PPV_ARGS(&cmdList->NativeCommandList));
+			IID_PPV_ARGS(&cmdList.NativeCommandList));
 
-		cmdList->NativeCommandList->SetName(L"D3D12GfxDevice::CommandList");
+		cmdList.NativeCommandList->SetName(L"D3D12GfxDevice::CommandList");
 		ThrowIfFailed(
-			cmdList->NativeCommandList.As<ID3D12GraphicsCommandList6>(
-				&cmdList->NativeCommandList6));
+			cmdList.NativeCommandList.As<ID3D12GraphicsCommandList6>(
+				&cmdList.NativeCommandList6));
 
 	}
 	else
 	{
-		cmdList = &this->m_commandListPool[currentCmdIndex];
-		cmdList->NativeCommandAllocator = allocator;
-		cmdList->NativeCommandList->Reset(cmdList->NativeCommandAllocator, nullptr);
+		cmdList.NativeCommandList->Reset(cmdList.NativeCommandAllocator, nullptr);
 	}
 
-	cmdList->Id = currentCmdIndex;
-	cmdList->QueueType = queueType;
-	cmdList->Waits.clear();
-	cmdList->IsWaitedOn.store(false);
-	cmdList->UploadBuffer.Reset();
+	cmdList.Id = currentCmdIndex;
+	cmdList.QueueType = queueType;
+	cmdList.Waits.clear();
+	cmdList.IsWaitedOn.store(false);
+	cmdList.UploadBuffer.Reset();
 
 	// Bind Heaps
 	std::array<ID3D12DescriptorHeap*, 2> heaps;
@@ -3737,9 +3727,7 @@ CommandListHandle D3D12GfxDevice::BeginCommandList(CommandQueueType queueType)
 	{
 		heaps[i] = this->m_gpuDescriptorHeaps[i].GetNativeHeap();
 	}
-
-	// TODO: NOT VALID FOR COPY
-	cmdList->NativeCommandList6->SetDescriptorHeaps(heaps.size(), heaps.data());
+	cmdList.NativeCommandList6->SetDescriptorHeaps(static_cast<UINT>(heaps.size()), heaps.data());
 
 	return currentCmdIndex;
 }
@@ -3960,7 +3948,7 @@ void D3D12GfxDevice::TransitionBarriers(Span<GpuBarrier> gpuBarriers, CommandLis
 	{
 		// TODO: Batch Barrier
 		internalCmd.NativeCommandList->ResourceBarrier(
-			internalCmd.BarrierMemoryPool.size(),
+			static_cast<UINT>(internalCmd.BarrierMemoryPool.size()),
 			internalCmd.BarrierMemoryPool.data());
 
 		internalCmd.BarrierMemoryPool.clear();
@@ -4101,7 +4089,7 @@ void D3D12GfxDevice::DrawIndirect(rhi::BufferHandle args, size_t argsOffsetInByt
 		1);
 }
 
-void D3D12GfxDevice::DrawIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void D3D12GfxDevice::DrawIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, PHX_UNUSED rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = this->m_commandListPool[cmd];
 	D3D12Buffer* argBufferImpl = this->GetBufferPool().Get(args);
@@ -4128,7 +4116,7 @@ void D3D12GfxDevice::DrawIndexedIndirect(rhi::BufferHandle args, size_t argsOffs
 		1);
 }
 
-void D3D12GfxDevice::DrawIndexedIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void D3D12GfxDevice::DrawIndexedIndirect(rhi::BufferHandle args, size_t argsOffsetInBytes, PHX_UNUSED rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = this->m_commandListPool[cmd];
 	D3D12Buffer* argBufferImpl = this->GetBufferPool().Get(args);
@@ -4208,7 +4196,7 @@ void D3D12GfxDevice::WriteTexture(TextureHandle texture, uint32_t firstSubresour
 {
 	D3D12CommandList& internalCmd = this->m_commandListPool[cmd];
 	auto textureImpl = this->GetTexturePool().Get(texture);
-	UINT64 requiredSize = GetRequiredIntermediateSize(textureImpl->D3D12Resource.Get(), firstSubresource, numSubresources);
+	UINT64 requiredSize = GetRequiredIntermediateSize(textureImpl->D3D12Resource.Get(), firstSubresource, static_cast<UINT>(numSubresources));
 
 	auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(requiredSize);
@@ -4238,16 +4226,16 @@ void D3D12GfxDevice::WriteTexture(TextureHandle texture, uint32_t firstSubresour
 		intermediateResource.Get(),
 		0,
 		firstSubresource,
-		subresources.size(),
+		static_cast<UINT>(subresources.size()),
 		subresources.data());
 
 	internalCmd.TrackedResources.push_back(intermediateResource);
 }
 
-void D3D12GfxDevice::WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* Data, size_t rowPitch, size_t depthPitch, CommandListHandle cmd)
+void D3D12GfxDevice::WriteTexture(PHX_UNUSED TextureHandle texture, PHX_UNUSED uint32_t arraySlice, PHX_UNUSED uint32_t mipLevel, PHX_UNUSED const void* Data, PHX_UNUSED size_t rowPitch, PHX_UNUSED size_t depthPitch, PHX_UNUSED CommandListHandle cmd)
 {
+#if false
 	// LOG_CORE_FATAL("NOT IMPLEMENTED FUNCTION CALLED: CommandList::WriteTexture");
-	assert(false);
 	auto textureImpl = this->GetTexturePool().Get(texture);
 	uint32_t subresource = CalcSubresource(mipLevel, arraySlice, 0, textureImpl->Desc.MipLevels, textureImpl->Desc.ArraySize);
 
@@ -4256,6 +4244,9 @@ void D3D12GfxDevice::WriteTexture(TextureHandle texture, uint32_t arraySlice, ui
 	uint32_t numRows;
 	uint64_t rowSizeInBytes;
 	uint64_t totalBytes;
+#else
+	assert(false);
+#endif
 }
 
 void D3D12GfxDevice::SetRenderTargets(Span<TextureHandle> renderTargets, TextureHandle depthStencil, CommandListHandle cmd)
@@ -4277,7 +4268,7 @@ void D3D12GfxDevice::SetRenderTargets(Span<TextureHandle> renderTargets, Texture
 	}
 
 	internalCmd.NativeCommandList->OMSetRenderTargets(
-		renderTargetViews.size(),
+		static_cast<UINT>(renderTargetViews.size()),
 		renderTargetViews.data(),
 		hasDepth,
 		hasDepth ? &depthView : nullptr);
@@ -4367,11 +4358,11 @@ void D3D12GfxDevice::BindConstantBuffer(size_t rootParameterIndex, BufferHandle 
 	const D3D12Buffer* constantBufferImpl = this->GetBufferPool().Get(constantBuffer);
 	if (internalCmd.ActivePipelineType == D3D12CommandList::PipelineType::Compute)
 	{
-		internalCmd.NativeCommandList->SetComputeRootConstantBufferView(rootParameterIndex, constantBufferImpl->D3D12Resource->GetGPUVirtualAddress());
+		internalCmd.NativeCommandList->SetComputeRootConstantBufferView(static_cast<UINT>(rootParameterIndex), constantBufferImpl->D3D12Resource->GetGPUVirtualAddress());
 	}
 	else
 	{
-		internalCmd.NativeCommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, constantBufferImpl->D3D12Resource->GetGPUVirtualAddress());
+		internalCmd.NativeCommandList->SetGraphicsRootConstantBufferView(static_cast<UINT>(rootParameterIndex), constantBufferImpl->D3D12Resource->GetGPUVirtualAddress());
 	}
 }
 
@@ -4383,11 +4374,11 @@ void D3D12GfxDevice::BindDynamicConstantBuffer(size_t rootParameterIndex, size_t
 
 	if (internalCmd.ActivePipelineType == D3D12CommandList::PipelineType::Compute)
 	{
-		internalCmd.NativeCommandList->SetComputeRootConstantBufferView(rootParameterIndex, alloc.Gpu);
+		internalCmd.NativeCommandList->SetComputeRootConstantBufferView(static_cast<UINT>(rootParameterIndex), alloc.Gpu);
 	}
 	else
 	{
-		internalCmd.NativeCommandList->SetGraphicsRootConstantBufferView(rootParameterIndex, alloc.Gpu);
+		internalCmd.NativeCommandList->SetGraphicsRootConstantBufferView(static_cast<UINT>(rootParameterIndex), alloc.Gpu);
 	}
 }
 
@@ -4466,13 +4457,13 @@ void D3D12GfxDevice::BindStructuredBuffer(size_t rootParameterIndex, BufferHandl
 	if (internalCmd.ActivePipelineType == D3D12CommandList::PipelineType::Compute)
 	{
 		internalCmd.NativeCommandList->SetComputeRootShaderResourceView(
-			rootParameterIndex,
+			static_cast<UINT>(rootParameterIndex),
 			bufferImpl->D3D12Resource->GetGPUVirtualAddress());
 	}
 	else
 	{
 		internalCmd.NativeCommandList->SetGraphicsRootShaderResourceView(
-			rootParameterIndex,
+			static_cast<UINT>(rootParameterIndex),
 			bufferImpl->D3D12Resource->GetGPUVirtualAddress());
 	}
 }
@@ -4485,19 +4476,19 @@ void D3D12GfxDevice::BindResourceTable(size_t rootParameterIndex, CommandListHan
 		if (internalCmd.ActivePipelineType == D3D12CommandList::PipelineType::Compute)
 		{
 			internalCmd.NativeCommandList->SetComputeRootDescriptorTable(
-				rootParameterIndex,
+				static_cast<UINT>(rootParameterIndex),
 				this->m_bindlessResourceDescriptorTable.GetGpuHandle(0));
 		}
 		else
 		{
 			internalCmd.NativeCommandList->SetGraphicsRootDescriptorTable(
-				rootParameterIndex,
+				static_cast<UINT>(rootParameterIndex),
 				this->m_bindlessResourceDescriptorTable.GetGpuHandle(0));
 		}
 	}
 }
 
-void D3D12GfxDevice::BindSamplerTable(size_t rootParameterIndex, CommandListHandle cmd)
+void D3D12GfxDevice::BindSamplerTable(PHX_UNUSED size_t rootParameterIndex, PHX_UNUSED CommandListHandle cmd)
 {
 	// TODO:
 	assert(false);
@@ -4508,7 +4499,7 @@ void D3D12GfxDevice::BindDynamicDescriptorTable(size_t rootParameterIndex, Span<
 	D3D12CommandList& internalCmd = this->m_commandListPool[cmd];
 	// Request Descriptoprs for table
 	// Validate with Root Signature. Maybe an improvment in the future.
-	DescriptorHeapAllocation descriptorTable = internalCmd.ActiveDynamicSubAllocator->Allocate(textures.Size());
+	DescriptorHeapAllocation descriptorTable = internalCmd.ActiveDynamicSubAllocator->Allocate(static_cast<uint32_t>(textures.Size()));
 	for (int i = 0; i < textures.Size(); i++)
 	{
 		auto textureImpl = this->GetTexturePool().Get(textures[i]);
@@ -4521,11 +4512,11 @@ void D3D12GfxDevice::BindDynamicDescriptorTable(size_t rootParameterIndex, Span<
 
 	if (internalCmd.ActivePipelineType == D3D12CommandList::PipelineType::Compute)
 	{
-		internalCmd.NativeCommandList->SetComputeRootDescriptorTable(rootParameterIndex, descriptorTable.GetGpuHandle());
+		internalCmd.NativeCommandList->SetComputeRootDescriptorTable(static_cast<UINT>(rootParameterIndex), descriptorTable.GetGpuHandle());
 	}
 	else
 	{
-		internalCmd.NativeCommandList->SetGraphicsRootDescriptorTable(rootParameterIndex, descriptorTable.GetGpuHandle());
+		internalCmd.NativeCommandList->SetGraphicsRootDescriptorTable(static_cast<UINT>(rootParameterIndex), descriptorTable.GetGpuHandle());
 	}
 }
 
@@ -4538,7 +4529,8 @@ void D3D12GfxDevice::BindDynamicUavDescriptorTable(
 	D3D12CommandList& internalCmd = this->m_commandListPool[cmd];
 	// Request Descriptoprs for table
 	// Validate with Root Signature. Maybe an improvment in the future.
-	DescriptorHeapAllocation descriptorTable = internalCmd.ActiveDynamicSubAllocator->Allocate(buffers.Size() + textures.Size());
+	DescriptorHeapAllocation descriptorTable = internalCmd.ActiveDynamicSubAllocator->Allocate(
+		static_cast<uint32_t>(buffers.Size() + textures.Size()));
 	for (int i = 0; i < buffers.Size(); i++)
 	{
 		auto impl = this->GetBufferPool().Get(buffers[i]);
@@ -4554,8 +4546,8 @@ void D3D12GfxDevice::BindDynamicUavDescriptorTable(
 	{
 		auto textureImpl = this->GetTexturePool().Get(textures[i]);
 		this->GetD3D12Device2()->CopyDescriptorsSimple(
-			1,
-			descriptorTable.GetCpuHandle(i + buffers.Size()),
+			1u,
+			descriptorTable.GetCpuHandle(static_cast<uint32_t>(i + buffers.Size())),
 			textureImpl->UavAllocation.Allocation.GetCpuHandle(),
 			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
@@ -4563,11 +4555,11 @@ void D3D12GfxDevice::BindDynamicUavDescriptorTable(
 
 	if (internalCmd.ActivePipelineType == D3D12CommandList::PipelineType::Compute)
 	{
-		internalCmd.NativeCommandList->SetComputeRootDescriptorTable(rootParameterIndex, descriptorTable.GetGpuHandle());
+		internalCmd.NativeCommandList->SetComputeRootDescriptorTable(static_cast<UINT>(rootParameterIndex), descriptorTable.GetGpuHandle());
 	}
 	else
 	{
-		internalCmd.NativeCommandList->SetGraphicsRootDescriptorTable(rootParameterIndex, descriptorTable.GetGpuHandle());
+		internalCmd.NativeCommandList->SetGraphicsRootDescriptorTable(static_cast<UINT>(rootParameterIndex), descriptorTable.GetGpuHandle());
 	}
 }
 
@@ -4601,7 +4593,7 @@ void D3D12GfxDevice::DispatchIndirect(rhi::BufferHandle args, uint32_t argsOffse
 		1);
 }
 
-void D3D12GfxDevice::DispatchIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void D3D12GfxDevice::DispatchIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, PHX_UNUSED rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = this->m_commandListPool[cmd];
 	D3D12Buffer* argBufferImpl = this->GetBufferPool().Get(args);
@@ -4665,7 +4657,7 @@ void D3D12GfxDevice::DispatchMeshIndirect(rhi::BufferHandle args, uint32_t argsO
 		1);
 }
 
-void D3D12GfxDevice::DispatchMeshIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
+void D3D12GfxDevice::DispatchMeshIndirect(rhi::BufferHandle args, uint32_t argsOffsetInBytes, PHX_UNUSED rhi::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount, CommandListHandle cmd)
 {
 	D3D12CommandList& internalCmd = this->m_commandListPool[cmd];
 	D3D12Buffer* argBufferImpl = this->GetBufferPool().Get(args);
@@ -4689,7 +4681,7 @@ void D3D12GfxDevice::BeginTimerQuery(TimerQueryHandle query, CommandListHandle c
 	internalCmd.NativeCommandList->EndQuery(
 		this->GetQueryHeap(),
 		D3D12_QUERY_TYPE_TIMESTAMP,
-		queryImpl->BeginQueryIndex);
+		static_cast<UINT>(queryImpl->BeginQueryIndex));
 }
 
 void D3D12GfxDevice::EndTimerQuery(TimerQueryHandle query, CommandListHandle cmd)
@@ -4704,12 +4696,12 @@ void D3D12GfxDevice::EndTimerQuery(TimerQueryHandle query, CommandListHandle cmd
 	internalCmd.NativeCommandList->EndQuery(
 		this->GetQueryHeap(),
 		D3D12_QUERY_TYPE_TIMESTAMP,
-		queryImpl->EndQueryIndex);
+		static_cast<UINT>(queryImpl->EndQueryIndex));
 
 	internalCmd.NativeCommandList->ResolveQueryData(
 		this->GetQueryHeap(),
 		D3D12_QUERY_TYPE_TIMESTAMP,
-		queryImpl->BeginQueryIndex,
+		static_cast<UINT>(queryImpl->BeginQueryIndex),
 		2,
 		timeStampQueryBuffer->D3D12Resource.Get(),
 		queryImpl->BeginQueryIndex * sizeof(uint64_t));

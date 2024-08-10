@@ -71,6 +71,8 @@ void CpuDescriptorHeap::Free(DescriptorHeapAllocation&& allocation)
 
 std::shared_ptr<DescriptorHeapAllocationPage> CpuDescriptorHeap::CreateAllocationPage()
 {
+#pragma warning( push )
+#pragma warning( disable : 4267)
 	auto newPage = std::make_shared<DescriptorHeapAllocationPage>(
 		this->m_heapPool.size(),
 		this,
@@ -78,6 +80,7 @@ std::shared_ptr<DescriptorHeapAllocationPage> CpuDescriptorHeap::CreateAllocatio
 		this->m_heapDesc,
 		this->m_numDescriptorsPerHeap);
 
+#pragma warning( pop )
 	this->m_heapPool.push_back(newPage);
 	this->m_availableHeaps.insert(this->m_heapPool.size() - 1);
 

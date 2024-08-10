@@ -411,7 +411,6 @@ namespace phx::rhi::d3d12
 
 
         void DeleteCommandSignature(CommandSignatureHandle handle) override;
-        const rhi::GfxPipelineDesc& GetGfxPipelineDesc(GfxPipelineHandle handle) override;
         void DeleteGfxPipeline(GfxPipelineHandle handle) override;
 
 
@@ -778,7 +777,7 @@ namespace phx::rhi::d3d12
 
         // -- Command lists ---
         uint32_t m_activeCmdCount;
-        std::vector<D3D12CommandList> m_commandListPool;
+        std::array<D3D12CommandList, 32> m_commandListPool;
 
         // -- Descriptor Heaps ---
         std::array<CpuDescriptorHeap, (int)DescriptorHeapTypes::Count> m_cpuDescriptorHeaps;

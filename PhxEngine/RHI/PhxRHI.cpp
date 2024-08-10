@@ -2,7 +2,7 @@
 #include "phxRHI.h"
 
 #ifdef _WIN32
-#include "phxD3D12/phxRHI_d3d12.h"
+#include "D3D12/PhxRHI_D3D12.h"
 #endif
 
 using namespace phx;
@@ -15,28 +15,32 @@ extern "C" {
 namespace
 {
 #ifdef _WIN32
-	void InitD3D12(Config const& config)
+	void InitD3D12()
 	{
+		using namespace phx::rhi::d3d12;
 		PHX_CORE_INFO("Init D3D12 RHI backend");
-		GfxDevice::Ptr = new D3D12GfxDevice(config);
+		GfxDevice::Ptr = new D3D12GfxDevice();
 	}
 #endif
 }
 
 #ifdef _WIN32
-void rhi::Initialize_Windows(Config const& config)
+void rhi::Initialize_Windows(rhi::GraphicsAPI preferedAPI)
 {
-	switch (config.Api)
+	switch (preferedAPI)
 	{
 	case GraphicsAPI::DX12:
 	default:
-		InitD3D12(config);
+		InitD3D12();
 	}
 }
 #endif
 
 void rhi::Finalize()
 {
+	if (!GfxDevice::Ptr)
+		return;
+
 	GfxDevice::Ptr->WaitForIdle();
 	delete GfxDevice::Ptr;
 }

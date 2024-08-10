@@ -1263,6 +1263,10 @@ namespace phx::rhi
     class IGfxDevice
     {
     public:
+        // -- Global Pointer ---
+        inline static IGfxDevice* Ptr = nullptr;
+
+    public:
         virtual ~IGfxDevice() = default;
 
         // -- Frame Functions ---
@@ -1303,7 +1307,6 @@ namespace phx::rhi
 
 
         virtual void DeleteCommandSignature(CommandSignatureHandle handle) = 0;
-        virtual const rhi::GfxPipelineDesc& GetGfxPipelineDesc(GfxPipelineHandle handle) = 0;
         virtual void DeleteGfxPipeline(GfxPipelineHandle handle) = 0;
 
 
