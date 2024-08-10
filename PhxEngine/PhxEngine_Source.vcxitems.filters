@@ -69,6 +69,9 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12UploadBuffer.h">
       <Filter>RHI\D3D12</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\IRenderSystem.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
@@ -85,6 +88,9 @@
     </Filter>
     <Filter Include="RHI\D3D12">
       <UniqueIdentifier>{766450f4-0f55-44e5-be66-5b1ef7e6a1e0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer">
+      <UniqueIdentifier>{7799392d-ddcb-4ec1-a59d-78de5bb83d3a}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

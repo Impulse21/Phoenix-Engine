@@ -30,6 +30,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxPlatform.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)phxApplication.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)phxEngineCore.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\IRenderSystem.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\d3dx12.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12BiindlessDescriptorTable.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12CommandQueue.h" />
