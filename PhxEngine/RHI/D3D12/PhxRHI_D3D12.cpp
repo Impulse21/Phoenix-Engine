@@ -4434,7 +4434,7 @@ void D3D12GfxDevice::BindDynamicIndexBuffer(size_t numIndicies, rhi::Format inde
 	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
 	indexBufferView.BufferLocation = heapAllocation.Gpu;
 	indexBufferView.SizeInBytes = static_cast<UINT>(bufferSize);
-	const auto& formatMapping = d3d12::GetDxgiFormatMapping(indexFormat);;
+	const DxgiFormatMapping& formatMapping = GetDxgiFormatMapping(indexFormat);
 
 	indexBufferView.Format = formatMapping.SrvFormat;
 

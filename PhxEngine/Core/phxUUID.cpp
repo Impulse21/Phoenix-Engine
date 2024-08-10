@@ -14,7 +14,7 @@ namespace
 	static std::uniform_int_distribution<uint64_t> sUniformDistribution;
 }
 
-UUID::UUID()
+phx::UUID::UUID()
 	: m_uuid(sUniformDistribution(sEngine))
 {
 }

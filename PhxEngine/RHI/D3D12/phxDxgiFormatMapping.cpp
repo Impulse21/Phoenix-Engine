@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "phxRHI_d3d12.h"
+#include "phxD3D12Common.h"
 
 using namespace phx;
 using namespace phx::rhi;
@@ -85,7 +86,7 @@ static const DxgiFormatMapping c_FormatMappings[] = {
     { rhi::Format::BC7_UNORM_SRGB,       DXGI_FORMAT_BC7_TYPELESS,           DXGI_FORMAT_BC7_UNORM_SRGB,           DXGI_FORMAT_BC7_UNORM_SRGB         },
 };
 
-const phx::rhi::d3d12::DxgiFormatMapping& GetDxgiFormatMapping(rhi::Format abstractFormat)
+const phx::rhi::d3d12::DxgiFormatMapping& phx::rhi::d3d12::GetDxgiFormatMapping(rhi::Format abstractFormat)
 {
     static_assert(sizeof(c_FormatMappings) / sizeof(DxgiFormatMapping) == size_t(rhi::Format::COUNT),
         "The format mapping table doesn't have the right number of elements");

@@ -1,14 +1,15 @@
-#include "C:/Users/dipao/source/repos/Impulse21/Phoenix-Engine/Build/PhxEngine/CMakeFiles/PhxEngine.dir/Debug/cmake_pch.hxx"
+#include "pch.h"
 
-#include "PhxEngine/Scene/Entity.h"
+#include "phxEntity.h"
+#include "phxComponents.h"
 #include <DirectXMath.h>
 
 using namespace DirectX;
-using namespace PhxEngine::Scene;
+using namespace phx;
 
-Entity::Entity(entt::entity handle, Scene* scene)
+Entity::Entity(entt::entity handle, World* scene)
 	: m_entityHandle(handle)
-	, m_scene(scene)
+	, m_world(scene)
 {
 }
 
@@ -56,13 +57,13 @@ void Entity::DetachFromParent()
 
 void Entity::DetachChildren()
 {
-	auto view = this->m_scene->GetAllEntitiesWith<HierarchyComponent>();
+	auto view = this->m_world->GetAllEntitiesWith<HierarchyComponent>();
 	for (auto entity : view)
 	{
 		auto hComp = view.get<HierarchyComponent>(entity);
 		if (hComp.ParentID == this->m_entityHandle)
 		{
-			this->m_scene->GetRegistry().remove<HierarchyComponent>(entity);
+			this->m_world->GetRegistry().remove<HierarchyComponent>(entity);
 		}
 	}
 }
