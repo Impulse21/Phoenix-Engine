@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/phxPlatform.h"
+#include "Core/phxLog.h"
 
 namespace phx
 {

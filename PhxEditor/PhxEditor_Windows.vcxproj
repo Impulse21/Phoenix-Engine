@@ -173,15 +173,9 @@
     </FXCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="d3dx12.h" />
-    <ClInclude Include="DeviceResources.h" />
-    <ClInclude Include="Game.h" />
-    <ClInclude Include="StepTimer.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="DeviceResources.cpp" />
-    <ClCompile Include="Game.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">Create</PrecompiledHeader>

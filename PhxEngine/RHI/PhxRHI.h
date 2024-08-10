@@ -1275,6 +1275,7 @@ namespace phx::rhi
         virtual void Finalize() = 0;
 
         // -- Resizes swapchain ---
+        virtual void ResizeSwapchain(uint32_t width, uint32_t height) = 0;
         virtual void ResizeSwapchain(SwapChainDesc const& desc) = 0;
 
         // -- Submits Command lists and presents ---

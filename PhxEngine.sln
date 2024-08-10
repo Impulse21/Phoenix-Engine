@@ -15,8 +15,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhxEditor_Windows", "PhxEdi
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhxEngine_Windows", "PhxEngine\PhxEngine_Windows.vcxproj", "{11561D58-ABCB-4FFE-95DD-EDE1F0BA2E0A}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhxRHISandbox", "PhxRHISandbox\PhxRHISandbox.vcxproj", "{A185CF05-9E49-49E9-910A-BEE77E629B3E}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Gaming.Desktop.x64 = Debug|Gaming.Desktop.x64
@@ -36,12 +34,6 @@ Global
 		{11561D58-ABCB-4FFE-95DD-EDE1F0BA2E0A}.Profile|Gaming.Desktop.x64.Build.0 = Profile|Gaming.Desktop.x64
 		{11561D58-ABCB-4FFE-95DD-EDE1F0BA2E0A}.Release|Gaming.Desktop.x64.ActiveCfg = Release|Gaming.Desktop.x64
 		{11561D58-ABCB-4FFE-95DD-EDE1F0BA2E0A}.Release|Gaming.Desktop.x64.Build.0 = Release|Gaming.Desktop.x64
-		{A185CF05-9E49-49E9-910A-BEE77E629B3E}.Debug|Gaming.Desktop.x64.ActiveCfg = Debug|Gaming.Desktop.x64
-		{A185CF05-9E49-49E9-910A-BEE77E629B3E}.Debug|Gaming.Desktop.x64.Build.0 = Debug|Gaming.Desktop.x64
-		{A185CF05-9E49-49E9-910A-BEE77E629B3E}.Profile|Gaming.Desktop.x64.ActiveCfg = Profile|Gaming.Desktop.x64
-		{A185CF05-9E49-49E9-910A-BEE77E629B3E}.Profile|Gaming.Desktop.x64.Build.0 = Profile|Gaming.Desktop.x64
-		{A185CF05-9E49-49E9-910A-BEE77E629B3E}.Release|Gaming.Desktop.x64.ActiveCfg = Release|Gaming.Desktop.x64
-		{A185CF05-9E49-49E9-910A-BEE77E629B3E}.Release|Gaming.Desktop.x64.Build.0 = Release|Gaming.Desktop.x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -51,7 +43,6 @@ Global
 		{DE728E30-D4D7-4CF0-BDF0-853CE4276417} = {7F4F3042-D8EB-4462-8640-156A8FC5BEB3}
 		{3C781A6F-0F6C-45FC-ABCB-1928EFD17660} = {7F4F3042-D8EB-4462-8640-156A8FC5BEB3}
 		{11561D58-ABCB-4FFE-95DD-EDE1F0BA2E0A} = {08BF99A1-FB59-4156-AA6F-8609F398FD3B}
-		{A185CF05-9E49-49E9-910A-BEE77E629B3E} = {7F4F3042-D8EB-4462-8640-156A8FC5BEB3}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {930367CB-B352-4A6D-8277-2D97E95F837C}

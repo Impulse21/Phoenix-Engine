@@ -33,8 +33,6 @@ namespace phx::rhi::d3d12
 
    const DxgiFormatMapping& GetDxgiFormatMapping(rhi::Format abstractFormat);
 
-   const DxgiFormatMapping& GetDxgiFormatMapping(rhi::Format abstractFormat);
-
    inline D3D12_RESOURCE_STATES ConvertResourceStates(ResourceStates stateBits)
    {
        if (stateBits == ResourceStates::Common)

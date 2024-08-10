@@ -41,6 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)3rdParty\d3d12ma\D3D12MemAlloc.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Core\BitSetAllocator.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxLog.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxMemory.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)phxEngineCore.cpp" />

@@ -3,11 +3,9 @@
 //
 
 #include "pch.h"
-#include "Game.h"
 #include "Editor.h"
 #include "phxEngineCore.h"
-#include "Graphics/phxGfxCore.h"
-#include "Core/phxLog.h"
+#include "RHI/PhxRHI.h"
 
 using namespace DirectX;
 using namespace phx::editor;
@@ -161,7 +159,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_DISPLAYCHANGE:
-        phx::gfx::UpdateColourSpace();
+        // phx::gfx::UpdateColourSpace();
         break;
 
     case WM_MOVE:
@@ -191,7 +189,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         else if (!s_in_sizemove)
         {
-            phx::gfx::ResizeSwapchain(LOWORD(lParam), HIWORD(lParam));
+            phx::rhi::GfxDevice::Ptr->ResizeSwapchain(LOWORD(lParam), HIWORD(lParam));
         }
         break;
 
@@ -205,7 +203,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         RECT rc;
         GetClientRect(hWnd, &rc);
 
-        phx::gfx::ResizeSwapchain(rc.right - rc.left, rc.bottom - rc.top);
+        phx::rhi::GfxDevice::Ptr->ResizeSwapchain(rc.right - rc.left, rc.bottom - rc.top);
         break;
 
     case WM_GETMINMAXINFO:

@@ -493,6 +493,15 @@ void D3D12GfxDevice::Finalize()
 #endif
 }
 
+void D3D12GfxDevice::ResizeSwapchain(uint32_t width, uint32_t height)
+{
+	SwapChainDesc desc = this->m_swapChain.Desc;
+	desc.Width = width;
+	desc.Height = height;
+
+	this->CreateSwapChain(desc, nullptr);
+}
+
 void D3D12GfxDevice::ResizeSwapchain(SwapChainDesc const& desc)
 {
 	this->CreateSwapChain(desc, nullptr);
@@ -4425,7 +4434,7 @@ void D3D12GfxDevice::BindDynamicIndexBuffer(size_t numIndicies, rhi::Format inde
 	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
 	indexBufferView.BufferLocation = heapAllocation.Gpu;
 	indexBufferView.SizeInBytes = static_cast<UINT>(bufferSize);
-	const auto& formatMapping = GetDxgiFormatMapping(indexFormat);;
+	const auto& formatMapping = d3d12::GetDxgiFormatMapping(indexFormat);;
 
 	indexBufferView.Format = formatMapping.SrvFormat;
 

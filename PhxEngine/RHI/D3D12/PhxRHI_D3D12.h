@@ -379,6 +379,7 @@ namespace phx::rhi::d3d12
         void Finalize() override;
 
         // -- Resizes swapchain ---
+        void ResizeSwapchain(uint32_t width, uint32_t height) override;
         void ResizeSwapchain(SwapChainDesc const& desc) override;
 
         // -- Submits Command lists and presents ---

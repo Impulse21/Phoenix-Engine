@@ -1,30 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Common">
-      <UniqueIdentifier>0699176e-a0f9-4265-830e-a43daa1f1660</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="pch.h" />
-    <ClInclude Include="StepTimer.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="Game.h" />
-    <ClInclude Include="DeviceResources.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="d3dx12.h">
-      <Filter>Common</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="Game.cpp" />
-    <ClCompile Include="DeviceResources.cpp">
-      <Filter>Common</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <MGCCompile Include="MicrosoftGameConfig.mgc" />

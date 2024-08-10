@@ -116,5 +116,8 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxDxgiFormatMapping.cpp">
       <Filter>RHI\D3D12</Filter>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Core\BitSetAllocator.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
