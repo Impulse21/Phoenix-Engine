@@ -93,6 +93,12 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxStringHash.h">
       <Filter>Core</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxRenderComponents.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)World\phxPrefabFactory.h">
+      <Filter>World</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
@@ -163,6 +169,12 @@
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxUUID.cpp">
       <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Renderer\phxRenderSystemMesh.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)World\phxPrefabFactory.cpp">
+      <Filter>World</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

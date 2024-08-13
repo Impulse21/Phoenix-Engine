@@ -33,6 +33,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxPlatform.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)phxApplication.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)phxEngineCore.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxRenderComponents.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxRenderSystem.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxRendererForward.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\d3dx12.h" />
@@ -45,6 +46,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\phxRHI.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)World\phxComponents.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)World\phxEntity.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)World\phxPrefabFactory.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)World\phxWorld.h" />
   </ItemGroup>
   <ItemGroup>
@@ -55,6 +57,7 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxUUID.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)phxEngineCore.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Renderer\phxRendererForward.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Renderer\phxRenderSystemMesh.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12CommandQueue.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12DescriptorHeap.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12UploadBuffer.cpp" />
@@ -62,6 +65,7 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxRHI_d3d12.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\phxRHI.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)World\phxEntity.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)World\phxPrefabFactory.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)World\phxWorld.cpp" />
   </ItemGroup>
 </Project>

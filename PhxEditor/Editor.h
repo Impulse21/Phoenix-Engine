@@ -2,6 +2,13 @@
 
 #include "phxApplication.h"
 
+#include <memory>
+
+namespace phx
+{
+	class World;
+	class RendererForward;
+}
 namespace phx::editor
 {
 	class Editor final : public phx::IApplication
@@ -25,6 +32,9 @@ namespace phx::editor
 
 	private:
 		bool m_isSuspended = false;
+		std::unique_ptr<RendererForward> m_renderer;
+		std::unique_ptr<World> m_world;
+		
 	};
 }
 

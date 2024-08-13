@@ -38,6 +38,11 @@ namespace phx
 
 	private:
 		std::vector<std::unique_ptr<IRenderSystem>> m_renderSystems;
+
+		struct Viewport
+		{
+
+		};
 	};
 
 }
