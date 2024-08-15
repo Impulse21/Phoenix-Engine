@@ -23,11 +23,13 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxHandlePool.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxMath.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxMemory.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxPrimitives.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxSpan.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxStaticArray.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxStringHash.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxTimeStep.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxUUID.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxRefCountPtr.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)phxBaseInclude.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxLog.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxPlatform.h" />
@@ -51,9 +53,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)3rdParty\d3d12ma\D3D12MemAlloc.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)Core\BitSetAllocator.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxBitSetAllocator.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxLog.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxMemory.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxPrimitives.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxUUID.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)phxEngineCore.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Renderer\phxRendererForward.cpp" />

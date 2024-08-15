@@ -45,7 +45,6 @@ Entity PrefabFactory::CreateCube(
 		{ 0, 0 },
 	};
 
-
 	Entity retVal = this->CreateEntity("Cube Mesh");
 	MeshComponent& mesh = retVal.AddComponent<MeshComponent>();
 	mesh.Material = matId;

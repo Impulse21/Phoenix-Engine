@@ -3,6 +3,7 @@
 #include "entt/entt.hpp"
 #include "World/phxEntity.h"
 #include "RHI/PhxRHI.h"
+#include "Core/phxRefCountPtr.h"
 
 namespace phx
 {

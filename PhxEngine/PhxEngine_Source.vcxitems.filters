@@ -99,6 +99,12 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)World\phxPrefabFactory.h">
       <Filter>World</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxRefCountPtr.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxPrimitives.h">
+      <Filter>Core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
@@ -155,7 +161,7 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxDxgiFormatMapping.cpp">
       <Filter>RHI\D3D12</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)Core\BitSetAllocator.cpp">
+    <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxBitSetAllocator.cpp">
       <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)Renderer\phxRendererForward.cpp">
@@ -175,6 +181,9 @@
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)World\phxPrefabFactory.cpp">
       <Filter>World</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxPrimitives.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
