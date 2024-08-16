@@ -10,6 +10,7 @@ using namespace phx;
 using namespace phx::rhi;
 using namespace DirectX;
 
+#if false
 Entity PrefabFactory::CreateCube(
 	rhi::GfxDevice* gfxDevice,
 	entt::entity matId,
@@ -293,3 +294,28 @@ Entity PrefabFactory::CreatePlane(
 
 	return retVal;
 }
+#else
+
+Entity PrefabFactory::CreateCube(
+	rhi::GfxDevice* gfxDevice,
+	entt::entity matId,
+	float size,
+	bool rhsCoord)
+{}
+
+Entity PrefabFactory::CreateSphere(
+	rhi::GfxDevice* gfxDevice,
+	entt::entity matId,
+	float diameter,
+	size_t tessellation,
+	bool rhcoords)
+{}
+
+Entity PrefabFactory::CreatePlane(
+	rhi::GfxDevice* gfxDevice,
+	entt::entity matId,
+	float width,
+	float height,
+	bool rhCoords)
+{}
+#endif

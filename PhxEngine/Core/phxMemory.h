@@ -1,6 +1,9 @@
 #pragma once
 
 #include <mutex>
+
+#include "Core/phxSpan.h"
+
 constexpr inline unsigned long long operator "" _KiB(unsigned long long value)
 {
 	return value << 10;
@@ -53,6 +56,20 @@ namespace phx
 			return static_cast<T*>(Allocate(sizeof(T) * count, alignof(T)));
 		}
 
+		template<typename T>
+		[[nodiscard]] phx::Span<T> AllocSpan(size_t count)
+		{
+			T* ptr = this->AllocArray(count);
+			return Span<T>(ptr, count);
+		}
+
+		template<typename T>
+		[[nodiscard]] phx::SpanMutable<T> AllocSpanMutable(size_t count)
+		{
+			T* ptr = this->AllocArray(count);
+			return SpanMutable<T>(ptr, count);
+		}
+
 		void* Allocate(size_t size, size_t alignment);
 
 		void Reset();
@@ -95,4 +112,6 @@ namespace phx
 
 		~ScopedScratchMarker() { Memory::GetScratchAllocator().FreeMarker(Marker); }
 	};
+
+#define BEGIN_TEMP_SCOPE ScopedScratchMarker _;
 }
