@@ -105,6 +105,12 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxPrimitives.h">
       <Filter>Core</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Resource\phxResource.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Resource\phxMesh.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
@@ -130,6 +136,9 @@
     </Filter>
     <Filter Include="World">
       <UniqueIdentifier>{a106e905-17a7-4b4e-bf2b-06315c0ccd92}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource">
+      <UniqueIdentifier>{e65d40f8-ded6-466b-b98d-8b5a1d7c6a8d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -184,6 +193,12 @@
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxPrimitives.cpp">
       <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Resource\phxResource.cpp">
+      <Filter>Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Resource\phxMesh.cpp">
+      <Filter>Resource</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

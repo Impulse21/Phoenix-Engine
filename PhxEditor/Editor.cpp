@@ -16,7 +16,7 @@ void phx::editor::Editor::OnStartup()
 
 	this->m_world = std::make_unique<World>();
 
-	// attach a cube
+	// attach a cube asset
 
 }
 
