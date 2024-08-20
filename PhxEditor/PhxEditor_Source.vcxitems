@@ -14,9 +14,11 @@
     <ProjectCapability Include="SourceItemsFromImports" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)AssetImporterGltf.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Editor.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)AssetImporterGltf.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Editor.cpp" />
   </ItemGroup>
 </Project>
