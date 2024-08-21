@@ -111,6 +111,12 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Resource\phxMesh.h">
       <Filter>Resource</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxStopWatch.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxVirtualFileSystem.h">
+      <Filter>Core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
@@ -199,6 +205,9 @@
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)Resource\phxMesh.cpp">
       <Filter>Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxVirtualFileSystem.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

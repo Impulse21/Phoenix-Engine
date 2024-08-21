@@ -16,11 +16,9 @@
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)AssetImporterGltf.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Editor.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)phxMeshPrefabFactory.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)AssetImporterGltf.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Editor.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)phxMeshPrefabFactory.cpp" />
   </ItemGroup>
 </Project>

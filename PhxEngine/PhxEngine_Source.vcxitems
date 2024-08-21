@@ -26,10 +26,12 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxPrimitives.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxSpan.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxStaticArray.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxStopWatch.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxStringHash.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxTimeStep.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxUUID.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxRefCountPtr.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxVirtualFileSystem.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)phxBaseInclude.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxLog.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxPlatform.h" />
@@ -60,6 +62,7 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxMemory.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxPrimitives.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxUUID.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxVirtualFileSystem.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)phxEngineCore.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Renderer\phxRendererForward.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Renderer\phxRenderSystemMesh.cpp" />
