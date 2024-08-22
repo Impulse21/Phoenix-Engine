@@ -45,8 +45,12 @@ namespace phx
 		virtual bool Unmount(const std::filesystem::path& path) = 0;
 	};
 
-	std::unique_ptr<IFileSystem> CreateNativeFileSystem();
-	std::unique_ptr<IFileSystem> CreateRelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::filesystem::path& baseBath);
-	std::unique_ptr<IRootFileSystem> CreateRootFileSystem();
-	std::unique_ptr<IBlob> CreateBlob(void* Data, size_t size);
+	namespace FileSystemFactory
+	{
+		std::unique_ptr<IFileSystem> CreateNativeFileSystem();
+		std::unique_ptr<IFileSystem> CreateRelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::filesystem::path& baseBath);
+		std::unique_ptr<IRootFileSystem> CreateRootFileSystem();
+		std::unique_ptr<IBlob> CreateBlob(void* Data, size_t size);
+
+	}
 }

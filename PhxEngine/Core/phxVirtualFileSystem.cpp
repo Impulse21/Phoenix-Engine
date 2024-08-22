@@ -291,22 +291,22 @@ bool RootFileSystem::FindMountPoint(const std::filesystem::path& path, std::file
     return false;
 }
 
-std::unique_ptr<IFileSystem> phx::CreateNativeFileSystem()
+std::unique_ptr<IFileSystem> phx::FileSystemFactory::CreateNativeFileSystem()
 {
     return std::make_unique<NativeFileSystem>();
 }
 
-std::unique_ptr<IFileSystem> phx::CreateRelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::filesystem::path& basePath)
+std::unique_ptr<IFileSystem> phx::FileSystemFactory::CreateRelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::filesystem::path& basePath)
 {
     return std::make_unique<RelativeFileSystem>(fs, basePath);
 }
 
-std::unique_ptr<IRootFileSystem> phx::CreateRootFileSystem()
+std::unique_ptr<IRootFileSystem> phx::FileSystemFactory::CreateRootFileSystem()
 {
     return std::make_unique<RootFileSystem>();
 }
 
-std::unique_ptr<IBlob> phx::CreateBlob(void* Data, size_t size)
+std::unique_ptr<IBlob> phx::FileSystemFactory::CreateBlob(void* Data, size_t size)
 {
     return std::make_unique<Blob>(Data, size);
 }
