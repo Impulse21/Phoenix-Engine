@@ -8,10 +8,10 @@ using namespace phx;
 
 Entity World::CreateEntity(std::string const& name)
 {
-	return this->CreateEntity(UUID(), name);
+	return this->CreateEntity(phx::UUID(), name);
 }
 
-Entity World::CreateEntity(UUID uuid, std::string const& name)
+Entity World::CreateEntity(phx::UUID uuid, std::string const& name)
 {
 	Entity entity = { this->m_registry.create(), this };
 	entity.AddComponent<IDComponent>(uuid);

@@ -4,6 +4,9 @@
 
 #define PHX_UNUSED [[maybe_unused]]
 
+#ifdef _WIN32
+#define STRUCT_ALIGN(x) __declspec(align(x))
+#endif
 
 struct NonMoveable
 {

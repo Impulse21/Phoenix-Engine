@@ -12,6 +12,9 @@
 #include <Core/phxVirtualFileSystem.h>
 
 #include "3rdParty/nlohmann/json.hpp"
+#include "phxModelImporter.h"
+#include "phxModelImporterGltf.h"
+
 
 using namespace phx;
 using namespace phx::core;
@@ -63,10 +66,17 @@ int main(int argc, const char** argv)
 #endif
 
 	PHX_INFO("Creating PhxArchive '%s' from '%s'", outputDirectory.c_str(), gltfInput.c_str());
-	std::unique_ptr<IFileSystem> fileSystem = FileSystemFactory::CreateNativeFileSystem();
+	std::unique_ptr<IFileSystem> fs = FileSystemFactory::CreateNativeFileSystem();
 
+	phxModelImporterGltf gltfImporter;
 	// Import Model from GLTF
-	phx::Stop
+	phx::StopWatch elapsedTime;
+
+	ModelData model = {};
+	gltfImporter.Import(fs.get(), gltfInput, model);
+	PHX_INFO("Importing GLTF File took %f seconds", elapsedTime.Elapsed().GetSeconds());
+
+
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu

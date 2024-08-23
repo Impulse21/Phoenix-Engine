@@ -1,6 +1,7 @@
 #pragma once
 
 #include "entt/entt.hpp"
+#include "Core/phxUUID.h"
 
 namespace phx
 {
@@ -28,7 +29,7 @@ namespace phx
 
 
 		Entity CreateEntity(std::string const& name = std::string());
-		Entity CreateEntity(UUID uuid, std::string const& name = std::string());
+		Entity CreateEntity(phx::UUID uuid, std::string const& name = std::string());
 
 		void DestroyEntity(Entity& entity);
 

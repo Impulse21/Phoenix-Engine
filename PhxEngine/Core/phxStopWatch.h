@@ -1,9 +1,9 @@
 #pragma once
 
 #include <chrono>
-#include "TimeStep.h"
+#include "phxTimeStep.h"
 
-namespace PhxEngine::Core
+namespace phx
 {
 	class StopWatch
 	{

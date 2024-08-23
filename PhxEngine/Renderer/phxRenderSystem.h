@@ -18,8 +18,8 @@ namespace phx
 	class RenderSystemMesh : public IRenderSystem
 	{
 	public:
-		RenderSystemMesh();
-		~RenderSystemMesh() override;
+		RenderSystemMesh() = default;
+		~RenderSystemMesh() override = default;
 
 		void* CacheData(World const& world) override;
 		void Render() override;

@@ -96,9 +96,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxRenderComponents.h">
       <Filter>Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)World\phxPrefabFactory.h">
-      <Filter>World</Filter>
-    </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxRefCountPtr.h">
       <Filter>Core</Filter>
     </ClInclude>
@@ -108,14 +105,14 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Resource\phxResource.h">
       <Filter>Resource</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)Resource\phxMesh.h">
-      <Filter>Resource</Filter>
-    </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxStopWatch.h">
       <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxVirtualFileSystem.h">
       <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxConstantBuffers.h">
+      <Filter>Renderer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -194,16 +191,10 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Renderer\phxRenderSystemMesh.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)World\phxPrefabFactory.cpp">
-      <Filter>World</Filter>
-    </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxPrimitives.cpp">
       <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)Resource\phxResource.cpp">
-      <Filter>Resource</Filter>
-    </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)Resource\phxMesh.cpp">
       <Filter>Resource</Filter>
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)Core\phxVirtualFileSystem.cpp">
