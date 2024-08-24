@@ -4,6 +4,12 @@
 namespace phx::renderer
 {
     enum { kBaseColor, kMetallicRoughness, kOcclusion, kEmissive, kNormal, kNumTextures };
+
+
+#pragma warning( push )
+#pragma warning( disable : 4324)
+
+
 	STRUCT_ALIGN(256) struct MaterialConstants
 	{
 		float BaseColour[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -33,4 +39,7 @@ namespace phx::renderer
             };
         };
 	};
+
+    // Your function
+#pragma warning( pop ) 
 }

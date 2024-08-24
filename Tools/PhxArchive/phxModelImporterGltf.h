@@ -12,6 +12,7 @@ struct cgltf_data;
 
 namespace phx
 {
+	class IBlob;
 	struct CgltfContext
 	{
 		IFileSystem* FileSystem;
