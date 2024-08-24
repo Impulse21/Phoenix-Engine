@@ -5,8 +5,11 @@
 
 #include <Core/phxVirtualFileSystem.h>
 #include <Core/phxLog.h>
+#include <Core/phxMath.h>
 
 #include <Renderer/phxConstantBuffers.h>
+
+#include <map>
 
 using namespace phx;
 using namespace phx::renderer;
@@ -97,11 +100,46 @@ void phx::phxModelImporterGltf::BuildMaterials(ModelData& outModel)
 	outModel.TextureNames.resize(this->m_gltfData->textures_count);
 	for (size_t i = 0; i < this->m_gltfData->textures_count; ++i)
 	{
-		outModel.TextureNames[i] = this->m_gltfData->textures[i].name;
+		outModel.TextureNames[i] = this->m_gltfData->textures[i].image->name;
 	}
 
+	std::map<std::string, uint8_t> textureOptions;
 	const uint32_t numMaterials = (uint32_t)this->m_gltfData->materials_count;
 
 	outModel.MaterialConstants.resize(numMaterials);
 	outModel.MaterialTextures.resize(numMaterials);
+
+	for (size_t i = 0; i < this->m_gltfData->materials_count; i++)
+	{
+		const cgltf_material& srcMat = this->m_gltfData->materials[i];
+		MaterialConstantData& material = outModel.MaterialConstants[i];
+
+		material.Flags = 0u;
+		material.AlphaCutoff = DirectX::XMConvertFloatToHalf(0.5f);
+
+		if (srcMat.has_pbr_metallic_roughness)
+		{
+			const cgltf_pbr_metallic_roughness& pbr = srcMat.pbr_metallic_roughness;
+			material.BaseColour[0] = pbr.base_color_factor[0];
+			material.BaseColour[1] = pbr.base_color_factor[1];
+			material.BaseColour[2] = pbr.base_color_factor[2];
+			material.BaseColour[3] = pbr.base_color_factor[3];
+			material.Metalness = pbr.metallic_factor;
+			material.Rougness = pbr.roughness_factor;
+
+			material.BaseColorUV = pbr.base_color_texture.texcoord;
+		}
+
+		material.EmissiveColour[0] = srcMat.emissive_factor[0];
+		material.EmissiveColour[1] = srcMat.emissive_factor[1];
+		material.EmissiveColour[2] = srcMat.emissive_factor[2];
+		material.EmissiveUV = srcMat.emissive_texture.texcoord;
+
+		if (srcMat.alpha_mode == cgltf_alpha_mode_blend)
+			material.AlphaBlend = true;
+		else if (srcMat.alpha_mode == cgltf_alpha_mode_mask)
+			material.AlphaTest = true;
+
+		material.AlphaCutoff = DirectX::XMConvertFloatToHalf((float)material.AlphaCutoff);
+	}
 }

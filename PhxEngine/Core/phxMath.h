@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DirectXMath.h>
+#include <DirectXPackedVector.h>
 #include <algorithm>
 
 namespace phx::math
