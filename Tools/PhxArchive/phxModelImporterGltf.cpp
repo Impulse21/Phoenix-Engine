@@ -128,6 +128,7 @@ void phx::phxModelImporterGltf::BuildMaterials(ModelData& outModel)
 			material.Rougness = pbr.roughness_factor;
 
 			material.BaseColorUV = pbr.base_color_texture.texcoord;
+			material.MetallicRoughnessUV = pbr.metallic_roughness_texture.texcoord;
 		}
 
 		material.EmissiveColour[0] = srcMat.emissive_factor[0];
@@ -135,11 +136,19 @@ void phx::phxModelImporterGltf::BuildMaterials(ModelData& outModel)
 		material.EmissiveColour[2] = srcMat.emissive_factor[2];
 		material.EmissiveUV = srcMat.emissive_texture.texcoord;
 
+		material.NormalUV = srcMat.normal_texture.texcoord;
+		material.OcclusionUV = srcMat.occlusion_texture.texcoord;
+
 		if (srcMat.alpha_mode == cgltf_alpha_mode_blend)
 			material.AlphaBlend = true;
 		else if (srcMat.alpha_mode == cgltf_alpha_mode_mask)
 			material.AlphaTest = true;
 
 		material.AlphaCutoff = DirectX::XMConvertFloatToHalf((float)material.AlphaCutoff);
+		material.TwoSided = srcMat.double_sided;
+
+		MaterialTextureData& dstTexture = outModel.MaterialTextures[i];
+		dstTexture.AddressModes = 0;
+
 	}
 }

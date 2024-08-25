@@ -43,8 +43,8 @@ namespace phx
     // Used at load time to construct descriptor tables
     struct MaterialTextureData
     {
-		uint16_t stringIdx[renderer::kNumTextures];
-        uint32_t addressModes;
+		uint16_t StringIdx[renderer::kNumTextures];
+        uint32_t AddressModes;
     };
 
 	struct ModelData
