@@ -94,6 +94,7 @@
   <ItemGroup>
     <ClInclude Include="phxModelImporter.h" />
     <ClInclude Include="phxModelImporterGltf.h" />
+    <ClInclude Include="phxTextureConvert.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

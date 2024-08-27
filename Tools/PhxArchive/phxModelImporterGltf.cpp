@@ -109,8 +109,35 @@ void phx::phxModelImporterGltf::BuildMaterials(ModelData& outModel)
 	outModel.MaterialConstants.resize(numMaterials);
 	outModel.MaterialTextures.resize(numMaterials);
 
+	auto SetTextureData = [&outModel](cgltf_data* gltfData, cgltf_texture* texture, int mtlIdx, int texIdx) {
+		MaterialTextureData& dstTexture = outModel.MaterialTextures[mtlIdx];
+		dstTexture.StringIdx[texIdx];
+
+		if (!texture)
+		{
+			dstTexture.AddressModes |= 0x5 << (texIdx * 4);
+			return;
+		}
+
+		dstTexture.StringIdx[texIdx] = uint16_t(texture - gltfData->textures);
+
+		if (texture->sampler)
+		{
+			dstTexture.AddressModes |= texture->sampler->wrap_s << (texIdx * 4);
+			dstTexture.AddressModes |= texture->sampler->wrap_t << (texIdx * 4 + 2);
+		}
+		else 
+		{
+			dstTexture.AddressModes |= 0x5 << (texIdx * 4);
+		}
+
+	};
+
 	for (size_t i = 0; i < this->m_gltfData->materials_count; i++)
 	{
+		MaterialTextureData& dstTexture = outModel.MaterialTextures[i];
+		dstTexture.AddressModes = 0;
+
 		const cgltf_material& srcMat = this->m_gltfData->materials[i];
 		MaterialConstantData& material = outModel.MaterialConstants[i];
 
@@ -128,16 +155,23 @@ void phx::phxModelImporterGltf::BuildMaterials(ModelData& outModel)
 			material.Rougness = pbr.roughness_factor;
 
 			material.BaseColorUV = pbr.base_color_texture.texcoord;
+			SetTextureData(this->m_gltfData, pbr.base_color_texture.texture, i, kBaseColor);
+
 			material.MetallicRoughnessUV = pbr.metallic_roughness_texture.texcoord;
+			SetTextureData(this->m_gltfData, pbr.metallic_roughness_texture.texture, i, kMetallicRoughness);
 		}
 
 		material.EmissiveColour[0] = srcMat.emissive_factor[0];
 		material.EmissiveColour[1] = srcMat.emissive_factor[1];
 		material.EmissiveColour[2] = srcMat.emissive_factor[2];
 		material.EmissiveUV = srcMat.emissive_texture.texcoord;
+		SetTextureData(this->m_gltfData, srcMat.emissive_texture.texture, i, kEmissive);
 
 		material.NormalUV = srcMat.normal_texture.texcoord;
+		SetTextureData(this->m_gltfData, srcMat.normal_texture.texture, i, kNormal);
+
 		material.OcclusionUV = srcMat.occlusion_texture.texcoord;
+		SetTextureData(this->m_gltfData, srcMat.occlusion_texture.texture, i, kOcclusion);
 
 		if (srcMat.alpha_mode == cgltf_alpha_mode_blend)
 			material.AlphaBlend = true;
@@ -146,9 +180,5 @@ void phx::phxModelImporterGltf::BuildMaterials(ModelData& outModel)
 
 		material.AlphaCutoff = DirectX::XMConvertFloatToHalf((float)material.AlphaCutoff);
 		material.TwoSided = srcMat.double_sided;
-
-		MaterialTextureData& dstTexture = outModel.MaterialTextures[i];
-		dstTexture.AddressModes = 0;
-
 	}
 }
