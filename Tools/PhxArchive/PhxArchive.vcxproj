@@ -82,6 +82,7 @@
   <ItemGroup>
     <ClCompile Include="PhxArchive.cpp" />
     <ClCompile Include="phxModelImporterGltf.cpp" />
+    <ClCompile Include="phxTextureConvert.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\PhxEngine\PhxEngine_Windows.vcxproj">

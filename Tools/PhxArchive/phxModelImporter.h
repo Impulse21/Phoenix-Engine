@@ -52,6 +52,7 @@ namespace phx
 		std::vector<std::string> TextureNames;
 		std::vector<MaterialConstantData> MaterialConstants;
 		std::vector<MaterialTextureData> MaterialTextures;
+        std::vector<uint8_t> TextureOptions;
 	};
 
 	class ModelImporter

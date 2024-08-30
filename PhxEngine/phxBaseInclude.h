@@ -8,6 +8,7 @@
 #define STRUCT_ALIGN(x) __declspec(align(x))
 #endif
 
+#define BIT(b) 1 << b
 struct NonMoveable
 {
     NonMoveable() = default;

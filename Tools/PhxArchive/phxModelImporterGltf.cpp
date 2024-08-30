@@ -8,8 +8,9 @@
 #include <Core/phxMath.h>
 
 #include <Renderer/phxConstantBuffers.h>
+#include "phxTextureConvert.h"
 
-#include <map>
+#include <unordered_map>
 
 using namespace phx;
 using namespace phx::renderer;
@@ -47,6 +48,12 @@ namespace
 		void*)
 	{
 		// do nothing
+	}
+
+	inline void SetTextureOptions(std::unordered_map<std::string, uint8_t>& optionsMap, cgltf_texture* texture, uint8_t options)
+	{
+		if (texture && texture->image && optionsMap.find(texture->image->uri) == optionsMap.end())
+			optionsMap[texture->image->uri] = options;
 	}
 }
 
@@ -103,7 +110,7 @@ void phx::phxModelImporterGltf::BuildMaterials(ModelData& outModel)
 		outModel.TextureNames[i] = this->m_gltfData->textures[i].image->name;
 	}
 
-	std::map<std::string, uint8_t> textureOptions;
+	std::unordered_map<std::string, uint8_t> textureOptions;
 	const uint32_t numMaterials = (uint32_t)this->m_gltfData->materials_count;
 
 	outModel.MaterialConstants.resize(numMaterials);
@@ -180,5 +187,36 @@ void phx::phxModelImporterGltf::BuildMaterials(ModelData& outModel)
 
 		material.AlphaCutoff = DirectX::XMConvertFloatToHalf((float)material.AlphaCutoff);
 		material.TwoSided = srcMat.double_sided;
+
+		// -- Set Texture Conversion options ---
+		if (srcMat.has_pbr_metallic_roughness)
+		{
+			const cgltf_pbr_metallic_roughness& pbr = srcMat.pbr_metallic_roughness;
+			SetTextureOptions(textureOptions, pbr.base_color_texture.texture, TextureOptions(true, material.AlphaBlend | material.AlphaTest));
+			SetTextureOptions(textureOptions, pbr.metallic_roughness_texture.texture, TextureOptions(false));
+		}
+
+		SetTextureOptions(textureOptions, srcMat.occlusion_texture.texture, TextureOptions(false));
+		SetTextureOptions(textureOptions, srcMat.emissive_texture.texture, TextureOptions(true));
+		SetTextureOptions(textureOptions, srcMat.normal_texture.texture, TextureOptions(false));
 	}
+
+	const bool compileTextures = true;
+	outModel.TextureOptions.clear();
+	for (auto& name : outModel.TextureNames)
+	{
+		auto iter = textureOptions.find(name);
+		if (iter != textureOptions.end())
+		{
+			outModel.TextureOptions.push_back(iter->second);
+			if (compileTextures)
+				CompileTextureOnDemand(asset.m_basePath + Utility::UTF8ToWideString(iter->first), iter->second);
+		}
+		else
+		{
+			outModel.TextureOptions.push_back(0xFF);
+		}
+	}
+
+	assert(outModel.TextureOptions.size() == outModel.TextureNames.size());
 }

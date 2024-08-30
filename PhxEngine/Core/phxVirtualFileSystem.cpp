@@ -310,3 +310,18 @@ std::unique_ptr<IBlob> phx::FileSystemFactory::CreateBlob(void* Data, size_t siz
 {
     return std::make_unique<Blob>(Data, size);
 }
+
+std::string FileSystem::GetFileNameWithoutExt(std::string const& path)
+{
+    return std::filesystem::path(path).stem().generic_string();
+}
+
+std::string FileSystem::GetFileExt(std::string const& path)
+{
+    return std::filesystem::path(path).extension().generic_string();
+}
+
+std::filesystem::file_time_type GetLastWriteTime(std::string const& path)
+{
+    return std::filesystem::last_write_time(path);
+}

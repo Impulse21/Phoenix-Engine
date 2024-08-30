@@ -45,6 +45,13 @@ namespace phx
 		virtual bool Unmount(const std::filesystem::path& path) = 0;
 	};
 
+	namespace FileSystem
+	{
+		std::string GetFileNameWithoutExt(std::string const& path);
+		std::string GetFileExt(std::string const& path);
+		std::filesystem::file_time_type GetLastWriteTime(std::string const& path);
+	}
+
 	namespace FileSystemFactory
 	{
 		std::unique_ptr<IFileSystem> CreateNativeFileSystem();
