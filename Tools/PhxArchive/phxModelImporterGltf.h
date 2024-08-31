@@ -22,7 +22,9 @@ namespace phx
 	class phxModelImporterGltf final : public ModelImporter
 	{
 	public:
-		phxModelImporterGltf() = default;
+		phxModelImporterGltf(IFileSystem* fs)
+			: m_fs(fs)
+		{}
 		~phxModelImporterGltf() override = default;
 
 		bool Import(IFileSystem* fs, std::string const& filename, ModelData& outModel) override;
@@ -31,6 +33,7 @@ namespace phx
 		void BuildMaterials(ModelData& outModel);
 
 	private:
+		IFileSystem* m_fs = nullptr;
 		std::unordered_map<cgltf_mesh*, size_t> m_meshIndexLut;
 		std::unordered_map<cgltf_material*, size_t> m_materialIndexLut;
 		std::unordered_map<cgltf_texture*, size_t> m_textureIndexLut;

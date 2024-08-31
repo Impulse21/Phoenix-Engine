@@ -3,7 +3,9 @@
 #include <string>
 #include <vector>
 
+#include <Core/phxPrimitives.h>
 #include <Renderer/phxConstantBuffers.h>
+#include <Resource/phxResource.h>
 
 namespace phx
 {
@@ -49,10 +51,16 @@ namespace phx
 
 	struct ModelData
 	{
+        Sphere BoundingSphere;
+        AABB BoundingBox;
+        std::vector<uint8_t> GeometryData;
 		std::vector<std::string> TextureNames;
 		std::vector<MaterialConstantData> MaterialConstants;
 		std::vector<MaterialTextureData> MaterialTextures;
+        std::vector<Mesh*> Meshes;
         std::vector<uint8_t> TextureOptions;
+
+        std::vector<GraphNode> SceneGraph;
 	};
 
 	class ModelImporter
