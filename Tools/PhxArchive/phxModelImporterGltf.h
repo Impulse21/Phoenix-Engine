@@ -1,6 +1,7 @@
 #pragma once
 
 #include "phxModelImporter.h"
+#include <Core/phxMath.h>
 #include <unordered_map>
 #include <vector>
 #include <memory>
@@ -31,6 +32,16 @@ namespace phx
 
 	private:
 		void BuildMaterials(ModelData& outModel);
+		uint32_t WalkGraphRec(
+			std::vector<GraphNode>& sceneGraph,
+			Sphere& modelBSphere,
+			AABB& modelBBox,
+			std::vector<Mesh*>& meshList,
+			std::vector<uint8_t>& bufferMemory,
+			cgltf_node** siblings,
+			uint32_t numSiblings,
+			uint32_t curPos,
+			DirectX::XMMATRIX const& xform);
 
 	private:
 		IFileSystem* m_fs = nullptr;

@@ -5,7 +5,6 @@
 
 #include <Core/phxVirtualFileSystem.h>
 #include <Core/phxLog.h>
-#include <Core/phxMath.h>
 
 #include <Renderer/phxConstantBuffers.h>
 #include "phxTextureConvert.h"
@@ -54,76 +53,6 @@ namespace
 	{
 		if (texture && texture->image && optionsMap.find(texture->image->uri) == optionsMap.end())
 			optionsMap[texture->image->uri] = options;
-	}
-
-	uint32_t WalkGraphRec(
-		std::vector<GraphNode>& sceneGraph,
-		Sphere& modelBSphere,
-		AABB& modelBBox,
-		std::vector<Mesh*>& meshList,
-		std::vector<uint8_t>& bufferMemory,
-		cgltf_node** siblings,
-		uint32_t numSiblings,
-		uint32_t curPos,
-		DirectX::XMMATRIX const& xform)
-	{
-		// TODO: I am here.
-		for (size_t i = 0; i < numSiblings; ++i)
-		{
-			glTF::Node* curNode = siblings[i];
-			GraphNode& thisGraphNode = sceneGraph[curPos];
-			thisGraphNode.hasChildren = 0;
-			thisGraphNode.hasSibling = 0;
-			thisGraphNode.matrixIdx = curPos;
-			thisGraphNode.skeletonRoot = curNode->skeletonRoot;
-			curNode->linearIdx = curPos;
-
-			// They might not be used, but we have space to hold the neutral values which could be
-			// useful when updating the matrix via animation.
-			std::memcpy((float*)&thisGraphNode.scale, curNode->scale, sizeof(curNode->scale));
-			std::memcpy((float*)&thisGraphNode.rotation, curNode->rotation, sizeof(curNode->rotation));
-
-			if (curNode->hasMatrix)
-			{
-				std::memcpy((float*)&thisGraphNode.xform, curNode->matrix, sizeof(curNode->matrix));
-			}
-			else
-			{
-				thisGraphNode.xform = Matrix4(
-					Matrix3(thisGraphNode.rotation) * Matrix3::MakeScale(thisGraphNode.scale),
-					Vector3(*(const XMFLOAT3*)curNode->translation)
-				);
-			}
-
-			const Matrix4 LocalXform = xform * thisGraphNode.xform;
-
-			if (!curNode->pointsToCamera && curNode->mesh != nullptr)
-			{
-				BoundingSphere sphereOS;
-				AxisAlignedBox boxOS;
-				CompileMesh(meshList, bufferMemory, *curNode->mesh, curPos, LocalXform, sphereOS, boxOS);
-				modelBSphere = modelBSphere.Union(sphereOS);
-				modelBBox.AddBoundingBox(boxOS);
-			}
-
-			uint32_t nextPos = curPos + 1;
-
-			if (curNode->children.size() > 0)
-			{
-				thisGraphNode.hasChildren = 1;
-				nextPos = WalkGraphRec(sceneGraph, modelBSphere, modelBBox, meshList, bufferMemory, curNode->children, nextPos, LocalXform);
-			}
-
-			// Are there more siblings?
-			if (i + 1 < numSiblings)
-			{
-				thisGraphNode.hasSibling = 1;
-			}
-
-			curPos = nextPos;
-		}
-
-		return curPos;
 	}
 }
 
@@ -312,4 +241,71 @@ void phx::phxModelImporterGltf::BuildMaterials(ModelData& outModel)
 	}
 
 	assert(outModel.TextureOptions.size() == outModel.TextureNames.size());
+}
+
+uint32_t phx::phxModelImporterGltf::WalkGraphRec(
+	std::vector<GraphNode>& sceneGraph,
+	Sphere& modelBSphere,
+	AABB& modelBBox,
+	std::vector<Mesh*>& meshList,
+	std::vector<uint8_t>& bufferMemory,
+	cgltf_node** siblings,
+	uint32_t numSiblings,
+	uint32_t curPos,
+	DirectX::XMMATRIX const& xform)
+{
+	for (size_t i = 0; i < numSiblings; ++i)
+	{
+		cgltf_node* curNode = siblings[i];
+		GraphNode& thisGraphNode = sceneGraph[curPos];
+		thisGraphNode.HasSibling = 0;
+		thisGraphNode.MatrixIdx = curPos;
+		thisGraphNode.SkeletonRoot = static_cast<uint32_t>(curNode->skin - this->m_gltfData->skins);
+
+		// They might not be used, but we have space to hold the neutral values which could be
+		// useful when updating the matrix via animation.
+		std::memcpy((float*)&thisGraphNode.Scale, curNode->scale, sizeof(curNode->scale));
+		std::memcpy((float*)&thisGraphNode.Rotation, curNode->rotation, sizeof(curNode->rotation));
+
+		if (curNode->has_translation)
+		{
+			std::memcpy((float*)&thisGraphNode.XForm, curNode->matrix, sizeof(curNode->matrix));
+		}
+		else
+		{
+			thisGraphNode.XForm = DirectX::XMFLoat4X4(
+				Matrix3(thisGraphNode.rotation) * Matrix3::MakeScale(thisGraphNode.scale),
+				Vector3(*(const XMFLOAT3*)curNode->translation)
+			);
+		}
+
+		const Matrix4 LocalXform = xform * thisGraphNode.xform;
+
+		if (!curNode->pointsToCamera && curNode->mesh != nullptr)
+		{
+			BoundingSphere sphereOS;
+			AxisAlignedBox boxOS;
+			CompileMesh(meshList, bufferMemory, *curNode->mesh, curPos, LocalXform, sphereOS, boxOS);
+			modelBSphere = modelBSphere.Union(sphereOS);
+			modelBBox.AddBoundingBox(boxOS);
+		}
+
+		uint32_t nextPos = curPos + 1;
+
+		if (curNode->children.size() > 0)
+		{
+			thisGraphNode.hasChildren = 1;
+			nextPos = WalkGraphRec(sceneGraph, modelBSphere, modelBBox, meshList, bufferMemory, curNode->children, nextPos, LocalXform);
+		}
+
+		// Are there more siblings?
+		if (i + 1 < numSiblings)
+		{
+			thisGraphNode.hasSibling = 1;
+		}
+
+		curPos = nextPos;
+	}
+
+	return curPos;
 }
