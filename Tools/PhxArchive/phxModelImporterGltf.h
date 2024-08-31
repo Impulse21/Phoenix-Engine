@@ -43,6 +43,15 @@ namespace phx
 			uint32_t curPos,
 			DirectX::XMMATRIX const& xform);
 
+		void CompileMesh(
+			std::vector<Mesh*>& meshList,
+			std::vector<uint8_t>& bufferMemory,
+			cgltf_mesh& srcMesh,
+			uint32_t matrixIdx,
+			const DirectX::XMMATRIX& localToObject,
+			Sphere& boundingSphere,
+			AABB& boundingBox);
+
 	private:
 		IFileSystem* m_fs = nullptr;
 		std::unordered_map<cgltf_mesh*, size_t> m_meshIndexLut;

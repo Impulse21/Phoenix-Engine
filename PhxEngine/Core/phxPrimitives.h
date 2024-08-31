@@ -30,6 +30,38 @@ namespace phx
 			, Radius(r) 
 		{}
 
+		Sphere Union(Sphere const& rhs)
+		{
+			using namespace DirectX;
+
+			float radA = this->Radius;
+			if (radA == 0.0f)
+				return rhs;
+
+			float radB = rhs.Radius;
+			if (radB == 0.0f)
+				return *this;
+
+			
+			DirectX::XMVECTOR vCenterA = DirectX::XMLoadFloat3(&this->Centre);
+			DirectX::XMVECTOR vCenterB = DirectX::XMLoadFloat3(&rhs.Centre);
+			DirectX::XMVECTOR diff = vCenterA - vCenterB;
+			float dist = DirectX::XMVectorGetX(DirectX::XMVector3Length(diff));
+			float distReciprocal = DirectX::XMVectorGetX(DirectX::XMVector3ReciprocalLength(diff));
+
+			// Safe normalize vector between sphere centers
+			diff = dist < 1e-6f ? DirectX::g_XMIdentityR0 : diff * distReciprocal;
+
+			DirectX::XMVECTOR extremeA = vCenterA + diff * std::max(radA, radB - dist);
+			DirectX::XMVECTOR extremeB = vCenterB - diff * std::max(radB, radA - dist);
+
+			DirectX::XMVECTOR newCentreV = (extremeA + extremeB) * 0.5f;
+			DirectX::XMFLOAT3 newCentre;
+			DirectX::XMStoreFloat3(&newCentre, newCentreV);
+			const float newLength = XMVectorGetX(DirectX::XMVector3Length((extremeA - extremeB) * 0.5f));
+
+			return Sphere(newCentre, newLength);
+		}
 	};
 
 	struct AABB

@@ -175,7 +175,6 @@ bool PhxEngine::Pipeline::GltfAssetImporter::Import(IFileSystem* fileSystem, std
 	importedObjects.Materials.resize(this->m_gltfData->materials_count);
 	importedObjects.Textures.resize(this->m_gltfData->textures_count);
 
-
 	for (int i = 0; i < this->m_gltfData->textures_count; i++)
 	{
 		cgltf_texture* texture = (this->m_gltfData->textures + i);
@@ -237,6 +236,7 @@ bool PhxEngine::Pipeline::GltfAssetImporter::ImportMesh(cgltf_mesh* gltfMesh, Pi
 		{
 			continue;
 		}
+
 		if (cgltfPrim.indices)
 		{
 			assert(cgltfPrim.indices->component_type == cgltf_component_type_r_32u ||

@@ -8,11 +8,13 @@
 
 #include <Renderer/phxConstantBuffers.h>
 #include "phxTextureConvert.h"
+#include "phxMeshConvert.h"
 
 #include <unordered_map>
 
 using namespace phx;
 using namespace phx::renderer;
+using namespace DirectX;
 
 namespace
 {
@@ -266,7 +268,6 @@ uint32_t phx::phxModelImporterGltf::WalkGraphRec(
 		// useful when updating the matrix via animation.
 		std::memcpy((float*)&thisGraphNode.Scale, curNode->scale, sizeof(curNode->scale));
 		std::memcpy((float*)&thisGraphNode.Rotation, curNode->rotation, sizeof(curNode->rotation));
-		std::memcpy((float*)&thisGraphNode.Trans, curNode->rotation, sizeof(curNode->rotation));
 
 		if (curNode->has_matrix)
 		{
@@ -277,6 +278,11 @@ uint32_t phx::phxModelImporterGltf::WalkGraphRec(
 
 			DirectX::XMVECTOR localScale = XMLoadFloat3(&thisGraphNode.Scale);
 			DirectX::XMVECTOR localRotation = XMLoadFloat4(&thisGraphNode.Rotation);
+			DirectX::XMVECTOR localTranslation = {
+				curNode->translation[0],
+				curNode->translation[1],
+				curNode->translation[2],
+				1.0f };
 
 			DirectX::XMMATRIX result = 
 				DirectX::XMMatrixScalingFromVector(localScale) *
@@ -286,33 +292,68 @@ uint32_t phx::phxModelImporterGltf::WalkGraphRec(
 			DirectX::XMStoreFloat4x4(&thisGraphNode.XForm, result);
 		}
 
-		const Matrix4 LocalXform = xform * thisGraphNode.XForm;
+		const DirectX::XMMATRIX localXform = xform * DirectX::XMLoadFloat4x4(&thisGraphNode.XForm);
 
-		if (!curNode->pointsToCamera && curNode->mesh != nullptr)
+		if (!curNode->camera && curNode->mesh != nullptr)
 		{
-			BoundingSphere sphereOS;
-			AxisAlignedBox boxOS;
-			CompileMesh(meshList, bufferMemory, *curNode->mesh, curPos, LocalXform, sphereOS, boxOS);
+			Sphere sphereOS;
+			AABB boxOS;
+			CompileMesh(meshList, bufferMemory, *curNode->mesh, curPos, localXform, sphereOS, boxOS);
 			modelBSphere = modelBSphere.Union(sphereOS);
-			modelBBox.AddBoundingBox(boxOS);
+			modelBBox = AABB::Merge(modelBBox, boxOS);
 		}
 
 		uint32_t nextPos = curPos + 1;
 
-		if (curNode->children.size() > 0)
+		if (curNode->children_count > 0)
 		{
-			thisGraphNode.hasChildren = 1;
-			nextPos = WalkGraphRec(sceneGraph, modelBSphere, modelBBox, meshList, bufferMemory, curNode->children, nextPos, LocalXform);
+			thisGraphNode.HasChildren = 1;
+			nextPos = WalkGraphRec(
+				sceneGraph,
+				modelBSphere,
+				modelBBox,
+				meshList,
+				bufferMemory,
+				curNode->children,
+				curNode->children_count,
+				nextPos,
+				localXform);
 		}
 
 		// Are there more siblings?
 		if (i + 1 < numSiblings)
 		{
-			thisGraphNode.hasSibling = 1;
+			thisGraphNode.HasSibling = 1;
 		}
 
 		curPos = nextPos;
 	}
 
 	return curPos;
+}
+
+void phx::phxModelImporterGltf::CompileMesh(
+	std::vector<Mesh*>& meshList,
+	std::vector<uint8_t>& bufferMemory,
+	cgltf_mesh& srcMesh,
+	uint32_t matrixIdx,
+	const DirectX::XMMATRIX& localToObject,
+	Sphere& boundingSphere,
+	AABB& boundingBox)
+{
+	size_t totalVertexSize = 0;
+	size_t totalDepthVertexSize = 0;
+	size_t totalIndexSize = 0;
+
+	Sphere sphereOS;
+	AABB bboxOS;
+
+	std::vector<MeshConverter::Primitive> primitives(srcMesh.primitives_count);
+	for (size_t i = 0; i < srcMesh.primitives_count; i++)
+	{
+		MeshConverter::OptimizeMesh(primitives[i], srcMesh.primitives[i], localToObject);
+		sphereOS = sphereOS.Union(primitives[i].BoundsOS);
+		bboxOS = AABB::Merge(bboxOS, primitives[i].BBoxOS);
+	}
+
 }

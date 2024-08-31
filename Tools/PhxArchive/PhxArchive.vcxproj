@@ -81,6 +81,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="PhxArchive.cpp" />
+    <ClCompile Include="phxMeshConvert.cpp" />
     <ClCompile Include="phxModelImporterGltf.cpp" />
     <ClCompile Include="phxTextureConvert.cpp" />
   </ItemGroup>
@@ -93,6 +94,7 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="phxMeshConvert.h" />
     <ClInclude Include="phxModelImporter.h" />
     <ClInclude Include="phxModelImporterGltf.h" />
     <ClInclude Include="phxTextureConvert.h" />
