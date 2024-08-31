@@ -266,20 +266,27 @@ uint32_t phx::phxModelImporterGltf::WalkGraphRec(
 		// useful when updating the matrix via animation.
 		std::memcpy((float*)&thisGraphNode.Scale, curNode->scale, sizeof(curNode->scale));
 		std::memcpy((float*)&thisGraphNode.Rotation, curNode->rotation, sizeof(curNode->rotation));
+		std::memcpy((float*)&thisGraphNode.Trans, curNode->rotation, sizeof(curNode->rotation));
 
-		if (curNode->has_translation)
+		if (curNode->has_matrix)
 		{
 			std::memcpy((float*)&thisGraphNode.XForm, curNode->matrix, sizeof(curNode->matrix));
 		}
 		else
 		{
-			thisGraphNode.XForm = DirectX::XMFLoat4X4(
-				Matrix3(thisGraphNode.rotation) * Matrix3::MakeScale(thisGraphNode.scale),
-				Vector3(*(const XMFLOAT3*)curNode->translation)
-			);
+
+			DirectX::XMVECTOR localScale = XMLoadFloat3(&thisGraphNode.Scale);
+			DirectX::XMVECTOR localRotation = XMLoadFloat4(&thisGraphNode.Rotation);
+
+			DirectX::XMMATRIX result = 
+				DirectX::XMMatrixScalingFromVector(localScale) *
+				DirectX::XMMatrixRotationQuaternion(localRotation) *
+				DirectX::XMMatrixTranslationFromVector(localTranslation);
+
+			DirectX::XMStoreFloat4x4(&thisGraphNode.XForm, result);
 		}
 
-		const Matrix4 LocalXform = xform * thisGraphNode.xform;
+		const Matrix4 LocalXform = xform * thisGraphNode.XForm;
 
 		if (!curNode->pointsToCamera && curNode->mesh != nullptr)
 		{

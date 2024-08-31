@@ -42,7 +42,7 @@ namespace phx
 
     struct GraphNode
     {
-        DirectX::XMFLOAT4X4 XForm;
+        DirectX::XMFLOAT4X4 XForm;;
         DirectX::XMFLOAT4 Rotation; //quaterion
         DirectX::XMFLOAT3 Scale;
 
