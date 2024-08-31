@@ -21,13 +21,17 @@ void phx::MeshConverter::OptimizeMesh(
         return;
     }
 
+#if false
+
+	size_t indexCount = inPrim.ac;
+	size_t unindexed_vertex_count = face_count * 3;
+	std::vector<unsigned int> remap(index_count); // allocate temporary memory for the remap table
+	size_t vertex_count = meshopt_generateVertexRemap(&remap[0], NULL, index_count, &unindexed_vertices[0], unindexed_vertex_count, sizeof(Vertex));
+
+#endif 
+
 	if (inPrim.indices == nullptr)
 	{
-		size_t indexCount = face_count * 3;
-		size_t unindexed_vertex_count = face_count * 3;
-		std::vector<unsigned int> remap(index_count); // allocate temporary memory for the remap table
-		size_t vertex_count = meshopt_generateVertexRemap(&remap[0], NULL, index_count, &unindexed_vertices[0], unindexed_vertex_count, sizeof(Vertex));
-
 
 	}
 }
