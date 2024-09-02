@@ -9,7 +9,7 @@ struct cgltf_primitive;
 
 namespace phx::MeshConverter
 {
-    using ByteArray = std::shared_ptr<std::vector<uint8_t>>;
+    using ByteArray = std::shared_ptr<uint8_t[]>;
 
     struct Primitive
     {
@@ -19,7 +19,8 @@ namespace phx::MeshConverter
         AABB BBoxOS;        // object space AABB
         ByteArray VB;
         ByteArray IB;
-        ByteArray DepthVB;
+        uint32_t NumVertices;
+        uint32_t NumIndices;
         uint32_t PrimCount;
         union
         {
@@ -32,6 +33,7 @@ namespace phx::MeshConverter
         };
         uint16_t VertexStride;
     };
+
     void OptimizeMesh(
         Primitive& outPrim,
         cgltf_primitive const& inPrim,
