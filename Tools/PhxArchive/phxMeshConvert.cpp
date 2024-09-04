@@ -3,6 +3,8 @@
 #include <array>
 
 #include <Core/phxLog.h>
+#include <Core/phxBinaryBuilder.h>
+
 #include <cgltf/cgltf.h>
 #include <mesh-optimizer/meshoptimizer.h>
 
@@ -55,6 +57,8 @@ void phx::MeshConverter::OptimizeMesh(
 		kWeights,
 		kNumAccessors,
 	};
+	
+	BinaryBuilder builder;
 	std::array<const cgltf_accessor*, kNumAccessors> cgltfAccessors;
 	std::array<std::unique_ptr<uint8_t[]>, kNumAccessors> vertexData;
 	std::memset(cgltfAccessors.data(), 0, cgltfAccessors.size() * sizeof(cgltf_accessor*));

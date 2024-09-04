@@ -16,6 +16,7 @@
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)3rdParty\d3d12ma\D3D12MemAlloc.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)3rdParty\entt\entt.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxBinaryBuilder.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxBitSetAllocator.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxEnumArray.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxEnumClassFlags.h" />
@@ -41,6 +42,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxRenderComponents.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxRenderSystem.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxRendererForward.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxShaderInterop.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Resource\phxResource.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\d3dx12.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12BiindlessDescriptorTable.h" />
