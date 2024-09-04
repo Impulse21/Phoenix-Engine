@@ -61,12 +61,12 @@ namespace phx::renderer
 
 	};
 
-	struct VertexStreams
+	struct VertexStreamsHeader
 	{
 		VertexStreamDesc Desc[kNumStreams];
 	};
 
-	STATIC_ASSERT_SIZE_OF(VertexStreams, 4 * kNumStreams);
+	STATIC_ASSERT_SIZE_OF(VertexStreamsHeader, 4 * kNumStreams);
 #ifdef __cplusplus
 }
 #endif

@@ -4,6 +4,7 @@
 
 #include <Core/phxLog.h>
 #include <Core/phxBinaryBuilder.h>
+#include <Renderer/phxShaderInterop.h>
 
 #include <cgltf/cgltf.h>
 #include <mesh-optimizer/meshoptimizer.h>
@@ -45,22 +46,8 @@ void phx::MeshConverter::OptimizeMesh(
 	size_t vertex_count = meshopt_generateVertexRemap(&remap[0], NULL, index_count, &unindexed_vertices[0], unindexed_vertex_count, sizeof(Vertex));
 
 #endif 
-	enum kAccessorType
-	{
-		kPosition = 0,
-		kTangents,
-		kNormals,
-		kUV0,
-		kUV1,
-		kColour,
-		kJoints,
-		kWeights,
-		kNumAccessors,
-	};
-	
-	BinaryBuilder builder;
-	std::array<const cgltf_accessor*, kNumAccessors> cgltfAccessors;
-	std::array<std::unique_ptr<uint8_t[]>, kNumAccessors> vertexData;
+	std::array<const cgltf_accessor*, phx::renderer::kNumStreams> cgltfAccessors;
+	std::array<std::unique_ptr<uint8_t[]>, phx::renderer::kNumStreams> vertexData;
 	std::memset(cgltfAccessors.data(), 0, cgltfAccessors.size() * sizeof(cgltf_accessor*));
 
 	// Collect intreasted attributes
@@ -120,13 +107,20 @@ void phx::MeshConverter::OptimizeMesh(
 		}
 	}
 
-	if (cgltfAccessors[kPosition] == nullptr)
+	if (cgltfAccessors[phx::renderer::kPosition] == nullptr)
 	{
 		PHX_ERROR("Missing required Position attribute.");
 		return;
 	}
 
-	const size_t vertexCount = cgltfAccessors[kPosition]->count;
+
+	BinaryBuilder builder;
+	builder.Reserve<phx::renderer::VertexStreamsHeader>();
+	const size_t vertexCount = cgltfAccessors[phx::renderer::kPosition]->count;
+	for (size_t i = 0; i < cgltfAccessors.size(); i++)
+	{
+	}
+
 	for (size_t i = 0; i < cgltfAccessors.size(); i++)
 	{
 		const cgltf_accessor* accessor = cgltfAccessors[i];
