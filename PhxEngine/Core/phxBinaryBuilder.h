@@ -17,8 +17,13 @@ namespace phx
 		template<typename T>
 		size_t Reserve(size_t count = 1)
 		{
-			const size_t newStart = MemoryAlign(this->m_allocationSize, alignof(T));
-			this->m_allocationSize = newStart + sizeof(T) * count;
+			this->Reserve(sizeof(T), alignof(T), count);
+		}
+
+		size_t Reserve(size_t stride, size_t alignment, size_t count = 1)
+		{
+			const size_t newStart = MemoryAlign(this->m_allocationSize, alignment);
+			this->m_allocationSize = newStart + stride * count;
 			return newStart;
 		}
 
@@ -57,6 +62,12 @@ namespace phx
 			return  reinterpret_cast<T*>(this->m_memory.get() + offset);
 		}
 
+
+		void Place(size_t offset, const void* data, size_t size)
+		{
+			void* startAddr = this->m_memory.get() + offset;
+			std::memcpy(startAddr, data, size);
+		}
 
 		void Place(size_t offset, BinaryBuilder const& builder)
 		{
