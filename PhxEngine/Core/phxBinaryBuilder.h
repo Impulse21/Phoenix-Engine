@@ -37,7 +37,7 @@ namespace phx
 
 		void Commit()
 		{
-			this->m_memory = std::make_unique<char[]>(this->m_allocationSize);
+			this->m_memory = std::make_unique<uint8_t[]>(this->m_allocationSize);
 		}
 
 		template<typename T, typename... Args>
@@ -75,7 +75,7 @@ namespace phx
 			std::memcpy(startAddr, builder.Data(), builder.Size());
 		}
 
-		const char* Data() const
+		const uint8_t* Data() const
 		{
 			return this->m_memory.get();
 		}
@@ -85,12 +85,12 @@ namespace phx
 			return this->m_allocationSize;
 		}
 
-		Span<char> GetSpan() const { return Span<char>(this->m_memory.get(), this->m_allocationSize); }
+		Span<uint8_t> GetSpan() const { return Span<uint8_t>(this->m_memory.get(), this->m_allocationSize); }
 
-		std::shared_ptr<char[]> GetMemory()const { return this->m_memory; }
+		std::shared_ptr<uint8_t[]> GetMemory()const { return this->m_memory; }
 
 	private:
-		std::shared_ptr<char[]> m_memory;
+		std::shared_ptr<uint8_t[]> m_memory;
 		size_t m_allocationSize = 0;
 	};
 }

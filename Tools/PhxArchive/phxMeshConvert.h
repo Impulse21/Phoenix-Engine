@@ -17,8 +17,8 @@ namespace phx::MeshConverter
         Sphere BoundsOS;    // object space bounds
         AABB BBoxLS;        // local space AABB
         AABB BBoxOS;        // object space AABB
-        ByteArray VB;
-        ByteArray IB;
+        ByteArray VertexBuffer;
+        ByteArray IndexBuffer;
         uint32_t NumVertices;
         uint32_t NumIndices;
         uint32_t PrimCount;
@@ -31,7 +31,6 @@ namespace phx::MeshConverter
                 uint32_t MaterialIdx : 15;
             };
         };
-        uint16_t VertexStride;
     };
 
     void OptimizeMesh(

@@ -4,6 +4,7 @@
 
 #include <Core/phxLog.h>
 #include <Core/phxBinaryBuilder.h>
+#include <Core/phxMath.h>
 #include <Renderer/phxShaderInterop.h>
 
 #include <cgltf/cgltf.h>
@@ -90,80 +91,56 @@ void phx::MeshConverter::OptimizeMesh(
 
 	bool b32BitIndices = false;
 	const size_t vertexCount = inPrim.attributes->data->count;
+	size_t indexCount = 0;
 	outPrim.NumVertices = vertexCount;
 
 	BinaryBuilder indexBufferBuilder;
 	if (inPrim.indices)
 	{
-		const size_t indexCount = inPrim.indices->count;
+		indexCount = inPrim.indices->count;
 		outPrim.NumIndices = indexCount;
 
 		// copy the indices
-		auto [indexSrc, indexStride] = CgltfBufferAccessor(inPrim.indices, 0);
+		auto [indexSrc, indexSrcStride] = CgltfBufferAccessor(inPrim.indices, 0);
 		const size_t maxIndex = FindMaxIndex(inPrim.indices);
 
 		b32BitIndices = maxIndex > 0xFFFF;
-		const size_t bufferCount = b32BitIndices ? indexCount : indexCount / 2;
-
-		const size_t offset = indexBufferBuilder.Reserve<uint32_t>(bufferCount);
+		const size_t destStride = b32BitIndices ? 4 : 2;
+		const size_t bufferSize = destStride * indexCount;
+		const size_t offset = indexBufferBuilder.Reserve<uint8_t>(bufferSize);
 		indexBufferBuilder.Commit();
 
 		// TODO: Need to fill in the vertex buffer.
-		uint32_t* indexDst = indexBufferBuilder.Place<uint32_t>(offset, bufferCount);
+		uint8_t* indexDst = indexBufferBuilder.Place<uint8_t>(offset, bufferSize);
 		switch (inPrim.indices->component_type)
 		{
 		case cgltf_component_type_r_8u:
-			if (!indexStride)
-			{
-				indexStride = sizeof(uint8_t);
-			}
-
-			for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
-			{
-				*indexDst = *(const uint8_t*)indexSrc;
-
-				indexSrc += indexStride;
-				indexDst++;
-			}
+			indexSrcStride = sizeof(uint8_t);
 			break;
-
 		case cgltf_component_type_r_16u:
-			if (!indexStride)
-			{
-				indexStride = sizeof(uint16_t);
-			}
-
-			for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
-			{
-				*indexDst = *(const uint16_t*)indexSrc;
-
-				indexSrc += indexStride;
-				indexDst++;
-			}
+			indexSrcStride = sizeof(uint16_t);
 			break;
-
 		case cgltf_component_type_r_32u:
-			if (!indexStride)
-			{
-				indexStride = sizeof(uint32_t);
-			}
-
-			for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
-			{
-				*indexDst = *(const uint32_t*)indexSrc;
-
-				indexSrc += indexStride;
-				indexDst++;
-			}
+			indexSrcStride = sizeof(uint32_t);
 			break;
-
 		default:
 			assert(false);
+		}
+
+		for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
+		{
+			std::memcpy(
+				indexDst,
+				indexSrc,
+				indexSrcStride);
+
+			indexSrc += indexSrcStride;
+			indexDst += destStride;
 		}
 	}
 	else
 	{
-		const size_t indexCount = vertexCount;
+		indexCount = vertexCount;
 		outPrim.NumIndices = indexCount;
 		b32BitIndices = indexCount > 0xFFFF;
 		const size_t bufferCount = b32BitIndices ? indexCount : indexCount / 2;
@@ -185,6 +162,8 @@ void phx::MeshConverter::OptimizeMesh(
 			indexDst++;
 		}
 	}
+
+	outPrim.IndexBuffer = indexBufferBuilder.GetMemory();
 
 	struct AccessorInfoCache
 	{
@@ -295,67 +274,54 @@ void phx::MeshConverter::OptimizeMesh(
 	}
 
 	vertexBufferBuilder.Commit();
-	for (size_t i = 0; i < cgltfAccessors.size(); i++)
+	for (size_t i = 0; i < accessors.size(); i++)
 	{
-		auto& [accessor, defaultStride] = cgltfAccessors[i];
-		if (accessor)
+		const AccessorInfoCache& accessorInfo = accessors[i];
+		if (!accessorInfo.Accessor)
 		{
 			continue;
 		}
 
-		auto [data, dataStride] = CgltfBufferAccessor(accessor, defaultStride);
-		vertexBufferBuilder.Place(dataOffsets[i], data, dataStride * vertexCount);
-	}
-
-	bool is32BitIndices = false;
-	if (inPrim.indices == nullptr)
-	{
-		assert(false && "Need to implement this.");
-
-		uint32_t totalIndices = inPrim.vertex;
-		//meshopt_generateVertexRemap
-	}
-	else
-	{
-		assert(inPrim.indices->type == cgltf_type_scalar);
-		assert(inPrim.indices->component_type == cgltf_component_type_r_8u);
-
-		is32BitIndices = inPrim.indices->component_type == cgltf_component_type_r_32u;
-
-		const size_t indexCount = inPrim.indices->count;
-
-		auto [indexSrc, indexStride] = CgltfBufferAccessor(inPrim.indices, 0);
-		switch (inPrim.indices->stride)
+		auto [data, dataStride] = CgltfBufferAccessor(accessorInfo.Accessor, accessorInfo.DefaultStride);
+		if (i == kPosition)
 		{
-			case sizeof(uint8_t) :
-				for (size_t i = 0; i < indexCount; i += 3)
-				{
-					outMesh.Indices[indexOffset + i + 0] = vertexOffset + indexSrc[i + indexRemap[0]];
-					outMesh.Indices[indexOffset + i + 1] = vertexOffset + indexSrc[i + indexRemap[1]];
-					outMesh.Indices[indexOffset + i + 2] = vertexOffset + indexSrc[i + indexRemap[2]];
-				}
-			break;
-			case sizeof(uint16_t) :
-				for (size_t i = 0; i < indexCount; i += 3)
-				{
-					outMesh.Indices[indexOffset + i + 0] = vertexOffset + reinterpret_cast<const uint16_t*>(indexSrc)[i + indexRemap[0]];
-					outMesh.Indices[indexOffset + i + 1] = vertexOffset + reinterpret_cast<const uint16_t*>(indexSrc)[i + indexRemap[1]];
-					outMesh.Indices[indexOffset + i + 2] = vertexOffset + reinterpret_cast<const uint16_t*>(indexSrc)[i + indexRemap[2]];
-				}
-			break;
-			case sizeof(uint32_t) :
-				is32BitIndices = true;
-				for (size_t i = 0; i < indexCount; i += 3)
-				{
-					outMesh.Indices[indexOffset + i + 0] = vertexOffset + reinterpret_cast<const uint32_t*>(indexSrc)[i + indexRemap[0]];
-					outMesh.Indices[indexOffset + i + 1] = vertexOffset + reinterpret_cast<const uint32_t*>(indexSrc)[i + indexRemap[1]];
-					outMesh.Indices[indexOffset + i + 2] = vertexOffset + reinterpret_cast<const uint32_t*>(indexSrc)[i + indexRemap[2]];
-				}
-			break;
-			default:
-				assert(0 && "unsupported index stride!");
+			// Do bound box calculations as we read it in.
+			DirectX::XMFLOAT3* posDst = vertexBufferBuilder.Place<DirectX::XMFLOAT3>(accessorInfo.Offset, vertexCount);
+			const DirectX::XMFLOAT3* posSrc = reinterpret_cast<const DirectX::XMFLOAT3*>(data);
+
+			DirectX::XMFLOAT3 minBounds = DirectX::XMFLOAT3(math::cMaxFloat, math::cMaxFloat, math::cMaxFloat);
+			DirectX::XMFLOAT3 maxBounds = DirectX::XMFLOAT3(math::cMinFloat, math::cMinFloat, math::cMinFloat);
+
+			for (int i = 0; i < vertexCount; i++)
+			{
+				*posDst = *posSrc;
+				minBounds = math::Min(minBounds, *posDst);
+				maxBounds = math::Max(maxBounds, *posDst);
+
+				posDst++;
+				posSrc++;
+			}
+
+			outPrim.BBoxLS = AABB(minBounds, maxBounds);
+			outPrim.BoundsLS = Sphere(minBounds, maxBounds);
+			
+			DirectX::XMVECTOR boundsCoord = DirectX::XMLoadFloat3(&minBounds);
+			DirectX::XMVECTOR result = DirectX::XMVector3TransformCoord(boundsCoord, localToObject);
+			DirectX::XMStoreFloat3(&minBounds, result);
+
+			boundsCoord = DirectX::XMLoadFloat3(&maxBounds);
+			result = DirectX::XMVector3TransformCoord(boundsCoord, localToObject);
+			DirectX::XMStoreFloat3(&maxBounds, result);
+
+			outPrim.BBoxOS = AABB(minBounds, maxBounds);
+			outPrim.BoundsOS = Sphere(minBounds, maxBounds);
+		}
+		else
+		{
+			vertexBufferBuilder.Place(accessorInfo.Offset, data, dataStride * vertexCount);
+		}
 	}
 
-
-	assert(material.index < 0x8000 && "Only 15-bit material indices allowed");
+	outPrim.MaterialIdx;
+	outPrim.PrimCount = indexCount;
 }
