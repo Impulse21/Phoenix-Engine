@@ -17,6 +17,68 @@ using namespace phx::renderer;
 
 namespace
 {
+
+	template<typename T>
+	void ComputeTangentSpace(DirectX::XMFLOAT3* positions, DirectX::XMFLOAT2* texcoords, T* indices, size_t indexCount, size_t vertexCount, std::unique_ptr<DirectX::XMFLOAT4>& outTangents)
+	{
+		std::vector<DirectX::XMVECTOR> computedTangents(vertexCount);
+		std::vector<DirectX::XMVECTOR> computedBitangents(indexCount);
+
+		for (int i = 0; i < this->TotalIndices; i += 3)
+		{
+			auto& index0 = indices[i + 0];
+			auto& index1 = indices[i + 1];
+			auto& index2 = indices[i + 2];
+
+			// Vertices
+			DirectX::XMVECTOR pos0 = DirectX::XMLoadFloat3(&positions[index0]);
+			DirectX::XMVECTOR pos1 = DirectX::XMLoadFloat3(&positions[index1]);
+			DirectX::XMVECTOR pos2 = DirectX::XMLoadFloat3(&positions[index2]);
+
+			// UVs
+			DirectX::XMVECTOR uvs0 = DirectX::XMLoadFloat2(&this->TexCoords[index0]);
+			DirectX::XMVECTOR uvs1 = DirectX::XMLoadFloat2(&this->TexCoords[index1]);
+			DirectX::XMVECTOR uvs2 = DirectX::XMLoadFloat2(&this->TexCoords[index2]);
+
+			DirectX::XMVECTOR deltaPos1 = DirectX::XMVectorSubtract(pos1, pos0);
+			DirectX::XMVECTOR deltaPos2 = DirectX::XMVectorSubtract(pos2, pos0);
+
+			DirectX::XMVECTOR deltaUV1 = DirectX::XMVectorSubtract(uvs1, uvs0);
+			DirectX::XMVECTOR deltaUV2 = DirectX::XMVectorSubtract(uvs2, uvs0);
+
+			// TODO: Take advantage of SIMD better here
+			float r = 1.0f / (DirectX::XMVectorGetX(deltaUV1) * DirectX::XMVectorGetY(deltaUV2) - DirectX::XMVectorGetY(deltaUV1) * DirectX::XMVectorGetX(deltaUV2));
+
+			DirectX::XMVECTOR tangent = (deltaPos1 * DirectX::XMVectorGetY(deltaUV2) - deltaPos2 * DirectX::XMVectorGetY(deltaUV1)) * r;
+			DirectX::XMVECTOR bitangent = (deltaPos2 * DirectX::XMVectorGetX(deltaUV1) - deltaPos1 * DirectX::XMVectorGetX(deltaUV2)) * r;
+
+			computedTangents[index0] += tangent;
+			computedTangents[index1] += tangent;
+			computedTangents[index2] += tangent;
+
+			computedBitangents[index0] += bitangent;
+			computedBitangents[index1] += bitangent;
+			computedBitangents[index2] += bitangent;
+		}
+
+		outTangents.reset(new DirectX::XMFLOAT4[vertexCount]);
+		for (int i = 0; i < indexCount; i++)
+		{
+			const DirectX::XMVECTOR normal = DirectX::XMLoadFloat3(&this->Normals[i]);
+			const DirectX::XMVECTOR& tangent = computedTangents[i];
+			const DirectX::XMVECTOR& bitangent = computedBitangents[i];
+
+			// Gram-Schmidt orthogonalize
+			DirectX::XMVECTOR orthTangent = DirectX::XMVector3Normalize(tangent - normal * DirectX::XMVector3Dot(normal, tangent));
+			float sign = DirectX::XMVectorGetX(DirectX::XMVector3Dot(DirectX::XMVector3Cross(normal, tangent), bitangent)) > 0
+				? -1.0f
+				: 1.0f;
+
+			orthTangent = DirectX::XMVectorSetW(orthTangent, sign);
+			DirectX::XMStoreFloat4(&outTangents[i], orthTangent);
+		}
+	}
+
 	std::pair<const uint8_t*, size_t> CgltfBufferAccessor(const cgltf_accessor* accessor, size_t defaultStride)
 	{
 		// TODO: sparse accessor support
@@ -165,16 +227,16 @@ void phx::MeshConverter::OptimizeMesh(
 
 	outPrim.IndexBuffer = indexBufferBuilder.GetMemory();
 
-	struct AccessorInfoCache
-	{
-		const cgltf_accessor* Accessor = nullptr;
-		size_t DefaultStride = 0;
-		size_t Offset = 0;
-	};
 
-	BinaryBuilder vertexBufferBuilder;
-	vertexBufferBuilder.Reserve<phx::renderer::VertexStreamsHeader>();
-	std::array<AccessorInfoCache, phx::renderer::kNumStreams> accessors;
+	std::unique_ptr<DirectX::XMFLOAT3[]> positions;
+	std::unique_ptr<DirectX::XMFLOAT3[]> normal;
+	std::unique_ptr<DirectX::XMFLOAT4[]> tangent;
+	std::unique_ptr<DirectX::XMFLOAT2[]> texcoord0;
+	std::unique_ptr<DirectX::XMFLOAT2[]> texcoord1;
+	std::unique_ptr<DirectX::XMFLOAT3[]> color;
+	std::unique_ptr<DirectX::XMFLOAT4[]> joints;
+	std::unique_ptr<DirectX::XMFLOAT4[]> weights;
+	positions.reset(new DirectX::XMFLOAT3[vertexCount]);
 
 	// Collect intreasted attributes
 	for (int iAttr = 0; iAttr < inPrim.attributes_count; iAttr++)
@@ -187,106 +249,7 @@ void phx::MeshConverter::OptimizeMesh(
 			assert(cgltfAttribute.data->type == cgltf_type_vec3);
 			assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
 			const size_t dataStride = sizeof(float) * 3;
-			accessors[kPosition] = {
-				.Accessor = cgltfAttribute.data,
-				.DefaultStride = dataStride,
-				.Offset = vertexBufferBuilder.Reserve(dataStride, 16, vertexCount)
-			};
-			break;
-
-		case cgltf_attribute_type_tangent:
-			assert(cgltfAttribute.data->type == cgltf_type_vec4);
-			assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
-			const size_t dataStride = sizeof(float) * 4;
-			accessors[kTangents] = {
-				.Accessor = cgltfAttribute.data,
-				.DefaultStride = dataStride,
-				.Offset = vertexBufferBuilder.Reserve(dataStride, 16, vertexCount)
-			};
-			break;
-
-		case cgltf_attribute_type_normal:
-			assert(cgltfAttribute.data->type == cgltf_type_vec3);
-			assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
-			const size_t dataStride = sizeof(float) * 3;
-			accessors[kNormals] = {
-				.Accessor = cgltfAttribute.data,
-				.DefaultStride = dataStride,
-				.Offset = vertexBufferBuilder.Reserve(dataStride, 16, vertexCount)
-			};
-			break;
-
-		case cgltf_attribute_type_texcoord:
-			if (std::strcmp(cgltfAttribute.name, "TEXCOORD_0") == 0)
-			{
-				assert(cgltfAttribute.data->type == cgltf_type_vec2);
-				assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
-				const size_t dataStride = sizeof(float) * 2;
-				accessors[kUV0] = {
-					.Accessor = cgltfAttribute.data,
-					.DefaultStride = dataStride,
-					.Offset = vertexBufferBuilder.Reserve(dataStride, 16, vertexCount)
-				};
-			}
-			else if (std::strcmp(cgltfAttribute.name, "TEXCOORD_1") == 0)
-			{
-				assert(cgltfAttribute.data->type == cgltf_type_vec2);
-				assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
-				const size_t dataStride = sizeof(float) * 2;
-				accessors[kUV1] = {
-					.Accessor = cgltfAttribute.data,
-					.DefaultStride = dataStride,
-					.Offset = vertexBufferBuilder.Reserve(dataStride, 16, vertexCount)
-				};
-			}
-			break;
-		case cgltf_attribute_type_color:
-			assert(cgltfAttribute.data->type == cgltf_type_vec3);
-			assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
-			const size_t dataStride = sizeof(float) * 3;
-			accessors[kColour] = {
-				.Accessor = cgltfAttribute.data,
-				.DefaultStride = dataStride,
-				.Offset = vertexBufferBuilder.Reserve(dataStride, 16, vertexCount)
-			};
-			break;
-		case cgltf_attribute_type_joints:
-			assert(cgltfAttribute.data->type == cgltf_type_vec4);
-			assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
-			const size_t dataStride = sizeof(float) * 4;
-			accessors[kJoints] = {
-				.Accessor = cgltfAttribute.data,
-				.DefaultStride = dataStride,
-				.Offset = vertexBufferBuilder.Reserve(dataStride, 16, vertexCount)
-			};
-			break;
-		case cgltf_attribute_type_weights:
-			assert(cgltfAttribute.data->type == cgltf_type_vec4);
-			assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
-			const size_t dataStride = sizeof(float) * 4;
-			accessors[kWeights] = {
-				.Accessor = cgltfAttribute.data,
-				.DefaultStride = dataStride,
-				.Offset = vertexBufferBuilder.Reserve(dataStride, 16, vertexCount)
-			};
-			break;
-		}
-	}
-
-	vertexBufferBuilder.Commit();
-	for (size_t i = 0; i < accessors.size(); i++)
-	{
-		const AccessorInfoCache& accessorInfo = accessors[i];
-		if (!accessorInfo.Accessor)
-		{
-			continue;
-		}
-
-		auto [data, dataStride] = CgltfBufferAccessor(accessorInfo.Accessor, accessorInfo.DefaultStride);
-		if (i == kPosition)
-		{
-			// Do bound box calculations as we read it in.
-			DirectX::XMFLOAT3* posDst = vertexBufferBuilder.Place<DirectX::XMFLOAT3>(accessorInfo.Offset, vertexCount);
+			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, dataStride);
 			const DirectX::XMFLOAT3* posSrc = reinterpret_cast<const DirectX::XMFLOAT3*>(data);
 
 			DirectX::XMFLOAT3 minBounds = DirectX::XMFLOAT3(math::cMaxFloat, math::cMaxFloat, math::cMaxFloat);
@@ -294,17 +257,15 @@ void phx::MeshConverter::OptimizeMesh(
 
 			for (int i = 0; i < vertexCount; i++)
 			{
-				*posDst = *posSrc;
-				minBounds = math::Min(minBounds, *posDst);
-				maxBounds = math::Max(maxBounds, *posDst);
-
-				posDst++;
+				positions[i] = *posSrc;
+				minBounds = math::Min(minBounds, positions[i]);
+				maxBounds = math::Max(maxBounds, positions[i]);
 				posSrc++;
 			}
 
 			outPrim.BBoxLS = AABB(minBounds, maxBounds);
 			outPrim.BoundsLS = Sphere(minBounds, maxBounds);
-			
+
 			DirectX::XMVECTOR boundsCoord = DirectX::XMLoadFloat3(&minBounds);
 			DirectX::XMVECTOR result = DirectX::XMVector3TransformCoord(boundsCoord, localToObject);
 			DirectX::XMStoreFloat3(&minBounds, result);
@@ -315,13 +276,113 @@ void phx::MeshConverter::OptimizeMesh(
 
 			outPrim.BBoxOS = AABB(minBounds, maxBounds);
 			outPrim.BoundsOS = Sphere(minBounds, maxBounds);
-		}
-		else
-		{
-			vertexBufferBuilder.Place(accessorInfo.Offset, data, dataStride * vertexCount);
+			break;
+
+		case cgltf_attribute_type_tangent:
+			assert(cgltfAttribute.data->type == cgltf_type_vec4);
+			assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
+			const size_t dataStride = sizeof(float) * 4;
+			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, dataStride);
+			tangent.reset(new DirectX::XMFLOAT4[vertexCount]);
+			std::memcpy(
+				&tangent[0],
+				data,
+				dataStride*vertexCount);
+			break;
+
+		case cgltf_attribute_type_normal:
+			assert(cgltfAttribute.data->type == cgltf_type_vec3);
+			assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
+			const size_t dataStride = sizeof(float) * 3;
+			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, dataStride);
+			normal.reset(new DirectX::XMFLOAT3[vertexCount]);
+			std::memcpy(
+				&normal[0],
+				data,
+				dataStride * vertexCount);
+			break;
+
+		case cgltf_attribute_type_texcoord:
+			if (std::strcmp(cgltfAttribute.name, "TEXCOORD_0") == 0)
+			{
+				assert(cgltfAttribute.data->type == cgltf_type_vec2);
+				assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
+				const size_t dataStride = sizeof(float) * 2;
+				auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, dataStride);
+				texcoord0.reset(new DirectX::XMFLOAT2[vertexCount]);
+				std::memcpy(
+					&texcoord0[0],
+					data,
+					dataStride* vertexCount);
+			}
+			else if (std::strcmp(cgltfAttribute.name, "TEXCOORD_1") == 0)
+			{
+				assert(cgltfAttribute.data->type == cgltf_type_vec2);
+				assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
+				const size_t dataStride = sizeof(float) * 2;
+				auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, dataStride);
+				texcoord1.reset(new DirectX::XMFLOAT2[vertexCount]);
+				std::memcpy(
+					&texcoord1[0],
+					data,
+					dataStride * vertexCount);
+			}
+			break;
+		case cgltf_attribute_type_color:
+			assert(cgltfAttribute.data->type == cgltf_type_vec3);
+			assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
+			const size_t dataStride = sizeof(float) * 3;
+			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, dataStride);
+			color.reset(new DirectX::XMFLOAT3[vertexCount]);
+			std::memcpy(
+				&color[0],
+				data,
+				dataStride * vertexCount);
+			break;
+		case cgltf_attribute_type_joints:
+			assert(cgltfAttribute.data->type == cgltf_type_vec4);
+			assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
+			const size_t dataStride = sizeof(float) * 4;
+			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, dataStride);
+			joints.reset(new DirectX::XMFLOAT4[vertexCount]);
+			std::memcpy(
+				&joints[0],
+				data,
+				dataStride * vertexCount);
+			break;
+		case cgltf_attribute_type_weights:
+			assert(cgltfAttribute.data->type == cgltf_type_vec4);
+			assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
+			const size_t dataStride = sizeof(float) * 4;
+			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, dataStride);
+			weights.reset(new DirectX::XMFLOAT4[vertexCount]);
+			std::memcpy(
+				&weights[0],
+				data,
+				dataStride * vertexCount);
+			break;
 		}
 	}
 
+	if (!normal)
+	{
+		PHX_ERROR("Prim doesn't contain normals");
+		// TODO: Compute Normals
+	}
+
+	if (!tangent)
+	{
+		assert(indexCount % 3 == 0);
+		if (texcoord0 && inPrim.material && inPrim.material->normal_texture.texcoord == 0)
+		{
+			if (b32BitIndices)
+				ComputeTangentSpace<uint32_t>(positions.get(), texcoord0.get(), (uint32_t*)outPrim.IndexBuffer.get(), indexCount, vertexCount, tangent);
+		}
+		if (texcoord1 && inPrim.material && inPrim.material->normal_texture.texcoord == 1)
+		{
+
+		}
+	}
 	outPrim.MaterialIdx;
 	outPrim.PrimCount = indexCount;
 }
