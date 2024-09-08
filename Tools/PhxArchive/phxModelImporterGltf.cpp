@@ -5,6 +5,9 @@
 
 #include <Core/phxVirtualFileSystem.h>
 #include <Core/phxLog.h>
+#include <Core/phxMath.h>
+#include <Core/phxMemory.h>
+#include <Core/phxBinaryBuilder.h>
 
 #include <Renderer/phxConstantBuffers.h>
 #include "phxTextureConvert.h"
@@ -343,7 +346,6 @@ void phx::phxModelImporterGltf::CompileMesh(
 	AABB& boundingBox)
 {
 	size_t totalVertexSize = 0;
-	size_t totalDepthVertexSize = 0;
 	size_t totalIndexSize = 0;
 
 	Sphere sphereOS;
@@ -357,6 +359,25 @@ void phx::phxModelImporterGltf::CompileMesh(
 		sphereOS = sphereOS.Union(primitives[i].BoundsOS);
 		bboxOS = AABB::Merge(bboxOS, primitives[i].BBoxOS);
 		primitives[i].MaterialIdx = this->m_materialIndexLut[srcMesh.primitives[i].material];
+	}
+	boundingSphere = sphereOS;
+	boundingBox = bboxOS;
+
+	std::unordered_map<uint32_t, std::vector<MeshConverter::Primitive*>> renderMeshes;
+	for (auto& prim : primitives)
+	{
+		const uint32_t hash = prim.Hash;
+		renderMeshes[hash].push_back(&prim);
+		totalVertexSize += prim.NumVertices;
+		totalIndexSize += MemoryAlign(prim.NumIndices, 4);
+	}
+	const uint32_t totalBufferSize = (uint32_t)(totalVertexSize + totalIndexSize);
+
+	BinaryBuilder staggingBufferBuilder;
+
+	for (auto& iter : renderMeshes)
+	{
+		const size_t numDraws = iter.second.size();
 	}
 
 }
