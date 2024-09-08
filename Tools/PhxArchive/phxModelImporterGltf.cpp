@@ -172,6 +172,7 @@ void phx::phxModelImporterGltf::BuildMaterials(ModelData& outModel)
 		const cgltf_material& srcMat = this->m_gltfData->materials[i];
 		MaterialConstantData& material = outModel.MaterialConstants[i];
 
+		this->m_materialIndexLut[this->m_gltfData->materials + i] = i;
 		material.Flags = 0u;
 		material.AlphaCutoff = DirectX::XMConvertFloatToHalf(0.5f);
 
@@ -349,11 +350,13 @@ void phx::phxModelImporterGltf::CompileMesh(
 	AABB bboxOS;
 
 	std::vector<MeshConverter::Primitive> primitives(srcMesh.primitives_count);
+
 	for (size_t i = 0; i < srcMesh.primitives_count; i++)
 	{
 		MeshConverter::OptimizeMesh(primitives[i], srcMesh.primitives[i], localToObject);
 		sphereOS = sphereOS.Union(primitives[i].BoundsOS);
 		bboxOS = AABB::Merge(bboxOS, primitives[i].BBoxOS);
+		primitives[i].MaterialIdx = this->m_materialIndexLut[srcMesh.primitives[i].material];
 	}
 
 }
