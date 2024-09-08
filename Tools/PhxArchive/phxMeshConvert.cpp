@@ -6,6 +6,7 @@
 #include <Core/phxBinaryBuilder.h>
 #include <Core/phxMath.h>
 #include <Renderer/phxShaderInterop.h>
+#include <Resource/phxResource.h>
 
 #include <cgltf/cgltf.h>
 
@@ -19,7 +20,7 @@ namespace
 {
 
 	template<typename T>
-	void ComputeTangentSpace(DirectX::XMFLOAT3* positions, DirectX::XMFLOAT2* texcoords, T* indices, size_t indexCount, size_t vertexCount, std::unique_ptr<DirectX::XMFLOAT4>& outTangents)
+	void ComputeTangentSpace(DirectX::XMFLOAT3* positions, DirectX::XMFLOAT2* texcoords, T* indices, size_t indexCount, size_t vertexCount, std::unique_ptr<DirectX::XMFLOAT4[]>& outTangents)
 	{
 		std::vector<DirectX::XMVECTOR> computedTangents(vertexCount);
 		std::vector<DirectX::XMVECTOR> computedBitangents(indexCount);
@@ -377,12 +378,27 @@ void phx::MeshConverter::OptimizeMesh(
 		{
 			if (b32BitIndices)
 				ComputeTangentSpace<uint32_t>(positions.get(), texcoord0.get(), (uint32_t*)outPrim.IndexBuffer.get(), indexCount, vertexCount, tangent);
+			else
+				ComputeTangentSpace(positions.get(), texcoord0.get(), (uint16_t*)outPrim.IndexBuffer.get(), indexCount, vertexCount, tangent);
 		}
 		if (texcoord1 && inPrim.material && inPrim.material->normal_texture.texcoord == 1)
 		{
-
+			if (b32BitIndices)
+				ComputeTangentSpace<uint32_t>(positions.get(), texcoord1.get(), (uint32_t*)outPrim.IndexBuffer.get(), indexCount, vertexCount, tangent);
+			else
+				ComputeTangentSpace(positions.get(), texcoord1.get(), (uint16_t*)outPrim.IndexBuffer.get(), indexCount, vertexCount, tangent);
 		}
 	}
+
+	if (inPrim.material->alpha_mode == cgltf_alpha_mode_blend)
+		outPrim.PsoFlags |= PSOFlags::kAlphaBlend;
+
+	if (inPrim.material->alpha_mode == cgltf_alpha_mode_blend)
+		outPrim.PsoFlags |= PSOFlags::kAlphaBlend;
+
+	if (inPrim.material-> == cgltf_alpha_mode_blend)
+		outPrim.PsoFlags |= PSOFlags::kAlphaBlend;
+
 	outPrim.MaterialIdx;
 	outPrim.PrimCount = indexCount;
 }

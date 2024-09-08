@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/phxMath.h"
+#include "phxBaseInclude.h"
 
 namespace phx
 {
@@ -10,6 +11,26 @@ namespace phx
 		virtual ~IResource() = default;
 	};
 
+
+    //
+    // To request a PSO index, provide flags that describe the kind of PSO
+    // you need.  If one has not yet been created, it will be created.
+    //
+    namespace PSOFlags
+    {
+        enum : uint16_t
+        {
+            kHasPosition = BIT(1),
+            kHasNormal = BIT(2),  // Required
+            kHasTangent = BIT(3),
+            kHasUV0 = BIT(4),  // Required (for now)
+            kHasUV1 = BIT(5),
+            kAlphaBlend = BIT(6),
+            kAlphaTest = BIT(7),
+            kTwoSided = BIT(8),
+            kHasSkin = BIT(9),  // Implies having indices and weights
+        };
+    }
     struct Mesh
     {
         float    Nounds[4];     // A bounding sphere
