@@ -19,6 +19,7 @@ namespace phx::MeshConverter
         AABB BBoxOS;        // object space AABB
         ByteArray VertexBuffer;
         ByteArray IndexBuffer;
+        uint32_t VertexSizeInBytes;
         uint32_t NumVertices;
         uint32_t NumIndices;
         uint32_t PrimCount;

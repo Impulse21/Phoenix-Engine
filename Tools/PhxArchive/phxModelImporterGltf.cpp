@@ -372,12 +372,14 @@ void phx::phxModelImporterGltf::CompileMesh(
 	{
 		const uint32_t hash = prim.Hash;
 		renderMeshes[hash].push_back(&prim);
-		totalVertexSize += prim.NumVertices * prim.NumVertexStreams;
+		totalVertexSize += prim.VertexSizeInBytes;
 		totalIndexSize += MemoryAlign(prim.NumIndices, 4);
 	}
 	const uint32_t totalBufferSize = (uint32_t)(totalVertexSize + totalIndexSize);
 	std::vector<uint8_t> stagggingBuffer(totalBufferSize);
-	BinaryBuilder staggingBufferBuilder;
+
+	uint32_t curVBOffset = 0;
+	uint32_t curIBOffset = totalVertexSize;
 
 	for (auto& [hash, drawables] : renderMeshes)
 	{
@@ -386,11 +388,12 @@ void phx::phxModelImporterGltf::CompileMesh(
 		size_t vbSize = 0;
 		size_t ibSize = 0;
 
+		// TODO: I am here Need to sort out this logic.
 		// local space of all sub meshes
 		Sphere collectiveSphereLS;
 		for (auto& draw : drawables)
 		{
-			vbSize += draw->NumVertices;
+			vbSize += draw->VertexSizeInBytes;
 			ibSize += draw->NumIndices;
 			collectiveSphereLS = collectiveSphereLS.Union(draw->BoundsLS);
 		}
@@ -399,7 +402,7 @@ void phx::phxModelImporterGltf::CompileMesh(
 		mesh->Bounds[1] = collectiveSphereLS.Centre.y;
 		mesh->Bounds[2] = collectiveSphereLS.Centre.z;
 		mesh->Bounds[3] = collectiveSphereLS.Radius;
-		mesh->VbOffset = 0;
+		mesh->VbOffset = (uint32_t)bufferMemory.size() + curVBOffset;
 		mesh->VbSize = 0;
 		mesh->VbStride = 0;
 		mesh->IbFormat = uint8_t(drawables[0]->Index32 ? rhi::Format::R32_UINT : rhi::Format::R16_UINT);

@@ -249,6 +249,7 @@ void phx::MeshConverter::OptimizeMesh(
 	std::unique_ptr<DirectX::XMFLOAT3[]> color;
 	std::unique_ptr<DirectX::XMFLOAT4[]> joints;
 	std::unique_ptr<DirectX::XMFLOAT4[]> weights;
+	outPrim.VertexSizeInBytes = 0;
 	positions.reset(new DirectX::XMFLOAT3[vertexCount]);
 
 	// Collect intreasted attributes
@@ -408,19 +409,36 @@ void phx::MeshConverter::OptimizeMesh(
 		std::array<size_t, kNumStreams> streamOffsets(0);
 
 		streamOffsets[kPosition] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT3>(vertexCount);
+		outPrim.VertexSizeInBytes += sizeof(DirectX::XMFLOAT3) * vertexCount;
 		streamOffsets[kNormals] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT3>(vertexCount);
+		outPrim.VertexSizeInBytes += sizeof(DirectX::XMFLOAT3) * vertexCount;
 		if (texcoord0)
+		{
 			streamOffsets[kUV0] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT2>(vertexCount);
+			outPrim.VertexSizeInBytes += sizeof(DirectX::XMFLOAT2) * vertexCount;
+		}
 		if (texcoord1)
+		{
 			streamOffsets[kUV1] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT2>(vertexCount);
+			outPrim.VertexSizeInBytes += sizeof(DirectX::XMFLOAT2) * vertexCount;
+		}
 		if (tangent)
+		{
 			streamOffsets[kTangents] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT4>(vertexCount);
+			outPrim.VertexSizeInBytes += sizeof(DirectX::XMFLOAT4) * vertexCount;
+		}
 		if (color)
+		{
 			streamOffsets[kColour] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT3>(vertexCount);
+			outPrim.VertexSizeInBytes += sizeof(DirectX::XMFLOAT3) * vertexCount;
+		}
 		if (joints && weights)
 		{
 			streamOffsets[kJoints] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT4>(vertexCount);
+			outPrim.VertexSizeInBytes += sizeof(DirectX::XMFLOAT4) * vertexCount;
+
 			streamOffsets[kWeights] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT4>(vertexCount);
+			outPrim.VertexSizeInBytes += sizeof(DirectX::XMFLOAT4) * vertexCount;
 		}
 
 		vertexBufferBuilder.Commit();
