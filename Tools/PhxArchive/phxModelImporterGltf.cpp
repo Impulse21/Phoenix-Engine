@@ -9,6 +9,8 @@
 #include <Core/phxMemory.h>
 #include <Core/phxBinaryBuilder.h>
 
+#include <RHI/PhxRHI.h>
+
 #include <Renderer/phxConstantBuffers.h>
 #include "phxTextureConvert.h"
 #include "phxMeshConvert.h"
@@ -300,9 +302,10 @@ uint32_t phx::phxModelImporterGltf::WalkGraphRec(
 
 		if (!curNode->camera && curNode->mesh != nullptr)
 		{
+			const size_t skinIndex = curNode->skin != nullptr ? curNode->skin - this->m_gltfData->skins : ~0ul;
 			Sphere sphereOS;
 			AABB boxOS;
-			CompileMesh(meshList, bufferMemory, *curNode->mesh, curPos, localXform, sphereOS, boxOS);
+			CompileMesh(meshList, bufferMemory, *curNode->mesh, curPos, localXform, skinIndex,sphereOS, boxOS);
 			modelBSphere = modelBSphere.Union(sphereOS);
 			modelBBox = AABB::Merge(modelBBox, boxOS);
 		}
@@ -342,6 +345,7 @@ void phx::phxModelImporterGltf::CompileMesh(
 	cgltf_mesh& srcMesh,
 	uint32_t matrixIdx,
 	const DirectX::XMMATRIX& localToObject,
+	size_t skinIndex,
 	Sphere& boundingSphere,
 	AABB& boundingBox)
 {
@@ -368,16 +372,68 @@ void phx::phxModelImporterGltf::CompileMesh(
 	{
 		const uint32_t hash = prim.Hash;
 		renderMeshes[hash].push_back(&prim);
-		totalVertexSize += prim.NumVertices;
+		totalVertexSize += prim.NumVertices * prim.NumVertexStreams;
 		totalIndexSize += MemoryAlign(prim.NumIndices, 4);
 	}
 	const uint32_t totalBufferSize = (uint32_t)(totalVertexSize + totalIndexSize);
-
+	std::vector<uint8_t> stagggingBuffer(totalBufferSize);
 	BinaryBuilder staggingBufferBuilder;
 
-	for (auto& iter : renderMeshes)
+	for (auto& [hash, drawables] : renderMeshes)
 	{
-		const size_t numDraws = iter.second.size();
+		const size_t numDraws = drawables.size();
+		Mesh* mesh = (Mesh*)malloc(sizeof(Mesh) * sizeof(Mesh::Draw) * (numDraws - 1));
+		size_t vbSize = 0;
+		size_t ibSize = 0;
+
+		// local space of all sub meshes
+		Sphere collectiveSphereLS;
+		for (auto& draw : drawables)
+		{
+			vbSize += draw->NumVertices;
+			ibSize += draw->NumIndices;
+			collectiveSphereLS = collectiveSphereLS.Union(draw->BoundsLS);
+		}
+
+		mesh->Bounds[0] = collectiveSphereLS.Centre.x;
+		mesh->Bounds[1] = collectiveSphereLS.Centre.y;
+		mesh->Bounds[2] = collectiveSphereLS.Centre.z;
+		mesh->Bounds[3] = collectiveSphereLS.Radius;
+		mesh->VbOffset = 0;
+		mesh->VbSize = 0;
+		mesh->VbStride = 0;
+		mesh->IbFormat = uint8_t(drawables[0]->Index32 ? rhi::Format::R32_UINT : rhi::Format::R16_UINT);
+		mesh->MeshCBV = (uint16_t)matrixIdx;
+		mesh->MaterialCBV = drawables[0]->MaterialIdx;
+		mesh->PsoFlags = drawables[0]->PsoFlags;
+		mesh->Pso = 0xFFFF;
+
+		if (skinIndex != ~0ul)
+		{
+			mesh->NumJoints = 0xFFFF;
+			mesh->StartJoint = (uint16_t)skinIndex;
+		}
+		else
+		{
+			mesh->NumJoints = 0;
+			mesh->StartJoint = 0xFFFF;
+		}
+
+		mesh->NumDraws = (uint16_t)numDraws;
+		uint32_t drawIdx = 0;
+		for (auto& draw : drawables)
+		{
+			Mesh::DrawInfo& d = mesh->Draw[drawIdx++];
+			d.PrimCount = draw->PrimCount;
+			d.BaseVertex = curVertOffset;
+			d.StartIndex = curIndexOffset;
+			std::memcpy(uploadMem + curVBOffset + curVertOffset, draw->VB->data(), draw->VB->size());
+			curVertOffset += (uint32_t)draw->VB->size() / draw->vertexStride;
+			std::memcpy(uploadMem + curDepthVBOffset, draw->DepthVB->data(), draw->DepthVB->size());
+			std::memcpy(uploadMem + curIBOffset + curIndexOffset, draw->IB->data(), draw->IB->size());
+			curIndexOffset += (uint32_t)draw->IB->size() >> (draw->index32 + 1);
+		}
+		meshList.push_back(mesh);
 	}
 
 }

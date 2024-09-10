@@ -33,11 +33,9 @@ namespace phx
     }
     struct Mesh
     {
-        float    Nounds[4];     // A bounding sphere
+        float    Bounds[4];     // A bounding sphere
         uint32_t VbOffset;      // BufferLocation - Buffer.GpuVirtualAddress
         uint32_t VbSize;        // SizeInBytes
-        uint32_t VbDepthOffset; // BufferLocation - Buffer.GpuVirtualAddress
-        uint32_t VbDepthSize;   // SizeInBytes
         uint32_t IbOffset;      // BufferLocation - Buffer.GpuVirtualAddress
         uint32_t IbSize;        // SizeInBytes
         uint8_t  VbStride;      // StrideInBytes
@@ -52,13 +50,13 @@ namespace phx
         uint16_t StartJoint;    // Flat offset to first joint index
         uint16_t NumDraws;      // Number of draw groups
 
-        struct Draw
+        struct DrawInfo
         {
             uint32_t PrimCount;   // Number of indices = 3 * number of triangles
             uint32_t StartIndex;  // Offset to first index in index buffer 
             uint32_t BaseVertex;  // Offset to first vertex in vertex buffer
         };
-        Draw Draw[1];           // Actually 1 or more draws
+        DrawInfo Draw[1];           // Actually 1 or more draws
     };
 
     struct GraphNode

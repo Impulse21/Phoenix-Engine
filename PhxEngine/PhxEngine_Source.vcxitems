@@ -25,6 +25,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxMath.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxMemory.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxPrimitives.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxRelativePtr.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxSpan.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxStaticArray.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxStopWatch.h" />

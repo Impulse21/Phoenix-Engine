@@ -120,6 +120,9 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxShaderInterop.h">
       <Filter>Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxRelativePtr.h">
+      <Filter>Core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">

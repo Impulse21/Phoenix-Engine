@@ -49,6 +49,7 @@ namespace phx
 			cgltf_mesh& srcMesh,
 			uint32_t matrixIdx,
 			const DirectX::XMMATRIX& localToObject,
+			size_t skinIndex,
 			Sphere& boundingSphere,
 			AABB& boundingBox);
 
