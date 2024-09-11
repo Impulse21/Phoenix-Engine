@@ -169,6 +169,8 @@ void phx::MeshConverter::OptimizeMesh(
 	size_t indexCount = 0;
 	outPrim.NumVertices = vertexCount;
 
+
+	BinaryBuilder indexBufferBuilder;
 	if (inPrim.indices)
 	{
 		indexCount = inPrim.indices->count;
@@ -179,12 +181,13 @@ void phx::MeshConverter::OptimizeMesh(
 		const size_t maxIndex = FindMaxIndex(inPrim.indices);
 
 		b32BitIndices = maxIndex > 0xFFFF;
-		const size_t indexSize = b32BitIndices ? 4 : 2;
-		outPrim.IndexBuffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>(indexSize * indexCount));
-
+		const size_t destStride = b32BitIndices ? 4 : 2;
+		const size_t bufferSize = destStride * indexCount;
+		const size_t offset = indexBufferBuilder.Reserve<uint8_t>(bufferSize);
+		indexBufferBuilder.Commit();
 
 		// TODO: Need to fill in the vertex buffer.
-		uint8_t* indexDst = outPrim.IndexBuffer->data();
+		uint8_t* indexDst = indexBufferBuilder.Place<uint8_t>(offset, bufferSize);
 		switch (inPrim.indices->component_type)
 		{
 		case cgltf_component_type_r_8u:
@@ -208,7 +211,7 @@ void phx::MeshConverter::OptimizeMesh(
 				indexSrcStride);
 
 			indexSrc += indexSrcStride;
-			indexDst += indexSize;
+			indexDst += destStride;
 		}
 	}
 	else
@@ -216,12 +219,15 @@ void phx::MeshConverter::OptimizeMesh(
 		indexCount = vertexCount;
 		outPrim.NumIndices = indexCount;
 		b32BitIndices = indexCount > 0xFFFF;
-		const size_t indexSize = b32BitIndices ? 4 : 2;
-		outPrim.IndexBuffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>(indexSize * indexCount));
+		const size_t destStride = b32BitIndices ? 4 : 2;
+		const size_t bufferSize = destStride * indexCount;
+		const size_t offset = indexBufferBuilder.Reserve<uint8_t>(bufferSize);
+		indexBufferBuilder.Commit();
 
+		uint8_t* memory = indexBufferBuilder.Place<uint8_t>(offset, bufferSize);
 		if (b32BitIndices)
 		{
-			uint32_t* indexDst = reinterpret_cast<uint32_t*>(outPrim.IndexBuffer->data());
+			uint32_t* indexDst = reinterpret_cast<uint32_t*>(memory);
 			for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
 			{
 				*indexDst = (uint32_t)iIdx;
@@ -230,7 +236,7 @@ void phx::MeshConverter::OptimizeMesh(
 		}
 		else
 		{
-			uint16_t* indexDst = reinterpret_cast<uint16_t*>(outPrim.IndexBuffer->data());
+			uint16_t* indexDst = reinterpret_cast<uint16_t*>(memory);
 			for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
 			{
 				*indexDst = (uint16_t)iIdx;
@@ -238,6 +244,9 @@ void phx::MeshConverter::OptimizeMesh(
 			}
 		}
 	}
+
+	outPrim.IndexBuffer = indexBufferBuilder.GetMemory();
+	outPrim.IndexBufferSize = indexBufferBuilder.Size();
 
 	std::unique_ptr<DirectX::XMFLOAT3[]> positions;
 	std::unique_ptr<DirectX::XMFLOAT3[]> normal;
@@ -247,7 +256,6 @@ void phx::MeshConverter::OptimizeMesh(
 	std::unique_ptr<DirectX::XMFLOAT3[]> color;
 	std::unique_ptr<DirectX::XMFLOAT4[]> joints;
 	std::unique_ptr<DirectX::XMFLOAT4[]> weights;
-	outPrim.VertexSizeInBytes = 0;
 	positions.reset(new DirectX::XMFLOAT3[vertexCount]);
 
 	// Collect intreasted attributes
@@ -407,36 +415,28 @@ void phx::MeshConverter::OptimizeMesh(
 		std::array<size_t, kNumStreams> streamOffsets(0);
 
 		streamOffsets[kPosition] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT3>(vertexCount);
-		outPrim.VertexSizeInBytes += sizeof(DirectX::XMFLOAT3) * vertexCount;
 		streamOffsets[kNormals] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT3>(vertexCount);
-		outPrim.VertexSizeInBytes += sizeof(DirectX::XMFLOAT3) * vertexCount;
 		if (texcoord0)
 		{
 			streamOffsets[kUV0] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT2>(vertexCount);
-			outPrim.VertexSizeInBytes += sizeof(DirectX::XMFLOAT2) * vertexCount;
 		}
 		if (texcoord1)
 		{
 			streamOffsets[kUV1] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT2>(vertexCount);
-			outPrim.VertexSizeInBytes += sizeof(DirectX::XMFLOAT2) * vertexCount;
 		}
 		if (tangent)
 		{
 			streamOffsets[kTangents] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT4>(vertexCount);
-			outPrim.VertexSizeInBytes += sizeof(DirectX::XMFLOAT4) * vertexCount;
 		}
 		if (color)
 		{
 			streamOffsets[kColour] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT3>(vertexCount);
-			outPrim.VertexSizeInBytes += sizeof(DirectX::XMFLOAT3) * vertexCount;
 		}
 		if (joints && weights)
 		{
 			streamOffsets[kJoints] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT4>(vertexCount);
-			outPrim.VertexSizeInBytes += sizeof(DirectX::XMFLOAT4) * vertexCount;
 
 			streamOffsets[kWeights] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT4>(vertexCount);
-			outPrim.VertexSizeInBytes += sizeof(DirectX::XMFLOAT4) * vertexCount;
 		}
 
 		vertexBufferBuilder.Commit();
@@ -467,6 +467,7 @@ void phx::MeshConverter::OptimizeMesh(
 		FillVertexBuffer<DirectX::XMFLOAT4>(vertexBufferBuilder, streamOffsets[kWeights], weights.get(), vertexCount);
 
 		outPrim.NumVertices = vertexCount;
+		outPrim.VertexBufferSize = vertexBufferBuilder.Size();
 		outPrim.VertexBuffer = vertexBufferBuilder.GetMemory();
 	}
 

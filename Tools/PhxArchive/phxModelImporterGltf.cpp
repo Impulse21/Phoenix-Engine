@@ -372,11 +372,12 @@ void phx::phxModelImporterGltf::CompileMesh(
 	{
 		const uint32_t hash = prim.Hash;
 		renderMeshes[hash].push_back(&prim);
-		totalVertexSize += prim.VertexSizeInBytes;
-		totalIndexSize += MemoryAlign(prim.NumIndices, 4);
+		totalVertexSize += prim.VertexBufferSize;
+		totalIndexSize += MemoryAlign(prim.IndexBufferSize, 4);
 	}
 	const uint32_t totalBufferSize = (uint32_t)(totalVertexSize + totalIndexSize);
-	std::vector<uint8_t> stagggingBuffer(totalBufferSize);
+	std::vector<uint8_t> stagingBuffer(totalBufferSize);
+	uint8_t* uploadMem = stagingBuffer.data();
 
 	uint32_t curVBOffset = 0;
 	uint32_t curIBOffset = totalVertexSize;
@@ -385,16 +386,16 @@ void phx::phxModelImporterGltf::CompileMesh(
 	{
 		const size_t numDraws = drawables.size();
 		Mesh* mesh = (Mesh*)malloc(sizeof(Mesh) * sizeof(Mesh::Draw) * (numDraws - 1));
-		size_t vbSize = 0;
-		size_t ibSize = 0;
+		size_t meshVBSize = 0;
+		size_t meshIbSize = 0;
 
 		// TODO: I am here Need to sort out this logic.
 		// local space of all sub meshes
 		Sphere collectiveSphereLS;
 		for (auto& draw : drawables)
 		{
-			vbSize += draw->VertexSizeInBytes;
-			ibSize += draw->NumIndices;
+			meshVBSize += draw->VertexBufferSize;
+			meshIbSize += draw->IndexBufferSize;
 			collectiveSphereLS = collectiveSphereLS.Union(draw->BoundsLS);
 		}
 
@@ -403,8 +404,9 @@ void phx::phxModelImporterGltf::CompileMesh(
 		mesh->Bounds[2] = collectiveSphereLS.Centre.z;
 		mesh->Bounds[3] = collectiveSphereLS.Radius;
 		mesh->VbOffset = (uint32_t)bufferMemory.size() + curVBOffset;
-		mesh->VbSize = 0;
-		mesh->VbStride = 0;
+		mesh->VbSize = meshVBSize;
+		mesh->VbStride = 0; // 0 for non interlace
+		mesh->IbOffset = (uint32_t)bufferMemory.size() + curIBOffset;
 		mesh->IbFormat = uint8_t(drawables[0]->Index32 ? rhi::Format::R32_UINT : rhi::Format::R16_UINT);
 		mesh->MeshCBV = (uint16_t)matrixIdx;
 		mesh->MaterialCBV = drawables[0]->MaterialIdx;
@@ -424,18 +426,24 @@ void phx::phxModelImporterGltf::CompileMesh(
 
 		mesh->NumDraws = (uint16_t)numDraws;
 		uint32_t drawIdx = 0;
+		uint32_t curVertOffset = 0;
+		uint32_t curIndexOffset = 0;
 		for (auto& draw : drawables)
 		{
 			Mesh::DrawInfo& d = mesh->Draw[drawIdx++];
 			d.PrimCount = draw->PrimCount;
 			d.BaseVertex = curVertOffset;
 			d.StartIndex = curIndexOffset;
-			std::memcpy(uploadMem + curVBOffset + curVertOffset, draw->VB->data(), draw->VB->size());
+			std::memcpy(uploadMem + curVBOffset + curVertOffset, draw->VertexBuffer.get(), draw->VertexBufferSize);
 			curVertOffset += (uint32_t)draw->VB->size() / draw->vertexStride;
 			std::memcpy(uploadMem + curDepthVBOffset, draw->DepthVB->data(), draw->DepthVB->size());
 			std::memcpy(uploadMem + curIBOffset + curIndexOffset, draw->IB->data(), draw->IB->size());
 			curIndexOffset += (uint32_t)draw->IB->size() >> (draw->index32 + 1);
 		}
+
+		curVBOffset += (uint32_t)meshVBSize;
+		curIBOffset += (uint32_t)MemoryAlign(meshIbSize, 4);
+		curIndexOffset = Math::AlignUp(curIndexOffset, 4);
 		meshList.push_back(mesh);
 	}
 

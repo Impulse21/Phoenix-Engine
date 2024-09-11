@@ -9,17 +9,16 @@ struct cgltf_primitive;
 
 namespace phx::MeshConverter
 {
-    using ByteArray = std::shared_ptr<std::vector<uint8_t>>;
-
     struct Primitive
     {
         Sphere BoundsLS;    // local space bounds
         Sphere BoundsOS;    // object space bounds
         AABB BBoxLS;        // local space AABB
         AABB BBoxOS;        // object space AABB
-        ByteArray VertexBuffer;
-        ByteArray IndexBuffer;
-        uint32_t VertexSizeInBytes;
+        std::shared_ptr<uint8_t[]> VertexBuffer;
+        uint32_t VertexBufferSize;
+        std::shared_ptr<uint8_t[]> IndexBuffer;
+        uint32_t IndexBufferSize;
         uint32_t NumVertices;
         uint32_t NumIndices;
         uint32_t PrimCount;
