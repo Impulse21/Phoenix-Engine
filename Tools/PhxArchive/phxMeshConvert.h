@@ -9,7 +9,7 @@ struct cgltf_primitive;
 
 namespace phx::MeshConverter
 {
-    using ByteArray = std::shared_ptr<uint8_t[]>;
+    using ByteArray = std::shared_ptr<std::vector<uint8_t>>;
 
     struct Primitive
     {

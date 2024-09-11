@@ -169,7 +169,6 @@ void phx::MeshConverter::OptimizeMesh(
 	size_t indexCount = 0;
 	outPrim.NumVertices = vertexCount;
 
-	BinaryBuilder indexBufferBuilder;
 	if (inPrim.indices)
 	{
 		indexCount = inPrim.indices->count;
@@ -180,13 +179,12 @@ void phx::MeshConverter::OptimizeMesh(
 		const size_t maxIndex = FindMaxIndex(inPrim.indices);
 
 		b32BitIndices = maxIndex > 0xFFFF;
-		const size_t destStride = b32BitIndices ? 4 : 2;
-		const size_t bufferSize = destStride * indexCount;
-		const size_t offset = indexBufferBuilder.Reserve<uint8_t>(bufferSize);
-		indexBufferBuilder.Commit();
+		const size_t indexSize = b32BitIndices ? 4 : 2;
+		outPrim.IndexBuffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>(indexSize * indexCount));
+
 
 		// TODO: Need to fill in the vertex buffer.
-		uint8_t* indexDst = indexBufferBuilder.Place<uint8_t>(offset, bufferSize);
+		uint8_t* indexDst = outPrim.IndexBuffer->data();
 		switch (inPrim.indices->component_type)
 		{
 		case cgltf_component_type_r_8u:
@@ -210,7 +208,7 @@ void phx::MeshConverter::OptimizeMesh(
 				indexSrcStride);
 
 			indexSrc += indexSrcStride;
-			indexDst += destStride;
+			indexDst += indexSize;
 		}
 	}
 	else
@@ -218,28 +216,28 @@ void phx::MeshConverter::OptimizeMesh(
 		indexCount = vertexCount;
 		outPrim.NumIndices = indexCount;
 		b32BitIndices = indexCount > 0xFFFF;
-		const size_t bufferCount = b32BitIndices ? indexCount : indexCount / 2;
-		const size_t offset = indexBufferBuilder.Reserve<uint32_t>(bufferCount);
-		indexBufferBuilder.Commit();
+		const size_t indexSize = b32BitIndices ? 4 : 2;
+		outPrim.IndexBuffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>(indexSize * indexCount));
 
-		uint32_t* indexDst = indexBufferBuilder.Place<uint32_t>(offset, bufferCount);
-		for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
+		if (b32BitIndices)
 		{
-			if (b32BitIndices)
+			uint32_t* indexDst = reinterpret_cast<uint32_t*>(outPrim.IndexBuffer->data());
+			for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
 			{
 				*indexDst = (uint32_t)iIdx;
+				indexDst++;
 			}
-			else
+		}
+		else
+		{
+			uint16_t* indexDst = reinterpret_cast<uint16_t*>(outPrim.IndexBuffer->data());
+			for (size_t iIdx = 0; iIdx < indexCount; iIdx++)
 			{
-				*reinterpret_cast<uint16_t*>(indexDst) = (uint16_t)iIdx;
+				*indexDst = (uint16_t)iIdx;
+				indexDst++;
 			}
-
-			indexDst++;
 		}
 	}
-
-	outPrim.IndexBuffer = indexBufferBuilder.GetMemory();
-
 
 	std::unique_ptr<DirectX::XMFLOAT3[]> positions;
 	std::unique_ptr<DirectX::XMFLOAT3[]> normal;
