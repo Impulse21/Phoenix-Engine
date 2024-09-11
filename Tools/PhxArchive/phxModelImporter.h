@@ -9,8 +9,6 @@
 
 namespace phx
 {
-	class IFileSystem;
-
     // Unaligned mirror of MaterialConstants
     struct MaterialConstantData
     {
@@ -68,6 +66,6 @@ namespace phx
 	public:
 		virtual ~ModelImporter() = default;
 
-		virtual bool Import(IFileSystem* fs, std::string const& fileName, ModelData& outModel) = 0;
+		virtual bool Import(std::string const& fileName, ModelData& outModel) = 0;
 	};
 }

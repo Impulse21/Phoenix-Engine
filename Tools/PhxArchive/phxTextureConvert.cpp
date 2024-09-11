@@ -1,3 +1,5 @@
+#include "pch.h"
+
 #include "phxTextureConvert.h"
 
 #include <phxBaseInclude.h>
@@ -14,7 +16,7 @@ using namespace DirectX;
 #define GetFlag(f) ((flags & f) != 0)
 namespace
 {
-    std::unique_ptr<ScratchImage> BuildDDS(IFileSystem& fs, std::string const& filename, uint32_t flags)
+    std::unique_ptr<ScratchImage> BuildDDS(std::string const& filename, uint32_t flags)
 	{
         bool bInterpretAsSRGB = GetFlag(kSRGB);
         bool bPreserveAlpha = GetFlag(kPreserveAlpha);
@@ -45,13 +47,13 @@ namespace
         {
             isDDS = true;
             // TODO:  It might be desired to compress or recompress existing DDS files
-            //Utility::Printf("Ignoring existing DDS \"%ws\".\n", filePath.c_str());
+            //Utility::Printf("Ignoring existing DDS \"%s\".\n", filePath.c_str());
             //return false;
 
             HRESULT hr = LoadFromDDSFile(wFilename.c_str(), DDS_FLAGS_NONE, &info, *image);
             if (FAILED(hr))
             {
-                PHX_ERROR("Could not load texture \"%ws\" (DDS: %08X).", wFilename.c_str(), hr);
+                PHX_ERROR("Could not load texture \"%s\" (DDS).", filename.c_str());
                 return nullptr;
             }
         }
@@ -60,7 +62,7 @@ namespace
             HRESULT hr = LoadFromTGAFile(wFilename.c_str(), &info, *image);
             if (FAILED(hr))
             {
-                PHX_ERROR("Could not load texture \"%ws\" (TGA: %08X).", wFilename.c_str(), hr);
+                PHX_ERROR("Could not load texture \"%s\" (TGA).", filename.c_str());
                 return nullptr;
             }
         }
@@ -70,7 +72,7 @@ namespace
             HRESULT hr = LoadFromHDRFile(wFilename.c_str(), &info, *image);
             if (FAILED(hr))
             {
-                PHX_ERROR("Could not load texture \"%ws\" (HDR: %08X).", wFilename.c_str(), hr);
+                PHX_ERROR("Could not load texture \"%s\" (HDR).", filename.c_str());
                 return nullptr;
             }
         }
@@ -81,7 +83,7 @@ namespace
             HRESULT hr = LoadFromEXRFile(filePath.c_str(), &info, *image);
             if (FAILED(hr))
             {
-                PHX_ERROR("Could not load texture \"%ws\" (EXR: %08X).", wFilename.c_str(), hr);
+                PHX_ERROR("Could not load texture \"%s\" (EXR).", filename.c_str());
                 return nullptr;
             }
 #else
@@ -95,14 +97,14 @@ namespace
             HRESULT hr = LoadFromWICFile(wFilename.c_str(), wicFlags, &info, *image);
             if (FAILED(hr))
             {
-                PHX_ERROR("Could not load texture \"%ws\" (WIC: %08X).", wFilename.c_str(), hr);
+                PHX_ERROR("Could not load texture \"%s\" (WIC).", filename.c_str());
                 return nullptr;
             }
         }
 
         if (info.width > 16384 || info.height > 16384)
         {
-            PHX_ERROR("Texture size (%Iu,%Iu) too large for feature level 11.0 or later (16384) \"%ws\"", info.width, info.height, wFilename.c_str());
+            PHX_ERROR("Texture size (%Iu,%Iu) too large for feature level 11.0 or later (16384) \"%s\"", info.width, info.height, filename.c_str());
             return nullptr;
         }
 
@@ -114,7 +116,7 @@ namespace
 
             if (FAILED(hr))
             {
-                PHX_ERROR("Could not flip image \"%ws\" (%08X).", wFilename.c_str(), hr);
+                PHX_ERROR("Could not flip image \"%s\" ().", filename.c_str());
             }
             else
             {
@@ -154,7 +156,7 @@ namespace
 
             if (FAILED(hr))
             {
-                PHX_ERROR("Could not compute normal map for \"%ws\" (%08X).", wFilename.c_str(), hr);
+                PHX_ERROR("Could not compute normal map for \"%s\" ().", filename.c_str());
             }
             else
             {
@@ -171,7 +173,7 @@ namespace
 
             if (FAILED(hr))
             {
-                PHX_ERROR("Could not convert \"%ws\" (%08X).", wFilename.c_str(), hr);
+                PHX_ERROR("Could not convert \"%s\" ().", filename.c_str());
             }
             else
             {
@@ -188,7 +190,7 @@ namespace
 
             if (FAILED(hr))
             {
-                PHX_ERROR("Failing generating mimaps for \"%ws\" (WIC: %08X)", wFilename.c_str(), hr);
+                PHX_ERROR("Failing generating mimaps for \"%s\" (WIC:)", filename.c_str());
             }
             else
             {
@@ -201,7 +203,7 @@ namespace
         {
             if (info.width % 4 || info.height % 4)
             {
-                PHX_ERROR("Texture size (%Iux%Iu) not a multiple of 4 \"%ws\", so skipping compress", info.width, info.height, wFilename.c_str());
+                PHX_ERROR("Texture size (%Iux%Iu) not a multiple of 4 \"%s\", so skipping compress", info.width, info.height, filename.c_str());
             }
             else
             {
@@ -210,7 +212,7 @@ namespace
                 HRESULT hr = Compress(image->GetImages(), image->GetImageCount(), image->GetMetadata(), cformat, TEX_COMPRESS_DEFAULT, 0.5f, *timage);
                 if (FAILED(hr))
                 {
-                    PHX_ERROR("Failing compressing \"%ws\" (WIC: %08X).", wFilename.c_str(), hr);
+                    PHX_ERROR("Failing compressing \"%s\" (WIC:).", filename.c_str());
                 }
                 else
                 {
@@ -222,9 +224,9 @@ namespace
         return image;
 	}
 
-    bool ConvertToDDS(IFileSystem& fs, std::string const& filename, uint32_t flags)
+    bool ConvertToDDS(std::string const& filename, uint32_t flags)
     {
-        std::unique_ptr<ScratchImage> image = BuildDDS(fs, filename, flags);
+        std::unique_ptr<ScratchImage> image = BuildDDS(filename, flags);
 
         if (!image)
             return false;
@@ -239,7 +241,7 @@ namespace
         HRESULT hr = SaveToDDSFile(image->GetImages(), image->GetImageCount(), image->GetMetadata(), DDS_FLAGS_NONE, wDest.c_str());
         if (FAILED(hr))
         {
-            PHX_ERROR("Could not write texture to file \"%ws\" (%08X).\n", wDest.c_str(), hr);
+            PHX_ERROR("Could not write texture to file \"%s\" ().\n", dest.c_str());
             return false;
         }
 
@@ -255,14 +257,14 @@ void phx::TextureCompiler::CompileOnDemand(IFileSystem& fs, std::string const& f
 
     if (srcFileMissing && ddsFileMissing)
     {
-        PHX_ERROR("Texture %s is missing.", FileSystem::GetFileNameWithoutExt(filename));
+        PHX_ERROR("Texture %s is missing.", FileSystem::GetFileNameWithoutExt(filename).c_str());
         return;
     }
 
     // If we can find the source texture and the DDS file is older, reconvert.
     if (ddsFileMissing || !srcFileMissing && FileSystem::GetLastWriteTime(ddsFile) < FileSystem::GetLastWriteTime(filename))
     {
-        PHX_INFO("DDS texture %s missing or older than source.Rebuilding", FileSystem::GetFileNameWithoutExt(filename));
-        ConvertToDDS(fs, filename, flags);
+        PHX_INFO("DDS texture %s missing or older than source.Rebuilding", FileSystem::GetFileNameWithoutExt(filename).c_str());
+        ConvertToDDS(filename, flags);
     }
 }

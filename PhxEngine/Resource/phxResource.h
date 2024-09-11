@@ -52,7 +52,7 @@ namespace phx
 
         struct DrawInfo
         {
-            uint32_t PrimCount;   // Number of indices = 3 * number of triangles
+            uint32_t IndexCount;  // Number of indices
             uint32_t StartIndex;  // Offset to first index in index buffer 
             uint32_t BaseVertex;  // Offset to first vertex in vertex buffer
         };

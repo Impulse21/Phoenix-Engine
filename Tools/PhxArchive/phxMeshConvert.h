@@ -20,8 +20,7 @@ namespace phx::MeshConverter
         std::shared_ptr<uint8_t[]> IndexBuffer;
         uint32_t IndexBufferSize;
         uint32_t NumVertices;
-        uint32_t NumIndices;
-        uint32_t PrimCount;
+        uint32_t NumIndices;;
         union
         {
             uint32_t Hash;

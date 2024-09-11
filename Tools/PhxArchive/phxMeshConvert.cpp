@@ -1,3 +1,5 @@
+#include "pch.h"
+
 #include "phxMeshConvert.h"
 
 #include <array>
@@ -15,6 +17,7 @@
 using namespace phx;
 using namespace phx::MeshConverter;
 using namespace phx::renderer;
+using namespace DirectX;
 
 namespace
 {
@@ -32,12 +35,12 @@ namespace
 	}
 
 	template<typename T>
-	void ComputeTangentSpace(DirectX::XMFLOAT3* positions, DirectX::XMFLOAT2* texcoords, T* indices, size_t indexCount, size_t vertexCount, std::unique_ptr<DirectX::XMFLOAT4[]>& outTangents)
+	void ComputeTangentSpace(DirectX::XMFLOAT3* positions, DirectX::XMFLOAT2* texcoords, DirectX::XMFLOAT3* normals, T* indices, size_t indexCount, size_t vertexCount, std::unique_ptr<DirectX::XMFLOAT4[]>& outTangents)
 	{
 		std::vector<DirectX::XMVECTOR> computedTangents(vertexCount);
 		std::vector<DirectX::XMVECTOR> computedBitangents(indexCount);
 
-		for (int i = 0; i < this->TotalIndices; i += 3)
+		for (int i = 0; i < indexCount; i += 3)
 		{
 			auto& index0 = indices[i + 0];
 			auto& index1 = indices[i + 1];
@@ -49,9 +52,9 @@ namespace
 			DirectX::XMVECTOR pos2 = DirectX::XMLoadFloat3(&positions[index2]);
 
 			// UVs
-			DirectX::XMVECTOR uvs0 = DirectX::XMLoadFloat2(&this->TexCoords[index0]);
-			DirectX::XMVECTOR uvs1 = DirectX::XMLoadFloat2(&this->TexCoords[index1]);
-			DirectX::XMVECTOR uvs2 = DirectX::XMLoadFloat2(&this->TexCoords[index2]);
+			DirectX::XMVECTOR uvs0 = DirectX::XMLoadFloat2(&texcoords[index0]);
+			DirectX::XMVECTOR uvs1 = DirectX::XMLoadFloat2(&texcoords[index1]);
+			DirectX::XMVECTOR uvs2 = DirectX::XMLoadFloat2(&texcoords[index2]);
 
 			DirectX::XMVECTOR deltaPos1 = DirectX::XMVectorSubtract(pos1, pos0);
 			DirectX::XMVECTOR deltaPos2 = DirectX::XMVectorSubtract(pos2, pos0);
@@ -77,7 +80,7 @@ namespace
 		outTangents.reset(new DirectX::XMFLOAT4[vertexCount]);
 		for (int i = 0; i < indexCount; i++)
 		{
-			const DirectX::XMVECTOR normal = DirectX::XMLoadFloat3(&this->Normals[i]);
+			const DirectX::XMVECTOR normal = DirectX::XMLoadFloat3(&normals[i]);
 			const DirectX::XMVECTOR& tangent = computedTangents[i];
 			const DirectX::XMVECTOR& bitangent = computedBitangents[i];
 
@@ -147,6 +150,8 @@ namespace
 		default:
 			assert(false);
 		}
+
+		return maxIndex;
 	}
 }
 
@@ -166,14 +171,13 @@ void phx::MeshConverter::OptimizeMesh(
 
 	bool b32BitIndices = false;
 	const size_t vertexCount = inPrim.attributes->data->count;
-	size_t indexCount = 0;
-	outPrim.NumVertices = vertexCount;
-
+	uint32_t indexCount = 0;
+	outPrim.NumVertices = (uint32_t)vertexCount;
 
 	BinaryBuilder indexBufferBuilder;
 	if (inPrim.indices)
 	{
-		indexCount = inPrim.indices->count;
+		indexCount = (uint32_t)inPrim.indices->count;
 		outPrim.NumIndices = indexCount;
 
 		// copy the indices
@@ -216,8 +220,8 @@ void phx::MeshConverter::OptimizeMesh(
 	}
 	else
 	{
-		indexCount = vertexCount;
-		outPrim.NumIndices = indexCount;
+		indexCount = (uint32_t)vertexCount;
+		outPrim.NumIndices = (uint32_t)indexCount;
 		b32BitIndices = indexCount > 0xFFFF;
 		const size_t destStride = b32BitIndices ? 4 : 2;
 		const size_t bufferSize = destStride * indexCount;
@@ -246,7 +250,7 @@ void phx::MeshConverter::OptimizeMesh(
 	}
 
 	outPrim.IndexBuffer = indexBufferBuilder.GetMemory();
-	outPrim.IndexBufferSize = indexBufferBuilder.Size();
+	outPrim.IndexBufferSize = (uint32_t)indexBufferBuilder.Size();
 
 	std::unique_ptr<DirectX::XMFLOAT3[]> positions;
 	std::unique_ptr<DirectX::XMFLOAT3[]> normal;
@@ -266,10 +270,10 @@ void phx::MeshConverter::OptimizeMesh(
 		switch (cgltfAttribute.type)
 		{
 		case cgltf_attribute_type_position:
+		{
 			assert(cgltfAttribute.data->type == cgltf_type_vec3);
 			assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
-			const size_t dataStride = sizeof(float) * 3;
-			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, dataStride);
+			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, sizeof(float) * 3);
 			const DirectX::XMFLOAT3* posSrc = reinterpret_cast<const DirectX::XMFLOAT3*>(data);
 
 			DirectX::XMFLOAT3 minBounds = DirectX::XMFLOAT3(math::cMaxFloat, math::cMaxFloat, math::cMaxFloat);
@@ -297,50 +301,49 @@ void phx::MeshConverter::OptimizeMesh(
 			outPrim.BBoxOS = AABB(minBounds, maxBounds);
 			outPrim.BoundsOS = Sphere(minBounds, maxBounds);
 			break;
-
+		}
 		case cgltf_attribute_type_tangent:
+		{
 			assert(cgltfAttribute.data->type == cgltf_type_vec4);
 			assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
-			const size_t dataStride = sizeof(float) * 4;
-			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, dataStride);
+			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, sizeof(float) * 4);
 			tangent.reset(new DirectX::XMFLOAT4[vertexCount]);
 			std::memcpy(
 				&tangent[0],
 				data,
-				dataStride*vertexCount);
+				dataStride * vertexCount);
 			break;
-
+		}
 		case cgltf_attribute_type_normal:
+		{
 			assert(cgltfAttribute.data->type == cgltf_type_vec3);
 			assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
-			const size_t dataStride = sizeof(float) * 3;
-			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, dataStride);
+			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, sizeof(float) * 3);
 			normal.reset(new DirectX::XMFLOAT3[vertexCount]);
 			std::memcpy(
 				&normal[0],
 				data,
 				dataStride * vertexCount);
 			break;
-
+		}
 		case cgltf_attribute_type_texcoord:
+		{
 			if (std::strcmp(cgltfAttribute.name, "TEXCOORD_0") == 0)
 			{
 				assert(cgltfAttribute.data->type == cgltf_type_vec2);
 				assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
-				const size_t dataStride = sizeof(float) * 2;
-				auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, dataStride);
+				auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, sizeof(float) * 2);
 				texcoord0.reset(new DirectX::XMFLOAT2[vertexCount]);
 				std::memcpy(
 					&texcoord0[0],
 					data,
-					dataStride* vertexCount);
+					dataStride * vertexCount);
 			}
 			else if (std::strcmp(cgltfAttribute.name, "TEXCOORD_1") == 0)
 			{
 				assert(cgltfAttribute.data->type == cgltf_type_vec2);
 				assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
-				const size_t dataStride = sizeof(float) * 2;
-				auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, dataStride);
+				auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, sizeof(float) * 2);
 				texcoord1.reset(new DirectX::XMFLOAT2[vertexCount]);
 				std::memcpy(
 					&texcoord1[0],
@@ -348,39 +351,43 @@ void phx::MeshConverter::OptimizeMesh(
 					dataStride * vertexCount);
 			}
 			break;
+		}
 		case cgltf_attribute_type_color:
+		{
 			assert(cgltfAttribute.data->type == cgltf_type_vec3);
 			assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
-			const size_t dataStride = sizeof(float) * 3;
-			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, dataStride);
+			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, sizeof(float) * 3);
 			color.reset(new DirectX::XMFLOAT3[vertexCount]);
 			std::memcpy(
 				&color[0],
 				data,
 				dataStride * vertexCount);
 			break;
+		}
 		case cgltf_attribute_type_joints:
+		{
 			assert(cgltfAttribute.data->type == cgltf_type_vec4);
 			assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
-			const size_t dataStride = sizeof(float) * 4;
-			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, dataStride);
+			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, sizeof(float) * 4);
 			joints.reset(new DirectX::XMFLOAT4[vertexCount]);
 			std::memcpy(
 				&joints[0],
 				data,
 				dataStride * vertexCount);
 			break;
+		}
 		case cgltf_attribute_type_weights:
+		{
 			assert(cgltfAttribute.data->type == cgltf_type_vec4);
 			assert(cgltfAttribute.data->component_type == cgltf_component_type_r_32f);
-			const size_t dataStride = sizeof(float) * 4;
-			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, dataStride);
+			auto [data, dataStride] = CgltfBufferAccessor(cgltfAttribute.data, sizeof(float) * 4);
 			weights.reset(new DirectX::XMFLOAT4[vertexCount]);
 			std::memcpy(
 				&weights[0],
 				data,
 				dataStride * vertexCount);
 			break;
+		}
 		}
 	}
 
@@ -396,23 +403,23 @@ void phx::MeshConverter::OptimizeMesh(
 		if (texcoord0 && inPrim.material && inPrim.material->normal_texture.texcoord == 0)
 		{
 			if (b32BitIndices)
-				ComputeTangentSpace<uint32_t>(positions.get(), texcoord0.get(), (uint32_t*)outPrim.IndexBuffer.get(), indexCount, vertexCount, tangent);
+				ComputeTangentSpace<uint32_t>(positions.get(), texcoord0.get(), normal.get(), (uint32_t*)outPrim.IndexBuffer.get(), indexCount, vertexCount, tangent);
 			else
-				ComputeTangentSpace(positions.get(), texcoord0.get(), (uint16_t*)outPrim.IndexBuffer.get(), indexCount, vertexCount, tangent);
+				ComputeTangentSpace(positions.get(), texcoord0.get(), normal.get(), (uint16_t*)outPrim.IndexBuffer.get(), indexCount, vertexCount, tangent);
 		}
 		if (texcoord1 && inPrim.material && inPrim.material->normal_texture.texcoord == 1)
 		{
 			if (b32BitIndices)
-				ComputeTangentSpace<uint32_t>(positions.get(), texcoord1.get(), (uint32_t*)outPrim.IndexBuffer.get(), indexCount, vertexCount, tangent);
+				ComputeTangentSpace<uint32_t>(positions.get(), texcoord1.get(), normal.get(), (uint32_t*)outPrim.IndexBuffer.get(), indexCount, vertexCount, tangent);
 			else
-				ComputeTangentSpace(positions.get(), texcoord1.get(), (uint16_t*)outPrim.IndexBuffer.get(), indexCount, vertexCount, tangent);
+				ComputeTangentSpace(positions.get(), texcoord1.get(), normal.get(), (uint16_t*)outPrim.IndexBuffer.get(), indexCount, vertexCount, tangent);
 		}
 	}
 
 	{
 		BinaryBuilder vertexBufferBuilder;
 		auto headerOfset = vertexBufferBuilder.Reserve<VertexStreamsHeader>();
-		std::array<size_t, kNumStreams> streamOffsets(0);
+		std::array<size_t, kNumStreams> streamOffsets = {};
 
 		streamOffsets[kPosition] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT3>(vertexCount);
 		streamOffsets[kNormals] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT3>(vertexCount);
@@ -443,8 +450,8 @@ void phx::MeshConverter::OptimizeMesh(
 		auto* header = vertexBufferBuilder.Place<VertexStreamsHeader>(headerOfset);
 
 		auto SetStreamDesc = [header, &streamOffsets](VertexStreamTypes type, size_t stride) {
-			header->Desc[type].SetOffset(streamOffsets[type]);
-			header->Desc[type].SetStride(stride);
+			header->Desc[type].SetOffset((uint)streamOffsets[type]);
+			header->Desc[type].SetStride((uint)stride);
 			};
 
 		SetStreamDesc(kPosition, sizeof(DirectX::XMFLOAT3));
@@ -466,8 +473,8 @@ void phx::MeshConverter::OptimizeMesh(
 		FillVertexBuffer<DirectX::XMFLOAT4>(vertexBufferBuilder, streamOffsets[kJoints], joints.get(), vertexCount);
 		FillVertexBuffer<DirectX::XMFLOAT4>(vertexBufferBuilder, streamOffsets[kWeights], weights.get(), vertexCount);
 
-		outPrim.NumVertices = vertexCount;
-		outPrim.VertexBufferSize = vertexBufferBuilder.Size();
+		outPrim.NumVertices = (uint32_t)vertexCount;
+		outPrim.VertexBufferSize = (uint32_t)vertexBufferBuilder.Size();
 		outPrim.VertexBuffer = vertexBufferBuilder.GetMemory();
 	}
 
@@ -479,6 +486,4 @@ void phx::MeshConverter::OptimizeMesh(
 
 	if (inPrim.material->double_sided)
 		outPrim.PsoFlags |= PSOFlags::kTwoSided;
-
-	outPrim.PrimCount = indexCount;
 }

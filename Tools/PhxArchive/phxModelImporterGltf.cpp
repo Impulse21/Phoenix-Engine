@@ -1,3 +1,5 @@
+#include "pch.h"
+
 #include "phxModelImporterGltf.h"
 
 #define CGLTF_IMPLEMENTATION
@@ -23,7 +25,7 @@ using namespace DirectX;
 
 namespace
 {
-	cgltf_result CgltfReadFile(const cgltf_memory_options* memory_options, const cgltf_file_options* file_options, const char* path, cgltf_size* size, void** Data)
+	cgltf_result CgltfReadFile(PHX_UNUSED const cgltf_memory_options* memory_options, const cgltf_file_options* file_options, const char* path, cgltf_size* size, void** Data)
 	{
 		CgltfContext* context = (CgltfContext*)file_options->user_data;
 
@@ -63,12 +65,12 @@ namespace
 	}
 }
 
-bool phx::phxModelImporterGltf::Import(IFileSystem* fs, std::string const& filename, ModelData& outModel)
+bool phx::phxModelImporterGltf::Import(std::string const& filename, ModelData& outModel)
 {
 	// Load GLF File into memory
 	this->m_cgltfContext =
 	{
-		.FileSystem = fs,
+		.FileSystem = this->m_fs,
 		.Blobs = {}
 	};
 
@@ -78,7 +80,7 @@ bool phx::phxModelImporterGltf::Import(IFileSystem* fs, std::string const& filen
 	options.file.user_data = &this->m_cgltfContext;
 
 
-	std::unique_ptr<IBlob> blob = fs->ReadFile(filename);
+	std::unique_ptr<IBlob> blob = this->m_fs->ReadFile(filename);
 	if (!blob)
 	{
 		PHX_ERROR("Couldn't Read file %s", filename.c_str());
@@ -112,7 +114,7 @@ bool phx::phxModelImporterGltf::Import(IFileSystem* fs, std::string const& filen
 
 	outModel.BoundingSphere = {};
 	outModel.BoundingBox = {};
-	uint32_t numNodes = WalkGraphRec(
+	size_t numNodes = WalkGraphRec(
 		outModel.SceneGraph,
 		outModel.BoundingSphere,
 		outModel.BoundingBox,
@@ -124,6 +126,7 @@ bool phx::phxModelImporterGltf::Import(IFileSystem* fs, std::string const& filen
 		DirectX::XMMatrixIdentity());
 
 	outModel.SceneGraph.resize(numNodes);
+	// TODO Build Animations and Skins
 
     return true;
 }
@@ -145,7 +148,7 @@ void phx::phxModelImporterGltf::BuildMaterials(ModelData& outModel)
 	outModel.MaterialConstants.resize(numMaterials);
 	outModel.MaterialTextures.resize(numMaterials);
 
-	auto SetTextureData = [&outModel](cgltf_data* gltfData, cgltf_texture* texture, int mtlIdx, int texIdx) {
+	auto SetTextureData = [&outModel](cgltf_data* gltfData, cgltf_texture* texture, size_t mtlIdx, size_t texIdx) {
 		MaterialTextureData& dstTexture = outModel.MaterialTextures[mtlIdx];
 		dstTexture.StringIdx[texIdx];
 
@@ -179,7 +182,7 @@ void phx::phxModelImporterGltf::BuildMaterials(ModelData& outModel)
 
 		this->m_materialIndexLut[this->m_gltfData->materials + i] = i;
 		material.Flags = 0u;
-		material.AlphaCutoff = DirectX::XMConvertFloatToHalf(0.5f);
+		material.AlphaCutoff = DirectX::PackedVector::XMConvertFloatToHalf(0.5f);
 
 		if (srcMat.has_pbr_metallic_roughness)
 		{
@@ -215,7 +218,7 @@ void phx::phxModelImporterGltf::BuildMaterials(ModelData& outModel)
 		else if (srcMat.alpha_mode == cgltf_alpha_mode_mask)
 			material.AlphaTest = true;
 
-		material.AlphaCutoff = DirectX::XMConvertFloatToHalf((float)material.AlphaCutoff);
+		material.AlphaCutoff = DirectX::PackedVector::XMConvertFloatToHalf((float)material.AlphaCutoff);
 		material.TwoSided = srcMat.double_sided;
 
 		// -- Set Texture Conversion options ---
@@ -251,15 +254,15 @@ void phx::phxModelImporterGltf::BuildMaterials(ModelData& outModel)
 	assert(outModel.TextureOptions.size() == outModel.TextureNames.size());
 }
 
-uint32_t phx::phxModelImporterGltf::WalkGraphRec(
+size_t phx::phxModelImporterGltf::WalkGraphRec(
 	std::vector<GraphNode>& sceneGraph,
 	Sphere& modelBSphere,
 	AABB& modelBBox,
 	std::vector<Mesh*>& meshList,
 	std::vector<uint8_t>& bufferMemory,
 	cgltf_node** siblings,
-	uint32_t numSiblings,
-	uint32_t curPos,
+	size_t numSiblings,
+	size_t curPos,
 	DirectX::XMMATRIX const& xform)
 {
 	for (size_t i = 0; i < numSiblings; ++i)
@@ -310,7 +313,7 @@ uint32_t phx::phxModelImporterGltf::WalkGraphRec(
 			modelBBox = AABB::Merge(modelBBox, boxOS);
 		}
 
-		uint32_t nextPos = curPos + 1;
+		size_t nextPos = curPos + 1ull;
 
 		if (curNode->children_count > 0)
 		{
@@ -343,7 +346,7 @@ void phx::phxModelImporterGltf::CompileMesh(
 	std::vector<Mesh*>& meshList,
 	std::vector<uint8_t>& bufferMemory,
 	cgltf_mesh& srcMesh,
-	uint32_t matrixIdx,
+	size_t matrixIdx,
 	const DirectX::XMMATRIX& localToObject,
 	size_t skinIndex,
 	Sphere& boundingSphere,
@@ -380,7 +383,7 @@ void phx::phxModelImporterGltf::CompileMesh(
 	uint8_t* uploadMem = stagingBuffer.data();
 
 	uint32_t curVBOffset = 0;
-	uint32_t curIBOffset = totalVertexSize;
+	uint32_t curIBOffset = (uint32_t)totalVertexSize;
 
 	for (auto& [hash, drawables] : renderMeshes)
 	{
@@ -404,7 +407,7 @@ void phx::phxModelImporterGltf::CompileMesh(
 		mesh->Bounds[2] = collectiveSphereLS.Centre.z;
 		mesh->Bounds[3] = collectiveSphereLS.Radius;
 		mesh->VbOffset = (uint32_t)bufferMemory.size() + curVBOffset;
-		mesh->VbSize = meshVBSize;
+		mesh->VbSize = (uint32_t)meshVBSize;
 		mesh->VbStride = 0; // 0 for non interlace
 		mesh->IbOffset = (uint32_t)bufferMemory.size() + curIBOffset;
 		mesh->IbFormat = uint8_t(drawables[0]->Index32 ? rhi::Format::R32_UINT : rhi::Format::R16_UINT);
@@ -428,23 +431,32 @@ void phx::phxModelImporterGltf::CompileMesh(
 		uint32_t drawIdx = 0;
 		uint32_t curVertOffset = 0;
 		uint32_t curIndexOffset = 0;
+		uint32_t curVertByteOffset = 0;
+		uint32_t curIndexByteOffset = 0;
 		for (auto& draw : drawables)
 		{
+			// TODO: we might need to reset the indices based off of the vertex offset
+			// Similar to Wicked Engine.
 			Mesh::DrawInfo& d = mesh->Draw[drawIdx++];
-			d.PrimCount = draw->PrimCount;
+			d.IndexCount = draw->NumIndices;
 			d.BaseVertex = curVertOffset;
 			d.StartIndex = curIndexOffset;
-			std::memcpy(uploadMem + curVBOffset + curVertOffset, draw->VertexBuffer.get(), draw->VertexBufferSize);
-			curVertOffset += (uint32_t)draw->VB->size() / draw->vertexStride;
-			std::memcpy(uploadMem + curDepthVBOffset, draw->DepthVB->data(), draw->DepthVB->size());
-			std::memcpy(uploadMem + curIBOffset + curIndexOffset, draw->IB->data(), draw->IB->size());
-			curIndexOffset += (uint32_t)draw->IB->size() >> (draw->index32 + 1);
+
+			curVertOffset += (uint32_t)draw->NumVertices;
+			curIndexOffset += (uint32_t)draw->NumIndices;
+
+			std::memcpy(uploadMem + curVBOffset + curVertByteOffset, draw->VertexBuffer.get(), draw->VertexBufferSize);
+			std::memcpy(uploadMem + curIBOffset + curIndexByteOffset, draw->IndexBuffer.get(), draw->IndexBufferSize);
+
+			curVertByteOffset += (uint32_t)draw->VertexBufferSize;
+			curIndexByteOffset += (uint32_t)draw->IndexBufferSize >> (draw->Index32 + 1);
 		}
 
 		curVBOffset += (uint32_t)meshVBSize;
 		curIBOffset += (uint32_t)MemoryAlign(meshIbSize, 4);
-		curIndexOffset = Math::AlignUp(curIndexOffset, 4);
+		curIndexOffset = (uint32_t)MemoryAlign(curIndexOffset, 4);
 		meshList.push_back(mesh);
 	}
 
+	bufferMemory.insert(bufferMemory.end(), stagingBuffer.begin(), stagingBuffer.end());
 }

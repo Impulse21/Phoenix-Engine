@@ -17,7 +17,7 @@ namespace phx
 		template<typename T>
 		size_t Reserve(size_t count = 1)
 		{
-			this->Reserve(sizeof(T), alignof(T), count);
+			return this->Reserve(sizeof(T), alignof(T), count);
 		}
 
 		size_t Reserve(size_t stride, size_t alignment, size_t count = 1)

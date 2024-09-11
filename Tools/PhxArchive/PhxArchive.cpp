@@ -1,6 +1,7 @@
 // PhxArchive.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
+#include "pch.h"
 #include <iostream>
 
 #include <dstorage.h>
@@ -68,12 +69,12 @@ int main(int argc, const char** argv)
 	PHX_INFO("Creating PhxArchive '%s' from '%s'", outputDirectory.c_str(), gltfInput.c_str());
 	std::unique_ptr<IFileSystem> fs = FileSystemFactory::CreateNativeFileSystem();
 
-	phxModelImporterGltf gltfImporter;
+	phxModelImporterGltf gltfImporter(fs.get());
 	// Import Model from GLTF
 	phx::StopWatch elapsedTime;
 
 	ModelData model = {};
-	gltfImporter.Import(fs.get(), gltfInput, model);
+	gltfImporter.Import(gltfInput, model);
 	PHX_INFO("Importing GLTF File took %f seconds", elapsedTime.Elapsed().GetSeconds());
 
 
