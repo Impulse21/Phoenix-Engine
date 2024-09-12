@@ -123,6 +123,9 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Core\phxRelativePtr.h">
       <Filter>Core</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Resource\phxArcFileFormat.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">

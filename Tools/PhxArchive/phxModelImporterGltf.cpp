@@ -126,6 +126,7 @@ bool phx::phxModelImporterGltf::Import(std::string const& filename, ModelData& o
 		DirectX::XMMatrixIdentity());
 
 	outModel.SceneGraph.resize(numNodes);
+
 	// TODO Build Animations and Skins
 
     return true;
@@ -234,7 +235,7 @@ void phx::phxModelImporterGltf::BuildMaterials(ModelData& outModel)
 		SetTextureOptions(textureOptions, srcMat.normal_texture.texture, TextureOptions(false));
 	}
 
-	const bool compileTextures = true;
+	const bool compileTextures = false;
 	outModel.TextureOptions.clear();
 	for (auto& name : outModel.TextureNames)
 	{
@@ -439,9 +440,26 @@ void phx::phxModelImporterGltf::CompileMesh(
 			// Similar to Wicked Engine.
 			Mesh::DrawInfo& d = mesh->Draw[drawIdx++];
 			d.IndexCount = draw->NumIndices;
-			d.BaseVertex = curVertOffset;
+			d.BaseVertex = 0;
 			d.StartIndex = curIndexOffset;
 
+			if (draw->Index32)
+			{
+				uint32_t* index = reinterpret_cast<uint32_t*>(draw->IndexBuffer.get());
+				for (int i = 0; i < draw->NumIndices; i++)
+				{
+					*index += curVertOffset;
+				}
+			}
+			else
+			{
+				uint16_t* index = reinterpret_cast<uint16_t*>(draw->IndexBuffer.get());
+				for (int i = 0; i < draw->NumIndices; i++)
+				{
+					*index += (uint16_t)curVertOffset;
+				}
+
+			}
 			curVertOffset += (uint32_t)draw->NumVertices;
 			curIndexOffset += (uint32_t)draw->NumIndices;
 

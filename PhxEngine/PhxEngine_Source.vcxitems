@@ -44,6 +44,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxRenderSystem.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxRendererForward.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Renderer\phxShaderInterop.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Resource\phxArcFileFormat.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Resource\phxResource.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\d3dx12.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)RHI\D3D12\phxD3D12BiindlessDescriptorTable.h" />

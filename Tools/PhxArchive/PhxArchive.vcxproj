@@ -83,7 +83,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
-    <ClCompile Include="PhxArchive.cpp" />
+    <ClCompile Include="Main.cpp" />
     <ClCompile Include="phxMeshConvert.cpp" />
     <ClCompile Include="phxModelImporterGltf.cpp" />
     <ClCompile Include="phxTextureConvert.cpp" />

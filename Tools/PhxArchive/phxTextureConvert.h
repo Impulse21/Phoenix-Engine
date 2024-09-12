@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <phxBaseInclude.h>
+#include <DirectXTex.h>
 
 namespace phx
 {
@@ -25,6 +26,7 @@ namespace phx
 
     namespace TextureCompiler
     {
+        std::unique_ptr<ScratchImage> BuildDDS(std::string const& filename, uint32_t flags);
         void CompileOnDemand(IFileSystem& fs, std::string const& filename, uint32_t flags);
     }
 }
