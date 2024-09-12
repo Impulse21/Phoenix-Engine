@@ -31,7 +31,141 @@ using namespace nlohmann;
 
 namespace
 {
-	static ComPtr<IDStorageCompressionCodec> g_bufferCompression;
+	struct FormatMapping
+	{
+		rhi::Format PhxRHIFormat;
+		DXGI_FORMAT DxgiFormat;
+		uint32_t BitsPerPixel;
+	};
+	const FormatMapping g_FormatMappings[] = {
+	{ rhi::Format::UNKNOWN,              DXGI_FORMAT_UNKNOWN,                0 },
+	{ rhi::Format::R8_UINT,              DXGI_FORMAT_R8_UINT,                8 },
+	{ rhi::Format::R8_SINT,              DXGI_FORMAT_R8_SINT,                8 },
+	{ rhi::Format::R8_UNORM,             DXGI_FORMAT_R8_UNORM,               8 },
+	{ rhi::Format::R8_SNORM,             DXGI_FORMAT_R8_SNORM,               8 },
+	{ rhi::Format::RG8_UINT,             DXGI_FORMAT_R8G8_UINT,              16 },
+	{ rhi::Format::RG8_SINT,             DXGI_FORMAT_R8G8_SINT,              16 },
+	{ rhi::Format::RG8_UNORM,            DXGI_FORMAT_R8G8_UNORM,             16 },
+	{ rhi::Format::RG8_SNORM,            DXGI_FORMAT_R8G8_SNORM,             16 },
+	{ rhi::Format::R16_UINT,             DXGI_FORMAT_R16_UINT,               16 },
+	{ rhi::Format::R16_SINT,             DXGI_FORMAT_R16_SINT,               16 },
+	{ rhi::Format::R16_UNORM,            DXGI_FORMAT_R16_UNORM,              16 },
+	{ rhi::Format::R16_SNORM,            DXGI_FORMAT_R16_SNORM,              16 },
+	{ rhi::Format::R16_FLOAT,            DXGI_FORMAT_R16_FLOAT,              16 },
+	{ rhi::Format::BGRA4_UNORM,          DXGI_FORMAT_B4G4R4A4_UNORM,         16 },
+	{ rhi::Format::B5G6R5_UNORM,         DXGI_FORMAT_B5G6R5_UNORM,           16 },
+	{ rhi::Format::B5G5R5A1_UNORM,       DXGI_FORMAT_B5G5R5A1_UNORM,         16 },
+	{ rhi::Format::RGBA8_UINT,           DXGI_FORMAT_R8G8B8A8_UINT,          32 },
+	{ rhi::Format::RGBA8_SINT,           DXGI_FORMAT_R8G8B8A8_SINT,          32 },
+	{ rhi::Format::RGBA8_UNORM,          DXGI_FORMAT_R8G8B8A8_UNORM,         32 },
+	{ rhi::Format::RGBA8_SNORM,          DXGI_FORMAT_R8G8B8A8_SNORM,         32 },
+	{ rhi::Format::BGRA8_UNORM,          DXGI_FORMAT_B8G8R8A8_UNORM,         32 },
+	{ rhi::Format::SRGBA8_UNORM,         DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,    32 },
+	{ rhi::Format::SBGRA8_UNORM,         DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,    32 },
+	{ rhi::Format::R10G10B10A2_UNORM,    DXGI_FORMAT_R10G10B10A2_UNORM,      32 },
+	{ rhi::Format::R11G11B10_FLOAT,      DXGI_FORMAT_R11G11B10_FLOAT,        32 },
+	{ rhi::Format::RG16_UINT,            DXGI_FORMAT_R16G16_UINT,            32 },
+	{ rhi::Format::RG16_SINT,            DXGI_FORMAT_R16G16_SINT,            32 },
+	{ rhi::Format::RG16_UNORM,           DXGI_FORMAT_R16G16_UNORM,           32 },
+	{ rhi::Format::RG16_SNORM,           DXGI_FORMAT_R16G16_SNORM,           32 },
+	{ rhi::Format::RG16_FLOAT,           DXGI_FORMAT_R16G16_FLOAT,           32 },
+	{ rhi::Format::R32_UINT,             DXGI_FORMAT_R32_UINT,               32 },
+	{ rhi::Format::R32_SINT,             DXGI_FORMAT_R32_SINT,               32 },
+	{ rhi::Format::R32_FLOAT,            DXGI_FORMAT_R32_FLOAT,              32 },
+	{ rhi::Format::RGBA16_UINT,          DXGI_FORMAT_R16G16B16A16_UINT,      64 },
+	{ rhi::Format::RGBA16_SINT,          DXGI_FORMAT_R16G16B16A16_SINT,      64 },
+	{ rhi::Format::RGBA16_FLOAT,         DXGI_FORMAT_R16G16B16A16_FLOAT,     64 },
+	{ rhi::Format::RGBA16_UNORM,         DXGI_FORMAT_R16G16B16A16_UNORM,     64 },
+	{ rhi::Format::RGBA16_SNORM,         DXGI_FORMAT_R16G16B16A16_SNORM,     64 },
+	{ rhi::Format::RG32_UINT,            DXGI_FORMAT_R32G32_UINT,            64 },
+	{ rhi::Format::RG32_SINT,            DXGI_FORMAT_R32G32_SINT,            64 },
+	{ rhi::Format::RG32_FLOAT,           DXGI_FORMAT_R32G32_FLOAT,           64 },
+	{ rhi::Format::RGB32_UINT,           DXGI_FORMAT_R32G32B32_UINT,         96 },
+	{ rhi::Format::RGB32_SINT,           DXGI_FORMAT_R32G32B32_SINT,         96 },
+	{ rhi::Format::RGB32_FLOAT,          DXGI_FORMAT_R32G32B32_FLOAT,        96 },
+	{ rhi::Format::RGBA32_UINT,          DXGI_FORMAT_R32G32B32A32_UINT,      128 },
+	{ rhi::Format::RGBA32_SINT,          DXGI_FORMAT_R32G32B32A32_SINT,      128 },
+	{ rhi::Format::RGBA32_FLOAT,         DXGI_FORMAT_R32G32B32A32_FLOAT,     128 },
+	{ rhi::Format::D16,                  DXGI_FORMAT_R16_UNORM,              16 },
+	{ rhi::Format::D24S8,                DXGI_FORMAT_R24_UNORM_X8_TYPELESS,  32 },
+	{ rhi::Format::X24G8_UINT,           DXGI_FORMAT_X24_TYPELESS_G8_UINT,   32 },
+	{ rhi::Format::D32,                  DXGI_FORMAT_R32_FLOAT,              32 },
+	{ rhi::Format::D32S8,                DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS, 64 },
+	{ rhi::Format::X32G8_UINT,           DXGI_FORMAT_X32_TYPELESS_G8X24_UINT,  64 },
+	{ rhi::Format::BC1_UNORM,            DXGI_FORMAT_BC1_UNORM,              4 },
+	{ rhi::Format::BC1_UNORM_SRGB,       DXGI_FORMAT_BC1_UNORM_SRGB,         4 },
+	{ rhi::Format::BC2_UNORM,            DXGI_FORMAT_BC2_UNORM,              8 },
+	{ rhi::Format::BC2_UNORM_SRGB,       DXGI_FORMAT_BC2_UNORM_SRGB,         8 },
+	{ rhi::Format::BC3_UNORM,            DXGI_FORMAT_BC3_UNORM,              8 },
+	{ rhi::Format::BC3_UNORM_SRGB,       DXGI_FORMAT_BC3_UNORM_SRGB,         8 },
+	{ rhi::Format::BC4_UNORM,            DXGI_FORMAT_BC4_UNORM,              4 },
+	{ rhi::Format::BC4_SNORM,            DXGI_FORMAT_BC4_SNORM,              4 },
+	{ rhi::Format::BC5_UNORM,            DXGI_FORMAT_BC5_UNORM,              8 },
+	{ rhi::Format::BC5_SNORM,            DXGI_FORMAT_BC5_SNORM,              8 },
+	{ rhi::Format::BC6H_UFLOAT,          DXGI_FORMAT_BC6H_UF16,              8 },
+	{ rhi::Format::BC6H_SFLOAT,          DXGI_FORMAT_BC6H_SF16,              8 },
+	{ rhi::Format::BC7_UNORM,            DXGI_FORMAT_BC7_UNORM,              8 },
+	{ rhi::Format::BC7_UNORM_SRGB,       DXGI_FORMAT_BC7_UNORM_SRGB,         8 },
+	};
+	ComPtr<IDStorageCompressionCodec> g_bufferCompression;
+
+	template<typename T>
+	static std::remove_reference_t<T> Compress(arc::Compression compression, T&& source)
+	{
+		if (compression == marc::Compression::None)
+		{
+			return source;
+		}
+		else
+		{
+			size_t maxSize;
+			if (compression == marc::Compression::GDeflate)
+				maxSize = g_bufferCompression->CompressBufferBound(static_cast<uint32_t>(source.size()));
+			else if (compression == marc::Compression::Zlib)
+				maxSize = static_cast<size_t>(compressBound(static_cast<uLong>(source.size())));
+			else
+				throw std::runtime_error("Unknown Compression type");
+
+			std::remove_reference_t<T> dest;
+			dest.resize(maxSize);
+
+			size_t actualCompressedSize = 0;
+
+			HRESULT compressionResult = S_OK;
+
+			if (compression == marc::Compression::GDeflate)
+			{
+				compressionResult = g_bufferCompression->CompressBuffer(
+					reinterpret_cast<const void*>(source.data()),
+					static_cast<uint32_t>(source.size()),
+					DSTORAGE_COMPRESSION_BEST_RATIO,
+					reinterpret_cast<void*>(dest.data()),
+					static_cast<uint32_t>(dest.size()),
+					&actualCompressedSize);
+			}
+			else if (compression == marc::Compression::Zlib)
+			{
+				throw std::runtime_error("Zlib is not supported");
+			}
+
+			if (FAILED(compressionResult))
+			{
+				std::cout << "Failed to compress data using CompressBuffer, hr = 0x" << std::hex << compressionResult
+					<< std::endl;
+				std::abort();
+			}
+
+			dest.resize(actualCompressedSize);
+
+			return dest;
+		}
+	}
+
+	std::string Compress(arc::Compression compression, std::stringstream sourceStream)
+	{
+		auto source = sourceStream.str();
+		return Compress(compression, std::move(source));
+	}
 
 	void Set(float dest[4], Sphere const& src)
 	{
@@ -110,10 +244,7 @@ namespace
 
 			// -- Fill data ---
 			Header* header = fileBuilder.Place<Header>(headerOffset);
-			header->Id[0] = 'P';
-			header->Id[1] = 'A';
-			header->Id[2] = 'R';
-			header->Id[3] = 'C';
+			header->Id = arc::Id;
 			header->Version = CURRENT_PARC_FILE_VERSION;
 			Set(header->BoundingSphere, m_modelData.BoundingSphere);
 			Set(header->MinPos, this->m_modelData.BoundingBox.Min);
@@ -188,7 +319,7 @@ namespace
 
 			uint32_t currentSubresource = 0;
 
-			m_device->GetCopyableFootprints(
+			this->m_device->GetCopyableFootprints(
 				&desc,
 				currentSubresource,
 				totalSubresourceCount - currentSubresource,
@@ -275,6 +406,96 @@ namespace
 		void WriteCpuMetadata(BinaryBuilder& builder);
 		void WriteCpuData(BinaryBuilder& builder);
 
+
+		arc::GpuRegion WriteTextureRegion(
+			uint32_t currentSubresource,
+			uint32_t numSubresources,
+			std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> const& layouts,
+			std::vector<UINT> const& numRows,
+			std::vector<UINT64> const& rowSizes,
+			uint64_t totalBytes,
+			std::vector<D3D12_SUBRESOURCE_DATA> const& subresources,
+			std::string const& name)
+		{
+			std::vector<char> data(totalBytes);
+
+			for (auto i = 0u; i < numSubresources; ++i)
+			{
+				auto const& layout = layouts[i];
+				auto const& subresource = subresources[currentSubresource + i];
+
+				D3D12_MEMCPY_DEST memcpyDest{};
+				memcpyDest.pData = data.data() + layout.Offset;
+				memcpyDest.RowPitch = layout.Footprint.RowPitch;
+				memcpyDest.SlicePitch = layout.Footprint.RowPitch * numRows[i];
+
+				MemcpySubresource(
+					&memcpyDest,
+					&subresource,
+					static_cast<SIZE_T>(rowSizes[i]),
+					numRows[i],
+					layout.Footprint.Depth);
+			}
+
+			return WriteRegion<void>(data, name.c_str());
+		}
+	private:
+		template<typename T, typename C>
+		Region<T> WriteRegion(C uncompressedRegion, char const* name)
+		{
+			size_t uncompressedSize = uncompressedRegion.size();
+
+			C compressedRegion;
+
+			Compression compression = m_compression;
+
+			if (compression == Compression::None)
+			{
+				compressedRegion = std::move(uncompressedRegion);
+			}
+			else
+			{
+				compressedRegion = Compress(m_compression, uncompressedRegion);
+				if (compressedRegion.size() > uncompressedSize)
+				{
+					compression = Compression::None;
+					compressedRegion = std::move(uncompressedRegion);
+				}
+			}
+
+			Region<T> r;
+			r.Compression = compression;
+			r.Data.Offset = static_cast<uint32_t>(m_out.tellp());
+			r.CompressedSize = static_cast<uint32_t>(compressedRegion.size());
+			r.UncompressedSize = static_cast<uint32_t>(uncompressedSize);
+
+			if (r.Compression == Compression::None)
+			{
+				assert(r.CompressedSize == r.UncompressedSize);
+			}
+
+			m_out.write(compressedRegion.data(), compressedRegion.size());
+
+			auto toString = [](Compression c)
+				{
+					switch (c)
+					{
+					case Compression::None:
+						return "Uncompressed";
+					case Compression::GDeflate:
+						return "GDeflate";
+					case Compression::Zlib:
+						return "Zlib";
+					default:
+						throw std::runtime_error("Unknown compression format");
+					}
+				};
+
+			std::cout << r.Data.Offset << ":  " << name << " " << toString(r.Compression) << " " << r.UncompressedSize
+				<< " --> " << r.CompressedSize << "\n";
+
+			return r;
+		}
 	private:
 		struct TextureMetadata
 		{
@@ -283,7 +504,7 @@ namespace
 		};
 
 		std::vector<TextureMetadata> m_textureMetadata;
-		std::vector<rhi::TextureDesc> m_textureDescs;
+		std::vector<D3D12_RESOURCE_DESC> m_textureDescs;
 		ComPtr<ID3D12Device> m_device;
 		std::ostream& m_out;
 		Compression m_compression;

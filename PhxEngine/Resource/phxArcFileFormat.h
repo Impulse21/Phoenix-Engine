@@ -3,12 +3,15 @@
 #include <stdint.h>
 #include "Core/phxRelativePtr.h"
 
+#define MAKE_ID(a, b, c, d)		(((d) << 24) | ((c) << 16) | ((b) << 8) | ((a)))
+
 namespace phx
 {
 	namespace arc
 	{
 
         constexpr uint16_t CURRENT_PARC_FILE_VERSION = 1u;
+        constexpr uint32_t Id = MAKE_ID('P', 'A', 'R', 'C');
 
         //
         // Supported compression formats.  See Region.
@@ -33,7 +36,7 @@ namespace phx
 
         struct Header
         {
-            char Id[4];       // "parc"
+            uint32_t Id;       // "parc"
             uint16_t Version; // CURRENT_PARC_FILE_VERSION
 
             // The unstructured GPU data is read entirely into a D3D12 buffer resource.
