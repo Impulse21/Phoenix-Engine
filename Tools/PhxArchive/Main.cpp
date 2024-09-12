@@ -110,7 +110,7 @@ namespace
 
 			// -- Fill data ---
 			Header* header = fileBuilder.Place<Header>(headerOffset);
-			header->Id[0] = 'M';
+			header->Id[0] = 'P';
 			header->Id[1] = 'A';
 			header->Id[2] = 'R';
 			header->Id[3] = 'C';
