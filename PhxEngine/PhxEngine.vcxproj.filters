@@ -60,6 +60,9 @@
     <ClInclude Include="phxEnumUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="D3D12\phxGfxDescriptorHeap.h">
+      <Filter>Header Files\D3D12</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -87,6 +90,9 @@
       <Filter>Source Files\D3D12</Filter>
     </ClCompile>
     <ClCompile Include="D3D12\phxGfxDxgiFormatMapping.cpp">
+      <Filter>Header Files\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="D3D12\phxGfxDescriptorHeap.cpp">
       <Filter>Header Files\D3D12</Filter>
     </ClCompile>
   </ItemGroup>
