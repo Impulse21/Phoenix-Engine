@@ -90,10 +90,10 @@
       <Filter>Source Files\D3D12</Filter>
     </ClCompile>
     <ClCompile Include="D3D12\phxGfxDxgiFormatMapping.cpp">
-      <Filter>Header Files\D3D12</Filter>
+      <Filter>Source Files\D3D12</Filter>
     </ClCompile>
     <ClCompile Include="D3D12\phxGfxDescriptorHeap.cpp">
-      <Filter>Header Files\D3D12</Filter>
+      <Filter>Source Files\D3D12</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
