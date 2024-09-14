@@ -1,20 +1,20 @@
 ﻿#include "pch.h"
 #include "phxGfxCore.h"
 #include "phxDisplay.h"
-#include "phxGfxContext.h"
+#include "phxGfxDevice.h"
 
 using namespace phx;
-
-#pragma warning(disable : 4061)
 
 namespace phx::gfx
 {
 	void Initialize()
 	{
-		PlatformContext::Initialize();
+		if (Device::Ptr)
+			return;
 
-		// Create COmmand Handlers
-		// Create Create Context manager
+		Device::Ptr = new Device();
+		Device::Ptr->Initialize();
+
 		Display::Initialize();
 
 		// Initialize Other gfx Systems
@@ -22,6 +22,12 @@ namespace phx::gfx
 
 	void Finalize()
 	{
-		PlatformContext::Finalize();
+		if (!Device::Ptr)
+			return;
+
+		Device::Ptr->Finalize();
+		delete Device::Ptr;
+
+		Device::Ptr = nullptr;
 	}
 }

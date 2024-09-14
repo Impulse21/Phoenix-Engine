@@ -16,6 +16,9 @@
     <Filter Include="Header Files\D3D12">
       <UniqueIdentifier>{d2848b47-4689-409b-8847-41d4d69cd49c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\D3D12">
+      <UniqueIdentifier>{54594189-3cee-4020-8608-61e3ced62eeb}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -36,20 +39,23 @@
     <ClInclude Include="phxSystemTime.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D3D12\phxGfxResources.h">
-      <Filter>Header Files\D3D12</Filter>
-    </ClInclude>
     <ClInclude Include="phxGfxCommonResources.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="phxDeferredReleaseQueue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D3D12\phxGfxContext.h">
+    <ClInclude Include="D3D12\phxGfxDevice.h">
       <Filter>Header Files\D3D12</Filter>
     </ClInclude>
-    <ClInclude Include="D3D12\phxGfxDevice.h">
+    <ClInclude Include="D3D12\phxGfxResources.h">
+      <Filter>Header Files\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="phxLog.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D12\phxGfxPlatformCommon.h">
+      <Filter>Header Files\D3D12</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -74,14 +80,11 @@
     <ClCompile Include="phxDeferredReleaseQueue.cpp">
       <Filter>Header Files</Filter>
     </ClCompile>
-    <ClCompile Include="D3D12\phxGfxContext.cpp">
-      <Filter>Header Files\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="D3D12\phxGfxD3D12SwapChain.cpp">
-      <Filter>Header Files\D3D12</Filter>
-    </ClCompile>
     <ClCompile Include="D3D12\phxGfxDevice.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="D3D12\phxGfxDxgiFormatMapping.cpp">
+      <Filter>Header Files\D3D12</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

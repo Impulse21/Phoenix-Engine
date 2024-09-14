@@ -118,6 +118,8 @@ namespace phx::gfx
 		uint32_t Height = 0;
 		uint32_t BufferCount = 3;
 		gfx::Format Format = gfx::Format::R10G10B10A2_UNORM;
+		HWND WindowHandle = nullptr;
+
 		ClearValue OptmizedClearValue =
 		{
 			.Colour = { 0.0f, 0.0f, 0.0f, 1.0f }

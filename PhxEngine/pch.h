@@ -82,6 +82,21 @@
 #include <pix.h>
 
 #include <XGameRuntime.h>
+#include "phxLog.h"
+
+struct NonCopyable
+{
+	NonCopyable() = default;
+	NonCopyable(const NonCopyable&) = delete;
+	NonCopyable& operator=(const NonCopyable&) = delete;
+};
+
+struct NonCopyable
+{
+	NonCopyable() = default;
+	NonCopyable(const NonCopyable&) = delete;
+	NonCopyable& operator=(const NonCopyable&) = delete;
+};
 
 namespace dx
 {

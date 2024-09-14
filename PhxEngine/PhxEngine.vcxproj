@@ -145,8 +145,8 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="D3D12\phxGfxContext.h" />
     <ClInclude Include="D3D12\phxGfxDevice.h" />
+    <ClInclude Include="D3D12\phxGfxPlatformCommon.h" />
     <ClInclude Include="D3D12\phxGfxResources.h" />
     <ClInclude Include="phxDeferredReleaseQueue.h" />
     <ClInclude Include="phxGfxCommonResources.h" />
@@ -155,12 +155,12 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="phxDisplay.h" />
     <ClInclude Include="phxEngineCore.h" />
+    <ClInclude Include="phxLog.h" />
     <ClInclude Include="phxSystemTime.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="D3D12\phxGfxContext.cpp" />
-    <ClCompile Include="D3D12\phxGfxD3D12SwapChain.cpp" />
     <ClCompile Include="D3D12\phxGfxDevice.cpp" />
+    <ClCompile Include="D3D12\phxGfxDxgiFormatMapping.cpp" />
     <ClCompile Include="phxDeferredReleaseQueue.cpp" />
     <ClCompile Include="phxGfxCore.cpp" />
     <ClCompile Include="phxCommandLineArgs.cpp" />
