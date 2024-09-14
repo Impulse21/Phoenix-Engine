@@ -3,8 +3,45 @@
 #include "phxGfxCommonResources.h"
 #include "phxGfxResources.h"
 
+#include <mutex>
+
 namespace phx::gfx
 {
+
+    enum class DescriptorHeapTypes : uint8_t
+    {
+        CBV_SRV_UAV,
+        Sampler,
+        RTV,
+        DSV,
+        Count,
+    };
+
+    struct D3D12CommandQueue final
+    {
+        D3D12_COMMAND_LIST_TYPE m_type;
+
+        Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_d3d12CommandQueue;
+        Microsoft::WRL::ComPtr<ID3D12Fence> m_d3d12Fence;
+
+#if 0
+        std::vector<std::unique_ptr<D3D12CommandContext>> m_commandListsPool;
+        std::queue<D3D12CommandContext*> m_availableCommandLists;
+#endif
+        std::mutex m_commandListMutx;
+
+        uint64_t m_nextFenceValue = 0;
+        uint64_t m_lastCompletedFenceValue = 0;
+
+        std::mutex m_fenceMutex;
+        std::mutex m_eventMutex;
+        HANDLE m_fenceEvent;
+
+        std::vector<ID3D12CommandList*> m_pendingCmdLists;
+        std::vector<ID3D12CommandAllocator*> m_pendingAllocators;;
+    };
+
+    using CommandQueue = D3D12CommandQueue;
 
     struct D3D12DeviceBasicInfo final
     {
@@ -38,10 +75,25 @@ namespace phx::gfx
         void Initialize();
         void Finalize();
 
+        // -- Factory methods ---
     public:
-        // Will resize.
         void Create(SwapChainDesc const& desc, SwapChain& out);
 
+
+        // -- Getters ---
+    public:
+        Microsoft::WRL::ComPtr<ID3D12Device> GetPlatformDevice() { return this->m_platformDevice; }
+        Microsoft::WRL::ComPtr<ID3D12Device2> GetPlatformDevice2() { return this->m_platformDevice2; }
+        Microsoft::WRL::ComPtr<ID3D12Device5> GetPlatformDevice5() { return this->m_platformDevice5; }
+
+        Microsoft::WRL::ComPtr<IDXGIFactory6> GetPlatformFactory() { return this->m_factory; }
+        Microsoft::WRL::ComPtr<IDXGIAdapter> GetPlatformGpuAdapter() { return this->m_gpuAdapter.PlatformAdapter; }
+
+        D3D12CommandQueue& GetGfxQueue() { return this->GetQueue(CommandQueueType::Graphics); }
+        D3D12CommandQueue& GetComputeQueue() { return this->GetQueue(CommandQueueType::Compute); }
+        D3D12CommandQueue& GetCopyQueue() { return this->GetQueue(CommandQueueType::Copy); }
+
+        D3D12CommandQueue& GetQueue(CommandQueueType type) { return this->m_commandQueues[(int)type]; }
 
     private:
         void InitializeD3D12();
@@ -53,6 +105,21 @@ namespace phx::gfx
         Microsoft::WRL::ComPtr<ID3D12Device>    m_platformDevice;
         Microsoft::WRL::ComPtr<ID3D12Device2>   m_platformDevice2;
         Microsoft::WRL::ComPtr<ID3D12Device5>   m_platformDevice5;
+
+
+        D3D12_FEATURE_DATA_ROOT_SIGNATURE FeatureDataRootSignature = {};
+        D3D12_FEATURE_DATA_SHADER_MODEL   FeatureDataShaderModel = {};
+        ShaderModel m_minShaderModel = ShaderModel::SM_6_0;
+        gfx::DeviceCapability m_capabilities;
+
+
+        // -- Command Queues ---
+        EnumArray<CommandQueueType, D3D12CommandQueue> m_commandQueues;
+
+        // -- Descriptor Heaps ---
+        EnumArray<DescriptorHeapTypes, CpuDescriptorHeap> m_cpuDescriptorHeaps;
+        std::array<GpuDescriptorHeap, 2> m_gpuDescriptorHeaps;
+
     };
 
     using Device = D3D12Device;

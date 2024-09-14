@@ -149,6 +149,7 @@
     <ClInclude Include="D3D12\phxGfxPlatformCommon.h" />
     <ClInclude Include="D3D12\phxGfxResources.h" />
     <ClInclude Include="phxDeferredReleaseQueue.h" />
+    <ClInclude Include="phxEnumUtils.h" />
     <ClInclude Include="phxGfxCommonResources.h" />
     <ClInclude Include="phxGfxCore.h" />
     <ClInclude Include="phxCommandLineArgs.h" />

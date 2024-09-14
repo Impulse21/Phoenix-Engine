@@ -57,6 +57,9 @@
     <ClInclude Include="D3D12\phxGfxPlatformCommon.h">
       <Filter>Header Files\D3D12</Filter>
     </ClInclude>
+    <ClInclude Include="phxEnumUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
