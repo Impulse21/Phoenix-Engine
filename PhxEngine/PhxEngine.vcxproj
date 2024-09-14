@@ -146,6 +146,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="D3D12\phxGfxContext.h" />
+    <ClInclude Include="D3D12\phxGfxDevice.h" />
     <ClInclude Include="D3D12\phxGfxResources.h" />
     <ClInclude Include="phxDeferredReleaseQueue.h" />
     <ClInclude Include="phxGfxCommonResources.h" />
@@ -159,6 +160,7 @@
   <ItemGroup>
     <ClCompile Include="D3D12\phxGfxContext.cpp" />
     <ClCompile Include="D3D12\phxGfxD3D12SwapChain.cpp" />
+    <ClCompile Include="D3D12\phxGfxDevice.cpp" />
     <ClCompile Include="phxDeferredReleaseQueue.cpp" />
     <ClCompile Include="phxGfxCore.cpp" />
     <ClCompile Include="phxCommandLineArgs.cpp" />
