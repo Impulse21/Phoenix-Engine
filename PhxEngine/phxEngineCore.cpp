@@ -20,8 +20,6 @@ using namespace DirectX;
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 void ExitGame() noexcept;
 
-HWND g_hWnd = nullptr;
-
 
 namespace
 {
@@ -53,81 +51,86 @@ namespace
 	}
 }
 
-int EngineCore::RunApplication(std::unique_ptr<IEngineApp>&& app, const wchar_t* className, HINSTANCE hInst, int nCmdShow)
+namespace phx::EngineCore
 {
-	if (!XMVerifyCPUSupport())
-		return 1;
 
-	// Initialize the GameRuntime
-	HRESULT hr = XGameRuntimeInitialize();
-	if (FAILED(hr))
+	HWND g_hWnd = nullptr;
+	int RunApplication(std::unique_ptr<IEngineApp>&& app, const wchar_t* className, HINSTANCE hInst, int nCmdShow)
 	{
-		if (hr == E_GAMERUNTIME_DLL_NOT_FOUND || hr == E_GAMERUNTIME_VERSION_MISMATCH)
-		{
-			std::ignore = MessageBoxW(nullptr, L"Game Runtime is not installed on this system or needs updating.", className, MB_ICONERROR | MB_OK);
-		}
-		return 1;
-	}
-
-
-	// Register class and create window
-	{
-		// Register class
-		WNDCLASSEXW wcex = {};
-		wcex.cbSize = sizeof(WNDCLASSEXW);
-		wcex.style = CS_HREDRAW | CS_VREDRAW;
-		wcex.lpfnWndProc = WndProc;
-		wcex.hInstance = hInst;
-		wcex.hIcon = LoadIconW(hInst, L"IDI_ICON");
-		wcex.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-		wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
-		wcex.lpszClassName = L"PhxEditorWindowClass";
-		wcex.hIconSm = LoadIconW(wcex.hInstance, L"IDI_ICON");
-		if (!RegisterClassExW(&wcex))
+		if (!XMVerifyCPUSupport())
 			return 1;
 
-		// Create window
-		RECT rc = { 0, 0, (LONG)gfx::g_DisplayWidth, (LONG)gfx::g_DisplayHeight };
-		AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
-		
-		g_hWnd = CreateWindowExW(0, L"PhxEditorWindowClass", className, WS_OVERLAPPEDWINDOW,
-			CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top,
-			nullptr, nullptr, hInst,
-			nullptr);
-		// TODO: Change to CreateWindowExW(WS_EX_TOPMOST, L"PhxEditorWindowClass", g_szAppName, WS_POPUP,
-		// to default to fullscreen.
-
-		if (!g_hWnd )
+		// Initialize the GameRuntime
+		HRESULT hr = XGameRuntimeInitialize();
+		if (FAILED(hr))
+		{
+			if (hr == E_GAMERUNTIME_DLL_NOT_FOUND || hr == E_GAMERUNTIME_VERSION_MISMATCH)
+			{
+				std::ignore = MessageBoxW(nullptr, L"Game Runtime is not installed on this system or needs updating.", className, MB_ICONERROR | MB_OK);
+			}
 			return 1;
-
-		ApplicationInitialize(*app);
-
-		ShowWindow(g_hWnd, nCmdShow/*SW_SHOWDEFAULT*/);
-		// TODO: Change nCmdShow to SW_SHOWMAXIMIZED to default to fullscreen.
-	}
-
-	// Main message loop
-	MSG msg = {};
-	while (WM_QUIT != msg.message)
-	{
-		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
-		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
 		}
-		else
+
+
+		// Register class and create window
 		{
-			UpdateApplication(*app);
+			// Register class
+			WNDCLASSEXW wcex = {};
+			wcex.cbSize = sizeof(WNDCLASSEXW);
+			wcex.style = CS_HREDRAW | CS_VREDRAW;
+			wcex.lpfnWndProc = WndProc;
+			wcex.hInstance = hInst;
+			wcex.hIcon = LoadIconW(hInst, L"IDI_ICON");
+			wcex.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+			wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+			wcex.lpszClassName = L"PhxEditorWindowClass";
+			wcex.hIconSm = LoadIconW(wcex.hInstance, L"IDI_ICON");
+			if (!RegisterClassExW(&wcex))
+				return 1;
+
+			// Create window
+			RECT rc = { 0, 0, (LONG)gfx::g_DisplayWidth, (LONG)gfx::g_DisplayHeight };
+			AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
+
+			g_hWnd = CreateWindowExW(0, L"PhxEditorWindowClass", className, WS_OVERLAPPEDWINDOW,
+				CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top,
+				nullptr, nullptr, hInst,
+				nullptr);
+			// TODO: Change to CreateWindowExW(WS_EX_TOPMOST, L"PhxEditorWindowClass", g_szAppName, WS_POPUP,
+			// to default to fullscreen.
+
+			if (!g_hWnd)
+				return 1;
+
+			ApplicationInitialize(*app);
+
+			ShowWindow(g_hWnd, nCmdShow/*SW_SHOWDEFAULT*/);
+			// TODO: Change nCmdShow to SW_SHOWMAXIMIZED to default to fullscreen.
 		}
+
+		// Main message loop
+		MSG msg = {};
+		while (WM_QUIT != msg.message)
+		{
+			if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+			{
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+			}
+			else
+			{
+				UpdateApplication(*app);
+			}
+		}
+
+		ApplicationFinalize(*app);
+		app.reset();
+
+		XGameRuntimeUninitialize();
+		gfx::Finalize();
+
+		return static_cast<int>(msg.wParam);
 	}
-
-	ApplicationFinalize(*app);
-	app.reset();
-
-	XGameRuntimeUninitialize();
-	gfx::Finalize();
-	
-	return static_cast<int>(msg.wParam);
 }
 
 

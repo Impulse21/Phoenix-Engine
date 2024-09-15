@@ -8,6 +8,7 @@
 #include "d3d12ma/D3D12MemAlloc.h"
 
 #include <mutex>
+#include <queue>
 
 namespace phx::gfx
 {
@@ -53,6 +54,8 @@ namespace phx::gfx
 
         uint64_t Submit();
 
+        uint64_t GetLastCompletedFence();
+        uint64_t ExecuteCommandLists(Span<ID3D12CommandList*> commandLists);
         ID3D12CommandAllocator* RequestAllocator();
         void DiscardAllocators(uint64_t fence, Span<ID3D12CommandAllocator*> allocators);
         void DiscardAllocator(uint64_t fence, ID3D12CommandAllocator* allocator);
@@ -62,6 +65,20 @@ namespace phx::gfx
         bool IsFenceComplete(uint64_t fenceValue);
         void WaitForFence(uint64_t fenceValue);
         void WaitForIdle() { this->WaitForFence(this->IncrementFence()); }
+        class CommandAllocatorPool
+        {
+        public:
+            void Initialize(ID3D12Device* nativeDevice, D3D12_COMMAND_LIST_TYPE type);
+            ID3D12CommandAllocator* RequestAllocator(uint64_t completedFenceValue);
+            void DiscardAllocator(uint64_t fence, ID3D12CommandAllocator* allocator);
+
+        private:
+            std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> m_allocatorPool;
+            std::queue<std::pair<uint64_t, ID3D12CommandAllocator*>> m_availableAllocators;
+            std::mutex m_allocatonMutex;
+            ID3D12Device* m_nativeDevice;
+            D3D12_COMMAND_LIST_TYPE m_type;
+        } m_allocatorPool;
     };
 
     using CommandQueue = D3D12CommandQueue;

@@ -8,7 +8,7 @@ namespace
 	std::unordered_map<std::wstring, std::wstring> m_argumentMap;
 }
 
-namespace CommandLineArgs
+namespace phx::CommandLineArgs
 {
 
 	template<typename GetStringFunc>

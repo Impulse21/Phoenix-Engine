@@ -34,4 +34,10 @@ namespace phx::gfx
 		Device::Ptr = nullptr;
 	}
 
+	void SwapChain::Initialize(SwapChainDesc desc)
+	{
+		this->m_desc = desc;
+		Device::Ptr->GetPlatform().Create(desc, this->m_platformResource);
+	}
+
 }

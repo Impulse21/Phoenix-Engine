@@ -8,7 +8,7 @@
 #include "phxDeferredReleaseQueue.h"
 #include "phxSystemTime.h"
 
-namespace EngineCore { extern HWND g_hWnd; }
+namespace phx::EngineCore { extern HWND g_hWnd; }
 
 using namespace phx;
 

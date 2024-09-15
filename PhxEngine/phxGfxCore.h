@@ -34,11 +34,7 @@ namespace phx
 		public:
 			SwapChain() = default;
 
-			void Initialize(SwapChainDesc desc)
-			{
-				this->m_desc = desc;
-				Device::Ptr->GetPlatform().Create(desc, this->m_platformResource);
-			}
+			void Initialize(SwapChainDesc desc);
 
 			void Release()
 			{

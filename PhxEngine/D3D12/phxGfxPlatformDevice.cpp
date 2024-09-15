@@ -317,8 +317,8 @@ namespace phx::gfx
 			}
 
 
-			Microsoft::WRL::ComPtr<ID3D12Debug3> debugController3;
-			if (SUCCEEDED(out.m_platform->QueryInterface(IID_PPV_ARGS(&out.m_platform4))))
+			hr = out.m_platform.As(&out.m_platform4);
+			if (FAILED(hr))
 			{
 				throw std::exception();
 			}

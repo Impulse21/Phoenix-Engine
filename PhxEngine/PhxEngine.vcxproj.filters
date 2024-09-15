@@ -19,6 +19,12 @@
     <Filter Include="Source Files\D3D12">
       <UniqueIdentifier>{54594189-3cee-4020-8608-61e3ced62eeb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\3rdParty">
+      <UniqueIdentifier>{a85f129a-e280-41b1-bdfe-22bbc8af5551}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\3rdParty">
+      <UniqueIdentifier>{2662db93-0168-49c6-adf2-0f06685aa95a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -63,6 +69,9 @@
     <ClInclude Include="D3D12\phxGfxDescriptorHeap.h">
       <Filter>Header Files\D3D12</Filter>
     </ClInclude>
+    <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h">
+      <Filter>Header Files\3rdParty</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -74,17 +83,8 @@
     <ClCompile Include="phxDisplay.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="phxCommandLineArgs.cpp">
-      <Filter>Header Files</Filter>
-    </ClCompile>
-    <ClCompile Include="phxGfxCore.cpp">
-      <Filter>Header Files</Filter>
-    </ClCompile>
     <ClCompile Include="phxSystemTimer.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="phxDeferredReleaseQueue.cpp">
-      <Filter>Header Files</Filter>
     </ClCompile>
     <ClCompile Include="D3D12\phxGfxPlatformDevice.cpp">
       <Filter>Source Files\D3D12</Filter>
@@ -93,6 +93,21 @@
       <Filter>Source Files\D3D12</Filter>
     </ClCompile>
     <ClCompile Include="D3D12\phxGfxDescriptorHeap.cpp">
+      <Filter>Source Files\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="phxCommandLineArgs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="phxDeferredReleaseQueue.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="phxGfxCore.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp">
+      <Filter>Source Files\3rdParty</Filter>
+    </ClCompile>
+    <ClCompile Include="D3D12\phxGfxD3D12CommandQueue.cpp">
       <Filter>Source Files\D3D12</Filter>
     </ClCompile>
   </ItemGroup>
