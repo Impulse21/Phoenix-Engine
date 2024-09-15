@@ -91,8 +91,12 @@ namespace phx::gfx
         inline static D3D12Device* Ptr = nullptr;
 
     public:
-        D3D12Device() = default;
-        ~D3D12Device() { this->Finalize(); }
+        D3D12Device()
+        {
+            assert(!D3D12Device::Ptr);
+            Ptr = this;
+        };
+        ~D3D12Device() { this->Finalize(); Ptr = nullptr; }
 
         void Initialize();
         void Finalize();
@@ -144,7 +148,7 @@ namespace phx::gfx
 
     };
 
-    using Device = D3D12Device;
+    using PlatformDevice = D3D12Device;
 #if false
     class D3D12GfxDevice final
     {

@@ -30,4 +30,5 @@ namespace phx::gfx
 
 		Device::Ptr = nullptr;
 	}
+
 }
