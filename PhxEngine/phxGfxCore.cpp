@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 #include "phxGfxCore.h"
 #include "phxDisplay.h"
-#include "phxGfxDevice.h"
+#include "phxGfxPlatformDevice.h"
 
 using namespace phx;
 
@@ -15,7 +15,10 @@ namespace phx::gfx
 		Device::Ptr = new Device();
 		Device::Ptr->Initialize();
 
+		// TODO: Initialize Common Types
 		Display::Initialize();
+
+		// Add GPU Time Manager
 
 		// Initialize Other gfx Systems
 	}

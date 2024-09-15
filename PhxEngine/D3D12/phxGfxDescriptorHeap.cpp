@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include "phxGfxDevice.h"
+#include "phxGfxPlatformDevice.h"
 
 using namespace dx;
 using namespace phx::gfx;

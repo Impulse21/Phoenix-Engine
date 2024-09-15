@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include "phxGfxDevice.h"
-#include "phxGfxResources.h"
+#include "phxGfxPlatformDevice.h"
+#include "phxGfxPlatformResources.h"
 
 namespace phx
 {
@@ -9,7 +9,44 @@ namespace phx
 	{
 		void Initialize();
 		void Finalize();
-	
+
+		template<typename TDesc, typename TPlatform>
+		class DeviceResource
+		{
+		public:
+			virtual ~DeviceResource() = default;
+
+			TPlatform& GetPlatform() { return this->m_platformResource; }
+			const TDesc& GetDesc() const { return this->m_desc; }
+
+			explicit operator bool() const
+			{
+				return !!m_platformResource;
+			}
+
+		protected:
+			TPlatform m_platformResource;
+			TDesc m_desc;
+		};
+
+		class SwapChain final : DeviceResource<SwapChainDesc, PlatformSwapChain>
+		{
+		public:
+			SwapChain() = default;
+
+			void Initialize(SwapChainDesc desc)
+			{
+				this->m_desc = desc;
+				Device::Ptr->GetPlatform().Create(desc, this->m_platformResource);
+			}
+
+			void Release()
+			{
+				this->m_platformResource.Release();
+				this->m_desc = {};
+			}
+		};
+
 		class Device
 		{
 		public:
@@ -27,27 +64,19 @@ namespace phx
 				this->m_platform.WaitForIdle();
 			}
 
-			// -- Factory methods ---
-		public:
-			void Create(SwapChainDesc const& desc, SwapChain& out)
+			void Present(SwapChain const& swapChain)
 			{
-				// TODO:
+#if false
+				this->m_platform.Present(swapChain.GetPlatform());
+#endif
 			}
+
+			// -- Getters ---
+		public:
+			PlatformDevice& GetPlatform() { return this->m_platform; }
 
 		private:
 			PlatformDevice m_platform;
 		};
-
-		// TODO:
-#if false
-		extern gDevice;
-		extern CommandListManager;
-		extern ContextManager;
-
-
-		// Features
-		// Allocators
-#endif
-
 	}
 }

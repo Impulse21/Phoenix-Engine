@@ -15,6 +15,18 @@ namespace phx::gfx
 
 		IDXGISwapChain1* GetPlatform() { return this->m_platform.Get(); }
 		IDXGISwapChain1* GetPlatform4() { return this->m_platform4.Get(); }
+
+		void Release()
+		{
+			this->m_backBuffers.clear();
+			this->m_platform.Reset();
+			this->m_platform4.Reset();
+		}
+
+		explicit operator bool() const
+		{
+			return !!this->m_platform;
+		}
 	};
 
 	using PlatformSwapChain = D3D12SwapChain;

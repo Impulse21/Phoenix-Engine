@@ -1,7 +1,7 @@
 #pragma once
 
 #include "phxGfxCommonResources.h"
-#include "phxGfxResources.h"
+#include "phxGfxPlatformResources.h"
 #include "phxGfxDescriptorHeap.h"
 
 #include "phxSpan.h"
@@ -106,7 +106,7 @@ namespace phx::gfx
 
         // -- Factory methods ---
     public:
-        void Create(SwapChainDesc const& desc, PlatformSwapChain& out);
+        bool Create(SwapChainDesc const& desc, PlatformSwapChain& out);
 
 
         // -- Getters ---

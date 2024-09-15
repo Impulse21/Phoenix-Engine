@@ -91,13 +91,6 @@ struct NonCopyable
 	NonCopyable& operator=(const NonCopyable&) = delete;
 };
 
-struct NonCopyable
-{
-	NonCopyable() = default;
-	NonCopyable(const NonCopyable&) = delete;
-	NonCopyable& operator=(const NonCopyable&) = delete;
-};
-
 namespace dx
 {
 	// Helper class for COM exceptions

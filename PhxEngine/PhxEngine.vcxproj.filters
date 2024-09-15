@@ -45,10 +45,10 @@
     <ClInclude Include="phxDeferredReleaseQueue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D3D12\phxGfxDevice.h">
+    <ClInclude Include="D3D12\phxGfxPlatformDevice.h">
       <Filter>Header Files\D3D12</Filter>
     </ClInclude>
-    <ClInclude Include="D3D12\phxGfxResources.h">
+    <ClInclude Include="D3D12\phxGfxPlatformResources.h">
       <Filter>Header Files\D3D12</Filter>
     </ClInclude>
     <ClInclude Include="phxLog.h">
@@ -86,7 +86,7 @@
     <ClCompile Include="phxDeferredReleaseQueue.cpp">
       <Filter>Header Files</Filter>
     </ClCompile>
-    <ClCompile Include="D3D12\phxGfxDevice.cpp">
+    <ClCompile Include="D3D12\phxGfxPlatformDevice.cpp">
       <Filter>Source Files\D3D12</Filter>
     </ClCompile>
     <ClCompile Include="D3D12\phxGfxDxgiFormatMapping.cpp">

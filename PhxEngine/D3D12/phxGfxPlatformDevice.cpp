@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "phxGfxDevice.h"
+#include "phxGfxPlatformDevice.h"
 #include "phxCommandLineArgs.h"
 #include "phxGfxPlatformCommon.h"
 
@@ -274,7 +274,7 @@ namespace phx::gfx
 		}
 	}
 
-	void D3D12Device::Create(SwapChainDesc const& desc, D3D12SwapChain& out)
+	bool D3D12Device::Create(SwapChainDesc const& desc, D3D12SwapChain& out)
 	{
 		HRESULT hr;
 
@@ -402,21 +402,11 @@ namespace phx::gfx
 		{
 			Microsoft::WRL::ComPtr<ID3D12Resource> backBuffer;
 			ThrowIfFailed(
-				out.m_platform4->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
+				out.m_platform4->GetBuffer(i, IID_PPV_ARGS(&out.m_backBuffers[i])));
 
-			char allocatorName[32];
-			sprintf_s(allocatorName, "Back Buffer %iu", i);
-
-			out.m_backBuffers[i] = this->CreateTexture(
-				{
-					.BindingFlags = BindingFlags::RenderTarget,
-					.Dimension = TextureDimension::Texture2D,
-					.Format = out.m_desc.Format,
-					.Width = out.m_desc.Width,
-					.Height = out.m_desc.Height,
-					.DebugName = std::string(allocatorName)
-				},
-				backBuffer);
+			wchar_t allocatorName[32];
+			swprintf_s(allocatorName, L"Back Buffer %iu", i);
+			out.m_backBuffers[i]->SetName(allocatorName);
 		}
 	}
 

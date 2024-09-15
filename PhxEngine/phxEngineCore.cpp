@@ -181,14 +181,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_SIZE:
-#if false
 		if (wParam == SIZE_MINIMIZED)
 		{
 			if (!s_minimized)
 			{
 				s_minimized = true;
 				if (!s_in_suspend && app)
-					app->OnSuspending();
+					// app->OnSuspending();
 				s_in_suspend = true;
 			}
 		}
@@ -196,16 +195,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			s_minimized = false;
 			if (s_in_suspend && app)
-				app->OnResuming();
+				// app->OnResuming();
 			s_in_suspend = false;
 		}
 		else if (!s_in_sizemove && app)
 		{
-			app->OnWindowSizeChanged(LOWORD(lParam), HIWORD(lParam));
+			Display::Resize(LOWORD(lParam), HIWORD(lParam));
 		}
-#else
-		// Display::Resize();
-#endif
 
 		break;
 
