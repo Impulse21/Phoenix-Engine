@@ -274,6 +274,94 @@ namespace phx::gfx
 		}
 	}
 
+	void D3D12Device::Present(PlatformSwapChain const& swapChain)
+	{
+		// Submit Commandlists
+		const uint32_t numActiveCommandLists = this->m_activeCmdCount;
+		this->m_activeCmdCount = 0;
+
+		for (uint32_t iCmd = 0; iCmd < numActiveCommandLists; ++iCmd)
+		{
+			// TODO: Determine how this logic should work....
+			D3D12CommandList& commandList = this->m_commandListPool[iCmd];
+			commandList.NativeCommandList6->Close();
+
+			D3D12CommandQueue& queue = this->GetQueue(commandList.QueueType);
+			const bool dependency = !commandList.Waits.empty() || !commandList.IsWaitedOn.load();
+
+			if (dependency)
+			{
+#if false
+				queue.Submit();
+#endif
+			}
+
+			queue.EnqueueCommandList(commandList.NativeCommandList.Get(), commandList.NativeCommandAllocator);
+
+			if (dependency)
+			{
+#if false
+				for (auto& wait : commandList.Waits)
+				{
+					// record wait for signal on a previous submit:
+					D3D12CommandList& waitCommandList = *this->m_commandListPool.Get(cmdHandle);
+					ThrowIfFailed(
+						this->GetQueue(waitCommandList.QueueType).GetD3D12CommandQueue()->Wait(
+							this->GetQueue(waitCommandList.QueueType).GetFence(),
+							nextFenceValue));
+				}
+
+				if (!submitCommands.empty())
+				{
+					uint64_t waitOnFenceValue = this->GetQueue(commandList.QueueType).ExecuteCommandLists(Span(submitCommands));
+					queue.DiscardAllocators(waitOnFenceValue, Span(submitAllocators));
+
+					submitCommands.clear();
+					submitAllocators.clear();
+					assert(nextFenceValue);
+				}
+#else
+				assert(false && "Queue Syncing isn't working");
+#endif
+			}
+		}
+
+		// -- Mark Queues for completion ---
+		for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
+		{
+			D3D12CommandQueue& queue = this->m_commandQueues[q];
+			queue.Submit();
+		}
+
+		// -- Present SwapChain ---
+
+		{
+			UINT presentFlags = 0;
+			if (!.Desc.VSync && !this->m_swapChain.Desc.Fullscreen)
+			{
+				presentFlags = DXGI_PRESENT_ALLOW_TEARING;
+			}
+			HRESULT hr = this->m_swapChain.NativeSwapchain4->Present((UINT)this->m_swapChain.Desc.VSync, presentFlags);
+
+			// If the device was reset we must completely reinitialize the renderer.
+			if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+			{
+
+#ifdef _DEBUG
+				char buff[64] = {};
+				sprintf_s(buff, "Device Lost on Present: Reason code 0x%08X\n",
+					static_cast<unsigned int>((hr == DXGI_ERROR_DEVICE_REMOVED)
+						? this->GetD3D12Device()->GetDeviceRemovedReason()
+						: hr));
+				OutputDebugStringA(buff);
+#endif
+
+				// TODO: Handle device lost
+				// HandleDeviceLost();
+			}
+		}
+	}
+
 	bool D3D12Device::Create(SwapChainDesc const& desc, D3D12SwapChain& out)
 	{
 		HRESULT hr;

@@ -62,9 +62,7 @@ namespace phx
 
 			void Present(SwapChain const& swapChain)
 			{
-#if false
 				this->m_platform.Present(swapChain.GetPlatform());
-#endif
 			}
 
 			// -- Getters ---

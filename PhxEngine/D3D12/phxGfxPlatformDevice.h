@@ -120,6 +120,7 @@ namespace phx::gfx
         void Finalize();
 
         void WaitForIdle();
+        void Present(PlatformSwapChain const& swapChain);
 
         // -- Factory methods ---
     public:
