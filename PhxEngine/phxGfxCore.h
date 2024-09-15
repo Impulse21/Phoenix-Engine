@@ -21,6 +21,19 @@ namespace phx
 			void Initialize() { this->m_platform.Initialize(); }
 			void Finalize() { this->m_platform.Finalize(); };
 
+
+			void WaitForIdle()
+			{
+				this->m_platform.WaitForIdle();
+			}
+
+			// -- Factory methods ---
+		public:
+			void Create(SwapChainDesc const& desc, SwapChain& out)
+			{
+				// TODO:
+			}
+
 		private:
 			PlatformDevice m_platform;
 		};

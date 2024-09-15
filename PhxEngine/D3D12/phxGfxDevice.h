@@ -5,6 +5,7 @@
 #include "phxGfxDescriptorHeap.h"
 
 #include "phxSpan.h"
+#include "d3d12ma/D3D12MemAlloc.h"
 
 #include <mutex>
 
@@ -101,9 +102,11 @@ namespace phx::gfx
         void Initialize();
         void Finalize();
 
+        void WaitForIdle();
+
         // -- Factory methods ---
     public:
-        void Create(SwapChainDesc const& desc, SwapChain& out);
+        void Create(SwapChainDesc const& desc, PlatformSwapChain& out);
 
 
         // -- Getters ---
@@ -132,6 +135,7 @@ namespace phx::gfx
         Microsoft::WRL::ComPtr<ID3D12Device2>   m_platformDevice2;
         Microsoft::WRL::ComPtr<ID3D12Device5>   m_platformDevice5;
 
+        Microsoft::WRL::ComPtr<D3D12MA::Allocator> m_gpuMemAllocator;
 
         D3D12_FEATURE_DATA_ROOT_SIGNATURE FeatureDataRootSignature = {};
         D3D12_FEATURE_DATA_SHADER_MODEL   FeatureDataShaderModel = {};

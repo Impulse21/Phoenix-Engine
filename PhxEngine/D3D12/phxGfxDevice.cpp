@@ -6,6 +6,14 @@
 using namespace phx;
 using namespace dx;
 
+
+// Teir 1 limit is 1,000,000
+// https://docs.microsoft.com/en-us/windows/win32/direct3d12/hardware-support
+#define TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE 1000000
+
+#define NUM_BINDLESS_RESOURCES TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE / 2
+
+
 namespace
 {
 
@@ -55,6 +63,62 @@ namespace phx::gfx
 	{
 		PHX_CORE_INFO("Initialize DirectX 12 Graphics Device");
 #if true
+		this->InitializeD3D12();
+
+		// Create Queues
+		this->m_commandQueues[(int)CommandQueueType::Graphics].Initialize(this->GetPlatformDevice().Get(), D3D12_COMMAND_LIST_TYPE_DIRECT);
+		this->m_commandQueues[(int)CommandQueueType::Compute].Initialize(this->GetPlatformDevice().Get(), D3D12_COMMAND_LIST_TYPE_COMPUTE);
+		this->m_commandQueues[(int)CommandQueueType::Copy].Initialize(this->GetPlatformDevice().Get(), D3D12_COMMAND_LIST_TYPE_COPY);
+
+
+		// Create Descriptor Heaps
+		this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::CBV_SRV_UAV].Initialize(
+			this,
+			1024,
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+		this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler].Initialize(
+			this,
+			1024,
+			D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+
+		this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::RTV].Initialize(
+			this,
+			1024,
+			D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+		this->m_cpuDescriptorHeaps[(int)DescriptorHeapTypes::DSV].Initialize(
+			this,
+			1024,
+			D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+
+
+		this->m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::CBV_SRV_UAV].Initialize(
+			this,
+			NUM_BINDLESS_RESOURCES,
+			TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE - NUM_BINDLESS_RESOURCES,
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
+
+
+		this->m_gpuDescriptorHeaps[(int)DescriptorHeapTypes::Sampler].Initialize(
+			this,
+			10,
+			100,
+			D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
+			D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
+
+		D3D12MA::ALLOCATOR_DESC allocatorDesc = {};
+		allocatorDesc.pDevice = this->m_platformDevice.Get();
+		allocatorDesc.pAdapter = this->m_gpuAdapter.PlatformAdapter.Get();
+		//allocatorDesc.PreferredBlockSize = 256 * 1024 * 1024;
+		//allocatorDesc.Flags |= D3D12MA::ALLOCATOR_FLAG_ALWAYS_COMMITTED;
+		allocatorDesc.Flags = (D3D12MA::ALLOCATOR_FLAGS)(D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED);
+
+		ThrowIfFailed(
+			D3D12MA::CreateAllocator(&allocatorDesc, &this->m_gpuMemAllocator));
+
+
 #else
 		this->InitializeResourcePools();
 		this->InitializeD3D12NativeResources(this->m_gpuAdapter.NativeAdapter.Get());
@@ -152,7 +216,7 @@ namespace phx::gfx
 		this->m_bindlessResourceDescriptorTable.Initialize(this->GetResourceGpuHeap().Allocate(NUM_BINDLESS_RESOURCES));
 
 		D3D12MA::ALLOCATOR_DESC allocatorDesc = {};
-		allocatorDesc.pDevice = this->m_rootDevice.Get();
+		allocatorDesc.pDevice = this->m_platformDevice.Get();
 		allocatorDesc.pAdapter = this->m_gpuAdapter.NativeAdapter.Get();
 		//allocatorDesc.PreferredBlockSize = 256 * 1024 * 1024;
 		//allocatorDesc.Flags |= D3D12MA::ALLOCATOR_FLAG_ALWAYS_COMMITTED;
@@ -190,10 +254,28 @@ namespace phx::gfx
 	{
 	}
 
-	void D3D12Device::Create(SwapChainDesc const& desc, SwapChain& out)
+	void D3D12Device::WaitForIdle()
 	{
-		out.m_Desc = desc;
+		Microsoft::WRL::ComPtr<ID3D12Fence> fence;
+		HRESULT hr = this->m_platformDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+		assert(SUCCEEDED(hr));
 
+		for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
+		{
+			D3D12CommandQueue& queue = this->m_commandQueues[q];
+			hr = queue.m_platformQueue->Signal(fence.Get(), 1);
+			assert(SUCCEEDED(hr));
+			if (fence->GetCompletedValue() < 1)
+			{
+				hr = fence->SetEventOnCompletion(1, NULL);
+				assert(SUCCEEDED(hr));
+			}
+			fence->Signal(0);
+		}
+	}
+
+	void D3D12Device::Create(SwapChainDesc const& desc, D3D12SwapChain& out)
+	{
 		HRESULT hr;
 
 		UINT swapChainFlags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
@@ -222,7 +304,7 @@ namespace phx::gfx
 			fullscreenDesc.Windowed = !desc.Fullscreen;
 
 			hr = this->m_factory->CreateSwapChainForHwnd(
-				this->GetGfxQueue().GetD3D12CommandQueue(),
+				this->GetGfxQueue().m_platformQueue.Get(),
 				static_cast<HWND>(desc.WindowHandle),
 				&swapChainDesc,
 				&fullscreenDesc,
@@ -247,12 +329,7 @@ namespace phx::gfx
 			// Resize swapchain:
 			this->WaitForIdle();
 
-			// Delete back buffers
-			for (int i = 0; i < out.BackBuffers.size(); i++)
-			{
-			}
-
-			out.BackBuffers.clear();
+			out.m_backBuffers.clear();
 
 			hr = out.m_platform4->ResizeBuffers(
 				desc.BufferCount,
@@ -319,9 +396,9 @@ namespace phx::gfx
 		}
 #endif
 
-		out.BackBuffers.resize(desc.BufferCount);
+		out.m_backBuffers.resize(desc.BufferCount);
 
-		for (UINT i = 0; i < out.Desc.BufferCount; i++)
+		for (UINT i = 0; i < desc.BufferCount; i++)
 		{
 			Microsoft::WRL::ComPtr<ID3D12Resource> backBuffer;
 			ThrowIfFailed(
@@ -330,7 +407,7 @@ namespace phx::gfx
 			char allocatorName[32];
 			sprintf_s(allocatorName, "Back Buffer %iu", i);
 
-			out.BackBuffers[i] = this->CreateTexture(
+			out.m_backBuffers[i] = this->CreateTexture(
 				{
 					.BindingFlags = BindingFlags::RenderTarget,
 					.Dimension = TextureDimension::Texture2D,
@@ -409,7 +486,6 @@ namespace phx::gfx
 			this->IsUnderGraphicsDebugger |= !!pix;
 		}
 #endif
-#if false
 		D3D12_FEATURE_DATA_D3D12_OPTIONS featureOpptions = {};
 		bool hasOptions = SUCCEEDED(this->m_platformDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &featureOpptions, sizeof(featureOpptions)));
 
@@ -423,9 +499,9 @@ namespace phx::gfx
 
 		// TODO: Move to acability array
 		D3D12_FEATURE_DATA_D3D12_OPTIONS5 featureSupport5 = {};
-		bool hasOptions5 = SUCCEEDED(this->m_rootDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureSupport5, sizeof(featureSupport5)));
+		bool hasOptions5 = SUCCEEDED(this->m_platformDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureSupport5, sizeof(featureSupport5)));
 
-		if (SUCCEEDED(this->m_rootDevice.As(&this->m_rootDevice5)) && hasOptions5)
+		if (SUCCEEDED(this->m_platformDevice.As(&this->m_platformDevice5)) && hasOptions5)
 		{
 			if (featureSupport5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0)
 			{
@@ -443,7 +519,7 @@ namespace phx::gfx
 
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS6 featureSupport6 = {};
-		bool hasOptions6 = SUCCEEDED(this->m_rootDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &featureSupport6, sizeof(featureSupport6)));
+		bool hasOptions6 = SUCCEEDED(this->m_platformDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &featureSupport6, sizeof(featureSupport6)));
 
 		if (hasOptions6)
 		{
@@ -454,9 +530,9 @@ namespace phx::gfx
 		}
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS7 featureSupport7 = {};
-		bool hasOptions7 = SUCCEEDED(this->m_rootDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureSupport7, sizeof(featureSupport7)));
+		bool hasOptions7 = SUCCEEDED(this->m_platformDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &featureSupport7, sizeof(featureSupport7)));
 
-		if (SUCCEEDED(this->m_rootDevice.As(&this->m_rootDevice2)) && hasOptions7)
+		if (SUCCEEDED(this->m_platformDevice.As(&this->m_platformDevice2)) && hasOptions7)
 		{
 			if (featureSupport7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1)
 			{
@@ -466,7 +542,7 @@ namespace phx::gfx
 		}
 
 		this->FeatureDataRootSignature.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
-		if (FAILED(this->m_rootDevice2->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &this->FeatureDataRootSignature, sizeof(this->FeatureDataRootSignature))))
+		if (FAILED(this->m_platformDevice2->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &this->FeatureDataRootSignature, sizeof(this->FeatureDataRootSignature))))
 		{
 			this->FeatureDataRootSignature.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
 		}
@@ -474,12 +550,11 @@ namespace phx::gfx
 		// Check shader model support
 		this->FeatureDataShaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_6;
 		this->m_minShaderModel = ShaderModel::SM_6_6;
-		if (FAILED(this->m_rootDevice2->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &this->FeatureDataShaderModel, sizeof(this->FeatureDataShaderModel))))
+		if (FAILED(this->m_platformDevice2->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &this->FeatureDataShaderModel, sizeof(this->FeatureDataShaderModel))))
 		{
 			this->FeatureDataShaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_5;
 			this->m_minShaderModel = ShaderModel::SM_6_5;
 		}
-#endif
 
 		if (useDebugLayers)
 		{

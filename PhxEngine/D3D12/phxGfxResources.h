@@ -3,18 +3,19 @@
 #include "pch.h"
 #include "phxGfxCommonResources.h"
 #include "phxDeferredReleaseQueue.h"
+#include <vector>
 
 namespace phx::gfx
 {
-	struct SwapChain : NonCopyable
+	struct D3D12SwapChain : NonCopyable
 	{
-        SwapChainDesc m_Desc;
-        DeferredReleasePtr<IDXGISwapChain1> m_platform;
-        DeferredReleasePtr<IDXGISwapChain4> m_platform4;
+		Microsoft::WRL::ComPtr<IDXGISwapChain1> m_platform;
+		Microsoft::WRL::ComPtr<IDXGISwapChain4> m_platform4;
+		std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_backBuffers;
 
-		IDXGISwapChain1* GetPlatform() { return this->m_platform; }
-		IDXGISwapChain2* GetPlatform2() { return this->m_platform2; }
-
-		const SwapChainDesc& GetDesc() { return this->m_Desc; }
+		IDXGISwapChain1* GetPlatform() { return this->m_platform.Get(); }
+		IDXGISwapChain1* GetPlatform4() { return this->m_platform4.Get(); }
 	};
+
+	using PlatformSwapChain = D3D12SwapChain;
 }
