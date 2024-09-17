@@ -72,6 +72,12 @@
     <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h">
       <Filter>Header Files\3rdParty</Filter>
     </ClInclude>
+    <ClInclude Include="phxGfxHandle.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="phxGfxHandlePool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">

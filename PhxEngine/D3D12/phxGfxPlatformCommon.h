@@ -16,7 +16,6 @@ namespace phx::gfx::dx
 
     const DxgiFormatMapping& GetDxgiFormatMapping(gfx::Format abstractFormat);
 
-# if false
     inline D3D12_RESOURCE_STATES ConvertResourceStates(ResourceStates stateBits)
     {
         if (stateBits == ResourceStates::Common)
@@ -49,5 +48,4 @@ namespace phx::gfx::dx
 
         return result;
     }
-#endif
 }

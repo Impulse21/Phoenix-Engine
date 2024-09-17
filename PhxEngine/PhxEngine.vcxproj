@@ -158,6 +158,8 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="phxDisplay.h" />
     <ClInclude Include="phxEngineCore.h" />
+    <ClInclude Include="phxGfxHandle.h" />
+    <ClInclude Include="phxGfxHandlePool.h" />
     <ClInclude Include="phxLog.h" />
     <ClInclude Include="phxSystemTime.h" />
   </ItemGroup>
