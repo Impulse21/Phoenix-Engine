@@ -146,6 +146,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h" />
+    <ClInclude Include="D3D12\phxGfxPlatformImpl.h" />
     <ClInclude Include="D3D12\phxGfxPlatformCommon.h" />
     <ClInclude Include="phxDeferredReleaseQueue.h" />
     <ClInclude Include="phxEnumUtils.h" />
@@ -164,6 +165,7 @@
   <ItemGroup>
     <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp" />
     <ClCompile Include="D3D12\phxGfxDxgiFormatMapping.cpp" />
+    <ClCompile Include="D3D12\phxGfxPlatformImpl.cpp" />
     <ClCompile Include="phxDeferredReleaseQueue.cpp" />
     <ClCompile Include="phxGfxCore.cpp" />
     <ClCompile Include="phxCommandLineArgs.cpp" />

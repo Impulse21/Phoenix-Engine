@@ -8,6 +8,8 @@ namespace phx::gfx
 {
 	void Initialize()
 	{
+		platform::Initialize();
+
 		// TODO: Initialize Common Types
 		Display::Initialize();
 
@@ -18,6 +20,8 @@ namespace phx::gfx
 
 	void Finalize()
 	{
+		platform::IdleGpu();
+		platform::Finalize();
 	}
 
 }

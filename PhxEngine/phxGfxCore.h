@@ -3,6 +3,8 @@
 #include "phxGfxHandle.h"
 #include "phxGfxResources.h"
 
+#include "phxGfxPlatformImpl.h"
+
 namespace phx
 {
 	namespace gfx
@@ -12,28 +14,20 @@ namespace phx
 
 		void IdleGpu()
 		{
-
+			platform::IdleGpu();
 		}
 
 		void SubmitFrame(SwapChain const& swapChain)
 		{
-
+			platform::SubmitFrame(swapChain.Handle);
 		}
 
 		namespace ResourceManager
 		{
-			bool CreateSwapChain(SwapChainDesc const& desc, SwapChain& out)
+			void CreateSwapChain(SwapChainDesc const& desc, SwapChain& out)
 			{
-				if (out)
-				{
-					// resize()
-				}
-				else
-				{
-					// Create
-				}
-
-				return true;
+				out.Desc = desc;
+				out.Handle = platform::ResourceManger::CreateSwapChain(desc);
 			}
 
 			void Release(SwapChain& out)

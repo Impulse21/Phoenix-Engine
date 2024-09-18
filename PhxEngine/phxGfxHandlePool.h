@@ -8,7 +8,7 @@
 #include <stdexcept>
 
 #include <iostream>
-namespace phx
+namespace phx::gfx
 {
 	template<typename ImplT, typename HT, bool _AllowResize = false>
 	class HandlePool
@@ -152,7 +152,7 @@ namespace phx
 		void Resize()
 		{
 			if constexpr !_AllowResize
-				throw std::rutime_exceptiom("Ran out of space");
+				throw std::runtime_exception("Ran out of space");
 
 			if (this->m_size == 0)
 			{
