@@ -51,23 +51,11 @@
     <ClInclude Include="phxDeferredReleaseQueue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D3D12\phxGfxPlatformDevice.h">
-      <Filter>Header Files\D3D12</Filter>
-    </ClInclude>
-    <ClInclude Include="D3D12\phxGfxPlatformResources.h">
-      <Filter>Header Files\D3D12</Filter>
-    </ClInclude>
     <ClInclude Include="phxLog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D3D12\phxGfxPlatformCommon.h">
-      <Filter>Header Files\D3D12</Filter>
-    </ClInclude>
     <ClInclude Include="phxEnumUtils.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="D3D12\phxGfxDescriptorHeap.h">
-      <Filter>Header Files\D3D12</Filter>
     </ClInclude>
     <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h">
       <Filter>Header Files\3rdParty</Filter>
@@ -76,6 +64,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="phxGfxHandlePool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D12\phxGfxPlatformCommon.h">
+      <Filter>Header Files\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="phxGfxResources.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -92,13 +86,7 @@
     <ClCompile Include="phxSystemTimer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="D3D12\phxGfxPlatformDevice.cpp">
-      <Filter>Source Files\D3D12</Filter>
-    </ClCompile>
     <ClCompile Include="D3D12\phxGfxDxgiFormatMapping.cpp">
-      <Filter>Source Files\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="D3D12\phxGfxDescriptorHeap.cpp">
       <Filter>Source Files\D3D12</Filter>
     </ClCompile>
     <ClCompile Include="phxCommandLineArgs.cpp">
@@ -112,9 +100,6 @@
     </ClCompile>
     <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp">
       <Filter>Source Files\3rdParty</Filter>
-    </ClCompile>
-    <ClCompile Include="D3D12\phxGfxD3D12CommandQueue.cpp">
-      <Filter>Source Files\D3D12</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

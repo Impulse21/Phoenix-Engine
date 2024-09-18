@@ -2,7 +2,7 @@
 
 #include "pch.h"
 
-#include "phxGfxCommonResources.h"
+#include "phxGfxResources.h"
 
 namespace phx::gfx::dx
 {

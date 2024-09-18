@@ -57,24 +57,23 @@ namespace phx::Display
 			.Height = gfx::g_DisplayHeight,
 			.BufferCount = SWAP_CHAIN_BUFFER_COUNT,
 			.Format = kSwapChainFromat,
-			.WindowHandle = EngineCore::g_hWnd,
 			.Fullscreen = false,
 			.VSync = false,
 			.EnableHDR = false
 		};
 
-		m_swapChain.Initialize(desc);
+		gfx::ResourceManager::CreateSwapChain(desc, m_swapChain);
 	}
 
 	void Finalize()
 	{
-		gfx::Device::Ptr->WaitForIdle();
-		m_swapChain.Release();
+		gfx::IdleGpu();
+		gfx::ResourceManager::Release(m_swapChain);
 	}
 
 	void Resize(uint32_t width, uint32_t height)
 	{
-		gfx::Device::Ptr->WaitForIdle();
+		gfx::IdleGpu();
 		gfx::g_DisplayWidth = width;
 		gfx::g_DisplayHeight = height;
 
@@ -83,20 +82,19 @@ namespace phx::Display
 			.Height = gfx::g_DisplayHeight,
 			.BufferCount = SWAP_CHAIN_BUFFER_COUNT,
 			.Format = kSwapChainFromat,
-			.WindowHandle = EngineCore::g_hWnd,
 			.Fullscreen = false,
 			.VSync = false,
 			.EnableHDR = false
 		};
 
-		m_swapChain.Initialize(desc);
+		gfx::ResourceManager::CreateSwapChain(desc, m_swapChain);
 	}
 
 	void Preset()
 	{
 		UINT presentInterval = m_enableVSync ? std::min(4, (int)std::round(m_frameTime * 60.0f)) : 0;
+		gfx::SubmitFrame(m_swapChain);
 
-		gfx::Device::Ptr->Present(m_swapChain);
 		int64_t currentTick = SystemTime::GetCurrentTick();
 
 #if false

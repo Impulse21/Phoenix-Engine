@@ -146,10 +146,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h" />
-    <ClInclude Include="D3D12\phxGfxDescriptorHeap.h" />
-    <ClInclude Include="D3D12\phxGfxPlatformDevice.h" />
     <ClInclude Include="D3D12\phxGfxPlatformCommon.h" />
-    <ClInclude Include="D3D12\phxGfxPlatformResources.h" />
     <ClInclude Include="phxDeferredReleaseQueue.h" />
     <ClInclude Include="phxEnumUtils.h" />
     <ClInclude Include="phxGfxCommonResources.h" />
@@ -160,14 +157,12 @@
     <ClInclude Include="phxEngineCore.h" />
     <ClInclude Include="phxGfxHandle.h" />
     <ClInclude Include="phxGfxHandlePool.h" />
+    <ClInclude Include="phxGfxResources.h" />
     <ClInclude Include="phxLog.h" />
     <ClInclude Include="phxSystemTime.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp" />
-    <ClCompile Include="D3D12\phxGfxD3D12CommandQueue.cpp" />
-    <ClCompile Include="D3D12\phxGfxDescriptorHeap.cpp" />
-    <ClCompile Include="D3D12\phxGfxPlatformDevice.cpp" />
     <ClCompile Include="D3D12\phxGfxDxgiFormatMapping.cpp" />
     <ClCompile Include="phxDeferredReleaseQueue.cpp" />
     <ClCompile Include="phxGfxCore.cpp" />

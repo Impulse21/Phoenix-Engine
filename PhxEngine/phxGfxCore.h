@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include "phxGfxPlatformDevice.h"
-#include "phxGfxPlatformResources.h"
+#include "phxGfxHandle.h"
+#include "phxGfxResources.h"
 
 namespace phx
 {
@@ -10,67 +10,37 @@ namespace phx
 		void Initialize();
 		void Finalize();
 
-		template<typename TDesc, typename TPlatform>
-		class DeviceResource
+		void IdleGpu()
 		{
-		public:
-			virtual ~DeviceResource() = default;
 
-			TPlatform& GetPlatform() { return this->m_platformResource; }
-			const TDesc& GetDesc() const { return this->m_desc; }
+		}
 
-			explicit operator bool() const
-			{
-				return !!m_platformResource;
-			}
-
-		protected:
-			TPlatform m_platformResource;
-			TDesc m_desc;
-		};
-
-		class SwapChain final : DeviceResource<SwapChainDesc, PlatformSwapChain>
+		void SubmitFrame(SwapChain const& swapChain)
 		{
-		public:
-			SwapChain() = default;
 
-			void Initialize(SwapChainDesc desc);
+		}
 
-			void Release()
-			{
-				this->m_platformResource.Release();
-				this->m_desc = {};
-			}
-		};
-
-		class Device
+		namespace ResourceManager
 		{
-		public:
-			inline static Device* Ptr = nullptr;
-
-		public:
-			Device() = default;
-
-			void Initialize() { this->m_platform.Initialize(); }
-			void Finalize() { this->m_platform.Finalize(); };
-
-
-			void WaitForIdle()
+			bool CreateSwapChain(SwapChainDesc const& desc, SwapChain& out)
 			{
-				this->m_platform.WaitForIdle();
+				if (out)
+				{
+					// resize()
+				}
+				else
+				{
+					// Create
+				}
+
+				return true;
 			}
 
-			void Present(SwapChain const& swapChain)
+			void Release(SwapChain& out)
 			{
-				this->m_platform.Present(swapChain.GetPlatform());
+				out.Desc = { };
+				// TODO: Free Handle
 			}
-
-			// -- Getters ---
-		public:
-			PlatformDevice& GetPlatform() { return this->m_platform; }
-
-		private:
-			PlatformDevice m_platform;
-		};
+		}
 	}
 }
