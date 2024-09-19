@@ -80,6 +80,16 @@ namespace phx::gfx
 
         COUNT,
     };
+
+    enum class CommandQueueType : uint8_t
+    {
+        Graphics = 0,
+        Compute,
+        Copy,
+
+        Count
+    };
+
     enum class ResourceStates : uint32_t
     {
         Unknown = 0,
@@ -109,6 +119,33 @@ namespace phx::gfx
     };
 
     PHX_ENUM_CLASS_FLAGS(ResourceStates)
+
+    enum class DeviceCapability
+    {
+        None = 0,
+        RT_VT_ArrayIndex_Without_GS = 1 << 0,
+        RayTracing = 1 << 1,
+        RenderPass = 1 << 2,
+        RayQuery = 1 << 3,
+        VariableRateShading = 1 << 4,
+        MeshShading = 1 << 5,
+        CreateNoteZeroed = 1 << 6,
+        Bindless = 1 << 7,
+    };
+
+    PHX_ENUM_CLASS_FLAGS(DeviceCapability);
+
+    enum class ShaderModel
+    {
+        SM_6_0,
+        SM_6_1,
+        SM_6_2,
+        SM_6_3,
+        SM_6_4,
+        SM_6_5,
+        SM_6_6,
+        SM_6_7,
+    };
 
     struct Color
     {

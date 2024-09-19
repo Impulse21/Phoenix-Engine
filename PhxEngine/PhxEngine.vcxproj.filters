@@ -75,6 +75,9 @@
     <ClInclude Include="D3D12\phxGfxPlatformImpl.h">
       <Filter>Header Files\D3D12</Filter>
     </ClInclude>
+    <ClInclude Include="D3D12\phxGfxD3D12DescriptorHeaps.h">
+      <Filter>Header Files\D3D12</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -104,8 +107,11 @@
     <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp">
       <Filter>Source Files\3rdParty</Filter>
     </ClCompile>
+    <ClCompile Include="D3D12\phxGfxD3D12DescriptorHeaps.cpp">
+      <Filter>Header Files\D3D12</Filter>
+    </ClCompile>
     <ClCompile Include="D3D12\phxGfxPlatformImpl.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\D3D12</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

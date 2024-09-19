@@ -27,7 +27,7 @@ namespace phx
 			void CreateSwapChain(SwapChainDesc const& desc, SwapChain& out)
 			{
 				out.Desc = desc;
-				out.Handle = platform::ResourceManger::CreateSwapChain(desc);
+				platform::ResourceManger::CreateSwapChain(desc, out.Handle);
 			}
 
 			void Release(SwapChain& out)

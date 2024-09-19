@@ -136,14 +136,6 @@ namespace phx::gfx
         DepthStencil
     };
 
-    enum class CommandQueueType : uint8_t
-    {
-        Graphics = 0,
-        Compute,
-        Copy,
-
-        Count
-    };
 
     constexpr size_t NumCommandQueues = static_cast<size_t>(CommandQueueType::Count);
 
@@ -172,18 +164,6 @@ namespace phx::gfx
     {
         SM5,
         SM6
-    };
-
-    enum class ShaderModel
-    {
-        SM_6_0,
-        SM_6_1,
-        SM_6_2,
-        SM_6_3,
-        SM_6_4,
-        SM_6_5,
-        SM_6_6,
-        SM_6_7,
     };
 
 
@@ -1056,21 +1036,6 @@ namespace phx::gfx
         uint64_t FenceValue;
         CommandQueueType CommandQueue;
     };
-
-    enum class DeviceCapability
-    {
-        None = 0,
-        RT_VT_ArrayIndex_Without_GS = 1 << 0,
-        RayTracing = 1 << 1,
-        RenderPass = 1 << 2,
-        RayQuery = 1 << 3,
-        VariableRateShading = 1 << 4,
-        MeshShading = 1 << 5,
-        CreateNoteZeroed = 1 << 6,
-        Bindless = 1 << 7,
-    };
-
-    PHX_ENUM_CLASS_FLAGS(DeviceCapability);
 
     struct SwapChainDesc
     {
