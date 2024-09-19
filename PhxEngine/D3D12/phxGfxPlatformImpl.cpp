@@ -15,6 +15,8 @@ using namespace phx;
 using namespace phx::gfx;
 using namespace phx::gfx::dx;
 
+using namespace Microsoft::WRL;
+
 #ifdef USING_D3D12_AGILITY_SDK
 extern "C"
 {
@@ -121,6 +123,7 @@ namespace
 	EnumArray<platform::DescriptorHeapTypes, d3d12::CpuDescriptorHeap> m_CpuDescriptorHeaps;
 	std::array<d3d12::GpuDescriptorHeap, 2> m_GpuDescriptorHeaps;
 
+	std::array<EnumArray<CommandQueueType, ComPtr<ID3D12Fence>>, platform::MaxNumInflightFames> m_FrameFences;
 	struct DeleteItem
 	{
 		uint64_t Frame;
@@ -444,6 +447,14 @@ namespace
 		// ThrowIfFailed(
 			// DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&context.dxcUtils)));
 
+		for (auto& frame : m_FrameFences)
+		{
+			for (size_t q = 0; q < (size_t)CommandQueueType::Count; q++)
+			{
+				g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&frame[q]));
+			}
+		}
+
 	}
 
 	void RunGarbageCollection(uint64_t completedFrame = ~0lu)
@@ -451,7 +462,7 @@ namespace
 		while (!m_DeleteQueue.empty())
 		{
 			DeleteItem& deleteItem = m_DeleteQueue.front();
-			if (deleteItem.Frame < completedFrame)
+			if (deleteItem.Frame + platform::MaxNumInflightFames < completedFrame)
 			{
 				deleteItem.DeleteFn();
 				m_DeleteQueue.pop_front();
@@ -515,7 +526,7 @@ namespace phx::gfx
 				100,
 				D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
 				D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
-		}B
+		}
 
 		void Finalize()
 		{
@@ -546,6 +557,60 @@ namespace phx::gfx
 
 		void SubmitFrame(SwapChainHandle handle)
 		{
+
+			if (!m_poolSwapChain.Contains(handle))
+				return;
+
+			const D3D12SwapChain& swapChain = *m_poolSwapChain.Get(handle);
+
+			{
+				const size_t backBufferIndex = swapChain.NativeSwapchain4->GetCurrentBackBufferIndex();
+				// -- Mark queues for Compleition ---
+				for (size_t q = 0; q < (size_t)CommandQueueType::Count; q++)
+				{
+					D3D12CommandQueue& queue = m_CommandQueues[q];
+					queue.Queue->Signal(m_FrameFences[backBufferIndex][q].Get(), 1);
+				}
+			}
+
+			bool enableVSync = false;
+			UINT presentFlags = 0;
+			if (!enableVSync)
+			{
+				presentFlags |= DXGI_PRESENT_ALLOW_TEARING;
+			}
+
+			HRESULT hr = swapChain.NativeSwapchain4->Present((UINT)enableVSync, presentFlags);
+
+			if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+			{
+				assert(false);
+			}
+
+			m_FrameCount++;
+
+			// -- wait for fence to finish
+			{
+				const size_t backBufferIndex = swapChain.NativeSwapchain4->GetCurrentBackBufferIndex();
+
+				// Sync The queeus
+				for (size_t q = 0; q < (size_t)CommandQueueType::Count; q++)
+				{
+					ID3D12Fence* fence = m_FrameFences[backBufferIndex][q].Get();
+					const size_t completedValue = fence->GetCompletedValue();
+
+					if (m_FrameCount >= platform::MaxNumInflightFames && completedValue < 1)
+					{
+						dx::ThrowIfFailed(
+							fence->SetEventOnCompletion(1, NULL));
+					}
+					// Reset fence;
+					fence->Signal(0);
+				}
+			}
+
+			// I don't believe this will work.
+			RunGarbageCollection(m_FrameCount);
 		}
 	}
 }

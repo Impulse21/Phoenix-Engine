@@ -205,11 +205,17 @@ namespace phx::gfx
 	struct PlatformSwapChain;
 	using SwapChainHandle = Handle<PlatformSwapChain>;
 
-    struct SwapChain final
+    struct SwapChain final : NonCopyable
     {
         SwapChainDesc Desc;
         SwapChainHandle Handle;
 
+        ~SwapChain()
+        {
+            this->Release();
+        }
+
+        void Release();
         explicit operator bool() const
         {
             return !!this->Handle.IsValid();

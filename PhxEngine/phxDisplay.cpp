@@ -123,7 +123,6 @@ namespace phx::Display
 		m_frameStartTick = currentTick;
 
 		++m_frameIndex;
-		DeferredDeleteQueue::ReleaseItems(m_frameIndex);
 
 	}
 }

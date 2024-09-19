@@ -24,4 +24,11 @@ namespace phx::gfx
 		platform::Finalize();
 	}
 
+
+	void SwapChain::Release()
+	{
+		platform::ResourceManger::Release(this->Handle);
+		this->Handle = {};
+		this->Desc = {};
+	}
 }

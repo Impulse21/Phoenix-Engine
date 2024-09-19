@@ -10,6 +10,12 @@ namespace phx::gfx
 {
 	namespace platform
 	{
+		struct D3D12CommandContext
+		{
+			
+		};
+		using CommandContext = D3D12CommandContext;
+
 		constexpr size_t MaxNumInflightFames = 3;
 
 		extern Microsoft::WRL::ComPtr<ID3D12Device> g_Device;
