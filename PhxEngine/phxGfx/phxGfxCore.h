@@ -64,7 +64,7 @@ namespace phx::gfx
 	class CommandList
 	{
 	public:
-		virtual ~CommandList() = 0;
+		virtual ~CommandList() = default;
 		virtual RenderPassRenderer* BeginRenderPass() = 0;
 		virtual void EndRenderPass(RenderPassRenderer* pass) = 0;
 	};
@@ -72,6 +72,6 @@ namespace phx::gfx
 	class RenderPassRenderer
 	{
 	public:
-		virtual ~RenderPassRenderer() = 0;
+		virtual ~RenderPassRenderer() = default;
 	};
 }

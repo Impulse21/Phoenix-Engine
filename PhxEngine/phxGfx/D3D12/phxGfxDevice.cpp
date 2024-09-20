@@ -158,6 +158,35 @@ namespace
 
 }
 
+ID3D12CommandAllocator* D3D12CommandQueue::RequestAllocator()
+{
+	SCOPED_LOCK(this->MutexAllocation);
+
+	const uint64_t completedFenceValue = this->Fence->GetCompletedValue();
+	ID3D12CommandAllocator* retVal = nullptr;
+	if (!this->AvailableAllocators.empty())
+	{
+		auto& [fenceValue, allocator] = this->AvailableAllocators.front();
+		if (fenceValue < completedFenceValue)
+		{
+			retVal = allocator;
+			this->AvailableAllocators.pop_front();
+		}
+	}
+
+	if (!retVal)
+	{
+		Microsoft::WRL::ComPtr<ID3D12CommandAllocator>& newAllocator = this->AllocatorPool.emplace_back();
+		auto* device = D3D12Device::Impl();
+		dx::ThrowIfFailed(
+			device->GetD3D12Device2()->CreateCommandAllocator(this->Type, IID_PPV_ARGS(&newAllocator)));
+
+		newAllocator->SetName(L"Allocator");
+		retVal = newAllocator.Get();
+	}
+
+	return retVal;
+}
 phx::gfx::D3D12Device::D3D12Device(SwapChainDesc const& desc, HWND hwnd)
 {
 	assert(Singleton == nullptr);
@@ -243,7 +272,6 @@ void phx::gfx::D3D12Device::Present()
 		}
 	}
 }
-
 
 void phx::gfx::D3D12Device::Initialize()
 {
@@ -334,12 +362,6 @@ void phx::gfx::D3D12Device::InitializeD3D12Context(IDXGIAdapter* gpuAdapter)
 			D3D_FEATURE_LEVEL_11_1,
 			IID_PPV_ARGS(&this->m_d3d12Device)));
 
-	ThrowIfFailed(
-		D3D12CreateDevice(
-			gpuAdapter,
-			D3D_FEATURE_LEVEL_11_1,
-			IID_PPV_ARGS(&this->m_d3d12Device)));
-
 	this->m_d3d12Device->SetName(L"D3D12GfxDevice::RootDevice");
 	Microsoft::WRL::ComPtr<IUnknown> renderdoc;
 	if (SUCCEEDED(DXGIGetDebugInterface1(0, RenderdocUUID, &renderdoc)))
@@ -423,9 +445,7 @@ void phx::gfx::D3D12Device::InitializeD3D12Context(IDXGIAdapter* gpuAdapter)
 		this->m_minShaderModel = ShaderModel::SM_6_5;
 	}
 
-
-	static const bool debugEnabled = IsDebuggerPresent();
-	if (debugEnabled)
+	if (this->m_debugLayersEnabled)
 	{
 		Microsoft::WRL::ComPtr<ID3D12InfoQueue> infoQueue;
 		if (SUCCEEDED(this->m_d3d12Device->QueryInterface<ID3D12InfoQueue>(&infoQueue)))

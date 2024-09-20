@@ -89,6 +89,11 @@ namespace phx
 		{
 		}
 
+		template<typename E>
+		SpanMutable(EnumArray<T, E>& a)
+			: SpanMutable(a.data(), a.size(), 0)
+		{}
+
 		T& operator[](size_t index)
 		{
 			assert(index < this->m_length);

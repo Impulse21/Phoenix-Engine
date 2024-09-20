@@ -1186,9 +1186,6 @@ namespace phx::gfx
     struct CommandSignature;
     using CommandSignatureHandle = Handle<CommandSignature>;
 
-    struct CommandList;
-    using CommandListHandle = Handle<CommandList>;
-
     struct ExecutionReceipt
     {
         uint64_t FenceValue;

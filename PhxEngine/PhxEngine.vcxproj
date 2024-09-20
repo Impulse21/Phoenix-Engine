@@ -164,6 +164,7 @@
     <ClInclude Include="phxGfx\phxGfxResources.h" />
     <ClInclude Include="phxLog.h" />
     <ClInclude Include="phxPlatformDetection.h" />
+    <ClInclude Include="phxSpan.h" />
     <ClInclude Include="phxSystemTime.h" />
   </ItemGroup>
   <ItemGroup>

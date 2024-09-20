@@ -87,6 +87,9 @@
     <ClInclude Include="phxGfx\D3D12\phxGfxGpuMemoryManager.h">
       <Filter>EmberGfx\D3D12</Filter>
     </ClInclude>
+    <ClInclude Include="phxSpan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -128,10 +131,10 @@
     <ClCompile Include="phxGfx\D3D12\phxGfxGpuMemoryManager.cpp">
       <Filter>EmberGfx\D3D12</Filter>
     </ClCompile>
-    <ClCompile Include="phxGfx\D3D12\phxGfxRenderer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="phxGfx\D3D12\phxGfxResourceManager.cpp">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="phxGfx\D3D12\phxGfxRenderer.cpp">
       <Filter>EmberGfx\D3D12</Filter>
     </ClCompile>
   </ItemGroup>

@@ -4,7 +4,9 @@
 
 #include "phxGfxCore.h"
 #include "phxGfxD3D12DescriptorHeaps.h"
+#include <deque>
 
+#define SCOPED_LOCK(x) std::scoped_lock _(x)
 namespace phx::gfx
 {
 	static const GUID RenderdocUUID = { 0xa7aa6116, 0x9c8d, 0x4bba, { 0x90, 0x83, 0xb4, 0xd8, 0x16, 0xb7, 0x1b, 0x78 } };
@@ -43,11 +45,34 @@ namespace phx::gfx
 		}
 	};
 
+	struct D3D12SwapChain final
+	{
+		Microsoft::WRL::ComPtr<IDXGISwapChain1> SwapChain;
+		Microsoft::WRL::ComPtr<IDXGISwapChain4> SwapChain4;
+
+		std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, gfx::kBufferCount> BackBuffers;
+		DescriptorHeapAllocation Rtv;
+
+		bool Fullscreen : 1 = false;
+		bool VSync : 1 = false;
+		bool EnableHDR : 1 = false;
+	};
+
+
 	struct D3D12CommandQueue
 	{
 		D3D12_COMMAND_LIST_TYPE Type;
 		Microsoft::WRL::ComPtr<ID3D12CommandQueue> Queue;
 		Microsoft::WRL::ComPtr<ID3D12Fence> Fence;
+
+		std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> AllocatorPool;
+		std::deque<std::pair<uint64_t, ID3D12CommandAllocator*>> AvailableAllocators;
+
+		std::vector<ID3D12CommandList*> m_pendingSubmitCommands;
+		std::vector<ID3D12CommandAllocator*> m_pendingSubmitAllocators;
+
+		std::mutex MutexAllocation;
+		uint64_t NextFenceValue = 0;
 
 		void Initialize(ID3D12Device* nativeDevice, D3D12_COMMAND_LIST_TYPE type)
 		{
@@ -60,6 +85,7 @@ namespace phx::gfx
 			queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
 			queueDesc.NodeMask = 0;
 
+
 			dx::ThrowIfFailed(
 				nativeDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&Queue)));
 
@@ -68,6 +94,7 @@ namespace phx::gfx
 				nativeDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&Fence)));
 			Fence->SetName(L"D3D12CommandQueue::D3D12CommandQueue::Fence");
 
+			this->NextFenceValue = this->Fence->GetCompletedValue() + 1;
 			switch (type)
 			{
 			case D3D12_COMMAND_LIST_TYPE_DIRECT:
@@ -81,19 +108,47 @@ namespace phx::gfx
 				break;
 			}
 		}
-	};
 
-	struct D3D12SwapChain final
-	{
-		Microsoft::WRL::ComPtr<IDXGISwapChain1> SwapChain;
-		Microsoft::WRL::ComPtr<IDXGISwapChain4> SwapChain4;
+		uint64_t SubmitCommandLists(Span<ID3D12CommandList*> commandLists)
+		{
+			this->Queue->ExecuteCommandLists((UINT)commandLists.Size(), commandLists.begin());
 
-		std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, gfx::kBufferCount> BackBuffers;
-		DescriptorHeapAllocation Rtv;
+			return this->IncrementFence();
+		}
 
-		bool Fullscreen : 1 = false;
-		bool VSync : 1 = false;
-		bool EnableHDR : 1 = false;
+		void DiscardAllocators(uint64_t fenceValue, Span<ID3D12CommandAllocator*> allocators)
+		{
+			SCOPED_LOCK(this->MutexAllocation);
+			for (ID3D12CommandAllocator* allocator : allocators)
+			{
+				this->AvailableAllocators.push_back(std::make_pair(fenceValue, allocator));
+			}
+		}
+
+		uint64_t IncrementFence()
+		{
+			this->Queue->Signal(this->Fence.Get(), this->NextFenceValue);
+			return this->NextFenceValue++;
+		}
+
+		uint64_t Submit()
+		{
+			const uint64_t fenceValue = this->SubmitCommandLists(this->m_pendingSubmitCommands);
+			this->m_pendingSubmitCommands.clear();
+
+			this->DiscardAllocators(fenceValue, this->m_pendingSubmitAllocators);
+			this->m_pendingSubmitAllocators.clear();
+
+			return fenceValue;
+		}
+
+		void EnqueueForSubmit(ID3D12CommandList* cmdList, ID3D12CommandAllocator* allocator)
+		{
+			this->m_pendingSubmitAllocators.push_back(allocator);
+			this->m_pendingSubmitCommands.push_back(cmdList);
+		}
+
+		ID3D12CommandAllocator* RequestAllocator();
 	};
 
 	class D3D12Device final : public Device
@@ -118,9 +173,12 @@ namespace phx::gfx
 		IDXGIAdapter* GetDxgiAdapter() { return this->m_gpuAdapter.NativeAdapter.Get(); }
 
 		D3D12CommandQueue& GetQueue(CommandQueueType type) { return this->m_commandQueues[type]; }
+		SpanMutable<D3D12CommandQueue> GetQueues() { return SpanMutable(this->m_commandQueues); }
 		D3D12CommandQueue& GetGfxQueue() { return this->m_commandQueues[CommandQueueType::Graphics]; }
 		D3D12CommandQueue& GetComputeQueue() { return this->m_commandQueues[CommandQueueType::Compute]; }
 		D3D12CommandQueue& GetCopyQueue() { return this->m_commandQueues[CommandQueueType::Copy]; }
+
+		Span<GpuDescriptorHeap> GetGpuDescriptorHeaps() { return Span<GpuDescriptorHeap>(this->m_gpuDescriptorHeaps.data(), this->m_gpuDescriptorHeaps.size()); }
 
 	private:
 		void Initialize();
@@ -154,6 +212,7 @@ namespace phx::gfx
 		std::array<GpuDescriptorHeap, 2> m_gpuDescriptorHeaps;
 
 		std::array<EnumArray<Microsoft::WRL::ComPtr<ID3D12Fence>, CommandQueueType>, kBufferCount> m_frameFences;
-		uint64_t m_frameCount = 1;
+		uint64_t m_frameCount = 0;
 	};
+
 }

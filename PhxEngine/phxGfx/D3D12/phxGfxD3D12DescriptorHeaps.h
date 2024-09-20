@@ -19,6 +19,19 @@ namespace phx::gfx
 		virtual uint32_t GetDescriptorSize() const = 0;
 	};
 
+	struct D3D12TypedCpuDescriptorHandle : public D3D12_CPU_DESCRIPTOR_HANDLE
+	{
+		D3D12TypedCpuDescriptorHandle() = default;
+		D3D12TypedCpuDescriptorHandle(const D3D12TypedCpuDescriptorHandle& other) { ptr = other.ptr; }
+
+		D3D12TypedCpuDescriptorHandle operator =(const D3D12TypedCpuDescriptorHandle& other)
+		{
+			ptr = other.ptr;
+			return *this;
+		}
+
+	};
+
 	class DescriptorHeapAllocation
 	{
 	public:
@@ -279,6 +292,7 @@ namespace phx::gfx
 
 		uint32_t GetDescriptorSize() const override { return this->m_descriptorSize; }
 		ID3D12DescriptorHeap* GetNativeHeap() { return this->m_d3dHeap.Get(); }
+		ID3D12DescriptorHeap* GetNativeHeap() const { return this->m_d3dHeap.Get(); }
 
 		DescriptorHeapAllocation AllocateDynamic(uint32_t numDescriptors);
 
