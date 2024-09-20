@@ -47,14 +47,31 @@ namespace phx::gfx
 		virtual ~ResourceManager() = default;
 	};
 
+	class CommandList;
 	class Renderer
 	{
 	public:
 		inline static Renderer* Ptr = nullptr;
 
+		virtual CommandList* BeginCommandRecording(CommandQueueType type = CommandQueueType::Graphics) = 0;
 		virtual void SubmitCommands() = 0;
 
 	public:
 		virtual ~Renderer() = default;
+	};
+
+	class RenderPassRenderer;
+	class CommandList
+	{
+	public:
+		virtual ~CommandList() = 0;
+		virtual RenderPassRenderer* BeginRenderPass() = 0;
+		virtual void EndRenderPass(RenderPassRenderer* pass) = 0;
+	};
+
+	class RenderPassRenderer
+	{
+	public:
+		virtual ~RenderPassRenderer() = 0;
 	};
 }

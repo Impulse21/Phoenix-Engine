@@ -9,6 +9,8 @@ using namespace dx;
 
 phx::gfx::D3D12GpuMemoryManager::D3D12GpuMemoryManager(D3D12Device* device)
 {
+	Singleton = this;
+
 	D3D12MA::ALLOCATOR_DESC allocatorDesc = {};
 	allocatorDesc.pDevice = device->GetD3D12Device();
 	allocatorDesc.pAdapter = device->GetDxgiAdapter();
@@ -18,4 +20,9 @@ phx::gfx::D3D12GpuMemoryManager::D3D12GpuMemoryManager(D3D12Device* device)
 
 	ThrowIfFailed(
 		D3D12MA::CreateAllocator(&allocatorDesc, &this->m_d3d12MemAllocator));
+}
+
+phx::gfx::D3D12GpuMemoryManager::~D3D12GpuMemoryManager()
+{
+	Singleton = nullptr;
 }

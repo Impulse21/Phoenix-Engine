@@ -14,7 +14,7 @@ namespace phx::gfx
 
 	public:
 		D3D12GpuMemoryManager(D3D12Device* device);
-		~D3D12GpuMemoryManager() = default;
+		~D3D12GpuMemoryManager();
 
 	private:
 		inline static D3D12GpuMemoryManager* Singleton = nullptr;

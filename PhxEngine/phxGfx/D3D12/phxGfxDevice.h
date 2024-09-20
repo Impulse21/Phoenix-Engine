@@ -117,6 +117,7 @@ namespace phx::gfx
 		IDXGIFactory6* GetDxgiFactory() { return this->m_factory.Get(); }
 		IDXGIAdapter* GetDxgiAdapter() { return this->m_gpuAdapter.NativeAdapter.Get(); }
 
+		D3D12CommandQueue& GetQueue(CommandQueueType type) { return this->m_commandQueues[type]; }
 		D3D12CommandQueue& GetGfxQueue() { return this->m_commandQueues[CommandQueueType::Graphics]; }
 		D3D12CommandQueue& GetComputeQueue() { return this->m_commandQueues[CommandQueueType::Compute]; }
 		D3D12CommandQueue& GetCopyQueue() { return this->m_commandQueues[CommandQueueType::Copy]; }
