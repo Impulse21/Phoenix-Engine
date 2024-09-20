@@ -193,19 +193,33 @@ void phx::gfx::D3D12Device::ResizeSwapChain(SwapChainDesc const& desc)
 
 void phx::gfx::D3D12Device::Present()
 {
-	UINT presentFlags = 0;
-	if (!this->m_swapChain.VSync)
+	// -- Mark Queues for completion ---
 	{
-		presentFlags |= DXGI_PRESENT_ALLOW_TEARING;
+		const size_t backBufferIndex = this->m_swapChain.SwapChain4->GetCurrentBackBufferIndex();
+		// -- Mark queues for Compleition ---
+		for (size_t q = 0; q < (size_t)CommandQueueType::Count; q++)
+		{
+			D3D12CommandQueue& queue = this->m_commandQueues[q];
+			queue.Queue->Signal(this->m_frameFences[backBufferIndex][q].Get(), 1);
+		}
 	}
 
-	HRESULT hr = this->m_swapChain.SwapChain4->Present((UINT)this->m_swapChain.VSync, presentFlags);
-
-	if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+	// -- Present the back buffer ---
 	{
-		assert(false);
-	}
 
+		UINT presentFlags = 0;
+		if (!this->m_swapChain.VSync)
+		{
+			presentFlags |= DXGI_PRESENT_ALLOW_TEARING;
+		}
+
+		HRESULT hr = this->m_swapChain.SwapChain4->Present((UINT)this->m_swapChain.VSync, presentFlags);
+
+		if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+		{
+			assert(false);
+		}
+	}
 	// -- wait for fence to finish
 	{
 		const size_t backBufferIndex = this->m_swapChain.SwapChain4->GetCurrentBackBufferIndex();

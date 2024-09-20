@@ -34,6 +34,7 @@ namespace
 		LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 		CommandLineArgs::Initialize(argc, argv);
 
+		phx::Log::Initialize();
 		Display::Initialize();
 
 		SystemTime::Initialize();

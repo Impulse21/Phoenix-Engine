@@ -1,0 +1,5 @@
+[05:59:26] [info] Phx Engine: Initialize DirectX 12 Graphics Device
+[05:59:26] [info] Phx Engine: Finding a suitable adapter
+[05:59:26] [info] Phx Engine: GPU '%s' is a software adapter. Skipping consideration as this is not supported.
+[05:59:26] [info] Phx Engine: Found Suitable D3D12 Adapter '%s'
+[05:59:26] [info] Phx Engine: Adapter has %dMB of dedicated video memory, %dMB of dedicated system memory, and %dMB of shared system memory.
