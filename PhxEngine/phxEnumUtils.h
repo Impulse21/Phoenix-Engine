@@ -17,7 +17,7 @@
 
 namespace phx
 {
-	template<typename TEnum, class T, std::size_t N = (std::size_t)TEnum::Count>
+	template<class T, typename TEnum, std::size_t N = (std::size_t)TEnum::Count>
 	class EnumArray : public std::array<T, N>
 	{
 	public:

@@ -3,7 +3,7 @@
 
 #include "phxCommandLineArgs.h"
 #include "phxDisplay.h"
-#include "phxGfxCore.h"
+#include "phxGfx.h"
 #include <shellapi.h>  // For CommandLineToArgW
 
 #include "phxDeferredReleaseQueue.h"
@@ -21,6 +21,11 @@ LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 void ExitGame() noexcept;
 
 
+namespace phx::EngineCore
+{
+	HWND g_hWnd = nullptr;
+}
+
 namespace
 {
 	void ApplicationInitialize(IEngineApp& app)
@@ -29,7 +34,9 @@ namespace
 		LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 		CommandLineArgs::Initialize(argc, argv);
 
-		gfx::Initialize();
+		gfx::InitializeWindows(EngineCore::g_hWnd);
+		Display::Initialize();
+
 		SystemTime::Initialize();
 		// TODO: Game Input
 		// TODO: EngineTuning;
@@ -53,8 +60,6 @@ namespace
 
 namespace phx::EngineCore
 {
-
-	HWND g_hWnd = nullptr;
 	int RunApplication(std::unique_ptr<IEngineApp>&& app, const wchar_t* className, HINSTANCE hInst, int nCmdShow)
 	{
 		if (!XMVerifyCPUSupport())

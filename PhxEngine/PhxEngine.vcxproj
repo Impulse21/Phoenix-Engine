@@ -100,7 +100,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)D3D12;$(ProjectDir)3rdParty;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)D3D12;$(ProjectDir)3rdParty;$(ProjectDir)phxGfx;</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">
@@ -122,7 +122,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)D3D12;$(ProjectDir)3rdParty;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)D3D12;$(ProjectDir)3rdParty;$(ProjectDir)phxGfx;</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">
@@ -141,35 +141,33 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)D3D12;$(ProjectDir)3rdParty;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)D3D12;$(ProjectDir)3rdParty;$(ProjectDir)phxGfx;</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h" />
-    <ClInclude Include="D3D12\phxGfxD3D12DescriptorHeaps.h" />
-    <ClInclude Include="D3D12\phxGfxPlatformImpl.h" />
-    <ClInclude Include="D3D12\phxGfxPlatformCommon.h" />
     <ClInclude Include="phxDeferredReleaseQueue.h" />
     <ClInclude Include="phxEnumUtils.h" />
-    <ClInclude Include="phxGfxCommonResources.h" />
-    <ClInclude Include="phxGfxCore.h" />
     <ClInclude Include="phxCommandLineArgs.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="phxDisplay.h" />
     <ClInclude Include="phxEngineCore.h" />
-    <ClInclude Include="phxGfxHandle.h" />
-    <ClInclude Include="phxGfxHandlePool.h" />
-    <ClInclude Include="phxGfxResources.h" />
+    <ClInclude Include="phxGfx\D3D12\phxGfxD3D12DescriptorHeaps.h" />
+    <ClInclude Include="phxGfx\D3D12\phxGfxDevice.h" />
+    <ClInclude Include="phxGfx\D3D12\phxGfxPlatformCommon.h" />
+    <ClInclude Include="phxGfx\D3D12\phxGfxRenderer.h" />
+    <ClInclude Include="phxGfx\D3D12\phxGfxResourceManager.h" />
+    <ClInclude Include="phxGfx\phxGfx.h" />
+    <ClInclude Include="phxGfx\phxGfxHandle.h" />
+    <ClInclude Include="phxGfx\phxGfxHandlePool.h" />
+    <ClInclude Include="phxGfx\phxGfxResources.h" />
     <ClInclude Include="phxLog.h" />
+    <ClInclude Include="phxPlatformDetection.h" />
     <ClInclude Include="phxSystemTime.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp" />
-    <ClCompile Include="D3D12\phxGfxD3D12DescriptorHeaps.cpp" />
-    <ClCompile Include="D3D12\phxGfxDxgiFormatMapping.cpp" />
-    <ClCompile Include="D3D12\phxGfxPlatformImpl.cpp" />
     <ClCompile Include="phxDeferredReleaseQueue.cpp" />
-    <ClCompile Include="phxGfxCore.cpp" />
     <ClCompile Include="phxCommandLineArgs.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">Create</PrecompiledHeader>
@@ -178,6 +176,11 @@
     </ClCompile>
     <ClCompile Include="phxDisplay.cpp" />
     <ClCompile Include="phxEngineCore.cpp" />
+    <ClCompile Include="phxGfx\D3D12\phxGfxD3D12DescriptorHeaps.cpp" />
+    <ClCompile Include="phxGfx\D3D12\phxGfxDevice.cpp" />
+    <ClCompile Include="phxGfx\D3D12\phxGfxDxgiFormatMapping.cpp" />
+    <ClCompile Include="phxGfx\phxGfx.cpp" />
+    <ClCompile Include="phxGfx\phxLog.cpp" />
     <ClCompile Include="phxSystemTimer.cpp" />
   </ItemGroup>
   <ItemGroup>

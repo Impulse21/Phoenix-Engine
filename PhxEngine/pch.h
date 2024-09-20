@@ -84,6 +84,8 @@
 #include <XGameRuntime.h>
 #include "phxLog.h"
 
+#include "phxPlatformDetection.h"
+
 struct NonCopyable
 {
 	NonCopyable() = default;

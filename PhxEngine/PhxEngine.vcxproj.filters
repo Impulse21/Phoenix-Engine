@@ -13,17 +13,17 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Header Files\D3D12">
-      <UniqueIdentifier>{d2848b47-4689-409b-8847-41d4d69cd49c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\D3D12">
-      <UniqueIdentifier>{54594189-3cee-4020-8608-61e3ced62eeb}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\3rdParty">
       <UniqueIdentifier>{a85f129a-e280-41b1-bdfe-22bbc8af5551}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\3rdParty">
       <UniqueIdentifier>{2662db93-0168-49c6-adf2-0f06685aa95a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="phxGfx">
+      <UniqueIdentifier>{9efebb87-cbf6-428e-b617-b6995bab0603}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="phxGfx\D3D12">
+      <UniqueIdentifier>{a731a9de-4e9f-4fb8-9a0d-46a99e0146b7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -39,13 +39,7 @@
     <ClInclude Include="phxCommandLineArgs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="phxGfxCore.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="phxSystemTime.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="phxGfxCommonResources.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="phxDeferredReleaseQueue.h">
@@ -60,23 +54,35 @@
     <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h">
       <Filter>Header Files\3rdParty</Filter>
     </ClInclude>
-    <ClInclude Include="phxGfxHandle.h">
+    <ClInclude Include="phxGfx\phxGfx.h">
+      <Filter>phxGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="phxGfx\phxGfxResources.h">
+      <Filter>phxGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="phxPlatformDetection.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="phxGfxHandlePool.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="phxGfx\phxGfxHandlePool.h">
+      <Filter>phxGfx</Filter>
     </ClInclude>
-    <ClInclude Include="D3D12\phxGfxPlatformCommon.h">
-      <Filter>Header Files\D3D12</Filter>
+    <ClInclude Include="phxGfx\phxGfxHandle.h">
+      <Filter>phxGfx</Filter>
     </ClInclude>
-    <ClInclude Include="phxGfxResources.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="phxGfx\D3D12\phxGfxDevice.h">
+      <Filter>phxGfx\D3D12</Filter>
     </ClInclude>
-    <ClInclude Include="D3D12\phxGfxPlatformImpl.h">
-      <Filter>Header Files\D3D12</Filter>
+    <ClInclude Include="phxGfx\D3D12\phxGfxResourceManager.h">
+      <Filter>phxGfx\D3D12</Filter>
     </ClInclude>
-    <ClInclude Include="D3D12\phxGfxD3D12DescriptorHeaps.h">
-      <Filter>Header Files\D3D12</Filter>
+    <ClInclude Include="phxGfx\D3D12\phxGfxRenderer.h">
+      <Filter>phxGfx\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="phxGfx\D3D12\phxGfxPlatformCommon.h">
+      <Filter>phxGfx\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="phxGfx\D3D12\phxGfxD3D12DescriptorHeaps.h">
+      <Filter>phxGfx\D3D12</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -92,26 +98,29 @@
     <ClCompile Include="phxSystemTimer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="D3D12\phxGfxDxgiFormatMapping.cpp">
-      <Filter>Source Files\D3D12</Filter>
-    </ClCompile>
     <ClCompile Include="phxCommandLineArgs.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="phxDeferredReleaseQueue.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="phxGfxCore.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp">
       <Filter>Source Files\3rdParty</Filter>
     </ClCompile>
-    <ClCompile Include="D3D12\phxGfxD3D12DescriptorHeaps.cpp">
-      <Filter>Header Files\D3D12</Filter>
+    <ClCompile Include="phxGfx\phxGfx.cpp">
+      <Filter>phxGfx</Filter>
     </ClCompile>
-    <ClCompile Include="D3D12\phxGfxPlatformImpl.cpp">
-      <Filter>Source Files\D3D12</Filter>
+    <ClCompile Include="phxGfx\D3D12\phxGfxDevice.cpp">
+      <Filter>phxGfx\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="phxGfx\D3D12\phxGfxD3D12DescriptorHeaps.cpp">
+      <Filter>phxGfx\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="phxGfx\D3D12\phxGfxDxgiFormatMapping.cpp">
+      <Filter>phxGfx\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="phxGfx\phxLog.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

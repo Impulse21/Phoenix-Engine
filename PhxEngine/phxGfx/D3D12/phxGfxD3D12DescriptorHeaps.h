@@ -5,7 +5,7 @@
 #include <map>
 #include <mutex>
 
-namespace phx::gfx::d3d12
+namespace phx::gfx
 {
 	class DescriptorHeapAllocation;
 	class DescriptorHeapAllocationPage;
