@@ -1,6 +1,6 @@
 #include "pch.h"
 
-#include "phxGfxPlatformCommon.h"
+#include "phxGfxCommon.h"
 
 using namespace phx;
 using namespace phx::gfx;

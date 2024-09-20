@@ -34,7 +34,7 @@ namespace phx
 		{}
 
 		template<typename E>
-		Span(EnumArray<E, T>& a)
+		Span(EnumArray<T, E>& a)
 			: Span(a.data(), a.size(), 0)
 		{}
 

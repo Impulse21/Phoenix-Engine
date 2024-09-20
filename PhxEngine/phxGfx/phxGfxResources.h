@@ -1214,11 +1214,7 @@ namespace phx::gfx
     {
         uint32_t Width = 0;
         uint32_t Height = 0;
-        uint32_t BufferCount = 3;
         gfx::Format Format = gfx::Format::R10G10B10A2_UNORM;
-        bool Fullscreen = false;
-        bool VSync = false;
-        bool EnableHDR = false;
         gfx::ClearValue OptmizedClearValue =
         {
             .Colour =
@@ -1229,6 +1225,10 @@ namespace phx::gfx
                 1.0f,
             }
         };
+
+        bool Fullscreen : 1 = false;
+        bool VSync : 1 = false;
+        bool EnableHDR : 1 = false;
     };
 
 }

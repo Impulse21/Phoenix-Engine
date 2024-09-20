@@ -74,18 +74,18 @@ namespace phx
 
 #ifdef _DEBUG
 // Core log macros
-#define PHX_CORE_TRACE(...)    ::phx::core::Log::Trace<phx::core::Log::LogType::Engine>(__VA_ARGS__)
-#define PHX_CORE_INFO(...)     ::phx::core::Log::Info<phx::core::Log::LogType::Engine>(__VA_ARGS__)
-#define PHX_CORE_WARN(...)     ::phx::core::Log::Warn<phx::core::Log::LogType::Engine>(__VA_ARGS__)
-#define PHX_CORE_ERROR(...)    ::phx::core::Log::Error<phx::core::Log::LogType::Engine>(__VA_ARGS__)
-#define PHX_CORE_CRITICAL(...) ::phx::core::Log::Critical<phx::core::Log::LogType::Engine>(__VA_ARGS__)
+#define PHX_CORE_TRACE(...)    ::phx::Log::Trace<phx::Log::LogType::Engine>(__VA_ARGS__)
+#define PHX_CORE_INFO(...)     ::phx::Log::Info<phx::Log::LogType::Engine>(__VA_ARGS__)
+#define PHX_CORE_WARN(...)     ::phx::Log::Warn<phx::Log::LogType::Engine>(__VA_ARGS__)
+#define PHX_CORE_ERROR(...)    ::phx::Log::Error<phx::Log::LogType::Engine>(__VA_ARGS__)
+#define PHX_CORE_CRITICAL(...) ::phx::Log::Critical<phx::Log::LogType::Engine>(__VA_ARGS__)
 
 // Client log macros		   
-#define PHX_TRACE(...)         ::phx::core::Log::Trace<phx::core::Log::LogType::App>(__VA_ARGS__)
-#define PHX_INFO(...)          ::phx::core::Log::Info<phx::core::Log::LogType::App>(__VA_ARGS__)
-#define PHX_WARN(...)          ::phx::core::Log::Warn<phx::core::Log::LogType::App>(__VA_ARGS__)
-#define PHX_ERROR(...)         ::phx::core::Log::Error<phx::core::Log::LogType::App>(__VA_ARGS__)
-#define PHX_CRITICAL(...)      ::phx::core::Log::Critical<phx::core::Log::LogType::App>(__VA_ARGS__)
+#define PHX_TRACE(...)         ::phx::Log::Trace<phx::Log::LogType::App>(__VA_ARGS__)
+#define PHX_INFO(...)          ::phx::Log::Info<phx::Log::LogType::App>(__VA_ARGS__)
+#define PHX_WARN(...)          ::phx::Log::Warn<phx::Log::LogType::App>(__VA_ARGS__)
+#define PHX_ERROR(...)         ::phx::Log::Error<phx::Log::LogType::App>(__VA_ARGS__)
+#define PHX_CRITICAL(...)      ::phx::Log::Critical<phx::Log::LogType::App>(__VA_ARGS__)
 #else
 // Core log macros
 #define PHX_CORE_TRACE(...)    

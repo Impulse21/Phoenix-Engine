@@ -3,7 +3,7 @@
 
 #include "phxCommandLineArgs.h"
 #include "phxDisplay.h"
-#include "phxGfx.h"
+#include "phxGfxCore.h"
 #include <shellapi.h>  // For CommandLineToArgW
 
 #include "phxDeferredReleaseQueue.h"
@@ -34,7 +34,6 @@ namespace
 		LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 		CommandLineArgs::Initialize(argc, argv);
 
-		gfx::InitializeWindows(EngineCore::g_hWnd);
 		Display::Initialize();
 
 		SystemTime::Initialize();
@@ -45,6 +44,9 @@ namespace
 
 	void UpdateApplication(IEngineApp& app)
 	{
+		// TODO:
+		app.Update();
+		app.Render();
 		Display::Preset();
 	}
 
@@ -132,7 +134,7 @@ namespace phx::EngineCore
 		app.reset();
 
 		XGameRuntimeUninitialize();
-		gfx::Finalize();
+		Display::Finalize();
 
 		return static_cast<int>(msg.wParam);
 	}

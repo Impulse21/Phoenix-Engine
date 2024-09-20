@@ -2,7 +2,7 @@
 
 #include "pch.h"
 
-#include "phxGfx.h"
+#include "phxGfxCore.h"
 #include "phxGfxD3D12DescriptorHeaps.h"
 
 namespace phx::gfx
@@ -83,14 +83,31 @@ namespace phx::gfx
 		}
 	};
 
+	struct D3D12SwapChain final
+	{
+		Microsoft::WRL::ComPtr<IDXGISwapChain1> SwapChain;
+		Microsoft::WRL::ComPtr<IDXGISwapChain4> SwapChain4;
+
+		std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, gfx::kBufferCount> BackBuffers;
+		DescriptorHeapAllocation Rtv;
+
+		bool Fullscreen : 1 = false;
+		bool VSync : 1 = false;
+		bool EnableHDR : 1 = false;
+	};
+
 	class D3D12Device final : public Device
 	{
 	public:
 		inline static D3D12Device* Impl() { return Singleton; }
 
 	public:
-		D3D12Device(HWND hwnd);
+		D3D12Device(SwapChainDesc const& desc, HWND hwnd);
 		~D3D12Device() = default;
+
+		void WaitForIdle() override;
+		void ResizeSwapChain(SwapChainDesc const& desc) override;
+		void Present() override;
 
 	public:
 		ID3D12Device* GetD3D12Device() { return this->m_d3d12Device.Get(); }
@@ -100,6 +117,15 @@ namespace phx::gfx
 		IDXGIFactory6* GetDxgiFactory() { return this->m_factory.Get(); }
 		IDXGIAdapter* GetDxgiAdapter() { return this->m_gpuAdapter.NativeAdapter.Get(); }
 
+		D3D12CommandQueue& GetGfxQueue() { return this->m_commandQueues[CommandQueueType::Graphics]; }
+		D3D12CommandQueue& GetComputeQueue() { return this->m_commandQueues[CommandQueueType::Compute]; }
+		D3D12CommandQueue& GetCopyQueue() { return this->m_commandQueues[CommandQueueType::Copy]; }
+
+	private:
+		void Initialize();
+		void InitializeD3D12Context(IDXGIAdapter* gpuAdapter);
+		void CreateSwapChain(SwapChainDesc const& desc, HWND hwnd);
+
 	private:
 		inline static D3D12Device* Singleton = nullptr;
 		Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
@@ -108,12 +134,14 @@ namespace phx::gfx
 		Microsoft::WRL::ComPtr<ID3D12Device5> m_d3d12Device5;
 
 		D3D12Adapter m_gpuAdapter;
+		D3D12SwapChain m_swapChain;
 
 		D3D12_FEATURE_DATA_ROOT_SIGNATURE m_featureDataRootSignature = {};
 		D3D12_FEATURE_DATA_SHADER_MODEL   m_featureDataShaderModel = {};
 		ShaderModel m_minShaderModel = ShaderModel::SM_6_0;
 
 		bool m_isUnderGraphicsDebugger = false;
+		bool m_debugLayersEnabled = false;
 		gfx::DeviceCapability m_capabilities;
 
 

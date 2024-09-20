@@ -4,7 +4,6 @@
 
 #include "phxDisplay.h"
 #include "phxGfxCore.h"
-#include "phxGfxCommonResources.h"
 #include "phxDeferredReleaseQueue.h"
 #include "phxSystemTime.h"
 
@@ -22,8 +21,6 @@ namespace
 	int64_t m_frameStartTick = 0;
 
 	bool m_enableVSync = false;
-
-	gfx::SwapChain m_swapChain;
 }
 
 namespace phx::gfx
@@ -54,48 +51,52 @@ namespace phx::Display
 	{
 		gfx::SwapChainDesc desc = {
 			.Width = gfx::g_DisplayWidth,
-			.Height = gfx::g_DisplayHeight,
-			.BufferCount = SWAP_CHAIN_BUFFER_COUNT,
 			.Format = kSwapChainFromat,
 			.Fullscreen = false,
 			.VSync = false,
 			.EnableHDR = false
 		};
 
-		gfx::ResourceManager::CreateSwapChain(desc, m_swapChain);
+		phx::gfx::InitializeWindows(desc, EngineCore::g_hWnd);
 	}
 
 	void Finalize()
 	{
-		gfx::IdleGpu();
-		gfx::ResourceManager::Release(m_swapChain);
+		phx::gfx::Device::Ptr->WaitForIdle();
+		phx::gfx::Finalize();
 	}
 
 	void Resize(uint32_t width, uint32_t height)
 	{
-		gfx::IdleGpu();
+		gfx::Device* device = gfx::Device::Ptr;
+
 		gfx::g_DisplayWidth = width;
 		gfx::g_DisplayHeight = height;
 
 		gfx::SwapChainDesc desc = {
 			.Width = gfx::g_DisplayWidth,
 			.Height = gfx::g_DisplayHeight,
-			.BufferCount = SWAP_CHAIN_BUFFER_COUNT,
 			.Format = kSwapChainFromat,
 			.Fullscreen = false,
 			.VSync = false,
 			.EnableHDR = false
 		};
 
-		gfx::ResourceManager::CreateSwapChain(desc, m_swapChain);
+		device->ResizeSwapChain(desc);
 	}
 
 	void Preset()
 	{
 		UINT presentInterval = m_enableVSync ? std::min(4, (int)std::round(m_frameTime * 60.0f)) : 0;
-		gfx::SubmitFrame(m_swapChain);
-
 		int64_t currentTick = SystemTime::GetCurrentTick();
+
+		gfx::Renderer::Ptr->SubmitCommands();
+		gfx::Device::Ptr->Present();
+
+		m_frameStartTick = currentTick;
+		++m_frameIndex;
+
+		gfx::ResourceManager::Ptr->RunGrabageCollection(m_frameIndex);
 
 #if false
 
@@ -120,9 +121,7 @@ namespace phx::Display
 		}
 #endif
 
-		m_frameStartTick = currentTick;
 
-		++m_frameIndex;
 
 	}
 }

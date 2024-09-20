@@ -154,10 +154,11 @@
     <ClInclude Include="phxEngineCore.h" />
     <ClInclude Include="phxGfx\D3D12\phxGfxD3D12DescriptorHeaps.h" />
     <ClInclude Include="phxGfx\D3D12\phxGfxDevice.h" />
-    <ClInclude Include="phxGfx\D3D12\phxGfxPlatformCommon.h" />
+    <ClInclude Include="phxGfx\D3D12\phxGfxGpuMemoryManager.h" />
+    <ClInclude Include="phxGfx\D3D12\phxGfxCommon.h" />
     <ClInclude Include="phxGfx\D3D12\phxGfxRenderer.h" />
     <ClInclude Include="phxGfx\D3D12\phxGfxResourceManager.h" />
-    <ClInclude Include="phxGfx\phxGfx.h" />
+    <ClInclude Include="phxGfx\phxGfxCore.h" />
     <ClInclude Include="phxGfx\phxGfxHandle.h" />
     <ClInclude Include="phxGfx\phxGfxHandlePool.h" />
     <ClInclude Include="phxGfx\phxGfxResources.h" />
@@ -179,7 +180,10 @@
     <ClCompile Include="phxGfx\D3D12\phxGfxD3D12DescriptorHeaps.cpp" />
     <ClCompile Include="phxGfx\D3D12\phxGfxDevice.cpp" />
     <ClCompile Include="phxGfx\D3D12\phxGfxDxgiFormatMapping.cpp" />
-    <ClCompile Include="phxGfx\phxGfx.cpp" />
+    <ClCompile Include="phxGfx\D3D12\phxGfxGpuMemoryManager.cpp" />
+    <ClCompile Include="phxGfx\D3D12\phxGfxRenderer.cpp" />
+    <ClCompile Include="phxGfx\D3D12\phxGfxResourceManager.cpp" />
+    <ClCompile Include="phxGfx\phxGfxCore.cpp" />
     <ClCompile Include="phxGfx\phxLog.cpp" />
     <ClCompile Include="phxSystemTimer.cpp" />
   </ItemGroup>

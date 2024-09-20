@@ -3,9 +3,9 @@
 
 #include <memory>
 
-using namespace phx::gfx::d3d12;
+using namespace phx::gfx;
 
-void phx::gfx::d3d12::CpuDescriptorHeap::Initialize(
+void phx::gfx::CpuDescriptorHeap::Initialize(
 	Microsoft::WRL::ComPtr<ID3D12Device2> device,
 	uint32_t numDesctiptors,
 	D3D12_DESCRIPTOR_HEAP_TYPE type,
@@ -292,7 +292,7 @@ void DescriptorHeapAllocationPage::FreeBlock(uint32_t offset, uint32_t numDescri
 	this->AddNewBlock(offset, numDescriptors);
 }
 
-void phx::gfx::d3d12::GpuDescriptorHeap::Initialize(
+void phx::gfx::GpuDescriptorHeap::Initialize(
 	Microsoft::WRL::ComPtr<ID3D12Device2> device,
 	uint32_t numDesctiptors,
 	uint32_t numDynamicDesciprotrs,
