@@ -25,6 +25,9 @@
     <Filter Include="EmberGfx\D3D12">
       <UniqueIdentifier>{a731a9de-4e9f-4fb8-9a0d-46a99e0146b7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="EmberGfx\Vulkan">
+      <UniqueIdentifier>{f8640bc4-3be9-4ab0-ba69-2cba1d4c3521}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -54,9 +57,6 @@
     <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h">
       <Filter>Header Files\3rdParty</Filter>
     </ClInclude>
-    <ClInclude Include="phxGfx\phxGfxCore.h">
-      <Filter>EmberGfx</Filter>
-    </ClInclude>
     <ClInclude Include="phxGfx\phxGfxResources.h">
       <Filter>EmberGfx</Filter>
     </ClInclude>
@@ -69,26 +69,29 @@
     <ClInclude Include="phxGfx\phxGfxHandle.h">
       <Filter>EmberGfx</Filter>
     </ClInclude>
-    <ClInclude Include="phxGfx\D3D12\phxGfxDevice.h">
-      <Filter>EmberGfx\D3D12</Filter>
-    </ClInclude>
-    <ClInclude Include="phxGfx\D3D12\phxGfxResourceManager.h">
-      <Filter>EmberGfx\D3D12</Filter>
-    </ClInclude>
-    <ClInclude Include="phxGfx\D3D12\phxGfxRenderer.h">
-      <Filter>EmberGfx\D3D12</Filter>
-    </ClInclude>
-    <ClInclude Include="phxGfx\D3D12\phxGfxCommon.h">
-      <Filter>EmberGfx\D3D12</Filter>
-    </ClInclude>
-    <ClInclude Include="phxGfx\D3D12\phxGfxD3D12DescriptorHeaps.h">
-      <Filter>EmberGfx\D3D12</Filter>
-    </ClInclude>
-    <ClInclude Include="phxGfx\D3D12\phxGfxGpuMemoryManager.h">
-      <Filter>EmberGfx\D3D12</Filter>
-    </ClInclude>
     <ClInclude Include="phxSpan.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxGfxDevice.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxEmber.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxGfxDeviceFactory.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxGfxDeviceInterface.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxGfxDeviceSelector.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\D3D12\phxGfxDeviceD3D12.h">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\Vulkan\phxGfxDeviceVulkan.h">
+      <Filter>EmberGfx\Vulkan</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -113,29 +116,20 @@
     <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp">
       <Filter>Source Files\3rdParty</Filter>
     </ClCompile>
-    <ClCompile Include="phxGfx\phxGfxCore.cpp">
-      <Filter>EmberGfx</Filter>
-    </ClCompile>
-    <ClCompile Include="phxGfx\D3D12\phxGfxDevice.cpp">
-      <Filter>EmberGfx\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="phxGfx\D3D12\phxGfxD3D12DescriptorHeaps.cpp">
-      <Filter>EmberGfx\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="phxGfx\D3D12\phxGfxDxgiFormatMapping.cpp">
-      <Filter>EmberGfx\D3D12</Filter>
-    </ClCompile>
     <ClCompile Include="phxGfx\phxLog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="phxGfx\D3D12\phxGfxGpuMemoryManager.cpp">
+    <ClCompile Include="EmberGfx\phxEmber.cpp">
+      <Filter>EmberGfx</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\phxGfxDeviceFactory.cpp">
+      <Filter>EmberGfx</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\D3D12\phxGfxDeviceD3D12.cpp">
       <Filter>EmberGfx\D3D12</Filter>
     </ClCompile>
-    <ClCompile Include="phxGfx\D3D12\phxGfxResourceManager.cpp">
-      <Filter>EmberGfx\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="phxGfx\D3D12\phxGfxRenderer.cpp">
-      <Filter>EmberGfx\D3D12</Filter>
+    <ClCompile Include="EmberGfx\Vulkan\phxGfxDeviceVulkan.cpp">
+      <Filter>EmberGfx\Vulkan</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
