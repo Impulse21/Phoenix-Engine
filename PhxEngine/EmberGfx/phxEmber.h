@@ -6,7 +6,7 @@
 namespace phx::gfx
 {
 	void InitializeWindows();
-	void Shutdown();
+	void Finalize();
 	class Ember
 	{
 	public:

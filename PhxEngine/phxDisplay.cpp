@@ -3,9 +3,11 @@
 #include <cmath>
 
 #include "phxDisplay.h"
+#if false
 #include "phxGfxCore.h"
 #include "phxDeferredReleaseQueue.h"
 #include "phxSystemTime.h"
+#endif
 
 namespace phx::EngineCore { extern HWND g_hWnd; }
 
@@ -15,7 +17,7 @@ using namespace phx;
 
 namespace
 {
-	constexpr gfx::Format kSwapChainFromat = gfx::Format::R10G10B10A2_UNORM;
+	// constexpr gfx::Format kSwapChainFromat = gfx::Format::R10G10B10A2_UNORM;
 	float m_frameTime = 0.0f;
 	uint64_t m_frameIndex = 0;
 	int64_t m_frameStartTick = 0;
@@ -49,6 +51,7 @@ namespace phx::Display
 {
 	void Initialize()
 	{
+#if false
 		gfx::SwapChainDesc desc = {
 			.Width = gfx::g_DisplayWidth,
 			.Format = kSwapChainFromat,
@@ -58,16 +61,20 @@ namespace phx::Display
 		};
 
 		phx::gfx::InitializeWindows(desc, EngineCore::g_hWnd);
+#endif
 	}
 
 	void Finalize()
 	{
+#if false
 		phx::gfx::Device::Ptr->WaitForIdle();
 		phx::gfx::Finalize();
+#endif
 	}
 
 	void Resize(uint32_t width, uint32_t height)
 	{
+#if false
 		gfx::Device* device = gfx::Device::Ptr;
 
 		gfx::g_DisplayWidth = width;
@@ -83,10 +90,12 @@ namespace phx::Display
 		};
 
 		device->ResizeSwapChain(desc);
+#endif
 	}
 
 	void Preset()
 	{
+#if false
 		UINT presentInterval = m_enableVSync ? std::min(4, (int)std::round(m_frameTime * 60.0f)) : 0;
 		int64_t currentTick = SystemTime::GetCurrentTick();
 
@@ -96,7 +105,7 @@ namespace phx::Display
 		m_frameStartTick = currentTick;
 		++m_frameIndex;
 
-		gfx::ResourceManager::Ptr->RunGrabageCollection(m_frameIndex);
+		// gfx::ResourceManager::Ptr->RunGrabageCollection(m_frameIndex);
 
 #if false
 
@@ -121,7 +130,7 @@ namespace phx::Display
 		}
 #endif
 
-
+#endif
 
 	}
 }

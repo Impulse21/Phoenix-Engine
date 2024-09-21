@@ -2,12 +2,11 @@
 #include "phxEngineCore.h"
 
 #include "phxCommandLineArgs.h"
-#include "phxDisplay.h"
-#include "phxGfxCore.h"
 #include <shellapi.h>  // For CommandLineToArgW
 
 #include "phxDeferredReleaseQueue.h"
 #include "phxSystemTime.h"
+#include "EmberGfx/phxEmber.h"
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wcovered-switch-default"
@@ -35,6 +34,8 @@ namespace
 		CommandLineArgs::Initialize(argc, argv);
 
 		phx::Log::Initialize();
+		phx::gfx::InitializeWindows();
+
 		Display::Initialize();
 
 		SystemTime::Initialize();
@@ -135,7 +136,7 @@ namespace phx::EngineCore
 		app.reset();
 
 		XGameRuntimeUninitialize();
-		Display::Finalize();
+		phx::gfx::Finalize()();
 
 		return static_cast<int>(msg.wParam);
 	}

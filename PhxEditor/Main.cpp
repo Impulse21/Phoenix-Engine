@@ -18,10 +18,6 @@ public:
 	void Update() override {};
 	void Render() override
 	{
-		phx::gfx::CommandList* commandList = phx::gfx::Renderer::Ptr->BeginCommandRecording();
-		phx::gfx::RenderPassRenderer* mainPass = commandList->BeginRenderPass();
-
-		commandList->EndRenderPass(mainPass);
 	}
 };
 

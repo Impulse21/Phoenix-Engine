@@ -348,5 +348,4 @@ namespace phx::gfx
     using GfxDevice = IGfxDevice;
 
 #endif
-#endif
 }

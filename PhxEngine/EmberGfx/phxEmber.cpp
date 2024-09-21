@@ -9,7 +9,7 @@ void phx::gfx::InitializeWindows()
 	Ember::Ptr->GfxDevice = GfxDeviceFactory::Create(GfxApi::DX12);
 }
 
-void phx::gfx::Shutdown()
+void phx::gfx::Finalize()
 {
 	delete Ember::Ptr->GfxDevice;
 	Ember::Ptr->GfxDevice = nullptr;
