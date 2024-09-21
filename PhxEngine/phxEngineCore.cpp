@@ -34,7 +34,7 @@ namespace
 		CommandLineArgs::Initialize(argc, argv);
 
 		phx::Log::Initialize();
-		phx::gfx::InitializeWindows();
+		phx::gfx::InitializeWindows(phx::gfx::GfxBackend::Dx12);
 
 		Display::Initialize();
 

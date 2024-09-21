@@ -1,11 +1,13 @@
 #pragma once
 
-
 #include "phxGfxDevice.h"
+#include "phxPlatformDetection.h"
 
 namespace phx::gfx
 {
-	void InitializeWindows();
+#if defined(PHX_PLATFORM_WINDOWS)
+	void InitializeWindows(GfxBackend backend);
+#endif
 	void Finalize();
 	class Ember
 	{

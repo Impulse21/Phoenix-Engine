@@ -277,6 +277,8 @@
     <ClInclude Include="EmberGfx\phxGfxDeviceFactory.h" />
     <ClInclude Include="EmberGfx\phxGfxDeviceInterface.h" />
     <ClInclude Include="EmberGfx\phxGfxDeviceSelector.h" />
+    <ClInclude Include="EmberGfx\phxHandle.h" />
+    <ClInclude Include="EmberGfx\phxHandlePool.h" />
     <ClInclude Include="EmberGfx\Vulkan\phxGfxDeviceVulkan.h" />
     <ClInclude Include="phxDeferredReleaseQueue.h" />
     <ClInclude Include="phxEnumUtils.h" />
@@ -284,8 +286,6 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="phxDisplay.h" />
     <ClInclude Include="phxEngineCore.h" />
-    <ClInclude Include="phxGfx\phxGfxHandle.h" />
-    <ClInclude Include="phxGfx\phxGfxHandlePool.h" />
     <ClInclude Include="phxGfx\phxGfxResources.h" />
     <ClInclude Include="phxLog.h" />
     <ClInclude Include="phxPlatformDetection.h" />
