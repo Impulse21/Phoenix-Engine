@@ -6,7 +6,9 @@
 #include "phxGfxDeviceVulkan.h"
 #endif
 
-phx::gfx::GfxDevice* phx::gfx::GfxDeviceFactory::Create(GfxApi api)
+using namespace phx::gfx;
+
+phx::gfx::GfxDevice* phx::gfx::GfxDeviceFactory::Create(GfxBackend api)
 {
 #ifdef PHX_VIRTUAL_DEVICE
     switch (api)

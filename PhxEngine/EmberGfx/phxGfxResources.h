@@ -7,7 +7,7 @@
 
 #include "phxSpan.h"
 #include "phxEnumUtils.h"
-#include "phxGfxHandle.h"
+#include "phxHandle.h"
 
 namespace phx::gfx
 {
@@ -24,10 +24,11 @@ namespace phx::gfx
     static constexpr uint32_t cMaxVolatileConstantBuffers = 32;
     static constexpr uint32_t cMaxPushConstantSize = 128;      // D3D12: root signature is 256 bytes max., Vulkan: 128 bytes of push constants guaranteed
 
-    enum class ApiType
+    enum class GfxBackend
     {
         Null = 0,
-        DX12
+        Dx12,
+        Vulkan
     };
 
     enum class ShaderStage : uint16_t

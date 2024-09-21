@@ -7,7 +7,7 @@ namespace phx::gfx
 {
 #ifndef PHX_VIRTUAL_DEVICE
 #if defined(_WIN32)
-	constexpr GfxApi kSelectedAPI = GfxApi::DX12;
+	constexpr GfxBackend kSelectedAPI = GfxBackend::Dx12;
 #endif
 #endif
 		

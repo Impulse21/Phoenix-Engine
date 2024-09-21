@@ -6,6 +6,6 @@ namespace phx::gfx
 	class GfxDeviceFactory
 	{
 	public:
-		static GfxDevice* Create(GfxApi api);
+		static GfxDevice* Create(GfxBackend api);
 	};
 }

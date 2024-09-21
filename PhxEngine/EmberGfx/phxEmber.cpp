@@ -6,7 +6,7 @@
 void phx::gfx::InitializeWindows()
 {
 	Ember::Ptr = new Ember();
-	Ember::Ptr->GfxDevice = GfxDeviceFactory::Create(GfxApi::DX12);
+	Ember::Ptr->GfxDevice = GfxDeviceFactory::Create(GfxBackend::Dx12);
 }
 
 void phx::gfx::Finalize()

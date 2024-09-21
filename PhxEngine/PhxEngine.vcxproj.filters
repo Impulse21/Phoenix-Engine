@@ -116,9 +116,6 @@
     <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp">
       <Filter>Source Files\3rdParty</Filter>
     </ClCompile>
-    <ClCompile Include="phxGfx\phxLog.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="EmberGfx\phxEmber.cpp">
       <Filter>EmberGfx</Filter>
     </ClCompile>
@@ -130,6 +127,9 @@
     </ClCompile>
     <ClCompile Include="EmberGfx\Vulkan\phxGfxDeviceVulkan.cpp">
       <Filter>EmberGfx\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="phxLog.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

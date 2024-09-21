@@ -20,19 +20,19 @@ namespace phx::gfx
         using GfxDeviceType = phx::gfx::IGfxDevice;
     };
 #else
-    // Template-based compile-time selector
-    template <GfxApi api>
+    // Template-based compile-tiGfxBackendme selector
+    template <GfxBackend api>
     class GfxDeviceSelector;
 
     template <>
-    class GfxDeviceSelector<GfxApi::DX12>
+    class GfxDeviceSelector<GfxBackend::Dx12>
     {
     public:
         using GfxDeviceType = phx::gfx::GfxDeviceD3D12;
     };
 
     template <>
-    class GfxDeviceSelector<GfxApi::Vulkan>
+    class GfxDeviceSelector<GfxBackend::Vulkan>
     {
     public:
         using GfxDeviceType = phx::gfx::GfxDeviceVulkan;

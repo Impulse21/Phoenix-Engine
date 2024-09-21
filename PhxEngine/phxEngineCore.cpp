@@ -136,7 +136,7 @@ namespace phx::EngineCore
 		app.reset();
 
 		XGameRuntimeUninitialize();
-		phx::gfx::Finalize()();
+		phx::gfx::Finalize();
 
 		return static_cast<int>(msg.wParam);
 	}
