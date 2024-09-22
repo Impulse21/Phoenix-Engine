@@ -96,6 +96,12 @@
     <ClInclude Include="EmberGfx\phxGfxDeviceResources.h">
       <Filter>EmberGfx</Filter>
     </ClInclude>
+    <ClInclude Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.h">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\D3D12\phxGfxCommonD3D12.h">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -133,6 +139,12 @@
     </ClCompile>
     <ClCompile Include="phxLog.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.cpp">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\D3D12\phxGfxDxgiFormatMapping.cpp">
+      <Filter>EmberGfx\D3D12</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

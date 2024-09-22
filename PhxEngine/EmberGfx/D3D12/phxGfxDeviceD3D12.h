@@ -2,6 +2,8 @@
 
 #include "EmberGfx/phxGfxDeviceInterface.h"
 
+#include "phxGfxDescriptorHeapsD3D12.h"
+
 #include <deque>
 #include <mutex>
 #define SCOPED_LOCK(x) std::scoped_lock _(x)
@@ -86,11 +88,11 @@ namespace phx::gfx
 			queueDesc.NodeMask = 0;
 
 
-			dx::ThrowIfFailed(
+			ThrowIfFailed(
 				nativeDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&Queue)));
 
 			// Create Fence
-			dx::ThrowIfFailed(
+			ThrowIfFailed(
 				nativeDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&Fence)));
 			Fence->SetName(L"D3D12CommandQueue::D3D12CommandQueue::Fence");
 
@@ -165,8 +167,56 @@ namespace phx::gfx
 		void WaitForIdle() override;
 		void ResizeSwapChain(SwapChainDesc const& swapChainDesc) override;
 
+
+	public:
+		  ID3D12Device* GetD3D12Device() { return this->m_d3d12Device.Get(); }
+		  ID3D12Device2* GetD3D12Device2() { return this->m_d3d12Device2.Get(); }
+		  ID3D12Device5* GetD3D12Device5() { return this->m_d3d12Device5.Get(); }
+
+		  IDXGIFactory6* GetDxgiFactory() { return this->m_factory.Get(); }
+		  IDXGIAdapter* GetDxgiAdapter() { return this->m_gpuAdapter.NativeAdapter.Get(); }
+
+		  D3D12CommandQueue& GetQueue(CommandQueueType type) { return this->m_commandQueues[type]; }
+		  SpanMutable<D3D12CommandQueue> GetQueues() { return SpanMutable(this->m_commandQueues); }
+		  D3D12CommandQueue& GetGfxQueue() { return this->m_commandQueues[CommandQueueType::Graphics]; }
+		  D3D12CommandQueue& GetComputeQueue() { return this->m_commandQueues[CommandQueueType::Compute]; }
+		  D3D12CommandQueue& GetCopyQueue() { return this->m_commandQueues[CommandQueueType::Copy]; }
+
+		  Span<GpuDescriptorHeap> GetGpuDescriptorHeaps() { return Span<GpuDescriptorHeap>(this->m_gpuDescriptorHeaps.data(), this->m_gpuDescriptorHeaps.size()); }
+
+	private:
+		void Initialize();
+		void InitializeD3D12Context(IDXGIAdapter* gpuAdapter);
+		void CreateSwapChain(SwapChainDesc const& desc, HWND hwnd);
+
 	private:
 		inline static GfxDeviceD3D12* Singleton = nullptr;
+
+		Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
+		Microsoft::WRL::ComPtr<ID3D12Device> m_d3d12Device;
+		Microsoft::WRL::ComPtr<ID3D12Device2> m_d3d12Device2;
+		Microsoft::WRL::ComPtr<ID3D12Device5> m_d3d12Device5;
+
+		D3D12Adapter m_gpuAdapter;
+		D3D12SwapChain m_swapChain;
+
+		D3D12_FEATURE_DATA_ROOT_SIGNATURE m_featureDataRootSignature = {};
+		D3D12_FEATURE_DATA_SHADER_MODEL   m_featureDataShaderModel = {};
+		ShaderModel m_minShaderModel = ShaderModel::SM_6_0;
+
+		bool m_isUnderGraphicsDebugger = false;
+		bool m_debugLayersEnabled = false;
+		gfx::DeviceCapability m_capabilities;
+
+		// -- Command Queues ---
+		EnumArray<D3D12CommandQueue, CommandQueueType> m_commandQueues;
+
+		// -- Descriptor Heaps ---
+		EnumArray<CpuDescriptorHeap, DescriptorHeapTypes> m_cpuDescriptorHeaps;
+		std::array<GpuDescriptorHeap, 2> m_gpuDescriptorHeaps;
+
+		std::array<EnumArray<Microsoft::WRL::ComPtr<ID3D12Fence>, CommandQueueType>, kBufferCount> m_frameFences;
+		uint64_t m_frameCount = 0;
 	};
 }
 

@@ -97,7 +97,7 @@ namespace phx
 {
 	inline void StringConvert(std::string const& from, std::wstring& to)
 	{
-#ifdef _WIN32
+#ifdef PHX_PLATFORM_WINDOWS
 		int num = MultiByteToWideChar(CP_UTF8, 0, from.c_str(), -1, NULL, 0);
 		if (num > 0)
 		{
@@ -113,7 +113,7 @@ namespace phx
 
 	inline void StringConvert(std::wstring const& from, std::string& to)
 	{
-#ifdef _WIN32
+#ifdef PHX_PLATFORM_WINDOWS
 		int num = WideCharToMultiByte(CP_UTF8, 0, from.c_str(), -1, NULL, 0, NULL, NULL);
 		if (num > 0)
 		{
@@ -133,8 +133,10 @@ namespace phx
 	}
 
 }
-namespace phx::gfx::dx
+
+namespace phx::gfx
 {
+#ifdef PHX_PLATFORM_WINDOWS
 	// Helper class for COM exceptions
 	class com_exception : public std::exception
 	{
@@ -161,4 +163,5 @@ namespace phx::gfx::dx
 			throw com_exception(hr);
 		}
 	}
+#endif
 }

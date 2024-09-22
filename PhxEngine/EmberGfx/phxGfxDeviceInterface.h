@@ -4,6 +4,7 @@
 
 namespace phx::gfx
 {
+	constexpr size_t kBufferCount = 3;
 	class IGfxDevice
 	{
 	public:

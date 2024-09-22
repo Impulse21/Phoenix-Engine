@@ -271,6 +271,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h" />
+    <ClInclude Include="EmberGfx\D3D12\phxGfxCommonD3D12.h" />
+    <ClInclude Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxDeviceD3D12.h" />
     <ClInclude Include="EmberGfx\phxEmber.h" />
     <ClInclude Include="EmberGfx\phxGfxDevice.h" />
@@ -295,7 +297,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp" />
+    <ClCompile Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDeviceD3D12.cpp" />
+    <ClCompile Include="EmberGfx\D3D12\phxGfxDxgiFormatMapping.cpp" />
     <ClCompile Include="EmberGfx\phxEmber.cpp" />
     <ClCompile Include="EmberGfx\phxGfxDeviceFactory.cpp" />
     <ClCompile Include="EmberGfx\Vulkan\phxGfxDeviceVulkan.cpp" />

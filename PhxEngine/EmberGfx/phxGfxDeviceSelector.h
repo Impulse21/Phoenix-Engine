@@ -11,15 +11,6 @@
 
 namespace phx::gfx
 {
-#ifdef PHX_VIRTUAL_DEVICE
-    // Template-based compile-time selector
-    template <GfxApi api>
-    class GfxDeviceSelector
-    {
-    public:
-        using GfxDeviceType = phx::gfx::IGfxDevice;
-    };
-#else
     // Template-based compile-tiGfxBackendme selector
     template <GfxBackend api>
     class GfxDeviceSelector;
@@ -29,7 +20,7 @@ namespace phx::gfx
     {
     public:
         using GfxDeviceType = phx::gfx::GfxDeviceD3D12;
-    };
+};
 
 #if false
     template <>
@@ -38,6 +29,5 @@ namespace phx::gfx
     public:
         using GfxDeviceType = phx::gfx::GfxDeviceVulkan;
     };
-#endif
 #endif
 }
