@@ -57,9 +57,6 @@
     <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h">
       <Filter>Header Files\3rdParty</Filter>
     </ClInclude>
-    <ClInclude Include="phxGfx\phxGfxResources.h">
-      <Filter>EmberGfx</Filter>
-    </ClInclude>
     <ClInclude Include="phxPlatformDetection.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -91,6 +88,12 @@
       <Filter>EmberGfx</Filter>
     </ClInclude>
     <ClInclude Include="EmberGfx\phxHandlePool.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="phxPlatform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxGfxDeviceResources.h">
       <Filter>EmberGfx</Filter>
     </ClInclude>
   </ItemGroup>

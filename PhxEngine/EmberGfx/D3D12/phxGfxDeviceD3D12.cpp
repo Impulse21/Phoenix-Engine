@@ -3,7 +3,20 @@
 
 #include <iostream>
 
-void phx::gfx::GfxDeviceD3D12::Initialize()
+using namespace phx::gfx;
+
+void phx::gfx::GfxDeviceD3D12::Initialize(SwapChainDesc const& swapChainDesc, void* windowHandle)
 {
-	std::cout << "D3D12 INitialzie\n";
+}
+
+void phx::gfx::GfxDeviceD3D12::Finalize()
+{
+}
+
+void phx::gfx::GfxDeviceD3D12::WaitForIdle()
+{
+}
+
+void phx::gfx::GfxDeviceD3D12::ResizeSwapChain(SwapChainDesc const& swapChainDesc)
+{
 }

@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include "phxDisplay.h"
+#include "EmberGfx/phxEmber.h"
 #if false
 #include "phxGfxCore.h"
 #include "phxDeferredReleaseQueue.h"
@@ -17,7 +18,7 @@ using namespace phx;
 
 namespace
 {
-	// constexpr gfx::Format kSwapChainFromat = gfx::Format::R10G10B10A2_UNORM;
+	constexpr gfx::Format kSwapChainFromat = gfx::Format::R10G10B10A2_UNORM;
 	float m_frameTime = 0.0f;
 	uint64_t m_frameIndex = 0;
 	int64_t m_frameStartTick = 0;
@@ -51,31 +52,29 @@ namespace phx::Display
 {
 	void Initialize()
 	{
-#if false
 		gfx::SwapChainDesc desc = {
-			.Width = gfx::g_DisplayWidth,
-			.Format = kSwapChainFromat,
-			.Fullscreen = false,
-			.VSync = false,
-			.EnableHDR = false
+		.Width = gfx::g_DisplayWidth,
+		.Format = kSwapChainFromat,
+		.Fullscreen = false,
+		.VSync = false,
+		.EnableHDR = false
 		};
 
-		phx::gfx::InitializeWindows(desc, EngineCore::g_hWnd);
-#endif
+
+		phx::gfx::InitializeWindows(
+			phx::gfx::GfxBackend::Dx12,
+			desc,
+			EngineCore::g_hWnd);
 	}
 
 	void Finalize()
 	{
-#if false
-		phx::gfx::Device::Ptr->WaitForIdle();
 		phx::gfx::Finalize();
-#endif
 	}
 
 	void Resize(uint32_t width, uint32_t height)
 	{
-#if false
-		gfx::Device* device = gfx::Device::Ptr;
+		gfx::GfxDevice* device = gfx::Ember::Ptr->GfxDevice;
 
 		gfx::g_DisplayWidth = width;
 		gfx::g_DisplayHeight = height;
@@ -90,7 +89,6 @@ namespace phx::Display
 		};
 
 		device->ResizeSwapChain(desc);
-#endif
 	}
 
 	void Preset()

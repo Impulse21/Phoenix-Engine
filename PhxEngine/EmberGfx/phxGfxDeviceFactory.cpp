@@ -15,8 +15,10 @@ phx::gfx::GfxDevice* phx::gfx::GfxDeviceFactory::Create(GfxBackend api)
     {
     case GfxApi::DX12:
         return new GfxDeviceD3D12();
+#if false
     case GfxApi::Vulkan:
         return new GfxDeviceVulkan();
+#endif
     default:
         break;
     }

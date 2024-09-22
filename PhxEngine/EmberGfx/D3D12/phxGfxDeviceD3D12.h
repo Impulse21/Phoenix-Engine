@@ -10,7 +10,11 @@ namespace phx::gfx
 		GfxDeviceD3D12() = default;
 		~GfxDeviceD3D12() = default;
 
-		void Initialize() override;
+		void Initialize(SwapChainDesc const& swapChainDesc, void* windowHandle = nullptr) override;
+		void Finalize() override;
+
+		void WaitForIdle() override;
+		void ResizeSwapChain(SwapChainDesc const& swapChainDesc) override;
 	};
 }
 

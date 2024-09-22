@@ -5,7 +5,6 @@
 #include "pch.h"
 
 #include "phxEngineCore.h"
-#include "phxGfx/phxGfxCore.h"
 
 class PhxEditor final : public phx::IEngineApp
 {

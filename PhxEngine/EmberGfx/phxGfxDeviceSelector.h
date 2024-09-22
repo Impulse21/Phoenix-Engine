@@ -31,11 +31,13 @@ namespace phx::gfx
         using GfxDeviceType = phx::gfx::GfxDeviceD3D12;
     };
 
+#if false
     template <>
     class GfxDeviceSelector<GfxBackend::Vulkan>
     {
     public:
         using GfxDeviceType = phx::gfx::GfxDeviceVulkan;
     };
+#endif
 #endif
 }

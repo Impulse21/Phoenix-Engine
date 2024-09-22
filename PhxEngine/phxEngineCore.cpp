@@ -7,6 +7,7 @@
 #include "phxDeferredReleaseQueue.h"
 #include "phxSystemTime.h"
 #include "EmberGfx/phxEmber.h"
+#include <EmberGfx/phxGfxDeviceResources.h>
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wcovered-switch-default"
@@ -34,8 +35,6 @@ namespace
 		CommandLineArgs::Initialize(argc, argv);
 
 		phx::Log::Initialize();
-		phx::gfx::InitializeWindows(phx::gfx::GfxBackend::Dx12);
-
 		Display::Initialize();
 
 		SystemTime::Initialize();
@@ -136,7 +135,7 @@ namespace phx::EngineCore
 		app.reset();
 
 		XGameRuntimeUninitialize();
-		phx::gfx::Finalize();
+		Display::Finalize();
 
 		return static_cast<int>(msg.wParam);
 	}
@@ -168,7 +167,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_PAINT:
 		if (s_in_sizemove && app)
 		{
-		EngineCore:UpdateApplication(*app);
+			EngineCore:UpdateApplication(*app);
 		}
 		else
 		{

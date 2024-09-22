@@ -3,10 +3,14 @@
 
 #include "phxGfxDeviceFactory.h"
 
-void phx::gfx::InitializeWindows(GfxBackend backend)
+void phx::gfx::InitializeWindows(
+	GfxBackend backend,
+	SwapChainDesc const& swapChainDesc,
+	void* windowHandle)
 {
 	Ember::Ptr = new Ember();
 	Ember::Ptr->GfxDevice = GfxDeviceFactory::Create(backend);
+	Ember::Ptr->GfxDevice->Initialize(swapChainDesc, windowHandle);
 }
 
 void phx::gfx::Finalize()

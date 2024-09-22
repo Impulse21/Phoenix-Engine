@@ -3,6 +3,7 @@
 
 namespace phx::gfx
 {
+#if false
 	class GfxDeviceVulkan final : public IGfxDevice
 	{
 	public:
@@ -11,5 +12,6 @@ namespace phx::gfx
 
 		void Initialize() override;
 	};
+#endif
 }
 
