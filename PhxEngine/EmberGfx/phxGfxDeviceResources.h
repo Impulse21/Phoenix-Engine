@@ -1229,6 +1229,13 @@ namespace phx::gfx
         bool EnableHDR : 1 = false;
     };
 
+#ifndef PHX_VIRTUAL_DEVICE
+#if defined(_WIN32)
+    constexpr GfxBackend kSelectedAPI = GfxBackend::Dx12;
+#endif
+#endif
+
+
 }
 
 namespace std

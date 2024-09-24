@@ -170,8 +170,8 @@ namespace phx::gfx
 		void WaitForIdle() override;
 		void ResizeSwapChain(SwapChainDesc const& swapChainDesc) override;
 
-		ICommandList& BeginGfxContext() ;
-		ICommandList& BeginComputeContext();
+		CommandList& BeginGfxContext() ;
+		CommandList& BeginComputeContext();
 
 		void SubmitFrame();
 
@@ -196,7 +196,7 @@ namespace phx::gfx
 		void InitializeD3D12Context(IDXGIAdapter* gpuAdapter);
 		void CreateSwapChain(SwapChainDesc const& desc, HWND hwnd);
 
-		CommandListD3D12& BeginCommandRecording(CommandQueueType type);
+		CommandList& BeginCommandRecording(CommandQueueType type);
 
 		void SubmitCommandLists();
 		void Present();

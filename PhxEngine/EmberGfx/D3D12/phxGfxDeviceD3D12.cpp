@@ -243,12 +243,12 @@ void phx::gfx::GfxDeviceD3D12::ResizeSwapChain(SwapChainDesc const& swapChainDes
 	this->CreateSwapChain(swapChainDesc, nullptr);
 }
 
-ICommandList& phx::gfx::GfxDeviceD3D12::BeginGfxContext()
+CommandList& phx::gfx::GfxDeviceD3D12::BeginGfxContext()
 {
 	return this->BeginCommandRecording(CommandQueueType::Graphics);
 }
 
-ICommandList& phx::gfx::GfxDeviceD3D12::BeginComputeContext()
+CommandList& phx::gfx::GfxDeviceD3D12::BeginComputeContext()
 {
 	return this->BeginCommandRecording(CommandQueueType::Compute);
 }
@@ -260,11 +260,11 @@ void phx::gfx::GfxDeviceD3D12::SubmitFrame()
 	this->RunGarbageCollection();
 }
 
-CommandListD3D12& phx::gfx::GfxDeviceD3D12::BeginCommandRecording(CommandQueueType type)
+CommandList& phx::gfx::GfxDeviceD3D12::BeginCommandRecording(CommandQueueType type)
 {
 	const uint32_t currentCmdIndex = this->m_activeCmdCount++;
 	assert(currentCmdIndex < this->m_commandPool.size());
-	CommandListD3D12& cmdList = *this->m_commandPool[currentCmdIndex];
+	CommandList& cmdList = *this->m_commandPool[currentCmdIndex];
 	cmdList.Reset(currentCmdIndex, type, this);
 	return cmdList;
 }
@@ -275,7 +275,7 @@ void phx::gfx::GfxDeviceD3D12::SubmitCommandLists()
 
 	for (size_t i = 0; i < (size_t)numActiveCommands; i++)
 	{
-		CommandListD3D12& commandList = *this->m_commandPool[i];
+		CommandList& commandList = *this->m_commandPool[i];
 		commandList.m_commandList->Close();
 
 		D3D12CommandQueue& queue = this->GetQueue(commandList.m_queueType);

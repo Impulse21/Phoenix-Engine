@@ -276,6 +276,9 @@
     <ClInclude Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxDeviceD3D12.h" />
     <ClInclude Include="EmberGfx\phxEmber.h" />
+    <ClInclude Include="EmberGfx\phxGfxCommandCtx.h" />
+    <ClInclude Include="EmberGfx\phxGfxCommandCtxInterface.h" />
+    <ClInclude Include="EmberGfx\phxGfxCommandCtxSelector.h" />
     <ClInclude Include="EmberGfx\phxGfxDevice.h" />
     <ClInclude Include="EmberGfx\phxGfxDeviceFactory.h" />
     <ClInclude Include="EmberGfx\phxGfxDeviceInterface.h" />

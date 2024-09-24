@@ -2,10 +2,12 @@
 #include "phxCommandListD3D12.h"
 
 #include "phxGfxDeviceD3D12.h"
+
 using namespace phx::gfx;
 
+using namespace phx::gfx::platform;
 
-void phx::gfx::CommandListD3D12::Reset(size_t id, CommandQueueType queueType, GfxDeviceD3D12* device)
+void CommandListD3D12::Reset(size_t id, CommandQueueType queueType, GfxDeviceD3D12* device)
 {
 	ID3D12Device* d3d12Device = device->GetD3D12Device();
 	D3D12CommandQueue& queue = device->GetQueue(queueType);
@@ -52,18 +54,18 @@ void CommandListD3D12::TransitionBarrier(GpuBarrier const& barrier)
 {
 }
 
-void phx::gfx::CommandListD3D12::TransitionBarriers(Span<GpuBarrier> gpuBarriers)
+void CommandListD3D12::TransitionBarriers(Span<GpuBarrier> gpuBarriers)
 {
 }
 
-void phx::gfx::CommandListD3D12::ClearBackBuffer(Color const& clearColour)
+void CommandListD3D12::ClearBackBuffer(Color const& clearColour)
 {
 }
 
-void phx::gfx::CommandListD3D12::ClearTextureFloat(TextureHandle texture, Color const& clearColour)
+void CommandListD3D12::ClearTextureFloat(TextureHandle texture, Color const& clearColour)
 {
 }
 
-void phx::gfx::CommandListD3D12::ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil)
+void CommandListD3D12::ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil)
 {
 }

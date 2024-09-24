@@ -63,9 +63,6 @@
     <ClInclude Include="phxSpan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="EmberGfx\phxGfxDevice.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="EmberGfx\phxEmber.h">
       <Filter>EmberGfx</Filter>
     </ClInclude>
@@ -104,6 +101,18 @@
     </ClInclude>
     <ClInclude Include="EmberGfx\D3D12\phxCommandListD3D12.h">
       <Filter>EmberGfx\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxGfxCommandCtxInterface.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxGfxCommandCtxSelector.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxGfxDevice.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxGfxCommandCtx.h">
+      <Filter>EmberGfx</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

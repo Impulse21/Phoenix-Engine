@@ -5,18 +5,9 @@
 
 namespace phx::gfx
 {
-#ifndef PHX_VIRTUAL_DEVICE
-#if defined(_WIN32)
-	constexpr GfxBackend kSelectedAPI = GfxBackend::Dx12;
-#endif
-#endif
-		
-
 #ifdef PHX_VIRTUAL_DEVICE
-	using CommandList = ICommandList;
 	using GfxDevice = IGfxDevice;
 #else
-	using CommandList = GfxDeviceSelector<kSelectedAPI>::CommandListType;
 	using GfxDevice = GfxDeviceSelector<kSelectedAPI>::GfxDeviceType;
 #endif
 

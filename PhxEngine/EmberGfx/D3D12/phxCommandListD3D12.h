@@ -1,8 +1,13 @@
 #pragma once
 
-#include "EmberGfx/phxGfxDeviceInterface.h"
+#include "EmberGfx/phxGfxCommandCtxInterface.h"
 
 namespace phx::gfx
+{
+	class GfxDeviceD3D12;
+}
+
+namespace phx::gfx::platform
 {
 	struct D3D12Semaphore
 	{
@@ -10,8 +15,7 @@ namespace phx::gfx
 		uint64_t fenceValue = 0;
 	};
 
-	class GfxDeviceD3D12;
-	class CommandListD3D12 final : public ICommandList
+	class CommandListD3D12 final : public internal::ICommandList
 	{
 		friend GfxDeviceD3D12;
 	public:
