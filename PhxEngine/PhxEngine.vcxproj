@@ -271,6 +271,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h" />
+    <ClInclude Include="EmberGfx\D3D12\phxCommandListD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxCommonD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxDeviceD3D12.h" />
@@ -283,7 +284,6 @@
     <ClInclude Include="EmberGfx\phxHandle.h" />
     <ClInclude Include="EmberGfx\phxHandlePool.h" />
     <ClInclude Include="EmberGfx\Vulkan\phxGfxDeviceVulkan.h" />
-    <ClInclude Include="phxCommandListD3D12.h" />
     <ClInclude Include="phxDeferredReleaseQueue.h" />
     <ClInclude Include="phxEnumUtils.h" />
     <ClInclude Include="phxCommandLineArgs.h" />
@@ -298,13 +298,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp" />
+    <ClCompile Include="EmberGfx\D3D12\phxCommandListD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDeviceD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDxgiFormatMapping.cpp" />
     <ClCompile Include="EmberGfx\phxEmber.cpp" />
     <ClCompile Include="EmberGfx\phxGfxDeviceFactory.cpp" />
     <ClCompile Include="EmberGfx\Vulkan\phxGfxDeviceVulkan.cpp" />
-    <ClCompile Include="phxCommandListD3D12.cpp" />
     <ClCompile Include="phxDeferredReleaseQueue.cpp" />
     <ClCompile Include="phxCommandLineArgs.cpp" />
     <ClCompile Include="pch.cpp">

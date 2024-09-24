@@ -196,7 +196,11 @@ namespace phx::gfx
 		void InitializeD3D12Context(IDXGIAdapter* gpuAdapter);
 		void CreateSwapChain(SwapChainDesc const& desc, HWND hwnd);
 
-		CommandListD3D12& BeginCommandList(CommandQueueType type);
+		CommandListD3D12& BeginCommandRecording(CommandQueueType type);
+
+		void SubmitCommandLists();
+		void Present();
+		void RunGarbageCollection(uint64_t completedFrame = ~0ul);
 
 	private:
 		inline static GfxDeviceD3D12* Singleton = nullptr;
@@ -232,7 +236,6 @@ namespace phx::gfx
 			std::function<void()> DeleteFn;
 		};
 		std::deque<DeleteItem> m_deleteQueue;
-		uint32_t m_frameCount = 0;
 
 		std::atomic_uint32_t m_activeCmdCount = 0;
 		std::vector<std::unique_ptr<CommandListD3D12>> m_commandPool;

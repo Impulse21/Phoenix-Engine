@@ -18,7 +18,7 @@ namespace phx::gfx
 		CommandListD3D12() = default;
 		~CommandListD3D12() = default;
 		
-		void Reset(CommandQueueType queueType, GfxDeviceD3D12* device);
+		void Reset(size_t id, CommandQueueType queueType, GfxDeviceD3D12* device);
 
 	public:
 		void TransitionBarrier(GpuBarrier const& barrier) override;
@@ -28,6 +28,7 @@ namespace phx::gfx
 		void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) override;
 
 	private:
+		size_t m_id = ~0ul;
 		CommandQueueType m_queueType = CommandQueueType::Graphics;
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList6> m_commandList6;

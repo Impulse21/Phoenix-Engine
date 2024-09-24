@@ -102,8 +102,8 @@
     <ClInclude Include="EmberGfx\D3D12\phxGfxCommonD3D12.h">
       <Filter>EmberGfx\D3D12</Filter>
     </ClInclude>
-    <ClInclude Include="phxCommandListD3D12.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="EmberGfx\D3D12\phxCommandListD3D12.h">
+      <Filter>EmberGfx\D3D12</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -149,8 +149,8 @@
     <ClCompile Include="EmberGfx\D3D12\phxGfxDxgiFormatMapping.cpp">
       <Filter>EmberGfx\D3D12</Filter>
     </ClCompile>
-    <ClCompile Include="phxCommandListD3D12.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="EmberGfx\D3D12\phxCommandListD3D12.cpp">
+      <Filter>EmberGfx\D3D12</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -245,21 +245,125 @@ void phx::gfx::GfxDeviceD3D12::ResizeSwapChain(SwapChainDesc const& swapChainDes
 
 ICommandList& phx::gfx::GfxDeviceD3D12::BeginGfxContext()
 {
-	return this->BeginCommandList(CommandQueueType::Graphics);
+	return this->BeginCommandRecording(CommandQueueType::Graphics);
 }
 
 ICommandList& phx::gfx::GfxDeviceD3D12::BeginComputeContext()
 {
-	return this->BeginCommandList(CommandQueueType::Compute);
+	return this->BeginCommandRecording(CommandQueueType::Compute);
 }
 
 void phx::gfx::GfxDeviceD3D12::SubmitFrame()
 {
+	this->SubmitCommandLists();
+	this->Present();
+	this->RunGarbageCollection();
 }
 
-CommandListD3D12& phx::gfx::GfxDeviceD3D12::BeginCommandList(CommandQueueType type)
+CommandListD3D12& phx::gfx::GfxDeviceD3D12::BeginCommandRecording(CommandQueueType type)
 {
-	// TODO: insert return statement here
+	const uint32_t currentCmdIndex = this->m_activeCmdCount++;
+	assert(currentCmdIndex < this->m_commandPool.size());
+	CommandListD3D12& cmdList = *this->m_commandPool[currentCmdIndex];
+	cmdList.Reset(currentCmdIndex, type, this);
+	return cmdList;
+}
+
+void phx::gfx::GfxDeviceD3D12::SubmitCommandLists()
+{
+	const uint32_t numActiveCommands = this->m_activeCmdCount.exchange(0);
+
+	for (size_t i = 0; i < (size_t)numActiveCommands; i++)
+	{
+		CommandListD3D12& commandList = *this->m_commandPool[i];
+		commandList.m_commandList->Close();
+
+		D3D12CommandQueue& queue = this->GetQueue(commandList.m_queueType);
+		const bool dependency = !commandList.m_waits.empty() || !commandList.m_isWaitedOn;
+
+		if (dependency)
+			queue.Submit();
+
+		queue.EnqueueForSubmit(commandList.m_commandList.Get(), commandList.m_allocator);
+		commandList.m_allocator = nullptr;
+
+		if (dependency)
+		{
+			// TODO;
+		}
+	}
+
+	for (auto& q : this->GetQueues())
+		q.Submit();
+}
+
+void phx::gfx::GfxDeviceD3D12::Present()
+{
+	// -- Mark Queues for completion ---
+	{
+		const size_t backBufferIndex = this->m_swapChain.SwapChain4->GetCurrentBackBufferIndex();
+		// -- Mark queues for Compleition ---
+		for (size_t q = 0; q < (size_t)CommandQueueType::Count; q++)
+		{
+			D3D12CommandQueue& queue = this->m_commandQueues[q];
+			queue.Queue->Signal(this->m_frameFences[backBufferIndex][q].Get(), 1);
+		}
+	}
+
+	// -- Present the back buffer ---
+	{
+
+		UINT presentFlags = 0;
+		if (!this->m_swapChain.VSync)
+		{
+			presentFlags |= DXGI_PRESENT_ALLOW_TEARING;
+		}
+
+		HRESULT hr = this->m_swapChain.SwapChain4->Present((UINT)this->m_swapChain.VSync, presentFlags);
+
+		if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+		{
+			assert(false);
+		}
+	}
+	// -- wait for fence to finish
+	{
+		const size_t backBufferIndex = this->m_swapChain.SwapChain4->GetCurrentBackBufferIndex();
+
+		this->m_frameCount++;
+
+		// Sync The queeus
+		for (size_t q = 0; q < (size_t)CommandQueueType::Count; q++)
+		{
+			ID3D12Fence* fence = this->m_frameFences[backBufferIndex][q].Get();
+			const size_t completedValue = fence->GetCompletedValue();
+
+			if (this->m_frameCount >= kBufferCount && completedValue < 1)
+			{
+				ThrowIfFailed(
+					fence->SetEventOnCompletion(1, NULL));
+			}
+			// Reset fence;
+			fence->Signal(0);
+		}
+	}
+}
+
+void phx::gfx::GfxDeviceD3D12::RunGarbageCollection(uint64_t completedFrame)
+{
+	while (!this->m_deleteQueue.empty())
+	{
+		DeleteItem& deleteItem = this->m_deleteQueue.front();
+		if (deleteItem.Frame + kBufferCount < completedFrame)
+		{
+			deleteItem.DeleteFn();
+			this->m_deleteQueue.pop_front();
+		}
+		else
+		{
+			break;
+		}
+	}
 }
 
 void phx::gfx::GfxDeviceD3D12::Initialize()

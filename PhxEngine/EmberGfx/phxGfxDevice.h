@@ -16,7 +16,7 @@ namespace phx::gfx
 	using CommandList = ICommandList;
 	using GfxDevice = IGfxDevice;
 #else
-	using GfxDevice = GfxDeviceSelector<kSelectedAPI>::CommandListType;
+	using CommandList = GfxDeviceSelector<kSelectedAPI>::CommandListType;
 	using GfxDevice = GfxDeviceSelector<kSelectedAPI>::GfxDeviceType;
 #endif
 

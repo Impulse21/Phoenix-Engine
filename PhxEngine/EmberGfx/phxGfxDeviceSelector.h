@@ -3,9 +3,12 @@
 #ifdef PHX_VIRTUAL_DEVICE
 #include "phxGfxDeviceInterface.h"
 #else
+
 #include "phxGfxDevice.h"
-#include "D3D12/phx"
+
+#include "D3D12/phxCommandListD3D12.h"
 #include "D3D12/phxGfxDeviceD3D12.h"
+
 #include "Vulkan/phxGfxDeviceVulkan.h"
 
 #endif
