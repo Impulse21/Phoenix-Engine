@@ -4,6 +4,7 @@
 #include "phxGfxDeviceInterface.h"
 #else
 #include "phxGfxDevice.h"
+#include "D3D12/phx"
 #include "D3D12/phxGfxDeviceD3D12.h"
 #include "Vulkan/phxGfxDeviceVulkan.h"
 
@@ -19,6 +20,7 @@ namespace phx::gfx
     class GfxDeviceSelector<GfxBackend::Dx12>
     {
     public:
+        using CommandListType = phx::gfx::CommandListD3D12;
         using GfxDeviceType = phx::gfx::GfxDeviceD3D12;
 };
 

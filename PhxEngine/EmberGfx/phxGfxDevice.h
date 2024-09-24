@@ -13,8 +13,10 @@ namespace phx::gfx
 		
 
 #ifdef PHX_VIRTUAL_DEVICE
+	using CommandList = ICommandList;
 	using GfxDevice = IGfxDevice;
 #else
+	using GfxDevice = GfxDeviceSelector<kSelectedAPI>::CommandListType;
 	using GfxDevice = GfxDeviceSelector<kSelectedAPI>::GfxDeviceType;
 #endif
 

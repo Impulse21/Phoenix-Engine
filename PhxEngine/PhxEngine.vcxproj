@@ -283,6 +283,7 @@
     <ClInclude Include="EmberGfx\phxHandle.h" />
     <ClInclude Include="EmberGfx\phxHandlePool.h" />
     <ClInclude Include="EmberGfx\Vulkan\phxGfxDeviceVulkan.h" />
+    <ClInclude Include="phxCommandListD3D12.h" />
     <ClInclude Include="phxDeferredReleaseQueue.h" />
     <ClInclude Include="phxEnumUtils.h" />
     <ClInclude Include="phxCommandLineArgs.h" />
@@ -303,6 +304,7 @@
     <ClCompile Include="EmberGfx\phxEmber.cpp" />
     <ClCompile Include="EmberGfx\phxGfxDeviceFactory.cpp" />
     <ClCompile Include="EmberGfx\Vulkan\phxGfxDeviceVulkan.cpp" />
+    <ClCompile Include="phxCommandListD3D12.cpp" />
     <ClCompile Include="phxDeferredReleaseQueue.cpp" />
     <ClCompile Include="phxCommandLineArgs.cpp" />
     <ClCompile Include="pch.cpp">
