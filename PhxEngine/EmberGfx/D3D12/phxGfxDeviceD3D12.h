@@ -3,9 +3,12 @@
 #include "EmberGfx/phxGfxDeviceInterface.h"
 
 #include "phxGfxDescriptorHeapsD3D12.h"
+#include "phxCommandListD3D12.h"
 
 #include <deque>
 #include <mutex>
+#include <functional>
+
 #define SCOPED_LOCK(x) std::scoped_lock _(x)
 
 namespace phx::gfx
@@ -13,7 +16,7 @@ namespace phx::gfx
 
 	static const GUID RenderdocUUID = { 0xa7aa6116, 0x9c8d, 0x4bba, { 0x90, 0x83, 0xb4, 0xd8, 0x16, 0xb7, 0x1b, 0x78 } };
 	static const GUID PixUUID = { 0x9f251514, 0x9d4d, 0x4902, { 0x9d, 0x60, 0x18, 0x98, 0x8a, 0xb7, 0xd4, 0xb5 } };
-
+	
 	struct D3D12DeviceBasicInfo final
 	{
 		uint32_t NumDeviceNodes;
@@ -167,6 +170,10 @@ namespace phx::gfx
 		void WaitForIdle() override;
 		void ResizeSwapChain(SwapChainDesc const& swapChainDesc) override;
 
+		ICommandList& BeginGfxContext() ;
+		ICommandList& BeginComputeContext();
+
+		void SubmitFrame();
 
 	public:
 		  ID3D12Device* GetD3D12Device() { return this->m_d3d12Device.Get(); }
@@ -188,6 +195,8 @@ namespace phx::gfx
 		void Initialize();
 		void InitializeD3D12Context(IDXGIAdapter* gpuAdapter);
 		void CreateSwapChain(SwapChainDesc const& desc, HWND hwnd);
+
+		CommandListD3D12& BeginCommandList(CommandQueueType type);
 
 	private:
 		inline static GfxDeviceD3D12* Singleton = nullptr;
@@ -217,6 +226,16 @@ namespace phx::gfx
 
 		std::array<EnumArray<Microsoft::WRL::ComPtr<ID3D12Fence>, CommandQueueType>, kBufferCount> m_frameFences;
 		uint64_t m_frameCount = 0;
+		struct DeleteItem
+		{
+			uint64_t Frame;
+			std::function<void()> DeleteFn;
+		};
+		std::deque<DeleteItem> m_deleteQueue;
+		uint32_t m_frameCount = 0;
+
+		std::atomic_uint32_t m_activeCmdCount = 0;
+		std::vector<std::unique_ptr<CommandListD3D12>> m_commandPool;
 	};
 }
 

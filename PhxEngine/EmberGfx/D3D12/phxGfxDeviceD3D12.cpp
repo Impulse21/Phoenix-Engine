@@ -243,6 +243,25 @@ void phx::gfx::GfxDeviceD3D12::ResizeSwapChain(SwapChainDesc const& swapChainDes
 	this->CreateSwapChain(swapChainDesc, nullptr);
 }
 
+ICommandList& phx::gfx::GfxDeviceD3D12::BeginGfxContext()
+{
+	return this->BeginCommandList(CommandQueueType::Graphics);
+}
+
+ICommandList& phx::gfx::GfxDeviceD3D12::BeginComputeContext()
+{
+	return this->BeginCommandList(CommandQueueType::Compute);
+}
+
+void phx::gfx::GfxDeviceD3D12::SubmitFrame()
+{
+}
+
+CommandListD3D12& phx::gfx::GfxDeviceD3D12::BeginCommandList(CommandQueueType type)
+{
+	// TODO: insert return statement here
+}
+
 void phx::gfx::GfxDeviceD3D12::Initialize()
 {
 	PHX_CORE_INFO("Initialize DirectX 12 Graphics Device");

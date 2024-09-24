@@ -13,6 +13,7 @@ namespace phx::gfx
 
         virtual void TransitionBarrier(GpuBarrier const& barrier) = 0;
         virtual void TransitionBarriers(Span<GpuBarrier> gpuBarriers) = 0;
+        virtual void ClearBackBuffer(Color const& clearColour) = 0;
         virtual void ClearTextureFloat(TextureHandle texture, Color const& clearColour) = 0;
         virtual void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) = 0;
 #if false
@@ -194,5 +195,10 @@ namespace phx::gfx
 
 		virtual void WaitForIdle() = 0;
 		virtual void ResizeSwapChain(SwapChainDesc const& swapChainDesc) = 0;
+
+        virtual ICommandList& BeginGfxContext() = 0;
+        virtual ICommandList& BeginComputeContext() = 0;
+
+        virtual void SubmitFrame() = 0;
 	};
 }
