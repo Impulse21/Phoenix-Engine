@@ -84,7 +84,7 @@ static const DxgiFormatMapping c_FormatMappings[] = {
   { gfx::Format::BC7_UNORM_SRGB,       DXGI_FORMAT_BC7_TYPELESS,           DXGI_FORMAT_BC7_UNORM_SRGB,           DXGI_FORMAT_BC7_UNORM_SRGB         },
 };
 
-const phx::gfx::dx::DxgiFormatMapping& phx::gfx::dx::GetDxgiFormatMapping(gfx::Format abstractFormat)
+const phx::gfx::DxgiFormatMapping& phx::gfx::GetDxgiFormatMapping(gfx::Format abstractFormat)
 {
     static_assert(sizeof(c_FormatMappings) / sizeof(DxgiFormatMapping) == size_t(gfx::Format::COUNT),
         "The format mapping table doesn't have the right number of elements");

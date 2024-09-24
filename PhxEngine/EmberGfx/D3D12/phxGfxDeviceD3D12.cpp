@@ -204,7 +204,7 @@ phx::gfx::GfxDeviceD3D12::~GfxDeviceD3D12()
 void phx::gfx::GfxDeviceD3D12::Initialize(SwapChainDesc const& swapChainDesc, void* windowHandle)
 {
 	this->Initialize();
-	this->CreateSwapChain(swapChainDesc, *static_cast<HWND*>(windowHandle));
+	this->CreateSwapChain(swapChainDesc, static_cast<HWND>(windowHandle));
 }
 
 void phx::gfx::GfxDeviceD3D12::Finalize()

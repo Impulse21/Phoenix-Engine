@@ -60,7 +60,6 @@ namespace phx::Display
 		.EnableHDR = false
 		};
 
-
 		phx::gfx::InitializeWindows(
 			phx::gfx::GfxBackend::Dx12,
 			desc,
