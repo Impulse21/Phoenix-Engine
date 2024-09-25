@@ -10,7 +10,6 @@
 class PhxEditor final : public phx::IEngineApp
 {
 public:
-
 	void Startup() override {};
 	void Shutdonw() override {};
 
