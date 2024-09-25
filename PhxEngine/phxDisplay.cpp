@@ -92,6 +92,8 @@ namespace phx::Display
 
 	void Preset()
 	{
+		phx::gfx::GfxDevice* gfxDevice = phx::gfx::Ember::Ptr->GfxDevice;
+		gfxDevice->SubmitFrame();
 #if false
 		UINT presentInterval = m_enableVSync ? std::min(4, (int)std::round(m_frameTime * 60.0f)) : 0;
 		int64_t currentTick = SystemTime::GetCurrentTick();

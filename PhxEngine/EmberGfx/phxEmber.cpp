@@ -15,6 +15,7 @@ void phx::gfx::InitializeWindows(
 
 void phx::gfx::Finalize()
 {
+	Ember::Ptr->GfxDevice->Finalize();
 	delete Ember::Ptr->GfxDevice;
 	Ember::Ptr->GfxDevice = nullptr;
 

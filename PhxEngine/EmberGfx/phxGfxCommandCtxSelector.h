@@ -4,9 +4,6 @@
 #ifdef PHX_VIRTUAL_DEVICE
 #include "phxGfxCommandCtxInterface.h"
 #else
-
-#include "phxGfxDevice.h"
-
 #include "D3D12/phxCommandListD3D12.h"
 
 #endif

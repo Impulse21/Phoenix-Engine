@@ -61,6 +61,17 @@ namespace phx::gfx
 		bool Fullscreen : 1 = false;
 		bool VSync : 1 = false;
 		bool EnableHDR : 1 = false;
+
+		D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView()
+		{
+			const uint64_t currentIndex = this->SwapChain4->GetCurrentBackBufferIndex();
+			return this->Rtv.GetCpuHandle(currentIndex);
+		}
+		ID3D12Resource* GetBackBuffer()
+		{
+			const uint64_t currentIndex = this->SwapChain4->GetCurrentBackBufferIndex();
+			return this->BackBuffers[currentIndex].Get();
+		}
 	};
 
 
@@ -176,6 +187,9 @@ namespace phx::gfx
 		void SubmitFrame();
 
 	public:
+		  D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView() { return this->m_swapChain.GetBackBufferView(); }
+		  ID3D12Resource* GetBackBuffer() { return this->m_swapChain.GetBackBuffer(); }
+
 		  ID3D12Device* GetD3D12Device() { return this->m_d3d12Device.Get(); }
 		  ID3D12Device2* GetD3D12Device2() { return this->m_d3d12Device2.Get(); }
 		  ID3D12Device5* GetD3D12Device5() { return this->m_d3d12Device5.Get(); }
@@ -196,7 +210,7 @@ namespace phx::gfx
 		void InitializeD3D12Context(IDXGIAdapter* gpuAdapter);
 		void CreateSwapChain(SwapChainDesc const& desc, HWND hwnd);
 
-		CommandList& BeginCommandRecording(CommandQueueType type);
+		platform::CommandListD3D12& BeginCommandRecording(CommandQueueType type);
 
 		void SubmitCommandLists();
 		void Present();
@@ -238,7 +252,7 @@ namespace phx::gfx
 		std::deque<DeleteItem> m_deleteQueue;
 
 		std::atomic_uint32_t m_activeCmdCount = 0;
-		std::vector<std::unique_ptr<CommandListD3D12>> m_commandPool;
+		std::vector<std::unique_ptr<platform::CommandListD3D12>> m_commandPool;
 	};
 }
 

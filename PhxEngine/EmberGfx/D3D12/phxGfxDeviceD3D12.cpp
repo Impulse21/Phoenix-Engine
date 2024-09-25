@@ -260,10 +260,14 @@ void phx::gfx::GfxDeviceD3D12::SubmitFrame()
 	this->RunGarbageCollection();
 }
 
-CommandList& phx::gfx::GfxDeviceD3D12::BeginCommandRecording(CommandQueueType type)
+platform::CommandListD3D12& phx::gfx::GfxDeviceD3D12::BeginCommandRecording(CommandQueueType type)
 {
 	const uint32_t currentCmdIndex = this->m_activeCmdCount++;
-	assert(currentCmdIndex < this->m_commandPool.size());
+	if (currentCmdIndex >= this->m_commandPool.size())
+	{
+		this->m_commandPool.emplace_back(std::make_unique<platform::CommandListD3D12>());
+	}
+
 	CommandList& cmdList = *this->m_commandPool[currentCmdIndex];
 	cmdList.Reset(currentCmdIndex, type, this);
 	return cmdList;
