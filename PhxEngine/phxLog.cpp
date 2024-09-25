@@ -41,9 +41,10 @@ namespace
 
 void phx::Log::Initialize()
 {
+#if false
 	std::vector<spdlog::sink_ptr> logSinks;
 	logSinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
-	logSinks.emplace_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>("Hazel.log", true));
+	logSinks.emplace_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>("phxLog.log", true));
 
 	logSinks[0]->set_pattern("%^[%T] %n: %v%$");
 	logSinks[1]->set_pattern("[%T] [%l] %n: %v");
@@ -57,6 +58,18 @@ void phx::Log::Initialize()
 	spdlog::register_logger(g_clientLogger);
 	g_clientLogger->set_level(spdlog::level::trace);
 	g_clientLogger->flush_on(spdlog::level::trace);
+#else
+
+	// Timestamp, name of logger.
+	spdlog::set_pattern("%^[%T] %n: %v%$");
+
+	g_coreLogger = spdlog::stdout_color_mt("Engine");
+	g_coreLogger->set_level(spdlog::level::trace);
+
+	g_clientLogger = spdlog::stdout_color_mt("Application");
+	g_clientLogger->set_level(spdlog::level::trace);
+#endif
+
 }
 
 void phx::Log::Log(LogType type, Level level, std::string_view msg)
