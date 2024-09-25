@@ -7,7 +7,9 @@
 using namespace phx;
 using namespace phx::gfx;
 
-
+extern "C" {
+	_declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+}
 // Teir 1 limit is 1,000,000
 // https://docs.microsoft.com/en-us/windows/win32/direct3d12/hardware-support
 #define TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE 1000000
