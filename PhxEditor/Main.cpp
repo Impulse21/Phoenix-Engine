@@ -20,8 +20,8 @@ public:
 	{
 		phx::gfx::GfxDevice* device = phx::gfx::Ember::Ptr->GfxDevice;
 
-		//phx::gfx::CommandList& command = device->BeginGfxContext();
-		// command.ClearBackBuffer({ 1.0, 0.0f, 0.0, 1.0f });
+		phx::gfx::CommandList& command = device->BeginGfxContext();
+		command.ClearBackBuffer({ 1.0, 0.0f, 0.0, 1.0f });
 	}
 };
 
