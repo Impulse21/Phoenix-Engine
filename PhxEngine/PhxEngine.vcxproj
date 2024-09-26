@@ -279,10 +279,8 @@
     <ClInclude Include="EmberGfx\phxGfxCommandCtx.h" />
     <ClInclude Include="EmberGfx\phxGfxCommandCtxInterface.h" />
     <ClInclude Include="EmberGfx\phxGfxDevice.h" />
-    <ClInclude Include="EmberGfx\phxGfxDeviceFactory.h" />
     <ClInclude Include="EmberGfx\phxGfxDeviceInterface.h" />
     <ClInclude Include="EmberGfx\phxGfxDeviceResources.h" />
-    <ClInclude Include="EmberGfx\phxGfxDeviceSelector.h" />
     <ClInclude Include="EmberGfx\phxHandle.h" />
     <ClInclude Include="EmberGfx\phxHandlePool.h" />
     <ClInclude Include="EmberGfx\Vulkan\phxGfxDeviceVulkan.h" />
@@ -305,7 +303,7 @@
     <ClCompile Include="EmberGfx\D3D12\phxGfxDeviceD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDxgiFormatMapping.cpp" />
     <ClCompile Include="EmberGfx\phxEmber.cpp" />
-    <ClCompile Include="EmberGfx\phxGfxDeviceFactory.cpp" />
+    <ClCompile Include="EmberGfx\phxGfxDevice.cpp" />
     <ClCompile Include="EmberGfx\Vulkan\phxGfxDeviceVulkan.cpp" />
     <ClCompile Include="phxDeferredReleaseQueue.cpp" />
     <ClCompile Include="phxCommandLineArgs.cpp" />

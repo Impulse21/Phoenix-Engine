@@ -1,24 +1,30 @@
 #include "pch.h"
 #include "phxEmber.h"
 
-#include "phxGfxDeviceFactory.h"
+#include "phxGfxDevice.h"
 
 void phx::gfx::InitializeWindows(
 	GfxBackend backend,
 	SwapChainDesc const& swapChainDesc,
 	void* windowHandle)
 {
-	Ember::Ptr = new Ember();
-	Ember::Ptr->GfxDevice = GfxDeviceFactory::Create(backend);
-	Ember::Ptr->GfxDevice->Initialize(swapChainDesc, windowHandle);
+	Ember::Ptr = new Ember(GfxBackend::Dx12);
+	Ember::Ptr->GetDevice().Initialize(swapChainDesc, windowHandle);
 }
 
 void phx::gfx::Finalize()
 {
-	Ember::Ptr->GfxDevice->Finalize();
-	delete Ember::Ptr->GfxDevice;
-	Ember::Ptr->GfxDevice = nullptr;
-
 	delete Ember::Ptr;
 	Ember::Ptr = nullptr;
+}
+
+
+phx::gfx::Ember::Ember(GfxBackend backend)
+{
+	GfxDeviceFactory::Create(backend, this->m_gfxDevice);
+}
+
+phx::gfx::Ember::~Ember()
+{
+	this->m_gfxDevice.Finalize();
 }

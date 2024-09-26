@@ -17,9 +17,9 @@ public:
 	void Update() override {};
 	void Render() override
 	{
-		phx::gfx::GfxDevice* device = phx::gfx::Ember::Ptr->GfxDevice;
+		phx::gfx::GfxDevice& device = phx::gfx::Ember::Ptr->GetDevice();
 
-		phx::gfx::CommandCtx command = device->BeginGfxContext();
+		phx::gfx::CommandCtx command = device.BeginGfxContext();
 		command.ClearBackBuffer({ 1.0, 0.0f, 0.0, 1.0f });
 	}
 };

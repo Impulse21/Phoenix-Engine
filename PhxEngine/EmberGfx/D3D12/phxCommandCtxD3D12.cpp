@@ -7,6 +7,15 @@ using namespace phx::gfx;
 
 using namespace phx::gfx::platform;
 
+#ifdef USING_D3D12_AGILITY_SDK
+extern "C"
+{
+	// Used to enable the "Agility SDK" components
+	__declspec(dllexport) extern const UINT D3D12SDKVersion = D3D12_SDK_VERSION;
+	__declspec(dllexport) extern const char8_t* D3D12SDKPath = u8".\\D3D12\\";
+}
+#endif
+
 void CommandCtxD3D12::Reset(size_t id, CommandQueueType queueType, GfxDeviceD3D12* device)
 {
 	ID3D12Device* d3d12Device = device->GetD3D12Device();

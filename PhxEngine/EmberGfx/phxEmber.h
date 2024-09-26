@@ -15,7 +15,14 @@ namespace phx::gfx
 	public:
 		inline static Ember* Ptr = nullptr;
 
-		GfxDevice* GfxDevice = nullptr;
+	public:
+		Ember(GfxBackend backend);
+		~Ember();
+
+		GfxDevice& GetDevice() { return this->m_gfxDevice; }
+
+	private:
+		GfxDevice m_gfxDevice;
 	};
 }
 
