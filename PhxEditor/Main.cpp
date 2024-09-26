@@ -39,7 +39,7 @@ public:
 		phx::gfx::GfxDevice& device = phx::gfx::Ember::Ptr->GetDevice();
 
 		phx::gfx::CommandCtx command = device.BeginGfxContext();
-		command.ClearBackBuffer({ 1.0, 0.0f, 0.0, 1.0f });
+		command.ClearBackBuffer({ 0.392156899f, 0.584313750f, 0.929411829f, 1.f  }); // Cornflower blue
 	}
 
 private:
