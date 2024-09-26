@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EmberGfx/phxGfxDeviceResources.h"
 
 namespace phx
 {
@@ -16,6 +17,7 @@ namespace phx
 	{
 		extern uint32_t g_DisplayWidth;
 		extern uint32_t g_DisplayHeight;
+		extern gfx::Format g_SwapChainFormat;
 		extern bool g_EnableHDROutput;
 
 		// Returns the number of elapsed frames since application start

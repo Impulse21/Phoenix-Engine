@@ -30,8 +30,10 @@ namespace phx::gfx::platform
 		void ClearBackBuffer(Color const& clearColour) override;
 		void ClearTextureFloat(TextureHandle texture, Color const& clearColour) override;
 		void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) override;
+		void SetGfxPipeline(GfxPipelineHandle handle) override;
 
 	private:
+		GfxDeviceD3D12* m_device;
 		size_t m_id = ~0ul;
 		CommandQueueType m_queueType = CommandQueueType::Graphics;
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;

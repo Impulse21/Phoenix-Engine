@@ -14,6 +14,7 @@ namespace phx::gfx::internal
         virtual void ClearBackBuffer(Color const& clearColour) = 0;
         virtual void ClearTextureFloat(TextureHandle texture, Color const& clearColour) = 0;
         virtual void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) = 0;
+        virtual void SetGfxPipeline(GfxPipelineHandle handle) = 0;
 #if false
 
         // -- Ray Trace stuff       ---

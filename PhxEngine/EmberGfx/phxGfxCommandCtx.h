@@ -42,6 +42,10 @@ namespace phx::gfx
 			this->m_impl->ClearDepthStencilTexture(depthStencil, clearDepth, depth, clearStencil, stencil);
 		}
 
+		void SetGfxPipeline(GfxPipelineHandle handle)
+		{
+			this->m_impl->SetGfxPipeline(handle);
+		}
 	private:
 		TImpl* m_impl;
 	};

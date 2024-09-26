@@ -6,6 +6,7 @@
 
 #include "phxEngineCore.h"
 #include "EmberGfx/phxEmber.h"
+#include "phxDisplay.h"
 
 #include "CompiledShaders/TestShaderVS.h"
 #include "CompiledShaders/TestShaderPS.h"
@@ -15,10 +16,21 @@ class PhxEditor final : public phx::IEngineApp
 public:
 	void Startup() override 
 	{
+		phx::gfx::GfxDevice& device = phx::gfx::Ember::Ptr->GetDevice();
 
+		this->m_pipeline = device.CreateGfxPipeline({
+				.VertexShaderByteCode = phx::Span(g_pTestShaderVS, ARRAYSIZE(g_pTestShaderVS)),
+				.PixelShaderByteCode = phx::Span(g_pTestShaderPS, ARRAYSIZE(g_pTestShaderPS)),
+				.RtvFormats = { phx::gfx::g_SwapChainFormat }
+			});
 	};
 
-	void Shutdonw() override {};
+	void Shutdonw() override 
+	{
+		phx::gfx::GfxDevice& device = phx::gfx::Ember::Ptr->GetDevice();
+
+		device.DeleteGfxPipeline(this->m_pipeline);
+	};
 
 	void CacheRenderData() override {};
 	void Update() override {};
