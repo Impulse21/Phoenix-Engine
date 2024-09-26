@@ -3,7 +3,7 @@
 #include "EmberGfx/phxGfxDeviceInterface.h"
 
 #include "phxGfxDescriptorHeapsD3D12.h"
-#include "phxCommandListD3D12.h"
+#include "phxCommandCtxD3D12.h"
 
 #include <deque>
 #include <mutex>
@@ -181,8 +181,8 @@ namespace phx::gfx
 		void WaitForIdle() override;
 		void ResizeSwapChain(SwapChainDesc const& swapChainDesc) override;
 
-		CommandList& BeginGfxContext() ;
-		CommandList& BeginComputeContext();
+		CommandCtx BeginGfxContext() ;
+		CommandCtx BeginComputeContext();
 
 		void SubmitFrame();
 
@@ -210,7 +210,7 @@ namespace phx::gfx
 		void InitializeD3D12Context(IDXGIAdapter* gpuAdapter);
 		void CreateSwapChain(SwapChainDesc const& desc, HWND hwnd);
 
-		platform::CommandListD3D12& BeginCommandRecording(CommandQueueType type);
+		platform::CommandCtxD3D12* BeginCommandRecording(CommandQueueType type);
 
 		void SubmitCommandLists();
 		void Present();
@@ -252,7 +252,7 @@ namespace phx::gfx
 		std::deque<DeleteItem> m_deleteQueue;
 
 		std::atomic_uint32_t m_activeCmdCount = 0;
-		std::vector<std::unique_ptr<platform::CommandListD3D12>> m_commandPool;
+		std::vector<std::unique_ptr<platform::CommandCtxD3D12>> m_commandPool;
 	};
 }
 

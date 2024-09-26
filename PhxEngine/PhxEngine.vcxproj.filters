@@ -99,13 +99,10 @@
     <ClInclude Include="EmberGfx\D3D12\phxGfxCommonD3D12.h">
       <Filter>EmberGfx\D3D12</Filter>
     </ClInclude>
-    <ClInclude Include="EmberGfx\D3D12\phxCommandListD3D12.h">
+    <ClInclude Include="EmberGfx\D3D12\phxCommandCtxD3D12.h">
       <Filter>EmberGfx\D3D12</Filter>
     </ClInclude>
     <ClInclude Include="EmberGfx\phxGfxCommandCtxInterface.h">
-      <Filter>EmberGfx</Filter>
-    </ClInclude>
-    <ClInclude Include="EmberGfx\phxGfxCommandCtxSelector.h">
       <Filter>EmberGfx</Filter>
     </ClInclude>
     <ClInclude Include="EmberGfx\phxGfxDevice.h">
@@ -158,7 +155,7 @@
     <ClCompile Include="EmberGfx\D3D12\phxGfxDxgiFormatMapping.cpp">
       <Filter>EmberGfx\D3D12</Filter>
     </ClCompile>
-    <ClCompile Include="EmberGfx\D3D12\phxCommandListD3D12.cpp">
+    <ClCompile Include="EmberGfx\D3D12\phxCommandCtxD3D12.cpp">
       <Filter>EmberGfx\D3D12</Filter>
     </ClCompile>
   </ItemGroup>

@@ -271,14 +271,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h" />
-    <ClInclude Include="EmberGfx\D3D12\phxCommandListD3D12.h" />
+    <ClInclude Include="EmberGfx\D3D12\phxCommandCtxD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxCommonD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxDeviceD3D12.h" />
     <ClInclude Include="EmberGfx\phxEmber.h" />
     <ClInclude Include="EmberGfx\phxGfxCommandCtx.h" />
     <ClInclude Include="EmberGfx\phxGfxCommandCtxInterface.h" />
-    <ClInclude Include="EmberGfx\phxGfxCommandCtxSelector.h" />
     <ClInclude Include="EmberGfx\phxGfxDevice.h" />
     <ClInclude Include="EmberGfx\phxGfxDeviceFactory.h" />
     <ClInclude Include="EmberGfx\phxGfxDeviceInterface.h" />
@@ -301,7 +300,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp" />
-    <ClCompile Include="EmberGfx\D3D12\phxCommandListD3D12.cpp" />
+    <ClCompile Include="EmberGfx\D3D12\phxCommandCtxD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDeviceD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDxgiFormatMapping.cpp" />

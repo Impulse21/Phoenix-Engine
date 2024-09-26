@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "phxCommandListD3D12.h"
+#include "phxCommandCtxD3D12.h"
 
 #include "phxGfxDeviceD3D12.h"
 
@@ -7,7 +7,7 @@ using namespace phx::gfx;
 
 using namespace phx::gfx::platform;
 
-void CommandListD3D12::Reset(size_t id, CommandQueueType queueType, GfxDeviceD3D12* device)
+void CommandCtxD3D12::Reset(size_t id, CommandQueueType queueType, GfxDeviceD3D12* device)
 {
 	ID3D12Device* d3d12Device = device->GetD3D12Device();
 	D3D12CommandQueue& queue = device->GetQueue(queueType);
@@ -50,16 +50,16 @@ void CommandListD3D12::Reset(size_t id, CommandQueueType queueType, GfxDeviceD3D
 	this->m_commandList6->SetDescriptorHeaps(static_cast<UINT>(heaps.size()), heaps.data());
 }
 
-void CommandListD3D12::TransitionBarrier(GpuBarrier const& barrier)
+void CommandCtxD3D12::TransitionBarrier(GpuBarrier const& barrier)
 {
 }
 
-void CommandListD3D12::TransitionBarriers(Span<GpuBarrier> gpuBarriers)
+void CommandCtxD3D12::TransitionBarriers(Span<GpuBarrier> gpuBarriers)
 {
 
 }
 
-void CommandListD3D12::ClearBackBuffer(Color const& clearColour)
+void CommandCtxD3D12::ClearBackBuffer(Color const& clearColour)
 {
 	GfxDeviceD3D12* device = GfxDeviceD3D12::Instance();
 	auto view = device->GetBackBuffer();
@@ -85,10 +85,10 @@ void CommandListD3D12::ClearBackBuffer(Color const& clearColour)
 	this->m_commandList->ResourceBarrier(1, &barrier);
 }
 
-void CommandListD3D12::ClearTextureFloat(TextureHandle texture, Color const& clearColour)
+void CommandCtxD3D12::ClearTextureFloat(TextureHandle texture, Color const& clearColour)
 {
 }
 
-void CommandListD3D12::ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil)
+void CommandCtxD3D12::ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil)
 {
 }

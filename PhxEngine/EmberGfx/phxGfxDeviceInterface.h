@@ -20,8 +20,8 @@ namespace phx::gfx
 		virtual void WaitForIdle() = 0;
 		virtual void ResizeSwapChain(SwapChainDesc const& swapChainDesc) = 0;
 
-        virtual CommandList& BeginGfxContext() = 0;
-        virtual CommandList& BeginComputeContext() = 0;
+        virtual CommandCtx BeginGfxContext() = 0;
+        virtual CommandCtx BeginComputeContext() = 0;
 
         virtual void SubmitFrame() = 0;
 	};

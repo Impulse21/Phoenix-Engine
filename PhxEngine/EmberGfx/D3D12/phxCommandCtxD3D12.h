@@ -15,12 +15,12 @@ namespace phx::gfx::platform
 		uint64_t fenceValue = 0;
 	};
 
-	class CommandListD3D12 final : public internal::ICommandList
+	class CommandCtxD3D12 final : public internal::ICommandCtx
 	{
 		friend GfxDeviceD3D12;
 	public:
-		CommandListD3D12() = default;
-		~CommandListD3D12() = default;
+		CommandCtxD3D12() = default;
+		~CommandCtxD3D12() = default;
 		
 		void Reset(size_t id, CommandQueueType queueType, GfxDeviceD3D12* device);
 

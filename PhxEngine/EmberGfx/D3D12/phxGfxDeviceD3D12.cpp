@@ -245,14 +245,16 @@ void phx::gfx::GfxDeviceD3D12::ResizeSwapChain(SwapChainDesc const& swapChainDes
 	this->CreateSwapChain(swapChainDesc, nullptr);
 }
 
-CommandList& phx::gfx::GfxDeviceD3D12::BeginGfxContext()
+CommandCtx phx::gfx::GfxDeviceD3D12::BeginGfxContext()
 {
-	return this->BeginCommandRecording(CommandQueueType::Graphics);
+	auto impl = this->BeginCommandRecording(CommandQueueType::Graphics);
+	return CommandCtx(impl);
 }
 
-CommandList& phx::gfx::GfxDeviceD3D12::BeginComputeContext()
+CommandCtx phx::gfx::GfxDeviceD3D12::BeginComputeContext()
 {
-	return this->BeginCommandRecording(CommandQueueType::Compute);
+	auto impl = this->BeginCommandRecording(CommandQueueType::Compute);
+	return CommandCtx(impl);
 }
 
 void phx::gfx::GfxDeviceD3D12::SubmitFrame()
@@ -262,16 +264,16 @@ void phx::gfx::GfxDeviceD3D12::SubmitFrame()
 	this->RunGarbageCollection();
 }
 
-platform::CommandListD3D12& phx::gfx::GfxDeviceD3D12::BeginCommandRecording(CommandQueueType type)
+platform::CommandCtxD3D12* phx::gfx::GfxDeviceD3D12::BeginCommandRecording(CommandQueueType type)
 {
 	const uint32_t currentCmdIndex = this->m_activeCmdCount++;
 	if (currentCmdIndex >= this->m_commandPool.size())
 	{
-		this->m_commandPool.emplace_back(std::make_unique<platform::CommandListD3D12>());
+		this->m_commandPool.emplace_back(std::make_unique<platform::CommandCtxD3D12>());
 	}
 
-	CommandList& cmdList = *this->m_commandPool[currentCmdIndex];
-	cmdList.Reset(currentCmdIndex, type, this);
+	platform::CommandCtxD3D12* cmdList = this->m_commandPool[currentCmdIndex].get();
+	cmdList->Reset(currentCmdIndex, type, this);
 	return cmdList;
 }
 
@@ -281,22 +283,26 @@ void phx::gfx::GfxDeviceD3D12::SubmitCommandLists()
 
 	for (size_t i = 0; i < (size_t)numActiveCommands; i++)
 	{
-		CommandList& commandList = *this->m_commandPool[i];
-		commandList.m_commandList->Close();
+		platform::CommandCtxD3D12& ctx = *this->m_commandPool[i].get();
+		ctx.m_commandList->Close();
 
-		D3D12CommandQueue& queue = this->GetQueue(commandList.m_queueType);
-		const bool dependency = !commandList.m_waits.empty() || !commandList.m_isWaitedOn;
+		D3D12CommandQueue& queue = this->GetQueue(ctx.m_queueType);
+#if false
+		const bool dependency = !ctx.m_waits.empty() || !ctx.m_isWaitedOn;
 
 		if (dependency)
 			queue.Submit();
+#endif
+		queue.EnqueueForSubmit(ctx.m_commandList.Get(), ctx.m_allocator);
 
-		queue.EnqueueForSubmit(commandList.m_commandList.Get(), commandList.m_allocator);
-		commandList.m_allocator = nullptr;
+#if false
+		ctx.m_allocator = nullptr;
 
 		if (dependency)
 		{
 			// TODO;
 		}
+#endif
 	}
 
 	for (auto& q : this->GetQueues())

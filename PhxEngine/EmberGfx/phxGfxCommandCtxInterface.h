@@ -4,10 +4,10 @@
 
 namespace phx::gfx::internal
 {
-    class ICommandList
+    class ICommandCtx
     {
     public:
-        virtual ~ICommandList() = default;
+        virtual ~ICommandCtx() = default;
 
         virtual void TransitionBarrier(GpuBarrier const& barrier) = 0;
         virtual void TransitionBarriers(Span<GpuBarrier> gpuBarriers) = 0;
