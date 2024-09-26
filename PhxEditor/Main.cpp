@@ -16,10 +16,8 @@ class PhxEditor final : public phx::IEngineApp
 public:
 	void Startup() override 
 	{
-		phx::gfx::GfxDevice& device = phx::gfx::Ember::Ptr->GetDevice();
-
 #if false
-		this->m_pipeline = device.CreateGfxPipeline({
+		this->m_pipeline = phx::gfx::GfxDevice::CreateGfxPipeline({
 				.VertexShaderByteCode = phx::Span(g_pTestShaderVS, ARRAYSIZE(g_pTestShaderVS)),
 				.PixelShaderByteCode = phx::Span(g_pTestShaderPS, ARRAYSIZE(g_pTestShaderPS)),
 				.RtvFormats = { phx::gfx::g_SwapChainFormat }
@@ -29,18 +27,14 @@ public:
 
 	void Shutdonw() override 
 	{
-		phx::gfx::GfxDevice& device = phx::gfx::Ember::Ptr->GetDevice();
-
-		device.DeleteGfxPipeline(this->m_pipeline);
+		phx::gfx::GfxDevice::DeleteGfxPipeline(this->m_pipeline);
 	};
 
 	void CacheRenderData() override {};
 	void Update() override {};
 	void Render() override
 	{
-		phx::gfx::GfxDevice& device = phx::gfx::Ember::Ptr->GetDevice();
-
-		phx::gfx::CommandCtx command = device.BeginGfxContext();
+		phx::gfx::CommandCtx command = phx::gfx::GfxDevice::BeginGfxContext();
 		command.ClearBackBuffer({ 0.392156899f, 0.584313750f, 0.929411829f, 1.f  }); // Cornflower blue
 	}
 

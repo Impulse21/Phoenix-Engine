@@ -72,8 +72,6 @@ namespace phx::Display
 
 	void Resize(uint32_t width, uint32_t height)
 	{
-		gfx::GfxDevice& device = gfx::Ember::Ptr->GetDevice();
-
 		gfx::g_DisplayWidth = width;
 		gfx::g_DisplayHeight = height;
 
@@ -86,13 +84,12 @@ namespace phx::Display
 			.EnableHDR = false
 		};
 
-		device.ResizeSwapChain(desc);
+		phx::gfx::GfxDevice::ResizeSwapChain(desc);
 	}
 
 	void Preset()
 	{
-		phx::gfx::GfxDevice& gfxDevice = phx::gfx::Ember::Ptr->GetDevice();
-		gfxDevice.SubmitFrame();
+		phx::gfx::GfxDevice::SubmitFrame();
 #if false
 		UINT presentInterval = m_enableVSync ? std::min(4, (int)std::round(m_frameTime * 60.0f)) : 0;
 		int64_t currentTick = SystemTime::GetCurrentTick();

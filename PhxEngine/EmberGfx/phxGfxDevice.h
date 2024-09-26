@@ -8,54 +8,54 @@ namespace phx::gfx
 	class GfxDevice : NonCopyable
 	{
 	public:
-		void Initialize(SwapChainDesc const& swapChainDesc, void* windowHandle = nullptr)
+		static void Initialize(SwapChainDesc const& swapChainDesc, void* windowHandle = nullptr)
 		{
-			this->m_plaform.Initialize(swapChainDesc, windowHandle);
+			m_plaform.Initialize(swapChainDesc, windowHandle);
 		}
 
-		void Finalize()
+		static void Finalize()
 		{
-			this->m_plaform.Finalize();
+			m_plaform.Finalize();
 		}
 
-		void WaitForIdle()
+		static void WaitForIdle()
 		{
-			this->m_plaform.WaitForIdle();
+			m_plaform.WaitForIdle();
 		}
 
-		void ResizeSwapChain(SwapChainDesc const& swapChainDesc)
+		static void ResizeSwapChain(SwapChainDesc const& swapChainDesc)
 		{
-			this->m_plaform.ResizeSwapChain(swapChainDesc);
+			m_plaform.ResizeSwapChain(swapChainDesc);
 		}
 
-		CommandCtx BeginGfxContext()
+		static CommandCtx BeginGfxContext()
 		{
-			return this->m_plaform.BeginGfxContext();
+			return m_plaform.BeginGfxContext();
 		}
 
-		CommandCtx BeginComputeContext()
+		static CommandCtx BeginComputeContext()
 		{
-			return this->m_plaform.BeginComputeContext();
+			return m_plaform.BeginComputeContext();
 		}
 
-		void SubmitFrame()
+		static void SubmitFrame()
 		{
-			this->m_plaform.SubmitFrame();
+			m_plaform.SubmitFrame();
 		}
 
 	public:
-		GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc)
+		static GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc)
 		{
-			return this->m_plaform.CreateGfxPipeline(desc);
+			return m_plaform.CreateGfxPipeline(desc);
 		}
 
-		void DeleteGfxPipeline(GfxPipelineHandle handle)
+		static void DeleteGfxPipeline(GfxPipelineHandle handle)
 		{
-			this->m_plaform.DeleteGfxPipeline(handle);
+			m_plaform.DeleteGfxPipeline(handle);
 		}
 
 	private:
-		PlatformGfxDevice m_plaform;
+		inline static PlatformGfxDevice m_plaform;
 	};
 
 }

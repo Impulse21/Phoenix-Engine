@@ -19,10 +19,12 @@ namespace phx::gfx
 		Ember();
 		~Ember();
 
+#if false
 		GfxDevice& GetDevice() { return this->m_gfxDevice; }
 
 	private:
 		GfxDevice m_gfxDevice;
+#endif
 	};
 }
 

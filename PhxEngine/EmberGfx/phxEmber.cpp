@@ -8,7 +8,7 @@ void phx::gfx::InitializeWindows(
 	void* windowHandle)
 {
 	Ember::Ptr = new Ember();
-	Ember::Ptr->GetDevice().Initialize(swapChainDesc, windowHandle);
+	GfxDevice::Initialize(swapChainDesc, windowHandle);
 }
 
 void phx::gfx::Finalize()
@@ -22,5 +22,5 @@ phx::gfx::Ember::Ember() = default;
 
 phx::gfx::Ember::~Ember()
 {
-	this->m_gfxDevice.Finalize();
+	GfxDevice::Finalize();
 }
