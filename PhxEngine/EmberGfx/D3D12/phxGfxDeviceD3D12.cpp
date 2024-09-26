@@ -18,6 +18,31 @@ extern "C" {
 
 namespace
 {
+	void PollDebugMessages(ID3D12Device* device)
+	{
+		Microsoft::WRL::ComPtr<ID3D12InfoQueue> infoQueue;
+		if (FAILED(device->QueryInterface(IID_PPV_ARGS(&infoQueue))))
+		{
+			return;
+		}
+
+		const UINT64 messageCount = infoQueue->GetNumStoredMessages();
+
+		for (UINT64 i = 0; i < messageCount; i++)
+		{
+			SIZE_T messageLength = 0;
+			infoQueue->GetMessage(i, nullptr, &messageLength);
+
+			std::vector<char> messageData(messageLength);
+			D3D12_MESSAGE* message = reinterpret_cast<D3D12_MESSAGE*>(messageData.data());
+			infoQueue->GetMessage(i, message, &messageLength);
+
+			PHX_CORE_INFO("[DX12] - %s", message->pDescription);
+		}
+
+		infoQueue->ClearStoredMessages();
+	}
+
 	Microsoft::WRL::ComPtr<IDXGIFactory6> CreateDXGIFactory6(bool enableDebugLayers)
 	{
 		uint32_t flags = 0;
@@ -460,6 +485,7 @@ ID3D12CommandAllocator* D3D12CommandQueue::RequestAllocator()
 		if (fenceValue < completedFenceValue)
 		{
 			retVal = allocator;
+			retVal->Reset();
 			this->AvailableAllocators.pop_front();
 		}
 	}
@@ -548,6 +574,7 @@ void phx::gfx::GfxDeviceD3D12::SubmitFrame()
 {
 	this->SubmitCommandLists();
 	this->Present();
+	PollDebugMessages(this->m_d3d12Device.Get());
 	this->RunGarbageCollection();
 }
 
