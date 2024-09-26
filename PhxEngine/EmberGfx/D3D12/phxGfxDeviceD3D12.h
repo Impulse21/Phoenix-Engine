@@ -70,13 +70,13 @@ namespace phx::gfx
 
 		D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView()
 		{
-			const uint64_t currentIndex = this->SwapChain4->GetCurrentBackBufferIndex();
-			return this->Rtv.GetCpuHandle(currentIndex);
+			const uint64_t currentIndex = SwapChain4->GetCurrentBackBufferIndex();
+			return Rtv.GetCpuHandle(currentIndex);
 		}
 		ID3D12Resource* GetBackBuffer()
 		{
-			const uint64_t currentIndex = this->SwapChain4->GetCurrentBackBufferIndex();
-			return this->BackBuffers[currentIndex].Get();
+			const uint64_t currentIndex = SwapChain4->GetCurrentBackBufferIndex();
+			return BackBuffers[currentIndex].Get();
 		}
 	};
 
@@ -116,7 +116,7 @@ namespace phx::gfx
 				nativeDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&Fence)));
 			Fence->SetName(L"D3D12CommandQueue::D3D12CommandQueue::Fence");
 
-			this->NextFenceValue = this->Fence->GetCompletedValue() + 1;
+			NextFenceValue = Fence->GetCompletedValue() + 1;
 			switch (type)
 			{
 			case D3D12_COMMAND_LIST_TYPE_DIRECT:
@@ -133,41 +133,41 @@ namespace phx::gfx
 
 		uint64_t SubmitCommandLists(Span<ID3D12CommandList*> commandLists)
 		{
-			this->Queue->ExecuteCommandLists((UINT)commandLists.Size(), commandLists.begin());
+			Queue->ExecuteCommandLists((UINT)commandLists.Size(), commandLists.begin());
 
-			return this->IncrementFence();
+			return IncrementFence();
 		}
 
 		void DiscardAllocators(uint64_t fenceValue, Span<ID3D12CommandAllocator*> allocators)
 		{
-			SCOPED_LOCK(this->MutexAllocation);
+			SCOPED_LOCK(MutexAllocation);
 			for (ID3D12CommandAllocator* allocator : allocators)
 			{
-				this->AvailableAllocators.push_back(std::make_pair(fenceValue, allocator));
+				AvailableAllocators.push_back(std::make_pair(fenceValue, allocator));
 			}
 		}
 
 		uint64_t IncrementFence()
 		{
-			this->Queue->Signal(this->Fence.Get(), this->NextFenceValue);
-			return this->NextFenceValue++;
+			Queue->Signal(Fence.Get(), NextFenceValue);
+			return NextFenceValue++;
 		}
 
 		uint64_t Submit()
 		{
-			const uint64_t fenceValue = this->SubmitCommandLists(this->m_pendingSubmitCommands);
-			this->m_pendingSubmitCommands.clear();
+			const uint64_t fenceValue = SubmitCommandLists(m_pendingSubmitCommands);
+			m_pendingSubmitCommands.clear();
 
-			this->DiscardAllocators(fenceValue, this->m_pendingSubmitAllocators);
-			this->m_pendingSubmitAllocators.clear();
+			DiscardAllocators(fenceValue, m_pendingSubmitAllocators);
+			m_pendingSubmitAllocators.clear();
 
 			return fenceValue;
 		}
 
 		void EnqueueForSubmit(ID3D12CommandList* cmdList, ID3D12CommandAllocator* allocator)
 		{
-			this->m_pendingSubmitAllocators.push_back(allocator);
-			this->m_pendingSubmitCommands.push_back(cmdList);
+			m_pendingSubmitAllocators.push_back(allocator);
+			m_pendingSubmitCommands.push_back(cmdList);
 		}
 
 		ID3D12CommandAllocator* RequestAllocator();
@@ -176,97 +176,99 @@ namespace phx::gfx
 	class GfxDeviceD3D12 final
 	{
 	public:
+#if false
 		inline static GfxDeviceD3D12* Instance() { return Singleton; }
+#endif
 	public:
 		GfxDeviceD3D12();
 		~GfxDeviceD3D12();
 
-		void Initialize(SwapChainDesc const& swapChainDesc, void* windowHandle = nullptr);
-		void Finalize();
+		static void Initialize(SwapChainDesc const& swapChainDesc, void* windowHandle = nullptr);
+		static void Finalize();
 
-		void WaitForIdle();
-		void ResizeSwapChain(SwapChainDesc const& swapChainDesc);
+		static void WaitForIdle();
+		static void ResizeSwapChain(SwapChainDesc const& swapChainDesc);
 
-		platform::CommandCtxD3D12* BeginGfxContext();
-		platform::CommandCtxD3D12* BeginComputeContext();
+		static platform::CommandCtxD3D12* BeginGfxContext();
+		static platform::CommandCtxD3D12* BeginComputeContext();
 
-		void SubmitFrame();
+		static void SubmitFrame();
 
 	public:
-		GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
-		void DeleteGfxPipeline(GfxPipelineHandle handle);
+		static GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
+		static void DeleteGfxPipeline(GfxPipelineHandle handle);
 
 			// -- Platform specific ---
 	public:
-		  D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView() { return this->m_swapChain.GetBackBufferView(); }
-		  ID3D12Resource* GetBackBuffer() { return this->m_swapChain.GetBackBuffer(); }
+		static D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView() { return m_swapChain.GetBackBufferView(); }
+		static ID3D12Resource* GetBackBuffer() { return m_swapChain.GetBackBuffer(); }
 
-		  ID3D12Device* GetD3D12Device() { return this->m_d3d12Device.Get(); }
-		  ID3D12Device2* GetD3D12Device2() { return this->m_d3d12Device2.Get(); }
-		  ID3D12Device5* GetD3D12Device5() { return this->m_d3d12Device5.Get(); }
+		static ID3D12Device* GetD3D12Device() { return m_d3d12Device.Get(); }
+		static ID3D12Device2* GetD3D12Device2() { return m_d3d12Device2.Get(); }
+		static ID3D12Device5* GetD3D12Device5() { return m_d3d12Device5.Get(); }
 
-		  IDXGIFactory6* GetDxgiFactory() { return this->m_factory.Get(); }
-		  IDXGIAdapter* GetDxgiAdapter() { return this->m_gpuAdapter.NativeAdapter.Get(); }
+		static IDXGIFactory6* GetDxgiFactory() { return m_factory.Get(); }
+		static IDXGIAdapter* GetDxgiAdapter() { return m_gpuAdapter.NativeAdapter.Get(); }
 
-		  D3D12CommandQueue& GetQueue(CommandQueueType type) { return this->m_commandQueues[type]; }
-		  SpanMutable<D3D12CommandQueue> GetQueues() { return SpanMutable(this->m_commandQueues); }
-		  D3D12CommandQueue& GetGfxQueue() { return this->m_commandQueues[CommandQueueType::Graphics]; }
-		  D3D12CommandQueue& GetComputeQueue() { return this->m_commandQueues[CommandQueueType::Compute]; }
-		  D3D12CommandQueue& GetCopyQueue() { return this->m_commandQueues[CommandQueueType::Copy]; }
+		static D3D12CommandQueue& GetQueue(CommandQueueType type) { return m_commandQueues[type]; }
+		static SpanMutable<D3D12CommandQueue> GetQueues() { return SpanMutable(m_commandQueues); }
+		static D3D12CommandQueue& GetGfxQueue() { return m_commandQueues[CommandQueueType::Graphics]; }
+		static D3D12CommandQueue& GetComputeQueue() { return m_commandQueues[CommandQueueType::Compute]; }
+		static D3D12CommandQueue& GetCopyQueue() { return m_commandQueues[CommandQueueType::Copy]; }
 
-		  Span<GpuDescriptorHeap> GetGpuDescriptorHeaps() { return Span<GpuDescriptorHeap>(this->m_gpuDescriptorHeaps.data(), this->m_gpuDescriptorHeaps.size()); }
-
-	private:
-		void Initialize();
-		void InitializeD3D12Context(IDXGIAdapter* gpuAdapter);
-		void CreateSwapChain(SwapChainDesc const& desc, HWND hwnd);
-
-		platform::CommandCtxD3D12* BeginCommandRecording(CommandQueueType type);
-
-		void SubmitCommandLists();
-		void Present();
-		void RunGarbageCollection(uint64_t completedFrame = ~0ul);
+		static Span<GpuDescriptorHeap> GetGpuDescriptorHeaps() { return Span<GpuDescriptorHeap>(m_gpuDescriptorHeaps.data(), m_gpuDescriptorHeaps.size()); }
 
 	private:
-		inline static GfxDeviceD3D12* Singleton = nullptr;
+		static void Initialize();
+		static void InitializeD3D12Context(IDXGIAdapter* gpuAdapter);
+		static void CreateSwapChain(SwapChainDesc const& desc, HWND hwnd);
 
-		Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
-		Microsoft::WRL::ComPtr<ID3D12Device> m_d3d12Device;
-		Microsoft::WRL::ComPtr<ID3D12Device2> m_d3d12Device2;
-		Microsoft::WRL::ComPtr<ID3D12Device5> m_d3d12Device5;
+		static platform::CommandCtxD3D12* BeginCommandRecording(CommandQueueType type);
 
-		D3D12Adapter m_gpuAdapter;
-		D3D12SwapChain m_swapChain;
+		static void SubmitCommandLists();
+		static void Present();
+		static void RunGarbageCollection(uint64_t completedFrame = ~0ul);
 
-		D3D12_FEATURE_DATA_ROOT_SIGNATURE m_featureDataRootSignature = {};
-		D3D12_FEATURE_DATA_SHADER_MODEL   m_featureDataShaderModel = {};
-		ShaderModel m_minShaderModel = ShaderModel::SM_6_0;
+	private:
+		// inline static GfxDeviceD3D12* Singleton = nullptr;
 
-		bool m_isUnderGraphicsDebugger = false;
-		bool m_debugLayersEnabled = false;
-		gfx::DeviceCapability m_capabilities;
+		inline static Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
+		inline static Microsoft::WRL::ComPtr<ID3D12Device> m_d3d12Device;
+		inline static Microsoft::WRL::ComPtr<ID3D12Device2> m_d3d12Device2;
+		inline static Microsoft::WRL::ComPtr<ID3D12Device5> m_d3d12Device5;
+
+		inline static D3D12Adapter m_gpuAdapter;
+		inline static D3D12SwapChain m_swapChain;
+
+		inline static D3D12_FEATURE_DATA_ROOT_SIGNATURE m_featureDataRootSignature = {};
+		inline static D3D12_FEATURE_DATA_SHADER_MODEL   m_featureDataShaderModel = {};
+		inline static ShaderModel m_minShaderModel = ShaderModel::SM_6_0;
+
+		inline static bool m_isUnderGraphicsDebugger = false;
+		inline static bool m_debugLayersEnabled = false;
+		inline static gfx::DeviceCapability m_capabilities;
 
 		// -- Command Queues ---
-		EnumArray<D3D12CommandQueue, CommandQueueType> m_commandQueues;
+		inline static EnumArray<D3D12CommandQueue, CommandQueueType> m_commandQueues;
 
 		// -- Descriptor Heaps ---
-		EnumArray<CpuDescriptorHeap, DescriptorHeapTypes> m_cpuDescriptorHeaps;
-		std::array<GpuDescriptorHeap, 2> m_gpuDescriptorHeaps;
+		inline static EnumArray<CpuDescriptorHeap, DescriptorHeapTypes> m_cpuDescriptorHeaps;
+		inline static std::array<GpuDescriptorHeap, 2> m_gpuDescriptorHeaps;
 
-		std::array<EnumArray<Microsoft::WRL::ComPtr<ID3D12Fence>, CommandQueueType>, kBufferCount> m_frameFences;
-		uint64_t m_frameCount = 0;
+		inline static std::array<EnumArray<Microsoft::WRL::ComPtr<ID3D12Fence>, CommandQueueType>, kBufferCount> m_frameFences;
+		inline static uint64_t m_frameCount = 0;
 		struct DeleteItem
 		{
 			uint64_t Frame;
 			std::function<void()> DeleteFn;
 		};
-		std::deque<DeleteItem> m_deleteQueue;
+		inline static std::deque<DeleteItem> m_deleteQueue;
 
-		std::atomic_uint32_t m_activeCmdCount = 0;
-		std::vector<std::unique_ptr<platform::CommandCtxD3D12>> m_commandPool;
+		inline static std::atomic_uint32_t m_activeCmdCount = 0;
+		inline static std::vector<std::unique_ptr<platform::CommandCtxD3D12>> m_commandPool;
 
 		// -- Resource Pools ---
-		HandlePool<D3D12GfxPipeline, GfxPipeline> m_gfxPipelinePool;
+		inline static HandlePool<D3D12GfxPipeline, GfxPipeline> m_gfxPipelinePool;
 	};
 }
 
@@ -311,7 +313,7 @@ struct D3D12Shader
 	D3D12Shader(ShaderDesc const& desc, const void* binary, size_t binarySize)
 		: Desc(desc)
 	{
-		this->ByteCode.resize(binarySize);
+		ByteCode.resize(binarySize);
 		std::memcpy(ByteCode.data(), binary, binarySize);
 	}
 };
@@ -402,7 +404,7 @@ struct D3D12Texture final
 	void DisposeViews()
 	{
 		RtvAllocation.Allocation.Free();
-		for (auto& view : this->RtvSubresourcesAlloc)
+		for (auto& view : RtvSubresourcesAlloc)
 		{
 			view.Allocation.Free();
 		}
@@ -410,7 +412,7 @@ struct D3D12Texture final
 		RtvAllocation = {};
 
 		DsvAllocation.Allocation.Free();
-		for (auto& view : this->DsvSubresourcesAlloc)
+		for (auto& view : DsvSubresourcesAlloc)
 		{
 			view.Allocation.Free();
 		}
@@ -418,7 +420,7 @@ struct D3D12Texture final
 		DsvAllocation = {};
 
 		Srv.Allocation.Free();
-		for (auto& view : this->SrvSubresourcesAlloc)
+		for (auto& view : SrvSubresourcesAlloc)
 		{
 			view.Allocation.Free();
 		}
@@ -426,7 +428,7 @@ struct D3D12Texture final
 		Srv = {};
 
 		UavAllocation.Allocation.Free();
-		for (auto& view : this->UavSubresourcesAlloc)
+		for (auto& view : UavSubresourcesAlloc)
 		{
 			view.Allocation.Free();
 		}
@@ -455,14 +457,14 @@ struct D3D12Buffer final
 	D3D12_VERTEX_BUFFER_VIEW VertexView = {};
 	D3D12_INDEX_BUFFER_VIEW IndexView = {};
 
-	const BufferDesc& GetDesc() const { return this->Desc; }
+	const BufferDesc& GetDesc() const { return Desc; }
 
 	D3D12Buffer() = default;
 
 	void DisposeViews()
 	{
 		Srv.Allocation.Free();
-		for (auto& view : this->SrvSubresourcesAlloc)
+		for (auto& view : SrvSubresourcesAlloc)
 		{
 			view.Allocation.Free();
 		}
@@ -470,7 +472,7 @@ struct D3D12Buffer final
 		Srv = {};
 
 		UavAllocation.Allocation.Free();
-		for (auto& view : this->UavSubresourcesAlloc)
+		for (auto& view : UavSubresourcesAlloc)
 		{
 			view.Allocation.Free();
 		}
