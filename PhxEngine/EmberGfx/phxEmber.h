@@ -6,7 +6,7 @@
 namespace phx::gfx
 {
 #if defined(PHX_PLATFORM_WINDOWS)
-	void InitializeWindows(GfxBackend backend, SwapChainDesc const& swapCahinDesc, void* windowHandle);
+	void InitializeWindows(SwapChainDesc const& swapCahinDesc, void* windowHandle);
 #endif
 	void Finalize();
 
@@ -16,7 +16,7 @@ namespace phx::gfx
 		inline static Ember* Ptr = nullptr;
 
 	public:
-		Ember(GfxBackend backend);
+		Ember();
 		~Ember();
 
 		GfxDevice& GetDevice() { return this->m_gfxDevice; }

@@ -18,11 +18,13 @@ public:
 	{
 		phx::gfx::GfxDevice& device = phx::gfx::Ember::Ptr->GetDevice();
 
+#if false
 		this->m_pipeline = device.CreateGfxPipeline({
 				.VertexShaderByteCode = phx::Span(g_pTestShaderVS, ARRAYSIZE(g_pTestShaderVS)),
 				.PixelShaderByteCode = phx::Span(g_pTestShaderPS, ARRAYSIZE(g_pTestShaderPS)),
 				.RtvFormats = { phx::gfx::g_SwapChainFormat }
 			});
+#endif
 	};
 
 	void Shutdonw() override 

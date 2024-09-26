@@ -558,16 +558,14 @@ void phx::gfx::GfxDeviceD3D12::ResizeSwapChain(SwapChainDesc const& swapChainDes
 	this->CreateSwapChain(swapChainDesc, nullptr);
 }
 
-CommandCtx phx::gfx::GfxDeviceD3D12::BeginGfxContext()
+platform::CommandCtxD3D12* phx::gfx::GfxDeviceD3D12::BeginGfxContext()
 {
-	auto impl = this->BeginCommandRecording(CommandQueueType::Graphics);
-	return CommandCtx(impl);
+	return this->BeginCommandRecording(CommandQueueType::Graphics);
 }
 
-CommandCtx phx::gfx::GfxDeviceD3D12::BeginComputeContext()
+platform::CommandCtxD3D12* phx::gfx::GfxDeviceD3D12::BeginComputeContext()
 {
-	auto impl = this->BeginCommandRecording(CommandQueueType::Compute);
-	return CommandCtx(impl);
+	return this->BeginCommandRecording(CommandQueueType::Compute);
 }
 
 void phx::gfx::GfxDeviceD3D12::SubmitFrame()

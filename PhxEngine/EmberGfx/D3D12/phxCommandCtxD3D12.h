@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EmberGfx/phxGfxCommandCtxInterface.h"
+#include "EmberGfx/phxGfxDeviceResources.h"
 
 namespace phx::gfx
 {
@@ -15,7 +15,7 @@ namespace phx::gfx::platform
 		uint64_t fenceValue = 0;
 	};
 
-	class CommandCtxD3D12 final : public internal::ICommandCtx
+	class CommandCtxD3D12 final
 	{
 		friend GfxDeviceD3D12;
 	public:
@@ -25,12 +25,12 @@ namespace phx::gfx::platform
 		void Reset(size_t id, CommandQueueType queueType, GfxDeviceD3D12* device);
 
 	public:
-		void TransitionBarrier(GpuBarrier const& barrier) override;
-		void TransitionBarriers(Span<GpuBarrier> gpuBarriers) override;
-		void ClearBackBuffer(Color const& clearColour) override;
-		void ClearTextureFloat(TextureHandle texture, Color const& clearColour) override;
-		void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) override;
-		void SetGfxPipeline(GfxPipelineHandle handle) override;
+		void TransitionBarrier(GpuBarrier const& barrier);
+		void TransitionBarriers(Span<GpuBarrier> gpuBarriers);
+		void ClearBackBuffer(Color const& clearColour);
+		void ClearTextureFloat(TextureHandle texture, Color const& clearColour);
+		void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil);
+		void SetGfxPipeline(GfxPipelineHandle handle);
 
 	private:
 		GfxDeviceD3D12* m_device;

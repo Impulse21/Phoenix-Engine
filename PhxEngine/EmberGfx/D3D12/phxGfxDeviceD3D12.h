@@ -1,6 +1,5 @@
 #pragma once
 
-#include "EmberGfx/phxGfxDeviceInterface.h"
 #include "EmberGfx/phxHandlePool.h"
 
 #include "phxGfxDescriptorHeapsD3D12.h"
@@ -14,7 +13,7 @@
 
 namespace phx::gfx
 {
-
+	constexpr size_t kBufferCount = 3;
 	static const GUID RenderdocUUID = { 0xa7aa6116, 0x9c8d, 0x4bba, { 0x90, 0x83, 0xb4, 0xd8, 0x16, 0xb7, 0x1b, 0x78 } };
 	static const GUID PixUUID = { 0x9f251514, 0x9d4d, 0x4902, { 0x9d, 0x60, 0x18, 0x98, 0x8a, 0xb7, 0xd4, 0xb5 } };
 	
@@ -174,7 +173,7 @@ namespace phx::gfx
 		ID3D12CommandAllocator* RequestAllocator();
 	};
 
-	class GfxDeviceD3D12 final : public IGfxDevice
+	class GfxDeviceD3D12 final
 	{
 	public:
 		inline static GfxDeviceD3D12* Instance() { return Singleton; }
@@ -182,20 +181,20 @@ namespace phx::gfx
 		GfxDeviceD3D12();
 		~GfxDeviceD3D12();
 
-		void Initialize(SwapChainDesc const& swapChainDesc, void* windowHandle = nullptr) override;
-		void Finalize() override;
+		void Initialize(SwapChainDesc const& swapChainDesc, void* windowHandle = nullptr);
+		void Finalize();
 
-		void WaitForIdle() override;
-		void ResizeSwapChain(SwapChainDesc const& swapChainDesc) override;
+		void WaitForIdle();
+		void ResizeSwapChain(SwapChainDesc const& swapChainDesc);
 
-		CommandCtx BeginGfxContext() ;
-		CommandCtx BeginComputeContext();
+		platform::CommandCtxD3D12* BeginGfxContext();
+		platform::CommandCtxD3D12* BeginComputeContext();
 
 		void SubmitFrame();
 
 	public:
-		GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc) override;
-		void DeleteGfxPipeline(GfxPipelineHandle handle) override;
+		GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
+		void DeleteGfxPipeline(GfxPipelineHandle handle);
 
 			// -- Platform specific ---
 	public:

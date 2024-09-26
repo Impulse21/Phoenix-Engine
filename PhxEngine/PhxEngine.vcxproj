@@ -162,7 +162,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)D3D12;$(ProjectDir)3rdParty;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">
@@ -184,7 +184,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)D3D12;$(ProjectDir)3rdParty;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">
@@ -206,7 +206,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)D3D12;$(ProjectDir)3rdParty;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile_Virtual_Gfx|Gaming.Desktop.x64'">
@@ -228,7 +228,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)D3D12;$(ProjectDir)3rdParty;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">
@@ -247,7 +247,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)D3D12;$(ProjectDir)3rdParty;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Virtual_Gfx|Gaming.Desktop.x64'">
@@ -266,7 +266,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)D3D12;$(ProjectDir)3rdParty;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -275,15 +275,13 @@
     <ClInclude Include="EmberGfx\D3D12\phxGfxCommonD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxDeviceD3D12.h" />
+    <ClInclude Include="EmberGfx\D3D12\phxGfxPlatform.h" />
     <ClInclude Include="EmberGfx\phxEmber.h" />
     <ClInclude Include="EmberGfx\phxGfxCommandCtx.h" />
-    <ClInclude Include="EmberGfx\phxGfxCommandCtxInterface.h" />
     <ClInclude Include="EmberGfx\phxGfxDevice.h" />
-    <ClInclude Include="EmberGfx\phxGfxDeviceInterface.h" />
     <ClInclude Include="EmberGfx\phxGfxDeviceResources.h" />
     <ClInclude Include="EmberGfx\phxHandle.h" />
     <ClInclude Include="EmberGfx\phxHandlePool.h" />
-    <ClInclude Include="EmberGfx\Vulkan\phxGfxDeviceVulkan.h" />
     <ClInclude Include="phxDeferredReleaseQueue.h" />
     <ClInclude Include="phxEnumUtils.h" />
     <ClInclude Include="phxCommandLineArgs.h" />
@@ -303,8 +301,6 @@
     <ClCompile Include="EmberGfx\D3D12\phxGfxDeviceD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDxgiFormatMapping.cpp" />
     <ClCompile Include="EmberGfx\phxEmber.cpp" />
-    <ClCompile Include="EmberGfx\phxGfxDevice.cpp" />
-    <ClCompile Include="EmberGfx\Vulkan\phxGfxDeviceVulkan.cpp" />
     <ClCompile Include="phxDeferredReleaseQueue.cpp" />
     <ClCompile Include="phxCommandLineArgs.cpp" />
     <ClCompile Include="pch.cpp">

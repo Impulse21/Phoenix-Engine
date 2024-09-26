@@ -54,14 +54,13 @@ namespace phx::Display
 	{
 		gfx::SwapChainDesc desc = {
 		.Width = gfx::g_DisplayWidth,
-		.Format = kSwapChainFromat,
+		.Format = gfx::g_SwapChainFormat,
 		.Fullscreen = false,
 		.VSync = false,
 		.EnableHDR = false
 		};
 
 		phx::gfx::InitializeWindows(
-			phx::gfx::GfxBackend::Dx12,
 			desc,
 			EngineCore::g_hWnd);
 	}
@@ -81,7 +80,7 @@ namespace phx::Display
 		gfx::SwapChainDesc desc = {
 			.Width = gfx::g_DisplayWidth,
 			.Height = gfx::g_DisplayHeight,
-			.Format = kSwapChainFormat,
+			.Format = gfx::g_SwapChainFormat,
 			.Fullscreen = false,
 			.VSync = false,
 			.EnableHDR = false

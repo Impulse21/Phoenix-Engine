@@ -1,78 +1,61 @@
 #pragma once
 
-#include "EmberGfx/phxGfxDeviceInterface.h"
-
-#ifndef PHX_VIRTUAL_DEVICE
-#include "D3D12/phxGfxDeviceD3D12.h"
-#endif
+#include "D3D12/phxGfxPlatform.h"
+#include "phxGfxCommandCtx.h"
 
 namespace phx::gfx
 {
-
-	template<typename TImpl>
-	class GfxDeviceWrapper
+	class GfxDevice : NonCopyable
 	{
-		friend class GfxDeviceFactory;
 	public:
 		void Initialize(SwapChainDesc const& swapChainDesc, void* windowHandle = nullptr)
 		{
-			this->m_impl->Initialize(swapChainDesc, windowHandle);
+			this->m_plaform.Initialize(swapChainDesc, windowHandle);
 		}
 
 		void Finalize()
 		{
-			this->m_impl->Finalize();
+			this->m_plaform.Finalize();
 		}
 
 		void WaitForIdle()
 		{
-			this->m_impl->WaitForIdle();
+			this->m_plaform.WaitForIdle();
 		}
 
 		void ResizeSwapChain(SwapChainDesc const& swapChainDesc)
 		{
-			this->m_impl->ResizeSwapChain(swapChainDesc);
+			this->m_plaform.ResizeSwapChain(swapChainDesc);
 		}
 
 		CommandCtx BeginGfxContext()
 		{
-			return this->m_impl->BeginGfxContext();
+			return this->m_plaform.BeginGfxContext();
 		}
 
 		CommandCtx BeginComputeContext()
 		{
-			return this->m_impl->BeginComputeContext();
+			return this->m_plaform.BeginComputeContext();
 		}
 
 		void SubmitFrame()
 		{
-			this->m_impl->SubmitFrame();
+			this->m_plaform.SubmitFrame();
 		}
 
 	public:
 		GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc)
 		{
-			return this->m_impl->CreateGfxPipeline(desc);
+			return this->m_plaform.CreateGfxPipeline(desc);
 		}
 
 		void DeleteGfxPipeline(GfxPipelineHandle handle)
 		{
-			this->m_impl->DeleteGfxPipeline(handle);
+			this->m_plaform.DeleteGfxPipeline(handle);
 		}
 
 	private:
-		std::unique_ptr<TImpl> m_impl;
+		PlatformGfxDevice m_plaform;
 	};
 
-#ifdef PHX_VIRTUAL_DEVICE
-	using GfxDevice = GfxDeviceWrapper<IGfxDevice>;
-#else
-	using GfxDevice = GfxDeviceWrapper<GfxDeviceD3D12>;
-#endif
-
-	class GfxDeviceFactory
-	{
-	public:
-		static void Create(GfxBackend backend, GfxDevice& device);
-	};
 }

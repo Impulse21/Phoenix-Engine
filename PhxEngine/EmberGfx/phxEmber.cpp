@@ -4,11 +4,10 @@
 #include "phxGfxDevice.h"
 
 void phx::gfx::InitializeWindows(
-	GfxBackend backend,
 	SwapChainDesc const& swapChainDesc,
 	void* windowHandle)
 {
-	Ember::Ptr = new Ember(GfxBackend::Dx12);
+	Ember::Ptr = new Ember();
 	Ember::Ptr->GetDevice().Initialize(swapChainDesc, windowHandle);
 }
 
@@ -19,10 +18,7 @@ void phx::gfx::Finalize()
 }
 
 
-phx::gfx::Ember::Ember(GfxBackend backend)
-{
-	GfxDeviceFactory::Create(backend, this->m_gfxDevice);
-}
+phx::gfx::Ember::Ember() = default;
 
 phx::gfx::Ember::~Ember()
 {
