@@ -59,6 +59,13 @@ namespace
 
 		DeferredDeleteQueue::ReleaseItems();
 	}
+
+	void ShowConsole()
+	{
+		AllocConsole(); // Allocate a new console window
+		freopen("CONOUT$", "w", stdout); // Redirect stdout to the console
+		std::cout << "Console initialized." << std::endl;
+	}
 }
 
 namespace phx::EngineCore
@@ -79,7 +86,8 @@ namespace phx::EngineCore
 			return 1;
 		}
 
-
+		ShowConsole();
+		
 		// Register class and create window
 		{
 			// Register class
