@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EmberGfx/phxGfxDeviceInterface.h"
+#include "EmberGfx/phxHandlePool.h"
 
 #include "phxGfxDescriptorHeapsD3D12.h"
 #include "phxCommandCtxD3D12.h"
@@ -29,6 +30,12 @@ namespace phx::gfx
 		RTV,
 		DSV,
 		Count,
+	};
+
+	struct D3D12GfxPipeline final
+	{
+		Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
+		Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
 	};
 
 	struct D3D12Adapter final
@@ -187,6 +194,11 @@ namespace phx::gfx
 		void SubmitFrame();
 
 	public:
+		GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc) override;
+		void DeleteGfxPipeline(GfxPipelineHandle handle) override;
+
+			// -- Platform specific ---
+	public:
 		  D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView() { return this->m_swapChain.GetBackBufferView(); }
 		  ID3D12Resource* GetBackBuffer() { return this->m_swapChain.GetBackBuffer(); }
 
@@ -253,6 +265,249 @@ namespace phx::gfx
 
 		std::atomic_uint32_t m_activeCmdCount = 0;
 		std::vector<std::unique_ptr<platform::CommandCtxD3D12>> m_commandPool;
+
+		// -- Resource Pools ---
+		HandlePool<D3D12GfxPipeline, GfxPipeline> m_gfxPipelinePool;
 	};
 }
 
+#if false
+
+struct D3D12TimerQuery
+{
+	size_t BeginQueryIndex = 0;
+	size_t EndQueryIndex = 0;
+
+	// Microsoft::WRL::ComPtr<ID3D12Fence> Fence;
+	CommandQueue* CommandQueue = nullptr;
+	uint64_t FenceCount = 0;
+
+	bool Started = false;
+	bool Resolved = false;
+	Core::TimeStep Time;
+
+};
+
+
+struct D3D12Viewport
+{
+	ViewportDesc Desc;
+
+	Microsoft::WRL::ComPtr<IDXGISwapChain1> NativeSwapchain;
+	Microsoft::WRL::ComPtr<IDXGISwapChain4> NativeSwapchain4;
+
+	std::vector<TextureHandle> BackBuffers;
+	RenderPassHandle RenderPass;
+};
+
+struct D3D12Shader
+{
+	std::vector<uint8_t> ByteCode;
+	const ShaderDesc Desc;
+	Microsoft::WRL::ComPtr<ID3D12VersionedRootSignatureDeserializer> RootSignatureDeserializer;
+	const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* RootSignatureDesc = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
+
+	D3D12Shader() = default;
+	D3D12Shader(ShaderDesc const& desc, const void* binary, size_t binarySize)
+		: Desc(desc)
+	{
+		this->ByteCode.resize(binarySize);
+		std::memcpy(ByteCode.data(), binary, binarySize);
+	}
+};
+
+struct D3D12InputLayout
+{
+	std::vector<VertexAttributeDesc> Attributes;
+	std::vector<D3D12_INPUT_ELEMENT_DESC> InputElements;
+
+	D3D12InputLayout() = default;
+};
+
+struct D3D12GraphicsPipeline
+{
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
+	GraphicsPipelineDesc Desc;
+
+	D3D12GraphicsPipeline() = default;
+};
+
+struct D3D12ComputePipeline
+{
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
+	ComputePipelineDesc Desc;
+
+	D3D12ComputePipeline() = default;
+};
+
+struct D3D12MeshPipeline
+{
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
+	MeshPipelineDesc Desc;
+
+	D3D12MeshPipeline() = default;
+};
+
+struct DescriptorView
+{
+	DescriptorHeapAllocation Allocation;
+	DescriptorIndex BindlessIndex = cInvalidDescriptorIndex;
+	D3D12_DESCRIPTOR_HEAP_TYPE Type = {};
+	union
+	{
+		D3D12_CONSTANT_BUFFER_VIEW_DESC CBVDesc;
+		D3D12_SHADER_RESOURCE_VIEW_DESC SRVDesc;
+		D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
+		D3D12_SAMPLER_DESC SAMDesc;
+		D3D12_RENDER_TARGET_VIEW_DESC RTVDesc;
+		D3D12_DEPTH_STENCIL_VIEW_DESC DSVDesc;
+	};
+
+	uint32_t FirstMip = 0;
+	uint32_t MipCount = 0;
+	uint32_t FirstSlice = 0;
+	uint32_t SliceCount = 0;
+};
+
+struct D3D12CommandSignature final
+{
+	std::vector<D3D12_INDIRECT_ARGUMENT_DESC> D3D12Descs;
+	Microsoft::WRL::ComPtr<ID3D12CommandSignature> NativeSignature;
+};
+
+struct D3D12Texture final
+{
+	TextureDesc Desc = {};
+	Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
+	Microsoft::WRL::ComPtr<D3D12MA::Allocation> Allocation;
+
+	// -- The views ---
+	DescriptorView RtvAllocation;
+	std::vector<DescriptorView> RtvSubresourcesAlloc = {};
+
+	DescriptorView DsvAllocation;
+	std::vector<DescriptorView> DsvSubresourcesAlloc = {};
+
+	DescriptorView Srv;
+	std::vector<DescriptorView> SrvSubresourcesAlloc = {};
+
+	DescriptorView UavAllocation;
+	std::vector<DescriptorView> UavSubresourcesAlloc = {};
+
+	D3D12Texture() = default;
+
+	void DisposeViews()
+	{
+		RtvAllocation.Allocation.Free();
+		for (auto& view : this->RtvSubresourcesAlloc)
+		{
+			view.Allocation.Free();
+		}
+		RtvSubresourcesAlloc.clear();
+		RtvAllocation = {};
+
+		DsvAllocation.Allocation.Free();
+		for (auto& view : this->DsvSubresourcesAlloc)
+		{
+			view.Allocation.Free();
+		}
+		DsvSubresourcesAlloc.clear();
+		DsvAllocation = {};
+
+		Srv.Allocation.Free();
+		for (auto& view : this->SrvSubresourcesAlloc)
+		{
+			view.Allocation.Free();
+		}
+		SrvSubresourcesAlloc.clear();
+		Srv = {};
+
+		UavAllocation.Allocation.Free();
+		for (auto& view : this->UavSubresourcesAlloc)
+		{
+			view.Allocation.Free();
+		}
+		UavSubresourcesAlloc.clear();
+		UavAllocation = {};
+	}
+};
+
+struct D3D12Buffer final
+{
+	BufferDesc Desc = {};
+	Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
+	Microsoft::WRL::ComPtr<D3D12MA::Allocation> Allocation;
+
+	void* MappedData = nullptr;
+	uint32_t MappedSizeInBytes = 0;
+
+	// -- Views ---
+	DescriptorView Srv;
+	std::vector<DescriptorView> SrvSubresourcesAlloc = {};
+
+	DescriptorView UavAllocation;
+	std::vector<DescriptorView> UavSubresourcesAlloc = {};
+
+
+	D3D12_VERTEX_BUFFER_VIEW VertexView = {};
+	D3D12_INDEX_BUFFER_VIEW IndexView = {};
+
+	const BufferDesc& GetDesc() const { return this->Desc; }
+
+	D3D12Buffer() = default;
+
+	void DisposeViews()
+	{
+		Srv.Allocation.Free();
+		for (auto& view : this->SrvSubresourcesAlloc)
+		{
+			view.Allocation.Free();
+		}
+		SrvSubresourcesAlloc.clear();
+		Srv = {};
+
+		UavAllocation.Allocation.Free();
+		for (auto& view : this->UavSubresourcesAlloc)
+		{
+			view.Allocation.Free();
+		}
+		UavSubresourcesAlloc.clear();
+		UavAllocation = {};
+	}
+};
+
+struct D3D12RTAccelerationStructure final
+{
+	RTAccelerationStructureDesc Desc = {};
+	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS Dx12Desc = {};
+	std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> Geometries;
+	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO Info = {};
+	BufferHandle SratchBuffer;
+	Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
+	Microsoft::WRL::ComPtr<D3D12MA::Allocation> Allocation;
+	DescriptorView Srv;
+
+	D3D12RTAccelerationStructure() = default;
+};
+
+struct D3D12RenderPass final
+{
+	RenderPassDesc Desc = {};
+
+	D3D12_RENDER_PASS_FLAGS D12RenderFlags = D3D12_RENDER_PASS_FLAG_NONE;
+
+	size_t NumRenderTargets = 0;
+	std::array<D3D12_RENDER_PASS_RENDER_TARGET_DESC, kNumConcurrentRenderTargets> RTVs = {};
+	D3D12_RENDER_PASS_DEPTH_STENCIL_DESC DSV = {};
+
+	std::vector<D3D12_RESOURCE_BARRIER> BarrierDescBegin;
+	std::vector<D3D12_RESOURCE_BARRIER> BarrierDescEnd;
+
+	D3D12RenderPass() = default;
+};
+
+#endif

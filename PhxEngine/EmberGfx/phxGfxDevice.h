@@ -49,6 +49,17 @@ namespace phx::gfx
 			this->m_impl->SubmitFrame();
 		}
 
+	public:
+		GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc)
+		{
+			return this->m_impl->CreateGfxPipeline(desc);
+		}
+
+		void DeleteGfxPipeline(GfxPipelineHandle handle)
+		{
+			this->m_impl->DeleteGfxPipeline(handle);
+		}
+
 	private:
 		std::unique_ptr<TImpl> m_impl;
 	};

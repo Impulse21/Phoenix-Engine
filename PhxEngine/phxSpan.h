@@ -61,6 +61,7 @@ namespace phx
 		const T* begin() const { return this->m_array; }
 		const T* end() const { return this->m_array + this->m_length; }
 
+		bool IsEmpty() const { return this->m_length == 0; };
 	private:
 		const T* m_array;
 		size_t m_length;
@@ -105,6 +106,8 @@ namespace phx
 		// -- Use lower case here so we can use the for each loop ---
 		T* begin() const { return this->m_array; }
 		T* end() const { return this->m_array + this->m_length; }
+
+		bool IsEmpty() const { return this->m_length == 0; };
 
 	private:
 		T* m_array;

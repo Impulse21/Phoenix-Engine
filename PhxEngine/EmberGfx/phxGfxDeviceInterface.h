@@ -24,5 +24,9 @@ namespace phx::gfx
         virtual CommandCtx BeginComputeContext() = 0;
 
         virtual void SubmitFrame() = 0;
+
+	public:
+		virtual GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc) = 0;
+		virtual void DeleteGfxPipeline(GfxPipelineHandle handle) = 0;
 	};
 }

@@ -4,7 +4,7 @@
 #include <utility>
 #include <limits>
 #include <assert.h>
-#include "phxGfxHandle.h"
+#include "phxHandle.h"
 #include <stdexcept>
 
 #include <iostream>

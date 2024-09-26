@@ -869,6 +869,7 @@ namespace phx::gfx
         std::string DebugName;
     };
 
+    using ByteCodeView = Span<uint8_t>;
     struct GfxPipelineDesc
     {
         PrimitiveType PrimType = PrimitiveType::TriangleList;
@@ -877,11 +878,11 @@ namespace phx::gfx
         IRootSignatureBuilder* RootSignatureBuilder = nullptr;
         ShaderParameterLayout ShaderParameters;
 
-        ShaderHandle VertexShader;
-        ShaderHandle HullShader;
-        ShaderHandle DomainShader;
-        ShaderHandle GeometryShader;
-        ShaderHandle PixelShader;
+        ByteCodeView VertexShaderByteCode;
+        ByteCodeView HullShaderByteCode;
+        ByteCodeView DomainShaderByteCode;
+        ByteCodeView GeometryShaderByteCode;
+        ByteCodeView PixelShaderByteCode;
 
         BlendRenderState BlendRenderState = {};
         DepthStencilRenderState DepthStencilRenderState = {};
