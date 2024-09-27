@@ -32,6 +32,9 @@ namespace phx::gfx::platform
 		void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil);
 		void SetGfxPipeline(GfxPipelineHandle handle); 
 		void SetRenderTargetSwapChain();
+		void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex, uint32_t startInstance);
+		void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex, int32_t baseVertex, uint32_t startInstance);
+		void SetViewports(Span<Viewport> viewports);
 
 	private:
 		GfxDeviceD3D12* m_device;

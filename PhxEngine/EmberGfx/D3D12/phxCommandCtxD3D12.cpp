@@ -178,6 +178,23 @@ void phx::gfx::platform::CommandCtxD3D12::DrawIndexed(
         baseVertex,
         startInstance);
 }
+void phx::gfx::platform::CommandCtxD3D12::SetViewports(Span<Viewport> viewports)
+{
+    CD3DX12_VIEWPORT dx12Viewports[16] = {};
+    for (int i = 0; i < viewports.Size(); i++)
+    {
+        const Viewport& viewport = viewports[i];
+        dx12Viewports[i] = CD3DX12_VIEWPORT(
+            viewport.MinX,
+            viewport.MinY,
+            viewport.GetWidth(),
+            viewport.GetHeight(),
+            viewport.MinZ,
+            viewport.MaxZ);
+    }
+
+    this->m_commandList->RSSetViewports((UINT)viewports.Size(), dx12Viewports);
+}
 #if false
 
 namespace
