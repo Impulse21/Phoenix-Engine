@@ -22,7 +22,7 @@ namespace phx::gfx::platform
 		CommandCtxD3D12() = default;
 		~CommandCtxD3D12() = default;
 		
-		void Reset(size_t id, CommandQueueType queueType, GfxDeviceD3D12* device);
+		void Reset(size_t id, CommandQueueType queueType);
 
 	public:
 		void TransitionBarrier(GpuBarrier const& barrier);
