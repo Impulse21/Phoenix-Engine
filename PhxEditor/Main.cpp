@@ -39,7 +39,7 @@ public:
 		phx::gfx::CommandCtx command = phx::gfx::GfxDevice::BeginGfxContext();
 		command.ClearBackBuffer({ 0.392156899f, 0.584313750f, 0.929411829f, 1.f  }); // Cornflower blue
 		command.SetRenderTargetSwapChain();
-		Viewport viewport(g_DisplayWidth, g_DisplayWidth);
+		Viewport viewport(g_DisplayWidth, g_DisplayHeight);
 
 		command.SetViewports({ &viewport, 1 });
 		command.SetGfxPipeline(this->m_pipeline);

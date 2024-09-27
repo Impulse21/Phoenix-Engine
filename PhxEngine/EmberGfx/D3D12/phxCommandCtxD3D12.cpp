@@ -194,6 +194,14 @@ void phx::gfx::platform::CommandCtxD3D12::SetViewports(Span<Viewport> viewports)
     }
 
     this->m_commandList->RSSetViewports((UINT)viewports.Size(), dx12Viewports);
+
+    // TODO - Fix this
+	D3D12_RECT scissorRect = {};
+	scissorRect.left = 0;
+	scissorRect.top = 0;
+	scissorRect.right = dx12Viewports[0].Width;
+	scissorRect.bottom = dx12Viewports[0].Height;
+    this->m_commandList6->RSSetScissorRects(1, &scissorRect);
 }
 #if false
 
