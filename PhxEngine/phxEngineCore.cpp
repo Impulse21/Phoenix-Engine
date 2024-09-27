@@ -62,9 +62,11 @@ namespace
 
 	void ShowConsole()
 	{
+#if _DEBUG
 		AllocConsole(); // Allocate a new console window
 		freopen("CONOUT$", "w", stdout); // Redirect stdout to the console
 		std::cout << "Console initialized." << std::endl;
+#endif
 	}
 }
 
