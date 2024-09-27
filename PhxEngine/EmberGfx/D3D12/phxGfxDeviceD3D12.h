@@ -173,6 +173,7 @@ namespace phx::gfx
 		ID3D12CommandAllocator* RequestAllocator();
 	};
 
+	using GfxPipelinePool = HandlePool<D3D12GfxPipeline, GfxPipeline>;
 	class GfxDeviceD3D12 final
 	{
 	public:
@@ -217,6 +218,8 @@ namespace phx::gfx
 		static D3D12CommandQueue& GetCopyQueue() { return m_commandQueues[CommandQueueType::Copy]; }
 
 		static Span<GpuDescriptorHeap> GetGpuDescriptorHeaps() { return Span<GpuDescriptorHeap>(m_gpuDescriptorHeaps.data(), m_gpuDescriptorHeaps.size()); }
+
+		static GfxPipelinePool& GetGfxPipelinePool() { return m_gfxPipelinePool; }
 
 	private:
 		static void Initialize();
@@ -268,7 +271,7 @@ namespace phx::gfx
 		inline static std::vector<std::unique_ptr<platform::CommandCtxD3D12>> m_commandPool;
 
 		// -- Resource Pools ---
-		inline static HandlePool<D3D12GfxPipeline, GfxPipeline> m_gfxPipelinePool;
+		inline static GfxPipelinePool m_gfxPipelinePool;
 	};
 }
 

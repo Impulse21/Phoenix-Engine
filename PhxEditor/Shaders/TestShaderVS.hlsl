@@ -1,14 +1,14 @@
 
 
 // Define the positions of the triangle vertices based on the vertexID
-float3 trianglePos[3] =
+static float3 trianglePos[3] =
 {
     float3(0.0f, 0.5f, 0.0f), // Top vertex
     float3(0.5f, -0.5f, 0.0f), // Bottom-right vertex
     float3(-0.5f, -0.5f, 0.0f) // Bottom-left vertex
 };
 
-float3 triangleColours[3] =
+static float3 triangleColours[3] =
 {
     float3(1.0f, 0.0, 0.0f), // Top vertex
     float3(0.0f, 1.0f, 0.0f), // Bottom-right vertex

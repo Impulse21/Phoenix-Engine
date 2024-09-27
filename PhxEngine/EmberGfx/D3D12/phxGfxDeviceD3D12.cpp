@@ -37,7 +37,7 @@ namespace
 			D3D12_MESSAGE* message = reinterpret_cast<D3D12_MESSAGE*>(messageData.data());
 			infoQueue->GetMessage(i, message, &messageLength);
 
-			PHX_CORE_INFO("[DX12] - %s", message->pDescription);
+			PHX_CORE_INFO("[DX12Driver] - {0}", message->pDescription);
 		}
 
 		infoQueue->ClearStoredMessages();
@@ -128,7 +128,7 @@ namespace
 
 			if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
 			{
-				PHX_CORE_INFO("GPU '%ws' is a software adapter. Skipping consideration as this is not supported.", name.c_str());
+				PHX_CORE_INFO("GPU '{0}' is a software adapter. Skipping consideration as this is not supported.", name.c_str());
 				continue;
 			}
 
@@ -140,7 +140,7 @@ namespace
 
 			if (basicDeviceInfo.NumDeviceNodes > 1)
 			{
-				PHX_CORE_INFO("GPU '%s' has one or more device nodes. Currently only support one device ndoe.", name.c_str());
+				PHX_CORE_INFO("GPU {0}' has one or more device nodes. Currently only support one device ndoe.", name.c_str());
 			}
 
 			if (!selectedAdapter || selectedGPUVideoMemeory < dedicatedVideoMemory)
@@ -168,12 +168,12 @@ namespace
 
 		// TODO: FIXLOG
 		PHX_CORE_INFO(
-			"Found Suitable D3D12 Adapter '%s'",
+			"Found Suitable D3D12 Adapter '{0}'",
 			name.c_str());
 
 		// TODO: FIXLOG
 		PHX_CORE_INFO(
-			"Adapter has %dMB of dedicated video memory, %dMB of dedicated system memory, and %dMB of shared system memory.",
+			"Adapter has {0}MB of dedicated video memory, {1}MB of dedicated system memory, and {2}MB of shared system memory.",
 			dedicatedVideoMemory / (1024 * 1024),
 			dedicatedSystemMemory / (1024 * 1024),
 			sharedSystemMemory / (1024 * 1024));
@@ -579,9 +579,51 @@ void phx::gfx::GfxDeviceD3D12::SubmitFrame()
 	RunGarbageCollection();
 }
 
+Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateEmptyRootSignature()
+{
+	using namespace Microsoft::WRL;
+
+	// Define an empty root signature
+	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
+	rootSignatureDesc.NumParameters = 0;         // No root parameters
+	rootSignatureDesc.pParameters = nullptr;
+	rootSignatureDesc.NumStaticSamplers = 0;     // No static samplers
+	rootSignatureDesc.pStaticSamplers = nullptr;
+	rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+	// Serialize the root signature
+	ComPtr<ID3DBlob> serializedRootSignature;
+	ComPtr<ID3DBlob> errorBlob; // To capture any errors
+	HRESULT hr = D3D12SerializeRootSignature(&rootSignatureDesc,
+		D3D_ROOT_SIGNATURE_VERSION_1,
+		&serializedRootSignature,
+		&errorBlob);
+
+	if (FAILED(hr)) {
+		if (errorBlob) {
+			OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+		}
+		throw std::runtime_error("Failed to serialize root signature");
+	}
+
+	// Create the root signature
+	ComPtr<ID3D12RootSignature> rootSignature;
+	hr = GfxDeviceD3D12::GetD3D12Device()->CreateRootSignature(
+		0,
+		serializedRootSignature->GetBufferPointer(),
+		serializedRootSignature->GetBufferSize(),
+		IID_PPV_ARGS(&rootSignature));
+
+	if (FAILED(hr)) {
+		throw std::runtime_error("Failed to create root signature");
+	}
+
+	return rootSignature;
+}
 GfxPipelineHandle phx::gfx::GfxDeviceD3D12::CreateGfxPipeline(GfxPipelineDesc const& desc)
 {
 	D3D12GfxPipeline pipeline = {};
+	pipeline.RootSignature = CreateEmptyRootSignature();
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC d3d12Desc = {};
 	d3d12Desc.pRootSignature = pipeline.RootSignature.Get();
@@ -652,6 +694,9 @@ GfxPipelineHandle phx::gfx::GfxDeviceD3D12::CreateGfxPipeline(GfxPipelineDesc co
 		d3d12Desc.InputLayout.NumElements = uint32_t(inputLayout->InputElements.size());
 		d3d12Desc.InputLayout.pInputElementDescs = &(inputLayout->InputElements[0]);
 	}
+#else
+	d3d12Desc.InputLayout.NumElements = 0;
+	d3d12Desc.InputLayout.pInputElementDescs = nullptr;
 #endif
 
 	d3d12Desc.NumRenderTargets = (uint32_t)desc.RtvFormats.size();
@@ -704,7 +749,7 @@ void phx::gfx::GfxDeviceD3D12::SubmitCommandLists()
 	for (size_t i = 0; i < (size_t)numActiveCommands; i++)
 	{
 		platform::CommandCtxD3D12& ctx = *m_commandPool[i].get();
-		ctx.m_commandList->Close();
+		ctx.Close();
 
 		D3D12CommandQueue& queue = GetQueue(ctx.m_queueType);
 #if false

@@ -57,6 +57,34 @@ void CommandCtxD3D12::Reset(size_t id, CommandQueueType queueType)
 	}
 
 	this->m_commandList6->SetDescriptorHeaps(static_cast<UINT>(heaps.size()), heaps.data());
+
+    auto view = GfxDeviceD3D12::GetBackBuffer();
+
+    D3D12_RESOURCE_BARRIER barrier = {};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.Transition.pResource = GfxDeviceD3D12::GetBackBuffer();
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+    this->m_commandList->ResourceBarrier(1, &barrier);
+}
+
+void phx::gfx::platform::CommandCtxD3D12::Close()
+{
+    auto view = GfxDeviceD3D12::GetBackBuffer();
+
+    D3D12_RESOURCE_BARRIER barrier = {};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.Transition.pResource = GfxDeviceD3D12::GetBackBuffer();
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+    this->m_commandList->ResourceBarrier(1, &barrier);
+    this->m_commandList->Close();
 }
 
 void CommandCtxD3D12::TransitionBarrier(GpuBarrier const& barrier)
@@ -70,27 +98,11 @@ void CommandCtxD3D12::TransitionBarriers(Span<GpuBarrier> gpuBarriers)
 
 void CommandCtxD3D12::ClearBackBuffer(Color const& clearColour)
 {
-	auto view = GfxDeviceD3D12::GetBackBuffer();
-
-	D3D12_RESOURCE_BARRIER barrier = {};
-	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	barrier.Transition.pResource = GfxDeviceD3D12::GetBackBuffer();
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-	this->m_commandList->ResourceBarrier(1, &barrier);
 	this->m_commandList->ClearRenderTargetView(
         GfxDeviceD3D12::GetBackBufferView(),
 		&clearColour.R,
 		0,
 		nullptr);
-
-
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-	this->m_commandList->ResourceBarrier(1, &barrier);
 }
 
 void CommandCtxD3D12::ClearTextureFloat(TextureHandle texture, Color const& clearColour)
@@ -103,12 +115,12 @@ void CommandCtxD3D12::ClearDepthStencilTexture(TextureHandle depthStencil, bool 
 
 void phx::gfx::platform::CommandCtxD3D12::SetGfxPipeline(GfxPipelineHandle handle)
 {
+    D3D12GfxPipeline* graphisPipeline = GfxDeviceD3D12::GetGfxPipelinePool().Get(handle);
+    this->m_commandList->SetPipelineState(graphisPipeline->D3D12PipelineState.Get());
+
+    this->m_commandList->SetGraphicsRootSignature(graphisPipeline->RootSignature.Get());
+
 #if false
-    D3D12GraphicsPipeline* graphisPipeline = GfxDeviceD3D12::Instance().GetGraphicsPipelinePool().Get(graphicsPiplineHandle);
-    this->m_d3d12CommandList->SetPipelineState(graphisPipeline->D3D12PipelineState.Get());
-
-    this->m_d3d12CommandList->SetGraphicsRootSignature(graphisPipeline->RootSignature.Get());
-
     const auto& desc = graphisPipeline->Desc;
     D3D_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
     switch (desc.PrimType)
@@ -125,10 +137,47 @@ void phx::gfx::platform::CommandCtxD3D12::SetGfxPipeline(GfxPipelineHandle handl
     default:
         assert(false);
     }
-    this->m_d3d12CommandList->IASetPrimitiveTopology(topology);
 #endif
+    this->m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
+void phx::gfx::platform::CommandCtxD3D12::SetRenderTargetSwapChain()
+{
+    auto view = GfxDeviceD3D12::GetBackBufferView();
+    this->m_commandList->OMSetRenderTargets(
+        1,
+        &view,
+        false,
+        nullptr);
+}
+
+void phx::gfx::platform::CommandCtxD3D12::Draw(
+    uint32_t vertexCount,
+    uint32_t instanceCount,
+    uint32_t startVertex,
+    uint32_t startInstance)
+{
+    this->m_commandList->DrawInstanced(
+        vertexCount,
+        instanceCount,
+        startVertex,
+        startInstance);
+}
+
+void phx::gfx::platform::CommandCtxD3D12::DrawIndexed(
+    uint32_t indexCount,
+    uint32_t instanceCount,
+    uint32_t startIndex,
+    int32_t baseVertex,
+    uint32_t startInstance)
+{
+    this->m_commandList->DrawIndexedInstanced(
+        indexCount,
+        instanceCount,
+        startIndex,
+        baseVertex,
+        startInstance);
+}
 #if false
 
 namespace

@@ -23,14 +23,15 @@ namespace phx::gfx::platform
 		~CommandCtxD3D12() = default;
 		
 		void Reset(size_t id, CommandQueueType queueType);
-
+		void Close();
 	public:
 		void TransitionBarrier(GpuBarrier const& barrier);
 		void TransitionBarriers(Span<GpuBarrier> gpuBarriers);
 		void ClearBackBuffer(Color const& clearColour);
 		void ClearTextureFloat(TextureHandle texture, Color const& clearColour);
 		void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil);
-		void SetGfxPipeline(GfxPipelineHandle handle);
+		void SetGfxPipeline(GfxPipelineHandle handle); 
+		void SetRenderTargetSwapChain();
 
 	private:
 		GfxDeviceD3D12* m_device;

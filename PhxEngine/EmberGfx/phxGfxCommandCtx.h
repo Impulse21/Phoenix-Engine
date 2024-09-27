@@ -41,6 +41,11 @@ namespace phx::gfx
 		{
 			this->m_platform->SetGfxPipeline(handle);
 		}
+
+		void SetRenderTargetSwapChain()
+		{
+			this->m_platform->SetRenderTargetSwapChain();
+		}
 	private:
 		PlatformCommandCtx* m_platform;
 	};
