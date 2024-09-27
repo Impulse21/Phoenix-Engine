@@ -693,7 +693,7 @@ platform::CommandCtxD3D12* phx::gfx::GfxDeviceD3D12::BeginCommandRecording(Comma
 	}
 
 	platform::CommandCtxD3D12* cmdList = m_commandPool[currentCmdIndex].get();
-	cmdList->Reset(currentCmdIndex, type, this);
+	cmdList->Reset(currentCmdIndex, type);
 	return cmdList;
 }
 
