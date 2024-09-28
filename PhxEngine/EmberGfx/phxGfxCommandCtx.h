@@ -37,9 +37,9 @@ namespace phx::gfx
 			this->m_platform->ClearDepthStencilTexture(depthStencil, clearDepth, depth, clearStencil, stencil);
 		}
 
-		void SetGfxPipeline(GfxPipelineHandle handle)
+		void SetGfxPipeline(GfxPipeline* pipeline)
 		{
-			this->m_platform->SetGfxPipeline(handle);
+			this->m_platform->SetGfxPipeline(pipeline);
 		}
 
 		void SetRenderTargetSwapChain()

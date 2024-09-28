@@ -30,7 +30,7 @@ namespace phx::gfx::platform
 		void ClearBackBuffer(Color const& clearColour);
 		void ClearTextureFloat(TextureHandle texture, Color const& clearColour);
 		void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil);
-		void SetGfxPipeline(GfxPipelineHandle handle); 
+		void SetGfxPipeline(GfxPipeline* pipeline); 
 		void SetRenderTargetSwapChain();
 		void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex, uint32_t startInstance);
 		void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex, int32_t baseVertex, uint32_t startInstance);

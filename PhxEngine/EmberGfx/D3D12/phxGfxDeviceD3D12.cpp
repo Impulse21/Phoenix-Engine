@@ -622,7 +622,9 @@ Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateEmptyRootSignature()
 }
 GfxPipelineHandle phx::gfx::GfxDeviceD3D12::CreateGfxPipeline(GfxPipelineDesc const& desc)
 {
-	D3D12GfxPipeline pipeline = {};
+	std::unique_ptr<D3D12GfxPipeline> impl = std::make_unique<D3D12GfxPipeline>();
+	D3D12GfxPipeline& pipeline = *impl;
+	pipeline.Desc = desc;
 	pipeline.RootSignature = CreateEmptyRootSignature();
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC d3d12Desc = {};
@@ -705,24 +707,20 @@ GfxPipelineHandle phx::gfx::GfxDeviceD3D12::CreateGfxPipeline(GfxPipelineDesc co
 	ThrowIfFailed(
 		GetD3D12Device2()->CreateGraphicsPipelineState(&d3d12Desc, IID_PPV_ARGS(&pipeline.D3D12PipelineState)));
 
-	return m_gfxPipelinePool.Insert(pipeline);
+	return RefCountPtr<GfxPipeline>::Create(impl.release());
 }
 
-void phx::gfx::GfxDeviceD3D12::DeleteGfxPipeline(GfxPipelineHandle handle)
+void phx::gfx::GfxDeviceD3D12::DeleteResource(D3D12GfxPipeline* handle)
 {
-	if (!handle.IsValid())
-		return;
-
 	DeleteItem d =
 	{
 		m_frameCount,
 		[=]()
 		{
-			D3D12GfxPipeline* pipeline = m_gfxPipelinePool.Get(handle);
-			if (pipeline)
-			{
-				m_gfxPipelinePool.Release(handle);
-			}
+			if (handle)
+				return;
+
+			delete handle;
 		}
 	};
 

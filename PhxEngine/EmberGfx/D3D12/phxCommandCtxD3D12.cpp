@@ -113,9 +113,9 @@ void CommandCtxD3D12::ClearDepthStencilTexture(TextureHandle depthStencil, bool 
 {
 }
 
-void phx::gfx::platform::CommandCtxD3D12::SetGfxPipeline(GfxPipelineHandle handle)
+void phx::gfx::platform::CommandCtxD3D12::SetGfxPipeline(GfxPipeline* pipeline)
 {
-    D3D12GfxPipeline* graphisPipeline = GfxDeviceD3D12::GetGfxPipelinePool().Get(handle);
+    D3D12GfxPipeline* graphisPipeline = static_cast<D3D12GfxPipeline*>(pipeline);
     this->m_commandList->SetPipelineState(graphisPipeline->D3D12PipelineState.Get());
 
     this->m_commandList->SetGraphicsRootSignature(graphisPipeline->RootSignature.Get());

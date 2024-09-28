@@ -26,9 +26,9 @@ public:
 			});
 	};
 
-	void Shutdonw() override 
+	void Shutdown() override 
 	{
-		phx::gfx::GfxDevice::DeleteGfxPipeline(this->m_pipeline);
+		this->m_pipeline.Reset();
 	};
 
 	void CacheRenderData() override {};

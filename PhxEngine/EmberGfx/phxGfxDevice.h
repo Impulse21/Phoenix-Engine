@@ -49,11 +49,6 @@ namespace phx::gfx
 			return m_plaform.CreateGfxPipeline(desc);
 		}
 
-		static void DeleteGfxPipeline(GfxPipelineHandle handle)
-		{
-			m_plaform.DeleteGfxPipeline(handle);
-		}
-
 	private:
 		inline static PlatformGfxDevice m_plaform;
 	};

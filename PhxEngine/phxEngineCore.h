@@ -12,7 +12,7 @@ namespace phx
 		virtual ~IEngineApp() = default;
 
 		virtual void Startup() = 0;
-		virtual void Shutdonw() = 0;
+		virtual void Shutdown() = 0;
 
 		virtual void CacheRenderData() = 0;
 		virtual void Update() = 0;

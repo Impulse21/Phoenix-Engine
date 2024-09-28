@@ -55,7 +55,7 @@ namespace
 	{
 		// TODO: Idle GPU;
 
-		app.Shutdonw();
+		app.Shutdown();
 
 		DeferredDeleteQueue::ReleaseItems();
 	}

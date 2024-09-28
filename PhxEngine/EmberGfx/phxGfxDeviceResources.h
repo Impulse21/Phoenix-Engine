@@ -8,6 +8,7 @@
 #include "phxSpan.h"
 #include "phxEnumUtils.h"
 #include "phxHandle.h"
+#include "phxRefCountPtr.h"
 
 namespace phx::gfx
 {
@@ -513,6 +514,7 @@ namespace phx::gfx
 
 #pragma endregion
 
+
     // -- Indirect Objects ---
     // 
     struct IndirectDrawArgInstanced
@@ -605,6 +607,29 @@ namespace phx::gfx
         char samplePositionsY[16]{};
     };
     // -- Pipeline State Objects End ---
+
+
+    class Resource
+    {
+    protected:
+        Resource() = default;
+        virtual ~Resource() = default;
+
+    public:
+        virtual unsigned long AddRef() = 0;
+        virtual unsigned long Release() = 0;
+
+#if flase
+        // Returns a native object or interface, for example ID3D11Device*, or nullptr if the requested interface is unavailable.
+        // Does *not* AddRef the returned interface.
+        virtual Object getNativeObject(ObjectType objectType) { (void)objectType; return nullptr; }
+#endif
+        // Non-copyable and non-movable
+        Resource(const Resource&) = delete;
+        Resource(const Resource&&) = delete;
+        Resource& operator=(const Resource&) = delete;
+        Resource& operator=(const Resource&&) = delete;
+    };
 
     struct ShaderDesc
     {
@@ -895,8 +920,17 @@ namespace phx::gfx
         uint32_t SampleQuality = 0;
     };
 
+#if USE_HANDLES
     struct GfxPipeline;
     using GfxPipelineHandle = Handle<GfxPipeline>;
+#else
+    class GfxPipeline : public Resource
+    {
+    public:
+        virtual const GfxPipelineDesc& GetDesc() const = 0;
+    };
+    using GfxPipelineHandle = RefCountPtr<GfxPipeline>;
+#endif
 
     struct ComputePipelineDesc
     {

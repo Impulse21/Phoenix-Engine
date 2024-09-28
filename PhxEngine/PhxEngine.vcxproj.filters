@@ -96,6 +96,9 @@
     <ClInclude Include="EmberGfx\D3D12\phxGfxPlatform.h">
       <Filter>EmberGfx\D3D12</Filter>
     </ClInclude>
+    <ClInclude Include="phxRefCountPtr.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">

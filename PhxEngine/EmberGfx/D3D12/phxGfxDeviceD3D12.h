@@ -31,12 +31,6 @@ namespace phx::gfx
 		Count,
 	};
 
-	struct D3D12GfxPipeline final
-	{
-		Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
-		Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
-	};
-
 	struct D3D12Adapter final
 	{
 		std::string Name;
@@ -173,7 +167,8 @@ namespace phx::gfx
 		ID3D12CommandAllocator* RequestAllocator();
 	};
 
-	using GfxPipelinePool = HandlePool<D3D12GfxPipeline, GfxPipeline>;
+	struct D3D12GfxPipeline;
+
 	class GfxDeviceD3D12 final
 	{
 	public:
@@ -197,7 +192,7 @@ namespace phx::gfx
 
 	public:
 		static GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
-		static void DeleteGfxPipeline(GfxPipelineHandle handle);
+		static void DeleteResource(D3D12GfxPipeline* handle);
 
 			// -- Platform specific ---
 	public:
@@ -218,8 +213,6 @@ namespace phx::gfx
 		static D3D12CommandQueue& GetCopyQueue() { return m_commandQueues[CommandQueueType::Copy]; }
 
 		static Span<GpuDescriptorHeap> GetGpuDescriptorHeaps() { return Span<GpuDescriptorHeap>(m_gpuDescriptorHeaps.data(), m_gpuDescriptorHeaps.size()); }
-
-		static GfxPipelinePool& GetGfxPipelinePool() { return m_gfxPipelinePool; }
 
 	private:
 		static void Initialize();
@@ -269,9 +262,29 @@ namespace phx::gfx
 
 		inline static std::atomic_uint32_t m_activeCmdCount = 0;
 		inline static std::vector<std::unique_ptr<platform::CommandCtxD3D12>> m_commandPool;
+	};
 
-		// -- Resource Pools ---
-		inline static GfxPipelinePool m_gfxPipelinePool;
+	template<class T>
+	struct DeferredRelease
+	{
+		void ReleaseImpl()
+		{
+			GfxDeviceD3D12::DeleteResource(static_cast<T*>(this));
+		}
+	};
+
+	struct D3D12GfxPipeline final 
+		: public RefCounter<GfxPipeline, D3D12GfxPipeline>
+		, public DeferredRelease<D3D12GfxPipeline>
+	{
+		GfxPipelineDesc Desc;
+		Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
+		Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
+
+		const GfxPipelineDesc& GetDesc() const
+		{
+			return Desc;
+		}
 	};
 }
 

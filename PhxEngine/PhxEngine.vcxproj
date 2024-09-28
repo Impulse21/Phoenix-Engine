@@ -291,6 +291,7 @@
     <ClInclude Include="phxLog.h" />
     <ClInclude Include="phxPlatform.h" />
     <ClInclude Include="phxPlatformDetection.h" />
+    <ClInclude Include="phxRefCountPtr.h" />
     <ClInclude Include="phxSpan.h" />
     <ClInclude Include="phxSystemTime.h" />
   </ItemGroup>
