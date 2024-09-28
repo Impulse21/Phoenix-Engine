@@ -279,6 +279,7 @@
     <ClInclude Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxDeviceD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxPlatform.h" />
+    <ClInclude Include="EmberGfx\Fonts\phxLiberationSans.h" />
     <ClInclude Include="EmberGfx\phxEmber.h" />
     <ClInclude Include="EmberGfx\phxFontRenderer.h" />
     <ClInclude Include="EmberGfx\phxGfxCommandCtx.h" />

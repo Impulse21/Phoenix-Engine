@@ -25,6 +25,9 @@
     <Filter Include="EmberGfx\D3D12">
       <UniqueIdentifier>{a731a9de-4e9f-4fb8-9a0d-46a99e0146b7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="EmberGfx\Fonts">
+      <UniqueIdentifier>{1f8b7124-f56c-464f-b8db-c1200252232f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -110,6 +113,9 @@
     </ClInclude>
     <ClInclude Include="3rdParty\stb\stb_rect_pack.h">
       <Filter>Header Files\3rdParty</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\Fonts\phxLiberationSans.h">
+      <Filter>EmberGfx\Fonts</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
