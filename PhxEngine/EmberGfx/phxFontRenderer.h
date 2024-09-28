@@ -1,5 +1,11 @@
 #pragma once
-class phxFontRenderer
+
+namespace phx::gfx
 {
-};
+	namespace FontRenderer
+	{
+		void Initialize();
+		void Finalize();
+	}
+}
 

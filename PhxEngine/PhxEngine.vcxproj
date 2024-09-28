@@ -271,6 +271,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h" />
+    <ClInclude Include="3rdParty\stb\stb_perlin.h" />
+    <ClInclude Include="3rdParty\stb\stb_rect_pack.h" />
+    <ClInclude Include="3rdParty\stb\stb_truetype.h" />
     <ClInclude Include="EmberGfx\D3D12\phxCommandCtxD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxCommonD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.h" />
