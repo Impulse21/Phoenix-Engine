@@ -99,6 +99,9 @@
     <ClInclude Include="phxRefCountPtr.h">
       <Filter>EmberGfx</Filter>
     </ClInclude>
+    <ClInclude Include="EmberGfx\phxFontRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -139,6 +142,9 @@
     </ClCompile>
     <ClCompile Include="EmberGfx\D3D12\phxCommandCtxD3D12.cpp">
       <Filter>EmberGfx\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\phxFontRenderer.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
