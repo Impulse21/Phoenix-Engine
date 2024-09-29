@@ -7,11 +7,8 @@
 using namespace phx::gfx;
 namespace
 {
-	ImGuiContext* m_imguiContext;
+}
 
-	RHI::TextureHandle m_fontTexture;
-	RHI::ShaderHandle m_vertexShader;
-	RHI::ShaderHandle m_pixelShader;
-	RHI::InputLayoutHandle m_inputLayout;
-	RHI::GraphicsPipelineHandle m_pipeline;
+void phx::gfx::ImGuiRenderer::Initialize()
+{
 }

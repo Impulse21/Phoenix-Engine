@@ -1,14 +1,18 @@
 #pragma once
 
+#include "EmberGfx/phxGfxDevice.h"
 
+struct ImGuiContext;
 namespace phx::gfx
 {
-	namespace ImGuiRenderer
+	class ImGuiRenderSystem
 	{
-		void Initialize();
-		void Finalize();
-		void Update();
-		void Render();
+	public:
+	private:
+		ImGuiContext* m_imguiContext;
 
-	}
+		TextureHandle m_fontTexture;
+		InputLayoutHandle m_inputLayout;
+		GfxPipelineHandle m_pipeline;
+	};
 }
