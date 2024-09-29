@@ -6,6 +6,11 @@
 
 using namespace phx::gfx;
 
+
+namespace
+{
+}
+
 void phx::gfx::FontRenderer::Initialize()
 {
 }

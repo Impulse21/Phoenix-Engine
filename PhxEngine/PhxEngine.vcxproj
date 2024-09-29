@@ -280,6 +280,10 @@
     <ClInclude Include="EmberGfx\D3D12\phxGfxDeviceD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxPlatform.h" />
     <ClInclude Include="EmberGfx\Fonts\phxLiberationSans.h" />
+    <ClInclude Include="EmberGfx\ImGui\ImguiPS.h" />
+    <ClInclude Include="EmberGfx\ImGui\ImguiVS.h" />
+    <ClInclude Include="EmberGfx\ImGui\imgui_impl_win32.h" />
+    <ClInclude Include="EmberGfx\phxImGuiRenderer.h" />
     <ClInclude Include="EmberGfx\phxEmber.h" />
     <ClInclude Include="EmberGfx\phxFontRenderer.h" />
     <ClInclude Include="EmberGfx\phxGfxCommandCtx.h" />
@@ -306,6 +310,8 @@
     <ClCompile Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDeviceD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDxgiFormatMapping.cpp" />
+    <ClCompile Include="EmberGfx\ImGui\imgui_impl_win32.cpp" />
+    <ClCompile Include="EmberGfx\phxImGuiRenderer.cpp" />
     <ClCompile Include="EmberGfx\phxEmber.cpp" />
     <ClCompile Include="EmberGfx\phxFontRenderer.cpp" />
     <ClCompile Include="phxDeferredReleaseQueue.cpp" />
@@ -325,6 +331,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="3rdParty\ImGui\ImGui.vcxproj">
+      <Project>{b7a38d2e-f239-4286-afae-050f8dbfaebb}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

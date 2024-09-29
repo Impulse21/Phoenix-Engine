@@ -28,6 +28,9 @@
     <Filter Include="EmberGfx\Fonts">
       <UniqueIdentifier>{1f8b7124-f56c-464f-b8db-c1200252232f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="EmberGfx\ImGui">
+      <UniqueIdentifier>{6ead0aa1-d629-4342-b89d-e46bb06ee9e6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -117,6 +120,18 @@
     <ClInclude Include="EmberGfx\Fonts\phxLiberationSans.h">
       <Filter>EmberGfx\Fonts</Filter>
     </ClInclude>
+    <ClInclude Include="EmberGfx\phxImGuiRenderer.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\ImGui\imgui_impl_win32.h">
+      <Filter>EmberGfx\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\ImGui\ImguiPS.h">
+      <Filter>EmberGfx\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\ImGui\ImguiVS.h">
+      <Filter>EmberGfx\ImGui</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -160,6 +175,12 @@
     </ClCompile>
     <ClCompile Include="EmberGfx\phxFontRenderer.cpp">
       <Filter>EmberGfx</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\phxImGuiRenderer.cpp">
+      <Filter>EmberGfx</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\ImGui\imgui_impl_win32.cpp">
+      <Filter>EmberGfx\ImGui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

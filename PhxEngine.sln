@@ -7,28 +7,62 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhxEditor", "PhxEditor\PhxE
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhxEngine_Windows", "PhxEngine\PhxEngine.vcxproj", "{1DF55938-774A-44E2-B837-6CACD97706EF}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "3rdParty", "3rdParty", "{881EF9A0-9236-474D-9E7D-B202EB9D0C0C}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImGui", "PhxEngine\3rdParty\ImGui\ImGui.vcxproj", "{B7A38D2E-F239-4286-AFAE-050F8DBFAEBB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Gaming.Desktop.x64 = Debug|Gaming.Desktop.x64
 		Debug|Windows = Debug|Windows
+		Profile|Gaming.Desktop.x64 = Profile|Gaming.Desktop.x64
 		Profile|Windows = Profile|Windows
+		Release|Gaming.Desktop.x64 = Release|Gaming.Desktop.x64
 		Release|Windows = Release|Windows
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6BE9DB4B-5E4F-4963-893A-DE0A24DB38BB}.Debug|Gaming.Desktop.x64.ActiveCfg = Debug|Gaming.Desktop.x64
+		{6BE9DB4B-5E4F-4963-893A-DE0A24DB38BB}.Debug|Gaming.Desktop.x64.Build.0 = Debug|Gaming.Desktop.x64
 		{6BE9DB4B-5E4F-4963-893A-DE0A24DB38BB}.Debug|Windows.ActiveCfg = Debug|Gaming.Desktop.x64
 		{6BE9DB4B-5E4F-4963-893A-DE0A24DB38BB}.Debug|Windows.Build.0 = Debug|Gaming.Desktop.x64
+		{6BE9DB4B-5E4F-4963-893A-DE0A24DB38BB}.Profile|Gaming.Desktop.x64.ActiveCfg = Profile|Gaming.Desktop.x64
+		{6BE9DB4B-5E4F-4963-893A-DE0A24DB38BB}.Profile|Gaming.Desktop.x64.Build.0 = Profile|Gaming.Desktop.x64
 		{6BE9DB4B-5E4F-4963-893A-DE0A24DB38BB}.Profile|Windows.ActiveCfg = Profile|Gaming.Desktop.x64
 		{6BE9DB4B-5E4F-4963-893A-DE0A24DB38BB}.Profile|Windows.Build.0 = Profile|Gaming.Desktop.x64
+		{6BE9DB4B-5E4F-4963-893A-DE0A24DB38BB}.Release|Gaming.Desktop.x64.ActiveCfg = Release|Gaming.Desktop.x64
+		{6BE9DB4B-5E4F-4963-893A-DE0A24DB38BB}.Release|Gaming.Desktop.x64.Build.0 = Release|Gaming.Desktop.x64
 		{6BE9DB4B-5E4F-4963-893A-DE0A24DB38BB}.Release|Windows.ActiveCfg = Release|Gaming.Desktop.x64
 		{6BE9DB4B-5E4F-4963-893A-DE0A24DB38BB}.Release|Windows.Build.0 = Release|Gaming.Desktop.x64
+		{1DF55938-774A-44E2-B837-6CACD97706EF}.Debug|Gaming.Desktop.x64.ActiveCfg = Debug|Gaming.Desktop.x64
+		{1DF55938-774A-44E2-B837-6CACD97706EF}.Debug|Gaming.Desktop.x64.Build.0 = Debug|Gaming.Desktop.x64
 		{1DF55938-774A-44E2-B837-6CACD97706EF}.Debug|Windows.ActiveCfg = Debug|Gaming.Desktop.x64
 		{1DF55938-774A-44E2-B837-6CACD97706EF}.Debug|Windows.Build.0 = Debug|Gaming.Desktop.x64
+		{1DF55938-774A-44E2-B837-6CACD97706EF}.Profile|Gaming.Desktop.x64.ActiveCfg = Profile|Gaming.Desktop.x64
+		{1DF55938-774A-44E2-B837-6CACD97706EF}.Profile|Gaming.Desktop.x64.Build.0 = Profile|Gaming.Desktop.x64
 		{1DF55938-774A-44E2-B837-6CACD97706EF}.Profile|Windows.ActiveCfg = Profile|Gaming.Desktop.x64
 		{1DF55938-774A-44E2-B837-6CACD97706EF}.Profile|Windows.Build.0 = Profile|Gaming.Desktop.x64
+		{1DF55938-774A-44E2-B837-6CACD97706EF}.Release|Gaming.Desktop.x64.ActiveCfg = Release|Gaming.Desktop.x64
+		{1DF55938-774A-44E2-B837-6CACD97706EF}.Release|Gaming.Desktop.x64.Build.0 = Release|Gaming.Desktop.x64
 		{1DF55938-774A-44E2-B837-6CACD97706EF}.Release|Windows.ActiveCfg = Release|Gaming.Desktop.x64
 		{1DF55938-774A-44E2-B837-6CACD97706EF}.Release|Windows.Build.0 = Release|Gaming.Desktop.x64
+		{B7A38D2E-F239-4286-AFAE-050F8DBFAEBB}.Debug|Gaming.Desktop.x64.ActiveCfg = Debug|Gaming.Desktop.x64
+		{B7A38D2E-F239-4286-AFAE-050F8DBFAEBB}.Debug|Gaming.Desktop.x64.Build.0 = Debug|Gaming.Desktop.x64
+		{B7A38D2E-F239-4286-AFAE-050F8DBFAEBB}.Debug|Windows.ActiveCfg = Debug|Gaming.Desktop.x64
+		{B7A38D2E-F239-4286-AFAE-050F8DBFAEBB}.Debug|Windows.Build.0 = Debug|Gaming.Desktop.x64
+		{B7A38D2E-F239-4286-AFAE-050F8DBFAEBB}.Profile|Gaming.Desktop.x64.ActiveCfg = Profile|Gaming.Desktop.x64
+		{B7A38D2E-F239-4286-AFAE-050F8DBFAEBB}.Profile|Gaming.Desktop.x64.Build.0 = Profile|Gaming.Desktop.x64
+		{B7A38D2E-F239-4286-AFAE-050F8DBFAEBB}.Profile|Windows.ActiveCfg = Profile|Gaming.Desktop.x64
+		{B7A38D2E-F239-4286-AFAE-050F8DBFAEBB}.Profile|Windows.Build.0 = Profile|Gaming.Desktop.x64
+		{B7A38D2E-F239-4286-AFAE-050F8DBFAEBB}.Release|Gaming.Desktop.x64.ActiveCfg = Release|Gaming.Desktop.x64
+		{B7A38D2E-F239-4286-AFAE-050F8DBFAEBB}.Release|Gaming.Desktop.x64.Build.0 = Release|Gaming.Desktop.x64
+		{B7A38D2E-F239-4286-AFAE-050F8DBFAEBB}.Release|Windows.ActiveCfg = Release|Gaming.Desktop.x64
+		{B7A38D2E-F239-4286-AFAE-050F8DBFAEBB}.Release|Windows.Build.0 = Release|Gaming.Desktop.x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B7A38D2E-F239-4286-AFAE-050F8DBFAEBB} = {881EF9A0-9236-474D-9E7D-B202EB9D0C0C}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BB3675E6-A457-4437-ABD4-94CC9C23DDDE}
