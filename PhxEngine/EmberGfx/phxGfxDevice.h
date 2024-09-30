@@ -44,6 +44,11 @@ namespace phx::gfx
 			PlatformGfxDevice::SubmitFrame();
 		}
 
+		static TempBuffer AllocateTemp(size_t sizeInBytes, size_t alignment = 16)
+		{
+			return PlatformGfxDevice::AllocateTemp(sizeInBytes, alignment);
+		}
+
 	public:
 		static GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc)
 		{

@@ -44,7 +44,16 @@ public:
 
 		command.SetViewports({ &viewport, 1 });
 		command.SetGfxPipeline(this->m_pipeline);
-		command.Draw(3, 1, 0, 0);
+
+		TempBuffer temp = GfxDevice::AllocateTemp(sizeof(uint16_t) * 3);
+		
+		uint16_t* indices = reinterpret_cast<uint16_t*>(temp.Data);
+		indices[0] = 0;
+		indices[1] = 1;
+		indices[2] = 2;
+
+		command.SetDynamicIndexBuffer(temp.Buffer, temp.Offset, 3, Format::R16_UINT);
+		command.DrawIndexed(3, 1, 0, 0, 0);
 	}
 
 private:

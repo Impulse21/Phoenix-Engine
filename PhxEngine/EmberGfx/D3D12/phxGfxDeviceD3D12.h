@@ -192,7 +192,7 @@ namespace phx::gfx
 
 		static void SubmitFrame();
 
-		TempBuffer AllocateTemp(size_t size, size_t alignment = 16);
+		static TempBuffer AllocateTemp(size_t size, size_t alignment = 16);
 
 	public:
 		static GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
