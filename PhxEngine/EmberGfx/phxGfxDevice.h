@@ -99,14 +99,13 @@ namespace phx::gfx
 	template<typename HT>
 	struct HandleOwner : NonCopyable
 	{
-		Handle<HT> Handle;
+		Handle<HT> m_handle;
 
-#if false
-		operator Handle<HT>() { this->Handle; }
-		operator Handle<HT>() const { this->Handle; }
+		operator Handle<HT>() { return this->m_handle; }
+		operator Handle<HT>() const { return this->m_handle; }
 
 		HandleOwner() = default;
-		HandleOwner(Handle<HT> handle) : Hanlde(handle) {};
+		HandleOwner(Handle<HT> handle) : m_handle(handle) {};
 		~HandleOwner()
 		{
 			this->Reset();
@@ -116,16 +115,15 @@ namespace phx::gfx
 		{
 			GfxDevice::DeleteResource(handle);
 			if (handle.IsValid())
-				this - Handle = handle;
+				this->m_handle = handle;
 		}
 
 		Handle<HT> Release()
 		{
-			Handle<HT> retVal = handle;
-			handle = {};
+			Handle<HT> retVal = this->m_handle;
+			this->m_handle = {};
 			return retVal;
 		}
-#endif
 	};
 
 }
