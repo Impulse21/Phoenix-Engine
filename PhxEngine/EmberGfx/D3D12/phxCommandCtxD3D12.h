@@ -42,9 +42,9 @@ namespace phx::gfx::platform
 		void WriteTexture(TextureHandle texture, uint32_t firstSubresource, size_t numSubresources, SubresourceData* pSubresourceData);
 
 		void SetRenderTargets(Span<TextureHandle> renderTargets, TextureHandle depthStencil);
-		void SetDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData);
+		void SetDynamicVertexBuffer(BufferHandle tempBuffer, size_t offset, uint32_t slot, size_t numVertices, size_t vertexSize);
 		void SetIndexBuffer(BufferHandle indexBuffer);
-		void SetDynamicIndexBuffer(size_t numIndicies, Format indexFormat, const void* indexBufferData);
+		void SetDynamicIndexBuffer(BufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat);
 
 	private:
 		std::vector<D3D12_RESOURCE_BARRIER> m_barrierMemoryPool;

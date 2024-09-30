@@ -199,8 +199,8 @@ void phx::gfx::ImGuiRenderSystem::Render(CommandCtx& context)
         {
             const ImDrawList* drawList = drawData->CmdLists[i];
 
-            context.SetDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data);
-            context.SetDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data);
+            // context.SetDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data);
+            // context.SetDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data);
 
             int indexOffset = 0;
             for (int j = 0; j < drawList->CmdBuffer.size(); ++j)

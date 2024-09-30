@@ -352,20 +352,17 @@ void  phx::gfx::platform::CommandCtxD3D12::SetRenderTargets(Span<TextureHandle> 
 }
 
 
-void phx::gfx::platform::CommandCtxD3D12::SetDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData)
+void phx::gfx::platform::CommandCtxD3D12::SetDynamicVertexBuffer(BufferHandle tempBuffer, size_t offset, uint32_t slot, size_t numVertices, size_t vertexSize)
 {
     size_t bufferSize = numVertices * vertexSize;
-#if false
-    auto heapAllocation = this->m_uploadBuffer->Allocate(bufferSize, vertexSize);
-    memcpy(heapAllocation.CpuData, vertexBufferData, bufferSize);
 
+    const D3D12Buffer* bufferImpl = GfxDeviceD3D12::GetRegistry().Buffers.Get(tempBuffer);
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
-    vertexBufferView.BufferLocation = heapAllocation.Gpu;
+    vertexBufferView.BufferLocation = bufferImpl->D3D12Resource->GetGPUVirtualAddress() + offset;
     vertexBufferView.SizeInBytes = static_cast<UINT>(bufferSize);
     vertexBufferView.StrideInBytes = static_cast<UINT>(vertexSize);
 
     this->m_commandList->IASetVertexBuffers(slot, 1, &vertexBufferView);
-#endif
 }
 
 void phx::gfx::platform::CommandCtxD3D12::SetIndexBuffer(BufferHandle indexBuffer)
@@ -375,24 +372,19 @@ void phx::gfx::platform::CommandCtxD3D12::SetIndexBuffer(BufferHandle indexBuffe
     this->m_commandList->IASetIndexBuffer(&bufferImpl->IndexView);
 }
 
-void phx::gfx::platform::CommandCtxD3D12::SetDynamicIndexBuffer(size_t numIndicies, Format indexFormat, const void* indexBufferData)
+void phx::gfx::platform::CommandCtxD3D12::SetDynamicIndexBuffer(BufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat)
 {
+    const D3D12Buffer* bufferImpl = GfxDeviceD3D12::GetRegistry().Buffers.Get(tempBuffer);
     size_t indexSizeInBytes = indexFormat == Format::R16_UINT ? 2 : 4;
     size_t bufferSize = numIndicies * indexSizeInBytes;
 
-#if false
-    auto heapAllocation = this->m_uploadBuffer->Allocate(bufferSize, indexSizeInBytes);
-    memcpy(heapAllocation.CpuData, indexBufferData, bufferSize);
-
     D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
-    indexBufferView.BufferLocation = heapAllocation.Gpu;
+    indexBufferView.BufferLocation = bufferImpl->D3D12Resource->GetGPUVirtualAddress() + offset;
     indexBufferView.SizeInBytes = static_cast<UINT>(bufferSize);
     const auto& formatMapping = GetDxgiFormatMapping(indexFormat);;
 
     indexBufferView.Format = formatMapping.SrvFormat;
-
     this->m_commandList->IASetIndexBuffer(&indexBufferView);
-#endif
 }
 
 #if false

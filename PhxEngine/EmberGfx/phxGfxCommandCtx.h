@@ -73,9 +73,9 @@ namespace phx::gfx
 		}
 
 		
-		void SetDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData)
+		void SetDynamicVertexBuffer(BufferHandle tempBuffer, size_t offset, uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData)
 		{
-			this->m_platform->SetDynamicVertexBuffer(slot, numVertices, vertexSize, vertexBufferData);
+			this->m_platform->SetDynamicVertexBuffer(tempBuffer, offset, slot, numVertices, vertexSize);
 		}
 
 		void SetIndexBuffer(BufferHandle indexBuffer)
@@ -83,9 +83,9 @@ namespace phx::gfx
 			this->m_platform->SetIndexBuffer(indexBuffer);
 		}
 
-		void SetDynamicIndexBuffer(size_t numIndicies, Format indexFormat, const void* indexBufferData)
+		void SetDynamicIndexBuffer(BufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat, const void* indexBufferData)
 		{
-			this->m_platform->SetDynamicIndexBuffer(numIndicies, indexFormat, indexBufferData);
+			this->m_platform->SetDynamicIndexBuffer(tempBuffer, offset, numIndicies, indexFormat);
 		}
 
 	private:

@@ -326,7 +326,15 @@ namespace phx::gfx
 				}
 				else
 				{
-					this->PagePool.emplace_back();
+					retVal = this->PagePool.emplace_back().get();
+
+					retVal->Buffer = GfxDeviceD3D12::CreateBuffer({
+							.Usage = Usage::Upload,
+							.SizeInBytes = PageSize,
+							.DebugName ="Upload Buffer",
+						});
+					retVal->data = static_cast<uint8_t*>(
+						GfxDeviceD3D12::GetRegistry().Buffers.Get(retVal->Buffer)->MappedData);
 					retVal = this->PagePool.back().get();
 				}
 
