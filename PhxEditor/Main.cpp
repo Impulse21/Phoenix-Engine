@@ -11,6 +11,7 @@
 
 #include "CompiledShaders/TestShaderVS.h"
 #include "CompiledShaders/TestShaderPS.h"
+#include "EmberGfx/phxImGuiRenderer.h"
 
 class PhxEditor final : public phx::IEngineApp
 {
@@ -25,6 +26,9 @@ public:
 				.RasterRenderState = { .CullMode = phx::gfx::RasterCullMode::None },
 				.RtvFormats = { phx::gfx::g_SwapChainFormat }
 			}));
+
+		this->m_imguiRenderSystem.Initialize();
+		this->m_imguiRenderSystem.EnableDarkThemeColours();
 	};
 
 	void Shutdown() override 
@@ -33,17 +37,22 @@ public:
 	};
 
 	void CacheRenderData() override {};
-	void Update() override {};
+	void Update() override 
+	{
+		m_imguiRenderSystem.BeginFrame();
+		ImGui::ShowDemoWindow();
+	};
+
 	void Render() override
 	{
 		using namespace phx::gfx;
-		phx::gfx::CommandCtx command = phx::gfx::GfxDevice::BeginGfxContext();
-		command.ClearBackBuffer({ 0.392156899f, 0.584313750f, 0.929411829f, 1.f  }); // Cornflower blue
-		command.SetRenderTargetSwapChain();
+		phx::gfx::CommandCtx ctx = phx::gfx::GfxDevice::BeginGfxContext();
+		ctx.ClearBackBuffer({ 0.392156899f, 0.584313750f, 0.929411829f, 1.f  }); // Cornflower blue
+		ctx.SetRenderTargetSwapChain();
 		Viewport viewport(g_DisplayWidth, g_DisplayHeight);
 
-		command.SetViewports({ &viewport, 1 });
-		command.SetGfxPipeline(this->m_pipeline);
+		ctx.SetViewports({ &viewport, 1 });
+		ctx.SetGfxPipeline(this->m_pipeline);
 
 		TempBuffer temp = GfxDevice::AllocateTemp(sizeof(uint16_t) * 3);
 		
@@ -52,12 +61,15 @@ public:
 		indices[1] = 1;
 		indices[2] = 2;
 
-		command.SetDynamicIndexBuffer(temp.Buffer, temp.Offset, 3, Format::R16_UINT);
-		command.DrawIndexed(3, 1, 0, 0, 0);
+		ctx.SetDynamicIndexBuffer(temp.Buffer, temp.Offset, 3, Format::R16_UINT);
+		ctx.DrawIndexed(3, 1, 0, 0, 0);
+
+		m_imguiRenderSystem.Render(ctx);
 	}
 
 private:
 	phx::gfx::HandleOwner<phx::gfx::GfxPipeline> m_pipeline;
+	phx::gfx::ImGuiRenderSystem m_imguiRenderSystem;
 };
 
 CREATE_APPLICATION(PhxEditor)

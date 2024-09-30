@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EmberGfx/phxGfxDevice.h"
+#include "ImGui/imgui.h"
 
 struct ImGuiContext;
 namespace phx::gfx
@@ -17,8 +18,8 @@ namespace phx::gfx
 		bool m_isFontTextureUploaded = false;
 		ImGuiContext* m_imguiContext;
 
-		TextureHandle m_fontTexture;
-		InputLayoutHandle m_inputLayout;
-		GfxPipelineHandle m_pipeline;
+		HandleOwner<Texture> m_fontTexture;
+		HandleOwner<InputLayout> m_inputLayout;
+		HandleOwner<GfxPipeline> m_pipeline;
 	};
 }
