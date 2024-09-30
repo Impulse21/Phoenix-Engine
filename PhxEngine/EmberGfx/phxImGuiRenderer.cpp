@@ -64,10 +64,8 @@ void phx::gfx::ImGuiRenderSystem::Initialize(bool enableDocking)
         { "COLOR",      0, Format::RGBA8_UNORM, 0, VertexAttributeDesc::SAppendAlignedElement, false},
     };
 
-    m_inputLayout = GfxDevice::CreateInputLayout(attributeDesc);
-
     m_pipeline = GfxDevice::CreateGfxPipeline({
-        .InputLayout = m_inputLayout,
+        .InputLayout = GfxDevice::CreateInputLayout(attributeDesc),
         .VertexShaderByteCode = Span(g_mainVS, ARRAYSIZE(g_mainVS)),
         .HullShaderByteCode = Span(g_mainPS, ARRAYSIZE(g_mainPS)),
         .BlendRenderState = {
@@ -98,18 +96,6 @@ void phx::gfx::ImGuiRenderSystem::Initialize(bool enableDocking)
      });
 
 #if false
-    SubresourceData subResourceData = {};
-
-    // Bytes per pixel * width of the image. Since we are using an RGBA8, there is 4 bytes per pixel.
-    subResourceData.rowPitch = width * 4;
-    subResourceData.slicePitch = subResourceData.rowPitch * height;
-    subResourceData.pData = pixelData;
-
-    CommandListHandle uploadCommandList = gfxDevice->BeginCommandList();
-
-    gfxDevice->TransitionBarrier(m_fontTexture, RHI::ResourceStates::Common, RHI::ResourceStates::CopyDest, uploadCommandList);
-    gfxDevice->WriteTexture(m_fontTexture, 0, 1, &subResourceData, uploadCommandList);
-    gfxDevice->TransitionBarrier(m_fontTexture, RHI::ResourceStates::CopyDest, RHI::ResourceStates::ShaderResource, uploadCommandList);
 
 
     m_vertexShader = gfxDevice->CreateShader({
@@ -135,4 +121,133 @@ void phx::gfx::ImGuiRenderSystem::Initialize(bool enableDocking)
 
     m_inputLayout = gfxDevice->CreateInputLayout(attributeDesc.data(), attributeDesc.size());
 #endif
+}
+
+void phx::gfx::ImGuiRenderSystem::Render(CommandCtx& context)
+{
+    if (!this->m_isFontTextureUploaded)
+    {
+        unsigned char* pixelData = nullptr;
+        int width;
+        int height;
+
+        ImGuiIO& io = ImGui::GetIO();
+        io.Fonts->GetTexDataAsRGBA32(&pixelData, &width, &height);
+
+        SubresourceData subResourceData = {};
+
+        const TextureDesc& desc = this->m_fontTexture->GetDesc();
+        // Bytes per pixel * width of the image. Since we are using an RGBA8, there is 4 bytes per pixel.
+        subResourceData.rowPitch = desc.Width * 4;
+        subResourceData.slicePitch = subResourceData.rowPitch * desc.Height;
+        subResourceData.pData = pixelData;
+
+        GpuBarrier barrier = GpuBarrier::CreateTexture(this->m_fontTexture, gfx::ResourceStates::Common, gfx::ResourceStates::CopyDest);
+        context.TransitionBarrier(barrier);
+
+        context.WriteTexture(this->m_fontTexture, 0, 1, &subResourceData);
+
+        barrier = GpuBarrier::CreateTexture(this->m_fontTexture, gfx::ResourceStates::Common, gfx::ResourceStates::CopyDest);
+        context.TransitionBarrier(barrier);
+    }
+
+
+    ImGui::SetCurrentContext(m_imguiContext);
+    ImGui::Render();
+
+
+    ImGuiIO& io = ImGui::GetIO();
+    ImDrawData* drawData = ImGui::GetDrawData();
+
+    // Check if there is anything to render.
+    if (!drawData || drawData->CmdListsCount == 0)
+    {
+        return;
+    }
+
+    ImVec2 displayPos = drawData->DisplayPos;
+
+    {
+        context.SetGfxPipeline(m_pipeline);
+
+        // Set root arguments.
+        //    DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixOrthographicRH( drawData->DisplaySize.x, drawData->DisplaySize.y, 0.0f, 1.0f );
+        float L = drawData->DisplayPos.x;
+        float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
+        float T = drawData->DisplayPos.y;
+        float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
+        static const float mvp[4][4] =
+        {
+            { 2.0f / (R - L),   0.0f,           0.0f,       0.0f },
+            { 0.0f,         2.0f / (T - B),     0.0f,       0.0f },
+            { 0.0f,         0.0f,           0.5f,       0.0f },
+            { (R + L) / (L - R),  (T + B) / (B - T),    0.5f,       1.0f },
+        };
+
+        struct ImguiDrawInfo
+        {
+            DirectX::XMFLOAT4X4 Mvp;
+            uint32_t TextureIndex;
+        } push = {};
+        push.Mvp = DirectX::XMFLOAT4X4(&mvp[0][0]);
+
+        Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
+        context.SetViewports({ v });
+
+        context.SetRenderTargetSwapChain();
+        const Format indexFormat = sizeof(ImDrawIdx) == 2 ? Format::R16_UINT : Format::R32_UINT;
+
+        for (int i = 0; i < drawData->CmdListsCount; ++i)
+        {
+            const ImDrawList* drawList = drawData->CmdLists[i];
+
+            context.SetDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data);
+            context.SetDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data);
+
+            int indexOffset = 0;
+            for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
+            {
+                const ImDrawCmd& drawCmd = drawList->CmdBuffer[j];
+
+                if (drawCmd.UserCallback)
+                {
+                    drawCmd.UserCallback(drawList, &drawCmd);
+                }
+                else
+                {
+                    ImVec4 clipRect = drawCmd.ClipRect;
+                    Rect scissorRect;
+                    // TODO: Validate
+                    scissorRect.MinX = static_cast<int>(clipRect.x - displayPos.x);
+                    scissorRect.MinY = static_cast<int>(clipRect.y - displayPos.y);
+                    scissorRect.MaxX = static_cast<int>(clipRect.z - displayPos.x);
+                    scissorRect.MaxY = static_cast<int>(clipRect.w - displayPos.y);
+
+                    if (scissorRect.MaxX - scissorRect.MinX > 0.0f &&
+                        scissorRect.MaxY - scissorRect.MinY > 0.0)
+                    {
+#if false
+                        auto texture = static_cast<TextureRef>(drawCmd.GetTexID());
+                        push.TextureIndex = texture
+                            ? m_gfxDevice->GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
+                            : RHI::cInvalidDescriptorIndex;
+                        m_gfxDevice->BindPushConstant(RootParameters::PushConstant, push, cmd);
+                        m_gfxDevice->SetScissors(&scissorRect, 1, cmd);
+                        m_gfxDevice->DrawIndexed({
+                                .IndexCount = drawCmd.ElemCount,
+                                .InstanceCount = 1,
+                                .StartIndex = static_cast<uint32_t>(indexOffset),
+                            },
+                            cmd);
+#endif
+
+                    }
+                }
+                indexOffset += drawCmd.ElemCount;
+            }
+        }
+
+        // cmd->TransitionBarriers(Span<GpuBarrier>(postBarriers.data(), postBarriers.size()));
+        ImGui::EndFrame();
+    }
 }

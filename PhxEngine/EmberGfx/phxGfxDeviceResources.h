@@ -10,6 +10,7 @@
 #include "phxHandle.h"
 #include "phxRefCountPtr.h"
 
+#define USE_HANDLES true
 namespace phx::gfx
 {
     typedef uint32_t DescriptorIndex;
@@ -819,7 +820,9 @@ namespace phx::gfx
         virtual const TextureDesc& GetDesc() const = 0;
     };
     using TextureHandle = RefCountPtr<Texture>;
+    using TextureRef = Texture*;
 #endif
+
 
     struct BufferRange
     {
@@ -880,8 +883,21 @@ namespace phx::gfx
         };
     };
 
+
+#if USE_HANDLES
     struct Buffer;
     using BufferHandle = Handle<Buffer>;
+#else
+    struct BufferDesc;
+    class Buffer : public Resource
+    {
+    public:
+        virtual const BufferDesc& GetDesc() const = 0;
+    };
+    using BufferHandle = RefCountPtr<BufferDesc>;
+    using BufferRef = Buffer*;
+#endif
+
     struct BufferDesc
     {
         BufferMiscFlags MiscFlags = BufferMiscFlags::None;
@@ -1267,6 +1283,13 @@ namespace phx::gfx
         bool Fullscreen : 1 = false;
         bool VSync : 1 = false;
         bool EnableHDR : 1 = false;
+    };
+
+
+    struct TempMemoryBlock
+    {
+        BufferHandle Buffer;
+        uint8_t* Data;
     };
 }
 

@@ -5,6 +5,8 @@
 #include "phxGfxDescriptorHeapsD3D12.h"
 #include "phxCommandCtxD3D12.h"
 #include "d3d12ma/D3D12MemAlloc.h"
+#include "phxMemory.h"
+#include "phxGfxResourceRegistryD3D12.h"
 
 #include <deque>
 #include <mutex>
@@ -168,9 +170,18 @@ namespace phx::gfx
 		ID3D12CommandAllocator* RequestAllocator();
 	};
 
-	struct D3D12GfxPipeline;
-	struct D3D12Texture;
-	struct D3D12InputLayout;
+	struct TempMemoryAllocator
+	{
+		const size_t BlockSize = 4_MiB;
+		std::vector<TempMemoryBlock> m_memoryBlockPool;
+
+		TempMemoryBlock RequestNextMemoryBlock()
+		{
+
+		}
+	};
+
+
 	class GfxDeviceD3D12 final
 	{
 	public:
@@ -194,15 +205,20 @@ namespace phx::gfx
 
 	public:
 		static GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
-		static void DeleteResource(D3D12GfxPipeline* handle);
+		static void DeleteResource(GfxPipelineHandle handle);
 
 		static TextureHandle CreateTexture(TextureDesc const& desc);
-		static void DeleteResource(D3D12Texture* handle);
+		static void DeleteResource(TextureHandle handle);
 
 		static InputLayoutHandle CreateInputLayout(Span<VertexAttributeDesc> desc);
-		static void DeleteResource(D3D12InputLayout* handle);
+		static void DeleteResource(InputLayoutHandle handle);
 
-			// -- Platform specific ---
+		static void DeleteResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource);
+
+
+		static TempMemoryBlock RequestNextMemoryBlock();
+
+		// -- Platform specific ---
 	public:
 		static D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView() { return m_swapChain.GetBackBufferView(); }
 		static ID3D12Resource* GetBackBuffer() { return m_swapChain.GetBackBuffer(); }
@@ -220,8 +236,12 @@ namespace phx::gfx
 		static D3D12CommandQueue& GetComputeQueue() { return m_commandQueues[CommandQueueType::Compute]; }
 		static D3D12CommandQueue& GetCopyQueue() { return m_commandQueues[CommandQueueType::Copy]; }
 
+		static CpuDescriptorHeap& GetResourceCpuHeap() { return m_cpuDescriptorHeaps[DescriptorHeapTypes::CBV_SRV_UAV]; }
+		static CpuDescriptorHeap& GetRtvCpuHeap() { return m_cpuDescriptorHeaps[DescriptorHeapTypes::RTV]; }
+		static CpuDescriptorHeap& GetDsvCpuHeap() { return m_cpuDescriptorHeaps[DescriptorHeapTypes::DSV]; }
 		static Span<GpuDescriptorHeap> GetGpuDescriptorHeaps() { return Span<GpuDescriptorHeap>(m_gpuDescriptorHeaps.data(), m_gpuDescriptorHeaps.size()); }
 
+		static ResourceRegistryD3D12& GetRegistry() { return m_resourceRegistry; }
 	private:
 		static void Initialize();
 		static void InitializeD3D12Context(IDXGIAdapter* gpuAdapter);
@@ -232,6 +252,17 @@ namespace phx::gfx
 		static void SubmitCommandLists();
 		static void Present();
 		static void RunGarbageCollection(uint64_t completedFrame = ~0ul);
+
+		static int CreateSubresource(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size);
+		static int CreateSubresource(TextureHandle texture, TextureDesc const& desc, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+
+		static int CreateShaderResourceView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+		static int CreateRenderTargetView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+		static int CreateDepthStencilView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+		static int CreateUnorderedAccessView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+
+		static int CreateShaderResourceView(BufferHandle buffer, size_t offset, size_t size);
+		static int CreateUnorderedAccessView(BufferHandle buffer, size_t offset, size_t size);
 
 	private:
 		// inline static GfxDeviceD3D12* Singleton = nullptr;
@@ -271,125 +302,9 @@ namespace phx::gfx
 
 		inline static std::atomic_uint32_t m_activeCmdCount = 0;
 		inline static std::vector<std::unique_ptr<platform::CommandCtxD3D12>> m_commandPool;
+		inline static ResourceRegistryD3D12 m_resourceRegistry;
 	};
 
-	template<class T>
-	struct DeferredRelease
-	{
-		void ReleaseImpl()
-		{
-			GfxDeviceD3D12::DeleteResource(static_cast<T*>(this));
-		}
-	};
-
-	struct D3D12GfxPipeline final 
-		: public RefCounter<GfxPipeline, D3D12GfxPipeline>
-		, public DeferredRelease<D3D12GfxPipeline>
-	{
-		GfxPipelineDesc Desc;
-		Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
-		Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
-
-		const GfxPipelineDesc& GetDesc() const
-		{
-			return Desc;
-		}
-	};
-
-	struct DescriptorView final
-	{
-		DescriptorHeapAllocation Allocation;
-		DescriptorIndex BindlessIndex = cInvalidDescriptorIndex;
-		D3D12_DESCRIPTOR_HEAP_TYPE Type = {};
-		union
-		{
-			D3D12_CONSTANT_BUFFER_VIEW_DESC CBVDesc;
-			D3D12_SHADER_RESOURCE_VIEW_DESC SRVDesc;
-			D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
-			D3D12_SAMPLER_DESC SAMDesc;
-			D3D12_RENDER_TARGET_VIEW_DESC RTVDesc;
-			D3D12_DEPTH_STENCIL_VIEW_DESC DSVDesc;
-		};
-
-		uint32_t FirstMip = 0;
-		uint32_t MipCount = 0;
-		uint32_t FirstSlice = 0;
-		uint32_t SliceCount = 0;
-	};
-
-	struct D3D12Texture final 
-		: public RefCounter<Texture, D3D12Texture>
-		, public DeferredRelease<D3D12Texture>
-	{
-		TextureDesc Desc;
-		const TextureDesc& GetDesc() const
-		{
-			return Desc;
-		}
-
-		Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
-		Microsoft::WRL::ComPtr<D3D12MA::Allocation> Allocation;
-
-		// -- The views ---
-		DescriptorView RtvAllocation;
-		std::vector<DescriptorView> RtvSubresourcesAlloc = {};
-
-		DescriptorView DsvAllocation;
-		std::vector<DescriptorView> DsvSubresourcesAlloc = {};
-
-		DescriptorView Srv;
-		std::vector<DescriptorView> SrvSubresourcesAlloc = {};
-
-		DescriptorView UavAllocation;
-		std::vector<DescriptorView> UavSubresourcesAlloc = {};
-
-		D3D12Texture() = default;
-
-		void DisposeViews()
-		{
-			RtvAllocation.Allocation.Free();
-			for (auto& view : RtvSubresourcesAlloc)
-			{
-				view.Allocation.Free();
-			}
-			RtvSubresourcesAlloc.clear();
-			RtvAllocation = {};
-
-			DsvAllocation.Allocation.Free();
-			for (auto& view : DsvSubresourcesAlloc)
-			{
-				view.Allocation.Free();
-			}
-			DsvSubresourcesAlloc.clear();
-			DsvAllocation = {};
-
-			Srv.Allocation.Free();
-			for (auto& view : SrvSubresourcesAlloc)
-			{
-				view.Allocation.Free();
-			}
-			SrvSubresourcesAlloc.clear();
-			Srv = {};
-
-			UavAllocation.Allocation.Free();
-			for (auto& view : UavSubresourcesAlloc)
-			{
-				view.Allocation.Free();
-			}
-			UavSubresourcesAlloc.clear();
-			UavAllocation = {};
-		}
-	};
-
-	struct D3D12InputLayout
-		: public RefCounter<InputLayout, D3D12InputLayout>
-		, public DeferredRelease<D3D12InputLayout>
-	{
-		std::vector<VertexAttributeDesc> Attributes;
-		std::vector<D3D12_INPUT_ELEMENT_DESC> InputElements;
-
-		D3D12InputLayout() = default;
-	};
 }
 
 #if false

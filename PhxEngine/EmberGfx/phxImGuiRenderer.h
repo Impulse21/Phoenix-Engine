@@ -11,9 +11,10 @@ namespace phx::gfx
 		void Initialize(bool enableDocking = false);
 		void EnableDarkThemeColours();
 		void BeginFrame();
-		void Render();
+		void Render(CommandCtx& context);
 
 	private:
+		bool m_isFontTextureUploaded = false;
 		ImGuiContext* m_imguiContext;
 
 		TextureHandle m_fontTexture;

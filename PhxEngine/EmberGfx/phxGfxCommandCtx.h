@@ -37,7 +37,7 @@ namespace phx::gfx
 			this->m_platform->ClearDepthStencilTexture(depthStencil, clearDepth, depth, clearStencil, stencil);
 		}
 
-		void SetGfxPipeline(GfxPipeline* pipeline)
+		void SetGfxPipeline(GfxPipelineHandle pipeline)
 		{
 			this->m_platform->SetGfxPipeline(pipeline);
 		}
@@ -60,6 +60,32 @@ namespace phx::gfx
 		void SetViewports(Span<Viewport> viewports)
 		{
 			this->m_platform->SetViewports(viewports);
+		}
+
+		void WriteTexture(TextureHandle texture, uint32_t firstSubresource, size_t numSubresources, SubresourceData* pSubresourceData)
+		{
+			this->m_platform->WriteTexture(texture, firstSubresource, numSubresources, pSubresourceData);
+		}
+
+		void SetRenderTargets(Span<TextureHandle> renderTargets, TextureHandle depthStencil)
+		{
+			this->m_platform->SetRenderTargets(renderTargets, depthStencil);
+		}
+
+		
+		void SetDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData)
+		{
+			this->m_platform->SetDynamicVertexBuffer(slot, numVertices, vertexSize, vertexBufferData);
+		}
+
+		void SetIndexBuffer(BufferHandle indexBuffer)
+		{
+			this->m_platform->SetIndexBuffer(indexBuffer);
+		}
+
+		void SetDynamicIndexBuffer(size_t numIndicies, Format indexFormat, const void* indexBufferData)
+		{
+			this->m_platform->SetDynamicIndexBuffer(numIndicies, indexFormat, indexBufferData);
 		}
 
 	private:

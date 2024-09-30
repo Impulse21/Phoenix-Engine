@@ -17,13 +17,14 @@ class PhxEditor final : public phx::IEngineApp
 public:
 	void Startup() override 
 	{
-		this->m_pipeline = phx::gfx::GfxDevice::CreateGfxPipeline({
+		this->m_pipeline.Reset(
+			phx::gfx::GfxDevice::CreateGfxPipeline({
 				.VertexShaderByteCode = phx::Span(g_pTestShaderVS, ARRAYSIZE(g_pTestShaderVS)),
 				.PixelShaderByteCode = phx::Span(g_pTestShaderPS, ARRAYSIZE(g_pTestShaderPS)),
 				.DepthStencilRenderState = {.DepthTestEnable = false, .DepthWriteEnable = false },
 				.RasterRenderState = { .CullMode = phx::gfx::RasterCullMode::None },
 				.RtvFormats = { phx::gfx::g_SwapChainFormat }
-			});
+			}));
 	};
 
 	void Shutdown() override 
@@ -47,7 +48,7 @@ public:
 	}
 
 private:
-	phx::gfx::GfxPipelineHandle m_pipeline;
+	phx::gfx::HandleOwner<phx::gfx::GfxPipeline> m_pipeline;
 };
 
 CREATE_APPLICATION(PhxEditor)

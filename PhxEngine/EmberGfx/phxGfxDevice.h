@@ -5,6 +5,13 @@
 
 namespace phx::gfx
 {
+	struct TempBuffer
+	{
+		gfx::BufferHandle Buffer;
+		uint32_t Offset;
+		uint8_t* Data;
+	};
+
 	class GfxDevice : NonCopyable
 	{
 	public:
@@ -49,9 +56,29 @@ namespace phx::gfx
 			return PlatformGfxDevice::CreateGfxPipeline(desc);
 		}
 
+		static void DeleteResource(GfxPipelineHandle handle)
+		{
+			PlatformGfxDevice::DeleteResource(handle);
+		}
+
 		static TextureHandle CreateTexture(TextureDesc const& texture)
 		{
 			return PlatformGfxDevice::CreateTexture(texture);
+		}
+
+		static void DeleteResource(TextureHandle handle)
+		{
+			PlatformGfxDevice::DeleteResource(handle);
+		}
+
+		static BufferHandle CreateBuffer(BufferDesc const& desc)
+		{
+			// return PlatformGfxDevice::CreateBuffer(desc);
+			return {};
+		}
+
+		static void DeleteResource(BufferHandle handle)
+		{
 		}
 
 		static InputLayoutHandle CreateInputLayout(Span<VertexAttributeDesc> desc)
@@ -59,7 +86,43 @@ namespace phx::gfx
 			return PlatformGfxDevice::CreateInputLayout(desc);
 		}
 
+		static void DeleteResource(InputLayoutHandle handle)
+		{
+			PlatformGfxDevice::DeleteResource(handle);
+		}
+
 	private:
+	};
+
+
+	template<typename HT>
+	struct HandleOwner : NonCopyable
+	{
+		Handle<HT> Handle;
+
+		operator Handle<HT>() { this->Handle; }
+		operator Handle<HT>() const { this->Handle; }
+
+		HandleOwner() = default;
+		HandleOwner(Handle<HT> handle) : Hanlde(handle) {};
+		~HandleOwner()
+		{
+			this->Reset();
+		}
+
+		void Reset(Handle<HT> handle = {})
+		{
+			GfxDevice::DeleteResource(handle);
+			if (handle.IsValid())
+				this - Handle = handle;
+		}
+
+		Handle<HT> Release()
+		{
+			Handle<HT> retVal = handle;
+			handle = {};
+			return retVal;
+		}
 	};
 
 }

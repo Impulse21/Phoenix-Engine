@@ -24,19 +24,28 @@ namespace phx::gfx::platform
 		
 		void Reset(size_t id, CommandQueueType queueType);
 		void Close();
+
 	public:
 		void TransitionBarrier(GpuBarrier const& barrier);
 		void TransitionBarriers(Span<GpuBarrier> gpuBarriers);
 		void ClearBackBuffer(Color const& clearColour);
 		void ClearTextureFloat(TextureHandle texture, Color const& clearColour);
 		void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil);
-		void SetGfxPipeline(GfxPipeline* pipeline); 
+		void SetGfxPipeline(GfxPipelineHandle pipeline); 
 		void SetRenderTargetSwapChain();
 		void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex, uint32_t startInstance);
 		void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex, int32_t baseVertex, uint32_t startInstance);
 		void SetViewports(Span<Viewport> viewports);
 
+		void WriteTexture(TextureHandle texture, uint32_t firstSubresource, size_t numSubresources, SubresourceData* pSubresourceData);
+
+		void SetRenderTargets(Span<TextureHandle> renderTargets, TextureHandle depthStencil);
+		void SetDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData);
+		void SetIndexBuffer(BufferHandle indexBuffer);
+		void SetDynamicIndexBuffer(size_t numIndicies, Format indexFormat, const void* indexBufferData);
+
 	private:
+		std::vector<D3D12_RESOURCE_BARRIER> m_barrierMemoryPool;
 		GfxDeviceD3D12* m_device;
 		size_t m_id = ~0ul;
 		CommandQueueType m_queueType = CommandQueueType::Graphics;
