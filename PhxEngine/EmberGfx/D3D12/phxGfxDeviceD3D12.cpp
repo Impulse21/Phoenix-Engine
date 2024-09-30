@@ -727,6 +727,202 @@ void phx::gfx::GfxDeviceD3D12::DeleteResource(D3D12GfxPipeline* handle)
 	m_deleteQueue.push_back(d);
 }
 
+TextureHandle phx::gfx::GfxDeviceD3D12::CreateTexture(TextureDesc const& desc)
+{
+	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
+	d3d12OptimizedClearValue.Color[0] = desc.OptmizedClearValue.Colour.R;
+	d3d12OptimizedClearValue.Color[1] = desc.OptmizedClearValue.Colour.G;
+	d3d12OptimizedClearValue.Color[2] = desc.OptmizedClearValue.Colour.B;
+	d3d12OptimizedClearValue.Color[3] = desc.OptmizedClearValue.Colour.A;
+	d3d12OptimizedClearValue.DepthStencil.Depth = desc.OptmizedClearValue.DepthStencil.Depth;
+	d3d12OptimizedClearValue.DepthStencil.Stencil = desc.OptmizedClearValue.DepthStencil.Stencil;
+
+	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
+	d3d12OptimizedClearValue.Format = dxgiFormatMapping.RtvFormat;
+
+	D3D12MA::ALLOCATION_DESC allocationDesc = {};
+	allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+
+	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
+
+	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		if ((desc.BindingFlags & BindingFlags::ShaderResource) != BindingFlags::ShaderResource)
+		{
+			resourceFlags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+		}
+	}
+	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+	}
+	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	}
+
+	CD3DX12_RESOURCE_DESC resourceDesc = {};
+
+	switch (desc.Dimension)
+	{
+	case TextureDimension::Texture1D:
+	case TextureDimension::Texture1DArray:
+	{
+		resourceDesc =
+			CD3DX12_RESOURCE_DESC::Tex1D(
+				desc.IsTypeless ? dxgiFormatMapping.SrvFormat : dxgiFormatMapping.RtvFormat,
+				desc.Width,
+				desc.ArraySize,
+				desc.MipLevels,
+				resourceFlags);
+		break;
+	}
+	case TextureDimension::Texture2D:
+	case TextureDimension::Texture2DArray:
+	case TextureDimension::TextureCube:
+	case TextureDimension::TextureCubeArray:
+	case TextureDimension::Texture2DMS:
+	case TextureDimension::Texture2DMSArray:
+	{
+		resourceDesc =
+			CD3DX12_RESOURCE_DESC::Tex2D(
+				desc.IsTypeless ? dxgiFormatMapping.SrvFormat : dxgiFormatMapping.RtvFormat,
+				desc.Width,
+				desc.Height,
+				desc.ArraySize,
+				desc.MipLevels,
+				1,
+				0,
+				resourceFlags);
+		break;
+	}
+	case TextureDimension::Texture3D:
+	{
+		resourceDesc =
+			CD3DX12_RESOURCE_DESC::Tex3D(
+				desc.IsTypeless ? dxgiFormatMapping.SrvFormat : dxgiFormatMapping.RtvFormat,
+				desc.Width,
+				desc.Height,
+				desc.ArraySize,
+				desc.MipLevels,
+				resourceFlags);
+		break;
+	}
+	default:
+		throw std::runtime_error("Unsupported texture dimension");
+	}
+
+	const bool useClearValue =
+		((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget) ||
+		((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil);
+
+	D3D12Texture textureImpl = {};
+	textureImpl.Desc = desc;
+
+	ThrowIfFailed(
+		m_d3d12MemAllocator->CreateResource(
+			&allocationDesc,
+			&resourceDesc,
+			ConvertResourceStates(desc.InitialState),
+			useClearValue ? &d3d12OptimizedClearValue : nullptr,
+			&textureImpl.Allocation,
+			IID_PPV_ARGS(&textureImpl.D3D12Resource)));
+
+
+	std::wstring debugName;
+	StringConvert(desc.DebugName, debugName);
+	textureImpl.D3D12Resource->SetName(debugName.c_str());
+
+	std::unique_ptr<D3D12Texture> texture = std::make_unique<D3D12Texture>();
+
+	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
+	{
+		CreateSubresource(texture.get(), SubresouceType::SRV, 0, ~0u, 0, ~0u);
+	}
+
+	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
+	{
+		CreateSubresource(texture.get(), SubresouceType::RTV, 0, ~0u, 0, ~0u);
+	}
+
+	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
+	{
+		CreateSubresource(texture.get(), SubresouceType::DSV, 0, ~0u, 0, ~0u);
+	}
+
+	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+	{
+		CreateSubresource(texture.get(), SubresouceType::UAV, 0, ~0u, 0, ~0u);
+	}
+
+	return RefCountPtr<Texture>::Create(texture.release());
+}
+
+void phx::gfx::GfxDeviceD3D12::DeleteResource(D3D12Texture* handle)
+{
+	DeleteItem d =
+	{
+		m_frameCount,
+		[=]()
+		{
+			if (handle)
+				return;
+
+			handle->DisposeViews();
+			delete handle;
+		}
+	};
+
+	m_deleteQueue.push_back(d);
+}
+
+InputLayoutHandle phx::gfx::GfxDeviceD3D12::CreateInputLayout(Span<VertexAttributeDesc> desc)
+{
+	std::unique_ptr<D3D12InputLayout> inputLayoutImpl = std::make_unique<D3D12InputLayout>();
+
+	for (uint32_t index = 0; index < desc.Size(); index++)
+	{
+		VertexAttributeDesc& attr = inputLayoutImpl->Attributes[index];
+
+		// Copy the description to get a stable name pointer in desc
+		attr = desc[index];
+
+		D3D12_INPUT_ELEMENT_DESC& dx12Desc = inputLayoutImpl->InputElements.emplace_back();
+
+		dx12Desc.SemanticName = attr.SemanticName.c_str();
+		dx12Desc.SemanticIndex = attr.SemanticIndex;
+
+
+		const DxgiFormatMapping& formatMapping = GetDxgiFormatMapping(attr.Format);
+		dx12Desc.Format = formatMapping.SrvFormat;
+		dx12Desc.InputSlot = attr.InputSlot;
+		dx12Desc.AlignedByteOffset = attr.AlignedByteOffset;
+		if (dx12Desc.AlignedByteOffset == VertexAttributeDesc::SAppendAlignedElement)
+		{
+			dx12Desc.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+		}
+
+		if (attr.IsInstanced)
+		{
+			dx12Desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
+			dx12Desc.InstanceDataStepRate = 1;
+		}
+		else
+		{
+			dx12Desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+			dx12Desc.InstanceDataStepRate = 0;
+		}
+	}
+
+	return RefCountPtr<InputLayout>::Create(inputLayoutImpl.release());
+}
+
+void phx::gfx::GfxDeviceD3D12::DeleteResource(D3D12InputLayout* handle)
+{
+	delete handle;
+}
+
 platform::CommandCtxD3D12* phx::gfx::GfxDeviceD3D12::BeginCommandRecording(CommandQueueType type)
 {
 	const uint32_t currentCmdIndex = m_activeCmdCount++;
@@ -901,6 +1097,16 @@ void phx::gfx::GfxDeviceD3D12::Initialize()
 				GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&frameFences[q])));
 		}
 	}
+
+	D3D12MA::ALLOCATOR_DESC allocatorDesc = {};
+	allocatorDesc.pDevice = GetD3D12Device();
+	allocatorDesc.pAdapter = m_gpuAdapter.NativeAdapter.Get();
+	//allocatorDesc.PreferredBlockSize = 256 * 1024 * 1024;
+	//allocatorDesc.Flags |= D3D12MA::ALLOCATOR_FLAG_ALWAYS_COMMITTED;
+	allocatorDesc.Flags = (D3D12MA::ALLOCATOR_FLAGS)(D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED);
+
+	ThrowIfFailed(
+		D3D12MA::CreateAllocator(&allocatorDesc, &m_d3d12MemAllocator));
 }
 
 void phx::gfx::GfxDeviceD3D12::InitializeD3D12Context(IDXGIAdapter* gpuAdapter)
@@ -2920,9 +3126,9 @@ int PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateSubresource(TextureHandle 
 	}
 }
 
-int PhxEngine::RHI::D3D12::D3D12GraphicsDevice::CreateSubresource(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size)
+int PhxEngine::RHI::D3D12::D3D12GraphicsDevice::(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size)
 {
-	switch (subresourceType)
+	switch (subresourceType)CreateSubresource
 	{
 	case SubresouceType::SRV:
 		return CreateShaderResourceView(buffer, offset, size);

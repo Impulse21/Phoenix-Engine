@@ -10,47 +10,56 @@ namespace phx::gfx
 	public:
 		static void Initialize(SwapChainDesc const& swapChainDesc, void* windowHandle = nullptr)
 		{
-			m_plaform.Initialize(swapChainDesc, windowHandle);
+			PlatformGfxDevice::Initialize(swapChainDesc, windowHandle);
 		}
 
 		static void Finalize()
 		{
-			m_plaform.Finalize();
+			PlatformGfxDevice::Finalize();
 		}
 
 		static void WaitForIdle()
 		{
-			m_plaform.WaitForIdle();
+			PlatformGfxDevice::WaitForIdle();
 		}
 
 		static void ResizeSwapChain(SwapChainDesc const& swapChainDesc)
 		{
-			m_plaform.ResizeSwapChain(swapChainDesc);
+			PlatformGfxDevice::ResizeSwapChain(swapChainDesc);
 		}
 
 		static CommandCtx BeginGfxContext()
 		{
-			return m_plaform.BeginGfxContext();
+			return PlatformGfxDevice::BeginGfxContext();
 		}
 
 		static CommandCtx BeginComputeContext()
 		{
-			return m_plaform.BeginComputeContext();
+			return PlatformGfxDevice::BeginComputeContext();
 		}
 
 		static void SubmitFrame()
 		{
-			m_plaform.SubmitFrame();
+			PlatformGfxDevice::SubmitFrame();
 		}
 
 	public:
 		static GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc)
 		{
-			return m_plaform.CreateGfxPipeline(desc);
+			return PlatformGfxDevice::CreateGfxPipeline(desc);
+		}
+
+		static TextureHandle CreateTexture(TextureDesc const& texture)
+		{
+			return PlatformGfxDevice::CreateTexture(texture);
+		}
+
+		static InputLayoutHandle CreateInputLayout(Span<VertexAttributeDesc> desc)
+		{
+			return PlatformGfxDevice::CreateInputLayout(desc);
 		}
 
 	private:
-		inline static PlatformGfxDevice m_plaform;
 	};
 
 }

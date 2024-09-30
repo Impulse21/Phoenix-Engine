@@ -4,6 +4,7 @@
 
 #include "phxGfxDescriptorHeapsD3D12.h"
 #include "phxCommandCtxD3D12.h"
+#include "d3d12ma/D3D12MemAlloc.h"
 
 #include <deque>
 #include <mutex>
@@ -168,7 +169,8 @@ namespace phx::gfx
 	};
 
 	struct D3D12GfxPipeline;
-
+	struct D3D12Texture;
+	struct D3D12InputLayout;
 	class GfxDeviceD3D12 final
 	{
 	public:
@@ -193,6 +195,12 @@ namespace phx::gfx
 	public:
 		static GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
 		static void DeleteResource(D3D12GfxPipeline* handle);
+
+		static TextureHandle CreateTexture(TextureDesc const& desc);
+		static void DeleteResource(D3D12Texture* handle);
+
+		static InputLayoutHandle CreateInputLayout(Span<VertexAttributeDesc> desc);
+		static void DeleteResource(D3D12InputLayout* handle);
 
 			// -- Platform specific ---
 	public:
@@ -232,7 +240,8 @@ namespace phx::gfx
 		inline static Microsoft::WRL::ComPtr<ID3D12Device> m_d3d12Device;
 		inline static Microsoft::WRL::ComPtr<ID3D12Device2> m_d3d12Device2;
 		inline static Microsoft::WRL::ComPtr<ID3D12Device5> m_d3d12Device5;
-
+		inline static Microsoft::WRL::ComPtr<D3D12MA::Allocator> m_d3d12MemAllocator;
+		
 		inline static D3D12Adapter m_gpuAdapter;
 		inline static D3D12SwapChain m_swapChain;
 
@@ -285,6 +294,101 @@ namespace phx::gfx
 		{
 			return Desc;
 		}
+	};
+
+	struct DescriptorView final
+	{
+		DescriptorHeapAllocation Allocation;
+		DescriptorIndex BindlessIndex = cInvalidDescriptorIndex;
+		D3D12_DESCRIPTOR_HEAP_TYPE Type = {};
+		union
+		{
+			D3D12_CONSTANT_BUFFER_VIEW_DESC CBVDesc;
+			D3D12_SHADER_RESOURCE_VIEW_DESC SRVDesc;
+			D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
+			D3D12_SAMPLER_DESC SAMDesc;
+			D3D12_RENDER_TARGET_VIEW_DESC RTVDesc;
+			D3D12_DEPTH_STENCIL_VIEW_DESC DSVDesc;
+		};
+
+		uint32_t FirstMip = 0;
+		uint32_t MipCount = 0;
+		uint32_t FirstSlice = 0;
+		uint32_t SliceCount = 0;
+	};
+
+	struct D3D12Texture final 
+		: public RefCounter<Texture, D3D12Texture>
+		, public DeferredRelease<D3D12Texture>
+	{
+		TextureDesc Desc;
+		const TextureDesc& GetDesc() const
+		{
+			return Desc;
+		}
+
+		Microsoft::WRL::ComPtr<ID3D12Resource> D3D12Resource;
+		Microsoft::WRL::ComPtr<D3D12MA::Allocation> Allocation;
+
+		// -- The views ---
+		DescriptorView RtvAllocation;
+		std::vector<DescriptorView> RtvSubresourcesAlloc = {};
+
+		DescriptorView DsvAllocation;
+		std::vector<DescriptorView> DsvSubresourcesAlloc = {};
+
+		DescriptorView Srv;
+		std::vector<DescriptorView> SrvSubresourcesAlloc = {};
+
+		DescriptorView UavAllocation;
+		std::vector<DescriptorView> UavSubresourcesAlloc = {};
+
+		D3D12Texture() = default;
+
+		void DisposeViews()
+		{
+			RtvAllocation.Allocation.Free();
+			for (auto& view : RtvSubresourcesAlloc)
+			{
+				view.Allocation.Free();
+			}
+			RtvSubresourcesAlloc.clear();
+			RtvAllocation = {};
+
+			DsvAllocation.Allocation.Free();
+			for (auto& view : DsvSubresourcesAlloc)
+			{
+				view.Allocation.Free();
+			}
+			DsvSubresourcesAlloc.clear();
+			DsvAllocation = {};
+
+			Srv.Allocation.Free();
+			for (auto& view : SrvSubresourcesAlloc)
+			{
+				view.Allocation.Free();
+			}
+			SrvSubresourcesAlloc.clear();
+			Srv = {};
+
+			UavAllocation.Allocation.Free();
+			for (auto& view : UavSubresourcesAlloc)
+			{
+				view.Allocation.Free();
+			}
+			UavSubresourcesAlloc.clear();
+			UavAllocation = {};
+		}
+	};
+
+	struct D3D12InputLayout
+		: public RefCounter<InputLayout, D3D12InputLayout>
+		, public DeferredRelease<D3D12InputLayout>
+	{
+		std::vector<VertexAttributeDesc> Attributes;
+		std::vector<D3D12_INPUT_ELEMENT_DESC> InputElements;
+
+		D3D12InputLayout() = default;
 	};
 }
 

@@ -8,6 +8,11 @@ namespace phx::gfx
 	class ImGuiRenderSystem
 	{
 	public:
+		void Initialize(bool enableDocking = false);
+		void EnableDarkThemeColours();
+		void BeginFrame();
+		void Render();
+
 	private:
 		ImGuiContext* m_imguiContext;
 

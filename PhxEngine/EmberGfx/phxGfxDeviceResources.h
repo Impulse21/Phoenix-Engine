@@ -631,15 +631,6 @@ namespace phx::gfx
         Resource& operator=(const Resource&&) = delete;
     };
 
-    struct ShaderDesc
-    {
-        ShaderStage Stage = ShaderStage::None;
-        std::string DebugName = "";
-    };
-
-    struct Shader;
-    using ShaderHandle = Handle<Shader>;
-
     struct VertexAttributeDesc
     {
         static const uint32_t SAppendAlignedElement = 0xffffffff; // automatically figure out AlignedByteOffset depending on Format
@@ -652,8 +643,15 @@ namespace phx::gfx
         bool IsInstanced = false;
     };
 
+#if USE_HANDLES
     struct InputLayout;
     using InputLayoutHandle = Handle<InputLayout>;
+#else
+    class InputLayout : public Resource
+    {
+    };
+    using InputLayoutHandle = RefCountPtr<InputLayout>;
+#endif
 
     struct StaticSamplerParameter
     {
@@ -808,13 +806,20 @@ namespace phx::gfx
 
         gfx::ClearValue OptmizedClearValue = {};
         std::string DebugName;
+        bool IsTypeless : 1 = false;
     };
 
-    // New;
+#if USE_HANDLES
     struct Texture;
-
-    // using TextureHandle = std::shared_ptr<ITexture>;
     using TextureHandle = Handle<Texture>;
+#else
+    class Texture : public Resource
+    {
+    public:
+        virtual const TextureDesc& GetDesc() const = 0;
+    };
+    using TextureHandle = RefCountPtr<Texture>;
+#endif
 
     struct BufferRange
     {
@@ -934,7 +939,7 @@ namespace phx::gfx
 
     struct ComputePipelineDesc
     {
-        ShaderHandle ComputeShader;
+        ByteCodeView ComputeShader;
     };
 
     struct ComputePipeline;
@@ -944,9 +949,9 @@ namespace phx::gfx
     {
         PrimitiveType PrimType = PrimitiveType::TriangleList;
 
-        ShaderHandle AmpShader;
-        ShaderHandle MeshShader;
-        ShaderHandle PixelShader;
+        ByteCodeView AmpShader;
+        ByteCodeView MeshShader;
+        ByteCodeView PixelShader;
 
         BlendRenderState BlendRenderState = {};
         DepthStencilRenderState DepthStencilRenderState = {};
