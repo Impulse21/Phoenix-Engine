@@ -111,7 +111,9 @@ namespace phx::gfx
 
 		void Reset(Handle<HT> handle = {})
 		{
-			GfxDevice::DeleteResource(handle);
+			if (m_handle.IsValid())
+				GfxDevice::DeleteResource(m_handle);
+
 			if (handle.IsValid())
 				this->m_handle = handle;
 		}

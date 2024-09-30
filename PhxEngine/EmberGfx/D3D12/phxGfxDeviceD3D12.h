@@ -312,7 +312,7 @@ namespace phx::gfx
 			};
 
 			const size_t PageSize = 4_MiB;
-			std::vector<std::shared_ptr<TempMemoryPage>> PagePool;
+			std::vector<std::unique_ptr<TempMemoryPage>> PagePool;
 			std::deque<TempMemoryPage*> AvailablePages;
 			std::mutex PageMutex;
 
@@ -326,7 +326,8 @@ namespace phx::gfx
 				}
 				else
 				{
-					retVal = this->PagePool.emplace_back().get();
+					this->PagePool.push_back(std::make_unique<TempMemoryPage>());
+					retVal = this->PagePool.back().get();
 
 					retVal->Buffer = GfxDeviceD3D12::CreateBuffer({
 							.Usage = Usage::Upload,

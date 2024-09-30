@@ -585,7 +585,7 @@ TempBuffer phx::gfx::GfxDeviceD3D12::AllocateTemp(size_t size, size_t alignment)
 	assert(size < m_tempAllocator.PageAllocator.PageSize);
 	uint32_t offset = MemoryAlign(m_tempAllocator.ByteOffset, alignment);
 	m_tempAllocator.ByteOffset = offset + size;
-	if (m_tempAllocator.ByteOffset > m_tempAllocator.PageAllocator.PageSize)
+	if (!m_tempAllocator.CurrentPage || m_tempAllocator.ByteOffset > m_tempAllocator.PageAllocator.PageSize)
 	{
 		auto* free = m_tempAllocator.CurrentPage;
 		// Request a new page
