@@ -170,18 +170,6 @@ namespace phx::gfx
 		ID3D12CommandAllocator* RequestAllocator();
 	};
 
-	struct TempMemoryAllocator
-	{
-		const size_t BlockSize = 4_MiB;
-		std::vector<TempMemoryBlock> m_memoryBlockPool;
-
-		TempMemoryBlock RequestNextMemoryBlock()
-		{
-
-		}
-	};
-
-
 	class GfxDeviceD3D12 final
 	{
 	public:

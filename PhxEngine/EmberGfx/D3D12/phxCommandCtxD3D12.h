@@ -15,6 +15,18 @@ namespace phx::gfx::platform
 		uint64_t fenceValue = 0;
 	};
 
+
+	struct TempMemoryAllocator
+	{
+		const size_t BlockSize = 4_MiB;
+		std::vector<TempMemoryBlock> m_memoryBlockPool;
+
+		TempMemoryBlock RequestNextMemoryBlock()
+		{
+
+		}
+	};
+
 	class CommandCtxD3D12 final
 	{
 		friend GfxDeviceD3D12;
@@ -26,6 +38,8 @@ namespace phx::gfx::platform
 		void Close();
 
 	public:
+		TempMemoryBlock Allocate(size_t size, size_t alignment = 16);
+
 		void TransitionBarrier(GpuBarrier const& barrier);
 		void TransitionBarriers(Span<GpuBarrier> gpuBarriers);
 		void ClearBackBuffer(Color const& clearColour);
