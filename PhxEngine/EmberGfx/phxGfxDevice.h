@@ -2,6 +2,7 @@
 
 #include "D3D12/phxGfxPlatform.h"
 #include "phxGfxCommandCtx.h"
+#include "EmberGfx/phxHandle.h"
 
 namespace phx::gfx
 {
@@ -100,6 +101,7 @@ namespace phx::gfx
 	{
 		Handle<HT> Handle;
 
+#if false
 		operator Handle<HT>() { this->Handle; }
 		operator Handle<HT>() const { this->Handle; }
 
@@ -123,6 +125,7 @@ namespace phx::gfx
 			handle = {};
 			return retVal;
 		}
+#endif
 	};
 
 }

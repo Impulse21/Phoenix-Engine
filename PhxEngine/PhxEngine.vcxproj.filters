@@ -123,9 +123,6 @@
     <ClInclude Include="EmberGfx\phxImGuiRenderer.h">
       <Filter>EmberGfx</Filter>
     </ClInclude>
-    <ClInclude Include="EmberGfx\ImGui\imgui_impl_win32.h">
-      <Filter>EmberGfx\ImGui</Filter>
-    </ClInclude>
     <ClInclude Include="EmberGfx\ImGui\ImguiPS.h">
       <Filter>EmberGfx\ImGui</Filter>
     </ClInclude>
@@ -184,9 +181,6 @@
     </ClCompile>
     <ClCompile Include="EmberGfx\phxImGuiRenderer.cpp">
       <Filter>EmberGfx</Filter>
-    </ClCompile>
-    <ClCompile Include="EmberGfx\ImGui\imgui_impl_win32.cpp">
-      <Filter>EmberGfx\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="EmberGfx\D3D12\phxGfxResourceRegistryD3D12.cpp">
       <Filter>EmberGfx\D3D12</Filter>

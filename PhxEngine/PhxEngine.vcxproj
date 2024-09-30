@@ -283,7 +283,6 @@
     <ClInclude Include="EmberGfx\Fonts\phxLiberationSans.h" />
     <ClInclude Include="EmberGfx\ImGui\ImguiPS.h" />
     <ClInclude Include="EmberGfx\ImGui\ImguiVS.h" />
-    <ClInclude Include="EmberGfx\ImGui\imgui_impl_win32.h" />
     <ClInclude Include="EmberGfx\phxImGuiRenderer.h" />
     <ClInclude Include="EmberGfx\phxEmber.h" />
     <ClInclude Include="EmberGfx\phxFontRenderer.h" />
@@ -313,7 +312,6 @@
     <ClCompile Include="EmberGfx\D3D12\phxGfxDeviceD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDxgiFormatMapping.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxResourceRegistryD3D12.cpp" />
-    <ClCompile Include="EmberGfx\ImGui\imgui_impl_win32.cpp" />
     <ClCompile Include="EmberGfx\phxImGuiRenderer.cpp" />
     <ClCompile Include="EmberGfx\phxEmber.cpp" />
     <ClCompile Include="EmberGfx\phxFontRenderer.cpp" />

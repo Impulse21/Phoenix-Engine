@@ -135,11 +135,9 @@ void phx::gfx::ImGuiRenderSystem::Render(CommandCtx& context)
         io.Fonts->GetTexDataAsRGBA32(&pixelData, &width, &height);
 
         SubresourceData subResourceData = {};
-
-        const TextureDesc& desc = this->m_fontTexture->GetDesc();
         // Bytes per pixel * width of the image. Since we are using an RGBA8, there is 4 bytes per pixel.
-        subResourceData.rowPitch = desc.Width * 4;
-        subResourceData.slicePitch = subResourceData.rowPitch * desc.Height;
+        subResourceData.rowPitch = width * 4;
+        subResourceData.slicePitch = subResourceData.rowPitch * height;
         subResourceData.pData = pixelData;
 
         GpuBarrier barrier = GpuBarrier::CreateTexture(this->m_fontTexture, gfx::ResourceStates::Common, gfx::ResourceStates::CopyDest);
