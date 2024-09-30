@@ -579,6 +579,37 @@ void phx::gfx::GfxDeviceD3D12::SubmitFrame()
 	RunGarbageCollection();
 }
 
+TempBuffer phx::gfx::GfxDeviceD3D12::AllocateTemp(size_t size, size_t alignment)
+{
+	std::scoped_lock _(m_tempAllocator.m_mutex);
+	assert(size < m_tempAllocator.PageAllocator.PageSize);
+	uint32_t offset = MemoryAlign(m_tempAllocator.ByteOffset, alignment);
+	m_tempAllocator.ByteOffset = offset + size;
+	if (m_tempAllocator.ByteOffset > m_tempAllocator.PageAllocator.PageSize)
+	{
+		auto* free = m_tempAllocator.CurrentPage;
+		// Request a new page
+		DeferredItem d = {
+			m_frameCount,
+			[=]()
+			{
+				GfxDeviceD3D12::m_tempAllocator.PageAllocator.FreePage(free);
+			}
+		};
+
+		m_deferredQueue.push_back(d);
+		m_tempAllocator.CurrentPage = m_tempAllocator.PageAllocator.RequestNextMemoryBlock();
+		offset = 0;
+		m_tempAllocator.ByteOffset = size;
+	}
+
+	return TempBuffer{
+		.Buffer = m_tempAllocator.CurrentPage->Buffer,
+		.Offset = offset,
+		.Data = m_tempAllocator.CurrentPage->data + offset,
+	};
+}
+
 Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateEmptyRootSignature()
 {
 	using namespace Microsoft::WRL;
@@ -710,7 +741,7 @@ GfxPipelineHandle phx::gfx::GfxDeviceD3D12::CreateGfxPipeline(GfxPipelineDesc co
 
 void phx::gfx::GfxDeviceD3D12::DeleteResource(GfxPipelineHandle handle)
 {
-	DeleteItem d =
+	DeferredItem d =
 	{
 		m_frameCount,
 		[=]()
@@ -719,7 +750,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteResource(GfxPipelineHandle handle)
 		}
 	};
 
-	m_deleteQueue.push_back(d);
+	m_deferredQueue.push_back(d);
 }
 
 TextureHandle phx::gfx::GfxDeviceD3D12::CreateTexture(TextureDesc const& desc)
@@ -855,7 +886,6 @@ TextureHandle phx::gfx::GfxDeviceD3D12::CreateTexture(TextureDesc const& desc)
 	return textureHandle;
 }
 
-
 int  phx::gfx::GfxDeviceD3D12::CreateSubresource(TextureHandle texture, TextureDesc const& desc, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
 	switch (subresourceType)
@@ -873,44 +903,43 @@ int  phx::gfx::GfxDeviceD3D12::CreateSubresource(TextureHandle texture, TextureD
 	}
 }
 
-int phx::gfx::GfxDeviceD3D12::CreateSubresource(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size)
+int phx::gfx::GfxDeviceD3D12::CreateSubresource(BufferHandle buffer, BufferDesc const& desc, SubresouceType subresourceType, size_t offset, size_t size)
 {
 	switch (subresourceType)
 	{
 	case SubresouceType::SRV:
-		return CreateShaderResourceView(buffer, offset, size);
+		return CreateShaderResourceView(buffer, desc, offset, size);
 	case SubresouceType::UAV:
-		return CreateUnorderedAccessView(buffer, offset, size);
+		return CreateUnorderedAccessView(buffer, desc, offset, size);
 	default:
 		throw std::runtime_error("Unknown sub resource type");
 	}
 }
 
-int phx::gfx::GfxDeviceD3D12::CreateShaderResourceView(BufferHandle buffer, size_t offset, size_t size)
+int phx::gfx::GfxDeviceD3D12::CreateShaderResourceView(BufferHandle buffer, BufferDesc const& desc, size_t offset, size_t size)
 {
-#if false
-	D3D12Buffer* bufferImpl = m_bufferPool.Get(buffer);
+	D3D12Buffer* bufferImpl = m_resourceRegistry.Buffers.Get(buffer);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 
-	if (bufferImpl->Desc.Format == RHIFormat::UNKNOWN)
+	if (desc.Format == Format::UNKNOWN)
 	{
-		if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Raw) != 0)
+		if (EnumHasAnyFlags(desc.MiscFlags, BufferMiscFlags::Raw))
 		{
 			srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
 			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
 			srvDesc.Buffer.FirstElement = (UINT)offset / sizeof(uint32_t);
-			srvDesc.Buffer.NumElements = (UINT)std::min(size, bufferImpl->Desc.SizeInBytes - offset) / sizeof(uint32_t);
+			srvDesc.Buffer.NumElements = (UINT)std::min(size, desc.SizeInBytes - offset) / sizeof(uint32_t);
 		}
-		else if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Structured) != 0)
+		else if (EnumHasAnyFlags(desc.MiscFlags, BufferMiscFlags::Structured))
 		{
 			// This is a Structured Buffer
 			srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-			srvDesc.Buffer.FirstElement = (UINT)offset / bufferImpl->Desc.StrideInBytes;
-			srvDesc.Buffer.NumElements = (UINT)std::min(size, bufferImpl->Desc.SizeInBytes - offset) / bufferImpl->Desc.StrideInBytes;
-			srvDesc.Buffer.StructureByteStride = bufferImpl->Desc.StrideInBytes;
+			srvDesc.Buffer.FirstElement = (UINT)offset / desc.Stride;
+			srvDesc.Buffer.NumElements = (UINT)std::min(size, desc.SizeInBytes - offset) / desc.Stride;
+			srvDesc.Buffer.StructureByteStride = desc.Stride;
 		}
 	}
 	else
@@ -926,7 +955,7 @@ int phx::gfx::GfxDeviceD3D12::CreateShaderResourceView(BufferHandle buffer, size
 	}
 
 	DescriptorView view = {
-			.Allocation = GetResourceCpuHeap()->Allocate(1),
+			.Allocation = GfxDeviceD3D12::GetResourceCpuHeap().Allocate(1),
 			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 			.SRVDesc = srvDesc,
 	};
@@ -936,7 +965,8 @@ int phx::gfx::GfxDeviceD3D12::CreateShaderResourceView(BufferHandle buffer, size
 		&srvDesc,
 		view.Allocation.GetCpuHandle());
 
-	const bool isBindless = bufferImpl->GetDesc().CreateBindless || (bufferImpl->GetDesc().MiscFlags & RHI::BufferMiscFlags::Bindless) != 0;
+#if false
+	const bool isBindless = desc.CreateBindless || (desc.MiscFlags & BufferMiscFlags::Bindless) != 0;
 	if (isBindless)
 	{
 		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
@@ -950,6 +980,7 @@ int phx::gfx::GfxDeviceD3D12::CreateShaderResourceView(BufferHandle buffer, size
 				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
 	}
+#endif
 
 	if (bufferImpl->Srv.Allocation.IsNull())
 	{
@@ -959,40 +990,36 @@ int phx::gfx::GfxDeviceD3D12::CreateShaderResourceView(BufferHandle buffer, size
 
 	bufferImpl->SrvSubresourcesAlloc.push_back(view);
 	return bufferImpl->SrvSubresourcesAlloc.size() - 1;
-#else
-	return -1;
-#endif
 }
 
-int phx::gfx::GfxDeviceD3D12::CreateUnorderedAccessView(BufferHandle buffer, size_t offset, size_t size)
+int phx::gfx::GfxDeviceD3D12::CreateUnorderedAccessView(BufferHandle buffer, BufferDesc const& desc, size_t offset, size_t size)
 {
-#if false
-	D3D12Buffer* bufferImpl = m_bufferPool.Get(buffer);
+	D3D12Buffer* bufferImpl = m_resourceRegistry.Buffers.Get(buffer);;
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 
-	const bool hasCounter = (bufferImpl->Desc.MiscFlags & BufferMiscFlags::HasCounter) == BufferMiscFlags::HasCounter;
-	if (bufferImpl->Desc.Format == RHIFormat::UNKNOWN)
+	const bool hasCounter = (desc.MiscFlags & BufferMiscFlags::HasCounter) == BufferMiscFlags::HasCounter;
+	if (desc.Format == Format::UNKNOWN)
 	{
-		if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Raw) != 0)
+		if (EnumHasAnyFlags(desc.MiscFlags, BufferMiscFlags::Raw))
 		{
 			uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
 			uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
 			uavDesc.Buffer.FirstElement = (UINT)offset / sizeof(uint32_t);
-			uavDesc.Buffer.NumElements = (UINT)std::min(size, bufferImpl->Desc.SizeInBytes - offset) / sizeof(uint32_t);
+			uavDesc.Buffer.NumElements = (UINT)std::min(size, desc.SizeInBytes - offset) / sizeof(uint32_t);
 		}
-		else if ((bufferImpl->Desc.MiscFlags & BufferMiscFlags::Structured) != 0)
+		else if (EnumHasAnyFlags(desc.MiscFlags, BufferMiscFlags::Structured))
 		{
 			// This is a Structured Buffer
 			uavDesc.Format = DXGI_FORMAT_UNKNOWN;
-			uavDesc.Buffer.FirstElement = (UINT)offset / bufferImpl->Desc.StrideInBytes;
-			uavDesc.Buffer.NumElements = (UINT)std::min(size, bufferImpl->Desc.SizeInBytes - offset) / bufferImpl->Desc.StrideInBytes;
-			uavDesc.Buffer.StructureByteStride = bufferImpl->Desc.StrideInBytes;
+			uavDesc.Buffer.FirstElement = (UINT)offset / desc.Stride;
+			uavDesc.Buffer.NumElements = (UINT)std::min(size, desc.SizeInBytes - offset) / desc.Stride;
+			uavDesc.Buffer.StructureByteStride = desc.Stride;
 
 			if (hasCounter)
 			{
-				uavDesc.Buffer.CounterOffsetInBytes = bufferImpl->Desc.UavCounterOffsetInBytes;
+				// uavDesc.Buffer.CounterOffsetInBytes = desc.UavCounterOffsetInBytes;
 			}
 		}
 	}
@@ -1009,7 +1036,7 @@ int phx::gfx::GfxDeviceD3D12::CreateUnorderedAccessView(BufferHandle buffer, siz
 	}
 
 	DescriptorView view = {
-			.Allocation = GetResourceCpuHeap()->Allocate(1),
+			.Allocation = GetResourceCpuHeap().Allocate(1),
 			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 			.UAVDesc = uavDesc,
 	};
@@ -1017,9 +1044,9 @@ int phx::gfx::GfxDeviceD3D12::CreateUnorderedAccessView(BufferHandle buffer, siz
 	ID3D12Resource* counterResource = nullptr;
 	if (hasCounter)
 	{
-		if (bufferImpl->Desc.UavCounterBuffer.IsValid())
+		if (desc.UavCounterBuffer.IsValid())
 		{
-			D3D12Buffer* counterBuffer = m_bufferPool.Get(bufferImpl->Desc.UavCounterBuffer);
+			D3D12Buffer* counterBuffer = m_resourceRegistry.Buffers.Get(desc.UavCounterBuffer);
 			counterResource = counterBuffer->D3D12Resource.Get();
 
 		}
@@ -1035,7 +1062,8 @@ int phx::gfx::GfxDeviceD3D12::CreateUnorderedAccessView(BufferHandle buffer, siz
 		&uavDesc,
 		view.Allocation.GetCpuHandle());
 
-	const bool isBindless = bufferImpl->GetDesc().CreateBindless || (bufferImpl->GetDesc().MiscFlags & RHI::BufferMiscFlags::Bindless) != 0;
+#if false
+	const bool isBindless = desc.CreateBindless || (desc.MiscFlags & RHI::BufferMiscFlags::Bindless) != 0;
 	if (isBindless)
 	{
 		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
@@ -1049,7 +1077,7 @@ int phx::gfx::GfxDeviceD3D12::CreateUnorderedAccessView(BufferHandle buffer, siz
 				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
 	}
-
+#endif
 	if (bufferImpl->UavAllocation.Allocation.IsNull())
 	{
 		bufferImpl->UavAllocation = view;
@@ -1059,9 +1087,6 @@ int phx::gfx::GfxDeviceD3D12::CreateUnorderedAccessView(BufferHandle buffer, siz
 
 	bufferImpl->UavSubresourcesAlloc.push_back(view);
 	return bufferImpl->UavSubresourcesAlloc.size() - 1;
-#else
-	return -1;
-#endif
 }
 
 int phx::gfx::GfxDeviceD3D12::CreateShaderResourceView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
@@ -1428,7 +1453,7 @@ int phx::gfx::GfxDeviceD3D12::CreateUnorderedAccessView(TextureHandle texture, T
 
 void phx::gfx::GfxDeviceD3D12::DeleteResource(TextureHandle handle)
 {
-	DeleteItem d =
+	DeferredItem d =
 	{
 		m_frameCount,
 		[=]()
@@ -1439,7 +1464,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteResource(TextureHandle handle)
 		}
 	};
 
-	m_deleteQueue.push_back(d);
+	m_deferredQueue.push_back(d);
 }
 
 InputLayoutHandle phx::gfx::GfxDeviceD3D12::CreateInputLayout(Span<VertexAttributeDesc> desc)
@@ -1488,9 +1513,173 @@ void phx::gfx::GfxDeviceD3D12::DeleteResource(InputLayoutHandle handle)
 	m_resourceRegistry.InputLayouts.Release(handle);
 }
 
+BufferHandle phx::gfx::GfxDeviceD3D12::CreateBuffer(BufferDesc const& desc)
+{
+	BufferHandle buffer = m_resourceRegistry.Buffers.Emplace();
+	D3D12Buffer& bufferImpl = *m_resourceRegistry.Buffers.Get(buffer);
+
+	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
+	if ((desc.Binding & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	}
+
+	D3D12MA::ALLOCATION_DESC allocationDesc = {};
+	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
+
+	switch (desc.Usage)
+	{
+	case Usage::ReadBack:
+		allocationDesc.HeapType = D3D12_HEAP_TYPE_READBACK;
+
+		initialState = D3D12_RESOURCE_STATE_COPY_DEST;
+		break;
+
+	case Usage::Upload:
+		allocationDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
+		break;
+
+	case Usage::Default:
+	default:
+		allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+		initialState = D3D12_RESOURCE_STATE_COMMON;
+	}
+
+	UINT64 alignedSize = 0;
+	if ((desc.Binding & BindingFlags::ConstantBuffer) == BindingFlags::ConstantBuffer)
+	{
+		alignedSize = MemoryAlign(alignedSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+	}
+
+	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(desc.SizeInBytes, resourceFlags, alignedSize);
+
+	/* TODO: Add Sparse stuff
+	if (resource_heap_tier >= D3D12_RESOURCE_HEAP_TIER_2)
+	{
+		// tile pool memory can be used for sparse buffers and textures alike (requires resource heap tier 2):
+		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
+	}
+	else if (has_flag(desc->misc_flags, ResourceMiscFlag::SPARSE_TILE_POOL_BUFFER))
+	{
+		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+	}
+	else if (has_flag(desc->misc_flags, ResourceMiscFlag::SPARSE_TILE_POOL_TEXTURE_NON_RT_DS))
+	{
+		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
+	}
+	else if (has_flag(desc->misc_flags, ResourceMiscFlag::SPARSE_TILE_POOL_TEXTURE_RT_DS))
+	{
+		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
+	}
+	*/
+
+	if ((desc.MiscFlags & BufferMiscFlags::IsAliasedResource) == BufferMiscFlags::IsAliasedResource)
+	{
+		D3D12_RESOURCE_ALLOCATION_INFO finalAllocInfo = {};
+		finalAllocInfo.Alignment = 0;
+		finalAllocInfo.SizeInBytes = MemoryAlign(
+			desc.SizeInBytes,
+			D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT * 1024);
+
+		ThrowIfFailed(
+			m_d3d12MemAllocator->AllocateMemory(
+				&allocationDesc,
+				&finalAllocInfo,
+				&bufferImpl.Allocation));
+		return {};
+	}
+	else if (desc.AliasedBuffer.IsValid())
+	{
+		D3D12Buffer* aliasedBuffer = m_resourceRegistry.Buffers.Get(desc.AliasedBuffer);
+
+		ThrowIfFailed(
+			m_d3d12MemAllocator->CreateAliasingResource(
+				aliasedBuffer->Allocation.Get(),
+				0,
+				&resourceDesc,
+				initialState,
+				nullptr,
+				IID_PPV_ARGS(&bufferImpl.D3D12Resource)));
+	}
+	else
+	{
+		ThrowIfFailed(
+			m_d3d12MemAllocator->CreateResource(
+				&allocationDesc,
+				&resourceDesc,
+				initialState,
+				nullptr,
+				&bufferImpl.Allocation,
+				IID_PPV_ARGS(&bufferImpl.D3D12Resource)));
+	}
+
+	switch (desc.Usage)
+	{
+	case Usage::ReadBack:
+	{
+		ThrowIfFailed(
+			bufferImpl.D3D12Resource->Map(0, nullptr, &bufferImpl.MappedData));
+		bufferImpl.MappedSizeInBytes = static_cast<uint32_t>(desc.SizeInBytes);
+
+		break;
+	}
+
+	case Usage::Upload:
+	{
+		D3D12_RANGE readRange = {};
+		ThrowIfFailed(
+			bufferImpl.D3D12Resource->Map(0, &readRange, &bufferImpl.MappedData));
+
+		bufferImpl.MappedSizeInBytes = static_cast<uint32_t>(desc.SizeInBytes);
+		break;
+	}
+	case Usage::Default:
+	default:
+		break;
+	}
+
+	std::wstring debugName(desc.DebugName.begin(), desc.DebugName.end());
+	bufferImpl.D3D12Resource->SetName(debugName.c_str());
+
+	if ((desc.MiscFlags & BufferMiscFlags::IsAliasedResource) == BufferMiscFlags::IsAliasedResource)
+	{
+		return buffer;
+	}
+
+	if ((desc.Binding & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
+	{
+		CreateSubresource(buffer, desc, SubresouceType::SRV, 0u);
+	}
+
+	if ((desc.Binding & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+	{
+		CreateSubresource(buffer, desc, SubresouceType::UAV, 0u);
+	}
+
+	return buffer;
+}
+
+
+void phx::gfx::GfxDeviceD3D12::DeleteResource(BufferHandle handle)
+{
+	DeferredItem d =
+	{
+		m_frameCount,
+		[=]()
+		{
+			auto* impl = m_resourceRegistry.Buffers.Get(handle);
+			if (impl)
+				impl->DisposeViews();
+		}
+	};
+
+	m_deferredQueue.push_back(d);
+}
+
 void phx::gfx::GfxDeviceD3D12::DeleteResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource)
 {
-	DeleteItem d =
+	DeferredItem d =
 	{
 		m_frameCount,
 		[=]()
@@ -1498,12 +1687,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteResource(Microsoft::WRL::ComPtr<ID3D12Resou
 		}
 	};
 
-	m_deleteQueue.push_back(d);
-}
-
-TempMemoryBlock phx::gfx::GfxDeviceD3D12::RequestNextMemoryBlock()
-{
-	return TempMemoryBlock();
+	m_deferredQueue.push_back(d);
 }
 
 platform::CommandCtxD3D12* phx::gfx::GfxDeviceD3D12::BeginCommandRecording(CommandQueueType type)
@@ -1605,13 +1789,13 @@ void phx::gfx::GfxDeviceD3D12::Present()
 
 void phx::gfx::GfxDeviceD3D12::RunGarbageCollection(uint64_t completedFrame)
 {
-	while (!m_deleteQueue.empty())
+	while (!m_deferredQueue.empty())
 	{
-		DeleteItem& deleteItem = m_deleteQueue.front();
-		if (deleteItem.Frame + kBufferCount < completedFrame)
+		DeferredItem& DeferredItem = m_deferredQueue.front();
+		if (DeferredItem.Frame + kBufferCount < completedFrame)
 		{
-			deleteItem.DeleteFn();
-			m_deleteQueue.pop_front();
+			DeferredItem.DeferredFunc();
+			m_deferredQueue.pop_front();
 		}
 		else
 		{
@@ -2329,7 +2513,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteCommandSignature(CommandSignatureHandle han
 		return;
 	}
 
-	DeleteItem d =
+	DeferredItem d =
 	{
 		m_frameCount,
 		[=]()
@@ -2342,7 +2526,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteCommandSignature(CommandSignatureHandle han
 		}
 	};
 
-	m_deleteQueue.push_back(d);
+	m_deferredQueue.push_back(d);
 }
 
 ShaderHandle phx::gfx::GfxDeviceD3D12::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
@@ -2542,7 +2726,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteGraphicsPipeline(GraphicsPipelineHandle han
 		return;
 	}
 
-	DeleteItem d =
+	DeferredItem d =
 	{
 		m_frameCount,
 		[=]()
@@ -2555,7 +2739,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteGraphicsPipeline(GraphicsPipelineHandle han
 		}
 	};
 
-	m_deleteQueue.push_back(d);
+	m_deferredQueue.push_back(d);
 }
 
 ComputePipelineHandle phx::gfx::GfxDeviceD3D12::CreateComputePipeline(ComputePipelineDesc const& desc)
@@ -2720,7 +2904,7 @@ void D3D12GraphicsDevice::DeleteMeshPipeline(MeshPipelineHandle handle)
 		return;
 	}
 
-	DeleteItem d =
+	DeferredItem d =
 	{
 		m_frameCount,
 		[=]()
@@ -2733,7 +2917,7 @@ void D3D12GraphicsDevice::DeleteMeshPipeline(MeshPipelineHandle handle)
 		}
 	};
 
-	m_deleteQueue.push_back(d);
+	m_deferredQueue.push_back(d);
 }
 
 RenderPassHandle phx::gfx::GfxDeviceD3D12::CreateRenderPass(RenderPassDesc const& desc)
@@ -3034,7 +3218,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteRenderPass(RenderPassHandle handle)
 		return;
 	}
 
-	DeleteItem d =
+	DeferredItem d =
 	{
 		m_frameCount,
 		[=]()
@@ -3048,7 +3232,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteRenderPass(RenderPassHandle handle)
 		}
 	};
 
-	m_deleteQueue.push_back(d);
+	m_deferredQueue.push_back(d);
 }
 
 TextureHandle phx::gfx::GfxDeviceD3D12::CreateTexture(TextureDesc const& desc)
@@ -3235,7 +3419,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteTexture(TextureHandle handle)
 		return;
 	}
 
-	DeleteItem d =
+	DeferredItem d =
 	{
 		m_frameCount,
 		[=]()
@@ -3266,7 +3450,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteTexture(TextureHandle handle)
 		}
 	};
 
-	m_deleteQueue.push_back(d);
+	m_deferredQueue.push_back(d);
 }
 
 BufferHandle phx::gfx::GfxDeviceD3D12::CreateIndexBuffer(BufferDesc const& desc)
@@ -3312,42 +3496,6 @@ BufferHandle phx::gfx::GfxDeviceD3D12::CreateVertexBuffer(BufferDesc const& desc
 	return buffer;
 }
 
-BufferHandle phx::gfx::GfxDeviceD3D12::CreateBuffer(BufferDesc const& desc)
-{
-	BufferHandle buffer = m_bufferPool.Emplace();
-	D3D12Buffer& bufferImpl = *m_bufferPool.Get(buffer);
-	CreateBufferInternal(desc, bufferImpl);
-
-	if ((desc.MiscFlags & BufferMiscFlags::IsAliasedResource) == BufferMiscFlags::IsAliasedResource)
-	{
-		return buffer;
-	}
-
-	if ((desc.Binding & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
-	{
-		CreateSubresource(buffer, RHI::SubresouceType::SRV, 0u);
-	}
-
-	if ((desc.Binding & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
-	{
-		CreateSubresource(buffer, RHI::SubresouceType::UAV, 0u);
-	}
-
-#if TRACK_RESOURCES
-	assert(desc.DebugName != "");
-	auto itr = sTrackedResources.find(desc.DebugName);
-	if (itr == sTrackedResources.end())
-	{
-		sTrackedResources.insert(std::make_pair(desc.DebugName, 1u));
-	}
-	else
-	{
-		itr->second += 1;
-	}
-#endif
-	return buffer;
-}
-
 const BufferDesc& D3D12GraphicsDevice::GetBufferDesc(BufferHandle handle)
 {
 	return m_bufferPool.Get(handle)->Desc;
@@ -3381,14 +3529,14 @@ DescriptorIndex D3D12GraphicsDevice::GetDescriptorIndex(BufferHandle handle, Sub
 void* D3D12GraphicsDevice::GetBufferMappedData(BufferHandle handle)
 {
 	const D3D12Buffer* bufferImpl = m_bufferPool.Get(handle);
-	assert(bufferImpl->GetDesc().Usage != Usage::Default);
+	assert(desc.Usage != Usage::Default);
 	return bufferImpl->MappedData;
 }
 
 uint32_t D3D12GraphicsDevice::GetBufferMappedDataSizeInBytes(BufferHandle handle)
 {
 	const D3D12Buffer* bufferImpl = m_bufferPool.Get(handle);
-	assert(bufferImpl->GetDesc().Usage != Usage::Default);
+	assert(desc.Usage != Usage::Default);
 	return bufferImpl->MappedSizeInBytes;
 }
 
@@ -3400,7 +3548,7 @@ void D3D12GraphicsDevice::DeleteBuffer(BufferHandle handle)
 	}
 	D3D12Buffer* bufferImpl = m_bufferPool.Get(handle);
 
-	DeleteItem d =
+	DeferredItem d =
 	{
 		m_frameCount,
 		[=]()
@@ -3410,7 +3558,7 @@ void D3D12GraphicsDevice::DeleteBuffer(BufferHandle handle)
 			if (bufferImpl)
 			{
 #if TRACK_RESOURCES
-				auto itr = sTrackedResources.find(bufferImpl->Desc.DebugName);
+				auto itr = sTrackedResources.find(desc.DebugName);
 				if (itr != sTrackedResources.end())
 				{
 					if (itr->second != 0)
@@ -3441,7 +3589,7 @@ void D3D12GraphicsDevice::DeleteBuffer(BufferHandle handle)
 		}
 	};
 
-	m_deleteQueue.push_back(d);
+	m_deferredQueue.push_back(d);
 }
 
 RTAccelerationStructureHandle phx::gfx::GfxDeviceD3D12::CreateRTAccelerationStructure(RTAccelerationStructureDesc const& desc)
@@ -3660,7 +3808,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteRtAccelerationStructure(RTAccelerationStruc
 		DeleteBuffer(impl->Desc.TopLevel.InstanceBuffer);
 	}
 
-	DeleteItem d =
+	DeferredItem d =
 	{
 		m_frameCount,
 		[=]()
@@ -3677,7 +3825,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteRtAccelerationStructure(RTAccelerationStruc
 		}
 	};
 
-	m_deleteQueue.push_back(d);
+	m_deferredQueue.push_back(d);
 }
 
 DescriptorIndex phx::gfx::GfxDeviceD3D12::GetDescriptorIndex(RTAccelerationStructureHandle handle)
@@ -3752,7 +3900,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteTimerQuery(TimerQueryHandle query)
 		return;
 	}
 
-	DeleteItem d =
+	DeferredItem d =
 	{
 		m_frameCount,
 		[=]()
@@ -3767,7 +3915,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteTimerQuery(TimerQueryHandle query)
 		}
 	};
 
-	m_deleteQueue.push_back(d);
+	m_deferredQueue.push_back(d);
 }
 
 bool phx::gfx::GfxDeviceD3D12::PollTimerQuery(TimerQueryHandle query)
@@ -3956,7 +4104,7 @@ bool phx::gfx::GfxDeviceD3D12::IsDevicedRemoved()
 
 void phx::gfx::GfxDeviceD3D12::DeleteD3DResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource)
 {
-	DeleteItem d =
+	DeferredItem d =
 	{
 		m_frameCount,
 		[=]()
@@ -3965,7 +4113,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteD3DResource(Microsoft::WRL::ComPtr<ID3D12Re
 		}
 	};
 
-	m_deleteQueue.push_back(d);
+	m_deferredQueue.push_back(d);
 }
 
 TextureHandle phx::gfx::GfxDeviceD3D12::CreateRenderTarget(
@@ -4209,13 +4357,13 @@ RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(Gr
 	// TODO: remove
 void phx::gfx::GfxDeviceD3D12::RunGarbageCollection(uint64_t completedFrame)
 {
-	while (!m_deleteQueue.empty())
+	while (!m_deferredQueue.empty())
 	{
-		DeleteItem& deleteItem = m_deleteQueue.front();
-		if (deleteItem.Frame < completedFrame)
+		DeferredItem& DeferredItem = m_deferredQueue.front();
+		if (DeferredItem.Frame < completedFrame)
 		{
-			deleteItem.DeleteFn();
-			m_deleteQueue.pop_front();
+			DeferredItem.DeleteFn();
+			m_deferredQueue.pop_front();
 		}
 		else
 		{
@@ -4321,133 +4469,8 @@ size_t phx::gfx::GfxDeviceD3D12::GetCurrentBackBufferIndex() const
 	return (size_t)retVal;
 }
 
-void D3D12GraphicsDevice::CreateBufferInternal(BufferDesc const& desc, D3D12Buffer& outBuffer)
+void D3D12GraphicsDevice::CreateBufferInternal(BufferDesc const& desc, D3D12Buffer& bufferImpl)
 {
-	outBuffer.Desc = desc;
-
-	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
-	if (desc.AllowUnorderedAccess || (desc.Binding & RHI::BindingFlags::UnorderedAccess) == RHI::BindingFlags::UnorderedAccess)
-	{
-		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-	}
-
-	D3D12MA::ALLOCATION_DESC allocationDesc = {};
-	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
-
-	switch (desc.Usage)
-	{
-	case Usage::ReadBack:
-		allocationDesc.HeapType = D3D12_HEAP_TYPE_READBACK;
-
-		initialState = D3D12_RESOURCE_STATE_COPY_DEST;
-		break;
-
-	case Usage::Upload:
-		allocationDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
-		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
-		break;
-
-	case Usage::Default:
-	default:
-		allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
-		initialState = D3D12_RESOURCE_STATE_COMMON;
-	}
-
-	UINT64 alignedSize = 0;
-	if ((desc.Binding & BindingFlags::ConstantBuffer) == BindingFlags::ConstantBuffer)
-	{
-		alignedSize = AlignTo(alignedSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
-	}
-
-	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(desc.SizeInBytes, resourceFlags, alignedSize);
-
-	/* TODO: Add Sparse stuff
-	if (resource_heap_tier >= D3D12_RESOURCE_HEAP_TIER_2)
-	{
-		// tile pool memory can be used for sparse buffers and textures alike (requires resource heap tier 2):
-		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
-	}
-	else if (has_flag(desc->misc_flags, ResourceMiscFlag::SPARSE_TILE_POOL_BUFFER))
-	{
-		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
-	}
-	else if (has_flag(desc->misc_flags, ResourceMiscFlag::SPARSE_TILE_POOL_TEXTURE_NON_RT_DS))
-	{
-		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
-	}
-	else if (has_flag(desc->misc_flags, ResourceMiscFlag::SPARSE_TILE_POOL_TEXTURE_RT_DS))
-	{
-		allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
-	}
-	*/
-
-	if ((outBuffer.Desc.MiscFlags & BufferMiscFlags::IsAliasedResource) == BufferMiscFlags::IsAliasedResource)
-	{
-		D3D12_RESOURCE_ALLOCATION_INFO finalAllocInfo = {};
-		finalAllocInfo.Alignment = 0;
-		finalAllocInfo.SizeInBytes = Core::Helpers::AlignTo(
-			outBuffer.Desc.SizeInBytes,
-			D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT * 1024);
-
-		ThrowIfFailed(
-			m_d3d12MemAllocator->AllocateMemory(
-				&allocationDesc,
-				&finalAllocInfo,
-				&outBuffer.Allocation));
-		return;
-	}
-	else if (outBuffer.Desc.AliasedBuffer.IsValid())
-	{
-		D3D12Buffer* aliasedBuffer = m_bufferPool.Get(outBuffer.Desc.AliasedBuffer);
-
-		ThrowIfFailed(
-			m_d3d12MemAllocator->CreateAliasingResource(
-				aliasedBuffer->Allocation.Get(),
-				0,
-				&resourceDesc,
-				initialState,
-				nullptr,
-				IID_PPV_ARGS(&outBuffer.D3D12Resource)));
-	}
-	else
-	{
-		ThrowIfFailed(
-			m_d3d12MemAllocator->CreateResource(
-				&allocationDesc,
-				&resourceDesc,
-				initialState,
-				nullptr,
-				&outBuffer.Allocation,
-				IID_PPV_ARGS(&outBuffer.D3D12Resource)));
-	}
-
-	switch (desc.Usage)
-	{
-	case Usage::ReadBack:
-	{
-		ThrowIfFailed(
-			outBuffer.D3D12Resource->Map(0, nullptr, &outBuffer.MappedData));
-		outBuffer.MappedSizeInBytes = static_cast<uint32_t>(desc.SizeInBytes);
-
-		break;
-	}
-
-	case Usage::Upload:
-	{
-		D3D12_RANGE readRange = {};
-		ThrowIfFailed(
-			outBuffer.D3D12Resource->Map(0, &readRange, &outBuffer.MappedData));
-
-		outBuffer.MappedSizeInBytes = static_cast<uint32_t>(desc.SizeInBytes);
-		break;
-	}
-	case Usage::Default:
-	default:
-		break;
-	}
-
-	std::wstring debugName(desc.DebugName.begin(), desc.DebugName.end());
-	outBuffer.D3D12Resource->SetName(debugName.c_str());
 }
 
 

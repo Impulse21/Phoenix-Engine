@@ -906,8 +906,8 @@ namespace phx::gfx
         ResourceStates InitialState = ResourceStates::Common;
         gfx::Format Format = gfx::Format::UNKNOWN;
 
-        uint64_t Stride = 0;
-        uint64_t NumElements = 0;
+        size_t SizeInBytes = 0;
+        size_t Stride = 0;
         size_t UavCounterOffset = 0;
         BufferHandle UavCounterBuffer = {};
         BufferHandle AliasedBuffer = {};
@@ -1286,9 +1286,10 @@ namespace phx::gfx
     };
 
 
-    struct TempMemoryBlock
+    struct TempBuffer
     {
         BufferHandle Buffer;
+        uint32_t Offset;
         uint8_t* Data;
     };
 }

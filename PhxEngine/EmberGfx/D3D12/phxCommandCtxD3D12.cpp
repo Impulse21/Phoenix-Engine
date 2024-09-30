@@ -395,7 +395,6 @@ void phx::gfx::platform::CommandCtxD3D12::SetDynamicIndexBuffer(size_t numIndici
 #endif
 }
 
-
 #if false
 
 namespace

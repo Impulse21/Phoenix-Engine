@@ -170,6 +170,7 @@ namespace phx::gfx
 		ID3D12CommandAllocator* RequestAllocator();
 	};
 
+
 	class GfxDeviceD3D12 final
 	{
 	public:
@@ -191,6 +192,8 @@ namespace phx::gfx
 
 		static void SubmitFrame();
 
+		TempBuffer AllocateTemp(size_t size, size_t alignment = 16);
+
 	public:
 		static GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
 		static void DeleteResource(GfxPipelineHandle handle);
@@ -201,10 +204,11 @@ namespace phx::gfx
 		static InputLayoutHandle CreateInputLayout(Span<VertexAttributeDesc> desc);
 		static void DeleteResource(InputLayoutHandle handle);
 
+		static BufferHandle CreateBuffer(BufferDesc const& desc);
+		static void DeleteResource(BufferHandle handle);
+
 		static void DeleteResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource);
 
-
-		static TempMemoryBlock RequestNextMemoryBlock();
 
 		// -- Platform specific ---
 	public:
@@ -230,6 +234,7 @@ namespace phx::gfx
 		static Span<GpuDescriptorHeap> GetGpuDescriptorHeaps() { return Span<GpuDescriptorHeap>(m_gpuDescriptorHeaps.data(), m_gpuDescriptorHeaps.size()); }
 
 		static ResourceRegistryD3D12& GetRegistry() { return m_resourceRegistry; }
+
 	private:
 		static void Initialize();
 		static void InitializeD3D12Context(IDXGIAdapter* gpuAdapter);
@@ -241,7 +246,7 @@ namespace phx::gfx
 		static void Present();
 		static void RunGarbageCollection(uint64_t completedFrame = ~0ul);
 
-		static int CreateSubresource(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size);
+		static int CreateSubresource(BufferHandle buffer, BufferDesc const& desc, SubresouceType subresourceType, size_t offset, size_t size = ~0u);
 		static int CreateSubresource(TextureHandle texture, TextureDesc const& desc, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
 
 		static int CreateShaderResourceView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
@@ -249,8 +254,8 @@ namespace phx::gfx
 		static int CreateDepthStencilView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
 		static int CreateUnorderedAccessView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
 
-		static int CreateShaderResourceView(BufferHandle buffer, size_t offset, size_t size);
-		static int CreateUnorderedAccessView(BufferHandle buffer, size_t offset, size_t size);
+		static int CreateShaderResourceView(BufferHandle buffer, BufferDesc const& desc, size_t offset, size_t size);
+		static int CreateUnorderedAccessView(BufferHandle buffer, BufferDesc const& desc, size_t offset, size_t size);
 
 	private:
 		// inline static GfxDeviceD3D12* Singleton = nullptr;
@@ -281,16 +286,67 @@ namespace phx::gfx
 
 		inline static std::array<EnumArray<Microsoft::WRL::ComPtr<ID3D12Fence>, CommandQueueType>, kBufferCount> m_frameFences;
 		inline static uint64_t m_frameCount = 0;
-		struct DeleteItem
+		struct DeferredItem
 		{
 			uint64_t Frame;
-			std::function<void()> DeleteFn;
+			std::function<void()> DeferredFunc;
 		};
-		inline static std::deque<DeleteItem> m_deleteQueue;
+		inline static std::deque<DeferredItem> m_deferredQueue;
 
 		inline static std::atomic_uint32_t m_activeCmdCount = 0;
 		inline static std::vector<std::unique_ptr<platform::CommandCtxD3D12>> m_commandPool;
 		inline static ResourceRegistryD3D12 m_resourceRegistry;
+
+
+		struct TempMemoryPageAllocator
+		{
+			struct TempMemoryPage
+			{
+				BufferHandle Buffer;
+				uint8_t* data;
+
+				~TempMemoryPage()
+				{
+					GfxDeviceD3D12::DeleteResource(Buffer);
+				}
+			};
+
+			const size_t PageSize = 4_MiB;
+			std::vector<std::shared_ptr<TempMemoryPage>> PagePool;
+			std::deque<TempMemoryPage*> AvailablePages;
+			std::mutex PageMutex;
+
+			TempMemoryPage* RequestNextMemoryBlock()
+			{
+				TempMemoryPage* retVal = nullptr;
+				if (!this->AvailablePages.empty())
+				{
+					retVal = this->AvailablePages.front();
+					this->AvailablePages.pop_front();
+				}
+				else
+				{
+					this->PagePool.emplace_back();
+					retVal = this->PagePool.back().get();
+				}
+
+				return retVal;
+			}
+
+			void FreePage(TempMemoryPage* page)
+			{
+				this->AvailablePages.push_back(page);
+			}
+		};
+
+		struct TempMemoryAllocator
+		{
+			std::mutex m_mutex;
+			TempMemoryPageAllocator PageAllocator;
+			TempMemoryPageAllocator::TempMemoryPage* CurrentPage;
+			uint32_t ByteOffset;
+		};
+		inline static TempMemoryAllocator m_tempAllocator;
 	};
 
 }

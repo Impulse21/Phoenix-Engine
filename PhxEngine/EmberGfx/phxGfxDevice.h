@@ -6,13 +6,6 @@
 
 namespace phx::gfx
 {
-	struct TempBuffer
-	{
-		gfx::BufferHandle Buffer;
-		uint32_t Offset;
-		uint8_t* Data;
-	};
-
 	class GfxDevice : NonCopyable
 	{
 	public:
@@ -74,12 +67,12 @@ namespace phx::gfx
 
 		static BufferHandle CreateBuffer(BufferDesc const& desc)
 		{
-			// return PlatformGfxDevice::CreateBuffer(desc);
-			return {};
+			return PlatformGfxDevice::CreateBuffer(desc);
 		}
 
 		static void DeleteResource(BufferHandle handle)
 		{
+			PlatformGfxDevice::DeleteResource(handle);
 		}
 
 		static InputLayoutHandle CreateInputLayout(Span<VertexAttributeDesc> desc)
