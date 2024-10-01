@@ -235,6 +235,8 @@ namespace phx::gfx
 
 		static ResourceRegistryD3D12& GetRegistry() { return m_resourceRegistry; }
 
+		static void PollDebugMessages();
+
 	private:
 		static void Initialize();
 		static void InitializeD3D12Context(IDXGIAdapter* gpuAdapter);

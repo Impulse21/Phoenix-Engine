@@ -5,13 +5,12 @@
 #include "phxGfxDevice.h"
 #include "phxSpan.h"
 
-#include "ImGui/ImguiVS.h"
-#include "ImGui/ImguiPS.h"
+#include "CompiledShaders/ImGuiVS.h"
+#include "CompiledShaders/ImGuiPS.h"
+#include "phxDisplay.h"
 namespace phx
 {
-    namespace phx::EngineCore { extern HWND g_hWnd; }
-
-    extern gfx::Format g_SwapChainFormat;
+    namespace EngineCore { extern HWND g_hWnd; }
 }
 
 using namespace phx::gfx;
@@ -76,8 +75,8 @@ void phx::gfx::ImGuiRenderSystem::Initialize(bool enableDocking)
     m_pipeline.Reset(
         GfxDevice::CreateGfxPipeline({
             .InputLayout = GfxDevice::CreateInputLayout(attributeDesc),
-            .VertexShaderByteCode = Span(g_mainVS, ARRAYSIZE(g_mainVS)),
-            .HullShaderByteCode = Span(g_mainPS, ARRAYSIZE(g_mainPS)),
+            .VertexShaderByteCode = Span(g_pImGuiVS, ARRAYSIZE(g_pImGuiVS)),
+            .HullShaderByteCode = Span(g_pImGuiPS, ARRAYSIZE(g_pImGuiPS)),
             .BlendRenderState = {
                 .Targets {
                     {
@@ -104,33 +103,6 @@ void phx::gfx::ImGuiRenderSystem::Initialize(bool enableDocking)
             },
             .RtvFormats = { g_SwapChainFormat }
      }));
-
-#if false
-
-
-    m_vertexShader = gfxDevice->CreateShader({
-            .Stage = RHI::ShaderStage::Vertex,
-            .DebugName = "ImGuiVS",
-        },
-        PhxEngine::Core::Span<uint8_t>(static_cast<const uint8_t*>(g_mainVS), sizeof(g_mainVS) / sizeof(unsigned char)));
-
-    m_pixelShader = gfxDevice->CreateShader(
-        {
-            .Stage = RHI::ShaderStage::Pixel,
-            .DebugName = "ImGuiPS",
-        },
-        PhxEngine::Core::Span<uint8_t>(static_cast<const uint8_t*>(g_mainPS), sizeof(g_mainPS) / sizeof(unsigned char)));
-
-
-    std::vector<VertexAttributeDesc> attributeDesc =
-    {
-        { "POSITION",   0, RHI::Format::RG32_FLOAT,  0, VertexAttributeDesc::SAppendAlignedElement, false},
-        { "TEXCOORD",   0, RHI::Format::RG32_FLOAT,  0, VertexAttributeDesc::SAppendAlignedElement, false},
-        { "COLOR",      0, RHI::Format::RGBA8_UNORM, 0, VertexAttributeDesc::SAppendAlignedElement, false},
-    };
-
-    m_inputLayout = gfxDevice->CreateInputLayout(attributeDesc.data(), attributeDesc.size());
-#endif
 }
 
 void phx::gfx::ImGuiRenderSystem::EnableDarkThemeColours()
@@ -169,7 +141,7 @@ void phx::gfx::ImGuiRenderSystem::EnableDarkThemeColours()
 void phx::gfx::ImGuiRenderSystem::BeginFrame()
 {
     ImGui::SetCurrentContext(m_imguiContext);
-    // ImGui_ImplGlfw_NewFrame();
+    ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 }
 

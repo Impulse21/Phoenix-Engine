@@ -38,7 +38,3 @@ IMGUI_IMPL_API void     ImGui_ImplWin32_EnableDpiAwareness();
 IMGUI_IMPL_API float    ImGui_ImplWin32_GetDpiScaleForHwnd(void* hwnd);       // HWND hwnd
 IMGUI_IMPL_API float    ImGui_ImplWin32_GetDpiScaleForMonitor(void* monitor); // HMONITOR monitor
 
-// Transparency related helpers (optional) [experimental]
-// - Use to enable alpha compositing transparency with the desktop.
-// - Use together with e.g. clearing your framebuffer with zero-alpha.
-IMGUI_IMPL_API void     ImGui_ImplWin32_EnableAlphaCompositing(void* hwnd);   // HWND hwnd

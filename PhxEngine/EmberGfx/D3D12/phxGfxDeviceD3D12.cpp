@@ -575,7 +575,7 @@ void phx::gfx::GfxDeviceD3D12::SubmitFrame()
 {
 	SubmitCommandLists();
 	Present();
-	PollDebugMessages(m_d3d12Device.Get());
+	PollDebugMessages();
 	RunGarbageCollection();
 }
 
@@ -662,6 +662,26 @@ GfxPipelineHandle phx::gfx::GfxDeviceD3D12::CreateGfxPipeline(GfxPipelineDesc co
 	if (!desc.VertexShaderByteCode.IsEmpty())
 	{
 		d3d12Desc.VS = { desc.VertexShaderByteCode.begin(), desc.VertexShaderByteCode.Size() };
+
+		Microsoft::WRL::ComPtr<ID3D12VersionedRootSignatureDeserializer> RootSignatureDeserializer;
+		const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* RootSignatureDesc = nullptr;
+		auto hr = D3D12CreateVersionedRootSignatureDeserializer(
+			desc.VertexShaderByteCode.begin(),
+			desc.VertexShaderByteCode.Size(),
+			IID_PPV_ARGS(&RootSignatureDeserializer));
+		if (SUCCEEDED(hr))
+		{
+			RootSignatureDeserializer->GetRootSignatureDescAtVersion(D3D_ROOT_SIGNATURE_VERSION_1_1, &RootSignatureDesc);
+			assert(RootSignatureDesc->Version == D3D_ROOT_SIGNATURE_VERSION_1_1);
+			Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature;
+			hr = m_d3d12Device->CreateRootSignature(
+				0,
+				desc.VertexShaderByteCode.begin(),
+				desc.VertexShaderByteCode.Size(),
+				IID_PPV_ARGS(&rootSignature));
+			if (SUCCEEDED(hr))
+				pipeline.RootSignature = rootSignature;
+		}
 	}
 
 	if (!desc.HullShaderByteCode.IsEmpty())
@@ -718,17 +738,12 @@ GfxPipelineHandle phx::gfx::GfxDeviceD3D12::CreateGfxPipeline(GfxPipelineDesc co
 		d3d12Desc.RTVFormats[i] = GetDxgiFormatMapping(desc.RtvFormats[i]).RtvFormat;
 	}
 
-#if false
-	D3D12InputLayout* inputLayout = m_inputLayoutPool.Get(desc.InputLayout);
+	D3D12InputLayout* inputLayout = m_resourceRegistry.InputLayouts.Get(desc.InputLayout);
 	if (inputLayout && !inputLayout->InputElements.empty())
 	{
 		d3d12Desc.InputLayout.NumElements = uint32_t(inputLayout->InputElements.size());
 		d3d12Desc.InputLayout.pInputElementDescs = &(inputLayout->InputElements[0]);
 	}
-#else
-	d3d12Desc.InputLayout.NumElements = 0;
-	d3d12Desc.InputLayout.pInputElementDescs = nullptr;
-#endif
 
 	d3d12Desc.NumRenderTargets = (uint32_t)desc.RtvFormats.size();
 	d3d12Desc.SampleMask = ~0u;
@@ -1470,7 +1485,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteResource(TextureHandle handle)
 InputLayoutHandle phx::gfx::GfxDeviceD3D12::CreateInputLayout(Span<VertexAttributeDesc> desc)
 {
 	D3D12InputLayout inputLayoutImpl = {};
-
+	inputLayoutImpl.Attributes.resize(desc.Size());
 	for (uint32_t index = 0; index < desc.Size(); index++)
 	{
 		VertexAttributeDesc& attr = inputLayoutImpl.Attributes[index];
@@ -1802,6 +1817,11 @@ void phx::gfx::GfxDeviceD3D12::RunGarbageCollection(uint64_t completedFrame)
 			break;
 		}
 	}
+}
+
+void phx::gfx::GfxDeviceD3D12::PollDebugMessages()
+{
+	::PollDebugMessages(GetD3D12Device());
 }
 
 void phx::gfx::GfxDeviceD3D12::Initialize()

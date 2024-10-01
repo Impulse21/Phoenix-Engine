@@ -31,6 +31,9 @@
     <Filter Include="EmberGfx\ImGui">
       <UniqueIdentifier>{6ead0aa1-d629-4342-b89d-e46bb06ee9e6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="EmberGfx\Shaders">
+      <UniqueIdentifier>{b83ff36c-6eeb-4ae0-9f4c-5e1d28316da0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -123,17 +126,14 @@
     <ClInclude Include="EmberGfx\phxImGuiRenderer.h">
       <Filter>EmberGfx</Filter>
     </ClInclude>
-    <ClInclude Include="EmberGfx\ImGui\ImguiPS.h">
-      <Filter>EmberGfx\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="EmberGfx\ImGui\ImguiVS.h">
-      <Filter>EmberGfx\ImGui</Filter>
-    </ClInclude>
     <ClInclude Include="phxMemory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EmberGfx\D3D12\phxGfxResourceRegistryD3D12.h">
       <Filter>EmberGfx\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\ImGui\imgui_impl_win32.h">
+      <Filter>EmberGfx\ImGui</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -185,8 +185,22 @@
     <ClCompile Include="EmberGfx\D3D12\phxGfxResourceRegistryD3D12.cpp">
       <Filter>EmberGfx\D3D12</Filter>
     </ClCompile>
+    <ClCompile Include="EmberGfx\ImGui\imgui_impl_win32.cpp">
+      <Filter>EmberGfx\ImGui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="EmberGfx\Shaders\ImGui.hlsli">
+      <Filter>EmberGfx\Shaders</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="EmberGfx\Shaders\ImGuiPS.hlsl">
+      <Filter>EmberGfx\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="EmberGfx\Shaders\ImGuiVS.hlsl">
+      <Filter>EmberGfx\Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>
