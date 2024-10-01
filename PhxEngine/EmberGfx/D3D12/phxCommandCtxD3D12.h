@@ -38,6 +38,7 @@ namespace phx::gfx::platform
 		void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex, uint32_t startInstance);
 		void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex, int32_t baseVertex, uint32_t startInstance);
 		void SetViewports(Span<Viewport> viewports);
+		void SetScissors(Span<Rect> scissors);
 
 		void WriteTexture(TextureHandle texture, uint32_t firstSubresource, size_t numSubresources, SubresourceData* pSubresourceData);
 
@@ -45,6 +46,7 @@ namespace phx::gfx::platform
 		void SetDynamicVertexBuffer(BufferHandle tempBuffer, size_t offset, uint32_t slot, size_t numVertices, size_t vertexSize);
 		void SetIndexBuffer(BufferHandle indexBuffer);
 		void SetDynamicIndexBuffer(BufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat);
+		void SetPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants);
 
 	private:
 		std::vector<D3D12_RESOURCE_BARRIER> m_barrierMemoryPool;
@@ -56,6 +58,7 @@ namespace phx::gfx::platform
 		ID3D12CommandAllocator* m_allocator;
 		std::atomic_bool m_isWaitedOn = false;
 		std::vector<D3D12Semaphore> m_waits;
+		PipelineType m_activePipelineType = PipelineType::Gfx;
 	};
 }
 

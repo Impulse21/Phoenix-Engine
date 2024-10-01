@@ -17,6 +17,13 @@ namespace phx
 using namespace phx::gfx;
 namespace
 {
+    enum RootParameters
+    {
+        PushConstant,           // cbuffer vertexBuffer : register(b0)
+        BindlessResources,
+        NumRootParameters
+    };
+
 }
 
 
@@ -48,12 +55,14 @@ void phx::gfx::ImGuiRenderSystem::Initialize(bool enableDocking)
     io.Fonts->GetTexDataAsRGBA32(&pixelData, &width, &height);
 
     // Create texture
-    m_fontTexture = GfxDevice::CreateTexture({
-        .Format = gfx::Format::RGBA8_UNORM,
-        .Width = static_cast<uint32_t>(width),
-        .Height = static_cast<uint32_t>(height),
-        .DebugName = "ImGui Font"
-        });
+    m_fontTexture.Reset(
+        GfxDevice::CreateTexture({
+            .Format = gfx::Format::RGBA8_UNORM,
+            .Width = static_cast<uint32_t>(width),
+            .Height = static_cast<uint32_t>(height),
+            .DebugName = "ImGui Font"
+            })
+    );
 
     io.Fonts->SetTexID(static_cast<void*>(&m_fontTexture));
 
@@ -64,36 +73,37 @@ void phx::gfx::ImGuiRenderSystem::Initialize(bool enableDocking)
         { "COLOR",      0, Format::RGBA8_UNORM, 0, VertexAttributeDesc::SAppendAlignedElement, false},
     };
 
-    m_pipeline = GfxDevice::CreateGfxPipeline({
-        .InputLayout = GfxDevice::CreateInputLayout(attributeDesc),
-        .VertexShaderByteCode = Span(g_mainVS, ARRAYSIZE(g_mainVS)),
-        .HullShaderByteCode = Span(g_mainPS, ARRAYSIZE(g_mainPS)),
-        .BlendRenderState = {
-            .Targets {
-                {
-                    .BlendEnable = true,
-                    .SrcBlend = BlendFactor::SrcAlpha,
-                    .DestBlend = BlendFactor::InvSrcAlpha,
-                    .BlendOp = EBlendOp::Add,
-                    .SrcBlendAlpha = BlendFactor::One,
-                    .DestBlendAlpha = BlendFactor::InvSrcAlpha,
-                    .BlendOpAlpha = EBlendOp::Add,
-                    .ColorWriteMask = ColorMask::All,
+    m_pipeline.Reset(
+        GfxDevice::CreateGfxPipeline({
+            .InputLayout = GfxDevice::CreateInputLayout(attributeDesc),
+            .VertexShaderByteCode = Span(g_mainVS, ARRAYSIZE(g_mainVS)),
+            .HullShaderByteCode = Span(g_mainPS, ARRAYSIZE(g_mainPS)),
+            .BlendRenderState = {
+                .Targets {
+                    {
+                        .BlendEnable = true,
+                        .SrcBlend = BlendFactor::SrcAlpha,
+                        .DestBlend = BlendFactor::InvSrcAlpha,
+                        .BlendOp = EBlendOp::Add,
+                        .SrcBlendAlpha = BlendFactor::One,
+                        .DestBlendAlpha = BlendFactor::InvSrcAlpha,
+                        .BlendOpAlpha = EBlendOp::Add,
+                        .ColorWriteMask = ColorMask::All,
+                    }
                 }
-            }
-        },
-        .DepthStencilRenderState = {
-            .DepthTestEnable = false,
-            .DepthFunc = ComparisonFunc::Always,
-            .StencilEnable = false,
-        },
-        .RasterRenderState = {
-            .CullMode = RasterCullMode::None,
-            .DepthClipEnable = true,
-            .ScissorEnable = true,
-        },
-        .RtvFormats = { g_SwapChainFormat }
-     });
+            },
+            .DepthStencilRenderState = {
+                .DepthTestEnable = false,
+                .DepthFunc = ComparisonFunc::Always,
+                .StencilEnable = false,
+            },
+            .RasterRenderState = {
+                .CullMode = RasterCullMode::None,
+                .DepthClipEnable = true,
+                .ScissorEnable = true,
+            },
+            .RtvFormats = { g_SwapChainFormat }
+     }));
 
 #if false
 
@@ -273,17 +283,13 @@ void phx::gfx::ImGuiRenderSystem::Render(CommandCtx& context)
                         auto texture = static_cast<TextureRef>(drawCmd.GetTexID());
                         push.TextureIndex = texture
                             ? m_gfxDevice->GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
-                            : RHI::cInvalidDescriptorIndex;
+                            : cInvalidDescriptorIndex;
 #else
-                        m_gfxDevice->BindPushConstant(RootParameters::PushConstant, push, cmd);
-                        m_gfxDevice->SetScissors(&scissorRect, 1, cmd);
-                        m_gfxDevice->DrawIndexed({
-                                .IndexCount = drawCmd.ElemCount,
-                                .InstanceCount = 1,
-                                .StartIndex = static_cast<uint32_t>(indexOffset),
-                    },
-                    cmd);
+                        push.TextureIndex = cInvalidDescriptorIndex;
 #endif
+                        context.SetPushConstant(RootParameters::PushConstant, sizeof(ImguiDrawInfo), &push);
+                        context.SetScissors({ &scissorRect, 1 });
+                        context.DrawIndexed(drawCmd.ElemCount, 1, indexOffset, 0, 0);
 
                     }
                 }

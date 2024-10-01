@@ -88,6 +88,16 @@ namespace phx::gfx
 			this->m_platform->SetDynamicIndexBuffer(tempBuffer, offset, numIndicies, indexFormat);
 		}
 
+		void SetPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants)
+		{
+			this->m_platform->SetPushConstant(rootParameterIndex, sizeInBytes, constants);
+		}
+
+		void SetScissors(Span<Rect> scissors)
+		{
+			this->m_platform->SetScissors(scissors);
+		}
+
 	private:
 		PlatformCommandCtx* m_platform;
 	};

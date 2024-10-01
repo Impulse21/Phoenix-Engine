@@ -202,6 +202,7 @@ void phx::gfx::platform::CommandCtxD3D12::SetGfxPipeline(GfxPipelineHandle pipel
     this->m_commandList->SetPipelineState(graphisPipeline->D3D12PipelineState.Get());
 
     this->m_commandList->SetGraphicsRootSignature(graphisPipeline->RootSignature.Get());
+    this->m_activePipelineType = PipelineType::Gfx;
 
 #if false
     const auto& desc = graphisPipeline->Desc;
@@ -278,13 +279,23 @@ void phx::gfx::platform::CommandCtxD3D12::SetViewports(Span<Viewport> viewports)
 
     this->m_commandList->RSSetViewports((UINT)viewports.Size(), dx12Viewports);
 
-    // TODO - Fix this
-	D3D12_RECT scissorRect = {};
-	scissorRect.left = 0;
-	scissorRect.top = 0;
-	scissorRect.right = dx12Viewports[0].Width;
-	scissorRect.bottom = dx12Viewports[0].Height;
-    this->m_commandList6->RSSetScissorRects(1, &scissorRect);
+}
+
+void phx::gfx::platform::CommandCtxD3D12::SetScissors(Span<Rect> scissors)
+{
+    CD3DX12_RECT dx12Scissors[16] = {};
+    for (int i = 0; i < scissors.Size(); i++)
+    {
+        const Rect& scissor = scissors[i];
+
+        dx12Scissors[i] = CD3DX12_RECT(
+            scissor.MinX,
+            scissor.MinY,
+            scissor.MaxX,
+            scissor.MaxY);
+    }
+
+    this->m_commandList->RSSetScissorRects((UINT)scissors.Size(), dx12Scissors);
 }
 
 void phx::gfx::platform::CommandCtxD3D12::WriteTexture(TextureHandle texture, uint32_t firstSubresource, size_t numSubresources, SubresourceData* pSubresourceData)
@@ -385,6 +396,18 @@ void phx::gfx::platform::CommandCtxD3D12::SetDynamicIndexBuffer(BufferHandle tem
 
     indexBufferView.Format = formatMapping.SrvFormat;
     this->m_commandList->IASetIndexBuffer(&indexBufferView);
+}
+
+void phx::gfx::platform::CommandCtxD3D12::SetPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants)
+{
+    if (this->m_activePipelineType == PipelineType::Compute)
+    {
+        this->m_commandList->SetComputeRoot32BitConstants(rootParameterIndex, sizeInBytes / sizeof(uint32_t), constants, 0);
+    }
+    else
+    {
+        this->m_commandList->SetGraphicsRoot32BitConstants(rootParameterIndex, sizeInBytes / sizeof(uint32_t), constants, 0);
+    }
 }
 
 #if false

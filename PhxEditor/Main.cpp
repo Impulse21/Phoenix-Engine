@@ -52,6 +52,8 @@ public:
 		Viewport viewport(g_DisplayWidth, g_DisplayHeight);
 
 		ctx.SetViewports({ &viewport, 1 });
+		Rect rec(g_DisplayWidth, g_DisplayHeight);
+		ctx.SetScissors({ &rec, 1 });
 		ctx.SetGfxPipeline(this->m_pipeline);
 
 		TempBuffer temp = GfxDevice::AllocateTemp(sizeof(uint16_t) * 3);
