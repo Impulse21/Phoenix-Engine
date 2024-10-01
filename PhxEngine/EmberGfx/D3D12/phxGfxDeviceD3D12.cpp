@@ -1707,8 +1707,9 @@ void phx::gfx::GfxDeviceD3D12::DeleteResource(Microsoft::WRL::ComPtr<ID3D12Resou
 	DeferredItem d =
 	{
 		m_frameCount,
-		[=]()
+		[ptr = std::move(resource)]()
 		{
+			ptr->GetDesc();
 		}
 	};
 

@@ -169,6 +169,7 @@ void phx::gfx::ImGuiRenderSystem::Render(CommandCtx& context)
 
         barrier = GpuBarrier::CreateTexture(this->m_fontTexture, gfx::ResourceStates::Common, gfx::ResourceStates::CopyDest);
         context.TransitionBarrier(barrier);
+        this->m_isFontTextureUploaded = true;
     }
 
 
