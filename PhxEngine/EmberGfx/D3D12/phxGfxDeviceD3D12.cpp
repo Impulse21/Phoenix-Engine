@@ -657,7 +657,6 @@ GfxPipelineHandle phx::gfx::GfxDeviceD3D12::CreateGfxPipeline(GfxPipelineDesc co
 	pipeline.RootSignature = CreateEmptyRootSignature();
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC d3d12Desc = {};
-	d3d12Desc.pRootSignature = pipeline.RootSignature.Get();
 
 	if (!desc.VertexShaderByteCode.IsEmpty())
 	{
@@ -683,6 +682,7 @@ GfxPipelineHandle phx::gfx::GfxDeviceD3D12::CreateGfxPipeline(GfxPipelineDesc co
 				pipeline.RootSignature = rootSignature;
 		}
 	}
+	d3d12Desc.pRootSignature = pipeline.RootSignature.Get();
 
 	if (!desc.HullShaderByteCode.IsEmpty())
 	{
@@ -748,8 +748,17 @@ GfxPipelineHandle phx::gfx::GfxDeviceD3D12::CreateGfxPipeline(GfxPipelineDesc co
 	d3d12Desc.NumRenderTargets = (uint32_t)desc.RtvFormats.size();
 	d3d12Desc.SampleMask = ~0u;
 
+#if false
 	ThrowIfFailed(
 		GetD3D12Device2()->CreateGraphicsPipelineState(&d3d12Desc, IID_PPV_ARGS(&pipeline.D3D12PipelineState)));
+#else
+	auto hr = GetD3D12Device2()->CreateGraphicsPipelineState(&d3d12Desc, IID_PPV_ARGS(&pipeline.D3D12PipelineState));
+	if (FAILED(hr))
+	{
+		PollDebugMessages();
+		throw com_exception(hr);
+	}
+#endif
 
 	return m_resourceRegistry.GfxPipelines.Emplace(pipeline);
 }
@@ -1484,7 +1493,8 @@ void phx::gfx::GfxDeviceD3D12::DeleteResource(TextureHandle handle)
 
 InputLayoutHandle phx::gfx::GfxDeviceD3D12::CreateInputLayout(Span<VertexAttributeDesc> desc)
 {
-	D3D12InputLayout inputLayoutImpl = {};
+	InputLayoutHandle retVal = m_resourceRegistry.InputLayouts.Emplace();
+	D3D12InputLayout& inputLayoutImpl = *m_resourceRegistry.InputLayouts.Get(retVal);
 	inputLayoutImpl.Attributes.resize(desc.Size());
 	for (uint32_t index = 0; index < desc.Size(); index++)
 	{
@@ -1520,7 +1530,7 @@ InputLayoutHandle phx::gfx::GfxDeviceD3D12::CreateInputLayout(Span<VertexAttribu
 		}
 	}
 
-	return m_resourceRegistry.InputLayouts.Emplace(inputLayoutImpl);
+	return retVal;
 }
 
 void phx::gfx::GfxDeviceD3D12::DeleteResource(InputLayoutHandle handle)

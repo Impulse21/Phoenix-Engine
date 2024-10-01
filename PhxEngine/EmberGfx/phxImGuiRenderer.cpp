@@ -76,7 +76,7 @@ void phx::gfx::ImGuiRenderSystem::Initialize(bool enableDocking)
         GfxDevice::CreateGfxPipeline({
             .InputLayout = GfxDevice::CreateInputLayout(attributeDesc),
             .VertexShaderByteCode = Span(g_pImGuiVS, ARRAYSIZE(g_pImGuiVS)),
-            .HullShaderByteCode = Span(g_pImGuiPS, ARRAYSIZE(g_pImGuiPS)),
+            .PixelShaderByteCode = Span(g_pImGuiPS, ARRAYSIZE(g_pImGuiPS)),
             .BlendRenderState = {
                 .Targets {
                     {
