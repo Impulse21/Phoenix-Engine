@@ -292,7 +292,7 @@ namespace phx::gfx
 		{
 			std::scoped_lock _(this->m_mutex);
 
-			if (((m_tail - m_head) + allocSize) <= this->m_bufferSize)
+			if (((m_tail - m_head) + allocSize) >= this->m_bufferSize)
 			{
 				while (!this->m_inUseRegions.empty())
 				{
@@ -315,7 +315,7 @@ namespace phx::gfx
 
 			void* allocationPtr = this->m_data.get() + (this->m_tail & (this->m_bufferSize - 1));
 
-			this->m_tail + allocSize;
+			this->m_tail += allocSize;
 			return TempMemoryPage{
 				.Offset = this->m_head,
 				.Data = reinterpret_cast<uint8_t*>(allocationPtr)
