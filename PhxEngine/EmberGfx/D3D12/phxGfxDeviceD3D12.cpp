@@ -989,22 +989,20 @@ int phx::gfx::GfxDeviceD3D12::CreateShaderResourceView(BufferHandle buffer, Buff
 		&srvDesc,
 		view.Allocation.GetCpuHandle());
 
-#if false
-	const bool isBindless = desc.CreateBindless || (desc.MiscFlags & BufferMiscFlags::Bindless) != 0;
+	const bool isBindless = true;
 	if (isBindless)
 	{
 		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
-		view.BindlessIndex = m_bindlessResourceDescriptorTable->Allocate();
+		view.BindlessIndex = m_bindlessDescritorTable.Allocate();
 		if (view.BindlessIndex != cInvalidDescriptorIndex)
 		{
 			GetD3D12Device2()->CopyDescriptorsSimple(
 				1,
-				m_bindlessResourceDescriptorTable->GetCpuHandle(view.BindlessIndex),
+				m_bindlessDescritorTable.GetCpuHandle(view.BindlessIndex),
 				view.Allocation.GetCpuHandle(),
 				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
 	}
-#endif
 
 	if (bufferImpl->Srv.Allocation.IsNull())
 	{
@@ -1086,22 +1084,20 @@ int phx::gfx::GfxDeviceD3D12::CreateUnorderedAccessView(BufferHandle buffer, Buf
 		&uavDesc,
 		view.Allocation.GetCpuHandle());
 
-#if false
-	const bool isBindless = desc.CreateBindless || (desc.MiscFlags & RHI::BufferMiscFlags::Bindless) != 0;
+	const bool isBindless = true;
 	if (isBindless)
 	{
 		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
-		view.BindlessIndex = m_bindlessResourceDescriptorTable->Allocate();
+		view.BindlessIndex = m_bindlessDescritorTable.Allocate();
 		if (view.BindlessIndex != cInvalidDescriptorIndex)
 		{
 			GetD3D12Device2()->CopyDescriptorsSimple(
 				1,
-				m_bindlessResourceDescriptorTable->GetCpuHandle(view.BindlessIndex),
+				m_bindlessDescritorTable.GetCpuHandle(view.BindlessIndex),
 				view.Allocation.GetCpuHandle(),
 				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
 	}
-#endif
 	if (bufferImpl->UavAllocation.Allocation.IsNull())
 	{
 		bufferImpl->UavAllocation = view;
@@ -1209,21 +1205,19 @@ int phx::gfx::GfxDeviceD3D12::CreateShaderResourceView(TextureHandle texture, Te
 		&srvDesc,
 		view.Allocation.GetCpuHandle());
 
-#if false
-	if (desc.IsBindless)
+	if (true)
 	{
 		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
-		view.BindlessIndex = m_bindlessResourceDescriptorTable->Allocate();
+		view.BindlessIndex = m_bindlessDescritorTable.Allocate();
 		if (view.BindlessIndex != cInvalidDescriptorIndex)
 		{
 			GetD3D12Device2()->CopyDescriptorsSimple(
 				1,
-				m_bindlessResourceDescriptorTable->GetCpuHandle(view.BindlessIndex),
+				m_bindlessDescritorTable.GetCpuHandle(view.BindlessIndex),
 				view.Allocation.GetCpuHandle(),
 				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
 	}
-#endif
 	if (textureImpl->Srv.Allocation.IsNull())
 	{
 		textureImpl->Srv = view;
@@ -1449,21 +1443,19 @@ int phx::gfx::GfxDeviceD3D12::CreateUnorderedAccessView(TextureHandle texture, T
 		&uavDesc,
 		view.Allocation.GetCpuHandle());
 
-#if false
-	if (desc.IsBindless)
+	if (true)
 	{
 		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
-		view.BindlessIndex = m_bindlessResourceDescriptorTable->Allocate();
+		view.BindlessIndex = m_bindlessDescritorTable.Allocate();
 		if (view.BindlessIndex != cInvalidDescriptorIndex)
 		{
 			GetD3D12Device2()->CopyDescriptorsSimple(
 				1,
-				m_bindlessResourceDescriptorTable->GetCpuHandle(view.BindlessIndex),
+				m_bindlessDescritorTable.GetCpuHandle(view.BindlessIndex),
 				view.Allocation.GetCpuHandle(),
 				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
 	}
-#endif
 
 	if (textureImpl->UavAllocation.Allocation.IsNull())
 	{
@@ -1484,7 +1476,25 @@ void phx::gfx::GfxDeviceD3D12::DeleteResource(TextureHandle handle)
 		{
 			auto* impl = m_resourceRegistry.Textures.Get(handle);
 			if (impl)
+			{
+				for (auto& view : impl->SrvSubresourcesAlloc)
+				{
+					if (view.BindlessIndex != cInvalidDescriptorIndex)
+					{
+						m_bindlessDescritorTable.Free(view.BindlessIndex);
+					}
+				}
+
+				for (auto& view : impl->UavSubresourcesAlloc)
+				{
+					if (view.BindlessIndex != cInvalidDescriptorIndex)
+					{
+						m_bindlessDescritorTable.Free(view.BindlessIndex);
+					}
+				}
 				impl->DisposeViews();
+				GetRegistry().Textures.Release(handle);
+			}
 		}
 	};
 
@@ -1695,7 +1705,25 @@ void phx::gfx::GfxDeviceD3D12::DeleteResource(BufferHandle handle)
 		{
 			auto* impl = m_resourceRegistry.Buffers.Get(handle);
 			if (impl)
+			{
+				for (auto& view : impl->SrvSubresourcesAlloc)
+				{
+					if (view.BindlessIndex != cInvalidDescriptorIndex)
+					{
+						m_bindlessDescritorTable.Free(view.BindlessIndex);
+					}
+				}
+
+				for (auto& view : impl->UavSubresourcesAlloc)
+				{
+					if (view.BindlessIndex != cInvalidDescriptorIndex)
+					{
+						m_bindlessDescritorTable.Free(view.BindlessIndex);
+					}
+				}
 				impl->DisposeViews();
+				GetRegistry().Buffers.Release(handle);
+			}
 		}
 	};
 
@@ -1905,6 +1933,9 @@ void phx::gfx::GfxDeviceD3D12::Initialize()
 
 	ThrowIfFailed(
 		D3D12MA::CreateAllocator(&allocatorDesc, &m_d3d12MemAllocator));
+
+	m_bindlessDescritorTable.Initialize(
+		m_gpuDescriptorHeaps[0].Allocate(NUM_BINDLESS_RESOURCES));
 }
 
 void phx::gfx::GfxDeviceD3D12::InitializeD3D12Context(IDXGIAdapter* gpuAdapter)
@@ -3463,7 +3494,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteTexture(TextureHandle handle)
 				{
 					if (view.BindlessIndex != cInvalidDescriptorIndex)
 					{
-						m_bindlessResourceDescriptorTable->Free(view.BindlessIndex);
+						m_bindlessDescritorTable.Free(view.BindlessIndex);
 					}
 				}
 
@@ -3471,7 +3502,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteTexture(TextureHandle handle)
 				{
 					if (view.BindlessIndex != cInvalidDescriptorIndex)
 					{
-						m_bindlessResourceDescriptorTable->Free(view.BindlessIndex);
+						m_bindlessDescritorTable.Free(view.BindlessIndex);
 					}
 				}
 
@@ -3602,7 +3633,7 @@ void D3D12GraphicsDevice::DeleteBuffer(BufferHandle handle)
 				{
 					if (view.BindlessIndex != cInvalidDescriptorIndex)
 					{
-						m_bindlessResourceDescriptorTable->Free(view.BindlessIndex);
+						m_bindlessDescritorTable.Free(view.BindlessIndex);
 					}
 				}
 
@@ -3610,7 +3641,7 @@ void D3D12GraphicsDevice::DeleteBuffer(BufferHandle handle)
 				{
 					if (view.BindlessIndex != cInvalidDescriptorIndex)
 					{
-						m_bindlessResourceDescriptorTable->Free(view.BindlessIndex);
+						m_bindlessDescritorTable.Free(view.BindlessIndex);
 					}
 				}
 
@@ -3779,12 +3810,12 @@ RTAccelerationStructureHandle phx::gfx::GfxDeviceD3D12::CreateRTAccelerationStru
 		rtAccelerationStructureImpl.Srv.Allocation.GetCpuHandle());
 
 	// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
-	rtAccelerationStructureImpl.Srv.BindlessIndex = m_bindlessResourceDescriptorTable->Allocate();
+	rtAccelerationStructureImpl.Srv.BindlessIndex = m_bindlessDescritorTable.Allocate();
 	if (rtAccelerationStructureImpl.Srv.BindlessIndex != cInvalidDescriptorIndex)
 	{
 		GetD3D12Device5()->CopyDescriptorsSimple(
 			1,
-			m_bindlessResourceDescriptorTable->GetCpuHandle(rtAccelerationStructureImpl.Srv.BindlessIndex),
+			m_bindlessDescritorTable.GetCpuHandle(rtAccelerationStructureImpl.Srv.BindlessIndex),
 			rtAccelerationStructureImpl.Srv.Allocation.GetCpuHandle(),
 			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	}
@@ -3848,7 +3879,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteRtAccelerationStructure(RTAccelerationStruc
 			{
 				if (impl->Srv.BindlessIndex != cInvalidDescriptorIndex)
 				{
-					m_bindlessResourceDescriptorTable->Free(impl->Srv.BindlessIndex);
+					m_bindlessDescritorTable.Free(impl->Srv.BindlessIndex);
 				}
 
 				m_rtAccelerationStructurePool.Release(handle);

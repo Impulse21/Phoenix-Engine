@@ -135,6 +135,9 @@
     <ClInclude Include="EmberGfx\ImGui\imgui_impl_win32.h">
       <Filter>EmberGfx\ImGui</Filter>
     </ClInclude>
+    <ClInclude Include="EmberGfx\phxTempMemoryAllocator.h">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">

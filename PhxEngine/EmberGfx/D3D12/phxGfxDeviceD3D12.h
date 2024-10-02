@@ -171,6 +171,112 @@ namespace phx::gfx
 	};
 
 
+	class BindlessDescriptorTable
+	{
+	public:
+		BindlessDescriptorTable() = default;
+		void Initialize(DescriptorHeapAllocation&& allocation) { this->m_allocation = allocation; }
+		BindlessDescriptorTable(const BindlessDescriptorTable&) = delete;
+		BindlessDescriptorTable(BindlessDescriptorTable&&) = delete;
+		BindlessDescriptorTable& operator = (const BindlessDescriptorTable&) = delete;
+		BindlessDescriptorTable& operator = (BindlessDescriptorTable&&) = delete;
+
+	public:
+		DescriptorIndex Allocate() { return this->m_descriptorIndexPool.Allocate(); }
+		void Free(DescriptorIndex index) { this->m_descriptorIndexPool.Release(index); }
+
+		D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(DescriptorIndex index) const { return this->m_allocation.GetCpuHandle(index); }
+		D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(DescriptorIndex index) const { return this->m_allocation.GetGpuHandle(index); }
+
+	private:
+		struct DescriptorIndexPool
+		{
+			// Removes the first element from the free list and returns its index
+			UINT Allocate()
+			{
+				std::scoped_lock Guard(this->IndexMutex);
+
+				UINT NewIndex;
+				if (!IndexQueue.empty())
+				{
+					NewIndex = IndexQueue.front();
+					IndexQueue.pop_front();
+				}
+				else
+				{
+					NewIndex = Index++;
+				}
+				return NewIndex;
+			}
+
+			void Release(UINT Index)
+			{
+				std::scoped_lock Guard(this->IndexMutex);
+				IndexQueue.push_back(Index);
+			}
+
+			std::mutex IndexMutex;
+			std::deque<DescriptorIndex> IndexQueue;
+			size_t Index = 0;
+		};
+
+	private:
+		DescriptorHeapAllocation m_allocation;
+		DescriptorIndexPool m_descriptorIndexPool;
+	};
+
+
+	struct GpuRingBuffer
+	{
+		BufferHandle Buffer;
+		struct RingSection
+		{
+			size_t Tail = 0;
+			Microsoft::WRL::ComPtr<ID3D12Fence> Fence;
+		};
+		std::array<RingSection, kBufferCount> Sections;
+		std::deque<RingSection*> PendingSection;
+		std::mutex Mutex;
+		size_t Head = 0;
+		size_t Tail = 0;
+		size_t BufferSize;
+
+		void Initialize(size_t bufferSize = 100_MiB)
+		{
+			BufferSize = bufferSize;
+			Buffer = GfxDeviceD3D12::CreateBuffer({
+					.Usage = Usage::Upload,
+					.SizeInBytes = bufferSize,
+					.DebugName = "Upload Buffer"
+				});
+
+			for (size_t i; i < kBufferCount; i++)
+				GfxDeviceD3D12::GetD3D12Device()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&Sections[i].Fence));
+		}
+
+		void Reset(size_t frameIndex)
+		{
+
+		}
+
+		struct TempMemoryPage
+		{
+			BufferHandle Buffer;
+			uint32_t GpuOffset;
+			uint8_t Data;
+		};
+
+		TempMemoryPage GetNextMemoryPage(size_t size)
+		{
+			if (size > BufferSize)
+				throw std::runtime_error("Requested allocation size exceeds buffer size");
+
+			const uint32_t newTail = Tail + size;
+			if (newTail > )
+
+		};
+	};
+
 	class GfxDeviceD3D12 final
 	{
 	public:
@@ -298,66 +404,7 @@ namespace phx::gfx
 		inline static std::atomic_uint32_t m_activeCmdCount = 0;
 		inline static std::vector<std::unique_ptr<platform::CommandCtxD3D12>> m_commandPool;
 		inline static ResourceRegistryD3D12 m_resourceRegistry;
-
-
-		struct TempMemoryPageAllocator
-		{
-			struct TempMemoryPage
-			{
-				BufferHandle Buffer;
-				uint8_t* data;
-
-				~TempMemoryPage()
-				{
-					GfxDeviceD3D12::DeleteResource(Buffer);
-				}
-			};
-
-			const size_t PageSize = 4_MiB;
-			std::vector<std::unique_ptr<TempMemoryPage>> PagePool;
-			std::deque<TempMemoryPage*> AvailablePages;
-			std::mutex PageMutex;
-
-			TempMemoryPage* RequestNextMemoryBlock()
-			{
-				TempMemoryPage* retVal = nullptr;
-				if (!this->AvailablePages.empty())
-				{
-					retVal = this->AvailablePages.front();
-					this->AvailablePages.pop_front();
-				}
-				else
-				{
-					this->PagePool.push_back(std::make_unique<TempMemoryPage>());
-					retVal = this->PagePool.back().get();
-
-					retVal->Buffer = GfxDeviceD3D12::CreateBuffer({
-							.Usage = Usage::Upload,
-							.SizeInBytes = PageSize,
-							.DebugName ="Upload Buffer",
-						});
-					retVal->data = static_cast<uint8_t*>(
-						GfxDeviceD3D12::GetRegistry().Buffers.Get(retVal->Buffer)->MappedData);
-					retVal = this->PagePool.back().get();
-				}
-
-				return retVal;
-			}
-
-			void FreePage(TempMemoryPage* page)
-			{
-				this->AvailablePages.push_back(page);
-			}
-		};
-
-		struct TempMemoryAllocator
-		{
-			std::mutex m_mutex;
-			TempMemoryPageAllocator PageAllocator;
-			TempMemoryPageAllocator::TempMemoryPage* CurrentPage;
-			uint32_t ByteOffset;
-		};
-		inline static TempMemoryAllocator m_tempAllocator;
+		inline static BindlessDescriptorTable m_bindlessDescritorTable;
 	};
 
 }
