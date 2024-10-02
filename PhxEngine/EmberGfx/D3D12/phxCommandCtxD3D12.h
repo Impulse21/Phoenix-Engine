@@ -16,6 +16,15 @@ namespace phx::gfx::platform
 		uint64_t fenceValue = 0;
 	};
 
+	struct TempAllocator
+	{
+		TempBuffer Allocate(uint32_t byteSize, uint32_t alignment = 16)
+		{
+			// TODO:
+		}
+
+	};
+
 	class CommandCtxD3D12 final
 	{
 		friend GfxDeviceD3D12;
@@ -59,6 +68,7 @@ namespace phx::gfx::platform
 		std::atomic_bool m_isWaitedOn = false;
 		std::vector<D3D12Semaphore> m_waits;
 		PipelineType m_activePipelineType = PipelineType::Gfx;
+		Temp
 	};
 }
 

@@ -231,14 +231,16 @@ namespace phx::gfx
 		BufferHandle Buffer;
 		struct RingSection
 		{
-			size_t Tail = 0;
+			uint32_t Tail = 0;
 			Microsoft::WRL::ComPtr<ID3D12Fence> Fence;
 		};
 		std::array<RingSection, kBufferCount> Sections;
 		std::deque<RingSection*> PendingSection;
 		std::mutex Mutex;
-		size_t Head = 0;
-		size_t Tail = 0;
+
+		uint32_t Head = 0;
+		uint32_t Tail = 0;
+
 		size_t BufferSize;
 
 		void Initialize(size_t bufferSize = 100_MiB)
@@ -250,30 +252,58 @@ namespace phx::gfx
 					.DebugName = "Upload Buffer"
 				});
 
+
 			for (size_t i; i < kBufferCount; i++)
 				GfxDeviceD3D12::GetD3D12Device()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&Sections[i].Fence));
 		}
 
-		void Reset(size_t frameIndex)
+		void Reset(size_t completedFrame)
 		{
-
+			
 		}
 
 		struct TempMemoryPage
 		{
 			BufferHandle Buffer;
 			uint32_t GpuOffset;
-			uint8_t Data;
+			uint8_t* Data;
 		};
 
-		TempMemoryPage GetNextMemoryPage(size_t size)
+		TempMemoryPage GetNextMemoryPage(size_t pageSize)
 		{
-			if (size > BufferSize)
+			std::scoped_lock _(this->Mutex);
+
+			if (pageSize > BufferSize)
 				throw std::runtime_error("Requested allocation size exceeds buffer size");
 
-			const uint32_t newTail = Tail + size;
-			if (newTail > )
+			
+			// check if we need to wrap
+			if (this->Tail + pageSize > this->BufferSize)
+			{
+				if (this->Head <= pageSize)
+				{
+					/// We need to free up a region
+					PHX_CORE_WARN("[GfxDevice] Need to wait for upload space");
+					// TODO Wait
+				}
 
+				this->Tail = 0;
+			}
+
+			// Check if we are allocating into a used space.
+			if (this->Tail + pageSize > this->Head)
+			{
+				PHX_CORE_WARN("[GfxDevice] Need to wait for upload space");
+				this->Head = this->Tail;
+			}
+
+			D3D12Buffer& impl = *GfxDeviceD3D12::GetRegistry().Buffers.Get(this->Buffer);
+			
+			return TempMemoryPage{
+				.Buffer = Buffer,
+				.GpuOffset = this->Head,
+				.Data = static_cast<uint8_t*>(impl.MappedData) + this->Head
+			};
 		};
 	};
 
@@ -298,8 +328,6 @@ namespace phx::gfx
 
 		static void SubmitFrame();
 
-		static TempBuffer AllocateTemp(size_t size, size_t alignment = 16);
-
 	public:
 		static GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
 		static void DeleteResource(GfxPipelineHandle handle);
@@ -314,7 +342,6 @@ namespace phx::gfx
 		static void DeleteResource(BufferHandle handle);
 
 		static void DeleteResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource);
-
 
 		// -- Platform specific ---
 	public:
@@ -340,6 +367,7 @@ namespace phx::gfx
 		static Span<GpuDescriptorHeap> GetGpuDescriptorHeaps() { return Span<GpuDescriptorHeap>(m_gpuDescriptorHeaps.data(), m_gpuDescriptorHeaps.size()); }
 
 		static ResourceRegistryD3D12& GetRegistry() { return m_resourceRegistry; }
+		static GpuRingBuffer& GetTempPageAllocator() { return m_tempPageAllocator; }
 
 		static void PollDebugMessages();
 
@@ -405,6 +433,7 @@ namespace phx::gfx
 		inline static std::vector<std::unique_ptr<platform::CommandCtxD3D12>> m_commandPool;
 		inline static ResourceRegistryD3D12 m_resourceRegistry;
 		inline static BindlessDescriptorTable m_bindlessDescritorTable;
+		inline static GpuRingBuffer m_tempPageAllocator;
 	};
 
 }

@@ -579,37 +579,6 @@ void phx::gfx::GfxDeviceD3D12::SubmitFrame()
 	RunGarbageCollection();
 }
 
-TempBuffer phx::gfx::GfxDeviceD3D12::AllocateTemp(size_t size, size_t alignment)
-{
-	std::scoped_lock _(m_tempAllocator.m_mutex);
-	assert(size < m_tempAllocator.PageAllocator.PageSize);
-	uint32_t offset = MemoryAlign(m_tempAllocator.ByteOffset, alignment);
-	m_tempAllocator.ByteOffset = offset + size;
-	if (!m_tempAllocator.CurrentPage || m_tempAllocator.ByteOffset > m_tempAllocator.PageAllocator.PageSize)
-	{
-		auto* free = m_tempAllocator.CurrentPage;
-		// Request a new page
-		DeferredItem d = {
-			m_frameCount,
-			[=]()
-			{
-				GfxDeviceD3D12::m_tempAllocator.PageAllocator.FreePage(free);
-			}
-		};
-
-		m_deferredQueue.push_back(d);
-		m_tempAllocator.CurrentPage = m_tempAllocator.PageAllocator.RequestNextMemoryBlock();
-		offset = 0;
-		m_tempAllocator.ByteOffset = size;
-	}
-
-	return TempBuffer{
-		.Buffer = m_tempAllocator.CurrentPage->Buffer,
-		.Offset = offset,
-		.Data = m_tempAllocator.CurrentPage->data + offset,
-	};
-}
-
 Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateEmptyRootSignature()
 {
 	using namespace Microsoft::WRL;
