@@ -226,34 +226,86 @@ namespace phx::gfx
 	};
 
 
-	class GpuRingAllocator
+
+template<size_t BufferSize>
+class GpuRingAllocator
+{
+public:
+	struct TempMemoryPage
 	{
-	public:
-		struct TempMemoryPage
-		{
-			uint32_t Offset;
-			uint8_t* Data;
-		};
+		uint32_t Offset;
+		uint8_t* Data;
+	};
 
 
-	public:
-		GpuRingAllocator(size_t size, ID3D12Device* device)
-			: m_bufferSize((uint32_t)size)
-			, m_device(device)
+public:
+	GpuRingAllocator(ID3D12Device* device)
+		: m_device(device)
+	{
+		this->m_data = std::make_unique<uint8_t[]>(BufferSize);
+	}
+
+	void EndFrame(ID3D12CommandQueue* q)
+	{
+		while (!this->m_inUseRegions.empty())
 		{
-			const size_t sizeMask = size - 1;
-			assert((sizeMask & size) == 0);
-			this->m_data = std::make_unique<uint8_t[]>(size);
+			auto& region = this->m_inUseRegions.front();
+			if (region.Fence->GetCompletedValue() != 1)
+			{
+				break;
+			}
+
+			region.Fence->Signal(0);
+			this->m_availableFences.push_back(region.Fence);
+
+			m_head += region.UsedSize;
+
+			this->m_inUseRegions.pop_front();
 		}
 
-		void EndFrame(ID3D12CommandQueue* q)
+		ID3D12Fence* fence = nullptr;
+		if (!this->m_availableFences.empty())
+		{
+			fence = this->m_availableFences.front();
+			this->m_availableFences.pop_front();
+
+		}
+
+		if (!fence)
+		{
+			Microsoft::WRL::ComPtr<ID3D12Fence> newFence;
+			this->m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(newFence.ReleaseAndGetAddressOf()));
+			this->m_fencePool.push_back(newFence);
+			fence = newFence.Get();
+		}
+
+		q->Signal(fence, 1);
+		this->m_inUseRegions.push_front(UsedRegion{
+			.UsedSize =  m_tail - m_headAtStartOfFrame,
+			.Fence = fence });
+
+		m_headAtStartOfFrame = m_tail;
+	}
+
+	TempMemoryPage Allocate(size_t allocSize)
+	{
+		std::scoped_lock _(this->m_mutex);
+
+		// Checks if the top bits have changes, if so, we need to wrap around.
+		if ((m_tail ^ (m_tail + allocSize)) & ~BufferMask)
+		{
+			m_tail = (m_tail + BufferMask) & ~BufferMask;
+		}
+
+		if (((m_tail - m_head) + allocSize) >= BufferSize)
 		{
 			while (!this->m_inUseRegions.empty())
 			{
 				auto& region = this->m_inUseRegions.front();
 				if (region.Fence->GetCompletedValue() != 1)
 				{
-					break;
+					std::cout << "[GPU QUEUE] Stalling waiting for space\n";
+					region.Fence->SetEventOnCompletion(1, NULL);
 				}
 
 				region.Fence->Signal(0);
@@ -263,84 +315,38 @@ namespace phx::gfx
 
 				this->m_inUseRegions.pop_front();
 			}
-
-			ID3D12Fence* fence = nullptr;
-			if (!this->m_availableFences.empty())
-			{
-				fence = this->m_availableFences.front();
-				this->m_availableFences.pop_front();
-
-			}
-
-			if (!fence)
-			{
-				Microsoft::WRL::ComPtr<ID3D12Fence> newFence;
-				this->m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(newFence.ReleaseAndGetAddressOf()));
-				this->m_fencePool.push_back(newFence);
-				fence = newFence.Get();
-			}
-
-			q->Signal(fence, 1);
-			this->m_inUseRegions.push_front(UsedRegion{
-				.UsedSize =  m_tail - m_headAtStartOfFrame,
-				.Fence = fence });
-
-			m_headAtStartOfFrame = m_tail;
-		}
-
-		TempMemoryPage Allocate(size_t allocSize)
-		{
-			std::scoped_lock _(this->m_mutex);
-
-			if (((m_tail - m_head) + allocSize) >= this->m_bufferSize)
-			{
-				while (!this->m_inUseRegions.empty())
-				{
-					auto& region = this->m_inUseRegions.front();
-					if (region.Fence->GetCompletedValue() != 1)
-					{
-						std::cout << "[GPU QUEUE] Stalling waiting for space\n";
-						region.Fence->SetEventOnCompletion(1, NULL);
-					}
-
-					region.Fence->Signal(0);
-					this->m_availableFences.push_back(region.Fence);
-
-					m_head += region.UsedSize;
-
-					this->m_inUseRegions.pop_front();
-				}
-			}
-			
-
-			void* allocationPtr = this->m_data.get() + (this->m_tail & (this->m_bufferSize - 1));
-
-			this->m_tail += allocSize;
-			return TempMemoryPage{
-				.Offset = this->m_head,
-				.Data = reinterpret_cast<uint8_t*>(allocationPtr)
-			};
 		}
 		
-	private:
-		std::mutex m_mutex;
-		uint32_t m_bufferSize = 0;
-		uint32_t m_headAtStartOfFrame = 0;
-		uint32_t m_head = 0;
-		uint32_t m_tail = 0;
 
-		std::unique_ptr<uint8_t[]> m_data;
+		void* allocationPtr = this->m_data.get() + (this->m_tail & BufferMask);
 
-		ID3D12Device* m_device;
-		std::vector<Microsoft::WRL::ComPtr<ID3D12Fence>> m_fencePool;
-		std::deque<ID3D12Fence*> m_availableFences;
-		struct UsedRegion
-		{
-			uint32_t UsedSize = 0;
-			ID3D12Fence* Fence;
+		m_tail++;
+
+		return TempMemoryPage{
+			.Offset = this->m_head,
+			.Data = reinterpret_cast<uint8_t*>(allocationPtr)
 		};
-		std::deque<UsedRegion> m_inUseRegions;
+	}
+	
+private:
+	const uint32_t BufferMask = (BufferSize - 1);
+	std::mutex m_mutex;
+	uint32_t m_headAtStartOfFrame = 0;
+	uint32_t m_head = 0;
+	uint32_t m_tail = 0;
+
+	std::unique_ptr<uint8_t[]> m_data;
+
+	ID3D12Device* m_device;
+	std::vector<Microsoft::WRL::ComPtr<ID3D12Fence>> m_fencePool;
+	std::deque<ID3D12Fence*> m_availableFences;
+	struct UsedRegion
+	{
+		uint32_t UsedSize = 0;
+		ID3D12Fence* Fence;
 	};
+	std::deque<UsedRegion> m_inUseRegions;
+};
 
 	class GfxDeviceD3D12 final
 	{
