@@ -29,12 +29,21 @@ namespace phx::gfx::platform
 
 	struct DynamicAllocator
 	{
+		void Reset(GpuRingAllocator* allocator)
+		{
+			if (allocator != this->RingAllocator)
+				this->RingAllocator = allocator;
+
+			this->Page = this->RingAllocator->Allocate(this->PageSize);
+			this->ByteOffset = 0;
+		}
+
 		DynamicBuffer Allocate(uint32_t byteSize, uint32_t alignment)
 		{
 			uint32_t offset = MemoryAlign(ByteOffset, alignment);
 			this->ByteOffset = offset + byteSize;
 
-			if (!Page.has_value() || this->ByteOffset > this->PageSize)
+			if (this->ByteOffset > this->PageSize)
 			{
 				this->Page = this->RingAllocator->Allocate(this->PageSize);
 				offset = 0;
@@ -42,17 +51,18 @@ namespace phx::gfx::platform
 			}
 
 			return DynamicBuffer{
-				.BufferHandle = this->Page->BufferHandle,
+				.BufferHandle = this->Page.BufferHandle,
 				.Offset = offset,
-				.Data = this->Page->Data + offset
+				.Data = this->Page.Data + offset
 			};
 		}
 
-		GpuRingAllocator* RingAllocator;
-		std::optional<DynamicMemoryPage> Page;
+		GpuRingAllocator* RingAllocator = nullptr;
+		DynamicMemoryPage Page = {};
 		size_t PageSize = 4_MiB;
 		uint32_t ByteOffset = 0;
 	};
+
 
 	class CommandCtxD3D12 final
 	{

@@ -21,10 +21,8 @@ void CommandCtxD3D12::Reset(size_t id, CommandQueueType queueType)
 {
 	ID3D12Device* d3d12Device = GfxDeviceD3D12::GetD3D12Device();
 	D3D12CommandQueue& queue = GfxDeviceD3D12::GetQueue(queueType);
-    if (!m_dynamicAllocator.RingAllocator)
-    {
-        this->m_dynamicAllocator.RingAllocator = GfxDeviceD3D12::GetDynamicPageAllocator();
-    }
+
+	this->m_dynamicAllocator.Reset(GfxDeviceD3D12::GetDynamicPageAllocator());
 
 	this->m_allocator = nullptr;
 	this->m_allocator = queue.RequestAllocator();
@@ -377,7 +375,7 @@ void phx::gfx::platform::CommandCtxD3D12::SetDynamicVertexBuffer(BufferHandle te
     size_t bufferSize = numVertices * vertexSize;
 
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
-    vertexBufferView.BufferLocation = this->m_dynamicAllocator.Page->GpuAddress + offset;
+    vertexBufferView.BufferLocation = this->m_dynamicAllocator.Page.GpuAddress + offset;
     vertexBufferView.SizeInBytes = static_cast<UINT>(bufferSize);
     vertexBufferView.StrideInBytes = static_cast<UINT>(vertexSize);
 
@@ -397,7 +395,7 @@ void phx::gfx::platform::CommandCtxD3D12::SetDynamicIndexBuffer(BufferHandle tem
     size_t bufferSize = numIndicies * indexSizeInBytes;
 
     D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
-    indexBufferView.BufferLocation = this->m_dynamicAllocator.Page->GpuAddress + offset;
+    indexBufferView.BufferLocation = this->m_dynamicAllocator.Page.GpuAddress + offset;
     indexBufferView.SizeInBytes = static_cast<UINT>(bufferSize);
     const auto& formatMapping = GetDxgiFormatMapping(indexFormat);;
 
