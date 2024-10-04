@@ -275,6 +275,7 @@
     <ClInclude Include="3rdParty\stb\stb_rect_pack.h" />
     <ClInclude Include="3rdParty\stb\stb_truetype.h" />
     <ClInclude Include="EmberGfx\D3D12\phxCommandCtxD3D12.h" />
+    <ClInclude Include="EmberGfx\D3D12\phxDynamicMemoryPageAllocatorD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxCommonD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxDeviceD3D12.h" />
@@ -282,6 +283,7 @@
     <ClInclude Include="EmberGfx\D3D12\phxGfxResourceRegistryD3D12.h" />
     <ClInclude Include="EmberGfx\Fonts\phxLiberationSans.h" />
     <ClInclude Include="EmberGfx\ImGui\imgui_impl_win32.h" />
+    <ClInclude Include="EmberGfx\phxDynamicMemoryAllocator.h" />
     <ClInclude Include="EmberGfx\phxImGuiRenderer.h" />
     <ClInclude Include="EmberGfx\phxEmber.h" />
     <ClInclude Include="EmberGfx\phxFontRenderer.h" />
@@ -308,11 +310,13 @@
   <ItemGroup>
     <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxCommandCtxD3D12.cpp" />
+    <ClCompile Include="EmberGfx\D3D12\phxDynamicMemoryPageAllocatorD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDeviceD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDxgiFormatMapping.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxResourceRegistryD3D12.cpp" />
     <ClCompile Include="EmberGfx\ImGui\imgui_impl_win32.cpp" />
+    <ClCompile Include="EmberGfx\phxDynamicMemoryAllocator.cpp" />
     <ClCompile Include="EmberGfx\phxImGuiRenderer.cpp" />
     <ClCompile Include="EmberGfx\phxEmber.cpp" />
     <ClCompile Include="EmberGfx\phxFontRenderer.cpp" />

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EmberGfx/phxGfxDeviceResources.h"
+#include "phxDynamicMemoryPageAllocatorD3D12.h"
 #include <deque>
 
 namespace phx::gfx
@@ -16,13 +17,19 @@ namespace phx::gfx::platform
 		uint64_t fenceValue = 0;
 	};
 
-	struct TempAllocator
+	struct TempBuffer
 	{
-		TempBuffer Allocate(uint32_t byteSize, uint32_t alignment = 16)
-		{
-			// TODO:
-		}
+		BufferHandle BufferHandle;
+		size_t Offset;
+		uint8_t* Data;
+	};
 
+	struct DynamicAllocator
+	{
+		GpuRingAllocator* RingAllocator;
+		DynamicMemoryPage Page;
+		size_t PageSize = 4_MiB;
+		uint32_t ByteOffset = 0;
 	};
 
 	class CommandCtxD3D12 final
@@ -68,7 +75,7 @@ namespace phx::gfx::platform
 		std::atomic_bool m_isWaitedOn = false;
 		std::vector<D3D12Semaphore> m_waits;
 		PipelineType m_activePipelineType = PipelineType::Gfx;
-		Temp
+		
 	};
 }
 

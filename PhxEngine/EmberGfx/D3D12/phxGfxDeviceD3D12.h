@@ -7,6 +7,7 @@
 #include "d3d12ma/D3D12MemAlloc.h"
 #include "phxMemory.h"
 #include "phxGfxResourceRegistryD3D12.h"
+#include "phxDynamicMemoryPageAllocatorD3D12.h"
 
 #include <deque>
 #include <mutex>
@@ -225,129 +226,6 @@ namespace phx::gfx
 		DescriptorIndexPool m_descriptorIndexPool;
 	};
 
-
-
-template<size_t BufferSize>
-class GpuRingAllocator
-{
-public:
-	struct TempMemoryPage
-	{
-		uint32_t Offset;
-		uint8_t* Data;
-	};
-
-
-public:
-	GpuRingAllocator(ID3D12Device* device)
-		: m_device(device)
-	{
-		this->m_data = std::make_unique<uint8_t[]>(BufferSize);
-	}
-
-	void EndFrame(ID3D12CommandQueue* q)
-	{
-		while (!this->m_inUseRegions.empty())
-		{
-			auto& region = this->m_inUseRegions.front();
-			if (region.Fence->GetCompletedValue() != 1)
-			{
-				break;
-			}
-
-			region.Fence->Signal(0);
-			this->m_availableFences.push_back(region.Fence);
-
-			m_head += region.UsedSize;
-
-			this->m_inUseRegions.pop_front();
-		}
-
-		ID3D12Fence* fence = nullptr;
-		if (!this->m_availableFences.empty())
-		{
-			fence = this->m_availableFences.front();
-			this->m_availableFences.pop_front();
-
-		}
-
-		if (!fence)
-		{
-			Microsoft::WRL::ComPtr<ID3D12Fence> newFence;
-			this->m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(newFence.ReleaseAndGetAddressOf()));
-			this->m_fencePool.push_back(newFence);
-			fence = newFence.Get();
-		}
-
-		q->Signal(fence, 1);
-		this->m_inUseRegions.push_front(UsedRegion{
-			.UsedSize =  m_tail - m_headAtStartOfFrame,
-			.Fence = fence });
-
-		m_headAtStartOfFrame = m_tail;
-	}
-
-	TempMemoryPage Allocate(size_t allocSize)
-	{
-		std::scoped_lock _(this->m_mutex);
-
-		// Checks if the top bits have changes, if so, we need to wrap around.
-		if ((m_tail ^ (m_tail + allocSize)) & ~BufferMask)
-		{
-			m_tail = (m_tail + BufferMask) & ~BufferMask;
-		}
-
-		if (((m_tail - m_head) + allocSize) >= BufferSize)
-		{
-			while (!this->m_inUseRegions.empty())
-			{
-				auto& region = this->m_inUseRegions.front();
-				if (region.Fence->GetCompletedValue() != 1)
-				{
-					std::cout << "[GPU QUEUE] Stalling waiting for space\n";
-					region.Fence->SetEventOnCompletion(1, NULL);
-				}
-
-				region.Fence->Signal(0);
-				this->m_availableFences.push_back(region.Fence);
-
-				m_head += region.UsedSize;
-
-				this->m_inUseRegions.pop_front();
-			}
-		}
-		
-
-		void* allocationPtr = this->m_data.get() + (this->m_tail & BufferMask);
-
-		m_tail++;
-
-		return TempMemoryPage{
-			.Offset = this->m_head,
-			.Data = reinterpret_cast<uint8_t*>(allocationPtr)
-		};
-	}
-	
-private:
-	const uint32_t BufferMask = (BufferSize - 1);
-	std::mutex m_mutex;
-	uint32_t m_headAtStartOfFrame = 0;
-	uint32_t m_head = 0;
-	uint32_t m_tail = 0;
-
-	std::unique_ptr<uint8_t[]> m_data;
-
-	ID3D12Device* m_device;
-	std::vector<Microsoft::WRL::ComPtr<ID3D12Fence>> m_fencePool;
-	std::deque<ID3D12Fence*> m_availableFences;
-	struct UsedRegion
-	{
-		uint32_t UsedSize = 0;
-		ID3D12Fence* Fence;
-	};
-	std::deque<UsedRegion> m_inUseRegions;
-};
-
 	class GfxDeviceD3D12 final
 	{
 	public:
@@ -386,6 +264,11 @@ private:
 
 		// -- Platform specific ---
 	public:
+		static DynamicMemoryPage AllocDynamicMemoryPage(uint32_t pageSize)
+		{
+			return m_tempPageAllocator.Allocate(pageSize);
+		}
+
 		static D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView() { return m_swapChain.GetBackBufferView(); }
 		static ID3D12Resource* GetBackBuffer() { return m_swapChain.GetBackBuffer(); }
 
@@ -408,7 +291,6 @@ private:
 		static Span<GpuDescriptorHeap> GetGpuDescriptorHeaps() { return Span<GpuDescriptorHeap>(m_gpuDescriptorHeaps.data(), m_gpuDescriptorHeaps.size()); }
 
 		static ResourceRegistryD3D12& GetRegistry() { return m_resourceRegistry; }
-		static GpuRingBuffer& GetTempPageAllocator() { return m_tempPageAllocator; }
 
 		static void PollDebugMessages();
 
@@ -474,7 +356,7 @@ private:
 		inline static std::vector<std::unique_ptr<platform::CommandCtxD3D12>> m_commandPool;
 		inline static ResourceRegistryD3D12 m_resourceRegistry;
 		inline static BindlessDescriptorTable m_bindlessDescritorTable;
-		inline static GpuRingBuffer m_tempPageAllocator;
+		inline static GpuRingAllocator<256_MiB> m_tempPageAllocator;
 	};
 
 }
