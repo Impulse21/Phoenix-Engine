@@ -577,6 +577,7 @@ void phx::gfx::GfxDeviceD3D12::SubmitFrame()
 {
 	SubmitCommandLists();
 	Present();
+	m_tempPageAllocator.EndFrame(GetGfxQueue().Queue.Get());
 	PollDebugMessages();
 	RunGarbageCollection();
 }
