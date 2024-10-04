@@ -283,7 +283,6 @@
     <ClInclude Include="EmberGfx\D3D12\phxGfxResourceRegistryD3D12.h" />
     <ClInclude Include="EmberGfx\Fonts\phxLiberationSans.h" />
     <ClInclude Include="EmberGfx\ImGui\imgui_impl_win32.h" />
-    <ClInclude Include="EmberGfx\phxDynamicMemoryAllocator.h" />
     <ClInclude Include="EmberGfx\phxImGuiRenderer.h" />
     <ClInclude Include="EmberGfx\phxEmber.h" />
     <ClInclude Include="EmberGfx\phxFontRenderer.h" />
@@ -292,7 +291,6 @@
     <ClInclude Include="EmberGfx\phxGfxDeviceResources.h" />
     <ClInclude Include="EmberGfx\phxHandle.h" />
     <ClInclude Include="EmberGfx\phxHandlePool.h" />
-    <ClInclude Include="EmberGfx\phxTempMemoryAllocator.h" />
     <ClInclude Include="phxDeferredReleaseQueue.h" />
     <ClInclude Include="phxEnumUtils.h" />
     <ClInclude Include="phxCommandLineArgs.h" />
@@ -316,7 +314,6 @@
     <ClCompile Include="EmberGfx\D3D12\phxGfxDxgiFormatMapping.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxResourceRegistryD3D12.cpp" />
     <ClCompile Include="EmberGfx\ImGui\imgui_impl_win32.cpp" />
-    <ClCompile Include="EmberGfx\phxDynamicMemoryAllocator.cpp" />
     <ClCompile Include="EmberGfx\phxImGuiRenderer.cpp" />
     <ClCompile Include="EmberGfx\phxEmber.cpp" />
     <ClCompile Include="EmberGfx\phxFontRenderer.cpp" />

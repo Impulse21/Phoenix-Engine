@@ -98,6 +98,11 @@ namespace phx::gfx
 			this->m_platform->SetScissors(scissors);
 		}
 
+		DynamicBuffer AllocateDynamic(size_t sizeInBytes, size_t alignment = 16)
+		{
+			return this->m_platform->AllocateDynamic(sizeInBytes, alignment);
+		}
+
 	private:
 		PlatformCommandCtx* m_platform;
 	};

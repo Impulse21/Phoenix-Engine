@@ -1284,14 +1284,6 @@ namespace phx::gfx
         bool VSync : 1 = false;
         bool EnableHDR : 1 = false;
     };
-
-
-    struct TempBuffer
-    {
-        BufferHandle Buffer;
-        uint32_t Offset;
-        uint8_t* Data;
-    };
 }
 
 namespace std

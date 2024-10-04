@@ -21,6 +21,10 @@ void CommandCtxD3D12::Reset(size_t id, CommandQueueType queueType)
 {
 	ID3D12Device* d3d12Device = GfxDeviceD3D12::GetD3D12Device();
 	D3D12CommandQueue& queue = GfxDeviceD3D12::GetQueue(queueType);
+    if (!m_dynamicAllocator.RingAllocator)
+    {
+        this->m_dynamicAllocator.RingAllocator = GfxDeviceD3D12::GetDynamicPageAllocator();
+    }
 
 	this->m_allocator = nullptr;
 	this->m_allocator = queue.RequestAllocator();
@@ -87,6 +91,11 @@ void phx::gfx::platform::CommandCtxD3D12::Close()
 
     this->m_commandList->ResourceBarrier(1, &barrier);
     this->m_commandList->Close();
+}
+
+DynamicBuffer phx::gfx::platform::CommandCtxD3D12::AllocateDynamic(size_t sizeInBytes, size_t alignment)
+{
+    return this->m_dynamicAllocator.Allocate(sizeInBytes, alignment);
 }
 
 void CommandCtxD3D12::TransitionBarrier(GpuBarrier const& barrier)
@@ -367,9 +376,8 @@ void phx::gfx::platform::CommandCtxD3D12::SetDynamicVertexBuffer(BufferHandle te
 {
     size_t bufferSize = numVertices * vertexSize;
 
-    const D3D12Buffer* bufferImpl = GfxDeviceD3D12::GetRegistry().Buffers.Get(tempBuffer);
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
-    vertexBufferView.BufferLocation = bufferImpl->D3D12Resource->GetGPUVirtualAddress() + offset;
+    vertexBufferView.BufferLocation = this->m_dynamicAllocator.Page->GpuAddress + offset;
     vertexBufferView.SizeInBytes = static_cast<UINT>(bufferSize);
     vertexBufferView.StrideInBytes = static_cast<UINT>(vertexSize);
 
@@ -385,12 +393,11 @@ void phx::gfx::platform::CommandCtxD3D12::SetIndexBuffer(BufferHandle indexBuffe
 
 void phx::gfx::platform::CommandCtxD3D12::SetDynamicIndexBuffer(BufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat)
 {
-    const D3D12Buffer* bufferImpl = GfxDeviceD3D12::GetRegistry().Buffers.Get(tempBuffer);
     size_t indexSizeInBytes = indexFormat == Format::R16_UINT ? 2 : 4;
     size_t bufferSize = numIndicies * indexSizeInBytes;
 
     D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
-    indexBufferView.BufferLocation = bufferImpl->D3D12Resource->GetGPUVirtualAddress() + offset;
+    indexBufferView.BufferLocation = this->m_dynamicAllocator.Page->GpuAddress + offset;
     indexBufferView.SizeInBytes = static_cast<UINT>(bufferSize);
     const auto& formatMapping = GetDxgiFormatMapping(indexFormat);;
 

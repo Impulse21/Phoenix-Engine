@@ -534,6 +534,8 @@ void phx::gfx::GfxDeviceD3D12::Finalize()
 	{
 		backBuffer.Reset();
 	}
+
+	m_tempPageAllocator.Finalize();
 }
 
 void phx::gfx::GfxDeviceD3D12::WaitForIdle()
@@ -1713,6 +1715,70 @@ void phx::gfx::GfxDeviceD3D12::DeleteResource(Microsoft::WRL::ComPtr<ID3D12Resou
 	m_deferredQueue.push_back(d);
 }
 
+DescriptorIndex phx::gfx::GfxDeviceD3D12::GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource)
+{
+	const D3D12Texture* texture = m_resourceRegistry.Textures.Get(handle);
+
+	if (!texture)
+	{
+		return cInvalidDescriptorIndex;
+	}
+
+	switch (type)
+	{
+	case SubresouceType::SRV:
+		return subResource == -1
+			? texture->Srv.BindlessIndex
+			: texture->SrvSubresourcesAlloc[subResource].BindlessIndex;
+		break;
+
+	case SubresouceType::UAV:
+		return subResource == -1
+			? texture->UavAllocation.BindlessIndex
+			: texture->UavSubresourcesAlloc[subResource].BindlessIndex;
+		break;
+
+	case SubresouceType::RTV:
+		return subResource == -1
+			? texture->RtvAllocation.BindlessIndex
+			: texture->RtvSubresourcesAlloc[subResource].BindlessIndex;
+		break;
+
+	case SubresouceType::DSV:
+		return subResource == -1
+			? texture->DsvAllocation.BindlessIndex
+			: texture->DsvSubresourcesAlloc[subResource].BindlessIndex;
+		break;
+	default:
+		throw std::runtime_error("Unsupported enum type");
+	}
+}
+
+DescriptorIndex phx::gfx::GfxDeviceD3D12::GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource)
+{
+	const D3D12Buffer* bufferImpl = m_resourceRegistry.Buffers.Get(handle);
+
+	if (!bufferImpl)
+	{
+		return cInvalidDescriptorIndex;
+	}
+
+	switch (type)
+	{
+	case SubresouceType::SRV:
+		return subResource == -1
+			? bufferImpl->Srv.BindlessIndex
+			: bufferImpl->SrvSubresourcesAlloc[subResource].BindlessIndex;
+
+	case SubresouceType::UAV:
+		return subResource == -1
+			? bufferImpl->UavAllocation.BindlessIndex
+			: bufferImpl->UavSubresourcesAlloc[subResource].BindlessIndex;
+	default:
+		throw std::runtime_error("Unsupported enum type");
+	}
+}
+
 platform::CommandCtxD3D12* phx::gfx::GfxDeviceD3D12::BeginCommandRecording(CommandQueueType type)
 {
 	const uint32_t currentCmdIndex = m_activeCmdCount++;
@@ -1905,6 +1971,8 @@ void phx::gfx::GfxDeviceD3D12::Initialize()
 
 	m_bindlessDescritorTable.Initialize(
 		m_gpuDescriptorHeaps[0].Allocate(NUM_BINDLESS_RESOURCES));
+
+	m_tempPageAllocator.Initialize(256_MiB);
 }
 
 void phx::gfx::GfxDeviceD3D12::InitializeD3D12Context(IDXGIAdapter* gpuAdapter)

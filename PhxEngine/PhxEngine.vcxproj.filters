@@ -135,14 +135,8 @@
     <ClInclude Include="EmberGfx\ImGui\imgui_impl_win32.h">
       <Filter>EmberGfx\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="EmberGfx\phxTempMemoryAllocator.h">
-      <Filter>EmberGfx\D3D12</Filter>
-    </ClInclude>
-    <ClInclude Include="EmberGfx\phxDynamicMemoryAllocator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="EmberGfx\D3D12\phxDynamicMemoryPageAllocatorD3D12.h">
-      <Filter>Header Files</Filter>
+      <Filter>EmberGfx\D3D12</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -197,11 +191,8 @@
     <ClCompile Include="EmberGfx\ImGui\imgui_impl_win32.cpp">
       <Filter>EmberGfx\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="EmberGfx\phxDynamicMemoryAllocator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="EmberGfx\D3D12\phxDynamicMemoryPageAllocatorD3D12.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>EmberGfx\D3D12</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

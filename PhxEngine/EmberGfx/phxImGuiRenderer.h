@@ -18,6 +18,7 @@ namespace phx::gfx
 		bool m_isFontTextureUploaded = false;
 		ImGuiContext* m_imguiContext;
 
+		DescriptorIndex m_fontTextureBindlessIndex = cInvalidDescriptorIndex;
 		HandleOwner<Texture> m_fontTexture;
 		HandleOwner<InputLayout> m_inputLayout;
 		HandleOwner<GfxPipeline> m_pipeline;

@@ -56,14 +56,14 @@ public:
 		ctx.SetScissors({ &rec, 1 });
 		ctx.SetGfxPipeline(this->m_pipeline);
 
-		TempBuffer temp = GfxDevice::AllocateTemp(sizeof(uint16_t) * 3);
+		DynamicBuffer temp = ctx.AllocateDynamic(sizeof(uint16_t) * 3);
 		
 		uint16_t* indices = reinterpret_cast<uint16_t*>(temp.Data);
 		indices[0] = 0;
 		indices[1] = 1;
 		indices[2] = 2;
 
-		ctx.SetDynamicIndexBuffer(temp.Buffer, temp.Offset, 3, Format::R16_UINT);
+		ctx.SetDynamicIndexBuffer(temp.BufferHandle, temp.Offset, 3, Format::R16_UINT);
 		ctx.DrawIndexed(3, 1, 0, 0, 0);
 
 		m_imguiRenderSystem.Render(ctx);

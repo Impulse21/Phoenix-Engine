@@ -1,12 +1,22 @@
 #pragma once
 
-#include "EmberGfx/phxGfxDeviceResources.h"
+#include "phxMemory.h"
 #include "phxDynamicMemoryPageAllocatorD3D12.h"
 #include <deque>
 
 namespace phx::gfx
 {
 	class GfxDeviceD3D12;
+}
+
+namespace phx::gfx
+{
+	struct DynamicBuffer
+	{
+		BufferHandle BufferHandle;
+		size_t Offset;
+		uint8_t* Data;
+	};
 }
 
 namespace phx::gfx::platform
@@ -17,17 +27,29 @@ namespace phx::gfx::platform
 		uint64_t fenceValue = 0;
 	};
 
-	struct TempBuffer
-	{
-		BufferHandle BufferHandle;
-		size_t Offset;
-		uint8_t* Data;
-	};
-
 	struct DynamicAllocator
 	{
+		DynamicBuffer Allocate(uint32_t byteSize, uint32_t alignment)
+		{
+			uint32_t offset = MemoryAlign(ByteOffset, alignment);
+			this->ByteOffset = offset + byteSize;
+
+			if (!Page.has_value() || this->ByteOffset > this->PageSize)
+			{
+				this->Page = this->RingAllocator->Allocate(this->PageSize);
+				offset = 0;
+				this->ByteOffset = byteSize;
+			}
+
+			return DynamicBuffer{
+				.BufferHandle = this->Page->BufferHandle,
+				.Offset = offset,
+				.Data = this->Page->Data + offset
+			};
+		}
+
 		GpuRingAllocator* RingAllocator;
-		DynamicMemoryPage Page;
+		std::optional<DynamicMemoryPage> Page;
 		size_t PageSize = 4_MiB;
 		uint32_t ByteOffset = 0;
 	};
@@ -43,7 +65,7 @@ namespace phx::gfx::platform
 		void Close();
 
 	public:
-
+		DynamicBuffer AllocateDynamic(size_t sizeInBytes, size_t alignment = 16);
 		void TransitionBarrier(GpuBarrier const& barrier);
 		void TransitionBarriers(Span<GpuBarrier> gpuBarriers);
 		void ClearBackBuffer(Color const& clearColour);
@@ -75,6 +97,7 @@ namespace phx::gfx::platform
 		std::atomic_bool m_isWaitedOn = false;
 		std::vector<D3D12Semaphore> m_waits;
 		PipelineType m_activePipelineType = PipelineType::Gfx;
+		DynamicAllocator m_dynamicAllocator;
 		
 	};
 }

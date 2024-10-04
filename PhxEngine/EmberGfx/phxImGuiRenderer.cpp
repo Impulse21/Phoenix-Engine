@@ -63,7 +63,8 @@ void phx::gfx::ImGuiRenderSystem::Initialize(bool enableDocking)
             })
     );
 
-    io.Fonts->SetTexID(static_cast<void*>(&m_fontTexture));
+    this->m_fontTextureBindlessIndex = GfxDevice::GetDescriptorIndex(this->m_fontTexture, SubresouceType::SRV);
+    io.Fonts->SetTexID(static_cast<void*>(&this->m_fontTextureBindlessIndex));
 
     std::vector<VertexAttributeDesc> attributeDesc =
     {
@@ -222,13 +223,13 @@ void phx::gfx::ImGuiRenderSystem::Render(CommandCtx& context)
         {
             const ImDrawList* drawList = drawData->CmdLists[i];
 
-            TempBuffer vertexBuffer = GfxDevice::AllocateTemp(drawList->VtxBuffer.size() * sizeof(ImDrawVert));
+            DynamicBuffer vertexBuffer = context.AllocateDynamic(drawList->VtxBuffer.size() * sizeof(ImDrawVert));
             std::memcpy(vertexBuffer.Data, drawList->VtxBuffer.Data, sizeof(ImDrawVert));
-            context.SetDynamicVertexBuffer(vertexBuffer.Buffer, vertexBuffer.Offset, 0, drawList->VtxBuffer.size(), sizeof(ImDrawVert));
+            context.SetDynamicVertexBuffer(vertexBuffer.BufferHandle, vertexBuffer.Offset, 0, drawList->VtxBuffer.size(), sizeof(ImDrawVert));
 
-            TempBuffer indexBuffer = GfxDevice::AllocateTemp(drawList->IdxBuffer.size() * sizeof(ImDrawIdx));
+            DynamicBuffer indexBuffer = context.AllocateDynamic(drawList->IdxBuffer.size() * sizeof(ImDrawIdx));
             std::memcpy(indexBuffer.Data, drawList->IdxBuffer.Data, drawList->IdxBuffer.size() * sizeof(ImDrawVert));
-            context.SetDynamicIndexBuffer(indexBuffer.Buffer, indexBuffer.Offset, drawList->IdxBuffer.size(), indexFormat);
+            context.SetDynamicIndexBuffer(indexBuffer.BufferHandle, indexBuffer.Offset, drawList->IdxBuffer.size(), indexFormat);
 
             int indexOffset = 0;
             for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
@@ -252,14 +253,11 @@ void phx::gfx::ImGuiRenderSystem::Render(CommandCtx& context)
                     if (scissorRect.MaxX - scissorRect.MinX > 0.0f &&
                         scissorRect.MaxY - scissorRect.MinY > 0.0)
                     {
-#if false
-                        auto texture = static_cast<TextureRef>(drawCmd.GetTexID());
-                        push.TextureIndex = texture
-                            ? m_gfxDevice->GetDescriptorIndex(*textureHandle, RHI::SubresouceType::SRV)
+
+                        auto* desciptorIndex = static_cast<DescriptorIndex*>(drawCmd.GetTexID());
+                        push.TextureIndex = desciptorIndex
+                            ? *desciptorIndex
                             : cInvalidDescriptorIndex;
-#else
-                        push.TextureIndex = cInvalidDescriptorIndex;
-#endif
                         context.SetPushConstant(RootParameters::PushConstant, sizeof(ImguiDrawInfo), &push);
                         context.SetScissors({ &scissorRect, 1 });
                         context.DrawIndexed(drawCmd.ElemCount, 1, indexOffset, 0, 0);

@@ -262,13 +262,12 @@ namespace phx::gfx
 
 		static void DeleteResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource);
 
+		static DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type = SubresouceType::SRV, int subResource = -1);
+
+		static DescriptorIndex GetDescriptorIndex(BufferHandle handle, SubresouceType type = SubresouceType::SRV, int subResource = -1);
+
 		// -- Platform specific ---
 	public:
-		static DynamicMemoryPage AllocDynamicMemoryPage(uint32_t pageSize)
-		{
-			return m_tempPageAllocator.Allocate(pageSize);
-		}
-
 		static D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView() { return m_swapChain.GetBackBufferView(); }
 		static ID3D12Resource* GetBackBuffer() { return m_swapChain.GetBackBuffer(); }
 
@@ -294,6 +293,7 @@ namespace phx::gfx
 
 		static void PollDebugMessages();
 
+		static GpuRingAllocator* GetDynamicPageAllocator() { return &m_tempPageAllocator; }
 	private:
 		static void Initialize();
 		static void InitializeD3D12Context(IDXGIAdapter* gpuAdapter);
@@ -356,7 +356,7 @@ namespace phx::gfx
 		inline static std::vector<std::unique_ptr<platform::CommandCtxD3D12>> m_commandPool;
 		inline static ResourceRegistryD3D12 m_resourceRegistry;
 		inline static BindlessDescriptorTable m_bindlessDescritorTable;
-		inline static GpuRingAllocator<256_MiB> m_tempPageAllocator;
+		inline static GpuRingAllocator m_tempPageAllocator;
 	};
 
 }

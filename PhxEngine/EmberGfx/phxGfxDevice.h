@@ -44,11 +44,6 @@ namespace phx::gfx
 			PlatformGfxDevice::SubmitFrame();
 		}
 
-		static TempBuffer AllocateTemp(size_t sizeInBytes, size_t alignment = 16)
-		{
-			return PlatformGfxDevice::AllocateTemp(sizeInBytes, alignment);
-		}
-
 	public:
 		static GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc)
 		{
@@ -90,6 +85,15 @@ namespace phx::gfx
 			PlatformGfxDevice::DeleteResource(handle);
 		}
 
+		static DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type = SubresouceType::SRV, int subResource = -1)
+		{
+			return PlatformGfxDevice::GetDescriptorIndex(handle, type, subResource);
+		}
+
+		static DescriptorIndex GetDescriptorIndex(BufferHandle handle, SubresouceType type = SubresouceType::SRV, int subResource = -1)
+		{
+			return PlatformGfxDevice::GetDescriptorIndex(handle, type, subResource);
+		}
 	private:
 	};
 
