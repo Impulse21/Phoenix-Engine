@@ -1,6 +1,7 @@
 #ifndef __IMGUI__HLSLI__
 #define __IMGUI__HLSLI__
 
+#pragma pack_matrix(row_major)
 
 #define ImGuiRS "RootFlags( ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED )," \
                 "RootConstants(num32BitConstants=17, b999), " \
