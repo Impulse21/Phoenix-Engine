@@ -253,7 +253,6 @@ void phx::gfx::ImGuiRenderSystem::Render(CommandCtx& context)
                     if (scissorRect.MaxX - scissorRect.MinX > 0.0f &&
                         scissorRect.MaxY - scissorRect.MinY > 0.0)
                     {
-
                         auto* desciptorIndex = static_cast<DescriptorIndex*>(drawCmd.GetTexID());
                         push.TextureIndex = desciptorIndex
                             ? *desciptorIndex
@@ -261,7 +260,6 @@ void phx::gfx::ImGuiRenderSystem::Render(CommandCtx& context)
                         context.SetPushConstant(RootParameters::PushConstant, sizeof(ImguiDrawInfo), &push);
                         context.SetScissors({ &scissorRect, 1 });
                         context.DrawIndexed(drawCmd.ElemCount, 1, indexOffset, 0, 0);
-
                     }
                 }
                 indexOffset += drawCmd.ElemCount;

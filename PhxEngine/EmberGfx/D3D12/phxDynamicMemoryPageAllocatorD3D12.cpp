@@ -90,42 +90,40 @@ void phx::gfx::GpuRingAllocator::EndFrame(ID3D12CommandQueue* q)
 
 DynamicMemoryPage phx::gfx::GpuRingAllocator::Allocate(uint32_t allocSize)
 {
+	std::scoped_lock _(this->m_mutex);
+
+	// Checks if the top bits have changes, if so, we need to wrap around.
+	if ((m_tail ^ (m_tail + allocSize)) & ~m_bufferMask)
 	{
-		std::scoped_lock _(this->m_mutex);
-
-		// Checks if the top bits have changes, if so, we need to wrap around.
-		if ((m_tail ^ (m_tail + allocSize)) & ~m_bufferMask)
-		{
-			m_tail = (m_tail + m_bufferMask) & ~m_bufferMask;
-		}
-
-		if (((m_tail - m_head) + allocSize) >= GetBufferSize())
-		{
-			while (!this->m_inUseRegions.empty())
-			{
-				auto& region = this->m_inUseRegions.front();
-				if (region.Fence->GetCompletedValue() != 1)
-				{
-					std::cout << "[GPU QUEUE] Stalling waiting for space\n";
-					region.Fence->SetEventOnCompletion(1, NULL);
-				}
-
-				region.Fence->Signal(0);
-				this->m_availableFences.push_back(region.Fence);
-
-				m_head += region.UsedSize;
-
-				this->m_inUseRegions.pop_front();
-			}
-		}
-
-		const uint32_t offset = (this->m_tail & m_bufferMask);
-		m_tail++;
-
-		return DynamicMemoryPage{
-			.BufferHandle = this->m_buffer,
-			.GpuAddress = this->m_gpuAddress + offset,
-			.Data = reinterpret_cast<uint8_t*>(this->m_data + offset),
-		};
+		m_tail = (m_tail + m_bufferMask) & ~m_bufferMask;
 	}
+
+	if (((m_tail - m_head) + allocSize) >= GetBufferSize())
+	{
+		while (!this->m_inUseRegions.empty())
+		{
+			auto& region = this->m_inUseRegions.front();
+			if (region.Fence->GetCompletedValue() != 1)
+			{
+				std::cout << "[GPU QUEUE] Stalling waiting for space\n";
+				region.Fence->SetEventOnCompletion(1, NULL);
+			}
+
+			region.Fence->Signal(0);
+			this->m_availableFences.push_back(region.Fence);
+
+			m_head += region.UsedSize;
+
+			this->m_inUseRegions.pop_front();
+		}
+	}
+
+	const uint32_t offset = (this->m_tail & m_bufferMask) * allocSize;
+	m_tail++;
+
+	return DynamicMemoryPage{
+		.BufferHandle = this->m_buffer,
+		.GpuAddress = this->m_gpuAddress + offset,
+		.Data = reinterpret_cast<uint8_t*>(this->m_data + offset),
+	};
 }
