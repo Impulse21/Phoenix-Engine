@@ -224,11 +224,11 @@ void phx::gfx::ImGuiRenderSystem::Render(CommandCtx& context)
             const ImDrawList* drawList = drawData->CmdLists[i];
 
             DynamicBuffer vertexBuffer = context.AllocateDynamic(drawList->VtxBuffer.size() * sizeof(ImDrawVert));
-            std::memcpy(vertexBuffer.Data, drawList->VtxBuffer.Data, sizeof(ImDrawVert));
+            std::memcpy(vertexBuffer.Data, drawList->VtxBuffer.Data, drawList->VtxBuffer.size() * sizeof(ImDrawVert));
             context.SetDynamicVertexBuffer(vertexBuffer.BufferHandle, vertexBuffer.Offset, 0, drawList->VtxBuffer.size(), sizeof(ImDrawVert));
 
             DynamicBuffer indexBuffer = context.AllocateDynamic(drawList->IdxBuffer.size() * sizeof(ImDrawIdx));
-            std::memcpy(indexBuffer.Data, drawList->IdxBuffer.Data, drawList->IdxBuffer.size() * sizeof(ImDrawVert));
+            std::memcpy(indexBuffer.Data, drawList->IdxBuffer.Data, drawList->IdxBuffer.size() * sizeof(ImDrawIdx));
             context.SetDynamicIndexBuffer(indexBuffer.BufferHandle, indexBuffer.Offset, drawList->IdxBuffer.size(), indexFormat);
 
             int indexOffset = 0;
