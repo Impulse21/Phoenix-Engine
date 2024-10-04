@@ -105,7 +105,7 @@ DynamicMemoryPage phx::gfx::GpuRingAllocator::Allocate(uint32_t allocSize)
 			auto& region = this->m_inUseRegions.front();
 			if (region.Fence->GetCompletedValue() != 1)
 			{
-				std::cout << "[GPU QUEUE] Stalling waiting for space\n";
+				PHX_CORE_WARN("[GPU QUEUE] Stalling waiting for space");
 				region.Fence->SetEventOnCompletion(1, NULL);
 			}
 
