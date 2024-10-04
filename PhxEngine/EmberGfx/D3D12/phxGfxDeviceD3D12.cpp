@@ -577,7 +577,6 @@ void phx::gfx::GfxDeviceD3D12::SubmitFrame()
 {
 	SubmitCommandLists();
 	Present();
-	m_tempPageAllocator.EndFrame(GetGfxQueue().Queue.Get());
 	PollDebugMessages();
 	RunGarbageCollection();
 }
@@ -1836,6 +1835,8 @@ void phx::gfx::GfxDeviceD3D12::Present()
 			D3D12CommandQueue& queue = m_commandQueues[q];
 			queue.Queue->Signal(m_frameFences[backBufferIndex][q].Get(), 1);
 		}
+
+		m_tempPageAllocator.EndFrame(GetGfxQueue().Queue.Get());
 	}
 
 	// -- Present the back buffer ---
