@@ -10,60 +10,81 @@ namespace
     public:
         StatHistory()
         {
-            for (uint32_t i = 0; i < kHistorySize; ++i)
-                m_RecentHistory[i] = 0.0f;
-            for (uint32_t i = 0; i < kExtendedHistorySize; ++i)
-                m_ExtendedHistory[i] = 0.0f;
-            m_Average = 0.0f;
-            m_Minimum = 0.0f;
-            m_Maximum = 0.0f;
+            m_average = 0.0f;
+            m_minimum = 0.0f;
+            m_maximum = 0.0f;
         }
 
-        void RecordStat(uint32_t FrameIndex, float Value)
+        void RecordStat(float Value)
         {
-            m_RecentHistory[FrameIndex % kHistorySize] = Value;
-            m_ExtendedHistory[FrameIndex % kExtendedHistorySize] = Value;
-            m_Recent = Value;
+            m_recentHistory.Push(Value);
+            m_extendedHistory[FrameIndex % kExtendedHistorySize] = Value;
+            m_recent = Value;
 
             uint32_t ValidCount = 0;
-            m_Minimum = FLT_MAX;
-            m_Maximum = 0.0f;
-            m_Average = 0.0f;
+            m_minimum = FLT_MAX;
+            m_maximum = 0.0f;
+            m_average = 0.0f;
 
-            for (float val : m_RecentHistory)
+            for (float val : m_recentHistory)
             {
                 if (val > 0.0f)
                 {
                     ++ValidCount;
-                    m_Average += val;
-                    m_Minimum = std::min(val, m_Minimum);
-                    m_Maximum = std::max(val, m_Maximum);
+                    m_average += val;
+                    m_minimum = std::min(val, m_minimum);
+                    m_maximum = std::max(val, m_maximum);
                 }
             }
 
             if (ValidCount > 0)
-                m_Average /= (float)ValidCount;
+                m_average /= (float)ValidCount;
             else
-                m_Minimum = 0.0f;
+                m_minimum = 0.0f;
         }
 
-        float GetLast(void) const { return m_Recent; }
-        float GetMax(void) const { return m_Maximum; }
-        float GetMin(void) const { return m_Minimum; }
-        float GetAvg(void) const { return m_Average; }
+        float GetLast(void) const { return m_recent; }
+        float GetMax(void) const { return m_maximum; }
+        float GetMin(void) const { return m_minimum; }
+        float GetAvg(void) const { return m_average; }
 
-        phx::Span<float> GetHistory(void) const { return { m_ExtendedHistory, kExtendedHistorySize }; }
+        phx::Span<float> GetHistory(void) const { return this->m_extendedHistory.GetSpan(); }
 
     private:
-        // TODO: Make into a Ring Buffer :)
-        static const uint32_t kHistorySize = 64;
-        static const uint32_t kExtendedHistorySize = 256;
-        float m_RecentHistory[kHistorySize];
-        float m_ExtendedHistory[kExtendedHistorySize];
-        float m_Recent;
-        float m_Average;
-        float m_Minimum;
-        float m_Maximum;
+        template<class T, uint32_t Size>
+        struct RingBuffer
+        {
+            static_assert((Size & (Size - 1)) == 0, "Size must be a power of 2");
+
+            void Push(T const& v)
+            {
+                this->Buffer[Tail] = item;
+                Tail = (Tail + 1) & BufferMAsk;  // Wrap using bitwise AND
+
+                if (Full) 
+                {
+                    // Move the tail to maintain the circular buffer when full
+                    Head = (Head + 1) & BufferMask;
+                }
+
+                Full = (head == tail);
+            }
+
+            phx::Span<T> GetSpan() const { return { Buffer.data, Size }; }
+
+            std::array<T, Size> Buffer;
+            uint32_t Head = 0;
+            uint32_t Tail = 0;
+            bool Full = false;
+            const uint32_t BufferMask = (size - 1);
+        };
+
+        RingBuffer<float, 64> m_recentHistory = {};
+        RingBuffer<float, 256> m_extendedHistory = {};
+        float m_recent;
+        float m_average;
+        float m_minimum;
+        float m_maximum;
     };
 }
 
