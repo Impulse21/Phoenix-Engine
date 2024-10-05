@@ -292,6 +292,7 @@
     <ClInclude Include="EmberGfx\phxHandle.h" />
     <ClInclude Include="EmberGfx\phxHandlePool.h" />
     <ClInclude Include="phxDeferredReleaseQueue.h" />
+    <ClInclude Include="phxEngineProfiler.h" />
     <ClInclude Include="phxEnumUtils.h" />
     <ClInclude Include="phxCommandLineArgs.h" />
     <ClInclude Include="pch.h" />
@@ -303,6 +304,7 @@
     <ClInclude Include="phxPlatformDetection.h" />
     <ClInclude Include="phxRefCountPtr.h" />
     <ClInclude Include="phxSpan.h" />
+    <ClInclude Include="phxStringHash.h" />
     <ClInclude Include="phxSystemTime.h" />
   </ItemGroup>
   <ItemGroup>
@@ -329,6 +331,7 @@
     </ClCompile>
     <ClCompile Include="phxDisplay.cpp" />
     <ClCompile Include="phxEngineCore.cpp" />
+    <ClCompile Include="phxEngineProfiler.cpp" />
     <ClCompile Include="phxLog.cpp" />
     <ClCompile Include="phxSystemTimer.cpp" />
   </ItemGroup>
