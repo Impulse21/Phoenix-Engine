@@ -2,9 +2,10 @@
 #include "phxEngineProfiler.h"
 #include  "phxSpan.h"
 
+using namespace phx;
+
 namespace
 {
-
     class StatHistory
     {
     public:
@@ -18,27 +19,27 @@ namespace
         void RecordStat(float Value)
         {
             m_recentHistory.Push(Value);
-            m_extendedHistory[FrameIndex % kExtendedHistorySize] = Value;
+            m_extendedHistory.Push(Value);
             m_recent = Value;
 
-            uint32_t ValidCount = 0;
+            uint32_t validCount = 0;
             m_minimum = FLT_MAX;
             m_maximum = 0.0f;
             m_average = 0.0f;
 
-            for (float val : m_recentHistory)
+            for (float val : m_recentHistory.GetSpan())
             {
                 if (val > 0.0f)
                 {
-                    ++ValidCount;
+                    ++validCount;
                     m_average += val;
                     m_minimum = std::min(val, m_minimum);
                     m_maximum = std::max(val, m_maximum);
                 }
             }
 
-            if (ValidCount > 0)
-                m_average /= (float)ValidCount;
+            if (validCount > 0)
+                m_average /= (float)validCount;
             else
                 m_minimum = 0.0f;
         }
@@ -85,6 +86,20 @@ namespace
         float m_average;
         float m_minimum;
         float m_maximum;
+    };
+
+
+    class TimingNode
+    {
+    public:
+        
+    private:
+        std::vector<std::unique_ptr<TimingNode>> m_children;
+        std::unordered_map<StringHash, TimingNode*> m_lut;
+    };
+    class TimingTree
+    {
+    public:
     };
 }
 
