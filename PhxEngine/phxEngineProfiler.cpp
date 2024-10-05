@@ -55,6 +55,7 @@ namespace
         phx::Span<float> GetHistory(void) const { return { m_ExtendedHistory, kExtendedHistorySize }; }
 
     private:
+        // TODO: Make into a Ring Buffer :)
         static const uint32_t kHistorySize = 64;
         static const uint32_t kExtendedHistorySize = 256;
         float m_RecentHistory[kHistorySize];
