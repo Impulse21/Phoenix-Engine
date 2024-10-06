@@ -59,8 +59,8 @@ namespace
 
             void Push(T const& v)
             {
-                this->Buffer[Tail] = item;
-                Tail = (Tail + 1) & BufferMAsk;  // Wrap using bitwise AND
+                this->Buffer[Tail] = v;
+                Tail = (Tail + 1) & BufferMask;  // Wrap using bitwise AND
 
                 if (Full) 
                 {
@@ -68,16 +68,16 @@ namespace
                     Head = (Head + 1) & BufferMask;
                 }
 
-                Full = (head == tail);
+                Full = (Head == Tail);
             }
 
-            phx::Span<T> GetSpan() const { return { Buffer.data, Size }; }
+            phx::Span<T> GetSpan() const { return phx::Span{ Buffer.data(), Size}; }
 
             std::array<T, Size> Buffer;
             uint32_t Head = 0;
             uint32_t Tail = 0;
             bool Full = false;
-            const uint32_t BufferMask = (size - 1);
+            const uint32_t BufferMask = (Size - 1);
         };
 
         RingBuffer<float, 64> m_recentHistory = {};
@@ -92,21 +92,34 @@ namespace
     class TimingNode
     {
     public:
-        
+        TimingNode(std::string const& name, TimingNode* parent = nullptr)
+            : m_name(name)
+            , m_parent(parent)
+        {
+
+        }
+
+        TimingNode* GetOrCreateChild(std::string const& name)
+        {
+            auto itr = this->m_lut.find(name);
+            if (itr != this->m_lut.end())
+                return itr->second;
+
+            this->m_children.emplace_back(std::make_unique<TimingNode>(name, this));
+            this->m_lut[name] = this->m_children.back().get();
+            return this->m_children.back().get();
+        }
+
     private:
+        const std::string m_name;
+        const TimingNode* m_parent;
         std::vector<std::unique_ptr<TimingNode>> m_children;
-        std::unordered_map<StringHash, TimingNode*> m_lut;
+        std::unordered_map<std::string, TimingNode*> m_lut;
     };
     class TimingTree
     {
     public:
     };
-}
-
-
-namespace
-{
-
 }
 
 void phx::EngineProfile::Update()
