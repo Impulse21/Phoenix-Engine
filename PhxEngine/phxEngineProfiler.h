@@ -1,15 +1,13 @@
 #pragma once
 
-#include "EmberGfx/phxGfxDeviceResources.h"
 #include "EmberGfx/phxGfxCommandCtx.h"
-#include "phxStringHash.h"
 
 namespace phx
 {
 	namespace EngineProfile
 	{
 		void Update();
-		void BlockBegin(StringHash name, gfx::CommandCtx* gfxContext = nullptr);
+		void BlockBegin(std::string const& name, gfx::CommandCtx* gfxContext = nullptr);
 		void BlockEnd(gfx::CommandCtx* gfxContext = nullptr);
 
 		void DrawUI();
@@ -18,16 +16,16 @@ namespace phx
 	class ScopedBlock
 	{
 	public:
-		ScopedBlock(StringHash funcName, StringHash override)
+		ScopedBlock(std::string const& funcName, std::string const&  override)
 			: m_gfxContext(nullptr)
 		{
-			if (override.Value() == 0)
+			if (override.empty() == 0)
 				EngineProfile::BlockBegin(override);
 			else
 				EngineProfile::BlockBegin(funcName);
 		}
 
-		ScopedBlock(StringHash name, gfx::CommandCtx* gfxContext)
+		ScopedBlock(std::string const&  name, gfx::CommandCtx* gfxContext)
 			: m_gfxContext(gfxContext)
 		{
 			EngineProfile::BlockBegin(name);
@@ -43,4 +41,4 @@ namespace phx
 	};
 }
 
-#define PHX_EVENT(...) ScopedBlock scopedLock(__func__, ##__VA_ARGS__);
+#define PHX_EVENT(...) ScopedBlock scopedLock(__func__, ##__VA_A
