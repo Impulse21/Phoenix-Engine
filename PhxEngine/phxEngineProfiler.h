@@ -25,10 +25,13 @@ namespace phx
 				EngineProfile::BlockBegin(funcName);
 		}
 
-		ScopedBlock(std::string const&  name, gfx::CommandCtx* gfxContext)
+		ScopedBlock(std::string const& funcName, std::string const&  override, gfx::CommandCtx* gfxContext)
 			: m_gfxContext(gfxContext)
 		{
-			EngineProfile::BlockBegin(name);
+			if (override.empty() == 0)
+				EngineProfile::BlockBegin(override, gfxContext);
+			else
+				EngineProfile::BlockBegin(funcName, gfxContext);
 		}
 
 		~ScopedBlock()
@@ -41,4 +44,4 @@ namespace phx
 	};
 }
 
-#define PHX_EVENT(...) ScopedBlock scopedLock(__func__, ##__VA_A
+#define PHX_EVENT(...) phx::ScopedBlock scope(__func__, #__VA_ARGS__)
