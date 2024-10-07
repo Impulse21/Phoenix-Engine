@@ -2,6 +2,7 @@
 #include "phxEngineProfiler.h"
 #include  "phxSpan.h"
 #include "phxSystemTime.h"
+#include "ImGui/imgui.h"
 
 using namespace phx;
 
@@ -206,6 +207,9 @@ namespace
             this->m_totalGpuTime.RecordStat(totalGpuTime);
         }
 
+		float GetTotalCpuTime() const { return this->m_totalCpuTime.GetAvg(); }
+		float GetTotalGpuTime() const { return this->m_totalGpuTime.GetAvg(); }
+
     private:
         TimingNode m_rootScope;
         TimingNode* m_currentNode = &m_rootScope;
@@ -239,4 +243,8 @@ void phx::EngineProfile::BlockEnd(gfx::CommandCtx* gfxContext)
 
 void phx::EngineProfile::DrawUI()
 {
+    ImGui::Begin("Profiler");
+	ImGui::Text("CPU time %7.3f ms", m_timingTree.GetTotalCpuTime());
+	ImGui::Text("GPU time %7.3f ms", m_timingTree.GetTotalGpuTime());
+    ImGui::End();
 }
