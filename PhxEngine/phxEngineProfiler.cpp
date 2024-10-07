@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "phxEngineProfiler.h"
 #include  "phxSpan.h"
+#include "phxSystemTime.h"
 
 using namespace phx;
 
@@ -110,28 +111,130 @@ namespace
             return this->m_children.back().get();
         }
 
+        void TimingStart(gfx::CommandCtx* context)
+        {
+			this->m_startTick = SystemTime::GetCurrentTick();
+			if (context == nullptr)
+				return;
+
+#if false
+			m_gpuTimer.Start(*Context);
+
+			Context->PIXBeginEvent(m_Name.c_str());
+#endif
+        }
+
+        void TimingStop(gfx::CommandCtx* context)
+		{
+			this->m_endTick = SystemTime::GetCurrentTick();
+			if (context == nullptr)
+				return;
+
+#if false
+			m_GpuTimer.Stop(*Context);
+
+			Context->PIXEndEvent();
+#endif
+        }
+
+        void GatherTimes()
+        {
+			m_cpuTime.RecordStat(1000.0f * (float)SystemTime::TimeBetweenTicks(m_startTick, m_endTick));
+			// m_gpuTime.RecordStat(1000.0f * m_GpuTimer.GetTime());
+
+			for (auto& node : m_children)
+				node->GatherTimes();
+
+			m_startTick = 0;
+			m_endTick = 0;
+        }
+
+        void SumInclusiveTimes(float& cpuTime, float& gpuTime)
+        {
+            cpuTime = 0.0f;
+            gpuTime = 0.0f;
+            for (auto& child : this->m_children)
+            {
+				cpuTime += child->m_cpuTime.GetLast();
+				gpuTime += child->m_gpuTime.GetLast();
+            }
+        }
+
+        TimingNode* GetParent() const { return this->m_parent; }
+
     private:
         const std::string m_name;
-        const TimingNode* m_parent;
+        TimingNode* m_parent;
         std::vector<std::unique_ptr<TimingNode>> m_children;
-        std::unordered_map<std::string, TimingNode*> m_lut;
+		std::unordered_map<std::string, TimingNode*> m_lut;
+		StatHistory m_cpuTime;
+		StatHistory m_gpuTime;
+		int64_t m_startTick;
+		int64_t m_endTick;
     };
-    class TimingTree
+
+    class TimingTree final : NonCopyable
     {
     public:
+        TimingTree()
+	        : m_rootScope("")
+        {}
+
+        void ProfileMarkerPush(std::string const& name, gfx::CommandCtx* context)
+        {
+            this->m_currentNode = this->m_currentNode->GetOrCreateChild(name);
+            this->m_currentNode->TimingStart(context);
+        }
+
+        void ProfileMarkerPop(gfx::CommandCtx* context)
+        {
+            this->m_currentNode->TimingStop(context);
+            this->m_currentNode = this->m_currentNode->GetParent();
+        }
+
+        void UpdateTimes()
+        {
+
+            m_rootScope.GatherTimes();
+            // Get GPU Time
+            // m_frameDelta.RecordStat()
+            float totalCpuTime = 0.0f;
+            float totalGpuTime = 0.0f;
+
+            this->m_rootScope.SumInclusiveTimes(totalCpuTime, totalGpuTime);
+            this->m_totalCpuTime.RecordStat(totalCpuTime);
+            this->m_totalGpuTime.RecordStat(totalGpuTime);
+        }
+
+    private:
+        TimingNode m_rootScope;
+        TimingNode* m_currentNode = &m_rootScope;
+        StatHistory m_frameDelta;
+        StatHistory m_totalCpuTime;
+        StatHistory m_totalGpuTime;
     };
+
+}
+
+namespace
+{
+	TimingTree m_timingTree;
+
 }
 
 void phx::EngineProfile::Update()
 {
+	m_timingTree.UpdateTimes();
 }
 
-void phx::EngineProfile::BlockBegin(StringHash name, gfx::CommandCtx* gfxContext)
+void phx::EngineProfile::BlockBegin(std::string const& name, gfx::CommandCtx* gfxContext)
 {
+    m_timingTree.ProfileMarkerPush(name, gfxContext);
 }
 
 void phx::EngineProfile::BlockEnd(gfx::CommandCtx* gfxContext)
 {
+	m_timingTree.ProfileMarkerPop(gfxContext);
 }
 
 void phx::EngineProfile::DrawUI()
