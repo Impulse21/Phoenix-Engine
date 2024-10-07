@@ -16,6 +16,12 @@ namespace phx
 	class ScopedBlock
 	{
 	public:
+		ScopedBlock(std::string const& funcName)
+			: m_gfxContext(nullptr)
+		{
+				EngineProfile::BlockBegin(funcName);
+		}
+
 		ScopedBlock(std::string const& funcName, std::string const&  override)
 			: m_gfxContext(nullptr)
 		{
@@ -44,4 +50,4 @@ namespace phx
 	};
 }
 
-#define PHX_EVENT(...) phx::ScopedBlock scope(__func__, #__VA_ARGS__)
+#define PHX_EVENT(...) phx::ScopedBlock scope(__func__, ##__VA_ARGS__)
