@@ -18,6 +18,7 @@
 namespace phx::gfx
 {
 	constexpr size_t kBufferCount = 3;
+	constexpr uint32_t kTimestampQueryHeapSize = 1024; // 4096;
 	static const GUID RenderdocUUID = { 0xa7aa6116, 0x9c8d, 0x4bba, { 0x90, 0x83, 0xb4, 0xd8, 0x16, 0xb7, 0x1b, 0x78 } };
 	static const GUID PixUUID = { 0x9f251514, 0x9d4d, 0x4902, { 0x9d, 0x60, 0x18, 0x98, 0x8a, 0xb7, 0xd4, 0xb5 } };
 	
@@ -226,6 +227,29 @@ namespace phx::gfx
 		DescriptorIndexPool m_descriptorIndexPool;
 	};
 
+	struct GpuTimerManager
+	{
+		void Initialize();
+		GpuTimerHandle NewTimer() { return this->NumTimers++; }
+		void BeginReadBack();
+		void EndReadBack();
+
+		float GetTime(GpuTimerHandle handle);
+
+
+		Microsoft::WRL::ComPtr<ID3D12QueryHeap> QueryHeap = nullptr;
+		Microsoft::WRL::ComPtr<ID3D12Resource> ReadBackBuffer = nullptr;
+		uint64_t* TimeStampBuffer = nullptr;
+		uint64_t Fence = 0;
+		uint32_t MaxNumTimers = kTimestampQueryHeapSize;
+		uint32_t NumTimers = 1;
+		uint64_t ValidTimeStart = 0;
+		uint64_t ValidTimeEnd = 0;
+		double GpuTickDelta = 0.0;
+
+
+	};
+
 	class GfxDeviceD3D12 final
 	{
 	public:
@@ -246,6 +270,11 @@ namespace phx::gfx
 		static platform::CommandCtxD3D12* BeginComputeContext();
 
 		static void SubmitFrame();
+
+		static void BeginGpuTimerReadback();
+		static float GetTime(GpuTimerHandle handle);
+		static void EndGpuTimerReadback();
+
 
 	public:
 		static GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
@@ -288,7 +317,7 @@ namespace phx::gfx
 		static CpuDescriptorHeap& GetRtvCpuHeap() { return m_cpuDescriptorHeaps[DescriptorHeapTypes::RTV]; }
 		static CpuDescriptorHeap& GetDsvCpuHeap() { return m_cpuDescriptorHeaps[DescriptorHeapTypes::DSV]; }
 		static Span<GpuDescriptorHeap> GetGpuDescriptorHeaps() { return Span<GpuDescriptorHeap>(m_gpuDescriptorHeaps.data(), m_gpuDescriptorHeaps.size()); }
-
+		static GpuTimerManager& GetGpuTimerManager() { return m_gpuTimerManager; }
 		static ResourceRegistryD3D12& GetRegistry() { return m_resourceRegistry; }
 
 		static void PollDebugMessages();
@@ -357,6 +386,8 @@ namespace phx::gfx
 		inline static ResourceRegistryD3D12 m_resourceRegistry;
 		inline static BindlessDescriptorTable m_bindlessDescritorTable;
 		inline static GpuRingAllocator m_tempPageAllocator;
+
+		inline static GpuTimerManager m_gpuTimerManager;
 	};
 
 }

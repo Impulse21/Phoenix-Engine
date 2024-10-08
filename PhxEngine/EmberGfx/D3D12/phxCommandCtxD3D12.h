@@ -95,6 +95,20 @@ namespace phx::gfx::platform
 		void SetIndexBuffer(BufferHandle indexBuffer);
 		void SetDynamicIndexBuffer(BufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat);
 		void SetPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants);
+		void StartTimer(GpuTimerHandle QueryIdx);
+		void EndTimer(GpuTimerHandle QueryIdx);
+
+	public:
+		inline void InsertTimeStamp(ID3D12QueryHeap* pQueryHeap, uint32_t QueryIdx)
+		{
+			this->m_commandList->EndQuery(pQueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, QueryIdx);
+		}
+
+		inline void ResolveTimeStamps(ID3D12Resource* pReadbackHeap, ID3D12QueryHeap* pQueryHeap, uint32_t NumQueries)
+		{
+			this->m_commandList->ResolveQueryData(pQueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, 0, NumQueries, pReadbackHeap, 0);
+		}
+
 
 	private:
 		std::vector<D3D12_RESOURCE_BARRIER> m_barrierMemoryPool;

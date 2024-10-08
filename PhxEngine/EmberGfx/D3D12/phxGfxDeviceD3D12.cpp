@@ -581,6 +581,16 @@ void phx::gfx::GfxDeviceD3D12::SubmitFrame()
 	RunGarbageCollection();
 }
 
+void phx::gfx::GfxDeviceD3D12::BeginGpuTimerReadback()
+{
+	m_gpuTimerManager.BeginReadBack();
+}
+
+void phx::gfx::GfxDeviceD3D12::EndGpuTimerReadback()
+{
+	m_gpuTimerManager.EndReadBack();
+}
+
 Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateEmptyRootSignature()
 {
 	using namespace Microsoft::WRL;
@@ -4751,3 +4761,90 @@ HRESULT D3D12Adapter::EnumAdapters(uint32_t adapterIndex, IDXGIFactory6* factory
 		IID_PPV_ARGS(outAdapter));
 }
 #endif
+
+void phx::gfx::GpuTimerManager::Initialize()
+{
+	uint64_t GpuFrequency;
+	GfxDeviceD3D12::GetGfxQueue().Queue->GetTimestampFrequency(&GpuFrequency);
+	GpuTickDelta = 1.0 / static_cast<double>(GpuFrequency);
+
+	D3D12_HEAP_PROPERTIES HeapProps;
+	HeapProps.Type = D3D12_HEAP_TYPE_READBACK;
+	HeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	HeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	HeapProps.CreationNodeMask = 1;
+	HeapProps.VisibleNodeMask = 1;
+
+	D3D12_RESOURCE_DESC BufferDesc;
+	BufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	BufferDesc.Alignment = 0;
+	BufferDesc.Width = sizeof(uint64_t) * MaxNumTimers * 2;
+	BufferDesc.Height = 1;
+	BufferDesc.DepthOrArraySize = 1;
+	BufferDesc.MipLevels = 1;
+	BufferDesc.Format = DXGI_FORMAT_UNKNOWN;
+	BufferDesc.SampleDesc.Count = 1;
+	BufferDesc.SampleDesc.Quality = 0;
+	BufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	BufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	ThrowIfFailed(
+		GfxDeviceD3D12::GetD3D12Device()->CreateCommittedResource(&
+			HeapProps,
+			D3D12_HEAP_FLAG_NONE,
+			&BufferDesc,
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			nullptr, IID_PPV_ARGS(&ReadBackBuffer)));
+	ReadBackBuffer->SetName(L"GpuTimeStamp Buffer");
+
+	D3D12_QUERY_HEAP_DESC QueryHeapDesc;
+	QueryHeapDesc.Count = MaxNumTimers * 2;
+	QueryHeapDesc.NodeMask = 1;
+	QueryHeapDesc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
+	ThrowIfFailed(GfxDeviceD3D12::GetD3D12Device2()->CreateQueryHeap(&QueryHeapDesc, IID_PPV_ARGS(&QueryHeap)));
+	QueryHeap->SetName(L"GpuTimeStamp QueryHeap");
+
+	// Pre-seed the query heap with valid values so that resolving them doesn't
+	// trigger debug layer errors.
+	platform::CommandCtxD3D12* Context = GfxDeviceD3D12::BeginGfxContext();
+	for (uint32_t i = 0; i < MaxNumTimers * 2; ++i)
+	{
+		Context->InsertTimeStamp(QueryHeap.Get(), i);
+	}
+}
+
+void phx::gfx::GpuTimerManager::BeginReadBack()
+{
+	// TODO Fence Value
+	D3D12_RANGE Range;
+	Range.Begin = 0;
+	Range.End = (NumTimers * 2) * sizeof(uint64_t);
+	ThrowIfFailed(
+		ReadBackBuffer->Map(0, &Range, reinterpret_cast<void**>(&TimeStampBuffer)));
+
+	ValidTimeStart = TimeStampBuffer[0];
+	ValidTimeEnd = TimeStampBuffer[1];
+
+	// On the first frame, with random values in the timestamp query heap, we can avoid a misstart.
+	if (ValidTimeEnd < ValidTimeStart)
+	{
+		ValidTimeStart = 0ull;
+		ValidTimeEnd = 0ull;
+	}
+}
+
+void phx::gfx::GpuTimerManager::EndReadBack()
+{
+	// Unmap with an empty range to indicate nothing was written by the CPU
+	D3D12_RANGE EmptyRange = {};
+	ReadBackBuffer->Unmap(0, &EmptyRange);
+	TimeStampBuffer = nullptr;
+
+#if false
+	CommandContext& Context = CommandContext::Begin();
+	Context.InsertTimeStamp(sm_QueryHeap, 1);
+	Context.ResolveTimeStamps(sm_ReadBackBuffer, sm_QueryHeap, sm_NumTimers * 2);
+	Context.InsertTimeStamp(sm_QueryHeap, 0);
+	Fence = Context.Finish();
+#endif
+}

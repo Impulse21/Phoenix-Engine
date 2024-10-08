@@ -6,6 +6,7 @@
 
 #include "phxEngineCore.h"
 #include "EmberGfx/phxEmber.h"
+#include "phxEngineProfiler.h"
 
 #include "phxDisplay.h"
 
@@ -39,12 +40,15 @@ public:
 	void CacheRenderData() override {};
 	void Update() override 
 	{
+		PHX_EVENT();
 		m_imguiRenderSystem.BeginFrame();
 		ImGui::ShowDemoWindow();
+		phx::EngineProfile::DrawUI();
 	};
 
 	void Render() override
 	{
+		PHX_EVENT();
 		using namespace phx::gfx;
 		phx::gfx::CommandCtx ctx = phx::gfx::GfxDevice::BeginGfxContext();
 		ctx.ClearBackBuffer({ 0.392156899f, 0.584313750f, 0.929411829f, 1.f  }); // Cornflower blue

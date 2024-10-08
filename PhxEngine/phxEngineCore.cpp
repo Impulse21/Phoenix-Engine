@@ -2,6 +2,7 @@
 #include "phxEngineCore.h"
 
 #include "phxCommandLineArgs.h"
+#include "phxEngineProfiler.h"
 #include <shellapi.h>  // For CommandLineToArgW
 
 #include "phxDeferredReleaseQueue.h"
@@ -48,7 +49,7 @@ namespace
 
 	void UpdateApplication(IEngineApp& app)
 	{
-		// TODO:
+		phx::EngineProfile::Update();
 		app.Update();
 		app.Render();
 		Display::Preset();

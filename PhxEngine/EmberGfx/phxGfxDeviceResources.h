@@ -1284,6 +1284,8 @@ namespace phx::gfx
         bool VSync : 1 = false;
         bool EnableHDR : 1 = false;
     };
+
+    using GpuTimerHandle = uint32_t;
 }
 
 namespace std
