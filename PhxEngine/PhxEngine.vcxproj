@@ -299,6 +299,7 @@
     <ClInclude Include="phxDisplay.h" />
     <ClInclude Include="phxEngineCore.h" />
     <ClInclude Include="phxLog.h" />
+    <ClInclude Include="phxMath.h" />
     <ClInclude Include="phxMemory.h" />
     <ClInclude Include="phxPlatform.h" />
     <ClInclude Include="phxPlatformDetection.h" />
