@@ -1,0 +1,221 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\3rdParty">
+      <UniqueIdentifier>{a85f129a-e280-41b1-bdfe-22bbc8af5551}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\3rdParty">
+      <UniqueIdentifier>{2662db93-0168-49c6-adf2-0f06685aa95a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EmberGfx">
+      <UniqueIdentifier>{9efebb87-cbf6-428e-b617-b6995bab0603}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EmberGfx\D3D12">
+      <UniqueIdentifier>{a731a9de-4e9f-4fb8-9a0d-46a99e0146b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EmberGfx\Fonts">
+      <UniqueIdentifier>{1f8b7124-f56c-464f-b8db-c1200252232f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EmberGfx\ImGui">
+      <UniqueIdentifier>{6ead0aa1-d629-4342-b89d-e46bb06ee9e6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="EmberGfx\Shaders">
+      <UniqueIdentifier>{b83ff36c-6eeb-4ae0-9f4c-5e1d28316da0}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="phxEngineCore.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="phxDisplay.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="phxCommandLineArgs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="phxSystemTime.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="phxDeferredReleaseQueue.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="phxLog.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="phxEnumUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h">
+      <Filter>Header Files\3rdParty</Filter>
+    </ClInclude>
+    <ClInclude Include="phxPlatformDetection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="phxSpan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxEmber.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\D3D12\phxGfxDeviceD3D12.h">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxHandle.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxHandlePool.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="phxPlatform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxGfxDeviceResources.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.h">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\D3D12\phxGfxCommonD3D12.h">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\D3D12\phxCommandCtxD3D12.h">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxGfxDevice.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxGfxCommandCtx.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\D3D12\phxGfxPlatform.h">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="phxRefCountPtr.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdParty\stb\stb_truetype.h">
+      <Filter>Header Files\3rdParty</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxFontRenderer.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdParty\stb\stb_perlin.h">
+      <Filter>Header Files\3rdParty</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdParty\stb\stb_rect_pack.h">
+      <Filter>Header Files\3rdParty</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\Fonts\phxLiberationSans.h">
+      <Filter>EmberGfx\Fonts</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxImGuiRenderer.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="phxMemory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\D3D12\phxGfxResourceRegistryD3D12.h">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\ImGui\imgui_impl_win32.h">
+      <Filter>EmberGfx\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\D3D12\phxDynamicMemoryPageAllocatorD3D12.h">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="phxEngineProfiler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="phxStringHash.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="pch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="phxEngineCore.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="phxDisplay.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="phxSystemTimer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="phxCommandLineArgs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="phxDeferredReleaseQueue.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp">
+      <Filter>Source Files\3rdParty</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\phxEmber.cpp">
+      <Filter>EmberGfx</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\D3D12\phxGfxDeviceD3D12.cpp">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="phxLog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.cpp">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\D3D12\phxGfxDxgiFormatMapping.cpp">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\D3D12\phxCommandCtxD3D12.cpp">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\phxFontRenderer.cpp">
+      <Filter>EmberGfx</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\phxImGuiRenderer.cpp">
+      <Filter>EmberGfx</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\D3D12\phxGfxResourceRegistryD3D12.cpp">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\ImGui\imgui_impl_win32.cpp">
+      <Filter>EmberGfx\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\D3D12\phxDynamicMemoryPageAllocatorD3D12.cpp">
+      <Filter>EmberGfx\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="phxEngineProfiler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+    <None Include="EmberGfx\Shaders\ImGui.hlsli">
+      <Filter>EmberGfx\Shaders</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="EmberGfx\Shaders\ImGuiPS.hlsl">
+      <Filter>EmberGfx\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="EmberGfx\Shaders\ImGuiVS.hlsl">
+      <Filter>EmberGfx\Shaders</Filter>
+    </FxCompile>
+  </ItemGroup>
+</Project>
