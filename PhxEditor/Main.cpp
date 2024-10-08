@@ -42,15 +42,14 @@ public:
 	{
 		PHX_EVENT();
 		m_imguiRenderSystem.BeginFrame();
-		ImGui::ShowDemoWindow();
 		phx::EngineProfile::DrawUI();
 	};
 
 	void Render() override
 	{
-		PHX_EVENT();
 		using namespace phx::gfx;
 		phx::gfx::CommandCtx ctx = phx::gfx::GfxDevice::BeginGfxContext();
+		PHX_EVENT_GFX(ctx);
 		ctx.ClearBackBuffer({ 0.392156899f, 0.584313750f, 0.929411829f, 1.f  }); // Cornflower blue
 		ctx.SetRenderTargetSwapChain();
 		Viewport viewport(g_DisplayWidth, g_DisplayHeight);

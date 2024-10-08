@@ -103,6 +103,16 @@ namespace phx::gfx
 			return this->m_platform->AllocateDynamic(sizeInBytes, alignment);
 		}
 
+		void StartTimer(TimerQueryHandle QueryIdx)
+		{
+			return this->m_platform->StartTimer(QueryIdx);
+		}
+
+		void EndTimer(TimerQueryHandle QueryIdx)
+		{
+			return this->m_platform->EndTimer(QueryIdx);
+		}
+
 	private:
 		PlatformCommandCtx* m_platform;
 	};

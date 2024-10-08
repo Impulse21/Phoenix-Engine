@@ -95,8 +95,8 @@ namespace phx::gfx::platform
 		void SetIndexBuffer(BufferHandle indexBuffer);
 		void SetDynamicIndexBuffer(BufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat);
 		void SetPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants);
-		void StartTimer(GpuTimerHandle QueryIdx);
-		void EndTimer(GpuTimerHandle QueryIdx);
+		void StartTimer(TimerQueryHandle QueryIdx);
+		void EndTimer(TimerQueryHandle QueryIdx);
 
 	public:
 		inline void InsertTimeStamp(ID3D12QueryHeap* pQueryHeap, uint32_t QueryIdx)

@@ -1133,7 +1133,7 @@ namespace phx::gfx
     using RenderPassHandle = Handle<RenderPass>;
 
     struct TimerQuery;
-    using TimerQueryHandle = Handle<TimerQuery>;
+    using TimerQueryHandle = uint32_t;
 
     struct GpuBarrier
     {
@@ -1284,8 +1284,6 @@ namespace phx::gfx
         bool VSync : 1 = false;
         bool EnableHDR : 1 = false;
     };
-
-    using GpuTimerHandle = uint32_t;
 }
 
 namespace std

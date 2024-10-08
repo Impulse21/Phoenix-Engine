@@ -2,6 +2,7 @@
 #include "phxEngineProfiler.h"
 #include  "phxSpan.h"
 #include "phxSystemTime.h"
+#include "EmberGfx/phxGfxDevice.h"
 #include "ImGui/imgui.h"
 
 using namespace phx;
@@ -91,6 +92,38 @@ namespace
     };
 
 
+    class GpuTimer
+    {
+    public:
+
+        GpuTimer()
+        {
+            m_timerIndex = gfx::GfxDevice::CreateTimerQueryHandle();
+        }
+
+        void Start(gfx::CommandCtx* context)
+        {
+            context->StartTimer(this->m_timerIndex);
+        }
+
+        void Stop(gfx::CommandCtx* context)
+        {
+            context->EndTimer(this->m_timerIndex);
+        }
+
+        float GetTime()
+        {
+            return gfx::GfxDevice::GetTime(m_timerIndex);
+        }
+
+        gfx::TimerQueryHandle GetTimerIndex(void)
+        {
+            return m_timerIndex;
+        }
+    private:
+        gfx::TimerQueryHandle m_timerIndex;
+    };
+
     class TimingNode
     {
     public:
@@ -118,11 +151,9 @@ namespace
 			if (context == nullptr)
 				return;
 
-#if false
-			m_gpuTimer.Start(*Context);
+			m_gpuTimer.Start(context);
 
-			Context->PIXBeginEvent(m_Name.c_str());
-#endif
+			// Context->PIXBeginEvent(m_name.c_str());
         }
 
         void TimingStop(gfx::CommandCtx* context)
@@ -131,17 +162,15 @@ namespace
 			if (context == nullptr)
 				return;
 
-#if false
-			m_GpuTimer.Stop(*Context);
+			m_gpuTimer.Stop(context);
 
-			Context->PIXEndEvent();
-#endif
+			// Context->PIXEndEvent();
         }
 
         void GatherTimes()
         {
 			m_cpuTime.RecordStat(1000.0f * (float)SystemTime::TimeBetweenTicks(m_startTick, m_endTick));
-			// m_gpuTime.RecordStat(1000.0f * m_GpuTimer.GetTime());
+			m_gpuTime.RecordStat(1000.0f * m_gpuTimer.GetTime());
 
 			for (auto& node : m_children)
 				node->GatherTimes();
@@ -172,6 +201,7 @@ namespace
 		StatHistory m_gpuTime;
 		int64_t m_startTick;
 		int64_t m_endTick;
+        GpuTimer m_gpuTimer;
     };
 
     class TimingTree final : NonCopyable
@@ -195,10 +225,11 @@ namespace
 
         void UpdateTimes()
         {
+            gfx::GfxDevice::BeginGpuTimerReadback();
+            m_rootScope.GatherTimes(); 
+            m_frameDelta.RecordStat(gfx::GfxDevice::GetTime(0));
+            gfx::GfxDevice::EndGpuTimerReadback();
 
-            m_rootScope.GatherTimes();
-            // Get GPU Time
-            // m_frameDelta.RecordStat()
             float totalCpuTime = 0.0f;
             float totalGpuTime = 0.0f;
 

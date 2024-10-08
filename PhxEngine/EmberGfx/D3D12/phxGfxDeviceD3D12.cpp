@@ -523,6 +523,7 @@ void phx::gfx::GfxDeviceD3D12::Initialize(SwapChainDesc const& swapChainDesc, vo
 {
 	Initialize();
 	CreateSwapChain(swapChainDesc, static_cast<HWND>(windowHandle));
+	m_gpuTimerManager.Initialize();
 }
 
 void phx::gfx::GfxDeviceD3D12::Finalize()
@@ -584,6 +585,11 @@ void phx::gfx::GfxDeviceD3D12::SubmitFrame()
 void phx::gfx::GfxDeviceD3D12::BeginGpuTimerReadback()
 {
 	m_gpuTimerManager.BeginReadBack();
+}
+
+float phx::gfx::GfxDeviceD3D12::GetTime(TimerQueryHandle handle)
+{
+	return m_gpuTimerManager.GetTime(handle);
 }
 
 void phx::gfx::GfxDeviceD3D12::EndGpuTimerReadback()
@@ -4788,14 +4794,17 @@ void phx::gfx::GpuTimerManager::Initialize()
 	BufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 	BufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-	ThrowIfFailed(
-		GfxDeviceD3D12::GetD3D12Device()->CreateCommittedResource(&
-			HeapProps,
-			D3D12_HEAP_FLAG_NONE,
-			&BufferDesc,
-			D3D12_RESOURCE_STATE_COPY_DEST,
-			nullptr, IID_PPV_ARGS(&ReadBackBuffer)));
-	ReadBackBuffer->SetName(L"GpuTimeStamp Buffer");
+	for (int i = 0; i < ReadBackBuffers.size(); i++)
+	{
+		ThrowIfFailed(
+			GfxDeviceD3D12::GetD3D12Device()->CreateCommittedResource(&
+				HeapProps,
+				D3D12_HEAP_FLAG_NONE,
+				&BufferDesc,
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				nullptr, IID_PPV_ARGS(&ReadBackBuffers[i])));
+		ReadBackBuffers[i]->SetName(L"GpuTimeStamp Buffer");
+	}
 
 	D3D12_QUERY_HEAP_DESC QueryHeapDesc;
 	QueryHeapDesc.Count = MaxNumTimers * 2;
@@ -4815,12 +4824,12 @@ void phx::gfx::GpuTimerManager::Initialize()
 
 void phx::gfx::GpuTimerManager::BeginReadBack()
 {
-	// TODO Fence Value
+	Microsoft::WRL::ComPtr<ID3D12Resource>& currentBuffer = ReadBackBuffers[GfxDeviceD3D12::GetFrameCount() % ReadBackBuffers.size()];
 	D3D12_RANGE Range;
 	Range.Begin = 0;
 	Range.End = (NumTimers * 2) * sizeof(uint64_t);
 	ThrowIfFailed(
-		ReadBackBuffer->Map(0, &Range, reinterpret_cast<void**>(&TimeStampBuffer)));
+		currentBuffer->Map(0, &Range, reinterpret_cast<void**>(&TimeStampBuffer)));
 
 	ValidTimeStart = TimeStampBuffer[0];
 	ValidTimeEnd = TimeStampBuffer[1];
@@ -4835,16 +4844,31 @@ void phx::gfx::GpuTimerManager::BeginReadBack()
 
 void phx::gfx::GpuTimerManager::EndReadBack()
 {
+	Microsoft::WRL::ComPtr<ID3D12Resource>& currentBuffer = ReadBackBuffers[GfxDeviceD3D12::GetFrameCount() % ReadBackBuffers.size()];
 	// Unmap with an empty range to indicate nothing was written by the CPU
 	D3D12_RANGE EmptyRange = {};
-	ReadBackBuffer->Unmap(0, &EmptyRange);
+	currentBuffer->Unmap(0, &EmptyRange);
 	TimeStampBuffer = nullptr;
 
-#if false
-	CommandContext& Context = CommandContext::Begin();
-	Context.InsertTimeStamp(sm_QueryHeap, 1);
-	Context.ResolveTimeStamps(sm_ReadBackBuffer, sm_QueryHeap, sm_NumTimers * 2);
-	Context.InsertTimeStamp(sm_QueryHeap, 0);
-	Fence = Context.Finish();
-#endif
+
+	Microsoft::WRL::ComPtr<ID3D12Resource>& nextBuffer = ReadBackBuffers[(GfxDeviceD3D12::GetFrameCount() + 1) % ReadBackBuffers.size()];
+	// Set next Readback Buffer.
+	platform::CommandCtxD3D12* ctx = GfxDeviceD3D12::BeginGfxContext();
+	ctx->InsertTimeStamp(this->QueryHeap.Get(), 1);
+	ctx->ResolveTimeStamps(nextBuffer.Get(), QueryHeap.Get(), NumTimers * 2);
+	ctx->InsertTimeStamp(QueryHeap.Get(), 0);
+}
+
+float phx::gfx::GpuTimerManager::GetTime(TimerQueryHandle handle)
+{
+	assert(TimeStampBuffer != nullptr, "Time stamp readback buffer is not mapped");
+	assert(handle < NumTimers, "Invalid GPU timer index");
+
+	uint64_t TimeStamp1 = TimeStampBuffer[handle * 2];
+	uint64_t TimeStamp2 = TimeStampBuffer[handle * 2 + 1];
+
+	if (TimeStamp1 < ValidTimeStart || TimeStamp2 > ValidTimeEnd || TimeStamp2 <= TimeStamp1)
+		return 0.0f;
+
+	return static_cast<float>(GpuTickDelta * (TimeStamp2 - TimeStamp1));
 }

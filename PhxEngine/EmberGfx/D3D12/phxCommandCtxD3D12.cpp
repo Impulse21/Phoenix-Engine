@@ -415,12 +415,12 @@ void phx::gfx::platform::CommandCtxD3D12::SetPushConstant(uint32_t rootParameter
     }
 }
 
-void phx::gfx::platform::CommandCtxD3D12::StartTimer(GpuTimerHandle QueryIdx)
+void phx::gfx::platform::CommandCtxD3D12::StartTimer(TimerQueryHandle QueryIdx)
 {
     this->InsertTimeStamp(GfxDeviceD3D12::GetGpuTimerManager().QueryHeap.Get(), QueryIdx);
 }
 
-void phx::gfx::platform::CommandCtxD3D12::EndTimer(GpuTimerHandle QueryIdx)
+void phx::gfx::platform::CommandCtxD3D12::EndTimer(TimerQueryHandle QueryIdx)
 {
     this->InsertTimeStamp(GfxDeviceD3D12::GetGpuTimerManager().QueryHeap.Get(), QueryIdx * 2 + 1);
 }

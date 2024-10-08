@@ -230,24 +230,22 @@ namespace phx::gfx
 	struct GpuTimerManager
 	{
 		void Initialize();
-		GpuTimerHandle NewTimer() { return this->NumTimers++; }
+		TimerQueryHandle NewTimer() { return this->NumTimers++; }
 		void BeginReadBack();
 		void EndReadBack();
 
-		float GetTime(GpuTimerHandle handle);
+		float GetTime(TimerQueryHandle handle);
 
 
 		Microsoft::WRL::ComPtr<ID3D12QueryHeap> QueryHeap = nullptr;
-		Microsoft::WRL::ComPtr<ID3D12Resource> ReadBackBuffer = nullptr;
+		std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kBufferCount> ReadBackBuffers = {};
 		uint64_t* TimeStampBuffer = nullptr;
 		uint64_t Fence = 0;
 		uint32_t MaxNumTimers = kTimestampQueryHeapSize;
-		uint32_t NumTimers = 1;
+		std::atomic<uint32_t> NumTimers = 1;
 		uint64_t ValidTimeStart = 0;
 		uint64_t ValidTimeEnd = 0;
 		double GpuTickDelta = 0.0;
-
-
 	};
 
 	class GfxDeviceD3D12 final
@@ -272,7 +270,7 @@ namespace phx::gfx
 		static void SubmitFrame();
 
 		static void BeginGpuTimerReadback();
-		static float GetTime(GpuTimerHandle handle);
+		static float GetTime(TimerQueryHandle handle);
 		static void EndGpuTimerReadback();
 
 
@@ -295,10 +293,14 @@ namespace phx::gfx
 
 		static DescriptorIndex GetDescriptorIndex(BufferHandle handle, SubresouceType type = SubresouceType::SRV, int subResource = -1);
 
+		static TimerQueryHandle CreateTimerQueryHandle() { return m_gpuTimerManager.NewTimer(); }
+
 		// -- Platform specific ---
 	public:
 		static D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView() { return m_swapChain.GetBackBufferView(); }
 		static ID3D12Resource* GetBackBuffer() { return m_swapChain.GetBackBuffer(); }
+		static UINT GetBackBufferIndex() { return m_swapChain.SwapChain4->GetCurrentBackBufferIndex(); }
+		static size_t GetFrameCount() { return m_frameCount; }
 
 		static ID3D12Device* GetD3D12Device() { return m_d3d12Device.Get(); }
 		static ID3D12Device2* GetD3D12Device2() { return m_d3d12Device2.Get(); }

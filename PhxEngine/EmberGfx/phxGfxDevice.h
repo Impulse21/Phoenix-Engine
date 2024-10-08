@@ -94,6 +94,29 @@ namespace phx::gfx
 		{
 			return PlatformGfxDevice::GetDescriptorIndex(handle, type, subResource);
 		}
+
+		static TimerQueryHandle CreateTimerQueryHandle()
+		{
+			return PlatformGfxDevice::CreateTimerQueryHandle();
+		}
+
+
+		static void BeginGpuTimerReadback()
+		{
+			PlatformGfxDevice::BeginGpuTimerReadback();
+		}
+
+
+		static float GetTime(TimerQueryHandle handle)
+		{
+			return PlatformGfxDevice::GetTime(handle);
+		}
+
+		static void EndGpuTimerReadback()
+		{
+			PlatformGfxDevice::EndGpuTimerReadback();
+		}
+
 	private:
 	};
 
