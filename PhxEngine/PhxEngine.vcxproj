@@ -162,8 +162,12 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);C:\VulkanSDK\1.3.296.0\Include</AdditionalIncludeDirectories>
     </ClCompile>
+    <Lib>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.296.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">
     <Link>
@@ -184,8 +188,12 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);C:\VulkanSDK\1.3.296.0\Include</AdditionalIncludeDirectories>
     </ClCompile>
+    <Lib>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.296.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">
     <Link>
@@ -206,8 +214,12 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);C:\VulkanSDK\1.3.296.0\Include</AdditionalIncludeDirectories>
     </ClCompile>
+    <Lib>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.296.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile_Virtual_Gfx|Gaming.Desktop.x64'">
     <Link>
@@ -228,8 +240,12 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);C:\VulkanSDK\1.3.296.0\Include</AdditionalIncludeDirectories>
     </ClCompile>
+    <Lib>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.296.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">
     <Link>
@@ -247,8 +263,12 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);C:\VulkanSDK\1.3.296.0\Include</AdditionalIncludeDirectories>
     </ClCompile>
+    <Lib>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.296.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Virtual_Gfx|Gaming.Desktop.x64'">
     <Link>
@@ -266,8 +286,12 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);C:\VulkanSDK\1.3.296.0\Include</AdditionalIncludeDirectories>
     </ClCompile>
+    <Lib>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.296.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h" />
@@ -291,6 +315,7 @@
     <ClInclude Include="EmberGfx\phxGfxDeviceResources.h" />
     <ClInclude Include="EmberGfx\phxHandle.h" />
     <ClInclude Include="EmberGfx\phxHandlePool.h" />
+    <ClInclude Include="EmberGfx\Vulkan\phxVulkanExtManager.h" />
     <ClInclude Include="phxDeferredReleaseQueue.h" />
     <ClInclude Include="phxEngineProfiler.h" />
     <ClInclude Include="phxEnumUtils.h" />
@@ -319,6 +344,7 @@
     <ClCompile Include="EmberGfx\phxImGuiRenderer.cpp" />
     <ClCompile Include="EmberGfx\phxEmber.cpp" />
     <ClCompile Include="EmberGfx\phxFontRenderer.cpp" />
+    <ClCompile Include="EmberGfx\Vulkan\phxVulkanExtManager.cpp" />
     <ClCompile Include="phxDeferredReleaseQueue.cpp" />
     <ClCompile Include="phxCommandLineArgs.cpp" />
     <ClCompile Include="pch.cpp">
