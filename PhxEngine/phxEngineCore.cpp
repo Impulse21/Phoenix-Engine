@@ -27,7 +27,8 @@ void ExitGame() noexcept;
 
 namespace phx::EngineCore
 {
-	HWND g_hWnd = nullptr;
+	HWND g_hWnd = nullptr; 
+	HINSTANCE g_hInstance = nullptr;
 }
 
 namespace
@@ -124,6 +125,7 @@ namespace phx::EngineCore
 			if (!g_hWnd)
 				return 1;
 
+			g_hInstance = hInst;
 			ApplicationInitialize(*app);
 
 			ShowWindow(g_hWnd, nCmdShow/*SW_SHOWDEFAULT*/);

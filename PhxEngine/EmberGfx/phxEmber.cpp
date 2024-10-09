@@ -20,14 +20,15 @@ void phx::gfx::InitializeWindows(
 #endif
 	CommandLineArgs::GetInteger(L"debug", useValidation);
 
-	platform::VulkanDevice::Initialize(swapChainDesc, (bool)useValidation, windowHandle);
+	platform::VulkanGpuDevice gpuDevice;
+
+	gpuDevice.Initialize(swapChainDesc, (bool)useValidation, windowHandle);
 	GfxDevice::Initialize(swapChainDesc, windowHandle);
 
-
+	gpuDevice.Finalize();
 }
 
 void phx::gfx::Finalize()
 {
-	platform::VulkanDevice::Finalize();
 	GfxDevice::Finalize();
 }
