@@ -21,16 +21,45 @@ void phx::gfx::platform::VulkanExtManager::Initialize(bool enableValidation)
 
     for (const auto& ext : m_availableExtensions) 
     {
-        PHX_CORE_INFO("\t[Extension] - {0} Version:{1}", ext.extensionName, ext.specVersion);
+        PHX_CORE_INFO("\t- '{0}' Version:{1}", ext.extensionName, ext.specVersion);
         
     }
 }
 
-void phx::gfx::platform::VulkanExtManager::CheckRequiredExtensions(Span<const char*> requiredExtensions)
+void phx::gfx::platform::VulkanExtManager::CheckRequiredExtensions(std::vector<const char*> const& requiredExtensions)
 {
+    for (const auto& reqExt : requiredExtensions) 
+    {
+        if (!IsExtensionAvailable(reqExt))
+        {
+            throw std::runtime_error(std::string("Required extension not available: ") + reqExt);
+        }
+    }
+}
+
+std::vector<const char*> phx::gfx::platform::VulkanExtManager::GetOptionalExtensions(std::vector<const char*> const& optionalExtensions)
+{
+    std::vector<const char*> enabledExtensions;
+    enabledExtensions.reserve(optionalExtensions.size());
+    for (const auto& optExt : optionalExtensions)
+    {
+        if (IsExtensionAvailable(optExt)) 
+        {
+            enabledExtensions.push_back(optExt);
+        }
+    }
+
+    return enabledExtensions;
 }
 
 bool phx::gfx::platform::VulkanExtManager::IsExtensionAvailable(const char* extensionName)
 {
+    for (const auto& ext : m_availableExtensions) 
+    {
+        if (strcmp(ext.extensionName, extensionName) == 0) 
+        {
+            return true;
+        }
+    }
     return false;
 }

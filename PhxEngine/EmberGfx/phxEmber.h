@@ -10,6 +10,8 @@ namespace phx::gfx
 #endif
 	void Finalize();
 
+
+#if false
 	class Ember
 	{
 	public:
@@ -18,13 +20,11 @@ namespace phx::gfx
 	public:
 		Ember();
 		~Ember();
-
-#if false
 		GfxDevice& GetDevice() { return this->m_gfxDevice; }
 
 	private:
 		GfxDevice m_gfxDevice;
-#endif
 	};
+#endif
 }
 
