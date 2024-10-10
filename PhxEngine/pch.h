@@ -56,6 +56,8 @@
 
 #include <dxgi1_6.h>
 
+#include <vulkan/vulkan.h>
+
 #include <DirectXMath.h>
 #include <DirectXColors.h>
 

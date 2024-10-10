@@ -34,6 +34,9 @@
     <Filter Include="EmberGfx\Shaders">
       <UniqueIdentifier>{b83ff36c-6eeb-4ae0-9f4c-5e1d28316da0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="EmberGfx\Vulkan">
+      <UniqueIdentifier>{d5d039a6-d11c-41fc-a945-404e21114844}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -144,6 +147,15 @@
     <ClInclude Include="phxStringHash.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="EmberGfx\Vulkan\phxVulkanManager.h">
+      <Filter>EmberGfx\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\Vulkan\phxVulkanDevice.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\Vulkan\phxVulkanCore.h">
+      <Filter>EmberGfx\Vulkan</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -201,6 +213,12 @@
       <Filter>EmberGfx\D3D12</Filter>
     </ClCompile>
     <ClCompile Include="phxEngineProfiler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\Vulkan\phxVulkanManager.cpp">
+      <Filter>EmberGfx\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\Vulkan\phxVulkanDevice.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
