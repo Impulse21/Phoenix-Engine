@@ -60,14 +60,14 @@ namespace phx::Display
 		.EnableHDR = false
 		};
 
-		phx::gfx::InitializeWindows(
+		phx::gfx::EmberGfx::Initialize(
 			desc,
 			EngineCore::g_hWnd);
 	}
 
 	void Finalize()
 	{
-		phx::gfx::Finalize();
+		phx::gfx::EmberGfx::Finalize();
 	}
 
 	void Resize(uint32_t width, uint32_t height)

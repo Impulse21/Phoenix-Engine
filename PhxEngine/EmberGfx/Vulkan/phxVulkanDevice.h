@@ -1,7 +1,11 @@
 #pragma once
 
+#include <functional>
+#include <deque>
+
 #include "EmberGfx/phxGfxDeviceResources.h"
 #include "phxVulkanManager.h"
+#include "EmberGfx/phxHandlePool.h"
 
 namespace phx::gfx::platform
 {
@@ -12,13 +16,11 @@ namespace phx::gfx::platform
 		std::optional<uint32_t> GraphicsFamily;
 		std::optional<uint32_t> ComputeFamily;
 		std::optional<uint32_t> TransferFamily;
-		std::optional<uint32_t> PresentFamily;
 
 		bool IsComplete() 
 		{
 			return 
-				GraphicsFamily.has_value() && 
-				PresentFamily.has_value() &&
+				GraphicsFamily.has_value() &&
 				TransferFamily.has_value() &&
 				ComputeFamily.has_value();
 		}
@@ -31,18 +33,38 @@ namespace phx::gfx::platform
 		std::vector<VkPresentModeKHR> PresentModes;
 	};
 
-	struct SwapChainVK
+	struct PipelineState_Vk
 	{
-		VkSwapchainKHR SwapChain = VK_NULL_HANDLE;
-		VkFormat SwapChainImageFormat;
-		VkExtent2D SwapChainExtent;
+		VkPipeline                      Pipeline;
+		VkPipelineLayout                PipelineLayout;
+
+		VkPipelineBindPoint             BindPoint;
+
+		// ShaderStateHandle               shader_state;
+
+		// const DesciptorSetLayout* descriptor_set_layout[k_max_descriptor_set_layouts];
+		// DescriptorSetLayoutHandle       descriptor_set_layout_handle[k_max_descriptor_set_layouts];
+		// u32                             num_active_layouts = 0;
+
+		// DepthStencilCreation            depth_stencil;
+		// BlendStateCreation              blend_state;
+		// RasterizationCreation           rasterization;
+		bool                            graphics_pipeline = true;
 	};
 
-	class VulkanGpuDevice
+	class VulkanGpuDevice final
 	{
 	public:
 		void Initialize(SwapChainDesc const& swapChainDesc, bool enableValidationLayers, void* windowHandle = nullptr);
 		void Finalize();
+
+
+		void RunGarbageCollection(uint64_t completedFrame = ~0ul);
+
+		// Resource Factory
+	public:
+		PipelineStateHandle CreatePipeline(PipelineStateDesc const& desc);
+		void DeletePipeline(PipelineStateHandle handle);
 
 	private:
 		void CreateInstance();
@@ -51,13 +73,13 @@ namespace phx::gfx::platform
 		void CreateLogicalDevice();
 		void CreateSurface(void* windowHandle);
 		void CreateSwapchain(SwapChainDesc const& desc);
+		void CreateSwapChaimImageViews();
 
 		int32_t RateDeviceSuitability(VkPhysicalDevice device);
 		QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device);
 		SwapChainSupportDetails QuerySwapchainSupport(VkPhysicalDevice device);
 
 	private:
-
 		bool m_enableValidationLayers;
 		VulkanExtManager m_extManager;
 		VulkanLayerManager m_layerManager;
@@ -69,12 +91,26 @@ namespace phx::gfx::platform
 		VkQueue m_vkQueueGfx;
 		VkQueue m_vkComputeQueue;
 		VkQueue m_vkTransferQueue;
-		VkQueue m_vkPresentQueue;
 
 		VkSurfaceKHR m_vkSurface;
 		VkDebugUtilsMessengerEXT m_debugMessenger;
-		SwapChainVK m_swapChain;
 
+		VkSwapchainKHR m_vkSwapChain = VK_NULL_HANDLE;
+		VkFormat m_swapChainFormat;
+		VkExtent2D m_swapChainExtent;
+		std::vector<VkImage> m_swapChainImages;
+		std::vector<VkImageView> m_swapChainImageViews;
+
+
+		struct DeferredItem
+		{
+			uint64_t Frame;
+			std::function<void()> DeferredFunc;
+		};
+		std::deque<DeferredItem> m_deferredQueue;
+
+		HandlePool<PipelineState_Vk, PipelineState> m_piplineStatePool;
+		uint64_t m_frameCount = 0;
 	};
 }
 

@@ -3,28 +3,19 @@
 #include "phxGfxDevice.h"
 #include "phxPlatformDetection.h"
 
+// -- Vulkan ---
+
+#include "Vulkan/phxVulkanDevice.h"
 namespace phx::gfx
 {
-#if defined(PHX_PLATFORM_WINDOWS)
-	void InitializeWindows(SwapChainDesc const& swapCahinDesc, void* windowHandle);
-#endif
-	void Finalize();
 
-
-#if false
-	class Ember
+	using GpuDevice = platform::VulkanGpuDevice;
+	namespace EmberGfx
 	{
-	public:
-		inline static Ember* Ptr = nullptr;
+		void Initialize(SwapChainDesc const& swapChainDesc, void* windowHandle);
+		void Finalize();
 
-	public:
-		Ember();
-		~Ember();
-		GfxDevice& GetDevice() { return this->m_gfxDevice; }
-
-	private:
-		GfxDevice m_gfxDevice;
-	};
-#endif
+		GpuDevice* GetDevice();
+	}
 }
 

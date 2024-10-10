@@ -953,6 +953,37 @@ namespace phx::gfx
     using GfxPipelineHandle = RefCountPtr<GfxPipeline>;
 #endif
 
+
+    using ByteCodeView = Span<uint8_t>;
+    struct PipelineStateDesc
+    {
+        PrimitiveType PrimType = PrimitiveType::TriangleList;
+        InputLayoutHandle InputLayout;
+
+        IRootSignatureBuilder* RootSignatureBuilder = nullptr;
+        ShaderParameterLayout ShaderParameters;
+
+        ByteCodeView VertexShaderByteCode;
+        ByteCodeView HullShaderByteCode;
+        ByteCodeView DomainShaderByteCode;
+        ByteCodeView GeometryShaderByteCode;
+        ByteCodeView PixelShaderByteCode;
+        ByteCodeView ComputeShaderByteCode;
+
+        BlendRenderState BlendRenderState = {};
+        DepthStencilRenderState DepthStencilRenderState = {};
+        RasterRenderState RasterRenderState = {};
+
+        std::vector<gfx::Format> RtvFormats;
+        std::optional<gfx::Format> DsvFormat;
+
+        uint32_t SampleCount = 1;
+        uint32_t SampleQuality = 0;
+    };
+
+    struct PipelineState;
+    using PipelineStateHandle = Handle<PipelineState>;
+
     struct ComputePipelineDesc
     {
         ByteCodeView ComputeShader;

@@ -7,6 +7,8 @@
 #include <set>
 #include <map>
 
+using namespace phx;
+using namespace phx::gfx;
 using namespace phx::gfx::platform;
 
 
@@ -55,7 +57,8 @@ namespace
 
     const std::vector<const char*> kRequiredDeviceExtensions = 
     {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
     };
 
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
@@ -77,6 +80,11 @@ namespace
             func(instance, debugMessenger, pAllocator);
         }
     }
+
+
+    PFN_vkSetDebugUtilsObjectNameEXT    pfnSetDebugUtilsObjectNameEXT;
+    PFN_vkCmdBeginDebugUtilsLabelEXT    pfnCmdBeginDebugUtilsLabelEXT;
+    PFN_vkCmdEndDebugUtilsLabelEXT      pfnCmdEndDebugUtilsLabelEXT;
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
@@ -120,12 +128,19 @@ void phx::gfx::platform::VulkanGpuDevice::Initialize(SwapChainDesc const& swapCh
 
     CreateSurface(windowHandle);
     PickPhysicalDevice();
-
     CreateLogicalDevice();
+    CreateSwapchain(swapChainDesc);
+    CreateSwapChaimImageViews();
 }
 
 void phx::gfx::platform::VulkanGpuDevice::Finalize()
 {
+    for (auto imageView : m_swapChainImageViews) 
+    {
+        vkDestroyImageView(m_vkDevice, imageView, nullptr);
+    }
+
+    vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
     vkDestroyDevice(m_vkDevice, nullptr);
 
     if (m_enableValidationLayers) 
@@ -135,6 +150,48 @@ void phx::gfx::platform::VulkanGpuDevice::Finalize()
 
     vkDestroySurfaceKHR(m_vkInstance, m_vkSurface, nullptr);
     vkDestroyInstance(m_vkInstance, nullptr);
+}
+
+void phx::gfx::platform::VulkanGpuDevice::RunGarbageCollection(uint64_t completedFrame)
+{
+    while (!m_deferredQueue.empty())
+    {
+        DeferredItem& DeferredItem = m_deferredQueue.front();
+        if (DeferredItem.Frame + kBufferCount < completedFrame)
+        {
+            DeferredItem.DeferredFunc();
+            m_deferredQueue.pop_front();
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+
+PipelineStateHandle phx::gfx::platform::VulkanGpuDevice::CreatePipeline(PipelineStateDesc const& desc)
+{
+    return PipelineStateHandle();
+}
+
+void phx::gfx::platform::VulkanGpuDevice::DeletePipeline(PipelineStateHandle handle)
+{
+
+    DeferredItem d =
+    {
+        m_frameCount,
+        [=]()
+        {
+            PipelineState_Vk* impl = m_piplineStatePool.Get(handle);
+            if (impl)
+            {
+                vkDestroyPipeline(m_vkDevice, impl->Pipeline, nullptr);
+
+                vkDestroyPipelineLayout(m_vkDevice, impl->PipelineLayout, nullptr);
+            }
+        }
+    };
+
 }
 
 void phx::gfx::platform::VulkanGpuDevice::CreateInstance()
@@ -261,7 +318,6 @@ void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
         indices.GraphicsFamily.value(),
         indices.ComputeFamily.value(),
         indices.TransferFamily.value(),
-        indices.PresentFamily.value(),
     };
 
 
@@ -296,11 +352,14 @@ void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
         throw std::runtime_error("failed to create logical device!");
     }
 
+    pfnSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(m_vkDevice, "vkSetDebugUtilsObjectNameEXT");
+    pfnCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_vkDevice, "vkCmdBeginDebugUtilsLabelEXT");
+    pfnCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_vkDevice, "vkCmdEndDebugUtilsLabelEXT");
+
     // Query queues
     vkGetDeviceQueue(m_vkDevice, indices.GraphicsFamily.value(), 0, &m_vkQueueGfx);
     vkGetDeviceQueue(m_vkDevice, indices.ComputeFamily.value(), 0, &m_vkComputeQueue);
     vkGetDeviceQueue(m_vkDevice, indices.TransferFamily.value(), 0, &m_vkTransferQueue);
-    vkGetDeviceQueue(m_vkDevice, indices.PresentFamily.value(), 0, &m_vkPresentQueue);
 }
 
 void phx::gfx::platform::VulkanGpuDevice::CreateSurface(void* windowHandle)
@@ -345,17 +404,17 @@ void phx::gfx::platform::VulkanGpuDevice::CreateSwapchain(SwapChainDesc const& d
         surfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     }
 
-    m_swapChain.SwapChainImageFormat = surfaceFormat.format;
+    m_swapChainFormat = surfaceFormat.format;
 
     if (swapChainSupport.Capabilities.currentExtent.width != 0xFFFFFFFF && swapChainSupport.Capabilities.currentExtent.height != 0xFFFFFFFF)
     {
-        m_swapChain.SwapChainExtent = swapChainSupport.Capabilities.currentExtent;
+        m_swapChainExtent = swapChainSupport.Capabilities.currentExtent;
     }
     else
     {
-        m_swapChain.SwapChainExtent = { desc.Width, desc.Height };
-        m_swapChain.SwapChainExtent.width = std::max(swapChainSupport.Capabilities.minImageExtent.width, std::min(swapChainSupport.Capabilities.maxImageExtent.width, m_swapChain.SwapChainExtent.width));
-        m_swapChain.SwapChainExtent.height = std::max(swapChainSupport.Capabilities.minImageExtent.height, std::min(swapChainSupport.Capabilities.maxImageExtent.height, m_swapChain.SwapChainExtent.height));
+        m_swapChainExtent = { desc.Width, desc.Height };
+        m_swapChainExtent.width = std::max(swapChainSupport.Capabilities.minImageExtent.width, std::min(swapChainSupport.Capabilities.maxImageExtent.width, m_swapChainExtent.width));
+        m_swapChainExtent.height = std::max(swapChainSupport.Capabilities.minImageExtent.height, std::min(swapChainSupport.Capabilities.maxImageExtent.height, m_swapChainExtent.height));
     }
 
     uint32_t imageCount = std::max(static_cast<uint32_t>(kBufferCount), swapChainSupport.Capabilities.minImageCount);
@@ -370,7 +429,7 @@ void phx::gfx::platform::VulkanGpuDevice::CreateSwapchain(SwapChainDesc const& d
     createInfo.minImageCount = imageCount;
     createInfo.imageFormat = surfaceFormat.format;
     createInfo.imageColorSpace = surfaceFormat.colorSpace;
-    createInfo.imageExtent = m_swapChain.SwapChainExtent;
+    createInfo.imageExtent = m_swapChainExtent;
     createInfo.imageArrayLayers = 1;
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -396,13 +455,45 @@ void phx::gfx::platform::VulkanGpuDevice::CreateSwapchain(SwapChainDesc const& d
 
 
     createInfo.clipped = VK_TRUE;
-    createInfo.oldSwapchain = m_swapChain.SwapChain;
+    createInfo.oldSwapchain = m_vkSwapChain;
 
-    VkResult res = vkCreateSwapchainKHR(m_vkDevice, &createInfo, nullptr, &m_swapChain.SwapChain);
+    PHX_CORE_INFO("[Vulkan] - Creating swapchain {0}, {1}", m_swapChainExtent.width, m_swapChainExtent.height);
+    VkResult res = vkCreateSwapchainKHR(m_vkDevice, &createInfo, nullptr, &m_vkSwapChain);
     if (res != VK_SUCCESS)
-        throw std::runtime_error("failed to vreate swapchain");
+        throw std::runtime_error("failed to create swapchain");
 
     // Create Images for back buffers;
+    vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &imageCount, nullptr);
+    m_swapChainImages.resize(static_cast<size_t>(imageCount));
+    vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &imageCount, m_swapChainImages.data());
+}
+
+void phx::gfx::platform::VulkanGpuDevice::CreateSwapChaimImageViews()
+{
+    m_swapChainImageViews.resize(m_swapChainImages.size());
+    for (size_t i = 0; i < m_swapChainImages.size(); i++) 
+    {
+        VkImageViewCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        createInfo.image = m_swapChainImages[i];
+        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        createInfo.format = m_swapChainFormat;
+        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY; 
+        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        createInfo.subresourceRange.baseMipLevel = 0;
+        createInfo.subresourceRange.levelCount = 1;
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.layerCount = 1;
+
+        VkResult result = vkCreateImageView(m_vkDevice, &createInfo, nullptr, &m_swapChainImageViews[i]);
+        if (result != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to create image views!");
+        }
+    }
 }
 
 int32_t phx::gfx::platform::VulkanGpuDevice::RateDeviceSuitability(VkPhysicalDevice device)
@@ -467,36 +558,69 @@ QueueFamilyIndices phx::gfx::platform::VulkanGpuDevice::FindQueueFamilies(VkPhys
     std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
-    int i = 0;
-    for (const auto& queueFamily : queueFamilies) 
+    // base queue families
+    for (uint32_t i = 0; i < queueFamilyCount; ++i)
     {
-        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        auto& queueFamily = queueFamilies[i];
+
+        if (!indices.GraphicsFamily.has_value() && queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
         {
             indices.GraphicsFamily = i;
         }
 
-        if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT)
+        if (!indices.ComputeFamily.has_value() && queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT)
         {
             indices.ComputeFamily = i;
         }
 
-        if (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT)
+        if (!indices.TransferFamily.has_value() && queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT)
         {
             indices.TransferFamily = i;
         }
+    }
 
-        VkBool32 presentSupport = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, m_vkSurface, &presentSupport);
-        if (presentSupport)
+
+    // Now try to find dedicated compute and transfer queues:
+    for (uint32_t i = 0; i < queueFamilyCount; ++i)
+    {
+        auto& queueFamily = queueFamilies[i];
+
+        if (queueFamily.queueCount > 0 &&
+            queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT &&
+            !(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
+            !(queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT)
+            )
         {
-            indices.PresentFamily = i;
+            indices.TransferFamily = i;
+
+            if (queueFamily.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT)
+            {
+                // queues[QUEUE_COPY].sparse_binding_supported = true;
+            }
         }
 
-        if (indices.IsComplete())
-            return indices;
+        if (queueFamily.queueCount > 0 &&
+            queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT &&
+            !(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+            )
+        {
+            indices.ComputeFamily = i;
 
-        i++;
+            if (queueFamily.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT)
+            {
+                // queues[QUEUE_COMPUTE].sparse_binding_supported = true;
+            }
+        }
     }
+
+#if false
+    VkBool32 presentSupport = false;
+    vkGetPhysicalDeviceSurfaceSupportKHR(device, i, m_vkSurface, &presentSupport);
+    if (presentSupport)
+    {
+        indices.PresentFamily = i;
+    }
+#endif
 
     return indices;
 }
@@ -521,7 +645,7 @@ SwapChainSupportDetails phx::gfx::platform::VulkanGpuDevice::QuerySwapchainSuppo
     if (presentModeCount != 0) 
     {
         details.PresentModes.resize(presentModeCount);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(device, m_vkSurface, &presentModeCount, details.presentModes.data());
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, m_vkSurface, &presentModeCount, details.PresentModes.data());
     }
 
     return details;

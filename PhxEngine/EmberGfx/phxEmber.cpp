@@ -4,31 +4,41 @@
 #include "phxGfxDevice.h"
 #include "phxCommandLineArgs.h"
 
+using namespace phx;
+using namespace phx::gfx;
 
-
-// Vulkan
-#include "Vulkan/phxVulkanDevice.h"
-
-void phx::gfx::InitializeWindows(
-	SwapChainDesc const& swapChainDesc,
-	void* windowHandle)
+namespace
 {
-	uint32_t useValidation = 0;
-#if _DEBUG
-	// Default to true for debug builds
-	useValidation = 1;
-#endif
-	CommandLineArgs::GetInteger(L"debug", useValidation);
-
-	platform::VulkanGpuDevice gpuDevice;
-
-	gpuDevice.Initialize(swapChainDesc, (bool)useValidation, windowHandle);
-	GfxDevice::Initialize(swapChainDesc, windowHandle);
-
-	gpuDevice.Finalize();
+	GpuDevice* m_gpuDevice;
 }
 
-void phx::gfx::Finalize()
+namespace phx::gfx
 {
-	GfxDevice::Finalize();
+	namespace EmberGfx
+	{
+		void Initialize(SwapChainDesc const& swapChainDesc, void* windowHandle)
+		{
+			uint32_t useValidation = 0;
+	#if _DEBUG
+			// Default to true for debug builds
+			useValidation = 1;
+	#endif
+			CommandLineArgs::GetInteger(L"debug", useValidation);
+
+			m_gpuDevice = new platform::VulkanGpuDevice();
+
+			m_gpuDevice->Initialize(swapChainDesc, (bool)useValidation, windowHandle);
+		}
+
+		void Finalize()
+		{
+			m_gpuDevice->Finalize();
+			delete m_gpuDevice;
+			m_gpuDevice = nullptr;
+		}
+
+		GpuDevice * GetDevice() { return m_gpuDevice; }
+	}
 }
+
+

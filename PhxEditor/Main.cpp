@@ -10,8 +10,8 @@
 
 #include "phxDisplay.h"
 
-#include "CompiledShaders/TestShaderVS.h"
-#include "CompiledShaders/TestShaderPS.h"
+#include "CompiledShaders/Spriv/TestShaderVS.h"
+#include "CompiledShaders/Spriv/TestShaderPS.h"
 #include "EmberGfx/phxImGuiRenderer.h"
 
 class PhxEditor final : public phx::IEngineApp
