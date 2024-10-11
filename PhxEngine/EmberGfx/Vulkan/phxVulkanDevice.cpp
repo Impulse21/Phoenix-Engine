@@ -218,7 +218,7 @@ ShaderHandle phx::gfx::platform::VulkanGpuDevice::CreateShader(ShaderDesc const&
 
     VkShaderModuleCreateInfo moduleInfo = {};
     moduleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    moduleInfo.codeSize = desc.ByteCode.Size() / sizeof(uint32_t);
+    moduleInfo.codeSize = desc.ByteCode.Size();
     moduleInfo.pCode = (const uint32_t*)desc.ByteCode.begin();
     VkResult res = vkCreateShaderModule(m_vkDevice, &moduleInfo, nullptr, &impl.ShaderModule);
     assert(res == VK_SUCCESS);
