@@ -73,6 +73,7 @@ void phx::gfx::ImGuiRenderSystem::Initialize(bool enableDocking)
         { "COLOR",      0, Format::RGBA8_UNORM, 0, VertexAttributeDesc::SAppendAlignedElement, false},
     };
 
+#if false
     m_pipeline.Reset(
         GfxDevice::CreateGfxPipeline({
             .InputLayout = GfxDevice::CreateInputLayout(attributeDesc),
@@ -104,6 +105,7 @@ void phx::gfx::ImGuiRenderSystem::Initialize(bool enableDocking)
             },
             .RtvFormats = { g_SwapChainFormat }
      }));
+#endif
 }
 
 void phx::gfx::ImGuiRenderSystem::EnableDarkThemeColours()

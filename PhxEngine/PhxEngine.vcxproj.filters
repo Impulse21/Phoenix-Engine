@@ -40,9 +40,6 @@
     <Filter Include="3rdParty">
       <UniqueIdentifier>{ebd68c16-2de3-4b75-8e32-f799e2c22e1f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="3rdParty\spirv-reflect">
-      <UniqueIdentifier>{1d2c3daf-e4ac-4e88-a1e4-90f59bdafe6d}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -162,11 +159,11 @@
     <ClInclude Include="EmberGfx\Vulkan\phxVulkanDevice.h">
       <Filter>EmberGfx\Vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="3rdParty\spriv-reflect\include\spirv\unified1\spirv.h">
-      <Filter>3rdParty\spirv-reflect</Filter>
+    <ClInclude Include="EmberGfx\phxShaderCompiler.h">
+      <Filter>EmberGfx</Filter>
     </ClInclude>
-    <ClInclude Include="3rdParty\spriv-reflect\spirv_reflect.h">
-      <Filter>3rdParty\spirv-reflect</Filter>
+    <ClInclude Include="phxVFS.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -236,8 +233,11 @@
     <ClCompile Include="phxMemory.cpp">
       <Filter>Header Files</Filter>
     </ClCompile>
-    <ClCompile Include="3rdParty\spriv-reflect\spirv_reflect.c">
-      <Filter>3rdParty\spirv-reflect</Filter>
+    <ClCompile Include="phxVFS.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\phxShaderCompiler_DXC.cpp">
+      <Filter>EmberGfx</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -253,5 +253,8 @@
     <FxCompile Include="EmberGfx\Shaders\ImGuiVS.hlsl">
       <Filter>EmberGfx\Shaders</Filter>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="EmberGfx\dxcompiler.dll" />
   </ItemGroup>
 </Project>
