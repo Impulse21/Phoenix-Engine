@@ -85,4 +85,117 @@ namespace phx::gfx::platform
     {
         return gVulkanFormatMapping[(int)format];
     }
+
+
+	VkBlendFactor ConvertBlendValue(BlendFactor value)
+	{
+		switch (value)
+		{
+		case BlendFactor::Zero:
+			return VK_BLEND_FACTOR_ZERO;
+		case BlendFactor::One:
+			return VK_BLEND_FACTOR_ONE;
+		case BlendFactor::SrcColor:
+			return VK_BLEND_FACTOR_SRC_COLOR;
+		case BlendFactor::InvSrcColor:
+			return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+		case BlendFactor::SrcAlpha:
+			return VK_BLEND_FACTOR_SRC_ALPHA;
+		case BlendFactor::InvSrcAlpha:
+			return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		case BlendFactor::DstAlpha:
+			return VK_BLEND_FACTOR_DST_ALPHA;
+		case BlendFactor::InvDstAlpha:
+			return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+		case BlendFactor::DstColor:
+			return VK_BLEND_FACTOR_DST_COLOR;
+		case BlendFactor::InvDstColor:
+			return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+		case BlendFactor::SrcAlphaSaturate:
+			return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+		case BlendFactor::ConstantColor:
+			return VK_BLEND_FACTOR_CONSTANT_COLOR;
+		case BlendFactor::InvConstantColor:
+			return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+		case BlendFactor::Src1Color:
+			return VK_BLEND_FACTOR_SRC1_COLOR;
+		case BlendFactor::InvSrc1Color:
+			return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
+		case BlendFactor::Src1Alpha:
+			return VK_BLEND_FACTOR_SRC1_ALPHA;
+		case BlendFactor::InvSrc1Alpha:
+			return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
+		default:
+			return VK_BLEND_FACTOR_ZERO;
+		}
+	}
+
+	VkBlendOp ConvertBlendOp(EBlendOp value)
+	{
+		switch (value)
+		{
+		case EBlendOp::Add:
+			return VK_BLEND_OP_ADD;
+		case EBlendOp::Subrtact:
+			return VK_BLEND_OP_SUBTRACT;
+		case EBlendOp::ReverseSubtract:
+			return VK_BLEND_OP_REVERSE_SUBTRACT;
+		case EBlendOp::Min:
+			return VK_BLEND_OP_MIN;
+		case EBlendOp::Max:
+			return VK_BLEND_OP_MAX;
+		default:
+			return VK_BLEND_OP_ADD;
+		}
+	}
+
+	VkStencilOp ConvertStencilOp(StencilOp value)
+	{
+		switch (value)
+		{
+		case StencilOp::Keep:
+			return VK_STENCIL_OP_KEEP;
+		case StencilOp::Zero:
+			return VK_STENCIL_OP_ZERO;
+		case StencilOp::Replace:
+			return VK_STENCIL_OP_REPLACE;
+		case StencilOp::IncrementAndClamp:
+			return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+		case StencilOp::DecrementAndClamp:
+			return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+		case StencilOp::Invert:
+			return VK_STENCIL_OP_INVERT;
+		case StencilOp::IncrementAndWrap:
+			return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+		case StencilOp::DecrementAndWrap:
+			return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+		default:
+			return VK_STENCIL_OP_KEEP;
+		}
+	}
+
+	VkCompareOp ConvertComparisonFunc(ComparisonFunc value)
+	{
+		switch (value)
+		{
+		case ComparisonFunc::Never:
+			return VK_COMPARE_OP_NEVER;
+		case ComparisonFunc::Less:
+			return VK_COMPARE_OP_LESS;
+		case ComparisonFunc::Equal:
+			return VK_COMPARE_OP_EQUAL;
+		case ComparisonFunc::LessOrEqual:
+			return VK_COMPARE_OP_LESS_OR_EQUAL;
+		case ComparisonFunc::Greater:
+			return VK_COMPARE_OP_GREATER;
+		case ComparisonFunc::NotEqual:
+			return VK_COMPARE_OP_NOT_EQUAL;
+		case ComparisonFunc::GreaterOrEqual:
+			return VK_COMPARE_OP_GREATER_OR_EQUAL;
+		case ComparisonFunc::Always:
+			return VK_COMPARE_OP_ALWAYS;
+		default:
+			return VK_COMPARE_OP_NEVER;
+		}
+	}
 }

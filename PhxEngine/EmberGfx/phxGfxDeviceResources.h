@@ -8,7 +8,6 @@
 #include "phxSpan.h"
 #include "phxEnumUtils.h"
 #include "phxHandle.h"
-#include "phxRefCountPtr.h"
 
 #define USE_HANDLES true
 namespace phx::gfx
@@ -394,6 +393,12 @@ namespace phx::gfx
         DecrementAndWrap = 8
     };
 
+	enum class DepthWriteMask : uint8_t
+	{
+		Zero,	// Disables depth write
+		All,	// Enables depth write
+	};
+
     enum class ComparisonFunc : uint8_t
     {
         Never = 1,
@@ -556,28 +561,23 @@ namespace phx::gfx
 
     struct DepthStencilRenderState
     {
-        struct StencilOpDesc
-        {
-            StencilOp FailOp = StencilOp::Keep;
-            StencilOp DepthFailOp = StencilOp::Keep;
-            StencilOp PassOp = StencilOp::Keep;
-            ComparisonFunc StencilFunc = ComparisonFunc::Always;
+		bool DepthEnable = false;
+		DepthWriteMask DepthWriteMask = DepthWriteMask::Zero;
+		ComparisonFunc DepthFunc = ComparisonFunc::Never;
+		bool StencilEnable = false;
+		uint8_t StencilReadMask = 0xff;
+		uint8_t StencilWriteMask = 0xff;
 
-            constexpr StencilOpDesc& setFailOp(StencilOp value) { FailOp = value; return *this; }
-            constexpr StencilOpDesc& setDepthFailOp(StencilOp value) { DepthFailOp = value; return *this; }
-            constexpr StencilOpDesc& setPassOp(StencilOp value) { PassOp = value; return *this; }
-            constexpr StencilOpDesc& setStencilFunc(ComparisonFunc value) { StencilFunc = value; return *this; }
-        };
-
-        bool            DepthTestEnable = true;
-        bool            DepthWriteEnable = true;
-        ComparisonFunc  DepthFunc = ComparisonFunc::Less;
-        bool            StencilEnable = false;
-        uint8_t         StencilReadMask = 0xff;
-        uint8_t         StencilWriteMask = 0xff;
-        uint8_t         stencilRefValue = 0;
-        StencilOpDesc   FrontFaceStencil;
-        StencilOpDesc   BackFaceStencil;
+		struct DepthStencilOp
+		{
+			StencilOp StencilFailOp = StencilOp::Keep;
+			StencilOp StencilDepthFailOp = StencilOp::Keep;
+			StencilOp StencilPassOp = StencilOp::Keep;
+			ComparisonFunc StencilFunc = ComparisonFunc::Never;
+		};
+		DepthStencilOp FrontFace;
+		DepthStencilOp BackFace;
+		bool DepthBoundsTestEnable = false;
     };
 
     struct RasterRenderState
