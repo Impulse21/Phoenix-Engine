@@ -309,6 +309,11 @@ namespace phx::gfx
 
     PHX_ENUM_CLASS_FLAGS(ResourceStates)
 
+    enum class InputClassification : uint8_t
+    {
+        PerVertexData,
+        PerInstanceData,
+    };
     enum class FeatureLevel
     {
         SM5,
@@ -941,7 +946,42 @@ namespace phx::gfx
 #endif
 
 
+    struct InputLayout
+    {
+        static const uint32_t APPEND_ALIGNED_ELEMENT = ~0u; // automatically figure out AlignedByteOffset depending on Format
+
+        struct Element
+        {
+            std::string SemanticName;
+            uint32_t SemanticIndex = 0;
+            Format Format = Format::UNKNOWN;
+            uint32_t InputSlot = 0;
+            uint32_t AlignedByteOffset = APPEND_ALIGNED_ELEMENT;
+            InputClassification InputSlotClass = InputClassification::PerVertexData;
+        };
+        std::vector<Element> elements;
+    };
+
     using ByteCodeView = Span<uint8_t>;
+
+    struct PipelineStateDesc2
+    {
+        ByteCodeView vs = {};
+        ByteCodeView ps = {};
+        ByteCodeView hs = {};
+        ByteCodeView ds = {};
+        ByteCodeView gs = {};
+        ByteCodeView ms = {};
+        ByteCodeView as = {};
+        BlendRenderState*           BlendRenderState = nullptr;
+        DepthStencilRenderState*    DepthStencilRenderState = nullptr;
+        RasterRenderState*          RasterRenderState = nullptr;
+        InputLayout*                InputLayout = nullptr;
+        PrimitiveType		PrimType = PrimitiveType::TriangleList;
+        uint32_t            PatchControlPoints = 3;
+        uint32_t			sampleMask = 0xFFFFFFFF;
+    };
+
     struct PipelineStateDesc
     {
         PrimitiveType PrimType = PrimitiveType::TriangleList;
@@ -1302,6 +1342,98 @@ namespace phx::gfx
         bool VSync : 1 = false;
         bool EnableHDR : 1 = false;
     };
+
+    constexpr uint32_t GetFormatStride(Format format)
+    {
+        switch (format)
+        {
+        case Format::BC1_UNORM:
+        case Format::BC1_UNORM_SRGB:
+        case Format::BC4_SNORM:
+        case Format::BC4_UNORM:
+            return 8u;
+
+        case Format::RGBA32_FLOAT:
+        case Format::RGBA32_UINT:
+        case Format::RGBA32_SINT:
+        case Format::BC2_UNORM:
+        case Format::BC2_UNORM_SRGB:
+        case Format::BC3_UNORM:
+        case Format::BC3_UNORM_SRGB:
+        case Format::BC5_SNORM:
+        case Format::BC5_UNORM:
+        case Format::BC6H_UFLOAT:
+        case Format::BC6H_SFLOAT:
+        case Format::BC7_UNORM:
+        case Format::BC7_UNORM_SRGB:
+            return 16u;
+
+        case Format::RGB32_FLOAT:
+        case Format::RGB32_UINT:
+        case Format::RGB32_SINT:
+            return 12u;
+
+        case Format::RGBA16_FLOAT:
+        case Format::RGBA16_UNORM:
+        case Format::RGBA16_UINT:
+        case Format::RGBA16_SNORM:
+        case Format::RGBA16_SINT:
+            return 8u;
+
+        case Format::RG32_FLOAT:
+        case Format::RG32_UINT:
+        case Format::RG32_SINT:
+        case Format::D32S8:
+            return 8u;
+
+        case Format::R10G10B10A2_UNORM:
+        //case Format::R10G10B10A2_UINT:
+        case Format::R11G11B10_FLOAT:
+        case Format::RGBA8_UNORM:
+        // case Format::RGBA8_UNORM_SRGB:
+        case Format::RGBA8_UINT:
+        case Format::RGBA8_SNORM:
+        case Format::RGBA8_SINT:
+        case Format::BGRA8_UNORM:
+        // case Format::BGRA8_UNORM_SRGB:
+        case Format::RG16_FLOAT:
+        case Format::RG16_UNORM:
+        case Format::RG16_UINT:
+        case Format::RG16_SNORM:
+        case Format::RG16_SINT:
+        // case Format::D32_FLOAT:
+        case Format::R32_FLOAT:
+        case Format::R32_UINT:
+        case Format::R32_SINT:
+        // case Format::D24_UNORM_S8_UINT:
+        // case Format::R9G9B9E5_SHAREDEXP:
+            return 4u;
+
+        case Format::RG8_UNORM:
+        case Format::RG8_UINT:
+        case Format::RG8_SNORM:
+        case Format::RG8_SINT:
+        case Format::R16_FLOAT:
+        case Format::D16:
+        case Format::R16_UNORM:
+        case Format::R16_UINT:
+        case Format::R16_SNORM:
+        case Format::R16_SINT:
+            return 2u;
+
+        case Format::R8_UNORM:
+        case Format::R8_UINT:
+        case Format::R8_SNORM:
+        case Format::R8_SINT:
+            return 1u;
+
+
+        default:
+            assert(0); // didn't catch format!
+            return 16u;
+        }
+    }
+
 }
 
 namespace std

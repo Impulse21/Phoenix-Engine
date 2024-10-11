@@ -173,8 +173,62 @@ void phx::gfx::platform::VulkanGpuDevice::RunGarbageCollection(uint64_t complete
     }
 }
 
-PipelineStateHandle phx::gfx::platform::VulkanGpuDevice::CreatePipeline(PipelineStateDesc const& desc)
+PipelineStateHandle phx::gfx::platform::VulkanGpuDevice::CreatePipeline(PipelineStateDesc2 const& desc)
 {
+    // -- input Layput---
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    std::vector<VkVertexInputBindingDescription> bindings;
+    std::vector<VkVertexInputAttributeDescription> attributes;
+    if (desc.InputLayout)
+    {
+        InputLayout* inputLayout = desc.InputLayout;
+        uint32_t lastBinding = 0xFFFFFFFF;
+        for (auto& e : inputLayout->elements)
+        {
+            if (e.InputSlot == lastBinding)
+                continue;
+            lastBinding = e.InputSlot;
+            VkVertexInputBindingDescription& bind = bindings.emplace_back();
+            bind.binding = e.InputSlot;
+            bind.inputRate = e.InputSlotClass== InputClassification::PerVertexData? VK_VERTEX_INPUT_RATE_VERTEX : VK_VERTEX_INPUT_RATE_INSTANCE;
+            bind.stride = GetFormatStride(e.Format);
+        }
+
+        uint32_t offset = 0;
+        uint32_t i = 0;
+        lastBinding = 0xFFFFFFFF;
+        for (auto& e : inputLayout->elements)
+        {
+            VkVertexInputAttributeDescription attr = {};
+            attr.binding = e.InputSlot;
+            if (attr.binding != lastBinding)
+            {
+                lastBinding = attr.binding;
+                offset = 0;
+            }
+            attr.format = FormatToVkFormat(e.Format);
+            attr.location = i;
+            attr.offset = e.AlignedByteOffset;
+            if (attr.offset == InputLayout::APPEND_ALIGNED_ELEMENT)
+            {
+                // need to manually resolve this from the format spec.
+                attr.offset = offset;
+                offset += GetFormatStride(e.Format);
+            }
+
+            attributes.push_back(attr);
+
+            i++;
+        }
+
+        vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindings.size());
+        vertexInputInfo.pVertexBindingDescriptions = bindings.data();
+        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
+        vertexInputInfo.pVertexAttributeDescriptions = attributes.data();
+    }
+
+
     return PipelineStateHandle();
 }
 

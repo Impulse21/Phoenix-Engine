@@ -63,7 +63,7 @@ namespace phx::gfx::platform
 
 		// Resource Factory
 	public:
-		PipelineStateHandle CreatePipeline(PipelineStateDesc const& desc);
+		PipelineStateHandle CreatePipeline(PipelineStateDesc2 const& desc);
 		void DeletePipeline(PipelineStateHandle handle);
 
 	private:

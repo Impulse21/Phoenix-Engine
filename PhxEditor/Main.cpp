@@ -80,7 +80,7 @@ public:
 		ctx.SetViewports({ &viewport, 1 });
 		Rect rec(g_DisplayWidth, g_DisplayHeight);
 		ctx.SetScissors({ &rec, 1 });
-		ctx.SetGfxPipeline(this->m_pipeline);
+		ctx.SetGfxPipeline(this->m_pipeline);	
 
 		DynamicBuffer temp = ctx.AllocateDynamic(sizeof(uint16_t) * 3);
 		
