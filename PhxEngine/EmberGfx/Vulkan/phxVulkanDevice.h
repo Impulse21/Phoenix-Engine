@@ -125,7 +125,8 @@ namespace phx::gfx::platform
 		};
 		std::deque<DeferredItem> m_deferredQueue;
 
-		HandlePool<PipelineState_Vk, PipelineState> m_piplineStatePool;
+		VkPipelineCache m_vkPipelineCache;
+		HandlePool<PipelineState_Vk, PipelineState> m_pipelineStatePool;
 		HandlePool<Shader_VK, Shader> m_shaderPool;
 		uint64_t m_frameCount = 0;
 
@@ -135,4 +136,3 @@ namespace phx::gfx::platform
 
 	};
 }
-

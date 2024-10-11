@@ -139,7 +139,10 @@ void phx::gfx::platform::VulkanGpuDevice::Initialize(SwapChainDesc const& swapCh
     CreateSwapchain(swapChainDesc);
     CreateSwapChaimImageViews();
 
-
+	VkPipelineCacheCreateInfo cacheCreateInfo = {};
+	cacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+    
+	vkCreatePipelineCache(m_vkDevice, &cacheCreateInfo, nullptr, &m_vkPipelineCache);
 
     // Dynamic PSO states:
     m_psoDynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT);
@@ -172,11 +175,13 @@ void phx::gfx::platform::VulkanGpuDevice::Initialize(SwapChainDesc const& swapCh
 
 void phx::gfx::platform::VulkanGpuDevice::Finalize()
 {
+    this->RunGarbageCollection();
     for (auto imageView : m_swapChainImageViews) 
     {
         vkDestroyImageView(m_vkDevice, imageView, nullptr);
     }
 
+    vkDestroyPipelineCache(m_vkDevice, m_vkPipelineCache, nullptr);
     vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
     vkDestroyDevice(m_vkDevice, nullptr);
 
@@ -283,8 +288,8 @@ void phx::gfx::platform::VulkanGpuDevice::DeleteShader(ShaderHandle handle)
 
 PipelineStateHandle phx::gfx::platform::VulkanGpuDevice::CreatePipeline(PipelineStateDesc2 const& desc)
 {
-    Handle<PipelineState> retVal = this->m_piplineStatePool.Emplace();
-    PipelineState_Vk& impl = *this->m_piplineStatePool.Get(retVal);
+    Handle<PipelineState> retVal = this->m_pipelineStatePool.Emplace();
+    PipelineState_Vk& impl = *this->m_pipelineStatePool.Get(retVal);
 
     // TODO: We can easly hash the shaders here since it's just a uint32 handle
 
@@ -458,10 +463,96 @@ PipelineStateHandle phx::gfx::platform::VulkanGpuDevice::CreatePipeline(Pipeline
             *tail = &rasterizationConservativeState;
             tail = &rasterizationConservativeState.pNext;
         }
-    }
+	}
+	pipelineInfo.pRasterizationState = &rasterizer;
+
+	VkPipelineViewportStateCreateInfo viewportState = {};
+	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewportState.viewportCount = 0;
+	viewportState.pViewports = nullptr;
+	viewportState.scissorCount = 0;
+	viewportState.pScissors = nullptr;
+
+	pipelineInfo.pViewportState = &viewportState;
+
+	// -- Depth-Stencil ---
+	VkPipelineDepthStencilStateCreateInfo depthstencil = {};
+	depthstencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    if (desc.DepthStencilRenderState)
+	{
+        DepthStencilRenderState* dss = desc.DepthStencilRenderState;
+		depthstencil.depthTestEnable = dss->DepthEnable ? VK_TRUE : VK_FALSE;
+		depthstencil.depthWriteEnable = dss->DepthWriteMask == DepthWriteMask::Zero ? VK_FALSE : VK_TRUE;
+		depthstencil.depthCompareOp = ConvertComparisonFunc(dss->DepthFunc);
+
+		if (dss->StencilEnable)
+		{
+			depthstencil.stencilTestEnable = VK_TRUE;
+
+			depthstencil.front.compareMask = dss->StencilReadMask;
+			depthstencil.front.writeMask = dss->StencilWriteMask;
+			depthstencil.front.reference = 0; // runtime supplied
+			depthstencil.front.compareOp = ConvertComparisonFunc(dss->FrontFace.StencilFunc);
+			depthstencil.front.passOp = ConvertStencilOp(dss->FrontFace.StencilPassOp);
+			depthstencil.front.failOp = ConvertStencilOp(dss->FrontFace.StencilFailOp);
+			depthstencil.front.depthFailOp = ConvertStencilOp(dss->FrontFace.StencilDepthFailOp);
+
+			depthstencil.back.compareMask = dss->StencilReadMask;
+			depthstencil.back.writeMask = dss->StencilWriteMask;
+			depthstencil.back.reference = 0; // runtime supplied
+			depthstencil.back.compareOp = ConvertComparisonFunc(dss->BackFace.StencilFunc);
+			depthstencil.back.passOp = ConvertStencilOp(dss->BackFace.StencilPassOp);
+			depthstencil.back.failOp = ConvertStencilOp(dss->BackFace.StencilFailOp);
+			depthstencil.back.depthFailOp = ConvertStencilOp(dss->BackFace.StencilDepthFailOp);
+		}
+		else
+		{
+			depthstencil.stencilTestEnable = VK_FALSE;
+
+			depthstencil.front.compareMask = 0;
+			depthstencil.front.writeMask = 0;
+			depthstencil.front.reference = 0;
+			depthstencil.front.compareOp = VK_COMPARE_OP_NEVER;
+			depthstencil.front.passOp = VK_STENCIL_OP_KEEP;
+			depthstencil.front.failOp = VK_STENCIL_OP_KEEP;
+			depthstencil.front.depthFailOp = VK_STENCIL_OP_KEEP;
+
+			depthstencil.back.compareMask = 0;
+			depthstencil.back.writeMask = 0;
+			depthstencil.back.reference = 0; // runtime supplied
+			depthstencil.back.compareOp = VK_COMPARE_OP_NEVER;
+			depthstencil.back.passOp = VK_STENCIL_OP_KEEP;
+			depthstencil.back.failOp = VK_STENCIL_OP_KEEP;
+			depthstencil.back.depthFailOp = VK_STENCIL_OP_KEEP;
+		}
+
+#if false
+		if (CheckCapability(GraphicsDeviceCapability::DEPTH_BOUNDS_TEST))
+		{
+			depthstencil.depthBoundsTestEnable = dss->DepthBoundsTestEnable ? VK_TRUE : VK_FALSE;
+		}
+		else
+		{
+			depthstencil.depthBoundsTestEnable = VK_FALSE;
+		}
+#else
+
+		depthstencil.depthBoundsTestEnable = VK_FALSE;
+#endif
+	}
+
+	pipelineInfo.pDepthStencilState = &depthstencil;
+
+	// -- Tessellation ---
+#if false
+	VkPipelineTessellationStateCreateInfo tessellationInfo = {};
+	tessellationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+	tessellationInfo.patchControlPoints = desc->patch_control_points;
+
+	pipelineInfo.pTessellationState = &tessellationInfo;
+#endif
 
     // -- Dynamic States ---
-
     if (!desc.MS.IsValid())
     {
         pipelineInfo.pDynamicState = &m_dynamicStateInfo;
@@ -471,7 +562,7 @@ PipelineStateHandle phx::gfx::platform::VulkanGpuDevice::CreatePipeline(Pipeline
         pipelineInfo.pDynamicState = &m_dynamicStateInfo_MeshShader;
     }
 
-    // -- input Layput---
+    // -- Input Layout ---
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     std::vector<VkVertexInputBindingDescription> bindings;
@@ -522,9 +613,22 @@ PipelineStateHandle phx::gfx::platform::VulkanGpuDevice::CreatePipeline(Pipeline
         vertexInputInfo.pVertexBindingDescriptions = bindings.data();
         vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
         vertexInputInfo.pVertexAttributeDescriptions = attributes.data();
-    }
+	}
 
+	pipelineInfo.pVertexInputState = &vertexInputInfo;
 
+	VkPipelineMultisampleStateCreateInfo multisampling{};
+	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisampling.sampleShadingEnable = VK_FALSE;
+	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampling.minSampleShading = 1.0f; // Optional
+	multisampling.pSampleMask = nullptr; // Optional
+	multisampling.alphaToCoverageEnable = VK_FALSE; // Optional
+	multisampling.alphaToOneEnable = VK_FALSE; // Optional
+	pipelineInfo.pMultisampleState = &multisampling;
+
+	VkResult res = vkCreateGraphicsPipelines(m_vkDevice, m_vkPipelineCache, 1, &pipelineInfo, nullptr, &impl.Pipeline);
+	assert(res == VK_SUCCESS);
     return retVal;
 }
 
@@ -535,7 +639,7 @@ void phx::gfx::platform::VulkanGpuDevice::DeletePipeline(PipelineStateHandle han
         m_frameCount,
         [=]()
         {
-            PipelineState_Vk* impl = m_piplineStatePool.Get(handle);
+            PipelineState_Vk* impl = m_pipelineStatePool.Get(handle);
             if (impl)
             {
                 vkDestroyPipeline(m_vkDevice, impl->Pipeline, nullptr);
