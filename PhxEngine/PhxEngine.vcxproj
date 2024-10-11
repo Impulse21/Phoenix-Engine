@@ -334,6 +334,7 @@
     <ClInclude Include="phxSpan.h" />
     <ClInclude Include="phxStringHash.h" />
     <ClInclude Include="phxSystemTime.h" />
+    <ClInclude Include="phxVFS.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp" />
@@ -366,6 +367,7 @@
     <ClCompile Include="phxLog.cpp" />
     <ClCompile Include="phxMemory.cpp" />
     <ClCompile Include="phxSystemTimer.cpp" />
+    <ClCompile Include="phxVFS.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="EmberGfx\dxcompiler.dll">

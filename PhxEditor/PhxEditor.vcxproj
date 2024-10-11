@@ -362,7 +362,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shaders\TestShader.hlsl">
+    <CopyFileToFolders Include="Shaders\TestShader.hlsl">
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">6.6</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile_Virtual_Gfx|Gaming.Desktop.x64'">6.6</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug_Virtual_Gfx|Gaming.Desktop.x64'">6.6</ShaderModel>
@@ -400,13 +400,14 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">Vertex</ShaderType>
       <DisableOptimizations Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">false</DisableOptimizations>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile_Virtual_Gfx|Gaming.Desktop.x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_Virtual_Gfx|Gaming.Desktop.x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">true</ExcludedFromBuild>
-    </FxCompile>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile_Virtual_Gfx|Gaming.Desktop.x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_Virtual_Gfx|Gaming.Desktop.x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">false</ExcludedFromBuild>
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
     <Page Include="Shaders\BuildShaders.txt">

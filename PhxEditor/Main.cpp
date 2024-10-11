@@ -12,17 +12,22 @@
 
 #include "EmberGfx/phxImGuiRenderer.h"
 #include "EmberGfx/phxShaderCompiler.h"
+#include "phxVFS.h"
 
 class PhxEditor final : public phx::IEngineApp
 {
 public:
 	void Startup() override 
 	{
+		m_fs = phx::FileSystemFactory::CreateRootFileSystem();
+		m_fs->Mount("/native", phx::FileSystemFactory::CreateNativeFileSystem());
+
 		phx::gfx::ShaderCompiler::Output testShaderVSOutput = phx::gfx::ShaderCompiler::Compile({
 			.Format = phx::gfx::ShaderFormat::Spriv,
 				.ShaderStage = phx::gfx::ShaderStage::VS,
-				.SourceFilename = "C:\\Users\\chris.dipaolo\\Documents\\Visual Studio 2022\\Projeccts\\ShaderCompiler\\ShaderCompiler\\TestShader.hlsl",
-				.EntryPoint = "MainVS"});
+				.SourceFilename = "/native/Shaders/TestShader.hlsl",
+				.EntryPoint = "MainVS",
+				.FileSystem = m_fs.get()});
 
 		if (!testShaderVSOutput.ErrorMessage.empty())
 			PHX_ERROR("Failed to compile VS shader: {0}", testShaderVSOutput.ErrorMessage);
@@ -30,8 +35,9 @@ public:
 		phx::gfx::ShaderCompiler::Output testShaderPSOutput = phx::gfx::ShaderCompiler::Compile({
 			.Format = phx::gfx::ShaderFormat::Spriv,
 			.ShaderStage = phx::gfx::ShaderStage::PS,
-			.SourceFilename = "C:\\Users\\chris.dipaolo\\Documents\\Visual Studio 2022\\Projeccts\\ShaderCompiler\\ShaderCompiler\\TestShader.hlsl",
-			.EntryPoint = "MainPS"});
+			.SourceFilename = "/native/Shaders/TestShader.hlsl",
+			.EntryPoint = "MainPS",
+			.FileSystem = m_fs.get() });
 
 		if (!testShaderPSOutput.ErrorMessage.empty())
 			PHX_ERROR("Failed to compile PS shader: {0}", testShaderPSOutput.ErrorMessage);
@@ -92,6 +98,7 @@ public:
 private:
 	phx::gfx::HandleOwner<phx::gfx::GfxPipeline> m_pipeline;
 	phx::gfx::ImGuiRenderSystem m_imguiRenderSystem;
+	std::unique_ptr<phx::IRootFileSystem> m_fs;
 };
 
 CREATE_APPLICATION(PhxEditor)

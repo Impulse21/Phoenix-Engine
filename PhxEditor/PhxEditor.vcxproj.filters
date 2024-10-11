@@ -16,16 +16,14 @@
     <CopyFileToFolders Include="SmallLogo.png" />
     <CopyFileToFolders Include="SplashScreen.png" />
     <CopyFileToFolders Include="StoreLogo.png" />
+    <CopyFileToFolders Include="Shaders\TestShader.hlsl">
+      <Filter>Shaders</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Shaders">
       <UniqueIdentifier>{57a9cdfc-5cfd-4736-83d0-17474c0539b0}</UniqueIdentifier>
     </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="Shaders\TestShader.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <Page Include="Shaders\BuildShaders.txt">

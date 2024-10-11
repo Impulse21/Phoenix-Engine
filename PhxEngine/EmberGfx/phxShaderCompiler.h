@@ -7,6 +7,10 @@
 
 #include "phxGfxDeviceResources.h"
 
+namespace phx
+{
+	class IFileSystem;
+}
 namespace phx::gfx
 {
 	namespace ShaderCompiler
@@ -30,6 +34,7 @@ namespace phx::gfx
 			std::string EntryPoint = "main";
 			std::vector<std::string> IncludeDir;
 			std::vector<std::string> Defines;
+			IFileSystem* FileSystem;
 		};
 
 		struct Output

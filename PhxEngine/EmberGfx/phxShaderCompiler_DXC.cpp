@@ -5,7 +5,7 @@
 
 #include "phxShaderCompiler.h"
 #include "assert.h"
-
+#include "phxVFS.h"
 #include <iostream>
 
 #include <windows.h>
@@ -65,7 +65,6 @@ namespace
 			return;
 		}
 
-
 		CComPtr<IDxcUtils> dxcUtils;
 		CComPtr<IDxcCompiler3> dxcCompiler;
 
@@ -80,20 +79,13 @@ namespace
 		}
 
 		// Read Shader data byte data
-		std::ifstream file(input.SourceFilename, std::ios::binary | std::ios::ate);
+		std::unique_ptr<IBlob> sourceData = input.FileSystem->ReadFile(input.SourceFilename);
 
-		std::vector<uint8_t> sourceData;
-		if (file.is_open())
+		if (IBlob::IsEmpty(sourceData.get()))
 		{
-			size_t dataSize = (size_t)file.tellg();
-			file.seekg(0);
-			sourceData.resize(dataSize);
-			file.read((char*)sourceData.data(), dataSize);
-			file.close();
-		}
-
-		if (sourceData.empty())
+			PHX_CORE_ERROR("Failed to load file {0}", input.SourceFilename.c_str());
 			return;
+		}
 
 		std::vector<std::wstring> args = {
 			L"-res-may-alias",
@@ -393,8 +385,8 @@ namespace
 		args.push_back(wsource.c_str());
 
 		DxcBuffer Source;
-		Source.Ptr = sourceData.data();
-		Source.Size = sourceData.size();
+		Source.Ptr = sourceData->Data();
+		Source.Size = sourceData->Size();
 		Source.Encoding = DXC_CP_ACP;
 
 		struct IncludeHandler : public IDxcIncludeHandler

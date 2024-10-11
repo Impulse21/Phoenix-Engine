@@ -159,6 +159,9 @@
     <ClInclude Include="EmberGfx\phxShaderCompiler.h">
       <Filter>EmberGfx</Filter>
     </ClInclude>
+    <ClInclude Include="phxVFS.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -229,6 +232,9 @@
     </ClCompile>
     <ClCompile Include="EmberGfx\phxShaderCompiler_DXC.cpp">
       <Filter>EmberGfx</Filter>
+    </ClCompile>
+    <ClCompile Include="phxVFS.cpp">
+      <Filter>Header Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
