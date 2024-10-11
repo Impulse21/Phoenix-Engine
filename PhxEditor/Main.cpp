@@ -58,10 +58,21 @@ public:
 			});
 
 		phx::gfx::InputLayout il = {
-
+			.elements = {
+				{
+					.SemanticName = "POSITION",
+					.SemanticIndex = 0,
+					.Format = phx::gfx::Format::RG32_FLOAT,
+				},
+				{
+					.SemanticName = "COLOR",
+					.SemanticIndex = 1,
+					.Format = phx::gfx::Format::RGB32_FLOAT,
+				}
+			}
 		};
 
-		phx::gfx::DepthStencilRenderState dss = { .DepthTestEnable = false, .DepthWriteEnable = false };
+		phx::gfx::DepthStencilRenderState dss = { .DepthEnable = false, .DepthWriteMask = phx::gfx::DepthWriteMask::Zero};
 		phx::gfx::RasterRenderState rs = {.CullMode = phx::gfx::RasterCullMode::None };
 
 		this->m_pipeline = device->CreatePipeline({
