@@ -86,8 +86,8 @@ public:
 		device->DeleteShader(vsShader);
 		device->DeleteShader(psShader);
 
-		this->m_imguiRenderSystem.Initialize();
-		this->m_imguiRenderSystem.EnableDarkThemeColours();
+		// this->m_imguiRenderSystem.Initialize();
+		// this->m_imguiRenderSystem.EnableDarkThemeColours();
 	};
 
 	void Shutdown() override 
@@ -100,7 +100,7 @@ public:
 	void Update() override 
 	{
 		PHX_EVENT();
-		m_imguiRenderSystem.BeginFrame();
+		// m_imguiRenderSystem.BeginFrame();
 		phx::EngineProfile::DrawUI();
 	};
 

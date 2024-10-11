@@ -65,6 +65,11 @@ namespace phx::gfx::platform
 		size_t BindingHash = 0;
 	};
 
+	struct CommandCtx_Vulkan
+	{
+
+	};
+
 	class VulkanGpuDevice final
 	{
 	public:
@@ -73,6 +78,8 @@ namespace phx::gfx::platform
 
 
 		void RunGarbageCollection(uint64_t completedFrame = ~0ul);
+
+		CommandCtx_Vulkan* BeingCommandCtx(phx::gfx::CommandQueueType type = CommandQueueType::Graphics);
 
 		// Resource Factory
 	public:

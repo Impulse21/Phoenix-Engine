@@ -209,6 +209,11 @@ void phx::gfx::platform::VulkanGpuDevice::RunGarbageCollection(uint64_t complete
     }
 }
 
+CommandCtx_Vulkan* phx::gfx::platform::VulkanGpuDevice::BeingCommandCtx(phx::gfx::CommandQueueType type)
+{
+    return nullptr;
+}
+
 ShaderHandle phx::gfx::platform::VulkanGpuDevice::CreateShader(ShaderDesc const& desc)
 {
     Handle<Shader> retVal = this->m_shaderPool.Emplace();
