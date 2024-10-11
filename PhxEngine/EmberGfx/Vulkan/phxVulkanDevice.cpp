@@ -26,6 +26,7 @@ namespace
     {
         VK_KHR_SURFACE_EXTENSION_NAME,
         VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
+        VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME
     };
 
     // Optional extensions can also be done in the same way
@@ -33,7 +34,6 @@ namespace
     {
         VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
         VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME,
-        VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
     };
 
     const std::vector<const char*> kValidationLayerPriorityList[] =
@@ -60,12 +60,10 @@ namespace
     const std::vector<const char*> kRequiredDeviceExtensions = 
     {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-        VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
-        VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
-        VK_KHR_MULTIVIEW_EXTENSION_NAME,
-        VK_KHR_MAINTENANCE_2_EXTENSION_NAME,
+        VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
         VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,
+
+        "VK_GOOGLE_hlsl_functionality1",
     };
 
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
@@ -327,32 +325,32 @@ PipelineStateHandle phx::gfx::platform::VulkanGpuDevice::CreatePipeline(Pipeline
     }
     if (desc.AS.IsValid())
     {
-        Shader_VK* impl = m_shaderPool.Get(desc.MS);
+        Shader_VK* impl = m_shaderPool.Get(desc.AS);
         shaderStages.push_back(impl->StageInfo);;
     }
     if (desc.VS.IsValid())
     {
-        Shader_VK* impl = m_shaderPool.Get(desc.MS);
+        Shader_VK* impl = m_shaderPool.Get(desc.VS);
         shaderStages.push_back(impl->StageInfo);
     }
     if (desc.HS.IsValid())
     {
-        Shader_VK* impl = m_shaderPool.Get(desc.MS);
+        Shader_VK* impl = m_shaderPool.Get(desc.HS);
         shaderStages.push_back(impl->StageInfo);
     }
     if (desc.DS.IsValid())
     {
-        Shader_VK* impl = m_shaderPool.Get(desc.MS);
+        Shader_VK* impl = m_shaderPool.Get(desc.DS);
         shaderStages.push_back(impl->StageInfo);
     }
     if (desc.GS.IsValid())
     {
-        Shader_VK* impl = m_shaderPool.Get(desc.MS);
+        Shader_VK* impl = m_shaderPool.Get(desc.GS);
         shaderStages.push_back(impl->StageInfo);
     }
     if (desc.PS.IsValid())
     {
-        Shader_VK* impl = m_shaderPool.Get(desc.MS);
+        Shader_VK* impl = m_shaderPool.Get(desc.PS);
         shaderStages.push_back(impl->StageInfo);
     }
 
@@ -791,6 +789,25 @@ void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
 
     VkPhysicalDeviceFeatures deviceFeatures{};
 
+    VkPhysicalDeviceFeatures2 features2{};
+    features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+
+    // Optionally, query other feature structures you might need
+    VkPhysicalDeviceVulkan13Features vulkan13Features{};
+    vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    features2.pNext = &vulkan13Features;
+
+    vkGetPhysicalDeviceFeatures2(m_vkPhysicalDevice, &features2);
+
+    // -- enable dynamic rendering ---
+    vulkan13Features.dynamicRendering = true;
+
+    // -- Enable extended Dynamic rendering ---
+    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extendedDynamicStateFeatures{};
+    extendedDynamicStateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+    extendedDynamicStateFeatures.extendedDynamicState = VK_TRUE; // Enable extended dynamic state
+    vulkan13Features.pNext = &extendedDynamicStateFeatures;
+
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
@@ -801,6 +818,7 @@ void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
     createInfo.enabledLayerCount = 0;
     createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
+    createInfo.pNext = &features2; // Point to the extended features structure
 
     VkResult result = vkCreateDevice(m_vkPhysicalDevice, &createInfo, nullptr, &m_vkDevice);
     if (result != VK_SUCCESS) 
