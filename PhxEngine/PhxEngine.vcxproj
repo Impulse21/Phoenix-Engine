@@ -295,6 +295,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h" />
+    <ClInclude Include="3rdParty\spriv-reflect\include\spirv\unified1\spirv.h" />
+    <ClInclude Include="3rdParty\spriv-reflect\spirv_reflect.h" />
     <ClInclude Include="3rdParty\stb\stb_perlin.h" />
     <ClInclude Include="3rdParty\stb\stb_rect_pack.h" />
     <ClInclude Include="3rdParty\stb\stb_truetype.h" />
@@ -315,7 +317,6 @@
     <ClInclude Include="EmberGfx\phxGfxDeviceResources.h" />
     <ClInclude Include="EmberGfx\phxHandle.h" />
     <ClInclude Include="EmberGfx\phxHandlePool.h" />
-    <ClInclude Include="EmberGfx\phxShaderCompiler.h" />
     <ClInclude Include="EmberGfx\Vulkan\phxVulkanDevice.h" />
     <ClInclude Include="EmberGfx\Vulkan\phxVulkanManager.h" />
     <ClInclude Include="EmberGfx\Vulkan\phxVulkanCore.h" />
@@ -334,10 +335,10 @@
     <ClInclude Include="phxSpan.h" />
     <ClInclude Include="phxStringHash.h" />
     <ClInclude Include="phxSystemTime.h" />
-    <ClInclude Include="phxVFS.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp" />
+    <ClCompile Include="3rdParty\spriv-reflect\spirv_reflect.c" />
     <ClCompile Include="EmberGfx\D3D12\phxCommandCtxD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxDynamicMemoryPageAllocatorD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.cpp" />
@@ -348,7 +349,6 @@
     <ClCompile Include="EmberGfx\phxImGuiRenderer.cpp" />
     <ClCompile Include="EmberGfx\phxEmber.cpp" />
     <ClCompile Include="EmberGfx\phxFontRenderer.cpp" />
-    <ClCompile Include="EmberGfx\phxShaderCompiler_DXC.cpp" />
     <ClCompile Include="EmberGfx\Vulkan\phxVulkanDevice.cpp" />
     <ClCompile Include="EmberGfx\Vulkan\phxVulkanManager.cpp" />
     <ClCompile Include="phxDeferredReleaseQueue.cpp" />
@@ -367,18 +367,8 @@
     <ClCompile Include="phxLog.cpp" />
     <ClCompile Include="phxMemory.cpp" />
     <ClCompile Include="phxSystemTimer.cpp" />
-    <ClCompile Include="phxVFS.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="EmberGfx\dxcompiler.dll">
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">true</DeploymentContent>
-      <FileType>Document</FileType>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Profile_Virtual_Gfx|Gaming.Desktop.x64'">true</DeploymentContent>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug_Virtual_Gfx|Gaming.Desktop.x64'">true</DeploymentContent>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">true</DeploymentContent>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">true</DeploymentContent>
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">true</DeploymentContent>
-    </CopyFileToFolders>
     <None Include="EmberGfx\Shaders\ImGui.hlsli" />
     <None Include="packages.config" />
   </ItemGroup>

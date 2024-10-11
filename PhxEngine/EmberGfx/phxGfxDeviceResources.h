@@ -324,6 +324,7 @@ namespace phx::gfx
     {
         PointList,
         LineList,
+        LineStrip,
         TriangleList,
         TriangleStrip,
         TriangleFan,
@@ -964,22 +965,32 @@ namespace phx::gfx
 
     using ByteCodeView = Span<uint8_t>;
 
+    struct ShaderDesc
+    {
+        ShaderStage Stage;
+        ByteCodeView ByteCode;
+        const char* EntryPoint = "main";
+    };
+
+    struct Shader;
+    using ShaderHandle = Handle<Shader>;
+
     struct PipelineStateDesc2
     {
-        ByteCodeView vs = {};
-        ByteCodeView ps = {};
-        ByteCodeView hs = {};
-        ByteCodeView ds = {};
-        ByteCodeView gs = {};
-        ByteCodeView ms = {};
-        ByteCodeView as = {};
+        ShaderHandle VS = {};
+        ShaderHandle PS = {};
+        ShaderHandle HS = {};
+        ShaderHandle DS = {};
+        ShaderHandle GS = {};
+        ShaderHandle MS = {};
+        ShaderHandle AS = {};
         BlendRenderState*           BlendRenderState = nullptr;
         DepthStencilRenderState*    DepthStencilRenderState = nullptr;
         RasterRenderState*          RasterRenderState = nullptr;
         InputLayout*                InputLayout = nullptr;
-        PrimitiveType		PrimType = PrimitiveType::TriangleList;
-        uint32_t            PatchControlPoints = 3;
-        uint32_t			sampleMask = 0xFFFFFFFF;
+        PrimitiveType		        PrimType = PrimitiveType::TriangleList;
+        uint32_t                    PatchControlPoints = 3;
+        uint32_t			        SampleMask = 0xFFFFFFFF;
     };
 
     struct PipelineStateDesc

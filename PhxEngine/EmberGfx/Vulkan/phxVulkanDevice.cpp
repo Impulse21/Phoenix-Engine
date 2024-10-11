@@ -4,6 +4,8 @@
 #include "phxVulkanDevice.h"
 
 #include "vulkan/vulkan_win32.h"
+#include "spriv-reflect/spirv_reflect.h"
+
 #include <set>
 #include <map>
 
@@ -63,6 +65,7 @@ namespace
         VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
         VK_KHR_MULTIVIEW_EXTENSION_NAME,
         VK_KHR_MAINTENANCE_2_EXTENSION_NAME,
+        VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,
     };
 
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
@@ -135,6 +138,36 @@ void phx::gfx::platform::VulkanGpuDevice::Initialize(SwapChainDesc const& swapCh
     CreateLogicalDevice();
     CreateSwapchain(swapChainDesc);
     CreateSwapChaimImageViews();
+
+
+
+    // Dynamic PSO states:
+    m_psoDynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT);
+    m_psoDynamicStates.push_back(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT);
+    m_psoDynamicStates.push_back(VK_DYNAMIC_STATE_STENCIL_REFERENCE);
+    m_psoDynamicStates.push_back(VK_DYNAMIC_STATE_BLEND_CONSTANTS);
+#if false
+    if (CheckCapability(GraphicsDeviceCapability::DEPTH_BOUNDS_TEST))
+    {
+        m_psoDynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_BOUNDS);
+    }
+    if (CheckCapability(GraphicsDeviceCapability::VARIABLE_RATE_SHADING))
+    {
+        m_psoDynamicStates.push_back(VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR);
+    }
+#endif
+    m_psoDynamicStates.push_back(VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE);
+
+    m_dynamicStateInfo = {};
+    m_dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    m_dynamicStateInfo.pDynamicStates = m_psoDynamicStates.data();
+    m_dynamicStateInfo.dynamicStateCount = (uint32_t)m_psoDynamicStates.size();
+
+    m_dynamicStateInfo_MeshShader = {};
+    m_dynamicStateInfo_MeshShader.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    m_dynamicStateInfo_MeshShader.pDynamicStates = m_psoDynamicStates.data();
+    m_dynamicStateInfo_MeshShader.dynamicStateCount = (uint32_t)m_psoDynamicStates.size() - 1; // don't include VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE for mesh shader
+
 }
 
 void phx::gfx::platform::VulkanGpuDevice::Finalize()
@@ -173,8 +206,271 @@ void phx::gfx::platform::VulkanGpuDevice::RunGarbageCollection(uint64_t complete
     }
 }
 
+ShaderHandle phx::gfx::platform::VulkanGpuDevice::CreateShader(ShaderDesc const& desc)
+{
+    Handle<Shader> retVal = this->m_shaderPool.Emplace();
+    Shader_VK& impl = *this->m_shaderPool.Get(retVal);
+
+    VkShaderModuleCreateInfo moduleInfo = {};
+    moduleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    moduleInfo.codeSize = desc.ByteCode.Size() / sizeof(uint32_t);
+    moduleInfo.pCode = (const uint32_t*)desc.ByteCode.begin();
+    VkResult res = vkCreateShaderModule(m_vkDevice, &moduleInfo, nullptr, &impl.ShaderModule);
+    assert(res == VK_SUCCESS);
+
+    impl.StageInfo = {};
+    impl.StageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    impl.StageInfo.module = impl.ShaderModule;
+    impl.StageInfo.pName = desc.EntryPoint;
+    switch (desc.Stage)
+    {
+    case ShaderStage::MS:
+        impl.StageInfo.stage = VK_SHADER_STAGE_MESH_BIT_EXT;
+        break;
+    case ShaderStage::AS:
+        impl.StageInfo.stage = VK_SHADER_STAGE_TASK_BIT_EXT;
+        break;
+    case ShaderStage::VS:
+        impl.StageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        break;
+    case ShaderStage::HS:
+        impl.StageInfo.stage = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+        break;
+    case ShaderStage::DS:
+        impl.StageInfo.stage = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+        break;
+    case ShaderStage::GS:
+        impl.StageInfo.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
+        break;
+    case ShaderStage::PS:
+        impl.StageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        break;
+    case ShaderStage::CS:
+        impl.StageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+        break;
+    default:
+        // also means library shader (ray tracing)
+        impl.StageInfo.stage = VK_SHADER_STAGE_ALL;
+        break;
+    }
+
+    {
+        SpvReflectShaderModule module;
+        SpvReflectResult result = spvReflectCreateShaderModule(moduleInfo.codeSize, moduleInfo.pCode, &module);
+        assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+        spvReflectDestroyShaderModule(&module);
+    }
+
+    return retVal;
+}
+
+void phx::gfx::platform::VulkanGpuDevice::DeleteShader(ShaderHandle handle)
+{
+    DeferredItem d =
+    {
+        m_frameCount,
+        [=]()
+        {
+            Shader_VK* impl = m_shaderPool.Get(handle);
+            if (impl)
+            {
+                vkDestroyShaderModule(m_vkDevice, impl->ShaderModule, nullptr);
+            }
+        }
+    };
+}
+
 PipelineStateHandle phx::gfx::platform::VulkanGpuDevice::CreatePipeline(PipelineStateDesc2 const& desc)
 {
+    Handle<PipelineState> retVal = this->m_piplineStatePool.Emplace();
+    PipelineState_Vk& impl = *this->m_piplineStatePool.Get(retVal);
+
+    // TODO: We can easly hash the shaders here since it's just a uint32 handle
+
+
+    // -- TODO: Process reflection data here ---
+    // -- TODO: Bindless ---
+    // Cache Pipeline Layouts
+
+    {
+        // -- Create Pipeline layout ---
+        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+        pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pipelineLayoutInfo.setLayoutCount = 0;       // No descriptor sets
+        pipelineLayoutInfo.pSetLayouts = nullptr;    // No layouts
+        pipelineLayoutInfo.pushConstantRangeCount = 0; // No push constants
+        pipelineLayoutInfo.pPushConstantRanges = nullptr;
+
+        VkResult result = vkCreatePipelineLayout(m_vkDevice, &pipelineLayoutInfo, nullptr, &impl.PipelineLayout);
+    }
+
+    VkGraphicsPipelineCreateInfo pipelineInfo = {};
+    //pipelineInfo.flags = VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.layout = impl.PipelineLayout;
+    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+    // -- Shader Stages ---
+    std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+    shaderStages.reserve(static_cast<size_t>(ShaderStage::Count));
+
+    if (desc.MS.IsValid())
+    {
+        Shader_VK* impl = m_shaderPool.Get(desc.MS);
+        shaderStages.push_back(impl->StageInfo);
+    }
+    if (desc.AS.IsValid())
+    {
+        Shader_VK* impl = m_shaderPool.Get(desc.MS);
+        shaderStages.push_back(impl->StageInfo);;
+    }
+    if (desc.VS.IsValid())
+    {
+        Shader_VK* impl = m_shaderPool.Get(desc.MS);
+        shaderStages.push_back(impl->StageInfo);
+    }
+    if (desc.HS.IsValid())
+    {
+        Shader_VK* impl = m_shaderPool.Get(desc.MS);
+        shaderStages.push_back(impl->StageInfo);
+    }
+    if (desc.DS.IsValid())
+    {
+        Shader_VK* impl = m_shaderPool.Get(desc.MS);
+        shaderStages.push_back(impl->StageInfo);
+    }
+    if (desc.GS.IsValid())
+    {
+        Shader_VK* impl = m_shaderPool.Get(desc.MS);
+        shaderStages.push_back(impl->StageInfo);
+    }
+    if (desc.PS.IsValid())
+    {
+        Shader_VK* impl = m_shaderPool.Get(desc.MS);
+        shaderStages.push_back(impl->StageInfo);
+    }
+
+    pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
+    pipelineInfo.pStages = shaderStages.data();
+
+
+    // -- Primitive type ---
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
+    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    switch (desc.PrimType)
+    {
+    case PrimitiveType::PointList:
+        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+        break;
+    case PrimitiveType::LineList:
+        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+        break;
+    case PrimitiveType::LineStrip:
+        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+        break;
+    case PrimitiveType::TriangleStrip:
+        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+        break;
+    case PrimitiveType::TriangleList:
+        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        break;
+    case PrimitiveType::PatchList:
+        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+        break;
+    default:
+        break;
+    }
+	inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+	pipelineInfo.pInputAssemblyState = &inputAssembly;
+
+	// -- Rasterizer ---
+    VkPipelineRasterizationStateCreateInfo rasterizer = {};
+	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	rasterizer.depthClampEnable = VK_TRUE;
+	rasterizer.rasterizerDiscardEnable = VK_FALSE;
+	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+	rasterizer.lineWidth = 1.0f;
+	rasterizer.cullMode = VK_CULL_MODE_NONE;
+	rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizer.depthBiasEnable = VK_FALSE;
+	rasterizer.depthBiasConstantFactor = 0.0f;
+	rasterizer.depthBiasClamp = 0.0f;
+	rasterizer.depthBiasSlopeFactor = 0.0f;
+
+    const void** tail = &rasterizer.pNext;
+
+    // depth clip will be enabled via Vulkan 1.1 extension VK_EXT_depth_clip_enable:
+    VkPipelineRasterizationDepthClipStateCreateInfoEXT depthClipStateInfo = {};
+    depthClipStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT;
+    depthClipStateInfo.depthClipEnable = VK_TRUE;
+
+    VkPhysicalDeviceDepthClipEnableFeaturesEXT depthClipEnableFeature = {};
+    depthClipEnableFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT;
+    *tail = &depthClipStateInfo;
+    tail = &depthClipStateInfo.pNext;
+
+    if (desc.RasterRenderState != nullptr)
+    {
+        const RasterRenderState& rs = *desc.RasterRenderState;
+
+        switch (rs.FillMode)
+        {
+        case RasterFillMode::Wireframe:
+            rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+            break;
+        case RasterFillMode::Solid:
+        default:
+            rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+            break;
+        }
+
+        switch (rs.CullMode)
+        {
+        case RasterCullMode::Back:
+            rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+            break;
+        case RasterCullMode::Front:
+            rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
+            break;
+        case RasterCullMode::None:
+        default:
+            rasterizer.cullMode = VK_CULL_MODE_NONE;
+            break;
+        }
+
+        rasterizer.frontFace = rs.FrontCounterClockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
+        rasterizer.depthBiasEnable = rs.DepthBias != 0 || rs.SlopeScaledDepthBias != 0;
+        rasterizer.depthBiasConstantFactor = static_cast<float>(rs.DepthBias);
+        rasterizer.depthBiasClamp = rs.DepthBiasClamp;
+        rasterizer.depthBiasSlopeFactor = rs.SlopeScaledDepthBias;
+
+        // Depth clip will be enabled via Vulkan 1.1 extension VK_EXT_depth_clip_enable:
+        depthClipStateInfo.depthClipEnable = rs.DepthClipEnable ? VK_TRUE : VK_FALSE;
+
+        VkPipelineRasterizationConservativeStateCreateInfoEXT rasterizationConservativeState = {};
+        if (/*CheckCapability(GraphicsDeviceCapability::CONSERVATIVE_RASTERIZATION) && */rs.ConservativeRasterEnable)
+        {
+            rasterizationConservativeState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT;
+            rasterizationConservativeState.conservativeRasterizationMode = VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
+            rasterizationConservativeState.extraPrimitiveOverestimationSize = 0.0f;
+            *tail = &rasterizationConservativeState;
+            tail = &rasterizationConservativeState.pNext;
+        }
+    }
+
+    // -- Dynamic States ---
+
+    if (!desc.MS.IsValid())
+    {
+        pipelineInfo.pDynamicState = &m_dynamicStateInfo;
+    }
+    else
+    {
+        pipelineInfo.pDynamicState = &m_dynamicStateInfo_MeshShader;
+    }
+
     // -- input Layput---
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -229,12 +525,11 @@ PipelineStateHandle phx::gfx::platform::VulkanGpuDevice::CreatePipeline(Pipeline
     }
 
 
-    return PipelineStateHandle();
+    return retVal;
 }
 
 void phx::gfx::platform::VulkanGpuDevice::DeletePipeline(PipelineStateHandle handle)
 {
-
     DeferredItem d =
     {
         m_frameCount,
@@ -249,7 +544,6 @@ void phx::gfx::platform::VulkanGpuDevice::DeletePipeline(PipelineStateHandle han
             }
         }
     };
-
 }
 
 void phx::gfx::platform::VulkanGpuDevice::CreateInstance()

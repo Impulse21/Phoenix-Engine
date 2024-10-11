@@ -22,6 +22,8 @@ public:
 		m_fs = phx::FileSystemFactory::CreateRootFileSystem();
 		m_fs->Mount("/native", phx::FileSystemFactory::CreateNativeFileSystem());
 
+		phx::gfx::GpuDevice* device = phx::gfx::EmberGfx::GetDevice();
+
 		phx::gfx::ShaderCompiler::Output testShaderVSOutput = phx::gfx::ShaderCompiler::Compile({
 			.Format = phx::gfx::ShaderFormat::Spriv,
 				.ShaderStage = phx::gfx::ShaderStage::VS,
@@ -31,6 +33,12 @@ public:
 
 		if (!testShaderVSOutput.ErrorMessage.empty())
 			PHX_ERROR("Failed to compile VS shader: {0}", testShaderVSOutput.ErrorMessage);
+
+		phx::gfx::ShaderHandle vsShader = device->CreateShader({
+				.Stage = phx::gfx::ShaderStage::VS,
+				.ByteCode = phx::Span(testShaderVSOutput.ByteCode, testShaderVSOutput.ByteCodeSize),
+				.EntryPoint = "MainVS"
+			});
 
 		phx::gfx::ShaderCompiler::Output testShaderPSOutput = phx::gfx::ShaderCompiler::Compile({
 			.Format = phx::gfx::ShaderFormat::Spriv,
@@ -42,14 +50,30 @@ public:
 		if (!testShaderPSOutput.ErrorMessage.empty())
 			PHX_ERROR("Failed to compile PS shader: {0}", testShaderPSOutput.ErrorMessage);
 		
-		this->m_pipeline.Reset(
-			phx::gfx::GfxDevice::CreateGfxPipeline({
-				.VertexShaderByteCode = phx::Span(testShaderVSOutput.ByteCode, testShaderVSOutput.ByteCodeSize),
-				.PixelShaderByteCode = phx::Span(testShaderPSOutput.ByteCode, testShaderPSOutput.ByteCodeSize),
-				.DepthStencilRenderState = {.DepthTestEnable = false, .DepthWriteEnable = false },
-				.RasterRenderState = { .CullMode = phx::gfx::RasterCullMode::None },
-				.RtvFormats = { phx::gfx::g_SwapChainFormat }
-			}));
+
+		phx::gfx::ShaderHandle psShader = device->CreateShader({
+				.Stage = phx::gfx::ShaderStage::PS,
+				.ByteCode = phx::Span(testShaderPSOutput.ByteCode, testShaderPSOutput.ByteCodeSize),
+				.EntryPoint = "MainPS"
+			});
+
+		phx::gfx::InputLayout il = {
+
+		};
+
+		phx::gfx::DepthStencilRenderState dss = { .DepthTestEnable = false, .DepthWriteEnable = false };
+		phx::gfx::RasterRenderState rs = {.CullMode = phx::gfx::RasterCullMode::None };
+
+		this->m_pipeline = device->CreatePipeline({
+				.VS = vsShader,
+				.PS = psShader,
+				.DepthStencilRenderState = &dss,
+				.RasterRenderState = &rs,
+				.InputLayout = &il
+			});
+
+		device->DeleteShader(vsShader);
+		device->DeleteShader(psShader);
 
 		this->m_imguiRenderSystem.Initialize();
 		this->m_imguiRenderSystem.EnableDarkThemeColours();
@@ -57,7 +81,8 @@ public:
 
 	void Shutdown() override 
 	{
-		this->m_pipeline.Reset();
+		phx::gfx::GpuDevice* device = phx::gfx::EmberGfx::GetDevice();
+		device->DeletePipeline(this->m_pipeline);
 	};
 
 	void CacheRenderData() override {};
@@ -72,6 +97,7 @@ public:
 	{
 		using namespace phx::gfx;
 		phx::gfx::CommandCtx ctx = phx::gfx::GfxDevice::BeginGfxContext();
+#if false
 		PHX_EVENT_GFX(ctx);
 		ctx.ClearBackBuffer({ 0.392156899f, 0.584313750f, 0.929411829f, 1.f  }); // Cornflower blue
 		ctx.SetRenderTargetSwapChain();
@@ -93,10 +119,11 @@ public:
 		ctx.DrawIndexed(3, 1, 0, 0, 0);
 
 		m_imguiRenderSystem.Render(ctx);
+#endif
 	}
 
 private:
-	phx::gfx::HandleOwner<phx::gfx::GfxPipeline> m_pipeline;
+	phx::gfx::PipelineStateHandle m_pipeline;
 	phx::gfx::ImGuiRenderSystem m_imguiRenderSystem;
 	std::unique_ptr<phx::IRootFileSystem> m_fs;
 };

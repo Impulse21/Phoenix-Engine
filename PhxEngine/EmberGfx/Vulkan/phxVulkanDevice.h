@@ -52,6 +52,19 @@ namespace phx::gfx::platform
 		bool                            graphics_pipeline = true;
 	};
 
+	struct Shader_VK
+	{
+		VkShaderModule ShaderModule = VK_NULL_HANDLE;
+		// VkPipeline PipelineCS = VK_NULL_HANDLE;
+		VkPipelineShaderStageCreateInfo StageInfo = {};
+		// VkPipelineLayout pipelineLayout_cs = VK_NULL_HANDLE; // no lifetime management here
+		VkDescriptorSetLayout DescriptorSetLayout = VK_NULL_HANDLE; // no lifetime management here
+		std::vector<VkDescriptorSetLayoutBinding> LayoutBindings;
+		VkPushConstantRange Pushconstants = {};
+		std::vector<uint32_t> UniformBufferDynamicSlots;
+		size_t BindingHash = 0;
+	};
+
 	class VulkanGpuDevice final
 	{
 	public:
@@ -63,6 +76,9 @@ namespace phx::gfx::platform
 
 		// Resource Factory
 	public:
+		ShaderHandle CreateShader(ShaderDesc const& desc);
+		void DeleteShader(ShaderHandle handle);
+
 		PipelineStateHandle CreatePipeline(PipelineStateDesc2 const& desc);
 		void DeletePipeline(PipelineStateHandle handle);
 
@@ -110,7 +126,13 @@ namespace phx::gfx::platform
 		std::deque<DeferredItem> m_deferredQueue;
 
 		HandlePool<PipelineState_Vk, PipelineState> m_piplineStatePool;
+		HandlePool<Shader_VK, Shader> m_shaderPool;
 		uint64_t m_frameCount = 0;
+
+		std::vector<VkDynamicState> m_psoDynamicStates;
+		VkPipelineDynamicStateCreateInfo m_dynamicStateInfo = {};
+		VkPipelineDynamicStateCreateInfo m_dynamicStateInfo_MeshShader = {};
+
 	};
 }
 
