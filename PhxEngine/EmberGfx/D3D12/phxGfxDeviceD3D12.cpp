@@ -415,20 +415,20 @@ namespace
 
 	void TranslateDepthStencilState(DepthStencilRenderState const& inState, D3D12_DEPTH_STENCIL_DESC& outState)
 	{
-		outState.DepthEnable = inState.DepthTestEnable ? TRUE : FALSE;
-		outState.DepthWriteMask = inState.DepthWriteEnable ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
+		outState.DepthEnable = inState.DepthEnable ? TRUE : FALSE;
+		outState.DepthWriteMask = inState.DepthWriteMask == DepthWriteMask::All ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
 		outState.DepthFunc = ConvertComparisonFunc(inState.DepthFunc);
 		outState.StencilEnable = inState.StencilEnable ? TRUE : FALSE;
 		outState.StencilReadMask = (UINT8)inState.StencilReadMask;
 		outState.StencilWriteMask = (UINT8)inState.StencilWriteMask;
-		outState.FrontFace.StencilFailOp = ConvertStencilOp(inState.FrontFaceStencil.FailOp);
-		outState.FrontFace.StencilDepthFailOp = ConvertStencilOp(inState.FrontFaceStencil.DepthFailOp);
-		outState.FrontFace.StencilPassOp = ConvertStencilOp(inState.FrontFaceStencil.PassOp);
-		outState.FrontFace.StencilFunc = ConvertComparisonFunc(inState.FrontFaceStencil.StencilFunc);
-		outState.BackFace.StencilFailOp = ConvertStencilOp(inState.BackFaceStencil.FailOp);
-		outState.BackFace.StencilDepthFailOp = ConvertStencilOp(inState.BackFaceStencil.DepthFailOp);
-		outState.BackFace.StencilPassOp = ConvertStencilOp(inState.BackFaceStencil.PassOp);
-		outState.BackFace.StencilFunc = ConvertComparisonFunc(inState.BackFaceStencil.StencilFunc);
+		outState.FrontFace.StencilFailOp = ConvertStencilOp(inState.FrontFace.StencilFailOp);
+		outState.FrontFace.StencilDepthFailOp = ConvertStencilOp(inState.FrontFace.StencilDepthFailOp);
+		outState.FrontFace.StencilPassOp = ConvertStencilOp(inState.FrontFace.StencilPassOp);
+		outState.FrontFace.StencilFunc = ConvertComparisonFunc(inState.FrontFace.StencilFunc);
+		outState.BackFace.StencilFailOp = ConvertStencilOp(inState.BackFace.StencilFailOp);
+		outState.BackFace.StencilDepthFailOp = ConvertStencilOp(inState.BackFace.StencilDepthFailOp);
+		outState.BackFace.StencilPassOp = ConvertStencilOp(inState.BackFace.StencilPassOp);
+		outState.BackFace.StencilFunc = ConvertComparisonFunc(inState.BackFace.StencilFunc);
 	}
 
 	void TranslateRasterState(RasterRenderState const& inState, D3D12_RASTERIZER_DESC& outState)
