@@ -194,19 +194,19 @@ namespace
 	{
 		switch (s)  // NOLINT(clang-diagnostic-switch-enum)
 		{
-		case ShaderStage::Vertex:
+		case ShaderStage::VS:
 			return D3D12_SHADER_VISIBILITY_VERTEX;
-		case ShaderStage::Hull:
+		case ShaderStage::HS:
 			return D3D12_SHADER_VISIBILITY_HULL;
-		case ShaderStage::Domain:
+		case ShaderStage::DS:
 			return D3D12_SHADER_VISIBILITY_DOMAIN;
-		case ShaderStage::Geometry:
+		case ShaderStage::GS:
 			return D3D12_SHADER_VISIBILITY_GEOMETRY;
-		case ShaderStage::Pixel:
+		case ShaderStage::PS:
 			return D3D12_SHADER_VISIBILITY_PIXEL;
-		case ShaderStage::Amplification:
+		case ShaderStage::AS:
 			return D3D12_SHADER_VISIBILITY_AMPLIFICATION;
-		case ShaderStage::Mesh:
+		case ShaderStage::MS:
 			return D3D12_SHADER_VISIBILITY_MESH;
 
 		default:

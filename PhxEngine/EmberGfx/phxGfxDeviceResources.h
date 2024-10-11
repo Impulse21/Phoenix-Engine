@@ -33,32 +33,38 @@ namespace phx::gfx
         Vulkan
     };
 
-    enum class ShaderStage : uint16_t
+    enum class ShaderFormat : uint8_t
     {
-        None = 0x0000,
-
-        Compute = 0x0020,
-
-        Vertex = 0x0001,
-        Hull = 0x0002,
-        Domain = 0x0004,
-        Geometry = 0x0008,
-        Pixel = 0x0010,
-        Amplification = 0x0040,
-        Mesh = 0x0080,
-        AllGraphics = 0x00FE,
-
-        RayGeneration = 0x0100,
-        AnyHit = 0x0200,
-        ClosestHit = 0x0400,
-        Miss = 0x0800,
-        Intersection = 0x1000,
-        Callable = 0x2000,
-        AllRayTracing = 0x3F00,
-
-        All = 0x3FFF,
+        None,		// Not used
+        Hlsl6,		// DXIL
+        Spriv,		// SPIR-V
     };
-    PHX_ENUM_CLASS_FLAGS(ShaderStage)
+
+    enum class ShaderStage : uint8_t
+    {
+        MS,		// Mesh Shader
+        AS,		// Amplification Shader
+        VS,		// Vertex Shader
+        HS,		// Hull Shader
+        DS,		// Domain Shader
+        GS,		// Geometry Shader
+        PS,		// Pixel Shader
+        CS,		// Compute Shader
+        LIB,	// Shader Library
+        Count,
+    };
+
+    enum class ShaderModel
+    {
+        SM_6_0,
+        SM_6_1,
+        SM_6_2,
+        SM_6_3,
+        SM_6_4,
+        SM_6_5,
+        SM_6_6,
+        SM_6_7,
+    };
 
     enum class ColourSpace
     {
@@ -303,30 +309,11 @@ namespace phx::gfx
 
     PHX_ENUM_CLASS_FLAGS(ResourceStates)
 
-        enum class ShaderType
-    {
-        None,
-        HLSL6,
-    };
-
     enum class FeatureLevel
     {
         SM5,
         SM6
     };
-
-    enum class ShaderModel
-    {
-        SM_6_0,
-        SM_6_1,
-        SM_6_2,
-        SM_6_3,
-        SM_6_4,
-        SM_6_5,
-        SM_6_6,
-        SM_6_7,
-    };
-
 
     enum class PrimitiveType : uint8_t
     {
@@ -696,7 +683,7 @@ namespace phx::gfx
     // Shader Binding Layout
     struct ShaderParameterLayout
     {
-        ShaderStage Visibility = ShaderStage::None;
+        ShaderStage Visibility = ShaderStage::VS;
         uint32_t RegisterSpace = 0;
         std::vector<ShaderParameter> Parameters;
         std::vector<BindlessShaderParameter> BindlessParameters;

@@ -10,19 +10,36 @@
 
 #include "phxDisplay.h"
 
-#include "CompiledShaders/Spriv/TestShaderVS.h"
-#include "CompiledShaders/Spriv/TestShaderPS.h"
 #include "EmberGfx/phxImGuiRenderer.h"
+#include "EmberGfx/phxShaderCompiler.h"
 
 class PhxEditor final : public phx::IEngineApp
 {
 public:
 	void Startup() override 
 	{
+		phx::gfx::ShaderCompiler::Output testShaderVSOutput = phx::gfx::ShaderCompiler::Compile({
+			.Format = phx::gfx::ShaderFormat::Spriv,
+				.ShaderStage = phx::gfx::ShaderStage::VS,
+				.SourceFilename = "C:\\Users\\chris.dipaolo\\Documents\\Visual Studio 2022\\Projeccts\\ShaderCompiler\\ShaderCompiler\\TestShader.hlsl",
+				.EntryPoint = "MainVS"});
+
+		if (!testShaderVSOutput.ErrorMessage.empty())
+			PHX_ERROR("Failed to compile VS shader: {0}", testShaderVSOutput.ErrorMessage);
+
+		phx::gfx::ShaderCompiler::Output testShaderPSOutput = phx::gfx::ShaderCompiler::Compile({
+			.Format = phx::gfx::ShaderFormat::Spriv,
+			.ShaderStage = phx::gfx::ShaderStage::PS,
+			.SourceFilename = "C:\\Users\\chris.dipaolo\\Documents\\Visual Studio 2022\\Projeccts\\ShaderCompiler\\ShaderCompiler\\TestShader.hlsl",
+			.EntryPoint = "MainPS"});
+
+		if (!testShaderPSOutput.ErrorMessage.empty())
+			PHX_ERROR("Failed to compile PS shader: {0}", testShaderPSOutput.ErrorMessage);
+		
 		this->m_pipeline.Reset(
 			phx::gfx::GfxDevice::CreateGfxPipeline({
-				.VertexShaderByteCode = phx::Span(g_pTestShaderVS, ARRAYSIZE(g_pTestShaderVS)),
-				.PixelShaderByteCode = phx::Span(g_pTestShaderPS, ARRAYSIZE(g_pTestShaderPS)),
+				.VertexShaderByteCode = phx::Span(testShaderVSOutput.ByteCode, testShaderVSOutput.ByteCodeSize),
+				.PixelShaderByteCode = phx::Span(testShaderPSOutput.ByteCode, testShaderPSOutput.ByteCodeSize),
 				.DepthStencilRenderState = {.DepthTestEnable = false, .DepthWriteEnable = false },
 				.RasterRenderState = { .CullMode = phx::gfx::RasterCullMode::None },
 				.RtvFormats = { phx::gfx::g_SwapChainFormat }

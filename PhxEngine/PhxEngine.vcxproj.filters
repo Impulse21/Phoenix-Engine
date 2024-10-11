@@ -156,6 +156,9 @@
     <ClInclude Include="EmberGfx\Vulkan\phxVulkanDevice.h">
       <Filter>EmberGfx\Vulkan</Filter>
     </ClInclude>
+    <ClInclude Include="EmberGfx\phxShaderCompiler.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -224,6 +227,9 @@
     <ClCompile Include="phxMemory.cpp">
       <Filter>Header Files</Filter>
     </ClCompile>
+    <ClCompile Include="EmberGfx\phxShaderCompiler_DXC.cpp">
+      <Filter>EmberGfx</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -238,5 +244,10 @@
     <FxCompile Include="EmberGfx\Shaders\ImGuiVS.hlsl">
       <Filter>EmberGfx\Shaders</Filter>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="EmberGfx\dxcompiler.dll">
+      <Filter>EmberGfx</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

@@ -315,6 +315,7 @@
     <ClInclude Include="EmberGfx\phxGfxDeviceResources.h" />
     <ClInclude Include="EmberGfx\phxHandle.h" />
     <ClInclude Include="EmberGfx\phxHandlePool.h" />
+    <ClInclude Include="EmberGfx\phxShaderCompiler.h" />
     <ClInclude Include="EmberGfx\Vulkan\phxVulkanDevice.h" />
     <ClInclude Include="EmberGfx\Vulkan\phxVulkanManager.h" />
     <ClInclude Include="EmberGfx\Vulkan\phxVulkanCore.h" />
@@ -346,6 +347,7 @@
     <ClCompile Include="EmberGfx\phxImGuiRenderer.cpp" />
     <ClCompile Include="EmberGfx\phxEmber.cpp" />
     <ClCompile Include="EmberGfx\phxFontRenderer.cpp" />
+    <ClCompile Include="EmberGfx\phxShaderCompiler_DXC.cpp" />
     <ClCompile Include="EmberGfx\Vulkan\phxVulkanDevice.cpp" />
     <ClCompile Include="EmberGfx\Vulkan\phxVulkanManager.cpp" />
     <ClCompile Include="phxDeferredReleaseQueue.cpp" />
@@ -366,6 +368,15 @@
     <ClCompile Include="phxSystemTimer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <CopyFileToFolders Include="EmberGfx\dxcompiler.dll">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">true</DeploymentContent>
+      <FileType>Document</FileType>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Profile_Virtual_Gfx|Gaming.Desktop.x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug_Virtual_Gfx|Gaming.Desktop.x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">true</DeploymentContent>
+    </CopyFileToFolders>
     <None Include="EmberGfx\Shaders\ImGui.hlsli" />
     <None Include="packages.config" />
   </ItemGroup>
