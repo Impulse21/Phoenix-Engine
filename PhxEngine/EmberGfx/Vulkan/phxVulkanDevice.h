@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <deque>
+#include <mutex>
 
 #include "EmberGfx/phxGfxDeviceResources.h"
 #include "phxVulkanManager.h"
@@ -135,6 +136,11 @@ namespace phx::gfx::platform
 		VkPipelineCache m_vkPipelineCache;
 		HandlePool<PipelineState_Vk, PipelineState> m_pipelineStatePool;
 		HandlePool<Shader_VK, Shader> m_shaderPool;
+
+
+		std::mutex m_commandPoolLock;
+		std::vector<std::unique_ptr<CommandCtx_Vulkan>> m_commandCtxPool;
+		uint32_t m_commandCtxCount;
 		uint64_t m_frameCount = 0;
 
 		std::vector<VkDynamicState> m_psoDynamicStates;

@@ -211,6 +211,18 @@ void phx::gfx::platform::VulkanGpuDevice::RunGarbageCollection(uint64_t complete
 
 CommandCtx_Vulkan* phx::gfx::platform::VulkanGpuDevice::BeingCommandCtx(phx::gfx::CommandQueueType type)
 {
+    CommandCtx_Vulkan* retVal = nullptr;
+    {
+        std::scoped_lock _(m_commandPoolLock);
+        uint32_t ctxCurrent = m_commandCtxCount++;
+        if (ctxCurrent >= m_commandCtxPool.size())
+        {
+            m_commandCtxPool.push_back(std::make_unique<CommandCtx_Vulkan>());
+        }
+        retVal = m_commandCtxPool[ctxCurrent].get();
+    }
+
+
     return nullptr;
 }
 
