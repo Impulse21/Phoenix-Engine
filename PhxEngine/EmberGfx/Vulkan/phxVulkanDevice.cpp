@@ -174,6 +174,21 @@ void phx::gfx::platform::VulkanGpuDevice::Initialize(SwapChainDesc const& swapCh
 void phx::gfx::platform::VulkanGpuDevice::Finalize()
 {
     this->RunGarbageCollection();
+
+    for (auto& cmdCtx : m_commandCtxPool)
+    {
+        for (uint32_t buffer = 0; buffer < kBufferCount; ++buffer)
+        {
+            for (size_t queue = 0; queue < (size_t)CommandQueueType::Count; ++queue)
+            {
+                vkDestroyCommandPool(m_vkDevice, cmdCtx->CmdBufferPoolVk[buffer][queue], nullptr);
+            }
+        }
+    }
+
+    m_commandCtxPool.clear();
+
+
     for (auto imageView : m_swapChainImageViews) 
     {
         vkDestroyImageView(m_vkDevice, imageView, nullptr);
@@ -211,10 +226,11 @@ void phx::gfx::platform::VulkanGpuDevice::RunGarbageCollection(uint64_t complete
 
 CommandCtx_Vulkan* phx::gfx::platform::VulkanGpuDevice::BeginCommandCtx(phx::gfx::CommandQueueType type)
 {
-    CommandCtx_Vulkan* retVal = nullptr;
+    CommandCtx_Vulkan* retVal = nullptr; 
+    uint32_t ctxCurrent = ~0u;
     {
         std::scoped_lock _(m_commandPoolLock);
-        uint32_t ctxCurrent = m_commandCtxCount++;
+        ctxCurrent = m_commandCtxCount++;
         if (ctxCurrent >= m_commandCtxPool.size())
         {
             m_commandCtxPool.push_back(std::make_unique<CommandCtx_Vulkan>());
@@ -222,7 +238,109 @@ CommandCtx_Vulkan* phx::gfx::platform::VulkanGpuDevice::BeginCommandCtx(phx::gfx
         retVal = m_commandCtxPool[ctxCurrent].get();
     }
 
-    retVal->Reset();
+    retVal->Reset(GetBufferIndex());
+    retVal->Id = ctxCurrent;
+    retVal->Queue = type;
+
+    if (retVal->GetVkCommandBuffer() == VK_NULL_HANDLE)
+    {
+        for (uint32_t buffer = 0; buffer < kBufferCount; ++buffer)
+        {
+            VkCommandPoolCreateInfo poolInfo = {};
+            poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            switch (type)
+            {
+            case CommandQueueType::Graphics:
+                poolInfo.queueFamilyIndex = m_queueFamilies.GraphicsFamily.value();
+                break;
+            case CommandQueueType::Compute:
+                poolInfo.queueFamilyIndex = m_queueFamilies.ComputeFamily.value();
+                break;
+            case CommandQueueType::Copy:
+                poolInfo.queueFamilyIndex = m_queueFamilies.TransferFamily.value();
+                break;
+            default:
+                assert(0); // queue type not handled
+                break;
+            }
+            poolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+
+            VkResult res = vkCreateCommandPool(m_vkDevice, &poolInfo, nullptr, &retVal->CmdBufferPoolVk[buffer][type]);
+            assert(res == VK_SUCCESS);
+
+            VkCommandBufferAllocateInfo commandBufferInfo = {};
+            commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            commandBufferInfo.commandBufferCount = 1;
+            commandBufferInfo.commandPool = retVal->CmdBufferPoolVk[buffer][type];
+            commandBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+            res = vkAllocateCommandBuffers(m_vkDevice, &commandBufferInfo, &retVal->CmdBufferVk[buffer][type]);
+            assert(res == VK_SUCCESS);
+        }
+    }
+
+
+    VkResult res = vkResetCommandPool(m_vkDevice, retVal->GetVkCommandPool(), 0);
+    assert(res == VK_SUCCESS);
+
+
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    beginInfo.pInheritanceInfo = nullptr; // Optional
+
+    res = vkBeginCommandBuffer(retVal->GetVkCommandBuffer(), &beginInfo);
+
+    if (type == CommandQueueType::Graphics)
+    {
+        vkCmdSetRasterizerDiscardEnable(retVal->GetVkCommandBuffer(), VK_FALSE);
+
+        VkViewport vp = {};
+        vp.width = 1;
+        vp.height = 1;
+        vp.maxDepth = 1;
+        vkCmdSetViewportWithCount(retVal->GetVkCommandBuffer(), 1, &vp);
+
+        VkRect2D scissor;
+        scissor.offset.x = 0;
+        scissor.offset.y = 0;
+        scissor.extent.width = 65535;
+        scissor.extent.height = 65535;
+        vkCmdSetScissorWithCount(retVal->GetVkCommandBuffer(), 1, &scissor);
+
+        float blendConstants[] = { 1,1,1,1 };
+        vkCmdSetBlendConstants(retVal->GetVkCommandBuffer(), blendConstants);
+
+        vkCmdSetStencilReference(retVal->GetVkCommandBuffer(), VK_STENCIL_FRONT_AND_BACK, ~0u);
+
+        if (m_features2.features.depthBounds == VK_TRUE)
+        {
+            vkCmdSetDepthBounds(retVal->GetVkCommandBuffer(), 0.0f, 1.0f);
+        }
+
+#if false
+        const VkDeviceSize zero = {};
+        vkCmdBindVertexBuffers2(retVal->GetVkCommandBuffer(), 0, 1, &nullBuffer, &zero, &zero, &zero);
+
+        if (CheckCapability(GraphicsDeviceCapability::VARIABLE_RATE_SHADING))
+        {
+            VkExtent2D fragmentSize = {};
+            fragmentSize.width = 1;
+            fragmentSize.height = 1;
+
+            VkFragmentShadingRateCombinerOpKHR combiner[] = {
+                VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
+                VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR
+            };
+
+            vkCmdSetFragmentShadingRateKHR(
+                retVal->GetVkCommandBuffer(),
+                &fragmentSize,
+                combiner
+            );
+        }
+#endif
+    }
 
     return retVal;
 }
@@ -807,24 +925,22 @@ void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
 
     VkPhysicalDeviceFeatures deviceFeatures{};
 
-    VkPhysicalDeviceFeatures2 features2{};
-    features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+  
+    m_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 
     // Optionally, query other feature structures you might need
-    VkPhysicalDeviceVulkan13Features vulkan13Features{};
-    vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-    features2.pNext = &vulkan13Features;
+    m_vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    m_features2.pNext = &m_vulkan13Features;
 
-    vkGetPhysicalDeviceFeatures2(m_vkPhysicalDevice, &features2);
+    vkGetPhysicalDeviceFeatures2(m_vkPhysicalDevice, &m_features2);
 
     // -- enable dynamic rendering ---
-    vulkan13Features.dynamicRendering = true;
+    m_vulkan13Features.dynamicRendering = true;
 
     // -- Enable extended Dynamic rendering ---
-    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extendedDynamicStateFeatures{};
-    extendedDynamicStateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
-    extendedDynamicStateFeatures.extendedDynamicState = VK_TRUE; // Enable extended dynamic state
-    vulkan13Features.pNext = &extendedDynamicStateFeatures;
+    m_extendedDynamicStateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+    m_extendedDynamicStateFeatures.extendedDynamicState = VK_TRUE; // Enable extended dynamic state
+    m_vulkan13Features.pNext = &m_extendedDynamicStateFeatures;
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -836,7 +952,7 @@ void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
     createInfo.enabledLayerCount = 0;
     createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
-    createInfo.pNext = &features2; // Point to the extended features structure
+    createInfo.pNext = &m_features2; // Point to the extended features structure
 
     VkResult result = vkCreateDevice(m_vkPhysicalDevice, &createInfo, nullptr, &m_vkDevice);
     if (result != VK_SUCCESS) 
@@ -852,6 +968,8 @@ void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
     vkGetDeviceQueue(m_vkDevice, indices.GraphicsFamily.value(), 0, &m_vkQueueGfx);
     vkGetDeviceQueue(m_vkDevice, indices.ComputeFamily.value(), 0, &m_vkComputeQueue);
     vkGetDeviceQueue(m_vkDevice, indices.TransferFamily.value(), 0, &m_vkTransferQueue);
+
+    m_queueFamilies = indices;
 }
 
 void phx::gfx::platform::VulkanGpuDevice::CreateSurface(void* windowHandle)

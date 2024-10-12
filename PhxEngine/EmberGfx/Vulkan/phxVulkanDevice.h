@@ -69,8 +69,8 @@ namespace phx::gfx::platform
 
 	struct CommandCtx_Vulkan
 	{
-		EnumArray<VkCommandBuffer, CommandQueueType>  BufferVk[kBufferCount];
-		EnumArray<VkCommandPool, CommandQueueType> BufferPoolVk[kBufferCount];
+		EnumArray<VkCommandBuffer, CommandQueueType>  CmdBufferVk[kBufferCount];
+		EnumArray<VkCommandPool, CommandQueueType> CmdBufferPoolVk[kBufferCount];
 
 		CommandQueueType Queue = {};
 		uint32_t Id = 0;
@@ -78,10 +78,21 @@ namespace phx::gfx::platform
 		std::vector<std::pair<CommandQueueType, VkSemaphore>> WaitQueues;
 		std::vector<VkSemaphore> Waits;
 		std::vector<VkSemaphore> Signals;
+		uint32_t CurrentBufferIndex = 0;
 
 		void Reset(uint32_t bufferIndex)
 		{
+			CurrentBufferIndex = bufferIndex;
+		}
 
+		VkCommandBuffer GetVkCommandBuffer()
+		{
+			return CmdBufferVk[CurrentBufferIndex][Queue];
+		}
+
+		VkCommandPool GetVkCommandPool()
+		{
+			return CmdBufferPoolVk[CurrentBufferIndex][Queue];
 		}
 	};
 
@@ -113,6 +124,8 @@ namespace phx::gfx::platform
 		void CreateSwapchain(SwapChainDesc const& desc);
 		void CreateSwapChaimImageViews();
 
+		uint32_t GetBufferIndex() const { return m_frameCount % kBufferCount; }
+
 		int32_t RateDeviceSuitability(VkPhysicalDevice device);
 		QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device);
 		SwapChainSupportDetails QuerySwapchainSupport(VkPhysicalDevice device);
@@ -126,6 +139,11 @@ namespace phx::gfx::platform
 		VkPhysicalDevice m_vkPhysicalDevice;
 		VkDevice m_vkDevice;
 
+		VkPhysicalDeviceFeatures2 m_features2 = {};
+		VkPhysicalDeviceVulkan13Features m_vulkan13Features = {};
+		VkPhysicalDeviceExtendedDynamicStateFeaturesEXT m_extendedDynamicStateFeatures = {};
+
+		QueueFamilyIndices m_queueFamilies;
 		VkQueue m_vkQueueGfx;
 		VkQueue m_vkComputeQueue;
 		VkQueue m_vkTransferQueue;
