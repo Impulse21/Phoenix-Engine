@@ -123,6 +123,9 @@ namespace phx::gfx::platform
 		void CreateSurface(void* windowHandle);
 		void CreateSwapchain(SwapChainDesc const& desc);
 		void CreateSwapChaimImageViews();
+		void CreateVma();
+		void CreateDefaultResources();
+		void DestoryDefaultResources();
 
 		uint32_t GetBufferIndex() const { return m_frameCount % kBufferCount; }
 
@@ -140,6 +143,7 @@ namespace phx::gfx::platform
 		VkDevice m_vkDevice;
 
 		VkPhysicalDeviceFeatures2 m_features2 = {};
+		VkPhysicalDeviceVulkan12Features m_vulkan12Features = {};
 		VkPhysicalDeviceVulkan13Features m_vulkan13Features = {};
 		VkPhysicalDeviceExtendedDynamicStateFeaturesEXT m_extendedDynamicStateFeatures = {};
 
@@ -179,5 +183,8 @@ namespace phx::gfx::platform
 		VkPipelineDynamicStateCreateInfo m_dynamicStateInfo = {};
 		VkPipelineDynamicStateCreateInfo m_dynamicStateInfo_MeshShader = {};
 
+
+		VkBuffer m_nullBuffer;
+		VkBufferView m_nullBufferView;
 	};
 }

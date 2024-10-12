@@ -3,6 +3,7 @@
 #include "phxVulkanCore.h"
 #include "phxVulkanDevice.h"
 
+#include "vma/vk_mem_alloc.h"
 #include "vulkan/vulkan_win32.h"
 #include "spriv-reflect/spirv_reflect.h"
 
@@ -320,7 +321,7 @@ CommandCtx_Vulkan* phx::gfx::platform::VulkanGpuDevice::BeginCommandCtx(phx::gfx
 
         //  Need to bind all dynamic states even if it's not being used.
         const VkDeviceSize zero = {};
-        vkCmdBindVertexBuffers2(retVal->GetVkCommandBuffer(), 0, 1, &nullBuffer, &zero, &zero, &zero);
+        vkCmdBindVertexBuffers2(retVal->GetVkCommandBuffer(), 0, 1, &m_nullBuffer, &zero, &zero, &zero);
 #if false
 
         if (CheckCapability(GraphicsDeviceCapability::VARIABLE_RATE_SHADING))
@@ -1105,6 +1106,58 @@ void phx::gfx::platform::VulkanGpuDevice::CreateSwapChaimImageViews()
             throw std::runtime_error("failed to create image views!");
         }
     }
+}
+
+void phx::gfx::platform::VulkanGpuDevice::CreateVma()
+{
+    // Initialize Vulkan Memory Allocator helper:
+    VmaAllocatorCreateInfo allocatorInfo = {};
+    allocatorInfo.physicalDevice = m_vkPhysicalDevice;
+    allocatorInfo.device = m_vkDevice;
+    allocatorInfo.instance = m_vkInstance;
+
+    // Core in 1.1
+    allocatorInfo.flags =
+        VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT |
+        VMA_ALLOCATOR_CREATE_KHR_BIND_MEMORY2_BIT;
+
+    if (m_features2.bufferDeviceAddress)
+    {
+        allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+    }
+
+}
+
+void phx::gfx::platform::VulkanGpuDevice::CreateDefaultResources()
+{
+
+    // Create default null descriptors:
+    {
+        VkBufferCreateInfo bufferInfo = {};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferInfo.size = 4;
+        bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        bufferInfo.flags = 0;
+
+
+        VmaAllocationCreateInfo allocInfo = {};
+        allocInfo.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+        res = vmaCreateBuffer(allocationhandler->allocator, &bufferInfo, &allocInfo, &nullBuffer, &nullBufferAllocation, nullptr);
+        assert(res == VK_SUCCESS);
+
+        VkBufferViewCreateInfo viewInfo = {};
+        viewInfo.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+        viewInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        viewInfo.range = VK_WHOLE_SIZE;
+        viewInfo.buffer = nullBuffer;
+        res = vkCreateBufferView(device, &viewInfo, nullptr, &nullBufferView);
+        assert(res == VK_SUCCESS);
+    }
+}
+
+void phx::gfx::platform::VulkanGpuDevice::DestoryDefaultResources()
+{
 }
 
 int32_t phx::gfx::platform::VulkanGpuDevice::RateDeviceSuitability(VkPhysicalDevice device)
