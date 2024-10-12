@@ -7,6 +7,7 @@
 #include "EmberGfx/phxGfxDeviceResources.h"
 #include "phxVulkanManager.h"
 #include "EmberGfx/phxHandlePool.h"
+#include "phxEnumUtils.h"
 
 namespace phx::gfx::platform
 {
@@ -68,7 +69,20 @@ namespace phx::gfx::platform
 
 	struct CommandCtx_Vulkan
 	{
+		EnumArray<VkCommandBuffer, CommandQueueType>  BufferVk[kBufferCount];
+		EnumArray<VkCommandPool, CommandQueueType> BufferPoolVk[kBufferCount];
 
+		CommandQueueType Queue = {};
+		uint32_t Id = 0;
+
+		std::vector<std::pair<CommandQueueType, VkSemaphore>> WaitQueues;
+		std::vector<VkSemaphore> Waits;
+		std::vector<VkSemaphore> Signals;
+
+		void Reset(uint32_t bufferIndex)
+		{
+
+		}
 	};
 
 	class VulkanGpuDevice final
@@ -80,7 +94,7 @@ namespace phx::gfx::platform
 
 		void RunGarbageCollection(uint64_t completedFrame = ~0ul);
 
-		CommandCtx_Vulkan* BeingCommandCtx(phx::gfx::CommandQueueType type = CommandQueueType::Graphics);
+		CommandCtx_Vulkan* BeginCommandCtx(phx::gfx::CommandQueueType type = CommandQueueType::Graphics);
 
 		// Resource Factory
 	public:

@@ -209,7 +209,7 @@ void phx::gfx::platform::VulkanGpuDevice::RunGarbageCollection(uint64_t complete
     }
 }
 
-CommandCtx_Vulkan* phx::gfx::platform::VulkanGpuDevice::BeingCommandCtx(phx::gfx::CommandQueueType type)
+CommandCtx_Vulkan* phx::gfx::platform::VulkanGpuDevice::BeginCommandCtx(phx::gfx::CommandQueueType type)
 {
     CommandCtx_Vulkan* retVal = nullptr;
     {
@@ -222,8 +222,9 @@ CommandCtx_Vulkan* phx::gfx::platform::VulkanGpuDevice::BeingCommandCtx(phx::gfx
         retVal = m_commandCtxPool[ctxCurrent].get();
     }
 
+    retVal->Reset();
 
-    return nullptr;
+    return retVal;
 }
 
 ShaderHandle phx::gfx::platform::VulkanGpuDevice::CreateShader(ShaderDesc const& desc)
