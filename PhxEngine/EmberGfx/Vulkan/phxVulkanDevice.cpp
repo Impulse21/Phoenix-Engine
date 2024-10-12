@@ -318,9 +318,10 @@ CommandCtx_Vulkan* phx::gfx::platform::VulkanGpuDevice::BeginCommandCtx(phx::gfx
             vkCmdSetDepthBounds(retVal->GetVkCommandBuffer(), 0.0f, 1.0f);
         }
 
-#if false
+        //  Need to bind all dynamic states even if it's not being used.
         const VkDeviceSize zero = {};
         vkCmdBindVertexBuffers2(retVal->GetVkCommandBuffer(), 0, 1, &nullBuffer, &zero, &zero, &zero);
+#if false
 
         if (CheckCapability(GraphicsDeviceCapability::VARIABLE_RATE_SHADING))
         {
