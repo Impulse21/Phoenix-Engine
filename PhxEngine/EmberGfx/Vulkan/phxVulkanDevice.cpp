@@ -170,11 +170,15 @@ void phx::gfx::platform::VulkanGpuDevice::Initialize(SwapChainDesc const& swapCh
     m_dynamicStateInfo_MeshShader.pDynamicStates = m_psoDynamicStates.data();
     m_dynamicStateInfo_MeshShader.dynamicStateCount = (uint32_t)m_psoDynamicStates.size() - 1; // don't include VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE for mesh shader
 
+    CreateVma();
+    CreateDefaultResources();
 }
 
 void phx::gfx::platform::VulkanGpuDevice::Finalize()
 {
     this->RunGarbageCollection();
+
+    DestoryDefaultResources();
 
     for (auto& cmdCtx : m_commandCtxPool)
     {
@@ -195,6 +199,7 @@ void phx::gfx::platform::VulkanGpuDevice::Finalize()
         vkDestroyImageView(m_vkDevice, imageView, nullptr);
     }
 
+    vmaDestroyAllocator(m_vmaAllocator);
     vkDestroyPipelineCache(m_vkDevice, m_vkPipelineCache, nullptr);
     vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
     vkDestroyDevice(m_vkDevice, nullptr);
@@ -836,7 +841,6 @@ void phx::gfx::platform::VulkanGpuDevice::CreateInstance()
         PHX_CORE_INFO("[Vulkan] - Enabling Vulkan Layer '{0}'", layerName);
     }
 
-
     VkResult result = vkCreateInstance(&createInfo, nullptr, &m_vkInstance);
     if (result != VK_SUCCESS)
         throw std::runtime_error("failed to create instance!");
@@ -929,10 +933,12 @@ void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
 
   
     m_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    m_vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    m_features2.pNext = &m_vulkan12Features;
 
     // Optionally, query other feature structures you might need
     m_vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-    m_features2.pNext = &m_vulkan13Features;
+    m_vulkan12Features.pNext = &m_vulkan13Features;
 
     vkGetPhysicalDeviceFeatures2(m_vkPhysicalDevice, &m_features2);
 
@@ -1121,16 +1127,40 @@ void phx::gfx::platform::VulkanGpuDevice::CreateVma()
         VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT |
         VMA_ALLOCATOR_CREATE_KHR_BIND_MEMORY2_BIT;
 
-    if (m_features2.bufferDeviceAddress)
+    if (m_vulkan12Features.bufferDeviceAddress)
     {
         allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     }
 
+#if false
+#if VMA_DYNAMIC_VULKAN_FUNCTIONS
+    static VmaVulkanFunctions vulkanFunctions = {};
+    vulkanFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+    vulkanFunctions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+    allocatorInfo.pVulkanFunctions = &vulkanFunctions;
+#endif
+    res = vmaCreateAllocator(&allocatorInfo, &allocationhandler->allocator);
+    assert(res == VK_SUCCESS);
+    if (res != VK_SUCCESS)
+    {
+        wi::helper::messageBox("vmaCreateAllocator failed! ERROR: " + std::to_string(res), "Error!");
+        wi::platform::Exit();
+    }
+
+    std::vector<VkExternalMemoryHandleTypeFlags> externalMemoryHandleTypes;
+#if defined(VK_USE_PLATFORM_WIN32_KHR)
+    externalMemoryHandleTypes.resize(memory_properties_2.memoryProperties.memoryTypeCount, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT);
+    allocatorInfo.pTypeExternalMemoryHandleTypes = externalMemoryHandleTypes.data();
+#elif defined(__linux__)
+    externalMemoryHandleTypes.resize(memory_properties_2.memoryProperties.memoryTypeCount, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT);
+    allocatorInfo.pTypeExternalMemoryHandleTypes = externalMemoryHandleTypes.data();
+#endif
+#endif
+    VkResult res = vmaCreateAllocator(&allocatorInfo, &m_vmaAllocator);
 }
 
 void phx::gfx::platform::VulkanGpuDevice::CreateDefaultResources()
 {
-
     // Create default null descriptors:
     {
         VkBufferCreateInfo bufferInfo = {};
@@ -1143,21 +1173,23 @@ void phx::gfx::platform::VulkanGpuDevice::CreateDefaultResources()
         VmaAllocationCreateInfo allocInfo = {};
         allocInfo.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-        res = vmaCreateBuffer(allocationhandler->allocator, &bufferInfo, &allocInfo, &nullBuffer, &nullBufferAllocation, nullptr);
+        VkResult res = vmaCreateBuffer(m_vmaAllocator, &bufferInfo, &allocInfo, &m_nullBuffer, &m_nullBufferAllocation, nullptr);
         assert(res == VK_SUCCESS);
 
         VkBufferViewCreateInfo viewInfo = {};
         viewInfo.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
         viewInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
         viewInfo.range = VK_WHOLE_SIZE;
-        viewInfo.buffer = nullBuffer;
-        res = vkCreateBufferView(device, &viewInfo, nullptr, &nullBufferView);
+        viewInfo.buffer = m_nullBuffer;
+        res = vkCreateBufferView(m_vkDevice, &viewInfo, nullptr, &m_nullBufferView);
         assert(res == VK_SUCCESS);
     }
 }
 
 void phx::gfx::platform::VulkanGpuDevice::DestoryDefaultResources()
 {
+    vmaDestroyBuffer(m_vmaAllocator, m_nullBuffer, m_nullBufferAllocation);
+    vkDestroyBufferView(m_vkDevice, m_nullBufferView, nullptr);
 }
 
 int32_t phx::gfx::platform::VulkanGpuDevice::RateDeviceSuitability(VkPhysicalDevice device)

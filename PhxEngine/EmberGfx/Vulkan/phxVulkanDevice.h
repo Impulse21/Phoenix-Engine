@@ -142,6 +142,8 @@ namespace phx::gfx::platform
 		VkPhysicalDevice m_vkPhysicalDevice;
 		VkDevice m_vkDevice;
 
+		VmaAllocator m_vmaAllocator = {};
+
 		VkPhysicalDeviceFeatures2 m_features2 = {};
 		VkPhysicalDeviceVulkan12Features m_vulkan12Features = {};
 		VkPhysicalDeviceVulkan13Features m_vulkan13Features = {};
@@ -160,7 +162,6 @@ namespace phx::gfx::platform
 		VkExtent2D m_swapChainExtent;
 		std::vector<VkImage> m_swapChainImages;
 		std::vector<VkImageView> m_swapChainImageViews;
-
 
 		struct DeferredItem
 		{
@@ -184,7 +185,8 @@ namespace phx::gfx::platform
 		VkPipelineDynamicStateCreateInfo m_dynamicStateInfo_MeshShader = {};
 
 
-		VkBuffer m_nullBuffer;
-		VkBufferView m_nullBufferView;
+		VkBuffer m_nullBuffer = VK_NULL_HANDLE;
+		VmaAllocation m_nullBufferAllocation = VK_NULL_HANDLE;
+		VkBufferView m_nullBufferView = VK_NULL_HANDLE;
 	};
 }
