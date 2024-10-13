@@ -4,6 +4,8 @@
 #include <deque>
 #include <mutex>
 
+#include "vma/vk_mem_alloc.h"
+
 #include "EmberGfx/phxGfxDeviceResources.h"
 #include "phxVulkanManager.h"
 #include "EmberGfx/phxHandlePool.h"

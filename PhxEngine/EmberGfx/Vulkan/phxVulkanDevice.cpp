@@ -3,7 +3,6 @@
 #include "phxVulkanCore.h"
 #include "phxVulkanDevice.h"
 
-#include "vma/vk_mem_alloc.h"
 #include "vulkan/vulkan_win32.h"
 #include "spriv-reflect/spirv_reflect.h"
 
