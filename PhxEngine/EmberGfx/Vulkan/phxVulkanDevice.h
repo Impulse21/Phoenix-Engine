@@ -11,6 +11,10 @@
 #include "EmberGfx/phxHandlePool.h"
 #include "phxEnumUtils.h"
 
+#ifdef PHX_PLATFORM_WINDOWS
+#define VK_USE_PLATFORM_WIN32_KHR
+#endif
+
 namespace phx::gfx::platform
 {
 	constexpr size_t kBufferCount = 2;
@@ -74,7 +78,7 @@ namespace phx::gfx::platform
 		EnumArray<VkCommandBuffer, CommandQueueType>  CmdBufferVk[kBufferCount];
 		EnumArray<VkCommandPool, CommandQueueType> CmdBufferPoolVk[kBufferCount];
 
-		CommandQueueType Queue = {};
+		CommandQueueType QueueType = {};
 		uint32_t Id = 0;
 
 		std::vector<std::pair<CommandQueueType, VkSemaphore>> WaitQueues;
@@ -85,16 +89,19 @@ namespace phx::gfx::platform
 		void Reset(uint32_t bufferIndex)
 		{
 			CurrentBufferIndex = bufferIndex;
+			Signals.clear();
+			Waits.clear(); 
+			WaitQueues.clear();
 		}
 
 		VkCommandBuffer GetVkCommandBuffer()
 		{
-			return CmdBufferVk[CurrentBufferIndex][Queue];
+			return CmdBufferVk[CurrentBufferIndex][QueueType];
 		}
 
 		VkCommandPool GetVkCommandPool()
 		{
-			return CmdBufferPoolVk[CurrentBufferIndex][Queue];
+			return CmdBufferPoolVk[CurrentBufferIndex][QueueType];
 		}
 	};
 
@@ -108,6 +115,7 @@ namespace phx::gfx::platform
 		void RunGarbageCollection(uint64_t completedFrame = ~0ul);
 
 		CommandCtx_Vulkan* BeginCommandCtx(phx::gfx::CommandQueueType type = CommandQueueType::Graphics);
+		void SubmitFrame();
 
 		// Resource Factory
 	public:
@@ -126,8 +134,11 @@ namespace phx::gfx::platform
 		void CreateSwapchain(SwapChainDesc const& desc);
 		void CreateSwapChaimImageViews();
 		void CreateVma();
+
 		void CreateDefaultResources();
 		void DestoryDefaultResources();
+		void CreateFrameResources();
+		void DestoryFrameResources();
 
 		uint32_t GetBufferIndex() const { return m_frameCount % kBufferCount; }
 
@@ -135,11 +146,16 @@ namespace phx::gfx::platform
 		QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device);
 		SwapChainSupportDetails QuerySwapchainSupport(VkPhysicalDevice device);
 
+
+		void SubmitCommandCtx();
+		void Present();
+
 	private:
 		bool m_enableValidationLayers;
 		VulkanExtManager m_extManager;
 		VulkanLayerManager m_layerManager;
 
+		GpuDeviceCapabilities m_capabilities = {};
 		VkInstance m_vkInstance;
 		VkPhysicalDevice m_vkPhysicalDevice;
 		VkDevice m_vkDevice;
@@ -150,11 +166,26 @@ namespace phx::gfx::platform
 		VkPhysicalDeviceVulkan12Features m_vulkan12Features = {};
 		VkPhysicalDeviceVulkan13Features m_vulkan13Features = {};
 		VkPhysicalDeviceExtendedDynamicStateFeaturesEXT m_extendedDynamicStateFeatures = {};
+		VkPhysicalDeviceMemoryProperties2 m_memoryProperties2 = {};
 
 		QueueFamilyIndices m_queueFamilies;
-		VkQueue m_vkQueueGfx;
-		VkQueue m_vkComputeQueue;
-		VkQueue m_vkTransferQueue;
+		struct CommandQueue
+		{
+			VkQueue QueueVk = VK_NULL_HANDLE;
+
+			std::vector<VkSemaphoreSubmitInfo> SubmitWaitSemaphoreInfos;
+			std::vector<VkSemaphore> SubmitSignalSemaphores;
+			std::vector<VkSemaphoreSubmitInfo> SubmitSignalSemaphoreInfos;
+			std::vector<VkCommandBufferSubmitInfo> SubmitCmds;
+
+			std::mutex m_mutex;
+
+			void Signal(VkSemaphore semaphore);
+			void Wait(VkSemaphore semaphore);
+			void Submit(VulkanGpuDevice* device, VkFence fence);
+		};
+
+		EnumArray<CommandQueue, CommandQueueType> m_queues;
 
 		VkSurfaceKHR m_vkSurface;
 		VkDebugUtilsMessengerEXT m_debugMessenger;
@@ -181,14 +212,15 @@ namespace phx::gfx::platform
 		std::vector<std::unique_ptr<CommandCtx_Vulkan>> m_commandCtxPool;
 		uint32_t m_commandCtxCount;
 		uint64_t m_frameCount = 0;
+		std::array<EnumArray<VkFence, CommandQueueType>, kBufferCount> m_frameFences;
 
 		std::vector<VkDynamicState> m_psoDynamicStates;
 		VkPipelineDynamicStateCreateInfo m_dynamicStateInfo = {};
 		VkPipelineDynamicStateCreateInfo m_dynamicStateInfo_MeshShader = {};
 
-
 		VkBuffer m_nullBuffer = VK_NULL_HANDLE;
 		VmaAllocation m_nullBufferAllocation = VK_NULL_HANDLE;
 		VkBufferView m_nullBufferView = VK_NULL_HANDLE;
+
 	};
 }

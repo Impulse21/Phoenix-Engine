@@ -513,6 +513,17 @@ namespace phx::gfx
 
 #pragma endregion
 
+    struct GpuDeviceCapabilities
+    {
+        union
+        {
+            struct
+            {
+                uint32_t CacheCoherentUma : 32;
+            };
+            uint32_t Flags = 0;
+        };
+    };
 
     // -- Indirect Objects ---
     // 

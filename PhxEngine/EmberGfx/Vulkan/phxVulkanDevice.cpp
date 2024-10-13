@@ -3,6 +3,11 @@
 #include "phxVulkanCore.h"
 #include "phxVulkanDevice.h"
 
+#define VMA_IMPLEMENTATION
+#define VMA_STATIC_VULKAN_FUNCTIONS 1
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
+#include "vma/vk_mem_alloc.h"
+
 #include "vulkan/vulkan_win32.h"
 #include "spriv-reflect/spirv_reflect.h"
 
@@ -170,6 +175,7 @@ void phx::gfx::platform::VulkanGpuDevice::Initialize(SwapChainDesc const& swapCh
     m_dynamicStateInfo_MeshShader.dynamicStateCount = (uint32_t)m_psoDynamicStates.size() - 1; // don't include VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE for mesh shader
 
     CreateVma();
+    CreateFrameResources();
     CreateDefaultResources();
 }
 
@@ -177,6 +183,7 @@ void phx::gfx::platform::VulkanGpuDevice::Finalize()
 {
     this->RunGarbageCollection();
 
+    DestoryFrameResources();
     DestoryDefaultResources();
 
     for (auto& cmdCtx : m_commandCtxPool)
@@ -245,7 +252,7 @@ CommandCtx_Vulkan* phx::gfx::platform::VulkanGpuDevice::BeginCommandCtx(phx::gfx
 
     retVal->Reset(GetBufferIndex());
     retVal->Id = ctxCurrent;
-    retVal->Queue = type;
+    retVal->QueueType = type;
 
     if (retVal->GetVkCommandBuffer() == VK_NULL_HANDLE)
     {
@@ -349,6 +356,13 @@ CommandCtx_Vulkan* phx::gfx::platform::VulkanGpuDevice::BeginCommandCtx(phx::gfx
     }
 
     return retVal;
+}
+
+void phx::gfx::platform::VulkanGpuDevice::SubmitFrame()
+{
+    SubmitCommandCtx();
+    Present();
+    RunGarbageCollection();
 }
 
 ShaderHandle phx::gfx::platform::VulkanGpuDevice::CreateShader(ShaderDesc const& desc)
@@ -915,7 +929,6 @@ void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
         indices.TransferFamily.value(),
     };
 
-
     const float queuePriority = 1.0f;
     for (uint32_t queueFamily : uniqueQueueFamilies) 
     {
@@ -972,11 +985,24 @@ void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
     pfnCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_vkDevice, "vkCmdEndDebugUtilsLabelEXT");
 
     // Query queues
-    vkGetDeviceQueue(m_vkDevice, indices.GraphicsFamily.value(), 0, &m_vkQueueGfx);
-    vkGetDeviceQueue(m_vkDevice, indices.ComputeFamily.value(), 0, &m_vkComputeQueue);
-    vkGetDeviceQueue(m_vkDevice, indices.TransferFamily.value(), 0, &m_vkTransferQueue);
+    vkGetDeviceQueue(m_vkDevice, indices.GraphicsFamily.value(), 0, &m_queues[CommandQueueType::Graphics].QueueVk);
+    vkGetDeviceQueue(m_vkDevice, indices.ComputeFamily.value(), 0, &m_queues[CommandQueueType::Compute].QueueVk);
+    vkGetDeviceQueue(m_vkDevice, indices.TransferFamily.value(), 0, &m_queues[CommandQueueType::Copy].QueueVk);
 
     m_queueFamilies = indices;
+
+    m_memoryProperties2 = {};
+    m_memoryProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
+    vkGetPhysicalDeviceMemoryProperties2(m_vkPhysicalDevice, &m_memoryProperties2);
+
+    if (m_memoryProperties2.memoryProperties.memoryHeapCount == 1 &&
+        m_memoryProperties2.memoryProperties.memoryHeaps[0].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+    {
+        // https://registry.khronos.org/vulkan/specs/1.0-extensions/html/vkspec.html#memory-device
+        //	"In a unified memory architecture (UMA) system there is often only a single memory heap which is
+        //	considered to be equally “local” to the host and to the device, and such an implementation must advertise the heap as device-local
+        m_capabilities.CacheCoherentUma = true;
+    }
 }
 
 void phx::gfx::platform::VulkanGpuDevice::CreateSurface(void* windowHandle)
@@ -1131,31 +1157,35 @@ void phx::gfx::platform::VulkanGpuDevice::CreateVma()
         allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     }
 
-#if false
 #if VMA_DYNAMIC_VULKAN_FUNCTIONS
     static VmaVulkanFunctions vulkanFunctions = {};
     vulkanFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
     vulkanFunctions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
     allocatorInfo.pVulkanFunctions = &vulkanFunctions;
 #endif
-    res = vmaCreateAllocator(&allocatorInfo, &allocationhandler->allocator);
+    VkResult res = vmaCreateAllocator(&allocatorInfo, &m_vmaAllocator);
     assert(res == VK_SUCCESS);
     if (res != VK_SUCCESS)
     {
-        wi::helper::messageBox("vmaCreateAllocator failed! ERROR: " + std::to_string(res), "Error!");
-        wi::platform::Exit();
+        PHX_CORE_ERROR("Failed to create VMA allocator");
+        throw std::runtime_error("vmaCreateAllocator failed!");
     }
 
     std::vector<VkExternalMemoryHandleTypeFlags> externalMemoryHandleTypes;
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
-    externalMemoryHandleTypes.resize(memory_properties_2.memoryProperties.memoryTypeCount, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT);
+    externalMemoryHandleTypes.resize(m_memoryProperties2.memoryProperties.memoryTypeCount, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT);
     allocatorInfo.pTypeExternalMemoryHandleTypes = externalMemoryHandleTypes.data();
 #elif defined(__linux__)
     externalMemoryHandleTypes.resize(memory_properties_2.memoryProperties.memoryTypeCount, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT);
     allocatorInfo.pTypeExternalMemoryHandleTypes = externalMemoryHandleTypes.data();
 #endif
-#endif
-    VkResult res = vmaCreateAllocator(&allocatorInfo, &m_vmaAllocator);
+    res = vmaCreateAllocator(&allocatorInfo, &m_vmaAllocator);
+    assert(res == VK_SUCCESS);
+    if (res != VK_SUCCESS)
+    {
+        PHX_CORE_ERROR("Failed to create VMA allocator");
+        throw std::runtime_error("vmaCreateAllocator failed!");
+    }
 }
 
 void phx::gfx::platform::VulkanGpuDevice::CreateDefaultResources()
@@ -1189,6 +1219,40 @@ void phx::gfx::platform::VulkanGpuDevice::DestoryDefaultResources()
 {
     vmaDestroyBuffer(m_vmaAllocator, m_nullBuffer, m_nullBufferAllocation);
     vkDestroyBufferView(m_vkDevice, m_nullBufferView, nullptr);
+}
+
+void phx::gfx::platform::VulkanGpuDevice::CreateFrameResources()
+{
+    for (size_t fr = 0; fr < m_frameFences.size(); ++fr)
+    {
+        for (size_t queue = 0; queue < (size_t)CommandQueueType::Count; ++queue)
+        {
+            if (m_queues[queue].QueueVk == VK_NULL_HANDLE)
+                continue;
+
+            VkFenceCreateInfo fenceInfo = {};
+            fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+            //fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+            VkResult res = vkCreateFence(m_vkDevice, &fenceInfo, nullptr, &m_frameFences[fr][queue]);
+            assert(res == VK_SUCCESS);
+            if (res != VK_SUCCESS)
+            {
+                PHX_CORE_ERROR("Failed To Create Frame Fence");
+                throw std::runtime_error("Failed to create frame fence");
+            }
+        }
+    }
+}
+
+void phx::gfx::platform::VulkanGpuDevice::DestoryFrameResources()
+{
+    for (size_t fr = 0; fr < m_frameFences.size(); ++fr)
+    {
+        for (size_t queue = 0; queue < (size_t)CommandQueueType::Count; ++queue)
+        {
+            vkDestroyFence(m_vkDevice, m_frameFences[fr][queue], nullptr);
+        }
+    }
 }
 
 int32_t phx::gfx::platform::VulkanGpuDevice::RateDeviceSuitability(VkPhysicalDevice device)
@@ -1344,4 +1408,76 @@ SwapChainSupportDetails phx::gfx::platform::VulkanGpuDevice::QuerySwapchainSuppo
     }
 
     return details;
+}
+
+void phx::gfx::platform::VulkanGpuDevice::SubmitCommandCtx()
+{
+    const uint32_t activeCtxCount = m_commandCtxCount;
+    m_commandCtxCount = 0;
+
+    for (size_t i = 0; i < (size_t)activeCtxCount; i++)
+    {
+        CommandCtx_Vulkan* ctx = m_commandCtxPool[i].get();
+        VkResult res = vkEndCommandBuffer(ctx->GetVkCommandBuffer());
+        assert(res == VK_SUCCESS);
+
+        CommandQueue& queue = m_queues[ctx->QueueType];
+        const bool dependency = !ctx->Signals.empty() || !ctx->Waits.empty() || !ctx->WaitQueues.empty();
+
+        if (dependency)
+        {
+            // NOT SUPPORTED yet
+            assert(false);
+            // If the current commandlist must resolve a dependency, then previous ones will be submitted before doing that:
+            //	This improves GPU utilization because not the whole batch of command lists will need to synchronize, but only the one that handles it
+            queue.Submit(this, VK_NULL_HANDLE);
+        }
+
+
+        VkCommandBufferSubmitInfo& cbSubmitInfo = queue.SubmitCmds.emplace_back();
+        cbSubmitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+        cbSubmitInfo.commandBuffer = ctx->GetVkCommandBuffer();
+    }
+
+    // final submits with fences:
+    for (size_t q = 0; qauto& queue : m_queues)
+    {
+        queue.Submit(this, m_frameFences[GetBufferIndex(), ]);
+        queues[q].submit(this, frame_fence[GetBufferIndex()][q]);
+    }
+
+}
+
+void phx::gfx::platform::VulkanGpuDevice::CommandQueue::Signal(VkSemaphore semaphore)
+{
+}
+
+void phx::gfx::platform::VulkanGpuDevice::CommandQueue::Wait(VkSemaphore semaphore)
+{
+}
+
+void phx::gfx::platform::VulkanGpuDevice::CommandQueue::Submit(VulkanGpuDevice* device, VkFence fence)
+{
+    if (QueueVk == VK_NULL_HANDLE)
+        return;
+    std::scoped_lock lock(m_mutex);
+
+    VkSubmitInfo2 submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+    submitInfo.commandBufferInfoCount = (uint32_t)SubmitCmds.size();
+    submitInfo.pCommandBufferInfos = SubmitCmds.data();
+
+    submitInfo.waitSemaphoreInfoCount = (uint32_t)SubmitWaitSemaphoreInfos.size();
+    submitInfo.pWaitSemaphoreInfos = SubmitWaitSemaphoreInfos.data();
+
+    submitInfo.signalSemaphoreInfoCount = (uint32_t)SubmitSignalSemaphoreInfos.size();
+    submitInfo.pSignalSemaphoreInfos = SubmitSignalSemaphoreInfos.data();
+
+    VkResult res = vkQueueSubmit2(QueueVk, 1, &submitInfo, fence);
+    assert(res == VK_SUCCESS);
+
+
+    SubmitCmds.clear();
+    SubmitWaitSemaphoreInfos.clear();
+    SubmitSignalSemaphoreInfos.clear();
 }
