@@ -1440,12 +1440,17 @@ void phx::gfx::platform::VulkanGpuDevice::SubmitCommandCtx()
     }
 
     // final submits with fences:
-    for (size_t q = 0; qauto& queue : m_queues)
+    for (size_t q = 0; q < (size_t)CommandQueueType::Count; q++)
     {
-        queue.Submit(this, m_frameFences[GetBufferIndex(), ]);
-        queues[q].submit(this, frame_fence[GetBufferIndex()][q]);
+        m_queues[q].Submit(this, m_frameFences[GetBufferIndex()][q]);
     }
 
+    // TODO: Present...
+}
+
+void phx::gfx::platform::VulkanGpuDevice::Present()
+{
+    // TODO:
 }
 
 void phx::gfx::platform::VulkanGpuDevice::CommandQueue::Signal(VkSemaphore semaphore)
