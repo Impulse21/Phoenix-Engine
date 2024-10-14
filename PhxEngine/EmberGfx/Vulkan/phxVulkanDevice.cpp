@@ -68,7 +68,7 @@ namespace
         VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
         VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,
 
-        "VK_GOOGLE_hlsl_functionality1",
+        // "VK_GOOGLE_hlsl_functionality1",
     };
 
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
