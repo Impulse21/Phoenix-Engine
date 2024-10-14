@@ -68,9 +68,6 @@ namespace
     {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
-        VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,
-
-        // "VK_GOOGLE_hlsl_functionality1",
     };
 
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
@@ -893,8 +890,12 @@ void phx::gfx::platform::VulkanGpuDevice::PickPhysicalDevice()
     // Use an ordered map to automatically sort candidates by increasing score
     std::multimap<int32_t, VkPhysicalDevice> candidates;
 
+    std::vector<const char*> enabledExtensions;
 	for (const auto& device : devices)
 	{
+        if (!IsDeviceSuitable(device, enabledExtensions))
+            continue;
+
         int32_t score = RateDeviceSuitability(device);
 		candidates.insert(std::make_pair(score, device));
 	}
@@ -904,11 +905,11 @@ void phx::gfx::platform::VulkanGpuDevice::PickPhysicalDevice()
 	{
         m_vkPhysicalDevice = candidates.rbegin()->second;
 
-        VkPhysicalDeviceProperties deviceProperties;
-        vkGetPhysicalDeviceProperties(m_vkPhysicalDevice, &deviceProperties);
+        IsDeviceSuitable(m_vkPhysicalDevice, enabledExtensions);
+        m_extManager.SetEnabledDeviceExtensions(enabledExtensions);
         PHX_CORE_INFO(
             "[Vulkan] Suitable device found {0} - Score:{1}",
-            deviceProperties.deviceName,
+            m_properties2.properties.deviceName,
             candidates.rbegin()->first);
 	}
 	else
@@ -917,6 +918,196 @@ void phx::gfx::platform::VulkanGpuDevice::PickPhysicalDevice()
 	}
 
     m_extManager.ObtainDeviceExtensions(m_vkPhysicalDevice);
+}
+
+bool phx::gfx::platform::VulkanGpuDevice::IsDeviceSuitable(VkPhysicalDevice device, std::vector<const char*>& enableExtensions)
+{
+    VkPhysicalDeviceProperties deviceProperties;
+    VkPhysicalDeviceFeatures deviceFeatures;
+    vkGetPhysicalDeviceProperties(device, &deviceProperties);
+    vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+
+    m_extManager.ObtainDeviceExtensions(device);
+
+    m_extManager.ObtainDeviceExtensions(device);
+
+    for (auto req : kRequiredDeviceExtensions)
+    {
+        if (!m_extManager.IsDeviceExtensionAvailable(req))
+        {
+            return false;
+        }
+    }
+
+    bool conservativeRasterization = false;
+    m_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    m_vulkan11Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+    m_vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    m_vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+
+    m_features2.pNext = &m_vulkan11Features;
+    m_vulkan11Features.pNext = &m_vulkan12Features;
+    m_vulkan12Features.pNext = &m_vulkan13Features;
+
+    void** featuresChain = &m_vulkan13Features.pNext;
+    m_accelerationStructureFeatures = {};
+    m_raytracingFeatures = {};
+    m_raytracingQueryFeatures = {};
+    m_fragmentShadingRateFeatures = {};
+    m_conditionalRenderingFeatures = {};
+    m_depthClipEnableFeatures = {};
+    m_meshShaderFeatures = {};
+    m_conservativeRasterProperties = {};
+    conservativeRasterization = false;
+
+    m_properties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    m_properties11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
+    m_properties12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
+    m_properties13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
+
+    m_properties2.pNext = &m_properties11;
+    m_properties11.pNext = &m_properties12;
+    m_properties12.pNext = &m_properties13;
+
+    void** propertiesChain = &m_properties13.pNext;
+
+    m_samplerMinMaxProperties = {};
+    m_accelerationStructureProperties = {};
+    m_raytracingProperties = {};
+    m_fragmentShadingRateProperties = {};
+    m_meshShaderProperties = {};
+
+
+    m_samplerMinMaxProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES;
+    *propertiesChain = &m_samplerMinMaxProperties;
+    propertiesChain = &m_samplerMinMaxProperties.pNext;
+
+    m_depthStencilResolveProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES;
+    *propertiesChain = &m_depthStencilResolveProperties;
+    propertiesChain = &m_depthStencilResolveProperties.pNext;
+
+    enableExtensions.clear();
+    for (const char* ext : kRequiredDeviceExtensions)
+        enableExtensions.push_back(ext);
+
+
+    if (m_extManager.IsDeviceExtensionAvailable(VK_EXT_IMAGE_VIEW_MIN_LOD_EXTENSION_NAME))
+    {
+#if false
+        enableExtensions.push_back(VK_EXT_IMAGE_VIEW_MIN_LOD_EXTENSION_NAME);
+        imageView.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_MIN_LOD_FEATURES_EXT;
+        *featuresChain = &image_view_min_lod_features;
+        featuresChain = &image_view_min_lod_features.pNext;
+#endif
+    }
+
+    if (m_extManager.IsDeviceExtensionAvailable(VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME))
+    {
+        enableExtensions.push_back(VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME);
+
+        m_depthClipEnableFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT;
+        *featuresChain = &m_depthClipEnableFeatures;
+        featuresChain = &m_depthClipEnableFeatures.pNext;
+    }
+    if (m_extManager.IsDeviceExtensionAvailable(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME))
+    {
+        conservativeRasterization = true;
+        enableExtensions.push_back(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
+
+        m_conservativeRasterProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT;
+        *propertiesChain = &m_conservativeRasterProperties;
+        propertiesChain = &m_conservativeRasterProperties.pNext;
+    }
+    if (m_extManager.IsDeviceExtensionAvailable(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME))
+    {
+        enableExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+        assert(m_extManager.IsDeviceExtensionAvailable(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME));
+        enableExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+
+        m_accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+        *featuresChain = &m_accelerationStructureFeatures;
+        featuresChain = &m_accelerationStructureFeatures.pNext;
+
+        m_accelerationStructureProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
+        *propertiesChain = &m_accelerationStructureProperties;
+        propertiesChain = &m_accelerationStructureProperties.pNext;
+
+        if (m_extManager.IsDeviceExtensionAvailable(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME))
+        {
+            enableExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+            enableExtensions.push_back(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
+
+            m_raytracingQueryFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+            *featuresChain = &m_raytracingQueryFeatures;
+            featuresChain = &m_raytracingQueryFeatures.pNext;
+
+            m_raytracingProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+            *propertiesChain = &m_raytracingProperties;
+            propertiesChain = &m_raytracingProperties.pNext;
+        }
+
+        if (m_extManager.IsDeviceExtensionAvailable(VK_KHR_RAY_QUERY_EXTENSION_NAME))
+        {
+            enableExtensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+
+            m_raytracingQueryFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+            *featuresChain = &m_raytracingQueryFeatures;
+            featuresChain = &m_raytracingQueryFeatures.pNext;
+        }
+    }
+
+    if (m_extManager.IsDeviceExtensionAvailable(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME))
+    {
+        enableExtensions.push_back(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
+        m_fragmentShadingRateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+        *featuresChain = &m_fragmentShadingRateFeatures;
+        featuresChain = &m_fragmentShadingRateFeatures.pNext;
+
+        m_fragmentShadingRateProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR;
+        *propertiesChain = &m_fragmentShadingRateProperties;
+        propertiesChain = &m_fragmentShadingRateProperties.pNext;
+    }
+
+    if (m_extManager.IsDeviceExtensionAvailable(VK_EXT_MESH_SHADER_EXTENSION_NAME))
+    {
+        enableExtensions.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
+
+        m_meshShaderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+        *featuresChain = &m_meshShaderFeatures;
+        featuresChain = &m_meshShaderFeatures.pNext;
+
+        m_meshShaderProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT;
+        *propertiesChain = &m_meshShaderProperties;
+        propertiesChain = &m_meshShaderProperties.pNext;
+    }
+
+    if (m_extManager.IsDeviceExtensionAvailable(VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME))
+    {
+        enableExtensions.push_back(VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME);
+
+        m_conditionalRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT;
+        *featuresChain = &m_conditionalRenderingFeatures;
+        featuresChain = &m_conditionalRenderingFeatures.pNext;
+    }
+
+#if defined(VK_USE_PLATFORM_WIN32_KHR)
+    if (m_extManager.IsDeviceExtensionAvailable(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME) &&
+        m_extManager.IsDeviceExtensionAvailable(VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME))
+    {
+        enableExtensions.push_back(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME);
+        enableExtensions.push_back(VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME);
+    }
+#elif defined(__linux__)
+    if (m_extManager.IsDeviceExtensionAvailable(VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME) &&
+        m_extManager.IsDeviceExtensionAvailable(VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME))
+    {
+        enableExtensions.push_back(VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME);
+        enableExtensions.push_back(VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME);
+    }
+#endif
+
+    vkGetPhysicalDeviceProperties2(m_vkPhysicalDevice, &m_properties2);
+    return true;
 }
 
 void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
@@ -945,24 +1136,15 @@ void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
 
     VkPhysicalDeviceFeatures deviceFeatures{};
 
-  
-    m_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-    m_vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-    m_features2.pNext = &m_vulkan12Features;
-
-    // Optionally, query other feature structures you might need
-    m_vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-    m_vulkan12Features.pNext = &m_vulkan13Features;
-
-    vkGetPhysicalDeviceFeatures2(m_vkPhysicalDevice, &m_features2);
-
-    // -- enable dynamic rendering ---
-    m_vulkan13Features.dynamicRendering = true;
-
-    // -- Enable extended Dynamic rendering ---
-    m_extendedDynamicStateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
-    m_extendedDynamicStateFeatures.extendedDynamicState = VK_TRUE; // Enable extended dynamic state
-    m_vulkan13Features.pNext = &m_extendedDynamicStateFeatures;
+    assert(m_features2.features.imageCubeArray == VK_TRUE);
+    assert(m_features2.features.independentBlend == VK_TRUE);
+    assert(m_features2.features.geometryShader == VK_TRUE);
+    assert(m_features2.features.samplerAnisotropy == VK_TRUE);
+    assert(m_features2.features.shaderClipDistance == VK_TRUE);
+    assert(m_features2.features.textureCompressionBC == VK_TRUE);
+    assert(m_features2.features.occlusionQueryPrecise == VK_TRUE);
+    assert(m_vulkan12Features.descriptorIndexing == VK_TRUE);
+    assert(m_vulkan13Features.dynamicRendering == VK_TRUE);
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -1295,16 +1477,6 @@ int32_t phx::gfx::platform::VulkanGpuDevice::RateDeviceSuitability(VkPhysicalDev
     if (!deviceFeatures.geometryShader)
     {
         return 0;
-    }
-
-    m_extManager.ObtainDeviceExtensions(device);
-
-    for (auto req : kRequiredDeviceExtensions)
-    {
-        if (!m_extManager.IsDeviceExtensionAvailable(req))
-        {
-            return score = 0;
-        }
     }
 
     QueueFamilyIndices indices = FindQueueFamilies(device);

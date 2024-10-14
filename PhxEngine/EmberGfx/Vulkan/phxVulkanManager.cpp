@@ -81,6 +81,11 @@ bool phx::gfx::platform::VulkanExtManager::IsDeviceExtensionAvailable(const char
     return false;
 }
 
+void phx::gfx::platform::VulkanExtManager::SetEnabledDeviceExtensions(std::vector<const char*> enabledDeviceExtensions)
+{
+    m_enabledDeviceExtensions = enabledDeviceExtensions;
+}
+
 void phx::gfx::platform::VulkanExtManager::LogDeviceExtensions()
 {
     PHX_CORE_INFO("[Vulkan] - Available Vulkan Device extensions:");

@@ -13,11 +13,17 @@ namespace phx::gfx::platform
 
 		void ObtainDeviceExtensions(VkPhysicalDevice device);
 		bool IsDeviceExtensionAvailable(const char* extensionName);
+		void SetEnabledDeviceExtensions(std::vector<const char*> enabledDeviceExtensions);
+		const std::vector<const char*>& GetEnabledDeviceExtensions(std::vector<const char*> enabledDeviceExtensions) const
+		{
+			return m_enabledDeviceExtensions;
+		}
 
 		void LogDeviceExtensions();
 	private:
 		std::vector<VkExtensionProperties> m_availableExtensions;
 		std::vector<VkExtensionProperties> m_availableDeviceExtensions;
+		std::vector<const char*> m_enabledDeviceExtensions;
 	};
 
 	class VulkanLayerManager

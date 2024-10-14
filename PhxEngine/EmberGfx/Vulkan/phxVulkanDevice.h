@@ -96,7 +96,11 @@ namespace phx::gfx::platform
 	private:
 		void CreateInstance();
 		void SetupDebugMessenger();
+
 		void PickPhysicalDevice();
+		bool IsDeviceSuitable(VkPhysicalDevice device, std::vector<const char*>& enableExtensions);
+		int32_t RateDeviceSuitability(VkPhysicalDevice device);
+
 		void CreateLogicalDevice();
 		void CreateSurface(void* windowHandle);
 		void CreateSwapchain(SwapChainDesc const& desc);
@@ -109,8 +113,6 @@ namespace phx::gfx::platform
 		void DestoryDefaultResources();
 
 		uint32_t GetBufferIndex() const { return m_frameCount % kBufferCount; }
-
-		int32_t RateDeviceSuitability(VkPhysicalDevice device);
 		QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device);
 		SwapChainSupportDetails QuerySwapchainSupport(VkPhysicalDevice device);
 
@@ -131,11 +133,32 @@ namespace phx::gfx::platform
 
 		VmaAllocator m_vmaAllocator = {};
 
+
+		VkPhysicalDeviceProperties2 m_properties2 = {};
+		VkPhysicalDeviceVulkan11Properties m_properties11 = {};
+		VkPhysicalDeviceVulkan12Properties m_properties12 = {};
+		VkPhysicalDeviceVulkan13Properties m_properties13 = {};
+		VkPhysicalDeviceSamplerFilterMinmaxProperties m_samplerMinMaxProperties = {};
+		VkPhysicalDeviceAccelerationStructurePropertiesKHR m_accelerationStructureProperties = {};
+		VkPhysicalDeviceRayTracingPipelinePropertiesKHR m_raytracingProperties = {};
+		VkPhysicalDeviceFragmentShadingRatePropertiesKHR m_fragmentShadingRateProperties = {};
+		VkPhysicalDeviceMeshShaderPropertiesEXT m_meshShaderProperties = {};
+		VkPhysicalDeviceMemoryProperties2 m_memoryProperties2 = {};
+		VkPhysicalDeviceDepthStencilResolveProperties m_depthStencilResolveProperties = {};
+		VkPhysicalDeviceConservativeRasterizationPropertiesEXT m_conservativeRasterProperties = {};
+
 		VkPhysicalDeviceFeatures2 m_features2 = {};
+		VkPhysicalDeviceVulkan11Features m_vulkan11Features = {};
 		VkPhysicalDeviceVulkan12Features m_vulkan12Features = {};
 		VkPhysicalDeviceVulkan13Features m_vulkan13Features = {};
-		VkPhysicalDeviceExtendedDynamicStateFeaturesEXT m_extendedDynamicStateFeatures = {};
-		VkPhysicalDeviceMemoryProperties2 m_memoryProperties2 = {};
+
+		VkPhysicalDeviceAccelerationStructureFeaturesKHR m_accelerationStructureFeatures = {};
+		VkPhysicalDeviceRayTracingPipelineFeaturesKHR m_raytracingFeatures = {};
+		VkPhysicalDeviceRayQueryFeaturesKHR m_raytracingQueryFeatures = {};
+		VkPhysicalDeviceFragmentShadingRateFeaturesKHR m_fragmentShadingRateFeatures = {};
+		VkPhysicalDeviceConditionalRenderingFeaturesEXT m_conditionalRenderingFeatures = {};
+		VkPhysicalDeviceDepthClipEnableFeaturesEXT m_depthClipEnableFeatures = {};
+		VkPhysicalDeviceMeshShaderFeaturesEXT m_meshShaderFeatures = {};
 
 		QueueFamilyIndices m_queueFamilies;
 		struct CommandQueue
