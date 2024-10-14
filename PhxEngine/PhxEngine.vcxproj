@@ -391,6 +391,9 @@
     <ProjectReference Include="3rdParty\spriv-reflect\spriv-reflect.vcxproj">
       <Project>{58155bd6-55fc-4ff6-8e18-4e3fff218115}</Project>
     </ProjectReference>
+    <ProjectReference Include="3rdParty\volk\Volk.vcxproj">
+      <Project>{dbd0b9c6-76c9-489a-9bb7-1526ef1c2228}</Project>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="EmberGfx\Shaders\ImGuiPS.hlsl">
