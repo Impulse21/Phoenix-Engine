@@ -117,11 +117,10 @@ namespace
 			args.push_back(L"-spirv");
 			if (!input.StripReflection)
 				args.push_back(L"-fspv-reflect");
+				args.push_back(L"-fspv-target-env=vulkan1.3");
+				args.push_back(L"-fvk-use-dx-layout");
+				args.push_back(L"-fvk-use-dx-position-w");
 #if false
-			args.push_back(L"-fspv-target-env=vulkan1.3");
-			//args.push_back(L"-fspv-target-env=vulkan1.3"); // this has some problem with RenderDoc AMD disassembly so it's not enabled for now
-			args.push_back(L"-fvk-use-dx-layout");
-			args.push_back(L"-fvk-use-dx-position-w");
 			//args.push_back(L"-fvk-b-shift"); args.push_back(L"0"); args.push_back(L"0");
 			args.push_back(L"-fvk-t-shift"); args.push_back(L"1000"); args.push_back(L"0");
 			args.push_back(L"-fvk-u-shift"); args.push_back(L"2000"); args.push_back(L"0");
