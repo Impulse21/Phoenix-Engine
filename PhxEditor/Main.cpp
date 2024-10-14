@@ -106,6 +106,15 @@ public:
 
 	void Render() override
 	{
+		using namespace phx::gfx;
+		GpuDevice* device = EmberGfx::GetDevice();
+		CommandCtx* ctx = device->BeginCommandCtx();
+
+		ctx->RenderPassBegin();
+
+		// TODO:
+
+		ctx->RenderPassEnd();
 #if false
 		using namespace phx::gfx;
 		phx::gfx::CommandCtx ctx = phx::gfx::GfxDevice::BeginGfxContext();
