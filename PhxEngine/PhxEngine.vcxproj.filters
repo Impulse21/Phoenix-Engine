@@ -102,9 +102,6 @@
     <ClInclude Include="EmberGfx\D3D12\phxCommandCtxD3D12.h">
       <Filter>EmberGfx\D3D12</Filter>
     </ClInclude>
-    <ClInclude Include="EmberGfx\phxGfxCommandCtx.h">
-      <Filter>EmberGfx</Filter>
-    </ClInclude>
     <ClInclude Include="phxRefCountPtr.h">
       <Filter>EmberGfx</Filter>
     </ClInclude>

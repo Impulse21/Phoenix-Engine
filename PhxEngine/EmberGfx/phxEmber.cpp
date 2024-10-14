@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "phxEmber.h"
 
-#include "phxGfxDevice.h"
 #include "phxCommandLineArgs.h"
 
 #include "Vulkan/phxVulkanDevice.h"

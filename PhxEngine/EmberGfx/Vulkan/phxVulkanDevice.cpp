@@ -236,7 +236,7 @@ void phx::gfx::platform::VulkanGpuDevice::RunGarbageCollection(uint64_t complete
     }
 }
 
-CommandCtx_Vulkan* phx::gfx::platform::VulkanGpuDevice::BeginCommandCtx(phx::gfx::CommandQueueType type)
+ICommandCtx* phx::gfx::platform::VulkanGpuDevice::BeginCommandCtx(phx::gfx::CommandQueueType type)
 {
     CommandCtx_Vulkan* retVal = nullptr; 
     uint32_t ctxCurrent = ~0u;

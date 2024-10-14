@@ -11,6 +11,7 @@
 #include <EmberGfx/phxGfxDeviceResources.h>
 
 #include "ImGui/imgui.h"
+#include <iostream>
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wcovered-switch-default"

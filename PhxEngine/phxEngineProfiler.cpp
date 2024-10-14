@@ -2,11 +2,10 @@
 #include "phxEngineProfiler.h"
 #include  "phxSpan.h"
 #include "phxSystemTime.h"
-#include "EmberGfx/phxGfxDevice.h"
 #include "ImGui/imgui.h"
 
 using namespace phx;
-
+#if false
 namespace
 {
     class StatHistory
@@ -281,3 +280,4 @@ void phx::EngineProfile::DrawUI()
     ImGui::End();
 #endif
 }
+#endif

@@ -312,7 +312,6 @@
     <ClInclude Include="EmberGfx\phxImGuiRenderer.h" />
     <ClInclude Include="EmberGfx\phxEmber.h" />
     <ClInclude Include="EmberGfx\phxFontRenderer.h" />
-    <ClInclude Include="EmberGfx\phxGfxCommandCtx.h" />
     <ClInclude Include="EmberGfx\phxGfxDeviceResources.h" />
     <ClInclude Include="EmberGfx\phxHandle.h" />
     <ClInclude Include="EmberGfx\phxHandlePool.h" />

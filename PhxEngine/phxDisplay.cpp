@@ -84,12 +84,12 @@ namespace phx::Display
 			.EnableHDR = false
 		};
 
-		phx::gfx::GfxDevice::ResizeSwapChain(desc);
+		// phx::gfx::EmberGfx::GetDevice()->ResizeSwapChain(desc);
 	}
 
 	void Preset()
 	{
-		phx::gfx::GfxDevice::SubmitFrame();
+		phx::gfx::EmberGfx::GetDevice()->SubmitFrame();
 #if false
 		UINT presentInterval = m_enableVSync ? std::min(4, (int)std::round(m_frameTime * 60.0f)) : 0;
 		int64_t currentTick = SystemTime::GetCurrentTick();

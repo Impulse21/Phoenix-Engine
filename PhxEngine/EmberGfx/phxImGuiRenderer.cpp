@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "phxImGuiRenderer.h"
 
+#include "EmberGfx/phxEmber.h"
 #include "ImGui/imgui_impl_win32.h"
-#include "phxGfxDevice.h"
 #include "phxSpan.h"
 
 #include "CompiledShaders/ImGuiVS.h"
@@ -25,8 +25,7 @@ namespace
 
 }
 
-
-void phx::gfx::ImGuiRenderSystem::Initialize(bool enableDocking)
+void phx::gfx::ImGuiRenderSystem::Initialize(GpuDevice* gfxDevice, bool enableDocking)
 {
     m_imguiContext = ImGui::CreateContext();
     ImGui::SetCurrentContext(m_imguiContext);
@@ -53,17 +52,16 @@ void phx::gfx::ImGuiRenderSystem::Initialize(bool enableDocking)
 
     io.Fonts->GetTexDataAsRGBA32(&pixelData, &width, &height);
 
+#if false
     // Create texture
-    m_fontTexture.Reset(
-        GfxDevice::CreateTexture({
-            .Format = gfx::Format::RGBA8_UNORM,
-            .Width = static_cast<uint32_t>(width),
-            .Height = static_cast<uint32_t>(height),
-            .DebugName = "ImGui Font"
-            })
-    );
+    gfxDevice->CreateTexture({
+        .Format = gfx::Format::RGBA8_UNORM,
+        .Width = static_cast<uint32_t>(width),
+        .Height = static_cast<uint32_t>(height),
+        .DebugName = "ImGui Font"
+        });
 
-    this->m_fontTextureBindlessIndex = GfxDevice::GetDescriptorIndex(this->m_fontTexture, SubresouceType::SRV);
+    this->m_fontTextureBindlessIndex = gfxDevice->GetDescriptorIndex(this->m_fontTexture, SubresouceType::SRV);
     io.Fonts->SetTexID(static_cast<void*>(&this->m_fontTextureBindlessIndex));
 
     std::vector<VertexAttributeDesc> attributeDesc =
@@ -73,7 +71,6 @@ void phx::gfx::ImGuiRenderSystem::Initialize(bool enableDocking)
         { "COLOR",      0, Format::RGBA8_UNORM, 0, VertexAttributeDesc::SAppendAlignedElement, false},
     };
 
-#if false
     m_pipeline.Reset(
         GfxDevice::CreateGfxPipeline({
             .InputLayout = GfxDevice::CreateInputLayout(attributeDesc),
@@ -148,8 +145,9 @@ void phx::gfx::ImGuiRenderSystem::BeginFrame()
     ImGui::NewFrame();
 }
 
-void phx::gfx::ImGuiRenderSystem::Render(CommandCtx& context)
+void phx::gfx::ImGuiRenderSystem::Render(ICommandCtx* context)
 {
+#if false
     if (!this->m_isFontTextureUploaded)
     {
         unsigned char* pixelData = nullptr;
@@ -271,4 +269,5 @@ void phx::gfx::ImGuiRenderSystem::Render(CommandCtx& context)
         // cmd->TransitionBarriers(Span<GpuBarrier>(postBarriers.data(), postBarriers.size()));
         ImGui::EndFrame();
     }
+#endif
 }

@@ -106,9 +106,9 @@ public:
 
 	void Render() override
 	{
+#if false
 		using namespace phx::gfx;
 		phx::gfx::CommandCtx ctx = phx::gfx::GfxDevice::BeginGfxContext();
-#if false
 		PHX_EVENT_GFX(ctx);
 		ctx.ClearBackBuffer({ 0.392156899f, 0.584313750f, 0.929411829f, 1.f  }); // Cornflower blue
 		ctx.SetRenderTargetSwapChain();
