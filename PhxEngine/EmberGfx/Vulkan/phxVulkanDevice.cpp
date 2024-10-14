@@ -253,6 +253,7 @@ CommandCtx_Vulkan* phx::gfx::platform::VulkanGpuDevice::BeginCommandCtx(phx::gfx
     retVal->Reset(GetBufferIndex());
     retVal->Id = ctxCurrent;
     retVal->QueueType = type;
+    retVal->GpuDevice = this;
 
     if (retVal->GetVkCommandBuffer() == VK_NULL_HANDLE)
     {
@@ -1021,6 +1022,7 @@ void phx::gfx::platform::VulkanGpuDevice::CreateSurface(void* windowHandle)
 
 void phx::gfx::platform::VulkanGpuDevice::CreateSwapchain(SwapChainDesc const& desc)
 {
+    m_swapChainDesc = desc;
     SwapChainSupportDetails swapChainSupport = QuerySwapchainSupport(m_vkPhysicalDevice);
 
     VkSurfaceFormatKHR surfaceFormat = {};
@@ -1223,8 +1225,14 @@ void phx::gfx::platform::VulkanGpuDevice::DestoryDefaultResources()
 
 void phx::gfx::platform::VulkanGpuDevice::CreateFrameResources()
 {
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     for (size_t fr = 0; fr < m_frameFences.size(); ++fr)
     {
+        if (vkCreateSemaphore(m_vkDevice, &semaphoreInfo, nullptr, &m_imageAvailableSemaphore[fr]) != VK_SUCCESS ||
+            vkCreateSemaphore(m_vkDevice, &semaphoreInfo, nullptr, &m_renderFinishedSemaphore[fr]) != VK_SUCCESS)
+            throw std::runtime_error("failed to create synchronization objects for a frame!");
+
         for (size_t queue = 0; queue < (size_t)CommandQueueType::Count; ++queue)
         {
             if (m_queues[queue].QueueVk == VK_NULL_HANDLE)
@@ -1232,7 +1240,8 @@ void phx::gfx::platform::VulkanGpuDevice::CreateFrameResources()
 
             VkFenceCreateInfo fenceInfo = {};
             fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-            //fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
             VkResult res = vkCreateFence(m_vkDevice, &fenceInfo, nullptr, &m_frameFences[fr][queue]);
             assert(res == VK_SUCCESS);
             if (res != VK_SUCCESS)
@@ -1248,6 +1257,9 @@ void phx::gfx::platform::VulkanGpuDevice::DestoryFrameResources()
 {
     for (size_t fr = 0; fr < m_frameFences.size(); ++fr)
     {
+        vkDestroySemaphore(m_vkDevice, m_imageAvailableSemaphore[fr], nullptr);
+        vkDestroySemaphore(m_vkDevice, m_renderFinishedSemaphore[fr], nullptr);
+
         for (size_t queue = 0; queue < (size_t)CommandQueueType::Count; ++queue)
         {
             vkDestroyFence(m_vkDevice, m_frameFences[fr][queue], nullptr);
@@ -1428,6 +1440,8 @@ void phx::gfx::platform::VulkanGpuDevice::SubmitCommandCtx()
         {
             // NOT SUPPORTED yet
             assert(false);
+            PHX_CORE_WARN("Inter Queue Waiting is currently not supported.");
+
             // If the current commandlist must resolve a dependency, then previous ones will be submitted before doing that:
             //	This improves GPU utilization because not the whole batch of command lists will need to synchronize, but only the one that handles it
             queue.Submit(this, VK_NULL_HANDLE);
@@ -1442,15 +1456,105 @@ void phx::gfx::platform::VulkanGpuDevice::SubmitCommandCtx()
     // final submits with fences:
     for (size_t q = 0; q < (size_t)CommandQueueType::Count; q++)
     {
-        m_queues[q].Submit(this, m_frameFences[GetBufferIndex()][q]);
+        CommandQueue& queue = m_queues[q];
+        if (q == (size_t)CommandQueueType::Graphics)
+        {
+            VkSemaphoreSubmitInfo& waitSemaphore = queue.SubmitWaitSemaphoreInfos.emplace_back();
+            waitSemaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+            waitSemaphore.semaphore = m_imageAvailableSemaphore[GetBufferIndex()];
+            waitSemaphore.value = 0; // not a timeline semaphore
+            waitSemaphore.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+            queue.SubmitSignalSemaphores.push_back(m_renderFinishedSemaphore[GetBufferIndex()]);
+            VkSemaphoreSubmitInfo& signalSemaphore = queue.SubmitSignalSemaphoreInfos.emplace_back();
+            signalSemaphore.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+            signalSemaphore.semaphore = m_renderFinishedSemaphore[GetBufferIndex()];
+            signalSemaphore.value = 0; // not a timeline semaphore
+        }
+
+        queue.Submit(this, m_frameFences[GetBufferIndex()][q]);
     }
 
-    // TODO: Present...
 }
 
 void phx::gfx::platform::VulkanGpuDevice::Present()
 {
-    // TODO:
+    VkPresentInfoKHR presentInfo = {};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &m_renderFinishedSemaphore[GetBufferIndex()];
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &m_vkSwapChain;
+    presentInfo.pImageIndices = &m_swapChainCurrentImage;
+    VkResult res = vkQueuePresentKHR(m_queues[CommandQueueType::Graphics].QueueVk, &presentInfo);
+    if (res != VK_SUCCESS)
+    {
+        // Handle outdated error in present:
+        if (res == VK_SUBOPTIMAL_KHR || res == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            PHX_CORE_ERROR("Swapchain needs to be recreated");
+            assert(false);
+#if false
+            for (auto& swapchain : swapchain_updates)
+            {
+                auto internal_state = to_internal(&swapchain);
+                bool success = CreateSwapChainInternal(internal_state, device->physicalDevice, device->device, device->allocationhandler);
+                assert(success);
+            }
+#endif
+        }
+        else
+        {
+            assert(0);
+        }
+    }
+
+    // present
+    m_frameCount++;
+
+    // -- Wait on next inflight frame ---
+    const size_t backBufferIndex = GetBufferIndex();
+    for (size_t q = 0; q < (size_t)CommandQueueType::Count; q++)
+    {
+        VkFence fence = m_frameFences[backBufferIndex][q];
+        vkWaitForFences(m_vkDevice, 1, &fence, VK_TRUE, UINT64_MAX);
+        vkResetFences(m_vkDevice, 1, &fence);
+    }
+
+    res = vkAcquireNextImageKHR(
+        m_vkDevice,
+        m_vkSwapChain,
+        UINT64_MAX,
+        m_imageAvailableSemaphore[GetBufferIndex()],
+        VK_NULL_HANDLE,
+        &m_swapChainCurrentImage
+    );
+
+    if (res != VK_SUCCESS)
+    {
+        // Handle outdated error in acquire:
+        if (res == VK_SUBOPTIMAL_KHR || res == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            // we need to create a new semaphore or jump through a few hoops to
+            // wait for the current one to be unsignalled before we can use it again
+            // creating a new one is easiest. See also:
+            // https://github.com/KhronosGroup/Vulkan-Docs/issues/152
+            // https://www.khronos.org/blog/resolving-longstanding-issues-with-wsi
+            {
+#if false
+                std::scoped_lock lock(allocationhandler->destroylocker);
+                for (auto& x : internal_state->swapchainAcquireSemaphores)
+                {
+                    allocationhandler->destroyer_semaphores.emplace_back(x, allocationhandler->framecount);
+                }
+#endif
+            }
+
+            // Recreate Swapchain and begin render pass again?
+            PHX_CORE_ERROR("Failed to Acuire next image index");
+        }
+        assert(0);
+    }
 }
 
 void phx::gfx::platform::VulkanGpuDevice::CommandQueue::Signal(VkSemaphore semaphore)
@@ -1480,7 +1584,6 @@ void phx::gfx::platform::VulkanGpuDevice::CommandQueue::Submit(VulkanGpuDevice* 
 
     VkResult res = vkQueueSubmit2(QueueVk, 1, &submitInfo, fence);
     assert(res == VK_SUCCESS);
-
 
     SubmitCmds.clear();
     SubmitWaitSemaphoreInfos.clear();

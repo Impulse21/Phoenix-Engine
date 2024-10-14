@@ -317,6 +317,7 @@
     <ClInclude Include="EmberGfx\phxHandle.h" />
     <ClInclude Include="EmberGfx\phxHandlePool.h" />
     <ClInclude Include="EmberGfx\phxShaderCompiler.h" />
+    <ClInclude Include="EmberGfx\Vulkan\phxVulkanCommandCtx.h" />
     <ClInclude Include="EmberGfx\Vulkan\phxVulkanDevice.h" />
     <ClInclude Include="EmberGfx\Vulkan\phxVulkanManager.h" />
     <ClInclude Include="EmberGfx\Vulkan\phxVulkanCore.h" />
@@ -350,6 +351,7 @@
     <ClCompile Include="EmberGfx\phxEmber.cpp" />
     <ClCompile Include="EmberGfx\phxFontRenderer.cpp" />
     <ClCompile Include="EmberGfx\phxShaderCompiler_DXC.cpp" />
+    <ClCompile Include="EmberGfx\Vulkan\phxVulkanCommandCtx.cpp" />
     <ClCompile Include="EmberGfx\Vulkan\phxVulkanDevice.cpp" />
     <ClCompile Include="EmberGfx\Vulkan\phxVulkanManager.cpp" />
     <ClCompile Include="phxDeferredReleaseQueue.cpp" />

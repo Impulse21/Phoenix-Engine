@@ -1871,6 +1871,7 @@ void phx::gfx::GfxDeviceD3D12::Present()
 			assert(false);
 		}
 	}
+
 	// -- wait for fence to finish
 	{
 		const size_t backBufferIndex = m_swapChain.SwapChain4->GetCurrentBackBufferIndex();

@@ -168,6 +168,9 @@
     <ClInclude Include="3rdParty\vma\vk_mem_alloc.h">
       <Filter>3rdParty</Filter>
     </ClInclude>
+    <ClInclude Include="EmberGfx\Vulkan\phxVulkanCommandCtx.h">
+      <Filter>EmberGfx\Vulkan</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -241,6 +244,9 @@
     </ClCompile>
     <ClCompile Include="EmberGfx\phxShaderCompiler_DXC.cpp">
       <Filter>EmberGfx</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\Vulkan\phxVulkanCommandCtx.cpp">
+      <Filter>EmberGfx\Vulkan</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

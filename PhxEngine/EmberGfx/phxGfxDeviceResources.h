@@ -12,6 +12,8 @@
 #define USE_HANDLES true
 namespace phx::gfx
 {
+    constexpr size_t kBufferCount = 2;
+
     typedef uint32_t DescriptorIndex;
 
     static constexpr DescriptorIndex cInvalidDescriptorIndex = ~0u;

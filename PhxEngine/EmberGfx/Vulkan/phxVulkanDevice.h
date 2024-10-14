@@ -4,12 +4,15 @@
 #include <deque>
 #include <mutex>
 
-#include "vma/vk_mem_alloc.h"
+#include "phxEnumUtils.h"
 
 #include "EmberGfx/phxGfxDeviceResources.h"
-#include "phxVulkanManager.h"
 #include "EmberGfx/phxHandlePool.h"
-#include "phxEnumUtils.h"
+
+#include "phxVulkanManager.h"
+#include "phxVulkanCommandCtx.h"
+
+#include "vma/vk_mem_alloc.h"
 
 #ifdef PHX_PLATFORM_WINDOWS
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -17,8 +20,6 @@
 
 namespace phx::gfx::platform
 {
-	constexpr size_t kBufferCount = 2;
-
 	struct QueueFamilyIndices
 	{
 		std::optional<uint32_t> GraphicsFamily;
@@ -73,40 +74,9 @@ namespace phx::gfx::platform
 		size_t BindingHash = 0;
 	};
 
-	struct CommandCtx_Vulkan
-	{
-		EnumArray<VkCommandBuffer, CommandQueueType>  CmdBufferVk[kBufferCount];
-		EnumArray<VkCommandPool, CommandQueueType> CmdBufferPoolVk[kBufferCount];
-
-		CommandQueueType QueueType = {};
-		uint32_t Id = 0;
-
-		std::vector<std::pair<CommandQueueType, VkSemaphore>> WaitQueues;
-		std::vector<VkSemaphore> Waits;
-		std::vector<VkSemaphore> Signals;
-		uint32_t CurrentBufferIndex = 0;
-
-		void Reset(uint32_t bufferIndex)
-		{
-			CurrentBufferIndex = bufferIndex;
-			Signals.clear();
-			Waits.clear(); 
-			WaitQueues.clear();
-		}
-
-		VkCommandBuffer GetVkCommandBuffer()
-		{
-			return CmdBufferVk[CurrentBufferIndex][QueueType];
-		}
-
-		VkCommandPool GetVkCommandPool()
-		{
-			return CmdBufferPoolVk[CurrentBufferIndex][QueueType];
-		}
-	};
-
 	class VulkanGpuDevice final
 	{
+		friend CommandCtx_Vulkan;
 	public:
 		void Initialize(SwapChainDesc const& swapChainDesc, bool enableValidationLayers, void* windowHandle = nullptr);
 		void Finalize();
@@ -134,18 +104,17 @@ namespace phx::gfx::platform
 		void CreateSwapchain(SwapChainDesc const& desc);
 		void CreateSwapChaimImageViews();
 		void CreateVma();
-
-		void CreateDefaultResources();
-		void DestoryDefaultResources();
 		void CreateFrameResources();
+		void CreateDefaultResources();
+
 		void DestoryFrameResources();
+		void DestoryDefaultResources();
 
 		uint32_t GetBufferIndex() const { return m_frameCount % kBufferCount; }
 
 		int32_t RateDeviceSuitability(VkPhysicalDevice device);
 		QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device);
 		SwapChainSupportDetails QuerySwapchainSupport(VkPhysicalDevice device);
-
 
 		void SubmitCommandCtx();
 		void Present();
@@ -190,11 +159,18 @@ namespace phx::gfx::platform
 		VkSurfaceKHR m_vkSurface;
 		VkDebugUtilsMessengerEXT m_debugMessenger;
 
+		SwapChainDesc m_swapChainDesc = {};
 		VkSwapchainKHR m_vkSwapChain = VK_NULL_HANDLE;
+		uint32_t m_swapChainCurrentImage = ~0u;
+
 		VkFormat m_swapChainFormat;
 		VkExtent2D m_swapChainExtent;
 		std::vector<VkImage> m_swapChainImages;
 		std::vector<VkImageView> m_swapChainImageViews;
+
+		std::array<VkSemaphore, kBufferCount> m_imageAvailableSemaphore;
+		std::array< VkSemaphore, kBufferCount> m_renderFinishedSemaphore;
+
 
 		struct DeferredItem
 		{
