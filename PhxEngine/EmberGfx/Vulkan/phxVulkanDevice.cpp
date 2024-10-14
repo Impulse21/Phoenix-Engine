@@ -66,8 +66,7 @@ namespace
 
     const std::vector<const char*> kRequiredDeviceExtensions = 
     {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
 
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
@@ -811,7 +810,7 @@ void phx::gfx::platform::VulkanGpuDevice::CreateInstance()
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pEngineName = "PHX Engine";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion = VK_API_VERSION_1_0;
+    appInfo.apiVersion = VK_API_VERSION_1_3;
 
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -1134,7 +1133,9 @@ void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    VkPhysicalDeviceFeatures deviceFeatures{};
+    assert(m_properties2.properties.limits.timestampComputeAndGraphics == VK_TRUE);
+
+    vkGetPhysicalDeviceFeatures2(m_vkPhysicalDevice, &m_features2);
 
     assert(m_features2.features.imageCubeArray == VK_TRUE);
     assert(m_features2.features.independentBlend == VK_TRUE);
@@ -1146,22 +1147,28 @@ void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
     assert(m_vulkan12Features.descriptorIndexing == VK_TRUE);
     assert(m_vulkan13Features.dynamicRendering == VK_TRUE);
 
-    VkDeviceCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
 #if LOG_DEVICE_EXTENSIONS
     m_extManager.ObtainDeviceExtensions(m_vkPhysicalDevice);
     m_extManager.LogDeviceExtensions();
 #endif
 
-    createInfo.enabledExtensionCount = kRequiredDeviceExtensions.size();
-    createInfo.ppEnabledExtensionNames = kRequiredDeviceExtensions.data();
+    const std::vector<const char*>& enabledExtensions = m_extManager.GetEnabledDeviceExtensions();
+    PHX_CORE_INFO("[Vulkan] Enabling Device Extensions: ");
+    for (auto ext : enabledExtensions)
+    {
+        PHX_CORE_INFO("\t\t{0}", ext);
+    }
 
     // Modern Vulkan doesn't require this.
+    VkDeviceCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     createInfo.enabledLayerCount = 0;
     createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
     createInfo.pNext = &m_features2; // Point to the extended features structure
+    createInfo.enabledExtensionCount = enabledExtensions.size();
+    createInfo.ppEnabledExtensionNames = enabledExtensions.data();
 
     VkResult result = vkCreateDevice(m_vkPhysicalDevice, &createInfo, nullptr, &m_vkDevice);
     if (result != VK_SUCCESS) 

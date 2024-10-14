@@ -14,7 +14,7 @@ namespace phx::gfx::platform
 		void ObtainDeviceExtensions(VkPhysicalDevice device);
 		bool IsDeviceExtensionAvailable(const char* extensionName);
 		void SetEnabledDeviceExtensions(std::vector<const char*> enabledDeviceExtensions);
-		const std::vector<const char*>& GetEnabledDeviceExtensions(std::vector<const char*> enabledDeviceExtensions) const
+		const std::vector<const char*>& GetEnabledDeviceExtensions() const
 		{
 			return m_enabledDeviceExtensions;
 		}

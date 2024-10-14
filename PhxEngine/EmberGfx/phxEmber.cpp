@@ -30,7 +30,7 @@ namespace phx::gfx
 
 			std::wstring deviceType;
 			CommandLineArgs::GetString(L"device", deviceType);
-			if (wcscmp(deviceType.c_str(), L"d3d12") == 0)
+			if (wcscmp(deviceType.c_str(), L"dx12") == 0)
 			{
 				m_selectedBackend = gfx::GfxBackend::Dx12;
 			}
