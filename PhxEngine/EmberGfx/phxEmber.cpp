@@ -28,11 +28,13 @@ namespace phx::gfx
 	#endif
 			CommandLineArgs::GetInteger(L"debug", useValidation);
 
-			if (CommandLineArgs::HasFlag(L"d3d12"))
+			std::wstring deviceType;
+			CommandLineArgs::GetString(L"device", deviceType);
+			if (wcscmp(deviceType.c_str(), L"d3d12") == 0)
 			{
 				m_selectedBackend = gfx::GfxBackend::Dx12;
 			}
-			else if (CommandLineArgs::HasFlag(L"vulkan"))
+			else if (wcscmp(deviceType.c_str(), L"vulkan") == 0)
 			{
 				m_selectedBackend = gfx::GfxBackend::Vulkan;
 			}

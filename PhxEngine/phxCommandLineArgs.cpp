@@ -74,9 +74,4 @@ namespace phx::CommandLineArgs
 				value = val;
 			});
 	}
-
-	bool HasFlag(const wchar_t* key)
-	{
-		return Lookup(key, [](std::wstring& val) {});
-	}
 }

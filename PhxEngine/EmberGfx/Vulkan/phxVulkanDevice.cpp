@@ -14,6 +14,8 @@
 #include <set>
 #include <map>
 
+#define LOG_DEVICE_EXTENSIONS false
+
 using namespace phx;
 using namespace phx::gfx;
 using namespace phx::gfx::platform;
@@ -295,7 +297,6 @@ ICommandCtx* phx::gfx::platform::VulkanGpuDevice::BeginCommandCtx(phx::gfx::Comm
 
     VkResult res = vkResetCommandPool(m_vkDevice, retVal->GetVkCommandPool(), 0);
     assert(res == VK_SUCCESS);
-
 
     VkCommandBufferBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -965,6 +966,11 @@ void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+
+#if LOG_DEVICE_EXTENSIONS
+    m_extManager.ObtainDeviceExtensions(m_vkPhysicalDevice);
+    m_extManager.LogDeviceExtensions();
+#endif
 
     createInfo.enabledExtensionCount = kRequiredDeviceExtensions.size();
     createInfo.ppEnabledExtensionNames = kRequiredDeviceExtensions.data();
