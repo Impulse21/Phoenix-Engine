@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "phxGfxDeviceD3D12.h"
+#include "phxD3D12GpuDevice.h"
 #include "phxCommandLineArgs.h"
 #include "phxGfxCommonD3D12.h"
 #include <iostream>
@@ -494,7 +494,7 @@ ID3D12CommandAllocator* D3D12CommandQueue::RequestAllocator()
 	{
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator>& newAllocator = AllocatorPool.emplace_back();
 		ThrowIfFailed(
-			GfxDeviceD3D12::GetD3D12Device2()->CreateCommandAllocator(Type, IID_PPV_ARGS(&newAllocator)));
+			D3D12GpuDevice::Instance()->GetD3D12Device2()->CreateCommandAllocator(Type, IID_PPV_ARGS(&newAllocator)));
 
 		newAllocator->SetName(L"Allocator");
 		retVal = newAllocator.Get();
@@ -503,30 +503,27 @@ ID3D12CommandAllocator* D3D12CommandQueue::RequestAllocator()
 	return retVal;
 }
 
-phx::gfx::GfxDeviceD3D12::GfxDeviceD3D12() = default;
-#if false
+phx::gfx::D3D12GpuDevice::D3D12GpuDevice()
 {
 	assert(Singleton == nullptr);
 	Singleton = this;
 }
-#endif
 
-phx::gfx::GfxDeviceD3D12::~GfxDeviceD3D12() = default;
-#if false
+phx::gfx::D3D12GpuDevice::~D3D12GpuDevice()
 {
 	assert(Singleton);
 	Singleton = nullptr;
 }
-#endif
 
-void phx::gfx::GfxDeviceD3D12::Initialize(SwapChainDesc const& swapChainDesc, void* windowHandle)
+void phx::gfx::D3D12GpuDevice::Initialize(SwapChainDesc const& swapChainDesc, bool enableValidation, void* windowHandle)
 {
+	m_enableDebugLayers = enableValidation;
 	Initialize();
 	CreateSwapChain(swapChainDesc, static_cast<HWND>(windowHandle));
 	m_gpuTimerManager.Initialize();
 }
 
-void phx::gfx::GfxDeviceD3D12::Finalize()
+void phx::gfx::D3D12GpuDevice::Finalize()
 {
 	WaitForIdle();
 
@@ -539,7 +536,7 @@ void phx::gfx::GfxDeviceD3D12::Finalize()
 	m_tempPageAllocator.Finalize();
 }
 
-void phx::gfx::GfxDeviceD3D12::WaitForIdle()
+void phx::gfx::D3D12GpuDevice::WaitForIdle()
 {
 	Microsoft::WRL::ComPtr<ID3D12Fence> fence;
 	HRESULT hr = GetD3D12Device2()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
@@ -559,22 +556,22 @@ void phx::gfx::GfxDeviceD3D12::WaitForIdle()
 	}
 }
 
-void phx::gfx::GfxDeviceD3D12::ResizeSwapChain(SwapChainDesc const& swapChainDesc)
+void phx::gfx::D3D12GpuDevice::ResizeSwapChain(SwapChainDesc const& swapChainDesc)
 {
 	CreateSwapChain(swapChainDesc, nullptr);
 }
 
-platform::CommandCtxD3D12* phx::gfx::GfxDeviceD3D12::BeginGfxContext()
+platform::CommandCtxD3D12* phx::gfx::D3D12GpuDevice::BeginGfxContext()
 {
 	return BeginCommandRecording(CommandQueueType::Graphics);
 }
 
-platform::CommandCtxD3D12* phx::gfx::GfxDeviceD3D12::BeginComputeContext()
+platform::CommandCtxD3D12* phx::gfx::D3D12GpuDevice::BeginComputeContext()
 {
 	return BeginCommandRecording(CommandQueueType::Compute);
 }
 
-void phx::gfx::GfxDeviceD3D12::SubmitFrame()
+void phx::gfx::D3D12GpuDevice::SubmitFrame()
 {
 	SubmitCommandLists();
 	Present();
@@ -582,17 +579,17 @@ void phx::gfx::GfxDeviceD3D12::SubmitFrame()
 	RunGarbageCollection();
 }
 
-void phx::gfx::GfxDeviceD3D12::BeginGpuTimerReadback()
+void phx::gfx::D3D12GpuDevice::BeginGpuTimerReadback()
 {
 	m_gpuTimerManager.BeginReadBack();
 }
 
-float phx::gfx::GfxDeviceD3D12::GetTime(TimerQueryHandle handle)
+float phx::gfx::D3D12GpuDevice::GetTime(TimerQueryHandle handle)
 {
 	return m_gpuTimerManager.GetTime(handle);
 }
 
-void phx::gfx::GfxDeviceD3D12::EndGpuTimerReadback()
+void phx::gfx::D3D12GpuDevice::EndGpuTimerReadback()
 {
 	m_gpuTimerManager.EndReadBack();
 }
@@ -626,7 +623,7 @@ Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateEmptyRootSignature()
 
 	// Create the root signature
 	ComPtr<ID3D12RootSignature> rootSignature;
-	hr = GfxDeviceD3D12::GetD3D12Device()->CreateRootSignature(
+	hr = D3D12GpuDevice::Instance()->GetD3D12Device()->CreateRootSignature(
 		0,
 		serializedRootSignature->GetBufferPointer(),
 		serializedRootSignature->GetBufferSize(),
@@ -638,7 +635,7 @@ Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateEmptyRootSignature()
 
 	return rootSignature;
 }
-GfxPipelineHandle phx::gfx::GfxDeviceD3D12::CreateGfxPipeline(GfxPipelineDesc const& desc)
+GfxPipelineHandle phx::gfx::D3D12GpuDevice::CreateGfxPipeline(GfxPipelineDesc const& desc)
 {
 	D3D12GfxPipeline pipeline = {};
 	pipeline.RootSignature = CreateEmptyRootSignature();
@@ -750,7 +747,7 @@ GfxPipelineHandle phx::gfx::GfxDeviceD3D12::CreateGfxPipeline(GfxPipelineDesc co
 	return m_resourceRegistry.GfxPipelines.Emplace(pipeline);
 }
 
-void phx::gfx::GfxDeviceD3D12::DeleteResource(GfxPipelineHandle handle)
+void phx::gfx::D3D12GpuDevice::DeleteResource(GfxPipelineHandle handle)
 {
 	DeferredItem d =
 	{
@@ -764,7 +761,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteResource(GfxPipelineHandle handle)
 	m_deferredQueue.push_back(d);
 }
 
-TextureHandle phx::gfx::GfxDeviceD3D12::CreateTexture(TextureDesc const& desc)
+TextureHandle phx::gfx::D3D12GpuDevice::CreateTexture(TextureDesc const& desc)
 {
 	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
 	d3d12OptimizedClearValue.Color[0] = desc.OptmizedClearValue.Colour.R;
@@ -897,7 +894,7 @@ TextureHandle phx::gfx::GfxDeviceD3D12::CreateTexture(TextureDesc const& desc)
 	return textureHandle;
 }
 
-int  phx::gfx::GfxDeviceD3D12::CreateSubresource(TextureHandle texture, TextureDesc const& desc, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+int  phx::gfx::D3D12GpuDevice::CreateSubresource(TextureHandle texture, TextureDesc const& desc, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
 	switch (subresourceType)
 	{
@@ -914,7 +911,7 @@ int  phx::gfx::GfxDeviceD3D12::CreateSubresource(TextureHandle texture, TextureD
 	}
 }
 
-int phx::gfx::GfxDeviceD3D12::CreateSubresource(BufferHandle buffer, BufferDesc const& desc, SubresouceType subresourceType, size_t offset, size_t size)
+int phx::gfx::D3D12GpuDevice::CreateSubresource(BufferHandle buffer, BufferDesc const& desc, SubresouceType subresourceType, size_t offset, size_t size)
 {
 	switch (subresourceType)
 	{
@@ -927,7 +924,7 @@ int phx::gfx::GfxDeviceD3D12::CreateSubresource(BufferHandle buffer, BufferDesc 
 	}
 }
 
-int phx::gfx::GfxDeviceD3D12::CreateShaderResourceView(BufferHandle buffer, BufferDesc const& desc, size_t offset, size_t size)
+int phx::gfx::D3D12GpuDevice::CreateShaderResourceView(BufferHandle buffer, BufferDesc const& desc, size_t offset, size_t size)
 {
 	D3D12Buffer* bufferImpl = m_resourceRegistry.Buffers.Get(buffer);
 
@@ -966,7 +963,7 @@ int phx::gfx::GfxDeviceD3D12::CreateShaderResourceView(BufferHandle buffer, Buff
 	}
 
 	DescriptorView view = {
-			.Allocation = GfxDeviceD3D12::GetResourceCpuHeap().Allocate(1),
+			.Allocation = D3D12GpuDevice::GetResourceCpuHeap().Allocate(1),
 			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 			.SRVDesc = srvDesc,
 	};
@@ -1001,7 +998,7 @@ int phx::gfx::GfxDeviceD3D12::CreateShaderResourceView(BufferHandle buffer, Buff
 	return bufferImpl->SrvSubresourcesAlloc.size() - 1;
 }
 
-int phx::gfx::GfxDeviceD3D12::CreateUnorderedAccessView(BufferHandle buffer, BufferDesc const& desc, size_t offset, size_t size)
+int phx::gfx::D3D12GpuDevice::CreateUnorderedAccessView(BufferHandle buffer, BufferDesc const& desc, size_t offset, size_t size)
 {
 	D3D12Buffer* bufferImpl = m_resourceRegistry.Buffers.Get(buffer);;
 
@@ -1096,7 +1093,7 @@ int phx::gfx::GfxDeviceD3D12::CreateUnorderedAccessView(BufferHandle buffer, Buf
 	return bufferImpl->UavSubresourcesAlloc.size() - 1;
 }
 
-int phx::gfx::GfxDeviceD3D12::CreateShaderResourceView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+int phx::gfx::D3D12GpuDevice::CreateShaderResourceView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
 	// TODO: Make use of parameters.
 	D3D12Texture* textureImpl = m_resourceRegistry.Textures.Get(texture);
@@ -1215,7 +1212,7 @@ int phx::gfx::GfxDeviceD3D12::CreateShaderResourceView(TextureHandle texture, Te
 	return textureImpl->SrvSubresourcesAlloc.size() - 1;
 }
 
-int phx::gfx::GfxDeviceD3D12::CreateRenderTargetView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+int phx::gfx::D3D12GpuDevice::CreateRenderTargetView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
 	D3D12Texture* textureImpl = m_resourceRegistry.Textures.Get(texture);
 
@@ -1291,7 +1288,7 @@ int phx::gfx::GfxDeviceD3D12::CreateRenderTargetView(TextureHandle texture, Text
 	return textureImpl->RtvSubresourcesAlloc.size() - 1;
 }
 
-int phx::gfx::GfxDeviceD3D12::CreateDepthStencilView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+int phx::gfx::D3D12GpuDevice::CreateDepthStencilView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
 	D3D12Texture* textureImpl = m_resourceRegistry.Textures.Get(texture);
 
@@ -1366,7 +1363,7 @@ int phx::gfx::GfxDeviceD3D12::CreateDepthStencilView(TextureHandle texture, Text
 	return textureImpl->DsvSubresourcesAlloc.size() - 1;
 }
 
-int phx::gfx::GfxDeviceD3D12::CreateUnorderedAccessView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+int phx::gfx::D3D12GpuDevice::CreateUnorderedAccessView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
 	D3D12Texture* textureImpl = m_resourceRegistry.Textures.Get(texture);
 
@@ -1454,7 +1451,7 @@ int phx::gfx::GfxDeviceD3D12::CreateUnorderedAccessView(TextureHandle texture, T
 	return textureImpl->UavSubresourcesAlloc.size() - 1;
 }
 
-void phx::gfx::GfxDeviceD3D12::DeleteResource(TextureHandle handle)
+void phx::gfx::D3D12GpuDevice::DeleteResource(TextureHandle handle)
 {
 	DeferredItem d =
 	{
@@ -1488,7 +1485,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteResource(TextureHandle handle)
 	m_deferredQueue.push_back(d);
 }
 
-InputLayoutHandle phx::gfx::GfxDeviceD3D12::CreateInputLayout(Span<VertexAttributeDesc> desc)
+InputLayoutHandle phx::gfx::D3D12GpuDevice::CreateInputLayout(Span<VertexAttributeDesc> desc)
 {
 	InputLayoutHandle retVal = m_resourceRegistry.InputLayouts.Emplace();
 	D3D12InputLayout& inputLayoutImpl = *m_resourceRegistry.InputLayouts.Get(retVal);
@@ -1530,12 +1527,12 @@ InputLayoutHandle phx::gfx::GfxDeviceD3D12::CreateInputLayout(Span<VertexAttribu
 	return retVal;
 }
 
-void phx::gfx::GfxDeviceD3D12::DeleteResource(InputLayoutHandle handle)
+void phx::gfx::D3D12GpuDevice::DeleteResource(InputLayoutHandle handle)
 {
 	m_resourceRegistry.InputLayouts.Release(handle);
 }
 
-BufferHandle phx::gfx::GfxDeviceD3D12::CreateBuffer(BufferDesc const& desc)
+BufferHandle phx::gfx::D3D12GpuDevice::CreateBuffer(BufferDesc const& desc)
 {
 	BufferHandle buffer = m_resourceRegistry.Buffers.Emplace();
 	D3D12Buffer& bufferImpl = *m_resourceRegistry.Buffers.Get(buffer);
@@ -1683,7 +1680,7 @@ BufferHandle phx::gfx::GfxDeviceD3D12::CreateBuffer(BufferDesc const& desc)
 }
 
 
-void phx::gfx::GfxDeviceD3D12::DeleteResource(BufferHandle handle)
+void phx::gfx::D3D12GpuDevice::DeleteResource(BufferHandle handle)
 {
 	DeferredItem d =
 	{
@@ -1717,7 +1714,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteResource(BufferHandle handle)
 	m_deferredQueue.push_back(d);
 }
 
-void phx::gfx::GfxDeviceD3D12::DeleteResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource)
+void phx::gfx::D3D12GpuDevice::DeleteResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource)
 {
 	DeferredItem d =
 	{
@@ -1731,7 +1728,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteResource(Microsoft::WRL::ComPtr<ID3D12Resou
 	m_deferredQueue.push_back(d);
 }
 
-DescriptorIndex phx::gfx::GfxDeviceD3D12::GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource)
+DescriptorIndex phx::gfx::D3D12GpuDevice::GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource)
 {
 	const D3D12Texture* texture = m_resourceRegistry.Textures.Get(handle);
 
@@ -1770,7 +1767,7 @@ DescriptorIndex phx::gfx::GfxDeviceD3D12::GetDescriptorIndex(TextureHandle handl
 	}
 }
 
-DescriptorIndex phx::gfx::GfxDeviceD3D12::GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource)
+DescriptorIndex phx::gfx::D3D12GpuDevice::GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource)
 {
 	const D3D12Buffer* bufferImpl = m_resourceRegistry.Buffers.Get(handle);
 
@@ -1795,7 +1792,7 @@ DescriptorIndex phx::gfx::GfxDeviceD3D12::GetDescriptorIndex(BufferHandle handle
 	}
 }
 
-platform::CommandCtxD3D12* phx::gfx::GfxDeviceD3D12::BeginCommandRecording(CommandQueueType type)
+platform::CommandCtxD3D12* phx::gfx::D3D12GpuDevice::BeginCommandRecording(CommandQueueType type)
 {
 	const uint32_t currentCmdIndex = m_activeCmdCount++;
 	if (currentCmdIndex >= m_commandPool.size())
@@ -1808,7 +1805,7 @@ platform::CommandCtxD3D12* phx::gfx::GfxDeviceD3D12::BeginCommandRecording(Comma
 	return cmdList;
 }
 
-void phx::gfx::GfxDeviceD3D12::SubmitCommandLists()
+void phx::gfx::D3D12GpuDevice::SubmitCommandLists()
 {
 	const uint32_t numActiveCommands = m_activeCmdCount.exchange(0);
 
@@ -1840,7 +1837,7 @@ void phx::gfx::GfxDeviceD3D12::SubmitCommandLists()
 		q.Submit();
 }
 
-void phx::gfx::GfxDeviceD3D12::Present()
+void phx::gfx::D3D12GpuDevice::Present()
 {
 	// -- Mark Queues for completion ---
 	{
@@ -1895,7 +1892,7 @@ void phx::gfx::GfxDeviceD3D12::Present()
 	}
 }
 
-void phx::gfx::GfxDeviceD3D12::RunGarbageCollection(uint64_t completedFrame)
+void phx::gfx::D3D12GpuDevice::RunGarbageCollection(uint64_t completedFrame)
 {
 	while (!m_deferredQueue.empty())
 	{
@@ -1912,12 +1909,12 @@ void phx::gfx::GfxDeviceD3D12::RunGarbageCollection(uint64_t completedFrame)
 	}
 }
 
-void phx::gfx::GfxDeviceD3D12::PollDebugMessages()
+void phx::gfx::D3D12GpuDevice::PollDebugMessages()
 {
 	::PollDebugMessages(GetD3D12Device());
 }
 
-void phx::gfx::GfxDeviceD3D12::Initialize()
+void phx::gfx::D3D12GpuDevice::Initialize()
 {
 	PHX_CORE_INFO("Initialize DirectX 12 Graphics Device");
 
@@ -1994,7 +1991,7 @@ void phx::gfx::GfxDeviceD3D12::Initialize()
 	m_tempPageAllocator.Initialize(256_MiB);
 }
 
-void phx::gfx::GfxDeviceD3D12::InitializeD3D12Context(IDXGIAdapter* gpuAdapter)
+void phx::gfx::D3D12GpuDevice::InitializeD3D12Context(IDXGIAdapter* gpuAdapter)
 {
 	{
 		uint32_t useDebugLayers = 0;
@@ -2154,7 +2151,7 @@ void phx::gfx::GfxDeviceD3D12::InitializeD3D12Context(IDXGIAdapter* gpuAdapter)
 
 }
 
-void phx::gfx::GfxDeviceD3D12::CreateSwapChain(SwapChainDesc const& desc, HWND hwnd)
+void phx::gfx::D3D12GpuDevice::CreateSwapChain(SwapChainDesc const& desc, HWND hwnd)
 {
 	HRESULT hr;
 
@@ -2316,7 +2313,7 @@ constexpr uint64_t AlignTo(uint64_t value, uint64_t alignment)
 	return ((value + alignment - 1) / alignment) * alignment;
 }
 
-phx::gfx::GfxDeviceD3D12::D3D12GraphicsDevice(D3D12Adapter const& adapter, Microsoft::WRL::ComPtr<IDXGIFactory6> factory)
+phx::gfx::D3D12GpuDevice::D3D12GraphicsDevice(D3D12Adapter const& adapter, Microsoft::WRL::ComPtr<IDXGIFactory6> factory)
 	: m_gpuAdapter(adapter)
 	, m_factory(factory)
 	, m_frameCount(1)
@@ -2337,7 +2334,7 @@ phx::gfx::GfxDeviceD3D12::D3D12GraphicsDevice(D3D12Adapter const& adapter, Micro
 	IGraphicsDevice::GPtr = this;
 }
 
-phx::gfx::GfxDeviceD3D12::~D3D12GraphicsDevice()
+phx::gfx::D3D12GpuDevice::~D3D12GraphicsDevice()
 {
 #if ENABLE_PIX_CAPUTRE
 	FreeLibrary(m_pixCaptureModule);
@@ -2346,7 +2343,7 @@ phx::gfx::GfxDeviceD3D12::~D3D12GraphicsDevice()
 	IGraphicsDevice::GPtr = nullptr;
 }
 
-void phx::gfx::GfxDeviceD3D12::Initialize()
+void phx::gfx::D3D12GpuDevice::Initialize()
 {
 	InitializeD3D12Device(m_gpuAdapter.NativeAdapter.Get());
 
@@ -2474,7 +2471,7 @@ void phx::gfx::GfxDeviceD3D12::Initialize()
 	m_timestampQueryBuffer = CreateBuffer(desc);
 }
 
-void phx::gfx::GfxDeviceD3D12::Finalize()
+void phx::gfx::D3D12GpuDevice::Finalize()
 {
 	DeleteBuffer(m_timestampQueryBuffer);
 
@@ -2491,7 +2488,7 @@ void phx::gfx::GfxDeviceD3D12::Finalize()
 	m_activeViewport.reset();
 }
 
-void phx::gfx::GfxDeviceD3D12::WaitForIdle()
+void phx::gfx::D3D12GpuDevice::WaitForIdle()
 {
 	for (auto& queue : m_commandQueues)
 	{
@@ -2504,7 +2501,7 @@ void phx::gfx::GfxDeviceD3D12::WaitForIdle()
 	RunGarbageCollection(UINT64_MAX);
 }
 
-void phx::gfx::GfxDeviceD3D12::QueueWaitForCommandList(CommandQueueType waitQueue, ExecutionReceipt waitOnRecipt)
+void phx::gfx::D3D12GpuDevice::QueueWaitForCommandList(CommandQueueType waitQueue, ExecutionReceipt waitOnRecipt)
 {
 	auto pWaitQueue = GetQueue(waitQueue);
 	auto executionQueue = GetQueue(waitOnRecipt.CommandQueue);
@@ -2514,7 +2511,7 @@ void phx::gfx::GfxDeviceD3D12::QueueWaitForCommandList(CommandQueueType waitQueu
 }
 
 
-bool phx::gfx::GfxDeviceD3D12::IsHdrSwapchainSupported()
+bool phx::gfx::D3D12GpuDevice::IsHdrSwapchainSupported()
 {
 	if (!m_activeViewport->NativeSwapchain)
 	{
@@ -2542,13 +2539,13 @@ bool phx::gfx::GfxDeviceD3D12::IsHdrSwapchainSupported()
 	return false;
 }
 
-CommandListHandle phx::gfx::GfxDeviceD3D12::CreateCommandList(CommandListDesc const& desc)
+CommandListHandle phx::gfx::D3D12GpuDevice::CreateCommandList(CommandListDesc const& desc)
 {
 	// auto commandListImpl = std::make_unique<D3D12CommandList>(*this, desc);
 	return nullptr;
 }
 
-ICommandList* phx::gfx::GfxDeviceD3D12::BeginCommandRecording(CommandQueueType queueType)
+ICommandList* phx::gfx::D3D12GpuDevice::BeginCommandRecording(CommandQueueType queueType)
 {
 	CommandQueue* queue = GetQueue(queueType);
 
@@ -2558,7 +2555,7 @@ ICommandList* phx::gfx::GfxDeviceD3D12::BeginCommandRecording(CommandQueueType q
 	return commandList;
 }
 
-CommandSignatureHandle phx::gfx::GfxDeviceD3D12::CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride)
+CommandSignatureHandle phx::gfx::D3D12GpuDevice::CreateCommandSignature(CommandSignatureDesc const& desc, size_t byteStride)
 {
 	CommandSignatureHandle handle = m_commandSignaturePool.Emplace();
 	D3D12CommandSignature* signature = m_commandSignaturePool.Get(handle);
@@ -2624,7 +2621,7 @@ CommandSignatureHandle phx::gfx::GfxDeviceD3D12::CreateCommandSignature(CommandS
 	return handle;
 }
 
-void phx::gfx::GfxDeviceD3D12::DeleteCommandSignature(CommandSignatureHandle handle)
+void phx::gfx::D3D12GpuDevice::DeleteCommandSignature(CommandSignatureHandle handle)
 {
 	if (!handle.IsValid())
 	{
@@ -2647,7 +2644,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteCommandSignature(CommandSignatureHandle han
 	m_deferredQueue.push_back(d);
 }
 
-ShaderHandle phx::gfx::GfxDeviceD3D12::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
+ShaderHandle phx::gfx::D3D12GpuDevice::CreateShader(ShaderDesc const& desc, Core::Span<uint8_t> shaderByteCode)
 {
 	ShaderHandle handle = m_shaderPool.Emplace(desc, shaderByteCode.begin(), shaderByteCode.Size());
 	D3D12Shader* shaderImpl = m_shaderPool.Get(handle);
@@ -2681,7 +2678,7 @@ ShaderHandle phx::gfx::GfxDeviceD3D12::CreateShader(ShaderDesc const& desc, Core
 	return handle;
 }
 
-InputLayoutHandle phx::gfx::GfxDeviceD3D12::CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount)
+InputLayoutHandle phx::gfx::D3D12GpuDevice::CreateInputLayout(VertexAttributeDesc* desc, uint32_t attributeCount)
 {
 	InputLayoutHandle handle = m_inputLayoutPool.Emplace();
 	D3D12InputLayout* inputLayoutImpl = m_inputLayoutPool.Get(handle);
@@ -2724,7 +2721,7 @@ InputLayoutHandle phx::gfx::GfxDeviceD3D12::CreateInputLayout(VertexAttributeDes
 	return handle;
 }
 
-GraphicsPipelineHandle phx::gfx::GfxDeviceD3D12::CreateGraphicsPipeline(GraphicsPipelineDesc const& desc)
+GraphicsPipelineHandle phx::gfx::D3D12GpuDevice::CreateGraphicsPipeline(GraphicsPipelineDesc const& desc)
 {
 	D3D12GraphicsPipeline pipeline = {};
 	pipeline.Desc = desc;
@@ -2832,12 +2829,12 @@ GraphicsPipelineHandle phx::gfx::GfxDeviceD3D12::CreateGraphicsPipeline(Graphics
 	return m_graphicsPipelinePool.Insert(pipeline);
 }
 
-const GraphicsPipelineDesc& phx::gfx::GfxDeviceD3D12::GetGfxPipelineDesc(GraphicsPipelineHandle handle)
+const GraphicsPipelineDesc& phx::gfx::D3D12GpuDevice::GetGfxPipelineDesc(GraphicsPipelineHandle handle)
 {
 	return m_graphicsPipelinePool.Get(handle)->Desc;
 }
 
-void phx::gfx::GfxDeviceD3D12::DeleteGraphicsPipeline(GraphicsPipelineHandle handle)
+void phx::gfx::D3D12GpuDevice::DeleteGraphicsPipeline(GraphicsPipelineHandle handle)
 {
 	if (!handle.IsValid())
 	{
@@ -2860,7 +2857,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteGraphicsPipeline(GraphicsPipelineHandle han
 	m_deferredQueue.push_back(d);
 }
 
-ComputePipelineHandle phx::gfx::GfxDeviceD3D12::CreateComputePipeline(ComputePipelineDesc const& desc)
+ComputePipelineHandle phx::gfx::D3D12GpuDevice::CreateComputePipeline(ComputePipelineDesc const& desc)
 {
 	D3D12ComputePipeline pipeline = {};
 	pipeline.Desc = desc;
@@ -2882,7 +2879,7 @@ ComputePipelineHandle phx::gfx::GfxDeviceD3D12::CreateComputePipeline(ComputePip
 	return m_computePipelinePool.Insert(pipeline);
 }
 
-MeshPipelineHandle phx::gfx::GfxDeviceD3D12::CreateMeshPipeline(MeshPipelineDesc const& desc)
+MeshPipelineHandle phx::gfx::D3D12GpuDevice::CreateMeshPipeline(MeshPipelineDesc const& desc)
 {
 	D3D12MeshPipeline pipeline = {};
 	pipeline.Desc = desc;
@@ -3038,7 +3035,7 @@ void D3D12GraphicsDevice::DeleteMeshPipeline(MeshPipelineHandle handle)
 	m_deferredQueue.push_back(d);
 }
 
-RenderPassHandle phx::gfx::GfxDeviceD3D12::CreateRenderPass(RenderPassDesc const& desc)
+RenderPassHandle phx::gfx::D3D12GpuDevice::CreateRenderPass(RenderPassDesc const& desc)
 {
 	if (!CheckCapability(DeviceCapability::RenderPass))
 	{
@@ -3299,7 +3296,7 @@ RenderPassHandle phx::gfx::GfxDeviceD3D12::CreateRenderPass(RenderPassDesc const
 	return m_renderPassPool.Insert(renderPassImpl);
 }
 
-void phx::gfx::GfxDeviceD3D12::GetRenderPassFormats(RenderPassHandle handle, std::vector<RHIFormat>& outRtvFormats, RHIFormat& depthFormat)
+void phx::gfx::D3D12GpuDevice::GetRenderPassFormats(RenderPassHandle handle, std::vector<RHIFormat>& outRtvFormats, RHIFormat& depthFormat)
 {
 	D3D12RenderPass* renderPass = GetRenderPassPool().Get(handle);
 	if (!renderPass)
@@ -3323,13 +3320,13 @@ void phx::gfx::GfxDeviceD3D12::GetRenderPassFormats(RenderPassHandle handle, std
 	}
 }
 
-RenderPassDesc phx::gfx::GfxDeviceD3D12::GetRenderPassDesc(RenderPassHandle handle)
+RenderPassDesc phx::gfx::D3D12GpuDevice::GetRenderPassDesc(RenderPassHandle handle)
 {
 	D3D12RenderPass* renderPass = GetRenderPassPool().Get(handle);
 	return renderPass->Desc;
 }
 
-void phx::gfx::GfxDeviceD3D12::DeleteRenderPass(RenderPassHandle handle)
+void phx::gfx::D3D12GpuDevice::DeleteRenderPass(RenderPassHandle handle)
 {
 	if (!handle.IsValid())
 	{
@@ -3353,7 +3350,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteRenderPass(RenderPassHandle handle)
 	m_deferredQueue.push_back(d);
 }
 
-TextureHandle phx::gfx::GfxDeviceD3D12::CreateTexture(TextureDesc const& desc)
+TextureHandle phx::gfx::D3D12GpuDevice::CreateTexture(TextureDesc const& desc)
 {
 	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
 	d3d12OptimizedClearValue.Color[0] = desc.OptmizedClearValue.Colour.R;
@@ -3485,13 +3482,13 @@ TextureHandle phx::gfx::GfxDeviceD3D12::CreateTexture(TextureDesc const& desc)
 	return texture;
 }
 
-const TextureDesc& phx::gfx::GfxDeviceD3D12::GetTextureDesc(TextureHandle handle)
+const TextureDesc& phx::gfx::D3D12GpuDevice::GetTextureDesc(TextureHandle handle)
 {
 	const D3D12Texture* texture = m_texturePool.Get(handle);
 	return texture->Desc;
 }
 
-DescriptorIndex phx::gfx::GfxDeviceD3D12::GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource)
+DescriptorIndex phx::gfx::D3D12GpuDevice::GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource)
 {
 	const D3D12Texture* texture = m_texturePool.Get(handle);
 
@@ -3530,7 +3527,7 @@ DescriptorIndex phx::gfx::GfxDeviceD3D12::GetDescriptorIndex(TextureHandle handl
 	}
 }
 
-void phx::gfx::GfxDeviceD3D12::DeleteTexture(TextureHandle handle)
+void phx::gfx::D3D12GpuDevice::DeleteTexture(TextureHandle handle)
 {
 	if (!handle.IsValid())
 	{
@@ -3571,7 +3568,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteTexture(TextureHandle handle)
 	m_deferredQueue.push_back(d);
 }
 
-BufferHandle phx::gfx::GfxDeviceD3D12::CreateIndexBuffer(BufferDesc const& desc)
+BufferHandle phx::gfx::D3D12GpuDevice::CreateIndexBuffer(BufferDesc const& desc)
 {
 	BufferHandle buffer = m_bufferPool.Emplace();
 	D3D12Buffer& bufferImpl = *m_bufferPool.Get(buffer);
@@ -3594,7 +3591,7 @@ BufferHandle phx::gfx::GfxDeviceD3D12::CreateIndexBuffer(BufferDesc const& desc)
 	return buffer;
 }
 
-BufferHandle phx::gfx::GfxDeviceD3D12::CreateVertexBuffer(BufferDesc const& desc)
+BufferHandle phx::gfx::D3D12GpuDevice::CreateVertexBuffer(BufferDesc const& desc)
 {
 	BufferHandle buffer = m_bufferPool.Emplace();
 	D3D12Buffer& bufferImpl = *m_bufferPool.Get(buffer);
@@ -3710,7 +3707,7 @@ void D3D12GraphicsDevice::DeleteBuffer(BufferHandle handle)
 	m_deferredQueue.push_back(d);
 }
 
-RTAccelerationStructureHandle phx::gfx::GfxDeviceD3D12::CreateRTAccelerationStructure(RTAccelerationStructureDesc const& desc)
+RTAccelerationStructureHandle phx::gfx::D3D12GpuDevice::CreateRTAccelerationStructure(RTAccelerationStructureDesc const& desc)
 {
 	RTAccelerationStructureHandle handle = m_rtAccelerationStructurePool.Emplace();
 	D3D12RTAccelerationStructure& rtAccelerationStructureImpl = *m_rtAccelerationStructurePool.Get(handle);
@@ -3885,13 +3882,13 @@ RTAccelerationStructureHandle phx::gfx::GfxDeviceD3D12::CreateRTAccelerationStru
 	return handle;
 }
 
-const RTAccelerationStructureDesc& phx::gfx::GfxDeviceD3D12::GetRTAccelerationStructureDesc(RTAccelerationStructureHandle handle)
+const RTAccelerationStructureDesc& phx::gfx::D3D12GpuDevice::GetRTAccelerationStructureDesc(RTAccelerationStructureHandle handle)
 {
 	assert(handle.IsValid());
 	return m_rtAccelerationStructurePool.Get(handle)->Desc;
 }
 
-void phx::gfx::GfxDeviceD3D12::WriteRTTopLevelAccelerationStructureInstance(RTAccelerationStructureDesc::TopLevelDesc::Instance const& instance, void* dest)
+void phx::gfx::D3D12GpuDevice::WriteRTTopLevelAccelerationStructureInstance(RTAccelerationStructureDesc::TopLevelDesc::Instance const& instance, void* dest)
 {
 	assert(instance.BottomLevel.IsValid());
 
@@ -3906,12 +3903,12 @@ void phx::gfx::GfxDeviceD3D12::WriteRTTopLevelAccelerationStructureInstance(RTAc
 	std::memcpy(dest, &tmp, sizeof(D3D12_RAYTRACING_INSTANCE_DESC)); // memcpy whole structure into mapped pointer to avoid read from uncached memory
 }
 
-size_t phx::gfx::GfxDeviceD3D12::GetRTTopLevelAccelerationStructureInstanceSize()
+size_t phx::gfx::D3D12GpuDevice::GetRTTopLevelAccelerationStructureInstanceSize()
 {
 	return sizeof(D3D12_RAYTRACING_INSTANCE_DESC);
 }
 
-void phx::gfx::GfxDeviceD3D12::DeleteRtAccelerationStructure(RTAccelerationStructureHandle handle)
+void phx::gfx::D3D12GpuDevice::DeleteRtAccelerationStructure(RTAccelerationStructureHandle handle)
 {
 	if (!handle.IsValid())
 	{
@@ -3946,7 +3943,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteRtAccelerationStructure(RTAccelerationStruc
 	m_deferredQueue.push_back(d);
 }
 
-DescriptorIndex phx::gfx::GfxDeviceD3D12::GetDescriptorIndex(RTAccelerationStructureHandle handle)
+DescriptorIndex phx::gfx::D3D12GpuDevice::GetDescriptorIndex(RTAccelerationStructureHandle handle)
 {
 	const D3D12RTAccelerationStructure* impl = m_rtAccelerationStructurePool.Get(handle);
 
@@ -3958,7 +3955,7 @@ DescriptorIndex phx::gfx::GfxDeviceD3D12::GetDescriptorIndex(RTAccelerationStruc
 	return impl->Srv.BindlessIndex;
 }
 
-int phx::gfx::GfxDeviceD3D12::CreateSubresource(TextureHandle texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+int phx::gfx::D3D12GpuDevice::CreateSubresource(TextureHandle texture, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
 	switch (subresourceType)
 	{
@@ -3975,7 +3972,7 @@ int phx::gfx::GfxDeviceD3D12::CreateSubresource(TextureHandle texture, Subresouc
 	}
 }
 
-int phx::gfx::GfxDeviceD3D12::(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size)
+int phx::gfx::D3D12GpuDevice::(BufferHandle buffer, SubresouceType subresourceType, size_t offset, size_t size)
 {
 	switch (subresourceType)CreateSubresource
 	{
@@ -3988,7 +3985,7 @@ int phx::gfx::GfxDeviceD3D12::(BufferHandle buffer, SubresouceType subresourceTy
 	}
 }
 
-TimerQueryHandle phx::gfx::GfxDeviceD3D12::CreateTimerQuery()
+TimerQueryHandle phx::gfx::D3D12GpuDevice::CreateTimerQuery()
 {
 
 	int queryIndex = m_timerQueryIndexPool.Allocate();
@@ -4011,7 +4008,7 @@ TimerQueryHandle phx::gfx::GfxDeviceD3D12::CreateTimerQuery()
 	return handle;
 }
 
-void phx::gfx::GfxDeviceD3D12::DeleteTimerQuery(TimerQueryHandle query)
+void phx::gfx::D3D12GpuDevice::DeleteTimerQuery(TimerQueryHandle query)
 {
 	if (!query.IsValid())
 	{
@@ -4036,7 +4033,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteTimerQuery(TimerQueryHandle query)
 	m_deferredQueue.push_back(d);
 }
 
-bool phx::gfx::GfxDeviceD3D12::PollTimerQuery(TimerQueryHandle query)
+bool phx::gfx::D3D12GpuDevice::PollTimerQuery(TimerQueryHandle query)
 {
 	assert(query.IsValid());
 	D3D12TimerQuery* queryImpl = m_timerQueryPool.Get(query);
@@ -4060,7 +4057,7 @@ bool phx::gfx::GfxDeviceD3D12::PollTimerQuery(TimerQueryHandle query)
 	return false;
 }
 
-TimeStep phx::gfx::GfxDeviceD3D12::GetTimerQueryTime(TimerQueryHandle query)
+TimeStep phx::gfx::D3D12GpuDevice::GetTimerQueryTime(TimerQueryHandle query)
 {
 	assert(query.IsValid());
 	D3D12TimerQuery* queryImpl = m_timerQueryPool.Get(query);
@@ -4102,7 +4099,7 @@ TimeStep phx::gfx::GfxDeviceD3D12::GetTimerQueryTime(TimerQueryHandle query)
 	return queryImpl->Time;
 }
 
-void phx::gfx::GfxDeviceD3D12::ResetTimerQuery(TimerQueryHandle query)
+void phx::gfx::D3D12GpuDevice::ResetTimerQuery(TimerQueryHandle query)
 {
 	assert(query.IsValid());
 	D3D12TimerQuery* queryImpl = m_timerQueryPool.Get(query);
@@ -4113,7 +4110,7 @@ void phx::gfx::GfxDeviceD3D12::ResetTimerQuery(TimerQueryHandle query)
 	queryImpl->CommandQueue = nullptr;
 }
 
-ExecutionReceipt phx::gfx::GfxDeviceD3D12::ExecuteCommandLists(
+ExecutionReceipt phx::gfx::D3D12GpuDevice::ExecuteCommandLists(
 	Core::Span<ICommandList*> commandLists,
 	bool waitForCompletion,
 	CommandQueueType executionQueue)
@@ -4187,7 +4184,7 @@ ExecutionReceipt phx::gfx::GfxDeviceD3D12::ExecuteCommandLists(
 	return { fenceValue, executionQueue };
 }
 
-void phx::gfx::GfxDeviceD3D12::BeginCapture(std::wstring const& filename)
+void phx::gfx::D3D12GpuDevice::BeginCapture(std::wstring const& filename)
 {
 #if ENABLE_PIX_CAPUTRE
 	if (m_pixCaptureModule)
@@ -4199,7 +4196,7 @@ void phx::gfx::GfxDeviceD3D12::BeginCapture(std::wstring const& filename)
 #endif
 }
 
-void phx::gfx::GfxDeviceD3D12::EndCapture(bool discard)
+void phx::gfx::D3D12GpuDevice::EndCapture(bool discard)
 {
 #if ENABLE_PIX_CAPUTRE
 	if (m_pixCaptureModule)
@@ -4209,18 +4206,18 @@ void phx::gfx::GfxDeviceD3D12::EndCapture(bool discard)
 #endif
 }
 
-bool phx::gfx::GfxDeviceD3D12::CheckCapability(DeviceCapability deviceCapability)
+bool phx::gfx::D3D12GpuDevice::CheckCapability(DeviceCapability deviceCapability)
 {
 	return (m_capabilities & deviceCapability) == deviceCapability;
 }
 
-bool phx::gfx::GfxDeviceD3D12::IsDevicedRemoved()
+bool phx::gfx::D3D12GpuDevice::IsDevicedRemoved()
 {
 	HRESULT hr = GetD3D12Device5()->GetDeviceRemovedReason();
 	return FAILED(hr);
 }
 
-void phx::gfx::GfxDeviceD3D12::DeleteD3DResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource)
+void phx::gfx::D3D12GpuDevice::DeleteD3DResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource)
 {
 	DeferredItem d =
 	{
@@ -4234,7 +4231,7 @@ void phx::gfx::GfxDeviceD3D12::DeleteD3DResource(Microsoft::WRL::ComPtr<ID3D12Re
 	m_deferredQueue.push_back(d);
 }
 
-TextureHandle phx::gfx::GfxDeviceD3D12::CreateRenderTarget(
+TextureHandle phx::gfx::D3D12GpuDevice::CreateRenderTarget(
 	TextureDesc const& desc,
 	Microsoft::WRL::ComPtr<ID3D12Resource> d3d12TextureResource)
 {
@@ -4260,7 +4257,7 @@ TextureHandle phx::gfx::GfxDeviceD3D12::CreateRenderTarget(
 	return m_texturePool.Insert(texture);
 }
 
-TextureHandle phx::gfx::GfxDeviceD3D12::CreateTexture(TextureDesc const& desc, Microsoft::WRL::ComPtr<ID3D12Resource> d3d12Resource)
+TextureHandle phx::gfx::D3D12GpuDevice::CreateTexture(TextureDesc const& desc, Microsoft::WRL::ComPtr<ID3D12Resource> d3d12Resource)
 {
 	// Construct Texture
 	D3D12Texture texture = {};
@@ -4473,7 +4470,7 @@ RootSignatureHandle PhxEngine::RHI::Dx12::GraphicsDevice::CreateRootSignature(Gr
 
 
 	// TODO: remove
-void phx::gfx::GfxDeviceD3D12::RunGarbageCollection(uint64_t completedFrame)
+void phx::gfx::D3D12GpuDevice::RunGarbageCollection(uint64_t completedFrame)
 {
 	while (!m_deferredQueue.empty())
 	{
@@ -4500,7 +4497,7 @@ void phx::gfx::GfxDeviceD3D12::RunGarbageCollection(uint64_t completedFrame)
 	}
 }
 
-void phx::gfx::GfxDeviceD3D12::TranslateBlendState(BlendRenderState const& inState, D3D12_BLEND_DESC& outState)
+void phx::gfx::D3D12GpuDevice::TranslateBlendState(BlendRenderState const& inState, D3D12_BLEND_DESC& outState)
 {
 	outState.AlphaToCoverageEnable = inState.alphaToCoverageEnable;
 	outState.IndependentBlendEnable = true;
@@ -4522,7 +4519,7 @@ void phx::gfx::GfxDeviceD3D12::TranslateBlendState(BlendRenderState const& inSta
 	}
 }
 
-void phx::gfx::GfxDeviceD3D12::TranslateDepthStencilState(DepthStencilRenderState const& inState, D3D12_DEPTH_STENCIL_DESC& outState)
+void phx::gfx::D3D12GpuDevice::TranslateDepthStencilState(DepthStencilRenderState const& inState, D3D12_DEPTH_STENCIL_DESC& outState)
 {
 	outState.DepthEnable = inState.DepthTestEnable ? TRUE : FALSE;
 	outState.DepthWriteMask = inState.DepthWriteEnable ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
@@ -4540,7 +4537,7 @@ void phx::gfx::GfxDeviceD3D12::TranslateDepthStencilState(DepthStencilRenderStat
 	outState.BackFace.StencilFunc = ConvertComparisonFunc(inState.BackFaceStencil.StencilFunc);
 }
 
-void phx::gfx::GfxDeviceD3D12::TranslateRasterState(RasterRenderState const& inState, D3D12_RASTERIZER_DESC& outState)
+void phx::gfx::D3D12GpuDevice::TranslateRasterState(RasterRenderState const& inState, D3D12_RASTERIZER_DESC& outState)
 {
 	switch (inState.FillMode)
 	{
@@ -4580,7 +4577,7 @@ void phx::gfx::GfxDeviceD3D12::TranslateRasterState(RasterRenderState const& inS
 	outState.ForcedSampleCount = inState.ForcedSampleCount;
 }
 
-size_t phx::gfx::GfxDeviceD3D12::GetCurrentBackBufferIndex() const
+size_t phx::gfx::D3D12GpuDevice::GetCurrentBackBufferIndex() const
 {
 	assert(m_activeViewport);
 	auto retVal = m_activeViewport->NativeSwapchain4->GetCurrentBackBufferIndex();
@@ -4604,7 +4601,7 @@ void D3D12GraphicsDevice::CreateGpuTimestampQueryHeap(uint32_t queryCount)
 			IID_PPV_ARGS(&m_gpuTimestampQueryHeap)));
 }
 
-void phx::gfx::GfxDeviceD3D12::InitializeD3D12Device(IDXGIAdapter* gpuAdapter)
+void phx::gfx::D3D12GpuDevice::InitializeD3D12Device(IDXGIAdapter* gpuAdapter)
 {
 	ThrowIfFailed(
 		D3D12CreateDevice(
@@ -4772,7 +4769,7 @@ HRESULT D3D12Adapter::EnumAdapters(uint32_t adapterIndex, IDXGIFactory6* factory
 void phx::gfx::GpuTimerManager::Initialize()
 {
 	uint64_t GpuFrequency;
-	GfxDeviceD3D12::GetGfxQueue().Queue->GetTimestampFrequency(&GpuFrequency);
+	D3D12GpuDevice::Instance()->GetGfxQueue().Queue->GetTimestampFrequency(&GpuFrequency);
 	GpuTickDelta = 1.0 / static_cast<double>(GpuFrequency);
 
 	D3D12_HEAP_PROPERTIES HeapProps;
@@ -4798,7 +4795,7 @@ void phx::gfx::GpuTimerManager::Initialize()
 	for (int i = 0; i < ReadBackBuffers.size(); i++)
 	{
 		ThrowIfFailed(
-			GfxDeviceD3D12::GetD3D12Device()->CreateCommittedResource(&
+			D3D12GpuDevice::Instance()->GetD3D12Device()->CreateCommittedResource(&
 				HeapProps,
 				D3D12_HEAP_FLAG_NONE,
 				&BufferDesc,
@@ -4811,12 +4808,12 @@ void phx::gfx::GpuTimerManager::Initialize()
 	QueryHeapDesc.Count = MaxNumTimers * 2;
 	QueryHeapDesc.NodeMask = 1;
 	QueryHeapDesc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
-	ThrowIfFailed(GfxDeviceD3D12::GetD3D12Device2()->CreateQueryHeap(&QueryHeapDesc, IID_PPV_ARGS(&QueryHeap)));
+	ThrowIfFailed(D3D12GpuDevice::Instance()->GetD3D12Device2()->CreateQueryHeap(&QueryHeapDesc, IID_PPV_ARGS(&QueryHeap)));
 	QueryHeap->SetName(L"GpuTimeStamp QueryHeap");
 
 	// Pre-seed the query heap with valid values so that resolving them doesn't
 	// trigger debug layer errors.
-	platform::CommandCtxD3D12* Context = GfxDeviceD3D12::BeginGfxContext();
+	platform::CommandCtxD3D12* Context = D3D12GpuDevice::Instance()->BeginGfxContext();
 	for (uint32_t i = 0; i < MaxNumTimers * 2; ++i)
 	{
 		Context->InsertTimeStamp(QueryHeap.Get(), i);
@@ -4825,7 +4822,7 @@ void phx::gfx::GpuTimerManager::Initialize()
 
 void phx::gfx::GpuTimerManager::BeginReadBack()
 {
-	Microsoft::WRL::ComPtr<ID3D12Resource>& currentBuffer = ReadBackBuffers[GfxDeviceD3D12::GetFrameCount() % ReadBackBuffers.size()];
+	Microsoft::WRL::ComPtr<ID3D12Resource>& currentBuffer = ReadBackBuffers[D3D12GpuDevice::Instance()->GetFrameCount() % ReadBackBuffers.size()];
 	D3D12_RANGE Range;
 	Range.Begin = 0;
 	Range.End = (NumTimers * 2) * sizeof(uint64_t);
@@ -4845,16 +4842,16 @@ void phx::gfx::GpuTimerManager::BeginReadBack()
 
 void phx::gfx::GpuTimerManager::EndReadBack()
 {
-	Microsoft::WRL::ComPtr<ID3D12Resource>& currentBuffer = ReadBackBuffers[GfxDeviceD3D12::GetFrameCount() % ReadBackBuffers.size()];
+	Microsoft::WRL::ComPtr<ID3D12Resource>& currentBuffer = ReadBackBuffers[D3D12GpuDevice::Instance()->GetFrameCount() % ReadBackBuffers.size()];
 	// Unmap with an empty range to indicate nothing was written by the CPU
 	D3D12_RANGE EmptyRange = {};
 	currentBuffer->Unmap(0, &EmptyRange);
 	TimeStampBuffer = nullptr;
 
 
-	Microsoft::WRL::ComPtr<ID3D12Resource>& nextBuffer = ReadBackBuffers[(GfxDeviceD3D12::GetFrameCount() + 1) % ReadBackBuffers.size()];
+	Microsoft::WRL::ComPtr<ID3D12Resource>& nextBuffer = ReadBackBuffers[(D3D12GpuDevice::Instance()->GetFrameCount() + 1) % ReadBackBuffers.size()];
 	// Set next Readback Buffer.
-	platform::CommandCtxD3D12* ctx = GfxDeviceD3D12::BeginGfxContext();
+	platform::CommandCtxD3D12* ctx = D3D12GpuDevice::Instance()->BeginGfxContext();
 	ctx->InsertTimeStamp(this->QueryHeap.Get(), 1);
 	ctx->ResolveTimeStamps(nextBuffer.Get(), QueryHeap.Get(), NumTimers * 2);
 	ctx->InsertTimeStamp(QueryHeap.Get(), 0);

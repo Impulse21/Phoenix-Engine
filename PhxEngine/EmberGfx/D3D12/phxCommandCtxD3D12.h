@@ -6,7 +6,7 @@
 
 namespace phx::gfx
 {
-	class GfxDeviceD3D12;
+	class D3D12GpuDevice;
 }
 
 namespace phx::gfx
@@ -66,7 +66,7 @@ namespace phx::gfx::platform
 
 	class CommandCtxD3D12 final
 	{
-		friend GfxDeviceD3D12;
+		friend D3D12GpuDevice;
 	public:
 		CommandCtxD3D12() = default;
 		~CommandCtxD3D12() = default;
@@ -112,7 +112,7 @@ namespace phx::gfx::platform
 
 	private:
 		std::vector<D3D12_RESOURCE_BARRIER> m_barrierMemoryPool;
-		GfxDeviceD3D12* m_device;
+		D3D12GpuDevice* m_device;
 		size_t m_id = ~0ul;
 		CommandQueueType m_queueType = CommandQueueType::Graphics;
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;

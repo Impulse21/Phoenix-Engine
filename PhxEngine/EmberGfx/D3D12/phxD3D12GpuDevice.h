@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EmberGfx/phxHandlePool.h"
+#include "EmberGfx/phxGpuDeviceInterface.h"
 
 #include "phxGfxDescriptorHeapsD3D12.h"
 #include "phxCommandCtxD3D12.h"
@@ -18,8 +19,8 @@
 namespace phx::gfx
 {
 	constexpr uint32_t kTimestampQueryHeapSize = 1024; // 4096;
-	static const GUID RenderdocUUID = { 0xa7aa6116, 0x9c8d, 0x4bba, { 0x90, 0x83, 0xb4, 0xd8, 0x16, 0xb7, 0x1b, 0x78 } };
-	static const GUID PixUUID = { 0x9f251514, 0x9d4d, 0x4902, { 0x9d, 0x60, 0x18, 0x98, 0x8a, 0xb7, 0xd4, 0xb5 } };
+	const GUID RenderdocUUID = { 0xa7aa6116, 0x9c8d, 0x4bba, { 0x90, 0x83, 0xb4, 0xd8, 0x16, 0xb7, 0x1b, 0x78 } };
+	const GUID PixUUID = { 0x9f251514, 0x9d4d, 0x4902, { 0x9d, 0x60, 0x18, 0x98, 0x8a, 0xb7, 0xd4, 0xb5 } };
 	
 	struct D3D12DeviceBasicInfo final
 	{
@@ -247,148 +248,154 @@ namespace phx::gfx
 		double GpuTickDelta = 0.0;
 	};
 
-	class GfxDeviceD3D12 final
+	class D3D12GpuDevice final : public IGpuDevice
 	{
 	public:
-#if false
-		inline static GfxDeviceD3D12* Instance() { return Singleton; }
-#endif
+		static D3D12GpuDevice* Instance() { return Singleton; }
 	public:
-		GfxDeviceD3D12();
-		~GfxDeviceD3D12();
+		D3D12GpuDevice();
+		~D3D12GpuDevice();
 
-		static void Initialize(SwapChainDesc const& swapChainDesc, void* windowHandle = nullptr);
-		static void Finalize();
+		void Initialize(SwapChainDesc const& swapChainDesc, bool enableValidationLayers, void* windowHandle = nullptr) override;
+		void Finalize() override;
 
-		static void WaitForIdle();
-		static void ResizeSwapChain(SwapChainDesc const& swapChainDesc);
+		void WaitForIdle();
+		void ResizeSwapChain(SwapChainDesc const& swapChainDesc);
 
-		static platform::CommandCtxD3D12* BeginGfxContext();
-		static platform::CommandCtxD3D12* BeginComputeContext();
+		ICommandCtx* BeginCommandCtx(phx::gfx::CommandQueueType type = CommandQueueType::Graphics) override;
+		void SubmitFrame() override;
 
-		static void SubmitFrame();
+		platform::CommandCtxD3D12* BeginGfxContext();
+		platform::CommandCtxD3D12* BeginComputeContext();
 
-		static void BeginGpuTimerReadback();
-		static float GetTime(TimerQueryHandle handle);
-		static void EndGpuTimerReadback();
+		void BeginGpuTimerReadback();
+		float GetTime(TimerQueryHandle handle);
+		void EndGpuTimerReadback();
 
 
 	public:
-		static GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
-		static void DeleteResource(GfxPipelineHandle handle);
+		ShaderHandle CreateShader(ShaderDesc const& desc) override;
+		void DeleteShader(ShaderHandle handle)  override;
 
-		static TextureHandle CreateTexture(TextureDesc const& desc);
-		static void DeleteResource(TextureHandle handle);
+		PipelineStateHandle CreatePipeline(PipelineStateDesc2 const& desc) override;
+		void DeletePipeline(PipelineStateHandle handle)  override;
 
-		static InputLayoutHandle CreateInputLayout(Span<VertexAttributeDesc> desc);
-		static void DeleteResource(InputLayoutHandle handle);
+		GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
+		void DeleteResource(GfxPipelineHandle handle);
 
-		static BufferHandle CreateBuffer(BufferDesc const& desc);
-		static void DeleteResource(BufferHandle handle);
+		TextureHandle CreateTexture(TextureDesc const& desc);
+		void DeleteResource(TextureHandle handle);
 
-		static void DeleteResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource);
+		InputLayoutHandle CreateInputLayout(Span<VertexAttributeDesc> desc);
+		void DeleteResource(InputLayoutHandle handle);
 
-		static DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type = SubresouceType::SRV, int subResource = -1);
+		BufferHandle CreateBuffer(BufferDesc const& desc);
+		void DeleteResource(BufferHandle handle);
 
-		static DescriptorIndex GetDescriptorIndex(BufferHandle handle, SubresouceType type = SubresouceType::SRV, int subResource = -1);
+		void DeleteResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource);
 
-		static TimerQueryHandle CreateTimerQueryHandle() { return m_gpuTimerManager.NewTimer(); }
+		DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type = SubresouceType::SRV, int subResource = -1);
+
+		DescriptorIndex GetDescriptorIndex(BufferHandle handle, SubresouceType type = SubresouceType::SRV, int subResource = -1);
+
+		TimerQueryHandle CreateTimerQueryHandle() { return m_gpuTimerManager.NewTimer(); }
 
 		// -- Platform specific ---
 	public:
-		static D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView() { return m_swapChain.GetBackBufferView(); }
-		static ID3D12Resource* GetBackBuffer() { return m_swapChain.GetBackBuffer(); }
-		static UINT GetBackBufferIndex() { return m_swapChain.SwapChain4->GetCurrentBackBufferIndex(); }
-		static size_t GetFrameCount() { return m_frameCount; }
+		D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView() { return m_swapChain.GetBackBufferView(); }
+		ID3D12Resource* GetBackBuffer() { return m_swapChain.GetBackBuffer(); }
+		UINT GetBackBufferIndex() { return m_swapChain.SwapChain4->GetCurrentBackBufferIndex(); }
+		size_t GetFrameCount() { return m_frameCount; }
 
-		static ID3D12Device* GetD3D12Device() { return m_d3d12Device.Get(); }
-		static ID3D12Device2* GetD3D12Device2() { return m_d3d12Device2.Get(); }
-		static ID3D12Device5* GetD3D12Device5() { return m_d3d12Device5.Get(); }
+		ID3D12Device* GetD3D12Device() { return m_d3d12Device.Get(); }
+		ID3D12Device2* GetD3D12Device2() { return m_d3d12Device2.Get(); }
+		ID3D12Device5* GetD3D12Device5() { return m_d3d12Device5.Get(); }
 
-		static IDXGIFactory6* GetDxgiFactory() { return m_factory.Get(); }
-		static IDXGIAdapter* GetDxgiAdapter() { return m_gpuAdapter.NativeAdapter.Get(); }
+		IDXGIFactory6* GetDxgiFactory() { return m_factory.Get(); }
+		IDXGIAdapter* GetDxgiAdapter() { return m_gpuAdapter.NativeAdapter.Get(); }
 
-		static D3D12CommandQueue& GetQueue(CommandQueueType type) { return m_commandQueues[type]; }
-		static SpanMutable<D3D12CommandQueue> GetQueues() { return SpanMutable(m_commandQueues); }
-		static D3D12CommandQueue& GetGfxQueue() { return m_commandQueues[CommandQueueType::Graphics]; }
-		static D3D12CommandQueue& GetComputeQueue() { return m_commandQueues[CommandQueueType::Compute]; }
-		static D3D12CommandQueue& GetCopyQueue() { return m_commandQueues[CommandQueueType::Copy]; }
+		D3D12CommandQueue& GetQueue(CommandQueueType type) { return m_commandQueues[type]; }
+		SpanMutable<D3D12CommandQueue> GetQueues() { return SpanMutable(m_commandQueues); }
+		D3D12CommandQueue& GetGfxQueue() { return m_commandQueues[CommandQueueType::Graphics]; }
+		D3D12CommandQueue& GetComputeQueue() { return m_commandQueues[CommandQueueType::Compute]; }
+		D3D12CommandQueue& GetCopyQueue() { return m_commandQueues[CommandQueueType::Copy]; }
 
-		static CpuDescriptorHeap& GetResourceCpuHeap() { return m_cpuDescriptorHeaps[DescriptorHeapTypes::CBV_SRV_UAV]; }
-		static CpuDescriptorHeap& GetRtvCpuHeap() { return m_cpuDescriptorHeaps[DescriptorHeapTypes::RTV]; }
-		static CpuDescriptorHeap& GetDsvCpuHeap() { return m_cpuDescriptorHeaps[DescriptorHeapTypes::DSV]; }
-		static Span<GpuDescriptorHeap> GetGpuDescriptorHeaps() { return Span<GpuDescriptorHeap>(m_gpuDescriptorHeaps.data(), m_gpuDescriptorHeaps.size()); }
-		static GpuTimerManager& GetGpuTimerManager() { return m_gpuTimerManager; }
-		static ResourceRegistryD3D12& GetRegistry() { return m_resourceRegistry; }
+		CpuDescriptorHeap& GetResourceCpuHeap() { return m_cpuDescriptorHeaps[DescriptorHeapTypes::CBV_SRV_UAV]; }
+		CpuDescriptorHeap& GetRtvCpuHeap() { return m_cpuDescriptorHeaps[DescriptorHeapTypes::RTV]; }
+		CpuDescriptorHeap& GetDsvCpuHeap() { return m_cpuDescriptorHeaps[DescriptorHeapTypes::DSV]; }
+		Span<GpuDescriptorHeap> GetGpuDescriptorHeaps() { return Span<GpuDescriptorHeap>(m_gpuDescriptorHeaps.data(), m_gpuDescriptorHeaps.size()); }
+		GpuTimerManager& GetGpuTimerManager() { return m_gpuTimerManager; }
+		ResourceRegistryD3D12& GetRegistry() { return m_resourceRegistry; }
 
-		static void PollDebugMessages();
+		void PollDebugMessages();
 
-		static GpuRingAllocator* GetDynamicPageAllocator() { return &m_tempPageAllocator; }
+		GpuRingAllocator* GetDynamicPageAllocator() { return &m_tempPageAllocator; }
 	private:
-		static void Initialize();
-		static void InitializeD3D12Context(IDXGIAdapter* gpuAdapter);
-		static void CreateSwapChain(SwapChainDesc const& desc, HWND hwnd);
+		void Initialize();
+		void InitializeD3D12Context(IDXGIAdapter* gpuAdapter);
+		void CreateSwapChain(SwapChainDesc const& desc, HWND hwnd);
 
-		static platform::CommandCtxD3D12* BeginCommandRecording(CommandQueueType type);
+		platform::CommandCtxD3D12* BeginCommandRecording(CommandQueueType type);
 
-		static void SubmitCommandLists();
-		static void Present();
-		static void RunGarbageCollection(uint64_t completedFrame = ~0ul);
+		void SubmitCommandLists();
+		void Present();
+		void RunGarbageCollection(uint64_t completedFrame = ~0ul);
 
-		static int CreateSubresource(BufferHandle buffer, BufferDesc const& desc, SubresouceType subresourceType, size_t offset, size_t size = ~0u);
-		static int CreateSubresource(TextureHandle texture, TextureDesc const& desc, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+		int CreateSubresource(BufferHandle buffer, BufferDesc const& desc, SubresouceType subresourceType, size_t offset, size_t size = ~0u);
+		int CreateSubresource(TextureHandle texture, TextureDesc const& desc, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
 
-		static int CreateShaderResourceView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
-		static int CreateRenderTargetView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
-		static int CreateDepthStencilView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
-		static int CreateUnorderedAccessView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+		int CreateShaderResourceView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+		int CreateRenderTargetView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+		int CreateDepthStencilView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+		int CreateUnorderedAccessView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
 
-		static int CreateShaderResourceView(BufferHandle buffer, BufferDesc const& desc, size_t offset, size_t size);
-		static int CreateUnorderedAccessView(BufferHandle buffer, BufferDesc const& desc, size_t offset, size_t size);
+		int CreateShaderResourceView(BufferHandle buffer, BufferDesc const& desc, size_t offset, size_t size);
+		int CreateUnorderedAccessView(BufferHandle buffer, BufferDesc const& desc, size_t offset, size_t size);
 
 	private:
-		// inline static GfxDeviceD3D12* Singleton = nullptr;
+		inline static D3D12GpuDevice* Singleton = nullptr;
 
-		inline static Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
-		inline static Microsoft::WRL::ComPtr<ID3D12Device> m_d3d12Device;
-		inline static Microsoft::WRL::ComPtr<ID3D12Device2> m_d3d12Device2;
-		inline static Microsoft::WRL::ComPtr<ID3D12Device5> m_d3d12Device5;
-		inline static Microsoft::WRL::ComPtr<D3D12MA::Allocator> m_d3d12MemAllocator;
+		bool m_enableDebugLayers = false;
+		Microsoft::WRL::ComPtr<IDXGIFactory6> m_factory;
+		Microsoft::WRL::ComPtr<ID3D12Device> m_d3d12Device;
+		Microsoft::WRL::ComPtr<ID3D12Device2> m_d3d12Device2;
+		Microsoft::WRL::ComPtr<ID3D12Device5> m_d3d12Device5;
+		Microsoft::WRL::ComPtr<D3D12MA::Allocator> m_d3d12MemAllocator;
 		
-		inline static D3D12Adapter m_gpuAdapter;
-		inline static D3D12SwapChain m_swapChain;
+		D3D12Adapter m_gpuAdapter;
+		D3D12SwapChain m_swapChain;
 
-		inline static D3D12_FEATURE_DATA_ROOT_SIGNATURE m_featureDataRootSignature = {};
-		inline static D3D12_FEATURE_DATA_SHADER_MODEL   m_featureDataShaderModel = {};
-		inline static ShaderModel m_minShaderModel = ShaderModel::SM_6_0;
+		D3D12_FEATURE_DATA_ROOT_SIGNATURE m_featureDataRootSignature = {};
+		D3D12_FEATURE_DATA_SHADER_MODEL   m_featureDataShaderModel = {};
+		ShaderModel m_minShaderModel = ShaderModel::SM_6_0;
 
-		inline static bool m_isUnderGraphicsDebugger = false;
-		inline static bool m_debugLayersEnabled = false;
-		inline static gfx::DeviceCapability m_capabilities;
+		bool m_isUnderGraphicsDebugger = false;
+		bool m_debugLayersEnabled = false;
+		gfx::DeviceCapability m_capabilities;
 
 		// -- Command Queues ---
-		inline static EnumArray<D3D12CommandQueue, CommandQueueType> m_commandQueues;
+		EnumArray<D3D12CommandQueue, CommandQueueType> m_commandQueues;
 
 		// -- Descriptor Heaps ---
-		inline static EnumArray<CpuDescriptorHeap, DescriptorHeapTypes> m_cpuDescriptorHeaps;
-		inline static std::array<GpuDescriptorHeap, 2> m_gpuDescriptorHeaps;
+		EnumArray<CpuDescriptorHeap, DescriptorHeapTypes> m_cpuDescriptorHeaps;
+		std::array<GpuDescriptorHeap, 2> m_gpuDescriptorHeaps;
 
-		inline static std::array<EnumArray<Microsoft::WRL::ComPtr<ID3D12Fence>, CommandQueueType>, kBufferCount> m_frameFences;
-		inline static uint64_t m_frameCount = 0;
+		std::array<EnumArray<Microsoft::WRL::ComPtr<ID3D12Fence>, CommandQueueType>, kBufferCount> m_frameFences;
+		uint64_t m_frameCount = 0;
 		struct DeferredItem
 		{
 			uint64_t Frame;
 			std::function<void()> DeferredFunc;
 		};
-		inline static std::deque<DeferredItem> m_deferredQueue;
+		std::deque<DeferredItem> m_deferredQueue;
 
-		inline static std::atomic_uint32_t m_activeCmdCount = 0;
-		inline static std::vector<std::unique_ptr<platform::CommandCtxD3D12>> m_commandPool;
-		inline static ResourceRegistryD3D12 m_resourceRegistry;
-		inline static BindlessDescriptorTable m_bindlessDescritorTable;
-		inline static GpuRingAllocator m_tempPageAllocator;
+		std::atomic_uint32_t m_activeCmdCount = 0;
+		std::vector<std::unique_ptr<platform::CommandCtxD3D12>> m_commandPool;
+		ResourceRegistryD3D12 m_resourceRegistry;
+		BindlessDescriptorTable m_bindlessDescritorTable;
+		GpuRingAllocator m_tempPageAllocator;
 
-		inline static GpuTimerManager m_gpuTimerManager;
+		GpuTimerManager m_gpuTimerManager;
 	};
 
 }

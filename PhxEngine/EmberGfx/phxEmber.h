@@ -3,13 +3,11 @@
 #include "phxGfxDevice.h"
 #include "phxPlatformDetection.h"
 
-// -- Vulkan ---
+#include "phxGpuDeviceInterface.h"
 
-#include "Vulkan/phxVulkanDevice.h"
 namespace phx::gfx
 {
-
-	using GpuDevice = platform::VulkanGpuDevice;
+	using GpuDevice = IGpuDevice;
 	namespace EmberGfx
 	{
 		void Initialize(SwapChainDesc const& swapChainDesc, void* windowHandle);

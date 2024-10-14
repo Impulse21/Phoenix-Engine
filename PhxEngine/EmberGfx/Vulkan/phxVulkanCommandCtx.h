@@ -1,12 +1,19 @@
 #pragma once
 
 #include "EmberGfx/phxGfxDeviceResources.h"
+#include "EmberGfx/phxCommandCtxInterface.h"
 
 namespace phx::gfx::platform
 {
 	class VulkanGpuDevice;
-	struct CommandCtx_Vulkan
+	class  CommandCtx_Vulkan final : public ICommandCtx
 	{
+	public:
+		// -- Command Interface ----
+		void RenderPassBegin() override;
+		void RenderPassEnd() override;
+
+	public:
 		EnumArray<VkCommandBuffer, CommandQueueType>  CmdBufferVk[kBufferCount];
 		EnumArray<VkCommandPool, CommandQueueType> CmdBufferPoolVk[kBufferCount];
 
@@ -39,9 +46,5 @@ namespace phx::gfx::platform
 		{
 			return CmdBufferPoolVk[CurrentBufferIndex][QueueType];
 		}
-
-		// -- Command Interface ----
-		void RenderPassBegin();
-		void RenderPassEnd();
 	};
 }

@@ -6,6 +6,7 @@
 
 #include "phxEnumUtils.h"
 
+#include "EmberGfx/phxGpuDeviceInterface.h"
 #include "EmberGfx/phxGfxDeviceResources.h"
 #include "EmberGfx/phxHandlePool.h"
 
@@ -74,26 +75,23 @@ namespace phx::gfx::platform
 		size_t BindingHash = 0;
 	};
 
-	class VulkanGpuDevice final
+	class VulkanGpuDevice final : public IGpuDevice
 	{
 		friend CommandCtx_Vulkan;
 	public:
-		void Initialize(SwapChainDesc const& swapChainDesc, bool enableValidationLayers, void* windowHandle = nullptr);
-		void Finalize();
+		void Initialize(SwapChainDesc const& swapChainDesc, bool enableValidationLayers, void* windowHandle = nullptr) override;
+		void Finalize() override;
 
-
-		void RunGarbageCollection(uint64_t completedFrame = ~0ul);
-
-		CommandCtx_Vulkan* BeginCommandCtx(phx::gfx::CommandQueueType type = CommandQueueType::Graphics);
-		void SubmitFrame();
+		ICommandCtx* BeginCommandCtx(phx::gfx::CommandQueueType type = CommandQueueType::Graphics) override;
+		void SubmitFrame() override;
 
 		// Resource Factory
 	public:
-		ShaderHandle CreateShader(ShaderDesc const& desc);
-		void DeleteShader(ShaderHandle handle);
+		ShaderHandle CreateShader(ShaderDesc const& desc) override;
+		void DeleteShader(ShaderHandle handle) override;
 
-		PipelineStateHandle CreatePipeline(PipelineStateDesc2 const& desc);
-		void DeletePipeline(PipelineStateHandle handle);
+		PipelineStateHandle CreatePipeline(PipelineStateDesc2 const& desc) override;
+		void DeletePipeline(PipelineStateHandle handle) override;
 
 	private:
 		void CreateInstance();
@@ -118,6 +116,8 @@ namespace phx::gfx::platform
 
 		void SubmitCommandCtx();
 		void Present();
+
+		void RunGarbageCollection(uint64_t completedFrame = ~0ul);
 
 	private:
 		bool m_enableValidationLayers;

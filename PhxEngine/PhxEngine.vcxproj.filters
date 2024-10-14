@@ -78,7 +78,7 @@
     <ClInclude Include="EmberGfx\phxEmber.h">
       <Filter>EmberGfx</Filter>
     </ClInclude>
-    <ClInclude Include="EmberGfx\D3D12\phxGfxDeviceD3D12.h">
+    <ClInclude Include="EmberGfx\D3D12\phxD3D12GpuDevice.h">
       <Filter>EmberGfx\D3D12</Filter>
     </ClInclude>
     <ClInclude Include="EmberGfx\phxHandle.h">
@@ -107,9 +107,6 @@
     </ClInclude>
     <ClInclude Include="EmberGfx\phxGfxCommandCtx.h">
       <Filter>EmberGfx</Filter>
-    </ClInclude>
-    <ClInclude Include="EmberGfx\D3D12\phxGfxPlatform.h">
-      <Filter>EmberGfx\D3D12</Filter>
     </ClInclude>
     <ClInclude Include="phxRefCountPtr.h">
       <Filter>EmberGfx</Filter>
@@ -171,6 +168,12 @@
     <ClInclude Include="EmberGfx\Vulkan\phxVulkanCommandCtx.h">
       <Filter>EmberGfx\Vulkan</Filter>
     </ClInclude>
+    <ClInclude Include="EmberGfx\phxGpuDeviceInterface.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxCommandCtxInterface.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -197,7 +200,7 @@
     <ClCompile Include="EmberGfx\phxEmber.cpp">
       <Filter>EmberGfx</Filter>
     </ClCompile>
-    <ClCompile Include="EmberGfx\D3D12\phxGfxDeviceD3D12.cpp">
+    <ClCompile Include="EmberGfx\D3D12\phxD3D12GpuDevice.cpp">
       <Filter>EmberGfx\D3D12</Filter>
     </ClCompile>
     <ClCompile Include="phxLog.cpp">
