@@ -571,6 +571,11 @@ platform::CommandCtxD3D12* phx::gfx::D3D12GpuDevice::BeginComputeContext()
 	return BeginCommandRecording(CommandQueueType::Compute);
 }
 
+ICommandCtx* phx::gfx::D3D12GpuDevice::BeginCommandCtx(phx::gfx::CommandQueueType type)
+{
+	return nullptr;
+}
+
 void phx::gfx::D3D12GpuDevice::SubmitFrame()
 {
 	SubmitCommandLists();
@@ -592,6 +597,24 @@ float phx::gfx::D3D12GpuDevice::GetTime(TimerQueryHandle handle)
 void phx::gfx::D3D12GpuDevice::EndGpuTimerReadback()
 {
 	m_gpuTimerManager.EndReadBack();
+}
+
+ShaderHandle phx::gfx::D3D12GpuDevice::CreateShader(ShaderDesc const& desc)
+{
+	return ShaderHandle();
+}
+
+void phx::gfx::D3D12GpuDevice::DeleteShader(ShaderHandle handle)
+{
+}
+
+PipelineStateHandle phx::gfx::D3D12GpuDevice::CreatePipeline(PipelineStateDesc2 const& desc)
+{
+	return PipelineStateHandle();
+}
+
+void phx::gfx::D3D12GpuDevice::DeletePipeline(PipelineStateHandle handle)
+{
 }
 
 Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateEmptyRootSignature()
