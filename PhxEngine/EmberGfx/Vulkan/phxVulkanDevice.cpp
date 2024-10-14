@@ -33,7 +33,6 @@ namespace
     {
         VK_KHR_SURFACE_EXTENSION_NAME,
         VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-        VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME
     };
 
     // Optional extensions can also be done in the same way
@@ -41,6 +40,7 @@ namespace
     {
         VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
         VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME,
+        VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
     };
 
     const std::vector<const char*> kValidationLayerPriorityList[] =
@@ -1106,7 +1106,7 @@ bool phx::gfx::platform::VulkanGpuDevice::IsDeviceSuitable(VkPhysicalDevice devi
     }
 #endif
 
-    vkGetPhysicalDeviceProperties2(m_vkPhysicalDevice, &m_properties2);
+    vkGetPhysicalDeviceProperties2(device, &m_properties2);
     return true;
 }
 
