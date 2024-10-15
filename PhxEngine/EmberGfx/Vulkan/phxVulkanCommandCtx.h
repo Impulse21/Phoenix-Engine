@@ -13,6 +13,10 @@ namespace phx::gfx::platform
 		void RenderPassBegin() override;
 		void RenderPassEnd() override;
 
+		void SetPipelineState(PipelineStateHandle pipelineState) override;
+		void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t startIndex = 0, int32_t baseVertex = 0, uint32_t startInstance = 0) override;
+		void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t startVertex = 0, uint32_t startInstance = 0) override;
+
 	public:
 		EnumArray<VkCommandBuffer, CommandQueueType>  CmdBufferVk[kBufferCount];
 		EnumArray<VkCommandPool, CommandQueueType> CmdBufferPoolVk[kBufferCount];

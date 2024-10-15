@@ -85,6 +85,8 @@ namespace phx::gfx::platform
 		ICommandCtx* BeginCommandCtx(phx::gfx::CommandQueueType type = CommandQueueType::Graphics) override;
 		void SubmitFrame() override;
 
+		void WaitForIdle() override;
+
 		// Resource Factory
 	public:
 		ShaderHandle CreateShader(ShaderDesc const& desc) override;

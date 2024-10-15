@@ -186,6 +186,7 @@ void phx::gfx::platform::VulkanGpuDevice::Initialize(SwapChainDesc const& swapCh
 
 void phx::gfx::platform::VulkanGpuDevice::Finalize()
 {
+    WaitForIdle();
     this->RunGarbageCollection();
 
     DestoryFrameResources();
@@ -370,6 +371,12 @@ void phx::gfx::platform::VulkanGpuDevice::SubmitFrame()
     SubmitCommandCtx();
     Present();
     RunGarbageCollection();
+}
+
+void phx::gfx::platform::VulkanGpuDevice::WaitForIdle()
+{
+    VkResult res = vkDeviceWaitIdle(m_vkDevice);
+    assert(res == VK_SUCCESS);
 }
 
 ShaderHandle phx::gfx::platform::VulkanGpuDevice::CreateShader(ShaderDesc const& desc)

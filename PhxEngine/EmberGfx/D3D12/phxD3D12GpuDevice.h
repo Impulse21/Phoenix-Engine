@@ -259,7 +259,7 @@ namespace phx::gfx
 		void Initialize(SwapChainDesc const& swapChainDesc, bool enableValidationLayers, void* windowHandle = nullptr) override;
 		void Finalize() override;
 
-		void WaitForIdle();
+		void WaitForIdle() override;
 		void ResizeSwapChain(SwapChainDesc const& swapChainDesc);
 
 		ICommandCtx* BeginCommandCtx(phx::gfx::CommandQueueType type = CommandQueueType::Graphics) override;

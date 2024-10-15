@@ -12,6 +12,8 @@ namespace phx::gfx
 
 		virtual void Initialize(SwapChainDesc const& swapChainDesc, bool enableValidationLayers, void* windowHandle = nullptr) = 0;
 		virtual void Finalize() = 0;
+
+		virtual void WaitForIdle() = 0;
 		virtual ICommandCtx* BeginCommandCtx(phx::gfx::CommandQueueType type = CommandQueueType::Graphics) = 0;
 		virtual void SubmitFrame() = 0;
 

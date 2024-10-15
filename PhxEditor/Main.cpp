@@ -21,6 +21,7 @@ public:
 	{
 		m_fs = phx::FileSystemFactory::CreateRootFileSystem();
 		m_fs->Mount("/native", phx::FileSystemFactory::CreateNativeFileSystem());
+		m_fs->Mount("/shaders", "/shaders/spriv");
 
 		phx::gfx::GpuDevice* device = phx::gfx::EmberGfx::GetDevice();
 
@@ -34,6 +35,8 @@ public:
 		if (!testShaderVSOutput.ErrorMessage.empty())
 			PHX_ERROR("Failed to compile VS shader: {0}", testShaderVSOutput.ErrorMessage);
 
+
+		m_fs->WriteFile("/shaders/TestShaderVS.spriv", phx::Span((char*)testShaderVSOutput.ByteCode, testShaderVSOutput.ByteCodeSize));
 		phx::gfx::ShaderHandle vsShader = device->CreateShader({
 				.Stage = phx::gfx::ShaderStage::VS,
 				.ByteCode = phx::Span(testShaderVSOutput.ByteCode, testShaderVSOutput.ByteCodeSize),
@@ -49,7 +52,8 @@ public:
 
 		if (!testShaderPSOutput.ErrorMessage.empty())
 			PHX_ERROR("Failed to compile PS shader: {0}", testShaderPSOutput.ErrorMessage);
-		
+
+		m_fs->WriteFile("/shaders/TestShaderPS.spriv", phx::Span((char*)testShaderPSOutput.ByteCode, testShaderPSOutput.ByteCodeSize));
 
 		phx::gfx::ShaderHandle psShader = device->CreateShader({
 				.Stage = phx::gfx::ShaderStage::PS,
@@ -112,7 +116,8 @@ public:
 
 		ctx->RenderPassBegin();
 
-		// TODO:
+		ctx->SetPipelineState(m_pipeline);
+		ctx->Draw(3);
 
 		ctx->RenderPassEnd();
 #if false
