@@ -19,7 +19,7 @@ static float3 triangleColours[3] =
 
 struct VSInput
 {
-    float2 Position : POSITIONT;
+    float2 Position : POSITION;
     float3 Colour : COLOR;
 };
 
