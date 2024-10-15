@@ -7,6 +7,42 @@ void phx::gfx::platform::CommandCtx_Vulkan::RenderPassBegin()
 {
 	BarriersRenderPassEnd.clear();
 
+	VkResult res = vkAcquireNextImageKHR(
+		GpuDevice->m_vkDevice,
+		GpuDevice->m_vkSwapChain,
+		UINT64_MAX,
+		GpuDevice->m_imageAvailableSemaphore[GpuDevice->GetBufferIndex()],
+		VK_NULL_HANDLE,
+		&GpuDevice->m_swapChainCurrentImage
+	);
+
+	if (res != VK_SUCCESS)
+	{
+		// Handle outdated error in acquire:
+		if (res == VK_SUBOPTIMAL_KHR || res == VK_ERROR_OUT_OF_DATE_KHR)
+		{
+			// we need to create a new semaphore or jump through a few hoops to
+			// wait for the current one to be unsignalled before we can use it again
+			// creating a new one is easiest. See also:
+			// https://github.com/KhronosGroup/Vulkan-Docs/issues/152
+			// https://www.khronos.org/blog/resolving-longstanding-issues-with-wsi
+			{
+#if false
+				std::scoped_lock lock(allocationhandler->destroylocker);
+				for (auto& x : internal_state->swapchainAcquireSemaphores)
+				{
+					allocationhandler->destroyer_semaphores.emplace_back(x, allocationhandler->framecount);
+				}
+#endif
+			}
+
+			// Recreate Swapchain and begin render pass again?
+			PHX_CORE_ERROR("Failed to Acuire next image index");
+		}
+		assert(0);
+	}
+
+
 	VkRenderingInfo info = {};
 	info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
 	info.renderArea.offset.x = 0;
