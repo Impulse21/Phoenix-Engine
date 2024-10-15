@@ -132,6 +132,7 @@ namespace phx::gfx::platform
 		VkDevice m_vkDevice;
 
 		VmaAllocator m_vmaAllocator = {};
+		VmaAllocator m_vmaAllocatorExternal = {};
 
 
 		VkPhysicalDeviceProperties2 m_properties2 = {};

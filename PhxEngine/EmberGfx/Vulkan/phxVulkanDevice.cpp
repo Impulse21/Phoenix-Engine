@@ -3,13 +3,18 @@
 #include "phxVulkanCore.h"
 #include "phxVulkanDevice.h"
 
+
+#define VOLK_IMPLEMENTATION
+#include "volk/volk.h"
+
+#include "spriv-reflect/spirv_reflect.h"
+
 #define VMA_IMPLEMENTATION
-#define VMA_STATIC_VULKAN_FUNCTIONS 1
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
+#define VMA_STATIC_VULKAN_FUNCTIONS 0
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #include "vma/vk_mem_alloc.h"
 
-#include "vulkan/vulkan_win32.h"
-#include "spriv-reflect/spirv_reflect.h"
+#include <vulkan/vulkan_win32.h>
 
 #include <set>
 #include <map>
@@ -125,6 +130,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL VkDebugCallback(
 
 void phx::gfx::platform::VulkanGpuDevice::Initialize(SwapChainDesc const& swapChainDesc, bool enableValidationLayers, void* windowHandle)
 {
+    volkInitialize();
+
     m_enableValidationLayers = enableValidationLayers;
     m_extManager.Initialize();
     if (m_enableValidationLayers)
@@ -204,6 +211,8 @@ void phx::gfx::platform::VulkanGpuDevice::Finalize()
     }
 
     vmaDestroyAllocator(m_vmaAllocator);
+	vmaDestroyAllocator(m_vmaAllocatorExternal);
+
     vkDestroyPipelineCache(m_vkDevice, m_vkPipelineCache, nullptr);
     vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
     vkDestroyDevice(m_vkDevice, nullptr);
@@ -855,6 +864,8 @@ void phx::gfx::platform::VulkanGpuDevice::CreateInstance()
     VkResult result = vkCreateInstance(&createInfo, nullptr, &m_vkInstance);
     if (result != VK_SUCCESS)
         throw std::runtime_error("failed to create instance!");
+
+    volkLoadInstance(m_vkInstance);
 }
 
 void phx::gfx::platform::VulkanGpuDevice::SetupDebugMessenger()
@@ -1176,6 +1187,7 @@ void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
         throw std::runtime_error("failed to create logical device!");
     }
 
+    volkLoadDevice(m_vkDevice);
     pfnSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(m_vkDevice, "vkSetDebugUtilsObjectNameEXT");
     pfnCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_vkDevice, "vkCmdBeginDebugUtilsLabelEXT");
     pfnCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_vkDevice, "vkCmdEndDebugUtilsLabelEXT");
@@ -1196,7 +1208,7 @@ void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
     {
         // https://registry.khronos.org/vulkan/specs/1.0-extensions/html/vkspec.html#memory-device
         //	"In a unified memory architecture (UMA) system there is often only a single memory heap which is
-        //	considered to be equally ìlocalî to the host and to the device, and such an implementation must advertise the heap as device-local
+        //	considered to be equally ‚Äúlocal‚Äù to the host and to the device, and such an implementation must advertise the heap as device-local
         m_capabilities.CacheCoherentUma = true;
     }
 }
@@ -1376,7 +1388,7 @@ void phx::gfx::platform::VulkanGpuDevice::CreateVma()
     externalMemoryHandleTypes.resize(memory_properties_2.memoryProperties.memoryTypeCount, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT);
     allocatorInfo.pTypeExternalMemoryHandleTypes = externalMemoryHandleTypes.data();
 #endif
-    res = vmaCreateAllocator(&allocatorInfo, &m_vmaAllocator);
+    res = vmaCreateAllocator(&allocatorInfo, &m_vmaAllocatorExternal);
     assert(res == VK_SUCCESS);
     if (res != VK_SUCCESS)
     {
