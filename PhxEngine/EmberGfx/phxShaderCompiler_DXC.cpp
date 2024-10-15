@@ -116,7 +116,7 @@ namespace
 		case ShaderFormat::Spriv:
 			args.push_back(L"-spirv");
 			if (!input.StripReflection)
-				args.push_back(L"-fspv-reflect");
+				// args.push_back(L"-fspv-reflect"); Adds an unwanted extension
 				args.push_back(L"-fspv-target-env=vulkan1.3");
 				args.push_back(L"-fvk-use-dx-layout");
 				args.push_back(L"-fvk-use-dx-position-w");
