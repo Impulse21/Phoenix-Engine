@@ -120,6 +120,15 @@ void phx::gfx::platform::CommandCtx_Vulkan::SetPipelineState(PipelineStateHandle
 	vkCmdBindPipeline(GetVkCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, impl->Pipeline);
 }
 
+void phx::gfx::platform::CommandCtx_Vulkan::SetViewport(Viewport const& viewport)
+{
+	VkViewport vp = {};
+	vp.width = viewport.GetWidth();
+	vp.height = viewport.GetHeight();
+	vp.maxDepth = 1;
+	vkCmdSetViewportWithCount(GetVkCommandBuffer(), 1, &vp);
+}
+
 void phx::gfx::platform::CommandCtx_Vulkan::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex, int32_t baseVertex, uint32_t startInstance)
 {
 	vkCmdDrawIndexed(GetVkCommandBuffer(), indexCount, instanceCount, startIndex, baseVertex, startInstance);

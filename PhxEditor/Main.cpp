@@ -116,6 +116,8 @@ public:
 
 		ctx->RenderPassBegin();
 
+		Viewport v(g_DisplayWidth, g_DisplayWidth);
+		ctx->SetViewport(v);
 		ctx->SetPipelineState(m_pipeline);
 		ctx->Draw(3);
 
