@@ -80,7 +80,7 @@ public:
 				.PS = psShader,
 				.DepthStencilRenderState = &dss,
 				.RasterRenderState = &rs,
-				.InputLayout = &il
+				.InputLayout = nullptr// &il
 			});
 
 		device->DeleteShader(vsShader);
