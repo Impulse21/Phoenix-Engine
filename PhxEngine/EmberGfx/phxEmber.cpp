@@ -12,7 +12,7 @@ using namespace phx::gfx;
 namespace
 {
 	GpuDevice* m_gpuDevice;
-	gfx::GfxBackend m_selectedBackend = gfx::GfxBackend::Dx12;
+	gfx::GfxBackend m_selectedBackend = gfx::GfxBackend::Vulkan;
 }
 
 namespace phx::gfx
