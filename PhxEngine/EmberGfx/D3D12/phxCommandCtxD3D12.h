@@ -72,7 +72,10 @@ namespace phx::gfx::platform
 	public:
 		CommandCtxD3D12() = default;
 		~CommandCtxD3D12() = default;
-		
+
+		void RenderPassBegin() override;
+		void RenderPassEnd() override;
+
 		void Reset(size_t id, CommandQueueType queueType);
 		void Close();
 
@@ -116,10 +119,13 @@ namespace phx::gfx::platform
 
 
 	private:
+		CommandQueueType m_queueType = CommandQueueType::Graphics;
 		std::vector<D3D12_RESOURCE_BARRIER> m_barrierMemoryPool;
 		D3D12GpuDevice* m_device;
 		size_t m_id = ~0ul;
-		CommandQueueType m_queueType = CommandQueueType::Graphics;
+
+		std::vector<D3D12_RESOURCE_BARRIER> m_barriersRenderPassEnd;
+
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList6> m_commandList6;
 		ID3D12CommandAllocator* m_allocator;

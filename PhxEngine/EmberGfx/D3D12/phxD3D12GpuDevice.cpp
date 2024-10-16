@@ -2,7 +2,6 @@
 #include "phxD3D12GpuDevice.h"
 #include "phxCommandLineArgs.h"
 #include "phxGfxCommonD3D12.h"
-#include <iostream>
 
 using namespace phx;
 using namespace phx::gfx;
@@ -440,7 +439,7 @@ namespace
 		}
 	}
 
-	void TranslateDepthStencilState(DepthStencilRenderState const& inState, D3D12_DEPTH_STENCIL_DESC& outState)
+	void TranslateDepthStencilState(DepthStencilRenderState const& inState, CD3DX12_DEPTH_STENCIL_DESC1& outState)
 	{
 		outState.DepthEnable = inState.DepthEnable ? TRUE : FALSE;
 		outState.DepthWriteMask = inState.DepthWriteMask == DepthWriteMask::All ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
@@ -2338,6 +2337,7 @@ void phx::gfx::D3D12GpuDevice::CreateSwapChain(SwapChainDesc const& desc, HWND h
 {
 	HRESULT hr;
 
+	m_swapChain.ClearColour = desc.OptmizedClearValue;
 	m_swapChain.VSync = desc.VSync;
 	m_swapChain.Fullscreen = desc.Fullscreen;
 	m_swapChain.EnableHDR = desc.EnableHDR;
@@ -4996,7 +4996,7 @@ void phx::gfx::GpuTimerManager::Initialize()
 
 	// Pre-seed the query heap with valid values so that resolving them doesn't
 	// trigger debug layer errors.
-	platform::CommandCtxD3D12* Context = D3D12GpuDevice::Instance()->BeginGfxContext();
+	platform::CommandCtxD3D12* Context = static_cast<platform::CommandCtxD3D12*>(D3D12GpuDevice::Instance()->BeginCommandCtx());
 	for (uint32_t i = 0; i < MaxNumTimers * 2; ++i)
 	{
 		Context->InsertTimeStamp(QueryHeap.Get(), i);
@@ -5034,7 +5034,7 @@ void phx::gfx::GpuTimerManager::EndReadBack()
 
 	Microsoft::WRL::ComPtr<ID3D12Resource>& nextBuffer = ReadBackBuffers[(D3D12GpuDevice::Instance()->GetFrameCount() + 1) % ReadBackBuffers.size()];
 	// Set next Readback Buffer.
-	platform::CommandCtxD3D12* ctx = D3D12GpuDevice::Instance()->BeginGfxContext();
+	platform::CommandCtxD3D12* ctx = static_cast<platform::CommandCtxD3D12*>(D3D12GpuDevice::Instance()->BeginCommandCtx());
 	ctx->InsertTimeStamp(this->QueryHeap.Get(), 1);
 	ctx->ResolveTimeStamps(nextBuffer.Get(), QueryHeap.Get(), NumTimers * 2);
 	ctx->InsertTimeStamp(QueryHeap.Get(), 0);

@@ -6,7 +6,6 @@
 #include "phxGfxDescriptorHeapsD3D12.h"
 #include "phxCommandCtxD3D12.h"
 #include "d3d12ma/D3D12MemAlloc.h"
-#include "phxMemory.h"
 #include "phxGfxResourceRegistryD3D12.h"
 #include "phxDynamicMemoryPageAllocatorD3D12.h"
 
@@ -62,7 +61,7 @@ namespace phx::gfx
 
 		std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, gfx::kBufferCount> BackBuffers;
 		DescriptorHeapAllocation Rtv;
-
+		gfx::ClearValue ClearColour = {};
 		bool Fullscreen : 1 = false;
 		bool VSync : 1 = false;
 		bool EnableHDR : 1 = false;
@@ -263,6 +262,7 @@ namespace phx::gfx
 
 	class D3D12GpuDevice final : public IGpuDevice
 	{
+		friend platform::CommandCtxD3D12;
 	public:
 		static D3D12GpuDevice* Instance() { return Singleton; }
 

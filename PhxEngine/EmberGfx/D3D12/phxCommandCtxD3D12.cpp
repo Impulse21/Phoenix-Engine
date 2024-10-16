@@ -17,6 +17,35 @@ extern "C"
 }
 #endif
 
+void CommandCtxD3D12::RenderPassBegin()
+{
+	m_barriersRenderPassEnd.clear();
+
+    D3D12SwapChain& swapChain = D3D12GpuDevice::Instance()->m_swapChain;
+    auto swapChainImage = swapChain.GetBackBuffer();
+
+	D3D12_RESOURCE_BARRIER barrier = {};
+	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	barrier.Transition.pResource = swapChainImage;
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+	m_commandList->ResourceBarrier(1, &barrier);
+    ClearBackBuffer(swapChain.ClearColour.Colour);
+
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+    m_barriersRenderPassEnd.push_back(barrier);
+
+}
+
+void CommandCtxD3D12::RenderPassEnd()
+{
+	m_commandList->ResourceBarrier((UINT)m_barriersRenderPassEnd.size(), m_barriersRenderPassEnd.data());
+}
+
 void CommandCtxD3D12::Reset(size_t id, CommandQueueType queueType)
 {
 	ID3D12Device* d3d12Device = D3D12GpuDevice::Instance()->GetD3D12Device();
@@ -60,18 +89,6 @@ void CommandCtxD3D12::Reset(size_t id, CommandQueueType queueType)
 	}
 
 	this->m_commandList6->SetDescriptorHeaps(static_cast<UINT>(heaps.size()), heaps.data());
-
-    auto view = D3D12GpuDevice::Instance()->GetBackBuffer();
-
-    D3D12_RESOURCE_BARRIER barrier = {};
-    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-    barrier.Transition.pResource = D3D12GpuDevice::Instance()->GetBackBuffer();
-    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-    this->m_commandList->ResourceBarrier(1, &barrier);
     this->m_barrierMemoryPool.clear();
 }
 
