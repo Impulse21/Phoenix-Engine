@@ -248,10 +248,24 @@ namespace phx::gfx
 		double GpuTickDelta = 0.0;
 	};
 
+	struct PipelineState_Dx12
+	{
+		D3D_PRIMITIVE_TOPOLOGY Topology;
+		Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
+		Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
+	};
+
+	struct Shader_Dx12
+	{
+		std::vector<uint8_t> ByteCode;
+		Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
+	};
+
 	class D3D12GpuDevice final : public IGpuDevice
 	{
 	public:
 		static D3D12GpuDevice* Instance() { return Singleton; }
+
 	public:
 		D3D12GpuDevice();
 		~D3D12GpuDevice();
@@ -265,20 +279,20 @@ namespace phx::gfx
 		ICommandCtx* BeginCommandCtx(phx::gfx::CommandQueueType type = CommandQueueType::Graphics) override;
 		void SubmitFrame() override;
 
-		platform::CommandCtxD3D12* BeginGfxContext();
-		platform::CommandCtxD3D12* BeginComputeContext();
+	public:
+		ShaderHandle CreateShader(ShaderDesc const& desc) override;
+		void DeleteShader(ShaderHandle handle)  override;
 
+		PipelineStateHandle CreatePipeline(PipelineStateDesc2 const& desc, RenderPassInfo* renderPassInfo = nullptr) override;
+		void DeletePipeline(PipelineStateHandle handle)  override;
+
+	public:
 		void BeginGpuTimerReadback();
 		float GetTime(TimerQueryHandle handle);
 		void EndGpuTimerReadback();
 
 
 	public:
-		ShaderHandle CreateShader(ShaderDesc const& desc) override;
-		void DeleteShader(ShaderHandle handle)  override;
-
-		PipelineStateHandle CreatePipeline(PipelineStateDesc2 const& desc) override;
-		void DeletePipeline(PipelineStateHandle handle)  override;
 
 		GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
 		void DeleteResource(GfxPipelineHandle handle);
@@ -332,10 +346,11 @@ namespace phx::gfx
 		GpuRingAllocator* GetDynamicPageAllocator() { return &m_tempPageAllocator; }
 	private:
 		void Initialize();
+		void InitializeResourcePools();
+		void FinalizeResourcePools();
+
 		void InitializeD3D12Context(IDXGIAdapter* gpuAdapter);
 		void CreateSwapChain(SwapChainDesc const& desc, HWND hwnd);
-
-		platform::CommandCtxD3D12* BeginCommandRecording(CommandQueueType type);
 
 		void SubmitCommandLists();
 		void Present();
@@ -396,6 +411,9 @@ namespace phx::gfx
 		GpuRingAllocator m_tempPageAllocator;
 
 		GpuTimerManager m_gpuTimerManager;
+
+		HandlePool<PipelineState_Dx12, PipelineState> m_pipelineStatePool;
+		HandlePool<Shader_Dx12, Shader> m_shaderPool;
 	};
 
 }

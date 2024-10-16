@@ -190,6 +190,33 @@ namespace
 		return gfx::GetDxgiFormatMapping(format).SrvFormat;
 	}
 
+
+	 D3D_PRIMITIVE_TOPOLOGY ConvertPrimitiveTopology(PrimitiveType topology, uint32_t controlPoints)
+	{
+		switch (topology)
+		{
+		case PrimitiveType::PointList:
+			return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+		case PrimitiveType::LineList:
+			return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+		case PrimitiveType::LineStrip:
+			return D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
+		case PrimitiveType::TriangleList:
+			return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		case PrimitiveType::TriangleStrip:
+			return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+		case PrimitiveType::PatchList:
+			if (controlPoints == 0 || controlPoints > 32)
+			{
+				assert(false && "Invalid PatchList control points");
+				return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+			}
+			return D3D_PRIMITIVE_TOPOLOGY(D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST + (controlPoints - 1));
+		default:
+			return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+		}
+	}
+
 	D3D12_SHADER_VISIBILITY ConvertShaderStage(ShaderStage s)
 	{
 		switch (s)  // NOLINT(clang-diagnostic-switch-enum)
@@ -519,6 +546,7 @@ void phx::gfx::D3D12GpuDevice::Initialize(SwapChainDesc const& swapChainDesc, bo
 {
 	m_enableDebugLayers = enableValidation;
 	Initialize();
+	InitializeResourcePools();
 	CreateSwapChain(swapChainDesc, static_cast<HWND>(windowHandle));
 	m_gpuTimerManager.Initialize();
 }
@@ -534,6 +562,7 @@ void phx::gfx::D3D12GpuDevice::Finalize()
 	}
 
 	m_tempPageAllocator.Finalize();
+	FinalizeResourcePools();
 }
 
 void phx::gfx::D3D12GpuDevice::WaitForIdle()
@@ -561,19 +590,17 @@ void phx::gfx::D3D12GpuDevice::ResizeSwapChain(SwapChainDesc const& swapChainDes
 	CreateSwapChain(swapChainDesc, nullptr);
 }
 
-platform::CommandCtxD3D12* phx::gfx::D3D12GpuDevice::BeginGfxContext()
-{
-	return BeginCommandRecording(CommandQueueType::Graphics);
-}
-
-platform::CommandCtxD3D12* phx::gfx::D3D12GpuDevice::BeginComputeContext()
-{
-	return BeginCommandRecording(CommandQueueType::Compute);
-}
-
 ICommandCtx* phx::gfx::D3D12GpuDevice::BeginCommandCtx(phx::gfx::CommandQueueType type)
 {
-	return nullptr;
+	const uint32_t currentCmdIndex = m_activeCmdCount++;
+	if (currentCmdIndex >= m_commandPool.size())
+	{
+		m_commandPool.emplace_back(std::make_unique<platform::CommandCtxD3D12>());
+	}
+
+	platform::CommandCtxD3D12* cmdList = m_commandPool[currentCmdIndex].get();
+	cmdList->Reset(currentCmdIndex, type);
+	return cmdList;
 }
 
 void phx::gfx::D3D12GpuDevice::SubmitFrame()
@@ -601,20 +628,260 @@ void phx::gfx::D3D12GpuDevice::EndGpuTimerReadback()
 
 ShaderHandle phx::gfx::D3D12GpuDevice::CreateShader(ShaderDesc const& desc)
 {
-	return ShaderHandle();
+	ShaderHandle retVal = m_shaderPool.Emplace();
+	Shader_Dx12& impl = *m_shaderPool.Get(retVal);
+
+	impl.ByteCode.reserve(desc.ByteCode.Size());
+	std::memcpy(impl.ByteCode.data(), desc.ByteCode.begin(), desc.ByteCode.Size());
+
+	Microsoft::WRL::ComPtr<ID3D12VersionedRootSignatureDeserializer> RootSignatureDeserializer;
+	const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* RootSignatureDesc = nullptr;
+	auto hr = D3D12CreateVersionedRootSignatureDeserializer(
+		impl.ByteCode.data(),
+		impl.ByteCode.size(),
+		IID_PPV_ARGS(&RootSignatureDeserializer));
+	if (SUCCEEDED(hr))
+	{
+		RootSignatureDeserializer->GetRootSignatureDescAtVersion(D3D_ROOT_SIGNATURE_VERSION_1_1, &RootSignatureDesc);
+		assert(RootSignatureDesc->Version == D3D_ROOT_SIGNATURE_VERSION_1_1);
+		Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature;
+		hr = m_d3d12Device->CreateRootSignature(
+			0,
+			impl.ByteCode.data(),
+			impl.ByteCode.size(),
+			IID_PPV_ARGS(&rootSignature));
+
+		if (SUCCEEDED(hr))
+			impl.RootSignature = rootSignature;
+	}
+
+	return retVal;
 }
 
 void phx::gfx::D3D12GpuDevice::DeleteShader(ShaderHandle handle)
 {
+	m_shaderPool.Release(handle);
 }
 
-PipelineStateHandle phx::gfx::D3D12GpuDevice::CreatePipeline(PipelineStateDesc2 const& desc)
+PipelineStateHandle phx::gfx::D3D12GpuDevice::CreatePipeline(PipelineStateDesc2 const& desc, RenderPassInfo* renderPassInfo)
 {
-	return PipelineStateHandle();
+	PipelineStateHandle retVal = m_pipelineStatePool.Emplace();
+	PipelineState_Dx12& impl = *m_pipelineStatePool.Get(retVal);
+
+	struct PSO_STREAM
+	{
+		struct PSO_STREAM1
+		{
+			CD3DX12_PIPELINE_STATE_STREAM_VS VS;
+			CD3DX12_PIPELINE_STATE_STREAM_HS HS;
+			CD3DX12_PIPELINE_STATE_STREAM_DS DS;
+			CD3DX12_PIPELINE_STATE_STREAM_GS GS;
+			CD3DX12_PIPELINE_STATE_STREAM_PS PS;
+			CD3DX12_PIPELINE_STATE_STREAM_RASTERIZER RS;
+			CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL1 DSS;
+			CD3DX12_PIPELINE_STATE_STREAM_BLEND_DESC BD;
+			CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY PT;
+			CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT IL;
+			CD3DX12_PIPELINE_STATE_STREAM_IB_STRIP_CUT_VALUE STRIP;
+			CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT DSFormat;
+			CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS Formats;
+			CD3DX12_PIPELINE_STATE_STREAM_SAMPLE_DESC SampleDesc;
+			CD3DX12_PIPELINE_STATE_STREAM_SAMPLE_MASK SampleMask;
+			CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE ROOTSIG;
+		} stream1 = {};
+
+		struct PSO_STREAM2
+		{
+			CD3DX12_PIPELINE_STATE_STREAM_MS MS;
+			CD3DX12_PIPELINE_STATE_STREAM_AS AS;
+		} stream2 = {};
+	} stream = {};
+
+	if (desc.MS.IsValid())
+	{
+		Shader_Dx12* shaderImpl = m_shaderPool.Get(desc.MS);
+		stream.stream2.MS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+		
+		if (!impl.RootSignature)
+			impl.RootSignature = shaderImpl->RootSignature;
+	}
+	if (desc.AS.IsValid())
+	{
+		Shader_Dx12* shaderImpl = m_shaderPool.Get(desc.MS);
+		stream.stream2.MS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+
+		if (!impl.RootSignature)
+			impl.RootSignature = shaderImpl->RootSignature;
+	}
+	if (desc.VS.IsValid())
+	{
+		Shader_Dx12* shaderImpl = m_shaderPool.Get(desc.VS);
+		stream.stream1.VS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+
+		if (!impl.RootSignature)
+			impl.RootSignature = shaderImpl->RootSignature;
+	}
+	if (desc.HS.IsValid())
+	{
+		Shader_Dx12* shaderImpl = m_shaderPool.Get(desc.HS);
+		stream.stream1.HS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+
+		if (!impl.RootSignature)
+			impl.RootSignature = shaderImpl->RootSignature;
+	}
+	if (desc.DS.IsValid())
+	{
+		Shader_Dx12* shaderImpl = m_shaderPool.Get(desc.DS);
+		stream.stream1.DS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+
+		if (!impl.RootSignature)
+			impl.RootSignature = shaderImpl->RootSignature;
+	}
+	if (desc.GS.IsValid())
+	{
+		Shader_Dx12* shaderImpl = m_shaderPool.Get(desc.GS);
+		stream.stream1.GS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+
+		if (!impl.RootSignature)
+			impl.RootSignature = shaderImpl->RootSignature;
+	}
+	if (desc.PS.IsValid())
+	{
+		Shader_Dx12* shaderImpl = m_shaderPool.Get(desc.PS);
+		stream.stream1.PS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+
+		if (!impl.RootSignature)
+			impl.RootSignature = shaderImpl->RootSignature;
+	}
+
+	stream.stream1.ROOTSIG = impl.RootSignature.Get();
+
+	BlendRenderState brs = {};
+	if (desc.BlendRenderState)
+		brs = *desc.BlendRenderState;
+
+	TranslateBlendState(brs, stream.stream1.BD);
+
+	DepthStencilRenderState dss = {};
+	if (desc.DepthStencilRenderState)
+		dss = *desc.DepthStencilRenderState;
+
+	TranslateDepthStencilState(dss, stream.stream1.DSS);
+
+
+	RasterRenderState rs = {};
+	if (desc.RasterRenderState)
+		rs = *desc.RasterRenderState;
+
+	TranslateRasterState(rs, stream.stream1.RS);
+
+	D3D12_INPUT_LAYOUT_DESC il = {};
+
+	std::vector<D3D12_INPUT_ELEMENT_DESC> elements;
+	if (desc.InputLayout != nullptr)
+	{
+		il.NumElements = (uint32_t)desc.InputLayout->elements.size();
+		elements.resize(il.NumElements);
+		for (uint32_t i = 0; i < il.NumElements; ++i)
+		{
+			auto& element = desc.InputLayout->elements[i];
+			D3D12_INPUT_ELEMENT_DESC& dx12Desc = elements.emplace_back();
+
+			dx12Desc.SemanticName = element.SemanticName.c_str();
+			dx12Desc.SemanticIndex = element.SemanticIndex;
+
+
+			const DxgiFormatMapping& formatMapping = GetDxgiFormatMapping(element.Format);
+			dx12Desc.Format = formatMapping.SrvFormat;
+			dx12Desc.InputSlot = element.InputSlot;
+			dx12Desc.AlignedByteOffset = element.AlignedByteOffset;
+			if (dx12Desc.AlignedByteOffset == VertexAttributeDesc::SAppendAlignedElement)
+			{
+				dx12Desc.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+			}
+
+			if (element.InputSlotClass == InputClassification::PerInstanceData)
+			{
+				dx12Desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
+				dx12Desc.InstanceDataStepRate = 1;
+			}
+			else
+			{
+				dx12Desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+				dx12Desc.InstanceDataStepRate = 0;
+			}
+		}
+
+	}
+	il.pInputElementDescs = elements.data();
+	stream.stream1.IL = il;
+
+	stream.stream1.SampleMask = desc.SampleMask;
+
+	impl.Topology = ConvertPrimitiveTopology(desc.PrimType, desc.PatchControlPoints);
+	switch (desc.PrimType)
+	{
+	case PrimitiveType::PointList:
+		stream.stream1.PT = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		break;
+	case PrimitiveType::LineList:
+		stream.stream1.PT = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+		break;
+	case PrimitiveType::TriangleList:
+	case PrimitiveType::TriangleStrip:
+		stream.stream1.PT = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		break;
+	case PrimitiveType::PatchList:
+		stream.stream1.PT = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+		break;
+	}
+	stream.stream1.STRIP = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
+
+	if (renderPassInfo != nullptr)
+	{
+		DXGI_FORMAT DSFormat = ConvertFormat(renderPassInfo->DsFormat);
+		D3D12_RT_FORMAT_ARRAY formats = {};
+		formats.NumRenderTargets = renderPassInfo->RenderTargetCount;
+		for (uint32_t i = 0; i < renderPassInfo->RenderTargetCount; ++i)
+		{
+			formats.RTFormats[i] = ConvertFormat(renderPassInfo->RenderTargetFormats[i]);
+		}
+		DXGI_SAMPLE_DESC sampleDesc = {};
+		sampleDesc.Count = renderPassInfo->SampleCount;
+		sampleDesc.Quality = 0;
+
+		stream.stream1.DSFormat = DSFormat;
+		stream.stream1.Formats = formats;
+		stream.stream1.SampleDesc = sampleDesc;
+
+		D3D12_PIPELINE_STATE_STREAM_DESC streamDesc = {};
+		streamDesc.pPipelineStateSubobjectStream = &stream;
+		streamDesc.SizeInBytes = sizeof(stream.stream1);
+#if false
+		if (CheckCapability(GraphicsDeviceCapability::MESH_SHADER))
+		{
+			streamDesc.SizeInBytes += sizeof(stream.stream2);
+		}
+#endif
+		HRESULT hr = m_d3d12Device2->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&impl.D3D12PipelineState));
+		assert(SUCCEEDED(hr));
+	}
+
+	return retVal;
 }
 
 void phx::gfx::D3D12GpuDevice::DeletePipeline(PipelineStateHandle handle)
 {
+	DeferredItem d =
+	{
+		m_frameCount,
+		[=]()
+		{
+			m_pipelineStatePool.Release(handle);
+		}
+	};
+
+	m_deferredQueue.push_back(d);
 }
 
 Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateEmptyRootSignature()
@@ -660,114 +927,7 @@ Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateEmptyRootSignature()
 }
 GfxPipelineHandle phx::gfx::D3D12GpuDevice::CreateGfxPipeline(GfxPipelineDesc const& desc)
 {
-	D3D12GfxPipeline pipeline = {};
-	pipeline.RootSignature = CreateEmptyRootSignature();
-
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC d3d12Desc = {};
-
-	if (!desc.VertexShaderByteCode.IsEmpty())
-	{
-		d3d12Desc.VS = { desc.VertexShaderByteCode.begin(), desc.VertexShaderByteCode.Size() };
-
-		Microsoft::WRL::ComPtr<ID3D12VersionedRootSignatureDeserializer> RootSignatureDeserializer;
-		const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* RootSignatureDesc = nullptr;
-		auto hr = D3D12CreateVersionedRootSignatureDeserializer(
-			desc.VertexShaderByteCode.begin(),
-			desc.VertexShaderByteCode.Size(),
-			IID_PPV_ARGS(&RootSignatureDeserializer));
-		if (SUCCEEDED(hr))
-		{
-			RootSignatureDeserializer->GetRootSignatureDescAtVersion(D3D_ROOT_SIGNATURE_VERSION_1_1, &RootSignatureDesc);
-			assert(RootSignatureDesc->Version == D3D_ROOT_SIGNATURE_VERSION_1_1);
-			Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature;
-			hr = m_d3d12Device->CreateRootSignature(
-				0,
-				desc.VertexShaderByteCode.begin(),
-				desc.VertexShaderByteCode.Size(),
-				IID_PPV_ARGS(&rootSignature));
-			if (SUCCEEDED(hr))
-				pipeline.RootSignature = rootSignature;
-		}
-	}
-	d3d12Desc.pRootSignature = pipeline.RootSignature.Get();
-
-	if (!desc.HullShaderByteCode.IsEmpty())
-	{
-		d3d12Desc.HS = { desc.HullShaderByteCode.begin(), desc.HullShaderByteCode.Size() };
-	}
-
-	if (!desc.DomainShaderByteCode.IsEmpty())
-	{
-		d3d12Desc.DS = { desc.DomainShaderByteCode.begin(), desc.DomainShaderByteCode.Size() };
-	}
-
-	if (!desc.GeometryShaderByteCode.IsEmpty())
-	{
-		d3d12Desc.GS = { desc.GeometryShaderByteCode.begin(), desc.GeometryShaderByteCode.Size() };
-	}
-
-	if (!desc.PixelShaderByteCode.IsEmpty())
-	{
-		d3d12Desc.PS = { desc.PixelShaderByteCode.begin(), desc.PixelShaderByteCode.Size() };
-	}
-
-	TranslateBlendState(desc.BlendRenderState, d3d12Desc.BlendState);
-	TranslateDepthStencilState(desc.DepthStencilRenderState, d3d12Desc.DepthStencilState);
-	TranslateRasterState(desc.RasterRenderState, d3d12Desc.RasterizerState);
-
-	switch (desc.PrimType)
-	{
-	case PrimitiveType::PointList:
-		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-		break;
-	case PrimitiveType::LineList:
-		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
-		break;
-	case PrimitiveType::TriangleList:
-	case PrimitiveType::TriangleStrip:
-		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		break;
-	case PrimitiveType::PatchList:
-		d3d12Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
-		break;
-	}
-
-	if (desc.DsvFormat.has_value())
-	{
-		d3d12Desc.DSVFormat = GetDxgiFormatMapping(desc.DsvFormat.value()).RtvFormat;
-	}
-
-	d3d12Desc.SampleDesc.Count = desc.SampleCount;
-	d3d12Desc.SampleDesc.Quality = desc.SampleQuality;
-
-	for (size_t i = 0; i < desc.RtvFormats.size(); i++)
-	{
-		d3d12Desc.RTVFormats[i] = GetDxgiFormatMapping(desc.RtvFormats[i]).RtvFormat;
-	}
-
-	D3D12InputLayout* inputLayout = m_resourceRegistry.InputLayouts.Get(desc.InputLayout);
-	if (inputLayout && !inputLayout->InputElements.empty())
-	{
-		d3d12Desc.InputLayout.NumElements = uint32_t(inputLayout->InputElements.size());
-		d3d12Desc.InputLayout.pInputElementDescs = &(inputLayout->InputElements[0]);
-	}
-
-	d3d12Desc.NumRenderTargets = (uint32_t)desc.RtvFormats.size();
-	d3d12Desc.SampleMask = ~0u;
-
-#if false
-	ThrowIfFailed(
-		GetD3D12Device2()->CreateGraphicsPipelineState(&d3d12Desc, IID_PPV_ARGS(&pipeline.D3D12PipelineState)));
-#else
-	auto hr = GetD3D12Device2()->CreateGraphicsPipelineState(&d3d12Desc, IID_PPV_ARGS(&pipeline.D3D12PipelineState));
-	if (FAILED(hr))
-	{
-		PollDebugMessages();
-		throw com_exception(hr);
-	}
-#endif
-
-	return m_resourceRegistry.GfxPipelines.Emplace(pipeline);
+	return {};
 }
 
 void phx::gfx::D3D12GpuDevice::DeleteResource(GfxPipelineHandle handle)
@@ -1815,19 +1975,6 @@ DescriptorIndex phx::gfx::D3D12GpuDevice::GetDescriptorIndex(BufferHandle handle
 	}
 }
 
-platform::CommandCtxD3D12* phx::gfx::D3D12GpuDevice::BeginCommandRecording(CommandQueueType type)
-{
-	const uint32_t currentCmdIndex = m_activeCmdCount++;
-	if (currentCmdIndex >= m_commandPool.size())
-	{
-		m_commandPool.emplace_back(std::make_unique<platform::CommandCtxD3D12>());
-	}
-
-	platform::CommandCtxD3D12* cmdList = m_commandPool[currentCmdIndex].get();
-	cmdList->Reset(currentCmdIndex, type);
-	return cmdList;
-}
-
 void phx::gfx::D3D12GpuDevice::SubmitCommandLists()
 {
 	const uint32_t numActiveCommands = m_activeCmdCount.exchange(0);
@@ -2012,6 +2159,19 @@ void phx::gfx::D3D12GpuDevice::Initialize()
 		m_gpuDescriptorHeaps[0].Allocate(NUM_BINDLESS_RESOURCES));
 
 	m_tempPageAllocator.Initialize(256_MiB);
+
+}
+
+void phx::gfx::D3D12GpuDevice::InitializeResourcePools()
+{
+	m_shaderPool.Initialize();
+	m_pipelineStatePool.Initialize();
+}
+
+void phx::gfx::D3D12GpuDevice::FinalizeResourcePools()
+{
+	m_shaderPool.Finalize();
+	m_pipelineStatePool.Finalize();
 }
 
 void phx::gfx::D3D12GpuDevice::InitializeD3D12Context(IDXGIAdapter* gpuAdapter)

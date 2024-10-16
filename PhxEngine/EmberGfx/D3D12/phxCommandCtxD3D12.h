@@ -1,5 +1,7 @@
 #pragma once
 
+#include "EmberGfx/phxCommandCtxInterface.h"
+
 #include "phxMemory.h"
 #include "phxDynamicMemoryPageAllocatorD3D12.h"
 #include <deque>
@@ -64,7 +66,7 @@ namespace phx::gfx::platform
 	};
 
 
-	class CommandCtxD3D12 final
+	class CommandCtxD3D12 final : public phx::gfx::ICommandCtx
 	{
 		friend D3D12GpuDevice;
 	public:
@@ -73,6 +75,13 @@ namespace phx::gfx::platform
 		
 		void Reset(size_t id, CommandQueueType queueType);
 		void Close();
+
+		void SetPipelineState(PipelineStateHandle pipelineState) override;
+		void SetViewports(Span<Viewport> viewports) override;
+		void SetScissors(Span<Rect> rects) override;
+
+		void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex, uint32_t startInstance) override;
+		void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex, int32_t baseVertex, uint32_t startInstance) override;
 
 	public:
 		DynamicBuffer AllocateDynamic(size_t sizeInBytes, size_t alignment = 16);
@@ -83,10 +92,6 @@ namespace phx::gfx::platform
 		void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil);
 		void SetGfxPipeline(GfxPipelineHandle pipeline); 
 		void SetRenderTargetSwapChain();
-		void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex, uint32_t startInstance);
-		void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex, int32_t baseVertex, uint32_t startInstance);
-		void SetViewports(Span<Viewport> viewports);
-		void SetScissors(Span<Rect> scissors);
 
 		void WriteTexture(TextureHandle texture, uint32_t firstSubresource, size_t numSubresources, SubresourceData* pSubresourceData);
 

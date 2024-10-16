@@ -238,6 +238,14 @@ namespace phx::gfx
         int GetHeight() const { return MaxY - MinY; }
     };
 
+
+    struct RenderPassInfo
+    {
+        Format RenderTargetFormats[8] = {};
+        uint32_t RenderTargetCount = 0;
+        Format DsFormat = Format::UNKNOWN;
+        uint32_t SampleCount = 1;
+    };
 #pragma region Enums
 
     enum class Usage

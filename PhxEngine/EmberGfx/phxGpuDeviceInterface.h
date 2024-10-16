@@ -21,7 +21,7 @@ namespace phx::gfx
 		virtual ShaderHandle CreateShader(ShaderDesc const& desc) = 0;
 		virtual void DeleteShader(ShaderHandle handle) = 0;
 
-		virtual PipelineStateHandle CreatePipeline(PipelineStateDesc2 const& desc) = 0;
+		virtual PipelineStateHandle CreatePipeline(PipelineStateDesc2 const& desc, RenderPassInfo* renderPassInfo = nullptr) = 0;
 		virtual void DeletePipeline(PipelineStateHandle handle) = 0;
 	};
 }

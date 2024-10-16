@@ -92,7 +92,7 @@ namespace phx::gfx::platform
 		ShaderHandle CreateShader(ShaderDesc const& desc) override;
 		void DeleteShader(ShaderHandle handle) override;
 
-		PipelineStateHandle CreatePipeline(PipelineStateDesc2 const& desc) override;
+		PipelineStateHandle CreatePipeline(PipelineStateDesc2 const& desc, RenderPassInfo* renderPassInfo = nullptr) override;
 		void DeletePipeline(PipelineStateHandle handle) override;
 
 	private:

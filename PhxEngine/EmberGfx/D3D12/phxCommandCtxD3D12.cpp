@@ -269,6 +269,18 @@ void phx::gfx::platform::CommandCtxD3D12::DrawIndexed(
         baseVertex,
         startInstance);
 }
+
+void phx::gfx::platform::CommandCtxD3D12::SetPipelineState(PipelineStateHandle pipelineState)
+{
+    PipelineState_Dx12* impl = D3D12GpuDevice::Instance()->m_pipelineStatePool.Get(pipelineState);
+    this->m_commandList->SetPipelineState(impl->D3D12PipelineState.Get());
+
+    this->m_commandList->SetGraphicsRootSignature(impl->RootSignature.Get());
+    this->m_activePipelineType = PipelineType::Gfx;
+    
+    this->m_commandList->IASetPrimitiveTopology(impl->Topology);
+}
+
 void phx::gfx::platform::CommandCtxD3D12::SetViewports(Span<Viewport> viewports)
 {
     CD3DX12_VIEWPORT dx12Viewports[16] = {};

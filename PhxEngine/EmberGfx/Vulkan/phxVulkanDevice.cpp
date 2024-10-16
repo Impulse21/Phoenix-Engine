@@ -454,7 +454,7 @@ void phx::gfx::platform::VulkanGpuDevice::DeleteShader(ShaderHandle handle)
     };
 }
 
-PipelineStateHandle phx::gfx::platform::VulkanGpuDevice::CreatePipeline(PipelineStateDesc2 const& desc)
+PipelineStateHandle phx::gfx::platform::VulkanGpuDevice::CreatePipeline(PipelineStateDesc2 const& desc, RenderPassInfo* renderPassInfo)
 {
     Handle<PipelineState> retVal = this->m_pipelineStatePool.Emplace();
     PipelineState_Vk& impl = *this->m_pipelineStatePool.Get(retVal);
