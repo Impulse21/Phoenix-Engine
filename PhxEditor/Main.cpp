@@ -116,8 +116,11 @@ public:
 
 		ctx->RenderPassBegin();
 
-		Viewport v(g_DisplayWidth, g_DisplayWidth);
-		ctx->SetViewport(v);
+		Viewport v(g_DisplayWidth, g_DisplayHeight);
+		ctx->SetViewports({ v });
+
+		Rect scissor(g_DisplayWidth, g_DisplayHeight);
+		ctx->SetScissors({ scissor });
 		ctx->SetPipelineState(m_pipeline);
 		ctx->Draw(3);
 

@@ -120,13 +120,34 @@ void phx::gfx::platform::CommandCtx_Vulkan::SetPipelineState(PipelineStateHandle
 	vkCmdBindPipeline(GetVkCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, impl->Pipeline);
 }
 
-void phx::gfx::platform::CommandCtx_Vulkan::SetViewport(Viewport const& viewport)
+void phx::gfx::platform::CommandCtx_Vulkan::SetViewports(Span<Viewport> viewports)
 {
-	VkViewport vp = {};
-	vp.width = viewport.GetWidth();
-	vp.height = viewport.GetHeight();
-	vp.maxDepth = 1;
-	vkCmdSetViewportWithCount(GetVkCommandBuffer(), 1, &vp);
+	VkViewport vp[16];
+	for (size_t i = 0; i < viewports.Size(); i++)
+	{
+		vp[i].x = viewports[i].MinX;
+		vp[i].y = viewports[i].MinY + viewports[i].MaxY;
+		vp[i].width = viewports[i].GetWidth();
+		vp[i].height = -viewports[i].GetHeight();
+		vp[i].minDepth = viewports[i].MinZ;
+		vp[i].maxDepth = viewports[i].MaxZ;
+	}
+
+	vkCmdSetViewportWithCount(GetVkCommandBuffer(), viewports.Size(), vp);
+}
+
+void phx::gfx::platform::CommandCtx_Vulkan::SetScissors(Span<Rect> rects)
+{
+	VkRect2D scissors[16];
+	for (size_t i = 0; i < rects.Size(); i++)
+	{
+		scissors[i].extent.width = rects[i].GetWidth();
+		scissors[i].extent.height = rects[i].GetHeight();
+		scissors[i].offset.x = std::max(0, rects[i].MinX);
+		scissors[i].offset.y = std::max(0, rects[i].MinY);
+	}
+
+	vkCmdSetScissorWithCount(GetVkCommandBuffer(), rects.Size(), scissors);
 }
 
 void phx::gfx::platform::CommandCtx_Vulkan::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex, int32_t baseVertex, uint32_t startInstance)
