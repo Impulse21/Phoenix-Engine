@@ -412,6 +412,8 @@ namespace phx::gfx
 
 		GpuTimerManager m_gpuTimerManager;
 
+		Microsoft::WRL::ComPtr<ID3D12RootSignature> m_emptyRootSignature;
+
 		HandlePool<PipelineState_Dx12, PipelineState> m_pipelineStatePool;
 		HandlePool<Shader_Dx12, Shader> m_shaderPool;
 	};

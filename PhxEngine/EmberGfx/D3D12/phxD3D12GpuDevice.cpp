@@ -497,6 +497,47 @@ namespace
 		outState.ForcedSampleCount = inState.ForcedSampleCount;
 	}
 
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateEmptyRootSignature()
+	{
+		using namespace Microsoft::WRL;
+
+		// Define an empty root signature
+		D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
+		rootSignatureDesc.NumParameters = 0;         // No root parameters
+		rootSignatureDesc.pParameters = nullptr;
+		rootSignatureDesc.NumStaticSamplers = 0;     // No static samplers
+		rootSignatureDesc.pStaticSamplers = nullptr;
+		rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+		// Serialize the root signature
+		ComPtr<ID3DBlob> serializedRootSignature;
+		ComPtr<ID3DBlob> errorBlob; // To capture any errors
+		HRESULT hr = D3D12SerializeRootSignature(&rootSignatureDesc,
+			D3D_ROOT_SIGNATURE_VERSION_1,
+			&serializedRootSignature,
+			&errorBlob);
+
+		if (FAILED(hr)) {
+			if (errorBlob) {
+				OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+			}
+			throw std::runtime_error("Failed to serialize root signature");
+		}
+
+		// Create the root signature
+		ComPtr<ID3D12RootSignature> rootSignature;
+		hr = D3D12GpuDevice::Instance()->GetD3D12Device()->CreateRootSignature(
+			0,
+			serializedRootSignature->GetBufferPointer(),
+			serializedRootSignature->GetBufferSize(),
+			IID_PPV_ARGS(&rootSignature));
+
+		if (FAILED(hr)) {
+			throw std::runtime_error("Failed to create root signature");
+		}
+
+		return rootSignature;
+	}
 }
 
 ID3D12CommandAllocator* D3D12CommandQueue::RequestAllocator()
@@ -548,6 +589,8 @@ void phx::gfx::D3D12GpuDevice::Initialize(SwapChainDesc const& swapChainDesc, bo
 	InitializeResourcePools();
 	CreateSwapChain(swapChainDesc, static_cast<HWND>(windowHandle));
 	m_gpuTimerManager.Initialize();
+
+	m_emptyRootSignature = CreateEmptyRootSignature();
 }
 
 void phx::gfx::D3D12GpuDevice::Finalize()
@@ -753,6 +796,11 @@ PipelineStateHandle phx::gfx::D3D12GpuDevice::CreatePipeline(PipelineStateDesc2 
 			impl.RootSignature = shaderImpl->RootSignature;
 	}
 
+	if (impl.RootSignature == nullptr)
+	{
+		impl.RootSignature = m_emptyRootSignature;
+	}
+
 	stream.stream1.ROOTSIG = impl.RootSignature.Get();
 
 	BlendRenderState brs = {};
@@ -883,47 +931,6 @@ void phx::gfx::D3D12GpuDevice::DeletePipeline(PipelineStateHandle handle)
 	m_deferredQueue.push_back(d);
 }
 
-Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateEmptyRootSignature()
-{
-	using namespace Microsoft::WRL;
-
-	// Define an empty root signature
-	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
-	rootSignatureDesc.NumParameters = 0;         // No root parameters
-	rootSignatureDesc.pParameters = nullptr;
-	rootSignatureDesc.NumStaticSamplers = 0;     // No static samplers
-	rootSignatureDesc.pStaticSamplers = nullptr;
-	rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-
-	// Serialize the root signature
-	ComPtr<ID3DBlob> serializedRootSignature;
-	ComPtr<ID3DBlob> errorBlob; // To capture any errors
-	HRESULT hr = D3D12SerializeRootSignature(&rootSignatureDesc,
-		D3D_ROOT_SIGNATURE_VERSION_1,
-		&serializedRootSignature,
-		&errorBlob);
-
-	if (FAILED(hr)) {
-		if (errorBlob) {
-			OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-		}
-		throw std::runtime_error("Failed to serialize root signature");
-	}
-
-	// Create the root signature
-	ComPtr<ID3D12RootSignature> rootSignature;
-	hr = D3D12GpuDevice::Instance()->GetD3D12Device()->CreateRootSignature(
-		0,
-		serializedRootSignature->GetBufferPointer(),
-		serializedRootSignature->GetBufferSize(),
-		IID_PPV_ARGS(&rootSignature));
-
-	if (FAILED(hr)) {
-		throw std::runtime_error("Failed to create root signature");
-	}
-
-	return rootSignature;
-}
 GfxPipelineHandle phx::gfx::D3D12GpuDevice::CreateGfxPipeline(GfxPipelineDesc const& desc)
 {
 	return {};

@@ -79,13 +79,18 @@ public:
 		phx::gfx::DepthStencilRenderState dss = { .DepthEnable = false, .DepthWriteMask = phx::gfx::DepthWriteMask::Zero};
 		phx::gfx::RasterRenderState rs = {.CullMode = phx::gfx::RasterCullMode::None };
 
+		phx::gfx::RenderPassInfo passInfo;
+		passInfo.RenderTargetCount = 1;
+		passInfo.RenderTargetFormats[0] = phx::gfx::g_SwapChainFormat;
+
 		this->m_pipeline = device->CreatePipeline({
 				.VS = vsShader,
 				.PS = psShader,
 				.DepthStencilRenderState = &dss,
 				.RasterRenderState = &rs,
 				.InputLayout = nullptr// &il
-			});
+			},
+			&passInfo);
 
 		device->DeleteShader(vsShader);
 		device->DeleteShader(psShader);
