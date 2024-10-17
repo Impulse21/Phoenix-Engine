@@ -205,16 +205,11 @@ void phx::gfx::platform::VulkanGpuDevice::Finalize()
 
     m_commandCtxPool.clear();
 
-
-    for (auto imageView : m_swapChainImageViews) 
-    {
-        vkDestroyImageView(m_vkDevice, imageView, nullptr);
-    }
-
     vmaDestroyAllocator(m_vmaAllocator);
 	vmaDestroyAllocator(m_vmaAllocatorExternal);
 
-    vkDestroyPipelineCache(m_vkDevice, m_vkPipelineCache, nullptr);
+    vkDestroyPipelineCache(m_vkDevice, m_vkPipelineCache, nullptr); 
+    CleanupSwapchain();
     vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
     vkDestroyDevice(m_vkDevice, nullptr);
 
@@ -377,6 +372,13 @@ void phx::gfx::platform::VulkanGpuDevice::WaitForIdle()
 {
     VkResult res = vkDeviceWaitIdle(m_vkDevice);
     assert(res == VK_SUCCESS);
+}
+
+void phx::gfx::platform::VulkanGpuDevice::ResizeSwapChain(SwapChainDesc const& swapChainDesc)
+{
+    std::scoped_lock _(m_swapchainMutex);
+    m_swapChainDesc = swapChainDesc;
+
 }
 
 ShaderHandle phx::gfx::platform::VulkanGpuDevice::CreateShader(ShaderDesc const& desc)
@@ -1327,6 +1329,28 @@ void phx::gfx::platform::VulkanGpuDevice::CreateSwapchain(SwapChainDesc const& d
     vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &imageCount, m_swapChainImages.data());
 }
 
+void phx::gfx::platform::VulkanGpuDevice::RecreateSwapchain()
+{
+    std::scoped_lock _(m_swapchainMutex);
+    WaitForIdle();
+    CleanupSwapchain();
+
+    CreateSwapchain(m_swapChainDesc);
+    CreateSwapChaimImageViews();
+
+    m_swapchainResized = false;
+}
+
+void phx::gfx::platform::VulkanGpuDevice::CleanupSwapchain()
+{
+
+    for (auto imageView : m_swapChainImageViews)
+    {
+        vkDestroyImageView(m_vkDevice, imageView, nullptr);
+    }
+
+}
+
 void phx::gfx::platform::VulkanGpuDevice::CreateSwapChaimImageViews()
 {
     m_swapChainImageViews.resize(m_swapChainImages.size());
@@ -1696,16 +1720,7 @@ void phx::gfx::platform::VulkanGpuDevice::Present()
         // Handle outdated error in present:
         if (res == VK_SUBOPTIMAL_KHR || res == VK_ERROR_OUT_OF_DATE_KHR)
         {
-            PHX_CORE_ERROR("Swapchain needs to be recreated");
-            assert(false);
-#if false
-            for (auto& swapchain : swapchain_updates)
-            {
-                auto internal_state = to_internal(&swapchain);
-                bool success = CreateSwapChainInternal(internal_state, device->physicalDevice, device->device, device->allocationhandler);
-                assert(success);
-            }
-#endif
+            RecreateSwapchain();
         }
         else
         {

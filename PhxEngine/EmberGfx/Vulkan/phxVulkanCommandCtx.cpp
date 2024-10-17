@@ -21,23 +21,9 @@ void phx::gfx::platform::CommandCtx_Vulkan::RenderPassBegin()
 		// Handle outdated error in acquire:
 		if (res == VK_SUBOPTIMAL_KHR || res == VK_ERROR_OUT_OF_DATE_KHR)
 		{
-			// we need to create a new semaphore or jump through a few hoops to
-			// wait for the current one to be unsignalled before we can use it again
-			// creating a new one is easiest. See also:
-			// https://github.com/KhronosGroup/Vulkan-Docs/issues/152
-			// https://www.khronos.org/blog/resolving-longstanding-issues-with-wsi
-			{
-#if false
-				std::scoped_lock lock(allocationhandler->destroylocker);
-				for (auto& x : internal_state->swapchainAcquireSemaphores)
-				{
-					allocationhandler->destroyer_semaphores.emplace_back(x, allocationhandler->framecount);
-				}
-#endif
-			}
-
-			// Recreate Swapchain and begin render pass again?
-			PHX_CORE_ERROR("Failed to Acuire next image index");
+			GpuDevice->RecreateSwapchain();
+			RenderPassBegin();
+			return;
 		}
 		assert(0);
 	}

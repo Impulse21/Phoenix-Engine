@@ -226,7 +226,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				// app->OnResuming();
 			s_in_suspend = false;
 		}
-		else if (!s_in_sizemove && app)
+		else if (s_in_sizemove)
 		{
 			Display::Resize(LOWORD(lParam), HIWORD(lParam));
 		}

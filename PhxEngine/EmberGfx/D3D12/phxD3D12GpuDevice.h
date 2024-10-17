@@ -274,7 +274,7 @@ namespace phx::gfx
 		void Finalize() override;
 
 		void WaitForIdle() override;
-		void ResizeSwapChain(SwapChainDesc const& swapChainDesc);
+		void ResizeSwapChain(SwapChainDesc const& swapChainDesc) override;
 
 		ICommandCtx* BeginCommandCtx(phx::gfx::CommandQueueType type = CommandQueueType::Graphics) override;
 		void SubmitFrame() override;

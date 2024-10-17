@@ -85,7 +85,8 @@ namespace phx::gfx::platform
 		ICommandCtx* BeginCommandCtx(phx::gfx::CommandQueueType type = CommandQueueType::Graphics) override;
 		void SubmitFrame() override;
 
-		void WaitForIdle() override;
+		void WaitForIdle() override; 
+		void ResizeSwapChain(SwapChainDesc const& swapChainDesc) override;
 
 		// Resource Factory
 	public:
@@ -106,6 +107,8 @@ namespace phx::gfx::platform
 		void CreateLogicalDevice();
 		void CreateSurface(void* windowHandle);
 		void CreateSwapchain(SwapChainDesc const& desc);
+		void RecreateSwapchain();
+		void CleanupSwapchain();
 		void CreateSwapChaimImageViews();
 		void CreateVma();
 		void CreateFrameResources();
@@ -188,6 +191,8 @@ namespace phx::gfx::platform
 		SwapChainDesc m_swapChainDesc = {};
 		VkSwapchainKHR m_vkSwapChain = VK_NULL_HANDLE;
 		uint32_t m_swapChainCurrentImage = ~0u;
+		bool m_swapchainResized = false;
+		std::mutex m_swapchainMutex;
 
 		VkFormat m_swapChainFormat;
 		VkExtent2D m_swapChainExtent;

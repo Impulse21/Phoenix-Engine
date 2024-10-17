@@ -84,7 +84,7 @@ namespace phx::Display
 			.EnableHDR = false
 		};
 
-		// phx::gfx::EmberGfx::GetDevice()->ResizeSwapChain(desc);
+		phx::gfx::EmberGfx::GetDevice()->ResizeSwapChain(desc);
 	}
 
 	void Preset()
