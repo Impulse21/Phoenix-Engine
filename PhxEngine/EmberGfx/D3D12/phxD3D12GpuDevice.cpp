@@ -653,6 +653,12 @@ void phx::gfx::D3D12GpuDevice::SubmitFrame()
 	RunGarbageCollection();
 }
 
+DynamicMemoryPage phx::gfx::D3D12GpuDevice::AllocateDynamicMemoryPage(size_t pageSize)
+{
+	GpuRingAllocator* ringAllocator = GetDynamicPageAllocator();
+	return ringAllocator->Allocate(pageSize);
+}
+
 void phx::gfx::D3D12GpuDevice::BeginGpuTimerReadback()
 {
 	m_gpuTimerManager.BeginReadBack();

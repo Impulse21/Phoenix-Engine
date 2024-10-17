@@ -1375,6 +1375,13 @@ namespace phx::gfx
         bool EnableHDR : 1 = false;
     };
 
+    struct DynamicMemoryPage
+    {
+        BufferHandle BufferHandle;
+        size_t Offset;
+        uint8_t* Data;
+    };
+
     constexpr uint32_t GetFormatStride(Format format)
     {
         switch (format)

@@ -125,7 +125,7 @@ DynamicMemoryPage phx::gfx::GpuRingAllocator::Allocate(uint32_t allocSize)
 
 	return DynamicMemoryPage{
 		.BufferHandle = this->m_buffer,
-		.GpuAddress = this->m_gpuAddress + offset,
+		.Offset = offset,
 		.Data = reinterpret_cast<uint8_t*>(this->m_data + offset),
 	};
 }

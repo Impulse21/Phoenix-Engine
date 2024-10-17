@@ -381,6 +381,11 @@ void phx::gfx::platform::VulkanGpuDevice::ResizeSwapChain(SwapChainDesc const& s
 
 }
 
+DynamicMemoryPage phx::gfx::platform::VulkanGpuDevice::AllocateDynamicMemoryPage(size_t pageSize)
+{
+    return DynamicMemoryPage();
+}
+
 ShaderHandle phx::gfx::platform::VulkanGpuDevice::CreateShader(ShaderDesc const& desc)
 {
     Handle<Shader> retVal = this->m_shaderPool.Emplace();

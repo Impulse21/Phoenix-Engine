@@ -1,17 +1,11 @@
 #pragma once
+
 #include "phxDynamicMemoryPageAllocatorD3D12.h"
 #include "EmberGfx/phxGfxDeviceResources.h"
 #include <deque>
 #include <mutex>
 namespace phx::gfx
 {
-	struct DynamicMemoryPage
-	{
-		BufferHandle BufferHandle;
-		D3D12_GPU_VIRTUAL_ADDRESS GpuAddress;
-		uint8_t* Data;
-	};
-
 	class GpuRingAllocator
 	{
 	public:

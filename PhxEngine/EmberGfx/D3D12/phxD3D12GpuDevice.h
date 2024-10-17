@@ -281,6 +281,8 @@ namespace phx::gfx
 		ICommandCtx* BeginCommandCtx(phx::gfx::CommandQueueType type = CommandQueueType::Graphics) override;
 		void SubmitFrame() override;
 
+		DynamicMemoryPage AllocateDynamicMemoryPage(size_t pageSize) override;
+	
 	public:
 		ShaderHandle CreateShader(ShaderDesc const& desc) override;
 		void DeleteShader(ShaderHandle handle)  override;

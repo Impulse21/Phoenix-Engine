@@ -89,6 +89,8 @@ namespace phx::gfx::platform
 		void WaitForIdle() override; 
 		void ResizeSwapChain(SwapChainDesc const& swapChainDesc) override;
 
+		DynamicMemoryPage AllocateDynamicMemoryPage(size_t pageSize) override;
+
 		// Resource Factory
 	public:
 		ShaderHandle CreateShader(ShaderDesc const& desc) override;

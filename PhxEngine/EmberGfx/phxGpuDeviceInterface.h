@@ -21,6 +21,8 @@ namespace phx::gfx
 		virtual ICommandCtx* BeginCommandCtx(phx::gfx::CommandQueueType type = CommandQueueType::Graphics) = 0;
 		virtual void SubmitFrame() = 0;
 
+		virtual DynamicMemoryPage AllocateDynamicMemoryPage(size_t pageSize) = 0;
+
 	public:
 		virtual ShaderHandle CreateShader(ShaderDesc const& desc) = 0;
 		virtual void DeleteShader(ShaderHandle handle) = 0;

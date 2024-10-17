@@ -403,8 +403,10 @@ void phx::gfx::platform::CommandCtxD3D12::SetDynamicVertexBuffer(BufferHandle te
 {
     size_t bufferSize = numVertices * vertexSize;
 
+    const D3D12Buffer* bufferImpl = D3D12GpuDevice::Instance()->GetRegistry().Buffers.Get(tempBuffer);
+
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
-    vertexBufferView.BufferLocation = this->m_dynamicAllocator.Page.GpuAddress + offset;
+    vertexBufferView.BufferLocation = bufferImpl->D3D12Resource->GetGPUVirtualAddress() + offset;
     vertexBufferView.SizeInBytes = static_cast<UINT>(bufferSize);
     vertexBufferView.StrideInBytes = static_cast<UINT>(vertexSize);
 
@@ -423,8 +425,10 @@ void phx::gfx::platform::CommandCtxD3D12::SetDynamicIndexBuffer(BufferHandle tem
     size_t indexSizeInBytes = indexFormat == Format::R16_UINT ? 2 : 4;
     size_t bufferSize = numIndicies * indexSizeInBytes;
 
+    const D3D12Buffer* bufferImpl = D3D12GpuDevice::Instance()->GetRegistry().Buffers.Get(tempBuffer);
+
     D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
-    indexBufferView.BufferLocation = this->m_dynamicAllocator.Page.GpuAddress + offset;
+    indexBufferView.BufferLocation = bufferImpl->D3D12Resource->GetGPUVirtualAddress()  + offset;
     indexBufferView.SizeInBytes = static_cast<UINT>(bufferSize);
     const auto& formatMapping = GetDxgiFormatMapping(indexFormat);;
 
