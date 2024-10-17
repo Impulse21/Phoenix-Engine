@@ -29,5 +29,8 @@ namespace phx::gfx
 
 		virtual PipelineStateHandle CreatePipeline(PipelineStateDesc2 const& desc, RenderPassInfo* renderPassInfo = nullptr) = 0;
 		virtual void DeletePipeline(PipelineStateHandle handle) = 0;
+
+		virtual BufferHandle CreateBuffer(BufferDesc const& desc) = 0;
+		virtual void DeleteBuffer(BufferHandle handle) = 0;
 	};
 }

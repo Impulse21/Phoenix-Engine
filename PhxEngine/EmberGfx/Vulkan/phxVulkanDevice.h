@@ -75,6 +75,37 @@ namespace phx::gfx::platform
 		size_t BindingHash = 0;
 	};
 
+	class TempMemoryAllocator
+	{
+	public:
+		void Initialize(VulkanGpuDevice* device, size_t bufferSize);
+		void Finalize();
+		void EndFrame();
+
+		uint32_t GetBufferSize() { return (this->m_bufferMask + 1); }
+
+	private:
+		VulkanGpuDevice* m_device;
+		BufferHandle m_buffer;
+		uint32_t m_bufferMask;
+		uint32_t m_headAtStartOfFrame = 0;
+		uint32_t m_head = 0;
+		uint32_t m_tail = 0;
+
+		std::mutex m_mutex;
+
+		uint8_t* m_data;
+
+		std::array<VkFence, kBufferCount> m_vkFences;
+		struct UsedRegion
+		{
+			uint32_t UsedSize = 0;
+			VkFence Fence;
+		};
+
+		std::deque<UsedRegion> m_inUseRegions;
+	};
+
 	class VulkanGpuDevice final : public IGpuDevice
 	{
 		friend CommandCtx_Vulkan;
@@ -99,6 +130,13 @@ namespace phx::gfx::platform
 		PipelineStateHandle CreatePipeline(PipelineStateDesc2 const& desc, RenderPassInfo* renderPassInfo = nullptr) override;
 		void DeletePipeline(PipelineStateHandle handle) override;
 
+		BufferHandle CreateBuffer(BufferDesc const& desc) override;
+		void DeleteBuffer(BufferHandle handle) override;
+
+	public:
+		VkDevice GetVkDevice() { return m_vkDevice; }
+		uint32_t GetBufferIndex() const { return m_frameCount % kBufferCount; }
+
 	private:
 		void CreateInstance();
 		void SetupDebugMessenger();
@@ -120,7 +158,6 @@ namespace phx::gfx::platform
 		void DestoryFrameResources();
 		void DestoryDefaultResources();
 
-		uint32_t GetBufferIndex() const { return m_frameCount % kBufferCount; }
 		QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device);
 		SwapChainSupportDetails QuerySwapchainSupport(VkPhysicalDevice device);
 

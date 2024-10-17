@@ -43,7 +43,7 @@ void phx::gfx::GpuRingAllocator::Finalize()
 	this->m_availableFences.clear();
 
 	auto* device = D3D12GpuDevice::Instance();
-	device->DeleteResource(this->m_buffer);
+	device->DeleteBuffer(this->m_buffer);
 }
 
 void phx::gfx::GpuRingAllocator::EndFrame(ID3D12CommandQueue* q)

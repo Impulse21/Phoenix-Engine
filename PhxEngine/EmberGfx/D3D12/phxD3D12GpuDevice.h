@@ -290,6 +290,10 @@ namespace phx::gfx
 		PipelineStateHandle CreatePipeline(PipelineStateDesc2 const& desc, RenderPassInfo* renderPassInfo = nullptr) override;
 		void DeletePipeline(PipelineStateHandle handle)  override;
 
+
+		BufferHandle CreateBuffer(BufferDesc const& desc) override;
+		void DeleteBuffer(BufferHandle handle) override;
+
 	public:
 		void BeginGpuTimerReadback();
 		float GetTime(TimerQueryHandle handle);
@@ -306,9 +310,6 @@ namespace phx::gfx
 
 		InputLayoutHandle CreateInputLayout(Span<VertexAttributeDesc> desc);
 		void DeleteResource(InputLayoutHandle handle);
-
-		BufferHandle CreateBuffer(BufferDesc const& desc);
-		void DeleteResource(BufferHandle handle);
 
 		void DeleteResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource);
 

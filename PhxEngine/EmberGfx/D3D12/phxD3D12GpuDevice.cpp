@@ -1878,8 +1878,7 @@ BufferHandle phx::gfx::D3D12GpuDevice::CreateBuffer(BufferDesc const& desc)
 	return buffer;
 }
 
-
-void phx::gfx::D3D12GpuDevice::DeleteResource(BufferHandle handle)
+void phx::gfx::D3D12GpuDevice::DeleteBuffer(BufferHandle handle)
 {
 	DeferredItem d =
 	{
@@ -1912,6 +1911,7 @@ void phx::gfx::D3D12GpuDevice::DeleteResource(BufferHandle handle)
 
 	m_deferredQueue.push_back(d);
 }
+
 
 void phx::gfx::D3D12GpuDevice::DeleteResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource)
 {

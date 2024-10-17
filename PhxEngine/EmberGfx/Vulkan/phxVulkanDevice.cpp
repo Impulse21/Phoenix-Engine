@@ -1170,6 +1170,7 @@ void phx::gfx::platform::VulkanGpuDevice::CreateLogicalDevice()
     assert(m_features2.features.textureCompressionBC == VK_TRUE);
     assert(m_features2.features.occlusionQueryPrecise == VK_TRUE);
     assert(m_vulkan12Features.descriptorIndexing == VK_TRUE);
+    assert(m_vulkan12Features.timelineSemaphore == VK_TRUE);
     assert(m_vulkan13Features.dynamicRendering == VK_TRUE);
 
 
@@ -1777,4 +1778,60 @@ void phx::gfx::platform::VulkanGpuDevice::CommandQueue::Submit(VulkanGpuDevice* 
     SubmitCmds.clear();
     SubmitWaitSemaphoreInfos.clear();
     SubmitSignalSemaphoreInfos.clear();
+}
+
+void phx::gfx::platform::TempMemoryAllocator::Initialize(VulkanGpuDevice* device, size_t bufferSize)
+{
+    m_device = device;
+    assert((bufferSize & (bufferSize - 1)) == 0);
+    this->m_bufferMask = (bufferSize - 1);
+
+    this->m_buffer = device->CreateBuffer({
+            .Usage = Usage::Upload,
+            .SizeInBytes = bufferSize,
+            .DebugName = "Temp Buffer"
+        });
+
+
+    VkFenceCreateInfo fenceInfo = {};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+    for (auto& fence : m_vkFences)
+    {
+        VkResult res = vkCreateFence(m_device->GetVkDevice(), &fenceInfo, nullptr, &fence);
+        assert(res == VK_SUCCESS);
+    }
+}
+
+void phx::gfx::platform::TempMemoryAllocator::Finalize()
+{
+    this->m_data = nullptr;
+
+    for (auto& fence : m_vkFences)
+    {
+        vkDestroyFence(m_device->GetVkDevice(), fence, nullptr);
+    }
+
+    this->m_inUseRegions.clear();
+    m_device->DeleteBuffer(m_buffer);
+}
+
+void phx::gfx::platform::TempMemoryAllocator::EndFrame()
+{
+    // -- Wait on next inflight frame ---
+    while (!this->m_inUseRegions.empty())
+    {
+        auto& region = this->m_inUseRegions.front();
+        VkResult result = vkGetFenceStatus(m_device->GetVkDevice(), region.Fence);
+        if (result == VK_NOT_READY)
+        {
+            break;
+        }
+
+        // vkWaitForFences(m_device->GetVkDevice(), 1, &region.Fence, VK_TRUE, UINT64_MAX);
+        vkResetFences(m_device->GetVkDevice(), 1, &region.Fence);
+        m_head += region.UsedSize;
+
+        this->m_inUseRegions.pop_front();
+    }
 }
