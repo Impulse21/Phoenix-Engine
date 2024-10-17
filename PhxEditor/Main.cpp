@@ -26,33 +26,28 @@ public:
 		phx::gfx::GpuDevice* device = phx::gfx::EmberGfx::GetDevice();
 
 		phx::gfx::ShaderCompiler::Output testShaderVSOutput = phx::gfx::ShaderCompiler::Compile({
-			.Format = phx::gfx::ShaderFormat::Spriv,
+				.Format = device->GetShaderFormat(),
 				.ShaderStage = phx::gfx::ShaderStage::VS,
 				.SourceFilename = "/native/Shaders/TestShader.hlsl",
 				.EntryPoint = "MainVS",
 				.FileSystem = m_fs.get()});
 
-		m_fs->WriteFile("/shaders/TestShaderVS.spriv", phx::Span((char*)testShaderVSOutput.ByteCode, testShaderVSOutput.ByteCodeSize));
 		phx::gfx::ShaderHandle vsShader = device->CreateShader({
 				.Stage = phx::gfx::ShaderStage::VS,
 				.ByteCode = phx::Span(testShaderVSOutput.ByteCode, testShaderVSOutput.ByteCodeSize),
-				.EntryPoint = "MainVS"
-			});
+				.EntryPoint = "MainVS"});
 
 		phx::gfx::ShaderCompiler::Output testShaderPSOutput = phx::gfx::ShaderCompiler::Compile({
-			.Format = phx::gfx::ShaderFormat::Spriv,
-			.ShaderStage = phx::gfx::ShaderStage::PS,
-			.SourceFilename = "/native/Shaders/TestShader.hlsl",
-			.EntryPoint = "MainPS",
-			.FileSystem = m_fs.get() });
-
-		m_fs->WriteFile("/shaders/TestShaderPS.spriv", phx::Span((char*)testShaderPSOutput.ByteCode, testShaderPSOutput.ByteCodeSize));
+				.Format = device->GetShaderFormat(),
+				.ShaderStage = phx::gfx::ShaderStage::PS,
+				.SourceFilename = "/native/Shaders/TestShader.hlsl",
+				.EntryPoint = "MainPS",
+				.FileSystem = m_fs.get() });
 
 		phx::gfx::ShaderHandle psShader = device->CreateShader({
 				.Stage = phx::gfx::ShaderStage::PS,
 				.ByteCode = phx::Span(testShaderPSOutput.ByteCode, testShaderPSOutput.ByteCodeSize),
-				.EntryPoint = "MainPS"
-			});
+				.EntryPoint = "MainPS"});
 
 		phx::gfx::InputLayout il = {
 			.elements = {

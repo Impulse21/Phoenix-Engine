@@ -910,7 +910,7 @@ PipelineStateHandle phx::gfx::D3D12GpuDevice::CreatePipeline(PipelineStateDesc2 
 			streamDesc.SizeInBytes += sizeof(stream.stream2);
 		}
 #endif
-		HRESULT hr = m_d3d12Device5->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&impl.D3D12PipelineState));
+		HRESULT hr = m_d3d12Device2->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&impl.D3D12PipelineState));
 		if (FAILED(hr))
 		{
 			PollDebugMessages();

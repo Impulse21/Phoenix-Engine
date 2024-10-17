@@ -13,6 +13,8 @@ namespace phx::gfx
 		virtual void Initialize(SwapChainDesc const& swapChainDesc, bool enableValidationLayers, void* windowHandle = nullptr) = 0;
 		virtual void Finalize() = 0;
 
+		virtual ShaderFormat GetShaderFormat() const = 0;
+
 		virtual void WaitForIdle() = 0;
 		virtual void ResizeSwapChain(SwapChainDesc const& swapChainDesc) = 0;
 

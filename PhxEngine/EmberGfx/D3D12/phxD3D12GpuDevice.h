@@ -273,6 +273,8 @@ namespace phx::gfx
 		void Initialize(SwapChainDesc const& swapChainDesc, bool enableValidationLayers, void* windowHandle = nullptr) override;
 		void Finalize() override;
 
+		ShaderFormat GetShaderFormat() const { return ShaderFormat::Hlsl6; }
+
 		void WaitForIdle() override;
 		void ResizeSwapChain(SwapChainDesc const& swapChainDesc) override;
 

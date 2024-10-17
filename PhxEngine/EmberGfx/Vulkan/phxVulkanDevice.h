@@ -82,6 +82,7 @@ namespace phx::gfx::platform
 		void Initialize(SwapChainDesc const& swapChainDesc, bool enableValidationLayers, void* windowHandle = nullptr) override;
 		void Finalize() override;
 
+		ShaderFormat GetShaderFormat() const { return ShaderFormat::Spriv; }
 		ICommandCtx* BeginCommandCtx(phx::gfx::CommandQueueType type = CommandQueueType::Graphics) override;
 		void SubmitFrame() override;
 
