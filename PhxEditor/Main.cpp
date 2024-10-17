@@ -120,8 +120,8 @@ public:
 		Rect scissor(g_DisplayWidth, g_DisplayHeight);
 		ctx->SetScissors({ scissor });
 		ctx->SetPipelineState(m_pipeline);
-
-		DynamicBuffer temp = ctx.AllocateDynamic(sizeof(uint16_t) * 3);
+#if false
+		DynamicBuffer temp = ctx->AllocateDynamic(sizeof(uint16_t) * 3);
 
 		uint16_t* indices = reinterpret_cast<uint16_t*>(temp.Data);
 		indices[0] = 0;
@@ -131,33 +131,12 @@ public:
 		ctx->SetDynamicIndexBuffer(temp.BufferHandle, temp.Offset, 3, Format::R16_UINT);
 
 		ctx->DrawIndexed(3);
+#else
+
+		ctx->Draw(3);
+#endif
 
 		ctx->RenderPassEnd();
-#if false
-		using namespace phx::gfx;
-		phx::gfx::CommandCtx ctx = phx::gfx::GfxDevice::BeginGfxContext();
-		PHX_EVENT_GFX(ctx);
-		ctx.ClearBackBuffer({ 0.392156899f, 0.584313750f, 0.929411829f, 1.f  }); // Cornflower blue
-		ctx.SetRenderTargetSwapChain();
-		Viewport viewport(g_DisplayWidth, g_DisplayHeight);
-
-		ctx.SetViewports({ &viewport, 1 });
-		Rect rec(g_DisplayWidth, g_DisplayHeight);
-		ctx.SetScissors({ &rec, 1 });
-		ctx.SetGfxPipeline(this->m_pipeline);	
-
-		DynamicBuffer temp = ctx.AllocateDynamic(sizeof(uint16_t) * 3);
-		
-		uint16_t* indices = reinterpret_cast<uint16_t*>(temp.Data);
-		indices[0] = 0;
-		indices[1] = 1;
-		indices[2] = 2;
-
-		ctx.SetDynamicIndexBuffer(temp.BufferHandle, temp.Offset, 3, Format::R16_UINT);
-		ctx.DrawIndexed(3, 1, 0, 0, 0);
-
-		m_imguiRenderSystem.Render(ctx);
-#endif
 	}
 
 private:
