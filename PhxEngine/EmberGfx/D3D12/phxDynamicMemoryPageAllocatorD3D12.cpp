@@ -69,7 +69,6 @@ void phx::gfx::GpuRingAllocator::EndFrame(ID3D12CommandQueue* q)
 	{
 		fence = this->m_availableFences.front();
 		this->m_availableFences.pop_front();
-
 	}
 
 	if (!fence)

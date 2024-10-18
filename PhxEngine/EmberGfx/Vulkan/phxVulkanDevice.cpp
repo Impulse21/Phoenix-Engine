@@ -402,6 +402,7 @@ ShaderHandle phx::gfx::platform::VulkanGpuDevice::CreateShader(ShaderDesc const&
     impl.StageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     impl.StageInfo.module = impl.ShaderModule;
     impl.StageInfo.pName = desc.EntryPoint;
+
     switch (desc.Stage)
     {
     case ShaderStage::MS:
@@ -820,6 +821,26 @@ void phx::gfx::platform::VulkanGpuDevice::DeletePipeline(PipelineStateHandle han
                 vkDestroyPipeline(m_vkDevice, impl->Pipeline, nullptr);
 
                 vkDestroyPipelineLayout(m_vkDevice, impl->PipelineLayout, nullptr);
+            }
+        }
+    };
+}
+
+BufferHandle phx::gfx::platform::VulkanGpuDevice::CreateBuffer(BufferDesc const& desc)
+{
+    return BufferHandle();
+}
+
+void phx::gfx::platform::VulkanGpuDevice::DeleteBuffer(BufferHandle handle)
+{
+    DeferredItem d =
+    {
+        m_frameCount,
+        [=]()
+        {
+            Buffer_VK* impl = m_bufferPool.Get(handle);
+            if (impl)
+            {
             }
         }
     };
@@ -1846,9 +1867,10 @@ void phx::gfx::platform::DynamicMemoryAllocator::EndFrame()
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     VkResult result = vkQueueSubmit(m_device->GetVkQueue(CommandQueueType::Graphics), 1, &submitInfo, vkFence);
 
-    this->m_inUseRegions.push_front(UsedRegion{
-        .UsedSize = m_tail - m_headAtStartOfFrame,
-        .Fence = vkFence });
+    this->m_inUseRegions.push_front(
+        UsedRegion{
+            .UsedSize = m_tail - m_headAtStartOfFrame,
+            .Fence = vkFence });
 
     m_headAtStartOfFrame = m_tail;
 }

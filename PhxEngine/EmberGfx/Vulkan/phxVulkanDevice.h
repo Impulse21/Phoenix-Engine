@@ -75,6 +75,12 @@ namespace phx::gfx::platform
 		size_t BindingHash = 0;
 	};
 
+	struct Buffer_VK
+	{
+		VkBuffer BufferVk;
+		VmaAllocation Allocation;
+	};
+
 	class DynamicMemoryAllocator
 	{
 	public:
@@ -258,6 +264,7 @@ namespace phx::gfx::platform
 		VkPipelineCache m_vkPipelineCache;
 		HandlePool<PipelineState_Vk, PipelineState> m_pipelineStatePool;
 		HandlePool<Shader_VK, Shader> m_shaderPool;
+		HandlePool<Buffer_VK, Buffer> m_bufferPool;
 
 
 		std::mutex m_commandPoolLock;
