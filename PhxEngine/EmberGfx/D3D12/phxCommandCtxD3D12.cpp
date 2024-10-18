@@ -51,8 +51,6 @@ void CommandCtxD3D12::Reset(size_t id, CommandQueueType queueType)
 	ID3D12Device* d3d12Device = D3D12GpuDevice::Instance()->GetD3D12Device();
 	D3D12CommandQueue& queue = D3D12GpuDevice::Instance()->GetQueue(queueType);
 
-	this->m_dynamicAllocator.Reset(D3D12GpuDevice::Instance()->GetDynamicPageAllocator());
-
 	this->m_allocator = nullptr;
 	this->m_allocator = queue.RequestAllocator();
 	if (this->m_commandList == nullptr)
@@ -106,11 +104,6 @@ void phx::gfx::platform::CommandCtxD3D12::Close()
 
     this->m_commandList->ResourceBarrier(1, &barrier);
     this->m_commandList->Close();
-}
-
-DynamicBuffer phx::gfx::platform::CommandCtxD3D12::AllocateDynamic(size_t sizeInBytes, size_t alignment)
-{
-    return this->m_dynamicAllocator.Allocate(sizeInBytes, alignment);
 }
 
 void CommandCtxD3D12::TransitionBarrier(GpuBarrier const& barrier)
@@ -430,7 +423,7 @@ void phx::gfx::platform::CommandCtxD3D12::SetDynamicIndexBuffer(BufferHandle tem
     D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
     indexBufferView.BufferLocation = bufferImpl->D3D12Resource->GetGPUVirtualAddress()  + offset;
     indexBufferView.SizeInBytes = static_cast<UINT>(bufferSize);
-    const auto& formatMapping = GetDxgiFormatMapping(indexFormat);;
+    const auto& formatMapping = GetDxgiFormatMapping(indexFormat);
 
     indexBufferView.Format = formatMapping.SrvFormat;
     this->m_commandList->IASetIndexBuffer(&indexBufferView);

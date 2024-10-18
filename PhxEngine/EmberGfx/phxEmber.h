@@ -51,7 +51,7 @@ namespace phx::gfx
 			}
 
 			DynamicMemoryPage Page = {};
-			size_t PageSize = 4_MiB;
+			static const size_t PageSize = 4_MiB;
 			uint32_t ByteOffset = 0;
 		};
 	}

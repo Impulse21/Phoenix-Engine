@@ -145,3 +145,20 @@ void phx::gfx::platform::CommandCtx_Vulkan::Draw(uint32_t vertexCount, uint32_t 
 {
 	vkCmdDraw(GetVkCommandBuffer(), vertexCount, instanceCount, startVertex, startInstance);
 }
+
+void phx::gfx::platform::CommandCtx_Vulkan::SetDynamicVertexBuffer(BufferHandle tempBuffer, size_t offset, uint32_t slot, size_t numVertices, size_t vertexSize)
+{
+	assert(false);
+}
+
+void phx::gfx::platform::CommandCtx_Vulkan::SetDynamicIndexBuffer(BufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat)
+{
+	// TODO: Format mapping
+
+	VkIndexType type = indexFormat == Format::R16_UINT
+		? VK_INDEX_TYPE_UINT16
+		: VK_INDEX_TYPE_UINT32;
+
+	const Buffer_VK* bufferImpl = GpuDevice->m_bufferPool.Get(tempBuffer);
+	vkCmdBindIndexBuffer(GetVkCommandBuffer(), bufferImpl->BufferVk, offset, type);
+}

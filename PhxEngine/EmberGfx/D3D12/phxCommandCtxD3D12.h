@@ -29,43 +29,6 @@ namespace phx::gfx::platform
 		uint64_t fenceValue = 0;
 	};
 
-	struct DynamicAllocator
-	{
-		void Reset(GpuRingAllocator* allocator)
-		{
-			if (allocator != this->RingAllocator)
-				this->RingAllocator = allocator;
-
-			this->Page = this->RingAllocator->Allocate(this->PageSize);
-			this->ByteOffset = 0;
-		}
-
-		DynamicBuffer Allocate(uint32_t byteSize, uint32_t alignment)
-		{
-			uint32_t offset = MemoryAlign(ByteOffset, alignment);
-			this->ByteOffset = offset + byteSize;
-
-			if (this->ByteOffset > this->PageSize)
-			{
-				this->Page = this->RingAllocator->Allocate(this->PageSize);
-				offset = 0;
-				this->ByteOffset = byteSize;
-			}
-
-			return DynamicBuffer{
-				.BufferHandle = this->Page.BufferHandle,
-				.Offset = offset,
-				.Data = this->Page.Data + offset
-			};
-		}
-
-		GpuRingAllocator* RingAllocator = nullptr;
-		DynamicMemoryPage Page = {};
-		size_t PageSize = 4_MiB;
-		uint32_t ByteOffset = 0;
-	};
-
-
 	class CommandCtxD3D12 final : public phx::gfx::ICommandCtx
 	{
 		friend D3D12GpuDevice;
@@ -86,8 +49,10 @@ namespace phx::gfx::platform
 		void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertex, uint32_t startInstance) override;
 		void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndex, int32_t baseVertex, uint32_t startInstance) override;
 
+		void SetDynamicVertexBuffer(BufferHandle tempBuffer, size_t offset, uint32_t slot, size_t numVertices, size_t vertexSize) override;
+		void SetDynamicIndexBuffer(BufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat) override;
+
 	public:
-		DynamicBuffer AllocateDynamic(size_t sizeInBytes, size_t alignment = 16);
 		void TransitionBarrier(GpuBarrier const& barrier);
 		void TransitionBarriers(Span<GpuBarrier> gpuBarriers);
 		void ClearBackBuffer(Color const& clearColour);
@@ -99,9 +64,7 @@ namespace phx::gfx::platform
 		void WriteTexture(TextureHandle texture, uint32_t firstSubresource, size_t numSubresources, SubresourceData* pSubresourceData);
 
 		void SetRenderTargets(Span<TextureHandle> renderTargets, TextureHandle depthStencil);
-		void SetDynamicVertexBuffer(BufferHandle tempBuffer, size_t offset, uint32_t slot, size_t numVertices, size_t vertexSize);
 		void SetIndexBuffer(BufferHandle indexBuffer);
-		void SetDynamicIndexBuffer(BufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat);
 		void SetPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants);
 		void StartTimer(TimerQueryHandle QueryIdx);
 		void EndTimer(TimerQueryHandle QueryIdx);
@@ -132,7 +95,6 @@ namespace phx::gfx::platform
 		std::atomic_bool m_isWaitedOn = false;
 		std::vector<D3D12Semaphore> m_waits;
 		PipelineType m_activePipelineType = PipelineType::Gfx;
-		DynamicAllocator m_dynamicAllocator;
 		
 	};
 }

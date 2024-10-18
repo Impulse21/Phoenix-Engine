@@ -20,6 +20,8 @@ namespace phx::gfx::platform
 		void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t startIndex = 0, int32_t baseVertex = 0, uint32_t startInstance = 0) override;
 		void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t startVertex = 0, uint32_t startInstance = 0) override;
 
+		void SetDynamicVertexBuffer(BufferHandle tempBuffer, size_t offset, uint32_t slot, size_t numVertices, size_t vertexSize) override;
+		void SetDynamicIndexBuffer(BufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat) override;
 	public:
 		EnumArray<VkCommandBuffer, CommandQueueType>  CmdBufferVk[kBufferCount];
 		EnumArray<VkCommandPool, CommandQueueType> CmdBufferPoolVk[kBufferCount];

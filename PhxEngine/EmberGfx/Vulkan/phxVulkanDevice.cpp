@@ -182,11 +182,15 @@ void phx::gfx::platform::VulkanGpuDevice::Initialize(SwapChainDesc const& swapCh
     CreateVma();
     CreateFrameResources();
     CreateDefaultResources();
+    m_dynamicAllocator.Initialize(this, 256);
 }
 
 void phx::gfx::platform::VulkanGpuDevice::Finalize()
 {
     WaitForIdle();
+
+    m_dynamicAllocator.Finalize();
+
     this->RunGarbageCollection();
 
     DestoryFrameResources();
@@ -383,7 +387,7 @@ void phx::gfx::platform::VulkanGpuDevice::ResizeSwapChain(SwapChainDesc const& s
 
 DynamicMemoryPage phx::gfx::platform::VulkanGpuDevice::AllocateDynamicMemoryPage(size_t pageSize)
 {
-    return DynamicMemoryPage();
+    return m_dynamicAllocator.Allocate(pageSize);
 }
 
 ShaderHandle phx::gfx::platform::VulkanGpuDevice::CreateShader(ShaderDesc const& desc)
@@ -887,7 +891,6 @@ BufferHandle phx::gfx::platform::VulkanGpuDevice::CreateBuffer(BufferDesc const&
         bufferInfo.queueFamilyIndexCount = (uint32_t)families.size();
         bufferInfo.pQueueFamilyIndices = families.data();
 #else
-        assert(false);
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 #endif
     }
@@ -978,9 +981,17 @@ void phx::gfx::platform::VulkanGpuDevice::DeleteBuffer(BufferHandle handle)
             Buffer_VK* impl = m_bufferPool.Get(handle);
             if (impl)
             {
+                vmaDestroyBuffer(m_vmaAllocator, impl->BufferVk, impl->Allocation);
+                // vkDestroyBufferView(m_vkDevice, m_nullBufferView, nullptr);
             }
         }
     };
+}
+
+void* phx::gfx::platform::VulkanGpuDevice::GetMappedData(BufferHandle handle)
+{
+    Buffer_VK* impl = m_bufferPool.Get(handle);
+    return impl ? impl->MappedData : nullptr;
 }
 
 void phx::gfx::platform::VulkanGpuDevice::CreateInstance()
@@ -1949,6 +1960,8 @@ void phx::gfx::platform::DynamicMemoryAllocator::Initialize(VulkanGpuDevice* dev
             .SizeInBytes = bufferSize,
             .DebugName = "Temp Buffer"
         });
+
+    m_data = static_cast<uint8_t*>(m_device->GetMappedData(m_buffer));
 }
 
 void phx::gfx::platform::DynamicMemoryAllocator::Finalize()
@@ -2022,7 +2035,7 @@ DynamicMemoryPage phx::gfx::platform::DynamicMemoryAllocator::Allocate(uint32_t 
         m_tail = (m_tail + m_bufferMask) & ~m_bufferMask;
     }
 
-    if (((m_tail - m_head) + allocSize) >= GetBufferSize())
+    if (((m_tail - m_head) & allocSize) >= GetBufferSize())
     {
         while (!this->m_inUseRegions.empty())
         {

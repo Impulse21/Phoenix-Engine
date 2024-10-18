@@ -154,6 +154,9 @@ namespace phx::gfx::platform
 		void DeleteBuffer(BufferHandle handle) override;
 
 	public:
+		void* GetMappedData(BufferHandle handle);
+
+	public:
 		VkDevice GetVkDevice() { return m_vkDevice; }
 		uint32_t GetBufferIndex() const { return m_frameCount % kBufferCount; }
 
@@ -290,6 +293,8 @@ namespace phx::gfx::platform
 		VkBuffer m_nullBuffer = VK_NULL_HANDLE;
 		VmaAllocation m_nullBufferAllocation = VK_NULL_HANDLE;
 		VkBufferView m_nullBufferView = VK_NULL_HANDLE;
+
+		DynamicMemoryAllocator m_dynamicAllocator;
 
 	};
 }

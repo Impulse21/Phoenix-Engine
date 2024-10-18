@@ -115,15 +115,16 @@ public:
 		Rect scissor(g_DisplayWidth, g_DisplayHeight);
 		ctx->SetScissors({ scissor });
 		ctx->SetPipelineState(m_pipeline);
-#if false
-		DynamicBuffer temp = ctx->AllocateDynamic(sizeof(uint16_t) * 3);
+#if true
+		EmberGfx::DynamicAllocator dynamicAllocator = {};
+		EmberGfx::DynamicBuffer dynamicBuffer = dynamicAllocator.Allocate(sizeof(uint16_t) * 3, 16);
 
-		uint16_t* indices = reinterpret_cast<uint16_t*>(temp.Data);
+		uint16_t* indices = reinterpret_cast<uint16_t*>(dynamicBuffer.Data);
 		indices[0] = 0;
 		indices[1] = 1;
 		indices[2] = 2;
 
-		ctx->SetDynamicIndexBuffer(temp.BufferHandle, temp.Offset, 3, Format::R16_UINT);
+		ctx->SetDynamicIndexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, 3, Format::R16_UINT);
 
 		ctx->DrawIndexed(3);
 #else
