@@ -75,7 +75,7 @@ namespace phx::gfx::platform
 		size_t BindingHash = 0;
 	};
 
-	class TempMemoryAllocator
+	class DynamicMemoryAllocator
 	{
 	public:
 		void Initialize(VulkanGpuDevice* device, size_t bufferSize);
@@ -83,6 +83,8 @@ namespace phx::gfx::platform
 		void EndFrame();
 
 		uint32_t GetBufferSize() { return (this->m_bufferMask + 1); }
+
+		DynamicMemoryPage Allocate(uint32_t allocSize);
 
 	private:
 		VulkanGpuDevice* m_device;

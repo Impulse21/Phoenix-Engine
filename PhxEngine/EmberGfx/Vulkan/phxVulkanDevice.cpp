@@ -1780,7 +1780,7 @@ void phx::gfx::platform::VulkanGpuDevice::CommandQueue::Submit(VulkanGpuDevice* 
     SubmitSignalSemaphoreInfos.clear();
 }
 
-void phx::gfx::platform::TempMemoryAllocator::Initialize(VulkanGpuDevice* device, size_t bufferSize)
+void phx::gfx::platform::DynamicMemoryAllocator::Initialize(VulkanGpuDevice* device, size_t bufferSize)
 {
     m_device = device;
     assert((bufferSize & (bufferSize - 1)) == 0);
@@ -1803,7 +1803,7 @@ void phx::gfx::platform::TempMemoryAllocator::Initialize(VulkanGpuDevice* device
     }
 }
 
-void phx::gfx::platform::TempMemoryAllocator::Finalize()
+void phx::gfx::platform::DynamicMemoryAllocator::Finalize()
 {
     this->m_data = nullptr;
 
@@ -1816,7 +1816,7 @@ void phx::gfx::platform::TempMemoryAllocator::Finalize()
     m_device->DeleteBuffer(m_buffer);
 }
 
-void phx::gfx::platform::TempMemoryAllocator::EndFrame()
+void phx::gfx::platform::DynamicMemoryAllocator::EndFrame()
 {
     // -- Wait on next inflight frame ---
     while (!this->m_inUseRegions.empty())
@@ -1828,10 +1828,55 @@ void phx::gfx::platform::TempMemoryAllocator::EndFrame()
             break;
         }
 
-        // vkWaitForFences(m_device->GetVkDevice(), 1, &region.Fence, VK_TRUE, UINT64_MAX);
         vkResetFences(m_device->GetVkDevice(), 1, &region.Fence);
         m_head += region.UsedSize;
 
         this->m_inUseRegions.pop_front();
     }
+
+
+    this->m_inUseRegions.push_front(UsedRegion{
+        .UsedSize = m_tail - m_headAtStartOfFrame,
+        .Fence = fence });
+
+    m_headAtStartOfFrame = m_tail;
+}
+
+DynamicMemoryPage phx::gfx::platform::DynamicMemoryAllocator::Allocate(uint32_t allocSize)
+{
+    std::scoped_lock _(this->m_mutex);
+
+    // Checks if the top bits have changes, if so, we need to wrap around.
+    if ((m_tail ^ (m_tail * allocSize)) & ~m_bufferMask)
+    {
+        m_tail = (m_tail + m_bufferMask) & ~m_bufferMask;
+    }
+
+    if (((m_tail - m_head) + allocSize) >= GetBufferSize())
+    {
+        while (!this->m_inUseRegions.empty())
+        {
+            auto& region = this->m_inUseRegions.front();
+            VkResult result = vkGetFenceStatus(m_device->GetVkDevice(), region.Fence);
+            if (result == VK_NOT_READY)
+            {
+                PHX_CORE_WARN("[GPU QUEUE] Stalling waiting for space");
+                vkWaitForFences(m_device->GetVkDevice(), 1, &region.Fence, VK_TRUE, UINT64_MAX);
+            }
+
+            vkResetFences(m_device->GetVkDevice(), 1, &region.Fence);
+            m_head += region.UsedSize;
+
+            this->m_inUseRegions.pop_front();
+        }
+    }
+
+    const uint32_t offset = (this->m_tail & m_bufferMask) * allocSize;
+    m_tail++;
+
+    return DynamicMemoryPage{
+        .BufferHandle = this->m_buffer,
+        .Offset = offset,
+        .Data = reinterpret_cast<uint8_t*>(this->m_data + offset),
+    };
 }
