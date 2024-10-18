@@ -98,7 +98,9 @@ namespace phx::gfx::platform
 
 		uint8_t* m_data;
 
-		std::array<VkFence, kBufferCount> m_vkFences;
+		std::vector<VkFence> m_fencePool;
+		std::deque<VkFence> m_availableFences;
+
 		struct UsedRegion
 		{
 			uint32_t UsedSize = 0;
@@ -139,6 +141,7 @@ namespace phx::gfx::platform
 		VkDevice GetVkDevice() { return m_vkDevice; }
 		uint32_t GetBufferIndex() const { return m_frameCount % kBufferCount; }
 
+		VkQueue GetVkQueue(CommandQueueType type) { return m_queues[type].QueueVk; }
 	private:
 		void CreateInstance();
 		void SetupDebugMessenger();

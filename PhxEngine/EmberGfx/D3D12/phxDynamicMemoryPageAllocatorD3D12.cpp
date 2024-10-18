@@ -48,7 +48,6 @@ void phx::gfx::GpuRingAllocator::Finalize()
 
 void phx::gfx::GpuRingAllocator::EndFrame(ID3D12CommandQueue* q)
 {
-
 	while (!this->m_inUseRegions.empty())
 	{
 		auto& region = this->m_inUseRegions.front();

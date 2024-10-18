@@ -1791,23 +1791,13 @@ void phx::gfx::platform::DynamicMemoryAllocator::Initialize(VulkanGpuDevice* dev
             .SizeInBytes = bufferSize,
             .DebugName = "Temp Buffer"
         });
-
-
-    VkFenceCreateInfo fenceInfo = {};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-
-    for (auto& fence : m_vkFences)
-    {
-        VkResult res = vkCreateFence(m_device->GetVkDevice(), &fenceInfo, nullptr, &fence);
-        assert(res == VK_SUCCESS);
-    }
 }
 
 void phx::gfx::platform::DynamicMemoryAllocator::Finalize()
 {
     this->m_data = nullptr;
 
-    for (auto& fence : m_vkFences)
+    for (auto& fence : m_fencePool)
     {
         vkDestroyFence(m_device->GetVkDevice(), fence, nullptr);
     }
@@ -1831,13 +1821,34 @@ void phx::gfx::platform::DynamicMemoryAllocator::EndFrame()
         vkResetFences(m_device->GetVkDevice(), 1, &region.Fence);
         m_head += region.UsedSize;
 
+        this->m_availableFences.push_back(region.Fence);
         this->m_inUseRegions.pop_front();
     }
 
+    VkFence vkFence = VK_NULL_HANDLE;
+    if (!this->m_availableFences.empty())
+    {
+        vkFence = this->m_availableFences.front();
+        this->m_availableFences.pop_front();
+
+    }
+
+    if (vkFence == VK_NULL_HANDLE)
+    {
+        VkFenceCreateInfo fenceInfo = {};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        VkResult res = vkCreateFence(m_device->GetVkDevice(), &fenceInfo, nullptr, &vkFence);
+        assert(res == VK_SUCCESS);
+        m_fencePool.push_back(vkFence);
+    }
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    VkResult result = vkQueueSubmit(m_device->GetVkQueue(CommandQueueType::Graphics), 1, &submitInfo, vkFence);
 
     this->m_inUseRegions.push_front(UsedRegion{
         .UsedSize = m_tail - m_headAtStartOfFrame,
-        .Fence = fence });
+        .Fence = vkFence });
 
     m_headAtStartOfFrame = m_tail;
 }
@@ -1867,6 +1878,7 @@ DynamicMemoryPage phx::gfx::platform::DynamicMemoryAllocator::Allocate(uint32_t 
             vkResetFences(m_device->GetVkDevice(), 1, &region.Fence);
             m_head += region.UsedSize;
 
+            this->m_availableFences.push_back(region.Fence);
             this->m_inUseRegions.pop_front();
         }
     }
