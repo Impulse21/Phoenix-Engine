@@ -828,7 +828,144 @@ void phx::gfx::platform::VulkanGpuDevice::DeletePipeline(PipelineStateHandle han
 
 BufferHandle phx::gfx::platform::VulkanGpuDevice::CreateBuffer(BufferDesc const& desc)
 {
-    return BufferHandle();
+    Handle<Buffer> retVal = this->m_bufferPool.Emplace();
+    Buffer_VK& impl = *this->m_bufferPool.Get(retVal);
+
+    VkBufferCreateInfo bufferInfo = {};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = desc.SizeInBytes;
+    bufferInfo.usage = 0;
+
+    static const std::vector <std::pair<BindingFlags, VkBufferUsageFlags>> kUsageMapping =
+    {
+        { BindingFlags::VertexBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT},
+        { BindingFlags::IndexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT},
+        { BindingFlags::ConstantBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT},
+        { BindingFlags::ShaderResource, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT},
+        { BindingFlags::UnorderedAccess, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT},
+    };
+
+    for (const auto& [flag, usageFlag] : kUsageMapping)
+    {
+        if (EnumHasAnyFlags(desc.Binding, flag))
+        {
+            bufferInfo.usage |= usageFlag;
+        }
+    }
+
+    // Misc Flags
+    static const std::vector <std::pair<BufferMiscFlags, VkBufferUsageFlags>> kUsageMappingMisc =
+    {
+        { BufferMiscFlags::Raw, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT},
+        { BufferMiscFlags::Structured, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT},
+        { BufferMiscFlags::IndirectArgs, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT},
+        { BufferMiscFlags::RayTracing, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR },
+    };
+
+    for (const auto& [flag, usageFlag] : kUsageMappingMisc)
+    {
+        if (EnumHasAnyFlags(desc.MiscFlags, flag))
+        {
+            bufferInfo.usage |= usageFlag;
+        }
+    }
+
+    if (m_vulkan12Features.bufferDeviceAddress == VK_TRUE)
+    {
+        bufferInfo.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    }
+
+    bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+    bufferInfo.flags = 0;
+
+    if (m_queueFamilies.AreSeperate())
+    {
+#if false
+        bufferInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+        bufferInfo.queueFamilyIndexCount = (uint32_t)families.size();
+        bufferInfo.pQueueFamilyIndices = families.data();
+#else
+        assert(false);
+        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+#endif
+    }
+    else
+    {
+        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    }
+
+    if (EnumHasAnyFlags(desc.MiscFlags, BufferMiscFlags::IsAliasedResource))
+    {
+        // TOD:
+    }
+    else if(EnumHasAnyFlags(desc.MiscFlags, BufferMiscFlags::Sparse))
+    {
+    }
+    else
+    {
+        VmaAllocationCreateInfo allocInfo = {};
+        allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+        if (desc.Usage == Usage::ReadBack)
+        {
+            bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+            allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        }
+        else if (desc.Usage == Usage::Upload)
+        {
+            bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+            allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        }
+
+        VkResult res = VK_SUCCESS;
+        if (desc.Alias == nullptr)
+        {
+             res = vmaCreateBuffer(m_vmaAllocator, &bufferInfo, &allocInfo, &impl.BufferVk, &impl.Allocation, nullptr);
+        }
+        else
+        {
+            // Aliasing: https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/resource_aliasing.html
+            if (std::holds_alternative<TextureHandle>(desc.Alias->Handle))
+            {
+                // TODO:
+            }
+            else
+            {
+                Buffer_VK* aliasBuffer = m_bufferPool.Get(std::get<BufferHandle>(desc.Alias->Handle));
+                assert(aliasBuffer);
+                res = vmaCreateAliasingBuffer2(
+                    m_vmaAllocator,
+                    aliasBuffer->Allocation,
+                    desc.Alias->AliasOffset,
+                    &bufferInfo,
+                    &impl.BufferVk);
+
+            }
+
+            assert(res == VK_SUCCESS);
+        }
+    }
+
+    // TODO Set up Mappings
+
+    if (desc.Usage == Usage::ReadBack || desc.Usage == Usage::Upload)
+    {
+        impl.MappedData = impl.Allocation->GetMappedData();
+        impl.MappedSizeInBytes = impl.Allocation->GetSize();
+    }
+
+    if (bufferInfo.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
+    {
+        VkBufferDeviceAddressInfo info = {};
+        info.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+        info.buffer = impl.BufferVk;
+        impl.GpuAddress = vkGetBufferDeviceAddress(m_vkDevice, &info);
+    }
+
+    // TODO Upload Data
+    // TODO Create Views
+    return retVal;
 }
 
 void phx::gfx::platform::VulkanGpuDevice::DeleteBuffer(BufferHandle handle)

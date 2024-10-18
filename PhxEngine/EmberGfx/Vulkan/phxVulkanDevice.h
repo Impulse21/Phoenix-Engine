@@ -34,6 +34,11 @@ namespace phx::gfx::platform
 				TransferFamily.has_value() &&
 				ComputeFamily.has_value();
 		}
+		bool AreSeperate()
+		{
+			assert(IsComplete());
+			return GraphicsFamily != ComputeFamily != TransferFamily;
+		}
 	};
 
 	struct SwapChainSupportDetails 
@@ -79,6 +84,11 @@ namespace phx::gfx::platform
 	{
 		VkBuffer BufferVk;
 		VmaAllocation Allocation;
+
+		void* MappedData = nullptr;
+		uint32_t MappedSizeInBytes = 0;
+
+		VkDeviceAddress GpuAddress = 0;
 	};
 
 	class DynamicMemoryAllocator

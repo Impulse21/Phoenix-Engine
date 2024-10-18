@@ -485,6 +485,9 @@ namespace phx::gfx
         Typed = 1 << 3,
         HasCounter = 1 << 4,
         IsAliasedResource = 1 << 5,
+        IndirectArgs = 1 << 6,
+        RayTracing = 1 << 7,
+        Sparse = 1 << 8,
     };
 
     PHX_ENUM_CLASS_FLAGS(BufferMiscFlags);
@@ -924,6 +927,13 @@ namespace phx::gfx
         size_t Stride = 0;
         size_t UavCounterOffset = 0;
         BufferHandle UavCounterBuffer = {};
+
+        struct AliasDesc
+        {
+            std::variant<BufferHandle, TextureHandle> Handle;
+            size_t AliasOffset = 0;
+        };
+        AliasDesc* Alias = nullptr;
         BufferHandle AliasedBuffer = {};
 
         std::string DebugName;
