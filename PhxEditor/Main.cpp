@@ -13,6 +13,30 @@
 #include "EmberGfx/phxImGuiRenderer.h"
 #include "EmberGfx/phxShaderCompiler.h"
 #include "phxVFS.h"
+#include "phxSystemTime.h"
+
+
+#include <cmath>
+// Function to update the vertex colors based on time
+void UpdateTriangleColors(std::array<float, 3>& colorV1,
+	std::array<float, 3>& colorV2,
+	std::array<float, 3>& colorV3)
+{
+	float time = phx::SystemTime::GetCurrentTick();  // Get the current time
+
+	// Use sin and cos functions to generate smooth color transitions over time
+	colorV1[0] = (sin(time) + 1.0f) * 0.5f; // R for vertex 1
+	colorV1[1] = (cos(time * 0.8f) + 1.0f) * 0.5f; // G for vertex 1
+	colorV1[2] = (sin(time * 1.2f) + 1.0f) * 0.5f; // B for vertex 1
+
+	colorV2[0] = (sin(time * 1.3f) + 1.0f) * 0.5f; // R for vertex 2
+	colorV2[1] = (cos(time * 0.7f) + 1.0f) * 0.5f; // G for vertex 2
+	colorV2[2] = (sin(time * 1.1f) + 1.0f) * 0.5f; // B for vertex 2
+
+	colorV3[0] = (sin(time * 0.9f) + 1.0f) * 0.5f; // R for vertex 3
+	colorV3[1] = (cos(time * 1.5f) + 1.0f) * 0.5f; // G for vertex 3
+	colorV3[2] = (sin(time * 1.4f) + 1.0f) * 0.5f; // B for vertex 3
+}
 
 class PhxEditor final : public phx::IEngineApp
 {
@@ -76,7 +100,7 @@ public:
 				.PS = psShader,
 				.DepthStencilRenderState = &dss,
 				.RasterRenderState = &rs,
-				.InputLayout = nullptr// &il
+				.InputLayout = &il
 			},
 			&passInfo);
 
@@ -126,9 +150,27 @@ public:
 
 		ctx->SetDynamicIndexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, 3, Format::R16_UINT);
 
+		struct Vertex
+		{
+			std::array<float, 2> Position;
+			std::array<float, 3> Colour;
+		};
+
+		const size_t bufferSize = sizeof(Vertex) * 3;
+		dynamicBuffer = dynamicAllocator.Allocate(bufferSize, 16);
+		Vertex* vertices = reinterpret_cast<Vertex*>(dynamicBuffer.Data);
+		vertices[0].Position = { 0.0f, 0.5f };
+		vertices[1].Position = { 0.5f, -0.5f };
+		vertices[2].Position = { -0.5f, -0.5f };
+
+		UpdateTriangleColors(
+			vertices[0].Colour,
+			vertices[1].Colour,
+			vertices[2].Colour);
+
+		ctx->SetDynamicVertexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, 0, 3, sizeof(Vertex));
 		ctx->DrawIndexed(3);
 #else
-
 		ctx->Draw(3);
 #endif
 

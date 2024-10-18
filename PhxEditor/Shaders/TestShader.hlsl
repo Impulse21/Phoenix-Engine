@@ -1,4 +1,4 @@
-#if false
+#if true
 
 struct VSInput
 {
