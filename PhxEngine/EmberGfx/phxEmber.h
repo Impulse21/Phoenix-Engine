@@ -45,7 +45,7 @@ namespace phx::gfx
 
 				return DynamicBuffer{
 					.BufferHandle = this->Page.BufferHandle,
-					.Offset = offset,
+					.Offset = offset + Page.Offset,
 					.Data = this->Page.Data + offset
 				};
 			}

@@ -152,7 +152,11 @@ void phx::gfx::platform::CommandCtx_Vulkan::SetDynamicVertexBuffer(BufferHandle 
 	const VkDeviceSize vertexStride = vertexSize;
 
 	const Buffer_VK* bufferImpl = GpuDevice->m_bufferPool.Get(tempBuffer);
-	vkCmdBindVertexBuffers2(GetVkCommandBuffer(), 1, 1, &bufferImpl->BufferVk, &offset, &bufferSize, &vertexStride);
+#if true
+	vkCmdBindVertexBuffers2(GetVkCommandBuffer(), 0, 1, &bufferImpl->BufferVk, &offset, &bufferSize, &vertexStride);
+#else
+	vkCmdBindVertexBuffers(GetVkCommandBuffer(), 0, 1, &bufferImpl->BufferVk, &offset);
+#endif
 }
 
 void phx::gfx::platform::CommandCtx_Vulkan::SetDynamicIndexBuffer(BufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat)
