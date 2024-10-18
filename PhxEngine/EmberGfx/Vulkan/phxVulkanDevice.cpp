@@ -1957,6 +1957,7 @@ void phx::gfx::platform::DynamicMemoryAllocator::Initialize(VulkanGpuDevice* dev
 
     this->m_buffer = device->CreateBuffer({
             .Usage = Usage::Upload,
+            .Binding = BindingFlags::IndexBuffer | BindingFlags::VertexBuffer,
             .SizeInBytes = bufferSize,
             .DebugName = "Temp Buffer"
         });
