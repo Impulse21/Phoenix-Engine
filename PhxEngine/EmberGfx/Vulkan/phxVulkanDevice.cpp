@@ -1858,7 +1858,7 @@ DynamicMemoryPage phx::gfx::platform::DynamicMemoryAllocator::Allocate(uint32_t 
     std::scoped_lock _(this->m_mutex);
 
     // Checks if the top bits have changes, if so, we need to wrap around.
-    if ((m_tail ^ (m_tail * allocSize)) & ~m_bufferMask)
+    if ((m_tail ^ (m_tail + allocSize)) & ~m_bufferMask)
     {
         m_tail = (m_tail + m_bufferMask) & ~m_bufferMask;
     }
