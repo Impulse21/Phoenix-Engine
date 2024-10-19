@@ -1883,6 +1883,8 @@ void phx::gfx::platform::VulkanGpuDevice::SubmitCommandCtx()
 
 void phx::gfx::platform::VulkanGpuDevice::Present()
 {
+    m_dynamicAllocator.EndFrame();
+
     VkPresentInfoKHR presentInfo = {};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     presentInfo.waitSemaphoreCount = 1;
