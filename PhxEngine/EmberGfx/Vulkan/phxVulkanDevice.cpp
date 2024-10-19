@@ -1,5 +1,6 @@
 #include "pch.h"
 
+#include "phxMemory.h"
 #include "phxVulkanCore.h"
 #include "phxVulkanDevice.h"
 
@@ -182,7 +183,7 @@ void phx::gfx::platform::VulkanGpuDevice::Initialize(SwapChainDesc const& swapCh
     CreateVma();
     CreateFrameResources();
     CreateDefaultResources();
-    m_dynamicAllocator.Initialize(this, 256);
+    m_dynamicAllocator.Initialize(this, 256_MiB);
 }
 
 void phx::gfx::platform::VulkanGpuDevice::Finalize()
