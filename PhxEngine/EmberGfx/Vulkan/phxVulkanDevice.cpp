@@ -214,12 +214,12 @@ void phx::gfx::platform::VulkanGpuDevice::Finalize()
 
     m_commandCtxPool.clear();
 
-    vmaDestroyAllocator(m_vmaAllocator);
-	vmaDestroyAllocator(m_vmaAllocatorExternal);
-
     vkDestroyPipelineCache(m_vkDevice, m_vkPipelineCache, nullptr); 
     CleanupSwapchain();
     vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
+
+    vmaDestroyAllocator(m_vmaAllocator);
+    vmaDestroyAllocator(m_vmaAllocatorExternal);
     vkDestroyDevice(m_vkDevice, nullptr);
 
     if (m_enableValidationLayers) 
@@ -1268,6 +1268,26 @@ void* phx::gfx::platform::VulkanGpuDevice::GetMappedData(BufferHandle handle)
 {
     Buffer_VK* impl = m_bufferPool.Get(handle);
     return impl ? impl->MappedData : nullptr;
+}
+
+DescriptorIndex VulkanGpuDevice::GetDescriptorIndex(TextureHandle handle, SubresouceType type, int subResource)
+{
+    Texture_VK* impl = m_texturePool.Get(handle);
+    if (impl == nullptr)
+        return cInvalidDescriptorIndex;
+
+    // TODO:
+    return cInvalidDescriptorIndex;
+}
+
+DescriptorIndex VulkanGpuDevice::GetDescriptorIndex(BufferHandle handle, SubresouceType type, int subResource)
+{
+    Buffer_VK* impl = m_bufferPool.Get(handle);
+    if (impl == nullptr)
+        return cInvalidDescriptorIndex;
+
+    // TODO:
+    return cInvalidDescriptorIndex;
 }
 
 int phx::gfx::platform::VulkanGpuDevice::CreateSubresource(Texture_VK& texture, TextureDesc const& desc, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)

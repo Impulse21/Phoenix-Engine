@@ -115,8 +115,8 @@ public:
 		device->DeleteShader(vsShader);
 		device->DeleteShader(psShader);
 
-		this->m_imguiRenderSystem.Initialize(device, m_fs.get());
-		this->m_imguiRenderSystem.EnableDarkThemeColours();
+		// this->m_imguiRenderSystem.Initialize(device, m_fs.get());
+		// this->m_imguiRenderSystem.EnableDarkThemeColours();
 	};
 
 	void Shutdown() override 
