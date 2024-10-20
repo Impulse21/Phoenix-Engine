@@ -4,9 +4,9 @@
 #include "EmberGfx/phxEmber.h"
 #include "ImGui/imgui_impl_win32.h"
 #include "phxSpan.h"
+#include "phxVFS.h"
+#include "phxShaderCompiler.h"
 
-#include "CompiledShaders/ImGuiVS.h"
-#include "CompiledShaders/ImGuiPS.h"
 #include "phxDisplay.h"
 namespace phx
 {
@@ -25,7 +25,7 @@ namespace
 
 }
 
-void phx::gfx::ImGuiRenderSystem::Initialize(GpuDevice* gfxDevice, bool enableDocking)
+void phx::gfx::ImGuiRenderSystem::Initialize(GpuDevice* gfxDevice, IFileSystem* fs, bool enableDocking)
 {
     m_imguiContext = ImGui::CreateContext();
     ImGui::SetCurrentContext(m_imguiContext);
@@ -52,7 +52,7 @@ void phx::gfx::ImGuiRenderSystem::Initialize(GpuDevice* gfxDevice, bool enableDo
 
     io.Fonts->GetTexDataAsRGBA32(&pixelData, &width, &height);
 
-#if false
+#if true
     // Create texture
     gfxDevice->CreateTexture({
         .Format = gfx::Format::RGBA8_UNORM,
@@ -71,37 +71,87 @@ void phx::gfx::ImGuiRenderSystem::Initialize(GpuDevice* gfxDevice, bool enableDo
         { "COLOR",      0, Format::RGBA8_UNORM, 0, VertexAttributeDesc::SAppendAlignedElement, false},
     };
 
-    m_pipeline.Reset(
-        GfxDevice::CreateGfxPipeline({
-            .InputLayout = GfxDevice::CreateInputLayout(attributeDesc),
-            .VertexShaderByteCode = Span(g_pImGuiVS, ARRAYSIZE(g_pImGuiVS)),
-            .PixelShaderByteCode = Span(g_pImGuiPS, ARRAYSIZE(g_pImGuiPS)),
-            .BlendRenderState = {
-                .Targets {
-                    {
-                        .BlendEnable = true,
-                        .SrcBlend = BlendFactor::SrcAlpha,
-                        .DestBlend = BlendFactor::InvSrcAlpha,
-                        .BlendOp = EBlendOp::Add,
-                        .SrcBlendAlpha = BlendFactor::One,
-                        .DestBlendAlpha = BlendFactor::InvSrcAlpha,
-                        .BlendOpAlpha = EBlendOp::Add,
-                        .ColorWriteMask = ColorMask::All,
-                    }
-                }
+    phx::gfx::ShaderCompiler::Output vsOut = phx::gfx::ShaderCompiler::Compile({
+            .Format = gfxDevice->GetShaderFormat(),
+            .ShaderStage = phx::gfx::ShaderStage::VS,
+            .SourceFilename = "/shaders/engine/ImGui.hlsl",
+            .EntryPoint = "MainVS",
+            .FileSystem = fs });
+
+    phx::gfx::ShaderHandle vsShader = gfxDevice->CreateShader({
+            .Stage = phx::gfx::ShaderStage::VS,
+            .ByteCode = phx::Span(vsOut.ByteCode, vsOut.ByteCodeSize),
+            .EntryPoint = "MainVS" });
+
+    phx::gfx::ShaderCompiler::Output psOut = phx::gfx::ShaderCompiler::Compile({
+            .Format = gfxDevice->GetShaderFormat(),
+            .ShaderStage = phx::gfx::ShaderStage::PS,
+            .SourceFilename = "/shaders/engine/ImGui.hlsl",
+            .EntryPoint = "MainPS",
+            .FileSystem = fs });
+
+    phx::gfx::ShaderHandle psShader = gfxDevice->CreateShader({
+            .Stage = phx::gfx::ShaderStage::PS,
+            .ByteCode = phx::Span(psOut.ByteCode, psOut.ByteCodeSize),
+            .EntryPoint = "MainPS" });
+
+    phx::gfx::InputLayout il = {
+        .elements = {
+            {
+                .SemanticName = "POSITION",
+                .SemanticIndex = 0,
+                .Format = phx::gfx::Format::RG32_FLOAT,
             },
-            .DepthStencilRenderState = {
-                .DepthTestEnable = false,
-                .DepthFunc = ComparisonFunc::Always,
-                .StencilEnable = false,
+            {
+                .SemanticName = "TEXCOORD",
+                .SemanticIndex = 1,
+                .Format = phx::gfx::Format::RG32_FLOAT,
             },
-            .RasterRenderState = {
-                .CullMode = RasterCullMode::None,
-                .DepthClipEnable = true,
-                .ScissorEnable = true,
-            },
-            .RtvFormats = { g_SwapChainFormat }
-     }));
+            {
+                .SemanticName = "COLOR",
+                .SemanticIndex = 2,
+                .Format = phx::gfx::Format::RGBA8_UNORM,
+            }
+		}
+	};
+
+	phx::gfx::DepthStencilRenderState dss = {
+		.DepthEnable = false,
+		.DepthWriteMask = phx::gfx::DepthWriteMask::Zero };
+
+	phx::gfx::RasterRenderState rs = {
+		.CullMode = RasterCullMode::None,
+		.DepthClipEnable = true,
+		.ScissorEnable = true };
+
+	phx::gfx::BlendRenderState bs = {
+				.Targets {
+					{
+						.BlendEnable = true,
+						.SrcBlend = BlendFactor::SrcAlpha,
+						.DestBlend = BlendFactor::InvSrcAlpha,
+						.BlendOp = EBlendOp::Add,
+						.SrcBlendAlpha = BlendFactor::One,
+						.DestBlendAlpha = BlendFactor::InvSrcAlpha,
+						.BlendOpAlpha = EBlendOp::Add,
+						.ColorWriteMask = ColorMask::All,
+					}
+				}
+	};
+
+	phx::gfx::RenderPassInfo passInfo;
+	passInfo.RenderTargetCount = 1;
+	passInfo.RenderTargetFormats[0] = phx::gfx::g_SwapChainFormat;
+
+	m_pipeline = gfxDevice->CreatePipeline({
+            .VS = vsShader,
+		    .PS = psShader,
+		    .BlendRenderState = &bs,
+		    .DepthStencilRenderState = &dss,
+		    .RasterRenderState = &rs,
+		    .InputLayout = &il
+        },
+        &passInfo);
 #endif
 }
 

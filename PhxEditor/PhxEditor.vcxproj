@@ -363,6 +363,8 @@
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="Shaders\TestShader.hlsl">
+      <SkipUnchangedFiles>true</SkipUnchangedFiles>
+      <DestinationFolder>$(OutDir)/shaders/application</DestinationFolder>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">6.6</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile_Virtual_Gfx|Gaming.Desktop.x64'">6.6</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug_Virtual_Gfx|Gaming.Desktop.x64'">6.6</ShaderModel>
@@ -407,6 +409,12 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">false</ExcludedFromBuild>
       <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">$(OutDir)shaders\application</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Profile_Virtual_Gfx|Gaming.Desktop.x64'">$(OutDir)shaders\application</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug_Virtual_Gfx|Gaming.Desktop.x64'">$(OutDir)shaders\application</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">$(OutDir)shaders\application</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">$(OutDir)shaders\application</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">$(OutDir)shaders\application</DestinationFolders>
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>

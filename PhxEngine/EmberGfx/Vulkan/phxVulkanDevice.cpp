@@ -194,6 +194,7 @@ void phx::gfx::platform::VulkanGpuDevice::Finalize()
 
     this->RunGarbageCollection();
 
+    FinalizeResourcePools();
     DestoryFrameResources();
     DestoryDefaultResources();
 
@@ -989,6 +990,28 @@ void phx::gfx::platform::VulkanGpuDevice::DeleteBuffer(BufferHandle handle)
     };
 }
 
+TextureHandle phx::gfx::platform::VulkanGpuDevice::CreateTexture(TextureDesc const& desc)
+{
+    return TextureHandle();
+}
+
+void phx::gfx::platform::VulkanGpuDevice::DeleteTexture(TextureHandle handle)
+{
+    DeferredItem d =
+    {
+        m_frameCount,
+        [=]()
+        {
+            Texture_VK* impl = m_texturePool.Get(handle);
+            if (impl)
+            {
+                vmaDestroyImage(m_vmaAllocator, impl->ImageVk, impl->Allocation);
+                // vkDestroyBufferView(m_vkDevice, m_nullBufferView, nullptr);
+            }
+        }
+    };
+}
+
 void* phx::gfx::platform::VulkanGpuDevice::GetMappedData(BufferHandle handle)
 {
     Buffer_VK* impl = m_bufferPool.Get(handle);
@@ -1665,6 +1688,13 @@ void phx::gfx::platform::VulkanGpuDevice::CreateFrameResources()
             }
         }
     }
+}
+
+void phx::gfx::platform::VulkanGpuDevice::FinalizeResourcePools()
+{
+    m_pipelineStatePool.Finalize();
+    m_bufferPool.Finalize();
+    m_texturePool.Finalize();
 }
 
 void phx::gfx::platform::VulkanGpuDevice::DestoryFrameResources()

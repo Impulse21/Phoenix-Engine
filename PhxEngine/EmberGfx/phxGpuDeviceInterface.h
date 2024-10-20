@@ -22,6 +22,7 @@ namespace phx::gfx
 		virtual void SubmitFrame() = 0;
 
 		virtual DynamicMemoryPage AllocateDynamicMemoryPage(size_t pageSize) = 0;
+		virtual DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type = SubresouceType::SRV, int subResource = -1) = 0;
 
 	public:
 		virtual ShaderHandle CreateShader(ShaderDesc const& desc) = 0;
@@ -32,5 +33,8 @@ namespace phx::gfx
 
 		virtual BufferHandle CreateBuffer(BufferDesc const& desc) = 0;
 		virtual void DeleteBuffer(BufferHandle handle) = 0;
+
+		virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
+		virtual void DeleteTexture(TextureHandle handle) = 0;
 	};
 }

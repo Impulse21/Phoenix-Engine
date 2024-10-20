@@ -91,6 +91,12 @@ namespace phx::gfx::platform
 		VkDeviceAddress GpuAddress = 0;
 	};
 
+	struct Texture_VK
+	{
+		VkImage ImageVk;
+		VmaAllocation Allocation;
+	};
+
 	class DynamicMemoryAllocator
 	{
 	public:
@@ -153,6 +159,9 @@ namespace phx::gfx::platform
 		BufferHandle CreateBuffer(BufferDesc const& desc) override;
 		void DeleteBuffer(BufferHandle handle) override;
 
+		TextureHandle CreateTexture(TextureDesc const& desc) override;
+		void DeleteTexture(TextureHandle handle) override;
+
 	public:
 		void* GetMappedData(BufferHandle handle);
 
@@ -179,6 +188,7 @@ namespace phx::gfx::platform
 		void CreateFrameResources();
 		void CreateDefaultResources();
 
+		void FinalizeResourcePools();
 		void DestoryFrameResources();
 		void DestoryDefaultResources();
 
@@ -278,6 +288,7 @@ namespace phx::gfx::platform
 		HandlePool<PipelineState_Vk, PipelineState> m_pipelineStatePool;
 		HandlePool<Shader_VK, Shader> m_shaderPool;
 		HandlePool<Buffer_VK, Buffer> m_bufferPool;
+		HandlePool<Texture_VK, Texture> m_texturePool;
 
 
 		std::mutex m_commandPoolLock;

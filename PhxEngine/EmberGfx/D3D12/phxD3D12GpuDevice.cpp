@@ -1650,7 +1650,7 @@ int phx::gfx::D3D12GpuDevice::CreateUnorderedAccessView(TextureHandle texture, T
 	return textureImpl->UavSubresourcesAlloc.size() - 1;
 }
 
-void phx::gfx::D3D12GpuDevice::DeleteResource(TextureHandle handle)
+void phx::gfx::D3D12GpuDevice::DeleteTexture(TextureHandle handle)
 {
 	DeferredItem d =
 	{
