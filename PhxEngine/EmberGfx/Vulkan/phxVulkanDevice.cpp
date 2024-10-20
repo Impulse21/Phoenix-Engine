@@ -933,7 +933,13 @@ BufferHandle phx::gfx::platform::VulkanGpuDevice::CreateBuffer(BufferDesc const&
             // Aliasing: https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/resource_aliasing.html
             if (std::holds_alternative<TextureHandle>(desc.Alias->Handle))
             {
-                // TODO:
+                Texture_VK* aliasTexture = m_texturePool.Get(std::get<TextureHandle>(desc.Alias->Handle));
+                res = vmaCreateAliasingBuffer2(
+                    m_vmaAllocator,
+                    aliasTexture->Allocation,
+                    desc.Alias->AliasOffset,
+                    &bufferInfo,
+                    &impl.BufferVk);
             }
             else
             {
@@ -992,7 +998,167 @@ void phx::gfx::platform::VulkanGpuDevice::DeleteBuffer(BufferHandle handle)
 
 TextureHandle phx::gfx::platform::VulkanGpuDevice::CreateTexture(TextureDesc const& desc)
 {
-    return TextureHandle();
+    Handle<Texture> retVal = this->m_texturePool.Emplace();
+    Texture_VK& impl = *this->m_texturePool.Get(retVal);
+
+    VkImageCreateInfo imageInfo = {};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.extent.width = desc.Width;
+    imageInfo.extent.height = desc.Height;
+    imageInfo.extent.depth = desc.Depth;
+    imageInfo.format = FormatToVkFormat(desc.Format);
+    imageInfo.mipLevels = desc.MipLevels;
+    imageInfo.samples = (VkSampleCountFlagBits)desc.SampleCount;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.usage = 0;
+
+    static const std::vector <std::pair<BindingFlags, VkImageUsageFlags>> kUsageMapping =
+    {
+        { BindingFlags::ShaderResource, VK_IMAGE_USAGE_SAMPLED_BIT},
+        { BindingFlags::UnorderedAccess, VK_IMAGE_USAGE_STORAGE_BIT},
+        { BindingFlags::RenderTarget, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT},
+        { BindingFlags::DepthStencil, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT},
+        { BindingFlags::ShadingRate, VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR},
+    };
+
+    for (const auto& [flag, usageFlag] : kUsageMapping)
+    {
+        if (EnumHasAnyFlags(desc.BindingFlags, flag))
+        {
+            imageInfo.usage |= usageFlag;
+        }
+    }
+
+    if (EnumHasAnyFlags(desc.BindingFlags, BindingFlags::UnorderedAccess))
+    {
+        if (IsFormatSRGB(desc.Format))
+        {
+            imageInfo.flags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+        }
+    }
+
+    // Misc Flags
+    static const std::vector <std::pair<TextureMiscFlags, VkImageUsageFlags>> kUsageMappingMisc =
+    {
+        { TextureMiscFlags::TransientAttachment, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT},
+        { TextureMiscFlags::TypedFormatCasting, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT},
+        { TextureMiscFlags::TypelessFormatCasting, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT},
+    };
+
+    for (const auto& [flag, usageFlag] : kUsageMappingMisc)
+    {
+        if (EnumHasAnyFlags(desc.MiscFlags, flag))
+        {
+            imageInfo.usage |= usageFlag;
+        }
+    }
+
+    if (desc.Dimension == TextureDimension::TextureCube || desc.Dimension == TextureDimension::TextureCubeArray)
+    {
+        imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+    }
+
+    if (!EnumHasAnyFlags(desc.MiscFlags, TextureMiscFlags::TransientAttachment))
+    {
+        imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    }
+
+    if (m_queueFamilies.AreSeperate())
+    {
+#if false
+        imageInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+        imageInfo.queueFamilyIndexCount = (uint32_t)families.size();
+        imageInfo.pQueueFamilyIndices = families.data();
+#else
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+#endif
+    }
+    else
+    {
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    }
+
+    switch (desc.Dimension)
+    {
+    case TextureDimension::Texture1D:
+    case TextureDimension::Texture1DArray:
+        imageInfo.imageType = VK_IMAGE_TYPE_1D;
+        break;
+    case TextureDimension::Texture2D:
+    case TextureDimension::Texture2DArray:
+    case TextureDimension::TextureCube:
+    case TextureDimension::TextureCubeArray:
+    case TextureDimension::Texture2DMS:
+    case TextureDimension::Texture2DMSArray:
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        break;
+    case TextureDimension::Texture3D:
+        imageInfo.imageType = VK_IMAGE_TYPE_3D;
+        break;
+    default:
+        assert(0);
+        break;
+    }
+
+    VkResult res;
+
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+
+    // TODO: Sparse Textures
+    if (EnumHasAnyFlags(desc.MiscFlags, TextureMiscFlags::Sparse))
+    {
+    }
+    else
+    {
+        // TODO: Support image read backs / uploads
+        // Wicked engine special cases these.
+
+
+        if (desc.Alias == nullptr)
+        {
+            res = vmaCreateImage(
+                m_vmaAllocator,
+                &imageInfo,
+                &allocInfo,
+                &impl.ImageVk,
+                &impl.Allocation,
+                nullptr);
+        }
+        else
+        {
+            // Aliasing: https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/resource_aliasing.html
+            if (std::holds_alternative<TextureHandle>(desc.Alias->Handle))
+            {
+                Texture_VK* aliasTexture = m_texturePool.Get(std::get<TextureHandle>(desc.Alias->Handle));
+                res = vmaCreateAliasingImage2(
+                    m_vmaAllocator,
+                    aliasTexture->Allocation,
+                    desc.Alias->AliasOffset,
+                    &imageInfo,
+                    &impl.ImageVk);
+            }
+            else
+            {
+                Buffer_VK* aliasBuffer = m_bufferPool.Get(std::get<BufferHandle>(desc.Alias->Handle));
+                assert(aliasBuffer);
+                res = vmaCreateAliasingImage2(
+                    m_vmaAllocator,
+                    aliasBuffer->Allocation,
+                    desc.Alias->AliasOffset,
+                    &imageInfo,
+                    &impl.ImageVk);
+            }
+        }
+
+        assert(res == VK_SUCCESS);
+    }
+
+    // TODO Data Copy
+    // TODO: Create Sub Resources
+    return retVal;
 }
 
 void phx::gfx::platform::VulkanGpuDevice::DeleteTexture(TextureHandle handle)

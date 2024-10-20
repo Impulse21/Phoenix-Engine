@@ -495,8 +495,10 @@ namespace phx::gfx
     enum class TextureMiscFlags
     {
         None = 0,
-        Bindless = 1 << 0,
-        Typeless = 1 << 1,
+        Sparse = 1 << 0,
+        TransientAttachment = 1 << 1,
+        TypedFormatCasting = 1 << 2,
+        TypelessFormatCasting = 1 << 3,
     };
 
     PHX_ENUM_CLASS_FLAGS(TextureMiscFlags);
@@ -525,6 +527,20 @@ namespace phx::gfx
     };
 
 #pragma endregion
+
+    constexpr bool IsFormatSRGB(Format format)
+    {
+        switch (format)
+        {
+        case Format::BC1_UNORM_SRGB:
+        case Format::BC2_UNORM_SRGB:
+        case Format::BC3_UNORM_SRGB:
+        case Format::BC7_UNORM_SRGB:
+            return true;
+        default:
+            return false;
+        }
+    }
 
     struct GpuDeviceCapabilities
     {
@@ -803,6 +819,7 @@ namespace phx::gfx
         }
     };
 
+    struct AliasDesc;
     struct TextureDesc
     {
         TextureMiscFlags MiscFlags = TextureMiscFlags::None;
@@ -821,8 +838,10 @@ namespace phx::gfx
         };
 
         uint16_t MipLevels = 1;
+        uint16_t SampleCount = 1;
 
         gfx::ClearValue OptmizedClearValue = {};
+        AliasDesc* Alias = nullptr;
         std::string DebugName;
         bool IsTypeless : 1 = false;
     };
@@ -900,7 +919,6 @@ namespace phx::gfx
         };
     };
 
-
 #if USE_HANDLES
     struct Buffer;
     using BufferHandle = Handle<Buffer>;
@@ -928,17 +946,17 @@ namespace phx::gfx
         size_t UavCounterOffset = 0;
         BufferHandle UavCounterBuffer = {};
 
-        struct AliasDesc
-        {
-            std::variant<BufferHandle, TextureHandle> Handle;
-            size_t AliasOffset = 0;
-        };
         AliasDesc* Alias = nullptr;
         BufferHandle AliasedBuffer = {};
 
         std::string DebugName;
     };
 
+    struct AliasDesc
+    {
+        std::variant<BufferHandle, TextureHandle> Handle;
+        size_t AliasOffset = 0;
+    };
     using ByteCodeView = Span<uint8_t>;
     struct GfxPipelineDesc
     {
