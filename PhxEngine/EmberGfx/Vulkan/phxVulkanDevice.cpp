@@ -1000,6 +1000,7 @@ void phx::gfx::platform::VulkanGpuDevice::DeleteBuffer(BufferHandle handle)
         [=]()
         {
             Buffer_VK* impl = m_bufferPool.Get(handle);
+            // TODO: Move into the deconstructor of struct
             if (impl)
             {
                 if (impl->Srv.IsValid())
@@ -1232,6 +1233,7 @@ void phx::gfx::platform::VulkanGpuDevice::DeleteTexture(TextureHandle handle)
         {
             
             Texture_VK* impl = m_texturePool.Get(handle);
+            // TODO: Move into the deconstructor of struct
             if (impl)
             {
                 if (impl->Srv.IsValid())
