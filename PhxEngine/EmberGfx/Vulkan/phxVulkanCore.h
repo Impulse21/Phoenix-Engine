@@ -4,7 +4,7 @@
 #include <vulkan/vulkan.h>
 namespace phx::gfx::platform
 {
-    VkFormat gVulkanFormatMapping[] = 
+    constexpr VkFormat gVulkanFormatMapping[] = 
     {
        VK_FORMAT_UNDEFINED,                  // UNKNOWN
        VK_FORMAT_R8_UINT,                    // R8_UINT
@@ -86,6 +86,25 @@ namespace phx::gfx::platform
         return gVulkanFormatMapping[(int)format];
     }
 
+	constexpr VkComponentSwizzle ComponentSwizzleMap[] = 
+	{
+		VK_COMPONENT_SWIZZLE_R,        // ComponentSwizzle::R
+		VK_COMPONENT_SWIZZLE_G,        // ComponentSwizzle::G
+		VK_COMPONENT_SWIZZLE_B,        // ComponentSwizzle::B
+		VK_COMPONENT_SWIZZLE_A,        // ComponentSwizzle::A
+		VK_COMPONENT_SWIZZLE_ZERO,     // ComponentSwizzle::Zero
+		VK_COMPONENT_SWIZZLE_ONE,      // ComponentSwizzle::One
+	};
+
+	constexpr VkComponentMapping ConvertSwizzle(Swizzle value)
+	{
+		VkComponentMapping mapping = {};
+		mapping.r = ComponentSwizzleMap[(size_t)value.R];
+		mapping.g = ComponentSwizzleMap[(size_t)value.G];
+		mapping.b = ComponentSwizzleMap[(size_t)value.B];
+		mapping.a = ComponentSwizzleMap[(size_t)value.A];
+		return mapping;
+	}
 
 	VkBlendFactor ConvertBlendValue(BlendFactor value)
 	{
@@ -196,6 +215,19 @@ namespace phx::gfx::platform
 			return VK_COMPARE_OP_ALWAYS;
 		default:
 			return VK_COMPARE_OP_NEVER;
+		}
+	}
+
+	constexpr bool IsFormatDepthSupport(Format format)
+	{
+		switch (format)
+		{
+		case Format::D16:
+		case Format::D32:
+		case Format::D24S8:
+			return true;
+		default:
+			return false;
 		}
 	}
 }

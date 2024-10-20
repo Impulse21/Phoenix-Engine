@@ -180,6 +180,7 @@ void phx::gfx::platform::VulkanGpuDevice::Initialize(SwapChainDesc const& swapCh
     m_dynamicStateInfo_MeshShader.pDynamicStates = m_psoDynamicStates.data();
     m_dynamicStateInfo_MeshShader.dynamicStateCount = (uint32_t)m_psoDynamicStates.size() - 1; // don't include VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE for mesh shader
 
+    InitializeDescriptorHeaps();
     CreateVma();
     CreateFrameResources();
     CreateDefaultResources();
@@ -193,10 +194,12 @@ void phx::gfx::platform::VulkanGpuDevice::Finalize()
     m_dynamicAllocator.Finalize();
 
     this->RunGarbageCollection();
-
-    FinalizeResourcePools();
     DestoryFrameResources();
     DestoryDefaultResources();
+
+    FinalizeResourcePools();
+
+    DestroyDescriptorHeaps();
 
     for (auto& cmdCtx : m_commandCtxPool)
     {
@@ -975,7 +978,17 @@ BufferHandle phx::gfx::platform::VulkanGpuDevice::CreateBuffer(BufferDesc const&
     }
 
     // TODO Upload Data
-    // TODO Create Views
+
+    if ((desc.Binding & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
+    {
+        CreateSubresource(impl, desc, SubresouceType::SRV, 0u);
+    }
+
+    if ((desc.Binding & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+    {
+        CreateSubresource(impl, desc, SubresouceType::UAV, 0u);
+    }
+
     return retVal;
 }
 
@@ -989,9 +1002,39 @@ void phx::gfx::platform::VulkanGpuDevice::DeleteBuffer(BufferHandle handle)
             Buffer_VK* impl = m_bufferPool.Get(handle);
             if (impl)
             {
+                if (impl->Srv.IsValid())
+                {
+                    if (impl->Srv.IsTyped)
+                    {
+                        m_bindlessUniformTexelBuffers.Free(impl->Srv.Index);
+                    }
+                    else
+                    {
+                        m_bindlessStorageBuffers.Free(impl->Srv.Index);
+                    }
+
+                    if (impl->Srv.ViewVk != VK_NULL_HANDLE)
+                        vkDestroyBufferView(m_vkDevice, impl->Uav.ViewVk, nullptr);
+                    impl->Srv = {};
+                }
+                if (impl->Uav.IsValid())
+                {
+                    if (impl->Uav.IsTyped)
+                    {
+                        m_bindlessStorageTexelBuffers.Free(impl->Uav.Index);
+                    }
+                    else
+                    {
+                        m_bindlessStorageBuffers.Free(impl->Uav.Index);
+                    }
+
+                    if (impl->Uav.ViewVk != VK_NULL_HANDLE)
+                        vkDestroyBufferView(m_vkDevice, impl->Uav.ViewVk, nullptr);
+                    impl->Uav = {};
+                }
                 vmaDestroyBuffer(m_vmaAllocator, impl->BufferVk, impl->Allocation);
-                // vkDestroyBufferView(m_vkDevice, m_nullBufferView, nullptr);
             }
+            m_bufferPool.Release(handle);
         }
     };
 }
@@ -1157,7 +1200,26 @@ TextureHandle phx::gfx::platform::VulkanGpuDevice::CreateTexture(TextureDesc con
     }
 
     // TODO Data Copy
-    // TODO: Create Sub Resources
+
+    if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
+    {
+        CreateSubresource(impl, desc, SubresouceType::SRV, 0, ~0u, 0, ~0u);
+    }
+
+    if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
+    {
+        CreateSubresource(impl, desc, SubresouceType::RTV, 0, ~0u, 0, ~0u);
+    }
+
+    if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
+    {
+        CreateSubresource(impl, desc, SubresouceType::DSV, 0, ~0u, 0, ~0u);
+    }
+
+    if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+    {
+        CreateSubresource(impl, desc, SubresouceType::UAV, 0, ~0u, 0, ~0u);
+    }
     return retVal;
 }
 
@@ -1168,11 +1230,33 @@ void phx::gfx::platform::VulkanGpuDevice::DeleteTexture(TextureHandle handle)
         m_frameCount,
         [=]()
         {
+            
             Texture_VK* impl = m_texturePool.Get(handle);
             if (impl)
             {
+                if (impl->Srv.IsValid())
+                {
+                    m_bindlessSampledImages.Free(impl->Srv.Index);
+                    impl->Srv = {};
+                }
+                if (impl->Uav.IsValid())
+                {
+                    m_bindlessStorageImages.Free(impl->Uav.Index);
+                    impl->Uav = {};
+                }
+                if (impl->Rtv.ViewVk != VK_NULL_HANDLE)
+                {
+                    vkDestroyImageView(m_vkDevice, impl->Rtv.ViewVk, nullptr);
+                    impl->Rtv = {};
+                }
+                if (impl->Dsv.ViewVk != VK_NULL_HANDLE)
+                {
+                    vkDestroyImageView(m_vkDevice, impl->Dsv.ViewVk, nullptr);
+                    impl->Dsv = {};
+                }
+
                 vmaDestroyImage(m_vmaAllocator, impl->ImageVk, impl->Allocation);
-                // vkDestroyBufferView(m_vkDevice, m_nullBufferView, nullptr);
+                m_texturePool.Release(handle);
             }
         }
     };
@@ -1182,6 +1266,270 @@ void* phx::gfx::platform::VulkanGpuDevice::GetMappedData(BufferHandle handle)
 {
     Buffer_VK* impl = m_bufferPool.Get(handle);
     return impl ? impl->MappedData : nullptr;
+}
+
+int phx::gfx::platform::VulkanGpuDevice::CreateSubresource(Texture_VK& texture, TextureDesc const& desc, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+{
+    VkImageViewCreateInfo viewDesc = {};
+    viewDesc.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewDesc.flags = 0;
+    viewDesc.image = texture.ImageVk;
+    viewDesc.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+    viewDesc.subresourceRange.baseArrayLayer = firstSlice;
+    viewDesc.subresourceRange.layerCount = sliceCount;
+    viewDesc.subresourceRange.baseMipLevel = firstMip;
+    viewDesc.subresourceRange.levelCount = mipCount;
+
+    // TODO Support Swizzle?
+
+    if (subresourceType == SubresouceType::SRV)
+    {
+        Swizzle defaultSwizzle = {};
+        viewDesc.components = ConvertSwizzle(defaultSwizzle);
+    }
+
+    viewDesc.format = FormatToVkFormat(desc.Format);
+
+
+    switch (desc.Dimension)
+    {
+    case TextureDimension::Texture1D:
+    case TextureDimension::Texture1DArray:
+    {
+        if (desc.ArraySize > 1)
+        {
+            viewDesc.viewType = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+        }
+        else
+        {
+            viewDesc.viewType = VK_IMAGE_VIEW_TYPE_1D;
+        }
+        break;
+    }
+    case TextureDimension::Texture2D:
+    case TextureDimension::Texture2DArray:
+    {
+        if (desc.ArraySize > 1)
+        {
+            viewDesc.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        }
+        else
+        {
+            viewDesc.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        }
+        break;
+    }
+    case TextureDimension::TextureCube:
+    {
+        if (desc.ArraySize > 1)
+        {
+            if (desc.ArraySize > 6 && sliceCount > 6)
+            {
+                viewDesc.viewType = VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+            }
+            else
+            {
+                viewDesc.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+            }
+        }
+        break;
+    };
+    case TextureDimension::Texture3D:
+    {
+        viewDesc.viewType = VK_IMAGE_VIEW_TYPE_3D;
+        break;
+    }
+    case TextureDimension::Texture2DMS:
+    case TextureDimension::Texture2DMSArray:
+    case TextureDimension::Unknown:
+    default:
+        throw std::runtime_error("Unsupported Enum");
+    }
+
+
+    switch (subresourceType)
+    {
+    case SubresouceType::SRV:
+    {
+        if (IsFormatDepthSupport(desc.Format))
+        {
+            viewDesc.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        }
+
+        // This is required in cases where image was created with eg. USAGE_STORAGE, but
+        //	the view format that we are creating doesn't support USAGE_STORAGE (for examplle: SRGB formats)
+        VkImageViewUsageCreateInfo viewUsageInfo = {};
+        viewUsageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
+        viewUsageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+        viewDesc.pNext = &viewUsageInfo;
+
+#if false
+        VkImageViewMinLodCreateInfoEXT min_lod_info = {};
+        min_lod_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_MIN_LOD_CREATE_INFO_EXT;
+        min_lod_info.minLod = 0;
+        if (min_lod_info.minLod > 0 && image_view_min_lod_features.minLod == VK_TRUE)
+        {
+            viewUsageInfo.pNext = &min_lod_info;
+        }
+#endif
+        VkResult res = vkCreateImageView(m_vkDevice, &viewDesc, nullptr, &texture.Srv.ViewVk);
+
+        texture.Srv.Index = m_bindlessSampledImages.Allocate();
+        if (texture.Srv.Index != cInvalidDescriptorIndex)
+        {
+            VkDescriptorImageInfo imageInfo = {};
+            imageInfo.imageView = texture.Srv.ViewVk;
+            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            VkWriteDescriptorSet write = {};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+            write.dstBinding = 0;
+            write.dstArrayElement = texture.Srv.Index;
+            write.descriptorCount = 1;
+            write.dstSet = m_bindlessSampledImages.DescritporSetVk;
+            write.pImageInfo = &imageInfo;
+            vkUpdateDescriptorSets(m_vkDevice, 1, &write, 0, nullptr);
+        }
+
+        assert(res == VK_SUCCESS);
+    }
+    break;
+    case SubresouceType::UAV:
+    {
+        if (viewDesc.viewType == VK_IMAGE_VIEW_TYPE_CUBE || viewDesc.viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)
+        {
+            viewDesc.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        }
+
+        VkResult res = vkCreateImageView(m_vkDevice, &viewDesc, nullptr, &texture.Uav.ViewVk);
+
+        texture.Uav.Index = m_bindlessStorageImages.Allocate();
+        if (texture.Uav.Index != cInvalidDescriptorIndex)
+        {
+            VkDescriptorImageInfo imageInfo = {};
+            imageInfo.imageView = texture.Uav.ViewVk;
+            imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+            VkWriteDescriptorSet write = {};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            write.dstBinding = 0;
+            write.dstArrayElement = texture.Uav.Index;
+            write.descriptorCount = 1;
+            write.dstSet = m_bindlessStorageBuffers.DescritporSetVk;
+            write.pImageInfo = &imageInfo;
+            vkUpdateDescriptorSets(m_vkDevice, 1, &write, 0, nullptr);
+        }
+
+        assert(res == VK_SUCCESS);
+    }
+    break;
+    case SubresouceType::RTV:
+    {
+        viewDesc.subresourceRange.levelCount = 1;
+        VkResult res = vkCreateImageView(m_vkDevice, &viewDesc, nullptr, &texture.Rtv.ViewVk);
+        assert(res == VK_SUCCESS);
+    }
+    break;
+    case SubresouceType::DSV:
+    {
+        viewDesc.subresourceRange.levelCount = 1;
+        viewDesc.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+        VkResult res = vkCreateImageView(m_vkDevice, &viewDesc, nullptr, &texture.Dsv.ViewVk);
+        assert(res == VK_SUCCESS);
+    }
+    break;
+    default:
+        break;
+    }
+    return -1;
+}
+
+int phx::gfx::platform::VulkanGpuDevice::CreateSubresource(Buffer_VK& buffer, BufferDesc const& desc, SubresouceType subresourceType, size_t offset, size_t size)
+{
+    assert(subresourceType == SubresouceType::SRV || subresourceType == SubresouceType::UAV);
+
+    Format format = desc.Format;
+
+    Buffer_VK::BufferView& view = subresourceType == SubresouceType::SRV 
+        ? buffer.Srv
+        : buffer.Uav;
+    
+
+    // Is raw buffer
+    if (format == Format::UNKNOWN)
+    {
+        view.IsTyped = false;
+        view.Index = m_bindlessStorageBuffers.Allocate();
+
+        VkDescriptorBufferInfo bufferInfo = {};
+        bufferInfo.buffer = buffer.BufferVk;
+        bufferInfo.offset = offset;
+        bufferInfo.range = size;
+
+        VkWriteDescriptorSet write = {};
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        write.dstBinding = 0;
+        write.dstArrayElement = view.Index;
+        write.descriptorCount = 1;
+        write.dstSet = m_bindlessStorageBuffers.DescritporSetVk;
+        write.pBufferInfo = &bufferInfo;
+    }
+    else
+    {
+        // Typed buffer
+        view.IsTyped = true;
+
+        VkBufferViewCreateInfo srvDesc = {};
+        srvDesc.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+        srvDesc.buffer = buffer.BufferVk;
+        srvDesc.flags = 0;
+        srvDesc.format = FormatToVkFormat(format);
+        srvDesc.offset = offset;
+        srvDesc.range = std::min(size, (uint64_t)desc.SizeInBytes- srvDesc.offset);
+
+        VkResult res = vkCreateBufferView(m_vkDevice, &srvDesc, nullptr, &view.ViewVk);
+        assert(res == VK_SUCCESS);
+
+        if (subresourceType == SubresouceType::SRV)
+        {
+            view.Index = m_bindlessUniformTexelBuffers.Allocate();
+            if (view.IsValid())
+            {
+                VkWriteDescriptorSet write = {};
+                write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+                write.dstBinding = 0;
+                write.dstArrayElement = view.Index;
+                write.descriptorCount = 1;
+                write.dstSet = m_bindlessUniformTexelBuffers.DescritporSetVk;
+                write.pTexelBufferView = &view.ViewVk;
+                vkUpdateDescriptorSets(m_vkDevice, 1, &write, 0, nullptr);
+            }
+
+            return -1;
+        }
+        else
+        {
+            view.Index = m_bindlessStorageTexelBuffers.Allocate();
+            if (view.IsValid())
+            {
+                VkWriteDescriptorSet write = {};
+                write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+                write.dstBinding = 0;
+                write.dstArrayElement = view;
+                write.descriptorCount = 1;
+                write.dstSet = m_bindlessStorageTexelBuffers.DescritporSetVk;
+                write.pTexelBufferView = &view.ViewVk;
+                vkUpdateDescriptorSets(m_vkDevice, 1, &write, 0, nullptr);
+            }
+            return -1;
+        }
+    }
 }
 
 void phx::gfx::platform::VulkanGpuDevice::CreateInstance()
@@ -1744,6 +2092,39 @@ void phx::gfx::platform::VulkanGpuDevice::CreateSwapChaimImageViews()
     }
 }
 
+void phx::gfx::platform::VulkanGpuDevice::InitializeDescriptorHeaps()
+{
+    if (m_vulkan12Features.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE)
+    {
+        m_bindlessSampledImages.Initialize(m_vkDevice, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, m_properties12.maxDescriptorSetUpdateAfterBindSampledImages / 4);
+    }
+    if (m_vulkan12Features.descriptorBindingUniformTexelBufferUpdateAfterBind == VK_TRUE)
+    {
+        m_bindlessUniformTexelBuffers.Initialize(m_vkDevice, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, m_properties12.maxDescriptorSetUpdateAfterBindSampledImages / 4);
+    }
+    if (m_vulkan12Features.descriptorBindingStorageBufferUpdateAfterBind == VK_TRUE)
+    {
+        m_bindlessStorageBuffers.Initialize(m_vkDevice, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, m_properties12.maxDescriptorSetUpdateAfterBindStorageBuffers / 4);
+    }
+    if (m_vulkan12Features.descriptorBindingStorageImageUpdateAfterBind == VK_TRUE)
+    {
+        m_bindlessStorageImages.Initialize(m_vkDevice, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, m_properties12.maxDescriptorSetUpdateAfterBindStorageImages / 4);
+    }
+    if (m_vulkan12Features.descriptorBindingStorageTexelBufferUpdateAfterBind == VK_TRUE)
+    {
+        m_bindlessStorageTexelBuffers.Initialize(m_vkDevice, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, m_properties12.maxDescriptorSetUpdateAfterBindStorageImages / 4);
+    }
+    if (m_vulkan12Features.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE)
+    {
+        m_bindlessSamplers.Initialize(m_vkDevice, VK_DESCRIPTOR_TYPE_SAMPLER, 256);
+    }
+
+    if (m_capabilities.RayTracing)
+    {
+        m_bindlessAccelerationStructures.Initialize(m_vkDevice, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 32);
+    }
+}
+
 void phx::gfx::platform::VulkanGpuDevice::CreateVma()
 {
     // Initialize Vulkan Memory Allocator helper:
@@ -1854,6 +2235,17 @@ void phx::gfx::platform::VulkanGpuDevice::CreateFrameResources()
             }
         }
     }
+}
+
+void phx::gfx::platform::VulkanGpuDevice::DestroyDescriptorHeaps()
+{
+    m_bindlessSampledImages.Finalize(m_vkDevice);
+    m_bindlessUniformTexelBuffers.Finalize(m_vkDevice);
+    m_bindlessStorageBuffers.Finalize(m_vkDevice);
+    m_bindlessStorageImages.Finalize(m_vkDevice);
+    m_bindlessStorageTexelBuffers.Finalize(m_vkDevice);
+    m_bindlessSamplers.Finalize(m_vkDevice);
+    m_bindlessAccelerationStructures.Finalize(m_vkDevice);
 }
 
 void phx::gfx::platform::VulkanGpuDevice::FinalizeResourcePools()
@@ -2263,4 +2655,64 @@ DynamicMemoryPage phx::gfx::platform::DynamicMemoryAllocator::Allocate(uint32_t 
         .Offset = offset,
         .Data = reinterpret_cast<uint8_t*>(this->m_data + offset),
     };
+}
+
+void phx::gfx::platform::BindlessDescriptorHeap::Initialize(VkDevice device, VkDescriptorType type, uint32_t descriptorCount)
+{
+    descriptorCount = std::min(descriptorCount, 500000u);
+
+    VkDescriptorPoolSize poolSize = {};
+    poolSize.type = type;
+    poolSize.descriptorCount = descriptorCount;
+
+    VkDescriptorPoolCreateInfo poolInfo = {};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes = &poolSize;
+    poolInfo.maxSets = 1;
+    poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+
+    VkResult res = vkCreateDescriptorPool(device, &poolInfo, nullptr, &DescriptorPoolVk);
+    assert(res == VK_SUCCESS);
+
+    VkDescriptorSetLayoutBinding binding = {};
+    binding.descriptorType = type;
+    binding.binding = 0;
+    binding.descriptorCount = descriptorCount;
+    binding.stageFlags = VK_SHADER_STAGE_ALL;
+    binding.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &binding;
+    layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+
+    VkDescriptorBindingFlags bindingFlags =
+        VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT |
+        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
+        VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT;
+        //| VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
+
+    VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo = {};
+    bindingFlagsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+    bindingFlagsInfo.bindingCount = 1;
+    bindingFlagsInfo.pBindingFlags = &bindingFlags;
+    layoutInfo.pNext = &bindingFlagsInfo;
+
+    res = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &DescirptorSetLayoutVk);
+    assert(res == VK_SUCCESS);
+
+    VkDescriptorSetAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = DescriptorPoolVk;
+    allocInfo.descriptorSetCount = 1;
+    allocInfo.pSetLayouts = &DescirptorSetLayoutVk;
+    res = vkAllocateDescriptorSets(device, &allocInfo, &DescritporSetVk);
+    assert(res == VK_SUCCESS);
+
+    for (int i = 0; i < (int)descriptorCount; ++i)
+    {
+        FreeList.push_back((int)descriptorCount - i - 1);
+    }
 }

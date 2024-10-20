@@ -150,6 +150,16 @@ namespace phx::gfx
         COUNT,
     };
 
+    enum class ComponentSwizzle : uint8_t
+    {
+        R,
+        G,
+        B,
+        A,
+        Zero,
+        One,
+    };
+
     struct Color
     {
         float R;
@@ -548,7 +558,8 @@ namespace phx::gfx
         {
             struct
             {
-                uint32_t CacheCoherentUma : 32;
+                uint32_t CacheCoherentUma   : 1;
+                uint32_t RayTracing         : 31;
             };
             uint32_t Flags = 0;
         };
@@ -817,6 +828,14 @@ namespace phx::gfx
         {
             this->BindlessParameters.emplace_back(bindlessParameter);
         }
+    };
+
+    struct Swizzle
+    {
+        ComponentSwizzle R = ComponentSwizzle::R;
+        ComponentSwizzle G = ComponentSwizzle::G;
+        ComponentSwizzle B = ComponentSwizzle::B;
+        ComponentSwizzle A = ComponentSwizzle::A;
     };
 
     struct AliasDesc;
