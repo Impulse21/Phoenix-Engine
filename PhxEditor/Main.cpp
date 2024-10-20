@@ -23,7 +23,7 @@ void UpdateTriangleColors(std::array<float, 3>& colorV1,
 	std::array<float, 3>& colorV3)
 {
 	float time = phx::SystemTime::GetCurrentTick();  // Get the current time
-	constexpr float speed = 0.01f;  // Slow down the color transitions
+	constexpr float speed = 0.00001f;  // Slow down the color transitions
 
 	// Use sin and cos functions with a lower frequency to smooth color transitions
 	colorV1[0] = (sin(time * speed) + 1.0f) * 0.5f; // R for vertex 1
