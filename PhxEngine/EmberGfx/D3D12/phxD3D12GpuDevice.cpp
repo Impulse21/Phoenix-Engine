@@ -838,7 +838,7 @@ PipelineStateHandle phx::gfx::D3D12GpuDevice::CreatePipeline(PipelineStateDesc2 
 		for (uint32_t i = 0; i < il.NumElements; ++i)
 		{
 			auto& element = desc.InputLayout->elements[i];
-			D3D12_INPUT_ELEMENT_DESC& dx12Desc = elements.emplace_back();
+			D3D12_INPUT_ELEMENT_DESC& dx12Desc = elements[i];
 
 			dx12Desc.SemanticName = element.SemanticName.c_str();
 			dx12Desc.SemanticIndex = element.SemanticIndex;
