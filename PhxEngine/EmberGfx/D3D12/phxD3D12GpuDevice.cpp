@@ -755,8 +755,8 @@ PipelineStateHandle phx::gfx::D3D12GpuDevice::CreatePipeline(PipelineStateDesc2 
 	}
 	if (desc.AS.IsValid())
 	{
-		Shader_Dx12* shaderImpl = m_shaderPool.Get(desc.MS);
-		stream.stream2.MS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
+		Shader_Dx12* shaderImpl = m_shaderPool.Get(desc.AS);
+		stream.stream2.AS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
 
 		if (!impl.RootSignature)
 			impl.RootSignature = shaderImpl->RootSignature;
@@ -910,12 +910,13 @@ PipelineStateHandle phx::gfx::D3D12GpuDevice::CreatePipeline(PipelineStateDesc2 
 		D3D12_PIPELINE_STATE_STREAM_DESC streamDesc = {};
 		streamDesc.pPipelineStateSubobjectStream = &stream;
 		streamDesc.SizeInBytes = sizeof(stream.stream1);
-#if false
-		if (CheckCapability(GraphicsDeviceCapability::MESH_SHADER))
+
+
+		if (EnumHasAnyFlags(m_capabilities, DeviceCapability::MeshShading))
 		{
 			streamDesc.SizeInBytes += sizeof(stream.stream2);
 		}
-#endif
+
 		HRESULT hr = m_d3d12Device2->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&impl.D3D12PipelineState));
 		if (FAILED(hr))
 		{
