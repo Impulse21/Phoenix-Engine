@@ -2039,7 +2039,7 @@ DynamicMemoryPage phx::gfx::platform::DynamicMemoryAllocator::Allocate(uint32_t 
         m_tail = (m_tail + m_bufferMask) & ~m_bufferMask;
     }
 
-    if (((m_tail - m_head) & allocSize) >= GetBufferSize())
+    if (((m_tail - m_head) + allocSize) >= GetBufferSize())
     {
         while (!this->m_inUseRegions.empty())
         {
