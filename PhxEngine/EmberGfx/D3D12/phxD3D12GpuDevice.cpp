@@ -939,6 +939,7 @@ PipelineStateHandle phx::gfx::D3D12GpuDevice::CreatePipeline(PipelineStateDesc2 
 
 		il = {};
 		il.pInputElementDescs = inputLayout;
+		il.NumElements = _countof(inputLayout);
 		testStream.stream1.IL = il;
 		stream.stream1.ROOTSIG = m_emptyRootSignature.Get();
 
