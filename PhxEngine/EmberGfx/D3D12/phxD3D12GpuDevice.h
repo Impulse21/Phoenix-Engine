@@ -282,7 +282,9 @@ namespace phx::gfx
 		void SubmitFrame() override;
 
 		DynamicMemoryPage AllocateDynamicMemoryPage(size_t pageSize) override;
-	
+
+		DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type = SubresouceType::SRV, int subResource = -1) override;
+
 	public:
 		ShaderHandle CreateShader(ShaderDesc const& desc) override;
 		void DeleteShader(ShaderHandle handle)  override;
@@ -293,6 +295,9 @@ namespace phx::gfx
 
 		BufferHandle CreateBuffer(BufferDesc const& desc) override;
 		void DeleteBuffer(BufferHandle handle) override;
+
+		TextureHandle CreateTexture(TextureDesc const& desc) override;
+		void DeleteTexture(TextureHandle handle) override;
 
 	public:
 		void BeginGpuTimerReadback();
@@ -305,15 +310,11 @@ namespace phx::gfx
 		GfxPipelineHandle CreateGfxPipeline(GfxPipelineDesc const& desc);
 		void DeleteResource(GfxPipelineHandle handle);
 
-		TextureHandle CreateTexture(TextureDesc const& desc);
-		void DeleteResource(TextureHandle handle);
-
 		InputLayoutHandle CreateInputLayout(Span<VertexAttributeDesc> desc);
 		void DeleteResource(InputLayoutHandle handle);
 
 		void DeleteResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource);
 
-		DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type = SubresouceType::SRV, int subResource = -1);
 
 		DescriptorIndex GetDescriptorIndex(BufferHandle handle, SubresouceType type = SubresouceType::SRV, int subResource = -1);
 
@@ -361,13 +362,14 @@ namespace phx::gfx
 		void Present();
 		void RunGarbageCollection(uint64_t completedFrame = ~0ul);
 
-		int CreateSubresource(BufferHandle buffer, BufferDesc const& desc, SubresouceType subresourceType, size_t offset, size_t size = ~0u);
 		int CreateSubresource(TextureHandle texture, TextureDesc const& desc, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
 
 		int CreateShaderResourceView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
 		int CreateRenderTargetView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
 		int CreateDepthStencilView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
 		int CreateUnorderedAccessView(TextureHandle texture, TextureDesc const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+
+		int CreateSubresource(BufferHandle buffer, BufferDesc const& desc, SubresouceType subresourceType, size_t offset, size_t size = ~0u);
 
 		int CreateShaderResourceView(BufferHandle buffer, BufferDesc const& desc, size_t offset, size_t size);
 		int CreateUnorderedAccessView(BufferHandle buffer, BufferDesc const& desc, size_t offset, size_t size);

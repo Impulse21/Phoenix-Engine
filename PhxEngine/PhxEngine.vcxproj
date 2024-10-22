@@ -373,6 +373,7 @@
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="EmberGfx\dxcompiler.dll">
+      <SkipUnchangedFiles>true</SkipUnchangedFiles>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">true</DeploymentContent>
       <FileType>Document</FileType>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Profile_Virtual_Gfx|Gaming.Desktop.x64'">true</DeploymentContent>
@@ -381,7 +382,17 @@
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">true</DeploymentContent>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">true</DeploymentContent>
     </CopyFileToFolders>
-    <None Include="EmberGfx\Shaders\ImGui.hlsli" />
+    <CopyFileToFolders Include="EmberGfx\Shaders\ImGui.hlsl">
+      <SkipUnchangedFiles>true</SkipUnchangedFiles>
+      <DestinationFolder>$(OutDir)/shaders/framework</DestinationFolder>
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">$(OutDir)shaders\engine</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Profile_Virtual_Gfx|Gaming.Desktop.x64'">$(OutDir)shaders\engine</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug_Virtual_Gfx|Gaming.Desktop.x64'">$(OutDir)shaders\engine</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">$(OutDir)shaders\engine</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">$(OutDir)shaders\engine</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">$(OutDir)shaders\engine</DestinationFolders>
+    </CopyFileToFolders>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

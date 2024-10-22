@@ -23,7 +23,7 @@ void UpdateTriangleColors(std::array<float, 3>& colorV1,
 	std::array<float, 3>& colorV3)
 {
 	float time = phx::SystemTime::GetCurrentTick();  // Get the current time
-	constexpr float speed = 0.01f;  // Slow down the color transitions
+	constexpr float speed = 0.00001f;  // Slow down the color transitions
 
 	// Use sin and cos functions with a lower frequency to smooth color transitions
 	colorV1[0] = (sin(time * speed) + 1.0f) * 0.5f; // R for vertex 1
@@ -45,16 +45,22 @@ public:
 	void Startup() override 
 	{
 		m_fs = phx::FileSystemFactory::CreateRootFileSystem();
+		phx::FS::RootPtr = m_fs.get();
+
+		std::filesystem::path applicationShaderPath = phx::FS::GetDirectoryWithExecutable() / "shaders/application";
+		std::filesystem::path frameworkShaderPath = phx::FS::GetDirectoryWithExecutable() / "shaders/engine";
+
 		m_fs->Mount("/native", phx::FileSystemFactory::CreateNativeFileSystem());
-		m_fs->Mount("/shaders", "/shaders/spriv");
-		m_fs->Mount("/shaders", m_fs)
+		m_fs->Mount("/shaders", applicationShaderPath);
+		m_fs->Mount("/shaders_engine/", frameworkShaderPath);
+
 
 		phx::gfx::GpuDevice* device = phx::gfx::EmberGfx::GetDevice();
 
 		phx::gfx::ShaderCompiler::Output testShaderVSOutput = phx::gfx::ShaderCompiler::Compile({
 				.Format = device->GetShaderFormat(),
 				.ShaderStage = phx::gfx::ShaderStage::VS,
-				.SourceFilename = "/native/Shaders/TestShader.hlsl",
+				.SourceFilename = "/shaders/TestShader.hlsl",
 				.EntryPoint = "MainVS",
 				.FileSystem = m_fs.get()});
 
@@ -66,7 +72,7 @@ public:
 		phx::gfx::ShaderCompiler::Output testShaderPSOutput = phx::gfx::ShaderCompiler::Compile({
 				.Format = device->GetShaderFormat(),
 				.ShaderStage = phx::gfx::ShaderStage::PS,
-				.SourceFilename = "/native/Shaders/TestShader.hlsl",
+				.SourceFilename = "/shaders/TestShader.hlsl",
 				.EntryPoint = "MainPS",
 				.FileSystem = m_fs.get() });
 
@@ -109,7 +115,7 @@ public:
 		device->DeleteShader(vsShader);
 		device->DeleteShader(psShader);
 
-		// this->m_imguiRenderSystem.Initialize();
+		// this->m_imguiRenderSystem.Initialize(device, m_fs.get());
 		// this->m_imguiRenderSystem.EnableDarkThemeColours();
 	};
 
@@ -117,6 +123,8 @@ public:
 	{
 		phx::gfx::GpuDevice* device = phx::gfx::EmberGfx::GetDevice();
 		device->DeletePipeline(this->m_pipeline);
+
+		phx::FS::RootPtr = nullptr;
 	};
 
 	void CacheRenderData() override {};
@@ -141,7 +149,7 @@ public:
 		Rect scissor(g_DisplayWidth, g_DisplayHeight);
 		ctx->SetScissors({ scissor });
 		ctx->SetPipelineState(m_pipeline);
-#if true
+
 		EmberGfx::DynamicAllocator dynamicAllocator = {};
 		EmberGfx::DynamicBuffer dynamicBuffer = dynamicAllocator.Allocate(sizeof(uint16_t) * 3, 16);
 
@@ -165,16 +173,18 @@ public:
 		vertices[1].Position = { 0.5f, -0.5f };
 		vertices[2].Position = { -0.5f, -0.5f };
 
+#if false
 		UpdateTriangleColors(
 			vertices[0].Colour,
 			vertices[1].Colour,
 			vertices[2].Colour);
-
+#else
+		vertices[0].Colour = { 1.0f, 0.0f, 0.0f };
+		vertices[1].Colour = { 0.0f, 1.0f, 0.0f };
+		vertices[2].Colour = { 0.0f, 0.0f, 1.0f };
+#endif
 		ctx->SetDynamicVertexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, 0, 3, sizeof(Vertex));
 		ctx->DrawIndexed(3);
-#else
-		ctx->Draw(3);
-#endif
 
 		ctx->RenderPassEnd();
 	}

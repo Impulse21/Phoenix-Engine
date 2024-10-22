@@ -4,13 +4,17 @@
 #include "EmberGfx/phxGfxDeviceResources.h"
 #include "EmberGfx/phxEmber.h"
 
+namespace phx
+{
+	class IFileSystem;
+}
 struct ImGuiContext;
 namespace phx::gfx
 {
 	class ImGuiRenderSystem
 	{
 	public:
-		void Initialize(GpuDevice* gfxDevice, bool enableDocking = false);
+		void Initialize(GpuDevice* gfxDevice, IFileSystem* fs, bool enableDocking = false);
 		void EnableDarkThemeColours();
 		void BeginFrame();
 		void Render(ICommandCtx* context);

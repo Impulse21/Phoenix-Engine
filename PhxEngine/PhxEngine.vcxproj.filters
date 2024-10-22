@@ -248,9 +248,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="EmberGfx\Shaders\ImGui.hlsli">
-      <Filter>EmberGfx\Shaders</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="EmberGfx\Shaders\ImGuiPS.hlsl">
@@ -262,5 +259,8 @@
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="EmberGfx\dxcompiler.dll" />
+    <CopyFileToFolders Include="EmberGfx\Shaders\ImGui.hlsl">
+      <Filter>EmberGfx\Shaders</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

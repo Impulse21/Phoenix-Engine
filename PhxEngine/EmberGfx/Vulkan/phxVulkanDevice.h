@@ -86,9 +86,55 @@ namespace phx::gfx::platform
 		VmaAllocation Allocation;
 
 		void* MappedData = nullptr;
-		uint32_t MappedSizeInBytes = 0;
 
+		uint32_t MappedSizeInBytes = 0;
 		VkDeviceAddress GpuAddress = 0;
+
+		struct BufferView
+		{
+			VkBufferView ViewVk = VK_NULL_HANDLE;
+			DescriptorIndex Index = cInvalidDescriptorIndex;
+			bool IsTyped : 1 = false;
+
+			constexpr bool IsValid()
+			{
+				return Index != cInvalidDescriptorIndex;
+			}
+
+			operator bool()
+			{
+				return IsValid();
+			}
+		};
+
+		BufferView Srv;
+		BufferView Uav;
+	};
+
+	struct Texture_VK
+	{
+		VkImage ImageVk;
+		VmaAllocation Allocation;
+		struct BufferView
+		{
+			VkImageView ViewVk = VK_NULL_HANDLE;
+			DescriptorIndex Index = cInvalidDescriptorIndex;
+
+			constexpr bool IsValid()
+			{
+				return Index != cInvalidDescriptorIndex;
+			}
+
+			operator bool()
+			{
+				return IsValid();
+			}
+		};
+
+		BufferView Srv;
+		BufferView Uav;
+		BufferView Rtv;
+		BufferView Dsv;
 	};
 
 	class DynamicMemoryAllocator
@@ -126,6 +172,54 @@ namespace phx::gfx::platform
 		std::deque<UsedRegion> m_inUseRegions;
 	};
 
+	struct BindlessDescriptorHeap
+	{
+		VkDescriptorSetLayout DescirptorSetLayoutVk = VK_NULL_HANDLE;
+		VkDescriptorPool DescriptorPoolVk = VK_NULL_HANDLE;
+		VkDescriptorSet DescritporSetVk = VK_NULL_HANDLE;
+		std::vector<DescriptorIndex> FreeList;
+		std::mutex AllocMutex;
+		void Initialize(VkDevice device, VkDescriptorType type, uint32_t descriptorCount);
+
+		void Finalize(VkDevice device)
+		{
+
+			if (DescirptorSetLayoutVk != VK_NULL_HANDLE)
+			{
+				vkDestroyDescriptorSetLayout(device, DescirptorSetLayoutVk, nullptr);
+				DescirptorSetLayoutVk = VK_NULL_HANDLE;
+			}
+
+			if (DescriptorPoolVk != VK_NULL_HANDLE)
+			{
+				vkDestroyDescriptorPool(device, DescriptorPoolVk, nullptr);
+				DescriptorPoolVk = VK_NULL_HANDLE;
+			}
+		}
+
+		DescriptorIndex Allocate()
+		{
+			std::scoped_lock _(AllocMutex);
+			if (FreeList.empty())
+			{
+				return cInvalidDescriptorIndex;
+			}
+
+			int index = FreeList.back();
+			FreeList.pop_back();
+			return index;
+		}
+
+		void Free(DescriptorIndex index)
+		{
+			if (index == cInvalidDescriptorIndex)
+				return;
+
+			std::scoped_lock _(AllocMutex);
+			FreeList.push_back(index);
+		}
+	};
+
 	class VulkanGpuDevice final : public IGpuDevice
 	{
 		friend CommandCtx_Vulkan;
@@ -153,8 +247,17 @@ namespace phx::gfx::platform
 		BufferHandle CreateBuffer(BufferDesc const& desc) override;
 		void DeleteBuffer(BufferHandle handle) override;
 
+		TextureHandle CreateTexture(TextureDesc const& desc) override;
+		void DeleteTexture(TextureHandle handle) override;
+
 	public:
 		void* GetMappedData(BufferHandle handle);
+		DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type = SubresouceType::SRV, int subResource = -1) override;
+		DescriptorIndex GetDescriptorIndex(BufferHandle handle, SubresouceType type = SubresouceType::SRV, int subResource = -1);
+
+	private:
+		int CreateSubresource(Texture_VK& texture, TextureDesc const& desc, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+		int CreateSubresource(Buffer_VK& buffer, BufferDesc const& desc, SubresouceType subresourceType, size_t offset, size_t size = ~0u);
 
 	public:
 		VkDevice GetVkDevice() { return m_vkDevice; }
@@ -175,10 +278,13 @@ namespace phx::gfx::platform
 		void RecreateSwapchain();
 		void CleanupSwapchain();
 		void CreateSwapChaimImageViews();
+		void InitializeDescriptorHeaps();
 		void CreateVma();
 		void CreateFrameResources();
 		void CreateDefaultResources();
 
+		void DestroyDescriptorHeaps();
+		void FinalizeResourcePools();
 		void DestoryFrameResources();
 		void DestoryDefaultResources();
 
@@ -275,9 +381,19 @@ namespace phx::gfx::platform
 		std::deque<DeferredItem> m_deferredQueue;
 
 		VkPipelineCache m_vkPipelineCache;
+
+		BindlessDescriptorHeap m_bindlessSampledImages;
+		BindlessDescriptorHeap m_bindlessUniformTexelBuffers;
+		BindlessDescriptorHeap m_bindlessStorageBuffers;
+		BindlessDescriptorHeap m_bindlessStorageImages;
+		BindlessDescriptorHeap m_bindlessStorageTexelBuffers;
+		BindlessDescriptorHeap m_bindlessSamplers;
+		BindlessDescriptorHeap m_bindlessAccelerationStructures;
+
 		HandlePool<PipelineState_Vk, PipelineState> m_pipelineStatePool;
 		HandlePool<Shader_VK, Shader> m_shaderPool;
 		HandlePool<Buffer_VK, Buffer> m_bufferPool;
+		HandlePool<Texture_VK, Texture> m_texturePool;
 
 
 		std::mutex m_commandPoolLock;

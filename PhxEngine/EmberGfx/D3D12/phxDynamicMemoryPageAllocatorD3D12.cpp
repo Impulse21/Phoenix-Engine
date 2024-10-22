@@ -118,8 +118,8 @@ DynamicMemoryPage phx::gfx::GpuRingAllocator::Allocate(uint32_t allocSize)
 		}
 	}
 
-	const uint32_t offset = (this->m_tail & m_bufferMask) * allocSize;
-	m_tail++;
+	const uint32_t offset = (this->m_tail & m_bufferMask) + allocSize;
+	m_tail += allocSize;
 
 	return DynamicMemoryPage{
 		.BufferHandle = this->m_buffer,

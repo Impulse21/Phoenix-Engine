@@ -3,6 +3,14 @@
 
 #include <fstream>
 
+#ifndef PHX_PLATFORM_WINDOWS
+#include <unistd.h>
+#include <cstdio>
+#include <climits>
+#else
+#define PATH_MAX MAX_PATH
+#endif // _WIN32
+
 using namespace phx;
 
 namespace
@@ -313,5 +321,30 @@ namespace phx::FileSystemFactory
     std::unique_ptr<IBlob> CreateBlob(void* Data, size_t size)
     {
         return std::make_unique<Blob>(Data, size);
+    }
+}
+
+namespace phx::FS
+{
+    std::filesystem::path GetDirectoryWithExecutable()
+    {
+        char path[PATH_MAX] = { 0 };
+#ifdef PHX_PLATFORM_WINDOWS
+        if (GetModuleFileNameA(nullptr, path, PATH_MAX) == 0)
+            return "";
+#else // _WIN32
+        // /proc/self/exe is mostly linux-only, but can't hurt to try it elsewhere
+        if (readlink("/proc/self/exe", path, std::size(path)) <= 0)
+        {
+            // portable but assumes executable dir == cwd
+            if (!getcwd(path, std::size(path)))
+                return ""; // failure
+        }
+#endif // PHX_PLATFORM_WINDOWS
+
+        std::filesystem::path result = path;
+        result = result.parent_path();
+
+        return result;
     }
 }
