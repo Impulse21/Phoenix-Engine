@@ -22,7 +22,7 @@ void CommandCtxD3D12::RenderPassBegin()
 	m_barriersRenderPassEnd.clear();
 
     D3D12SwapChain& swapChain = D3D12GpuDevice::Instance()->m_swapChain;
-    auto swapChainImage = swapChain.GetBackBuffer();
+    ID3D12Resource* swapChainImage = swapChain.GetBackBuffer();
 
 	D3D12_RESOURCE_BARRIER barrier = {};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -39,6 +39,8 @@ void CommandCtxD3D12::RenderPassBegin()
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
     m_barriersRenderPassEnd.push_back(barrier);
 
+    D3D12_CPU_DESCRIPTOR_HANDLE view = swapChain.GetBackBufferView();
+    m_commandList->OMSetRenderTargets(1, &view, 0, nullptr);
 }
 
 void CommandCtxD3D12::RenderPassEnd()
