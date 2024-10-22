@@ -15,6 +15,24 @@ extern "C" {
 
 #define NUM_BINDLESS_RESOURCES TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE / 2
 
+// Shader reflecting sample
+#if false
+
+#include <dxcapi.h>
+#include <d3d12shader.h> // Contains functions and structures useful in accessing shader information.
+		Microsoft::WRL::ComPtr<ID3D12ShaderReflection> shaderReflection{};
+		utils->CreateReflection(&reflectionBuffer, IID_PPV_ARGS(&shaderReflection));
+		D3D12_SHADER_DESC shaderDesc{};
+		shaderReflection->GetDesc(&shaderDesc);
+		
+		uint16_t stage =  (shaderDesc.Version & 0xFFFF0000) >> 16;  // Extract the stage bits
+		uint16_t major = (shaderDesc.Version & 0x000000F0) >> 4;
+		uint16_t minor = (shaderDesc.Version & 0x0000000F);
+
+		assert(D3D12_SHVER_VERTEX_SHADER == stage);
+
+#endif
+
 namespace
 {
 	void PollDebugMessages(ID3D12Device* device)
@@ -841,7 +859,7 @@ PipelineStateHandle phx::gfx::D3D12GpuDevice::CreatePipeline(PipelineStateDesc2 
 			D3D12_INPUT_ELEMENT_DESC& dx12Desc = elements[i];
 
 			dx12Desc.SemanticName = element.SemanticName.c_str();
-			dx12Desc.SemanticIndex = element.SemanticIndex;
+			dx12Desc.SemanticIndex = 0;
 
 
 			const DxgiFormatMapping& formatMapping = GetDxgiFormatMapping(element.Format);
@@ -899,6 +917,7 @@ PipelineStateHandle phx::gfx::D3D12GpuDevice::CreatePipeline(PipelineStateDesc2 
 		{
 			formats.RTFormats[i] = ConvertFormat(renderPassInfo->RenderTargetFormats[i]);
 		}
+		
 		DXGI_SAMPLE_DESC sampleDesc = {};
 		sampleDesc.Count = renderPassInfo->SampleCount;
 		sampleDesc.Quality = 0;
@@ -906,59 +925,7 @@ PipelineStateHandle phx::gfx::D3D12GpuDevice::CreatePipeline(PipelineStateDesc2 
 		stream.stream1.DSFormat = DSFormat;
 		stream.stream1.Formats = formats;
 		stream.stream1.SampleDesc = sampleDesc;
-#if true
-		struct PSO_STREAM
-		{
-			struct PSO_STREAM1
-			{
-				CD3DX12_PIPELINE_STATE_STREAM_VS VS;
-				CD3DX12_PIPELINE_STATE_STREAM_PS PS;
-				CD3DX12_PIPELINE_STATE_STREAM_RASTERIZER RS;
-				CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL DSS;
-				CD3DX12_PIPELINE_STATE_STREAM_BLEND_DESC BD;
-				CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY PT;
-				CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT IL;
-				CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT DSFormat;
-				CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS Formats;
-				CD3DX12_PIPELINE_STATE_STREAM_SAMPLE_DESC SampleDesc;
-				CD3DX12_PIPELINE_STATE_STREAM_SAMPLE_MASK SampleMask;
-				CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE ROOTSIG;
-			} stream1 = {};
-		} testStream;
 
-		Shader_Dx12* shaderImpl = m_shaderPool.Get(desc.VS);
-		testStream.stream1.VS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
-
-		shaderImpl = m_shaderPool.Get(desc.PS);
-		testStream.stream1.PS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
-
-		D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-		{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		};
-
-		il = {};
-		il.pInputElementDescs = inputLayout;
-		il.NumElements = _countof(inputLayout);
-		testStream.stream1.IL = il;
-		stream.stream1.ROOTSIG = m_emptyRootSignature.Get();
-
-		testStream.stream1.RS = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);         // Default rasterizer state
-		testStream.stream1.BD = CD3DX12_BLEND_DESC(D3D12_DEFAULT);                   // Default blend state
-		testStream.stream1.DSS = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);    // Default depth/stencil state
-		testStream.stream1.SampleMask = UINT_MAX;
-		testStream.stream1.PT = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;   // Triangle topology
-		formats = {};
-		formats.NumRenderTargets = 1;
-		formats.RTFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-		testStream.stream1.Formats = formats;
-		testStream.stream1.SampleDesc = sampleDesc;                                             // No multi-sampling
-		testStream.stream1.DSFormat = DXGI_FORMAT_D32_FLOAT;
-
-		D3D12_PIPELINE_STATE_STREAM_DESC streamDesc = {};
-		streamDesc.pPipelineStateSubobjectStream = &testStream;
-		streamDesc.SizeInBytes = sizeof(testStream.stream1);
-#else
 		D3D12_PIPELINE_STATE_STREAM_DESC streamDesc = {};
 		streamDesc.pPipelineStateSubobjectStream = &stream;
 		streamDesc.SizeInBytes = sizeof(stream.stream1);
@@ -967,7 +934,7 @@ PipelineStateHandle phx::gfx::D3D12GpuDevice::CreatePipeline(PipelineStateDesc2 
 		{
 			streamDesc.SizeInBytes += sizeof(stream.stream2);
 		}
-#endif
+
 		HRESULT hr = m_d3d12Device2->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&impl.D3D12PipelineState));
 		if (FAILED(hr))
 		{
