@@ -1012,7 +1012,7 @@ void phx::gfx::D3D12GpuDevice::DeleteResource(GfxPipelineHandle handle)
 	m_deferredQueue.push_back(d);
 }
 
-TextureHandle phx::gfx::D3D12GpuDevice::CreateTexture(TextureDesc const& desc)
+TextureHandle phx::gfx::D3D12GpuDevice::CreateTexture(TextureDesc const& desc, SubresourceData* initialData)
 {
 	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
 	d3d12OptimizedClearValue.Color[0] = desc.OptmizedClearValue.Colour.R;
@@ -1120,7 +1120,13 @@ TextureHandle phx::gfx::D3D12GpuDevice::CreateTexture(TextureDesc const& desc)
 	std::wstring debugName;
 	StringConvert(desc.DebugName, debugName);
 	textureImpl.D3D12Resource->SetName(debugName.c_str());
+
 	TextureHandle textureHandle = m_resourceRegistry.Textures.Emplace(textureImpl);
+
+	if (initialData)
+	{
+		// TODO
+	}
 
 	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{

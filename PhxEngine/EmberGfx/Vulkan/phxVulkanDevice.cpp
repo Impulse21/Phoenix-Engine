@@ -1040,7 +1040,7 @@ void phx::gfx::platform::VulkanGpuDevice::DeleteBuffer(BufferHandle handle)
     };
 }
 
-TextureHandle phx::gfx::platform::VulkanGpuDevice::CreateTexture(TextureDesc const& desc)
+TextureHandle phx::gfx::platform::VulkanGpuDevice::CreateTexture(TextureDesc const& desc, SubresourceData* initData)
 {
     Handle<Texture> retVal = this->m_texturePool.Emplace();
     Texture_VK& impl = *this->m_texturePool.Get(retVal);
@@ -1200,7 +1200,9 @@ TextureHandle phx::gfx::platform::VulkanGpuDevice::CreateTexture(TextureDesc con
         assert(res == VK_SUCCESS);
     }
 
-    // TODO Data Copy
+    if (initData)
+    {
+    }
 
     if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
     {

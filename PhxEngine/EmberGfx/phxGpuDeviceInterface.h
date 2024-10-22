@@ -34,7 +34,7 @@ namespace phx::gfx
 		virtual BufferHandle CreateBuffer(BufferDesc const& desc) = 0;
 		virtual void DeleteBuffer(BufferHandle handle) = 0;
 
-		virtual TextureHandle CreateTexture(TextureDesc const& desc) = 0;
+		virtual TextureHandle CreateTexture(TextureDesc const& desc, SubresourceData* initialData = nullptr) = 0;
 		virtual void DeleteTexture(TextureHandle handle) = 0;
 	};
 }

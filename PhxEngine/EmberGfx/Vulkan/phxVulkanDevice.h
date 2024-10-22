@@ -247,7 +247,7 @@ namespace phx::gfx::platform
 		BufferHandle CreateBuffer(BufferDesc const& desc) override;
 		void DeleteBuffer(BufferHandle handle) override;
 
-		TextureHandle CreateTexture(TextureDesc const& desc) override;
+		TextureHandle CreateTexture(TextureDesc const& desc, SubresourceData* initData = nullptr) override;
 		void DeleteTexture(TextureHandle handle) override;
 
 	public:

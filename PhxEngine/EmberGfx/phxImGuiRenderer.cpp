@@ -52,6 +52,11 @@ void phx::gfx::ImGuiRenderSystem::Initialize(GpuDevice* gfxDevice, IFileSystem* 
 
     io.Fonts->GetTexDataAsRGBA32(&pixelData, &width, &height);
 
+    SubresourceData subResourceData = {};
+    // Bytes per pixel * width of the image. Since we are using an RGBA8, there is 4 bytes per pixel.
+    subResourceData.rowPitch = width * 4;
+    subResourceData.slicePitch = subResourceData.rowPitch * height;
+    subResourceData.pData = pixelData;
 #if true
     // Create texture
     gfxDevice->CreateTexture({
@@ -59,7 +64,7 @@ void phx::gfx::ImGuiRenderSystem::Initialize(GpuDevice* gfxDevice, IFileSystem* 
         .Width = static_cast<uint32_t>(width),
         .Height = static_cast<uint32_t>(height),
         .DebugName = "ImGui Font"
-        });
+        }, &subResourceData);
 
     this->m_fontTextureBindlessIndex = gfxDevice->GetDescriptorIndex(this->m_fontTexture, SubresouceType::SRV);
     io.Fonts->SetTexID(static_cast<void*>(&this->m_fontTextureBindlessIndex));
@@ -198,32 +203,6 @@ void phx::gfx::ImGuiRenderSystem::BeginFrame()
 void phx::gfx::ImGuiRenderSystem::Render(ICommandCtx* context)
 {
 #if false
-    if (!this->m_isFontTextureUploaded)
-    {
-        unsigned char* pixelData = nullptr;
-        int width;
-        int height;
-
-        ImGuiIO& io = ImGui::GetIO();
-        io.Fonts->GetTexDataAsRGBA32(&pixelData, &width, &height);
-
-        SubresourceData subResourceData = {};
-        // Bytes per pixel * width of the image. Since we are using an RGBA8, there is 4 bytes per pixel.
-        subResourceData.rowPitch = width * 4;
-        subResourceData.slicePitch = subResourceData.rowPitch * height;
-        subResourceData.pData = pixelData;
-
-        GpuBarrier barrier = GpuBarrier::CreateTexture(this->m_fontTexture, gfx::ResourceStates::Common, gfx::ResourceStates::CopyDest);
-        context.TransitionBarrier(barrier);
-
-        context.WriteTexture(this->m_fontTexture, 0, 1, &subResourceData);
-
-        barrier = GpuBarrier::CreateTexture(this->m_fontTexture, gfx::ResourceStates::Common, gfx::ResourceStates::CopyDest);
-        context.TransitionBarrier(barrier);
-        this->m_isFontTextureUploaded = true;
-    }
-
-
     ImGui::SetCurrentContext(m_imguiContext);
     ImGui::Render();
 

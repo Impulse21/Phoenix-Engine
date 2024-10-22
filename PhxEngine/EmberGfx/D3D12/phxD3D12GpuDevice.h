@@ -292,11 +292,10 @@ namespace phx::gfx
 		PipelineStateHandle CreatePipeline(PipelineStateDesc2 const& desc, RenderPassInfo* renderPassInfo = nullptr) override;
 		void DeletePipeline(PipelineStateHandle handle)  override;
 
-
 		BufferHandle CreateBuffer(BufferDesc const& desc) override;
 		void DeleteBuffer(BufferHandle handle) override;
 
-		TextureHandle CreateTexture(TextureDesc const& desc) override;
+		TextureHandle CreateTexture(TextureDesc const& desc, SubresourceData* initialData = nullptr) override;
 		void DeleteTexture(TextureHandle handle) override;
 
 	public:
