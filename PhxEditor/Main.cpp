@@ -47,6 +47,7 @@ public:
 		m_fs = phx::FileSystemFactory::CreateRootFileSystem();
 		m_fs->Mount("/native", phx::FileSystemFactory::CreateNativeFileSystem());
 		m_fs->Mount("/shaders", "/shaders/spriv");
+		m_fs->Mount("/shaders", m_fs)
 
 		phx::gfx::GpuDevice* device = phx::gfx::EmberGfx::GetDevice();
 
