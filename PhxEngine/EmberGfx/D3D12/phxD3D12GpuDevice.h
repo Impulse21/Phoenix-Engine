@@ -260,6 +260,27 @@ namespace phx::gfx
 		Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
 	};
 
+	class CopyCtxManager
+	{
+		struct UploadCtx
+		{
+			Microsoft::WRL::ComPtr<ID3D12CommandAllocator> Allocator = nullptr;
+			Microsoft::WRL::ComPtr<ID3D12CommandList> CommandList = nullptr;
+			Microsoft::WRL::ComPtr<ID3D12Fence> Fence;
+			BufferHandle UploadBuffer;
+			size_t UploadBufferSize;
+			inline bool IsValid() const { return CommandList != nullptr; }
+		};
+		std::vector<UploadCtx> FreeList;
+
+		void Initialize(D3D12GpuDevice* gpuDevice);
+		void Finalize();
+		UploadCtx Begin(size_t stagingSize);
+		void Submit(UploadCtx uploadCtx);
+
+	private:
+		D3D12GpuDevice* m_device;
+	};
 	class D3D12GpuDevice final : public IGpuDevice
 	{
 		friend platform::CommandCtxD3D12;

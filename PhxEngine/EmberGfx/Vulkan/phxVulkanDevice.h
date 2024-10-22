@@ -137,6 +137,29 @@ namespace phx::gfx::platform
 		BufferView Dsv;
 	};
 
+	class CopyCtxManager
+	{
+		struct UploadCtx
+		{
+			VkCommandPool TransferCommandPool = VK_NULL_HANDLE;
+			VkCommandBuffer TransferCommandBuffer = VK_NULL_HANDLE;
+			VkFence Fence = VK_NULL_HANDLE;
+			std::array<VkSemaphore, 2> Semaphores = { VK_NULL_HANDLE, VK_NULL_HANDLE }; // Gfx, Compute
+			BufferHandle UploadBuffer;
+			size_t UploadBufferSize;
+			inline bool IsValid() const { return TransferCommandBuffer != VK_NULL_HANDLE; }
+		};
+		std::vector<UploadCtx> FreeList;
+
+		void Initialize(VulkanGpuDevice* gpuDevice);
+		void Finalize();
+		UploadCtx Begin(size_t stagingSize);
+		void Submit(UploadCtx uploadCtx);
+
+	private:
+		VulkanGpuDevice* m_device;
+	};
+
 	class DynamicMemoryAllocator
 	{
 	public:
