@@ -117,14 +117,16 @@ public:
 		device->DeleteShader(vsShader);
 		device->DeleteShader(psShader);
 
-		// this->m_imguiRenderSystem.Initialize(device, m_fs.get());
-		// this->m_imguiRenderSystem.EnableDarkThemeColours();
+		this->m_imguiRenderSystem.Initialize(device, m_fs.get());
+		this->m_imguiRenderSystem.EnableDarkThemeColours();
 	};
 
 	void Shutdown() override 
 	{
 		phx::gfx::GpuDevice* device = phx::gfx::EmberGfx::GetDevice();
+
 		device->DeletePipeline(this->m_pipeline);
+		m_imguiRenderSystem.Finialize(device);
 
 		phx::FS::RootPtr = nullptr;
 	};
@@ -133,8 +135,9 @@ public:
 	void Update() override 
 	{
 		PHX_EVENT();
-		// m_imguiRenderSystem.BeginFrame();
-		phx::EngineProfile::DrawUI();
+		m_imguiRenderSystem.BeginFrame();
+		ImGui::ShowDemoWindow();
+		// phx::EngineProfile::DrawUI();
 	};
 
 	void Render() override
@@ -187,6 +190,8 @@ public:
 #endif
 		ctx->SetDynamicVertexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, 0, 3, sizeof(Vertex));
 		ctx->DrawIndexed(3);
+
+		m_imguiRenderSystem.Render(ctx);
 
 		ctx->RenderPassEnd();
 	}

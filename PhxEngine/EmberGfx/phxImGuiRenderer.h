@@ -15,6 +15,8 @@ namespace phx::gfx
 	{
 	public:
 		void Initialize(GpuDevice* gfxDevice, IFileSystem* fs, bool enableDocking = false);
+		void Finialize(GpuDevice* gfxDevice);
+
 		void EnableDarkThemeColours();
 		void BeginFrame();
 		void Render(ICommandCtx* context);
@@ -25,7 +27,6 @@ namespace phx::gfx
 
 		DescriptorIndex m_fontTextureBindlessIndex = cInvalidDescriptorIndex;
 		TextureHandle m_fontTexture;
-		InputLayoutHandle m_inputLayout;
 		PipelineStateHandle m_pipeline;
 	};
 }

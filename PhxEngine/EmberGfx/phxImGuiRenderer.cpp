@@ -57,7 +57,7 @@ void phx::gfx::ImGuiRenderSystem::Initialize(GpuDevice* gfxDevice, IFileSystem* 
     subResourceData.rowPitch = width * 4;
     subResourceData.slicePitch = subResourceData.rowPitch * height;
     subResourceData.pData = pixelData;
-#if true
+
     // Create texture
     gfxDevice->CreateTexture({
         .Format = gfx::Format::RGBA8_UNORM,
@@ -69,12 +69,6 @@ void phx::gfx::ImGuiRenderSystem::Initialize(GpuDevice* gfxDevice, IFileSystem* 
     this->m_fontTextureBindlessIndex = gfxDevice->GetDescriptorIndex(this->m_fontTexture, SubresouceType::SRV);
     io.Fonts->SetTexID(static_cast<void*>(&this->m_fontTextureBindlessIndex));
 
-    std::vector<VertexAttributeDesc> attributeDesc =
-    {
-        { "POSITION",   0, Format::RG32_FLOAT,  0, VertexAttributeDesc::SAppendAlignedElement, false},
-        { "TEXCOORD",   0, Format::RG32_FLOAT,  0, VertexAttributeDesc::SAppendAlignedElement, false},
-        { "COLOR",      0, Format::RGBA8_UNORM, 0, VertexAttributeDesc::SAppendAlignedElement, false},
-    };
 
     phx::gfx::ShaderCompiler::Output vsOut = phx::gfx::ShaderCompiler::Compile({
             .Format = gfxDevice->GetShaderFormat(),
@@ -157,7 +151,15 @@ void phx::gfx::ImGuiRenderSystem::Initialize(GpuDevice* gfxDevice, IFileSystem* 
 		    .InputLayout = &il
         },
         &passInfo);
-#endif
+
+    gfxDevice->DeleteShader(vsShader);
+    gfxDevice->DeleteShader(psShader);
+}
+
+void phx::gfx::ImGuiRenderSystem::Finialize(GpuDevice* gfxDevice)
+{
+    gfxDevice->DeleteTexture(m_fontTexture);
+    gfxDevice->DeletePipeline(m_pipeline);
 }
 
 void phx::gfx::ImGuiRenderSystem::EnableDarkThemeColours()

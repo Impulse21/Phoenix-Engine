@@ -2299,6 +2299,19 @@ void phx::gfx::platform::VulkanGpuDevice::CreateVma()
         throw std::runtime_error("vmaCreateAllocator failed!");
     }
 
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(m_vkPhysicalDevice, &memProperties);
+
+    VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
+    vmaGetHeapBudgets(m_vmaAllocator, budgets);
+
+    PHX_CORE_INFO("[Vulkan] Memory heap budgets:");
+    // Print memory usage for each heap
+    for (uint32_t i = 0; i < memProperties.memoryHeapCount; ++i) 
+    {
+        PHX_CORE_INFO("\Heap {0}: Used Size[{1}], Budget: {2}", i, budgets[i].usage, budgets[i].budget);
+    }
+
     std::vector<VkExternalMemoryHandleTypeFlags> externalMemoryHandleTypes;
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
     externalMemoryHandleTypes.resize(m_memoryProperties2.memoryProperties.memoryTypeCount, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT);
