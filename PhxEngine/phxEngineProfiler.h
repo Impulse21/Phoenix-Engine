@@ -1,16 +1,25 @@
 #pragma once
 
-#include "EmberGfx/phxGfxCommandCtx.h"
+#include "EmberGfx/phxEmber.h"
 
 namespace phx
 {
 	namespace EngineProfile
 	{
+#if false
 		void Update();
 		void BlockBegin(std::string const& name, gfx::CommandCtx* gfxContext = nullptr);
 		void BlockEnd(gfx::CommandCtx* gfxContext = nullptr);
 
 		void DrawUI();
+#else
+
+		inline void Update() {};
+		inline void BlockBegin(std::string const& name, gfx::CommandCtx* gfxContext = nullptr) {};
+		inline void BlockEnd(gfx::CommandCtx* gfxContext = nullptr) {};
+
+		inline void DrawUI() {};
+#endif
 	}
 
 	class ScopedBlock

@@ -16,6 +16,9 @@
     <CopyFileToFolders Include="SmallLogo.png" />
     <CopyFileToFolders Include="SplashScreen.png" />
     <CopyFileToFolders Include="StoreLogo.png" />
+    <CopyFileToFolders Include="Shaders\TestShader.hlsl">
+      <Filter>Shaders</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Shaders">
@@ -23,11 +26,11 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shaders\TestShaderPS.hlsl">
+    <Page Include="Shaders\BuildShaders.txt">
       <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\TestShaderVS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

@@ -1,30 +1,59 @@
 #pragma once
 
-#include "phxGfxDevice.h"
+#include "phxMemory.h"
+
 #include "phxPlatformDetection.h"
+#include "phxGpuDeviceInterface.h"
 
 namespace phx::gfx
 {
-#if defined(PHX_PLATFORM_WINDOWS)
-	void InitializeWindows(SwapChainDesc const& swapCahinDesc, void* windowHandle);
-#endif
-	void Finalize();
-
-	class Ember
+	using GpuDevice = IGpuDevice;
+	using CommandCtx = ICommandCtx;
+	namespace EmberGfx
 	{
-	public:
-		inline static Ember* Ptr = nullptr;
+		void Initialize(SwapChainDesc const& swapChainDesc, void* windowHandle);
+		void Finalize();
 
-	public:
-		Ember();
-		~Ember();
+		GpuDevice* GetDevice();
+		struct DynamicBuffer
+		{
+			BufferHandle BufferHandle;
+			size_t Offset;
+			uint8_t* Data;
+		};
 
-#if false
-		GfxDevice& GetDevice() { return this->m_gfxDevice; }
+		// One per thread - not thread safe
+		struct DynamicAllocator
+		{
+			DynamicAllocator()
+			{
+				this->Page = GetDevice()->AllocateDynamicMemoryPage(PageSize);
+				this->ByteOffset = 0;
+			}
 
-	private:
-		GfxDevice m_gfxDevice;
-#endif
-	};
+			DynamicBuffer Allocate(uint32_t byteSize, uint32_t alignment)
+			{
+				uint32_t offset = MemoryAlign(ByteOffset, alignment);
+				this->ByteOffset = offset + byteSize;
+
+				if (this->ByteOffset > this->PageSize)
+				{
+					this->Page = GetDevice()->AllocateDynamicMemoryPage(PageSize);
+					offset = 0;
+					this->ByteOffset = byteSize;
+				}
+
+				return DynamicBuffer{
+					.BufferHandle = this->Page.BufferHandle,
+					.Offset = offset + Page.Offset,
+					.Data = this->Page.Data + offset
+				};
+			}
+
+			DynamicMemoryPage Page = {};
+			static const size_t PageSize = 4_MiB;
+			uint32_t ByteOffset = 0;
+		};
+	}
 }
 

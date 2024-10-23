@@ -11,6 +11,7 @@
 #include <EmberGfx/phxGfxDeviceResources.h>
 
 #include "ImGui/imgui.h"
+#include <iostream>
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wcovered-switch-default"
@@ -27,7 +28,8 @@ void ExitGame() noexcept;
 
 namespace phx::EngineCore
 {
-	HWND g_hWnd = nullptr;
+	HWND g_hWnd = nullptr; 
+	HINSTANCE g_hInstance = nullptr;
 }
 
 namespace
@@ -124,6 +126,7 @@ namespace phx::EngineCore
 			if (!g_hWnd)
 				return 1;
 
+			g_hInstance = hInst;
 			ApplicationInitialize(*app);
 
 			ShowWindow(g_hWnd, nCmdShow/*SW_SHOWDEFAULT*/);
@@ -223,7 +226,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				// app->OnResuming();
 			s_in_suspend = false;
 		}
-		else if (!s_in_sizemove && app)
+		else if (s_in_sizemove)
 		{
 			Display::Resize(LOWORD(lParam), HIWORD(lParam));
 		}

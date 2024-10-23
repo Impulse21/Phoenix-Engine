@@ -162,8 +162,12 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);C:\VulkanSDK\1.3.296.0\Include</AdditionalIncludeDirectories>
     </ClCompile>
+    <Lib>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.296.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">
     <Link>
@@ -184,8 +188,12 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);C:\VulkanSDK\1.3.296.0\Include</AdditionalIncludeDirectories>
     </ClCompile>
+    <Lib>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.296.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">
     <Link>
@@ -206,8 +214,12 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);C:\VulkanSDK\1.3.296.0\Include</AdditionalIncludeDirectories>
     </ClCompile>
+    <Lib>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.296.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile_Virtual_Gfx|Gaming.Desktop.x64'">
     <Link>
@@ -228,8 +240,12 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);C:\VulkanSDK\1.3.296.0\Include</AdditionalIncludeDirectories>
     </ClCompile>
+    <Lib>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.296.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">
     <Link>
@@ -247,8 +263,12 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);C:\VulkanSDK\1.3.296.0\Include</AdditionalIncludeDirectories>
     </ClCompile>
+    <Lib>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.296.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Virtual_Gfx|Gaming.Desktop.x64'">
     <Link>
@@ -266,31 +286,40 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)EmberGfx\D3D12;$(ProjectDir)3rdParty;$(SolutionDir)Build\$(Platform)\$(Configuration)\Output\$(ProjectName);C:\VulkanSDK\1.3.296.0\Include</AdditionalIncludeDirectories>
     </ClCompile>
+    <Lib>
+      <AdditionalLibraryDirectories>C:\VulkanSDK\1.3.296.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h" />
     <ClInclude Include="3rdParty\stb\stb_perlin.h" />
     <ClInclude Include="3rdParty\stb\stb_rect_pack.h" />
     <ClInclude Include="3rdParty\stb\stb_truetype.h" />
+    <ClInclude Include="3rdParty\vma\vk_mem_alloc.h" />
     <ClInclude Include="EmberGfx\D3D12\phxCommandCtxD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxDynamicMemoryPageAllocatorD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxCommonD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.h" />
-    <ClInclude Include="EmberGfx\D3D12\phxGfxDeviceD3D12.h" />
-    <ClInclude Include="EmberGfx\D3D12\phxGfxPlatform.h" />
+    <ClInclude Include="EmberGfx\D3D12\phxD3D12GpuDevice.h" />
     <ClInclude Include="EmberGfx\D3D12\phxGfxResourceRegistryD3D12.h" />
     <ClInclude Include="EmberGfx\Fonts\phxLiberationSans.h" />
+    <ClInclude Include="EmberGfx\phxGpuDeviceInterface.h" />
     <ClInclude Include="EmberGfx\ImGui\imgui_impl_win32.h" />
+    <ClInclude Include="EmberGfx\phxCommandCtxInterface.h" />
     <ClInclude Include="EmberGfx\phxImGuiRenderer.h" />
     <ClInclude Include="EmberGfx\phxEmber.h" />
     <ClInclude Include="EmberGfx\phxFontRenderer.h" />
-    <ClInclude Include="EmberGfx\phxGfxCommandCtx.h" />
-    <ClInclude Include="EmberGfx\phxGfxDevice.h" />
     <ClInclude Include="EmberGfx\phxGfxDeviceResources.h" />
     <ClInclude Include="EmberGfx\phxHandle.h" />
     <ClInclude Include="EmberGfx\phxHandlePool.h" />
+    <ClInclude Include="EmberGfx\phxShaderCompiler.h" />
+    <ClInclude Include="EmberGfx\Vulkan\phxVulkanCommandCtx.h" />
+    <ClInclude Include="EmberGfx\Vulkan\phxVulkanDevice.h" />
+    <ClInclude Include="EmberGfx\Vulkan\phxVulkanManager.h" />
+    <ClInclude Include="EmberGfx\Vulkan\phxVulkanCore.h" />
     <ClInclude Include="phxDeferredReleaseQueue.h" />
     <ClInclude Include="phxEngineProfiler.h" />
     <ClInclude Include="phxEnumUtils.h" />
@@ -307,19 +336,24 @@
     <ClInclude Include="phxSpan.h" />
     <ClInclude Include="phxStringHash.h" />
     <ClInclude Include="phxSystemTime.h" />
+    <ClInclude Include="phxVFS.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxCommandCtxD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxDynamicMemoryPageAllocatorD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.cpp" />
-    <ClCompile Include="EmberGfx\D3D12\phxGfxDeviceD3D12.cpp" />
+    <ClCompile Include="EmberGfx\D3D12\phxD3D12GpuDevice.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDxgiFormatMapping.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxResourceRegistryD3D12.cpp" />
     <ClCompile Include="EmberGfx\ImGui\imgui_impl_win32.cpp" />
     <ClCompile Include="EmberGfx\phxImGuiRenderer.cpp" />
     <ClCompile Include="EmberGfx\phxEmber.cpp" />
     <ClCompile Include="EmberGfx\phxFontRenderer.cpp" />
+    <ClCompile Include="EmberGfx\phxShaderCompiler_DXC.cpp" />
+    <ClCompile Include="EmberGfx\Vulkan\phxVulkanCommandCtx.cpp" />
+    <ClCompile Include="EmberGfx\Vulkan\phxVulkanDevice.cpp" />
+    <ClCompile Include="EmberGfx\Vulkan\phxVulkanManager.cpp" />
     <ClCompile Include="phxDeferredReleaseQueue.cpp" />
     <ClCompile Include="phxCommandLineArgs.cpp" />
     <ClCompile Include="pch.cpp">
@@ -334,15 +368,43 @@
     <ClCompile Include="phxEngineCore.cpp" />
     <ClCompile Include="phxEngineProfiler.cpp" />
     <ClCompile Include="phxLog.cpp" />
+    <ClCompile Include="phxMemory.cpp" />
     <ClCompile Include="phxSystemTimer.cpp" />
+    <ClCompile Include="phxVFS.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="EmberGfx\Shaders\ImGui.hlsli" />
+    <CopyFileToFolders Include="EmberGfx\dxcompiler.dll">
+      <SkipUnchangedFiles>true</SkipUnchangedFiles>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">true</DeploymentContent>
+      <FileType>Document</FileType>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Profile_Virtual_Gfx|Gaming.Desktop.x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug_Virtual_Gfx|Gaming.Desktop.x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">true</DeploymentContent>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="EmberGfx\Shaders\ImGui.hlsl">
+      <SkipUnchangedFiles>true</SkipUnchangedFiles>
+      <DestinationFolder>$(OutDir)/shaders/framework</DestinationFolder>
+      <FileType>Document</FileType>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">$(OutDir)shaders\engine</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Profile_Virtual_Gfx|Gaming.Desktop.x64'">$(OutDir)shaders\engine</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug_Virtual_Gfx|Gaming.Desktop.x64'">$(OutDir)shaders\engine</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">$(OutDir)shaders\engine</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">$(OutDir)shaders\engine</DestinationFolders>
+      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">$(OutDir)shaders\engine</DestinationFolders>
+    </CopyFileToFolders>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="3rdParty\ImGui\ImGui.vcxproj">
       <Project>{b7a38d2e-f239-4286-afae-050f8dbfaebb}</Project>
+    </ProjectReference>
+    <ProjectReference Include="3rdParty\spriv-reflect\spriv-reflect.vcxproj">
+      <Project>{58155bd6-55fc-4ff6-8e18-4e3fff218115}</Project>
+    </ProjectReference>
+    <ProjectReference Include="3rdParty\volk\Volk.vcxproj">
+      <Project>{dbd0b9c6-76c9-489a-9bb7-1526ef1c2228}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
@@ -389,6 +451,12 @@
       <EnableUnboundedDescriptorTables Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">false</EnableUnboundedDescriptorTables>
       <EnableUnboundedDescriptorTables Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">false</EnableUnboundedDescriptorTables>
       <EnableUnboundedDescriptorTables Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">false</EnableUnboundedDescriptorTables>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile_Virtual_Gfx|Gaming.Desktop.x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_Virtual_Gfx|Gaming.Desktop.x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="EmberGfx\Shaders\ImGuiVS.hlsl">
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">6.6</ShaderModel>
@@ -427,6 +495,12 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">Vertex</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile_Virtual_Gfx|Gaming.Desktop.x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_Virtual_Gfx|Gaming.Desktop.x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_Virtual_Gfx|Gaming.Desktop.x64'">true</ExcludedFromBuild>
     </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

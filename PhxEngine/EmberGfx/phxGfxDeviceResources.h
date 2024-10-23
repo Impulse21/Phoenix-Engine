@@ -8,11 +8,12 @@
 #include "phxSpan.h"
 #include "phxEnumUtils.h"
 #include "phxHandle.h"
-#include "phxRefCountPtr.h"
 
 #define USE_HANDLES true
 namespace phx::gfx
 {
+    constexpr size_t kBufferCount = 2;
+
     typedef uint32_t DescriptorIndex;
 
     static constexpr DescriptorIndex cInvalidDescriptorIndex = ~0u;
@@ -33,32 +34,38 @@ namespace phx::gfx
         Vulkan
     };
 
-    enum class ShaderStage : uint16_t
+    enum class ShaderFormat : uint8_t
     {
-        None = 0x0000,
-
-        Compute = 0x0020,
-
-        Vertex = 0x0001,
-        Hull = 0x0002,
-        Domain = 0x0004,
-        Geometry = 0x0008,
-        Pixel = 0x0010,
-        Amplification = 0x0040,
-        Mesh = 0x0080,
-        AllGraphics = 0x00FE,
-
-        RayGeneration = 0x0100,
-        AnyHit = 0x0200,
-        ClosestHit = 0x0400,
-        Miss = 0x0800,
-        Intersection = 0x1000,
-        Callable = 0x2000,
-        AllRayTracing = 0x3F00,
-
-        All = 0x3FFF,
+        None,		// Not used
+        Hlsl6,		// DXIL
+        Spriv,		// SPIR-V
     };
-    PHX_ENUM_CLASS_FLAGS(ShaderStage)
+
+    enum class ShaderStage : uint8_t
+    {
+        MS,		// Mesh Shader
+        AS,		// Amplification Shader
+        VS,		// Vertex Shader
+        HS,		// Hull Shader
+        DS,		// Domain Shader
+        GS,		// Geometry Shader
+        PS,		// Pixel Shader
+        CS,		// Compute Shader
+        LIB,	// Shader Library
+        Count,
+    };
+
+    enum class ShaderModel
+    {
+        SM_6_0,
+        SM_6_1,
+        SM_6_2,
+        SM_6_3,
+        SM_6_4,
+        SM_6_5,
+        SM_6_6,
+        SM_6_7,
+    };
 
     enum class ColourSpace
     {
@@ -141,6 +148,16 @@ namespace phx::gfx
         BC7_UNORM_SRGB,
 
         COUNT,
+    };
+
+    enum class ComponentSwizzle : uint8_t
+    {
+        R,
+        G,
+        B,
+        A,
+        Zero,
+        One,
     };
 
     struct Color
@@ -231,6 +248,14 @@ namespace phx::gfx
         int GetHeight() const { return MaxY - MinY; }
     };
 
+
+    struct RenderPassInfo
+    {
+        Format RenderTargetFormats[8] = {};
+        uint32_t RenderTargetCount = 0;
+        Format DsFormat = Format::UNKNOWN;
+        uint32_t SampleCount = 1;
+    };
 #pragma region Enums
 
     enum class Usage
@@ -303,35 +328,22 @@ namespace phx::gfx
 
     PHX_ENUM_CLASS_FLAGS(ResourceStates)
 
-        enum class ShaderType
+    enum class InputClassification : uint8_t
     {
-        None,
-        HLSL6,
+        PerVertexData,
+        PerInstanceData,
     };
-
     enum class FeatureLevel
     {
         SM5,
         SM6
     };
 
-    enum class ShaderModel
-    {
-        SM_6_0,
-        SM_6_1,
-        SM_6_2,
-        SM_6_3,
-        SM_6_4,
-        SM_6_5,
-        SM_6_6,
-        SM_6_7,
-    };
-
-
     enum class PrimitiveType : uint8_t
     {
         PointList,
         LineList,
+        LineStrip,
         TriangleList,
         TriangleStrip,
         TriangleFan,
@@ -400,6 +412,12 @@ namespace phx::gfx
         IncrementAndWrap = 7,
         DecrementAndWrap = 8
     };
+
+	enum class DepthWriteMask : uint8_t
+	{
+		Zero,	// Disables depth write
+		All,	// Enables depth write
+	};
 
     enum class ComparisonFunc : uint8_t
     {
@@ -477,6 +495,9 @@ namespace phx::gfx
         Typed = 1 << 3,
         HasCounter = 1 << 4,
         IsAliasedResource = 1 << 5,
+        IndirectArgs = 1 << 6,
+        RayTracing = 1 << 7,
+        Sparse = 1 << 8,
     };
 
     PHX_ENUM_CLASS_FLAGS(BufferMiscFlags);
@@ -484,8 +505,10 @@ namespace phx::gfx
     enum class TextureMiscFlags
     {
         None = 0,
-        Bindless = 1 << 0,
-        Typeless = 1 << 1,
+        Sparse = 1 << 0,
+        TransientAttachment = 1 << 1,
+        TypedFormatCasting = 1 << 2,
+        TypelessFormatCasting = 1 << 3,
     };
 
     PHX_ENUM_CLASS_FLAGS(TextureMiscFlags);
@@ -515,6 +538,32 @@ namespace phx::gfx
 
 #pragma endregion
 
+    constexpr bool IsFormatSRGB(Format format)
+    {
+        switch (format)
+        {
+        case Format::BC1_UNORM_SRGB:
+        case Format::BC2_UNORM_SRGB:
+        case Format::BC3_UNORM_SRGB:
+        case Format::BC7_UNORM_SRGB:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    struct GpuDeviceCapabilities
+    {
+        union
+        {
+            struct
+            {
+                uint32_t CacheCoherentUma   : 1;
+                uint32_t RayTracing         : 31;
+            };
+            uint32_t Flags = 0;
+        };
+    };
 
     // -- Indirect Objects ---
     // 
@@ -563,28 +612,23 @@ namespace phx::gfx
 
     struct DepthStencilRenderState
     {
-        struct StencilOpDesc
-        {
-            StencilOp FailOp = StencilOp::Keep;
-            StencilOp DepthFailOp = StencilOp::Keep;
-            StencilOp PassOp = StencilOp::Keep;
-            ComparisonFunc StencilFunc = ComparisonFunc::Always;
+		bool DepthEnable = false;
+		DepthWriteMask DepthWriteMask = DepthWriteMask::Zero;
+		ComparisonFunc DepthFunc = ComparisonFunc::Never;
+		bool StencilEnable = false;
+		uint8_t StencilReadMask = 0xff;
+		uint8_t StencilWriteMask = 0xff;
 
-            constexpr StencilOpDesc& setFailOp(StencilOp value) { FailOp = value; return *this; }
-            constexpr StencilOpDesc& setDepthFailOp(StencilOp value) { DepthFailOp = value; return *this; }
-            constexpr StencilOpDesc& setPassOp(StencilOp value) { PassOp = value; return *this; }
-            constexpr StencilOpDesc& setStencilFunc(ComparisonFunc value) { StencilFunc = value; return *this; }
-        };
-
-        bool            DepthTestEnable = true;
-        bool            DepthWriteEnable = true;
-        ComparisonFunc  DepthFunc = ComparisonFunc::Less;
-        bool            StencilEnable = false;
-        uint8_t         StencilReadMask = 0xff;
-        uint8_t         StencilWriteMask = 0xff;
-        uint8_t         stencilRefValue = 0;
-        StencilOpDesc   FrontFaceStencil;
-        StencilOpDesc   BackFaceStencil;
+		struct DepthStencilOp
+		{
+			StencilOp StencilFailOp = StencilOp::Keep;
+			StencilOp StencilDepthFailOp = StencilOp::Keep;
+			StencilOp StencilPassOp = StencilOp::Keep;
+			ComparisonFunc StencilFunc = ComparisonFunc::Never;
+		};
+		DepthStencilOp FrontFace;
+		DepthStencilOp BackFace;
+		bool DepthBoundsTestEnable = false;
     };
 
     struct RasterRenderState
@@ -696,7 +740,7 @@ namespace phx::gfx
     // Shader Binding Layout
     struct ShaderParameterLayout
     {
-        ShaderStage Visibility = ShaderStage::None;
+        ShaderStage Visibility = ShaderStage::VS;
         uint32_t RegisterSpace = 0;
         std::vector<ShaderParameter> Parameters;
         std::vector<BindlessShaderParameter> BindlessParameters;
@@ -786,6 +830,15 @@ namespace phx::gfx
         }
     };
 
+    struct Swizzle
+    {
+        ComponentSwizzle R = ComponentSwizzle::R;
+        ComponentSwizzle G = ComponentSwizzle::G;
+        ComponentSwizzle B = ComponentSwizzle::B;
+        ComponentSwizzle A = ComponentSwizzle::A;
+    };
+
+    struct AliasDesc;
     struct TextureDesc
     {
         TextureMiscFlags MiscFlags = TextureMiscFlags::None;
@@ -804,8 +857,10 @@ namespace phx::gfx
         };
 
         uint16_t MipLevels = 1;
+        uint16_t SampleCount = 1;
 
         gfx::ClearValue OptmizedClearValue = {};
+        AliasDesc* Alias = nullptr;
         std::string DebugName;
         bool IsTypeless : 1 = false;
     };
@@ -883,7 +938,6 @@ namespace phx::gfx
         };
     };
 
-
 #if USE_HANDLES
     struct Buffer;
     using BufferHandle = Handle<Buffer>;
@@ -910,11 +964,18 @@ namespace phx::gfx
         size_t Stride = 0;
         size_t UavCounterOffset = 0;
         BufferHandle UavCounterBuffer = {};
+
+        AliasDesc* Alias = nullptr;
         BufferHandle AliasedBuffer = {};
 
         std::string DebugName;
     };
 
+    struct AliasDesc
+    {
+        std::variant<BufferHandle, TextureHandle> Handle;
+        size_t AliasOffset = 0;
+    };
     using ByteCodeView = Span<uint8_t>;
     struct GfxPipelineDesc
     {
@@ -952,6 +1013,82 @@ namespace phx::gfx
     };
     using GfxPipelineHandle = RefCountPtr<GfxPipeline>;
 #endif
+
+
+    struct InputLayout
+    {
+        static const uint32_t APPEND_ALIGNED_ELEMENT = ~0u; // automatically figure out AlignedByteOffset depending on Format
+
+        struct Element
+        {
+            std::string SemanticName;
+            uint32_t SemanticIndex = 0;
+            Format Format = Format::UNKNOWN;
+            uint32_t InputSlot = 0;
+            uint32_t AlignedByteOffset = APPEND_ALIGNED_ELEMENT;
+            InputClassification InputSlotClass = InputClassification::PerVertexData;
+        };
+        std::vector<Element> elements;
+    };
+
+    using ByteCodeView = Span<uint8_t>;
+
+    struct ShaderDesc
+    {
+        ShaderStage Stage;
+        ByteCodeView ByteCode;
+        const char* EntryPoint = "main";
+    };
+
+    struct Shader;
+    using ShaderHandle = Handle<Shader>;
+
+    struct PipelineStateDesc2
+    {
+        ShaderHandle VS = {};
+        ShaderHandle PS = {};
+        ShaderHandle HS = {};
+        ShaderHandle DS = {};
+        ShaderHandle GS = {};
+        ShaderHandle MS = {};
+        ShaderHandle AS = {};
+        BlendRenderState*           BlendRenderState = nullptr;
+        DepthStencilRenderState*    DepthStencilRenderState = nullptr;
+        RasterRenderState*          RasterRenderState = nullptr;
+        InputLayout*                InputLayout = nullptr;
+        PrimitiveType		        PrimType = PrimitiveType::TriangleList;
+        uint32_t                    PatchControlPoints = 3;
+        uint32_t			        SampleMask = 0xFFFFFFFF;
+    };
+
+    struct PipelineStateDesc
+    {
+        PrimitiveType PrimType = PrimitiveType::TriangleList;
+        InputLayoutHandle InputLayout;
+
+        IRootSignatureBuilder* RootSignatureBuilder = nullptr;
+        ShaderParameterLayout ShaderParameters;
+
+        ByteCodeView VertexShaderByteCode;
+        ByteCodeView HullShaderByteCode;
+        ByteCodeView DomainShaderByteCode;
+        ByteCodeView GeometryShaderByteCode;
+        ByteCodeView PixelShaderByteCode;
+        ByteCodeView ComputeShaderByteCode;
+
+        BlendRenderState BlendRenderState = {};
+        DepthStencilRenderState DepthStencilRenderState = {};
+        RasterRenderState RasterRenderState = {};
+
+        std::vector<gfx::Format> RtvFormats;
+        std::optional<gfx::Format> DsvFormat;
+
+        uint32_t SampleCount = 1;
+        uint32_t SampleQuality = 0;
+    };
+
+    struct PipelineState;
+    using PipelineStateHandle = Handle<PipelineState>;
 
     struct ComputePipelineDesc
     {
@@ -1284,6 +1421,135 @@ namespace phx::gfx
         bool VSync : 1 = false;
         bool EnableHDR : 1 = false;
     };
+
+    struct DynamicMemoryPage
+    {
+        BufferHandle BufferHandle;
+        size_t Offset;
+        uint8_t* Data;
+    };
+
+    constexpr uint32_t GetFormatStride(Format format)
+    {
+        switch (format)
+        {
+        case Format::BC1_UNORM:
+        case Format::BC1_UNORM_SRGB:
+        case Format::BC4_SNORM:
+        case Format::BC4_UNORM:
+            return 8u;
+
+        case Format::RGBA32_FLOAT:
+        case Format::RGBA32_UINT:
+        case Format::RGBA32_SINT:
+        case Format::BC2_UNORM:
+        case Format::BC2_UNORM_SRGB:
+        case Format::BC3_UNORM:
+        case Format::BC3_UNORM_SRGB:
+        case Format::BC5_SNORM:
+        case Format::BC5_UNORM:
+        case Format::BC6H_UFLOAT:
+        case Format::BC6H_SFLOAT:
+        case Format::BC7_UNORM:
+        case Format::BC7_UNORM_SRGB:
+            return 16u;
+
+        case Format::RGB32_FLOAT:
+        case Format::RGB32_UINT:
+        case Format::RGB32_SINT:
+            return 12u;
+
+        case Format::RGBA16_FLOAT:
+        case Format::RGBA16_UNORM:
+        case Format::RGBA16_UINT:
+        case Format::RGBA16_SNORM:
+        case Format::RGBA16_SINT:
+            return 8u;
+
+        case Format::RG32_FLOAT:
+        case Format::RG32_UINT:
+        case Format::RG32_SINT:
+        case Format::D32S8:
+            return 8u;
+
+        case Format::R10G10B10A2_UNORM:
+        //case Format::R10G10B10A2_UINT:
+        case Format::R11G11B10_FLOAT:
+        case Format::RGBA8_UNORM:
+        // case Format::RGBA8_UNORM_SRGB:
+        case Format::RGBA8_UINT:
+        case Format::RGBA8_SNORM:
+        case Format::RGBA8_SINT:
+        case Format::BGRA8_UNORM:
+        // case Format::BGRA8_UNORM_SRGB:
+        case Format::RG16_FLOAT:
+        case Format::RG16_UNORM:
+        case Format::RG16_UINT:
+        case Format::RG16_SNORM:
+        case Format::RG16_SINT:
+        // case Format::D32_FLOAT:
+        case Format::R32_FLOAT:
+        case Format::R32_UINT:
+        case Format::R32_SINT:
+        // case Format::D24_UNORM_S8_UINT:
+        // case Format::R9G9B9E5_SHAREDEXP:
+            return 4u;
+
+        case Format::RG8_UNORM:
+        case Format::RG8_UINT:
+        case Format::RG8_SNORM:
+        case Format::RG8_SINT:
+        case Format::R16_FLOAT:
+        case Format::D16:
+        case Format::R16_UNORM:
+        case Format::R16_UINT:
+        case Format::R16_SNORM:
+        case Format::R16_SINT:
+            return 2u;
+
+        case Format::R8_UNORM:
+        case Format::R8_UINT:
+        case Format::R8_SNORM:
+        case Format::R8_SINT:
+            return 1u;
+
+
+        default:
+            assert(0); // didn't catch format!
+            return 16u;
+        }
+    }
+
+    constexpr bool IsFormatBlockCompressed(Format format)
+    {
+        switch (format)
+        {
+        case Format::BC1_UNORM:
+        case Format::BC1_UNORM_SRGB:
+        case Format::BC2_UNORM:
+        case Format::BC2_UNORM_SRGB:
+        case Format::BC3_UNORM:
+        case Format::BC3_UNORM_SRGB:
+        case Format::BC4_UNORM:
+        case Format::BC4_SNORM:
+        case Format::BC5_UNORM:
+        case Format::BC5_SNORM:
+        case Format::BC7_UNORM:
+        case Format::BC7_UNORM_SRGB:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    constexpr uint32_t GetFormatBlockSize(Format format)
+    {
+        if (IsFormatBlockCompressed(format))
+        {
+            return 4u;
+        }
+        return 1u;
+    }
 }
 
 namespace std

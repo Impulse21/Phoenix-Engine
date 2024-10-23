@@ -28,6 +28,9 @@
 // WinHelp is deprecated
 #define NOHELP
 
+
+#include "phxPlatformDetection.h"
+
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -55,6 +58,15 @@
 #endif
 
 #include <dxgi1_6.h>
+
+#ifdef _WIN32
+#define VK_USE_PLATFORM_WIN32_KHR
+#endif // _WIN32
+
+#define VK_NO_PROTOTYPES
+#include <vulkan/vulkan.h>
+#include "volk/volk.h"
+#include "vma/vk_mem_alloc.h"
 
 #include <DirectXMath.h>
 #include <DirectXColors.h>

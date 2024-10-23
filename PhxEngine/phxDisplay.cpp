@@ -29,8 +29,8 @@ namespace phx::gfx
 {
 	uint32_t g_NativeWidth = 0;
 	uint32_t g_NativeHeight = 0;
-	uint32_t g_DisplayWidth = 1920;
-	uint32_t g_DisplayHeight = 1080; 
+	uint32_t g_DisplayWidth = 2000;
+	uint32_t g_DisplayHeight = 1200; 
 	gfx::Format g_SwapChainFormat = gfx::Format::R10G10B10A2_UNORM;
 	bool g_EnableHDROutput = false;
 
@@ -60,14 +60,14 @@ namespace phx::Display
 		.EnableHDR = false
 		};
 
-		phx::gfx::InitializeWindows(
+		phx::gfx::EmberGfx::Initialize(
 			desc,
 			EngineCore::g_hWnd);
 	}
 
 	void Finalize()
 	{
-		phx::gfx::Finalize();
+		phx::gfx::EmberGfx::Finalize();
 	}
 
 	void Resize(uint32_t width, uint32_t height)
@@ -84,12 +84,12 @@ namespace phx::Display
 			.EnableHDR = false
 		};
 
-		phx::gfx::GfxDevice::ResizeSwapChain(desc);
+		phx::gfx::EmberGfx::GetDevice()->ResizeSwapChain(desc);
 	}
 
 	void Preset()
 	{
-		phx::gfx::GfxDevice::SubmitFrame();
+		phx::gfx::EmberGfx::GetDevice()->SubmitFrame();
 #if false
 		UINT presentInterval = m_enableVSync ? std::min(4, (int)std::round(m_frameTime * 60.0f)) : 0;
 		int64_t currentTick = SystemTime::GetCurrentTick();

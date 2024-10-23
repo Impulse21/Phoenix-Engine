@@ -2,11 +2,10 @@
 #include "phxEngineProfiler.h"
 #include  "phxSpan.h"
 #include "phxSystemTime.h"
-#include "EmberGfx/phxGfxDevice.h"
 #include "ImGui/imgui.h"
 
 using namespace phx;
-
+#if false
 namespace
 {
     class StatHistory
@@ -274,8 +273,11 @@ void phx::EngineProfile::BlockEnd(gfx::CommandCtx* gfxContext)
 
 void phx::EngineProfile::DrawUI()
 {
+#if false
     ImGui::Begin("Profiler");
 	ImGui::Text("CPU time %7.3f ms", m_timingTree.GetTotalCpuTime());
 	ImGui::Text("GPU time %7.3f ms", m_timingTree.GetTotalGpuTime());
     ImGui::End();
+#endif
 }
+#endif

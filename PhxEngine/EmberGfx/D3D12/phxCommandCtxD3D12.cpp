@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "phxCommandCtxD3D12.h"
 
-#include "phxGfxDeviceD3D12.h"
+#include "phxD3D12GpuDevice.h"
 #include "phxGfxCommonD3D12.h"
 
 using namespace phx::gfx;
@@ -17,12 +17,41 @@ extern "C"
 }
 #endif
 
+void CommandCtxD3D12::RenderPassBegin()
+{
+	m_barriersRenderPassEnd.clear();
+
+    D3D12SwapChain& swapChain = D3D12GpuDevice::Instance()->m_swapChain;
+    ID3D12Resource* swapChainImage = swapChain.GetBackBuffer();
+
+	D3D12_RESOURCE_BARRIER barrier = {};
+	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	barrier.Transition.pResource = swapChainImage;
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+	m_commandList->ResourceBarrier(1, &barrier);
+    ClearBackBuffer(swapChain.ClearColour.Colour);
+
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+    m_barriersRenderPassEnd.push_back(barrier);
+
+    D3D12_CPU_DESCRIPTOR_HANDLE view = swapChain.GetBackBufferView();
+    m_commandList->OMSetRenderTargets(1, &view, 0, nullptr);
+}
+
+void CommandCtxD3D12::RenderPassEnd()
+{
+	m_commandList->ResourceBarrier((UINT)m_barriersRenderPassEnd.size(), m_barriersRenderPassEnd.data());
+}
+
 void CommandCtxD3D12::Reset(size_t id, CommandQueueType queueType)
 {
-	ID3D12Device* d3d12Device = GfxDeviceD3D12::GetD3D12Device();
-	D3D12CommandQueue& queue = GfxDeviceD3D12::GetQueue(queueType);
-
-	this->m_dynamicAllocator.Reset(GfxDeviceD3D12::GetDynamicPageAllocator());
+	ID3D12Device* d3d12Device = D3D12GpuDevice::Instance()->GetD3D12Device();
+	D3D12CommandQueue& queue = D3D12GpuDevice::Instance()->GetQueue(queueType);
 
 	this->m_allocator = nullptr;
 	this->m_allocator = queue.RequestAllocator();
@@ -53,47 +82,30 @@ void CommandCtxD3D12::Reset(size_t id, CommandQueueType queueType)
 
 	// Bind Heaps
 	std::array<ID3D12DescriptorHeap*, 2> heaps;
-	Span<GpuDescriptorHeap> gpuHeaps = GfxDeviceD3D12::GetGpuDescriptorHeaps();
+	Span<GpuDescriptorHeap> gpuHeaps = D3D12GpuDevice::Instance()->GetGpuDescriptorHeaps();
 	for (int i = 0; i < gpuHeaps.Size(); i++)
 	{
 		heaps[i] = gpuHeaps[i].GetNativeHeap();
 	}
 
 	this->m_commandList6->SetDescriptorHeaps(static_cast<UINT>(heaps.size()), heaps.data());
-
-    auto view = GfxDeviceD3D12::GetBackBuffer();
-
-    D3D12_RESOURCE_BARRIER barrier = {};
-    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-    barrier.Transition.pResource = GfxDeviceD3D12::GetBackBuffer();
-    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-    this->m_commandList->ResourceBarrier(1, &barrier);
     this->m_barrierMemoryPool.clear();
 }
 
 void phx::gfx::platform::CommandCtxD3D12::Close()
 {
-    auto view = GfxDeviceD3D12::GetBackBuffer();
+    auto view = D3D12GpuDevice::Instance()->GetBackBuffer();
 
     D3D12_RESOURCE_BARRIER barrier = {};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-    barrier.Transition.pResource = GfxDeviceD3D12::GetBackBuffer();
+    barrier.Transition.pResource = D3D12GpuDevice::Instance()->GetBackBuffer();
     barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
     barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
     barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
     this->m_commandList->ResourceBarrier(1, &barrier);
     this->m_commandList->Close();
-}
-
-DynamicBuffer phx::gfx::platform::CommandCtxD3D12::AllocateDynamic(size_t sizeInBytes, size_t alignment)
-{
-    return this->m_dynamicAllocator.Allocate(sizeInBytes, alignment);
 }
 
 void CommandCtxD3D12::TransitionBarrier(GpuBarrier const& barrier)
@@ -107,7 +119,7 @@ void CommandCtxD3D12::TransitionBarriers(Span<GpuBarrier> gpuBarriers)
     {
         if (const GpuBarrier::TextureBarrier* texBarrier = std::get_if<GpuBarrier::TextureBarrier>(&gpuBarrier.Data))
         {
-            D3D12Texture* textureImpl = GfxDeviceD3D12::GetRegistry().Textures.Get(texBarrier->Texture);
+            D3D12Texture* textureImpl = D3D12GpuDevice::Instance()->GetRegistry().Textures.Get(texBarrier->Texture);
             D3D12_RESOURCE_BARRIER barrier = {};
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
             barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -152,7 +164,7 @@ void CommandCtxD3D12::TransitionBarriers(Span<GpuBarrier> gpuBarriers)
 
             if (const TextureHandle* texture = std::get_if<TextureHandle>(&memoryBarrier->Resource))
             {
-                D3D12Texture* textureImpl = GfxDeviceD3D12::GetRegistry().Textures.Get(*texture);
+                D3D12Texture* textureImpl = D3D12GpuDevice::Instance()->GetRegistry().Textures.Get(*texture);
                 if (textureImpl && textureImpl->D3D12Resource != nullptr)
                 {
                     barrier.UAV.pResource = textureImpl->D3D12Resource.Get();
@@ -189,7 +201,7 @@ void CommandCtxD3D12::TransitionBarriers(Span<GpuBarrier> gpuBarriers)
 void CommandCtxD3D12::ClearBackBuffer(Color const& clearColour)
 {
 	this->m_commandList->ClearRenderTargetView(
-        GfxDeviceD3D12::GetBackBufferView(),
+        D3D12GpuDevice::Instance()->GetBackBufferView(),
 		&clearColour.R,
 		0,
 		nullptr);
@@ -205,7 +217,7 @@ void CommandCtxD3D12::ClearDepthStencilTexture(TextureHandle depthStencil, bool 
 
 void phx::gfx::platform::CommandCtxD3D12::SetGfxPipeline(GfxPipelineHandle pipeline)
 {
-    D3D12GfxPipeline* graphisPipeline = GfxDeviceD3D12::GetRegistry().GfxPipelines.Get(pipeline);
+    D3D12GfxPipeline* graphisPipeline = D3D12GpuDevice::Instance()->GetRegistry().GfxPipelines.Get(pipeline);
     this->m_commandList->SetPipelineState(graphisPipeline->D3D12PipelineState.Get());
 
     this->m_commandList->SetGraphicsRootSignature(graphisPipeline->RootSignature.Get());
@@ -234,7 +246,7 @@ void phx::gfx::platform::CommandCtxD3D12::SetGfxPipeline(GfxPipelineHandle pipel
 
 void phx::gfx::platform::CommandCtxD3D12::SetRenderTargetSwapChain()
 {
-    auto view = GfxDeviceD3D12::GetBackBufferView();
+    auto view = D3D12GpuDevice::Instance()->GetBackBufferView();
     this->m_commandList->OMSetRenderTargets(
         1,
         &view,
@@ -269,6 +281,18 @@ void phx::gfx::platform::CommandCtxD3D12::DrawIndexed(
         baseVertex,
         startInstance);
 }
+
+void phx::gfx::platform::CommandCtxD3D12::SetPipelineState(PipelineStateHandle pipelineState)
+{
+    PipelineState_Dx12* impl = D3D12GpuDevice::Instance()->m_pipelineStatePool.Get(pipelineState);
+    this->m_commandList->SetPipelineState(impl->D3D12PipelineState.Get());
+
+    this->m_commandList->SetGraphicsRootSignature(impl->RootSignature.Get());
+    this->m_activePipelineType = PipelineType::Gfx;
+    
+    this->m_commandList->IASetPrimitiveTopology(impl->Topology);
+}
+
 void phx::gfx::platform::CommandCtxD3D12::SetViewports(Span<Viewport> viewports)
 {
     CD3DX12_VIEWPORT dx12Viewports[16] = {};
@@ -307,14 +331,14 @@ void phx::gfx::platform::CommandCtxD3D12::SetScissors(Span<Rect> scissors)
 
 void phx::gfx::platform::CommandCtxD3D12::WriteTexture(TextureHandle texture, uint32_t firstSubresource, size_t numSubresources, SubresourceData* pSubresourceData)
 {
-    auto textureImpl = GfxDeviceD3D12::GetRegistry().Textures.Get(texture);
+    auto textureImpl = D3D12GpuDevice::Instance()->GetRegistry().Textures.Get(texture);
     UINT64 requiredSize = GetRequiredIntermediateSize(textureImpl->D3D12Resource.Get(), firstSubresource, numSubresources);
 
     auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
     auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(requiredSize);
     Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
     ThrowIfFailed(
-        GfxDeviceD3D12::GetD3D12Device2()->CreateCommittedResource(
+        D3D12GpuDevice::Instance()->GetD3D12Device2()->CreateCommittedResource(
             &heapProperties,
             D3D12_HEAP_FLAG_NONE,
             &resourceDesc,
@@ -341,7 +365,7 @@ void phx::gfx::platform::CommandCtxD3D12::WriteTexture(TextureHandle texture, ui
         subresources.size(),
         subresources.data());
 
-    GfxDeviceD3D12::DeleteResource(intermediateResource);
+    D3D12GpuDevice::Instance()->DeleteResource(intermediateResource);
 }
 
 
@@ -350,7 +374,7 @@ void  phx::gfx::platform::CommandCtxD3D12::SetRenderTargets(Span<TextureHandle> 
     std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> renderTargetViews(renderTargets.Size());
     for (int i = 0; i < renderTargets.Size(); i++)
     {
-        auto textureImpl = GfxDeviceD3D12::GetRegistry().Textures.Get(renderTargets[i]);
+        auto textureImpl = D3D12GpuDevice::Instance()->GetRegistry().Textures.Get(renderTargets[i]);
         renderTargetViews[i] = textureImpl->RtvAllocation.Allocation.GetCpuHandle();
     }
 
@@ -358,7 +382,7 @@ void  phx::gfx::platform::CommandCtxD3D12::SetRenderTargets(Span<TextureHandle> 
     const bool hasDepth = depthStencil.IsValid();
     if (hasDepth)
     {
-        auto textureImpl = GfxDeviceD3D12::GetRegistry().Textures.Get(depthStencil);
+        auto textureImpl = D3D12GpuDevice::Instance()->GetRegistry().Textures.Get(depthStencil);
         depthView = textureImpl->DsvAllocation.Allocation.GetCpuHandle();
     }
 
@@ -374,8 +398,10 @@ void phx::gfx::platform::CommandCtxD3D12::SetDynamicVertexBuffer(BufferHandle te
 {
     size_t bufferSize = numVertices * vertexSize;
 
+    const D3D12Buffer* bufferImpl = D3D12GpuDevice::Instance()->GetRegistry().Buffers.Get(tempBuffer);
+
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
-    vertexBufferView.BufferLocation = this->m_dynamicAllocator.Page.GpuAddress + offset;
+    vertexBufferView.BufferLocation = bufferImpl->D3D12Resource->GetGPUVirtualAddress() + offset;
     vertexBufferView.SizeInBytes = static_cast<UINT>(bufferSize);
     vertexBufferView.StrideInBytes = static_cast<UINT>(vertexSize);
 
@@ -384,7 +410,7 @@ void phx::gfx::platform::CommandCtxD3D12::SetDynamicVertexBuffer(BufferHandle te
 
 void phx::gfx::platform::CommandCtxD3D12::SetIndexBuffer(BufferHandle indexBuffer)
 {
-    const D3D12Buffer* bufferImpl = GfxDeviceD3D12::GetRegistry().Buffers.Get(indexBuffer);
+    const D3D12Buffer* bufferImpl = D3D12GpuDevice::Instance()->GetRegistry().Buffers.Get(indexBuffer);
 
     this->m_commandList->IASetIndexBuffer(&bufferImpl->IndexView);
 }
@@ -394,10 +420,12 @@ void phx::gfx::platform::CommandCtxD3D12::SetDynamicIndexBuffer(BufferHandle tem
     size_t indexSizeInBytes = indexFormat == Format::R16_UINT ? 2 : 4;
     size_t bufferSize = numIndicies * indexSizeInBytes;
 
+    const D3D12Buffer* bufferImpl = D3D12GpuDevice::Instance()->GetRegistry().Buffers.Get(tempBuffer);
+
     D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
-    indexBufferView.BufferLocation = this->m_dynamicAllocator.Page.GpuAddress + offset;
+    indexBufferView.BufferLocation = bufferImpl->D3D12Resource->GetGPUVirtualAddress()  + offset;
     indexBufferView.SizeInBytes = static_cast<UINT>(bufferSize);
-    const auto& formatMapping = GetDxgiFormatMapping(indexFormat);;
+    const auto& formatMapping = GetDxgiFormatMapping(indexFormat);
 
     indexBufferView.Format = formatMapping.SrvFormat;
     this->m_commandList->IASetIndexBuffer(&indexBufferView);
@@ -417,12 +445,12 @@ void phx::gfx::platform::CommandCtxD3D12::SetPushConstant(uint32_t rootParameter
 
 void phx::gfx::platform::CommandCtxD3D12::StartTimer(TimerQueryHandle QueryIdx)
 {
-    this->InsertTimeStamp(GfxDeviceD3D12::GetGpuTimerManager().QueryHeap.Get(), QueryIdx);
+    this->InsertTimeStamp(D3D12GpuDevice::Instance()->GetGpuTimerManager().QueryHeap.Get(), QueryIdx);
 }
 
 void phx::gfx::platform::CommandCtxD3D12::EndTimer(TimerQueryHandle QueryIdx)
 {
-    this->InsertTimeStamp(GfxDeviceD3D12::GetGpuTimerManager().QueryHeap.Get(), QueryIdx * 2 + 1);
+    this->InsertTimeStamp(D3D12GpuDevice::Instance()->GetGpuTimerManager().QueryHeap.Get(), QueryIdx * 2 + 1);
 }
 
 #if false

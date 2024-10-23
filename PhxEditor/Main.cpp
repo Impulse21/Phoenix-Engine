@@ -10,9 +10,34 @@
 
 #include "phxDisplay.h"
 
-#include "CompiledShaders/TestShaderVS.h"
-#include "CompiledShaders/TestShaderPS.h"
 #include "EmberGfx/phxImGuiRenderer.h"
+#include "EmberGfx/phxShaderCompiler.h"
+#include "phxVFS.h"
+#include "phxSystemTime.h"
+
+
+#include <cmath>
+// Function to update the vertex colors based on time
+void UpdateTriangleColors(std::array<float, 3>& colorV1,
+	std::array<float, 3>& colorV2,
+	std::array<float, 3>& colorV3)
+{
+	float time = phx::SystemTime::GetCurrentTick();  // Get the current time
+	constexpr float speed = 0.00001f;  // Slow down the color transitions
+
+	// Use sin and cos functions with a lower frequency to smooth color transitions
+	colorV1[0] = (sin(time * speed) + 1.0f) * 0.5f; // R for vertex 1
+	colorV1[1] = (cos(time * speed * 0.8f) + 1.0f) * 0.5f; // G for vertex 1
+	colorV1[2] = (sin(time * speed * 1.2f) + 1.0f) * 0.5f; // B for vertex 1
+
+	colorV2[0] = (sin(time * speed * 1.3f) + 1.0f) * 0.5f; // R for vertex 2
+	colorV2[1] = (cos(time * speed * 0.7f) + 1.0f) * 0.5f; // G for vertex 2
+	colorV2[2] = (sin(time * speed * 1.1f) + 1.0f) * 0.5f; // B for vertex 2
+
+	colorV3[0] = (sin(time * speed * 0.9f) + 1.0f) * 0.5f; // R for vertex 3
+	colorV3[1] = (cos(time * speed * 1.5f) + 1.0f) * 0.5f; // G for vertex 3
+	colorV3[2] = (sin(time * speed * 1.4f) + 1.0f) * 0.5f; // B for vertex 3
+}
 
 #include "entt/entt.hpp"
 #include "phxMath.h"
@@ -41,22 +66,91 @@ class PhxEditor final : public phx::IEngineApp
 public:
 	void Startup() override 
 	{
-		this->m_pipeline.Reset(
-			phx::gfx::GfxDevice::CreateGfxPipeline({
-				.VertexShaderByteCode = phx::Span(g_pTestShaderVS, ARRAYSIZE(g_pTestShaderVS)),
-				.PixelShaderByteCode = phx::Span(g_pTestShaderPS, ARRAYSIZE(g_pTestShaderPS)),
-				.DepthStencilRenderState = {.DepthTestEnable = false, .DepthWriteEnable = false },
-				.RasterRenderState = { .CullMode = phx::gfx::RasterCullMode::None },
-				.RtvFormats = { phx::gfx::g_SwapChainFormat }
-			}));
+		m_fs = phx::FileSystemFactory::CreateRootFileSystem();
+		phx::FS::RootPtr = m_fs.get();
 
-		this->m_imguiRenderSystem.Initialize();
+		std::filesystem::path applicationShaderPath = phx::FS::GetDirectoryWithExecutable() / "shaders/application";
+		std::filesystem::path frameworkShaderPath = phx::FS::GetDirectoryWithExecutable() / "shaders/engine";
+		std::filesystem::path compiledShadersPath = phx::FS::GetDirectoryWithExecutable() / "shaders/dxli";
+
+		m_fs->Mount("/native", phx::FileSystemFactory::CreateNativeFileSystem());
+		m_fs->Mount("/shaders", applicationShaderPath);
+		m_fs->Mount("/shaders_engine", frameworkShaderPath);
+		m_fs->Mount("/shaders_compiled", compiledShadersPath);
+
+
+		phx::gfx::GpuDevice* device = phx::gfx::EmberGfx::GetDevice();
+
+		phx::gfx::ShaderCompiler::Output testShaderVSOutput = phx::gfx::ShaderCompiler::Compile({
+				.Format = device->GetShaderFormat(),
+				.ShaderStage = phx::gfx::ShaderStage::VS,
+				.SourceFilename = "/shaders/TestShader.hlsl",
+				.EntryPoint = "MainVS",
+				.FileSystem = m_fs.get()});
+
+		phx::gfx::ShaderHandle vsShader = device->CreateShader({
+				.Stage = phx::gfx::ShaderStage::VS,
+				.ByteCode = phx::Span(testShaderVSOutput.ByteCode, testShaderVSOutput.ByteCodeSize),
+				.EntryPoint = "MainVS"});
+
+		phx::gfx::ShaderCompiler::Output testShaderPSOutput = phx::gfx::ShaderCompiler::Compile({
+				.Format = device->GetShaderFormat(),
+				.ShaderStage = phx::gfx::ShaderStage::PS,
+				.SourceFilename = "/shaders/TestShader.hlsl",
+				.EntryPoint = "MainPS",
+				.FileSystem = m_fs.get() });
+
+		phx::gfx::ShaderHandle psShader = device->CreateShader({
+				.Stage = phx::gfx::ShaderStage::PS,
+				.ByteCode = phx::Span(testShaderPSOutput.ByteCode, testShaderPSOutput.ByteCodeSize),
+				.EntryPoint = "MainPS"});
+
+		phx::gfx::InputLayout il = {
+			.elements = {
+				{
+					.SemanticName = "POSITION",
+					.SemanticIndex = 0,
+					.Format = phx::gfx::Format::RG32_FLOAT,
+				},
+				{
+					.SemanticName = "COLOR",
+					.SemanticIndex = 1,
+					.Format = phx::gfx::Format::RGB32_FLOAT,
+				}
+			}
+		};
+
+		phx::gfx::DepthStencilRenderState dss = { .DepthEnable = false, .DepthWriteMask = phx::gfx::DepthWriteMask::Zero};
+		phx::gfx::RasterRenderState rs = {.CullMode = phx::gfx::RasterCullMode::None };
+
+		phx::gfx::RenderPassInfo passInfo;
+		passInfo.RenderTargetCount = 1;
+		passInfo.RenderTargetFormats[0] = phx::gfx::g_SwapChainFormat;
+
+		this->m_pipeline = device->CreatePipeline({
+				.VS = vsShader,
+				.PS = psShader,
+				.DepthStencilRenderState = &dss,
+				.RasterRenderState = &rs,
+				.InputLayout = &il
+			},
+			&passInfo);
+
+		device->DeleteShader(vsShader);
+		device->DeleteShader(psShader);
+
+		this->m_imguiRenderSystem.Initialize(device, m_fs.get());
 		this->m_imguiRenderSystem.EnableDarkThemeColours();
 	};
 
 	void Shutdown() override 
 	{
-		this->m_pipeline.Reset();
+		phx::gfx::GpuDevice* device = phx::gfx::EmberGfx::GetDevice();
+
+		device->DeletePipeline(this->m_pipeline);
+		m_imguiRenderSystem.Finialize(device);
+
+		phx::FS::RootPtr = nullptr;
 	};
 
 	void CacheRenderData() override {};
@@ -64,40 +158,70 @@ public:
 	{
 		PHX_EVENT();
 		m_imguiRenderSystem.BeginFrame();
-		phx::EngineProfile::DrawUI();
+		ImGui::ShowDemoWindow();
+		// phx::EngineProfile::DrawUI();
 	};
 
 	void Render() override
 	{
 		using namespace phx::gfx;
-		phx::gfx::CommandCtx ctx = phx::gfx::GfxDevice::BeginGfxContext();
-		PHX_EVENT_GFX(ctx);
-		ctx.ClearBackBuffer({ 0.392156899f, 0.584313750f, 0.929411829f, 1.f  }); // Cornflower blue
-		ctx.SetRenderTargetSwapChain();
-		Viewport viewport(g_DisplayWidth, g_DisplayHeight);
+		GpuDevice* device = EmberGfx::GetDevice();
+		CommandCtx* ctx = device->BeginCommandCtx();
 
-		ctx.SetViewports({ &viewport, 1 });
-		Rect rec(g_DisplayWidth, g_DisplayHeight);
-		ctx.SetScissors({ &rec, 1 });
-		ctx.SetGfxPipeline(this->m_pipeline);
+		ctx->RenderPassBegin();
 
-		DynamicBuffer temp = ctx.AllocateDynamic(sizeof(uint16_t) * 3);
-		
-		uint16_t* indices = reinterpret_cast<uint16_t*>(temp.Data);
+		Viewport v(g_DisplayWidth, g_DisplayHeight);
+		ctx->SetViewports({ v });
+
+		Rect scissor(g_DisplayWidth, g_DisplayHeight);
+		ctx->SetScissors({ scissor });
+		ctx->SetPipelineState(m_pipeline);
+
+		EmberGfx::DynamicAllocator dynamicAllocator = {};
+		EmberGfx::DynamicBuffer dynamicBuffer = dynamicAllocator.Allocate(sizeof(uint16_t) * 3, 16);
+
+		uint16_t* indices = reinterpret_cast<uint16_t*>(dynamicBuffer.Data);
 		indices[0] = 0;
 		indices[1] = 1;
 		indices[2] = 2;
 
-		ctx.SetDynamicIndexBuffer(temp.BufferHandle, temp.Offset, 3, Format::R16_UINT);
-		ctx.DrawIndexed(3, 1, 0, 0, 0);
+		ctx->SetDynamicIndexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, 3, Format::R16_UINT);
+
+		struct Vertex
+		{
+			std::array<float, 2> Position;
+			std::array<float, 3> Colour;
+		};
+
+		const size_t bufferSize = sizeof(Vertex) * 3;
+		dynamicBuffer = dynamicAllocator.Allocate(bufferSize, 16);
+		Vertex* vertices = reinterpret_cast<Vertex*>(dynamicBuffer.Data);
+		vertices[0].Position = { 0.0f, 0.5f };
+		vertices[1].Position = { 0.5f, -0.5f };
+		vertices[2].Position = { -0.5f, -0.5f };
+
+#if false
+		UpdateTriangleColors(
+			vertices[0].Colour,
+			vertices[1].Colour,
+			vertices[2].Colour);
+#else
+		vertices[0].Colour = { 1.0f, 0.0f, 0.0f };
+		vertices[1].Colour = { 0.0f, 1.0f, 0.0f };
+		vertices[2].Colour = { 0.0f, 0.0f, 1.0f };
+#endif
+		ctx->SetDynamicVertexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, 0, 3, sizeof(Vertex));
+		ctx->DrawIndexed(3);
 
 		m_imguiRenderSystem.Render(ctx);
+
+		ctx->RenderPassEnd();
 	}
 
 private:
-	entt::registry m_registry;
-	phx::gfx::HandleOwner<phx::gfx::GfxPipeline> m_pipeline;
+	phx::gfx::PipelineStateHandle m_pipeline;
 	phx::gfx::ImGuiRenderSystem m_imguiRenderSystem;
+	std::unique_ptr<phx::IRootFileSystem> m_fs;
 };
 
 CREATE_APPLICATION(PhxEditor)

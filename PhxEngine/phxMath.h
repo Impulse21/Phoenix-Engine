@@ -1,10 +1,10 @@
 #pragma once
 
+#include <stdint.h>
 #include <DirectXMath.h>
 #include <algorithm>
 
-
-namespace phx::Math
+namespace phx::math
 {
 
 	static constexpr DirectX::XMFLOAT4X4 cIdentityMatrix = DirectX::XMFLOAT4X4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
@@ -12,6 +12,18 @@ namespace phx::Math
 	constexpr float cMaxFloat = std::numeric_limits<float>::max();
 	constexpr float cMinFloat = std::numeric_limits<float>::lowest();
 
+	constexpr uint64_t GetNextPowerOfTwo(uint64_t x)
+	{
+		--x;
+		x |= x >> 1;
+		x |= x >> 2;
+		x |= x >> 4;
+		x |= x >> 8;
+		x |= x >> 16;
+		x |= x >> 32u;
+		return ++x;
+	}
+  
 	inline uint32_t PackColour(DirectX::XMFLOAT4 const& colour)
 	{
 		uint32_t retVal = 0;
@@ -65,19 +77,7 @@ namespace phx::Math
 		DirectX::XMVECTOR d = DirectX::XMVectorSet(plane1.w, plane2.w, plane3.w, 1.0f);
 		return DirectX::XMVector3Transform(d, DirectX::XMMatrixInverse(nullptr, m));
 	}
-
-	constexpr uint64_t GetNextPowerOfTwo(uint64_t x)
-	{
-		--x;
-		x |= x >> 1;
-		x |= x >> 2;
-		x |= x >> 4;
-		x |= x >> 8;
-		x |= x >> 16;
-		x |= x >> 32u;
-		return ++x;
-	}
-
+  
 	struct Sphere
 	{
 		DirectX::XMFLOAT3 Centre;
@@ -183,5 +183,4 @@ namespace phx::Math
 
 		bool CheckBoxFast(AABB const& aabb) const;
 	};
-
 }

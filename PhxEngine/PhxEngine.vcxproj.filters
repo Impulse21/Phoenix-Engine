@@ -34,6 +34,12 @@
     <Filter Include="EmberGfx\Shaders">
       <UniqueIdentifier>{b83ff36c-6eeb-4ae0-9f4c-5e1d28316da0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="EmberGfx\Vulkan">
+      <UniqueIdentifier>{d5d039a6-d11c-41fc-a945-404e21114844}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty">
+      <UniqueIdentifier>{ebd68c16-2de3-4b75-8e32-f799e2c22e1f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -72,7 +78,7 @@
     <ClInclude Include="EmberGfx\phxEmber.h">
       <Filter>EmberGfx</Filter>
     </ClInclude>
-    <ClInclude Include="EmberGfx\D3D12\phxGfxDeviceD3D12.h">
+    <ClInclude Include="EmberGfx\D3D12\phxD3D12GpuDevice.h">
       <Filter>EmberGfx\D3D12</Filter>
     </ClInclude>
     <ClInclude Include="EmberGfx\phxHandle.h">
@@ -94,15 +100,6 @@
       <Filter>EmberGfx\D3D12</Filter>
     </ClInclude>
     <ClInclude Include="EmberGfx\D3D12\phxCommandCtxD3D12.h">
-      <Filter>EmberGfx\D3D12</Filter>
-    </ClInclude>
-    <ClInclude Include="EmberGfx\phxGfxDevice.h">
-      <Filter>EmberGfx</Filter>
-    </ClInclude>
-    <ClInclude Include="EmberGfx\phxGfxCommandCtx.h">
-      <Filter>EmberGfx</Filter>
-    </ClInclude>
-    <ClInclude Include="EmberGfx\D3D12\phxGfxPlatform.h">
       <Filter>EmberGfx\D3D12</Filter>
     </ClInclude>
     <ClInclude Include="phxRefCountPtr.h">
@@ -144,6 +141,33 @@
     <ClInclude Include="phxStringHash.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="EmberGfx\Vulkan\phxVulkanManager.h">
+      <Filter>EmberGfx\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\Vulkan\phxVulkanCore.h">
+      <Filter>EmberGfx\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\Vulkan\phxVulkanDevice.h">
+      <Filter>EmberGfx\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxShaderCompiler.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="phxVFS.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdParty\vma\vk_mem_alloc.h">
+      <Filter>3rdParty</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\Vulkan\phxVulkanCommandCtx.h">
+      <Filter>EmberGfx\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxGpuDeviceInterface.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
+    <ClInclude Include="EmberGfx\phxCommandCtxInterface.h">
+      <Filter>EmberGfx</Filter>
+    </ClInclude>
     <ClInclude Include="phxMath.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -173,7 +197,7 @@
     <ClCompile Include="EmberGfx\phxEmber.cpp">
       <Filter>EmberGfx</Filter>
     </ClCompile>
-    <ClCompile Include="EmberGfx\D3D12\phxGfxDeviceD3D12.cpp">
+    <ClCompile Include="EmberGfx\D3D12\phxD3D12GpuDevice.cpp">
       <Filter>EmberGfx\D3D12</Filter>
     </ClCompile>
     <ClCompile Include="phxLog.cpp">
@@ -206,12 +230,27 @@
     <ClCompile Include="phxEngineProfiler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="EmberGfx\Vulkan\phxVulkanManager.cpp">
+      <Filter>EmberGfx\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\Vulkan\phxVulkanDevice.cpp">
+      <Filter>EmberGfx\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="phxMemory.cpp">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="phxVFS.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\phxShaderCompiler_DXC.cpp">
+      <Filter>EmberGfx</Filter>
+    </ClCompile>
+    <ClCompile Include="EmberGfx\Vulkan\phxVulkanCommandCtx.cpp">
+      <Filter>EmberGfx\Vulkan</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="EmberGfx\Shaders\ImGui.hlsli">
-      <Filter>EmberGfx\Shaders</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="EmberGfx\Shaders\ImGuiPS.hlsl">
@@ -220,5 +259,11 @@
     <FxCompile Include="EmberGfx\Shaders\ImGuiVS.hlsl">
       <Filter>EmberGfx\Shaders</Filter>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="EmberGfx\dxcompiler.dll" />
+    <CopyFileToFolders Include="EmberGfx\Shaders\ImGui.hlsl">
+      <Filter>EmberGfx\Shaders</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>
