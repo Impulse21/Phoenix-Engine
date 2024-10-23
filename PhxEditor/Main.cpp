@@ -39,6 +39,28 @@ void UpdateTriangleColors(std::array<float, 3>& colorV1,
 	colorV3[2] = (sin(time * speed * 1.4f) + 1.0f) * 0.5f; // B for vertex 3
 }
 
+#include "entt/entt.hpp"
+#include "phxMath.h"
+
+using namespace phx;
+
+namespace temp
+{
+	// Create an asset resource that will be drawn X number of times
+
+	struct Drawable
+	{
+	public:
+		Math::Sphere m_boudingSphere;
+		Math::AABB m_boundingBox;
+		uint32_t m_numMeshes;
+		
+		gfx::BufferHandle m_dataBuffer;
+		gfx::BufferHandle m_materialConstants;
+		std::vector<gfx::TextureHandle> m_textueHandle;
+	};
+}
+
 class PhxEditor final : public phx::IEngineApp
 {
 public:
