@@ -29,8 +29,8 @@ namespace phx::gfx
 {
 	uint32_t g_NativeWidth = 0;
 	uint32_t g_NativeHeight = 0;
-	uint32_t g_DisplayWidth = 1920;
-	uint32_t g_DisplayHeight = 1080; 
+	uint32_t g_DisplayWidth = 2000;
+	uint32_t g_DisplayHeight = 1200; 
 	gfx::Format g_SwapChainFormat = gfx::Format::R10G10B10A2_UNORM;
 	bool g_EnableHDROutput = false;
 
