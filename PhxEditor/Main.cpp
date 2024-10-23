@@ -83,21 +83,6 @@ public:
 				.ByteCode = phx::Span(testShaderPSOutput.ByteCode, testShaderPSOutput.ByteCodeSize),
 				.EntryPoint = "MainPS"});
 
-
-		auto compiledShaderBlobVS = m_fs->ReadFile("/shaders_compiled/TestShaderVS.cso");
-		
-		phx::gfx::ShaderHandle vsCompiledShader = device->CreateShader({
-				.Stage = phx::gfx::ShaderStage::VS,
-				.ByteCode = phx::Span<uint8_t>((uint8_t*)compiledShaderBlobVS->Data(), compiledShaderBlobVS->Size()),
-				.EntryPoint = "main" });
-
-		auto compiledShaderBlobPS = m_fs->ReadFile("/shaders_compiled/TestShaderPS.cso");
-
-		phx::gfx::ShaderHandle psCompiledShader = device->CreateShader({
-				.Stage = phx::gfx::ShaderStage::PS,
-				.ByteCode = phx::Span<uint8_t>((uint8_t*)compiledShaderBlobPS->Data(), compiledShaderBlobPS->Size()),
-				.EntryPoint = "main" });
-
 		phx::gfx::InputLayout il = {
 			.elements = {
 				{
@@ -121,8 +106,8 @@ public:
 		passInfo.RenderTargetFormats[0] = phx::gfx::g_SwapChainFormat;
 
 		this->m_pipeline = device->CreatePipeline({
-				.VS = vsCompiledShader,
-				.PS = psCompiledShader,
+				.VS = vsShader,
+				.PS = psShader,
 				.DepthStencilRenderState = &dss,
 				.RasterRenderState = &rs,
 				.InputLayout = &il

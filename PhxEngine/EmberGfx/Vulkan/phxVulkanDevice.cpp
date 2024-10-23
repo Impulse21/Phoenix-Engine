@@ -22,6 +22,7 @@
 
 #define LOG_DEVICE_EXTENSIONS false
 
+#define LOG_AND_FINALIZE_POOL(x) if (!x.IsEmpty()) PHX_CORE_WARN("[Vulkan] - Pool '" #x "' still contains active handles"); x.Finalize();
 using namespace phx;
 using namespace phx::gfx;
 using namespace phx::gfx::platform;
@@ -193,7 +194,7 @@ void phx::gfx::platform::VulkanGpuDevice::Finalize()
 
     m_dynamicAllocator.Finalize();
 
-    this->RunGarbageCollection();
+    RunGarbageCollection();
     DestoryFrameResources();
     DestoryDefaultResources();
 
@@ -466,9 +467,12 @@ void phx::gfx::platform::VulkanGpuDevice::DeleteShader(ShaderHandle handle)
             if (impl)
             {
                 vkDestroyShaderModule(m_vkDevice, impl->ShaderModule, nullptr);
+                m_shaderPool.Release(handle);
             }
         }
     };
+
+    m_deferredQueue.push_back(d);
 }
 
 PipelineStateHandle phx::gfx::platform::VulkanGpuDevice::CreatePipeline(PipelineStateDesc2 const& desc, RenderPassInfo* renderPassInfo)
@@ -830,9 +834,13 @@ void phx::gfx::platform::VulkanGpuDevice::DeletePipeline(PipelineStateHandle han
                 vkDestroyPipeline(m_vkDevice, impl->Pipeline, nullptr);
 
                 vkDestroyPipelineLayout(m_vkDevice, impl->PipelineLayout, nullptr);
+
+                m_pipelineStatePool.Release(handle);
             }
         }
     };
+
+    m_deferredQueue.push_back(d);
 }
 
 BufferHandle phx::gfx::platform::VulkanGpuDevice::CreateBuffer(BufferDesc const& desc)
@@ -1038,6 +1046,8 @@ void phx::gfx::platform::VulkanGpuDevice::DeleteBuffer(BufferHandle handle)
             m_bufferPool.Release(handle);
         }
     };
+
+    m_deferredQueue.push_back(d);
 }
 
 TextureHandle phx::gfx::platform::VulkanGpuDevice::CreateTexture(TextureDesc const& desc, SubresourceData* initData)
@@ -1264,6 +1274,8 @@ void phx::gfx::platform::VulkanGpuDevice::DeleteTexture(TextureHandle handle)
             }
         }
     };
+
+    m_deferredQueue.push_back(d);
 }
 
 void* phx::gfx::platform::VulkanGpuDevice::GetMappedData(BufferHandle handle)
@@ -2274,9 +2286,10 @@ void phx::gfx::platform::VulkanGpuDevice::DestroyDescriptorHeaps()
 
 void phx::gfx::platform::VulkanGpuDevice::FinalizeResourcePools()
 {
-    m_pipelineStatePool.Finalize();
-    m_bufferPool.Finalize();
-    m_texturePool.Finalize();
+    LOG_AND_FINALIZE_POOL(m_pipelineStatePool);
+    LOG_AND_FINALIZE_POOL(m_shaderPool);
+    LOG_AND_FINALIZE_POOL(m_bufferPool);
+    LOG_AND_FINALIZE_POOL(m_texturePool);
 }
 
 void phx::gfx::platform::VulkanGpuDevice::DestoryFrameResources()
