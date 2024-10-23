@@ -2327,7 +2327,7 @@ void phx::gfx::platform::VulkanGpuDevice::CreateVma()
 			type = "Multi-instance heap";
         }
 
-        PHX_CORE_INFO("\tHeap {0} - {1}: {2}/{3}mb Budget: {4}mb", i, type.c_str(), budgets[i].usage >> 20, heap.size >> 20, budgets[i].budget >> 20);
+        PHX_CORE_INFO("\tHeap {0} - {1}: {2}/{3}mb Budget: {4}mb, Block bytes: {5}mb]", i, type.c_str(), budgets[i].usage >> 20, heap.size >> 20, budgets[i].budget >> 20, budgets[i].statistics.blockBytes >> 20);
     }
 
 	PHX_CORE_INFO("[Vulkan] Memory heap types:");
