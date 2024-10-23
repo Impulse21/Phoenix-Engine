@@ -1166,8 +1166,6 @@ TextureHandle phx::gfx::platform::VulkanGpuDevice::CreateTexture(TextureDesc con
     else
     {
         // TODO: Support image read backs / uploads
-        // Wicked engine special cases these.
-
 
         if (desc.Alias == nullptr)
         {
@@ -1210,6 +1208,113 @@ TextureHandle phx::gfx::platform::VulkanGpuDevice::CreateTexture(TextureDesc con
 
     if (initData)
     {
+        CopyCtxManager::Ctx ctx = m_copyCtxManager.Begin(impl.Allocation->GetSize());
+        void* mappedData = ctx.MappedData;
+
+        std::vector<VkBufferImageCopy> copyRegions;
+
+        VkDeviceSize copyOffset = 0;
+        uint32_t initDataIdx = 0;
+        for (uint32_t layer = 0; layer < desc.ArraySize; ++layer)
+        {
+            uint32_t width = imageInfo.extent.width;
+            uint32_t height = imageInfo.extent.height;
+            uint32_t depth = imageInfo.extent.depth;
+            for (uint32_t mip = 0; mip < desc.MipLevels; mip++)
+            {
+                const SubresourceData& subresourceData = initData[initDataIdx++];
+                const uint32_t blockSize = GetFormatBlockSize(desc.Format);
+                const uint32_t numBlocksX = std::max(1u, width / blockSize);
+                const uint32_t numBlocksY = std::max(1u, height / blockSize);
+                const uint32_t dstRowPitch = numBlocksX * GetFormatStride(desc.Format);
+                const uint32_t dstSlicePitch = dstRowPitch * numBlocksY;
+                const uint32_t srcRowPitch = subresourceData.rowPitch;
+                const uint32_t srcSlicePitch = subresourceData.slicePitch;
+                for (uint32_t z = 0; z < depth; ++z)
+                {
+                    uint8_t* dstSlice = (uint8_t*)mappedData + copyOffset + dstSlicePitch * z;
+                    uint8_t* srcSlice = (uint8_t*)subresourceData.pData + dstSlicePitch * z;
+                    for (uint32_t y = 0; y < numBlocksY; ++y)
+                    {
+                        std::memcpy(
+                            dstSlice + dstRowPitch * y,
+                            srcSlice + srcRowPitch * y,
+                            dstRowPitch);
+                    }
+                }
+
+                assert(ctx.IsValid());
+                VkBufferImageCopy copyRegion = {};
+                copyRegion.bufferOffset = copyOffset;
+                copyRegion.bufferRowLength = 0;
+                copyRegion.bufferImageHeight = 0;
+
+                copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                copyRegion.imageSubresource.mipLevel = mip;
+                copyRegion.imageSubresource.baseArrayLayer = layer;
+                copyRegion.imageSubresource.layerCount = 1;
+
+                copyRegion.imageOffset = { 0, 0, 0 };
+                copyRegion.imageExtent = {
+                    width,
+                    height,
+                    depth };
+
+                copyRegions.push_back(copyRegion);
+
+                copyOffset += dstSlicePitch * depth;
+
+                // fix for validation: on transfer queue the srcOffset must be 4-byte aligned
+                copyOffset = MemoryAlign(copyOffset, VkDeviceSize(4));
+
+                width = std::max(1u, width / 2);
+                height = std::max(1u, height / 2);
+                depth = std::max(1u, depth / 2);
+            }
+        }
+
+        VkImageMemoryBarrier2 barrier = {};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+        barrier.image = impl.ImageVk;
+        barrier.oldLayout = imageInfo.initialLayout;
+        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+        barrier.srcAccessMask = 0;
+        barrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        barrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+        VkDependencyInfo dependencyInfo = {};
+        dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        dependencyInfo.imageMemoryBarrierCount = 1;
+        dependencyInfo.pImageMemoryBarriers = &barrier;
+
+        vkCmdPipelineBarrier2(ctx.TransferCommandBuffer, &dependencyInfo);
+
+        Buffer_VK* staggingBuffer = m_bufferPool.Get(ctx.UploadBuffer);
+        vkCmdCopyBufferToImage(
+            ctx.TransferCommandBuffer,
+            staggingBuffer->BufferVk,
+            impl.ImageVk,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            (uint32_t)copyRegions.size(),
+            copyRegions.data()
+        );
+
+        std::swap(barrier.srcStageMask, barrier.dstStageMask);
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.newLayout = ConvertImageLayout(desc.InitialState);
+        barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = _ParseResourceState(desc.InitialState);
+        vkCmdPipelineBarrier2(ctx.TransferCommandBuffer, &dependencyInfo);
+
+        m_copyCtxManager.Submit(ctx);
     }
 
     if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)

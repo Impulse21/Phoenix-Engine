@@ -1520,6 +1520,36 @@ namespace phx::gfx
         }
     }
 
+    constexpr bool IsFormatBlockCompressed(Format format)
+    {
+        switch (format)
+        {
+        case Format::BC1_UNORM:
+        case Format::BC1_UNORM_SRGB:
+        case Format::BC2_UNORM:
+        case Format::BC2_UNORM_SRGB:
+        case Format::BC3_UNORM:
+        case Format::BC3_UNORM_SRGB:
+        case Format::BC4_UNORM:
+        case Format::BC4_SNORM:
+        case Format::BC5_UNORM:
+        case Format::BC5_SNORM:
+        case Format::BC7_UNORM:
+        case Format::BC7_UNORM_SRGB:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    constexpr uint32_t GetFormatBlockSize(Format format)
+    {
+        if (IsFormatBlockCompressed(format))
+        {
+            return 4u;
+        }
+        return 1u;
+    }
 }
 
 namespace std

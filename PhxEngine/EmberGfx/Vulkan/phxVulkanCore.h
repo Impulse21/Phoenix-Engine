@@ -230,4 +230,109 @@ namespace phx::gfx::platform
 			return false;
 		}
 	}
+
+	constexpr VkImageLayout ConvertImageLayout(ResourceStates value)
+	{
+		switch (value)
+		{
+		case ResourceStates::Unknown:
+			return VK_IMAGE_LAYOUT_UNDEFINED;
+		case ResourceStates::RenderTarget:
+			return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		case ResourceStates::DepthWrite:
+			return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		case ResourceStates::DepthRead:
+			return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+		case ResourceStates::ShaderResource:
+		case ResourceStates::ShaderResourceNonPixel:
+			return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		case ResourceStates::UnorderedAccess:
+			return VK_IMAGE_LAYOUT_GENERAL;
+		case ResourceStates::CopySource:
+		case ResourceStates::CopyDest:
+			// Workaround for handling multiple queues with textures in different layouts
+			return VK_IMAGE_LAYOUT_GENERAL;
+		case ResourceStates::ShadingRateSurface:
+			return VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+		default:
+			// Combination of state flags will default to general
+			return VK_IMAGE_LAYOUT_GENERAL;
+		}
+	}
+	constexpr VkAccessFlags2 _ParseResourceState(ResourceStates value)
+	{
+		VkAccessFlags2 flags = 0;
+
+		if (EnumHasAnyFlags(value, ResourceStates::ShaderResource))
+		{
+			flags |= VK_ACCESS_2_SHADER_READ_BIT;
+		}
+		if (EnumHasAnyFlags(value, ResourceStates::ShaderResourceNonPixel))
+		{
+			flags |= VK_ACCESS_2_SHADER_READ_BIT;
+		}
+		if (EnumHasAnyFlags(value, ResourceStates::UnorderedAccess))
+		{
+			flags |= VK_ACCESS_2_SHADER_READ_BIT;
+			flags |= VK_ACCESS_2_SHADER_WRITE_BIT;
+		}
+		if (EnumHasAnyFlags(value, ResourceStates::CopySource))
+		{
+			flags |= VK_ACCESS_2_TRANSFER_READ_BIT;
+		}
+		if (EnumHasAnyFlags(value, ResourceStates::CopyDest))
+		{
+			flags |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		}
+		if (EnumHasAnyFlags(value, ResourceStates::RenderTarget))
+		{
+			flags |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
+			flags |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+		}
+		if (EnumHasAnyFlags(value, ResourceStates::DepthWrite))
+		{
+			flags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+			flags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		}
+		if (EnumHasAnyFlags(value, ResourceStates::DepthRead))
+		{
+			flags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+		}
+		if (EnumHasAnyFlags(value, ResourceStates::VertexBuffer))
+		{
+			flags |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+		}
+		if (EnumHasAnyFlags(value, ResourceStates::IndexGpuBuffer))
+		{
+			flags |= VK_ACCESS_2_INDEX_READ_BIT;
+		}
+		if (EnumHasAnyFlags(value, ResourceStates::ConstantBuffer))
+		{
+			flags |= VK_ACCESS_2_UNIFORM_READ_BIT;
+		}
+		if (EnumHasAnyFlags(value, ResourceStates::IndirectArgument))
+		{
+			flags |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
+		}
+		if (EnumHasAnyFlags(value, ResourceStates::AccelStructRead))
+		{
+			flags |= VK_ACCESS_2_CONDITIONAL_RENDERING_READ_BIT_EXT;
+		}
+		if (EnumHasAnyFlags(value, ResourceStates::ShadingRateSurface))
+		{
+			flags |= VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
+		}
+		// Assuming the following states are added to map to the original VIDEO_DECODE_DST and VIDEO_DECODE_SRC
+		if (EnumHasAnyFlags(value, ResourceStates::AccelStructWrite))
+		{
+			flags |= VK_ACCESS_2_VIDEO_DECODE_WRITE_BIT_KHR;
+		}
+		if (EnumHasAnyFlags(value, ResourceStates::AccelStructBuildInput))
+		{
+			flags |= VK_ACCESS_2_VIDEO_DECODE_READ_BIT_KHR;
+		}
+
+		return flags;
+	}
+
 }
