@@ -170,3 +170,7 @@ void phx::gfx::platform::CommandCtx_Vulkan::SetDynamicIndexBuffer(BufferHandle t
 	const Buffer_VK* bufferImpl = GpuDevice->m_bufferPool.Get(tempBuffer);
 	vkCmdBindIndexBuffer(GetVkCommandBuffer(), bufferImpl->BufferVk, offset, type);
 }
+
+void phx::gfx::platform::CommandCtx_Vulkan::SetPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants)
+{
+}

@@ -22,6 +22,9 @@ namespace phx::gfx::platform
 
 		void SetDynamicVertexBuffer(BufferHandle tempBuffer, size_t offset, uint32_t slot, size_t numVertices, size_t vertexSize) override;
 		void SetDynamicIndexBuffer(BufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat) override;
+
+		void SetPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants) override;
+
 	public:
 		EnumArray<VkCommandBuffer, CommandQueueType>  CmdBufferVk[kBufferCount];
 		EnumArray<VkCommandPool, CommandQueueType> CmdBufferPoolVk[kBufferCount];

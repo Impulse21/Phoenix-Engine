@@ -52,6 +52,8 @@ namespace phx::gfx::platform
 		void SetDynamicVertexBuffer(BufferHandle tempBuffer, size_t offset, uint32_t slot, size_t numVertices, size_t vertexSize) override;
 		void SetDynamicIndexBuffer(BufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat) override;
 
+		void SetPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants) override;
+
 	public:
 		void TransitionBarrier(GpuBarrier const& barrier);
 		void TransitionBarriers(Span<GpuBarrier> gpuBarriers);
@@ -65,7 +67,6 @@ namespace phx::gfx::platform
 
 		void SetRenderTargets(Span<TextureHandle> renderTargets, TextureHandle depthStencil);
 		void SetIndexBuffer(BufferHandle indexBuffer);
-		void SetPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants);
 		void StartTimer(TimerQueryHandle QueryIdx);
 		void EndTimer(TimerQueryHandle QueryIdx);
 

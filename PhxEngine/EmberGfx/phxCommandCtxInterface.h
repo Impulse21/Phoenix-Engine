@@ -21,5 +21,13 @@ namespace phx::gfx
 
 		virtual void SetDynamicVertexBuffer(BufferHandle tempBuffer, size_t offset, uint32_t slot, size_t numVertices, size_t vertexSize) = 0;
 		virtual void SetDynamicIndexBuffer(BufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat) = 0;
+
+		virtual void SetPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants) = 0;
+
+		template<typename T>
+		void SetPushConstant(uint32_t rootParameterIndex, T const& constants)
+		{
+			SetPushConstant(rootParameterIndex, sizeof(T), &constants);
+		}
 	};
 }

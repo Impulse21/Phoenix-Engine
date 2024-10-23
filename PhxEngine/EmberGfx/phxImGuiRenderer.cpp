@@ -59,17 +59,16 @@ void phx::gfx::ImGuiRenderSystem::Initialize(GpuDevice* gfxDevice, IFileSystem* 
     subResourceData.pData = pixelData;
 
     // Create texture
-    gfxDevice->CreateTexture({
+    m_fontTexture = gfxDevice->CreateTexture({
         .Format = gfx::Format::RGBA8_UNORM,
         .Width = static_cast<uint32_t>(width),
         .Height = static_cast<uint32_t>(height),
         .DebugName = "ImGui Font"
         }, &subResourceData);
-
+    
     this->m_fontTextureBindlessIndex = gfxDevice->GetDescriptorIndex(this->m_fontTexture, SubresouceType::SRV);
     io.Fonts->SetTexID(static_cast<void*>(&this->m_fontTextureBindlessIndex));
-
-
+    
     phx::gfx::ShaderCompiler::Output vsOut = phx::gfx::ShaderCompiler::Compile({
             .Format = gfxDevice->GetShaderFormat(),
             .ShaderStage = phx::gfx::ShaderStage::VS,
@@ -204,12 +203,9 @@ void phx::gfx::ImGuiRenderSystem::BeginFrame()
 
 void phx::gfx::ImGuiRenderSystem::Render(ICommandCtx* context)
 {
-#if false
     ImGui::SetCurrentContext(m_imguiContext);
     ImGui::Render();
 
-
-    ImGuiIO& io = ImGui::GetIO();
     ImDrawData* drawData = ImGui::GetDrawData();
 
     // Check if there is anything to render.
@@ -221,7 +217,7 @@ void phx::gfx::ImGuiRenderSystem::Render(ICommandCtx* context)
     ImVec2 displayPos = drawData->DisplayPos;
 
     {
-        context.SetGfxPipeline(m_pipeline);
+        context->SetPipelineState(m_pipeline);
 
         // Set root arguments.
         //    DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixOrthographicRH( drawData->DisplaySize.x, drawData->DisplaySize.y, 0.0f, 1.0f );
@@ -245,22 +241,23 @@ void phx::gfx::ImGuiRenderSystem::Render(ICommandCtx* context)
         push.Mvp = DirectX::XMFLOAT4X4(&mvp[0][0]);
 
         Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
-        context.SetViewports({ v });
-
-        context.SetRenderTargetSwapChain();
+        context->SetViewports({ v });
+        
         const Format indexFormat = sizeof(ImDrawIdx) == 2 ? Format::R16_UINT : Format::R32_UINT;
 
+		EmberGfx::DynamicAllocator dynamicAllocator = {};
         for (int i = 0; i < drawData->CmdListsCount; ++i)
         {
             const ImDrawList* drawList = drawData->CmdLists[i];
 
-            DynamicBuffer vertexBuffer = context.AllocateDynamic(drawList->VtxBuffer.size() * sizeof(ImDrawVert));
-            std::memcpy(vertexBuffer.Data, drawList->VtxBuffer.Data, drawList->VtxBuffer.size() * sizeof(ImDrawVert));
-            context.SetDynamicVertexBuffer(vertexBuffer.BufferHandle, vertexBuffer.Offset, 0, drawList->VtxBuffer.size(), sizeof(ImDrawVert));
+			EmberGfx::DynamicBuffer dynamicBuffer = dynamicAllocator.Allocate(drawList->VtxBuffer.size() * sizeof(ImDrawVert), 16);
 
-            DynamicBuffer indexBuffer = context.AllocateDynamic(drawList->IdxBuffer.size() * sizeof(ImDrawIdx));
-            std::memcpy(indexBuffer.Data, drawList->IdxBuffer.Data, drawList->IdxBuffer.size() * sizeof(ImDrawIdx));
-            context.SetDynamicIndexBuffer(indexBuffer.BufferHandle, indexBuffer.Offset, drawList->IdxBuffer.size(), indexFormat);
+            std::memcpy(dynamicBuffer.Data, drawList->VtxBuffer.Data, drawList->VtxBuffer.size() * sizeof(ImDrawVert));
+            context->SetDynamicVertexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, 0, drawList->VtxBuffer.size(), sizeof(ImDrawVert));
+
+            dynamicBuffer = dynamicAllocator.Allocate(drawList->IdxBuffer.size() * sizeof(ImDrawIdx), 16);
+            std::memcpy(dynamicBuffer.Data, drawList->IdxBuffer.Data, drawList->IdxBuffer.size() * sizeof(ImDrawIdx));
+            context->SetDynamicIndexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, drawList->IdxBuffer.size(), indexFormat);
 
             int indexOffset = 0;
             for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
@@ -288,9 +285,9 @@ void phx::gfx::ImGuiRenderSystem::Render(ICommandCtx* context)
                         push.TextureIndex = desciptorIndex
                             ? *desciptorIndex
                             : cInvalidDescriptorIndex;
-                        context.SetPushConstant(RootParameters::PushConstant, sizeof(ImguiDrawInfo), &push);
-                        context.SetScissors({ &scissorRect, 1 });
-                        context.DrawIndexed(drawCmd.ElemCount, 1, indexOffset, 0, 0);
+                        context->SetPushConstant(RootParameters::PushConstant, sizeof(ImguiDrawInfo), &push);
+                        context->SetScissors({ &scissorRect, 1 });
+                        context->DrawIndexed(drawCmd.ElemCount, 1, indexOffset, 0, 0);
                     }
                 }
                 indexOffset += drawCmd.ElemCount;
@@ -300,5 +297,5 @@ void phx::gfx::ImGuiRenderSystem::Render(ICommandCtx* context)
         // cmd->TransitionBarriers(Span<GpuBarrier>(postBarriers.data(), postBarriers.size()));
         ImGui::EndFrame();
     }
-#endif
+    return;
 }
