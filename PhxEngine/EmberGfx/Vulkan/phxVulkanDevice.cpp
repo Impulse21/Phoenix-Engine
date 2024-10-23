@@ -969,6 +969,24 @@ BufferHandle phx::gfx::platform::VulkanGpuDevice::CreateBuffer(BufferDesc const&
 		}
 
 		assert(res == VK_SUCCESS);
+
+#ifdef _DEBUG
+		// Now you have allocInfo.memoryType, which tells you which memory type was used
+		VkPhysicalDeviceMemoryProperties memoryProperties;
+		vkGetPhysicalDeviceMemoryProperties(m_vkPhysicalDevice, &memoryProperties);
+
+		// Use the memoryTypeIndex to find the memory type
+		VkMemoryType memoryType = memoryProperties.memoryTypes[impl.Allocation->GetMemoryTypeIndex()];
+
+		// Find the corresponding heap
+		uint32_t heapIndex = memoryType.heapIndex;
+		VkMemoryHeap heap = memoryProperties.memoryHeaps[heapIndex];
+
+		VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
+		vmaGetHeapBudgets(m_vmaAllocator, budgets);
+
+        PHX_CORE_INFO("Created Buffer on {0} - {1}/{2}", heapIndex, budgets[heapIndex].usage, heap.size);
+#endif
     }
 
     // TODO Set up Mappings
@@ -1057,12 +1075,13 @@ TextureHandle phx::gfx::platform::VulkanGpuDevice::CreateTexture(TextureDesc con
     Handle<Texture> retVal = this->m_texturePool.Emplace();
     Texture_VK& impl = *this->m_texturePool.Get(retVal);
 
-    VkImageCreateInfo imageInfo = {};
+	VkImageCreateInfo imageInfo = {};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.extent.width = desc.Width;
     imageInfo.extent.height = desc.Height;
     imageInfo.extent.depth = desc.Depth;
-    imageInfo.format = FormatToVkFormat(desc.Format);
+	imageInfo.format = FormatToVkFormat(desc.Format);
+	imageInfo.arrayLayers = desc.ArraySize;
     imageInfo.mipLevels = desc.MipLevels;
     imageInfo.samples = (VkSampleCountFlagBits)desc.SampleCount;
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -1236,7 +1255,7 @@ TextureHandle phx::gfx::platform::VulkanGpuDevice::CreateTexture(TextureDesc con
                 for (uint32_t z = 0; z < depth; ++z)
                 {
                     uint8_t* dstSlice = (uint8_t*)mappedData + copyOffset + dstSlicePitch * z;
-                    uint8_t* srcSlice = (uint8_t*)subresourceData.pData + dstSlicePitch * z;
+                    uint8_t* srcSlice = (uint8_t*)subresourceData.pData + srcSlicePitch * z;
                     for (uint32_t y = 0; y < numBlocksY; ++y)
                     {
                         std::memcpy(
@@ -2359,13 +2378,7 @@ void phx::gfx::platform::VulkanGpuDevice::CreateVma()
         PHX_CORE_ERROR("Failed to create VMA allocator");
         throw std::runtime_error("vmaCreateAllocator failed!");
     }
-
-#if false
-    VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
-    vmaGetHeapBudgets(m_vmaAllocator, budgets);
-#endif
     
-
     std::vector<VkExternalMemoryHandleTypeFlags> externalMemoryHandleTypes;
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
     externalMemoryHandleTypes.resize(m_memoryProperties2.memoryProperties.memoryTypeCount, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT);
@@ -2946,7 +2959,7 @@ VulkanGpuDevice::CopyCtxManager::Ctx VulkanGpuDevice::CopyCtxManager::Begin(uint
     {
         std::scoped_lock _(m_mutex);
 
-        for (size_t i; i < FreeList.size(); i++)
+        for (size_t i = 0; i < FreeList.size(); i++)
         {
             if (FreeList[i].UploadBufferSize >= stagingSize)
             {
@@ -3004,6 +3017,9 @@ VulkanGpuDevice::CopyCtxManager::Ctx VulkanGpuDevice::CopyCtxManager::Begin(uint
                 .Usage = Usage::Upload,
                 .SizeInBytes = retVal.UploadBufferSize});
 
+        Buffer_VK* vkBuffer = m_device->m_bufferPool.Get(retVal.UploadBuffer);
+        retVal.MappedData = vkBuffer->MappedData;
+        
         assert(retVal.UploadBuffer.IsValid());
     }
 
