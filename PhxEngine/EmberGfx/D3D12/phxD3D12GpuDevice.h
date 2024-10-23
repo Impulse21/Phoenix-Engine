@@ -15,6 +15,8 @@
 
 #define SCOPED_LOCK(x) std::scoped_lock _(x)
 
+#define CompPtr Microsoft::WRL::ComPtr
+
 namespace phx::gfx
 {
 	constexpr uint32_t kTimestampQueryHeapSize = 1024; // 4096;
@@ -77,8 +79,7 @@ namespace phx::gfx
 			return BackBuffers[currentIndex].Get();
 		}
 	};
-
-
+	
 	struct D3D12CommandQueue
 	{
 		D3D12_COMMAND_LIST_TYPE Type;
@@ -260,27 +261,6 @@ namespace phx::gfx
 		Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
 	};
 
-	class CopyCtxManager
-	{
-		struct UploadCtx
-		{
-			Microsoft::WRL::ComPtr<ID3D12CommandAllocator> Allocator = nullptr;
-			Microsoft::WRL::ComPtr<ID3D12CommandList> CommandList = nullptr;
-			Microsoft::WRL::ComPtr<ID3D12Fence> Fence;
-			BufferHandle UploadBuffer;
-			size_t UploadBufferSize;
-			inline bool IsValid() const { return CommandList != nullptr; }
-		};
-		std::vector<UploadCtx> FreeList;
-
-		void Initialize(D3D12GpuDevice* gpuDevice);
-		void Finalize();
-		UploadCtx Begin(size_t stagingSize);
-		void Submit(UploadCtx uploadCtx);
-
-	private:
-		D3D12GpuDevice* m_device;
-	};
 	class D3D12GpuDevice final : public IGpuDevice
 	{
 		friend platform::CommandCtxD3D12;
@@ -443,6 +423,37 @@ namespace phx::gfx
 
 		HandlePool<PipelineState_Dx12, PipelineState> m_pipelineStatePool;
 		HandlePool<Shader_Dx12, Shader> m_shaderPool;
+
+		class CopyCtxManager
+		{
+		public:
+			struct Ctx
+			{
+				Microsoft::WRL::ComPtr<ID3D12CommandAllocator> Allocator = nullptr;
+				Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> CommandList = nullptr;
+				Microsoft::WRL::ComPtr<ID3D12Fence> Fence;
+				size_t FenceValue = 0;
+				BufferHandle UploadBuffer;
+				size_t UploadBufferSize;
+				void* MappedData = nullptr;
+				inline bool IsValid() const { return CommandList != nullptr; }
+				inline bool IsInValid() const { return CommandList == nullptr; }
+				inline bool IsCompleted() const { return Fence->GetCompletedValue() >= FenceValue; }
+			};
+
+			void Initialize(D3D12GpuDevice* gpuDevice);
+			void Finalize();
+
+			Ctx Begin(size_t stagingSize);
+			void Submit(Ctx uploadCtx);
+
+		private:
+			D3D12GpuDevice* m_device;
+			CompPtr<ID3D12CommandQueue> m_copyQueue;
+			std::vector<Ctx> m_freeList;
+			std::mutex m_mutex;
+		} m_copyCtxManager;
+
 	};
 
 }

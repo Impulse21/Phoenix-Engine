@@ -7,38 +7,6 @@
 
 using namespace phx;
 
-
-namespace
-{
-	std::shared_ptr<spdlog::logger> g_coreLogger;
-	std::shared_ptr<spdlog::logger> g_clientLogger;
-	void LogInternal(spdlog::logger& logger, Log::Level level, std::string_view msg)
-	{
-		switch (level)
-		{
-		case Log::Level::Trace:
-			logger.trace(msg);
-			break;
-		case Log::Level::Info:
-			logger.info(msg);
-			break;
-		case Log::Level::Debug:
-			logger.debug(msg);
-			break;
-		case Log::Level::Warn:
-			logger.warn(msg);
-			break;
-		case Log::Level::Error:
-			logger.error(msg);
-			break;
-		case Log::Level::Critical:
-		default:
-			logger.critical(msg);
-			break;
-		}
-	}
-}
-
 void phx::Log::Initialize()
 {
 #if false
@@ -63,25 +31,11 @@ void phx::Log::Initialize()
 	// Timestamp, name of logger.
 	spdlog::set_pattern("%^[%T] %n: %v%$");
 
-	g_coreLogger = spdlog::stdout_color_mt("Engine");
-	g_coreLogger->set_level(spdlog::level::trace);
+	s_CoreLogger = spdlog::stdout_color_mt("Engine");
+	s_CoreLogger->set_level(spdlog::level::trace);
 
-	g_clientLogger = spdlog::stdout_color_mt("Application");
-	g_clientLogger->set_level(spdlog::level::trace);
+	s_ClientLogger = spdlog::stdout_color_mt("Application");
+	s_ClientLogger->set_level(spdlog::level::trace);
 #endif
 
-}
-
-void phx::Log::Log(LogType type, Level level, std::string_view msg)
-{
-	switch (type)
-	{
-	case LogType::App:
-		LogInternal(*g_clientLogger, level, msg);
-		break;
-	case LogType::Engine:
-	default:
-		LogInternal(*g_coreLogger, level, msg);
-		break;
-	};
 }

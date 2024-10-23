@@ -73,7 +73,7 @@ void phx::gfx::ImGuiRenderSystem::Initialize(GpuDevice* gfxDevice, IFileSystem* 
     phx::gfx::ShaderCompiler::Output vsOut = phx::gfx::ShaderCompiler::Compile({
             .Format = gfxDevice->GetShaderFormat(),
             .ShaderStage = phx::gfx::ShaderStage::VS,
-            .SourceFilename = "/shaders/engine/ImGui.hlsl",
+            .SourceFilename = "/shaders_engine/ImGui.hlsl",
             .EntryPoint = "MainVS",
             .FileSystem = fs });
 
@@ -85,7 +85,7 @@ void phx::gfx::ImGuiRenderSystem::Initialize(GpuDevice* gfxDevice, IFileSystem* 
     phx::gfx::ShaderCompiler::Output psOut = phx::gfx::ShaderCompiler::Compile({
             .Format = gfxDevice->GetShaderFormat(),
             .ShaderStage = phx::gfx::ShaderStage::PS,
-            .SourceFilename = "/shaders/engine/ImGui.hlsl",
+            .SourceFilename = "/shaders_engine/ImGui.hlsl",
             .EntryPoint = "MainPS",
             .FileSystem = fs });
 

@@ -2,6 +2,7 @@
 #include "phxD3D12GpuDevice.h"
 #include "phxCommandLineArgs.h"
 #include "phxGfxCommonD3D12.h"
+#include "phxMath.h"
 
 using namespace phx;
 using namespace phx::gfx;
@@ -588,6 +589,119 @@ ID3D12CommandAllocator* D3D12CommandQueue::RequestAllocator()
 	return retVal;
 }
 
+void D3D12GpuDevice::CopyCtxManager::Initialize(D3D12GpuDevice* gpuDevice)
+{
+	m_device = gpuDevice;
+
+	D3D12_COMMAND_QUEUE_DESC desc = {};
+	desc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
+	desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
+	desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+	desc.NodeMask = 0;
+
+	ThrowIfFailed(
+		m_device->GetD3D12Device()->CreateCommandQueue(&desc, IID_PPV_ARGS(&m_copyQueue)));
+
+	ThrowIfFailed(
+		m_copyQueue->SetName(L"Copy Ctx Manager"));
+
+}
+
+void D3D12GpuDevice::CopyCtxManager::Finalize()
+{
+	for(auto& ctx : m_freeList)
+		this->m_device->DeleteBuffer(ctx.UploadBuffer);
+}
+
+D3D12GpuDevice::CopyCtxManager::Ctx D3D12GpuDevice::CopyCtxManager::Begin(size_t stagingSize)
+{
+	Ctx retVal;
+	{
+		std::scoped_lock _(m_mutex);
+
+		for (size_t i = 0; i < m_freeList.size(); i++)
+		{
+			Ctx& ctx = m_freeList[i];
+			if (ctx.UploadBufferSize > stagingSize)
+				continue;
+
+			if (!ctx.IsCompleted())
+				continue;
+
+			retVal = ctx;
+			std::swap(m_freeList[i], m_freeList.back());
+			m_freeList.pop_back();
+		}
+	}
+
+	if (retVal.IsInValid())
+	{
+		HRESULT hr = this->m_device->GetD3D12Device2()->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(&retVal.Allocator));
+		assert(SUCCEEDED(hr));
+
+		hr = this->m_device->GetD3D12Device2()->CreateCommandList(
+			0,
+			D3D12_COMMAND_LIST_TYPE_COPY, 
+			retVal.Allocator.Get(),
+			nullptr,
+			IID_PPV_ARGS(&retVal.CommandList));
+		assert(SUCCEEDED(hr));
+
+		retVal.CommandList->Close();
+
+		hr = this->m_device->GetD3D12Device()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&retVal.Fence));
+		assert(SUCCEEDED(hr));
+
+		retVal.UploadBufferSize = math::GetNextPowerOfTwo(stagingSize);
+		retVal.UploadBuffer = m_device->CreateBuffer({
+			.Usage = Usage::Upload,
+			.SizeInBytes = retVal.UploadBufferSize,
+			.DebugName = "Upload Buffer"
+			});
+
+		D3D12Buffer* bufferImpl = m_device->GetRegistry().Buffers.Get(retVal.UploadBuffer);
+		retVal.MappedData = bufferImpl->MappedData;
+	}
+
+	// begin command list in valid state:
+	HRESULT hr = retVal.Allocator->Reset();
+	assert(SUCCEEDED(hr));
+	hr = retVal.CommandList->Reset(retVal.Allocator.Get(), nullptr);
+	assert(SUCCEEDED(hr));
+
+	return retVal;
+}
+
+void D3D12GpuDevice::CopyCtxManager::Submit(Ctx ctx)
+{
+	HRESULT hr;
+
+	{
+		std::scoped_lock _(m_mutex);
+		ctx.FenceValue++;
+		m_freeList.push_back(ctx);
+	}
+
+	ctx.CommandList->Close();
+	ID3D12CommandList* commandlists[] = {
+		ctx.CommandList.Get()
+	};
+	
+	m_copyQueue->ExecuteCommandLists(1, commandlists);
+	hr = m_copyQueue->Signal(ctx.Fence.Get(), ctx.FenceValue);
+	assert(SUCCEEDED(hr));
+
+	hr = m_device->GetGfxQueue().Queue->Wait(ctx.Fence.Get(), ctx.FenceValue);
+	assert(SUCCEEDED(hr));
+
+	hr = m_device->GetComputeQueue().Queue->Wait(ctx.Fence.Get(), ctx.FenceValue);
+	assert(SUCCEEDED(hr));
+
+	hr = m_device->GetCopyQueue().Queue->Wait(ctx.Fence.Get(), ctx.FenceValue);
+	assert(SUCCEEDED(hr));
+	
+}
+
 phx::gfx::D3D12GpuDevice::D3D12GpuDevice()
 {
 	assert(Singleton == nullptr);
@@ -609,6 +723,7 @@ void phx::gfx::D3D12GpuDevice::Initialize(SwapChainDesc const& swapChainDesc, bo
 	m_gpuTimerManager.Initialize();
 
 	m_emptyRootSignature = CreateEmptyRootSignature();
+	m_copyCtxManager.Initialize(this);
 }
 
 void phx::gfx::D3D12GpuDevice::Finalize()
@@ -622,6 +737,8 @@ void phx::gfx::D3D12GpuDevice::Finalize()
 	}
 
 	m_tempPageAllocator.Finalize();
+	m_copyCtxManager.Finalize();
+
 	FinalizeResourcePools();
 }
 
@@ -1074,6 +1191,7 @@ TextureHandle phx::gfx::D3D12GpuDevice::CreateTexture(TextureDesc const& desc, S
 	textureImpl.MipLevels = desc.MipLevels;
 	textureImpl.ArraySize = desc.ArraySize;
 
+	// TODO: Support aliasing
 	ThrowIfFailed(
 		m_d3d12MemAllocator->CreateResource(
 			&allocationDesc,
@@ -1092,7 +1210,62 @@ TextureHandle phx::gfx::D3D12GpuDevice::CreateTexture(TextureDesc const& desc, S
 
 	if (initialData)
 	{
-		// TODO
+		UINT64 totalSize = 0;
+		std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints(desc.ArraySize * std::max((uint16_t)1u, (desc.MipLevels)));
+		std::vector<UINT> numRows(footprints.size());
+		std::vector<UINT64> rowSizesInBytes((UINT64)footprints.size());
+
+		m_d3d12Device2->GetCopyableFootprints(
+			&resourceDesc,
+			0,
+			(UINT)footprints.size(),
+			0,
+			footprints.data(),
+			numRows.data(),
+			rowSizesInBytes.data(),
+			&totalSize);
+
+
+		CopyCtxManager::Ctx ctx = m_copyCtxManager.Begin(totalSize);
+
+		D3D12Buffer* uploadBufferImpl = m_resourceRegistry.Buffers.Get(ctx.UploadBuffer);
+
+		for (size_t i = 0; i < footprints.size(); ++i)
+		{
+			D3D12_SUBRESOURCE_DATA data = {};
+			data.RowPitch = initialData[i].rowPitch;
+			data.SlicePitch = initialData[i].slicePitch;
+			data.pData = initialData[i].pData;
+
+			if (rowSizesInBytes[i] > (SIZE_T)-1)
+				continue;
+
+			D3D12_MEMCPY_DEST DestData = {};
+			DestData.pData = (void*)((UINT64)ctx.MappedData + footprints[i].Offset);
+			DestData.RowPitch = (SIZE_T)footprints[i].Footprint.RowPitch;
+			DestData.SlicePitch = (SIZE_T)footprints[i].Footprint.RowPitch * (SIZE_T)numRows[i];
+			MemcpySubresource(&DestData, &data, (SIZE_T)rowSizesInBytes[i], numRows[i], footprints[i].Footprint.Depth);
+
+			if (ctx.IsValid())
+			{
+				CD3DX12_TEXTURE_COPY_LOCATION Dst(textureImpl.D3D12Resource.Get(), UINT(i));
+				CD3DX12_TEXTURE_COPY_LOCATION Src(uploadBufferImpl->D3D12Resource.Get(), footprints[i]);
+				ctx.CommandList->CopyTextureRegion(
+					&Dst,
+					0,
+					0,
+					0,
+					&Src,
+					nullptr
+				);
+			}
+		}
+
+		if (ctx.IsValid())
+		{
+			m_copyCtxManager.Submit(ctx);
+		}
+
 	}
 
 	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
