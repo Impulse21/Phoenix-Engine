@@ -26,7 +26,7 @@ namespace phx::gfx::platform
 		std::optional<uint32_t> GraphicsFamily;
 		std::optional<uint32_t> ComputeFamily;
 		std::optional<uint32_t> TransferFamily;
-
+		std::vector<uint32_t> FamiliesVector;
 		bool IsComplete() 
 		{
 			return 
@@ -38,6 +38,23 @@ namespace phx::gfx::platform
 		{
 			assert(IsComplete());
 			return GraphicsFamily != ComputeFamily != TransferFamily;
+		}
+
+		Span<uint32_t> GetFamilies()
+		{
+			if (FamiliesVector.empty())
+			{
+				if (GraphicsFamily.has_value())
+					FamiliesVector.push_back(GraphicsFamily.value());
+
+				if (ComputeFamily.has_value())
+					FamiliesVector.push_back(ComputeFamily.value());
+
+				if (TransferFamily.has_value())
+					FamiliesVector.push_back(TransferFamily.value());
+			}
+
+			return FamiliesVector;
 		}
 	};
 

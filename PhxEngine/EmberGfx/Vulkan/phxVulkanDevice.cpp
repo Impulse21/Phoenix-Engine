@@ -899,13 +899,12 @@ BufferHandle phx::gfx::platform::VulkanGpuDevice::CreateBuffer(BufferDesc const&
 
     if (m_queueFamilies.AreSeperate())
     {
-#if false
         bufferInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
-        bufferInfo.queueFamilyIndexCount = (uint32_t)families.size();
-        bufferInfo.pQueueFamilyIndices = families.data();
-#else
+
+        Span<uint32_t> families = m_queueFamilies.GetFamilies();
+        bufferInfo.queueFamilyIndexCount = (uint32_t)families.Size();
+        bufferInfo.pQueueFamilyIndices = families.begin();
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-#endif
     }
     else
     {
@@ -1121,13 +1120,12 @@ TextureHandle phx::gfx::platform::VulkanGpuDevice::CreateTexture(TextureDesc con
 
     if (m_queueFamilies.AreSeperate())
     {
-#if false
         imageInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
-        imageInfo.queueFamilyIndexCount = (uint32_t)families.size();
-        imageInfo.pQueueFamilyIndices = families.data();
-#else
+
+        Span<uint32_t> families = m_queueFamilies.GetFamilies();
+        imageInfo.queueFamilyIndexCount = (uint32_t)families.Size();
+        imageInfo.pQueueFamilyIndices = families.begin();
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-#endif
     }
     else
     {
