@@ -168,6 +168,9 @@
     <ClInclude Include="EmberGfx\phxCommandCtxInterface.h">
       <Filter>EmberGfx</Filter>
     </ClInclude>
+    <ClInclude Include="phxMath.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">

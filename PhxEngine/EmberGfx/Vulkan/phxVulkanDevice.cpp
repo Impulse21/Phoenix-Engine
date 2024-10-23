@@ -3,6 +3,7 @@
 #include "phxMemory.h"
 #include "phxVulkanCore.h"
 #include "phxVulkanDevice.h"
+#include "phxMath.h"
 
 
 #define VOLK_IMPLEMENTATION
@@ -186,6 +187,7 @@ void phx::gfx::platform::VulkanGpuDevice::Initialize(SwapChainDesc const& swapCh
     CreateFrameResources();
     CreateDefaultResources();
     m_dynamicAllocator.Initialize(this, 256_MiB);
+    m_copyCtxManager.Initialize(this);
 }
 
 void phx::gfx::platform::VulkanGpuDevice::Finalize()
@@ -193,6 +195,7 @@ void phx::gfx::platform::VulkanGpuDevice::Finalize()
     WaitForIdle();
 
     m_dynamicAllocator.Finalize();
+    m_copyCtxManager.Finalize();
 
     RunGarbageCollection();
     DestoryFrameResources();
@@ -2647,15 +2650,7 @@ void phx::gfx::platform::VulkanGpuDevice::Present()
     }
 }
 
-void phx::gfx::platform::VulkanGpuDevice::CommandQueue::Signal(VkSemaphore semaphore)
-{
-}
-
-void phx::gfx::platform::VulkanGpuDevice::CommandQueue::Wait(VkSemaphore semaphore)
-{
-}
-
-void phx::gfx::platform::VulkanGpuDevice::CommandQueue::Submit(VulkanGpuDevice* device, VkFence fence)
+void phx::gfx::platform::CommandQueue::Submit(VulkanGpuDevice* device, VkFence fence)
 {
     if (QueueVk == VK_NULL_HANDLE)
         return;
@@ -2855,4 +2850,190 @@ void phx::gfx::platform::BindlessDescriptorHeap::Initialize(VkDevice device, VkD
     {
         FreeList.push_back((int)descriptorCount - i - 1);
     }
+}
+
+void VulkanGpuDevice::CopyCtxManager::Initialize(VulkanGpuDevice* gpuDevice)
+{
+    m_device = gpuDevice;
+}
+
+void VulkanGpuDevice::CopyCtxManager::Finalize()
+{
+    vkQueueWaitIdle(m_device->GetVkQueue(CommandQueueType::Copy));
+    
+    for (auto& ctx : FreeList)
+    {
+        vkDestroyCommandPool(m_device->GetVkDevice(), ctx.TransferCommandPool, nullptr);
+        vkDestroyCommandPool(m_device->GetVkDevice(), ctx.TransitionCommandPool, nullptr);
+        for (auto& sem : ctx.Semaphores)
+            vkDestroySemaphore(m_device->GetVkDevice(), sem, nullptr);
+
+        vkDestroyFence(m_device->GetVkDevice(), ctx.Fence, nullptr);
+        m_device->DeleteBuffer(ctx.UploadBuffer);
+    }
+}
+
+VulkanGpuDevice::CopyCtxManager::Ctx VulkanGpuDevice::CopyCtxManager::Begin(uint64_t stagingSize)
+{
+    Ctx retVal;
+    {
+        std::scoped_lock _(m_mutex);
+
+        for (size_t i; i < FreeList.size(); i++)
+        {
+            if (FreeList[i].UploadBufferSize >= stagingSize)
+            {
+                if (vkGetFenceStatus(m_device->GetVkDevice(), FreeList[i].Fence) == VK_SUCCESS)
+                {
+                    retVal = FreeList[i];
+                    std::swap(FreeList[i], FreeList.back());
+                    FreeList.pop_back();
+                    break;
+                }
+            }
+        }
+    }
+
+    if (!retVal.IsValid())
+    {
+        VkCommandPoolCreateInfo poolInfo = {};
+        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+        poolInfo.queueFamilyIndex = m_device->m_queueFamilies.TransferFamily.value();
+        VkResult res = vkCreateCommandPool(m_device->GetVkDevice(), &poolInfo, nullptr, &retVal.TransferCommandPool);
+        poolInfo.queueFamilyIndex = m_device->m_queueFamilies.GraphicsFamily.value();
+        res = vkCreateCommandPool(m_device->GetVkDevice(), &poolInfo, nullptr, &retVal.TransitionCommandPool);
+
+        assert(res == VK_SUCCESS);
+
+        VkCommandBufferAllocateInfo commandBufferInfo = {};
+        commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        commandBufferInfo.commandBufferCount = 1;
+        commandBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        commandBufferInfo.commandPool = retVal.TransferCommandPool;
+        res = vkAllocateCommandBuffers(m_device->GetVkDevice(), &commandBufferInfo, &retVal.TransferCommandBuffer);
+        assert(res == VK_SUCCESS);
+
+        commandBufferInfo.commandPool = retVal.TransferCommandPool;
+        res = vkAllocateCommandBuffers(m_device->GetVkDevice(), &commandBufferInfo, &retVal.TransitionCommandBuffer);
+        assert(res == VK_SUCCESS);
+
+        VkFenceCreateInfo fenceInfo = {};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        res = vkCreateFence(m_device->GetVkDevice(), &fenceInfo, nullptr, &retVal.Fence);
+        assert(res == VK_SUCCESS);
+
+        VkSemaphoreCreateInfo semaphoreInfo = {};
+        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        res = vkCreateSemaphore(m_device->GetVkDevice(), &semaphoreInfo, nullptr, &retVal.Semaphores[0]);
+        assert(res == VK_SUCCESS);
+
+        res = vkCreateSemaphore(m_device->GetVkDevice(), &semaphoreInfo, nullptr, &retVal.Semaphores[1]);
+        assert(res == VK_SUCCESS);
+
+        retVal.UploadBufferSize = math::GetNextPowerOfTwo(stagingSize);
+        retVal.UploadBufferSize = std::max(retVal.UploadBufferSize, uint64_t(65536));
+        retVal.UploadBuffer = m_device->CreateBuffer({
+                .Usage = Usage::Upload,
+                .SizeInBytes = retVal.UploadBufferSize});
+
+        assert(retVal.UploadBuffer.IsValid());
+    }
+
+    // begin command list in valid state:
+    VkResult res = vkResetCommandPool(m_device->GetVkDevice(), retVal.TransferCommandPool, 0);
+    assert(res == VK_SUCCESS);
+    res = vkResetCommandPool(m_device->GetVkDevice(), retVal.TransitionCommandPool, 0);
+    assert(res == VK_SUCCESS);
+
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    beginInfo.pInheritanceInfo = nullptr;
+
+    res = vkBeginCommandBuffer(retVal.TransferCommandBuffer, &beginInfo);
+    assert(res == VK_SUCCESS);
+
+    res = vkBeginCommandBuffer(retVal.TransitionCommandBuffer, &beginInfo);
+    assert(res == VK_SUCCESS);
+
+    res = vkResetFences(m_device->GetVkDevice(), 1, &retVal.Fence);
+    assert(res == VK_SUCCESS);
+
+    return retVal;
+}
+
+void VulkanGpuDevice::CopyCtxManager::Submit(Ctx ctx)
+{
+    VkResult res = vkEndCommandBuffer(ctx.TransferCommandBuffer);
+    assert(res == VK_SUCCESS);
+
+    VkSubmitInfo2 submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+
+    VkCommandBufferSubmitInfo cbSubmitInfo = {};
+    cbSubmitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+
+    VkSemaphoreSubmitInfo signalSemaphoreInfos[2] = {};
+    signalSemaphoreInfos[0].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    signalSemaphoreInfos[1].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+
+    VkSemaphoreSubmitInfo waitSemaphoreInfo = {};
+    waitSemaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+
+    {
+        cbSubmitInfo.commandBuffer = ctx.TransferCommandBuffer;
+        signalSemaphoreInfos[0].semaphore = ctx.Semaphores[0]; // signal for graphics queue
+        signalSemaphoreInfos[0].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+
+        submitInfo.commandBufferInfoCount = 1;
+        submitInfo.pCommandBufferInfos = &cbSubmitInfo;
+        submitInfo.signalSemaphoreInfoCount = 1;
+        submitInfo.pSignalSemaphoreInfos = signalSemaphoreInfos;
+
+        std::scoped_lock _(m_device->GetQueue(CommandQueueType::Copy).m_mutex);
+        res = vkQueueSubmit2(m_device->GetVkQueue(CommandQueueType::Copy), 1, &submitInfo, VK_NULL_HANDLE);
+        assert(res == VK_SUCCESS);
+    }
+
+    {
+        waitSemaphoreInfo.semaphore = ctx.Semaphores[0]; // wait for copy queue
+        waitSemaphoreInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+
+        cbSubmitInfo.commandBuffer = ctx.TransitionCommandBuffer;
+        signalSemaphoreInfos[0].semaphore = ctx.Semaphores[1]; // signal for compute queue
+        signalSemaphoreInfos[0].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT; // signal for compute queue
+
+        submitInfo.waitSemaphoreInfoCount = 1;
+        submitInfo.pWaitSemaphoreInfos = &waitSemaphoreInfo;
+        submitInfo.commandBufferInfoCount = 1;
+        submitInfo.pCommandBufferInfos = &cbSubmitInfo;
+        submitInfo.signalSemaphoreInfoCount = 1;
+        submitInfo.pSignalSemaphoreInfos = signalSemaphoreInfos;
+
+        std::scoped_lock _(m_device->GetQueue(CommandQueueType::Graphics).m_mutex);
+        res = vkQueueSubmit2(m_device->GetVkQueue(CommandQueueType::Graphics), 1, &submitInfo, VK_NULL_HANDLE);
+        assert(res == VK_SUCCESS);
+    }
+
+
+    // This must be final submit in this function because it will also signal a fence for state tracking by CPU!
+    {
+        waitSemaphoreInfo.semaphore = ctx.Semaphores[1]; // wait for graphics queue
+        waitSemaphoreInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+
+        submitInfo.waitSemaphoreInfoCount = 1;
+        submitInfo.pWaitSemaphoreInfos = &waitSemaphoreInfo;
+        submitInfo.commandBufferInfoCount = 0;
+        submitInfo.pCommandBufferInfos = nullptr;
+        submitInfo.signalSemaphoreInfoCount = 0;
+        submitInfo.pSignalSemaphoreInfos = nullptr;
+
+        std::scoped_lock lock(m_device->GetQueue(CommandQueueType::Compute).m_mutex);
+        res = vkQueueSubmit2(m_device->GetVkQueue(CommandQueueType::Compute), 1, &submitInfo, ctx.Fence); // final submit also signals fence!
+        assert(res == VK_SUCCESS);
+    }
+
+    std::scoped_lock _(m_mutex);
+    FreeList.push_back(ctx);
 }

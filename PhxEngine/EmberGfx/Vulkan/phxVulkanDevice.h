@@ -237,6 +237,20 @@ namespace phx::gfx::platform
 		}
 	};
 
+	struct CommandQueue
+	{
+		VkQueue QueueVk = VK_NULL_HANDLE;
+
+		std::vector<VkSemaphoreSubmitInfo> SubmitWaitSemaphoreInfos;
+		std::vector<VkSemaphore> SubmitSignalSemaphores;
+		std::vector<VkSemaphoreSubmitInfo> SubmitSignalSemaphoreInfos;
+		std::vector<VkCommandBufferSubmitInfo> SubmitCmds;
+
+		std::mutex m_mutex;
+
+		void Submit(VulkanGpuDevice* device, VkFence fence);
+	};
+
 	class VulkanGpuDevice final : public IGpuDevice
 	{
 		friend CommandCtx_Vulkan;
@@ -281,6 +295,8 @@ namespace phx::gfx::platform
 		uint32_t GetBufferIndex() const { return m_frameCount % kBufferCount; }
 
 		VkQueue GetVkQueue(CommandQueueType type) { return m_queues[type].QueueVk; }
+		CommandQueue& GetQueue(CommandQueueType type) { return m_queues[type]; }
+
 	private:
 		void CreateInstance();
 		void SetupDebugMessenger();
@@ -354,22 +370,6 @@ namespace phx::gfx::platform
 		VkPhysicalDeviceMeshShaderFeaturesEXT m_meshShaderFeatures = {};
 
 		QueueFamilyIndices m_queueFamilies;
-		struct CommandQueue
-		{
-			VkQueue QueueVk = VK_NULL_HANDLE;
-
-			std::vector<VkSemaphoreSubmitInfo> SubmitWaitSemaphoreInfos;
-			std::vector<VkSemaphore> SubmitSignalSemaphores;
-			std::vector<VkSemaphoreSubmitInfo> SubmitSignalSemaphoreInfos;
-			std::vector<VkCommandBufferSubmitInfo> SubmitCmds;
-
-			std::mutex m_mutex;
-
-			void Signal(VkSemaphore semaphore);
-			void Wait(VkSemaphore semaphore);
-			void Submit(VulkanGpuDevice* device, VkFence fence);
-		};
-
 		EnumArray<CommandQueue, CommandQueueType> m_queues;
 
 		VkSurfaceKHR m_vkSurface;
@@ -435,6 +435,8 @@ namespace phx::gfx::platform
 			{
 				VkCommandPool TransferCommandPool = VK_NULL_HANDLE;
 				VkCommandBuffer TransferCommandBuffer = VK_NULL_HANDLE;
+				VkCommandPool TransitionCommandPool = VK_NULL_HANDLE;
+				VkCommandBuffer TransitionCommandBuffer = VK_NULL_HANDLE;
 				VkFence Fence = VK_NULL_HANDLE;
 				std::array<VkSemaphore, 2> Semaphores = { VK_NULL_HANDLE, VK_NULL_HANDLE }; // Gfx, Compute
 				BufferHandle UploadBuffer;
@@ -451,6 +453,7 @@ namespace phx::gfx::platform
 
 		private:
 			VulkanGpuDevice* m_device;
+			std::mutex m_mutex;
 		} m_copyCtxManager;
 
 	};
