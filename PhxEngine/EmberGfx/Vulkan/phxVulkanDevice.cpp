@@ -966,9 +966,9 @@ BufferHandle phx::gfx::platform::VulkanGpuDevice::CreateBuffer(BufferDesc const&
                     &impl.BufferVk);
 
             }
+		}
 
-            assert(res == VK_SUCCESS);
-        }
+		assert(res == VK_SUCCESS);
     }
 
     // TODO Set up Mappings
@@ -1791,6 +1791,67 @@ void phx::gfx::platform::VulkanGpuDevice::PickPhysicalDevice()
 	}
 
     m_extManager.ObtainDeviceExtensions(m_vkPhysicalDevice);
+
+    // Print device info.
+	VkPhysicalDeviceMemoryProperties memProperties;
+	vkGetPhysicalDeviceMemoryProperties(m_vkPhysicalDevice, &memProperties);
+
+	PHX_CORE_INFO("[Vulkan] Selected device Memory heaps:");
+	// Print memory usage for each heap
+	for (uint32_t i = 0; i < memProperties.memoryHeapCount; ++i)
+	{
+		VkMemoryHeap heap = memProperties.memoryHeaps[i];
+
+		std::string type = {};
+
+		// Step 3: Check heap type based on flags
+		if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+		{
+			type = "Device Local (GPU memory)";
+		}
+		else
+		{
+			type = "Host Visible (CPU accessible)";
+		}
+
+		if (heap.flags & VK_MEMORY_HEAP_MULTI_INSTANCE_BIT)
+		{
+			type = "Multi-instance heap";
+		}
+
+		PHX_CORE_INFO("\tHeap {0} - {1}: {2} bytes", i, type.c_str(), heap.size);
+	}
+
+	PHX_CORE_INFO("[Vulkan] Selected device Memory types:");
+	// Print memory usage for each heap
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; ++i)
+	{
+		VkMemoryType memoryType = memProperties.memoryTypes[i];
+
+		std::stringstream ss = {};
+		// Translate property flags into human-readable form
+		if (memoryType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
+			ss << "Device Local | ";
+		}
+		if (memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+			ss << "Host Visible | ";
+		}
+		if (memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) {
+			ss << "Host Coherent | ";
+		}
+		if (memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) {
+			ss << "Host Cached | ";
+		}
+		if (memoryType.propertyFlags & VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT) {
+			ss << "Lazily Allocated | ";
+		}
+
+        std::string properties = ss.str();
+        if (properties.empty())
+            continue;
+
+		PHX_CORE_INFO("\tHeap {0} - {1}", memoryType.heapIndex, properties.c_str());
+	}
 }
 
 bool phx::gfx::platform::VulkanGpuDevice::IsDeviceSuitable(VkPhysicalDevice device, std::vector<const char*>& enableExtensions)
@@ -2299,63 +2360,11 @@ void phx::gfx::platform::VulkanGpuDevice::CreateVma()
         throw std::runtime_error("vmaCreateAllocator failed!");
     }
 
-    VkPhysicalDeviceMemoryProperties memProperties;
-    vkGetPhysicalDeviceMemoryProperties(m_vkPhysicalDevice, &memProperties);
-
+#if false
     VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
     vmaGetHeapBudgets(m_vmaAllocator, budgets);
-    PHX_CORE_INFO("[Vulkan] Memory heap budgets:");
-    // Print memory usage for each heap
-    for (uint32_t i = 0; i < memProperties.memoryHeapCount; ++i) 
-    {
-        VkMemoryHeap heap =  memProperties.memoryHeaps[i];
-
-        std::string type = {};
-
-		// Step 3: Check heap type based on flags
-		if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
-        {
-			type = "Device Local (GPU memory)";
-		}
-		else
-        {
-			type = "Host Visible (CPU accessible)";
-		}
-
-		if (heap.flags & VK_MEMORY_HEAP_MULTI_INSTANCE_BIT)
-        {
-			type = "Multi-instance heap";
-        }
-
-        PHX_CORE_INFO("\tHeap {0} - {1}: {2}/{3}mb Budget: {4}mb, Block bytes: {5}mb]", i, type.c_str(), budgets[i].usage >> 20, heap.size >> 20, budgets[i].budget >> 20, budgets[i].statistics.blockBytes >> 20);
-    }
-
-	PHX_CORE_INFO("[Vulkan] Memory heap types:");
-	// Print memory usage for each heap
-	for (uint32_t i = 0; i < memProperties.memoryTypeCount; ++i)
-	{
-		VkMemoryType memoryType = memProperties.memoryTypes[i];
-
-		std::stringstream ss = {};
-		// Translate property flags into human-readable form
-		if (memoryType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
-			ss << "Device Local | ";
-		}
-		if (memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-			ss << "Host Visible | ";
-		}
-		if (memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) {
-			ss << "Host Coherent | ";
-		}
-		if (memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) {
-			ss << "Host Cached | ";
-		}
-		if (memoryType.propertyFlags & VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT) {
-			ss << "Lazily Allocated | ";
-		}
-
-		PHX_CORE_INFO("\tHeap {0} - Memory Types {1}", memoryType.heapIndex, ss.str().c_str());
-	}
+#endif
+    
 
     std::vector<VkExternalMemoryHandleTypeFlags> externalMemoryHandleTypes;
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
