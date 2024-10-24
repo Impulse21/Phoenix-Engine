@@ -153,7 +153,7 @@ namespace phx::math
 
 		static AABB Merge(AABB const& a, AABB const& b)
 		{
-			return AABB(Math::Min(a.Min, b.Min), Math::Max(a.Max, b.Max));
+			return AABB(math::Min(a.Min, b.Min), math::Max(a.Max, b.Max));
 		}
 	};
 
