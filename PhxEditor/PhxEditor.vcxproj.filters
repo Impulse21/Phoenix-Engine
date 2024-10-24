@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="EditorAssetStore.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="EditorAssetStore.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <MGCCompile Include="MicrosoftGameConfig.mgc" />
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="GraphicsLogo.png" />
+    <CopyFileToFolders Include="LargeLogo.png" />
+    <CopyFileToFolders Include="SmallLogo.png" />
+    <CopyFileToFolders Include="SplashScreen.png" />
+    <CopyFileToFolders Include="StoreLogo.png" />
+    <CopyFileToFolders Include="Shaders\TestShader.hlsl">
+      <Filter>Shaders</Filter>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{57a9cdfc-5cfd-4736-83d0-17474c0539b0}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="Shaders\BuildShaders.txt">
+      <Filter>Shaders</Filter>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+</Project>

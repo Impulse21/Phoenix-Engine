@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <OutDir>$(SolutionDir)Output\$(Platform)$(Configuration)\</OutDir>
+    <IntermediateOutputPath>$(SolutionDir)Build\$(Platform)$(Configuration)\</IntermediateOutputPath>
+    <MSBuildLogFilePath>$(SolutionDir)Build\Logs\$(MSBuildProjectName)-$(Configuration)-$(Platform).log</MSBuildLogFilePath>
+		<LanguageStandard>stdcpp20</LanguageStandard>
+  </PropertyGroup>
+</Project>

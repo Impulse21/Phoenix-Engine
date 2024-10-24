@@ -1,5 +1,5 @@
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.22)
 
 # Group CMakePredefinedTargets into a folder filter
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -21,27 +21,15 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 
+include(CMakeDependentOption)
+cmake_dependent_option(PHX_WITH_DX12 "Enable the DX12 version of Donut" ON "WIN32" OFF)
+
 add_definitions(-DUNICODE)
 add_definitions(-D_UNICODE)
+add_compile_definitions(NOMINMAX)
 
 add_subdirectory(PhxEngine)
-add_subdirectory(PhxEngine-Runtime)
-#add_subdirectory(PhxEngine-AssetBaker)
-add_subdirectory(PhxEngine-Editor)
-
-# Disabling Samples as I work through things
-#add_subdirectory(Examples/BasicTriangle)
-#add_subdirectory(Examples/ImGuiDemo)
-#add_subdirectory(Examples/GPUCulling)
-#add_subdirectory(Examples/DirectLighting)
-#add_subdirectory(Examples/ClusterLighting)
-#add_subdirectory(Examples/Shadows)
-#add_subdirectory(Examples/IndirectLighting)
-
-#add_subdirectory(Examples/ThreadedRendering)
-#add_subdirectory(Examples/DeferredRendering)
-#add_subdirectory(Examples/VisibilityBufferRendering)
-#add_subdirectory(Examples/Meshlet)
-#add_subdirectory(Examples/IndirectDraw)
-
-
+add_subdirectory(PhxEditor)
+# add_subdirectory(Tests)
+#add_subdirectory(Tools/PhxAssetConverter)
+add_subdirectory(Tools/PhxShaderCompiler)

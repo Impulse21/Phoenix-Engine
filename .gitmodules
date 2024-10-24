@@ -1,37 +1,31 @@
+[submodule "PhxEngine/Extern/optick"]
+	path = PhxEngine/Extern/optick
+	url = https://github.com/bombomby/optick.git
 [submodule "PhxEngine/Extern/glfw"]
 	path = PhxEngine/Extern/glfw
 	url = https://github.com/glfw/glfw.git
-[submodule "PhxEngine/Extern/imgui"]
-	path = PhxEngine/Extern/imgui
-	url = https://github.com/ocornut/imgui.git
-	branch = docking
-[submodule "PhxEngine/Extern/DirectXTex"]
-	path = PhxEngine/Extern/DirectXTex
-	url = https://github.com/microsoft/DirectXTex.git
-[submodule "PhxEngine/Extern/DirectX-Headers"]
-	path = PhxEngine/Extern/DirectX-Headers
-	url = https://github.com/microsoft/DirectX-Headers.git
-[submodule "PhxEngine/Extern/cgltf"]
-	path = PhxEngine/Extern/cgltf
-	url = https://github.com/jkuhlmann/cgltf.git
-[submodule "PhxEngine/Extern/stb"]
-	path = PhxEngine/Extern/stb
-	url = https://github.com/nothings/stb.git
-[submodule "PhxEngine/Extern/DirectXMesh"]
-	path = PhxEngine/Extern/DirectXMesh
-	url = https://github.com/microsoft/DirectXMesh.git
-[submodule "PhxEngine/Extern/EASTL"]
-	path = PhxEngine/Extern/EASTL
-	url = https://github.com/electronicarts/EASTL.git
 [submodule "PhxEngine/Extern/D3D12MemoryAllocator"]
 	path = PhxEngine/Extern/D3D12MemoryAllocator
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
-[submodule "PhxEngine/Extern/mimalloc"]
-	path = PhxEngine/Extern/mimalloc
-	url = https://github.com/microsoft/mimalloc.git
+[submodule "PhxEngine/Extern/DirectX-Headers"]
+	path = PhxEngine/Extern/DirectX-Headers
+	url = https://github.com/microsoft/DirectX-Headers.git
+[submodule "Tools/PhxAssetConverter/Extern/cgltf"]
+	path = Tools/PhxAssetConverter/Extern/cgltf
+	url = https://github.com/jkuhlmann/cgltf.git
+[submodule "Tools/PhxAssetConverter/Extern/meshoptimizer"]
+	path = Tools/PhxAssetConverter/Extern/meshoptimizer
+	url = https://github.com/zeux/meshoptimizer.git
+[submodule "Tools/PhxAssetConverter/Extern/DirectXTex"]
+	path = Tools/PhxAssetConverter/Extern/DirectXTex
+	url = https://github.com/microsoft/DirectXTex.git
 [submodule "PhxEngine/Extern/taskflow"]
 	path = PhxEngine/Extern/taskflow
 	url = https://github.com/taskflow/taskflow.git
-[submodule "PhxEngine/Extern/enkiTS"]
-	path = PhxEngine/Extern/enkiTS
-	url = https://github.com/dougbinks/enkiTS.git
+[submodule "PhxEngine/Extern/imgui"]
+	path = PhxEngine/Extern/imgui
+	url = https://github.com/ocornut/imgui.git
+    branch = docking
+[submodule "PhxEngine/Extern/yaml-cpp"]
+	path = PhxEngine/Extern/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp.git
