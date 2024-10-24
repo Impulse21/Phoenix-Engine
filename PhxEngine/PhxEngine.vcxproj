@@ -311,7 +311,6 @@
     <ClInclude Include="EmberGfx\phxCommandCtxInterface.h" />
     <ClInclude Include="EmberGfx\phxImGuiRenderer.h" />
     <ClInclude Include="EmberGfx\phxEmber.h" />
-    <ClInclude Include="EmberGfx\phxFontRenderer.h" />
     <ClInclude Include="EmberGfx\phxGfxDeviceResources.h" />
     <ClInclude Include="EmberGfx\phxHandle.h" />
     <ClInclude Include="EmberGfx\phxHandlePool.h" />
@@ -349,7 +348,6 @@
     <ClCompile Include="EmberGfx\ImGui\imgui_impl_win32.cpp" />
     <ClCompile Include="EmberGfx\phxImGuiRenderer.cpp" />
     <ClCompile Include="EmberGfx\phxEmber.cpp" />
-    <ClCompile Include="EmberGfx\phxFontRenderer.cpp" />
     <ClCompile Include="EmberGfx\phxShaderCompiler_DXC.cpp" />
     <ClCompile Include="EmberGfx\Vulkan\phxVulkanCommandCtx.cpp" />
     <ClCompile Include="EmberGfx\Vulkan\phxVulkanDevice.cpp" />

@@ -108,9 +108,6 @@
     <ClInclude Include="3rdParty\stb\stb_truetype.h">
       <Filter>Header Files\3rdParty</Filter>
     </ClInclude>
-    <ClInclude Include="EmberGfx\phxFontRenderer.h">
-      <Filter>EmberGfx</Filter>
-    </ClInclude>
     <ClInclude Include="3rdParty\stb\stb_perlin.h">
       <Filter>Header Files\3rdParty</Filter>
     </ClInclude>
@@ -211,9 +208,6 @@
     </ClCompile>
     <ClCompile Include="EmberGfx\D3D12\phxCommandCtxD3D12.cpp">
       <Filter>EmberGfx\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="EmberGfx\phxFontRenderer.cpp">
-      <Filter>EmberGfx</Filter>
     </ClCompile>
     <ClCompile Include="EmberGfx\phxImGuiRenderer.cpp">
       <Filter>EmberGfx</Filter>

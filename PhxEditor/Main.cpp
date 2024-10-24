@@ -51,8 +51,8 @@ namespace temp
 	struct Drawable
 	{
 	public:
-		Math::Sphere m_boudingSphere;
-		Math::AABB m_boundingBox;
+		math::Sphere m_boudingSphere;
+		math::AABB m_boundingBox;
 		uint32_t m_numMeshes;
 		
 		gfx::BufferHandle m_dataBuffer;
