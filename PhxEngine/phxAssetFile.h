@@ -12,9 +12,13 @@ namespace phx::assets
 	constexpr uint32_t kCurrentFileVersion = 1;
 	struct AssetFile
 	{
-		uint32_t ID;
-		uint32_t Version = kCurrentFileVersion;
-		std::string json;
+		struct HeaderDef
+		{
+			uint32_t ID;
+			uint32_t Version = kCurrentFileVersion;
+		} Header;
+
+		std::string JsonMetadata;
 		std::vector<char> BinaryBlob;
 	};
 

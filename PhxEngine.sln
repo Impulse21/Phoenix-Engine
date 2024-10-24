@@ -15,6 +15,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "spriv-reflect", "PhxEngine\
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Volk", "PhxEngine\3rdParty\volk\Volk.vcxproj", "{DBD0B9C6-76C9-489A-9BB7-1526EF1C2228}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "D3D12MA", "PhxEngine\3rdParty\d3d12ma\D3D12MA.vcxproj", "{C452F962-6478-43E7-A79B-B2C3CB570E31}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Gaming.Desktop.x64 = Debug|Gaming.Desktop.x64
@@ -151,6 +153,30 @@ Global
 		{DBD0B9C6-76C9-489A-9BB7-1526EF1C2228}.Release|x64.Build.0 = Release|x64
 		{DBD0B9C6-76C9-489A-9BB7-1526EF1C2228}.Release|x86.ActiveCfg = Release|Win32
 		{DBD0B9C6-76C9-489A-9BB7-1526EF1C2228}.Release|x86.Build.0 = Release|Win32
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Debug|Gaming.Desktop.x64.ActiveCfg = Debug|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Debug|Gaming.Desktop.x64.Build.0 = Debug|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Debug|Windows.ActiveCfg = Debug|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Debug|Windows.Build.0 = Debug|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Debug|x64.ActiveCfg = Debug|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Debug|x64.Build.0 = Debug|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Debug|x86.ActiveCfg = Debug|Win32
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Debug|x86.Build.0 = Debug|Win32
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Profile|Gaming.Desktop.x64.ActiveCfg = Debug|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Profile|Gaming.Desktop.x64.Build.0 = Debug|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Profile|Windows.ActiveCfg = Debug|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Profile|Windows.Build.0 = Debug|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Profile|x64.ActiveCfg = Debug|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Profile|x64.Build.0 = Debug|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Profile|x86.ActiveCfg = Debug|Win32
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Profile|x86.Build.0 = Debug|Win32
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Release|Gaming.Desktop.x64.ActiveCfg = Release|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Release|Gaming.Desktop.x64.Build.0 = Release|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Release|Windows.ActiveCfg = Release|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Release|Windows.Build.0 = Release|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Release|x64.ActiveCfg = Release|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Release|x64.Build.0 = Release|x64
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Release|x86.ActiveCfg = Release|Win32
+		{C452F962-6478-43E7-A79B-B2C3CB570E31}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -159,6 +185,7 @@ Global
 		{B7A38D2E-F239-4286-AFAE-050F8DBFAEBB} = {881EF9A0-9236-474D-9E7D-B202EB9D0C0C}
 		{58155BD6-55FC-4FF6-8E18-4E3FFF218115} = {881EF9A0-9236-474D-9E7D-B202EB9D0C0C}
 		{DBD0B9C6-76C9-489A-9BB7-1526EF1C2228} = {881EF9A0-9236-474D-9E7D-B202EB9D0C0C}
+		{C452F962-6478-43E7-A79B-B2C3CB570E31} = {881EF9A0-9236-474D-9E7D-B202EB9D0C0C}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BB3675E6-A457-4437-ABD4-94CC9C23DDDE}

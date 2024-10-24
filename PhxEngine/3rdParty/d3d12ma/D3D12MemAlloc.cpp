@@ -19,7 +19,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-#include "pch.h"
 #include "D3D12MemAlloc.h"
 
 #include <combaseapi.h>

@@ -317,6 +317,7 @@
     <ClInclude Include="EmberGfx\Vulkan\phxVulkanManager.h" />
     <ClInclude Include="EmberGfx\Vulkan\phxVulkanCore.h" />
     <ClInclude Include="phxAssetFile.h" />
+    <ClInclude Include="phxBinaryBuilder.h" />
     <ClInclude Include="phxDeferredReleaseQueue.h" />
     <ClInclude Include="phxEngineProfiler.h" />
     <ClInclude Include="phxEnumUtils.h" />
@@ -392,6 +393,9 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="3rdParty\d3d12ma\D3D12MA.vcxproj">
+      <Project>{c452f962-6478-43e7-a79b-b2c3cb570e31}</Project>
+    </ProjectReference>
     <ProjectReference Include="3rdParty\ImGui\ImGui.vcxproj">
       <Project>{b7a38d2e-f239-4286-afae-050f8dbfaebb}</Project>
     </ProjectReference>

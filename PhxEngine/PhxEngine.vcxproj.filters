@@ -115,7 +115,10 @@
     <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h">
       <Filter>EmberGfx\D3D12</Filter>
     </ClInclude>
-    <ClInclude Include="phxAssetFile.h" />
+    <ClInclude Include="phxBinaryBuilder.h" />
+    <ClInclude Include="phxAssetFile.h">
+      <Filter>Assets</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EmberGfx\phxEmber.cpp">
@@ -167,7 +170,9 @@
     <ClCompile Include="phxSystemTimer.cpp" />
     <ClCompile Include="phxVFS.cpp" />
     <ClCompile Include="phxMemory.cpp" />
-    <ClCompile Include="phxAssetFile.cpp" />
+    <ClCompile Include="phxAssetFile.cpp">
+      <Filter>Assets</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
