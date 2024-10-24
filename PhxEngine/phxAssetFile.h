@@ -18,7 +18,7 @@ namespace phx::assets
 		std::vector<char> BinaryBlob;
 	};
 
-	bool LoadBinaryFile(IFileSystem* fs, const char* path, AssetFile& loadAssetFile);
-	bool SaveBinaryFile(IFileSystem* fs, const char* path, AssetFile const& loadAssetFile);
+	bool LoadBinaryFile(IFileSystem* fs, const char* path, AssetFile& assetFile);
+	bool SaveBinaryFile(IFileSystem* fs, const char* path, AssetFile const& assetFile);
 }
 
