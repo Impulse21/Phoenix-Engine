@@ -295,9 +295,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="3rdParty\d3d12ma\D3D12MemAlloc.h" />
-    <ClInclude Include="3rdParty\stb\stb_perlin.h" />
-    <ClInclude Include="3rdParty\stb\stb_rect_pack.h" />
-    <ClInclude Include="3rdParty\stb\stb_truetype.h" />
     <ClInclude Include="3rdParty\vma\vk_mem_alloc.h" />
     <ClInclude Include="EmberGfx\D3D12\phxCommandCtxD3D12.h" />
     <ClInclude Include="EmberGfx\D3D12\phxDynamicMemoryPageAllocatorD3D12.h" />
@@ -319,6 +316,7 @@
     <ClInclude Include="EmberGfx\Vulkan\phxVulkanDevice.h" />
     <ClInclude Include="EmberGfx\Vulkan\phxVulkanManager.h" />
     <ClInclude Include="EmberGfx\Vulkan\phxVulkanCore.h" />
+    <ClInclude Include="phxAssetFile.h" />
     <ClInclude Include="phxDeferredReleaseQueue.h" />
     <ClInclude Include="phxEngineProfiler.h" />
     <ClInclude Include="phxEnumUtils.h" />
@@ -327,7 +325,6 @@
     <ClInclude Include="phxDisplay.h" />
     <ClInclude Include="phxEngineCore.h" />
     <ClInclude Include="phxLog.h" />
-    <ClInclude Include="phxMath.h" />
     <ClInclude Include="phxMemory.h" />
     <ClInclude Include="phxPlatform.h" />
     <ClInclude Include="phxPlatformDetection.h" />
@@ -338,7 +335,6 @@
     <ClInclude Include="phxVFS.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="3rdParty\d3d12ma\D3D12MemAlloc.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxCommandCtxD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxDynamicMemoryPageAllocatorD3D12.cpp" />
     <ClCompile Include="EmberGfx\D3D12\phxGfxDescriptorHeapsD3D12.cpp" />
@@ -352,6 +348,7 @@
     <ClCompile Include="EmberGfx\Vulkan\phxVulkanCommandCtx.cpp" />
     <ClCompile Include="EmberGfx\Vulkan\phxVulkanDevice.cpp" />
     <ClCompile Include="EmberGfx\Vulkan\phxVulkanManager.cpp" />
+    <ClCompile Include="phxAssetFile.cpp" />
     <ClCompile Include="phxDeferredReleaseQueue.cpp" />
     <ClCompile Include="phxCommandLineArgs.cpp" />
     <ClCompile Include="pch.cpp">

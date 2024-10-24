@@ -12,6 +12,8 @@
 
 #include "EmberGfx/phxImGuiRenderer.h"
 #include "EmberGfx/phxShaderCompiler.h"
+#include "phxCommandLineArgs.h"
+
 #include "phxVFS.h"
 #include "phxSystemTime.h"
 
@@ -69,16 +71,33 @@ public:
 		m_fs = phx::FileSystemFactory::CreateRootFileSystem();
 		phx::FS::RootPtr = m_fs.get();
 
+		std::string projectDir;
+		bool hasProjectPath = false;
+		{
+			std::wstring projectDirW;
+			hasProjectPath = phx::CommandLineArgs::GetString(L"project_dir", projectDirW);
+			StringConvert(projectDirW, projectDir);
+		}
+
+		std::filesystem::path projectDirPath = projectDir;
+		if (!hasProjectPath)
+		{
+			PHX_WARN("No project_dir defined, defaulting to working directory");
+			projectDirPath = phx::FS::GetDirectoryWithExecutable();
+		}
+
 		std::filesystem::path applicationShaderPath = phx::FS::GetDirectoryWithExecutable() / "shaders/application";
 		std::filesystem::path frameworkShaderPath = phx::FS::GetDirectoryWithExecutable() / "shaders/engine";
-		std::filesystem::path compiledShadersPath = phx::FS::GetDirectoryWithExecutable() / "shaders/dxli";
+		std::filesystem::path assetsPath = projectDirPath / "assets";
+		std::filesystem::path assetsCachePath = projectDirPath / "assets/.cache";
 
 		m_fs->Mount("/native", phx::FileSystemFactory::CreateNativeFileSystem());
 		m_fs->Mount("/shaders", applicationShaderPath);
 		m_fs->Mount("/shaders_engine", frameworkShaderPath);
-		m_fs->Mount("/shaders_compiled", compiledShadersPath);
+		m_fs->Mount("/assets", assetsPath);
+		m_fs->Mount("/assets_cache", assetsCachePath);
 
-
+		// Try to load asset
 		phx::gfx::GpuDevice* device = phx::gfx::EmberGfx::GetDevice();
 
 		phx::gfx::ShaderCompiler::Output testShaderVSOutput = phx::gfx::ShaderCompiler::Compile({
