@@ -2,7 +2,7 @@
 
 
 #include "ModelImporter.h"
-#include <Core/phxMath.h>
+#include "phxMath.h"
 #include <unordered_map>
 #include <vector>
 #include <memory>
@@ -13,7 +13,7 @@ struct cgltf_texture;
 struct cgltf_data;
 struct cgltf_node;
 
-namespace phx
+namespace phxed
 {
 	class IBlob;
 	class IFileSystem;
@@ -37,8 +37,8 @@ namespace phx
 		void BuildMaterials(ModelData& outModel);
 		size_t WalkGraphRec(
 			std::vector<GraphNode>& sceneGraph,
-			Sphere& modelBSphere,
-			AABB& modelBBox,
+			phx::math::Sphere& modelBSphere,
+			phx::math::AABB& modelBBox,
 			std::vector<Mesh*>& meshList,
 			std::vector<uint8_t>& bufferMemory,
 			cgltf_node** siblings,
@@ -53,8 +53,8 @@ namespace phx
 			size_t matrixIdx,
 			const DirectX::XMMATRIX& localToObject,
 			size_t skinIndex,
-			Sphere& boundingSphere,
-			AABB& boundingBox);
+			phx::math::Sphere& boundingSphere,
+			phx::math::AABB& boundingBox);
 
 	private:
 		IFileSystem* m_fs = nullptr;

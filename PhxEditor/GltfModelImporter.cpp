@@ -9,7 +9,7 @@
 #include <Core/phxMath.h>
 #include <Core/phxMemory.h>
 #include <Core/phxBinaryBuilder.h>
-z
+
 #include <RHI/PhxRHI.h>
 
 #include <Renderer/phxConstantBuffers.h>
