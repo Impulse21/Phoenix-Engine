@@ -3,11 +3,20 @@
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="EditorAssetStore.h" />
+    <ClInclude Include="ModelImporter.h">
+      <Filter>Importers</Filter>
+    </ClInclude>
+    <ClInclude Include="GltfModelImporter.h">
+      <Filter>Importers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="EditorAssetStore.cpp" />
+    <ClCompile Include="GltfModelImporter.cpp">
+      <Filter>Importers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <MGCCompile Include="MicrosoftGameConfig.mgc" />
@@ -25,6 +34,9 @@
   <ItemGroup>
     <Filter Include="Shaders">
       <UniqueIdentifier>{57a9cdfc-5cfd-4736-83d0-17474c0539b0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Importers">
+      <UniqueIdentifier>{a2348583-8b5d-404e-9f75-6872a5574f71}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
