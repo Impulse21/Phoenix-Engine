@@ -15,6 +15,19 @@ struct cgltf_node;
 
 namespace phxed
 {
+	struct GraphNode // 96 bytes
+	{
+		DirectX::XMMATRIX Xform;
+		DirectX::XMFLOAT4 Dotation;
+		DirectX::XMFLOAT3 scale;
+
+		uint32_t matrixIdx : 28;
+		uint32_t hasSibling : 1;
+		uint32_t hasChildren : 1;
+		uint32_t staleMatrix : 1;
+		uint32_t skeletonRoot : 1;
+	};
+
 	class IBlob;
 	class IFileSystem;
 	struct CgltfContext
