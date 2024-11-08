@@ -119,6 +119,8 @@
     <ClInclude Include="phxAssetFile.h">
       <Filter>Assets</Filter>
     </ClInclude>
+    <ClInclude Include="phxJobSystem.h" />
+    <ClInclude Include="phxRingBuffer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EmberGfx\phxEmber.cpp">
@@ -173,6 +175,7 @@
     <ClCompile Include="phxAssetFile.cpp">
       <Filter>Assets</Filter>
     </ClCompile>
+    <ClCompile Include="phxJobSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

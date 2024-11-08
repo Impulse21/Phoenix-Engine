@@ -6,17 +6,11 @@
     <ClInclude Include="ModelImporter.h">
       <Filter>Importers</Filter>
     </ClInclude>
-    <ClInclude Include="GltfModelImporter.h">
-      <Filter>Importers</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="EditorAssetStore.cpp" />
-    <ClCompile Include="GltfModelImporter.cpp">
-      <Filter>Importers</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <MGCCompile Include="MicrosoftGameConfig.mgc" />
