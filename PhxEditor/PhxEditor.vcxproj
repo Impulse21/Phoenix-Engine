@@ -360,11 +360,6 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\PhxEngine\PhxEngine.vcxproj">
-      <Project>{1df55938-774a-44e2-b837-6cacd97706ef}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <CopyFileToFolders Include="Shaders\TestShader.hlsl">
       <SkipUnchangedFiles>true</SkipUnchangedFiles>
       <DestinationFolder>$(OutDir)/shaders/application</DestinationFolder>
@@ -426,6 +421,7 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\phxengine\projects\windows\PhxEngine.vcxproj" />
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

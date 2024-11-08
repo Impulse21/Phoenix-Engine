@@ -1,5 +1,7 @@
 #include "pch.h"
-#include "phxSystemTime.h"
+
+#include "phx/core/SystemTime.h"
+#include <assert.h>
 
 using namespace phx;
 
@@ -10,7 +12,7 @@ double SystemTime::sm_CpuTickDelta = 0.0;
 void SystemTime::Initialize()
 {
 	LARGE_INTEGER frequency;
-	assert(TRUE == QueryPerformanceFrequency(&frequency), "Unable to query performance counter frequency");
+	assert(TRUE == QueryPerformanceFrequency(&frequency) && "Unable to query performance counter frequency");
 	sm_CpuTickDelta = 1.0 / static_cast<double>(frequency.QuadPart);
 }
 
@@ -18,7 +20,7 @@ void SystemTime::Initialize()
 int64_t SystemTime::GetCurrentTick()
 {
 	LARGE_INTEGER currentTick;
-	assert(TRUE == QueryPerformanceCounter(&currentTick), "Unable to query performance counter value");
+	assert(TRUE == QueryPerformanceCounter(&currentTick) && "Unable to query performance counter value");
 	return static_cast<int64_t>(currentTick.QuadPart);
 }
 

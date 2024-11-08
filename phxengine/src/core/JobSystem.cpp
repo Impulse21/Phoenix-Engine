@@ -1,9 +1,9 @@
 #include "pch.h"
 
-#include "phxJobSystem.h"
-#include "phxPlatformDetection.h"
+#include "phx/core/JobSystem.h"
+#include "phx/core/PlatformDetection.h"
 
-#include "phxRingBuffer.h"
+#include "phx/core/RingBuffer.h"
 #include <thread>
 #include <algorithm>
 #include <condition_variable>

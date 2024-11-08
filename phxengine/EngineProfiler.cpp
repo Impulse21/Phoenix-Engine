@@ -1,7 +1,7 @@
 #include "pch.h"
-#include "phxEngineProfiler.h"
+#include "phx/core/EngineProfiler.h"
 #include  "phxSpan.h"
-#include "phxSystemTime.h"
+#include "phx/core/SystemTime.h"
 #include "ImGui/imgui.h"
 
 using namespace phx;

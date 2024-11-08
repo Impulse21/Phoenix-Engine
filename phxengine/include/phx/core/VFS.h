@@ -8,7 +8,7 @@
 #include <functional>
 #include <vector>
 
-#include "phxSpan.h"
+#include "phx/core/Span.h"
 
 namespace phx
 {

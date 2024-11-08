@@ -3,7 +3,7 @@
 #include <initializer_list>
 #include <vector>
 #include <assert.h>
-#include "phxEnumUtils.h"
+#include "phx/core/EnumUtils.h"
 
 namespace phx
 {

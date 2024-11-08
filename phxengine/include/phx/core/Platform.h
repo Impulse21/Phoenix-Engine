@@ -1,6 +1,6 @@
 #pragma once
 
-#include "phxPlatformDetection.h"
+#include "phx/core/PlatformDetection.h"
 
 #if defined(PHX_PLATFORM_WINDOWS)
 
