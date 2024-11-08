@@ -11,7 +11,7 @@ namespace phx
 {
 	class IFileSystem;
 }
-namespace phx::gfx
+namespace phx::rhi
 {
 	namespace ShaderCompiler
 	{

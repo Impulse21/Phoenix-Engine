@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-namespace phx::gfx
+namespace phx::rhi
 {
 	template<typename T>
 	class Handle

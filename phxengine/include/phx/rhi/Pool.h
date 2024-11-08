@@ -8,7 +8,7 @@
 #include <stdexcept>
 
 #include <iostream>
-namespace phx::gfx
+namespace phx::rhi
 {
 	template<typename ImplT, typename HT>
 	class HandlePool
@@ -423,4 +423,62 @@ namespace phx::gfx
 		// Data Array
 		ImplT* m_data;
 	};
+
+	#include <iostream>
+#include <cstdint>
+#include <tuple>
+
+template<typename HotData, typename ColdData>
+class ResourcePool
+{
+public:
+    struct Handle
+    {
+        uint16_t index;
+        uint16_t generation;
+    };
+
+    ResourcePool(size_t maxEntries)
+        : maxEntries(maxEntries <= UINT16_MAX ? maxEntries : UINT16_MAX),
+          freeListHead(0)
+    {
+        // Reserve and commit pages for hotData and freeList here
+    }
+
+    std::tuple<Handle, HotData*, ColdData*> allocate(bool requiresColdData = true)
+    {
+        if (freeListHead >= maxEntries)
+            throw std::runtime_error("Pool is out of memory!");
+
+        uint16_t index = freeList[freeListHead++];
+
+        if (index >= committedIndices)
+            commitPages();
+
+        Handle handle{ index, generations[index] };
+
+        // Conditionally return ColdData based on need
+        return requiresColdData ? 
+            std::make_tuple(handle, &hotData[index], &coldData[index]) :
+            std::make_tuple(handle, &hotData[index], nullptr);
+    }
+
+    void free(Handle handle)
+    {
+        // Standard free with generation increment
+    }
+
+private:
+    size_t maxEntries;
+    HotData* hotData;
+    ColdData* coldData;
+    uint16_t* freeList;
+    uint16_t* generations;
+    size_t freeListHead;
+
+    void commitPages()
+    {
+        // Commit pages as needed
+    }
+};
 }
