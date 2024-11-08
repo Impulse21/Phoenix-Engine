@@ -1,27 +1,119 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="include">
+      <UniqueIdentifier>{1986587a-15cd-4e9b-9427-ff73e694580e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    <Filter Include="src">
+      <UniqueIdentifier>{2b6fa81d-5f3d-4557-993c-3960e3e4ce47}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="include\phx">
+      <UniqueIdentifier>{23fde73e-fb18-4785-a4d8-e4da74346916}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\phx\core">
+      <UniqueIdentifier>{605c97e4-a0b5-4a94-b38b-e8c91bed17e2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core">
+      <UniqueIdentifier>{42b70a93-3071-4a2f-9980-12feccd3667d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\phx\rhi">
+      <UniqueIdentifier>{a44770e3-80fc-4348-b8b1-0f4ddd034e3b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\rhi">
+      <UniqueIdentifier>{b082c106-4639-4661-af2a-f233317bc1b2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\rhi\dx12">
+      <UniqueIdentifier>{74e80790-49d8-402a-8288-20f698320ba9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="pch.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="..\..\include\phx\core\BinaryBuilder.h">
+      <Filter>include\phx\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\core\CommandLineArgs.h">
+      <Filter>include\phx\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\core\EnumUtils.h">
+      <Filter>include\phx\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\core\JobSystem.h">
+      <Filter>include\phx\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\core\Log.h">
+      <Filter>include\phx\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\core\Math.h">
+      <Filter>include\phx\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\core\Memory.h">
+      <Filter>include\phx\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\core\Platform.h">
+      <Filter>include\phx\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\core\PlatformDetection.h">
+      <Filter>include\phx\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\core\RefCountPtr.h">
+      <Filter>include\phx\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\core\RingBuffer.h">
+      <Filter>include\phx\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\core\Span.h">
+      <Filter>include\phx\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\core\StringHash.h">
+      <Filter>include\phx\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\core\SystemTime.h">
+      <Filter>include\phx\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\core\VFS.h">
+      <Filter>include\phx\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\rhi\Handle.h">
+      <Filter>include\phx\rhi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\rhi\Pool.h">
+      <Filter>include\phx\rhi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\rhi\RHICore.h">
+      <Filter>include\phx\rhi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\rhi\ShaderCompiler.h">
+      <Filter>include\phx\rhi</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="pch.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="..\..\src\core\CommandLineArgs.cpp">
+      <Filter>src\core</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\core\JobSystem.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\core\Log.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\core\Memory.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\core\SystemTimer.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\core\VFS.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\rhi\RhiCore.cpp">
+      <Filter>src\rhi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\rhi\ShaderCompiler_DXC.cpp">
+      <Filter>src\rhi</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

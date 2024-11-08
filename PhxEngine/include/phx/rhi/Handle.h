@@ -20,16 +20,18 @@ namespace phx::gfx
 			return this->m_generation == rhs.m_generation && this->m_index == rhs.m_index;
 		}
 	private:
-		Handle(uint32_t index, uint32_t generation)
+		Handle(uint16_t index, uint16_t generation)
 			: m_index(index)
 			, m_generation(generation)
 		{};
 
 	private:
-		uint32_t m_index;
-		uint32_t m_generation;
+		uint16_t m_index;
+		uint16_t m_generation;
 
 		template<typename ImplT, typename HT>
 		friend class HandlePool;
 	};
+	
+	static_assert(sizeof(Handle<uint16_t>) == sizeof(uint16_t));
 }
