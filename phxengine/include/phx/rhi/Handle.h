@@ -33,5 +33,5 @@ namespace phx::rhi
 		friend class HandlePool;
 	};
 	
-	static_assert(sizeof(Handle<uint16_t>) == sizeof(uint16_t));
+	static_assert(sizeof(Handle<uint16_t>) == sizeof(uint32_t));
 }
