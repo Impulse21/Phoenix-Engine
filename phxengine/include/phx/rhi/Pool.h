@@ -4,481 +4,173 @@
 #include <utility>
 #include <limits>
 #include <assert.h>
-#include "phxHandle.h"
 #include <stdexcept>
-
 #include <iostream>
+
+#include "Handle.h"
+#include "phx/core/Memory.h"
+
 namespace phx::rhi
 {
-	template<typename ImplT, typename HT>
-	class HandlePool
+	constexpr size_t kCacheLineSize = 64;
+	constexpr size_t kPageSize = 4_MiB;
+
+	template<class THandle, class THotData, class TColdData>
+	class Pool
 	{
+		static_assert(sizeof(THotData) <= kCacheLineSize);
+
 	public:
-		HandlePool()
-			: m_size(0)
-			, m_numActiveEntries(0)
-			, m_data(nullptr)
-			, m_generations(nullptr)
-			, m_freeList(nullptr)
+		Pool(size_t maxHandles)
+			: m_maxEntries(std::min(maxHandles, std::numeric_limits<uint16_t>::max()))
+			, m_freeListHead(0)
+			, m_commitedIndices(0)
 		{
+			m_dataHot = static_cast<THotData*>(phx::VirtualMemReserve(m_maxEntries * sizeof(THotData)));
+			m_dataCold = static_cast<THotData*>(phx::VirtualMemReserve(m_maxEntries * sizeof(THotData)));
+
+			m_freeList = static_cast<uint16_t*>(phx::VirtualMemReserve(m_maxEntries * sizeof(uint16_t)));
+			m_generations = static_cast<uint16_t*>(phx::VirtualMemReserve(m_maxEntries * sizeof(uint16_t)));
+
+			if (!m_dataHot || !m_dataCold || !m_freeList || !m_generations)
+				throw std::runtime_error("Failed to reserve virtual pool memory.");
+
+			m_indicesPerPageHot  =	kPageSize / sizeof(THotData);
+			m_indicesPerPageCold =	kPageSize / sizeof(TColdData);
+			m_indicesPerPageMeta =	kPageSize / sizeof(uint16_t);
+
+			m_indicesPerCommit = std::min({ m_indicesPerPageHot, m_indicesPerPageCold, m_indicesPerPageMeta });
+
+			CommitPages();  // Commit an initial 4 pages
+
+			// Initialize the free list with available indices
+			for (uint16_t i = 0; i < maxEntries; ++i)
+			{
+				freeList[i] = i;
+				generations[i] = 0;
+			}
 		}
 
 		~HandlePool()
 		{
-			this->Finalize();
-		}
-
-		void Initialize(size_t initCapacity = 16)
-		{
-			this->m_size = initCapacity;
-			this->m_numActiveEntries = 0;
-
-			this->m_data = new ImplT[this->m_size];
-			this->m_generations = new uint32_t[this->m_size];
-			this->m_freeList = new uint32_t[this->m_size];
-
-			std::memset(this->m_data, 0, this->m_size * sizeof(ImplT));
-			std::memset(this->m_generations, 0, this->m_size * sizeof(uint32_t));
-			std::memset(this->m_freeList, 0, this->m_size * sizeof(uint32_t));
-
-			for (size_t i = 0; i < this->m_size; i++)
-			{
-				this->m_generations[i] = 1;
-			}
-
-			this->m_freeListPosition = this->m_size - 1;
-			for (size_t i = 0; i < this->m_size; i++)
-			{
-				this->m_freeList[i] = static_cast<uint32_t>((this->m_size - 1) - i);
-			}
+			Finalize();
 		}
 
 		void Finalize()
 		{
-			if (this->m_data)
+			if (m_data)
 			{
-				for (int i = 0; i < this->m_size; i++)
+				for (int i = 0; i < m_size; i++)
 				{
-					this->m_data[i].~ImplT();
+					m_data[i].~ImplT();
 				}
 
-				delete[] this->m_data;
-				this->m_data = nullptr;
+				m_data = nullptr;
 			}
-
-			if (this->m_freeList)
-			{
-				delete[] this->m_freeList;
-				this->m_freeList = nullptr;
-			}
-
-			if (this->m_generations)
-			{
-				delete[] this->m_generations;
-				this->m_generations = nullptr;
-			}
-
-			this->m_size = 0;
 		}
 
-		ImplT* Get(Handle<HT> handle)
+		Handle<THandle> Allocate(THotData const& hotData, TColdData const& coldData)
 		{
-			if (!this->Contains(handle))
-			{
-				return nullptr;
-			}
+			if (m_freeListHead >= m_maxEntries)
+				throw std::runtime_error("Pool is out of memory!");
 
-			return this->m_data + handle.m_index;
-		}
+			if (m_freeListHead >= m_commitedIndices)
+				CommitPages();
 
-		bool Contains(Handle<HT> handle) const
-		{
-			return
-				handle.IsValid() &&
-				handle.m_index < this->m_size &&
-				this->m_generations[handle.m_index] == handle.m_generation;
-		}
-
-
-		template<typename... Args>
-		Handle<HT> Emplace(Args&&... args)
-		{
-			if (!this->HasSpace())
-			{
-				this->Resize();
-			}
 
 			Handle<HT> handle;
 			// Get a free index
-			handle.m_index = this->m_freeList[this->m_freeListPosition];
-			handle.m_generation = this->m_generations[handle.m_index];
-			this->m_freeListPosition--;
-			this->m_numActiveEntries++;
+			handle.m_index = m_freeList[m_freeListHead++];
+			handle.m_generation = m_generations[handle.m_index];
 
-			new (this->m_data + handle.m_index) ImplT(std::forward<Args>(args)...);
+			// new (m_dataHot + handle.m_index) ImplT(std::forward<Args>(args)...);
+			m_dataHot[handle.m_index] = hotData;
+			m_dataCold[handle.m_index] = coldData;
 
 			return handle;
 		}
 
-		Handle<HT> Insert(ImplT const& Data)
+		void Free(Handle<THandle> handle)
 		{
-			return this->Emplace(Data);
-		}
-
-		void Release(Handle<HT> handle)
-		{
-			if (!this->Contains(handle))
+			if (!Contains(handle))
 			{
 				return;
 			}
 
-			this->Get(handle)->~ImplT();
-			new (this->m_data + handle.m_index) ImplT();
-			this->m_generations[handle.m_index] += 1;
+			GetHot(handle)->~THotData();
+			GetCold(handle)->~TColdData();
+
+			m_dataHot[handle.m_index] = {};
+			m_dataCold[handle.m_index] = {};
+
+			m_generations[handle.m_index]++;
 
 			// To prevent the risk of re assignment, block index for being allocated
-			if (this->m_generations[handle.m_index] == std::numeric_limits<uint32_t>::max())
+			if (m_generations[handle.m_index] == std::numeric_limits<uint16_t>::max())
 			{
 				return;
 			}
 
-			this->m_freeList[++this->m_freeListPosition] = handle.m_index;
-			this->m_numActiveEntries--;
+			m_freeList[--m_freeListHead] = handle.m_index;
 		}
 
-		bool IsEmpty() const { return this->m_numActiveEntries == 0; }
-
-	private:
-		void Resize()
+		THotData* GetHot(Handle<THandle> handle)
 		{
-
-			if (this->m_size == 0)
-			{
-				this->Initialize(16);
-				return;
-			}
-
-			size_t newSize = this->m_size * 2;
-			auto* newDataArray = new ImplT[newSize];
-			auto* newFreeListArray = new uint32_t[newSize];
-			auto* newGenerations = new uint32_t[newSize];
-
-			std::memset(newDataArray, 0, newSize * sizeof(ImplT));
-			std::memset(newFreeListArray, 0, newSize * sizeof(uint32_t));
-
-			for (size_t i = 0; i < newSize; i++)
-			{
-				newGenerations[i] = 1;
-			}
-
-			// Copy data over
-			std::memcpy(newDataArray, this->m_data, this->m_size * sizeof(ImplT));
-			// No need to copy the free list as we need to re-populate it.
-			// std::memcpy(newFreeListArray, this->m_freeList, this->m_size * sizeof(uint32_t));
-			std::memcpy(newGenerations, this->m_generations, this->m_size * sizeof(uint32_t));
-
-			delete[] this->m_data;
-			delete[] this->m_freeList;
-			delete[] this->m_generations;
-
-			this->m_data = newDataArray;
-			this->m_freeList = newFreeListArray;
-			this->m_generations = newGenerations;
-
-			this->m_freeListPosition = this->m_size - 1;
-
-			this->m_size = newSize;
-			for (size_t i = 0; i < this->m_size - 1; i++)
-			{
-				this->m_freeList[i] = static_cast<uint32_t>((this->m_size - 1) - i);
-			}
-		}
-
-		bool HasSpace() const { return this->m_numActiveEntries < this->m_size; }
-
-	private:
-		size_t m_size;
-		size_t m_numActiveEntries;
-		size_t m_freeListPosition;
-
-		// free array
-		uint32_t* m_freeList;
-
-		// Generation array
-		uint32_t* m_generations;
-
-		// Data Array
-		ImplT* m_data;
-	};
-
-	template<typename ImplT, typename HT>
-	class HandlePoolVirtual
-	{
-		struct VirtualPageAllocator
-		{
-			uint8_t* VirtualPtr;
-			size_t TotalMemoryCommited = 0;
-			size_t PageSize = 0;
-			size_t VirtualMemorySize = 0;
-			void Initialize(size_t virtualMemorySize, size_t pageSize)
-			{
-				VirtualMemorySize = virtualMemorySize;
-				PageSize = pageSize;
-				VirtualPtr = static_cast<uint8_t*>(VirtualAlloc(NULL, VirtualMemorySize, MEM_RESERVE, PAGE_READWRITE));
-				Grow();
-			}
-
-			void Grow()
-			{
-				if ((TotalMemoryCommited + PageSize) > VirtualMemorySize)
-					throw std::runtime_error("Ran out of virtual memory");
-
-				// Commit data
-				VirtualAlloc(VirtualPtr + TotalMemoryCommited, PageSize, MEM_COMMIT, PAGE_READWRITE);
-				TotalMemoryCommited += PageSize;
-			}
-
-			~VirtualPageAllocator()
-			{
-				// Free the committed memory
-				if (!VirtualFree(reinterpret_cast<void*>(VirtualPtr), 0, MEM_RELEASE))
-				{
-					std::cerr << "Memory deallocation failed." << std::endl;
-				}
-
-				VirtualPtr = nullptr;
-				TotalMemoryCommited = 0;
-			}
-		};
-
-	public:
-		HandlePoolVirtual()
-			: m_size(0)
-			, m_numActiveEntries(0)
-			, m_data(nullptr)
-			, m_generations(nullptr)
-			, m_freeList(nullptr)
-		{
-		}
-
-		~HandlePoolVirtual()
-		{
-			this->Finalize();
-		}
-
-		void Initialize(size_t reservedMemory, size_t initCapacity = 16)
-		{
-			this->m_size = initCapacity;
-			this->m_numActiveEntries = 0;
-
-			m_freeListAllocator.Initialize(reservedMemory, sizeof(uint32_t) * initCapacity);
-			m_generatorAllocator.Initialize(reservedMemory, sizeof(uint32_t) * initCapacity);
-			m_dataAllocator.Initialize(reservedMemory, sizeof(ImplT) * initCapacity);
-
-			this->m_data = reinterpret_cast<ImplT*>(m_dataAllocator.VirtualPtr);
-			this->m_generations = reinterpret_cast<uint32_t*>(m_generatorAllocator.VirtualPtr);
-			this->m_freeList = reinterpret_cast<uint32_t*>(m_freeListAllocator.VirtualPtr);
-
-			std::memset(this->m_data, 0, this->m_size * sizeof(ImplT));
-			std::memset(this->m_generations, 0, this->m_size * sizeof(uint32_t));
-			std::memset(this->m_freeList, 0, this->m_size * sizeof(uint32_t));
-
-			for (size_t i = 0; i < this->m_size; i++)
-			{
-				this->m_generations[i] = 1;
-			}
-
-			this->m_freeListPosition = this->m_size - 1;
-			for (size_t i = 0; i < this->m_size; i++)
-			{
-				this->m_freeList[i] = static_cast<uint32_t>((this->m_size - 1) - i);
-			}
-		}
-
-		void Finalize()
-		{
-			if (this->m_data)
-			{
-				for (int i = 0; i < this->m_size; i++)
-				{
-					this->m_data[i].~ImplT();
-				}
-			}
-
-			this->m_size = 0;
-		}
-
-		ImplT* Get(Handle<HT> handle)
-		{
-			if (!this->Contains(handle))
+			if (!Contains(handle))
 			{
 				return nullptr;
 			}
 
-			return this->m_data + handle.m_index;
+			return m_dataHot + handle.m_index;
 		}
 
-		bool Contains(Handle<HT> handle) const
+		TColdData* GetCold(Handle<THandle> handle)
+		{
+			if (!Contains(handle))
+			{
+				return nullptr;
+			}
+
+			return m_dataCold + handle.m_index;
+		}
+
+		bool Contains(Handle<THandle> handle) const
 		{
 			return
 				handle.IsValid() &&
-				handle.m_index < this->m_size&&
-				this->m_generations[handle.m_index] == handle.m_generation;
+				handle.m_index < m_size &&
+				m_generations[handle.m_index] == handle.m_generation;
 		}
 
-
-		template<typename... Args>
-		Handle<HT> Emplace(Args&&... args)
-		{
-			if (!this->HasSpace())
-			{
-				this->Grow();
-			}
-
-			Handle<HT> handle;
-			// Get a free index
-			handle.m_index = this->m_freeList[this->m_freeListPosition];
-			handle.m_generation = this->m_generations[handle.m_index];
-			this->m_freeListPosition--;
-			this->m_numActiveEntries++;
-
-			new (this->m_data + handle.m_index) ImplT(std::forward<Args>(args)...);
-
-			return handle;
-		}
-
-		Handle<HT> Insert(ImplT const& Data)
-		{
-			return this->Emplace(Data);
-		}
-
-		void Release(Handle<HT> handle)
-		{
-			if (!this->Contains(handle))
-			{
-				return;
-			}
-
-			this->Get(handle)->~ImplT();
-			new (this->m_data + handle.m_index) ImplT();
-			this->m_generations[handle.m_index] += 1;
-
-			// To prevent the risk of re assignment, block index for being allocated
-			if (this->m_generations[handle.m_index] == std::numeric_limits<uint32_t>::max())
-			{
-				return;
-			}
-
-			this->m_freeList[++this->m_freeListPosition] = handle.m_index;
-			this->m_numActiveEntries--;
-		}
-
-		bool IsEmpty() const { return this->m_numActiveEntries == 0; }
+		bool IsEmpty() const { return m_freeListHead == 0; }
 
 	private:
-		void Grow()
+		void CommitPages(size_t pagesToCommit = 1)
 		{
-			if (this->m_size == 0)
-			{
-				this->Initialize(16);
-				return;
-			}
+			size_t commitSize = pagesToCommit * kPageSize;
 
-			m_generatorAllocator.Grow();
-			m_dataAllocator.Grow();
-			m_freeListAllocator.Grow();
+			phx::VirtualMemCommit(static_cast<void*>(m_dataHot) + m_commitedIndices * sizeof(THotData), commitSize);
+			phx::VirtualMemCommit(static_cast<void*>(m_dataCold) + m_commitedIndices * sizeof(TColdData), commitSize);
+			phx::VirtualMemCommit(static_cast<void*>(m_freeList) + m_commitedIndices * sizeof(uint16_t), commitSize);
+			phx::VirtualMemCommit(static_cast<void*>(m_generations) + m_commitedIndices * sizeof(uint16_t), commitSize);
 
-			const int newSize = m_generatorAllocator.TotalMemoryCommited / sizeof(ImplT);
-			for (size_t i = this->m_size; i < newSize; i++)
-			{
-				m_generations[i] = 1;
-			}
-			
-			this->m_freeListPosition = this->m_size - 1;
-
-			this->m_size = newSize;
-			for (size_t i = 0; i < this->m_size - 1; i++)
-			{
-				this->m_freeList[i] = static_cast<uint32_t>((this->m_size - 1) - i);
-			}
+			m_commitedIndices += pagesToCommit * m_indicesPerCommit;
 		}
 
-		bool HasSpace() const { return this->m_numActiveEntries < this->m_size; }
-
 	private:
-		size_t m_size;
-		size_t m_numActiveEntries;
-		size_t m_freeListPosition;
+		const size_t	m_maxEntries;
+		THotData*		m_dataHot;
+		TColdData*		m_dataCold;
 
-		VirtualPageAllocator m_freeListAllocator;
-		VirtualPageAllocator m_generatorAllocator;
-		VirtualPageAllocator m_dataAllocator;
-		
-		// free array
-		uint32_t* m_freeList;
+		uint16_t* m_freeList;
+		uint16_t* m_generations;
+		size_t	m_freeListHead;
 
-		// Generation array
-		uint32_t* m_generations;
-
-		// Data Array
-		ImplT* m_data;
+		size_t m_commitedIndices;
+		size_t m_indicesPerPageHot;
+		size_t m_indicesPerPageCold;
+		size_t m_indicesPerPageMetadata;
+		size_t m_indicesPerCommit;
 	};
 
-	#include <iostream>
-#include <cstdint>
-#include <tuple>
-
-template<typename HotData, typename ColdData>
-class ResourcePool
-{
-public:
-    struct Handle
-    {
-        uint16_t index;
-        uint16_t generation;
-    };
-
-    ResourcePool(size_t maxEntries)
-        : maxEntries(maxEntries <= UINT16_MAX ? maxEntries : UINT16_MAX),
-          freeListHead(0)
-    {
-        // Reserve and commit pages for hotData and freeList here
-    }
-
-    std::tuple<Handle, HotData*, ColdData*> allocate(bool requiresColdData = true)
-    {
-        if (freeListHead >= maxEntries)
-            throw std::runtime_error("Pool is out of memory!");
-
-        uint16_t index = freeList[freeListHead++];
-
-        if (index >= committedIndices)
-            commitPages();
-
-        Handle handle{ index, generations[index] };
-
-        // Conditionally return ColdData based on need
-        return requiresColdData ? 
-            std::make_tuple(handle, &hotData[index], &coldData[index]) :
-            std::make_tuple(handle, &hotData[index], nullptr);
-    }
-
-    void free(Handle handle)
-    {
-        // Standard free with generation increment
-    }
-
-private:
-    size_t maxEntries;
-    HotData* hotData;
-    ColdData* coldData;
-    uint16_t* freeList;
-    uint16_t* generations;
-    size_t freeListHead;
-
-    void commitPages()
-    {
-        // Commit pages as needed
-    }
-};
 }

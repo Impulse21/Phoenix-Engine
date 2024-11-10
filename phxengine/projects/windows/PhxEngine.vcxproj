@@ -160,6 +160,7 @@
     <ClInclude Include="..\..\include\phx\rhi\Pool.h" />
     <ClInclude Include="..\..\include\phx\rhi\RHICore.h" />
     <ClInclude Include="..\..\include\phx\rhi\ShaderCompiler.h" />
+    <ClInclude Include="..\..\include\phx\rhi\RHITypes.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>

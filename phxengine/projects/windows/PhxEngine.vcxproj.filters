@@ -85,6 +85,9 @@
     <ClInclude Include="..\..\include\phx\rhi\ShaderCompiler.h">
       <Filter>include\phx\rhi</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\phx\rhi\RHITypes.h">
+      <Filter>include\phx\rhi</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
