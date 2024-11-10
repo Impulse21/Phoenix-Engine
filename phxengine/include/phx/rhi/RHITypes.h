@@ -1,7 +1,10 @@
 #pragma once
 
 #include <stdint.h>
+#include "phx/core/Span.h"
 #include "phx/core/EnumUtils.h"
+
+#include "Handle.h"
 
 namespace phx::rhi
 {
@@ -153,6 +156,300 @@ namespace phx::rhi
         Zero,
         One,
     };
+
+    enum class Usage
+    {
+        Default = 0,
+        ReadBack,
+        Upload
+    };
+
+    enum class FormatKind : uint8_t
+    {
+        Integer,
+        Normalized,
+        Float,
+        DepthStencil
+    };
+
+    enum class CommandQueueType : uint8_t
+    {
+        Graphics = 0,
+        Compute,
+        Copy,
+
+        Count
+    };
+
+    constexpr size_t NumCommandQueues = static_cast<size_t>(CommandQueueType::Count);
+
+    enum class TextureDimension : uint8_t
+    {
+        Unknown,
+        Texture1D,
+        Texture1DArray,
+        Texture2D,
+        Texture2DArray,
+        TextureCube,
+        TextureCubeArray,
+        Texture2DMS,
+        Texture2DMSArray,
+        Texture3D
+    };
+
+    enum class ResourceStates : uint32_t
+    {
+        Unknown = 0,
+        Common = 1 << 0,
+        ConstantBuffer = 1 << 1,
+        VertexBuffer = 1 << 2,
+        IndexGpuBuffer = 1 << 3,
+        IndirectArgument = 1 << 4,
+        ShaderResource = 1 << 5,
+        UnorderedAccess = 1 << 6,
+        RenderTarget = 1 << 7,
+        DepthWrite = 1 << 8,
+        DepthRead = 1 << 9,
+        StreamOut = 1 << 10,
+        CopyDest = 1 << 11,
+        CopySource = 1 << 12,
+        ResolveDest = 1 << 13,
+        ResolveSource = 1 << 14,
+        Present = 1 << 15,
+        AccelStructRead = 1 << 16,
+        AccelStructWrite = 1 << 17,
+        AccelStructBuildInput = 1 << 18,
+        AccelStructBuildBlas = 1 << 19,
+        ShadingRateSurface = 1 << 20,
+        GenericRead = 1 << 21,
+        ShaderResourceNonPixel = 1 << 22,
+    };
+
+    PHX_ENUM_CLASS_FLAGS(ResourceStates)
+
+        enum class InputClassification : uint8_t
+    {
+        PerVertexData,
+        PerInstanceData,
+    };
+    enum class FeatureLevel
+    {
+        SM5,
+        SM6
+    };
+
+    enum class PrimitiveType : uint8_t
+    {
+        PointList,
+        LineList,
+        LineStrip,
+        TriangleList,
+        TriangleStrip,
+        TriangleFan,
+        TriangleListWithAdjacency,
+        TriangleStripWithAdjacency,
+        PatchList
+    };
+
+    enum class BlendFactor : uint8_t
+    {
+        Zero = 1,
+        One = 2,
+        SrcColor = 3,
+        InvSrcColor = 4,
+        SrcAlpha = 5,
+        InvSrcAlpha = 6,
+        DstAlpha = 7,
+        InvDstAlpha = 8,
+        DstColor = 9,
+        InvDstColor = 10,
+        SrcAlphaSaturate = 11,
+        ConstantColor = 14,
+        InvConstantColor = 15,
+        Src1Color = 16,
+        InvSrc1Color = 17,
+        Src1Alpha = 18,
+        InvSrc1Alpha = 19,
+
+        // Vulkan names
+        OneMinusSrcColor = InvSrcColor,
+        OneMinusSrcAlpha = InvSrcAlpha,
+        OneMinusDstAlpha = InvDstAlpha,
+        OneMinusDstColor = InvDstColor,
+        OneMinusConstantColor = InvConstantColor,
+        OneMinusSrc1Color = InvSrc1Color,
+        OneMinusSrc1Alpha = InvSrc1Alpha,
+    };
+
+    enum class EBlendOp : uint8_t
+    {
+        Add = 1,
+        Subrtact = 2,
+        ReverseSubtract = 3,
+        Min = 4,
+        Max = 5
+    };
+
+    enum class ColorMask : uint8_t
+    {
+        // These values are equal to their counterparts in DX11, DX12, and Vulkan.
+        Red = 1,
+        Green = 2,
+        Blue = 4,
+        Alpha = 8,
+        All = 0xF
+    };
+
+    enum class StencilOp : uint8_t
+    {
+        Keep = 1,
+        Zero = 2,
+        Replace = 3,
+        IncrementAndClamp = 4,
+        DecrementAndClamp = 5,
+        Invert = 6,
+        IncrementAndWrap = 7,
+        DecrementAndWrap = 8
+    };
+
+    enum class DepthWriteMask : uint8_t
+    {
+        Zero,	// Disables depth write
+        All,	// Enables depth write
+    };
+
+    enum class ComparisonFunc : uint8_t
+    {
+        Never = 1,
+        Less = 2,
+        Equal = 3,
+        LessOrEqual = 4,
+        Greater = 5,
+        NotEqual = 6,
+        GreaterOrEqual = 7,
+        Always = 8
+    };
+
+    enum class RasterFillMode : uint8_t
+    {
+        Solid,
+        Wireframe,
+
+        // Vulkan names
+        Fill = Solid,
+        Line = Wireframe
+    };
+
+    enum class RasterCullMode : uint8_t
+    {
+        Back,
+        Front,
+        None
+    };
+
+    // identifies the underlying resource type in a binding
+    enum class ResourceType : uint8_t
+    {
+        None,
+        PushConstants,
+        ConstantBuffer,
+        StaticSampler,
+        SRVBuffer,
+        SRVTexture,
+        BindlessSRV,
+        Count
+    };
+
+    enum class SamplerAddressMode : uint8_t
+    {
+        // D3D names
+        Clamp,
+        Wrap,
+        Border,
+        Mirror,
+        MirrorOnce,
+
+        // Vulkan names
+        ClampToEdge = Clamp,
+        Repeat = Wrap,
+        ClampToBorder = Border,
+        MirroredRepeat = Mirror,
+        MirrorClampToEdge = MirrorOnce
+    };
+
+    enum class SamplerReductionType : uint8_t
+    {
+        Standard,
+        Comparison,
+        Minimum,
+        Maximum
+    };
+
+    enum class BufferMiscFlags
+    {
+        None = 0,
+        Bindless = 1 << 0,
+        Raw = 1 << 1,
+        Structured = 1 << 2,
+        Typed = 1 << 3,
+        HasCounter = 1 << 4,
+        IsAliasedResource = 1 << 5,
+        IndirectArgs = 1 << 6,
+        RayTracing = 1 << 7,
+        Sparse = 1 << 8,
+    };
+
+    PHX_ENUM_CLASS_FLAGS(BufferMiscFlags);
+
+    enum class TextureMiscFlags
+    {
+        None = 0,
+        Sparse = 1 << 0,
+        TransientAttachment = 1 << 1,
+        TypedFormatCasting = 1 << 2,
+        TypelessFormatCasting = 1 << 3,
+    };
+
+    PHX_ENUM_CLASS_FLAGS(TextureMiscFlags);
+
+    enum class BindingFlags
+    {
+        None = 0,
+        VertexBuffer = 1 << 0,
+        IndexBuffer = 1 << 1,
+        ConstantBuffer = 1 << 2,
+        ShaderResource = 1 << 3,
+        RenderTarget = 1 << 4,
+        DepthStencil = 1 << 5,
+        UnorderedAccess = 1 << 6,
+        ShadingRate = 1 << 7,
+    };
+
+    PHX_ENUM_CLASS_FLAGS(BindingFlags);
+
+    enum class SubresouceType
+    {
+        SRV,
+        UAV,
+        RTV,
+        DSV,
+    };
+
+
+    enum class DeviceCapability
+    {
+        None = 0,
+        RT_VT_ArrayIndex_Without_GS = 1 << 0,
+        RayTracing = 1 << 1,
+        RenderPass = 1 << 2,
+        RayQuery = 1 << 3,
+        VariableRateShading = 1 << 4,
+        MeshShading = 1 << 5,
+        CreateNoteZeroed = 1 << 6,
+        Bindless = 1 << 7,
+    };
+
+    PHX_ENUM_CLASS_FLAGS(DeviceCapability);
 #pragma endregion
 
 #pragma region Types
@@ -245,13 +542,147 @@ namespace phx::rhi
         int GetHeight() const { return MaxY - MinY; }
     };
 
+    // -- Pipeline State objects ---
+    struct BlendRenderState
+    {
+        struct RenderTarget
+        {
+            bool        BlendEnable = false;
+            BlendFactor SrcBlend = BlendFactor::One;
+            BlendFactor DestBlend = BlendFactor::Zero;
+            EBlendOp    BlendOp = EBlendOp::Add;
+            BlendFactor SrcBlendAlpha = BlendFactor::One;
+            BlendFactor DestBlendAlpha = BlendFactor::Zero;
+            EBlendOp    BlendOpAlpha = EBlendOp::Add;
+            ColorMask   ColorWriteMask = ColorMask::All;
+        };
+
+        RenderTarget Targets[cMaxRenderTargets];
+        bool alphaToCoverageEnable = false;
+    };
+
+    struct DepthStencilRenderState
+    {
+        bool DepthEnable = false;
+        DepthWriteMask DepthWriteMask = DepthWriteMask::Zero;
+        ComparisonFunc DepthFunc = ComparisonFunc::Never;
+        bool StencilEnable = false;
+        uint8_t StencilReadMask = 0xff;
+        uint8_t StencilWriteMask = 0xff;
+
+        struct DepthStencilOp
+        {
+            StencilOp StencilFailOp = StencilOp::Keep;
+            StencilOp StencilDepthFailOp = StencilOp::Keep;
+            StencilOp StencilPassOp = StencilOp::Keep;
+            ComparisonFunc StencilFunc = ComparisonFunc::Never;
+        };
+        DepthStencilOp FrontFace;
+        DepthStencilOp BackFace;
+        bool DepthBoundsTestEnable = false;
+    };
+
+    struct RasterRenderState
+    {
+        RasterFillMode FillMode = RasterFillMode::Solid;
+        RasterCullMode CullMode = RasterCullMode::Back;
+        bool FrontCounterClockwise = false;
+        bool DepthClipEnable = false;
+        bool ScissorEnable = false;
+        bool MultisampleEnable = false;
+        bool AntialiasedLineEnable = false;
+        int DepthBias = 0;
+        float DepthBiasClamp = 0.f;
+        float SlopeScaledDepthBias = 0.f;
+
+        uint8_t ForcedSampleCount = 0;
+        bool programmableSamplePositionsEnable = false;
+        bool ConservativeRasterEnable = false;
+        bool quadFillEnable = false;
+        char samplePositionsX[16]{};
+        char samplePositionsY[16]{};
+    };
+    // -- Pipeline State Objects End ---
+#pragma endregion
+
+#pragma region Helper_Functions
+
+    constexpr bool IsFormatSRGB(Format format)
+    {
+        switch (format)
+        {
+        case Format::BC1_UNORM_SRGB:
+        case Format::BC2_UNORM_SRGB:
+        case Format::BC3_UNORM_SRGB:
+        case Format::BC7_UNORM_SRGB:
+            return true;
+        default:
+            return false;
+        }
+    }
+#pragma endregion
+
+#pragma region Device_Types
+
+    struct ShaderProgram
+    {
+        phx::Span<uint8_t> ByteCode;
+        const char* EntryPoint = "main";
+    };
+
+    struct VertexBufferBinding
+    {
+        static const uint32_t APPEND_ALIGNED_ELEMENT = ~0u; // automatically figure out AlignedByteOffset depending on Format
+        
+        const char* SemanticName;
+        Format Format = Format::UNKNOWN;
+        uint32_t InputSlot = 0;
+        uint32_t AlignedByteOffset = APPEND_ALIGNED_ELEMENT;
+        InputClassification InputSlotClass = InputClassification::PerVertexData;
+    };
 
     struct RenderPassInfo
     {
-        Format RenderTargetFormats[8] = {};
-        uint32_t RenderTargetCount = 0;
+        phx::Span<Format> RTFormats = {};
         Format DsFormat = Format::UNKNOWN;
         uint32_t SampleCount = 1;
     };
+
+    struct PipelineState;
+    using PipelineStateHandle = Handle<PipelineState>;
+    struct PipelineStateDescriptor
+    {
+        ShaderProgram VS = {};
+        ShaderProgram PS = {};
+        ShaderProgram HS = {};
+        ShaderProgram DS = {};
+        ShaderProgram GS = {};
+        ShaderProgram MS = {};
+        ShaderProgram AS = {};
+
+        BlendRenderState        BlendState = {};
+        DepthStencilRenderState DepthStencilState = {};
+        RasterRenderState       RasterState = {};
+
+        phx::Span<VertexBufferBinding>  VertexBufferBindings;
+        RenderPassInfo                  RenderPassInfo;
+        uint32_t                        PatchControlPoints = 3;
+        uint32_t			            SampleMask = ~0u;
+    };
+
+    struct GpuBuffer;
+    using GpuBufferHandle = Handle<GpuBuffer>;
+    struct GpuBufferDescriptor
+    {
+
+    };
+
+    struct Texture;
+    using TextureHandle = Handle<Texture>;
+    struct TextureDescriptor
+    {
+
+    };
+
 #pragma endregion
 }
