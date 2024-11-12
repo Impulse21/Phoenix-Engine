@@ -93,7 +93,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\src;$(SolutionDir)3rdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\include\phx\rhi\dx12;$(ProjectDir)..\..\src;$(SolutionDir)3rdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
   </ItemDefinitionGroup>
@@ -116,7 +116,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\src;$(SolutionDir)3rdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\include\phx\rhi\dx12;$(ProjectDir)..\..\src;$(SolutionDir)3rdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
   </ItemDefinitionGroup>
@@ -136,7 +136,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\src;$(SolutionDir)3rdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\include\phx\rhi\dx12;$(ProjectDir)..\..\src;$(SolutionDir)3rdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
   </ItemDefinitionGroup>
@@ -156,11 +156,13 @@
     <ClInclude Include="..\..\include\phx\core\StringHash.h" />
     <ClInclude Include="..\..\include\phx\core\SystemTime.h" />
     <ClInclude Include="..\..\include\phx\core\VFS.h" />
+    <ClInclude Include="..\..\include\phx\rhi\dx12\GfxDevice_Dx12.h" />
+    <ClInclude Include="..\..\include\phx\rhi\dx12\RHIPlatformTypes.h" />
     <ClInclude Include="..\..\include\phx\rhi\Handle.h" />
     <ClInclude Include="..\..\include\phx\rhi\Pool.h" />
-    <ClInclude Include="..\..\include\phx\rhi\RHICore.h" />
-    <ClInclude Include="..\..\include\phx\rhi\ShaderCompiler.h" />
+    <ClInclude Include="..\..\include\phx\rhi\GfxDevice.h" />
     <ClInclude Include="..\..\include\phx\rhi\RHITypes.h" />
+    <ClInclude Include="..\..\include\phx\rhi\ShaderCompiler.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
@@ -170,7 +172,7 @@
     <ClCompile Include="..\..\src\core\Memory.cpp" />
     <ClCompile Include="..\..\src\core\SystemTimer.cpp" />
     <ClCompile Include="..\..\src\core\VFS.cpp" />
-    <ClCompile Include="..\..\src\rhi\RhiCore.cpp" />
+    <ClCompile Include="..\..\src\rhi\GfxDevice.cpp" />
     <ClCompile Include="..\..\src\rhi\ShaderCompiler_DXC.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">Create</PrecompiledHeader>
