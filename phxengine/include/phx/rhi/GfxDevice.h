@@ -1,5 +1,7 @@
 #pragma once
 
+#include <deque>
+
 #include "RHITypes.h"
 #include "RHIPlatformTypes.h"
 
@@ -27,6 +29,7 @@ namespace phx::rhi
         {
             return {};
         }
+
         void DeletePipeline(PipelineStateHandle handle)
         {
 
@@ -41,6 +44,13 @@ namespace phx::rhi
     private:
         platform::GfxDevice m_platformDevice;
         std::vector<CommandCtx> m_commandCtx;
+
+        struct DeferredItem
+        {
+            uint64_t Frame;
+            std::function<void()> DeferredFunc;
+        };
+        std::deque<DeferredItem> m_deferredQueue;
     };
     
     // TODO: Create Device.
