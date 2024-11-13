@@ -4,21 +4,20 @@
 
 #include "pch.h"
 
-#include "phxEngineCore.h"
-#include "EmberGfx/phxEmber.h"
-#include "phxEngineProfiler.h"
+#include "phx/core/CommandLineArgs.h"
 
-#include "phxDisplay.h"
+#include "phx/core/Log.h"
+#include "phx/core/VFS.h"
+#include "phx/core/StringUtils.h"
+#include "phx/core/SystemTime.h"
 
-#include "EmberGfx/phxImGuiRenderer.h"
-#include "EmberGfx/phxShaderCompiler.h"
-#include "phxCommandLineArgs.h"
+#include "phx/rhi/GfxDevice.h"
+#include "phx/rhi/ShaderCompiler.h"
 
-#include "phxVFS.h"
-#include "phxSystemTime.h"
-
+#include "phx/EngineCore.h"
 
 #include <cmath>
+
 // Function to update the vertex colors based on time
 void UpdateTriangleColors(std::array<float, 3>& colorV1,
 	std::array<float, 3>& colorV2,
@@ -41,27 +40,7 @@ void UpdateTriangleColors(std::array<float, 3>& colorV1,
 	colorV3[2] = (sin(time * speed * 1.4f) + 1.0f) * 0.5f; // B for vertex 3
 }
 
-#include "entt/entt.hpp"
-#include "phxMath.h"
-
 using namespace phx;
-
-namespace temp
-{
-	// Create an asset resource that will be drawn X number of times
-
-	struct Drawable
-	{
-	public:
-		math::Sphere m_boudingSphere;
-		math::AABB m_boundingBox;
-		uint32_t m_numMeshes;
-		
-		gfx::BufferHandle m_dataBuffer;
-		gfx::BufferHandle m_materialConstants;
-		std::vector<gfx::TextureHandle> m_textueHandle;
-	};
-}
 
 class PhxEditor final : public phx::IEngineApp
 {
@@ -98,76 +77,47 @@ public:
 		m_fs->Mount("/assets_cache", assetsCachePath);
 
 		// Try to load asset
-		phx::gfx::GpuDevice* device = phx::gfx::EmberGfx::GetDevice();
+		phx::rhi::GfxDevice* device = phx::rhi::GfxDevice::Ptr;
 
-		phx::gfx::ShaderCompiler::Output testShaderVSOutput = phx::gfx::ShaderCompiler::Compile({
+		phx::rhi::ShaderCompiler::Output testShaderVSOutput = phx::rhi::ShaderCompiler::Compile({
 				.Format = device->GetShaderFormat(),
-				.ShaderStage = phx::gfx::ShaderStage::VS,
+				.ShaderStage = phx::rhi::ShaderStage::VS,
 				.SourceFilename = "/shaders/TestShader.hlsl",
 				.EntryPoint = "MainVS",
 				.FileSystem = m_fs.get()});
 
-		phx::gfx::ShaderHandle vsShader = device->CreateShader({
-				.Stage = phx::gfx::ShaderStage::VS,
-				.ByteCode = phx::Span(testShaderVSOutput.ByteCode, testShaderVSOutput.ByteCodeSize),
-				.EntryPoint = "MainVS"});
-
-		phx::gfx::ShaderCompiler::Output testShaderPSOutput = phx::gfx::ShaderCompiler::Compile({
+		phx::rhi::ShaderCompiler::Output testShaderPSOutput = phx::rhi::ShaderCompiler::Compile({
 				.Format = device->GetShaderFormat(),
-				.ShaderStage = phx::gfx::ShaderStage::PS,
+				.ShaderStage = phx::rhi::ShaderStage::PS,
 				.SourceFilename = "/shaders/TestShader.hlsl",
 				.EntryPoint = "MainPS",
 				.FileSystem = m_fs.get() });
 
-		phx::gfx::ShaderHandle psShader = device->CreateShader({
-				.Stage = phx::gfx::ShaderStage::PS,
-				.ByteCode = phx::Span(testShaderPSOutput.ByteCode, testShaderPSOutput.ByteCodeSize),
-				.EntryPoint = "MainPS"});
-
-		phx::gfx::InputLayout il = {
-			.elements = {
-				{
-					.SemanticName = "POSITION",
-					.SemanticIndex = 0,
-					.Format = phx::gfx::Format::RG32_FLOAT,
-				},
-				{
-					.SemanticName = "COLOR",
-					.SemanticIndex = 1,
-					.Format = phx::gfx::Format::RGB32_FLOAT,
-				}
-			}
-		};
-
-		phx::gfx::DepthStencilRenderState dss = { .DepthEnable = false, .DepthWriteMask = phx::gfx::DepthWriteMask::Zero};
-		phx::gfx::RasterRenderState rs = {.CullMode = phx::gfx::RasterCullMode::None };
-
-		phx::gfx::RenderPassInfo passInfo;
-		passInfo.RenderTargetCount = 1;
-		passInfo.RenderTargetFormats[0] = phx::gfx::g_SwapChainFormat;
-
-		this->m_pipeline = device->CreatePipeline({
-				.VS = vsShader,
-				.PS = psShader,
-				.DepthStencilRenderState = &dss,
-				.RasterRenderState = &rs,
-				.InputLayout = &il
+		
+		m_pipeline = device->CreatePipeline({
+			.VS = {.ByteCode = testShaderVSOutput.ByteCode, .EntryPoint = "MainVS"},
+			.PS = {.ByteCode = testShaderPSOutput.ByteCode, .EntryPoint = "MainPS"},
+			.DepthStencilState = { .DepthEnable = false, .DepthWriteMask = phx::rhi::DepthWriteMask::Zero },
+			.RasterState = {.CullMode = phx::rhi::RasterCullMode::None },
+			.VertexBufferBindings = {
+				{ .SemanticName = "POSITION", .Format = phx::rhi::Format::RG32_FLOAT },
+				{ .SemanticName = "COLOR", .Format = phx::rhi::Format::RGB32_FLOAT },
 			},
-			&passInfo);
+			.RenderPassInfo = {
+				.RTFormats = { phx::rhi::Format::R10G10B10A2_UNORM }
+}
+			});
 
-		device->DeleteShader(vsShader);
-		device->DeleteShader(psShader);
-
-		this->m_imguiRenderSystem.Initialize(device, m_fs.get());
-		this->m_imguiRenderSystem.EnableDarkThemeColours();
+		// this->m_imguiRenderSystem.Initialize(device, m_fs.get());
+		// this->m_imguiRenderSystem.EnableDarkThemeColours();
 	};
 
 	void Shutdown() override 
 	{
-		phx::gfx::GpuDevice* device = phx::gfx::EmberGfx::GetDevice();
+		phx::rhi::GfxDevice* device = phx::rhi::GfxDevice::Ptr;
 
 		device->DeletePipeline(this->m_pipeline);
-		m_imguiRenderSystem.Finialize(device);
+		// m_imguiRenderSystem.Finialize(device);
 
 		phx::FS::RootPtr = nullptr;
 	};
@@ -175,27 +125,26 @@ public:
 	void CacheRenderData() override {};
 	void Update() override 
 	{
-		PHX_EVENT();
-		m_imguiRenderSystem.BeginFrame();
-		ImGui::ShowDemoWindow();
+		// m_imguiRenderSystem.BeginFrame();
+		// ImGui::ShowDemoWindow();
 		// phx::EngineProfile::DrawUI();
 	};
 
 	void Render() override
 	{
-		using namespace phx::gfx;
-		GpuDevice* device = EmberGfx::GetDevice();
-		CommandCtx* ctx = device->BeginCommandCtx();
+		using namespace phx::rhi;
+		phx::rhi::GfxDevice* device = phx::rhi::GfxDevice::Ptr;
+		CommandCtx& ctx = device->BeginCommandCtx();
 
-		ctx->RenderPassBegin();
+		ctx.RenderPassBegin();
 
-		Viewport v(g_DisplayWidth, g_DisplayHeight);
-		ctx->SetViewports({ v });
+		Viewport v(2000, 1700);
+		ctx.SetViewports({ v });
 
-		Rect scissor(g_DisplayWidth, g_DisplayHeight);
-		ctx->SetScissors({ scissor });
-		ctx->SetPipelineState(m_pipeline);
-
+		Rect scissor(2000, 1700);
+		ctx.SetScissors({ scissor });
+		ctx.SetPipelineState(m_pipeline);
+#if false
 		EmberGfx::DynamicAllocator dynamicAllocator = {};
 		EmberGfx::DynamicBuffer dynamicBuffer = dynamicAllocator.Allocate(sizeof(uint16_t) * 3, 16);
 
@@ -204,7 +153,7 @@ public:
 		indices[1] = 1;
 		indices[2] = 2;
 
-		ctx->SetDynamicIndexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, 3, Format::R16_UINT);
+		ctx.SetDynamicIndexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, 3, Format::R16_UINT);
 
 		struct Vertex
 		{
@@ -229,17 +178,16 @@ public:
 		vertices[1].Colour = { 0.0f, 1.0f, 0.0f };
 		vertices[2].Colour = { 0.0f, 0.0f, 1.0f };
 #endif
-		ctx->SetDynamicVertexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, 0, 3, sizeof(Vertex));
-		ctx->DrawIndexed(3);
+		ctx.SetDynamicVertexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, 0, 3, sizeof(Vertex));
+		ctx.DrawIndexed(3);
 
-		m_imguiRenderSystem.Render(ctx);
-
-		ctx->RenderPassEnd();
+		// m_imguiRenderSystem.Render(ctx);
+#endif
+		ctx.RenderPassEnd();
 	}
 
 private:
-	phx::gfx::PipelineStateHandle m_pipeline;
-	phx::gfx::ImGuiRenderSystem m_imguiRenderSystem;
+	phx::rhi::PipelineStateHandle m_pipeline;
 	std::unique_ptr<phx::IRootFileSystem> m_fs;
 };
 
