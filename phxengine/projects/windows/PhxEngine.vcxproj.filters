@@ -25,6 +25,9 @@
     <Filter Include="src\rhi\dx12">
       <UniqueIdentifier>{74e80790-49d8-402a-8288-20f698320ba9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="include\phx\rhi\dx12">
+      <UniqueIdentifier>{2fa37a16-b73e-4a3e-888c-2453d223e87e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -79,13 +82,28 @@
     <ClInclude Include="..\..\include\phx\rhi\Pool.h">
       <Filter>include\phx\rhi</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\phx\rhi\RHICore.h">
+    <ClInclude Include="..\..\include\phx\rhi\GfxDevice.h">
       <Filter>include\phx\rhi</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\phx\rhi\ShaderCompiler.h">
       <Filter>include\phx\rhi</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\phx\rhi\RHITypes.h">
+      <Filter>include\phx\rhi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\rhi\dx12\GfxDevice_Dx12.h">
+      <Filter>include\phx\rhi\dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\rhi\dx12\RHIPlatformTypes.h">
+      <Filter>include\phx\rhi\dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\EngineCore.h">
+      <Filter>include\phx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\core\StringUtils.h">
+      <Filter>include\phx\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\rhi\CommandCtx.h">
       <Filter>include\phx\rhi</Filter>
     </ClInclude>
   </ItemGroup>
@@ -109,14 +127,20 @@
     <ClCompile Include="..\..\src\core\VFS.cpp">
       <Filter>src\core</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\rhi\RhiCore.cpp">
+    <ClCompile Include="..\..\src\rhi\GfxDevice.cpp">
       <Filter>src\rhi</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\rhi\ShaderCompiler_DXC.cpp">
       <Filter>src\rhi</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\EngineCore.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="..\..\..\3rdParty\dxc\lib\x64\dxcompiler.lib" />
   </ItemGroup>
 </Project>
