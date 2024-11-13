@@ -97,6 +97,15 @@
     <ClInclude Include="..\..\include\phx\rhi\dx12\RHIPlatformTypes.h">
       <Filter>include\phx\rhi\dx12</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\phx\EngineCore.h">
+      <Filter>include\phx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\core\StringUtils.h">
+      <Filter>include\phx\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\rhi\CommandCtx.h">
+      <Filter>include\phx\rhi</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
@@ -124,8 +133,14 @@
     <ClCompile Include="..\..\src\rhi\ShaderCompiler_DXC.cpp">
       <Filter>src\rhi</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\EngineCore.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="..\..\..\3rdParty\dxc\lib\x64\dxcompiler.lib" />
   </ItemGroup>
 </Project>

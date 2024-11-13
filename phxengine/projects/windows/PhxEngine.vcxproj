@@ -95,7 +95,14 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\include\phx\rhi\dx12;$(ProjectDir)..\..\src;$(SolutionDir)3rdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <DisableSpecificWarnings>4201</DisableSpecificWarnings>
     </ClCompile>
+    <Lib>
+      <AdditionalDependencies>dxcompiler.lib</AdditionalDependencies>
+    </Lib>
+    <Lib>
+      <AdditionalLibraryDirectories>$(SolutionDir)3rdParty\dxc\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">
     <Link>
@@ -118,7 +125,14 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\include\phx\rhi\dx12;$(ProjectDir)..\..\src;$(SolutionDir)3rdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <DisableSpecificWarnings>4201</DisableSpecificWarnings>
     </ClCompile>
+    <Lib>
+      <AdditionalDependencies>dxcompiler.lib</AdditionalDependencies>
+    </Lib>
+    <Lib>
+      <AdditionalLibraryDirectories>$(SolutionDir)3rdParty\dxc\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">
     <Link>
@@ -138,7 +152,14 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\include\phx\rhi\dx12;$(ProjectDir)..\..\src;$(SolutionDir)3rdparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <DisableSpecificWarnings>4201</DisableSpecificWarnings>
     </ClCompile>
+    <Lib>
+      <AdditionalDependencies>dxcompiler.lib</AdditionalDependencies>
+    </Lib>
+    <Lib>
+      <AdditionalLibraryDirectories>$(SolutionDir)3rdParty\dxc\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\phx\core\BinaryBuilder.h" />
@@ -154,8 +175,11 @@
     <ClInclude Include="..\..\include\phx\core\RingBuffer.h" />
     <ClInclude Include="..\..\include\phx\core\Span.h" />
     <ClInclude Include="..\..\include\phx\core\StringHash.h" />
+    <ClInclude Include="..\..\include\phx\core\StringUtils.h" />
     <ClInclude Include="..\..\include\phx\core\SystemTime.h" />
     <ClInclude Include="..\..\include\phx\core\VFS.h" />
+    <ClInclude Include="..\..\include\phx\EngineCore.h" />
+    <ClInclude Include="..\..\include\phx\rhi\CommandCtx.h" />
     <ClInclude Include="..\..\include\phx\rhi\dx12\GfxDevice_Dx12.h" />
     <ClInclude Include="..\..\include\phx\rhi\dx12\RHIPlatformTypes.h" />
     <ClInclude Include="..\..\include\phx\rhi\Handle.h" />
@@ -172,6 +196,7 @@
     <ClCompile Include="..\..\src\core\Memory.cpp" />
     <ClCompile Include="..\..\src\core\SystemTimer.cpp" />
     <ClCompile Include="..\..\src\core\VFS.cpp" />
+    <ClCompile Include="..\..\src\EngineCore.cpp" />
     <ClCompile Include="..\..\src\rhi\GfxDevice.cpp" />
     <ClCompile Include="..\..\src\rhi\ShaderCompiler_DXC.cpp" />
     <ClCompile Include="pch.cpp">
@@ -182,6 +207,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="..\..\..\3rdParty\dxc\lib\x64\dxcompiler.lib">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

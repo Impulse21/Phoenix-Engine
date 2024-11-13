@@ -3,6 +3,7 @@
 #include "RHITypes.h"
 #include "RHIPlatformTypes.h"
 
+#include "CommandCtx.h"
 namespace phx::rhi
 {
     class GfxDevice
@@ -16,8 +17,30 @@ namespace phx::rhi
         GfxDevice();
         ~GfxDevice();
 
+        ShaderFormat GetShaderFormat() const
+        {
+            return m_platformDevice.GetShaderFormat();
+        }
+
+    public:
+        PipelineStateHandle CreatePipeline(PipelineStateDescriptor const& desc)
+        {
+            return {};
+        }
+        void DeletePipeline(PipelineStateHandle handle)
+        {
+
+        }
+
+    public:
+        CommandCtx& BeginCommandCtx(CommandQueueType type = CommandQueueType::Graphics)
+        {
+            return m_commandCtx[0];
+        }
+        
     private:
         platform::GfxDevice m_platformDevice;
+        std::vector<CommandCtx> m_commandCtx;
     };
     
     // TODO: Create Device.

@@ -3,12 +3,15 @@
 #include <filesystem>
 #include <fstream>
 
-#include "phxShaderCompiler.h"
+#include "phx/core/VFS.h"
+#include "phx/core/StringUtils.h"
+#include "phx/rhi/ShaderCompiler.h"
+#include "phx/rhi/RHITypes.h"
+
 #include "assert.h"
-#include "phxVFS.h"
 #include <iostream>
 
-#include <windows.h>
+#include <Objbase.h>  // This includes COM base definitions
 #include "dxc/dxcapi.h"
 
 using namespace phx;
@@ -469,8 +472,11 @@ namespace
 		if (pShader != nullptr)
 		{
 			output.Dependencies.push_back(input.SourceFilename);
-			output.ByteCode = (const uint8_t*)pShader->GetBufferPointer();
-			output.ByteCodeSize = pShader->GetBufferSize();
+			output.ByteCode =
+			{
+				(const uint8_t*)pShader->GetBufferPointer(),
+				pShader->GetBufferSize()
+			};
 
 			// keep the blob alive == keep shader pointer valid!
 			auto internal_state = std::make_shared<CComPtr<IDxcBlob>>();

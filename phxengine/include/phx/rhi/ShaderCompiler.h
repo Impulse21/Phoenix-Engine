@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "phxGfxDeviceResources.h"
+#include "phx/rhi/RHITypes.h"
 
 namespace phx
 {
@@ -41,8 +41,7 @@ namespace phx::rhi
 		{
 			std::shared_ptr<void> Internal;
 
-			const uint8_t* ByteCode = nullptr;
-			size_t ByteCodeSize = 0;
+			phx::Span<uint8_t> ByteCode;
 
 			std::vector<uint8_t> ShaderHash;
 			std::string ErrorMessage;
