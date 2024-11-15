@@ -1,6 +1,7 @@
 #pragma once
 
 #include <deque>
+#include <functional>
 
 #include "RHITypes.h"
 #include "RHIPlatformTypes.h"

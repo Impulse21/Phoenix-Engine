@@ -91,7 +91,7 @@
     <ClInclude Include="..\..\include\phx\rhi\RHITypes.h">
       <Filter>include\phx\rhi</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\phx\rhi\dx12\GfxDevice_Dx12.h">
+    <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12GfxDevice.h">
       <Filter>include\phx\rhi\dx12</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\phx\rhi\dx12\RHIPlatformTypes.h">
@@ -105,6 +105,15 @@
     </ClInclude>
     <ClInclude Include="..\..\include\phx\rhi\CommandCtx.h">
       <Filter>include\phx\rhi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12Common.h">
+      <Filter>include\phx\rhi\dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12DescriptorHeaps.h">
+      <Filter>include\phx\rhi\dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12CommandQueue.h">
+      <Filter>include\phx\rhi\dx12</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -135,6 +144,18 @@
     </ClCompile>
     <ClCompile Include="..\..\src\EngineCore.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\rhi\dx12\Dx12DescriptorHeaps.cpp">
+      <Filter>src\rhi\dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\rhi\dx12\Dx12DxgiFormatMapping.cpp">
+      <Filter>src\rhi\dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\rhi\dx12\Dx12GfxDevice.cpp">
+      <Filter>src\rhi\dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\rhi\dx12\Dx12CommandQueue.cpp">
+      <Filter>src\rhi\dx12</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

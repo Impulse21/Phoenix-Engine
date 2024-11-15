@@ -11,16 +11,17 @@ namespace phx::rhi
 
     using DescriptorIndex = uint32_t;
 
-    static constexpr DescriptorIndex cInvalidDescriptorIndex = ~0u;
+    constexpr size_t kBufferCount = 3;
+    constexpr DescriptorIndex cInvalidDescriptorIndex = ~0u;
 
-    static constexpr uint32_t cMaxRenderTargets = 8;
-    static constexpr uint32_t cMaxViewports = 16;
-    static constexpr uint32_t cMaxVertexAttributes = 16;
-    static constexpr uint32_t cMaxBindingLayouts = 5;
-    static constexpr uint32_t cMaxBindingsPerLayout = 128;
-    static constexpr uint32_t cMaxVolatileConstantBuffersPerLayout = 6;
-    static constexpr uint32_t cMaxVolatileConstantBuffers = 32;
-    static constexpr uint32_t cMaxPushConstantSize = 128;      // D3D12: root signature is 256 bytes max., Vulkan: 128 bytes of push constants guaranteed
+    constexpr uint32_t cMaxRenderTargets = 8;
+    constexpr uint32_t cMaxViewports = 16;
+    constexpr uint32_t cMaxVertexAttributes = 16;
+    constexpr uint32_t cMaxBindingLayouts = 5;
+    constexpr uint32_t cMaxBindingsPerLayout = 128;
+    constexpr uint32_t cMaxVolatileConstantBuffersPerLayout = 6;
+    constexpr uint32_t cMaxVolatileConstantBuffers = 32;
+    constexpr uint32_t cMaxPushConstantSize = 128;      // D3D12: root signature is 256 bytes max., Vulkan: 128 bytes of push constants guaranteed
 
 #pragma region Enums
 
@@ -806,5 +807,14 @@ namespace phx::rhi
 
     };
 
+    struct GfxDeviceDescriptor
+    {
+        bool enableValidationLayers : 1 = false;
+    };
+
+    struct SwapChainDescriptor
+    {
+        void* WindowHandle = nullptr;
+    };
 #pragma endregion
 }
