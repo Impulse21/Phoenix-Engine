@@ -29,8 +29,8 @@ namespace phx::rhi
 		uint16_t m_index;
 		uint16_t m_generation;
 
-		template<typename ImplT, typename HT>
-		friend class HandlePool;
+		template<class THandle, class THotData, class TColdData>
+		friend class ResourcePool;
 	};
 	
 	static_assert(sizeof(Handle<uint16_t>) == sizeof(uint32_t));

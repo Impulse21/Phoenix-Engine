@@ -4,6 +4,7 @@
 
 namespace phx::rhi
 {
+#if false
 	class CommandCtx
 	{
 	public:
@@ -63,4 +64,5 @@ namespace phx::rhi
 			SetPushConstant(rootParameterIndex, sizeof(T), &constants);
 		}
 	};
+#endif
 }

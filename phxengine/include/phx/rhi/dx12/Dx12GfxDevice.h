@@ -1,6 +1,7 @@
 #pragma once
 
 #include "phx/rhi/RHITypes.h"
+#include "Dx12DeviceResources.h"
 #include "d3d12ma/D3D12MemAlloc.h"
 
 #include "Dx12Common.h"
@@ -63,12 +64,12 @@ namespace phx::rhi::dx12
 
 		D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView()
 		{
-			const uint64_t currentIndex = SwapChain4->GetCurrentBackBufferIndex();
+			const UINT currentIndex = SwapChain4->GetCurrentBackBufferIndex();
 			return Rtv.GetCpuHandle(currentIndex);
 		}
 		ID3D12Resource* GetBackBuffer()
 		{
-			const uint64_t currentIndex = SwapChain4->GetCurrentBackBufferIndex();
+			const UINT currentIndex = SwapChain4->GetCurrentBackBufferIndex();
 			return BackBuffers[currentIndex].Get();
 		}
 	};
@@ -113,15 +114,15 @@ namespace phx::rhi::dx12
 				return NewIndex;
 			}
 
-			void Release(UINT Index)
+			void Release(UINT index)
 			{
 				std::scoped_lock Guard(this->IndexMutex);
-				IndexQueue.push_back(Index);
+				IndexQueue.push_back(index);
 			}
 
 			std::mutex IndexMutex;
 			std::deque<DescriptorIndex> IndexQueue;
-			size_t Index = 0;
+			UINT Index = 0;
 		};
 
 	private:
@@ -168,9 +169,9 @@ namespace phx::rhi::dx12
 
 	public:
 		bool CreateSwapChain(SwapChainDescriptor& desc);
-		bool CreatePipeline(PipelineStateDescriptor const& desc);
-		bool CreateBuffer(GpuBufferDescriptor const& desc);
-		bool CreateTexture(TextureDescriptor const& desc);
+		bool CreatePipeline(PipelineStateDescriptor const& desc, PipelineState_Hot& hot, PipelineState_Cold& cold);
+		bool CreateBuffer(GpuBufferDescriptor const& desc, GpuBuffer_Hot& hot, GpuBuffer_Cold& cold);
+		bool CreateTexture(TextureDescriptor const& desc, Texture_Hot& hot, Texture_Cold& cold);
 
 		// -- Getter and setters ---
 	public:

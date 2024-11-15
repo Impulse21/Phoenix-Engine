@@ -557,8 +557,8 @@ void GfxDeviceDx12::CopyCtxManager::Initialize()
 
 void GfxDeviceDx12::CopyCtxManager::Finalize()
 {
-	for (auto& ctx : m_freeList)
-		GfxDeviceDx12::Instance()->DeleteBuffer(ctx.UploadBuffer);
+	// for (auto& ctx : m_freeList)
+		// GfxDeviceDx12::Instance()->DeleteBuffer(ctx.UploadBuffer);
 }
 
 GfxDeviceDx12::CopyCtxManager::Ctx GfxDeviceDx12::CopyCtxManager::Begin(size_t stagingSize)
@@ -715,7 +715,7 @@ void GfxDeviceDx12::ResizeSwapChain(SwapChainDesc const& swapChainDesc)
 }
 #endif
 
-bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc)
+bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, PipelineState_Hot& hot, PipelineState_Cold& cold)
 {
 	PipelineStateHandle retVal = m_pipelineStatePool.Emplace();
 	PipelineState_Dx12& impl = *m_pipelineStatePool.Get(retVal);

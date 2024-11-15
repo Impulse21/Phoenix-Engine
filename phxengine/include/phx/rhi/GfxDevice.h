@@ -5,8 +5,10 @@
 
 #include "RHITypes.h"
 #include "RHIPlatformTypes.h"
+#include "phx/rhi/ResourcePool.h"
 
 #include "CommandCtx.h"
+
 namespace phx::rhi
 {
     class GfxDevice
@@ -28,24 +30,35 @@ namespace phx::rhi
     public:
         PipelineStateHandle CreatePipeline(PipelineStateDescriptor const& desc)
         {
-            return {};
+            platform::PipelineState_Hot hot;
+            platform::PipelineState_Cold cold;
+
+            m_platformDevice.CreatePipeline(desc, hot, cold);
+            return m_pipelineStatePool.Allocate(hot, cold);
         }
 
         void DeletePipeline(PipelineStateHandle handle)
         {
+            DeferredItem d =
+            {
+                m_frameCount,
+                [=]()
+                {
+                    m_pipelineStatePool.Free(handle);
+                }
+            };
 
+            m_deferredQueue.push_back(d);
         }
 
-    public:
-        CommandCtx& BeginCommandCtx(CommandQueueType type = CommandQueueType::Graphics)
-        {
-            return m_commandCtx[0];
-        }
-        
     private:
         platform::GfxDevice m_platformDevice;
-        std::vector<CommandCtx> m_commandCtx;
 
+        ResourcePool<Texture, platform::Texture_Hot, platform::Texture_Cold> m_texturePool;
+        ResourcePool<GpuBuffer, platform::GpuBuffer_Hot, platform::GpuBuffer_Cold> m_gpuBufferPool;
+        ResourcePool<PipelineState, platform::PipelineState_Hot, platform::PipelineState_Cold> m_pipelineStatePool;
+
+        uint64_t m_frameCount = 0;
         struct DeferredItem
         {
             uint64_t Frame;
