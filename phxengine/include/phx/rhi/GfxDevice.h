@@ -19,7 +19,7 @@ namespace phx::rhi
         static void Finalize();
 
     public:
-        GfxDevice();
+        GfxDevice(rhi::GfxDeviceDescriptor const& descriptor);
         ~GfxDevice();
 
         ShaderFormat GetShaderFormat() const

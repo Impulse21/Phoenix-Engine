@@ -86,7 +86,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>NDEBUG;__WRL_NO_DEFAULT_LIB__;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;NDEBUG;__WRL_NO_DEFAULT_LIB__;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level4</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -116,7 +116,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>NDEBUG;__WRL_NO_DEFAULT_LIB__;_LIB;PROFILE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;NDEBUG;__WRL_NO_DEFAULT_LIB__;_LIB;PROFILE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level4</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -146,7 +146,7 @@
       <MinimalRebuild>false</MinimalRebuild>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_DEBUG;__WRL_NO_DEFAULT_LIB__;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;_DEBUG;__WRL_NO_DEFAULT_LIB__;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -183,10 +183,11 @@
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12CommandQueue.h" />
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12Common.h" />
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12DescriptorHeaps.h" />
+    <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12DeviceResources.h" />
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12GfxDevice.h" />
     <ClInclude Include="..\..\include\phx\rhi\dx12\RHIPlatformTypes.h" />
     <ClInclude Include="..\..\include\phx\rhi\Handle.h" />
-    <ClInclude Include="..\..\include\phx\rhi\Pool.h" />
+    <ClInclude Include="..\..\include\phx\rhi\ResourcePool.h" />
     <ClInclude Include="..\..\include\phx\rhi\GfxDevice.h" />
     <ClInclude Include="..\..\include\phx\rhi\RHITypes.h" />
     <ClInclude Include="..\..\include\phx\rhi\ShaderCompiler.h" />

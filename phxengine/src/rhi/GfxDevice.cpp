@@ -14,7 +14,11 @@ void GfxDevice::Finalize()
 
 }
 
-GfxDevice::GfxDevice()
+GfxDevice::GfxDevice(rhi::GfxDeviceDescriptor const& descriptor)
+	: m_platformDevice(descriptor)
+	, m_texturePool(100)
+	, m_gpuBufferPool(100)
+	, m_pipelineStatePool(100)
 {
 
 }

@@ -21,13 +21,13 @@ namespace phx::rhi
 		static_assert(sizeof(THotData) <= kCacheLineSize);
 
 	public:
-		ResourcePool(size_t maxHandles)
+		ResourcePool(uint16_t maxHandles)
 			: m_maxEntries(std::min(maxHandles, std::numeric_limits<uint16_t>::max()))
 			, m_freeListHead(0)
 			, m_commitedIndices(0)
 		{
 			m_dataHot = static_cast<THotData*>(phx::VirtualMemReserve(m_maxEntries * sizeof(THotData)));
-			m_dataCold = static_cast<THotData*>(phx::VirtualMemReserve(m_maxEntries * sizeof(THotData)));
+			m_dataCold = static_cast<TColdData*>(phx::VirtualMemReserve(m_maxEntries * sizeof(TColdData)));
 
 			m_freeList = static_cast<uint16_t*>(phx::VirtualMemReserve(m_maxEntries * sizeof(uint16_t)));
 			m_generations = static_cast<uint16_t*>(phx::VirtualMemReserve(m_maxEntries * sizeof(uint16_t)));
@@ -55,7 +55,7 @@ namespace phx::rhi
 			{
 				for (int i = 0; i < m_commitedIndices; i++)
 				{
-					m_dataHot[i].~ImplT();
+					m_dataHot[i].~THotData();
 				}
 
 				phx::VirtualMemFree(m_dataHot);
@@ -66,7 +66,7 @@ namespace phx::rhi
 			{
 				for (int i = 0; i < m_commitedIndices; i++)
 				{
-					m_dataCold[i].~ImplT();
+					m_dataCold[i].~TColdData();
 				}
 
 				phx::VirtualMemFree(m_dataCold);

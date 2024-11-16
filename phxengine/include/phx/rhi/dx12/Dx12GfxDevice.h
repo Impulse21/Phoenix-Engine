@@ -210,7 +210,7 @@ namespace phx::rhi::dx12
 		void InitializeResourcePools();
 		void FinalizeResourcePools();
 
-		void InitializeD3D12Context(IDXGIAdapter* gpuAdapter);
+		void InitializeD3D12Context();
 
 		void SubmitCommandLists();
 		void Present();

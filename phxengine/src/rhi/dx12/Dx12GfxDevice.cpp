@@ -715,8 +715,9 @@ void GfxDeviceDx12::ResizeSwapChain(SwapChainDesc const& swapChainDesc)
 }
 #endif
 
-bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, PipelineState_Hot& hot, PipelineState_Cold& cold)
+bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const&, PipelineState_Hot&, PipelineState_Cold& )
 {
+#if false
 	PipelineStateHandle retVal = m_pipelineStatePool.Emplace();
 	PipelineState_Dx12& impl = *m_pipelineStatePool.Get(retVal);
 
@@ -930,6 +931,8 @@ bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, Pipeline
 	}
 
 	return retVal;
+#endif
+	return true;
 }
 
 
@@ -999,7 +1002,7 @@ void GfxDeviceDx12::Initialize()
 {
 	PHX_CORE_INFO("Initialize DirectX 12 Graphics Device");
 
-	InitializeD3D12Context(m_gpuAdapter.NativeAdapter.Get());
+	InitializeD3D12Context();
 
 #if ENABLE_PIX_CAPUTRE
 	m_pixCaptureModule = PIXLoadLatestWinPixGpuCapturerLibrary();
@@ -1081,7 +1084,7 @@ void GfxDeviceDx12::FinalizeResourcePools()
 {
 }
 
-void GfxDeviceDx12::InitializeD3D12Context(IDXGIAdapter* gpuAdapter)
+void GfxDeviceDx12::InitializeD3D12Context()
 {
 	{
 		uint32_t useDebugLayers = 0;

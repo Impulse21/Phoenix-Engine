@@ -79,7 +79,7 @@
     <ClInclude Include="..\..\include\phx\rhi\Handle.h">
       <Filter>include\phx\rhi</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\phx\rhi\Pool.h">
+    <ClInclude Include="..\..\include\phx\rhi\ResourcePool.h">
       <Filter>include\phx\rhi</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\phx\rhi\GfxDevice.h">
@@ -113,6 +113,9 @@
       <Filter>include\phx\rhi\dx12</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12CommandQueue.h">
+      <Filter>include\phx\rhi\dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12DeviceResources.h">
       <Filter>include\phx\rhi\dx12</Filter>
     </ClInclude>
   </ItemGroup>

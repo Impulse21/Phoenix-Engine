@@ -10,8 +10,9 @@
 #include <SDKDDKVer.h>
 
 // Use the C++ standard templated min/max
+#ifndef NOMINMAX
 #define NOMINMAX
-
+#endif
 // DirectX apps don't need GDI
 #define NODRAWTEXT
 #define NOGDI
