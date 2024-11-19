@@ -122,6 +122,8 @@
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)phxengine/include;$(SolutionDir)phxengine/include/phx/rhi/dx12;$(SolutionDir)3rdParty;$(SolutionDir)3rdparty;$(SolutionDir)packages\Microsoft.Direct3D.D3D12.1.614.1\build\native\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <DisableSpecificWarnings>4201</DisableSpecificWarnings>
     </ClCompile>
     <FXCompile>
       <ShaderModel>6.0</ShaderModel>
@@ -152,6 +154,8 @@
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)phxengine/include;$(SolutionDir)phxengine/include/phx/rhi/dx12;$(SolutionDir)3rdParty;$(SolutionDir)3rdparty;$(SolutionDir)packages\Microsoft.Direct3D.D3D12.1.614.1\build\native\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <DisableSpecificWarnings>4201</DisableSpecificWarnings>
     </ClCompile>
     <FXCompile>
       <ShaderModel>6.0</ShaderModel>
@@ -179,6 +183,8 @@
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)phxengine/include;$(SolutionDir)phxengine/include/phx/rhi/dx12;$(SolutionDir)3rdParty;$(SolutionDir)3rdparty;$(SolutionDir)packages\Microsoft.Direct3D.D3D12.1.614.1\build\native\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <DisableSpecificWarnings>4201</DisableSpecificWarnings>
     </ClCompile>
     <FXCompile>
       <ShaderModel>6.0</ShaderModel>
