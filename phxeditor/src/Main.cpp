@@ -25,12 +25,12 @@ class PhxEditor final : public phx::IEngineApp
 public:
 	void Startup() override 
 	{
-		phx::rhi::GfxDevice* device = phx::rhi::GfxDevice::Ptr;
+		// phx::rhi::GfxDevice* device = phx::rhi::GfxDevice::Ptr;
 	};
 
 	void Shutdown() override 
 	{
-		phx::rhi::GfxDevice* device = phx::rhi::GfxDevice::Ptr;
+		// phx::rhi::GfxDevice* device = phx::rhi::GfxDevice::Ptr;
 
 	};
 

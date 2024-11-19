@@ -65,8 +65,6 @@
 #include <dxgidebug.h>
 #endif
 
-#include <pix3.h>
-
 #include <XGameRuntime.h>
 
 namespace DX
