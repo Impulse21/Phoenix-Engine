@@ -17,14 +17,26 @@
 #include "phx/EngineCore.h"
 
 #include <cmath>
+#include <unordered_map>
+
+#include "phx/core/StringHash.h"
 
 using namespace phx;
 
+class ShaderLibrary
+{
+public:
+	
+private:
+	std::unordered_map<phx::StringHash, uint8_t>
+};
 class PhxEditor final : public phx::IEngineApp
 {
 public:
 	void Startup() override 
 	{
+		// Create a shader Libary for loading and compiling shaders
+		// Add a reload functionality
 		// phx::rhi::GfxDevice* device = phx::rhi::GfxDevice::Ptr;
 	};
 
