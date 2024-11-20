@@ -86,14 +86,14 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>NOMINMAX;USING_D3D12_AGILITY_SDK;NDEBUG;__WRL_NO_DEFAULT_LIB__;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;USING_DIRECTX_HEADERS;USING_D3D12_AGILITY_SDK;NDEBUG;__WRL_NO_DEFAULT_LIB__;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level4</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\include\phx\rhi\dx12;$(ProjectDir)..\..\src;$(SolutionDir)3rdparty;$(SolutionDir)packages\Microsoft.Direct3D.D3D12.1.614.1\build\native\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\src;$(ProjectDir)..\..\include;$(ProjectDir)..\..\include\phx\rhi\dx12;$(ProjectDir)..\..\src;$(SolutionDir)3rdparty;$(SolutionDir)packages\Microsoft.Direct3D.D3D12.1.614.1\build\native\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4201</DisableSpecificWarnings>
     </ClCompile>
@@ -116,14 +116,14 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>NOMINMAX;USING_D3D12_AGILITY_SDK;NDEBUG;__WRL_NO_DEFAULT_LIB__;_LIB;PROFILE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;USING_DIRECTX_HEADERS;USING_D3D12_AGILITY_SDK;NDEBUG;__WRL_NO_DEFAULT_LIB__;_LIB;PROFILE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level4</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\include\phx\rhi\dx12;$(ProjectDir)..\..\src;$(SolutionDir)3rdparty;$(SolutionDir)packages\Microsoft.Direct3D.D3D12.1.614.1\build\native\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\src;$(ProjectDir)..\..\include;$(ProjectDir)..\..\include\phx\rhi\dx12;$(ProjectDir)..\..\src;$(SolutionDir)3rdparty;$(SolutionDir)packages\Microsoft.Direct3D.D3D12.1.614.1\build\native\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4201</DisableSpecificWarnings>
     </ClCompile>
@@ -146,11 +146,11 @@
       <MinimalRebuild>false</MinimalRebuild>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>NOMINMAX;USING_D3D12_AGILITY_SDK;_DEBUG;__WRL_NO_DEFAULT_LIB__;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;USING_DIRECTX_HEADERS;USING_D3D12_AGILITY_SDK;_DEBUG;__WRL_NO_DEFAULT_LIB__;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\include;$(ProjectDir)..\..\include\phx\rhi\dx12;$(ProjectDir)..\..\src;$(SolutionDir)3rdparty;$(SolutionDir)packages\Microsoft.Direct3D.D3D12.1.614.1\build\native\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\src;$(ProjectDir)..\..\include;$(ProjectDir)..\..\include\phx\rhi\dx12;$(ProjectDir)..\..\src;$(SolutionDir)3rdparty;$(SolutionDir)packages\Microsoft.Direct3D.D3D12.1.614.1\build\native\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4201</DisableSpecificWarnings>
     </ClCompile>
@@ -179,6 +179,7 @@
     <ClInclude Include="..\..\include\phx\core\SystemTime.h" />
     <ClInclude Include="..\..\include\phx\core\VFS.h" />
     <ClInclude Include="..\..\include\phx\EngineCore.h" />
+    <ClInclude Include="..\..\include\phx\renderer\ImGuiRenderer.h" />
     <ClInclude Include="..\..\include\phx\rhi\CommandCtx.h" />
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12CommandQueue.h" />
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12Common.h" />
@@ -191,6 +192,7 @@
     <ClInclude Include="..\..\include\phx\rhi\GfxDevice.h" />
     <ClInclude Include="..\..\include\phx\rhi\RHITypes.h" />
     <ClInclude Include="..\..\include\phx\rhi\ShaderCompiler.h" />
+    <ClInclude Include="..\..\src\renderer\ImGui\imgui_impl_win32.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
@@ -201,6 +203,8 @@
     <ClCompile Include="..\..\src\core\SystemTimer.cpp" />
     <ClCompile Include="..\..\src\core\VFS.cpp" />
     <ClCompile Include="..\..\src\EngineCore.cpp" />
+    <ClCompile Include="..\..\src\renderer\ImGuiRenderer.cpp" />
+    <ClCompile Include="..\..\src\renderer\ImGui\imgui_impl_win32.cpp" />
     <ClCompile Include="..\..\src\rhi\dx12\Dx12CommandQueue.cpp" />
     <ClCompile Include="..\..\src\rhi\dx12\Dx12DescriptorHeaps.cpp" />
     <ClCompile Include="..\..\src\rhi\dx12\Dx12DxgiFormatMapping.cpp" />
@@ -224,6 +228,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\3rdParty\d3d12ma\D3D12MA.vcxproj">
       <Project>{c452f962-6478-43e7-a79b-b2c3cb570e31}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\3rdParty\ImGui\ImGui.vcxproj">
+      <Project>{b7a38d2e-f239-4286-afae-050f8dbfaebb}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

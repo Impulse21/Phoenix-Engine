@@ -28,6 +28,15 @@
     <Filter Include="include\phx\rhi\dx12">
       <UniqueIdentifier>{2fa37a16-b73e-4a3e-888c-2453d223e87e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="include\phx\renderer">
+      <UniqueIdentifier>{5ee41319-f492-4487-895e-525856027b32}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\renderer">
+      <UniqueIdentifier>{577468c6-3d39-4f21-9ebc-28eb446dee6c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\renderer\ImGui">
+      <UniqueIdentifier>{a3932928-4a16-4374-806b-4080b062ad8c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -118,6 +127,12 @@
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12DeviceResources.h">
       <Filter>include\phx\rhi\dx12</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\phx\renderer\ImGuiRenderer.h">
+      <Filter>include\phx\renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\renderer\ImGui\imgui_impl_win32.h">
+      <Filter>src\renderer\ImGui</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
@@ -159,6 +174,12 @@
     </ClCompile>
     <ClCompile Include="..\..\src\rhi\dx12\Dx12CommandQueue.cpp">
       <Filter>src\rhi\dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\renderer\ImGuiRenderer.cpp">
+      <Filter>src\renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\renderer\ImGui\imgui_impl_win32.cpp">
+      <Filter>src\renderer\ImGui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
