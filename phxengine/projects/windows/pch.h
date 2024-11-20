@@ -29,6 +29,8 @@
 
 #include <windows.h>
 
+#include <DirectXMath.h>
+
 #include "phx/core/Log.h"
 #include "phx/core/Platform.h"
 #include "phx/core/PlatformDetection.h"

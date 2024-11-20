@@ -3,10 +3,10 @@
 #include "phx/rhi/RHITypes.h"
 
 #ifdef USING_DIRECTX_HEADERS
-#include <directx-headers/directx/dxgiformat.h>
-#include <directx-headers/directx/d3d12.h>
-#include <directx-headers/directx/d3dx12.h>
-#include <directx-headers/dxguids/dxguids.h>
+#include "directx/dxgiformat.h"
+#include "directx/d3d12.h"
+#include "directx/d3dx12.h"
+#include "dxguids/dxguids.h"
 #else
 #include <d3d12.h>
 

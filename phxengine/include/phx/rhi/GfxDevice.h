@@ -51,6 +51,34 @@ namespace phx::rhi
             m_deferredQueue.push_back(d);
         }
 
+        TextureHandle CreateTexture(TextureDescriptor const& desc, MemInfo* initData = nullptr)
+        {
+            UNREFERENCED_PARAMETER(desc);
+            UNREFERENCED_PARAMETER(initData);
+            return {};
+        }
+
+        DescriptorIndex GetDescriptorIndex(TextureHandle texture, SubresouceType type = SubresouceType::SRV)
+        {
+            UNREFERENCED_PARAMETER(texture);
+            UNREFERENCED_PARAMETER(type);
+
+            return cInvalidDescriptorIndex;
+        }
+
+        void DeleteTexture(TextureHandle handle)
+        {
+            DeferredItem d =
+            {
+                m_frameCount,
+                [=]()
+                {
+                    m_texturePool.Free(handle);
+                }
+            };
+
+            m_deferredQueue.push_back(d);
+        }
     private:
         platform::GfxDevice m_platformDevice;
 

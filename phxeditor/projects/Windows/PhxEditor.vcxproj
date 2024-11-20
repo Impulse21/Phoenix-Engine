@@ -16,6 +16,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\3rdParty\ImGui\ImGui.vcxproj">
+      <Project>{b7a38d2e-f239-4286-afae-050f8dbfaebb}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\phxengine\projects\Windows\PhxEngine.vcxproj">
       <Project>{e255b43c-84e0-481c-abd5-42bc1e925e55}</Project>
     </ProjectReference>
@@ -114,7 +117,7 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>USING_D3D12_AGILITY_SDK;NDEBUG;__WRL_NO_DEFAULT_LIB__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>;USING_DIRECTX_HEADERS;USING_D3D12_AGILITY_SDK;NDEBUG;__WRL_NO_DEFAULT_LIB__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level4</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -146,7 +149,7 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>USING_D3D12_AGILITY_SDK;NDEBUG;__WRL_NO_DEFAULT_LIB__;PROFILE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>;USING_DIRECTX_HEADERS;USING_D3D12_AGILITY_SDK;NDEBUG;__WRL_NO_DEFAULT_LIB__;PROFILE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level4</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -178,7 +181,7 @@
       <MinimalRebuild>false</MinimalRebuild>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>USING_D3D12_AGILITY_SDK;_DEBUG;__WRL_NO_DEFAULT_LIB__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>;USING_DIRECTX_HEADERS;USING_D3D12_AGILITY_SDK;_DEBUG;__WRL_NO_DEFAULT_LIB__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)phxengine/include;$(SolutionDir)phxengine/include/phx/rhi/dx12;$(SolutionDir)3rdParty;$(SolutionDir)3rdparty;$(SolutionDir)packages\Microsoft.Direct3D.D3D12.1.614.1\build\native\include</AdditionalIncludeDirectories>

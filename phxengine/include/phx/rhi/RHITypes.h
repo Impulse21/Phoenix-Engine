@@ -6,6 +6,8 @@
 
 #include "Handle.h"
 
+#define BIT(x) 1 << x
+
 namespace phx::rhi
 {
 
@@ -183,20 +185,6 @@ namespace phx::rhi
     };
 
     constexpr size_t NumCommandQueues = static_cast<size_t>(CommandQueueType::Count);
-
-    enum class TextureDimension : uint8_t
-    {
-        Unknown,
-        Texture1D,
-        Texture1DArray,
-        Texture2D,
-        Texture2DArray,
-        TextureCube,
-        TextureCubeArray,
-        Texture2DMS,
-        Texture2DMSArray,
-        Texture3D
-    };
 
     enum class ResourceStates : uint32_t
     {
@@ -386,32 +374,26 @@ namespace phx::rhi
         Maximum
     };
 
-    enum class BufferMiscFlags
+    enum class ResourceMiscFlags
     {
-        None = 0,
-        Bindless = 1 << 0,
-        Raw = 1 << 1,
-        Structured = 1 << 2,
-        Typed = 1 << 3,
-        HasCounter = 1 << 4,
-        IsAliasedResource = 1 << 5,
-        IndirectArgs = 1 << 6,
-        RayTracing = 1 << 7,
-        Sparse = 1 << 8,
+        None                    = 0,
+        TextureCube             = BIT(0),
+        IndirectArgs            = BIT(1),
+        BufferRaw               = BIT(2),
+        BufferStructured        = BIT(3),
+        RayTracing              = BIT(4),
+        AliasBuffer             = BIT(5),
+        AliasTexture_NonRtDs    = BIT(6),
+        AliasTexture_RtDs       = BIT(7),
+        Sparse                  = BIT(8),
+        HasCounter              = BIT(9),
+        TypedFormatCasting      = BIT(10),	// enable casting formats between same type and different modifiers: eg. UNORM -> SRGB
+        TypelessFormatCasting   = BIT(11),  // enable casting formats to other formats that have the s
+        Alias = AliasBuffer | AliasTexture_NonRtDs | AliasTexture_RtDs,
+
     };
 
-    PHX_ENUM_CLASS_FLAGS(BufferMiscFlags);
-
-    enum class TextureMiscFlags
-    {
-        None = 0,
-        Sparse = 1 << 0,
-        TransientAttachment = 1 << 1,
-        TypedFormatCasting = 1 << 2,
-        TypelessFormatCasting = 1 << 3,
-    };
-
-    PHX_ENUM_CLASS_FLAGS(TextureMiscFlags);
+    PHX_ENUM_CLASS_FLAGS(ResourceMiscFlags);
 
     enum class BindingFlags
     {
@@ -454,6 +436,13 @@ namespace phx::rhi
 #pragma endregion
 
 #pragma region Types
+
+    struct MemInfo
+    {
+        const void* Data = nullptr;
+        uint32_t RowPitch = 0;
+        uint32_t SlicePitch = 0;
+    };
 
     struct Color
     {
@@ -800,11 +789,58 @@ namespace phx::rhi
 
     };
 
+#if false
+    enum class Type : uint8_t
+    {
+        TEXTURE_1D,
+        TEXTURE_2D,
+        TEXTURE_3D,
+    } type = Type::TEXTURE_2D;
+    Format format = Format::UNKNOWN;
+    uint32_t width = 1;
+    uint32_t height = 1;
+    uint32_t depth = 1;
+    uint32_t array_size = 1;
+    uint32_t mip_levels = 1;
+    uint32_t sample_count = 1;
+    ClearValue clear = {};
+    Swizzle swizzle;
+    Usage usage = Usage::DEFAULT;
+    BindFlag bind_flags = BindFlag::NONE;
+    ResourceMiscFlag misc_flags = ResourceMiscFlag::NONE;
+    ResourceState layout = ResourceState::SHADER_RESOURCE;
+#endif
+    
     struct Texture;
     using TextureHandle = Handle<Texture>;
     struct TextureDescriptor
     {
+        const char* DebugName = "";
+        enum class TexType : uint8_t
+        {
+            Texture1D,
+            Texture2D,
+            Texture3D,
+        } Type = TexType::Texture2D;
+        rhi::Format Format = rhi::Format::UNKNOWN;
 
+        uint32_t Width = 1;
+        uint32_t Height = 1;
+
+        union
+        {
+            uint16_t ArraySize = 1;
+            uint16_t Depth;
+        };
+        uint16_t MipLevels = 1;
+        uint16_t SampleCount = 1;
+
+        rhi::ClearValue ClearValue = {};
+        Usage Usage = Usage::Default;
+
+        BindingFlags BindingFlags = BindingFlags::ShaderResource;
+        ResourceMiscFlags MiscFlags = ResourceMiscFlags::None;
+        ResourceStates InitialState = ResourceStates::ShaderResource;
     };
 
     struct GfxDeviceDescriptor

@@ -23,13 +23,7 @@
 
 using namespace phx;
 
-class ShaderLibrary
-{
-public:
-	
-private:
-	std::unordered_map<phx::StringHash, uint8_t>
-};
+
 class PhxEditor final : public phx::IEngineApp
 {
 public:

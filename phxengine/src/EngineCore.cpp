@@ -29,7 +29,7 @@ using namespace phx;
 using namespace DirectX;
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-// extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void ExitGame() noexcept;
 
 
@@ -342,7 +342,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		return MAKELRESULT(0, MNC_CLOSE);
 	}
 
-	// ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam);
+	ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam);
 
 	return DefWindowProc(hWnd, message, wParam, lParam);
 }
