@@ -1,11 +1,11 @@
 # Phoenix Engine
  
-## ToDO List
-### Initial Pass
+## TODO List
+### Dx12 Only focus currently
 
-- [x] Setup initial loop
-- [x] Hook in Profiler (3rd Party https://github.com/bombomby/optick)
-- [x] Config System
-- [x] Hook in Core Memory Service
-- [x] Hook in Core Logger?
-- [] Start to add Core Services and services setup system
+- [] Get ImGui Demo Window Rendering 
+- [] Delete old unused code
+- [] Create a resource system and resources
+- [] Construct a pipeline tool for converting GLTF files into my file format.
+- [] Implement a scene using ECS system
+- [] Implement a Render Graph to render said scene.
