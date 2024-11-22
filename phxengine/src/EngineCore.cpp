@@ -1,13 +1,16 @@
 ﻿#include "pch.h"
 #include "phx/EngineCore.h"
 
-#include "phx/core/CommandLineArgs.h"
 #include <shellapi.h>  // For CommandLineToArgW
-
+#include "phx/core/CommandLineArgs.h"
 #include "phx/core/SystemTime.h"
+
 #include "phx/rhi/GfxDevice.h"
 
+#include "phx/Display.h"
+
 #include "ImGui/imgui.h"
+
 #include <iostream>
 
 
@@ -50,8 +53,17 @@ namespace
 
 		phx::Log::Initialize();
 		
-
 		SystemTime::Initialize();
+		Display::Initialize({
+				.WindowHandle = EngineCore::g_hWnd,
+				.Width = 2000, // TODO: Data Drive this.
+				.Height = 1200,
+				.Format = rhi::Format::R10G10B10A2_UNORM,
+				.Fullscreen = false,
+				.VSync = false,
+				.EnableHDR = false,
+			});
+
 		// TODO: Game Input
 		// TODO: EngineTuning;
 		app.Startup();

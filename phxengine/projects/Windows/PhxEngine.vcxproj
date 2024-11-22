@@ -178,6 +178,7 @@
     <ClInclude Include="..\..\include\phx\core\StringUtils.h" />
     <ClInclude Include="..\..\include\phx\core\SystemTime.h" />
     <ClInclude Include="..\..\include\phx\core\VFS.h" />
+    <ClInclude Include="..\..\include\phx\Display.h" />
     <ClInclude Include="..\..\include\phx\EngineCore.h" />
     <ClInclude Include="..\..\include\phx\renderer\ImGuiRenderer.h" />
     <ClInclude Include="..\..\include\phx\rhi\CommandCtx.h" />
@@ -202,6 +203,7 @@
     <ClCompile Include="..\..\src\core\Memory.cpp" />
     <ClCompile Include="..\..\src\core\SystemTimer.cpp" />
     <ClCompile Include="..\..\src\core\VFS.cpp" />
+    <ClCompile Include="..\..\src\Display.cpp" />
     <ClCompile Include="..\..\src\EngineCore.cpp" />
     <ClCompile Include="..\..\src\renderer\ImGuiRenderer.cpp" />
     <ClCompile Include="..\..\src\renderer\ImGui\imgui_impl_win32.cpp" />

@@ -28,6 +28,25 @@ namespace phx::rhi
         }
 
     public:
+        SwapChainHandle CreateSwapChain(SwapChainDescriptor const& swapChain)
+        {
+            return {};
+        }
+
+        void DeleteSwapChain(SwapChainHandle swapChain)
+        {
+            DeferredItem d =
+            {
+                m_frameCount,
+                [=]()
+                {
+                    m_swapChainPool.Free(swapChain);
+                }
+            };
+
+            m_deferredQueue.push_back(d);
+        }
+
         PipelineStateHandle CreatePipeline(PipelineStateDescriptor const& desc)
         {
             platform::PipelineState_Hot hot;
@@ -82,6 +101,7 @@ namespace phx::rhi
     private:
         platform::GfxDevice m_platformDevice;
 
+        ResourcePool<SwapChain, platform::SwapChain_Hot, platform::SwapChain_Cold> m_swapChainPool;
         ResourcePool<Texture, platform::Texture_Hot, platform::Texture_Cold> m_texturePool;
         ResourcePool<GpuBuffer, platform::GpuBuffer_Hot, platform::GpuBuffer_Cold> m_gpuBufferPool;
         ResourcePool<PipelineState, platform::PipelineState_Hot, platform::PipelineState_Cold> m_pipelineStatePool;

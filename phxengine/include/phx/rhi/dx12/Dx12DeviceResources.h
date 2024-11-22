@@ -2,6 +2,16 @@
 
 namespace phx::rhi::dx12
 {
+	struct SwapChain_Hot
+	{
+
+	};
+
+	struct SwapChain_Cold
+	{
+
+	};
+
 	struct PipelineState_Hot
 	{
 

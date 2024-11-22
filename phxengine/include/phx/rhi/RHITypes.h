@@ -851,6 +851,26 @@ namespace phx::rhi
     struct SwapChainDescriptor
     {
         void* WindowHandle = nullptr;
+        uint32_t Width = 0;
+        uint32_t Height = 0;
+        rhi::Format Format = rhi::Format::R10G10B10A2_UNORM;
+        rhi::ClearValue OptmizedClearValue =
+        {
+            .Colour =
+            {
+                0.0f,
+                0.0f,
+                0.0f,
+                1.0f,
+            }
+        };
+
+        bool Fullscreen : 1 = false;
+        bool VSync : 1 = false;
+        bool EnableHDR : 1 = false;
     };
+
+    struct SwapChain;
+    using SwapChainHandle = Handle<SwapChain>;
 #pragma endregion
 }

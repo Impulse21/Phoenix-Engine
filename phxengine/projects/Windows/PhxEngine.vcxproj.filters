@@ -133,6 +133,9 @@
     <ClInclude Include="..\..\src\renderer\ImGui\imgui_impl_win32.h">
       <Filter>src\renderer\ImGui</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\phx\Display.h">
+      <Filter>include\phx</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
@@ -180,6 +183,9 @@
     </ClCompile>
     <ClCompile Include="..\..\src\renderer\ImGui\imgui_impl_win32.cpp">
       <Filter>src\renderer\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\Display.cpp">
+      <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

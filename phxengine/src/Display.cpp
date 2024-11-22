@@ -1,0 +1,25 @@
+#include "pch.h"
+#include "phx/Display.h"
+
+#include "phx/rhi/GfxDevice.h"
+
+using namespace phx;
+
+
+namespace phx::Display
+{
+	extern rhi::SwapChainDescriptor g_SwapChainDesc;
+	extern rhi::SwapChainHandle g_SwapChain;
+}
+void Display::Initialize(rhi::SwapChainDescriptor const& swapchainDesc)
+{
+	auto* device = rhi::GfxDevice::Ptr;
+	g_SwapChainDesc = swapchainDesc;
+	g_SwapChain = device->CreateSwapChain(g_SwapChainDesc);
+}
+
+void Display::Finalize()
+{
+	auto* device = rhi::GfxDevice::Ptr;
+	device->DeleteSwapChain(g_SwapChain);
+}

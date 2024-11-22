@@ -6,6 +6,9 @@ namespace phx::rhi::platform
 {
 	using GfxDevice = phx::rhi::dx12::GfxDeviceDx12;
 
+	using SwapChain_Hot = phx::rhi::dx12::SwapChain_Hot;
+	using SwapChain_Cold = phx::rhi::dx12::SwapChain_Cold;
+
 	using PipelineState_Hot = phx::rhi::dx12::PipelineState_Hot;
 	using PipelineState_Cold = phx::rhi::dx12::PipelineState_Cold;
 
