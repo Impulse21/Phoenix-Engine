@@ -132,10 +132,10 @@ namespace phx::rhi::dx12
 
 	struct GpuTimerManager
 	{
-		void Initialize();
+		void Initialize() {};
 		// TimerQueryHandle NewTimer() { return this->NumTimers++; }
-		void BeginReadBack();
-		void EndReadBack();
+		void BeginReadBack() {};
+		void EndReadBack() {};
 
 		// float GetTime(TimerQueryHandle handle);
 
