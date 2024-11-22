@@ -1,8 +1,8 @@
 #pragma once
 
 #include "memory"
-#include "phxMemory.h"
-#include "phxSpan.h"
+#include "phx/core/Memory.h"
+#include "phx/core/Span.h"
 
 namespace phx
 {
