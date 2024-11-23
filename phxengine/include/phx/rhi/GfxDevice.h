@@ -27,11 +27,23 @@ namespace phx::rhi
             return m_platformDevice.GetShaderFormat();
         }
 
-    public:
-        SwapChainHandle CreateSwapChain(SwapChainDescriptor const& swapChain)
+        void Present(phx::Span<SwapChainHandle> swapChains)
         {
-            UNREFERENCED_PARAMETER(swapChain);
-            return {};
+            assert(swapChains.Size() == 1 && "Only support a single swap chain");
+
+            auto& hot = *m_swapChainPool.Get<platform::SwapChain_Hot>(swapChains[0]);
+            auto& cold = *m_swapChainPool.Get<platform::SwapChain_Cold>(swapChains[0]);
+
+            m_platformDevice.Present(hot, cold);
+        }
+    public:
+        SwapChainHandle CreateSwapChain(SwapChainDescriptor const& desc)
+        {
+            platform::SwapChain_Hot hot;
+            platform::SwapChain_Cold cold;
+
+            m_platformDevice.CreateSwapChain(desc, hot, cold);
+            return m_swapChainPool.Allocate(hot, cold);
         }
 
         void DeleteSwapChain(SwapChainHandle swapChain)

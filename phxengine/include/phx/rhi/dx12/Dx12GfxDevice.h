@@ -50,32 +50,6 @@ namespace phx::rhi::dx12
 		}
 	};
 
-	struct D3D12SwapChain final
-	{
-		Microsoft::WRL::ComPtr<IDXGISwapChain1> SwapChain;
-		Microsoft::WRL::ComPtr<IDXGISwapChain4> SwapChain4;
-
-		std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, rhi::kBufferCount> BackBuffers;
-		DescriptorHeapAllocation Rtv;
-		rhi::ClearValue ClearColour = {};
-		bool Fullscreen : 1 = false;
-		bool VSync : 1 = false;
-		bool EnableHDR : 1 = false;
-
-		D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView()
-		{
-			const UINT currentIndex = SwapChain4->GetCurrentBackBufferIndex();
-			return Rtv.GetCpuHandle(currentIndex);
-		}
-		ID3D12Resource* GetBackBuffer()
-		{
-			const UINT currentIndex = SwapChain4->GetCurrentBackBufferIndex();
-			return BackBuffers[currentIndex].Get();
-		}
-	};
-
-
-
 	class BindlessDescriptorTable
 	{
 	public:
@@ -167,8 +141,10 @@ namespace phx::rhi::dx12
 
 		// DynamicMemoryPage AllocateDynamicMemoryPage(size_t pageSize);
 
+		void Present(SwapChain_Hot& hot, SwapChain_Cold const& cold);
+
 	public:
-		bool CreateSwapChain(SwapChainDescriptor& desc);
+		bool CreateSwapChain(SwapChainDescriptor const& desc, SwapChain_Hot& hot, SwapChain_Cold& cold);
 		bool CreatePipeline(PipelineStateDescriptor const& desc, PipelineState_Hot& hot, PipelineState_Cold& cold);
 		bool CreateBuffer(GpuBufferDescriptor const& desc, GpuBuffer_Hot& hot, GpuBuffer_Cold& cold);
 		bool CreateTexture(TextureDescriptor const& desc, Texture_Hot& hot, Texture_Cold& cold);
@@ -179,9 +155,6 @@ namespace phx::rhi::dx12
 
 		// -- Platform specific ---
 	public:
-		D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView() { return m_swapChain.GetBackBufferView(); }
-		ID3D12Resource* GetBackBuffer() { return m_swapChain.GetBackBuffer(); }
-		UINT GetBackBufferIndex() { return m_swapChain.SwapChain4->GetCurrentBackBufferIndex(); }
 		size_t GetFrameCount() { return m_frameCount; }
 
 		ID3D12Device* GetD3D12Device() { return m_d3d12Device.Get(); }
@@ -213,7 +186,6 @@ namespace phx::rhi::dx12
 		void InitializeD3D12Context();
 
 		void SubmitCommandLists();
-		void Present();
 		void RunGarbageCollection(uint64_t completedFrame = ~0ul);
 
 		int CreateSubresource(TextureHandle texture, TextureDescriptor const& desc, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
@@ -239,7 +211,6 @@ namespace phx::rhi::dx12
 		Microsoft::WRL::ComPtr<D3D12MA::Allocator> m_d3d12MemAllocator;
 
 		D3D12Adapter m_gpuAdapter;
-		D3D12SwapChain m_swapChain;
 
 		D3D12_FEATURE_DATA_ROOT_SIGNATURE m_featureDataRootSignature = {};
 		D3D12_FEATURE_DATA_SHADER_MODEL   m_featureDataShaderModel = {};

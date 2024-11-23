@@ -661,7 +661,6 @@ GfxDeviceDx12::GfxDeviceDx12(GfxDeviceDescriptor const& descriptor)
 
 	Initialize();
 	InitializeResourcePools();
-	// CreateSwapChain(swapChainDesc, static_cast<HWND>(windowHandle));
 	m_gpuTimerManager.Initialize();
 
 	m_emptyRootSignature = CreateEmptyRootSignature();
@@ -670,14 +669,7 @@ GfxDeviceDx12::GfxDeviceDx12(GfxDeviceDescriptor const& descriptor)
 
 GfxDeviceDx12::~GfxDeviceDx12()
 {
-
 	WaitForIdle();
-
-	m_swapChain.Rtv.Free();
-	for (auto& backBuffer : m_swapChain.BackBuffers)
-	{
-		backBuffer.Reset();
-	}
 
 	// m_tempPageAllocator.Finalize();
 	m_copyCtxManager.Finalize();
@@ -714,6 +706,159 @@ void GfxDeviceDx12::ResizeSwapChain(SwapChainDesc const& swapChainDesc)
 	CreateSwapChain(swapChainDesc, nullptr);
 }
 #endif
+bool GfxDeviceDx12::CreateSwapChain(SwapChainDescriptor const& desc, SwapChain_Hot& hot, SwapChain_Cold& cold)
+{
+	HRESULT hr;
+
+	cold.ClearColour = desc.OptmizedClearValue;
+	cold.VSync = desc.VSync;
+	cold.Fullscreen = desc.Fullscreen;
+	cold.EnableHDR = desc.EnableHDR;
+
+	UINT swapChainFlags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+	swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+
+	const auto& formatMapping = GetDxgiFormatMapping(desc.Format);
+	if (cold.SwapChain == nullptr)
+	{
+		// Create swapchain:
+		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+		swapChainDesc.Width = desc.Width;
+		swapChainDesc.Height = desc.Height;
+		swapChainDesc.Format = formatMapping.RtvFormat;
+		swapChainDesc.Stereo = false;
+		swapChainDesc.SampleDesc.Count = 1;
+		swapChainDesc.SampleDesc.Quality = 0;
+		swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swapChainDesc.BufferCount = kBufferCount;
+		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+		swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+		swapChainDesc.Flags = swapChainFlags;
+
+		swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+
+		DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreenDesc = {};
+		fullscreenDesc.Windowed = !desc.Fullscreen;
+
+		hr = m_factory->CreateSwapChainForHwnd(
+			GetGfxQueue().Queue.Get(),
+			static_cast<HWND>(desc.WindowHandle),
+			&swapChainDesc,
+			&fullscreenDesc,
+			nullptr,
+			cold.SwapChain.GetAddressOf()
+		);
+
+		if (FAILED(hr))
+		{
+			throw std::exception();
+		}
+
+		hr = cold.SwapChain.As(&cold.SwapChain4);
+		if (FAILED(hr))
+		{
+			throw std::exception();
+		}
+	}
+	else
+	{
+		// Resize swapchain:
+		WaitForIdle();
+
+		hot.CurrentBackBuffer = nullptr;
+		hot.CurrentRtv = {};
+
+		// Delete back buffers
+		cold.ViewAllocation.Free();
+		for (auto& backBuffer : cold.BackBuffers)
+		{
+			backBuffer.Reset();
+		}
+
+		hr = cold.SwapChain->ResizeBuffers(
+			kBufferCount,
+			desc.Width,
+			desc.Height,
+			formatMapping.RtvFormat,
+			swapChainFlags
+		);
+
+		assert(SUCCEEDED(hr));
+	}
+
+	// -- From Wicked Engine
+#ifdef ENABLE_HDR
+	const bool hdr = desc->allow_hdr && IsSwapChainSupportsHDR(swapchain);
+
+	// Ensure correct color space:
+	//	https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/Samples/Desktop/D3D12HDR/src/D3D12HDR.cpp
+	{
+		internal_state->colorSpace = ColorSpace::SRGB; // reset to SDR, in case anything below fails to set HDR state
+		DXGI_COLOR_SPACE_TYPE colorSpace = {};
+
+		switch (desc->format)
+		{
+		case Format::R10G10B10A2_UNORM:
+			// This format is either HDR10 (ST.2084), or SDR (SRGB)
+			colorSpace = hdr ? DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 : DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+			break;
+		case Format::R16G16B16A16_FLOAT:
+			// This format is HDR (Linear):
+			colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+			break;
+		default:
+			// Anything else will be SDR (SRGB):
+			colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+			break;
+		}
+
+		UINT colorSpaceSupport = 0;
+		if (SUCCEEDED(internal_state->swapChain->CheckColorSpaceSupport(colorSpace, &colorSpaceSupport)))
+		{
+			if (colorSpaceSupport & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT)
+			{
+				hr = internal_state->swapChain->SetColorSpace1(colorSpace);
+				assert(SUCCEEDED(hr));
+				if (SUCCEEDED(hr))
+				{
+					switch (colorSpace)
+					{
+					default:
+					case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709:
+						internal_state->colorSpace = ColorSpace::SRGB;
+						break;
+					case DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709:
+						internal_state->colorSpace = ColorSpace::HDR_LINEAR;
+						break;
+					case DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020:
+						internal_state->colorSpace = ColorSpace::HDR10_ST2084;
+						break;
+					}
+				}
+			}
+		}
+	}
+#endif
+
+	cold.ViewAllocation = m_cpuDescriptorHeaps[DescriptorHeapTypes::RTV].Allocate(kBufferCount);
+	for (UINT i = 0; i < kBufferCount; i++)
+	{
+		Microsoft::WRL::ComPtr<ID3D12Resource>& backBuffer = cold.BackBuffers[i];
+		ThrowIfFailed(
+			cold.SwapChain4->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
+
+		char allocatorName[32];
+		sprintf_s(allocatorName, "Back Buffer %iu", i);
+
+		GetD3D12Device()->CreateRenderTargetView(backBuffer.Get(), nullptr, cold.ViewAllocation.GetCpuHandle(i));
+	}
+
+	const UINT currentIndex = cold.SwapChain4->GetCurrentBackBufferIndex();
+	hot.CurrentBackBuffer = cold.BackBuffers[currentIndex].Get();
+	hot.CurrentRtv = cold.ViewAllocation.GetCpuHandle(currentIndex);
+
+	return true;
+}
 
 bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const&, PipelineState_Hot&, PipelineState_Cold& )
 {
@@ -936,11 +1081,11 @@ bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const&, PipelineState
 }
 
 
-void GfxDeviceDx12::Present()
+void GfxDeviceDx12::Present(SwapChain_Hot& hot, SwapChain_Cold const& cold)
 {
 	// -- Mark Queues for completion ---
 	{
-		const size_t backBufferIndex = m_swapChain.SwapChain4->GetCurrentBackBufferIndex();
+		const size_t backBufferIndex = cold.SwapChain4->GetCurrentBackBufferIndex();
 		// -- Mark queues for Compleition ---
 		for (size_t q = 0; q < (size_t)CommandQueueType::Count; q++)
 		{
@@ -955,12 +1100,12 @@ void GfxDeviceDx12::Present()
 	{
 
 		UINT presentFlags = 0;
-		if (!m_swapChain.VSync)
+		if (!cold.VSync)
 		{
 			presentFlags |= DXGI_PRESENT_ALLOW_TEARING;
 		}
 
-		HRESULT hr = m_swapChain.SwapChain4->Present((UINT)m_swapChain.VSync, presentFlags);
+		HRESULT hr = cold.SwapChain4->Present((UINT)cold.VSync, presentFlags);
 
 		if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
 		{
@@ -970,7 +1115,7 @@ void GfxDeviceDx12::Present()
 
 	// -- wait for fence to finish
 	{
-		const size_t backBufferIndex = m_swapChain.SwapChain4->GetCurrentBackBufferIndex();
+		const size_t backBufferIndex = cold.SwapChain4->GetCurrentBackBufferIndex();
 
 		m_frameCount++;
 
@@ -988,6 +1133,9 @@ void GfxDeviceDx12::Present()
 			// Reset fence;
 			fence->Signal(0);
 		}
+
+		hot.CurrentRtv			= cold.ViewAllocation.GetCpuHandle((uint32_t)backBufferIndex);
+		hot.CurrentBackBuffer	= cold.BackBuffers[backBufferIndex].Get();
 	}
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <type_traits>
 #include <cstring>
 #include <utility>
 #include <limits>
@@ -14,6 +15,8 @@ namespace phx::rhi
 {
 	constexpr size_t kCacheLineSize = 64;
 	constexpr size_t kPageSize = 4_MiB;
+	template <typename>
+	inline constexpr bool always_false = false;
 
 	template<class THandle, class THotData, class TColdData>
 	class ResourcePool
@@ -131,6 +134,40 @@ namespace phx::rhi
 			m_freeList[--m_freeListHead] = handle.m_index;
 		}
 
+		template<typename T>
+		T* Get(Handle<THandle> handle)
+		{
+			if constexpr (std::is_same_v<T, THotData>)
+			{
+				return GetHot(handle);
+			}
+			else if constexpr (std::is_same_v<T, TColdData>)
+			{
+				return GetCold(handle);
+			}
+			else
+			{
+				static_assert(always_false<T>, "Unsupported handle type!");
+			}
+		}
+
+		template<typename T>
+		const T* Get(Handle<THandle> handle) const 
+		{
+			if constexpr (std::is_same_v<T, THotData>)
+			{
+				return GetHot(handle);
+			}
+			else if constexpr (std::is_same_v<T, TColdData>)
+			{
+				return GetCold(handle);
+			}
+			else
+			{
+				static_assert(always_false<T>, "Unsupported handle type!");
+			}
+		}
+
 		THotData* GetHot(Handle<THandle> handle)
 		{
 			if (!Contains(handle))
@@ -142,6 +179,27 @@ namespace phx::rhi
 		}
 
 		TColdData* GetCold(Handle<THandle> handle)
+		{
+			if (!Contains(handle))
+			{
+				return nullptr;
+			}
+
+			return m_dataCold + handle.m_index;
+		}
+
+
+		const THotData* GetHot(Handle<THandle> handle) const
+		{
+			if (!Contains(handle))
+			{
+				return nullptr;
+			}
+
+			return m_dataHot + handle.m_index;
+		}
+
+		const TColdData* GetCold(Handle<THandle> handle) const
 		{
 			if (!Contains(handle))
 			{
