@@ -10,7 +10,10 @@ namespace phx
 		void Finalize();
 
 		void Resize(uint32_t width, uint32_t height);
+	}
 
+	namespace gfx
+	{
 		extern rhi::SwapChainDescriptor g_SwapChainDesc;
 		extern rhi::SwapChainHandle g_SwapChain;
 	}

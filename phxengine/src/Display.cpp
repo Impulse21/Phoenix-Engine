@@ -4,9 +4,9 @@
 #include "phx/rhi/GfxDevice.h"
 
 using namespace phx;
+using namespace phx::gfx;
 
-
-namespace phx::Display
+namespace phx::gfx
 {
 	rhi::SwapChainDescriptor g_SwapChainDesc;
 	rhi::SwapChainHandle g_SwapChain;
