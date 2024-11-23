@@ -81,6 +81,7 @@ namespace
 		// TODO: Idle GPU:
 		app.Shutdown();
 
+		Display::Finalize();
 	}
 
 	void ShowConsole()
@@ -168,6 +169,8 @@ namespace phx::EngineCore
 		ApplicationFinalize(*app);
 		app.reset();
 
+		phx::rhi::GfxDevice::Finalize();
+
 		XGameRuntimeUninitialize();
 
 		if (stream) 
@@ -248,7 +251,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		else if (s_in_sizemove)
 		{
-			// Display::Resize(LOWORD(lParam), HIWORD(lParam));
+			Display::Resize(LOWORD(lParam), HIWORD(lParam));
 		}
 
 		break;
@@ -264,7 +267,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			RECT rc;
 			GetClientRect(hWnd, &rc);
 
-			// app->OnWindowSizeChanged(rc.right - rc.left, rc.bottom - rc.top);
+			Display::Resize(rc.right - rc.left, rc.bottom - rc.top);
 		}
 		break;
 

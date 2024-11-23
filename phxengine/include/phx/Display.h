@@ -9,6 +9,8 @@ namespace phx
 		void Initialize(rhi::SwapChainDescriptor const& swapchainDesc);
 		void Finalize();
 
+		void Present();
+
 		void Resize(uint32_t width, uint32_t height);
 	}
 

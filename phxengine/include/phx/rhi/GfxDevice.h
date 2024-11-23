@@ -46,6 +46,14 @@ namespace phx::rhi
             return m_swapChainPool.Allocate(hot, cold);
         }
 
+        void CreateSwapChain(SwapChainDescriptor const& desc, SwapChainHandle handle)
+        {
+            auto& hot = *m_swapChainPool.Get<platform::SwapChain_Hot>(handle);
+            auto& cold = *m_swapChainPool.Get<platform::SwapChain_Cold>(handle);
+
+            m_platformDevice.CreateSwapChain(desc, hot, cold);
+        }
+
         void DeleteSwapChain(SwapChainHandle swapChain)
         {
             DeferredItem d =
