@@ -8,9 +8,10 @@ using namespace phx;
 
 namespace phx::Display
 {
-	extern rhi::SwapChainDescriptor g_SwapChainDesc;
-	extern rhi::SwapChainHandle g_SwapChain;
+	rhi::SwapChainDescriptor g_SwapChainDesc;
+	rhi::SwapChainHandle g_SwapChain;
 }
+
 void Display::Initialize(rhi::SwapChainDescriptor const& swapchainDesc)
 {
 	auto* device = rhi::GfxDevice::Ptr;

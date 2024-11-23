@@ -19,6 +19,7 @@ GfxDevice::GfxDevice(rhi::GfxDeviceDescriptor const& descriptor)
 	, m_texturePool(100)
 	, m_gpuBufferPool(100)
 	, m_pipelineStatePool(100)
+	, m_swapChainPool(1)
 {
 
 }

@@ -30,6 +30,7 @@ namespace phx::rhi
     public:
         SwapChainHandle CreateSwapChain(SwapChainDescriptor const& swapChain)
         {
+            UNREFERENCED_PARAMETER(swapChain);
             return {};
         }
 
