@@ -751,7 +751,7 @@ namespace phx::rhi
         const char* SemanticName;
         Format Format = Format::UNKNOWN;
         uint32_t InputSlot = 0;
-        uint32_t AlignedByteOffset = APPEND_ALIGNED_ELEMENT;
+        uint32_t AlignedByteOffset = sAppendAlignedElement;
         InputClassification InputSlotClass = InputClassification::PerVertexData;
     };
 

@@ -510,7 +510,7 @@ namespace
 
 		if (SUCCEEDED(hr))
 		{
-			D3D12_VERSIONED_ROOT_SIGNATURE_DESC* rootsigDesc = nullptr;
+			const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* rootsigDesc = nullptr;
 			hr = rootsigDeserializer->GetRootSignatureDescAtVersion(D3D_ROOT_SIGNATURE_VERSION_1_1, &rootsigDesc);
 			if (SUCCEEDED(hr))
 			{
@@ -924,6 +924,7 @@ bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, Pipeline
 		} stream2 = {};
 	} stream = {};
 
+	// TODO: Cache reflection data in some way.
 	if (desc.MS.IsValid())
 	{
 		stream.stream2.MS = { desc.MS.ByteCode.data(), desc.MS.ByteCode.size() };
@@ -1056,7 +1057,7 @@ bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, Pipeline
 
 	DXGI_FORMAT DSFormat = GetDxgiFormatMapping(desc.RenderPassInfo.DsFormat).RtvFormat;
 	D3D12_RT_FORMAT_ARRAY formats = {};
-	formats.NumRenderTargets = desc.RenderPassInfo.RTFormats.size();
+	formats.NumRenderTargets = (UINT)desc.RenderPassInfo.RTFormats.size();
 	for (uint32_t i = 0; i < formats.NumRenderTargets; ++i)
 	{
 		formats.RTFormats[i] = GetDxgiFormatMapping(desc.RenderPassInfo.RTFormats[i]).RtvFormat;
