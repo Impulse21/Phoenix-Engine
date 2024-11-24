@@ -248,7 +248,7 @@ namespace phx::rhi::dx12
 				Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> CommandList = nullptr;
 				Microsoft::WRL::ComPtr<ID3D12Fence> Fence;
 				size_t FenceValue = 0;
-				GpuBufferHandle UploadBuffer;
+				CompPtr<ID3D12Resource> UploadBuffer;
 				size_t UploadBufferSize;
 				void* MappedData = nullptr;
 				inline bool IsValid() const { return CommandList != nullptr; }

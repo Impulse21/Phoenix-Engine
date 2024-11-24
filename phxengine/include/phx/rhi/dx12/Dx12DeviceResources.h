@@ -46,7 +46,15 @@ namespace phx::rhi::dx12
 
 	struct Texture_Cold
 	{
-
+		CompPtr<D3D12MA::Allocation> Allocation;
+		CompPtr<ID3D12Resource> Resource;
+		union
+		{
+			uint16_t ArraySize = 1;
+			uint16_t Depth;
+		};
+		uint16_t MipLevels = 1;
+		uint16_t SampleCount = 1;
 	};
 
 	struct GpuBuffer_Hot

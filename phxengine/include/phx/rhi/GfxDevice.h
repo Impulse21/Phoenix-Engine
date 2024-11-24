@@ -93,17 +93,17 @@ namespace phx::rhi
 
         TextureHandle CreateTexture(TextureDescriptor const& desc, MemInfo* initData = nullptr)
         {
-            UNREFERENCED_PARAMETER(desc);
-            UNREFERENCED_PARAMETER(initData);
-            return {};
-        }
+            platform::Texture_Hot hot;
+            platform::Texture_Cold cold;
 
-        DescriptorIndex GetDescriptorIndex(TextureHandle texture, SubresouceType type = SubresouceType::SRV)
-        {
-            UNREFERENCED_PARAMETER(texture);
-            UNREFERENCED_PARAMETER(type);
+            m_platformDevice.CreateTexture(desc, hot, cold);
 
-            return cInvalidDescriptorIndex;
+            if (initData)
+            {
+                // Upload via Ctx manager.
+            }
+
+            return m_texturePool.Allocate(hot, cold);
         }
 
         void DeleteTexture(TextureHandle handle)
@@ -119,6 +119,15 @@ namespace phx::rhi
 
             m_deferredQueue.push_back(d);
         }
+
+        DescriptorIndex GetDescriptorIndex(TextureHandle texture, SubresouceType type = SubresouceType::SRV)
+        {
+            UNREFERENCED_PARAMETER(texture);
+            UNREFERENCED_PARAMETER(type);
+
+            return cInvalidDescriptorIndex;
+        }
+
     private:
         platform::GfxDevice m_platformDevice;
 

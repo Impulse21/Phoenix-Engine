@@ -590,8 +590,6 @@ void GfxDeviceDx12::CopyCtxManager::Initialize()
 
 void GfxDeviceDx12::CopyCtxManager::Finalize()
 {
-	// for (auto& ctx : m_freeList)
-		// GfxDeviceDx12::Instance()->DeleteBuffer(ctx.UploadBuffer);
 }
 
 GfxDeviceDx12::CopyCtxManager::Ctx GfxDeviceDx12::CopyCtxManager::Begin(size_t stagingSize)
@@ -1090,6 +1088,192 @@ bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, Pipeline
 	return true;
 }
 
+bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, Texture_Hot& hot, Texture_Cold& cold)
+{
+	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
+	d3d12OptimizedClearValue.Color[0] = desc.ClearValue.Colour.R;
+	d3d12OptimizedClearValue.Color[1] = desc.ClearValue.Colour.G;
+	d3d12OptimizedClearValue.Color[2] = desc.ClearValue.Colour.B;
+	d3d12OptimizedClearValue.Color[3] = desc.ClearValue.Colour.A;
+	d3d12OptimizedClearValue.DepthStencil.Depth = desc.ClearValue.DepthStencil.Depth;
+	d3d12OptimizedClearValue.DepthStencil.Stencil = desc.ClearValue.DepthStencil.Stencil;
+
+	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
+	d3d12OptimizedClearValue.Format = dxgiFormatMapping.RtvFormat;
+
+	D3D12MA::ALLOCATION_DESC allocationDesc = {};
+	allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+
+	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
+	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		if ((desc.BindingFlags & BindingFlags::ShaderResource) != BindingFlags::ShaderResource)
+		{
+			resourceFlags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+		}
+	}
+
+	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+	}
+
+	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+	{
+		resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	}
+
+	CD3DX12_RESOURCE_DESC resourceDesc = {};
+
+	switch (desc.Type)
+	{
+	case TextureDescriptor::TexType::Texture1D:
+	{
+		resourceDesc =
+			CD3DX12_RESOURCE_DESC::Tex1D(EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::TypelessFormatCasting) ? dxgiFormatMapping.SrvFormat : dxgiFormatMapping.RtvFormat,
+				desc.Width,
+				desc.ArraySize,
+				desc.MipLevels,
+				resourceFlags);
+		break;
+	}
+	case TextureDescriptor::TexType::Texture2D:
+	{
+		resourceDesc =
+			CD3DX12_RESOURCE_DESC::Tex2D(EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::TypelessFormatCasting) ? dxgiFormatMapping.SrvFormat : dxgiFormatMapping.RtvFormat,
+				desc.Width,
+				desc.Height,
+				desc.ArraySize,
+				desc.MipLevels,
+				1,
+				0,
+				resourceFlags);
+		break;
+	}
+	case TextureDescriptor::TexType::Texture3D:
+	{
+		resourceDesc =
+			CD3DX12_RESOURCE_DESC::Tex3D(
+				EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::TypelessFormatCasting) ? dxgiFormatMapping.SrvFormat : dxgiFormatMapping.RtvFormat,
+				desc.Width,
+				desc.Height,
+				desc.ArraySize,
+				desc.MipLevels,
+				resourceFlags);
+		break;
+	}
+	default:
+		throw std::runtime_error("Unsupported texture dimension");
+	}
+
+	const bool useClearValue =
+		((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget) ||
+		((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil);
+
+	cold.MipLevels = desc.MipLevels;
+	cold.ArraySize = desc.ArraySize;
+
+	// TODO: Support aliasing
+	ThrowIfFailed(
+		m_d3d12MemAllocator->CreateResource(
+			&allocationDesc,
+			&resourceDesc,
+			ConvertResourceStates(desc.InitialState),
+			useClearValue ? &d3d12OptimizedClearValue : nullptr,
+			&cold.Allocation,
+			IID_PPV_ARGS(&cold.Resource)));
+
+
+	std::wstring debugName;
+	StringConvert(desc.DebugName, debugName);
+	cold.Resource->SetName(debugName.c_str());
+
+#if false
+	if (initialData)
+	{
+		UINT64 totalSize = 0;
+		std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints(desc.ArraySize * std::max((uint16_t)1u, (desc.MipLevels)));
+		std::vector<UINT> numRows(footprints.size());
+		std::vector<UINT64> rowSizesInBytes((UINT64)footprints.size());
+
+		m_d3d12Device2->GetCopyableFootprints(
+			&resourceDesc,
+			0,
+			(UINT)footprints.size(),
+			0,
+			footprints.data(),
+			numRows.data(),
+			rowSizesInBytes.data(),
+			&totalSize);
+
+
+		CopyCtxManager::Ctx ctx = m_copyCtxManager.Begin(totalSize);
+
+		D3D12Buffer* uploadBufferImpl = m_resourceRegistry.Buffers.Get(ctx.UploadBuffer);
+
+		for (size_t i = 0; i < footprints.size(); ++i)
+		{
+			D3D12_SUBRESOURCE_DATA data = {};
+			data.RowPitch = initialData[i].rowPitch;
+			data.SlicePitch = initialData[i].slicePitch;
+			data.pData = initialData[i].pData;
+
+			if (rowSizesInBytes[i] > (SIZE_T)-1)
+				continue;
+
+			D3D12_MEMCPY_DEST DestData = {};
+			DestData.pData = (void*)((UINT64)ctx.MappedData + footprints[i].Offset);
+			DestData.RowPitch = (SIZE_T)footprints[i].Footprint.RowPitch;
+			DestData.SlicePitch = (SIZE_T)footprints[i].Footprint.RowPitch * (SIZE_T)numRows[i];
+			MemcpySubresource(&DestData, &data, (SIZE_T)rowSizesInBytes[i], numRows[i], footprints[i].Footprint.Depth);
+
+			if (ctx.IsValid())
+			{
+				CD3DX12_TEXTURE_COPY_LOCATION Dst(textureImpl.D3D12Resource.Get(), UINT(i));
+				CD3DX12_TEXTURE_COPY_LOCATION Src(uploadBufferImpl->D3D12Resource.Get(), footprints[i]);
+				ctx.CommandList->CopyTextureRegion(
+					&Dst,
+					0,
+					0,
+					0,
+					&Src,
+					nullptr
+				);
+			}
+		}
+
+		if (ctx.IsValid())
+		{
+			m_copyCtxManager.Submit(ctx);
+		}
+
+	}
+
+#endif
+
+	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
+	{
+		CreateSubresource(textureHandle, desc, SubresouceType::SRV, 0, ~0u, 0, ~0u);
+	}
+
+	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
+	{
+		CreateSubresource(textureHandle, desc, SubresouceType::RTV, 0, ~0u, 0, ~0u);
+	}
+
+	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
+	{
+		CreateSubresource(textureHandle, desc, SubresouceType::DSV, 0, ~0u, 0, ~0u);
+	}
+
+	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+	{
+		CreateSubresource(textureHandle, desc, SubresouceType::UAV, 0, ~0u, 0, ~0u);
+	}
+
+	return true;
+}
 
 void GfxDeviceDx12::Present(SwapChain_Hot& hot, SwapChain_Cold const& cold)
 {
