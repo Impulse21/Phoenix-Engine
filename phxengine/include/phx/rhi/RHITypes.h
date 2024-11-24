@@ -740,6 +740,8 @@ namespace phx::rhi
     {
         phx::Span<uint8_t> ByteCode;
         const char* EntryPoint = "main";
+
+        bool IsValid() const { return !ByteCode.IsEmpty(); }
     };
 
     struct VertexBufferBinding

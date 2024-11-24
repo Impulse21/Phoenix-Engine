@@ -55,6 +55,8 @@ namespace phx
 			return this->m_array[index];
 		}
 
+		const T* data() const { return this->m_array; }
+		size_t size() const { return this->m_length; }
 		size_t Size() const { return this->m_length; }
 
 		// -- Use lower case here so we can use the for each loop ---
@@ -101,6 +103,7 @@ namespace phx
 			return this->m_array[index];
 		}
 
+		T* data() { return this->m_array; }
 		size_t Size() const { return this->m_length; }
 
 		// -- Use lower case here so we can use the for each loop ---

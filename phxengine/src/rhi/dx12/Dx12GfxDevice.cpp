@@ -860,12 +860,8 @@ bool GfxDeviceDx12::CreateSwapChain(SwapChainDescriptor const& desc, SwapChain_H
 	return true;
 }
 
-bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const&, PipelineState_Hot&, PipelineState_Cold& )
+bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, PipelineState_Hot& hot, PipelineState_Cold& cold)
 {
-#if false
-	PipelineStateHandle retVal = m_pipelineStatePool.Emplace();
-	PipelineState_Dx12& impl = *m_pipelineStatePool.Get(retVal);
-
 	struct PSO_STREAM
 	{
 		struct PSO_STREAM1
@@ -897,59 +893,31 @@ bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const&, PipelineState
 
 	if (desc.MS.IsValid())
 	{
-		Shader_Dx12* shaderImpl = m_shaderPool.Get(desc.MS);
-		stream.stream2.MS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
-
-		if (!impl.RootSignature)
-			impl.RootSignature = shaderImpl->RootSignature;
+		stream.stream2.MS = { desc.MS.ByteCode.data(), desc.MS.ByteCode.size() };
 	}
 	if (desc.AS.IsValid())
 	{
-		Shader_Dx12* shaderImpl = m_shaderPool.Get(desc.AS);
-		stream.stream2.AS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
-
-		if (!impl.RootSignature)
-			impl.RootSignature = shaderImpl->RootSignature;
+		stream.stream2.AS = { desc.AS.ByteCode.data(), desc.AS.ByteCode.size() };
 	}
 	if (desc.VS.IsValid())
 	{
-		Shader_Dx12* shaderImpl = m_shaderPool.Get(desc.VS);
-		stream.stream1.VS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
-
-		if (!impl.RootSignature)
-			impl.RootSignature = shaderImpl->RootSignature;
+		stream.stream1.VS = { desc.VS.ByteCode.data(), desc.VS.ByteCode.size() };
 	}
 	if (desc.HS.IsValid())
 	{
-		Shader_Dx12* shaderImpl = m_shaderPool.Get(desc.HS);
-		stream.stream1.HS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
-
-		if (!impl.RootSignature)
-			impl.RootSignature = shaderImpl->RootSignature;
+		stream.stream1.HS = { desc.HS.ByteCode.data(), desc.HS.ByteCode.size() };
 	}
 	if (desc.DS.IsValid())
 	{
-		Shader_Dx12* shaderImpl = m_shaderPool.Get(desc.DS);
-		stream.stream1.DS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
-
-		if (!impl.RootSignature)
-			impl.RootSignature = shaderImpl->RootSignature;
+		stream.stream1.DS = { desc.DS.ByteCode.data(), desc.DS.ByteCode.size() };
 	}
 	if (desc.GS.IsValid())
 	{
-		Shader_Dx12* shaderImpl = m_shaderPool.Get(desc.GS);
-		stream.stream1.GS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
-
-		if (!impl.RootSignature)
-			impl.RootSignature = shaderImpl->RootSignature;
+		stream.stream1.GS = { desc.GS.ByteCode.data(), desc.GS.ByteCode.size() };
 	}
 	if (desc.PS.IsValid())
 	{
-		Shader_Dx12* shaderImpl = m_shaderPool.Get(desc.PS);
-		stream.stream1.PS = { shaderImpl->ByteCode.data(), shaderImpl->ByteCode.size() };
-
-		if (!impl.RootSignature)
-			impl.RootSignature = shaderImpl->RootSignature;
+		stream.stream1.PS = { desc.PS.ByteCode.data(), desc.PS.ByteCode.size() };
 	}
 
 	if (impl.RootSignature == nullptr)
@@ -959,17 +927,8 @@ bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const&, PipelineState
 
 	stream.stream1.ROOTSIG = impl.RootSignature.Get();
 
-	BlendRenderState brs = {};
-	if (desc.BlendRenderState)
-		brs = *desc.BlendRenderState;
-
-	TranslateBlendState(brs, stream.stream1.BD);
-
-	DepthStencilRenderState dss = {};
-	if (desc.DepthStencilRenderState)
-		dss = *desc.DepthStencilRenderState;
-
-	TranslateDepthStencilState(dss, stream.stream1.DSS);
+	TranslateBlendState(desc.BlendState, stream.stream1.BD);
+	TranslateDepthStencilState(desc.DepthStencilState, stream.stream1.DSS);
 
 
 	RasterRenderState rs = {};
@@ -1071,12 +1030,10 @@ bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const&, PipelineState
 		if (FAILED(hr))
 		{
 			PollDebugMessages();
+			return false;
 		}
-		assert(SUCCEEDED(hr));
 	}
 
-	return retVal;
-#endif
 	return true;
 }
 
