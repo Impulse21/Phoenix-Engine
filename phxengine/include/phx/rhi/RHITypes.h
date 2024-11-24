@@ -746,7 +746,7 @@ namespace phx::rhi
 
     struct VertexBufferBinding
     {
-        static const uint32_t APPEND_ALIGNED_ELEMENT = ~0u; // automatically figure out AlignedByteOffset depending on Format
+        static const uint32_t sAppendAlignedElement = ~0u; // automatically figure out AlignedByteOffset depending on Format
         
         const char* SemanticName;
         Format Format = Format::UNKNOWN;
@@ -778,6 +778,7 @@ namespace phx::rhi
         DepthStencilRenderState DepthStencilState = {};
         RasterRenderState       RasterState = {};
 
+        rhi::PrimitiveType              PrimType = rhi::PrimitiveType::TriangleList;
         phx::Span<VertexBufferBinding>  VertexBufferBindings;
         RenderPassInfo                  RenderPassInfo;
         uint32_t                        PatchControlPoints = 3;

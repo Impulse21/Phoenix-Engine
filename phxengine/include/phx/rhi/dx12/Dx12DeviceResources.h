@@ -30,12 +30,13 @@ namespace phx::rhi::dx12
 
 	struct PipelineState_Hot
 	{
-
+		D3D_PRIMITIVE_TOPOLOGY Topology;
+		CompPtr<ID3D12PipelineState> D3D12PipelineState;
 	};
 
 	struct PipelineState_Cold
 	{
-
+		Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
 	};
 
 	struct Texture_Hot

@@ -496,6 +496,39 @@ namespace
 		outState.ForcedSampleCount = inState.ForcedSampleCount;
 	}
 
+	CompPtr<ID3D12RootSignature> CreateRootSignature(phx::Span<uint8_t> byteCode)
+	{
+		HRESULT hr = (byteCode.IsEmpty() ? E_FAIL : S_OK);
+		assert(SUCCEEDED(hr));
+
+		CompPtr<ID3D12RootSignature> rootSig;
+		CompPtr<ID3D12VersionedRootSignatureDeserializer> rootsigDeserializer;
+		hr = D3D12CreateVersionedRootSignatureDeserializer(
+			byteCode.data(),
+			byteCode.size(),
+			IID_PPV_ARGS(rootsigDeserializer.ReleaseAndGetAddressOf()));
+
+		if (SUCCEEDED(hr))
+		{
+			D3D12_VERSIONED_ROOT_SIGNATURE_DESC* rootsigDesc = nullptr;
+			hr = rootsigDeserializer->GetRootSignatureDescAtVersion(D3D_ROOT_SIGNATURE_VERSION_1_1, &rootsigDesc);
+			if (SUCCEEDED(hr))
+			{
+				assert(rootsigDesc->Version == D3D_ROOT_SIGNATURE_VERSION_1_1);
+
+				hr = GfxDeviceDx12::Instance()->GetD3D12Device2()->CreateRootSignature(
+					0,
+					byteCode.data(),
+					byteCode.size(),
+					IID_PPV_ARGS(rootSig.ReleaseAndGetAddressOf())
+				);
+				assert(SUCCEEDED(hr));
+			}
+		}
+
+		return rootSig;
+	}
+
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateEmptyRootSignature()
 	{
 		using namespace Microsoft::WRL;
@@ -894,62 +927,84 @@ bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, Pipeline
 	if (desc.MS.IsValid())
 	{
 		stream.stream2.MS = { desc.MS.ByteCode.data(), desc.MS.ByteCode.size() };
+		if (cold.RootSignature == nullptr)
+		{
+			cold.RootSignature = CreateRootSignature(desc.MS.ByteCode);
+		}
 	}
 	if (desc.AS.IsValid())
 	{
 		stream.stream2.AS = { desc.AS.ByteCode.data(), desc.AS.ByteCode.size() };
+		if (cold.RootSignature == nullptr)
+		{
+			cold.RootSignature = CreateRootSignature(desc.AS.ByteCode);
+		}
 	}
 	if (desc.VS.IsValid())
 	{
 		stream.stream1.VS = { desc.VS.ByteCode.data(), desc.VS.ByteCode.size() };
+		if (cold.RootSignature == nullptr)
+		{
+			cold.RootSignature = CreateRootSignature(desc.VS.ByteCode);
+		}
 	}
 	if (desc.HS.IsValid())
 	{
 		stream.stream1.HS = { desc.HS.ByteCode.data(), desc.HS.ByteCode.size() };
+		if (cold.RootSignature == nullptr)
+		{
+			cold.RootSignature = CreateRootSignature(desc.HS.ByteCode);
+		}
 	}
 	if (desc.DS.IsValid())
 	{
 		stream.stream1.DS = { desc.DS.ByteCode.data(), desc.DS.ByteCode.size() };
+		if (cold.RootSignature == nullptr)
+		{
+			cold.RootSignature = CreateRootSignature(desc.DS.ByteCode);
+		}
 	}
 	if (desc.GS.IsValid())
 	{
 		stream.stream1.GS = { desc.GS.ByteCode.data(), desc.GS.ByteCode.size() };
+		if (cold.RootSignature == nullptr)
+		{
+			cold.RootSignature = CreateRootSignature(desc.GS.ByteCode);
+		}
 	}
 	if (desc.PS.IsValid())
 	{
 		stream.stream1.PS = { desc.PS.ByteCode.data(), desc.PS.ByteCode.size() };
+		if (cold.RootSignature == nullptr)
+		{
+			cold.RootSignature = CreateRootSignature(desc.PS.ByteCode);
+		}
 	}
 
-	if (impl.RootSignature == nullptr)
+	if (cold.RootSignature == nullptr)
 	{
-		impl.RootSignature = m_emptyRootSignature;
+		cold.RootSignature = m_emptyRootSignature;
 	}
 
-	stream.stream1.ROOTSIG = impl.RootSignature.Get();
+	stream.stream1.ROOTSIG = cold.RootSignature.Get();
 
 	TranslateBlendState(desc.BlendState, stream.stream1.BD);
 	TranslateDepthStencilState(desc.DepthStencilState, stream.stream1.DSS);
-
-
-	RasterRenderState rs = {};
-	if (desc.RasterRenderState)
-		rs = *desc.RasterRenderState;
-
-	TranslateRasterState(rs, stream.stream1.RS);
+	TranslateRasterState(desc.RasterState, stream.stream1.RS);
 
 	D3D12_INPUT_LAYOUT_DESC il = {};
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> elements;
-	if (desc.InputLayout != nullptr)
+	if (!desc.VertexBufferBindings.IsEmpty())
 	{
-		il.NumElements = (uint32_t)desc.InputLayout->elements.size();
+		il.NumElements = (uint32_t)desc.VertexBufferBindings.size();
 		elements.resize(il.NumElements);
 		for (uint32_t i = 0; i < il.NumElements; ++i)
 		{
-			auto& element = desc.InputLayout->elements[i];
+			auto& element = desc.VertexBufferBindings[i];
 			D3D12_INPUT_ELEMENT_DESC& dx12Desc = elements[i];
 
-			dx12Desc.SemanticName = element.SemanticName.c_str();
+			dx12Desc.SemanticName = element.SemanticName;
 			dx12Desc.SemanticIndex = 0;
 
 
@@ -957,7 +1012,7 @@ bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, Pipeline
 			dx12Desc.Format = formatMapping.SrvFormat;
 			dx12Desc.InputSlot = element.InputSlot;
 			dx12Desc.AlignedByteOffset = element.AlignedByteOffset;
-			if (dx12Desc.AlignedByteOffset == VertexAttributeDesc::SAppendAlignedElement)
+			if (dx12Desc.AlignedByteOffset == VertexBufferBinding::sAppendAlignedElement)
 			{
 				dx12Desc.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
 			}
@@ -980,7 +1035,7 @@ bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, Pipeline
 
 	stream.stream1.SampleMask = desc.SampleMask;
 
-	impl.Topology = ConvertPrimitiveTopology(desc.PrimType, desc.PatchControlPoints);
+	hot.Topology = ConvertPrimitiveTopology(desc.PrimType, desc.PatchControlPoints);
 	switch (desc.PrimType)
 	{
 	case PrimitiveType::PointList:
@@ -999,39 +1054,36 @@ bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, Pipeline
 	}
 	stream.stream1.STRIP = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
 
-	if (renderPassInfo != nullptr)
+	DXGI_FORMAT DSFormat = GetDxgiFormatMapping(desc.RenderPassInfo.DsFormat).RtvFormat;
+	D3D12_RT_FORMAT_ARRAY formats = {};
+	formats.NumRenderTargets = desc.RenderPassInfo.RTFormats.size();
+	for (uint32_t i = 0; i < formats.NumRenderTargets; ++i)
 	{
-		DXGI_FORMAT DSFormat = ConvertFormat(renderPassInfo->DsFormat);
-		D3D12_RT_FORMAT_ARRAY formats = {};
-		formats.NumRenderTargets = renderPassInfo->RenderTargetCount;
-		for (uint32_t i = 0; i < renderPassInfo->RenderTargetCount; ++i)
-		{
-			formats.RTFormats[i] = ConvertFormat(renderPassInfo->RenderTargetFormats[i]);
-		}
+		formats.RTFormats[i] = GetDxgiFormatMapping(desc.RenderPassInfo.RTFormats[i]).RtvFormat;
+	}
 
-		DXGI_SAMPLE_DESC sampleDesc = {};
-		sampleDesc.Count = renderPassInfo->SampleCount;
-		sampleDesc.Quality = 0;
+	DXGI_SAMPLE_DESC sampleDesc = {};
+	sampleDesc.Count = desc.RenderPassInfo.SampleCount;
+	sampleDesc.Quality = 0;
 
-		stream.stream1.DSFormat = DSFormat;
-		stream.stream1.Formats = formats;
-		stream.stream1.SampleDesc = sampleDesc;
+	stream.stream1.DSFormat = DSFormat;
+	stream.stream1.Formats = formats;
+	stream.stream1.SampleDesc = sampleDesc;
 
-		D3D12_PIPELINE_STATE_STREAM_DESC streamDesc = {};
-		streamDesc.pPipelineStateSubobjectStream = &stream;
-		streamDesc.SizeInBytes = sizeof(stream.stream1);
+	D3D12_PIPELINE_STATE_STREAM_DESC streamDesc = {};
+	streamDesc.pPipelineStateSubobjectStream = &stream;
+	streamDesc.SizeInBytes = sizeof(stream.stream1);
 
-		if (EnumHasAnyFlags(m_capabilities, DeviceCapability::MeshShading))
-		{
-			streamDesc.SizeInBytes += sizeof(stream.stream2);
-		}
+	if (EnumHasAnyFlags(m_capabilities, DeviceCapability::MeshShading))
+	{
+		streamDesc.SizeInBytes += sizeof(stream.stream2);
+	}
 
-		HRESULT hr = m_d3d12Device2->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&impl.D3D12PipelineState));
-		if (FAILED(hr))
-		{
-			PollDebugMessages();
-			return false;
-		}
+	HRESULT hr = m_d3d12Device2->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&hot.D3D12PipelineState));
+	if (FAILED(hr))
+	{
+		PollDebugMessages();
+		return false;
 	}
 
 	return true;
