@@ -16,17 +16,17 @@ namespace phx
 		None = 0,
 		GDeflate = 1,
 	};
-
-	template <typename T>
+	
+	template <typename T, typename TOffset = std::int32_t>
 	struct RelativePtr
 	{
-		size_t offset;
+		TOffset offset;
 
 		T* Get() { return (T*)(((char*)this) + offset); }
 		const T* Get() const { return (const T*)(((char*)this) + offset); }
 		void Set(void* ptr) { offset = static_cast<size_t>(ptrdiff_t(ptr) - ptrdiff_t(this)); }
 	};
-	
+
 	//
 	// An array - stored as a Ptr, with overloaded array access operators.
 	//
