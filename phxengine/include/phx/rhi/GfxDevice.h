@@ -96,12 +96,7 @@ namespace phx::rhi
             platform::Texture_Hot hot;
             platform::Texture_Cold cold;
 
-            m_platformDevice.CreateTexture(desc, hot, cold);
-
-            if (initData)
-            {
-                // Upload via Ctx manager.
-            }
+            m_platformDevice.CreateTexture(desc, hot, cold, initData);
 
             return m_texturePool.Allocate(hot, cold);
         }

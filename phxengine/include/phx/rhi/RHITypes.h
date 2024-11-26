@@ -349,6 +349,20 @@ namespace phx::rhi
         Count
     };
 
+    enum class TextureType : uint8_t
+    {
+        Unknown,
+        Texture1D,
+        Texture1DArray,
+        Texture2D,
+        Texture2DArray,
+        TextureCube,
+        TextureCubeArray,
+        Texture2DMS,
+        Texture2DMSArray,
+        Texture3D
+    };
+
     enum class SamplerAddressMode : uint8_t
     {
         // D3D names
@@ -819,12 +833,7 @@ namespace phx::rhi
     struct TextureDescriptor
     {
         const char* DebugName = "";
-        enum class TexType : uint8_t
-        {
-            Texture1D,
-            Texture2D,
-            Texture3D,
-        } Type = TexType::Texture2D;
+        TextureType Type = TextureType::Unknown;
         rhi::Format Format = rhi::Format::UNKNOWN;
 
         uint32_t Width = 1;

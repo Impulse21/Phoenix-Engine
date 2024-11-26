@@ -1088,7 +1088,7 @@ bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, Pipeline
 	return true;
 }
 
-bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, Texture_Hot& hot, Texture_Cold& cold)
+bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, Texture_Hot& hot, Texture_Cold& cold, MemInfo* initData)
 {
 	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
 	d3d12OptimizedClearValue.Color[0] = desc.ClearValue.Colour.R;
@@ -1189,8 +1189,7 @@ bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, Texture_Hot& ho
 	StringConvert(desc.DebugName, debugName);
 	cold.Resource->SetName(debugName.c_str());
 
-#if false
-	if (initialData)
+	if (initData)
 	{
 		UINT64 totalSize = 0;
 		std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints(desc.ArraySize * std::max((uint16_t)1u, (desc.MipLevels)));
@@ -1250,26 +1249,25 @@ bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, Texture_Hot& ho
 
 	}
 
-#endif
 
 	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
-		CreateSubresource(textureHandle, desc, SubresouceType::SRV, 0, ~0u, 0, ~0u);
+		CreateSubresource(hot, desc, SubresouceType::SRV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
 	{
-		CreateSubresource(textureHandle, desc, SubresouceType::RTV, 0, ~0u, 0, ~0u);
+		CreateSubresource(hot, desc, SubresouceType::RTV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
 	{
-		CreateSubresource(textureHandle, desc, SubresouceType::DSV, 0, ~0u, 0, ~0u);
+		CreateSubresource(hot, desc, SubresouceType::DSV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
 	{
-		CreateSubresource(textureHandle, desc, SubresouceType::UAV, 0, ~0u, 0, ~0u);
+		CreateSubresource(hot, desc, SubresouceType::UAV, 0, ~0u, 0, ~0u);
 	}
 
 	return true;
@@ -1735,3 +1733,517 @@ void GfxDeviceDx12::CreateSwapChain(SwapChainDesc const& desc, HWND hwnd)
 }
 
 #endif
+
+int GfxDeviceDx12::CreateSubresource(Texture_Hot& hot, Texture_Cold& cold, TextureDescriptor const& desc, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+{
+	switch (subresourceType)
+	{
+	case SubresouceType::SRV:
+		return CreateShaderResourceView(hot, cold, desc, firstSlice, sliceCount, firstMip, mipCount);
+	case SubresouceType::UAV:
+		return CreateUnorderedAccessView(hot, cold, desc, firstSlice, sliceCount, firstMip, mipCount);
+	case SubresouceType::RTV:
+		return CreateRenderTargetView(hot, cold, desc, firstSlice, sliceCount, firstMip, mipCount);
+	case SubresouceType::DSV:
+		return CreateDepthStencilView(hot, cold, desc, firstSlice, sliceCount, firstMip, mipCount);
+	default:
+		throw std::runtime_error("Unknown sub resource type");
+	}
+}
+
+
+#if false
+int GfxDeviceDx12::CreateShaderResourceView(BufferHandle buffer, BufferDesc const& desc, size_t offset, size_t size)
+{
+	D3D12Buffer* bufferImpl = m_resourceRegistry.Buffers.Get(buffer);
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+
+	if (desc.Format == Format::UNKNOWN)
+	{
+		if (EnumHasAnyFlags(desc.MiscFlags, BufferMiscFlags::Raw))
+		{
+			srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+			srvDesc.Buffer.FirstElement = (UINT)offset / sizeof(uint32_t);
+			srvDesc.Buffer.NumElements = (UINT)std::min(size, desc.SizeInBytes - offset) / sizeof(uint32_t);
+		}
+		else if (EnumHasAnyFlags(desc.MiscFlags, BufferMiscFlags::Structured))
+		{
+			// This is a Structured Buffer
+			srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+			srvDesc.Buffer.FirstElement = (UINT)offset / desc.Stride;
+			srvDesc.Buffer.NumElements = (UINT)std::min(size, desc.SizeInBytes - offset) / desc.Stride;
+			srvDesc.Buffer.StructureByteStride = desc.Stride;
+		}
+	}
+	else
+	{
+		throw std::runtime_error("Unsupported at this time.");
+#if false
+		uint32_t stride = GetFormatStride(format);
+		srv_desc.Format = _ConvertFormat(format);
+		srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+		srv_desc.Buffer.FirstElement = offset / stride;
+		srv_desc.Buffer.NumElements = (UINT)std::min(size, desc.size - offset) / stride;
+#endif
+	}
+
+	DescriptorView view = {
+			.Allocation = D3D12GpuDevice::GetResourceCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.SRVDesc = srvDesc,
+	};
+
+	GetD3D12Device2()->CreateShaderResourceView(
+		bufferImpl->D3D12Resource.Get(),
+		&srvDesc,
+		view.Allocation.GetCpuHandle());
+
+	const bool isBindless = true;
+	if (isBindless)
+	{
+		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+		view.BindlessIndex = m_bindlessDescritorTable.Allocate();
+		if (view.BindlessIndex != cInvalidDescriptorIndex)
+		{
+			GetD3D12Device2()->CopyDescriptorsSimple(
+				1,
+				m_bindlessDescritorTable.GetCpuHandle(view.BindlessIndex),
+				view.Allocation.GetCpuHandle(),
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
+
+	if (bufferImpl->Srv.Allocation.IsNull())
+	{
+		bufferImpl->Srv = view;
+		return -1;
+	}
+
+	bufferImpl->SrvSubresourcesAlloc.push_back(view);
+	return bufferImpl->SrvSubresourcesAlloc.size() - 1;
+}
+
+int GfxDeviceDx12::CreateUnorderedAccessView(BufferHandle buffer, BufferDesc const& desc, size_t offset, size_t size)
+{
+	D3D12Buffer* bufferImpl = m_resourceRegistry.Buffers.Get(buffer);;
+
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+
+	const bool hasCounter = (desc.MiscFlags & BufferMiscFlags::HasCounter) == BufferMiscFlags::HasCounter;
+	if (desc.Format == Format::UNKNOWN)
+	{
+		if (EnumHasAnyFlags(desc.MiscFlags, BufferMiscFlags::Raw))
+		{
+			uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+			uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+			uavDesc.Buffer.FirstElement = (UINT)offset / sizeof(uint32_t);
+			uavDesc.Buffer.NumElements = (UINT)std::min(size, desc.SizeInBytes - offset) / sizeof(uint32_t);
+		}
+		else if (EnumHasAnyFlags(desc.MiscFlags, BufferMiscFlags::Structured))
+		{
+			// This is a Structured Buffer
+			uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+			uavDesc.Buffer.FirstElement = (UINT)offset / desc.Stride;
+			uavDesc.Buffer.NumElements = (UINT)std::min(size, desc.SizeInBytes - offset) / desc.Stride;
+			uavDesc.Buffer.StructureByteStride = desc.Stride;
+
+			if (hasCounter)
+			{
+				// uavDesc.Buffer.CounterOffsetInBytes = desc.UavCounterOffsetInBytes;
+			}
+		}
+	}
+	else
+	{
+		throw std::runtime_error("Unsupported at this time.");
+#if false
+		uint32_t stride = GetFormatStride(format);
+		uavDesc.Format = _ConvertFormat(format);
+		uavDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+		uavDesc.Buffer.FirstElement = offset / stride;
+		uavDesc.Buffer.NumElements = (UINT)std::min(size, desc.size - offset) / stride;
+#endif
+	}
+
+	DescriptorView view = {
+			.Allocation = GetResourceCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.UAVDesc = uavDesc,
+	};
+
+	ID3D12Resource* counterResource = nullptr;
+	if (hasCounter)
+	{
+		if (desc.UavCounterBuffer.IsValid())
+		{
+			D3D12Buffer* counterBuffer = m_resourceRegistry.Buffers.Get(desc.UavCounterBuffer);
+			counterResource = counterBuffer->D3D12Resource.Get();
+
+		}
+		else
+		{
+			counterResource = bufferImpl->D3D12Resource.Get();
+		}
+	}
+
+	GetD3D12Device2()->CreateUnorderedAccessView(
+		bufferImpl->D3D12Resource.Get(),
+		counterResource,
+		&uavDesc,
+		view.Allocation.GetCpuHandle());
+
+	const bool isBindless = true;
+	if (isBindless)
+	{
+		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+		view.BindlessIndex = m_bindlessDescritorTable.Allocate();
+		if (view.BindlessIndex != cInvalidDescriptorIndex)
+		{
+			GetD3D12Device2()->CopyDescriptorsSimple(
+				1,
+				m_bindlessDescritorTable.GetCpuHandle(view.BindlessIndex),
+				view.Allocation.GetCpuHandle(),
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
+	if (bufferImpl->UavAllocation.Allocation.IsNull())
+	{
+		bufferImpl->UavAllocation = view;
+
+		return -1;
+	}
+
+	bufferImpl->UavSubresourcesAlloc.push_back(view);
+	return bufferImpl->UavSubresourcesAlloc.size() - 1;
+}
+#endif
+
+int GfxDeviceDx12::CreateShaderResourceView(Texture_Hot& hot, Texture_Cold& cold, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+{
+	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = dxgiFormatMapping.SrvFormat;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+	uint32_t planeSlice = (srvDesc.Format == DXGI_FORMAT_X24_TYPELESS_G8_UINT) ? 1 : 0;
+
+	switch (desc.Type)
+	{
+	case TextureType::Texture1D:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1D;
+		rtvDesc.Texture1D.MipSlice = firstMip;
+		break;
+	case TextureType::Texture1DArray:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
+		rtvDesc.Texture1DArray.FirstArraySlice = firstSlice;
+		rtvDesc.Texture1DArray.ArraySize = sliceCount;
+		rtvDesc.Texture1DArray.MipSlice = firstMip;
+		break;
+	case TextureType::Texture2D:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+		rtvDesc.Texture2D.MipSlice = firstMip;
+		break;
+	case TextureType::Texture2DArray:
+	case TextureType::TextureCube:
+	case TextureType::TextureCubeArray:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+		rtvDesc.Texture2DArray.ArraySize = sliceCount;
+		rtvDesc.Texture2DArray.FirstArraySlice = firstSlice;
+		rtvDesc.Texture2DArray.MipSlice = firstMip;
+		break;
+	case TextureType::Texture2DMS:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
+		break;
+	case TextureType::Texture2DMSArray:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
+		rtvDesc.Texture2DMSArray.FirstArraySlice = firstSlice;
+		rtvDesc.Texture2DMSArray.ArraySize = sliceCount;
+		break;
+	case TextureType::Texture3D:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
+		rtvDesc.Texture3D.FirstWSlice = 0;
+		rtvDesc.Texture3D.WSize = desc.ArraySize;
+		rtvDesc.Texture3D.MipSlice = firstMip;
+		break;
+	case TextureType::Unknown:
+	default:
+		throw std::runtime_error("Unsupported Enum");
+	}
+
+	DescriptorView view = {
+			.Allocation = GetResourceCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.SRVDesc = srvDesc,
+			.FirstMip = firstMip,
+			.MipCount = mipCount,
+			.FirstSlice = firstSlice,
+			.SliceCount = sliceCount
+	};
+
+	GetD3D12Device2()->CreateShaderResourceView(
+		cold.Resource.Get(),
+		&srvDesc,
+		view.Allocation.GetCpuHandle());
+
+	if (true)
+	{
+		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+		view.BindlessIndex = m_bindlessDescritorTable.Allocate();
+		if (view.BindlessIndex != cInvalidDescriptorIndex)
+		{
+			GetD3D12Device2()->CopyDescriptorsSimple(
+				1,
+				m_bindlessDescritorTable.GetCpuHandle(view.BindlessIndex),
+				view.Allocation.GetCpuHandle(),
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
+	if (hot->Srv.Allocation.IsNull())
+	{
+		textureImpl->Srv = view;
+		return -1;
+	}
+
+	textureImpl->SrvSubresourcesAlloc.push_back(view);
+	return textureImpl->SrvSubresourcesAlloc.size() - 1;
+}
+
+int GfxDeviceDx12::CreateRenderTargetView(Texture_Hot& hot, Texture_Cold& cold, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+{
+	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+	rtvDesc.Format = dxgiFormatMapping.RtvFormat;
+
+	switch (desc.Type)
+	{
+	case TextureType::Texture1D:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1D;
+		rtvDesc.Texture1D.MipSlice = firstMip;
+		break;
+	case TextureType::Texture1DArray:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
+		rtvDesc.Texture1DArray.FirstArraySlice = firstSlice;
+		rtvDesc.Texture1DArray.ArraySize = sliceCount;
+		rtvDesc.Texture1DArray.MipSlice = firstMip;
+		break;
+	case TextureType::Texture2D:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+		rtvDesc.Texture2D.MipSlice = firstMip;
+		break;
+	case TextureType::Texture2DArray:
+	case TextureType::TextureCube:
+	case TextureType::TextureCubeArray:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+		rtvDesc.Texture2DArray.ArraySize = sliceCount;
+		rtvDesc.Texture2DArray.FirstArraySlice = firstSlice;
+		rtvDesc.Texture2DArray.MipSlice = firstMip;
+		break;
+	case TextureType::Texture2DMS:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
+		break;
+	case TextureType::Texture2DMSArray:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
+		rtvDesc.Texture2DMSArray.FirstArraySlice = firstSlice;
+		rtvDesc.Texture2DMSArray.ArraySize = sliceCount;
+		break;
+	case TextureType::Texture3D:
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
+		rtvDesc.Texture3D.FirstWSlice = 0;
+		rtvDesc.Texture3D.WSize = desc.ArraySize;
+		rtvDesc.Texture3D.MipSlice = firstMip;
+		break;
+	case TextureType::Unknown:
+	default:
+		throw std::runtime_error("Unsupported Enum");
+	}
+
+	DescriptorView view = {
+			.Allocation = GetRtvCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+			.RTVDesc = rtvDesc,
+			.FirstMip = firstMip,
+			.MipCount = mipCount,
+			.FirstSlice = firstSlice,
+			.SliceCount = sliceCount
+	};
+
+	GetD3D12Device2()->CreateRenderTargetView(
+		cold.Resource.Get(),
+		&rtvDesc,
+		view.Allocation.GetCpuHandle());
+
+	if (textureImpl->RtvAllocation.Allocation.IsNull())
+	{
+		textureImpl->RtvAllocation = view;
+		return -1;
+	}
+
+	textureImpl->RtvSubresourcesAlloc.push_back(view);
+	return textureImpl->RtvSubresourcesAlloc.size() - 1;
+}
+
+int GfxDeviceDx12::CreateDepthStencilView(Texture_Hot& hot, Texture_Cold& cold, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+{
+	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
+	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+	dsvDesc.Format = dxgiFormatMapping.RtvFormat;
+	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+
+	switch (desc.Type)
+	{
+	case TextureType::Texture1D:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1D;
+		dsvDesc.Texture1D.MipSlice = firstMip;
+		break;
+	case TextureType::Texture1DArray:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
+		dsvDesc.Texture1DArray.FirstArraySlice = firstSlice;
+		dsvDesc.Texture1DArray.ArraySize = sliceCount;
+		dsvDesc.Texture1DArray.MipSlice = firstMip;
+		break;
+	case TextureType::Texture2D:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+		dsvDesc.Texture2D.MipSlice = firstMip;
+		break;
+	case TextureType::Texture2DArray:
+	case TextureType::TextureCube:
+	case TextureType::TextureCubeArray:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+		dsvDesc.Texture2DArray.ArraySize = sliceCount;
+		dsvDesc.Texture2DArray.FirstArraySlice = firstSlice;
+		dsvDesc.Texture2DArray.MipSlice = firstMip;
+		break;
+	case TextureType::Texture2DMS:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
+		break;
+	case TextureType::Texture2DMSArray:
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
+		dsvDesc.Texture2DMSArray.FirstArraySlice = firstSlice;
+		dsvDesc.Texture2DMSArray.ArraySize = sliceCount;
+		break;
+	case TextureType::Texture3D:
+	{
+		throw std::runtime_error("Unsupported Dimension");
+	}
+	case TextureType::Unknown:
+	default:
+		throw std::runtime_error("Unsupported Enum");
+	}
+
+	DescriptorView view = {
+			.Allocation = GetDsvCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
+			.DSVDesc = dsvDesc,
+			.FirstMip = firstMip,
+			.MipCount = mipCount,
+			.FirstSlice = firstSlice,
+			.SliceCount = sliceCount
+	};
+
+	GetD3D12Device2()->CreateDepthStencilView(
+		cold.Resource.Get(),
+		&dsvDesc,
+		view.Allocation.GetCpuHandle());
+
+	if (textureImpl->DsvAllocation.Allocation.IsNull())
+	{
+		textureImpl->DsvAllocation = view;
+		return -1;
+	}
+
+	textureImpl->DsvSubresourcesAlloc.push_back(view);
+	return textureImpl->DsvSubresourcesAlloc.size() - 1;
+}
+
+int GfxDeviceDx12::CreateUnorderedAccessView(Texture_Hot& hot, Texture_Cold& cold, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+{
+	D3D12Texture* textureImpl = m_resourceRegistry.Textures.Get(texture);
+
+	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.Format = dxgiFormatMapping.SrvFormat;
+
+	switch (desc.Type)
+	{
+	case TextureType::Texture1D:
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1D;
+		uavDesc.Texture1D.MipSlice = firstMip;
+		break;
+	case TextureType::Texture1DArray:
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1DARRAY;
+		uavDesc.Texture1DArray.FirstArraySlice = firstSlice;
+		uavDesc.Texture1DArray.ArraySize = sliceCount;
+		uavDesc.Texture1DArray.MipSlice = firstMip;
+		break;
+	case TextureType::Texture2D:
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+		uavDesc.Texture2D.MipSlice = firstMip;
+		break;
+	case TextureType::Texture2DArray:
+	case TextureType::TextureCube:
+	case TextureType::TextureCubeArray:
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+		uavDesc.Texture2DArray.FirstArraySlice = firstSlice;
+		uavDesc.Texture2DArray.ArraySize = sliceCount;
+		uavDesc.Texture2DArray.MipSlice = firstMip;
+		break;
+	case TextureType::Texture3D:
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
+		uavDesc.Texture3D.FirstWSlice = 0;
+		uavDesc.Texture3D.WSize = desc.Depth;
+		uavDesc.Texture3D.MipSlice = firstMip;
+		break;
+	case TextureType::Texture2DMS:
+	case TextureType::Texture2DMSArray:
+	{
+		throw std::runtime_error("Unsupported Dimension");
+	}
+	case TextureType::Unknown:
+	default:
+		throw std::runtime_error("Unsupported Enum");
+	}
+
+	DescriptorView view = {
+			.Allocation = GetResourceCpuHeap().Allocate(1),
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.UAVDesc = uavDesc,
+			.FirstMip = firstMip,
+			.MipCount = mipCount,
+			.FirstSlice = firstSlice,
+			.SliceCount = sliceCount
+	};
+
+	GetD3D12Device2()->CreateUnorderedAccessView(
+		cold.Resource.Get(),
+		nullptr,
+		&uavDesc,
+		view.Allocation.GetCpuHandle());
+
+	if (true)
+	{
+		// Copy Descriptor to Bindless since we are creating a texture as a shader resource view
+		view.BindlessIndex = m_bindlessDescritorTable.Allocate();
+		if (view.BindlessIndex != cInvalidDescriptorIndex)
+		{
+			GetD3D12Device2()->CopyDescriptorsSimple(
+				1,
+				m_bindlessDescritorTable.GetCpuHandle(view.BindlessIndex),
+				view.Allocation.GetCpuHandle(),
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
+
+	if (textureImpl->UavAllocation.Allocation.IsNull())
+	{
+		textureImpl->UavAllocation = view;
+		return -1;
+	}
+
+	textureImpl->UavSubresourcesAlloc.push_back(view);
+	return textureImpl->UavSubresourcesAlloc.size() - 1;
+}
