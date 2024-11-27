@@ -8,6 +8,19 @@
 
 namespace phx::rhi::dx12
 {
+	struct TypedCPUDescriptorHandle : public D3D12_CPU_DESCRIPTOR_HANDLE
+	{
+		TypedCPUDescriptorHandle() = default;
+		TypedCPUDescriptorHandle(const TypedCPUDescriptorHandle &other) { ptr = other.ptr; }
+		TypedCPUDescriptorHandle(const D3D12_CPU_DESCRIPTOR_HANDLE &other) { ptr = other.ptr; }
+
+		TypedCPUDescriptorHandle operator =(const TypedCPUDescriptorHandle &other)
+		{
+			ptr = other.ptr;
+			return *this;
+		}
+	};
+
 	struct SwapChain_Hot
 	{
 		ID3D12Resource* CurrentBackBuffer = nullptr;
