@@ -54,13 +54,30 @@ namespace phx::rhi::dx12
 
 	struct Texture_Hot
 	{
-
+		TypedCPUDescriptorHandle RtView = {};
+		TypedCPUDescriptorHandle DsView = {};
+		TypedCPUDescriptorHandle SrvView = {};
+		TypedCPUDescriptorHandle UavView = {};
 	};
 
 	struct Texture_Cold
 	{
 		CompPtr<D3D12MA::Allocation> Allocation;
 		CompPtr<ID3D12Resource> Resource;
+
+		// -- The views ---
+		DescriptorView RtvAllocation;
+		std::vector<DescriptorView> RtvSubresourcesAlloc = {};
+
+		DescriptorView DsvAllocation;
+		std::vector<DescriptorView> DsvSubresourcesAlloc = {};
+
+		DescriptorView Srv;
+		std::vector<DescriptorView> SrvSubresourcesAlloc = {};
+
+		DescriptorView UavAllocation;
+		std::vector<DescriptorView> UavSubresourcesAlloc = {};
+
 		union
 		{
 			uint16_t ArraySize = 1;
