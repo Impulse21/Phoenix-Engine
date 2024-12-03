@@ -103,7 +103,7 @@
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12GfxDevice.h">
       <Filter>include\phx\rhi\dx12</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\phx\rhi\dx12\RHIPlatformTypes.h">
+    <ClInclude Include="..\..\include\phx\rhi\dx12\PlatformTypes.h">
       <Filter>include\phx\rhi\dx12</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\phx\EngineCore.h">

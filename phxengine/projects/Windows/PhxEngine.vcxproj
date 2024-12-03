@@ -187,7 +187,7 @@
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12DescriptorHeaps.h" />
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12DeviceResources.h" />
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12GfxDevice.h" />
-    <ClInclude Include="..\..\include\phx\rhi\dx12\RHIPlatformTypes.h" />
+    <ClInclude Include="..\..\include\phx\rhi\dx12\PlatformTypes.h" />
     <ClInclude Include="..\..\include\phx\rhi\Handle.h" />
     <ClInclude Include="..\..\include\phx\rhi\ResourcePool.h" />
     <ClInclude Include="..\..\include\phx\rhi\GfxDevice.h" />

@@ -13,7 +13,6 @@
 
 namespace phx::rhi
 {
-	constexpr size_t kCacheLineSize = 8 * sizeof(uint64_t);
 	constexpr size_t kPageSize = 4_MiB;
 	template <typename>
 	inline constexpr bool always_false = false;

@@ -12,7 +12,22 @@
 
 namespace phx::rhi::dx12
 {
-	struct SwapChain_Hot
+	constexpr size_t kCacheLineSize = 8 * sizeof(uint64_t);
+
+	struct TypedCPUDescriptorHandle : public D3D12_CPU_DESCRIPTOR_HANDLE
+	{
+		TypedCPUDescriptorHandle() = default;
+		TypedCPUDescriptorHandle(const TypedCPUDescriptorHandle& other) { ptr = other.ptr; }
+		TypedCPUDescriptorHandle(const D3D12_CPU_DESCRIPTOR_HANDLE& other) { ptr = other.ptr; }
+
+		TypedCPUDescriptorHandle operator =(const TypedCPUDescriptorHandle& other)
+		{
+			ptr = other.ptr;
+			return *this;
+		}
+	};
+
+	struct SwapChain
 	{
 		CompPtr<IDXGISwapChain1> SwapChain;
 		CompPtr<IDXGISwapChain4> SwapChain4;
@@ -66,7 +81,7 @@ namespace phx::rhi::dx12
 	{
 		CompPtr<ID3D12Resource> Resource;
 		CompPtr<D3D12MA::Allocation> Allocation;
-		CompPtr<ID3D12Resource> Resource;
+		D3D12_GPU_VIRTUAL_ADDRESS GpuAddress;
 		union
 		{
 			uint16_t ArraySize = 1;
@@ -76,13 +91,5 @@ namespace phx::rhi::dx12
 		uint16_t SampleCount = 1;
 	};
 
-	struct GpuBuffer_Hot
-	{
-
-	};
-
-		D3D12_GPU_VIRTUAL_ADDRESS GpuAddress;
-
-	};
 	static_assert(sizeof(GpuBuffer) <= kCacheLineSize);
 }
