@@ -12,7 +12,7 @@
 
 namespace phx::rhi::dx12
 {
-	struct SwapChain
+	struct SwapChain_Hot
 	{
 		CompPtr<IDXGISwapChain1> SwapChain;
 		CompPtr<IDXGISwapChain4> SwapChain4;
@@ -66,7 +66,20 @@ namespace phx::rhi::dx12
 	{
 		CompPtr<ID3D12Resource> Resource;
 		CompPtr<D3D12MA::Allocation> Allocation;
-		void* CpuMappedAddress;
+		CompPtr<ID3D12Resource> Resource;
+		union
+		{
+			uint16_t ArraySize = 1;
+			uint16_t Depth;
+		};
+		uint16_t MipLevels = 1;
+		uint16_t SampleCount = 1;
+	};
+
+	struct GpuBuffer_Hot
+	{
+
+	};
 
 		D3D12_GPU_VIRTUAL_ADDRESS GpuAddress;
 
