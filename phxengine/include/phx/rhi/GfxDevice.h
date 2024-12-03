@@ -4,7 +4,7 @@
 #include <functional>
 
 #include "RHITypes.h"
-#include "RHIPlatformTypes.h"
+#include "PlatformTypes.h"
 #include "phx/rhi/ResourcePool.h"
 
 #include "CommandCtx.h"
@@ -30,20 +30,16 @@ namespace phx::rhi
         void Present(phx::Span<SwapChainHandle> swapChains)
         {
             assert(swapChains.Size() == 1 && "Only support a single swap chain");
-
-            auto& hot = *m_swapChainPool.Get<platform::SwapChain_Hot>(swapChains[0]);
-            auto& cold = *m_swapChainPool.Get<platform::SwapChain_Cold>(swapChains[0]);
-
-            m_platformDevice.Present(hot, cold);
+            auto& platform = *m_swapChainPool.Get(swapChains[0]);
+            m_platformDevice.Present(platform);
         }
     public:
         SwapChainHandle CreateSwapChain(SwapChainDescriptor const& desc)
         {
-            platform::SwapChain_Hot hot;
-            platform::SwapChain_Cold cold;
+            SwapChainHandle handle = m_swapChainPool.Emplace();
 
-            m_platformDevice.CreateSwapChain(desc, hot, cold);
-            return m_swapChainPool.Allocate(hot, cold);
+            m_platformDevice.CreateSwapChain(desc, *m_swapChainPool.Get(handle));
+            return handle;
         }
 
         void CreateSwapChain(SwapChainDescriptor const& desc, SwapChainHandle handle)
@@ -126,10 +122,10 @@ namespace phx::rhi
     private:
         platform::GfxDevice m_platformDevice;
 
-        ResourcePool<SwapChain, platform::SwapChain_Hot, platform::SwapChain_Cold> m_swapChainPool;
-        ResourcePool<Texture, platform::Texture_Hot, platform::Texture_Cold> m_texturePool;
-        ResourcePool<GpuBuffer, platform::GpuBuffer_Hot, platform::GpuBuffer_Cold> m_gpuBufferPool;
-        ResourcePool<PipelineState, platform::PipelineState_Hot, platform::PipelineState_Cold> m_pipelineStatePool;
+        ResourcePool<SwapChain, platform::SwapChain> m_swapChainPool;
+        ResourcePool<Texture, platform::Texture> m_texturePool;
+        ResourcePool<GpuBuffer, platform::GpuBuffer> m_gpuBufferPool;
+        ResourcePool<PipelineState, platform::PipelineState> m_pipelineStatePool;
 
         uint64_t m_frameCount = 0;
         struct DeferredItem

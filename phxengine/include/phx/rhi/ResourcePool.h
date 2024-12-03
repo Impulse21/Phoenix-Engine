@@ -13,32 +13,29 @@
 
 namespace phx::rhi
 {
-	constexpr size_t kCacheLineSize = 64;
+	constexpr size_t kCacheLineSize = 8 * sizeof(uint64_t);
 	constexpr size_t kPageSize = 4_MiB;
 	template <typename>
 	inline constexpr bool always_false = false;
 
-	template<class THandle, class THotData, class TColdData>
+	template<class THandle, class TData>
 	class ResourcePool
 	{
-		static_assert(sizeof(THotData) <= kCacheLineSize);
-
 	public:
 		ResourcePool(uint16_t maxHandles)
 			: m_maxEntries(std::min(maxHandles, std::numeric_limits<uint16_t>::max()))
 			, m_freeListHead(0)
 			, m_commitedIndices(0)
 		{
-			m_dataHot = static_cast<THotData*>(phx::VirtualMemReserve(m_maxEntries * sizeof(THotData)));
-			m_dataCold = static_cast<TColdData*>(phx::VirtualMemReserve(m_maxEntries * sizeof(TColdData)));
+			m_data = static_cast<TData*>(phx::VirtualMemReserve(m_maxEntries * sizeof(TData));
 
 			m_freeList = static_cast<uint16_t*>(phx::VirtualMemReserve(m_maxEntries * sizeof(uint16_t)));
 			m_generations = static_cast<uint16_t*>(phx::VirtualMemReserve(m_maxEntries * sizeof(uint16_t)));
 
-			if (!m_dataHot || !m_dataCold || !m_freeList || !m_generations)
+			if (!m_data || !m_freeList || !m_generations)
 				throw std::runtime_error("Failed to reserve virtual pool memory.");
 
-			m_indicesPerPageHot			=	kPageSize / sizeof(THotData);
+			m_indicesPerPageHot			=	kPageSize / sizeof(TData);
 			m_indicesPerPageCold		=	kPageSize / sizeof(TColdData);
 			m_indicesPerPageMetadata	=	kPageSize / sizeof(uint16_t);
 
@@ -54,26 +51,15 @@ namespace phx::rhi
 
 		void Finalize()
 		{
-			if (m_dataHot)
+			if (m_data)
 			{
 				for (int i = 0; i < m_commitedIndices; i++)
 				{
-					m_dataHot[i].~THotData();
+					m_data[i].~TData();
 				}
 
-				phx::VirtualMemFree(m_dataHot);
-				m_dataHot = nullptr;
-			}
-
-			if (m_dataCold)
-			{
-				for (int i = 0; i < m_commitedIndices; i++)
-				{
-					m_dataCold[i].~TColdData();
-				}
-
-				phx::VirtualMemFree(m_dataCold);
-				m_dataCold = nullptr;
+				phx::VirtualMemFree(m_data);
+				m_data = nullptr;
 			}
 
 			if (m_freeList)
@@ -89,7 +75,8 @@ namespace phx::rhi
 			}
 		}
 
-		Handle<THandle> Allocate(THotData const& hotData, TColdData const& coldData)
+		template<typename... Args>
+		Handle<THandle> Emplace(Args&&... args)
 		{
 			if (m_freeListHead >= m_maxEntries)
 				throw std::runtime_error("Pool is out of memory!");
@@ -103,11 +90,14 @@ namespace phx::rhi
 			handle.m_index = m_freeList[m_freeListHead++];
 			handle.m_generation = m_generations[handle.m_index];
 
-			// new (m_dataHot + handle.m_index) ImplT(std::forward<Args>(args)...);
-			m_dataHot[handle.m_index] = hotData;
-			m_dataCold[handle.m_index] = coldData;
+			new (this->m_data + handle.m_index) TData(std::forward<Args>(args)...);
 
 			return handle;
+		}
+
+		Handle<THandle> Insert(TData const& data)
+		{
+			return this->Emplace(data);
 		}
 
 		void Free(Handle<THandle> handle)
@@ -117,11 +107,10 @@ namespace phx::rhi
 				return;
 			}
 
-			GetHot(handle)->~THotData();
+			GetHot(handle)->~TData();
 			GetCold(handle)->~TColdData();
 
-			m_dataHot[handle.m_index] = {};
-			m_dataCold[handle.m_index] = {};
+			m_data[handle.m_index] = {};
 
 			m_generations[handle.m_index]++;
 
@@ -137,7 +126,7 @@ namespace phx::rhi
 		template<typename T>
 		T* Get(Handle<THandle> handle)
 		{
-			if constexpr (std::is_same_v<T, THotData>)
+			if constexpr (std::is_same_v<T, TData>)
 			{
 				return GetHot(handle);
 			}
@@ -151,62 +140,24 @@ namespace phx::rhi
 			}
 		}
 
-		template<typename T>
-		const T* Get(Handle<THandle> handle) const 
-		{
-			if constexpr (std::is_same_v<T, THotData>)
-			{
-				return GetHot(handle);
-			}
-			else if constexpr (std::is_same_v<T, TColdData>)
-			{
-				return GetCold(handle);
-			}
-			else
-			{
-				static_assert(always_false<T>, "Unsupported handle type!");
-			}
-		}
-
-		THotData* GetHot(Handle<THandle> handle)
+		TData* Get(Handle<THandle> handle)
 		{
 			if (!Contains(handle))
 			{
 				return nullptr;
 			}
 
-			return m_dataHot + handle.m_index;
+			return m_data + handle.m_index;
 		}
 
-		TColdData* GetCold(Handle<THandle> handle)
+		const TData* Get(Handle<THandle> handle) const
 		{
 			if (!Contains(handle))
 			{
 				return nullptr;
 			}
 
-			return m_dataCold + handle.m_index;
-		}
-
-
-		const THotData* GetHot(Handle<THandle> handle) const
-		{
-			if (!Contains(handle))
-			{
-				return nullptr;
-			}
-
-			return m_dataHot + handle.m_index;
-		}
-
-		const TColdData* GetCold(Handle<THandle> handle) const
-		{
-			if (!Contains(handle))
-			{
-				return nullptr;
-			}
-
-			return m_dataCold + handle.m_index;
+			return m_data + handle.m_index;
 		}
 
 		bool Contains(Handle<THandle> handle) const
@@ -224,8 +175,7 @@ namespace phx::rhi
 		{
 			size_t commitSize = pagesToCommit * kPageSize;
 
-			phx::VirtualMemCommit(reinterpret_cast<char*>(m_dataHot) + m_commitedIndices * sizeof(THotData), commitSize);
-			phx::VirtualMemCommit(reinterpret_cast<char*>(m_dataCold) + m_commitedIndices * sizeof(TColdData), commitSize);
+			phx::VirtualMemCommit(reinterpret_cast<char*>(m_data) + m_commitedIndices * sizeof(TData), commitSize);
 			phx::VirtualMemCommit(reinterpret_cast<char*>(m_freeList) + m_commitedIndices * sizeof(uint16_t), commitSize);
 			phx::VirtualMemCommit(reinterpret_cast<char*>(m_generations) + m_commitedIndices * sizeof(uint16_t), commitSize);
 
@@ -242,7 +192,7 @@ namespace phx::rhi
 
 	private:
 		const size_t	m_maxEntries;
-		THotData*		m_dataHot;
+		TData*		m_data;
 		TColdData*		m_dataCold;
 
 		uint16_t* m_freeList;

@@ -6,65 +6,70 @@
 
 #include <array>
 
+#define ALIGNAS(x)             __declspec(align(x))
+#define DEFINE_ALIGNED(def, a) __declspec(align(a)) def
+#define THREAD_LOCAL           __declspec(thread)
+
 namespace phx::rhi::dx12
 {
-	struct SwapChain_Hot
+	struct SwapChain
 	{
-		ID3D12Resource* CurrentBackBuffer = nullptr;
-		D3D12_CPU_DESCRIPTOR_HANDLE CurrentRtv;
-	};
+		CompPtr<IDXGISwapChain1> SwapChain;
+		CompPtr<IDXGISwapChain4> SwapChain4;
 
-	struct SwapChain_Cold
-	{
-		Microsoft::WRL::ComPtr<IDXGISwapChain1> SwapChain;
-		Microsoft::WRL::ComPtr<IDXGISwapChain4> SwapChain4;
-
-		std::array<CompPtr<ID3D12Resource>, rhi::kBufferCount> BackBuffers;
 		DescriptorHeapAllocation ViewAllocation;
+		std::array<CompPtr<ID3D12Resource>, rhi::kBufferCount> BackBuffers;
 
 		rhi::ClearValue ClearColour = {};
-		bool Fullscreen : 1 = false;
-		bool VSync : 1 = false;
-		bool EnableHDR : 1 = false;
+
+		uint32_t        CurrentIndex : 8;
+		bool			Fullscreen : 1 = false;
+		bool			VSync : 1 = false;
+		bool			EnableHDR : 1 = false;
+		rhi::Format		Format	: 8;
 	};
 
-	struct PipelineState_Hot
+	struct PipelineState
 	{
-		D3D_PRIMITIVE_TOPOLOGY Topology;
 		CompPtr<ID3D12PipelineState> D3D12PipelineState;
-	};
+		CompPtr<ID3D12RootSignature> RootSignature;
 
-	struct PipelineState_Cold
-	{
-		Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
-	};
-
-	struct Texture_Hot
-	{
-
-	};
-
-	struct Texture_Cold
-	{
-		CompPtr<D3D12MA::Allocation> Allocation;
-		CompPtr<ID3D12Resource> Resource;
-		union
+		enum class PipelineType : uint8_t
 		{
-			uint16_t ArraySize = 1;
-			uint16_t Depth;
-		};
-		uint16_t MipLevels = 1;
-		uint16_t SampleCount = 1;
-	};
+			Gfx = 0,
+			Compute,
+		} Type;
 
-	struct GpuBuffer_Hot
+		D3D_PRIMITIVE_TOPOLOGY Topology;
+	}; 
+	static_assert(sizeof(PipelineState) <= kCacheLineSize);
+
+	struct Texture
 	{
+		CompPtr<ID3D12Resource> Resource;
+		CompPtr<D3D12MA::Allocation> Allocation;
 
+		/// Current state of the buffer
+		uint32_t Width : 16;
+		uint32_t Height : 16;
+		uint32_t Depth : 16;
+		uint32_t MipLevels : 5;
+		uint32_t ArraySize : 11;
+		uint32_t Format : 8;
+		uint32_t NodeIndex : 4;
+		uint32_t SampleCount : 5;
+		uint32_t Uav : 1;
 	};
+	static_assert(sizeof(Texture) <= kCacheLineSize);
 
-	struct GpuBuffer_Cold
+	struct GpuBuffer
 	{
+		CompPtr<ID3D12Resource> Resource;
+		CompPtr<D3D12MA::Allocation> Allocation;
+		void* CpuMappedAddress;
+
+		D3D12_GPU_VIRTUAL_ADDRESS GpuAddress;
 
 	};
-
+	static_assert(sizeof(GpuBuffer) <= kCacheLineSize);
 }

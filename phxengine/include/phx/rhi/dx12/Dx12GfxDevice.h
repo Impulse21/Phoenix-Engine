@@ -162,13 +162,13 @@ namespace phx::rhi::dx12
 
 		// DynamicMemoryPage AllocateDynamicMemoryPage(size_t pageSize);
 
-		void Present(SwapChain_Hot& hot, SwapChain_Cold const& cold);
+		void Present(SwapChain& swapChain);
 
 	public:
-		bool CreateSwapChain(SwapChainDescriptor const& desc, SwapChain_Hot& hot, SwapChain_Cold& cold);
-		bool CreatePipeline(PipelineStateDescriptor const& desc, PipelineState_Hot& hot, PipelineState_Cold& cold);
-		bool CreateBuffer(GpuBufferDescriptor const& desc, GpuBuffer_Hot& hot, GpuBuffer_Cold& cold, MemInfo* initData = nullptr);
-		bool CreateTexture(TextureDescriptor const& desc, Texture_Hot& hot, Texture_Cold& cold, MemInfo* initData = nullptr);
+		bool CreateSwapChain(SwapChainDescriptor const& desc, SwapChain& swapchain);
+		bool CreatePipeline(PipelineStateDescriptor const& desc, PipelineState& pipline);
+		bool CreateBuffer(GpuBufferDescriptor const& desc, GpuBuffer& gpuBuffer, MemInfo* initData = nullptr);
+		bool CreateTexture(TextureDescriptor const& desc, Texture& texture, MemInfo* initData = nullptr);
 
 		// -- Getter and setters ---
 	public:
@@ -209,12 +209,12 @@ namespace phx::rhi::dx12
 		void SubmitCommandLists();
 		void RunGarbageCollection(uint64_t completedFrame = ~0ul);
 
-		int CreateSubresource(Texture_Hot& hot, Texture_Cold& cold, TextureDescriptor const& desc, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+		int CreateSubresource(Texture& texture, TextureDescriptor const& desc, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
 
-		int CreateShaderResourceView(Texture_Hot& hot, Texture_Cold& cold, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
-		int CreateRenderTargetView(Texture_Hot& hot, Texture_Cold& cold, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
-		int CreateDepthStencilView(Texture_Hot& hot, Texture_Cold& cold, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
-		int CreateUnorderedAccessView(Texture_Hot& hot, Texture_Cold& cold, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+		int CreateShaderResourceView(Texture& texture, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+		int CreateRenderTargetView(Texture& texture, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+		int CreateDepthStencilView(Texture& texture, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
+		int CreateUnorderedAccessView(Texture& texture, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount);
 
 		int CreateSubresource(GpuBufferHandle buffer, GpuBufferDescriptor const& desc, SubresouceType subresourceType, size_t offset, size_t size = ~0u);
 

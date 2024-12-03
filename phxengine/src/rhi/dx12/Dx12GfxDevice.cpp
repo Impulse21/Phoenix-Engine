@@ -737,20 +737,20 @@ void GfxDeviceDx12::ResizeSwapChain(SwapChainDesc const& swapChainDesc)
 	CreateSwapChain(swapChainDesc, nullptr);
 }
 #endif
-bool GfxDeviceDx12::CreateSwapChain(SwapChainDescriptor const& desc, SwapChain_Hot& hot, SwapChain_Cold& cold)
+bool GfxDeviceDx12::CreateSwapChain(SwapChainDescriptor const& desc, SwapChain& swapChain)
 {
 	HRESULT hr;
 
-	cold.ClearColour = desc.OptmizedClearValue;
-	cold.VSync = desc.VSync;
-	cold.Fullscreen = desc.Fullscreen;
-	cold.EnableHDR = desc.EnableHDR;
+	swapChain.ClearColour = desc.OptmizedClearValue;
+	swapChain.VSync = desc.VSync;
+	swapChain.Fullscreen = desc.Fullscreen;
+	swapChain.EnableHDR = desc.EnableHDR;
 
 	UINT swapChainFlags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 	swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 
 	const auto& formatMapping = GetDxgiFormatMapping(desc.Format);
-	if (cold.SwapChain == nullptr)
+	if (swapChain.SwapChain == nullptr)
 	{
 		// Create swapchain:
 		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
@@ -777,7 +777,7 @@ bool GfxDeviceDx12::CreateSwapChain(SwapChainDescriptor const& desc, SwapChain_H
 			&swapChainDesc,
 			&fullscreenDesc,
 			nullptr,
-			cold.SwapChain.GetAddressOf()
+			swapChain.SwapChain.GetAddressOf()
 		);
 
 		if (FAILED(hr))
@@ -785,7 +785,7 @@ bool GfxDeviceDx12::CreateSwapChain(SwapChainDescriptor const& desc, SwapChain_H
 			throw std::exception();
 		}
 
-		hr = cold.SwapChain.As(&cold.SwapChain4);
+		hr = swapChain.SwapChain.As(&swapChain.SwapChain4);
 		if (FAILED(hr))
 		{
 			throw std::exception();
@@ -796,17 +796,16 @@ bool GfxDeviceDx12::CreateSwapChain(SwapChainDescriptor const& desc, SwapChain_H
 		// Resize swapchain:
 		WaitForIdle();
 
-		hot.CurrentBackBuffer = nullptr;
-		hot.CurrentRtv = {};
+		swapChain.CurrentIndex = 0;
 
 		// Delete back buffers
-		cold.ViewAllocation.Free();
-		for (auto& backBuffer : cold.BackBuffers)
+		swapChain.ViewAllocation.Free();
+		for (auto& backBuffer : swapChain.BackBuffers)
 		{
 			backBuffer.Reset();
 		}
 
-		hr = cold.SwapChain->ResizeBuffers(
+		hr = swapChain.SwapChain->ResizeBuffers(
 			kBufferCount,
 			desc.Width,
 			desc.Height,
@@ -871,27 +870,25 @@ bool GfxDeviceDx12::CreateSwapChain(SwapChainDescriptor const& desc, SwapChain_H
 	}
 #endif
 
-	cold.ViewAllocation = m_cpuDescriptorHeaps[DescriptorHeapTypes::RTV].Allocate(kBufferCount);
+	swapChain.ViewAllocation = m_cpuDescriptorHeaps[DescriptorHeapTypes::RTV].Allocate(kBufferCount);
 	for (UINT i = 0; i < kBufferCount; i++)
 	{
-		Microsoft::WRL::ComPtr<ID3D12Resource>& backBuffer = cold.BackBuffers[i];
+		Microsoft::WRL::ComPtr<ID3D12Resource>& backBuffer = swapChain.BackBuffers[i];
 		ThrowIfFailed(
-			cold.SwapChain4->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
+			pipeline.SwapChain4->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
 
 		char allocatorName[32];
 		sprintf_s(allocatorName, "Back Buffer %iu", i);
 
-		GetD3D12Device()->CreateRenderTargetView(backBuffer.Get(), nullptr, cold.ViewAllocation.GetCpuHandle(i));
+		GetD3D12Device()->CreateRenderTargetView(backBuffer.Get(), nullptr, pipeline.ViewAllocation.GetCpuHandle(i));
 	}
 
-	const UINT currentIndex = cold.SwapChain4->GetCurrentBackBufferIndex();
-	hot.CurrentBackBuffer = cold.BackBuffers[currentIndex].Get();
-	hot.CurrentRtv = cold.ViewAllocation.GetCpuHandle(currentIndex);
+	swapChain.CurrentIndex = (uint32_t)swapChain.SwapChain4->GetCurrentBackBufferIndex();
 
 	return true;
 }
 
-bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, PipelineState_Hot& hot, PipelineState_Cold& cold)
+bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, PipelineState& pipeline)
 {
 	struct PSO_STREAM
 	{
@@ -926,66 +923,66 @@ bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, Pipeline
 	if (desc.MS.IsValid())
 	{
 		stream.stream2.MS = { desc.MS.ByteCode.data(), desc.MS.ByteCode.size() };
-		if (cold.RootSignature == nullptr)
+		if (pipeline.RootSignature == nullptr)
 		{
-			cold.RootSignature = CreateRootSignature(desc.MS.ByteCode);
+			pipeline.RootSignature = CreateRootSignature(desc.MS.ByteCode);
 		}
 	}
 	if (desc.AS.IsValid())
 	{
 		stream.stream2.AS = { desc.AS.ByteCode.data(), desc.AS.ByteCode.size() };
-		if (cold.RootSignature == nullptr)
+		if (pipeline.RootSignature == nullptr)
 		{
-			cold.RootSignature = CreateRootSignature(desc.AS.ByteCode);
+			pipeline.RootSignature = CreateRootSignature(desc.AS.ByteCode);
 		}
 	}
 	if (desc.VS.IsValid())
 	{
 		stream.stream1.VS = { desc.VS.ByteCode.data(), desc.VS.ByteCode.size() };
-		if (cold.RootSignature == nullptr)
+		if (pipeline.RootSignature == nullptr)
 		{
-			cold.RootSignature = CreateRootSignature(desc.VS.ByteCode);
+			pipeline.RootSignature = CreateRootSignature(desc.VS.ByteCode);
 		}
 	}
 	if (desc.HS.IsValid())
 	{
 		stream.stream1.HS = { desc.HS.ByteCode.data(), desc.HS.ByteCode.size() };
-		if (cold.RootSignature == nullptr)
+		if (pipeline.RootSignature == nullptr)
 		{
-			cold.RootSignature = CreateRootSignature(desc.HS.ByteCode);
+			pipeline.RootSignature = CreateRootSignature(desc.HS.ByteCode);
 		}
 	}
 	if (desc.DS.IsValid())
 	{
 		stream.stream1.DS = { desc.DS.ByteCode.data(), desc.DS.ByteCode.size() };
-		if (cold.RootSignature == nullptr)
+		if (pipeline.RootSignature == nullptr)
 		{
-			cold.RootSignature = CreateRootSignature(desc.DS.ByteCode);
+			pipeline.RootSignature = CreateRootSignature(desc.DS.ByteCode);
 		}
 	}
 	if (desc.GS.IsValid())
 	{
 		stream.stream1.GS = { desc.GS.ByteCode.data(), desc.GS.ByteCode.size() };
-		if (cold.RootSignature == nullptr)
+		if (pipeline.RootSignature == nullptr)
 		{
-			cold.RootSignature = CreateRootSignature(desc.GS.ByteCode);
+			pipeline.RootSignature = CreateRootSignature(desc.GS.ByteCode);
 		}
 	}
 	if (desc.PS.IsValid())
 	{
 		stream.stream1.PS = { desc.PS.ByteCode.data(), desc.PS.ByteCode.size() };
-		if (cold.RootSignature == nullptr)
+		if (pipeline.RootSignature == nullptr)
 		{
-			cold.RootSignature = CreateRootSignature(desc.PS.ByteCode);
+			pipeline.RootSignature = CreateRootSignature(desc.PS.ByteCode);
 		}
 	}
 
-	if (cold.RootSignature == nullptr)
+	if (pipeline.RootSignature == nullptr)
 	{
-		cold.RootSignature = m_emptyRootSignature;
+		pipeline.RootSignature = m_emptyRootSignature;
 	}
 
-	stream.stream1.ROOTSIG = cold.RootSignature.Get();
+	stream.stream1.ROOTSIG = pipeline.RootSignature.Get();
 
 	TranslateBlendState(desc.BlendState, stream.stream1.BD);
 	TranslateDepthStencilState(desc.DepthStencilState, stream.stream1.DSS);
@@ -1034,7 +1031,7 @@ bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, Pipeline
 
 	stream.stream1.SampleMask = desc.SampleMask;
 
-	hot.Topology = ConvertPrimitiveTopology(desc.PrimType, desc.PatchControlPoints);
+	pipeline.Topology = ConvertPrimitiveTopology(desc.PrimType, desc.PatchControlPoints);
 	switch (desc.PrimType)
 	{
 	case PrimitiveType::PointList:
@@ -1078,7 +1075,7 @@ bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, Pipeline
 		streamDesc.SizeInBytes += sizeof(stream.stream2);
 	}
 
-	HRESULT hr = m_d3d12Device2->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&hot.D3D12PipelineState));
+	HRESULT hr = m_d3d12Device2->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pipeline.D3D12PipelineState));
 	if (FAILED(hr))
 	{
 		PollDebugMessages();
@@ -1088,7 +1085,7 @@ bool GfxDeviceDx12::CreatePipeline(PipelineStateDescriptor const& desc, Pipeline
 	return true;
 }
 
-bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, Texture_Hot& hot, Texture_Cold& cold, MemInfo* initData)
+bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, Texture& texture, MemInfo* initData)
 {
 	D3D12_CLEAR_VALUE d3d12OptimizedClearValue = {};
 	d3d12OptimizedClearValue.Color[0] = desc.ClearValue.Colour.R;
@@ -1128,7 +1125,7 @@ bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, Texture_Hot& ho
 
 	switch (desc.Type)
 	{
-	case TextureDescriptor::TexType::Texture1D:
+	case TextureType::Texture1D:
 	{
 		resourceDesc =
 			CD3DX12_RESOURCE_DESC::Tex1D(EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::TypelessFormatCasting) ? dxgiFormatMapping.SrvFormat : dxgiFormatMapping.RtvFormat,
@@ -1138,7 +1135,7 @@ bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, Texture_Hot& ho
 				resourceFlags);
 		break;
 	}
-	case TextureDescriptor::TexType::Texture2D:
+	case TextureType::Texture2D:
 	{
 		resourceDesc =
 			CD3DX12_RESOURCE_DESC::Tex2D(EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::TypelessFormatCasting) ? dxgiFormatMapping.SrvFormat : dxgiFormatMapping.RtvFormat,
@@ -1151,7 +1148,7 @@ bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, Texture_Hot& ho
 				resourceFlags);
 		break;
 	}
-	case TextureDescriptor::TexType::Texture3D:
+	case TextureType::Texture3D:
 	{
 		resourceDesc =
 			CD3DX12_RESOURCE_DESC::Tex3D(
@@ -1171,8 +1168,8 @@ bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, Texture_Hot& ho
 		((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget) ||
 		((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil);
 
-	cold.MipLevels = desc.MipLevels;
-	cold.ArraySize = desc.ArraySize;
+	texture.MipLevels = desc.MipLevels;
+	texture.ArraySize = desc.ArraySize;
 
 	// TODO: Support aliasing
 	ThrowIfFailed(
@@ -1181,13 +1178,13 @@ bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, Texture_Hot& ho
 			&resourceDesc,
 			ConvertResourceStates(desc.InitialState),
 			useClearValue ? &d3d12OptimizedClearValue : nullptr,
-			&cold.Allocation,
-			IID_PPV_ARGS(&cold.Resource)));
+			&texture.Allocation,
+			IID_PPV_ARGS(&texture.Resource)));
 
 
 	std::wstring debugName;
 	StringConvert(desc.DebugName, debugName);
-	cold.Resource->SetName(debugName.c_str());
+	texture.Resource->SetName(debugName.c_str());
 
 	if (initData)
 	{
@@ -1252,32 +1249,32 @@ bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, Texture_Hot& ho
 
 	if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
 	{
-		CreateSubresource(hot, desc, SubresouceType::SRV, 0, ~0u, 0, ~0u);
+		CreateSubresource(texture, desc, SubresouceType::SRV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::RenderTarget) == BindingFlags::RenderTarget)
 	{
-		CreateSubresource(hot, desc, SubresouceType::RTV, 0, ~0u, 0, ~0u);
+		CreateSubresource(texture, desc, SubresouceType::RTV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::DepthStencil) == BindingFlags::DepthStencil)
 	{
-		CreateSubresource(hot, desc, SubresouceType::DSV, 0, ~0u, 0, ~0u);
+		CreateSubresource(texture, desc, SubresouceType::DSV, 0, ~0u, 0, ~0u);
 	}
 
 	if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
 	{
-		CreateSubresource(hot, desc, SubresouceType::UAV, 0, ~0u, 0, ~0u);
+		CreateSubresource(texture, desc, SubresouceType::UAV, 0, ~0u, 0, ~0u);
 	}
 
 	return true;
 }
 
-void GfxDeviceDx12::Present(SwapChain_Hot& hot, SwapChain_Cold const& cold)
+void GfxDeviceDx12::Present(SwapChain& swapchain)
 {
 	// -- Mark Queues for completion ---
 	{
-		const size_t backBufferIndex = cold.SwapChain4->GetCurrentBackBufferIndex();
+		const size_t backBufferIndex = swapchain.SwapChain4->GetCurrentBackBufferIndex();
 		// -- Mark queues for Compleition ---
 		for (size_t q = 0; q < (size_t)CommandQueueType::Count; q++)
 		{
@@ -1292,12 +1289,12 @@ void GfxDeviceDx12::Present(SwapChain_Hot& hot, SwapChain_Cold const& cold)
 	{
 
 		UINT presentFlags = 0;
-		if (!cold.VSync)
+		if (!swapchain.VSync)
 		{
 			presentFlags |= DXGI_PRESENT_ALLOW_TEARING;
 		}
 
-		HRESULT hr = cold.SwapChain4->Present((UINT)cold.VSync, presentFlags);
+		HRESULT hr = swapchain.SwapChain4->Present((UINT)swapchain.VSync, presentFlags);
 
 		if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
 		{
@@ -1307,7 +1304,7 @@ void GfxDeviceDx12::Present(SwapChain_Hot& hot, SwapChain_Cold const& cold)
 
 	// -- wait for fence to finish
 	{
-		const size_t backBufferIndex = cold.SwapChain4->GetCurrentBackBufferIndex();
+		const size_t backBufferIndex = swapchain.SwapChain4->GetCurrentBackBufferIndex();
 
 		m_frameCount++;
 
@@ -1326,17 +1323,14 @@ void GfxDeviceDx12::Present(SwapChain_Hot& hot, SwapChain_Cold const& cold)
 			fence->Signal(0);
 		}
 
-		hot.CurrentRtv			= cold.ViewAllocation.GetCpuHandle((uint32_t)backBufferIndex);
-		hot.CurrentBackBuffer	= cold.BackBuffers[backBufferIndex].Get();
+		swapchain.CurrentIndex = backBufferIndex;
 	}
 }
-
 
 void GfxDeviceDx12::PollDebugMessages()
 {
 	::PollDebugMessages(GetD3D12Device());
 }
-
 
 void GfxDeviceDx12::Initialize()
 {
@@ -1734,18 +1728,18 @@ void GfxDeviceDx12::CreateSwapChain(SwapChainDesc const& desc, HWND hwnd)
 
 #endif
 
-int GfxDeviceDx12::CreateSubresource(Texture_Hot& hot, Texture_Cold& cold, TextureDescriptor const& desc, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+int GfxDeviceDx12::CreateSubresource(Texture& hot, TextureDescriptor const& desc, SubresouceType subresourceType, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
 	switch (subresourceType)
 	{
 	case SubresouceType::SRV:
-		return CreateShaderResourceView(hot, cold, desc, firstSlice, sliceCount, firstMip, mipCount);
+		return CreateShaderResourceView(hot, desc, firstSlice, sliceCount, firstMip, mipCount);
 	case SubresouceType::UAV:
-		return CreateUnorderedAccessView(hot, cold, desc, firstSlice, sliceCount, firstMip, mipCount);
+		return CreateUnorderedAccessView(hot, desc, firstSlice, sliceCount, firstMip, mipCount);
 	case SubresouceType::RTV:
-		return CreateRenderTargetView(hot, cold, desc, firstSlice, sliceCount, firstMip, mipCount);
+		return CreateRenderTargetView(hot, desc, firstSlice, sliceCount, firstMip, mipCount);
 	case SubresouceType::DSV:
-		return CreateDepthStencilView(hot, cold, desc, firstSlice, sliceCount, firstMip, mipCount);
+		return CreateDepthStencilView(hot, desc, firstSlice, sliceCount, firstMip, mipCount);
 	default:
 		throw std::runtime_error("Unknown sub resource type");
 	}
@@ -1923,7 +1917,7 @@ int GfxDeviceDx12::CreateUnorderedAccessView(BufferHandle buffer, BufferDesc con
 }
 #endif
 
-int GfxDeviceDx12::CreateShaderResourceView(Texture_Hot& hot, Texture_Cold& cold, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+int GfxDeviceDx12::CreateShaderResourceView(Texture& hot, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
 	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -1986,7 +1980,7 @@ int GfxDeviceDx12::CreateShaderResourceView(Texture_Hot& hot, Texture_Cold& cold
 	};
 
 	GetD3D12Device2()->CreateShaderResourceView(
-		cold.Resource.Get(),
+		pipeline.Resource.Get(),
 		&srvDesc,
 		view.Allocation.GetCpuHandle());
 
@@ -2013,7 +2007,7 @@ int GfxDeviceDx12::CreateShaderResourceView(Texture_Hot& hot, Texture_Cold& cold
 	return textureImpl->SrvSubresourcesAlloc.size() - 1;
 }
 
-int GfxDeviceDx12::CreateRenderTargetView(Texture_Hot& hot, Texture_Cold& cold, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+int GfxDeviceDx12::CreateRenderTargetView(Texture& hot, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
 	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
@@ -2073,7 +2067,7 @@ int GfxDeviceDx12::CreateRenderTargetView(Texture_Hot& hot, Texture_Cold& cold, 
 	};
 
 	GetD3D12Device2()->CreateRenderTargetView(
-		cold.Resource.Get(),
+		pipeline.Resource.Get(),
 		&rtvDesc,
 		view.Allocation.GetCpuHandle());
 
@@ -2087,7 +2081,7 @@ int GfxDeviceDx12::CreateRenderTargetView(Texture_Hot& hot, Texture_Cold& cold, 
 	return textureImpl->RtvSubresourcesAlloc.size() - 1;
 }
 
-int GfxDeviceDx12::CreateDepthStencilView(Texture_Hot& hot, Texture_Cold& cold, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+int GfxDeviceDx12::CreateDepthStencilView(Texture& hot, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
 	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
@@ -2146,7 +2140,7 @@ int GfxDeviceDx12::CreateDepthStencilView(Texture_Hot& hot, Texture_Cold& cold, 
 	};
 
 	GetD3D12Device2()->CreateDepthStencilView(
-		cold.Resource.Get(),
+		pipeline.Resource.Get(),
 		&dsvDesc,
 		view.Allocation.GetCpuHandle());
 
@@ -2160,7 +2154,7 @@ int GfxDeviceDx12::CreateDepthStencilView(Texture_Hot& hot, Texture_Cold& cold, 
 	return textureImpl->DsvSubresourcesAlloc.size() - 1;
 }
 
-int GfxDeviceDx12::CreateUnorderedAccessView(Texture_Hot& hot, Texture_Cold& cold, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+int GfxDeviceDx12::CreateUnorderedAccessView(Texture& hot, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
 	D3D12Texture* textureImpl = m_resourceRegistry.Textures.Get(texture);
 
@@ -2219,7 +2213,7 @@ int GfxDeviceDx12::CreateUnorderedAccessView(Texture_Hot& hot, Texture_Cold& col
 	};
 
 	GetD3D12Device2()->CreateUnorderedAccessView(
-		cold.Resource.Get(),
+		pipeline.Resource.Get(),
 		nullptr,
 		&uavDesc,
 		view.Allocation.GetCpuHandle());
