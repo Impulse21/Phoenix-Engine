@@ -875,12 +875,12 @@ bool GfxDeviceDx12::CreateSwapChain(SwapChainDescriptor const& desc, SwapChain& 
 	{
 		Microsoft::WRL::ComPtr<ID3D12Resource>& backBuffer = swapChain.BackBuffers[i];
 		ThrowIfFailed(
-			pipeline.SwapChain4->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
+			swapChain.SwapChain4->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
 
 		char allocatorName[32];
 		sprintf_s(allocatorName, "Back Buffer %iu", i);
 
-		GetD3D12Device()->CreateRenderTargetView(backBuffer.Get(), nullptr, pipeline.ViewAllocation.GetCpuHandle(i));
+		GetD3D12Device()->CreateRenderTargetView(backBuffer.Get(), nullptr, swapChain.ViewAllocation.GetCpuHandle(i));
 	}
 
 	swapChain.CurrentIndex = (uint32_t)swapChain.SwapChain4->GetCurrentBackBufferIndex();
@@ -1917,7 +1917,7 @@ int GfxDeviceDx12::CreateUnorderedAccessView(BufferHandle buffer, BufferDesc con
 }
 #endif
 
-int GfxDeviceDx12::CreateShaderResourceView(Texture& hot, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+int GfxDeviceDx12::CreateShaderResourceView(Texture& texture, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
 	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -1929,40 +1929,55 @@ int GfxDeviceDx12::CreateShaderResourceView(Texture& hot, TextureDescriptor cons
 	switch (desc.Type)
 	{
 	case TextureType::Texture1D:
-		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1D;
-		rtvDesc.Texture1D.MipSlice = firstMip;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
+		srvDesc.Texture1D.MostDetailedMip = firstMip; // Subresource data
+		srvDesc.Texture1D.MipLevels = mipCount;// Subresource data
 		break;
 	case TextureType::Texture1DArray:
-		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
-		rtvDesc.Texture1DArray.FirstArraySlice = firstSlice;
-		rtvDesc.Texture1DArray.ArraySize = sliceCount;
-		rtvDesc.Texture1DArray.MipSlice = firstMip;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1DARRAY;
+		srvDesc.Texture1DArray.FirstArraySlice = firstSlice;
+		srvDesc.Texture1DArray.ArraySize = sliceCount;// Subresource data
+		srvDesc.Texture1DArray.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.Texture1DArray.MipLevels = mipCount;// Subresource data
 		break;
 	case TextureType::Texture2D:
-		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-		rtvDesc.Texture2D.MipSlice = firstMip;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.Texture2D.MipLevels = mipCount;// Subresource data
+		srvDesc.Texture2D.PlaneSlice = planeSlice;
 		break;
 	case TextureType::Texture2DArray:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+		srvDesc.Texture2DArray.FirstArraySlice = firstSlice;// Subresource data
+		srvDesc.Texture2DArray.ArraySize = sliceCount;// Subresource data
+		srvDesc.Texture2DArray.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.Texture2DArray.MipLevels = mipCount;// Subresource data
+		srvDesc.Texture2DArray.PlaneSlice = planeSlice;
+		break;
 	case TextureType::TextureCube:
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+		srvDesc.TextureCube.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.TextureCube.MipLevels = mipCount;// Subresource data
+		break;
 	case TextureType::TextureCubeArray:
-		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-		rtvDesc.Texture2DArray.ArraySize = sliceCount;
-		rtvDesc.Texture2DArray.FirstArraySlice = firstSlice;
-		rtvDesc.Texture2DArray.MipSlice = firstMip;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
+		srvDesc.TextureCubeArray.First2DArrayFace = 0;// Subresource data
+		srvDesc.TextureCubeArray.NumCubes = desc.ArraySize / 6;// Subresource data
+		srvDesc.TextureCubeArray.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.TextureCubeArray.MipLevels = mipCount;// Subresource data
 		break;
 	case TextureType::Texture2DMS:
-		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
 		break;
 	case TextureType::Texture2DMSArray:
-		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
-		rtvDesc.Texture2DMSArray.FirstArraySlice = firstSlice;
-		rtvDesc.Texture2DMSArray.ArraySize = sliceCount;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
+		srvDesc.Texture2DMSArray.FirstArraySlice = firstSlice;// Subresource data
+		srvDesc.Texture2DMSArray.ArraySize = sliceCount;// Subresource data
 		break;
 	case TextureType::Texture3D:
-		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
-		rtvDesc.Texture3D.FirstWSlice = 0;
-		rtvDesc.Texture3D.WSize = desc.ArraySize;
-		rtvDesc.Texture3D.MipSlice = firstMip;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
+		srvDesc.Texture3D.MostDetailedMip = firstMip;// Subresource data
+		srvDesc.Texture3D.MipLevels = mipCount;// Subresource data
 		break;
 	case TextureType::Unknown:
 	default:
@@ -1980,7 +1995,7 @@ int GfxDeviceDx12::CreateShaderResourceView(Texture& hot, TextureDescriptor cons
 	};
 
 	GetD3D12Device2()->CreateShaderResourceView(
-		pipeline.Resource.Get(),
+		texture.Resource.Get(),
 		&srvDesc,
 		view.Allocation.GetCpuHandle());
 
@@ -1997,17 +2012,18 @@ int GfxDeviceDx12::CreateShaderResourceView(Texture& hot, TextureDescriptor cons
 				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
 	}
-	if (hot->Srv.Allocation.IsNull())
+
+	if (texture.Srv.Allocation.IsNull())
 	{
-		textureImpl->Srv = view;
+		texture.Srv = view;
 		return -1;
 	}
 
-	textureImpl->SrvSubresourcesAlloc.push_back(view);
-	return textureImpl->SrvSubresourcesAlloc.size() - 1;
+	texture.SrvSubresourcesAlloc.push_back(view);
+	return texture.SrvSubresourcesAlloc.size() - 1;
 }
 
-int GfxDeviceDx12::CreateRenderTargetView(Texture& hot, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+int GfxDeviceDx12::CreateRenderTargetView(Texture& texture, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
 	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
@@ -2067,21 +2083,21 @@ int GfxDeviceDx12::CreateRenderTargetView(Texture& hot, TextureDescriptor const&
 	};
 
 	GetD3D12Device2()->CreateRenderTargetView(
-		pipeline.Resource.Get(),
+		texture.Resource.Get(),
 		&rtvDesc,
 		view.Allocation.GetCpuHandle());
 
-	if (textureImpl->RtvAllocation.Allocation.IsNull())
+	if (texture.RtvAllocation.Allocation.IsNull())
 	{
-		textureImpl->RtvAllocation = view;
+		texture.RtvAllocation = view;
 		return -1;
 	}
 
-	textureImpl->RtvSubresourcesAlloc.push_back(view);
-	return textureImpl->RtvSubresourcesAlloc.size() - 1;
+	texture.RtvSubresourcesAlloc.push_back(view);
+	return texture.RtvSubresourcesAlloc.size() - 1;
 }
 
-int GfxDeviceDx12::CreateDepthStencilView(Texture& hot, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+int GfxDeviceDx12::CreateDepthStencilView(Texture& texture, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
 	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
@@ -2140,24 +2156,22 @@ int GfxDeviceDx12::CreateDepthStencilView(Texture& hot, TextureDescriptor const&
 	};
 
 	GetD3D12Device2()->CreateDepthStencilView(
-		pipeline.Resource.Get(),
+		texture.Resource.Get(),
 		&dsvDesc,
 		view.Allocation.GetCpuHandle());
 
-	if (textureImpl->DsvAllocation.Allocation.IsNull())
+	if (texture.DsvAllocation.Allocation.IsNull())
 	{
-		textureImpl->DsvAllocation = view;
+		texture.DsvAllocation = view;
 		return -1;
 	}
 
-	textureImpl->DsvSubresourcesAlloc.push_back(view);
-	return textureImpl->DsvSubresourcesAlloc.size() - 1;
+	texture.DsvSubresourcesAlloc.push_back(view);
+	return texture.DsvSubresourcesAlloc.size() - 1;
 }
 
-int GfxDeviceDx12::CreateUnorderedAccessView(Texture& hot, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
+int GfxDeviceDx12::CreateUnorderedAccessView(Texture& texture, TextureDescriptor const& desc, uint32_t firstSlice, uint32_t sliceCount, uint32_t firstMip, uint32_t mipCount)
 {
-	D3D12Texture* textureImpl = m_resourceRegistry.Textures.Get(texture);
-
 	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.Format = dxgiFormatMapping.SrvFormat;
@@ -2213,7 +2227,7 @@ int GfxDeviceDx12::CreateUnorderedAccessView(Texture& hot, TextureDescriptor con
 	};
 
 	GetD3D12Device2()->CreateUnorderedAccessView(
-		pipeline.Resource.Get(),
+		texture.Resource.Get(),
 		nullptr,
 		&uavDesc,
 		view.Allocation.GetCpuHandle());
@@ -2232,12 +2246,12 @@ int GfxDeviceDx12::CreateUnorderedAccessView(Texture& hot, TextureDescriptor con
 		}
 	}
 
-	if (textureImpl->UavAllocation.Allocation.IsNull())
+	if (texture.UavAllocation.Allocation.IsNull())
 	{
-		textureImpl->UavAllocation = view;
+		texture.UavAllocation = view;
 		return -1;
 	}
 
-	textureImpl->UavSubresourcesAlloc.push_back(view);
-	return textureImpl->UavSubresourcesAlloc.size() - 1;
+	texture.UavSubresourcesAlloc.push_back(view);
+	return texture.UavSubresourcesAlloc.size() - 1;
 }

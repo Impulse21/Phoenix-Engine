@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <stdexcept>
 #include <iostream>
+#include <variant>
 
 #include "phx/rhi/Handle.h"
 #include "phx/core/Memory.h"
@@ -17,7 +18,7 @@ namespace phx::rhi
 	template <typename>
 	inline constexpr bool always_false = false;
 
-	template<class THandle, class TData>
+	template<class THandle, class TDataHot, class TDataCold = std::monostate>
 	class ResourcePool
 	{
 	public:
@@ -26,16 +27,16 @@ namespace phx::rhi
 			, m_freeListHead(0)
 			, m_commitedIndices(0)
 		{
-			m_data = static_cast<TData*>(phx::VirtualMemReserve(m_maxEntries * sizeof(TData));
+			m_dataHot = static_cast<TDataHot*>(phx::VirtualMemReserve(m_maxEntries * sizeof(TDataHot));
 
 			m_freeList = static_cast<uint16_t*>(phx::VirtualMemReserve(m_maxEntries * sizeof(uint16_t)));
 			m_generations = static_cast<uint16_t*>(phx::VirtualMemReserve(m_maxEntries * sizeof(uint16_t)));
 
-			if (!m_data || !m_freeList || !m_generations)
+			if (!m_dataHot || !m_freeList || !m_generations)
 				throw std::runtime_error("Failed to reserve virtual pool memory.");
 
-			m_indicesPerPageHot			=	kPageSize / sizeof(TData);
-			m_indicesPerPageCold		=	kPageSize / sizeof(TColdData);
+			m_indicesPerPageHot			=	kPageSize / sizeof(TDataHot);
+			m_indicesPerPageCold		=	kPageSize / sizeof(TDataCold);
 			m_indicesPerPageMetadata	=	kPageSize / sizeof(uint16_t);
 
 			m_indicesPerCommit = std::min({ m_indicesPerPageHot, m_indicesPerPageCold, m_indicesPerPageMetadata });
@@ -50,15 +51,15 @@ namespace phx::rhi
 
 		void Finalize()
 		{
-			if (m_data)
+			if (m_dataHot)
 			{
 				for (int i = 0; i < m_commitedIndices; i++)
 				{
-					m_data[i].~TData();
+					m_dataHot[i].~TDataHot();
 				}
 
-				phx::VirtualMemFree(m_data);
-				m_data = nullptr;
+				phx::VirtualMemFree(m_dataHot);
+				m_dataHot = nullptr;
 			}
 
 			if (m_freeList)
@@ -89,12 +90,12 @@ namespace phx::rhi
 			handle.m_index = m_freeList[m_freeListHead++];
 			handle.m_generation = m_generations[handle.m_index];
 
-			new (this->m_data + handle.m_index) TData(std::forward<Args>(args)...);
+			new (this->m_dataHot + handle.m_index) TDataHot(std::forward<Args>(args)...);
 
 			return handle;
 		}
 
-		Handle<THandle> Insert(TData const& data)
+		Handle<THandle> Insert(TDataHot const& data)
 		{
 			return this->Emplace(data);
 		}
@@ -106,10 +107,10 @@ namespace phx::rhi
 				return;
 			}
 
-			GetHot(handle)->~TData();
+			GetHot(handle)->~TDataHot();
 			GetCold(handle)->~TColdData();
 
-			m_data[handle.m_index] = {};
+			m_dataHot[handle.m_index] = {};
 
 			m_generations[handle.m_index]++;
 
@@ -125,7 +126,7 @@ namespace phx::rhi
 		template<typename T>
 		T* Get(Handle<THandle> handle)
 		{
-			if constexpr (std::is_same_v<T, TData>)
+			if constexpr (std::is_same_v<T, TDataHot>)
 			{
 				return GetHot(handle);
 			}
@@ -139,24 +140,24 @@ namespace phx::rhi
 			}
 		}
 
-		TData* Get(Handle<THandle> handle)
+		TDataHot* Get(Handle<THandle> handle)
 		{
 			if (!Contains(handle))
 			{
 				return nullptr;
 			}
 
-			return m_data + handle.m_index;
+			return m_dataHot + handle.m_index;
 		}
 
-		const TData* Get(Handle<THandle> handle) const
+		const TDataHot* Get(Handle<THandle> handle) const
 		{
 			if (!Contains(handle))
 			{
 				return nullptr;
 			}
 
-			return m_data + handle.m_index;
+			return m_dataHot + handle.m_index;
 		}
 
 		bool Contains(Handle<THandle> handle) const
@@ -174,7 +175,7 @@ namespace phx::rhi
 		{
 			size_t commitSize = pagesToCommit * kPageSize;
 
-			phx::VirtualMemCommit(reinterpret_cast<char*>(m_data) + m_commitedIndices * sizeof(TData), commitSize);
+			phx::VirtualMemCommit(reinterpret_cast<char*>(m_dataHot) + m_commitedIndices * sizeof(TDataHot), commitSize);
 			phx::VirtualMemCommit(reinterpret_cast<char*>(m_freeList) + m_commitedIndices * sizeof(uint16_t), commitSize);
 			phx::VirtualMemCommit(reinterpret_cast<char*>(m_generations) + m_commitedIndices * sizeof(uint16_t), commitSize);
 
@@ -191,8 +192,8 @@ namespace phx::rhi
 
 	private:
 		const size_t	m_maxEntries;
-		TData*		m_data;
-		TColdData*		m_dataCold;
+		TDataHot*		m_dataHot;
+		TColdData*		m_dataHotCold;
 
 		uint16_t* m_freeList;
 		uint16_t* m_generations;

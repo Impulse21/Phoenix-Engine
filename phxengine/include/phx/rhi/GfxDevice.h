@@ -44,10 +44,8 @@ namespace phx::rhi
 
         void CreateSwapChain(SwapChainDescriptor const& desc, SwapChainHandle handle)
         {
-            auto& hot = *m_swapChainPool.Get<platform::SwapChain_Hot>(handle);
-            auto& cold = *m_swapChainPool.Get<platform::SwapChain_Cold>(handle);
-
-            m_platformDevice.CreateSwapChain(desc, hot, cold);
+            auto& swapchain = *m_swapChainPool.Get(handle);
+            m_platformDevice.CreateSwapChain(desc, swapchain);
         }
 
         void DeleteSwapChain(SwapChainHandle swapChain)
@@ -66,11 +64,11 @@ namespace phx::rhi
 
         PipelineStateHandle CreatePipeline(PipelineStateDescriptor const& desc)
         {
-            platform::PipelineState_Hot hot;
-            platform::PipelineState_Cold cold;
+            PipelineStateHandle handle = m_pipelineStatePool.Emplace();
+            auto& pipeline = *m_pipelineStatePool.Get(handle);
+            m_platformDevice.CreatePipeline(desc, pipeline);
 
-            m_platformDevice.CreatePipeline(desc, hot, cold);
-            return m_pipelineStatePool.Allocate(hot, cold);
+            return handle;
         }
 
         void DeletePipeline(PipelineStateHandle handle)
@@ -89,12 +87,11 @@ namespace phx::rhi
 
         TextureHandle CreateTexture(TextureDescriptor const& desc, MemInfo* initData = nullptr)
         {
-            platform::Texture_Hot hot;
-            platform::Texture_Cold cold;
+            TextureHandle handle = m_texturePool.Emplace();
+            auto& texture = *m_texturePool.Get(handle);
+            m_platformDevice.CreateTexture(desc, texture, initData);
 
-            m_platformDevice.CreateTexture(desc, hot, cold, initData);
-
-            return m_texturePool.Allocate(hot, cold);
+            return handle;
         }
 
         void DeleteTexture(TextureHandle handle)

@@ -59,24 +59,22 @@ namespace phx::rhi::dx12
 	}; 
 	static_assert(sizeof(PipelineState) <= kCacheLineSize);
 
-	struct Texture
+	// -- Texture Data ---
+	struct DEFINE_ALIGNED(TextureResource, 64)
 	{
 		CompPtr<ID3D12Resource> Resource;
 		CompPtr<D3D12MA::Allocation> Allocation;
-
-		/// Current state of the buffer
-		uint32_t Width : 16;
-		uint32_t Height : 16;
-		uint32_t Depth : 16;
-		uint32_t MipLevels : 5;
-		uint32_t ArraySize : 11;
-		uint32_t Format : 8;
-		uint32_t NodeIndex : 4;
-		uint32_t SampleCount : 5;
-		uint32_t Uav : 1;
 	};
-	static_assert(sizeof(Texture) <= kCacheLineSize);
 
+	static_assert(sizeof(TextureResource) <= kCacheLineSize);
+
+	struct DEFINE_ALIGNED(TextureView, 64)
+	{
+		DescriptorHeapAllocation Srv_Uav_Descriptors;
+	};
+	static_assert(sizeof(TextureView) <= kCacheLineSize);
+
+	// -- End Texture data ---
 	struct GpuBuffer
 	{
 		CompPtr<ID3D12Resource> Resource;

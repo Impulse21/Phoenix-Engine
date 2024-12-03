@@ -152,7 +152,7 @@ namespace phx::rhi::dx12
 			return this->GetGpuHandle(offset);
 		}
 
-		uint32_t GetNumHandles() const { return this->m_numHandles; }
+		uint8_t GetNumHandles() const { return this->m_numHandles; }
 		bool IsNull() const { return this->m_firstCpuHandle.ptr == 0; }
 		bool IsShaderVisible() const { return this->m_firstGpuHandle.ptr != 0; }
 		uint32_t GetDescriptorSize() const { return this->m_descriptorSize; }
@@ -162,11 +162,11 @@ namespace phx::rhi::dx12
 		D3D12_CPU_DESCRIPTOR_HANDLE m_firstCpuHandle = { 0 };
 		D3D12_GPU_DESCRIPTOR_HANDLE m_firstGpuHandle = { 0 };
 
-		uint32_t m_pageId;
 		IDescriptorAllocator* m_descriptorAllocator = nullptr;
-		uint32_t m_numHandles = 0;
 
 		uint32_t m_descriptorSize = 0;
+		uint32_t m_pageId;
+		uint8_t m_numHandles = 0;
 	};
 
 	class DescriptorHeapAllocationPage

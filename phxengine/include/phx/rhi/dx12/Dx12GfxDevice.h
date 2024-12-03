@@ -259,7 +259,6 @@ namespace phx::rhi::dx12
 
 		Microsoft::WRL::ComPtr<ID3D12RootSignature> m_emptyRootSignature;
 
-
 		class CopyCtxManager
 		{
 		public:
