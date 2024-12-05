@@ -144,7 +144,7 @@ void ThreadPool::Submit(std::function<void()> const& job)
 		return;
 	}
 
-	m_jobQueuePerThread[m_nextQueue.fetch_add(1) & m_numThreads].Push(job);
+	m_jobQueuePerThread[m_nextQueue.fetch_add(1) % m_numThreads].Push(job);
 	m_wakeCondition.notify_one();
 }
 
