@@ -137,16 +137,18 @@ void ThreadPool::Finalize()
 
 void ThreadPool::SubmitTask(std::function<void()> const& task)
 {
+	if (m_numThreads == 1)
+	{
+		task();
+		return;
+	}
+
 	Job job = {
 		.Task = task,
 		.KickoffThreadBarrier = &m_threadBarrier
 	};
 
-	if ( m_numThreads == 1)
-	{
-		job.Execute();
-		return;
-	}
+	m_threadBarrier.Add();
 
 	m_jobQueuePerThread[m_nextQueue.fetch_add(1) % m_numThreads].Push(job);
 	m_wakeCondition.notify_one();
