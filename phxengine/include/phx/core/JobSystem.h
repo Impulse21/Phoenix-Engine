@@ -3,6 +3,13 @@
 #include <functional>
 namespace phx
 {
+	struct JobDispatchArgs
+	{
+		uint32_t JobIndex = 0;
+		uint32_t GroupIndex = 0;
+	};
+
+	
 	namespace ThreadPool
 	{
 		struct Barrier
@@ -21,6 +28,9 @@ namespace phx
 		void Wait(Barrier& barrier);
 
 		void Signal(Barrier& barrier);
+
+		size_t GetThreadCount();
 	}
 
 }
+

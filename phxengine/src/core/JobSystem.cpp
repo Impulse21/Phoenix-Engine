@@ -57,6 +57,7 @@ namespace
 			while (jobQueue.Pop(job))
 			{
 				job();
+				m_finishedFenceValue.fetch_add(1);
 			}
 			threadId++;
 		}
@@ -99,7 +100,6 @@ void ThreadPool::Initialize()
 		HRESULT hr = SetThreadDescription(handle, wss.str().c_str());
 		assert(SUCCEEDED(hr));
 #endif
-		worker.detach();
 	}
 
 	m_alive.store(true);
@@ -217,3 +217,9 @@ void ThreadPool::Signal(Barrier& barrier)
 	barrier.Counter--;
 	m_wakeCondition.notify_one();
 }
+
+size_t ThreadPool::GetThreadCount()
+{
+	return m_numThreads;
+}
+
