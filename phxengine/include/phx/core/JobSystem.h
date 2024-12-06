@@ -15,11 +15,17 @@ namespace phx
 		struct Barrier
 		{
 			std::atomic_int Counter;
+
+			void Signal() { Counter.fetch_sub(1); }
+
+			void Add() { Counter.fetch_add(1); }
+
+			bool IsNotCleared() { return Counter.load() > 0; }
 		};
 
 		void Initialize();
 		void Finalize();
-		void Submit(std::function<void()> const& job);
+		void SubmitTask(std::function<void()> const& task);
 
 		bool IsBusy();
 

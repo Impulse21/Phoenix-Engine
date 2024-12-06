@@ -19,24 +19,30 @@ using namespace phx;
 
 namespace
 {
-	using JobQueue = ThreadSafeRingBuffer<std::function<void()>, 256>;
+	struct Job
+	{
+		std::function<void()> Task;
+		ThreadPool::Barrier* KickoffThreadBarrier = nullptr;
+
+		void Execute()
+		{
+			Task();
+			KickoffThreadBarrier->Signal();
+		}
+	};
+
+	using JobQueue = ThreadSafeRingBuffer<Job, 256>;
 
 	uint32_t m_numThreads = 0;
 	std::vector<std::thread> m_workerThreads;
 	std::unique_ptr<JobQueue[]> m_jobQueuePerThread;
 	std::condition_variable m_wakeCondition;
 	std::mutex m_wakeMutex;
-	uint64_t m_currentFenceValue;
-	std::atomic_uint64_t m_finishedFenceValue;
 	std::atomic_bool m_alive = false;
 	std::atomic_uint32_t m_nextQueue =  0 ;
-
-	void Poll()
-	{
-		m_wakeCondition.notify_one();
-		std::this_thread::yield(); // allow this thread to be rescheduled;
-	}
-
+	
+	thread_local ThreadPool::Barrier m_threadBarrier;
+	
 	// use R
 	struct Shutdowner
 	{
@@ -50,14 +56,13 @@ namespace
 	// Ran per thread - steals jobs.
 	void ThreadDoWork(size_t threadId)
 	{
-		std::function<void()> job;
+		Job job;
 		for (size_t i = 0; i < m_numThreads; i++)
 		{
 			JobQueue& jobQueue = m_jobQueuePerThread[threadId % m_numThreads];
 			while (jobQueue.Pop(job))
 			{
-				job();
-				m_finishedFenceValue.fetch_add(1);
+				job.Execute();
 			}
 			threadId++;
 		}
@@ -66,9 +71,6 @@ namespace
 
 void ThreadPool::Initialize()
 {
-	m_finishedFenceValue.store(0ull);
-	m_currentFenceValue = 0;
-
 	const uint32_t numCores = std::thread::hardware_concurrency() - 1; // -1 for main thread.
 	m_numThreads = std::max(1u, numCores);
 
@@ -133,14 +135,16 @@ void ThreadPool::Finalize()
 	m_nextQueue = 0;
 }
 
-void ThreadPool::Submit(std::function<void()> const& job)
+void ThreadPool::SubmitTask(std::function<void()> const& task)
 {
-	// Main Thread state
-	m_currentFenceValue += 1;
+	Job job = {
+		.Task = task,
+		.KickoffThreadBarrier = &m_threadBarrier
+	};
 
 	if ( m_numThreads == 1)
 	{
-		job();
+		job.Execute();
 		return;
 	}
 
@@ -189,32 +193,42 @@ void ThreadPool::Dispatch(uint32_t jobCount, uint32_t groupSize, std::function<v
 
 bool ThreadPool::IsBusy()
 {
-	return m_finishedFenceValue.load() < m_currentFenceValue;
+	return m_threadBarrier.IsNotCleared();
 }
 
 void ThreadPool::Wait()
 {
-	while(IsBusy()) { Poll(); }
-}
-
-
-void ThreadPool::Wait(Barrier& barrier)
-{
-	barrier.Counter++;
-	
-	while (barrier.Counter.load() > 0)
+	if (IsBusy())
 	{
 		m_wakeCondition.notify_all();
 		ThreadDoWork(m_nextQueue.fetch_add(1) % m_numThreads);
 
-		while (barrier.Counter.load() > 0)
+		while (IsBusy())
+		{
 			std::this_thread::yield();
+		}
+	}
+}
+
+void ThreadPool::Wait(Barrier& barrier)
+{
+	barrier.Add();
+	
+	while (barrier.IsNotCleared())
+	{
+		m_wakeCondition.notify_all();
+		ThreadDoWork(m_nextQueue.fetch_add(1) % m_numThreads);
+
+		while (barrier.IsNotCleared())
+		{
+			std::this_thread::yield();
+		}
 	}
 }
 
 void ThreadPool::Signal(Barrier& barrier)
 {
-	barrier.Counter--;
+	barrier.Signal();
 	m_wakeCondition.notify_one();
 }
 
