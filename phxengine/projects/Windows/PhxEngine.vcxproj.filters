@@ -49,7 +49,7 @@
     <ClInclude Include="..\..\include\phx\core\EnumUtils.h">
       <Filter>include\phx\core</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\phx\core\JobSystem.h">
+    <ClInclude Include="..\..\include\phx\core\ThreadPool.h">
       <Filter>include\phx\core</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\phx\core\Log.h">
@@ -142,9 +142,6 @@
     <ClCompile Include="..\..\src\core\CommandLineArgs.cpp">
       <Filter>src\core</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\core\JobSystem.cpp">
-      <Filter>src\core</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\core\Log.cpp">
       <Filter>src\core</Filter>
     </ClCompile>
@@ -186,6 +183,9 @@
     </ClCompile>
     <ClCompile Include="..\..\src\Display.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\core\ThreadPool.cpp">
+      <Filter>src\core</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

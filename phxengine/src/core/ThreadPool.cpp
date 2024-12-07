@@ -1,6 +1,6 @@
-#include "ThreadPool.h"
+#include "phx/core/ThreadPool.h"
 
-#include "phxRingBuffer.h"
+#include "phx/core/RingBuffer.h"
 #include <thread>
 #include <algorithm>
 #include <condition_variable>

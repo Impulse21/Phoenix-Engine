@@ -8,6 +8,8 @@ namespace phx
 	{
 		static_assert((BufferCapacity & (BufferCapacity - 1)) == 0, "BufferCapacity must be a power of two.");
 	public:
+		ThreadSafeRingBuffer() = default;
+
 		bool Push(TData const& data)
 		{
 			std::scoped_lock _(m_lock);
