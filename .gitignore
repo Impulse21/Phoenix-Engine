@@ -43,3 +43,5 @@ build
 /Output/x64Debug
 /.Build
 /examples/projects/Windows/.vs/PhxExamples
+/examples/projects/Windows/.Build
+/examples/projects/Windows/packages/Microsoft.Direct3D.D3D12.1.614.1
