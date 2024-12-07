@@ -42,3 +42,4 @@ build
 /PhxEditor/Hazel.log
 /Output/x64Debug
 /.Build
+/examples/projects/Windows/.vs/PhxExamples
