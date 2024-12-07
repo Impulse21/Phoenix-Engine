@@ -165,7 +165,7 @@
     <ClInclude Include="..\..\include\phx\core\BinaryBuilder.h" />
     <ClInclude Include="..\..\include\phx\core\CommandLineArgs.h" />
     <ClInclude Include="..\..\include\phx\core\EnumUtils.h" />
-    <ClInclude Include="..\..\include\phx\core\JobSystem.h" />
+    <ClInclude Include="..\..\include\phx\core\ThreadPool.h" />
     <ClInclude Include="..\..\include\phx\core\Log.h" />
     <ClInclude Include="..\..\include\phx\core\Math.h" />
     <ClInclude Include="..\..\include\phx\core\Memory.h" />
@@ -198,7 +198,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\core\CommandLineArgs.cpp" />
-    <ClCompile Include="..\..\src\core\JobSystem.cpp" />
+    <ClCompile Include="..\..\src\core\ThreadPool.cpp" />
     <ClCompile Include="..\..\src\core\Log.cpp" />
     <ClCompile Include="..\..\src\core\Memory.cpp" />
     <ClCompile Include="..\..\src\core\SystemTimer.cpp" />
