@@ -1,0 +1,55 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35527.113
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{48AE473B-9CD3-485F-9A37-0F3C7D450B3D}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Common", "Common.vcxproj", "{A837EDA1-D2A2-4F4D-B14F-F32FA5E7FC07}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "01_initialization", "01_initialization.vcxproj", "{4CFC0E8D-8391-4140-9B89-3340543F61BD}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "02_ImGui", "02_ImGui.vcxproj", "{5A9185FC-3B3B-4A5C-A089-0D40267ED565}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhxEngine", "..\..\..\phxengine\projects\Windows\PhxEngine.vcxproj", "{E255B43C-84E0-481C-ABD5-42BC1E925E55}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Gaming.Desktop.x64 = Debug|Gaming.Desktop.x64
+		Profile|Gaming.Desktop.x64 = Profile|Gaming.Desktop.x64
+		Release|Gaming.Desktop.x64 = Release|Gaming.Desktop.x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A837EDA1-D2A2-4F4D-B14F-F32FA5E7FC07}.Debug|Gaming.Desktop.x64.ActiveCfg = Debug|Gaming.Desktop.x64
+		{A837EDA1-D2A2-4F4D-B14F-F32FA5E7FC07}.Debug|Gaming.Desktop.x64.Build.0 = Debug|Gaming.Desktop.x64
+		{A837EDA1-D2A2-4F4D-B14F-F32FA5E7FC07}.Profile|Gaming.Desktop.x64.ActiveCfg = Profile|Gaming.Desktop.x64
+		{A837EDA1-D2A2-4F4D-B14F-F32FA5E7FC07}.Profile|Gaming.Desktop.x64.Build.0 = Profile|Gaming.Desktop.x64
+		{A837EDA1-D2A2-4F4D-B14F-F32FA5E7FC07}.Release|Gaming.Desktop.x64.ActiveCfg = Release|Gaming.Desktop.x64
+		{A837EDA1-D2A2-4F4D-B14F-F32FA5E7FC07}.Release|Gaming.Desktop.x64.Build.0 = Release|Gaming.Desktop.x64
+		{4CFC0E8D-8391-4140-9B89-3340543F61BD}.Debug|Gaming.Desktop.x64.ActiveCfg = Debug|Gaming.Desktop.x64
+		{4CFC0E8D-8391-4140-9B89-3340543F61BD}.Debug|Gaming.Desktop.x64.Build.0 = Debug|Gaming.Desktop.x64
+		{4CFC0E8D-8391-4140-9B89-3340543F61BD}.Profile|Gaming.Desktop.x64.ActiveCfg = Profile|Gaming.Desktop.x64
+		{4CFC0E8D-8391-4140-9B89-3340543F61BD}.Profile|Gaming.Desktop.x64.Build.0 = Profile|Gaming.Desktop.x64
+		{4CFC0E8D-8391-4140-9B89-3340543F61BD}.Release|Gaming.Desktop.x64.ActiveCfg = Release|Gaming.Desktop.x64
+		{4CFC0E8D-8391-4140-9B89-3340543F61BD}.Release|Gaming.Desktop.x64.Build.0 = Release|Gaming.Desktop.x64
+		{5A9185FC-3B3B-4A5C-A089-0D40267ED565}.Debug|Gaming.Desktop.x64.ActiveCfg = Debug|Gaming.Desktop.x64
+		{5A9185FC-3B3B-4A5C-A089-0D40267ED565}.Debug|Gaming.Desktop.x64.Build.0 = Debug|Gaming.Desktop.x64
+		{5A9185FC-3B3B-4A5C-A089-0D40267ED565}.Profile|Gaming.Desktop.x64.ActiveCfg = Profile|Gaming.Desktop.x64
+		{5A9185FC-3B3B-4A5C-A089-0D40267ED565}.Profile|Gaming.Desktop.x64.Build.0 = Profile|Gaming.Desktop.x64
+		{5A9185FC-3B3B-4A5C-A089-0D40267ED565}.Release|Gaming.Desktop.x64.ActiveCfg = Release|Gaming.Desktop.x64
+		{5A9185FC-3B3B-4A5C-A089-0D40267ED565}.Release|Gaming.Desktop.x64.Build.0 = Release|Gaming.Desktop.x64
+		{E255B43C-84E0-481C-ABD5-42BC1E925E55}.Debug|Gaming.Desktop.x64.ActiveCfg = Debug|Gaming.Desktop.x64
+		{E255B43C-84E0-481C-ABD5-42BC1E925E55}.Debug|Gaming.Desktop.x64.Build.0 = Debug|Gaming.Desktop.x64
+		{E255B43C-84E0-481C-ABD5-42BC1E925E55}.Profile|Gaming.Desktop.x64.ActiveCfg = Profile|Gaming.Desktop.x64
+		{E255B43C-84E0-481C-ABD5-42BC1E925E55}.Profile|Gaming.Desktop.x64.Build.0 = Profile|Gaming.Desktop.x64
+		{E255B43C-84E0-481C-ABD5-42BC1E925E55}.Release|Gaming.Desktop.x64.ActiveCfg = Release|Gaming.Desktop.x64
+		{E255B43C-84E0-481C-ABD5-42BC1E925E55}.Release|Gaming.Desktop.x64.Build.0 = Release|Gaming.Desktop.x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A837EDA1-D2A2-4F4D-B14F-F32FA5E7FC07} = {48AE473B-9CD3-485F-9A37-0F3C7D450B3D}
+		{E255B43C-84E0-481C-ABD5-42BC1E925E55} = {48AE473B-9CD3-485F-9A37-0F3C7D450B3D}
+	EndGlobalSection
+EndGlobal
