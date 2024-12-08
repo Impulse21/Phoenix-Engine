@@ -181,7 +181,7 @@
     <ClInclude Include="..\..\include\phx\Display.h" />
     <ClInclude Include="..\..\include\phx\EngineCore.h" />
     <ClInclude Include="..\..\include\phx\renderer\ImGuiRenderer.h" />
-    <ClInclude Include="..\..\include\phx\rhi\CommandCtx.h" />
+    <ClInclude Include="..\..\include\phx\rhi\CommandListRecorder.h" />
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12CommandQueue.h" />
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12Common.h" />
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12DescriptorHeaps.h" />
@@ -207,6 +207,7 @@
     <ClCompile Include="..\..\src\EngineCore.cpp" />
     <ClCompile Include="..\..\src\renderer\ImGuiRenderer.cpp" />
     <ClCompile Include="..\..\src\renderer\ImGui\imgui_impl_win32.cpp" />
+    <ClCompile Include="..\..\src\rhi\CommandListRecorder.cpp" />
     <ClCompile Include="..\..\src\rhi\dx12\Dx12CommandQueue.cpp" />
     <ClCompile Include="..\..\src\rhi\dx12\Dx12DescriptorHeaps.cpp" />
     <ClCompile Include="..\..\src\rhi\dx12\Dx12DxgiFormatMapping.cpp" />
