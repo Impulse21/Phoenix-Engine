@@ -102,7 +102,7 @@ namespace phx::rhi::dx12
 
 	// -- End Texture data ---
 
-	struct GpuBufferResource
+	struct DEFINE_ALIGNED(GpuBufferResource, 64)
 	{
 		CompPtr<ID3D12Resource> Resource;
 		CompPtr<D3D12MA::Allocation> Allocation;
@@ -115,7 +115,7 @@ namespace phx::rhi::dx12
 		uint16_t SampleCount = 1;
 	};
 
-	struct GpuBufferBindings
+	struct DEFINE_ALIGNED(GpuBufferBindings, 64)
 	{
 		ID3D12Resource* Resource;
 		D3D12_GPU_VIRTUAL_ADDRESS GpuAddress;
@@ -129,4 +129,13 @@ namespace phx::rhi::dx12
 		DescriptorIndex BindlessIndex_Uav = cInvalidDescriptorIndex;
 	};
 	static_assert(sizeof(GpuBufferBindings) <= kCacheLineSize);
+
+	struct DEFINE_ALIGNED(CommandContextResource, 64)
+	{
+		CompPtr<ID3D12GraphicsCommandList> CmdList;
+		CompPtr<ID3D12GraphicsCommandList6> CmdList6;
+		CommandQueueType Type;
+		ID3D12CommandAllocator* Allocator; // TODO: Look into setting this into the command list to save on space
+		uint32_t IsOpen : 1 = false;
+	};
 }

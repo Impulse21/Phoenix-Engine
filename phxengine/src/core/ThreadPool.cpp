@@ -72,7 +72,7 @@ namespace
 
 void ThreadPool::Initialize()
 {
-	const uint32_t numCores = std::thread::hardware_concurrency() - 1; // -1 for main thread.
+	const uint32_t numCores = GetNumCores() - 1; // -1 for main thread.
 	m_numThreads = std::max(1u, numCores);
 
 	m_jobQueuePerThread.reset(new JobQueue[m_numThreads]);
@@ -238,5 +238,10 @@ void ThreadPool::Signal(Barrier& barrier)
 size_t ThreadPool::GetThreadCount()
 {
 	return m_numThreads;
+}
+
+size_t phx::ThreadPool::GetNumCores()
+{
+	return std::thread::hardware_concurrency();
 }
 

@@ -15,7 +15,6 @@
 
 #include "phx/rhi/GfxDevice.h"
 #include "phx/rhi/ShaderCompiler.h"
-#include "phx/rhi/CommandCtx.h"
 
 #include "phx/EngineCore.h"
 
@@ -30,7 +29,6 @@ class PhxEditor final : public phx::IEngineApp
 public:
 	void Startup() override 
 	{
-
 		m_fs = phx::FileSystemFactory::CreateRootFileSystem();
 		phx::FS::RootPtr = m_fs.get();
 
@@ -61,14 +59,18 @@ public:
 		m_fs->Mount("/assets_cache", assetsCachePath);
 
 		phx::rhi::GfxDevice* device = phx::rhi::GfxDevice::Ptr;
-		this->m_imguiRenderer.Initialize(device, m_fs.get());
-		this->m_imguiRenderer.EnableDarkThemeColours();
+		m_imguiRenderer.Initialize(device, m_fs.get());
+		m_imguiRenderer.EnableDarkThemeColours();
+
+		m_gfxCommandList = device->CreateGfxCommandList();
 	};
 
 	void Shutdown() override 
 	{
 		phx::rhi::GfxDevice* device = phx::rhi::GfxDevice::Ptr;
 		m_imguiRenderer.Finialize(device);
+
+		device->DeleteCommandList(m_gfxCommandList);
 
 	};
 
@@ -81,19 +83,20 @@ public:
 
 	void Render() override
 	{
-		// phx::rhi::GfxDevice* device = phx::rhi::GfxDevice::Ptr;
-		rhi::CommandCtx ctx = {};
+		phx::rhi::GfxDevice* device = phx::rhi::GfxDevice::Ptr;
+		rhi::GfxCommandListRecorder recorder = device->BeginGfxRecording(m_gfxCommandList);
 
-		ctx.RenderPassBegin();
+		recorder.RenderPassBegin();
 
-		m_imguiRenderer.Render(ctx);
+		m_imguiRenderer.Render(recorder);
 
-		ctx.RenderPassEnd();
+		recorder.RenderPassEnd();
 	}
 
 private:
 	std::unique_ptr<phx::IRootFileSystem> m_fs;
 	gfx::ImGuiRenderSystem m_imguiRenderer;
+	rhi::CommandListHandle m_gfxCommandList;
 };
 
 CREATE_APPLICATION(PhxEditor)

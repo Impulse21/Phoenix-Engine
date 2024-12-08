@@ -884,5 +884,8 @@ namespace phx::rhi
 
     struct SwapChain;
     using SwapChainHandle = Handle<SwapChain>;
+
+    struct CommandList;
+    using CommandListHandle = Handle<CommandList>;
 #pragma endregion
 }

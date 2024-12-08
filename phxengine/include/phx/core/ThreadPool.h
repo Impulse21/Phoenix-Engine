@@ -36,6 +36,7 @@ namespace phx
 		void Signal(Barrier& barrier);
 
 		size_t GetThreadCount();
+		size_t GetNumCores();
 	}
 
 }

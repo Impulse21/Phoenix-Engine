@@ -3,11 +3,11 @@
 #include <deque>
 #include <functional>
 
-#include "RHITypes.h"
-#include "PlatformTypes.h"
+#include "phx/rhi/RHITypes.h"
 #include "phx/rhi/ResourcePool.h"
+#include "phx/rhi/CommandListRecorder.h"
 
-#include "CommandCtx.h"
+#include "PlatformTypes.h"
 
 namespace phx::rhi
 {
@@ -34,7 +34,40 @@ namespace phx::rhi
                 *m_swapChainPool.Get<platform::SwapChainResource>(swapChains[0]),
                 *m_swapChainPool.Get<platform::SwapChainBindings>(swapChains[0]));
         }
+
     public:
+        GfxCommandListRecorder BeginGfxRecording(CommandListHandle handle)
+        {
+            auto* commandList = m_commandListPool.Get<platform::CommandContextResource>(handle);
+            assert(commandList->Type == CommandQueueType::Graphics);
+            return GfxCommandListRecorder(this, commandList);
+        }
+
+        void Execute(Span<CommandListHandle>)
+        {
+        }
+
+    public:
+        CommandListHandle CreateGfxCommandList() { return CreateCommandList(CommandQueueType::Graphics); }
+        CommandListHandle CreateComputeCommadList() { return CreateCommandList(CommandQueueType::Compute); }
+        CommandListHandle CreateCopyCommandList() { return CreateCommandList(CommandQueueType::Copy); }
+
+        CommandListHandle CreateCommandList(CommandQueueType type)
+        {
+            CommandListHandle handle = m_commandListPool.Allocate();
+
+            m_platformDevice.CreateCommandList(
+                type,
+                *m_commandListPool.Get<platform::CommandContextResource>(handle));
+
+            return handle;
+        }
+
+        void DeleteCommandList(CommandListHandle handle)
+        {
+            m_commandListPool.Free(handle);
+        }
+
         SwapChainHandle CreateSwapChain(SwapChainDescriptor const& desc)
         {
             SwapChainHandle handle = m_swapChainPool.Allocate();
@@ -43,6 +76,7 @@ namespace phx::rhi
                 desc,
                 *m_swapChainPool.Get<platform::SwapChainResource>(handle),
                 *m_swapChainPool.Get<platform::SwapChainBindings>(handle));
+
             return handle;
         }
 
@@ -130,6 +164,8 @@ namespace phx::rhi
 
     private:
         platform::GfxDevice m_platformDevice;
+
+        ResourcePool<CommandList, platform::CommandContextResource> m_commandListPool;
 
         ResourcePool<SwapChain, platform::SwapChainResource, platform::SwapChainBindings> m_swapChainPool;
         ResourcePool<Texture, platform::TextureResource, platform::TextureBindings> m_texturePool;

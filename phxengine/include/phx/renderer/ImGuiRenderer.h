@@ -19,7 +19,7 @@ namespace phx::gfx
 
 		void EnableDarkThemeColours();
 		void BeginFrame();
-		void Render(rhi::CommandCtx& context);
+		void Render(rhi::GfxCommandListRecorder& recorder);
 
 	private:
 		bool m_isFontTextureUploaded = false;

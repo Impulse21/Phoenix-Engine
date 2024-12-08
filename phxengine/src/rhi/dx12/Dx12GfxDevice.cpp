@@ -736,6 +736,30 @@ void GfxDeviceDx12::ResizeSwapChain(SwapChainDesc const& swapChainDesc)
 	CreateSwapChain(swapChainDesc, nullptr);
 }
 #endif
+
+bool GfxDeviceDx12::CreateCommandList(CommandQueueType type, CommandContextResource& resource)
+{
+	// No-op, don't set thing up until begin since an allocator is required for
+	// creation.
+
+	D3D12CommandQueue& queue = GetQueue(type);
+	resource.Allocator =  queue.RequestAllocator();
+
+	GetD3D12Device()->CreateCommandList(
+		0,
+		queue.Type,
+		resource.Allocator,
+		nullptr,
+		IID_PPV_ARGS(&resource.CmdList));
+
+	resource.CmdList->SetName(L"GfxDeviceD3D12::CommandList");
+	ThrowIfFailed(
+		resource.CmdList.As<ID3D12GraphicsCommandList6>(
+			&resource.CmdList6));
+
+	return true;
+}
+
 bool GfxDeviceDx12::CreateSwapChain(SwapChainDescriptor const& desc, SwapChainResource& resource, SwapChainBindings& bindings)
 {
 	HRESULT hr;

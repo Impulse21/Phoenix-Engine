@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "phx/rhi/GfxDevice.h"
+#include "phx/core/ThreadPool.h"
 
 using namespace phx::rhi;
 
@@ -11,7 +12,6 @@ void GfxDevice::Initialize()
 
 void GfxDevice::Finalize()
 {
-
 }
 
 GfxDevice::GfxDevice(rhi::GfxDeviceDescriptor const& descriptor)
@@ -20,6 +20,7 @@ GfxDevice::GfxDevice(rhi::GfxDeviceDescriptor const& descriptor)
 	, m_gpuBufferPool(100)
 	, m_pipelineStatePool(100)
 	, m_swapChainPool(1)
+	, m_commandListPool(ThreadPool::GetNumCores() * 2) // Double for async
 {
 
 }

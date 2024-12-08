@@ -112,7 +112,7 @@
     <ClInclude Include="..\..\include\phx\core\StringUtils.h">
       <Filter>include\phx\core</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\phx\rhi\CommandCtx.h">
+    <ClInclude Include="..\..\include\phx\rhi\CommandListRecorder.h">
       <Filter>include\phx\rhi</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12Common.h">
@@ -186,6 +186,9 @@
     </ClCompile>
     <ClCompile Include="..\..\src\core\ThreadPool.cpp">
       <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\rhi\CommandListRecorder.cpp">
+      <Filter>src\rhi</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

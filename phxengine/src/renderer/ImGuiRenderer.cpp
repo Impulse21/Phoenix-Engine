@@ -26,8 +26,8 @@ namespace
 
 void ImGuiRenderSystem::Initialize(GfxDevice* gfxDevice, IFileSystem* fs, bool enableDocking)
 {
-    m_imguiContext = ImGui::CreateContext();
-    ImGui::SetCurrentContext(m_imguiContext);
+    m_imguirecorder = ImGui::Createrecorder();
+    ImGui::SetCurrentrecorder(m_imguirecorder);
 
     if (!ImGui_ImplWin32_Init(phx::EngineCore::g_hWnd))
     {
@@ -160,14 +160,14 @@ void ImGuiRenderSystem::EnableDarkThemeColours()
 
 void ImGuiRenderSystem::BeginFrame()
 {
-    ImGui::SetCurrentContext(m_imguiContext);
+    ImGui::SetCurrentrecorder(m_imguirecorder);
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 }
 
-void ImGuiRenderSystem::Render(rhi::CommandCtx& context)
+void ImGuiRenderSystem::Render(GfxCommandListRecorder& recorder)
 {
-    ImGui::SetCurrentContext(m_imguiContext);
+    ImGui::SetCurrentrecorder(m_imguirecorder);
     ImGui::Render();
 
     ImDrawData* drawData = ImGui::GetDrawData();
@@ -181,7 +181,7 @@ void ImGuiRenderSystem::Render(rhi::CommandCtx& context)
     ImVec2 displayPos = drawData->DisplayPos;
 
     {
-        context.SetPipelineState(m_pipeline);
+        recorder.SetPipelineState(m_pipeline);
 
         // Set root arguments.
         //    DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixOrthographicRH( drawData->DisplaySize.x, drawData->DisplaySize.y, 0.0f, 1.0f );
@@ -205,7 +205,7 @@ void ImGuiRenderSystem::Render(rhi::CommandCtx& context)
         push.Mvp = DirectX::XMFLOAT4X4(&mvp[0][0]);
 
         Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
-        context.SetViewports({ v });
+        recorder.SetViewports({ v });
 
 #if false
         const Format indexFormat = sizeof(ImDrawIdx) == 2 ? Format::R16_UINT : Format::R32_UINT;
@@ -218,11 +218,11 @@ void ImGuiRenderSystem::Render(rhi::CommandCtx& context)
 			EmberGfx::DynamicBuffer dynamicBuffer = dynamicAllocator.Allocate(drawList->VtxBuffer.size() * sizeof(ImDrawVert), 16);
 
             std::memcpy(dynamicBuffer.Data, drawList->VtxBuffer.Data, drawList->VtxBuffer.size() * sizeof(ImDrawVert));
-            context.SetDynamicVertexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, 0, drawList->VtxBuffer.size(), sizeof(ImDrawVert));
+            recorder.SetDynamicVertexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, 0, drawList->VtxBuffer.size(), sizeof(ImDrawVert));
 
             dynamicBuffer = dynamicAllocator.Allocate(drawList->IdxBuffer.size() * sizeof(ImDrawIdx), 16);
             std::memcpy(dynamicBuffer.Data, drawList->IdxBuffer.Data, drawList->IdxBuffer.size() * sizeof(ImDrawIdx));
-            context.SetDynamicIndexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, drawList->IdxBuffer.size(), indexFormat);
+            recorder.SetDynamicIndexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, drawList->IdxBuffer.size(), indexFormat);
 
             int indexOffset = 0;
             for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
@@ -250,9 +250,9 @@ void ImGuiRenderSystem::Render(rhi::CommandCtx& context)
                         push.TextureIndex = desciptorIndex
                             ? *desciptorIndex
                             : cInvalidDescriptorIndex;
-                        context.SetPushConstant(RootParameters::PushConstant, sizeof(ImguiDrawInfo), &push);
-                        context.SetScissors({ &scissorRect, 1 });
-                        context.DrawIndexed(drawCmd.ElemCount, 1, indexOffset, 0, 0);
+                        recorder.SetPushConstant(RootParameters::PushConstant, sizeof(ImguiDrawInfo), &push);
+                        recorder.SetScissors({ &scissorRect, 1 });
+                        recorder.DrawIndexed(drawCmd.ElemCount, 1, indexOffset, 0, 0);
                     }
                 }
                 indexOffset += drawCmd.ElemCount;

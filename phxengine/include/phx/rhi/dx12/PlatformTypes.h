@@ -16,4 +16,6 @@ namespace phx::rhi::platform
 
 	using GpuBufferResource = phx::rhi::dx12::GpuBufferResource;
 	using GpuBufferBindings = phx::rhi::dx12::GpuBufferBindings;
+
+	using CommandContextResource = phx::rhi::dx12::CommandContextResource;
 }

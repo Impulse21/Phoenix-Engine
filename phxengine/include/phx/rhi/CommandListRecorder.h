@@ -1,12 +1,19 @@
 #pragma once
 
 #include "RHITypes.h"
+#include "PlatformTypes.h"
+#include "RHITypes.h"
 
 namespace phx::rhi
 {
-	class CommandCtx
+	class GfxDevice;
+
+	class GfxCommandListRecorder
 	{
+		friend GfxDevice;
 	public:
+		void Finished();
+
 		void RenderPassBegin()
 		{
 
@@ -81,5 +88,13 @@ namespace phx::rhi
 		{
 			SetPushConstant(rootParameterIndex, sizeof(T), &constants);
 		}
+
+	protected:
+		GfxCommandListRecorder(GfxDevice* device, platform::CommandContextResource* context);
+
+	private:
+		GfxDevice* m_device;
+		platform::CommandContextResource* m_platformContext;
+
 	};
 }
