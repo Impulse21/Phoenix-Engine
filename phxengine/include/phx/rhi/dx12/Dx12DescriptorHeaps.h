@@ -165,8 +165,8 @@ namespace phx::rhi::dx12
 		IDescriptorAllocator* m_descriptorAllocator = nullptr;
 
 		uint32_t m_descriptorSize = 0;
-		uint32_t m_pageId;
-		uint8_t m_numHandles = 0;
+		uint32_t m_pageId : 24;
+		uint32_t m_numHandles : 8 = 0;
 	};
 
 	class DescriptorHeapAllocationPage

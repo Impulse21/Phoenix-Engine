@@ -27,7 +27,14 @@ namespace phx::rhi::dx12
 		}
 	};
 
-	struct SwapChain
+	struct SwapChainBindings
+	{
+		ID3D12Resource* FrameBackBuffer;
+		D3D12_GPU_DESCRIPTOR_HANDLE FrameBackBufferRTV;
+	};
+	static_assert(sizeof(SwapChainBindings) <= kCacheLineSize);
+
+	struct SwapChainResource
 	{
 		CompPtr<IDXGISwapChain1> SwapChain;
 		CompPtr<IDXGISwapChain4> SwapChain4;
@@ -44,7 +51,7 @@ namespace phx::rhi::dx12
 		rhi::Format		Format	: 8;
 	};
 
-	struct PipelineState
+	struct DEFINE_ALIGNED(PipelineStateResource, 64)
 	{
 		CompPtr<ID3D12PipelineState> D3D12PipelineState;
 		CompPtr<ID3D12RootSignature> RootSignature;
@@ -57,29 +64,48 @@ namespace phx::rhi::dx12
 
 		D3D_PRIMITIVE_TOPOLOGY Topology;
 	}; 
-	static_assert(sizeof(PipelineState) <= kCacheLineSize);
+	static_assert(sizeof(PipelineStateResource) <= kCacheLineSize);
 
 	// -- Texture Data ---
 	struct DEFINE_ALIGNED(TextureResource, 64)
 	{
 		CompPtr<ID3D12Resource> Resource;
 		CompPtr<D3D12MA::Allocation> Allocation;
+		DescriptorHeapAllocation DescriptorAllocation_CbvSrvUav; // SRV = 0, UAV = 1
+
+		DescriptorHeapAllocation DescriptorAllocation_Rtv;
+		DescriptorHeapAllocation DescriptorAllocation_Dsv;
+
+		union
+		{
+			uint16_t ArraySize = 1;
+			uint16_t Depth;
+		};
+		uint16_t MipLevels = 1;
+		uint16_t SampleCount = 1;
 	};
+	// static_assert(sizeof(TextureResource) <= kCacheLineSize);
 
-	static_assert(sizeof(TextureResource) <= kCacheLineSize);
-
-	struct DEFINE_ALIGNED(TextureView, 64)
+	struct DEFINE_ALIGNED(TextureBindings, 64)
 	{
-		DescriptorHeapAllocation Srv_Uav_Descriptors;
+		ID3D12Resource* Resource;
+		D3D12_GPU_DESCRIPTOR_HANDLE Srv;
+		D3D12_GPU_DESCRIPTOR_HANDLE Uav;
+
+		D3D12_GPU_DESCRIPTOR_HANDLE Rtv;
+		D3D12_GPU_DESCRIPTOR_HANDLE Dsv;
+
+		DescriptorIndex BindlessIndex_Srv = cInvalidDescriptorIndex;
+		DescriptorIndex BindlessIndex_Uav = cInvalidDescriptorIndex;
 	};
-	static_assert(sizeof(TextureView) <= kCacheLineSize);
+	static_assert(sizeof(TextureBindings) <= kCacheLineSize);
 
 	// -- End Texture data ---
-	struct GpuBuffer
+
+	struct GpuBufferResource
 	{
 		CompPtr<ID3D12Resource> Resource;
 		CompPtr<D3D12MA::Allocation> Allocation;
-		D3D12_GPU_VIRTUAL_ADDRESS GpuAddress;
 		union
 		{
 			uint16_t ArraySize = 1;
@@ -89,5 +115,18 @@ namespace phx::rhi::dx12
 		uint16_t SampleCount = 1;
 	};
 
-	static_assert(sizeof(GpuBuffer) <= kCacheLineSize);
+	struct GpuBufferBindings
+	{
+		ID3D12Resource* Resource;
+		D3D12_GPU_VIRTUAL_ADDRESS GpuAddress;
+
+		DescriptorHeapAllocation DescriptorAllocation_CbvSrvUav;
+		uint8_t SrvOffset = ~0u;
+		uint8_t UavOffset = ~0u;
+
+		DescriptorIndex BindlessIndex_Cbv = cInvalidDescriptorIndex;
+		DescriptorIndex BindlessIndex_Srv = cInvalidDescriptorIndex;
+		DescriptorIndex BindlessIndex_Uav = cInvalidDescriptorIndex;
+	};
+	static_assert(sizeof(GpuBufferBindings) <= kCacheLineSize);
 }

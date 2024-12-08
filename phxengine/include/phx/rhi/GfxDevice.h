@@ -30,22 +30,28 @@ namespace phx::rhi
         void Present(phx::Span<SwapChainHandle> swapChains)
         {
             assert(swapChains.Size() == 1 && "Only support a single swap chain");
-            auto& platform = *m_swapChainPool.Get(swapChains[0]);
-            m_platformDevice.Present(platform);
+            m_platformDevice.Present(
+                *m_swapChainPool.Get<platform::SwapChainResource>(swapChains[0]),
+                *m_swapChainPool.Get<platform::SwapChainBindings>(swapChains[0]));
         }
     public:
         SwapChainHandle CreateSwapChain(SwapChainDescriptor const& desc)
         {
-            SwapChainHandle handle = m_swapChainPool.Emplace();
+            SwapChainHandle handle = m_swapChainPool.Allocate();
 
-            m_platformDevice.CreateSwapChain(desc, *m_swapChainPool.Get(handle));
+            m_platformDevice.CreateSwapChain(
+                desc,
+                *m_swapChainPool.Get<platform::SwapChainResource>(handle),
+                *m_swapChainPool.Get<platform::SwapChainBindings>(handle));
             return handle;
         }
 
         void CreateSwapChain(SwapChainDescriptor const& desc, SwapChainHandle handle)
         {
-            auto& swapchain = *m_swapChainPool.Get(handle);
-            m_platformDevice.CreateSwapChain(desc, swapchain);
+            m_platformDevice.CreateSwapChain(
+                desc,
+                *m_swapChainPool.Get<platform::SwapChainResource>(handle),
+                *m_swapChainPool.Get<platform::SwapChainBindings>(handle));
         }
 
         void DeleteSwapChain(SwapChainHandle swapChain)
@@ -64,9 +70,11 @@ namespace phx::rhi
 
         PipelineStateHandle CreatePipeline(PipelineStateDescriptor const& desc)
         {
-            PipelineStateHandle handle = m_pipelineStatePool.Emplace();
-            auto& pipeline = *m_pipelineStatePool.Get(handle);
-            m_platformDevice.CreatePipeline(desc, pipeline);
+            PipelineStateHandle handle = m_pipelineStatePool.Allocate();
+
+            m_platformDevice.CreatePipeline(
+                desc,
+                *m_pipelineStatePool.Get<platform::PipelineStateResource>(handle));
 
             return handle;
         }
@@ -87,9 +95,13 @@ namespace phx::rhi
 
         TextureHandle CreateTexture(TextureDescriptor const& desc, MemInfo* initData = nullptr)
         {
-            TextureHandle handle = m_texturePool.Emplace();
-            auto& texture = *m_texturePool.Get(handle);
-            m_platformDevice.CreateTexture(desc, texture, initData);
+            TextureHandle handle = m_texturePool.Allocate();
+
+            m_platformDevice.CreateTexture(
+                desc,
+                *m_texturePool.Get<platform::TextureResource>(handle),
+                *m_texturePool.Get<platform::TextureBindings>(handle),
+                initData);
 
             return handle;
         }
@@ -119,10 +131,10 @@ namespace phx::rhi
     private:
         platform::GfxDevice m_platformDevice;
 
-        ResourcePool<SwapChain, platform::SwapChain> m_swapChainPool;
-        ResourcePool<Texture, platform::Texture> m_texturePool;
-        ResourcePool<GpuBuffer, platform::GpuBuffer> m_gpuBufferPool;
-        ResourcePool<PipelineState, platform::PipelineState> m_pipelineStatePool;
+        ResourcePool<SwapChain, platform::SwapChainResource, platform::SwapChainBindings> m_swapChainPool;
+        ResourcePool<Texture, platform::TextureResource, platform::TextureBindings> m_texturePool;
+        ResourcePool<GpuBuffer, platform::GpuBufferResource, platform::TextureBindings> m_gpuBufferPool;
+        ResourcePool<PipelineState, platform::PipelineStateResource> m_pipelineStatePool;
 
         uint64_t m_frameCount = 0;
         struct DeferredItem

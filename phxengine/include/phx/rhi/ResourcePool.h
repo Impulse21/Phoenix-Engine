@@ -21,6 +21,8 @@ namespace phx::rhi
 	template<class THandle, class TDataHot, class TDataCold = std::monostate>
 	class ResourcePool
 	{
+		static_assert(std::is_trivially_constructible_v<TDataHot>&& std::is_trivially_constructible_v<TDataCold>);
+
 	public:
 		ResourcePool(uint16_t maxHandles)
 			: m_maxEntries(std::min(maxHandles, std::numeric_limits<uint16_t>::max()))
@@ -28,6 +30,7 @@ namespace phx::rhi
 			, m_commitedIndices(0)
 		{
 			m_dataHot = static_cast<TDataHot*>(phx::VirtualMemReserve(m_maxEntries * sizeof(TDataHot));
+			m_dataCold = static_cast<TDataCold*>(phx::VirtualMemReserve(m_maxEntries * sizeof(TDataCold));
 
 			m_freeList = static_cast<uint16_t*>(phx::VirtualMemReserve(m_maxEntries * sizeof(uint16_t)));
 			m_generations = static_cast<uint16_t*>(phx::VirtualMemReserve(m_maxEntries * sizeof(uint16_t)));
@@ -62,6 +65,17 @@ namespace phx::rhi
 				m_dataHot = nullptr;
 			}
 
+			if (m_dataCold)
+			{
+				for (int i = 0; i < m_commitedIndices; i++)
+				{
+					m_dataCold[i].~TDataCold();
+				}
+
+				phx::VirtualMemFree(m_dataCold);
+				m_dataCold = nullptr;
+			}
+
 			if (m_freeList)
 			{
 				phx::VirtualMemFree(m_freeList);
@@ -75,8 +89,7 @@ namespace phx::rhi
 			}
 		}
 
-		template<typename... Args>
-		Handle<THandle> Emplace(Args&&... args)
+		Handle<THandle> Allocate()
 		{
 			if (m_freeListHead >= m_maxEntries)
 				throw std::runtime_error("Pool is out of memory!");
@@ -90,14 +103,10 @@ namespace phx::rhi
 			handle.m_index = m_freeList[m_freeListHead++];
 			handle.m_generation = m_generations[handle.m_index];
 
-			new (this->m_dataHot + handle.m_index) TDataHot(std::forward<Args>(args)...);
+			new (this->m_dataHot + handle.m_index) TDataHot(std::forward<ArgsHot>(argsHot)...);
+			new (this->m_dataCold + handle.m_index) TDataCold(std::forward<ArgsCold>(argsCold)...);
 
 			return handle;
-		}
-
-		Handle<THandle> Insert(TDataHot const& data)
-		{
-			return this->Emplace(data);
 		}
 
 		void Free(Handle<THandle> handle)
@@ -130,7 +139,7 @@ namespace phx::rhi
 			{
 				return GetHot(handle);
 			}
-			else if constexpr (std::is_same_v<T, TColdData>)
+			else if constexpr (std::is_same_v<T, TDataCold>)
 			{
 				return GetCold(handle);
 			}
@@ -140,7 +149,24 @@ namespace phx::rhi
 			}
 		}
 
-		TDataHot* Get(Handle<THandle> handle)
+		template<typename T>
+		const T* Get(Handle<THandle> handle) const
+		{
+			if constexpr (std::is_same_v<T, TDataHot>)
+			{
+				return GetHot(handle);
+			}
+			else if constexpr (std::is_same_v<T, TDataCold>)
+			{
+				return GetCold(handle);
+			}
+			else
+			{
+				static_assert(always_false<T>, "Unsupported handle type!");
+			}
+		}
+
+		TDataHot* GetHot(Handle<THandle> handle)
 		{
 			if (!Contains(handle))
 			{
@@ -150,7 +176,27 @@ namespace phx::rhi
 			return m_dataHot + handle.m_index;
 		}
 
-		const TDataHot* Get(Handle<THandle> handle) const
+		const TDataHot* GetHot(Handle<THandle> handle) const
+		{
+			if (!Contains(handle))
+			{
+				return nullptr;
+			}
+
+			return m_dataHot + handle.m_index;
+		}
+
+		TDataHot* GetCold(Handle<THandle> handle)
+		{
+			if (!Contains(handle))
+			{
+				return nullptr;
+			}
+
+			return m_dataHot + handle.m_index;
+		}
+
+		const TDataHot* GetCold(Handle<THandle> handle) const
 		{
 			if (!Contains(handle))
 			{
