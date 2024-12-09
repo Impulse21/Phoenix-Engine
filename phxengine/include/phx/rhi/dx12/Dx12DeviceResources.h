@@ -1,8 +1,10 @@
 #pragma once
 
-#include "Dx12Common.h"
 #include "phx/rhi/RHITypes.h"
+
+#include "Dx12Common.h"
 #include "Dx12DescriptorHeaps.h"
+#include "d3d12ma/D3D12MemAlloc.h"
 
 #include <array>
 
@@ -10,6 +12,8 @@
 #define DEFINE_ALIGNED(def, a) __declspec(align(a)) def
 #define THREAD_LOCAL           __declspec(thread)
 
+#pragma warning(push)
+#pragma warning(disable: 4324)  // Warning about structure padding
 namespace phx::rhi::dx12
 {
 	constexpr size_t kCacheLineSize = 8 * sizeof(uint64_t);
@@ -121,8 +125,8 @@ namespace phx::rhi::dx12
 		D3D12_GPU_VIRTUAL_ADDRESS GpuAddress;
 
 		DescriptorHeapAllocation DescriptorAllocation_CbvSrvUav;
-		uint8_t SrvOffset = ~0u;
-		uint8_t UavOffset = ~0u;
+		uint8_t SrvOffset = 0xFF;
+		uint8_t UavOffset = 0xFF;
 
 		DescriptorIndex BindlessIndex_Cbv = cInvalidDescriptorIndex;
 		DescriptorIndex BindlessIndex_Srv = cInvalidDescriptorIndex;
@@ -130,12 +134,12 @@ namespace phx::rhi::dx12
 	};
 	static_assert(sizeof(GpuBufferBindings) <= kCacheLineSize);
 
-	struct DEFINE_ALIGNED(CommandContextResource, 64)
+	struct DEFINE_ALIGNED(CommandListResource, 64)
 	{
 		CompPtr<ID3D12GraphicsCommandList> CmdList;
 		CompPtr<ID3D12GraphicsCommandList6> CmdList6;
 		CommandQueueType Type;
 		ID3D12CommandAllocator* Allocator; // TODO: Look into setting this into the command list to save on space
-		uint32_t IsOpen : 1 = false;
 	};
 }
+#pragma warning(pop)

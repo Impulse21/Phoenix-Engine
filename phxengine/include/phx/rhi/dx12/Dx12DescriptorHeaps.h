@@ -63,8 +63,8 @@ namespace phx::rhi::dx12
 			: m_firstCpuHandle(std::move(other.m_firstCpuHandle))
 			, m_firstGpuHandle(std::move(other.m_firstGpuHandle))
 			, m_descriptorAllocator(std::move(other.m_descriptorAllocator))
-			, m_pageId(std::move(other.m_pageId))
-			, m_numHandles(std::move(other.m_numHandles))
+			, m_pageId(other.m_pageId)
+			, m_numHandles(other.m_numHandles)
 			, m_descriptorSize(std::move(other.m_descriptorSize))
 		{
 			other.Reset();
@@ -75,8 +75,8 @@ namespace phx::rhi::dx12
 			this->m_firstCpuHandle = std::move(other.m_firstCpuHandle);
 			this->m_firstGpuHandle = std::move(other.m_firstGpuHandle);
 			this->m_descriptorAllocator = std::move(other.m_descriptorAllocator);
-			this->m_pageId = std::move(other.m_pageId);
-			this->m_numHandles = std::move(other.m_numHandles);
+			this->m_pageId = (other.m_pageId & 0xFFFFFF);
+			this->m_numHandles = (other.m_numHandles & 0xFF);
 			this->m_descriptorSize = other.m_descriptorSize;
 
 			other.Reset();
@@ -88,8 +88,8 @@ namespace phx::rhi::dx12
 			this->m_firstCpuHandle = other.m_firstCpuHandle;
 			this->m_firstGpuHandle = other.m_firstGpuHandle;
 			this->m_descriptorAllocator = other.m_descriptorAllocator;
-			this->m_pageId = other.m_pageId;
-			this->m_numHandles = other.m_numHandles;
+			this->m_pageId = (other.m_pageId & 0xFFFFFF);
+			this->m_numHandles = (other.m_numHandles & 0xFF);
 			this->m_descriptorSize = other.m_descriptorSize;
 		}
 
@@ -119,7 +119,7 @@ namespace phx::rhi::dx12
 			this->m_firstCpuHandle.ptr = 0;
 			this->m_firstGpuHandle.ptr = 0;
 			this->m_descriptorAllocator = nullptr;
-			this->m_pageId = ~0u;
+			this->m_pageId = (~0u & 0xFFFFFF);
 			this->m_numHandles = 0;
 		}
 

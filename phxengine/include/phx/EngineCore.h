@@ -12,9 +12,7 @@ namespace phx
 		virtual void Startup() = 0;
 		virtual void Shutdown() = 0;
 
-		virtual void CacheRenderData() = 0;
-		virtual void Update() = 0;
-		virtual void Render() = 0;
+		virtual void Tick() = 0;
 	};
 
 	namespace EngineCore

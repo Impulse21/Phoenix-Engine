@@ -26,8 +26,8 @@ namespace
 
 void ImGuiRenderSystem::Initialize(GfxDevice* gfxDevice, IFileSystem* fs, bool enableDocking)
 {
-    m_imguirecorder = ImGui::Createrecorder();
-    ImGui::SetCurrentrecorder(m_imguirecorder);
+    m_imguiContext = ImGui::CreateContext();
+    ImGui::SetCurrentContext(m_imguiContext);
 
     if (!ImGui_ImplWin32_Init(phx::EngineCore::g_hWnd))
     {
@@ -160,14 +160,14 @@ void ImGuiRenderSystem::EnableDarkThemeColours()
 
 void ImGuiRenderSystem::BeginFrame()
 {
-    ImGui::SetCurrentrecorder(m_imguirecorder);
+    ImGui::SetCurrentContext(m_imguiContext);
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 }
 
 void ImGuiRenderSystem::Render(GfxCommandListRecorder& recorder)
 {
-    ImGui::SetCurrentrecorder(m_imguirecorder);
+    ImGui::SetCurrentContext(m_imguiContext);
     ImGui::Render();
 
     ImDrawData* drawData = ImGui::GetDrawData();

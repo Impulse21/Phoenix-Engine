@@ -69,11 +69,10 @@ namespace
 		app.Startup();
 	}
 
-	void UpdateApplication(IEngineApp& app)
+	void ApplicationTick(IEngineApp& app)
 	{
 		// phx::EngineProfile::Update();
-		app.Update();
-		app.Render();
+		app.Tick();
 	}
 
 	void ApplicationFinalize(IEngineApp& app)
@@ -162,7 +161,7 @@ namespace phx::EngineCore
 			}
 			else
 			{
-				UpdateApplication(*app);
+				ApplicationTick(*app);
 			}
 		}
 
@@ -207,7 +206,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_PAINT:
 		if (s_in_sizemove && app)
 		{
-			UpdateApplication(*app);
+			ApplicationTick(*app);
 		}
 		else
 		{

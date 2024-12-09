@@ -20,7 +20,7 @@ GfxDevice::GfxDevice(rhi::GfxDeviceDescriptor const& descriptor)
 	, m_gpuBufferPool(100)
 	, m_pipelineStatePool(100)
 	, m_swapChainPool(1)
-	, m_commandListPool(ThreadPool::GetNumCores() * 2) // Double for async
+	, m_commandListPool(static_cast<uint16_t>(ThreadPool::GetNumCores() * 2)) // Double for async
 {
 
 }

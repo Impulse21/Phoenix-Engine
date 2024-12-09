@@ -164,8 +164,12 @@ namespace phx::rhi::dx12
 
 		void Present(SwapChainResource& swapChain, SwapChainBindings& bindings);
 
+	public:
+		void CommandListOpen(CommandListResource& resource);
+		void Submit(Span<CommandListResource*> resources);
+
 	public:	
-		bool CreateCommandList(CommandQueueType type, CommandContextResource& resource);
+		bool CreateCommandList(CommandQueueType type, CommandListResource& resource);
 		bool CreateSwapChain(SwapChainDescriptor const& desc, SwapChainResource& resource, SwapChainBindings& bindings);
 		bool CreatePipeline(PipelineStateDescriptor const& desc, PipelineStateResource& resource);
 		bool CreateBuffer(GpuBufferDescriptor const& desc, GpuBufferResource& resource, GpuBufferBindings& bindings, MemInfo* initData = nullptr);

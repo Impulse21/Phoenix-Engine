@@ -21,7 +21,8 @@ namespace phx::rhi
 	template<class THandle, class TDataHot, class TDataCold = std::monostate>
 	class ResourcePool
 	{
-		static_assert(std::is_trivially_constructible_v<TDataHot>&& std::is_trivially_constructible_v<TDataCold>);
+		static_assert(std::is_default_constructible_v<TDataHot>);
+		static_assert(std::is_default_constructible_v<TDataCold>, "TDataHot should have a trivial destructor");
 
 	public:
 		ResourcePool(uint16_t maxHandles)
@@ -29,8 +30,8 @@ namespace phx::rhi
 			, m_freeListHead(0)
 			, m_commitedIndices(0)
 		{
-			m_dataHot = static_cast<TDataHot*>(phx::VirtualMemReserve(m_maxEntries * sizeof(TDataHot));
-			m_dataCold = static_cast<TDataCold*>(phx::VirtualMemReserve(m_maxEntries * sizeof(TDataCold));
+			m_dataHot = static_cast<TDataHot*>(phx::VirtualMemReserve(m_maxEntries * sizeof(TDataHot)));
+			m_dataCold = static_cast<TDataCold*>(phx::VirtualMemReserve(m_maxEntries * sizeof(TDataCold)));
 
 			m_freeList = static_cast<uint16_t*>(phx::VirtualMemReserve(m_maxEntries * sizeof(uint16_t)));
 			m_generations = static_cast<uint16_t*>(phx::VirtualMemReserve(m_maxEntries * sizeof(uint16_t)));
@@ -103,8 +104,8 @@ namespace phx::rhi
 			handle.m_index = m_freeList[m_freeListHead++];
 			handle.m_generation = m_generations[handle.m_index];
 
-			new (this->m_dataHot + handle.m_index) TDataHot(std::forward<ArgsHot>(argsHot)...);
-			new (this->m_dataCold + handle.m_index) TDataCold(std::forward<ArgsCold>(argsCold)...);
+			new (this->m_dataHot + handle.m_index) TDataHot();
+			new (this->m_dataCold + handle.m_index) TDataCold();
 
 			return handle;
 		}
@@ -117,7 +118,8 @@ namespace phx::rhi
 			}
 
 			GetHot(handle)->~TDataHot();
-			GetCold(handle)->~TColdData();
+			if constexpr (!std::is_trivially_destructible_v<TDataCold>)
+				GetCold(handle)->~TDataCold();
 
 			m_dataHot[handle.m_index] = {};
 
@@ -186,24 +188,24 @@ namespace phx::rhi
 			return m_dataHot + handle.m_index;
 		}
 
-		TDataHot* GetCold(Handle<THandle> handle)
+		TDataCold* GetCold(Handle<THandle> handle)
 		{
 			if (!Contains(handle))
 			{
 				return nullptr;
 			}
 
-			return m_dataHot + handle.m_index;
+			return m_dataCold + handle.m_index;
 		}
 
-		const TDataHot* GetCold(Handle<THandle> handle) const
+		const TDataCold* GetCold(Handle<THandle> handle) const
 		{
 			if (!Contains(handle))
 			{
 				return nullptr;
 			}
 
-			return m_dataHot + handle.m_index;
+			return m_dataCold + handle.m_index;
 		}
 
 		bool Contains(Handle<THandle> handle) const
@@ -239,7 +241,7 @@ namespace phx::rhi
 	private:
 		const size_t	m_maxEntries;
 		TDataHot*		m_dataHot;
-		TColdData*		m_dataHotCold;
+		TDataCold*		m_dataCold;
 
 		uint16_t* m_freeList;
 		uint16_t* m_generations;

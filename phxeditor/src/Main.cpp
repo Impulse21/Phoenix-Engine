@@ -71,17 +71,23 @@ public:
 		m_imguiRenderer.Finialize(device);
 
 		device->DeleteCommandList(m_gfxCommandList);
-
 	};
 
-	void CacheRenderData() override {};
-	void Update() override 
+public:
+	void Tick()
+	{
+		Update();
+		Render();
+	}
+
+private:
+	void Update()
 	{
 		m_imguiRenderer.BeginFrame();
 		ImGui::ShowDemoWindow();
 	};
 
-	void Render() override
+	void Render()
 	{
 		phx::rhi::GfxDevice* device = phx::rhi::GfxDevice::Ptr;
 		rhi::GfxCommandListRecorder recorder = device->BeginGfxRecording(m_gfxCommandList);
@@ -91,6 +97,9 @@ public:
 		m_imguiRenderer.Render(recorder);
 
 		recorder.RenderPassEnd();
+		recorder.Finished();
+
+		device->Submit({ m_gfxCommandList });
 	}
 
 private:

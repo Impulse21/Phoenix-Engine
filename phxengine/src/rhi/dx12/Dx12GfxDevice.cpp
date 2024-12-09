@@ -737,26 +737,8 @@ void GfxDeviceDx12::ResizeSwapChain(SwapChainDesc const& swapChainDesc)
 }
 #endif
 
-bool GfxDeviceDx12::CreateCommandList(CommandQueueType type, CommandContextResource& resource)
+bool GfxDeviceDx12::CreateCommandList(CommandQueueType, CommandListResource&)
 {
-	// No-op, don't set thing up until begin since an allocator is required for
-	// creation.
-
-	D3D12CommandQueue& queue = GetQueue(type);
-	resource.Allocator =  queue.RequestAllocator();
-
-	GetD3D12Device()->CreateCommandList(
-		0,
-		queue.Type,
-		resource.Allocator,
-		nullptr,
-		IID_PPV_ARGS(&resource.CmdList));
-
-	resource.CmdList->SetName(L"GfxDeviceD3D12::CommandList");
-	ThrowIfFailed(
-		resource.CmdList.As<ID3D12GraphicsCommandList6>(
-			&resource.CmdList6));
-
 	return true;
 }
 
@@ -1117,8 +1099,8 @@ bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, TextureResource
 	d3d12OptimizedClearValue.Color[1] = desc.ClearValue.Colour.G;
 	d3d12OptimizedClearValue.Color[2] = desc.ClearValue.Colour.B;
 	d3d12OptimizedClearValue.Color[3] = desc.ClearValue.Colour.A;
-	d3d12OptimizedClearValue.DepthStencil.Depth = desc.ClearValue.DepthStencil.Depth;
-	d3d12OptimizedClearValue.DepthStencil.Stencil = desc.ClearValue.DepthStencil.Stencil;
+	d3d12OptimizedClearValue.DepthStencil.Depth = (UINT8)desc.ClearValue.DepthStencil.Depth;
+	d3d12OptimizedClearValue.DepthStencil.Stencil = (UINT8)desc.ClearValue.DepthStencil.Stencil;
 
 	auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
 	d3d12OptimizedClearValue.Format = dxgiFormatMapping.RtvFormat;
@@ -1211,7 +1193,6 @@ bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, TextureResource
 	StringConvert(desc.DebugName, debugName);
 	resource.Resource->SetName(debugName.c_str());
 
-#if false
 	if (initData)
 	{
 		UINT64 totalSize = 0;
@@ -1232,14 +1213,12 @@ bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, TextureResource
 
 		CopyCtxManager::Ctx ctx = m_copyCtxManager.Begin(totalSize);
 
-		D3D12Buffer* uploadBufferImpl = m_resourceRegistry.Buffers.Get(ctx.UploadBuffer);
-
 		for (size_t i = 0; i < footprints.size(); ++i)
 		{
 			D3D12_SUBRESOURCE_DATA data = {};
-			data.RowPitch = initialData[i].rowPitch;
-			data.SlicePitch = initialData[i].slicePitch;
-			data.pData = initialData[i].pData;
+			data.RowPitch = initData[i].RowPitch;
+			data.SlicePitch = initData[i].SlicePitch;
+			data.pData = initData[i].Data;
 
 			if (rowSizesInBytes[i] > (SIZE_T)-1)
 				continue;
@@ -1252,8 +1231,8 @@ bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, TextureResource
 
 			if (ctx.IsValid())
 			{
-				CD3DX12_TEXTURE_COPY_LOCATION Dst(textureImpl.D3D12Resource.Get(), UINT(i));
-				CD3DX12_TEXTURE_COPY_LOCATION Src(uploadBufferImpl->D3D12Resource.Get(), footprints[i]);
+				CD3DX12_TEXTURE_COPY_LOCATION Dst(resource.Resource.Get(), UINT(i));
+				CD3DX12_TEXTURE_COPY_LOCATION Src(ctx.UploadBuffer.Get(), footprints[i]);
 				ctx.CommandList->CopyTextureRegion(
 					&Dst,
 					0,
@@ -1271,11 +1250,11 @@ bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, TextureResource
 		}
 
 	}
-#endif
+
 	// Create views
 
 	bindings.Resource = resource.Resource.Get();
-	const size_t numDescriptorsRequired =
+	const uint32_t numDescriptorsRequired =
 		(((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource) ? 1 : 0) +
 		(((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::ShaderResource) ? 1 : 0);
 
@@ -1383,6 +1362,58 @@ void GfxDeviceDx12::Present(SwapChainResource& resource, SwapChainBindings& bind
 		bindings.FrameBackBuffer = resource.BackBuffers[backBufferIndex].Get();
 		bindings.FrameBackBufferRTV = resource.ViewAllocation.GetGpuHandle((uint32_t)backBufferIndex);
 	}
+}
+
+void phx::rhi::dx12::GfxDeviceDx12::CommandListOpen(CommandListResource& resource)
+{
+	if (resource.Allocator)
+		return; // Already open
+
+	D3D12CommandQueue& queue = GetQueue(resource.Type);
+	resource.Allocator = queue.RequestAllocator();
+
+	if (resource.CmdList == nullptr)
+	{
+		GetD3D12Device()->CreateCommandList(
+			0,
+			queue.Type,
+			resource.Allocator,
+			nullptr,
+			IID_PPV_ARGS(&resource.CmdList));
+
+		resource.CmdList->SetName(L"GfxDeviceD3D12::CommandList");
+		ThrowIfFailed(
+			resource.CmdList.As<ID3D12GraphicsCommandList6>(
+				&resource.CmdList6));
+	}
+	else
+	{
+		resource.CmdList->Reset(resource.Allocator, nullptr);
+	}
+
+	// Bind Heaps
+	std::array<ID3D12DescriptorHeap*, 2> heaps;
+	Span<GpuDescriptorHeap> gpuHeaps = GetGpuDescriptorHeaps();
+	for (int i = 0; i < gpuHeaps.Size(); i++)
+	{
+		heaps[i] = gpuHeaps[i].GetNativeHeap();
+	}
+
+	resource.CmdList6->SetDescriptorHeaps(static_cast<UINT>(heaps.size()), heaps.data());
+}
+
+void GfxDeviceDx12::Submit(Span<CommandListResource*> resources)
+{
+	for (auto& resource : resources)
+	{
+		D3D12CommandQueue& queue = GetQueue(resource->Type);
+		queue.EnqueueForSubmit(resource->CmdList.Get(), resource->Allocator);
+		resource->Allocator = nullptr;
+	}
+
+	// TODO: Return fence values
+	for (auto& q : GetQueues())
+		q.Submit();
 }
 
 void GfxDeviceDx12::PollDebugMessages()

@@ -23,7 +23,6 @@ namespace phx
 	void VirtualMemCommit(void* ptr, size_t commitSize);
 	bool VirtualMemFree(void* ptr);
 
-
 	class VirtualStackAllocator
 	{
 	public:
@@ -80,8 +79,11 @@ namespace phx
 		void Finalize();
 		void BeginFrame();
 
-		VirtualStackAllocator& GetFrameAllocator();
-		VirtualStackAllocator& GetScratchAllocator();
+		using FrameAllocator = VirtualStackAllocator;
+		FrameAllocator& GetFrameAllocator();
+
+		using ScratchAllocator = VirtualStackAllocator;
+		ScratchAllocator& GetScratchAllocator();
 
 	}
 

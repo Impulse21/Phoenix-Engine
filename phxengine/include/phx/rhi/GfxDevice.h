@@ -3,6 +3,7 @@
 #include <deque>
 #include <functional>
 
+#include "phx/core/Memory.h"
 #include "phx/rhi/RHITypes.h"
 #include "phx/rhi/ResourcePool.h"
 #include "phx/rhi/CommandListRecorder.h"
@@ -38,14 +39,29 @@ namespace phx::rhi
     public:
         GfxCommandListRecorder BeginGfxRecording(CommandListHandle handle)
         {
-            auto* commandList = m_commandListPool.Get<platform::CommandContextResource>(handle);
+            auto* commandList = m_commandListPool.Get<platform::CommandListResource>(handle);
             assert(commandList->Type == CommandQueueType::Graphics);
+
+            m_platformDevice.CommandListOpen(*commandList);
             return GfxCommandListRecorder(this, commandList);
         }
 
-        void Execute(Span<CommandListHandle>)
+        void Submit(Span<CommandListHandle> handles)
         {
+            ScopedScratchMarker executeCommnadList;
+
+            Memory::ScratchAllocator& allocator =  Memory::GetScratchAllocator();
+            auto* resources = allocator.AllocArray<platform::CommandListResource*>(handles.Size());
+
+            for (size_t i = 0; i < handles.Size(); i++)
+            {
+                resources[i] = m_commandListPool.Get<platform::CommandListResource>(handles[i]);
+            }
+
+            // Build a list of data
+            m_platformDevice.Submit(Span<platform::CommandListResource*>(resources, handles.size()));
         }
+
 
     public:
         CommandListHandle CreateGfxCommandList() { return CreateCommandList(CommandQueueType::Graphics); }
@@ -58,7 +74,7 @@ namespace phx::rhi
 
             m_platformDevice.CreateCommandList(
                 type,
-                *m_commandListPool.Get<platform::CommandContextResource>(handle));
+                *m_commandListPool.Get<platform::CommandListResource>(handle));
 
             return handle;
         }
@@ -165,7 +181,7 @@ namespace phx::rhi
     private:
         platform::GfxDevice m_platformDevice;
 
-        ResourcePool<CommandList, platform::CommandContextResource> m_commandListPool;
+        ResourcePool<CommandList, platform::CommandListResource> m_commandListPool;
 
         ResourcePool<SwapChain, platform::SwapChainResource, platform::SwapChainBindings> m_swapChainPool;
         ResourcePool<Texture, platform::TextureResource, platform::TextureBindings> m_texturePool;

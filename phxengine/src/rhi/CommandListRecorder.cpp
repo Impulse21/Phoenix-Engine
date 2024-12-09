@@ -5,7 +5,7 @@
 using namespace phx;
 using namespace phx::rhi;
 
-GfxCommandListRecorder::GfxCommandListRecorder(GfxDevice* device, platform::CommandContextResource* context)
+GfxCommandListRecorder::GfxCommandListRecorder(GfxDevice* device, platform::CommandListResource* context)
     : m_device(device)
     , m_platformContext(context)
 {

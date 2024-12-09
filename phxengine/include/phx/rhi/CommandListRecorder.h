@@ -90,11 +90,11 @@ namespace phx::rhi
 		}
 
 	protected:
-		GfxCommandListRecorder(GfxDevice* device, platform::CommandContextResource* context);
+		GfxCommandListRecorder(GfxDevice* device, platform::CommandListResource* context);
 
 	private:
 		GfxDevice* m_device;
-		platform::CommandContextResource* m_platformContext;
+		platform::CommandListResource* m_platformContext;
 
 	};
 }

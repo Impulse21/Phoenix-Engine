@@ -7,10 +7,6 @@
 #include <condition_variable>
 
 #ifdef _WIN32
-
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-
 #include <Windows.h>
 #include <sstream>
 #include <assert.h>
@@ -72,7 +68,7 @@ namespace
 
 void ThreadPool::Initialize()
 {
-	const uint32_t numCores = GetNumCores() - 1; // -1 for main thread.
+	const uint32_t numCores = (uint32_t)GetNumCores() - 1; // -1 for main thread.
 	m_numThreads = std::max(1u, numCores);
 
 	m_jobQueuePerThread.reset(new JobQueue[m_numThreads]);
@@ -235,12 +231,12 @@ void ThreadPool::Signal(Barrier& barrier)
 	m_wakeCondition.notify_one();
 }
 
-size_t ThreadPool::GetThreadCount()
+uint32_t ThreadPool::GetThreadCount()
 {
 	return m_numThreads;
 }
 
-size_t phx::ThreadPool::GetNumCores()
+uint32_t phx::ThreadPool::GetNumCores()
 {
 	return std::thread::hardware_concurrency();
 }
