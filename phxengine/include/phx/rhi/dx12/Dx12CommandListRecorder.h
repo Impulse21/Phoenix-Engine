@@ -1,6 +1,12 @@
 #pragma once
 
+#include "Dx12Common.h"
+#include "phx/rhi/RHITypes.h"
+#include "phx/rhi/CommandListRecorder.h"
+
+#include "phx/rhi/dx12/Dx12GfxDevice.h"
 #include "Dx12DeviceResources.h"
+
 
 namespace phx::rhi::dx12
 {
@@ -12,52 +18,155 @@ namespace phx::rhi::dx12
         {
             resource->CmdList->Close();
         }
+		
+		void BeginMarker(const char*) {};
+		void EndMarker() {};
 
-		void RenderPassBegin(CommandListResource* resource, SwapChainBindings* bindings)
+		void RenderPassBegin(SwapChainBindings* bindings)
 		{
+			m_numRenderPasses = 0;
+			
+			ID3D12Resource* swapChainImage = bindings->FrameBackBuffer;
+			D3D12_CPU_DESCRIPTOR_HANDLE view = bindings->FrameBackBufferRTV;
+
+#if false // Enhanced Barriers
+			// Define the texture barrier
+			D3D12_BARRIER_TEXTURE_BARRIER textureBarrier = {};
+			textureBarrier.SyncBefore = D3D12_BARRIER_SYNC_RENDER_TARGET;
+			textureBarrier.AccessBefore = D3D12_BARRIER_ACCESS_RENDER_TARGET;
+			textureBarrier.LayoutBefore = D3D12_BARRIER_LAYOUT_RENDER_TARGET;
+
+			textureBarrier.SyncAfter = D3D12_BARRIER_SYNC_PIXEL_SHADER;
+			textureBarrier.AccessAfter = D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
+			textureBarrier.LayoutAfter = D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
+
+			textureBarrier.pResource = pTexture;  // The texture resource to transition
+			textureBarrier.Subresources = D3D12_BARRIER_SUBRESOURCE_RANGE(D3D12_BARRIER_SUBRESOURCE_RANGE_FLAG_ALL_SUBRESOURCES);
+
+			// Describe the barrier type
+			D3D12_BARRIER_GROUP barrierGroup = {};
+			barrierGroup.Type = D3D12_BARRIER_TYPE_TEXTURE;
+			barrierGroup.NumBarriers = 1;
+			barrierGroup.pTextureBarriers = &textureBarrier;
+
+#else
+			D3D12_RESOURCE_BARRIER barrier = {};
+			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			barrier.Transition.pResource = swapChainImage;
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+			m_commandList->ResourceBarrier(1, &barrier);
+			ClearTexture(view, bindings.ClearColour.Colour);
+
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+
+			m_renderPassBarriers[m_numRenderPasses++] = barrier;
+#endif
+
+			m_commandList->OMSetRenderTargets(1, &view, 0, nullptr);
+		}
+
+    	void ClearTexture(D3D12_CPU_DESCRIPTOR_HANDLE view, phx::rhi::Color const& clearColour)
+		{
+			this->m_commandList->ClearRenderTargetView(
+				view,
+				&clearColour.R,
+				0,
+				nullptr);
 		}
 
 		void RenderPassEnd(CommandListResource* resource)
 		{
-
+			m_commandList->ResourceBarrier((UINT)m_numRenderPasses, m_renderPassBarriers.data());
+			m_numRenderPasses = 0;
 		}
 
-		void SetViewports(CommandListResource* resource, phx::Span<Viewport> viewports)
+		void SetViewports(phx::Span<rhi::Viewport> viewports)
 		{
-			UNREFERENCED_PARAMETER(viewports);
+			CD3DX12_VIEWPORT dx12Viewports[16] = {};
+			for (int i = 0; i < viewports.Size(); i++)
+			{
+				const Viewport& viewport = viewports[i];
+				dx12Viewports[i] = CD3DX12_VIEWPORT(
+					viewport.MinX,
+					viewport.MinY,
+					viewport.GetWidth(),
+					viewport.GetHeight(),
+					viewport.MinZ,
+					viewport.MaxZ);
+			}
+
+			this->m_commandList->RSSetViewports((UINT)viewports.Size(), dx12Viewports);
+
 		}
 
-		void SetScissors(CommandListResource* resource, phx::Span<Rect> scissors)
+		void SetScissors(phx::Span<Rect> scissors)
 		{
-			UNREFERENCED_PARAMETER(scissors);
+			CD3DX12_RECT dx12Scissors[16] = {};
+			for (int i = 0; i < scissors.Size(); i++)
+			{
+				const Rect& scissor = scissors[i];
+
+				dx12Scissors[i] = CD3DX12_RECT(
+					scissor.MinX,
+					scissor.MinY,
+					scissor.MaxX,
+					scissor.MaxY);
+			}
+
+			this->m_commandList->RSSetScissorRects((UINT)scissors.Size(), dx12Scissors);
 
 		}
 
-		void SetPipelineState(CommandListResource* resource, PipelineStateHandle handle)
+		void SetPipelineState(dx12::PipelineStateResource* resource)
 		{
-			UNREFERENCED_PARAMETER(handle);
+			m_activePipelineType = resource->Type;
+			this->m_commandList->SetPipelineState(resource->D3D12PipelineState.Get());
+			this->m_commandList->SetGraphicsRootSignature(resource->RootSignature.Get());
+			
+			D3D_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+			switch (resource->Topology)
+			{
+			case rhi::PrimitiveType::TriangleList:
+				topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+				break;
+			case rhi::PrimitiveType::TriangleStrip:
+				topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+				break;
+			case rhi::PrimitiveType::LineList:
+				topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+				break;
+			default:
+				assert(false);
+			}
+			this->m_commandList->IASetPrimitiveTopology(topology);
 
 		}
 
-		void DrawIndexed(CommandListResource* resource, uint32_t indexCount, uint32_t instanceCount = 1, uint32_t startIndex = 0, int32_t baseVertex = 0, uint32_t startInstance = 0)
+		void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t startIndex = 0, int32_t baseVertex = 0, uint32_t startInstance = 0)
 		{
-			UNREFERENCED_PARAMETER(indexCount);
-			UNREFERENCED_PARAMETER(instanceCount);
-			UNREFERENCED_PARAMETER(startIndex);
-			UNREFERENCED_PARAMETER(baseVertex);
-			UNREFERENCED_PARAMETER(startInstance);
-
+			this->m_commandList->DrawIndexedInstanced(
+				indexCount,
+				instanceCount,
+				startIndex,
+				baseVertex,
+				startInstance);
 		}
 
-		void Draw(CommandListResource* resource, uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t startVertex = 0, uint32_t startInstance = 0)
+		void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t startVertex = 0, uint32_t startInstance = 0)
 		{
-			UNREFERENCED_PARAMETER(vertexCount);
-			UNREFERENCED_PARAMETER(instanceCount);
-			UNREFERENCED_PARAMETER(startVertex);
-			UNREFERENCED_PARAMETER(startInstance);
+			this->m_commandList->DrawInstanced(
+				vertexCount,
+				instanceCount,
+				startVertex,
+				startInstance);
 		}
 
-		void SetDynamicVertexBuffer(CommandListResource* resource, GpuBufferHandle tempBuffer, size_t offset, uint32_t slot, size_t numVertices, size_t vertexSize)
+		void SetDynamicVertexBuffer(size_t offset, uint32_t slot, size_t numVertices, size_t vertexSize)
 		{
 			UNREFERENCED_PARAMETER(tempBuffer);
 			UNREFERENCED_PARAMETER(offset);
@@ -66,7 +175,7 @@ namespace phx::rhi::dx12
 			UNREFERENCED_PARAMETER(vertexSize);
 		}
 
-		void SetDynamicIndexBuffer(CommandListResource* resource, GpuBufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat)
+		void SetDynamicIndexBuffer(size_t offset, size_t numIndicies, Format indexFormat)
 		{
 			UNREFERENCED_PARAMETER(tempBuffer);
 			UNREFERENCED_PARAMETER(offset);
@@ -74,11 +183,108 @@ namespace phx::rhi::dx12
 			UNREFERENCED_PARAMETER(indexFormat);
 		}
 
-		void SetPushConstant(CommandListResource* resource, uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants)
+		void SetPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants)
 		{
-			UNREFERENCED_PARAMETER(rootParameterIndex);
-			UNREFERENCED_PARAMETER(sizeInBytes);
-			UNREFERENCED_PARAMETER(constants);
+			if (this->m_activePipelineType == rhi::PipelineType::Compute)
+			{
+				this->m_commandList->SetComputeRoot32BitConstants(rootParameterIndex, sizeInBytes / sizeof(uint32_t), constants, 0);
+			}
+			else
+			{
+				this->m_commandList->SetGraphicsRoot32BitConstants(rootParameterIndex, sizeInBytes / sizeof(uint32_t), constants, 0);
+			}
 		}
+
+    private:
+		ID3D12GraphicsCommandList* m_commandList;
+		ID3D12GraphicsCommandList6* m_commandList6;
+
+		rhi::PipelineType m_activePipelineType = rhi::PipelineType::Gfx;
+		std::array<D3D12_RESOURCE_BARRIER, rhi::cMaxRenderTargets> m_renderPassBarriers;
+		uint8_t m_numRenderPasses = 0;
     };
+
+#if false
+
+	void Open() override;
+	void Close() override;
+
+	// -- RayTrace Stuff		---]
+	void RTBuildAccelerationStructure(RHI::RTAccelerationStructureHandle accelStructure) override;
+
+	// -- RayTrace Stuff END	---
+	ScopedMarker BeginScopedMarker(std::string_view name) override;
+	void BeginMarker(std::string_view name) override;
+	void EndMarker() override;
+	GPUAllocation AllocateGpu(size_t bufferSize, size_t stride) override;
+
+	void TransitionBarrier(TextureHandle texture, ResourceStates beforeState, ResourceStates afterState) override;
+	void TransitionBarrier(BufferHandle buffer, ResourceStates beforeState, ResourceStates afterState) override;
+	void TransitionBarriers(Core::Span<GpuBarrier> gpuBarriers) override;
+
+	void BeginRenderPassBackBuffer(bool clear = true) override;
+	RenderPassHandle GetRenderPassBackBuffer() override;
+	void BeginRenderPass(RenderPassHandle renderPass) override;
+	void EndRenderPass() override;
+
+	void ClearTextureFloat(TextureHandle texture, Color const& clearColour) override;
+	void ClearDepthStencilTexture(TextureHandle depthStencil, bool clearDepth, float depth, bool clearStencil, uint8_t stencil) override;
+
+	void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t startVertex = 0, uint32_t startInstance = 0) override;
+	void DrawIndexed(
+		uint32_t indexCount,
+		uint32_t instanceCount = 1,
+		uint32_t startIndex = 0,
+		int32_t baseVertex = 0,
+		uint32_t startInstance = 0) override;
+
+
+	void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount = 1) override;
+	void ExecuteIndirect(RHI::CommandSignatureHandle commandSignature, RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) override;
+
+	void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount = 1) override;
+	void DrawIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) override;
+
+	virtual void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, uint32_t maxCount = 1) override;
+	virtual void DrawIndexedIndirect(RHI::BufferHandle args, size_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) override;
+
+	void WriteBuffer(BufferHandle buffer, const void* Data, size_t dataSize, uint64_t destOffsetBytes = 0) override;
+	void CopyBuffer(BufferHandle dst, uint64_t dstOffset, BufferHandle src, uint64_t srcOffset, size_t sizeInBytes) override;
+	void WriteTexture(TextureHandle texture, uint32_t firstSubResource, size_t numSubResources, SubresourceData* pSubResourceData) override;
+	void WriteTexture(TextureHandle texture, uint32_t arraySlice, uint32_t mipLevel, const void* Data, size_t rowPitch, size_t depthPitch) override;
+	void SetRenderTargets(std::vector<TextureHandle> const& renderTargets, TextureHandle depthStencil) override;
+
+	void SetGraphicsPipeline(GraphicsPipelineHandle graphisPSO) override;
+	void SetViewports(Viewport* viewports, size_t numViewports) override;
+	void SetScissors(Rect* scissor, size_t numScissors) override;
+	void BindPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants) override;
+	void BindConstantBuffer(size_t rootParameterIndex, BufferHandle constantBuffer) override;
+	void BindDynamicConstantBuffer(size_t rootParameterIndex, size_t sizeInBytes, const void* bufferData) override;
+	void BindVertexBuffer(uint32_t slot, BufferHandle vertexBuffer) override;
+	void BindDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData) override;
+	void BindIndexBuffer(BufferHandle indexBuffer) override;
+	void BindDynamicIndexBuffer(size_t numIndicies, RHIFormat indexFormat, const void* indexBufferData) override;
+	void BindDynamicStructuredBuffer(uint32_t rootParameterIndex, size_t numElements, size_t elementSize, const void* bufferData) override;
+	void BindStructuredBuffer(size_t rootParameterIndex, BufferHandle buffer) override;
+	void BindResourceTable(size_t rootParameterIndex) override;
+	void BindSamplerTable(size_t rootParameterIndex) override;
+	void BindDynamicDescriptorTable(size_t rootParameterIndex, Core::Span<TextureHandle> textures) override;
+	void BindDynamicUavDescriptorTable(size_t rootParameterIndex, Core::Span<BufferHandle> buffers, Core::Span<TextureHandle> textures) override;
+
+	// -- Comptute Stuff ---
+	void SetComputeState(ComputePipelineHandle state);
+	void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1);
+	void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount = 1);
+	void DispatchIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) override;
+
+	// -- Mesh Stuff ---
+	void SetMeshPipeline(MeshPipelineHandle meshPipeline) override;
+	void DispatchMesh(uint32_t groupsX, uint32_t groupsY = 1u, uint32_t groupsZ = 1u) override;
+	void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, uint32_t maxCount = 1) override;
+	void DispatchMeshIndirect(RHI::BufferHandle args, uint32_t argsOffsetInBytes, RHI::BufferHandle count, size_t countOffsetInBytes, uint32_t maxCount) override;
+
+	// -- Query Stuff ---
+	void BeginTimerQuery(TimerQueryHandle query);
+	void EndTimerQuery(TimerQueryHandle query);
+#endif
 }
