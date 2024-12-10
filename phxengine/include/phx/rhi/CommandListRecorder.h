@@ -2,7 +2,7 @@
 
 #include "RHITypes.h"
 #include "PlatformTypes.h"
-#include "RHITypes.h"
+#include "GfxDevice.h"
 
 namespace phx::rhi
 {
@@ -10,77 +10,70 @@ namespace phx::rhi
 
 	class GfxCommandListRecorder
 	{
-		friend GfxDevice;
 	public:
-		void Finished();
-
-		void RenderPassBegin()
+		static GfxCommandListRecorder Begin(GfxDevice* device, CommandListHandle cmdHandle)
 		{
+			return GfxCommandListRecorder(device, cmdHandle);
+		}
 
+	public:
+
+		void Finished()
+		{
+			m_platformRecorder.Close(m_platformResource);
+		}
+
+		void RenderPassBegin(SwapChainHandle handle)
+		{
+			auto* binding = m_device->GetSwapChainPool().Get<platform::SwapChainBindings>(handle);
+			m_platformRecorder.RenderPassBegin(m_platformResource, binding);
 		}
 
 		void RenderPassEnd()
 		{
-
+			m_platformRecorder.RenderPassEnd(m_platformResource);
 		}
 
 		void SetViewports(phx::Span<Viewport> viewports)
 		{
-			UNREFERENCED_PARAMETER(viewports);
+			m_platformRecorder.RenderPassEnd(m_platformResource);
 		}
 
 		void SetScissors(phx::Span<Rect> scissors)
 		{
-			UNREFERENCED_PARAMETER(scissors);
+			m_platformRecorder.RenderPassEnd(m_platformResource);
 
 		}
 
 		void SetPipelineState(PipelineStateHandle handle)
 		{
-			UNREFERENCED_PARAMETER(handle);
-
+			m_platformRecorder.RenderPassEnd(m_platformResource);
 		}
 
 		void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t startIndex = 0, int32_t baseVertex = 0, uint32_t startInstance = 0)
 		{
-			UNREFERENCED_PARAMETER(indexCount);
-			UNREFERENCED_PARAMETER(instanceCount);
-			UNREFERENCED_PARAMETER(startIndex);
-			UNREFERENCED_PARAMETER(baseVertex);
-			UNREFERENCED_PARAMETER(startInstance);
+			m_platformRecorder.RenderPassEnd(m_platformResource);
 
 		}
 
 		void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t startVertex = 0, uint32_t startInstance = 0)
 		{
-			UNREFERENCED_PARAMETER(vertexCount);
-			UNREFERENCED_PARAMETER(instanceCount);
-			UNREFERENCED_PARAMETER(startVertex);
-			UNREFERENCED_PARAMETER(startInstance);
+			m_platformRecorder.RenderPassEnd(m_platformResource);
 		}
 
 		void SetDynamicVertexBuffer(GpuBufferHandle tempBuffer, size_t offset, uint32_t slot, size_t numVertices, size_t vertexSize)
 		{
-			UNREFERENCED_PARAMETER(tempBuffer);
-			UNREFERENCED_PARAMETER(offset);
-			UNREFERENCED_PARAMETER(slot);
-			UNREFERENCED_PARAMETER(numVertices);
-			UNREFERENCED_PARAMETER(vertexSize);
+			m_platformRecorder.RenderPassEnd(m_platformResource);
 		}
 
 		void SetDynamicIndexBuffer(GpuBufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat)
 		{
-			UNREFERENCED_PARAMETER(tempBuffer);
-			UNREFERENCED_PARAMETER(offset);
-			UNREFERENCED_PARAMETER(numIndicies);
-			UNREFERENCED_PARAMETER(indexFormat);
+			m_platformRecorder.RenderPassEnd(m_platformResource);
 		}
 
 		void SetPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants)
 		{
-			UNREFERENCED_PARAMETER(rootParameterIndex);
-			UNREFERENCED_PARAMETER(sizeInBytes);
-			UNREFERENCED_PARAMETER(constants);
+			m_platformRecorder.RenderPassEnd(m_platformResource);
 		}
 
 		template<typename T>
@@ -90,11 +83,12 @@ namespace phx::rhi
 		}
 
 	protected:
-		GfxCommandListRecorder(GfxDevice* device, platform::CommandListResource* context);
+		GfxCommandListRecorder(GfxDevice* device, CommandListHandle cmdHandle);
 
 	private:
 		GfxDevice* m_device;
-		platform::CommandListResource* m_platformContext;
+		platform::CommandListResource* m_platformResource;
+		platform::GfxCommandListRecorder m_platformRecorder;
 
 	};
 }

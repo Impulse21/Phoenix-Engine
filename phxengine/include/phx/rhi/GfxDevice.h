@@ -6,12 +6,20 @@
 #include "phx/core/Memory.h"
 #include "phx/rhi/RHITypes.h"
 #include "phx/rhi/ResourcePool.h"
-#include "phx/rhi/CommandListRecorder.h"
 
 #include "PlatformTypes.h"
 
 namespace phx::rhi
 {
+    class GfxCommandListRecorder;
+
+
+    using CommandListPool = ResourcePool<CommandList, platform::CommandListResource>;
+    using SwapChainPool= ResourcePool<SwapChain, platform::SwapChainResource, platform::SwapChainBindings>;
+    using TexturePool = ResourcePool<Texture, platform::TextureResource, platform::TextureBindings>;
+    using GpuBufferPool = ResourcePool<GpuBuffer, platform::GpuBufferResource, platform::GpuBufferBindings>;
+    using PipelineStatePool = ResourcePool<PipelineState, platform::PipelineStateResource>;
+
     class GfxDevice
     {
     public:
@@ -37,15 +45,6 @@ namespace phx::rhi
         }
 
     public:
-        GfxCommandListRecorder BeginGfxRecording(CommandListHandle handle)
-        {
-            auto* commandList = m_commandListPool.Get<platform::CommandListResource>(handle);
-            assert(commandList->Type == CommandQueueType::Graphics);
-
-            m_platformDevice.CommandListOpen(*commandList);
-            return GfxCommandListRecorder(this, commandList);
-        }
-
         void Submit(Span<CommandListHandle> handles)
         {
             ScopedScratchMarker executeCommnadList;
@@ -178,15 +177,22 @@ namespace phx::rhi
             return cInvalidDescriptorIndex;
         }
 
+    public:
+        CommandListPool& GetCommandListPool() { return m_commandListPool; }
+        SwapChainPool& GetSwapChainPool() { return m_swapChainPool; }
+        TexturePool& GetTexturPool() { return  m_texturePool; }
+        GpuBufferPool& GetGpuBufferPool() { return  m_gpuBufferPool; }
+        PipelineStatePool& GetPipelineStatePool() { return  m_pipelineStatePool; }
+
+
     private:
         platform::GfxDevice m_platformDevice;
 
-        ResourcePool<CommandList, platform::CommandListResource> m_commandListPool;
-
-        ResourcePool<SwapChain, platform::SwapChainResource, platform::SwapChainBindings> m_swapChainPool;
-        ResourcePool<Texture, platform::TextureResource, platform::TextureBindings> m_texturePool;
-        ResourcePool<GpuBuffer, platform::GpuBufferResource, platform::TextureBindings> m_gpuBufferPool;
-        ResourcePool<PipelineState, platform::PipelineStateResource> m_pipelineStatePool;
+        CommandListPool m_commandListPool;
+        SwapChainPool m_swapChainPool;
+        TexturePool m_texturePool;
+        GpuBufferPool m_gpuBufferPool;
+        PipelineStatePool m_pipelineStatePool;
 
         uint64_t m_frameCount = 0;
         struct DeferredItem

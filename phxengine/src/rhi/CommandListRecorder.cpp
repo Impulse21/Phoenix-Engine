@@ -5,13 +5,11 @@
 using namespace phx;
 using namespace phx::rhi;
 
-GfxCommandListRecorder::GfxCommandListRecorder(GfxDevice* device, platform::CommandListResource* context)
+GfxCommandListRecorder::GfxCommandListRecorder(GfxDevice* device, CommandListHandle cmdHandle)
     : m_device(device)
-    , m_platformContext(context)
 {
-}
+    m_platformResource = m_device->GetCommandListPool().Get<platform::CommandListResource>(cmdHandle);
+    assert(m_platformResource->Type == CommandQueueType::Graphics);
 
-void GfxCommandListRecorder::Finished()
-{
-
+    m_platformRecorder.Open(m_platformResource);
 }

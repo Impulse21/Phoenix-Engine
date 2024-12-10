@@ -4,7 +4,9 @@
 #include "ImGui/imgui_impl_win32.h"
 #include "phx/core/Span.h"
 #include "phx/core/VFS.h"
+
 #include "phx/rhi/ShaderCompiler.h"
+#include "phx/rhi/CommandListRecorder.h"
 
 namespace phx
 {

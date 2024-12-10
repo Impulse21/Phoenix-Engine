@@ -136,6 +136,9 @@
     <ClInclude Include="..\..\include\phx\Display.h">
       <Filter>include\phx</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12CommandListRecorder.h">
+      <Filter>include\phx\rhi\dx12</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
@@ -189,6 +192,9 @@
     </ClCompile>
     <ClCompile Include="..\..\src\rhi\CommandListRecorder.cpp">
       <Filter>src\rhi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\rhi\dx12\Dx12CommandListRecorder.cpp">
+      <Filter>src\rhi\dx12</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

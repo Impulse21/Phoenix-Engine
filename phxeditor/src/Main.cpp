@@ -14,6 +14,7 @@
 #include "phx/renderer/ImGuiRenderer.h"
 
 #include "phx/rhi/GfxDevice.h"
+#include "phx/rhi/CommandListRecorder.h"
 #include "phx/rhi/ShaderCompiler.h"
 
 #include "phx/EngineCore.h"
@@ -90,7 +91,7 @@ private:
 	void Render()
 	{
 		phx::rhi::GfxDevice* device = phx::rhi::GfxDevice::Ptr;
-		rhi::GfxCommandListRecorder recorder = device->BeginGfxRecording(m_gfxCommandList);
+		rhi::GfxCommandListRecorder recorder = rhi::GfxCommandListRecorder::Begin(device, m_gfxCommandList);
 
 		recorder.RenderPassBegin();
 

@@ -1364,43 +1364,6 @@ void GfxDeviceDx12::Present(SwapChainResource& resource, SwapChainBindings& bind
 	}
 }
 
-void phx::rhi::dx12::GfxDeviceDx12::CommandListOpen(CommandListResource& resource)
-{
-	if (resource.Allocator)
-		return; // Already open
-
-	D3D12CommandQueue& queue = GetQueue(resource.Type);
-	resource.Allocator = queue.RequestAllocator();
-
-	if (resource.CmdList == nullptr)
-	{
-		GetD3D12Device()->CreateCommandList(
-			0,
-			queue.Type,
-			resource.Allocator,
-			nullptr,
-			IID_PPV_ARGS(&resource.CmdList));
-
-		resource.CmdList->SetName(L"GfxDeviceD3D12::CommandList");
-		ThrowIfFailed(
-			resource.CmdList.As<ID3D12GraphicsCommandList6>(
-				&resource.CmdList6));
-	}
-	else
-	{
-		resource.CmdList->Reset(resource.Allocator, nullptr);
-	}
-
-	// Bind Heaps
-	std::array<ID3D12DescriptorHeap*, 2> heaps;
-	Span<GpuDescriptorHeap> gpuHeaps = GetGpuDescriptorHeaps();
-	for (int i = 0; i < gpuHeaps.Size(); i++)
-	{
-		heaps[i] = gpuHeaps[i].GetNativeHeap();
-	}
-
-	resource.CmdList6->SetDescriptorHeaps(static_cast<UINT>(heaps.size()), heaps.data());
-}
 
 void GfxDeviceDx12::Submit(Span<CommandListResource*> resources)
 {

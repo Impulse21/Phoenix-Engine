@@ -165,7 +165,6 @@ namespace phx::rhi::dx12
 		void Present(SwapChainResource& swapChain, SwapChainBindings& bindings);
 
 	public:
-		void CommandListOpen(CommandListResource& resource);
 		void Submit(Span<CommandListResource*> resources);
 
 	public:	
@@ -174,9 +173,6 @@ namespace phx::rhi::dx12
 		bool CreatePipeline(PipelineStateDescriptor const& desc, PipelineStateResource& resource);
 		bool CreateBuffer(GpuBufferDescriptor const& desc, GpuBufferResource& resource, GpuBufferBindings& bindings, MemInfo* initData = nullptr);
 		bool CreateTexture(TextureDescriptor const& desc, TextureResource& resource, TextureBindings& bindings, MemInfo* initData = nullptr);
-
-
-	public:
 
 		// -- Getter and setters ---
 	public:
