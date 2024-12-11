@@ -890,8 +890,7 @@ bool GfxDeviceDx12::CreateSwapChain(SwapChainDescriptor const& desc, SwapChainRe
 
 	UINT currentIndex = resource.SwapChain4->GetCurrentBackBufferIndex();
 	bindings.FrameBackBuffer = resource.BackBuffers[currentIndex].Get();
-	bindings.FrameBackBufferRTV = resource.ViewAllocation.GetGpuHandle((uint32_t)currentIndex);
-
+	bindings.FrameBackBufferRTV = resource.ViewAllocation.GetCpuHandle((uint32_t)currentIndex);
 	return true;
 }
 
@@ -1360,7 +1359,8 @@ void GfxDeviceDx12::Present(SwapChainResource& resource, SwapChainBindings& bind
 		}
 
 		bindings.FrameBackBuffer = resource.BackBuffers[backBufferIndex].Get();
-		bindings.FrameBackBufferRTV = resource.ViewAllocation.GetGpuHandle((uint32_t)backBufferIndex);
+		bindings.FrameBackBufferRTV = resource.ViewAllocation.GetCpuHandle((uint32_t)backBufferIndex);
+		bindings.ClearColour = &resource.ClearColour;
 	}
 }
 

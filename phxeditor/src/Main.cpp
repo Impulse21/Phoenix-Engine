@@ -11,6 +11,8 @@
 #include "phx/core/StringUtils.h"
 #include "phx/core/SystemTime.h"
 
+#include "phx/Display.h"
+
 #include "phx/renderer/ImGuiRenderer.h"
 
 #include "phx/rhi/GfxDevice.h"
@@ -93,7 +95,7 @@ private:
 		phx::rhi::GfxDevice* device = phx::rhi::GfxDevice::Ptr;
 		rhi::GfxCommandListRecorder recorder = rhi::GfxCommandListRecorder::Begin(device, m_gfxCommandList);
 
-		recorder.RenderPassBegin();
+		recorder.RenderPassBegin(phx::gfx::g_SwapChain);
 
 		m_imguiRenderer.Render(recorder);
 

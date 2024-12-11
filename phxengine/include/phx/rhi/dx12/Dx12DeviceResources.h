@@ -34,7 +34,8 @@ namespace phx::rhi::dx12
 	struct SwapChainBindings
 	{
 		ID3D12Resource* FrameBackBuffer;
-		D3D12_GPU_DESCRIPTOR_HANDLE FrameBackBufferRTV;
+		D3D12_CPU_DESCRIPTOR_HANDLE FrameBackBufferRTV;
+		rhi::ClearValue* ClearColour;
 	};
 	static_assert(sizeof(SwapChainBindings) <= kCacheLineSize);
 

@@ -14,10 +14,7 @@ namespace phx::rhi::dx12
     {
     public:
         void Open(CommandListResource* resource);
-        void Close(CommandListResource* resource)
-        {
-            resource->CmdList->Close();
-        }
+		void Close();
 		
 		void BeginMarker(const char*) {};
 		void EndMarker() {};
@@ -59,7 +56,7 @@ namespace phx::rhi::dx12
 			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
 			m_commandList->ResourceBarrier(1, &barrier);
-			ClearTexture(view, bindings.ClearColour.Colour);
+			ClearTexture(view, bindings->ClearColour->Colour);
 
 			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
@@ -70,20 +67,9 @@ namespace phx::rhi::dx12
 			m_commandList->OMSetRenderTargets(1, &view, 0, nullptr);
 		}
 
-    	void ClearTexture(D3D12_CPU_DESCRIPTOR_HANDLE view, phx::rhi::Color const& clearColour)
-		{
-			this->m_commandList->ClearRenderTargetView(
-				view,
-				&clearColour.R,
-				0,
-				nullptr);
-		}
+		void ClearTexture(D3D12_CPU_DESCRIPTOR_HANDLE view, phx::rhi::Color const& clearColour);
 
-		void RenderPassEnd(CommandListResource* resource)
-		{
-			m_commandList->ResourceBarrier((UINT)m_numRenderPasses, m_renderPassBarriers.data());
-			m_numRenderPasses = 0;
-		}
+		void RenderPassEnd();
 
 		void SetViewports(phx::Span<rhi::Viewport> viewports)
 		{
@@ -128,22 +114,7 @@ namespace phx::rhi::dx12
 			this->m_commandList->SetPipelineState(resource->D3D12PipelineState.Get());
 			this->m_commandList->SetGraphicsRootSignature(resource->RootSignature.Get());
 			
-			D3D_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
-			switch (resource->Topology)
-			{
-			case rhi::PrimitiveType::TriangleList:
-				topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-				break;
-			case rhi::PrimitiveType::TriangleStrip:
-				topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
-				break;
-			case rhi::PrimitiveType::LineList:
-				topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
-				break;
-			default:
-				assert(false);
-			}
-			this->m_commandList->IASetPrimitiveTopology(topology);
+			this->m_commandList->IASetPrimitiveTopology(resource->Topology);
 
 		}
 
@@ -185,7 +156,7 @@ namespace phx::rhi::dx12
 
 		void SetPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants)
 		{
-			if (this->m_activePipelineType == rhi::PipelineType::Compute)
+			if (this->m_activePipelineType == PipelineStateResource::PipelineType::Compute)
 			{
 				this->m_commandList->SetComputeRoot32BitConstants(rootParameterIndex, sizeInBytes / sizeof(uint32_t), constants, 0);
 			}
@@ -199,7 +170,7 @@ namespace phx::rhi::dx12
 		ID3D12GraphicsCommandList* m_commandList;
 		ID3D12GraphicsCommandList6* m_commandList6;
 
-		rhi::PipelineType m_activePipelineType = rhi::PipelineType::Gfx;
+		PipelineStateResource::PipelineType m_activePipelineType = PipelineStateResource::PipelineType::Gfx;
 		std::array<D3D12_RESOURCE_BARRIER, rhi::cMaxRenderTargets> m_renderPassBarriers;
 		uint8_t m_numRenderPasses = 0;
     };
