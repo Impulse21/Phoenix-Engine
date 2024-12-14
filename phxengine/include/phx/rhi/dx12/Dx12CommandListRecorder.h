@@ -2,7 +2,6 @@
 
 #include "Dx12Common.h"
 #include "phx/rhi/RHITypes.h"
-#include "phx/rhi/CommandListRecorder.h"
 
 #include "phx/rhi/dx12/Dx12GfxDevice.h"
 #include "Dx12DeviceResources.h"
@@ -14,8 +13,11 @@ namespace phx::rhi::dx12
     {
     public:
         void Open(CommandListResource* resource);
-		void Close();
-		
+		void Close()
+		{
+			m_commandList->Close();
+		}
+
 		void BeginMarker(const char*) {};
 		void EndMarker() {};
 
@@ -67,9 +69,19 @@ namespace phx::rhi::dx12
 			m_commandList->OMSetRenderTargets(1, &view, 0, nullptr);
 		}
 
-		void ClearTexture(D3D12_CPU_DESCRIPTOR_HANDLE view, phx::rhi::Color const& clearColour);
+		void ClearTexture(D3D12_CPU_DESCRIPTOR_HANDLE view, phx::rhi::Color const& clearColour) {
+			m_commandList->ClearRenderTargetView(
+				view,
+				&clearColour.R,
+				0,
+				nullptr);
+		}
 
-		void RenderPassEnd();
+		void RenderPassEnd()
+		{
+			m_commandList->ResourceBarrier((UINT)m_numRenderPasses, m_renderPassBarriers.data());
+			m_numRenderPasses = 0;
+		}
 
 		void SetViewports(phx::Span<rhi::Viewport> viewports)
 		{
@@ -139,7 +151,6 @@ namespace phx::rhi::dx12
 
 		void SetDynamicVertexBuffer(size_t offset, uint32_t slot, size_t numVertices, size_t vertexSize)
 		{
-			UNREFERENCED_PARAMETER(tempBuffer);
 			UNREFERENCED_PARAMETER(offset);
 			UNREFERENCED_PARAMETER(slot);
 			UNREFERENCED_PARAMETER(numVertices);
@@ -148,21 +159,21 @@ namespace phx::rhi::dx12
 
 		void SetDynamicIndexBuffer(size_t offset, size_t numIndicies, Format indexFormat)
 		{
-			UNREFERENCED_PARAMETER(tempBuffer);
 			UNREFERENCED_PARAMETER(offset);
 			UNREFERENCED_PARAMETER(numIndicies);
 			UNREFERENCED_PARAMETER(indexFormat);
 		}
 
-		void SetPushConstant(uint32_t rootParameterIndex, uint32_t sizeInBytes, const void* constants)
+		void SetPushConstant(uint32_t rootParameterIndex, size_t sizeInBytes, const void* constants)
 		{
+			const uint32_t size = static_cast<UINT>(sizeInBytes / sizeof(uint32_t));
 			if (this->m_activePipelineType == PipelineStateResource::PipelineType::Compute)
 			{
-				this->m_commandList->SetComputeRoot32BitConstants(rootParameterIndex, sizeInBytes / sizeof(uint32_t), constants, 0);
+				this->m_commandList->SetComputeRoot32BitConstants(rootParameterIndex, size, constants, 0);
 			}
 			else
 			{
-				this->m_commandList->SetGraphicsRoot32BitConstants(rootParameterIndex, sizeInBytes / sizeof(uint32_t), constants, 0);
+				this->m_commandList->SetGraphicsRoot32BitConstants(rootParameterIndex, size, constants, 0);
 			}
 		}
 
