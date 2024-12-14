@@ -111,6 +111,11 @@ namespace phx::rhi::dx12
 	{
 		CompPtr<ID3D12Resource> Resource;
 		CompPtr<D3D12MA::Allocation> Allocation;
+
+		DescriptorHeapAllocation DescriptorAllocation_CbvSrvUav;
+		uint8_t SrvOffset = 0xFF;
+		uint8_t UavOffset = 0xFF;
+
 		union
 		{
 			uint16_t ArraySize = 1;
@@ -123,11 +128,11 @@ namespace phx::rhi::dx12
 	struct DEFINE_ALIGNED(GpuBufferBindings, 64)
 	{
 		ID3D12Resource* Resource;
+		void* CpuMappedAddress;
 		D3D12_GPU_VIRTUAL_ADDRESS GpuAddress;
 
-		DescriptorHeapAllocation DescriptorAllocation_CbvSrvUav;
-		uint8_t SrvOffset = 0xFF;
-		uint8_t UavOffset = 0xFF;
+		D3D12_GPU_DESCRIPTOR_HANDLE Srv;
+		D3D12_GPU_DESCRIPTOR_HANDLE Uav;
 
 		DescriptorIndex BindlessIndex_Cbv = cInvalidDescriptorIndex;
 		DescriptorIndex BindlessIndex_Srv = cInvalidDescriptorIndex;

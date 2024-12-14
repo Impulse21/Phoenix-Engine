@@ -194,6 +194,7 @@
     <ClInclude Include="..\..\include\phx\rhi\GfxDevice.h" />
     <ClInclude Include="..\..\include\phx\rhi\RHITypes.h" />
     <ClInclude Include="..\..\include\phx\rhi\ShaderCompiler.h" />
+    <ClInclude Include="..\..\include\phx\rhi\TempMemoryBlockAllocator.h" />
     <ClInclude Include="..\..\src\renderer\ImGui\imgui_impl_win32.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
@@ -216,6 +217,7 @@
     <ClCompile Include="..\..\src\rhi\dx12\Dx12GfxDevice.cpp" />
     <ClCompile Include="..\..\src\rhi\GfxDevice.cpp" />
     <ClCompile Include="..\..\src\rhi\ShaderCompiler_DXC.cpp" />
+    <ClCompile Include="..\..\src\rhi\TempMemoryBlockAllocator.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profile|Gaming.Desktop.x64'">Create</PrecompiledHeader>

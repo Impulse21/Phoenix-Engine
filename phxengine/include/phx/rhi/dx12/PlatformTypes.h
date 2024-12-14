@@ -20,4 +20,6 @@ namespace phx::rhi::platform
 	using GpuBufferBindings = phx::rhi::dx12::GpuBufferBindings;
 
 	using CommandListResource = phx::rhi::dx12::CommandListResource;
+
+	using TempMemoryBlockAllocator = std::monostate;
 }

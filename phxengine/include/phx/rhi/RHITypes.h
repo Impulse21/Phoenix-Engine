@@ -803,7 +803,15 @@ namespace phx::rhi
     using GpuBufferHandle = Handle<GpuBuffer>;
     struct GpuBufferDescriptor
     {
+        const char* DebugName = "";
+        rhi::Format Format = rhi::Format::UNKNOWN;
+        uint32_t SizeInBytes = 0;
+        uint32_t Stride = 0;
+        Usage Usage = Usage::Default;
 
+        BindingFlags BindingFlags = BindingFlags::ShaderResource;
+        ResourceMiscFlags MiscFlags = ResourceMiscFlags::None;
+        ResourceStates InitialState = ResourceStates::ShaderResource;
     };
 
 #if false

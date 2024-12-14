@@ -61,18 +61,20 @@ namespace phx::rhi
 			m_platformRecorder.Draw(vertexCount, instanceCount, startVertex, startInstance);
 		}
 
-		void SetDynamicVertexBuffer(GpuBufferHandle tempBuffer, size_t offset, uint32_t slot, size_t numVertices, size_t vertexSize)
+		void SetDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData)
 		{
-			UNREFERENCED_PARAMETER(tempBuffer);
+			TempMemoryBlockAllocator& tempAlloator = m_device->GetBlockAllocator();
+			
+			// If we are out of space, allocate a new block
+			// TODO: I am here.
 			UNREFERENCED_PARAMETER(offset);
 			UNREFERENCED_PARAMETER(slot);
 			UNREFERENCED_PARAMETER(numVertices);
 			UNREFERENCED_PARAMETER(vertexSize);
 		}
 
-		void SetDynamicIndexBuffer(GpuBufferHandle tempBuffer, size_t offset, size_t numIndicies, Format indexFormat)
+		void SetDynamicIndexBuffer(size_t offset, size_t numIndicies, Format indexFormat)
 		{
-			UNREFERENCED_PARAMETER(tempBuffer);
 			UNREFERENCED_PARAMETER(offset);
 			UNREFERENCED_PARAMETER(numIndicies);
 			UNREFERENCED_PARAMETER(indexFormat);

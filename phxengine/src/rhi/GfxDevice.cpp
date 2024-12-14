@@ -22,10 +22,10 @@ GfxDevice::GfxDevice(rhi::GfxDeviceDescriptor const& descriptor)
 	, m_swapChainPool(1)
 	, m_commandListPool(static_cast<uint16_t>(ThreadPool::GetNumCores() * 2)) // Double for async
 {
-
+	m_blockAllocator.Initialize(this, 128_MiB, 4_MiB);
 }
 
 GfxDevice::~GfxDevice()
 {
-
+	m_blockAllocator.Finalize();
 }

@@ -6,6 +6,7 @@
 #include "phx/core/Memory.h"
 #include "phx/rhi/RHITypes.h"
 #include "phx/rhi/ResourcePool.h"
+#include "phx/rhi/TempMemoryBlockAllocator.h"
 
 #include "PlatformTypes.h"
 
@@ -169,6 +170,33 @@ namespace phx::rhi
             m_deferredQueue.push_back(d);
         }
 
+        GpuBufferHandle CreateBuffer(GpuBufferDescriptor const& desc, MemInfo* initData = nullptr)
+        {
+            GpuBufferHandle handle = m_gpuBufferPool.Allocate();
+
+            m_platformDevice.CreateBuffer(
+                desc,
+                *m_gpuBufferPool.Get<platform::GpuBufferResource>(handle),
+                *m_gpuBufferPool.Get<platform::GpuBufferBindings>(handle),
+                initData);
+
+            return handle;
+        }
+
+        void DeleteBuffer(GpuBufferHandle handle)
+        {
+            DeferredItem d =
+            {
+                m_frameCount,
+                [=]()
+                {
+                    m_gpuBufferPool.Free(handle);
+                }
+            };
+
+            m_deferredQueue.push_back(d);
+        }
+
         DescriptorIndex GetDescriptorIndex(TextureHandle texture, SubresouceType type = SubresouceType::SRV)
         {
             UNREFERENCED_PARAMETER(texture);
@@ -184,10 +212,12 @@ namespace phx::rhi
         GpuBufferPool& GetGpuBufferPool() { return  m_gpuBufferPool; }
         PipelineStatePool& GetPipelineStatePool() { return  m_pipelineStatePool; }
 
+        platform::GfxDevice& Platform() { return m_platformDevice; }
+        TempMemoryBlockAllocator& GetBlockAllocator() { return m_blockAllocator; }
 
     private:
         platform::GfxDevice m_platformDevice;
-
+        TempMemoryBlockAllocator m_blockAllocator;
         CommandListPool m_commandListPool;
         SwapChainPool m_swapChainPool;
         TexturePool m_texturePool;
