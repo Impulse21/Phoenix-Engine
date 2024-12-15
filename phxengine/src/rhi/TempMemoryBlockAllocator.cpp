@@ -40,7 +40,7 @@ void TempMemoryBlockAllocator::EndFrame()
 	m_headAtStartOfFrame = m_tail;
 }
 
-rhi::DynamicMemoryPage TempMemoryBlockAllocator::GetNextMemoryBlock()
+rhi::DynamicMemoryBlock TempMemoryBlockAllocator::GetNextMemoryBlock()
 {
 	std::scoped_lock _(this->m_mutex);
 

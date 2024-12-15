@@ -10,7 +10,7 @@ namespace phx::rhi
 {
 	class GfxDevice;
 
-	struct DynamicMemoryPage
+	struct DynamicMemoryBlock
 	{
 		GpuBufferHandle BufferHandle;
 		size_t Offset;
@@ -25,9 +25,10 @@ namespace phx::rhi
 
 		void EndFrame();
 
-		DynamicMemoryPage GetNextMemoryBlock();
+		DynamicMemoryBlock GetNextMemoryBlock();
 
 		uint32_t GetBufferSize() { return (this->m_bufferMask + 1); }
+		uint32_t GetBlockSize() { return m_blockSize; }
 
 	private:
 		uint32_t m_blockSize;

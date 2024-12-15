@@ -1,12 +1,66 @@
 #pragma once
 
+#include "phx/core/Memory.h"
 #include "RHITypes.h"
 #include "PlatformTypes.h"
 #include "GfxDevice.h"
+#include "TempMemoryBlockAllocator.h"
 
 namespace phx::rhi
 {
 	class GfxDevice;
+
+	// One per thread - not thread safe
+
+	struct DynamicAllocation
+	{
+		rhi::GpuBufferHandle BufferHandle;
+		size_t Offset;
+		uint8_t* Data;
+
+		void Set(v)
+		{
+			std::memcpy(Data, drawList->VtxBuffer.Data, drawList->VtxBuffer.size() * sizeof(ImDrawVert));
+		}
+	};
+
+	struct DynamicAllocator
+	{
+		DynamicAllocator(TempMemoryBlockAllocator& blockAllocator)
+			: BlockAllocator(blockAllocator)
+			, ByteOffset(0) 
+		{
+		}
+
+		DynamicAllocation Allocate(uint32_t byteSize, uint32_t alignment)
+		{
+			if (!Block.BufferHandle.IsValid())
+			{
+				Block = BlockAllocator.GetNextMemoryBlock();
+			}
+
+			uint32_t offset = AlignUp(ByteOffset, alignment);
+			ByteOffset = offset + byteSize;
+
+			if (ByteOffset > BlockAllocator.GetBlockSize())
+			{
+				Block = BlockAllocator.GetNextMemoryBlock();
+				offset = 0;
+				ByteOffset = byteSize;
+			}
+
+			return DynamicAllocation{
+				.BufferHandle = Block.BufferHandle,
+				.Offset = offset + Block.Offset,
+				.Data = Block.Data + offset
+			};
+		}
+
+		DynamicMemoryBlock Block = {};
+		uint32_t ByteOffset = 0;
+		TempMemoryBlockAllocator& BlockAllocator;
+	};
+
 
 	class GfxCommandListRecorder
 	{
@@ -63,8 +117,9 @@ namespace phx::rhi
 
 		void SetDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData)
 		{
-			TempMemoryBlockAllocator& tempAlloator = m_device->GetBlockAllocator();
-			
+			DynamicAllocation alloc = m_dynamicAllocator.Allocate(vertexSize, 16);
+
+
 			// If we are out of space, allocate a new block
 			// TODO: I am here.
 			UNREFERENCED_PARAMETER(offset);
@@ -96,6 +151,7 @@ namespace phx::rhi
 
 	private:
 		rhi::GfxDevice* m_device;
+		DynamicAllocator m_dynamicAllocator;
 		platform::CommandListResource* m_platformResource;
 		platform::GfxCommandListRecorder m_platformRecorder;
 

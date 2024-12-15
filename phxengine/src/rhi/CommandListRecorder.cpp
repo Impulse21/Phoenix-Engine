@@ -7,6 +7,7 @@ using namespace phx::rhi;
 
 GfxCommandListRecorder::GfxCommandListRecorder(GfxDevice* device, CommandListHandle cmdHandle)
     : m_device(device)
+    , m_dynamicAllocator(device->GetBlockAllocator())
 {
     m_platformResource = m_device->GetCommandListPool().Get<platform::CommandListResource>(cmdHandle);
     assert(m_platformResource->Type == CommandQueueType::Graphics);
