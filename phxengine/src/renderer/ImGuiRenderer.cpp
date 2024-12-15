@@ -209,22 +209,13 @@ void ImGuiRenderSystem::Render(GfxCommandListRecorder& recorder)
         Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
         recorder.SetViewports({ v });
 
-#if false
         const Format indexFormat = sizeof(ImDrawIdx) == 2 ? Format::R16_UINT : Format::R32_UINT;
 
-		EmberGfx::DynamicAllocator dynamicAllocator = {};
         for (int i = 0; i < drawData->CmdListsCount; ++i)
         {
             const ImDrawList* drawList = drawData->CmdLists[i];
-
-			EmberGfx::DynamicBuffer dynamicBuffer = dynamicAllocator.Allocate(drawList->VtxBuffer.size() * sizeof(ImDrawVert), 16);
-
-            std::memcpy(dynamicBuffer.Data, drawList->VtxBuffer.Data, drawList->VtxBuffer.size() * sizeof(ImDrawVert));
-            recorder.SetDynamicVertexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, 0, drawList->VtxBuffer.size(), sizeof(ImDrawVert));
-
-            dynamicBuffer = dynamicAllocator.Allocate(drawList->IdxBuffer.size() * sizeof(ImDrawIdx), 16);
-            std::memcpy(dynamicBuffer.Data, drawList->IdxBuffer.Data, drawList->IdxBuffer.size() * sizeof(ImDrawIdx));
-            recorder.SetDynamicIndexBuffer(dynamicBuffer.BufferHandle, dynamicBuffer.Offset, drawList->IdxBuffer.size(), indexFormat);
+            recorder.SetDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data);
+            recorder.SetDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data);
 
             int indexOffset = 0;
             for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
@@ -261,7 +252,6 @@ void ImGuiRenderSystem::Render(GfxCommandListRecorder& recorder)
             }
         }
 
-#endif
         // cmd->TransitionBarriers(Span<GpuBarrier>(postBarriers.data(), postBarriers.size()));
         ImGui::EndFrame();
     }

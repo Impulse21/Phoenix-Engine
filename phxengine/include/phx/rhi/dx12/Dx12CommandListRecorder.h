@@ -149,19 +149,29 @@ namespace phx::rhi::dx12
 				startInstance);
 		}
 
-		void SetDynamicVertexBuffer(size_t offset, uint32_t slot, size_t numVertices, size_t vertexSize)
+		void SetDynamicVertexBuffer(dx12::GpuBufferBindings* bindings, size_t offset, uint32_t slot, size_t numVertices, size_t vertexStride)
 		{
-			UNREFERENCED_PARAMETER(offset);
-			UNREFERENCED_PARAMETER(slot);
-			UNREFERENCED_PARAMETER(numVertices);
-			UNREFERENCED_PARAMETER(vertexSize);
+			D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
+			vertexBufferView.BufferLocation = bindings->GpuAddress + offset;
+			vertexBufferView.SizeInBytes = static_cast<UINT>(numVertices * vertexStride);
+			vertexBufferView.StrideInBytes = static_cast<UINT>(vertexStride);
+
+			m_commandList->IASetVertexBuffers(slot, 1, &vertexBufferView);
+			m_commandList->IASetVertexBuffers(slot, 1, &vertexBufferView);
 		}
 
-		void SetDynamicIndexBuffer(size_t offset, size_t numIndicies, Format indexFormat)
+		void SetDynamicIndexBuffer(dx12::GpuBufferBindings* bindings, size_t offset, size_t numIndicies, Format indexFormat)
 		{
-			UNREFERENCED_PARAMETER(offset);
-			UNREFERENCED_PARAMETER(numIndicies);
-			UNREFERENCED_PARAMETER(indexFormat);
+			const size_t indexStrideInBytes = indexFormat == Format::R16_UINT ? 2 : 4;
+			const size_t indexSizeInBytes = numIndicies * indexStrideInBytes;
+
+			D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
+			indexBufferView.BufferLocation = bindings->GpuAddress + offset;
+			indexBufferView.SizeInBytes = static_cast<UINT>(indexSizeInBytes);
+			const auto& formatMapping = GetDxgiFormatMapping(indexFormat);
+
+			indexBufferView.Format = formatMapping.SrvFormat;
+			this->m_commandList->IASetIndexBuffer(&indexBufferView);
 		}
 
 		void SetPushConstant(uint32_t rootParameterIndex, size_t sizeInBytes, const void* constants)

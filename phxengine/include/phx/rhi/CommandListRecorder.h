@@ -18,9 +18,9 @@ namespace phx::rhi
 		size_t Offset;
 		uint8_t* Data;
 
-		void Set(v)
+		void Set(const void* src, size_t size)
 		{
-			std::memcpy(Data, drawList->VtxBuffer.Data, drawList->VtxBuffer.size() * sizeof(ImDrawVert));
+			std::memcpy(Data, src, size);
 		}
 	};
 
@@ -118,21 +118,22 @@ namespace phx::rhi
 		void SetDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData)
 		{
 			DynamicAllocation alloc = m_dynamicAllocator.Allocate(vertexSize, 16);
+			alloc.Set(vertexBufferData, numVertices * vertexSize);
 
-
-			// If we are out of space, allocate a new block
-			// TODO: I am here.
-			UNREFERENCED_PARAMETER(offset);
-			UNREFERENCED_PARAMETER(slot);
-			UNREFERENCED_PARAMETER(numVertices);
-			UNREFERENCED_PARAMETER(vertexSize);
+			auto* platformBindings = m_device->GetGpuBufferPool().Get<platform::GpuBufferBindings>(alloc.BufferHandle);
+			m_platformRecorder.SetDynamicVertexBuffer(platformBindings, alloc.Offset, slot, numVertices, vertexSize);
 		}
 
-		void SetDynamicIndexBuffer(size_t offset, size_t numIndicies, Format indexFormat)
+		void SetDynamicIndexBuffer(size_t numIndicies, Format indexFormat, const void* indexBufferData)
 		{
-			UNREFERENCED_PARAMETER(offset);
-			UNREFERENCED_PARAMETER(numIndicies);
-			UNREFERENCED_PARAMETER(indexFormat);
+			const size_t indexStrideInBytes = indexFormat == Format::R16_UINT ? 2 : 4;
+			const size_t indexSizeInBytes = numIndicies * indexStrideInBytes;
+
+			DynamicAllocation alloc = m_dynamicAllocator.Allocate(indexSizeInBytes, 16);
+			alloc.Set(indexBufferData, indexSizeInBytes);
+
+			auto* platformBindings = m_device->GetGpuBufferPool().Get<platform::GpuBufferBindings>(alloc.BufferHandle);
+			m_platformRecorder.SetDynamicIndexBuffer(platformBindings, alloc.Offset, numIndicies, indexFormat);
 		}
 
 		void SetPushConstant(uint32_t rootParameterIndex, size_t sizeInBytes, const void* constants)
