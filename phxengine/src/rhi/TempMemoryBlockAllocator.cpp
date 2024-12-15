@@ -23,8 +23,9 @@ void TempMemoryBlockAllocator::Initialize(GfxDevice* device, size_t bufferSize, 
 	platform::GpuBufferBindings* platformBufferBinding = m_gfxDevice->GetGpuBufferPool().Get<platform::GpuBufferBindings>(m_buffer);
 	m_data = reinterpret_cast<uint8_t*>(platformBufferBinding->CpuMappedAddress);
 
-	m_platform.Initialize(device->Platform(), platformBufferBinding);
+	m_platform.Initialize(m_gfxDevice->Platform(), platformBufferBinding);
 }
+
 
 void TempMemoryBlockAllocator::Finalize()
 {
@@ -36,7 +37,7 @@ void TempMemoryBlockAllocator::Finalize()
 
 void TempMemoryBlockAllocator::EndFrame()
 {
-	m_platform.EndFrame();
+	m_platform.EndFrame(m_gfxDevice->Platform());
 	m_headAtStartOfFrame = m_tail;
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Dx12GfxDevice.h"
+#include "Dx12TempMemoryBlockAllocator.h"
 #include "Dx12CommandListRecorder.h"
 
 namespace phx::rhi::platform
@@ -21,5 +22,5 @@ namespace phx::rhi::platform
 
 	using CommandListResource = phx::rhi::dx12::CommandListResource;
 
-	using TempMemoryBlockAllocator = std::monostate;
+	using TempMemoryBlockAllocator = phx::rhi::dx12::TempMemoryBlockAllocator;
 }
