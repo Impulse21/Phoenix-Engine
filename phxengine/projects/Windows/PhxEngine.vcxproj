@@ -188,6 +188,7 @@
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12DescriptorHeaps.h" />
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12DeviceResources.h" />
     <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12GfxDevice.h" />
+    <ClInclude Include="..\..\include\phx\rhi\dx12\Dx12TempMemoryBlockAllocator.h" />
     <ClInclude Include="..\..\include\phx\rhi\dx12\PlatformTypes.h" />
     <ClInclude Include="..\..\include\phx\rhi\Handle.h" />
     <ClInclude Include="..\..\include\phx\rhi\ResourcePool.h" />
@@ -215,6 +216,7 @@
     <ClCompile Include="..\..\src\rhi\dx12\Dx12DescriptorHeaps.cpp" />
     <ClCompile Include="..\..\src\rhi\dx12\Dx12DxgiFormatMapping.cpp" />
     <ClCompile Include="..\..\src\rhi\dx12\Dx12GfxDevice.cpp" />
+    <ClCompile Include="..\..\src\rhi\dx12\Dx12TempMemoryBlockAllocator.cpp" />
     <ClCompile Include="..\..\src\rhi\GfxDevice.cpp" />
     <ClCompile Include="..\..\src\rhi\ShaderCompiler_DXC.cpp" />
     <ClCompile Include="..\..\src\rhi\TempMemoryBlockAllocator.cpp" />
