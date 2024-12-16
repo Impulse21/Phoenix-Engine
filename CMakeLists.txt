@@ -34,14 +34,13 @@ else()
 endif()
 
 option(PHX_TARGET_GDK "Target GDK for PC" ON)
-option(PHX_ENABLE_BACKEND "Enable Graphics Backend" ON)
 option(PHX_ENABLE_VULKAN "Enable Vulkan backend" OFF)
 
 # DirectX 12 - Only available on Windows and if the backend is enabled
 cmake_dependent_option(
     PHX_ENABLE_DX12
     "Enable DirectX 12 Backend" ON OFF
-    PHX_ENABLE_BACKEND AND IS_WINDOWS
+    IS_WINDOWS
 )
 
 # GDK - Only available on Windows and if DirectX 12 is enabled
@@ -51,6 +50,9 @@ cmake_dependent_option(
     IS_WINDOWS
 )
 
+if(PHX_ENABLE_DX12 AND PHX_ENABLE_VULKAN)
+    message(FATAL_ERROR "Only one backend can be enabled: USE_DX12 or USE_VULKAN.")
+endif()
 #if (USING_MSVC)
 #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4 /WX /MP")
 #endif()
@@ -72,10 +74,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
 
 include(CMakeDependentOption)
-cmake_dependent_option(PHX_WITH_DX12 "Enable the DX12 version of Donut" ON "WIN32" OFF)
-
 add_subdirectory(PhxEngine)
-add_subdirectory(PhxEditor)
-# add_subdirectory(Tests)
+#add_subdirectory(PhxEditor)
+#add_subdirectory(Tests)
 #add_subdirectory(Tools/PhxAssetConverter)
-add_subdirectory(Tools/PhxShaderCompiler)
+#add_subdirectory(Tools/PhxShaderCompiler)
