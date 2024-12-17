@@ -70,10 +70,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 # Output everything to Bin because some commands copies it to destination exe
 # Not the best way, could get rid of .libs, but for now it'll do
 
-
-
-
 include(CMakeDependentOption)
+
+add_subdirectory(3rdparty)
 add_subdirectory(PhxEngine)
 #add_subdirectory(PhxEditor)
 #add_subdirectory(Tests)
