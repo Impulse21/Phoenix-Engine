@@ -102,19 +102,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(dxc)
 
-file(MAKE_DIRECTORY ${dxc_SOURCE_DIR}/include)
-file(COPY ${dxc_SOURCE_DIR}/inc/d3d12shader.h DESTINATION ${dxc_SOURCE_DIR}/include/dxc)
-file(COPY ${dxc_SOURCE_DIR}/inc/dxcapi.h DESTINATION ${dxc_SOURCE_DIR}/include/dxc)
-add_library(
-	DirectXShaderCompiler
-	INTERFACE
-	"${dxc_SOURCE_DIR}/include/dxc/d3d12shader.h"
-	"${dxc_SOURCE_DIR}/include/dxc/dxcapi.h"
-	"${dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll"
-	"${dxc_SOURCE_DIR}/bin/x64/dxil.dll")
-    
 file(GLOB_RECURSE dxc_include "${dxc_SOURCE_DIR}/include")
-set_target_properties(DirectXShaderCompiler  PROPERTIES FOLDER ${3rdparty_folder})
 
 
 add_library(DirectXShaderCompiler SHARED IMPORTED)
@@ -176,7 +164,7 @@ if (PHX_ENABLE_DX12)
     FetchContent_Declare(
         pix 
         URL ${PIX_URL}
-        SOURCE_DIR ${CMAKE_BINARY_DIR}/pix))
+        SOURCE_DIR ${CMAKE_BINARY_DIR}/pix)
     FetchContent_MakeAvailable(pix)
 
     add_library(pix SHARED IMPORTED)
