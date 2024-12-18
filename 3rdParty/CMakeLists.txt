@@ -1,4 +1,4 @@
-set(extern_folder 3rdParty)
+set(3rdparty_folder 3rdParty)
 
 add_library(spdlog INTERFACE)
 target_include_directories(spdlog INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/spdlog)
@@ -6,12 +6,12 @@ target_include_directories(spdlog INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/spdlog)
 add_library(cgltf INTERFACE 
     ${CMAKE_CURRENT_SOURCE_DIR}/cgltf/cgltf.h)
 target_include_directories(cgltf INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/cgltf)
-set_target_properties(cgltf PROPERTIES FOLDER ${extern_folder})
+set_target_properties(cgltf PROPERTIES FOLDER ${3rdparty_folder})
 
 add_library(entt INTERFACE 
     ${CMAKE_CURRENT_SOURCE_DIR}/entt/entt.hpp)
 target_include_directories(entt INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/entt)
-set_target_properties(entt PROPERTIES FOLDER ${extern_folder})
+set_target_properties(entt PROPERTIES FOLDER ${3rdparty_folder})
 
 set(imgui_src
     ${CMAKE_CURRENT_SOURCE_DIR}/imgui/imconfig.h
@@ -30,16 +30,16 @@ set(imgui_src
 
 add_library(imgui STATIC ${imgui_src})
 target_include_directories(imgui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
-set_target_properties(imgui PROPERTIES FOLDER ${extern_folder})
+set_target_properties(imgui PROPERTIES FOLDER ${3rdparty_folder})
 
 option(BUILD_TOOLS "" OFF)
 option(BUILD_DX11 "" OFF)
 option(BUILD_DX12 "" OFF)
 
 add_subdirectory(DirectXTex)
-set_target_properties(DirectXTex PROPERTIES FOLDER ${extern_folder})
+set_target_properties(DirectXTex PROPERTIES FOLDER ${3rdparty_folder})
 
 
 add_subdirectory(D3D12MemoryAllocator)
-set_target_properties(D3D12MemoryAllocator PROPERTIES FOLDER ${extern_folder})
+set_target_properties(D3D12MemoryAllocator PROPERTIES FOLDER ${3rdparty_folder})
  target_include_directories(D3D12MemoryAllocator INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/D3D12MemoryAllocator/include)

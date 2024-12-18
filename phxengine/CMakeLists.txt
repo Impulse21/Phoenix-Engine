@@ -83,8 +83,59 @@ target_include_directories(PhxEngine PUBLIC
     $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>)
 
 
-target_link_libraries(PhxEngine PUBLIC spdlog)
+target_link_libraries(PhxEngine PUBLIC spdlog imgui entt cgltf DirectXTex)
 set_target_properties(PhxEngine PROPERTIES FOLDER "Engine")
+
+# DXC
+message("Fetching DirectXShaderCompiler")
+
+if (USING_MSVC)
+    set(DXC_SDK_URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2407/dxc_2024_07_31.zip)
+else()
+    set(DXC_SDK_URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2407/dxc_2024_07_31_clang_cl.zip)
+endif()
+
+FetchContent_Declare(
+    dxc 
+    URL https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.7.2212.1/dxc_2023_03_01.zip
+    SOURCE_DIR ${CMAKE_BINARY_DIR}/dxc)
+
+FetchContent_MakeAvailable(dxc)
+
+file(MAKE_DIRECTORY ${dxc_SOURCE_DIR}/include)
+file(COPY ${dxc_SOURCE_DIR}/inc/d3d12shader.h DESTINATION ${dxc_SOURCE_DIR}/include/dxc)
+file(COPY ${dxc_SOURCE_DIR}/inc/dxcapi.h DESTINATION ${dxc_SOURCE_DIR}/include/dxc)
+add_library(
+	DirectXShaderCompiler
+	INTERFACE
+	"${dxc_SOURCE_DIR}/include/dxc/d3d12shader.h"
+	"${dxc_SOURCE_DIR}/include/dxc/dxcapi.h"
+	"${dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll"
+	"${dxc_SOURCE_DIR}/bin/x64/dxil.dll")
+    
+file(GLOB_RECURSE dxc_include "${dxc_SOURCE_DIR}/include")
+set_target_properties(DirectXShaderCompiler  PROPERTIES FOLDER ${3rdparty_folder})
+
+
+add_library(DirectXShaderCompiler SHARED IMPORTED)
+set_target_properties(DirectXShaderCompiler PROPERTIES
+    IMPORTED_LOCATION "${dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll"
+    IMPORTED_IMPLIB "${dxc_SOURCE_DIR}/lib/x64/dxcompiler.lib"
+)
+
+add_library(Dxil SHARED IMPORTED)
+set_target_properties(Dxil PROPERTIES
+    IMPORTED_LOCATION "${dxc_SOURCE_DIR}/bin/x64/dxil.dll"
+    IMPORTED_IMPLIB "${dxc_SOURCE_DIR}/lib/x64/dxil.lib"
+)
+
+target_include_directories(PhxEngine PRIVATE 
+    ${dxc_include}
+)
+
+target_link_libraries(PhxEngine PRIVATE DirectXShaderCompiler Dxil)
+
+message("DirectXShaderCompiler fetched")
 
 if (PHX_ENABLE_DX12)
     
@@ -114,9 +165,32 @@ if (PHX_ENABLE_DX12)
     )
 
     file(GLOB_RECURSE d3d12-agility-sdk_include "${d3d12-agility-sdk_SOURCE_DIR}/build/native/include/*.h")
-    target_include_directories(PhxEngine PRIVATE 
-        ${d3d12-agility-sdk_include}
+    message("D3D12 Agility SDK fetched")
+
+    
+    message("Fetching PIX")
+    
+    set(PIX_VERSION "1.0.240308001")
+    string(CONFIGURE "https://www.nuget.org/api/v2/package/WinPixEventRuntime/${PIX_VERSION}" PIX_URL)
+
+    FetchContent_Declare(
+        pix 
+        URL ${PIX_URL}
+        SOURCE_DIR ${CMAKE_BINARY_DIR}/pix))
+    FetchContent_MakeAvailable(pix)
+
+    add_library(pix SHARED IMPORTED)
+    set_target_properties(pix PROPERTIES
+        IMPORTED_LOCATION "${pix_SOURCE_DIR}/bin/x64/WinPixEventRuntime.dll"
+        IMPORTED_IMPLIB "${pix_SOURCE_DIR}/bin/x64/WinPixEventRuntime.lib"
     )
 
-    target_link_libraries(PhxEngine PRIVATE AgilitySDK)
+    file(GLOB_RECURSE pix_include "${pix_SOURCE_DIR}/Include/WinPixEventRuntime/*.h")
+    message("PIX fetched")
+
+    target_include_directories(PhxEngine PRIVATE 
+        ${d3d12-agility-sdk_include}
+        ${pix_include}
+    )
+    target_link_libraries(PhxEngine PRIVATE AgilitySDK D3D12MemoryAllocator PIX)
 endif()
