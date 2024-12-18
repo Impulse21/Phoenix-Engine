@@ -9,7 +9,7 @@ target_include_directories(cgltf INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/cgltf)
 set_target_properties(cgltf PROPERTIES FOLDER ${3rdparty_folder})
 
 add_library(entt INTERFACE 
-    ${CMAKE_CURRENT_SOURCE_DIR}/entt/entt.hpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/entt/src/entt/entt.hpp)
 target_include_directories(entt INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/entt)
 set_target_properties(entt PROPERTIES FOLDER ${3rdparty_folder})
 
@@ -42,4 +42,3 @@ set_target_properties(DirectXTex PROPERTIES FOLDER ${3rdparty_folder})
 
 add_subdirectory(D3D12MemoryAllocator)
 set_target_properties(D3D12MemoryAllocator PROPERTIES FOLDER ${3rdparty_folder})
- target_include_directories(D3D12MemoryAllocator INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/D3D12MemoryAllocator/include)
