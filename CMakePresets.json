@@ -19,7 +19,7 @@
       "name": "default-clang",
       "inherits": "default",
       "hidden": true,
-      "cacheVariables": { 
+      "cacheVariables": {
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++"
       }
@@ -28,7 +28,7 @@
       "name": "default-clang-cl",
       "inherits": "default",
       "hidden": true,
-      "cacheVariables": { 
+      "cacheVariables": {
         "CMAKE_C_COMPILER": "ClangCL",
         "CMAKE_CXX_COMPILER": "ClangCL"
       }
@@ -47,7 +47,7 @@
       "inherits": "default",
       "hidden": true,
       "generator": "Visual Studio 17 2022",
-      "cacheVariables": { 
+      "cacheVariables": {
         "CMAKE_C_COMPILER": "ClangCL",
         "CMAKE_CXX_COMPILER": "ClangCL",
         "CMAKE_VS_PLATFORM_TOOLSET": "ClangCL"
@@ -150,7 +150,7 @@
     },
     {
       "name": "vs2022-clang-profile-build",
-      "configurePreset": "vs2022-clang-release"
+      "configurePreset": "vs2022-clang-profile"
     },
     {
       "name": "vs2022-clang-release-build",
@@ -162,7 +162,7 @@
     },
     {
       "name": "vs2022-msvc-profile-build",
-      "configurePreset": "vs2022-msvc-release"
+      "configurePreset": "vs2022-msvc-profile"
     },
     {
       "name": "vs2022-msvc-release-build",
@@ -177,3 +177,4 @@
     }
   }
 }
+  
