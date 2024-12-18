@@ -1,171 +1,179 @@
 {
-    "version": 3,
-    "cmakeMinimumRequired": {
-      "major": 3,
-      "minor": 21,
-      "patch": 0
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/.build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
     },
-    "configurePresets": [
-      {
-        "name": "default",
-        "hidden": true,
-        "generator": "Ninja",
-        "binaryDir": "${sourceDir}/.build/${presetName}",
-        "cacheVariables": {
-          "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-        }
-      },
-      {
-        "name": "default-clang",
-        "inherits": "default",
-        "hidden": true,
-        "cacheVariables": { 
-          "CMAKE_C_COMPILER": "clang",
-          "CMAKE_CXX_COMPILER": "clang++"
-        }
-      },
-      {
-        "name": "default-vs2022",
-        "inherits": "default",
-        "hidden": true,
-        "generator": "Visual Studio 17 2022",
-        "cacheVariables": {
-          "CMAKE_VS_PLATFORM_TOOLSET": "v143"
-        }
-      },
-      {
-        "name": "default-vs2022-clang",
-        "inherits": "default",
-        "hidden": true,
-        "generator": "Visual Studio 17 2022",
-        "cacheVariables": { 
-          "CMAKE_C_COMPILER": "ClangCL",
-          "CMAKE_CXX_COMPILER": "ClangCL",
-          "CMAKE_VS_PLATFORM_TOOLSET": "ClangCL"
-        }
-      },
-      {
-        "name": "clang-debug",
-        "inherits": "default-clang",
-        "description": "Build using Clang with Debug configuration",
-        "cacheVariables": {
-          "USE_VULKAN": "OFF",
-          "USE_DX12": "ON"
-        }
-      },
-      {
-        "name": "clang-profile",
-        "inherits": "default-clang",
-        "description": "Build using Clang with Release configuration",
-        "cacheVariables": {
-          "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-          "USE_VULKAN": "OFF",
-          "USE_DX12": "ON"
-        }
-      },
-      {
-        "name": "clang-release",
-        "inherits": "default-clang",
-        "description": "Build using Clang with Release configuration",
-        "cacheVariables": {
-          "CMAKE_BUILD_TYPE": "Release",
-          "USE_VULKAN": "OFF",
-          "USE_DX12": "ON"
-        }
-      },
-      {
-        "name": "vs2022-clang-debug",
-        "inherits": "default-vs2022-clang",
-        "description": "Build using Clang(VS) with Debug configuration",
-        "cacheVariables": {
-          "USE_VULKAN": "OFF",
-          "USE_DX12": "ON"
-        }
-      },
-      {
-        "name": "vs2022-clang-profile",
-        "inherits": "default-vs2022-clang",
-        "description": "Build using Clang(VS) with Release configuration",
-        "cacheVariables": {
-          "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-          "USE_VULKAN": "OFF",
-          "USE_DX12": "ON"
-        }
-      },
-      {
-        "name": "vs2022-clang-release",
-        "inherits": "default-vs2022-clang",
-        "description": "Build using Clang(VS) with Release configuration",
-        "cacheVariables": {
-          "CMAKE_BUILD_TYPE": "Release",
-          "USE_VULKAN": "OFF",
-          "USE_DX12": "ON"
-        }
-      },
-      {
-        "name": "vs2022-msvc-debug",
-        "inherits": "default-vs2022",
-        "description": "Build using MSVC with Debug configuration",
-        "cacheVariables": {
-          "CMAKE_BUILD_TYPE": "Debug",
-          "USE_VULKAN": "OFF",
-          "USE_DX12": "ON"
-        }
-      },
-      {
-        "name": "vs2022-msvc-profile",
-        "inherits": "default-vs2022",
-        "description": "Build using MSVC with Release configuration",
-        "cacheVariables": {
-          "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-          "USE_VULKAN": "OFF",
-          "USE_DX12": "ON"
-        }
-      },
-      {
-        "name": "vs2022-msvc-release",
-        "inherits": "default-vs2022",
-        "description": "Build using MSVC with Release configuration",
-        "cacheVariables": {
-          "CMAKE_BUILD_TYPE": "Release",
-          "USE_VULKAN": "OFF",
-          "USE_DX12": "ON"
-        }
+    {
+      "name": "default-clang",
+      "inherits": "default",
+      "hidden": true,
+      "cacheVariables": { 
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
       }
-    ],
-  
-    "buildPresets": [
-      {
-        "name": "vs2022-clang-debug-build",
-        "configurePreset": "vs2022-clang-debug"
-      },
-      {
-        "name": "vs2022-clang-profile-build",
-        "configurePreset": "vs2022-clang-release"
-      },
-      {
-        "name": "vs2022-clang-release-build",
-        "configurePreset": "vs2022-clang-release"
-      },
-      {
-        "name": "vs2022-msvc-debug-build",
-        "configurePreset": "vs2022-msvc-debug"
-      },
-      {
-        "name": "vs2022-msvc-profile-build",
-        "configurePreset": "vs2022-msvc-release"
-      },
-      {
-        "name": "vs2022-msvc-release-build",
-        "configurePreset": "vs2022-msvc-release"
+    },
+    {
+      "name": "default-clang-cl",
+      "inherits": "default",
+      "hidden": true,
+      "cacheVariables": { 
+        "CMAKE_C_COMPILER": "ClangCL",
+        "CMAKE_CXX_COMPILER": "ClangCL"
       }
-    ],
-  
-    "vendor": {
-      "microsoft.com/VisualStudio": {
-        "hostArch": "x64",
-        "targetArch": "x64"
+    },
+    {
+      "name": "default-vs2022",
+      "inherits": "default",
+      "hidden": true,
+      "generator": "Visual Studio 17 2022",
+      "cacheVariables": {
+        "CMAKE_VS_PLATFORM_TOOLSET": "v143"
+      }
+    },
+    {
+      "name": "default-vs2022-clang",
+      "inherits": "default",
+      "hidden": true,
+      "generator": "Visual Studio 17 2022",
+      "cacheVariables": { 
+        "CMAKE_C_COMPILER": "ClangCL",
+        "CMAKE_CXX_COMPILER": "ClangCL",
+        "CMAKE_VS_PLATFORM_TOOLSET": "ClangCL"
+      }
+    },
+    {
+      "name": "clang-debug",
+      "inherits": "default-clang-cl",
+      "description": "Build using Clang with Debug configuration",
+      "cacheVariables": {
+        "USE_VULKAN": "OFF",
+        "USE_DX12": "ON"
+      }
+    },
+    {
+      "name": "clang-profile",
+      "inherits": "default-clang-cl",
+      "description": "Build using Clang with Release configuration",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "USE_VULKAN": "OFF",
+        "USE_DX12": "ON"
+      }
+    },
+    {
+      "name": "clang-release",
+      "inherits": "default-clang-cl",
+      "description": "Build using Clang with Release configuration",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "USE_VULKAN": "OFF",
+        "USE_DX12": "ON"
+      }
+    },
+    {
+      "name": "vs2022-clang-debug",
+      "inherits": "default-vs2022-clang",
+      "description": "Build using Clang(VS) with Debug configuration",
+      "cacheVariables": {
+        "USE_VULKAN": "OFF",
+        "USE_DX12": "ON"
+      }
+    },
+    {
+      "name": "vs2022-clang-profile",
+      "inherits": "default-vs2022-clang",
+      "description": "Build using Clang(VS) with Release configuration",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "USE_VULKAN": "OFF",
+        "USE_DX12": "ON"
+      }
+    },
+    {
+      "name": "vs2022-clang-release",
+      "inherits": "default-vs2022-clang",
+      "description": "Build using Clang(VS) with Release configuration",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "USE_VULKAN": "OFF",
+        "USE_DX12": "ON"
+      }
+    },
+    {
+      "name": "vs2022-msvc-debug",
+      "inherits": "default-vs2022",
+      "description": "Build using MSVC with Debug configuration",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "USE_VULKAN": "OFF",
+        "USE_DX12": "ON"
+      }
+    },
+    {
+      "name": "vs2022-msvc-profile",
+      "inherits": "default-vs2022",
+      "description": "Build using MSVC with Release configuration",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "USE_VULKAN": "OFF",
+        "USE_DX12": "ON"
+      }
+    },
+    {
+      "name": "vs2022-msvc-release",
+      "inherits": "default-vs2022",
+      "description": "Build using MSVC with Release configuration",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "USE_VULKAN": "OFF",
+        "USE_DX12": "ON"
       }
     }
+  ],
+
+  "buildPresets": [
+    {
+      "name": "vs2022-clang-debug-build",
+      "configurePreset": "vs2022-clang-debug"
+    },
+    {
+      "name": "vs2022-clang-profile-build",
+      "configurePreset": "vs2022-clang-release"
+    },
+    {
+      "name": "vs2022-clang-release-build",
+      "configurePreset": "vs2022-clang-release"
+    },
+    {
+      "name": "vs2022-msvc-debug-build",
+      "configurePreset": "vs2022-msvc-debug"
+    },
+    {
+      "name": "vs2022-msvc-profile-build",
+      "configurePreset": "vs2022-msvc-release"
+    },
+    {
+      "name": "vs2022-msvc-release-build",
+      "configurePreset": "vs2022-msvc-release"
+    }
+  ],
+
+  "vendor": {
+    "microsoft.com/VisualStudio": {
+      "hostArch": "x64",
+      "targetArch": "x64"
+    }
   }
-  
+}
