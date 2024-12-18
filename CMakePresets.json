@@ -153,7 +153,7 @@
       },
       {
         "name": "vs2022-msvc-profile-build",
-        "configurePreset": "msvc-release"
+        "configurePreset": "vs2022-msvc-release"
       },
       {
         "name": "vs2022-msvc-release-build",
