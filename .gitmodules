@@ -1,28 +1,28 @@
-[submodule "3rdparty/DirectX-Headers"]
-	path = 3rdparty/DirectX-Headers
-	url = https://github.com/microsoft/DirectX-Headers.git
-[submodule "3rdparty/imgui"]
-	path = 3rdparty/imgui
+[submodule "3rdParty/cgltf"]
+	path = 3rdParty/cgltf
+	url = https://github.com/jkuhlmann/cgltf.git
+[submodule "3rdParty/EASTL"]
+	path = 3rdParty/EASTL
+	url = https://github.com/electronicarts/EASTL.git
+[submodule "3rdParty/D3D12MemoryAllocator"]
+	path = 3rdParty/D3D12MemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
+[submodule "3rdParty/optick"]
+	path = 3rdParty/optick
+	url = https://github.com/bombomby/optick.git
+[submodule "3rdParty/entt"]
+	path = 3rdParty/entt
+	url = https://github.com/skypjack/entt.git
+[submodule "3rdParty/DirectXTex"]
+	path = 3rdParty/DirectXTex
+	url = https://github.com/microsoft/DirectXTex.git
+[submodule "3rdParty/spdlog"]
+	path = 3rdParty/spdlog
+	url = https://github.com/gabime/spdlog.git
+[submodule "3rdParty/imgui"]
+	path = 3rdParty/imgui
 	url = https://github.com/ocornut/imgui.git
 	branch = docking
-[submodule "3rdparty/spdlog"]
-	path = 3rdparty/spdlog
-	url = https://github.com/gabime/spdlog.git
-[submodule "3rdparty/DirectXTex"]
-	path = 3rdparty/DirectXTex
-	url = https://github.com/microsoft/DirectXTex.git
-[submodule "3rdparty/cgltf"]
-	path = 3rdparty/cgltf
-	url = https://github.com/jkuhlmann/cgltf.git
-[submodule "3rdparty/EASTL"]
-	path = 3rdparty/EASTL
-	url = https://github.com/electronicarts/EASTL.git
-[submodule "3rdparty/D3D12MemoryAllocator"]
-	path = 3rdparty/D3D12MemoryAllocator
-	url = https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
-[submodule "3rdparty/optick"]
-	path = 3rdparty/optick
-	url = https://github.com/bombomby/optick.git
-[submodule "3rdparty/entt"]
-	path = 3rdparty/entt
-	url = https://github.com/skypjack/entt.git
+[submodule "3rdParty/DirectX-Headers"]
+	path = 3rdParty/DirectX-Headers
+	url = https://github.com/microsoft/DirectX-Headers.git
