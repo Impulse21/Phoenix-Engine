@@ -83,7 +83,7 @@ target_include_directories(PhxEngine PUBLIC
     $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>)
 
 
-target_link_libraries(PhxEngine PUBLIC spdlog imgui entt cgltf DirectXTex)
+target_link_libraries(PhxEngine PUBLIC spdlog_header_only  imgui entt cgltf DirectXTex)
 set_target_properties(PhxEngine PROPERTIES FOLDER "Engine")
 
 # DXC

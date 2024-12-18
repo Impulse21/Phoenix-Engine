@@ -1,7 +1,7 @@
 set(3rdparty_folder 3rdParty)
 
-add_library(spdlog INTERFACE)
-target_include_directories(spdlog INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/spdlog)
+
+add_subdirectory(spdlog)
 
 add_library(cgltf INTERFACE 
     ${CMAKE_CURRENT_SOURCE_DIR}/cgltf/cgltf.h)
