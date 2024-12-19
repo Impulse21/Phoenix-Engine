@@ -17,18 +17,18 @@
 
 namespace phx
 {
-	template<class T, typename TEnum, std::size_t N = (std::size_t)TEnum::Count>
+	template<class T, typename TEnum, std::size_t N = static_cast<std::size_t>(TEnum::Count)>
 	class EnumArray : public std::array<T, N>
 	{
 	public:
 		T& operator[] (TEnum e)
 		{
-			return std::array<T, N>::operator[]((std::size_t)e);
+			return std::array<T, N>::operator[](static_cast<std::size_t>(e));
 		}
 
 		const T& operator[] (TEnum e) const
 		{
-			return std::array<T, N>::operator[]((std::size_t)e);
+			return std::array<T, N>::operator[](static_cast<std::size_t>(e));
 		}
 
 		T& operator[] (size_t i)

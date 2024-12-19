@@ -23,7 +23,7 @@ namespace phx::rhi
 		Handle(uint16_t index, uint16_t generation)
 			: m_index(index)
 			, m_generation(generation)
-		{};
+		{}
 
 	private:
 		uint16_t m_index;

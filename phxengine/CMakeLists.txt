@@ -66,6 +66,23 @@ target_compile_options(PhxEngine PRIVATE
   $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
 )
 
+target_compile_options(PhxEngine PRIVATE
+    # All warnings, warnings as errors, be pedantic.
+    -Wall
+    -Wextra
+    -Werror
+    -Wpedantic
+
+    # Disable warnings about C++98 incompatibility. We're using C++20 features...
+    -Wno-c++98-compat
+    -Wno-c++98-compat-pedantic
+    -Wno-old-style-cast
+    -Wno-float-equal
+    -Wno-reserved-identifier
+    -Wno-newline-eof
+    -Wno-switch-enum
+)
+
 if (USING_MSVC)
     target_precompile_headers(PhxEngine PRIVATE ${pch_file})
 else()

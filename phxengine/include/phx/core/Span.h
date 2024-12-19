@@ -27,7 +27,7 @@ namespace phx
 
 		Span(std::initializer_list<T> v)
 			: Span(v.begin(), v.size(), 0)
-		{};
+		{}
 
 		Span(std::vector<T> const& v)
 			: Span(v.data(), v.size(), 0)
@@ -63,7 +63,7 @@ namespace phx
 		const T* begin() const { return this->m_array; }
 		const T* end() const { return this->m_array + this->m_length; }
 
-		bool IsEmpty() const { return this->m_length == 0; };
+		bool IsEmpty() const { return this->m_length == 0; }
 	private:
 		const T* m_array;
 		size_t m_length;
@@ -110,7 +110,7 @@ namespace phx
 		T* begin() const { return this->m_array; }
 		T* end() const { return this->m_array + this->m_length; }
 
-		bool IsEmpty() const { return this->m_length == 0; };
+		bool IsEmpty() const { return this->m_length == 0; }
 
 	private:
 		T* m_array;
