@@ -57,6 +57,8 @@ namespace phx::rhi::dx12
 			case D3D12_COMMAND_LIST_TYPE_COMPUTE:
 				Queue->SetName(L"Compute Command Queue");
 				break;
+			default:
+				throw std::runtime_error("Unsupported Command list Type");
 			}
 		}
 

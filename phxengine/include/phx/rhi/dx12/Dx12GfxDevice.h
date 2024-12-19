@@ -2,7 +2,7 @@
 
 #include "phx/rhi/RHITypes.h"
 #include "Dx12DeviceResources.h"
-#include "d3d12ma/D3D12MemAlloc.h"
+#include "D3D12MemAlloc.h"
 
 #include "Dx12Common.h"
 #include "Dx12DescriptorHeaps.h"
@@ -127,10 +127,10 @@ namespace phx::rhi::dx12
 
 	struct GpuTimerManager
 	{
-		void Initialize() {};
+		void Initialize() {}
 		// TimerQueryHandle NewTimer() { return this->NumTimers++; }
-		void BeginReadBack() {};
-		void EndReadBack() {};
+		void BeginReadBack() {}
+		void EndReadBack() {}
 
 		// float GetTime(TimerQueryHandle handle);
 

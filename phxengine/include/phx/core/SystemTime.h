@@ -18,12 +18,12 @@ namespace phx
 
 		static inline double TicksToSeconds(int64_t tickCount)
 		{
-			return tickCount * sm_CpuTickDelta;
+			return static_cast<double>(tickCount) * sm_CpuTickDelta;
 		}
 
 		static inline double TicksToMillisecs(int64_t tickCount)
 		{
-			return tickCount * sm_CpuTickDelta * 1000.0;
+			return static_cast<double>(tickCount) * sm_CpuTickDelta * 1000.0;
 		}
 
 		static inline double TimeBetweenTicks(int64_t tick1, int64_t tick2)

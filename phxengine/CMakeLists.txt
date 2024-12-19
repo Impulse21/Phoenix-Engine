@@ -80,7 +80,13 @@ target_compile_options(PhxEngine PRIVATE
     -Wno-float-equal
     -Wno-reserved-identifier
     -Wno-newline-eof
+    -Wno-switch
     -Wno-switch-enum
+    -Wno-reorder-ctor
+    -Wno-ctad-maybe-unsupported
+    -Wno-language-extension-token
+    -Wno-unsafe-buffer-usage
+    -Wno-global-constructors
 )
 
 if (USING_MSVC)
@@ -147,12 +153,41 @@ target_link_libraries(PhxEngine PRIVATE DirectXShaderCompiler Dxil)
 
 message("DirectXShaderCompiler fetched")
 
+if (PHX_ENABLE_GDK)
+
+    if(NOT DEFINED ENV{GXDKLatest})
+        message(FATAL_ERROR "GDK SDK not found. Please install GDK and set GXDKLatest.")
+    endif()
+
+    # Include GDK toolchain
+    set(GDK_INCLUDE_DIR "$ENV{GXDKLatest}\\Include")
+    set(GDK_LIB_DIR "$ENV{GXDKLatest}\\Lib\\$(Platform)\\$(Configuration)")
+
+    target_include_directories(PhxEngine SYSTEM PRIVATE ${GDK_INCLUDE_DIR})
+    target_link_directories(PhxEngine PRIVATE ${GDK_LIB_DIR})
+
+    # Link against the required GDK libraries
+    target_link_libraries(PhxEngine 
+        xgame 
+        xsystem 
+        xgraphics 
+        xaudio2 
+        xinput
+    )
+endif()
+
 if (PHX_ENABLE_DX12)
     
     target_sources(PhxEngine PRIVATE 
         ${include_rhi_dx12}
-        ${src_rhi_d3d12})
+        ${src_rhi_d3d12}
+    )
     
+    target_include_directories(PhxEngine PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/phx/rhi/dx12/>
+        $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/phx/rhi/dx12/>
+    )
+
     source_group("include/phx/rhi/dx12" FILES ${include_rhi_dx12})
     source_group("src/rhi/dx12"         FILES ${src_rhi_d3d12})
     
@@ -174,7 +209,7 @@ if (PHX_ENABLE_DX12)
         IMPORTED_IMPLIB "${d3d12-agility-sdk_SOURCE_DIR}/lib/D3D12Core.lib"
     )
 
-    file(GLOB_RECURSE d3d12-agility-sdk_include "${d3d12-agility-sdk_SOURCE_DIR}/build/native/include/*.h")
+    set(d3d12-agility-sdk_include "${d3d12-agility-sdk_SOURCE_DIR}/build/native/include/")
     message("D3D12 Agility SDK fetched")
 
     
@@ -195,12 +230,18 @@ if (PHX_ENABLE_DX12)
         IMPORTED_IMPLIB "${pix_SOURCE_DIR}/bin/x64/WinPixEventRuntime.lib"
     )
 
-    file(GLOB_RECURSE pix_include "${pix_SOURCE_DIR}/Include/WinPixEventRuntime/*.h")
+    set(pix_include "${pix_SOURCE_DIR}/Include/WinPixEventRuntime")
     message("PIX fetched")
 
-    target_include_directories(PhxEngine PRIVATE 
+    target_include_directories(PhxEngine SYSTEM PRIVATE 
         ${d3d12-agility-sdk_include}
         ${pix_include}
+        ${include_rhi_dx12}
     )
+
     target_link_libraries(PhxEngine PRIVATE AgilitySDK D3D12MemoryAllocator PIX)
+    target_include_directories(PhxEngine SYSTEM PRIVATE 
+        $<TARGET_PROPERTY:D3D12MemoryAllocator,INTERFACE_INCLUDE_DIRECTORIES>
+    )
+    target_compile_definitions(PhxEngine PRIVATE USING_D3D12_AGILITY_SDK PIX)
 endif()

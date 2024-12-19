@@ -4,7 +4,7 @@
 
 #include "Dx12Common.h"
 #include "Dx12DescriptorHeaps.h"
-#include "d3d12ma/D3D12MemAlloc.h"
+#include "D3D12MemAlloc.h"
 
 #include <array>
 

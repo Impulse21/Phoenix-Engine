@@ -126,14 +126,14 @@ namespace phx::rhi::dx12
 		D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(uint32_t offset = 0) const
 		{
 			assert(offset < this->m_numHandles);
-			CD3DX12_CPU_DESCRIPTOR_HANDLE handle(this->m_firstCpuHandle, offset * this->m_descriptorSize);
+			CD3DX12_CPU_DESCRIPTOR_HANDLE handle(this->m_firstCpuHandle, static_cast<INT>(offset * this->m_descriptorSize));
 			return handle;
 		}
 
 		D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(uint32_t offset = 0) const
 		{
 			assert(offset < this->m_numHandles);
-			CD3DX12_GPU_DESCRIPTOR_HANDLE handle(this->m_firstGpuHandle, offset * this->m_descriptorSize);
+			CD3DX12_GPU_DESCRIPTOR_HANDLE handle(this->m_firstGpuHandle, static_cast<INT>(offset * this->m_descriptorSize));
 			return handle;
 		}
 
@@ -327,7 +327,7 @@ namespace phx::rhi::dx12
 		DynamicSuballocator& operator = (DynamicSuballocator&&) = delete;
 		// clang-format on
 
-		~DynamicSuballocator() = default;
+		~DynamicSuballocator() override = default;
 
 		void ReleaseAllocations();
 		DescriptorHeapAllocation Allocate(uint32_t numDescriptors) override;

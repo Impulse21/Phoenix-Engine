@@ -8,7 +8,7 @@
 #include "phx/rhi/ResourcePool.h"
 #include "phx/rhi/TempMemoryBlockAllocator.h"
 
-#include "PlatformTypes.h"
+#include "RHIPlatformTypes.h"
 
 namespace phx::rhi
 {
@@ -109,7 +109,7 @@ namespace phx::rhi
             DeferredItem d =
             {
                 m_frameCount,
-                [=]()
+                [=, this]()
                 {
                     m_swapChainPool.Free(swapChain);
                 }
@@ -134,7 +134,7 @@ namespace phx::rhi
             DeferredItem d =
             {
                 m_frameCount,
-                [=]()
+                [=, this]()
                 {
                     m_pipelineStatePool.Free(handle);
                 }
@@ -161,7 +161,7 @@ namespace phx::rhi
             DeferredItem d =
             {
                 m_frameCount,
-                [=]()
+                [=, this]()
                 {
                     m_texturePool.Free(handle);
                 }
@@ -188,7 +188,7 @@ namespace phx::rhi
             DeferredItem d =
             {
                 m_frameCount,
-                [=]()
+                [=, this]()
                 {
                     m_gpuBufferPool.Free(handle);
                 }

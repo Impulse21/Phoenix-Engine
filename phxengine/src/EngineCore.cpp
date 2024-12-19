@@ -9,7 +9,7 @@
 
 #include "phx/Display.h"
 
-#include "ImGui/imgui.h"
+#include "imgui.h"
 
 #include <iostream>
 

@@ -4,6 +4,7 @@
 #include "phx/core/Log.h"
 
 #include "phx/rhi/RHITypes.h"
+#include "RHIPlatformTypes.h"
 
 namespace phx::rhi
 {

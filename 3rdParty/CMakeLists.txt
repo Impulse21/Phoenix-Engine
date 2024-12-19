@@ -40,8 +40,9 @@ add_subdirectory(DirectXTex)
 set_target_properties(DirectXTex PROPERTIES FOLDER ${3rdparty_folder})
 
 
-set(CMAKE_SUPPRESS_DEVELOPER_WARNINGS 1 CACHE INTERNAL "")
 add_subdirectory(D3D12MemoryAllocator)
 set_target_properties(D3D12MemoryAllocator PROPERTIES FOLDER ${3rdparty_folder})
 
-set(CMAKE_SUPPRESS_DEVELOPER_WARNINGS 0 CACHE INTERNAL "")
+target_compile_options(D3D12MemoryAllocator PRIVATE 
+    $<$<COMPILE_LANGUAGE:CXX>:-Wno-error>
+)

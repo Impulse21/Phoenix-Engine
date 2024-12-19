@@ -18,8 +18,8 @@ namespace phx::rhi::dx12
 			m_commandList->Close();
 		}
 
-		void BeginMarker(const char*) {};
-		void EndMarker() {};
+		void BeginMarker(const char*) {}
+		void EndMarker() {}
 
 		void RenderPassBegin(SwapChainBindings* bindings)
 		{
@@ -86,7 +86,7 @@ namespace phx::rhi::dx12
 		void SetViewports(phx::Span<rhi::Viewport> viewports)
 		{
 			CD3DX12_VIEWPORT dx12Viewports[16] = {};
-			for (int i = 0; i < viewports.Size(); i++)
+			for (size_t i = 0; i < viewports.Size(); i++)
 			{
 				const Viewport& viewport = viewports[i];
 				dx12Viewports[i] = CD3DX12_VIEWPORT(
@@ -105,7 +105,7 @@ namespace phx::rhi::dx12
 		void SetScissors(phx::Span<Rect> scissors)
 		{
 			CD3DX12_RECT dx12Scissors[16] = {};
-			for (int i = 0; i < scissors.Size(); i++)
+			for (size_t i = 0; i < scissors.Size(); i++)
 			{
 				const Rect& scissor = scissors[i];
 
