@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -42,6 +42,11 @@ cmake_dependent_option(
     "Enable DirectX 12 Backend" ON OFF
     IS_WINDOWS
 )
+cmake_dependent_option(
+    BUILD_USING_ONECORE
+    "Build for Windows 10/Windows 11 only" OFF OFF
+    IS_WINDOWS
+)
 
 # GDK - Only available on Windows and if DirectX 12 is enabled
 cmake_dependent_option(
@@ -53,6 +58,22 @@ cmake_dependent_option(
 if(PHX_ENABLE_DX12 AND PHX_ENABLE_VULKAN)
     message(FATAL_ERROR "Only one backend can be enabled: USE_DX12 or USE_VULKAN.")
 endif()
+
+if (IS_WINDOWS)
+    include(cmake/CMakeGDKDesktop.cmake)
+    
+    
+    if(NOT MSVC)
+      message(FATAL_ERROR "ERROR: This CMake file requires MSVC or MSVC-like compiler.")
+    endif()
+
+endif()
+
+if (BUILD_USING_ONECORE)
+    set(CMAKE_CXX_STANDARD_LIBRARIES "onecore_apiset.lib user32.lib")
+    set(CMAKE_CXX_STANDARD_LIBRARIES_INIT "onecore_apiset.lib user32.lib")
+endif()
+
 #if (USING_MSVC)
 #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4 /WX /MP")
 #endif()

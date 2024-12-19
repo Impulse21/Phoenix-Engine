@@ -153,7 +153,7 @@ target_link_libraries(PhxEngine PRIVATE DirectXShaderCompiler Dxil)
 
 message("DirectXShaderCompiler fetched")
 
-if (PHX_ENABLE_GDK)
+if (IS_WINDOWS)
 
     if(NOT DEFINED ENV{GXDKLatest})
         message(FATAL_ERROR "GDK SDK not found. Please install GDK and set GXDKLatest.")
