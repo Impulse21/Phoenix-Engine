@@ -33,7 +33,6 @@ else()
     set(IS_WINDOWS FALSE)
 endif()
 
-option(PHX_TARGET_GDK "Target GDK for PC" ON)
 option(PHX_ENABLE_VULKAN "Enable Vulkan backend" OFF)
 
 # DirectX 12 - Only available on Windows and if the backend is enabled
