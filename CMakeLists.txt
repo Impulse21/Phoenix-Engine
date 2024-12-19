@@ -55,7 +55,7 @@ cmake_dependent_option(
 )
 
 if(PHX_ENABLE_DX12 AND PHX_ENABLE_VULKAN)
-    message(FATAL_ERROR "Only one backend can be enabled: USE_DX12 or USE_VULKAN.")
+    message(FATAL_ERROR "Only one backend can be enabled: PHX_ENABLE_DX12 or PHX_ENABLE_VULKAN.")
 endif()
 
 if (IS_WINDOWS)

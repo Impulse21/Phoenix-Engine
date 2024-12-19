@@ -81,20 +81,19 @@
     {
       "name": "RHI_dx12",
       "cacheVariables": {
-        "USE_VULKAN": "OFF",
-        "USE_DX12": "ON"
+        "PHX_ENABLE_VULKAN": "OFF",
+        "PHX_ENABLE_DX12": "ON"
       },
       "hidden": true
     },
     {
       "name": "RHI_vk",
       "cacheVariables": {
-        "USE_VULKAN": "ON",
-        "USE_DX12": "OFF"
+        "PHX_ENABLE_VULKAN": "ON",
+        "PHX_ENABLE_DX12": "OFF"
       },
       "hidden": true
     },
-
     {
       "name": "x64-Debug-Vs2022",
       "description": "MSVC for x64 (Debug)",
