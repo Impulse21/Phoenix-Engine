@@ -61,6 +61,11 @@ source_group("src/core"                 FILES ${src_core})
 source_group("src/renderer"             FILES ${src_renderer})
 source_group("src/rhi"                  FILES ${src_rhi})
     
+target_compile_options(PhxEngine PRIVATE
+  $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
+  $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
+)
+
 if (USING_MSVC)
     target_precompile_headers(PhxEngine PRIVATE ${pch_file})
 else()

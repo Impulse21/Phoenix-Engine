@@ -1,7 +1,7 @@
 set(3rdparty_folder 3rdParty)
 
 
-add_subdirectory(spdlog)
+add_subdirectory(spdlog EXCLUDE_FROM_ALL)
 
 add_library(cgltf INTERFACE 
     ${CMAKE_CURRENT_SOURCE_DIR}/cgltf/cgltf.h)
@@ -36,9 +36,9 @@ option(BUILD_TOOLS "" OFF)
 option(BUILD_DX11 "" OFF)
 option(BUILD_DX12 "" OFF)
 
-add_subdirectory(DirectXTex)
+add_subdirectory(DirectXTex EXCLUDE_FROM_ALL)
 set_target_properties(DirectXTex PROPERTIES FOLDER ${3rdparty_folder})
 
 
-add_subdirectory(D3D12MemoryAllocator)
+add_subdirectory(D3D12MemoryAllocator EXCLUDE_FROM_ALL)
 set_target_properties(D3D12MemoryAllocator PROPERTIES FOLDER ${3rdparty_folder})
