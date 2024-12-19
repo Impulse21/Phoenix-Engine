@@ -24,7 +24,7 @@
     },
     {
       "name": "visual_studio_2022",
-      "inherits": "default",
+      "inherits": "base",
       "displayName": "Basic Config (VS 2022)",
       "description": "Basic build using Visual studio 2022 generator",
       "generator": "Visual Studio 17 2022",
