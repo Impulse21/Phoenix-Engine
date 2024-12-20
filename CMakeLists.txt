@@ -90,9 +90,42 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
 include(CMakeDependentOption)
 
+# Common compile options for multiple targets
+set(COMMON_COMPILE_OPTIONS
+    # All warnings, warnings as errors, be pedantic.
+    -Wall
+    -Wextra
+    -Werror
+    -Wpedantic
+
+    # Disable warnings about C++98 incompatibility. We're using C++20 features...
+    -Wno-c++98-compat
+    -Wno-c++98-compat-pedantic
+    -Wno-old-style-cast
+    -Wno-float-equal
+    -Wno-reserved-identifier
+    -Wno-newline-eof
+    -Wno-switch
+    -Wno-switch-enum
+    -Wno-switch-default
+    -Wno-covered-switch-default
+    -Wno-reorder-ctor
+    -Wno-ctad-maybe-unsupported
+    -Wno-language-extension-token
+    -Wno-global-constructors
+    -Wno-missing-variable-declarations
+    -Wno-exit-time-destructors
+    -Wno-nonportable-system-include-path
+    -Wno-sign-conversion
+    -Wno-unused-member-function
+    -Wno-nested-anon-types
+    -Wno-gnu-anonymous-struct
+    -Wno-cast-function-type
+)
+
 add_subdirectory(3rdparty)
-add_subdirectory(PhxEngine)
-#add_subdirectory(PhxEditor)
+add_subdirectory(phxengine)
+add_subdirectory(phxeditor)
 #add_subdirectory(Tests)
 #add_subdirectory(Tools/PhxAssetConverter)
 #add_subdirectory(Tools/PhxShaderCompiler)

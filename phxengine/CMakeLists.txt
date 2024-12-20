@@ -66,37 +66,7 @@ target_compile_options(PhxEngine PRIVATE
   $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
 )
 
-target_compile_options(PhxEngine PRIVATE
-    # All warnings, warnings as errors, be pedantic.
-    -Wall
-    -Wextra
-    -Werror
-    -Wpedantic
-
-    # Disable warnings about C++98 incompatibility. We're using C++20 features...
-    -Wno-c++98-compat
-    -Wno-c++98-compat-pedantic
-    -Wno-old-style-cast
-    -Wno-float-equal
-    -Wno-reserved-identifier
-    -Wno-newline-eof
-    -Wno-switch
-    -Wno-switch-enum
-    -Wno-switch-default
-    -Wno-covered-switch-default
-    -Wno-reorder-ctor
-    -Wno-ctad-maybe-unsupported
-    -Wno-language-extension-token
-    -Wno-global-constructors
-    -Wno-missing-variable-declarations
-    -Wno-exit-time-destructors
-    -Wno-nonportable-system-include-path
-    -Wno-sign-conversion
-    -Wno-unused-member-function
-    -Wno-nested-anon-types
-    -Wno-gnu-anonymous-struct
-    -Wno-cast-function-type
-)
+target_compile_options(PhxEngine PRIVATE ${COMMON_COMPILE_OPTIONS})
 
 include(CheckCXXCompilerFlag)
 
@@ -132,7 +102,8 @@ target_include_directories(PhxEngine PUBLIC
 
 
 target_link_libraries(PhxEngine PUBLIC spdlog_header_only  imgui entt cgltf DirectXTex)
-set_target_properties(PhxEngine PROPERTIES FOLDER "Engine")
+set_target_properties(PhxEngine PROPERTIES FOLDER "Libs")
+
 
 # DXC
 message("Fetching DirectXShaderCompiler")
@@ -250,15 +221,15 @@ if (PHX_ENABLE_DX12)
     set(pix_include "${pix_SOURCE_DIR}/Include/WinPixEventRuntime")
     message("PIX fetched")
 
-    target_include_directories(PhxEngine SYSTEM PRIVATE 
+    target_include_directories(PhxEngine SYSTEM PUBLIC 
         ${d3d12-agility-sdk_include}
         ${pix_include}
         ${include_rhi_dx12}
     )
 
-    target_link_libraries(PhxEngine PRIVATE AgilitySDK D3D12MemoryAllocator PIX)
-    target_include_directories(PhxEngine SYSTEM PRIVATE 
+    target_link_libraries(PhxEngine PUBLIC AgilitySDK D3D12MemoryAllocator PIX)
+    target_include_directories(PhxEngine SYSTEM PUBLIC 
         $<TARGET_PROPERTY:D3D12MemoryAllocator,INTERFACE_INCLUDE_DIRECTORIES>
     )
-    target_compile_definitions(PhxEngine PRIVATE USING_D3D12_AGILITY_SDK PIX)
+    target_compile_definitions(PhxEngine PUBLIC USING_D3D12_AGILITY_SDK PIX)
 endif()
