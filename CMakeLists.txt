@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.22)
 
 project(PhxEngine)
 
+include(FetchContent)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
@@ -122,6 +124,10 @@ set(COMMON_COMPILE_OPTIONS
     -Wno-gnu-anonymous-struct
     -Wno-cast-function-type
 )
+
+set(d3d12-agility-sdk_include "" CACHE STRING "Agility SDK Include dir")
+set(pix_include "" CACHE STRING "PIX include")
+set(dxc_include "" CACHE STRING "DXC include")
 
 add_subdirectory(3rdparty)
 add_subdirectory(phxengine)

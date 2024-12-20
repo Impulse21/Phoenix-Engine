@@ -10,7 +10,7 @@ file(GLOB src_editor
 
 
 add_executable(PhxEditor ${src_editor})
-target_link_libraries(PhxEditor PRIVATE PhxEngine AgilitySDK)
+target_link_libraries(PhxEditor PRIVATE PhxEngine)
 
 set_target_properties(PhxEditor  PROPERTIES FOLDER "Applications")
 set_target_properties(PhxEditor PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
