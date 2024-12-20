@@ -18,14 +18,6 @@
 
 #include <DirectXMath.h>
 #include <DirectXColors.h>
-
-#include <XGameRuntime.h>
-
-#endif
-
-#ifdef __clang__
-#pragma clang diagnostic ignored "-Wcovered-switch-default"
-#pragma clang diagnostic ignored "-Wswitch-enum"
 #endif
 
 using namespace phx;
@@ -100,19 +92,11 @@ namespace phx::EngineCore
 		if (!XMVerifyCPUSupport())
 			return 1;
 
-		// Initialize the GameRuntime
-		HRESULT hr = XGameRuntimeInitialize();
-		if (FAILED(hr))
-		{
-			if (hr == E_GAMERUNTIME_DLL_NOT_FOUND || hr == E_GAMERUNTIME_VERSION_MISMATCH)
-			{
-				std::ignore = MessageBoxW(nullptr, L"Game Runtime is not installed on this system or needs updating.", className, MB_ICONERROR | MB_OK);
-			}
-			return 1;
-		}
+		BOOL dpi_success = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+		assert(dpi_success);
 
 		ShowConsole();
-		
+
 		// Register class and create window
 		{
 			// Register class
@@ -122,7 +106,7 @@ namespace phx::EngineCore
 			wcex.lpfnWndProc = WndProc;
 			wcex.hInstance = hInst;
 			wcex.hIcon = LoadIconW(hInst, L"IDI_ICON");
-			wcex.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+			wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
 			wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
 			wcex.lpszClassName = L"PhxEditorWindowClass";
 			wcex.hIconSm = LoadIconW(wcex.hInstance, L"IDI_ICON");
@@ -130,7 +114,7 @@ namespace phx::EngineCore
 				return 1;
 
 			// Create window
-			RECT rc = { 0, 0, (LONG)2000, (LONG)1700};
+			RECT rc = { 0, 0, (LONG)2000, (LONG)1700 };
 			AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
 
 			g_hWnd = CreateWindowExW(0, L"PhxEditorWindowClass", className, WS_OVERLAPPEDWINDOW,
@@ -170,9 +154,7 @@ namespace phx::EngineCore
 
 		phx::rhi::GfxDevice::Finalize();
 
-		XGameRuntimeUninitialize();
-
-		if (stream) 
+		if (stream)
 		{
 			fclose(stream);
 		}
@@ -266,7 +248,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			RECT rc;
 			GetClientRect(hWnd, &rc);
 
-			Display::Resize(rc.right - rc.left, rc.bottom - rc.top);
+			Display::Resize(static_cast<uint32_t>(rc.right - rc.left), static_cast<uint32_t>(rc.bottom - rc.top));
 		}
 		break;
 

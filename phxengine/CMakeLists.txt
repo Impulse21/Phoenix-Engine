@@ -82,11 +82,13 @@ target_compile_options(PhxEngine PRIVATE
     -Wno-newline-eof
     -Wno-switch
     -Wno-switch-enum
+    -Wno-switch-default
     -Wno-reorder-ctor
     -Wno-ctad-maybe-unsupported
     -Wno-language-extension-token
     -Wno-unsafe-buffer-usage
     -Wno-global-constructors
+    -Wno-missing-variable-declarations
 )
 
 if (USING_MSVC)
