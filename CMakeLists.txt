@@ -60,9 +60,6 @@ if(PHX_ENABLE_DX12 AND PHX_ENABLE_VULKAN)
 endif()
 
 if (IS_WINDOWS)
-    include(cmake/CMakeGDKDesktop.cmake)
-    
-    
     if(NOT MSVC)
       message(FATAL_ERROR "ERROR: This CMake file requires MSVC or MSVC-like compiler.")
     endif()

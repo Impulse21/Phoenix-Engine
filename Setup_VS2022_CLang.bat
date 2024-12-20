@@ -1,6 +1,7 @@
 @echo off
-if not exist ".build" mkdir .build
-cd .build
+rem if not exist ".build" mkdir .build
+rem cd .build
 
-cmake -G "Visual Studio 17 2022" -A x64 ../  -T ClangCL
+rem cmake -G "Visual Studio 17 2022" -A x64 ../  -T ClangCL
+cmake --preset x64-Debug-Clang-Vs2022
 pause

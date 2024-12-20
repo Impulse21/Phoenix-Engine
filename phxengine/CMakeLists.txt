@@ -152,12 +152,8 @@ target_include_directories(PhxEngine PRIVATE
 target_link_libraries(PhxEngine PRIVATE DirectXShaderCompiler Dxil)
 
 message("DirectXShaderCompiler fetched")
-
+#[===[
 if (IS_WINDOWS)
-
-    if(NOT DEFINED ENV{GXDKLatest})
-        message(FATAL_ERROR "GDK SDK not found. Please install GDK and set GXDKLatest.")
-    endif()
 
     # Include GDK toolchain
     set(GDK_INCLUDE_DIR "$ENV{GXDKLatest}\\Include")
@@ -175,6 +171,7 @@ if (IS_WINDOWS)
         xinput
     )
 endif()
+]===]
 
 if (PHX_ENABLE_DX12)
     
