@@ -27,10 +27,7 @@
       "displayName": "Basic Config (VS 2022)",
       "description": "Basic build using Visual studio 2022 generator",
       "generator": "Visual Studio 17 2022",
-      "hidden": true,
-      "cacheVariables": {
-        "CMAKE_VS_PLATFORM_TOOLSET": "v143"
-      }
+      "hidden": true
     },
 
     {
@@ -59,7 +56,8 @@
       "name": "MSVC",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "cl.exe"
+        "CMAKE_CXX_COMPILER": "cl.exe",
+        "CMAKE_VS_PLATFORM_TOOLSET": "v143"
       },
       "toolset": {
         "value": "host=x64",
@@ -70,11 +68,12 @@
       "name": "Clang",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "clang-cl.exe"
+        "CMAKE_CXX_COMPILER": "clang-cl.exe",
+        "CMAKE_C_COMPILER": "clang-cl.exe"
       },
+      "architecture": "x64",
       "toolset": {
-        "value": "host=x64",
-        "strategy": "external"
+        "value": "ClangCL"
       }
     },
     {
