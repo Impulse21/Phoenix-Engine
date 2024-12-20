@@ -237,8 +237,7 @@ namespace phx::rhi::dx12
 
 		CD3DX12_CPU_DESCRIPTOR_HANDLE m_baseCpuDescritpor;
 		CD3DX12_GPU_DESCRIPTOR_HANDLE m_baseGpuDescritpor;
-
-		uint32_t m_numDescriptorsInHeap;
+		
 		uint32_t m_numFreeHandles;
 		uint32_t m_descritporSize;
 

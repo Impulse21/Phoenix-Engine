@@ -20,7 +20,7 @@ namespace phx::rhi
 	class TempMemoryBlockAllocator
 	{
 	public:
-		void Initialize(GfxDevice* device, size_t bufferSize, uint32_t blockSize = 4_MiB);
+		void Initialize(GfxDevice* device, uint32_t bufferSize, uint32_t blockSize = 4_MiB);
 		void Finalize();
 
 		void EndFrame();

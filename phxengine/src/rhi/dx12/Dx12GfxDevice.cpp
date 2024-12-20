@@ -7,6 +7,10 @@
 #include "phx/core/Log.h"
 #include "phx/core/StringUtils.h"
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wunused-function"
+#endif
+
 using namespace phx;
 using namespace phx::rhi;
 using namespace phx::rhi::dx12;
@@ -723,7 +727,7 @@ void GfxDeviceDx12::WaitForIdle()
 		assert(SUCCEEDED(hr));
 		if (fence->GetCompletedValue() < 1)
 		{
-			hr = fence->SetEventOnCompletion(1, NULL);
+			hr = fence->SetEventOnCompletion(1, nullptr);
 			assert(SUCCEEDED(hr));
 		}
 		fence->Signal(0);
@@ -1218,10 +1222,7 @@ bool GfxDeviceDx12::CreateTexture(TextureDescriptor const& desc, TextureResource
 			data.RowPitch = initData[i].RowPitch;
 			data.SlicePitch = initData[i].SlicePitch;
 			data.pData = initData[i].Data;
-
-			if (rowSizesInBytes[i] > (SIZE_T)-1)
-				continue;
-
+			
 			D3D12_MEMCPY_DEST DestData = {};
 			DestData.pData = (void*)((UINT64)ctx.MappedData + footprints[i].Offset);
 			DestData.RowPitch = (SIZE_T)footprints[i].Footprint.RowPitch;
@@ -1352,7 +1353,7 @@ void GfxDeviceDx12::Present(SwapChainResource& resource, SwapChainBindings& bind
 			if (m_frameCount >= kBufferCount && completedValue < 1)
 			{
 				ThrowIfFailed(
-					fence->SetEventOnCompletion(1, NULL));
+					fence->SetEventOnCompletion(1, nullptr));
 			}
 			// Reset fence;
 			fence->Signal(0);
@@ -1389,11 +1390,7 @@ void GfxDeviceDx12::Initialize()
 	PHX_CORE_INFO("Initialize DirectX 12 Graphics Device");
 
 	InitializeD3D12Context();
-
-#if ENABLE_PIX_CAPUTRE
-	m_pixCaptureModule = PIXLoadLatestWinPixGpuCapturerLibrary();
-#endif 
-
+	
 	// Create Queues
 	m_commandQueues[CommandQueueType::Graphics].Initialize(GetD3D12Device(), D3D12_COMMAND_LIST_TYPE_DIRECT);
 	m_commandQueues[CommandQueueType::Compute].Initialize(GetD3D12Device(), D3D12_COMMAND_LIST_TYPE_COMPUTE);

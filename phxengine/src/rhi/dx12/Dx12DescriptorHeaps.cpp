@@ -110,7 +110,6 @@ DescriptorHeapAllocationPage::DescriptorHeapAllocationPage(
 	: m_id(id)
 	, m_allocator(allocator)
 	, m_heapDesc(heapDesc)
-	, m_numDescriptorsInHeap(numDescriptorsInHeap)
 	, m_numFreeHandles(numDescriptorsInHeap)
 	, m_d3d12Heap(d3dHeap)
 {
@@ -135,7 +134,6 @@ DescriptorHeapAllocationPage::DescriptorHeapAllocationPage(
 	: m_id(id)
 	, m_allocator(allocator)
 	, m_heapDesc(heapDesc)
-	, m_numDescriptorsInHeap(numDescriptorsInHeap)
 	, m_numFreeHandles(numDescriptorsInHeap)
 {
 	ThrowIfFailed(
@@ -418,7 +416,7 @@ DescriptorHeapAllocation DynamicSuballocator::Allocate(uint32_t numDescriptors)
 	this->m_currentDescriptorCount += numDescriptors;
 	this->m_peakDescriptorCount = std::max(this->m_peakDescriptorCount, numDescriptors);
 
-	return std::move(allocation);
+	return allocation;
 }
 
 void DynamicSuballocator::Free(DescriptorHeapAllocation&& allocation)

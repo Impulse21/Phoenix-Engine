@@ -189,7 +189,7 @@ namespace phx::rhi::dx12
 
     private:
 		ID3D12GraphicsCommandList* m_commandList;
-		ID3D12GraphicsCommandList6* m_commandList6;
+		// ID3D12GraphicsCommandList6* m_commandList6;
 
 		PipelineStateResource::PipelineType m_activePipelineType = PipelineStateResource::PipelineType::Gfx;
 		std::array<D3D12_RESOURCE_BARRIER, rhi::cMaxRenderTargets> m_renderPassBarriers;

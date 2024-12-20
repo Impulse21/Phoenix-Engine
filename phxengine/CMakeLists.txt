@@ -83,6 +83,7 @@ target_compile_options(PhxEngine PRIVATE
     -Wno-switch
     -Wno-switch-enum
     -Wno-switch-default
+    -Wno-covered-switch-default
     -Wno-reorder-ctor
     -Wno-ctad-maybe-unsupported
     -Wno-language-extension-token

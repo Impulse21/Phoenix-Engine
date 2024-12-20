@@ -14,7 +14,9 @@ namespace phx::rhi::dx12
 		void Initialize(GfxDeviceDx12& device, dx12::GpuBufferBindings* bindings);
 		void Finalize();
 
-		void EndFrame(GfxDeviceDx12& device);
+		void EndFrame(GfxDeviceDx12& device, uint32_t usedSize, uint32_t& head);
+
+		void WaitForFreeRegions(uint32_t& head);
 
 	private:
 		std::vector<Microsoft::WRL::ComPtr<ID3D12Fence>> m_fencePool;

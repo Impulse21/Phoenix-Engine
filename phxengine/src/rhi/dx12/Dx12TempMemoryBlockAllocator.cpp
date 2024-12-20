@@ -3,13 +3,12 @@
 
 using namespace phx::rhi::dx12;
 
-void TempMemoryBlockAllocator::Initialize(GfxDeviceDx12& device, dx12::GpuBufferBindings* bindings)
+void TempMemoryBlockAllocator::Initialize(GfxDeviceDx12&, dx12::GpuBufferBindings*)
 {
 }
 
-void TempMemoryBlockAllocator::EndFrame(GfxDeviceDx12& device)
+void TempMemoryBlockAllocator::EndFrame(GfxDeviceDx12& device, uint32_t usedSize, uint32_t& head)
 {
-
 	while (!this->m_inUseRegions.empty())
 	{
 		auto& region = this->m_inUseRegions.front();
@@ -21,7 +20,7 @@ void TempMemoryBlockAllocator::EndFrame(GfxDeviceDx12& device)
 		region.Fence->Signal(0);
 		this->m_availableFences.push_back(region.Fence);
 
-		m_head += region.UsedSize;
+		head += region.UsedSize;
 
 		this->m_inUseRegions.pop_front();
 	}
@@ -41,10 +40,30 @@ void TempMemoryBlockAllocator::EndFrame(GfxDeviceDx12& device)
 		fence = newFence.Get();
 	}
 
-	q->Signal(fence, 1);
+	device.GetGfxQueue().Queue->Signal(fence, 1);
 	this->m_inUseRegions.push_front(UsedRegion{
-		.UsedSize = m_tail - m_headAtStartOfFrame,
+		.UsedSize = usedSize,
 		.Fence = fence });
+}
+
+void TempMemoryBlockAllocator::WaitForFreeRegions(uint32_t& head)
+{
+	while (!this->m_inUseRegions.empty())
+	{
+		auto& region = this->m_inUseRegions.front();
+		if (region.Fence->GetCompletedValue() != 1)
+		{
+			PHX_CORE_WARN("[GPU QUEUE] Stalling waiting for space");
+			region.Fence->SetEventOnCompletion(1, nullptr);
+		}
+
+		region.Fence->Signal(0);
+		this->m_availableFences.push_back(region.Fence);
+
+		head += region.UsedSize;
+
+		this->m_inUseRegions.pop_front();
+	}
 }
 
 void TempMemoryBlockAllocator::Finalize()
@@ -54,7 +73,7 @@ void TempMemoryBlockAllocator::Finalize()
 		auto& region = this->m_inUseRegions.front();
 		if (region.Fence->GetCompletedValue() != 1)
 		{
-			region.Fence->SetEventOnCompletion(1, NULL);
+			region.Fence->SetEventOnCompletion(1, nullptr);
 		}
 
 		this->m_inUseRegions.pop_front();

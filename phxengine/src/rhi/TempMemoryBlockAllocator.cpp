@@ -6,13 +6,13 @@
 using namespace phx;
 using namespace phx::rhi;
 
-void TempMemoryBlockAllocator::Initialize(GfxDevice* device, size_t bufferSize, uint32_t blockSize)
+void TempMemoryBlockAllocator::Initialize(GfxDevice* device, uint32_t bufferSize, uint32_t blockSize)
 {
 	m_gfxDevice = device;
 	m_blockSize = blockSize;
 
 	assert((bufferSize& (bufferSize - 1)) == 0);
-	this->m_bufferMask = (bufferSize - 1);
+	m_bufferMask = (bufferSize - 1);
 
 	m_buffer = m_gfxDevice->CreateBuffer({
 			.DebugName = "Upload Buffer",
@@ -37,7 +37,7 @@ void TempMemoryBlockAllocator::Finalize()
 
 void TempMemoryBlockAllocator::EndFrame()
 {
-	m_platform.EndFrame(m_gfxDevice->Platform());
+	m_platform.EndFrame(m_gfxDevice->Platform(), m_tail - m_headAtStartOfFrame, m_head);
 	m_headAtStartOfFrame = m_tail;
 }
 
@@ -53,28 +53,13 @@ rhi::DynamicMemoryBlock TempMemoryBlockAllocator::GetNextMemoryBlock()
 
 	if (((m_tail - m_head) + m_blockSize) >= GetBufferSize())
 	{
-		while (!this->m_inUseRegions.empty())
-		{
-			auto& region = this->m_inUseRegions.front();
-			if (region.Fence->GetCompletedValue() != 1)
-			{
-				PHX_CORE_WARN("[GPU QUEUE] Stalling waiting for space");
-				region.Fence->SetEventOnCompletion(1, NULL);
-			}
-
-			region.Fence->Signal(0);
-			this->m_availableFences.push_back(region.Fence);
-
-			m_head += region.UsedSize;
-
-			this->m_inUseRegions.pop_front();
-		}
+		m_platform.WaitForFreeRegions(m_head);
 	}
 
 	const uint32_t offset = (this->m_tail & m_bufferMask) + m_blockSize;
 	m_tail += m_blockSize;
 
-	return DynamicMemoryPage{
+	return DynamicMemoryBlock{
 		.BufferHandle = this->m_buffer,
 		.Offset = offset,
 		.Data = reinterpret_cast<uint8_t*>(this->m_data + offset),
