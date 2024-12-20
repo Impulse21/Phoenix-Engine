@@ -10,11 +10,16 @@ file(GLOB src_editor
 
 
 add_executable(PhxEditor ${src_editor})
-target_link_libraries(PhxEditor PhxEngine)
+target_link_libraries(PhxEditor PRIVATE PhxEngine AgilitySDK)
 
 set_target_properties(PhxEditor  PROPERTIES FOLDER "Applications")
 set_target_properties(PhxEditor PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+
 target_compile_options(PhxEditor PRIVATE ${COMMON_COMPILE_OPTIONS})
+
+target_include_directories(PhxEditor SYSTEM PUBLIC 
+$<TARGET_PROPERTY:spdlog_header_only,INTERFACE_INCLUDE_DIRECTORIES>
+)
 
 # Add shader files to the project as resources
 file(GLOB shaders_editor

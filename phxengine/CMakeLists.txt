@@ -1,4 +1,3 @@
-include(FetchContent)
 
 file(GLOB include_engine
     include/phx/*.h)
@@ -140,7 +139,7 @@ target_include_directories(PhxEngine PRIVATE
     ${dxc_include}
 )
 
-target_link_libraries(PhxEngine PRIVATE DirectXShaderCompiler Dxil)
+target_link_libraries(PhxEngine PUBLIC DirectXShaderCompiler Dxil)
 
 message("DirectXShaderCompiler fetched")
 #[===[
@@ -180,27 +179,6 @@ if (PHX_ENABLE_DX12)
     source_group("src/rhi/dx12"         FILES ${src_rhi_d3d12})
     
     
-    message("Fetching D3D12 Agility SDK")
-    set(D3D12_AGILITY_SDK_VERSION "1.715.1-preview")
-    string(CONFIGURE "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/${D3D12_AGILITY_SDK_VERSION}" D3D12_AGILITY_SDK_URL)
-
-    FetchContent_Declare(
-        d3d12-agility-sdk 
-        URL ${D3D12_AGILITY_SDK_URL}
-        SOURCE_DIR ${CMAKE_BINARY_DIR}/d3d12-agility-sdk)
-
-    FetchContent_MakeAvailable(d3d12-agility-sdk)
-
-    add_library(AgilitySDK SHARED IMPORTED)
-    set_target_properties(AgilitySDK PROPERTIES
-        IMPORTED_LOCATION "${d3d12-agility-sdk_SOURCE_DIR}/bin/D3D12Core.dll"
-        IMPORTED_IMPLIB "${d3d12-agility-sdk_SOURCE_DIR}/lib/D3D12Core.lib"
-    )
-
-    set(d3d12-agility-sdk_include "${d3d12-agility-sdk_SOURCE_DIR}/build/native/include/")
-    message("D3D12 Agility SDK fetched")
-
-    
     message("Fetching PIX")
     
     set(PIX_VERSION "1.0.240308001")
@@ -227,7 +205,7 @@ if (PHX_ENABLE_DX12)
         ${include_rhi_dx12}
     )
 
-    target_link_libraries(PhxEngine PUBLIC AgilitySDK D3D12MemoryAllocator PIX)
+    target_link_libraries(PhxEngine PUBLIC  AgilitySDK D3D12MemoryAllocator PIX)
     target_include_directories(PhxEngine SYSTEM PUBLIC 
         $<TARGET_PROPERTY:D3D12MemoryAllocator,INTERFACE_INCLUDE_DIRECTORIES>
     )

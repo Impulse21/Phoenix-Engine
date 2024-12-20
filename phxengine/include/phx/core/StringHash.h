@@ -14,7 +14,7 @@ namespace phx
 	constexpr size_t const_strlen(const char* s)
 	{
 		size_t size = 0;
-		while (s[size]) { size++; };
+		while (s[size]) { size++; }
 		return size;
 	}
 
@@ -47,7 +47,7 @@ namespace phx
 		StringHash(const StringHash& other) = default;
 
 		StringHash()
-			: m_computedHash(0) {};
+			: m_computedHash(0) {}
 
 		constexpr operator Hash32()noexcept { return this->m_computedHash; }
 		explicit operator bool() const { return this->m_computedHash != 0; }

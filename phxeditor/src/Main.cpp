@@ -66,7 +66,7 @@ public:
 		m_imguiRenderer.EnableDarkThemeColours();
 
 		m_gfxCommandList = device->CreateGfxCommandList();
-	};
+	}
 
 	void Shutdown() override 
 	{
@@ -74,10 +74,10 @@ public:
 		m_imguiRenderer.Finialize(device);
 
 		device->DeleteCommandList(m_gfxCommandList);
-	};
+	}
 
 public:
-	void Tick()
+	void Tick() override
 	{
 		Update();
 		Render();
@@ -88,7 +88,7 @@ private:
 	{
 		m_imguiRenderer.BeginFrame();
 		ImGui::ShowDemoWindow();
-	};
+	}
 
 	void Render()
 	{
