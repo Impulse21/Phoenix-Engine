@@ -2,7 +2,7 @@
 
 #include "phx/core/Memory.h"
 #include "RHITypes.h"
-#include "PlatformTypes.h"
+#include "RHIPlatformTypes.h"
 #include "GfxDevice.h"
 #include "TempMemoryBlockAllocator.h"
 
@@ -117,7 +117,7 @@ namespace phx::rhi
 
 		void SetDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData)
 		{
-			DynamicAllocation alloc = m_dynamicAllocator.Allocate(vertexSize, 16);
+			DynamicAllocation alloc = m_dynamicAllocator.Allocate(static_cast<uint32_t>(vertexSize), 16);
 			alloc.Set(vertexBufferData, numVertices * vertexSize);
 
 			auto* platformBindings = m_device->GetGpuBufferPool().Get<platform::GpuBufferBindings>(alloc.BufferHandle);
@@ -126,8 +126,8 @@ namespace phx::rhi
 
 		void SetDynamicIndexBuffer(size_t numIndicies, Format indexFormat, const void* indexBufferData)
 		{
-			const size_t indexStrideInBytes = indexFormat == Format::R16_UINT ? 2 : 4;
-			const size_t indexSizeInBytes = numIndicies * indexStrideInBytes;
+			const uint32_t indexStrideInBytes = indexFormat == Format::R16_UINT ? 2 : 4;
+			const uint32_t indexSizeInBytes = static_cast<uint32_t>(numIndicies * indexStrideInBytes);
 
 			DynamicAllocation alloc = m_dynamicAllocator.Allocate(indexSizeInBytes, 16);
 			alloc.Set(indexBufferData, indexSizeInBytes);

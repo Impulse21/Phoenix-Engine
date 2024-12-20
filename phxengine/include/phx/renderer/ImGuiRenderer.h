@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ImGui/imgui.h"
+#include "imgui.h"
 #include "phx/rhi/GfxDevice.h"
 
 namespace phx

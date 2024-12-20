@@ -55,7 +55,7 @@ namespace phx::CommandLineArgs
 	{
 		return Lookup(key, [&value](std::wstring& val)
 			{
-				value = std::stoi(val);
+				value = static_cast<uint32_t>(std::stoi(val));
 			});
 	}
 
@@ -63,7 +63,7 @@ namespace phx::CommandLineArgs
 	{
 		return Lookup(key, [&value](std::wstring& val)
 			{
-				value = (float)_wtof(val.c_str());
+				value = static_cast<float>(_wtof(val.c_str()));
 			});
 	}
 

@@ -111,10 +111,10 @@ std::unique_ptr<IBlob> NativeFileSystem::ReadFile(std::filesystem::path const& n
     }
 
     file.seekg(0, std::ios::end);
-    uint64_t size = file.tellg();
+    uint64_t size = static_cast<uint64_t>(file.tellg());
     file.seekg(0, std::ios::beg);
 
-    if (size > static_cast<uint64_t>(std::numeric_limits<size_t>::max()))
+    if (size > static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))
     {
         PHX_CORE_ERROR("File larger then size_t");
         return nullptr;

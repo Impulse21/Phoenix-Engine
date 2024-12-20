@@ -39,7 +39,7 @@ namespace
 
 void Memory::Initialize(MemoryConfiguration const& config)
 {
-	VirtualPtr = static_cast<uint8_t*>(VirtualAlloc(NULL, config.VirtualMemorySize, MEM_RESERVE, PAGE_READWRITE));
+	VirtualPtr = static_cast<uint8_t*>(VirtualAlloc(nullptr, config.VirtualMemorySize, MEM_RESERVE, PAGE_READWRITE));
 }
 
 void Memory::Finalize()
@@ -130,7 +130,7 @@ void VirtualStackAllocator::FreeMarker(VirtualStackAllocator::Marker marker)
 #if defined(PHX_PLATFORM_WINDOWS)
 void* phx::VirtualMemReserve(size_t reserveSize)
 {
-	return VirtualAlloc(NULL, reserveSize, MEM_RESERVE, PAGE_READWRITE);
+	return VirtualAlloc(nullptr, reserveSize, MEM_RESERVE, PAGE_READWRITE);
 }
 
 void phx::VirtualMemCommit(void* ptr, size_t commitSize)

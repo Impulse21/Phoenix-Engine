@@ -34,7 +34,6 @@ void ImGuiRenderSystem::Initialize(GfxDevice* gfxDevice, IFileSystem* fs, bool e
     if (!ImGui_ImplWin32_Init(phx::EngineCore::g_hWnd))
     {
         throw std::runtime_error("Failed it initalize IMGUI");
-        return;
     }
 
     ImGuiIO& io = ImGui::GetIO();
@@ -68,7 +67,7 @@ void ImGuiRenderSystem::Initialize(GfxDevice* gfxDevice, IFileSystem* fs, bool e
         }, &memInfo);
     
     this->m_fontTextureBindlessIndex = gfxDevice->GetDescriptorIndex(this->m_fontTexture, SubresouceType::SRV);
-    io.Fonts->SetTexID(static_cast<void*>(&this->m_fontTextureBindlessIndex));
+    io.Fonts->SetTexID(static_cast<ImTextureID>(this->m_fontTextureBindlessIndex));
     
     ShaderCompiler::Output vsOut = ShaderCompiler::Compile({
             .Format = gfxDevice->GetShaderFormat(),
@@ -236,12 +235,12 @@ void ImGuiRenderSystem::Render(GfxCommandListRecorder& recorder)
                     scissorRect.MaxX = static_cast<int>(clipRect.z - displayPos.x);
                     scissorRect.MaxY = static_cast<int>(clipRect.w - displayPos.y);
 
-                    if (scissorRect.MaxX - scissorRect.MinX > 0.0f &&
-                        scissorRect.MaxY - scissorRect.MinY > 0.0)
+                    if (scissorRect.MaxX - scissorRect.MinX > 0 &&
+                        scissorRect.MaxY - scissorRect.MinY > 0)
                     {
-                        auto* desciptorIndex = static_cast<DescriptorIndex*>(drawCmd.GetTexID());
+                        auto desciptorIndex = static_cast<DescriptorIndex>(drawCmd.GetTexID());
                         push.TextureIndex = desciptorIndex
-                            ? *desciptorIndex
+                            ? desciptorIndex
                             : cInvalidDescriptorIndex;
                         recorder.SetPushConstant(RootParameters::PushConstant, sizeof(ImguiDrawInfo), &push);
                         recorder.SetScissors({ &scissorRect, 1 });

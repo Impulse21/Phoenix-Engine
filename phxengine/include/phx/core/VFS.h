@@ -40,7 +40,7 @@ namespace phx
 	class IRootFileSystem : public IFileSystem
 	{
 	public:
-		virtual ~IRootFileSystem() = default;
+		virtual ~IRootFileSystem() override = default;
 
 		virtual void Mount(const std::filesystem::path& path, std::shared_ptr<IFileSystem> fs) = 0;
 		virtual void Mount(const std::filesystem::path& path, const std::filesystem::path& nativePath) = 0;

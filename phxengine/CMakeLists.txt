@@ -86,10 +86,27 @@ target_compile_options(PhxEngine PRIVATE
     -Wno-reorder-ctor
     -Wno-ctad-maybe-unsupported
     -Wno-language-extension-token
-    -Wno-unsafe-buffer-usage
     -Wno-global-constructors
     -Wno-missing-variable-declarations
+    -Wno-exit-time-destructors
+    -Wno-nonportable-system-include-path
+    -Wno-sign-conversion
+    -Wno-unused-member-function
+    -Wno-nested-anon-types
+    -Wno-gnu-anonymous-struct
+    -Wno-cast-function-type
 )
+
+include(CheckCXXCompilerFlag)
+
+check_cxx_compiler_flag("-Wno-unsafe-buffer-usage" HAS_UNSAFE_BUFFER_FLAG)
+
+if(HAS_UNSAFE_BUFFER_FLAG)
+    message(STATUS "Compiler supports -Wno-unsafe-buffer-usage")
+    add_compile_options(-Wno-unsafe-buffer-usage)
+else()
+    message(STATUS "Compiler does NOT support -Wno-unsafe-buffer-usage")
+endif()
 
 if (USING_MSVC)
     target_precompile_headers(PhxEngine PRIVATE ${pch_file})

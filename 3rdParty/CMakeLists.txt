@@ -10,7 +10,7 @@ set_target_properties(cgltf PROPERTIES FOLDER ${3rdparty_folder})
 
 add_library(entt INTERFACE 
     ${CMAKE_CURRENT_SOURCE_DIR}/entt/src/entt/entt.hpp)
-target_include_directories(entt INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/entt)
+target_include_directories(entt SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/entt)
 set_target_properties(entt PROPERTIES FOLDER ${3rdparty_folder})
 
 set(imgui_src
@@ -29,7 +29,7 @@ set(imgui_src
     ${CMAKE_CURRENT_SOURCE_DIR}/imgui/misc/cpp/imgui_stdlib.cpp)
 
 add_library(imgui STATIC ${imgui_src})
-target_include_directories(imgui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
+target_include_directories(imgui SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
 set_target_properties(imgui PROPERTIES FOLDER ${3rdparty_folder})
 
 option(BUILD_TOOLS "" OFF)

@@ -12,7 +12,7 @@
 #include <iostream>
 
 #include <Objbase.h>  // This includes COM base definitions
-#include "dxc/dxcapi.h"
+#include "dxcapi.h"
 
 using namespace phx;
 using namespace phx::rhi;
@@ -21,6 +21,7 @@ using namespace phx::rhi;
 #define CComPtr Microsoft::WRL::ComPtr
 namespace
 {
+
 	struct InternalState_DXC
 	{
 		DxcCreateInstanceProc DxcCreateInstance = nullptr;
@@ -28,7 +29,7 @@ namespace
 		InternalState_DXC()
 		{
 #ifdef _WIN32
-			const std::wstring library = L"./dxcompiler.dll";
+			const std::string library = "./dxcompiler.dll";
 			HMODULE dxcompiler = LoadLibrary(library.c_str());
 #elif defined(PLATFORM_LINUX)
 			const std::string library = "./libdxcompiler" + modifier + ".so";
@@ -36,7 +37,7 @@ namespace
 #endif
 			if (dxcompiler != nullptr)
 			{
-				DxcCreateInstance = (DxcCreateInstanceProc)GetProcAddress(dxcompiler, "DxcCreateInstance");
+				DxcCreateInstance = reinterpret_cast<DxcCreateInstanceProc>(GetProcAddress(dxcompiler, "DxcCreateInstance"));
 				if (DxcCreateInstance != nullptr)
 				{
 					CComPtr<IDxcCompiler3> dxcCompiler;
@@ -118,11 +119,10 @@ namespace
 			break;
 		case ShaderFormat::Spriv:
 			args.push_back(L"-spirv");
-			if (!input.StripReflection)
-				// args.push_back(L"-fspv-reflect"); Adds an unwanted extension
-				args.push_back(L"-fspv-target-env=vulkan1.3");
-				args.push_back(L"-fvk-use-dx-layout");
-				args.push_back(L"-fvk-use-dx-position-w");
+			// args.push_back(L"-fspv-reflect"); Adds an unwanted extension
+			args.push_back(L"-fspv-target-env=vulkan1.3");
+			args.push_back(L"-fvk-use-dx-layout");
+			args.push_back(L"-fvk-use-dx-position-w");
 #if false
 			//args.push_back(L"-fvk-b-shift"); args.push_back(L"0"); args.push_back(L"0");
 			args.push_back(L"-fvk-t-shift"); args.push_back(L"1000"); args.push_back(L"0");
@@ -425,6 +425,8 @@ namespace
 			{
 				return 0;
 			}
+
+			virtual ~IncludeHandler() = default;
 		} includehandler;
 		includehandler.input = &input;
 		includehandler.output = &output;
@@ -492,7 +494,7 @@ namespace
 			if (pHash != nullptr)
 			{
 				DxcShaderHash* pHashBuf = (DxcShaderHash*)pHash->GetBufferPointer();
-				for (int i = 0; i < _countof(pHashBuf->HashDigest); i++)
+				for (size_t i = 0; i < _countof(pHashBuf->HashDigest); i++)
 				{
 					output.ShaderHash.push_back(pHashBuf->HashDigest[i]);
 				}

@@ -57,7 +57,7 @@ namespace phx::rhi
 		{
 			if (m_dataHot)
 			{
-				for (int i = 0; i < m_commitedIndices; i++)
+				for (size_t i = 0; i < m_commitedIndices; i++)
 				{
 					m_dataHot[i].~TDataHot();
 				}
@@ -68,7 +68,7 @@ namespace phx::rhi
 
 			if (m_dataCold)
 			{
-				for (int i = 0; i < m_commitedIndices; i++)
+				for (size_t i = 0; i < m_commitedIndices; i++)
 				{
 					m_dataCold[i].~TDataCold();
 				}

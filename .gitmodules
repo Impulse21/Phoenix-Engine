@@ -22,6 +22,7 @@
 [submodule "3rdParty/imgui"]
 	path = 3rdParty/imgui
 	url = https://github.com/ocornut/imgui.git
+	branch = "docking"
 [submodule "3rdParty/meshoptimizer"]
 	path = 3rdParty/meshoptimizer
 	url = https://github.com/zeux/meshoptimizer.git
