@@ -3,8 +3,9 @@
 ## TODO List
 ### Dx12 Only focus currently
 
+- [ ] Set up Project Build files (Premake)
+- [ ] CLang compile
 - [ ] Get ImGui Demo Window Rendering 
-- [ ] Reset up CMake (To difficult to manage VS projects)
 - [ ] Switch Compiler to LLVM
 - [ ] Delete old unused code
 - [ ] Create a resource system and resources
