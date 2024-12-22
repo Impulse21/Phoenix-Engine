@@ -115,7 +115,6 @@ function HandleGlobalWarnings()
     --]=====]
 end
 
-
 workspace 'Phx Engine'
 	configurations { 'Debug', 'Profile', 'Final' }
 	platforms { clang_win_64, msvc_win_64 }
@@ -264,7 +263,7 @@ workspace 'Phx Engine'
 		flags { 'linktimeoptimization' }
 		runtime('release')
 
-    filter { 'configurations:Profiling' }
+    filter { 'configurations:Profile' }
 		defines { 'PHX_CONFIG_PROFILING', }
 
 	filter { 'configurations:Final' }
@@ -272,65 +271,59 @@ workspace 'Phx Engine'
 	
     
     -- Project definitions
-    project (ProjectCorsairEngine)
+    project (project_name_phx_editor)
 	kind('WindowedApp')
 	files	
 	{	
-		SourceDirectory..'/*.h', SourceDirectory..'/*.cpp'
+		engine_include_directory..'/**.h',
+		engine_src_directory..'/**.h',
+		engine_src_directory..'/**.cpp',
 	}
 
 	-- Libraries from other projects
 	links
 	{
-		ProjectCore,
-		ProjectRendering,
-		ProjectResource,
-		ProjectEditor
+		project_name_phx_engine,
 	}
 	
 	-- Only executables should link to any libraries
 	-- Otherwise we'll get bloated libs and slow link times
 	-- Project libraries have slimmed by about ~140MB
-	AddLibraryIncludes(AssimpLibrary)
-	LinkLibrary(AssimpLibrary)
-	LinkLibrary(UfbxLibrary)
-	LinkLibrary(MeshOptimizerLibrary)
-	LinkLibrary(MikkTSpaceLibrary)
-	LinkLibrary(StbLibrary)
-	LinkLibrary(WuffsLibrary)
+	LinkLibrary(library_mesh_optimizer)
+	--LinkLibrary(MikkTSpaceLibrary)
+	--LinkLibrary(StbLibrary)
+	--LinkLibrary(WuffsLibrary)
 
-	AddLibraryIncludes(SDL3Library)
-	LinkLibrary(SDL3Library)
+	--AddLibraryIncludes(SDL3Library)
+	--LinkLibrary(SDL3Library)
 	
-	LinkLibrary(EASTLLibrary)
+	LinkLibrary(library_eastl_library)
 	
-	AddLibraryIncludes(ImguiLibrary)
-	LinkLibrary(ImguiLibrary)
+	AddLibraryIncludes(library_imgui)
+	LinkLibrary(library_imgui)
 
 	-- todo platform filters
-	LinkLibrary(VulkanLibrary)
-	LinkLibrary(D3D12Library)
-	LinkLibrary(WinPixEventRuntimeLibrary)
+	-- LinkLibrary(VulkanLibrary)
+	-- LinkLibrary(D3D12Library)
+	LinkLibrary(library_win_pix_event_runtime)
 
 	-- Copy necessary files or DLLs
 	postbuildcommands
 	{
-		CopyFileCommand(path.getabsolute(SDL3Library.dlls), '%{cfg.buildtarget.directory}')
+		--CopyFileCommand(path.getabsolute(SDL3Library.dlls), '%{cfg.buildtarget.directory}')
 	}
 	
 	filter {}
-
-group('Rendering')
 
 SourceShaderCompilerDirectory = SourceRenderingDirectory..'/ShaderCompiler'
 ShaderMetadataFilename = "ShaderMetadata"
 BuiltinShadersFilename = "BuiltinShaders"
 
-project(ProjectRendering)
+project(project_name_phx_engine)
 	kind('StaticLib')
 	pchheader('Rendering/CrRendering_pch.h')
 	pchsource(SourceRenderingDirectory..'/CrRendering_pch.cpp')
-	dependson { ProjectShaders } -- This depends on the shaders. Shaders in turn depends on the shader compiler
+	-- dependson { ProjectShaders } -- This depends on the shaders. Shaders in turn depends on the shader compiler
 	dependson { ProjectBuiltinShaders }
 
 	local ShaderMetadataHeader = GeneratedShadersDirectory..'/'..ShaderMetadataFilename..'.h'
@@ -353,11 +346,9 @@ project(ProjectRendering)
 		BuiltinShaderCpp
 	}
 	
-	AddLibraryIncludes(AgilityLibrary)
-	AddLibraryIncludes(AssimpLibrary)
-	AddLibraryIncludes(ImguiLibrary)
-	AddLibraryIncludes(SPIRVReflectLibrary)
-	AddLibraryIncludes(RenderDocLibrary)
+	-- TODO: DX12 Filter
+	AddLibraryIncludes(library_agility)
+	AddLibraryIncludes(library_imgui)
 	
 	filter { Win64PlatformFilter }
 		files { SourceRenderingDirectory..'/Vulkan/*' }
@@ -367,14 +358,14 @@ project(ProjectRendering)
 		
 		postbuildcommands
 		{
-			CopyFileCommand(path.getabsolute(WinPixEventRuntimeLibrary.dlls), '%{cfg.buildtarget.directory}'),
+			CopyFileCommand(path.getabsolute(library_win_pix_event_runtime.dlls), '%{cfg.buildtarget.directory}'),
 			MakeDirCommand('%{cfg.buildtarget.directory}/D3D12/'),
-			CopyFileCommand(path.getabsolute(AgilityLibrary.dlls[1]), '%{cfg.buildtarget.directory}/D3D12/'),
-			CopyFileCommand(path.getabsolute(AgilityLibrary.dlls[2]), '%{cfg.buildtarget.directory}/D3D12/'),
+			CopyFileCommand(path.getabsolute(library_agility.dlls[1]), '%{cfg.buildtarget.directory}/D3D12/'),
+			CopyFileCommand(path.getabsolute(library_agility.dlls[2]), '%{cfg.buildtarget.directory}/D3D12/'),
 		}
 		
-	filter { 'platforms:'..VulkanOSX }
-		files { SourceRenderingDirectory..'/Vulkan/*' }
+	--filter { 'platforms:'..VulkanOSX }
+		--files { SourceRenderingDirectory..'/Vulkan/*' }
 	
 	filter {}
 
@@ -382,6 +373,7 @@ project(ProjectRendering)
 -- Shader metadata generation job --
 ------------------------------------
 
+--[=====[
 local GeneratedShadersDirectoryAbsolute = path.getabsolute(GeneratedShadersDirectory)
 
 local hlslFiles = os.matchfiles(SourceShadersDirectory..'/**.hlsl')
@@ -454,56 +446,7 @@ project(ProjectBuiltinShaders)
 		
 	filter {}
 
-project(ProjectShaderCompiler)
-	kind('ConsoleApp')
-	files { SourceShaderCompilerDirectory..'/**' }
-	
-	pchheader('Rendering/ShaderCompiler/CrShaderCompiler_pch.h')
-	pchsource(SourceShaderCompilerDirectory..'/CrShaderCompiler_pch.cpp')
-	
-	links { ProjectCore }
-
-	AddLibraryIncludes(SPIRVReflectLibrary)
-	LinkLibrary(SPIRVReflectLibrary)
-	
-	AddLibraryIncludes(DxcLibrary)
-	LinkLibrary(DxcLibrary)
-	
-	LinkLibrary(EASTLLibrary)
-	
-	AddLibraryIncludes(RapidYAMLLibrary)
-	LinkLibrary(RapidYAMLLibrary)
-
-	postbuildcommands
-	{
-		-- Copy DLLs that the shader compiler needs
-		CopyFileCommand(path.getabsolute(DxcLibrary.dlls[1]), '%{cfg.buildtarget.directory}'),
-		CopyFileCommand(path.getabsolute(DxcLibrary.dlls[2]), '%{cfg.buildtarget.directory}')
-	}
-
-group('Resource')
-
-SourceResourceDirectory = SourceDirectory..'/Resource'
-SourceImageDirectory = SourceResourceDirectory..'/Image'
-SourceModelDirectory = SourceResourceDirectory..'/Model'
-
-project(ProjectResource)
-	kind('StaticLib')
-	pchheader('Resource/CrResource_pch.h')
-	pchsource(SourceResourceDirectory..'/CrResource_pch.cpp')
-	dependson { ProjectShaders }
-	files
-	{
-		SourceResourceDirectory..'/**'
-	}
-
-	AddLibraryIncludes(AssimpLibrary)
-	AddLibraryIncludes(CGLTFLibrary)
-	AddLibraryIncludes(MeshOptimizerLibrary)
-	AddLibraryIncludes(MikkTSpaceLibrary)
-	AddLibraryIncludes(StbLibrary)
-	AddLibraryIncludes(UfbxLibrary)
-	AddLibraryIncludes(WuffsLibrary)
+	--]=====]
 
 group('Core')
 
@@ -535,43 +478,22 @@ project(ProjectCore)
 
 	filter {}
 
-project(ProjectMath)
-	kind('StaticLib')
-	files { MathDirectory..'/**' }
-	includedirs { MathDirectory }
-	
-	AddLibraryFiles(HlslppLibrary)
-	AddLibraryNatvis(HlslppLibrary)
-
-group('Editor')
-
-project(ProjectEditor)
-	kind('StaticLib')
-	
-	files
-	{
-		SourceEditorDirectory..'/**'
-	}
-	
-	AddLibraryIncludes(SDL3Library)
-	AddLibraryIncludes(ImguiLibrary)
-
 group('.Solution Generation')
 
 project('Generate Solution')
 	kind('StaticLib')
 	files{ '*.lua', '*.bat', '*.command' }
 
-	local rootPathAbsolute = path.getabsolute('')
-	local generateSolutionCommandLine = '{chdir} "'..rootPathAbsolute..'"'
+	local root_path_absolute = path.getabsolute('')
+	local generate_solution_command_line = '{chdir} "'..root_path_absolute..'"'
 
-	if IsVisualStudio then
-		rebuildProjectCommand = '"Visual Studio '..VisualStudioVersion..'.bat"'
-		print(rebuildProjectCommand)
+	if is_visual_studio then
+		rebuild_project_command = '"VS'..VisualStudioVersion..'_Dx12.bat"'
+		print(rebuild_project_command)
 	end
 
 	postbuildcommands
 	{
-		generateSolutionCommandLine, -- Run
-		rebuildProjectCommand,
+		generate_solution_command_line, -- Run
+		rebuild_project_command,
 	}
