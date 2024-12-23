@@ -26,7 +26,7 @@ AgilityLibrary =
 	lib_dirs     = LibAgility..binary_directory,
 	dlls        =
 	{
-		..binary_directory..'x64/D3D12Core.dll',
+		LibAgility..binary_directory..'x64/D3D12Core.dll',
 		LibAgility..binary_directory..'x64/d3d12SDKLayers.dll'
 	}
 }

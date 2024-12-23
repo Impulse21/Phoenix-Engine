@@ -315,9 +315,9 @@ workspace 'Phx Engine'
 	
 	filter {}
 
-SourceShaderCompilerDirectory = SourceRenderingDirectory..'/ShaderCompiler'
-ShaderMetadataFilename = "ShaderMetadata"
-BuiltinShadersFilename = "BuiltinShaders"
+--SourceShaderCompilerDirectory = SourceRenderingDirectory..'/ShaderCompiler'
+--ShaderMetadataFilename = "ShaderMetadata"
+--BuiltinShadersFilename = "BuiltinShaders"
 
 project(project_name_phx_engine)
 	kind('StaticLib')
@@ -362,10 +362,10 @@ project(project_name_phx_engine)
 		
 		postbuildcommands
 		{
-			CopyFileCommand(path.getabsolute(library_win_pix_event_runtime.dlls), '%{cfg.buildtarget.directory}'),
-			MakeDirCommand('%{cfg.buildtarget.directory}/D3D12/'),
-			CopyFileCommand(path.getabsolute(library_agility.dlls[1]), '%{cfg.buildtarget.directory}/D3D12/'),
-			CopyFileCommand(path.getabsolute(library_agility.dlls[2]), '%{cfg.buildtarget.directory}/D3D12/'),
+			--CopyFileCommand(path.getabsolute(library_win_pix_event_runtime.dlls), '%{cfg.buildtarget.directory}'),
+			--MakeDirCommand('%{cfg.buildtarget.directory}/D3D12/'),
+			--CopyFileCommand(path.getabsolute(library_agility.dlls[1]), '%{cfg.buildtarget.directory}/D3D12/'),
+			--CopyFileCommand(path.getabsolute(library_agility.dlls[2]), '%{cfg.buildtarget.directory}/D3D12/'),
 		}
 		
 	--filter { 'platforms:'..VulkanOSX }
@@ -462,7 +462,7 @@ project('Generate Solution')
 	local generate_solution_command_line = '{chdir} "'..root_path_absolute..'"'
 
 	if is_visual_studio then
-		rebuild_project_command = '"VS'..VisualStudioVersion..'_Dx12.bat"'
+		rebuild_project_command = '"VS'..visual_studio_version..'_Dx12.bat"'
 		print(rebuild_project_command)
 	end
 
