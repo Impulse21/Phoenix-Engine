@@ -351,14 +351,15 @@ project(project_name_phx_engine)
 
 	ExcludePlatformSpecificRHI(engine_include_directory)
 	ExcludePlatformSpecificRHI(engine_src_directory)
+	
 	-- TODO: DX12 Filter
 	--AddLibraryIncludes(library_agility)
 	--AddLibraryIncludes(library_imgui)
 	
 	filter { win_64_platform_filters }
 		files 
-		{ 
-			engine_include_directory..'**/rhi/dx12/**',
+		{
+			engine_include_directory..'**/phx/rhi/dx12/**',
 			engine_src_directory..'**/rhi/dx12/**'
 		}
 		--AddLibraryIncludes(VulkanLibrary)
