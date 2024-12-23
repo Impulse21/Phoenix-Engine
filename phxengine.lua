@@ -115,7 +115,7 @@ function HandleGlobalWarnings()
     --]=====]
 end
 
-workspace 'Phx Engine'
+workspace 'PhxEngine'
 	configurations { 'Debug', 'Profile', 'Final' }
 	platforms { clang_win_64, msvc_win_64 }
 	location (workspace_directory)
