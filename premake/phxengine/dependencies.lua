@@ -1,206 +1,114 @@
--- Dependencies for Corsair Engine
+-- Dependencies for Phx Engine
 
-DependenciesDirectory   = 'Dependencies'
-BinaryDirectory = '/Libraries/'
-IncludeDirectory = '/Include/'
+thrid_party_directory   = '3rdParty'
+binary_directory = '/libraries/'
+include_directory = '/include/'
 
 -- Library Directories
-LibAgility            = DependenciesDirectory..'/agility'
-LibAssimp             = DependenciesDirectory..'/assimp'
-LibCGLTF              = DependenciesDirectory..'/cgltf'
-LibCRSTL              = DependenciesDirectory..'/crstl'
-LibDdspp              = DependenciesDirectory..'/ddspp'
-LibDxc                = DependenciesDirectory..'/dxc'
-LibEASTL              = DependenciesDirectory..'/eastl'
-LibHlslpp             = DependenciesDirectory..'/hlslpp'
-LibImGui              = DependenciesDirectory..'/imgui'
-LibMeshOptimizer      = DependenciesDirectory..'/meshoptimizer'
-LibMikkTSpace         = DependenciesDirectory..'/mikktspace'
-LibRapidYAML          = DependenciesDirectory..'/rapidyaml'
-LibRenderDoc          = DependenciesDirectory..'/renderdoc'
-LibSDL3               = DependenciesDirectory..'/sdl3'
-LibSPIRVReflect       = DependenciesDirectory..'/spirv-reflect'
-LibStb                = DependenciesDirectory..'/stb'
-LibUfbx               = DependenciesDirectory..'/ufbx'
-LibVMA                = DependenciesDirectory..'/vma'
-LibVulkan             = DependenciesDirectory..'/vulkan'
-LibWinPixEventRuntime = DependenciesDirectory..'/winpixeventruntime'
-LibWuffs              = DependenciesDirectory..'/wuffs'
-LibxxHash             = DependenciesDirectory..'/xxHash'
+LibCGLTF              	= thrid_party_directory..'/cgltf'
+LibAgility            	= thrid_party_directory..'/agility'
+LibDxc                	= thrid_party_directory..'/dxc'
+LibEASTL              	= thrid_party_directory..'/eastl'
+LibHlslpp             	= thrid_party_directory..'/hlslpp'
+LibImGui              	= thrid_party_directory..'/imgui'
+LibMeshOptimizer      	= thrid_party_directory..'/meshoptimizer'
+LibWinPixEventRuntime 	= thrid_party_directory..'/winpixeventruntime'
+LibxxHash             	= thrid_party_directory..'/xxHash'
+lib_D3D12MA				= thrid_party_directory..'/D3D12MemoryAllocator'
+lib_directx_tex			= thrid_party_directory..'/DirectXTex'
+lib_entt				= thrid_party_directory..'/entt'
+lib_optick				= thrid_party_directory..'/optic'
+lib_spdlog				= thrid_party_directory..'/spdlog'
 
 AgilityLibrary =
 {
-	includeDirs = LibAgility..IncludeDirectory..'include',
-	libDirs     = LibAgility..BinaryDirectory,
+	include_dirs = LibAgility..include_directory..'include',
+	lib_dirs     = LibAgility..binary_directory,
 	dlls        =
 	{
-		LibAgility..BinaryDirectory..'x64/D3D12Core.dll',
-		LibAgility..BinaryDirectory..'x64/d3d12SDKLayers.dll'
+		..binary_directory..'x64/D3D12Core.dll',
+		LibAgility..binary_directory..'x64/d3d12SDKLayers.dll'
 	}
 }
 
-AssimpLibrary =
-{
-	includeDirs = LibAssimp..IncludeDirectory..'include',
-	libDirs     = LibAssimp..BinaryDirectory,
-	libNames    = 'Assimp.vs2019.release'
-}
+-- natvis      = LibCRSTL..include_directory..'include/*.natvis',
 
 CGLTFLibrary =
 {
-	includeDirs = LibCGLTF..IncludeDirectory
-}
-
-CRSTLLibrary =
-{
-	includeDirs = LibCRSTL..IncludeDirectory..'include',
-	natvis      = LibCRSTL..IncludeDirectory..'include/*.natvis',
+	include_dirs = LibCGLTF..include_directory
 }
 
 D3D12Library =
 {
-	libNames = {'dxgi', 'd3d12'}
-}
-
-DdsppLibrary =
-{
-	includeDirs = LibDdspp..IncludeDirectory
+	lib_names = {'dxgi', 'd3d12'}
 }
 
 -- https://github.com/microsoft/DirectXShaderCompiler
 DxcLibrary =
 {
-	includeDirs = LibDxc..IncludeDirectory,
-	libDirs     = LibDxc..BinaryDirectory,
-	libNames    = { 'dxcompiler' },
-	dlls        = { LibDxc..BinaryDirectory..'dxcompiler.dll', LibDxc..BinaryDirectory..'dxil.dll' }
+	include_dirs = LibDxc..include_directory,
+	lib_dirs     = LibDxc..binary_directory,
+	lib_names    = { 'dxcompiler' },
+	dlls        = { LibDxc..binary_directory..'dxcompiler.dll', LibDxc..binary_directory..'dxil.dll' }
 }
 
 EASTLLibrary =
 {
-	includeDirs =
+	include_dirs =
 	{ 
-		LibEASTL..IncludeDirectory..'include',
-		LibEASTL..IncludeDirectory..'test/packages/EAStdC/include', 
-		LibEASTL..IncludeDirectory..'test/packages/EAAssert/include',
-		LibEASTL..IncludeDirectory..'test/packages/EABase/include/Common'
+		LibEASTL..include_directory..'include',
+		LibEASTL..include_directory..'test/packages/EAStdC/include', 
+		LibEASTL..include_directory..'test/packages/EAAssert/include',
+		LibEASTL..include_directory..'test/packages/EABase/include/Common'
 	},
 	defines =
 	{
 		"EASTL_ASSERT_ENABLED=1",
 		"CHAR8_T_DEFINED" -- We don't want EASTL to define char8_t regardless of compiler options
 	},
-	natvis      = LibEASTL..IncludeDirectory..'doc/**.natvis',
-	libDirs     = LibEASTL..BinaryDirectory,
-	libNames    = 'EASTL.vs2019.release'
+	natvis      = LibEASTL..include_directory..'doc/**.natvis',
+	lib_dirs     = LibEASTL..binary_directory,
+	lib_names    = 'EASTL.vs2019.release'
 }
 
 HlslppLibrary =
 {
-	includeDirs = LibHlslpp..IncludeDirectory..'include',
-	files = LibHlslpp..IncludeDirectory..'include/**.h',
-	natvis = LibHlslpp..IncludeDirectory..'include/**.natvis',
+	include_dirs = LibHlslpp..include_directory..'include',
+	files = LibHlslpp..include_directory..'include/**.h',
+	natvis = LibHlslpp..include_directory..'include/**.natvis',
 	defines = 'HLSLPP_FEATURE_TRANSFORM'
 }
 
 ImguiLibrary =
 {
-	includeDirs = LibImGui..IncludeDirectory,
-	libDirs     = LibImGui..BinaryDirectory,
-	libNames    = 'ImGui.vs2022.release',
+	include_dirs = LibImGui..include_directory,
+	lib_dirs     = LibImGui..binary_directory,
+	lib_names    = 'ImGui.vs2022.release',
 	defines = 'IMGUI_DISABLE_OBSOLETE_FUNCTIONS'
 }
 
 MeshOptimizerLibrary =
 {
-	includeDirs = LibMeshOptimizer..IncludeDirectory..'src',
-	libDirs     = LibMeshOptimizer..BinaryDirectory,
-	libNames    = 'MeshOptimizer.vs2022.release',
-}
-
-MikkTSpaceLibrary =
-{
-	includeDirs = LibMikkTSpace..IncludeDirectory,
-	libDirs     = LibMikkTSpace..BinaryDirectory,
-	libNames    = 'MikkTSpace.vs2022.release',
-}
-
-RapidYAMLLibrary =
-{
-	includeDirs = 
-	{
-		LibRapidYAML..IncludeDirectory..'src',
-		LibRapidYAML..IncludeDirectory..'ext/c4core/src',
-	},
-	libDirs     = LibRapidYAML..BinaryDirectory,
-	libNames    = 'rapidyaml.vs2019.release'
-}
-
-RenderDocLibrary =
-{
-	includeDirs = { LibRenderDoc..IncludeDirectory }
-}
-
-SDL3Library =
-{
-	includeDirs = LibSDL3..IncludeDirectory..'include',
-	libDirs     = LibSDL3..BinaryDirectory,
-	libNames    = 'SDL3',
-	defines     = 'SDL_MAIN_HANDLED',
-	dlls        = LibSDL3..BinaryDirectory..'SDL3.dll'
-}
-
-SPIRVReflectLibrary =
-{
-	includeDirs = LibSPIRVReflect..IncludeDirectory,
-	libDirs     = LibSPIRVReflect..BinaryDirectory,
-	libNames    = 'SPIRV-Reflect.vs2019.release'
-}
-
-StbLibrary =
-{
-	includeDirs = LibStb..IncludeDirectory,
-	libDirs     = LibStb..BinaryDirectory,
-	libNames    = 'Stb.vs2022.release'
-}
-
-UfbxLibrary =
-{
-	includeDirs = LibUfbx..IncludeDirectory,
-	libDirs     = LibUfbx..BinaryDirectory,
-	libNames    = 'Ufbx.vs2022.release'
-}
-
-VulkanLibrary =
-{
-	includeDirs = { LibVulkan..IncludeDirectory..'include', LibVMA..IncludeDirectory..'include' },
-	libDirs     = LibVulkan..BinaryDirectory,
-	natvis      = LibVMA..IncludeDirectory..'src/**.natvis',
-	libNames    = 'vulkan-1'
+	include_dirs = LibMeshOptimizer..include_directory..'src',
+	lib_dirs     = LibMeshOptimizer..binary_directory,
+	lib_names    = 'MeshOptimizer.vs2022.release',
 }
 
 WinPixEventRuntimeLibrary =
 {
-	includeDirs = { LibWinPixEventRuntime..IncludeDirectory },
-	libDirs = { LibWinPixEventRuntime..BinaryDirectory },
-	libNames = 'WinPixEventRuntime',
-	dlls = LibWinPixEventRuntime..BinaryDirectory..'WinPixEventRuntime.dll'
-}
-
-WuffsLibrary =
-{
-	includeDirs = { LibWuffs..IncludeDirectory },
-	libDirs = { LibWuffs..BinaryDirectory },
-	libNames = 'Wuffs.vs2022.release'
+	include_dirs = { LibWinPixEventRuntime..include_directory },
+	lib_dirs = { LibWinPixEventRuntime..binary_directory },
+	lib_names = 'WinPixEventRuntime',
+	dlls = LibWinPixEventRuntime..binary_directory..'WinPixEventRuntime.dll'
 }
 
 xxHashLibrary =
 {
-	includeDirs = LibxxHash..IncludeDirectory
+	include_dirs = LibxxHash..include_directory
 }
 
 function AddLibraryIncludes(library)
-	includedirs(library.includeDirs)
+	include_dirs(library.include_dirs)
 	if(library['defines']) then
 		defines(library.defines)
 	end
@@ -217,6 +125,6 @@ function AddLibraryNatvis(library)
 end
 
 function LinkLibrary(library)
-	libdirs(library.libDirs)
-	links(library.libNames)
+	lib_dirs(library.lib_dirs)
+	links(library.lib_names)
 end
