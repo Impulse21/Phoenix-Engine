@@ -181,7 +181,7 @@ workspace 'PhxEngine'
 		GraphicsApis = { GraphicsApiVulkan, GraphicsApiD3D12 }
 		defines
 		{
-			'PHX_PLATFORM_WINDOWS', 'VULKAN_API', 'D3D12_API', 'VK_USE_PLATFORM_WIN32_KHR'
+			'PHX_PLATFORM_WINDOWS', 'RHI_D3D12', 'VK_USE_PLATFORM_WIN32_KHR'
 		}
 
 	--filter { 'platforms:'..VulkanOSX }
@@ -289,6 +289,8 @@ project (project_name_phx_editor)
 		project_name_phx_engine,
 	}
 	
+	AddLibraryIncludes(SpdLogLibrary)
+
 	-- Only executables should link to any libraries
 	-- Otherwise we'll get bloated libs and slow link times
 	-- Project libraries have slimmed by about ~140MB
@@ -353,6 +355,8 @@ project(project_name_phx_engine)
 	ExcludePlatformSpecificRHI(engine_src_directory)
 	
 	-- TODO: DX12 Filter
+	
+	AddLibraryIncludes(SpdLogLibrary)
 	--AddLibraryIncludes(library_agility)
 	--AddLibraryIncludes(library_imgui)
 	

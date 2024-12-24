@@ -5,6 +5,7 @@ binary_directory = '/libraries/'
 include_directory = '/include/'
 
 -- Library Directories
+lib_dir_spdlog			= thrid_party_directory..'/spdlog'
 LibCGLTF              	= thrid_party_directory..'/cgltf'
 LibAgility            	= thrid_party_directory..'/agility'
 LibDxc                	= thrid_party_directory..'/dxc'
@@ -36,6 +37,11 @@ AgilityLibrary =
 CGLTFLibrary =
 {
 	include_dirs = LibCGLTF..include_directory
+}
+
+SpdLogLibrary = 
+{
+	include_dirs = lib_dir_spdlog..include_directory
 }
 
 D3D12Library =
