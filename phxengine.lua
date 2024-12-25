@@ -287,9 +287,11 @@ project (project_name_phx_editor)
 	links
 	{
 		project_name_phx_engine,
+		ImguiLibrary.project_name
 	}
 	
 	AddLibraryIncludes(SpdLogLibrary)
+	AddLibraryIncludes(ImguiLibrary)
 
 	-- Only executables should link to any libraries
 	-- Otherwise we'll get bloated libs and slow link times
@@ -351,12 +353,18 @@ project(project_name_phx_engine)
 		--BuiltinShaderCpp
 	}
 
+	links
+	{
+		ImguiLibrary.project_name
+	}
+
 	ExcludePlatformSpecificRHI(engine_include_directory)
 	ExcludePlatformSpecificRHI(engine_src_directory)
 	
 	-- TODO: DX12 Filter
 	
 	AddLibraryIncludes(SpdLogLibrary)
+	AddLibraryIncludes(ImguiLibrary)
 	--AddLibraryIncludes(library_agility)
 	--AddLibraryIncludes(library_imgui)
 	
@@ -383,7 +391,22 @@ project(project_name_phx_engine)
 	filter {}
 
 	group("3rd Party")
-	project("Imgui")
+	project(ImguiLibrary.project_name)
+	kind('StaticLib')
+
+	files
+	{
+		ImguiLibrary.lib_source_dir..'/*.cpp',
+		ImguiLibrary.lib_source_dir..'/*.hpp',
+		ImguiLibrary.lib_source_dir..'/*.h',
+	}
+	
+	removefiles {}
+	
+	defines { 'IMGUI_DISABLE_OBSOLETE_FUNCTIONS' }
+	
+	filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+	filter()
 ------------------------------------
 -- Shader metadata generation job --
 ------------------------------------

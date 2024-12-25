@@ -87,8 +87,10 @@ HlslppLibrary =
 
 ImguiLibrary =
 {
-	include_dirs = LibImGui..include_directory,
-	lib_dirs     = LibImGui..binary_directory,
+	project_name	= "ImGui",
+	include_dirs 	= LibImGui..include_directory,
+	lib_dirs     	= LibImGui..binary_directory,
+	lib_source_dir	= LibImGui,
 	lib_names    = 'ImGui.vs2022.release',
 	defines = 'IMGUI_DISABLE_OBSOLETE_FUNCTIONS'
 }
