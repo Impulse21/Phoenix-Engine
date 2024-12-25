@@ -245,7 +245,7 @@ workspace 'PhxEngine'
 
 	
 	filter { 'configurations:Debug' }
-		defines { 'CR_CONFIG_DEBUG' }
+		defines { 'PHX_CONFIG_DEBUG' }
 		optimize('off')
 		--symbols('on')
 		symbols('fastlink')
@@ -382,6 +382,8 @@ project(project_name_phx_engine)
 	
 	filter {}
 
+	group("3rd Party")
+	project("Imgui")
 ------------------------------------
 -- Shader metadata generation job --
 ------------------------------------

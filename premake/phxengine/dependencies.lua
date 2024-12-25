@@ -114,7 +114,7 @@ xxHashLibrary =
 }
 
 function AddLibraryIncludes(library)
-	include_dirs(library.include_dirs)
+	includedirs(library.include_dirs)
 	if(library['defines']) then
 		defines(library.defines)
 	end
