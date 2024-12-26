@@ -3,6 +3,7 @@
 thrid_party_directory   = '3rdParty'
 binary_directory = '/libraries/'
 include_directory = '/include/'
+src_directory = '/src/'
 
 -- Library Directories
 lib_dir_spdlog			= thrid_party_directory..'/spdlog'
@@ -85,14 +86,32 @@ HlslppLibrary =
 	defines = 'HLSLPP_FEATURE_TRANSFORM'
 }
 
+
 ImguiLibrary =
 {
 	project_name	= "ImGui",
 	include_dirs 	= LibImGui..include_directory,
 	lib_dirs     	= LibImGui..binary_directory,
-	lib_source_dir	= LibImGui,
-	lib_names    = 'ImGui.vs2022.release',
-	defines = 'IMGUI_DISABLE_OBSOLETE_FUNCTIONS'
+	defines = 'IMGUI_DISABLE_OBSOLETE_FUNCTIONS',
+	files =
+	{
+		LibImGui..'/*.cpp',
+		LibImGui..'/*.hpp',
+		LibImGui..'/*.h',
+	}
+}
+
+D3D12MALibrary = 
+{
+	project_name = "D3D12MA",
+	include_dirs 	= lib_D3D12MA..include_directory,
+	lib_source_dir	= lib_D3D12MA..src_directory,
+	files =
+	{
+		lib_D3D12MA..src_directory..'/*.cpp',
+		lib_D3D12MA..src_directory..'/*.h',
+		lib_D3D12MA..include_directory..'/*.h',
+	}
 }
 
 MeshOptimizerLibrary =
@@ -135,4 +154,28 @@ end
 function LinkLibrary(library)
 	lib_dirs(library.lib_dirs)
 	links(library.lib_names)
+end
+
+function LinkProject(library)
+	links(library.project_name)
+end
+
+function  AddLibraryProject(library)
+	
+	project(library.project_name)
+	kind('StaticLib')
+
+	files
+	{
+		library.files
+	}
+	
+	removefiles {}
+	
+	if(library['defines']) then
+		defines(library.defines)
+	end
+	
+	filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+	filter()
 end

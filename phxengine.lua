@@ -165,7 +165,8 @@ workspace 'PhxEngine'
 			'NOMINMAX', 
 			'WIN32_LEAN_AND_MEAN', 
 			'VC_EXTRALEAN',
-			'_CRT_SECURE_NO_WARNINGS'
+			'_CRT_SECURE_NO_WARNINGS',
+			'USING_D3D12_AGILITY_SDK'
 		}
 	
     HandleGlobalWarnings()
@@ -287,9 +288,11 @@ project (project_name_phx_editor)
 	links
 	{
 		project_name_phx_engine,
-		ImguiLibrary.project_name
 	}
 	
+	LinkProject(ImguiLibrary)
+	LinkProject(D3D12MALibrary)
+
 	AddLibraryIncludes(SpdLogLibrary)
 	AddLibraryIncludes(ImguiLibrary)
 
@@ -330,6 +333,7 @@ project(project_name_phx_engine)
 	kind('StaticLib')
 	pchheader('phxengine/include/phx/phx_pch.h')
 	pchsource(engine_src_directory..'/phx_pch.cpp')
+	nuget { "Microsoft.Direct3D.D3D12:1.614.0" }
 	-- dependson { ProjectShaders } -- This depends on the shaders. Shaders in turn depends on the shader compiler
 	-- dependson { ProjectBuiltinShaders }
 
@@ -353,11 +357,8 @@ project(project_name_phx_engine)
 		--BuiltinShaderCpp
 	}
 
-	links
-	{
-		ImguiLibrary.project_name
-	}
-
+	LinkProject(ImguiLibrary)
+	LinkProject(D3D12MALibrary)
 	ExcludePlatformSpecificRHI(engine_include_directory)
 	ExcludePlatformSpecificRHI(engine_src_directory)
 	
@@ -365,6 +366,7 @@ project(project_name_phx_engine)
 	
 	AddLibraryIncludes(SpdLogLibrary)
 	AddLibraryIncludes(ImguiLibrary)
+	AddLibraryIncludes(D3D12MALibrary)
 	--AddLibraryIncludes(library_agility)
 	--AddLibraryIncludes(library_imgui)
 	
@@ -391,22 +393,8 @@ project(project_name_phx_engine)
 	filter {}
 
 	group("3rd Party")
-	project(ImguiLibrary.project_name)
-	kind('StaticLib')
-
-	files
-	{
-		ImguiLibrary.lib_source_dir..'/*.cpp',
-		ImguiLibrary.lib_source_dir..'/*.hpp',
-		ImguiLibrary.lib_source_dir..'/*.h',
-	}
-	
-	removefiles {}
-	
-	defines { 'IMGUI_DISABLE_OBSOLETE_FUNCTIONS' }
-	
-	filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
-	filter()
+	AddLibraryProject(ImguiLibrary)
+	AddLibraryProject(D3D12MALibrary)
 ------------------------------------
 -- Shader metadata generation job --
 ------------------------------------
