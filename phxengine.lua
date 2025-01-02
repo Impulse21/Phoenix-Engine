@@ -82,8 +82,10 @@ function HandleGlobalWarnings()
 		
 		disablewarnings
 		{
-			'4201' -- nonstandard extension used: nameless struct/union
+			'4201', -- nonstandard extension used: nameless struct/union
+			'5038', -- -Wno-reorder-ctor
 		}
+		
 		
 	filter { "files:3rdParty/**" }
     	warnings "Off"
@@ -106,8 +108,8 @@ function HandleGlobalWarnings()
         -Wno-switch
         -Wno-switch-enum
         -Wno-switch-default
-        -Wno-covered-switch-default
         -Wno-reorder-ctor
+        -Wno-covered-switch-default
         -Wno-ctad-maybe-unsupported
         -Wno-language-extension-token
         -Wno-global-constructors
@@ -374,6 +376,8 @@ project(project_name_phx_engine)
 	--AddLibraryIncludes(library_imgui)
 	
 	filter { win_64_platform_filters }
+		
+		includedirs	{ engine_include_directory..'/phx/rhi/dx12' }
 		files 
 		{
 			engine_include_directory..'**/phx/rhi/dx12/**',

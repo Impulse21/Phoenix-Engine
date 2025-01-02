@@ -12,9 +12,9 @@
 // If you are new to Dear ImGui, read documentation from the docs/ folder + read the top of imgui.cpp.
 // Read online: https://github.com/ocornut/imgui/tree/master/docs
 
-#include "pch.h"
+#include "phx/phx_pch.h"
 
-#include "imgui/imgui.h"
+#include "imgui.h"
 #include "imgui_impl_win32.h"
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -237,10 +237,10 @@ static void ImGui_ImplWin32_ProcessKeyEventsWorkarounds()
 static void ImGui_ImplWin32_UpdateKeyModifiers()
 {
     ImGuiIO& io = ImGui::GetIO();
-    io.AddKeyEvent(ImGuiKey_ModCtrl, IsVkDown(VK_CONTROL));
-    io.AddKeyEvent(ImGuiKey_ModShift, IsVkDown(VK_SHIFT));
-    io.AddKeyEvent(ImGuiKey_ModAlt, IsVkDown(VK_MENU));
-    io.AddKeyEvent(ImGuiKey_ModSuper, IsVkDown(VK_APPS));
+    io.AddKeyEvent(ImGuiMod_Ctrl, IsVkDown(VK_CONTROL));
+    io.AddKeyEvent(ImGuiMod_Shift, IsVkDown(VK_SHIFT));
+    io.AddKeyEvent(ImGuiMod_Alt, IsVkDown(VK_MENU));
+    io.AddKeyEvent(ImGuiMod_Super, IsVkDown(VK_APPS));
 }
 
 static void ImGui_ImplWin32_UpdateMouseData()
