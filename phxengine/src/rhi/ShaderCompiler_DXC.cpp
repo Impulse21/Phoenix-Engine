@@ -29,7 +29,7 @@ namespace
 		InternalState_DXC()
 		{
 #ifdef _WIN32
-			const std::string library = "./dxcompiler.dll";
+			const std::wstring library = L"./dxcompiler.dll";
 			HMODULE dxcompiler = LoadLibrary(library.c_str());
 #elif defined(PLATFORM_LINUX)
 			const std::string library = "./libdxcompiler" + modifier + ".so";

@@ -38,7 +38,7 @@ void dx12::GfxCommandListRecorder::Open(CommandListResource* resource)
 	// Bind Heaps
 	std::array<ID3D12DescriptorHeap*, 2> heaps;
 	Span<GpuDescriptorHeap> gpuHeaps = device->GetGpuDescriptorHeaps();
-	for (int i = 0; i < gpuHeaps.Size(); i++)
+	for (size_t i = 0; i < gpuHeaps.Size(); i++)
 	{
 		heaps[i] = gpuHeaps[i].GetNativeHeap();
 	}

@@ -86,7 +86,40 @@ function HandleGlobalWarnings()
 			'5038', -- -Wno-reorder-ctor
 		}
 		
-		
+	filter('toolset:*-clangcl')
+        buildoptions {
+            -- Compatibility warnings
+            "-Wno-c++98-compat",              -- Disable C++98 compatibility warnings
+            "-Wno-c++98-compat-pedantic",     -- Disable pedantic C++98 compatibility warnings
+
+            -- Coding style warnings
+            "-Wno-old-style-cast",            -- Disable warnings about old-style C-style casts
+            "-Wno-float-equal",               -- Disable warnings about floating-point equality checks
+            "-Wno-reserved-identifier",       -- Disable warnings about reserved identifiers
+            "-Wno-newline-eof",               -- Disable warnings about missing newline at end of file
+            "-Wno-switch",                    -- Disable general switch statement warnings
+            "-Wno-switch-enum",               -- Disable warnings about missing cases in switch for enums
+            "-Wno-switch-default",            -- Disable warnings about missing default in switch statements
+            "-Wno-reorder-ctor",              -- Disable warnings about constructor initializer order
+            "-Wno-covered-switch-default",    -- Disable warnings about covered default cases in switch
+            "-Wno-ctad-maybe-unsupported",    -- Disable warnings about potentially unsupported CTAD usage
+
+            -- Language extensions
+            "-Wno-language-extension-token",  -- Disable warnings about use of language extension tokens
+            "-Wno-global-constructors",       -- Disable warnings about global constructors
+            "-Wno-missing-variable-declarations", -- Disable warnings about missing variable declarations
+            "-Wno-exit-time-destructors",     -- Disable warnings about destructors called at exit time
+            "-Wno-nonportable-system-include-path", -- Disable warnings about non-portable include paths
+
+            -- Conversions and usage warnings
+            "-Wno-sign-conversion",           -- Disable warnings about signed/unsigned conversions
+            "-Wno-unused-member-function",    -- Disable warnings about unused member functions
+
+            -- Anonymous structures and casting
+            "-Wno-nested-anon-types",         -- Disable warnings about nested anonymous types
+            "-Wno-gnu-anonymous-struct",      -- Disable warnings about GNU anonymous structs
+            "-Wno-cast-function-type"         -- Disable warnings about function pointer casts
+        }
 	filter { "files:3rdParty/**" }
     	warnings "Off"
 
