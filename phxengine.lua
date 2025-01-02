@@ -84,7 +84,10 @@ function HandleGlobalWarnings()
 		{
 			'4201' -- nonstandard extension used: nameless struct/union
 		}
-	
+		
+	filter { "files:3rdParty/**" }
+    	warnings "Off"
+
 	filter {}
     --[=====[ 
         # All warnings, warnings as errors, be pedantic.

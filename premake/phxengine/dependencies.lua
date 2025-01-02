@@ -108,9 +108,8 @@ D3D12MALibrary =
 	lib_source_dir	= lib_D3D12MA..src_directory,
 	files =
 	{
-		lib_D3D12MA..src_directory..'/*.cpp',
-		lib_D3D12MA..src_directory..'/*.h',
-		lib_D3D12MA..include_directory..'/*.h',
+		lib_D3D12MA..src_directory..'/D3D12MemAlloc.cpp',
+		lib_D3D12MA..src_directory..'/D3D12MemAlloc.h',
 	}
 }
 
@@ -169,6 +168,8 @@ function  AddLibraryProject(library)
 	{
 		library.files
 	}
+
+	includedirs	{ library.include_dirs }
 	
 	removefiles {}
 	
