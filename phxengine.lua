@@ -132,7 +132,7 @@ workspace 'PhxEngine'
 	language('C++')
 	cppdialect('C++20')
 	rtti('off')
-	exceptionhandling ('off') -- Don't enable this setting
+	exceptionhandling ('on') -- Don't enable this setting
 	objdir ("%{wks.location}/Object")
 	targetdir ("%{wks.location}/Binaries/%{cfg.platform}/%{cfg.buildcfg}")
 
@@ -334,7 +334,7 @@ project (project_name_phx_editor)
 
 project(project_name_phx_engine)
 	kind('StaticLib')
-	pchheader('phxengine/include/phx/phx_pch.h')
+	pchheader('phx/phx_pch.h')
 	pchsource(engine_src_directory..'/phx_pch.cpp')
 	nuget { "Microsoft.Direct3D.D3D12:1.614.0", "Microsoft.Direct3D.DXC:1.8.2407.12" }
 	-- dependson { ProjectShaders } -- This depends on the shaders. Shaders in turn depends on the shader compiler

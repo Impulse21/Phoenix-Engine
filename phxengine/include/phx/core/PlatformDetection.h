@@ -5,7 +5,9 @@
 	/* Windows x64/x86 */
 #ifdef _WIN64
 	/* Windows x64  */
+#ifndef PHX_PLATFORM_WINDOWS
 #define PHX_PLATFORM_WINDOWS
+#endif
 #else
 	/* Windows x86 */
 #error "x86 Builds are not supported!"
