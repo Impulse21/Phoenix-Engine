@@ -2,7 +2,7 @@
 
 -- Globals
 
-workspace_directory	= '../../.workspace/'.._ACTION
+workspace_directory	= '../.workspace/'.._ACTION
 
 generated_shader_directory  = workspace_directory..'/GeneratedShaders'
 generated_code_directory    = workspace_directory..'/GeneratedCode'
@@ -79,6 +79,9 @@ rhi_libraries =
 		}
 	}
 }
+
+include_dir = {}
+include_dir["agility"] = "%{wks.location}/../PrebuiltLibs/agility_1.614.1/include"
 
 function ConfigureRhi()
     if arg_rhi == "d3d12" then
@@ -271,7 +274,7 @@ function SlnGenerationConfiguration()
 	group('.Solution Generation')
 	project('Generate Solution')
 		kind('StaticLib')
-		files{ '*.lua', '*.bat', '*.command' }
+		files{ '../**.lua', '../**.bat', '../**.command', '../**.py' }
 		local root_path_absolute = path.getabsolute('')
 		local generate_solution_command_line = '{chdir} "'..root_path_absolute..'"'
 
@@ -290,7 +293,8 @@ end
 
 function ThridPartyConfgurations()
 	group "3rd Party"
-	include('imgui.lua')
+	include('../3rdParty/Imgui/premake.lua')
+	include('../3rdParty/D3D12MA/premake.lua')
 	group ""
 end
 
