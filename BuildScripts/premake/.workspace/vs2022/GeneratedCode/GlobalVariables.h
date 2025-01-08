@@ -1,0 +1,2 @@
+namespace phx::GlobalPaths
+{
