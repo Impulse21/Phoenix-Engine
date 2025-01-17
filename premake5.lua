@@ -7,8 +7,8 @@ workspace "PhxEngine"
 	architecture "x86_64"
 	startproject "PhxEditor"
 	platforms { "windows_clang" }
-	objdir ("%{wks.location}/.build/object")
-	targetdir ("%{wks.location}/.build/binaries/%{cfg.platform}/%{cfg.buildcfg}")
+
+	outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 	
 	configurations
 	{
@@ -31,7 +31,8 @@ workspace "PhxEngine"
 
 group "Dependencies"
 	include "vendor/premake"
-	include "vendor/ImGui"
+	include "Phoenix/vendor/ImGui"
+	include "Phoenix/vendor/D3D12MA"
 group ""
 
 group "Core"

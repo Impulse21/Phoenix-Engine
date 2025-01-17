@@ -2,7 +2,9 @@
 -- phx Dependencies
 
 IncludeDir = {}
-IncludeDir["ImGui"] = "%{wks.location}/phoenix/vendor/ImGui"
+IncludeDir["ImGui"]         = "%{wks.location}/phoenix/vendor/ImGui"
+IncludeDir["D3D12MA"]       = "%{wks.location}/phoenix/vendor/ImGui"
+includeDir["AgilitySDK"]    = "%{wks.location}/vendor/agility_1.614.1/include"
 
 LibraryDir = {}
 
