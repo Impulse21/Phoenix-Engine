@@ -1,8 +1,9 @@
 --require("premake/phxengine/dependencies")
+include "Dependencies.lua"
 
--- Globals
 
-workspace_directory	= '../.workspace/'.._ACTION
+
+workspace_directory	= '.workspace/'.._ACTION
 
 generated_shader_directory  = workspace_directory..'/GeneratedShaders'
 generated_code_directory    = workspace_directory..'/GeneratedCode'
