@@ -1,7 +1,7 @@
 project "D3D12MA"
 	kind "StaticLib"
 	language "C++"
-    staticruntime "on"
+    staticruntime "off"
 
 	files
 	{
@@ -16,9 +16,17 @@ project "D3D12MA"
 		"%{IncludeDir.AgilitySDK}",
 	}
 
+
+	filter('toolset:*-clangcl')
+        buildoptions {
+			'-Wno-unused-const-variable',
+			'-Wno-unused-function',
+		}
+	filter()
+	
 	filter "system:windows"
 		systemversion "latest"
-		cppdialect "C++14"
+		cppdialect "C++17"
 
 	removefiles {}
 	

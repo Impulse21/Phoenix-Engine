@@ -1,6 +1,7 @@
 include "./vendor/premake/premake_customization/solution_items.lua"
 include "Dependencies.lua"
 
+platform_clang_win_64   = "x64 (LLVM)"
 rhi_cpp_define			= ""
 arg_rhi					= _ARGS[1]
 executable_postfix		= ""
@@ -71,7 +72,10 @@ function HandleGlobalWarnings()
             -- Anonymous structures and casting
             "-Wno-nested-anon-types",         -- Disable warnings about nested anonymous types
             "-Wno-gnu-anonymous-struct",      -- Disable warnings about GNU anonymous structs
-            "-Wno-cast-function-type"         -- Disable warnings about function pointer casts
+            "-Wno-cast-function-type",        -- Disable warnings about function pointer casts
+
+            "-Wno-misleading-indentation",
+            "-Wno-tautological-undefined-compare",
         }
 		
 		
@@ -120,9 +124,12 @@ workspace "PhxEngine"
 	location ('.workspace/'.._ACTION)
 	architecture "x86_64"
 	startproject "PhxEditor"
-	platforms { "windows_clang" }
+	platforms { platform_clang_win_64 }
 
 	outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
+    
+	targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
+	objdir ("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")
 	
 	configurations
 	{
@@ -138,10 +145,20 @@ workspace "PhxEngine"
 
 	flags
 	{
-		"MultiProcessorCompile"
+        'fatalcompilewarnings',
+		"MultiProcessorCompile",
 	}
+    
+    HandleGlobalWarnings()
+    
+    --filter('platforms:'..msvc_win_64)
+		--toolset('msc')
 
-	outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
+	filter('platforms:'..platform_clang_win_64)
+    toolset('msc-clangcl')
+    --toolset('msc-llvm') -- Older versions of Clang in VS
+
+    filter{}
 
 group "Dependencies"
 	include "vendor/premake"
@@ -154,6 +171,9 @@ group "Core"
 group ""
 
 group "Misc"
+group ""
+
+group "Tools"
 	include "PhxEditor"
 group ""
 

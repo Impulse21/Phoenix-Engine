@@ -12,7 +12,7 @@
 // If you are new to Dear ImGui, read documentation from the docs/ folder + read the top of imgui.cpp.
 // Read online: https://github.com/ocornut/imgui/tree/master/docs
 
-#include "phx/phx_pch.h"
+#include "phxpch.h"
 
 #include "imgui.h"
 #include "imgui_impl_win32.h"

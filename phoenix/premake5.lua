@@ -4,18 +4,12 @@ project "Phoenix"
 	cppdialect "c++20"
 	staticruntime "on"
 
-	targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
-	objdir ("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")
-
 	pchheader "phxpch.h"
 	pchsource "src/phxpch.cpp"
 
-	
 	excludes { 'src/phx/**/rhi/d3d12/**' }
 	excludes { 'src/phx/**/rhi/vulkan/**' }
 
-	HandleGlobalWarnings()
-	
 	files
 	{
 		"src/phx/**.h",
