@@ -13,7 +13,7 @@ project "D3D12MA"
 
 	includedirs
 	{
-		"%{include_dir.agility}",
+		"%{IncludeDir.AgilitySDK}",
 	}
 
 	filter "system:windows"

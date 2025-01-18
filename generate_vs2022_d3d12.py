@@ -7,7 +7,7 @@ def main():
     script_dir = Path(__file__).parent
     os.chdir(script_dir)
 
-    script = script_dir / "scripts" / "generate_project_files.py"
+    script = script_dir  / "scripts" / "generate_project_files.py"
     subprocess.Popen([sys.executable, str(script), "vs2022", "d3d12"]).communicate()
 
     sys.exit(0)

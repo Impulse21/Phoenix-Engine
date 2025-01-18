@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 
 def extract_archive(archive_path, destination_path):
-    exe_dir = os.path.join(os.getcwd(), 'BuildScripts')
+    exe_dir = os.path.join(os.getcwd(), 'vendor', "7z")
     seven_zip_exe = os.path.join(exe_dir, '7z.exe')
 
     # Construct the command
@@ -30,9 +30,9 @@ def extract_archive(archive_path, destination_path):
 
 def generate_project_files():
     cmd = (
-        f"BuildScripts\\premake5.exe --file=BuildScripts\\premake.lua {sys.argv[1]} {sys.argv[2]}"
+        f"vendor\\premake\\premake5.exe --file=premake5.lua {sys.argv[1]} {sys.argv[2]}"
         if sys.argv[1] == "vs2022"
-        else f"premake5 --file=BuildScripts/premake.lua {sys.argv[1]} {sys.argv[2]}"
+        else f"premake5 --file=premake5.lua {sys.argv[1]} {sys.argv[2]}"
     )
     subprocess.Popen(cmd, shell=True).communicate()
     
@@ -47,7 +47,7 @@ def main():
     is_ci = "ci" in sys.argv
     
     print("\n1. Extract Pre-built libraries...")
-    extract_archive("3rdParty/PrebuiltLibs.7z", ".workspace/")
+    extract_archive("vendor/PrebuiltLibs.7z", ".workspace/")
     
     print("\n2. Generate project files...\n")
     generate_project_files()
