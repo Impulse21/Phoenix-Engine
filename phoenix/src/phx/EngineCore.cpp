@@ -5,8 +5,6 @@
 #include "phx/core/CommandLineArgs.h"
 #include "phx/core/SystemTime.h"
 
-#include "phx/rhi/GfxDevice.h"
-
 #include "phx/Display.h"
 
 #include "imgui.h"
@@ -152,7 +150,6 @@ namespace phx::EngineCore
 		ApplicationFinalize(*app);
 		app.reset();
 
-		phx::rhi::GfxDevice::Finalize();
 
 		if (stream)
 		{

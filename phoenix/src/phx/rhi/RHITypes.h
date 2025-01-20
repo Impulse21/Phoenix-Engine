@@ -4,7 +4,7 @@
 #include "phx/core/Span.h"
 #include "phx/core/EnumUtils.h"
 
-#include "Handle.h"
+#include "phx/rhi/Handle.h"
 
 #define BIT(x) 1 << x
 

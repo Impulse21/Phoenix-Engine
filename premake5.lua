@@ -1,6 +1,8 @@
+
 include "./vendor/premake/premake_customization/solution_items.lua"
 include "Dependencies.lua"
 
+workspace_directory         = '.workspace/'.._ACTION
 platform_clang_win_64   = "x64 (LLVM)"
 rhi_cpp_define			= ""
 arg_rhi					= _ARGS[1]
@@ -121,7 +123,7 @@ ConfigureRhi()
 
 -- Globals
 workspace "PhxEngine"
-	location ('.workspace/'.._ACTION)
+	location (workspace_directory)
 	architecture "x86_64"
 	startproject "PhxEditor"
 	platforms { platform_clang_win_64 }

@@ -4,6 +4,12 @@ project "Phoenix"
 	cppdialect "c++20"
 	staticruntime "on"
 
+	
+-- Note on precompiled header files
+-- On Visual Studio, the header file needs to be the exact string as it appears in your include,
+-- e.g. if your cpp says #include 'Foo_pch.h' then pchheader('Foo_pch.h')
+-- However, the pchsource file has to be the exact path.
+
 	pchheader "phxpch.h"
 	pchsource "src/phxpch.cpp"
 
@@ -12,6 +18,8 @@ project "Phoenix"
 
 	files
 	{
+		"src/phxpch.h",
+		"src/phxpch.cpp",
 		"src/phx/**.h",
 		"src/phx/**.cpp",
 	}

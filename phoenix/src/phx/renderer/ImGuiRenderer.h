@@ -1,7 +1,7 @@
 #pragma once
 
 #include "imgui.h"
-#include "phx/rhi/GfxDevice.h"
+#include "phx/rhi/RHICore.h"
 
 namespace phx
 {
@@ -14,12 +14,12 @@ namespace phx::gfx
 	class ImGuiRenderSystem
 	{
 	public:
-		void Initialize(rhi::GfxDevice* gfxDevice, IFileSystem* fs, bool enableDocking = false);
-		void Finialize(rhi::GfxDevice* gfxDevice);
+		void Initialize(IFileSystem* fs, bool enableDocking = false);
+		void Finialize();
 
 		void EnableDarkThemeColours();
 		void BeginFrame();
-		void Render(rhi::GfxCommandListRecorder& recorder);
+		void Render();
 
 	private:
 		bool m_isFontTextureUploaded = false;

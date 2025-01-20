@@ -5,8 +5,6 @@
 #include "phx/core/Span.h"
 #include "phx/core/VFS.h"
 
-#include "phx/rhi/ShaderCompiler.h"
-#include "phx/rhi/CommandListRecorder.h"
 
 namespace phx
 {
@@ -26,7 +24,7 @@ namespace
     };
 }
 
-void ImGuiRenderSystem::Initialize(GfxDevice* gfxDevice, IFileSystem* fs, bool enableDocking)
+void ImGuiRenderSystem::Initialize(IFileSystem* fs, bool enableDocking)
 {
     m_imguiContext = ImGui::CreateContext();
     ImGui::SetCurrentContext(m_imguiContext);
@@ -58,6 +56,7 @@ void ImGuiRenderSystem::Initialize(GfxDevice* gfxDevice, IFileSystem* fs, bool e
     memInfo.SlicePitch = memInfo.RowPitch * height;
     memInfo.Data = pixelData;
 
+#if false
     // Create texture
     m_fontTexture = gfxDevice->CreateTexture({
         .DebugName = "ImGui Font",
@@ -118,12 +117,11 @@ void ImGuiRenderSystem::Initialize(GfxDevice* gfxDevice, IFileSystem* fs, bool e
             },
             .RenderPassInfo = {.RTFormats { rhi::Format::UNKNOWN }}
         });
+#endif
 }
 
-void ImGuiRenderSystem::Finialize(GfxDevice* gfxDevice)
+void ImGuiRenderSystem::Finialize()
 {
-    gfxDevice->DeleteTexture(m_fontTexture);
-    gfxDevice->DeletePipeline(m_pipeline);
 }
 
 void ImGuiRenderSystem::EnableDarkThemeColours()
@@ -166,8 +164,9 @@ void ImGuiRenderSystem::BeginFrame()
     ImGui::NewFrame();
 }
 
-void ImGuiRenderSystem::Render(GfxCommandListRecorder& recorder)
+void ImGuiRenderSystem::Render()
 {
+#if false
     ImGui::SetCurrentContext(m_imguiContext);
     ImGui::Render();
 
@@ -254,5 +253,5 @@ void ImGuiRenderSystem::Render(GfxCommandListRecorder& recorder)
         // cmd->TransitionBarriers(Span<GpuBarrier>(postBarriers.data(), postBarriers.size()));
         ImGui::EndFrame();
     }
-    return;
+#endif
 }
