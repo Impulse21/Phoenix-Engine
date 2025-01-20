@@ -1,6 +1,7 @@
 project "ImGui"
 	kind "StaticLib"
 	language "C++"
+	cppdialect "c++17"
 
 	files
 	{

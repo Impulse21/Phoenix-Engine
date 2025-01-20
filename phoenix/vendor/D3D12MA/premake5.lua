@@ -1,6 +1,8 @@
 project "D3D12MA"
 	kind "StaticLib"
 	language "C++"
+	cppdialect "c++17"
+	
 	files
 	{
 		'D3D12MemAlloc.cpp',

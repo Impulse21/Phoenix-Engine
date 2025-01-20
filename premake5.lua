@@ -162,7 +162,8 @@ workspace "PhxEngine"
     }
     
 	filter('platforms:'..platform_clang_win_64)
-        toolset('msc-clangcl')
+        -- toolset('msc-clangcl')
+        toolset("clang")
     --toolset('msc-llvm') -- Older versions of Clang in VS
 
 	filter { 'configurations:Debug' }
