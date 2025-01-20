@@ -124,7 +124,7 @@ ConfigureRhi()
 -- Globals
 workspace "PhxEngine"
 	location (workspace_directory)
-	architecture "x86_64"
+    architecture('x64')
 	startproject "PhxEditor"
 	platforms { platform_clang_win_64 }
 
