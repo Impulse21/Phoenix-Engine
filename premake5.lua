@@ -173,6 +173,7 @@ group "Core"
 group ""
 
 group "Misc"
+    include "sandbox"
 group ""
 
 group "Tools"
