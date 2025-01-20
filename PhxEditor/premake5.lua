@@ -26,25 +26,27 @@ project "PhxEditor"
 
 	links
 	{
-		"Phoenix"
+		"Phoenix",
+		"ImGui",
 	}
 
     HandleGlobalWarnings()
     
 	filter "system:windows"
 		systemversion "latest"
+		links
+		{
+			"D3D12MA",
+		}
 
 	filter "configurations:Debug"
 		defines "PHX_DEBUG"
-		runtime "Debug"
 		symbols "on"
 
 	filter "configurations:Release"
 		defines "PHX_RELEASE"
-		runtime "Release"
 		optimize "on"
 
 	filter "configurations:Dist"
 		defines "PHX_DIST"
-		runtime "Release"
 		optimize "on"

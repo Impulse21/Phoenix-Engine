@@ -37,7 +37,6 @@ project "Phoenix"
 	
 	links
 	{
-		"ImGui",
 	}
 
 	filter "system:windows"
@@ -67,12 +66,10 @@ project "Phoenix"
 
 		links
 		{
-			"D3D12MA",
 		}
 
 	filter "configurations:Debug"
 		defines { "PHX_DEBUG" }
-		runtime "Debug"
 		symbols "on"
 
 		links
@@ -81,7 +78,6 @@ project "Phoenix"
 
 	filter "configurations:Release"
 		defines "PHX_RELEASE"
-		runtime "Release"
 		optimize "on"
 
 		links
@@ -90,7 +86,6 @@ project "Phoenix"
 
 	filter "configurations:Dist"
 		defines "PHX_DIST"
-		runtime "Release"
 		optimize "on"
 
 		links

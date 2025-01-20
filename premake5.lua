@@ -158,7 +158,7 @@ workspace "PhxEngine"
 
     defines
     { 
-        '_HAS_EXCEPTIONS=0', -- Disable STL exceptions
+        --'_HAS_EXCEPTIONS=0', -- Disable STL exceptions
     }
     
 	filter('platforms:'..platform_clang_win_64)
@@ -172,10 +172,7 @@ workspace "PhxEngine"
 		symbols('fastlink')
 		--inlining('auto')
 
-		-- We force the release runtime to be able to link against
-		-- release external libraries to speed up this config
-		runtime('release')
-        staticruntime "off"
+		runtime('debug')
 
 	filter { 'configurations:Release or Dist' }
 		defines
@@ -188,7 +185,6 @@ workspace "PhxEngine"
 		symbols('on')
 		inlining('auto')
 		flags { 'linktimeoptimization' }
-        staticruntime "off"
 		runtime('release')
 
     filter{}
