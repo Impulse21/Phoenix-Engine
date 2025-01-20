@@ -30,7 +30,6 @@ project "Sandbox"
 		
 		links
 		{
-			"msvcrt"
 		}
 
 	filter "configurations:Debug"
