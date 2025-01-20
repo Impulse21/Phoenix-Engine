@@ -6,7 +6,6 @@
 
 #include "phx/rhi/Handle.h"
 
-#define BIT(x) 1 << x
 
 namespace phx::rhi
 {

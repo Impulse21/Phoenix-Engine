@@ -156,9 +156,39 @@ workspace "PhxEngine"
     --filter('platforms:'..msvc_win_64)
 		--toolset('msc')
 
+    defines
+    { 
+        '_HAS_EXCEPTIONS=0', -- Disable STL exceptions
+    }
+    
 	filter('platforms:'..platform_clang_win_64)
-    toolset('msc-clangcl')
+        toolset('msc-clangcl')
     --toolset('msc-llvm') -- Older versions of Clang in VS
+
+	filter { 'configurations:Debug' }
+		optimize('off')
+		--symbols('on')
+		symbols('fastlink')
+		--inlining('auto')
+
+		-- We force the release runtime to be able to link against
+		-- release external libraries to speed up this config
+		runtime('release')
+        staticruntime "off"
+
+	filter { 'configurations:Release or Dist' }
+		defines
+		{
+			'NDEBUG', -- Disables assert
+			'EASTL_ASSERT_ENABLED=0'
+		}
+
+		optimize('speed')
+		symbols('on')
+		inlining('auto')
+		flags { 'linktimeoptimization' }
+        staticruntime "off"
+		runtime('release')
 
     filter{}
 
@@ -177,7 +207,7 @@ group "Misc"
 group ""
 
 group "Tools"
-	include "PhxEditor"
+	--include "PhxEditor"
 group ""
 
 

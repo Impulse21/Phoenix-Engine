@@ -1,7 +1,6 @@
 project "ImGui"
 	kind "StaticLib"
 	language "C++"
-    staticruntime "on"
 
 	files
 	{

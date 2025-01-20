@@ -16,7 +16,12 @@ namespace phx
 		inline static IApplication* Ptr = nullptr;
 
 	public:
+		virtual ~IApplication() = default;
+
 		virtual void Tick() = 0;
+
+		virtual void Startup() = 0;
+		virtual void Shutdown() = 0;
 	};
 
 	// To be defined in CLIENT

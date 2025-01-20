@@ -1,9 +1,8 @@
 project "Sandbox"
-	kind "ConsoleApp"
+	kind "WindowedApp"
 	language "C++"
 	cppdialect "C++20"
-	staticruntime "off"
-
+	
 	files
 	{
 		"src/**.h",
@@ -12,10 +11,12 @@ project "Sandbox"
 
 	includedirs
 	{
-		"%{wks.location}/phoenix/vendor/spdlog/include",
-		"%{wks.location}/phoenix/vendor/spdlog/include",
-		"%{wks.location}/phoenix/src",
-		"%{wks.location}/phoenix/vendor",
+		"../phoenix/vendor/spdlog/include",
+		"../phoenix/vendor/spdlog/include",
+		"../phoenix/src",
+		"../phoenix/src",
+		"../phoenix/vendor",
+		"%{IncludeDir.ImGui}",
 	}
 
 	links
@@ -25,6 +26,12 @@ project "Sandbox"
 
 	filter "system:windows"
 		systemversion "latest"
+		entrypoint 'wWinMain'
+		
+		links
+		{
+			"msvcrt"
+		}
 
 	filter "configurations:Debug"
 		defines "PHX_DEBUG"

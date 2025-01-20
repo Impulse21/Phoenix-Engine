@@ -1,8 +1,6 @@
 project "D3D12MA"
 	kind "StaticLib"
 	language "C++"
-    staticruntime "off"
-
 	files
 	{
 		'D3D12MemAlloc.cpp',

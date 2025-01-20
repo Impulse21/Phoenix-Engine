@@ -2,7 +2,6 @@ project "Phoenix"
 	kind "StaticLib"
 	language "C++"
 	cppdialect "c++20"
-	staticruntime "off"
 
 	
 -- Note on precompiled header files
@@ -72,7 +71,7 @@ project "Phoenix"
 		}
 
 	filter "configurations:Debug"
-		defines "PHX_DEBUG"
+		defines { "PHX_DEBUG" }
 		runtime "Debug"
 		symbols "on"
 
