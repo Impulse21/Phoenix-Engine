@@ -28,8 +28,14 @@ project "Sandbox"
 	
     -- Windows-specific settings
     filter "system:windows"
-        -- defines { "UNICODE", "_UNICODE" }
-        -- links { "user32", "gdi32", "kernel32" } -- Link against Windows libraries
+		defines
+		{
+			'PHX_PLATFORM_WINDOWS',
+			'NOMINMAX', 
+			'WIN32_LEAN_AND_MEAN', 
+			'VC_EXTRALEAN',
+			"%{rhi_cpp_define}",
+		}
 
 		links
 		{
