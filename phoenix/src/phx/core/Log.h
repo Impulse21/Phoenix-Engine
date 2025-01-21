@@ -21,7 +21,7 @@ namespace phx
 	};
 }
 
-#ifdef PHX_CONFIG_DEBUG
+#ifdef PHX_DEBUG
 
 // Core log macros
 #define PHX_CORE_TRACE(...)    ::phx::Log::GetCoreLogger()->trace(__VA_ARGS__)

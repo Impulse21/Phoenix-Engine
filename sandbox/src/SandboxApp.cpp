@@ -35,6 +35,8 @@ public:
 		PHX_INFO("Tick");
 	}
 
+	const char* GetName() const override { return this->m_spec.Name.c_str(); }
+
 private:
 	inline static Sandbox* ms_instance = nullptr;
 

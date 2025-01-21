@@ -5,6 +5,7 @@
 #include "phx/core/Base.h"
 #include "phx/core/Application.h"
 #include "phx/core/CommandLineArgs.h"
+#include "phx/core/StringUtils.h"
 
 #include "imgui.h"
 
@@ -85,6 +86,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	phx::CommandLineArgs::Initialize(argc, argv);
 
 	phx::IApplication::Ptr = phx::CreateApplication();
+	auto* app = phx::IApplication::Ptr;
 
 	WNDCLASS wc = {};
 	wc.lpfnWndProc = WindowProc;
@@ -93,10 +95,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 	RegisterClass(&wc);
 
+	std::wstring appNameW;
+	phx::StringConvert(app->GetName(), appNameW);
+
 	HWND hwnd = CreateWindowEx(
 		0,                          // Optional window styles
 		CLASS_NAME,                 // Window class
-		L"Phoenix title",             // Window title
+		appNameW.c_str(),           // Window title
 		WS_OVERLAPPEDWINDOW,        // Window style
 		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
 		nullptr,                    // Parent window

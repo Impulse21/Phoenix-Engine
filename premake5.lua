@@ -190,7 +190,7 @@ workspace "PhxEngine"
     filter{}
 
 group "Dependencies"
-	include "vendor/premake"
+	--include "vendor/premake"
 	include "Phoenix/vendor/ImGui"
 	include "Phoenix/vendor/D3D12MA"
 group ""

@@ -22,6 +22,8 @@ namespace phx
 
 		virtual void Startup() = 0;
 		virtual void Shutdown() = 0;
+
+		virtual const char* GetName() const = 0;
 	};
 
 	// To be defined in CLIENT
