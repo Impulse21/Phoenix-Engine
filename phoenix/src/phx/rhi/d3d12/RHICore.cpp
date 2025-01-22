@@ -3,9 +3,15 @@
 #include "phx/core/StringUtils.h"
 #include "phx/core/CommandLineArgs.h"
 
+#include "phx/rhi/RHITypes.h"
 #include "phx/rhi/RHICore.h"
 #include "D3D12Types.h"
 #include "D3D12Core.h"
+#include "D3D12Utils.h"
+
+#include "D3D12CommandQueue.h"
+#include "D3D12DescriptorHeaps.h"
+#include "D3D12ResourceManager.h"
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wunused-function"
@@ -16,6 +22,8 @@
 #define TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE 1000000
 
 #define NUM_BINDLESS_RESOURCES TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE / 2
+
+#define SAFE_DELETE(x) if (x) { delete x; }
 
 using namespace phx;
 using namespace phx::rhi;
@@ -34,16 +42,38 @@ namespace
 	D3D12_FEATURE_DATA_SHADER_MODEL   m_featureDataShaderModel = {};
 	ShaderModel m_minShaderModel = ShaderModel::SM_6_0;
 	D3D12Adapter m_adapter;
+
+	std::array<EnumArray<Microsoft::WRL::ComPtr<ID3D12Fence>, CommandQueueType>, kBufferCount> m_frameFences;
+	D3D12SwapChain m_swapChain;
 }
 
 namespace phx::rhi::d3d12
 {
-	Microsoft::WRL::ComPtr<IDXGIFactory6> g_dxgiFactory;
-	Microsoft::WRL::ComPtr<ID3D12Device> g_d3d12Device;
-	Microsoft::WRL::ComPtr<ID3D12Device2> g_d3d12Device2;
-	Microsoft::WRL::ComPtr<ID3D12Device5> g_d3d12Device5;
-	Microsoft::WRL::ComPtr<D3D12MA::Allocator> g_d3d12MemAllocator;
+	Microsoft::WRL::ComPtr<IDXGIFactory6> g_dxgiFactory = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Device> g_d3d12Device = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Device2> g_d3d12Device2 = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Device5> g_d3d12Device5 = nullptr;
+	Microsoft::WRL::ComPtr<D3D12MA::Allocator> g_d3d12MemAllocator = nullptr;
 	bool g_isUnderGfxDebugger;
+
+
+	// -- Command queues ---
+	D3D12CommandQueue* g_commandQueue_Gfx = nullptr;
+	D3D12CommandQueue* g_commandQueue_Compute = nullptr;
+	D3D12CommandQueue* g_commandQueue_Copy = nullptr;
+
+	// -- Descriptor Heaps ---
+	CpuDescriptorHeap* g_cpuDescHeap_Resource = nullptr;
+	CpuDescriptorHeap* g_cpuDescHeap_Sampler = nullptr;
+	CpuDescriptorHeap* g_cpuDescHeap_Rtv = nullptr;
+	CpuDescriptorHeap* g_cpuDescHeap_Dsv = nullptr;
+
+	GpuDescriptorHeap* g_gpuDescHeap_Resource = nullptr;
+	GpuDescriptorHeap* g_gpuDescHeap_Sampler = nullptr;
+
+	D3D12ResourceManager* g_resourceManager = nullptr;
+
+	size_t g_frameCount = 0;
 }
 
 namespace
@@ -417,21 +447,325 @@ namespace
 				filter.DenyList.pIDList = denyIds;
 				infoQueue->PushStorageFilter(&filter);
 			}
+
+			// Create Queues
+			g_commandQueue_Gfx = new D3D12CommandQueue();
+			g_commandQueue_Gfx->Initialize(g_d3d12Device.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT);
+
+			g_commandQueue_Compute = new D3D12CommandQueue();
+			g_commandQueue_Compute->Initialize(g_d3d12Device.Get(), D3D12_COMMAND_LIST_TYPE_COMPUTE);
+
+			g_commandQueue_Copy = new D3D12CommandQueue();
+			g_commandQueue_Copy->Initialize(g_d3d12Device.Get(), D3D12_COMMAND_LIST_TYPE_COPY);
+
+			// Create Descriptor Heaps
+			g_cpuDescHeap_Resource = new CpuDescriptorHeap();
+			g_cpuDescHeap_Resource->Initialize(
+				g_d3d12Device2.Get(),
+				1024,
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+			g_cpuDescHeap_Sampler = new CpuDescriptorHeap();
+			g_cpuDescHeap_Sampler->Initialize(
+				g_d3d12Device2.Get(),
+				1024,
+				D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+
+			g_cpuDescHeap_Rtv = new CpuDescriptorHeap();
+			g_cpuDescHeap_Rtv->Initialize(
+				g_d3d12Device2.Get(),
+				1024,
+				D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+			g_cpuDescHeap_Dsv = new CpuDescriptorHeap();
+			g_cpuDescHeap_Dsv->Initialize(
+				g_d3d12Device2.Get(),
+				1024,
+				D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+
+			g_gpuDescHeap_Resource = new GpuDescriptorHeap();
+			g_gpuDescHeap_Resource->Initialize(
+				g_d3d12Device2.Get(),
+				NUM_BINDLESS_RESOURCES,
+				TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE - NUM_BINDLESS_RESOURCES,
+				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+				D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
+
+			g_gpuDescHeap_Sampler = new GpuDescriptorHeap();
+			g_gpuDescHeap_Resource->Initialize(
+				g_d3d12Device2.Get(),
+				10,
+				100,
+				D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
+				D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
+
+			for (auto& frameFences : m_frameFences)
+			{
+				for (size_t q = 0; q < (size_t)CommandQueueType::Count; ++q)
+				{
+					ThrowIfFailed(
+						g_d3d12Device2->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&frameFences[q])));
+				}
+			}
+		};
+	}
+
+	void CreateSwapChain(rhi::SwapChainDescriptor const& desc, HWND hwnd)
+	{
+		HRESULT hr;
+
+		m_swapChain.ClearColour = desc.OptmizedClearValue;
+		m_swapChain.VSync = desc.VSync;
+		m_swapChain.Fullscreen = desc.Fullscreen;
+		m_swapChain.EnableHDR = desc.EnableHDR;
+
+		UINT swapChainFlags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+		swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+
+		const auto& formatMapping = GetDxgiFormatMapping(desc.Format);
+		if (m_swapChain.SwapChain == nullptr)
+		{
+			// Create swapchain:
+			DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+			swapChainDesc.Width = desc.Width;
+			swapChainDesc.Height = desc.Height;
+			swapChainDesc.Format = formatMapping.RtvFormat;
+			swapChainDesc.Stereo = false;
+			swapChainDesc.SampleDesc.Count = 1;
+			swapChainDesc.SampleDesc.Quality = 0;
+			swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+			swapChainDesc.BufferCount = kBufferCount;
+			swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+			swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+			swapChainDesc.Flags = swapChainFlags;
+
+			swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+
+			DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreenDesc = {};
+			fullscreenDesc.Windowed = !desc.Fullscreen;
+
+			hr = g_dxgiFactory->CreateSwapChainForHwnd(
+				g_commandQueue_Gfx->Queue.Get(),
+				hwnd,
+				&swapChainDesc,
+				&fullscreenDesc,
+				nullptr,
+				m_swapChain.SwapChain.GetAddressOf()
+			);
+
+			if (FAILED(hr))
+			{
+				throw std::exception();
+			}
+
+			hr = m_swapChain.SwapChain.As(&m_swapChain.SwapChain4);
+			if (FAILED(hr))
+			{
+				throw std::exception();
+			}
+		}
+		else
+		{
+			// Resize swapchain:
+			WaitForIdle();
+
+			// Delete back buffers
+			m_swapChain.Rtv.Free();
+			for (auto& backBuffer : m_swapChain.BackBuffers)
+			{
+				backBuffer.Reset();
+			}
+
+			hr = m_swapChain.SwapChain->ResizeBuffers(
+				kBufferCount,
+				desc.Width,
+				desc.Height,
+				formatMapping.RtvFormat,
+				swapChainFlags
+			);
+
+			assert(SUCCEEDED(hr));
+		}
+
+		// -- From Wicked Engine
+#ifdef ENABLE_HDR
+		const bool hdr = desc->allow_hdr && IsSwapChainSupportsHDR(swapchain);
+
+		// Ensure correct color space:
+		//	https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/Samples/Desktop/D3D12HDR/src/D3D12HDR.cpp
+		{
+			internal_state->colorSpace = ColorSpace::SRGB; // reset to SDR, in case anything below fails to set HDR state
+			DXGI_COLOR_SPACE_TYPE colorSpace = {};
+
+			switch (desc->format)
+			{
+			case Format::R10G10B10A2_UNORM:
+				// This format is either HDR10 (ST.2084), or SDR (SRGB)
+				colorSpace = hdr ? DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 : DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+				break;
+			case Format::R16G16B16A16_FLOAT:
+				// This format is HDR (Linear):
+				colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+				break;
+			default:
+				// Anything else will be SDR (SRGB):
+				colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+				break;
+			}
+
+			UINT colorSpaceSupport = 0;
+			if (SUCCEEDED(internal_state->swapChain->CheckColorSpaceSupport(colorSpace, &colorSpaceSupport)))
+			{
+				if (colorSpaceSupport & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT)
+				{
+					hr = internal_state->swapChain->SetColorSpace1(colorSpace);
+					assert(SUCCEEDED(hr));
+					if (SUCCEEDED(hr))
+					{
+						switch (colorSpace)
+						{
+						default:
+						case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709:
+							internal_state->colorSpace = ColorSpace::SRGB;
+							break;
+						case DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709:
+							internal_state->colorSpace = ColorSpace::HDR_LINEAR;
+							break;
+						case DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020:
+							internal_state->colorSpace = ColorSpace::HDR10_ST2084;
+							break;
+						}
+					}
+				}
+			}
+		}
+#endif
+		m_swapChain.Rtv = g_cpuDescHeap_Rtv->Allocate(kBufferCount);
+		for (UINT i = 0; i < kBufferCount; i++)
+		{
+			Microsoft::WRL::ComPtr<ID3D12Resource>& backBuffer = m_swapChain.BackBuffers[i];
+			ThrowIfFailed(
+				m_swapChain.SwapChain4->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
+
+			char allocatorName[32];
+			sprintf_s(allocatorName, "Back Buffer %iu", i);
+
+			g_d3d12Device2->CreateRenderTargetView(backBuffer.Get(), nullptr, m_swapChain.Rtv.GetCpuHandle(i));
 		}
 	}
 }
 
 namespace phx::rhi
 {
-
-	void Initialize()
+	void Initialize(RhiCreateInfo const& createInfo)
 	{
 		PHX_CORE_INFO("Initialize RHI(D3D12)");
 		InitializeD3D12Context();
+
+		g_resourceManager = new D3D12ResourceManager();
+
+		CreateSwapChain(createInfo.SwapChianDesc, static_cast<HWND>(createInfo.WindowsHandle));
+
 	}
 
 	void Finalize()
 	{
+		WaitForIdle();
 
+		m_swapChain.Rtv.Free();
+		for (auto& backBuffer : m_swapChain.BackBuffers)
+		{
+			backBuffer.Reset();
+		}
+
+		SAFE_DELETE(g_resourceManager);
+		SAFE_DELETE(g_cpuDescHeap_Resource)
+		SAFE_DELETE(g_cpuDescHeap_Sampler)
+		SAFE_DELETE(g_cpuDescHeap_Rtv)
+		SAFE_DELETE(g_cpuDescHeap_Dsv)
+		SAFE_DELETE(g_gpuDescHeap_Resource)
+		SAFE_DELETE(g_gpuDescHeap_Sampler)
+	}
+
+
+	void WaitForIdle()
+	{
+
+		Microsoft::WRL::ComPtr<ID3D12Fence> fence;
+		HRESULT hr = g_d3d12Device2->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+		assert(SUCCEEDED(hr));
+
+		auto IdleQueue = [&](D3D12CommandQueue& queue) {
+			hr = queue.Queue->Signal(fence.Get(), 1);
+			assert(SUCCEEDED(hr));
+			if (fence->GetCompletedValue() < 1)
+			{
+				hr = fence->SetEventOnCompletion(1, NULL);
+				assert(SUCCEEDED(hr));
+			}
+			fence->Signal(0);
+		};
+
+		IdleQueue(*g_commandQueue_Gfx);
+		IdleQueue(*g_commandQueue_Compute);
+		IdleQueue(*g_commandQueue_Copy);
+	}
+
+	void Present()
+	{
+		// -- Mark Queues for completion ---
+		{
+			const size_t backBufferIndex = m_swapChain.SwapChain4->GetCurrentBackBufferIndex();
+			// -- Mark queues for Compleition ---
+			g_commandQueue_Gfx->Queue->Signal(m_frameFences[backBufferIndex][CommandQueueType::Graphics].Get(), 1);
+			g_commandQueue_Compute->Queue->Signal(m_frameFences[backBufferIndex][CommandQueueType::Compute].Get(), 1);
+			g_commandQueue_Copy->Queue->Signal(m_frameFences[backBufferIndex][CommandQueueType::Copy].Get(), 1);
+
+			// m_tempPageAllocator.EndFrame(GetGfxQueue().Queue.Get());
+		}
+
+		// -- Present the back buffer ---
+		{
+
+			UINT presentFlags = 0;
+			if (!m_swapChain.VSync)
+			{
+				presentFlags |= DXGI_PRESENT_ALLOW_TEARING;
+			}
+
+			HRESULT hr = m_swapChain.SwapChain4->Present((UINT)m_swapChain.VSync, presentFlags);
+
+			if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+			{
+				assert(false);
+			}
+		}
+
+		// -- wait for fence to finish
+		{
+			const size_t backBufferIndex = m_swapChain.SwapChain4->GetCurrentBackBufferIndex();
+
+			g_frameCount++;
+
+			// Sync The queeus
+			for (size_t q = 0; q < (size_t)CommandQueueType::Count; q++)
+			{
+				ID3D12Fence* fence = m_frameFences[backBufferIndex][q].Get();
+				const size_t completedValue = fence->GetCompletedValue();
+
+				if (g_frameCount >= kBufferCount && completedValue < 1)
+				{
+					ThrowIfFailed(
+						fence->SetEventOnCompletion(1, nullptr));
+				}
+				// Reset fence;
+				fence->Signal(0);
+			}
+		}
+	}
+
+	ShaderFormat GetShaderFormat() 
+	{ 
+		return ShaderFormat::Hlsl6;
 	}
 }

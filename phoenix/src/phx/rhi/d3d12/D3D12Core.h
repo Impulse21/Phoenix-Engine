@@ -15,6 +15,11 @@
 
 namespace phx::rhi::d3d12
 {
+	// -- Forward Declares ---
+	struct D3D12CommandQueue;
+	class CpuDescriptorHeap;
+	class GpuDescriptorHeap;
+	class D3D12ResourceManager;
 
     // -- Globals ---
     extern Microsoft::WRL::ComPtr<IDXGIFactory6> g_dxgiFactory;
@@ -23,8 +28,25 @@ namespace phx::rhi::d3d12
     extern Microsoft::WRL::ComPtr<ID3D12Device5> g_d3d12Device5;
     extern Microsoft::WRL::ComPtr<D3D12MA::Allocator> g_d3d12MemAllocator;
 
-
 	extern bool g_isUnderGfxDebugger;
+
+	// -- Command queues ---
+	extern D3D12CommandQueue* g_commandQueue_Gfx;
+	extern D3D12CommandQueue* g_commandQueue_Compute;
+	extern D3D12CommandQueue* g_commandQueue_Copy;
+
+	// -- Descriptor Heaps ---
+	extern CpuDescriptorHeap* g_cpuDescHeap_Resource;
+	extern CpuDescriptorHeap* g_cpuDescHeap_Sampler;
+	extern CpuDescriptorHeap* g_cpuDescHeap_Rtv;
+	extern CpuDescriptorHeap* g_cpuDescHeap_Dsv;
+
+	extern GpuDescriptorHeap* g_gpuDescHeap_Resource;
+	extern GpuDescriptorHeap* g_gpuDescHeap_Sampler;
+
+	extern D3D12ResourceManager* g_resourceManager;
+
+	extern size_t g_frameCount;
 
 	// Helper class for COM exceptions
 	class com_exception : public std::exception

@@ -4,12 +4,20 @@
 
 namespace phx::rhi
 {
-    void Initialize();
+    struct RhiCreateInfo
+    {
+        SwapChainDescriptor SwapChianDesc = {};
+        void* WindowsHandle = nullptr;
+    };
+
+    void Initialize(RhiCreateInfo const& createInfo);
     void Finalize();
+
+    void WaitForIdle();
 
     ShaderFormat GetShaderFormat();
 
-    void Present(phx::Span<SwapChainHandle> swapchains);
+    void Present();
 
     // TODO Context management;
 

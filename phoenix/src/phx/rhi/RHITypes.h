@@ -869,7 +869,6 @@ namespace phx::rhi
 
     struct SwapChainDescriptor
     {
-        void* WindowHandle = nullptr;
         uint32_t Width = 0;
         uint32_t Height = 0;
         rhi::Format Format = rhi::Format::R10G10B10A2_UNORM;

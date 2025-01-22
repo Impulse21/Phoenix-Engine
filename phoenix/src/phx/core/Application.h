@@ -4,10 +4,12 @@
 
 namespace phx
 {
-	struct ApplicationSpecification
+	struct ApplicationDescriptor
 	{
-		std::string Name = "Hazel Application";
-		std::string WorkingDirectory;
+		std::string Name = "Phoenix Application";
+		std::string WorkingDirectory = "";
+		uint32_t Width = 1600;
+		uint32_t Height = 900;
 	};
 
 	class IApplication
@@ -24,6 +26,7 @@ namespace phx
 		virtual void Shutdown() = 0;
 
 		virtual const char* GetName() const = 0;
+		virtual void GetDefaultWindowSize(uint32_t& outWidth, uint32_t& outHeight) const = 0;
 	};
 
 	// To be defined in CLIENT

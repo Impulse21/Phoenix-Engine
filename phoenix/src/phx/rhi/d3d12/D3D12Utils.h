@@ -7,6 +7,15 @@
 
 namespace phx::rhi::d3d12
 {
+	struct DxgiFormatMapping
+	{
+		rhi::Format AbstractFormat;
+		DXGI_FORMAT ResourceFormat;
+		DXGI_FORMAT SrvFormat;
+		DXGI_FORMAT RtvFormat;
+	};
+	const DxgiFormatMapping& GetDxgiFormatMapping(rhi::Format abstractFormat);
+
 	inline D3D12_RESOURCE_STATES ConvertResourceStates(ResourceStates stateBits)
 	{
 		if (stateBits == ResourceStates::Common)

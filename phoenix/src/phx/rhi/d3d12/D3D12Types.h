@@ -1,9 +1,17 @@
 #pragma once
 
 #include "D3D12Core.h"
+#include "phx/rhi/RHITypes.h"
+#include "D3D12DescriptorHeaps.h"
+
+#define ALIGNAS(x)             __declspec(align(x))
+#define DEFINE_ALIGNED(def, a) __declspec(align(a)) def
+#define THREAD_LOCAL           __declspec(thread)
 
 namespace phx::rhi::d3d12
 {
+	constexpr size_t kCacheLineSize = 8 * sizeof(uint64_t);
+
 	enum class DescriptorHeapTypes : uint8_t
 	{
 		CBV_SRV_UAV,
@@ -36,4 +44,127 @@ namespace phx::rhi::d3d12
 				IID_PPV_ARGS(outAdapter));
 		}
 	};
+
+
+	struct D3D12SwapChain final
+	{
+		Microsoft::WRL::ComPtr<IDXGISwapChain1> SwapChain;
+		Microsoft::WRL::ComPtr<IDXGISwapChain4> SwapChain4;
+
+		std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, rhi::kBufferCount> BackBuffers;
+		DescriptorHeapAllocation Rtv;
+		rhi::ClearValue ClearColour = {};
+
+		uint32_t        CurrentIndex : 8;
+		bool			Fullscreen : 1 = false;
+		bool			VSync : 1 = false;
+		bool			EnableHDR : 1 = false;
+		rhi::Format		Format : 8;
+
+		D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView()
+		{
+			const uint64_t currentIndex = SwapChain4->GetCurrentBackBufferIndex();
+			return Rtv.GetCpuHandle(currentIndex);
+		}
+		ID3D12Resource* GetBackBuffer()
+		{
+			const uint64_t currentIndex = SwapChain4->GetCurrentBackBufferIndex();
+			return BackBuffers[currentIndex].Get();
+		}
+	};
+
+	struct SwapChain final
+	{
+		Microsoft::WRL::ComPtr<IDXGISwapChain1> SwapChain;
+		Microsoft::WRL::ComPtr<IDXGISwapChain4> SwapChain4;
+
+		DescriptorHeapAllocation ViewAllocation;
+		std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, rhi::kBufferCount> BackBuffers;
+
+	};
+
+	struct DEFINE_ALIGNED(PipelineStateResource, 64)
+	{
+		Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
+		Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
+
+		enum class PipelineType : uint8_t
+		{
+			Gfx = 0,
+			Compute,
+		} Type;
+
+		D3D_PRIMITIVE_TOPOLOGY Topology;
+	};
+	static_assert(sizeof(PipelineStateResource) <= kCacheLineSize);
+
+	// -- Texture Data ---
+	struct DEFINE_ALIGNED(TextureResource, 64)
+	{
+		Microsoft::WRL::ComPtr<ID3D12Resource> Resource;
+		Microsoft::WRL::ComPtr<D3D12MA::Allocation> Allocation;
+		DescriptorHeapAllocation DescriptorAllocation_CbvSrvUav; // SRV = 0, UAV = 1
+
+		DescriptorHeapAllocation DescriptorAllocation_Rtv;
+		DescriptorHeapAllocation DescriptorAllocation_Dsv;
+
+		union
+		{
+			uint16_t ArraySize = 1;
+			uint16_t Depth;
+		};
+		uint16_t MipLevels = 1;
+		uint16_t SampleCount = 1;
+	};
+	// static_assert(sizeof(TextureResource) <= kCacheLineSize);
+
+	struct DEFINE_ALIGNED(TextureBindings, 64)
+	{
+		ID3D12Resource* Resource;
+		D3D12_GPU_DESCRIPTOR_HANDLE Srv;
+		D3D12_GPU_DESCRIPTOR_HANDLE Uav;
+
+		D3D12_GPU_DESCRIPTOR_HANDLE Rtv;
+		D3D12_GPU_DESCRIPTOR_HANDLE Dsv;
+
+		rhi::DescriptorIndex BindlessIndex_Srv = rhi::cInvalidDescriptorIndex;
+		rhi::DescriptorIndex BindlessIndex_Uav = rhi::cInvalidDescriptorIndex;
+	};
+	static_assert(sizeof(TextureBindings) <= kCacheLineSize);
+
+	// -- End Texture data ---
+
+	struct DEFINE_ALIGNED(GpuBufferResource, 64)
+	{
+		Microsoft::WRL::ComPtr<ID3D12Resource> Resource;
+		Microsoft::WRL::ComPtr<D3D12MA::Allocation> Allocation;
+
+		DescriptorHeapAllocation DescriptorAllocation_CbvSrvUav;
+		uint8_t SrvOffset = 0xFF;
+		uint8_t UavOffset = 0xFF;
+
+		union
+		{
+			uint16_t ArraySize = 1;
+			uint16_t Depth;
+		};
+		uint16_t MipLevels = 1;
+		uint16_t SampleCount = 1;
+	};
+
+	struct DEFINE_ALIGNED(GpuBufferBindings, 64)
+	{
+		ID3D12Resource* Resource;
+		void* CpuMappedAddress;
+		D3D12_GPU_VIRTUAL_ADDRESS GpuAddress;
+
+		D3D12_GPU_DESCRIPTOR_HANDLE Srv;
+		D3D12_GPU_DESCRIPTOR_HANDLE Uav;
+
+		rhi::DescriptorIndex BindlessIndex_Cbv = rhi::cInvalidDescriptorIndex;
+		rhi::DescriptorIndex BindlessIndex_Srv = rhi::cInvalidDescriptorIndex;
+		rhi::DescriptorIndex BindlessIndex_Uav = rhi::cInvalidDescriptorIndex;
+	};
+	static_assert(sizeof(GpuBufferBindings) <= kCacheLineSize);
+
 }

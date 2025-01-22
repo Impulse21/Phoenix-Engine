@@ -114,12 +114,19 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	std::wstring appNameW;
 	phx::StringConvert(app->GetName(), appNameW);
 
+	// Create window
+	uint32_t w, h;
+	app->GetDefaultWindowSize(w, h);
+
+	RECT rc = { 0, 0, static_cast<LONG>(w), static_cast<LONG>(h) };
+	AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
+
 	HWND hwnd = CreateWindowEx(
 		0,                          // Optional window styles
 		CLASS_NAME,                 // Window class
 		appNameW.c_str(),           // Window title
 		WS_OVERLAPPEDWINDOW,        // Window style
-		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+		CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top,
 		nullptr,                    // Parent window
 		nullptr,                    // Menu
 		hInstance,                  // Instance handle
@@ -130,6 +137,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		return 0;
 
 	ShowWindow(hwnd, nCmdShow);
+
+	phx::rhi::Initialize({
+		.SwapChianDesc = { .Width = w, .Height = h },
+		.WindowsHandle = hwnd
+	});
 
 	phx::IApplication::Ptr->Startup();
 
@@ -155,6 +167,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	delete phx::IApplication::Ptr;
 	phx::IApplication::Ptr = nullptr;
 
+	phx::rhi::Finalize();
 	if (stream)
 	{
 		fclose(stream);
