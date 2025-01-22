@@ -1,22 +1,7 @@
-
-include "./vendor/premake/premake_customization/solution_items.lua"
 include "Dependencies.lua"
 
 workspace_directory         = '.workspace/'.._ACTION
-platform_clang_win_64   = "x64 (LLVM)"
-rhi_cpp_define			= ""
-arg_rhi					= _ARGS[1]
-executable_postfix		= ""
-
-function ConfigureRhi()
-    if arg_rhi == "d3d12" then
-        rhi_cpp_define  = "PHX_RHI_D3D12"
-        executable_postfix = "_d3d12"
-    elseif arg_rhi == "vulkan_windows" or arg_rhi == "vulkan_linux" then
-        rhi_cpp_define  = "PHX_RHI_VULKAN"
-        executable_postfix = "_vulkan"
-    end
-end
+platform_clang_win_64_dx12  = "Win64_Dx12 (LLVM)"
 
 -- Add warnings globally to fix serious issues that could cause incorrect
 -- runtime behavior or crashes.
@@ -118,15 +103,12 @@ function HandleGlobalWarnings()
     --]=====]
 end
 
-
-ConfigureRhi()
-
 -- Globals
 workspace "PhxEngine"
 	location (workspace_directory)
     architecture('x64')
 	startproject "PhxEditor"
-	platforms { platform_clang_win_64 }
+	platforms { platform_clang_win_64_dx12 }
 
 	outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
     
@@ -138,11 +120,6 @@ workspace "PhxEngine"
 		"Debug",
 		"Release",
 		"Dist"
-	}
-
-	solution_items
-	{
-		".editorconfig"
 	}
 
 	flags
@@ -161,7 +138,7 @@ workspace "PhxEngine"
         --'_HAS_EXCEPTIONS=0', -- Disable STL exceptions
     }
     
-	filter('platforms:'..platform_clang_win_64)
+	filter('platforms:'..platform_clang_win_64_dx12)
         toolset('msc-clangcl')
         -- toolset("clang")
     --toolset('msc-llvm') -- Older versions of Clang in VS
@@ -190,7 +167,6 @@ workspace "PhxEngine"
     filter{}
 
 group "Dependencies"
-	--include "vendor/premake"
 	include "Phoenix/vendor/ImGui"
 	include "Phoenix/vendor/D3D12MA"
 group ""
