@@ -4,7 +4,7 @@
 #include "phx/core/Span.h"
 #include "phx/core/EnumUtils.h"
 
-#include "phx/rhi/Handle.h"
+#include "phx/core/Handle.h"
 
 
 namespace phx::rhi

@@ -9,10 +9,10 @@
 #include <iostream>
 #include <variant>
 
-#include "phx/rhi/Handle.h"
+#include "phx/core/Handle.h"
 #include "phx/core/Memory.h"
 
-namespace phx::rhi
+namespace phx
 {
 	constexpr size_t kPageSize = 4_MiB;
 	template <typename>
