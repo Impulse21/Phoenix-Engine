@@ -1,7 +1,21 @@
-include "Dependencies.lua"
+include "vendor/premake/PhxEngine/Dependencies.lua"
 
 workspace_directory         = '.workspace/'.._ACTION
 platform_clang_win_64_dx12  = "Win64_Dx12 (LLVM)"
+
+-- Utility Functions
+
+function ExcludePlatformSpecificCode(rootPath)
+	excludes { rootPath..'**/platform/**' }
+end
+
+function CopyFileCommand(filePath, destinationPath)
+	return '{copyfile} "'..filePath..'" "'..destinationPath..'"'
+end
+
+function MakeDirCommand(directoryPath)
+	return '{mkdir} "'..directoryPath..'"'
+end
 
 -- Add warnings globally to fix serious issues that could cause incorrect
 -- runtime behavior or crashes.
@@ -183,4 +197,23 @@ group "Tools"
 	--include "PhxEditor"
 group ""
 
+group('.Solution Generation')
+
+    project('Generate Solution')
+        kind('StaticLib')
+        files{ '*.lua', '*.bat', '*.command' }
+
+        local rootPathAbsolute = path.getabsolute('')
+        local generateSolutionCommandLine = '{chdir} "'..rootPathAbsolute..'"'
+
+        if IsVisualStudio then
+            rebuildProjectCommand = '"Visual Studio '..VisualStudioVersion..'.bat"'
+            print(rebuildProjectCommand)
+        end
+
+        postbuildcommands
+        {
+            generateSolutionCommandLine, -- Run
+            rebuildProjectCommand,
+        }
 

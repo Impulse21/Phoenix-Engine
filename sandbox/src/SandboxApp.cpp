@@ -35,7 +35,6 @@ public:
 
 	void Tick() override
 	{
-		PHX_INFO("Tick");
 	}
 
 	const char* GetName() const override { return this->m_spec.Name.c_str(); }

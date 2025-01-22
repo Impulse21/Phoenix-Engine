@@ -46,6 +46,15 @@ project "Sandbox"
 			Library["DXGUID"],
 		}
 
+		postbuildcommands
+		{
+			--CopyFileCommand(path.getabsolute(WinPixEventRuntimeLibrary.dlls), '%{cfg.buildtarget.directory}'),
+			MakeDirCommand('%{cfg.buildtarget.directory}D3D12/'),
+
+			CopyFileCommand(DynamicLibrary["D3D12Core"], '%{cfg.buildtarget.directory}/D3D12/'),
+			CopyFileCommand(DynamicLibrary["d3d12SDKLayers"], '%{cfg.buildtarget.directory}/D3D12/'),
+		}
+
     -- Debug configuration
     filter "configurations:Debug"
         defines { "PHX_DEBUG" }
