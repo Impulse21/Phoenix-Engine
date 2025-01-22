@@ -34,12 +34,16 @@ project "Sandbox"
 			'NOMINMAX', 
 			'WIN32_LEAN_AND_MEAN', 
 			'VC_EXTRALEAN',
-			"%{rhi_cpp_define}",
 		}
 
+
+	filter('platforms:'..platform_clang_win_64_dx12)
 		links
 		{
 			"D3D12MA",
+			Library["D3D12"],
+			Library["DXGI"],
+			Library["DXGUID"],
 		}
 
     -- Debug configuration

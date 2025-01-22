@@ -8,9 +8,12 @@ IncludeDir["AgilitySDK"]    = "%{wks.location}/../PrebuiltLibs/agility_1.614.1/i
 IncludeDir["DXC"]           = "%{wks.location}/../PrebuiltLibs/dxc_2024_07_31_clang_cl/inc"
 
 LibraryDir = {}
-
+LibraryDir["AgilitySDK_Win64"]    = "%{wks.location}/../PrebuiltLibs/agility_1.614.1/bin/x64"
 
 Library = {}
+Library["D3D12"]    = "d3d12.lib"
+Library["DXGI"]     = "dxgi.lib"
+Library["DXGUID"]   = "dxguid.lib"
 
 -- Windows
 Library["WinSock"] = "Ws2_32.lib"

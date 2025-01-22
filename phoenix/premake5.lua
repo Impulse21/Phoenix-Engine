@@ -12,9 +12,6 @@ project "Phoenix"
 	pchheader "phxpch.h"
 	pchsource "src/phxpch.cpp"
 
-	excludes { 'src/phx/**/rhi/d3d12/**' }
-	excludes { 'src/phx/**/rhi/vulkan/**' }
-
 	files
 	{
 		"src/phxpch.h",
@@ -47,11 +44,24 @@ project "Phoenix"
 			'NOMINMAX', 
 			'WIN32_LEAN_AND_MEAN', 
 			'VC_EXTRALEAN',
-			"%{rhi_cpp_define}",
 		}
 
-		includedirs	{ 'src/phx/**/rhi/dx12' }
+		files 
+		{
+		}
 
+		includedirs
+		{
+		}
+
+		links
+		{
+		}
+
+	filter('platforms:'..platform_clang_win_64_dx12)
+		defines { "PHX_RHI_D3D12" }
+		
+		excludes  { 'src/phx/rhi/vulkan/**' }
 		files 
 		{
 			"src/phx/rhi/d3d12/**.h",
@@ -60,12 +70,9 @@ project "Phoenix"
 
 		includedirs
 		{
+			'src/phx/**/rhi/dx12',
 			"%{IncludeDir.D3D12MA}",
 			"%{IncludeDir.AgilitySDK}",
-		}
-
-		links
-		{
 		}
 
 	filter "configurations:Debug"

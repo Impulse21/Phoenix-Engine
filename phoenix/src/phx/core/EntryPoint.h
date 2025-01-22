@@ -11,6 +11,10 @@
 
 #ifdef PHX_PLATFORM_WINDOWS
 
+extern "C" {
+	_declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+}
+
 #ifdef PHX_RHI_D3D12
 
 #include <d3d12.h>

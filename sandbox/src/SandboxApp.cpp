@@ -23,14 +23,14 @@ public:
 	void Startup() override
 	{
 		PHX_INFO("Sandbox app is starting up");
-		// phx::rhi::Initialize();
+		phx::rhi::Initialize();
 	}
 
 	void Shutdown() override
 	{
 		PHX_INFO("Sandbox app is starting up");
 
-		//phx::rhi::Finalize();
+		phx::rhi::Finalize();
 	}
 
 	void Tick() override

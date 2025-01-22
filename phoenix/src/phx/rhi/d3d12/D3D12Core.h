@@ -23,9 +23,9 @@ namespace phx::rhi::d3d12
     extern Microsoft::WRL::ComPtr<ID3D12Device5> g_d3d12Device5;
     extern Microsoft::WRL::ComPtr<D3D12MA::Allocator> g_d3d12MemAllocator;
 
-    // But other global state here
 
-    
+	extern bool g_isUnderGfxDebugger;
+
 	// Helper class for COM exceptions
 	class com_exception : public std::exception
 	{
