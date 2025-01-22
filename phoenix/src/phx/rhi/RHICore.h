@@ -15,31 +15,19 @@ namespace phx::rhi
 
     void WaitForIdle();
 
-    ShaderFormat GetShaderFormat();
+	ShaderFormat GetShaderFormat();
 
-    void Present();
+	void Present();
 
-    // TODO Context management;
+	// TODO Context management;
 
+	TextureHandle CreateTexture(TextureDescriptor const& desc, MemInfo* initData = nullptr);
+	PipelineStateHandle CreatePipelineState(PipelineStateDescriptor const& desc);
+	GpuBufferHandle CreateBuffer(GpuBufferDescriptor const& desc, MemInfo* initData = nullptr);
 
-    namespace ResourceManager
-    {
-        CommandListHandle CreateCommandList(CommandQueueType type);
-        void DeleteCommandList(CommandListHandle handle);
+	void DeletePipeline(PipelineStateHandle handle);
+	void DeleteTexture(TextureHandle handle);
+	void DeleteBuffer(GpuBufferHandle handle);
 
-        SwapChainHandle CreateSwapChain(SwapChainDescriptor const &desc);
-        void CreateSwapChain(SwapChainDescriptor const &desc, SwapChainHandle handle);
-        void DeleteSwapChain(SwapChainHandle swapChain);
-
-        PipelineStateHandle CreatePipeline(PipelineStateDescriptor const &desc);
-        void DeletePipeline(PipelineStateHandle handle);
-
-        TextureHandle CreateTexture(TextureDescriptor const &desc, MemInfo *initData = nullptr);
-        void DeleteTexture(TextureHandle handle);
-
-        GpuBufferHandle CreateBuffer(GpuBufferDescriptor const &desc, MemInfo *initData = nullptr);
-        void DeleteBuffer(GpuBufferHandle handle);
-
-        DescriptorIndex GetDescriptorIndex(TextureHandle texture, SubresouceType type = SubresouceType::SRV);
-    }
+	DescriptorIndex GetDescriptorIndex(TextureHandle texture, SubresouceType type = SubresouceType::SRV);
 }

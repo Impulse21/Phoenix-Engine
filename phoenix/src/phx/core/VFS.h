@@ -55,10 +55,8 @@ namespace phx
 		std::unique_ptr<IBlob> CreateBlob(void* Data, size_t size);
 	}
 
-	namespace FS
+	namespace VFS
 	{
-		inline static IRootFileSystem* RootPtr = nullptr;
-		
 		std::filesystem::path GetDirectoryWithExecutable();
 	}
 }

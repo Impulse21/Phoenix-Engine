@@ -1,13 +1,14 @@
 #pragma once
 
 #include <string>
+#include <filesystem>
 
 namespace phx
 {
 	struct ApplicationDescriptor
 	{
 		std::string Name = "Phoenix Application";
-		std::string WorkingDirectory = "";
+		std::filesystem::path WorkingDirectory = "";
 		uint32_t Width = 1600;
 		uint32_t Height = 900;
 	};

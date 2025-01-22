@@ -11,7 +11,6 @@
 
 #include "D3D12CommandQueue.h"
 #include "D3D12DescriptorHeaps.h"
-#include "D3D12ResourceManager.h"
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wunused-function"
@@ -71,9 +70,10 @@ namespace phx::rhi::d3d12
 	GpuDescriptorHeap* g_gpuDescHeap_Resource = nullptr;
 	GpuDescriptorHeap* g_gpuDescHeap_Sampler = nullptr;
 
-	D3D12ResourceManager* g_resourceManager = nullptr;
-
 	size_t g_frameCount = 0;
+
+	phx::ResourcePool<rhi::PipelineState, PipelineStateResource> g_pipelineStatePool;
+	phx::ResourcePool<rhi::Texture, TextureBindings, TextureResource> g_texturePool;
 }
 
 namespace
@@ -662,8 +662,6 @@ namespace phx::rhi
 		PHX_CORE_INFO("Initialize RHI(D3D12)");
 		InitializeD3D12Context();
 
-		g_resourceManager = new D3D12ResourceManager();
-
 		CreateSwapChain(createInfo.SwapChianDesc, static_cast<HWND>(createInfo.WindowsHandle));
 
 	}
@@ -678,7 +676,6 @@ namespace phx::rhi
 			backBuffer.Reset();
 		}
 
-		SAFE_DELETE(g_resourceManager);
 		SAFE_DELETE(g_cpuDescHeap_Resource)
 		SAFE_DELETE(g_cpuDescHeap_Sampler)
 		SAFE_DELETE(g_cpuDescHeap_Rtv)

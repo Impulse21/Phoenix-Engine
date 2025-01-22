@@ -1,7 +1,7 @@
 #pragma once
 
 #include "imgui.h"
-#include "phx/rhi/RHICore.h"
+#include "phx/rhi/RHITypes.h"
 
 namespace phx
 {
@@ -25,7 +25,7 @@ namespace phx::gfx
 		// bool m_isFontTextureUploaded = false;
 		ImGuiContext* m_imguiContext;
 
-		// rhi::DescriptorIndex m_fontTextureBindlessIndex = rhi::cInvalidDescriptorIndex;
+		rhi::DescriptorIndex m_fontTextureBindlessIndex = rhi::cInvalidDescriptorIndex;
 		rhi::TextureHandle m_fontTexture;
 		rhi::PipelineStateHandle m_pipeline;
 	};

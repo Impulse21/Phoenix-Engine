@@ -2,6 +2,9 @@
 #include <Phoenix.h>
 #include <phx/core/EntryPoint.h>
 
+#include <phx/core/VFS.h>
+#include <phx/renderer/ImGuiRenderer.h>
+
 class Sandbox final : public phx::IApplication
 {
 public:
@@ -20,15 +23,28 @@ public:
 	void Startup() override
 	{
 		PHX_INFO("Sandbox app is starting up");
+		m_fs = phx::FileSystemFactory::CreateRootFileSystem();
+
+		std::filesystem::path applicationShaderPath = phx::VFS::GetDirectoryWithExecutable() / "shaders/application";
+		std::filesystem::path frameworkShaderPath = phx::VFS::GetDirectoryWithExecutable() / "shaders/engine";
+
+		m_fs->Mount("/native", phx::FileSystemFactory::CreateNativeFileSystem());
+		m_fs->Mount("/shaders", applicationShaderPath);
+		m_fs->Mount("/shaders_engine", frameworkShaderPath);
+
+		m_imguiRenderer.Initialize(m_fs.get());
+		m_imguiRenderer.EnableDarkThemeColours();
 	}
 
 	void Shutdown() override
 	{
 		PHX_INFO("Sandbox app is starting up");
+		m_imguiRenderer.Finialize();
 	}
 
 	void Tick() override
 	{
+		m_imguiRenderer.BeginFrame();
 		phx::rhi::Present();
 	}
 
@@ -43,13 +59,16 @@ private:
 	inline static Sandbox* ms_instance = nullptr;
 
 private:
+	std::unique_ptr<phx::IRootFileSystem> m_fs;
 	const phx::ApplicationDescriptor m_desc;
+	phx::gfx::ImGuiRenderSystem m_imguiRenderer;
 };
 
 phx::IApplication* phx::CreateApplication()
 {
 	ApplicationDescriptor desc = {
 		.Name = "Sandbox",
+		.WorkingDirectory = phx::VFS::GetDirectoryWithExecutable()
 	};
 
 	return new Sandbox(desc);

@@ -1,16 +1,20 @@
 #include "phxpch.h"
+
 #include "phx/renderer/ImGuiRenderer.h"
+
+#include "phx/rhi/RHICore.h"
+#include "phx/rhi/ShaderCompiler.h"
 
 #include "ImGui/imgui_impl_win32.h"
 #include "phx/core/Span.h"
 #include "phx/core/VFS.h"
-
 
 namespace phx
 {
     namespace EngineCore { extern HWND g_hWnd; }
 }
 
+using namespace phx;
 using namespace phx::gfx;
 using namespace phx::rhi;
 
@@ -56,33 +60,32 @@ void ImGuiRenderSystem::Initialize(IFileSystem* fs, bool enableDocking)
     memInfo.SlicePitch = memInfo.RowPitch * height;
     memInfo.Data = pixelData;
 
-#if false
     // Create texture
-    m_fontTexture = gfxDevice->CreateTexture({
-        .DebugName = "ImGui Font",
-        .Format = rhi::Format::RGBA8_UNORM,
-        .Width = static_cast<uint32_t>(width),
-        .Height = static_cast<uint32_t>(height)
+    m_fontTexture = rhi::CreateTexture({
+            .DebugName = "ImGui Font",
+            .Format = rhi::Format::RGBA8_UNORM,
+            .Width = static_cast<uint32_t>(width),
+            .Height = static_cast<uint32_t>(height)
         }, &memInfo);
     
-    this->m_fontTextureBindlessIndex = gfxDevice->GetDescriptorIndex(this->m_fontTexture, SubresouceType::SRV);
+    this->m_fontTextureBindlessIndex = rhi::GetDescriptorIndex(this->m_fontTexture, SubresouceType::SRV);
     io.Fonts->SetTexID(static_cast<ImTextureID>(this->m_fontTextureBindlessIndex));
     
     ShaderCompiler::Output vsOut = ShaderCompiler::Compile({
-            .Format = gfxDevice->GetShaderFormat(),
+            .Format = rhi::GetShaderFormat(),
             .ShaderStage = ShaderStage::VS,
             .SourceFilename = "/shaders_engine/ImGui.hlsl",
             .EntryPoint = "MainVS",
             .FileSystem = fs });
 
     ShaderCompiler::Output psOut = ShaderCompiler::Compile({
-            .Format = gfxDevice->GetShaderFormat(),
+            .Format = rhi::GetShaderFormat(),
             .ShaderStage = ShaderStage::PS,
             .SourceFilename = "/shaders_engine/ImGui.hlsl",
             .EntryPoint = "MainPS",
             .FileSystem = fs });
 
-	m_pipeline = gfxDevice->CreatePipeline({
+	m_pipeline = rhi::CreatePipelineState({
             .VS = {.ByteCode = vsOut.ByteCode, .EntryPoint = "MainVS" },
             .PS = {.ByteCode = psOut.ByteCode, .EntryPoint = "MainPS" },
 		    .BlendState = {
@@ -117,11 +120,12 @@ void ImGuiRenderSystem::Initialize(IFileSystem* fs, bool enableDocking)
             },
             .RenderPassInfo = {.RTFormats { rhi::Format::UNKNOWN }}
         });
-#endif
 }
 
 void ImGuiRenderSystem::Finialize()
 {
+    rhi::DeleteTexture(m_fontTexture);
+    rhi::DeletePipeline(m_pipeline);
 }
 
 void ImGuiRenderSystem::EnableDarkThemeColours()
