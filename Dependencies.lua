@@ -10,6 +10,10 @@ IncludeDir["DXC"]           = "%{wks.location}/../PrebuiltLibs/dxc_2024_07_31_cl
 LibraryDir = {}
 LibraryDir["AgilitySDK_Win64"]    = "%{wks.location}/../PrebuiltLibs/agility_1.614.1/bin/x64"
 
+DynamicLibrary = {}
+DynamicLibrary["D3D12Core"]        = LibraryDir["AgilitySDK_Win64"].."D3D12Core.dll"
+DynamicLibrary["d3d12SDKLayers"]   = LibraryDir["AgilitySDK_Win64"].."d3d12SDKLayers.dll"
+
 Library = {}
 Library["D3D12"]    = "d3d12.lib"
 Library["DXGI"]     = "dxgi.lib"

@@ -75,6 +75,15 @@ project "Phoenix"
 			"%{IncludeDir.AgilitySDK}",
 		}
 
+		postbuildcommands
+		{
+			--CopyFileCommand(path.getabsolute(WinPixEventRuntimeLibrary.dlls), '%{cfg.buildtarget.directory}'),
+			MakeDirCommand('%{cfg.buildtarget.directory}/D3D12/'),
+
+			CopyFileCommand(path.getabsolute(DynamicLibrary["D3D12Core"]), '%{cfg.buildtarget.directory}/D3D12/'),
+			CopyFileCommand(path.getabsolute(DynamicLibrary["d3d12SDKLayers"]), '%{cfg.buildtarget.directory}/D3D12/'),
+		}
+
 	filter "configurations:Debug"
 		defines { "PHX_DEBUG" }
 		symbols "on"

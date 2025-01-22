@@ -373,6 +373,4 @@ namespace phx::rhi::d3d12
 		outState.ConservativeRaster = inState.ConservativeRasterEnable ? D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON : D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 		outState.ForcedSampleCount = inState.ForcedSampleCount;
 	}
-
-
 }
