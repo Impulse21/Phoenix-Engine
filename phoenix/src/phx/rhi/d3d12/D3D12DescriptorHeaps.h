@@ -5,7 +5,7 @@
 #include <mutex>
 #include <assert.h>
 
-#include "D3D12Core.h"
+#include "D3D12Base.h"
 
 namespace phx::rhi::d3d12
 {

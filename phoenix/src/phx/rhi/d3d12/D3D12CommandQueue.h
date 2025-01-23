@@ -2,7 +2,7 @@
 
 #include "phx/core/Span.h"
 
-#include "D3D12Core.h"
+#include "D3D12Base.h"
 
 #include <deque>
 #include <mutex>

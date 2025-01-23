@@ -25,11 +25,15 @@ namespace phx
 		static_assert(std::is_default_constructible_v<TDataCold>, "TDataHot should have a trivial destructor");
 
 	public:
-		ResourcePool(uint16_t maxHandles)
-			: m_maxEntries(std::min(maxHandles, std::numeric_limits<uint16_t>::max()))
-			, m_freeListHead(0)
-			, m_commitedIndices(0)
+		ResourcePool() = default;
+		~ResourcePool()
 		{
+			Finalize();
+		}
+
+		void Initialize(uint16_t maxHandles)
+		{
+			m_maxEntries = std::min(maxHandles, std::numeric_limits<uint16_t>::max());
 			m_dataHot = static_cast<TDataHot*>(phx::VirtualMemReserve(m_maxEntries * sizeof(TDataHot)));
 			m_dataCold = static_cast<TDataCold*>(phx::VirtualMemReserve(m_maxEntries * sizeof(TDataCold)));
 
@@ -39,18 +43,13 @@ namespace phx
 			if (!m_dataHot || !m_freeList || !m_generations)
 				throw std::runtime_error("Failed to reserve virtual pool memory.");
 
-			m_indicesPerPageHot			=	kPageSize / sizeof(TDataHot);
-			m_indicesPerPageCold		=	kPageSize / sizeof(TDataCold);
-			m_indicesPerPageMetadata	=	kPageSize / sizeof(uint16_t);
+			m_indicesPerPageHot = kPageSize / sizeof(TDataHot);
+			m_indicesPerPageCold = kPageSize / sizeof(TDataCold);
+			m_indicesPerPageMetadata = kPageSize / sizeof(uint16_t);
 
 			m_indicesPerCommit = std::min({ m_indicesPerPageHot, m_indicesPerPageCold, m_indicesPerPageMetadata });
 
 			CommitPages();  // Commit an initial 4 pages
-		}
-
-		~ResourcePool()
-		{
-			Finalize();
 		}
 
 		void Finalize()
@@ -239,7 +238,7 @@ namespace phx
 		}
 
 	private:
-		const size_t	m_maxEntries;
+		size_t			m_maxEntries;
 		TDataHot*		m_dataHot;
 		TDataCold*		m_dataCold;
 

@@ -8,6 +8,8 @@ namespace phx::rhi
     {
         SwapChainDescriptor SwapChianDesc = {};
         void* WindowsHandle = nullptr;
+		uint32_t MaxNumTextures = 1000;
+		uint32_t MaxNumPipelineStates = 1000;
     };
 
     void Initialize(RhiCreateInfo const& createInfo);

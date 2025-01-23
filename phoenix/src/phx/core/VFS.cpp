@@ -324,7 +324,7 @@ namespace phx::FileSystemFactory
     }
 }
 
-namespace phx::FS
+namespace phx::VFS
 {
     std::filesystem::path GetDirectoryWithExecutable()
     {

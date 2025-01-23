@@ -662,6 +662,8 @@ namespace phx::rhi
 		PHX_CORE_INFO("Initialize RHI(D3D12)");
 		InitializeD3D12Context();
 
+		g_pipelineStatePool.Initialize(createInfo.MaxNumTextures);
+		g_texturePool.Initialize(createInfo.MaxNumPipelineStates);
 		CreateSwapChain(createInfo.SwapChianDesc, static_cast<HWND>(createInfo.WindowsHandle));
 
 	}
@@ -675,6 +677,10 @@ namespace phx::rhi
 		{
 			backBuffer.Reset();
 		}
+
+
+		g_pipelineStatePool.Finalize();
+		g_texturePool.Finalize();
 
 		SAFE_DELETE(g_cpuDescHeap_Resource)
 		SAFE_DELETE(g_cpuDescHeap_Sampler)
