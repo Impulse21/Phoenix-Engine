@@ -7,6 +7,11 @@
 #include "D3D12Types.h"
 #include "D3D12MemAlloc.h"
 
+namespace phx::rhi
+{
+	struct RhiCreateInfo;
+}
+
 namespace phx::rhi::d3d12
 {
 	// -- Forward Declares ---
@@ -46,4 +51,6 @@ namespace phx::rhi::d3d12
 	extern phx::ResourcePool<rhi::PipelineState, PipelineStateResource> g_pipelineStatePool;
 	extern phx::ResourcePool<rhi::Texture, TextureBindings, TextureResource> g_texturePool;
 
+
+	void InitializeResources(rhi::RhiCreateInfo const& createInfo);
 }

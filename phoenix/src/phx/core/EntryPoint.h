@@ -143,7 +143,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		.WindowsHandle = hwnd
 	});
 
-	phx::IApplication::Ptr->Startup();
+	app->SetWindowHandle(hwnd);
+	app->Startup();
 
 	// Main message loop
 	// Main message loop

@@ -32,7 +32,7 @@ public:
 		m_fs->Mount("/shaders", applicationShaderPath);
 		m_fs->Mount("/shaders_engine", frameworkShaderPath);
 
-		m_imguiRenderer.Initialize(m_fs.get());
+		m_imguiRenderer.Initialize(m_fs.get(), m_windowHandle);
 		m_imguiRenderer.EnableDarkThemeColours();
 	}
 
@@ -55,6 +55,9 @@ public:
 		outHeight = m_desc.Height;
 	}
 
+	void SetWindowHandle(void* handle) override { m_windowHandle = handle; }
+	void* GetWindowHandle() const override { return m_windowHandle; }
+
 private:
 	inline static Sandbox* ms_instance = nullptr;
 
@@ -62,6 +65,8 @@ private:
 	std::unique_ptr<phx::IRootFileSystem> m_fs;
 	const phx::ApplicationDescriptor m_desc;
 	phx::gfx::ImGuiRenderSystem m_imguiRenderer;
+
+	void* m_windowHandle;
 };
 
 phx::IApplication* phx::CreateApplication()

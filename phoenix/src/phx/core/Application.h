@@ -26,6 +26,9 @@ namespace phx
 		virtual void Startup() = 0;
 		virtual void Shutdown() = 0;
 
+
+		virtual void SetWindowHandle(void* handle) = 0;
+		virtual void* GetWindowHandle() const = 0;
 		virtual const char* GetName() const = 0;
 		virtual void GetDefaultWindowSize(uint32_t& outWidth, uint32_t& outHeight) const = 0;
 	};

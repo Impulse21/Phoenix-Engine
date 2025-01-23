@@ -71,9 +71,6 @@ namespace phx::rhi::d3d12
 	GpuDescriptorHeap* g_gpuDescHeap_Sampler = nullptr;
 
 	size_t g_frameCount = 0;
-
-	phx::ResourcePool<rhi::PipelineState, PipelineStateResource> g_pipelineStatePool;
-	phx::ResourcePool<rhi::Texture, TextureBindings, TextureResource> g_texturePool;
 }
 
 namespace
@@ -662,8 +659,7 @@ namespace phx::rhi
 		PHX_CORE_INFO("Initialize RHI(D3D12)");
 		InitializeD3D12Context();
 
-		g_pipelineStatePool.Initialize(createInfo.MaxNumTextures);
-		g_texturePool.Initialize(createInfo.MaxNumPipelineStates);
+		InitializeResources(createInfo);
 		CreateSwapChain(createInfo.SwapChianDesc, static_cast<HWND>(createInfo.WindowsHandle));
 
 	}

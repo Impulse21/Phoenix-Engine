@@ -9,10 +9,6 @@
 #include "phx/core/Span.h"
 #include "phx/core/VFS.h"
 
-namespace phx
-{
-    namespace EngineCore { extern HWND g_hWnd; }
-}
 
 using namespace phx;
 using namespace phx::gfx;
@@ -28,12 +24,12 @@ namespace
     };
 }
 
-void ImGuiRenderSystem::Initialize(IFileSystem* fs, bool enableDocking)
+void ImGuiRenderSystem::Initialize(IFileSystem* fs, void* windowHandle, bool enableDocking)
 {
     m_imguiContext = ImGui::CreateContext();
     ImGui::SetCurrentContext(m_imguiContext);
 
-    if (!ImGui_ImplWin32_Init(phx::EngineCore::g_hWnd))
+    if (!ImGui_ImplWin32_Init(windowHandle))
     {
         throw std::runtime_error("Failed it initalize IMGUI");
     }

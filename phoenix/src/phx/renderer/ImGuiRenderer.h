@@ -14,7 +14,7 @@ namespace phx::gfx
 	class ImGuiRenderSystem
 	{
 	public:
-		void Initialize(IFileSystem* fs, bool enableDocking = false);
+		void Initialize(IFileSystem* fs, void* windowHandle, bool enableDocking = false);
 		void Finialize();
 
 		void EnableDarkThemeColours();
