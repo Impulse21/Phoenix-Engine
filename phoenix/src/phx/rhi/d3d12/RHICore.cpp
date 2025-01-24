@@ -412,7 +412,7 @@ namespace
 				D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
 
 			g_gpuDescHeap_Sampler = new GpuDescriptorHeap();
-			g_gpuDescHeap_Resource->Initialize(
+			g_gpuDescHeap_Sampler->Initialize(
 				g_d3d12Device2.Get(),
 				10,
 				100,
