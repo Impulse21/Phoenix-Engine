@@ -840,7 +840,7 @@ namespace phx::rhi
     struct TextureDescriptor
     {
         const char* DebugName = "";
-        TextureType Type = TextureType::Unknown;
+        TextureType Type = TextureType::Texture2D;
         rhi::Format Format = rhi::Format::UNKNOWN;
 
         uint32_t Width = 1;

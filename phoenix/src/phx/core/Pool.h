@@ -234,7 +234,7 @@ namespace phx
 			for (size_t i = previousCommitedIndices; i < m_commitedIndices; ++i)
 			{
 				m_freeList[i] = (uint16_t)i;
-				m_generations[i] = 0;
+				m_generations[i] = 1;
 			}
 		}
 
