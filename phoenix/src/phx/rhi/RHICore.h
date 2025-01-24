@@ -31,5 +31,5 @@ namespace phx::rhi
 	void DeleteTexture(TextureHandle handle);
 	void DeleteBuffer(GpuBufferHandle handle);
 
-	DescriptorIndex GetDescriptorIndex(TextureHandle texture, SubresouceType type = SubresouceType::SRV);
+	DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type = SubresouceType::SRV);
 }

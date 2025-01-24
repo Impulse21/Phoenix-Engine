@@ -89,7 +89,7 @@ namespace phx::rhi::d3d12
 
 	};
 
-	struct DEFINE_ALIGNED(PipelineStateResource, 64)
+	struct DEFINE_ALIGNED(PipelineState, 64)
 	{
 		Microsoft::WRL::ComPtr<ID3D12PipelineState> D3D12PipelineState;
 		Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignature;
@@ -102,10 +102,11 @@ namespace phx::rhi::d3d12
 
 		D3D_PRIMITIVE_TOPOLOGY Topology;
 	};
-	static_assert(sizeof(PipelineStateResource) <= kCacheLineSize);
+	static_assert(sizeof(PipelineState) <= kCacheLineSize);
 
 	// -- Texture Data ---
-	struct DEFINE_ALIGNED(TextureResource, 64)
+	// TODO: Make these fit within a cache line.
+	struct Texture
 	{
 		Microsoft::WRL::ComPtr<ID3D12Resource> Resource;
 		Microsoft::WRL::ComPtr<D3D12MA::Allocation> Allocation;
@@ -113,6 +114,9 @@ namespace phx::rhi::d3d12
 
 		DescriptorHeapAllocation DescriptorAllocation_Rtv;
 		DescriptorHeapAllocation DescriptorAllocation_Dsv;
+
+		rhi::DescriptorIndex BindlessIndex_Srv = rhi::cInvalidDescriptorIndex;
+		rhi::DescriptorIndex BindlessIndex_Uav = rhi::cInvalidDescriptorIndex;
 
 		union
 		{
@@ -122,21 +126,6 @@ namespace phx::rhi::d3d12
 		uint16_t MipLevels = 1;
 		uint16_t SampleCount = 1;
 	};
-	// static_assert(sizeof(TextureResource) <= kCacheLineSize);
-
-	struct DEFINE_ALIGNED(TextureBindings, 64)
-	{
-		ID3D12Resource* Resource;
-		D3D12_GPU_DESCRIPTOR_HANDLE Srv;
-		D3D12_GPU_DESCRIPTOR_HANDLE Uav;
-
-		D3D12_GPU_DESCRIPTOR_HANDLE Rtv;
-		D3D12_GPU_DESCRIPTOR_HANDLE Dsv;
-
-		rhi::DescriptorIndex BindlessIndex_Srv = rhi::cInvalidDescriptorIndex;
-		rhi::DescriptorIndex BindlessIndex_Uav = rhi::cInvalidDescriptorIndex;
-	};
-	static_assert(sizeof(TextureBindings) <= kCacheLineSize);
 
 	// -- End Texture data ---
 

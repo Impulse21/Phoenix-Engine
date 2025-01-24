@@ -382,4 +382,81 @@ namespace phx::rhi::d3d12
 		outState.ConservativeRaster = inState.ConservativeRasterEnable ? D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON : D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 		outState.ForcedSampleCount = inState.ForcedSampleCount;
 	}
+
+	inline Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateRootSignature(phx::Span<uint8_t> byteCode)
+	{
+		using namespace Microsoft::WRL;
+
+		HRESULT hr = (byteCode.IsEmpty() ? E_FAIL : S_OK);
+		assert(SUCCEEDED(hr));
+
+		ComPtr<ID3D12RootSignature> rootSig;
+		ComPtr<ID3D12VersionedRootSignatureDeserializer> rootsigDeserializer;
+		hr = D3D12CreateVersionedRootSignatureDeserializer(
+			byteCode.data(),
+			byteCode.size(),
+			IID_PPV_ARGS(rootsigDeserializer.ReleaseAndGetAddressOf()));
+
+		if (SUCCEEDED(hr))
+		{
+			const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* rootsigDesc = nullptr;
+			hr = rootsigDeserializer->GetRootSignatureDescAtVersion(D3D_ROOT_SIGNATURE_VERSION_1_1, &rootsigDesc);
+			if (SUCCEEDED(hr))
+			{
+				assert(rootsigDesc->Version == D3D_ROOT_SIGNATURE_VERSION_1_1);
+
+				hr = g_d3d12Device2->CreateRootSignature(
+					0,
+					byteCode.data(),
+					byteCode.size(),
+					IID_PPV_ARGS(rootSig.ReleaseAndGetAddressOf())
+				);
+				assert(SUCCEEDED(hr));
+			}
+		}
+
+		return rootSig;
+	}
+
+	inline Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateEmptyRootSignature()
+	{
+		using namespace Microsoft::WRL;
+
+		// Define an empty root signature
+		D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
+		rootSignatureDesc.NumParameters = 0;         // No root parameters
+		rootSignatureDesc.pParameters = nullptr;
+		rootSignatureDesc.NumStaticSamplers = 0;     // No static samplers
+		rootSignatureDesc.pStaticSamplers = nullptr;
+		rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+		// Serialize the root signature
+		ComPtr<ID3DBlob> serializedRootSignature;
+		ComPtr<ID3DBlob> errorBlob; // To capture any errors
+		HRESULT hr = D3D12SerializeRootSignature(&rootSignatureDesc,
+			D3D_ROOT_SIGNATURE_VERSION_1,
+			&serializedRootSignature,
+			&errorBlob);
+
+		if (FAILED(hr)) {
+			if (errorBlob) {
+				OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+			}
+			throw std::runtime_error("Failed to serialize root signature");
+		}
+
+		// Create the root signature
+		ComPtr<ID3D12RootSignature> rootSignature;
+		hr = g_d3d12Device->CreateRootSignature(
+			0,
+			serializedRootSignature->GetBufferPointer(),
+			serializedRootSignature->GetBufferSize(),
+			IID_PPV_ARGS(&rootSignature));
+
+		if (FAILED(hr)) {
+			throw std::runtime_error("Failed to create root signature");
+		}
+
+		return rootSignature;
+	}
 }

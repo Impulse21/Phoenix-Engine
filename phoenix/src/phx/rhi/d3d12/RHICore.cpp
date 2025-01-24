@@ -16,11 +16,6 @@
 #pragma clang diagnostic ignored "-Wunused-function"
 #endif
 
-// Teir 1 limit is 1,000,000
-// https://docs.microsoft.com/en-us/windows/win32/direct3d12/hardware-support
-#define TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE 1000000
-
-#define NUM_BINDLESS_RESOURCES TIER_ONE_GPU_DESCRIPTOR_HEAP_SIZE / 2
 
 #define SAFE_DELETE(x) if (x) { delete x; }
 
@@ -35,15 +30,15 @@ namespace
 	const GUID kPixUUID = { 0x9f251514, 0x9d4d, 0x4902, { 0x9d, 0x60, 0x18, 0x98, 0x8a, 0xb7, 0xd4, 0xb5 } };
 
 	bool m_debugLayersEnabled = false;
-	rhi::DeviceCapability m_capabilities;
 
 	D3D12_FEATURE_DATA_ROOT_SIGNATURE m_featureDataRootSignature = {};
 	D3D12_FEATURE_DATA_SHADER_MODEL   m_featureDataShaderModel = {};
 	ShaderModel m_minShaderModel = ShaderModel::SM_6_0;
-	D3D12Adapter m_adapter;
 
 	std::array<EnumArray<Microsoft::WRL::ComPtr<ID3D12Fence>, CommandQueueType>, kBufferCount> m_frameFences;
 	D3D12SwapChain m_swapChain;
+
+	std::deque<DeferredItem> m_deferredQueue;
 }
 
 namespace phx::rhi::d3d12
@@ -55,6 +50,9 @@ namespace phx::rhi::d3d12
 	Microsoft::WRL::ComPtr<D3D12MA::Allocator> g_d3d12MemAllocator = nullptr;
 	bool g_isUnderGfxDebugger;
 
+	D3D12Adapter g_adapter;
+
+	rhi::DeviceCapability g_capabilities;
 
 	// -- Command queues ---
 	D3D12CommandQueue* g_commandQueue_Gfx = nullptr;
@@ -217,81 +215,6 @@ namespace
 		outAdapter.NativeAdapter = selectedAdapter;
 	}
 
-	ComPtr<ID3D12RootSignature> CreateRootSignature(phx::Span<uint8_t> byteCode)
-	{
-		HRESULT hr = (byteCode.IsEmpty() ? E_FAIL : S_OK);
-		assert(SUCCEEDED(hr));
-
-		ComPtr<ID3D12RootSignature> rootSig;
-		ComPtr<ID3D12VersionedRootSignatureDeserializer> rootsigDeserializer;
-		hr = D3D12CreateVersionedRootSignatureDeserializer(
-			byteCode.data(),
-			byteCode.size(),
-			IID_PPV_ARGS(rootsigDeserializer.ReleaseAndGetAddressOf()));
-
-		if (SUCCEEDED(hr))
-		{
-			const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* rootsigDesc = nullptr;
-			hr = rootsigDeserializer->GetRootSignatureDescAtVersion(D3D_ROOT_SIGNATURE_VERSION_1_1, &rootsigDesc);
-			if (SUCCEEDED(hr))
-			{
-				assert(rootsigDesc->Version == D3D_ROOT_SIGNATURE_VERSION_1_1);
-
-				hr = g_d3d12Device2->CreateRootSignature(
-					0,
-					byteCode.data(),
-					byteCode.size(),
-					IID_PPV_ARGS(rootSig.ReleaseAndGetAddressOf())
-				);
-				assert(SUCCEEDED(hr));
-			}
-		}
-
-		return rootSig;
-	}
-
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateEmptyRootSignature()
-	{
-		using namespace Microsoft::WRL;
-
-		// Define an empty root signature
-		D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
-		rootSignatureDesc.NumParameters = 0;         // No root parameters
-		rootSignatureDesc.pParameters = nullptr;
-		rootSignatureDesc.NumStaticSamplers = 0;     // No static samplers
-		rootSignatureDesc.pStaticSamplers = nullptr;
-		rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-
-		// Serialize the root signature
-		ComPtr<ID3DBlob> serializedRootSignature;
-		ComPtr<ID3DBlob> errorBlob; // To capture any errors
-		HRESULT hr = D3D12SerializeRootSignature(&rootSignatureDesc,
-			D3D_ROOT_SIGNATURE_VERSION_1,
-			&serializedRootSignature,
-			&errorBlob);
-
-		if (FAILED(hr)) {
-			if (errorBlob) {
-				OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-			}
-			throw std::runtime_error("Failed to serialize root signature");
-		}
-
-		// Create the root signature
-		ComPtr<ID3D12RootSignature> rootSignature;
-		hr = g_d3d12Device->CreateRootSignature(
-			0,
-			serializedRootSignature->GetBufferPointer(),
-			serializedRootSignature->GetBufferSize(),
-			IID_PPV_ARGS(&rootSignature));
-
-		if (FAILED(hr)) {
-			throw std::runtime_error("Failed to create root signature");
-		}
-
-		return rootSignature;
-	}
-
 	void InitializeD3D12Context()
 	{
 		{
@@ -305,16 +228,16 @@ namespace
 		}
 
 		g_dxgiFactory = CreateDXGIFactory6(m_debugLayersEnabled);
-		FindAdapter(g_dxgiFactory, m_adapter);
+		FindAdapter(g_dxgiFactory, g_adapter);
 
-		if (!m_adapter.NativeAdapter)
+		if (!g_adapter.NativeAdapter)
 		{
-			// LOG_CORE_ERROR("Unable to create D3D12 RHI On current platform.");
+			PHX_CORE_ERROR("Unable to create D3D12 RHI On current platform.");
 		}
 
 		ThrowIfFailed(
 			D3D12CreateDevice(
-				m_adapter.NativeAdapter.Get(),
+				g_adapter.NativeAdapter.Get(),
 				D3D_FEATURE_LEVEL_11_1,
 				IID_PPV_ARGS(&g_d3d12Device)));
 
@@ -338,7 +261,7 @@ namespace
 		{
 			if (featureOpptions.VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation)
 			{
-				m_capabilities |= DeviceCapability::RT_VT_ArrayIndex_Without_GS;
+				g_capabilities |= DeviceCapability::RT_VT_ArrayIndex_Without_GS;
 			}
 		}
 
@@ -350,15 +273,15 @@ namespace
 		{
 			if (featureSupport5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0)
 			{
-				m_capabilities |= DeviceCapability::RayTracing;
+				g_capabilities |= DeviceCapability::RayTracing;
 			}
 			if (featureSupport5.RenderPassesTier >= D3D12_RENDER_PASS_TIER_0)
 			{
-				m_capabilities |= DeviceCapability::RenderPass;
+				g_capabilities |= DeviceCapability::RenderPass;
 			}
 			if (featureSupport5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_1)
 			{
-				m_capabilities |= DeviceCapability::RayQuery;
+				g_capabilities |= DeviceCapability::RayQuery;
 			}
 		}
 
@@ -370,7 +293,7 @@ namespace
 		{
 			if (featureSupport6.VariableShadingRateTier >= D3D12_VARIABLE_SHADING_RATE_TIER_2)
 			{
-				m_capabilities |= DeviceCapability::VariableRateShading;
+				g_capabilities |= DeviceCapability::VariableRateShading;
 			}
 		}
 
@@ -381,9 +304,9 @@ namespace
 		{
 			if (featureSupport7.MeshShaderTier >= D3D12_MESH_SHADER_TIER_1)
 			{
-				m_capabilities |= DeviceCapability::MeshShading;
+				g_capabilities |= DeviceCapability::MeshShading;
 			}
-			m_capabilities |= DeviceCapability::CreateNoteZeroed;
+			g_capabilities |= DeviceCapability::CreateNoteZeroed;
 		}
 
 		m_featureDataRootSignature.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
@@ -650,6 +573,23 @@ namespace
 			g_d3d12Device2->CreateRenderTargetView(backBuffer.Get(), nullptr, m_swapChain.Rtv.GetCpuHandle(i));
 		}
 	}
+
+	void RunGarbageCollection(uint64_t completedFrame)
+	{
+		while (!m_deferredQueue.empty())
+		{
+			DeferredItem& DeferredItem = m_deferredQueue.front();
+			if (DeferredItem.Frame + kBufferCount < completedFrame)
+			{
+				DeferredItem.DeferredFunc();
+				m_deferredQueue.pop_front();
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
 }
 
 namespace phx::rhi
@@ -674,9 +614,7 @@ namespace phx::rhi
 			backBuffer.Reset();
 		}
 
-
-		g_pipelineStatePool.Finalize();
-		g_texturePool.Finalize();
+		FinalizeResources();
 
 		SAFE_DELETE(g_cpuDescHeap_Resource)
 		SAFE_DELETE(g_cpuDescHeap_Sampler)
@@ -708,6 +646,9 @@ namespace phx::rhi
 		IdleQueue(*g_commandQueue_Gfx);
 		IdleQueue(*g_commandQueue_Compute);
 		IdleQueue(*g_commandQueue_Copy);
+
+
+		RunGarbageCollection(UINT64_MAX);
 	}
 
 	void Present()
@@ -761,10 +702,20 @@ namespace phx::rhi
 				fence->Signal(0);
 			}
 		}
+
+		RunGarbageCollection(g_frameCount);
 	}
 
 	ShaderFormat GetShaderFormat() 
 	{ 
 		return ShaderFormat::Hlsl6;
+	}
+}
+
+namespace phx::rhi::d3d12
+{
+	void EnqueueDelete(DeferredItem&& item)
+	{
+		m_deferredQueue.emplace_back(std::forward<DeferredItem>(item));
 	}
 }
