@@ -3,7 +3,7 @@
 #include "phx/renderer/ImGuiRenderer.h"
 
 #include "phx/rhi/RHICore.h"
-#include "phx/rhi/ShaderCompiler.h"
+#include <phx/renderer/shaders/PrecompiledShaders.h>
 
 #include "ImGui/imgui_impl_win32.h"
 #include "phx/core/Span.h"
@@ -67,23 +67,12 @@ void ImGuiRenderSystem::Initialize(IFileSystem* fs, void* windowHandle, bool ena
     this->m_fontTextureBindlessIndex = rhi::GetDescriptorIndex(this->m_fontTexture, SubresouceType::SRV);
     io.Fonts->SetTexID(static_cast<ImTextureID>(this->m_fontTextureBindlessIndex));
     
-    ShaderCompiler::Output vsOut = ShaderCompiler::Compile({
-            .Format = rhi::GetShaderFormat(),
-            .ShaderStage = ShaderStage::VS,
-            .SourceFilename = "/shaders_engine/ImGui.hlsl",
-            .EntryPoint = "MainVS",
-            .FileSystem = fs });
-
-    ShaderCompiler::Output psOut = ShaderCompiler::Compile({
-            .Format = rhi::GetShaderFormat(),
-            .ShaderStage = ShaderStage::PS,
-            .SourceFilename = "/shaders_engine/ImGui.hlsl",
-            .EntryPoint = "MainPS",
-            .FileSystem = fs });
+    Span vsOutBytesCode = Span(ImGuiVS::g_MainVS, sizeof(ImGuiVS::g_MainVS));
+    Span psOutBytesCode = Span(ImGuiPS::g_MainPS, sizeof(ImGuiPS::g_MainPS));
 
 	m_pipeline = rhi::CreatePipelineState({
-            .VS = {.ByteCode = vsOut.ByteCode, .EntryPoint = "MainVS" },
-            .PS = {.ByteCode = psOut.ByteCode, .EntryPoint = "MainPS" },
+            .VS = {.ByteCode = vsOutBytesCode, .EntryPoint = "MainVS" },
+            .PS = {.ByteCode = psOutBytesCode, .EntryPoint = "MainPS" },
 		    .BlendState = {
                 .Targets {
                     {

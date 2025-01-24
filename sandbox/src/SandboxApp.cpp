@@ -1,4 +1,3 @@
-
 #include <Phoenix.h>
 #include <phx/core/EntryPoint.h>
 
@@ -34,14 +33,14 @@ public:
 		m_fs->Mount("/shaders", applicationShaderPath);
 		m_fs->Mount("/shaders_engine", frameworkShaderPath);
 
-		// m_imguiRenderer.Initialize(m_fs.get(), m_windowHandle);
-		// m_imguiRenderer.EnableDarkThemeColours();
+		m_imguiRenderer.Initialize(m_fs.get(), m_windowHandle);
+		m_imguiRenderer.EnableDarkThemeColours();
 	}
 
 	void Shutdown() override
 	{
 		PHX_INFO("Sandbox app is starting up");
-		// m_imguiRenderer.Finialize();
+		m_imguiRenderer.Finialize();
 	}
 
 	void Tick() override
@@ -54,7 +53,7 @@ public:
 				.Height = static_cast<uint32_t>(200)
 			});
 
-		// m_imguiRenderer.BeginFrame();
+		m_imguiRenderer.BeginFrame();
 		rhi::DeleteTexture(handle);
 		phx::rhi::Present();
 	}
