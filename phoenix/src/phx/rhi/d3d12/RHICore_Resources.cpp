@@ -75,7 +75,6 @@ namespace phx::rhi::d3d12
 {
 	phx::ResourcePool<rhi::PipelineState, PipelineState> g_pipelineStatePool;
 	phx::ResourcePool<rhi::Texture, Texture> g_texturePool;
-
 }
 
 namespace
