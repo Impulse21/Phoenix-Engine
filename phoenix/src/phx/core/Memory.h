@@ -20,6 +20,13 @@ constexpr inline unsigned long long operator "" _GiB(unsigned long long value)
 namespace phx
 {
 	void* VirtualMemReserve(size_t reserveSize);
+	template<typename T>
+	T* VirtualMemReserveTyped(size_t numEntries)
+	{
+		void* alloc = VirtualMemReserve(numEntries * sizeof(T));
+		return static_cast<T*>(alloc);
+	}
+
 	void VirtualMemCommit(void* ptr, size_t commitSize);
 	bool VirtualMemFree(void* ptr);
 

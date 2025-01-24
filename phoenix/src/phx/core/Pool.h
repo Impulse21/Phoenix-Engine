@@ -34,11 +34,11 @@ namespace phx
 		void Initialize(uint16_t maxHandles)
 		{
 			m_maxEntries = std::min(maxHandles, std::numeric_limits<uint16_t>::max());
-			m_dataHot = static_cast<TDataHot*>(phx::VirtualMemReserve(m_maxEntries * sizeof(TDataHot)));
-			m_dataCold = static_cast<TDataCold*>(phx::VirtualMemReserve(m_maxEntries * sizeof(TDataCold)));
+			m_dataHot = VirtualMemReserveTyped<TDataHot>(m_maxEntries);
+			m_dataCold = VirtualMemReserveTyped<TDataCold>(m_maxEntries);
 
-			m_freeList = static_cast<uint16_t*>(phx::VirtualMemReserve(m_maxEntries * sizeof(uint16_t)));
-			m_generations = static_cast<uint16_t*>(phx::VirtualMemReserve(m_maxEntries * sizeof(uint16_t)));
+			m_freeList = VirtualMemReserveTyped<uint16_t>(m_maxEntries);
+			m_generations = VirtualMemReserveTyped<uint16_t>(m_maxEntries);
 
 			if (!m_dataHot || !m_freeList || !m_generations)
 				throw std::runtime_error("Failed to reserve virtual pool memory.");
