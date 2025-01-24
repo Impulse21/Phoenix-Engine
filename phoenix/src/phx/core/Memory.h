@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <mutex>
 #include <vector>
+
 constexpr inline unsigned long long operator "" _KiB(unsigned long long value)
 {
 	return value << 10;
@@ -19,11 +20,18 @@ constexpr inline unsigned long long operator "" _GiB(unsigned long long value)
 }
 namespace phx
 {
+	template<typename T, typename U>
+	constexpr T AlignUp(T Size, U Alignment)
+	{
+		return (T)(((size_t)Size + (size_t)Alignment - 1) & ~((size_t)Alignment - 1));
+	}
+
 	void* VirtualMemReserve(size_t reserveSize);
-	template<typename T>
+
+	template<typename T, size_t _PageSize = 1>
 	T* VirtualMemReserveTyped(size_t numEntries)
 	{
-		void* alloc = VirtualMemReserve(numEntries * sizeof(T));
+		void* alloc = VirtualMemReserve(AlignUp(numEntries * sizeof(T), _PageSize));
 		return static_cast<T*>(alloc);
 	}
 
@@ -104,10 +112,4 @@ namespace phx
 
 		~ScopedScratchMarker() { Memory::GetScratchAllocator().FreeMarker(Marker); }
 	};
-
-	template<typename T, typename U>
-	constexpr T AlignUp(T Size, U Alignment)
-	{
-		return (T)(((size_t)Size + (size_t)Alignment - 1) & ~((size_t)Alignment - 1));
-	}
 }
