@@ -5,6 +5,8 @@
 #include <phx/core/VFS.h>
 #include <phx/renderer/ImGuiRenderer.h>
 
+using namespace phx;
+
 class Sandbox final : public phx::IApplication
 {
 public:
@@ -32,19 +34,28 @@ public:
 		m_fs->Mount("/shaders", applicationShaderPath);
 		m_fs->Mount("/shaders_engine", frameworkShaderPath);
 
-		m_imguiRenderer.Initialize(m_fs.get(), m_windowHandle);
-		m_imguiRenderer.EnableDarkThemeColours();
+		// m_imguiRenderer.Initialize(m_fs.get(), m_windowHandle);
+		// m_imguiRenderer.EnableDarkThemeColours();
 	}
 
 	void Shutdown() override
 	{
 		PHX_INFO("Sandbox app is starting up");
-		m_imguiRenderer.Finialize();
+		// m_imguiRenderer.Finialize();
 	}
 
 	void Tick() override
 	{
-		m_imguiRenderer.BeginFrame();
+
+		rhi::TextureHandle handle = rhi::CreateTexture({
+				.DebugName = "ImGui Font",
+				.Format = rhi::Format::RGBA8_UNORM,
+				.Width = static_cast<uint32_t>(200),
+				.Height = static_cast<uint32_t>(200)
+			});
+
+		// m_imguiRenderer.BeginFrame();
+		rhi::DeleteTexture(handle);
 		phx::rhi::Present();
 	}
 
