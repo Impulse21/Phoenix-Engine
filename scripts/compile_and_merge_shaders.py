@@ -1,34 +1,34 @@
 import os
 import subprocess
-
+from pathlib import Path
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DXC_PATH = os.path.join(SCRIPT_DIR, r"../.workspace/PrebuiltLibs/dxc_2024_07_31_clang_cl/bin/x64/dxc.exe")
 SHADER_DIR = os.path.join(SCRIPT_DIR, r"../phoenix/src/phx/renderer/shaders")
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, r"../.workspace/generated_shaders")
-MERGED_HEADER = os.path.join(SCRIPT_DIR, r"../Phoenix/renderer/shaders/PrecompiledShaders.h")
+MERGED_HEADER = os.path.join(SCRIPT_DIR, r"../Phoenix/src/phx/renderer/shaders/PrecompiledShaders.h")
 SHADER_MODEL = "6_6"  # Default Shader Model
 
 
 def determine_entry_point(filename):
     """Determine shader entry point and type based on filename."""
     if "PS" in filename:
-        return "PSMain", f"ps_{SHADER_MODEL}"
+        return "MainPS", f"ps_{SHADER_MODEL}"
     elif "VS" in filename:
-        return "VSMain", f"vs_{SHADER_MODEL}"
+        return "MainVS", f"vs_{SHADER_MODEL}"
     return None, None
 
 
 def compile_shader(shader_path, output_path, entry_point, target):
     """Compile the shader using DXC."""
+    
     try:
         subprocess.run([
             DXC_PATH,
             "-T", target,                  # Shader target (e.g., vs_6_0)
             "-E", entry_point,             # Entry point function (e.g., PSMain or VSMain)
             "-Fo", output_path,            # Output object file
-            "-Fd", output_path + ".pdb",   # Output debug info
             "-Fh", output_path + ".h",     # Output header file
             shader_path                    # Input shader file
         ], check=True)
@@ -46,8 +46,9 @@ def merge_headers(output_dir, merged_header_path):
                 if file.endswith(".h"):
                     header_path = os.path.join(root, file)
                     with open(header_path, "r") as header_file:
+                        merged_file.write("namespace " + Path(file).stem + " {\n\n")
                         merged_file.write(header_file.read())
-                        merged_file.write("\n\n")
+                        merged_file.write("}\n\n")
         print(f"Merged headers into {merged_header_path}")
 
 def main():
@@ -73,7 +74,6 @@ def main():
 
     # Merge all generated headers
     merge_headers(OUTPUT_DIR, MERGED_HEADER)
-    sys.exit(0)
 
 if __name__ == "__main__":
     main()
