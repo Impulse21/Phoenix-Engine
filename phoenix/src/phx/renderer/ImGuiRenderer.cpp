@@ -153,9 +153,8 @@ void ImGuiRenderSystem::BeginFrame()
     ImGui::NewFrame();
 }
 
-void ImGuiRenderSystem::Render()
+void ImGuiRenderSystem::Render(CommandCtx* ctx)
 {
-#if false
     ImGui::SetCurrentContext(m_imguiContext);
     ImGui::Render();
 
@@ -170,7 +169,7 @@ void ImGuiRenderSystem::Render()
     ImVec2 displayPos = drawData->DisplayPos;
 
     {
-        recorder.SetPipelineState(m_pipeline);
+        ctx->SetPipelineState(m_pipeline);
 
         // Set root arguments.
         //    DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixOrthographicRH( drawData->DisplaySize.x, drawData->DisplaySize.y, 0.0f, 1.0f );
@@ -194,15 +193,15 @@ void ImGuiRenderSystem::Render()
         push.Mvp = DirectX::XMFLOAT4X4(&mvp[0][0]);
 
         Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
-        recorder.SetViewports({ v });
+        ctx->SetViewports({ v });
 
         const Format indexFormat = sizeof(ImDrawIdx) == 2 ? Format::R16_UINT : Format::R32_UINT;
 
         for (int i = 0; i < drawData->CmdListsCount; ++i)
         {
             const ImDrawList* drawList = drawData->CmdLists[i];
-            recorder.SetDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data);
-            recorder.SetDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data);
+            ctx->SetDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data);
+            ctx->SetDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data);
 
             int indexOffset = 0;
             for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
@@ -230,9 +229,9 @@ void ImGuiRenderSystem::Render()
                         push.TextureIndex = desciptorIndex
                             ? desciptorIndex
                             : cInvalidDescriptorIndex;
-                        recorder.SetPushConstant(RootParameters::PushConstant, sizeof(ImguiDrawInfo), &push);
-                        recorder.SetScissors({ &scissorRect, 1 });
-                        recorder.DrawIndexed(drawCmd.ElemCount, 1, indexOffset, 0, 0);
+                        ctx->SetPushConstant(RootParameters::PushConstant, sizeof(ImguiDrawInfo), &push);
+                        ctx->SetScissors({ &scissorRect, 1 });
+                        ctx->DrawIndexed(drawCmd.ElemCount, 1, indexOffset, 0, 0);
                     }
                 }
                 indexOffset += drawCmd.ElemCount;
@@ -242,5 +241,4 @@ void ImGuiRenderSystem::Render()
         // cmd->TransitionBarriers(Span<GpuBarrier>(postBarriers.data(), postBarriers.size()));
         ImGui::EndFrame();
     }
-#endif
 }

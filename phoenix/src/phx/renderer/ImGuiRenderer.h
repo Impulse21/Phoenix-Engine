@@ -9,6 +9,10 @@ namespace phx
 }
 struct ImGuiContext;
 
+namespace phx::rhi
+{
+	class CommandCtx;
+}
 namespace phx::gfx
 {
 	class ImGuiRenderSystem
@@ -19,7 +23,7 @@ namespace phx::gfx
 
 		void EnableDarkThemeColours();
 		void BeginFrame();
-		void Render();
+		void Render(CommandCtx* ctx);
 
 	private:
 		// bool m_isFontTextureUploaded = false;

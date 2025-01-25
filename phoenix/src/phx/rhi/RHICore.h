@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RHITypes.h"
+#include "RHICommandCtx.h"
 
 namespace phx::rhi
 {
@@ -18,6 +19,8 @@ namespace phx::rhi
     void WaitForIdle();
 
 	ShaderFormat GetShaderFormat();
+
+	CommandCtx* BeingContext(CommandQueueType queueType = CommandQueueType::Graphics);
 
 	void Present();
 

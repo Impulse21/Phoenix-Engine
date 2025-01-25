@@ -651,6 +651,11 @@ namespace phx::rhi
 		RunGarbageCollection(UINT64_MAX);
 	}
 
+
+	CommandCtx* BeingContext(CommandQueueType /*queueType*/)
+	{
+	}
+
 	void Present()
 	{
 		// -- Mark Queues for completion ---
