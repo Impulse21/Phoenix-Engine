@@ -45,16 +45,11 @@ public:
 
 	void Tick() override
 	{
-
-		rhi::TextureHandle handle = rhi::CreateTexture({
-				.DebugName = "ImGui Font",
-				.Format = rhi::Format::RGBA8_UNORM,
-				.Width = static_cast<uint32_t>(200),
-				.Height = static_cast<uint32_t>(200)
-			});
-
 		m_imguiRenderer.BeginFrame();
-		rhi::DeleteTexture(handle);
+
+		rhi::CommandCtx* ctx = rhi::BeingContext();
+		m_imguiRenderer.Render(ctx);
+
 		phx::rhi::Present();
 	}
 

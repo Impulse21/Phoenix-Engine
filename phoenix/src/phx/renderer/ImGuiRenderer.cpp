@@ -2,13 +2,14 @@
 
 #include "phx/renderer/ImGuiRenderer.h"
 
+#include <DirectXMath.h>
+
 #include "phx/rhi/RHICore.h"
 #include <phx/renderer/shaders/PrecompiledShaders.h>
 
 #include "ImGui/imgui_impl_win32.h"
 #include "phx/core/Span.h"
 #include "phx/core/VFS.h"
-
 
 using namespace phx;
 using namespace phx::gfx;

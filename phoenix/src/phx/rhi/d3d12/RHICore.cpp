@@ -651,9 +651,9 @@ namespace phx::rhi
 		RunGarbageCollection(UINT64_MAX);
 	}
 
-
 	CommandCtx* BeingContext(CommandQueueType /*queueType*/)
 	{
+		return nullptr;
 	}
 
 	void Present()
