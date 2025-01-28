@@ -13,7 +13,6 @@ project "Sandbox"
     includedirs 
 	{
 		"../phoenix/vendor/spdlog/include",
-		"../phoenix/vendor/spdlog/include",
 		"../phoenix/src",
 		"../phoenix/src",
 		"../phoenix/vendor",
@@ -44,6 +43,12 @@ project "Sandbox"
 			Library["D3D12"],
 			Library["DXGI"],
 			Library["DXGUID"],
+		}
+
+		includedirs
+		{
+			'../phoenix/src/phx/rhi/d3d12',
+			"%{IncludeDir.AgilitySDK}",
 		}
 
 		postbuildcommands
