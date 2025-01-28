@@ -11,7 +11,6 @@ namespace phx::rhi::d3d12
 	{
 	public:
 		void Reset(rhi::CommandQueueType queueType);
-		void EnqueueSubmit();
 
 		void RenderPassBegin() {}
 		void RenderPassEnd() {}
@@ -24,7 +23,13 @@ namespace phx::rhi::d3d12
 		void SetDynamicIndexBuffer(size_t numIndicies, Format indexFormat, const void* indexBufferData) {}
 		void SetPushConstant(uint32_t rootParameterIndex, size_t sizeInBytes, const void* constants) {}
 
-	private:
+	public:
+		void EnqueueSubmit();
+
+	public:
+		ID3D12CommandAllocator* GetAllocator() { return m_allocator; }
+		ID3D12CommandList* GetCommandList() { return m_commandLists[m_queueType].Get(); }
+		
 		inline ID3D12GraphicsCommandList* GetGfxCommandList()
 		{
 			return static_cast<ID3D12GraphicsCommandList*>(m_commandLists[m_queueType].Get());

@@ -51,5 +51,10 @@ void phx::rhi::d3d12::D3D12CommandCtx::Reset(rhi::CommandQueueType queueType)
 		}
 		GetGfxCommandList()->RSSetScissorRects(std::size(pRects), pRects);
 	}
+}
 
+void phx::rhi::d3d12::D3D12CommandCtx::EnqueueSubmit()
+{
+	GetGfxCommandList()->Close();
+	g_commandQueue[m_queueType].EnqueueForSubmit(GetCommandList(), GetAllocator());
 }

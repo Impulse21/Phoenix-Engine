@@ -8,12 +8,6 @@ namespace phx::rhi
 	class CommandCtx
 	{
 	public:
-
-		void Reset(rhi::CommandQueueType queueType)
-		{
-			m_platform.Reset(queueType);
-		}
-
 		void RenderPassBegin()
 		{
 			m_platform.RenderPassBegin();
@@ -70,6 +64,8 @@ namespace phx::rhi
 			SetPushConstant(rootParameterIndex, sizeof(T), &constants);
 		}
 
+	public:
+		PlatformCommandCtx& GetPlatform() { return m_platform; }
 
 	private:
 		PlatformCommandCtx m_platform;

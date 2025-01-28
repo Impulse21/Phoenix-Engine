@@ -43,7 +43,7 @@ namespace
 	std::deque<DeferredItem> m_deferredQueue;
 
 	std::vector<std::unique_ptr<rhi::CommandCtx>> m_commandCtxPool;
-	size_t m_activeCommnadCtxs = 0;
+	size_t m_numActiveCmdLists = 0;
 	std::mutex m_commandCtxMutex;
 
 }
@@ -652,7 +652,7 @@ namespace phx::rhi
 		size_t currentCtx = ~0u;
 		{
 			std::scoped_lock _(m_commandCtxMutex);
-			currentCtx = m_activeCommnadCtxs++;
+			currentCtx = m_numActiveCmdLists++;
 
 			if (currentCtx >= m_commandCtxPool.size())
 			{
@@ -661,13 +661,25 @@ namespace phx::rhi
 		}
 
 		std::unique_ptr<CommandCtx>& ctx = m_commandCtxPool[currentCtx];
-		ctx->Reset(queueType);
+		ctx->GetPlatform().Reset(queueType);
 
 		return ctx.get();
 	}
 
 	void Present()
 	{
+		size_t numCommandLists = m_numActiveCmdLists;
+		m_numActiveCmdLists = 0;
+
+		// -- Process command contexts ---
+		for (size_t i = 0; i < numCommandLists; i++)
+		{
+			// TODO: Add queue waiting support
+			D3D12CommandCtx& d3d12Ctx = m_commandCtxPool[i]->GetPlatform();
+			d3d12Ctx.EnqueueSubmit();
+			
+		}
+
 		// -- Mark Queues for completion ---
 		{
 			const size_t backBufferIndex = m_swapChain.SwapChain4->GetCurrentBackBufferIndex();
@@ -676,7 +688,10 @@ namespace phx::rhi
 
 			for (size_t qType = 0; qType < static_cast<size_t>(CommandQueueType::Count); qType++)
 			{
-				g_commandQueue[qType].Queue->Signal(m_frameFences[backBufferIndex][qType].Get(), 1);
+
+				D3D12CommandQueue& queue = g_commandQueue[qType];
+				queue.Submit();
+				queue.Queue->Signal(m_frameFences[backBufferIndex][qType].Get(), 1);
 			}
 
 			// m_tempPageAllocator.EndFrame(GetGfxQueue().Queue.Get());
