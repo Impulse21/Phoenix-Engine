@@ -70,7 +70,7 @@ project "Phoenix"
 
 		includedirs
 		{
-			'src/phx/**/rhi/dx12',
+			'src/phx/rhi/d3d12',
 			"%{IncludeDir.D3D12MA}",
 			"%{IncludeDir.AgilitySDK}",
 		}

@@ -3,8 +3,10 @@
 #include "phx/core/StringUtils.h"
 #include "phx/core/CommandLineArgs.h"
 
+#include "phx/rhi/RHICommandCtx.h"
 #include "phx/rhi/RHITypes.h"
 #include "phx/rhi/RHICore.h"
+
 #include "D3D12Types.h"
 #include "D3D12Core.h"
 #include "D3D12Utils.h"
@@ -39,6 +41,11 @@ namespace
 	D3D12SwapChain m_swapChain;
 
 	std::deque<DeferredItem> m_deferredQueue;
+
+	std::vector<std::unique_ptr<rhi::CommandCtx>> m_commandCtxPool;
+	size_t m_activeCommnadCtxs = 0;
+	std::mutex m_commandCtxMutex;
+
 }
 
 namespace phx::rhi::d3d12
@@ -651,9 +658,20 @@ namespace phx::rhi
 		RunGarbageCollection(UINT64_MAX);
 	}
 
-	CommandCtx* BeingContext(CommandQueueType /*queueType*/)
+	CommandCtx* BeginCommnadCtx(CommandQueueType queueType)
 	{
-		return nullptr;
+		size_t currentCtx = ~0u;
+		{
+			std::scoped_lock _(m_commandCtxMutex);
+			currentCtx = m_activeCommnadCtxs++;
+
+			if (currentCtx >= m_commandCtxPool.size())
+			{
+				m_commandCtxPool.push_back(std::make_unique<CommandCtx>());
+			}
+		}
+
+		return m_commandCtxPool[currentCtx].get();
 	}
 
 	void Present()

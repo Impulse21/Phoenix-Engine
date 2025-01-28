@@ -61,22 +61,6 @@ namespace phx::rhi::d3d12
 			}
 		}
 
-		uint64_t SubmitCommandLists(Span<ID3D12CommandList*> commandLists)
-		{
-			Queue->ExecuteCommandLists((UINT)commandLists.Size(), commandLists.begin());
-
-			return IncrementFence();
-		}
-
-		void DiscardAllocators(uint64_t fenceValue, Span<ID3D12CommandAllocator*> allocators)
-		{
-			std::scoped_lock _(MutexAllocation);
-			for (ID3D12CommandAllocator* allocator : allocators)
-			{
-				AvailableAllocators.push_back(std::make_pair(fenceValue, allocator));
-			}
-		}
-
 		uint64_t IncrementFence()
 		{
 			Queue->Signal(Fence.Get(), NextFenceValue);
@@ -101,5 +85,22 @@ namespace phx::rhi::d3d12
 		}
 
 		ID3D12CommandAllocator* RequestAllocator();
+
+	private:
+		uint64_t SubmitCommandLists(Span<ID3D12CommandList*> commandLists)
+		{
+			Queue->ExecuteCommandLists((UINT)commandLists.Size(), commandLists.begin());
+
+			return IncrementFence();
+		}
+
+		void DiscardAllocators(uint64_t fenceValue, Span<ID3D12CommandAllocator*> allocators)
+		{
+			std::scoped_lock _(MutexAllocation);
+			for (ID3D12CommandAllocator* allocator : allocators)
+			{
+				AvailableAllocators.push_back(std::make_pair(fenceValue, allocator));
+			}
+		}
 	};
 }

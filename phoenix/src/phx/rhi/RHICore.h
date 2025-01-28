@@ -20,7 +20,7 @@ namespace phx::rhi
 
 	ShaderFormat GetShaderFormat();
 
-	CommandCtx* BeingContext(CommandQueueType queueType = CommandQueueType::Graphics);
+	CommandCtx* BeginCommnadCtx(CommandQueueType queueType = CommandQueueType::Graphics);
 
 	void Present();
 
