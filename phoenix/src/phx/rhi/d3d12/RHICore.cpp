@@ -62,9 +62,7 @@ namespace phx::rhi::d3d12
 	rhi::DeviceCapability g_capabilities;
 
 	// -- Command queues ---
-	D3D12CommandQueue* g_commandQueue_Gfx = nullptr;
-	D3D12CommandQueue* g_commandQueue_Compute = nullptr;
-	D3D12CommandQueue* g_commandQueue_Copy = nullptr;
+	EnumArray<D3D12CommandQueue, CommandQueueType> g_commandQueue;
 
 	// -- Descriptor Heaps ---
 	CpuDescriptorHeap* g_cpuDescHeap_Resource = nullptr;
@@ -376,14 +374,9 @@ namespace
 			}
 
 			// Create Queues
-			g_commandQueue_Gfx = new D3D12CommandQueue();
-			g_commandQueue_Gfx->Initialize(g_d3d12Device.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT);
-
-			g_commandQueue_Compute = new D3D12CommandQueue();
-			g_commandQueue_Compute->Initialize(g_d3d12Device.Get(), D3D12_COMMAND_LIST_TYPE_COMPUTE);
-
-			g_commandQueue_Copy = new D3D12CommandQueue();
-			g_commandQueue_Copy->Initialize(g_d3d12Device.Get(), D3D12_COMMAND_LIST_TYPE_COPY);
+			g_commandQueue[CommandQueueType::Graphics].Initialize(g_d3d12Device.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT);
+			g_commandQueue[CommandQueueType::Compute].Initialize(g_d3d12Device.Get(), D3D12_COMMAND_LIST_TYPE_COMPUTE);
+			g_commandQueue[CommandQueueType::Copy].Initialize(g_d3d12Device.Get(), D3D12_COMMAND_LIST_TYPE_COPY);
 
 			// Create Descriptor Heaps
 			g_cpuDescHeap_Resource = new CpuDescriptorHeap();
@@ -472,7 +465,7 @@ namespace
 			fullscreenDesc.Windowed = !desc.Fullscreen;
 
 			hr = g_dxgiFactory->CreateSwapChainForHwnd(
-				g_commandQueue_Gfx->Queue.Get(),
+				g_commandQueue[CommandQueueType::Graphics].Queue.Get(),
 				hwnd,
 				&swapChainDesc,
 				&fullscreenDesc,
@@ -638,9 +631,10 @@ namespace phx::rhi
 		Microsoft::WRL::ComPtr<ID3D12Fence> fence;
 		HRESULT hr = g_d3d12Device2->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
 		assert(SUCCEEDED(hr));
-
-		auto IdleQueue = [&](D3D12CommandQueue& queue) {
-			hr = queue.Queue->Signal(fence.Get(), 1);
+		
+		for (auto& q : g_commandQueue)
+		{
+			hr = q.Queue->Signal(fence.Get(), 1);
 			assert(SUCCEEDED(hr));
 			if (fence->GetCompletedValue() < 1)
 			{
@@ -648,12 +642,7 @@ namespace phx::rhi
 				assert(SUCCEEDED(hr));
 			}
 			fence->Signal(0);
-		};
-
-		IdleQueue(*g_commandQueue_Gfx);
-		IdleQueue(*g_commandQueue_Compute);
-		IdleQueue(*g_commandQueue_Copy);
-
+		}
 
 		RunGarbageCollection(UINT64_MAX);
 	}
@@ -682,10 +671,13 @@ namespace phx::rhi
 		// -- Mark Queues for completion ---
 		{
 			const size_t backBufferIndex = m_swapChain.SwapChain4->GetCurrentBackBufferIndex();
-			// -- Mark queues for Compleition ---
-			g_commandQueue_Gfx->Queue->Signal(m_frameFences[backBufferIndex][CommandQueueType::Graphics].Get(), 1);
-			g_commandQueue_Compute->Queue->Signal(m_frameFences[backBufferIndex][CommandQueueType::Compute].Get(), 1);
-			g_commandQueue_Copy->Queue->Signal(m_frameFences[backBufferIndex][CommandQueueType::Copy].Get(), 1);
+
+			// -- Mark queues for Completion ---
+
+			for (size_t qType = 0; qType < static_cast<size_t>(CommandQueueType::Count); qType++)
+			{
+				g_commandQueue[qType].Queue->Signal(m_frameFences[backBufferIndex][qType].Get(), 1);
+			}
 
 			// m_tempPageAllocator.EndFrame(GetGfxQueue().Queue.Get());
 		}

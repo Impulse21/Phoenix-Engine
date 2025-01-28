@@ -277,6 +277,21 @@ namespace phx::rhi::d3d12
 		}
 	}
 
+	inline D3D12_COMMAND_LIST_TYPE ConvertCommandQueueType(CommandQueueType type)
+	{
+		switch (type)
+		{
+		case CommandQueueType::Graphics:
+			return D3D12_COMMAND_LIST_TYPE_DIRECT;
+		case CommandQueueType::Compute:
+			return D3D12_COMMAND_LIST_TYPE_COMPUTE;
+		case CommandQueueType::Copy:
+			return D3D12_COMMAND_LIST_TYPE_COPY;
+		default:
+			return D3D12_COMMAND_LIST_TYPE_NONE;
+		}
+	}
+
 	inline void PollDebugMessages(ID3D12Device* device)
 	{
 		Microsoft::WRL::ComPtr<ID3D12InfoQueue> infoQueue;

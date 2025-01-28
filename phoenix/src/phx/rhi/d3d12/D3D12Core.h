@@ -40,9 +40,7 @@ namespace phx::rhi::d3d12
 	extern rhi::DeviceCapability g_capabilities;
 
 	// -- Command queues ---
-	extern D3D12CommandQueue* g_commandQueue_Gfx;
-	extern D3D12CommandQueue* g_commandQueue_Compute;
-	extern D3D12CommandQueue* g_commandQueue_Copy;
+	extern EnumArray<D3D12CommandQueue, CommandQueueType> g_commandQueue;
 
 	// -- Descriptor Heaps ---
 	extern CpuDescriptorHeap* g_cpuDescHeap_Resource;

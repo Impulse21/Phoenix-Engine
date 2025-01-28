@@ -2,6 +2,7 @@
 
 #include "D3D12Base.h"
 #include <phx/core/Span.h>
+#include "phx/core/EnumUtils.h"
 #include "phx/rhi/RHITypes.h"
 
 namespace phx::rhi::d3d12
@@ -25,7 +26,8 @@ namespace phx::rhi::d3d12
 
 
 	private:
-		Microsoft::WRL::ComPtr<ID3D12CommandList> m_commandList;
+		CommandQueueType m_queueType;
+		EnumArray<Microsoft::WRL::ComPtr<ID3D12CommandList>, CommandQueueType> m_commandLists;
 		ID3D12CommandAllocator* m_allocator;
 	};
 
