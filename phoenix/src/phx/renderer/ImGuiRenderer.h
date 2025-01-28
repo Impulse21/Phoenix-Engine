@@ -13,6 +13,7 @@ namespace phx::rhi
 {
 	class CommandCtx;
 }
+
 namespace phx::gfx
 {
 	class ImGuiRenderSystem
@@ -23,7 +24,7 @@ namespace phx::gfx
 
 		void EnableDarkThemeColours();
 		void BeginFrame();
-		void Render(CommandCtx* ctx);
+		void Render(rhi::CommandCtx* ctx);
 
 	private:
 		// bool m_isFontTextureUploaded = false;

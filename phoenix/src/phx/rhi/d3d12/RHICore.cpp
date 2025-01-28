@@ -671,7 +671,10 @@ namespace phx::rhi
 			}
 		}
 
-		return m_commandCtxPool[currentCtx].get();
+		std::unique_ptr<CommandCtx>& ctx = m_commandCtxPool[currentCtx];
+		ctx->Reset(queueType);
+
+		return ctx.get();
 	}
 
 	void Present()

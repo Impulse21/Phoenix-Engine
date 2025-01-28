@@ -1,6 +1,9 @@
 #pragma once
 
 #include "D3D12Base.h"
+#include <phx/core/Span.h>
+#include "phx/rhi/RHITypes.h"
+
 namespace phx::rhi::d3d12
 {
 	class D3D12CommandCtx

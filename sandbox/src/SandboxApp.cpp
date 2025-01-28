@@ -47,7 +47,7 @@ public:
 	{
 		m_imguiRenderer.BeginFrame();
 
-		rhi::CommandCtx* ctx = rhi::BeingContext();
+		rhi::CommandCtx* ctx = rhi::BeginCommnadCtx();
 		m_imguiRenderer.Render(ctx);
 
 		phx::rhi::Present();
