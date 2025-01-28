@@ -24,6 +24,11 @@ namespace phx::rhi::d3d12
 		void SetDynamicIndexBuffer(size_t numIndicies, Format indexFormat, const void* indexBufferData) {}
 		void SetPushConstant(uint32_t rootParameterIndex, size_t sizeInBytes, const void* constants) {}
 
+	private:
+		inline ID3D12GraphicsCommandList* GetGfxCommandList()
+		{
+			return static_cast<ID3D12GraphicsCommandList*>(m_commandLists[m_queueType].Get());
+		}
 
 	private:
 		CommandQueueType m_queueType;
