@@ -7,7 +7,6 @@
 
 #include "D3D12Base.h"
 #include "D3D12Types.h"
-#include "D3D12MemAlloc.h"
 
 // Teir 1 limit is 1,000,000
 // https://docs.microsoft.com/en-us/windows/win32/direct3d12/hardware-support
@@ -55,10 +54,11 @@ namespace phx::rhi::d3d12
 
 	extern size_t g_frameCount;
 
+	extern D3D12SwapChain g_swapChain;
+
 	// -- Resource pools ---
 	extern phx::ResourcePool<rhi::PipelineState, d3d12::PipelineState> g_pipelineStatePool;
 	extern phx::ResourcePool<rhi::Texture, d3d12::Texture> g_texturePool;
-
 
 
 	void InitializeResources(rhi::RhiCreateInfo const& createInfo);

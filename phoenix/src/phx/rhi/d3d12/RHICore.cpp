@@ -14,6 +14,8 @@
 #include "D3D12CommandQueue.h"
 #include "D3D12DescriptorHeaps.h"
 
+#include "D3D12MemAlloc.h"
+
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wunused-function"
 #endif
@@ -38,7 +40,6 @@ namespace
 	ShaderModel m_minShaderModel = ShaderModel::SM_6_0;
 
 	std::array<EnumArray<Microsoft::WRL::ComPtr<ID3D12Fence>, CommandQueueType>, kBufferCount> m_frameFences;
-	D3D12SwapChain m_swapChain;
 
 	std::deque<DeferredItem> m_deferredQueue;
 
@@ -72,6 +73,8 @@ namespace phx::rhi::d3d12
 
 	GpuDescriptorHeap* g_gpuDescHeap_Resource = nullptr;
 	GpuDescriptorHeap* g_gpuDescHeap_Sampler = nullptr;
+
+	D3D12SwapChain g_swapChain;
 
 	size_t g_frameCount = 0;
 }
@@ -434,16 +437,16 @@ namespace
 	{
 		HRESULT hr;
 
-		m_swapChain.ClearColour = desc.OptmizedClearValue;
-		m_swapChain.VSync = desc.VSync;
-		m_swapChain.Fullscreen = desc.Fullscreen;
-		m_swapChain.EnableHDR = desc.EnableHDR;
+		g_swapChain.ClearColour = desc.OptmizedClearValue;
+		g_swapChain.VSync = desc.VSync;
+		g_swapChain.Fullscreen = desc.Fullscreen;
+		g_swapChain.EnableHDR = desc.EnableHDR;
 
 		UINT swapChainFlags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 		swapChainFlags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 
 		const auto& formatMapping = GetDxgiFormatMapping(desc.Format);
-		if (m_swapChain.SwapChain == nullptr)
+		if (g_swapChain.SwapChain == nullptr)
 		{
 			// Create swapchain:
 			DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
@@ -470,7 +473,7 @@ namespace
 				&swapChainDesc,
 				&fullscreenDesc,
 				nullptr,
-				m_swapChain.SwapChain.GetAddressOf()
+				g_swapChain.SwapChain.GetAddressOf()
 			);
 
 			if (FAILED(hr))
@@ -478,7 +481,7 @@ namespace
 				throw std::exception();
 			}
 
-			hr = m_swapChain.SwapChain.As(&m_swapChain.SwapChain4);
+			hr = g_swapChain.SwapChain.As(&g_swapChain.SwapChain4);
 			if (FAILED(hr))
 			{
 				throw std::exception();
@@ -490,13 +493,13 @@ namespace
 			WaitForIdle();
 
 			// Delete back buffers
-			m_swapChain.Rtv.Free();
-			for (auto& backBuffer : m_swapChain.BackBuffers)
+			g_swapChain.Rtv.Free();
+			for (auto& backBuffer : g_swapChain.BackBuffers)
 			{
 				backBuffer.Reset();
 			}
 
-			hr = m_swapChain.SwapChain->ResizeBuffers(
+			hr = g_swapChain.SwapChain->ResizeBuffers(
 				kBufferCount,
 				desc.Width,
 				desc.Height,
@@ -560,17 +563,17 @@ namespace
 			}
 		}
 #endif
-		m_swapChain.Rtv = g_cpuDescHeap_Rtv->Allocate(kBufferCount);
+		g_swapChain.Rtv = g_cpuDescHeap_Rtv->Allocate(kBufferCount);
 		for (UINT i = 0; i < kBufferCount; i++)
 		{
-			Microsoft::WRL::ComPtr<ID3D12Resource>& backBuffer = m_swapChain.BackBuffers[i];
+			Microsoft::WRL::ComPtr<ID3D12Resource>& backBuffer = g_swapChain.BackBuffers[i];
 			ThrowIfFailed(
-				m_swapChain.SwapChain4->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
+				g_swapChain.SwapChain4->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
 
 			char allocatorName[32];
 			sprintf_s(allocatorName, "Back Buffer %iu", i);
 
-			g_d3d12Device2->CreateRenderTargetView(backBuffer.Get(), nullptr, m_swapChain.Rtv.GetCpuHandle(i));
+			g_d3d12Device2->CreateRenderTargetView(backBuffer.Get(), nullptr, g_swapChain.Rtv.GetCpuHandle(i));
 		}
 	}
 
@@ -608,8 +611,8 @@ namespace phx::rhi
 	{
 		WaitForIdle();
 
-		m_swapChain.Rtv.Free();
-		for (auto& backBuffer : m_swapChain.BackBuffers)
+		g_swapChain.Rtv.Free();
+		for (auto& backBuffer : g_swapChain.BackBuffers)
 		{
 			backBuffer.Reset();
 		}
@@ -682,7 +685,7 @@ namespace phx::rhi
 
 		// -- Mark Queues for completion ---
 		{
-			const size_t backBufferIndex = m_swapChain.SwapChain4->GetCurrentBackBufferIndex();
+			const size_t backBufferIndex = g_swapChain.SwapChain4->GetCurrentBackBufferIndex();
 
 			// -- Mark queues for Completion ---
 
@@ -701,12 +704,12 @@ namespace phx::rhi
 		{
 
 			UINT presentFlags = 0;
-			if (!m_swapChain.VSync)
+			if (!g_swapChain.VSync)
 			{
 				presentFlags |= DXGI_PRESENT_ALLOW_TEARING;
 			}
 
-			HRESULT hr = m_swapChain.SwapChain4->Present((UINT)m_swapChain.VSync, presentFlags);
+			HRESULT hr = g_swapChain.SwapChain4->Present((UINT)g_swapChain.VSync, presentFlags);
 
 			if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
 			{
@@ -716,7 +719,7 @@ namespace phx::rhi
 
 		// -- wait for fence to finish
 		{
-			const size_t backBufferIndex = m_swapChain.SwapChain4->GetCurrentBackBufferIndex();
+			const size_t backBufferIndex = g_swapChain.SwapChain4->GetCurrentBackBufferIndex();
 
 			g_frameCount++;
 

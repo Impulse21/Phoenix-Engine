@@ -10,6 +10,7 @@
 #include "D3D12Utils.h"
 #include "D3D12Core.h"
 #include "D3D12DescriptorHeaps.h"
+#include "D3D12MemAlloc.h"
 
 using namespace phx::rhi;
 using namespace phx::rhi::d3d12;
