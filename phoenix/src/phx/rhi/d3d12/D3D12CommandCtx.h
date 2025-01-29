@@ -147,7 +147,7 @@ namespace phx::rhi::d3d12
 		{
 			const size_t vertexSizeInBytes = numVertices * vertexStride;
 
-			TempBuffer tempBuffer = m_tempAllocator.Allocate(static_cast<uint32_t>(vertexSizeInBytes), 16u);
+			TempBuffer tempBuffer = m_tempAllocator.Allocate(static_cast<uint32_t>(vertexSizeInBytes), 4u);
 			std::memcpy(tempBuffer.Data, vertexBufferData, vertexSizeInBytes);
 
 			D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
@@ -164,7 +164,7 @@ namespace phx::rhi::d3d12
 			const size_t indexStrideInBytes = indexFormat == Format::R16_UINT ? 2 : 4;
 			const size_t indexSizeInBytes = numIndicies * indexStrideInBytes;
 
-			TempBuffer tempBuffer = m_tempAllocator.Allocate(static_cast<uint32_t>(indexSizeInBytes), 16u);
+			TempBuffer tempBuffer = m_tempAllocator.Allocate(static_cast<uint32_t>(indexSizeInBytes), 4u);
 			std::memcpy(tempBuffer.Data, indexBufferData, indexStrideInBytes);
 
 			D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
