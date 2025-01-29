@@ -129,10 +129,20 @@ namespace phx::rhi::d3d12
 
 	// -- End Texture data ---
 
-	struct DEFINE_ALIGNED(GpuBufferResource, 64)
+	struct GpuBuffer
 	{
 		Microsoft::WRL::ComPtr<ID3D12Resource> Resource;
 		Microsoft::WRL::ComPtr<D3D12MA::Allocation> Allocation;
+
+		void* CpuMappedAddress;
+		D3D12_GPU_VIRTUAL_ADDRESS GpuAddress;
+
+		D3D12_GPU_DESCRIPTOR_HANDLE Srv;
+		D3D12_GPU_DESCRIPTOR_HANDLE Uav;
+
+		rhi::DescriptorIndex BindlessIndex_Cbv = rhi::cInvalidDescriptorIndex;
+		rhi::DescriptorIndex BindlessIndex_Srv = rhi::cInvalidDescriptorIndex;
+		rhi::DescriptorIndex BindlessIndex_Uav = rhi::cInvalidDescriptorIndex;
 
 		DescriptorHeapAllocation DescriptorAllocation_CbvSrvUav;
 		uint8_t SrvOffset = 0xFF;
@@ -146,20 +156,4 @@ namespace phx::rhi::d3d12
 		uint16_t MipLevels = 1;
 		uint16_t SampleCount = 1;
 	};
-
-	struct DEFINE_ALIGNED(GpuBufferBindings, 64)
-	{
-		ID3D12Resource* Resource;
-		void* CpuMappedAddress;
-		D3D12_GPU_VIRTUAL_ADDRESS GpuAddress;
-
-		D3D12_GPU_DESCRIPTOR_HANDLE Srv;
-		D3D12_GPU_DESCRIPTOR_HANDLE Uav;
-
-		rhi::DescriptorIndex BindlessIndex_Cbv = rhi::cInvalidDescriptorIndex;
-		rhi::DescriptorIndex BindlessIndex_Srv = rhi::cInvalidDescriptorIndex;
-		rhi::DescriptorIndex BindlessIndex_Uav = rhi::cInvalidDescriptorIndex;
-	};
-	static_assert(sizeof(GpuBufferBindings) <= kCacheLineSize);
-
 }

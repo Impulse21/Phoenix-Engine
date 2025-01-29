@@ -76,6 +76,7 @@ namespace phx::rhi::d3d12
 {
 	phx::ResourcePool<rhi::PipelineState, PipelineState> g_pipelineStatePool;
 	phx::ResourcePool<rhi::Texture, Texture> g_texturePool;
+	phx::ResourcePool<rhi::GpuBuffer, d3d12::GpuBuffer> g_bufferPool;
 }
 
 namespace
@@ -99,6 +100,7 @@ namespace phx::rhi::d3d12
 	void InitializeResources(rhi::RhiCreateInfo const& createInfo)
 	{
 		g_pipelineStatePool.Initialize(createInfo.MaxNumTextures);
+		g_bufferPool.Initialize(createInfo.MaxNumGpuBuffers);
 		g_texturePool.Initialize(createInfo.MaxNumPipelineStates);
 
 		D3D12MA::ALLOCATOR_DESC allocatorDesc = {};
@@ -122,6 +124,7 @@ namespace phx::rhi::d3d12
 	{
 		g_pipelineStatePool.Finalize();
 		g_texturePool.Finalize();
+		g_bufferPool.Finalize();
 	}
 
 }
@@ -529,7 +532,10 @@ namespace phx::rhi
 
 	GpuBufferHandle CreateBuffer(GpuBufferDescriptor const& desc, MemInfo* initData)
 	{
-		return {};
+		GpuBufferHandle handle = g_bufferPool.Allocate();
+		auto& buffer = *g_bufferPool.Get<d3d12::GpuBuffer>(handle);
+
+		return handle;
 	}
 
 	void DeletePipeline(PipelineStateHandle handle)

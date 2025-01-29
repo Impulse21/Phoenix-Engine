@@ -3,10 +3,12 @@
 #include "D3D12Base.h"
 #include "D3D12Core.h"
 #include "D3D12Types.h"
+#include "D3D12GpuTempMemory.h"
 
 #include <phx/core/Span.h>
 #include "phx/core/EnumUtils.h"
 #include "phx/rhi/RHITypes.h"
+#include <D3D12Utils.h>
 
 namespace phx::rhi::d3d12
 {
@@ -141,33 +143,38 @@ namespace phx::rhi::d3d12
 				startInstance);
 		}
 
-		inline void SetDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexSize, const void* vertexBufferData) 
+		inline void SetDynamicVertexBuffer(uint32_t slot, size_t numVertices, size_t vertexStride, const void* vertexBufferData) 
 		{
-#if false
+			const size_t vertexSizeInBytes = numVertices * vertexStride;
+
+			TempBuffer tempBuffer = m_tempAllocator.Allocate(static_cast<uint32_t>(vertexSizeInBytes), 16u);
+			std::memcpy(tempBuffer.Data, vertexBufferData, vertexSizeInBytes);
+
 			D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
-			vertexBufferView.BufferLocation = bindings->GpuAddress + offset;
-			vertexBufferView.SizeInBytes = static_cast<UINT>(numVertices * vertexStride);
+			vertexBufferView.BufferLocation = tempBuffer.GpuAddress;
+			vertexBufferView.SizeInBytes = static_cast<UINT>(vertexSizeInBytes);
 			vertexBufferView.StrideInBytes = static_cast<UINT>(vertexStride);
 
-			m_commandList->IASetVertexBuffers(slot, 1, &vertexBufferView);
-			m_commandList->IASetVertexBuffers(slot, 1, &vertexBufferView);
-#endif
+			GetGfxCommandList()->IASetVertexBuffers(slot, 1, &vertexBufferView);
+			GetGfxCommandList()->IASetVertexBuffers(slot, 1, &vertexBufferView);
 		}
 
 		inline void SetDynamicIndexBuffer(size_t numIndicies, Format indexFormat, const void* indexBufferData) 
 		{
-#if false
 			const size_t indexStrideInBytes = indexFormat == Format::R16_UINT ? 2 : 4;
 			const size_t indexSizeInBytes = numIndicies * indexStrideInBytes;
 
+			TempBuffer tempBuffer = m_tempAllocator.Allocate(static_cast<uint32_t>(indexSizeInBytes), 16u);
+			std::memcpy(tempBuffer.Data, indexBufferData, indexStrideInBytes);
+
 			D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
-			indexBufferView.BufferLocation = bindings->GpuAddress + offset;
+			indexBufferView.BufferLocation = tempBuffer.GpuAddress;
 			indexBufferView.SizeInBytes = static_cast<UINT>(indexSizeInBytes);
 			const auto& formatMapping = GetDxgiFormatMapping(indexFormat);
 
 			indexBufferView.Format = formatMapping.SrvFormat;
 			GetGfxCommandList()->IASetIndexBuffer(&indexBufferView);
-#endif
+
 		}
 
 		inline void SetPushConstant(uint32_t rootParameterIndex, size_t sizeInBytes, const void* constants) 
@@ -196,10 +203,13 @@ namespace phx::rhi::d3d12
 		}
 
 	private:
-		PipelineState::PipelineType m_activePipelineType = PipelineState::PipelineType::Gfx;
 		CommandQueueType m_queueType;
-		EnumArray<Microsoft::WRL::ComPtr<ID3D12CommandList>, CommandQueueType> m_commandLists;
 		ID3D12CommandAllocator* m_allocator;
+		EnumArray<Microsoft::WRL::ComPtr<ID3D12CommandList>, CommandQueueType> m_commandLists;
+
+		TempAllocator m_tempAllocator;
+
+		PipelineState::PipelineType m_activePipelineType = PipelineState::PipelineType::Gfx;
 		std::array<D3D12_RESOURCE_BARRIER, rhi::cMaxRenderTargets> m_renderPassBarriers;
 		size_t m_numRenderPasses = 0;
 		

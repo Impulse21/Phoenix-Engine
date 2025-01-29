@@ -28,6 +28,8 @@ void phx::rhi::d3d12::D3D12CommandCtx::Reset(rhi::CommandQueueType queueType)
 	ThrowIfFailed(
 		GetGfxCommandList()->Reset(m_allocator, nullptr));
 
+	m_tempAllocator.Reset();
+
 	// Set up bindless heaps
 	if (m_queueType == CommandQueueType::Graphics || m_queueType == CommandQueueType::Compute)
 	{

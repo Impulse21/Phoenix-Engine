@@ -1,5 +1,6 @@
 #include "phxpch.h"
 
+#include "phx/core/Math.h"
 #include "phx/core/StringUtils.h"
 #include "phx/core/CommandLineArgs.h"
 
@@ -19,7 +20,6 @@
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wunused-function"
 #endif
-
 
 #define SAFE_DELETE(x) if (x) { delete x; }
 
@@ -605,6 +605,8 @@ namespace phx::rhi
 		InitializeResources(createInfo);
 		CreateSwapChain(createInfo.SwapChianDesc, static_cast<HWND>(createInfo.WindowsHandle));
 
+		TempMemoryBlockAllocator::Ptr = new TempMemoryBlockAllocator;
+		TempMemoryBlockAllocator::Ptr->Initialize(math::GetNextPowerOfTwo(256));
 	}
 
 	void Finalize()
@@ -616,6 +618,9 @@ namespace phx::rhi
 		{
 			backBuffer.Reset();
 		}
+
+		TempMemoryBlockAllocator::Ptr->Finalize();
+		SAFE_DELETE(TempMemoryBlockAllocator::Ptr);
 
 		FinalizeResources();
 
@@ -697,7 +702,7 @@ namespace phx::rhi
 				queue.Queue->Signal(m_frameFences[backBufferIndex][qType].Get(), 1);
 			}
 
-			// m_tempPageAllocator.EndFrame(GetGfxQueue().Queue.Get());
+			TempMemoryBlockAllocator::Ptr->EndFrame();
 		}
 
 		// -- Present the back buffer ---
