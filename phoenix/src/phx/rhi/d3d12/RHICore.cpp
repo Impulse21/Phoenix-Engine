@@ -607,7 +607,7 @@ namespace phx::rhi
 		// TODO: Make this more consistent with out the rest of the code
 		// works inside this module.
 		TempMemoryBlockAllocator::Ptr = new TempMemoryBlockAllocator;
-		TempMemoryBlockAllocator::Ptr->Initialize(math::GetNextPowerOfTwo(256));
+		TempMemoryBlockAllocator::Ptr->Initialize(math::GetNextPowerOfTwo(256_MiB));
 	}
 
 	void Finalize()

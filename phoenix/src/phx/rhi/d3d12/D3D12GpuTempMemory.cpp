@@ -34,7 +34,7 @@ TempMemoryBlockAllocator::TempMemoryBlock TempMemoryBlockAllocator::GetNextMemor
 
 void TempMemoryBlockAllocator::Initialize(uint32_t bufferSize, uint32_t blockSize)
 {
-	PHX_ASSERT((bufferSize & (bufferSize - 1)) == 0);
+	PHX_ASSERT((bufferSize & (bufferSize - 1)) == 0, "Buffer Size must be a power of 2");
 
 	m_blockSize = blockSize;
 	m_bufferMask = (bufferSize - 1);

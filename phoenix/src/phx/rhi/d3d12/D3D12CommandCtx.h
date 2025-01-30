@@ -156,7 +156,6 @@ namespace phx::rhi::d3d12
 			vertexBufferView.StrideInBytes = static_cast<UINT>(vertexStride);
 
 			GetGfxCommandList()->IASetVertexBuffers(slot, 1, &vertexBufferView);
-			GetGfxCommandList()->IASetVertexBuffers(slot, 1, &vertexBufferView);
 		}
 
 		inline void SetDynamicIndexBuffer(size_t numIndicies, Format indexFormat, const void* indexBufferData) 
