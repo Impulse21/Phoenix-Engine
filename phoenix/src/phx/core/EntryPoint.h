@@ -79,10 +79,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
-
-	default:
-		return DefWindowProc(hwnd, uMsg, wParam, lParam);
 	}
+
+	ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam);
+
+	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)

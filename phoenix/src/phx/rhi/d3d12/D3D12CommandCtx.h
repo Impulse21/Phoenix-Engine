@@ -164,7 +164,7 @@ namespace phx::rhi::d3d12
 			const size_t indexSizeInBytes = numIndicies * indexStrideInBytes;
 
 			TempBuffer tempBuffer = m_tempAllocator.Allocate(static_cast<uint32_t>(indexSizeInBytes), 4u);
-			std::memcpy(tempBuffer.Data, indexBufferData, indexStrideInBytes);
+			std::memcpy(tempBuffer.Data, indexBufferData, indexSizeInBytes);
 
 			D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
 			indexBufferView.BufferLocation = tempBuffer.GpuAddress;

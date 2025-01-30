@@ -227,9 +227,7 @@ void ImGuiRenderSystem::Render(CommandCtx* ctx)
                         scissorRect.MaxY - scissorRect.MinY > 0)
                     {
                         auto desciptorIndex = static_cast<DescriptorIndex>(drawCmd.GetTexID());
-                        push.TextureIndex = desciptorIndex
-                            ? desciptorIndex
-                            : cInvalidDescriptorIndex;
+                        push.TextureIndex = desciptorIndex;
                         ctx->SetPushConstant(RootParameters::PushConstant, sizeof(ImguiDrawInfo), &push);
                         ctx->SetScissors({ &scissorRect, 1 });
                         ctx->DrawIndexed(drawCmd.ElemCount, 1, indexOffset, 0, 0);
