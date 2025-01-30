@@ -33,7 +33,6 @@ namespace
 	const GUID kRenderdocUUID = { 0xa7aa6116, 0x9c8d, 0x4bba, { 0x90, 0x83, 0xb4, 0xd8, 0x16, 0xb7, 0x1b, 0x78 } };
 	const GUID kPixUUID = { 0x9f251514, 0x9d4d, 0x4902, { 0x9d, 0x60, 0x18, 0x98, 0x8a, 0xb7, 0xd4, 0xb5 } };
 
-	bool m_debugLayersEnabled = false;
 
 	D3D12_FEATURE_DATA_ROOT_SIGNATURE m_featureDataRootSignature = {};
 	D3D12_FEATURE_DATA_SHADER_MODEL   m_featureDataShaderModel = {};
@@ -55,8 +54,8 @@ namespace phx::rhi::d3d12
 	Microsoft::WRL::ComPtr<ID3D12Device> g_d3d12Device = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Device2> g_d3d12Device2 = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Device5> g_d3d12Device5 = nullptr;
-	Microsoft::WRL::ComPtr<D3D12MA::Allocator> g_d3d12MemAllocator = nullptr;
 	bool g_isUnderGfxDebugger;
+	bool g_debugLayersEnabled = false;
 
 	D3D12Adapter g_adapter;
 
@@ -232,10 +231,10 @@ namespace
 			useDebugLayers = 1;
 #endif
 			phx::CommandLineArgs::GetInteger(L"debug", useDebugLayers);
-			m_debugLayersEnabled = (bool)useDebugLayers;
+			g_debugLayersEnabled = (bool)useDebugLayers;
 		}
 
-		g_dxgiFactory = CreateDXGIFactory6(m_debugLayersEnabled);
+		g_dxgiFactory = CreateDXGIFactory6(g_debugLayersEnabled);
 		FindAdapter(g_dxgiFactory, g_adapter);
 
 		if (!g_adapter.NativeAdapter)
@@ -332,7 +331,7 @@ namespace
 			m_minShaderModel = ShaderModel::SM_6_5;
 		}
 
-		if (m_debugLayersEnabled)
+		if (g_debugLayersEnabled)
 		{
 			Microsoft::WRL::ComPtr<ID3D12InfoQueue> infoQueue;
 			if (SUCCEEDED(g_d3d12Device->QueryInterface<ID3D12InfoQueue>(&infoQueue)))
@@ -605,6 +604,8 @@ namespace phx::rhi
 		InitializeResources(createInfo);
 		CreateSwapChain(createInfo.SwapChianDesc, static_cast<HWND>(createInfo.WindowsHandle));
 
+		// TODO: Make this more consistent with out the rest of the code
+		// works inside this module.
 		TempMemoryBlockAllocator::Ptr = new TempMemoryBlockAllocator;
 		TempMemoryBlockAllocator::Ptr->Initialize(math::GetNextPowerOfTwo(256));
 	}

@@ -27,7 +27,7 @@ namespace phx::rhi::d3d12
 			D3D12_GPU_VIRTUAL_ADDRESS GpuAddress = {};
 			uint8_t* Data = nullptr;
 
-			bool IsValid() const { return Data == nullptr; }
+			bool IsValid() const { return Data != nullptr; }
 		};
 
 		// -- Main interface method ---
@@ -44,7 +44,7 @@ namespace phx::rhi::d3d12
 		uint32_t GetBlockSize() { return m_blockSize; }
 
 	private:
-		void TempMemoryBlockAllocator::WaitForFreeRegions(uint32_t& head);
+		void WaitForFreeRegions(uint32_t& head);
 
 	private:
 		uint32_t m_blockSize;
@@ -53,10 +53,11 @@ namespace phx::rhi::d3d12
 		uint32_t m_head = 0;
 		uint32_t m_tail = 0;
 
-		uint8_t* m_data;
+		void* m_data;
 		std::mutex m_mutex;
 
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_buffer;
+		Microsoft::WRL::ComPtr<D3D12MA::Allocation> m_allocation;
 		std::vector<Microsoft::WRL::ComPtr<ID3D12Fence>> m_fencePool;
 		std::deque<ID3D12Fence*> m_availableFences;
 		struct UsedRegion

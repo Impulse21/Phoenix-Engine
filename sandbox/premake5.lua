@@ -49,6 +49,7 @@ project "Sandbox"
 		{
 			'../phoenix/src/phx/rhi/d3d12',
 			"%{IncludeDir.AgilitySDK}",
+			"%{IncludeDir.D3D12MA}",
 		}
 
 		postbuildcommands

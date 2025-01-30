@@ -12,6 +12,8 @@
 
 #include <dxgi1_6.h>
 
+#include "D3D12MemAlloc.h"
+
 namespace phx::rhi::d3d12
 {
 	// Helper class for COM exceptions

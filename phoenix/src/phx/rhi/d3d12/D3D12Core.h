@@ -33,8 +33,11 @@ namespace phx::rhi::d3d12
 	extern Microsoft::WRL::ComPtr<ID3D12Device2> g_d3d12Device2;
     extern Microsoft::WRL::ComPtr<ID3D12Device5> g_d3d12Device5;
 
+	extern Microsoft::WRL::ComPtr<D3D12MA::Allocator> g_d3d12MemAllocator;
+
 	extern D3D12Adapter g_adapter;
 
+	extern bool g_debugLayersEnabled;
 	extern bool g_isUnderGfxDebugger;
 	extern rhi::DeviceCapability g_capabilities;
 

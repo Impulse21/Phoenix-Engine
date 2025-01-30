@@ -11,6 +11,7 @@
 #include "D3D12Core.h"
 #include "D3D12DescriptorHeaps.h"
 #include "D3D12MemAlloc.h"
+#include "D3D12CopyCtxManager.h"
 
 using namespace phx::rhi;
 using namespace phx::rhi::d3d12;
@@ -74,6 +75,7 @@ namespace
 
 namespace phx::rhi::d3d12
 {
+	Microsoft::WRL::ComPtr<D3D12MA::Allocator> g_d3d12MemAllocator;
 	phx::ResourcePool<rhi::PipelineState, PipelineState> g_pipelineStatePool;
 	phx::ResourcePool<rhi::Texture, Texture> g_texturePool;
 	phx::ResourcePool<rhi::GpuBuffer, d3d12::GpuBuffer> g_bufferPool;
@@ -81,9 +83,9 @@ namespace phx::rhi::d3d12
 
 namespace
 {
-	Microsoft::WRL::ComPtr<D3D12MA::Allocator> m_d3d12MemAllocator;
 	BindlessDescriptorTable m_bindlessDescritorTable;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_emptyRootSignature;
+	CopyCtxManager m_copyCtxManager;
 }
 
 namespace
@@ -111,13 +113,14 @@ namespace phx::rhi::d3d12
 		allocatorDesc.Flags = (D3D12MA::ALLOCATOR_FLAGS)(D3D12MA::ALLOCATOR_FLAG_MSAA_TEXTURES_ALWAYS_COMMITTED | D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED);
 
 		ThrowIfFailed(
-			D3D12MA::CreateAllocator(&allocatorDesc, &m_d3d12MemAllocator));
+			D3D12MA::CreateAllocator(&allocatorDesc, &g_d3d12MemAllocator));
 
 		m_bindlessDescritorTable.Initialize(
 			g_gpuDescHeap_Resource->Allocate(NUM_BINDLESS_RESOURCES));
 
 
 		m_emptyRootSignature = CreateEmptyRootSignature();
+		m_copyCtxManager.Initialize();
 	}
 
 	void FinalizeResources()
@@ -222,7 +225,7 @@ namespace phx::rhi
 
 		// TODO: Support aliasing
 		ThrowIfFailed(
-			m_d3d12MemAllocator->CreateResource(
+			g_d3d12MemAllocator->CreateResource(
 				&allocationDesc,
 				&resourceDesc,
 				ConvertResourceStates(desc.InitialState),
@@ -237,9 +240,6 @@ namespace phx::rhi
 
 		if (initData)
 		{
-			PHX_CORE_WARN("Initialize Data doesn't currently work yet");
-			PHX_CORE_ASSERT(false);
-#if false
 			UINT64 totalSize = 0;
 			std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints(desc.ArraySize * std::max((uint16_t)1u, (desc.MipLevels)));
 			std::vector<UINT> numRows(footprints.size());
@@ -273,7 +273,7 @@ namespace phx::rhi
 
 				if (ctx.IsValid())
 				{
-					CD3DX12_TEXTURE_COPY_LOCATION Dst(impl.impl.Get(), UINT(i));
+					CD3DX12_TEXTURE_COPY_LOCATION Dst(impl.Resource.Get(), UINT(i));
 					CD3DX12_TEXTURE_COPY_LOCATION Src(ctx.UploadBuffer.Get(), footprints[i]);
 					ctx.CommandList->CopyTextureRegion(
 						&Dst,
@@ -290,7 +290,6 @@ namespace phx::rhi
 			{
 				m_copyCtxManager.Submit(ctx);
 			}
-#endif
 		}
 
 		// Create views
@@ -533,7 +532,7 @@ namespace phx::rhi
 	GpuBufferHandle CreateBuffer(GpuBufferDescriptor const& desc, MemInfo* initData)
 	{
 		GpuBufferHandle handle = g_bufferPool.Allocate();
-		auto& buffer = *g_bufferPool.Get<d3d12::GpuBuffer>(handle);
+		// auto& buffer = *g_bufferPool.Get<d3d12::GpuBuffer>(handle);
 
 		return handle;
 	}

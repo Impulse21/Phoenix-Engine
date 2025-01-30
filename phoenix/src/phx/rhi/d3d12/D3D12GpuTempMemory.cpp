@@ -28,7 +28,7 @@ TempMemoryBlockAllocator::TempMemoryBlock TempMemoryBlockAllocator::GetNextMemor
 
 	return TempMemoryBlock{
 		.GpuAddress = m_buffer->GetGPUVirtualAddress() + offset,
-		.Data = this->m_data + offset,
+		.Data = static_cast<uint8_t*>(this->m_data) + offset,
 	};
 }
 
@@ -41,6 +41,31 @@ void TempMemoryBlockAllocator::Initialize(uint32_t bufferSize, uint32_t blockSiz
 
 	// TODO: Create Buffer
 
+	D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
+
+	D3D12MA::ALLOCATION_DESC allocationDesc = {};
+#if true
+	allocationDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+#else
+	allocationDesc.HeapType = D3D12_HEAP_TYPE_GPU_UPLOAD;
+#endif
+
+	D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
+	auto resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(bufferSize, resourceFlags, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
+
+	ThrowIfFailed(
+		g_d3d12MemAllocator->CreateResource(
+			&allocationDesc,
+			&resourceDesc,
+			initialState,
+			nullptr,
+			&m_allocation,
+			IID_PPV_ARGS(&m_buffer)));
+
+
+	D3D12_RANGE readRange = {};
+	ThrowIfFailed(
+		m_buffer->Map(0, &readRange, &m_data));
 }
 
 void TempMemoryBlockAllocator::Finalize()
@@ -55,6 +80,8 @@ void TempMemoryBlockAllocator::Finalize()
 
 		this->m_inUseRegions.pop_front();
 	}
+
+	// TODO: Determine if I need to unmap??
 }
 
 void TempMemoryBlockAllocator::EndFrame()
