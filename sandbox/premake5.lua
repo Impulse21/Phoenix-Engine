@@ -44,6 +44,12 @@ project "Sandbox"
 			Library["D3D12"],
 			Library["DXGI"],
 			Library["DXGUID"],
+			Library["DStorage"],
+		}
+
+		libdirs 
+		{ 
+			LibraryDir["DStorage_lib_Win64"],
 		}
 
 		includedirs
@@ -60,6 +66,8 @@ project "Sandbox"
 
 			CopyFileCommand(DynamicLibrary["D3D12Core"], '%{cfg.buildtarget.directory}/D3D12/'),
 			CopyFileCommand(DynamicLibrary["d3d12SDKLayers"], '%{cfg.buildtarget.directory}/D3D12/'),
+			CopyFileCommand(DynamicLibrary["DStorage"], '%{cfg.buildtarget.directory}'),
+			CopyFileCommand(DynamicLibrary["DStorageCore"], '%{cfg.buildtarget.directory}'),
 		}
 
     -- Debug configuration
