@@ -30,6 +30,7 @@ project "Phoenix"
 		"src",
 		"vendor/spdlog/include",
 		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.ENTT}",
 	}
 	
 	links

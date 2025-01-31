@@ -17,6 +17,7 @@ project "Sandbox"
 		"../phoenix/src",
 		"../phoenix/vendor",
 		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.ENTT}",
 	}
 
 	links
