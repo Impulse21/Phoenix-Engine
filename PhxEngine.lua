@@ -1,10 +1,30 @@
-include "vendor/premake/PhxEngine/Dependencies.lua"
+-- TODO: Switch to require
+include 'vendor/premake/PhxEngine/Dependencies.lua'
+
+-- Directories
+phx_lib_Directory           = 'PhxLibs'
+phx_lib_src_directory       = "PhxLibs/src"
+phx_lib_vendor_directory    = "PhxLibs/vendor"
+
+phx_lib_src_core_dir        = phx_lib_src_directory.."/PhxCore"
 
 workspace_directory         = '.workspace/'.._ACTION
-platform_clang_win_64_dx12  = "Win64_Dx12 (LLVM)"
+
+-- IDE Platform Names
+clang_win64_d3d12  = "Clang Win64 (D3D12)"
+
+win64_platform_filter = "platforms:"..clang_win64_d3d12
+
+platform_windows = "Windows"
+rhi_backend_d3d12 = "D3D12"
+
+-- Project Names
+project_phx_core        = 'PhxCore'
+project_phx_renderer    = 'PhxRenderer'
+project_phx_rhi         = 'PhxRhi'
+project_sandbox         = 'Sandbox'
 
 -- Utility Functions
-
 function ExcludePlatformSpecificCode(rootPath)
 	excludes { rootPath..'**/platform/**' }
 end
@@ -119,86 +139,119 @@ end
 
 -- Globals
 workspace "PhxEngine"
+    configurations { 'Debug', 'Profiling', 'Final' }
 	location (workspace_directory)
-    architecture('x64')
-	startproject "PhxEditor"
-	platforms { platform_clang_win_64_dx12 }
+    preferredtoolarchitecture('x86_64') -- Prefer this toolset on MSVC as it can handle more memory for multiprocessor compiles
+    warnings('extra')
+	startproject(project_sandbox)
+    language('C++')
+	cppdialect('C++20')
+	rtti('off')
+	platforms { clang_win64_d3d12 }
 
 	outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
-    
 	targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")
-	
-	configurations
-	{
-		"Debug",
-		"Release",
-		"Dist"
-	}
 
-	flags
-	{
-        'fatalcompilewarnings',
-		"MultiProcessorCompile",
-	}
-    
+	flags { 'fatalcompilewarnings' }
+
+	filter('platforms:'..clang_win64_d3d12)
+		toolset('msc-clangcl')
+		--toolset('msc-llvm') -- Older versions of Clang in VS
+
+    filter('toolset:msc*')
+		flags
+		{
+			'multiprocessorcompile', -- /MP
+		}
+		
+		buildoptions
+		{
+			'/permissive-'
+		}
+		
+    filter('system:windows')
+		--systemversion(os.winSdkVersion())
+		entrypoint 'mainCRTStartup'
+		defines
+		{
+			-- Define this system-wide so we have no more unexpected surprises
+			'NOMINMAX', 
+			'WIN32_LEAN_AND_MEAN', 
+			'VC_EXTRALEAN',
+			'_CRT_SECURE_NO_WARNINGS'
+		}
+
     HandleGlobalWarnings()
-    
-    --filter('platforms:'..msvc_win_64)
-		--toolset('msc')
+		
+	filter {}
 
-    defines
-    { 
-        --'_HAS_EXCEPTIONS=0', -- Disable STL exceptions
-    }
-    
-	filter('platforms:'..platform_clang_win_64_dx12)
-        toolset('msc-clangcl')
-        -- toolset("clang")
-    --toolset('msc-llvm') -- Older versions of Clang in VS
+	filter { win64_platform_filter }
+		system('windows')
+		architecture('x64')
+		defines
+		{
+			'PHX_PLATFORM_WINDOWS'
+		}
+
+    filter {}
 
 	filter { 'configurations:Debug' }
+		defines { 'PHX_DEBUG' }
 		optimize('off')
 		--symbols('on')
 		symbols('fastlink')
 		--inlining('auto')
 
-		runtime('debug')
-
-	filter { 'configurations:Release or Dist' }
+    filter { 'configurations:Profiling or Final' }
 		defines
 		{
 			'NDEBUG', -- Disables assert
 			'EASTL_ASSERT_ENABLED=0'
 		}
-
 		optimize('speed')
 		symbols('on')
 		inlining('auto')
 		flags { 'linktimeoptimization' }
-		runtime('release')
 
-    filter{}
+    filter { 'configurations:Profiling' }
+		defines { 'PHX_PROFILING', }
 
-group "Dependencies"
-	include "Phoenix/vendor/ImGui"
-	include "Phoenix/vendor/D3D12MA"
+	filter { 'configurations:Final' }
+		defines { 'PHX_FINAL', }
+
+-- Project definitions
+
+group "Vendors"
+	-- include "Phoenix/vendor/ImGui"
+	-- include "Phoenix/vendor/D3D12MA"
 group ""
 
-group "Core"
-	include "phoenix"
+group "PhxLibs"
+    project(project_phx_core)
+        kind('StaticLib')
+        pchheader('PhxCore/PhxCore_pch.h')
+        pchsource(phx_lib_src_core_dir..'/PhxCore_pch.cpp')
+        
+        files
+        {
+            phx_lib_src_core_dir.."/**.h",
+            phx_lib_src_core_dir.."/**.cpp",
+        }
+
+        includedirs
+        {
+            phx_lib_src_directory,
+            phx_lib_vendor_directory.."/spdlog/include",
+        }
+
 group ""
 
 group "Misc"
-    include "sandbox"
+    --include "sandbox"
 group ""
 
-group "Tools"
-	--include "PhxEditor"
-group ""
-
-group('.Solution Generation')
-
+group '.Solution Generation'
     project('Generate Solution')
         kind('StaticLib')
         files{ '*.lua', '*.bat', '*.command' }
@@ -216,4 +269,4 @@ group('.Solution Generation')
             generateSolutionCommandLine, -- Run
             rebuildProjectCommand,
         }
-
+group ""
