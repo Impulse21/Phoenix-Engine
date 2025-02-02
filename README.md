@@ -3,9 +3,9 @@
 ## TODO List
 ### Dx12 Only focus currently
 
-- [ x ] Set up Project Build files (Premake)
-- [ x ] CLang compile
-- [ x ] Get ImGui Demo Window Rendering 
+- [x] Set up Project Build files (Premake)
+- [x] CLang compile
+- [x] Get ImGui Demo Window Rendering 
 - [ ] Delete old unused code
 - [ ] Create a resource system and resources
 - [ ] Construct a pipeline tool for converting GLTF files into my file format.
