@@ -9,6 +9,7 @@ phx_lib_src_core_dir        = phx_lib_src_directory.."/PhxCore"
 phx_lib_src_rhi_dir         = phx_lib_src_directory.."/PhxRhi"
 phx_lib_src_renderer_dir    = phx_lib_src_directory.."/PhxRenderer"
 phx_lib_src_resource_dir    = phx_lib_src_directory.."/PhxResource"
+phx_lib_src_editor_lib_dir  = phx_lib_src_directory.."/PhxEditor"
 
 phx_vendor_src_imgui_dir    = phx_lib_vendor_directory.."/ImGui"
 phx_vendor_src_d3d12ma_dir  = phx_lib_vendor_directory.."/D3D12MA"
@@ -31,6 +32,7 @@ project_phx_core        = 'PhxCore'
 project_phx_renderer    = 'PhxRenderer'
 project_phx_rhi         = 'PhxRhi'
 project_phx_resource    = 'PhxResource'
+project_phx_editor      = 'PhxEditor'
 
 project_sandbox         = 'Sandbox'
 project_asset_packer    = 'PhxAssetPacker'
@@ -418,22 +420,39 @@ group "PhxLibs"
                     phx_vendor_src_d3d12ma_dir,
                 }
     
-        project(project_phx_resource)
-            kind('StaticLib')
-            pchheader('PhxResource/PhxResource_pch.h')
-            pchsource(phx_lib_src_resource_dir..'/PhxResource_pch.cpp')
+    project(project_phx_resource)
+        kind('StaticLib')
+        pchheader('PhxResource/PhxResource_pch.h')
+        pchsource(phx_lib_src_resource_dir..'/PhxResource_pch.cpp')
             
-            files 
-            {
-                phx_lib_src_resource_dir.."/**.h",
-                phx_lib_src_resource_dir.."/**.cpp",
-            }
+        files 
+        {
+            phx_lib_src_resource_dir.."/**.h",
+            phx_lib_src_resource_dir.."/**.cpp",
+        }
         
-            includedirs
-            {
-                phx_lib_src_directory,
-                phx_lib_vendor_directory.."/spdlog/include",
-            }
+        includedirs
+        {
+            phx_lib_src_directory,
+            phx_lib_vendor_directory.."/spdlog/include",
+        }
+
+    project(project_phx_editor)
+        kind('StaticLib')
+        pchheader('PhxEditor/PhxEditor_pch.h')
+        pchsource(phx_lib_src_editor_lib_dir..'/PhxEditor_pch.cpp')
+            
+        files 
+        {
+            phx_lib_src_editor_lib_dir.."/**.h",
+            phx_lib_src_editor_lib_dir.."/**.cpp",
+        }
+        
+        includedirs
+        {
+            phx_lib_src_directory,
+            phx_lib_vendor_directory.."/spdlog/include",
+        }
 group ""
 
 group "Misc"
