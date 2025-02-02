@@ -182,7 +182,7 @@ workspace "PhxEngine"
 		
     filter('system:windows')
 		--systemversion(os.winSdkVersion())
-		entrypoint 'mainCRTStartup'
+		--entrypoint 'mainCRTStartup'
 		defines
 		{
 			-- Define this system-wide so we have no more unexpected surprises
@@ -419,6 +419,9 @@ group "Misc"
             links
             {
                 project_vendor_d3d12ma,
+                "d3d12.lib",
+                "dxgi.lib",
+                "dxguid.lib",
             }
 
             includedirs
@@ -429,12 +432,17 @@ group "Misc"
 
             postbuildcommands
             {
-		        -- CopyFileCommand(path.getabsolute(DStorageLibrary.dlls), '%{cfg.buildtarget.directory}'),
-		        -- CopyFileCommand(path.getabsolute(DxcLibrary.dlls), '%{cfg.buildtarget.directory}'),
-		        -- CopyFileCommand(path.getabsolute(PixLibrary.dlls), '%{cfg.buildtarget.directory}'),
+		        CopyFileCommand(path.getabsolute(DStorageLibrary.dlls[1]), '%{cfg.buildtarget.directory}'),
+		        CopyFileCommand(path.getabsolute(DStorageLibrary.dlls[2]), '%{cfg.buildtarget.directory}'),
+
+		        CopyFileCommand(path.getabsolute(DxcLibrary.dlls[1]), '%{cfg.buildtarget.directory}'),
+		        CopyFileCommand(path.getabsolute(DxcLibrary.dlls[2]), '%{cfg.buildtarget.directory}'),
+
+		        CopyFileCommand(path.getabsolute(PixLibrary.dlls[1]), '%{cfg.buildtarget.directory}'),
 
                 MakeDirCommand('%{cfg.buildtarget.directory}/D3D12/'),
-		        CopyFileCommand(path.getabsolute(AgilityLibrary.dlls), '%{cfg.buildtarget.directory}/D3D12/')
+                CopyFileCommand(path.getabsolute(AgilityLibrary.dlls[1]), '%{cfg.buildtarget.directory}/D3D12/'),
+                CopyFileCommand(path.getabsolute(AgilityLibrary.dlls[2]), '%{cfg.buildtarget.directory}/D3D12/'),
             }
 group ""
 

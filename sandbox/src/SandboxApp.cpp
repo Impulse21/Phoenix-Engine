@@ -1,8 +1,8 @@
 #include <Phoenix.h>
-#include <phx/core/EntryPoint.h>
+#include "PhxCore/EntryPoint.h"
 
-#include <phx/core/VFS.h>
-#include <phx/renderer/ImGuiRenderer.h>
+#include "PhxCore/VFS.h"
+#include "PhxRenderer/ImGuiRenderer.h"
 
 using namespace phx;
 
