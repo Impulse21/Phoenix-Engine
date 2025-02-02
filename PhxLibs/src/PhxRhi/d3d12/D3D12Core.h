@@ -2,8 +2,8 @@
 
 #include <functional>
 
-#include "phx/rhi/RHITypes.h"
-#include "phx/core/Pool.h"
+#include "PhxRhi/RHITypes.h"
+#include "PhxCore/Pool.h"
 
 #include "D3D12Base.h"
 #include "D3D12Types.h"

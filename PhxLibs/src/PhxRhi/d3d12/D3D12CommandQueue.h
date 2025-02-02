@@ -1,6 +1,6 @@
 #pragma once
 
-#include "phx/core/Span.h"
+#include "PhxCore/Span.h"
 
 #include "D3D12Base.h"
 

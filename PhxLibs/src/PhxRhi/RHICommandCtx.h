@@ -1,6 +1,6 @@
 #pragma once
 
-#include <phx/rhi/RHITypes.h>
+#include <PhxRhi/RHITypes.h>
 #include <RHIPlatformTypes.h>
 
 namespace phx::rhi

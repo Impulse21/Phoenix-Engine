@@ -1,8 +1,8 @@
 #pragma once
 
-#include "phx/core/Log.h"
-#include "phx/core/EnumUtils.h"
-#include "phx/rhi/RHITypes.h"
+#include "PhxCore/Log.h"
+#include "PhxCore/EnumUtils.h"
+#include "PhxRhi/RHITypes.h"
 #include "D3D12Core.h"
 
 namespace phx::rhi::d3d12

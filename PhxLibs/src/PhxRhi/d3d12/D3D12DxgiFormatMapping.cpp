@@ -1,6 +1,6 @@
-#include "phxpch.h"
+#include "PhxRhi/PhxRhi_pch.h"
 
-#include "phx/rhi/RHITypes.h"
+#include "PhxRhi/RHITypes.h"
 #include "D3D12Utils.h"
 
 using namespace phx;

@@ -1,10 +1,10 @@
 #pragma once
 
 #include <stdint.h>
-#include "phx/core/Span.h"
-#include "phx/core/EnumUtils.h"
+#include "PhxCore/Span.h"
+#include "PhxCore/EnumUtils.h"
 
-#include "phx/core/Handle.h"
+#include "PhxCore/Handle.h"
 
 
 namespace phx::rhi
@@ -580,8 +580,8 @@ namespace phx::rhi
             StencilOp StencilPassOp = StencilOp::Keep;
             ComparisonFunc StencilFunc = ComparisonFunc::Never;
         };
-        DepthStencilOp FrontFace;
-        DepthStencilOp BackFace;
+        DepthStencilOp FrontFace = {};
+        DepthStencilOp BackFace = {};
         bool DepthBoundsTestEnable = false;
     };
 

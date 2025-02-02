@@ -1,12 +1,12 @@
 #pragma once
 
 #include <deque>
-#include <phx/core/Assert.h>
-#include <phx/core/Memory.h>
+#include "PhxCore/Assert.h"
+#include "PhxCore/Memory.h"
 
 #include "D3D12Base.h"
 
-#include "phx/rhi/RHITypes.h"
+#include "PhxRhi/RHITypes.h"
 
 namespace phx::rhi::d3d12
 {

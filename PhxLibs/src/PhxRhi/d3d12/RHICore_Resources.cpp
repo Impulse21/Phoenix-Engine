@@ -1,10 +1,10 @@
-#include "phxpch.h"
+#include "PhxRhi/PhxRhi_pch.h"
 
 #include <deque>
 
-#include "phx/core/EnumUtils.h"
-#include "phx/core/StringUtils.h"
-#include "phx/rhi/RHICore.h"
+#include "PhxCore/EnumUtils.h"
+#include "PhxCore/StringUtils.h"
+#include "PhxRhi/RHICore.h"
 
 #include "D3D12Base.h"
 #include "D3D12Utils.h"
@@ -529,7 +529,7 @@ namespace phx::rhi
 		return handle;
 	}
 
-	GpuBufferHandle CreateBuffer(GpuBufferDescriptor const& desc, MemInfo* initData)
+	GpuBufferHandle CreateBuffer(GpuBufferDescriptor const& /*desc*/, MemInfo* /*initData*/)
 	{
 		GpuBufferHandle handle = g_bufferPool.Allocate();
 		// auto& buffer = *g_bufferPool.Get<d3d12::GpuBuffer>(handle);
@@ -566,7 +566,7 @@ namespace phx::rhi
 			});
 	}
 
-	void DeleteBuffer(GpuBufferHandle handle)
+	void DeleteBuffer(GpuBufferHandle /*handle*/)
 	{
 
 	}

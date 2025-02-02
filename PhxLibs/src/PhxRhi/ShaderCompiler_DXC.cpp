@@ -1,12 +1,12 @@
-#include "phxpch.h"
+#include "PhxRhi_pch.h"
 
 #include <filesystem>
 #include <fstream>
 
-#include "phx/core/VFS.h"
-#include "phx/core/StringUtils.h"
-#include "phx/rhi/ShaderCompiler.h"
-#include "phx/rhi/RHITypes.h"
+#include "PhxCore/VFS.h"
+#include "PhxCore/StringUtils.h"
+#include "PhxRhi/ShaderCompiler.h"
+#include "PhxRhi/RHITypes.h"
 
 #include "assert.h"
 #include <iostream>

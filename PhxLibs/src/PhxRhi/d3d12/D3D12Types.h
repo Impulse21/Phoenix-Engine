@@ -1,6 +1,6 @@
 #pragma once
 
-#include "phx/rhi/RHITypes.h"
+#include "PhxRhi/RHITypes.h"
 #include "D3D12Base.h"
 #include "D3D12DescriptorHeaps.h"
 

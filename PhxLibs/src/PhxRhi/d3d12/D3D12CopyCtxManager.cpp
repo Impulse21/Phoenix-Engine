@@ -1,8 +1,8 @@
-#include "phxpch.h"
+#include "PhxRhi/PhxRhi_pch.h"
 
 #include "D3D12CopyCtxManager.h"
 
-#include <phx/core/Math.h>
+#include "PhxCore/Math.h"
 
 #include "D3D12Core.h"
 #include "D3D12CommandQueue.h"

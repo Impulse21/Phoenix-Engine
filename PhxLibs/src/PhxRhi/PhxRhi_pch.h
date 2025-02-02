@@ -29,8 +29,8 @@
 
 #include <windows.h>
 
-#include "phx/core/Base.h"
+#include "PhxCore/Base.h"
 
-#include "phx/core/Log.h"
-#include "phx/core/Platform.h"
-#include "phx/core/PlatformDetection.h"
+#include "PhxCore/Log.h"
+#include "PhxCore/Platform.h"
+#include "PhxCore/PlatformDetection.h"

@@ -5,9 +5,10 @@
 #include "D3D12Types.h"
 #include "D3D12GpuTempMemory.h"
 
-#include <phx/core/Span.h>
-#include "phx/core/EnumUtils.h"
-#include "phx/rhi/RHITypes.h"
+#include "PhxCore/Span.h"
+#include "PhxCore/EnumUtils.h"
+#include "PhxRhi/RHITypes.h"
+
 #include <D3D12Utils.h>
 
 namespace phx::rhi::d3d12

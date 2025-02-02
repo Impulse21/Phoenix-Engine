@@ -1,12 +1,12 @@
-#include "phxpch.h"
+#include "PhxRhi/PhxRhi_pch.h"
 
-#include "phx/core/Math.h"
-#include "phx/core/StringUtils.h"
-#include "phx/core/CommandLineArgs.h"
+#include "PhxCore/Math.h"
+#include "PhxCore/StringUtils.h"
+#include "PhxCore/CommandLineArgs.h"
 
-#include "phx/rhi/RHICommandCtx.h"
-#include "phx/rhi/RHITypes.h"
-#include "phx/rhi/RHICore.h"
+#include "PhxRhi/RHICommandCtx.h"
+#include "PhxRhi/RHITypes.h"
+#include "PhxRhi/RHICore.h"
 
 #include "D3D12Types.h"
 #include "D3D12Core.h"

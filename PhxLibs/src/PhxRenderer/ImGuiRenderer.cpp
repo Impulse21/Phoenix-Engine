@@ -1,15 +1,15 @@
-#include "phxpch.h"
+#include "PhxRenderer/PhxRenderer_pch.h"
 
-#include "phx/renderer/ImGuiRenderer.h"
+#include "PhxRenderer/ImGuiRenderer.h"
 
 #include <DirectXMath.h>
 
-#include "phx/rhi/RHICore.h"
-#include <phx/renderer/shaders/PrecompiledShaders.h>
+#include "PhxRhi/RHICore.h"
+#include <PhxRenderer/shaders/PrecompiledShaders.h>
 
 #include "ImGui/imgui_impl_win32.h"
-#include "phx/core/Span.h"
-#include "phx/core/VFS.h"
+#include "PhxCore/Span.h"
+#include "PhxCore/VFS.h"
 
 using namespace phx;
 using namespace phx::gfx;
@@ -25,7 +25,7 @@ namespace
     };
 }
 
-void ImGuiRenderSystem::Initialize(IFileSystem* fs, void* windowHandle, bool enableDocking)
+void ImGuiRenderSystem::Initialize(IFileSystem* /*fs*/, void* windowHandle, bool enableDocking)
 {
     m_imguiContext = ImGui::CreateContext();
     ImGui::SetCurrentContext(m_imguiContext);
@@ -62,7 +62,8 @@ void ImGuiRenderSystem::Initialize(IFileSystem* fs, void* windowHandle, bool ena
             .DebugName = "ImGui Font",
             .Format = rhi::Format::RGBA8_UNORM,
             .Width = static_cast<uint32_t>(width),
-            .Height = static_cast<uint32_t>(height)
+            .Height = static_cast<uint32_t>(height),
+            .ArraySize = 1,
         }, &memInfo);
     
     this->m_fontTextureBindlessIndex = rhi::GetDescriptorIndex(this->m_fontTexture, SubresouceType::SRV);

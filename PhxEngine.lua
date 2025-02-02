@@ -1,5 +1,4 @@
--- TODO: Switch to require
-include 'vendor/premake/PhxEngine/Dependencies.lua'
+include "vendor/premake/PhxEngine/PrebuiltLibs.lua"
 
 -- Directories
 phx_lib_Directory           = 'PhxLibs'
@@ -7,14 +6,20 @@ phx_lib_src_directory       = "PhxLibs/src"
 phx_lib_vendor_directory    = "PhxLibs/vendor"
 
 phx_lib_src_core_dir        = phx_lib_src_directory.."/PhxCore"
+phx_lib_src_rhi_dir         = phx_lib_src_directory.."/PhxRhi"
+phx_lib_src_renderer_dir    = phx_lib_src_directory.."/PhxRenderer"
+phx_vendor_src_imgui_dir    = phx_lib_vendor_directory.."/ImGui"
+phx_vendor_src_d3d12ma_dir  = phx_lib_vendor_directory.."/D3D12MA"
 
 workspace_directory         = '.workspace/'.._ACTION
 
 -- IDE Platform Names
 clang_win64_d3d12  = "Clang Win64 (D3D12)"
 
+-- TOODL Add vulkan to this list = "platforms:"..clang_win64_d3d12..' or '..clang_win64_vulkan
 win64_platform_filter = "platforms:"..clang_win64_d3d12
 
+--Win64PlatformFilter 
 platform_windows = "Windows"
 rhi_backend_d3d12 = "D3D12"
 
@@ -23,6 +28,9 @@ project_phx_core        = 'PhxCore'
 project_phx_renderer    = 'PhxRenderer'
 project_phx_rhi         = 'PhxRhi'
 project_sandbox         = 'Sandbox'
+
+project_vendor_imgui    = 'ImGui'
+project_vendor_d3d12ma  = 'D3D12MA'
 
 -- Utility Functions
 function ExcludePlatformSpecificCode(rootPath)
@@ -223,8 +231,65 @@ workspace "PhxEngine"
 -- Project definitions
 
 group "Vendors"
-	-- include "Phoenix/vendor/ImGui"
-	-- include "Phoenix/vendor/D3D12MA"
+    project(project_vendor_imgui)
+        kind "StaticLib"
+        language "C++"
+        cppdialect "c++17"
+
+        files
+        {
+            phx_vendor_src_imgui_dir..'/*.cpp',
+            phx_vendor_src_imgui_dir..'/*.hpp',
+            phx_vendor_src_imgui_dir..'/*.h',
+            phx_vendor_src_imgui_dir..'/version.txt',
+            phx_vendor_src_imgui_dir..'/LICENSE.txt'
+        }
+
+        filter "system:linux"
+            pic "On"
+            systemversion "latest"
+        removefiles {}
+
+        defines { 'IMGUI_DISABLE_OBSOLETE_FUNCTIONS' }
+
+        filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+
+        filter {}
+
+    project(project_vendor_d3d12ma)
+        kind "StaticLib"
+        language "C++"
+        
+        files
+        {
+            phx_vendor_src_d3d12ma_dir..'/D3D12MemAlloc.cpp',
+            phx_vendor_src_d3d12ma_dir..'/D3D12MemAlloc.h',
+            phx_vendor_src_d3d12ma_dir..'/D3D12MemAlloc.natvis',
+            phx_vendor_src_d3d12ma_dir..'/version.txt',
+        }
+
+        AddLibraryIncludes(AgilityLibrary)
+
+        filter('toolset:*-clangcl')
+            buildoptions {
+                '-Wno-unused-const-variable',
+                '-Wno-unused-function',
+                '-Wno-unused-parameter',
+                '-Wno-missing-field-initializers',
+            }
+        filter()
+        
+        filter "system:windows"
+            systemversion "latest"
+            cppdialect "C++17"
+
+        removefiles {}
+        
+        defines { 'D3D12MA_USE_AGILITY_SDK=1' }
+
+        filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+
+        filter {}
 group ""
 
 group "PhxLibs"
@@ -245,6 +310,73 @@ group "PhxLibs"
             phx_lib_vendor_directory.."/spdlog/include",
         }
 
+    project(project_phx_rhi)
+        kind('StaticLib')
+        pchheader('PhxRhi/PhxRhi_pch.h')
+        pchsource(phx_lib_src_rhi_dir..'/PhxRhi_pch.cpp')
+        
+		files 
+		{
+			phx_lib_src_rhi_dir.."/**.h",
+			phx_lib_src_rhi_dir.."/**.cpp",
+		}
+
+        includedirs
+        {
+            phx_lib_src_directory,
+            phx_lib_vendor_directory.."/spdlog/include",
+        }
+
+        filter('platforms:'..clang_win64_d3d12)
+            defines { "PHX_RHI_D3D12" }
+            
+            excludes  { phx_lib_src_rhi_dir..'/vulkan/**' }
+
+            files 
+            {
+                phx_lib_src_rhi_dir.."/d3d12/**.h",
+                phx_lib_src_rhi_dir.."/d3d12/**.cpp",
+            }
+            
+            AddLibraryIncludes(AgilityLibrary)
+
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/d3d12',
+                phx_vendor_src_d3d12ma_dir,
+            }
+
+    project(project_phx_renderer)
+        kind('StaticLib')
+        pchheader('PhxRenderer/PhxRenderer_pch.h')
+        pchsource(phx_lib_src_renderer_dir..'/PhxRenderer_pch.cpp')
+        
+        files 
+        {
+            phx_lib_src_renderer_dir.."/**.h",
+            phx_lib_src_renderer_dir.."/**.cpp",
+        }
+    
+        includedirs
+        {
+            phx_lib_src_directory,
+            phx_vendor_src_imgui_dir,
+            phx_lib_vendor_directory.."/spdlog/include",
+        }
+
+        filter('platforms:'..clang_win64_d3d12)
+            defines { "PHX_RHI_D3D12" }
+            
+            excludes  { phx_lib_src_rhi_dir..'/vulkan/**' }
+    
+            AddLibraryIncludes(AgilityLibrary)
+    
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/d3d12',
+                phx_vendor_src_d3d12ma_dir,
+            }
+    
 group ""
 
 group "Misc"
