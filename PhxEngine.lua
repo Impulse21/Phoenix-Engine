@@ -1,10 +1,40 @@
-include "vendor/premake/PhxEngine/Dependencies.lua"
+include "vendor/premake/PhxEngine/PrebuiltLibs.lua"
+
+-- Directories
+phx_lib_Directory           = 'PhxLibs'
+phx_lib_src_directory       = "PhxLibs/src"
+phx_lib_vendor_directory    = "PhxLibs/vendor"
+
+phx_lib_src_core_dir        = phx_lib_src_directory.."/PhxCore"
+phx_lib_src_rhi_dir         = phx_lib_src_directory.."/PhxRhi"
+phx_lib_src_renderer_dir    = phx_lib_src_directory.."/PhxRenderer"
+
+phx_vendor_src_imgui_dir    = phx_lib_vendor_directory.."/ImGui"
+phx_vendor_src_d3d12ma_dir  = phx_lib_vendor_directory.."/D3D12MA"
+phx_vendor_src_entt_dir  = phx_lib_vendor_directory.."/entt"
 
 workspace_directory         = '.workspace/'.._ACTION
-platform_clang_win_64_dx12  = "Win64_Dx12 (LLVM)"
+
+-- IDE Platform Names
+clang_win64_d3d12  = "Clang Win64 (D3D12)"
+
+-- TOODL Add vulkan to this list = "platforms:"..clang_win64_d3d12..' or '..clang_win64_vulkan
+win64_platform_filter = "platforms:"..clang_win64_d3d12
+
+--Win64PlatformFilter 
+platform_windows = "Windows"
+rhi_backend_d3d12 = "D3D12"
+
+-- Project Names
+project_phx_core        = 'PhxCore'
+project_phx_renderer    = 'PhxRenderer'
+project_phx_rhi         = 'PhxRhi'
+project_sandbox         = 'Sandbox'
+
+project_vendor_imgui    = 'ImGui'
+project_vendor_d3d12ma  = 'D3D12MA'
 
 -- Utility Functions
-
 function ExcludePlatformSpecificCode(rootPath)
 	excludes { rootPath..'**/platform/**' }
 end
@@ -119,86 +149,304 @@ end
 
 -- Globals
 workspace "PhxEngine"
+    configurations { 'Debug', 'Profiling', 'Final' }
 	location (workspace_directory)
-    architecture('x64')
-	startproject "PhxEditor"
-	platforms { platform_clang_win_64_dx12 }
+    preferredtoolarchitecture('x86_64') -- Prefer this toolset on MSVC as it can handle more memory for multiprocessor compiles
+    warnings('extra')
+	startproject(project_sandbox)
+    language('C++')
+	cppdialect('C++20')
+	rtti('off')
+	platforms { clang_win64_d3d12 }
 
 	outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
-    
 	targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")
-	
-	configurations
-	{
-		"Debug",
-		"Release",
-		"Dist"
-	}
 
-	flags
-	{
-        'fatalcompilewarnings',
-		"MultiProcessorCompile",
-	}
-    
+	flags { 'fatalcompilewarnings' }
+
+	filter('platforms:'..clang_win64_d3d12)
+		toolset('msc-clangcl')
+		--toolset('msc-llvm') -- Older versions of Clang in VS
+
+    filter('toolset:msc*')
+		flags
+		{
+			'multiprocessorcompile', -- /MP
+		}
+		
+		buildoptions
+		{
+			'/permissive-'
+		}
+		
+    filter('system:windows')
+		--systemversion(os.winSdkVersion())
+		--entrypoint 'mainCRTStartup'
+		defines
+		{
+			-- Define this system-wide so we have no more unexpected surprises
+			'NOMINMAX', 
+			'WIN32_LEAN_AND_MEAN', 
+			'VC_EXTRALEAN',
+			'_CRT_SECURE_NO_WARNINGS'
+		}
+
     HandleGlobalWarnings()
-    
-    --filter('platforms:'..msvc_win_64)
-		--toolset('msc')
+		
+	filter {}
 
-    defines
-    { 
-        --'_HAS_EXCEPTIONS=0', -- Disable STL exceptions
-    }
-    
-	filter('platforms:'..platform_clang_win_64_dx12)
-        toolset('msc-clangcl')
-        -- toolset("clang")
-    --toolset('msc-llvm') -- Older versions of Clang in VS
+	filter { win64_platform_filter }
+		system('windows')
+		architecture('x64')
+		defines
+		{
+			'PHX_PLATFORM_WINDOWS'
+		}
+
+    filter {}
 
 	filter { 'configurations:Debug' }
+		defines { 'PHX_DEBUG' }
 		optimize('off')
 		--symbols('on')
 		symbols('fastlink')
 		--inlining('auto')
 
-		runtime('debug')
-
-	filter { 'configurations:Release or Dist' }
+    filter { 'configurations:Profiling or Final' }
 		defines
 		{
 			'NDEBUG', -- Disables assert
 			'EASTL_ASSERT_ENABLED=0'
 		}
-
 		optimize('speed')
 		symbols('on')
 		inlining('auto')
 		flags { 'linktimeoptimization' }
-		runtime('release')
 
-    filter{}
+    filter { 'configurations:Profiling' }
+		defines { 'PHX_PROFILING', }
 
-group "Dependencies"
-	include "Phoenix/vendor/ImGui"
-	include "Phoenix/vendor/D3D12MA"
+	filter { 'configurations:Final' }
+		defines { 'PHX_FINAL', }
+
+-- Project definitions
+
+group "Vendors"
+    project(project_vendor_imgui)
+        kind "StaticLib"
+        language "C++"
+        cppdialect "c++17"
+
+        files
+        {
+            phx_vendor_src_imgui_dir..'/*.cpp',
+            phx_vendor_src_imgui_dir..'/*.hpp',
+            phx_vendor_src_imgui_dir..'/*.h',
+            phx_vendor_src_imgui_dir..'/version.txt',
+            phx_vendor_src_imgui_dir..'/LICENSE.txt'
+        }
+
+        filter "system:linux"
+            pic "On"
+            systemversion "latest"
+        removefiles {}
+
+        defines { 'IMGUI_DISABLE_OBSOLETE_FUNCTIONS' }
+
+        filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+
+        filter {}
+
+    project(project_vendor_d3d12ma)
+        kind "StaticLib"
+        language "C++"
+        
+        files
+        {
+            phx_vendor_src_d3d12ma_dir..'/D3D12MemAlloc.cpp',
+            phx_vendor_src_d3d12ma_dir..'/D3D12MemAlloc.h',
+            phx_vendor_src_d3d12ma_dir..'/D3D12MemAlloc.natvis',
+            phx_vendor_src_d3d12ma_dir..'/version.txt',
+        }
+
+        AddLibraryIncludes(AgilityLibrary)
+
+        filter('toolset:*-clangcl')
+            buildoptions {
+                '-Wno-unused-const-variable',
+                '-Wno-unused-function',
+                '-Wno-unused-parameter',
+                '-Wno-missing-field-initializers',
+            }
+        filter()
+        
+        filter "system:windows"
+            systemversion "latest"
+            cppdialect "C++17"
+
+        removefiles {}
+        
+        defines { 'D3D12MA_USE_AGILITY_SDK=1' }
+
+        filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+
+        filter {}
 group ""
 
-group "Core"
-	include "phoenix"
+group "PhxLibs"
+    project(project_phx_core)
+        kind('StaticLib')
+        pchheader('PhxCore/PhxCore_pch.h')
+        pchsource(phx_lib_src_core_dir..'/PhxCore_pch.cpp')
+        
+        files
+        {
+            phx_lib_src_core_dir.."/**.h",
+            phx_lib_src_core_dir.."/**.cpp",
+        }
+
+        includedirs
+        {
+            phx_lib_src_directory,
+            phx_lib_vendor_directory.."/spdlog/include",
+        }
+
+    project(project_phx_rhi)
+        kind('StaticLib')
+        pchheader('PhxRhi/PhxRhi_pch.h')
+        pchsource(phx_lib_src_rhi_dir..'/PhxRhi_pch.cpp')
+        
+		files 
+		{
+			phx_lib_src_rhi_dir.."/**.h",
+			phx_lib_src_rhi_dir.."/**.cpp",
+		}
+
+        includedirs
+        {
+            phx_lib_src_directory,
+            phx_lib_vendor_directory.."/spdlog/include",
+        }
+
+        filter('platforms:'..clang_win64_d3d12)
+            defines { "PHX_RHI_D3D12" }
+            
+            excludes  { phx_lib_src_rhi_dir..'/vulkan/**' }
+
+            files 
+            {
+                phx_lib_src_rhi_dir.."/d3d12/**.h",
+                phx_lib_src_rhi_dir.."/d3d12/**.cpp",
+            }
+            
+            AddLibraryIncludes(AgilityLibrary)
+
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/d3d12',
+                phx_vendor_src_d3d12ma_dir,
+            }
+
+    project(project_phx_renderer)
+        kind('StaticLib')
+        pchheader('PhxRenderer/PhxRenderer_pch.h')
+        pchsource(phx_lib_src_renderer_dir..'/PhxRenderer_pch.cpp')
+        
+        files 
+        {
+            phx_lib_src_renderer_dir.."/**.h",
+            phx_lib_src_renderer_dir.."/**.cpp",
+        }
+    
+        includedirs
+        {
+            phx_lib_src_directory,
+            phx_vendor_src_imgui_dir,
+            phx_lib_vendor_directory.."/spdlog/include",
+        }
+
+        filter('platforms:'..clang_win64_d3d12)
+            defines { "PHX_RHI_D3D12" }
+            
+            excludes  { phx_lib_src_rhi_dir..'/vulkan/**' }
+    
+            AddLibraryIncludes(AgilityLibrary)
+    
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/d3d12',
+                phx_vendor_src_d3d12ma_dir,
+            }
+    
 group ""
 
 group "Misc"
-    include "sandbox"
+    project(project_sandbox)
+        kind "WindowedApp"         -- Windows application (no console)
+
+        files 
+        {
+            "sandbox/src/**.cpp",          -- Include all .cpp files in src/
+            "sandbox/src/**.h",            -- Include all .h files in src/
+        }
+
+        includedirs 
+        {
+            phx_lib_src_directory,
+            phx_lib_vendor_directory.."/spdlog/include",
+            phx_vendor_src_imgui_dir,
+            phx_vendor_src_entt_dir,
+        }
+
+        links
+        {
+            project_phx_core,
+            project_phx_rhi,
+            project_phx_renderer,
+            project_vendor_imgui,
+        }
+        
+        filter('platforms:'..clang_win64_d3d12)
+            defines { "PHX_RHI_D3D12" }
+
+            AddLibraryIncludes(AgilityLibrary)
+
+            LinkLibrary(DStorageLibrary)
+            LinkLibrary(DxcLibrary)
+            LinkLibrary(PixLibrary)
+            
+            links
+            {
+                project_vendor_d3d12ma,
+                "d3d12.lib",
+                "dxgi.lib",
+                "dxguid.lib",
+            }
+
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/d3d12',
+                phx_vendor_src_d3d12ma_dir,
+            }
+
+            postbuildcommands
+            {
+		        CopyFileCommand(path.getabsolute(DStorageLibrary.dlls[1]), '%{cfg.buildtarget.directory}'),
+		        CopyFileCommand(path.getabsolute(DStorageLibrary.dlls[2]), '%{cfg.buildtarget.directory}'),
+
+		        CopyFileCommand(path.getabsolute(DxcLibrary.dlls[1]), '%{cfg.buildtarget.directory}'),
+		        CopyFileCommand(path.getabsolute(DxcLibrary.dlls[2]), '%{cfg.buildtarget.directory}'),
+
+		        CopyFileCommand(path.getabsolute(PixLibrary.dlls[1]), '%{cfg.buildtarget.directory}'),
+
+                MakeDirCommand('%{cfg.buildtarget.directory}/D3D12/'),
+                CopyFileCommand(path.getabsolute(AgilityLibrary.dlls[1]), '%{cfg.buildtarget.directory}/D3D12/'),
+                CopyFileCommand(path.getabsolute(AgilityLibrary.dlls[2]), '%{cfg.buildtarget.directory}/D3D12/'),
+            }
 group ""
 
-group "Tools"
-	--include "PhxEditor"
-group ""
-
-group('.Solution Generation')
-
+group '.Solution Generation'
     project('Generate Solution')
         kind('StaticLib')
         files{ '*.lua', '*.bat', '*.command' }
@@ -216,4 +464,4 @@ group('.Solution Generation')
             generateSolutionCommandLine, -- Run
             rebuildProjectCommand,
         }
-
+group ""
