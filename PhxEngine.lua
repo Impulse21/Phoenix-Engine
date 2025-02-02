@@ -8,8 +8,10 @@ phx_lib_vendor_directory    = "PhxLibs/vendor"
 phx_lib_src_core_dir        = phx_lib_src_directory.."/PhxCore"
 phx_lib_src_rhi_dir         = phx_lib_src_directory.."/PhxRhi"
 phx_lib_src_renderer_dir    = phx_lib_src_directory.."/PhxRenderer"
+
 phx_vendor_src_imgui_dir    = phx_lib_vendor_directory.."/ImGui"
 phx_vendor_src_d3d12ma_dir  = phx_lib_vendor_directory.."/D3D12MA"
+phx_vendor_src_entt_dir  = phx_lib_vendor_directory.."/entt"
 
 workspace_directory         = '.workspace/'.._ACTION
 
@@ -380,7 +382,60 @@ group "PhxLibs"
 group ""
 
 group "Misc"
-    --include "sandbox"
+    project(project_sandbox)
+        kind "WindowedApp"         -- Windows application (no console)
+
+        files 
+        {
+            "sandbox/src/**.cpp",          -- Include all .cpp files in src/
+            "sandbox/src/**.h",            -- Include all .h files in src/
+        }
+
+        includedirs 
+        {
+            phx_lib_src_directory,
+            phx_lib_vendor_directory.."/spdlog/include",
+            phx_vendor_src_imgui_dir,
+            phx_vendor_src_entt_dir,
+        }
+
+        links
+        {
+            project_phx_core,
+            project_phx_rhi,
+            project_phx_renderer,
+            project_vendor_imgui,
+        }
+        
+        filter('platforms:'..clang_win64_d3d12)
+            defines { "PHX_RHI_D3D12" }
+
+            AddLibraryIncludes(AgilityLibrary)
+
+            LinkLibrary(DStorageLibrary)
+            LinkLibrary(DxcLibrary)
+            LinkLibrary(PixLibrary)
+            
+            links
+            {
+                project_vendor_d3d12ma,
+            }
+
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/d3d12',
+                phx_vendor_src_d3d12ma_dir,
+            }
+
+            postbuildcommands
+            {
+		        -- CopyFileCommand(path.getabsolute(DStorageLibrary.dlls), '%{cfg.buildtarget.directory}'),
+		        -- CopyFileCommand(path.getabsolute(DxcLibrary.dlls), '%{cfg.buildtarget.directory}'),
+		        -- CopyFileCommand(path.getabsolute(PixLibrary.dlls), '%{cfg.buildtarget.directory}'),
+
+                MakeDirCommand('%{cfg.buildtarget.directory}/D3D12/'),
+		        CopyFileCommand(path.getabsolute(AgilityLibrary.dlls), '%{cfg.buildtarget.directory}/D3D12/')
+            }
 group ""
 
 group '.Solution Generation'
