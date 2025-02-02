@@ -15,6 +15,7 @@ phx_vendor_src_imgui_dir    = phx_lib_vendor_directory.."/ImGui"
 phx_vendor_src_d3d12ma_dir  = phx_lib_vendor_directory.."/D3D12MA"
 phx_vendor_src_entt_dir     = phx_lib_vendor_directory.."/entt"
 phx_vendor_src_yaml_dir     = phx_lib_vendor_directory.."/yaml"
+phx_vendor_include_yaml_dir = phx_vendor_src_yaml_dir.."/include"
 
 workspace_directory         = '.workspace/'.._ACTION
 
@@ -524,6 +525,7 @@ group "Tools"
         {
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
+            phx_vendor_include_yaml_dir,
         }
 
         links
@@ -533,6 +535,7 @@ group "Tools"
             project_phx_renderer,
             project_phx_resource,
             project_vendor_imgui,
+            project_vendor_yaml,
         }
 
 group ""
