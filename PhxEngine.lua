@@ -8,6 +8,7 @@ phx_lib_vendor_directory    = "PhxLibs/vendor"
 phx_lib_src_core_dir        = phx_lib_src_directory.."/PhxCore"
 phx_lib_src_rhi_dir         = phx_lib_src_directory.."/PhxRhi"
 phx_lib_src_renderer_dir    = phx_lib_src_directory.."/PhxRenderer"
+phx_lib_src_resource_dir    = phx_lib_src_directory.."/PhxResource"
 
 phx_vendor_src_imgui_dir    = phx_lib_vendor_directory.."/ImGui"
 phx_vendor_src_d3d12ma_dir  = phx_lib_vendor_directory.."/D3D12MA"
@@ -29,7 +30,10 @@ rhi_backend_d3d12 = "D3D12"
 project_phx_core        = 'PhxCore'
 project_phx_renderer    = 'PhxRenderer'
 project_phx_rhi         = 'PhxRhi'
+project_phx_resource    = 'PhxResource'
+
 project_sandbox         = 'Sandbox'
+project_asset_packer    = 'PhxAssetPacker'
 
 project_vendor_imgui    = 'ImGui'
 project_vendor_d3d12ma  = 'D3D12MA'
@@ -378,7 +382,58 @@ group "PhxLibs"
                 phx_lib_src_rhi_dir..'/d3d12',
                 phx_vendor_src_d3d12ma_dir,
             }
+
+            kind('StaticLib')
+            pchheader('PhxRhi/PhxRhi_pch.h')
+            pchsource(phx_lib_src_rhi_dir..'/PhxRhi_pch.cpp')
+            
+            files 
+            {
+                phx_lib_src_rhi_dir.."/**.h",
+                phx_lib_src_rhi_dir.."/**.cpp",
+            }
     
+            includedirs
+            {
+                phx_lib_src_directory,
+                phx_lib_vendor_directory.."/spdlog/include",
+            }
+    
+            filter('platforms:'..clang_win64_d3d12)
+                defines { "PHX_RHI_D3D12" }
+                
+                excludes  { phx_lib_src_rhi_dir..'/vulkan/**' }
+    
+                files 
+                {
+                    phx_lib_src_rhi_dir.."/d3d12/**.h",
+                    phx_lib_src_rhi_dir.."/d3d12/**.cpp",
+                }
+                
+                AddLibraryIncludes(AgilityLibrary)
+    
+                includedirs
+                {
+                    phx_lib_src_rhi_dir..'/d3d12',
+                    phx_vendor_src_d3d12ma_dir,
+                }
+    
+        project(project_phx_resource)
+            kind('StaticLib')
+            pchheader('PhxResource/PhxResource_pch.h')
+            pchsource(phx_lib_src_resource_dir..'/PhxResource_pch.cpp')
+            
+            files 
+            {
+                phx_lib_src_resource_dir.."/**.h",
+                phx_lib_src_resource_dir.."/**.cpp",
+            }
+        
+            includedirs
+            {
+                phx_lib_src_directory,
+                phx_lib_vendor_directory.."/spdlog/include",
+            }
 group ""
 
 group "Misc"
@@ -404,6 +459,7 @@ group "Misc"
             project_phx_core,
             project_phx_rhi,
             project_phx_renderer,
+            project_phx_resource,
             project_vendor_imgui,
         }
         
@@ -444,6 +500,34 @@ group "Misc"
                 CopyFileCommand(path.getabsolute(AgilityLibrary.dlls[1]), '%{cfg.buildtarget.directory}/D3D12/'),
                 CopyFileCommand(path.getabsolute(AgilityLibrary.dlls[2]), '%{cfg.buildtarget.directory}/D3D12/'),
             }
+group ""
+
+group "Tools"
+
+    project(project_asset_packer)
+        kind "ConsoleApp"         -- Windows application (no console)
+
+        files 
+        {
+            "PhxAssetPacker/src/**.cpp",          -- Include all .cpp files in src/
+            "PhxAssetPacker/src/**.h",            -- Include all .h files in src/
+        }
+
+        includedirs 
+        {
+            phx_lib_src_directory,
+            phx_lib_vendor_directory.."/spdlog/include",
+        }
+
+        links
+        {
+            project_phx_core,
+            project_phx_rhi,
+            project_phx_renderer,
+            project_phx_resource,
+            project_vendor_imgui,
+        }
+
 group ""
 
 group '.Solution Generation'
