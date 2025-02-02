@@ -95,5 +95,6 @@
         "xtr1common": "cpp",
         "xtree": "cpp",
         "xutility": "cpp"
-    }
+    },
+    "cmake.sourceDirectory": "C:/Users/dipao/source/repos/Phoenix-Engine/Tools/PhxAssetConverter"
 }

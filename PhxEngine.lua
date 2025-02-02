@@ -13,7 +13,8 @@ phx_lib_src_editor_lib_dir  = phx_lib_src_directory.."/PhxEditor"
 
 phx_vendor_src_imgui_dir    = phx_lib_vendor_directory.."/ImGui"
 phx_vendor_src_d3d12ma_dir  = phx_lib_vendor_directory.."/D3D12MA"
-phx_vendor_src_entt_dir  = phx_lib_vendor_directory.."/entt"
+phx_vendor_src_entt_dir     = phx_lib_vendor_directory.."/entt"
+phx_vendor_src_yaml_dir     = phx_lib_vendor_directory.."/yaml"
 
 workspace_directory         = '.workspace/'.._ACTION
 
@@ -39,6 +40,7 @@ project_asset_packer    = 'PhxAssetPacker'
 
 project_vendor_imgui    = 'ImGui'
 project_vendor_d3d12ma  = 'D3D12MA'
+project_vendor_yaml     = 'yaml-cpp'
 
 -- Utility Functions
 function ExcludePlatformSpecificCode(rootPath)
@@ -298,6 +300,26 @@ group "Vendors"
         filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
 
         filter {}
+
+    project(project_vendor_yaml)
+        kind "StaticLib"
+        files
+        {
+            phx_vendor_src_yaml_dir.."/src/**.h",
+            phx_vendor_src_yaml_dir.."/src/**.cpp",
+            
+            phx_vendor_src_yaml_dir.."/include/**.h"
+        }
+    
+        includedirs
+        {
+            phx_vendor_src_yaml_dir.."/include"
+        }
+        
+        defines { "YAML_CPP_STATIC_DEFINE" }
+        filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+
+        filter {}
 group ""
 
 group "PhxLibs"
@@ -353,7 +375,7 @@ group "PhxLibs"
                 phx_lib_src_rhi_dir..'/d3d12',
                 phx_vendor_src_d3d12ma_dir,
             }
-
+        filter {}
     project(project_phx_renderer)
         kind('StaticLib')
         pchheader('PhxRenderer/PhxRenderer_pch.h')
@@ -385,40 +407,6 @@ group "PhxLibs"
                 phx_vendor_src_d3d12ma_dir,
             }
 
-            kind('StaticLib')
-            pchheader('PhxRhi/PhxRhi_pch.h')
-            pchsource(phx_lib_src_rhi_dir..'/PhxRhi_pch.cpp')
-            
-            files 
-            {
-                phx_lib_src_rhi_dir.."/**.h",
-                phx_lib_src_rhi_dir.."/**.cpp",
-            }
-    
-            includedirs
-            {
-                phx_lib_src_directory,
-                phx_lib_vendor_directory.."/spdlog/include",
-            }
-    
-            filter('platforms:'..clang_win64_d3d12)
-                defines { "PHX_RHI_D3D12" }
-                
-                excludes  { phx_lib_src_rhi_dir..'/vulkan/**' }
-    
-                files 
-                {
-                    phx_lib_src_rhi_dir.."/d3d12/**.h",
-                    phx_lib_src_rhi_dir.."/d3d12/**.cpp",
-                }
-                
-                AddLibraryIncludes(AgilityLibrary)
-    
-                includedirs
-                {
-                    phx_lib_src_rhi_dir..'/d3d12',
-                    phx_vendor_src_d3d12ma_dir,
-                }
     
     project(project_phx_resource)
         kind('StaticLib')
