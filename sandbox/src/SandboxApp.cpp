@@ -46,8 +46,6 @@ public:
 	{
 		m_imguiRenderer.BeginFrame();
 
-		ImGui::ShowDemoWindow();
-
 		rhi::CommandCtx* ctx = rhi::BeginCommnadCtx();
 		ctx->RenderPassBegin();
 		m_imguiRenderer.Render(ctx);
