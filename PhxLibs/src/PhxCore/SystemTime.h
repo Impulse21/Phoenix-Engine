@@ -35,47 +35,46 @@ namespace phx
 		static double sm_CpuTickDelta;
 	};
 
+	class CpuTimeStep
+	{
+	public:
+		CpuTimeStep(int64_t ticks = 0ll)
+			: m_ticks(ticks)
+		{
+		}
+
+		operator int64_t() const { return this->m_ticks; }
+
+		float GetSeconds() const { return SystemTime::TicksToSeconds(m_ticks); }
+		float GetMilliseconds() const { return SystemTime::TicksToMillisecs(m_ticks); }
+
+	private:
+		int64_t m_ticks = 0.0f;
+	};
 
 	class CpuTimer
 	{
 	public:
+		CpuTimer() 
+		 : m_timestamp(0ll)
+		{ 
+			Begin();
+		};
 
-		CpuTimer()
+		// Record a reference timestamp
+		inline void Begin()
 		{
-			m_StartTick = 0ll;
-			m_ElapsedTicks = 0ll;
+			this->m_timestamp = SystemTime::GetCurrentTick();
 		}
 
-		void Start()
+		// Elapsed time in milliseconds since the wi::Timer creation or last call to record()
+		inline CpuTimeStep Elapsed()
 		{
-			if (m_StartTick == 0ll)
-				m_StartTick = SystemTime::GetCurrentTick();
-		}
-
-		void Stop()
-		{
-			if (m_StartTick != 0ll)
-			{
-				m_ElapsedTicks += SystemTime::GetCurrentTick() - m_StartTick;
-				m_StartTick = 0ll;
-			}
-		}
-
-		void Reset()
-		{
-			m_ElapsedTicks = 0ll;
-			m_StartTick = 0ll;
-		}
-
-		double GetTime() const
-		{
-			return SystemTime::TicksToSeconds(m_ElapsedTicks);
+			auto timestamp2 = SystemTime::GetCurrentTick();
+			return CpuTimeStep(timestamp2 - m_timestamp);
 		}
 
 	private:
-
-		int64_t m_StartTick;
-		int64_t m_ElapsedTicks;
+		int64_t m_timestamp;
 	};
-
 }

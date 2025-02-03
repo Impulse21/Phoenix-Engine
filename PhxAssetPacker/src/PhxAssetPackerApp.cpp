@@ -2,6 +2,7 @@
 #include <PhxCore/CommandLineArgs.h>
 #include <PhxCore/Log.h>
 #include <PhxCore/VFS.h>
+#include <PhxCore/SystemTime.h>
 #include "PhxCore/ChunkFile.h"
 
 #include "TextureConverter.h"
@@ -163,11 +164,13 @@ int wmain(int argc, wchar_t** argv)
 			extraTextureFlags = static_cast<phx::TexConversionFlags>(extraTextureFlags | phx::kDefaultBC);
 		}
 
-#if false
 		uint32_t stagingBufferSize = 256_MiB;
 		std::filesystem::path outputPath(outputFilename);
 		outputPath.make_preferred();
-#endif
+
+		phx::CpuTimer timer;
+
+		PHX_INFO("Exporting Archive file '%s' took %f seconds", outputFilename, timer.Elapsed().GetSeconds());
 	}
 
     return 0;
