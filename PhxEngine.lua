@@ -515,16 +515,22 @@ group "Tools"
     project(project_asset_packer)
         kind "ConsoleApp"         -- Windows application (no console)
 
+        defines { "YAML_CPP_STATIC_DEFINE" }
+
         files 
         {
             "PhxAssetPacker/src/**.cpp",          -- Include all .cpp files in src/
             "PhxAssetPacker/src/**.h",            -- Include all .h files in src/
         }
 
+        AddLibraryIncludes(DStorageLibrary)
+        LinkLibrary(DStorageLibrary)
+        
         includedirs 
         {
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
+            phx_lib_vendor_directory.."/cgltf",
             phx_vendor_include_yaml_dir,
         }
 
