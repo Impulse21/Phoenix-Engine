@@ -347,4 +347,14 @@ namespace phx::VFS
 
         return result;
     }
+
+    std::string GetFileNameWithoutExt(std::string const& path)
+    {
+        return std::filesystem::path(path).stem().generic_string();
+    }
+
+    std::string GetFileExt(std::string const& path)
+    {
+        return std::filesystem::path(path).extension().generic_string();
+    }
 }

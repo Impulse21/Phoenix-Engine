@@ -17,6 +17,9 @@ phx_vendor_src_entt_dir     = phx_lib_vendor_directory.."/entt"
 phx_vendor_src_yaml_dir     = phx_lib_vendor_directory.."/yaml"
 phx_vendor_include_yaml_dir = phx_vendor_src_yaml_dir.."/include"
 
+phx_packer_vendor_dir       = "PhxAssetPacker/vendor"
+phx_packer_vendor_dx_tex    = phx_packer_vendor_dir..'/DirectXTex'
+
 workspace_directory         = '.workspace/'.._ACTION
 
 -- IDE Platform Names
@@ -514,7 +517,7 @@ group "Tools"
 
     project(project_asset_packer)
         kind "ConsoleApp"         -- Windows application (no console)
-
+        
         defines { "YAML_CPP_STATIC_DEFINE" }
 
         files 
@@ -524,6 +527,7 @@ group "Tools"
         }
 
         AddLibraryIncludes(DStorageLibrary)
+        AddLibraryIncludes(DirectXTexLibrary)
         LinkLibrary(DStorageLibrary)
         
         includedirs 
@@ -543,6 +547,15 @@ group "Tools"
             project_vendor_imgui,
             project_vendor_yaml,
         }
+        
+        libdirs(DirectXTexLibrary.libDirs)
+        filter { 'configurations:Debug' }
+            links(DirectXTexLibrary.libNames[2])
+
+        filter { 'configurations:Profiling or Final' }
+            links(DirectXTexLibrary.libNames[1])
+
+        filter{}
 
 group ""
 

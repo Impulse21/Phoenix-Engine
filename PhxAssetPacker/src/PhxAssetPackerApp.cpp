@@ -2,6 +2,9 @@
 #include <PhxCore/CommandLineArgs.h>
 #include <PhxCore/Log.h>
 #include <PhxCore/VFS.h>
+#include "PhxCore/ChunkFile.h"
+
+#include "TextureConverter.h"
 
 #include <wrl.h>
 #include <dstorage.h>
@@ -17,37 +20,6 @@ constexpr const char* kTestInput= R"(
 	output_file: "Sponza.phxpak"
 	compression: "GDeflate")";
 
-namespace phx
-{
-	enum class CompressionType : uint16_t
-	{
-		None = 0,
-		GDeflate = 1,
-	};
-	class IFileSystem;
-
-	enum TexConversionFlags
-	{
-		kSRGB = BIT(0),   // Texture contains sRGB colors
-		kPreserveAlpha = BIT(1),   // Keep four channels
-		kNormalMap = BIT(2),   // Texture contains normals
-		kBumpToNormal = BIT(3),   // Generate a normal map from a bump map
-		kDefaultBC = BIT(4),   // Apply standard block compression (BC1-5)
-		kQualityBC = BIT(5),   // Apply quality block compression (BC6H/7)
-		kFlipVertical = BIT(6),
-	};
-
-	inline uint8_t TextureOptions(bool sRGB, bool hasAlpha = false, bool invertY = false)
-	{
-		return (sRGB ? kSRGB : 0) | (hasAlpha ? kPreserveAlpha : 0) | (invertY ? kFlipVertical : 0);
-	}
-
-	namespace TextureCompiler
-	{
-		// std::unique_ptr<ScratchImage> BuildDDS(std::string const& filename, uint32_t flags);
-		void CompileOnDemand(IFileSystem& fs, std::string const& filename, uint32_t flags);
-	}
-}
 
 namespace
 {

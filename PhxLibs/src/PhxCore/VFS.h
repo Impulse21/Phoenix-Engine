@@ -58,5 +58,7 @@ namespace phx
 	namespace VFS
 	{
 		std::filesystem::path GetDirectoryWithExecutable();
+		std::string GetFileNameWithoutExt(std::string const& path);
+		std::string GetFileExt(std::string const& path);
 	}
 }
