@@ -19,12 +19,6 @@
 using namespace Microsoft::WRL;
 // "{ \"input\" : \"Main.1_Sponza\\NewSponza_Main_glTF_002.gltf\", \"output_file\": \"Sponza.phxarc", \"compression\" : \"GDeflate\" }"
 
-constexpr const char* kTestInput= R"(
-	input: "C:\Users\dipao\OneDrive\Documents\Art\main1_sponzas\NewSponza_Main_glTF_003.gltf"
-	output_file: "Sponza.phxpak"
-	compression: "GDeflate")";
-
-
 namespace
 {
 	constexpr const char* kInputTag = "input";
@@ -85,8 +79,7 @@ int wmain(int argc, wchar_t** argv)
     phx::CommandLineArgs::Initialize(argc, argv);
 	phx::ThreadPool::Initialize();
 
-    YAML::Node config = YAML::Load(kTestInput);
-
+	YAML::Node config = YAML::LoadFile("C:/Users/chris.dipaolo/Downloads/main1_sponza/config.yaml");
 	if (!config[kInputTag])
 	{
 		PHX_ERROR("Input is required");
@@ -109,16 +102,17 @@ int wmain(int argc, wchar_t** argv)
 		useGDeflate = compressionStr == "gdeflate";
 	}
 
-	PHX_INFO("Creating Phoenix Pack File '%s' from '%s'", outputFilename, gltfInput);
+	PHX_INFO("Creating Phoenix Pack File '{0}' from '{1}'", outputFilename, gltfInput);
 	std::filesystem::path gltfInputPath(gltfInput);
 	gltfInputPath.make_preferred();
-	std::unique_ptr<phx::IFileSystem> fs = phx::FileSystemFactory::CreateRelativeFileSystem(phx::FileSystemFactory::CreateNativeFileSystem(), gltfInputPath.parent_path());
+	std::shared_ptr<phx::IFileSystem> nativeFS = phx::FileSystemFactory::CreateNativeFileSystem();
+	std::unique_ptr<phx::IFileSystem> fs = phx::FileSystemFactory::CreateRelativeFileSystem(nativeFS, gltfInputPath.parent_path());
 
 	{
 		// Load GLF File into memory
 		CgltfContext context =
 		{
-			.FileSystem = fs.get(),
+			.FileSystem = nativeFS.get(),
 			.Blobs = {}
 		};
 
@@ -128,10 +122,10 @@ int wmain(int argc, wchar_t** argv)
 		options.file.user_data = &context;
 
 
-		std::unique_ptr<phx::IBlob> blob = fs->ReadFile(gltfInputPath);
+		std::unique_ptr<phx::IBlob> blob = nativeFS->ReadFile(gltfInputPath);
 		if (!blob)
 		{
-			PHX_ERROR("Couldn't Read file %s", gltfInput);
+			PHX_ERROR("Couldn't Read file {0}", gltfInput);
 			return false;
 		}
 
@@ -139,11 +133,23 @@ int wmain(int argc, wchar_t** argv)
 		cgltf_result res = cgltf_parse(&options, blob->Data(), blob->Size(), &gltfData);
 		if (res != cgltf_result_success)
 		{
-			PHX_ERROR("Couldn't load glTF file %s", gltfInput);
+			PHX_ERROR("Couldn't load glTF file {0}", gltfInput);
 			return false;
 		}
 
-		std::vector<phx::MeshData> meshData = phx::GltfMeshImporter::Import(gltfData);
+		res = cgltf_load_buffers(&options, gltfData, gltfInput.c_str());
+		if (res != cgltf_result_success)
+		{
+			PHX_ERROR("Couldn't load glTF Binary data {0}", gltfInput.c_str());
+			return false;
+		}
+
+		phx::CpuTimer timer;
+		std::vector<phx::MeshData> importedMeshes = phx::GltfMeshImporter::Import(gltfData);
+		PHX_INFO(
+			"Imported {0} Meshes in {1} ms",
+			importedMeshes.size(),
+			timer.Elapsed().GetMilliseconds());
 
 		if (useGDeflate)
 		{
@@ -175,10 +181,8 @@ int wmain(int argc, wchar_t** argv)
 		// uint32_t stagingBufferSize = 256_MiB;
 		std::filesystem::path outputPath(outputFilename);
 		outputPath.make_preferred();
-
-		phx::CpuTimer timer;
-		std::vector<phx::MeshData> importedMeshes = phx::GltfMeshImporter::Import(gltfData);
-		PHX_INFO("Exporting Archive file '%s' took %f seconds", outputFilename, timer.Elapsed().GetSeconds());
+		timer.Begin();
+		PHX_INFO("Exporting Archive file '{0}' took {1} seconds", outputFilename, timer.Elapsed().GetSeconds());
 	}
 
     return 0;

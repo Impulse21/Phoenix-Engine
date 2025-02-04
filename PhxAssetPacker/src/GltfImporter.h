@@ -53,7 +53,6 @@ namespace phx
 
 		std::vector<MeshData> Import();
 
-		void ProcessMesh(MeshData& meshData, cgltf_mesh const& cgltfMesh);
 	private:
 		cgltf_data* m_gltfData;
 	};
