@@ -6,6 +6,7 @@
 #include "PhxCore/ChunkFile.h"
 
 #include "TextureConverter.h"
+#include "GltfImporter.h"
 
 #include <wrl.h>
 #include <dstorage.h>
@@ -139,6 +140,8 @@ int wmain(int argc, wchar_t** argv)
 			return false;
 		}
 
+		std::vector<phx::MeshData> meshData = phx::GltfMeshImporter::Import(gltfData);
+
 		if (useGDeflate)
 		{
 			// Get the buffer compression interface for DSTORAGE_COMPRESSION_FORMAT_GDEFLATE
@@ -151,6 +154,8 @@ int wmain(int argc, wchar_t** argv)
 					IID_PPV_ARGS(&g_bufferCompression)));
 		}
 
+
+		cgltf_free(gltfData);
 
 		phx::CompressionType compression = phx::CompressionType::None;
 		if (useGDeflate)
