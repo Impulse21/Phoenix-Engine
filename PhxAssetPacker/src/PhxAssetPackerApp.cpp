@@ -14,6 +14,8 @@
 #include <cgltf.h>
 #include <yaml-cpp/yaml.h>
 
+#include "PhxCore/ThreadPool.h"
+
 using namespace Microsoft::WRL;
 // "{ \"input\" : \"Main.1_Sponza\\NewSponza_Main_glTF_002.gltf\", \"output_file\": \"Sponza.phxarc", \"compression\" : \"GDeflate\" }"
 
@@ -81,6 +83,7 @@ int wmain(int argc, wchar_t** argv)
 	}
 
     phx::CommandLineArgs::Initialize(argc, argv);
+	phx::ThreadPool::Initialize();
 
     YAML::Node config = YAML::Load(kTestInput);
 
@@ -169,12 +172,12 @@ int wmain(int argc, wchar_t** argv)
 			extraTextureFlags = static_cast<phx::TexConversionFlags>(extraTextureFlags | phx::kDefaultBC);
 		}
 
-		uint32_t stagingBufferSize = 256_MiB;
+		// uint32_t stagingBufferSize = 256_MiB;
 		std::filesystem::path outputPath(outputFilename);
 		outputPath.make_preferred();
 
 		phx::CpuTimer timer;
-
+		std::vector<phx::MeshData> importedMeshes = phx::GltfMeshImporter::Import(gltfData);
 		PHX_INFO("Exporting Archive file '%s' took %f seconds", outputFilename, timer.Elapsed().GetSeconds());
 	}
 

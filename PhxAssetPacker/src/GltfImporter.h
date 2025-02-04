@@ -5,6 +5,8 @@
 #include <vector>
 #include <DirectXMath.h>
 struct cgltf_data;
+struct cgltf_mesh;
+
 namespace phx
 {
 	struct MeshData
@@ -14,6 +16,7 @@ namespace phx
 		std::vector<DirectX::XMFLOAT4> Vertex_Tangents;
 		std::vector<DirectX::XMFLOAT2> Vertex_Uvset_0;
 		std::vector<DirectX::XMFLOAT2> Vertex_Uvset_1;
+#if false
 		std::vector<DirectX::XMUINT4> Vertex_Boneindices;
 		std::vector<DirectX::XMFLOAT4> Vertex_Boneweights;
 		std::vector<DirectX::XMUINT4> Vertex_Boneindices2;
@@ -21,6 +24,7 @@ namespace phx
 		std::vector<DirectX::XMFLOAT2> Vertex_Atlas;
 		std::vector<uint32_t> Vertex_Colors;
 		std::vector<uint8_t> Vertex_Windweights;
+#endif
 		std::vector<uint32_t> Indices;
 
 		struct GeometryData
@@ -49,6 +53,7 @@ namespace phx
 
 		std::vector<MeshData> Import();
 
+		void ProcessMesh(MeshData& meshData, cgltf_mesh const& cgltfMesh);
 	private:
 		cgltf_data* m_gltfData;
 	};
