@@ -59,16 +59,20 @@ namespace phx
 			return Data.Get()[index];
 		}
 	};
+
 	/*
 			+----------------------+  <--- Start of File
 			|   File Header        |  (Fixed Size)
 			|----------------------|
 			|  Chunk Table (N)     |  (List of ChunkHeaders)
 			|----------------------|
-			|  Chunk Data          |  (Raw Chunk Data)
+			|  Chunk Region (1)    |  (Raw Chunk Data)
+			|----------------------|
+			|  Chunk Region (1-n)  |
+			|----------------------|
+			|  Chunk Region (n)    |
 			+----------------------+
 	*/
-
 	struct ChunkFileHeader
 	{
 		uint32_t Magic;
