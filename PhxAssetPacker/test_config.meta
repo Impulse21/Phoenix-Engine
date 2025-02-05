@@ -1,0 +1,4 @@
+input: 'C:/Users/dipao/Documents/Sponza/Main.1_Sponza/NewSponza_Main_glTF_003.gltf'
+output_file: 'Sponza.phxarc'
+compression: 'GDeflate'
+pack_file: true

@@ -44,8 +44,6 @@ namespace phx
 			this->m_computedHash = Calculate(s.data(), s.size());
 		}
 
-		StringHash(const StringHash& other) = default;
-
 		StringHash()
 			: m_computedHash(0) {}
 

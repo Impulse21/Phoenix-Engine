@@ -79,7 +79,7 @@ int wmain(int argc, wchar_t** argv)
     phx::CommandLineArgs::Initialize(argc, argv);
 	phx::ThreadPool::Initialize();
 
-	YAML::Node config = YAML::LoadFile("C:/Users/chris.dipaolo/Downloads/main1_sponza/config.yaml");
+	YAML::Node config = YAML::LoadFile("../../PhxAssetPacker/test_config.meta");
 	if (!config[kInputTag])
 	{
 		PHX_ERROR("Input is required");

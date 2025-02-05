@@ -26,6 +26,11 @@ namespace phx
 			return static_cast<double>(tickCount) * sm_CpuTickDelta * 1000.0;
 		}
 
+		static inline double TicksToNanosecs(int64_t tickCount)
+		{
+			return static_cast<double>(tickCount) * sm_CpuTickDelta * 1000.0;
+		}
+
 		static inline double TimeBetweenTicks(int64_t tick1, int64_t tick2)
 		{
 			return TicksToSeconds(tick2 - tick1);
@@ -45,8 +50,9 @@ namespace phx
 
 		operator int64_t() const { return this->m_ticks; }
 
-		float GetSeconds() const { return SystemTime::TicksToSeconds(m_ticks); }
-		float GetMilliseconds() const { return SystemTime::TicksToMillisecs(m_ticks); }
+		double GetSeconds() const { return SystemTime::TicksToSeconds(m_ticks); }
+		double GetMilliseconds() const { return SystemTime::TicksToMillisecs(m_ticks); }
+		double GetNanoseconds() const { return SystemTime::TicksToMillisecs(m_ticks); }
 
 	private:
 		int64_t m_ticks = 0.0f;

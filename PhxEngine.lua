@@ -529,6 +529,7 @@ group "Tools"
         AddLibraryIncludes(DStorageLibrary)
         AddLibraryIncludes(DirectXTexLibrary)
         LinkLibrary(DStorageLibrary)
+        libdirs(DirectXTexLibrary.libDirs)
         
         includedirs 
         {
@@ -548,7 +549,12 @@ group "Tools"
             project_vendor_yaml,
         }
         
-        libdirs(DirectXTexLibrary.libDirs)
+        postbuildcommands
+        {
+            CopyFileCommand(path.getabsolute(DStorageLibrary.dlls[1]), '%{cfg.buildtarget.directory}'),
+            CopyFileCommand(path.getabsolute(DStorageLibrary.dlls[2]), '%{cfg.buildtarget.directory}'),
+        }
+        
         filter { 'configurations:Debug' }
             links(DirectXTexLibrary.libNames[2])
 
