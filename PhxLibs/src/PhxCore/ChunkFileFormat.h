@@ -1,5 +1,6 @@
 #pragma once
 
+
 namespace phx
 {
 	constexpr uint32_t MakeMagicNum(char a, char b, char c, char d)
@@ -28,6 +29,19 @@ namespace phx
 	};
 
 	//
+	// A pointer/offset.  On disk, this is an offset relative to the containing
+	// region (or the start of the file if this Ptr is stored in the header.)
+	// After the data has been loaded, the offsets are fixed up and converted
+	// into typed pointers.
+	//
+	template<typename T>
+	union Ptr
+	{
+		uint32_t Offset;
+		T* Ptr;
+	};
+
+	//
 	// An array - stored as a Ptr, with overloaded array access operators.
 	//
 	template<typename T>
@@ -45,42 +59,41 @@ namespace phx
 			return Data.Get()[index];
 		}
 	};
-	
-	struct Chunk
+	/*
+			+----------------------+  <--- Start of File
+			|   File Header        |  (Fixed Size)
+			|----------------------|
+			|  Chunk Table (N)     |  (List of ChunkHeaders)
+			|----------------------|
+			|  Chunk Data          |  (Raw Chunk Data)
+			+----------------------+
+	*/
+
+	struct ChunkFileHeader
 	{
-		CompressionType Compression = CompressionType::None;
-		uint64_t Offset = 0u;
-		uint32_t CompressedSize = 0u;
-		uint32_t UncompressedSize = 0u;
+		uint32_t Magic;
+		uint32_t Version;
+		uint64_t BuildNumber;
+		uint32_t ChunkCount;
+		uint32_t _Pading;
 	};
 
-	struct DependencyEntry
+	struct ChunkHeader
 	{
-		char PathOrHash[256]; // File path or unique hash
+		uint32_t ChunkID;
+		CompressionType Compression;
+		uint8_t _Padding;
+		uint32_t Offset; // (on disk this is compressed, in memory it is uncompressed)
+		uint32_t CompressedSize;
+		uint32_t UncompressedSize;
 	};
 
-	struct DependencyList
+
+	class ChunkFile
 	{
-		uint64_t DependencyCount;
-		Array<DependencyEntry> Dependencies;
+	public:
+		ChunkFile() = default;
 	};
-
-	namespace MeshFileFormat
-	{
-		constexpr uint16_t cCurrentVersion = 1u;
-		struct Header
-		{
-
-			uint32_t MagicNumber = MakeMagicNum('P', 'M', 'S', 'H');
-			uint16_t Version = cCurrentVersion;
-
-			Chunk Dependencies;
-			Chunk Metadata;
-			Chunk CpuData;
-			Chunk GpuData;
-
-		};
-	}
 }
 
 #if false

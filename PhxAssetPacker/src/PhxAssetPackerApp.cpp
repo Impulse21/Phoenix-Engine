@@ -3,7 +3,7 @@
 #include <PhxCore/Log.h>
 #include <PhxCore/VFS.h>
 #include <PhxCore/SystemTime.h>
-#include "PhxCore/ChunkFile.h"
+#include "PhxCore/ChunkFileFormat.h"
 
 #include "TextureConverter.h"
 #include "GltfImporter.h"
@@ -182,6 +182,7 @@ int wmain(int argc, wchar_t** argv)
 		std::filesystem::path outputPath(outputFilename);
 		outputPath.make_preferred();
 		timer.Begin();
+
 		PHX_INFO("Exporting Archive file '{0}' took {1} seconds", outputFilename, timer.Elapsed().GetSeconds());
 	}
 
