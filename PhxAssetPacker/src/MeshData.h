@@ -1,5 +1,6 @@
 #pragma once
 
+#include <PhxCore/ChunkFileFormat.h>
 #include <PhxCore/StringHash.h>
 #include <vector>
 #include <DirectXMath.h>
@@ -36,8 +37,8 @@ namespace phx
 
 	};
 
-	namespace GpuDataBuilder
+	namespace MeshBuilder
 	{
-		std::vector<uint8_t> BuildMeshGpuData(MeshData const& data);
+		std::vector<uint8_t> Build(MeshData const& data, std::vector<C);
 	}
 }
