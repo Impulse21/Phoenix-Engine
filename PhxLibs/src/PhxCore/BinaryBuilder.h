@@ -6,10 +6,9 @@
 
 namespace phx
 {
+	using OffsetHandle = size_t;
 	class BinaryBuilder
 	{
-	public:
-		using OffsetHandle = size_t;
 	public:
 
 		OffsetHandle Reserve(size_t sizeInBytes, size_t alignment = 1)

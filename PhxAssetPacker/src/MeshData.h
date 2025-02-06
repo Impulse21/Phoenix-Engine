@@ -1,7 +1,8 @@
 #pragma once
 
-#include <PhxCore/ChunkFileFormat.h>
 #include <PhxCore/StringHash.h>
+#include "PhxRenderer/MeshResource.h"
+
 #include <vector>
 #include <DirectXMath.h>
 #include <string>
@@ -27,6 +28,8 @@ namespace phx
 #endif
 		std::vector<uint32_t> Indices;
 
+
+		std::vector<uint8_t> GpuBufferData;
 		struct GeometryData
 		{
 			phx::StringHash MaterialId = {};
@@ -35,10 +38,82 @@ namespace phx
 		};
 		std::vector<GeometryData> Geometry;
 
-	};
+		std::vector<uint8_t> Compile()
+		{
 
-	namespace MeshBuilder
-	{
-		std::vector<uint8_t> Build(MeshData const& data, std::vector<C);
-	}
+			BinaryBuilder vertexBufferBuilder;
+			auto headerOfset = vertexBufferBuilder.Reserve<VertexStreamsHeader>();
+			std::array<size_t, kNumStreams> streamOffsets = {};
+
+			streamOffsets[kPosition] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT3>(vertexCount);
+			streamOffsets[kNormals] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT3>(vertexCount);
+			if (texcoord0)
+			{
+				streamOffsets[kUV0] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT2>(vertexCount);
+			}
+			if (texcoord1)
+			{
+				streamOffsets[kUV1] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT2>(vertexCount);
+			}
+			if (tangent)
+			{
+				streamOffsets[kTangents] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT4>(vertexCount);
+			}
+			if (color)
+			{
+				streamOffsets[kColour] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT3>(vertexCount);
+			}
+			if (joints && weights)
+			{
+				streamOffsets[kJoints] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT4>(vertexCount);
+
+				streamOffsets[kWeights] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT4>(vertexCount);
+			}
+
+			vertexBufferBuilder.Commit();
+			auto* header = vertexBufferBuilder.Place<VertexStreamsHeader>(headerOfset);
+
+			auto SetStreamDesc = [header, &streamOffsets](VertexStreamTypes type, size_t stride) {
+				header->Desc[type].SetOffset((uint)streamOffsets[type]);
+				header->Desc[type].SetStride((uint)stride);
+				};
+
+			SetStreamDesc(kPosition, sizeof(DirectX::XMFLOAT3));
+			SetStreamDesc(kNormals, sizeof(DirectX::XMFLOAT3));
+			SetStreamDesc(kUV0, sizeof(DirectX::XMFLOAT2));
+			SetStreamDesc(kUV1, sizeof(DirectX::XMFLOAT2));
+			SetStreamDesc(kTangents, sizeof(DirectX::XMFLOAT4));
+			SetStreamDesc(kColour, sizeof(DirectX::XMFLOAT3));
+			SetStreamDesc(kJoints, sizeof(DirectX::XMFLOAT4));
+			SetStreamDesc(kWeights, sizeof(DirectX::XMFLOAT4));
+
+			// fill data
+			FillVertexBuffer<DirectX::XMFLOAT3>(vertexBufferBuilder, streamOffsets[kPosition], positions.get(), vertexCount);
+			FillVertexBuffer<DirectX::XMFLOAT3>(vertexBufferBuilder, streamOffsets[kNormals], normal.get(), vertexCount);
+			FillVertexBuffer<DirectX::XMFLOAT2>(vertexBufferBuilder, streamOffsets[kUV0], texcoord0.get(), vertexCount);
+			FillVertexBuffer<DirectX::XMFLOAT2>(vertexBufferBuilder, streamOffsets[kUV1], texcoord1.get(), vertexCount);
+			FillVertexBuffer<DirectX::XMFLOAT4>(vertexBufferBuilder, streamOffsets[kTangents], tangent.get(), vertexCount);
+			FillVertexBuffer<DirectX::XMFLOAT3>(vertexBufferBuilder, streamOffsets[kColour], color.get(), vertexCount);
+			FillVertexBuffer<DirectX::XMFLOAT4>(vertexBufferBuilder, streamOffsets[kJoints], joints.get(), vertexCount);
+			FillVertexBuffer<DirectX::XMFLOAT4>(vertexBufferBuilder, streamOffsets[kWeights], weights.get(), vertexCount);
+
+			outPrim.NumVertices = (uint32_t)vertexCount;
+			outPrim.VertexBufferSize = (uint32_t)vertexBufferBuilder.Size();
+			outPrim.VertexBuffer = vertexBufferBuilder.GetMemory();
+		}
+
+	private:
+		template<typename T>
+		void FillVertexBuffer(BinaryBuilder& builder, size_t offset, T* src, size_t count)
+		{
+			if (!src)
+				return;
+
+			auto* data = builder.Place<T>(offset, count);
+			std::memcpy(
+				data,
+				src,
+				sizeof(T) * count);
+		}
+	};
 }
