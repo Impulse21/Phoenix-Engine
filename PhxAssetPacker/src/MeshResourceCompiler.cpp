@@ -13,14 +13,14 @@ namespace
 	template<typename T>
 	void FillVertexBuffer(BinaryBuilder& builder, OffsetHandle offset, Span<T> srcData)
 	{
-		if (!src)
+		if (srcData.IsEmpty())
 			return;
 
-		auto* data = builder.Place<T>(offset, count);
+		auto* data = builder.Place<T>(offset, srcData.Size());
 		std::memcpy(
 			data,
-			src,
-			sizeof(T) * count);
+			srcData.data(),
+			sizeof(T) * srcData.Size());
 	}
 }
 void phx::MeshResourceCompiler::Compile()
@@ -88,12 +88,16 @@ std::vector<uint8_t> phx::MeshResourceCompiler::BuildVertexBuffer()
 	FillStreamDesc(kWeights, sizeof(DirectX::XMFLOAT4));
 
 
-	FillVertexBuffer<DirectX::XMFLOAT3>(vbBuilder, streamOffsets[kPosition], positions.get(), vertexCount);
-	FillVertexBuffer<DirectX::XMFLOAT3>(vbBuilder, streamOffsets[kNormals], m_meshData.Vertex_Normals.data(), m_meshData.Vertex_Normals.size());
-	FillVertexBuffer<DirectX::XMFLOAT2>(vbBuilder, streamOffsets[kUV0], texcoord0.get(), vertexCount);
-	FillVertexBuffer<DirectX::XMFLOAT2>(vbBuilder, streamOffsets[kUV1], texcoord1.get(), vertexCount);
-	FillVertexBuffer<DirectX::XMFLOAT4>(vbBuilder, streamOffsets[kTangents], tangent.get(), vertexCount);
-	FillVertexBuffer<DirectX::XMFLOAT3>(vbBuilder, streamOffsets[kColour], color.get(), vertexCount);
+	FillVertexBuffer<DirectX::XMFLOAT3>(vbBuilder, streamOffsets[kPosition], m_meshData.Vertex_Positions);
+	FillVertexBuffer<DirectX::XMFLOAT3>(vbBuilder, streamOffsets[kNormals], m_meshData.Vertex_Normals);
+	FillVertexBuffer<DirectX::XMFLOAT2>(vbBuilder, streamOffsets[kUV0], m_meshData.Vertex_Uvset_0);
+	FillVertexBuffer<DirectX::XMFLOAT2>(vbBuilder, streamOffsets[kUV1], m_meshData.Vertex_Uvset_1);
+	FillVertexBuffer<DirectX::XMFLOAT4>(vbBuilder, streamOffsets[kTangents], m_meshData.Vertex_Tangents);
+#if false
+	FillVertexBuffer<DirectX::XMFLOAT3>(vbBuilder, streamOffsets[kColour], m_meshData.Vertex_Tangents);
 	FillVertexBuffer<DirectX::XMFLOAT4>(vbBuilder, streamOffsets[kJoints], joints.get(), vertexCount);
 	FillVertexBuffer<DirectX::XMFLOAT4>(vbBuilder, streamOffsets[kWeights], weights.get(), vertexCount);
+#endif
+
+	return vbBuilder.GetMemory();
 }
