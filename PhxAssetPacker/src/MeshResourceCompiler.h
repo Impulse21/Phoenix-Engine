@@ -9,7 +9,7 @@
 
 namespace phx
 {
-	struct MeshData
+	struct MeshData final
 	{
 		std::string Name;
 		std::vector<DirectX::XMFLOAT3> Vertex_Positions;
@@ -115,5 +115,36 @@ namespace phx
 				src,
 				sizeof(T) * count);
 		}
+	};
+
+	struct CompiledMeshResource final
+	{
+		phx::renderer::MeshCpuMetadata Metadata;
+		std::vector<uint8_t> GpuData;
+	};
+
+	class MeshResourceCompiler final
+	{
+	public:
+		static void Compile(MeshData const& meshData, CompiledMeshResource& outCompiledMesh)
+		{
+			MeshResourceCompiler resourceCompiler(meshData, outCompiledMesh);
+			resourceCompiler.Compile();
+		}
+
+	private:
+		MeshResourceCompiler(MeshData const& meshData, CompiledMeshResource& outCompiledMesh)
+			: m_meshData(meshData)
+			, m_outCompiledMesh(outCompiledMesh)
+		{
+		}
+
+		void Compile();
+
+		std::vector<uint8_t> BuildVertexBuffer();
+
+	private:
+		const MeshData& m_meshData;
+		CompiledMeshResource& m_outCompiledMesh;
 	};
 }

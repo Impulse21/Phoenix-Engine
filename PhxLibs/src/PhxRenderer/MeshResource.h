@@ -1,11 +1,9 @@
 #pragma once
 
+#include "PhxRenderer/shaders/ShaderInterop.h"
+
 namespace phx::renderer
 {
-	struct VertexBufferHeader
-	{
-
-	};
 	struct MeshCpuMetadata
 	{
 		float Bounds[4];

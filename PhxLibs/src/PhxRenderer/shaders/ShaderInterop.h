@@ -24,6 +24,7 @@ using uint4 = DirectX::XMUINT4;
 using int2 = DirectX::XMINT2;
 using int3 = DirectX::XMINT3;
 using int4 = DirectX::XMINT4;
+
 namespace phx::renderer
 {
 #endif
