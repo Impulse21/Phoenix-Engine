@@ -45,30 +45,6 @@ namespace phx
 			auto headerOfset = vertexBufferBuilder.Reserve<VertexStreamsHeader>();
 			std::array<size_t, kNumStreams> streamOffsets = {};
 
-			streamOffsets[kPosition] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT3>(vertexCount);
-			streamOffsets[kNormals] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT3>(vertexCount);
-			if (texcoord0)
-			{
-				streamOffsets[kUV0] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT2>(vertexCount);
-			}
-			if (texcoord1)
-			{
-				streamOffsets[kUV1] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT2>(vertexCount);
-			}
-			if (tangent)
-			{
-				streamOffsets[kTangents] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT4>(vertexCount);
-			}
-			if (color)
-			{
-				streamOffsets[kColour] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT3>(vertexCount);
-			}
-			if (joints && weights)
-			{
-				streamOffsets[kJoints] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT4>(vertexCount);
-
-				streamOffsets[kWeights] = vertexBufferBuilder.Reserve<DirectX::XMFLOAT4>(vertexCount);
-			}
 
 			vertexBufferBuilder.Commit();
 			auto* header = vertexBufferBuilder.Place<VertexStreamsHeader>(headerOfset);
@@ -103,18 +79,6 @@ namespace phx
 		}
 
 	private:
-		template<typename T>
-		void FillVertexBuffer(BinaryBuilder& builder, size_t offset, T* src, size_t count)
-		{
-			if (!src)
-				return;
-
-			auto* data = builder.Place<T>(offset, count);
-			std::memcpy(
-				data,
-				src,
-				sizeof(T) * count);
-		}
 	};
 
 	struct CompiledMeshResource final
