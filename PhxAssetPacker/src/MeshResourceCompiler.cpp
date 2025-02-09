@@ -1,6 +1,7 @@
 #include "MeshResourceCompiler.h"
 
 #include "PhxCore/Span.h"
+#include "PhxRhi/RHITypes.h"
 
 #include "PhxCore/BinaryBuilder.h"
 #include <DirectXMath.h>
@@ -27,13 +28,27 @@ void phx::MeshResourceCompiler::Compile()
 {
 	std::memset(&m_outCompiledMesh, 0, sizeof(CompiledMeshResource));
 
-	std::vector<uint8_t> vertexBuffer = BuildVertexBuffer();
-	BinaryBuilder GpuBufferBuilder;
-
+	renderer::MeshCpuMetadata& metadata = m_outCompiledMesh.Metadata;
+	metadata.IbOffset = 0;
+	metadata.IbFormat = static_cast<uint8_t>(rhi::Format::R32_UINT);
 	
+	// set index data
+	std::vector<uint8_t>& gpuData = m_outCompiledMesh.GpuData;
+	gpuData.resize(m_meshData.Indices.size() * sizeof(uint32_t));
+
+	metadata.VbOffset = gpuData.size();
+	memcpy(
+		gpuData.data(),
+		m_meshData.Indices.data(),
+		m_meshData.Indices.size() * sizeof(uint32_t));
+
+
+	BuildVertexBuffer(gpuData);	
+
+	// Set up draw calls
 }
 
-std::vector<uint8_t> phx::MeshResourceCompiler::BuildVertexBuffer()
+void phx::MeshResourceCompiler::BuildVertexBuffer(std::vector<uint8_t>& gpuBuffer)
 {
 	// TODO: I think this can be written in a more eligent way
 	// such that it's easier to expand to new stream enums without needing to manually
@@ -99,5 +114,14 @@ std::vector<uint8_t> phx::MeshResourceCompiler::BuildVertexBuffer()
 	FillVertexBuffer<DirectX::XMFLOAT4>(vbBuilder, streamOffsets[kWeights], weights.get(), vertexCount);
 #endif
 
-	return vbBuilder.GetMemory();
+	phx::Span<uint8_t> memory = vbBuilder.GetMemory();
+	m_outCompiledMesh.Metadata.VbSize = memory.size();
+
+	const size_t vbOffset = gpuBuffer.size();
+	gpuBuffer.resize(vbOffset + memory.size());
+	
+	memcpy(
+		gpuBuffer.data() + vbOffset,
+		memory.data(),
+		memory.size());
 }

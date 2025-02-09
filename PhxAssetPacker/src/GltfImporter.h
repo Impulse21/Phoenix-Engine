@@ -2,7 +2,8 @@
 
 #include <memory>
 
-#include "MeshData.h"
+#include "MeshResourceCompiler.h"
+
 struct cgltf_data;
 struct cgltf_mesh;
 

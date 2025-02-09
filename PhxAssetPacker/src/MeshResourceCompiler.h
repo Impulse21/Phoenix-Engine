@@ -38,46 +38,6 @@ namespace phx
 		};
 		std::vector<GeometryData> Geometry;
 
-		std::vector<uint8_t> Compile()
-		{
-
-			BinaryBuilder vertexBufferBuilder;
-			auto headerOfset = vertexBufferBuilder.Reserve<VertexStreamsHeader>();
-			std::array<size_t, kNumStreams> streamOffsets = {};
-
-
-			vertexBufferBuilder.Commit();
-			auto* header = vertexBufferBuilder.Place<VertexStreamsHeader>(headerOfset);
-
-			auto SetStreamDesc = [header, &streamOffsets](VertexStreamTypes type, size_t stride) {
-				header->Desc[type].SetOffset((uint)streamOffsets[type]);
-				header->Desc[type].SetStride((uint)stride);
-				};
-
-			SetStreamDesc(kPosition, sizeof(DirectX::XMFLOAT3));
-			SetStreamDesc(kNormals, sizeof(DirectX::XMFLOAT3));
-			SetStreamDesc(kUV0, sizeof(DirectX::XMFLOAT2));
-			SetStreamDesc(kUV1, sizeof(DirectX::XMFLOAT2));
-			SetStreamDesc(kTangents, sizeof(DirectX::XMFLOAT4));
-			SetStreamDesc(kColour, sizeof(DirectX::XMFLOAT3));
-			SetStreamDesc(kJoints, sizeof(DirectX::XMFLOAT4));
-			SetStreamDesc(kWeights, sizeof(DirectX::XMFLOAT4));
-
-			// fill data
-			FillVertexBuffer<DirectX::XMFLOAT3>(vertexBufferBuilder, streamOffsets[kPosition], positions.get(), vertexCount);
-			FillVertexBuffer<DirectX::XMFLOAT3>(vertexBufferBuilder, streamOffsets[kNormals], normal.get(), vertexCount);
-			FillVertexBuffer<DirectX::XMFLOAT2>(vertexBufferBuilder, streamOffsets[kUV0], texcoord0.get(), vertexCount);
-			FillVertexBuffer<DirectX::XMFLOAT2>(vertexBufferBuilder, streamOffsets[kUV1], texcoord1.get(), vertexCount);
-			FillVertexBuffer<DirectX::XMFLOAT4>(vertexBufferBuilder, streamOffsets[kTangents], tangent.get(), vertexCount);
-			FillVertexBuffer<DirectX::XMFLOAT3>(vertexBufferBuilder, streamOffsets[kColour], color.get(), vertexCount);
-			FillVertexBuffer<DirectX::XMFLOAT4>(vertexBufferBuilder, streamOffsets[kJoints], joints.get(), vertexCount);
-			FillVertexBuffer<DirectX::XMFLOAT4>(vertexBufferBuilder, streamOffsets[kWeights], weights.get(), vertexCount);
-
-			outPrim.NumVertices = (uint32_t)vertexCount;
-			outPrim.VertexBufferSize = (uint32_t)vertexBufferBuilder.Size();
-			outPrim.VertexBuffer = vertexBufferBuilder.GetMemory();
-		}
-
 	private:
 	};
 
@@ -105,7 +65,7 @@ namespace phx
 
 		void Compile();
 
-		std::vector<uint8_t> BuildVertexBuffer();
+		void BuildVertexBuffer(std::vector<uint8_t>& gpuBuffer);
 
 	private:
 		const MeshData& m_meshData;

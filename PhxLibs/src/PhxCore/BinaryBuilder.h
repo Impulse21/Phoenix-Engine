@@ -10,7 +10,6 @@ namespace phx
 	class BinaryBuilder
 	{
 	public:
-
 		OffsetHandle Reserve(size_t sizeInBytes, size_t alignment = 1)
 		{
 			uint32_t offset = MemoryAlign(m_totalSize, alignment);
