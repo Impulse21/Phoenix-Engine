@@ -15,9 +15,9 @@ namespace phx::renderer
 		uint16_t NumDraws;
 		struct DrawInfo
 		{
-			uint32_t PrimCount;
-			uint32_t StartIndex;
 			uint32_t IndexCount;
+			uint32_t StartIndex;
+			uint32_t BaseVertex;
 		};
 		DrawInfo Draw[1];
 	};

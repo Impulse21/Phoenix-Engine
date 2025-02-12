@@ -3,7 +3,7 @@
 #include <PhxCore/Log.h>
 #include <PhxCore/VFS.h>
 #include <PhxCore/SystemTime.h>
-#include "PhxCore/ChunkFileFormat.h"
+#include "PhxCore/IO/ChunkFile.h"
 
 #include "TextureConverter.h"
 #include "GltfImporter.h"

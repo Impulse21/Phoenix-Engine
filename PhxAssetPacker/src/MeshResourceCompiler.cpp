@@ -17,7 +17,7 @@ namespace
 		if (srcData.IsEmpty())
 			return;
 
-		auto* data = builder.Place<T>(offset, srcData.Size());
+		auto* data = builder.Place(offset);
 		std::memcpy(
 			data,
 			srcData.data(),
@@ -31,12 +31,14 @@ void phx::MeshResourceCompiler::Compile()
 	renderer::MeshCpuMetadata& metadata = m_outCompiledMesh.Metadata;
 	metadata.IbOffset = 0;
 	metadata.IbFormat = static_cast<uint8_t>(rhi::Format::R32_UINT);
-	
+	metadata.IbSize = m_meshData.Indices.size();
+
 	// set index data
 	std::vector<uint8_t>& gpuData = m_outCompiledMesh.GpuData;
 	gpuData.resize(m_meshData.Indices.size() * sizeof(uint32_t));
 
-	metadata.VbOffset = gpuData.size();
+	metadata.VbOffset = 0;
+	metadata.VbSize = gpuData.size();
 	memcpy(
 		gpuData.data(),
 		m_meshData.Indices.data(),
@@ -46,6 +48,17 @@ void phx::MeshResourceCompiler::Compile()
 	BuildVertexBuffer(gpuData);	
 
 	// Set up draw calls
+	m_outCompiledMesh.Metadata.NumDraws = m_meshData.Geometry.size();
+	m_outCompiledMesh.Draws.resize(m_meshData.Geometry.size());
+	for (size_t i = 0; i < m_meshData.Geometry.size(); i++)
+	{
+		const MeshData::GeometryData& geometry = m_meshData.Geometry[i];
+		MeshCpuMetadata::DrawInfo& drawInfo = m_outCompiledMesh.Draws[i];
+		drawInfo.IndexCount = geometry.IndexCount;
+		drawInfo.StartIndex = geometry.IndexOffset;
+		drawInfo.BaseVertex = 0;
+	}
+
 }
 
 void phx::MeshResourceCompiler::BuildVertexBuffer(std::vector<uint8_t>& gpuBuffer)

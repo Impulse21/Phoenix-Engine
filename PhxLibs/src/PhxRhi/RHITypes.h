@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "PhxCore/Base.h"
 #include "PhxCore/Span.h"
 #include "PhxCore/EnumUtils.h"
 

@@ -45,6 +45,7 @@ namespace phx
 	{
 		phx::renderer::MeshCpuMetadata Metadata;
 		std::vector<uint8_t> GpuData;
+		std::vector<phx::renderer::MeshCpuMetadata::DrawInfo> Draws;
 	};
 
 	class MeshResourceCompiler final
