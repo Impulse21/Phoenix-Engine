@@ -3,7 +3,9 @@
 #include <PhxCore/Log.h>
 #include <PhxCore/VFS.h>
 #include <PhxCore/SystemTime.h>
-#include "PhxCore/IO/ChunkFile.h"
+#include <PhxCore/IO/ChunkFile.h>
+#include <PhxCore/IO/PakFile.h>
+#include <PhxCore/BinaryBuilder.h>
 
 #include "TextureConverter.h"
 #include "GltfImporter.h"
@@ -16,6 +18,7 @@
 
 #include "PhxCore/ThreadPool.h"
 
+using namespace phx;
 using namespace Microsoft::WRL;
 // "{ \"input\" : \"Main.1_Sponza\\NewSponza_Main_glTF_002.gltf\", \"output_file\": \"Sponza.phxarc", \"compression\" : \"GDeflate\" }"
 
@@ -183,6 +186,12 @@ int wmain(int argc, wchar_t** argv)
 		outputPath.make_preferred();
 		timer.Begin();
 
+
+		BinaryBuilder packFile;
+		OffsetHandle headerOffset = packFile.Reserve<PakFileFormat::Header>();
+		OffsetHandle assetEntries = packFile.Reserve<PakFileFormat::AssetEntry>(importedMeshes.size());
+		// Write out Chunk Data
+		// Calculate entry Offsets?
 		PHX_INFO("Exporting Archive file '{0}' took {1} seconds", outputFilename, timer.Elapsed().GetSeconds());
 	}
 
