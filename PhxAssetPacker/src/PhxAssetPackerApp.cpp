@@ -186,10 +186,23 @@ int wmain(int argc, wchar_t** argv)
 		outputPath.make_preferred();
 		timer.Begin();
 
+		std::vector<CompiledMeshResource> meshChunkFiles(importedMeshes.size());
+		for (size_t i = 0; i < meshChunkFiles.size(); i++)
+		{
+			CompiledMeshResource& blob = meshChunkFiles[i];
+			const MeshData& meshData = importedMeshes[i];
 
-		BinaryBuilder packFile;
-		OffsetHandle headerOffset = packFile.Reserve<PakFileFormat::Header>();
-		OffsetHandle assetEntries = packFile.Reserve<PakFileFormat::AssetEntry>(importedMeshes.size());
+			ThreadPool::SubmitTask([meshData, &blob]() {
+				MeshResourceCompiler::Compile(meshData, blob);
+			});
+		}
+		PHX_INFO(
+			"Compiled {0} Mesh Chunk files in {1} ms",
+			meshChunkFiles.size(),
+			timer.Elapsed().GetMilliseconds());
+
+
+		// Write out mesh Chunk Files
 		// Write out Chunk Data
 		// Calculate entry Offsets?
 		PHX_INFO("Exporting Archive file '{0}' took {1} seconds", outputFilename, timer.Elapsed().GetSeconds());

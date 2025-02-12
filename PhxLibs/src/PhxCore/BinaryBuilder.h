@@ -3,6 +3,7 @@
 #include "memory"
 #include "PhxCore/Memory.h"
 #include "PhxCore/Span.h"
+#include <PhxCore/VFS.h>
 
 namespace phx
 {
@@ -13,7 +14,7 @@ namespace phx
 		OffsetHandle Reserve(size_t sizeInBytes, size_t alignment = 1)
 		{
 			uint32_t offset = MemoryAlign(m_totalSize, alignment);
-			m_totalSize = offset + sizeInBytes;;
+			m_totalSize = offset + sizeInBytes;
 
 			return offset;
 		}
@@ -45,6 +46,14 @@ namespace phx
 			return { m_data.get(), m_totalSize };
 		}
 
+		std::unique_ptr<IBlob> Finialize()
+		{
+			std::unique_ptr<IBlob> retVal = std::make_unique<Blob>(m_data.release(), m_totalSize);
+			m_totalSize = 0;
+
+			return retVal;
+		}
+
 	private:
 		inline size_t MemoryAlign(size_t size, size_t alignment)
 		{
@@ -52,6 +61,7 @@ namespace phx
 			return (size + alignmentMask) & ~alignmentMask;
 		}
 	private:
+		// TODO: This could just become a blob.
 		size_t m_totalSize = 0;
 		std::unique_ptr<uint8_t[]> m_data;
 	};

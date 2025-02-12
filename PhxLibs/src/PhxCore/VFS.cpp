@@ -15,33 +15,6 @@ using namespace phx;
 
 namespace
 {
-    class Blob : public IBlob
-    {
-    public:
-        Blob(void* Data, size_t size)
-            : m_data(Data)
-            , m_size(size)
-        {}
-
-        ~Blob() override
-        {
-            if (this->m_data)
-            {
-                free(this->m_data);
-                this->m_data = nullptr;
-            }
-
-            this->m_size = 0;
-        }
-
-        [[nodiscard]] const void* Data() const override { return this->m_data; }
-        [[nodiscard]] size_t Size() const override { return this->m_size; }
-
-    private:
-        void* m_data;
-        size_t m_size;
-    };
-
     class NativeFileSystem final : public IFileSystem
     {
     public:

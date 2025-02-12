@@ -1,7 +1,7 @@
 #pragma once
 
 #include "PhxCore/Base.h"
-#include "PhxCore/ChunkFileFormat.h"
+#include "PhxCore/IO/ChunkFile.h"
 
 namespace phx
 {

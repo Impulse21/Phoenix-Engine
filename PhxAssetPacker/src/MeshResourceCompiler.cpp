@@ -1,6 +1,8 @@
 #include "MeshResourceCompiler.h"
 
 #include "PhxCore/Span.h"
+#include "PhxCore/IO/ChunkFile.h"
+
 #include "PhxRhi/RHITypes.h"
 
 #include "PhxCore/BinaryBuilder.h"
@@ -24,44 +26,92 @@ namespace
 			sizeof(T) * srcData.Size());
 	}
 }
+
 void phx::MeshResourceCompiler::Compile()
 {
 	std::memset(&m_outCompiledMesh, 0, sizeof(CompiledMeshResource));
 
-	renderer::MeshCpuMetadata& metadata = m_outCompiledMesh.Metadata;
-	metadata.IbOffset = 0;
-	metadata.IbFormat = static_cast<uint8_t>(rhi::Format::R32_UINT);
-	metadata.IbSize = m_meshData.Indices.size();
+	BinaryBuilder chunkFileBuilder;
+	OffsetHandle headerOffset = chunkFileBuilder.Reserve<ChunkFileFormat::Header>();
+	OffsetHandle cpuChunkHeaderOffset = chunkFileBuilder.Reserve<ChunkFileFormat::ChunkHeader>();
+	OffsetHandle gpuChunkHeaderOffset = chunkFileBuilder.Reserve<ChunkFileFormat::ChunkHeader>();
+
+	// Determine the size of the CPU metdata based on the number of draw calls
+	const size_t cpuDataSize = sizeof(renderer::MeshCpuMetadata) + (sizeof(renderer::MeshCpuMetadata) * m_meshData.Geometry.size() - 1);
+	OffsetHandle cpuDataOffset = chunkFileBuilder.Reserve(cpuDataSize, 4ull);
 
 	// set index data
-	std::vector<uint8_t>& gpuData = m_outCompiledMesh.GpuData;
-	gpuData.resize(m_meshData.Indices.size() * sizeof(uint32_t));
+	std::vector<uint8_t> gpuData;
+	BuildGpuBufferData(gpuData);
+	OffsetHandle gpuDataOffset = chunkFileBuilder.Reserve(gpuData.size(), 16ull);
 
-	metadata.VbOffset = 0;
-	metadata.VbSize = gpuData.size();
+	// Fill in the data
+	chunkFileBuilder.Commit();
+	{
+		auto& header = *chunkFileBuilder.Place<ChunkFileFormat::Header>(headerOffset);
+		header.Magic = MakeMagicNum('P', 'X', 'M', 'S');
+		header.Version = MshVersion;
+		header.BuildNumber = GetTimestamp();
+		header.ChunkCount = 2; // Two Chunks
+	}
+
+	{
+		auto& cpuMetadataHeader = *chunkFileBuilder.Place<ChunkFileFormat::ChunkHeader>(cpuChunkHeaderOffset);
+		cpuMetadataHeader.ChunkID = MakeMagicNum('M', 'E', 'T', 'A');
+		cpuMetadataHeader.Compression = CompressionType::None;
+		cpuMetadataHeader.UncompressedSize = cpuDataOffset;
+		cpuMetadataHeader.CompressedSize = cpuMetadataHeader.UncompressedSize;
+		cpuMetadataHeader.Offset = static_cast<uint32_t>(cpuDataOffset);
+		
+		auto& gpuHeader = *chunkFileBuilder.Place<ChunkFileFormat::ChunkHeader>(gpuChunkHeaderOffset);
+		gpuHeader.ChunkID = MakeMagicNum('G', 'B', 'U', 'F');
+
+		// TODO: Compress
+		gpuHeader.Compression = CompressionType::None;
+		gpuHeader.UncompressedSize = gpuData.size();
+		gpuHeader.CompressedSize = cpuMetadataHeader.UncompressedSize;
+		gpuHeader.Offset = static_cast<uint32_t>(gpuDataOffset);
+	}
+
+	// Fill in the data
+	{
+		auto& cpuMetadata = *chunkFileBuilder.Place<MeshCpuMetadata>(cpuDataOffset);
+		std::memset(&cpuMetadata, 0, cpuDataSize);
+
+		cpuMetadata.IbSize = m_meshData.Indices.size() * sizeof(uint32_t);
+		cpuMetadata.VbOffset = m_meshData.Indices.size() * sizeof(uint32_t);
+		cpuMetadata.VbSize = gpuData.size() - cpuMetadata.IbSize;
+		cpuMetadata.NumDraws = m_meshData.Geometry.size();
+		for (size_t i = 0; i < m_meshData.Geometry.size(); i++)
+		{
+			const MeshData::GeometryData& geometry = m_meshData.Geometry[i];
+			MeshCpuMetadata::DrawInfo& drawInfo = *(cpuMetadata.Draw + i);
+			drawInfo.IndexCount = geometry.IndexCount;
+			drawInfo.StartIndex = geometry.IndexOffset;
+			drawInfo.BaseVertex = 0;
+		}
+	}
+
+	{
+		void* gpuDataDest = chunkFileBuilder.Place(gpuDataOffset);
+		std::memcpy(gpuDataDest, gpuData.data(), gpuData.size());
+	}
+
+	m_outCompiledMesh.File = chunkFileBuilder.Finialize();
+}
+
+void phx::MeshResourceCompiler::BuildGpuBufferData(std::vector<uint8_t>& gpuBuffer) const
+{
+	gpuBuffer.resize(m_meshData.Indices.size() * sizeof(uint32_t));
 	memcpy(
-		gpuData.data(),
+		gpuBuffer.data(),
 		m_meshData.Indices.data(),
 		m_meshData.Indices.size() * sizeof(uint32_t));
 
-
-	BuildVertexBuffer(gpuData);	
-
-	// Set up draw calls
-	m_outCompiledMesh.Metadata.NumDraws = m_meshData.Geometry.size();
-	m_outCompiledMesh.Draws.resize(m_meshData.Geometry.size());
-	for (size_t i = 0; i < m_meshData.Geometry.size(); i++)
-	{
-		const MeshData::GeometryData& geometry = m_meshData.Geometry[i];
-		MeshCpuMetadata::DrawInfo& drawInfo = m_outCompiledMesh.Draws[i];
-		drawInfo.IndexCount = geometry.IndexCount;
-		drawInfo.StartIndex = geometry.IndexOffset;
-		drawInfo.BaseVertex = 0;
-	}
-
+	BuildVertexBuffer(gpuBuffer);
 }
 
-void phx::MeshResourceCompiler::BuildVertexBuffer(std::vector<uint8_t>& gpuBuffer)
+void phx::MeshResourceCompiler::BuildVertexBuffer(std::vector<uint8_t>& gpuBuffer) const
 {
 	// TODO: I think this can be written in a more eligent way
 	// such that it's easier to expand to new stream enums without needing to manually
@@ -128,7 +178,6 @@ void phx::MeshResourceCompiler::BuildVertexBuffer(std::vector<uint8_t>& gpuBuffe
 #endif
 
 	phx::Span<uint8_t> memory = vbBuilder.GetMemory();
-	m_outCompiledMesh.Metadata.VbSize = memory.size();
 
 	const size_t vbOffset = gpuBuffer.size();
 	gpuBuffer.resize(vbOffset + memory.size());

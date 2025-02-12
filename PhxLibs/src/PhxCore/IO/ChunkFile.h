@@ -1,8 +1,23 @@
 #pragma once
 
-
 namespace phx
 {
+	inline uint64_t GetTimestamp()
+	{
+		std::time_t t = std::time(nullptr);
+		std::tm* tm = std::localtime(&t);
+
+		uint64_t timestamp = 0;
+		timestamp |= (static_cast<uint64_t>(tm->tm_year + 1900) & 0xFFFF) << 48; // Year (16 bits)
+		timestamp |= (static_cast<uint64_t>(tm->tm_mon + 1) & 0xF) << 44;        // Month (4 bits)
+		timestamp |= (static_cast<uint64_t>(tm->tm_mday) & 0x1F) << 39;          // Day (5 bits)
+		timestamp |= (static_cast<uint64_t>(tm->tm_hour) & 0x1F) << 34;          // Hour (5 bits)
+		timestamp |= (static_cast<uint64_t>(tm->tm_min) & 0x3F) << 28;           // Minute (6 bits)
+		timestamp |= (static_cast<uint64_t>(tm->tm_sec) & 0x3F) << 22;           // Second (6 bits)
+
+		return timestamp;
+	}
+
 	constexpr uint32_t MakeMagicNum(char a, char b, char c, char d)
 	{
 		return

@@ -1,7 +1,9 @@
 #pragma once
 
+#include <memory>
+
 #include <PhxCore/StringHash.h>
-#include "PhxRenderer/MeshResource.h"
+#include <PhxRenderer/MeshResource.h>
 
 #include <vector>
 #include <DirectXMath.h>
@@ -9,6 +11,8 @@
 
 namespace phx
 {
+	class IBlob;
+
 	struct MeshData final
 	{
 		std::string Name;
@@ -37,17 +41,14 @@ namespace phx
 			uint32_t IndexCount = 0;
 		};
 		std::vector<GeometryData> Geometry;
-
-	private:
 	};
 
 	struct CompiledMeshResource final
 	{
-		phx::renderer::MeshCpuMetadata Metadata;
-		std::vector<uint8_t> GpuData;
-		std::vector<phx::renderer::MeshCpuMetadata::DrawInfo> Draws;
+		std::unique_ptr<IBlob> File;
 	};
 
+	constexpr uint32_t MshVersion = 1;
 	class MeshResourceCompiler final
 	{
 	public:
@@ -66,7 +67,8 @@ namespace phx
 
 		void Compile();
 
-		void BuildVertexBuffer(std::vector<uint8_t>& gpuBuffer);
+		void BuildGpuBufferData(std::vector<uint8_t>& gpuBuffer) const;
+		void BuildVertexBuffer(std::vector<uint8_t>& gpuBuffer) const;
 
 	private:
 		const MeshData& m_meshData;
