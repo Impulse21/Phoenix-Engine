@@ -6,9 +6,11 @@
 #include <PhxCore/IO/ChunkFile.h>
 #include <PhxCore/IO/PakFile.h>
 #include <PhxCore/BinaryBuilder.h>
+#include <PhxCore/Span.h>
 
 #include "TextureConverter.h"
 #include "GltfImporter.h"
+#include "PakFileBuilder.h"
 
 #include <wrl.h>
 #include <dstorage.h>
@@ -109,7 +111,7 @@ int wmain(int argc, wchar_t** argv)
 	std::filesystem::path gltfInputPath(gltfInput);
 	gltfInputPath.make_preferred();
 	std::shared_ptr<phx::IFileSystem> nativeFS = phx::FileSystemFactory::CreateNativeFileSystem();
-	std::unique_ptr<phx::IFileSystem> fs = phx::FileSystemFactory::CreateRelativeFileSystem(nativeFS, gltfInputPath.parent_path());
+	std::unique_ptr<phx::IFileSystem> inputFS = phx::FileSystemFactory::CreateRelativeFileSystem(nativeFS, gltfInputPath.parent_path());
 
 	{
 		// Load GLF File into memory
@@ -201,6 +203,22 @@ int wmain(int argc, wchar_t** argv)
 			meshChunkFiles.size(),
 			timer.Elapsed().GetMilliseconds());
 
+		// Build an order map of chunk Entires
+		std::vector<std::pair<std::string, IBlob*>> assetEntries;
+		for (size_t i = 0; i < meshChunkFiles.size(); i++)
+		{
+			auto& meshFile = meshChunkFiles[i];
+			assetEntries.push_back(std::make_pair(meshFile.FileName, meshFile.File.get()));
+		}
+
+		// Lets save a pack file :)
+		timer.Begin();
+		phx::PakFileBuilder pakBuilder = phx::PakFileBuilder()
+			.AddFiles(assetEntries);
+
+		std::unique_ptr<phx::IBlob> pakFileData = pakBuilder.Build();
+		
+		nativeFS->WriteFile(outputPath, pakFileData.get());
 
 		// Write out mesh Chunk Files
 		// Write out Chunk Data

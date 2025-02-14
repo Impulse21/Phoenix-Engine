@@ -62,7 +62,12 @@ namespace phx
 		virtual bool FileExists(std::filesystem::path const& name) = 0;
 		virtual bool FolderExists(std::filesystem::path const& name) = 0;
 		virtual std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) = 0;
+
 		virtual bool WriteFile(std::filesystem::path const& name, Span<char> Data) = 0;
+		bool WriteFile(std::filesystem::path const& name, IBlob* blob)
+		{
+			return WriteFile(name, Span<char>(reinterpret_cast<const char*>(blob->Data()), blob->Size()));
+		}
 	};
 
 	class IRootFileSystem : public IFileSystem

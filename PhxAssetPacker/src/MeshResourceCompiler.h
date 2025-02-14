@@ -45,6 +45,7 @@ namespace phx
 
 	struct CompiledMeshResource final
 	{
+		std::string FileName;
 		std::unique_ptr<IBlob> File;
 	};
 

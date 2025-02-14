@@ -98,6 +98,7 @@ void phx::MeshResourceCompiler::Compile()
 	}
 
 	m_outCompiledMesh.File = chunkFileBuilder.Finialize();
+	m_outCompiledMesh.FileName = std::format("{}.phxmsh", m_meshData.Name);
 }
 
 void phx::MeshResourceCompiler::BuildGpuBufferData(std::vector<uint8_t>& gpuBuffer) const
