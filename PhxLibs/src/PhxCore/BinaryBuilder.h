@@ -25,6 +25,12 @@ namespace phx
 			return Reserve(sizeof(T), alignment);
 		}
 
+		template<typename T>
+		OffsetHandle ReserveArray(size_t count, size_t alignment = alignof(T))
+		{
+			return Reserve(sizeof(T) * count, alignment);
+		}
+
 		void Commit()
 		{
 			m_data = std::make_unique<uint8_t[]>(m_totalSize);

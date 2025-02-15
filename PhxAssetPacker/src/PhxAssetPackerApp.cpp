@@ -194,7 +194,7 @@ int wmain(int argc, wchar_t** argv)
 			CompiledMeshResource& blob = meshChunkFiles[i];
 			const MeshData& meshData = importedMeshes[i];
 
-#if false
+#if true
 			ThreadPool::SubmitTask([meshData, &blob]() {
 				MeshResourceCompiler::Compile(meshData, blob);
 			});
@@ -222,6 +222,7 @@ int wmain(int argc, wchar_t** argv)
 
 		std::unique_ptr<phx::IBlob> pakFileData = pakBuilder.Build();
 		
+		std::filesystem::create_directories(outputPath.parent_path());
 		nativeFS->WriteFile(outputPath, pakFileData.get());
 
 		// Write out mesh Chunk Files

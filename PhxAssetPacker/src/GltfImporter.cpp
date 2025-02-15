@@ -39,6 +39,7 @@ namespace
 	void ProcessMesh(MeshData& meshData, cgltf_mesh const& cgltfMesh)
 	{
 		meshData.Geometry.resize(cgltfMesh.primitives_count);
+		meshData.Name = cgltfMesh.name;
 		for (cgltf_size iPrim = 0; iPrim < cgltfMesh.primitives_count; iPrim++)
 		{
 			const cgltf_primitive& cgltfPrim = cgltfMesh.primitives[iPrim];
@@ -169,11 +170,14 @@ std::vector<MeshData> phx::GltfMeshImporter::Import()
 	{
 		MeshData* meshData = &retVal[iMesh];
 		const cgltf_mesh* cgltfMesh = &m_gltfData->meshes[iMesh];
-
+		cgltf_size index = iMesh;
 #if true
-		ThreadPool::SubmitTask([cgltfMesh, meshData](){
+		ThreadPool::SubmitTask([index, cgltfMesh, meshData](){
 
 				ProcessMesh(*meshData, *cgltfMesh);
+				if (meshData->Name.empty())
+					meshData->Name = std::format("mesh_{}", index);
+
 		});
 #else
 		ProcessMesh(*meshData, *cgltfMesh);

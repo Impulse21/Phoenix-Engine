@@ -14,7 +14,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
     OffsetHandle headerOffset = packFileBuilder.Reserve<PakFileFormat::Header>();
 
     const size_t numEntries = m_entries.size();
-    OffsetHandle assetEntiresOffset = packFileBuilder.Reserve<PakFileFormat::AssetEntry>(numEntries);
+    OffsetHandle assetEntiresOffset = packFileBuilder.ReserveArray<PakFileFormat::AssetEntry>(numEntries);
     OffsetHandle assetsOffset = packFileBuilder.Reserve(m_entiresSize);
 
     packFileBuilder.Commit();
@@ -46,7 +46,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
             std::memcpy(dataDest, entriesItr->second->Data(), entry.Size);
 
             dataOffset += entry.Size;
-            std::advance(entriesItr, i);
+            std::advance(entriesItr, 1);
         }
     }
 

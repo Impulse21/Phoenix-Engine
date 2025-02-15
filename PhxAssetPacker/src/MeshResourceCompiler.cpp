@@ -127,28 +127,28 @@ void phx::MeshResourceCompiler::BuildVertexBuffer(std::vector<uint8_t>& gpuBuffe
 	std::array<OffsetHandle, renderer::kNumStreams> streamOffsets;
 	std::memset(streamOffsets.data(), 0xFF, sizeof(OffsetHandle) * renderer::kNumStreams);
 
-	streamOffsets[kPosition] = vbBuilder.Reserve<DirectX::XMFLOAT3>(m_meshData.Vertex_Positions.size());
+	streamOffsets[kPosition] = vbBuilder.ReserveArray<DirectX::XMFLOAT3>(m_meshData.Vertex_Positions.size());
 
 	PHX_ASSERT(!m_meshData.Vertex_Normals.empty(), "Normal generation is currently not supported");
-	streamOffsets[kNormals] = vbBuilder.Reserve<DirectX::XMFLOAT3>(m_meshData.Vertex_Normals.size());
+	streamOffsets[kNormals] = vbBuilder.ReserveArray<DirectX::XMFLOAT3>(m_meshData.Vertex_Normals.size());
 	
 	if (!m_meshData.Vertex_Uvset_0.empty())
 	{
-		streamOffsets[kUV0] = vbBuilder.Reserve<DirectX::XMFLOAT2>(m_meshData.Vertex_Uvset_0.size());
+		streamOffsets[kUV0] = vbBuilder.ReserveArray<DirectX::XMFLOAT2>(m_meshData.Vertex_Uvset_0.size());
 	}
 
 	if (!m_meshData.Vertex_Uvset_1.empty())
 	{
-		streamOffsets[kUV1] = vbBuilder.Reserve<DirectX::XMFLOAT2>(m_meshData.Vertex_Uvset_1.size());
+		streamOffsets[kUV1] = vbBuilder.ReserveArray<DirectX::XMFLOAT2>(m_meshData.Vertex_Uvset_1.size());
 	}
 
 	if (!m_meshData.Vertex_Tangents.empty())
 	{
-		streamOffsets[kTangents] = vbBuilder.Reserve<DirectX::XMFLOAT4>(m_meshData.Vertex_Tangents.size());
+		streamOffsets[kTangents] = vbBuilder.ReserveArray<DirectX::XMFLOAT4>(m_meshData.Vertex_Tangents.size());
 	}
 
 	vbBuilder.Commit();
-
+	
 	// Fill in the data.
 	auto header = vbBuilder.Place<renderer::VertexStreamsHeader>(headerOffset);
 
@@ -162,18 +162,18 @@ void phx::MeshResourceCompiler::BuildVertexBuffer(std::vector<uint8_t>& gpuBuffe
 	FillStreamDesc(kUV0, sizeof(DirectX::XMFLOAT2));
 	FillStreamDesc(kUV1, sizeof(DirectX::XMFLOAT2));
 	FillStreamDesc(kTangents, sizeof(DirectX::XMFLOAT4));
+#if false
 	FillStreamDesc(kColour, sizeof(DirectX::XMFLOAT3));
 	FillStreamDesc(kJoints, sizeof(DirectX::XMFLOAT4));
 	FillStreamDesc(kWeights, sizeof(DirectX::XMFLOAT4));
+#endif
 
-
-#if false
 	FillVertexBuffer<DirectX::XMFLOAT3>(vbBuilder, streamOffsets[kPosition], m_meshData.Vertex_Positions);
 	FillVertexBuffer<DirectX::XMFLOAT3>(vbBuilder, streamOffsets[kNormals], m_meshData.Vertex_Normals);
 	FillVertexBuffer<DirectX::XMFLOAT2>(vbBuilder, streamOffsets[kUV0], m_meshData.Vertex_Uvset_0);
 	FillVertexBuffer<DirectX::XMFLOAT2>(vbBuilder, streamOffsets[kUV1], m_meshData.Vertex_Uvset_1);
 	FillVertexBuffer<DirectX::XMFLOAT4>(vbBuilder, streamOffsets[kTangents], m_meshData.Vertex_Tangents);
-#endif
+
 #if false
 	FillVertexBuffer<DirectX::XMFLOAT3>(vbBuilder, streamOffsets[kColour], m_meshData.Vertex_Tangents);
 	FillVertexBuffer<DirectX::XMFLOAT4>(vbBuilder, streamOffsets[kJoints], joints.get(), vertexCount);
@@ -183,6 +183,7 @@ void phx::MeshResourceCompiler::BuildVertexBuffer(std::vector<uint8_t>& gpuBuffe
 
 	const size_t vbOffset = gpuBuffer.size();
 	gpuBuffer.resize(vbOffset + memory.size());
+
 	memcpy(
 		gpuBuffer.data() + vbOffset,
 		memory.data(),

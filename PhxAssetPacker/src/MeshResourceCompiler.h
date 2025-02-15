@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include <PhxCore/UUID.h>
 #include <PhxCore/StringHash.h>
 #include <PhxRenderer/MeshResource.h>
 
@@ -15,6 +16,7 @@ namespace phx
 
 	struct MeshData final
 	{
+		UUID ID;
 		std::string Name;
 		std::vector<DirectX::XMFLOAT3> Vertex_Positions;
 		std::vector<DirectX::XMFLOAT3> Vertex_Normals;

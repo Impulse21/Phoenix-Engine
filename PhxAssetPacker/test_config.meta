@@ -1,4 +1,4 @@
 input: 'C:/Users/dipao/Documents/Sponza/Main.1_Sponza/NewSponza_Main_glTF_003.gltf'
-output_file: '.workspae/assets/baked/Sponza.phxpak'
+output_file: 'C:\Users\dipao\source\repos\Phoenix-Engine\.workspace/assets/baked/Sponza.phxpak'
 compression: 'GDeflate'
 pack_file: true
