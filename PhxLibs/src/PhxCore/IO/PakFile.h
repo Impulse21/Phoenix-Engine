@@ -7,6 +7,7 @@ namespace phx
 {
     namespace PakFileFormat
     {
+        constexpr uint32_t Version = 1;
         struct Header
         {
             uint32_t Magic;                     // 'PHXPAK'
