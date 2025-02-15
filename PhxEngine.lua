@@ -478,6 +478,7 @@ group "Misc"
             defines { "PHX_RHI_D3D12" }
 
             AddLibraryIncludes(AgilityLibrary)
+            AddLibraryIncludes(DStorageLibrary)
 
             LinkLibrary(DStorageLibrary)
             LinkLibrary(DxcLibrary)

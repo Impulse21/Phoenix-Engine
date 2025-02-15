@@ -212,6 +212,7 @@ int wmain(int argc, wchar_t** argv)
 		for (size_t i = 0; i < meshChunkFiles.size(); i++)
 		{
 			auto& meshFile = meshChunkFiles[i];
+			PHX_ASSERT(meshFile.File);
 			assetEntries.push_back(std::make_pair(meshFile.FileName, meshFile.File.get()));
 		}
 
