@@ -84,14 +84,11 @@ namespace
 
 		~PakFile_Test()
 		{
-			m_cpuDataLoaded.Close();
-			m_gpuDataLoaded.Close();
-
 			// All requests created for this instance are tagged with 'this', so we can
 			// cancel any outstanding requests.
 			g_dsSystemMemoryQueue->CancelRequestsWithTag(0xFFFFFFFFFFFFll, reinterpret_cast<uint64_t>(this));
-			g_dsGpuQueue->CancelRequestsWithTag(0xFFFFFFFFFFFFll, reinterpret_cast<uint64_t>(this));
 		}
+
 	private:
 
 		Microsoft::WRL::ComPtr<IDStorageFile> m_dsFile;
