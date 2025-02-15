@@ -167,22 +167,22 @@ void phx::MeshResourceCompiler::BuildVertexBuffer(std::vector<uint8_t>& gpuBuffe
 	FillStreamDesc(kWeights, sizeof(DirectX::XMFLOAT4));
 
 
+#if false
 	FillVertexBuffer<DirectX::XMFLOAT3>(vbBuilder, streamOffsets[kPosition], m_meshData.Vertex_Positions);
 	FillVertexBuffer<DirectX::XMFLOAT3>(vbBuilder, streamOffsets[kNormals], m_meshData.Vertex_Normals);
 	FillVertexBuffer<DirectX::XMFLOAT2>(vbBuilder, streamOffsets[kUV0], m_meshData.Vertex_Uvset_0);
 	FillVertexBuffer<DirectX::XMFLOAT2>(vbBuilder, streamOffsets[kUV1], m_meshData.Vertex_Uvset_1);
 	FillVertexBuffer<DirectX::XMFLOAT4>(vbBuilder, streamOffsets[kTangents], m_meshData.Vertex_Tangents);
+#endif
 #if false
 	FillVertexBuffer<DirectX::XMFLOAT3>(vbBuilder, streamOffsets[kColour], m_meshData.Vertex_Tangents);
 	FillVertexBuffer<DirectX::XMFLOAT4>(vbBuilder, streamOffsets[kJoints], joints.get(), vertexCount);
 	FillVertexBuffer<DirectX::XMFLOAT4>(vbBuilder, streamOffsets[kWeights], weights.get(), vertexCount);
 #endif
-
 	phx::Span<uint8_t> memory = vbBuilder.GetMemory();
 
 	const size_t vbOffset = gpuBuffer.size();
 	gpuBuffer.resize(vbOffset + memory.size());
-	
 	memcpy(
 		gpuBuffer.data() + vbOffset,
 		memory.data(),

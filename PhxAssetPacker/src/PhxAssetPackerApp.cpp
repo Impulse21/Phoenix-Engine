@@ -194,9 +194,13 @@ int wmain(int argc, wchar_t** argv)
 			CompiledMeshResource& blob = meshChunkFiles[i];
 			const MeshData& meshData = importedMeshes[i];
 
+#if false
 			ThreadPool::SubmitTask([meshData, &blob]() {
 				MeshResourceCompiler::Compile(meshData, blob);
 			});
+#else
+			MeshResourceCompiler::Compile(meshData, blob);
+#endif
 		}
 		PHX_INFO(
 			"Compiled {0} Mesh Chunk files in {1} ms",
