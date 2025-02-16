@@ -16,8 +16,8 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
     const size_t numEntries = m_entries.size();
     OffsetHandle assetEntriesOffset = packFileBuilder.ReserveArray<PakFileFormat::AssetEntry>(numEntries);
     OffsetHandle stringTableOffset = packFileBuilder.ReserveArray<PakFileFormat::StringEntry>(numEntries);
-    OffsetHandle assetsOffset = packFileBuilder.Reserve(m_entiresSize);
-    OffsetHandle stringDataOffset = packFileBuilder.Reserve(m_stringDataSize);
+    OffsetHandle assetsOffsetHandle = packFileBuilder.Reserve(m_entiresSize);
+    OffsetHandle stringDataOffsetHandle = packFileBuilder.Reserve(m_stringDataSize);
 
     //
     // TODO: Build string table
@@ -33,19 +33,19 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
         header->EntriesOffset = static_cast<uint32_t>(assetEntriesOffset);
         header->NumStrings = numEntries;
         header->StringTableOffset = static_cast<uint32_t>(stringTableOffset);
-        header->StringDataOffset = stringDataOffset;
+        header->StringDataOffset = stringDataOffsetHandle;
         header->StringDataSize = m_stringDataSize;
     }
 
     {
         auto* entriesDest = packFileBuilder.Place<PakFileFormat::AssetEntry>(assetEntriesOffset);
-        auto* entreesDataDest = packFileBuilder.Place<char>(assetsOffset);
+        auto* entreesDataDest = packFileBuilder.Place<char>(assetsOffsetHandle);
 
         auto* stringTableDest = packFileBuilder.Place<PakFileFormat::StringEntry>(stringTableOffset);
-        auto* stringDataDest = packFileBuilder.Place<char>(stringDataOffset);
+        auto* stringDataDest = packFileBuilder.Place<char>(stringDataOffsetHandle);
 
-        OffsetHandle dataOffset = assetsOffset;
-        OffsetHandle strDataOffset = stringDataOffset;
+        OffsetHandle dataOffset = assetsOffsetHandle;
+        OffsetHandle strDataOffset = stringDataOffsetHandle;
 
         auto entriesItr = m_entries.begin();
 
@@ -65,7 +65,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
             strEntry.Offset = strDataOffset;
 
 
-            char* strDataDest = (stringDataDest + strDataOffset);
+            char* strDataDest = (stringDataDest + (strDataOffset - stringDataOffsetHandle));
             strcpy(strDataDest, entriesItr->first.c_str());
 
             dataOffset += entry.Size;
