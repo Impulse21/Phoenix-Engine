@@ -14,8 +14,9 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
     OffsetHandle headerOffset = packFileBuilder.Reserve<PakFileFormat::Header>();
 
     const size_t numEntries = m_entries.size();
-    OffsetHandle assetEntiresOffset = packFileBuilder.ReserveArray<PakFileFormat::AssetEntry>(numEntries);
     OffsetHandle assetsOffset = packFileBuilder.Reserve(m_entiresSize);
+    OffsetHandle assetEntriesOffset = packFileBuilder.ReserveArray<PakFileFormat::AssetEntry>(numEntries);
+    // TODO: Build string table
 
     packFileBuilder.Commit();
 
@@ -24,11 +25,13 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
         header->Magic = PakFileFormat::MagicNumber;
         header->Version = PakFileFormat::Version;
         header->BuildNumber = GetTimestamp();
-        header->NumEntires = numEntries;
+        header->AssetCount = numEntries;
+        header->AssetEntires.Data.Offset = assetEntriesOffset;
+        header->AssetEntires.Size = sizeof(PakFileFormat::AssetEntry) * numEntries;
     }
 
     {
-        auto* entriesDest = packFileBuilder.Place<PakFileFormat::AssetEntry>(assetEntiresOffset);
+        auto* entriesDest = packFileBuilder.Place<PakFileFormat::AssetEntry>(assetEntriesOffset);
         auto* entreesDataDest = packFileBuilder.Place<char>(assetsOffset);
 
         OffsetHandle dataOffset = assetsOffset;
@@ -37,15 +40,15 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
         for (size_t i = 0; i < numEntries; i++)
         {
             PakFileFormat::AssetEntry& entry = *(entriesDest + i);
-            entry.Offset = dataOffset;
-            entry.Size = entriesItr->second->Size();
+            entry.AssetHeader.Data.Offset = dataOffset;
+            entry.AssetHeader.Size = sizeof(ChunkFileFormat::Header);
             entry.FileNameHash = StringHash(entriesItr->first);
-            entry.CompressedSize = entry.Size;
             
+            const size_t chunkFileSize = entriesItr->second->Size();
             char* dataDest = (entreesDataDest + i);
-            std::memcpy(dataDest, entriesItr->second->Data(), entry.Size);
+            std::memcpy(dataDest, entriesItr->second->Data(), chunkFileSize);
 
-            dataOffset += entry.Size;
+            dataOffset += chunkFileSize;
             std::advance(entriesItr, 1);
         }
     }

@@ -191,7 +191,7 @@ namespace
 		}
 
 		uint8_t GetStatus() { return m_status.load(); }
-		phx::Span<PakFileFormat::AssetEntry> GetEntries() const { return m_assetEntries; }
+		phx::Span<PakFileFormat::AssetEntry> GetEntries() const { return Span(m_assetEntriesData.Get(), m_header.AssetCount); }
 
 	private:
 		void OnHeaderLoaded()
@@ -210,11 +210,7 @@ namespace
 				return;
 			}
 
-			m_assetEntries.resize(m_header.NumEntires);
-
-			//  Beging Asset Index read
-			EnqueueReadArray<PakFileFormat::AssetEntry>(sizeof(PakFileFormat::Header), m_assetEntries.data(), m_header.NumEntires);
-
+			EnqueueReadMemoryRegion(m_header.AssetEntires);
 			m_assetIndexLoaded.SetThreadpoolWait();
 			g_dsSystemMemoryQueue->EnqueueSetEvent(m_assetIndexLoaded);
 			g_dsSystemMemoryQueue->Submit();
@@ -242,17 +238,16 @@ namespace
 			Error
 		};
 
-#if false
 		template<typename T>
-		MemoryRegion<T> EnqueueReadMemoryRegion(marc::Region<T> const& region)
+		MemoryRegion<T> EnqueueReadMemoryRegion(PakFileFormat::PakRegion<T> const& region)
 		{
-			MemoryRegion<T> dest(std::make_unique<char[]>(region.UncompressedSize));
+			MemoryRegion<T> dest(std::make_unique<char[]>(region.Size));
 
 			DSTORAGE_REQUEST r{};
 			r.Options.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
 			r.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_MEMORY;
 			r.Options.CompressionFormat = ToCompressionFormat(region.Compression);
-			r.Source.File.Source = m_file.Get();
+			r.Source.File.Source = m_dsFile.Get();
 			r.Source.File.Offset = region.Data.Offset;
 			r.Source.File.Size = region.CompressedSize;
 			r.Destination.Memory.Buffer = dest.Data();
@@ -264,7 +259,6 @@ namespace
 
 			return dest;
 		}
-#endif
 
 		//
 		// Enqueues a read of a single, fixed-size, uncompressed piece of data.
@@ -327,7 +321,7 @@ namespace
 
 	private:
 		PakFileFormat::Header m_header;
-		std::vector<PakFileFormat::AssetEntry> m_assetEntries;
+		MemoryRegion<PakFileFormat::AssetEntry> m_assetEntriesData;
 
 	private:
 		EventWait m_headerLoaded;
@@ -410,9 +404,9 @@ public:
 					if (ImGui::TreeNode(buffer))
 					{
 						ImGui::Text("ID: %d", entry.FileNameHash);
-						ImGui::Text("Uncompressed Size: %d", entry.Size);
+						ImGui::Text("Uncompressed Size: %d", entry.);
 						ImGui::Text("Compressed Size: %d", entry.CompressedSize);
-						ImGui::Text("Offset: %lld", entry.Offset);
+						ImGui::Text("Offset: %lld", entry.AssetHeader.of);
 
 						ImGui::TreePop();
 					}

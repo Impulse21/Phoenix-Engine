@@ -26,6 +26,11 @@ namespace phx
 			return reinterpret_cast<T*>(m_buffer.get());
 		}
 
+		const T* Get() const
+		{
+			return reinterpret_cast<T*>(m_buffer.get());
+		}
+
 		T* operator->()
 		{
 			return reinterpret_cast<T*>(m_buffer.get());
