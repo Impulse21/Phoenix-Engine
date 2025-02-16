@@ -39,7 +39,7 @@ namespace phx
         struct StringEntry
         {
             uint32_t Hash; // Hash of filename for lookup
-            uint32_t Offset;
+            uint32_t Offset; // Regions offset
         };
 
         /*

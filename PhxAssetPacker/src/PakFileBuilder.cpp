@@ -45,7 +45,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
         auto* stringDataDest = packFileBuilder.Place<char>(stringDataOffsetHandle);
 
         OffsetHandle dataOffset = assetsOffsetHandle;
-        OffsetHandle strDataOffset = stringDataOffsetHandle;
+        OffsetHandle strDataOffset = 0;
 
         auto entriesItr = m_entries.begin();
 
@@ -65,7 +65,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
             strEntry.Offset = strDataOffset;
 
 
-            char* strDataDest = (stringDataDest + (strDataOffset - stringDataOffsetHandle));
+            char* strDataDest = (stringDataDest + strDataOffset);
             strcpy(strDataDest, entriesItr->first.c_str());
 
             dataOffset += entry.Size;
