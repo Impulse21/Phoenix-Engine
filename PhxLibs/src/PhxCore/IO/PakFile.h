@@ -8,7 +8,8 @@ namespace phx
     namespace PakFileFormat
     {
         constexpr uint32_t Version = 1;
-        struct Header
+        constexpr uint32_t MagicNumber = MakeMagicNum('P', 'X', 'P', 'K');
+        struct DEFINE_ALIGNED(Header, 64)
         {
             uint32_t Magic;                     // 'PHXPAK'
             uint32_t Version;
@@ -17,6 +18,8 @@ namespace phx
             uint32_t DependencyTableOffset;     // Offset to the dependency table
             uint32_t NumEntires;                // Entires follow after header
         };
+
+        static_assert(sizeof(Header) == 64);
 
         struct AssetEntry
         {

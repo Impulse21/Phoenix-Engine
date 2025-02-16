@@ -21,7 +21,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
 
     {
         auto* header = packFileBuilder.Place<PakFileFormat::Header>(headerOffset);
-        header->Magic = MakeMagicNum('P', 'X', 'P', 'K');
+        header->Magic = PakFileFormat::MagicNumber;
         header->Version = PakFileFormat::Version;
         header->BuildNumber = GetTimestamp();
         header->NumEntires = numEntries;

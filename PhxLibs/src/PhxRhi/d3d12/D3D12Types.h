@@ -1,13 +1,10 @@
 #pragma once
 
+
+#include "PhxCore/Base.h"
 #include "PhxRhi/RHITypes.h"
 #include "D3D12Base.h"
 #include "D3D12DescriptorHeaps.h"
-
-
-#define ALIGNAS(x)             __declspec(align(x))
-#define DEFINE_ALIGNED(def, a) __declspec(align(a)) def
-#define THREAD_LOCAL           __declspec(thread)
 
 namespace D3D12MA
 {

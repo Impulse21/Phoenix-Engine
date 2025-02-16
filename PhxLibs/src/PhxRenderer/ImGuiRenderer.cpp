@@ -36,7 +36,6 @@ void ImGuiRenderSystem::Initialize(IFileSystem* /*fs*/, void* windowHandle, bool
     }
 
     ImGuiIO& io = ImGui::GetIO();
-    io.FontAllowUserScaling = true;
     // Drive this based on configuration
     if (enableDocking)
     {
