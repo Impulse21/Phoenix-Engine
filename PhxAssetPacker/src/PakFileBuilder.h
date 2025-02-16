@@ -22,6 +22,7 @@ namespace phx
 			{
 				m_entries.emplace(pair);
 				m_entiresSize += pair.second->Size();
+				m_stringDataSize += pair.first.size() + 1; // add one for null terminated string
 			}
 
 			return *this;
@@ -32,6 +33,7 @@ namespace phx
 	private:
 		std::map<std::string, IBlob*> m_entries;
 		size_t m_entiresSize = 0ull;
+		size_t m_stringDataSize = 0ull;
 	};
 }
 

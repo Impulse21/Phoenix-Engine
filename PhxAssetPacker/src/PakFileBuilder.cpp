@@ -14,8 +14,12 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
     OffsetHandle headerOffset = packFileBuilder.Reserve<PakFileFormat::Header>();
 
     const size_t numEntries = m_entries.size();
-    OffsetHandle assetsOffset = packFileBuilder.Reserve(m_entiresSize);
     OffsetHandle assetEntriesOffset = packFileBuilder.ReserveArray<PakFileFormat::AssetEntry>(numEntries);
+    OffsetHandle stringTableOffset = packFileBuilder.ReserveArray<PakFileFormat::StringEntry>(numEntries);
+    OffsetHandle assetsOffset = packFileBuilder.Reserve(m_entiresSize);
+    OffsetHandle stringDataOffset = packFileBuilder.Reserve(m_stringDataSize);
+
+    //
     // TODO: Build string table
 
     packFileBuilder.Commit();
@@ -25,30 +29,47 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
         header->Magic = PakFileFormat::MagicNumber;
         header->Version = PakFileFormat::Version;
         header->BuildNumber = GetTimestamp();
-        header->AssetCount = numEntries;
-        header->AssetEntires.Data.Offset = assetEntriesOffset;
-        header->AssetEntires.Size = sizeof(PakFileFormat::AssetEntry) * numEntries;
+        header->NumEntries = numEntries;
+        header->EntriesOffset = static_cast<uint32_t>(assetEntriesOffset);
+        header->NumStrings = numEntries;
+        header->StringTableOffset = static_cast<uint32_t>(stringTableOffset);
+        header->StringDataOffset = stringDataOffset;
+        header->StringDataSize = m_stringDataSize;
     }
 
     {
         auto* entriesDest = packFileBuilder.Place<PakFileFormat::AssetEntry>(assetEntriesOffset);
         auto* entreesDataDest = packFileBuilder.Place<char>(assetsOffset);
 
+        auto* stringTableDest = packFileBuilder.Place<PakFileFormat::StringEntry>(stringTableOffset);
+        auto* stringDataDest = packFileBuilder.Place<char>(stringDataOffset);
+
         OffsetHandle dataOffset = assetsOffset;
+        OffsetHandle strDataOffset = stringDataOffset;
+
         auto entriesItr = m_entries.begin();
 
         for (size_t i = 0; i < numEntries; i++)
         {
             PakFileFormat::AssetEntry& entry = *(entriesDest + i);
-            entry.AssetHeader.Data.Offset = dataOffset;
-            entry.AssetHeader.Size = sizeof(ChunkFileFormat::Header);
-            entry.FileNameHash = StringHash(entriesItr->first);
+            entry.Offset = dataOffset;
+            entry.Size = entriesItr->second->Size();
+            entry.Hash = StringHash(entriesItr->first);
+            entry.NumDependiences = 0;
             
-            const size_t chunkFileSize = entriesItr->second->Size();
             char* dataDest = (entreesDataDest + i);
-            std::memcpy(dataDest, entriesItr->second->Data(), chunkFileSize);
+            std::memcpy(dataDest, entriesItr->second->Data(), entry.Size);
 
-            dataOffset += chunkFileSize;
+            PakFileFormat::StringEntry& strEntry = *(stringTableDest + i);
+            strEntry.Hash = entry.Hash;
+            strEntry.Offset = strDataOffset;
+
+
+            char* strDataDest = (stringDataDest + strDataOffset);
+            strcpy(strDataDest, entriesItr->first.c_str());
+
+            dataOffset += entry.Size;
+            strDataOffset += entriesItr->first.size() + 1;
             std::advance(entriesItr, 1);
         }
     }

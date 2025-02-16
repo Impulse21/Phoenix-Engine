@@ -3,6 +3,7 @@
 #include <atomic>
 
 #include "PhxCore/EntryPoint.h"
+#include "PhxCore/StringHash.h"
 
 #include "PhxCore/VFS.h"
 #include "PhxRenderer/ImGuiRenderer.h"
@@ -191,7 +192,33 @@ namespace
 		}
 
 		uint8_t GetStatus() { return m_status.load(); }
-		phx::Span<PakFileFormat::AssetEntry> GetEntries() const { return Span(m_assetEntriesData.Get(), m_header.AssetCount); }
+		phx::Span<PakFileFormat::AssetEntry> GetEntries() const { return Span(m_assetEntriesData.Get(), m_header.EntriesOffset); }
+
+		const char* FindFilenameByHash(phx::StringHash targetHash)
+		{
+			int left = 0, right = m_header.NumStrings - 1;
+
+			while (left <= right)
+			{
+				int mid = left + (right - left) / 2;
+				const PakFileFormat::StringEntry& entry = m_assetStringEntriesData.Get()[mid];
+
+				if (entry.Hash == targetHash)
+				{
+					return m_assetStringData.Get() + entry.Offset; // Return pointer to the filename
+				}
+				else if (entry.Hash < targetHash)
+				{
+					left = mid + 1;
+				}
+				else
+				{
+					right = mid - 1;
+				}
+			}
+
+			return nullptr; // Not found
+		}
 
 	private:
 		void OnHeaderLoaded()
@@ -210,7 +237,14 @@ namespace
 				return;
 			}
 
-			EnqueueReadMemoryRegion(m_header.AssetEntires);
+			const uint32_t sizeOfEntries = static_cast<uint32_t>(m_header.NumEntries * sizeof(PakFileFormat::AssetEntry));
+			m_assetEntriesData = EnqueueReadMemoryRegion<PakFileFormat::AssetEntry>(m_header.EntriesOffset, sizeOfEntries);
+
+			const uint32_t sizeOfStringEntries = static_cast<uint32_t>(m_header.NumStrings * sizeof(PakFileFormat::StringEntry));
+			m_assetStringEntriesData= EnqueueReadMemoryRegion<PakFileFormat::StringEntry>(m_header.StringTableOffset, sizeOfStringEntries);
+
+			m_assetStringData = EnqueueReadMemoryRegion<char>(m_header.StringDataOffset, m_header.StringDataSize);
+			
 			m_assetIndexLoaded.SetThreadpoolWait();
 			g_dsSystemMemoryQueue->EnqueueSetEvent(m_assetIndexLoaded);
 			g_dsSystemMemoryQueue->Submit();
@@ -239,19 +273,19 @@ namespace
 		};
 
 		template<typename T>
-		MemoryRegion<T> EnqueueReadMemoryRegion(PakFileFormat::PakRegion<T> const& region)
+		MemoryRegion<T> EnqueueReadMemoryRegion(uint64_t offset, uint32_t size)
 		{
-			MemoryRegion<T> dest(std::make_unique<char[]>(region.Size));
+			MemoryRegion<T> dest(std::make_unique<char[]>(size));
 
+			//TODO: Add compression support
 			DSTORAGE_REQUEST r{};
 			r.Options.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
 			r.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_MEMORY;
-			r.Options.CompressionFormat = ToCompressionFormat(region.Compression);
 			r.Source.File.Source = m_dsFile.Get();
-			r.Source.File.Offset = region.Data.Offset;
-			r.Source.File.Size = region.CompressedSize;
+			r.Source.File.Offset = offset;
+			r.Source.File.Size = size;
 			r.Destination.Memory.Buffer = dest.Data();
-			r.Destination.Memory.Size = region.UncompressedSize;
+			r.Destination.Memory.Size = size;
 			r.UncompressedSize = r.Destination.Memory.Size;
 			r.CancellationTag = reinterpret_cast<uint64_t>(this);
 
@@ -322,6 +356,8 @@ namespace
 	private:
 		PakFileFormat::Header m_header;
 		MemoryRegion<PakFileFormat::AssetEntry> m_assetEntriesData;
+		MemoryRegion<PakFileFormat::StringEntry> m_assetStringEntriesData;
+		MemoryRegion<char> m_assetStringData;
 
 	private:
 		EventWait m_headerLoaded;
@@ -399,14 +435,15 @@ public:
 				for (const PakFileFormat::AssetEntry& entry : m_pakFileTest->GetEntries())
 				{
 					char buffer[9]; // 8 characters + null terminator
-					std::snprintf(buffer, sizeof(buffer), "%08X", entry.FileNameHash);
-
-					if (ImGui::TreeNode(buffer))
+					std::snprintf(buffer, sizeof(buffer), "%08X", entry.Hash);
+					
+					const char* fileName = m_pakFileTest->FindFilenameByHash(entry.Hash);
+					if (ImGui::TreeNode(fileName ? fileName : buffer))
 					{
-						ImGui::Text("ID: %d", entry.FileNameHash);
-						ImGui::Text("Uncompressed Size: %d", entry.);
-						ImGui::Text("Compressed Size: %d", entry.CompressedSize);
-						ImGui::Text("Offset: %lld", entry.AssetHeader.of);
+						ImGui::Text("ID: %s", buffer);
+						ImGui::Text("Uncompressed Size: %d", entry.Size);
+						ImGui::Text("Offset: %lld", entry.Offset);
+						ImGui::Text("Num Dependecies: %d", entry.NumDependiences);
 
 						ImGui::TreePop();
 					}
