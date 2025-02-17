@@ -15,6 +15,9 @@ phx_vendor_src_imgui_dir    = phx_lib_vendor_directory.."/ImGui"
 phx_vendor_src_d3d12ma_dir  = phx_lib_vendor_directory.."/D3D12MA"
 phx_vendor_src_entt_dir     = phx_lib_vendor_directory.."/entt"
 phx_vendor_src_yaml_dir     = phx_lib_vendor_directory.."/yaml"
+phx_vendor_src_glfw_dir     = phx_lib_vendor_directory.."/glfw"
+
+phx_vendor_include_glfw_dir = phx_vendor_src_glfw_dir.."/include"
 phx_vendor_include_yaml_dir = phx_vendor_src_yaml_dir.."/include"
 
 phx_packer_vendor_dir       = "PhxAssetPacker/vendor"
@@ -324,24 +327,22 @@ group "Vendors"
         filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
 
         filter {}
+        
     project "GLFW"
         kind "StaticLib"
         language "C"
 
-        targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-        objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
-
         files
         {
-            "include/GLFW/glfw3.h",
-            "include/GLFW/glfw3native.h",
-            "src/glfw_config.h",
-            "src/context.c",
-            "src/init.c",
-            "src/input.c",
-            "src/monitor.c",
-            "src/vulkan.c",
-            "src/window.c"
+            phx_vendor_include_glfw_dir.."/GLFW/glfw3.h",
+            phx_vendor_include_glfw_dir.."/GLFW/glfw3native.h",
+            phx_vendor_src_glfw_dir.."/src/glfw_config.h",
+            phx_vendor_src_glfw_dir.."/src/context.c",
+            phx_vendor_src_glfw_dir.."/src/init.c",
+            phx_vendor_src_glfw_dir.."/src/input.c",
+            phx_vendor_src_glfw_dir.."/src/monitor.c",
+            phx_vendor_src_glfw_dir.."/src/vulkan.c",
+            phx_vendor_src_glfw_dir.."/src/window.c"
         }
         filter "system:linux"
             pic "On"
@@ -351,16 +352,16 @@ group "Vendors"
 
             files
             {
-                "src/x11_init.c",
-                "src/x11_monitor.c",
-                "src/x11_window.c",
-                "src/xkb_unicode.c",
-                "src/posix_time.c",
-                "src/posix_thread.c",
-                "src/glx_context.c",
-                "src/egl_context.c",
-                "src/osmesa_context.c",
-                "src/linux_joystick.c"
+                phx_vendor_src_glfw_dir.."/src/x11_init.c",
+                phx_vendor_src_glfw_dir.."/src/x11_monitor.c",
+                phx_vendor_src_glfw_dir.."/src/x11_window.c",
+                phx_vendor_src_glfw_dir.."/src/xkb_unicode.c",
+                phx_vendor_src_glfw_dir.."/src/posix_time.c",
+                phx_vendor_src_glfw_dir.."/src/posix_thread.c",
+                phx_vendor_src_glfw_dir.."/src/glx_context.c",
+                phx_vendor_src_glfw_dir.."/src/egl_context.c",
+                phx_vendor_src_glfw_dir.."/src/osmesa_context.c",
+                phx_vendor_src_glfw_dir.."/src/linux_joystick.c"
             }
 
             defines
@@ -374,15 +375,15 @@ group "Vendors"
 
             files
             {
-                "src/win32_init.c",
-                "src/win32_joystick.c",
-                "src/win32_monitor.c",
-                "src/win32_time.c",
-                "src/win32_thread.c",
-                "src/win32_window.c",
-                "src/wgl_context.c",
-                "src/egl_context.c",
-                "src/osmesa_context.c"
+                phx_vendor_src_glfw_dir.."/src/win32_init.c",
+                phx_vendor_src_glfw_dir.."/src/win32_joystick.c",
+                phx_vendor_src_glfw_dir.."/src/win32_monitor.c",
+                phx_vendor_src_glfw_dir.."/src/win32_time.c",
+                phx_vendor_src_glfw_dir.."/src/win32_thread.c",
+                phx_vendor_src_glfw_dir.."/src/win32_window.c",
+                phx_vendor_src_glfw_dir.."/src/wgl_context.c",
+                phx_vendor_src_glfw_dir.."/src/egl_context.c",
+                phx_vendor_src_glfw_dir.."/src/osmesa_context.c"
             }
 
             defines 
@@ -391,7 +392,16 @@ group "Vendors"
                 "_CRT_SECURE_NO_WARNINGS"
             }
 
-            filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+        filter('toolset:*-clangcl')
+            buildoptions {
+                '-Wno-unused-const-variable',
+                '-Wno-unused-function',
+                '-Wno-unused-parameter',
+                '-Wno-missing-field-initializers',
+                '-Wno-sign-compare',
+            }
+
+        filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
             
         filter {}
 group ""

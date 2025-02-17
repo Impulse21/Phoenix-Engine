@@ -1,0 +1,30 @@
+﻿clang-cl : error : no such file or directory: '..\..\src\wgl_context.c'
+clang-cl : error : no input files
+clang-cl : error : no such file or directory: '..\..\src\egl_context.c'
+clang-cl : error : no input files
+clang-cl : error : no such file or directory: '..\..\src\win32_thread.c'
+clang-cl : error : no input files
+clang-cl : error : no such file or directory: '..\..\src\win32_time.c'
+clang-cl : error : no input files
+clang-cl : error : no such file or directory: '..\..\src\win32_window.c'
+clang-cl : error : no input files
+clang-cl : error : no such file or directory: '..\..\src\osmesa_context.c'
+clang-cl : error : no input files
+clang-cl : error : no such file or directory: '..\..\src\window.c'
+clang-cl : error : no input files
+clang-cl : error : no such file or directory: '..\..\src\vulkan.c'
+clang-cl : error : no input files
+clang-cl : error : no such file or directory: '..\..\src\win32_joystick.c'
+clang-cl : error : no input files
+clang-cl : error : no such file or directory: '..\..\src\win32_init.c'
+clang-cl : error : no input files
+clang-cl : error : no such file or directory: '..\..\src\win32_monitor.c'
+clang-cl : error : no input files
+clang-cl : error : no such file or directory: '..\..\src\monitor.c'
+clang-cl : error : no input files
+clang-cl : error : no such file or directory: '..\..\src\input.c'
+clang-cl : error : no input files
+clang-cl : error : no such file or directory: '..\..\src\init.c'
+clang-cl : error : no input files
+clang-cl : error : no such file or directory: '..\..\src\context.c'
+clang-cl : error : no input files
