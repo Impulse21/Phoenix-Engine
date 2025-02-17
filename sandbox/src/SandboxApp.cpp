@@ -196,6 +196,7 @@ namespace
 
 		const char* FindFilenameByHash(phx::StringHash targetHash)
 		{
+#if false
 			int left = 0, right = m_header.NumStrings - 1;
 
 			while (left <= right)
@@ -217,6 +218,16 @@ namespace
 				}
 			}
 
+#else
+			for (uint32_t i = 0; i < m_header.NumStrings; i++)
+			{
+				const PakFileFormat::StringEntry& entry = m_assetStringEntriesData.Get()[i];
+				if (entry.Hash == targetHash)
+				{
+					return m_assetStringData.Get() + entry.Offset; // Return pointer to the filename
+				}
+			}
+#endif
 			return nullptr; // Not found
 		}
 

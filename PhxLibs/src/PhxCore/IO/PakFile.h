@@ -46,7 +46,7 @@ namespace phx
                 +-----------------------+  <--- Start of File
                 |    File Header        |  (Fixed Size)
                 |-----------------------|
-                |   Asset Index (N)     | (List of AssetEntries)
+                |   Asset Entires (N)   | (List of AssetEntries)
                 |-----------------------|
                 |   String Table (N)    |  (Has, name mappings)
                 |-----------------------|
@@ -55,6 +55,8 @@ namespace phx
                 |   Asset Entry (1-N)   |
                 |-----------------------|
                 |   Asset Entry (N)     |
+                |-----------------------|
+                |   Dependencies        |  
                 |-----------------------|
                 |   String Data         |  (Null terminated string data)
                 +-----------------------+
