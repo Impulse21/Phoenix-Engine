@@ -36,6 +36,16 @@ void ImGuiRenderSystem::Initialize(IFileSystem* /*fs*/, void* windowHandle, bool
     }
 
     ImGuiIO& io = ImGui::GetIO();
+
+    io.Fonts->Clear();  // Remove the default font
+
+    // Load a new font to replace the default one
+   io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeui.ttf", 30.0f); // Adjust size as needed
+
+    // Rebuild the font atlas
+    io.Fonts->Build();
+    // ImGui::GetIO().FontGlobalScale = 1.5f; // Increase UI scale
+    
     // Drive this based on configuration
     if (enableDocking)
     {
