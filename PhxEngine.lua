@@ -49,6 +49,10 @@ project_vendor_imgui    = 'ImGui'
 project_vendor_d3d12ma  = 'D3D12MA'
 project_vendor_yaml     = 'yaml-cpp'
 
+-- Generated Code Directories
+generated_shaders_dir = workspace_directory..'/GeneratedShaders'
+generated_code_dir = workspace_directory..'/GeneratedCode'
+
 -- Utility Functions
 function ExcludePlatformSpecificCode(rootPath)
 	excludes { rootPath..'**/platform/**' }
@@ -205,12 +209,27 @@ workspace "PhxEngine"
 			'WIN32_LEAN_AND_MEAN', 
 			'VC_EXTRALEAN',
 			'_CRT_SECURE_NO_WARNINGS'
-		}
-
-    HandleGlobalWarnings()
-		
+		}		
 	filter {}
+    
+    HandleGlobalWarnings()
 
+    -- Setup global include directories
+	includedirs
+	{
+		generated_code_dir
+	}
+
+	-- Generate the global paths file
+	globalVariableHeader = io.open(path.getabsolute(generated_code_dir)..'Generated/GlobalVariables.h', 'wb');
+	globalVariableHeader:write('namespace phx::GlobalPaths\n{\n');
+	--globalVariableHeader:write('\tstatic const char* ShaderCompilerExecutableName = "'..ShaderCompilerExecutableName..'";\n');
+	--globalVariableHeader:write('\tstatic const char* ShaderSourceDirectory = "'..path.getabsolute(SourceShadersDirectory)..'/";\n');
+	globalVariableHeader:write('};\n');
+	globalVariableHeader:close();
+
+	filter {}
+		
 	filter { win64_platform_filter }
 		system('windows')
 		architecture('x64')

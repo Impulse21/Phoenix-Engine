@@ -4,13 +4,13 @@
 
 #include "PhxCore/EntryPoint.h"
 #include "PhxCore/StringHash.h"
-
-#include "PhxCore/IO/PakFile.h"
-
 #include "PhxCore/VFS.h"
+
+#include "PhxResource/PakManager.h"
+
 #include "PhxRenderer/ImGuiRenderer.h"
 
-#include "PhxRenderer/MeshResourceHandler.h"
+#include "PhxRenderer/MeshResourceFactory.h"
 #include "PhxResource/ResourceManger.h"
 
 using namespace phx;
@@ -36,20 +36,19 @@ public:
 
 		std::filesystem::path applicationShaderPath = phx::VFS::GetDirectoryWithExecutable() / "shaders/application";
 		std::filesystem::path frameworkShaderPath = phx::VFS::GetDirectoryWithExecutable() / "shaders/engine";
+		std::filesystem::path assetsPath = phx::VFS::GetDirectoryWithExecutable() / "assets";
 
 		m_fs->Mount("/native", phx::FileSystemFactory::CreateNativeFileSystem());
 		m_fs->Mount("/shaders", applicationShaderPath);
 		m_fs->Mount("/shaders_engine", frameworkShaderPath);
-
-		phx::ResourceManger::RegisterResourceHandler<phx::renderer::MeshResourceHandler>();
+		m_fs->Mount("/assets", assetsPath);
 
 		m_imguiRenderer.Initialize(m_fs.get(), m_windowHandle);
 		m_imguiRenderer.EnableDarkThemeColours();
 
 		phx::InitDStorage();
-		const wchar_t* fileToLoad = L"C:\\Users\\dipao\\source\\repos\\Phoenix-Engine\\.workspace\\assets\\baked\\Sponza.phxpak";
-		m_pakFileTest = std::make_unique<PakFile>(fileToLoad);
-		m_pakFileTest->StartMetadataLoad();
+		phx::ResourceManger::RegisterFactory<phx::renderer::MeshResourceFactory>();
+		RefCountPtr<IResource> meshResource = phx::ResourceManger::Get("lionhead", ".phxmsh");
 	}
 
 	void Shutdown() override
@@ -62,43 +61,7 @@ public:
 	{
 		m_imguiRenderer.BeginFrame();
 
-		{
-			ImGui::Begin("Pak File Manager");
-			const uint8_t status = m_pakFileTest->GetStatus();
-			switch (status)
-			{
-			case PakStatus::Unloaded:
-				ImGui::Text("Unloaded");
-				break;
-			case PakStatus::LoadingHeader:
-				ImGui::Text("Loaded header...");
-				break;
-			case PakStatus::LoadingAssetHeaders:
-				ImGui::Text("Loaded asset headers...");
-				break;
-
-			case::PakStatus::Loaded:
-			default:
-				for (const PakFileFormat::AssetEntry& entry : m_pakFileTest->GetEntries())
-				{
-					char buffer[9]; // 8 characters + null terminator
-					std::snprintf(buffer, sizeof(buffer), "%08X", entry.Hash);
-					
-					const char* fileName = m_pakFileTest->FindFilenameByHash(entry.Hash);
-					if (ImGui::TreeNode(fileName ? fileName : buffer))
-					{
-						ImGui::Text("ID: %s", buffer);
-						ImGui::Text("Uncompressed Size: %d", entry.Size);
-						ImGui::Text("Offset: %lld", entry.Offset);
-						ImGui::Text("Num Dependecies: %d", entry.NumDependiences);
-
-						ImGui::TreePop();
-					}
-				}
-			}
-
-			ImGui::End();
-		}
+		PakManager::DrawGui();
 
 		rhi::CommandCtx* ctx = rhi::BeginCommnadCtx();
 		ctx->RenderPassBegin();
@@ -117,9 +80,6 @@ public:
 
 	void SetWindowHandle(void* handle) override { m_windowHandle = handle; }
 	void* GetWindowHandle() const override { return m_windowHandle; }
-
-private:
-	std::unique_ptr<PakFile> m_pakFileTest;
 
 private:
 	inline static Sandbox* ms_instance = nullptr;

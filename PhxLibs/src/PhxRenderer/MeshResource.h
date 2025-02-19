@@ -23,10 +23,12 @@ namespace phx::renderer
 		DrawInfo Draw[1];
 	};
 
-	class MeshResource : public RefCounter<IResource>
+	class MeshResource final : public RefCounter<IResource>
 	{
 	public:
-		bool IsLoaded() const { return false; }
+		MeshResource() = default;
+		void StartMetadataLoad() override;
+		bool IsLoaded() const override { return false; }
 	};
 }
 

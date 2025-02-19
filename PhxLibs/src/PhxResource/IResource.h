@@ -9,6 +9,7 @@ namespace phx
 	public:
 		virtual ~IResource() = default;
 
+		virtual void StartMetadataLoad() = 0;
 		virtual bool IsLoaded() const = 0;
 
 	public:

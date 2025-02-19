@@ -3,11 +3,12 @@
 #include <PhxCore/RefCountPtr.h>
 #include <PhxCore/StringHash.h>
 #include <unordered_map>
+#include <mutex>
 
 #include <memory>
 
 #include "IResource.h"
-#include "IResourceHandler.h"
+#include "IResourceFactory.h"
 
 namespace phx
 {
@@ -16,18 +17,19 @@ namespace phx
 	class ResourceManger
 	{
 	public:
-		static RefCountPtr<IResource> Get(StringHash filename, std::string const& ext);
+		static RefCountPtr<IResource> Get(const char* name, const char* ext);
 
-		template<typename T>
-		static void RegisterResourceHandler()
+		template<typename TFactory>
+		static void RegisterFactory()
 		{
-			constexpr const char* ext = ResourceHandlerExtension<T>::value;
-			m_resourceHandler[StringHash(ext).ToHash()] = std::make_unique<T>();
+			constexpr const char* ext = ResourceFactoryExtension<TFactory>::value;
+			ms_resourceFactories[StringHash(ext).ToHash()] = std::make_unique<TFactory>();
 		}
 
 	private:
-		inline static std::unordered_map<uint32_t, RefCountPtr<IResource>> m_cache;
-		inline static std::unordered_map<uint32_t, std::unique_ptr<IResourceHandler>> m_resourceHandler;
+		inline static std::unordered_map<uint32_t, RefCountPtr<IResource>> ms_cache;
+		inline static std::unordered_map<uint32_t, std::unique_ptr<IResourceFactory>> ms_resourceFactories;
+		inline static std::mutex ms_mutex;
 	};
 }
 

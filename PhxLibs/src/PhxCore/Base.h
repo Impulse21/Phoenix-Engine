@@ -50,7 +50,7 @@ constexpr inline unsigned long long operator "" _GiB(unsigned long long value)
 	return value << 30;
 }
 
-
+#define PHX_MAX_PATH			MAX_PATH
 #define ALIGNAS(x)             __declspec(align(x))
 #define DEFINE_ALIGNED(def, a) __declspec(align(a)) def
 #define THREAD_LOCAL           __declspec(thread)
