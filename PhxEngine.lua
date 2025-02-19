@@ -423,6 +423,11 @@ group "PhxLibs"
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
         }
+        
+        filter('platforms:'..clang_win64_d3d12)
+            AddLibraryIncludes(DStorageLibrary)
+            LinkLibrary(DStorageLibrary)
+        filter{}
 
     project(project_phx_rhi)
         kind('StaticLib')
@@ -460,6 +465,7 @@ group "PhxLibs"
                 phx_vendor_src_d3d12ma_dir,
             }
         filter {}
+        
     project(project_phx_renderer)
         kind('StaticLib')
         pchheader('PhxRenderer/PhxRenderer_pch.h')
