@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PhxRenderer/shaders/ShaderInterop.h"
+#include <PhxResource/ResourceManger.h>
 
 namespace phx::renderer
 {
@@ -22,8 +23,11 @@ namespace phx::renderer
 		DrawInfo Draw[1];
 	};
 
-	class MeshResource
+	class MeshResource : public RefCounter<IResource>
 	{
+	public:
+		bool IsLoaded() const { return false; }
 	};
 }
+
 

@@ -10,6 +10,9 @@
 #include "PhxCore/VFS.h"
 #include "PhxRenderer/ImGuiRenderer.h"
 
+#include "PhxRenderer/MeshResourceHandler.h"
+#include "PhxResource/ResourceManger.h"
+
 using namespace phx;
 
 class Sandbox final : public phx::IApplication
@@ -37,6 +40,8 @@ public:
 		m_fs->Mount("/native", phx::FileSystemFactory::CreateNativeFileSystem());
 		m_fs->Mount("/shaders", applicationShaderPath);
 		m_fs->Mount("/shaders_engine", frameworkShaderPath);
+
+		phx::ResourceManger::RegisterResourceHandler<phx::renderer::MeshResourceHandler>();
 
 		m_imguiRenderer.Initialize(m_fs.get(), m_windowHandle);
 		m_imguiRenderer.EnableDarkThemeColours();
