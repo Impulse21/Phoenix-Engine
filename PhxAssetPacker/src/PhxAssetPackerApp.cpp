@@ -27,7 +27,7 @@ using namespace Microsoft::WRL;
 namespace
 {
 	constexpr const char* kInputTag = "input";
-	constexpr const char* kOutputTag = "output_file";
+	constexpr const char* kOutputTag = "output_dir";
 	constexpr const char* kCompressionTag = "compression";
 
 	ComPtr<IDStorageCompressionCodec> g_bufferCompression;
@@ -74,17 +74,22 @@ namespace
 
 int wmain(int argc, wchar_t** argv)
 {
-    phx::Log::Initialize();
+	phx::Log::Initialize();
 	if (argc == 0)
 	{
 		PHX_INFO("YAML config expected");
 		return -1;
 	}
 
-    phx::CommandLineArgs::Initialize(argc, argv);
+	phx::CommandLineArgs::Initialize(argc, argv);
 	phx::ThreadPool::Initialize();
 
-	YAML::Node config = YAML::LoadFile("../../PhxAssetPacker/test_config.meta");
+#if true
+	YAML::Node config = YAML::LoadFile("../../PhxAssetPacker/test_config_laptop.meta");
+#else
+	YAML::Node config = YAML::LoadFile("../../PhxAssetPacker/test_config_matrix.meta");
+#endif
+
 	if (!config[kInputTag])
 	{
 		PHX_ERROR("Input is required");
@@ -98,7 +103,7 @@ int wmain(int argc, wchar_t** argv)
 	}
 
 	auto gltfInput = config[kInputTag].as<std::string>();
-	auto outputFilename = config[kOutputTag].as<std::string>();
+	auto outputDir = config[kOutputTag].as<std::string>();
 
 	bool useGDeflate = false;
 	if (config[kCompressionTag])
@@ -107,11 +112,15 @@ int wmain(int argc, wchar_t** argv)
 		useGDeflate = compressionStr == "gdeflate";
 	}
 
-	PHX_INFO("Creating Phoenix Pack File '{0}' from '{1}'", outputFilename, gltfInput);
 	std::filesystem::path gltfInputPath(gltfInput);
 	gltfInputPath.make_preferred();
+
+	std::string outputFilename = std::format("{}.{}", gltfInputPath.stem().generic_string().c_str(), ".phxpak");
+	PHX_INFO("Creating Phoenix Pack File '{0}' from '{1}'", outputFilename.c_str(), gltfInput);
+
 	std::shared_ptr<phx::IFileSystem> nativeFS = phx::FileSystemFactory::CreateNativeFileSystem();
 	std::unique_ptr<phx::IFileSystem> inputFS = phx::FileSystemFactory::CreateRelativeFileSystem(nativeFS, gltfInputPath.parent_path());
+	std::unique_ptr<phx::IFileSystem> outputFS = phx::FileSystemFactory::CreateRelativeFileSystem(nativeFS, outputDir);
 
 	{
 		// Load GLF File into memory

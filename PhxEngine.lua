@@ -53,6 +53,8 @@ project_vendor_yaml     = 'yaml-cpp'
 generated_shaders_dir = workspace_directory..'/GeneratedShaders'
 generated_code_dir = workspace_directory..'/GeneratedCode'
 
+assets_directory = workspace_directory.."/Assets"
+
 -- Utility Functions
 function ExcludePlatformSpecificCode(rootPath)
 	excludes { rootPath..'**/platform/**' }
@@ -223,6 +225,8 @@ workspace "PhxEngine"
 	-- Generate the global paths file
 	globalVariableHeader = io.open(path.getabsolute(generated_code_dir)..'Generated/GlobalVariables.h', 'wb');
 	globalVariableHeader:write('namespace phx::GlobalPaths\n{\n');
+	globalVariableHeader:write('\tstatic const char* WorkspaceDirectory = "'..path.getabsolute(workspace_directory)..'/";\n');
+	globalVariableHeader:write('\tstatic const char* AssetsDirectory = "'..path.getabsolute(assets_directory)..'/";\n');
 	--globalVariableHeader:write('\tstatic const char* ShaderCompilerExecutableName = "'..ShaderCompilerExecutableName..'";\n');
 	--globalVariableHeader:write('\tstatic const char* ShaderSourceDirectory = "'..path.getabsolute(SourceShadersDirectory)..'/";\n');
 	globalVariableHeader:write('};\n');
@@ -445,7 +449,6 @@ group "PhxLibs"
         
         filter('platforms:'..clang_win64_d3d12)
             AddLibraryIncludes(DStorageLibrary)
-            LinkLibrary(DStorageLibrary)
         filter{}
 
     project(project_phx_rhi)
@@ -531,8 +534,14 @@ group "PhxLibs"
         includedirs
         {
             phx_lib_src_directory,
+            phx_vendor_src_imgui_dir,
             phx_lib_vendor_directory.."/spdlog/include",
         }
+        
+        -- TODO: Do a better job at abtracting this away.
+        filter('platforms:'..clang_win64_d3d12)
+            AddLibraryIncludes(DStorageLibrary)
+        filter{}
 
     project(project_phx_editor)
         kind('StaticLib')

@@ -1,4 +1,4 @@
-#include "PhxRenderer/PhxRenderer_pch.h"
+#include "PhxResource_pch.h"
 #include "PakManager.h"
 
 #include <imgui.h>

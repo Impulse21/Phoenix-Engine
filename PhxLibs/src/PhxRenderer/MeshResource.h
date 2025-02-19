@@ -26,7 +26,6 @@ namespace phx::renderer
 	class MeshResource final : public RefCounter<IResource>
 	{
 	public:
-		MeshResource() = default;
 		void StartMetadataLoad() override;
 		bool IsLoaded() const override { return false; }
 	};

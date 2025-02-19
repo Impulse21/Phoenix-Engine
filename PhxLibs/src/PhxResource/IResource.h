@@ -17,10 +17,10 @@ namespace phx
 		virtual unsigned long Release() = 0;
 
         // Non-copyable and non-movable
-        IResource(const IResource&) = delete;
-        IResource(const IResource&&) = delete;
-        IResource& operator=(const IResource&) = delete;
-        IResource& operator=(const IResource&&) = delete;
+        // IResource(const IResource&) = delete;
+        // IResource(const IResource&&) = delete;
+        // IResource& operator=(const IResource&) = delete;
+        // IResource& operator=(const IResource&&) = delete;
 	};
 
 }

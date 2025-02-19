@@ -255,6 +255,8 @@ namespace phx
         std::atomic<unsigned long> m_refCount = 1;
 
     public:
+        RefCounter() = default;
+
         virtual unsigned long AddRef() override
         {
             return ++m_refCount;
