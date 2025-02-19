@@ -2,6 +2,7 @@
 
 #include <PhxCore/VFS.h>
 #include <PhxCore/Span.h>
+#include <PhxCore/StringHash.h>
 
 #include <memory>
 #include <string>
@@ -20,9 +21,10 @@ namespace phx
 		{
 			for (auto& pair : entry)
 			{
-				m_entries.emplace(pair);
+				phx::StringHash hash(pair.first);
+				m_entries.emplace(std::make_pair(hash.ToHash(), pair));
 				m_entiresSize += pair.second->Size();
-				m_stringDataSize += pair.first.size() + 1; // add one for null terminated string
+				m_stringHeapSize += pair.first.size() + 1; // add one for null terminated string
 			}
 
 			return *this;
@@ -31,9 +33,9 @@ namespace phx
 		std::unique_ptr<IBlob> Build();
 
 	private:
-		std::map<std::string, IBlob*> m_entries;
+		std::map<uint32_t, std::pair<std::string, IBlob*>> m_entries;
 		size_t m_entiresSize = 0ull;
-		size_t m_stringDataSize = 0ull;
+		size_t m_stringHeapSize = 0ull;
 	};
 }
 

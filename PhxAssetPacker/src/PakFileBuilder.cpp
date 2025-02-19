@@ -17,7 +17,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
     OffsetHandle assetEntriesOffset = packFileBuilder.ReserveArray<PakFileFormat::AssetEntry>(numEntries);
     OffsetHandle stringTableOffset = packFileBuilder.ReserveArray<PakFileFormat::StringEntry>(numEntries);
     OffsetHandle assetsOffsetHandle = packFileBuilder.Reserve(m_entiresSize);
-    OffsetHandle stringDataOffsetHandle = packFileBuilder.Reserve(m_stringDataSize);
+    OffsetHandle stringHeapOffsetHandle = packFileBuilder.Reserve(m_stringHeapSize);
 
     //
     // TODO: Build string table
@@ -32,9 +32,8 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
         header->NumEntries = numEntries;
         header->EntriesOffset = static_cast<uint32_t>(assetEntriesOffset);
         header->NumStrings = numEntries;
-        header->StringTableOffset = static_cast<uint32_t>(stringTableOffset);
-        header->StringDataOffset = stringDataOffsetHandle;
-        header->StringDataSize = m_stringDataSize;
+        header->DependenciesHeapSize = 0;
+        header->StringHeapSize = m_stringHeapSize;
     }
 
     {
@@ -42,7 +41,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
         auto* entreesDataDest = packFileBuilder.Place<char>(assetsOffsetHandle);
 
         auto* stringTableDest = packFileBuilder.Place<PakFileFormat::StringEntry>(stringTableOffset);
-        auto* stringDataDest = packFileBuilder.Place<char>(stringDataOffsetHandle);
+        auto* stringDataDest = packFileBuilder.Place<char>(stringHeapOffsetHandle);
 
         OffsetHandle dataOffset = assetsOffsetHandle;
         OffsetHandle strDataOffset = 0;
@@ -51,25 +50,28 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
 
         for (size_t i = 0; i < numEntries; i++)
         {
-            PakFileFormat::AssetEntry& entry = *(entriesDest + i);
-            entry.Offset = dataOffset;
-            entry.Size = entriesItr->second->Size();
-            entry.Hash = StringHash(entriesItr->first);
-            entry.NumDependiences = 0;
+            uint32_t hash = entriesItr->first;
+            std::pair<std::string, IBlob*>& entry = entriesItr->second;
+
+            PakFileFormat::AssetEntry& assetEntry = *(entriesDest + i);
+            assetEntry.Offset = dataOffset;
+            assetEntry.Size = entry.second->Size();
+            assetEntry.Hash = hash;
+            assetEntry.NumDependiences = 0;
             
             char* dataDest = (entreesDataDest + i);
-            std::memcpy(dataDest, entriesItr->second->Data(), entry.Size);
+            std::memcpy(dataDest, entry.second->Data(), assetEntry.Size);
 
             PakFileFormat::StringEntry& strEntry = *(stringTableDest + i);
-            strEntry.Hash = entry.Hash;
+            strEntry.Hash = assetEntry.Hash;
             strEntry.Offset = strDataOffset;
 
 
             char* strDataDest = (stringDataDest + strDataOffset);
-            strcpy(strDataDest, entriesItr->first.c_str());
+            strcpy(strDataDest, entry.first.c_str());
 
-            dataOffset += entry.Size;
-            strDataOffset += entriesItr->first.size() + 1;
+            dataOffset += assetEntry.Size;
+            strDataOffset += entry.first.size() + 1;
             std::advance(entriesItr, 1);
         }
     }

@@ -54,3 +54,5 @@ constexpr inline unsigned long long operator "" _GiB(unsigned long long value)
 #define ALIGNAS(x)             __declspec(align(x))
 #define DEFINE_ALIGNED(def, a) __declspec(align(a)) def
 #define THREAD_LOCAL           __declspec(thread)
+
+#define CompileTimeAssertSize(def, size) static_assert(sizeof(def) == size, "Definition #def must be #size bytes")

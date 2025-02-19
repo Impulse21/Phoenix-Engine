@@ -149,13 +149,10 @@ namespace
 				PHX_ERROR("The file {0}, could no open.", outMsg);
 				return;
 			}
-
-
-			BY_HANDLE_FILE_INFORMATION info{};
-			hr = (m_dsFile->GetFileInformation(&info));
+			hr = (m_dsFile->GetFileInformation(&m_fileInfo));
 			PHX_ASSERT(SUCCEEDED(hr));
-			uint32_t fileSize = info.nFileSizeLow;
-			PHX_INFO("FileSize {0}.", fileSize);
+			uint32_t fileSize = m_fileInfo.nFileSizeLow;
+			PHX_INFO("File Size {0}.", fileSize);
 
 			hr = (g_dsFactory->CreateStatusArray(
 				static_cast<uint32_t>(StatusArrayEntry::NumEntries),
@@ -196,17 +193,17 @@ namespace
 
 		const char* FindFilenameByHash(phx::StringHash targetHash)
 		{
-#if false
-			int left = 0, right = m_header.NumStrings - 1;
+			size_t left = 0;
+			size_t right = m_header.NumStrings - 1;
 
 			while (left <= right)
 			{
-				int mid = left + (right - left) / 2;
+				size_t mid = left + (right - left) / 2;
 				const PakFileFormat::StringEntry& entry = m_assetStringEntriesData.Get()[mid];
 
 				if (entry.Hash == targetHash)
 				{
-					return m_assetStringData.Get() + entry.Offset; // Return pointer to the filename
+					return m_assetStringHeap.Get() + entry.Offset; // Return pointer to the filename
 				}
 				else if (entry.Hash < targetHash)
 				{
@@ -218,16 +215,6 @@ namespace
 				}
 			}
 
-#else
-			for (uint32_t i = 0; i < m_header.NumStrings; i++)
-			{
-				const PakFileFormat::StringEntry& entry = m_assetStringEntriesData.Get()[i];
-				if (entry.Hash == targetHash)
-				{
-					return m_assetStringData.Get() + entry.Offset; // Return pointer to the filename
-				}
-			}
-#endif
 			return nullptr; // Not found
 		}
 
@@ -248,13 +235,15 @@ namespace
 				return;
 			}
 
+			const size_t fileSize = (static_cast<size_t>(m_fileInfo.nFileSizeHigh) << sizeof(m_fileInfo.nFileSizeLow) * 8) | m_fileInfo.nFileSizeLow;
+
 			const uint32_t sizeOfEntries = static_cast<uint32_t>(m_header.NumEntries * sizeof(PakFileFormat::AssetEntry));
 			m_assetEntriesData = EnqueueReadMemoryRegion<PakFileFormat::AssetEntry>(m_header.EntriesOffset, sizeOfEntries);
 
 			const uint32_t sizeOfStringEntries = static_cast<uint32_t>(m_header.NumStrings * sizeof(PakFileFormat::StringEntry));
-			m_assetStringEntriesData= EnqueueReadMemoryRegion<PakFileFormat::StringEntry>(m_header.StringTableOffset, sizeOfStringEntries);
-
-			m_assetStringData = EnqueueReadMemoryRegion<char>(m_header.StringDataOffset, m_header.StringDataSize);
+			const size_t stringTableOffset = sizeof(PakFileFormat::Header) + sizeOfEntries;
+			m_assetStringEntriesData = EnqueueReadMemoryRegion<PakFileFormat::StringEntry>(stringTableOffset, sizeOfStringEntries);
+			m_assetStringHeap = EnqueueReadMemoryRegion<char>(fileSize - m_header.StringHeapSize, m_header.StringHeapSize);
 			
 			m_assetIndexLoaded.SetThreadpoolWait();
 			g_dsSystemMemoryQueue->EnqueueSetEvent(m_assetIndexLoaded);
@@ -368,7 +357,7 @@ namespace
 		PakFileFormat::Header m_header;
 		MemoryRegion<PakFileFormat::AssetEntry> m_assetEntriesData;
 		MemoryRegion<PakFileFormat::StringEntry> m_assetStringEntriesData;
-		MemoryRegion<char> m_assetStringData;
+		MemoryRegion<char> m_assetStringHeap;
 
 	private:
 		EventWait m_headerLoaded;
@@ -378,6 +367,7 @@ namespace
 		mutable std::mutex m_mutex;
 		InternalState m_state = InternalState::FileOpen;
 		Microsoft::WRL::ComPtr<IDStorageFile> m_dsFile;
+		BY_HANDLE_FILE_INFORMATION m_fileInfo = {};
 		Microsoft::WRL::ComPtr<IDStorageStatusArray> m_statusArray;
 	};
 }
