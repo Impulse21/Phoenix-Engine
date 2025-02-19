@@ -16,14 +16,16 @@
 #include <dstorage.h>
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
-#include <yaml-cpp/yaml.h>
 
+#include <yaml-cpp/yaml.h>
+#include <PhxCore/StringUtils.h>
 #include "PhxCore/ThreadPool.h"
 
 using namespace phx;
 using namespace Microsoft::WRL;
-// "{ \"input\" : \"Main.1_Sponza\\NewSponza_Main_glTF_002.gltf\", \"output_file\": \"Sponza.phxarc", \"compression\" : \"GDeflate\" }"
 
+// Args for Laptop: -config "../../PhxAssetPacker/test_config_laptop.yaml"
+// Args For Matrix: -config "../../PhxAssetPacker/test_config_matrix.yaml"
 namespace
 {
 	constexpr const char* kInputTag = "input";
@@ -84,11 +86,13 @@ int wmain(int argc, wchar_t** argv)
 	phx::CommandLineArgs::Initialize(argc, argv);
 	phx::ThreadPool::Initialize();
 
-#if true
-	YAML::Node config = YAML::LoadFile("../../PhxAssetPacker/test_config_laptop.meta");
-#else
-	YAML::Node config = YAML::LoadFile("../../PhxAssetPacker/test_config_matrix.meta");
-#endif
+	std::wstring wConfigFile;
+	phx::CommandLineArgs::GetString(L"config", wConfigFile);
+
+	std::string configFile;
+	StringConvert(wConfigFile, configFile);
+
+	YAML::Node config = YAML::LoadFile(configFile.c_str());
 
 	if (!config[kInputTag])
 	{
@@ -120,6 +124,8 @@ int wmain(int argc, wchar_t** argv)
 
 	std::shared_ptr<phx::IFileSystem> nativeFS = phx::FileSystemFactory::CreateNativeFileSystem();
 	std::unique_ptr<phx::IFileSystem> inputFS = phx::FileSystemFactory::CreateRelativeFileSystem(nativeFS, gltfInputPath.parent_path());
+
+	std::filesystem::create_directories(outputDir);
 	std::unique_ptr<phx::IFileSystem> outputFS = phx::FileSystemFactory::CreateRelativeFileSystem(nativeFS, outputDir);
 
 	{
@@ -231,9 +237,7 @@ int wmain(int argc, wchar_t** argv)
 			.AddFiles(assetEntries);
 
 		std::unique_ptr<phx::IBlob> pakFileData = pakBuilder.Build();
-		
-		std::filesystem::create_directories(outputPath.parent_path());
-		nativeFS->WriteFile(outputPath, pakFileData.get());
+		outputFS->WriteFile(outputFilename, pakFileData.get());
 
 		// Write out mesh Chunk Files
 		// Write out Chunk Data
