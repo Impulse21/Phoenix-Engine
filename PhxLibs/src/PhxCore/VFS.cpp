@@ -254,11 +254,11 @@ bool RootFileSystem::FindMountPoint(const std::filesystem::path& path, std::file
 
     for (auto it : this->m_mountPoints)
     {
-        if (spath.find(it.first, 0) == 0 && ((spath.length() == it.first.length()) || (spath[it.first.length()] == '/')))
+        if (spath.find(it.first, 0) == 0 && ((spath.length() == it.first.length()) || (spath[it.first.length() - 1] == '/')))
         {
             if (pRelativePath)
             {
-                std::string relative = spath.substr(it.first.size() + 1);
+                std::string relative = spath.substr(it.first.size());
                 *pRelativePath = relative;
             }
 

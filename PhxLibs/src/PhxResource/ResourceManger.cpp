@@ -2,8 +2,22 @@
 
 #include "PhxCore/Base.h"
 #include "ResourceManger.h"
+#include "PakManager.h"
 
 using namespace phx;
+
+void ResourceManger::Initialize(std::filesystem::path const& resourcePath)
+{
+	phx::InitDStorage();
+	ms_rootFs = phx::FileSystemFactory::CreateRootFileSystem();
+
+	ms_rootFs->Mount("res:/", resourcePath);
+}
+
+void ResourceManger::MountPak(std::filesystem::path const& filename)
+{
+	PHX_ASSERT(ms_rootFs->FileExists(filename)  == true);
+}
 
 RefCountPtr<IResource> ResourceManger::Get(const char* name, const char* ext)
 {

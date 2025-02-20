@@ -5,8 +5,7 @@
 #include "PhxCore/EntryPoint.h"
 #include "PhxCore/StringHash.h"
 #include "PhxCore/VFS.h"
-
-#include "PhxResource/PakManager.h"
+#include "Generated/GlobalVariables.h"
 
 #include "PhxRenderer/ImGuiRenderer.h"
 
@@ -34,19 +33,12 @@ public:
 		PHX_INFO("Sandbox app is starting up");
 		m_fs = phx::FileSystemFactory::CreateRootFileSystem();
 
-		std::filesystem::path applicationShaderPath = phx::VFS::GetDirectoryWithExecutable() / "shaders/application";
-		std::filesystem::path frameworkShaderPath = phx::VFS::GetDirectoryWithExecutable() / "shaders/engine";
-		std::filesystem::path assetsPath = phx::VFS::GetDirectoryWithExecutable() / "assets";
-
-		m_fs->Mount("/native", phx::FileSystemFactory::CreateNativeFileSystem());
-		m_fs->Mount("/shaders", applicationShaderPath);
-		m_fs->Mount("/shaders_engine", frameworkShaderPath);
-		m_fs->Mount("/assets", assetsPath);
-
 		m_imguiRenderer.Initialize(m_fs.get(), m_windowHandle);
 		m_imguiRenderer.EnableDarkThemeColours();
 
-		phx::InitDStorage();
+		phx::ResourceManger::Initialize(GlobalPaths::AssetsDirectory);
+		phx::ResourceManger::MountPak("res:/Sponza.phxpak");
+
 		phx::ResourceManger::RegisterFactory<phx::renderer::MeshResourceFactory>();
 		RefCountPtr<IResource> meshResource = phx::ResourceManger::Get("lionhead", ".phxmsh");
 	}
@@ -60,8 +52,6 @@ public:
 	void Tick() override
 	{
 		m_imguiRenderer.BeginFrame();
-
-		PakManager::DrawGui();
 
 		rhi::CommandCtx* ctx = rhi::BeginCommnadCtx();
 		ctx->RenderPassBegin();

@@ -53,7 +53,7 @@ project_vendor_yaml     = 'yaml-cpp'
 generated_shaders_dir = workspace_directory..'/GeneratedShaders'
 generated_code_dir = workspace_directory..'/GeneratedCode'
 
-assets_directory = workspace_directory.."/Assets"
+assets_directory = workspace_directory.."/../assets"
 
 -- Utility Functions
 function ExcludePlatformSpecificCode(rootPath)
@@ -223,10 +223,10 @@ workspace "PhxEngine"
 	}
 
 	-- Generate the global paths file
-	globalVariableHeader = io.open(path.getabsolute(generated_code_dir)..'Generated/GlobalVariables.h', 'wb');
+	globalVariableHeader = io.open(path.getabsolute(generated_code_dir)..'/Generated/GlobalVariables.h', 'wb');
 	globalVariableHeader:write('namespace phx::GlobalPaths\n{\n');
-	globalVariableHeader:write('\tstatic const char* WorkspaceDirectory = "'..path.getabsolute(workspace_directory)..'/";\n');
-	globalVariableHeader:write('\tstatic const char* AssetsDirectory = "'..path.getabsolute(assets_directory)..'/";\n');
+	globalVariableHeader:write('\tconstexpr const char* WorkspaceDirectory = "'..path.getabsolute(workspace_directory)..'/";\n');
+	globalVariableHeader:write('\tconstexpr const char* AssetsDirectory = "'..path.getabsolute(assets_directory)..'/";\n');
 	--globalVariableHeader:write('\tstatic const char* ShaderCompilerExecutableName = "'..ShaderCompilerExecutableName..'";\n');
 	--globalVariableHeader:write('\tstatic const char* ShaderSourceDirectory = "'..path.getabsolute(SourceShadersDirectory)..'/";\n');
 	globalVariableHeader:write('};\n');
