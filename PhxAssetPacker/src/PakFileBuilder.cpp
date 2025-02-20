@@ -3,7 +3,8 @@
 #include <PhxCore/StringHash.h>
 #include <PhxCore/VFS.h>
 #include <PhxCore/BinaryBuilder.h>
-#include <PhxCore/IO/PakFile.h>
+#include <PhxResource/PakFileFormat.h>
+#include <PhxResource/FileFormatUtils.h>
 
 using namespace phx;
 
@@ -28,7 +29,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
         auto* header = packFileBuilder.Place<PakFileFormat::Header>(headerOffset);
         header->Magic = PakFileFormat::MagicNumber;
         header->Version = PakFileFormat::Version;
-        header->BuildNumber = GetTimestamp();
+        header->BuildNumber = FileFormat::GetTimestamp();
         header->NumEntries = numEntries;
         header->EntriesOffset = static_cast<uint32_t>(assetEntriesOffset);
         header->NumStrings = numEntries;

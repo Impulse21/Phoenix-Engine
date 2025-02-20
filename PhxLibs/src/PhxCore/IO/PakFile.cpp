@@ -1,7 +1,7 @@
 #include "PhxCore/PhxCore_pch.h"
 
 #include "PakFile.h"
-
+#if false
 #include "PhxCore/StringUtils.h"
 #include <wrl.h>
 
@@ -159,3 +159,4 @@ void PakFile::OnAssetIndexLoaded()
 	m_status = PakStatus::Loaded;
 
 }
+#endif

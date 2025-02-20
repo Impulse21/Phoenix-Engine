@@ -137,10 +137,10 @@ namespace phx
 		FileHandle Open(std::filesystem::path const& path) override;
 		void Close(FileHandle handle) override;
 
-		void EnqueueRead(ReadRequest const& request, RequestCallbackFunc&& callback) override;
-		MemoryRegion<uint8_t> EnqueueReadBlob(ReadRequest const& request, RequestCallbackFunc&& callback) override;
+		void EnqueueRead(ReadRequest const& request) override;
 
-		void SubmitRequests() override;
+		size_t GetFileSize(FileHandle handle) const override;
+		void SubmitRequests(RequestCallbackFunc&& callback) override;
 
 	public:
 		void Mount(const std::filesystem::path& path, std::shared_ptr<IFileSystem> fs) override

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxCore/RefCountPtr.h>
+#include <PhxResource/VFSResource.h>
 
 namespace phx
 {
@@ -9,8 +10,8 @@ namespace phx
 	public:
 		virtual ~IResource() = default;
 
-		virtual void StartMetadataLoad() = 0;
 		virtual bool IsLoaded() const = 0;
+		virtual FileHandle GetFileHandle() const = 0;
 
 	public:
 		virtual unsigned long AddRef() = 0;

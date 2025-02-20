@@ -9,5 +9,5 @@ using namespace phx::renderer;
 
 RefCountPtr<IResource> phx::renderer::MeshResourceFactory::Create(StringHash, const char*)
 {
-	return RefCountPtr<IResource>::Create(new MeshResource());
+	return nullptr;
 }

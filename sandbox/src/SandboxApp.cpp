@@ -59,6 +59,8 @@ public:
 	{
 		m_imguiRenderer.BeginFrame();
 
+		phx::ResourceManger::DrawGui();
+
 		rhi::CommandCtx* ctx = rhi::BeginCommnadCtx();
 		ctx->RenderPassBegin();
 		m_imguiRenderer.Render(ctx);

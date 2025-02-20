@@ -21,13 +21,13 @@ namespace
 		g_dsFactory->SetStagingBufferSize(256 * 1024 * 1024);
 	}
 
-	constexpr size_t GetFileSize(DWORD sizeLow, DWORD sizeHigh)
+	constexpr size_t RetrieveFileSize(DWORD sizeLow, DWORD sizeHigh)
 	{
 		return (static_cast<size_t>(sizeHigh) << sizeof(sizeLow) * 8) | sizeLow;
 	}
-	constexpr size_t GetFileSize(BY_HANDLE_FILE_INFORMATION fileInfo)
+	constexpr size_t RetrieveFileSize(BY_HANDLE_FILE_INFORMATION fileInfo)
 	{
-		return GetFileSize(fileInfo.nFileSizeLow, fileInfo.nFileSizeHigh);
+		return RetrieveFileSize(fileInfo.nFileSizeLow, fileInfo.nFileSizeHigh);
 	}
 }
 
@@ -80,7 +80,7 @@ FileHandle phx::DSResourceFileSystem::Open(std::filesystem::path const& path)
 	hr = (file->GetFileInformation(&fileImpl.FileInfo));
 	PHX_ASSERT(SUCCEEDED(hr));
 
-	PHX_INFO("[DS] Opened File: {0} [size {1}] bytes.", resolvedPath.generic_string().c_str(), GetFileSize(fileImpl.FileInfo));
+	PHX_INFO("[DS] Opened File: {0} [size {1}] bytes.", resolvedPath.generic_string().c_str(), RetrieveFileSize(fileImpl.FileInfo));
 
 	hr = (g_dsFactory->CreateStatusArray(
 		static_cast<uint32_t>(255),
@@ -106,7 +106,7 @@ void phx::DSResourceFileSystem::Close(FileHandle handle)
 	m_filePool.Free(handle);
 }
 
-void phx::DSResourceFileSystem::EnqueueRead(ReadRequest const& request, RequestCallbackFunc&& callback)
+void phx::DSResourceFileSystem::EnqueueRead(ReadRequest const& request)
 {
 	FileDS* fileImpl = m_filePool.Get<FileDS>(request.Handle);
 	if (!fileImpl)
@@ -126,37 +126,17 @@ void phx::DSResourceFileSystem::EnqueueRead(ReadRequest const& request, RequestC
 
 	// TODO: Set up events
 	m_dsSystemMemoryQueue->EnqueueRequest(&r);
-	m_callbackQueue.EnqueueCallback(std::move(callback));
 }
 
-MemoryRegion<uint8_t> phx::DSResourceFileSystem::EnqueueReadBlob(ReadRequest const& request, RequestCallbackFunc&& callback)
+size_t phx::DSResourceFileSystem::GetFileSize(FileHandle handle) const
 {
-	FileDS* fileImpl = m_filePool.Get<FileDS>(request.Handle);
-	if (!fileImpl)
-		std::runtime_error("unopened file handle");
-
-	MemoryRegion<uint8_t> dest(std::make_unique<char[]>(request.Size));
-
-	DSTORAGE_REQUEST r{};
-	r.Options.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
-	r.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_MEMORY;
-	r.Source.File.Source = fileImpl->DsFile.Get();
-	r.Source.File.Offset = request.Offset;
-	r.Source.File.Size = request.Size;
-	r.Destination.Memory.Buffer = dest.Data();
-	r.Destination.Memory.Size = request.Size;
-	r.UncompressedSize = r.Destination.Memory.Size;
-	r.CancellationTag = reinterpret_cast<uint64_t>(fileImpl);
-
-	// TODO: Set up events
-	m_dsSystemMemoryQueue->EnqueueRequest(&r);
-	m_callbackQueue.EnqueueCallback(std::move(callback));
-
-	return dest;
+	const FileDS* fileImpl = m_filePool.Get<FileDS>(handle);
+	return fileImpl ? RetrieveFileSize(fileImpl->FileInfo) : 0;
 }
 
-void phx::DSResourceFileSystem::SubmitRequests()
+void phx::DSResourceFileSystem::SubmitRequests(RequestCallbackFunc&& callback)
 {
+	m_callbackQueue.EnqueueCallback(std::move(callback));
 	m_callbackQueue.SetThreadpoolWait();
 	//m_dsSystemMemoryQueue->EnqueueStatus(m_statusArray.Get(), static_cast<uint32_t>(StatusArrayEntry::Metadata));
 	m_dsSystemMemoryQueue->EnqueueSetEvent(m_callbackQueue.GetEvent());

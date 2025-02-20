@@ -5,11 +5,13 @@
 #include <PhxCore/Span.h>
 
 #include <unordered_map>
+#include <vector>
 #include <mutex>
 
 #include <filesystem>
 #include <memory>
 
+#include "PakFile.h"
 #include "VFSResource.h"
 #include "IResource.h"
 #include "IResourceFactory.h"
@@ -31,13 +33,18 @@ namespace phx
 			ms_resourceFactories[StringHash(ext).ToHash()] = std::make_unique<TFactory>();
 		}
 
+		static void DrawGui();
+
 	private:
 		static void RegisterPakFile(std::filesystem::path const& pakFile);
 
 	private:
-		inline static std::unique_ptr<IResourceFileSystem> ms_fileSytem;
-		inline static std::unordered_map<uint32_t, RefCountPtr<IResource>> ms_cache;
-		inline static std::unordered_map<uint32_t, std::unique_ptr<IResourceFactory>> ms_resourceFactories;
+		inline static std::vector<RefCountPtr<PakFile>> ms_registeredPaks;
+		inline static std::unordered_map<Hash32, size_t> ms_pakLut;
+		inline static PakFileHandler ms_pakFileHandler;
+		inline static std::shared_ptr<IResourceFileSystem> ms_fileSytem;
+		inline static std::unordered_map<Hash32, RefCountPtr<IResource>> ms_cache;
+		inline static std::unordered_map<Hash32, std::unique_ptr<IResourceFactory>> ms_resourceFactories;
 		inline static std::mutex ms_mutex;
 	};
 }

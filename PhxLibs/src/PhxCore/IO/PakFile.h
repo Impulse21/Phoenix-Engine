@@ -11,6 +11,7 @@
 #include <wrl/wrappers/corewrappers.h>
 #include <dstorage.h>
 
+#if false
 namespace phx
 {
     namespace PakFileFormat
@@ -286,3 +287,4 @@ namespace phx
 		Microsoft::WRL::ComPtr<IDStorageStatusArray> m_statusArray;
     };
 }
+#endif

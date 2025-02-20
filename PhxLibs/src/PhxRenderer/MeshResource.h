@@ -23,11 +23,9 @@ namespace phx::renderer
 		DrawInfo Draw[1];
 	};
 
-	class MeshResource final : public RefCounter<IResource>
+	class MeshResource final 
 	{
 	public:
-		void StartMetadataLoad() override;
-		bool IsLoaded() const override { return false; }
 	};
 }
 
