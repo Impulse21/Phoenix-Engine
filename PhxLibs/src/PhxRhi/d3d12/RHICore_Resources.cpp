@@ -76,9 +76,9 @@ namespace
 namespace phx::rhi::d3d12
 {
 	Microsoft::WRL::ComPtr<D3D12MA::Allocator> g_d3d12MemAllocator;
-	phx::ResourcePool<rhi::PipelineState, PipelineState> g_pipelineStatePool;
-	phx::ResourcePool<rhi::Texture, Texture> g_texturePool;
-	phx::ResourcePool<rhi::GpuBuffer, d3d12::GpuBuffer> g_bufferPool;
+	phx::PagedPool<rhi::PipelineState, PipelineState> g_pipelineStatePool;
+	phx::PagedPool<rhi::Texture, Texture> g_texturePool;
+	phx::PagedPool<rhi::GpuBuffer, d3d12::GpuBuffer> g_bufferPool;
 }
 
 namespace

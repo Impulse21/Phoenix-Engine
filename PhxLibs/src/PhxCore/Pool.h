@@ -20,14 +20,14 @@ namespace phx
 
     // TODO: Need to fix up how the pages work.
 	template<class THandle, class TDataHot, class TDataCold = std::monostate>
-	class ResourcePool
+	class PagedPool
 	{
 		static_assert(std::is_default_constructible_v<TDataHot>);
 		static_assert(std::is_default_constructible_v<TDataCold>, "TDataHot should have a trivial destructor");
 
 	public:
-		ResourcePool() = default;
-		~ResourcePool()
+		PagedPool() = default;
+		~PagedPool()
 		{
 			Finalize();
 		}

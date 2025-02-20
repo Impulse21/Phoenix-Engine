@@ -60,9 +60,9 @@ namespace phx::rhi::d3d12
 	extern D3D12SwapChain g_swapChain;
 
 	// -- Resource pools --- TODO: Move to a ResourceManager class that wraps these pool
-	extern phx::ResourcePool<rhi::PipelineState, d3d12::PipelineState> g_pipelineStatePool;
-	extern phx::ResourcePool<rhi::Texture, d3d12::Texture> g_texturePool;
-	extern phx::ResourcePool<rhi::GpuBuffer, d3d12::GpuBuffer> g_bufferPool;
+	extern phx::PagedPool<rhi::PipelineState, d3d12::PipelineState> g_pipelineStatePool;
+	extern phx::PagedPool<rhi::Texture, d3d12::Texture> g_texturePool;
+	extern phx::PagedPool<rhi::GpuBuffer, d3d12::GpuBuffer> g_bufferPool;
 
 
 	void InitializeResources(rhi::RhiCreateInfo const& createInfo);

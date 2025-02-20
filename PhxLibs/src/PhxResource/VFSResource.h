@@ -2,6 +2,7 @@
 
 #include <PhxCore/VFS.h>
 #include <PhxCore/Handle.h>
+#include <PhxCore/IO/MemoryRegion.h>
 
 #include <functional>
 
@@ -33,7 +34,7 @@ namespace phx
 			EnqueueRead(handle, offset, sizeof(T) * numEntries, dest, callback);
 		}
 
-		virtual std::unique_ptr<IBlob> EnqueueReadBlob(FileHandle handle, uint64_t offset, uint64_t size, RequestCallbackFunc&& callback) = 0;
+		virtual MemoryRegion<uint8_t> EnqueueReadBlob(FileHandle handle, uint64_t offset, uint64_t size, RequestCallbackFunc&& callback) = 0;
 
 		virtual void SubmitRequests() = 0;
 	};
