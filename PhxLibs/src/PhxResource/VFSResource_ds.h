@@ -137,8 +137,8 @@ namespace phx
 		FileHandle Open(std::filesystem::path const& path) override;
 		void Close(FileHandle handle) override;
 
-		void EnqueueRead(FileHandle handle, uint64_t offset, uint64_t size, void* dest, RequestCallbackFunc&& callback) override;
-		MemoryRegion<uint8_t> EnqueueReadBlob(FileHandle handle, uint64_t offset, uint64_t size, RequestCallbackFunc&& callback) override;
+		void EnqueueRead(ReadRequest const& request, RequestCallbackFunc&& callback) override;
+		MemoryRegion<uint8_t> EnqueueReadBlob(ReadRequest const& request, RequestCallbackFunc&& callback) override;
 
 		void SubmitRequests() override;
 
@@ -178,6 +178,10 @@ namespace phx
 			return m_rootFs->WriteFile(name, Data);
 		}
 
+		std::filesystem::path ResolvePath(std::filesystem::path const& name) override
+		{
+			return m_rootFs->ResolvePath(name);
+		}
 		
 	private:
 		std::unique_ptr<IRootFileSystem> m_rootFs;

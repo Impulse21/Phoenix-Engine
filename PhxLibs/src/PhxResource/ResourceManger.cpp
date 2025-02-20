@@ -6,18 +6,45 @@
 
 using namespace phx;
 
+static std::unique_ptr<PakFileFormat::Header> g_testHeader = {};
+
 void ResourceManger::Initialize(std::filesystem::path const& resourcePath)
 {
-	phx::InitDStorage();
-	ms_rootFs = phx::FileSystemFactory::CreateRootFileSystem();
+	ms_fileSytem = phx::FileSystemFactory::CreateResourceFileSystem();
 
-	ms_rootFs->Mount("res:/", resourcePath);
+	ms_fileSytem->Mount("res:/", resourcePath);
 }
 
-void ResourceManger::MountPak(std::filesystem::path const& filename)
+void ResourceManger::RegisterPakFiles(Span<std::filesystem::path> pakFiles)
 {
-	PHX_ASSERT(ms_rootFs->FileExists(filename)  == true);
-	// OPen File
+	for (auto& pakFile : pakFiles)
+	{
+		PHX_CORE_INFO("Registering PakFile {0}.", pakFile.generic_string().c_str());
+		RegisterPakFile(pakFile);
+	}
+
+	ms_fileSytem->SubmitRequests();
+}
+
+void phx::ResourceManger::RegisterPakFile(std::filesystem::path const& pakFile)
+{
+	// Get filename of pak file
+	StringHash pakFileId(pakFile.stem().generic_string());
+
+	FileHandle fileHandle = ms_fileSytem->Open(pakFile);
+	
+	g_testHeader = std::make_unique<PakFileFormat::Header>();
+
+#if false
+	ms_fileSytem->EnqueueRead(fileHandle, 0, g_testHeader.get(), [&] {
+		PHX_CORE_INFO(
+			"Header Loaded info: \n\tVersion:{0}\n\tBuild:{1}\n\tNumEntries:{2}",
+			g_testHeader->Version,
+			g_testHeader->BuildNumber,
+			g_testHeader->NumEntries);
+	});
+#endif 
+	ms_fileSytem->Close(fileHandle);
 }
 
 RefCountPtr<IResource> ResourceManger::Get(const char* name, const char* ext)

@@ -35,9 +35,11 @@ phx::DSResourceFileSystem::DSResourceFileSystem()
 {
 	{
 		std::scoped_lock _(g_initMutex);
-		if (g_isInit)
+		if (!g_isInit)
 			InitDStorage();
 	}
+
+	m_rootFs = FileSystemFactory::CreateRootFileSystem();
 
 	// Create a DirectStorage queue which will be used to load data into a
 	// buffer on the GPU.
@@ -58,39 +60,34 @@ phx::DSResourceFileSystem::DSResourceFileSystem()
 
 FileHandle phx::DSResourceFileSystem::Open(std::filesystem::path const& path)
 {
+	std::filesystem::path resolvedPath = ResolvePath(path);
 	FileHandle retVal = {};
-	if (FileExists(path))
+	Microsoft::WRL::ComPtr<IDStorageFile> file;
+	HRESULT hr = g_dsFactory->OpenFile(resolvedPath.wstring().c_str(), IID_PPV_ARGS(&file));
+
+	if (FAILED(hr))
 	{
-		Microsoft::WRL::ComPtr<IDStorageFile> file;
-		HRESULT hr = g_dsFactory->OpenFile(path.wstring().c_str(), IID_PPV_ARGS(&file));
-		if (FAILED(hr))
-		{
-			std::string outMsg;
-			StringConvert(path.wstring().c_str(), outMsg);
-			PHX_ERROR("The file {0}, could no open.", outMsg);
-			return retVal;
-		}
-
-		retVal = m_filePool.Allocate();
-		FileDS& fileImpl = *m_filePool.Get<FileDS>(retVal);
-		fileImpl.DsFile = file;
-
-		hr = (file->GetFileInformation(&fileImpl.FileInfo));
-		PHX_ASSERT(SUCCEEDED(hr));
-
-		PHX_INFO("[DS] Opened File: {0} [size {1}] bytes.", path.generic_string().c_str(), GetFileSize(fileImpl.FileInfo));
-
-#if false
-		hr = (g_dsFactory->CreateStatusArray(
-			static_cast<uint32_t>(StatusArrayEntry::NumEntries),
-			nullptr,
-			IID_PPV_ARGS(&m_statusArray)));
-
-		PHX_ASSERT(SUCCEEDED(hr));
-
-		m_status.store(0xFF);
-#endif
+		std::string outMsg;
+		StringConvert(resolvedPath.wstring().c_str(), outMsg);
+		PHX_ERROR("The file {0}, could no open.", outMsg);
+		return retVal;
 	}
+
+	retVal = m_filePool.Allocate();
+	FileDS& fileImpl = *m_filePool.Get<FileDS>(retVal);
+	fileImpl.DsFile = file;
+
+	hr = (file->GetFileInformation(&fileImpl.FileInfo));
+	PHX_ASSERT(SUCCEEDED(hr));
+
+	PHX_INFO("[DS] Opened File: {0} [size {1}] bytes.", resolvedPath.generic_string().c_str(), GetFileSize(fileImpl.FileInfo));
+
+	hr = (g_dsFactory->CreateStatusArray(
+		static_cast<uint32_t>(255),
+		nullptr,
+		IID_PPV_ARGS(&fileImpl.StatusArray)));
+
+	PHX_ASSERT(SUCCEEDED(hr));
 
 	return retVal;
 }
@@ -109,9 +106,9 @@ void phx::DSResourceFileSystem::Close(FileHandle handle)
 	m_filePool.Free(handle);
 }
 
-void phx::DSResourceFileSystem::EnqueueRead(FileHandle handle, uint64_t offset, uint64_t size, void* dest, RequestCallbackFunc&& callback)
+void phx::DSResourceFileSystem::EnqueueRead(ReadRequest const& request, RequestCallbackFunc&& callback)
 {
-	FileDS* fileImpl = m_filePool.Get<FileDS>(handle);
+	FileDS* fileImpl = m_filePool.Get<FileDS>(request.Handle);
 	if (!fileImpl)
 		return;
 
@@ -120,9 +117,9 @@ void phx::DSResourceFileSystem::EnqueueRead(FileHandle handle, uint64_t offset, 
 	r.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_MEMORY;
 	r.Options.CompressionFormat = DSTORAGE_COMPRESSION_FORMAT_NONE;
 	r.Source.File.Source = fileImpl->DsFile.Get();
-	r.Source.File.Offset = offset;
-	r.Source.File.Size = static_cast<uint32_t>(size);
-	r.Destination.Memory.Buffer = dest;
+	r.Source.File.Offset = request.Offset;
+	r.Source.File.Size = static_cast<uint32_t>(request.Size);
+	r.Destination.Memory.Buffer = request.Dest;
 	r.Destination.Memory.Size = r.Source.File.Size;
 	r.UncompressedSize = r.Destination.Memory.Size;
 	r.CancellationTag = reinterpret_cast<uint64_t>(fileImpl);
@@ -132,22 +129,22 @@ void phx::DSResourceFileSystem::EnqueueRead(FileHandle handle, uint64_t offset, 
 	m_callbackQueue.EnqueueCallback(std::move(callback));
 }
 
-MemoryRegion<uint8_t> phx::DSResourceFileSystem::EnqueueReadBlob(FileHandle handle, uint64_t offset, uint64_t size, RequestCallbackFunc&& callback)
+MemoryRegion<uint8_t> phx::DSResourceFileSystem::EnqueueReadBlob(ReadRequest const& request, RequestCallbackFunc&& callback)
 {
-	FileDS* fileImpl = m_filePool.Get<FileDS>(handle);
+	FileDS* fileImpl = m_filePool.Get<FileDS>(request.Handle);
 	if (!fileImpl)
 		std::runtime_error("unopened file handle");
 
-	MemoryRegion<uint8_t> dest(std::make_unique<char[]>(size));
+	MemoryRegion<uint8_t> dest(std::make_unique<char[]>(request.Size));
 
 	DSTORAGE_REQUEST r{};
 	r.Options.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
 	r.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_MEMORY;
 	r.Source.File.Source = fileImpl->DsFile.Get();
-	r.Source.File.Offset = offset;
-	r.Source.File.Size = size;
+	r.Source.File.Offset = request.Offset;
+	r.Source.File.Size = request.Size;
 	r.Destination.Memory.Buffer = dest.Data();
-	r.Destination.Memory.Size = size;
+	r.Destination.Memory.Size = request.Size;
 	r.UncompressedSize = r.Destination.Memory.Size;
 	r.CancellationTag = reinterpret_cast<uint64_t>(fileImpl);
 

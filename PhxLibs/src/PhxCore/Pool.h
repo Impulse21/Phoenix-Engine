@@ -245,9 +245,9 @@ namespace phx
 
 		uint16_t* m_freeList;
 		uint16_t* m_generations;
-		size_t	m_freeListHead;
+		size_t	m_freeListHead = 0;
 
-		size_t m_commitedIndices;
+		size_t m_commitedIndices = 0;
 		size_t m_indicesPerPageHot;
 		size_t m_indicesPerPageCold;
 		size_t m_indicesPerPageMetadata;

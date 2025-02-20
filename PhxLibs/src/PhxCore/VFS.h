@@ -68,6 +68,8 @@ namespace phx
 		{
 			return WriteFile(name, Span<char>(reinterpret_cast<const char*>(blob->Data()), blob->Size()));
 		}
+
+		virtual std::filesystem::path ResolvePath(std::filesystem::path const& name) = 0;
 	};
 
 	class IRootFileSystem : public IFileSystem

@@ -37,7 +37,13 @@ public:
 		m_imguiRenderer.EnableDarkThemeColours();
 
 		phx::ResourceManger::Initialize(GlobalPaths::AssetsDirectory);
-		phx::ResourceManger::MountPak("res:/Sponza.phxpak");
+
+		std::array<std::filesystem::path, 1> pakFiles =
+		{
+			"res:/Sponza.phxpak"
+		};
+
+		phx::ResourceManger::RegisterPakFiles(Span(pakFiles.data(), pakFiles.size()));
 
 		phx::ResourceManger::RegisterFactory<phx::renderer::MeshResourceFactory>();
 		RefCountPtr<IResource> meshResource = phx::ResourceManger::Get("lionhead", ".phxmsh");

@@ -22,6 +22,11 @@ namespace
         bool FolderExists(std::filesystem::path const& name) override;
         std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
         bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
+
+        std::filesystem::path ResolvePath(std::filesystem::path const& name) override
+        {
+            return name;
+        }
     };
 
     class RelativeFileSystem final : public IFileSystem
@@ -35,6 +40,11 @@ namespace
         bool FolderExists(std::filesystem::path const& name) override;
         std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
         bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
+
+        std::filesystem::path ResolvePath(std::filesystem::path const& name) override
+        {
+            return this->m_basePath / name.relative_path();
+        }
 
     private:
         std::shared_ptr<IFileSystem> m_underlyingFS;
@@ -52,8 +62,9 @@ namespace
         bool FolderExists(std::filesystem::path const& name) override;
         std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
         bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
+        std::filesystem::path ResolvePath(std::filesystem::path const& name) override;
 
-    private:
+    protected:
         bool FindMountPoint(const std::filesystem::path& path, std::filesystem::path* pRelativePath, IFileSystem** ppFS);
 
     private:
@@ -246,6 +257,19 @@ bool RootFileSystem::WriteFile(std::filesystem::path const& name, Span<char> Dat
     }
 
     return false;
+}
+
+std::filesystem::path RootFileSystem::ResolvePath(std::filesystem::path const& name)
+{
+    std::filesystem::path relativePath;
+    IFileSystem* fs = nullptr;
+
+    if (this->FindMountPoint(name, &relativePath, &fs))
+    {
+        return fs->ResolvePath(relativePath);
+    }
+
+    return name;
 }
 
 bool RootFileSystem::FindMountPoint(const std::filesystem::path& path, std::filesystem::path* pRelativePath, IFileSystem** ppFS)

@@ -18,6 +18,19 @@ namespace phx
 		return timestamp;
 	}
 
+	inline std::tm ReadTimestamp(uint64_t timestamp)
+	{
+		std::tm tm = {};
+
+		tm.tm_year = static_cast<int>((timestamp >> 48) & 0xFFFF) + 1990;
+		tm.tm_mon = static_cast<int>((timestamp >> 44) & 0xF) - 1;
+		tm.tm_mday = static_cast<int>((timestamp >> 39) & 0x1F);
+		tm.tm_hour = static_cast<int>((timestamp >> 34) & 0x1F);
+		tm.tm_min = static_cast<int>((timestamp >> 28) & 0x3F);
+		tm.tm_sec = static_cast<int>((timestamp >> 22) & 0x3F);
+
+		return tm;
+	}
 	constexpr uint32_t MakeMagicNum(char a, char b, char c, char d)
 	{
 		return
