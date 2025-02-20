@@ -17,6 +17,7 @@ void ResourceManger::Initialize(std::filesystem::path const& resourcePath)
 void ResourceManger::MountPak(std::filesystem::path const& filename)
 {
 	PHX_ASSERT(ms_rootFs->FileExists(filename)  == true);
+	// OPen File
 }
 
 RefCountPtr<IResource> ResourceManger::Get(const char* name, const char* ext)
