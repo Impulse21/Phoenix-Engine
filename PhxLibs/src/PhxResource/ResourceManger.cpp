@@ -22,10 +22,6 @@ void ResourceManger::Initialize(std::filesystem::path const& resourcePath)
 
 }
 
-void phx::ResourceManger::Finalize()
-{
-}
-
 void ResourceManger::RegisterPakFiles(Span<std::filesystem::path> pakFiles)
 {
 	for (auto& pakFile : pakFiles)

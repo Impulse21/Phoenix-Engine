@@ -24,7 +24,6 @@ namespace phx
 	{
 	public:
 		static void Initialize(std::filesystem::path const& resourcePath);
-		static void Finalize();
 		static RefCountPtr<IResource> Get(std::filesystem::path const& path);
 
 		static void RegisterPakFiles(Span<std::filesystem::path> pakFiles);

@@ -3,14 +3,13 @@
 
 using namespace phx;
 
-PakFile::PakFile(std::filesystem::path const& path, FileHandle handle, std::shared_ptr<IResourceFileSystem> fs)
+PakFile::PakFile(std::shared_ptr<IAssetStreamer> assetStreamer, std::filesystem::path const& path)
 	: m_filePath(path)
 	, m_cachedFilename(m_filePath.generic_string())
-	, m_fileHandle(handle)
-	, m_fs(std::move(fs))
+	, m_assetStreamer(std::move(assetStreamer))
 	, m_status(Status_UnLoaded)
 {
-
+	m_fileHandle = m_assetStreamer->OpenFile(m_filePath);
 }
 
 const char* PakFile::FindFilenameByHash(phx::StringHash targetHash)

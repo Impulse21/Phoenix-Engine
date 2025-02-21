@@ -4,18 +4,17 @@
 
 #include "PakFileFormat.h"
 #include "IResource.h"
-#include "VFSResource.h"
+#include "IAssetStreamer.h"
 
 namespace phx
 {
 	class PakFile : public RefCounter<IResource>
 	{
-		friend class PakFileHandler;
 	public:
-		PakFile(std::filesystem::path const& path, FileHandle handle, std::shared_ptr<IResourceFileSystem> fs);
+		PakFile(std::shared_ptr<IAssetStreamer> assetStreamer, std::filesystem::path const& path);
 		~PakFile()
 		{
-			m_fs->Close(m_fileHandle);
+			m_assetEntries->Close(m_fileHandle);
 		}
 
 		bool IsLoaded() const { return m_status == Status_Loaded; }
@@ -40,21 +39,14 @@ namespace phx
 		std::filesystem::path m_filePath;
 		std::string m_cachedFilename;
 
-		FileHandle m_fileHandle;
+		StreamFileHandle m_fileHandle;
 		PakFileFormat::Header m_header;
-		std::shared_ptr<IResourceFileSystem> m_fs;
+		std::shared_ptr<IAssetStreamer> m_assetStreamer;
 		std::atomic_uint8_t m_status;
 
 		MemoryRegion<PakFileFormat::AssetEntry> m_assetEntries;
 		MemoryRegion<PakFileFormat::StringEntry> m_assetStringEntriesData;
 		MemoryRegion<char> m_assetStringHeap;
-	};
-
-	class PakFileHandler
-	{
-	public:
-		RefCountPtr<PakFile> Load(std::filesystem::path const& path, std::shared_ptr<IResourceFileSystem> const& fs) const;
-
 	};
 }
 
