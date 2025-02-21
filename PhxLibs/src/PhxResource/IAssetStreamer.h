@@ -23,8 +23,6 @@ namespace phx
 	class IAssetStreamer
 	{
 	public:
-		inline static IAssetStreamer* Ptr = nullptr;
-
 		virtual StreamFileHandle OpenFile(std::filesystem::path const& path) = 0;
 		virtual void CloseFile(StreamFileHandle handle) = 0;
 

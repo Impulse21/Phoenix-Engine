@@ -28,7 +28,7 @@ namespace phx
 
 		inline uint64_t Submit();
 	};
-	class DStorageAssetStreamer : public IAssetStreamer
+	class DStorageAssetStreamer final : public IAssetStreamer
 	{
 	public:
 		DStorageAssetStreamer();

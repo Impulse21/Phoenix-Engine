@@ -4,15 +4,26 @@
 #include "ResourceManger.h"
 #include "imgui.h"
 
-using namespace phx;
+#ifdef PHX_RHI_D3D12
+#include "DStorageAssetStreamer.h"
+#endif
 
-static std::unique_ptr<PakFileFormat::Header> g_testHeader = {};
+using namespace phx;
 
 void ResourceManger::Initialize(std::filesystem::path const& resourcePath)
 {
 	ms_fileSytem = phx::FileSystemFactory::CreateResourceFileSystem();
 
 	ms_fileSytem->Mount("res:/", resourcePath);
+
+#ifdef PHX_RHI_D3D12
+	ms_assetStreamer = std::make_unique<DStorageAssetStreamer>();
+#endif
+
+}
+
+void phx::ResourceManger::Finalize()
+{
 }
 
 void ResourceManger::RegisterPakFiles(Span<std::filesystem::path> pakFiles)

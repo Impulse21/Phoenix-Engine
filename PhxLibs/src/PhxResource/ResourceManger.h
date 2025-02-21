@@ -12,17 +12,19 @@
 #include <memory>
 
 #include "PakFile.h"
-#include "VFSResource.h"
+#include "IAssetStreamer.h"
 #include "IResource.h"
 #include "IResourceHandler.h"
 
 namespace phx
 {
 	class IResource;
+
 	class ResourceManger
 	{
 	public:
 		static void Initialize(std::filesystem::path const& resourcePath);
+		static void Finalize();
 		static RefCountPtr<IResource> Get(std::filesystem::path const& path);
 
 		static void RegisterPakFiles(Span<std::filesystem::path> pakFiles);
@@ -37,8 +39,7 @@ namespace phx
 		static void DrawGui();
 
 	private:
-
-	private:
+		inline static std::shared_ptr<IAssetStreamer> ms_assetStreamer;
 		inline static std::vector<RefCountPtr<PakFile>> ms_registeredPaks;
 		inline static std::unordered_map<Hash32, size_t> ms_pakLut;
 		inline static PakFileHandler ms_pakFileHandler;
