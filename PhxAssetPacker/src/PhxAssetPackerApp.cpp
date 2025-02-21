@@ -3,10 +3,11 @@
 #include <PhxCore/Log.h>
 #include <PhxCore/VFS.h>
 #include <PhxCore/SystemTime.h>
-#include <PhxCore/IO/ChunkFile.h>
-#include <PhxCore/IO/PakFile.h>
 #include <PhxCore/BinaryBuilder.h>
 #include <PhxCore/Span.h>
+
+#include <PhxResource/ChunkFileFormat.h>
+#include <PhxResource/PakFileFormat.h>
 
 #include "TextureConverter.h"
 #include "GltfImporter.h"
@@ -186,9 +187,9 @@ int wmain(int argc, wchar_t** argv)
 
 		cgltf_free(gltfData);
 
-		phx::CompressionType compression = phx::CompressionType::None;
+		phx::FileFormat::CompressionType compression = phx::FileFormat::CompressionType::None;
 		if (useGDeflate)
-			compression = phx::CompressionType::GDeflate;
+			compression = phx::FileFormat::CompressionType::GDeflate;
 
 		(void)compression;
 		bool useBC = true;

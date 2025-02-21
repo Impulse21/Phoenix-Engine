@@ -67,7 +67,6 @@ void phx::ResourceManger::DrawGui()
 							ImGui::Text("Uncompressed Size: %d", entry.Size);
 							ImGui::Text("Offset: %lld", entry.Offset);
 							ImGui::Text("Num Dependecies: %d", entry.NumDependiences);
-
 							ImGui::TreePop();
 						}
 					}

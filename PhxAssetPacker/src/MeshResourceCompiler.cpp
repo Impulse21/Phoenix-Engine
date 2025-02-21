@@ -1,11 +1,13 @@
 #include "MeshResourceCompiler.h"
 
 #include "PhxCore/Span.h"
-#include "PhxCore/IO/ChunkFile.h"
+#include "PhxCore/BinaryBuilder.h"
 
 #include "PhxRhi/RHITypes.h"
 
-#include "PhxCore/BinaryBuilder.h"
+#include "PhxResource/FileFormatUtils.h"
+#include "PhxResource/ChunkFileFormat.h"
+
 #include <DirectXMath.h>
 
 using namespace phx;
@@ -49,25 +51,25 @@ void phx::MeshResourceCompiler::Compile()
 	chunkFileBuilder.Commit();
 	{
 		auto& header = *chunkFileBuilder.Place<ChunkFileFormat::Header>(headerOffset);
-		header.Magic = MakeMagicNum('P', 'X', 'M', 'S');
+		header.Magic = FileFormat::MakeMagicNum('P', 'X', 'M', 'S');
 		header.Version = MshVersion;
-		header.BuildNumber = GetTimestamp();
+		header.BuildNumber = FileFormat::GetTimestamp();
 		header.ChunkCount = 2; // Two Chunks
 	}
 
 	{
 		auto& cpuMetadataHeader = *chunkFileBuilder.Place<ChunkFileFormat::ChunkHeader>(cpuChunkHeaderOffset);
-		cpuMetadataHeader.ChunkID = MakeMagicNum('M', 'E', 'T', 'A');
-		cpuMetadataHeader.Compression = CompressionType::None;
+		cpuMetadataHeader.ChunkID = FileFormat::MakeMagicNum('M', 'E', 'T', 'A');
+		cpuMetadataHeader.Compression = FileFormat::CompressionType::None;
 		cpuMetadataHeader.UncompressedSize = cpuDataOffset;
 		cpuMetadataHeader.CompressedSize = cpuMetadataHeader.UncompressedSize;
 		cpuMetadataHeader.Offset = static_cast<uint32_t>(cpuDataOffset);
 		
 		auto& gpuHeader = *chunkFileBuilder.Place<ChunkFileFormat::ChunkHeader>(gpuChunkHeaderOffset);
-		gpuHeader.ChunkID = MakeMagicNum('G', 'B', 'U', 'F');
+		gpuHeader.ChunkID = FileFormat::MakeMagicNum('G', 'B', 'U', 'F');
 
 		// TODO: Compress
-		gpuHeader.Compression = CompressionType::None;
+		gpuHeader.Compression = FileFormat::CompressionType::None;
 		gpuHeader.UncompressedSize = gpuData.size();
 		gpuHeader.CompressedSize = cpuMetadataHeader.UncompressedSize;
 		gpuHeader.Offset = static_cast<uint32_t>(gpuDataOffset);
