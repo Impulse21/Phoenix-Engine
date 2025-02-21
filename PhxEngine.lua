@@ -540,7 +540,16 @@ group "PhxLibs"
         
         -- TODO: Do a better job at abtracting this away.
         filter('platforms:'..clang_win64_d3d12)
+            defines { "PHX_RHI_D3D12" }
             AddLibraryIncludes(DStorageLibrary)
+            AddLibraryIncludes(AgilityLibrary)
+    
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/d3d12',
+                phx_vendor_src_d3d12ma_dir,
+            }
+    
         filter{}
 
     project(project_phx_editor)

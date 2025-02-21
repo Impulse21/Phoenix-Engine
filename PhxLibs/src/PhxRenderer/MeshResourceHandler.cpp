@@ -14,7 +14,7 @@ RefCountPtr<IResource> MeshResourceHandler::Load(std::filesystem::path const& /*
 	return RefCountPtr<IResource>::Create(new MeshResource());
 }
 
-RefCountPtr<IResource> MeshResourceHandler::Load(std::filesystem::path const& path, std::shared_ptr<IResourceFileSystem> const& fs, FileHandle filehandle, size_t offset) const
+RefCountPtr<IResource> MeshResourceHandler::Load(std::filesystem::path const& /*path*/, std::shared_ptr<IResourceFileSystem> const& /*fs*/, FileHandle /*filehandle*/, size_t /*offset*/) const
 {
 	return RefCountPtr<IResource>::Create(new MeshResource());
 }
