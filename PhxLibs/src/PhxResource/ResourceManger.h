@@ -14,7 +14,7 @@
 #include "PakFile.h"
 #include "VFSResource.h"
 #include "IResource.h"
-#include "IResourceFactory.h"
+#include "IResourceHandler.h"
 
 namespace phx
 {
@@ -23,20 +23,20 @@ namespace phx
 	{
 	public:
 		static void Initialize(std::filesystem::path const& resourcePath);
-		static RefCountPtr<IResource> Get(const char* name, const char* ext);
+		static RefCountPtr<IResource> Get(std::filesystem::path const& path);
 
 		static void RegisterPakFiles(Span<std::filesystem::path> pakFiles);
-		template<typename TFactory>
-		static void RegisterFactory()
+		static RefCountPtr<PakFile> RegisterPakFile(std::filesystem::path const& pakFile);
+		template<typename THandler>
+		static void RegisterHandler()
 		{
-			constexpr const char* ext = ResourceFactoryExtension<TFactory>::value;
-			ms_resourceFactories[StringHash(ext).ToHash()] = std::make_unique<TFactory>();
+			constexpr const char* ext = ResourceExtension<THandler>::value;
+			ms_resourceHandlers[StringHash(ext).ToHash()] = std::make_unique<THandler>();
 		}
 
 		static void DrawGui();
 
 	private:
-		static void RegisterPakFile(std::filesystem::path const& pakFile);
 
 	private:
 		inline static std::vector<RefCountPtr<PakFile>> ms_registeredPaks;
@@ -44,8 +44,8 @@ namespace phx
 		inline static PakFileHandler ms_pakFileHandler;
 		inline static std::shared_ptr<IResourceFileSystem> ms_fileSytem;
 		inline static std::unordered_map<Hash32, RefCountPtr<IResource>> ms_cache;
-		inline static std::unordered_map<Hash32, std::unique_ptr<IResourceFactory>> ms_resourceFactories;
-		inline static std::mutex ms_mutex;
+		inline static std::unordered_map<Hash32, std::unique_ptr<IResourceHandler>> ms_resourceHandlers;
+		inline static std::mutex ms_cacheMutex;
 	};
 }
 

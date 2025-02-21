@@ -23,9 +23,13 @@ namespace phx::renderer
 		DrawInfo Draw[1];
 	};
 
-	class MeshResource final 
+	class MeshResource final : public RefCounter<IResource>
 	{
+		friend class MeshResourceHandler;
 	public:
+		bool IsLoaded() const { return false; }
+		FileHandle GetFileHandle() const { return {}; }
+
 	};
 }
 

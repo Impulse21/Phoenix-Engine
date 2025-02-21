@@ -9,7 +9,7 @@
 
 #include "PhxRenderer/ImGuiRenderer.h"
 
-#include "PhxRenderer/MeshResourceFactory.h"
+#include "PhxRenderer/MeshResourceHandler.h"
 #include "PhxResource/ResourceManger.h"
 
 using namespace phx;
@@ -37,16 +37,9 @@ public:
 		m_imguiRenderer.EnableDarkThemeColours();
 
 		phx::ResourceManger::Initialize(GlobalPaths::AssetsDirectory);
+		phx::ResourceManger::RegisterHandler<phx::renderer::MeshResourceHandler>();
+		phx::ResourceManger::RegisterPakFile("res:/Sponza.phxpak");
 
-		std::array<std::filesystem::path, 1> pakFiles =
-		{
-			"res:/Sponza.phxpak"
-		};
-
-		phx::ResourceManger::RegisterPakFiles(Span(pakFiles.data(), pakFiles.size()));
-
-		phx::ResourceManger::RegisterFactory<phx::renderer::MeshResourceFactory>();
-		RefCountPtr<IResource> meshResource = phx::ResourceManger::Get("lionhead", ".phxmsh");
 	}
 
 	void Shutdown() override
@@ -58,6 +51,11 @@ public:
 	void Tick() override
 	{
 		m_imguiRenderer.BeginFrame();
+
+		if (!m_meshResource)
+		{
+			m_meshResource = phx::ResourceManger::Get("res:/Sponza/lionhead.phxmsh");
+		}
 
 		phx::ResourceManger::DrawGui();
 
@@ -88,6 +86,7 @@ private:
 	const phx::ApplicationDescriptor m_desc;
 	phx::gfx::ImGuiRenderSystem m_imguiRenderer;
 
+	RefCountPtr<IResource> m_meshResource;
 	void* m_windowHandle;
 };
 

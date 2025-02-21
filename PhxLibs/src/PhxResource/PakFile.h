@@ -27,6 +27,8 @@ namespace phx
 
 		const char* FindFilenameByHash(phx::StringHash targetHash);
 
+		const PakFileFormat::AssetEntry* FindEntryByHash(phx::StringHash filename);
+
 		enum Status
 		{
 			Status_Loaded = 0,

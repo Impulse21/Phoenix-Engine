@@ -40,6 +40,33 @@ const char* PakFile::FindFilenameByHash(phx::StringHash targetHash)
 	return nullptr; // Not found
 }
 
+const PakFileFormat::AssetEntry* phx::PakFile::FindEntryByHash(phx::StringHash filename)
+{
+	size_t left = 0;
+	size_t right = m_header.NumEntries - 1;
+
+	while (left <= right)
+	{
+		size_t mid = left + (right - left) / 2;
+		const PakFileFormat::AssetEntry& entry = m_assetEntries.Get()[mid];
+
+		if (entry.Hash == filename)
+		{
+			return &entry;
+		}
+		else if (entry.Hash < filename)
+		{
+			left = mid + 1;
+		}
+		else
+		{
+			right = mid - 1;
+		}
+	}
+
+	return nullptr; // Not found
+}
+
 RefCountPtr<PakFile> PakFileHandler::Load(std::filesystem::path const& path, std::shared_ptr<IResourceFileSystem> const& fs) const
 {
 	FileHandle handle = fs->Open(path);

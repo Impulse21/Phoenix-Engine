@@ -19,20 +19,20 @@ void ResourceManger::RegisterPakFiles(Span<std::filesystem::path> pakFiles)
 {
 	for (auto& pakFile : pakFiles)
 	{
-		PHX_CORE_INFO("Registering PakFile {0}.", pakFile.generic_string().c_str());
 		RegisterPakFile(pakFile);
 	}
 }
-void phx::ResourceManger::RegisterPakFile(std::filesystem::path const& pakFile)
+
+RefCountPtr<PakFile> phx::ResourceManger::RegisterPakFile(std::filesystem::path const& pakFile)
 {
 	// Get filename of pak file
-
+	PHX_CORE_INFO("Registering PakFile {0}.", pakFile.generic_string().c_str());
 	std::filesystem::path const& pakDirectoryAlias = pakFile.parent_path() / pakFile.stem();
 	StringHash pakFileId(pakDirectoryAlias.generic_string());
 
 	auto itr = ms_pakLut.find(pakFileId);
 	if (itr != ms_pakLut.end())
-		return;
+		return ms_registeredPaks[itr->second];
 
 	RefCountPtr<PakFile> pakfile = ms_pakFileHandler.Load(pakFile, ms_fileSytem);
 	if (pakfile)
@@ -40,6 +40,8 @@ void phx::ResourceManger::RegisterPakFile(std::filesystem::path const& pakFile)
 		ms_pakLut[pakFileId] = ms_registeredPaks.size();
 		ms_registeredPaks.push_back(pakfile);
 	}
+
+	return pakfile;
 }
 
 void phx::ResourceManger::DrawGui()
@@ -82,14 +84,62 @@ void phx::ResourceManger::DrawGui()
 }
 
 
-RefCountPtr<IResource> ResourceManger::Get(const char* name, const char* ext)
+RefCountPtr<IResource> ResourceManger::Get(std::filesystem::path const& path)
 {
-	StringHash filenameHash(std::format("{}.{}", name, ext));
+	// TODO: Clean up all these allocations and use simpler string functions
+	// that just strip out data a single string.
+	// way to many allocations probably make this code really really slow.
 
-	std::scoped_lock _(ms_mutex);
-	auto itr = ms_cache.find(filenameHash);
-	if (itr != ms_cache.end())
-		return itr->second;
+	StringHash filenameHash(path.generic_string());
 
-	return nullptr;;
+	{
+		std::scoped_lock _(ms_cacheMutex);
+		auto itr = ms_cache.find(filenameHash);
+		if (itr != ms_cache.end())
+			return itr->second;
+	}
+
+	RefCountPtr<IResource> resource = nullptr;
+
+	std::string ext = path.extension().generic_string();
+	auto handlerItr = ms_resourceHandlers.find(StringHash(ext));
+
+	if (handlerItr == ms_resourceHandlers.end())
+	{
+		PHX_CORE_ERROR("Unknown resource extension '{0}'", ext.c_str());
+		return nullptr;
+	}
+
+	// Check if file is in a pak
+	StringHash directoryId(path.parent_path().generic_string());
+	auto pakItr = ms_pakLut.find(directoryId);
+	if (pakItr != ms_pakLut.end())
+	{
+		RefCountPtr<PakFile> pakFile = ms_registeredPaks[pakItr->second];
+		if (!pakFile->IsLoaded())
+		{
+			PHX_CORE_WARN("Pak File isn't loaded yet.");
+			return resource;
+
+		}
+
+		const PakFileFormat::AssetEntry* entry = pakFile->FindEntryByHash(StringHash(path.filename().generic_string()));
+		if (entry)
+		{
+			resource = handlerItr->second->Load(path, ms_fileSytem, pakFile->GetFileHandle(), entry->Offset);
+		}
+	}
+
+	if (!resource)
+	{
+		PHX_CORE_ERROR("Loding from disk is not currently supported");
+	}
+
+	if (resource)
+	{
+		std::scoped_lock _(ms_cacheMutex);
+		ms_cache[filenameHash] = resource;
+	}
+
+	return resource;
 }
