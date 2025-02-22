@@ -17,7 +17,6 @@ namespace phx
 		std::shared_ptr<IAssetStreamer> m_assetStreamer;
 		StreamFileHandle m_fileHandle;
 		std::atomic_uint8_t m_status;
-
 	};
 }
 
