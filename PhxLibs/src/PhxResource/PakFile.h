@@ -58,11 +58,11 @@ namespace phx
 	private:
 		std::filesystem::path m_filePath;
 		std::string m_cachedFilename;
-
-		StreamFileHandle m_fileHandle;
-		PakFileFormat::Header m_header;
 		std::shared_ptr<IAssetStreamer> m_assetStreamer;
+		StreamFileHandle m_fileHandle;
 		std::atomic_uint8_t m_status;
+
+		PakFileFormat::Header m_header;
 
 		MemoryRegion<PakFileFormat::AssetEntry> m_assetEntries;
 		MemoryRegion<PakFileFormat::StringEntry> m_assetStringEntriesData;
