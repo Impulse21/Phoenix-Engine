@@ -12,7 +12,7 @@ using namespace phx;
 
 void ResourceManger::Initialize(std::filesystem::path const& resourcePath)
 {
-	ms_fileSytem = phx::FileSystemFactory::CreateResourceFileSystem();
+	ms_fileSytem = phx::FileSystemFactory::CreateRootFileSystem();
 
 	ms_fileSytem->Mount("res:/", resourcePath);
 
@@ -30,25 +30,27 @@ void ResourceManger::RegisterPakFiles(Span<std::filesystem::path> pakFiles)
 	}
 }
 
-RefCountPtr<PakFile> phx::ResourceManger::RegisterPakFile(std::filesystem::path const& pakFile)
+RefCountPtr<PakFile> phx::ResourceManger::RegisterPakFile(std::filesystem::path const& path)
 {
 	// Get filename of pak file
-	PHX_CORE_INFO("Registering PakFile {0}.", pakFile.generic_string().c_str());
-	std::filesystem::path const& pakDirectoryAlias = pakFile.parent_path() / pakFile.stem();
+	PHX_CORE_INFO("Registering PakFile {0}.", path.generic_string().c_str());
+	std::filesystem::path const& pakDirectoryAlias = path.parent_path() / path.stem();
 	StringHash pakFileId(pakDirectoryAlias.generic_string());
 
 	auto itr = ms_pakLut.find(pakFileId);
 	if (itr != ms_pakLut.end())
 		return ms_registeredPaks[itr->second];
 
-	RefCountPtr<PakFile> pakfile = ms_pakFileHandler.Load(pakFile, ms_fileSytem);
-	if (pakfile)
+	std::filesystem::path resolvedPath = ms_fileSytem->ResolvePath(path);
+	RefCountPtr<PakFile> pakFile = RefCountPtr<PakFile>::Create(new PakFile(ms_assetStreamer, resolvedPath));
+	if (pakFile)
 	{
+		pakFile->StartMetadataLoad();
 		ms_pakLut[pakFileId] = ms_registeredPaks.size();
-		ms_registeredPaks.push_back(pakfile);
+		ms_registeredPaks.push_back(pakFile);
 	}
 
-	return pakfile;
+	return pakFile;
 }
 
 void phx::ResourceManger::DrawGui()
@@ -133,7 +135,7 @@ RefCountPtr<IResource> ResourceManger::Get(std::filesystem::path const& path)
 		const PakFileFormat::AssetEntry* entry = pakFile->FindEntryByHash(StringHash(path.filename().generic_string()));
 		if (entry)
 		{
-			resource = handlerItr->second->Load(path, ms_fileSytem, pakFile->GetFileHandle(), entry->Offset);
+			// resource = handlerItr->second->Load(path, ms_fileSytem, pakFile->GetFileHandle(), entry->Offset);
 		}
 	}
 

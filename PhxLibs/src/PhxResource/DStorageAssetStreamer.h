@@ -28,13 +28,17 @@ namespace phx
 
 		inline uint64_t Submit();
 	};
+
 	class DStorageAssetStreamer final : public IAssetStreamer
 	{
 	public:
 		DStorageAssetStreamer();
 		~DStorageAssetStreamer();
-		StreamFileHandle OpenFile(std::filesystem::path const& path) override;
+		StreamFileHandle OpenFile(std::filesystem::path const& path, uint32_t statusCount) override;
 		void CloseFile(StreamFileHandle handle) override;
+
+		bool GetStatus(StreamFileHandle handle, uint32_t status) const override;
+		uint64_t GetFileSize(StreamFileHandle handle) const override;
 
 		void SubmitBatch(Span<StreamRequest> requests, StreamCallback callback) override;
 
@@ -48,7 +52,8 @@ namespace phx
 
 	private:
 		std::deque<Batch> m_pendingBatches;
-		std::mutex m_batchMutex;
+		std::deque<Batch> m_processingBatches;
+		std::mutex m_swapMutex;
 
 		DStorageQueue m_metadataQueue;
 		phx::PagedPool<StreamFile, DStorageStreamFile> m_filePool;

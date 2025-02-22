@@ -3,13 +3,36 @@
 
 using namespace phx;
 
+namespace
+{
+	namespace StreamingStatus
+	{
+		enum : uint32_t
+		{
+			Metadata = 0,
+			CpuData,
+			GpuData,
+			NumEntries
+		};
+	}
+}
+
 PakFile::PakFile(std::shared_ptr<IAssetStreamer> assetStreamer, std::filesystem::path const& path)
 	: m_filePath(path)
 	, m_cachedFilename(m_filePath.generic_string())
 	, m_assetStreamer(std::move(assetStreamer))
 	, m_status(Status_UnLoaded)
 {
-	m_fileHandle = m_assetStreamer->OpenFile(m_filePath);
+	m_fileHandle = m_assetStreamer->OpenFile(m_filePath, StreamingStatus::NumEntries);
+}
+
+void phx::PakFile::StartMetadataLoad()
+{
+	m_assetStreamer->Submit({
+			.FileHandle = m_fileHandle,
+			.Size = sizeof(PakFileFormat::Header),
+			.Destination = &m_header
+		}, [this] { OnHeaderLoaded(); });
 }
 
 const char* PakFile::FindFilenameByHash(phx::StringHash targetHash)
@@ -66,39 +89,33 @@ const PakFileFormat::AssetEntry* phx::PakFile::FindEntryByHash(phx::StringHash f
 	return nullptr; // Not found
 }
 
-RefCountPtr<PakFile> PakFileHandler::Load(std::filesystem::path const& path, std::shared_ptr<IResourceFileSystem> const& fs) const
+void phx::PakFile::OnHeaderLoaded()
 {
-	FileHandle handle = fs->Open(path);
-	if (!handle.IsValid())
-		return nullptr;
+	bool status = m_assetStreamer->GetStatus(m_fileHandle, StreamingStatus::Metadata);
 
-	RefCountPtr<PakFile> pakFile = RefCountPtr<PakFile>::Create(new PakFile(path, handle, fs));
+	if (!status ||
+		m_header.Magic != PakFileFormat::MagicNumber ||
+		m_header.Version != PakFileFormat::Version)
+	{
+		return;
+	}
 
-	// Begin Loading
-	fs->EnqueueRead({
-		.Handle = handle,
-		.Offset = 0,
-		.Size = sizeof(PakFileFormat::Header),
-		.Dest = &pakFile->m_header
-	});
+	const size_t fileSize = m_assetStreamer->GetFileSize(m_fileHandle);
+	const uint32_t sizeOfEntries = static_cast<uint32_t>(m_header.NumEntries * sizeof(PakFileFormat::AssetEntry));
 
-	pakFile->m_status = PakFile::Status_LoadingMetdata;
+	std::array<StreamRequest, 3> batchedRequests;
+	batchedRequests[0] = EnqueueReadMemoryRegion<PakFileFormat::AssetEntry>(m_header.EntriesOffset, sizeOfEntries, m_assetEntries);
 
-	fs->SubmitRequests(
-		[=] {
-			const size_t fileSize = fs->GetFileSize(handle);
-			const uint32_t sizeOfEntries = static_cast<uint32_t>(pakFile->m_header.NumEntries * sizeof(PakFileFormat::AssetEntry));
-			pakFile->m_assetEntries = fs->EnqueueReadRegion<PakFileFormat::AssetEntry>(handle, sizeof(PakFileFormat::Header), sizeOfEntries);
+	const uint32_t sizeOfStringEntries = static_cast<uint32_t>(m_header.NumStrings * sizeof(PakFileFormat::StringEntry));
+	const size_t stringTableOffset = sizeof(PakFileFormat::Header) + sizeOfEntries;
+	batchedRequests[1] = EnqueueReadMemoryRegion<PakFileFormat::StringEntry>(stringTableOffset, sizeOfStringEntries, m_assetStringEntriesData);
+	batchedRequests[2] = EnqueueReadMemoryRegion<char>(fileSize - m_header.StringHeapSize, m_header.StringHeapSize, m_assetStringHeap);
 
-			const uint32_t sizeOfStringEntries = static_cast<uint32_t>(pakFile->m_header.NumStrings * sizeof(PakFileFormat::StringEntry));
-			const size_t stringTableOffset = sizeof(PakFileFormat::Header) + sizeOfEntries;
-			pakFile->m_assetStringEntriesData = fs->EnqueueReadRegion<PakFileFormat::StringEntry>(handle, stringTableOffset, sizeOfStringEntries);
-			pakFile->m_assetStringHeap = fs->EnqueueReadRegion<char>(handle, fileSize - pakFile->m_header.StringHeapSize, pakFile->m_header.StringHeapSize);
+	m_assetStreamer->SubmitBatch(batchedRequests, [this] { OnMetadataLoaded(); });
+	m_status = 0xf0;
+}
 
-			fs->SubmitRequests([=]{
-				pakFile->m_status = PakFile::Status_Loaded;
-			});
-		});
-
-	return pakFile;
+void phx::PakFile::OnMetadataLoaded()
+{
+	m_status = 0;
 }

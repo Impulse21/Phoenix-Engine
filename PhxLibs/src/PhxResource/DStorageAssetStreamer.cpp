@@ -59,12 +59,20 @@ phx::DStorageAssetStreamer::DStorageAssetStreamer()
 
 	m_filePool.Initialize(200);
 
+	m_alive = true;
 	m_queueThread = std::thread([this] {
 		while (m_alive)
 		{
+			{
+				std::scoped_lock lock(m_swapMutex);
+				std::swap(m_processingBatches, m_pendingBatches);
+			}
+
 			ProcessBatches();
+#if false
 			std::unique_lock<std::mutex> lock(m_wakeMutex);
 			m_wakeCondition.wait(lock);
+#endif
 		}
 	});
 
@@ -94,11 +102,12 @@ phx::DStorageAssetStreamer::~DStorageAssetStreamer()
 		}
 	});
 
+	m_queueThread.join();
 	wakeLoop = false;
 	waker.join();
 }
 
-StreamFileHandle phx::DStorageAssetStreamer::OpenFile(std::filesystem::path const& path)
+StreamFileHandle phx::DStorageAssetStreamer::OpenFile(std::filesystem::path const& path, uint32_t statusCount)
 {
 	std::filesystem::path resolvedPath = path;
 	StreamFileHandle retVal = {};
@@ -123,7 +132,7 @@ StreamFileHandle phx::DStorageAssetStreamer::OpenFile(std::filesystem::path cons
 	PHX_INFO("[DStorage] Opened File: {0} [size {1}] bytes.", resolvedPath.generic_string().c_str(), RetrieveFileSize(fileImpl.FileInfo));
 
 	hr = (g_dsFactory->CreateStatusArray(
-		static_cast<uint32_t>(255),
+		static_cast<uint32_t>(statusCount),
 		nullptr,
 		IID_PPV_ARGS(&fileImpl.StatusArray)));
 
@@ -144,6 +153,30 @@ void phx::DStorageAssetStreamer::CloseFile(StreamFileHandle handle)
 
 	PHX_INFO("[DStorage] Closing file handle");
 	m_filePool.Free(handle);
+}
+
+bool phx::DStorageAssetStreamer::GetStatus(StreamFileHandle /*handle*/, uint32_t /*statusId*/) const
+{
+#if true
+	return true;
+#else
+	auto* fileImpl = m_filePool.Get<DStorageStreamFile>(handle);
+	if (!fileImpl)
+		return false;
+
+	uint32_t status = fileImpl->StatusArray->GetHResult(statusId);
+
+	return SUCCEEDED(status);
+#endif
+}
+
+uint64_t phx::DStorageAssetStreamer::GetFileSize(StreamFileHandle handle) const
+{
+	auto* fileImpl = m_filePool.Get<DStorageStreamFile>(handle);
+	if (!fileImpl)
+		return 0;
+
+	return RetrieveFileSize(fileImpl->FileInfo);
 }
 
 void phx::DStorageAssetStreamer::SubmitBatch(Span<StreamRequest> requests, StreamCallback callback)
@@ -174,26 +207,23 @@ void phx::DStorageAssetStreamer::SubmitBatch(Span<StreamRequest> requests, Strea
 	batch.Callback = callback;
 
 	{
-		std::scoped_lock _(m_batchMutex);
+		std::scoped_lock _(m_swapMutex);
 		m_pendingBatches.push_back(std::move(batch));
 	}
+
+	m_wakeCondition.notify_all();
 }
 
 void phx::DStorageAssetStreamer::ProcessBatches()
 {
-	std::scoped_lock _(m_batchMutex);
-	while (!m_pendingBatches.empty())
+	while (!m_processingBatches.empty())
 	{
-		Batch& batch = m_pendingBatches.front();
+		Batch& batch = m_processingBatches.front();
 
 		if (m_metadataQueue.Fence->GetCompletedValue() >= batch.FenceValue)
 		{
 			batch.Callback();
-			m_pendingBatches.pop_front();
-		}
-		else
-		{
-			break;
+			m_processingBatches.pop_front();
 		}
 	}
 }

@@ -54,7 +54,7 @@ public:
 
 		if (!m_meshResource)
 		{
-			m_meshResource = phx::ResourceManger::Get("res:/Sponza/lionhead.phxmsh");
+			// m_meshResource = phx::ResourceManger::Get("res:/Sponza/lionhead.phxmsh");
 		}
 
 		phx::ResourceManger::DrawGui();

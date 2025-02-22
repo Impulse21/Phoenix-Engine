@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxCore/StringHash.h>
+#include<PhxCore/IO/MemoryRegion.h>
 
 #include "PakFileFormat.h"
 #include "IResource.h"
@@ -14,12 +15,14 @@ namespace phx
 		PakFile(std::shared_ptr<IAssetStreamer> assetStreamer, std::filesystem::path const& path);
 		~PakFile()
 		{
-			m_assetEntries->Close(m_fileHandle);
+			m_assetStreamer->CloseFile(m_fileHandle);
 		}
+
+		void StartMetadataLoad();
 
 		bool IsLoaded() const { return m_status == Status_Loaded; }
 
-		FileHandle GetFileHandle() const { return m_fileHandle; }
+		StreamFileHandle GetFileHandle() const { return m_fileHandle; }
 		const std::filesystem::path& GetFilePath() const { return m_filePath; }
 		std::string GetFilename() const { return m_cachedFilename; }
 		Span<PakFileFormat::AssetEntry> GetEntries() const { return Span(m_assetEntries.Get(), m_header.NumEntries); }
@@ -34,6 +37,23 @@ namespace phx
 			Status_LoadingMetdata = 0xF0,
 			Status_UnLoaded = 0xFF,
 		};
+
+	private:
+		void OnHeaderLoaded();
+		void OnMetadataLoaded();
+
+		template<typename T>
+		StreamRequest EnqueueReadMemoryRegion(uint64_t offset, uint32_t size, MemoryRegion<T>& outRegion)
+		{
+			outRegion = MemoryRegion<T>(std::make_unique<char[]>(size));
+
+			return {
+				.FileHandle = m_fileHandle,
+				.Offset = offset,
+				.Size = size,
+				.Destination = outRegion.Get()
+			};
+		}
 
 	private:
 		std::filesystem::path m_filePath;

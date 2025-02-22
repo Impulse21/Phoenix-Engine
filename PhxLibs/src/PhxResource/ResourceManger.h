@@ -41,8 +41,7 @@ namespace phx
 		inline static std::shared_ptr<IAssetStreamer> ms_assetStreamer;
 		inline static std::vector<RefCountPtr<PakFile>> ms_registeredPaks;
 		inline static std::unordered_map<Hash32, size_t> ms_pakLut;
-		inline static PakFileHandler ms_pakFileHandler;
-		inline static std::shared_ptr<IResourceFileSystem> ms_fileSytem;
+		inline static std::shared_ptr<IRootFileSystem> ms_fileSytem;
 		inline static std::unordered_map<Hash32, RefCountPtr<IResource>> ms_cache;
 		inline static std::unordered_map<Hash32, std::unique_ptr<IResourceHandler>> ms_resourceHandlers;
 		inline static std::mutex ms_cacheMutex;

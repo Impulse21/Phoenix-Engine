@@ -33,6 +33,12 @@ namespace phx
 			: Span(v.data(), v.size(), 0)
 		{}
 
+		template <typename U, std::size_t N>
+		Span(const std::array<U, N>& arr)
+			: Span(arr.data(), arr.size(), 0)
+		{
+		}
+
 		template<typename E>
 		Span(EnumArray<T, E>& a)
 			: Span(a.data(), a.size(), 0)
