@@ -15,7 +15,6 @@ namespace phx
 		uint64_t Offset = 0;
 		uint64_t Size = 0;
 		void* Destination = nullptr;
-
 	};
 
 	using StreamCallback = std::function<void()>;

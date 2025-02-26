@@ -8,6 +8,12 @@ using namespace phx;
 
 namespace
 {
+	struct Request
+	{
+		HANDLE EventHandle;
+		StreamCallback Callback;
+	};
+
 	Microsoft::WRL::ComPtr<IDStorageFactory> g_dsFactory;
 	bool g_isInit = false;
 	std::mutex g_initMutex;
@@ -163,11 +169,16 @@ void phx::DStorageAssetStreamer::SubmitBatch(Span<StreamRequest> requests, Strea
 	m_metadataQueue->EnqueueSetEvent(hEvent);
 	m_metadataQueue->Submit();
 
+	Request req = {
+		.EventHandle = hEvent,
+		.Callback = callback
+	};
+
 	ThreadPool::SubmitTask(
-		[hEvent, callback]
+		[req]
 		{
-			WaitForSingleObject(hEvent, INFINITY);
-			callback();
+			WaitForSingleObject(req.EventHandle, INFINITY);
+			req.Callback();
 		},
 		ThreadPool::Type::Streaming);
 }
