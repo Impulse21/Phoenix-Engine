@@ -8,7 +8,6 @@
 #include <wrl.h>
 #include <dstorage.h>
 
-#include <wrl/wrappers/corewrappers.h>
 namespace phx
 {
 	struct DStorageStreamFile
@@ -16,17 +15,6 @@ namespace phx
 		Microsoft::WRL::ComPtr<IDStorageFile> DsFile;
 		BY_HANDLE_FILE_INFORMATION FileInfo = {};
 		Microsoft::WRL::ComPtr<IDStorageStatusArray> StatusArray;
-	};
-
-	struct DStorageQueue
-	{
-		Microsoft::WRL::ComPtr<IDStorageQueue1> Queue;
-		Microsoft::WRL::ComPtr<ID3D12Fence> Fence;
-		Microsoft::WRL::Wrappers::Event Event;
-		uint64_t FenceValue = 0;
-		std::mutex SubmitMutex;
-
-		inline uint64_t Submit();
 	};
 
 	class DStorageAssetStreamer final : public IAssetStreamer
@@ -43,25 +31,17 @@ namespace phx
 		void SubmitBatch(Span<StreamRequest> requests, StreamCallback callback) override;
 
 	private:
-		void ProcessBatches();
-		struct Batch
-		{
-			uint64_t FenceValue;
-			StreamCallback Callback;
-		};
+		HANDLE RequestEvent();
+		void DisardEvent(HANDLE event);
 
 	private:
-		std::deque<Batch> m_pendingBatches;
-		std::deque<Batch> m_processingBatches;
-		std::mutex m_swapMutex;
+		std::mutex m_eventMutex;
+		std::vector<HANDLE> m_eventPool;
+		std::deque<HANDLE> m_freeEvents;
 
-		DStorageQueue m_metadataQueue;
+		Microsoft::WRL::ComPtr<IDStorageQueue1> m_metadataQueue;
+
 		phx::PagedPool<StreamFile, DStorageStreamFile> m_filePool;
-
-		std::thread m_queueThread;
-		std::condition_variable m_wakeCondition;
-		std::mutex m_wakeMutex;
-		std::atomic_bool m_alive = false;
 	};
 }
 

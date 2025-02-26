@@ -2,12 +2,10 @@
 #include "DStorageAssetStreamer.h"
 
 #include <PhxCore/StringUtils.h>
-
-#include <PhxRhi/d3d12/D3D12Base.h>
-#include <PhxRhi/d3d12/D3D12Core.h>
+#include <PhxCore/ThreadPool.h>
 
 using namespace phx;
-using namespace phx::rhi::d3d12;
+
 namespace
 {
 	Microsoft::WRL::ComPtr<IDStorageFactory> g_dsFactory;
@@ -49,62 +47,21 @@ phx::DStorageAssetStreamer::DStorageAssetStreamer()
 		queueDesc.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
 		queueDesc.Name = "SysMetadataQueue";
 
-		HRESULT hr = (g_dsFactory->CreateQueue(&queueDesc, IID_PPV_ARGS(&m_metadataQueue.Queue)));
+		HRESULT hr = (g_dsFactory->CreateQueue(&queueDesc, IID_PPV_ARGS(&m_metadataQueue)));
 		PHX_ASSERT(SUCCEEDED(hr));
-
-		ThrowIfFailed(
-			g_d3d12Device->CreateFence(m_metadataQueue.FenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_metadataQueue.Fence)));
-		m_metadataQueue.Event.Attach(CreateEvent(nullptr, false, false, nullptr));
 	}
 
 	m_filePool.Initialize(200);
-
-	m_alive = true;
-	m_queueThread = std::thread([this] {
-		while (m_alive)
-		{
-			{
-				std::scoped_lock lock(m_swapMutex);
-				std::swap(m_processingBatches, m_pendingBatches);
-			}
-
-			ProcessBatches();
-#if false
-			std::unique_lock<std::mutex> lock(m_wakeMutex);
-			m_wakeCondition.wait(lock);
-#endif
-		}
-	});
-
-	// TODO:
-#ifdef _WIN32
-	HANDLE handle = (HANDLE)m_queueThread.native_handle();
-	BOOL priorityResult = SetThreadPriority(handle, THREAD_PRIORITY_NORMAL);
-	assert(priorityResult != 0);
-
-	std::wstringstream wss;
-	wss << "[PHX] AssetStreamer ";
-	HRESULT hr = SetThreadDescription(handle, wss.str().c_str());
-	assert(SUCCEEDED(hr));
-#endif
 }
 
 phx::DStorageAssetStreamer::~DStorageAssetStreamer()
 {
-	m_alive.store(false);
+	for (auto& hEvent : m_eventPool)
+	{
+		CloseHandle(hEvent);
+	}
 
-	bool wakeLoop = true;
-
-	std::thread waker([&] {
-		while (wakeLoop)
-		{
-			m_wakeCondition.notify_all();
-		}
-	});
-
-	m_queueThread.join();
-	wakeLoop = false;
-	waker.join();
+	m_eventPool.clear();
 }
 
 StreamFileHandle phx::DStorageAssetStreamer::OpenFile(std::filesystem::path const& path, uint32_t statusCount)
@@ -148,7 +105,7 @@ void phx::DStorageAssetStreamer::CloseFile(StreamFileHandle handle)
 	auto* fileImpl = m_filePool.Get<DStorageStreamFile>(handle);
 	if (fileImpl)
 	{
-		m_metadataQueue.Queue->CancelRequestsWithTag(0xFFFFFFFFFFFFll, reinterpret_cast<uint64_t>(fileImpl));
+		m_metadataQueue->CancelRequestsWithTag(0xFFFFFFFFFFFFll, reinterpret_cast<uint64_t>(fileImpl));
 	}
 
 	PHX_INFO("[DStorage] Closing file handle");
@@ -199,43 +156,46 @@ void phx::DStorageAssetStreamer::SubmitBatch(Span<StreamRequest> requests, Strea
 		r.UncompressedSize = r.Destination.Memory.Size;
 		r.CancellationTag = reinterpret_cast<uint64_t>(fileImpl);
 
-		m_metadataQueue.Queue->EnqueueRequest(&r);
+		m_metadataQueue->EnqueueRequest(&r);
 	}
 
-	Batch batch = {};
-	batch.FenceValue = m_metadataQueue.Submit();
-	batch.Callback = callback;
+	HANDLE hEvent = RequestEvent();
+	m_metadataQueue->EnqueueSetEvent(hEvent);
+	m_metadataQueue->Submit();
 
-	{
-		std::scoped_lock _(m_swapMutex);
-		m_pendingBatches.push_back(std::move(batch));
-	}
-
-	m_wakeCondition.notify_all();
-}
-
-void phx::DStorageAssetStreamer::ProcessBatches()
-{
-	while (!m_processingBatches.empty())
-	{
-		Batch& batch = m_processingBatches.front();
-
-		if (m_metadataQueue.Fence->GetCompletedValue() >= batch.FenceValue)
+	ThreadPool::SubmitTask(
+		[hEvent, callback]
 		{
-			batch.Callback();
-			m_processingBatches.pop_front();
-		}
-	}
+			WaitForSingleObject(hEvent, INFINITY);
+			callback();
+		},
+		ThreadPool::Type::Streaming);
 }
 
-inline uint64_t phx::DStorageQueue::Submit()
+HANDLE DStorageAssetStreamer::RequestEvent()
 {
-	std::scoped_lock _(SubmitMutex);
+	std::scoped_lock _(m_eventMutex);
+	if (m_freeEvents.empty())
+	{
+		HANDLE hEvent = CreateEvent(
+			NULL,               // Security attributes (default)
+			FALSE,              // Auto-reset event (manual-reset if TRUE)
+			FALSE,              // Initial state is non-signaled
+			L"StreamingEvent"      // Event name (optional)
+		);
+		m_eventPool.push_back(hEvent);
 
-	uint64_t fenceValue = ++FenceValue;
-	Queue->EnqueueSignal(Fence.Get(), fenceValue);
-	ThrowIfFailed(Fence->SetEventOnCompletion(fenceValue, Event.Get()));
-	Queue->Submit();
+		return hEvent;
+	}
 
-	return fenceValue;
+	HANDLE hEvent = m_freeEvents.front();
+	m_freeEvents.pop_front();
+
+	return hEvent;
+}
+
+void DStorageAssetStreamer::DisardEvent(HANDLE event)
+{
+	std::scoped_lock _(m_eventMutex);
+	m_freeEvents.push_back(event);
 }
