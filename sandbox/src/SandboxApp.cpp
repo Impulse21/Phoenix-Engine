@@ -14,7 +14,7 @@
 
 #include <PhxCore/ThreadPool.h>
 
-#define TEST_TREAD_POOL 1
+#define TEST_TREAD_POOL 0
 #if TEST_TREAD_POOL 
 #include <chrono>
 #include <thread>
@@ -40,9 +40,18 @@ public:
 	{
 		PHX_INFO("Sandbox app is starting up");
 
-#if TEST_TREAD_POOL
+		#if TEST_TREAD_POOL
 
 		ThreadPool::Initialize();
+		ThreadPool::SubmitTask([]{
+
+			for (int i = 0; i < 20; i++)
+			{
+				PHX_INFO("Streaming A");
+				std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+			}
+		}, ThreadPool::Type::Streaming);
+
 		ThreadPool::SubmitTask([]() {
 
 			ThreadPool::Barrier barrier;
@@ -73,7 +82,12 @@ public:
 
 		});
 
+		PHX_INFO("---->Wainting for all task");
 		ThreadPool::Wait();
+
+		PHX_INFO("---->Waiting for streaming");
+		ThreadPool::Wait(ThreadPool::Type::Streaming);
+		PHX_INFO("---->Waint is done");
 #endif
 		m_fs = phx::FileSystemFactory::CreateRootFileSystem();
 
