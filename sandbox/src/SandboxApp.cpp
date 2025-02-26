@@ -12,6 +12,14 @@
 #include "PhxRenderer/MeshResourceHandler.h"
 #include "PhxResource/ResourceManger.h"
 
+#include <PhxCore/ThreadPool.h>
+
+#define TEST_TREAD_POOL 1
+#if TEST_TREAD_POOL 
+#include <chrono>
+#include <thread>
+#endif
+
 using namespace phx;
 
 class Sandbox final : public phx::IApplication
@@ -31,6 +39,42 @@ public:
 	void Startup() override
 	{
 		PHX_INFO("Sandbox app is starting up");
+
+#if TEST_TREAD_POOL
+
+		ThreadPool::Initialize();
+		ThreadPool::SubmitTask([]() {
+
+			ThreadPool::Barrier barrier;
+			PHX_INFO("Tasking A");
+			barrier.Add();
+			ThreadPool::SubmitTask([&]() {
+				for (int i = 0; i < 10; i++)
+				{
+					PHX_INFO("Tasking B");
+					std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+				}
+				ThreadPool::Signal(barrier);
+			});
+
+			ThreadPool::SubmitTask([&]() {
+				for (int i = 0; i < 10; i++)
+				{
+					PHX_INFO("Tasking C");
+					std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				}
+				ThreadPool::Signal(barrier);
+			});
+
+			PHX_INFO("Waiting on Tasks A");
+			ThreadPool::Wait(barrier);
+
+			PHX_INFO("Finished waiting on Tasks A");
+
+		});
+
+		ThreadPool::Wait();
+#endif
 		m_fs = phx::FileSystemFactory::CreateRootFileSystem();
 
 		m_imguiRenderer.Initialize(m_fs.get(), m_windowHandle);
@@ -46,6 +90,8 @@ public:
 	{
 		PHX_INFO("Sandbox app is starting up");
 		m_imguiRenderer.Finialize();
+
+		ThreadPool::Finalize();
 	}
 
 	void Tick() override

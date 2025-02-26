@@ -9,7 +9,6 @@ namespace phx
 		uint32_t GroupIndex = 0;
 	};
 
-	
 	namespace ThreadPool
 	{
 		struct Barrier
@@ -21,6 +20,12 @@ namespace phx
 			void Add() { Counter.fetch_add(1); }
 
 			bool IsNotCleared() { return Counter.load() > 0; }
+		};
+
+		enum class Priority
+		{
+			High = 0,
+			Streaming,
 		};
 
 		void Initialize();

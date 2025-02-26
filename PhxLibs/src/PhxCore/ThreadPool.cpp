@@ -10,8 +10,8 @@
 #include <Windows.h>
 #include <sstream>
 #include <assert.h>
-
 #endif
+
 using namespace phx;
 
 namespace
@@ -211,7 +211,8 @@ void ThreadPool::Wait()
 
 void ThreadPool::Wait(Barrier& barrier)
 {
-	barrier.Add();
+	// Not sure I want to add here.
+	// barrier.Add();
 	
 	while (barrier.IsNotCleared())
 	{
