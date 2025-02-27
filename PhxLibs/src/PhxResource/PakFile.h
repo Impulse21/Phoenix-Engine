@@ -25,7 +25,7 @@ namespace phx
 		StreamFileHandle GetFileHandle() const { return m_fileHandle; }
 		const std::filesystem::path& GetFilePath() const { return m_filePath; }
 		std::string GetFilename() const { return m_cachedFilename; }
-		Span<PakFileFormat::AssetEntry> GetEntries() const { return Span(m_assetEntries.Get(), m_header.NumEntries); }
+		Span<PakFileFormat::AssetEntry> GetEntries() const { return Span(m_metadata->AssetsEntries.Get(), m_header.NumEntries); }
 
 		const char* FindFilenameByHash(phx::StringHash targetHash);
 
@@ -63,9 +63,13 @@ namespace phx
 		std::atomic_uint8_t m_status;
 
 		PakFileFormat::Header m_header;
+		MemoryRegion<PakFileFormat::Header> m_metadata;
+
+#if false
 		MemoryRegion<PakFileFormat::AssetEntry> m_assetEntries;
 		MemoryRegion<PakFileFormat::StringEntry> m_assetStringEntriesData;
 		MemoryRegion<char> m_assetStringHeap;
+#endif
 	};
 }
 

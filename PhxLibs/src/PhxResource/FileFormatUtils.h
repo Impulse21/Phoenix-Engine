@@ -49,14 +49,14 @@ namespace phx
 			GDeflate = 1,
 		};
 
-		template <typename T, typename TOffset = std::int32_t>
+		template <typename T, typename TOffset = std::uint32_t>
 		struct RelativePtr
 		{
-			TOffset offset;
+			TOffset Offset;
 
-			T* Get() { return (T*)(((char*)this) + offset); }
-			const T* Get() const { return (const T*)(((char*)this) + offset); }
-			void Set(void* ptr) { offset = static_cast<size_t>(ptrdiff_t(ptr) - ptrdiff_t(this)); }
+			T* Get() { return (T*)(((char*)this) + Offset); }
+			const T* Get() const { return (const T*)(((char*)this) + Offset); }
+			void Set(void* ptr) { Offset = static_cast<size_t>(ptrdiff_t(ptr) - ptrdiff_t(this)); }
 		};
 
 		//

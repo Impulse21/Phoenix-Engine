@@ -10,6 +10,7 @@ namespace phx
         constexpr uint32_t Version = 1;
         constexpr uint32_t MagicNumber = FileFormat::MakeMagicNum('P', 'X', 'P', 'K');
 
+#if false
         /*
                 +-----------------------+  <--- Start of File
                 |    File Header        |  (Fixed Size)
@@ -59,6 +60,39 @@ namespace phx
             uint32_t Hash; // Hash of filename for lookup
             uint32_t Offset; // Regions offset
         };
+#else
+        struct StringEntry;
+        struct AssetEntry;
+        struct Header
+        {
+            uint32_t Magic;                     // 'PXPK'
+            uint32_t Version;
+            uint64_t BuildNumber;               // Build Number is a timestamp
 
+            uint32_t NumEntries;                // Number of assets in the PAK
+            FileFormat::RelativePtr<AssetEntry> AssetsEntries;
+
+            uint32_t NumStrings;
+            FileFormat::RelativePtr<StringEntry> StringEntries;
+
+            uint32_t MetadataHeapSize;
+            uint32_t DependenciesHeapSize;       // Depenencies Heap located before the string heaps
+            uint32_t StringHeapSize;             // String heap located at the end of the file
+
+            uint8_t _FreeSpace[19];
+        };
+        CompileTimeAssertSize(Header, 64);
+
+        struct AssetEntry
+        {
+            uint32_t Hash; // Hash of filename for lookup
+        };
+
+        struct StringEntry
+        {
+            uint32_t Hash; // Hash of filename for lookup
+            FileFormat::RelativePtr<const char*> Value;
+        };
+#endif
     }
 }

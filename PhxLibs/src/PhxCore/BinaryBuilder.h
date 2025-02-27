@@ -31,6 +31,7 @@ namespace phx
 			return Reserve(sizeof(T) * count, alignment);
 		}
 
+		size_t GetSize() const { return m_totalSize; }
 		void Commit()
 		{
 			m_data = std::make_unique<uint8_t[]>(m_totalSize);

@@ -120,7 +120,7 @@ int wmain(int argc, wchar_t** argv)
 	std::filesystem::path gltfInputPath(gltfInput);
 	gltfInputPath.make_preferred();
 
-	std::string outputFilename = std::format("{}.{}", gltfInputPath.stem().generic_string().c_str(), ".phxpak");
+	std::string outputFilename = std::format("{}.{}", gltfInputPath.stem().generic_string().c_str(), "phxpak");
 	PHX_INFO("Creating Phoenix Pack File '{0}' from '{1}'", outputFilename.c_str(), gltfInput);
 
 	std::shared_ptr<phx::IFileSystem> nativeFS = phx::FileSystemFactory::CreateNativeFileSystem();

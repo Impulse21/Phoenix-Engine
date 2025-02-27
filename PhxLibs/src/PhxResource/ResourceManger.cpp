@@ -75,9 +75,9 @@ void phx::ResourceManger::DrawGui()
 						if (ImGui::TreeNode(fileName ? fileName : buffer))
 						{
 							ImGui::Text("ID: %s", buffer);
-							ImGui::Text("Uncompressed Size: %d", entry.Size);
-							ImGui::Text("Offset: %lld", entry.Offset);
-							ImGui::Text("Num Dependecies: %d", entry.NumDependiences);
+							// ImGui::Text("Uncompressed Size: %d", entry.Size);
+							// ImGui::Text("Offset: %lld", entry.Offset);
+							// ImGui::Text("Num Dependecies: %d", entry.NumDependiences);
 							ImGui::TreePop();
 						}
 					}

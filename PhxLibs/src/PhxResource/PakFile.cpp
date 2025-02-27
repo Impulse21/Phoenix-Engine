@@ -32,7 +32,10 @@ void phx::PakFile::StartMetadataLoad()
 			.FileHandle = m_fileHandle,
 			.Size = sizeof(PakFileFormat::Header),
 			.Destination = &m_header
-		}, [this] { OnHeaderLoaded(); });
+		},
+		[this] {
+			OnHeaderLoaded();
+		});
 }
 
 const char* PakFile::FindFilenameByHash(phx::StringHash targetHash)
@@ -43,11 +46,11 @@ const char* PakFile::FindFilenameByHash(phx::StringHash targetHash)
 	while (left <= right)
 	{
 		size_t mid = left + (right - left) / 2;
-		const PakFileFormat::StringEntry& entry = m_assetStringEntriesData.Get()[mid];
+		const PakFileFormat::StringEntry& entry = m_metadata->StringEntries.Get()[mid];
 
 		if (entry.Hash == targetHash)
 		{
-			return m_assetStringHeap.Get() + entry.Offset; // Return pointer to the filename
+			return *entry.Value.Get(); // Return pointer to the filename
 		}
 		else if (entry.Hash < targetHash)
 		{
@@ -70,7 +73,7 @@ const PakFileFormat::AssetEntry* phx::PakFile::FindEntryByHash(phx::StringHash f
 	while (left <= right)
 	{
 		size_t mid = left + (right - left) / 2;
-		const PakFileFormat::AssetEntry& entry = m_assetEntries.Get()[mid];
+		const PakFileFormat::AssetEntry& entry = m_metadata->AssetsEntries.Get()[mid];
 
 		if (entry.Hash == filename)
 		{
@@ -100,6 +103,7 @@ void phx::PakFile::OnHeaderLoaded()
 		return;
 	}
 
+#if false
 	const size_t fileSize = m_assetStreamer->GetFileSize(m_fileHandle);
 	const uint32_t sizeOfEntries = static_cast<uint32_t>(m_header.NumEntries * sizeof(PakFileFormat::AssetEntry));
 
@@ -112,6 +116,11 @@ void phx::PakFile::OnHeaderLoaded()
 	batchedRequests[2] = EnqueueReadMemoryRegion<char>(fileSize - m_header.StringHeapSize, m_header.StringHeapSize, m_assetStringHeap);
 
 	m_assetStreamer->SubmitBatch(batchedRequests, [this] { OnMetadataLoaded(); });
+#else
+
+	StreamRequest request = EnqueueReadMemoryRegion<PakFileFormat::Header>(0, m_header.MetadataHeapSize, m_metadata);
+	m_assetStreamer->Submit(request, [this] { OnMetadataLoaded(); });
+#endif
 	m_status = 0xf0;
 }
 
