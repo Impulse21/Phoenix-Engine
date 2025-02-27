@@ -75,6 +75,7 @@ namespace
 void ThreadPool::Initialize()
 {
 	const uint32_t numCores = (uint32_t)GetNumCores();
+	m_alive.store(true);
 
 	CpuTimer timer;
 	for (size_t i = 0; i < m_threadPools.size(); i++)
@@ -154,8 +155,6 @@ void ThreadPool::Initialize()
 		duration.GetMilliseconds(),
 		m_threadPools[Type::High].NumThreads,
 		m_threadPools[Type::Streaming].NumThreads);
-
-	m_alive.store(true);
 }
 
 void ThreadPool::Finalize()
