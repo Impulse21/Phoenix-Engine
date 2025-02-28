@@ -3,6 +3,7 @@
 #include "IAssetStreamer.h"
 
 #include <PhxCore/Pool.h>
+#include <PhxCore/FreeList.h>
 
 #include <deque>
 #include <wrl.h>
@@ -40,6 +41,7 @@ namespace phx
 		std::vector<HANDLE> m_eventPool;
 		std::deque<HANDLE> m_freeEvents;
 
+		FreeList<kMaxPendingRequests> m_statusIdxPool;
 		Microsoft::WRL::ComPtr<IDStorageQueue1> m_metadataQueue;
 		Microsoft::WRL::ComPtr<IDStorageStatusArray> m_statusArray;
 

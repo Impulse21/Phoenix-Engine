@@ -168,7 +168,20 @@ void phx::DStorageAssetStreamer::SubmitBatch(Span<StreamRequest> requests, Strea
 	}
 
 	HANDLE hEvent = RequestEvent();
+
 	m_metadataQueue->EnqueueSetEvent(hEvent);
+	
+	size_t statusIndex;
+	if (m_statusIdxPool.Allocate(statusIndex))
+	{
+		m_metadataQueue->EnqueueStatus(m_statusArray.Get(), static_cast<uint32_t>(statusIndex));
+	}
+	else
+	{
+		PHX_CORE_WARN("Max requests has been reached");
+		statusIndex = ~0ull;
+	}
+
 	m_metadataQueue->Submit();
 
 	Request req = {
@@ -180,6 +193,10 @@ void phx::DStorageAssetStreamer::SubmitBatch(Span<StreamRequest> requests, Strea
 		[req]
 		{
 			WaitForSingleObject(req.EventHandle, INFINITY);
+
+			HRESULT result = m_statusArray->GetHResult(static_cast<uint32_t>(StatusArrayEntry::Metadata));
+			bool success =
+				m_metadataQueue->EnqueueStatus(m_statusArray.Get(), static_cast<uint32_t>(statusIndex));
 			req.Callback();
 		},
 		ThreadPool::Type::Streaming);
