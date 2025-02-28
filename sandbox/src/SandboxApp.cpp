@@ -107,7 +107,7 @@ public:
 
 			phx::ResourceManger::Initialize(GlobalPaths::AssetsDirectory);
 			phx::ResourceManger::RegisterHandler<phx::renderer::MeshResourceHandler>();
-			phx::ResourceManger::RegisterPakFile("res:/Sponza.phxpak");
+			phx::ResourceManger::RegisterPakFile("res:/NewSponza_Main_glTF_003.phxpak");
 
 			// ThreadPool::Wait(ThreadPool::Type::Streaming);
 			m_loadingBarrier.Signal();

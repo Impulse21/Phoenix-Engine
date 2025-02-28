@@ -41,7 +41,7 @@ void phx::PakFile::StartMetadataLoad()
 const char* PakFile::FindFilenameByHash(phx::StringHash targetHash)
 {
 	size_t left = 0;
-	size_t right = m_header.NumStrings - 1;
+	size_t right = m_metadata->NumStrings - 1;
 
 	while (left <= right)
 	{
@@ -68,12 +68,12 @@ const char* PakFile::FindFilenameByHash(phx::StringHash targetHash)
 const PakFileFormat::AssetEntry* phx::PakFile::FindEntryByHash(phx::StringHash filename)
 {
 	size_t left = 0;
-	size_t right = m_header.NumEntries - 1;
+	size_t right = m_metadata->NumEntries - 1;
 
 	while (left <= right)
 	{
 		size_t mid = left + (right - left) / 2;
-		const PakFileFormat::AssetEntry& entry = m_metadata->AssetsEntries.Get()[mid];
+		const PakFileFormat::AssetEntry& entry = m_metadata->AssetEntries.Get()[mid];
 
 		if (entry.Hash == filename)
 		{
@@ -118,7 +118,7 @@ void phx::PakFile::OnHeaderLoaded()
 	m_assetStreamer->SubmitBatch(batchedRequests, [this] { OnMetadataLoaded(); });
 #else
 
-	StreamRequest request = EnqueueReadMemoryRegion<PakFileFormat::Header>(0, m_header.MetadataHeapSize, m_metadata);
+	StreamRequest request = EnqueueReadMemoryRegion<PakFileFormat::MetadataHeader>(sizeof(PakFileFormat::Header), m_header.MetadataHeapSize, m_metadata);
 	m_assetStreamer->Submit(request, [this] { OnMetadataLoaded(); });
 #endif
 	m_status = 0xf0;

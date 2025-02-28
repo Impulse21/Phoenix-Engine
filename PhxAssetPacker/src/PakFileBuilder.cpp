@@ -43,15 +43,6 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
         header->Magic = PakFileFormat::MagicNumber;
         header->Version = PakFileFormat::Version;
         header->BuildNumber = FileFormat::GetTimestamp();
-
-        header->NumEntries = numEntries;
-        header->AssetsEntries.Offset = static_cast<uint32_t>(assetEntriesOffset);
-
-        header->NumStrings = numEntries;
-        header->StringEntries.Offset = static_cast<uint32_t>(stringTableOffset);
-
-        header->DependenciesHeapSize = 0;
-        header->StringHeapSize = m_stringHeapSize;
         header->MetadataHeapSize = static_cast<uint32_t>(metdataSize);
 #endif
     }
@@ -97,7 +88,6 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
             strEntry.Hash = assetEntry.Hash;
             strEntry.Value.Offset = strDataOffset;
 #endif
-
 
             char* strDataDest = (stringDataDest + strDataOffset);
             strcpy(strDataDest, entry.first.c_str());

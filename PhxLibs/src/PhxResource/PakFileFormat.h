@@ -61,27 +61,27 @@ namespace phx
             uint32_t Offset; // Regions offset
         };
 #else
-        struct StringEntry;
-        struct AssetEntry;
         struct Header
         {
             uint32_t Magic;                     // 'PXPK'
             uint32_t Version;
             uint64_t BuildNumber;               // Build Number is a timestamp
 
-            uint32_t NumEntries;                // Number of assets in the PAK
-            FileFormat::RelativePtr<AssetEntry> AssetsEntries;
+            uint32_t MetadataHeapSize;
+            uint8_t _FreeSpace[40];
+        };
+        CompileTimeAssertSize(Header, 64);
+
+        struct StringEntry;
+        struct AssetEntry;
+        struct MetadataHeader
+        {
+            uint32_t NumEntries;                
+            FileFormat::RelativePtr<AssetEntry>  AssetEntries;
 
             uint32_t NumStrings;
             FileFormat::RelativePtr<StringEntry> StringEntries;
-
-            uint32_t MetadataHeapSize;
-            uint32_t DependenciesHeapSize;       // Depenencies Heap located before the string heaps
-            uint32_t StringHeapSize;             // String heap located at the end of the file
-
-            uint8_t _FreeSpace[19];
         };
-        CompileTimeAssertSize(Header, 64);
 
         struct AssetEntry
         {
