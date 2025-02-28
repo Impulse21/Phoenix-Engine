@@ -55,6 +55,14 @@ phx::DStorageAssetStreamer::DStorageAssetStreamer()
 
 		HRESULT hr = (g_dsFactory->CreateQueue(&queueDesc, IID_PPV_ARGS(&m_metadataQueue)));
 		PHX_ASSERT(SUCCEEDED(hr));
+
+		hr = (g_dsFactory->CreateStatusArray(
+			kMaxPendingRequests,
+			nullptr,
+			IID_PPV_ARGS(&m_statusArray)));
+
+		PHX_ASSERT(SUCCEEDED(hr));
+
 	}
 
 	m_filePool.Initialize(200);
@@ -94,12 +102,6 @@ StreamFileHandle phx::DStorageAssetStreamer::OpenFile(std::filesystem::path cons
 
 	PHX_INFO("[DStorage] Opened File: {0} [size {1}] bytes.", resolvedPath.generic_string().c_str(), RetrieveFileSize(fileImpl.FileInfo));
 
-	hr = (g_dsFactory->CreateStatusArray(
-		static_cast<uint32_t>(statusCount),
-		nullptr,
-		IID_PPV_ARGS(&fileImpl.StatusArray)));
-
-	PHX_ASSERT(SUCCEEDED(hr));
 
 	return retVal;
 }

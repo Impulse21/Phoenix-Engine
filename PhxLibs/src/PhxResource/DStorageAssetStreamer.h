@@ -14,8 +14,9 @@ namespace phx
 	{
 		Microsoft::WRL::ComPtr<IDStorageFile> DsFile;
 		BY_HANDLE_FILE_INFORMATION FileInfo = {};
-		Microsoft::WRL::ComPtr<IDStorageStatusArray> StatusArray;
 	};
+
+	constexpr uint32_t kMaxPendingRequests = 256;
 
 	class DStorageAssetStreamer final : public IAssetStreamer
 	{
@@ -40,6 +41,7 @@ namespace phx
 		std::deque<HANDLE> m_freeEvents;
 
 		Microsoft::WRL::ComPtr<IDStorageQueue1> m_metadataQueue;
+		Microsoft::WRL::ComPtr<IDStorageStatusArray> m_statusArray;
 
 		phx::PagedPool<StreamFile, DStorageStreamFile> m_filePool;
 	};
