@@ -17,17 +17,20 @@ namespace
 	}
 }
 
-PakFile::PakFile(std::shared_ptr<IAssetStreamer> assetStreamer, std::filesystem::path const& path)
-	: m_filePath(path)
+PakFile::PakFile(std::shared_ptr<IAssetStreamer> assetStreamer, std::filesystem::path const& filePath, std::filesystem::path const& resolvedFilePath)
+	: m_filePath(filePath)
 	, m_cachedFilename(m_filePath.generic_string())
+	, m_resolvedFilePath(resolvedFilePath)
+	, m_cachedResolvedFilename(m_resolvedFilePath.generic_string())
 	, m_assetStreamer(std::move(assetStreamer))
 	, m_status(Status_UnLoaded)
 {
-	m_fileHandle = m_assetStreamer->OpenFile(m_filePath, StreamingStatus::NumEntries);
+	m_fileHandle = m_assetStreamer->OpenFile(m_resolvedFilePath, StreamingStatus::NumEntries);
 }
 
 void phx::PakFile::StartMetadataLoad()
 {
+	std::memset(&m_header, 0, sizeof(m_header));
 	m_assetStreamer->Submit({
 			.FileHandle = m_fileHandle,
 			.Size = sizeof(PakFileFormat::Header),
@@ -50,7 +53,7 @@ const char* PakFile::FindFilenameByHash(phx::StringHash targetHash)
 
 		if (entry.Hash == targetHash)
 		{
-			return *entry.Value.Get(); // Return pointer to the filename
+			return entry.Value.Get(); // Return pointer to the filename
 		}
 		else if (entry.Hash < targetHash)
 		{
@@ -127,4 +130,7 @@ void phx::PakFile::OnHeaderLoaded()
 void phx::PakFile::OnMetadataLoaded()
 {
 	m_status = 0;
+	PakFileFormat::MetadataHeader* metadata = m_metadata.Get();
+
+	PHX_CORE_INFO("Metadata Loading Completed - There are {0} entries and {1} strings", metadata->NumEntries, metadata->NumStrings);
 }

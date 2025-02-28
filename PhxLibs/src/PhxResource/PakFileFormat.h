@@ -91,7 +91,7 @@ namespace phx
         struct StringEntry
         {
             uint32_t Hash; // Hash of filename for lookup
-            FileFormat::RelativePtr<const char*> Value;
+            FileFormat::RelativePtr<char> Value;
         };
 #endif
     }

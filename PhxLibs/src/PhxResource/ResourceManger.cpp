@@ -42,7 +42,7 @@ RefCountPtr<PakFile> phx::ResourceManger::RegisterPakFile(std::filesystem::path 
 		return ms_registeredPaks[itr->second];
 
 	std::filesystem::path resolvedPath = ms_fileSytem->ResolvePath(path);
-	RefCountPtr<PakFile> pakFile = RefCountPtr<PakFile>::Create(new PakFile(ms_assetStreamer, resolvedPath));
+	RefCountPtr<PakFile> pakFile = RefCountPtr<PakFile>::Create(new PakFile(ms_assetStreamer, path, resolvedPath));
 	if (pakFile)
 	{
 		pakFile->StartMetadataLoad();

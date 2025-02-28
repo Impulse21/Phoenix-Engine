@@ -12,7 +12,7 @@ namespace phx
 	class PakFile : public RefCounter<IResource>
 	{
 	public:
-		PakFile(std::shared_ptr<IAssetStreamer> assetStreamer, std::filesystem::path const& path);
+		PakFile(std::shared_ptr<IAssetStreamer> assetStreamer, std::filesystem::path const& filePath, std::filesystem::path const& resolvedFilePath);
 		~PakFile()
 		{
 			m_assetStreamer->CloseFile(m_fileHandle);
@@ -25,6 +25,8 @@ namespace phx
 		StreamFileHandle GetFileHandle() const { return m_fileHandle; }
 		const std::filesystem::path& GetFilePath() const { return m_filePath; }
 		std::string GetFilename() const { return m_cachedFilename; }
+		const std::filesystem::path& GetResolvedFilePath() const { return m_resolvedFilePath; }
+		std::string GetResolvedFilename() const { return m_cachedResolvedFilename; }
 		Span<PakFileFormat::AssetEntry> GetEntries() const { return Span(m_metadata->AssetEntries.Get(), m_metadata->NumEntries); }
 
 		const char* FindFilenameByHash(phx::StringHash targetHash);
@@ -58,6 +60,8 @@ namespace phx
 	private:
 		std::filesystem::path m_filePath;
 		std::string m_cachedFilename;
+		std::filesystem::path m_resolvedFilePath;
+		std::string m_cachedResolvedFilename;
 		std::shared_ptr<IAssetStreamer> m_assetStreamer;
 		StreamFileHandle m_fileHandle;
 		std::atomic_uint8_t m_status;
