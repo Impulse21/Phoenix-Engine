@@ -2,6 +2,7 @@
 
 #include <PhxCore/Base.h>
 #include "FileFormatUtils.h"
+#include "ChunkFileFormat.h"
 
 namespace phx
 {
@@ -86,6 +87,13 @@ namespace phx
         struct AssetEntry
         {
             uint32_t Hash; // Hash of filename for lookup
+
+            // For optmization, we store the metadata chunk right in this metadata heap
+            FileFormat::RelativePtr<void*> MetadataChunk;
+
+            // Info about the meteadata chunks.
+            uint32_t NumDataChunks;
+            FileFormat::RelativePtr<ChunkFileFormat::ChunkHeader> DataChunkHeaders;
         };
 
         struct StringEntry
