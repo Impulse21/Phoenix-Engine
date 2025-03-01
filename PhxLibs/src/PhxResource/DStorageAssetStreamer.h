@@ -24,7 +24,7 @@ namespace phx
 	public:
 		DStorageAssetStreamer();
 		~DStorageAssetStreamer();
-		StreamFileHandle OpenFile(std::filesystem::path const& path, uint32_t statusCount) override;
+		StreamFileHandle OpenFile(std::filesystem::path const& path) override;
 		void CloseFile(StreamFileHandle handle) override;
 
 		bool GetStatus(StreamFileHandle handle, uint32_t status) const override;

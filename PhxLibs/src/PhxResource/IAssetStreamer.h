@@ -22,7 +22,7 @@ namespace phx
 	class IAssetStreamer
 	{
 	public:
-		virtual StreamFileHandle OpenFile(std::filesystem::path const& path, uint32_t statusCount) = 0;
+		virtual StreamFileHandle OpenFile(std::filesystem::path const& path) = 0;
 		virtual void CloseFile(StreamFileHandle handle) = 0;
 
 		virtual bool GetStatus(StreamFileHandle handle, uint32_t status) const = 0;

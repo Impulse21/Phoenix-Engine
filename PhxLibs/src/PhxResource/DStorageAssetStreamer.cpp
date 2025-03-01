@@ -12,6 +12,8 @@ namespace
 	{
 		HANDLE EventHandle;
 		StreamCallback Callback;
+		uint32_t StatusIndex;
+		Microsoft::WRL::ComPtr<IDStorageStatusArray> StatusArray;
 	};
 
 	Microsoft::WRL::ComPtr<IDStorageFactory> g_dsFactory;
@@ -78,7 +80,7 @@ phx::DStorageAssetStreamer::~DStorageAssetStreamer()
 	m_eventPool.clear();
 }
 
-StreamFileHandle phx::DStorageAssetStreamer::OpenFile(std::filesystem::path const& path, uint32_t statusCount)
+StreamFileHandle phx::DStorageAssetStreamer::OpenFile(std::filesystem::path const& path)
 {
 	std::filesystem::path resolvedPath = path;
 	StreamFileHandle retVal = {};
@@ -166,10 +168,6 @@ void phx::DStorageAssetStreamer::SubmitBatch(Span<StreamRequest> requests, Strea
 
 		m_metadataQueue->EnqueueRequest(&r);
 	}
-
-	HANDLE hEvent = RequestEvent();
-
-	m_metadataQueue->EnqueueSetEvent(hEvent);
 	
 	size_t statusIndex;
 	if (m_statusIdxPool.Allocate(statusIndex))
@@ -182,21 +180,34 @@ void phx::DStorageAssetStreamer::SubmitBatch(Span<StreamRequest> requests, Strea
 		statusIndex = ~0ull;
 	}
 
+	HANDLE hEvent = RequestEvent();
+	m_metadataQueue->EnqueueSetEvent(hEvent);
 	m_metadataQueue->Submit();
 
 	Request req = {
 		.EventHandle = hEvent,
-		.Callback = callback
+		.Callback = callback,
+		.StatusIndex = static_cast<uint32_t>(statusIndex),
+		.StatusArray = m_statusArray
 	};
 
 	ThreadPool::SubmitTask(
 		[req]
 		{
-			WaitForSingleObject(req.EventHandle, INFINITY);
+			// todo: this event isn't working.
+			DWORD waitResult = WaitForSingleObject(req.EventHandle, INFINITE);
+			if (waitResult != WAIT_OBJECT_0)
+			{
+				PHX_CORE_WARN("DStorage request failed. HR={0}.", waitResult);
+			}
 
-			HRESULT result = m_statusArray->GetHResult(static_cast<uint32_t>(StatusArrayEntry::Metadata));
-			bool success =
-				m_metadataQueue->EnqueueStatus(m_statusArray.Get(), static_cast<uint32_t>(statusIndex));
+			HRESULT result = req.StatusArray->GetHResult(req.StatusIndex);
+			if (FAILED(result))
+			{
+				PHX_CORE_WARN("DStorage request failed. HR={0}.", result);
+				return;
+			}
+
 			req.Callback();
 		},
 		ThreadPool::Type::Streaming);
@@ -209,18 +220,20 @@ HANDLE DStorageAssetStreamer::RequestEvent()
 	{
 		HANDLE hEvent = CreateEvent(
 			NULL,               // Security attributes (default)
-			FALSE,              // Auto-reset event (manual-reset if TRUE)
+			TRUE,              // Auto-reset event (manual-reset if TRUE)
 			FALSE,              // Initial state is non-signaled
 			L"StreamingEvent"      // Event name (optional)
 		);
 		m_eventPool.push_back(hEvent);
 
+		ResetEvent(hEvent);
 		return hEvent;
 	}
 
 	HANDLE hEvent = m_freeEvents.front();
 	m_freeEvents.pop_front();
 
+	ResetEvent(hEvent);
 	return hEvent;
 }
 

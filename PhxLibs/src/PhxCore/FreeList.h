@@ -24,7 +24,7 @@ namespace phx
         bool Allocate(size_t& index) 
         {
             size_t currentHead = m_head.load(std::memory_order_acquire);
-            while (currentHead != -1) 
+            while (currentHead != std::numeric_limits<std::size_t>::max())
             {
                 size_t next = m_nodes[currentHead].Next.load(std::memory_order_acquire);
                 if (m_head.compare_exchange_weak(currentHead, next, std::memory_order_acq_rel, std::memory_order_acquire))

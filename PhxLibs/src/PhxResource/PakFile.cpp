@@ -25,7 +25,7 @@ PakFile::PakFile(std::shared_ptr<IAssetStreamer> assetStreamer, std::filesystem:
 	, m_assetStreamer(std::move(assetStreamer))
 	, m_status(Status_UnLoaded)
 {
-	m_fileHandle = m_assetStreamer->OpenFile(m_resolvedFilePath, StreamingStatus::NumEntries);
+	m_fileHandle = m_assetStreamer->OpenFile(m_resolvedFilePath);
 }
 
 void phx::PakFile::StartMetadataLoad()
