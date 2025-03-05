@@ -135,7 +135,7 @@ RefCountPtr<IResource> ResourceManger::Get(std::filesystem::path const& path)
 		const PakFileFormat::AssetEntry* entry = pakFile->FindEntryByHash(StringHash(path.filename().generic_string()));
 		if (entry)
 		{
-			// resource = handlerItr->second->Load(path, ms_fileSytem, pakFile->GetFileHandle(), entry->Offset);
+			resource = handlerItr->second->Load(ms_assetStreamer, pakFile->GetFileHandle(), *entry);
 		}
 	}
 

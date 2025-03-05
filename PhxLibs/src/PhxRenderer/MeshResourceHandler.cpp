@@ -8,13 +8,11 @@
 using namespace phx;
 using namespace phx::renderer;
 
-
-RefCountPtr<IResource> MeshResourceHandler::Load(std::filesystem::path const& /*path*/, std::shared_ptr<IResourceFileSystem> const& /*fs*/ ) const
+RefCountPtr<IResource> phx::renderer::MeshResourceHandler::Load(std::shared_ptr<IAssetStreamer> const& /*assetStreamer*/, StreamFileHandle /*filehandle*/, PakFileFormat::AssetEntry const& assetEntry) const
 {
-	return RefCountPtr<IResource>::Create(new MeshResource());
-}
+	const MeshCpuMetadata* meshCpuData = reinterpret_cast<const MeshCpuMetadata*>(assetEntry.MetadataChunk.Get());
 
-RefCountPtr<IResource> MeshResourceHandler::Load(std::filesystem::path const& /*path*/, std::shared_ptr<IResourceFileSystem> const& /*fs*/, FileHandle /*filehandle*/, size_t /*offset*/) const
-{
-	return RefCountPtr<IResource>::Create(new MeshResource());
+	assert(meshCpuData->NumDraws >= 1);
+
+	return nullptr;
 }

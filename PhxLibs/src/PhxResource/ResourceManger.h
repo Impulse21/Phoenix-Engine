@@ -3,6 +3,7 @@
 #include <PhxCore/RefCountPtr.h>
 #include <PhxCore/StringHash.h>
 #include <PhxCore/Span.h>
+#include <PhxCore/VFS.h>
 
 #include <unordered_map>
 #include <vector>

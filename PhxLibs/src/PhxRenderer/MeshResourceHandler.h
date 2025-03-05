@@ -5,12 +5,13 @@
 
 namespace phx::renderer
 {
-	class MeshResourceHandler : public phx::IResourceHandler
+	class MeshResourceHandler final : public phx::IResourceHandler
 	{
 	public:
-		RefCountPtr<IResource> Load(std::filesystem::path const& path, std::shared_ptr<IResourceFileSystem> const& fs) const override;
-		RefCountPtr<IResource> Load(std::filesystem::path const& path, std::shared_ptr<IResourceFileSystem> const& fs, FileHandle filehandle, size_t offset) const override;
-
+		RefCountPtr<IResource> Load(
+			std::shared_ptr<IAssetStreamer> const& assetStreamer,
+			StreamFileHandle filehandle,
+			PakFileFormat::AssetEntry const& assetEntry) const override;
 	};
 }
 

@@ -29,8 +29,9 @@ TempMemoryBlockAllocator::TempMemoryBlock TempMemoryBlockAllocator::GetNextMemor
 	const uint32_t offset = (this->m_tail & m_bufferMask); // Change  + m_blockSize;0
 	m_tail += m_blockSize;
 
-	return TempMemoryBlock{
-		.Data = this->m_data.get() + offset,
+	return TempMemoryBlock {
+		.GpuAddress = m_buffer->GetGPUVirtualAddress() + offset,
+		.Data = static_cast<uint8_t*>(this->m_data) + offset,
 	};
 }
 

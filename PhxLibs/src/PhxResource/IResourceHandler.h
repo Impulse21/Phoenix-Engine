@@ -3,7 +3,8 @@
 #include <PhxCore/RefCountPtr.h>
 #include <PhxCore/StringHash.h>
 
-#include <PhxResource/VFSResource.h>
+#include <PhxResource\IAssetStreamer.h>
+#include <PhxResource\PakFileFormat.h>
 #include <memory>
 #include <filesystem>
 
@@ -16,8 +17,10 @@ namespace phx
 	class IResourceHandler
 	{
 	public:
-		virtual RefCountPtr<IResource> Load(std::filesystem::path const& path, std::shared_ptr<IResourceFileSystem> const& fs) const = 0;
-		virtual RefCountPtr<IResource> Load(std::filesystem::path const& path, std::shared_ptr<IResourceFileSystem> const& fs, FileHandle filehandle, size_t offset) const = 0;
+		virtual RefCountPtr<IResource> Load(
+			std::shared_ptr<IAssetStreamer> const& assetStreamer,
+			StreamFileHandle filehandle,
+			PakFileFormat::AssetEntry const& assetEntry) const = 0;
 
 		virtual ~IResourceHandler() = default;
 	};

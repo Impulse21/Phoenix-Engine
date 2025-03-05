@@ -28,7 +28,7 @@ namespace phx::renderer
 		friend class MeshResourceHandler;
 	public:
 		bool IsLoaded() const { return false; }
-		FileHandle GetFileHandle() const { return {}; }
+		StreamFileHandle GetFileHandle() const { return {}; }
 
 	};
 }

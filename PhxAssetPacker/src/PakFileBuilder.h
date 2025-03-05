@@ -4,6 +4,7 @@
 #include <PhxCore/Span.h>
 #include <PhxCore/StringHash.h>
 
+#include <PhxResource/ChunkFileFormat.h>
 #include <memory>
 #include <string>
 #include <map>
@@ -32,6 +33,16 @@ namespace phx
 
 		std::unique_ptr<IBlob> Build();
 
+	private:
+		struct ChunkEntry
+		{
+			ChunkFileFormat::Header* Header;
+			ChunkFileFormat::ChunkHeader* ChunkHeaders;
+			IBlob* Source;
+
+			ChunkEntry(IBlob* blob);
+
+		};
 	private:
 		std::map<uint32_t, std::pair<std::string, IBlob*>> m_entries;
 		size_t m_entiresSize = 0ull;

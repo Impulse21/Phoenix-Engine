@@ -109,7 +109,10 @@ public:
 			phx::ResourceManger::RegisterHandler<phx::renderer::MeshResourceHandler>();
 			phx::ResourceManger::RegisterPakFile("res:/NewSponza_Main_glTF_003.phxpak");
 
-			// ThreadPool::Wait(ThreadPool::Type::Streaming);
+			ThreadPool::Wait(ThreadPool::Type::Streaming);
+
+			m_meshResource = phx::ResourceManger::Get("res:/NewSponza_Main_glTF_003/lionhead.phxmsh");
+
 			m_loadingBarrier.Signal();
 			PHX_INFO("--->Decremented value {0}", m_loadingBarrier.Counter.load());
 		});

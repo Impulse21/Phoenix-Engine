@@ -570,7 +570,7 @@ group "PhxLibs"
         }
 group ""
 
-group "Misc"
+group "Applications"
     project(project_sandbox)
         kind "WindowedApp"         -- Windows application (no console)
 
@@ -635,10 +635,7 @@ group "Misc"
                 CopyFileCommand(path.getabsolute(AgilityLibrary.dlls[1]), '%{cfg.buildtarget.directory}/D3D12/'),
                 CopyFileCommand(path.getabsolute(AgilityLibrary.dlls[2]), '%{cfg.buildtarget.directory}/D3D12/'),
             }
-group ""
-
-group "Tools"
-
+            
     project(project_asset_packer)
         kind "ConsoleApp"         -- Windows application (no console)
         
