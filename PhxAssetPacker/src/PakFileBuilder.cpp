@@ -62,6 +62,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
         }
 
         OffsetHandle strDataOffset = 0;
+        OffsetHandle chunkDestByteOffset = 0;
         auto entriesItr = m_entries.begin();
         for (size_t i = 0; i < m_entries.size(); i++)
         {
@@ -74,10 +75,23 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
             {
                 if (id == ResourceFileFormat::ChunkId_Metadata)
                 {
-                    // TODO: I am here
+                    std::memcpy(metadataChunksDest, chunk->Data(), chunk->Size());
+                    metadataChunksDest = metadataChunksDest + chunk->Size();
                 }
                 else
                 {
+                    // Construct chunk Header
+                    *chunkHeadersDest = {
+                    	.ChunkID = id,
+                        .Compression = FileFormat::CompressionType::None,
+						.Offset = static_cast<uint32_t>(assetChunkOffsetHandle + chunkDestByteOffset),
+						.CompressedSize = static_cast<uint32_t>(chunk->Size()),
+                        .UncompressedSize = static_cast<uint32_t>(chunk->Size()),
+                    };
+
+                    std::memcpy(assetChunkDest + chunkDestByteOffset, chunk->Data(), chunk->Size());
+                    chunkDestByteOffset += chunk->Size();
+                    chunkHeadersDest += 1;
                     assetEntry.NumChunks += 1;
                 }
             }
@@ -91,58 +105,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
             strEntry.Hash = assetEntry.Hash;
             strEntry.Value.Set(strDataDest);
 
-            strDataOffset += entryName.size() + 1;
-            std::advance(entriesItr, 1);
-        }
-
-        //OffsetHandle dataOffset = assetsOffsetHandle;
-        OffsetHandle strDataOffset = 0;
-
-        auto entriesItr = m_entries.begin();
-
-        for (size_t i = 0; i < numEntries; i++)
-        {
-            uint32_t hash = entriesItr->first;
-            auto& [entryName, blob] = entriesItr->second;
-#if false
-            PakFileFormat::AssetEntry& assetEntry = *(entriesDest + i);
-            assetEntry.Offset = dataOffset;
-            assetEntry.Size = entry.second->Size();
-            assetEntry.Hash = hash;
-            assetEntry.NumDependiences = 0;
-
-            char* dataDest = (entreesDataDest + i);
-            std::memcpy(dataDest, entry.second->Data(), assetEntry.Size);
-
-            PakFileFormat::StringEntry& strEntry = *(stringTableDest + i);
-            strEntry.Hash = assetEntry.Hash;
-            strEntry.Offset = strDataOffset;
-
-            char* strDataDest = (stringDataDest + strDataOffset);
-            strcpy(strDataDest, entry.first.c_str());
-
-#else
-            auto* chunkHeader = reinterpret_cast<const ResourceFileFormat::Header*>(blob->Data());
-            // construct asset Entry
-            PakFileFormat::AssetEntry& assetEntry = *(entriesDest + i);
-            assetEntry.Hash = hash;
-            assetEntry.NumChunks = chunkHeader->ChunkCount;
-            //  assetEntry.DataChunkHeaders;
-            // assetEntry.MetadataChunk;
-
-            char* dataDest = (entreesDataDest + i);
-            std::memcpy(dataDest, blob->Data(), blob->Size());
-
-            char* strDataDest = (stringDataDest + strDataOffset);
-            strcpy(strDataDest, entryName.c_str());
-
-            PakFileFormat::StringEntry& strEntry = *(stringTableDest + i);
-            strEntry.Hash = assetEntry.Hash;
-            strEntry.Value.Set(strDataDest);
-#endif
-
-            // dataOffset += entry.second->Size();
-            strDataOffset += entryName.size() + 1;
+            strDataOffset += filename.size() + 1;
             std::advance(entriesItr, 1);
         }
     }

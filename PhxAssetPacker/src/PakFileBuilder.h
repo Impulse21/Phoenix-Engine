@@ -24,7 +24,7 @@ namespace phx
 			for (auto& resource : resources)
 			{
 				std::string filename = std::format("{}.{}", resource.Name, resource.Ext);
-				m_entries.emplace(std::make_pair(filename, &resource));
+				m_entries.emplace(filename, &resource);
 
 				// -- Some upfront size calculations ---
 				m_stringHeapSize += filename.size() + 1; // add one for null terminated string
@@ -56,7 +56,7 @@ namespace phx
 
 		};
 	private:
-		std::map<std::string, CompiledResource*> m_entries;
+		std::map<std::string, const CompiledResource*> m_entries;
 		size_t m_numChunkHeaders = 0ull;
 		size_t m_metadataChunksSize = 0ull;
 		size_t m_chunkSize = 0ull;
