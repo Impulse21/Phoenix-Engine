@@ -61,17 +61,17 @@ namespace phx
 			T* operator->() { return Get(); }
 			T const* operator->() const { return Get(); }
 		};
-
+		
 		//
 		// A pointer/offset.  On disk, this is an offset relative to the containing
 		// region (or the start of the file if this Ptr is stored in the header.)
 		// After the data has been loaded, the offsets are fixed up and converted
 		// into typed pointers.
 		//
-		template<typename T>
+		template<typename T, typename TOffset = std::uint32_t>
 		union Ptr
 		{
-			uint32_t Offset;
+			TOffset Offset;
 			T* Ptr;
 		};
 
