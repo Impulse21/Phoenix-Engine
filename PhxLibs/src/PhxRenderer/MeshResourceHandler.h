@@ -22,5 +22,11 @@ namespace phx
 	{
 		static constexpr const char* value = ".phxmsh";
 	};
+
+	template<>
+	struct ResourceHandlerId<renderer::MeshResourceHandler>
+	{
+		static constexpr phx::StringHash value = "phxmsh";
+	};
 }
 

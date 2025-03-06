@@ -1,13 +1,16 @@
 #pragma once
 
 #include <PhxCore/VFS.h>
-#include <PhxResource/ResourceFileFormat.h>
+
 namespace phx
 {
 	struct CompiledResource
 	{
 		std::string Name;
 		std::string Ext;
-		std::vector<std::pair<uint32_t, std::unique_ptr<IBlob>>> Chunks;
+
+		// Keep metadata chunk separate as they are stored differently in pak files.
+		std::unique_ptr<IBlob> MetadataChunk;
+		std::vector<std::unique_ptr<IBlob>> Chunks;
 	};
 }

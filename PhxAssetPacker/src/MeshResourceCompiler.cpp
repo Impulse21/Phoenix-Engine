@@ -5,7 +5,6 @@
 
 #include "PhxRhi/RHITypes.h"
 
-#include "PhxResource/FileFormatUtils.h"
 #include "PhxResource/ResourceFileFormat.h"
 #include "PhxRenderer/MeshResourceHandler.h"
 
@@ -43,37 +42,40 @@ void phx::MeshResourceCompiler::Compile()
 	BuildGpuBufferData(gpuData);
 	// metadata chunk
 	{
-		auto& [id, chunk] = m_outCompiledResource.Chunks.emplace_back();
-		id = ResourceFileFormat::ChunkId_Metadata;
+		auto metadata = reinterpret_cast<renderer::MeshMetadata*>(malloc(sizeof(MeshMetadata)));
+		std::memset(&metadata, 0, sizeof(MeshMetadata));
 
-		const size_t metadataSize = sizeof(renderer::data::MeshMetadata) + sizeof(MeshData::GeometryData) * (m_meshData.Geometry.size() - 1);
-
-		auto metadata = reinterpret_cast<renderer::data::MeshMetadata*>(malloc(metadataSize));
-		std::memset(&metadata, 0, metadataSize);
-
-		metadata->IbSize = m_meshData.Indices.size() * sizeof(uint32_t);
-		metadata->VbOffset = m_meshData.Indices.size() * sizeof(uint32_t);
-		metadata->VbSize = gpuData.size() - metadata->IbSize;
-		metadata->numGeometry = m_meshData.Geometry.size();
-		for (size_t i = 0; i < m_meshData.Geometry.size(); i++)
-		{
-			const MeshData::GeometryData& srcGeo = m_meshData.Geometry[i];
-			renderer::data::MeshMetadata::GeometryData& destGeo = *(metadata->Geo + i);
-			destGeo.IndexCount = srcGeo.IndexCount;
-			destGeo.IndexOffset = srcGeo.IndexOffset;
-			destGeo.MaterialId = srcGeo.MaterialId;
-		}
-
-		chunk = std::make_unique<Blob>(metadata, metadataSize);
+		metadata->GeometryBufferSize = static_cast<uint32_t>(gpuData.size());
+		metadata->VertexBufferOffset = m_meshData.Indices.size() * sizeof(uint32_t);
+		m_outCompiledResource.MetadataChunk = std::make_unique<Blob>(metadata, sizeof(MeshMetadata));
 	}
 
 	{
-		auto& [id, chunk] = m_outCompiledResource.Chunks.emplace_back();
-		id = ResourceFileFormat::ChunkId_GPUData;
+		const size_t cpuDataSize = sizeof(renderer::MeshResource::CpuData) + (sizeof(renderer::MeshResource::CpuData::DrawInfo) * m_meshData.Geometry.size());
+		auto cpuData = reinterpret_cast<renderer::MeshResource::CpuData*>(malloc(cpuDataSize));
+		cpuData->IbSize = m_meshData.Indices.size() * sizeof(uint32_t);
+		cpuData->VbOffset = m_meshData.Indices.size() * sizeof(uint32_t);
+		cpuData->VbSize = gpuData.size() - cpuData->IbSize;
+		cpuData->NumDraws = static_cast<uint16_t>(m_meshData.Geometry.size());
+		for (size_t i = 0; i < m_meshData.Geometry.size(); i++)
+		{
+			const MeshData::GeometryData& srcGeo = m_meshData.Geometry[i];
+			MeshResource::CpuData::DrawInfo& drawInfo = *(cpuData->Draw + i);
+			drawInfo.IndexCount = srcGeo.IndexCount;
+			drawInfo.StartIndex = srcGeo.IndexOffset;
+			drawInfo.BaseVertex = 0;
+		}
 
+		m_outCompiledResource.Chunks.emplace_back(std::make_unique<Blob>(cpuData, cpuDataSize));
+	}
+
+	{
+		m_outCompiledResource.Chunks.emplace_back(std::make_unique<Blob>(cpuData, cpuDataSize));
+		
 		void* gpuDataDest = malloc(gpuData.size());
 		std::memcpy(gpuDataDest, gpuData.data(), gpuData.size());
-		chunk = std::make_unique<Blob>(gpuDataDest, gpuData.size());
+
+		m_outCompiledResource.Chunks.emplace_back(std::make_unique<Blob>(gpuDataDest, gpuData.size()));
 	}
 }
 

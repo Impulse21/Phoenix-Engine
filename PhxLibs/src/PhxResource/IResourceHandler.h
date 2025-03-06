@@ -13,6 +13,9 @@ namespace phx
 	template<typename T>
 	struct ResourceExtension;
 
+	template<typename T>
+	struct ResourceHandlerId;
+
 	class IResource;
 	class IResourceHandler
 	{

@@ -10,9 +10,9 @@ using namespace phx::renderer;
 
 RefCountPtr<IResource> phx::renderer::MeshResourceHandler::Load(std::shared_ptr<IAssetStreamer> const& /*assetStreamer*/, StreamFileHandle /*filehandle*/, PakFileFormat::AssetEntry const& assetEntry) const
 {
-	auto meshCpuData = reinterpret_cast<const data::MeshMetadata*>(assetEntry.MetadataChunk.Get());
+	auto meshCpuData = reinterpret_cast<const MeshMetadata*>(assetEntry.MetadataChunk.Get());
 
-	assert(meshCpuData->numGeometry >= 1);
+	assert(meshCpuData->GeometryBufferSize > 0);
 
 	return nullptr;
 }
