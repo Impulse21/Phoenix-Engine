@@ -70,8 +70,6 @@ void phx::MeshResourceCompiler::Compile()
 	}
 
 	{
-		m_outCompiledResource.Chunks.emplace_back(std::make_unique<Blob>(cpuData, cpuDataSize));
-		
 		void* gpuDataDest = malloc(gpuData.size());
 		std::memcpy(gpuDataDest, gpuData.data(), gpuData.size());
 

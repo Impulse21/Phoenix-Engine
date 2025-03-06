@@ -47,7 +47,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
 
     {
         auto* assetEntriesDest = packFileBuilder.Place<PakFileFormat::AssetEntry>(assetEntriesOffset);
-        auto* chunkHeadersDest = packFileBuilder.Place<ResourceFileFormat::Chunk>(chunkOffsetHandle);
+        auto* chunkOffsetDest = packFileBuilder.Place<ResourceFileFormat::Chunk>(chunkOffsetHandle);
         auto* metadataChunksDest = packFileBuilder.Place<char>(metadataChunksOffsetHandle);
         auto* stringTableDest = packFileBuilder.Place<PakFileFormat::StringEntry>(stringTableOffset);
         auto* stringDataDest = packFileBuilder.Place<char>(stringHeapOffsetHandle);
@@ -78,22 +78,20 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
             assetEntry.Hash = phx::StringHash(filename);
             assetEntry.HandlerId = 0; // TODO
             
-			std::memcpy(metadataChunksDest, compiledResource.MetadataChunk->Data(), compiledResource.MetadataChunk->Size());
-			metadataChunksDest = metadataChunksDest + compiledResource.MetadataChunk->Size();
+			std::memcpy(metadataChunksDest, compiledResource->MetadataChunk->Data(), compiledResource->MetadataChunk->Size());
+			metadataChunksDest = metadataChunksDest + compiledResource->MetadataChunk->Size();
 
-            for (auto& [id, chunk] : compiledResource->Chunks)
+            for (auto& chunk : compiledResource->Chunks)
 			{
 				// Construct chunk Header
-				*chunkHeadersDest = {
-					.Compression = FileFormat::CompressionType::None,
-					.Offset = static_cast<uint32_t>(chunkHeapOffset + chunkDestByteOffset),
-					.CompressedSize = static_cast<uint32_t>(chunk->Size()),
-					.UncompressedSize = static_cast<uint32_t>(chunk->Size()),
-				};
+				chunkOffsetDest->Compression = FileFormat::CompressionType::None;
+				chunkOffsetDest->Offset.Offset = chunkHeapOffset + chunkDestByteOffset;
+				chunkOffsetDest->CompressedSize = chunk->Size();
+				chunkOffsetDest->UncompressedSize = chunk->Size();
 
 				std::memcpy(chunkHeapDest + chunkDestByteOffset, chunk->Data(), chunk->Size());
 				chunkDestByteOffset += chunk->Size();
-				chunkHeadersDest += 1;
+				chunkOffsetDest += 1;
 				assetEntry.NumChunks += 1;
             }
 
