@@ -40,6 +40,9 @@ namespace phx
 
             uint32_t NumStrings;
             FileFormat::RelativePtr<StringEntry> StringEntries;
+
+			uint32_t NumDependencies;
+			FileFormat::RelativePtr<uint32_t> Dependencies;
         };
 
         struct AssetEntry

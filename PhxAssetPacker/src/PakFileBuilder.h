@@ -28,15 +28,12 @@ namespace phx
 
 				// -- Some upfront size calculations ---
 				m_stringHeapSize += filename.size() + 1; // add one for null terminated string
-				for (auto& [id, chunk] : resource.Chunks)
+
+				m_metadataChunksSize += resource.MetadataChunk->Size();
+				for (auto& chunk : resource.Chunks)
 				{
-					if (id == ResourceFileFormat::ChunkId_Metadata)
-						m_metadataChunksSize += chunk->Size();
-					else
-					{
-						m_numChunkHeaders += 1;
-						m_chunkSize += chunk->Size();
-					}
+						m_numChunks += 1;
+						m_chunkHeapSize += chunk->Size();
 				}
 			}
 
@@ -44,22 +41,12 @@ namespace phx
 		}
 
 		std::unique_ptr<IBlob> Build();
-
-	private:
-		struct ChunkEntry
-		{
-			ResourceFileFormat::Header* Header;
-			ResourceFileFormat::ChunkHeader* ChunkHeaders;
-			IBlob* Source;
-
-			ChunkEntry(IBlob* blob);
-
-		};
+		
 	private:
 		std::map<std::string, const CompiledResource*> m_entries;
-		size_t m_numChunkHeaders = 0ull;
+		size_t m_numChunks = 0ull;
 		size_t m_metadataChunksSize = 0ull;
-		size_t m_chunkSize = 0ull;
+		size_t m_chunkHeapSize = 0ull;
 		size_t m_stringHeapSize = 0ull;
 	};
 }
