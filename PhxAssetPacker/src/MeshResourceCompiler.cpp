@@ -6,7 +6,8 @@
 #include "PhxRhi/RHITypes.h"
 
 #include "PhxResource/FileFormatUtils.h"
-#include "PhxResource/ChunkFileFormat.h"
+#include "PhxResource/ResourceFileFormat.h"
+#include "PhxRenderer/MeshResourceHandler.h"
 
 #include <DirectXMath.h>
 
@@ -31,76 +32,49 @@ namespace
 
 void phx::MeshResourceCompiler::Compile()
 {
-	std::memset(&m_outCompiledMesh, 0, sizeof(CompiledMeshResource));
+	std::memset(&m_outCompiledResource, 0, sizeof(m_outCompiledResource));
 
-	BinaryBuilder chunkFileBuilder;
-	OffsetHandle headerOffset = chunkFileBuilder.Reserve<ChunkFileFormat::Header>();
-	OffsetHandle cpuChunkHeaderOffset = chunkFileBuilder.Reserve<ChunkFileFormat::ChunkHeader>();
-	OffsetHandle gpuChunkHeaderOffset = chunkFileBuilder.Reserve<ChunkFileFormat::ChunkHeader>();
+	m_outCompiledResource.Name = m_meshData.Name;
+	m_outCompiledResource.Ext = ResourceExtension< renderer::MeshResourceHandler>::value;
 
-	// Determine the size of the CPU metdata based on the number of draw calls
-	const size_t cpuDataSize = sizeof(renderer::MeshCpuMetadata) + (sizeof(renderer::MeshCpuMetadata) * m_meshData.Geometry.size() - 1);
-	OffsetHandle cpuDataOffset = chunkFileBuilder.Reserve(cpuDataSize, 4ull);
+	// Build Chunks
 
-	// set index data
 	std::vector<uint8_t> gpuData;
 	BuildGpuBufferData(gpuData);
-	OffsetHandle gpuDataOffset = chunkFileBuilder.Reserve(gpuData.size(), 16ull);
-
-	// Fill in the data
-	chunkFileBuilder.Commit();
+	// metadata chunk
 	{
-		auto& header = *chunkFileBuilder.Place<ChunkFileFormat::Header>(headerOffset);
-		header.Magic = FileFormat::MakeMagicNum('P', 'X', 'M', 'S');
-		header.Version = MshVersion;
-		header.BuildNumber = FileFormat::GetTimestamp();
-		header.ChunkCount = 2; // Two Chunks
-	}
+		auto& [id, chunk] = m_outCompiledResource.Chunks.emplace_back();
+		id = ResourceFileFormat::ChunkId_Metadata;
 
-	{
-		auto& cpuMetadataHeader = *chunkFileBuilder.Place<ChunkFileFormat::ChunkHeader>(cpuChunkHeaderOffset);
-		cpuMetadataHeader.ChunkID = FileFormat::MakeMagicNum('M', 'E', 'T', 'A');
-		cpuMetadataHeader.Compression = FileFormat::CompressionType::None;
-		cpuMetadataHeader.UncompressedSize = cpuDataOffset;
-		cpuMetadataHeader.CompressedSize = cpuMetadataHeader.UncompressedSize;
-		cpuMetadataHeader.Offset = static_cast<uint32_t>(cpuDataOffset);
-		
-		auto& gpuHeader = *chunkFileBuilder.Place<ChunkFileFormat::ChunkHeader>(gpuChunkHeaderOffset);
-		gpuHeader.ChunkID = FileFormat::MakeMagicNum('G', 'B', 'U', 'F');
+		const size_t metadataSize = sizeof(renderer::data::MeshMetadata) + sizeof(MeshData::GeometryData) * (m_meshData.Geometry.size() - 1);
 
-		// TODO: Compress
-		gpuHeader.Compression = FileFormat::CompressionType::None;
-		gpuHeader.UncompressedSize = gpuData.size();
-		gpuHeader.CompressedSize = cpuMetadataHeader.UncompressedSize;
-		gpuHeader.Offset = static_cast<uint32_t>(gpuDataOffset);
-	}
+		auto metadata = reinterpret_cast<renderer::data::MeshMetadata*>(malloc(metadataSize));
+		std::memset(&metadata, 0, metadataSize);
 
-	// Fill in the data
-	{
-		auto& cpuMetadata = *chunkFileBuilder.Place<MeshCpuMetadata>(cpuDataOffset);
-		std::memset(&cpuMetadata, 0, cpuDataSize);
-
-		cpuMetadata.IbSize = m_meshData.Indices.size() * sizeof(uint32_t);
-		cpuMetadata.VbOffset = m_meshData.Indices.size() * sizeof(uint32_t);
-		cpuMetadata.VbSize = gpuData.size() - cpuMetadata.IbSize;
-		cpuMetadata.NumDraws = m_meshData.Geometry.size();
+		metadata->IbSize = m_meshData.Indices.size() * sizeof(uint32_t);
+		metadata->VbOffset = m_meshData.Indices.size() * sizeof(uint32_t);
+		metadata->VbSize = gpuData.size() - metadata->IbSize;
+		metadata->numGeometry = m_meshData.Geometry.size();
 		for (size_t i = 0; i < m_meshData.Geometry.size(); i++)
 		{
-			const MeshData::GeometryData& geometry = m_meshData.Geometry[i];
-			MeshCpuMetadata::DrawInfo& drawInfo = *(cpuMetadata.Draw + i);
-			drawInfo.IndexCount = geometry.IndexCount;
-			drawInfo.StartIndex = geometry.IndexOffset;
-			drawInfo.BaseVertex = 0;
+			const MeshData::GeometryData& srcGeo = m_meshData.Geometry[i];
+			renderer::data::MeshMetadata::GeometryData& destGeo = *(metadata->Geo + i);
+			destGeo.IndexCount = srcGeo.IndexCount;
+			destGeo.IndexOffset = srcGeo.IndexOffset;
+			destGeo.MaterialId = srcGeo.MaterialId;
 		}
+
+		chunk = std::make_unique<Blob>(metadata, metadataSize);
 	}
 
 	{
-		void* gpuDataDest = chunkFileBuilder.Place(gpuDataOffset);
-		std::memcpy(gpuDataDest, gpuData.data(), gpuData.size());
-	}
+		auto& [id, chunk] = m_outCompiledResource.Chunks.emplace_back();
+		id = ResourceFileFormat::ChunkId_GPUData;
 
-	m_outCompiledMesh.File = chunkFileBuilder.Finialize();
-	m_outCompiledMesh.FileName = std::format("{}.phxmsh", m_meshData.Name);
+		void* gpuDataDest = malloc(gpuData.size());
+		std::memcpy(gpuDataDest, gpuData.data(), gpuData.size());
+		chunk = std::make_unique<Blob>(gpuDataDest, gpuData.size());
+	}
 }
 
 void phx::MeshResourceCompiler::BuildGpuBufferData(std::vector<uint8_t>& gpuBuffer) const

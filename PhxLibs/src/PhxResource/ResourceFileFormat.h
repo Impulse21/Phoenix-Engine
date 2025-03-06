@@ -4,8 +4,13 @@
 
 namespace phx
 {
-	namespace ChunkFileFormat
+	namespace ResourceFileFormat
 	{
+		constexpr uint32_t Version = 1;
+		constexpr uint32_t MagicNumber = FileFormat::MakeMagicNum('P', 'X', 'R', 'S');
+
+		constexpr uint32_t ChunkId_Metadata = FileFormat::MakeMagicNum('M', 'E', 'T', 'A');
+		constexpr uint32_t ChunkId_GPUData  = FileFormat::MakeMagicNum('G', 'D', 'A', 'T');
 		/*
 				+----------------------+  <--- Start of File
 				|   File Header        |  (Fixed Size)
@@ -28,6 +33,7 @@ namespace phx
 			uint32_t _Pading;
 		};
 
+		// Note Metadata Chunk is moved when Packed
 		struct ChunkHeader
 		{
 			uint32_t ChunkID;

@@ -6,9 +6,6 @@
 #include <PhxCore/BinaryBuilder.h>
 #include <PhxCore/Span.h>
 
-#include <PhxResource/ChunkFileFormat.h>
-#include <PhxResource/PakFileFormat.h>
-
 #include "TextureConverter.h"
 #include "GltfImporter.h"
 #include "PakFileBuilder.h"
@@ -204,10 +201,10 @@ int wmain(int argc, wchar_t** argv)
 		outputPath.make_preferred();
 		timer.Begin();
 
-		std::vector<CompiledMeshResource> meshChunkFiles(importedMeshes.size());
-		for (size_t i = 0; i < meshChunkFiles.size(); i++)
+		std::vector<CompiledResource> compiledResources(importedMeshes.size());
+		for (size_t i = 0; i < compiledResources.size(); i++)
 		{
-			CompiledMeshResource& blob = meshChunkFiles[i];
+			CompiledResource& blob = compiledResources[i];
 			const MeshData& meshData = importedMeshes[i];
 
 #if true
@@ -219,23 +216,15 @@ int wmain(int argc, wchar_t** argv)
 #endif
 		}
 		PHX_INFO(
-			"Compiled {0} Mesh Chunk files in {1} ms",
-			meshChunkFiles.size(),
+			"Compiled {0} resources in {1} ms",
+			compiledResources.size(),
 			timer.Elapsed().GetMilliseconds());
 
 		// Build an order map of chunk Entires
-		std::vector<std::pair<std::string, IBlob*>> assetEntries;
-		for (size_t i = 0; i < meshChunkFiles.size(); i++)
-		{
-			auto& meshFile = meshChunkFiles[i];
-			PHX_ASSERT(meshFile.File);
-			assetEntries.push_back(std::make_pair(meshFile.FileName, meshFile.File.get()));
-		}
-
 		// Lets save a pack file :)
 		timer.Begin();
 		phx::PakFileBuilder pakBuilder = phx::PakFileBuilder()
-			.AddFiles(assetEntries);
+			.AddCompiledResources(compiledResources);
 
 		std::unique_ptr<phx::IBlob> pakFileData = pakBuilder.Build();
 		outputFS->WriteFile(outputFilename, pakFileData.get());

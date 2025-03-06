@@ -4,7 +4,8 @@
 #include <PhxCore/Span.h>
 #include <PhxCore/StringHash.h>
 
-#include <PhxResource/ChunkFileFormat.h>
+#include <PhxResource/ResourceFileFormat.h>
+#include "CompiledResource.h"
 #include <memory>
 #include <string>
 #include <map>
@@ -18,14 +19,25 @@ namespace phx
 		~PakFileBuilder() = default;
 
 	public:
-		PakFileBuilder& AddFiles(Span<std::pair<std::string, IBlob*>> entry)
+		PakFileBuilder& AddCompiledResources(Span<CompiledResource> resources)
 		{
-			for (auto& pair : entry)
+			for (auto& resource : resources)
 			{
-				phx::StringHash hash(pair.first);
-				m_entries.emplace(std::make_pair(hash.ToHash(), pair));
-				m_entiresSize += pair.second->Size();
-				m_stringHeapSize += pair.first.size() + 1; // add one for null terminated string
+				std::string filename = std::format("{}.{}", resource.Name, resource.Ext);
+				m_entries.emplace(std::make_pair(filename, &resource));
+
+				// -- Some upfront size calculations ---
+				m_stringHeapSize += filename.size() + 1; // add one for null terminated string
+				for (auto& [id, chunk] : resource.Chunks)
+				{
+					if (id == ResourceFileFormat::ChunkId_Metadata)
+						m_metadataChunksSize += chunk->Size();
+					else
+					{
+						m_numChunkHeaders += 1;
+						m_chunkSize += chunk->Size();
+					}
+				}
 			}
 
 			return *this;
@@ -36,16 +48,18 @@ namespace phx
 	private:
 		struct ChunkEntry
 		{
-			ChunkFileFormat::Header* Header;
-			ChunkFileFormat::ChunkHeader* ChunkHeaders;
+			ResourceFileFormat::Header* Header;
+			ResourceFileFormat::ChunkHeader* ChunkHeaders;
 			IBlob* Source;
 
 			ChunkEntry(IBlob* blob);
 
 		};
 	private:
-		std::map<uint32_t, std::pair<std::string, IBlob*>> m_entries;
-		size_t m_entiresSize = 0ull;
+		std::map<std::string, CompiledResource*> m_entries;
+		size_t m_numChunkHeaders = 0ull;
+		size_t m_metadataChunksSize = 0ull;
+		size_t m_chunkSize = 0ull;
 		size_t m_stringHeapSize = 0ull;
 	};
 }

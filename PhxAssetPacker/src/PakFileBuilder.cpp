@@ -14,17 +14,21 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
     BinaryBuilder packFileBuilder;
     OffsetHandle headerOffset = packFileBuilder.Reserve<PakFileFormat::Header>();
 
-    // -- metadata header ---
+    // -- metadata heap offsets ---
     OffsetHandle metadataHeaderOffset = packFileBuilder.Reserve<PakFileFormat::MetadataHeader>();
 
     const size_t numEntries = m_entries.size();
     OffsetHandle assetEntriesOffset = packFileBuilder.ReserveArray<PakFileFormat::AssetEntry>(numEntries);
     OffsetHandle stringTableOffset = packFileBuilder.ReserveArray<PakFileFormat::StringEntry>(numEntries);
     OffsetHandle stringHeapOffsetHandle = packFileBuilder.Reserve(m_stringHeapSize);
+    OffsetHandle chunkHeaderOffsetHandle = packFileBuilder.Reserve<ResourceFileFormat::ChunkHeader>(m_numChunkHeaders);
+    OffsetHandle metadataChunksOffsetHandle = packFileBuilder.Reserve(m_metadataChunksSize);
 
+    // Calculate the meta chunk sizes as they are part of the header
     const size_t metadataHeapSize = packFileBuilder.GetSize() - metadataHeaderOffset;
 
-    OffsetHandle assetsOffsetHandle = packFileBuilder.Reserve(m_entiresSize);
+    // -- Data Offsets ---
+    OffsetHandle assetChunkOffsetHandle = packFileBuilder.Reserve(m_chunkSize);
 
     //
     // TODO: Build string table
@@ -32,40 +36,64 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
     packFileBuilder.Commit();
 
     {
-#if false
-        auto* header = packFileBuilder.Place<PakFileFormat::Header>(headerOffset);
-        header->Magic = PakFileFormat::MagicNumber;
-        header->Version = PakFileFormat::Version;
-        header->BuildNumber = FileFormat::GetTimestamp();
-        header->NumEntries = numEntries;
-        header->EntriesOffset = static_cast<uint32_t>(assetEntriesOffset);
-        header->NumStrings = numEntries;
-        header->DependenciesHeapSize = 0;
-        header->StringHeapSize = m_stringHeapSize;
-#else
         auto* header = packFileBuilder.Place<PakFileFormat::Header>(headerOffset);
         header->Magic = PakFileFormat::MagicNumber;
         header->Version = PakFileFormat::Version;
         header->BuildNumber = FileFormat::GetTimestamp();
         header->MetadataHeapSize = static_cast<uint32_t>(metadataHeapSize);
-#endif
     }
 
     {
-
-        auto* entriesDest = packFileBuilder.Place<PakFileFormat::AssetEntry>(assetEntriesOffset);
-        auto* entreesDataDest = packFileBuilder.Place<char>(assetsOffsetHandle);
-
+        auto* assetEntriesDest = packFileBuilder.Place<PakFileFormat::AssetEntry>(assetEntriesOffset);
+        auto* chunkHeadersDest = packFileBuilder.Place<ResourceFileFormat::ChunkHeader>(chunkHeaderOffsetHandle);
+        auto* metadataChunksDest = packFileBuilder.Place<char>(metadataChunksOffsetHandle);
         auto* stringTableDest = packFileBuilder.Place<PakFileFormat::StringEntry>(stringTableOffset);
         auto* stringDataDest = packFileBuilder.Place<char>(stringHeapOffsetHandle);
 
+        auto* assetChunkDest = packFileBuilder.Place<char>(assetChunkOffsetHandle);
 
-        auto* metadataHeader = packFileBuilder.Place<PakFileFormat::MetadataHeader>(metadataHeaderOffset);
-        metadataHeader->NumEntries = numEntries;
-        metadataHeader->AssetEntries.Set(entriesDest);
-        metadataHeader->NumStrings = numEntries;
-        metadataHeader->StringEntries.Set(stringTableDest);
+        // -- Fill metadata header ---
+        {
+            auto* metadataHeader = packFileBuilder.Place<PakFileFormat::MetadataHeader>(metadataHeaderOffset);
+            metadataHeader->NumEntries = numEntries;
+            metadataHeader->AssetEntries.Set(assetEntriesDest);
+            metadataHeader->NumStrings = numEntries;
+            metadataHeader->StringEntries.Set(stringTableDest);
+        }
 
+        OffsetHandle strDataOffset = 0;
+        auto entriesItr = m_entries.begin();
+        for (size_t i = 0; i < m_entries.size(); i++)
+        {
+            auto& [filename, compiledResource] = *entriesItr;
+
+            PakFileFormat::AssetEntry& assetEntry = *(assetEntriesDest + i);
+            assetEntry.Hash = phx::StringHash(filename);
+
+            for (auto& [id, chunk] : compiledResource->Chunks)
+            {
+                if (id == ResourceFileFormat::ChunkId_Metadata)
+                {
+                    // TODO: I am here
+                }
+                else
+                {
+                    assetEntry.NumChunks += 1;
+                }
+            }
+            //  assetEntry.DataChunkHeaders;
+            // assetEntry.MetadataChunk;
+
+            char* strDataDest = (stringDataDest + strDataOffset);
+            strcpy(strDataDest, filename.c_str());
+
+            PakFileFormat::StringEntry& strEntry = *(stringTableDest + i);
+            strEntry.Hash = assetEntry.Hash;
+            strEntry.Value.Set(strDataDest);
+
+            strDataOffset += entryName.size() + 1;
+            std::advance(entriesItr, 1);
+        }
 
         //OffsetHandle dataOffset = assetsOffsetHandle;
         OffsetHandle strDataOffset = 0;
@@ -94,13 +122,13 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
             strcpy(strDataDest, entry.first.c_str());
 
 #else
-            auto* chunkHeader = reinterpret_cast<const ChunkFileFormat::Header*>(blob->Data());
+            auto* chunkHeader = reinterpret_cast<const ResourceFileFormat::Header*>(blob->Data());
             // construct asset Entry
             PakFileFormat::AssetEntry& assetEntry = *(entriesDest + i);
             assetEntry.Hash = hash;
-            assetEntry.NumDataChunks = chunkHeader->ChunkCount;
-            assetEntry.DataChunkHeaders;
-            assetEntry.MetadataChunk;
+            assetEntry.NumChunks = chunkHeader->ChunkCount;
+            //  assetEntry.DataChunkHeaders;
+            // assetEntry.MetadataChunk;
 
             char* dataDest = (entreesDataDest + i);
             std::memcpy(dataDest, blob->Data(), blob->Size());

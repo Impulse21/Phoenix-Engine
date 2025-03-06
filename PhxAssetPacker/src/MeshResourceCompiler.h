@@ -5,10 +5,12 @@
 #include <PhxCore/UUID.h>
 #include <PhxCore/StringHash.h>
 #include <PhxRenderer/MeshResource.h>
+#include "CompiledResource.h"
 
 #include <vector>
 #include <DirectXMath.h>
 #include <string>
+
 
 namespace phx
 {
@@ -45,26 +47,20 @@ namespace phx
 		std::vector<GeometryData> Geometry;
 	};
 
-	struct CompiledMeshResource final
-	{
-		std::string FileName;
-		std::unique_ptr<IBlob> File;
-	};
-
-	constexpr uint32_t MshVersion = 1;
+	
 	class MeshResourceCompiler final
 	{
 	public:
-		static void Compile(MeshData const& meshData, CompiledMeshResource& outCompiledMesh)
+		static void Compile(MeshData const& meshData, CompiledResource& outCompiledResource)
 		{
-			MeshResourceCompiler resourceCompiler(meshData, outCompiledMesh);
+			MeshResourceCompiler resourceCompiler(meshData, outCompiledResource);
 			resourceCompiler.Compile();
 		}
 
 	private:
-		MeshResourceCompiler(MeshData const& meshData, CompiledMeshResource& outCompiledMesh)
+		MeshResourceCompiler(MeshData const& meshData, CompiledResource& outCompiledResource)
 			: m_meshData(meshData)
-			, m_outCompiledMesh(outCompiledMesh)
+			, m_outCompiledResource(outCompiledResource)
 		{
 		}
 
@@ -75,6 +71,6 @@ namespace phx
 
 	private:
 		const MeshData& m_meshData;
-		CompiledMeshResource& m_outCompiledMesh;
+		CompiledResource& m_outCompiledResource;
 	};
 }
