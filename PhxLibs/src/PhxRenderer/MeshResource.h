@@ -46,5 +46,6 @@ namespace phx::renderer
 	private:
 		phx::MemoryRegion<CpuData> m_cpuData;
 		rhi::GpuBufferHandle m_geometryBuffer;
+		std::atomic_uint8_t m_status = 0xFF;
 	};
 }
