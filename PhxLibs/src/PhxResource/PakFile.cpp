@@ -3,7 +3,9 @@
 
 using namespace phx;
 
-#define ENABLE_PRINT_STRING_ENTRIES 1
+#define ENABLE_DEBUG_PRINT_STRING_ENTRIES 0
+#define ENABLE_DEBUG_PRINT_ENTRIES 0
+
 namespace
 {
 	namespace StreamingStatus
@@ -118,7 +120,16 @@ void phx::PakFile::OnMetadataLoaded()
 	PakFileFormat::MetadataHeader* metadata = m_metadata.Get();
 
 	PHX_CORE_INFO("Metadata Loading Completed - There are {0} entries and {1} strings", metadata->NumEntries, metadata->NumStrings);
-#if ENABLE_PRINT_STRING_ENTRIES
+#if ENABLE_DEBUG_PRINT_ENTRIES
+	for (size_t i = 0; i < metadata->NumEntries; i++)
+	{
+		auto& assetEntry = metadata->AssetEntries.Get()[i];
+		char buffer[9]; // 8 characters + null terminator
+		std::snprintf(buffer, sizeof(buffer), "%08X", assetEntry.Hash);
+		PHX_CORE_INFO("Asset Entry {0} - Hash={1}", i, buffer);
+	}
+#endif
+#if ENABLE_DEBUG_PRINT_STRING_ENTRIES
 	for (size_t i = 0; i < metadata->NumStrings; i++)
 	{
 		auto& stringEntry = metadata->StringEntries.Get()[i];

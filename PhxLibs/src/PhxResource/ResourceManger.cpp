@@ -141,7 +141,7 @@ RefCountPtr<IResource> ResourceManger::Get(std::filesystem::path const& path)
 
 	if (!resource)
 	{
-		PHX_CORE_ERROR("Loding from disk is not currently supported");
+		PHX_CORE_ERROR("Loading from disk is not currently supported");
 	}
 
 	if (resource)

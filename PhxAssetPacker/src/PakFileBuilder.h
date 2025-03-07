@@ -24,7 +24,12 @@ namespace phx
 			for (auto& resource : resources)
 			{
 				std::string filename = std::format("{}{}", resource.Name, resource.Ext);
-				m_entries.emplace(filename, &resource);
+				Entry e = {
+					.Filename = filename,
+					.Resource = &resource
+				};
+
+				m_entries.emplace(StringHash(filename).ToHash(), e);
 
 				// -- Some upfront size calculations ---
 				m_stringHeapSize += filename.size() + 1; // add one for null terminated string
@@ -43,7 +48,13 @@ namespace phx
 		std::unique_ptr<IBlob> Build();
 		
 	private:
-		std::map<std::string, const CompiledResource*> m_entries;
+		struct Entry
+		{
+			std::string Filename;
+			const CompiledResource* Resource;
+		};
+
+		std::map<uint32_t, Entry> m_entries;
 		size_t m_numChunks = 0ull;
 		size_t m_metadataChunksSize = 0ull;
 		size_t m_chunkHeapSize = 0ull;

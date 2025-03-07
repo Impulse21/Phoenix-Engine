@@ -215,6 +215,7 @@ int wmain(int argc, wchar_t** argv)
 			MeshResourceCompiler::Compile(meshData, blob);
 #endif
 		}
+		ThreadPool::Wait();
 		PHX_INFO(
 			"Compiled {0} resources in {1} ms",
 			compiledResources.size(),
