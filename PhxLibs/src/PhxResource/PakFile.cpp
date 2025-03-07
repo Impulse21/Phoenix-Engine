@@ -3,6 +3,7 @@
 
 using namespace phx;
 
+#define ENABLE_PRINT_STRING_ENTRIES 1
 namespace
 {
 	namespace StreamingStatus
@@ -105,25 +106,9 @@ void phx::PakFile::OnHeaderLoaded()
 	{
 		return;
 	}
-
-#if false
-	const size_t fileSize = m_assetStreamer->GetFileSize(m_fileHandle);
-	const uint32_t sizeOfEntries = static_cast<uint32_t>(m_header.NumEntries * sizeof(PakFileFormat::AssetEntry));
-
-	std::array<StreamRequest, 3> batchedRequests;
-	batchedRequests[0] = EnqueueReadMemoryRegion<PakFileFormat::AssetEntry>(m_header.EntriesOffset, sizeOfEntries, m_assetEntries);
-
-	const uint32_t sizeOfStringEntries = static_cast<uint32_t>(m_header.NumStrings * sizeof(PakFileFormat::StringEntry));
-	const size_t stringTableOffset = sizeof(PakFileFormat::Header) + sizeOfEntries;
-	batchedRequests[1] = EnqueueReadMemoryRegion<PakFileFormat::StringEntry>(stringTableOffset, sizeOfStringEntries, m_assetStringEntriesData);
-	batchedRequests[2] = EnqueueReadMemoryRegion<char>(fileSize - m_header.StringHeapSize, m_header.StringHeapSize, m_assetStringHeap);
-
-	m_assetStreamer->SubmitBatch(batchedRequests, [this] { OnMetadataLoaded(); });
-#else
-
 	StreamRequest request = EnqueueReadMemoryRegion<PakFileFormat::MetadataHeader>(sizeof(PakFileFormat::Header), m_header.MetadataHeapSize, m_metadata);
 	m_assetStreamer->Submit(request, [this] { OnMetadataLoaded(); });
-#endif
+
 	m_status = 0xf0;
 }
 
@@ -133,4 +118,13 @@ void phx::PakFile::OnMetadataLoaded()
 	PakFileFormat::MetadataHeader* metadata = m_metadata.Get();
 
 	PHX_CORE_INFO("Metadata Loading Completed - There are {0} entries and {1} strings", metadata->NumEntries, metadata->NumStrings);
+#if ENABLE_PRINT_STRING_ENTRIES
+	for (size_t i = 0; i < metadata->NumStrings; i++)
+	{
+		auto& stringEntry = metadata->StringEntries.Get()[i];
+		char buffer[9]; // 8 characters + null terminator
+		std::snprintf(buffer, sizeof(buffer), "%08X", stringEntry.Hash);
+		PHX_CORE_INFO("STRING TABLE Entry {0} - Hash={1} Value={2}", i, buffer, stringEntry.Value.Get());
+	}
+#endif
 }

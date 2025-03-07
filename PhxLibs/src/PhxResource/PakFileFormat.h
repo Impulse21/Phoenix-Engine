@@ -55,7 +55,7 @@ namespace phx
 
             // Info about the meteadata chunks.
             uint32_t NumChunks;
-            FileFormat::RelativePtr<ResourceFileFormat::Chunk> DataChunkHeaders;
+            FileFormat::RelativePtr<ResourceFileFormat::Chunk> Chunks;
             
             uint32_t NumDependencies;
             FileFormat::RelativePtr<uint32_t> Dependencies;

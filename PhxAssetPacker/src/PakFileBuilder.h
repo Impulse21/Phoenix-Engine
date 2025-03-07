@@ -23,17 +23,17 @@ namespace phx
 		{
 			for (auto& resource : resources)
 			{
-				std::string filename = std::format("{}.{}", resource.Name, resource.Ext);
+				std::string filename = std::format("{}{}", resource.Name, resource.Ext);
 				m_entries.emplace(filename, &resource);
 
 				// -- Some upfront size calculations ---
 				m_stringHeapSize += filename.size() + 1; // add one for null terminated string
 
 				m_metadataChunksSize += resource.MetadataChunk->Size();
-				for (auto& chunk : resource.Chunks)
+				for (size_t i = 0; i < resource.Chunks.size(); i++)
 				{
 						m_numChunks += 1;
-						m_chunkHeapSize += chunk->Size();
+						m_chunkHeapSize += resource.Chunks[i]->Size();
 				}
 			}
 

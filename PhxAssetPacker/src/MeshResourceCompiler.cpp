@@ -31,8 +31,6 @@ namespace
 
 void phx::MeshResourceCompiler::Compile()
 {
-	std::memset(&m_outCompiledResource, 0, sizeof(m_outCompiledResource));
-
 	m_outCompiledResource.Name = m_meshData.Name;
 	m_outCompiledResource.Ext = ResourceExtension< renderer::MeshResourceHandler>::value;
 
@@ -42,8 +40,9 @@ void phx::MeshResourceCompiler::Compile()
 	BuildGpuBufferData(gpuData);
 	// metadata chunk
 	{
-		auto metadata = reinterpret_cast<renderer::MeshMetadata*>(malloc(sizeof(MeshMetadata)));
-		std::memset(&metadata, 0, sizeof(MeshMetadata));
+		auto metadata = static_cast<renderer::MeshMetadata*>(malloc(sizeof(MeshMetadata)));
+		assert(metadata);
+		std::memset(metadata, 0, sizeof(MeshMetadata));
 
 		metadata->GeometryBufferSize = static_cast<uint32_t>(gpuData.size());
 		metadata->VertexBufferOffset = m_meshData.Indices.size() * sizeof(uint32_t);

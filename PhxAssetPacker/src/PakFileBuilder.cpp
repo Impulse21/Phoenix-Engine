@@ -23,8 +23,8 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
 	OffsetHandle chunkOffsetHandle = packFileBuilder.Reserve<ResourceFileFormat::Chunk>(m_numChunks);
     OffsetHandle stringTableOffset = packFileBuilder.ReserveArray<PakFileFormat::StringEntry>(numEntries);
 
-	OffsetHandle metadataChunksOffsetHandle = packFileBuilder.Reserve(m_metadataChunksSize);
-	OffsetHandle stringHeapOffsetHandle = packFileBuilder.Reserve(m_stringHeapSize);
+    OffsetHandle metadataChunksOffsetHandle = packFileBuilder.Reserve(m_metadataChunksSize);
+    OffsetHandle stringHeapOffsetHandle = packFileBuilder.Reserve(m_stringHeapSize);
 
     // Calculate the meta chunk sizes as they are part of the header
     const size_t metadataHeapSize = packFileBuilder.GetSize() - metadataHeaderOffset;
@@ -67,8 +67,8 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
 			metadataHeader->NumDependencies= 0;
         }
 
-        OffsetHandle strDataOffset = 0;
         OffsetHandle chunkDestByteOffset = 0;
+        OffsetHandle stringHeapOffset = 0;
         auto entriesItr = m_entries.begin();
         for (size_t i = 0; i < m_entries.size(); i++)
         {
@@ -77,12 +77,17 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
             PakFileFormat::AssetEntry& assetEntry = *(assetEntriesDest + i);
             assetEntry.Hash = phx::StringHash(filename);
             assetEntry.HandlerId = 0; // TODO
-            
+            assetEntry.MetadataChunk.Set(metadataChunksDest);
+
 			std::memcpy(metadataChunksDest, compiledResource->MetadataChunk->Data(), compiledResource->MetadataChunk->Size());
 			metadataChunksDest = metadataChunksDest + compiledResource->MetadataChunk->Size();
 
-            for (auto& chunk : compiledResource->Chunks)
+            assetEntry.NumChunks = static_cast<uint32_t>(compiledResource->Chunks.size());
+            assetEntry.Chunks.Set(chunkOffsetDest);
+            for (size_t i = 0; i < compiledResource->Chunks.size(); i++)
 			{
+                auto& chunk = compiledResource->Chunks[i];
+
 				// Construct chunk Header
 				chunkOffsetDest->Compression = FileFormat::CompressionType::None;
 				chunkOffsetDest->Offset.Offset = chunkHeapOffset + chunkDestByteOffset;
@@ -95,14 +100,14 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
 				assetEntry.NumChunks += 1;
             }
 
-            char* strDataDest = (stringDataDest + strDataOffset);
-            strcpy(strDataDest, filename.c_str());
-
+            char* stringHeapDest = stringDataDest + stringHeapOffset;
             PakFileFormat::StringEntry& strEntry = *(stringTableDest + i);
             strEntry.Hash = assetEntry.Hash;
-            strEntry.Value.Set(strDataDest);
+            strEntry.Value.Set(stringDataDest);
 
-            strDataOffset += filename.size() + 1;
+            strcpy(stringHeapDest, filename.c_str());
+            stringHeapOffset += filename.size() + 1;
+
             std::advance(entriesItr, 1);
         }
     }
