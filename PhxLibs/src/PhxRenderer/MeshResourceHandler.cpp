@@ -31,8 +31,9 @@ RefCountPtr<IResource> phx::renderer::MeshResourceHandler::Load(std::shared_ptr<
 	meshResource->m_geometryBuffer = rhi::CreateBuffer({
 		.DebugName = "Geometry Buffer",
 		.Size = metadata->GeometryBufferSize,
+		.BindingFlags = rhi::BindingFlags::ShaderResource | rhi::BindingFlags::IndexBuffer,
 		.MiscFlags = rhi::ResourceMiscFlags::BufferRaw,
-		.InitialState = rhi::ResourceStates::Common
+		.InitialState = rhi::ResourceStates::IndexGpuBuffer | rhi::ResourceStates::ShaderResourceNonPixel,
 	});
 
 	StreamRequest gpuDataRequest = {

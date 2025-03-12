@@ -20,6 +20,8 @@ namespace phx::renderer
 	{
 		friend class MeshResourceHandler;
 	public:
+		~MeshResource();
+
 		bool IsLoaded() const { return false; }
 		StreamFileHandle GetFileHandle() const { return {}; }
 
