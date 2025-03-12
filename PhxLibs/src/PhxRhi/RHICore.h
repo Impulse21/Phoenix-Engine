@@ -17,6 +17,7 @@ namespace phx::rhi
     void Initialize(RhiCreateInfo const& createInfo);
     void Finalize();
 
+	Budget GetBudget();
     void WaitForIdle();
 
 	ShaderFormat GetShaderFormat();

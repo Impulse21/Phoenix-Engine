@@ -649,6 +649,17 @@ namespace phx::rhi
 	}
 
 
+	Budget GetBudget()
+	{
+		D3D12MA::Budget localBudget = {};
+		g_d3d12MemAllocator->GetBudget(&localBudget, nullptr);
+
+		return {
+			.BudgetBytes = localBudget.BudgetBytes,
+			.UsageBytes = localBudget.UsageBytes
+		};
+	}
+
 	void WaitForIdle()
 	{
 

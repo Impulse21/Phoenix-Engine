@@ -141,6 +141,12 @@ public:
 			phx::ResourceManger::DrawGui();
 		}
 
+		ImGui::Begin("Profiler");
+		rhi::Budget budget = rhi::GetBudget();
+		ImGui::Text("Pool Used: %llu bytes, Unused: %llu bytes", budget.UsageBytes, budget.BudgetBytes);
+		ImGui::ProgressBar(float(budget.UsageBytes) / float(budget.BudgetBytes));
+		ImGui::End();
+
 		rhi::CommandCtx* ctx = rhi::BeginCommnadCtx();
 		ctx->RenderPassBegin();
 		m_imguiRenderer.Render(ctx);

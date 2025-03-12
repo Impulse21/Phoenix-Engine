@@ -452,6 +452,12 @@ namespace phx::rhi
 
 #pragma region Types
 
+    struct Budget
+    {
+        uint64_t BudgetBytes = 0ull;
+        uint64_t UsageBytes = 0ull;
+    };
+
     struct SparseTextureProperties
     {
         uint32_t TileWidth = 0;				    // width of 1 tile in texels
