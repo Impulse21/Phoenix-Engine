@@ -35,9 +35,11 @@ void phx::PakFile::StartMetadataLoad()
 {
 	std::memset(&m_header, 0, sizeof(m_header));
 	m_assetStreamer->Submit({
+			.DebugName = "Metadata Load",
 			.FileHandle = m_fileHandle,
-			.Size = sizeof(PakFileFormat::Header),
-			.Destination = &m_header
+			.SrcSize = sizeof(PakFileFormat::Header),
+			.DestSize = sizeof(PakFileFormat::Header),
+			.Destination = { .Memory = &m_header }
 		},
 		[this] {
 			OnHeaderLoaded();

@@ -42,7 +42,8 @@ namespace phx
 		std::deque<HANDLE> m_freeEvents;
 
 		FreeList<kMaxPendingRequests> m_statusIdxPool;
-		Microsoft::WRL::ComPtr<IDStorageQueue1> m_metadataQueue;
+		Microsoft::WRL::ComPtr<IDStorageQueue1> m_dsMetadataQueue;
+		Microsoft::WRL::ComPtr<IDStorageQueue1> m_dsGpuQueue;
 		Microsoft::WRL::ComPtr<IDStorageStatusArray> m_statusArray;
 
 		phx::PagedPool<StreamFile, DStorageStreamFile> m_filePool;

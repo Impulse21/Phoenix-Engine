@@ -51,9 +51,10 @@ namespace phx
 
 			return {
 				.FileHandle = m_fileHandle,
+				.SrcSize = size,
+				.DestSize = size,
 				.Offset = offset,
-				.Size = size,
-				.Destination = outRegion.Get()
+				.Destination = {.Memory = outRegion.Get() }
 			};
 		}
 

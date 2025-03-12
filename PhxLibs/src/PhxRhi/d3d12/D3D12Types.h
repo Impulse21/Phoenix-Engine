@@ -115,6 +115,9 @@ namespace phx::rhi::d3d12
 		rhi::DescriptorIndex BindlessIndex_Srv = rhi::cInvalidDescriptorIndex;
 		rhi::DescriptorIndex BindlessIndex_Uav = rhi::cInvalidDescriptorIndex;
 
+		size_t SparsePageSize = 0ull;	// specifies the required alignment of backing allocation for sparse tile pool
+		SparseTextureProperties SparseProperties;
+
 		union
 		{
 			uint16_t ArraySize = 1;
@@ -132,18 +135,18 @@ namespace phx::rhi::d3d12
 		Microsoft::WRL::ComPtr<D3D12MA::Allocation> Allocation;
 
 		void* CpuMappedAddress;
+		uint32_t MappedSize = 0;
 		D3D12_GPU_VIRTUAL_ADDRESS GpuAddress;
 
-		D3D12_GPU_DESCRIPTOR_HANDLE Srv;
-		D3D12_GPU_DESCRIPTOR_HANDLE Uav;
+		DescriptorHeapAllocation DescriptorAllocation_CbvSrvUav; // SRV = 0, UAV = 1
 
-		rhi::DescriptorIndex BindlessIndex_Cbv = rhi::cInvalidDescriptorIndex;
 		rhi::DescriptorIndex BindlessIndex_Srv = rhi::cInvalidDescriptorIndex;
 		rhi::DescriptorIndex BindlessIndex_Uav = rhi::cInvalidDescriptorIndex;
 
-		DescriptorHeapAllocation DescriptorAllocation_CbvSrvUav;
 		uint8_t SrvOffset = 0xFF;
 		uint8_t UavOffset = 0xFF;
+
+		size_t SparsePageSize = 0ull;	// specifies the required alignment of backing allocation for sparse tile pool
 
 		union
 		{

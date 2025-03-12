@@ -4,17 +4,45 @@
 #include <PhxCore/Handle.h>
 #include <PhxCore/Span.h>
 
+
+#include <PhxResource/FileFormatUtils.h>
+#include <PhxRhi/RHICore.h>
+
 namespace phx
 {
 	struct StreamFile;
 	using StreamFileHandle = Handle<StreamFile>;
 	
+	enum class DestinationType : uint64_t
+	{
+		Memory = 0,
+		RHI_GpuBuffer,
+		RHI_Texture,
+		RHI_Multi_Subresource,
+		RHI_TiledTexture,
+	};
+
 	struct StreamRequest
 	{
+		const char* DebugName = "";
 		StreamFileHandle FileHandle = {};
+
+		FileFormat::CompressionType CompressionType = FileFormat::CompressionType::None;
+		uint64_t SrcSize = 0;
+		uint64_t DestSize = 0;
+
 		uint64_t Offset = 0;
-		uint64_t Size = 0;
-		void* Destination = nullptr;
+
+		struct Destination
+		{
+			DestinationType Type = DestinationType::Memory;
+			union
+			{
+				void* Memory = nullptr;
+				rhi::GpuBufferHandle Buffer;
+				rhi::TextureHandle Texture;
+			};
+		} Destination;
 	};
 
 	using StreamCallback = std::function<void()>;

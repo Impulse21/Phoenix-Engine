@@ -648,9 +648,7 @@ group "Applications"
         }
 
         AddLibraryIncludes(DStorageLibrary)
-        AddLibraryIncludes(DirectXTexLibrary)
         LinkLibrary(DStorageLibrary)
-        libdirs(DirectXTexLibrary.libDirs)
         
         includedirs 
         {
@@ -676,12 +674,24 @@ group "Applications"
             CopyFileCommand(path.getabsolute(DStorageLibrary.dlls[2]), '%{cfg.buildtarget.directory}'),
         }
         
-        filter { 'configurations:Debug' }
-            links(DirectXTexLibrary.libNames[2])
-
-        filter { 'configurations:Profiling or Final' }
-            links(DirectXTexLibrary.libNames[1])
-
+        -- TODO: Do a better job at abtracting this away.
+        filter('platforms:'..clang_win64_d3d12)
+            defines { "PHX_RHI_D3D12" }
+            AddLibraryIncludes(AgilityLibrary)
+    
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/d3d12',
+                phx_vendor_src_d3d12ma_dir,
+            }
+    
+            AddLibraryIncludes(DirectXTexLibrary)
+            libdirs(DirectXTexLibrary.libDirs)
+            filter { 'configurations:Debug' }
+                links(DirectXTexLibrary.libNames[2])
+    
+            filter { 'configurations:Profiling or Final' }
+                links(DirectXTexLibrary.libNames[1])
         filter{}
 
 group ""

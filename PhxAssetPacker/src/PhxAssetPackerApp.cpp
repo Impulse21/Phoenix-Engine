@@ -6,6 +6,16 @@
 #include <PhxCore/BinaryBuilder.h>
 #include <PhxCore/Span.h>
 
+#ifdef PHX_RHI_D3D12
+#include <d3d12.h>
+extern "C"
+{
+	// Used to enable the "Agility SDK" components
+	__declspec(dllexport) extern const UINT D3D12SDKVersion = D3D12_SDK_VERSION;
+	__declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\";
+}
+#endif
+
 #include "TextureConverter.h"
 #include "GltfImporter.h"
 #include "PakFileBuilder.h"
@@ -21,6 +31,7 @@
 
 using namespace phx;
 using namespace Microsoft::WRL;
+
 
 // Args for Laptop: -config "../../PhxAssetPacker/test_config_laptop.yaml"
 // Args For Matrix: -config "../../PhxAssetPacker/test_config_matrix.yaml"

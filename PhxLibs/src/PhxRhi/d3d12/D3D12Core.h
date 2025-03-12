@@ -40,6 +40,7 @@ namespace phx::rhi::d3d12
 	extern bool g_debugLayersEnabled;
 	extern bool g_isUnderGfxDebugger;
 	extern rhi::DeviceCapability g_capabilities;
+	extern D3D12_RESOURCE_HEAP_TIER g_resourceHeapTeir;
 
 	// -- Command queues ---
 	extern EnumArray<D3D12CommandQueue, CommandQueueType> g_commandQueue;

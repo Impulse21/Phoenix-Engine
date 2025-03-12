@@ -4,10 +4,27 @@
 #include <PhxCore/StringUtils.h>
 #include <PhxCore/ThreadPool.h>
 
+#ifdef PHX_RHI_D3D12
+#include <PhxRhi/d3d12/D3D12Core.h>
+#endif
+
 using namespace phx;
 
 namespace
 {
+	EnumArray<DSTORAGE_REQUEST_DESTINATION_TYPE, phx::DestinationType, 5> kDsConvertDestType = {
+		DSTORAGE_REQUEST_DESTINATION_MEMORY,
+		DSTORAGE_REQUEST_DESTINATION_BUFFER,
+		DSTORAGE_REQUEST_DESTINATION_TEXTURE_REGION,
+		DSTORAGE_REQUEST_DESTINATION_MULTIPLE_SUBRESOURCES,
+		DSTORAGE_REQUEST_DESTINATION_TILES
+	};
+
+	EnumArray<DSTORAGE_COMPRESSION_FORMAT, phx::FileFormat::CompressionType, 2> kDsCompressionFormat = {
+		DSTORAGE_COMPRESSION_FORMAT_NONE,
+		DSTORAGE_COMPRESSION_FORMAT_GDEFLATE,
+	};
+
 	struct Request
 	{
 		HANDLE EventHandle;
@@ -55,18 +72,32 @@ phx::DStorageAssetStreamer::DStorageAssetStreamer()
 		queueDesc.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
 		queueDesc.Name = "SysMetadataQueue";
 
-		HRESULT hr = (g_dsFactory->CreateQueue(&queueDesc, IID_PPV_ARGS(&m_metadataQueue)));
+		HRESULT hr = (g_dsFactory->CreateQueue(&queueDesc, IID_PPV_ARGS(&m_dsMetadataQueue)));
 		PHX_ASSERT(SUCCEEDED(hr));
-
-		hr = (g_dsFactory->CreateStatusArray(
-			kMaxPendingRequests,
-			nullptr,
-			IID_PPV_ARGS(&m_statusArray)));
-
-		PHX_ASSERT(SUCCEEDED(hr));
-
 	}
 
+	// Create the GPU queue, used for reading GPU resources.
+	{
+		DSTORAGE_QUEUE_DESC queueDesc{};
+		queueDesc.Device = rhi::d3d12::g_d3d12Device.Get();
+		queueDesc.Capacity = DSTORAGE_MAX_QUEUE_CAPACITY;
+		queueDesc.Priority = DSTORAGE_PRIORITY_NORMAL;
+		queueDesc.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
+		queueDesc.Name = "g_dsGpuQueue";
+
+		HRESULT hr = (g_dsFactory->CreateQueue(&queueDesc, IID_PPV_ARGS(&m_dsGpuQueue)));
+		PHX_ASSERT(SUCCEEDED(hr));
+	}
+
+	// Status array
+	HRESULT hr = (g_dsFactory->CreateStatusArray(
+		kMaxPendingRequests,
+		nullptr,
+		IID_PPV_ARGS(&m_statusArray)));
+
+	PHX_ASSERT(SUCCEEDED(hr));
+
+	// TODO: Custom Decompression Queue. Looks like this uses MS thread pool.
 	m_filePool.Initialize(200);
 }
 
@@ -115,7 +146,8 @@ void phx::DStorageAssetStreamer::CloseFile(StreamFileHandle handle)
 	auto* fileImpl = m_filePool.Get<DStorageStreamFile>(handle);
 	if (fileImpl)
 	{
-		m_metadataQueue->CancelRequestsWithTag(0xFFFFFFFFFFFFll, reinterpret_cast<uint64_t>(fileImpl));
+		m_dsMetadataQueue->CancelRequestsWithTag(0xFFFFFFFFFFFFll, reinterpret_cast<uint64_t>(fileImpl));
+		m_dsGpuQueue->CancelRequestsWithTag(0xFFFFFFFFFFFFll, reinterpret_cast<uint64_t>(fileImpl));
 	}
 
 	PHX_INFO("[DStorage] Closing file handle");
@@ -156,23 +188,53 @@ void phx::DStorageAssetStreamer::SubmitBatch(Span<StreamRequest> requests, Strea
 
 		DSTORAGE_REQUEST r = {};
 		r.Options.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
-		r.Options.DestinationType = DSTORAGE_REQUEST_DESTINATION_MEMORY;
-		r.Options.CompressionFormat = DSTORAGE_COMPRESSION_FORMAT_NONE;
+		r.Options.DestinationType = kDsConvertDestType[request.Destination.Type];
+		r.Options.CompressionFormat = kDsCompressionFormat[request.CompressionType];
+
 		r.Source.File.Source = fileImpl->DsFile.Get();
 		r.Source.File.Offset = request.Offset;
-		r.Source.File.Size = static_cast<uint32_t>(request.Size);
-		r.Destination.Memory.Buffer = request.Destination;
-		r.Destination.Memory.Size = r.Source.File.Size;
-		r.UncompressedSize = r.Destination.Memory.Size;
+		r.Source.File.Size = static_cast<uint32_t>(request.SrcSize);
+
+		switch (request.Destination.Type)
+		{
+		case DestinationType::Memory:
+		{
+			r.Destination.Memory.Buffer = request.Destination.Memory;
+			r.Destination.Memory.Size = request.DestSize;
+			break;
+		}
+		case DestinationType::RHI_GpuBuffer:
+		{
+			// Request
+			auto buffer = rhi::d3d12::g_bufferPool.Get<rhi::d3d12::GpuBuffer>(request.Destination.Buffer);
+			if (!buffer)
+			{
+				PHX_CORE_ERROR("Cannot make buffer request '{}' as buffer handle is invalid.", request.DebugName);
+				continue;
+			}
+
+			r.Destination.Buffer.Offset = 0;
+			r.Destination.Buffer.Resource = buffer->Resource.Get();
+			r.Destination.Buffer.Size = request.DestSize;
+			break;
+		}
+		case DestinationType::RHI_Texture:
+		case DestinationType::RHI_Multi_Subresource:
+		case DestinationType::RHI_TiledTexture:
+		default:
+			PHX_ASSERT(false, "TODO: Implementat");
+		}
+
+		r.UncompressedSize = request.DestSize;
 		r.CancellationTag = reinterpret_cast<uint64_t>(fileImpl);
 
-		m_metadataQueue->EnqueueRequest(&r);
+		m_dsMetadataQueue->EnqueueRequest(&r);
 	}
 	
 	size_t statusIndex;
 	if (m_statusIdxPool.Allocate(statusIndex))
 	{
-		m_metadataQueue->EnqueueStatus(m_statusArray.Get(), static_cast<uint32_t>(statusIndex));
+		m_dsMetadataQueue->EnqueueStatus(m_statusArray.Get(), static_cast<uint32_t>(statusIndex));
 	}
 	else
 	{
@@ -181,8 +243,8 @@ void phx::DStorageAssetStreamer::SubmitBatch(Span<StreamRequest> requests, Strea
 	}
 
 	HANDLE hEvent = RequestEvent();
-	m_metadataQueue->EnqueueSetEvent(hEvent);
-	m_metadataQueue->Submit();
+	m_dsMetadataQueue->EnqueueSetEvent(hEvent);
+	m_dsMetadataQueue->Submit();
 
 	Request req = {
 		.EventHandle = hEvent,
