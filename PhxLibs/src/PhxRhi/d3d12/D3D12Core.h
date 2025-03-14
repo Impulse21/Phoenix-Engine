@@ -40,6 +40,7 @@ namespace phx::rhi::d3d12
 	extern bool g_debugLayersEnabled;
 	extern bool g_isUnderGfxDebugger;
 	extern rhi::DeviceCapability g_capabilities;
+	extern D3D12_RESOURCE_HEAP_TIER g_resourceHeapTeir;
 
 	// -- Command queues ---
 	extern EnumArray<D3D12CommandQueue, CommandQueueType> g_commandQueue;
@@ -60,9 +61,9 @@ namespace phx::rhi::d3d12
 	extern D3D12SwapChain g_swapChain;
 
 	// -- Resource pools --- TODO: Move to a ResourceManager class that wraps these pool
-	extern phx::ResourcePool<rhi::PipelineState, d3d12::PipelineState> g_pipelineStatePool;
-	extern phx::ResourcePool<rhi::Texture, d3d12::Texture> g_texturePool;
-	extern phx::ResourcePool<rhi::GpuBuffer, d3d12::GpuBuffer> g_bufferPool;
+	extern phx::PagedPool<rhi::PipelineState, d3d12::PipelineState> g_pipelineStatePool;
+	extern phx::PagedPool<rhi::Texture, d3d12::Texture> g_texturePool;
+	extern phx::PagedPool<rhi::GpuBuffer, d3d12::GpuBuffer> g_bufferPool;
 
 
 	void InitializeResources(rhi::RhiCreateInfo const& createInfo);

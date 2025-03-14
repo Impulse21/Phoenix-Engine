@@ -5,6 +5,7 @@
 #include "PhxCore/Base.h"
 #include "PhxCore/Application.h"
 #include "PhxCore/CommandLineArgs.h"
+#include "PhxCore/ThreadPool.h"
 #include "PhxCore/StringUtils.h"
 
 #include "imgui.h"
@@ -86,6 +87,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
+namespace phx::EngineCore
+{
+	void Initialize()
+	{
+		phx::Log::Initialize();
+		int argc = 0;
+		LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+		phx::CommandLineArgs::Initialize(argc, argv);
+		phx::ThreadPool::Initialize();
+	}
+}
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*lpCmdLine*/, int nCmdShow)
 {
 	const wchar_t CLASS_NAME[] = L"PhoenixAppClassName";
@@ -96,11 +108,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*l
 	FILE* stream = nullptr;
 	ShowConsole(stream);
 
-	phx::Log::Initialize();
-
-	int argc = 0;
-	LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-	phx::CommandLineArgs::Initialize(argc, argv);
+	phx::EngineCore::Initialize();
 
 	phx::IApplication::Ptr = phx::CreateApplication();
 	auto* app = phx::IApplication::Ptr;

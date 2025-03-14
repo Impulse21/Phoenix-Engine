@@ -13,6 +13,7 @@
 #include "D3D12MemAlloc.h"
 #include "D3D12CopyCtxManager.h"
 
+using namespace phx;
 using namespace phx::rhi;
 using namespace phx::rhi::d3d12;
 
@@ -76,9 +77,9 @@ namespace
 namespace phx::rhi::d3d12
 {
 	Microsoft::WRL::ComPtr<D3D12MA::Allocator> g_d3d12MemAllocator;
-	phx::ResourcePool<rhi::PipelineState, PipelineState> g_pipelineStatePool;
-	phx::ResourcePool<rhi::Texture, Texture> g_texturePool;
-	phx::ResourcePool<rhi::GpuBuffer, d3d12::GpuBuffer> g_bufferPool;
+	phx::PagedPool<rhi::PipelineState, PipelineState> g_pipelineStatePool;
+	phx::PagedPool<rhi::Texture, Texture> g_texturePool;
+	phx::PagedPool<rhi::GpuBuffer, d3d12::GpuBuffer> g_bufferPool;
 }
 
 namespace
@@ -90,7 +91,12 @@ namespace
 
 namespace
 {
+	// Forward Declares of some fuctions. These are defined at the end of the file as I don't touch them too often.
 	void CopyBindlessDescriptor(DescriptorIndex index, D3D12_CPU_DESCRIPTOR_HANDLE srcHandle);
+
+	void CreateSrv(GpuBufferDescriptor const& desc, ID3D12Resource* d3d12Resource, D3D12_CPU_DESCRIPTOR_HANDLE handle);
+	void CreateUav(GpuBufferDescriptor const& desc, ID3D12Resource* d3d12Resource, D3D12_CPU_DESCRIPTOR_HANDLE handle);
+
 	void CreateSrv(TextureDescriptor const& desc, ID3D12Resource* d3d12Resource, D3D12_CPU_DESCRIPTOR_HANDLE handle);
 	void CreateRtv(TextureDescriptor const& desc, ID3D12Resource* d3d12Resource, D3D12_CPU_DESCRIPTOR_HANDLE handle);
 	void CreateDsv(TextureDescriptor const& desc, ID3D12Resource* d3d12Resource, D3D12_CPU_DESCRIPTOR_HANDLE handle);
@@ -223,15 +229,117 @@ namespace phx::rhi
 		impl.MipLevels = desc.MipLevels;
 		impl.ArraySize = desc.ArraySize;
 
-		// TODO: Support aliasing
-		ThrowIfFailed(
-			g_d3d12MemAllocator->CreateResource(
-				&allocationDesc,
+
+		if (EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::Alias))
+		{
+			// Aliasing memory pool must not be a committed resource because that uses implicit heap which returns nullptr,
+			//	thus it cannot be offsetted. This is why we create custom allocation here which will never be committed resource
+			//	(since it has no resource)
+			D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = g_d3d12Device->GetResourceAllocationInfo(0, 1, &resourceDesc);
+
+			allocationInfo.SizeInBytes = AlignUp(allocationInfo.SizeInBytes, (UINT64)D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
+
+
+			if (EnumHasAnyFlags(g_capabilities, DeviceCapability::AliasingGeneric))
+			{
+				allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
+			}
+			else if (EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::AliasBuffer))
+			{
+				allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+			}
+			else if (EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::AliasTexture_NonRtDs))
+			{
+				allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
+			}
+			else if (EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::AliasTexture_RtDs))
+			{
+				allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
+			}
+
+			ThrowIfFailed(
+				g_d3d12MemAllocator->AllocateMemory(
+					&allocationDesc,
+					&allocationInfo,
+					&impl.Allocation));
+
+			ThrowIfFailed(
+				g_d3d12Device->CreatePlacedResource(
+					impl.Allocation->GetHeap(),
+					impl.Allocation->GetOffset(),
+					&resourceDesc,
+					ConvertResourceStates(desc.InitialState),
+					useClearValue ? &d3d12OptimizedClearValue : nullptr,
+					IID_PPV_ARGS(&impl.Resource)));
+		}
+		else if (EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::Sparse))
+		{
+			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
+			g_d3d12Device->CreateReservedResource(
 				&resourceDesc,
 				ConvertResourceStates(desc.InitialState),
 				useClearValue ? &d3d12OptimizedClearValue : nullptr,
-				&impl.Allocation,
-				IID_PPV_ARGS(&impl.Resource)));
+				IID_PPV_ARGS(&impl.Resource));
+
+			impl.SparsePageSize = D3D12_TILED_RESOURCE_TILE_SIZE_IN_BYTES;
+
+			UINT num_tiles_for_entire_resource = 0;
+			D3D12_PACKED_MIP_INFO packed_mip_info = {};
+			D3D12_TILE_SHAPE tile_shape = {};
+			UINT num_subresource_tilings = 0;
+
+			g_d3d12Device->GetResourceTiling(
+				impl.Resource.Get(),
+				&num_tiles_for_entire_resource,
+				&packed_mip_info,
+				&tile_shape,
+				&num_subresource_tilings,
+				0,
+				nullptr
+			);
+
+			SparseTextureProperties& sparse = impl.SparseProperties;
+			sparse.TileWidth = tile_shape.WidthInTexels;
+			sparse.TileHeight = tile_shape.HeightInTexels;
+			sparse.TileDepth = tile_shape.DepthInTexels;
+			sparse.TotalTileCount = num_tiles_for_entire_resource;
+			sparse.PackedMipStart = packed_mip_info.NumStandardMips;
+			sparse.PackedMipCount = packed_mip_info.NumPackedMips;
+			sparse.PackedMipTileOffset = packed_mip_info.StartTileIndexInOverallResource;
+			sparse.PackedMipTileCount = packed_mip_info.NumTilesForPackedMips;
+		}
+		else
+		{
+			if (desc.Alias.Buffer.IsValid())
+			{
+				// Aliasing: https://gpuopen-librariesandsdks.github.io/D3D12MemoryAllocator/html/resource_aliasing.html
+
+				// TODO Handle Textures and Buffers
+				auto& aliasBuffer = *g_bufferPool.Get<d3d12::GpuBuffer>(desc.Alias.Buffer);
+				// TODO: Support aliasing
+				ThrowIfFailed(
+					g_d3d12MemAllocator->CreateAliasingResource(
+						aliasBuffer.Allocation.Get(),
+						desc.Alias.Offset,
+						&resourceDesc,
+						ConvertResourceStates(desc.InitialState),
+						useClearValue ? &d3d12OptimizedClearValue : nullptr,
+						IID_PPV_ARGS(&impl.Resource)));
+
+			}
+			else
+			{
+				// TODO: Support aliasing
+				ThrowIfFailed(
+					g_d3d12MemAllocator->CreateResource(
+						&allocationDesc,
+						&resourceDesc,
+						ConvertResourceStates(desc.InitialState),
+						useClearValue ? &d3d12OptimizedClearValue : nullptr,
+						&impl.Allocation,
+						IID_PPV_ARGS(&impl.Resource)));
+			}
+		}
 
 
 		std::wstring debugName;
@@ -529,10 +637,212 @@ namespace phx::rhi
 		return handle;
 	}
 
-	GpuBufferHandle CreateBuffer(GpuBufferDescriptor const& /*desc*/, MemInfo* /*initData*/)
+	GpuBufferHandle CreateBuffer(GpuBufferDescriptor const& desc, MemInfo* initData)
 	{
 		GpuBufferHandle handle = g_bufferPool.Allocate();
-		// auto& buffer = *g_bufferPool.Get<d3d12::GpuBuffer>(handle);
+		auto& buffer = *g_bufferPool.Get<d3d12::GpuBuffer>(handle);
+
+		UINT64 alignedSize = desc.Size;
+		if (EnumHasAnyFlags(desc.BindingFlags, BindingFlags::ConstantBuffer))
+		{
+			alignedSize = AlignUp(alignedSize, (UINT64)D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+		}
+
+		D3D12_RESOURCE_DESC resourceDesc;
+		resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+		resourceDesc.Width = alignedSize;
+		resourceDesc.Height = 1;
+		resourceDesc.MipLevels = 1;
+		resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		resourceDesc.DepthOrArraySize = 1;
+		resourceDesc.Alignment = 0;
+		resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+		if (EnumHasAnyFlags(desc.BindingFlags, BindingFlags::UnorderedAccess))
+		{
+			resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+		}
+		if (!EnumHasAnyFlags(desc.BindingFlags, BindingFlags::ShaderResource))
+		{
+			resourceDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+		}
+
+		resourceDesc.SampleDesc.Count = 1;
+		resourceDesc.SampleDesc.Quality = 0;
+
+		D3D12_RESOURCE_STATES resourceState = D3D12_RESOURCE_STATE_COMMON;
+
+		D3D12MA::ALLOCATION_DESC allocationDesc = {};
+		allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+		if (desc.Usage == Usage::ReadBack)
+		{
+			allocationDesc.HeapType = D3D12_HEAP_TYPE_READBACK;
+			resourceState = D3D12_RESOURCE_STATE_COPY_DEST;
+			resourceDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+		}
+		else if (desc.Usage == Usage::Upload)
+		{
+			allocationDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+			resourceState = D3D12_RESOURCE_STATE_GENERIC_READ;
+		}
+
+		if (EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::Alias))
+		{
+			// Aliasing memory pool must not be a committed resource because that uses implicit heap which returns nullptr,
+			//	thus it cannot be offsetted. This is why we create custom allocation here which will never be committed resource
+			//	(since it has no resource)
+			D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = g_d3d12Device->GetResourceAllocationInfo(0, 1, &resourceDesc);
+
+			if (EnumHasAnyFlags(g_capabilities, DeviceCapability::AliasingGeneric))
+			{
+				allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
+			}
+			else if (EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::AliasBuffer))
+			{
+				allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+			}
+			else if (EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::AliasTexture_NonRtDs))
+			{
+				allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
+			}
+			else if (EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::AliasTexture_RtDs))
+			{
+				allocationDesc.ExtraHeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
+			}
+
+			ThrowIfFailed(
+				g_d3d12MemAllocator->AllocateMemory(
+					&allocationDesc,
+					&allocationInfo,
+					&buffer.Allocation));
+
+			if (allocationDesc.ExtraHeapFlags == D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS || allocationDesc.ExtraHeapFlags == D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES)
+			{
+				ThrowIfFailed(
+					g_d3d12Device->CreatePlacedResource(
+						buffer.Allocation->GetHeap(),
+						buffer.Allocation->GetOffset(),
+						&resourceDesc,
+						resourceState,
+						nullptr,
+						IID_PPV_ARGS(&buffer.Resource)));
+			}
+		}
+		else if (EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::Sparse))
+		{
+			ThrowIfFailed(
+				g_d3d12Device->CreateReservedResource(
+					&resourceDesc,
+					resourceState,
+					nullptr,
+					IID_PPV_ARGS(&buffer.Resource)));
+
+			buffer.SparsePageSize = D3D12_TILED_RESOURCE_TILE_SIZE_IN_BYTES;
+		}
+		else
+		{
+			if (desc.Alias.Buffer.IsValid())
+			{
+				// Aliasing: https://gpuopen-librariesandsdks.github.io/D3D12MemoryAllocator/html/resource_aliasing.html
+
+				auto& aliasBuffer = *g_bufferPool.Get<d3d12::GpuBuffer>(desc.Alias.Buffer);
+				ThrowIfFailed(
+					g_d3d12MemAllocator->CreateAliasingResource(
+						aliasBuffer.Allocation.Get(),
+						desc.Alias.Offset,
+						&resourceDesc,
+						resourceState,
+						nullptr,
+						IID_PPV_ARGS(&buffer.Resource)));
+			}
+			else
+			{
+				ThrowIfFailed(
+					g_d3d12MemAllocator->CreateResource(
+						&allocationDesc,
+						&resourceDesc,
+						resourceState,
+						nullptr,
+						&buffer.Allocation,
+						IID_PPV_ARGS(&buffer.Resource)));
+			}
+		}
+
+		if (buffer.Resource != nullptr)
+		{
+			buffer.GpuAddress = buffer.Resource->GetGPUVirtualAddress();
+		}
+
+		if (desc.Usage == Usage::ReadBack)
+		{
+			ThrowIfFailed(
+				buffer.Resource->Map(0, nullptr, &buffer.CpuMappedAddress));
+			buffer.MappedSize = static_cast<uint32_t>(desc.Size);
+		}
+		else if (desc.Usage == Usage::Upload)
+		{
+			D3D12_RANGE read_range = {};
+			ThrowIfFailed(
+				buffer.Resource->Map(0, &read_range, &buffer.CpuMappedAddress));
+			buffer.MappedSize = static_cast<uint32_t>(desc.Size);
+		}
+
+		// Issue data copy on request:
+		if (initData)
+		{
+
+			CopyCtxManager::Ctx ctx;
+
+			void* mappedData = nullptr;
+			if (desc.Usage == Usage::Upload)
+			{
+				mappedData = buffer.CpuMappedAddress;
+			}
+			else
+			{
+				ctx = m_copyCtxManager.Begin(desc.Size);
+				mappedData = ctx.MappedData;
+			}
+
+			std::memcpy(mappedData, initData->Data, desc.Size);
+
+			if (ctx.IsValid())
+			{
+				ctx.CommandList->CopyBufferRegion(
+					buffer.Resource.Get(),
+					0,
+					ctx.UploadBuffer.Get(),
+					0,
+					desc.Size);
+
+				m_copyCtxManager.Submit(ctx);
+			}
+		}
+
+		const uint32_t numDescriptorsRequired =
+			(EnumHasAnyFlags(desc.BindingFlags, BindingFlags::ShaderResource) ? 1 : 0) +
+			(EnumHasAnyFlags(desc.BindingFlags, BindingFlags::UnorderedAccess) ? 1 : 0);
+
+		buffer.DescriptorAllocation_CbvSrvUav = g_cpuDescHeap_Resource->Allocate(numDescriptorsRequired);
+
+		if (EnumHasAnyFlags(desc.BindingFlags, BindingFlags::ShaderResource))
+		{
+			D3D12_CPU_DESCRIPTOR_HANDLE handle = buffer.DescriptorAllocation_CbvSrvUav.GetCpuHandle(0);
+			CreateSrv(desc, buffer.Resource.Get(), handle);
+
+			buffer.BindlessIndex_Srv = m_bindlessDescritorTable.Allocate();
+			CopyBindlessDescriptor(buffer.BindlessIndex_Srv, handle);
+		}
+
+		if (EnumHasAnyFlags(desc.BindingFlags, BindingFlags::UnorderedAccess))
+		{
+			D3D12_CPU_DESCRIPTOR_HANDLE handle = buffer.DescriptorAllocation_CbvSrvUav.GetCpuHandle(1);
+			CreateUav(desc, buffer.Resource.Get(), handle);
+
+			buffer.BindlessIndex_Uav = m_bindlessDescritorTable.Allocate();
+			CopyBindlessDescriptor(buffer.BindlessIndex_Uav, handle);
+		}
 
 		return handle;
 	}
@@ -607,6 +917,103 @@ namespace
 			m_bindlessDescritorTable.GetCpuHandle(index),
 			srcHandle,
 			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	}
+
+	void CreateSrv(GpuBufferDescriptor const& desc, ID3D12Resource* d3d12Resource, D3D12_CPU_DESCRIPTOR_HANDLE handle)
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		const UINT offset = 0;
+		const UINT size = desc.Size;
+
+		if (desc.Format == Format::UNKNOWN)
+		{
+			if (phx::EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::BufferStructured))
+			{
+				// This is a Structured Buffer
+				const uint32_t stride = desc.Stride;
+				// PHX_ASSERT(IsAligned(offset, (uint64_t)stride)); // structured buffer offset must be aligned to structure stride!
+				srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+				srvDesc.Buffer.FirstElement = UINT(offset / stride);
+				srvDesc.Buffer.NumElements = UINT(std::min(size, desc.Size - offset) / stride);
+				srvDesc.Buffer.StructureByteStride = stride;
+			}
+			else
+			{
+				// This is a Raw Buffer
+				PHX_ASSERT(phx::EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::BufferRaw), "Expected a raw buffer for this case");
+				srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+				srvDesc.Buffer.FirstElement = UINT(offset / sizeof(uint32_t));
+				srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+				srvDesc.Buffer.NumElements = UINT(std::min(size, desc.Size - offset) / sizeof(uint32_t));
+			}
+		}
+		else
+		{
+			// This is a Typed Buffer
+			auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
+			const uint32_t stride = GetFormatStride(desc.Format);
+
+			srvDesc.Format = dxgiFormatMapping.SrvFormat;
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+			srvDesc.Buffer.FirstElement = UINT(offset / stride);
+			srvDesc.Buffer.NumElements = UINT(std::min(size, desc.Size - offset) / stride);
+		}
+
+		g_d3d12Device->CreateShaderResourceView(
+			d3d12Resource,
+			&srvDesc,
+			handle);
+	}
+
+	void CreateUav(GpuBufferDescriptor const& desc, ID3D12Resource* d3d12Resource, D3D12_CPU_DESCRIPTOR_HANDLE handle)
+	{
+		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+		uavDesc.Buffer.FirstElement = 0;
+		const UINT offset = 0;
+		const UINT size = desc.Size;
+
+		if (desc.Format == Format::UNKNOWN)
+		{
+			if (phx::EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::BufferStructured))
+			{
+				// This is a Structured Buffer
+				const uint32_t stride = desc.Stride;
+
+				uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+				uavDesc.Buffer.FirstElement = UINT(offset / stride);
+				uavDesc.Buffer.NumElements = UINT(std::min(size, desc.Size - offset) / stride);
+				uavDesc.Buffer.StructureByteStride = stride;
+			}
+			else
+			{
+				// This is a Raw Buffer
+				PHX_ASSERT(phx::EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::BufferRaw), "Expected a raw buffer for this case");
+				uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+				uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+				uavDesc.Buffer.FirstElement = UINT(offset / sizeof(uint32_t));
+				uavDesc.Buffer.NumElements = UINT(std::min(size, desc.Size - offset) / sizeof(uint32_t));
+			}
+		}
+		else
+		{
+			// This is a Typed Buffer
+			auto dxgiFormatMapping = GetDxgiFormatMapping(desc.Format);
+			const uint32_t stride = GetFormatStride(desc.Format);
+
+			uavDesc.Format = dxgiFormatMapping.SrvFormat;
+			uavDesc.Buffer.FirstElement = UINT(offset / stride);
+			uavDesc.Buffer.NumElements = UINT(std::min(size, desc.Size - offset) / stride);
+		}
+
+		g_d3d12Device2->CreateUnorderedAccessView(
+			d3d12Resource,
+			nullptr,
+			&uavDesc,
+			handle);
 	}
 
 	void CreateSrv(TextureDescriptor const& desc, ID3D12Resource* d3d12Resource, D3D12_CPU_DESCRIPTOR_HANDLE handle)

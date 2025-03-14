@@ -9,7 +9,6 @@ namespace phx
 		uint32_t GroupIndex = 0;
 	};
 
-	
 	namespace ThreadPool
 	{
 		struct Barrier
@@ -23,19 +22,26 @@ namespace phx
 			bool IsNotCleared() { return Counter.load() > 0; }
 		};
 
+		enum class Type
+		{
+			High = 0,
+			Streaming,
+			Count
+		};
+
 		void Initialize();
 		void Finalize();
-		void SubmitTask(std::function<void()> const& task);
+		void SubmitTask(std::function<void()> const& task, Type type = Type::High);
 
-		bool IsBusy();
+		bool IsBusy(Type type = Type::High);
 
-		void Wait();
+		void Wait(Type type = Type::High);
 
-		void Wait(Barrier& barrier);
+		void Wait(Barrier& barrier, Type type = Type::High);
 
-		void Signal(Barrier& barrier);
+		void Signal(Barrier& barrier, Type type = Type::High);
 
-		uint32_t GetThreadCount();
+		uint32_t GetThreadCount(Type type = Type::High);
 		uint32_t GetNumCores();
 	}
 

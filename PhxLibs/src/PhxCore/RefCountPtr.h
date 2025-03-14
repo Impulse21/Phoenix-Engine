@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <atomic>
 
-namespace phx::gfx
+namespace phx
 {
     //////////////////////////////////////////////////////////////////////////
     // RefCountPtr
@@ -248,15 +248,15 @@ namespace phx::gfx
     // Intended usage is to use it as a base class for interface implementations, like so:
     // class Texture : public RefCounter<ITexture> { ... }
     //////////////////////////////////////////////////////////////////////////
-
-#if true
-    template<class T, typename TImpl>
+    template<class T>
     class RefCounter : public T
     {
     private:
         std::atomic<unsigned long> m_refCount = 1;
 
     public:
+        RefCounter() = default;
+
         virtual unsigned long AddRef() override
         {
             return ++m_refCount;
@@ -264,33 +264,11 @@ namespace phx::gfx
 
         virtual unsigned long Release() override
         {
-            const unsigned long result = --m_refCount;
-            if (result == 0)
-                static_cast<TImpl*>(this)->ReleaseImpl();
-
+            unsigned long result = --m_refCount;
+            if (result == 0) {
+                delete this;
+            }
             return result;
         }
     };
-#else
-    template<typename T> class RefCounter
-    {
-        std::atomic<unsigned long> m_refCount = 1;
-
-    public:
-        RefCounted() = default;
-        ~RefCounted() = default;
-
-        void AddRef() 
-        { 
-            this->m_refCount++; 
-        }
-
-        void Release() 
-        { 
-            this->m_refCount--;
-            if (m_RefCount == 0) 
-                static_cast<T*>(this)->ReleaseImpl();
-        }
-    };
-#endif
 }

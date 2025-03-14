@@ -14,20 +14,22 @@ TempMemoryBlockAllocator::TempMemoryBlock TempMemoryBlockAllocator::GetNextMemor
 	std::scoped_lock _(this->m_mutex);
 
 	// Checks if the top bits have changes, if so, we need to wrap around.
-	if ((m_tail ^ (m_tail + m_blockSize)) & ~m_bufferMask)
+	// Added a -1 to (m_blockSize) as it checks if thre is enough room in the
+	//  buffer I hope.
+	if ((m_tail ^ (m_tail + (m_blockSize - 1))) & ~m_bufferMask)
 	{
 		m_tail = (m_tail + m_bufferMask) & ~m_bufferMask;
 	}
 
-	if (((m_tail - m_head) + m_blockSize) >= GetBufferSize())
+	if (((m_tail - m_head) + (m_blockSize - 1)) >= GetBufferSize())
 	{
 		WaitForFreeRegions(m_head);
 	}
 
-	const uint32_t offset = (this->m_tail & m_bufferMask) + m_blockSize;
+	const uint32_t offset = (this->m_tail & m_bufferMask); // Change  + m_blockSize;0
 	m_tail += m_blockSize;
 
-	return TempMemoryBlock{
+	return TempMemoryBlock {
 		.GpuAddress = m_buffer->GetGPUVirtualAddress() + offset,
 		.Data = static_cast<uint8_t*>(this->m_data) + offset,
 	};

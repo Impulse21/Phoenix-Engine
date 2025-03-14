@@ -35,6 +35,14 @@ struct NonCopyable
 #include "PhxCore/Assert.h"
 
 
+#define PhxKB(size)                 (size * 1024)
+#define PhxMB(size)                 (size * 1024 * 1024)
+#define PhxGB(size)                 (size * 1024 * 1024 * 1024)
+
+#define PhxToKB(x)					((size_t) (x) >> 10)
+#define PhxToMB(x)					((size_t) (x) >> 20)
+#define PhxToGB(x)					((size_t) (x) >> 30)
+
 constexpr inline unsigned long long operator "" _KiB(unsigned long long value)
 {
 	return value << 10;
@@ -49,3 +57,10 @@ constexpr inline unsigned long long operator "" _GiB(unsigned long long value)
 {
 	return value << 30;
 }
+
+#define PHX_MAX_PATH			MAX_PATH
+#define ALIGNAS(x)             __declspec(align(x))
+#define DEFINE_ALIGNED(def, a) __declspec(align(a)) def
+#define THREAD_LOCAL           __declspec(thread)
+
+#define CompileTimeAssertSize(def, size) static_assert(sizeof(def) == size, "Definition #def must be #size bytes")

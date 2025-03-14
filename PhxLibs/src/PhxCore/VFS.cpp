@@ -15,33 +15,6 @@ using namespace phx;
 
 namespace
 {
-    class Blob : public IBlob
-    {
-    public:
-        Blob(void* Data, size_t size)
-            : m_data(Data)
-            , m_size(size)
-        {}
-
-        ~Blob() override
-        {
-            if (this->m_data)
-            {
-                free(this->m_data);
-                this->m_data = nullptr;
-            }
-
-            this->m_size = 0;
-        }
-
-        [[nodiscard]] const void* Data() const override { return this->m_data; }
-        [[nodiscard]] size_t Size() const override { return this->m_size; }
-
-    private:
-        void* m_data;
-        size_t m_size;
-    };
-
     class NativeFileSystem final : public IFileSystem
     {
     public:
@@ -49,6 +22,11 @@ namespace
         bool FolderExists(std::filesystem::path const& name) override;
         std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
         bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
+
+        std::filesystem::path ResolvePath(std::filesystem::path const& name) override
+        {
+            return name;
+        }
     };
 
     class RelativeFileSystem final : public IFileSystem
@@ -62,6 +40,11 @@ namespace
         bool FolderExists(std::filesystem::path const& name) override;
         std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
         bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
+
+        std::filesystem::path ResolvePath(std::filesystem::path const& name) override
+        {
+            return this->m_basePath / name.relative_path();
+        }
 
     private:
         std::shared_ptr<IFileSystem> m_underlyingFS;
@@ -79,8 +62,9 @@ namespace
         bool FolderExists(std::filesystem::path const& name) override;
         std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
         bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
+        std::filesystem::path ResolvePath(std::filesystem::path const& name) override;
 
-    private:
+    protected:
         bool FindMountPoint(const std::filesystem::path& path, std::filesystem::path* pRelativePath, IFileSystem** ppFS);
 
     private:
@@ -275,17 +259,30 @@ bool RootFileSystem::WriteFile(std::filesystem::path const& name, Span<char> Dat
     return false;
 }
 
+std::filesystem::path RootFileSystem::ResolvePath(std::filesystem::path const& name)
+{
+    std::filesystem::path relativePath;
+    IFileSystem* fs = nullptr;
+
+    if (this->FindMountPoint(name, &relativePath, &fs))
+    {
+        return fs->ResolvePath(relativePath);
+    }
+
+    return name;
+}
+
 bool RootFileSystem::FindMountPoint(const std::filesystem::path& path, std::filesystem::path* pRelativePath, IFileSystem** ppFS)
 {
     std::string spath = path.lexically_normal().generic_string();
 
     for (auto it : this->m_mountPoints)
     {
-        if (spath.find(it.first, 0) == 0 && ((spath.length() == it.first.length()) || (spath[it.first.length()] == '/')))
+        if (spath.find(it.first, 0) == 0 && ((spath.length() == it.first.length()) || (spath[it.first.length() - 1] == '/')))
         {
             if (pRelativePath)
             {
-                std::string relative = spath.substr(it.first.size() + 1);
+                std::string relative = spath.substr(it.first.size());
                 *pRelativePath = relative;
             }
 
@@ -346,5 +343,15 @@ namespace phx::VFS
         result = result.parent_path();
 
         return result;
+    }
+
+    std::string GetFileNameWithoutExt(std::string const& path)
+    {
+        return std::filesystem::path(path).stem().generic_string();
+    }
+
+    std::string GetFileExt(std::string const& path)
+    {
+        return std::filesystem::path(path).extension().generic_string();
     }
 }

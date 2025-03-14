@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "PhxCore/Base.h"
 #include "PhxCore/Span.h"
 #include "PhxCore/EnumUtils.h"
 
@@ -443,12 +444,31 @@ namespace phx::rhi
         MeshShading = 1 << 5,
         CreateNoteZeroed = 1 << 6,
         Bindless = 1 << 7,
+        AliasingGeneric = 1 << 8,
     };
 
     PHX_ENUM_CLASS_FLAGS(DeviceCapability);
 #pragma endregion
 
 #pragma region Types
+
+    struct Budget
+    {
+        uint64_t BudgetBytes = 0ull;
+        uint64_t UsageBytes = 0ull;
+    };
+
+    struct SparseTextureProperties
+    {
+        uint32_t TileWidth = 0;				    // width of 1 tile in texels
+        uint32_t TileHeight = 0;				// height of 1 tile in texels
+        uint32_t TileDepth = 0;				// depth of 1 tile in texels
+        uint32_t TotalTileCount = 0;			// number of tiles for entire resource
+        uint32_t PackedMipStart = 0;			// first mip of packed mipmap levels, these cannot be individually mapped and they cannot use a box mapping
+        uint32_t PackedMipCount = 0;			// number of packed mipmap levels, these cannot be individually mapped and they cannot use a box mapping
+        uint32_t PackedMipTileOffset = 0;	    // offset of the tiles for packed mip data relative to the entire resource
+        uint32_t PackedMipTileCount = 0;		// how many tiles are required for the packed mipmaps
+    };
 
     struct MemInfo
     {
@@ -804,13 +824,19 @@ namespace phx::rhi
     {
         const char* DebugName = "";
         rhi::Format Format = rhi::Format::UNKNOWN;
-        uint32_t SizeInBytes = 0;
+        uint32_t Size = 0;
         uint32_t Stride = 0;
         Usage Usage = Usage::Default;
 
         BindingFlags BindingFlags = BindingFlags::ShaderResource;
         ResourceMiscFlags MiscFlags = ResourceMiscFlags::None;
         ResourceStates InitialState = ResourceStates::ShaderResource;
+
+        struct AliasDescriptor
+        {
+            GpuBufferHandle Buffer;
+            uint64_t Offset;
+        } Alias = {};
     };
 
 #if false
@@ -860,6 +886,13 @@ namespace phx::rhi
         BindingFlags BindingFlags = BindingFlags::ShaderResource;
         ResourceMiscFlags MiscFlags = ResourceMiscFlags::None;
         ResourceStates InitialState = ResourceStates::ShaderResource;
+
+        // COMBINE with Buffer
+        struct AliasDescriptor
+        {
+            GpuBufferHandle Buffer;
+            uint64_t Offset;
+        } Alias = {};
     };
 
     struct GfxDeviceDescriptor

@@ -8,10 +8,20 @@ phx_lib_vendor_directory    = "PhxLibs/vendor"
 phx_lib_src_core_dir        = phx_lib_src_directory.."/PhxCore"
 phx_lib_src_rhi_dir         = phx_lib_src_directory.."/PhxRhi"
 phx_lib_src_renderer_dir    = phx_lib_src_directory.."/PhxRenderer"
+phx_lib_src_resource_dir    = phx_lib_src_directory.."/PhxResource"
+phx_lib_src_editor_lib_dir  = phx_lib_src_directory.."/PhxEditor"
 
 phx_vendor_src_imgui_dir    = phx_lib_vendor_directory.."/ImGui"
 phx_vendor_src_d3d12ma_dir  = phx_lib_vendor_directory.."/D3D12MA"
-phx_vendor_src_entt_dir  = phx_lib_vendor_directory.."/entt"
+phx_vendor_src_entt_dir     = phx_lib_vendor_directory.."/entt"
+phx_vendor_src_yaml_dir     = phx_lib_vendor_directory.."/yaml"
+phx_vendor_src_glfw_dir     = phx_lib_vendor_directory.."/glfw"
+
+phx_vendor_include_glfw_dir = phx_vendor_src_glfw_dir.."/include"
+phx_vendor_include_yaml_dir = phx_vendor_src_yaml_dir.."/include"
+
+phx_packer_vendor_dir       = "PhxAssetPacker/vendor"
+phx_packer_vendor_dx_tex    = phx_packer_vendor_dir..'/DirectXTex'
 
 workspace_directory         = '.workspace/'.._ACTION
 
@@ -29,10 +39,21 @@ rhi_backend_d3d12 = "D3D12"
 project_phx_core        = 'PhxCore'
 project_phx_renderer    = 'PhxRenderer'
 project_phx_rhi         = 'PhxRhi'
+project_phx_resource    = 'PhxResource'
+project_phx_editor      = 'PhxEditor'
+
 project_sandbox         = 'Sandbox'
+project_asset_packer    = 'PhxAssetPacker'
 
 project_vendor_imgui    = 'ImGui'
 project_vendor_d3d12ma  = 'D3D12MA'
+project_vendor_yaml     = 'yaml-cpp'
+
+-- Generated Code Directories
+generated_shaders_dir = workspace_directory..'/GeneratedShaders'
+generated_code_dir = workspace_directory..'/GeneratedCode'
+
+assets_directory = workspace_directory.."/../assets"
 
 -- Utility Functions
 function ExcludePlatformSpecificCode(rootPath)
@@ -190,12 +211,29 @@ workspace "PhxEngine"
 			'WIN32_LEAN_AND_MEAN', 
 			'VC_EXTRALEAN',
 			'_CRT_SECURE_NO_WARNINGS'
-		}
-
-    HandleGlobalWarnings()
-		
+		}		
 	filter {}
+    
+    HandleGlobalWarnings()
 
+    -- Setup global include directories
+	includedirs
+	{
+		generated_code_dir
+	}
+
+	-- Generate the global paths file
+	globalVariableHeader = io.open(path.getabsolute(generated_code_dir)..'/Generated/GlobalVariables.h', 'wb');
+	globalVariableHeader:write('namespace phx::GlobalPaths\n{\n');
+	globalVariableHeader:write('\tconstexpr const char* WorkspaceDirectory = "'..path.getabsolute(workspace_directory)..'/";\n');
+	globalVariableHeader:write('\tconstexpr const char* AssetsDirectory = "'..path.getabsolute(assets_directory)..'/";\n');
+	--globalVariableHeader:write('\tstatic const char* ShaderCompilerExecutableName = "'..ShaderCompilerExecutableName..'";\n');
+	--globalVariableHeader:write('\tstatic const char* ShaderSourceDirectory = "'..path.getabsolute(SourceShadersDirectory)..'/";\n');
+	globalVariableHeader:write('};\n');
+	globalVariableHeader:close();
+
+	filter {}
+		
 	filter { win64_platform_filter }
 		system('windows')
 		architecture('x64')
@@ -292,6 +330,103 @@ group "Vendors"
         filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
 
         filter {}
+
+    project(project_vendor_yaml)
+        kind "StaticLib"
+        files
+        {
+            phx_vendor_src_yaml_dir.."/src/**.h",
+            phx_vendor_src_yaml_dir.."/src/**.cpp",
+            
+            phx_vendor_src_yaml_dir.."/include/**.h"
+        }
+    
+        includedirs
+        {
+            phx_vendor_src_yaml_dir.."/include"
+        }
+        
+        defines { "YAML_CPP_STATIC_DEFINE" }
+        filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+
+        filter {}
+        
+    project "GLFW"
+        kind "StaticLib"
+        language "C"
+
+        files
+        {
+            phx_vendor_include_glfw_dir.."/GLFW/glfw3.h",
+            phx_vendor_include_glfw_dir.."/GLFW/glfw3native.h",
+            phx_vendor_src_glfw_dir.."/src/glfw_config.h",
+            phx_vendor_src_glfw_dir.."/src/context.c",
+            phx_vendor_src_glfw_dir.."/src/init.c",
+            phx_vendor_src_glfw_dir.."/src/input.c",
+            phx_vendor_src_glfw_dir.."/src/monitor.c",
+            phx_vendor_src_glfw_dir.."/src/vulkan.c",
+            phx_vendor_src_glfw_dir.."/src/window.c"
+        }
+        filter "system:linux"
+            pic "On"
+
+            systemversion "latest"
+            staticruntime "On"
+
+            files
+            {
+                phx_vendor_src_glfw_dir.."/src/x11_init.c",
+                phx_vendor_src_glfw_dir.."/src/x11_monitor.c",
+                phx_vendor_src_glfw_dir.."/src/x11_window.c",
+                phx_vendor_src_glfw_dir.."/src/xkb_unicode.c",
+                phx_vendor_src_glfw_dir.."/src/posix_time.c",
+                phx_vendor_src_glfw_dir.."/src/posix_thread.c",
+                phx_vendor_src_glfw_dir.."/src/glx_context.c",
+                phx_vendor_src_glfw_dir.."/src/egl_context.c",
+                phx_vendor_src_glfw_dir.."/src/osmesa_context.c",
+                phx_vendor_src_glfw_dir.."/src/linux_joystick.c"
+            }
+
+            defines
+            {
+                "_GLFW_X11"
+            }
+
+        filter "system:windows"
+            systemversion "latest"
+            staticruntime "On"
+
+            files
+            {
+                phx_vendor_src_glfw_dir.."/src/win32_init.c",
+                phx_vendor_src_glfw_dir.."/src/win32_joystick.c",
+                phx_vendor_src_glfw_dir.."/src/win32_monitor.c",
+                phx_vendor_src_glfw_dir.."/src/win32_time.c",
+                phx_vendor_src_glfw_dir.."/src/win32_thread.c",
+                phx_vendor_src_glfw_dir.."/src/win32_window.c",
+                phx_vendor_src_glfw_dir.."/src/wgl_context.c",
+                phx_vendor_src_glfw_dir.."/src/egl_context.c",
+                phx_vendor_src_glfw_dir.."/src/osmesa_context.c"
+            }
+
+            defines 
+            { 
+                "_GLFW_WIN32",
+                "_CRT_SECURE_NO_WARNINGS"
+            }
+
+        filter('toolset:*-clangcl')
+            buildoptions {
+                '-Wno-unused-const-variable',
+                '-Wno-unused-function',
+                '-Wno-unused-parameter',
+                '-Wno-missing-field-initializers',
+                '-Wno-sign-compare',
+            }
+
+        filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+            
+        filter {}
 group ""
 
 group "PhxLibs"
@@ -311,6 +446,10 @@ group "PhxLibs"
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
         }
+        
+        filter('platforms:'..clang_win64_d3d12)
+            AddLibraryIncludes(DStorageLibrary)
+        filter{}
 
     project(project_phx_rhi)
         kind('StaticLib')
@@ -347,7 +486,8 @@ group "PhxLibs"
                 phx_lib_src_rhi_dir..'/d3d12',
                 phx_vendor_src_d3d12ma_dir,
             }
-
+        filter {}
+        
     project(project_phx_renderer)
         kind('StaticLib')
         pchheader('PhxRenderer/PhxRenderer_pch.h')
@@ -378,10 +518,59 @@ group "PhxLibs"
                 phx_lib_src_rhi_dir..'/d3d12',
                 phx_vendor_src_d3d12ma_dir,
             }
+
     
+    project(project_phx_resource)
+        kind('StaticLib')
+        pchheader('PhxResource/PhxResource_pch.h')
+        pchsource(phx_lib_src_resource_dir..'/PhxResource_pch.cpp')
+            
+        files 
+        {
+            phx_lib_src_resource_dir.."/**.h",
+            phx_lib_src_resource_dir.."/**.cpp",
+        }
+        
+        includedirs
+        {
+            phx_lib_src_directory,
+            phx_vendor_src_imgui_dir,
+            phx_lib_vendor_directory.."/spdlog/include",
+        }
+        
+        -- TODO: Do a better job at abtracting this away.
+        filter('platforms:'..clang_win64_d3d12)
+            defines { "PHX_RHI_D3D12" }
+            AddLibraryIncludes(DStorageLibrary)
+            AddLibraryIncludes(AgilityLibrary)
+    
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/d3d12',
+                phx_vendor_src_d3d12ma_dir,
+            }
+    
+        filter{}
+
+    project(project_phx_editor)
+        kind('StaticLib')
+        pchheader('PhxEditor/PhxEditor_pch.h')
+        pchsource(phx_lib_src_editor_lib_dir..'/PhxEditor_pch.cpp')
+            
+        files 
+        {
+            phx_lib_src_editor_lib_dir.."/**.h",
+            phx_lib_src_editor_lib_dir.."/**.cpp",
+        }
+        
+        includedirs
+        {
+            phx_lib_src_directory,
+            phx_lib_vendor_directory.."/spdlog/include",
+        }
 group ""
 
-group "Misc"
+group "Applications"
     project(project_sandbox)
         kind "WindowedApp"         -- Windows application (no console)
 
@@ -404,6 +593,7 @@ group "Misc"
             project_phx_core,
             project_phx_rhi,
             project_phx_renderer,
+            project_phx_resource,
             project_vendor_imgui,
         }
         
@@ -411,6 +601,7 @@ group "Misc"
             defines { "PHX_RHI_D3D12" }
 
             AddLibraryIncludes(AgilityLibrary)
+            AddLibraryIncludes(DStorageLibrary)
 
             LinkLibrary(DStorageLibrary)
             LinkLibrary(DxcLibrary)
@@ -444,6 +635,65 @@ group "Misc"
                 CopyFileCommand(path.getabsolute(AgilityLibrary.dlls[1]), '%{cfg.buildtarget.directory}/D3D12/'),
                 CopyFileCommand(path.getabsolute(AgilityLibrary.dlls[2]), '%{cfg.buildtarget.directory}/D3D12/'),
             }
+            
+    project(project_asset_packer)
+        kind "ConsoleApp"         -- Windows application (no console)
+        
+        defines { "YAML_CPP_STATIC_DEFINE" }
+
+        files 
+        {
+            "PhxAssetPacker/src/**.cpp",          -- Include all .cpp files in src/
+            "PhxAssetPacker/src/**.h",            -- Include all .h files in src/
+        }
+
+        AddLibraryIncludes(DStorageLibrary)
+        LinkLibrary(DStorageLibrary)
+        
+        includedirs 
+        {
+            phx_lib_src_directory,
+            phx_lib_vendor_directory.."/spdlog/include",
+            phx_lib_vendor_directory.."/cgltf",
+            phx_vendor_include_yaml_dir,
+        }
+
+        links
+        {
+            project_phx_core,
+            project_phx_rhi,
+            project_phx_renderer,
+            project_phx_resource,
+            project_vendor_imgui,
+            project_vendor_yaml,
+        }
+        
+        postbuildcommands
+        {
+            CopyFileCommand(path.getabsolute(DStorageLibrary.dlls[1]), '%{cfg.buildtarget.directory}'),
+            CopyFileCommand(path.getabsolute(DStorageLibrary.dlls[2]), '%{cfg.buildtarget.directory}'),
+        }
+        
+        -- TODO: Do a better job at abtracting this away.
+        filter('platforms:'..clang_win64_d3d12)
+            defines { "PHX_RHI_D3D12" }
+            AddLibraryIncludes(AgilityLibrary)
+    
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/d3d12',
+                phx_vendor_src_d3d12ma_dir,
+            }
+    
+            AddLibraryIncludes(DirectXTexLibrary)
+            libdirs(DirectXTexLibrary.libDirs)
+            filter { 'configurations:Debug' }
+                links(DirectXTexLibrary.libNames[2])
+    
+            filter { 'configurations:Profiling or Final' }
+                links(DirectXTexLibrary.libNames[1])
+        filter{}
+
 group ""
 
 group '.Solution Generation'

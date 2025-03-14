@@ -1,7 +1,10 @@
 #include "PhxCore_pch.h"
-#include "PhxCore/ThreadPool.h"
 
+#include "PhxCore/ThreadPool.h"
+#include "PhxCore/EnumUtils.h"
 #include "PhxCore/RingBuffer.h"
+#include "PhxCore/SystemTime.h"
+
 #include <thread>
 #include <algorithm>
 #include <condition_variable>
@@ -10,8 +13,8 @@
 #include <Windows.h>
 #include <sstream>
 #include <assert.h>
-
 #endif
+
 using namespace phx;
 
 namespace
@@ -30,16 +33,34 @@ namespace
 
 	using JobQueue = ThreadSafeRingBuffer<Job, 256>;
 
-	uint32_t m_numThreads = 0;
-	std::vector<std::thread> m_workerThreads;
-	std::unique_ptr<JobQueue[]> m_jobQueuePerThread;
-	std::condition_variable m_wakeCondition;
-	std::mutex m_wakeMutex;
+	struct ThreadPoolContext
+	{
+		uint32_t NumThreads = 0;
+		std::vector<std::thread> WorkerThreads;
+		std::unique_ptr<JobQueue[]> JobQueuePerThread;
+		std::condition_variable WakeCondition;
+		std::mutex WakeMutex;
+		std::atomic_uint32_t NextQueue = 0;
+
+		void DoWork(size_t threadId)
+		{
+			Job job;
+			for (size_t i = 0; i < NumThreads; i++)
+			{
+				JobQueue& jobQueue = JobQueuePerThread[threadId % NumThreads];
+				while (jobQueue.Pop(job))
+				{
+					job.Execute();
+				}
+				threadId++;
+			}
+		}
+	};
+	
+	thread_local phx::EnumArray<ThreadPool::Barrier, ThreadPool::Type> m_threadBarrier;
 	std::atomic_bool m_alive = false;
-	std::atomic_uint32_t m_nextQueue =  0 ;
-	
-	thread_local ThreadPool::Barrier m_threadBarrier;
-	
+	phx::EnumArray<ThreadPoolContext, ThreadPool::Type> m_threadPools;
+
 	// use R
 	struct Shutdowner
 	{
@@ -48,60 +69,92 @@ namespace
 			ThreadPool::Finalize();
 		}
 	} m_shutdowner;
-
-
-	// Ran per thread - steals jobs.
-	void ThreadDoWork(size_t threadId)
-	{
-		Job job;
-		for (size_t i = 0; i < m_numThreads; i++)
-		{
-			JobQueue& jobQueue = m_jobQueuePerThread[threadId % m_numThreads];
-			while (jobQueue.Pop(job))
-			{
-				job.Execute();
-			}
-			threadId++;
-		}
-	}
+	
 }
 
 void ThreadPool::Initialize()
 {
-	const uint32_t numCores = (uint32_t)GetNumCores() - 1; // -1 for main thread.
-	m_numThreads = std::max(1u, numCores);
+	const uint32_t numCores = (uint32_t)GetNumCores();
+	m_alive.store(true);
 
-	m_jobQueuePerThread.reset(new JobQueue[m_numThreads]);
-	for (uint32_t threadID = 0; threadID < m_numThreads; threadID++)
+	CpuTimer timer;
+	for (size_t i = 0; i < m_threadPools.size(); i++)
 	{
-		std::thread& worker = m_workerThreads.emplace_back([threadID] {
-			while(m_alive)
-			{
-				ThreadDoWork(threadID);
-				
-				std::unique_lock<std::mutex> lock(m_wakeMutex);
-				m_wakeCondition.wait(lock);
-			}
-		});
+		Type type = static_cast<Type>(i);
+		ThreadPoolContext& resource = m_threadPools[i];
 
-		// TODO:
+		switch (type)
+		{
+		case ThreadPool::Type::High:
+			resource.NumThreads = numCores - 1; // -1 for main thread;
+			break;
+		case ThreadPool::Type::Streaming:
+			resource.NumThreads = 1;
+			break;
+		default:
+			PHX_ASSERT(false, "Unsupported type hit");
+			break;
+		}
+
+		resource.NumThreads = std::max(1u, std::min(resource.NumThreads, numCores));
+		resource.JobQueuePerThread.reset(new JobQueue[resource.NumThreads]);
+		resource.WorkerThreads.reserve(static_cast<size_t>(resource.NumThreads));
+
+		for (uint32_t threadID = 0; threadID < resource.NumThreads; threadID++)
+		{
+			std::thread& worker = resource.WorkerThreads.emplace_back([threadID, &resource] {
+				while (m_alive)
+				{
+					resource.DoWork(threadID);
+
+					std::unique_lock<std::mutex> lock(resource.WakeMutex);
+					resource.WakeCondition.wait(lock);
+				}
+			});
+			
 #ifdef _WIN32
-		HANDLE handle = (HANDLE)worker.native_handle();
-		DWORD_PTR affinityMask = 1ull << threadID;
-		DWORD_PTR affinityResult = SetThreadAffinityMask(handle, affinityMask);
-		assert(affinityResult > 0);
+			HANDLE handle = (HANDLE)worker.native_handle();
+			int core = threadID + 1; // put threads on increasing cores starting from 2nd
+			if (type== Type::Streaming)
+			{
+				// Put streaming to last core:
+				core = numCores - 1 - threadID;
+			}
 
-		BOOL priorityResult = SetThreadPriority(handle, THREAD_PRIORITY_NORMAL);
-		assert(priorityResult != 0);
+			DWORD_PTR affinityMask = 1ull << core;
+			DWORD_PTR affinityResult = SetThreadAffinityMask(handle, affinityMask);
+			assert(affinityResult > 0);
 
-		std::wstringstream wss;
-		wss << "[PHX] ThreadPool_" << threadID;
-		HRESULT hr = SetThreadDescription(handle, wss.str().c_str());
-		assert(SUCCEEDED(hr));
+			if (type == Type::High)
+			{
+				BOOL priorityResult = SetThreadPriority(handle, THREAD_PRIORITY_NORMAL);
+				assert(priorityResult != 0);
+
+				std::wstringstream wss;
+				wss << "[PHX] TP_High_" << threadID;
+				HRESULT hr = SetThreadDescription(handle, wss.str().c_str());
+				assert(SUCCEEDED(hr));
+			}
+			else if (type == Type::High)
+			{
+				BOOL priorityResult = SetThreadPriority(handle, THREAD_PRIORITY_LOWEST);
+				assert(priorityResult != 0);
+
+				std::wstringstream wss;
+				wss << "[PHX] TP_Streaming_" << threadID;
+				HRESULT hr = SetThreadDescription(handle, wss.str().c_str());
+				assert(SUCCEEDED(hr));
+			}
 #endif
+		}
 	}
 
-	m_alive.store(true);
+	CpuTimeStep duration = timer.Elapsed();
+	PHX_CORE_INFO("[ThreadPool] Initialized with {0} cores in {1} ms\n\tHigh priority threads: {2}\n\tStreaming threads: {3}",
+		numCores,
+		duration.GetMilliseconds(),
+		m_threadPools[Type::High].NumThreads,
+		m_threadPools[Type::Streaming].NumThreads);
 }
 
 void ThreadPool::Finalize()
@@ -116,25 +169,33 @@ void ThreadPool::Finalize()
 	{
 		while(wakeLoop)
 		{
-			m_wakeCondition.notify_all();
+			for (auto& res : m_threadPools)
+				res.WakeCondition.notify_all();
 		}
 	});
 
-	for (auto& thread : m_workerThreads)
-		thread.join();
+	for (auto& res : m_threadPools)
+	{
+		for (auto& thread : res.WorkerThreads)
+			thread.join();
+	}
 
 	wakeLoop = false;
 	waker.join();
-
-	m_workerThreads.clear();
-	m_numThreads = 0;
-	m_jobQueuePerThread.reset();
-	m_nextQueue = 0;
+	
+	for (auto& res : m_threadPools)
+	{
+		res.WorkerThreads.clear();
+		res.NumThreads = 0;
+		res.JobQueuePerThread.reset();
+		res.NextQueue = 0;
+	}
 }
 
-void ThreadPool::SubmitTask(std::function<void()> const& task)
+void ThreadPool::SubmitTask(std::function<void()> const& task, Type type)
 {
-	if (m_numThreads == 1)
+	ThreadPoolContext& ctx = m_threadPools[type];
+	if (ctx.NumThreads < 1)
 	{
 		task();
 		return;
@@ -142,13 +203,13 @@ void ThreadPool::SubmitTask(std::function<void()> const& task)
 
 	Job job = {
 		.Task = task,
-		.KickoffThreadBarrier = &m_threadBarrier
+		.KickoffThreadBarrier = &m_threadBarrier[type]
 	};
 
-	m_threadBarrier.Add();
-
-	m_jobQueuePerThread[m_nextQueue.fetch_add(1) % m_numThreads].Push(job);
-	m_wakeCondition.notify_one();
+	job.KickoffThreadBarrier->Add();
+	
+	ctx.JobQueuePerThread[ctx.NextQueue.fetch_add(1) % ctx.NumThreads].Push(job);
+	ctx.WakeCondition.notify_one();
 }
 
 #if false
@@ -190,33 +251,36 @@ void ThreadPool::Dispatch(uint32_t jobCount, uint32_t groupSize, std::function<v
 }
 #endif
 
-bool ThreadPool::IsBusy()
+bool ThreadPool::IsBusy(Type type)
 {
-	return m_threadBarrier.IsNotCleared();
+	return m_threadBarrier[type].IsNotCleared();
 }
 
-void ThreadPool::Wait()
+void ThreadPool::Wait(Type type)
 {
-	if (IsBusy())
+	if (IsBusy(type))
 	{
-		m_wakeCondition.notify_all();
-		ThreadDoWork(m_nextQueue.fetch_add(1) % m_numThreads);
+		ThreadPoolContext& ctx = m_threadPools[type];
+		ctx.WakeCondition.notify_all();
+		ctx.DoWork(ctx.NextQueue.fetch_add(1) % ctx.NumThreads);
 
-		while (IsBusy())
+		while (IsBusy(type))
 		{
 			std::this_thread::yield();
 		}
 	}
 }
 
-void ThreadPool::Wait(Barrier& barrier)
+void ThreadPool::Wait(Barrier& barrier, Type type)
 {
-	barrier.Add();
+	// Not sure I want to add here.
+	// barrier.Add();
 	
 	while (barrier.IsNotCleared())
 	{
-		m_wakeCondition.notify_all();
-		ThreadDoWork(m_nextQueue.fetch_add(1) % m_numThreads);
+		ThreadPoolContext& ctx = m_threadPools[type];
+		ctx.WakeCondition.notify_all();
+		ctx.DoWork(ctx.NextQueue.fetch_add(1) % ctx.NumThreads);
 
 		while (barrier.IsNotCleared())
 		{
@@ -225,15 +289,16 @@ void ThreadPool::Wait(Barrier& barrier)
 	}
 }
 
-void ThreadPool::Signal(Barrier& barrier)
+void ThreadPool::Signal(Barrier& barrier, Type type)
 {
 	barrier.Signal();
-	m_wakeCondition.notify_one();
+	ThreadPoolContext& ctx = m_threadPools[type];
+	ctx.WakeCondition.notify_one();
 }
 
-uint32_t ThreadPool::GetThreadCount()
+uint32_t ThreadPool::GetThreadCount(Type type)
 {
-	return m_numThreads;
+	return m_threadPools[type].NumThreads;
 }
 
 uint32_t phx::ThreadPool::GetNumCores()

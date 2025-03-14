@@ -56,6 +56,7 @@ namespace phx::rhi::d3d12
 	Microsoft::WRL::ComPtr<ID3D12Device5> g_d3d12Device5 = nullptr;
 	bool g_isUnderGfxDebugger;
 	bool g_debugLayersEnabled = false;
+	D3D12_RESOURCE_HEAP_TIER g_resourceHeapTeir;
 
 	D3D12Adapter g_adapter;
 
@@ -259,6 +260,20 @@ namespace
 		if (SUCCEEDED(DXGIGetDebugInterface1(0, kPixUUID, &pix)))
 		{
 			g_isUnderGfxDebugger |= !!pix;
+		}
+
+		// TODO: Make use of this feature below.
+		CD3DX12FeatureSupport features;
+		PHX_ASSERT(
+			SUCCEEDED(features.Init(g_d3d12Device.Get())),
+			"Unexpected Failure");
+
+
+		g_resourceHeapTeir = features.ResourceHeapTier();
+
+		if (g_resourceHeapTeir >= D3D12_RESOURCE_HEAP_TIER_2)
+		{
+			g_capabilities |= DeviceCapability::AliasingGeneric;
 		}
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS featureOpptions = {};
@@ -633,6 +648,17 @@ namespace phx::rhi
 		SAFE_DELETE(g_gpuDescHeap_Sampler)
 	}
 
+
+	Budget GetBudget()
+	{
+		D3D12MA::Budget localBudget = {};
+		g_d3d12MemAllocator->GetBudget(&localBudget, nullptr);
+
+		return {
+			.BudgetBytes = localBudget.BudgetBytes,
+			.UsageBytes = localBudget.UsageBytes
+		};
+	}
 
 	void WaitForIdle()
 	{

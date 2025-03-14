@@ -30,7 +30,7 @@ namespace phx
 		uint16_t m_generation;
 
 		template<class THandle, class THotData, class TColdData>
-		friend class ResourcePool;
+		friend class PagedPool;
 	};
 	
 	static_assert(sizeof(Handle<uint16_t>) == sizeof(uint32_t));

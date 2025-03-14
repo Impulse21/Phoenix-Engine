@@ -6,6 +6,7 @@ LibAgility              = prebuild_direcotry..'/agility_1.614.1'
 LibDxc                  = prebuild_direcotry..'/dxc_2024_07_31_clang_cl'
 LibDStorage             = prebuild_direcotry..'/directstorage_1.2.2'
 LibPix                  = prebuild_direcotry..'/winpix_1.0.240308001'
+LibDirectXTex			= prebuild_direcotry..'/directx_tex_oct2024'
 
 AgilityLibrary =
 {
@@ -50,6 +51,13 @@ PixLibrary =
 	{
 		LibPix..'/bin/x64/WinPixEventRuntime.dll',
 	}
+}
+
+DirectXTexLibrary =
+{
+	includeDirs = LibDirectXTex..'/include',
+	libDirs     = LibDirectXTex..'/lib/x64',
+    libNames    = { "DirectXTex", "DirectXTex-d"}
 }
 
 function AddLibraryIncludes(library)
