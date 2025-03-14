@@ -10,6 +10,7 @@ phx_lib_src_rhi_dir         = phx_lib_src_directory.."/PhxRhi"
 phx_lib_src_renderer_dir    = phx_lib_src_directory.."/PhxRenderer"
 phx_lib_src_resource_dir    = phx_lib_src_directory.."/PhxResource"
 phx_lib_src_editor_lib_dir  = phx_lib_src_directory.."/PhxEditor"
+phx_lib_src_scene_dir       = phx_lib_src_directory.."/PhxScene"
 
 phx_vendor_src_imgui_dir    = phx_lib_vendor_directory.."/ImGui"
 phx_vendor_src_d3d12ma_dir  = phx_lib_vendor_directory.."/D3D12MA"
@@ -41,6 +42,7 @@ project_phx_renderer    = 'PhxRenderer'
 project_phx_rhi         = 'PhxRhi'
 project_phx_resource    = 'PhxResource'
 project_phx_editor      = 'PhxEditor'
+project_phx_scene       = 'PhxScene'
 
 project_sandbox         = 'Sandbox'
 project_asset_packer    = 'PhxAssetPacker'
@@ -568,6 +570,24 @@ group "PhxLibs"
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
         }
+
+    project(project_phx_scene)
+        kind('StaticLib')
+        pchheader('PhxCore/PhxScene_pch.h')
+        pchsource(phx_lib_src_scene_dir..'/PhxScene_pch.cpp')
+        
+        files
+        {
+            phx_lib_src_scene_dir.."/**.h",
+            phx_lib_src_scene_dir.."/**.cpp",
+        }
+
+        includedirs
+        {
+            phx_lib_src_directory,
+            phx_lib_vendor_directory.."/spdlog/include",
+        }
+
 group ""
 
 group "Applications"
