@@ -1,4 +1,4 @@
-#include "PhxScene_pch.h"
+#include "PhxWorld_pch.h"
 
 #include "Entity.h"
 
@@ -13,14 +13,14 @@ constexpr uint64_t kVertexBufferAlignment = 16ull;
 
 
 // #define ENABLE_ALIASED_BUFFER
-Scene::Scene() 
+World::World() 
 
-Entity Scene::CreateEntity(std::string const& name)
+Entity World::CreateEntity(std::string const& name)
 {
 	return this->CreateEntity(Core::UUID(), name);
 }
 
-Entity Scene::CreateEntity(Core::UUID uuid, std::string const& name)
+Entity World::CreateEntity(Core::UUID uuid, std::string const& name)
 {
 	Entity entity = { this->m_registry.create(), this };
 	entity.AddComponent<IDComponent>(uuid);
@@ -30,24 +30,24 @@ Entity Scene::CreateEntity(Core::UUID uuid, std::string const& name)
 	return entity;
 }
 
-void Scene::DestroyEntity(Entity entity)
+void World::DestroyEntity(Entity entity)
 {
 	this->DetachChildren(entity);
 	this->m_registry.destroy(entity);
 }
 
-void Scene::AttachToParent(Entity entity, Entity parent, bool childInLocalSpace)
+void World::AttachToParent(Entity entity, Entity parent, bool childInLocalSpace)
 {
 	assert(entity != parent);
 	entity.AttachToParent(parent, childInLocalSpace);
 }
 
-void Scene::DetachFromParent(Entity entity)
+void World::DetachFromParent(Entity entity)
 {
 	entity.DetachFromParent();
 }
 
-void Scene::DetachChildren(Entity parent)
+void World::DetachChildren(Entity parent)
 {
 	parent.DetachChildren();
 }

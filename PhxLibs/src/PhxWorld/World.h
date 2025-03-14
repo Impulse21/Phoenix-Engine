@@ -8,12 +8,12 @@
 namespace phx
 {   
 	class Entity;
-	class Scene
+	class World
 	{
 	public:
-		Scene() = default;
+		World() = default;
 
-		~Scene()
+		~World()
 		{
 			this->m_registry.clear();
 		};
