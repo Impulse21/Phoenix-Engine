@@ -1,10 +1,10 @@
 #pragma once
 
-#include <PhxEngine/Scene/Components.h>
-#include <entt.hpp>
+#include <entt\entt.hpp>
 
 namespace phx
 {
+	class Scene;
 	class Entity
 	{
 	public:
@@ -59,7 +59,7 @@ namespace phx
 		operator entt::entity() const { return this->m_entityHandle; }
 		operator uint32_t() const { return (uint32_t)this->m_entityHandle; }
 
-		Core::UUID GetUUID() { return this->GetComponent<IDComponent>().ID; }
+		UUID GetUUID() { return this->GetComponent<IDComponent>().ID; }
 		const std::string& GetName() { return this->GetComponent<NameComponent>().Name; }
 
 		bool operator==(const Entity& other) const
