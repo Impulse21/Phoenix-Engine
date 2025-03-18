@@ -9,20 +9,14 @@
 using namespace phx;
 using namespace DirectX;
 
-constexpr uint64_t kVertexBufferAlignment = 16ull;
-
-
-// #define ENABLE_ALIASED_BUFFER
-World::World() 
-
 Entity World::CreateEntity(std::string const& name)
 {
-	return this->CreateEntity(Core::UUID(), name);
+	return CreateEntity(UUID(), name);
 }
 
-Entity World::CreateEntity(Core::UUID uuid, std::string const& name)
+Entity World::CreateEntity(UUID uuid, std::string const& name)
 {
-	Entity entity = { this->m_registry.create(), this };
+	Entity entity = { m_registry.create(), this };
 	entity.AddComponent<IDComponent>(uuid);
 	entity.AddComponent<TransformComponent>();
 	auto& nameComp = entity.AddComponent<NameComponent>();
@@ -32,8 +26,8 @@ Entity World::CreateEntity(Core::UUID uuid, std::string const& name)
 
 void World::DestroyEntity(Entity entity)
 {
-	this->DetachChildren(entity);
-	this->m_registry.destroy(entity);
+	DetachChildren(entity);
+	m_registry.destroy(entity);
 }
 
 void World::AttachToParent(Entity entity, Entity parent, bool childInLocalSpace)

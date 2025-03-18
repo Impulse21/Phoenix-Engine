@@ -1,70 +1,71 @@
 #pragma once
 
-#include <entt\entt.hpp>
+#include <PhxCore/UUID.h>
+#include <entt/entt.hpp>
+
+#include "World.h"
+#include "WorldComponents.h"
 
 namespace phx
 {
-	class Scene;
 	class Entity
 	{
 	public:
 		Entity() = default;
-		Entity(entt::entity handle, Scene* scene);
+		Entity(entt::entity handle, World* scene);
 		Entity(Entity const& other) = default;
 
 		// Wrappers
 		template<typename T, typename... Args>
 		T& AddComponent(Args&&... args)
 		{
-			assert(!this->HasComponent<T>());
-			T& component = this->m_scene->m_registry.emplace<T>(this->m_entityHandle, std::forward<Args>(args)...);
+			assert(!HasComponent<T>());
+			T& component = m_world->GetRegistry().emplace<T>(m_entityHandle, std::forward<Args>(args)...);
 			return component;
 		}
 
 		template<typename T, typename... Args>
 		T& AddOrReplaceComponent(Args&&... args)
 		{
-			T& component = this->m_scene->m_registry.emplace_or_replace<T>(this->m_entityHandle, std::forward<Args>(args)...);
+			T& component = m_world->GetRegistry().emplace_or_replace<T>(m_entityHandle, std::forward<Args>(args)...);
 			return component;
 		}
 
 		template<typename T>
 		T& GetComponent()
 		{
-			assert(this->HasComponent<T>());
-			return this->m_scene->m_registry.get<T>(this->m_entityHandle);
+			assert(HasComponent<T>());
+			return m_world->GetRegistry().get<T>(m_entityHandle);
 		}
 
 		template<typename T>
 		bool HasComponent()
 		{
-			return this->m_scene->m_registry.all_of<T>(this->m_entityHandle);
+			return m_world->GetRegistry().all_of<T>(m_entityHandle);
 		}
 
 		template<typename T>
 		void RemoveComponent()
 		{
-			assert(this->HasComponent<T>());
+			assert(HasComponent<T>());
 
-			this->m_scene->m_registry.remove<T>(this->m_entityHandle);
+			m_world->GetRegistry().remove<T>(m_entityHandle);
 		}
 
-		// Get Children
-		std::vector<Entity> GetChildren();
 		void AttachToParent(Entity parent, bool childInLocalSpace = false);
 		void DetachFromParent();
 		void DetachChildren();
 
-		operator bool() const { return this->m_entityHandle != entt::null; }
-		operator entt::entity() const { return this->m_entityHandle; }
-		operator uint32_t() const { return (uint32_t)this->m_entityHandle; }
+		operator bool() const { return m_entityHandle != entt::null; }
+		operator entt::entity() const { return m_entityHandle; }
+		operator uint32_t() const { return (uint32_t)m_entityHandle; }
 
-		UUID GetUUID() { return this->GetComponent<IDComponent>().ID; }
-		const std::string& GetName() { return this->GetComponent<NameComponent>().Name; }
+		UUID GetUUID() { return GetComponent<IDComponent>().ID; }
+		const std::string& GetName() { return GetComponent<NameComponent>().Name; }
 
 		bool operator==(const Entity& other) const
 		{
-			return this->m_entityHandle == other.m_entityHandle && this->m_scene == other.m_scene;
+			return m_entityHandle == other.m_entityHandle && m_world == other.m_world;
 		}
 
 		bool operator!=(const Entity& other) const
@@ -74,6 +75,6 @@ namespace phx
 
 	private:
 		entt::entity m_entityHandle = entt::null;
-		Scene* m_scene;
+		World* m_world;
 	};
 }

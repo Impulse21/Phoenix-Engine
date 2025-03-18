@@ -3,7 +3,7 @@
 #include <PhxCore/UUID.h>
 
 #include <sstream>
-#include <entt.hpp>
+#include <entt/entt.hpp>
 
 namespace phx
 {   

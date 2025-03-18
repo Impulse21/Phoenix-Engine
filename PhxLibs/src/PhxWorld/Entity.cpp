@@ -4,11 +4,11 @@
 #include <DirectXMath.h>
 
 using namespace DirectX;
-using namespace phx
+using namespace phx;
 
-Entity::Entity(entt::entity handle, Scene* scene)
+Entity::Entity(entt::entity handle, World* scene)
 	: m_entityHandle(handle)
-	, m_scene(scene)
+	, m_world(scene)
 {
 }
 
@@ -17,18 +17,18 @@ void Entity::AttachToParent(Entity parent, bool childInLocalSpace)
 	assert(*this != parent);
 
 	// Detatch so we can ensure that the child comes after the parent in the compoent Pool
-	if (this->HasComponent<HierarchyComponent>())
+	if (HasComponent<HierarchyComponent>())
 	{
-		this->DetachFromParent();
+		DetachFromParent();
 	}
 
-	auto& comp = this->AddComponent<HierarchyComponent>();
+	auto& comp = AddComponent<HierarchyComponent>();
 	comp.ParentID = (entt::entity)parent;
 
 	assert(parent.HasComponent<TransformComponent>());
-	assert(this->HasComponent<TransformComponent>());
+	assert(HasComponent<TransformComponent>());
 
-	auto& transformChild = this->GetComponent<TransformComponent>();
+	auto& transformChild = GetComponent<TransformComponent>();
 	auto& transformParent = parent.GetComponent<TransformComponent>();
 	if (!childInLocalSpace)
 	{
@@ -42,27 +42,27 @@ void Entity::AttachToParent(Entity parent, bool childInLocalSpace)
 
 void Entity::DetachFromParent()
 {
-	if (!this->HasComponent<HierarchyComponent>())
+	if (!HasComponent<HierarchyComponent>())
 	{
 		return;
 	}
 
-	assert(this->HasComponent<TransformComponent>());
-	auto& transform = this->GetComponent<TransformComponent>();
+	assert(HasComponent<TransformComponent>());
+	auto& transform = GetComponent<TransformComponent>();
 	transform.ApplyTransform();
 
-	this->RemoveComponent<HierarchyComponent>();
+	RemoveComponent<HierarchyComponent>();
 }
 
 void Entity::DetachChildren()
 {
-	auto view = this->m_scene->GetAllEntitiesWith<HierarchyComponent>();
+	auto view = m_world->GetAllEntitiesWith<HierarchyComponent>();
 	for (auto entity : view)
 	{
 		auto hComp = view.get<HierarchyComponent>(entity);
-		if (hComp.ParentID == this->m_entityHandle)
+		if (hComp.ParentID == m_entityHandle)
 		{
-			this->m_scene->GetRegistry().remove<HierarchyComponent>(entity);
+			m_world->GetRegistry().remove<HierarchyComponent>(entity);
 		}
 	}
 }

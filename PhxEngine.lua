@@ -573,7 +573,7 @@ group "PhxLibs"
 
     project(project_phx_world)
         kind('StaticLib')
-        pchheader('PhxCore/PhxWorld_pch.h')
+        pchheader('PhxWorld/PhxWorld_pch.h')
         pchsource(phx_lib_src_world_dir..'/PhxWorld_pch.cpp')
         
         files
