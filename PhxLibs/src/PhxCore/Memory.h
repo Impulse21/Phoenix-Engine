@@ -4,6 +4,7 @@
 #include <mutex>
 #include <vector>
 #include "PhxCore/Base.h"
+#include "PhxCore/Span.h"
 
 namespace phx
 {
@@ -52,6 +53,15 @@ namespace phx
 			static_assert(std::is_trivially_destructible<T>::value, "Doesn't support Deconstrutable Types");
 
 			return static_cast<T*>(Allocate(sizeof(T) * count, alignof(T)));
+		}
+
+		template<typename T>
+		[[nodiscard]] SpanMutable<T> AllocSpan(size_t count)
+		{
+			static_assert(std::is_trivially_destructible<T>::value, "Doesn't support Deconstrutable Types");
+
+			T* ptr = static_cast<T*>(Allocate(sizeof(T) * count, alignof(T)));
+			return SpanMutable<T>(ptr, count);
 		}
 
 		void* Allocate(size_t size, size_t alignment);

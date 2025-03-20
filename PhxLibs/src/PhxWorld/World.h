@@ -45,6 +45,5 @@ namespace phx
 
 	private:
 		entt::registry m_registry;
-
 	};
 }

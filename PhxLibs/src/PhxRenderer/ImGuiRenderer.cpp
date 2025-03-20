@@ -1,11 +1,13 @@
 #include "PhxRenderer/PhxRenderer_pch.h"
 
-#include "PhxRenderer/ImGuiRenderer.h"
-
 #include <DirectXMath.h>
 
-#include "PhxRhi/RHICore.h"
+#include <PhxCore/Memory.h>
+
+#include <PhxRhi/RHICore.h>
+
 #include <PhxRenderer/shaders/PrecompiledShaders.h>
+#include "PhxRenderer/ImGuiRenderer.h"
 
 #include "ImGui/imgui_impl_win32.h"
 #include "PhxCore/Span.h"
@@ -22,6 +24,31 @@ namespace
         PushConstant,           // cbuffer vertexBuffer : register(b0)
         BindlessResources,
         NumRootParameters
+    };
+
+    struct CachedRenderData
+    {
+        DirectX::XMFLOAT4X4 Mvp;
+        Viewport ViewportData;
+
+        struct DrawList
+        {
+            SpanMutable<ImDrawVert> VertData;
+            SpanMutable<ImDrawIdx> IndexData;
+            Rect ScissorRect;
+            DescriptorIndex TextureIndex;
+
+            struct Cmd
+            {
+                Rect ScissorRect;
+                DescriptorIndex TextureIndex;
+                uint32_t IndexCount;
+            };
+            SpanMutable<Cmd> CmdBuffer;
+
+        };
+
+        SpanMutable<DrawList> DrawLists;
     };
 }
 
@@ -116,6 +143,8 @@ void ImGuiRenderSystem::Initialize(IFileSystem* /*fs*/, void* windowHandle, bool
             },
             .RenderPassInfo = {.RTFormats { rhi::Format::UNKNOWN }}
         });
+
+    m_indexFormat = sizeof(ImDrawIdx) == 2 ? Format::R16_UINT : Format::R32_UINT;
 }
 
 void ImGuiRenderSystem::Finialize()
@@ -162,6 +191,156 @@ void ImGuiRenderSystem::BeginFrame()
     ImGui::SetCurrentContext(m_imguiContext);
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
+}
+
+
+void* ImGuiRenderSystem::OnPreRender()
+{
+    ImGui::SetCurrentContext(m_imguiContext);
+    ImGui::Render();
+
+    ImDrawData* drawData = ImGui::GetDrawData();
+    // Check if there is anything to render.
+    if (!drawData || drawData->CmdListsCount == 0)
+    {
+        return nullptr;
+    }
+
+    ImVec2 displayPos = drawData->DisplayPos;
+
+    Memory::FrameAllocator& allocator = Memory::GetFrameAllocator();
+    auto cachedData = allocator.Alloc<CachedRenderData>();
+
+    // Set root arguments.
+    //    DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixOrthographicRH( drawData->DisplaySize.x, drawData->DisplaySize.y, 0.0f, 1.0f );
+    float L = drawData->DisplayPos.x;
+    float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
+    float T = drawData->DisplayPos.y;
+    float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
+    static const float mvp[4][4] =
+    {
+        { 2.0f / (R - L),   0.0f,           0.0f,       0.0f },
+        { 0.0f,         2.0f / (T - B),     0.0f,       0.0f },
+        { 0.0f,         0.0f,           0.5f,       0.0f },
+        { (R + L) / (L - R),  (T + B) / (B - T),    0.5f,       1.0f },
+    };
+
+    cachedData->Mvp = DirectX::XMFLOAT4X4(&mvp[0][0]);
+    cachedData->ViewportData = Viewport(drawData->DisplaySize.x, drawData->DisplaySize.y);
+
+    cachedData->DrawLists = allocator.AllocSpan<CachedRenderData::DrawList>(drawData->CmdListsCount);
+
+    for (int i = 0; i < drawData->CmdListsCount; ++i)
+    {
+        const ImDrawList* imguiDrawList = drawData->CmdLists[i];
+        CachedRenderData::DrawList& drawList = cachedData->DrawLists[i];
+
+        drawList.VertData = allocator.AllocSpan<ImDrawVert>(imguiDrawList->VtxBuffer.size());
+        std::memcpy(drawList.VertData.data(), imguiDrawList->VtxBuffer.Data, imguiDrawList->VtxBuffer.size());
+
+        drawList.IndexData = allocator.AllocSpan<ImDrawIdx>(imguiDrawList->IdxBuffer.size());
+        std::memcpy(drawList.IndexData.data(), imguiDrawList->IdxBuffer.Data, imguiDrawList->IdxBuffer.size());
+
+        drawList.CmdBuffer = allocator.AllocSpan<CachedRenderData::DrawList::Cmd>(imguiDrawList->CmdBuffer.size());
+
+        for (int j = 0; j < imguiDrawList->CmdBuffer.size(); ++j)
+        {
+            const ImDrawCmd& imguiDrawCmd = imguiDrawList->CmdBuffer[j];
+            CachedRenderData::DrawList::Cmd& drawCmd = drawList.CmdBuffer[j];
+            PHX_ASSERT(!imguiDrawList, "Not currently supported");
+#if false
+            if (drawCmd.UserCallback)
+            {
+                drawCmd.UserCallback(drawList, &drawCmd);
+            }
+            else
+#endif
+            {
+                const ImVec4& clipRect = imguiDrawCmd.ClipRect;
+                Rect& scissorRect = drawCmd.ScissorRect;
+
+                // TODO: Validate
+                scissorRect.MinX = static_cast<int>(clipRect.x - displayPos.x);
+                scissorRect.MinY = static_cast<int>(clipRect.y - displayPos.y);
+                scissorRect.MaxX = static_cast<int>(clipRect.z - displayPos.x);
+                scissorRect.MaxY = static_cast<int>(clipRect.w - displayPos.y);
+
+                drawCmd.TextureIndex = static_cast<DescriptorIndex>(imguiDrawCmd.GetTexID());
+                drawCmd.IndexCount = imguiDrawCmd.ElemCount;
+            }
+        }
+
+    }
+
+    ImGui::EndFrame();
+    return cachedData;
+}
+
+void ImGuiRenderSystem::OnRender(rhi::CommandCtx* ctx, void* cachedData)
+{
+    if (!cachedData)
+        return;
+
+    auto imguiCachedData = static_cast<CachedRenderData*>(cachedData);
+    if (imguiCachedData->DrawLists.Size() == 0)
+        return;
+
+    ctx->SetPipelineState(m_pipeline);
+
+    // TODO: I am here
+	struct ImguiDrawInfo
+	{
+		DirectX::XMFLOAT4X4 Mvp;
+		uint32_t TextureIndex;
+	} push = {};
+	push.Mvp = DirectX::XMFLOAT4X4(&mvp[0][0]);
+
+	Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
+	ctx->SetViewports({ v });
+
+	const Format indexFormat = sizeof(ImDrawIdx) == 2 ? Format::R16_UINT : Format::R32_UINT;
+
+	for (int i = 0; i < drawData->CmdListsCount; ++i)
+	{
+		const ImDrawList* drawList = drawData->CmdLists[i];
+		ctx->SetDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data);
+		ctx->SetDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data);
+
+		int indexOffset = 0;
+		for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
+		{
+			const ImDrawCmd& drawCmd = drawList->CmdBuffer[j];
+
+			if (drawCmd.UserCallback)
+			{
+				drawCmd.UserCallback(drawList, &drawCmd);
+			}
+			else
+			{
+				ImVec4 clipRect = drawCmd.ClipRect;
+				Rect scissorRect;
+				// TODO: Validate
+				scissorRect.MinX = static_cast<int>(clipRect.x - displayPos.x);
+				scissorRect.MinY = static_cast<int>(clipRect.y - displayPos.y);
+				scissorRect.MaxX = static_cast<int>(clipRect.z - displayPos.x);
+				scissorRect.MaxY = static_cast<int>(clipRect.w - displayPos.y);
+
+				if (scissorRect.MaxX - scissorRect.MinX > 0 &&
+					scissorRect.MaxY - scissorRect.MinY > 0)
+				{
+					auto desciptorIndex = static_cast<DescriptorIndex>(drawCmd.GetTexID());
+					push.TextureIndex = desciptorIndex;
+					ctx->SetPushConstant(RootParameters::PushConstant, sizeof(ImguiDrawInfo), &push);
+					ctx->SetScissors({ &scissorRect, 1 });
+					ctx->DrawIndexed(drawCmd.ElemCount, 1, indexOffset, 0, 0);
+				}
+			}
+			indexOffset += drawCmd.ElemCount;
+		}
+	}
+
+	// cmd->TransitionBarriers(Span<GpuBarrier>(postBarriers.data(), postBarriers.size()));
+	ImGui::EndFrame();
 }
 
 void ImGuiRenderSystem::Render(CommandCtx* ctx)

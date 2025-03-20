@@ -4,7 +4,9 @@
 #include <PhxCore/UUID.h>
 #include <PhxCore/Math.h>
 
-#include <entt\entt.hpp>
+#include <PhxResource/IResource.h>
+
+#include <entt/entt.hpp>
 
 #include <string>
 
@@ -158,5 +160,10 @@ namespace phx
 	struct HierarchyComponent
 	{
 		entt::entity ParentID = entt::null;
+	};
+
+	struct MeshRendererComponent
+	{
+		RefCountPtr<IResource> MeshResource;
 	};
 }

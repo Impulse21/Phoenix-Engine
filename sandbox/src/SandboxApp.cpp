@@ -12,6 +12,9 @@
 #include "PhxRenderer/MeshResourceHandler.h"
 #include "PhxResource/ResourceManger.h"
 
+#include <PhxWorld/World.h>
+#include <PhxWorld/Entity.h>
+
 #include <PhxCore/ThreadPool.h>
 
 #define TEST_TREAD_POOL 0
@@ -111,7 +114,10 @@ public:
 
 			ThreadPool::Wait(ThreadPool::Type::Streaming);
 
-			m_meshResource = phx::ResourceManger::Get("res:/NewSponza_Main_glTF_003/lionhead.phxmsh");
+			phx::Entity lionHeadEntity = m_world.CreateEntity("LionHead");
+
+			auto& renderComponent = lionHeadEntity.AddComponent<MeshRendererComponent>();
+			renderComponent.MeshResource = phx::ResourceManger::Get("res:/NewSponza_Main_glTF_003/lionhead.phxmsh");
 
 			m_loadingBarrier.Signal();
 			PHX_INFO("--->Decremented value {0}", m_loadingBarrier.Counter.load());
@@ -134,25 +140,28 @@ public:
 		{
 			uint32_t width, height;
 			GetDefaultWindowSize(width, height);
-			ImGui::GetForegroundDrawList()->AddText(ImVec2(width / 2, height / 2), IM_COL32(255, 255, 255, 255), "Loading");
-		}
-		else
-		{
-			phx::ResourceManger::DrawGui();
+			ImGui::GetForegroundDrawList()->AddText(ImVec2(width / 2, height / 2), IM_COL32(255, 255, 255, 255), "Registering Pak Files...");
+			return;
 		}
 
-		ImGui::Begin("Profiler");
-		rhi::Budget budget = rhi::GetBudget();
-		ImGui::Text("Pool Used: %llu bytes, Unused: %llu bytes", budget.UsageBytes, budget.BudgetBytes);
-		ImGui::ProgressBar(float(budget.UsageBytes) / float(budget.BudgetBytes));
-		ImGui::End();
+		// -- Pre-Render ---
+		ThreadPool::SubmitTask([this]() {
+			OnPreRender();
+		});
 
-		rhi::CommandCtx* ctx = rhi::BeginCommnadCtx();
-		ctx->RenderPassBegin();
-		m_imguiRenderer.Render(ctx);
-		ctx->RenderPassEnd();
+		ThreadPool::Wait();
 
-		phx::rhi::Present();
+		// -- Update ---
+		ThreadPool::SubmitTask([this]() {
+			OnUpdate();
+		});
+
+		// -- Render ---
+		ThreadPool::SubmitTask([this]() {
+			OnRender();
+		});
+
+		ThreadPool::Wait();
 	}
 
 	const char* GetName() const override { return this->m_desc.Name.c_str(); }
@@ -167,13 +176,44 @@ public:
 
 private:
 	inline static Sandbox* ms_instance = nullptr;
+	inline void DrawGui()
+	{
+		phx::ResourceManger::DrawGui();
 
+		ImGui::Begin("Profiler");
+		rhi::Budget budget = rhi::GetBudget();
+		ImGui::Text("Pool Used: %llu bytes, Unused: %llu bytes", budget.UsageBytes, budget.BudgetBytes);
+		ImGui::ProgressBar(float(budget.UsageBytes) / float(budget.BudgetBytes));
+		ImGui::End();
+	}
 	
+
+	inline void OnPreRender()
+	{
+		DrawGui();
+	}
+
+	inline void OnUpdate()
+	{
+
+	}
+
+	inline void OnRender()
+	{
+		rhi::CommandCtx* ctx = rhi::BeginCommnadCtx();
+		ctx->RenderPassBegin();
+		m_imguiRenderer.Render(ctx);
+		ctx->RenderPassEnd();
+
+		phx::rhi::Present();
+	}
+
 private:
 	ThreadPool::Barrier m_loadingBarrier;
 	std::unique_ptr<phx::IRootFileSystem> m_fs;
 	const phx::ApplicationDescriptor m_desc;
 	phx::gfx::ImGuiRenderSystem m_imguiRenderer;
+	phx::World m_world;
 
 	RefCountPtr<IResource> m_meshResource;
 	void* m_windowHandle;
