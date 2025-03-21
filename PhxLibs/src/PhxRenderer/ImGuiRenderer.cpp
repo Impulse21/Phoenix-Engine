@@ -44,7 +44,7 @@ namespace
                 DescriptorIndex TextureIndex;
                 uint32_t IndexCount;
             };
-            SpanMutable<Cmd> CmdBuffer;
+            SpanMutable<Cmd> CmdBuffers;
 
         };
 
@@ -241,12 +241,12 @@ void* ImGuiRenderSystem::OnPreRender()
         drawList.IndexData = allocator.AllocSpan<ImDrawIdx>(imguiDrawList->IdxBuffer.size());
         std::memcpy(drawList.IndexData.data(), imguiDrawList->IdxBuffer.Data, imguiDrawList->IdxBuffer.size());
 
-        drawList.CmdBuffer = allocator.AllocSpan<CachedRenderData::DrawList::Cmd>(imguiDrawList->CmdBuffer.size());
+        drawList.CmdBuffers = allocator.AllocSpan<CachedRenderData::DrawList::Cmd>(imguiDrawList->CmdBuffer.size());
 
         for (int j = 0; j < imguiDrawList->CmdBuffer.size(); ++j)
         {
             const ImDrawCmd& imguiDrawCmd = imguiDrawList->CmdBuffer[j];
-            CachedRenderData::DrawList::Cmd& drawCmd = drawList.CmdBuffer[j];
+            CachedRenderData::DrawList::Cmd& drawCmd = drawList.CmdBuffers[j];
             PHX_ASSERT(!imguiDrawList, "Not currently supported");
 #if false
             if (drawCmd.UserCallback)
@@ -293,49 +293,40 @@ void ImGuiRenderSystem::OnRender(rhi::CommandCtx* ctx, void* cachedData)
 		DirectX::XMFLOAT4X4 Mvp;
 		uint32_t TextureIndex;
 	} push = {};
-	push.Mvp = DirectX::XMFLOAT4X4(&mvp[0][0]);
+	push.Mvp = imguiCachedData->Mvp;
 
-	Viewport v(drawData->DisplaySize.x, drawData->DisplaySize.y);
-	ctx->SetViewports({ v });
+	ctx->SetViewports({ imguiCachedData->ViewportData });
 
 	const Format indexFormat = sizeof(ImDrawIdx) == 2 ? Format::R16_UINT : Format::R32_UINT;
 
-	for (int i = 0; i < drawData->CmdListsCount; ++i)
+	for (auto& drawList : imguiCachedData->DrawLists)
 	{
-		const ImDrawList* drawList = drawData->CmdLists[i];
-		ctx->SetDynamicVertexBuffer(0, drawList->VtxBuffer.size(), sizeof(ImDrawVert), drawList->VtxBuffer.Data);
-		ctx->SetDynamicIndexBuffer(drawList->IdxBuffer.size(), indexFormat, drawList->IdxBuffer.Data);
+		ctx->SetDynamicVertexBuffer(0, drawList.VertData.Size(), sizeof(ImDrawVert), drawList.VertData.data());
+		ctx->SetDynamicIndexBuffer(drawList.IndexData.Size(), indexFormat, drawList.IndexData.data());
 
 		int indexOffset = 0;
-		for (int j = 0; j < drawList->CmdBuffer.size(); ++j)
+		for (auto& cmdBuffer : drawList.CmdBuffers)
 		{
-			const ImDrawCmd& drawCmd = drawList->CmdBuffer[j];
-
-			if (drawCmd.UserCallback)
+#if false
+			if (cmdBuffer.UserCallback)
 			{
 				drawCmd.UserCallback(drawList, &drawCmd);
 			}
 			else
+#endif
 			{
-				ImVec4 clipRect = drawCmd.ClipRect;
-				Rect scissorRect;
-				// TODO: Validate
-				scissorRect.MinX = static_cast<int>(clipRect.x - displayPos.x);
-				scissorRect.MinY = static_cast<int>(clipRect.y - displayPos.y);
-				scissorRect.MaxX = static_cast<int>(clipRect.z - displayPos.x);
-				scissorRect.MaxY = static_cast<int>(clipRect.w - displayPos.y);
-
+				Rect& scissorRect = cmdBuffer.ScissorRect;
 				if (scissorRect.MaxX - scissorRect.MinX > 0 &&
 					scissorRect.MaxY - scissorRect.MinY > 0)
 				{
-					auto desciptorIndex = static_cast<DescriptorIndex>(drawCmd.GetTexID());
+					auto desciptorIndex = static_cast<DescriptorIndex>(cmdBuffer.TextureIndex);
 					push.TextureIndex = desciptorIndex;
 					ctx->SetPushConstant(RootParameters::PushConstant, sizeof(ImguiDrawInfo), &push);
 					ctx->SetScissors({ &scissorRect, 1 });
-					ctx->DrawIndexed(drawCmd.ElemCount, 1, indexOffset, 0, 0);
+					ctx->DrawIndexed(cmdBuffer.IndexCount, 1, indexOffset, 0, 0);
 				}
 			}
-			indexOffset += drawCmd.ElemCount;
+			indexOffset += cmdBuffer.IndexCount;
 		}
 	}
 
