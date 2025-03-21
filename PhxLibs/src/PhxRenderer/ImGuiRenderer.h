@@ -35,7 +35,7 @@ namespace phx::gfx
 		// bool m_isFontTextureUploaded = false;
 		ImGuiContext* m_imguiContext;
 		rhi::Format m_indexFormat;
-		std::array<ImGuiContext*, 2> m_imguiContexts;
+
 		rhi::DescriptorIndex m_fontTextureBindlessIndex = rhi::cInvalidDescriptorIndex;
 		rhi::TextureHandle m_fontTexture;
 		rhi::PipelineStateHandle m_pipeline;
