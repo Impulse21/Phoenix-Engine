@@ -1,6 +1,7 @@
 #include <Phoenix.h>
 #include <mutex>
 #include <atomic>
+#include <memory>
 
 #include "PhxCore/EntryPoint.h"
 #include "PhxCore/StringHash.h"
@@ -8,6 +9,7 @@
 #include "Generated/GlobalVariables.h"
 
 #include "PhxRenderer/ImGuiRenderer.h"
+#include "PhxRenderer/ForwardRenderer.h"
 
 #include "PhxRenderer/MeshResourceHandler.h"
 #include "PhxResource/ResourceManger.h"
@@ -100,13 +102,17 @@ public:
 #if TEST_TREAD_POOL
 		ThreadPoolTest();
 #endif
-		m_imguiRenderer.Initialize(m_fs.get(), m_windowHandle);
-		m_imguiRenderer.EnableDarkThemeColours();
+
+		m_fs = phx::FileSystemFactory::CreateRootFileSystem();
+
+		m_imguiRenderSystem = std::make_shared<phx::gfx::ImGuiRenderSystem>();
+		m_imguiRenderSystem->Initialize(m_fs.get(), m_windowHandle);
+		m_imguiRenderSystem->EnableDarkThemeColours();
+
+		m_renderer.RegisterRenderSystem(phx::gfx::ForwardRenderPasses::GuiPass, m_imguiRenderSystem);
 
 		m_loadingBarrier.Add();
 		ThreadPool::SubmitTask([this] {
-
-			m_fs = phx::FileSystemFactory::CreateRootFileSystem();
 
 			phx::ResourceManger::Initialize(GlobalPaths::AssetsDirectory);
 			phx::ResourceManger::RegisterHandler<phx::renderer::MeshResourceHandler>();
@@ -127,23 +133,13 @@ public:
 	void Shutdown() override
 	{
 		PHX_INFO("Sandbox app is starting up");
-		m_imguiRenderer.Finialize();
+		m_renderer.Finalize();
 
 		ThreadPool::Finalize();
 	}
 
 	void Tick() override
 	{
-		m_imguiRenderer.BeginFrame();
-
-		if (m_loadingBarrier.IsNotCleared())
-		{
-			uint32_t width, height;
-			GetDefaultWindowSize(width, height);
-			ImGui::GetForegroundDrawList()->AddText(ImVec2(width / 2, height / 2), IM_COL32(255, 255, 255, 255), "Registering Pak Files...");
-			return;
-		}
-
 		// -- Pre-Render ---
 		ThreadPool::SubmitTask([this]() {
 			OnPreRender();
@@ -178,6 +174,14 @@ private:
 	inline static Sandbox* ms_instance = nullptr;
 	inline void DrawGui()
 	{
+		if (m_loadingBarrier.IsNotCleared())
+		{
+			uint32_t width, height;
+			GetDefaultWindowSize(width, height);
+			ImGui::GetForegroundDrawList()->AddText(ImVec2(width / 2, height / 2), IM_COL32(255, 255, 255, 255), "Registering Pak Files...");
+			return;
+		}
+
 		phx::ResourceManger::DrawGui();
 
 		ImGui::Begin("Profiler");
@@ -190,21 +194,20 @@ private:
 
 	inline void OnPreRender()
 	{
-		DrawGui();
+		m_renderer.OnPreRender();
 	}
 
 	inline void OnUpdate()
 	{
+		m_imguiRenderSystem->BeginFrame();
+		DrawGui();
 
+		m_imguiRenderSystem->EndFrame();
 	}
 
 	inline void OnRender()
 	{
-		rhi::CommandCtx* ctx = rhi::BeginCommnadCtx();
-		ctx->RenderPassBegin();
-		m_imguiRenderer.Render(ctx);
-		ctx->RenderPassEnd();
-
+		m_renderer.OnRender();
 		phx::rhi::Present();
 	}
 
@@ -212,7 +215,9 @@ private:
 	ThreadPool::Barrier m_loadingBarrier;
 	std::unique_ptr<phx::IRootFileSystem> m_fs;
 	const phx::ApplicationDescriptor m_desc;
-	phx::gfx::ImGuiRenderSystem m_imguiRenderer;
+
+	std::shared_ptr<phx::gfx::ImGuiRenderSystem> m_imguiRenderSystem;
+	phx::gfx::ForwardRenderer m_renderer;
 	phx::World m_world;
 
 	RefCountPtr<IResource> m_meshResource;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <PhxCore/Base.h>
 #include <PhxRenderer/RenderSystem.h>
 
 #include <vector>
@@ -11,9 +12,9 @@ namespace phx::gfx
 	{
 		enum
 		{
-			GeometryPass = 0,
-			ShadowPass,
-			GuiPass,
+			GeometryPass	= BIT(0),
+			ShadowPass		= BIT(1),
+			GuiPass			= BIT(2),
 		};
 	}
 	class ForwardRenderer final
@@ -22,16 +23,27 @@ namespace phx::gfx
 		ForwardRenderer() = default;
 		~ForwardRenderer() = default;
 
+		void Finalize();
+
 		template<typename TSystem>
 		void RegisterRenderSystem(uint32_t passMask)
 		{
-			m_renderSystems.emplace_back(std::make_unique<TSystem>());
+			RegisterRenderSystem(passMask, std::make_shared<TSystem>());
+		}
+
+		template<typename TSystem>
+		void RegisterRenderSystem(uint32_t passMask, std::shared_ptr<TSystem> renderSystem)
+		{
+			m_renderSystems.emplace_back(std::move(renderSystem));
 			m_passMasks.push_back(passMask);
 			m_cachedData.push_back(nullptr);
 		}
 
+		void OnPreRender();
+		void OnRender();
+
 	private:
-		std::vector<std::unique_ptr<IRenderSystem>> m_renderSystems;
+		std::vector<std::shared_ptr<IRenderSystem>> m_renderSystems;
 		std::vector<uint32_t> m_passMasks;
 		std::vector<void*> m_cachedData;
 	};

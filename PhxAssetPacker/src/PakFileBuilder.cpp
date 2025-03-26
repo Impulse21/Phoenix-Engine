@@ -117,5 +117,5 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
         }
     }
 
-    return packFileBuilder.Finialize();
+    return packFileBuilder.Finalize();
 }

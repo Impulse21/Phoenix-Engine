@@ -15,6 +15,7 @@ namespace phx::gfx
 	public:
 		virtual ~IRenderSystem() = default;
 
+		virtual void Finalize() = 0;
 		virtual void* OnPreRender() = 0;
 		virtual void OnRender(rhi::CommandCtx* ctx, void* cachedData) = 0;
 	};

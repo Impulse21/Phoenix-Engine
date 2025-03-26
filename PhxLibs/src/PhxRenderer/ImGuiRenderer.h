@@ -22,10 +22,11 @@ namespace phx::gfx
 	{
 	public:
 		void Initialize(IFileSystem* fs, void* windowHandle, bool enableDocking = false);
-		void Finialize();
+		void Finalize() override;
 
 		void EnableDarkThemeColours();
 		void BeginFrame();
+		void EndFrame();
 		void Render(rhi::CommandCtx* ctx);
 
 		void* OnPreRender() override;

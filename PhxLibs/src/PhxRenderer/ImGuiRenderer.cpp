@@ -147,7 +147,7 @@ void ImGuiRenderSystem::Initialize(IFileSystem* /*fs*/, void* windowHandle, bool
     m_indexFormat = sizeof(ImDrawIdx) == 2 ? Format::R16_UINT : Format::R32_UINT;
 }
 
-void ImGuiRenderSystem::Finialize()
+void ImGuiRenderSystem::Finalize()
 {
     rhi::DeleteTexture(m_fontTexture);
     rhi::DeletePipeline(m_pipeline);
@@ -193,12 +193,14 @@ void ImGuiRenderSystem::BeginFrame()
     ImGui::NewFrame();
 }
 
+void phx::gfx::ImGuiRenderSystem::EndFrame()
+{
+    ImGui::Render();
+}
+
 
 void* ImGuiRenderSystem::OnPreRender()
 {
-    ImGui::SetCurrentContext(m_imguiContext);
-    ImGui::Render();
-
     ImDrawData* drawData = ImGui::GetDrawData();
     // Check if there is anything to render.
     if (!drawData || drawData->CmdListsCount == 0)
@@ -272,7 +274,6 @@ void* ImGuiRenderSystem::OnPreRender()
 
     }
 
-    ImGui::EndFrame();
     return cachedData;
 }
 
