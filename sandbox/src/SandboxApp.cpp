@@ -144,6 +144,9 @@ public:
 
 	void Tick() override
 	{
+		Memory::FrameAllocator& allocator = Memory::GetFrameAllocator();
+		allocator.Reset();
+		
 		// -- Pre-Render ---
 		ThreadPool::SubmitTask([this]() {
 			OnPreRender();
