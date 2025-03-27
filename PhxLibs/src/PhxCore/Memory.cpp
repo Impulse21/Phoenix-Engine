@@ -15,7 +15,7 @@ namespace
 	std::mutex Mutex;
 	VirtualStackAllocator gFrameAllocator;
 	VirtualStackAllocator gScratchAllocator;
-	
+
 	uint8_t* Commit(size_t commitSize)
 	{
 		std::scoped_lock _(Mutex);
@@ -94,12 +94,17 @@ void* VirtualStackAllocator::Allocate(size_t size, size_t alignment)
 	// if there isn't enough space on the current page, request a new one
 	if (this->m_pages.empty() || this->m_ptrOffset + alignedSize > this->m_pageSize)
 	{
-		// request a new page
-		this->m_currentPage = this->m_pages.size();
-		this->m_ptrOffset = 0;
-		this->m_pages.push_back(Commit(this->m_pageSize));
-	}
+		m_currentPage += 1;
+		if (m_currentPage >= this->m_pages.size())
+		{
+			// request a new page
+			m_currentPage = this->m_pages.size();
+			m_pages.push_back(Commit(this->m_pageSize));
+		}
 
+		this->m_ptrOffset = 0;
+	}
+	
 	void* ptr = this->m_pages[this->m_currentPage] + this->m_ptrOffset;
 	this->m_ptrOffset += alignedSize;
 
