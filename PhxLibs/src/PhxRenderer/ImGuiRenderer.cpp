@@ -333,7 +333,6 @@ void ImGuiRenderSystem::OnRender(rhi::CommandCtx* ctx, void* cachedData)
 	}
 
 	// cmd->TransitionBarriers(Span<GpuBarrier>(postBarriers.data(), postBarriers.size()));
-	ImGui::EndFrame();
 }
 
 void ImGuiRenderSystem::Render(CommandCtx* ctx)
