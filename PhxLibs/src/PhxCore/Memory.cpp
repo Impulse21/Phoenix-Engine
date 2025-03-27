@@ -14,27 +14,26 @@ namespace
 	size_t PtrOffset = 0;
 	std::mutex Mutex;
 	VirtualStackAllocator gFrameAllocator;
-	VirtualStackAllocator gScratchAllocator;;
-
-
+	VirtualStackAllocator gScratchAllocator;
+	
 	uint8_t* Commit(size_t commitSize)
 	{
 		std::scoped_lock _(Mutex);
 
+		size_t originalOffset = PtrOffset;
 		PtrOffset += commitSize;
 		if (PtrOffset < TotalMemoryCommited)
 		{
 			// no need to commit more memory, return address offset
-			return VirtualPtr + PtrOffset;
+			return VirtualPtr + originalOffset;
 		}
 
 		// Commit data
-		VirtualAlloc(VirtualPtr + TotalMemoryCommited, commitSize, MEM_COMMIT, PAGE_READWRITE);
+		VirtualAlloc(VirtualPtr + originalOffset, commitSize, MEM_COMMIT, PAGE_READWRITE);
 		TotalMemoryCommited += commitSize;
-		PtrOffset += commitSize;
-		return VirtualPtr + PtrOffset;
-	}
 
+		return VirtualPtr + originalOffset;
+	}
 }
 
 void Memory::Initialize(MemoryConfiguration const& config)

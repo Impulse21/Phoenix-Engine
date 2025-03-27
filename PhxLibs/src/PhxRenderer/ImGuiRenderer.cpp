@@ -249,7 +249,8 @@ void* ImGuiRenderSystem::OnPreRender()
         {
             const ImDrawCmd& imguiDrawCmd = imguiDrawList->CmdBuffer[j];
             CachedRenderData::DrawList::Cmd& drawCmd = drawList.CmdBuffers[j];
-            PHX_ASSERT(!imguiDrawList, "Not currently supported");
+
+            PHX_ASSERT(!imguiDrawCmd.UserCallback, "ImGui User Callback is not currently supported");
 #if false
             if (drawCmd.UserCallback)
             {

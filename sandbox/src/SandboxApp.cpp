@@ -3,6 +3,7 @@
 #include <atomic>
 #include <memory>
 
+#include "PhxCore/Base.h"
 #include "PhxCore/EntryPoint.h"
 #include "PhxCore/StringHash.h"
 #include "PhxCore/VFS.h"
@@ -103,6 +104,8 @@ public:
 		ThreadPoolTest();
 #endif
 
+		Memory::Initialize( { .VirtualMemorySize = 16_GiB } );
+
 		m_fs = phx::FileSystemFactory::CreateRootFileSystem();
 
 		m_imguiRenderSystem = std::make_shared<phx::gfx::ImGuiRenderSystem>();
@@ -136,6 +139,7 @@ public:
 		m_renderer.Finalize();
 
 		ThreadPool::Finalize();
+		Memory::Finalize();
 	}
 
 	void Tick() override
