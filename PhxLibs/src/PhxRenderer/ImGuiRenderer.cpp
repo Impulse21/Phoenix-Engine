@@ -240,13 +240,6 @@ void* ImGuiRenderSystem::OnPreRender()
 		const float R = drawData->DisplayPos.x + drawData->DisplaySize.x;
 		const float T = drawData->DisplayPos.y;
 		const float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
-		const float mvp[4][4] =
-		{
-			{ 2.0f / (R - L),   0.0f,           0.0f,       0.0f },
-			{ 0.0f,         2.0f / (T - B),     0.0f,       0.0f },
-			{ 0.0f,         0.0f,           0.5f,       0.0f },
-			{ (R + L) / (L - R),  (T + B) / (B - T),    0.5f,       1.0f },
-		};
 
 		imguiDrawList->Mvp = DirectX::XMFLOAT4X4(
 			2.0f / (R - L),     0.0f,               0.0f,       0.0f,
@@ -264,10 +257,10 @@ void* ImGuiRenderSystem::OnPreRender()
         const ImDrawList* cmdList = drawData->CmdLists[i];
 
         if (cmdList->VtxBuffer.size() > 0)
-            std::memcpy(imguiDrawList->Vertices + vertexOffset, cmdList->VtxBuffer.Data(), cmdList->VtxBuffer.size() * sizeof(ImDrawVert));
+            std::memcpy(imguiDrawList->Vertices + vertexOffset, cmdList->VtxBuffer.Data, cmdList->VtxBuffer.size() * sizeof(ImDrawVert));
 
 		if (cmdList->IdxBuffer.size() > 0)
-			std::memcpy(imguiDrawList->Indices + indexOffset, cmdList->IdxBuffer.Data(), cmdList->IdxBuffer.size() * sizeof(ImDrawIdx));
+			std::memcpy(imguiDrawList->Indices + indexOffset, cmdList->IdxBuffer.Data, cmdList->IdxBuffer.size() * sizeof(ImDrawIdx));
 
         for (int j = 0; j < cmdList->CmdBuffer.size(); ++j)
         {
@@ -326,19 +319,24 @@ void ImGuiRenderSystem::OnRender(rhi::CommandCtx* ctx, void* cachedData)
 	ctx->SetDynamicVertexBuffer(0, drawList->VertexCount, sizeof(ImDrawVert), drawList->Vertices);
 	ctx->SetDynamicIndexBuffer(drawList->IndexCount, indexFormat, drawList->Indices);
 
-	for (int i = 0; i < drawList->CommandCount; i++)
+	for (uint32_t i = 0; i < drawList->CommandCount; i++)
 	{
         auto command = drawList->Commands[i];
 
+#if false
+        // TODO
 		if (command.DrawCallback)
 		{
-#if false
-			command.DrawCallback(drawList, command.DrawCallbackData);
-#else
-            PHX_ASSERT(false, "User callbacks - NOT CURRENTLY SUPPORTED");
-#endif
+			ImDrawCmd cmd;
+			cmd.ElemCount = command.IndexCount;
+			// cmd.ClipRect cannot restore cliprect here
+			cmd.TextureId = command.TextureDescriptorIndex;
+			cmd.UserCallback = command.DrawCallback;
+			cmd.UserCallbackData = command.DrawCallbackData;
+			command.DrawCallback(command.DrawList, &cmd);
 		}
 		else
+#endif
 		{
 			Rect& scissorRect = command.ScissorRect;
 			if (scissorRect.MaxX - scissorRect.MinX > 0 &&
