@@ -125,7 +125,7 @@ public:
 
 			phx::Entity lionHeadEntity = m_world.CreateEntity("LionHead");
 
-			auto& renderComponent = lionHeadEntity.AddComponent<MeshRendererComponent>();
+			auto& renderComponent = lionHeadEntity.AddComponent<MeshRenderComponent>();
 			renderComponent.MeshResource = phx::ResourceManger::Get("res:/NewSponza_Main_glTF_003/lionhead.phxmsh");
 
 			m_loadingBarrier.Signal();

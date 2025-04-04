@@ -3,10 +3,11 @@
 namespace phx
 {
 	class World;
+	class IFileSystem;
 
 	namespace WorldSerializer
 	{
-		bool Save(const char* filename, World& world);
-		void Load(const char* filename, World& world);
+		bool Save(IFileSystem* fs, const char* filename, World& world);
+		void Load(IFileSystem* fs, const char* filename, World& world);
 	}
 }

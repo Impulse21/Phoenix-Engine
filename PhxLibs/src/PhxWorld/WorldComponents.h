@@ -11,6 +11,7 @@
 #include <string>
 
 #include <DirectXMath.h>
+#include <entt/entt.hpp>
 
 namespace phx
 {
@@ -162,8 +163,12 @@ namespace phx
 		entt::entity ParentID = entt::null;
 	};
 
-	struct MeshRendererComponent
+	struct MeshRenderComponent
 	{
-		RefCountPtr<IResource> MeshResource;
+		union
+		{
+			const char* MeshPath;
+			RefCountPtr<IResource> MeshResource;
+		};
 	};
 }

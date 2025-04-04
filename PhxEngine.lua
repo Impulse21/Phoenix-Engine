@@ -591,6 +591,8 @@ group "PhxLibs"
             phx_vendor_include_yaml_dir,
         }
 
+        defines { "YAML_CPP_STATIC_DEFINE" }
+        
 group ""
 
 group "Applications"
@@ -679,6 +681,7 @@ group "Applications"
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
             phx_lib_vendor_directory.."/cgltf",
+            phx_lib_vendor_directory.."/entt",
             phx_vendor_include_yaml_dir,
         }
 
@@ -688,6 +691,7 @@ group "Applications"
             project_phx_rhi,
             project_phx_renderer,
             project_phx_resource,
+            project_phx_world,
             project_vendor_imgui,
             project_vendor_yaml,
         }

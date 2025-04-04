@@ -5,6 +5,7 @@
 #include <PhxCore/SystemTime.h>
 #include <PhxCore/BinaryBuilder.h>
 #include <PhxCore/Span.h>
+#include <PhxWorld/WorldSerializer.h>
 
 #ifdef PHX_RHI_D3D12
 #include <d3d12.h>
@@ -17,7 +18,7 @@ extern "C"
 #endif
 
 #include "TextureConverter.h"
-#include "GltfImporter.h"
+#include "GltfImporters.h"
 #include "PakFileBuilder.h"
 
 #include <wrl.h>
@@ -128,7 +129,8 @@ int wmain(int argc, wchar_t** argv)
 	std::filesystem::path gltfInputPath(gltfInput);
 	gltfInputPath.make_preferred();
 
-	std::string outputFilename = std::format("{}.{}", gltfInputPath.stem().generic_string().c_str(), "phxpak");
+	std::string baseFilename = gltfInputPath.stem().generic_string();
+	std::string outputFilename = std::format("{}.{}", baseFilename, "phxpak");
 	PHX_INFO("Creating Phoenix Pack File '{0}' from '{1}'", outputFilename.c_str(), gltfInput);
 
 	std::shared_ptr<phx::IFileSystem> nativeFS = phx::FileSystemFactory::CreateNativeFileSystem();
@@ -174,11 +176,22 @@ int wmain(int argc, wchar_t** argv)
 		}
 
 		phx::CpuTimer timer;
-		std::vector<phx::MeshData> importedMeshes = phx::GltfMeshImporter::Import(gltfData);
+		std::vector<phx::MeshData> importedMeshes;
+		phx::GltfMeshImporter::Import(gltfData, importedMeshes);
 		PHX_INFO(
 			"Imported {0} Meshes in {1} ms",
 			importedMeshes.size(),
 			timer.Elapsed().GetMilliseconds());
+
+
+		ThreadPool::SubmitTask([&]()
+		{
+			phx::World world;
+			phx::GltfWorldImporter::Import(gltfData, world);
+
+			std::string worldFilename = std::format("{}.{}", baseFilename, "phxwld");
+			phx::WorldSerializer::Save(outputFS.get(), worldFilename.c_str(), world);
+		});
 
 		if (useGDeflate)
 		{
@@ -191,9 +204,6 @@ int wmain(int argc, wchar_t** argv)
 					NumCompressionThreads,
 					IID_PPV_ARGS(&g_bufferCompression)));
 		}
-
-
-		cgltf_free(gltfData);
 
 		phx::FileFormat::CompressionType compression = phx::FileFormat::CompressionType::None;
 		if (useGDeflate)
@@ -227,6 +237,9 @@ int wmain(int argc, wchar_t** argv)
 #endif
 		}
 		ThreadPool::Wait();
+
+		cgltf_free(gltfData);
+
 		PHX_INFO(
 			"Compiled {0} resources in {1} ms",
 			compiledResources.size(),

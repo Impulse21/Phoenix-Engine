@@ -45,3 +45,11 @@ void World::DetachChildren(Entity parent)
 {
 	parent.DetachChildren();
 }
+
+void phx::World::RegisterComponents()
+{
+#if false
+	entt::meta<TransformComponent>()
+		.data<&TransformComponent::LocalTranslation>("LocalTranslation"_hs);
+#endif
+}

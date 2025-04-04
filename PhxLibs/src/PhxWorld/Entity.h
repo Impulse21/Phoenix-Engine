@@ -13,7 +13,12 @@ namespace phx
 	public:
 		Entity() = default;
 		Entity(entt::entity handle, World* scene);
+
 		Entity(Entity const& other) = default;
+		Entity(Entity&& other) noexcept = default;
+
+		Entity& operator=(const Entity& other) = default;
+		Entity& operator=(Entity&& other) noexcept = default;
 
 		// Wrappers
 		template<typename T, typename... Args>

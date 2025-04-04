@@ -43,6 +43,7 @@ namespace phx
 		entt::registry& GetRegistry() { return this->m_registry; }
 		const entt::registry& GetRegistry() const { return this->m_registry; }
 
+		void RegisterComponents();
 	private:
 		entt::registry m_registry;
 	};

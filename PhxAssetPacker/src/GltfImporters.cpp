@@ -1,4 +1,4 @@
-#include "GltfImporter.h"
+#include "GltfImporters.h"
 
 #include <PhxCore/Assert.h>
 #include <PhxCore/StringHash.h>
@@ -163,12 +163,12 @@ namespace
 	}
 }
 
-std::vector<MeshData> phx::GltfMeshImporter::Import()
+bool phx::GltfMeshImporter::ImportImpl()
 {
-	std::vector<MeshData> retVal(m_gltfData->meshes_count);
+	m_out.resize(m_gltfData->meshes_count);
 	for (cgltf_size iMesh = 0; iMesh < m_gltfData->meshes_count; iMesh++)
 	{
-		MeshData* meshData = &retVal[iMesh];
+		MeshData* meshData = &m_out[iMesh];
 		const cgltf_mesh* cgltfMesh = &m_gltfData->meshes[iMesh];
 		cgltf_size index = iMesh;
 #if true
@@ -185,6 +185,182 @@ std::vector<MeshData> phx::GltfMeshImporter::Import()
 	}
 
 	ThreadPool::Wait();
-	return retVal;
+	return true;
 }
 
+bool phx::GltfWorldImporter::ImportImpl()
+{
+	// Load Node Data
+	cgltf_scene* gltfScene = m_gltfData->scene;
+	phx::Entity rootEntity = m_out.CreateEntity(gltfScene->name ? gltfScene->name : "Scene Root");
+	for (size_t i = 0; i < gltfScene->nodes_count; i++)
+	{
+		// Load Node Data
+		LoadNodeRec(*gltfScene->nodes[i], rootEntity);
+	}
+
+	return false;
+}
+
+void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, phx::Entity parent)
+{
+	Entity entity;
+
+	std::vector<Entity> childEntities; // TODO: Make use of an allorcator.
+	if (gltfNode.mesh)
+	{
+		// Create a mesh instance
+		static size_t meshId = 0;
+
+		std::string nodeName = gltfNode.name ? gltfNode.name : "Scene Node " + std::to_string(meshId++);
+		entity = m_out.CreateEntity(nodeName);
+
+		uint32_t meshInstance = 0;
+		for (auto& mesh : this->m_meshEntityMap[gltfNode.mesh])
+		{
+			std::string meshNodeName = nodeName + std::to_string(meshInstance++);
+#if false
+			PhxEngine::Scene::Entity subEntity = scene.CreateEntity(meshNodeName);
+
+			auto& instanceComponent = subEntity.AddComponent<MeshInstanceComponent>();
+			instanceComponent.Mesh = mesh;
+
+			subEntity.AddComponent<AABBComponent>();
+
+			childEntities.push_back(subEntity);
+#endif
+		}
+	}
+
+	else if (gltfNode.camera)
+	{
+#if false
+		static size_t cameraId = 0;
+		std::string cameraName = gltfNode.camera->name ? gltfNode.camera->name : "Camera " + std::to_string(cameraId++);
+
+		entity = scene.CreateEntity(cameraName);
+		entity.AddComponent<CameraComponent>();
+#else
+		// TODO: Attach a camera component
+#endif
+	}
+	else if (gltfNode.light)
+	{
+#if false
+		static size_t lightID = 0;
+		std::string lightName = gltfNode.light->name ? gltfNode.light->name : "Light " + std::to_string(lightID++);
+
+		entity = scene.CreateEntity(lightName);
+		auto& lightComponent = entity.AddComponent<LightComponent>();
+		switch (gltfNode.light->type)
+		{
+		case cgltf_light_type_directional:
+			lightComponent.Type = LightComponent::kDirectionalLight;
+			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 6.0f;
+			break;
+
+		case cgltf_light_type_point:
+			lightComponent.Type = LightComponent::kOmniLight;
+			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 6.0f;
+			break;
+
+		case cgltf_light_type_spot:
+			lightComponent.Type = LightComponent::kSpotLight;
+			lightComponent.Intensity = gltfNode.light->intensity > 0 ? (float)gltfNode.light->intensity : 6.0f;
+			break;
+
+		case cgltf_light_type_invalid:
+		default:
+			// Ignore
+			assert(false);
+		}
+
+		std::memcpy(
+			&lightComponent.Colour.x,
+			&gltfNode.light->color[0],
+			sizeof(float) * 3);
+
+		lightComponent.Range = gltfNode.light->range > 0 ? (float)gltfNode.light->range : std::numeric_limits<float>().max();
+		lightComponent.InnerConeAngle = (float)gltfNode.light->spot_inner_cone_angle;
+		lightComponent.OuterConeAngle = (float)gltfNode.light->spot_outer_cone_angle;
+#else
+		// TODO: Attach a light component
+#endif
+	}
+
+	if (!entity)
+	{
+		static size_t emptyNode = 0;
+
+		std::string nodeName = gltfNode.name ? gltfNode.name : "Scene Node " + std::to_string(emptyNode++);
+		entity = m_out.CreateEntity(nodeName);
+	}
+
+	auto& transform = entity.GetComponent<TransformComponent>();
+	if (gltfNode.has_scale)
+	{
+		std::memcpy(
+			&transform.LocalScale.x,
+			&gltfNode.scale[0],
+			sizeof(float) * 3);
+	}
+	if (gltfNode.has_rotation)
+	{
+		std::memcpy(
+			&transform.LocalRotation.x,
+			&gltfNode.rotation[0],
+			sizeof(float) * 4);
+	}
+	if (gltfNode.has_translation)
+	{
+		std::memcpy(
+			&transform.LocalTranslation.x,
+			&gltfNode.translation[0],
+			sizeof(float) * 3);
+	}
+
+	if (gltfNode.has_matrix)
+	{
+		std::memcpy(
+			&transform.WorldMatrix._11,
+			&gltfNode.matrix[0],
+			sizeof(float) * 16);
+		transform.ApplyTransform();
+	}
+
+	// GLTF default light Direciton is forward - I want this to be downwards.
+#if false
+	if (gltfNode.light)
+	{
+		transform.RotateRollPitchYaw(XMFLOAT3(XM_PIDIV2, 0, 0));
+	}
+
+	transform.UpdateTransform();
+
+	if (cReverseZ)
+	{
+		transform.LocalTranslation.z *= -1.0f;
+		transform.LocalRotation.x *= -1.0f;
+		transform.LocalRotation.y *= 1.0f;
+		transform.SetDirty();
+		transform.UpdateTransform();
+	}
+
+	for (auto& child : childEntities)
+	{
+		child.AttachToParent(entity, true);
+	}
+
+#endif
+
+	if (parent)
+	{
+		entity.AttachToParent(parent, true);
+	}
+
+	for (cgltf_size i = 0; i < gltfNode.children_count; i++)
+	{
+		if (gltfNode.children[i])
+			this->LoadNodeRec(*gltfNode.children[i], entity);
+	}
+}
