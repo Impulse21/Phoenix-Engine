@@ -11,6 +11,7 @@ phx_lib_src_renderer_dir    = phx_lib_src_directory.."/PhxRenderer"
 phx_lib_src_resource_dir    = phx_lib_src_directory.."/PhxResource"
 phx_lib_src_editor_lib_dir  = phx_lib_src_directory.."/PhxEditor"
 phx_lib_src_world_dir       = phx_lib_src_directory.."/PhxWorld"
+phx_lib_src_data_dir        = phx_lib_src_directory.."/PhxData"
 
 phx_vendor_src_imgui_dir    = phx_lib_vendor_directory.."/ImGui"
 phx_vendor_src_d3d12ma_dir  = phx_lib_vendor_directory.."/D3D12MA"
@@ -20,7 +21,6 @@ phx_vendor_src_glfw_dir     = phx_lib_vendor_directory.."/glfw"
 
 phx_vendor_include_glfw_dir = phx_vendor_src_glfw_dir.."/include"
 phx_vendor_include_yaml_dir = phx_vendor_src_yaml_dir.."/include"
-
 
 phx_packer_vendor_dir       = "PhxAssetPacker/vendor"
 phx_packer_vendor_dx_tex    = phx_packer_vendor_dir..'/DirectXTex'
@@ -44,6 +44,7 @@ project_phx_rhi         = 'PhxRhi'
 project_phx_resource    = 'PhxResource'
 project_phx_editor      = 'PhxEditor'
 project_phx_world       = 'PhxWorld'
+project_phx_data        = 'PhxData'
 
 project_sandbox         = 'Sandbox'
 project_asset_packer    = 'PhxAssetPacker'
@@ -572,6 +573,28 @@ group "PhxLibs"
             phx_lib_vendor_directory.."/spdlog/include",
         }
 
+    project(project_phx_data)
+        kind('StaticLib')
+        pchheader('PhxWorld/PhxData_pch.h')
+        pchsource(phx_lib_src_data_dir..'/PhxData_pch.cpp')
+        
+        files
+        {
+            phx_lib_src_data_dir.."/**.h",
+            phx_lib_src_data_dir.."/**.cpp",
+            phx_lib_src_data_dir.."/**.py"
+        }
+
+        includedirs
+        {
+            phx_lib_src_directory,
+            phx_lib_vendor_directory.."/spdlog/include",
+            phx_lib_vendor_directory.."/entt",
+            phx_vendor_include_yaml_dir,
+        }
+
+        defines { "YAML_CPP_STATIC_DEFINE" }
+
     project(project_phx_world)
         kind('StaticLib')
         pchheader('PhxWorld/PhxWorld_pch.h')
@@ -592,7 +615,7 @@ group "PhxLibs"
         }
 
         defines { "YAML_CPP_STATIC_DEFINE" }
-        
+      
 group ""
 
 group "Applications"
@@ -742,4 +765,11 @@ group '.Solution Generation'
             generateSolutionCommandLine, -- Run
             rebuildProjectCommand,
         }
+        
+group ""
+
+group '.Scripts'
+    project('Scripts')
+        kind('StaticLib')
+        files{ '*.py' }
 group ""

@@ -1,0 +1,28 @@
+#pragma once
+
+#define PROPERTY(...)
+
+namespace phx
+{
+	struct TransformComponent
+	{
+		enum Flags
+		{
+			kEmpty = 0,
+			kDirty = BIT(1),
+		};
+
+		uint32_t Flags;
+
+        PROPERTY(name="Scale", tooltip="Local Scale")
+		DirectX::XMFLOAT3 LocalScale = { 1.0f, 1.0f, 1.0f };
+        
+        PROPERTY(name="Rotation", tooltip="Local Rotation")
+		DirectX::XMFLOAT4 LocalRotation = { 0.0f, 0.0f, 0.0f, 1.0f };
+        
+        PROPERTY(name="Translation", tooltip="Local Translation")
+		DirectX::XMFLOAT3 LocalTranslation = { 0.0f, 0.0f, 0.0f };
+
+		DirectX::XMFLOAT4X4 WorldMatrix = math::cIdentityMatrix;
+    };
+}
