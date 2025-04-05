@@ -42,11 +42,11 @@ def parse_defines_header_T(file):
 def parse_defines_header(file):
     
     structs = {}
-    current = None
+    current = []
     for line in file.readlines():
         line = line.strip()
         
-        if line.startswith("struct") and current is None:
+        if line.startswith("struct") and not current:
             print("Found Struct")
             print(re.findall(r"struct (\w+)", line)[0])
             continue
@@ -55,7 +55,25 @@ def parse_defines_header(file):
             for match in property_regex.finditer(line):
                 attr_string = match.groups()
                 print(f"\tattr_string={attr_string}")
+                   
+            current.append([])
             continue
+
+        m = re.match(r"(\w[\w<>:]*)\s+(\w+);", line)
+        if m and current:
+            ftype, fname = m.groups()
+            field = {"type": ftype, "name": fname, "attrs": []}
+            
+            print(f"\tField={field}")
+            if current:
+                field["attrs"] = current[0]
+                current.pop("pending_attrs")
+
+            print(field)
+
+        if line == "};" and current:
+            current.clear()
+
     return structs
 
 def main():
