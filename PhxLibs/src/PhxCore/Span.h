@@ -25,7 +25,7 @@ namespace phx
 			: Span(array, length, 0)
 		{}
 
-		Span(std::initializer_list<T> v)
+		constexpr Span(std::initializer_list<T> v)
 			: Span(v.begin(), v.size(), 0)
 		{}
 
@@ -43,6 +43,13 @@ namespace phx
 		Span(EnumArray<T, E>& a)
 			: Span(a.data(), a.size(), 0)
 		{}
+
+		template <typename U, std::size_t N>
+		constexpr Span(const U(&arr)[N]) noexcept
+			: m_array(arr)
+			, m_length(N)
+		{
+		}
 
 		Span(const T* array, size_t length, size_t skip)
 			: m_array(array + skip)

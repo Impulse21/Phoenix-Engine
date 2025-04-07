@@ -575,7 +575,7 @@ group "PhxLibs"
 
     project(project_phx_data)
         kind('StaticLib')
-        pchheader('PhxWorld/PhxData_pch.h')
+        pchheader('PhxData/PhxData_pch.h')
         pchsource(phx_lib_src_data_dir..'/PhxData_pch.cpp')
         
         files

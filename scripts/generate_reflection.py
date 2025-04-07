@@ -1,10 +1,25 @@
 import re
 import os
 
+
+property_macro = re.compile(r'PROPERTY\((.*?)\)')
+struct_decl = re.compile(r'struct\s+(\w+)')
+member_decl = re.compile(r'([a-zA-Z0-9_:<>]+)\s+([a-zA-Z0-9_]+)\s*(=.+)?;')
+
+def parse_property_args(arg_str):
+    """Parses the PROPERTY(...) macro arguments into a dictionary."""
+    args = {}
+    for part in arg_str.split(','):
+        if '=' in part:
+            key, value = part.split('=', 1)
+            args[key.strip()] = value.strip().strip('"')
+    return args
+
 def parse_def_file(filepath):
-    """Parses a .def file and extracts struct and property information."""
     structs = {}
     current_struct = None
+    pending_property = None
+    brace_depth = 0
 
     with open(filepath, 'r') as f:
         for line in f:
@@ -12,46 +27,44 @@ def parse_def_file(filepath):
             if not line or line.startswith('//'):
                 continue
 
-            struct_match = re.match(r'struct (\w+)', line)
-            if struct_match:
-                print("struct Match")
-                current_struct = struct_match.group(1)
+            # Check for struct
+            match = struct_decl.match(line)
+            if match:
+                current_struct = match.group(1)
                 structs[current_struct] = {'properties': []}
+                brace_depth = 0
                 continue
 
             if current_struct:
-                if '}' in line:
+                brace_depth += line.count('{')
+                brace_depth -= line.count('}')
+                if brace_depth <= 0:
                     current_struct = None
                     continue
 
-                property_match = re.match(r'PROPERTY\(name="([^"]*)",\s*tooltip="([^"]*)"\)\s+(.+)\s+([a-zA-Z0-9_]+)\s*=?.*?;', line)
-                if property_match:
-                    name, tooltip, type_str, var_name = property_match.groups()
-                    structs[current_struct]['properties'].append({
-                        'name': name,
-                        'tooltip': tooltip,
-                        'type': type_str.strip(),
-                        'variable': var_name
-                    })
+                prop_match = property_macro.match(line)
+                if prop_match:
+                    pending_property = parse_property_args(prop_match.group(1))
                     continue
 
-                # Basic type and variable extraction (without PROPERTY macro)
-                member_match = re.match(r'([a-zA-Z0-9_:]+)\s+([a-zA-Z0-9_]+)\s*=?.*?;', line)
+                member_match = member_decl.match(line)
                 if member_match:
-                    type_str, var_name = member_match.groups()
-                    # We only want to include these if they are not part of a PROPERTY macro
-                    is_property = False
-                    for prop in structs.get(current_struct, {}).get('properties', []):
-                        if prop['variable'] == var_name:
-                            is_property = True
-                            break
-                    if not is_property:
-                        structs[current_struct].setdefault('members', []).append({
-                            'type': type_str.strip(),
-                            'variable': var_name
-                        })
+                    type_str, var_name, _ = member_match.groups()
+                    type_str = type_str.strip()
+
+                    if pending_property is not None:
+                        property_info = {
+                            'name': pending_property.get('name', var_name),
+                            'tooltip': pending_property.get('tooltip', ''),
+                            'extras': {k: v for k, v in pending_property.items() if k not in ('name', 'tooltip')},
+                            'type': type_str,
+                            'variable': var_name,
+                        }
+                        structs[current_struct]['properties'].append(property_info)
+                        pending_property = None
 
     return structs
+
 
 def generate_metadata_header(output_filepath):
     """Generates the C++ .h metadata header file."""
@@ -74,38 +87,53 @@ def generate_metadata_header(output_filepath):
         outfile.write("extern std::unordered_map<std::string, StructInfo> g_metadata;\n\n")
         outfile.write("} // namespace Reflection\n\n")
 
-def generate_metadata_cpp(structs, output_header, output_filepath):
-    """Generates the C++ .cpp metadata table."""
-    with open(output_filepath, 'w') as outfile:
-        outfile.write(f"#include {output_header}\n\n")
-        outfile.write("using namespace phx::rfl;\n\n")
-
-        outfile.write("std::unordered_map<std::string, StructInfo> g_metadata = \n{\n")
+def generate_metadata_cpp(structs, includes, output_filepath):
+    with open(output_filepath, 'w') as out:
+        for include in includes:
+            out.write(f'#include \"{include}\"\n')
+            
+        out.write("\n\n")
+        out.write('using namespace phx;\n')
+        out.write('using namespace phx::rft;\n\n')
 
         for struct_name, struct_data in structs.items():
-            outfile.write(f'    {{ "{struct_name}", {{ "{struct_name}", {{\n')
-            for prop in struct_data.get('properties', []):
-                # Calculate offset (this is a placeholder, actual offset calculation is complex)
-                outfile.write(f'        {{ "{prop["name"]}", {{ "{prop["name"]}", "{prop["tooltip"]}", "{prop["type"]}", offsetof({struct_name}, {prop["variable"]}) }} }},\n')
-            outfile.write("    }} }}\n")
-        outfile.write("};\n\n")
+            out.write(f'template<>\n')
+            out.write(f'struct TypeInfo<{struct_name}>\n')
+            out.write('{\n')
+            out.write('\tstatic constexpr FieldInfo Fields[] = {\n')
+
+            for prop in struct_data['properties']:
+                extras = ', '.join(f'{{"{k}", "{v}"}}' for k, v in prop['extras'].items())
+                if not extras:
+                    extras = '{}'
+
+                out.write(f'\t\t{{ "{prop["name"]}", "{prop["type"]}", "{prop["type"]}"_hash, "{prop["tooltip"]}", offsetof({struct_name}, {prop["variable"]}), std::initializer_list<ExtraInfo>{extras} }},\n')
+
+            out.write('\t};\n\n')
+            out.write('\tstatic constexpr phx::Span<const FieldInfo> GetFields() { return Fields; }\n')
+            out.write(f'\tstatic constexpr const char* GetTypeName() {{ return "{struct_name}"; }}\n')
+            out.write(f'\tstatic constexpr StringHash GetTypeNameHash() {{ return "{struct_name}"_hash; }}\n')
+            out.write('};\n\n')
+
 
 def main():
     def_file_path = r"C:\Users\dipao\source\repos\Phoenix-Engine\PhxLibs\src\PhxData\WorldComponents.def"  # Replace with the actual path to your .def file
     output_cpp_path = r"C:\Users\dipao\source\repos\Phoenix-Engine\PhxLibs\src\PhxData\MetadataTable.generated.cpp"
-    output_h_path = r"C:\Users\dipao\source\repos\Phoenix-Engine\PhxLibs\src\PhxData\Reflection.generated.h"
-    if not os.path.exists(def_file_path):
-        print(f"Error: .def file not found at '{def_file_path}'")
-    else:
-        parsed_structs = parse_def_file(def_file_path)
-        if parsed_structs:
-            generate_metadata_header(output_h_path) # Generate the header
-            generate_metadata_cpp(parsed_structs, output_h_path, output_cpp_path)
+    includes = ["PhxData_pch.h", "Reflection.h", "WorldComponents.def"]
 
-            print(f"Reflection header generated successfully in '{output_h_path}'")
-            print(f"Metadata generated successfully in '{output_cpp_path}'")
-        else:
-            print("No structs with properties found in the .def file.")
+    if not os.path.exists(def_file_path):
+        print(f"Error: file not found: {def_file_path}")
+        return
+
+    parsed_structs = parse_def_file(def_file_path)
+    if parsed_structs:
+        #generate_metadata_header(output_h_path) # Generate the header
+        generate_metadata_cpp(parsed_structs, includes, output_cpp_path)
+        #print(f"Reflection header generated successfully in '{output_h_path}'")
+        print("Generated:", output_cpp_path)
+
+    else:
+        print("No structs with properties found in the .def file.")
 
 if __name__ == "__main__":
     main()
