@@ -21,6 +21,7 @@ namespace phx
 
 	struct NameComponent
 	{
+		PROPERTY()
 		std::string Name;
 
 		inline void operator=(const std::string& str) { Name = str; }

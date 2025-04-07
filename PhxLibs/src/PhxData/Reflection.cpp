@@ -80,7 +80,7 @@ void phx::rft::SerializeToYAML(YAML::Emitter& out, const void* obj, const TypeIn
         }
         else if (field.TypeHash.Value() == StringId.Value())
         {
-            out << "\"" << *(std::string*)ptr << "\"";
+            out << *(std::string*)ptr;
         }
         else if (field.TypeHash.Value() == BoolId.Value())
         {

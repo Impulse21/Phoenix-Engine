@@ -28,6 +28,8 @@ namespace
 
 		if (entity.HasComponent<NameComponent>())
 		{
+			auto& component = entity.GetComponent<NameComponent>();
+			rft::SerializeToYAML<NameComponent>(out, &component);
 		}
 
 		if (entity.HasComponent<HierarchyComponent>())
@@ -48,8 +50,8 @@ namespace
 
 		if (entity.HasComponent<TransformComponent>())
 		{
-			auto& transformComponent = entity.GetComponent<TransformComponent>();
-			rft::SerializeToYAML<TransformComponent>(out, &transformComponent);
+			auto& component = entity.GetComponent<TransformComponent>();
+			rft::SerializeToYAML<TransformComponent>(out, &component);
 		}
 
 		out << YAML::EndMap; // Entity

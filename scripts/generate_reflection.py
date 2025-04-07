@@ -128,17 +128,17 @@ def generate_metadata_cpp(structs, includes, output_filepath):
         for struct_name, struct_data in structs.items():
             if len(struct_data['properties']) == 0:
                 continue
-            out.write(f'constexpr FieldInfo {struct_name}_Fields[] = {{\n')
+            out.write(f'FieldInfo {struct_name}_Fields[] = {{\n')
             for prop in struct_data['properties']:
                 extras = ', '.join(f'{{"{k}", "{v}"}}' for k, v in prop['extras'].items())
                 if not extras:
                     extras = '{}'
 
-                out.write(f'\t{{ "{prop["name"]}", "{prop["type"]}"_hash, "{prop["tooltip"]}", offsetof({struct_name}, {prop["variable"]}), nullptr, std::initializer_list<ExtraInfo>{extras} }},\n')
+                out.write(f'\t{{ "{prop["name"]}", "{prop["type"]}"_hash, "{prop["tooltip"]}", phx_offsetof(&{struct_name}::{prop["variable"]}), nullptr, std::initializer_list<ExtraInfo>{extras} }},\n')
 
             out.write('};\n\n')
 
-            out.write(f'constexpr TypeInfo {struct_name}_TypeInfo = {{\n')
+            out.write(f'TypeInfo {struct_name}_TypeInfo = {{\n')
             out.write(f'\t"{struct_name}", {struct_name}_Fields \n')
             out.write('};\n\n')
             out.write(f'template<> const TypeInfo& Refelction<{struct_name}>::GetTypeInfo() {{ return {struct_name}_TypeInfo; }}\n')
@@ -155,7 +155,7 @@ def generate_metadata_cpp(structs, includes, output_filepath):
 def main():
     def_file_path = r"C:\Users\dipao\source\repos\Phoenix-Engine\PhxLibs\src\PhxData\WorldComponents.def.h"  # Replace with the actual path to your .def file
     output_cpp_path = r"C:\Users\dipao\source\repos\Phoenix-Engine\PhxLibs\src\PhxData\MetadataTable.generated.cpp"
-    includes = ["PhxData_pch.h", "Reflection.h", "WorldComponents.def.h"]
+    includes = ["PhxData_pch.h", "Reflection.h", "WorldComponents.def.h", "PhxCore/Base.h"]
 
     if not os.path.exists(def_file_path):
         print(f"Error: file not found: {def_file_path}")

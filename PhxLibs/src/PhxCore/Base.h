@@ -64,3 +64,9 @@ constexpr inline unsigned long long operator "" _GiB(unsigned long long value)
 #define THREAD_LOCAL           __declspec(thread)
 
 #define CompileTimeAssertSize(def, size) static_assert(sizeof(def) == size, "Definition #def must be #size bytes")
+
+template<typename T, typename M>
+constexpr size_t phx_offsetof(M T::* member)
+{
+	return reinterpret_cast<size_t>(&(((T*)0)->*member));
+}
