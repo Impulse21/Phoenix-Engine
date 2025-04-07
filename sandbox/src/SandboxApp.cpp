@@ -123,10 +123,10 @@ public:
 
 			ThreadPool::Wait(ThreadPool::Type::Streaming);
 
-			phx::Entity lionHeadEntity = m_world.CreateEntity("LionHead");
+			// phx::Entity lionHeadEntity = m_world.CreateEntity("LionHead");
 
-			auto& renderComponent = lionHeadEntity.AddComponent<MeshRenderComponent>();
-			renderComponent.MeshResource = phx::ResourceManger::Get("res:/NewSponza_Main_glTF_003/lionhead.phxmsh");
+			// auto& renderComponent = lionHeadEntity.AddComponent<MeshRenderComponent>();
+			// renderComponent.MeshResource = phx::ResourceManger::Get("res:/NewSponza_Main_glTF_003/lionhead.phxmsh");
 
 			m_loadingBarrier.Signal();
 			PHX_INFO("--->Decremented value {0}", m_loadingBarrier.Counter.load());

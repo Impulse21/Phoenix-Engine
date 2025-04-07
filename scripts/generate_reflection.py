@@ -97,6 +97,7 @@ def generate_metadata_cpp_old(structs, includes, output_filepath):
         out.write('using namespace phx::rft;\n\n')
 
         for struct_name, struct_data in structs.items():
+
             out.write(f'template<>\n')
             out.write(f'struct TypeInfo<{struct_name}>\n')
             out.write('{\n')
@@ -125,6 +126,8 @@ def generate_metadata_cpp(structs, includes, output_filepath):
         out.write('using namespace phx::rft;\n\n')
 
         for struct_name, struct_data in structs.items():
+            if len(struct_data['properties']) == 0:
+                continue
             out.write(f'constexpr FieldInfo {struct_name}_Fields[] = {{\n')
             for prop in struct_data['properties']:
                 extras = ', '.join(f'{{"{k}", "{v}"}}' for k, v in prop['extras'].items())
@@ -143,7 +146,9 @@ def generate_metadata_cpp(structs, includes, output_filepath):
 
         out.write('const std::unordered_map<std::string, const TypeInfo*> g_TypeRegistry = {\n')
         for struct_name, struct_data in structs.items():
-            out.write(f'\t{{ "{struct_name}", &Refelction<{struct_name}>::GetTypeInfo()}}\n')
+            if len(struct_data['properties']) == 0:
+                continue
+            out.write(f'\t{{ "{struct_name}", &Refelction<{struct_name}>::GetTypeInfo()}},\n')
         
         out.write('};\n\n')
 

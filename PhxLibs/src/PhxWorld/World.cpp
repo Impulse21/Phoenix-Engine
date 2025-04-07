@@ -2,6 +2,8 @@
 
 #include "Entity.h"
 
+#include <PhxData/WorldComponents.def.h>
+
 #include <DirectXMath.h>
 
 #include <algorithm>

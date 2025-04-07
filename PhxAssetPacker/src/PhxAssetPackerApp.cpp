@@ -6,8 +6,6 @@
 #include <PhxCore/BinaryBuilder.h>
 #include <PhxCore/Span.h>
 #include <PhxWorld/WorldSerializer.h>
-#include <PhxData/Reflection.h>
-#include <PhxData/WorldComponents.def.h>
 
 #ifdef PHX_RHI_D3D12
 #include <d3d12.h>
@@ -193,11 +191,6 @@ int wmain(int argc, wchar_t** argv)
 
 			std::string worldFilename = std::format("{}.{}", baseFilename, "phxwld");
 			phx::WorldSerializer::Save(outputFS.get(), worldFilename.c_str(), world);
-
-			std::string worldFilename2 = std::format("{}.{}", "ReflectionTest", "phxwld");
-			phx::TransformComponent_ c = {.Flags = 0, .LocalTranslation = { 10.f, 20.f, 0.f } };
-
-			phx::rft::SerializeToYAML(outputFS.get(), worldFilename2.c_str(), c);
 		});
 
 		if (useGDeflate)

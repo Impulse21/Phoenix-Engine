@@ -53,7 +53,10 @@ YAML::Emitter& operator<<(YAML::Emitter& out, DirectX::XMFLOAT4 const& v)
 
 void phx::rft::SerializeToYAML(YAML::Emitter& out, const void* obj, const TypeInfo& type)
 {
-    out << YAML::BeginMap;
+
+    out << YAML::Key << type.TypeName;
+    out << YAML::BeginMap; // TransformComponent
+
     for (auto& field : type.GetFields())
     {
         const void* ptr = (char*)obj + field.Offset;

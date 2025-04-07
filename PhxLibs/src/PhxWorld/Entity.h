@@ -4,7 +4,7 @@
 #include <entt/entt.hpp>
 
 #include "World.h"
-#include "WorldComponents.h"
+#include <PhxData/WorldComponents.def.h>
 
 namespace phx
 {

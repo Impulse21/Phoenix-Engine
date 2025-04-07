@@ -4,6 +4,7 @@
 #include <PhxCore/StringHash.h>
 #include <PhxCore/VFS.h>
 #include <PhxCore/ThreadPool.h>
+#include <PhxData/WorldComponents.def.h>
 #include <cgltf.h>
 
 using namespace phx;

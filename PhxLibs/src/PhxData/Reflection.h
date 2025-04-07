@@ -61,6 +61,14 @@ namespace phx::rft
         return SerializeToYAML(fs, filename, typeInfo, &obj);
     }
 
+    template<typename T>
+    void SerializeToYAML(YAML::Emitter& out, const void* obj)
+    {
+        const TypeInfo& typeInfo = Refelction<T>::GetTypeInfo();
+        SerializeToYAML(out, obj, typeInfo);
+    }
+
+
     bool SerializeToYAML(phx::IFileSystem* fs, const char* filename, TypeInfo const& typeInfo, const void* obj);
     void SerializeToYAML(YAML::Emitter& out, const void* obj, const TypeInfo& type);
 }
