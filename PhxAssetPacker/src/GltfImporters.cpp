@@ -209,6 +209,7 @@ void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, phx::Entity
 	std::vector<Entity> childEntities; // TODO: Make use of an allorcator.
 	if (gltfNode.mesh)
 	{
+#if false
 		// Create a mesh instance
 		static size_t meshId = 0;
 
@@ -230,6 +231,7 @@ void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, phx::Entity
 			childEntities.push_back(subEntity);
 #endif
 		}
+#endif
 	}
 
 	else if (gltfNode.camera)

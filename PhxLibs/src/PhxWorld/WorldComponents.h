@@ -165,10 +165,6 @@ namespace phx
 
 	struct MeshRenderComponent
 	{
-		union
-		{
-			const char* MeshPath;
-			RefCountPtr<IResource> MeshResource;
-		};
+		RefCountPtr<IResource> MeshResource;
 	};
 }

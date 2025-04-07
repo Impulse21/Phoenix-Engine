@@ -1,11 +1,14 @@
 #pragma once
 
 #include <PhxCore/Math.h>
+
+#define REFLECT_CLASS(T) \
+	
 #define PROPERTY(...)
 
 namespace phx
 {
-	struct TransformComponent
+	struct TransformComponent_
 	{
 		enum Flags
 		{

@@ -44,8 +44,23 @@ namespace phx::rft
         phx::Span<FieldInfo> GetFields() const { return Fields; }
     };
 
+    template<typename T>
+    struct Refelction
+    {
+        static const TypeInfo& GetTypeInfo();
+        static constexpr StringHash GetTypeId();
+    };
+
     extern const std::unordered_map<std::string, const TypeInfo*> g_TypeRegistry;
 
-    bool SerializeToYAML(phx::IFileSystem* fs, const char* filename, const void* obj);
+    template<typename T>
+    bool SerializeToYAML(phx::IFileSystem* fs, const char* filename, T const& obj)
+    {
+        const TypeInfo& typeInfo = Refelction<T>::GetTypeInfo();
+
+        return SerializeToYAML(fs, filename, typeInfo, &obj);
+    }
+
+    bool SerializeToYAML(phx::IFileSystem* fs, const char* filename, TypeInfo const& typeInfo, const void* obj);
     void SerializeToYAML(YAML::Emitter& out, const void* obj, const TypeInfo& type);
 }

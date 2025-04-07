@@ -125,7 +125,7 @@ def generate_metadata_cpp(structs, includes, output_filepath):
         out.write('using namespace phx::rft;\n\n')
 
         for struct_name, struct_data in structs.items():
-            out.write(f'static const FieldInfo {struct_name}_Fields[] = {{\n')
+            out.write(f'constexpr FieldInfo {struct_name}_Fields[] = {{\n')
             for prop in struct_data['properties']:
                 extras = ', '.join(f'{{"{k}", "{v}"}}' for k, v in prop['extras'].items())
                 if not extras:
@@ -135,20 +135,22 @@ def generate_metadata_cpp(structs, includes, output_filepath):
 
             out.write('};\n\n')
 
-            out.write(f'static const TypeInfo {struct_name}_TypeInfo[] = {{\n')
-            out.write(f'\t{{ "{struct_name}", {struct_name}_Fields }}\n')
+            out.write(f'constexpr TypeInfo {struct_name}_TypeInfo = {{\n')
+            out.write(f'\t"{struct_name}", {struct_name}_Fields \n')
             out.write('};\n\n')
+            out.write(f'template<> const TypeInfo& Refelction<{struct_name}>::GetTypeInfo() {{ return {struct_name}_TypeInfo; }}\n')
+            out.write(f'template<> constexpr StringHash Refelction<{struct_name}>::GetTypeId() {{ return "{struct_name}"_hash; }}\n\n')
 
         out.write('const std::unordered_map<std::string, const TypeInfo*> g_TypeRegistry = {\n')
         for struct_name, struct_data in structs.items():
-            out.write(f'\t{{ "{struct_name}", {struct_name}_TypeInfo}}\n')
+            out.write(f'\t{{ "{struct_name}", &Refelction<{struct_name}>::GetTypeInfo()}}\n')
         
         out.write('};\n\n')
 
 def main():
-    def_file_path = r"C:\Users\dipao\source\repos\Phoenix-Engine\PhxLibs\src\PhxData\WorldComponents.def"  # Replace with the actual path to your .def file
+    def_file_path = r"C:\Users\dipao\source\repos\Phoenix-Engine\PhxLibs\src\PhxData\WorldComponents.def.h"  # Replace with the actual path to your .def file
     output_cpp_path = r"C:\Users\dipao\source\repos\Phoenix-Engine\PhxLibs\src\PhxData\MetadataTable.generated.cpp"
-    includes = ["PhxData_pch.h", "Reflection.h", "WorldComponents.def"]
+    includes = ["PhxData_pch.h", "Reflection.h", "WorldComponents.def.h"]
 
     if not os.path.exists(def_file_path):
         print(f"Error: file not found: {def_file_path}")

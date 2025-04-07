@@ -643,6 +643,7 @@ group "Applications"
             project_phx_renderer,
             project_phx_resource,
             project_phx_world,
+            project_phx_data,
             project_vendor_imgui,
         }
         
@@ -715,6 +716,7 @@ group "Applications"
             project_phx_renderer,
             project_phx_resource,
             project_phx_world,
+            project_phx_data,
             project_vendor_imgui,
             project_vendor_yaml,
         }
