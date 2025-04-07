@@ -66,7 +66,6 @@ namespace phx
 	{
 		return StringHash(s, const_strlen(s));
 	}
-
 }
 
 

@@ -87,7 +87,7 @@ def generate_metadata_header(output_filepath):
         outfile.write("extern std::unordered_map<std::string, StructInfo> g_metadata;\n\n")
         outfile.write("} // namespace Reflection\n\n")
 
-def generate_metadata_cpp(structs, includes, output_filepath):
+def generate_metadata_cpp_old(structs, includes, output_filepath):
     with open(output_filepath, 'w') as out:
         for include in includes:
             out.write(f'#include \"{include}\"\n')
@@ -115,6 +115,35 @@ def generate_metadata_cpp(structs, includes, output_filepath):
             out.write(f'\tstatic constexpr StringHash GetTypeNameHash() {{ return "{struct_name}"_hash; }}\n')
             out.write('};\n\n')
 
+def generate_metadata_cpp(structs, includes, output_filepath):
+    with open(output_filepath, 'w') as out:
+        for include in includes:
+            out.write(f'#include \"{include}\"\n')
+            
+        out.write("\n\n")
+        out.write('using namespace phx;\n')
+        out.write('using namespace phx::rft;\n\n')
+
+        for struct_name, struct_data in structs.items():
+            out.write(f'static const FieldInfo {struct_name}_Fields[] = {{\n')
+            for prop in struct_data['properties']:
+                extras = ', '.join(f'{{"{k}", "{v}"}}' for k, v in prop['extras'].items())
+                if not extras:
+                    extras = '{}'
+
+                out.write(f'\t{{ "{prop["name"]}", "{prop["type"]}"_hash, "{prop["tooltip"]}", offsetof({struct_name}, {prop["variable"]}), nullptr, std::initializer_list<ExtraInfo>{extras} }},\n')
+
+            out.write('};\n\n')
+
+            out.write(f'static const TypeInfo {struct_name}_TypeInfo[] = {{\n')
+            out.write(f'\t{{ "{struct_name}", {struct_name}_Fields }}\n')
+            out.write('};\n\n')
+
+        out.write('const std::unordered_map<std::string, const TypeInfo*> g_TypeRegistry = {\n')
+        for struct_name, struct_data in structs.items():
+            out.write(f'\t{{ "{struct_name}", {struct_name}_TypeInfo}}\n')
+        
+        out.write('};\n\n')
 
 def main():
     def_file_path = r"C:\Users\dipao\source\repos\Phoenix-Engine\PhxLibs\src\PhxData\WorldComponents.def"  # Replace with the actual path to your .def file

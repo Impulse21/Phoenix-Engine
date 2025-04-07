@@ -6,17 +6,17 @@
 using namespace phx;
 using namespace phx::rft;
 
-template<>
-struct TypeInfo<TransformComponent>
-{
-	static constexpr FieldInfo Fields[] = {
-		{ "Scale", "DirectX::XMFLOAT3", "DirectX::XMFLOAT3"_hash, "Local Scale", offsetof(TransformComponent, LocalScale), std::initializer_list<ExtraInfo>{} },
-		{ "Rotation", "DirectX::XMFLOAT4", "DirectX::XMFLOAT4"_hash, "Local Rotation", offsetof(TransformComponent, LocalRotation), std::initializer_list<ExtraInfo>{} },
-		{ "Translation", "DirectX::XMFLOAT3", "DirectX::XMFLOAT3"_hash, "Local Translation", offsetof(TransformComponent, LocalTranslation), std::initializer_list<ExtraInfo>{} },
-	};
+static const FieldInfo TransformComponent_Fields[] = {
+	{ "Scale", "DirectX::XMFLOAT3"_hash, "Local Scale", offsetof(TransformComponent, LocalScale), nullptr, std::initializer_list<ExtraInfo>{} },
+	{ "Rotation", "DirectX::XMFLOAT4"_hash, "Local Rotation", offsetof(TransformComponent, LocalRotation), nullptr, std::initializer_list<ExtraInfo>{} },
+	{ "Translation", "DirectX::XMFLOAT3"_hash, "Local Translation", offsetof(TransformComponent, LocalTranslation), nullptr, std::initializer_list<ExtraInfo>{} },
+};
 
-	static constexpr phx::Span<const FieldInfo> GetFields() { return Fields; }
-	static constexpr const char* GetTypeName() { return "TransformComponent"; }
-	static constexpr StringHash GetTypeNameHash() { return "TransformComponent"_hash; }
+static const TypeInfo TransformComponent_TypeInfo[] = {
+	{ "TransformComponent", TransformComponent_Fields }
+};
+
+const std::unordered_map<std::string, const TypeInfo*> g_TypeRegistry = {
+	{ "TransformComponent", TransformComponent_TypeInfo}
 };
 
