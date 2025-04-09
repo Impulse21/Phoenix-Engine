@@ -17,7 +17,7 @@ namespace phx
     class IFileSystem;
 }
 
-namespace phx::rft
+namespace phx::data
 {
 	struct ExtraInfo
 	{
@@ -45,10 +45,9 @@ namespace phx::rft
     };
 
     template<typename T>
-    struct Refelction
+    struct Reflection
     {
         static const TypeInfo& GetTypeInfo();
-        static constexpr StringHash GetTypeId();
     };
 
     extern const std::unordered_map<std::string, const TypeInfo*> g_TypeRegistry;
