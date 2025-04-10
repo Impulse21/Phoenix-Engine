@@ -25,7 +25,10 @@ phx_vendor_include_yaml_dir = phx_vendor_src_yaml_dir.."/include"
 phx_packer_vendor_dir       = "PhxAssetPacker/vendor"
 phx_packer_vendor_dx_tex    = phx_packer_vendor_dir..'/DirectXTex'
 
-workspace_directory         = '.workspace/'.._ACTION
+phx_script_dir                  = "scripts"
+phx_generate_reflection_script  = phx_script_dir.."/generate_reflection.py"
+phx_reflection_output_dir       = phx_lib_src_data_dir.."/GeneratedReflection.gen.cpp"
+workspace_directory             = '.workspace/'.._ACTION
 
 -- IDE Platform Names
 clang_win64_d3d12  = "Clang Win64 (D3D12)"
@@ -594,6 +597,11 @@ group "PhxLibs"
         }
 
         defines { "YAML_CPP_STATIC_DEFINE" }
+
+        -- Pre-build step to generate reflection
+        prebuildcommands {
+            "python ../../"..phx_generate_reflection_script.." --output "..phx_reflection_output_dir.." "..phx_lib_src_data_dir
+        }
 
     project(project_phx_world)
         kind('StaticLib')

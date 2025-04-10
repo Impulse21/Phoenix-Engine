@@ -1,12 +1,39 @@
 import re
 import os
-
+import argparse
+import glob
 
 property_macro = re.compile(r'PROPERTY\((.*?)\)')
 struct_decl = re.compile(r'struct\s+(\w+)')
-member_decl = re.compile(r'([a-zA-Z0-9_:<>]+)\s+([a-zA-Z0-9_]+)\s*(=.+)?;')
+member_decl = re.compile(r'([a-zA-Z0-9_:<>]+(?:<[^>]+>)?)\s+([a-zA-Z0-9_]+)\s*(=.+)?;')
 
-def parse_property_args(arg_str):
+
+def glob_def_h_files(directory):
+    pattern = os.path.join(directory, "*.def.h")
+    matching_files = glob.glob(pattern)
+    return matching_files
+
+def parse_type(type_str: str):
+    type_str = type_str.strip()
+
+    # Check for raw pointer
+    is_pointer = '*' in type_str
+    type_str = type_str.replace('*', '').strip()
+
+    # Check for smart pointer-like templates
+    smart_pointer_types = ['RefCountPtr', 'std::shared_ptr', 'UniquePtr']
+    for smart_type in smart_pointer_types:
+        if type_str.startswith(smart_type + "<"):
+            is_pointer = True
+            # Extract inner type, e.g., RefCountPtr<Foo> → Foo
+            inner_type = re.findall(r'<(.+?)>', type_str)
+            if inner_type:
+                type_str = inner_type[0].strip()
+            break
+
+    return type_str, is_pointer
+
+def parse_property_args(arg_str: str):
     """Parses the PROPERTY(...) macro arguments into a dictionary."""
     args = {}
     for part in arg_str.split(','):
@@ -49,16 +76,17 @@ def parse_def_file(filepath):
 
                 member_match = member_decl.match(line)
                 if member_match:
-                    type_str, var_name, _ = member_match.groups()
-                    type_str = type_str.strip()
+                    full_type, var_name, _ = member_match.groups()
+                    base_type, is_pointer = parse_type(full_type)
 
                     if pending_property is not None:
                         property_info = {
                             'name': pending_property.get('name', var_name),
                             'tooltip': pending_property.get('tooltip', ''),
                             'extras': {k: v for k, v in pending_property.items() if k not in ('name', 'tooltip')},
-                            'type': type_str,
+                            'type': full_type,
                             'variable': var_name,
+                            "is_pointer":is_pointer
                         }
                         structs[current_struct]['properties'].append(property_info)
                         pending_property = None
@@ -87,35 +115,6 @@ def generate_metadata_header(output_filepath):
         outfile.write("extern std::unordered_map<std::string, StructInfo> g_metadata;\n\n")
         outfile.write("} // namespace Reflection\n\n")
 
-def generate_metadata_cpp_old(structs, includes, output_filepath):
-    with open(output_filepath, 'w') as out:
-        for include in includes:
-            out.write(f'#include \"{include}\"\n')
-            
-        out.write("\n\n")
-        out.write('using namespace phx;\n')
-        out.write('using namespace phx::rft;\n\n')
-
-        for struct_name, struct_data in structs.items():
-
-            out.write(f'template<>\n')
-            out.write(f'struct TypeInfo<{struct_name}>\n')
-            out.write('{\n')
-            out.write('\tstatic constexpr FieldInfo Fields[] = {\n')
-
-            for prop in struct_data['properties']:
-                extras = ', '.join(f'{{"{k}", "{v}"}}' for k, v in prop['extras'].items())
-                if not extras:
-                    extras = '{}'
-
-                out.write(f'\t\t{{ "{prop["name"]}", "{prop["type"]}", "{prop["type"]}"_hash, "{prop["tooltip"]}", offsetof({struct_name}, {prop["variable"]}), std::initializer_list<ExtraInfo>{extras} }},\n')
-
-            out.write('\t};\n\n')
-            out.write('\tstatic constexpr phx::Span<const FieldInfo> GetFields() { return Fields; }\n')
-            out.write(f'\tstatic constexpr const char* GetTypeName() {{ return "{struct_name}"; }}\n')
-            out.write(f'\tstatic constexpr StringHash GetTypeNameHash() {{ return "{struct_name}"_hash; }}\n')
-            out.write('};\n\n')
-
 def generate_metadata_cpp(structs, includes, output_filepath):
     with open(output_filepath, 'w') as out:
         for include in includes:
@@ -134,7 +133,7 @@ def generate_metadata_cpp(structs, includes, output_filepath):
                 if not extras:
                     extras = '{}'
 
-                out.write(f'\t{{ "{prop["name"]}", "{prop["type"]}"_hash, "{prop["tooltip"]}", phx_offsetof(&{struct_name}::{prop["variable"]}), nullptr, std::initializer_list<ExtraInfo>{extras} }},\n')
+                out.write(f'\t{{ "{prop["name"]}", "{prop["type"]}"_hash, "{prop["tooltip"]}", phx_offsetof(&{struct_name}::{prop["variable"]}), std::initializer_list<ExtraInfo>{extras}, "{prop["is_pointer"]}" }},\n')
 
             out.write('};\n\n')
 
@@ -142,7 +141,8 @@ def generate_metadata_cpp(structs, includes, output_filepath):
             out.write(f'\t"{struct_name}", {struct_name}_Fields \n')
             out.write('};\n\n')
             out.write(f'template<> const TypeInfo& Refelction<{struct_name}>::GetTypeInfo() {{ return {struct_name}_TypeInfo; }}\n')
-            out.write(f'template<> constexpr StringHash Refelction<{struct_name}>::GetTypeId() {{ return "{struct_name}"_hash; }}\n\n')
+            out.write(f'template<> constexpr StringHash Refelction<{struct_name}>::GetTypeId() {{ return "{struct_name}"_hash; }}\n')
+            out.write(f'REGISTER_TYPE_FACTORY({struct_name})\n\n')
 
         out.write('const std::unordered_map<std::string, const TypeInfo*> g_TypeRegistry = {\n')
         for struct_name, struct_data in structs.items():
@@ -153,20 +153,32 @@ def generate_metadata_cpp(structs, includes, output_filepath):
         out.write('};\n\n')
 
 def main():
-    def_file_path = r"C:\Users\dipao\source\repos\Phoenix-Engine\PhxLibs\src\PhxData\WorldComponents.def.h"  # Replace with the actual path to your .def file
-    output_cpp_path = r"C:\Users\dipao\source\repos\Phoenix-Engine\PhxLibs\src\PhxData\MetadataTable.generated.cpp"
-    includes = ["PhxData_pch.h", "Reflection.h", "WorldComponents.def.h", "PhxCore/Base.h"]
+        
+    includes = ["PhxData_pch.h", "Reflection.h", "DataTypeFactory.h", "WorldComponents.def.h", "PhxCore/Base.h"]
 
-    if not os.path.exists(def_file_path):
-        print(f"Error: file not found: {def_file_path}")
-        return
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", required=True)
+    parser.add_argument("headers_dir", nargs="+")
+    args = parser.parse_args()
 
-    parsed_structs = parse_def_file(def_file_path)
+    header_files = []
+    for headers_dir in args.headers_dir:
+        header_files.extend(glob_def_h_files(headers_dir))
+
+    parsed_structs = []
+    for header_file in header_files:
+        header_file_abs = os.path.abspath(header_file)
+        if not os.path.exists(header_file_abs):
+            print(f"Error: file not found: {header_file_abs}")
+            return
+
+        parsed_structs.extend(parse_def_file(header_file_abs))
+
     if parsed_structs:
         #generate_metadata_header(output_h_path) # Generate the header
-        generate_metadata_cpp(parsed_structs, includes, output_cpp_path)
+        generate_metadata_cpp(parsed_structs, includes, args.output)
         #print(f"Reflection header generated successfully in '{output_h_path}'")
-        print("Generated:", output_cpp_path)
+        print("Generated:", args.output)
 
     else:
         print("No structs with properties found in the .def file.")

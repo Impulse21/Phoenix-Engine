@@ -32,8 +32,8 @@ namespace phx::data
         StringHash TypeHash;
         const char* Tooltip = nullptr;
         size_t Offset;                     // Byte offset within the struct
-        TypeInfo* NestedType = nullptr;
         std::initializer_list<ExtraInfo> Extras;
+        bool IsPointer : 1 = false; // New flag to indicate pointer types
     };
 
     struct TypeInfo
