@@ -9,6 +9,7 @@
 
 #include "DataObject.h"
 
+#include <PhxCore/RefCountPtr.h>
 namespace phx::data
 {
 	struct Component : public DataObj
@@ -49,10 +50,10 @@ namespace phx::data
 		std::string Name;
 
 		PROPERTY()
-		std::vector<Component*> Components;
+		std::vector<RefCountPtr<Component>> Components;
 
 		PROPERTY()
-		std::vector<Entity*> Children;
+		std::vector<RefCountPtr<Entity>> Children;
 	};
 
 	struct Level : public DataObj
@@ -66,6 +67,6 @@ namespace phx::data
 		std::string PackFile;
 
 		PROPERTY()
-		std::vector<Entity*> Children;
+		std::vector<RefCountPtr<Entity>> Children;
 	};
 }
