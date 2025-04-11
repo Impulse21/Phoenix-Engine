@@ -56,9 +56,9 @@ namespace phx::data
 		std::vector<RefCountPtr<Entity>> Children;
 	};
 
-	struct Level : public DataObj
+	struct WorldChunk : public DataObj
 	{
-		PHX_DATA_OBJECT(Level, DataObj)
+		PHX_DATA_OBJECT(WorldChunk, DataObj)
 
 		PROPERTY()
 		UUID ID;
