@@ -11,7 +11,7 @@ member_decl = re.compile(r'([a-zA-Z0-9_:<>]+(?:<[^>]+>)?)\s+([a-zA-Z0-9_]+)\s*(=
 def glob_def_h_files(directory):
     pattern = os.path.join(directory, "*.def.h")
     matching_files = glob.glob(pattern)
-    return matching_files
+    return [os.path.abspath(path) for path in matching_files] 
 
 def parse_type(type_str: str):
     type_str = type_str.strip()
@@ -163,19 +163,23 @@ def main():
 
     header_files = []
     for headers_dir in args.headers_dir:
-        header_files.extend(glob_def_h_files(headers_dir))
+        header_file_path = os.path.abspath(headers_dir)
+        def_files = glob_def_h_files(header_file_path)
+        header_files.extend(def_files)
 
-    parsed_structs = []
+    parsed_structs = {}
     for header_file in header_files:
         header_file_abs = os.path.abspath(header_file)
         if not os.path.exists(header_file_abs):
             print(f"Error: file not found: {header_file_abs}")
             return
 
-        parsed_structs.extend(parse_def_file(header_file_abs))
+        parsed_data = parse_def_file(header_file_abs)
+        parsed_structs.update(parsed_data)
 
     if parsed_structs:
         #generate_metadata_header(output_h_path) # Generate the header
+        print(args.output)
         generate_metadata_cpp(parsed_structs, includes, args.output)
         #print(f"Reflection header generated successfully in '{output_h_path}'")
         print("Generated:", args.output)
