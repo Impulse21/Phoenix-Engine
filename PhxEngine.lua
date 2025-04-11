@@ -586,8 +586,8 @@ group "PhxLibs"
         {
             phx_lib_src_data_dir.."/**.h",
             phx_lib_src_data_dir.."/**.cpp",
-            phx_lib_src_data_dir.."/**.py"
-            phx_lib_src_data_dir.."/"..phx_generated_file_name
+            phx_lib_src_data_dir.."/**.py",
+            phx_lib_src_data_dir.."/"..phx_generated_file_name,
         }
 
         includedirs
