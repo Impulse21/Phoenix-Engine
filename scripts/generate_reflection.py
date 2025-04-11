@@ -122,7 +122,7 @@ def generate_metadata_cpp(structs, includes, output_filepath):
             
         out.write("\n\n")
         out.write('using namespace phx;\n')
-        out.write('using namespace phx::rft;\n\n')
+        out.write('using namespace phx::data;\n\n')
 
         for struct_name, struct_data in structs.items():
             if len(struct_data['properties']) == 0:
@@ -154,7 +154,7 @@ def generate_metadata_cpp(structs, includes, output_filepath):
 
 def main():
         
-    includes = ["PhxData_pch.h", "Reflection.h", "DataTypeFactory.h", "WorldComponents.def.h", "PhxCore/Base.h"]
+    includes = ["PhxData_pch.h", "Reflection.h", "DataTypeFactory.h", "PhxCore/Base.h"]
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True)
@@ -176,6 +176,9 @@ def main():
 
         parsed_data = parse_def_file(header_file_abs)
         parsed_structs.update(parsed_data)
+        
+        include_entry = os.path.basename(header_file)
+        includes.append(f"PhxData/{include_entry}")
 
     if parsed_structs:
         #generate_metadata_header(output_h_path) # Generate the header
