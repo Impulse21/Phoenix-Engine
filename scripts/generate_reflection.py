@@ -132,23 +132,23 @@ def generate_metadata_cpp(structs, includes, output_filepath):
                 extras = ', '.join(f'{{"{k}", "{v}"}}' for k, v in prop['extras'].items())
                 if not extras:
                     extras = '{}'
-
-                out.write(f'\t{{ "{prop["name"]}", "{prop["type"]}"_hash, "{prop["tooltip"]}", phx_offsetof(&{struct_name}::{prop["variable"]}), std::initializer_list<ExtraInfo>{extras}, "{prop["is_pointer"]}" }},\n')
+            
+                is_pointer_cpp = 'true' if prop["is_pointer"] else 'false'
+                out.write(f'\t{{ "{prop["name"]}", "{prop["type"]}"_hash, "{prop["tooltip"]}", phx_offsetof(&{struct_name}::{prop["variable"]}), std::initializer_list<ExtraInfo>{{{extras}}}, {is_pointer_cpp} }},\n')
 
             out.write('};\n\n')
 
             out.write(f'TypeInfo {struct_name}_TypeInfo = {{\n')
             out.write(f'\t"{struct_name}", {struct_name}_Fields \n')
             out.write('};\n\n')
-            out.write(f'template<> const TypeInfo& Refelction<{struct_name}>::GetTypeInfo() {{ return {struct_name}_TypeInfo; }}\n')
-            out.write(f'template<> constexpr StringHash Refelction<{struct_name}>::GetTypeId() {{ return "{struct_name}"_hash; }}\n')
+            out.write(f'template<> const TypeInfo& Reflection<{struct_name}>::GetTypeInfo() {{ return {struct_name}_TypeInfo; }}\n')
             out.write(f'REGISTER_TYPE_FACTORY({struct_name})\n\n')
 
         out.write('const std::unordered_map<std::string, const TypeInfo*> g_TypeRegistry = {\n')
         for struct_name, struct_data in structs.items():
             if len(struct_data['properties']) == 0:
                 continue
-            out.write(f'\t{{ "{struct_name}", &Refelction<{struct_name}>::GetTypeInfo()}},\n')
+            out.write(f'\t{{ "{struct_name}", &Reflection<{struct_name}>::GetTypeInfo()}},\n')
         
         out.write('};\n\n')
 
@@ -182,10 +182,10 @@ def main():
 
     if parsed_structs:
         #generate_metadata_header(output_h_path) # Generate the header
-        print(args.output)
-        generate_metadata_cpp(parsed_structs, includes, args.output)
+        output_path = os.path.join(os.getcwd(), os.path.abspath(args.output))
+        generate_metadata_cpp(parsed_structs, includes, output_path)
         #print(f"Reflection header generated successfully in '{output_h_path}'")
-        print("Generated:", args.output)
+        print("Generated:", output_path)
 
     else:
         print("No structs with properties found in the .def file.")

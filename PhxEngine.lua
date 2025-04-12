@@ -28,7 +28,7 @@ phx_packer_vendor_dx_tex    = phx_packer_vendor_dir..'/DirectXTex'
 phx_script_dir                  = "scripts"
 phx_generate_reflection_script  = phx_script_dir.."/generate_reflection.py"
 phx_generated_file_name         = "GeneratedReflection.gen.cpp"
-phx_reflection_output_dir       = phx_lib_src_data_dir.."/"..phx_generate_reflection_script
+phx_reflection_output_dir       = phx_lib_src_data_dir.."/"..phx_generated_file_name
 workspace_directory             = '.workspace/'.._ACTION
 
 -- IDE Platform Names
@@ -602,7 +602,7 @@ group "PhxLibs"
 
         -- Pre-build step to generate reflection
         prebuildcommands {
-            "python ../../"..phx_generate_reflection_script.." --output ../.."..phx_reflection_output_dir.." ../.."..phx_lib_src_data_dir
+            "python ../../"..phx_generate_reflection_script.." --output ../../"..phx_reflection_output_dir.." ../../"..phx_lib_src_data_dir
         }
 
     project(project_phx_world)

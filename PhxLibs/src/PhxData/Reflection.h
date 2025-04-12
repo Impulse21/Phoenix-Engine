@@ -55,7 +55,7 @@ namespace phx::data
     template<typename T>
     bool SerializeToYAML(phx::IFileSystem* fs, const char* filename, T const& obj)
     {
-        const TypeInfo& typeInfo = Refelction<T>::GetTypeInfo();
+        const TypeInfo& typeInfo = Reflection<T>::GetTypeInfo();
 
         return SerializeToYAML(fs, filename, typeInfo, &obj);
     }
@@ -63,7 +63,7 @@ namespace phx::data
     template<typename T>
     void SerializeToYAML(YAML::Emitter& out, const void* obj)
     {
-        const TypeInfo& typeInfo = Refelction<T>::GetTypeInfo();
+        const TypeInfo& typeInfo = Reflection<T>::GetTypeInfo();
         SerializeToYAML(out, obj, typeInfo);
     }
 

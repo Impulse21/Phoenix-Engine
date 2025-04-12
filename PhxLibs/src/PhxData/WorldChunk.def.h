@@ -10,11 +10,12 @@
 #include "DataObject.h"
 
 #include <PhxCore/RefCountPtr.h>
+
 namespace phx::data
 {
-	struct Component : public DataObj
+	struct Component : public RefCounter<IDataObj>
 	{
-		PHX_DATA_OBJECT(Component, DataObj)
+		PHX_DATA_OBJECT(Component, IDataObj)
 	};
 
 	struct TransformComponent : public Component
@@ -39,9 +40,9 @@ namespace phx::data
 		std::string Mesh;
 	};
 
-	struct Entity : public DataObj
+	struct Entity : public RefCounter<IDataObj>
 	{
-		PHX_DATA_OBJECT(Entity, DataObj)
+		PHX_DATA_OBJECT(Entity, IDataObj)
 
 		PROPERTY()
 		UUID ID;
@@ -56,9 +57,9 @@ namespace phx::data
 		std::vector<RefCountPtr<Entity>> Children;
 	};
 
-	struct WorldChunk : public DataObj
+	struct WorldChunk : public RefCounter<IDataObj>
 	{
-		PHX_DATA_OBJECT(WorldChunk, DataObj)
+		PHX_DATA_OBJECT(WorldChunk, IDataObj)
 
 		PROPERTY()
 		UUID ID;

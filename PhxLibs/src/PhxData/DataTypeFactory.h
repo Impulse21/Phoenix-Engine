@@ -12,7 +12,7 @@
         {                                                   \
             AutoRegister_##TYPE()                           \
             {                                               \
-                TypeFactory::Register(#TYPE##_hash, []() -> \
+                DataTypeFactory::Register(#TYPE##_hash, []() -> \
                     void* { return new TYPE(); });          \
             }                                               \
         };                                                  \

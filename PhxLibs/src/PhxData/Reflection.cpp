@@ -7,8 +7,7 @@
 #include "yaml-cpp/yaml.h"
 
 using namespace phx;
-using namespace phx::rft;
-
+using namespace phx::data;
 
 namespace
 {
@@ -51,7 +50,7 @@ YAML::Emitter& operator<<(YAML::Emitter& out, DirectX::XMFLOAT4 const& v)
     return out;
 }
 
-void phx::rft::SerializeToYAML(YAML::Emitter& out, const void* obj, const TypeInfo& type)
+void phx::data::SerializeToYAML(YAML::Emitter& out, const void* obj, const TypeInfo& type)
 {
 
     out << YAML::Key << type.TypeName;
@@ -62,9 +61,9 @@ void phx::rft::SerializeToYAML(YAML::Emitter& out, const void* obj, const TypeIn
         const void* ptr = (char*)obj + field.Offset;
         out << YAML::Key << field.Name << YAML::Value;
 
-        if (field.NestedType)
+        if (field.IsPointer)
         {
-            SerializeToYAML(out, ptr, *field.NestedType);
+            // SerializeToYAML(out, ptr, *field.NestedType);
         }
         else if (field.TypeHash.Value() == FloatId.Value())
         {
@@ -109,7 +108,7 @@ void phx::rft::SerializeToYAML(YAML::Emitter& out, const void* obj, const TypeIn
     out << YAML::EndMap;
 }
 
-bool phx::rft::SerializeToYAML(phx::IFileSystem* fs, const char* filename, TypeInfo const& typeInfo, const void* obj)
+bool phx::data::SerializeToYAML(phx::IFileSystem* fs, const char* filename, TypeInfo const& typeInfo, const void* obj)
 {
     YAML::Emitter out;
 

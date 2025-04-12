@@ -21,10 +21,14 @@
 
 namespace phx::data
 {
-    struct DataObj
+    struct IDataObj
     {
         virtual phx::StringHash GetType() const = 0;
         virtual const char* GetTypeName() const = 0;
         virtual const TypeInfo& GetTypeInfo() const = 0;
+
+    public:
+        virtual unsigned long AddRef() = 0;
+        virtual unsigned long Release() = 0;
     };
 }
