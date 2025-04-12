@@ -10,7 +10,7 @@
         inline static constexpr phx::StringHash TypeId = StringHash(#typeName);                                 \
         inline static constexpr const char* TypeName = #typeName;                                               \
                                                                                                                 \
-        static const phx::data::TypeInfo& GetTypeInfoStatic() { return Reflection<ClassName>::GetTypeInfo(); }  \
+        static const phx::data::TypeInfo& GetTypeInfoStatic();                                                  \
                                                                                                                 \
         virtual const phx::data::TypeInfo& GetTypeInfo() const override { return GetTypeInfoStatic(); }         \
         virtual phx::StringHash GetType() const override { return TypeId; }                                     \
@@ -27,6 +27,7 @@ namespace phx::data
         virtual const char* GetTypeName() const = 0;
         virtual const TypeInfo& GetTypeInfo() const = 0;
 
+        virtual ~IDataObj() = default;
     public:
         virtual unsigned long AddRef() = 0;
         virtual unsigned long Release() = 0;
