@@ -21,6 +21,7 @@
 
 namespace phx::data
 {
+    class IArchiver;
     struct IDataObj
     {
         virtual phx::StringHash GetType() const = 0;
@@ -28,6 +29,9 @@ namespace phx::data
         virtual const TypeInfo& GetTypeInfo() const = 0;
 
         virtual ~IDataObj() = default;
+
+        void Serialize(IArchiver& ar) const;
+        void Deserialize(IArchiver& ar);
     public:
         virtual unsigned long AddRef() = 0;
         virtual unsigned long Release() = 0;

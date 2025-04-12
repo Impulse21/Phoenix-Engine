@@ -52,7 +52,6 @@ YAML::Emitter& operator<<(YAML::Emitter& out, DirectX::XMFLOAT4 const& v)
 
 void phx::data::SerializeToYAML(YAML::Emitter& out, const void* obj, const TypeInfo& type)
 {
-
     out << YAML::Key << type.TypeName;
     out << YAML::BeginMap; // TransformComponent
 
