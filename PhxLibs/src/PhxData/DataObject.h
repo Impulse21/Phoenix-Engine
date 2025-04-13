@@ -11,7 +11,7 @@
         inline static constexpr const char* TypeName = #typeName;                                               \
                                                                                                                 \
         static const phx::data::TypeInfo& GetTypeInfoStatic();                                                  \
-                                                                                                                \
+        static phx::StringHash GetTypeIdStatic();                                                     \
         virtual const phx::data::TypeInfo& GetTypeInfo() const override { return GetTypeInfoStatic(); }         \
         virtual phx::StringHash GetType() const override { return TypeId; }                                     \
         virtual const char* GetTypeName() const override { return TypeName; }                                   \

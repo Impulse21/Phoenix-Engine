@@ -13,7 +13,7 @@
         {                                                   \
             AutoRegister_##TYPE()                           \
             {                                               \
-                DataTypeFactory::Register(#TYPE##_hash, []() -> \
+                DataTypeFactory::Register<TYPE>([]() ->     \
                     void* { return new TYPE(); });          \
             }                                               \
         };                                                  \
@@ -24,6 +24,12 @@ namespace phx::data
     class DataTypeFactory
     {
     public:
+        template<typename T>
+        static void Register(std::function<void* ()> const& function)
+        {
+            Register(T::TypeId, function);
+        }
+
         static void Register(StringHash hash, std::function<void* ()> const& function)
         {
             m_registry.emplace(hash, function);
@@ -33,7 +39,7 @@ namespace phx::data
         template<typename T>
         static RefCountPtr<T> Create()
         {
-            return RefCountPtr<T>::Create(static_cast<T*>(Create(T::TypeId)));
+            return RefCountPtr<T>::Create(static_cast<T*>(Create(T::GetTypeIdStatic())));
         }
 
         static void* Create(StringHash hash)

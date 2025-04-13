@@ -161,6 +161,7 @@ def generate_metadata_cpp(structs, includes, output_filepath):
             out.write('};\n\n')
             out.write(f'template<> const TypeInfo& Reflection<{struct_name}>::GetTypeInfo() {{ return {struct_name}_TypeInfo; }}\n')
             out.write(f'const phx::data::TypeInfo& {struct_name}::GetTypeInfoStatic() {{ return Reflection<{struct_name}>::GetTypeInfo(); }}\n')
+            out.write(f'phx::StringHash {struct_name}::GetTypeIdStatic() {{ return {struct_name}::TypeId; }}\n')
             out.write(f'REGISTER_TYPE_FACTORY({struct_name})\n\n')
 
         out.write('const std::unordered_map<std::string, const TypeInfo*> g_TypeRegistry = {\n')
