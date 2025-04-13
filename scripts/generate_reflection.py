@@ -97,7 +97,7 @@ def parse_def_file(filepath):
                             'name': pending_property.get('name', var_name),
                             'tooltip': pending_property.get('tooltip', ''),
                             'extras': {k: v for k, v in pending_property.items() if k not in ('name', 'tooltip')},
-                            'type': full_type,
+                            'type': base_type,
                             'variable': var_name,
                             "is_pointer": is_pointer,
                             "is_vector": is_vector,

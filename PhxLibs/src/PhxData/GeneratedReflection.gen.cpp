@@ -68,7 +68,7 @@ REGISTER_TYPE_FACTORY(Entity)
 FieldInfo WorldChunk_Fields[] = {
 	{ "ID", "UUID"_hash, "", phx_offsetof(&WorldChunk::ID), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
 	{ "PackFile", "std::string"_hash, "", phx_offsetof(&WorldChunk::PackFile), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
-	{ "Root", "RefCountPtr<Entity>"_hash, "", phx_offsetof(&WorldChunk::Root), std::initializer_list<ExtraInfo>{{}}, true, false, false, 0 },
+	{ "Root", "Entity"_hash, "", phx_offsetof(&WorldChunk::Root), std::initializer_list<ExtraInfo>{{}}, true, false, false, 0 },
 };
 
 TypeInfo WorldChunk_TypeInfo = {
