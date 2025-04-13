@@ -11,7 +11,16 @@ namespace DirectX
 
 namespace phx::data
 {
-	class IDataObj;
+	template<typename T>
+	struct ArchiveField
+	{
+		const char* key;
+		T& value;
+
+		ArchiveField(const char* key, T& value) : key(key), value(value) {}
+	};
+
+	struct IDataObj;
 	enum class ArchiveMode
 	{
 		Read,
@@ -27,20 +36,22 @@ namespace phx::data
 
 		// Templated interface for serialization
 		template<typename T>
-		IArchiver& operator<<(const std::pair<const char*, T>& pair)
+		IArchiver& operator<<(const ArchiveField<T>& field)
 		{
-			Write(pair.first, pair.second);
+			Write(field.key, field.value);
 			return *this;
 		}
 
 		template<typename T>
-		IArchiver& operator>>(std::pair<const char*, T>& pair)
+		IArchiver& operator>>(ArchiveField<T>& field)
 		{
-			Read(pair.first, pair.second);
+			Read(field.key, field.value);
 			return *this;
 		}
 
 	protected:
+
+		// TODO: Array and IData Obj
 		virtual void Write(const char* key, const int32_t& value) = 0;
 		virtual void Write(const char* key, const uint32_t& value) = 0;
 		virtual void Write(const char* key, const float& value) = 0;

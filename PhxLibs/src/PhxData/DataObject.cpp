@@ -4,6 +4,7 @@
 
 #include <PhxCore/StringHash.h>
 
+using namespace phx;
 using namespace phx::data;
 namespace
 {
@@ -33,46 +34,46 @@ void phx::data::IDataObj::Serialize(IArchiver& ar) const
         }
         else if (field.TypeHash == FloatId)
         {
-            ar << std::make_pair(key, *(float*)ptr);
+            ar << ArchiveField(key, *(float*)ptr);
         }
         else if (field.TypeHash == IntId)
         {
-            ar << *(int*)ptr;
+            ar << ArchiveField(key, *(int*)ptr);
         }
         else if (field.TypeHash == UIntId)
         {
-            ar << *(uint32_t*)ptr;
+            ar << ArchiveField(key, *(uint32_t*)ptr);
         }
         else if (field.TypeHash == StringId)
         {
-            ar << *(std::string*)ptr;
+            ar << ArchiveField(key, *(std::string*)ptr);
         }
         else if (field.TypeHash == BoolId)
         {
-            ar << (*(bool*)ptr ? "true" : "false");
+            ar << ArchiveField(key, *(bool*)ptr);
         }
         else if (field.TypeHash == XMFloat2Id)
         {
-            ar << *(DirectX::XMFLOAT2*)ptr;
+            ar << ArchiveField(key, *(DirectX::XMFLOAT2*)ptr);
         }
         else if (field.TypeHash == XMFloat3Id)
         {
-            ar << *(DirectX::XMFLOAT3*)ptr;
+            ar << ArchiveField(key, *(DirectX::XMFLOAT3*)ptr);
         }
         else if (field.TypeHash == XMFloat4Id)
         {
-            ar << *(DirectX::XMFLOAT4*)ptr;
+            ar << ArchiveField(key, *(DirectX::XMFLOAT4*)ptr);
         }
         else if (field.TypeHash == UUIDID || field.TypeHash == UUIDID_NS)
         {
-            ar << *(UUID*)ptr;
+            ar << ArchiveField(key, *(UUID*)ptr);
         }
         else
-            ar << "<unsupported>";
+            ar << ArchiveField(key, "<unsupported>");
     }
 
 }
 
-void phx::data::IDataObj::Deserialize(IArchiver& ar)
+void phx::data::IDataObj::Deserialize(IArchiver&)
 {
 }
