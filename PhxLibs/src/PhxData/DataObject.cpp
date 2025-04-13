@@ -5,8 +5,10 @@
 #include <PhxCore/VFS.h>
 #include <PhxCore/StringHash.h>
 
+
 using namespace phx;
 using namespace phx::data;
+
 namespace
 {
     constexpr phx::StringHash FloatId = "float"_hash;

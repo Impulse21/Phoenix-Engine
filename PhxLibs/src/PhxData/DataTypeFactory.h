@@ -40,7 +40,10 @@ namespace phx::data
         {
             auto itr = m_registry.find(hash);
             if (itr == m_registry.end())
+            {
+                PHX_ASSERT(false, "No registry found for type")
                 return nullptr;
+            }
             return itr->second();
         }
 

@@ -16,6 +16,10 @@ namespace phx::data
 	struct Component : public RefCounter<IDataObj>
 	{
 		PHX_DATA_OBJECT(Component, IDataObj)
+			
+		// Dummy workaround to get reflection data generated for this.
+		PROPERTY()
+		uint8_t _dummy = 0;
 	};
 
 	struct TransformComponent : public Component

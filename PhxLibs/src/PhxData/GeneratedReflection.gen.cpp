@@ -8,6 +8,18 @@
 using namespace phx;
 using namespace phx::data;
 
+FieldInfo Component_Fields[] = {
+	{ "_dummy", "uint8_t"_hash, "", phx_offsetof(&Component::_dummy), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
+};
+
+TypeInfo Component_TypeInfo = {
+	"Component", Component_Fields 
+};
+
+template<> const TypeInfo& Reflection<Component>::GetTypeInfo() { return Component_TypeInfo; }
+const phx::data::TypeInfo& Component::GetTypeInfoStatic() { return Reflection<Component>::GetTypeInfo(); }
+REGISTER_TYPE_FACTORY(Component)
+
 FieldInfo TransformComponent_Fields[] = {
 	{ "Translation", "DirectX::XMFLOAT3"_hash, "", phx_offsetof(&TransformComponent::Translation), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
 	{ "Rotation", "DirectX::XMFLOAT4"_hash, "", phx_offsetof(&TransformComponent::Rotation), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
@@ -64,6 +76,7 @@ const phx::data::TypeInfo& WorldChunk::GetTypeInfoStatic() { return Reflection<W
 REGISTER_TYPE_FACTORY(WorldChunk)
 
 const std::unordered_map<std::string, const TypeInfo*> g_TypeRegistry = {
+	{ "Component", &Reflection<Component>::GetTypeInfo()},
 	{ "TransformComponent", &Reflection<TransformComponent>::GetTypeInfo()},
 	{ "MeshComponent", &Reflection<MeshComponent>::GetTypeInfo()},
 	{ "Entity", &Reflection<Entity>::GetTypeInfo()},

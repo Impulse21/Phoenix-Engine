@@ -35,9 +35,6 @@ extern "C"
 using namespace phx;
 using namespace Microsoft::WRL;
 
-using namespace phx::data;
-REGISTER_TYPE_FACTORY(TransformComponent)
-
 // Args for Laptop: -config "../../PhxAssetPacker/test_config_laptop.yaml"
 // Args For Matrix: -config "../../PhxAssetPacker/test_config_matrix.yaml"
 namespace
