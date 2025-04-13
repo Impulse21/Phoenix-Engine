@@ -6,7 +6,8 @@ import glob
 property_macro = re.compile(r'PROPERTY\((.*?)\)')
 struct_decl = re.compile(r'struct\s+(\w+)')
 member_decl = re.compile(r'([a-zA-Z0-9_:<>]+(?:<[^>]+>)?)\s+([a-zA-Z0-9_]+)\s*(=.+)?;')
-
+is_vector_decl = re.compile(r'std::vector<(.+)>')
+is_array_decl = re.compile(r'(.+)\s*\[(\d+)\]')
 
 def glob_def_h_files(directory):
     pattern = os.path.join(directory, "*.def.h")
@@ -30,8 +31,20 @@ def parse_type(type_str: str):
             if inner_type:
                 type_str = inner_type[0].strip()
             break
+            
+    is_vector = False
+    is_array = False
+    array_size = 0
+    if not is_pointer:
+        if match := re.match(r'std::vector<(.+)>', type_str):
+            base_type = match.group(1).strip()
+            is_vector = True
+        elif match := re.match(r'(.+)\s*\[(\d+)\]', type_str):
+            base_type = match.group(1).strip()
+            array_size = int(match.group(2))
+            is_array = True
 
-    return type_str, is_pointer
+    return type_str, is_pointer, is_vector, is_array, array_size
 
 def parse_property_args(arg_str: str):
     """Parses the PROPERTY(...) macro arguments into a dictionary."""
@@ -77,7 +90,7 @@ def parse_def_file(filepath):
                 member_match = member_decl.match(line)
                 if member_match:
                     full_type, var_name, _ = member_match.groups()
-                    base_type, is_pointer = parse_type(full_type)
+                    base_type, is_pointer, is_vector, is_array, array_size = parse_type(full_type)
 
                     if pending_property is not None:
                         property_info = {
@@ -86,7 +99,10 @@ def parse_def_file(filepath):
                             'extras': {k: v for k, v in pending_property.items() if k not in ('name', 'tooltip')},
                             'type': full_type,
                             'variable': var_name,
-                            "is_pointer":is_pointer
+                            "is_pointer": is_pointer,
+                            "is_vector": is_vector,
+                            "is_array": is_array,
+                            "array_size": array_size
                         }
                         structs[current_struct]['properties'].append(property_info)
                         pending_property = None
@@ -134,7 +150,9 @@ def generate_metadata_cpp(structs, includes, output_filepath):
                     extras = '{}'
             
                 is_pointer_cpp = 'true' if prop["is_pointer"] else 'false'
-                out.write(f'\t{{ "{prop["name"]}", "{prop["type"]}"_hash, "{prop["tooltip"]}", phx_offsetof(&{struct_name}::{prop["variable"]}), std::initializer_list<ExtraInfo>{{{extras}}}, {is_pointer_cpp} }},\n')
+                is_vector_cpp = 'true' if prop["is_vector"] else 'false'
+                is_array_cpp = 'true' if prop["is_array"] else 'false'
+                out.write(f'\t{{ "{prop["name"]}", "{prop["type"]}"_hash, "{prop["tooltip"]}", phx_offsetof(&{struct_name}::{prop["variable"]}), std::initializer_list<ExtraInfo>{{{extras}}}, {is_pointer_cpp}, {is_vector_cpp}, {is_array_cpp}, {prop["array_size"]} }},\n')
 
             out.write('};\n\n')
 
@@ -142,7 +160,7 @@ def generate_metadata_cpp(structs, includes, output_filepath):
             out.write(f'\t"{struct_name}", {struct_name}_Fields \n')
             out.write('};\n\n')
             out.write(f'template<> const TypeInfo& Reflection<{struct_name}>::GetTypeInfo() {{ return {struct_name}_TypeInfo; }}\n')
-            out.write(f'const phx::data::TypeInfo& {struct_name}::GetTypeInfoStatic() {{ return Reflection<{struct_name}>::GetTypeInfo(); }}')
+            out.write(f'const phx::data::TypeInfo& {struct_name}::GetTypeInfoStatic() {{ return Reflection<{struct_name}>::GetTypeInfo(); }}\n')
             out.write(f'REGISTER_TYPE_FACTORY({struct_name})\n\n')
 
         out.write('const std::unordered_map<std::string, const TypeInfo*> g_TypeRegistry = {\n')

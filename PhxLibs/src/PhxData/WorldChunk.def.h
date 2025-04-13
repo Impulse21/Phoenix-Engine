@@ -68,6 +68,6 @@ namespace phx::data
 		std::string PackFile;
 
 		PROPERTY()
-		std::vector<RefCountPtr<Entity>> Children;
+		RefCountPtr<Entity> Root;
 	};
 }

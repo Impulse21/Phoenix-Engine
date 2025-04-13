@@ -2,7 +2,7 @@
 
 #include "Entity.h"
 #include <DirectXMath.h>
-#include <PhxData/WorldComponents.def.h>
+#include "WorldComponents.h"
 
 using namespace DirectX;
 using namespace phx;

@@ -9,9 +9,9 @@ using namespace phx;
 using namespace phx::data;
 
 FieldInfo TransformComponent_Fields[] = {
-	{ "Translation", "DirectX::XMFLOAT3"_hash, "", phx_offsetof(&TransformComponent::Translation), std::initializer_list<ExtraInfo>{{}}, false },
-	{ "Rotation", "DirectX::XMFLOAT4"_hash, "", phx_offsetof(&TransformComponent::Rotation), std::initializer_list<ExtraInfo>{{}}, false },
-	{ "Scale", "DirectX::XMFLOAT3"_hash, "", phx_offsetof(&TransformComponent::Scale), std::initializer_list<ExtraInfo>{{}}, false },
+	{ "Translation", "DirectX::XMFLOAT3"_hash, "", phx_offsetof(&TransformComponent::Translation), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
+	{ "Rotation", "DirectX::XMFLOAT4"_hash, "", phx_offsetof(&TransformComponent::Rotation), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
+	{ "Scale", "DirectX::XMFLOAT3"_hash, "", phx_offsetof(&TransformComponent::Scale), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
 };
 
 TypeInfo TransformComponent_TypeInfo = {
@@ -19,10 +19,11 @@ TypeInfo TransformComponent_TypeInfo = {
 };
 
 template<> const TypeInfo& Reflection<TransformComponent>::GetTypeInfo() { return TransformComponent_TypeInfo; }
-const phx::data::TypeInfo& TransformComponent::GetTypeInfoStatic() { return Reflection<TransformComponent>::GetTypeInfo(); }REGISTER_TYPE_FACTORY(TransformComponent)
+const phx::data::TypeInfo& TransformComponent::GetTypeInfoStatic() { return Reflection<TransformComponent>::GetTypeInfo(); }
+REGISTER_TYPE_FACTORY(TransformComponent)
 
 FieldInfo MeshComponent_Fields[] = {
-	{ "Mesh", "std::string"_hash, "", phx_offsetof(&MeshComponent::Mesh), std::initializer_list<ExtraInfo>{{}}, false },
+	{ "Mesh", "std::string"_hash, "", phx_offsetof(&MeshComponent::Mesh), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
 };
 
 TypeInfo MeshComponent_TypeInfo = {
@@ -30,13 +31,14 @@ TypeInfo MeshComponent_TypeInfo = {
 };
 
 template<> const TypeInfo& Reflection<MeshComponent>::GetTypeInfo() { return MeshComponent_TypeInfo; }
-const phx::data::TypeInfo& MeshComponent::GetTypeInfoStatic() { return Reflection<MeshComponent>::GetTypeInfo(); }REGISTER_TYPE_FACTORY(MeshComponent)
+const phx::data::TypeInfo& MeshComponent::GetTypeInfoStatic() { return Reflection<MeshComponent>::GetTypeInfo(); }
+REGISTER_TYPE_FACTORY(MeshComponent)
 
 FieldInfo Entity_Fields[] = {
-	{ "ID", "UUID"_hash, "", phx_offsetof(&Entity::ID), std::initializer_list<ExtraInfo>{{}}, false },
-	{ "Name", "std::string"_hash, "", phx_offsetof(&Entity::Name), std::initializer_list<ExtraInfo>{{}}, false },
-	{ "Components", "std::vector<RefCountPtr<Component>>"_hash, "", phx_offsetof(&Entity::Components), std::initializer_list<ExtraInfo>{{}}, false },
-	{ "Children", "std::vector<RefCountPtr<Entity>>"_hash, "", phx_offsetof(&Entity::Children), std::initializer_list<ExtraInfo>{{}}, false },
+	{ "ID", "UUID"_hash, "", phx_offsetof(&Entity::ID), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
+	{ "Name", "std::string"_hash, "", phx_offsetof(&Entity::Name), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
+	{ "Components", "std::vector<RefCountPtr<Component>>"_hash, "", phx_offsetof(&Entity::Components), std::initializer_list<ExtraInfo>{{}}, false, true, false, 0 },
+	{ "Children", "std::vector<RefCountPtr<Entity>>"_hash, "", phx_offsetof(&Entity::Children), std::initializer_list<ExtraInfo>{{}}, false, true, false, 0 },
 };
 
 TypeInfo Entity_TypeInfo = {
@@ -44,12 +46,13 @@ TypeInfo Entity_TypeInfo = {
 };
 
 template<> const TypeInfo& Reflection<Entity>::GetTypeInfo() { return Entity_TypeInfo; }
-const phx::data::TypeInfo& Entity::GetTypeInfoStatic() { return Reflection<Entity>::GetTypeInfo(); }REGISTER_TYPE_FACTORY(Entity)
+const phx::data::TypeInfo& Entity::GetTypeInfoStatic() { return Reflection<Entity>::GetTypeInfo(); }
+REGISTER_TYPE_FACTORY(Entity)
 
 FieldInfo WorldChunk_Fields[] = {
-	{ "ID", "UUID"_hash, "", phx_offsetof(&WorldChunk::ID), std::initializer_list<ExtraInfo>{{}}, false },
-	{ "PackFile", "std::string"_hash, "", phx_offsetof(&WorldChunk::PackFile), std::initializer_list<ExtraInfo>{{}}, false },
-	{ "Children", "std::vector<RefCountPtr<Entity>>"_hash, "", phx_offsetof(&WorldChunk::Children), std::initializer_list<ExtraInfo>{{}}, false },
+	{ "ID", "UUID"_hash, "", phx_offsetof(&WorldChunk::ID), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
+	{ "PackFile", "std::string"_hash, "", phx_offsetof(&WorldChunk::PackFile), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
+	{ "Root", "RefCountPtr<Entity>"_hash, "", phx_offsetof(&WorldChunk::Root), std::initializer_list<ExtraInfo>{{}}, true, false, false, 0 },
 };
 
 TypeInfo WorldChunk_TypeInfo = {
@@ -57,7 +60,8 @@ TypeInfo WorldChunk_TypeInfo = {
 };
 
 template<> const TypeInfo& Reflection<WorldChunk>::GetTypeInfo() { return WorldChunk_TypeInfo; }
-const phx::data::TypeInfo& WorldChunk::GetTypeInfoStatic() { return Reflection<WorldChunk>::GetTypeInfo(); }REGISTER_TYPE_FACTORY(WorldChunk)
+const phx::data::TypeInfo& WorldChunk::GetTypeInfoStatic() { return Reflection<WorldChunk>::GetTypeInfo(); }
+REGISTER_TYPE_FACTORY(WorldChunk)
 
 const std::unordered_map<std::string, const TypeInfo*> g_TypeRegistry = {
 	{ "TransformComponent", &Reflection<TransformComponent>::GetTypeInfo()},

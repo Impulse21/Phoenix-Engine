@@ -4,6 +4,7 @@
 #include <functional>
 
 #include <PhxCore/StringHash.h>
+#include <PhxCore/RefCountPtr.h>
 
 #define REGISTER_TYPE_FACTORY(TYPE)                         \
     namespace                                               \
@@ -28,13 +29,14 @@ namespace phx::data
             m_registry.emplace(hash, function);
         }
 
+        // TODO: Fix this interface
         template<typename T>
-        T* Create()
+        static RefCountPtr<T> Create()
         {
-            return static_cast<T*>(Create(T::TypeId));
+            return RefCountPtr<T>::Create(static_cast<T*>(Create(T::TypeId)));
         }
 
-        void* Create(StringHash hash)
+        static void* Create(StringHash hash)
         {
             auto itr = m_registry.find(hash);
             if (itr == m_registry.end())

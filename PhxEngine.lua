@@ -783,5 +783,5 @@ group ""
 group '.Scripts'
     project('Scripts')
         kind('StaticLib')
-        files{ '*.py' }
+        files{ phx_generate_reflection_script }
 group ""

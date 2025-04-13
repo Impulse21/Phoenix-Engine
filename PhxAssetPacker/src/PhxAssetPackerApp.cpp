@@ -5,7 +5,6 @@
 #include <PhxCore/SystemTime.h>
 #include <PhxCore/BinaryBuilder.h>
 #include <PhxCore/Span.h>
-#include <PhxWorld/WorldSerializer.h>
 
 #ifdef PHX_RHI_D3D12
 #include <d3d12.h>
@@ -30,9 +29,14 @@ extern "C"
 #include <PhxCore/StringUtils.h>
 #include "PhxCore/ThreadPool.h"
 
+#include <PhxData/DataTypeFactory.h>
+#include <PhxData/WorldChunk.def.h>
+
 using namespace phx;
 using namespace Microsoft::WRL;
 
+using namespace phx::data;
+REGISTER_TYPE_FACTORY(TransformComponent)
 
 // Args for Laptop: -config "../../PhxAssetPacker/test_config_laptop.yaml"
 // Args For Matrix: -config "../../PhxAssetPacker/test_config_matrix.yaml"
@@ -186,11 +190,11 @@ int wmain(int argc, wchar_t** argv)
 
 		ThreadPool::SubmitTask([&]()
 		{
-			phx::World world;
-			phx::GltfWorldImporter::Import(gltfData, world);
+			RefCountPtr<phx::data::WorldChunk> world = phx::data::DataTypeFactory::Create<phx::data::WorldChunk>();
+			phx::GltfWorldImporter::Import(gltfData, *world);
 
 			std::string worldFilename = std::format("{}.{}", baseFilename, "phxwld");
-			phx::WorldSerializer::Save(outputFS.get(), worldFilename.c_str(), world);
+			phx::data::Save(outputFS.get(), worldFilename.c_str(), *world);
 		});
 
 		if (useGDeflate)

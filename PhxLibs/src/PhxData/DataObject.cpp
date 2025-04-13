@@ -1,7 +1,8 @@
 #include "PhxData_pch.h"
 #include "DataObject.h"
-#include "Archiver.h"
+#include "ArchiverYaml.h"
 
+#include <PhxCore/VFS.h>
 #include <PhxCore/StringHash.h>
 
 using namespace phx;
@@ -75,5 +76,15 @@ void phx::data::IDataObj::Serialize(IArchiver& ar) const
 }
 
 void phx::data::IDataObj::Deserialize(IArchiver&)
+{
+}
+
+void phx::data::Save(phx::IFileSystem* fs, const char* filename, IDataObj const& dataObj)
+{
+    YamlArchiver archiver(fs, filename);
+    dataObj.Serialize(archiver);
+}
+
+void phx::data::Load(phx::IFileSystem* /*fs*/, const char* /*filename*/, IDataObj& /*dataObj*/)
 {
 }

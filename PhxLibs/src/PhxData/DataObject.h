@@ -19,6 +19,11 @@
 #define PROPERTY(...)
 
 
+namespace phx
+{
+    class IFileSystem;
+}
+
 namespace phx::data
 {
     class IArchiver;
@@ -36,4 +41,8 @@ namespace phx::data
         virtual unsigned long AddRef() = 0;
         virtual unsigned long Release() = 0;
     };
+
+    void Save(phx::IFileSystem* fs, const char* filename, IDataObj const& dataObj);
+    void Load(phx::IFileSystem* fs, const char* filename, IDataObj& dataObj);
+
 }

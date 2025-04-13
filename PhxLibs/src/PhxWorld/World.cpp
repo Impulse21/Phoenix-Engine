@@ -2,7 +2,7 @@
 
 #include "Entity.h"
 
-#include <PhxData/WorldComponents.def.h>
+#include "WorldComponents.h"
 
 #include <DirectXMath.h>
 

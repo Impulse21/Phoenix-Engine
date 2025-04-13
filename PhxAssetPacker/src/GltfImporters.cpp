@@ -4,7 +4,8 @@
 #include <PhxCore/StringHash.h>
 #include <PhxCore/VFS.h>
 #include <PhxCore/ThreadPool.h>
-#include <PhxData/WorldComponents.def.h>
+#include <PhxCore/Math.h>
+#include <PhxData/DataTypeFactory.h>
 #include <cgltf.h>
 
 using namespace phx;
@@ -193,21 +194,23 @@ bool phx::GltfWorldImporter::ImportImpl()
 {
 	// Load Node Data
 	cgltf_scene* gltfScene = m_gltfData->scene;
-	phx::Entity rootEntity = m_out.CreateEntity(gltfScene->name ? gltfScene->name : "Scene Root");
+	m_out.Root = phx::data::DataTypeFactory::Create<phx::data::Entity>();
+	m_out.Root->Name = gltfScene->name ? gltfScene->name : "Scene Root";
+
 	for (size_t i = 0; i < gltfScene->nodes_count; i++)
 	{
 		// Load Node Data
-		LoadNodeRec(*gltfScene->nodes[i], rootEntity);
+		LoadNodeRec(*gltfScene->nodes[i], m_out.Root);
 	}
 
 	return false;
 }
 
-void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, phx::Entity parent)
+void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, RefCountPtr<phx::data::Entity>& parent)
 {
-	Entity entity;
+	RefCountPtr<phx::data::Entity> entity;
 
-	std::vector<Entity> childEntities; // TODO: Make use of an allorcator.
+	std::vector<phx::data::Entity> childEntities; // TODO: Make use of an allorcator.
 	if (gltfNode.mesh)
 	{
 #if false
@@ -295,41 +298,52 @@ void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, phx::Entity
 	{
 		static size_t emptyNode = 0;
 
+		entity = phx::data::DataTypeFactory::Create<phx::data::Entity>();
+
 		std::string nodeName = gltfNode.name ? gltfNode.name : "Scene Node " + std::to_string(emptyNode++);
-		entity = m_out.CreateEntity(nodeName);
+		entity->Name = nodeName;
 	}
 
-	auto& transform = entity.GetComponent<TransformComponent>();
+	RefCountPtr<data::TransformComponent> transform = data::DataTypeFactory::Create<data::TransformComponent>();
 	if (gltfNode.has_scale)
 	{
 		std::memcpy(
-			&transform.LocalScale.x,
+			&transform->Scale.x,
 			&gltfNode.scale[0],
 			sizeof(float) * 3);
 	}
 	if (gltfNode.has_rotation)
 	{
 		std::memcpy(
-			&transform.LocalRotation.x,
+			&transform->Rotation.x,
 			&gltfNode.rotation[0],
 			sizeof(float) * 4);
 	}
 	if (gltfNode.has_translation)
 	{
 		std::memcpy(
-			&transform.LocalTranslation.x,
+			&transform->Translation.x,
 			&gltfNode.translation[0],
 			sizeof(float) * 3);
 	}
 
 	if (gltfNode.has_matrix)
 	{
+		DirectX::XMFLOAT4X4 WorldMatrix = math::cIdentityMatrix;
 		std::memcpy(
-			&transform.WorldMatrix._11,
+			&WorldMatrix._11,
 			&gltfNode.matrix[0],
 			sizeof(float) * 16);
-		transform.ApplyTransform();
+
+
+		DirectX::XMVECTOR scalar, rotation, translation;
+		DirectX::XMMatrixDecompose(&scalar, &rotation, &translation, DirectX::XMLoadFloat4x4(&WorldMatrix));
+		DirectX::XMStoreFloat3(&transform->Scale, scalar);
+		DirectX::XMStoreFloat4(&transform->Rotation, rotation);
+		DirectX::XMStoreFloat3(&transform->Translation, translation);
 	}
+
+	entity->Components.push_back(transform);
 
 	// GLTF default light Direciton is forward - I want this to be downwards.
 #if false
@@ -358,7 +372,7 @@ void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, phx::Entity
 
 	if (parent)
 	{
-		entity.AttachToParent(parent, true);
+		parent->Children.push_back(entity);
 	}
 
 	for (cgltf_size i = 0; i < gltfNode.children_count; i++)
