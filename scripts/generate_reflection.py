@@ -14,15 +14,13 @@ def glob_def_h_files(directory):
     matching_files = glob.glob(pattern)
     return [os.path.abspath(path) for path in matching_files] 
 
-def parse_type(type_str: str):
-    type_str = type_str.strip()
-
+def parse_ptr(type_str):
     # Check for raw pointer
     is_pointer = '*' in type_str
     type_str = type_str.replace('*', '').strip()
 
     # Check for smart pointer-like templates
-    smart_pointer_types = ['RefCountPtr', 'std::shared_ptr', 'UniquePtr']
+    smart_pointer_types = ['RefCountPtr', 'std::shared_ptr', 'std::unique_ptr']
     for smart_type in smart_pointer_types:
         if type_str.startswith(smart_type + "<"):
             is_pointer = True
@@ -31,19 +29,26 @@ def parse_type(type_str: str):
             if inner_type:
                 type_str = inner_type[0].strip()
             break
-            
+
+    return type_str, is_pointer
+
+def parse_type(type_str: str):
+    type_str = type_str.strip()
+
     is_vector = False
     is_array = False
     array_size = 0
-    if not is_pointer:
-        if match := re.match(r'std::vector<(.+)>', type_str):
-            base_type = match.group(1).strip()
-            is_vector = True
-        elif match := re.match(r'(.+)\s*\[(\d+)\]', type_str):
-            base_type = match.group(1).strip()
-            array_size = int(match.group(2))
-            is_array = True
+    if match := re.match(r'std::vector<(.+)>', type_str):
+        type_str = match.group(1).strip()
+        is_vector = True
+    elif match := re.match(r'(.+)\s*\[(\d+)\]', type_str):
+        type_str = match.group(1).strip()
+        array_size = int(match.group(2))
+        is_array = True
 
+
+    type_str, is_pointer = parse_ptr(type_str)
+    
     return type_str, is_pointer, is_vector, is_array, array_size
 
 def parse_property_args(arg_str: str):
