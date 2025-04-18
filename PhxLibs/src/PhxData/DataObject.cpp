@@ -4,7 +4,7 @@
 
 #include <PhxCore/VFS.h>
 #include <PhxCore/StringHash.h>
-
+#include <PhxCore/RefCountPtr.h>
 
 using namespace phx;
 using namespace phx::data;
@@ -21,6 +21,48 @@ namespace
     constexpr phx::StringHash XMFloat2Id = "DirectX::XMFLOAT2"_hash;
     constexpr phx::StringHash XMFloat3Id = "DirectX::XMFLOAT3"_hash;
     constexpr phx::StringHash XMFloat4Id = "DirectX::XMFLOAT4"_hash;
+
+    void SerializeElement(IArchiver& ar, StringHash typeId, const void* data)
+    {
+        if (typeId == FloatId)
+        {
+            ar << ArhiverOp::Value << *((float*)data);
+        }
+        else if (typeId == IntId)
+        {
+            ar << ArhiverOp::Value << *((int*)data);
+        }
+        else if (typeId == UIntId)
+        {
+            ar << ArhiverOp::Value << *((uint32_t*)data);
+        }
+        else if (typeId == StringId)
+        {
+            ar << ArhiverOp::Value << *((std::string*)data);
+        }
+        else if (typeId == BoolId)
+        {
+            ar << ArhiverOp::Value << *((bool*)data);
+        }
+        else if (typeId == XMFloat2Id)
+        {
+            ar << ArhiverOp::Value << *((DirectX::XMFLOAT2*)data);
+        }
+        else if (typeId == XMFloat3Id)
+        {
+            ar << ArhiverOp::Value << *((DirectX::XMFLOAT3*)data);
+        }
+        else if (typeId == XMFloat4Id)
+        {
+            ar << ArhiverOp::Value << *((DirectX::XMFLOAT4*)data);
+        }
+        else if (typeId == UUIDID || typeId == UUIDID_NS)
+        {
+            ar << ArhiverOp::Value << *((UUID*)data);
+        }
+        else
+            ar << ArhiverOp::Value << "<unsupported>";
+    }
 }
 
 void phx::data::IDataObj::Serialize(IArchiver& ar) const
@@ -31,48 +73,54 @@ void phx::data::IDataObj::Serialize(IArchiver& ar) const
         const void* ptr = (char*)this + field.Offset;
         const char* key = field.Name;
 
-        if (field.IsPointer)
+        ar << ArhiverOp::Key << key;
+        if (field.IsArray)
         {
-            // SerializeToYAML(ar, ptr, *field.NestedType);
+            ar << ArhiverOp::BeginSeq;
+
+            // You might need size metadata or fix this at generation time
+            for (size_t i = 0; i < field.ArraySize; ++i)
+            {
+                void* element = (uint8_t*)ptr + i * field.Stride;
+                SerializeElement(ar, field.TypeHash, element);
+            }
+            ar << ArhiverOp::EndSeq;
         }
-        else if (field.TypeHash == FloatId)
+        else if (field.IsVector)
         {
-            ar << ArchiveField(key, *(float*)ptr);
+            const auto& vec = *reinterpret_cast<const std::vector<phx::RefCountPtr<IDataObj>>*>(ptr);
+            ar << ArhiverOp::BeginSeq;
+
+            for (auto& item : vec)
+            {
+                if (ptr)
+                {
+                    ar << ArhiverOp::BeginMap;
+                    item->Serialize(ar);
+                    ar << ArhiverOp::EndMap;
+                }
+                else
+                    ar << ArhiverOp::Null;
+            }
+
+            ar << ArhiverOp::EndSeq;
         }
-        else if (field.TypeHash == IntId)
+        else if (field.IsPointer)
         {
-            ar << ArchiveField(key, *(int*)ptr);
-        }
-        else if (field.TypeHash == UIntId)
-        {
-            ar << ArchiveField(key, *(uint32_t*)ptr);
-        }
-        else if (field.TypeHash == StringId)
-        {
-            ar << ArchiveField(key, *(std::string*)ptr);
-        }
-        else if (field.TypeHash == BoolId)
-        {
-            ar << ArchiveField(key, *(bool*)ptr);
-        }
-        else if (field.TypeHash == XMFloat2Id)
-        {
-            ar << ArchiveField(key, *(DirectX::XMFLOAT2*)ptr);
-        }
-        else if (field.TypeHash == XMFloat3Id)
-        {
-            ar << ArchiveField(key, *(DirectX::XMFLOAT3*)ptr);
-        }
-        else if (field.TypeHash == XMFloat4Id)
-        {
-            ar << ArchiveField(key, *(DirectX::XMFLOAT4*)ptr);
-        }
-        else if (field.TypeHash == UUIDID || field.TypeHash == UUIDID_NS)
-        {
-            ar << ArchiveField(key, *(UUID*)ptr);
+            const IDataObj* dataPtr = reinterpret_cast<const phx::RefCountPtr<IDataObj>*>(ptr)->Get();
+            if (dataPtr)
+            {
+                ar << ArhiverOp::BeginMap;
+                dataPtr->Serialize(ar);
+                ar << ArhiverOp::EndMap;
+            }
+            else
+                ar << ArhiverOp::Null;
         }
         else
-            ar << ArchiveField(key, "<unsupported>");
+        {
+            SerializeElement(ar, field.TypeHash, ptr);
+        }
     }
 
 }

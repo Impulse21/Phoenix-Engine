@@ -35,8 +35,8 @@ namespace phx::data
 
         virtual ~IDataObj() = default;
 
-        void Serialize(IArchiver& ar) const;
-        void Deserialize(IArchiver& ar);
+        virtual void Serialize(IArchiver& ar) const;
+        virtual void Deserialize(IArchiver& ar);
     public:
         virtual unsigned long AddRef() = 0;
         virtual unsigned long Release() = 0;

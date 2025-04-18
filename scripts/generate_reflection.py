@@ -157,7 +157,7 @@ def generate_metadata_cpp(structs, includes, output_filepath):
                 is_pointer_cpp = 'true' if prop["is_pointer"] else 'false'
                 is_vector_cpp = 'true' if prop["is_vector"] else 'false'
                 is_array_cpp = 'true' if prop["is_array"] else 'false'
-                out.write(f'\t{{ "{prop["name"]}", "{prop["type"]}"_hash, "{prop["tooltip"]}", phx_offsetof(&{struct_name}::{prop["variable"]}), std::initializer_list<ExtraInfo>{{{extras}}}, {is_pointer_cpp}, {is_vector_cpp}, {is_array_cpp}, {prop["array_size"]} }},\n')
+                out.write(f'\t{{ "{prop["name"]}", "{prop["type"]}"_hash, "{prop["tooltip"]}", phx_offsetof(&{struct_name}::{prop["variable"]}), std::initializer_list<ExtraInfo>{{{extras}}}, {is_pointer_cpp}, {is_array_cpp}, {is_vector_cpp}, {prop["array_size"]}, sizeof({prop["type"]}) }},\n')
 
             out.write('};\n\n')
 

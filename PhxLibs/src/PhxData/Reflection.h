@@ -33,10 +33,11 @@ namespace phx::data
         const char* Tooltip = nullptr;
         size_t Offset;                     // Byte offset within the struct
         std::initializer_list<ExtraInfo> Extras;
-        uint32_t ArraySize = 0;
         bool IsPointer  : 1 = false; // New flag to indicate pointer types
         bool IsArray    : 1 = false;
         bool IsVector   : 1 = false;
+        uint32_t ArraySize = 0;
+        uint64_t Stride = 0;
     };
     static_assert(sizeof(FieldInfo) <= 64);
 

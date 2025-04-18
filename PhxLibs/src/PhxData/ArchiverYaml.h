@@ -3,11 +3,40 @@
 #include <PhxCore/VFS.h>
 #include "Archiver.h"
 #include <yaml-cpp/yaml.h>
+#include <DirectXMath.h>
+
+inline YAML::Emitter& operator<<(YAML::Emitter& out, phx::UUID const& uuid)
+{
+    out << (uint64_t)uuid;
+    return out;
+}
+
+inline YAML::Emitter& operator<<(YAML::Emitter& out, DirectX::XMFLOAT2 const& v)
+{
+    out << YAML::Flow;
+    out << YAML::BeginSeq << v.x << v.y << YAML::EndSeq;
+    return out;
+}
+
+inline YAML::Emitter& operator<<(YAML::Emitter& out, DirectX::XMFLOAT3 const& v)
+{
+    out << YAML::Flow;
+    out << YAML::BeginSeq << v.x << v.y << v.z << YAML::EndSeq;
+    return out;
+}
+
+inline YAML::Emitter& operator<<(YAML::Emitter& out, DirectX::XMFLOAT4 const& v)
+{
+    out << YAML::Flow;
+    out << YAML::BeginSeq << v.x << v.y << v.z << v.w << YAML::EndSeq;
+    return out;
+}
 
 namespace phx::data
 {
+
 #if true
-    class YamlArchiver : public IArchiver
+    class YamlArchiver final : public IArchiver
 #else
     class YamlArchiver : public ArchiverMixin<YamlArchiver>
 #endif
@@ -55,26 +84,24 @@ namespace phx::data
 
     protected:
 
-        void Write(const char* key, const int32_t& value) override;
-        void Write(const char* key, const uint32_t& value) override;
-        void Write(const char* key, const float& value) override;
-        void Write(const char* key, const std::string& value) override;
-        void Write(const char* key, const bool& value) override;
-        void Write(const char* key, const phx::UUID& value) override;
-        void Write(const char* key, const DirectX::XMFLOAT2& value) override;
-        void Write(const char* key, const DirectX::XMFLOAT3& value) override;
-        void Write(const char* key, const DirectX::XMFLOAT4& value) override;
+        void WriteNull() override { m_emitter << YAML::Null; }
+        void BeginArrayWrite() override { m_emitter << YAML::BeginSeq; }
+        void EndArrayWrite() override { m_emitter << YAML::EndSeq; }
 
+        void BeginMap() override { m_emitter << YAML::BeginMap; };
+        void EndMap() override { m_emitter << YAML::EndMap; };
 
-       void Write(const char* key, const phx::Span<int32_t> value) override;
-       void Write(const char* key, const phx::Span<uint32_t> value) override;
-       void Write(const char* key, const phx::Span<float> value) override;
-       void Write(const char* key, const phx::Span<std::string> value) override;
-       void Write(const char* key, const phx::Span<bool> value) override;
-       void Write(const char* key, const phx::Span<DirectX::XMFLOAT2> value) override;
-       void Write(const char* key, const phx::Span<DirectX::XMFLOAT3> value) override;
-       void Write(const char* key, const phx::Span<DirectX::XMFLOAT4> value) override;
-        // virtual void Write(const std::string& key, phx::Span<IDataObj> value) override;
+        void WriteKey(const char* key) override { m_emitter << YAML::Key << key; }
+
+        void Write(const int32_t& value) override { m_emitter << YAML::Value << value; }
+        void Write(const uint32_t& value) override { m_emitter << YAML::Value << value; }
+        void Write(const float& value) override { m_emitter << YAML::Value << value; }
+        void Write(const std::string& value) override { m_emitter << YAML::Value << value; }
+        void Write(const bool& value) override { m_emitter << YAML::Value << value; }
+        void Write(const phx::UUID& value) override { m_emitter << YAML::Value << value; }
+        void Write(const DirectX::XMFLOAT2& value) override { m_emitter << YAML::Value << value; }
+        void Write(const DirectX::XMFLOAT3& value) override { m_emitter << YAML::Value << value; }
+        void Write(const DirectX::XMFLOAT4& value) override { m_emitter << YAML::Value << value; }
 
         void Read(const char* key, int32_t& value) override;
         void Read(const char* key, uint32_t& value) override;

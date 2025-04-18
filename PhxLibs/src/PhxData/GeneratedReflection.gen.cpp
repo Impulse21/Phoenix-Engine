@@ -9,7 +9,7 @@ using namespace phx;
 using namespace phx::data;
 
 FieldInfo Component_Fields[] = {
-	{ "_dummy", "uint8_t"_hash, "", phx_offsetof(&Component::_dummy), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
+	{ "_dummy", "uint8_t"_hash, "", phx_offsetof(&Component::_dummy), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0, sizeof(uint8_t) },
 };
 
 TypeInfo Component_TypeInfo = {
@@ -22,9 +22,9 @@ phx::StringHash Component::GetTypeIdStatic() { return Component::TypeId; }
 REGISTER_TYPE_FACTORY(Component)
 
 FieldInfo TransformComponent_Fields[] = {
-	{ "Translation", "DirectX::XMFLOAT3"_hash, "", phx_offsetof(&TransformComponent::Translation), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
-	{ "Rotation", "DirectX::XMFLOAT4"_hash, "", phx_offsetof(&TransformComponent::Rotation), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
-	{ "Scale", "DirectX::XMFLOAT3"_hash, "", phx_offsetof(&TransformComponent::Scale), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
+	{ "Translation", "DirectX::XMFLOAT3"_hash, "", phx_offsetof(&TransformComponent::Translation), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0, sizeof(DirectX::XMFLOAT3) },
+	{ "Rotation", "DirectX::XMFLOAT4"_hash, "", phx_offsetof(&TransformComponent::Rotation), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0, sizeof(DirectX::XMFLOAT4) },
+	{ "Scale", "DirectX::XMFLOAT3"_hash, "", phx_offsetof(&TransformComponent::Scale), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0, sizeof(DirectX::XMFLOAT3) },
 };
 
 TypeInfo TransformComponent_TypeInfo = {
@@ -37,7 +37,7 @@ phx::StringHash TransformComponent::GetTypeIdStatic() { return TransformComponen
 REGISTER_TYPE_FACTORY(TransformComponent)
 
 FieldInfo MeshComponent_Fields[] = {
-	{ "Mesh", "std::string"_hash, "", phx_offsetof(&MeshComponent::Mesh), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
+	{ "Mesh", "std::string"_hash, "", phx_offsetof(&MeshComponent::Mesh), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0, sizeof(std::string) },
 };
 
 TypeInfo MeshComponent_TypeInfo = {
@@ -50,10 +50,10 @@ phx::StringHash MeshComponent::GetTypeIdStatic() { return MeshComponent::TypeId;
 REGISTER_TYPE_FACTORY(MeshComponent)
 
 FieldInfo Entity_Fields[] = {
-	{ "ID", "UUID"_hash, "", phx_offsetof(&Entity::ID), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
-	{ "Name", "std::string"_hash, "", phx_offsetof(&Entity::Name), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
-	{ "Components", "std::vector<RefCountPtr<Component>>"_hash, "", phx_offsetof(&Entity::Components), std::initializer_list<ExtraInfo>{{}}, false, true, false, 0 },
-	{ "Children", "std::vector<RefCountPtr<Entity>>"_hash, "", phx_offsetof(&Entity::Children), std::initializer_list<ExtraInfo>{{}}, false, true, false, 0 },
+	{ "ID", "UUID"_hash, "", phx_offsetof(&Entity::ID), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0, sizeof(UUID) },
+	{ "Name", "std::string"_hash, "", phx_offsetof(&Entity::Name), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0, sizeof(std::string) },
+	{ "Components", "Component"_hash, "", phx_offsetof(&Entity::Components), std::initializer_list<ExtraInfo>{{}}, true, false, true, 0, sizeof(Component) },
+	{ "Children", "Entity"_hash, "", phx_offsetof(&Entity::Children), std::initializer_list<ExtraInfo>{{}}, true, false, true, 0, sizeof(Entity) },
 };
 
 TypeInfo Entity_TypeInfo = {
@@ -66,9 +66,9 @@ phx::StringHash Entity::GetTypeIdStatic() { return Entity::TypeId; }
 REGISTER_TYPE_FACTORY(Entity)
 
 FieldInfo WorldChunk_Fields[] = {
-	{ "ID", "UUID"_hash, "", phx_offsetof(&WorldChunk::ID), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
-	{ "PackFile", "std::string"_hash, "", phx_offsetof(&WorldChunk::PackFile), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0 },
-	{ "Root", "Entity"_hash, "", phx_offsetof(&WorldChunk::Root), std::initializer_list<ExtraInfo>{{}}, true, false, false, 0 },
+	{ "ID", "UUID"_hash, "", phx_offsetof(&WorldChunk::ID), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0, sizeof(UUID) },
+	{ "PackFile", "std::string"_hash, "", phx_offsetof(&WorldChunk::PackFile), std::initializer_list<ExtraInfo>{{}}, false, false, false, 0, sizeof(std::string) },
+	{ "Root", "Entity"_hash, "", phx_offsetof(&WorldChunk::Root), std::initializer_list<ExtraInfo>{{}}, true, false, false, 0, sizeof(Entity) },
 };
 
 TypeInfo WorldChunk_TypeInfo = {

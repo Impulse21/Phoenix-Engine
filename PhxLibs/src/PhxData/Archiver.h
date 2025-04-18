@@ -29,6 +29,17 @@ namespace phx::data
 		Write
 	};
 
+	enum class ArhiverOp : uint8_t
+	{
+		Key,
+		Value,
+		BeginSeq,
+		EndSeq,
+		BeginMap,
+		EndMap,
+		Null,
+	};
+
 	class IArchiver
 	{
 	public:
@@ -38,9 +49,9 @@ namespace phx::data
 
 		// Templated interface for serialization
 		template<typename T>
-		IArchiver& operator<<(const ArchiveField<T>& field)
+		IArchiver& operator<<(T& value)
 		{
-			Write(field.key, field.value);
+			Write(value);
 			return *this;
 		}
 
@@ -51,29 +62,64 @@ namespace phx::data
 			return *this;
 		}
 
+		IArchiver& operator<<(const char* key)
+		{
+			WriteKey(key);
+			return *this;
+		}
+		// Templated interface for serialization
+		IArchiver& operator<<(ArhiverOp op)
+		{
+			switch (op)
+			{
+			case ArhiverOp::BeginSeq:
+				BeginArrayWrite();
+				break;
+			case ArhiverOp::EndSeq:
+				EndArrayWrite();
+				break;
+			case ArhiverOp::BeginMap:
+				BeginMap();
+				break;
+			case ArhiverOp::EndMap:
+				EndMap();
+				break;
+			case ArhiverOp::Null:
+				WriteNull();
+				break;
+			case ArhiverOp::Key:
+			case ArhiverOp::Value:
+			default:
+				break;
+			}
+
+			return *this;
+		}
+
 	protected:
 		virtual void Save() = 0;
 
-		// TODO: Array and IData Obj
-		virtual void Write(const char* key, const int32_t& value) = 0;
-		virtual void Write(const char* key, const uint32_t& value) = 0;
-		virtual void Write(const char* key, const float& value) = 0;
-		virtual void Write(const char* key, const std::string& value) = 0;
-		virtual void Write(const char* key, const bool& value) = 0;
-		virtual void Write(const char* key, const phx::UUID& value) = 0;
-		virtual void Write(const char* key, const DirectX::XMFLOAT2& value) = 0;
-		virtual void Write(const char* key, const DirectX::XMFLOAT3& value) = 0;
-		virtual void Write(const char* key, const DirectX::XMFLOAT4& value) = 0;
+		virtual void WriteNull() = 0;
 
-		// TOOD: IS there a better way to do this?
-		virtual void Write(const char* key, const phx::Span<int32_t> value) = 0;
-		virtual void Write(const char* key, const phx::Span<uint32_t> value) = 0;
-		virtual void Write(const char* key, const phx::Span<float> value) = 0;
-		virtual void Write(const char* key, const phx::Span<std::string> value) = 0;
-		virtual void Write(const char* key, const phx::Span<bool> value) = 0;
-		virtual void Write(const char* key, const phx::Span<DirectX::XMFLOAT2> value) = 0;
-		virtual void Write(const char* key, const phx::Span<DirectX::XMFLOAT3> value) = 0;
-		virtual void Write(const char* key, const phx::Span<DirectX::XMFLOAT4> value) = 0;
+		virtual void BeginMap() = 0;
+		virtual void EndMap() = 0;
+
+		virtual void BeginArrayWrite() = 0;
+		virtual void EndArrayWrite() = 0;
+
+		// TODO: Array and IData Obj
+		virtual void WriteKey(const char* key) = 0;
+
+		virtual void Write(const int32_t& value) = 0;
+		virtual void Write(const uint32_t& value) = 0;
+		virtual void Write(const float& value) = 0;
+		virtual void Write(const std::string& value) = 0;
+		virtual void Write(const bool& value) = 0;
+		virtual void Write(const phx::UUID& value) = 0;
+		virtual void Write(const DirectX::XMFLOAT2& value) = 0;
+		virtual void Write(const DirectX::XMFLOAT3& value) = 0;
+		virtual void Write(const DirectX::XMFLOAT4& value) = 0;
+
 		// virtual void Write(const std::string& key, phx::Span<IDataObj> value) = 0;
 
 		virtual void Read(const char* key, int32_t& value) = 0;
@@ -86,6 +132,7 @@ namespace phx::data
 		virtual void Read(const char* key, DirectX::XMFLOAT4& value) = 0;
 		// virtual void Read(const std::string& key, IDataObj& value) = 0;
 
+	private:
 	};
 
 	// TRYING MIXIN

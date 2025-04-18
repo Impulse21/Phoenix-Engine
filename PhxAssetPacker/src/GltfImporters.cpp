@@ -294,15 +294,12 @@ void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, RefCountPtr
 #endif
 	}
 
-	if (!entity)
-	{
-		static size_t emptyNode = 0;
+	static size_t emptyNode = 0;
 
-		entity = phx::data::DataTypeFactory::Create<phx::data::Entity>();
+	entity = phx::data::DataTypeFactory::Create<phx::data::Entity>();
 
-		std::string nodeName = gltfNode.name ? gltfNode.name : "Scene Node " + std::to_string(emptyNode++);
-		entity->Name = nodeName;
-	}
+	std::string nodeName = gltfNode.name ? gltfNode.name : "Scene Node " + std::to_string(emptyNode++);
+	entity->Name = nodeName;
 
 	RefCountPtr<data::TransformComponent> transform = data::DataTypeFactory::Create<data::TransformComponent>();
 	if (gltfNode.has_scale)
@@ -344,6 +341,13 @@ void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, RefCountPtr
 	}
 
 	entity->Components.push_back(transform);
+
+	if (gltfNode.mesh)
+	{
+		RefCountPtr<data::MeshComponent> meshComponent = data::DataTypeFactory::Create<data::MeshComponent>();
+		meshComponent->Mesh = gltfNode.mesh->name;
+		entity->Components.push_back(meshComponent);
+	}
 
 	// GLTF default light Direciton is forward - I want this to be downwards.
 #if false
