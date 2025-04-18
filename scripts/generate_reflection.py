@@ -8,6 +8,7 @@ struct_decl = re.compile(r'struct\s+(\w+)')
 member_decl = re.compile(r'([a-zA-Z0-9_:<>]+(?:<[^>]+>)?)\s+([a-zA-Z0-9_]+)\s*(=.+)?;')
 is_vector_decl = re.compile(r'std::vector<(.+)>')
 is_array_decl = re.compile(r'(.+)\s*\[(\d+)\]')
+phx_object_regex = re.compile(r'PHX_DATA_OBJECT\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)')
 
 def glob_def_h_files(directory):
     pattern = os.path.join(directory, "*.def.h")
@@ -63,6 +64,7 @@ def parse_property_args(arg_str: str):
 def parse_def_file(filepath):
     structs = {}
     current_struct = None
+    base_type = None
     pending_property = None
     brace_depth = 0
 
@@ -78,6 +80,7 @@ def parse_def_file(filepath):
                 current_struct = match.group(1)
                 structs[current_struct] = {'properties': []}
                 brace_depth = 0
+                base_type = None
                 continue
 
             if current_struct:
@@ -86,6 +89,12 @@ def parse_def_file(filepath):
                 if brace_depth <= 0:
                     current_struct = None
                     continue
+
+                
+                object_match = phx_object_regex.match(line)
+                if object_math:
+                    # struct_name = match.group(1)
+                    base_type = match.group(2)
 
                 prop_match = property_macro.match(line)
                 if prop_match:
