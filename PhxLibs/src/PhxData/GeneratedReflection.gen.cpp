@@ -19,6 +19,8 @@ TypeInfo Component_TypeInfo = {
 template<> const TypeInfo& Reflection<Component>::GetTypeInfo() { return Component_TypeInfo; }
 const phx::data::TypeInfo& Component::GetTypeInfoStatic() { return Reflection<Component>::GetTypeInfo(); }
 phx::StringHash Component::GetTypeIdStatic() { return Component::TypeId; }
+const phx::data::TypeInfo& Component::GetBaseTypeInfoStatic() { return IDataObj::GetTypeInfoStatic(); }
+phx::StringHash Component::GetBaseTypeIdStatic() { return IDataObj::GetTypeIdStatic(); }
 REGISTER_TYPE_FACTORY(Component)
 
 FieldInfo TransformComponent_Fields[] = {
@@ -34,6 +36,8 @@ TypeInfo TransformComponent_TypeInfo = {
 template<> const TypeInfo& Reflection<TransformComponent>::GetTypeInfo() { return TransformComponent_TypeInfo; }
 const phx::data::TypeInfo& TransformComponent::GetTypeInfoStatic() { return Reflection<TransformComponent>::GetTypeInfo(); }
 phx::StringHash TransformComponent::GetTypeIdStatic() { return TransformComponent::TypeId; }
+const phx::data::TypeInfo& TransformComponent::GetBaseTypeInfoStatic() { return Component::GetTypeInfoStatic(); }
+phx::StringHash TransformComponent::GetBaseTypeIdStatic() { return Component::GetTypeIdStatic(); }
 REGISTER_TYPE_FACTORY(TransformComponent)
 
 FieldInfo MeshComponent_Fields[] = {
@@ -47,6 +51,8 @@ TypeInfo MeshComponent_TypeInfo = {
 template<> const TypeInfo& Reflection<MeshComponent>::GetTypeInfo() { return MeshComponent_TypeInfo; }
 const phx::data::TypeInfo& MeshComponent::GetTypeInfoStatic() { return Reflection<MeshComponent>::GetTypeInfo(); }
 phx::StringHash MeshComponent::GetTypeIdStatic() { return MeshComponent::TypeId; }
+const phx::data::TypeInfo& MeshComponent::GetBaseTypeInfoStatic() { return Component::GetTypeInfoStatic(); }
+phx::StringHash MeshComponent::GetBaseTypeIdStatic() { return Component::GetTypeIdStatic(); }
 REGISTER_TYPE_FACTORY(MeshComponent)
 
 FieldInfo Entity_Fields[] = {
@@ -63,6 +69,8 @@ TypeInfo Entity_TypeInfo = {
 template<> const TypeInfo& Reflection<Entity>::GetTypeInfo() { return Entity_TypeInfo; }
 const phx::data::TypeInfo& Entity::GetTypeInfoStatic() { return Reflection<Entity>::GetTypeInfo(); }
 phx::StringHash Entity::GetTypeIdStatic() { return Entity::TypeId; }
+const phx::data::TypeInfo& Entity::GetBaseTypeInfoStatic() { return IDataObj::GetTypeInfoStatic(); }
+phx::StringHash Entity::GetBaseTypeIdStatic() { return IDataObj::GetTypeIdStatic(); }
 REGISTER_TYPE_FACTORY(Entity)
 
 FieldInfo WorldChunk_Fields[] = {
@@ -78,6 +86,8 @@ TypeInfo WorldChunk_TypeInfo = {
 template<> const TypeInfo& Reflection<WorldChunk>::GetTypeInfo() { return WorldChunk_TypeInfo; }
 const phx::data::TypeInfo& WorldChunk::GetTypeInfoStatic() { return Reflection<WorldChunk>::GetTypeInfo(); }
 phx::StringHash WorldChunk::GetTypeIdStatic() { return WorldChunk::TypeId; }
+const phx::data::TypeInfo& WorldChunk::GetBaseTypeInfoStatic() { return IDataObj::GetTypeInfoStatic(); }
+phx::StringHash WorldChunk::GetBaseTypeIdStatic() { return IDataObj::GetTypeIdStatic(); }
 REGISTER_TYPE_FACTORY(WorldChunk)
 
 const std::unordered_map<std::string, const TypeInfo*> g_TypeRegistry = {

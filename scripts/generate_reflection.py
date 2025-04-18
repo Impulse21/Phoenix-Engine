@@ -92,9 +92,9 @@ def parse_def_file(filepath):
 
                 
                 object_match = phx_object_regex.match(line)
-                if object_math:
-                    # struct_name = match.group(1)
-                    base_type = match.group(2)
+                if object_match:
+                    # struct_name = object_match.group(1)
+                    base_type = object_match.group(2)
 
                 prop_match = property_macro.match(line)
                 if prop_match:
@@ -104,19 +104,20 @@ def parse_def_file(filepath):
                 member_match = member_decl.match(line)
                 if member_match:
                     full_type, var_name, _ = member_match.groups()
-                    base_type, is_pointer, is_vector, is_array, array_size = parse_type(full_type)
+                    field_type, is_pointer, is_vector, is_array, array_size = parse_type(full_type)
 
                     if pending_property is not None:
                         property_info = {
                             'name': pending_property.get('name', var_name),
                             'tooltip': pending_property.get('tooltip', ''),
                             'extras': {k: v for k, v in pending_property.items() if k not in ('name', 'tooltip')},
-                            'type': base_type,
+                            'type': field_type,
                             'variable': var_name,
                             "is_pointer": is_pointer,
                             "is_vector": is_vector,
                             "is_array": is_array,
-                            "array_size": array_size
+                            "array_size": array_size,
+                            "base_type": base_type,
                         }
                         structs[current_struct]['properties'].append(property_info)
                         pending_property = None
@@ -176,6 +177,8 @@ def generate_metadata_cpp(structs, includes, output_filepath):
             out.write(f'template<> const TypeInfo& Reflection<{struct_name}>::GetTypeInfo() {{ return {struct_name}_TypeInfo; }}\n')
             out.write(f'const phx::data::TypeInfo& {struct_name}::GetTypeInfoStatic() {{ return Reflection<{struct_name}>::GetTypeInfo(); }}\n')
             out.write(f'phx::StringHash {struct_name}::GetTypeIdStatic() {{ return {struct_name}::TypeId; }}\n')
+            out.write(f'const phx::data::TypeInfo& {struct_name}::GetBaseTypeInfoStatic() {{ return {prop["base_type"]}::GetTypeInfoStatic(); }}\n')
+            out.write(f'phx::StringHash {struct_name}::GetBaseTypeIdStatic() {{ return {prop["base_type"]}::GetTypeIdStatic(); }}\n')
             out.write(f'REGISTER_TYPE_FACTORY({struct_name})\n\n')
 
         out.write('const std::unordered_map<std::string, const TypeInfo*> g_TypeRegistry = {\n')

@@ -9,9 +9,13 @@
                                                                                                                 \
         inline static constexpr phx::StringHash TypeId = StringHash(#typeName);                                 \
         inline static constexpr const char* TypeName = #typeName;                                               \
+        inline static constexpr phx::StringHash BaseTypeId = StringHash(#baseTypeName);                         \
+        inline static constexpr const char* BaseTypeName = #baseTypeName;                                       \
                                                                                                                 \
         static const phx::data::TypeInfo& GetTypeInfoStatic();                                                  \
-        static phx::StringHash GetTypeIdStatic();                                                     \
+        static phx::StringHash GetTypeIdStatic();                                                               \
+        static const phx::data::TypeInfo& GetBaseTypeInfoStatic();                                              \
+        static phx::StringHash GetBaseTypeIdStatic();                                                           \
         virtual const phx::data::TypeInfo& GetTypeInfo() const override { return GetTypeInfoStatic(); }         \
         virtual phx::StringHash GetType() const override { return TypeId; }                                     \
         virtual const char* GetTypeName() const override { return TypeName; }                                   \
@@ -37,6 +41,10 @@ namespace phx::data
 
         virtual void Serialize(IArchiver& ar) const;
         virtual void Deserialize(IArchiver& ar);
+
+        static const phx::data::TypeInfo& GetTypeInfoStatic() { static TypeInfo typeInfo; return typeInfo; }
+        static phx::StringHash GetTypeIdStatic() { static StringHash id = "IDataObj"_hash; return id; }
+
     public:
         virtual unsigned long AddRef() = 0;
         virtual unsigned long Release() = 0;
