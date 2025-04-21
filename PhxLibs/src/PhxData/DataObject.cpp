@@ -109,10 +109,13 @@ void phx::data::IDataObj::Serialize(IArchiver& ar) const
         else if (field.IsVector && field.IsPointer)
         {
             const auto& vec = *reinterpret_cast<const std::vector<phx::RefCountPtr<IDataObj>>*>(ptr);
+
+            ar << ArchiverOp::BeginSeq;
             for (auto& item : vec)
             {
                 SerializePointer(ar, item.Get());
             }
+            ar << ArchiverOp::EndSeq;
         }
         else if (field.IsPointer)
         {
