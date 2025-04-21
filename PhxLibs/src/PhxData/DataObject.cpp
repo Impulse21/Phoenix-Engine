@@ -22,6 +22,26 @@ namespace
     constexpr phx::StringHash XMFloat3Id = "DirectX::XMFLOAT3"_hash;
     constexpr phx::StringHash XMFloat4Id = "DirectX::XMFLOAT4"_hash;
 
+    void SerializePointer(IArchiver& ar, const IDataObj* data)
+    {
+        ar << ArchiverOp::BeginMap;
+        ar << ArchiverOp::Key << "type";
+        ar << ArchiverOp::Value << data->GetTypeName();
+
+        if (data)
+        {
+            ar << ArchiverOp::Key << "data";
+            ar << ArchiverOp::BeginMap;
+            data->Serialize(ar);
+            ar << ArchiverOp::EndMap;
+        }
+        else
+            ar << ArchiverOp::Null;
+
+
+        ar << ArchiverOp::EndMap;
+    }
+
     void SerializeElement(IArchiver& ar, StringHash typeId, const void* data)
     {
         if (typeId == FloatId)
@@ -86,62 +106,18 @@ void phx::data::IDataObj::Serialize(IArchiver& ar) const
             }
             ar << ArchiverOp::EndSeq;
         }
-        else if (field.IsVector)
+        else if (field.IsVector && field.IsPointer)
         {
             const auto& vec = *reinterpret_cast<const std::vector<phx::RefCountPtr<IDataObj>>*>(ptr);
-#if false
-            ar << ArchiverOp::BeginSeq;
-
             for (auto& item : vec)
             {
-                if (ptr)
-                {
-                    ar << ArchiverOp::BeginMap;
-                    item->Serialize(ar);
-                    ar << ArchiverOp::EndMap;
-                }
-                else
-                    ar << ArchiverOp::Null;
+                SerializePointer(ar, item.Get());
             }
-
-            ar << ArchiverOp::EndSeq;
-#else
-
-            for (auto& item : vec)
-            {
-
-                ar << ArchiverOp::BeginMap;
-                ar << ArchiverOp::Key << "type";
-                ar << ArchiverOp::Value << item->GetType();
-
-                if (ptr)
-                {
-                    ar << ArchiverOp::Key << "data";
-                    ar << ArchiverOp::BeginMap;
-                    item->Serialize(ar);
-                    ar << ArchiverOp::EndMap;
-                }
-                else
-                    ar << ArchiverOp::Null;
-
-
-                ar << ArchiverOp::EndMap;
-            }
-
-
-#endif
         }
         else if (field.IsPointer)
         {
-            const IDataObj* dataPtr = reinterpret_cast<const phx::RefCountPtr<IDataObj>*>(ptr)->Get();
-            if (dataPtr)
-            {
-                ar << ArchiverOp::BeginMap;
-                dataPtr->Serialize(ar);
-                ar << ArchiverOp::EndMap;
-            }
-            else
-                ar << ArchiverOp::Null;
+            const auto& dataObj = reinterpret_cast<const phx::RefCountPtr<IDataObj>*>(ptr);
+            SerializePointer(ar, dataObj->Get());
         }
         else
         {
