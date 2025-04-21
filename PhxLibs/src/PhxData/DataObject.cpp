@@ -26,42 +26,42 @@ namespace
     {
         if (typeId == FloatId)
         {
-            ar << ArhiverOp::Value << *((float*)data);
+            ar << ArchiverOp::Value << *((float*)data);
         }
         else if (typeId == IntId)
         {
-            ar << ArhiverOp::Value << *((int*)data);
+            ar << ArchiverOp::Value << *((int*)data);
         }
         else if (typeId == UIntId)
         {
-            ar << ArhiverOp::Value << *((uint32_t*)data);
+            ar << ArchiverOp::Value << *((uint32_t*)data);
         }
         else if (typeId == StringId)
         {
-            ar << ArhiverOp::Value << *((std::string*)data);
+            ar << ArchiverOp::Value << *((std::string*)data);
         }
         else if (typeId == BoolId)
         {
-            ar << ArhiverOp::Value << *((bool*)data);
+            ar << ArchiverOp::Value << *((bool*)data);
         }
         else if (typeId == XMFloat2Id)
         {
-            ar << ArhiverOp::Value << *((DirectX::XMFLOAT2*)data);
+            ar << ArchiverOp::Value << *((DirectX::XMFLOAT2*)data);
         }
         else if (typeId == XMFloat3Id)
         {
-            ar << ArhiverOp::Value << *((DirectX::XMFLOAT3*)data);
+            ar << ArchiverOp::Value << *((DirectX::XMFLOAT3*)data);
         }
         else if (typeId == XMFloat4Id)
         {
-            ar << ArhiverOp::Value << *((DirectX::XMFLOAT4*)data);
+            ar << ArchiverOp::Value << *((DirectX::XMFLOAT4*)data);
         }
         else if (typeId == UUIDID || typeId == UUIDID_NS)
         {
-            ar << ArhiverOp::Value << *((UUID*)data);
+            ar << ArchiverOp::Value << *((UUID*)data);
         }
         else
-            ar << ArhiverOp::Value << "<unsupported>";
+            ar << ArchiverOp::Value << "<unsupported>";
     }
 }
 
@@ -73,10 +73,10 @@ void phx::data::IDataObj::Serialize(IArchiver& ar) const
         const void* ptr = (char*)this + field.Offset;
         const char* key = field.Name;
 
-        ar << ArhiverOp::Key << key;
+        ar << ArchiverOp::Key << key;
         if (field.IsArray)
         {
-            ar << ArhiverOp::BeginSeq;
+            ar << ArchiverOp::BeginSeq;
 
             // You might need size metadata or fix this at generation time
             for (size_t i = 0; i < field.ArraySize; ++i)
@@ -84,38 +84,64 @@ void phx::data::IDataObj::Serialize(IArchiver& ar) const
                 void* element = (uint8_t*)ptr + i * field.Stride;
                 SerializeElement(ar, field.TypeHash, element);
             }
-            ar << ArhiverOp::EndSeq;
+            ar << ArchiverOp::EndSeq;
         }
         else if (field.IsVector)
         {
             const auto& vec = *reinterpret_cast<const std::vector<phx::RefCountPtr<IDataObj>>*>(ptr);
-            ar << ArhiverOp::BeginSeq;
+#if false
+            ar << ArchiverOp::BeginSeq;
 
             for (auto& item : vec)
             {
                 if (ptr)
                 {
-                    ar << ArhiverOp::BeginMap;
+                    ar << ArchiverOp::BeginMap;
                     item->Serialize(ar);
-                    ar << ArhiverOp::EndMap;
+                    ar << ArchiverOp::EndMap;
                 }
                 else
-                    ar << ArhiverOp::Null;
+                    ar << ArchiverOp::Null;
             }
 
-            ar << ArhiverOp::EndSeq;
+            ar << ArchiverOp::EndSeq;
+#else
+
+            for (auto& item : vec)
+            {
+
+                ar << ArchiverOp::BeginMap;
+                ar << ArchiverOp::Key << "type";
+                ar << ArchiverOp::Value << item->GetType();
+
+                if (ptr)
+                {
+                    ar << ArchiverOp::Key << "data";
+                    ar << ArchiverOp::BeginMap;
+                    item->Serialize(ar);
+                    ar << ArchiverOp::EndMap;
+                }
+                else
+                    ar << ArchiverOp::Null;
+
+
+                ar << ArchiverOp::EndMap;
+            }
+
+
+#endif
         }
         else if (field.IsPointer)
         {
             const IDataObj* dataPtr = reinterpret_cast<const phx::RefCountPtr<IDataObj>*>(ptr)->Get();
             if (dataPtr)
             {
-                ar << ArhiverOp::BeginMap;
+                ar << ArchiverOp::BeginMap;
                 dataPtr->Serialize(ar);
-                ar << ArhiverOp::EndMap;
+                ar << ArchiverOp::EndMap;
             }
             else
-                ar << ArhiverOp::Null;
+                ar << ArchiverOp::Null;
         }
         else
         {

@@ -29,7 +29,7 @@ namespace phx::data
 		Write
 	};
 
-	enum class ArhiverOp : uint8_t
+	enum class ArchiverOp : uint8_t
 	{
 		Key,
 		Value,
@@ -68,27 +68,27 @@ namespace phx::data
 			return *this;
 		}
 		// Templated interface for serialization
-		IArchiver& operator<<(ArhiverOp op)
+		IArchiver& operator<<(ArchiverOp op)
 		{
 			switch (op)
 			{
-			case ArhiverOp::BeginSeq:
+			case ArchiverOp::BeginSeq:
 				BeginArrayWrite();
 				break;
-			case ArhiverOp::EndSeq:
+			case ArchiverOp::EndSeq:
 				EndArrayWrite();
 				break;
-			case ArhiverOp::BeginMap:
+			case ArchiverOp::BeginMap:
 				BeginMap();
 				break;
-			case ArhiverOp::EndMap:
+			case ArchiverOp::EndMap:
 				EndMap();
 				break;
-			case ArhiverOp::Null:
+			case ArchiverOp::Null:
 				WriteNull();
 				break;
-			case ArhiverOp::Key:
-			case ArhiverOp::Value:
+			case ArchiverOp::Key:
+			case ArchiverOp::Value:
 			default:
 				break;
 			}
