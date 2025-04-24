@@ -34,12 +34,7 @@ inline YAML::Emitter& operator<<(YAML::Emitter& out, DirectX::XMFLOAT4 const& v)
 
 namespace phx::data
 {
-
-#if true
     class YamlArchiver final : public IArchiver
-#else
-    class YamlArchiver : public ArchiverMixin<YamlArchiver>
-#endif
     {
     public:
         // Constructor for writing
@@ -54,18 +49,6 @@ namespace phx::data
             m_emitter.SetMapFormat(YAML::Block);
             m_emitter << YAML::BeginMap;
         }
-
-#if false
-        YamlArchiver(YAML::Emitter& outEmitter)
-            : m_mode(ArchiveMode::Write)
-            , m_emitter(&outEmitter)
-            , m_node(nullptr)
-        {
-            m_emitter->SetIndent(4);
-            m_emitter->SetMapFormat(YAML::Block);
-            *m_emitter << YAML::BeginMap;
-        }
-#endif
 
         // Constructor for reading
         YamlArchiver(const YAML::Node& inNode)
