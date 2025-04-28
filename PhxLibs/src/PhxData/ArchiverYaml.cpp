@@ -1,6 +1,7 @@
 #include "PhxData_pch.h"
 #include "ArchiverYaml.h"
 
+#if false
 
 using namespace phx::data;
 
@@ -66,3 +67,4 @@ void YamlArchiver::Read(const char* /*key*/, DirectX::XMFLOAT3& /*value*/)
 void YamlArchiver::Read(const char* /*key*/, DirectX::XMFLOAT4& /*value*/)
 {
 }
+#endif

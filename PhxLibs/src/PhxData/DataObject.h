@@ -1,5 +1,6 @@
 #pragma once
 
+#if false
 #include <PhxCore/StringHash.h>
 #include "Reflection.h"
 
@@ -54,3 +55,5 @@ namespace phx::data
     void Load(phx::IFileSystem* fs, const char* filename, IDataObj& dataObj);
 
 }
+
+#endif

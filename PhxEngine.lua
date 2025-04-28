@@ -586,9 +586,9 @@ group "PhxLibs"
         {
             phx_lib_src_data_dir.."/**.h",
             phx_lib_src_data_dir.."/**.cpp",
-            phx_lib_src_data_dir.."/**.py",
-            phx_lib_src_data_dir.."/"..phx_generated_file_name,
-            phx_generate_reflection_script,
+            --phx_lib_src_data_dir.."/**.py",
+            --phx_lib_src_data_dir.."/"..phx_generated_file_name,
+            --phx_generate_reflection_script,
         }
 
         includedirs
@@ -602,9 +602,9 @@ group "PhxLibs"
         defines { "YAML_CPP_STATIC_DEFINE" }
 
         -- Pre-build step to generate reflection
-        prebuildcommands {
+        --[[prebuildcommands {
             "python ../../"..phx_generate_reflection_script.." --output ../../"..phx_reflection_output_dir.." ../../"..phx_lib_src_data_dir
-        }
+        }--]]
 
     project(project_phx_world)
         kind('StaticLib')
@@ -781,8 +781,10 @@ group '.Solution Generation'
         
 group ""
 
+--[[
 group '.Scripts'
     project('Scripts')
         kind('StaticLib')
         files{ phx_generate_reflection_script }
 group ""
+--]]

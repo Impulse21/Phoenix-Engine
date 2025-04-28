@@ -1,5 +1,6 @@
 #pragma once
 
+#if false
 #include <PhxCore/VFS.h>
 #include "Archiver.h"
 #include <yaml-cpp/yaml.h>
@@ -114,3 +115,4 @@ namespace phx::data
         const YAML::Node* m_node;
     };
 }
+#endif

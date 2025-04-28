@@ -53,7 +53,7 @@ namespace phx
 		bool ImportImpl();
 
 	private:
-		void LoadNodeRec(cgltf_node const& gltfNode, RefCountPtr<phx::data::Entity>&  parent);
+		void LoadNodeRec(cgltf_node const& gltfNode, data::RefPtr<phx::data::Entity>&  parent);
 
 	private:
 		cgltf_data* m_gltfData;

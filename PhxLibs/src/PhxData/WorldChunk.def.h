@@ -4,74 +4,79 @@
 
 #include <PhxCore/Base.h>
 #include <PhxCore/UUID.h>
+#include <PhxCore/StringHash.h>
+
+#include <PhxData/DataPtr.h>
 
 #include <DirectXMath.h>
 
-#include "DataObject.h"
-
 #include <PhxCore/RefCountPtr.h>
+
+#define WORLD_COMPONENT(type) type() : Component(#type##_hash) {};
+
+namespace YAML
+{
+	class Emitter;
+}
+
+namespace phx
+{
+	class IFileSystem;
+}
 
 namespace phx::data
 {
-	struct Component : public RefCounter<IDataObj>
+	struct Component
 	{
-		PHX_DATA_OBJECT(Component, IDataObj)
-			
-		// Dummy workaround to get reflection data generated for this.
-		PROPERTY()
-		uint8_t _dummy = 0;
+		StringHash ComponentId;
+		std::string ComponentName;
+		Component(StringHash id)
+			: ComponentId(id)
+		{
+		}
+
+		virtual ~Component() = default;
+		virtual void Serialize(YAML::Emitter& emitter) const = 0;
 	};
 
+	// NOTE: Polymorphism increases the size of these structs form
+	// 40 bytes to 94 bytes 
 	struct TransformComponent : public Component
 	{
-		PHX_DATA_OBJECT(TransformComponent, Component)
-
-		PROPERTY()
+		WORLD_COMPONENT(TransformComponent)
 		DirectX::XMFLOAT3 Translation = { 0.0f, 0.0f, 0.0f };
-
-		PROPERTY()
 		DirectX::XMFLOAT4 Rotation = { 0.0f, 0.0f, 0.0f, 1.0f };
-
-		PROPERTY()
 		DirectX::XMFLOAT3 Scale = { 1.0f, 1.0f, 1.0f };
+
+		void Serialize(YAML::Emitter& emitter) const override;
 	};
 
 	struct MeshComponent : public Component
 	{
-		PHX_DATA_OBJECT(MeshComponent, Component)
-
-		PROPERTY()
+		WORLD_COMPONENT(MeshComponent)
 		std::string Mesh;
+
+		void Serialize(YAML::Emitter& emitter) const override;
 	};
 
-	struct Entity : public RefCounter<IDataObj>
+	struct Entity
 	{
-		PHX_DATA_OBJECT(Entity, IDataObj)
-
-		PROPERTY()
 		UUID ID;
-
-		PROPERTY()
 		std::string Name;
+		std::vector<RefPtr<Component>> Components;
+		std::vector<RefPtr<Entity>> Children;
 
-		PROPERTY()
-		std::vector<RefCountPtr<Component>> Components;
-
-		PROPERTY()
-		std::vector<RefCountPtr<Entity>> Children;
+		void Serialize(YAML::Emitter& emitter) const;
 	};
 
-	struct WorldChunk : public RefCounter<IDataObj>
+	struct WorldChunk
 	{
-		PHX_DATA_OBJECT(WorldChunk, IDataObj)
-
-		PROPERTY()
 		UUID ID;
-
-		PROPERTY()
 		std::string PackFile;
+		RefPtr<Entity> Root;
 
-		PROPERTY()
-		RefCountPtr<Entity> Root;
+		void Serialize(YAML::Emitter& emitter) const;
 	};
+
+	void Save(phx::IFileSystem* fs, const char* filename, WorldChunk const& chunk);
 }

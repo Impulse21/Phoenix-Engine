@@ -194,7 +194,7 @@ bool phx::GltfWorldImporter::ImportImpl()
 {
 	// Load Node Data
 	cgltf_scene* gltfScene = m_gltfData->scene;
-	m_out.Root = phx::data::DataTypeFactory::Create<phx::data::Entity>();
+	m_out.Root = data::RefPtr<data::Entity>::Create();
 	m_out.Root->Name = gltfScene->name ? gltfScene->name : "Scene Root";
 
 	for (size_t i = 0; i < gltfScene->nodes_count; i++)
@@ -206,9 +206,9 @@ bool phx::GltfWorldImporter::ImportImpl()
 	return false;
 }
 
-void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, RefCountPtr<phx::data::Entity>& parent)
+void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, data::RefPtr<phx::data::Entity>& parent)
 {
-	RefCountPtr<phx::data::Entity> entity;
+	data::RefPtr<phx::data::Entity> entity;
 
 	std::vector<phx::data::Entity> childEntities; // TODO: Make use of an allorcator.
 	if (gltfNode.mesh)
@@ -296,12 +296,12 @@ void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, RefCountPtr
 
 	static size_t emptyNode = 0;
 
-	entity = phx::data::DataTypeFactory::Create<phx::data::Entity>();
+	entity = data::RefPtr<phx::data::Entity>::Create();
 
 	std::string nodeName = gltfNode.name ? gltfNode.name : "Scene Node " + std::to_string(emptyNode++);
 	entity->Name = nodeName;
 
-	RefCountPtr<data::TransformComponent> transform = data::DataTypeFactory::Create<data::TransformComponent>();
+	data::RefPtr<data::TransformComponent> transform = data::RefPtr<data::TransformComponent>::Create();
 	if (gltfNode.has_scale)
 	{
 		std::memcpy(
@@ -344,7 +344,7 @@ void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, RefCountPtr
 
 	if (gltfNode.mesh)
 	{
-		RefCountPtr<data::MeshComponent> meshComponent = data::DataTypeFactory::Create<data::MeshComponent>();
+		data::RefPtr<data::MeshComponent> meshComponent = data::RefPtr<data::MeshComponent>::Create();
 		meshComponent->Mesh = gltfNode.mesh->name;
 		entity->Components.push_back(meshComponent);
 	}

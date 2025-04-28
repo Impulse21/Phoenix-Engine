@@ -6,6 +6,7 @@
 #include <PhxCore/StringHash.h>
 #include <PhxCore/RefCountPtr.h>
 
+#if false
 #define REGISTER_TYPE_FACTORY(TYPE)                         \
     namespace                                               \
     {                                                       \
@@ -57,3 +58,4 @@ namespace phx::data
         inline static std::unordered_map<phx::StringHash, std::function<void*()>> m_registry;
     };
 }
+#endif

@@ -1,5 +1,6 @@
 #pragma once
 
+#if false
 #include <string>
 #include <PhxCore\UUID.h>
 #include <PhxCore\Span.h>
@@ -155,3 +156,4 @@ namespace phx::data
 	};
 #endif
 }
+#endif

@@ -187,7 +187,7 @@ int wmain(int argc, wchar_t** argv)
 
 		ThreadPool::SubmitTask([&]()
 		{
-			RefCountPtr<phx::data::WorldChunk> world = phx::data::DataTypeFactory::Create<phx::data::WorldChunk>();
+			data::RefPtr<phx::data::WorldChunk> world = phx::data::RefPtr<phx::data::WorldChunk>::Create();
 			phx::GltfWorldImporter::Import(gltfData, *world);
 
 			std::string worldFilename = std::format("{}.{}", baseFilename, "phxwld");

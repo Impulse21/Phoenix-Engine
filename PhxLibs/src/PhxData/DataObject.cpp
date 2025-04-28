@@ -1,4 +1,7 @@
 #include "PhxData_pch.h"
+
+#if false
+
 #include "DataObject.h"
 #include "ArchiverYaml.h"
 
@@ -143,3 +146,5 @@ void phx::data::Save(phx::IFileSystem* fs, const char* filename, IDataObj const&
 void phx::data::Load(phx::IFileSystem* /*fs*/, const char* /*filename*/, IDataObj& /*dataObj*/)
 {
 }
+
+#endif
