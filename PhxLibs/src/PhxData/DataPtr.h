@@ -8,6 +8,9 @@ namespace phx::data
     template<typename T>
     class RefPtr
     {
+        template <typename, typename>
+        friend class RefPtr;
+
     public:
         template<typename... Args>
         static inline RefPtr<T> Create(Args&&... args)
@@ -118,6 +121,7 @@ namespace phx::data
                 control = nullptr;
             }
         }
+
     private:
         struct ControlBlock
         {
