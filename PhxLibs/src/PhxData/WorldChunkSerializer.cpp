@@ -54,9 +54,12 @@ void WorldChunk::Serialize(YAML::Emitter& emitter) const
 
 void Entity::Serialize(YAML::Emitter& emitter) const
 {
-    emitter << YAML::BeginMap; // Entity
+    emitter << YAML::BeginMap; // Entity Map
+
     emitter << YAML::Key << "Entity" << YAML::Value << Name;
 
+    // Components
+    emitter << YAML::Key << "Components" << YAML::Value;
     emitter << YAML::BeginSeq;
     for (auto& component : Components)
     {
@@ -64,14 +67,16 @@ void Entity::Serialize(YAML::Emitter& emitter) const
     }
     emitter << YAML::EndSeq;
 
+    // Children
+    emitter << YAML::Key << "Children" << YAML::Value;
     emitter << YAML::BeginSeq;
     for (auto& child : Children)
     {
         child->Serialize(emitter);
     }
-
     emitter << YAML::EndSeq;
-    emitter << YAML::EndMap; // Entity
+
+    emitter << YAML::EndMap; // End Entity Map
 }
 
 void MeshComponent::Serialize(YAML::Emitter& emitter) const

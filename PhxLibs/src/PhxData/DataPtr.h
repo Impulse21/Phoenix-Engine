@@ -5,10 +5,28 @@
 
 namespace phx::data
 {
+    struct ControlBlockBase
+    {
+        std::atomic<size_t> RefCount = 1;
+        virtual ~ControlBlockBase() = default;
+    };
+
+    template<typename U>
+    struct ControlBlock final : public ControlBlockBase
+    {
+        U* Ptr;
+
+        ControlBlock(U* p) : Ptr(p) {}
+        ~ControlBlock()
+        {
+            delete Ptr;
+        }
+    };
+
     template<typename T>
     class RefPtr
     {
-        template <typename, typename>
+        template<typename>
         friend class RefPtr;
 
     public:
@@ -20,41 +38,35 @@ namespace phx::data
 
     public:
         RefPtr()
-            : control(nullptr)
+            : control(nullptr), Ptr(nullptr)
         {
         }
 
-        RefPtr(T* ptr)
-            : control(ptr ? new ControlBlock(ptr) : nullptr)
+        RefPtr(T* raw)
+            : control(raw ? new ControlBlock<T>(raw) : nullptr), Ptr(raw)
         {
         }
 
         RefPtr(const RefPtr& other)
-            : control(other.control)
+            : control(other.control), Ptr(other.Ptr)
         {
             if (control)
-            {
-                control->refCount.fetch_add(1, std::memory_order_relaxed);
-            }
-        }
-
-        RefPtr(RefPtr&& other) noexcept
-            : control(other.control)
-        {
-            other.control = nullptr;
-        }
-
-        ~RefPtr()
-        {
-            Release();
+                control->RefCount.fetch_add(1, std::memory_order_relaxed);
         }
 
         template<typename U> requires std::convertible_to<U*, T*>
         RefPtr(const RefPtr<U>& other)
-            : control(other.control->ptr ? new ControlBlock(other.control->ptr) : nullptr)
+            : control(other.control), Ptr(other.Ptr)
         {
             if (control)
-                control->refCount.fetch_add(1, std::memory_order_relaxed);
+                control->RefCount.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        RefPtr(RefPtr&& other) noexcept
+            : control(other.control), Ptr(other.Ptr)
+        {
+            other.control = nullptr;
+            other.Ptr = nullptr;
         }
 
         RefPtr& operator=(const RefPtr& other)
@@ -63,10 +75,9 @@ namespace phx::data
             {
                 Release();
                 control = other.control;
+                Ptr = other.Ptr;
                 if (control)
-                {
-                    control->refCount.fetch_add(1, std::memory_order_relaxed);
-                }
+                    control->RefCount.fetch_add(1, std::memory_order_relaxed);
             }
             return *this;
         }
@@ -77,36 +88,43 @@ namespace phx::data
             {
                 Release();
                 control = other.control;
+                Ptr = other.Ptr;
                 other.control = nullptr;
+                other.Ptr = nullptr;
             }
             return *this;
         }
 
+        ~RefPtr()
+        {
+            Release();
+        }
+
         T* Get() const
         {
-            return control ? control->ptr : nullptr;
+            return Ptr;
         }
 
         T& operator*() const
         {
-            assert(Get());
-            return *Get();
+            assert(Ptr);
+            return *Ptr;
         }
 
         T* operator->() const
         {
-            assert(Get());
-            return Get();
+            assert(Ptr);
+            return Ptr;
         }
 
         explicit operator bool() const
         {
-            return Get() != nullptr;
+            return Ptr != nullptr;
         }
 
         size_t UseCount() const
         {
-            return control ? control->refCount.load(std::memory_order_relaxed) : 0;
+            return control ? control->RefCount.load(std::memory_order_relaxed) : 0;
         }
 
     private:
@@ -114,31 +132,18 @@ namespace phx::data
         {
             if (control)
             {
-                if (control->refCount.fetch_sub(1, std::memory_order_acq_rel) == 1)
+                if (control->RefCount.fetch_sub(1, std::memory_order_acq_rel) == 1)
                 {
                     delete control;
                 }
                 control = nullptr;
+                Ptr = nullptr;
             }
         }
 
     private:
-        struct ControlBlock
-        {
-            std::atomic<size_t> refCount;
-            T* ptr;
-
-            ControlBlock(T* p)
-                : refCount(1), ptr(p)
-            {
-            }
-
-            ~ControlBlock()
-            {
-                delete ptr;
-            }
-        };
-
-        ControlBlock* control;
+        ControlBlockBase* control;
+        T* Ptr;
     };
+
 }
