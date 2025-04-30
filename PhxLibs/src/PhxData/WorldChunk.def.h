@@ -16,7 +16,8 @@
 
 namespace YAML
 {
-	class Emitter;
+	class Emitter; 
+	class Node;
 }
 
 namespace phx
@@ -37,6 +38,7 @@ namespace phx::data
 
 		virtual ~Component() = default;
 		virtual void Serialize(YAML::Emitter& emitter) const = 0;
+		virtual void  Deserialize(YAML::Node& node) = 0;
 	};
 
 	// NOTE: Polymorphism increases the size of these structs form
@@ -49,6 +51,7 @@ namespace phx::data
 		DirectX::XMFLOAT3 Scale = { 1.0f, 1.0f, 1.0f };
 
 		void Serialize(YAML::Emitter& emitter) const override;
+		void Deserialize(YAML::Node& node) override;
 	};
 
 	struct MeshComponent : public Component
@@ -57,6 +60,7 @@ namespace phx::data
 		std::string Mesh;
 
 		void Serialize(YAML::Emitter& emitter) const override;
+		void Deserialize(YAML::Node& node) override;
 	};
 
 	struct Entity
@@ -67,6 +71,7 @@ namespace phx::data
 		std::vector<RefPtr<Entity>> Children;
 
 		void Serialize(YAML::Emitter& emitter) const;
+		void Deserialize(YAML::Node& node);
 	};
 
 	struct WorldChunk
@@ -76,7 +81,9 @@ namespace phx::data
 		RefPtr<Entity> Root;
 
 		void Serialize(YAML::Emitter& emitter) const;
+		void Deserialize(YAML::Node& node);
 	};
 
 	void Save(phx::IFileSystem* fs, const char* filename, WorldChunk const& chunk);
+	data::RefPtr<WorldChunk> Load(phx::IFileSystem* fs, const char* filename);
 }

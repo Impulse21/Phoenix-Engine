@@ -6,8 +6,10 @@
 #include <PhxCore/ThreadPool.h>
 #include <PhxCore/Math.h>
 #include <PhxData/DataTypeFactory.h>
+#include <PhxRenderer/MeshResourceHandler.h>
 #include <cgltf.h>
 
+#include <format>
 using namespace phx;
 
 namespace
@@ -345,7 +347,8 @@ void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, data::RefPt
 	if (gltfNode.mesh)
 	{
 		data::RefPtr<data::MeshComponent> meshComponent = data::RefPtr<data::MeshComponent>::Create();
-		meshComponent->Mesh = gltfNode.mesh->name;
+
+		meshComponent->Mesh = std::format("{}.{}", gltfNode.mesh->name, ResourceExtension<renderer::MeshResourceHandler>::value);
 		entity->Components.push_back(meshComponent);
 	}
 
