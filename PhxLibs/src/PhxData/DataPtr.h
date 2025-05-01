@@ -105,13 +105,24 @@ namespace phx::data
             return Ptr;
         }
 
-        T& operator*() const
+        T& operator*()
+        {
+            assert(Ptr);
+            return *Ptr;
+        }
+        const T& operator*() const
         {
             assert(Ptr);
             return *Ptr;
         }
 
-        T* operator->() const
+        T* operator->()
+        {
+            assert(Ptr);
+            return Ptr;
+        }
+
+        const T* operator->() const
         {
             assert(Ptr);
             return Ptr;

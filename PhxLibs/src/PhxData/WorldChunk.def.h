@@ -12,7 +12,10 @@
 
 #include <PhxCore/RefCountPtr.h>
 
-#define WORLD_COMPONENT(type) type() : Component(#type##_hash) {};
+#define WORLD_COMPONENT(type)						\
+	type() : Component(TypeId) {};					\
+	inline static StringHash TypeId = #type##_hash;
+											
 
 namespace YAML
 {
@@ -29,10 +32,10 @@ namespace phx::data
 {
 	struct Component
 	{
-		StringHash ComponentId;
-		std::string ComponentName;
+		StringHash TypeId;
+		std::string TypeName;
 		Component(StringHash id)
-			: ComponentId(id)
+			: TypeId(id)
 		{
 		}
 

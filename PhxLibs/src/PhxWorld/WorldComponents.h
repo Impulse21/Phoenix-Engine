@@ -3,6 +3,7 @@
 #include <PhxCore/Base.h>
 #include <PhxCore/UUID.h>
 #include <PhxCore/Math.h>
+#include <PhxData/WorldChunk.def.h>
 
 #include <PhxResource/IResource.h>
 
@@ -38,11 +39,11 @@ namespace phx
 		};
 
 		uint32_t Flags;
-
+#if false
 		DirectX::XMFLOAT3 LocalScale = { 1.0f, 1.0f, 1.0f };
 		DirectX::XMFLOAT4 LocalRotation = { 0.0f, 0.0f, 0.0f, 1.0f };
 		DirectX::XMFLOAT3 LocalTranslation = { 0.0f, 0.0f, 0.0f };
-
+#endif
 		DirectX::XMFLOAT4X4 WorldMatrix = math::cIdentityMatrix;
 
 		inline void SetDirty(bool value = true)
@@ -58,7 +59,7 @@ namespace phx
 		}
 
 		inline bool IsDirty() const { return Flags & kDirty; }
-
+		
 		DirectX::XMFLOAT3 GetPosition() const
 		{
 			return *((DirectX::XMFLOAT3*)&WorldMatrix._41);
@@ -96,7 +97,7 @@ namespace phx
 			XMMatrixDecompose(&S, &R, &T, XMLoadFloat4x4(&WorldMatrix));
 			return S;
 		}
-
+#if false
 		// TODO: Move to external functions that operate on the data type.
 		inline void UpdateTransform()
 		{
@@ -156,6 +157,7 @@ namespace phx
 			DirectX::XMStoreFloat4(&LocalRotation, rotate);
 			DirectX::XMStoreFloat3(&LocalTranslation, translate);
 		}
+#endif
 	};
 
 	struct HierarchyComponent
@@ -170,5 +172,10 @@ namespace phx
 			const char* MeshPath;
 			RefCountPtr<IResource> MeshResource;
 		};
+	};
+
+	struct WorldChunkRefComponent
+	{
+		data::RefPtr<data::Entity> Entity;
 	};
 }

@@ -24,7 +24,7 @@ namespace phx
 	class ResourceManger
 	{
 	public:
-		static void Initialize(std::filesystem::path const& resourcePath);
+		static void Initialize(std::shared_ptr<phx::IRootFileSystem> fs);
 		static RefCountPtr<IResource> Get(std::filesystem::path const& path);
 
 		static void RegisterPakFiles(Span<std::filesystem::path> pakFiles);

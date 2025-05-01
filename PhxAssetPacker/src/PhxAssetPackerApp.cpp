@@ -190,6 +190,7 @@ int wmain(int argc, wchar_t** argv)
 			data::RefPtr<phx::data::WorldChunk> world = phx::data::RefPtr<phx::data::WorldChunk>::Create();
 			phx::GltfWorldImporter::Import(gltfData, *world);
 
+			world->PackFile = outputFilename;
 			std::string worldFilename = std::format("{}.{}", baseFilename, "phxwld");
 			phx::data::Save(outputFS.get(), worldFilename.c_str(), *world);
 		});

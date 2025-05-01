@@ -20,6 +20,9 @@
 
 #include <PhxCore/ThreadPool.h>
 
+#include <PhxData/WorldChunk.def.h>
+#include <PhxWorld/World.h>
+
 #define TEST_TREAD_POOL 0
 #if TEST_TREAD_POOL 
 #include <chrono>
@@ -107,6 +110,7 @@ public:
 		Memory::Initialize( { .VirtualMemorySize = 16_GiB } );
 
 		m_fs = phx::FileSystemFactory::CreateRootFileSystem();
+		m_fs->Mount("res:/", GlobalPaths::AssetsDirectory);
 
 		m_imguiRenderSystem = std::make_shared<phx::gfx::ImGuiRenderSystem>();
 		m_imguiRenderSystem->Initialize(m_fs.get(), m_windowHandle);
@@ -117,12 +121,15 @@ public:
 		m_loadingBarrier.Add();
 		ThreadPool::SubmitTask([this] {
 
-			phx::ResourceManger::Initialize(GlobalPaths::AssetsDirectory);
+			phx::ResourceManger::Initialize(m_fs);
+
+			data::RefPtr<data::WorldChunk> worldChunk = data::Load(m_fs.get(), "res:/NewSponza_Main_glTF_003.phxwld");
 			phx::ResourceManger::RegisterHandler<phx::renderer::MeshResourceHandler>();
-			phx::ResourceManger::RegisterPakFile("res:/NewSponza_Main_glTF_003.phxpak");
+			phx::ResourceManger::RegisterPakFile(worldChunk->PackFile);
 
 			ThreadPool::Wait(ThreadPool::Type::Streaming);
 
+			MountWorldChunk(worldChunk);
 			// phx::Entity lionHeadEntity = m_world.CreateEntity("LionHead");
 
 			// auto& renderComponent = lionHeadEntity.AddComponent<MeshRenderComponent>();
@@ -179,6 +186,56 @@ public:
 
 private:
 	inline static Sandbox* ms_instance = nullptr;
+
+	void MountWorldChunk(data::RefPtr<data::WorldChunk>& worldChunk)
+	{
+		m_worldChunk = worldChunk;
+
+		auto MountEntityRec = [&](data::RefPtr<data::Entity> entity, Entity* parentWorldEntity = nullptr) {
+		
+			Entity worldEntity = m_world.CreateEntity(entity->ID, entity->Name);
+
+			for (const auto& component : entity->Components)
+			{
+				auto& refComp = worldEntity.AddComponent<WorldChunkRefComponent>();
+				refComp.Entity = entity;
+
+				if (component->TypeId == data::TransformComponent::TypeId)
+				{
+					const auto comp = static_cast<const data::TransformComponent*>(component.Get());
+					auto worldComp = worldEntity.GetComponent<TransformComponent>();
+					DirectX::XMVECTOR scale = DirectX::XMLoadFloat3(&comp->Scale);
+					DirectX::XMVECTOR rotation = DirectX::XMLoadFloat4(&comp->Rotation);
+					DirectX::XMVECTOR translation = DirectX::XMLoadFloat3(&comp->Translation);
+					DirectX::XMMATRIX matrix = 
+						DirectX::XMMatrixScalingFromVector(scale) *
+						DirectX::XMMatrixRotationQuaternion(rotation) *
+						DirectX::XMMatrixTranslationFromVector(translation);
+
+					DirectX::XMStoreFloat4x4(&worldComp.WorldMatrix, matrix);
+
+					if (parentWorldEntity)
+						worldEntity.AttachToParent(*parentWorldEntity);
+				}
+				else if (component->TypeId == data::MeshComponent::TypeId)
+				{
+					const auto comp = static_cast<const data::MeshComponent*>(component.Get());
+					auto& worldComp = worldEntity.AddComponent<MeshRenderComponent>();
+					worldComp.MeshResource = phx::ResourceManger::Get(comp->Mesh);
+				}
+			} 
+
+			for (auto& child : entity->Children)
+			{
+				MountEntityRec(child, &worldEntity);
+			}
+		};
+
+		data::RefPtr<data::Entity>& root = worldChunk->Root;
+		MountEntityRec(root);
+
+	}
+
 	inline void DrawGui()
 	{
 		if (m_loadingBarrier.IsNotCleared())
@@ -220,11 +277,12 @@ private:
 
 private:
 	ThreadPool::Barrier m_loadingBarrier;
-	std::unique_ptr<phx::IRootFileSystem> m_fs;
+	std::shared_ptr<phx::IRootFileSystem> m_fs;
 	const phx::ApplicationDescriptor m_desc;
 
 	std::shared_ptr<phx::gfx::ImGuiRenderSystem> m_imguiRenderSystem;
 	phx::gfx::ForwardRenderer m_renderer;
+	data::RefPtr<data::WorldChunk> m_worldChunk;
 	phx::World m_world;
 
 	RefCountPtr<IResource> m_meshResource;

@@ -10,11 +10,9 @@
 
 using namespace phx;
 
-void ResourceManger::Initialize(std::filesystem::path const& resourcePath)
+void ResourceManger::Initialize(std::shared_ptr<phx::IRootFileSystem> fs)
 {
-	ms_fileSytem = phx::FileSystemFactory::CreateRootFileSystem();
-
-	ms_fileSytem->Mount("res:/", resourcePath);
+	ms_fileSytem = fs;
 
 #ifdef PHX_RHI_D3D12
 	ms_assetStreamer = std::make_unique<DStorageAssetStreamer>();
