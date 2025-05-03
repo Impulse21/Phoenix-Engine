@@ -8,7 +8,7 @@
 namespace phx
 {   
 	class Entity;
-	class World
+	class World : public RefCountPtr<World>
 	{
 	public:
 		World() = default;
@@ -44,7 +44,10 @@ namespace phx
 		const entt::registry& GetRegistry() const { return this->m_registry; }
 
 		void RegisterComponents();
+
 	private:
 		entt::registry m_registry;
 	};
+
+
 }
