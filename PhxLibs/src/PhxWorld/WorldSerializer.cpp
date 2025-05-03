@@ -1,5 +1,9 @@
 #include "PhxWorld/PhxWorld_pch.h"
 
+#include <vector>
+#include <functional>
+#include <unordered_map>
+
 #include "WorldSerializer.h"
 #include "World.h"
 #include "Entity.h"
@@ -252,9 +256,11 @@ data::RefPtr<World> WorldSerializer::Load(IFileSystem* fs, const char* filename)
     if (!entities)
         return world;
 
+    std::vector<std::function<void(World&)>> deferredQueue;
+    std::unordered_map<entt::entity, UUID> entityIdLut;
     for (auto entity : entities)
     {
-        uint64_t uuid = entity["Entity"].as<uint64_t>();
+        phx::UUID uuid = entity["Entity"].as<phx::UUID>();
 
         std::string name;
         auto tagComponent = entity["NameComponent"];
@@ -265,7 +271,36 @@ data::RefPtr<World> WorldSerializer::Load(IFileSystem* fs, const char* filename)
 
         Entity deserializedEntity = world->CreateEntity(uuid, name);
 
-        // Process entities.
+        auto hierarchyComponent = entity["HierarchyComponent"];
+        if (hierarchyComponent)
+        {
+            // TODO: Defer set these up we can find the new entity value
+            // Entities always have transforms
+            auto& comp = deserializedEntity.GetComponent<HierarchyComponent>();
+            UUID parentsID = hierarchyComponent["ParentID"].as<phx::UUID>();
+            deferredQueue.push_back([parentsID, deserializedEntity, &entityIdLut](World& world) mutable {
+                    
+                    auto& comp = deserializedEntity.GetComponent<HierarchyComponent>();
+                    // TODO: I am here
+                });
+        }
+
+        auto transformComponent = entity["TransformComponent"];
+        if (transformComponent)
+        {
+            // Entities always have transforms
+            auto& comp = deserializedEntity.GetComponent<TransformComponent>();
+            comp.Translation = transformComponent["Translation"].as<DirectX::XMFLOAT3>();
+            comp.Rotation = transformComponent["Rotation"].as<DirectX::XMFLOAT4>();
+            comp.Scale = transformComponent["Scale"].as<DirectX::XMFLOAT3>();
+        }
+
+        auto meshComponent = entity["MeshComponent"];
+        if (meshComponent)
+        {
+            auto& comp = deserializedEntity.GetComponent<MeshComponent>();
+            comp.Mesh = tagComponent["Name"].as<std::string>();
+        }
     }
 
     return world;
