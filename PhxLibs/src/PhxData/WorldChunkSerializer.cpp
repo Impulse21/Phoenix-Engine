@@ -1,4 +1,5 @@
 #include "PhxData_pch.h"
+#if false
 #include "WorldChunk.def.h"
 
 #include <PhxCore/Span.h>
@@ -179,3 +180,5 @@ phx::data::RefPtr<WorldChunk> phx::data::Load(phx::IFileSystem* fs, const char* 
 
     return worldChunk;
 }
+
+#endif

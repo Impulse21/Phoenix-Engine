@@ -2,6 +2,7 @@
 
 #include "WorldSerializer.h"
 #include "World.h"
+#include "Entity.h"
 
 #include <PhxCore/VFS.h>
 
@@ -139,15 +140,133 @@ namespace YAML
 
 namespace
 {
+    void SerializeEntity(World& world, YAML::Emitter& out, Entity& entity)
+    {
+        PHX_CORE_ASSERT(entity.HasComponent<IDComponent>());
 
+        out << YAML::BeginMap; // Entity
+        out << YAML::Key << "Entity" << YAML::Value << entity.GetUUID();
+
+        if (entity.HasComponent<NameComponent>())
+        {
+            out << YAML::Key << "NameComponent";
+            out << YAML::BeginMap; // NameComponent
+
+            auto& comp = entity.GetComponent<NameComponent>();
+            out << YAML::Key << "Name" << YAML::Value << comp.Name;
+
+            out << YAML::EndMap; // NameComponent
+        }
+
+        if (entity.HasComponent<HierarchyComponent>())
+        {
+            auto& comp = entity.GetComponent<HierarchyComponent>();
+            Entity parent = { comp.ParentID, &world };
+
+            if (parent)
+            {
+                PHX_CORE_ASSERT(parent.HasComponent<IDComponent>());
+                out << YAML::Key << "HierarchyComponent";
+                out << YAML::BeginMap; // HierarchyComponent
+                out << YAML::Key << "ParentID" << YAML::Value << parent.GetComponent<IDComponent>().ID;
+                out << YAML::EndMap; // HierarchyComponent
+            }
+        }
+
+        if (entity.HasComponent<TransformComponent>())
+        {
+            out << YAML::Key << "TransformComponent";
+            out << YAML::BeginMap; // TransformComponent
+
+            auto& comp = entity.GetComponent<TransformComponent>();
+            out << YAML::Key << "Translation" << YAML::Value << comp.Translation;
+            out << YAML::Key << "Rotation" << YAML::Value << comp.Rotation;
+            out << YAML::Key << "Scale" << YAML::Value << comp.Scale;
+
+            out << YAML::EndMap; // TransformComponent
+        }
+
+        if (entity.HasComponent<MeshComponent>())
+        {
+            out << YAML::Key << "MeshComponent";
+            out << YAML::BeginMap; // MeshComponent
+
+            auto& comp = entity.GetComponent<MeshComponent>();
+            out << YAML::Key << "Name" << YAML::Value << comp.Mesh;
+
+            out << YAML::EndMap; // MeshComponent
+        }
+    }
 }
 
 bool Save(IFileSystem* fs, const char* filename, World& world)
 {
-    return false;
+    YAML::Emitter out;
+    out << YAML::BeginMap;
+    out << YAML::Key << "World" << YAML::Value << "Untitled";
+    out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;
+
+    auto view = world.GetRegistry().view<entt::entity>();
+
+    for (auto entityID : view)
+    {
+        Entity entity = { entityID, &world };
+        if (!entity)
+            continue;
+
+        SerializeEntity(world, out, entity);
+    }
+    out << YAML::EndSeq;
+    out << YAML::EndMap;
+
+    const char* strData = out.c_str();
+    fs->WriteFile(filename, Span(strData, strlen(strData)));
+
+    return true;
 }
 
 data::RefPtr<World> WorldSerializer::Load(IFileSystem* fs, const char* filename)
 {
-    return data::RefPtr<World>();
+    YAML::Node data;
+    try
+    {
+        data = YAML::LoadFile(fs->ResolvePath(filename).generic_string().c_str());
+    }
+    catch (YAML::ParserException e)
+    {
+        PHX_CORE_ERROR("Failed to load .phxwld file '{0}'\n     {1}", filename, e.what());
+        return nullptr;
+    }
+
+    if (!data["World"])
+        return nullptr;
+
+
+    auto world = data::RefPtr<World>::Create();
+
+    std::string worldName = data["World"].as<std::string>();
+    PHX_CORE_INFO("Loading world '{0}'", worldName);
+
+
+    auto entities = data["Entities"];
+    if (!entities)
+        return world;
+
+    for (auto entity : entities)
+    {
+        uint64_t uuid = entity["Entity"].as<uint64_t>();
+
+        std::string name;
+        auto tagComponent = entity["NameComponent"];
+        if (tagComponent)
+            name = tagComponent["Name"].as<std::string>();
+
+        PHX_CORE_INFO("Loading entity with ID = {0}, name = {1}", uuid, name);
+
+        Entity deserializedEntity = world->CreateEntity(uuid, name);
+
+        // Process entities.
+    }
+
+    return world;
 }

@@ -2,13 +2,15 @@
 
 #include <PhxCore/UUID.h>
 
+#include <PhxCore/RefCountPtr.h>
+
 #include <sstream>
 #include <entt/entt.hpp>
 
 namespace phx
 {   
 	class Entity;
-	class World : public RefCountPtr<World>
+	class World
 	{
 	public:
 		World() = default;

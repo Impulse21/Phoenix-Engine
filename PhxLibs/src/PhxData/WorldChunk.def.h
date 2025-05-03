@@ -1,5 +1,6 @@
 #pragma once
 
+#if false
 #include <string>
 
 #include <PhxCore/Base.h>
@@ -90,3 +91,4 @@ namespace phx::data
 	void Save(phx::IFileSystem* fs, const char* filename, WorldChunk const& chunk);
 	data::RefPtr<WorldChunk> Load(phx::IFileSystem* fs, const char* filename);
 }
+#endif

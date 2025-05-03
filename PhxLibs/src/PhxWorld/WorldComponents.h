@@ -39,11 +39,11 @@ namespace phx
 		};
 
 		uint32_t Flags;
-#if false
-		DirectX::XMFLOAT3 LocalScale = { 1.0f, 1.0f, 1.0f };
-		DirectX::XMFLOAT4 LocalRotation = { 0.0f, 0.0f, 0.0f, 1.0f };
-		DirectX::XMFLOAT3 LocalTranslation = { 0.0f, 0.0f, 0.0f };
-#endif
+
+		DirectX::XMFLOAT3 Scale = { 1.0f, 1.0f, 1.0f };
+		DirectX::XMFLOAT4 Rotation = { 0.0f, 0.0f, 0.0f, 1.0f };
+		DirectX::XMFLOAT3 Translation = { 0.0f, 0.0f, 0.0f };
+
 		DirectX::XMFLOAT4X4 WorldMatrix = math::cIdentityMatrix;
 
 		inline void SetDirty(bool value = true)
@@ -104,13 +104,13 @@ namespace phx
 			if (IsDirty())
 			{
 				SetDirty(false);
-				DirectX::XMStoreFloat4x4(&WorldMatrix, GetLocalMatrix());
+				DirectX::XMStoreFloat4x4(&WorldMatrix, GetMatrix());
 			}
 		}
 
 		inline void UpdateTransform(TransformComponent const& parent)
 		{
-			DirectX::XMMATRIX world = GetLocalMatrix();
+			DirectX::XMMATRIX world = GetMatrix();
 			DirectX::XMMATRIX worldParentworldParent = XMLoadFloat4x4(&parent.WorldMatrix);
 			world *= worldParentworldParent;
 
@@ -123,20 +123,20 @@ namespace phx
 
 			DirectX::XMVECTOR scalar, rotation, translation;
 			DirectX::XMMatrixDecompose(&scalar, &rotation, &translation, DirectX::XMLoadFloat4x4(&WorldMatrix));
-			DirectX::XMStoreFloat3(&LocalScale, scalar);
-			DirectX::XMStoreFloat4(&LocalRotation, rotation);
-			DirectX::XMStoreFloat3(&LocalTranslation, translation);
+			DirectX::XMStoreFloat3(&Scale, scalar);
+			DirectX::XMStoreFloat4(&Rotation, rotation);
+			DirectX::XMStoreFloat3(&Translation, translation);
 		}
 
-		inline DirectX::XMMATRIX GetLocalMatrix()
+		inline DirectX::XMMATRIX GetMatrix()
 		{
-			DirectX::XMVECTOR localScale = XMLoadFloat3(&LocalScale);
-			DirectX::XMVECTOR localRotation = XMLoadFloat4(&LocalRotation);
-			DirectX::XMVECTOR localTranslation = XMLoadFloat3(&LocalTranslation);
+			DirectX::XMVECTOR Scale = XMLoadFloat3(&Scale);
+			DirectX::XMVECTOR Rotation = XMLoadFloat4(&Rotation);
+			DirectX::XMVECTOR Translation = XMLoadFloat3(&Translation);
 			return
-				DirectX::XMMatrixScalingFromVector(localScale) *
-				DirectX::XMMatrixRotationQuaternion(localRotation) *
-				DirectX::XMMatrixTranslationFromVector(localTranslation);
+				DirectX::XMMatrixScalingFromVector(Scale) *
+				DirectX::XMMatrixRotationQuaternion(Rotation) *
+				DirectX::XMMatrixTranslationFromVector(Translation);
 		}
 
 		inline void MatrixTransform(const DirectX::XMFLOAT4X4& matrix)
@@ -151,11 +151,11 @@ namespace phx
 			DirectX::XMVECTOR scale;
 			DirectX::XMVECTOR rotate;
 			DirectX::XMVECTOR translate;
-			DirectX::XMMatrixDecompose(&scale, &rotate, &translate, GetLocalMatrix() * matrix);
+			DirectX::XMMatrixDecompose(&scale, &rotate, &translate, GetMatrix() * matrix);
 
-			DirectX::XMStoreFloat3(&LocalScale, scale);
-			DirectX::XMStoreFloat4(&LocalRotation, rotate);
-			DirectX::XMStoreFloat3(&LocalTranslation, translate);
+			DirectX::XMStoreFloat3(&Scale, scale);
+			DirectX::XMStoreFloat4(&Rotation, rotate);
+			DirectX::XMStoreFloat3(&Translation, translate);
 		}
 #endif
 	};
@@ -165,17 +165,8 @@ namespace phx
 		entt::entity ParentID = entt::null;
 	};
 
-	struct MeshRenderComponent
+	struct MeshComponent
 	{
-		union
-		{
-			const char* MeshPath;
-			RefCountPtr<IResource> MeshResource;
-		};
-	};
-
-	struct WorldChunkRefComponent
-	{
-		data::RefPtr<data::Entity> Entity;
+		std::string Mesh;
 	};
 }
