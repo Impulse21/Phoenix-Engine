@@ -15,6 +15,7 @@ namespace phx
 	namespace WorldSerializer
 	{
 		bool Save(phx::IFileSystem* fs, const char* filename, phx::World& world);
+		bool Load(phx::IFileSystem* fs, const char* filename, phx::World& world);
 		data::RefPtr<phx::World> Load(phx::IFileSystem* fs, const char* filename);
 	}
 }

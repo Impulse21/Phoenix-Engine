@@ -203,7 +203,7 @@ namespace
     }
 }
 
-bool Save(IFileSystem* fs, const char* filename, World& world)
+bool phx::WorldSerializer::Save(phx::IFileSystem* fs, const char* filename, phx::World& world)
 {
     YAML::Emitter out;
     out << YAML::BeginMap;
@@ -229,7 +229,7 @@ bool Save(IFileSystem* fs, const char* filename, World& world)
     return true;
 }
 
-data::RefPtr<World> WorldSerializer::Load(IFileSystem* fs, const char* filename)
+bool phx::WorldSerializer::Load(phx::IFileSystem* fs, const char* filename, phx::World& world)
 {
     YAML::Node data;
     try
@@ -246,15 +246,13 @@ data::RefPtr<World> WorldSerializer::Load(IFileSystem* fs, const char* filename)
         return nullptr;
 
 
-    auto world = data::RefPtr<World>::Create();
-
     std::string worldName = data["World"].as<std::string>();
     PHX_CORE_INFO("Loading world '{0}'", worldName);
 
 
     auto entities = data["Entities"];
     if (!entities)
-        return world;
+        return true;
 
     std::vector<std::function<void(World&)>> deferredQueue;
     std::unordered_map<entt::entity, UUID> entityIdLut;
@@ -269,7 +267,7 @@ data::RefPtr<World> WorldSerializer::Load(IFileSystem* fs, const char* filename)
 
         PHX_CORE_INFO("Loading entity with ID = {0}, name = {1}", uuid, name);
 
-        Entity deserializedEntity = world->CreateEntity(uuid, name);
+        Entity deserializedEntity = world.CreateEntity(uuid, name);
 
         auto hierarchyComponent = entity["HierarchyComponent"];
         if (hierarchyComponent)
@@ -279,9 +277,9 @@ data::RefPtr<World> WorldSerializer::Load(IFileSystem* fs, const char* filename)
             auto& comp = deserializedEntity.GetComponent<HierarchyComponent>();
             UUID parentsID = hierarchyComponent["ParentID"].as<phx::UUID>();
             deferredQueue.push_back([parentsID, deserializedEntity, &entityIdLut](World& world) mutable {
-                    
-                    auto& comp = deserializedEntity.GetComponent<HierarchyComponent>();
-                    // TODO: I am here
+
+                auto& comp = deserializedEntity.GetComponent<HierarchyComponent>();
+                // TODO: I am here
                 });
         }
 
@@ -303,5 +301,11 @@ data::RefPtr<World> WorldSerializer::Load(IFileSystem* fs, const char* filename)
         }
     }
 
+}
+
+data::RefPtr<World> phx::WorldSerializer::Load(IFileSystem* fs, const char* filename)
+{
+    auto world = data::RefPtr<World>::Create();
+    Load(fs, filename, *world);
     return world;
 }
