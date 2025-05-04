@@ -19,7 +19,6 @@ namespace phx::gfx
 	public:
 		virtual ~IRenderSystem() = default;
 
-		virtual void RegisterWorldCallbacks(World& world) = 0;
 		virtual void Finalize() = 0;
 		virtual void* OnPreRender() = 0;
 		virtual void OnRender(rhi::CommandCtx* ctx, void* cachedData) = 0;

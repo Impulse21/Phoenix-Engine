@@ -6,8 +6,19 @@
 #include <vector>
 #include <memory>
 
+#include <entt/entt.hpp>
+
+namespace phx
+{
+	class World;
+}
+
 namespace phx::gfx
 {
+	struct RenderMeshComponent
+	{
+
+	};
 	namespace ForwardRenderPasses
 	{
 		enum
@@ -17,11 +28,14 @@ namespace phx::gfx
 			GuiPass			= BIT(2),
 		};
 	}
+
 	class ForwardRenderer final
 	{
 	public:
 		ForwardRenderer() = default;
 		~ForwardRenderer() = default;
+
+		void RegisterObserver(phx::World& world);
 
 		void Finalize();
 
@@ -39,13 +53,15 @@ namespace phx::gfx
 			m_cachedData.push_back(nullptr);
 		}
 
-		void OnPreRender();
+		void OnPreRender(World& world);
 		void OnRender();
 
 	private:
 		std::vector<std::shared_ptr<IRenderSystem>> m_renderSystems;
 		std::vector<uint32_t> m_passMasks;
 		std::vector<void*> m_cachedData;
+
+		entt::observer m_observer;
 	};
 
 }

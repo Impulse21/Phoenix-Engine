@@ -512,6 +512,7 @@ group "PhxLibs"
             phx_lib_src_directory,
             phx_vendor_src_imgui_dir,
             phx_lib_vendor_directory.."/spdlog/include",
+            phx_lib_vendor_directory.."/entt",
         }
 
         filter('platforms:'..clang_win64_d3d12)

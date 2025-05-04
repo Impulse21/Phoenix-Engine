@@ -129,7 +129,8 @@ public:
 			ThreadPool::Wait(ThreadPool::Type::Streaming);
 
 			m_world = data::RefPtr<World>::Create();
-			
+			m_renderer.RegisterObserver(*m_world);
+
 			WorldSerializer::Load(m_fs.get(), "res:/NewSponza_Main_glTF_003.phxwld", *m_world);
 
 			// phx::Entity lionHeadEntity = m_world.CreateEntity("LionHead");
