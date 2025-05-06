@@ -12,7 +12,7 @@ namespace phx
 	{
 	public:
 		Entity() = default;
-		Entity(entt::entity handle, World* scene);
+		Entity(entt::entity handle, World* world);
 
 		Entity(Entity const& other) = default;
 		Entity(Entity&& other) noexcept = default;
