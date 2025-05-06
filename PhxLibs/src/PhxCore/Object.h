@@ -5,28 +5,6 @@
 #include <PhxCore/StringHash.h>
 #include <PhxCore/Span.h>
 
-#define PHX_OBJECT(typeName) \
-    public: \
-        using ClassName = typeName; \
-        virtual phx::StringHash GetType() const override { return GetTypeInfoStatic<ClassName>()->GetType(); } \
-        virtual const std::string& GetTypeName() const override { return GetTypeInfoStatic<ClassName>()->GetTypeName(); } \
-        virtual const phx::TypeInfo* GetTypeInfo() const override { return GetTypeInfoStatic<ClassName>(); } \
-        static phx::StringHash GetTypeStatic() { return GetTypeInfoStatic<ClassName>()->GetType(); } \
-        static const std::string& GetTypeNameStatic() { return GetTypeInfoStatic<ClassName>()->GetTypeName(); } \
-        //static const phx::TypeInfo* GetTypeInfoStatic() { static const phx::TypeInfo typeInfoStatic(#typeName, BaseClassName::GetTypeInfoStatic()); return &typeInfoStatic; }
-
-
-#define REFLECT_BEGIN(typeName, baseTypeName) \
-    template<> const phx::TypeInfo* GetTypeInfoStatic<typeName>() { \
-        static constexpr phx::FieldInfo fields[] = {
-
-#define REFLECT_FIELD(typeName, fieldName) { #fieldName, phx_offsetof(&typeName::fieldName), sizeof(((typeName*)0)->fieldName) }
-
-#define REFLECT_END(typeName) \
-        }; \
-        static const phx::TypeInfo typeInfo{ #typeName, phx::Span<phx::FieldInfo>(fields, sizeof(fields) / sizeof(FieldInfo)) }; \
-        return &typeInfo; \
-
 namespace phx
 {
     struct FieldInfo

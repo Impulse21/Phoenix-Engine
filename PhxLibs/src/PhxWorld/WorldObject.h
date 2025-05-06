@@ -2,9 +2,7 @@
 
 #include <memory>
 
-#include <PhxCore/RefCountPtr.h>
-#include <PhxCore/Object.h>
-
+#include <PhxData/TypeReflection.h>
 #include <entt/entt.hpp>
 
 #include "Entity.h"
@@ -14,32 +12,34 @@
 
 namespace phx
 {
-	class WorldObject : public RefCounter<Object>
+	struct WorldObject
 	{
-		PHX_OBJECT(WorldObject);
+        UUID ID;
+        std::string Name = "";
+        Entity Entity;
 
-    public:
-        WorldObject() = default;
-        WorldObject(entt::entity handle, World* world)
-            : WorldObject(Entity(handle, world)) 
-        {
-        };
+        DirectX::XMFLOAT3 Scale = { 1.0f, 1.0f, 1.0f };
+        DirectX::XMFLOAT4 Rotation = { 0.0f, 0.0f, 0.0f, 1.0f };
+        DirectX::XMFLOAT3 Translation = { 0.0f, 0.0f, 0.0f };
 
-        WorldObject(Entity entity);
+        WorldObject* Parent = nullptr;
+        std::vector<std::unique_ptr<WorldObject>> Children;
+
+        std::vector<std::unique_ptr<WorldObjectComponent>> ObjectComponents;
 
         template<typename T, typename... Args>
         T* AddObjectComponent(Args&&... args)
         {
             auto comp = std::make_unique<T>(std::forward<Args>(args)...);
             T* ptr = comp.get();
-            m_objectComponents.emplace_back(std::move(comp));
+            ObjectComponents.emplace_back(std::move(comp));
             return ptr;
         }
 
         template<typename T>
         T* GetObjectComponent()
         {
-            for (auto& c : m_objectComponents)
+            for (auto& c : ObjectComponents)
             {
                 if (c->IsInstanceOf<T>())
                     return c->As<T>();
@@ -47,25 +47,8 @@ namespace phx
 
             return nullptr;
         }
-
-        WorldObject* GetParent() { return m_parent; }
-        const Entity& GetEntity() const { return m_entity; }
-
-    private:
-        std::string m_name = "";
-        Entity m_entity;
-
-        DirectX::XMFLOAT3 m_scale = { 1.0f, 1.0f, 1.0f };
-        DirectX::XMFLOAT4 m_rotation = { 0.0f, 0.0f, 0.0f, 1.0f };
-        DirectX::XMFLOAT3 m_translation = { 0.0f, 0.0f, 0.0f };
-
-
-        // Intrusive would have been better for performance. I think however
-        // hard to work with the UI.
-        WorldObject* m_parent = nullptr;
-        std::vector<std::unique_ptr<WorldObject>> m_children;
-
-        std::vector<std::unique_ptr<WorldObjectComponent>> m_objectComponents;
-
 	};
+
+    REFLECT_BEGIN(WorldObject)
+    REFLECT_END(WorldObject)
 }
