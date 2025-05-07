@@ -17,7 +17,7 @@ namespace phx
 	class Span
 	{
 	public:
-		Span()
+		constexpr Span()
 			: Span(nullptr, 0)
 		{ }
 

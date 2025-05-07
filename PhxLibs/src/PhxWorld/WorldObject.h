@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include <PhxData/DataContainers.h>
 #include <PhxData/TypeReflection.h>
 #include <entt/entt.hpp>
 
@@ -15,7 +16,7 @@ namespace phx
 	struct WorldObject
 	{
         UUID ID;
-        std::string Name = "";
+        data::String Name = "";
         Entity Entity;
 
         DirectX::XMFLOAT3 Scale = { 1.0f, 1.0f, 1.0f };
@@ -23,9 +24,9 @@ namespace phx
         DirectX::XMFLOAT3 Translation = { 0.0f, 0.0f, 0.0f };
 
         WorldObject* Parent = nullptr;
-        std::vector<std::unique_ptr<WorldObject>> Children;
+        data::FlexArray<std::unique_ptr<WorldObject>> Children;
 
-        std::vector<std::unique_ptr<WorldObjectComponent>> ObjectComponents;
+        ///data::FlexArray<std::unique_ptr<WorldObjectComponent>> ObjectComponents;
 
         template<typename T, typename... Args>
         T* AddObjectComponent(Args&&... args)
@@ -39,6 +40,8 @@ namespace phx
         template<typename T>
         T* GetObjectComponent()
         {
+
+
             for (auto& c : ObjectComponents)
             {
                 if (c->IsInstanceOf<T>())
@@ -50,5 +53,6 @@ namespace phx
 	};
 
     REFLECT_BEGIN(WorldObject)
+        REFLECT_FIELD(WorldObject, ID)
     REFLECT_END(WorldObject)
 }

@@ -10,7 +10,7 @@ namespace phx::data
 
     struct FieldInfo
     {
-        std::string_view Name;
+        const char* Name;
         size_t Offset;
         size_t ElementSize;
         size_t ElementCount;
@@ -18,11 +18,12 @@ namespace phx::data
         bool IsArray;
     };
 
-    class TypeInfo
+    struct TypeInfo
     {
         phx::StringHash Type;
         std::string_view TypeName;
         const TypeInfo* BaseTypeInfo;
-        phx::Span<FieldInfo> Fields;
+        const FieldInfo* Fields;
+        size_t NumFields;
     };
 }

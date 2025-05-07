@@ -3,41 +3,37 @@
 #include "TypeInfo.h"
 #include <PhxCore/Base.h>
 
-#define REFLECT_BEGIN(typeName)						\
-template<>                                          \
-struct phx::data::TypeReflection<typeName>          \
-{													\
-	using ClassName = typeName;						\
-    static consteval const TypeInfo* Get()          \
-    {                                               \
-        static constexpr PropertyInfo fields[] = {
+#define REFLECT_BEGIN(typeName)									\
+	template<>													\
+	struct phx::data::TypeReflection<typeName>					\
+	{															\
+		using ClassName = typeName;								\
+		static constexpr FieldInfo fields[] =					\
+		{
 
-#if false
-#define REFLECT_FIELD(typeName, fieldName) { #fieldName, phx_offsetof(&typeName::fieldName), sizeof(((typeName*)0)->fieldName) }
-#else
 #define REFLECT_FIELD(typeName, fieldName)
-#endif
 
-#define REFLECT_END(typeName) \
-        };                                        \
-        static constexpr TypeInfo typeInfo = {   \
-            #typeName,                               \
-            sizeof(ClassName),                        \
-            fields,                               \
-            sizeof(fields) / sizeof(fields[0])     \
-        };                                        \
-        return &typeInfo;                        \
-    }                                             \
+
+#define REFLECT_END(typeName)									\
+        };														\
+		static constexpr TypeInfo typeInfo = 					\
+		{														\
+			.Type = phx::StringHash(#typeName),					\
+			.TypeName = #typeName,								\
+			.BaseTypeInfo = nullptr,							\
+			.Fields = &fields[0],								\
+			.NumFields = sizeof(fields) / sizeof(FieldInfo),	\
+		};														\
+																\
+		static consteval const TypeInfo* Get()					\
+		{														\
+			return &typeInfo;									\
+		}														\
+	};
 
 namespace phx::data
 {
 	template<typename T>
-	concept ReflectableStruct =
-		std::is_standard_layout_v<T> &&
-		std::is_trivially_copyable_v<T>;
-
-	template<typename T>
-		requires ReflectableStruct<T>
 	struct TypeReflection
 	{
 		static consteval const TypeInfo* Get()
@@ -49,7 +45,6 @@ namespace phx::data
 
 	template<typename T>
 	concept Reflectable =
-		ReflectableStruct<T> &&
 		requires { TypeReflection<T>::Get(); };
 
 	template<typename T>
