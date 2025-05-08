@@ -22,15 +22,18 @@ namespace phx::data
 
 namespace phx::data
 {
-	TypeDescriptor& AddType(TypeDescriptor&&);
+	namespace TypeRegistry
+	{
+		TypeDescriptor& AddType(TypeDescriptor&&);
 
 #if false
-	phx::Span<const TypeDescriptor> GetTypes();
+		phx::Span<const TypeDescriptor> GetTypes();
 #endif
-	const TypeDescriptor* GetType(std::string_view type_name);
-	const TypeDescriptor* GetType(TemplateTypeId type_id);
-	template<typename T>
-	const TypeDescriptor* GetType() { return get_type(GetId<T>()); }
+		const TypeDescriptor* GetType(std::string_view type_name);
+		const TypeDescriptor* GetType(TemplateTypeId type_id);
+		template<typename T>
+		const TypeDescriptor* GetType() { return get_type(GetId<T>()); }
+	}
 
 	struct TypeDescriptor
 	{

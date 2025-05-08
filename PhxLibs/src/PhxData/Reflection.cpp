@@ -7,7 +7,6 @@
 #include <vector>
 #include <string>
 #include <functional>
-#include <cassert>
 
 
 namespace
@@ -29,46 +28,51 @@ namespace
 
 namespace phx::data
 {
-	TypeDescriptor& AddType(TypeDescriptor&& type)
+	namespace TypeRegistry
 	{
-		auto type_by_id_it = g_TypeContainer.ByTemplateTypeId.find(type.Id);
-		if (type_by_id_it != g_TypeContainer.ByTemplateTypeId.end())
-		{
-			return g_TypeContainer.Types[type_by_id_it->second];
-		}
 
-		g_TypeContainer.ByTypeName[type.Name] = g_TypeContainer.Types.size();
-		g_TypeContainer.ByTemplateTypeId[type.Id] = g_TypeContainer.Types.size();
-		g_TypeContainer.Types.push_back(std::move(type));
-		return g_TypeContainer.Types.back();
-	}
+		TypeDescriptor& AddType(TypeDescriptor&& type)
+		{
+			auto type_by_id_it = g_TypeContainer.ByTemplateTypeId.find(type.Id);
+			if (type_by_id_it != g_TypeContainer.ByTemplateTypeId.end())
+			{
+				return g_TypeContainer.Types[type_by_id_it->second];
+			}
+
+			g_TypeContainer.ByTypeName[type.Name] = g_TypeContainer.Types.size();
+			g_TypeContainer.ByTemplateTypeId[type.Id] = g_TypeContainer.Types.size();
+			g_TypeContainer.Types.push_back(std::move(type));
+			return g_TypeContainer.Types.back();
+		}
 
 #if false
-	phx::Span<const TypeDescriptor> GetTypes()
-	{
-		return { g_TypeContainer.Types.begin(), g_TypeContainer.Types.end() };
-	}
+		phx::Span<const TypeDescriptor> GetTypes()
+		{
+			return { g_TypeContainer.Types.begin(), g_TypeContainer.Types.end() };
+		}
 #endif
 
-	const TypeDescriptor* GetType(std::string_view typeName)
-	{
-		auto it = g_TypeContainer.ByTypeName.find(typeName);
-		if (it != g_TypeContainer.ByTypeName.end())
+		const TypeDescriptor* GetType(std::string_view typeName)
 		{
-			return &g_TypeContainer.Types[it->second];
+			auto it = g_TypeContainer.ByTypeName.find(typeName);
+			if (it != g_TypeContainer.ByTypeName.end())
+			{
+				return &g_TypeContainer.Types[it->second];
+			}
+
+			return nullptr;
 		}
 
-		return nullptr;
-	}
-
-	const TypeDescriptor* GetType(TemplateTypeId typeId)
-	{
-		auto it = g_TypeContainer.ByTemplateTypeId.find(typeId);
-		if (it != g_TypeContainer.ByTemplateTypeId.end())
+		const TypeDescriptor* GetType(TemplateTypeId typeId)
 		{
-			return &g_TypeContainer.Types[it->second];
+			auto it = g_TypeContainer.ByTemplateTypeId.find(typeId);
+			if (it != g_TypeContainer.ByTemplateTypeId.end())
+			{
+				return &g_TypeContainer.Types[it->second];
+			}
+
+			return nullptr;
 		}
 
-		return nullptr;
 	}
 }
