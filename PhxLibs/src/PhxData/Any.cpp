@@ -4,47 +4,53 @@
 #include <type_traits>
 #include <cassert>
 
+// Credit to: https://github.dev/FireFlyForLife/NeatReflection
 
 namespace phx::data
 {
 	Any::Any(const Any& other) noexcept
 	{
 		// Assign other storage
-		if (other.storage_mode == StorageMode::InlineValue) {
-			memcpy(storage.inline_value, other.storage.inline_value, Storage::c_inline_storage_size);
+		if (other.m_storageMode == StorageMode::InlineValue) 
+		{
+			memcpy(m_storage.InlineValue, other.m_storage.InlineValue, Storage::kInlineStorageSize);
 		}
-		else if (other.storage_mode == StorageMode::BoxedValue) {
-			new (&storage.boxed_value) std::shared_ptr<void>{ other.storage.boxed_value };
+		else if (other.m_storageMode == StorageMode::BoxedValue) 
+		{
+			new (&m_storage.BoxedValue) std::shared_ptr<void>{ other.m_storage.BoxedValue };
 		}
 
 		// Assign other storage
-		template_type_id = other.template_type_id;
-		storage_mode = other.storage_mode;
+		m_tempalateTypeId = other.m_tempalateTypeId;
+		m_storageMode = other.m_storageMode;
 	}
 
 	Any::Any(Any&& other) noexcept
 	{
 		// Assign other storage
-		if (other.storage_mode == StorageMode::InlineValue) {
-			memcpy(storage.inline_value, other.storage.inline_value, Storage::c_inline_storage_size);
+		if (other.m_storageMode == StorageMode::InlineValue) 
+		{
+			memcpy(m_storage.InlineValue, other.m_storage.InlineValue, Storage::kInlineStorageSize);
 		}
-		else if (other.storage_mode == StorageMode::BoxedValue) {
-			new (&storage.boxed_value) std::shared_ptr<void>{ std::move(other.storage.boxed_value) };
+		else if (other.m_storageMode == StorageMode::BoxedValue) 
+		{
+			new (&m_storage.BoxedValue) std::shared_ptr<void>{ std::move(other.m_storage.BoxedValue) };
 		}
 
 		// Assign other storage
-		template_type_id = other.template_type_id;
-		storage_mode = other.storage_mode;
+		m_tempalateTypeId = other.m_tempalateTypeId;
+		m_storageMode = other.m_storageMode;
 
 		// Clear other
-		other.template_type_id = c_empty_type_id;
-		other.storage_mode = StorageMode::Empty;
+		other.m_tempalateTypeId = kEmptyTypeId;
+		other.m_storageMode = StorageMode::Empty;
 	}
 
 	Any& Any::operator=(const Any& other) noexcept
 	{
 		// Self assignment check
-		if (&other == this) {
+		if (&other == this) 
+		{
 			return *this;
 		}
 
@@ -60,7 +66,8 @@ namespace phx::data
 	Any& Any::operator=(Any&& other) noexcept
 	{
 		// Self assignment check
-		if (&other == this) {
+		if (&other == this) 
+		{
 			return *this;
 		}
 
@@ -76,42 +83,46 @@ namespace phx::data
 	Any::~Any()
 	{
 		// Destroy storage
-		if (storage_mode == StorageMode::BoxedValue) {
-			storage.boxed_value.~shared_ptr();
+		if (m_storageMode == StorageMode::BoxedValue) 
+		{
+			m_storage.BoxedValue.~shared_ptr();
 		}
-		else if (storage_mode == StorageMode::InlineValue) {
+		else if (m_storageMode == StorageMode::InlineValue) 
+		{
 			// SBO is limited to trivial type currently, so no destruction needs to happen
 		}
 	}
 
-	bool Any::has_value() const
+	bool Any::HasValue() const
 	{
-		return storage_mode != StorageMode::Empty;
+		return m_storageMode != StorageMode::Empty;
 	}
 
-	TemplateTypeId Any::type_id() const
+	TemplateTypeId Any::TypeId() const
 	{
-		return template_type_id;
+		return m_tempalateTypeId;
 	}
 
-	AnyPtr Any::to_any_ptr()
+	AnyPtr Any::ToAnyPtr()
 	{
-		if (!has_value()) {
+		if (!HasValue()) 
+		{
 			return AnyPtr{};
 		}
 
-		return AnyPtr{ object_pointer(), template_type_id };
+		return AnyPtr{ .ValuePtr = ObjectPtr(), .TypeId = m_tempalateTypeId };
 	}
 
-	void* Any::object_pointer()
+	void* Any::ObjectPtr()
 	{
-		switch (storage_mode) {
-		case StorageMode::InlineValue: return storage.inline_value;
-		case StorageMode::BoxedValue: return storage.boxed_value.get();
+		switch (m_storageMode)
+		{
+		case StorageMode::InlineValue: return m_storage.InlineValue;
+		case StorageMode::BoxedValue: return m_storage.BoxedValue.get();
 		case StorageMode::Empty: return nullptr;
 		}
 
-		assert(false && "Unexpected AnyStorageType flag.");
+		PHX_CORE_ASSERT(false && "Unexpected AnyStorageType flag.");
 		return nullptr;
 	}
 }

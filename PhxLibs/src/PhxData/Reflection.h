@@ -1,10 +1,14 @@
 #pragma once
 
+// Credit to: https://github.dev/FireFlyForLife/phx::dataReflection
+
 #include <PhxCore/Span.h>
 #include <PhxCore/Assert.h>
-#include "DataPtr.h"
 
+
+#include "Any.h"
 #include "TemplatedTypeId.h"
+
 #include <string>
 
 // Forward Declarations
@@ -18,13 +22,23 @@ namespace phx::data
 
 namespace phx::data
 {
+	TypeDescriptor& AddType(TypeDescriptor&&);
+
+#if false
+	phx::Span<const TypeDescriptor> GetTypes();
+#endif
+	const TypeDescriptor* GetType(std::string_view type_name);
+	const TypeDescriptor* GetType(TemplateTypeId type_id);
+	template<typename T>
+	const TypeDescriptor* GetType() { return get_type(GetId<T>()); }
+
 	struct TypeDescriptor
 	{
 		// Data
 		std::string Name;
 		TemplateTypeId Id;
 		size_t Size;
-		std::vector<BaseClassDescriptor> Bases;
+		BaseClassDescriptor* Base;
 		std::vector<FieldDescriptor> Fields;
 
 
@@ -67,11 +81,11 @@ namespace phx::data
 		static FieldDescriptor Create(std::string_view name);
 
 
-		//using GetValueFunction = Any(*)(AnyPtr object);
-		//using SetValueFunction = void (*)(AnyPtr object, Any value);
+		using GetValueFunction = Any(*)(AnyPtr object);
+		using SetValueFunction = void (*)(AnyPtr object, Any value);
 		using GetAddressFunction = AnyPtr(*)(AnyPtr object);
-		//GetValueFunction GetValue;
-		//SetValueFunction SetValue;
+		GetValueFunction GetValue;
+		SetValueFunction SetValue;
 		GetAddressFunction GetAddress;
 
 
@@ -88,7 +102,7 @@ namespace phx::data
 		template<typename T>
 		void DefaultConstructorErased(AnyPtr uninitialisedObject)
 		{
-			PHX_ASSERT(uninitialisedObject.TpyeId== GetId<T>());
+			PHX_CORE_ASSERT(uninitialisedObject.TypeId == GetId<T>())
 
 			new (uninitialisedObject.ValuePtr) T{};
 		}
@@ -96,7 +110,7 @@ namespace phx::data
 		template<typename T>
 		void DestructorErased(AnyPtr object)
 		{
-			assert(object.TypeId == GetId<T>());
+			PHX_CORE_ASSERT(object.TypeId == GetId<T>());
 
 			T* object_ = static_cast<T*>(object.ValuePtr);
 			object_->~T();
@@ -145,17 +159,17 @@ namespace phx::data
 		}
 
 		template<typename TObject, typename TType, TType TObject::* PtrToMember>
-		void set_field_erased(AnyPtr object, Any value)
+		void SetFieldErased(AnyPtr object, Any value)
 		{
 			assert(object.TypeId == GetId<TObject>());
 			assert(value.TypeId() == GetId<TType>());
 
 			TObject* object_ = static_cast<TObject*>(object.ValuePtr);
-			object_->*PtrToMember = value.value<TType>();
+			object_->*PtrToMember = value.Value<TType>();
 		}
 
 		template<typename TObject, typename TType, TType TObject::* PtrToMember>
-		AnyPtr get_field_address_erased(AnyPtr object)
+		AnyPtr GetFieldAddressErased(AnyPtr object)
 		{
 			assert(object.TypeId == GetId<TObject>());
 
@@ -169,20 +183,95 @@ namespace phx::data
 	template<typename TObject, typename TType, TType TObject::* PtrToMember>
 	FieldDescriptor FieldDescriptor::Create(std::string_view name)
 	{
-		SetValueFunction set_value = nullptr;
-		if constexpr (std::is_assignable_v<TType&, TType>) {
-			set_value = &Detail::set_field_erased<TObject, TType, PtrToMember>;
+		SetValueFunction setValue = nullptr;
+		if constexpr (std::is_assignable_v<TType&, TType>) 
+		{
+			setValue = &detail::SetFieldErased<TObject, TType, PtrToMember>;
 		}
 
-		return Field{
-			.get_value = &Detail::get_field_erased<TObject, TType, PtrToMember>,
-			.set_value = set_value,
-			.get_address = &Detail::get_field_address_erased<TObject, TType, PtrToMember>,
-			.object_type = GetId<TObject>(),
-			.type = GetId<TType>(),
-			.name = std::string{ name },
-			.access = access
+		return FieldDescriptor{
+			.GetValue = &detail::GetFieldErased<TObject, TType, PtrToMember>,
+			.SetValue = setValue,
+			.GetAddress = &detail::GetFieldAddressErased<TObject, TType, PtrToMember>,
+			.ObjectType = GetId<TObject>(),
+			.Type = GetId<TType>(),
+			.Name = std::string{ name },
 		};
 	}
+
+
+	inline bool TypeDescriptor::operator==(const TypeDescriptor& other) const noexcept
+	{
+		return (*this <=> other) == std::strong_ordering::equal;
+	}
+
+	inline std::strong_ordering TypeDescriptor::operator<=>(const TypeDescriptor& other) const noexcept
+	{
+		return Id <=> other.Id;
+	}
+
+	inline bool FieldDescriptor::operator==(const FieldDescriptor& other) const noexcept
+	{
+		return (*this <=> other) == std::strong_ordering::equal;
+	}
+
+	inline std::strong_ordering FieldDescriptor::operator<=>(const FieldDescriptor& other) const noexcept
+	{
+		std::strong_ordering order;
+
+		order = (ObjectType <=> other.ObjectType);
+		if (order != 0) 
+			return order;
+
+		order = (Name <=> other.Name);
+
+		return order;
+	}
+
 }
 
+
+namespace phx::HashUtils
+{
+
+	template <typename T, typename... Rest>
+	void Combine(std::size_t& seed, const T& v, const Rest&... rest)
+	{
+		seed ^= std::hash<T>{}(v)+0x9e3779b9 + (seed << 6) + (seed >> 2);
+		(combine(seed, rest), ...);
+	}
+}
+namespace std
+{
+	template<typename T>
+	struct hash;
+
+	template<>
+	struct hash<phx::data::TypeDescriptor>
+	{
+		size_t operator()(const phx::data::TypeDescriptor& type) const noexcept
+		{
+			return type.Id;
+		}
+	};
+
+	template<>
+	struct hash<phx::data::FieldDescriptor>
+	{
+		size_t operator()(const phx::data::FieldDescriptor& field) const noexcept
+		{
+			size_t h = 0;
+			phx::HashUtils::Combine(h, field.ObjectType, field.Name);
+			return h;
+		}
+	};
+
+	template<>
+	struct hash<phx::data::BaseClassDescriptor>
+	{
+		size_t operator()(const phx::data::BaseClassDescriptor& base_class) const noexcept
+		{
+			return base_class.BaseId;
+		}
+	};
+}

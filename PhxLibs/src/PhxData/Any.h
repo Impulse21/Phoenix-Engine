@@ -4,9 +4,12 @@
 #include <type_traits>
 #include <memory>
 
+// Credit to: https://github.dev/FireFlyForLife/NeatReflection
 namespace phx::data
 {
-    struct AnyPtr
+	class Any;
+
+	struct AnyPtr
     {
         // Data
         void* ValuePtr = nullptr;
@@ -61,7 +64,7 @@ namespace phx::data
 			~Storage() {} // Destruction handled in Any
 
 			std::shared_ptr<void> BoxedValue{}; // Active when `storage_mode == StorageMode::BoxedValue`
-			std::byte inlineValue[kInlineStorageSize]; // Active when `storage_mode == StorageMode::InlineValue`
+			std::byte InlineValue[kInlineStorageSize]; // Active when `storage_mode == StorageMode::InlineValue`
 		};
 
 		// Data
@@ -84,7 +87,7 @@ namespace phx::data
 
 		if (sizeof(CleanT) <= Storage::kInlineStorageSize && alignof(CleanT) <= alignof(Storage) && std::is_trivial_v<CleanT>) 
 		{
-			new (m_storage.inlineValue) CleanT{ value };
+			new (m_storage.InlineValue) CleanT{ value };
 			m_storageMode = StorageMode::InlineValue;
 		}
 		else {
@@ -121,6 +124,6 @@ namespace phx::data
 			return nullptr;
 		}
 
-		return static_cast<T*>(objectPtr());
+		return static_cast<T*>(ObjectPtr());
 	}
 }
