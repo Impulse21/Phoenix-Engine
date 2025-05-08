@@ -2,9 +2,20 @@
 
 #include <atomic>
 #include <cassert>
+#include "TemplatedTypeId.h"
 
 namespace phx::data
 {
+    struct AnyPtr
+    {
+        // Data
+        void* ValuePtr = nullptr;
+        TemplateTypeId TypeId = kEmptyTypeId;
+
+        // Operators
+        auto operator<=>(const AnyPtr& other) const noexcept = default;
+    };
+
     struct ControlBlockBase
     {
         std::atomic<size_t> RefCount = 1;
