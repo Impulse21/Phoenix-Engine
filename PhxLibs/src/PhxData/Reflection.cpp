@@ -1,7 +1,6 @@
 #include "PhxData/PhxData_pch.h"
 #include "Reflection.h"
 
-// Credit to: https://github.dev/FireFlyForLife/NeatReflection
 
 #include <unordered_map>
 #include <vector>

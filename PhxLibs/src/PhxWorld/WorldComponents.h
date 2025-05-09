@@ -3,7 +3,6 @@
 #include <PhxCore/Base.h>
 #include <PhxCore/UUID.h>
 #include <PhxCore/Math.h>
-#include <PhxData/WorldChunk.def.h>
 
 #include <PhxResource/IResource.h>
 
@@ -12,7 +11,6 @@
 #include <string>
 
 #include <DirectXMath.h>
-#include <entt/entt.hpp>
 
 namespace phx
 {

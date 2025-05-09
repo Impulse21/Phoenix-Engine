@@ -18,6 +18,7 @@ phx_vendor_src_d3d12ma_dir  = phx_lib_vendor_directory.."/D3D12MA"
 phx_vendor_src_entt_dir     = phx_lib_vendor_directory.."/entt"
 phx_vendor_src_yaml_dir     = phx_lib_vendor_directory.."/yaml"
 phx_vendor_src_glfw_dir     = phx_lib_vendor_directory.."/glfw"
+phx_vendor_src_json_dir     = phx_lib_vendor_directory.."/json"
 
 phx_vendor_include_glfw_dir = phx_vendor_src_glfw_dir.."/include"
 phx_vendor_include_yaml_dir = phx_vendor_src_yaml_dir.."/include"
@@ -598,6 +599,7 @@ group "PhxLibs"
             phx_lib_vendor_directory.."/spdlog/include",
             phx_lib_vendor_directory.."/entt",
             phx_vendor_include_yaml_dir,
+            phx_vendor_src_json_dir,
         }
 
         defines { "YAML_CPP_STATIC_DEFINE" }
@@ -624,6 +626,7 @@ group "PhxLibs"
             phx_lib_vendor_directory.."/spdlog/include",
             phx_lib_vendor_directory.."/entt",
             phx_vendor_include_yaml_dir,
+            phx_vendor_src_json_dir,
         }
 
         defines { "YAML_CPP_STATIC_DEFINE" }
@@ -719,6 +722,7 @@ group "Applications"
             phx_lib_vendor_directory.."/cgltf",
             phx_lib_vendor_directory.."/entt",
             phx_vendor_include_yaml_dir,
+            phx_vendor_src_json_dir,
         }
 
         links

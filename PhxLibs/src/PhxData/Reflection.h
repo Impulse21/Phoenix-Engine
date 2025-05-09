@@ -4,12 +4,15 @@
 
 #include <PhxCore/Span.h>
 #include <PhxCore/Assert.h>
+#include <PhxCore/StringHash.h>
 
-
+#include "ReflectionMacros.h"
 #include "Any.h"
 #include "TemplatedTypeId.h"
 
 #include <string>
+
+// Credit to: https://github.dev/FireFlyForLife/NeatReflection
 
 // Forward Declarations
 namespace phx::data
@@ -17,7 +20,6 @@ namespace phx::data
 	struct TypeDescriptor;
 	struct BaseClassDescriptor;
 	struct FieldDescriptor;
-	struct TemplateArgumentDescriptor;
 }
 
 namespace phx::data
@@ -41,7 +43,7 @@ namespace phx::data
 		std::string Name;
 		TemplateTypeId Id;
 		size_t Size;
-		BaseClassDescriptor* Base;
+		BaseClassDescriptor Base;
 		std::vector<FieldDescriptor> Fields;
 
 
@@ -50,13 +52,16 @@ namespace phx::data
 		DefaultConstructorPtr DefaultConstructor = nullptr;
 		DestructorPtr Destructor = nullptr;
 		
+		TypeDescriptor& AddField(FieldDescriptor&& field)
+		{
+			Fields.emplace_back(std::forward<FieldDescriptor>(field));
+			return *this;
+		};
+
 		// Functions
 		template<typename T>
 		static TypeDescriptor Create(
-			std::string_view name,
-			TemplateTypeId id,
-			BaseClassDescriptor* base,
-			Span<FieldDescriptor> fields);
+			std::string_view name);
 
 		// Operators
 		bool operator==(const TypeDescriptor& other) const noexcept;
@@ -66,7 +71,7 @@ namespace phx::data
 	struct BaseClassDescriptor
 	{
 		// Data
-		TemplateTypeId BaseId;
+		TemplateTypeId Id = kEmptyTypeId;
 
 		// Operators
 		auto operator<=>(const BaseClassDescriptor& other) const noexcept = default;
@@ -77,10 +82,10 @@ namespace phx::data
 		TemplateTypeId ObjectType;
 		TemplateTypeId Type;
 		std::string Name;
-		std::vector<std::string> Attributes; // Unused currently
+		std::vector<std::tuple<std::string, std::string>> Attributes; // Unused currently
 
 		// Functions
-		template<typename TObject, typename TType, TType TObject::* PtrToMember>
+		template<typename TObject, auto PtrToMember>
 		static FieldDescriptor Create(std::string_view name);
 
 
@@ -124,10 +129,7 @@ namespace phx::data
 
 	template<typename T>
 	TypeDescriptor TypeDescriptor::Create(
-		std::string_view name,
-		TemplateTypeId id,
-		BaseClassDescriptor* base,
-		phx::Span<FieldDescriptor> fields)
+		std::string_view name)
 	{
 		DefaultConstructorPtr defaultConstructor = nullptr;
 		if constexpr (std::is_default_constructible_v<T>) {
@@ -141,10 +143,9 @@ namespace phx::data
 
 		return TypeDescriptor{
 			.Name = std::string(name),
-			.Id = id,
+			.Id = GetId<T>(),
 			.Size = sizeof(T),
-			.Base = base,
-			.Fields = std::vector(fields.begin(), fields.end()),
+			.Base = {},
 			.DefaultConstructor = defaultConstructor,
 			.Destructor = destructor
 		};
@@ -152,7 +153,7 @@ namespace phx::data
 
 	namespace detail
 	{
-		template<typename TObject, typename TType, TType TObject::* PtrToMember>
+		template<typename TObject, auto PtrToMember>
 		Any GetFieldErased(AnyPtr object)
 		{
 			assert(object.TypeId == GetId<TObject>());
@@ -161,7 +162,7 @@ namespace phx::data
 			return object_->*PtrToMember;
 		}
 
-		template<typename TObject, typename TType, TType TObject::* PtrToMember>
+		template<typename TObject, auto PtrToMember>
 		void SetFieldErased(AnyPtr object, Any value)
 		{
 			assert(object.TypeId == GetId<TObject>());
@@ -171,7 +172,7 @@ namespace phx::data
 			object_->*PtrToMember = value.Value<TType>();
 		}
 
-		template<typename TObject, typename TType, TType TObject::* PtrToMember>
+		template<typename TObject, auto PtrToMember>
 		AnyPtr GetFieldAddressErased(AnyPtr object)
 		{
 			assert(object.TypeId == GetId<TObject>());
@@ -183,7 +184,7 @@ namespace phx::data
 		}
 	}
 
-	template<typename TObject, typename TType, TType TObject::* PtrToMember>
+	template<typename TObject, auto PtrToMember>
 	FieldDescriptor FieldDescriptor::Create(std::string_view name)
 	{
 		SetValueFunction setValue = nullptr;
@@ -272,9 +273,9 @@ namespace std
 	template<>
 	struct hash<phx::data::BaseClassDescriptor>
 	{
-		size_t operator()(const phx::data::BaseClassDescriptor& base_class) const noexcept
+		size_t operator()(const phx::data::BaseClassDescriptor& baseClass) const noexcept
 		{
-			return base_class.BaseId;
+			return baseClass.Id;
 		}
 	};
 }
