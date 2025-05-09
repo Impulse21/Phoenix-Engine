@@ -2,8 +2,8 @@
 
 #include <memory>
 
-#include <PhxData/WorldChunk.def.h>
 #include "MeshResourceCompiler.h"
+#include <PhxWorld/Level.def.h>
 
 // -- forward declares ---
 struct cgltf_data;
@@ -44,20 +44,20 @@ namespace phx
 	class GltfWorldImporter : public GltfImporter<GltfWorldImporter>
 	{
 	public:
-		GltfWorldImporter(cgltf_data* gltfData, phx::data::WorldChunk& world)
+		GltfWorldImporter(cgltf_data* gltfData, phx::Level& level)
 			: m_gltfData(gltfData)
-			, m_out(world)
+			, m_out(level)
 		{
 		}
 
 		bool ImportImpl();
 
 	private:
-		void LoadNodeRec(cgltf_node const& gltfNode, data::RefPtr<phx::data::Entity>&  parent);
+		void LoadNodeRec(cgltf_node const& gltfNode, phx::LevelObject& parent);
 
 	private:
 		cgltf_data* m_gltfData;
-		phx::data::WorldChunk& m_out;
+		phx::Level& m_out;
 	};
 
 }

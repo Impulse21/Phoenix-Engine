@@ -33,7 +33,7 @@ void phx::gfx::ForwardRenderer::OnPreRender(World& world)
 		if (entity.HasComponent<RenderMeshComponent>())
 			continue;
 
-		auto& renderComponent = entity.AddComponent<RenderMeshComponent>();
+		//auto& renderComponent = entity.AddComponent<RenderMeshComponent>();
 		// TODO: Set Resource
 	}
 

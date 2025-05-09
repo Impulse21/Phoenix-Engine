@@ -30,7 +30,6 @@ extern "C"
 #include "PhxCore/ThreadPool.h"
 
 #include <PhxData/DataTypeFactory.h>
-#include <PhxData/WorldChunk.def.h>
 
 using namespace phx;
 using namespace Microsoft::WRL;
@@ -187,12 +186,12 @@ int wmain(int argc, wchar_t** argv)
 
 		ThreadPool::SubmitTask([&]()
 		{
-			data::RefPtr<phx::data::WorldChunk> world = phx::data::RefPtr<phx::data::WorldChunk>::Create();
-			phx::GltfWorldImporter::Import(gltfData, *world);
+			Level level = {};
+			phx::GltfWorldImporter::Import(gltfData, level);
 
-			world->PackFile = outputFilename;
+			// world->PackFile = outputFilename;
 			std::string worldFilename = std::format("{}.{}", baseFilename, "phxwld");
-			phx::data::Save(outputFS.get(), worldFilename.c_str(), *world);
+			// phx::data::Save(outputFS.get(), worldFilename.c_str(), *world);
 		});
 
 		if (useGDeflate)

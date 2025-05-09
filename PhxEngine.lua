@@ -19,6 +19,7 @@ phx_vendor_src_entt_dir     = phx_lib_vendor_directory.."/entt"
 phx_vendor_src_yaml_dir     = phx_lib_vendor_directory.."/yaml"
 phx_vendor_src_glfw_dir     = phx_lib_vendor_directory.."/glfw"
 phx_vendor_src_json_dir     = phx_lib_vendor_directory.."/json"
+phx_vendor_src_cereal_dir   = phx_lib_vendor_directory.."/cereal"
 
 phx_vendor_include_glfw_dir = phx_vendor_src_glfw_dir.."/include"
 phx_vendor_include_yaml_dir = phx_vendor_src_yaml_dir.."/include"
@@ -137,6 +138,9 @@ function HandleGlobalWarnings()
 
             "-Wno-misleading-indentation",
             "-Wno-tautological-undefined-compare",
+
+            -- Cereal issues
+            "-Wno-deprecated-declarations",
         }
 		
 		
@@ -599,7 +603,7 @@ group "PhxLibs"
             phx_lib_vendor_directory.."/spdlog/include",
             phx_lib_vendor_directory.."/entt",
             phx_vendor_include_yaml_dir,
-            phx_vendor_src_json_dir,
+            phx_vendor_src_cereal_dir,
         }
 
         defines { "YAML_CPP_STATIC_DEFINE" }
@@ -626,7 +630,7 @@ group "PhxLibs"
             phx_lib_vendor_directory.."/spdlog/include",
             phx_lib_vendor_directory.."/entt",
             phx_vendor_include_yaml_dir,
-            phx_vendor_src_json_dir,
+            phx_vendor_src_cereal_dir,
         }
 
         defines { "YAML_CPP_STATIC_DEFINE" }

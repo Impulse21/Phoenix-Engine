@@ -3,8 +3,9 @@
 
 #include <PhxCore/VFS.h>
 
-void phx::data::Save(IFileSystem* fs, const char* filename, data::AnyPtr object)
+void phx::data::Save(IFileSystem* /*fs*/, const char* /*filename*/, data::AnyPtr /*object*/)
 {
+#if false
     if (object.type_id == Neat::get_id<int>())
     {
         return *static_cast<int*>(object.value_ptr);
@@ -25,10 +26,12 @@ void phx::data::Save(IFileSystem* fs, const char* filename, data::AnyPtr object)
     {
         return json{};
     }
+#endif
 }
 
-void phx::data::Load(IFileSystem* fs, const char* filename, data::AnyPtr object)
+void phx::data::Load(IFileSystem* /*fs*/, const char* /*filename*/, data::AnyPtr /*object*/)
 {
+#if false
     if (data.is_null())
     {
         return;
@@ -72,4 +75,5 @@ void phx::data::Load(IFileSystem* fs, const char* filename, data::AnyPtr object)
     //}
 
     field.set_value(object, value);
+#endif
 }

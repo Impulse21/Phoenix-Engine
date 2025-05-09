@@ -18,7 +18,6 @@
 namespace phx::data
 {
 	struct TypeDescriptor;
-	struct BaseClassDescriptor;
 	struct FieldDescriptor;
 }
 
@@ -36,6 +35,40 @@ namespace phx::data
 		template<typename T>
 		const TypeDescriptor* GetType() { return get_type(GetId<T>()); }
 	}
+
+	struct BaseClassDescriptor
+	{
+		// Data
+		TemplateTypeId Id = kEmptyTypeId;
+
+		// Operators
+		auto operator<=>(const BaseClassDescriptor& other) const noexcept = default;
+	};
+
+	struct FieldDescriptor
+	{
+		TemplateTypeId ObjectType;
+		TemplateTypeId Type;
+		std::string Name;
+		std::vector<std::tuple<std::string, std::string>> Attributes; // Unused currently
+
+		// Functions
+		template<typename TObject, typename TType, TType TObject::* PtrToMember>
+		static FieldDescriptor Create(std::string_view name);
+
+
+		using GetValueFunction = Any(*)(AnyPtr object);
+		using SetValueFunction = void (*)(AnyPtr object, Any value);
+		using GetAddressFunction = AnyPtr(*)(AnyPtr object);
+		GetValueFunction GetValue;
+		SetValueFunction SetValue;
+		GetAddressFunction GetAddress;
+
+
+		// Operators
+		bool operator==(const FieldDescriptor& other) const noexcept;
+		std::strong_ordering operator<=>(const FieldDescriptor& other) const noexcept;
+	};
 
 	struct TypeDescriptor
 	{
@@ -68,39 +101,6 @@ namespace phx::data
 		std::strong_ordering operator<=>(const TypeDescriptor& other) const noexcept;
 	};
 
-	struct BaseClassDescriptor
-	{
-		// Data
-		TemplateTypeId Id = kEmptyTypeId;
-
-		// Operators
-		auto operator<=>(const BaseClassDescriptor& other) const noexcept = default;
-	};
-
-	struct FieldDescriptor
-	{
-		TemplateTypeId ObjectType;
-		TemplateTypeId Type;
-		std::string Name;
-		std::vector<std::tuple<std::string, std::string>> Attributes; // Unused currently
-
-		// Functions
-		template<typename TObject, auto PtrToMember>
-		static FieldDescriptor Create(std::string_view name);
-
-
-		using GetValueFunction = Any(*)(AnyPtr object);
-		using SetValueFunction = void (*)(AnyPtr object, Any value);
-		using GetAddressFunction = AnyPtr(*)(AnyPtr object);
-		GetValueFunction GetValue;
-		SetValueFunction SetValue;
-		GetAddressFunction GetAddress;
-
-
-		// Operators
-		bool operator==(const FieldDescriptor& other) const noexcept;
-		std::strong_ordering operator<=>(const FieldDescriptor& other) const noexcept;
-	};
 }
 
 namespace phx::data
@@ -153,7 +153,7 @@ namespace phx::data
 
 	namespace detail
 	{
-		template<typename TObject, auto PtrToMember>
+		template<typename TObject, typename TType, TType TObject::* PtrToMember>
 		Any GetFieldErased(AnyPtr object)
 		{
 			assert(object.TypeId == GetId<TObject>());
@@ -162,7 +162,7 @@ namespace phx::data
 			return object_->*PtrToMember;
 		}
 
-		template<typename TObject, auto PtrToMember>
+		template<typename TObject, typename TType, TType TObject::* PtrToMember>
 		void SetFieldErased(AnyPtr object, Any value)
 		{
 			assert(object.TypeId == GetId<TObject>());
@@ -172,7 +172,7 @@ namespace phx::data
 			object_->*PtrToMember = value.Value<TType>();
 		}
 
-		template<typename TObject, auto PtrToMember>
+		template<typename TObject, typename TType, TType TObject::* PtrToMember>
 		AnyPtr GetFieldAddressErased(AnyPtr object)
 		{
 			assert(object.TypeId == GetId<TObject>());
@@ -184,7 +184,7 @@ namespace phx::data
 		}
 	}
 
-	template<typename TObject, auto PtrToMember>
+	template<typename TObject, typename TType, TType TObject::* PtrToMember>
 	FieldDescriptor FieldDescriptor::Create(std::string_view name)
 	{
 		SetValueFunction setValue = nullptr;
@@ -194,12 +194,13 @@ namespace phx::data
 		}
 
 		return FieldDescriptor{
-			.GetValue = &detail::GetFieldErased<TObject, TType, PtrToMember>,
-			.SetValue = setValue,
-			.GetAddress = &detail::GetFieldAddressErased<TObject, TType, PtrToMember>,
 			.ObjectType = GetId<TObject>(),
 			.Type = GetId<TType>(),
 			.Name = std::string{ name },
+			.Attributes = {},
+			.GetValue = &detail::GetFieldErased<TObject, TType, PtrToMember>,
+			.SetValue = setValue,
+			.GetAddress = &detail::GetFieldAddressErased<TObject, TType, PtrToMember>,
 		};
 	}
 

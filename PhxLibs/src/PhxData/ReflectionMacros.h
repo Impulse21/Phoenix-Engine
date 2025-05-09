@@ -6,7 +6,7 @@
 		static void Reflect() { \
 			using ThisType = ClassName; \
 			using BaseType = void; \
-			data::TypeDescriptor type{ #ClassName }; \
+			data::TypeDescriptor type = data::TypeDescriptor::Create( #ClassName ); \
 			if constexpr (!std::is_same_v<BaseType, void>) \
 				type.Base.Id = data::GetId<BaseType>();
 
@@ -16,11 +16,11 @@
 		static void Reflect() { \
 			using ThisType = ClassName; \
 			using BaseType = BaseClass; \
-			data::TypeDescriptor type{ #ClassName }; \
+			data::TypeDescriptor type = data::TypeDescriptor::Create( #ClassName ); \
 			type.Base.Id = data::GetId<BaseType>();
 
 #define PHX_REFLECT_FIELD(FieldName) \
-	type.AddField(data::FieldDescriptor::Create<ThisType, &ThisType::FieldName>(#FieldName));
+	type.AddField(data::FieldDescriptor::Create<ThisType, decltype(ThisType::FieldName), &ThisType::FieldName>(#FieldName));
 
 #define PHX_REFLECT_END() \
 			data::TypeRegistry::AddType(std::move(type)); \

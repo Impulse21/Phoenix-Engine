@@ -21,7 +21,6 @@
 #include <PhxCore/ThreadPool.h>
 
 #include <PhxWorld/World.h>
-#include <PhxWorld/WorldSerializer.h>
 
 #define TEST_TREAD_POOL 0
 #if TEST_TREAD_POOL 
@@ -128,10 +127,9 @@ public:
 
 			ThreadPool::Wait(ThreadPool::Type::Streaming);
 
-			m_world = data::RefPtr<World>::Create();
-			m_renderer.RegisterObserver(*m_world);
-
-			WorldSerializer::Load(m_fs.get(), "res:/NewSponza_Main_glTF_003.phxwld", *m_world);
+			// m_world = data::RefPtr<World>::Create();
+			// m_renderer.RegisterObserver(*m_world);
+			// WorldSerializer::Load(m_fs.get(), "res:/NewSponza_Main_glTF_003.phxwld", *m_world);
 
 			// phx::Entity lionHeadEntity = m_world.CreateEntity("LionHead");
 
@@ -212,7 +210,7 @@ private:
 
 	inline void OnPreRender()
 	{
-		m_renderer.OnPreRender();
+		//m_renderer.OnPreRender();
 	}
 
 	inline void OnUpdate()
@@ -236,7 +234,7 @@ private:
 
 	std::shared_ptr<phx::gfx::ImGuiRenderSystem> m_imguiRenderSystem;
 	phx::gfx::ForwardRenderer m_renderer;
-	data::RefPtr<World> m_world;
+	World m_world;
 
 	RefCountPtr<IResource> m_meshResource;
 	void* m_windowHandle;

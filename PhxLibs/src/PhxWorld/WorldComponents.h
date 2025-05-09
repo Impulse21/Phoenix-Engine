@@ -66,36 +66,36 @@ namespace phx
 		DirectX::XMFLOAT4 GetRotation() const
 		{
 			DirectX::XMFLOAT4 rotation;
-			XMStoreFloat4(&rotation, GetRotationV());
+			DirectX::XMStoreFloat4(&rotation, GetRotationV());
 			return rotation;
 		}
 
 		DirectX::XMFLOAT3 GetScale() const
 		{
 			DirectX::XMFLOAT3 scale;
-			XMStoreFloat3(&scale, GetScaleV());
+			DirectX::XMStoreFloat3(&scale, GetScaleV());
 			return scale;
 		}
 
 		DirectX::XMVECTOR GetPositionV() const
 		{
-			return XMLoadFloat3((DirectX::XMFLOAT3*)&WorldMatrix._41);
+			return DirectX::XMLoadFloat3((DirectX::XMFLOAT3*)&WorldMatrix._41);
 		}
 
 		DirectX::XMVECTOR GetRotationV() const
 		{
 			DirectX::XMVECTOR S, R, T;
-			XMMatrixDecompose(&S, &R, &T, XMLoadFloat4x4(&WorldMatrix));
+			XMMatrixDecompose(&S, &R, &T, DirectX::XMLoadFloat4x4(&WorldMatrix));
 			return R;
 		}
 
 		DirectX::XMVECTOR GetScaleV() const
 		{
 			DirectX::XMVECTOR S, R, T;
-			XMMatrixDecompose(&S, &R, &T, XMLoadFloat4x4(&WorldMatrix));
+			XMMatrixDecompose(&S, &R, &T, DirectX::XMLoadFloat4x4(&WorldMatrix));
 			return S;
 		}
-#if false
+
 		// TODO: Move to external functions that operate on the data type.
 		inline void UpdateTransform()
 		{
@@ -109,10 +109,10 @@ namespace phx
 		inline void UpdateTransform(TransformComponent const& parent)
 		{
 			DirectX::XMMATRIX world = GetMatrix();
-			DirectX::XMMATRIX worldParentworldParent = XMLoadFloat4x4(&parent.WorldMatrix);
+			DirectX::XMMATRIX worldParentworldParent = DirectX::XMLoadFloat4x4(&parent.WorldMatrix);
 			world *= worldParentworldParent;
 
-			XMStoreFloat4x4(&WorldMatrix, world);
+			DirectX::XMStoreFloat4x4(&WorldMatrix, world);
 		}
 
 		inline void ApplyTransform()
@@ -128,13 +128,13 @@ namespace phx
 
 		inline DirectX::XMMATRIX GetMatrix()
 		{
-			DirectX::XMVECTOR Scale = XMLoadFloat3(&Scale);
-			DirectX::XMVECTOR Rotation = XMLoadFloat4(&Rotation);
-			DirectX::XMVECTOR Translation = XMLoadFloat3(&Translation);
+			DirectX::XMVECTOR ScaleV = DirectX::XMLoadFloat3(&Scale);
+			DirectX::XMVECTOR RotationV = DirectX::XMLoadFloat4(&Rotation);
+			DirectX::XMVECTOR TranslationV = DirectX::XMLoadFloat3(&Translation);
 			return
-				DirectX::XMMatrixScalingFromVector(Scale) *
-				DirectX::XMMatrixRotationQuaternion(Rotation) *
-				DirectX::XMMatrixTranslationFromVector(Translation);
+				DirectX::XMMatrixScalingFromVector(ScaleV) *
+				DirectX::XMMatrixRotationQuaternion(RotationV) *
+				DirectX::XMMatrixTranslationFromVector(TranslationV);
 		}
 
 		inline void MatrixTransform(const DirectX::XMFLOAT4X4& matrix)
@@ -155,7 +155,6 @@ namespace phx
 			DirectX::XMStoreFloat4(&Rotation, rotate);
 			DirectX::XMStoreFloat3(&Translation, translate);
 		}
-#endif
 	};
 
 	struct HierarchyComponent
