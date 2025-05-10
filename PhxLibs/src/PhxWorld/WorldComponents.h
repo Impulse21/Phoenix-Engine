@@ -12,6 +12,7 @@
 
 #include <DirectXMath.h>
 
+
 namespace phx
 {
 	struct IDComponent
@@ -26,6 +27,16 @@ namespace phx
 		inline void operator=(const std::string& str) { Name = str; }
 		inline void operator=(std::string&& str) { Name = std::move(str); }
 		inline bool operator==(const std::string& str) const { return Name.compare(str) == 0; }
+	};
+
+	struct HierarchyComponent
+	{
+		entt::entity ParentID = entt::null;
+	};
+
+	struct MeshComponent
+	{
+		std::string Mesh;
 	};
 
 	struct TransformComponent
@@ -155,15 +166,5 @@ namespace phx
 			DirectX::XMStoreFloat4(&Rotation, rotate);
 			DirectX::XMStoreFloat3(&Translation, translate);
 		}
-	};
-
-	struct HierarchyComponent
-	{
-		entt::entity ParentID = entt::null;
-	};
-
-	struct MeshComponent
-	{
-		std::string Mesh;
 	};
 }

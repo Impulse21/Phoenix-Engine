@@ -6,6 +6,8 @@
 #include <PhxCore/BinaryBuilder.h>
 #include <PhxCore/Span.h>
 
+#include <PhxWorld/WorldSerializer.h>
+
 #ifdef PHX_RHI_D3D12
 #include <d3d12.h>
 extern "C"
@@ -186,12 +188,15 @@ int wmain(int argc, wchar_t** argv)
 
 		ThreadPool::SubmitTask([&]()
 		{
-			Level level = {};
-			phx::GltfWorldImporter::Import(gltfData, level);
+			World world = {};
+			phx::GltfWorldImporter::Import(gltfData, world);
 
 			// world->PackFile = outputFilename;
 			std::string worldFilename = std::format("{}.{}", baseFilename, "phxwld");
-			// phx::data::Save(outputFS.get(), worldFilename.c_str(), *world);
+
+			std::stringstream outputStream = {};
+			WorldSerializer::Save(outputFS.get(), worldFilename.c_str(), world);
+
 		});
 
 		if (useGDeflate)

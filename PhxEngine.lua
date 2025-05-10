@@ -518,6 +518,7 @@ group "PhxLibs"
             phx_vendor_src_imgui_dir,
             phx_lib_vendor_directory.."/spdlog/include",
             phx_lib_vendor_directory.."/entt",
+            phx_vendor_src_cereal_dir,
         }
 
         filter('platforms:'..clang_win64_d3d12)
@@ -630,6 +631,7 @@ group "PhxLibs"
             phx_lib_vendor_directory.."/spdlog/include",
             phx_lib_vendor_directory.."/entt",
             phx_vendor_include_yaml_dir,
+            phx_vendor_src_json_dir,
             phx_vendor_src_cereal_dir,
         }
 
@@ -727,6 +729,7 @@ group "Applications"
             phx_lib_vendor_directory.."/entt",
             phx_vendor_include_yaml_dir,
             phx_vendor_src_json_dir,
+            phx_vendor_src_cereal_dir,
         }
 
         links

@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "MeshResourceCompiler.h"
-#include <PhxWorld/Level.def.h>
+#include <PhxWorld/World.h>
 
 // -- forward declares ---
 struct cgltf_data;
@@ -44,7 +44,7 @@ namespace phx
 	class GltfWorldImporter : public GltfImporter<GltfWorldImporter>
 	{
 	public:
-		GltfWorldImporter(cgltf_data* gltfData, phx::Level& level)
+		GltfWorldImporter(cgltf_data* gltfData, phx::World& level)
 			: m_gltfData(gltfData)
 			, m_out(level)
 		{
@@ -53,11 +53,11 @@ namespace phx
 		bool ImportImpl();
 
 	private:
-		void LoadNodeRec(cgltf_node const& gltfNode, phx::LevelObject& parent);
+		void LoadNodeRec(cgltf_node const& gltfNode, Entity* parent);
 
 	private:
 		cgltf_data* m_gltfData;
-		phx::Level& m_out;
+		phx::World& m_out;
 	};
 
 }

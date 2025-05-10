@@ -6,6 +6,7 @@
 #include <PhxCore/ThreadPool.h>
 #include <PhxCore/Math.h>
 #include <PhxData/DataTypeFactory.h>
+#include <PhxWorld/Entity.h>
 #include <PhxRenderer/MeshResourceHandler.h>
 #include <cgltf.h>
 
@@ -196,23 +197,19 @@ bool phx::GltfWorldImporter::ImportImpl()
 {
 	// Load Node Data
 	cgltf_scene* gltfScene = m_gltfData->scene;
-	m_out.Name = "Level";
-	m_out.RootObject = std::make_unique<LevelObject>();
-	m_out.RootObject->Name = gltfScene->name ? gltfScene->name : "level Root";
 
 	for (size_t i = 0; i < gltfScene->nodes_count; i++)
 	{
 		// Load Node Data
-		LoadNodeRec(*gltfScene->nodes[i], *m_out.RootObject);
+		LoadNodeRec(*gltfScene->nodes[i], nullptr);
 	}
 
 	return false;
 }
 
-void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, LevelObject& parent)
+void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, Entity* parent)
 {
-	parent.Children.emplace_back(std::make_unique<LevelObject>());
-	LevelObject* object = parent.Children.back().get();
+
 	if (gltfNode.mesh)
 	{
 #if false
@@ -298,29 +295,29 @@ void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, LevelObject
 
 	static size_t emptyNode = 0;
 
-	std::string nodeName = gltfNode.name ? gltfNode.name : "Scene Node " + std::to_string(emptyNode++);
-	object->Name = nodeName;
 
-#if false
-	data::RefPtr<data::TransformComponent> transform = data::RefPtr<data::TransformComponent>::Create();
+	std::string nodeName = gltfNode.name ? gltfNode.name : "Scene Node " + std::to_string(emptyNode++);
+	Entity entity = m_out.CreateEntity(nodeName);
+
+	TransformComponent& transform = entity.GetComponent<TransformComponent>();
 	if (gltfNode.has_scale)
 	{
 		std::memcpy(
-			&transform->Scale.x,
+			&transform.Scale.x,
 			&gltfNode.scale[0],
 			sizeof(float) * 3);
 	}
 	if (gltfNode.has_rotation)
 	{
 		std::memcpy(
-			&transform->Rotation.x,
+			&transform.Rotation.x,
 			&gltfNode.rotation[0],
 			sizeof(float) * 4);
 	}
 	if (gltfNode.has_translation)
 	{
 		std::memcpy(
-			&transform->Translation.x,
+			&transform.Translation.x,
 			&gltfNode.translation[0],
 			sizeof(float) * 3);
 	}
@@ -336,19 +333,15 @@ void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, LevelObject
 
 		DirectX::XMVECTOR scalar, rotation, translation;
 		DirectX::XMMatrixDecompose(&scalar, &rotation, &translation, DirectX::XMLoadFloat4x4(&WorldMatrix));
-		DirectX::XMStoreFloat3(&transform->Scale, scalar);
-		DirectX::XMStoreFloat4(&transform->Rotation, rotation);
-		DirectX::XMStoreFloat3(&transform->Translation, translation);
+		DirectX::XMStoreFloat3(&transform.Scale, scalar);
+		DirectX::XMStoreFloat4(&transform.Rotation, rotation);
+		DirectX::XMStoreFloat3(&transform.Translation, translation);
 	}
-
-	entity->Components.push_back(transform);
 
 	if (gltfNode.mesh)
 	{
-		data::RefPtr<data::MeshComponent> meshComponent = data::RefPtr<data::MeshComponent>::Create();
-
-		meshComponent->Mesh = std::format("{}.{}", gltfNode.mesh->name, ResourceExtension<renderer::MeshResourceHandler>::value);
-		entity->Components.push_back(meshComponent);
+		auto& meshComp = entity.AddComponent<MeshComponent>();
+		meshComp.Mesh = std::format("{}.{}", gltfNode.mesh->name, ResourceExtension<renderer::MeshResourceHandler>::value);
 	}
 
 	// GLTF default light Direciton is forward - I want this to be downwards.
@@ -376,11 +369,14 @@ void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, LevelObject
 
 #endif
 
-#endif
+	if (parent)
+	{
+		entity.AttachToParent(*parent);
+	}
 
 	for (cgltf_size i = 0; i < gltfNode.children_count; i++)
 	{
 		if (gltfNode.children[i])
-			this->LoadNodeRec(*gltfNode.children[i], *object);
+			this->LoadNodeRec(*gltfNode.children[i], &entity);
 	}
 }
