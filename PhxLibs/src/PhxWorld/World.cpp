@@ -11,6 +11,12 @@
 using namespace phx;
 using namespace DirectX;
 
+void phx::World::RegisterReflection()
+{
+	TransformComponent::Reflect();
+	MeshComponent::Reflect();
+}
+
 Entity World::CreateEntity(std::string const& name)
 {
 	return CreateEntity(UUID(), name);

@@ -15,6 +15,8 @@ namespace phx
 	class World
 	{
 	public:
+		static void RegisterReflection();
+	public:
 		World() = default;
 
 		~World()

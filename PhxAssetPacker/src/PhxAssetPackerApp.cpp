@@ -188,6 +188,7 @@ int wmain(int argc, wchar_t** argv)
 
 		ThreadPool::SubmitTask([&]()
 		{
+			World::RegisterReflection();
 			World world = {};
 			phx::GltfWorldImporter::Import(gltfData, world);
 

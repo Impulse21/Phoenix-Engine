@@ -37,6 +37,13 @@ namespace phx
 	struct MeshComponent
 	{
 		std::string Mesh;
+		
+		static void Reflect()
+		{
+			using namespace entt;
+			entt::meta<MeshComponent>()
+				.data<&MeshComponent::Mesh>("Mesh"_hs);
+		}
 	};
 
 	struct TransformComponent
@@ -46,6 +53,15 @@ namespace phx
 			kEmpty = 0,
 			kDirty = BIT(1),
 		};
+
+		static void Reflect()
+		{
+			using namespace entt;
+			entt::meta<TransformComponent>()
+				.data<&TransformComponent::Scale>("Scale"_hs)
+				.data<&TransformComponent::Scale>("Rotation"_hs)
+				.data<&TransformComponent::Scale>("Translation"_hs);
+		}
 
 		uint32_t Flags;
 

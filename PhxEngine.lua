@@ -655,6 +655,7 @@ group "Applications"
             phx_lib_vendor_directory.."/spdlog/include",
             phx_vendor_src_imgui_dir,
             phx_vendor_src_entt_dir,
+            phx_vendor_src_cereal_dir,
         }
 
         links
