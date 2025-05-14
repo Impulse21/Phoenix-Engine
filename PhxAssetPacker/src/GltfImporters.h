@@ -44,9 +44,10 @@ namespace phx
 	class GltfWorldImporter : public GltfImporter<GltfWorldImporter>
 	{
 	public:
-		GltfWorldImporter(cgltf_data* gltfData, phx::World& level)
+		GltfWorldImporter(cgltf_data* gltfData, phx::World& level, const char* outputPackname)
 			: m_gltfData(gltfData)
 			, m_out(level)
+			, m_outputPackName(outputPackname)
 		{
 		}
 
@@ -58,6 +59,7 @@ namespace phx
 	private:
 		cgltf_data* m_gltfData;
 		phx::World& m_out;
+		const char* m_outputPackName;
 	};
 
 }

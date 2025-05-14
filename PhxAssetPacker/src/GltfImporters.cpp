@@ -341,7 +341,7 @@ void phx::GltfWorldImporter::LoadNodeRec(cgltf_node const& gltfNode, Entity* par
 	if (gltfNode.mesh)
 	{
 		auto& meshComp = entity.AddComponent<MeshComponent>();
-		meshComp.Mesh = std::format("{}.{}", gltfNode.mesh->name, ResourceExtension<renderer::MeshResourceHandler>::value);
+		meshComp.Mesh = std::format("res:/{}/{}{}", m_outputPackName, gltfNode.mesh->name, ResourceExtension<renderer::MeshResourceHandler>::value);
 	}
 
 	// GLTF default light Direciton is forward - I want this to be downwards.

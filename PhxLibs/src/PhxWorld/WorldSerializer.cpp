@@ -3,6 +3,7 @@
 #include <vector>
 #include <functional>
 #include <unordered_map>
+#include <fstream>
 
 #include "WorldSerializer.h"
 #include "World.h"
@@ -45,7 +46,7 @@ namespace DirectX
         j.at("x").get_to(v.x);
         j.at("y").get_to(v.y);
         j.at("z").get_to(v.x);
-        j.at("e").get_to(v.w);
+        j.at("w").get_to(v.w);
     }
 } // namespace ns
 namespace
@@ -68,6 +69,7 @@ namespace
         }
 
         nlohmann::json componentsJson;
+        // Disabled reflection version of code for now as it wasn't working
 #if false
         for (auto&& [typeId, storageBase] : world.GetRegistry().storage())
         {
@@ -180,8 +182,45 @@ bool phx::WorldSerializer::Save(phx::IFileSystem* fs, const char* filename, phx:
     return true;
 }
 
-bool phx::WorldSerializer::Load(phx::IFileSystem* /*fs*/, const char* /*filename*/, phx::World& /*world*/)
+bool phx::WorldSerializer::Load(phx::IFileSystem* fs, const char* filename, phx::World& world)
 {
-    
+    std::string str = fs->ResolvePath(filename).generic_string();
+    std::ifstream ifs(str.c_str());
+    json inputJson = json::parse(ifs);
+
+    for (auto& entityJson : inputJson["Entities"])
+    {
+        UUID id(entityJson["_id"].get<uint64_t>());
+        std::string name = entityJson["_name"].get<std::string>();
+
+        Entity entity = world.CreateEntity(id, name);
+
+        if (!entityJson.contains("components"))
+            continue;
+
+		json componentsJson = entityJson["components"];
+		if (componentsJson.contains("MeshComponent"))
+		{
+			nlohmann::json compJson = componentsJson["MeshComponent"];
+			MeshComponent comp = {
+				.Mesh = compJson["Mesh"].get<std::string>()
+			};
+
+			entity.AddComponent<MeshComponent>(comp);
+		}
+
+		if (componentsJson.contains("TransformComponent"))
+		{
+			nlohmann::json compJson = componentsJson["TransformComponent"];
+			TransformComponent comp = {
+				.Scale = compJson["scale"],
+				.Rotation = compJson["rotation"],
+				.Translation = compJson["transation"],
+			};
+
+			entity.AddOrReplaceComponent<TransformComponent>(comp);
+		}
+	}
+
     return true;
 }

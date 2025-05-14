@@ -63,7 +63,7 @@ namespace phx
 				.data<&TransformComponent::Scale>("Translation"_hs);
 		}
 
-		uint32_t Flags;
+		uint32_t Flags = kEmpty;
 
 		DirectX::XMFLOAT3 Scale = { 1.0f, 1.0f, 1.0f };
 		DirectX::XMFLOAT4 Rotation = { 0.0f, 0.0f, 0.0f, 1.0f };

@@ -2,6 +2,7 @@
 
 #include <PhxCore/Base.h>
 #include <PhxRenderer/RenderSystem.h>
+#include <PhxResource/IResource.h>
 
 #include <vector>
 #include <memory>
@@ -17,8 +18,9 @@ namespace phx::gfx
 {
 	struct RenderMeshComponent
 	{
-
+		RefCountPtr<IResource> MeshResource;
 	};
+
 	namespace ForwardRenderPasses
 	{
 		enum
