@@ -7,7 +7,7 @@
 #include <filesystem>
 #include <functional>
 #include <vector>
-
+#include <PhxCore/Handle.h>
 #include "PhxCore/Span.h"
 
 namespace phx
@@ -95,5 +95,17 @@ namespace phx
 		std::filesystem::path GetDirectoryWithExecutable();
 		std::string GetFileNameWithoutExt(std::string const& path);
 		std::string GetFileExt(std::string const& path);
+	}
+
+
+	struct File;
+	using FileHandle = phx::Handle<File>;
+	namespace FileSystem
+	{
+		void Mount(const char* prefix, const char* nativePath);
+		void MountPak(const char* prefix, const char* pakPath);
+
+		FileHandle Open(const char* path);
+		bool Close(FileHandle handle);
 	}
 }

@@ -21,11 +21,12 @@ namespace phx
 	public:
 		virtual ~IApplication() = default;
 
-		virtual void Tick() = 0;
+		virtual void OnPreRender() = 0;
+		virtual void OnUpdate_Threaded(float deltaTime) = 0;
+		virtual void OnRender_Threaded() = 0;
 
 		virtual void Startup() = 0;
 		virtual void Shutdown() = 0;
-
 
 		virtual void SetWindowHandle(void* handle) = 0;
 		virtual void* GetWindowHandle() const = 0;

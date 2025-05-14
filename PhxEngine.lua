@@ -4,12 +4,12 @@ include "vendor/premake/PhxEngine/PrebuiltLibs.lua"
 phx_lib_Directory           = 'PhxLibs'
 phx_lib_src_directory       = "PhxLibs/src"
 phx_lib_vendor_directory    = "PhxLibs/vendor"
+phx_app_directory           = 'PhxApps'
 
 phx_lib_src_core_dir        = phx_lib_src_directory.."/PhxCore"
 phx_lib_src_rhi_dir         = phx_lib_src_directory.."/PhxRhi"
 phx_lib_src_renderer_dir    = phx_lib_src_directory.."/PhxRenderer"
 phx_lib_src_resource_dir    = phx_lib_src_directory.."/PhxResource"
-phx_lib_src_editor_lib_dir  = phx_lib_src_directory.."/PhxEditor"
 phx_lib_src_world_dir       = phx_lib_src_directory.."/PhxWorld"
 phx_lib_src_data_dir        = phx_lib_src_directory.."/PhxData"
 
@@ -48,10 +48,10 @@ project_phx_core        = 'PhxCore'
 project_phx_renderer    = 'PhxRenderer'
 project_phx_rhi         = 'PhxRhi'
 project_phx_resource    = 'PhxResource'
-project_phx_editor      = 'PhxEditor'
 project_phx_world       = 'PhxWorld'
 project_phx_data        = 'PhxData'
 
+project_phx_app_editor  = 'PhxEditor'
 project_sandbox         = 'Sandbox'
 project_asset_packer    = 'PhxAssetPacker'
 
@@ -187,7 +187,7 @@ workspace "PhxEngine"
 	location (workspace_directory)
     preferredtoolarchitecture('x86_64') -- Prefer this toolset on MSVC as it can handle more memory for multiprocessor compiles
     warnings('extra')
-	startproject(project_sandbox)
+	startproject(project_phx_app_editor)
     language('C++')
 	cppdialect('C++20')
 	rtti('off')
@@ -534,55 +534,8 @@ group "PhxLibs"
                 phx_vendor_src_d3d12ma_dir,
             }
 
-    
-    project(project_phx_resource)
-        kind('StaticLib')
-        pchheader('PhxResource/PhxResource_pch.h')
-        pchsource(phx_lib_src_resource_dir..'/PhxResource_pch.cpp')
-            
-        files 
-        {
-            phx_lib_src_resource_dir.."/**.h",
-            phx_lib_src_resource_dir.."/**.cpp",
-        }
-        
-        includedirs
-        {
-            phx_lib_src_directory,
-            phx_vendor_src_imgui_dir,
-            phx_lib_vendor_directory.."/spdlog/include",
-        }
-        
-        -- TODO: Do a better job at abtracting this away.
-        filter('platforms:'..clang_win64_d3d12)
-            defines { "PHX_RHI_D3D12" }
-            AddLibraryIncludes(DStorageLibrary)
-            AddLibraryIncludes(AgilityLibrary)
-    
-            includedirs
-            {
-                phx_lib_src_rhi_dir..'/d3d12',
-                phx_vendor_src_d3d12ma_dir,
-            }
-    
         filter{}
 
-    project(project_phx_editor)
-        kind('StaticLib')
-        pchheader('PhxEditor/PhxEditor_pch.h')
-        pchsource(phx_lib_src_editor_lib_dir..'/PhxEditor_pch.cpp')
-            
-        files 
-        {
-            phx_lib_src_editor_lib_dir.."/**.h",
-            phx_lib_src_editor_lib_dir.."/**.cpp",
-        }
-        
-        includedirs
-        {
-            phx_lib_src_directory,
-            phx_lib_vendor_directory.."/spdlog/include",
-        }
 
     project(project_phx_data)
         kind('StaticLib')
@@ -640,13 +593,13 @@ group "PhxLibs"
 group ""
 
 group "Applications"
-    project(project_sandbox)
+    project(project_phx_app_editor)
         kind "WindowedApp"         -- Windows application (no console)
 
         files 
         {
-            "sandbox/src/**.cpp",          -- Include all .cpp files in src/
-            "sandbox/src/**.h",            -- Include all .h files in src/
+            phx_app_directory.."/"..project_phx_app_editor.."/src/**.cpp",
+            phx_app_directory.."/"..project_phx_app_editor.."/src/**.h"
         }
 
         includedirs 
@@ -708,6 +661,7 @@ group "Applications"
                 CopyFileCommand(path.getabsolute(AgilityLibrary.dlls[2]), '%{cfg.buildtarget.directory}/D3D12/'),
             }
             
+        filter{}
     project(project_asset_packer)
         kind "ConsoleApp"         -- Windows application (no console)
         

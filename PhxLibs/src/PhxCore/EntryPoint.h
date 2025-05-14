@@ -2,10 +2,9 @@
 
 #include <iostream>
 
+#include <PhxCore/EngineCore.h>
 #include "PhxCore/Base.h"
 #include "PhxCore/Application.h"
-#include "PhxCore/CommandLineArgs.h"
-#include "PhxCore/ThreadPool.h"
 #include "PhxCore/StringUtils.h"
 
 #include "imgui.h"
@@ -55,8 +54,6 @@ extern "C"
 #endif
 
 #ifdef PHX_PLATFORM_WINDOWS
-extern phx::IApplication* phx::CreateApplication();
-
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void ExitGame() noexcept;
 
@@ -87,17 +84,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-namespace phx::EngineCore
-{
-	void Initialize()
-	{
-		phx::Log::Initialize();
-		int argc = 0;
-		LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-		phx::CommandLineArgs::Initialize(argc, argv);
-		phx::ThreadPool::Initialize();
-	}
-}
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*lpCmdLine*/, int nCmdShow)
 {
 	const wchar_t CLASS_NAME[] = L"PhoenixAppClassName";
@@ -108,10 +94,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*l
 	FILE* stream = nullptr;
 	ShowConsole(stream);
 
-	phx::EngineCore::Initialize();
+	int argc = 0;
+	LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 
-	phx::IApplication::Ptr = phx::CreateApplication();
-	auto* app = phx::IApplication::Ptr;
+	phx::EngineCore::PreInitialize(argc, argv);
 
 	WNDCLASS wc = {};
 	wc.lpfnWndProc = WindowProc;
@@ -120,6 +106,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*l
 
 	RegisterClass(&wc);
 
+	auto* app = phx::IApplication::Ptr;
 	std::wstring appNameW;
 	phx::StringConvert(app->GetName(), appNameW);
 
@@ -147,13 +134,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*l
 
 	ShowWindow(hwnd, nCmdShow);
 
-	phx::rhi::Initialize({
-		.SwapChianDesc = { .Width = w, .Height = h },
-		.WindowsHandle = hwnd
-	});
+	phx::EngineCore::Initialize(hwnd);
 
-	app->SetWindowHandle(hwnd);
-	app->Startup();
 
 	// Main message loop
 	// Main message loop
@@ -167,17 +149,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*l
 		}
 		else
 		{
-			phx::IApplication::Ptr->Tick();
+			phx::EngineCore::Tick();
 		}
 	}
 
-
-	phx::IApplication::Ptr->Shutdown();
-
-	delete phx::IApplication::Ptr;
-	phx::IApplication::Ptr = nullptr;
-
-	phx::rhi::Finalize();
+	phx::EngineCore::Finalize();
 	if (stream)
 	{
 		fclose(stream);
