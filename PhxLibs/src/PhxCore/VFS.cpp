@@ -355,3 +355,26 @@ namespace phx::VFS
         return std::filesystem::path(path).extension().generic_string();
     }
 }
+
+namespace phx::FileSystem
+{
+    std::string GetDirectory(const char* path)
+    {
+        if (!path)
+            return nullptr;
+
+        const char* lastSlash = nullptr;
+        for (const char* p = path; *p != '\0'; ++p)
+        {
+            if (*p == '/' || *p == '\\')
+            {
+                lastSlash = p;
+            }
+        }
+
+        if (lastSlash)
+            return std::string(path, lastSlash + 1); // include the slash
+        else
+            return {};
+    }
+}

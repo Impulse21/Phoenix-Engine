@@ -95,6 +95,7 @@ namespace phx
 		std::filesystem::path GetDirectoryWithExecutable();
 		std::string GetFileNameWithoutExt(std::string const& path);
 		std::string GetFileExt(std::string const& path);
+
 	}
 
 
@@ -107,5 +108,7 @@ namespace phx
 
 		FileHandle Open(const char* path);
 		bool Close(FileHandle handle);
+
+		std::string GetDirectory(const char*);
 	}
 }

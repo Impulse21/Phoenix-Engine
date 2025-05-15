@@ -12,7 +12,7 @@
 
 using namespace phxed;
 using namespace phx;
-using namespace phxed::renderer;
+using namespace phx::renderer;
 
 namespace
 {
@@ -155,7 +155,7 @@ void phxed::MeshResourceCompiler::BuildVertexBuffer(std::vector<uint8_t>& gpuBuf
 	FillVertexBuffer<DirectX::XMFLOAT4>(vbBuilder, streamOffsets[kJoints], joints.get(), vertexCount);
 	FillVertexBuffer<DirectX::XMFLOAT4>(vbBuilder, streamOffsets[kWeights], weights.get(), vertexCount);
 #endif
-	phxed::Span<uint8_t> memory = vbBuilder.GetMemory();
+	phx::Span<uint8_t> memory = vbBuilder.GetMemory();
 
 	const size_t vbOffset = gpuBuffer.size();
 	gpuBuffer.resize(vbOffset + memory.size());

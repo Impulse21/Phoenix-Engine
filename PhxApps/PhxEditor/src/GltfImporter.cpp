@@ -49,6 +49,8 @@ namespace
 		// do nothing
 	}
 
+
+#if false
 	std::pair<const uint8_t*, size_t> CgltfBufferAccessor(const cgltf_accessor* accessor, size_t defaultStride)
 	{
 		// TODO: sparse accessor support
@@ -74,7 +76,6 @@ namespace
 			vertexSrc,
 			stride * vertexCount);
 	}
-
 	void ProcessMesh(MeshData& meshData, cgltf_mesh const& cgltfMesh)
 	{
 		meshData.Geometry.resize(cgltfMesh.primitives_count);
@@ -200,25 +201,21 @@ namespace
 
 		}
 	}
+#endif
 }
-phxed::GltfSceneImporter::GltfSceneImporter(const char* filename)
+phxed::GltfSceneImporter::GltfSceneImporter(const char*)
 {
-	m_fileHandle = phx::FileSystem::Open(filename);
-
 }
 
 phxed::GltfSceneImporter::~GltfSceneImporter()
 {
-	phx::FileSystem::Close(m_fileHandle);
 }
 
 void phxed::GltfSceneImporter::ImportImpl()
 {
 	if (!m_fileHandle.IsValid())
-	{
-		PHX_ERROR("Couldn't Read file {0}", gltfInput);
 		return;
-	}
+
 	// Load GLF File into memory
 	CgltfContext context =
 	{

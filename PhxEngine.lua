@@ -12,6 +12,7 @@ phx_lib_src_renderer_dir    = phx_lib_src_directory.."/PhxRenderer"
 phx_lib_src_resource_dir    = phx_lib_src_directory.."/PhxResource"
 phx_lib_src_world_dir       = phx_lib_src_directory.."/PhxWorld"
 phx_lib_src_data_dir        = phx_lib_src_directory.."/PhxData"
+phx_lib_src_engine_dir      = phx_lib_src_directory.."/PhxEngine"
 
 phx_vendor_src_imgui_dir    = phx_lib_vendor_directory.."/ImGui"
 phx_vendor_src_d3d12ma_dir  = phx_lib_vendor_directory.."/D3D12MA"
@@ -50,6 +51,7 @@ project_phx_rhi         = 'PhxRhi'
 project_phx_resource    = 'PhxResource'
 project_phx_world       = 'PhxWorld'
 project_phx_data        = 'PhxData'
+project_phx_engine      = 'PhxEngine'
 
 project_phx_app_editor  = 'PhxEditor'
 project_sandbox         = 'Sandbox'
@@ -536,6 +538,39 @@ group "PhxLibs"
 
         filter{}
 
+    project(project_phx_engine)
+        kind('StaticLib')
+        pchheader('PhxEngine/PhxEngine_pch.h')
+        pchsource(phx_lib_src_engine_dir..'/PhxEngine_pch.cpp')
+        
+        files 
+        {
+            phx_lib_src_engine_dir.."/**.h",
+            phx_lib_src_engine_dir.."/**.cpp",
+        }
+    
+        includedirs
+        {
+            phx_lib_src_directory,
+            phx_vendor_src_imgui_dir,
+            phx_lib_vendor_directory.."/spdlog/include",
+        }
+
+        filter('platforms:'..clang_win64_d3d12)
+            defines { "PHX_RHI_D3D12" }
+            
+            excludes  { phx_lib_src_rhi_dir..'/vulkan/**' }
+    
+            AddLibraryIncludes(AgilityLibrary)
+    
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/d3d12',
+                phx_vendor_src_d3d12ma_dir,
+            }
+
+        filter{}
+
     project(project_phx_resource)
         kind('StaticLib')
         pchheader('PhxResource/PhxResource_pch.h')
@@ -630,7 +665,15 @@ group "Applications"
         files 
         {
             phx_app_directory.."/"..project_phx_app_editor.."/src/**.cpp",
-            phx_app_directory.."/"..project_phx_app_editor.."/src/**.h"
+            phx_app_directory.."/"..project_phx_app_editor.."/src/**.h",
+
+            -- Vendor stuff
+            phx_app_directory.."/"..project_phx_app_editor.."/vendor/tinyobj/**.cc",
+            phx_app_directory.."/"..project_phx_app_editor.."/vendor/tinyobj/**.h",
+            phx_app_directory.."/"..project_phx_app_editor.."/vendor/fast_obj/**.c",
+            phx_app_directory.."/"..project_phx_app_editor.."/vendor/fast_obj/**.h",
+            phx_app_directory.."/"..project_phx_app_editor.."/vendor/meshoptimizer/**.cpp",
+            phx_app_directory.."/"..project_phx_app_editor.."/vendor/meshoptimizer/**.h"
         }
 
         includedirs 
@@ -642,6 +685,7 @@ group "Applications"
             phx_vendor_src_imgui_dir,
             phx_vendor_src_entt_dir,
             phx_vendor_src_cereal_dir,
+            phx_app_directory.."/"..project_phx_app_editor.."/vendor"
         }
 
         links
@@ -652,6 +696,7 @@ group "Applications"
             project_phx_resource,
             project_phx_world,
             project_phx_data,
+            project_phx_engine,
             project_vendor_imgui,
         }
         
@@ -727,6 +772,7 @@ group "Applications"
             project_phx_renderer,
             project_phx_resource,
             project_phx_world,
+            project_phx_engine,
             project_phx_data,
             project_vendor_imgui,
             project_vendor_yaml,

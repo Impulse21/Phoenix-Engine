@@ -1,11 +1,28 @@
 
 #include <PhxCore/Base.h>
-#include <PhxCore/EntryPoint.h>
 #include <PhxCore/VFS.h>
+#include <PhxEngine/EntryPoint.h>
 
-#include "GltfImporter.h"
+#include "fast_obj/fast_obj.h"
+#include "meshoptimizer/meshoptimizer.h"
 
 #include "Generated/GlobalVariables.h"
+
+namespace
+{
+	void CompileObjAndMaterials(const char* filename, const char*)
+	{
+		fastObjMesh* mesh = fast_obj_read(filename);
+		if (!mesh)
+		{
+			PHX_ERROR("Failed to Load. \n\tError {0}\n\tWarn {1}");
+			return;
+		}
+
+		fast_obj_destroy(mesh);
+	}
+}
+
 class PhxEditor final : public phx::IApplication
 {
 public:
@@ -19,8 +36,8 @@ public:
 
 	~PhxEditor() { ms_instance = nullptr; }
 
-	void Startup();
-	void Shutdown();
+	void Startup() override;
+	void Shutdown() override;
 
 	void OnPreRender() override;
 	void OnUpdate_Threaded(float deltaTime) override;
@@ -54,11 +71,13 @@ phx::IApplication* phx::CreateApplication()
 
 void PhxEditor::Startup()
 {
-	phx::FileSystem::Mount("native://", "");
-	phx::FileSystem::Mount("res://", phx::GlobalPaths::AssetsDirectory);
-
-	phxed::GltfSceneImporter::Import("native://C://Users//dipao//source//repos//Phoenix-Engine//.workspace//projects//sandbox//.cache//scene.gltf");
+	// phx::FileSystem::Mount("native://", "");
+	// phx::FileSystem::Mount("res://", phx::GlobalPaths::AssetsDirectory);
 	// Import Resource
+	const char* filename = "C:/Users/dipao/OneDrive/Documents/Art/SM_Chest_01.obj";
+	CompileObjAndMaterials(filename, "res://modulardungeoncollection");
+
+	// Compile mesh and save it to disk
 }
 
 void PhxEditor::Shutdown()
