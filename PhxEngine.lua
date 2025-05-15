@@ -536,7 +536,38 @@ group "PhxLibs"
 
         filter{}
 
-
+    project(project_phx_resource)
+        kind('StaticLib')
+        pchheader('PhxResource/PhxResource_pch.h')
+        pchsource(phx_lib_src_resource_dir..'/PhxResource_pch.cpp')
+            
+        files 
+        {
+            phx_lib_src_resource_dir.."/**.h",
+            phx_lib_src_resource_dir.."/**.cpp",
+        }
+        
+        includedirs
+        {
+            phx_lib_src_directory,
+            phx_vendor_src_imgui_dir,
+            phx_lib_vendor_directory.."/spdlog/include",
+        }
+        
+        -- TODO: Do a better job at abtracting this away.
+        filter('platforms:'..clang_win64_d3d12)
+            defines { "PHX_RHI_D3D12" }
+            AddLibraryIncludes(DStorageLibrary)
+            AddLibraryIncludes(AgilityLibrary)
+    
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/d3d12',
+                phx_vendor_src_d3d12ma_dir,
+            }
+    
+        filter{}
+        
     project(project_phx_data)
         kind('StaticLib')
         pchheader('PhxData/PhxData_pch.h')
@@ -606,6 +637,8 @@ group "Applications"
         {
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
+            phx_lib_vendor_directory.."/cgltf",
+            phx_lib_vendor_directory.."/entt",
             phx_vendor_src_imgui_dir,
             phx_vendor_src_entt_dir,
             phx_vendor_src_cereal_dir,

@@ -3,6 +3,8 @@
 #include <PhxCore/EntryPoint.h>
 #include <PhxCore/VFS.h>
 
+#include "GltfImporter.h"
+
 #include "Generated/GlobalVariables.h"
 class PhxEditor final : public phx::IApplication
 {
@@ -52,7 +54,11 @@ phx::IApplication* phx::CreateApplication()
 
 void PhxEditor::Startup()
 {
+	phx::FileSystem::Mount("native://", "");
 	phx::FileSystem::Mount("res://", phx::GlobalPaths::AssetsDirectory);
+
+	phxed::GltfSceneImporter::Import("native://C://Users//dipao//source//repos//Phoenix-Engine//.workspace//projects//sandbox//.cache//scene.gltf");
+	// Import Resource
 }
 
 void PhxEditor::Shutdown()
