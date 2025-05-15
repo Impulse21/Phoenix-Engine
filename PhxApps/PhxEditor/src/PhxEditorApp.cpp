@@ -3,8 +3,9 @@
 #include <PhxCore/VFS.h>
 #include <PhxEngine/EntryPoint.h>
 
-#include "fast_obj/fast_obj.h"
-#include "meshoptimizer/meshoptimizer.h"
+#include "MeshResourceCompiler.h"
+#include <fast_obj/fast_obj.h>
+#include <meshoptimizer/meshoptimizer.h>
 
 #include "Generated/GlobalVariables.h"
 
@@ -12,14 +13,35 @@ namespace
 {
 	void CompileObjAndMaterials(const char* filename, const char*)
 	{
-		fastObjMesh* mesh = fast_obj_read(filename);
-		if (!mesh)
+		fastObjMesh* objMesh = fast_obj_read(filename);
+		if (!objMesh)
 		{
 			PHX_ERROR("Failed to Load. \n\tError {0}\n\tWarn {1}");
 			return;
 		}
 
-		fast_obj_destroy(mesh);
+		phxed::MeshData meshData = {};
+
+		uint32_t offset = 0;
+		for (uint32_t iFace = 0; iFace < objMesh->face_count; iFace++)
+		{
+			uint32_t faceVertices = objMesh->face_vertices[iFace];
+
+			PHX_ASSERT(faceVertices == 3);
+
+			uint32_t idx0 = offset + 0;
+			uint32_t idx1 = offset + iFace + 1;
+			uint32_t idx2 = offset + iFace + 2;
+
+			for (uint32_t idx : { idx0, idx1, idx2 })
+			{
+				const auto& v = objMesh->indices[idx];
+				posIndex.push_back(v.p);
+				normIndex.push_back(v.n);
+				uvIndex.push_back(v.t);
+			}
+		}
+		fast_obj_destroy(objMesh);
 	}
 }
 
