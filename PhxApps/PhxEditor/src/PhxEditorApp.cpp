@@ -3,6 +3,7 @@
 #include <PhxCore/VFS.h>
 #include <PhxEngine/EntryPoint.h>
 
+#include <PhxCore/SystemTime.h>
 #include "MeshResourceCompiler.h"
 #include <fast_obj/fast_obj.h>
 #include <meshoptimizer/meshoptimizer.h>
@@ -11,76 +12,8 @@
 
 namespace
 {
-	void CompileObjAndMaterials(const char* filename, const char*)
-	{
-		phxed::MeshData meshSrc = {};
-		if (!ParseObj(filename, meshSrc))
-			return;
 
-		// Mesh Optimizer
-		const size_t totalIndices = meshSrc.Vertex_Positions.size();
-		std::array<meshopt_Stream, 3> vertexStream =
-		{
-			meshopt_Stream{
-				.data = meshSrc.Vertex_Positions.data(),
-				.size = meshSrc.Vertex_Positions.size(),
-				.stride = sizeof(meshSrc.Vertex_Positions[0])
-			},
-			meshopt_Stream{
-				.data = meshSrc.Vertex_Normals.data(),
-				.size = meshSrc.Vertex_Normals.size(),
-				.stride = sizeof(meshSrc.Vertex_Normals[0])
-			},
-			meshopt_Stream{
-				.data = meshSrc.Vertex_Uvset_0.data(),
-				.size = meshSrc.Vertex_Uvset_0.size(),
-				.stride = sizeof(meshSrc.Vertex_Uvset_0[0])
-			},
-		};
-
-		std::vector<uint32_t> remap(totalIndices);
-		size_t totalVertices =
-			meshopt_generateVertexRemapMulti(
-				&remap[0],
-				NULL,
-				totalIndices,
-				totalIndices,
-				vertexStream.data(),
-				vertexStream.size());
-
-
-		phxed::MeshData processedMesh = {};
-
-		processedMesh.Indices.resize(totalIndices);
-		meshopt_remapIndexBuffer(processedMesh.Indices.data(), NULL, totalIndices, remap.data());
-
-		processedMesh.Vertex_Positions.resize(totalVertices);
-		meshopt_remapVertexBuffer(
-			processedMesh.Vertex_Positions.data(),
-			meshSrc.Vertex_Positions.data(),
-			totalIndices,
-			sizeof(processedMesh.Vertex_Positions[0]),
-			&remap[0]);
-	
-		processedMesh.Vertex_Normals.resize(totalVertices);
-		meshopt_remapVertexBuffer(
-			processedMesh.Vertex_Normals.data(),
-			meshSrc.Vertex_Normals.data(),
-			totalIndices,
-			sizeof(processedMesh.Vertex_Normals[0]),
-			&remap[0]);
-
-		processedMesh.Vertex_Uvset_0.resize(totalVertices);
-		meshopt_remapVertexBuffer(
-			processedMesh.Vertex_Uvset_0.data(),
-			meshSrc.Vertex_Uvset_0.data(),
-			totalIndices,
-			sizeof(processedMesh.Vertex_Uvset_0[0]),
-			&remap[0]);
-
-
-	}
-
+	// constexpr  size_t kCacheSize = 16;
 	bool ParseObj(const char* filename, phxed::MeshData& meshData)
 	{
 		fastObjMesh* obj = fast_obj_read(filename);
@@ -95,11 +28,14 @@ namespace
 		for (uint32_t i = 0; i < obj->face_count; ++i)
 			totalIndices += 3 * (obj->face_vertices[i] - 2);
 
-		meshData.Vertex_Positions.reserve(totalIndices);
-		meshData.Vertex_Normals.reserve(totalIndices);
-		meshData.Vertex_Tangents.reserve(totalIndices);
-		meshData.Vertex_Uvset_0.reserve(totalIndices);
-		meshData.Vertex_Uvset_1.reserve(totalIndices);
+		phxed::VertexStream& positionStream = meshData.AddVertexStream<DirectX::XMFLOAT3>(phxed::VertexStreamType::Position, totalIndices);
+		phx::SpanMutable<DirectX::XMFLOAT3> positionData = positionStream.AsSpanMutable<DirectX::XMFLOAT3>();
+
+		phxed::VertexStream& normalsStream = meshData.AddVertexStream<DirectX::XMFLOAT3>(phxed::VertexStreamType::Normal, totalIndices);
+		phx::SpanMutable<DirectX::XMFLOAT3> normalData = normalsStream.AsSpanMutable<DirectX::XMFLOAT3>();
+
+		phxed::VertexStream& uv0Stream = meshData.AddVertexStream<DirectX::XMFLOAT2>(phxed::VertexStreamType::Uvset_0, totalIndices);
+		phx::SpanMutable<DirectX::XMFLOAT2> uv0Data = uv0Stream.AsSpanMutable<DirectX::XMFLOAT2>();
 
 		size_t vertexOffset = 0;
 		size_t indexOffset = 0;
@@ -115,32 +51,32 @@ namespace
 				// triangulate polygon on the fly; offset-3 is always the first polygon vertex
 				if (iVert >= 3)
 				{
-					meshData.Vertex_Positions[vertexOffset + 0] = meshData.Vertex_Positions[vertexOffset - 3];
-					meshData.Vertex_Normals[vertexOffset + 0] = meshData.Vertex_Normals[vertexOffset - 3];
-					meshData.Vertex_Uvset_0[vertexOffset + 0] = meshData.Vertex_Uvset_0[vertexOffset - 3];
+					positionData[vertexOffset + 0] = positionData[vertexOffset - 3];
+					normalData[vertexOffset + 0] = normalData[vertexOffset - 3];
+					uv0Data[vertexOffset + 0] = uv0Data[vertexOffset - 3];
 
-					meshData.Vertex_Positions[vertexOffset + 1] = meshData.Vertex_Positions[vertexOffset - 1];
-					meshData.Vertex_Normals[vertexOffset + 1] = meshData.Vertex_Normals[vertexOffset - 1];
-					meshData.Vertex_Uvset_0[vertexOffset + 1] = meshData.Vertex_Uvset_0[vertexOffset - 1];
+					positionData[vertexOffset + 1] = positionData[vertexOffset - 1];
+					normalData[vertexOffset + 1] = normalData[vertexOffset - 1];
+					uv0Data[vertexOffset + 1] = uv0Data[vertexOffset - 1];
 
 					vertexOffset += 2;
 				}
 
-				meshData.Vertex_Positions[vertexOffset] =
+				positionData[vertexOffset] =
 				{
 					obj->positions[gi.p * 3 + 0],
 					obj->positions[gi.p * 3 + 1],
 					obj->positions[gi.p * 3 + 2],
 				};
 
-				meshData.Vertex_Normals[vertexOffset] =
+				normalData[vertexOffset] =
 				{
 					obj->normals[gi.n * 3 + 0],
 					obj->normals[gi.n * 3 + 1],
 					obj->normals[gi.n * 3 + 2],
 				};
 
-				meshData.Vertex_Uvset_0[vertexOffset] =
+				uv0Data[vertexOffset] =
 				{
 					obj->texcoords[gi.t * 2 + 0],
 					obj->texcoords[gi.t * 2 + 1],
@@ -155,6 +91,156 @@ namespace
 
 		return true;
 	}
+
+	phxed::MeshData GenerateMeshIndices(phxed::MeshData const& meshSrc, std::vector<uint32_t>& outRemap)
+	{
+		// Mesh Optimizer
+		const size_t totalIndices = meshSrc.Vertex_Positions.size();
+
+		const phxed::VertexStream& srcPositionStream = *meshSrc.GetVertexStream(phxed::VertexStreamType::Position);
+		const phxed::VertexStream& srcNormalStream = *meshSrc.GetVertexStream(phxed::VertexStreamType::Normal);
+		const phxed::VertexStream& srcUv0Stream  = *meshSrc.GetVertexStream(phxed::VertexStreamType::Uvset_0);
+
+		std::array<meshopt_Stream, 3> vertexStream =
+		{
+			meshopt_Stream{
+				.data = srcPositionStream.Data.get(),
+				.size = srcPositionStream.ElementStride,
+				.stride = srcPositionStream.ElementStride,
+			},
+			meshopt_Stream{
+				.data = srcNormalStream.Data.get(),
+				.size = srcNormalStream.ElementStride,
+				.stride = srcNormalStream.ElementStride,
+			},
+			meshopt_Stream{
+				.data = srcUv0Stream.Data.get(),
+				.size = srcUv0Stream.ElementStride,
+				.stride = srcUv0Stream.ElementStride,
+			},
+		};
+
+		outRemap.clear();
+		outRemap.resize(totalIndices);
+		std::vector<uint32_t>& remap = outRemap;
+		size_t totalVertices =
+			meshopt_generateVertexRemapMulti(
+				&remap[0],
+				NULL,
+				totalIndices,
+				totalIndices,
+				vertexStream.data(),
+				vertexStream.size());
+
+
+		phxed::MeshData processedMesh = {};
+
+		processedMesh.Indices.resize(totalIndices);
+		meshopt_remapIndexBuffer(processedMesh.Indices.data(), NULL, totalIndices, remap.data());
+
+		phxed::VertexStream& posStream = processedMesh.AddVertexStream<DirectX::XMFLOAT3>(phxed::VertexStreamType::Position, totalVertices);
+		meshopt_remapVertexBuffer(
+			posStream.Data.get(),
+			srcPositionStream.Data.get(),
+			totalIndices,
+			posStream.ElementStride,
+			&remap[0]);
+
+		phxed::VertexStream& normalStream = processedMesh.AddVertexStream<DirectX::XMFLOAT3>(phxed::VertexStreamType::Normal, totalVertices);
+		meshopt_remapVertexBuffer(
+			normalStream.Data.get(),
+			srcNormalStream.Data.get(),
+			totalIndices,
+			normalStream.ElementStride,
+			&remap[0]);
+
+		phxed::VertexStream& uvStream  = processedMesh.AddVertexStream<DirectX::XMFLOAT2>(phxed::VertexStreamType::Uvset_0, totalVertices);
+		meshopt_remapVertexBuffer(
+			uvStream.Data.get(),
+			srcUv0Stream.Data.get(),
+			totalIndices,
+			uvStream.ElementStride,
+			&remap[0]);
+
+		return processedMesh;
+	}
+
+	void PrintStatistics(phxed::MeshData const&)
+	{
+#if false
+		meshopt_VertexCacheStatistics vcs = meshopt_analyzeVertexCache(mesh.Indices.data(), mesh.Indices.size(), mesh.GetVertexCount(), kCacheSize, 0, 0);
+		meshopt_VertexFetchStatistics vfs = meshopt_analyzeVertexFetch(mesh.Indices.data(), mesh.Indices.size(), mesh.GetVertexCount(), sizeof(Vertex));
+		meshopt_OverdrawStatistics os = meshopt_analyzeOverdraw(mesh.Indices.data(), mesh.Indices.size(), &copy.vertices[0].px, mesh.GetVertexCount(), sizeof(Vertex));
+
+		meshopt_VertexCacheStatistics vcs_nv = meshopt_analyzeVertexCache(mesh.Indices.data(), mesh.Indices.size(), mesh.GetVertexCount(), 32, 32, 32);
+		meshopt_VertexCacheStatistics vcs_amd = meshopt_analyzeVertexCache(mesh.Indices.data(), mesh.Indices.size(), mesh.GetVertexCount(), 14, 64, 128);
+		meshopt_VertexCacheStatistics vcs_intel = meshopt_analyzeVertexCache(mesh.Indices.data(), mesh.Indices.size(), mesh.GetVertexCount(), 128, 0, 0);
+
+		printf("%-9s: ACMR %f ATVR %f (NV %f AMD %f Intel %f) Overfetch %f Overdraw %f in %.2f msec\n", name, vcs.acmr, vcs.atvr, vcs_nv.atvr, vcs_amd.atvr, vcs_intel.atvr, vfs.overfetch, os.overdraw, (end - start) * 1000);
+#endif
+	}
+
+	void CompileObjAndMaterials(const char* filename, const char*)
+	{
+		phxed::MeshData mesh = {};
+		if (!ParseObj(filename, mesh))
+			return;
+
+		std::vector<uint32_t> remap;
+		phx::CpuTimer timer;
+		mesh = GenerateMeshIndices(mesh, remap);
+		phx::CpuTimeStep generateIndicesTime = timer.Elapsed();
+
+		const size_t totalIndices = mesh.Indices.size();
+		const size_t totalVertices = mesh.GetVertexCount();
+
+		PrintStatistics(mesh);
+		timer.Reset();
+		// -- Optimize vertex cache ---
+		meshopt_optimizeVertexCache(mesh.Indices.data(), mesh.Indices.data(), totalIndices, totalVertices);
+
+		// -- Vertex optmized overdraw ---
+		// Not in demo?
+
+		// -- Vertex fetch optimization ---
+		meshopt_optimizeVertexFetchRemap(remap.data(), mesh.Indices.data(), totalIndices, totalVertices);
+
+		for (auto& vertexStreamOpt : mesh.VertexStreams)
+		{
+			if (!vertexStreamOpt.has_value())
+				continue;
+
+			phxed::VertexStream& stream = vertexStreamOpt.value();
+
+			meshopt_remapVertexBuffer(stream.Data.get(), stream.Data.get(), totalVertices, stream.ElementStride, remap.data());
+		}
+
+		phx::CpuTimeStep optimizeTime = timer.Elapsed();
+
+		timer.Reset();
+		meshopt_Stream shadowStream =
+			meshopt_Stream{
+				.data = mesh.Vertex_Positions.data(),
+				.size = sizeof(mesh.Vertex_Positions[0]),
+				.stride = sizeof(mesh.Vertex_Positions[0])
+		};
+
+		mesh.ShadowIndices.resize(totalIndices);
+		meshopt_generateShadowIndexBufferMulti(mesh.ShadowIndices.data(), mesh.ShadowIndices.data(), totalIndices, totalVertices, &shadowStream, 1);
+
+		meshopt_optimizeVertexCache(mesh.ShadowIndices.data(), mesh.ShadowIndices.data(), totalIndices, totalVertices);
+		phx::CpuTimeStep shadowOptimize = timer.Elapsed();
+
+		PHX_INFO(
+			"Deintrlvd: {0} vertices, reindexed in {1} msec, optimized in {2} msec, generated & optimized shadow indices in {3} msec",
+			totalVertices,
+			generateIndicesTime.GetMilliseconds(),
+			optimizeTime.GetMilliseconds(),
+			shadowOptimize.GetMilliseconds());
+
+		PrintStatistics(mesh);
+	}
+
 }
 
 class PhxEditor final : public phx::IApplication
