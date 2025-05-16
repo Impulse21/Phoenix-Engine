@@ -180,22 +180,13 @@ namespace
 #endif
 	}
 
-	void CompileObjAndMaterials(const char* filename, const char*)
+	void OptimizeMesh(phxed::MeshData& mesh, std::vector<uint32_t>& remap)
 	{
-		phxed::MeshData mesh = {};
-		if (!ParseObj(filename, mesh))
-			return;
-
-		std::vector<uint32_t> remap;
-		phx::CpuTimer timer;
-		mesh = GenerateMeshIndices(mesh, remap);
-		phx::CpuTimeStep generateIndicesTime = timer.Elapsed();
-
 		const size_t totalIndices = mesh.Indices.size();
 		const size_t totalVertices = mesh.GetVertexCount();
 
 		PrintStatistics(mesh);
-		timer.Reset();
+		phx::CpuTimer timer;
 		// -- Optimize vertex cache ---
 		meshopt_optimizeVertexCache(mesh.Indices.data(), mesh.Indices.data(), totalIndices, totalVertices);
 
@@ -232,13 +223,36 @@ namespace
 		phx::CpuTimeStep shadowOptimize = timer.Elapsed();
 
 		PHX_INFO(
-			"Deintrlvd: {0} vertices, reindexed in {1} msec, optimized in {2} msec, generated & optimized shadow indices in {3} msec",
+			"Deintrlvd: {0} vertices, optimized in {2} msec, generated & optimized shadow indices in {3} msec",
 			totalVertices,
-			generateIndicesTime.GetMilliseconds(),
 			optimizeTime.GetMilliseconds(),
 			shadowOptimize.GetMilliseconds());
 
 		PrintStatistics(mesh);
+	}
+	void CompileObjAndMaterials(const char* filename, const char*)
+	{
+		phxed::MeshData mesh = {};
+		if (!ParseObj(filename, mesh))
+			return;
+
+		std::vector<uint32_t> remap;
+		phx::CpuTimer timer;
+		mesh = GenerateMeshIndices(mesh, remap);
+		phx::CpuTimeStep generateIndicesTime = timer.Elapsed();
+
+		PHX_INFO(
+			"Deintrlvd: {0} vertices, reindexed in {1} msec",
+			mesh.GetVertexCount(),
+			generateIndicesTime.GetMilliseconds());
+
+		OptimizeMesh(mesh, remap);
+
+		phxed::CompiledResource compiledMesh = {};
+		phxed::MeshResourceCompiler::Compile(mesh, compiledMesh);
+
+		// Save compiled resource
+
 	}
 
 }

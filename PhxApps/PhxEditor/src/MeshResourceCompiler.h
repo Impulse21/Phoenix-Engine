@@ -102,7 +102,10 @@ namespace phxed
 
 		inline size_t GetVertexCount() const
 		{
-			return Vertex_Positions.size();
+			if (VertexStreams[VertexStreamType::Position].has_value())
+				return VertexStreams[VertexStreamType::Position].value().NumElements;
+
+			return 0;
 		}
 
 		template<typename T>
