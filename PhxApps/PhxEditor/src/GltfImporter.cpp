@@ -213,8 +213,6 @@ phxed::GltfSceneImporter::~GltfSceneImporter()
 
 void phxed::GltfSceneImporter::ImportImpl()
 {
-	if (!m_fileHandle.IsValid())
-		return;
 
 	// Load GLF File into memory
 	CgltfContext context =

@@ -26,7 +26,7 @@ namespace phx
 	template<>
 	struct ResourceHandlerId<renderer::MeshResourceHandler>
 	{
-		static constexpr phx::StringHash value = "phxmsh";
+		static constexpr phx::StringHash value = "phxmsh"_hash;
 	};
 }
 

@@ -22,8 +22,8 @@ namespace phx
 		{
 			uint32_t Magic; 
 			uint32_t Version;
-			uint64_t BuildNumber;
 			uint32_t HandlerId;
+			uint64_t BuildNumber;
 #if false
 			uint32_t ChunkCount;
 #else

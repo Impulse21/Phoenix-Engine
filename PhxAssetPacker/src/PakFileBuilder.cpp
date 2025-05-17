@@ -50,7 +50,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
         auto* assetEntriesDest = packFileBuilder.Place<PakFileFormat::AssetEntry>(assetEntriesOffset);
         auto* chunkOffsetDest = packFileBuilder.Place<ResourceFileFormat::Chunk>(chunkOffsetHandle);
         auto* metadataChunksDest = packFileBuilder.Place<char>(metadataChunksOffsetHandle);
-        auto* stringTableDest = packFileBuilder.Place<PakFileFormat::StringEntry>(stringTableOffset);
+        auto* stringTableDest = packFileBuilder.Place<FileFormat::StringEntry>(stringTableOffset);
         auto* stringDataDest = packFileBuilder.Place<char>(stringHeapOffsetHandle);
 
         auto* chunkHeapDest = packFileBuilder.Place<char>(chunkHeapOffset);
@@ -106,7 +106,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
             }
 
             char* stringHeapDest = stringDataDest + stringHeapOffset;
-            PakFileFormat::StringEntry& strEntry = *(stringTableDest + i);
+            FileFormat::StringEntry& strEntry = *(stringTableDest + i);
             strEntry.Hash = assetEntry.Hash;
             strEntry.Value.Set(stringHeapDest);
 

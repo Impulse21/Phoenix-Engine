@@ -142,7 +142,7 @@ namespace
 		processedMesh.Indices.resize(totalIndices);
 		meshopt_remapIndexBuffer(processedMesh.Indices.data(), NULL, totalIndices, remap.data());
 
-		phxed::VertexStream& posStream = processedMesh.AddVertexStream<DirectX::XMFLOAT3>(phxed::VertexStreamType::Position, totalVertices);
+		phxed::VertexStream& posStream = processedMesh.AddVertexStream<DirectX::XMFLOAT3>(phx::renderer::VertexStream_Position, totalVertices);
 		meshopt_remapVertexBuffer(
 			posStream.Data.get(),
 			srcPositionStream.Data.get(),
@@ -150,7 +150,7 @@ namespace
 			posStream.ElementStride,
 			&remap[0]);
 
-		phxed::VertexStream& normalStream = processedMesh.AddVertexStream<DirectX::XMFLOAT3>(phxed::VertexStreamType::Normal, totalVertices);
+		phxed::VertexStream& normalStream = processedMesh.AddVertexStream<DirectX::XMFLOAT3>(phx::renderer::VertexStream_Normal, totalVertices);
 		meshopt_remapVertexBuffer(
 			normalStream.Data.get(),
 			srcNormalStream.Data.get(),
@@ -158,7 +158,7 @@ namespace
 			normalStream.ElementStride,
 			&remap[0]);
 
-		phxed::VertexStream& uvStream  = processedMesh.AddVertexStream<DirectX::XMFLOAT2>(phxed::VertexStreamType::Uvset_0, totalVertices);
+		phxed::VertexStream& uvStream  = processedMesh.AddVertexStream<DirectX::XMFLOAT2>(phx::renderer::VertexStream_UV0, totalVertices);
 		meshopt_remapVertexBuffer(
 			uvStream.Data.get(),
 			srcUv0Stream.Data.get(),
@@ -227,7 +227,7 @@ namespace
 		phx::CpuTimeStep shadowOptimize = timer.Elapsed();
 
 		PHX_INFO(
-			"Deintrlvd: {0} vertices, optimized in {2} msec, generated & optimized shadow indices in {3} msec",
+			"Deintrlvd: {0} vertices, optimized in {1} msec, generated & optimized shadow indices in {2} msec",
 			totalVertices,
 			optimizeTime.GetMilliseconds(),
 			shadowOptimize.GetMilliseconds());
