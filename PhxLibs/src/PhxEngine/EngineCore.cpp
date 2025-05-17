@@ -7,6 +7,7 @@
 #include <PhxCore/Memory.h>
 #include <PhxCore/ThreadPool.h>
 #include <PhxCore/CommandLineArgs.h>
+#include <PhxCore/VFS.h>
 
 #include <PhxRhi/RHICore.h>
 
@@ -42,6 +43,7 @@ namespace phx
 
 			Memory::Initialize({ .VirtualMemorySize = 16_GiB });
 
+			phx::IRootFileSystem::Ptr = new RootFileSystem();
 			phx::IApplication::Ptr = phx::CreateApplication();
 		}
 
@@ -93,6 +95,8 @@ namespace phx
 			phx::IApplication::Ptr = nullptr;
 
 			phx::rhi::Finalize();
+
+			delete phx::IRootFileSystem::Ptr;
 		}
 
 

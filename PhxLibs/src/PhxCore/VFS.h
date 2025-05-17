@@ -1,7 +1,5 @@
 #pragma once
 
-#pragma once
-
 #include <memory>
 #include <string>
 #include <filesystem>
@@ -75,6 +73,9 @@ namespace phx
 	class IRootFileSystem : public IFileSystem
 	{
 	public:
+		inline static IRootFileSystem* Ptr = nullptr;
+
+	public:
 		virtual ~IRootFileSystem() override = default;
 
 		virtual void Mount(const std::filesystem::path& path, std::shared_ptr<IFileSystem> fs) = 0;
@@ -99,16 +100,59 @@ namespace phx
 	}
 
 
-	struct File;
-	using FileHandle = phx::Handle<File>;
-	namespace FileSystem
+	class NativeFileSystem final : public IFileSystem
 	{
-		void Mount(const char* prefix, const char* nativePath);
-		void MountPak(const char* prefix, const char* pakPath);
+	public:
+		bool FileExists(std::filesystem::path const& name) override;
+		bool FolderExists(std::filesystem::path const& name) override;
+		std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
+		bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
 
-		FileHandle Open(const char* path);
-		bool Close(FileHandle handle);
+		std::filesystem::path ResolvePath(std::filesystem::path const& name) override
+		{
+			return name;
+		}
+	};
 
-		std::string GetDirectory(const char*);
-	}
+	class RelativeFileSystem final : public IFileSystem
+	{
+	public:
+		RelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::filesystem::path& baseBath);
+
+		[[nodiscard]] std::filesystem::path const& GetBasePath() const { return this->m_basePath; }
+
+		bool FileExists(std::filesystem::path const& name) override;
+		bool FolderExists(std::filesystem::path const& name) override;
+		std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
+		bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
+
+		std::filesystem::path ResolvePath(std::filesystem::path const& name) override
+		{
+			return this->m_basePath / name.relative_path();
+		}
+
+	private:
+		std::shared_ptr<IFileSystem> m_underlyingFS;
+		std::filesystem::path m_basePath;
+	};
+
+	class RootFileSystem final : public IRootFileSystem
+	{
+	public:
+		void Mount(const std::filesystem::path& path, std::shared_ptr<IFileSystem> fs) override;
+		void Mount(const std::filesystem::path& path, const std::filesystem::path& nativePath) override;
+		bool Unmount(const std::filesystem::path& path) override;
+
+		bool FileExists(std::filesystem::path const& name) override;
+		bool FolderExists(std::filesystem::path const& name) override;
+		std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
+		bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
+		std::filesystem::path ResolvePath(std::filesystem::path const& name) override;
+
+	protected:
+		bool FindMountPoint(const std::filesystem::path& path, std::filesystem::path* pRelativePath, IFileSystem** ppFS);
+
+	private:
+		std::vector<std::pair<std::string, std::shared_ptr<IFileSystem>>> m_mountPoints;
+	};
 }

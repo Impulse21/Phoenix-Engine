@@ -14,28 +14,10 @@ using namespace phxed;
 using namespace phx;
 using namespace phx::renderer;
 
-namespace
-{
-	template<typename T>
-	void FillVertexBuffer(BinaryBuilder& builder, OffsetHandle offset, Span<T> srcData)
-	{
-		if (srcData.IsEmpty())
-			return;
-
-		auto* data = builder.Place(offset);
-		std::memcpy(
-			data,
-			srcData.data(),
-			sizeof(T) * srcData.Size());
-	}
-}
-
 void phxed::MeshResourceCompiler::Compile()
 {
 	m_outCompiledResource.Name = m_meshData.Name;
 	m_outCompiledResource.Ext = ResourceExtension< renderer::MeshResourceHandler>::value;
-
-	// Build Chunks
 
 	std::vector<uint8_t> gpuData;
 	BuildGpuBufferData(gpuData);
@@ -100,61 +82,48 @@ void phxed::MeshResourceCompiler::BuildVertexBuffer(std::vector<uint8_t>& gpuBuf
 	BinaryBuilder vbBuilder;
 	OffsetHandle headerOffset = vbBuilder.Reserve<renderer::VertexStreamsHeader>();
 
-	std::array<OffsetHandle, renderer::kNumStreams> streamOffsets;
-	std::memset(streamOffsets.data(), 0xFF, sizeof(OffsetHandle) * renderer::kNumStreams);
+	std::array<OffsetHandle, renderer::VertexStream_Count> streamOffsets;
+	std::memset(streamOffsets.data(), 0xFF, sizeof(OffsetHandle) * renderer::VertexStream_Count);
 
-	streamOffsets[kPosition] = vbBuilder.ReserveArray<DirectX::XMFLOAT3>(m_meshData.Vertex_Positions.size());
-
-	PHX_ASSERT(!m_meshData.Vertex_Normals.empty(), "Normal generation is currently not supported");
-	streamOffsets[kNormals] = vbBuilder.ReserveArray<DirectX::XMFLOAT3>(m_meshData.Vertex_Normals.size());
-	
-	if (!m_meshData.Vertex_Uvset_0.empty())
+	for (auto& streamOpt : m_meshData.VertexStreams)
 	{
-		streamOffsets[kUV0] = vbBuilder.ReserveArray<DirectX::XMFLOAT2>(m_meshData.Vertex_Uvset_0.size());
-	}
-
-	if (!m_meshData.Vertex_Uvset_1.empty())
-	{
-		streamOffsets[kUV1] = vbBuilder.ReserveArray<DirectX::XMFLOAT2>(m_meshData.Vertex_Uvset_1.size());
-	}
-
-	if (!m_meshData.Vertex_Tangents.empty())
-	{
-		streamOffsets[kTangents] = vbBuilder.ReserveArray<DirectX::XMFLOAT4>(m_meshData.Vertex_Tangents.size());
+		if (!streamOpt.has_value())
+			continue;
+		
+		const VertexStream& stream = streamOpt.value();
+		const std::size_t sizeInBytes = stream.ElementStride * stream.NumElements;
+		streamOffsets[stream.Type] = vbBuilder.Reserve(sizeInBytes, 16u);
 	}
 
 	vbBuilder.Commit();
 	
 	// Fill in the data.
 	auto header = vbBuilder.Place<renderer::VertexStreamsHeader>(headerOffset);
+	for (auto& streamOpt : m_meshData.VertexStreams)
+	{
+		if (!streamOpt.has_value())
+			continue;
 
-	auto FillStreamDesc = [header, &streamOffsets](VertexStreamTypes type, size_t stride) {
-		header->Desc[type].SetOffset((uint)streamOffsets[type]);
-		header->Desc[type].SetStride((uint)stride);
-	};
-	
-	FillStreamDesc(kPosition, sizeof(DirectX::XMFLOAT3));
-	FillStreamDesc(kNormals, sizeof(DirectX::XMFLOAT3));
-	FillStreamDesc(kUV0, sizeof(DirectX::XMFLOAT2));
-	FillStreamDesc(kUV1, sizeof(DirectX::XMFLOAT2));
-	FillStreamDesc(kTangents, sizeof(DirectX::XMFLOAT4));
-#if false
-	FillStreamDesc(kColour, sizeof(DirectX::XMFLOAT3));
-	FillStreamDesc(kJoints, sizeof(DirectX::XMFLOAT4));
-	FillStreamDesc(kWeights, sizeof(DirectX::XMFLOAT4));
-#endif
+		const VertexStream& stream = streamOpt.value();
+		header->Desc[stream.Type].SetOffset((uint)streamOffsets[stream.Type]);
+		header->Desc[stream.Type].SetStride((uint)stream.ElementStride);
+	}
 
-	FillVertexBuffer<DirectX::XMFLOAT3>(vbBuilder, streamOffsets[kPosition], m_meshData.Vertex_Positions);
-	FillVertexBuffer<DirectX::XMFLOAT3>(vbBuilder, streamOffsets[kNormals], m_meshData.Vertex_Normals);
-	FillVertexBuffer<DirectX::XMFLOAT2>(vbBuilder, streamOffsets[kUV0], m_meshData.Vertex_Uvset_0);
-	FillVertexBuffer<DirectX::XMFLOAT2>(vbBuilder, streamOffsets[kUV1], m_meshData.Vertex_Uvset_1);
-	FillVertexBuffer<DirectX::XMFLOAT4>(vbBuilder, streamOffsets[kTangents], m_meshData.Vertex_Tangents);
+	for (auto& streamOpt : m_meshData.VertexStreams)
+	{
+		if (!streamOpt.has_value())
+			continue;
 
-#if false
-	FillVertexBuffer<DirectX::XMFLOAT3>(vbBuilder, streamOffsets[kColour], m_meshData.Vertex_Tangents);
-	FillVertexBuffer<DirectX::XMFLOAT4>(vbBuilder, streamOffsets[kJoints], joints.get(), vertexCount);
-	FillVertexBuffer<DirectX::XMFLOAT4>(vbBuilder, streamOffsets[kWeights], weights.get(), vertexCount);
-#endif
+		const VertexStream& stream = streamOpt.value();
+		const std::size_t sizeInBytes = stream.ElementStride * stream.NumElements;
+
+		auto* data = vbBuilder.Place(streamOffsets[stream.Type]);
+		std::memcpy(
+			data,
+			stream.Data.get(),
+			sizeInBytes);
+	}
+
 	phx::Span<uint8_t> memory = vbBuilder.GetMemory();
 
 	const size_t vbOffset = gpuBuffer.size();

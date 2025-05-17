@@ -5,6 +5,7 @@
 #include <PhxCore/UUID.h>
 #include <PhxCore/StringHash.h>
 #include <PhxRenderer/MeshResource.h>
+#include <PhxRenderer/shaders/ShaderInterop.h>
 #include "CompiledResource.h"
 
 #include <vector>
@@ -16,25 +17,14 @@ namespace phxed
 {
 	class IBlob;
 
-	enum VertexStreamType
-	{
-		Position = 0,
-		Normal,
-		Tangents,
-		Uvset_0,
-		Uvset_1,
-
-		Count,
-	};
-
 	struct VertexStream
 	{
-		VertexStreamType Type;
+		phx::renderer::VertexStreamType Type;
 		std::unique_ptr<uint8_t[]> Data;
 		size_t ElementStride;
 		size_t NumElements;
 
-		VertexStream(VertexStreamType type, size_t elementStride, size_t numElements)
+		VertexStream(phx::renderer::VertexStreamType type, size_t elementStride, size_t numElements)
 			: Type(type)
 			, ElementStride(elementStride)
 			, NumElements(numElements)
@@ -69,9 +59,9 @@ namespace phxed
 
 	struct MeshData final
 	{
-		UUID ID;
+		phx::UUID ID;
 		std::string Name;
-		std::array<std::optional<VertexStream>, VertexStreamType::Count> VertexStreams;
+		std::array<std::optional<VertexStream>, phx::renderer::VertexStream_Count> VertexStreams;
 
 		std::vector<DirectX::XMFLOAT3> Vertex_Positions;
 		std::vector<DirectX::XMFLOAT3> Vertex_Normals;
@@ -102,26 +92,26 @@ namespace phxed
 
 		inline size_t GetVertexCount() const
 		{
-			if (VertexStreams[VertexStreamType::Position].has_value())
-				return VertexStreams[VertexStreamType::Position].value().NumElements;
+			if (VertexStreams[phx::renderer::VertexStream_Position].has_value())
+				return VertexStreams[phx::renderer::VertexStream_Position].value().NumElements;
 
 			return 0;
 		}
 
 		template<typename T>
-		VertexStream& AddVertexStream(VertexStreamType type, size_t numElements)
+		VertexStream& AddVertexStream(phx::renderer::VertexStreamType type, size_t numElements)
 		{
 			return VertexStreams[type].emplace(type, sizeof(T), numElements);
 		}
 
-		VertexStream* GetVertexStream(VertexStreamType type)
+		VertexStream* GetVertexStream(phx::renderer::VertexStreamType type)
 		{
 			return VertexStreams[type].has_value()
 				? &VertexStreams[type].value()
 				: nullptr;
 		}
 
-		const VertexStream* GetVertexStream(VertexStreamType type) const
+		const VertexStream* GetVertexStream(phx::renderer::VertexStreamType type) const
 		{
 			return VertexStreams[type].has_value()
 				? &VertexStreams[type].value()

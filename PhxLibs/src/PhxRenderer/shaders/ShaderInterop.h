@@ -48,26 +48,26 @@ namespace phx::renderer
 	};
 	STATIC_ASSERT_SIZE_OF(VertexStreamDesc, 4);
 
-	enum VertexStreamTypes
+	enum VertexStreamType
 	{
-		kPosition = 0,
-		kTangents,
-		kNormals,
-		kUV0,
-		kUV1,
-		kColour,
-		kJoints,
-		kWeights,
-		kNumStreams,
+		VertexStream_Position = 0,
+		VertexStream_Tangent,
+		VertexStream_Normal,
+		VertexStream_UV0,
+		VertexStream_UV1,
+		VertexStream_Colour,
+		VertexStream_Joint,
+		VertexStream_Weight,
+		VertexStream_Count,
 
 	};
 
 	struct VertexStreamsHeader
 	{
-		VertexStreamDesc Desc[kNumStreams];
+		VertexStreamDesc Desc[VertexStream_Count];
 	};
 
-	STATIC_ASSERT_SIZE_OF(VertexStreamsHeader, 4 * kNumStreams);
+	STATIC_ASSERT_SIZE_OF(VertexStreamsHeader, 4 * VertexStream_Count);
 #ifdef __cplusplus
 }
 #endif

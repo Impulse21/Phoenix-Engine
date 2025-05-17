@@ -1,22 +1,26 @@
 
 #include <PhxCore/Base.h>
 #include <PhxCore/VFS.h>
+#include <PhxCore/SystemTime.h>
+
 #include <PhxEngine/EntryPoint.h>
 
-#include <PhxCore/SystemTime.h>
-#include "MeshResourceCompiler.h"
-#include <fast_obj/fast_obj.h>
-#include <meshoptimizer/meshoptimizer.h>
+#include <Generated/GlobalVariables.h>
 
-#include "Generated/GlobalVariables.h"
+#include "MeshResourceCompiler.h"
+#include "ResourceFileBuilder.h"
+
+#include <fast_obj/fast_obj.h>
+
+#include <meshoptimizer/meshoptimizer.h>
 
 namespace
 {
-
 	// constexpr  size_t kCacheSize = 16;
 	bool ParseObj(const char* filename, phxed::MeshData& meshData)
 	{
-		fastObjMesh* obj = fast_obj_read(filename);
+		std::filesystem::path resolvedPath = phx::IRootFileSystem::Ptr->ResolvePath(filename);
+		fastObjMesh* obj = fast_obj_read(resolvedPath.generic_string().c_str());
 		if (!obj)
 		{
 			PHX_ERROR("Failed to Load. \n\tError {0}\n\tWarn {1}");
@@ -28,13 +32,13 @@ namespace
 		for (uint32_t i = 0; i < obj->face_count; ++i)
 			totalIndices += 3 * (obj->face_vertices[i] - 2);
 
-		phxed::VertexStream& positionStream = meshData.AddVertexStream<DirectX::XMFLOAT3>(phxed::VertexStreamType::Position, totalIndices);
+		phxed::VertexStream& positionStream = meshData.AddVertexStream<DirectX::XMFLOAT3>(phx::renderer::VertexStream_Position, totalIndices);
 		phx::SpanMutable<DirectX::XMFLOAT3> positionData = positionStream.AsSpanMutable<DirectX::XMFLOAT3>();
 
-		phxed::VertexStream& normalsStream = meshData.AddVertexStream<DirectX::XMFLOAT3>(phxed::VertexStreamType::Normal, totalIndices);
+		phxed::VertexStream& normalsStream = meshData.AddVertexStream<DirectX::XMFLOAT3>(phx::renderer::VertexStream_Normal, totalIndices);
 		phx::SpanMutable<DirectX::XMFLOAT3> normalData = normalsStream.AsSpanMutable<DirectX::XMFLOAT3>();
 
-		phxed::VertexStream& uv0Stream = meshData.AddVertexStream<DirectX::XMFLOAT2>(phxed::VertexStreamType::Uvset_0, totalIndices);
+		phxed::VertexStream& uv0Stream = meshData.AddVertexStream<DirectX::XMFLOAT2>(phx::renderer::VertexStream_UV0, totalIndices);
 		phx::SpanMutable<DirectX::XMFLOAT2> uv0Data = uv0Stream.AsSpanMutable<DirectX::XMFLOAT2>();
 
 		size_t vertexOffset = 0;
@@ -97,9 +101,9 @@ namespace
 		// Mesh Optimizer
 		const size_t totalIndices = meshSrc.Vertex_Positions.size();
 
-		const phxed::VertexStream& srcPositionStream = *meshSrc.GetVertexStream(phxed::VertexStreamType::Position);
-		const phxed::VertexStream& srcNormalStream = *meshSrc.GetVertexStream(phxed::VertexStreamType::Normal);
-		const phxed::VertexStream& srcUv0Stream  = *meshSrc.GetVertexStream(phxed::VertexStreamType::Uvset_0);
+		const phxed::VertexStream& srcPositionStream = *meshSrc.GetVertexStream(phx::renderer::VertexStream_Position);
+		const phxed::VertexStream& srcNormalStream = *meshSrc.GetVertexStream(phx::renderer::VertexStream_Normal);
+		const phxed::VertexStream& srcUv0Stream  = *meshSrc.GetVertexStream(phx::renderer::VertexStream_UV0);
 
 		std::array<meshopt_Stream, 3> vertexStream =
 		{
@@ -230,7 +234,8 @@ namespace
 
 		PrintStatistics(mesh);
 	}
-	void CompileObjAndMaterials(const char* filename, const char*)
+
+	void CompileObjAndMaterials(const char* filename, const char* outputPath)
 	{
 		phxed::MeshData mesh = {};
 		if (!ParseObj(filename, mesh))
@@ -251,10 +256,12 @@ namespace
 		phxed::CompiledResource compiledMesh = {};
 		phxed::MeshResourceCompiler::Compile(mesh, compiledMesh);
 
-		// Save compiled resource
+		std::unique_ptr<phx::IBlob> resourceFileBlob = phxed::ResourceFileBuilder::Build(&compiledMesh);
 
+		if (!phx::IRootFileSystem::Ptr->WriteFile(outputPath, resourceFileBlob.get()))
+			PHX_ERROR("Failed to save file '{0}'", outputPath);
+		
 	}
-
 }
 
 class PhxEditor final : public phx::IApplication
@@ -305,11 +312,13 @@ phx::IApplication* phx::CreateApplication()
 
 void PhxEditor::Startup()
 {
-	// phx::FileSystem::Mount("native://", "");
-	// phx::FileSystem::Mount("res://", phx::GlobalPaths::AssetsDirectory);
+	auto& fs = phx::IRootFileSystem::Ptr;
+	fs->Mount("native://", phx::FileSystemFactory::CreateNativeFileSystem());
+	fs->Mount("res://", phx::GlobalPaths::AssetsDirectory);
+
 	// Import Resource
-	const char* filename = "C:/Users/dipao/OneDrive/Documents/Art/SM_Chest_01.obj";
-	CompileObjAndMaterials(filename, "res://modulardungeoncollection");
+	const char* filename = "native://C:/Users/dipao/OneDrive/Documents/Art/SM_Chest_01.obj";
+	CompileObjAndMaterials(filename, "res://modulardungeoncollection/SM_Chest_01.phxmsh");
 
 	// Compile mesh and save it to disk
 }

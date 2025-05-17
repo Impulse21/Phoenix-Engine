@@ -54,7 +54,7 @@ const char* PakFile::FindFilenameByHash(phx::StringHash targetHash)
 	while (left <= right)
 	{
 		size_t mid = left + (right - left) / 2;
-		const PakFileFormat::StringEntry& entry = m_metadata->StringEntries.Get()[mid];
+		const FileFormat::StringEntry& entry = m_metadata->StringEntries.Get()[mid];
 
 		if (entry.Hash == targetHash)
 		{

@@ -29,7 +29,6 @@ namespace phxed
 	public:
 		void ProcessMeshes();
 	private:
-		phx::FileHandle m_fileHandle;
 		std::unordered_map<cgltf_mesh*, std::string> m_meshFilePaths;
 		std::unordered_map<cgltf_image*, std::string> m_texturesPaths;
 		std::unordered_map< cgltf_material*, std::string> m_materialPaths;

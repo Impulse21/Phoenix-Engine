@@ -24,7 +24,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
 
     OffsetHandle metadataChunksOffsetHandle = packFileBuilder.Reserve(m_metadataChunksSize);
 
-    OffsetHandle stringTableOffset = packFileBuilder.ReserveArray<PakFileFormat::StringEntry>(numEntries);
+    OffsetHandle stringTableOffset = packFileBuilder.ReserveArray<FileFormat::StringEntry>(numEntries);
     OffsetHandle stringHeapOffsetHandle = packFileBuilder.Reserve(m_stringHeapSize);
 
     // Calculate the meta chunk sizes as they are part of the header

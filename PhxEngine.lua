@@ -644,6 +644,11 @@ group "PhxLibs"
             phx_lib_src_world_dir.."/**.cpp",
         }
 
+        removefiles {
+            phx_lib_src_world_dir.."/vendor/meshoptimizer/Demo/*.h",
+            phx_lib_src_world_dir.."/vendor/meshoptimizer/Demo/*.cpp",
+        }
+
         includedirs
         {
             phx_lib_src_directory,

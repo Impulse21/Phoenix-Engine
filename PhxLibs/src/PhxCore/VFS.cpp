@@ -11,291 +11,232 @@
 #define PATH_MAX MAX_PATH
 #endif // _WIN32
 
-using namespace phx;
-
-namespace
+namespace phx
 {
-    class NativeFileSystem final : public IFileSystem
+    bool NativeFileSystem::FileExists(std::filesystem::path const& name)
     {
-    public:
-        bool FileExists(std::filesystem::path const& name) override;
-        bool FolderExists(std::filesystem::path const& name) override;
-        std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
-        bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
+        return std::filesystem::exists(name) && std::filesystem::is_regular_file(name);
+    }
 
-        std::filesystem::path ResolvePath(std::filesystem::path const& name) override
-        {
-            return name;
-        }
-    };
-
-    class RelativeFileSystem final : public IFileSystem
+    bool NativeFileSystem::FolderExists(std::filesystem::path const& name)
     {
-    public:
-        RelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::filesystem::path& baseBath);
+        return std::filesystem::exists(name) && std::filesystem::is_directory(name);
+    }
 
-        [[nodiscard]] std::filesystem::path const& GetBasePath() const { return this->m_basePath; }
+    std::unique_ptr<IBlob> NativeFileSystem::ReadFile(std::filesystem::path const& name)
+    {
+        std::ifstream file(name, std::ios::binary);
 
-        bool FileExists(std::filesystem::path const& name) override;
-        bool FolderExists(std::filesystem::path const& name) override;
-        std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
-        bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
-
-        std::filesystem::path ResolvePath(std::filesystem::path const& name) override
+        if (!file.is_open())
         {
-            return this->m_basePath / name.relative_path();
+            // file does not exist or is locked
+
+            return nullptr;
         }
 
-    private:
-        std::shared_ptr<IFileSystem> m_underlyingFS;
-        std::filesystem::path m_basePath;
-    };
+        file.seekg(0, std::ios::end);
+        uint64_t size = static_cast<uint64_t>(file.tellg());
+        file.seekg(0, std::ios::beg);
 
-    class RootFileSystem final : public IRootFileSystem
-    {
-    public:
-        void Mount(const std::filesystem::path& path, std::shared_ptr<IFileSystem> fs) override;
-        void Mount(const std::filesystem::path& path, const std::filesystem::path& nativePath) override;
-        bool Unmount(const std::filesystem::path& path) override;
+        if (size > static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))
+        {
+            PHX_CORE_ERROR("File larger then size_t");
+            return nullptr;
+        }
 
-        bool FileExists(std::filesystem::path const& name) override;
-        bool FolderExists(std::filesystem::path const& name) override;
-        std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
-        bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
-        std::filesystem::path ResolvePath(std::filesystem::path const& name) override;
+        char* Data = static_cast<char*>(malloc(size));
 
-    protected:
-        bool FindMountPoint(const std::filesystem::path& path, std::filesystem::path* pRelativePath, IFileSystem** ppFS);
+        if (Data == nullptr)
+        {
+            PHX_CORE_ERROR("Out of memory");
+            return nullptr;
+        }
 
-    private:
-        std::vector<std::pair<std::string, std::shared_ptr<IFileSystem>>> m_mountPoints;
-    };
-}
+        file.read(Data, size);
 
+        if (!file.good())
+        {
+            PHX_CORE_ERROR("Reading error");
+            free(Data);
+            return nullptr;
+        }
 
-bool NativeFileSystem::FileExists(std::filesystem::path const& name)
-{
-    return std::filesystem::exists(name) && std::filesystem::is_regular_file(name);
-}
-
-bool NativeFileSystem::FolderExists(std::filesystem::path const& name)
-{
-    return std::filesystem::exists(name) && std::filesystem::is_directory(name);
-}
-
-std::unique_ptr<IBlob> NativeFileSystem::ReadFile(std::filesystem::path const& name)
-{
-    std::ifstream file(name, std::ios::binary);
-
-    if (!file.is_open())
-    {
-        // file does not exist or is locked
-
-        return nullptr;
+        return std::make_unique<Blob>(Data, size);
     }
 
-    file.seekg(0, std::ios::end);
-    uint64_t size = static_cast<uint64_t>(file.tellg());
-    file.seekg(0, std::ios::beg);
-
-    if (size > static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))
+    bool NativeFileSystem::WriteFile(std::filesystem::path const& name, Span<char> Data)
     {
-        PHX_CORE_ERROR("File larger then size_t");
-        return nullptr;
+        std::ofstream file(name, std::ios::binary);
+
+        if (!file.is_open())
+        {
+            PHX_CORE_ERROR("File does not exist or is locked");
+            return false;
+        }
+
+        if (Data.Size() > 0)
+        {
+            file.write(Data.begin(), static_cast<std::streamsize>(Data.Size()));
+        }
+
+        if (!file.good())
+        {
+            PHX_CORE_ERROR("Failed to write file.");
+            return false;
+        }
+
+        return true;
     }
 
-    char* Data = static_cast<char*>(malloc(size));
-
-    if (Data == nullptr)
+    RelativeFileSystem::RelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::filesystem::path& baseBath)
+        : m_underlyingFS(std::move(fs))
+        , m_basePath(baseBath.lexically_normal())
     {
-        PHX_CORE_ERROR("Out of memory");
-        return nullptr;
     }
 
-    file.read(Data, size);
-
-    if (!file.good())
+    bool RelativeFileSystem::FileExists(std::filesystem::path const& name)
     {
-        PHX_CORE_ERROR("Reading error");
-        free(Data);
-        return nullptr;
+        return this->m_underlyingFS->FileExists(this->m_basePath / name.relative_path());
     }
 
-    return std::make_unique<Blob>(Data, size);
-}
-
-bool NativeFileSystem::WriteFile(std::filesystem::path const& name, Span<char> Data)
-{
-    std::ofstream file(name, std::ios::binary);
-
-    if (!file.is_open())
+    bool RelativeFileSystem::FolderExists(std::filesystem::path const& name)
     {
-        PHX_CORE_ERROR("File does not exist or is locked");
+        return this->m_underlyingFS->FolderExists(this->m_basePath / name.relative_path());
+    }
+
+    std::unique_ptr<IBlob> RelativeFileSystem::ReadFile(std::filesystem::path const& name)
+    {
+        return this->m_underlyingFS->ReadFile(this->m_basePath / name.relative_path());
+    }
+
+    bool RelativeFileSystem::WriteFile(std::filesystem::path const& name, Span<char> Data)
+    {
+        return this->m_underlyingFS->WriteFile(this->m_basePath / name.relative_path(), Data);
+    }
+
+    void RootFileSystem::Mount(const std::filesystem::path& path, std::shared_ptr<IFileSystem> fs)
+    {
+        if (this->FindMountPoint(path, nullptr, nullptr))
+        {
+            PHX_CORE_ERROR("Cannot mount a filesystem at %s: there is another FS that includes this path", path.generic_string().c_str());
+
+            return;
+        }
+
+        this->m_mountPoints.push_back(std::make_pair(path.lexically_normal().generic_string(), fs));
+    }
+
+    void RootFileSystem::Mount(const std::filesystem::path& path, const std::filesystem::path& nativePath)
+    {
+        this->Mount(path, std::make_shared<RelativeFileSystem>(std::make_shared<NativeFileSystem>(), nativePath));
+    }
+
+    bool RootFileSystem::Unmount(const std::filesystem::path& path)
+    {
+        std::string spath = path.lexically_normal().generic_string();
+
+        for (size_t index = 0; index < this->m_mountPoints.size(); index++)
+        {
+            if (this->m_mountPoints[index].first == spath)
+            {
+                this->m_mountPoints.erase(this->m_mountPoints.begin() + index);
+                return true;
+            }
+        }
+
         return false;
     }
 
-    if (Data.Size() > 0)
+    bool RootFileSystem::FileExists(std::filesystem::path const& name)
     {
-        file.write(Data.begin(), static_cast<std::streamsize>(Data.Size()));
-    }
+        std::filesystem::path relativePath;
+        IFileSystem* fs = nullptr;
 
-    if (!file.good())
-    {
-        PHX_CORE_ERROR("Failed to write file.");
+        if (this->FindMountPoint(name, &relativePath, &fs))
+        {
+            return fs->FileExists(relativePath);
+        }
+
         return false;
     }
 
-    return true;
-}
-
-RelativeFileSystem::RelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::filesystem::path& baseBath)
-    : m_underlyingFS(std::move(fs))
-    , m_basePath(baseBath.lexically_normal())
-{
-}
-
-bool RelativeFileSystem::FileExists(std::filesystem::path const& name)
-{
-    return this->m_underlyingFS->FileExists(this->m_basePath / name.relative_path());
-}
-
-bool RelativeFileSystem::FolderExists(std::filesystem::path const& name)
-{
-    return this->m_underlyingFS->FolderExists(this->m_basePath / name.relative_path());
-}
-
-std::unique_ptr<IBlob> RelativeFileSystem::ReadFile(std::filesystem::path const& name)
-{
-    return this->m_underlyingFS->ReadFile(this->m_basePath / name.relative_path());
-}
-
-bool RelativeFileSystem::WriteFile(std::filesystem::path const& name, Span<char> Data)
-{
-    return this->m_underlyingFS->WriteFile(this->m_basePath / name.relative_path(), Data);
-}
-
-void RootFileSystem::Mount(const std::filesystem::path& path, std::shared_ptr<IFileSystem> fs)
-{
-    if (this->FindMountPoint(path, nullptr, nullptr))
+    bool RootFileSystem::FolderExists(std::filesystem::path const& name)
     {
-        PHX_CORE_ERROR("Cannot mount a filesystem at %s: there is another FS that includes this path", path.generic_string().c_str());
+        std::filesystem::path relativePath;
+        IFileSystem* fs = nullptr;
 
-        return;
-    }
-
-    this->m_mountPoints.push_back(std::make_pair(path.lexically_normal().generic_string(), fs));
-}
-
-void RootFileSystem::Mount(const std::filesystem::path& path, const std::filesystem::path& nativePath)
-{
-    this->Mount(path, std::make_shared<RelativeFileSystem>(std::make_shared<NativeFileSystem>(), nativePath));
-}
-
-bool RootFileSystem::Unmount(const std::filesystem::path& path)
-{
-    std::string spath = path.lexically_normal().generic_string();
-
-    for (size_t index = 0; index < this->m_mountPoints.size(); index++)
-    {
-        if (this->m_mountPoints[index].first == spath)
+        if (this->FindMountPoint(name, &relativePath, &fs))
         {
-            this->m_mountPoints.erase(this->m_mountPoints.begin() + index);
-            return true;
+            return fs->FolderExists(relativePath);
         }
+
+        return false;
     }
 
-    return false;
-}
-
-bool RootFileSystem::FileExists(std::filesystem::path const& name)
-{
-    std::filesystem::path relativePath;
-    IFileSystem* fs = nullptr;
-
-    if (this->FindMountPoint(name, &relativePath, &fs))
+    std::unique_ptr<IBlob> RootFileSystem::ReadFile(std::filesystem::path const& name)
     {
-        return fs->FileExists(relativePath);
-    }
+        std::filesystem::path relativePath;
+        IFileSystem* fs = nullptr;
 
-    return false;
-}
-
-bool RootFileSystem::FolderExists(std::filesystem::path const& name)
-{
-    std::filesystem::path relativePath;
-    IFileSystem* fs = nullptr;
-
-    if (this->FindMountPoint(name, &relativePath, &fs))
-    {
-        return fs->FolderExists(relativePath);
-    }
-
-    return false;
-}
-
-std::unique_ptr<IBlob> RootFileSystem::ReadFile(std::filesystem::path const& name)
-{
-    std::filesystem::path relativePath;
-    IFileSystem* fs = nullptr;
-
-    if (this->FindMountPoint(name, &relativePath, &fs))
-    {
-        return fs->ReadFile(relativePath);
-    }
-
-    return nullptr;
-}
-
-bool RootFileSystem::WriteFile(std::filesystem::path const& name, Span<char> Data)
-{
-    std::filesystem::path relativePath;
-    IFileSystem* fs = nullptr;
-
-    if (this->FindMountPoint(name, &relativePath, &fs))
-    {
-        return fs->WriteFile(relativePath, Data);
-    }
-
-    return false;
-}
-
-std::filesystem::path RootFileSystem::ResolvePath(std::filesystem::path const& name)
-{
-    std::filesystem::path relativePath;
-    IFileSystem* fs = nullptr;
-
-    if (this->FindMountPoint(name, &relativePath, &fs))
-    {
-        return fs->ResolvePath(relativePath);
-    }
-
-    return name;
-}
-
-bool RootFileSystem::FindMountPoint(const std::filesystem::path& path, std::filesystem::path* pRelativePath, IFileSystem** ppFS)
-{
-    std::string spath = path.lexically_normal().generic_string();
-
-    for (auto it : this->m_mountPoints)
-    {
-        if (spath.find(it.first, 0) == 0 && ((spath.length() == it.first.length()) || (spath[it.first.length() - 1] == '/')))
+        if (this->FindMountPoint(name, &relativePath, &fs))
         {
-            if (pRelativePath)
-            {
-                std::string relative = spath.substr(it.first.size());
-                *pRelativePath = relative;
-            }
-
-            if (ppFS)
-            {
-                *ppFS = it.second.get();
-            }
-
-            return true;
+            return fs->ReadFile(relativePath);
         }
+
+        return nullptr;
     }
 
-    return false;
+    bool RootFileSystem::WriteFile(std::filesystem::path const& name, Span<char> Data)
+    {
+        std::filesystem::path relativePath;
+        IFileSystem* fs = nullptr;
+
+        if (this->FindMountPoint(name, &relativePath, &fs))
+        {
+            return fs->WriteFile(relativePath, Data);
+        }
+
+        return false;
+    }
+
+    std::filesystem::path RootFileSystem::ResolvePath(std::filesystem::path const& name)
+    {
+        std::filesystem::path relativePath;
+        IFileSystem* fs = nullptr;
+
+        if (this->FindMountPoint(name, &relativePath, &fs))
+        {
+            return fs->ResolvePath(relativePath);
+        }
+
+        return name;
+    }
+
+    bool RootFileSystem::FindMountPoint(const std::filesystem::path& path, std::filesystem::path* pRelativePath, IFileSystem** ppFS)
+    {
+        std::string spath = path.lexically_normal().generic_string();
+
+        for (auto it : this->m_mountPoints)
+        {
+            if (spath.find(it.first, 0) == 0 && ((spath.length() == it.first.length()) || (spath[it.first.length() - 1] == '/')))
+            {
+                if (pRelativePath)
+                {
+                    std::string relative = spath.substr(it.first.size());
+                    *pRelativePath = relative;
+                }
+
+                if (ppFS)
+                {
+                    *ppFS = it.second.get();
+                }
+
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
 
 namespace phx::FileSystemFactory
