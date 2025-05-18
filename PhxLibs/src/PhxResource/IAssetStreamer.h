@@ -43,6 +43,20 @@ namespace phx
 				rhi::TextureHandle Texture;
 			};
 		} Destination;
+
+		template<typename T>
+		static StreamRequest Create(StreamFileHandle fileHandle, uint64_t offset, uint32_t size, MemoryRegion<T>& outRegion)
+		{
+			outRegion = MemoryRegion<T>(std::make_unique<char[]>(size));
+
+			return {
+				.FileHandle = fileHandle,
+				.SrcSize = size,
+				.DestSize = size,
+				.Offset = offset,
+				.Destination = {.Memory = outRegion.Get() }
+			};
+		}
 	};
 
 	using StreamCallback = std::function<void()>;

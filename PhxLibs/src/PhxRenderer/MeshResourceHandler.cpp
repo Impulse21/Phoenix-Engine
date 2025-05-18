@@ -58,7 +58,15 @@ RefCountPtr<IResource> phx::renderer::MeshResourceHandler::LoadFromPak(std::shar
 
 RefCountPtr<IResource> phx::renderer::MeshResourceHandler::LoadLoose(std::shared_ptr<IAssetStreamer> const& assetStreamer, StreamFileHandle fileHandle) const
 {
-	std::unique_ptr<MeshResource> meshResource = std::make_unique<MeshResource>();
+	auto retVal = RefCountPtr<MeshResource>::Create(new MeshResource());
+
+	ResourceFile::Load(
+		assetStreamer,
+		fileHandle,
+		[retVal](ResourceFile* resourceFile, ResourceFileFormat::MetadataHeader metadataHeader)
+		{
+
+		});
 
 	std::shared_ptr<phx::ResourceFile> resourceFile = std::make_shared<phx::ResourceFile>();
 
@@ -74,5 +82,5 @@ RefCountPtr<IResource> phx::renderer::MeshResourceHandler::LoadLoose(std::shared
 			// Once header is loaded, load metadata
 		});
 
-	return RefCountPtr<IResource>::Create(meshResource.release());
+	return retVal;
 }
