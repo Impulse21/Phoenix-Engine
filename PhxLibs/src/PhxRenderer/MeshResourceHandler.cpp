@@ -65,7 +65,7 @@ RefCountPtr<IResource> phx::renderer::MeshResourceHandler::LoadLoose(std::shared
 		fileHandle,
 		[retVal](ResourceFile* resourceFile, ResourceFileFormat::MetadataHeader metadataHeader)
 		{
-
+			// Load
 		});
 
 	std::shared_ptr<phx::ResourceFile> resourceFile = std::make_shared<phx::ResourceFile>();
