@@ -9,6 +9,8 @@
 #include <PhxCore/CommandLineArgs.h>
 #include <PhxCore/VFS.h>
 
+#include <PhxRenderer/DefaultRenderSystem.h>
+
 #include <PhxRhi/RHICore.h>
 
 using namespace phx;
@@ -43,14 +45,12 @@ namespace phx
 
 			Memory::Initialize({ .VirtualMemorySize = 16_GiB });
 
-			phx::IRootFileSystem::Ptr = new RootFileSystem();
 			phx::IApplication::Ptr = phx::CreateApplication();
 		}
 
 		void Initialize(void* windowHandle)
 		{
 			auto* app = phx::IApplication::Ptr;
-
 			uint32_t w, h;
 			app->GetDefaultWindowSize(w, h);
 
@@ -60,6 +60,10 @@ namespace phx
 				});
 
 			app->SetWindowHandle(windowHandle);
+
+			phx::IRootFileSystem::Ptr = new RootFileSystem();
+			phx::gfx::IRenderSystem::Ptr = new gfx::DefaultRenderSystem();
+
 			app->Startup();
 		}
 
@@ -94,12 +98,10 @@ namespace phx
 			delete phx::IApplication::Ptr;
 			phx::IApplication::Ptr = nullptr;
 
-			phx::rhi::Finalize();
-
+			delete gfx::IRenderSystem::Ptr;
 			delete phx::IRootFileSystem::Ptr;
+
+			phx::rhi::Finalize();
 		}
-
-
 	}
-
 }

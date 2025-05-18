@@ -8,10 +8,14 @@ namespace phx::renderer
 	class MeshResourceHandler final : public phx::IResourceHandler
 	{
 	public:
-		RefCountPtr<IResource> Load(
+		RefCountPtr<IResource> LoadFromPak(
 			std::shared_ptr<IAssetStreamer> const& assetStreamer,
 			StreamFileHandle filehandle,
 			PakFileFormat::AssetEntry const& assetEntry) const override;
+
+		RefCountPtr<IResource> LoadLoose(
+			std::shared_ptr<IAssetStreamer> const& assetStreamer,
+			StreamFileHandle filehandle) const override;
 	};
 }
 

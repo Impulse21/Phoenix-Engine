@@ -1,15 +1,18 @@
 #include "PhxRenderer_pch.h"
 
+#include <PhxResource/ResourceFile.h>
+
 #include "MeshResourceHandler.h"
 #include "MeshResource.h"
 
-#include <PhxResource/ResourceFileFormat.h>
+
 #include <PhxRhi/RHICore.h>
 
 using namespace phx;
 using namespace phx::renderer;
 
-RefCountPtr<IResource> phx::renderer::MeshResourceHandler::Load(std::shared_ptr<IAssetStreamer> const& assetStreamer, StreamFileHandle filehandle, PakFileFormat::AssetEntry const& assetEntry) const
+
+RefCountPtr<IResource> phx::renderer::MeshResourceHandler::LoadFromPak(std::shared_ptr<IAssetStreamer> const& assetStreamer, StreamFileHandle filehandle, PakFileFormat::AssetEntry const& assetEntry) const
 {
 	auto metadata = reinterpret_cast<const MeshMetadata*>(assetEntry.MetadataChunk.Get());
 
@@ -50,5 +53,26 @@ RefCountPtr<IResource> phx::renderer::MeshResourceHandler::Load(std::shared_ptr<
 			resource->m_status = 0;
 		});
 	
+	return RefCountPtr<IResource>::Create(meshResource.release());
+}
+
+RefCountPtr<IResource> phx::renderer::MeshResourceHandler::LoadLoose(std::shared_ptr<IAssetStreamer> const& assetStreamer, StreamFileHandle fileHandle) const
+{
+	std::unique_ptr<MeshResource> meshResource = std::make_unique<MeshResource>();
+
+	std::shared_ptr<phx::ResourceFile> resourceFile = std::make_shared<phx::ResourceFile>();
+
+	assetStreamer->Submit({
+			.DebugName = "Resource Header Load",
+			.FileHandle = fileHandle,
+			.SrcSize = sizeof(PakFileFormat::Header),
+			.DestSize = sizeof(PakFileFormat::Header),
+			.Destination = {.Memory = &resourceFile->Header }
+		},
+		[resourceFile] 
+		{
+			// Once header is loaded, load metadata
+		});
+
 	return RefCountPtr<IResource>::Create(meshResource.release());
 }

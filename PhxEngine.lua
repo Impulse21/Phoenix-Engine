@@ -65,7 +65,8 @@ project_vendor_yaml     = 'yaml-cpp'
 generated_shaders_dir = workspace_directory..'/GeneratedShaders'
 generated_code_dir = workspace_directory..'/GeneratedCode'
 
-assets_directory = workspace_directory.."/../assets"
+default_project_dir = workspace_directory.."/../projects/sandbox"
+art_src_dir = workspace_directory.."/../../Art"
 
 -- Utility Functions
 function ExcludePlatformSpecificCode(rootPath)
@@ -241,7 +242,9 @@ workspace "PhxEngine"
 	globalVariableHeader = io.open(path.getabsolute(generated_code_dir)..'/Generated/GlobalVariables.h', 'wb');
 	globalVariableHeader:write('namespace phx::GlobalPaths\n{\n');
 	globalVariableHeader:write('\tconstexpr const char* WorkspaceDirectory = "'..path.getabsolute(workspace_directory)..'/";\n');
-	globalVariableHeader:write('\tconstexpr const char* AssetsDirectory = "'..path.getabsolute(assets_directory)..'/";\n');
+	globalVariableHeader:write('\tconstexpr const char* DefaultProjectDir = "'..path.getabsolute(default_project_dir)..'/";\n');
+    globalVariableHeader:write('\tconstexpr const char* ArtSrcDirectory = "'..path.getabsolute(art_src_dir)..'/";\n');
+    
 	--globalVariableHeader:write('\tstatic const char* ShaderCompilerExecutableName = "'..ShaderCompilerExecutableName..'";\n');
 	--globalVariableHeader:write('\tstatic const char* ShaderSourceDirectory = "'..path.getabsolute(SourceShadersDirectory)..'/";\n');
 	globalVariableHeader:write('};\n');
@@ -554,6 +557,7 @@ group "PhxLibs"
             phx_lib_src_directory,
             phx_vendor_src_imgui_dir,
             phx_lib_vendor_directory.."/spdlog/include",
+            phx_lib_vendor_directory.."/entt",
         }
 
         filter('platforms:'..clang_win64_d3d12)

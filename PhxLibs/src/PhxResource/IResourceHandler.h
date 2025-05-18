@@ -20,10 +20,14 @@ namespace phx
 	class IResourceHandler
 	{
 	public:
-		virtual RefCountPtr<IResource> Load(
+		virtual RefCountPtr<IResource> LoadFromPak(
 			std::shared_ptr<IAssetStreamer> const& assetStreamer,
 			StreamFileHandle filehandle,
 			PakFileFormat::AssetEntry const& assetEntry) const = 0;
+
+		virtual RefCountPtr<IResource> LoadLoose(
+			std::shared_ptr<IAssetStreamer> const& assetStreamer,
+			StreamFileHandle filehandle) const = 0;
 
 		virtual ~IResourceHandler() = default;
 	};

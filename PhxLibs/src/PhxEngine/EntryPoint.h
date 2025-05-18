@@ -97,8 +97,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*l
 	int argc = 0;
 	LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 
-	phx::EngineCore::PreInitialize(argc, argv);
-
 	WNDCLASS wc = {};
 	wc.lpfnWndProc = WindowProc;
 	wc.hInstance = hInstance;
@@ -106,6 +104,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*l
 
 	RegisterClass(&wc);
 
+	// Sets up low level systems
+	phx::EngineCore::PreInitialize(argc, argv);
 	auto* app = phx::IApplication::Ptr;
 	std::wstring appNameW;
 	phx::StringConvert(app->GetName(), appNameW);
@@ -134,6 +134,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*l
 
 	ShowWindow(hwnd, nCmdShow);
 
+
+	// Sets up mid level systems
 	phx::EngineCore::Initialize(hwnd);
 
 

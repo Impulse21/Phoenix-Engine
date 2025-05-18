@@ -59,6 +59,7 @@ namespace phx
 
 		virtual bool FileExists(std::filesystem::path const& name) = 0;
 		virtual bool FolderExists(std::filesystem::path const& name) = 0;
+		virtual bool FolderCreate(std::filesystem::path const& name) = 0;
 		virtual std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) = 0;
 
 		virtual bool WriteFile(std::filesystem::path const& name, Span<char> Data) = 0;
@@ -91,8 +92,9 @@ namespace phx
 		std::unique_ptr<IBlob> CreateBlob(void* Data, size_t size);
 	}
 
-	namespace VFS
+	namespace FileSystem
 	{
+		std::filesystem::path GetWorkingDirectory();
 		std::filesystem::path GetDirectoryWithExecutable();
 		std::string GetFileNameWithoutExt(std::string const& path);
 		std::string GetFileExt(std::string const& path);
@@ -105,6 +107,7 @@ namespace phx
 	public:
 		bool FileExists(std::filesystem::path const& name) override;
 		bool FolderExists(std::filesystem::path const& name) override;
+		bool FolderCreate(std::filesystem::path const& name) override;
 		std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
 		bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
 
@@ -123,6 +126,7 @@ namespace phx
 
 		bool FileExists(std::filesystem::path const& name) override;
 		bool FolderExists(std::filesystem::path const& name) override;
+		bool FolderCreate(std::filesystem::path const& name) override;
 		std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
 		bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
 
@@ -144,7 +148,9 @@ namespace phx
 		bool Unmount(const std::filesystem::path& path) override;
 
 		bool FileExists(std::filesystem::path const& name) override;
-		bool FolderExists(std::filesystem::path const& name) override;
+		bool FolderExists(std::filesystem::path const& name) override; 
+		bool FolderCreate(std::filesystem::path const& name) override;
+
 		std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
 		bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
 		std::filesystem::path ResolvePath(std::filesystem::path const& name) override;

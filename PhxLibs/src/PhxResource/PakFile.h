@@ -9,7 +9,7 @@
 
 namespace phx
 {
-	class PakFile : public RefCounter<IResource>
+	class PakFile final : public RefCounter<IResource>
 	{
 	public:
 		PakFile(std::shared_ptr<IAssetStreamer> assetStreamer, std::filesystem::path const& filePath, std::filesystem::path const& resolvedFilePath);

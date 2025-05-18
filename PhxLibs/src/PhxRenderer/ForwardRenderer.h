@@ -16,11 +16,11 @@ namespace phx
 
 namespace phx::gfx
 {
+
 	struct RenderMeshComponent
 	{
 		RefCountPtr<IResource> MeshResource;
 	};
-
 	namespace ForwardRenderPasses
 	{
 		enum
@@ -59,7 +59,7 @@ namespace phx::gfx
 		void OnRender();
 
 	private:
-		std::vector<std::shared_ptr<IRenderSystem>> m_renderSystems;
+		std::vector<std::shared_ptr<IRenderSubSystem>> m_renderSystems;
 		std::vector<uint32_t> m_passMasks;
 		std::vector<void*> m_cachedData;
 

@@ -77,7 +77,7 @@ void phxed::MeshResourceCompiler::BuildVertexBuffer(std::vector<uint8_t>& gpuBuf
 	// add new entires. Will deffer to a later time as I wont to get things
 	// working for now.
 
-	PHX_ASSERT(!m_meshData.Vertex_Positions.empty());
+	PHX_ASSERT(m_meshData.GetVertexStream(phx::renderer::VertexStream_Position));
 
 	BinaryBuilder vbBuilder;
 	OffsetHandle headerOffset = vbBuilder.Reserve<renderer::VertexStreamsHeader>();

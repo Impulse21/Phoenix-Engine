@@ -190,7 +190,7 @@ int wmain(int argc, wchar_t** argv)
 		{
 			World::RegisterReflection();
 			World world = {};
-			std::string directory = VFS::GetFileNameWithoutExt(outputFilename);
+			std::string directory = FileSystem::GetFileNameWithoutExt(outputFilename);
 			phx::GltfWorldImporter::Import(gltfData, world, directory.c_str());
 
 			// world->PackFile = outputFilename;

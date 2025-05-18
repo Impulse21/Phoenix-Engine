@@ -97,7 +97,8 @@ RefCountPtr<IResource> ResourceManger::Get(std::filesystem::path const& path)
 	// that just strip out data a single string.
 	// way to many allocations probably make this code really really slow.
 
-	StringHash filenameHash(path.generic_string());
+	std::string filename = path.generic_string();
+	StringHash filenameHash(filename);
 
 	{
 		std::scoped_lock _(ms_cacheMutex);
@@ -133,13 +134,25 @@ RefCountPtr<IResource> ResourceManger::Get(std::filesystem::path const& path)
 		const PakFileFormat::AssetEntry* entry = pakFile->FindEntryByHash(StringHash(path.filename().generic_string()));
 		if (entry)
 		{
-			resource = handlerItr->second->Load(ms_assetStreamer, pakFile->GetFileHandle(), *entry);
+			PHX_CORE_INFO(
+				"Loading Resource '{0}' from Pak file '{1}'",
+				filename.c_str(),
+				pakFile->GetFilename().c_str());
+
+			resource = handlerItr->second->LoadFromPak(ms_assetStreamer, pakFile->GetFileHandle(), *entry);
 		}
 	}
 
 	if (!resource)
 	{
-		PHX_CORE_ERROR("Loading from disk is not currently supported");
+		PHX_CORE_INFO(
+			"Loading Resource '{0}' from disk",
+			filename.c_str());
+
+		auto resolvedPath = IRootFileSystem::Ptr->ResolvePath(path);
+		StreamFileHandle fileHandle = ms_assetStreamer->OpenFile(resolvedPath);
+
+		resource = handlerItr->second->LoadLoose(ms_assetStreamer, fileHandle);
 	}
 
 	if (resource)

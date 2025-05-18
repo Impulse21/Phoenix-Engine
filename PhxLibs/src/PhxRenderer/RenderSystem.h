@@ -1,5 +1,8 @@
 #pragma once
 
+#include <memory>
+#include <PhxRenderer/RenderSubSystem.h>
+
 namespace phx
 {
 	class World;
@@ -11,6 +14,9 @@ namespace phx
 
 namespace phx::gfx
 {
+	template<typename T>
+	concept RenderSubSystemType = std::is_base_of_v<IRenderSubSystem, T>;
+
 	class IRenderSystem
 	{
 	public:
@@ -19,8 +25,20 @@ namespace phx::gfx
 	public:
 		virtual ~IRenderSystem() = default;
 
+		virtual void Initialize() = 0;
 		virtual void Finalize() = 0;
-		virtual void* OnPreRender() = 0;
+
+		virtual void RegisterObservers(phx::World& world) = 0;
+
+		virtual void OnPreRender(World& world) = 0;
 		virtual void OnRender(rhi::CommandCtx* ctx, void* cachedData) = 0;
+
+		virtual void RegisterSubSystem(uint32_t passMask, std::shared_ptr<IRenderSubSystem> subSystem) = 0;
+
+		template<RenderSubSystemType TSubSystem>
+		void RegisterSubSystem(uint32_t passMask)
+		{
+			RegisterSubSystem(passMask, std::make_shared<TSubSystem>());
+		}
 	};
 }

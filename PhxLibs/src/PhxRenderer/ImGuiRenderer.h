@@ -3,7 +3,7 @@
 #include "imgui.h"
 
 #include <PhxRhi/RHITypes.h>
-#include <PhxRenderer/RenderSystem.h>
+#include <PhxRenderer/RenderSubSystem.h>
 
 namespace phx
 {
@@ -18,7 +18,7 @@ namespace phx::rhi
 
 namespace phx::gfx
 {
-	class ImGuiRenderSystem final : public IRenderSystem
+	class ImGuiRenderSystem final : public IRenderSubSystem
 	{
 	public:
 		void Initialize(IFileSystem* fs, void* windowHandle, bool enableDocking = false);

@@ -1,7 +1,15 @@
 
 #include <PhxCore/Base.h>
 #include <PhxCore/VFS.h>
+#include <PhxCore/ThreadPool.h>
 #include <PhxCore/SystemTime.h>
+
+#include <PhxWorld/WorldComponents.h>
+#include <PhxWorld/Entity.h>
+#include <PhxWorld/World.h>
+#include <PhxWorld/WorldSerializer.h>
+
+#include <PhxRenderer/RenderSystem.h>
 
 #include <PhxEngine/EntryPoint.h>
 
@@ -19,14 +27,16 @@ namespace
 	// constexpr  size_t kCacheSize = 16;
 	bool ParseObj(const char* filename, phxed::MeshData& meshData)
 	{
-		std::filesystem::path resolvedPath = phx::IRootFileSystem::Ptr->ResolvePath(filename);
-		fastObjMesh* obj = fast_obj_read(resolvedPath.generic_string().c_str());
+		std::filesystem::path resolvedFilePath = phx::IRootFileSystem::Ptr->ResolvePath(filename);
+		std::string resolvedFilename = resolvedFilePath.generic_string();
+		fastObjMesh* obj = fast_obj_read(resolvedFilename.c_str());
 		if (!obj)
 		{
-			PHX_ERROR("Failed to Load. \n\tError {0}\n\tWarn {1}");
+			PHX_ERROR("Failed to Load OBJ Mesh '{0}'.", filename);
 			return false;
 		}
 
+		PHX_INFO("Loaded '{0}' with fast obj", filename);
 		size_t totalIndices = 0;
 
 		for (uint32_t i = 0; i < obj->face_count; ++i)
@@ -99,7 +109,7 @@ namespace
 	phxed::MeshData GenerateMeshIndices(phxed::MeshData const& meshSrc, std::vector<uint32_t>& outRemap)
 	{
 		// Mesh Optimizer
-		const size_t totalIndices = meshSrc.Vertex_Positions.size();
+		const size_t totalIndices = meshSrc.GetVertexCount();
 
 		const phxed::VertexStream& srcPositionStream = *meshSrc.GetVertexStream(phx::renderer::VertexStream_Position);
 		const phxed::VertexStream& srcNormalStream = *meshSrc.GetVertexStream(phx::renderer::VertexStream_Normal);
@@ -213,11 +223,12 @@ namespace
 		phx::CpuTimeStep optimizeTime = timer.Elapsed();
 
 		timer.Reset();
+		phxed::VertexStream* posStream = mesh.GetVertexStream(phx::renderer::VertexStream_Position);
 		meshopt_Stream shadowStream =
 			meshopt_Stream{
-				.data = mesh.Vertex_Positions.data(),
-				.size = sizeof(mesh.Vertex_Positions[0]),
-				.stride = sizeof(mesh.Vertex_Positions[0])
+				.data = posStream->Data.get(),
+				.size = posStream->ElementStride,
+				.stride = posStream->ElementStride
 		};
 
 		mesh.ShadowIndices.resize(totalIndices);
@@ -258,9 +269,38 @@ namespace
 
 		std::unique_ptr<phx::IBlob> resourceFileBlob = phxed::ResourceFileBuilder::Build(&compiledMesh);
 
-		if (!phx::IRootFileSystem::Ptr->WriteFile(outputPath, resourceFileBlob.get()))
+		auto fs = phx::IRootFileSystem::Ptr;
+		fs->FolderCreate(outputPath);
+
+		if (!fs->WriteFile(outputPath, resourceFileBlob.get()))
 			PHX_ERROR("Failed to save file '{0}'", outputPath);
 		
+	}
+
+	void GenerateTestResources(const char* worldOutput)
+	{
+		const char* testResourceOutput = "res://modulardungeoncollection/SM_Chest_01.phxmsh";
+
+		// Save Resource
+		phx::ThreadPool::SubmitTask([&]() {
+
+			const char* filename = "art://SM_Chest_01.obj";
+			PHX_INFO("Compiling and Exporting test resource '{0}'", filename);
+			CompileObjAndMaterials(filename, testResourceOutput);
+		});
+
+		// Save World
+		phx::ThreadPool::SubmitTask([&]() {
+			phx::World world;
+
+			phx::Entity entity = world.CreateEntity("SM_Chest_01");
+			phx::MeshComponent& meshComp = entity.AddComponent<phx::MeshComponent>();
+			meshComp.Mesh = testResourceOutput;
+
+			phx::WorldSerializer::Save(phx::IRootFileSystem::Ptr, worldOutput, world);
+		});
+
+		phx::ThreadPool::Wait();
 	}
 }
 
@@ -297,6 +337,7 @@ public:
 private:
 	inline static PhxEditor* ms_instance = nullptr;
 	const phx::ApplicationDescriptor m_desc;
+	phx::World m_world;
 	void* m_windowHandle;
 };
 
@@ -304,7 +345,7 @@ phx::IApplication* phx::CreateApplication()
 {
 	ApplicationDescriptor desc = {
 		.Name = "PhxEditor",
-		.WorkingDirectory = phx::VFS::GetDirectoryWithExecutable()
+		.WorkingDirectory = phx::FileSystem::GetDirectoryWithExecutable()
 	};
 
 	return new PhxEditor(desc);
@@ -312,15 +353,35 @@ phx::IApplication* phx::CreateApplication()
 
 void PhxEditor::Startup()
 {
-	auto& fs = phx::IRootFileSystem::Ptr;
-	fs->Mount("native://", phx::FileSystemFactory::CreateNativeFileSystem());
-	fs->Mount("res://", phx::GlobalPaths::AssetsDirectory);
+	auto fs = phx::IRootFileSystem::Ptr;
+	{
+		std::shared_ptr<phx::IFileSystem> nativeFS = phx::FileSystemFactory::CreateNativeFileSystem();
+		fs->Mount("native://", nativeFS);
 
-	// Import Resource
-	const char* filename = "native://C:/Users/dipao/OneDrive/Documents/Art/SM_Chest_01.obj";
-	CompileObjAndMaterials(filename, "res://modulardungeoncollection/SM_Chest_01.phxmsh");
+		PHX_INFO("Filesystem is mounting {0} to {1}", "res://", phx::GlobalPaths::DefaultProjectDir);
+		fs->Mount("res://", phx::GlobalPaths::DefaultProjectDir);
 
-	// Compile mesh and save it to disk
+		PHX_INFO("Filesystem is mounting {0} to {1}", "art://", phx::GlobalPaths::ArtSrcDirectory);
+		fs->Mount("art://", phx::GlobalPaths::ArtSrcDirectory);
+	}
+	// TODO: Incremental build this to save time.
+	// however, still testing, so generating this every time at startup is fine.
+
+	const char* defaultWorldFilename = "res://Default.phxwld";
+
+	PHX_INFO("Compiling Test Resources");
+	GenerateTestResources(defaultWorldFilename);
+
+	// Assume there is a default world that can be loaded
+
+	PHX_INFO("Loading Test Resources");
+	
+	// Register observers
+	phx::gfx::IRenderSystem::Ptr->RegisterObservers(m_world);
+
+	if (!phx::WorldSerializer::Load(fs, defaultWorldFilename, m_world))
+		PHX_ERROR("Failed to load world '{0}'", defaultWorldFilename);
+
 }
 
 void PhxEditor::Shutdown()
@@ -329,6 +390,7 @@ void PhxEditor::Shutdown()
 
 void PhxEditor::OnPreRender()
 {
+	phx::gfx::IRenderSystem::Ptr->OnPreRender(m_world);
 }
 
 void PhxEditor::OnUpdate_Threaded(float /*deltaTime*/)

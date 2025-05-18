@@ -23,6 +23,15 @@ namespace phx
         return std::filesystem::exists(name) && std::filesystem::is_directory(name);
     }
 
+    bool NativeFileSystem::FolderCreate(std::filesystem::path const& name)
+    {
+        std::filesystem::path parentDir = name.parent_path();
+        if (FolderExists(parentDir))
+            return true;
+
+        return std::filesystem::create_directory(parentDir);
+    }
+
     std::unique_ptr<IBlob> NativeFileSystem::ReadFile(std::filesystem::path const& name)
     {
         std::ifstream file(name, std::ios::binary);
@@ -104,6 +113,11 @@ namespace phx
         return this->m_underlyingFS->FolderExists(this->m_basePath / name.relative_path());
     }
 
+    bool RelativeFileSystem::FolderCreate(std::filesystem::path const& name)
+    {
+        return this->m_underlyingFS->FolderCreate(this->m_basePath / name.relative_path());
+    }
+
     std::unique_ptr<IBlob> RelativeFileSystem::ReadFile(std::filesystem::path const& name)
     {
         return this->m_underlyingFS->ReadFile(this->m_basePath / name.relative_path());
@@ -173,6 +187,19 @@ namespace phx
         return false;
     }
 
+    bool RootFileSystem::FolderCreate(std::filesystem::path const& name)
+    {
+        std::filesystem::path relativePath;
+        IFileSystem* fs = nullptr;
+
+        if (this->FindMountPoint(name, &relativePath, &fs))
+        {
+            return fs->FolderCreate(relativePath);
+        }
+
+        return false;
+    }
+
     std::unique_ptr<IBlob> RootFileSystem::ReadFile(std::filesystem::path const& name)
     {
         std::filesystem::path relativePath;
@@ -216,19 +243,19 @@ namespace phx
     {
         std::string spath = path.lexically_normal().generic_string();
 
-        for (auto it : this->m_mountPoints)
+        for (const auto& [prefix, fs] : m_mountPoints)
         {
-            if (spath.find(it.first, 0) == 0 && ((spath.length() == it.first.length()) || (spath[it.first.length() - 1] == '/')))
+            if (spath.find(prefix, 0) == 0 && ((spath.length() == prefix.length()) || (spath[prefix.length() - 1] == '/')))
             {
                 if (pRelativePath)
                 {
-                    std::string relative = spath.substr(it.first.size());
+                    std::string relative = spath.substr(prefix.size());
                     *pRelativePath = relative;
                 }
 
                 if (ppFS)
                 {
-                    *ppFS = it.second.get();
+                    *ppFS = fs.get();
                 }
 
                 return true;
@@ -262,8 +289,13 @@ namespace phx::FileSystemFactory
     }
 }
 
-namespace phx::VFS
+namespace phx::FileSystem
 {
+    std::filesystem::path GetWorkingDirectory()
+    {
+        return std::filesystem::current_path();
+    }
+
     std::filesystem::path GetDirectoryWithExecutable()
     {
         char path[PATH_MAX] = { 0 };

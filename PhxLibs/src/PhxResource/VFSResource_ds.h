@@ -168,6 +168,11 @@ namespace phx
 			return m_rootFs->FolderExists(name);
 		}
 
+		bool FolderCreate(std::filesystem::path const& name) override
+		{
+			return m_rootFs->FolderCreate(name);
+		}
+
 		std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override
 		{
 			return m_rootFs->ReadFile(name);
