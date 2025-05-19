@@ -9,7 +9,8 @@
 
 namespace phx
 {
-	using MetadataLoadCallbackFunc = std::function<void()>;
+	struct ResourceFile;
+	using MetadataLoadCallbackFunc = std::function<void(std::shared_ptr<ResourceFile>)>;
 	using FailureCallbackFunc = std::function<void()>;
 
 	struct ResourceFile

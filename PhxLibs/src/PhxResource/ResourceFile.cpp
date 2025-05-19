@@ -52,7 +52,7 @@ void phx::ResourceFile::Load(
 				request,
 				[resourceFile] 
 				{ 
-					OnMetadataLoaded();
+					resourceFile->MetadataLoadedCallback(resourceFile);
 				});
 		});
 }
