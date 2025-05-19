@@ -16,44 +16,9 @@ RefCountPtr<IResource> phx::renderer::MeshResourceHandler::LoadFromPak(std::shar
 {
 	auto metadata = reinterpret_cast<const MeshMetadata*>(assetEntry.MetadataChunk.Get());
 
-	std::unique_ptr<MeshResource> meshResource = std::make_unique<MeshResource>();
-
-	const ResourceFileFormat::Chunk* cpuDataChunk = assetEntry.Chunks.Get();
-	StreamRequest cpuDataRequest = {
-		.DebugName = "Mesh CPU Request",
-		.FileHandle = filehandle,
-		.SrcSize = cpuDataChunk->UncompressedSize,
-		.DestSize = cpuDataChunk->UncompressedSize,
-		.Offset = cpuDataChunk->Offset.Offset,
-		.Destination = { .Memory = &meshResource->m_cpuData }
-	};
-
-	// TODO: Determine if we should just create one large buffer
-	// and alias/srv off it, or create a heap for this resource, 
-	// would require an RHI change.
-	meshResource->m_geometryBuffer = rhi::CreateBuffer({
-		.DebugName = "Geometry Buffer",
-		.Size = metadata->GeometryBufferSize,
-		.BindingFlags = rhi::BindingFlags::ShaderResource | rhi::BindingFlags::IndexBuffer,
-		.MiscFlags = rhi::ResourceMiscFlags::BufferRaw,
-		.InitialState = rhi::ResourceStates::IndexGpuBuffer | rhi::ResourceStates::ShaderResourceNonPixel,
-	});
-
-	StreamRequest gpuDataRequest = {
-		.DebugName = "Mesh Geometry Buffer",
-		.FileHandle = filehandle,
-		.SrcSize = cpuDataChunk->CompressedSize,
-		.DestSize = cpuDataChunk->UncompressedSize,
-		.Offset = cpuDataChunk->Offset.Offset,
-		.Destination = { .Type = DestinationType::RHI_GpuBuffer, .Buffer = meshResource->m_geometryBuffer }
-	};
-
-	assetStreamer->SubmitBatch({ cpuDataRequest, gpuDataRequest },
-		[resource = meshResource.get()]() {
-			resource->m_status = 0;
-		});
-	
-	return RefCountPtr<IResource>::Create(meshResource.release());
+	auto meshResource = RefCountPtr<MeshResource>::Create(new MeshResource());
+	RequestMeshData(meshResource, assetStreamer, filehandle, metadata, assetEntry.Chunks.Get());
+	return meshResource;
 }
 
 RefCountPtr<IResource> phx::renderer::MeshResourceHandler::LoadLoose(std::shared_ptr<IAssetStreamer> const& assetStreamer, StreamFileHandle fileHandle) const
@@ -63,24 +28,60 @@ RefCountPtr<IResource> phx::renderer::MeshResourceHandler::LoadLoose(std::shared
 	ResourceFile::Load(
 		assetStreamer,
 		fileHandle,
-		[retVal](ResourceFile* resourceFile, ResourceFileFormat::MetadataHeader metadataHeader)
+		[retVal](std::shared_ptr<ResourceFile> resourceFile)
 		{
-			// Load
-		});
-
-	std::shared_ptr<phx::ResourceFile> resourceFile = std::make_shared<phx::ResourceFile>();
-
-	assetStreamer->Submit({
-			.DebugName = "Resource Header Load",
-			.FileHandle = fileHandle,
-			.SrcSize = sizeof(PakFileFormat::Header),
-			.DestSize = sizeof(PakFileFormat::Header),
-			.Destination = {.Memory = &resourceFile->Header }
-		},
-		[resourceFile] 
-		{
-			// Once header is loaded, load metadata
+			auto meshMetadata = reinterpret_cast<const MeshMetadata*>(resourceFile->Metadata->MetadataChunk.Get());
+			RequestMeshData(
+				retVal,
+				resourceFile->AssetStreamer,
+				resourceFile->FileHandle,
+				meshMetadata,
+				resourceFile->Metadata->Chunks);
 		});
 
 	return retVal;
+}
+
+void phx::renderer::MeshResourceHandler::RequestMeshData(
+	RefCountPtr<MeshResource> meshResource,
+	std::shared_ptr<IAssetStreamer> const& assetStreamer,
+	StreamFileHandle fileHandle,
+	const MeshMetadata* meshMetadata,
+	const ResourceFileFormat::Chunk* chunks)
+{
+	const ResourceFileFormat::Chunk& cpuDataChunk = chunks[0];
+	StreamRequest cpuDataRequest = {
+		.DebugName = "Mesh CPU Request",
+		.FileHandle = fileHandle,
+		.SrcSize = cpuDataChunk.UncompressedSize,
+		.DestSize = cpuDataChunk.UncompressedSize,
+		.Offset = cpuDataChunk.Offset.Offset,
+		.Destination = {.Memory = &meshResource->m_cpuData }
+	};
+
+	// TODO: Determine if we should just create one large buffer
+	// and alias/srv off it, or create a heap for this resource, 
+	// would require an RHI change.
+	meshResource->m_geometryBuffer = rhi::CreateBuffer({
+		.DebugName = "Geometry Buffer",
+		.Size = meshMetadata->GeometryBufferSize,
+		.BindingFlags = rhi::BindingFlags::ShaderResource | rhi::BindingFlags::IndexBuffer,
+		.MiscFlags = rhi::ResourceMiscFlags::BufferRaw,
+		.InitialState = rhi::ResourceStates::IndexGpuBuffer | rhi::ResourceStates::ShaderResourceNonPixel,
+		});
+
+	const ResourceFileFormat::Chunk& gpuDataChunk = chunks[1];
+	StreamRequest gpuDataRequest = {
+		.DebugName = "Mesh Geometry Buffer",
+		.FileHandle = fileHandle,
+		.SrcSize = gpuDataChunk.CompressedSize,
+		.DestSize = gpuDataChunk.UncompressedSize,
+		.Offset = gpuDataChunk.Offset.Offset,
+		.Destination = {.Type = DestinationType::RHI_GpuBuffer, .Buffer = meshResource->m_geometryBuffer }
+	};
+
+	assetStreamer->SubmitBatch({ cpuDataRequest, gpuDataRequest },
+		[resource = meshResource]() {
+			resource->m_status = 0;
+		});
 }

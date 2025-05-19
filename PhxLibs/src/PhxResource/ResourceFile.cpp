@@ -19,7 +19,7 @@ void phx::ResourceFile::Load(
 	MetadataLoadCallbackFunc metadataLoadedCallback)
 {
 	std::shared_ptr<phx::ResourceFile> resourceFile = std::make_shared<phx::ResourceFile>();
-	resourceFile->AssetStreamer = std::move(assetStreamer);
+	resourceFile->AssetStreamer = assetStreamer;
 	resourceFile->FileHandle = fileHandle;
 	resourceFile->MetadataLoadedCallback = std::move(metadataLoadedCallback);
 

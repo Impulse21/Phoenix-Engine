@@ -70,6 +70,19 @@ void phx::gfx::DefaultRenderSystem::OnPreRender(World& world)
 	}
 
 	m_observer.clear();
+
+	static bool MessageDisplayed = false;
+	auto view = world.GetAllEntitiesWith<RenderMeshComponent>();
+	view.each([](RenderMeshComponent& renderMeshComp) {
+		if (MessageDisplayed)
+			return;
+
+		if (renderMeshComp.MeshResource->IsLoaded())
+		{
+			PHX_INFO("Mesh resource is loaded");
+			MessageDisplayed = true;
+		}
+	});
 }
 
 void phx::gfx::DefaultRenderSystem::OnRender(rhi::CommandCtx* /*ctx*/, void* /*cachedData*/)

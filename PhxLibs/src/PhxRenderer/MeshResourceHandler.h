@@ -5,6 +5,8 @@
 
 namespace phx::renderer
 {
+	struct MeshMetadata;
+	class MeshResource;
 	class MeshResourceHandler final : public phx::IResourceHandler
 	{
 	public:
@@ -16,6 +18,14 @@ namespace phx::renderer
 		RefCountPtr<IResource> LoadLoose(
 			std::shared_ptr<IAssetStreamer> const& assetStreamer,
 			StreamFileHandle filehandle) const override;
+
+	private:
+		static void RequestMeshData(
+			RefCountPtr<MeshResource> meshResource,
+			std::shared_ptr<IAssetStreamer> const& assetStreamer,
+			StreamFileHandle fileHandle,
+			const MeshMetadata* meshMetadata,
+			const ResourceFileFormat::Chunk* chunks);
 	};
 }
 

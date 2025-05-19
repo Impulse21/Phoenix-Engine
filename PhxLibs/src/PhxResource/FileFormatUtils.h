@@ -60,6 +60,8 @@ namespace phx
 
 			T* Get() { return (T*)(((char*)this) + Offset); }
 			const T* Get() const { return (const T*)(((char*)this) + Offset); }
+
+			operator T* () { return Get(); }
 			T* operator->() { return Get(); }
 			T const* operator->() const { return Get(); }
 		};

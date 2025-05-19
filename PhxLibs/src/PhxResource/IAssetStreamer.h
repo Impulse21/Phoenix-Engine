@@ -3,6 +3,7 @@
 #include <PhxCore/Base.h>
 #include <PhxCore/Handle.h>
 #include <PhxCore/Span.h>
+#include <PhxCore/IO/MemoryRegion.h>
 
 
 #include <PhxResource/FileFormatUtils.h>

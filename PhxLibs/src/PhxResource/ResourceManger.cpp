@@ -10,10 +10,8 @@
 
 using namespace phx;
 
-void ResourceManger::Initialize(std::shared_ptr<phx::IRootFileSystem> fs)
+void ResourceManger::Initialize()
 {
-	ms_fileSytem = fs;
-
 #ifdef PHX_RHI_D3D12
 	ms_assetStreamer = std::make_unique<DStorageAssetStreamer>();
 #endif
@@ -39,7 +37,7 @@ RefCountPtr<PakFile> phx::ResourceManger::RegisterPakFile(std::filesystem::path 
 	if (itr != ms_pakLut.end())
 		return ms_registeredPaks[itr->second];
 
-	std::filesystem::path resolvedPath = ms_fileSytem->ResolvePath(path);
+	std::filesystem::path resolvedPath = IRootFileSystem::Ptr->ResolvePath(path);
 	RefCountPtr<PakFile> pakFile = RefCountPtr<PakFile>::Create(new PakFile(ms_assetStreamer, path, resolvedPath));
 	if (pakFile)
 	{

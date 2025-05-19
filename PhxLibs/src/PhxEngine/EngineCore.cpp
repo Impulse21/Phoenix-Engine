@@ -9,7 +9,10 @@
 #include <PhxCore/CommandLineArgs.h>
 #include <PhxCore/VFS.h>
 
+#include <PhxResource/ResourceManger.h>
+
 #include <PhxRenderer/DefaultRenderSystem.h>
+#include <PhxRenderer/MeshResourceHandler.h>
 
 #include <PhxRhi/RHICore.h>
 
@@ -62,6 +65,10 @@ namespace phx
 			app->SetWindowHandle(windowHandle);
 
 			phx::IRootFileSystem::Ptr = new RootFileSystem();
+
+			phx::ResourceManger::Initialize();
+			phx::ResourceManger::RegisterHandler<renderer::MeshResourceHandler>();
+
 			phx::gfx::IRenderSystem::Ptr = new gfx::DefaultRenderSystem();
 
 			app->Startup();
