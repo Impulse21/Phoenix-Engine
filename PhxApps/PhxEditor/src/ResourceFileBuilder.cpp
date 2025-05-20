@@ -25,15 +25,16 @@ std::unique_ptr<phx::IBlob> phxed::ResourceFileBuilder::Build()
     OffsetHandle stringTableOffset = fileBuilder.ReserveArray<FileFormat::StringEntry>(1);
     OffsetHandle stringHeapOffsetHandle = fileBuilder.Reserve(stringHeapSize);
 
+    // Calculate the meta chunk sizes as they are part of the header
+    const size_t metadataHeapSize = fileBuilder.GetSize() - metadataHeaderOffset;
+
+    // -- Chunk heap offsets ---
     size_t chunkHeapSize = 0;
     for (auto& chunk : m_resource->Chunks)
     {
         chunkHeapSize += chunk->Size();
     }
     OffsetHandle chunkHeapOffset = fileBuilder.Reserve(chunkHeapSize);
-
-    // Calculate the meta chunk sizes as they are part of the header
-    const size_t metadataHeapSize = fileBuilder.GetSize() - metadataHeaderOffset;
 
     fileBuilder.Commit();
 

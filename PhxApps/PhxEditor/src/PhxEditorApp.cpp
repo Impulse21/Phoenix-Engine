@@ -101,6 +101,11 @@ namespace
 			indexOffset += obj->face_vertices[iFace];
 		}
 
+		meshData.Geometry.emplace_back(phxed::MeshData::GeometryData{
+				.MaterialId = phx::StringHash("Default"),
+				.IndexOffset = 0,
+				.IndexCount = static_cast<uint32_t>(meshData.Indices.size()),
+			});
 		fast_obj_destroy(obj);
 
 		return true;
@@ -175,6 +180,12 @@ namespace
 			totalIndices,
 			uvStream.ElementStride,
 			&remap[0]);
+
+
+		PHX_WARN("Hardcoming a single mateiral entry into the geometry. Please fix this");
+		PHX_ASSERT(meshSrc.Geometry.size() == 1);
+		processedMesh.Geometry.push_back(meshSrc.Geometry[0]);
+		processedMesh.Geometry[0].IndexCount = totalIndices;
 
 		return processedMesh;
 	}

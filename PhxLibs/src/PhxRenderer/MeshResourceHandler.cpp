@@ -50,14 +50,9 @@ void phx::renderer::MeshResourceHandler::RequestMeshData(
 	const ResourceFileFormat::Chunk* chunks)
 {
 	const ResourceFileFormat::Chunk& cpuDataChunk = chunks[0];
-	StreamRequest cpuDataRequest = {
-		.DebugName = "Mesh CPU Request",
-		.FileHandle = fileHandle,
-		.SrcSize = cpuDataChunk.UncompressedSize,
-		.DestSize = cpuDataChunk.UncompressedSize,
-		.Offset = cpuDataChunk.Offset.Offset,
-		.Destination = {.Memory = &meshResource->m_cpuData }
-	};
+	
+	StreamRequest cpuDataRequest = StreamRequest::Create(fileHandle, cpuDataChunk.Offset.Offset, cpuDataChunk.UncompressedSize, meshResource->m_cpuData); 
+	cpuDataRequest.DebugName = "Mesh CPU Request";
 
 	// TODO: Determine if we should just create one large buffer
 	// and alias/srv off it, or create a heap for this resource, 
@@ -69,7 +64,7 @@ void phx::renderer::MeshResourceHandler::RequestMeshData(
 		.MiscFlags = rhi::ResourceMiscFlags::BufferRaw,
 		.InitialState = rhi::ResourceStates::IndexGpuBuffer | rhi::ResourceStates::ShaderResourceNonPixel,
 		});
-
+#if flase
 	const ResourceFileFormat::Chunk& gpuDataChunk = chunks[1];
 	StreamRequest gpuDataRequest = {
 		.DebugName = "Mesh Geometry Buffer",
@@ -82,6 +77,12 @@ void phx::renderer::MeshResourceHandler::RequestMeshData(
 
 	assetStreamer->SubmitBatch({ cpuDataRequest, gpuDataRequest },
 		[resource = meshResource]() {
+				resource->m_status = 0;
+		});
+#else
+	assetStreamer->SubmitBatch({ cpuDataRequest },
+		[resource = meshResource]() {
 			resource->m_status = 0;
 		});
+#endif
 }

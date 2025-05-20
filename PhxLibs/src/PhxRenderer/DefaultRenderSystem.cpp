@@ -1,6 +1,8 @@
 #include "PhxRenderer/PhxRenderer_pch.h"
 #include "DefaultRenderSystem.h"
 
+#include "MeshResource.h"
+
 #include <PhxWorld/Entity.h>
 #include <PhxWorld/World.h>
 #include <PhxWorld/WorldComponents.h>
@@ -79,7 +81,15 @@ void phx::gfx::DefaultRenderSystem::OnPreRender(World& world)
 
 		if (renderMeshComp.MeshResource->IsLoaded())
 		{
-			PHX_INFO("Mesh resource is loaded");
+			auto meshResource = static_cast<phx::renderer::MeshResource*>(renderMeshComp.MeshResource.Get());
+			PHX_ASSERT(meshResource->GetCpuData());
+			PHX_INFO("Mesh resource is loaded:\n\tVBOffset = {0}\n\tVbSize = {1}\n\tIbOffset = {2}\n\tIbSize = {3}\n\tNumDraws = {4}",
+				meshResource->GetCpuData()->VbOffset,
+				meshResource->GetCpuData()->VbSize,
+				meshResource->GetCpuData()->IbOffset,
+				meshResource->GetCpuData()->IbSize,
+				meshResource->GetCpuData()->NumDraws);
+
 			MessageDisplayed = true;
 		}
 	});

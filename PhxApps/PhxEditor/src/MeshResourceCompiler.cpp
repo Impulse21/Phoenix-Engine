@@ -36,6 +36,8 @@ void phxed::MeshResourceCompiler::Compile()
 		const size_t cpuDataSize = sizeof(renderer::MeshResource::CpuData) + (sizeof(renderer::MeshResource::CpuData::DrawInfo) * m_meshData.Geometry.size());
 		auto cpuData = reinterpret_cast<renderer::MeshResource::CpuData*>(malloc(cpuDataSize));
 		cpuData->IbSize = m_meshData.Indices.size() * sizeof(uint32_t);
+		cpuData->IbOffset = 0;
+		cpuData->IbFormat = 0;
 		cpuData->VbOffset = m_meshData.Indices.size() * sizeof(uint32_t);
 		cpuData->VbSize = gpuData.size() - cpuData->IbSize;
 		cpuData->NumDraws = static_cast<uint16_t>(m_meshData.Geometry.size());

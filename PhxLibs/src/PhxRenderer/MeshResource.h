@@ -21,9 +21,7 @@ namespace phx::renderer
 		friend class MeshResourceHandler;
 	public:
 		~MeshResource();
-
-		bool IsLoaded() const { return false; }
-		StreamFileHandle GetFileHandle() const { return {}; }
+		bool IsLoaded() const { return m_status == 0; }
 
 	public:
 		struct CpuData
@@ -45,7 +43,9 @@ namespace phx::renderer
 			DrawInfo Draw[1];
 		};
 
-	private:
+		const CpuData* GetCpuData() const { return m_cpuData.Get(); }
+
+	protected:
 		phx::MemoryRegion<CpuData> m_cpuData;
 		rhi::GpuBufferHandle m_geometryBuffer;
 		std::atomic_uint8_t m_status = 0xFF;
