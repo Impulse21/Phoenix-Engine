@@ -54,6 +54,36 @@ namespace
 	{
 		return RetrieveFileSize(fileInfo.nFileSizeLow, fileInfo.nFileSizeHigh);
 	}
+
+	bool IsDStorageError(HRESULT hr)
+	{
+		return (hr & 0xFFFF0000) == 0x89240000;
+	}
+
+	const std::unordered_map<HRESULT, const char*> DStorageErrorMessages =
+	{
+		{ 0x89240001, "DStorage is already running exclusively" },
+		{ 0x89240002, "DStorage is not running" },
+		{ 0x89240003, "Invalid queue capacity parameter" },
+		{ 0x89240007, "Offset and length exceed file size" },
+		{ 0x89240008, "IO request too large" },
+		{ 0x89240009, "Access violation - buffer not accessible" },
+		{ 0x8924000B, "File is not open" },
+		{ 0x89240010, "Queue is closed" },
+		{ 0x89240012, "Too many queues" },
+		{ 0x89240014, "Too many files" },
+		{ 0x89240016, "IO operation timed out" },
+		{ 0x89240017, "Invalid file handle" },
+		{ 0x89240021, "Staging buffer too small" },
+		{ 0x89240030, "Generic decompression error" },
+	};
+	
+	const char* GetDStorageErrorMessage(HRESULT hr)
+	{
+		PHX_ASSERT(IsDStorageError(hr));
+		auto it = DStorageErrorMessages.find(hr);
+		return it != DStorageErrorMessages.end() ? it->second : "Unknown DStorage error";
+	}
 }
 
 phx::DStorageAssetStreamer::DStorageAssetStreamer()
@@ -260,13 +290,16 @@ void phx::DStorageAssetStreamer::SubmitBatch(Span<StreamRequest> requests, Strea
 			DWORD waitResult = WaitForSingleObject(req.EventHandle, INFINITE);
 			if (waitResult != WAIT_OBJECT_0)
 			{
-				PHX_CORE_WARN("DStorage request failed. HR={0}.", waitResult);
+				PHX_CORE_ERROR("DStorage wait request failed. HR={0}.", waitResult);
 			}
 
 			HRESULT result = req.StatusArray->GetHResult(req.StatusIndex);
 			if (FAILED(result))
 			{
-				PHX_CORE_WARN("DStorage request failed. HR={0}.", result);
+				PHX_CORE_ERROR(
+					"DStorage request failed. HR={0}, Msg={1}.",
+					result,
+					GetDStorageErrorMessage(result));
 				return;
 			}
 

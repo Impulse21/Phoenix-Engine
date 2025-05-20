@@ -182,7 +182,7 @@ namespace
 			&remap[0]);
 
 
-		PHX_WARN("Hardcoming a single mateiral entry into the geometry. Please fix this");
+		PHX_WARN("Hard coding a single mateiral entry into the geometry. Please fix this");
 		PHX_ASSERT(meshSrc.Geometry.size() == 1);
 		processedMesh.Geometry.push_back(meshSrc.Geometry[0]);
 		processedMesh.Geometry[0].IndexCount = totalIndices;

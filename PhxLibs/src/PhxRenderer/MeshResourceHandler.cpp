@@ -62,9 +62,9 @@ void phx::renderer::MeshResourceHandler::RequestMeshData(
 		.Size = meshMetadata->GeometryBufferSize,
 		.BindingFlags = rhi::BindingFlags::ShaderResource | rhi::BindingFlags::IndexBuffer,
 		.MiscFlags = rhi::ResourceMiscFlags::BufferRaw,
-		.InitialState = rhi::ResourceStates::IndexGpuBuffer | rhi::ResourceStates::ShaderResourceNonPixel,
+		.InitialState = rhi::ResourceStates::IndexGpuBuffer | rhi::ResourceStates::ShaderResourceNonPixel | rhi::ResourceStates::CopyDest,
 		});
-#if flase
+#if true
 	const ResourceFileFormat::Chunk& gpuDataChunk = chunks[1];
 	StreamRequest gpuDataRequest = {
 		.DebugName = "Mesh Geometry Buffer",
