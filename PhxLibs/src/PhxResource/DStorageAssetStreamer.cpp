@@ -27,7 +27,7 @@ namespace
 
 	struct Request
 	{
-		HANDLE EventHandle;
+		std::array<HANDLE, 2> EventHandles;
 		StreamCallback Callback;
 		uint32_t StatusIndex;
 		Microsoft::WRL::ComPtr<IDStorageStatusArray> StatusArray;
@@ -258,13 +258,17 @@ void phx::DStorageAssetStreamer::SubmitBatch(Span<StreamRequest> requests, Strea
 		r.UncompressedSize = request.DestSize;
 		r.CancellationTag = reinterpret_cast<uint64_t>(fileImpl);
 
-		m_dsMetadataQueue->EnqueueRequest(&r);
+		if (request.Destination.Type == DestinationType::Memory)
+			m_dsMetadataQueue->EnqueueRequest(&r);
+		else
+			m_dsGpuQueue->EnqueueRequest(&r);
 	}
 	
 	size_t statusIndex;
 	if (m_statusIdxPool.Allocate(statusIndex))
 	{
 		m_dsMetadataQueue->EnqueueStatus(m_statusArray.Get(), static_cast<uint32_t>(statusIndex));
+		m_dsGpuQueue->EnqueueStatus(m_statusArray.Get(), static_cast<uint32_t>(statusIndex));
 	}
 	else
 	{
@@ -272,25 +276,34 @@ void phx::DStorageAssetStreamer::SubmitBatch(Span<StreamRequest> requests, Strea
 		statusIndex = ~0ull;
 	}
 
-	HANDLE hEvent = RequestEvent();
-	m_dsMetadataQueue->EnqueueSetEvent(hEvent);
+	HANDLE metadataEvent = RequestEvent();
+	m_dsMetadataQueue->EnqueueSetEvent(metadataEvent);
 	m_dsMetadataQueue->Submit();
 
+	HANDLE gpuEvent = RequestEvent();
+	m_dsGpuQueue->EnqueueSetEvent(gpuEvent);
+	m_dsGpuQueue->Submit();
+
 	Request req = {
-		.EventHandle = hEvent,
+		.EventHandles = { metadataEvent, gpuEvent},
 		.Callback = callback,
 		.StatusIndex = static_cast<uint32_t>(statusIndex),
 		.StatusArray = m_statusArray
 	};
 
 	ThreadPool::SubmitTask(
-		[req]
+		[this, req]
 		{
 			// todo: this event isn't working.
-			DWORD waitResult = WaitForSingleObject(req.EventHandle, INFINITE);
-			if (waitResult != WAIT_OBJECT_0)
+			for (HANDLE eventHandle : req.EventHandles)
 			{
-				PHX_CORE_ERROR("DStorage wait request failed. HR={0}.", waitResult);
+				DWORD waitResult = WaitForSingleObject(eventHandle, INFINITE);
+				if (waitResult != WAIT_OBJECT_0)
+				{
+					PHX_CORE_ERROR("DStorage wait request failed. HR={0}.", waitResult);
+				}
+
+				DisardEvent(eventHandle);
 			}
 
 			HRESULT result = req.StatusArray->GetHResult(req.StatusIndex);

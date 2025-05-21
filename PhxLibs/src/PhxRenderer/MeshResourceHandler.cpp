@@ -5,7 +5,6 @@
 #include "MeshResourceHandler.h"
 #include "MeshResource.h"
 
-
 #include <PhxRhi/RHICore.h>
 
 using namespace phx;
@@ -62,10 +61,11 @@ void phx::renderer::MeshResourceHandler::RequestMeshData(
 		.Size = meshMetadata->GeometryBufferSize,
 		.BindingFlags = rhi::BindingFlags::ShaderResource | rhi::BindingFlags::IndexBuffer,
 		.MiscFlags = rhi::ResourceMiscFlags::BufferRaw,
-		.InitialState = rhi::ResourceStates::IndexGpuBuffer | rhi::ResourceStates::ShaderResourceNonPixel | rhi::ResourceStates::CopyDest,
+		.InitialState = rhi::ResourceStates::Common,
 		});
-#if true
+
 	const ResourceFileFormat::Chunk& gpuDataChunk = chunks[1];
+#if true
 	StreamRequest gpuDataRequest = {
 		.DebugName = "Mesh Geometry Buffer",
 		.FileHandle = fileHandle,
@@ -74,15 +74,12 @@ void phx::renderer::MeshResourceHandler::RequestMeshData(
 		.Offset = gpuDataChunk.Offset.Offset,
 		.Destination = {.Type = DestinationType::RHI_GpuBuffer, .Buffer = meshResource->m_geometryBuffer }
 	};
+#else
+	StreamRequest gpuDataRequest = StreamRequest::Create(fileHandle, gpuDataChunk.Offset.Offset, gpuDataChunk.UncompressedSize, meshResource->m_gpuData);
+#endif
 
 	assetStreamer->SubmitBatch({ cpuDataRequest, gpuDataRequest },
 		[resource = meshResource]() {
-				resource->m_status = 0;
-		});
-#else
-	assetStreamer->SubmitBatch({ cpuDataRequest },
-		[resource = meshResource]() {
 			resource->m_status = 0;
 		});
-#endif
 }

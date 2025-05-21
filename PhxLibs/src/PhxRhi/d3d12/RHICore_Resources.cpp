@@ -686,6 +686,10 @@ namespace phx::rhi
 			allocationDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
 			resourceState = D3D12_RESOURCE_STATE_GENERIC_READ;
 		}
+		else
+		{
+			resourceState = ConvertResourceStates(desc.InitialState);
+		}
 
 		if (EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::Alias))
 		{
