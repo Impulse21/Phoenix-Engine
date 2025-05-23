@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <PhxRenderer/RenderSubSystem.h>
+#include <PhxRenderer/RenderLayer.h>
 
 namespace phx
 {

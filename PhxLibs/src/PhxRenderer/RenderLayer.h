@@ -10,10 +10,10 @@ namespace phx
 
 namespace phx::gfx
 {
-	class IRenderSubSystem
+	class RenderLayer
 	{
 	public:
-		virtual ~IRenderSubSystem() = default;
+		virtual ~RenderLayer() = default;
 
 		virtual void Finalize() = 0;
 		virtual void* OnPreRender() = 0;
