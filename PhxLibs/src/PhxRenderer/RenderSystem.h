@@ -31,7 +31,7 @@ namespace phx::gfx
 		virtual void RegisterObservers(phx::World& world) = 0;
 
 		virtual void OnPreRender(World& world) = 0;
-		virtual void OnRender(rhi::CommandCtx* ctx, void* cachedData) = 0;
+		virtual void OnRender() = 0;
 
 		virtual void RegisterSubSystem(uint32_t passMask, std::shared_ptr<IRenderSubSystem> subSystem) = 0;
 

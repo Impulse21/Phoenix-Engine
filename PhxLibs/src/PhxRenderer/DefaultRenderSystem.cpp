@@ -84,7 +84,7 @@ void phx::gfx::DefaultRenderSystem::OnPreRender(World& world)
 	}
 }
 
-void phx::gfx::DefaultRenderSystem::OnRender(rhi::CommandCtx* /*ctx*/, void* /*cachedData*/)
+void phx::gfx::DefaultRenderSystem::OnRender()
 {
 }
 

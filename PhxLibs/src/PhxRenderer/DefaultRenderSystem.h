@@ -17,7 +17,7 @@ namespace phx::gfx
 		void RegisterObservers(phx::World& world) override;
 
 		void OnPreRender(World& world) override;
-		void OnRender(rhi::CommandCtx* ctx, void* cachedData)  override;
+		void OnRender()  override;
 
 		void RegisterSubSystem(uint32_t passMask, std::shared_ptr<IRenderSubSystem> subSystem) override;
 

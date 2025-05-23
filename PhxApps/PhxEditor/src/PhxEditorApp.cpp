@@ -413,4 +413,5 @@ void PhxEditor::OnUpdate_Threaded(float /*deltaTime*/)
 
 void PhxEditor::OnRender_Threaded()
 {
+	phx::gfx::IRenderSystem::Ptr->OnRender();
 }

@@ -93,14 +93,4 @@ namespace phx
 
 	}
 
-	struct ScopedScratchMarker
-	{
-		PagedStackAllocator::Marker Marker;
-		ScopedScratchMarker()
-		{
-			this->Marker = Memory::GetScratchAllocator().GetMarker();
-		}
-
-		~ScopedScratchMarker() { Memory::GetScratchAllocator().FreeMarker(Marker); }
-	};
 }
