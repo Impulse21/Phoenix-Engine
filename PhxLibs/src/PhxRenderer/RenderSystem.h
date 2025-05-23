@@ -15,7 +15,7 @@ namespace phx
 namespace phx::gfx
 {
 	template<typename T>
-	concept RenderSubSystemType = std::is_base_of_v<IRenderSubSystem, T>;
+	concept RenderLayerType = std::is_base_of_v<RenderLayer, T>;
 
 	class IRenderSystem
 	{
@@ -33,12 +33,12 @@ namespace phx::gfx
 		virtual void OnPreRender(World& world) = 0;
 		virtual void OnRender() = 0;
 
-		virtual void RegisterSubSystem(uint32_t passMask, std::shared_ptr<IRenderSubSystem> subSystem) = 0;
+		virtual void RegisterSubSystem(RenderLayer* layer) = 0;
 
-		template<RenderSubSystemType TSubSystem>
-		void RegisterSubSystem(uint32_t passMask)
+		template<RenderLayerType TLayer>
+		void AddLayer()
 		{
-			RegisterSubSystem(passMask, std::make_shared<TSubSystem>());
+			RegisterSubSystem(TLayer);
 		}
 	};
 }
