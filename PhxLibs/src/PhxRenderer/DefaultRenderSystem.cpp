@@ -75,17 +75,26 @@ void phx::gfx::DefaultRenderSystem::OnPreRender(World& world)
 
 	m_observer.clear();
 
-	m_cachedData = Memory::GetFrameAllocator().AllocArray<DefaultRenderSystem::CachedData>(m_subsystems.size());
-	for (size_t i = 0; i < m_subsystems.size(); i++)
-	{
-		m_cachedData[i] = {};
-		m_cachedData[i].SubSystem = m_subsystems[i].get();
-		m_cachedData[i].Data = m_subsystems[i]->OnPreRender();
-	}
+	auto view = world.GetAllEntitiesWith<RenderMeshComponent>();
+	view.each([this](RenderMeshComponent& renderMeshComp) {
+		m_cachedResourceCount = 0;
+
+		if (renderMeshComp.MeshResource->IsLoaded())
+			m_cachedResourceCount++;
+	});
+
+	m_cachedResourceData= Memory::GetFrameAllocator().AllocArray<DefaultRenderSystem::CachedResource>(m_cachedResourceCount);
+	view.each([this](RenderMeshComponent& renderMeshComp) {
+		m_cachedResourceCount = 0;
+
+		if (renderMeshComp.MeshResource->IsLoaded())
+			m_cachedResourceData->Resource = renderMeshComp.MeshResource;
+		});
 }
 
 void phx::gfx::DefaultRenderSystem::OnRender()
 {
+	// TOOD: Render the mesh
 }
 
 void phx::gfx::DefaultRenderSystem::RegisterSubSystem(uint32_t /*passMask*/, std::shared_ptr<IRenderSubSystem> subSystem)

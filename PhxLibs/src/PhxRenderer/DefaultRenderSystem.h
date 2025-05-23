@@ -25,12 +25,13 @@ namespace phx::gfx
 		entt::observer m_observer;
 		std::vector<std::shared_ptr<IRenderSubSystem>> m_subsystems;
 
-		struct CachedData
+		struct CachedResource
 		{
-			IRenderSubSystem* SubSystem;
-			void* Data;
+			RefCountPtr<IResource> Resource;
 		};
-		CachedData* m_cachedData;
+
+		size_t m_cachedResourceCount;
+		CachedResource* m_cachedResourceData;
 	};
 }
 
