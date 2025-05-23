@@ -10,6 +10,7 @@
 #include <PhxWorld/WorldSerializer.h>
 
 #include <PhxRenderer/RenderSystem.h>
+#include <PhxRenderer/SubSystems/MeshSubSystem.h>
 
 #include <PhxEngine/EntryPoint.h>
 
@@ -364,6 +365,8 @@ phx::IApplication* phx::CreateApplication()
 
 void PhxEditor::Startup()
 {
+	phx::gfx::IRenderSystem::Ptr->RegisterSubSystem<phx::gfx::MeshSubSystem>(0);
+
 	auto fs = phx::IRootFileSystem::Ptr;
 	{
 		std::shared_ptr<phx::IFileSystem> nativeFS = phx::FileSystemFactory::CreateNativeFileSystem();

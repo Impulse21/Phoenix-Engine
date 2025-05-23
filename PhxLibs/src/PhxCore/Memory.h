@@ -26,7 +26,7 @@ namespace phx
 	void VirtualMemCommit(void* ptr, size_t commitSize);
 	bool VirtualMemFree(void* ptr);
 
-	class VirtualStackAllocator
+	class PagedStackAllocator
 	{
 	public:
 		struct Marker
@@ -36,7 +36,7 @@ namespace phx
 		};
 
 	public:
-		VirtualStackAllocator(size_t pageSize = 4_MiB);
+		PagedStackAllocator(size_t pageSize = 4_MiB);
 
 		template<typename T, typename... TArgs>
 		[[nodiscard]] T* Alloc(TArgs&&... Args)
@@ -91,17 +91,11 @@ namespace phx
 		void Finalize();
 		void BeginFrame();
 
-		using FrameAllocator = VirtualStackAllocator;
-		FrameAllocator& GetFrameAllocator();
-
-		using ScratchAllocator = VirtualStackAllocator;
-		ScratchAllocator& GetScratchAllocator();
-
 	}
 
 	struct ScopedScratchMarker
 	{
-		VirtualStackAllocator::Marker Marker;
+		PagedStackAllocator::Marker Marker;
 		ScopedScratchMarker()
 		{
 			this->Marker = Memory::GetScratchAllocator().GetMarker();

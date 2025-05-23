@@ -33,6 +33,7 @@ namespace
 	void OnRender_Threaded(IApplication* app)
 	{
 		app->OnRender_Threaded();
+		phx::rhi::Present();
 	}
 }
 
@@ -76,8 +77,8 @@ namespace phx
 
 		void Tick()
 		{
-			Memory::FrameAllocator& allocator = Memory::GetFrameAllocator();
-			allocator.Reset();
+			Memory::GetFrameAllocator().Reset();
+			Memory::GetScratchAllocator().Reset();
 
 			// -- Pre-Render ---
 			OnPreRender(phx::IApplication::Ptr);

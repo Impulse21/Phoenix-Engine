@@ -23,7 +23,14 @@ namespace phx::gfx
 
 	private:
 		entt::observer m_observer;
+		std::vector<std::shared_ptr<IRenderSubSystem>> m_subsystems;
 
+		struct CachedData
+		{
+			IRenderSubSystem* SubSystem;
+			void* Data;
+		};
+		CachedData* m_cachedData;
 	};
 }
 

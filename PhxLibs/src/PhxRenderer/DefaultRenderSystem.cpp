@@ -3,6 +3,8 @@
 
 #include "MeshResource.h"
 
+#include <PhxCore/Memory.h>
+
 #include <PhxWorld/Entity.h>
 #include <PhxWorld/World.h>
 #include <PhxWorld/WorldComponents.h>
@@ -73,32 +75,20 @@ void phx::gfx::DefaultRenderSystem::OnPreRender(World& world)
 
 	m_observer.clear();
 
-	static bool MessageDisplayed = false;
-	auto view = world.GetAllEntitiesWith<RenderMeshComponent>();
-	view.each([](RenderMeshComponent& renderMeshComp) {
-		if (MessageDisplayed)
-			return;
-
-		if (renderMeshComp.MeshResource->IsLoaded())
-		{
-			auto meshResource = static_cast<phx::renderer::MeshResource*>(renderMeshComp.MeshResource.Get());
-			PHX_ASSERT(meshResource->GetCpuData());
-			PHX_INFO("Mesh resource is loaded:\n\tVBOffset = {0}\n\tVbSize = {1}\n\tIbOffset = {2}\n\tIbSize = {3}\n\tNumDraws = {4}",
-				meshResource->GetCpuData()->VbOffset,
-				meshResource->GetCpuData()->VbSize,
-				meshResource->GetCpuData()->IbOffset,
-				meshResource->GetCpuData()->IbSize,
-				meshResource->GetCpuData()->NumDraws);
-
-			MessageDisplayed = true;
-		}
-	});
+	m_cachedData = Memory::GetFrameAllocator().AllocArray<DefaultRenderSystem::CachedData>(m_subsystems.size());
+	for (size_t i = 0; i < m_subsystems.size(); i++)
+	{
+		m_cachedData[i] = {};
+		m_cachedData[i].SubSystem = m_subsystems[i].get();
+		m_cachedData[i].Data = m_subsystems[i]->OnPreRender();
+	}
 }
 
 void phx::gfx::DefaultRenderSystem::OnRender(rhi::CommandCtx* /*ctx*/, void* /*cachedData*/)
 {
 }
 
-void phx::gfx::DefaultRenderSystem::RegisterSubSystem(uint32_t /*passMask*/, std::shared_ptr<IRenderSubSystem> /*subSystem*/)
+void phx::gfx::DefaultRenderSystem::RegisterSubSystem(uint32_t /*passMask*/, std::shared_ptr<IRenderSubSystem> subSystem)
 {
+	m_subsystems.push_back(std::move(subSystem));
 }
