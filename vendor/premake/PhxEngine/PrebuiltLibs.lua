@@ -7,6 +7,7 @@ LibDxc                  = prebuild_direcotry..'/dxc_2024_07_31_clang_cl'
 LibDStorage             = prebuild_direcotry..'/directstorage_1.2.4'
 LibPix                  = prebuild_direcotry..'/winpix_1.0.240308001'
 LibDirectXTex			= prebuild_direcotry..'/directx_tex_oct2024'
+LibVulkan				= prebuild_direcotry..'/vulkan_1.4.313.0'
 
 AgilityLibrary =
 {
@@ -58,6 +59,13 @@ DirectXTexLibrary =
 	includeDirs = LibDirectXTex..'/include',
 	libDirs     = LibDirectXTex..'/lib/x64',
     libNames    = { "DirectXTex", "DirectXTex-d"}
+}
+
+VulkanLibrary =
+{
+	includeDirs = LibVulkan..'/Include',
+	libDirs     = LibVulkan..'/Lib',
+    libNames    = { "Vulkan-1"}
 }
 
 function AddLibraryIncludes(library)
