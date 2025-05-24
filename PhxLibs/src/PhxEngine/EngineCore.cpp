@@ -106,7 +106,9 @@ namespace phx
 			delete phx::IApplication::Ptr;
 			phx::IApplication::Ptr = nullptr;
 
+			gfx::IRenderSystem::Ptr->Finalize();
 			delete gfx::IRenderSystem::Ptr;
+
 			delete phx::IRootFileSystem::Ptr;
 
 			phx::rhi::Finalize();

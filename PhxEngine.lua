@@ -21,6 +21,8 @@ phx_vendor_src_yaml_dir     = phx_lib_vendor_directory.."/yaml"
 phx_vendor_src_glfw_dir     = phx_lib_vendor_directory.."/glfw"
 phx_vendor_src_json_dir     = phx_lib_vendor_directory.."/json"
 phx_vendor_src_cereal_dir   = phx_lib_vendor_directory.."/cereal"
+phx_vendor_src_tlsf         = phx_lib_vendor_directory.."/tlsf"
+phx_vender_src_tracy        = phx_lib_vendor_directory.."/tracy"
 
 phx_vendor_include_glfw_dir = phx_vendor_src_glfw_dir.."/include"
 phx_vendor_include_yaml_dir = phx_vendor_src_yaml_dir.."/include"
@@ -263,7 +265,7 @@ workspace "PhxEngine"
     filter {}
 
 	filter { 'configurations:Debug' }
-		defines { 'PHX_DEBUG' }
+		defines { 'PHX_DEBUG', "TRACY_ENABLE"}
 		optimize('off')
 		--symbols('on')
 		symbols('fastlink')
@@ -273,7 +275,7 @@ workspace "PhxEngine"
 		defines
 		{
 			'NDEBUG', -- Disables assert
-			'EASTL_ASSERT_ENABLED=0'
+			'EASTL_ASSERT_ENABLED=0',
 		}
 		optimize('speed')
 		symbols('on')
@@ -281,7 +283,7 @@ workspace "PhxEngine"
 		flags { 'linktimeoptimization' }
 
     filter { 'configurations:Profiling' }
-		defines { 'PHX_PROFILING', }
+		defines { 'PHX_PROFILING', "TRACY_ENABLE" }
 
 	filter { 'configurations:Final' }
 		defines { 'PHX_FINAL', }
@@ -682,7 +684,7 @@ group "Applications"
             phx_app_directory.."/"..project_phx_app_editor.."/vendor/fast_obj/**.c",
             phx_app_directory.."/"..project_phx_app_editor.."/vendor/fast_obj/**.h",
             phx_app_directory.."/"..project_phx_app_editor.."/vendor/meshoptimizer/**.cpp",
-            phx_app_directory.."/"..project_phx_app_editor.."/vendor/meshoptimizer/**.h"
+            phx_app_directory.."/"..project_phx_app_editor.."/vendor/meshoptimizer/**.h",
         }
 
         includedirs 
@@ -691,6 +693,7 @@ group "Applications"
             phx_lib_vendor_directory.."/spdlog/include",
             phx_lib_vendor_directory.."/cgltf",
             phx_lib_vendor_directory.."/entt",
+            phx_vender_src_tracy,
             phx_vendor_src_imgui_dir,
             phx_vendor_src_entt_dir,
             phx_vendor_src_cereal_dir,

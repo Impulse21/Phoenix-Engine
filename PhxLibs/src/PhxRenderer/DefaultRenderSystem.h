@@ -16,22 +16,14 @@ namespace phx::gfx
 
 		void RegisterObservers(phx::World& world) override;
 
-		void OnPreRender(World& world) override;
-		void OnRender()  override;
+		void PreRender(World& world) override;
+		void Render(RenderPass renderPass)  override;
 
-		void RegisterSubSystem(uint32_t passMask, std::shared_ptr<IRenderSubSystem> subSystem) override;
+		void AddLayer(RenderLayer* layer) override;
 
 	private:
 		entt::observer m_observer;
-		std::vector<std::shared_ptr<IRenderSubSystem>> m_subsystems;
-
-		struct CachedResource
-		{
-			RefCountPtr<IResource> Resource;
-		};
-
-		size_t m_cachedResourceCount;
-		CachedResource* m_cachedResourceData;
+		std::vector<RenderLayer*> m_layers;
 	};
 }
 

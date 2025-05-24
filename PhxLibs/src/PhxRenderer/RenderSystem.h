@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <PhxRenderer/RenderPasses.h>
 #include <PhxRenderer/RenderLayer.h>
 
 namespace phx
@@ -14,8 +15,15 @@ namespace phx
 
 namespace phx::gfx
 {
+	struct View
+	{
+
+	};
+
 	template<typename T>
 	concept RenderLayerType = std::is_base_of_v<RenderLayer, T>;
+
+	struct View;
 
 	class IRenderSystem
 	{
@@ -30,15 +38,15 @@ namespace phx::gfx
 
 		virtual void RegisterObservers(phx::World& world) = 0;
 
-		virtual void OnPreRender(World& world) = 0;
-		virtual void OnRender() = 0;
+		virtual void PreRender(World& world) = 0;
+		virtual void Render(RenderPass renderPass) = 0;
 
-		virtual void RegisterSubSystem(RenderLayer* layer) = 0;
+		virtual void AddLayer(RenderLayer* layer) = 0;
 
 		template<RenderLayerType TLayer>
 		void AddLayer()
 		{
-			RegisterSubSystem(TLayer);
+			AddLayer(new TLayer);
 		}
 	};
 }

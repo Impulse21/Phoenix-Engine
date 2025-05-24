@@ -2,6 +2,7 @@
 
 #include "imgui.h"
 
+#if false
 #include <PhxRhi/RHITypes.h>
 #include <PhxRenderer/RenderSubSystem.h>
 
@@ -42,3 +43,4 @@ namespace phx::gfx
 		rhi::PipelineStateHandle m_pipeline;
 	};
 }
+#endif

@@ -8,5 +8,6 @@ namespace phx::gfx
 		EarlyDepth = 0,
 		Shadow,
 		Forward,
+		PostProcess,
 	};
 }

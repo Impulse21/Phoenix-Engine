@@ -1,5 +1,6 @@
 #include "PhxRenderer/PhxRenderer_pch.h"
 
+#if false
 #include <DirectXMath.h>
 
 #include <PhxCore/Memory.h>
@@ -441,3 +442,4 @@ void ImGuiRenderSystem::Render(CommandCtx* ctx)
         ImGui::EndFrame();
     }
 }
+#endif

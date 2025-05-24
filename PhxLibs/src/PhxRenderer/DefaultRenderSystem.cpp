@@ -38,6 +38,13 @@ void phx::gfx::DefaultRenderSystem::Initialize()
 
 void phx::gfx::DefaultRenderSystem::Finalize()
 {
+	for (auto layer : m_layers)
+	{
+		if (layer)
+			delete layer;
+	}
+
+	m_layers.clear();
 }
 
 void phx::gfx::DefaultRenderSystem::RegisterObservers(phx::World& world)
@@ -54,7 +61,7 @@ void phx::gfx::DefaultRenderSystem::RegisterObservers(phx::World& world)
 #endif
 }
 
-void phx::gfx::DefaultRenderSystem::OnPreRender(World& world)
+void phx::gfx::DefaultRenderSystem::PreRender(World& world)
 {
 	// TODO: Determine where this should go
 	for (entt::entity entityId : m_observer)
@@ -75,29 +82,28 @@ void phx::gfx::DefaultRenderSystem::OnPreRender(World& world)
 
 	m_observer.clear();
 
-	auto view = world.GetAllEntitiesWith<RenderMeshComponent>();
-	view.each([this](RenderMeshComponent& renderMeshComp) {
-		m_cachedResourceCount = 0;
+	// Construct Views
 
-		if (renderMeshComp.MeshResource->IsLoaded())
-			m_cachedResourceCount++;
-	});
+	View view;
+	for (auto layer : m_layers)
+	{
+		// TODO: Cache data
+		layer->PreRender(world, view, RenderPass::Forward);
 
-	m_cachedResourceData= Memory::GetFrameAllocator().AllocArray<DefaultRenderSystem::CachedResource>(m_cachedResourceCount);
-	view.each([this](RenderMeshComponent& renderMeshComp) {
-		m_cachedResourceCount = 0;
-
-		if (renderMeshComp.MeshResource->IsLoaded())
-			m_cachedResourceData->Resource = renderMeshComp.MeshResource;
-		});
+	}
 }
 
-void phx::gfx::DefaultRenderSystem::OnRender()
+void phx::gfx::DefaultRenderSystem::Render(RenderPass renderPass)
 {
-	// TOOD: Render the mesh
+	for (auto layer : m_layers)
+	{
+		// TODO: Cache data
+		layer->Render(renderPass, nullptr);
+
+	}
 }
 
-void phx::gfx::DefaultRenderSystem::RegisterSubSystem(uint32_t /*passMask*/, std::shared_ptr<IRenderSubSystem> subSystem)
+void phx::gfx::DefaultRenderSystem::AddLayer(RenderLayer* layer)
 {
-	m_subsystems.push_back(std::move(subSystem));
+	m_layers.push_back(layer);
 }

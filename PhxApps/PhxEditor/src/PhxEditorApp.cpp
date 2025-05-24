@@ -10,7 +10,7 @@
 #include <PhxWorld/WorldSerializer.h>
 
 #include <PhxRenderer/RenderSystem.h>
-#include <PhxRenderer/SubSystems/MeshSubSystem.h>
+#include <PhxRenderer/RenderLayers/MeshRenderLayer.h>
 
 #include <PhxEngine/EntryPoint.h>
 
@@ -365,7 +365,7 @@ phx::IApplication* phx::CreateApplication()
 
 void PhxEditor::Startup()
 {
-	phx::gfx::IRenderSystem::Ptr->RegisterSubSystem<phx::gfx::MeshSubSystem>(0);
+	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
 
 	auto fs = phx::IRootFileSystem::Ptr;
 	{
@@ -404,7 +404,7 @@ void PhxEditor::Shutdown()
 
 void PhxEditor::OnPreRender()
 {
-	phx::gfx::IRenderSystem::Ptr->OnPreRender(m_world);
+	phx::gfx::IRenderSystem::Ptr->PreRender(m_world);
 }
 
 void PhxEditor::OnUpdate_Threaded(float /*deltaTime*/)
@@ -413,5 +413,6 @@ void PhxEditor::OnUpdate_Threaded(float /*deltaTime*/)
 
 void PhxEditor::OnRender_Threaded()
 {
-	phx::gfx::IRenderSystem::Ptr->OnRender();
+	// Render Forward
+	phx::gfx::IRenderSystem::Ptr->Render(phx::gfx::RenderPass::Forward);
 }
