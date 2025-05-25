@@ -306,6 +306,8 @@ namespace
 		phx::ThreadPool::SubmitTask([&]() {
 			phx::World world;
 
+			phx::Entity camera = world.CreateEntity("main_camera");
+			camera.AddComponent<phx::cam
 			phx::Entity entity = world.CreateEntity("SM_Chest_01");
 			phx::MeshComponent& meshComp = entity.AddComponent<phx::MeshComponent>();
 			meshComp.Mesh = testResourceOutput;

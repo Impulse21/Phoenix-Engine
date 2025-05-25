@@ -34,6 +34,23 @@ namespace phx
 		entt::entity ParentID = entt::null;
 	};
 
+	struct CameraComponent
+	{
+		float Width = 0.0f;
+		float Height = 0.0f;
+		float ZNear = 0.1f;
+		float ZFar = 5000.0f;
+		float FoV = 1.0f; // Radians
+
+		DirectX::XMFLOAT3 Eye = { 0.0f, 0.0f, 0.0f };
+#ifdef LH
+		DirectX::XMFLOAT3 Forward = { 0.0f, 0.0f, 1.0f };
+#else
+		DirectX::XMFLOAT3 Forward = { 0.0f, 0.0f, -1.0f };
+#endif
+		DirectX::XMFLOAT3 Up = { 0.0f, 1.0f, 0.0f };
+	};
+
 	struct MeshComponent
 	{
 		std::string Mesh;

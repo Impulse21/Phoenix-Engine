@@ -3,6 +3,7 @@
 #include <memory>
 #include <PhxRenderer/RenderPasses.h>
 #include <PhxRenderer/RenderLayer.h>
+#include <DirectXMath.h>
 
 namespace phx
 {
@@ -18,6 +19,16 @@ namespace phx::gfx
 	struct View
 	{
 
+		DirectX::XMFLOAT4X4 View;
+		DirectX::XMFLOAT4X4 Projection;
+		DirectX::XMFLOAT4X4 ViewProjection;
+
+		DirectX::XMFLOAT4X4 ViewInv;
+		DirectX::XMFLOAT4X4 ProjectionInv;
+		DirectX::XMFLOAT4X4 ViewProjectionInv;
+
+		Core::Frustum FrustumWS;
+		Core::Frustum FrustumVS;
 	};
 
 	template<typename T>
