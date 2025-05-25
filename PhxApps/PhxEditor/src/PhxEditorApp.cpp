@@ -370,7 +370,8 @@ public:
 	void* GetWindowHandle() const override { return m_windowHandle; }
 
 private:
-	void TEST_RotateEntity(float deltaTime);
+	void TEST_RotateEntity(float deltaTime, phx::TransformComponent& comp);
+
 private:
 	inline static PhxEditor* ms_instance = nullptr;
 	const phx::ApplicationDescriptor m_desc;
@@ -436,7 +437,12 @@ void PhxEditor::OnPreRender()
 void PhxEditor::OnUpdate_Threaded(float deltaTime)
 {
 	PHX_PROFILE;
-	TEST_RotateCube(deltaTime);
+
+	auto view = m_world.GetAllEntitiesWith<phx::TransformComponent, phx::MeshComponent>();
+
+	view.each([&](entt::entity, phx::TransformComponent& transformComp, phx::MeshComponent&) {
+			TEST_RotateEntity(deltaTime, transformComp);
+		});
 
 	// Rotate cube in a random direction
 }
@@ -448,38 +454,39 @@ void PhxEditor::OnRender_Threaded()
 	phx::gfx::IRenderSystem::Ptr->Render(phx::gfx::RenderPass::Forward);
 }
 
-void PhxEditor::TEST_RotateEntity(float deltaTime)
+void PhxEditor::TEST_RotateEntity(float deltaTime, phx::TransformComponent& comp)
 {
 	using namespace DirectX;
 
 	static std::default_random_engine s_rng;
-	static std::uniform_real_distribution<float> s_angleDist(-0.01f, 0.01f); // Small angles each frame
-	static std::uniform_real_distribution<float> s_axisDist(-1.0f, 1.0f);
+	static std::uniform_real_distribution<float> axisDist(-1.0f, 1.0f);       // For x/y/z axis
+	static std::uniform_real_distribution<float> factorDist(-1.0f, 1.0f);     // For random sign/scale
 	// You can define a max angular speed (in radians per second)
 	constexpr static float MAX_ANGULAR_SPEED = XM_PIDIV4; // 45 degrees/sec
 
-	// Random unit axis
-	XMVECTOR axis = XMVectorSet(axisDist(rng), axisDist(rng), axisDist(rng), 0.0f);
+	// Generate a random axis
+	XMVECTOR axis = XMVectorSet(
+		axisDist(s_rng),
+		axisDist(s_rng),
+		axisDist(s_rng),
+		0.0f
+	);
 	axis = XMVector3Normalize(axis);
 
-	// Random angle scale factor [-1, 1]
-	float randomFactor = baseAngleDist(rng);
+	// Random scale factor for the rotation angle
+	float randomFactor = factorDist(s_rng); // Range [-1, 1]
 
-	// Frame-scaled angle
-	float angle = randomFactor * MAX_ANGULAR_SPEED * deltaTimeSeconds;
+	// Calculate final angle based on deltaTime
+	float angle = randomFactor * MAX_ANGULAR_SPEED * deltaTime;
 
-	// Create quaternion delta
+	// Delta rotation quaternion
 	XMVECTOR deltaRotation = XMQuaternionRotationAxis(axis, angle);
 
-	// Update rotation
+	XMVECTOR rotationQuat = DirectX::XMLoadFloat4(&comp.Rotation);
+
+	// Accumulate rotation
 	rotationQuat = XMQuaternionNormalize(XMQuaternionMultiply(rotationQuat, deltaRotation));
 
-	// Build world transform: Scale * Rotation * Translation
-	XMMATRIX scaleMatrix = XMMatrixScalingFromVector(scale);
-	XMMATRIX rotationMatrix = XMMatrixRotationQuaternion(rotationQuat);
-	XMMATRIX translationMatrix = XMMatrixTranslationFromVector(position);
-
-	XMMATRIX worldMatrix = scaleMatrix * rotationMatrix * translationMatrix;
-
-	// Use worldMatrix in your rendering pipeline
+	DirectX::XMStoreFloat4(&comp.Rotation, rotationQuat);
+	DirectX::XMStoreFloat4x4(&comp.WorldMatrix, comp.GetMatrix());
 }

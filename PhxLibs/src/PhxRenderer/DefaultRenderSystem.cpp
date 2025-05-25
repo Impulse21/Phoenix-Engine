@@ -95,6 +95,21 @@ void phx::gfx::DefaultRenderSystem::Render(RenderPass renderPass)
 		layer->Render(renderPass, nullptr);
 
 	}
+
+	size_t offset = static_cast<size_t>(renderPass) * static_cast<size_t>(RenderPass::Count) * m_perFrameCache.NumViews * m_layers.size();
+
+	void** cacheArray = m_perFrameCache.CachedData + offset;
+	// TODO: Thread this
+	for (size_t iView = 0; iView < m_perFrameCache.NumViews; iView++)
+	{
+		for (size_t iLayer = 0; iLayer < m_layers.size(); iLayer++)
+		{
+			// Is there a performance hit here with virtals?
+			const size_t index = iView * m_perFrameCache.NumViews * static_cast<size_t>(RenderPass::Count) + iLayer;
+			m_perFrameCache.CachedData[index] =
+				m_layers[iLayer]->PreRender(world, m_perFrameCache.Views[iView], RenderPass::Forward);
+		}
+	}
 }
 
 void phx::gfx::DefaultRenderSystem::AddLayer(RenderLayer* layer)
@@ -154,20 +169,20 @@ void phx::gfx::DefaultRenderSystem::CacheLayerData(World& world)
 {
 	PHX_PROFILE;
 	
-	const size_t cacheDataSize = m_perFrameCache.NumViews * static_cast<size_t>(RenderPass::Count) * m_layers.size();
+	const size_t cacheDataSize =  static_cast<size_t>(RenderPass::Count) * m_perFrameCache.NumViews * m_layers.size();
 
 	m_perFrameCache.CachedData = Memory::GetFrameAllocator().AllocArray<void*>(cacheDataSize);
 
 	// TODO: Thread this
-	for (size_t iView = 0; iView < m_perFrameCache.NumViews; iView++)
+	for (size_t iPass = 0; iPass < static_cast<size_t>(RenderPass::Count); iPass++)
 	{
-		for (size_t iPass = 0; iPass < static_cast<size_t>(RenderPass::Count); iPass++)
+		for (size_t iView = 0; iView < m_perFrameCache.NumViews; iView++)
 		{
 			for (size_t iLayer = 0; iLayer < m_layers.size(); iLayer++)
 			{
 				// Is there a performance hit here with virtals?
 				const size_t index = iView * m_perFrameCache.NumViews + iPass * static_cast<size_t>(RenderPass::Count) + iLayer;
-				m_perFrameCache.CachedData[index] = 
+				m_perFrameCache.CachedData[index] =
 					m_layers[iLayer]->PreRender(world, m_perFrameCache.Views[iView], RenderPass::Forward);
 			}
 		}
