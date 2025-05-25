@@ -35,3 +35,4 @@
 #include "PhxCore/Platform.h"
 #include "PhxCore/PlatformDetection.h"
 #include <PhxCore/Profiler.h>
+#include <PhxCore/Memory.h>

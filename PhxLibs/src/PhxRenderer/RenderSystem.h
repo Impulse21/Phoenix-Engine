@@ -19,16 +19,13 @@ namespace phx::gfx
 	struct View
 	{
 
-		DirectX::XMFLOAT4X4 View;
-		DirectX::XMFLOAT4X4 Projection;
-		DirectX::XMFLOAT4X4 ViewProjection;
+		DirectX::XMFLOAT4X4 ViewMatrix;
+		DirectX::XMFLOAT4X4 ProjectionMatrix;
+		DirectX::XMFLOAT4X4 WorldToClipMatrix; // View - project matrix
 
-		DirectX::XMFLOAT4X4 ViewInv;
-		DirectX::XMFLOAT4X4 ProjectionInv;
-		DirectX::XMFLOAT4X4 ViewProjectionInv;
-
-		Core::Frustum FrustumWS;
-		Core::Frustum FrustumVS;
+		DirectX::XMFLOAT4X4 InvViewMatrix;
+		DirectX::XMFLOAT4X4 InvProjectionMatrix;
+		DirectX::XMFLOAT4X4 InvWorldToClipMatrix;
 	};
 
 	template<typename T>

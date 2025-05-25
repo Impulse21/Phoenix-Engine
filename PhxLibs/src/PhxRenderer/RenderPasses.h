@@ -9,5 +9,7 @@ namespace phx::gfx
 		Shadow,
 		Forward,
 		PostProcess,
+
+		Count,
 	};
 }

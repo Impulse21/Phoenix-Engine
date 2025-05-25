@@ -49,6 +49,8 @@ namespace phx
 		DirectX::XMFLOAT3 Forward = { 0.0f, 0.0f, -1.0f };
 #endif
 		DirectX::XMFLOAT3 Up = { 0.0f, 1.0f, 0.0f };
+
+		bool Active : 1 = false;
 	};
 
 	struct MeshComponent

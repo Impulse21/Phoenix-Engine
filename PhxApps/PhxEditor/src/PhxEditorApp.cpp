@@ -307,7 +307,26 @@ namespace
 			phx::World world;
 
 			phx::Entity camera = world.CreateEntity("main_camera");
-			camera.AddComponent<phx::cam
+			{
+				auto& cameraComp = camera.AddComponent<phx::CameraComponent>();
+				cameraComp.Active = true;
+
+				DirectX::XMVECTOR eyePos = DirectX::XMVectorSet(0.0f, 0.0f, -2.0f, 0.0f);
+				DirectX::XMVECTOR focusPoint = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+				DirectX::XMVECTOR eyeDir = DirectX::XMVectorSubtract(focusPoint, eyePos);
+				eyeDir = DirectX::XMVector3Normalize(eyeDir);
+
+				DirectX::XMStoreFloat3(
+					&cameraComp.Eye,
+					eyePos);
+
+				DirectX::XMStoreFloat3(
+					&cameraComp.Forward,
+					eyeDir);
+
+				cameraComp.FoV = DirectX::XMConvertToRadians(60);
+			}
+
 			phx::Entity entity = world.CreateEntity("SM_Chest_01");
 			phx::MeshComponent& meshComp = entity.AddComponent<phx::MeshComponent>();
 			meshComp.Mesh = testResourceOutput;

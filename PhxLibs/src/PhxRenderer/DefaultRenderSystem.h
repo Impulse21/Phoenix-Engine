@@ -1,8 +1,11 @@
 #pragma once
 
+#include <PhxCore/EnumUtils.h>
 #include <PhxRenderer/RenderSystem.h>
-
+#include <PhxRenderer/RenderPasses.h>
 #include <entt/entt.hpp>
+
+
 namespace phx::gfx
 {
 	class DefaultRenderSystem final : public IRenderSystem
@@ -22,8 +25,22 @@ namespace phx::gfx
 		void AddLayer(RenderLayer* layer) override;
 
 	private:
+		void CacheRenderViews(World& world);
+		void CacheLayerData(World& world);
+
+	private:
 		entt::observer m_observer;
 		std::vector<RenderLayer*> m_layers;
+
+		struct PerFrameCache
+		{
+			uint32_t NumViews = 0;
+			View* Views = nullptr;
+			
+			// [ view, render_pass, List of cachedData
+			void** CachedData = nullptr;
+
+		} m_perFrameCache;
 	};
 }
 
