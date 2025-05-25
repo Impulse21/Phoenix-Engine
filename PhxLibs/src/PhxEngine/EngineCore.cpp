@@ -42,8 +42,10 @@ namespace phx
 {
 	namespace EngineCore
 	{
+		size_t g_FrameCount = 0;
 		void PreInitialize(int argc, wchar_t** argv)
 		{
+			g_FrameCount = 0;
 			phx::Log::Initialize();
 			phx::CommandLineArgs::Initialize(argc, argv);
 			phx::ThreadPool::Initialize();
@@ -79,6 +81,8 @@ namespace phx
 		void Tick()
 		{
 			PHX_PROFILE_FRAME;
+
+			g_FrameCount++;
 			Memory::GetFrameAllocator().Reset();
 			Memory::GetScratchAllocator().Reset();
 

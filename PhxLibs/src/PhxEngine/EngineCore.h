@@ -8,6 +8,7 @@ namespace phx
 
 	namespace EngineCore
 	{
+		extern size_t g_FrameCount;
 		void PreInitialize(int argc, wchar_t** argv);
 
 		void Initialize(void* windowHandle);

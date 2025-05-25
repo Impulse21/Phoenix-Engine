@@ -23,6 +23,7 @@
 #include <fast_obj/fast_obj.h>
 
 #include <meshoptimizer/meshoptimizer.h>
+#include <random>
 
 namespace
 {
@@ -369,6 +370,8 @@ public:
 	void* GetWindowHandle() const override { return m_windowHandle; }
 
 private:
+	void TEST_RotateCube(float deltaTime);
+private:
 	inline static PhxEditor* ms_instance = nullptr;
 	const phx::ApplicationDescriptor m_desc;
 	phx::World m_world;
@@ -430,13 +433,53 @@ void PhxEditor::OnPreRender()
 	phx::gfx::IRenderSystem::Ptr->PreRender(m_world);
 }
 
-void PhxEditor::OnUpdate_Threaded(float /*deltaTime*/)
+void PhxEditor::OnUpdate_Threaded(float deltaTime)
 {
 	PHX_PROFILE;
+	TEST_RotateCube(deltaTime);
+
+	// Rotate cube in a random direction
 }
 
 void PhxEditor::OnRender_Threaded()
 {
 	PHX_PROFILE;
+	// TODO: Make use of the render graph
 	phx::gfx::IRenderSystem::Ptr->Render(phx::gfx::RenderPass::Forward);
+}
+
+void PhxEditor::TEST_RotateCube(float deltaTime)
+{
+	using namespace DirectX;
+
+	static std::default_random_engine s_rng;
+	static std::uniform_real_distribution<float> s_angleDist(-0.01f, 0.01f); // Small angles each frame
+	static std::uniform_real_distribution<float> s_axisDist(-1.0f, 1.0f);
+	// You can define a max angular speed (in radians per second)
+	constexpr static float MAX_ANGULAR_SPEED = XM_PIDIV4; // 45 degrees/sec
+
+	// Random unit axis
+	XMVECTOR axis = XMVectorSet(axisDist(rng), axisDist(rng), axisDist(rng), 0.0f);
+	axis = XMVector3Normalize(axis);
+
+	// Random angle scale factor [-1, 1]
+	float randomFactor = baseAngleDist(rng);
+
+	// Frame-scaled angle
+	float angle = randomFactor * MAX_ANGULAR_SPEED * deltaTimeSeconds;
+
+	// Create quaternion delta
+	XMVECTOR deltaRotation = XMQuaternionRotationAxis(axis, angle);
+
+	// Update rotation
+	rotationQuat = XMQuaternionNormalize(XMQuaternionMultiply(rotationQuat, deltaRotation));
+
+	// Build world transform: Scale * Rotation * Translation
+	XMMATRIX scaleMatrix = XMMatrixScalingFromVector(scale);
+	XMMATRIX rotationMatrix = XMMatrixRotationQuaternion(rotationQuat);
+	XMMATRIX translationMatrix = XMMatrixTranslationFromVector(position);
+
+	XMMATRIX worldMatrix = scaleMatrix * rotationMatrix * translationMatrix;
+
+	// Use worldMatrix in your rendering pipeline
 }

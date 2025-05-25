@@ -16,7 +16,7 @@ namespace
 {
 	struct CacheEntry
 	{
-		RefCountPtr<renderer::MeshResource> Resource;
+		renderer::MeshResource* Resource;
 		DirectX::XMFLOAT4X4 ModelToClipSpace;
 	};
 
@@ -30,7 +30,7 @@ namespace
 void* phx::gfx::MeshRenderLayer::PreRender(phx::World& world, View const& view, RenderPass renderPass)
 {
 	if (renderPass != RenderPass::Forward)
-		return;
+		return nullptr;
 
 	PHX_PROFILE;
 
@@ -39,11 +39,7 @@ void* phx::gfx::MeshRenderLayer::PreRender(phx::World& world, View const& view, 
 	// Collect Meshes
 	auto componentView = world.GetAllEntitiesWith<TransformComponent, gfx::RenderMeshComponent>();
 	size_t estimatedSize = 0;
-	for (auto e : componentView)
-	{
-		estimatedSize++;
-
-	}
+	componentView.each([&](entt::entity, TransformComponent, gfx::RenderMeshComponent) { estimatedSize++; });
 
 	cache->Entries = phx::Memory::GetFrameAllocator().AllocArray<CacheEntry>(estimatedSize);
 
@@ -54,7 +50,7 @@ void* phx::gfx::MeshRenderLayer::PreRender(phx::World& world, View const& view, 
 
 		CacheEntry& entry = cache->Entries[cache->NumEntries];
 
-		entry.Resource = renderMeshComp.MeshResource.As<renderer::MeshResource>();
+		entry.Resource = renderMeshComp.MeshResource.As<renderer::MeshResource>().Get();
 
 		DirectX::XMMATRIX model = DirectX::XMLoadFloat4x4(&transformComp.WorldMatrix);
 		DirectX::XMMATRIX worldToClip = DirectX::XMLoadFloat4x4(&view.WorldToClipMatrix);
@@ -71,6 +67,7 @@ void* phx::gfx::MeshRenderLayer::PreRender(phx::World& world, View const& view, 
 
 void phx::gfx::MeshRenderLayer::Render(RenderPass /*renderPass*/, void* /*cachedData*/)
 {
+
 }
 
 void phx::gfx::MeshRenderLayer::Finalize()
