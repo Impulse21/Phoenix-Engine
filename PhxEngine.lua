@@ -226,7 +226,7 @@ workspace "PhxEngine"
     language('C++')
 	cppdialect('C++20')
 	rtti('off')
-	platforms { clang_win64_d3d12, clang_win64_vulkan }
+	platforms { clang_win64_vulkan, clang_win64_d3d12 }
 
 	outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 	targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
@@ -367,7 +367,17 @@ group "Vendors"
             phx_vendor_src_tracy..'/version.txt',
             phx_vendor_src_tracy..'/LICENSE.txt'
         }
-
+        
+        filter('toolset:*-clangcl')
+            buildoptions {
+                '-Wno-unused-const-variable',
+                '-Wno-unused-function',
+                '-Wno-unused-parameter',
+                '-Wno-unused-parameter',
+                '-Wno-missing-field-initializers',
+            }
+        filter()
+        
         filter "system:linux"
             pic "On"
             systemversion "latest"
@@ -514,7 +524,7 @@ group "Vendors"
         filter {}
 
 
-    group "Vulkan"
+    group "Vendors/Vulkan"
         project(project_vendor_vk_bootstrap)
             kind "StaticLib"
             language "C++"
@@ -526,6 +536,8 @@ group "Vendors"
                 phx_vendor_src_vk_bootstrap..'/*.h',
                 phx_vendor_src_vk_bootstrap..'/LICENSE.txt'
             }
+
+            AddVulkanIncludes()
 
             filter "system:linux"
                 pic "On"
@@ -549,6 +561,8 @@ group "Vendors"
                 phx_vendor_src_tracy..'/LICENSE.txt'
             }
 
+            AddVulkanIncludes()
+            
             filter "system:linux"
                 pic "On"
                 systemversion "latest"
