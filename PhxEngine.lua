@@ -593,6 +593,7 @@ group "PhxLibs"
         {
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
+            phx_vendor_src_tracy,
         }
         
         filter('platforms:'..clang_win64_d3d12)

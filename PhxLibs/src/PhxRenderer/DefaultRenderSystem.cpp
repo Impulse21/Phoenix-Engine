@@ -63,6 +63,7 @@ void phx::gfx::DefaultRenderSystem::RegisterObservers(phx::World& world)
 
 void phx::gfx::DefaultRenderSystem::PreRender(World& world)
 {
+	PHX_PROFILE;
 	// TODO: Determine where this should go
 	for (entt::entity entityId : m_observer)
 	{
@@ -95,6 +96,7 @@ void phx::gfx::DefaultRenderSystem::PreRender(World& world)
 
 void phx::gfx::DefaultRenderSystem::Render(RenderPass renderPass)
 {
+	PHX_PROFILE;
 	for (auto layer : m_layers)
 	{
 		// TODO: Cache data

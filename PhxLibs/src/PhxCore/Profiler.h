@@ -1,5 +1,14 @@
 #pragma once
 
+#include <tracy/Tracy.hpp>
+
+#define PHX_PROFILE ZoneScoped
+#define PHX_PROFILE_FRAME FrameMark
+#define PHX_PROFILE_SECTION(x) ZoneScopedN(x)
+#define PHX_PROFILE_TAG(y, x) ZoneText(x, strlen(x))
+#define PHX_PROFILE_LOG(text, size) TracyMessage(text, size)
+#define PHX_PROFILE_VALUE(text, value) TracyPlot(text, value)
+
 #if false
 namespace phx
 {

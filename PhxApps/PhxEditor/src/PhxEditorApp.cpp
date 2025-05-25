@@ -3,6 +3,7 @@
 #include <PhxCore/VFS.h>
 #include <PhxCore/ThreadPool.h>
 #include <PhxCore/SystemTime.h>
+#include <PhxCore/Profiler.h>
 
 #include <PhxWorld/WorldComponents.h>
 #include <PhxWorld/Entity.h>
@@ -404,15 +405,17 @@ void PhxEditor::Shutdown()
 
 void PhxEditor::OnPreRender()
 {
+	PHX_PROFILE;
 	phx::gfx::IRenderSystem::Ptr->PreRender(m_world);
 }
 
 void PhxEditor::OnUpdate_Threaded(float /*deltaTime*/)
 {
+	PHX_PROFILE;
 }
 
 void PhxEditor::OnRender_Threaded()
 {
-	// Render Forward
+	PHX_PROFILE;
 	phx::gfx::IRenderSystem::Ptr->Render(phx::gfx::RenderPass::Forward);
 }

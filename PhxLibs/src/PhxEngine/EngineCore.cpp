@@ -8,6 +8,7 @@
 #include <PhxCore/ThreadPool.h>
 #include <PhxCore/CommandLineArgs.h>
 #include <PhxCore/VFS.h>
+#include <PhxCore/Profiler.h>
 
 #include <PhxResource/ResourceManger.h>
 
@@ -77,6 +78,7 @@ namespace phx
 
 		void Tick()
 		{
+			PHX_PROFILE_FRAME;
 			Memory::GetFrameAllocator().Reset();
 			Memory::GetScratchAllocator().Reset();
 
