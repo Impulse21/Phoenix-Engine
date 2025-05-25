@@ -370,7 +370,7 @@ public:
 	void* GetWindowHandle() const override { return m_windowHandle; }
 
 private:
-	void TEST_RotateCube(float deltaTime);
+	void TEST_RotateEntity(float deltaTime);
 private:
 	inline static PhxEditor* ms_instance = nullptr;
 	const phx::ApplicationDescriptor m_desc;
@@ -448,7 +448,7 @@ void PhxEditor::OnRender_Threaded()
 	phx::gfx::IRenderSystem::Ptr->Render(phx::gfx::RenderPass::Forward);
 }
 
-void PhxEditor::TEST_RotateCube(float deltaTime)
+void PhxEditor::TEST_RotateEntity(float deltaTime)
 {
 	using namespace DirectX;
 
