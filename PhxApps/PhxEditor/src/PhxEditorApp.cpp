@@ -386,7 +386,7 @@ phx::IApplication* phx::CreateApplication()
 		.WorkingDirectory = phx::FileSystem::GetDirectoryWithExecutable()
 	};
 
-	return new PhxEditor(desc);
+	return phx_new_system(PhxEditor, desc);
 }
 
 void PhxEditor::Startup()

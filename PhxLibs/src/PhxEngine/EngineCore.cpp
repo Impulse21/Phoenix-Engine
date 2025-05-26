@@ -48,9 +48,11 @@ namespace phx
 			g_FrameCount = 0;
 			phx::Log::Initialize();
 			phx::CommandLineArgs::Initialize(argc, argv);
-			phx::ThreadPool::Initialize();
 
-			Memory::Initialize({ .VirtualMemorySize = 16_GiB });
+			MemoryService::Initialize({
+				.MaxDynamicSize = 1_GiB });
+
+			phx::ThreadPool::Initialize();
 
 			phx::IApplication::Ptr = phx::CreateApplication();
 		}
@@ -68,12 +70,12 @@ namespace phx
 
 			app->SetWindowHandle(windowHandle);
 
-			phx::IRootFileSystem::Ptr = new RootFileSystem();
+			phx::IRootFileSystem::Ptr = phx_new_system(RootFileSystem);
 
 			phx::ResourceManger::Initialize();
 			phx::ResourceManger::RegisterHandler<renderer::MeshResourceHandler>();
 
-			phx::gfx::IRenderSystem::Ptr = new gfx::DefaultRenderSystem();
+			phx::gfx::IRenderSystem::Ptr = phx_new_system(gfx::DefaultRenderSystem);
 
 			app->Startup();
 		}
@@ -83,8 +85,7 @@ namespace phx
 			PHX_PROFILE_FRAME;
 
 			g_FrameCount++;
-			Memory::GetFrameAllocator().Reset();
-			Memory::GetScratchAllocator().Reset();
+			MemoryService::BeginFrame();
 
 			// -- Pre-Render ---
 			OnPreRender(phx::IApplication::Ptr);
@@ -109,15 +110,17 @@ namespace phx
 		{
 			phx::IApplication::Ptr->Shutdown();
 
-			delete phx::IApplication::Ptr;
+			phx_delete_system(phx::IApplication::Ptr);
 			phx::IApplication::Ptr = nullptr;
 
 			gfx::IRenderSystem::Ptr->Finalize();
-			delete gfx::IRenderSystem::Ptr;
+			phx_delete_system(gfx::IRenderSystem::Ptr);
 
-			delete phx::IRootFileSystem::Ptr;
+			phx_delete_system(phx::IRootFileSystem::Ptr);
 
 			phx::rhi::Finalize();
+
+			MemoryService::Finalize();
 		}
 	}
 }

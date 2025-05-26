@@ -239,11 +239,11 @@ void phx_delete(Allocator& allocator, T* ptr)
 };
 
 #define phx_new_system(Type, ...) phx_new<Type>(phx::MemoryService::g_SystemAllocator, __VA_ARGS__)
-#define phx_delete_system(Ptr) phx_delete<Type>(phx::MemoryService::g_SystemAllocator, Ptr)
+#define phx_delete_system(Ptr) phx_delete(phx::MemoryService::g_SystemAllocator, Ptr)
 
 #define phx_new_scratch(Type, ...) phx_new<Type>(phx::MemoryService::g_frameScratchAllocator, __VA_ARGS__)
 
 #define phx_new_frame(Type, ...) phx_new<Type>(phx::MemoryService::g_frameAllocator, __VA_ARGS__)
 
 #define phx_new_heap(Type, ...) phx_new<Type>(phx::MallocAllocator(), __VA_ARGS__)
-#define phx_delete_heap(Ptr) phx_delete<Type>(phx::MallocAllocator(), Ptr)
+#define phx_delete_heap(Ptr) phx_delete(phx::MallocAllocator(), Ptr)
