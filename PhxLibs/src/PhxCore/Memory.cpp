@@ -25,11 +25,11 @@ namespace phx::MemoryService
 	StackAllocator g_frameScratchAllocator;
 	LinearAllocator g_frameAllocator;
 
-	void Initialize(MemoryDescriptor& config)
+	void Initialize(MemoryDescriptor& desc)
 	{
-		g_SystemAllocator.Initialize(config.MaxDynamicSize);
-		g_frameScratchAllocator.Initialize(8_MiB);
-		g_frameAllocator.Initialize(8_MiB);
+		g_SystemAllocator.Initialize(desc.MaxDynamicSize);
+		g_frameAllocator.Initialize(desc.MaxFrameSize);
+		g_frameScratchAllocator.Initialize(desc.MaxScratchSize);
 	}
 
 	void Finalize()
