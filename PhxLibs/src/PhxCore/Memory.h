@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <mutex>
 #include <vector>
 #include "PhxCore/Base.h"
 #include "PhxCore/Span.h"
@@ -93,10 +92,10 @@ namespace phx
 
 		void Deallocate(void* pointer) override;
 
-		size_t GetMarker();
+		size_t GetMarker() { return m_allocatedSize; }
 		void FreeMarker(size_t marker);
 
-		void Clear();
+		void Clear() { m_allocatedSize = 0; }
 
 	private:
         uint8_t*	m_memory = nullptr;
@@ -112,10 +111,10 @@ namespace phx
 		void Initialize(size_t size);
 		void Finalize();
 		
-		void* Allocate(size_t size, size_t alignment) override;
-		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
+		void* Allocate(size_t size, size_t alignment) override {};
+		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override {};
 
-		void Deallocate(void* pointer) override;
+		void Deallocate(void* pointer) override {};
 
         void*	AllocateTop(size_t size, size_t alignment);
         void*   AllocateBottom(size_t size, size_t alignment);
@@ -123,20 +122,20 @@ namespace phx
         void	DeallocateTop(size_t size);
         void	DeallocateBottom(size_t size);
 
-		size_t GetMarkerTop();
-		size_t GetMarkerButtom();
+		size_t GetMarkerTop() { return m_top; }
+		size_t GetMarkerButtom() { return m_bottom; }
 
 		void FreeMarkerTop(size_t marker);
 		void FreeMarkerBottom(size_t marker);
 
-		void ClearTop();
-		void ClearBottom();
+		void ClearTop() { m_top = m_totalSize; }
+		void ClearBottom() { m_bottom = 0; }
 
 	private:
         uint8_t*	m_memory = nullptr;
         size_t   	m_totalSize = 0;
         size_t		m_top = 0;
-        size_t		m_buttom = 0;
+        size_t		m_bottom = 0;
 	};
 
 	//
@@ -153,9 +152,12 @@ namespace phx
 		void* Allocate(size_t size, size_t alignment) override;
 		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
 
-		void Deallocate(void* pointer) override;
+		void Deallocate(void* pointer) override {};
 
-		void Clear();
+		void Clear()
+		{
+			m_allocatedSize = 0;
+		}
 
 	private:
 		uint8_t*	m_memory = nullptr;
@@ -170,8 +172,8 @@ namespace phx
 	public:
 		~MallocAllocator() override = default;
 
-		void Initialize(size_t size);
-		void Finalize();
+		void Initialize(size_t size) {};
+		void Finalize() {};
 		
 		void* Allocate(size_t size, size_t alignment) override;
 		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
@@ -232,3 +234,13 @@ void phx_delete(Allocator& allocator, T* ptr)
         allocator.Deallocate(ptr);
     }
 };
+
+#define phx_new_system(Type, ...) phx_new<Type>(phx::MemoryService::g_SystemAllocator, __VA_ARGS__)
+#define phx_delete_system(Ptr) phx_delete<Type>(phx::MemoryService::g_SystemAllocator, Ptr)
+
+#define phx_new_scratch(Type, ...) phx_new<Type>(phx::MemoryService::g_frameScratchAllocator, __VA_ARGS__)
+
+#define phx_new_frame(Type, ...) phx_new<Type>(phx::MemoryService::g_frameAllocator, __VA_ARGS__)
+
+#define phx_new_heap(Type, ...) phx_new<Type>(phx::MallocAllocator(), __VA_ARGS__)
+#define phx_delete_heap(Ptr) phx_delete<Type>(phx::MallocAllocator(), Ptr)
