@@ -26,87 +26,209 @@ namespace phx
 	void VirtualMemCommit(void* ptr, size_t commitSize);
 	bool VirtualMemFree(void* ptr);
 
-	class VirtualStackAllocator
+	struct MemoryStatistics
 	{
-	public:
-		struct Marker
+		size_t AllocatedBytes = 0;
+		size_t TotalBytes = 0;
+		size_t AllocationCount = 0;
+
+		void Add(size_t a)
 		{
-			size_t PageIndex;
-			size_t ByteOffset;
-		};
-
-	public:
-		VirtualStackAllocator(size_t pageSize = 4_MiB);
-
-		template<typename T, typename... TArgs>
-		[[nodiscard]] T* Alloc(TArgs&&... Args)
-		{
-			static_assert(std::is_trivially_destructible<T>::value, "Doesn't support Deconstrutable Types");
-
-			void* memory = Allocate(sizeof(T), alignof(T));
-			return new (memory) T(std::forward<TArgs>(Args)...);
+			if (a)
+			{
+				AllocatedBytes += a;
+				AllocationCount++;
+			}
 		}
-
-		template<typename T>
-		[[nodiscard]] T* AllocArray(size_t count)
-		{
-			static_assert(std::is_trivially_destructible<T>::value, "Doesn't support Deconstrutable Types");
-
-			return static_cast<T*>(Allocate(sizeof(T) * count, alignof(T)));
-		}
-
-		template<typename T>
-		[[nodiscard]] SpanMutable<T> AllocSpan(size_t count)
-		{
-			static_assert(std::is_trivially_destructible<T>::value, "Doesn't support Deconstrutable Types");
-
-			T* ptr = static_cast<T*>(Allocate(sizeof(T) * count, alignof(T)));
-			return SpanMutable<T>(ptr, count);
-		}
-
-		void* Allocate(size_t size, size_t alignment);
-
-		void Reset();
-		Marker GetMarker();
-		void FreeMarker(Marker marker);
-
-	private:
-		const size_t m_pageSize;
-		std::vector<uint8_t*> m_pages;
-		size_t m_currentPage;
-		size_t m_ptrOffset;
-
-		std::mutex m_mutex;
 	};
 
-	namespace Memory
+	struct NonCopyable
 	{
-		struct MemoryConfiguration
-		{
-			size_t VirtualMemorySize = 16_GiB;
-			size_t StackPageSize = 4_MiB;
-		};
+		NonCopyable & operator=(const NonCopyable&) = delete;
+		NonCopyable(const NonCopyable&) = delete;
+		NonCopyable() = default;
+	};
 
-		void Initialize(MemoryConfiguration const& config);
+	class IAllocator : NonCopyable
+	{
+	public:
+		virtual ~IAllocator() = default;
+
+		virtual void* Allocate(size_t size, size_t alignment) = 0;
+		virtual void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) = 0;
+
+		virtual void Deallocate(void* pointer) = 0;
+	};
+
+	class HeapAllocator final : public IAllocator
+	{
+	public:
+		~HeapAllocator() override = default;
+
+		void Initialize(size_t size);
 		void Finalize();
+		
+		void* Allocate(size_t size, size_t alignment) override;
+		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
+
+		void Deallocate(void* pointer) override;
+
+	private:
+        void*	m_tlsfHandle;
+        void*   m_memory = nullptr;
+        size_t  m_allocatedSize = 0;
+        size_t 	m_maxSize = 0;
+	};
+
+	class StackAllocator final : public IAllocator
+	{
+	public:
+		~StackAllocator() override = default;
+
+		void Initialize(size_t size);
+		void Finalize();
+		
+		void* Allocate(size_t size, size_t alignment) override;
+		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
+
+		void Deallocate(void* pointer) override;
+
+		size_t GetMarker();
+		void FreeMarker(size_t marker);
+
+		void Clear();
+
+	private:
+        uint8_t*	m_memory = nullptr;
+        size_t   	m_totalSize = 0;
+        size_t		m_allocatedSize = 0;
+	};
+
+	class DoubleStackAllocator final : public IAllocator
+	{
+	public:
+		~DoubleStackAllocator() override = default;
+
+		void Initialize(size_t size);
+		void Finalize();
+		
+		void* Allocate(size_t size, size_t alignment) override;
+		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
+
+		void Deallocate(void* pointer) override;
+
+        void*	AllocateTop(size_t size, size_t alignment);
+        void*   AllocateBottom(size_t size, size_t alignment);
+
+        void	DeallocateTop(size_t size);
+        void	DeallocateBottom(size_t size);
+
+		size_t GetMarkerTop();
+		size_t GetMarkerButtom();
+
+		void FreeMarkerTop(size_t marker);
+		void FreeMarkerBottom(size_t marker);
+
+		void ClearTop();
+		void ClearBottom();
+
+	private:
+        uint8_t*	m_memory = nullptr;
+        size_t   	m_totalSize = 0;
+        size_t		m_top = 0;
+        size_t		m_buttom = 0;
+	};
+
+	//
+	// Allocator that can only be reset.
+	//
+	class LinearAllocator final : public IAllocator
+	{
+	public:
+		~LinearAllocator() override = default;
+
+		void Initialize(size_t size);
+		void Finalize();
+		
+		void* Allocate(size_t size, size_t alignment) override;
+		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
+
+		void Deallocate(void* pointer) override;
+
+		void Clear();
+
+	private:
+		uint8_t*	m_memory = nullptr;
+		size_t		m_totalSize = 0;
+		size_t 		m_allocatedSize = 0;
+	};
+
+	//
+	// DANGER: this should be used for NON runtime processes, like compilation of resources.
+	class MallocAllocator  final : public IAllocator
+	{
+	public:
+		~MallocAllocator() override = default;
+
+		void Initialize(size_t size);
+		void Finalize();
+		
+		void* Allocate(size_t size, size_t alignment) override;
+		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
+
+		void Deallocate(void* pointer) override;
+	};
+
+  	// Memory Service /////////////////////////////////////////////////////
+	// 
+	// 
+	struct MemoryDescriptor
+	{
+		size_t MaxDynamicSize = 32_MiB;
+		size_t VirtualMemorySize = 16_GiB;
+		size_t StackPageSize = 4_MiB;
+	};
+
+	namespace MemoryService
+	{
+		void Initialize(MemoryDescriptor const& config);
+		void Finalize();
+
 		void BeginFrame();
 
-		using FrameAllocator = VirtualStackAllocator;
-		FrameAllocator& GetFrameAllocator();
-
-		using ScratchAllocator = VirtualStackAllocator;
-		ScratchAllocator& GetScratchAllocator();
-
+		extern HeapAllocator g_SystemAllocator;
+		extern StackAllocator g_frameScratchAllocator;
+		extern LinearAllocator g_frameAllocator;
 	}
 
 	struct ScopedScratchMarker
 	{
-		VirtualStackAllocator::Marker Marker;
+		size_t Marker;
 		ScopedScratchMarker()
 		{
-			this->Marker = Memory::GetScratchAllocator().GetMarker();
+			Marker = MemoryService::g_frameScratchAllocator.GetMarker();
 		}
 
-		~ScopedScratchMarker() { Memory::GetScratchAllocator().FreeMarker(Marker); }
+		~ScopedScratchMarker() { MemoryService::g_frameScratchAllocator.FreeMarker(Marker); }
 	};
 }
+
+template<typename T>
+concept AllocatorType = std::is_base_of_v<phx::IAllocator, T>;
+
+template<typename T, AllocatorType Allocator, typename... Args>
+T* phx_new(Allocator& allocator, Args&&... args)
+{
+    void* mem = allocator.Allocate(sizeof(T), alignof(T));
+    return new (mem) T(std::forward<Args>(args)...);
+};
+
+template<typename T, AllocatorType Allocator>
+void phx_delete(Allocator& allocator, T* ptr)
+{
+    if (ptr)
+    {
+        ptr->~T();
+        allocator.Deallocate(ptr);
+    }
+};

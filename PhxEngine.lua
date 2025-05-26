@@ -68,6 +68,7 @@ project_asset_packer    = 'PhxAssetPacker'
 
 project_vendor_imgui        = 'ImGui'
 project_vendor_tracy        = 'Tracy'
+project_vendor_tlsf         = 'tlsf'
 project_vendor_d3d12ma      = 'D3D12MA'
 project_vendor_yaml         = 'yaml-cpp'
 project_vendor_volk         = 'Volk'
@@ -524,6 +525,28 @@ group "Vendors"
         filter {}
 
 
+    project(project_vendor_tlsf)
+        kind "StaticLib"
+        language "C"
+
+        files
+        {
+            phx_vendor_src_tlsf..'/*.c',
+            phx_vendor_src_tlsf..'/*.h',
+            phx_vendor_src_tlsf..'/LICENSE.txt'
+        }
+
+        AddVulkanIncludes()
+        
+        filter "system:linux"
+            pic "On"
+            systemversion "latest"
+        filter {}
+
+        filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+
+        filter {}
+        
     group "Vendors/Vulkan"
         project(project_vendor_vk_bootstrap)
             kind "StaticLib"
@@ -558,7 +581,7 @@ group "Vendors"
             {
                 phx_vendor_src_volk..'/*.c',
                 phx_vendor_src_volk..'/*.h',
-                phx_vendor_src_tracy..'/LICENSE.txt'
+                phx_vendor_src_volk..'/LICENSE.txt'
             }
 
             AddVulkanIncludes()
@@ -594,6 +617,7 @@ group "PhxLibs"
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
             phx_vendor_src_tracy,
+            phx_vendor_src_tlsf,
         }
         
         filter('platforms:'..clang_win64_d3d12)
@@ -843,8 +867,9 @@ group "Applications"
             phx_vendor_src_imgui_dir,
             phx_vendor_src_entt_dir,
             phx_vendor_src_cereal_dir,
-            phx_app_directory.."/"..project_phx_app_editor.."/vendor",
             phx_vendor_src_tracy,
+            project_vendor_tlsf,
+            phx_app_directory.."/"..project_phx_app_editor.."/vendor",
         }
 
         links
