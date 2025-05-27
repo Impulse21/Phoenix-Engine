@@ -27,6 +27,7 @@
 
 namespace
 {
+#if false
 	// constexpr  size_t kCacheSize = 16;
 	bool ParseObj(const char* filename, phxed::MeshData& meshData)
 	{
@@ -337,7 +338,9 @@ namespace
 
 		phx::ThreadPool::Wait();
 	}
+#endif
 }
+
 
 class PhxEditor final : public phx::IApplication
 {
@@ -391,6 +394,7 @@ phx::IApplication* phx::CreateApplication()
 
 void PhxEditor::Startup()
 {
+#if false
 	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
 
 	auto fs = phx::IRootFileSystem::Ptr;
@@ -421,7 +425,7 @@ void PhxEditor::Startup()
 
 	if (!phx::WorldSerializer::Load(fs, defaultWorldFilename, m_world))
 		PHX_ERROR("Failed to load world '{0}'", defaultWorldFilename);
-
+#endif
 }
 
 void PhxEditor::Shutdown()
@@ -431,18 +435,20 @@ void PhxEditor::Shutdown()
 void PhxEditor::OnPreRender()
 {
 	PHX_PROFILE;
-	phx::gfx::IRenderSystem::Ptr->PreRender(m_world);
+	//phx::gfx::IRenderSystem::Ptr->PreRender(m_world);
 }
 
-void PhxEditor::OnUpdate_Threaded(float deltaTime)
+void PhxEditor::OnUpdate_Threaded(float /*deltaTime*/)
 {
 	PHX_PROFILE;
 
+#if false
 	auto view = m_world.GetAllEntitiesWith<phx::TransformComponent, phx::MeshComponent>();
 
 	view.each([&](entt::entity, phx::TransformComponent& transformComp, phx::MeshComponent&) {
 			TEST_RotateEntity(deltaTime, transformComp);
 		});
+#endif
 
 	// Rotate cube in a random direction
 }
@@ -451,7 +457,7 @@ void PhxEditor::OnRender_Threaded()
 {
 	PHX_PROFILE;
 	// TODO: Make use of the render graph
-	phx::gfx::IRenderSystem::Ptr->Render(phx::gfx::RenderPass::Forward);
+	//phx::gfx::IRenderSystem::Ptr->Render(phx::gfx::RenderPass::Forward);
 }
 
 void PhxEditor::TEST_RotateEntity(float deltaTime, phx::TransformComponent& comp)

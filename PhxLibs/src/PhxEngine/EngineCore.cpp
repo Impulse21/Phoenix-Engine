@@ -34,7 +34,7 @@ namespace
 	void OnRender_Threaded(IApplication* app)
 	{
 		app->OnRender_Threaded();
-		phx::rhi::Present();
+		//phx::rhi::Present();
 	}
 }
 
@@ -57,12 +57,13 @@ namespace phx
 			phx::IApplication::Ptr = phx::CreateApplication();
 		}
 
-		void Initialize(void* windowHandle)
+		void Initialize(void* /*windowHandle*/)
 		{
 			auto* app = phx::IApplication::Ptr;
 			uint32_t w, h;
 			app->GetDefaultWindowSize(w, h);
 
+#if false
 			phx::rhi::Initialize({
 				.SwapChianDesc = {.Width = w, .Height = h },
 				.WindowsHandle = windowHandle
@@ -76,7 +77,7 @@ namespace phx
 			phx::ResourceManger::RegisterHandler<renderer::MeshResourceHandler>();
 
 			phx::gfx::IRenderSystem::Ptr = phx_new_system(gfx::DefaultRenderSystem);
-
+#endif
 			app->Startup();
 		}
 
@@ -113,13 +114,15 @@ namespace phx
 			phx_delete_system(phx::IApplication::Ptr);
 			phx::IApplication::Ptr = nullptr;
 
+#if false
 			gfx::IRenderSystem::Ptr->Finalize();
 			phx_delete_system(gfx::IRenderSystem::Ptr);
 
 			phx_delete_system(phx::IRootFileSystem::Ptr);
 
 			phx::rhi::Finalize();
-
+#endif
+			ThreadPool::Finalize();
 			MemoryService::Finalize();
 		}
 	}

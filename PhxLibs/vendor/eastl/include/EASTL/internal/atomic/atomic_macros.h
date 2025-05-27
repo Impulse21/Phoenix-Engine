@@ -3,65 +3,154 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 
-#ifndef EASTL_ATOMIC_INTERNAL_MACROS_H
-#define EASTL_ATOMIC_INTERNAL_MACROS_H
+#ifndef EASTL_ATOMIC_INTERNAL_ATOMIC_MACROS_H
+#define EASTL_ATOMIC_INTERNAL_ATOMIC_MACROS_H
 
 #if defined(EA_PRAGMA_ONCE_SUPPORTED)
 	#pragma once
 #endif
 
+#include <EABase/eabase.h>
+
+#include "atomic_macros_base.h"
+
+#include "atomic_macros_fetch_add.h"
+#include "atomic_macros_fetch_sub.h"
+
+#include "atomic_macros_fetch_and.h"
+#include "atomic_macros_fetch_xor.h"
+#include "atomic_macros_fetch_or.h"
+
+#include "atomic_macros_add_fetch.h"
+#include "atomic_macros_sub_fetch.h"
+
+#include "atomic_macros_and_fetch.h"
+#include "atomic_macros_xor_fetch.h"
+#include "atomic_macros_or_fetch.h"
+
+#include "atomic_macros_exchange.h"
+
+#include "atomic_macros_cmpxchg_weak.h"
+#include "atomic_macros_cmpxchg_strong.h"
+
+#include "atomic_macros_load.h"
+#include "atomic_macros_store.h"
+
+#include "atomic_macros_compiler_barrier.h"
+
+#include "atomic_macros_cpu_pause.h"
+
+#include "atomic_macros_memory_barrier.h"
+
+#include "atomic_macros_signal_fence.h"
+
+#include "atomic_macros_thread_fence.h"
+
 
 /////////////////////////////////////////////////////////////////////////////////
-//
-// The reason for the implementation separating out into a compiler and architecture
-// folder is as follows.
-//
-// The compiler directory is meant to implement atomics using the compiler provided
-// intrinsics. This also implies that usually the same compiler instrinsic implementation
-// can be used for any architecture the compiler supports. If a compiler provides intrinsics
-// to support barriers or atomic operations, then that implementation should be in the
-// compiler directory.
-//
-// The arch directory is meant to manually implement atomics for a specific architecture
-// such as power or x86. There may be some compiler specific code in this directory because
-// GCC inline assembly syntax may be different than another compiler as an example.
-//
-// The arch directory can also be used to implement some atomic operations ourselves
-// if we deem the compiler provided implementation to be inefficient for the given
-// architecture or we need to do some things manually for a given compiler.
-//
-// The atomic_macros directory implements the macros that the rest of the atomic
-// library uses. These macros will expand to either the compiler or arch implemented
-// macro. The arch implemented macro is given priority over the compiler implemented
-// macro if both are implemented otherwise whichever is implemented is chosen or
-// an error is emitted if none are implemented.
-//
-// The implementation being all macros has a couple nice side effects as well.
-//
-// 1. All the implementation ends up funneling into one low level macro implementation
-//    which makes it easy to verify correctness, reduce copy-paste errors and differences
-//    in various platform implementations.
-//
-// 2. Allows for the implementation to be implemented efficiently on compilers that do not
-//    directly implement the C++ memory model in their intrinsics such as msvc.
-//
-// 3. Allows for the implementation of atomics that may not be supported on the given platform,
-//    such as 128-bit atomics on 32-bit platforms since the macros will only ever be expanded
-//    on platforms that support said features. This makes implementing said features pretty easy
-//    since we do not have to worry about complicated feature detection in the low level implementations.
-//
-// The macro implementation may asume that all passed in types are trivially constructible thus it is
-// free to create local variables of the passed in types as it may please.
-// It may also assume that all passed in types are trivially copyable as well.
-// It cannot assume any passed in type is any given type thus is a specific type if needed, it must do an
-// EASTL_ATOMIC_TYPE_PUN_CAST() to the required type.
-//
 
 
-#include "compiler/compiler.h"
-#include "arch/arch.h"
+#if defined(EASTL_COMPILER_ATOMIC_HAS_8BIT) || defined(EASTL_ARCH_ATOMIC_HAS_8BIT)
 
-#include "atomic_macros/atomic_macros.h"
+	#define EASTL_ATOMIC_HAS_8BIT
+
+#endif
 
 
-#endif /* EASTL_ATOMIC_INTERNAL_MACROS_H */
+#if defined(EASTL_COMPILER_ATOMIC_HAS_16BIT) || defined(EASTL_ARCH_ATOMIC_HAS_16BIT)
+
+	#define EASTL_ATOMIC_HAS_16BIT
+
+#endif
+
+
+#if defined(EASTL_COMPILER_ATOMIC_HAS_32BIT) || defined(EASTL_ARCH_ATOMIC_HAS_32BIT)
+
+	#define EASTL_ATOMIC_HAS_32BIT
+
+#endif
+
+
+#if defined(EASTL_COMPILER_ATOMIC_HAS_64BIT) || defined(EASTL_ARCH_ATOMIC_HAS_64BIT)
+
+	#define EASTL_ATOMIC_HAS_64BIT
+
+#endif
+
+
+#if defined(EASTL_COMPILER_ATOMIC_HAS_128BIT) || defined(EASTL_ARCH_ATOMIC_HAS_128BIT)
+
+	#define EASTL_ATOMIC_HAS_128BIT
+
+#endif
+
+
+/////////////////////////////////////////////////////////////////////////////////
+
+
+#if defined(EASTL_ARCH_ATOMIC_FIXED_WIDTH_TYPE_8)
+
+	#define EASTL_ATOMIC_FIXED_WIDTH_TYPE_8 EASTL_ARCH_ATOMIC_FIXED_WIDTH_TYPE_8
+
+#elif defined(EASTL_COMPILER_ATOMIC_FIXED_WIDTH_TYPE_8)
+
+	#define EASTL_ATOMIC_FIXED_WIDTH_TYPE_8 EASTL_COMPILER_ATOMIC_FIXED_WIDTH_TYPE_8
+
+#endif
+
+
+#if defined(EASTL_ARCH_ATOMIC_FIXED_WIDTH_TYPE_16)
+
+	#define EASTL_ATOMIC_FIXED_WIDTH_TYPE_16 EASTL_ARCH_ATOMIC_FIXED_WIDTH_TYPE_16
+
+#elif defined(EASTL_COMPILER_ATOMIC_FIXED_WIDTH_TYPE_16)
+
+	#define EASTL_ATOMIC_FIXED_WIDTH_TYPE_16 EASTL_COMPILER_ATOMIC_FIXED_WIDTH_TYPE_16
+
+#endif
+
+
+#if defined(EASTL_ARCH_ATOMIC_FIXED_WIDTH_TYPE_32)
+
+	#define EASTL_ATOMIC_FIXED_WIDTH_TYPE_32 EASTL_ARCH_ATOMIC_FIXED_WIDTH_TYPE_32
+
+#elif defined(EASTL_COMPILER_ATOMIC_FIXED_WIDTH_TYPE_32)
+
+	#define EASTL_ATOMIC_FIXED_WIDTH_TYPE_32 EASTL_COMPILER_ATOMIC_FIXED_WIDTH_TYPE_32
+
+#endif
+
+
+#if defined(EASTL_ARCH_ATOMIC_FIXED_WIDTH_TYPE_64)
+
+	#define EASTL_ATOMIC_FIXED_WIDTH_TYPE_64 EASTL_ARCH_ATOMIC_FIXED_WIDTH_TYPE_64
+
+#elif defined(EASTL_COMPILER_ATOMIC_FIXED_WIDTH_TYPE_64)
+
+	#define EASTL_ATOMIC_FIXED_WIDTH_TYPE_64 EASTL_COMPILER_ATOMIC_FIXED_WIDTH_TYPE_64
+
+#endif
+
+
+#if defined(EASTL_ARCH_ATOMIC_FIXED_WIDTH_TYPE_128)
+
+	#define EASTL_ATOMIC_FIXED_WIDTH_TYPE_128 EASTL_ARCH_ATOMIC_FIXED_WIDTH_TYPE_128
+
+#elif defined(EASTL_COMPILER_ATOMIC_FIXED_WIDTH_TYPE_128)
+
+	#define EASTL_ATOMIC_FIXED_WIDTH_TYPE_128 EASTL_COMPILER_ATOMIC_FIXED_WIDTH_TYPE_128
+
+#endif
+
+// We write some of our variables in inline assembly, which MSAN
+// doesn't understand.  This macro forces initialization of those
+// variables when MSAN is enabled and doesn't pay the initialization
+// cost when it's not enabled.
+#if EA_MSAN_ENABLED
+	#define EASTL_ATOMIC_DEFAULT_INIT(type, var) type var{}
+#else
+	#define EASTL_ATOMIC_DEFAULT_INIT(type, var) type var
+#endif // EA_MSAN_ENABLED
+
+
+#endif /* EASTL_ATOMIC_INTERNAL_ATOMIC_MACROS_H */

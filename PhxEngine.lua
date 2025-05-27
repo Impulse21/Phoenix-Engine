@@ -35,6 +35,7 @@ phx_vendor_include_glfw_dir     = phx_vendor_src_glfw_dir.."/include"
 phx_vendor_include_yaml_dir     = phx_vendor_src_yaml_dir.."/include"
 phx_vendor_include_hlslpp_dir   = phx_vendor_src_hlslpp.."/include"
 phx_vendor_include_eastl_dir    = phx_vendor_src_eastl.."/include"
+phx_vendor_include_eabase_dir   = phx_vendor_src_eabase.."/include/Common"
 
 phx_packer_vendor_dir       = "PhxAssetPacker/vendor"
 phx_packer_vendor_dx_tex    = phx_packer_vendor_dir..'/DirectXTex'
@@ -378,7 +379,7 @@ group "Vendors"
 
         includedirs
         {
-            phx_vendor_src_eabase,
+            phx_vendor_include_eabase_dir,
         }
 
         filter "system:linux"
@@ -662,6 +663,7 @@ group "PhxLibs"
             phx_lib_vendor_directory.."/spdlog/include",
             phx_vendor_src_tracy,
             phx_vendor_src_tlsf,
+            phx_vendor_include_eabase_dir,
             phx_vendor_include_eastl_dir,
             phx_vendor_include_hlslpp_dir,
         }
@@ -686,6 +688,7 @@ group "PhxLibs"
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
             phx_vendor_src_tracy,
+            phx_vendor_include_eabase_dir,
             phx_vendor_include_eastl_dir,
             phx_vendor_include_hlslpp_dir,
         }
@@ -740,6 +743,7 @@ group "PhxLibs"
             phx_lib_vendor_directory.."/entt",
             phx_vendor_src_cereal_dir,
             phx_vendor_src_tracy,
+            phx_vendor_include_eabase_dir,
             phx_vendor_include_eastl_dir,
             phx_vendor_include_hlslpp_dir,
         }
@@ -777,6 +781,7 @@ group "PhxLibs"
             phx_lib_vendor_directory.."/spdlog/include",
             phx_lib_vendor_directory.."/entt",
             phx_vendor_src_tracy,
+            phx_vendor_include_eabase_dir,
             phx_vendor_include_eastl_dir,
             phx_vendor_include_hlslpp_dir,
         }
@@ -806,6 +811,7 @@ group "PhxLibs"
             phx_lib_src_resource_dir.."/**.h",
             phx_lib_src_resource_dir.."/**.cpp",
             phx_vendor_src_tracy,
+            phx_vendor_include_eabase_dir,
             phx_vendor_include_eastl_dir,
             phx_vendor_include_hlslpp_dir,
         }
@@ -853,6 +859,7 @@ group "PhxLibs"
             phx_vendor_include_yaml_dir,
             phx_vendor_src_cereal_dir,
             phx_vendor_src_tracy,
+            phx_vendor_include_eabase_dir,
             phx_vendor_include_eastl_dir,
             phx_vendor_include_hlslpp_dir,
         }
@@ -889,6 +896,7 @@ group "PhxLibs"
             phx_vendor_src_json_dir,
             phx_vendor_src_cereal_dir,
             phx_vendor_src_tracy,
+            phx_vendor_include_eabase_dir,
             phx_vendor_include_eastl_dir,
             phx_vendor_include_hlslpp_dir,
         }
@@ -905,6 +913,9 @@ group "Applications"
         {
             phx_app_directory.."/"..project_phx_app_editor.."/src/**.cpp",
             phx_app_directory.."/"..project_phx_app_editor.."/src/**.h",
+            phx_app_directory.."/"..project_phx_app_editor.."/src/resource.rc",
+            phx_app_directory.."/"..project_phx_app_editor.."/src/phx_logo.ico",
+            
 
             -- Vendor stuff
             phx_app_directory.."/"..project_phx_app_editor.."/vendor/tinyobj/**.cc",
@@ -926,6 +937,7 @@ group "Applications"
             phx_vendor_src_entt_dir,
             phx_vendor_src_cereal_dir,
             phx_vendor_src_tracy,
+            phx_vendor_include_eabase_dir,
             phx_vendor_include_eastl_dir,
             phx_vendor_include_hlslpp_dir,
             project_vendor_tlsf,

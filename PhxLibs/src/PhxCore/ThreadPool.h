@@ -1,6 +1,8 @@
 #pragma once
 
 #include <functional>
+#include <atomic>
+
 namespace phx
 {
 	struct JobDispatchArgs
