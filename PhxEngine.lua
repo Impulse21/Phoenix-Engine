@@ -366,20 +366,22 @@ group "Vendors"
     project(project_vendor_eastl)
         kind "StaticLib"
         language "C++"
-        cppdialect "c++17"
+        cppdialect "c++14"
 
         files
         {
-            phx_vendor_src_imgui_dir..'/*.cpp',
-            phx_vendor_src_imgui_dir..'/*.hpp',
-            phx_vendor_src_imgui_dir..'/*.h',
-            phx_vendor_src_imgui_dir..'/version.txt',
-            phx_vendor_src_imgui_dir..'/LICENSE.txt'
+            phx_vendor_src_eastl..'/**.cpp',
+            phx_vendor_src_eastl..'/**.h',
+            phx_vendor_src_eastl..'/EASTL.natvis',
+            phx_vendor_src_eastl..'/version.txt',
+            phx_vendor_src_eastl..'/LICENSE.txt',
+            phx_vendor_src_eastl..'/3RDPARTYLICENSES.txt',
         }
 
         includedirs
         {
             phx_vendor_include_eabase_dir,
+            phx_vendor_include_eastl_dir,
         }
 
         filter "system:linux"
@@ -395,6 +397,30 @@ group "Vendors"
             'DEASTL_OPENSOURCE',
             'DEASTL_STD_ITERATOR_CATEGORY_ENABLED=1'
          }
+
+        filter('toolset:*-clangcl')
+        
+            defines 
+            { 
+                'EA_COMPILER_CLANG=1',
+            } 
+        filter()
+        
+        filter "system:linux"
+            pic "On"
+            systemversion "latest"
+        removefiles {}
+
+        filter {}
+        
+        filter "system:windows"
+            defines 
+            { 
+                'EA_PLATFORM_WINDOWS=1',
+            } 
+
+        removefiles {}
+        filter {}
 
         filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
 
@@ -810,10 +836,6 @@ group "PhxLibs"
         {
             phx_lib_src_resource_dir.."/**.h",
             phx_lib_src_resource_dir.."/**.cpp",
-            phx_vendor_src_tracy,
-            phx_vendor_include_eabase_dir,
-            phx_vendor_include_eastl_dir,
-            phx_vendor_include_hlslpp_dir,
         }
         
         includedirs
@@ -821,6 +843,10 @@ group "PhxLibs"
             phx_lib_src_directory,
             phx_vendor_src_imgui_dir,
             phx_lib_vendor_directory.."/spdlog/include",
+            phx_vendor_src_tracy,
+            phx_vendor_include_eabase_dir,
+            phx_vendor_include_eastl_dir,
+            phx_vendor_include_hlslpp_dir,
         }
         
         -- TODO: Do a better job at abtracting this away.
