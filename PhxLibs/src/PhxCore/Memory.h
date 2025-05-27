@@ -201,7 +201,8 @@ namespace phx
 
 		void BeginFrame();
 
-		extern HeapAllocator g_SystemAllocator;
+		extern MallocAllocator g_SystemAllocator;
+		extern HeapAllocator g_PersistentAllocator;
 		extern StackAllocator g_frameScratchAllocator;
 		extern LinearAllocator g_frameAllocator;
 	}
@@ -238,12 +239,63 @@ void phx_delete(Allocator& allocator, T* ptr)
     }
 };
 
+template<typename T, AllocatorType Allocator>
+T* phx_new_arr(Allocator& allocator, size_t count)
+{
+	const size_t headerCount = sizeof(size_t);
+	const size_t totalSize = headerCount + sizeof(T) * count;
+	void* mem = allocator.Allocate(totalSize, alignof(T));
+
+	// Store the count at the beginning
+	*reinterpret_cast<size_t*>(mem) = count;
+
+	T* array = reinterpret_cast<T*>((char*)mem + headerSize);
+	for (size_t i = 0; i < count; ++i)
+		new (&array[i]) T();
+
+	return array;
+
+}
+
+size_t phx_array_len(void* ptr)
+{
+	void* raw = (char*)ptr - sizeof(size_t);
+	return *reinterpret_cast<size_t*>(raw);
+}
+
+template<typename T, AllocatorType Allocator>
+void phx_delete_arr(Allocator& allocator, T* ptr)
+{
+	if (!ptr)
+		return;
+
+	const size_t count = phx_array_len(ptr);
+
+	for (size_t i = 0; i < count; ++i)
+		ptr[i].~T();
+
+	allocator.Deallocate(raw);
+};
+
+
 #define phx_new_system(Type, ...) phx_new<Type>(phx::MemoryService::g_SystemAllocator, __VA_ARGS__)
 #define phx_delete_system(Ptr) phx_delete(phx::MemoryService::g_SystemAllocator, Ptr)
+
+#define phx_new_persistent(Type, ...) phx_new<Type>(phx::MemoryService::g_PersistentAllocator, __VA_ARGS__)
+#define phx_delete_persistent(Ptr) phx_delete(phx::MemoryService::g_PersistentAllocator, Ptr)
 
 #define phx_new_scratch(Type, ...) phx_new<Type>(phx::MemoryService::g_frameScratchAllocator, __VA_ARGS__)
 
 #define phx_new_frame(Type, ...) phx_new<Type>(phx::MemoryService::g_frameAllocator, __VA_ARGS__)
 
-#define phx_new_heap(Type, ...) phx_new<Type>(phx::MallocAllocator(), __VA_ARGS__)
-#define phx_delete_heap(Ptr) phx_delete(phx::MallocAllocator(), Ptr)
+// -- array varents ---
+#define phx_new_arr_system(Type, Count) phx_new_arr<Type>(phx::MemoryService::g_SystemAllocator, Count)
+#define phx_delete_arr_system(Ptr) phx_delete_arr(phx::MemoryService::g_SystemAllocator, Ptr)
+
+#define phx_new_arr_persistent(Type, Count) phx_new_arr<Type>(phx::MemoryService::g_PersistentAllocator, Count)
+#define phx_delete_arr_persistent(Ptr) phx_delete_arr(phx::MemoryService::g_PersistentAllocator, Ptr)
+
+
+#define phx_new_scratch(Type, Count) phx_new_arr<Type>(phx::MemoryService::g_frameScratchAllocator, Count)
+
+#define phx_new_frame(Type, Count) phx_new_arr<Type>(phx::MemoryService::g_frameAllocator, Count)
