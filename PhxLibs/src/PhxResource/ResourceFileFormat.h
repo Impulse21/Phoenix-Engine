@@ -20,12 +20,16 @@ namespace phx
 		*/
 		struct Header
 		{
-			uint32_t Magic;
+			uint32_t Magic; 
 			uint32_t Version;
-			uint64_t BuildNumber;
 			uint32_t HandlerId;
+			uint64_t BuildNumber;
+#if false
 			uint32_t ChunkCount;
-			uint8_t _Padding[40];
+#else
+			uint64_t MetadataHeapSize;
+#endif
+			uint8_t _Padding[32];
 
 		};
         CompileTimeAssertSize(Header, 64);
@@ -37,6 +41,20 @@ namespace phx
 			FileFormat::Ptr<void, uint64_t>	Offset;
 			uint64_t						CompressedSize;
 			uint64_t						UncompressedSize;
+		};
+
+		struct MetadataHeader
+		{
+			FileFormat::RelativePtr<void*> MetadataChunk;
+
+			uint32_t NumChunks;
+			FileFormat::RelativePtr<ResourceFileFormat::Chunk> Chunks;
+
+			uint32_t NumStrings;
+			FileFormat::RelativePtr<FileFormat::StringEntry> StringEntries;
+
+			uint32_t NumDependencies;
+			FileFormat::RelativePtr<uint32_t> Dependencies;
 		};
 
 	}

@@ -24,7 +24,7 @@ namespace phx
 	class ResourceManger
 	{
 	public:
-		static void Initialize(std::filesystem::path const& resourcePath);
+		static void Initialize();
 		static RefCountPtr<IResource> Get(std::filesystem::path const& path);
 
 		static void RegisterPakFiles(Span<std::filesystem::path> pakFiles);
@@ -42,7 +42,6 @@ namespace phx
 		inline static std::shared_ptr<IAssetStreamer> ms_assetStreamer;
 		inline static std::vector<RefCountPtr<PakFile>> ms_registeredPaks;
 		inline static std::unordered_map<Hash32, size_t> ms_pakLut;
-		inline static std::shared_ptr<IRootFileSystem> ms_fileSytem;
 		inline static std::unordered_map<Hash32, RefCountPtr<IResource>> ms_cache;
 		inline static std::unordered_map<Hash32, std::unique_ptr<IResourceHandler>> ms_resourceHandlers;
 		inline static std::mutex ms_cacheMutex;

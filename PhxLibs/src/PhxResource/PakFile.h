@@ -9,7 +9,7 @@
 
 namespace phx
 {
-	class PakFile : public RefCounter<IResource>
+	class PakFile final : public RefCounter<IResource>
 	{
 	public:
 		PakFile(std::shared_ptr<IAssetStreamer> assetStreamer, std::filesystem::path const& filePath, std::filesystem::path const& resolvedFilePath);
@@ -44,19 +44,6 @@ namespace phx
 		void OnHeaderLoaded();
 		void OnMetadataLoaded();
 
-		template<typename T>
-		StreamRequest EnqueueReadMemoryRegion(uint64_t offset, uint32_t size, MemoryRegion<T>& outRegion)
-		{
-			outRegion = MemoryRegion<T>(std::make_unique<char[]>(size));
-
-			return {
-				.FileHandle = m_fileHandle,
-				.SrcSize = size,
-				.DestSize = size,
-				.Offset = offset,
-				.Destination = {.Memory = outRegion.Get() }
-			};
-		}
 
 	private:
 		std::filesystem::path m_filePath;

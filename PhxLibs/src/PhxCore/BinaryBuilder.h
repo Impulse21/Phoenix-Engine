@@ -53,7 +53,7 @@ namespace phx
 			return { m_data.get(), m_totalSize };
 		}
 
-		std::unique_ptr<IBlob> Finialize()
+		std::unique_ptr<IBlob> Finalize()
 		{
 			std::unique_ptr<IBlob> retVal = std::make_unique<Blob>(m_data.release(), m_totalSize);
 			m_totalSize = 0;

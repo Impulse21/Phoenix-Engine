@@ -47,6 +47,16 @@ namespace phx
 		StringHash()
 			: m_computedHash(0) {}
 
+		constexpr bool operator==(const StringHash& other) const noexcept
+		{
+			return this->m_computedHash == other.m_computedHash;
+		}
+
+		constexpr bool operator!=(const StringHash& other) const noexcept
+		{
+			return this->m_computedHash != other.m_computedHash;
+		}
+
 		constexpr operator Hash32()noexcept { return this->m_computedHash; }
 		explicit operator bool() const { return this->m_computedHash != 0; }
 		Hash32 Value() const { return this->m_computedHash; }
@@ -66,8 +76,8 @@ namespace phx
 	{
 		return StringHash(s, const_strlen(s));
 	}
-
 }
+
 
 namespace std
 {

@@ -31,7 +31,6 @@ namespace phx
         };
         CompileTimeAssertSize(Header, 64);
 
-        struct StringEntry;
         struct AssetEntry;
         struct MetadataHeader
         {
@@ -39,7 +38,7 @@ namespace phx
             FileFormat::RelativePtr<AssetEntry>  AssetEntries;
 
             uint32_t NumStrings;
-            FileFormat::RelativePtr<StringEntry> StringEntries;
+            FileFormat::RelativePtr<FileFormat::StringEntry> StringEntries;
 
 			uint32_t NumDependencies;
 			FileFormat::RelativePtr<uint32_t> Dependencies;
@@ -61,10 +60,5 @@ namespace phx
             FileFormat::RelativePtr<uint32_t> Dependencies;
         };
 
-        struct StringEntry
-        {
-            uint32_t Hash; // Hash of filename for lookup
-            FileFormat::RelativePtr<char> Value;
-        };
     }
 }

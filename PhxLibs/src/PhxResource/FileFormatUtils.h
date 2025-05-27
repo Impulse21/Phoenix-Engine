@@ -3,8 +3,10 @@
 #include <PhxCore/Base.h>
 namespace phx
 {
+
 	namespace FileFormat
 	{
+
 		inline uint64_t GetTimestamp()
 		{
 			std::time_t t = std::time(nullptr);
@@ -58,6 +60,8 @@ namespace phx
 
 			T* Get() { return (T*)(((char*)this) + Offset); }
 			const T* Get() const { return (const T*)(((char*)this) + Offset); }
+
+			operator T* () { return Get(); }
 			T* operator->() { return Get(); }
 			T const* operator->() const { return Get(); }
 		};
@@ -92,6 +96,12 @@ namespace phx
 			{
 				return Data.Get()[index];
 			}
+		};
+
+		struct StringEntry
+		{
+			uint32_t Hash; // Hash of filename for lookup
+			FileFormat::RelativePtr<char> Value;
 		};
 
 	}

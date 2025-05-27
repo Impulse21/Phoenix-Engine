@@ -3,6 +3,7 @@
 #include <PhxCore/Base.h>
 #include <PhxCore/Handle.h>
 #include <PhxCore/Span.h>
+#include <PhxCore/IO/MemoryRegion.h>
 
 
 #include <PhxResource/FileFormatUtils.h>
@@ -43,6 +44,26 @@ namespace phx
 				rhi::TextureHandle Texture;
 			};
 		} Destination;
+
+		template<typename T>
+		static StreamRequest Create(StreamFileHandle fileHandle, uint64_t offset, uint64_t size, MemoryRegion<T>& outRegion)
+		{
+			return Create(fileHandle, offset, size, size, outRegion);
+		}
+
+		template<typename T>
+		static StreamRequest Create(StreamFileHandle fileHandle, uint64_t offset, uint64_t uncompressedSize, uint64_t compressedSize, MemoryRegion<T>& outRegion)
+		{
+			outRegion = MemoryRegion<T>(std::make_unique<char[]>(uncompressedSize));
+
+			return {
+				.FileHandle = fileHandle,
+				.SrcSize = compressedSize,
+				.DestSize = uncompressedSize,
+				.Offset = offset,
+				.Destination = {.Memory = outRegion.Get() }
+			};
+		}
 	};
 
 	using StreamCallback = std::function<void()>;

@@ -27,7 +27,7 @@ namespace
 
 	struct Request
 	{
-		HANDLE EventHandle;
+		std::array<HANDLE, 2> EventHandles;
 		StreamCallback Callback;
 		uint32_t StatusIndex;
 		Microsoft::WRL::ComPtr<IDStorageStatusArray> StatusArray;
@@ -53,6 +53,36 @@ namespace
 	constexpr size_t RetrieveFileSize(BY_HANDLE_FILE_INFORMATION fileInfo)
 	{
 		return RetrieveFileSize(fileInfo.nFileSizeLow, fileInfo.nFileSizeHigh);
+	}
+
+	bool IsDStorageError(HRESULT hr)
+	{
+		return (hr & 0xFFFF0000) == 0x89240000;
+	}
+
+	const std::unordered_map<HRESULT, const char*> DStorageErrorMessages =
+	{
+		{ 0x89240001, "DStorage is already running exclusively" },
+		{ 0x89240002, "DStorage is not running" },
+		{ 0x89240003, "Invalid queue capacity parameter" },
+		{ 0x89240007, "Offset and length exceed file size" },
+		{ 0x89240008, "IO request too large" },
+		{ 0x89240009, "Access violation - buffer not accessible" },
+		{ 0x8924000B, "File is not open" },
+		{ 0x89240010, "Queue is closed" },
+		{ 0x89240012, "Too many queues" },
+		{ 0x89240014, "Too many files" },
+		{ 0x89240016, "IO operation timed out" },
+		{ 0x89240017, "Invalid file handle" },
+		{ 0x89240021, "Staging buffer too small" },
+		{ 0x89240030, "Generic decompression error" },
+	};
+	
+	const char* GetDStorageErrorMessage(HRESULT hr)
+	{
+		PHX_ASSERT(IsDStorageError(hr));
+		auto it = DStorageErrorMessages.find(hr);
+		return it != DStorageErrorMessages.end() ? it->second : "Unknown DStorage error";
 	}
 }
 
@@ -228,13 +258,17 @@ void phx::DStorageAssetStreamer::SubmitBatch(Span<StreamRequest> requests, Strea
 		r.UncompressedSize = request.DestSize;
 		r.CancellationTag = reinterpret_cast<uint64_t>(fileImpl);
 
-		m_dsMetadataQueue->EnqueueRequest(&r);
+		if (request.Destination.Type == DestinationType::Memory)
+			m_dsMetadataQueue->EnqueueRequest(&r);
+		else
+			m_dsGpuQueue->EnqueueRequest(&r);
 	}
 	
 	size_t statusIndex;
 	if (m_statusIdxPool.Allocate(statusIndex))
 	{
 		m_dsMetadataQueue->EnqueueStatus(m_statusArray.Get(), static_cast<uint32_t>(statusIndex));
+		m_dsGpuQueue->EnqueueStatus(m_statusArray.Get(), static_cast<uint32_t>(statusIndex));
 	}
 	else
 	{
@@ -242,31 +276,43 @@ void phx::DStorageAssetStreamer::SubmitBatch(Span<StreamRequest> requests, Strea
 		statusIndex = ~0ull;
 	}
 
-	HANDLE hEvent = RequestEvent();
-	m_dsMetadataQueue->EnqueueSetEvent(hEvent);
+	HANDLE metadataEvent = RequestEvent();
+	m_dsMetadataQueue->EnqueueSetEvent(metadataEvent);
 	m_dsMetadataQueue->Submit();
 
+	HANDLE gpuEvent = RequestEvent();
+	m_dsGpuQueue->EnqueueSetEvent(gpuEvent);
+	m_dsGpuQueue->Submit();
+
 	Request req = {
-		.EventHandle = hEvent,
+		.EventHandles = { metadataEvent, gpuEvent},
 		.Callback = callback,
 		.StatusIndex = static_cast<uint32_t>(statusIndex),
 		.StatusArray = m_statusArray
 	};
 
 	ThreadPool::SubmitTask(
-		[req]
+		[this, req]
 		{
 			// todo: this event isn't working.
-			DWORD waitResult = WaitForSingleObject(req.EventHandle, INFINITE);
-			if (waitResult != WAIT_OBJECT_0)
+			for (HANDLE eventHandle : req.EventHandles)
 			{
-				PHX_CORE_WARN("DStorage request failed. HR={0}.", waitResult);
+				DWORD waitResult = WaitForSingleObject(eventHandle, INFINITE);
+				if (waitResult != WAIT_OBJECT_0)
+				{
+					PHX_CORE_ERROR("DStorage wait request failed. HR={0}.", waitResult);
+				}
+
+				DisardEvent(eventHandle);
 			}
 
 			HRESULT result = req.StatusArray->GetHResult(req.StatusIndex);
 			if (FAILED(result))
 			{
-				PHX_CORE_WARN("DStorage request failed. HR={0}.", result);
+				PHX_CORE_ERROR(
+					"DStorage request failed. HR={0}, Msg={1}.",
+					result,
+					GetDStorageErrorMessage(result));
 				return;
 			}
 

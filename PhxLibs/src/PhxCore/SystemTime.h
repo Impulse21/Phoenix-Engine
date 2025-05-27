@@ -73,6 +73,11 @@ namespace phx
 			this->m_timestamp = SystemTime::GetCurrentTick();
 		}
 
+		inline void Reset()
+		{
+			this->m_timestamp = SystemTime::GetCurrentTick();
+		}
+
 		// Elapsed time in milliseconds since the wi::Timer creation or last call to record()
 		inline CpuTimeStep Elapsed()
 		{

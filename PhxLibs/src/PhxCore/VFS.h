@@ -1,13 +1,11 @@
 #pragma once
 
-#pragma once
-
 #include <memory>
 #include <string>
 #include <filesystem>
 #include <functional>
 #include <vector>
-
+#include <PhxCore/Handle.h>
 #include "PhxCore/Span.h"
 
 namespace phx
@@ -61,6 +59,7 @@ namespace phx
 
 		virtual bool FileExists(std::filesystem::path const& name) = 0;
 		virtual bool FolderExists(std::filesystem::path const& name) = 0;
+		virtual bool FolderCreate(std::filesystem::path const& name) = 0;
 		virtual std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) = 0;
 
 		virtual bool WriteFile(std::filesystem::path const& name, Span<char> Data) = 0;
@@ -74,6 +73,9 @@ namespace phx
 
 	class IRootFileSystem : public IFileSystem
 	{
+	public:
+		inline static IRootFileSystem* Ptr = nullptr;
+
 	public:
 		virtual ~IRootFileSystem() override = default;
 
@@ -90,10 +92,73 @@ namespace phx
 		std::unique_ptr<IBlob> CreateBlob(void* Data, size_t size);
 	}
 
-	namespace VFS
+	namespace FileSystem
 	{
+		std::filesystem::path GetWorkingDirectory();
 		std::filesystem::path GetDirectoryWithExecutable();
 		std::string GetFileNameWithoutExt(std::string const& path);
 		std::string GetFileExt(std::string const& path);
+
 	}
+
+
+	class NativeFileSystem final : public IFileSystem
+	{
+	public:
+		bool FileExists(std::filesystem::path const& name) override;
+		bool FolderExists(std::filesystem::path const& name) override;
+		bool FolderCreate(std::filesystem::path const& name) override;
+		std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
+		bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
+
+		std::filesystem::path ResolvePath(std::filesystem::path const& name) override
+		{
+			return name;
+		}
+	};
+
+	class RelativeFileSystem final : public IFileSystem
+	{
+	public:
+		RelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::filesystem::path& baseBath);
+
+		[[nodiscard]] std::filesystem::path const& GetBasePath() const { return this->m_basePath; }
+
+		bool FileExists(std::filesystem::path const& name) override;
+		bool FolderExists(std::filesystem::path const& name) override;
+		bool FolderCreate(std::filesystem::path const& name) override;
+		std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
+		bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
+
+		std::filesystem::path ResolvePath(std::filesystem::path const& name) override
+		{
+			return this->m_basePath / name.relative_path();
+		}
+
+	private:
+		std::shared_ptr<IFileSystem> m_underlyingFS;
+		std::filesystem::path m_basePath;
+	};
+
+	class RootFileSystem final : public IRootFileSystem
+	{
+	public:
+		void Mount(const std::filesystem::path& path, std::shared_ptr<IFileSystem> fs) override;
+		void Mount(const std::filesystem::path& path, const std::filesystem::path& nativePath) override;
+		bool Unmount(const std::filesystem::path& path) override;
+
+		bool FileExists(std::filesystem::path const& name) override;
+		bool FolderExists(std::filesystem::path const& name) override; 
+		bool FolderCreate(std::filesystem::path const& name) override;
+
+		std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) override;
+		bool WriteFile(std::filesystem::path const& name, Span<char> Data) override;
+		std::filesystem::path ResolvePath(std::filesystem::path const& name) override;
+
+	protected:
+		bool FindMountPoint(const std::filesystem::path& path, std::filesystem::path* pRelativePath, IFileSystem** ppFS);
+
+	private:
+		std::vector<std::pair<std::string, std::shared_ptr<IFileSystem>>> m_mountPoints;
+	};
 }

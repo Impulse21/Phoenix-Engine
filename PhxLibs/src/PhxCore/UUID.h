@@ -10,9 +10,9 @@ namespace phx
 	public:
 		UUID();
 		UUID(uint64_t uuid);
-		UUID(const UUID&) = default;
 
 		operator uint64_t() const { return this->m_uuid; }
+
 	private:
 		uint64_t m_uuid;
 	};

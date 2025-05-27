@@ -10,12 +10,8 @@
 
 using namespace phx;
 
-void ResourceManger::Initialize(std::filesystem::path const& resourcePath)
+void ResourceManger::Initialize()
 {
-	ms_fileSytem = phx::FileSystemFactory::CreateRootFileSystem();
-
-	ms_fileSytem->Mount("res:/", resourcePath);
-
 #ifdef PHX_RHI_D3D12
 	ms_assetStreamer = std::make_unique<DStorageAssetStreamer>();
 #endif
@@ -41,7 +37,7 @@ RefCountPtr<PakFile> phx::ResourceManger::RegisterPakFile(std::filesystem::path 
 	if (itr != ms_pakLut.end())
 		return ms_registeredPaks[itr->second];
 
-	std::filesystem::path resolvedPath = ms_fileSytem->ResolvePath(path);
+	std::filesystem::path resolvedPath = IRootFileSystem::Ptr->ResolvePath(path);
 	RefCountPtr<PakFile> pakFile = RefCountPtr<PakFile>::Create(new PakFile(ms_assetStreamer, path, resolvedPath));
 	if (pakFile)
 	{
@@ -99,7 +95,8 @@ RefCountPtr<IResource> ResourceManger::Get(std::filesystem::path const& path)
 	// that just strip out data a single string.
 	// way to many allocations probably make this code really really slow.
 
-	StringHash filenameHash(path.generic_string());
+	std::string filename = path.generic_string();
+	StringHash filenameHash(filename);
 
 	{
 		std::scoped_lock _(ms_cacheMutex);
@@ -135,13 +132,25 @@ RefCountPtr<IResource> ResourceManger::Get(std::filesystem::path const& path)
 		const PakFileFormat::AssetEntry* entry = pakFile->FindEntryByHash(StringHash(path.filename().generic_string()));
 		if (entry)
 		{
-			resource = handlerItr->second->Load(ms_assetStreamer, pakFile->GetFileHandle(), *entry);
+			PHX_CORE_INFO(
+				"Loading Resource '{0}' from Pak file '{1}'",
+				filename.c_str(),
+				pakFile->GetFilename().c_str());
+
+			resource = handlerItr->second->LoadFromPak(ms_assetStreamer, pakFile->GetFileHandle(), *entry);
 		}
 	}
 
 	if (!resource)
 	{
-		PHX_CORE_ERROR("Loading from disk is not currently supported");
+		PHX_CORE_INFO(
+			"Loading Resource '{0}' from disk",
+			filename.c_str());
+
+		auto resolvedPath = IRootFileSystem::Ptr->ResolvePath(path);
+		StreamFileHandle fileHandle = ms_assetStreamer->OpenFile(resolvedPath);
+
+		resource = handlerItr->second->LoadLoose(ms_assetStreamer, fileHandle);
 	}
 
 	if (resource)

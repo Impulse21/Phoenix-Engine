@@ -54,7 +54,7 @@ const char* PakFile::FindFilenameByHash(phx::StringHash targetHash)
 	while (left <= right)
 	{
 		size_t mid = left + (right - left) / 2;
-		const PakFileFormat::StringEntry& entry = m_metadata->StringEntries.Get()[mid];
+		const FileFormat::StringEntry& entry = m_metadata->StringEntries.Get()[mid];
 
 		if (entry.Hash == targetHash)
 		{
@@ -110,7 +110,10 @@ void phx::PakFile::OnHeaderLoaded()
 	{
 		return;
 	}
-	StreamRequest request = EnqueueReadMemoryRegion<PakFileFormat::MetadataHeader>(sizeof(PakFileFormat::Header), m_header.MetadataHeapSize, m_metadata);
+	StreamRequest request = StreamRequest::Create<PakFileFormat::MetadataHeader>(
+		m_fileHandle,
+		sizeof(PakFileFormat::Header),
+		m_header.MetadataHeapSize, m_metadata);
 	m_assetStreamer->Submit(request, [this] { OnMetadataLoaded(); });
 
 	m_status = 0xf0;

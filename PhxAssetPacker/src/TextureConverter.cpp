@@ -25,7 +25,7 @@ namespace
             return false;
 
         // Rename file extension to DDS
-        const std::string dest = phx::VFS::GetFileNameWithoutExt(filename) + ".dds";
+        const std::string dest = phx::FileSystem::GetFileNameWithoutExt(filename) + ".dds";
 
         std::wstring wDest;
         StringConvert(dest, wDest);
@@ -60,7 +60,7 @@ std::unique_ptr<ScratchImage> phx::TextureCompiler::BuildDDS(std::string const& 
     PHX_INFO("Converting file \"%s\" to DDS.", filename.c_str());
 
     // Get extension as utf8 (ascii)
-    std::string ext = VFS::GetFileExt(filename);
+    std::string ext = FileSystem::GetFileExt(filename);
 
     // Load texture image
     TexMetadata info;
@@ -249,25 +249,25 @@ std::unique_ptr<ScratchImage> phx::TextureCompiler::BuildDDS(std::string const& 
 
 void phx::TextureCompiler::CompileOnDemand(IFileSystem& fs, std::string const& filename, uint32_t flags)
 {
-    std::string ddsFile = VFS::GetFileNameWithoutExt(filename) + ".dds";
+    std::string ddsFile = FileSystem::GetFileNameWithoutExt(filename) + ".dds";
 
     const bool srcFileMissing = fs.FileExists(filename);
     const bool ddsFileMissing = fs.FileExists(ddsFile);
 
     if (srcFileMissing && ddsFileMissing)
     {
-        PHX_ERROR("Texture %s is missing.", VFS::GetFileNameWithoutExt(filename).c_str());
+        PHX_ERROR("Texture %s is missing.", FileSystem::GetFileNameWithoutExt(filename).c_str());
         return;
     }
 
     // If we can find the source texture and the DDS file is older, reconvert.
     if (ddsFileMissing 
 #if false
-        || !srcFileMissing && VFS::GetLastWriteTime(ddsFile) < VFS::GetLastWriteTime(filename)
+        || !srcFileMissing && FileSystem::GetLastWriteTime(ddsFile) < FileSystem::GetLastWriteTime(filename)
 #endif
      )
     {
-        PHX_INFO("DDS texture %s missing or older than source.Rebuilding", VFS::GetFileNameWithoutExt(filename).c_str());
+        PHX_INFO("DDS texture %s missing or older than source.Rebuilding", FileSystem::GetFileNameWithoutExt(filename).c_str());
         ConvertToDDS(filename, flags);
     }
 }

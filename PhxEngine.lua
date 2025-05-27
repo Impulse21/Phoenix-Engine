@@ -4,56 +4,90 @@ include "vendor/premake/PhxEngine/PrebuiltLibs.lua"
 phx_lib_Directory           = 'PhxLibs'
 phx_lib_src_directory       = "PhxLibs/src"
 phx_lib_vendor_directory    = "PhxLibs/vendor"
+phx_app_directory           = 'PhxApps'
 
 phx_lib_src_core_dir        = phx_lib_src_directory.."/PhxCore"
 phx_lib_src_rhi_dir         = phx_lib_src_directory.."/PhxRhi"
 phx_lib_src_renderer_dir    = phx_lib_src_directory.."/PhxRenderer"
 phx_lib_src_resource_dir    = phx_lib_src_directory.."/PhxResource"
-phx_lib_src_editor_lib_dir  = phx_lib_src_directory.."/PhxEditor"
+phx_lib_src_world_dir       = phx_lib_src_directory.."/PhxWorld"
+phx_lib_src_data_dir        = phx_lib_src_directory.."/PhxData"
+phx_lib_src_engine_dir      = phx_lib_src_directory.."/PhxEngine"
 
 phx_vendor_src_imgui_dir    = phx_lib_vendor_directory.."/ImGui"
 phx_vendor_src_d3d12ma_dir  = phx_lib_vendor_directory.."/D3D12MA"
 phx_vendor_src_entt_dir     = phx_lib_vendor_directory.."/entt"
 phx_vendor_src_yaml_dir     = phx_lib_vendor_directory.."/yaml"
 phx_vendor_src_glfw_dir     = phx_lib_vendor_directory.."/glfw"
+phx_vendor_src_json_dir     = phx_lib_vendor_directory.."/json"
+phx_vendor_src_cereal_dir   = phx_lib_vendor_directory.."/cereal"
+phx_vendor_src_tlsf         = phx_lib_vendor_directory.."/tlsf"
+phx_vendor_src_tracy        = phx_lib_vendor_directory.."/tracy"
+phx_vendor_src_hlslpp       = phx_lib_vendor_directory.."/hlslpp"
+phx_vendor_src_eastl        = phx_lib_vendor_directory.."/eastl"
+phx_vendor_src_eabase       = phx_lib_vendor_directory.."/eabase"
 
-phx_vendor_include_glfw_dir = phx_vendor_src_glfw_dir.."/include"
-phx_vendor_include_yaml_dir = phx_vendor_src_yaml_dir.."/include"
+phx_vendor_src_vk_bootstrap = phx_lib_vendor_directory.."/vk-bootstrap"
+phx_vendor_src_vma          = phx_lib_vendor_directory.."/vma"
+phx_vendor_src_volk         = phx_lib_vendor_directory.."/volk"
+
+phx_vendor_include_glfw_dir     = phx_vendor_src_glfw_dir.."/include"
+phx_vendor_include_yaml_dir     = phx_vendor_src_yaml_dir.."/include"
+phx_vendor_include_hlslpp_dir   = phx_vendor_src_hlslpp.."/include"
+phx_vendor_include_eastl_dir    = phx_vendor_src_eastl.."/include"
+phx_vendor_include_eabase_dir   = phx_vendor_src_eabase.."/include/Common"
 
 phx_packer_vendor_dir       = "PhxAssetPacker/vendor"
 phx_packer_vendor_dx_tex    = phx_packer_vendor_dir..'/DirectXTex'
 
-workspace_directory         = '.workspace/'.._ACTION
+phx_script_dir                  = "scripts"
+phx_generate_reflection_script  = phx_script_dir.."/generate_reflection.py"
+phx_generated_file_name         = "GeneratedReflection.gen.cpp"
+phx_reflection_output_dir       = phx_lib_src_data_dir.."/"..phx_generated_file_name
+workspace_directory             = '.workspace/'.._ACTION
 
 -- IDE Platform Names
-clang_win64_d3d12  = "Clang Win64 (D3D12)"
+clang_win64         = "Clang Win64"
+clang_win64_d3d12   = clang_win64.." (D3D12)"
+clang_win64_vulkan  = clang_win64.." (Vulkan)"
 
 -- TOODL Add vulkan to this list = "platforms:"..clang_win64_d3d12..' or '..clang_win64_vulkan
-win64_platform_filter = "platforms:"..clang_win64_d3d12
+win64_platform_filter = "platforms:"..clang_win64_d3d12..' or '..clang_win64_vulkan
 
 --Win64PlatformFilter 
-platform_windows = "Windows"
-rhi_backend_d3d12 = "D3D12"
+platform_windows    = "Windows"
+rhi_backend_d3d12   = "D3D12"
+rhi_backend_vulkan  = "Vulkan"
 
 -- Project Names
-project_phx_core        = 'PhxCore'
+project_phx_core        = 'PhxCore' 
 project_phx_renderer    = 'PhxRenderer'
 project_phx_rhi         = 'PhxRhi'
 project_phx_resource    = 'PhxResource'
-project_phx_editor      = 'PhxEditor'
+project_phx_world       = 'PhxWorld'
+project_phx_data        = 'PhxData'
+project_phx_engine      = 'PhxEngine'
 
+project_phx_app_editor  = 'PhxEditor'
 project_sandbox         = 'Sandbox'
 project_asset_packer    = 'PhxAssetPacker'
 
-project_vendor_imgui    = 'ImGui'
-project_vendor_d3d12ma  = 'D3D12MA'
-project_vendor_yaml     = 'yaml-cpp'
+project_vendor_imgui        = 'ImGui'
+project_vendor_tracy        = 'Tracy'
+project_vendor_tlsf         = 'tlsf'
+project_vendor_eastl        = 'eastl'
+
+project_vendor_d3d12ma      = 'D3D12MA'
+project_vendor_yaml         = 'yaml-cpp'
+project_vendor_volk         = 'Volk'
+project_vendor_vk_bootstrap = "vk_bootstrap"
 
 -- Generated Code Directories
 generated_shaders_dir = workspace_directory..'/GeneratedShaders'
 generated_code_dir = workspace_directory..'/GeneratedCode'
 
-assets_directory = workspace_directory.."/../assets"
+default_project_dir = workspace_directory.."/../projects/sandbox"
+art_src_dir = workspace_directory.."/../../Art"
 
 -- Utility Functions
 function ExcludePlatformSpecificCode(rootPath)
@@ -66,6 +100,26 @@ end
 
 function MakeDirCommand(directoryPath)
 	return '{mkdir} "'..directoryPath..'"'
+end
+
+function AddVulkanIncludes()
+    AddLibraryIncludes(VulkanLibrary)
+    includedirs
+    {
+        phx_vendor_src_vma,
+        phx_vendor_src_volk,
+        phx_vendor_src_vk_bootstrap,
+    }
+end
+
+function AddVulkanLibraries()
+    LinkLibrary(VulkanLibrary)
+            
+    links
+    {
+        project_vendor_volk,
+        project_vendor_vk_bootstrap,
+    }
 end
 
 -- Add warnings globally to fix serious issues that could cause incorrect
@@ -128,6 +182,9 @@ function HandleGlobalWarnings()
 
             "-Wno-misleading-indentation",
             "-Wno-tautological-undefined-compare",
+
+            -- Cereal issues
+            "-Wno-deprecated-declarations",
         }
 		
 		
@@ -174,11 +231,11 @@ workspace "PhxEngine"
 	location (workspace_directory)
     preferredtoolarchitecture('x86_64') -- Prefer this toolset on MSVC as it can handle more memory for multiprocessor compiles
     warnings('extra')
-	startproject(project_sandbox)
+	startproject(project_phx_app_editor)
     language('C++')
 	cppdialect('C++20')
 	rtti('off')
-	platforms { clang_win64_d3d12 }
+	platforms { clang_win64_vulkan, clang_win64_d3d12 }
 
 	outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 	targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
@@ -186,7 +243,7 @@ workspace "PhxEngine"
 
 	flags { 'fatalcompilewarnings' }
 
-	filter('platforms:'..clang_win64_d3d12)
+	filter(win64_platform_filter)
 		toolset('msc-clangcl')
 		--toolset('msc-llvm') -- Older versions of Clang in VS
 
@@ -226,7 +283,9 @@ workspace "PhxEngine"
 	globalVariableHeader = io.open(path.getabsolute(generated_code_dir)..'/Generated/GlobalVariables.h', 'wb');
 	globalVariableHeader:write('namespace phx::GlobalPaths\n{\n');
 	globalVariableHeader:write('\tconstexpr const char* WorkspaceDirectory = "'..path.getabsolute(workspace_directory)..'/";\n');
-	globalVariableHeader:write('\tconstexpr const char* AssetsDirectory = "'..path.getabsolute(assets_directory)..'/";\n');
+	globalVariableHeader:write('\tconstexpr const char* DefaultProjectDir = "'..path.getabsolute(default_project_dir)..'/";\n');
+    globalVariableHeader:write('\tconstexpr const char* ArtSrcDirectory = "'..path.getabsolute(art_src_dir)..'/";\n');
+    
 	--globalVariableHeader:write('\tstatic const char* ShaderCompilerExecutableName = "'..ShaderCompilerExecutableName..'";\n');
 	--globalVariableHeader:write('\tstatic const char* ShaderSourceDirectory = "'..path.getabsolute(SourceShadersDirectory)..'/";\n');
 	globalVariableHeader:write('};\n');
@@ -244,8 +303,16 @@ workspace "PhxEngine"
 
     filter {}
 
+    filter('platforms:'..clang_win64_vulkan)
+		defines
+		{
+			'PHX_RHI_VULKAN'
+		}
+    filter{}
+
+
 	filter { 'configurations:Debug' }
-		defines { 'PHX_DEBUG' }
+		defines { 'PHX_DEBUG', "TRACY_ENABLE"}
 		optimize('off')
 		--symbols('on')
 		symbols('fastlink')
@@ -255,7 +322,7 @@ workspace "PhxEngine"
 		defines
 		{
 			'NDEBUG', -- Disables assert
-			'EASTL_ASSERT_ENABLED=0'
+			'EASTL_ASSERT_ENABLED=0',
 		}
 		optimize('speed')
 		symbols('on')
@@ -263,7 +330,7 @@ workspace "PhxEngine"
 		flags { 'linktimeoptimization' }
 
     filter { 'configurations:Profiling' }
-		defines { 'PHX_PROFILING', }
+		defines { 'PHX_PROFILING', "TRACY_ENABLE" }
 
 	filter { 'configurations:Final' }
 		defines { 'PHX_FINAL', }
@@ -291,6 +358,76 @@ group "Vendors"
         removefiles {}
 
         defines { 'IMGUI_DISABLE_OBSOLETE_FUNCTIONS' }
+
+        filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+
+        filter {}
+
+    project(project_vendor_eastl)
+        kind "StaticLib"
+        language "C++"
+        cppdialect "c++17"
+
+        files
+        {
+            phx_vendor_src_imgui_dir..'/*.cpp',
+            phx_vendor_src_imgui_dir..'/*.hpp',
+            phx_vendor_src_imgui_dir..'/*.h',
+            phx_vendor_src_imgui_dir..'/version.txt',
+            phx_vendor_src_imgui_dir..'/LICENSE.txt'
+        }
+
+        includedirs
+        {
+            phx_vendor_include_eabase_dir,
+        }
+
+        filter "system:linux"
+            pic "On"
+            systemversion "latest"
+        removefiles {}
+
+        defines 
+        { 
+            'D_CHAR16T',
+            'D_CRT_SECURE_NO_WARNINGS',
+            'D_SCL_SECURE_NO_WARNINGS',
+            'DEASTL_OPENSOURCE',
+            'DEASTL_STD_ITERATOR_CATEGORY_ENABLED=1'
+         }
+
+        filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+
+        filter {}
+
+    project(project_vendor_tracy)
+        kind "StaticLib"
+        language "C++"
+        cppdialect "c++17"
+
+        files
+        {
+            phx_vendor_src_tracy..'/*.cpp',
+            phx_vendor_src_tracy..'/*.hpp',
+            phx_vendor_src_tracy..'/*.h',
+            phx_vendor_src_tracy..'/version.txt',
+            phx_vendor_src_tracy..'/LICENSE.txt'
+        }
+        
+        filter('toolset:*-clangcl')
+            buildoptions {
+                '-Wno-unused-const-variable',
+                '-Wno-unused-function',
+                '-Wno-unused-parameter',
+                '-Wno-unused-parameter',
+                '-Wno-missing-field-initializers',
+            }
+        filter()
+        
+        filter "system:linux"
+            pic "On"
+            systemversion "latest"
+        removefiles {}
 
         filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
 
@@ -326,6 +463,10 @@ group "Vendors"
         removefiles {}
         
         defines { 'D3D12MA_USE_AGILITY_SDK=1' }
+
+        filter('platforms:'..clang_win64_vulkan)
+            kind "None"
+        filter {}
 
         filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
 
@@ -427,6 +568,81 @@ group "Vendors"
         filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
             
         filter {}
+
+
+    project(project_vendor_tlsf)
+        kind "StaticLib"
+        language "C"
+
+        files
+        {
+            phx_vendor_src_tlsf..'/*.c',
+            phx_vendor_src_tlsf..'/*.h',
+            phx_vendor_src_tlsf..'/LICENSE.txt'
+        }
+
+        AddVulkanIncludes()
+        
+        filter "system:linux"
+            pic "On"
+            systemversion "latest"
+        filter {}
+
+        filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+
+        filter {}
+        
+    group "Vendors/Vulkan"
+        project(project_vendor_vk_bootstrap)
+            kind "StaticLib"
+            language "C++"
+            cppdialect "c++17"
+
+            files
+            {
+                phx_vendor_src_vk_bootstrap..'/*.cpp',
+                phx_vendor_src_vk_bootstrap..'/*.h',
+                phx_vendor_src_vk_bootstrap..'/LICENSE.txt'
+            }
+
+            AddVulkanIncludes()
+
+            filter "system:linux"
+                pic "On"
+                systemversion "latest"
+            removefiles {}
+
+            filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+            
+            filter('platforms:'..clang_win64_d3d12)
+                kind "None"
+            filter {}
+            
+        project(project_vendor_volk)
+            kind "StaticLib"
+            language "C"
+
+            files
+            {
+                phx_vendor_src_volk..'/*.c',
+                phx_vendor_src_volk..'/*.h',
+                phx_vendor_src_volk..'/LICENSE.txt'
+            }
+
+            AddVulkanIncludes()
+            
+            filter "system:linux"
+                pic "On"
+                systemversion "latest"
+            filter {}
+
+            filter('platforms:'..clang_win64_d3d12)
+                kind "None"
+            filter {}
+
+            filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+
+            filter {}
 group ""
 
 group "PhxLibs"
@@ -445,6 +661,11 @@ group "PhxLibs"
         {
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
+            phx_vendor_src_tracy,
+            phx_vendor_src_tlsf,
+            phx_vendor_include_eabase_dir,
+            phx_vendor_include_eastl_dir,
+            phx_vendor_include_hlslpp_dir,
         }
         
         filter('platforms:'..clang_win64_d3d12)
@@ -466,6 +687,10 @@ group "PhxLibs"
         {
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
+            phx_vendor_src_tracy,
+            phx_vendor_include_eabase_dir,
+            phx_vendor_include_eastl_dir,
+            phx_vendor_include_hlslpp_dir,
         }
 
         filter('platforms:'..clang_win64_d3d12)
@@ -487,6 +712,17 @@ group "PhxLibs"
                 phx_vendor_src_d3d12ma_dir,
             }
         filter {}
+
+        filter('platforms:'..clang_win64_vulkan)
+            excludes  { phx_lib_src_rhi_dir..'/d3d12/**' }
+
+            files 
+            {
+                phx_lib_src_rhi_dir.."/vulkan/**.h",
+                phx_lib_src_rhi_dir.."/vulkan/**.cpp",
+            }
+            AddVulkanIncludes()
+        filter {}
         
     project(project_phx_renderer)
         kind('StaticLib')
@@ -504,6 +740,12 @@ group "PhxLibs"
             phx_lib_src_directory,
             phx_vendor_src_imgui_dir,
             phx_lib_vendor_directory.."/spdlog/include",
+            phx_lib_vendor_directory.."/entt",
+            phx_vendor_src_cereal_dir,
+            phx_vendor_src_tracy,
+            phx_vendor_include_eabase_dir,
+            phx_vendor_include_eastl_dir,
+            phx_vendor_include_hlslpp_dir,
         }
 
         filter('platforms:'..clang_win64_d3d12)
@@ -519,7 +761,46 @@ group "PhxLibs"
                 phx_vendor_src_d3d12ma_dir,
             }
 
+        filter{}
+
+    project(project_phx_engine)
+        kind('StaticLib')
+        pchheader('PhxEngine/PhxEngine_pch.h')
+        pchsource(phx_lib_src_engine_dir..'/PhxEngine_pch.cpp')
+        
+        files 
+        {
+            phx_lib_src_engine_dir.."/**.h",
+            phx_lib_src_engine_dir.."/**.cpp",
+        }
     
+        includedirs
+        {
+            phx_lib_src_directory,
+            phx_vendor_src_imgui_dir,
+            phx_lib_vendor_directory.."/spdlog/include",
+            phx_lib_vendor_directory.."/entt",
+            phx_vendor_src_tracy,
+            phx_vendor_include_eabase_dir,
+            phx_vendor_include_eastl_dir,
+            phx_vendor_include_hlslpp_dir,
+        }
+
+        filter('platforms:'..clang_win64_d3d12)
+            defines { "PHX_RHI_D3D12" }
+            
+            excludes  { phx_lib_src_rhi_dir..'/vulkan/**' }
+    
+            AddLibraryIncludes(AgilityLibrary)
+    
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/d3d12',
+                phx_vendor_src_d3d12ma_dir,
+            }
+
+        filter{}
+
     project(project_phx_resource)
         kind('StaticLib')
         pchheader('PhxResource/PhxResource_pch.h')
@@ -529,6 +810,10 @@ group "PhxLibs"
         {
             phx_lib_src_resource_dir.."/**.h",
             phx_lib_src_resource_dir.."/**.cpp",
+            phx_vendor_src_tracy,
+            phx_vendor_include_eabase_dir,
+            phx_vendor_include_eastl_dir,
+            phx_vendor_include_hlslpp_dir,
         }
         
         includedirs
@@ -551,41 +836,112 @@ group "PhxLibs"
             }
     
         filter{}
-
-    project(project_phx_editor)
-        kind('StaticLib')
-        pchheader('PhxEditor/PhxEditor_pch.h')
-        pchsource(phx_lib_src_editor_lib_dir..'/PhxEditor_pch.cpp')
-            
-        files 
-        {
-            phx_lib_src_editor_lib_dir.."/**.h",
-            phx_lib_src_editor_lib_dir.."/**.cpp",
-        }
         
+    project(project_phx_data)
+        kind('StaticLib')
+        pchheader('PhxData/PhxData_pch.h')
+        pchsource(phx_lib_src_data_dir..'/PhxData_pch.cpp')
+        
+        files
+        {
+            phx_lib_src_data_dir.."/**.h",
+            phx_lib_src_data_dir.."/**.cpp",
+            --phx_lib_src_data_dir.."/**.py",
+            --phx_lib_src_data_dir.."/"..phx_generated_file_name,
+            --phx_generate_reflection_script,
+        }
+
         includedirs
         {
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
+            phx_lib_vendor_directory.."/entt",
+            phx_vendor_include_yaml_dir,
+            phx_vendor_src_cereal_dir,
+            phx_vendor_src_tracy,
+            phx_vendor_include_eabase_dir,
+            phx_vendor_include_eastl_dir,
+            phx_vendor_include_hlslpp_dir,
         }
+
+        defines { "YAML_CPP_STATIC_DEFINE" }
+
+        -- Pre-build step to generate reflection
+        --[[prebuildcommands {
+            "python ../../"..phx_generate_reflection_script.." --output ../../"..phx_reflection_output_dir.." ../../"..phx_lib_src_data_dir
+        }--]]
+
+    project(project_phx_world)
+        kind('StaticLib')
+        pchheader('PhxWorld/PhxWorld_pch.h')
+        pchsource(phx_lib_src_world_dir..'/PhxWorld_pch.cpp')
+        
+        files
+        {
+            phx_lib_src_world_dir.."/**.h",
+            phx_lib_src_world_dir.."/**.cpp",
+        }
+
+        removefiles {
+            phx_lib_src_world_dir.."/vendor/meshoptimizer/Demo/*.h",
+            phx_lib_src_world_dir.."/vendor/meshoptimizer/Demo/*.cpp",
+        }
+
+        includedirs
+        {
+            phx_lib_src_directory,
+            phx_lib_vendor_directory.."/spdlog/include",
+            phx_lib_vendor_directory.."/entt",
+            phx_vendor_include_yaml_dir,
+            phx_vendor_src_json_dir,
+            phx_vendor_src_cereal_dir,
+            phx_vendor_src_tracy,
+            phx_vendor_include_eabase_dir,
+            phx_vendor_include_eastl_dir,
+            phx_vendor_include_hlslpp_dir,
+        }
+
+        defines { "YAML_CPP_STATIC_DEFINE" }
+      
 group ""
 
 group "Applications"
-    project(project_sandbox)
+    project(project_phx_app_editor)
         kind "WindowedApp"         -- Windows application (no console)
 
         files 
         {
-            "sandbox/src/**.cpp",          -- Include all .cpp files in src/
-            "sandbox/src/**.h",            -- Include all .h files in src/
+            phx_app_directory.."/"..project_phx_app_editor.."/src/**.cpp",
+            phx_app_directory.."/"..project_phx_app_editor.."/src/**.h",
+            phx_app_directory.."/"..project_phx_app_editor.."/src/resource.rc",
+            phx_app_directory.."/"..project_phx_app_editor.."/src/phx_logo.ico",
+            
+
+            -- Vendor stuff
+            phx_app_directory.."/"..project_phx_app_editor.."/vendor/tinyobj/**.cc",
+            phx_app_directory.."/"..project_phx_app_editor.."/vendor/tinyobj/**.h",
+            phx_app_directory.."/"..project_phx_app_editor.."/vendor/fast_obj/**.c",
+            phx_app_directory.."/"..project_phx_app_editor.."/vendor/fast_obj/**.h",
+            phx_app_directory.."/"..project_phx_app_editor.."/vendor/meshoptimizer/**.cpp",
+            phx_app_directory.."/"..project_phx_app_editor.."/vendor/meshoptimizer/**.h",
         }
 
         includedirs 
         {
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
+            phx_lib_vendor_directory.."/cgltf",
+            phx_lib_vendor_directory.."/entt",
+            phx_vendor_src_tracy,
             phx_vendor_src_imgui_dir,
             phx_vendor_src_entt_dir,
+            phx_vendor_src_cereal_dir,
+            phx_vendor_src_tracy,
+            phx_vendor_include_eabase_dir,
+            phx_vendor_include_eastl_dir,
+            phx_vendor_include_hlslpp_dir,
+            project_vendor_tlsf,
+            phx_app_directory.."/"..project_phx_app_editor.."/vendor",
         }
 
         links
@@ -594,7 +950,13 @@ group "Applications"
             project_phx_rhi,
             project_phx_renderer,
             project_phx_resource,
+            project_phx_world,
+            project_phx_data,
+            project_phx_engine,
             project_vendor_imgui,
+            project_vendor_tracy,
+            project_vendor_eastl,
+            project_vendor_tlsf,
         }
         
         filter('platforms:'..clang_win64_d3d12)
@@ -635,7 +997,11 @@ group "Applications"
                 CopyFileCommand(path.getabsolute(AgilityLibrary.dlls[1]), '%{cfg.buildtarget.directory}/D3D12/'),
                 CopyFileCommand(path.getabsolute(AgilityLibrary.dlls[2]), '%{cfg.buildtarget.directory}/D3D12/'),
             }
-            
+        
+        filter('platforms:'..clang_win64_vulkan)
+            AddVulkanIncludes()
+            AddVulkanLibraries()
+        filter{}
     project(project_asset_packer)
         kind "ConsoleApp"         -- Windows application (no console)
         
@@ -655,7 +1021,10 @@ group "Applications"
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
             phx_lib_vendor_directory.."/cgltf",
+            phx_lib_vendor_directory.."/entt",
             phx_vendor_include_yaml_dir,
+            phx_vendor_src_json_dir,
+            phx_vendor_src_cereal_dir,
         }
 
         links
@@ -664,6 +1033,9 @@ group "Applications"
             project_phx_rhi,
             project_phx_renderer,
             project_phx_resource,
+            project_phx_world,
+            project_phx_engine,
+            project_phx_data,
             project_vendor_imgui,
             project_vendor_yaml,
         }
@@ -714,4 +1086,13 @@ group '.Solution Generation'
             generateSolutionCommandLine, -- Run
             rebuildProjectCommand,
         }
+        
 group ""
+
+--[[
+group '.Scripts'
+    project('Scripts')
+        kind('StaticLib')
+        files{ phx_generate_reflection_script }
+group ""
+--]]

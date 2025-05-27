@@ -24,7 +24,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
 
     OffsetHandle metadataChunksOffsetHandle = packFileBuilder.Reserve(m_metadataChunksSize);
 
-    OffsetHandle stringTableOffset = packFileBuilder.ReserveArray<PakFileFormat::StringEntry>(numEntries);
+    OffsetHandle stringTableOffset = packFileBuilder.ReserveArray<FileFormat::StringEntry>(numEntries);
     OffsetHandle stringHeapOffsetHandle = packFileBuilder.Reserve(m_stringHeapSize);
 
     // Calculate the meta chunk sizes as they are part of the header
@@ -50,7 +50,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
         auto* assetEntriesDest = packFileBuilder.Place<PakFileFormat::AssetEntry>(assetEntriesOffset);
         auto* chunkOffsetDest = packFileBuilder.Place<ResourceFileFormat::Chunk>(chunkOffsetHandle);
         auto* metadataChunksDest = packFileBuilder.Place<char>(metadataChunksOffsetHandle);
-        auto* stringTableDest = packFileBuilder.Place<PakFileFormat::StringEntry>(stringTableOffset);
+        auto* stringTableDest = packFileBuilder.Place<FileFormat::StringEntry>(stringTableOffset);
         auto* stringDataDest = packFileBuilder.Place<char>(stringHeapOffsetHandle);
 
         auto* chunkHeapDest = packFileBuilder.Place<char>(chunkHeapOffset);
@@ -106,7 +106,7 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
             }
 
             char* stringHeapDest = stringDataDest + stringHeapOffset;
-            PakFileFormat::StringEntry& strEntry = *(stringTableDest + i);
+            FileFormat::StringEntry& strEntry = *(stringTableDest + i);
             strEntry.Hash = assetEntry.Hash;
             strEntry.Value.Set(stringHeapDest);
 
@@ -117,5 +117,5 @@ std::unique_ptr<IBlob> phx::PakFileBuilder::Build()
         }
     }
 
-    return packFileBuilder.Finialize();
+    return packFileBuilder.Finalize();
 }
