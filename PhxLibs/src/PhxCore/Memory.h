@@ -90,7 +90,7 @@ namespace phx
 		void* Allocate(size_t size, size_t alignment) override;
 		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
 
-		void Deallocate(void* pointer) override;
+		void Deallocate(void* /*pointer*/) override {};
 
 		size_t GetMarker() { return m_allocatedSize; }
 		void FreeMarker(size_t marker);
@@ -111,10 +111,10 @@ namespace phx
 		void Initialize(size_t size);
 		void Finalize();
 		
-		void* Allocate(size_t size, size_t alignment) override {};
-		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override {};
+		void* Allocate(size_t /*size*/, size_t /*alignment*/) override { return nullptr; };
+		void* Allocate(size_t /*size*/, size_t /*alignment*/, const char* /*file*/, int32_t /*line*/) override { return nullptr; };
 
-		void Deallocate(void* pointer) override {};
+		void Deallocate(void* /*pointer*/) override {};
 
         void*	AllocateTop(size_t size, size_t alignment);
         void*   AllocateBottom(size_t size, size_t alignment);
@@ -152,7 +152,7 @@ namespace phx
 		void* Allocate(size_t size, size_t alignment) override;
 		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
 
-		void Deallocate(void* pointer) override {};
+		void Deallocate(void* /*pointer*/) override {};
 
 		void Clear()
 		{
@@ -172,7 +172,7 @@ namespace phx
 	public:
 		~MallocAllocator() override = default;
 
-		void Initialize(size_t size) {};
+		void Initialize(size_t /*size*/) {};
 		void Finalize() {};
 		
 		void* Allocate(size_t size, size_t alignment) override;
@@ -196,7 +196,7 @@ namespace phx
 
 	namespace MemoryService
 	{
-		void Initialize(MemoryDescriptor const& config);
+		void Initialize(MemoryDescriptor const& desc);
 		void Finalize();
 
 		void BeginFrame();

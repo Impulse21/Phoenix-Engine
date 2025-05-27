@@ -19,33 +19,38 @@ namespace
 			PHX_CORE_WARN("Found active allocation {0}, {1}\n", ptr, size);
 	}
 }
-namespace phx::MemoryService
+
+namespace phx
 {
-	HeapAllocator g_SystemAllocator;
-	StackAllocator g_frameScratchAllocator;
-	LinearAllocator g_frameAllocator;
-
-	void Initialize(MemoryDescriptor& desc)
+	namespace MemoryService
 	{
-		g_SystemAllocator.Initialize(desc.MaxDynamicSize);
-		g_frameAllocator.Initialize(desc.MaxFrameSize);
-		g_frameScratchAllocator.Initialize(desc.MaxScratchSize);
-	}
+		HeapAllocator g_SystemAllocator;
+		StackAllocator g_frameScratchAllocator;
+		LinearAllocator g_frameAllocator;
 
-	void Finalize()
-	{
-		g_frameAllocator.Finalize();
-		g_frameScratchAllocator.Finalize();
-		g_SystemAllocator.Finalize();
-	}
+		void Initialize(MemoryDescriptor const& desc)
+		{
+			g_SystemAllocator.Initialize(desc.MaxDynamicSize);
+			g_frameAllocator.Initialize(desc.MaxFrameSize);
+			g_frameScratchAllocator.Initialize(desc.MaxScratchSize);
+		}
+
+		void Finalize()
+		{
+			g_frameAllocator.Finalize();
+			g_frameScratchAllocator.Finalize();
+			g_SystemAllocator.Finalize();
+		}
 
 
-	void BeginFrame()
-	{
-		g_frameAllocator.Clear();
-		g_frameAllocator.Clear();
+		void BeginFrame()
+		{
+			g_frameAllocator.Clear();
+			g_frameAllocator.Clear();
+		}
+
+
 	}
-	
 }
 
 
@@ -112,7 +117,7 @@ void* HeapAllocator::Allocate(size_t size, size_t alignment)
 	}*/
 	return allocatedMemory;
 #else
-	return tlsf_malloc(m_tlsfHandle, size);
+	return alignment == 1 ? tlsf_malloc(m_tlsfHandle, size) : tlsf_memalign(m_tlsfHandle, alignment, size);
 #endif // HEAP_ALLOCATOR_STATS
 }
 

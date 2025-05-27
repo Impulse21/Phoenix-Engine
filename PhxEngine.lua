@@ -23,13 +23,18 @@ phx_vendor_src_json_dir     = phx_lib_vendor_directory.."/json"
 phx_vendor_src_cereal_dir   = phx_lib_vendor_directory.."/cereal"
 phx_vendor_src_tlsf         = phx_lib_vendor_directory.."/tlsf"
 phx_vendor_src_tracy        = phx_lib_vendor_directory.."/tracy"
+phx_vendor_src_hlslpp       = phx_lib_vendor_directory.."/hlslpp"
+phx_vendor_src_eastl        = phx_lib_vendor_directory.."/eastl"
+phx_vendor_src_eabase       = phx_lib_vendor_directory.."/eabase"
 
 phx_vendor_src_vk_bootstrap = phx_lib_vendor_directory.."/vk-bootstrap"
 phx_vendor_src_vma          = phx_lib_vendor_directory.."/vma"
 phx_vendor_src_volk         = phx_lib_vendor_directory.."/volk"
 
-phx_vendor_include_glfw_dir = phx_vendor_src_glfw_dir.."/include"
-phx_vendor_include_yaml_dir = phx_vendor_src_yaml_dir.."/include"
+phx_vendor_include_glfw_dir     = phx_vendor_src_glfw_dir.."/include"
+phx_vendor_include_yaml_dir     = phx_vendor_src_yaml_dir.."/include"
+phx_vendor_include_hlslpp_dir   = phx_vendor_src_hlslpp.."/include"
+phx_vendor_include_eastl_dir    = phx_vendor_src_eastl.."/include"
 
 phx_packer_vendor_dir       = "PhxAssetPacker/vendor"
 phx_packer_vendor_dx_tex    = phx_packer_vendor_dir..'/DirectXTex'
@@ -69,6 +74,8 @@ project_asset_packer    = 'PhxAssetPacker'
 project_vendor_imgui        = 'ImGui'
 project_vendor_tracy        = 'Tracy'
 project_vendor_tlsf         = 'tlsf'
+project_vendor_eastl        = 'eastl'
+
 project_vendor_d3d12ma      = 'D3D12MA'
 project_vendor_yaml         = 'yaml-cpp'
 project_vendor_volk         = 'Volk'
@@ -355,6 +362,43 @@ group "Vendors"
 
         filter {}
 
+    project(project_vendor_eastl)
+        kind "StaticLib"
+        language "C++"
+        cppdialect "c++17"
+
+        files
+        {
+            phx_vendor_src_imgui_dir..'/*.cpp',
+            phx_vendor_src_imgui_dir..'/*.hpp',
+            phx_vendor_src_imgui_dir..'/*.h',
+            phx_vendor_src_imgui_dir..'/version.txt',
+            phx_vendor_src_imgui_dir..'/LICENSE.txt'
+        }
+
+        includedirs
+        {
+            phx_vendor_src_eabase,
+        }
+
+        filter "system:linux"
+            pic "On"
+            systemversion "latest"
+        removefiles {}
+
+        defines 
+        { 
+            'D_CHAR16T',
+            'D_CRT_SECURE_NO_WARNINGS',
+            'D_SCL_SECURE_NO_WARNINGS',
+            'DEASTL_OPENSOURCE',
+            'DEASTL_STD_ITERATOR_CATEGORY_ENABLED=1'
+         }
+
+        filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+
+        filter {}
+
     project(project_vendor_tracy)
         kind "StaticLib"
         language "C++"
@@ -618,6 +662,8 @@ group "PhxLibs"
             phx_lib_vendor_directory.."/spdlog/include",
             phx_vendor_src_tracy,
             phx_vendor_src_tlsf,
+            phx_vendor_include_eastl_dir,
+            phx_vendor_include_hlslpp_dir,
         }
         
         filter('platforms:'..clang_win64_d3d12)
@@ -640,6 +686,8 @@ group "PhxLibs"
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
             phx_vendor_src_tracy,
+            phx_vendor_include_eastl_dir,
+            phx_vendor_include_hlslpp_dir,
         }
 
         filter('platforms:'..clang_win64_d3d12)
@@ -692,6 +740,8 @@ group "PhxLibs"
             phx_lib_vendor_directory.."/entt",
             phx_vendor_src_cereal_dir,
             phx_vendor_src_tracy,
+            phx_vendor_include_eastl_dir,
+            phx_vendor_include_hlslpp_dir,
         }
 
         filter('platforms:'..clang_win64_d3d12)
@@ -727,6 +777,8 @@ group "PhxLibs"
             phx_lib_vendor_directory.."/spdlog/include",
             phx_lib_vendor_directory.."/entt",
             phx_vendor_src_tracy,
+            phx_vendor_include_eastl_dir,
+            phx_vendor_include_hlslpp_dir,
         }
 
         filter('platforms:'..clang_win64_d3d12)
@@ -754,6 +806,8 @@ group "PhxLibs"
             phx_lib_src_resource_dir.."/**.h",
             phx_lib_src_resource_dir.."/**.cpp",
             phx_vendor_src_tracy,
+            phx_vendor_include_eastl_dir,
+            phx_vendor_include_hlslpp_dir,
         }
         
         includedirs
@@ -799,6 +853,8 @@ group "PhxLibs"
             phx_vendor_include_yaml_dir,
             phx_vendor_src_cereal_dir,
             phx_vendor_src_tracy,
+            phx_vendor_include_eastl_dir,
+            phx_vendor_include_hlslpp_dir,
         }
 
         defines { "YAML_CPP_STATIC_DEFINE" }
@@ -833,6 +889,8 @@ group "PhxLibs"
             phx_vendor_src_json_dir,
             phx_vendor_src_cereal_dir,
             phx_vendor_src_tracy,
+            phx_vendor_include_eastl_dir,
+            phx_vendor_include_hlslpp_dir,
         }
 
         defines { "YAML_CPP_STATIC_DEFINE" }
@@ -868,6 +926,8 @@ group "Applications"
             phx_vendor_src_entt_dir,
             phx_vendor_src_cereal_dir,
             phx_vendor_src_tracy,
+            phx_vendor_include_eastl_dir,
+            phx_vendor_include_hlslpp_dir,
             project_vendor_tlsf,
             phx_app_directory.."/"..project_phx_app_editor.."/vendor",
         }
@@ -882,7 +942,9 @@ group "Applications"
             project_phx_data,
             project_phx_engine,
             project_vendor_imgui,
-            project_vendor_tracy
+            project_vendor_tracy,
+            project_vendor_eastl,
+            project_vendor_tlsf,
         }
         
         filter('platforms:'..clang_win64_d3d12)

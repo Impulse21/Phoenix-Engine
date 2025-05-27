@@ -86,9 +86,10 @@ void phx::gfx::DefaultRenderSystem::PreRender(World& world)
 	CacheLayerData(world);
 }
 
-void phx::gfx::DefaultRenderSystem::Render(RenderPass renderPass)
+void phx::gfx::DefaultRenderSystem::Render(RenderPass /*renderPass*/)
 {
 	PHX_PROFILE;
+#if false
 	for (auto layer : m_layers)
 	{
 		// TODO: Cache data
@@ -106,10 +107,9 @@ void phx::gfx::DefaultRenderSystem::Render(RenderPass renderPass)
 		{
 			// Is there a performance hit here with virtals?
 			const size_t index = iView * m_perFrameCache.NumViews * static_cast<size_t>(RenderPass::Count) + iLayer;
-			m_perFrameCache.CachedData[index] =
-				m_layers[iLayer]->PreRender(world, m_perFrameCache.Views[iView], RenderPass::Forward);
 		}
 	}
+#endif
 }
 
 void phx::gfx::DefaultRenderSystem::AddLayer(RenderLayer* layer)
@@ -121,7 +121,7 @@ void phx::gfx::DefaultRenderSystem::CacheRenderViews(World& world)
 {
 	PHX_PROFILE;
 
-	m_perFrameCache.Views = Memory::GetFrameAllocator().AllocArray<View>(1);
+	m_perFrameCache.Views = phx_new_frame(View);
 
 	auto camerasView = world.GetAllEntitiesWith<phx::NameComponent, phx::CameraComponent>();
 	for (auto e : camerasView)
@@ -169,9 +169,9 @@ void phx::gfx::DefaultRenderSystem::CacheLayerData(World& world)
 {
 	PHX_PROFILE;
 	
-	const size_t cacheDataSize =  static_cast<size_t>(RenderPass::Count) * m_perFrameCache.NumViews * m_layers.size();
+	//const size_t cacheDataSize =  static_cast<size_t>(RenderPass::Count) * m_perFrameCache.NumViews * m_layers.size();
 
-	m_perFrameCache.CachedData = Memory::GetFrameAllocator().AllocArray<void*>(cacheDataSize);
+	m_perFrameCache.CachedData = phx_new_frame(void*);
 
 	// TODO: Thread this
 	for (size_t iPass = 0; iPass < static_cast<size_t>(RenderPass::Count); iPass++)

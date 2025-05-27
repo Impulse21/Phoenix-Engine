@@ -34,14 +34,14 @@ void* phx::gfx::MeshRenderLayer::PreRender(phx::World& world, View const& view, 
 
 	PHX_PROFILE;
 
-	MeshRenderLayerCache* cache = phx::Memory::GetFrameAllocator().Alloc<MeshRenderLayerCache>();
+	MeshRenderLayerCache* cache = phx_new_frame(MeshRenderLayerCache);
 
 	// Collect Meshes
 	auto componentView = world.GetAllEntitiesWith<TransformComponent, gfx::RenderMeshComponent>();
 	size_t estimatedSize = 0;
 	componentView.each([&](entt::entity, TransformComponent, gfx::RenderMeshComponent) { estimatedSize++; });
 
-	cache->Entries = phx::Memory::GetFrameAllocator().AllocArray<CacheEntry>(estimatedSize);
+	cache->Entries = phx_new_frame(CacheEntry);
 
 	cache->NumEntries = 0;
 	for (auto e : componentView)
