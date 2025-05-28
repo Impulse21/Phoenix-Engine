@@ -221,7 +221,7 @@ namespace phx::rhi
 		for (uint32_t i = 0; i < memProperties.memoryHeapCount; ++i) 
 		{
 			const auto& heap = memProperties.memoryHeaps[i];
-			memory_ss << "\t\tHeap " << i
+			memory_ss << "\t\t\tHeap " << i
 				<< ": Size = " << PhxToMB(heap.size) << " MB, "
 				<< ((heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) ? "Device Local" : "System Shared")
 				<< std::endl;
@@ -230,7 +230,7 @@ namespace phx::rhi
 		for (uint32_t i = 0; i < memProperties.memoryTypeCount; ++i) 
 		{
 			const auto& type = memProperties.memoryTypes[i];
-			memory_ss << "\t\tType " << i
+			memory_ss << "\t\t\tType " << i
 				<< ": Heap = " << type.heapIndex
 				<< ", Flags = " << type.propertyFlags
 				<< std::endl;
@@ -238,7 +238,7 @@ namespace phx::rhi
 
 		std::string memoryInfo = memory_ss.str();
 		PHX_CORE_INFO(
-			"Physical Device Choosen: {0}\n\t Min Buffer Alignment: {1} \n\t Memory Details:\n{2}",
+			"Physical Device Chosen:\t {0}\n\t\t Min Buffer Alignment: {1} \n\t\t Memory Details:\n{2}",
 			g_VkContext.PhysicalDeviceProperties.deviceName,
 			g_VkContext.PhysicalDeviceProperties.limits.minUniformBufferOffsetAlignment,
 			memoryInfo.c_str());
