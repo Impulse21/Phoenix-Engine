@@ -4,6 +4,7 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
+#include <sstream>
 #include <PhxCore/CommandLineArgs.h>
 
 #include "PhxRhi/RHICommandCtx.h"
@@ -13,6 +14,8 @@
 
 #include "VkCore.h"
 
+#define VMA_IMPLEMENTATION
+#include "vk_mem_alloc.h"
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wunused-function"
@@ -113,16 +116,90 @@ namespace phx::rhi
 		feats.sparseBinding = true;
 		selector.set_required_features(feats);
 
-		vkb::PhysicalDevice physicalDevice = selector
+		const std::vector<const char*> extensions = 
+		{
+			VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
+			VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+			VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
+			VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+			VK_KHR_MULTIVIEW_EXTENSION_NAME,
+			VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME,
+			VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+			VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+			VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME
+		};
+
+		auto device_retval = selector
 			.set_minimum_version(1, 3)
 			.prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
 			.require_separate_compute_queue()
 			.require_separate_transfer_queue()
 			.set_surface(g_VkContext.Surface)
-			.add_required_extension(VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME)
+			.add_required_extensions(extensions.size(), extensions.data())
+			.select();
 
-			.select()
-			.value();
+		if (device_retval.vk_result() != VK_SUCCESS)
+		{
+			PHX_CORE_ERROR("Failed to find a suitable device");
+			return;
+		}
+
+		vkb::PhysicalDevice physicalDevice = device_retval.value();
+		vkb::DeviceBuilder deviceBuilder{ physicalDevice };
+
+		vkb::Device vkbDevice = deviceBuilder.build().value();
+
+		// Get the VkDevice handle used in the rest of a vulkan application
+		g_VkContext.Device = vkbDevice.device;
+		g_VkContext.ChoosenPhysicalDevice = physicalDevice.physical_device;
+
+		// use vkbootstrap to get a Graphics queue
+		g_VkContext.GfxQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
+		g_VkContext.GfxQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
+
+		g_VkContext.ComputeQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
+		g_VkContext.ComputeQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
+
+		g_VkContext.TransferQueue = vkbDevice.get_queue(vkb::QueueType::compute).value();
+		g_VkContext.TransferQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::compute).value();
+
+		VmaAllocatorCreateInfo allocatorInfo = {};
+		allocatorInfo.physicalDevice = g_VkContext.ChoosenPhysicalDevice;
+		allocatorInfo.device = g_VkContext.Device;
+		allocatorInfo.instance = g_VkContext.Instance;
+		vmaCreateAllocator(&allocatorInfo, &g_VkContext.VmaAllocator);
+
+
+		vkGetPhysicalDeviceProperties(g_VkContext.ChoosenPhysicalDevice, &g_VkContext.PhysicalDeviceProperties);
+
+		VkPhysicalDeviceMemoryProperties memProperties;
+		vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+		std::stringstream memory_ss;
+		for (uint32_t i = 0; i < memProperties.memoryHeapCount; ++i) 
+		{
+			const auto& heap = memProperties.memoryHeaps[i];
+			memory_ss << "\t\tHeap " << i
+				<< ": Size = " << PhxToMB(heap.size) << " MB, "
+				<< ((heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) ? "Device Local" : "System Shared")
+				<< std::endl;
+		}
+
+		for (uint32_t i = 0; i < memProperties.memoryTypeCount; ++i) 
+		{
+			const auto& type = memProperties.memoryTypes[i];
+			memory_ss << "\t\tType " << i
+				<< ": Heap = " << type.heapIndex
+				<< ", Flags = " << type.propertyFlags
+				<< std::endl;
+		}
+
+		std::string memoryInfo = memory_ss.str();
+		PHX_CORE_INFO(
+			"Physical Device Choosen: {0}\n\t Min Buffer Alignment: {1} \n\t Memory Details:\n{2}",
+			g_VkContext.PhysicalDeviceProperties.deviceName,
+			g_VkContext.PhysicalDeviceProperties.limits.minUniformBufferOffsetAlignment,
+			memoryInfo.c_str());
 	}
 
 	void Finalize()

@@ -180,6 +180,11 @@ function HandleGlobalWarnings()
 
             -- Cereal issues
             "-Wno-deprecated-declarations",
+
+            -- VMA
+            "-Wno-nullability-completeness",
+            "-Wno-missing-field-initializers"
+
         }
 		
 		
