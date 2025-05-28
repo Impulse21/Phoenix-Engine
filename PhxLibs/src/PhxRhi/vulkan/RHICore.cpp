@@ -42,6 +42,7 @@ namespace phx::rhi
 	void Initialize(RhiCreateInfo const&)
 	{
 		PHX_CORE_INFO("Initialize RHI(Vulkan)");
+
 	}
 
 	void Finalize()
