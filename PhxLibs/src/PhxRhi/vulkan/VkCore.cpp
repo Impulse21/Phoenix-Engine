@@ -14,10 +14,13 @@
 
 #include "VkCore.h"
 
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
+#define VMA_STATIC_VULKAN_FUNCTIONS 1
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #define VMA_IMPLEMENTATION
-#include "vk_mem_alloc.h"
+#include <vk_mem_alloc.h>
+
+#define VOLK_IMPLEMENTATION
+#include "volk.h"
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wunused-function"
@@ -61,6 +64,7 @@ namespace phx::rhi
 		PHX_PROFILE_SECTION("Vulkan::Initialize");
 		PHX_CORE_INFO("Initializing RHI(Vulkan)");
 
+		volkInitialize();
 
 #if PHX_DEBUG
 		// Default to true for debug builds
@@ -79,7 +83,7 @@ namespace phx::rhi
 
 		vkb::Instance vkbInstance = inst_ret.value();
 		g_VkContext.Instance = vkbInstance.instance;
-
+		volkLoadInstance(g_VkContext.Instance);
 		PHX_CORE_INFO("[RHI] Vulkan Instance initialized {0}", vkbInstance.api_version);
 
 #ifdef PHX_PLATFORM_WINDOWS
@@ -90,7 +94,6 @@ namespace phx::rhi
 			g_hInstance, // hinstance
 			(HWND)createInfo.WindowsHandle};
 
-		VkSurfaceKHR surface;
 
 		VkResult result = 
 			vkCreateWin32SurfaceKHR(
@@ -162,6 +165,8 @@ namespace phx::rhi
 
 		// Get the VkDevice handle used in the rest of a vulkan application
 		g_VkContext.Device = vkbDevice.device;
+		volkLoadDevice(g_VkContext.Device);
+
 		g_VkContext.ChoosenPhysicalDevice = physicalDevice.physical_device;
 		g_VkContext.PhysicalDeviceProperties = physicalDevice.properties;
 
