@@ -16,6 +16,7 @@
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wunused-function"
+#pragma clang diagnostic ignored "-Wunused-variable"
 #endif
 
 #define SAFE_DELETE(x) if (x) { delete x; }

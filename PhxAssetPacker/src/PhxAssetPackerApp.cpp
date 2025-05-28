@@ -213,6 +213,7 @@ int wmain(int argc, wchar_t** argv)
 					IID_PPV_ARGS(&g_bufferCompression)));
 		}
 
+#ifdef PHX_RHI_D3D12
 		phx::FileFormat::CompressionType compression = phx::FileFormat::CompressionType::None;
 		if (useGDeflate)
 			compression = phx::FileFormat::CompressionType::GDeflate;
@@ -224,7 +225,7 @@ int wmain(int argc, wchar_t** argv)
 		{
 			extraTextureFlags = static_cast<phx::TexConversionFlags>(extraTextureFlags | phx::kDefaultBC);
 		}
-
+#endif
 		// uint32_t stagingBufferSize = 256_MiB;
 		std::filesystem::path outputPath(outputFilename);
 		outputPath.make_preferred();

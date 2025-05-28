@@ -1,5 +1,6 @@
 #pragma once
 
+#ifdef PHX_RHI_D3D12
 #include <stdint.h>
 #include <PhxCore/Base.h>
 #include <DirectXTex.h>
@@ -30,3 +31,4 @@ namespace phx
         void CompileOnDemand(IFileSystem& fs, std::string const& filename, uint32_t flags);
     }
 }
+#endif

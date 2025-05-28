@@ -1,6 +1,7 @@
 
 #include "TextureConverter.h"
 
+#ifdef PHX_RHI_D3D12
 #include <PhxCore/VFS.h>
 #include <PhxCore/StringUtils.h>
 
@@ -271,3 +272,5 @@ void phx::TextureCompiler::CompileOnDemand(IFileSystem& fs, std::string const& f
         ConvertToDDS(filename, flags);
     }
 }
+
+#endif

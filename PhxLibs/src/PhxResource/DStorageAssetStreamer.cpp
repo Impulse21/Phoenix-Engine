@@ -1,6 +1,8 @@
 #include "PhxResource/PhxResource_pch.h"
+
 #include "DStorageAssetStreamer.h"
 
+#ifdef PHX_RHI_D3D12
 #include <PhxCore/StringUtils.h>
 #include <PhxCore/ThreadPool.h>
 
@@ -350,3 +352,4 @@ void DStorageAssetStreamer::DisardEvent(HANDLE event)
 	std::scoped_lock _(m_eventMutex);
 	m_freeEvents.push_back(event);
 }
+#endif

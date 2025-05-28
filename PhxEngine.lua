@@ -299,13 +299,13 @@ workspace "PhxEngine"
     filter {}
 
     filter('platforms:'..clang_win64_vulkan)
-		defines
-		{
-			'PHX_RHI_VULKAN'
-		}
+		defines { 'PHX_RHI_VULKAN' }
     filter{}
-
-
+    
+    filter('platforms:'..clang_win64_d3d12)
+		defines { "PHX_RHI_D3D12" }
+    filter{}
+            
 	filter { 'configurations:Debug' }
 		defines { 'PHX_DEBUG', "TRACY_ENABLE"}
 		optimize('off')
@@ -647,8 +647,6 @@ group "PhxLibs"
         }
 
         filter('platforms:'..clang_win64_d3d12)
-            defines { "PHX_RHI_D3D12" }
-            
             excludes  { phx_lib_src_rhi_dir..'/vulkan/**' }
 
             files 
@@ -673,6 +671,14 @@ group "PhxLibs"
             {
                 phx_lib_src_rhi_dir.."/vulkan/**.h",
                 phx_lib_src_rhi_dir.."/vulkan/**.cpp",
+            }
+
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/vulkan',
+                phx_vendor_src_vk_bootstrap,
+                phx_vendor_src_volk,
+                phx_vendor_src_vma,
             }
             AddVulkanIncludes()
         filter {}
@@ -700,8 +706,6 @@ group "PhxLibs"
         }
 
         filter('platforms:'..clang_win64_d3d12)
-            defines { "PHX_RHI_D3D12" }
-            
             excludes  { phx_lib_src_rhi_dir..'/vulkan/**' }
     
             AddLibraryIncludes(AgilityLibrary)
@@ -712,6 +716,16 @@ group "PhxLibs"
                 phx_vendor_src_d3d12ma_dir,
             }
 
+        filter{}
+        filter('platforms:'..clang_win64_vulkan)
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/vulkan',
+                phx_vendor_src_vk_bootstrap,
+                phx_vendor_src_volk,
+                phx_vendor_src_vma,
+            }
+            AddVulkanIncludes()
         filter{}
 
     project(project_phx_engine)
@@ -736,8 +750,6 @@ group "PhxLibs"
         }
 
         filter('platforms:'..clang_win64_d3d12)
-            defines { "PHX_RHI_D3D12" }
-            
             excludes  { phx_lib_src_rhi_dir..'/vulkan/**' }
     
             AddLibraryIncludes(AgilityLibrary)
@@ -748,6 +760,16 @@ group "PhxLibs"
                 phx_vendor_src_d3d12ma_dir,
             }
 
+        filter{}
+        filter('platforms:'..clang_win64_vulkan)
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/vulkan',
+                phx_vendor_src_vk_bootstrap,
+                phx_vendor_src_volk,
+                phx_vendor_src_vma,
+            }
+            AddVulkanIncludes()
         filter{}
 
     project(project_phx_resource)
@@ -772,7 +794,6 @@ group "PhxLibs"
         
         -- TODO: Do a better job at abtracting this away.
         filter('platforms:'..clang_win64_d3d12)
-            defines { "PHX_RHI_D3D12" }
             AddLibraryIncludes(DStorageLibrary)
             AddLibraryIncludes(AgilityLibrary)
     
@@ -782,6 +803,16 @@ group "PhxLibs"
                 phx_vendor_src_d3d12ma_dir,
             }
     
+        filter{}
+        filter('platforms:'..clang_win64_vulkan)
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/vulkan',
+                phx_vendor_src_vk_bootstrap,
+                phx_vendor_src_volk,
+                phx_vendor_src_vma,
+            }
+            AddVulkanIncludes()
         filter{}
         
     project(project_phx_data)
@@ -900,8 +931,6 @@ group "Applications"
         }
         
         filter('platforms:'..clang_win64_d3d12)
-            defines { "PHX_RHI_D3D12" }
-
             AddLibraryIncludes(AgilityLibrary)
             AddLibraryIncludes(DStorageLibrary)
 
@@ -939,11 +968,20 @@ group "Applications"
             }
         
         filter('platforms:'..clang_win64_vulkan)
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/vulkan',
+                phx_vendor_src_vk_bootstrap,
+                phx_vendor_src_volk,
+                phx_vendor_src_vma,
+            }
             AddVulkanIncludes()
             AddVulkanLibraries()
         filter{}
+
     project(project_asset_packer)
-        kind "ConsoleApp"         -- Windows application (no console)
+        -- kind "ConsoleApp"         -- Windows application (no console)
+            kind "None" -- Do not build right now.
         
         defines { "YAML_CPP_STATIC_DEFINE" }
 
@@ -953,9 +991,6 @@ group "Applications"
             "PhxAssetPacker/src/**.h",            -- Include all .h files in src/
         }
 
-        AddLibraryIncludes(DStorageLibrary)
-        LinkLibrary(DStorageLibrary)
-        
         includedirs 
         {
             phx_lib_src_directory,
@@ -989,9 +1024,11 @@ group "Applications"
         
         -- TODO: Do a better job at abtracting this away.
         filter('platforms:'..clang_win64_d3d12)
-            defines { "PHX_RHI_D3D12" }
             AddLibraryIncludes(AgilityLibrary)
     
+            AddLibraryIncludes(DStorageLibrary)
+            LinkLibrary(DStorageLibrary)
+        
             includedirs
             {
                 phx_lib_src_rhi_dir..'/d3d12',
@@ -1005,6 +1042,18 @@ group "Applications"
     
             filter { 'configurations:Profiling or Final' }
                 links(DirectXTexLibrary.libNames[1])
+        filter{}
+
+        filter('platforms:'..clang_win64_vulkan)
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/vulkan',
+                phx_vendor_src_vk_bootstrap,
+                phx_vendor_src_volk,
+                phx_vendor_src_vma,
+            }
+            AddVulkanIncludes()
+            AddVulkanLibraries()
         filter{}
 
 group ""
