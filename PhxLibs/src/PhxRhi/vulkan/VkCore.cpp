@@ -55,6 +55,38 @@ namespace
 	void RunGarbageCollection(uint64_t completedFrame)
 	{
 	}
+
+#if USE_PHX_ALLOCATOR
+	void* VKAPI_CALL vk_phx_allocate(
+		void* pUserData,
+		size_t size,
+		size_t alignment,
+		VkSystemAllocationScope scope)
+	{
+		auto* allocator = static_cast<phx::IAllocator*>(pUserData);
+		return allocator->Allocate(size, alignment);
+	}
+
+	void* VKAPI_CALL vk_phx_reallocate(
+		void* pUserData,
+		void* pOriginal,
+		size_t size,
+		size_t alignment,
+		VkSystemAllocationScope scope)
+	{
+		auto* allocator = static_cast<phx::IAllocator*>(pUserData);
+		allocator->Deallocate(pOriginal);
+		return allocator->Allocate(size, alignment);
+	}
+
+	void VKAPI_CALL vk_phx_free(
+		void* pUserData,
+		void* pMemory)
+	{
+		auto* allocator = static_cast<phx::IAllocator*>(pUserData);
+		allocator->Deallocate(pMemory);
+	}
+#endif
 }
 
 namespace phx::rhi
@@ -73,13 +105,38 @@ namespace phx::rhi
 		bool bUseValidationLayers = false;
 #endif
 
+#if USE_PHX_ALLOCATOR
+		
+		g_VkContext.AllocCallbacks = {
+			.pUserData = &phx::Memory::g_persistentAllocator,
+			.pfnAllocation = vk_phx_allocate,
+			.pfnReallocation = vk_phx_reallocate,
+			.pfnFree = vk_phx_free,
+			.pfnInternalAllocation = nullptr,
+			.pfnInternalFree = nullptr
+		};
+
+		PHX_CORE_INFO("[RHI] Override Vulkans default allocators");
+
+#endif
+
 		vkb::InstanceBuilder builder;
 		//make the vulkan instance, with basic debug features
 		auto inst_ret = builder.set_app_name("Vulkan Application")
 			.set_engine_name("Phx Engine")
 			.request_validation_layers(bUseValidationLayers)
 			.use_default_debug_messenger()
+			.set_headless(false)
+#if USE_PHX_ALLOCATOR
+			.set_allocation_callbacks(&g_VkContext.AllocCallbacks)
+#endif
 			.build();
+
+		if (!inst_ret)
+		{
+			PHX_CORE_ERROR("[RHI] Failed to create Vulkan Instance");
+			throw std::runtime_error("[RHI] Failed to create Vulkan Instance");
+		}
 
 		vkb::Instance vkbInstance = inst_ret.value();
 		g_VkContext.Instance = vkbInstance.instance;
@@ -253,6 +310,15 @@ namespace phx::rhi
 	{
 		WaitForIdle();
 
+		vmaDestroyAllocator(g_VkContext.VmaAllocator);
+
+		VkAllocationCallbacks* vkAllocationCallbacks = nullptr;
+#if USE_PHX_ALLOCATOR
+		vkAllocationCallbacks = &g_VkContext.AllocCallbacks;
+#endif
+
+		vkDestroyDevice(g_VkContext.Device, vkAllocationCallbacks);
+		vkDestroyInstance(g_VkContext.Instance, vkAllocationCallbacks);
 	}
 
 
@@ -263,6 +329,8 @@ namespace phx::rhi
 
 	void WaitForIdle()
 	{
+		VkResult res = vkDeviceWaitIdle(g_VkContext.Device);
+		PHX_ASSERT(res == VK_SUCCESS);
 	}
 
 	CommandCtx* BeginCommnadCtx(CommandQueueType queueType)

@@ -433,12 +433,13 @@ inline void phx_delete_arr(Allocator& allocator, T* ptr)
 	if (!ptr)
 		return;
 
-	const size_t count = phx_array_len(ptr);
+	void* raw = (char*)ptr - sizeof(size_t);
+	const size_t count = *reinterpret_cast<size_t*>(raw);
 
 	for (size_t i = 0; i < count; ++i)
 		ptr[i].~T();
 
-	allocator.Deallocate(ptr);
+	allocator.Deallocate(raw);
 };
 
 

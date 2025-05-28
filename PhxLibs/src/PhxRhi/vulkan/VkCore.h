@@ -1,5 +1,7 @@
 #pragma once
 
+#define USE_PHX_ALLOCATOR 0
+
 #ifdef PHX_PLATFORM_WINDOWS
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
@@ -24,6 +26,10 @@ namespace phx::rhi::vk
 		VkDevice Device;
 
 		VmaAllocator VmaAllocator;
+
+#if USE_PHX_ALLOCATOR
+		VkAllocationCallbacks AllocCallbacks;
+#endif
 
 		VkQueue GfxQueue;
 		uint32_t GfxQueueFamily;
