@@ -1,5 +1,9 @@
 #pragma once
 
+
+#ifdef PHX_PLATFORM_WINDOWS
+#define VK_USE_PLATFORM_WIN32_KHR
+#endif
 #include <vulkan/vulkan.h>
 #include <VkBootstrap.h>
 
@@ -9,8 +13,11 @@ namespace phx::rhi::vk
 {
 	struct VkContext
 	{
-		vkb::Instance Instance;
-		vkb::Device Device;
+		VkInstance Instance;
+		VkSurfaceKHR Surface;
+		VkPhysicalDevice ChoosenGpu;
+		VkDevice Device;
+
 
 		VkQueue GfxQueue;
 		VkQueue TransferQueue;

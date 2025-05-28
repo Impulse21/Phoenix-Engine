@@ -19,6 +19,10 @@
 
 using namespace phx;
 
+#ifdef PHX_PLATFORM_WINDOWS
+HWND g_hWnd;
+HINSTANCE g_hInstance;
+#endif
 namespace
 {
 	void OnPreRender(IApplication* app)

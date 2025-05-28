@@ -57,8 +57,8 @@ extern "C"
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void ExitGame() noexcept;
 
-HWND g_hWnd;
-HINSTANCE g_hInstance;
+extern HWND g_hWnd;
+extern HINSTANCE g_hInstance;
 
 void ShowConsole(FILE* stream)
 {
