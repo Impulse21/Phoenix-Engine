@@ -57,18 +57,18 @@ namespace phx
 			phx::IApplication::Ptr = phx::CreateApplication();
 		}
 
-		void Initialize(void* /*windowHandle*/)
+		void Initialize(void* windowHandle)
 		{
 			auto* app = phx::IApplication::Ptr;
 			uint32_t w, h;
 			app->GetDefaultWindowSize(w, h);
 
-#if false
 			phx::rhi::Initialize({
 				.SwapChianDesc = {.Width = w, .Height = h },
 				.WindowsHandle = windowHandle
 				});
 
+#if false
 			app->SetWindowHandle(windowHandle);
 
 			phx::IRootFileSystem::Ptr = phx_new_system(RootFileSystem);

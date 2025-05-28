@@ -1,12 +1,10 @@
 #include "PhxRhi/PhxRhi_pch.h"
 
-#include "PhxCore/Math.h"
-#include "PhxCore/StringUtils.h"
-#include "PhxCore/CommandLineArgs.h"
-
 #include "PhxRhi/RHICommandCtx.h"
 #include "PhxRhi/RHITypes.h"
 #include "PhxRhi/RHICore.h"
+
+#include "VkCore.h"
 
 
 #ifdef __clang__
@@ -28,8 +26,7 @@ namespace
 
 namespace phx::rhi::vk
 {
-	rhi::DeviceCapability g_capabilities;
-
+	VkContext g_VkContext;
 	size_t g_frameCount = 0;
 }
 
@@ -37,19 +34,6 @@ namespace
 {
 	void RunGarbageCollection(uint64_t completedFrame)
 	{
-		while (!m_deferredQueue.empty())
-		{
-			DeferredItem& DeferredItem = m_deferredQueue.front();
-			if (DeferredItem.Frame + kBufferCount < completedFrame)
-			{
-				DeferredItem.DeferredFunc();
-				m_deferredQueue.pop_front();
-			}
-			else
-			{
-				break;
-			}
-		}
 	}
 }
 
@@ -69,7 +53,7 @@ namespace phx::rhi
 
 	Budget GetBudget()
 	{
-		return {}
+		return {};
 	}
 
 	void WaitForIdle()
@@ -89,13 +73,5 @@ namespace phx::rhi
 	ShaderFormat GetShaderFormat() 
 	{ 
 		return ShaderFormat::Spriv;
-	}
-}
-
-namespace phx::rhi::vk
-{
-	void EnqueueDelete(DeferredItem&& item)
-	{
-		m_deferredQueue.emplace_back(std::forward<DeferredItem>(item));
 	}
 }
