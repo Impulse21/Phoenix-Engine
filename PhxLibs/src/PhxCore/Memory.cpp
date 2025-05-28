@@ -22,7 +22,7 @@ namespace
 
 namespace phx
 {
-	namespace MemoryService
+	namespace Memory
 	{
 		HeapAllocator g_SystemAllocator;
 		StackAllocator g_frameScratchAllocator;

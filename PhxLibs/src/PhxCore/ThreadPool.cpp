@@ -36,8 +36,8 @@ namespace
 	struct ThreadPoolContext
 	{
 		uint32_t NumThreads = 0;
-		std::vector<std::thread> WorkerThreads;
-		std::unique_ptr<JobQueue[]> JobQueuePerThread;
+		phx::Array<std::thread> WorkerThreads;
+		JobQueue* JobQueuePerThread;
 		std::condition_variable WakeCondition;
 		std::mutex WakeMutex;
 		std::atomic_uint32_t NextQueue = 0;
@@ -97,12 +97,12 @@ void ThreadPool::Initialize()
 		}
 
 		resource.NumThreads = std::max(1u, std::min(resource.NumThreads, numCores));
-		resource.JobQueuePerThread.reset(new JobQueue[resource.NumThreads]);
-		resource.WorkerThreads.reserve(static_cast<size_t>(resource.NumThreads));
+		resource.JobQueuePerThread = phx_new_arr_persistent(JobQueue, resource.NumThreads);
+		resource.WorkerThreads.Intialize(&Memory::g_PersistentAllocator, resource.NumThreads);
 
 		for (uint32_t threadID = 0; threadID < resource.NumThreads; threadID++)
 		{
-			std::thread& worker = resource.WorkerThreads.emplace_back([threadID, &resource] {
+			std::thread& worker = resource.WorkerThreads.Emplace([threadID, &resource] {
 				while (m_alive)
 				{
 					resource.DoWork(threadID);
@@ -185,9 +185,9 @@ void ThreadPool::Finalize()
 	
 	for (auto& res : m_threadPools)
 	{
-		res.WorkerThreads.clear();
+		res.WorkerThreads.Finalize();
 		res.NumThreads = 0;
-		res.JobQueuePerThread.reset();
+		phx_delete_arr_persistent(res.JobQueuePerThread);
 		res.NextQueue = 0;
 	}
 }

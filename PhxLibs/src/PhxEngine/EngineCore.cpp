@@ -49,7 +49,7 @@ namespace phx
 			phx::Log::Initialize();
 			phx::CommandLineArgs::Initialize(argc, argv);
 
-			MemoryService::Initialize({
+			Memory::Initialize({
 				.MaxDynamicSize = 1_GiB });
 
 			phx::ThreadPool::Initialize();
@@ -86,7 +86,7 @@ namespace phx
 			PHX_PROFILE_FRAME;
 
 			g_FrameCount++;
-			MemoryService::BeginFrame();
+			Memory::BeginFrame();
 
 			// -- Pre-Render ---
 			OnPreRender(phx::IApplication::Ptr);
@@ -123,7 +123,7 @@ namespace phx
 			phx::rhi::Finalize();
 #endif
 			ThreadPool::Finalize();
-			MemoryService::Finalize();
+			Memory::Finalize();
 		}
 	}
 }
