@@ -50,7 +50,7 @@ namespace phx
 			phx::CommandLineArgs::Initialize(argc, argv);
 
 			Memory::Initialize({
-				.MaxDynamicSize = 1_GiB });
+				.MaxPersistentHeapSize = 1_GiB });
 
 			phx::ThreadPool::Initialize();
 

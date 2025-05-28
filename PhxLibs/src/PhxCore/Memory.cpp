@@ -31,9 +31,13 @@ namespace phx
 
 		void Initialize(MemoryDescriptor const& desc)
 		{
-			g_persistentAllocator.Initialize(desc.MaxDynamicSize);
-			g_frameAllocator.Initialize(desc.MaxFrameSize);
-			g_frameScratchAllocator.Initialize(desc.MaxScratchSize);
+			g_persistentAllocator.Initialize(desc.MaxPersistentHeapSize);
+			g_frameAllocator.Initialize(desc.MaxFrameHeapSize);
+			g_frameScratchAllocator.Initialize(desc.MaxScratchHeapSize);
+
+			PHX_CORE_INFO("[Memory] Initialized Persistent Heap with {0} Mib", PhxToMB(desc.MaxPersistentHeapSize));
+			PHX_CORE_INFO("[Memory] Initialized Frame Heap with {0} Mib", PhxToMB(desc.MaxFrameHeapSize));
+			PHX_CORE_INFO("[Memory] Initialized Scratch Heap with {0} Mib", PhxToMB(desc.MaxScratchHeapSize));
 		}
 
 		void Finalize()

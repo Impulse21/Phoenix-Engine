@@ -185,9 +185,9 @@ namespace phx
 	// 
 	struct MemoryDescriptor
 	{
-		size_t MaxDynamicSize = 32_MiB;
-		size_t MaxFrameSize = 32_MiB;
-		size_t MaxScratchSize = 8_MiB;
+		size_t MaxPersistentHeapSize = 32_MiB;
+		size_t MaxFrameHeapSize = 32_MiB;
+		size_t MaxScratchHeapSize = 8_MiB;
 
 		size_t VirtualMemorySize = 16_GiB;
 		size_t StackPageSize = 4_MiB;
