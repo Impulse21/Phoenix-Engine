@@ -24,8 +24,6 @@ phx_vendor_src_cereal_dir   = phx_lib_vendor_directory.."/cereal"
 phx_vendor_src_tlsf         = phx_lib_vendor_directory.."/tlsf"
 phx_vendor_src_tracy        = phx_lib_vendor_directory.."/tracy"
 phx_vendor_src_hlslpp       = phx_lib_vendor_directory.."/hlslpp"
-phx_vendor_src_eastl        = phx_lib_vendor_directory.."/eastl"
-phx_vendor_src_eabase       = phx_lib_vendor_directory.."/eabase"
 
 phx_vendor_src_vk_bootstrap = phx_lib_vendor_directory.."/vk-bootstrap"
 phx_vendor_src_vma          = phx_lib_vendor_directory.."/vma"
@@ -34,8 +32,6 @@ phx_vendor_src_volk         = phx_lib_vendor_directory.."/volk"
 phx_vendor_include_glfw_dir     = phx_vendor_src_glfw_dir.."/include"
 phx_vendor_include_yaml_dir     = phx_vendor_src_yaml_dir.."/include"
 phx_vendor_include_hlslpp_dir   = phx_vendor_src_hlslpp.."/include"
-phx_vendor_include_eastl_dir    = phx_vendor_src_eastl.."/include"
-phx_vendor_include_eabase_dir   = phx_vendor_src_eabase.."/include/Common"
 
 phx_packer_vendor_dir       = "PhxAssetPacker/vendor"
 phx_packer_vendor_dx_tex    = phx_packer_vendor_dir..'/DirectXTex'
@@ -75,7 +71,6 @@ project_asset_packer    = 'PhxAssetPacker'
 project_vendor_imgui        = 'ImGui'
 project_vendor_tracy        = 'Tracy'
 project_vendor_tlsf         = 'tlsf'
-project_vendor_eastl        = 'eastl'
 
 project_vendor_d3d12ma      = 'D3D12MA'
 project_vendor_yaml         = 'yaml-cpp'
@@ -322,7 +317,6 @@ workspace "PhxEngine"
 		defines
 		{
 			'NDEBUG', -- Disables assert
-			'EASTL_ASSERT_ENABLED=0',
 		}
 		optimize('speed')
 		symbols('on')
@@ -358,69 +352,6 @@ group "Vendors"
         removefiles {}
 
         defines { 'IMGUI_DISABLE_OBSOLETE_FUNCTIONS' }
-
-        filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
-
-        filter {}
-
-    project(project_vendor_eastl)
-        kind "StaticLib"
-        language "C++"
-        cppdialect "c++14"
-
-        files
-        {
-            phx_vendor_src_eastl..'/**.cpp',
-            phx_vendor_src_eastl..'/**.h',
-            phx_vendor_src_eastl..'/EASTL.natvis',
-            phx_vendor_src_eastl..'/version.txt',
-            phx_vendor_src_eastl..'/LICENSE.txt',
-            phx_vendor_src_eastl..'/3RDPARTYLICENSES.txt',
-        }
-
-        includedirs
-        {
-            phx_vendor_include_eabase_dir,
-            phx_vendor_include_eastl_dir,
-        }
-
-        filter "system:linux"
-            pic "On"
-            systemversion "latest"
-        removefiles {}
-
-        defines 
-        { 
-            'D_CHAR16T',
-            'D_CRT_SECURE_NO_WARNINGS',
-            'D_SCL_SECURE_NO_WARNINGS',
-            'DEASTL_OPENSOURCE',
-            'DEASTL_STD_ITERATOR_CATEGORY_ENABLED=1'
-         }
-
-        filter('toolset:*-clangcl')
-        
-            defines 
-            { 
-                'EA_COMPILER_CLANG=1',
-            } 
-        filter()
-        
-        filter "system:linux"
-            pic "On"
-            systemversion "latest"
-        removefiles {}
-
-        filter {}
-        
-        filter "system:windows"
-            defines 
-            { 
-                'EA_PLATFORM_WINDOWS=1',
-            } 
-
-        removefiles {}
-        filter {}
 
         filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
 
@@ -689,8 +620,6 @@ group "PhxLibs"
             phx_lib_vendor_directory.."/spdlog/include",
             phx_vendor_src_tracy,
             phx_vendor_src_tlsf,
-            phx_vendor_include_eabase_dir,
-            phx_vendor_include_eastl_dir,
             phx_vendor_include_hlslpp_dir,
         }
         
@@ -714,8 +643,6 @@ group "PhxLibs"
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
             phx_vendor_src_tracy,
-            phx_vendor_include_eabase_dir,
-            phx_vendor_include_eastl_dir,
             phx_vendor_include_hlslpp_dir,
         }
 
@@ -769,8 +696,6 @@ group "PhxLibs"
             phx_lib_vendor_directory.."/entt",
             phx_vendor_src_cereal_dir,
             phx_vendor_src_tracy,
-            phx_vendor_include_eabase_dir,
-            phx_vendor_include_eastl_dir,
             phx_vendor_include_hlslpp_dir,
         }
 
@@ -807,8 +732,6 @@ group "PhxLibs"
             phx_lib_vendor_directory.."/spdlog/include",
             phx_lib_vendor_directory.."/entt",
             phx_vendor_src_tracy,
-            phx_vendor_include_eabase_dir,
-            phx_vendor_include_eastl_dir,
             phx_vendor_include_hlslpp_dir,
         }
 
@@ -844,8 +767,6 @@ group "PhxLibs"
             phx_vendor_src_imgui_dir,
             phx_lib_vendor_directory.."/spdlog/include",
             phx_vendor_src_tracy,
-            phx_vendor_include_eabase_dir,
-            phx_vendor_include_eastl_dir,
             phx_vendor_include_hlslpp_dir,
         }
         
@@ -885,8 +806,6 @@ group "PhxLibs"
             phx_vendor_include_yaml_dir,
             phx_vendor_src_cereal_dir,
             phx_vendor_src_tracy,
-            phx_vendor_include_eabase_dir,
-            phx_vendor_include_eastl_dir,
             phx_vendor_include_hlslpp_dir,
         }
 
@@ -922,8 +841,6 @@ group "PhxLibs"
             phx_vendor_src_json_dir,
             phx_vendor_src_cereal_dir,
             phx_vendor_src_tracy,
-            phx_vendor_include_eabase_dir,
-            phx_vendor_include_eastl_dir,
             phx_vendor_include_hlslpp_dir,
         }
 
@@ -963,8 +880,6 @@ group "Applications"
             phx_vendor_src_entt_dir,
             phx_vendor_src_cereal_dir,
             phx_vendor_src_tracy,
-            phx_vendor_include_eabase_dir,
-            phx_vendor_include_eastl_dir,
             phx_vendor_include_hlslpp_dir,
             project_vendor_tlsf,
             phx_app_directory.."/"..project_phx_app_editor.."/vendor",
@@ -981,7 +896,6 @@ group "Applications"
             project_phx_engine,
             project_vendor_imgui,
             project_vendor_tracy,
-            project_vendor_eastl,
             project_vendor_tlsf,
         }
         
@@ -1064,6 +978,7 @@ group "Applications"
             project_phx_data,
             project_vendor_imgui,
             project_vendor_yaml,
+            project_vendor_tlsf,
         }
         
         postbuildcommands

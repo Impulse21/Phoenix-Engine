@@ -24,13 +24,14 @@ namespace phx
 {
 	namespace Memory
 	{
-		HeapAllocator g_SystemAllocator;
+		MallocAllocator g_systemAllocator;
+		HeapAllocator g_persistentAllocator;
 		StackAllocator g_frameScratchAllocator;
 		LinearAllocator g_frameAllocator;
 
 		void Initialize(MemoryDescriptor const& desc)
 		{
-			g_SystemAllocator.Initialize(desc.MaxDynamicSize);
+			g_persistentAllocator.Initialize(desc.MaxDynamicSize);
 			g_frameAllocator.Initialize(desc.MaxFrameSize);
 			g_frameScratchAllocator.Initialize(desc.MaxScratchSize);
 		}
@@ -39,7 +40,7 @@ namespace phx
 		{
 			g_frameAllocator.Finalize();
 			g_frameScratchAllocator.Finalize();
-			g_SystemAllocator.Finalize();
+			g_persistentAllocator.Finalize();
 		}
 
 

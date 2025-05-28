@@ -1,9 +1,8 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
+
 #include "PhxCore/Base.h"
-#include "PhxCore/Span.h"
 
 namespace phx
 {
@@ -201,8 +200,8 @@ namespace phx
 
 		void BeginFrame();
 
-		extern MallocAllocator g_SystemAllocator;
-		extern HeapAllocator g_PersistentAllocator;
+		extern MallocAllocator g_systemAllocator;
+		extern HeapAllocator g_persistentAllocator;
 		extern StackAllocator g_frameScratchAllocator;
 		extern LinearAllocator g_frameAllocator;
 	}
@@ -266,7 +265,7 @@ namespace phx
 			if (m_ptr)
 			{
 				m_ptr->~T();
-				m_allocator->deallocate(m_ptr);
+				m_allocator->Deallocate(m_ptr);
 				m_ptr = nullptr;
 			}
 		}
@@ -322,7 +321,7 @@ namespace phx
 			if (m_refCount && --(*m_refCount) == 0)
 			{
 				m_ptr->~T();
-				m_allocator->deallocate(m_ptr);
+				m_allocator->Deallocate(m_ptr);
 				delete m_refCount;
 			}
 			m_ptr = nullptr;
@@ -388,14 +387,14 @@ template<typename T>
 concept AllocatorType = std::is_base_of_v<phx::IAllocator, T>;
 
 template<typename T, AllocatorType Allocator, typename... Args>
-T* phx_new(Allocator& allocator, Args&&... args)
+inline T* phx_new(Allocator& allocator, Args&&... args)
 {
     void* mem = allocator.Allocate(sizeof(T), alignof(T));
     return new (mem) T(std::forward<Args>(args)...);
 };
 
 template<typename T, AllocatorType Allocator>
-void phx_delete(Allocator& allocator, T* ptr)
+inline void phx_delete(Allocator& allocator, T* ptr)
 {
     if (ptr)
     {
@@ -405,10 +404,10 @@ void phx_delete(Allocator& allocator, T* ptr)
 };
 
 template<typename T, AllocatorType Allocator>
-T* phx_new_arr(Allocator& allocator, size_t count)
+inline T* phx_new_arr(Allocator& allocator, size_t count)
 {
-	const size_t headerCount = sizeof(size_t);
-	const size_t totalSize = headerCount + sizeof(T) * count;
+	const size_t headerSize = sizeof(size_t);
+	const size_t totalSize = headerSize + sizeof(T) * count;
 	void* mem = allocator.Allocate(totalSize, alignof(T));
 
 	// Store the count at the beginning
@@ -422,14 +421,14 @@ T* phx_new_arr(Allocator& allocator, size_t count)
 
 }
 
-size_t phx_array_len(void* ptr)
+inline size_t phx_array_len(void* ptr)
 {
 	void* raw = (char*)ptr - sizeof(size_t);
 	return *reinterpret_cast<size_t*>(raw);
 }
 
 template<typename T, AllocatorType Allocator>
-void phx_delete_arr(Allocator& allocator, T* ptr)
+inline void phx_delete_arr(Allocator& allocator, T* ptr)
 {
 	if (!ptr)
 		return;
@@ -439,28 +438,28 @@ void phx_delete_arr(Allocator& allocator, T* ptr)
 	for (size_t i = 0; i < count; ++i)
 		ptr[i].~T();
 
-	allocator.Deallocate(raw);
+	allocator.Deallocate(ptr);
 };
 
 
-#define phx_new_system(Type, ...) phx_new<Type>(phx::Memory::g_SystemAllocator, __VA_ARGS__)
-#define phx_delete_system(Ptr) phx_delete(phx::Memory::g_SystemAllocator, Ptr)
+#define phx_new_system(Type, ...) phx_new<Type>(phx::Memory::g_systemAllocator, __VA_ARGS__)
+#define phx_delete_system(Ptr) phx_delete(phx::Memory::g_systemAllocator, Ptr)
 
-#define phx_new_persistent(Type, ...) phx_new<Type>(phx::Memory::g_PersistentAllocator, __VA_ARGS__)
-#define phx_delete_persistent(Ptr) phx_delete(phx::Memory::g_PersistentAllocator, Ptr)
+#define phx_new_persistent(Type, ...) phx_new<Type>(phx::Memory::g_persistentAllocator, __VA_ARGS__)
+#define phx_delete_persistent(Ptr) phx_delete(phx::Memory::g_persistentAllocator, Ptr)
 
 #define phx_new_scratch(Type, ...) phx_new<Type>(phx::Memory::g_frameScratchAllocator, __VA_ARGS__)
 
 #define phx_new_frame(Type, ...) phx_new<Type>(phx::Memory::g_frameAllocator, __VA_ARGS__)
 
 // -- array varents ---
-#define phx_new_arr_system(Type, Count) phx_new_arr<Type>(phx::Memory::g_SystemAllocator, Count)
-#define phx_delete_arr_system(Ptr) phx_delete_arr(phx::Memory::g_SystemAllocator, Ptr)
+#define phx_new_arr_system(Type, Count) phx_new_arr<Type>(phx::Memory::g_systemAllocator, Count)
+#define phx_delete_arr_system(Ptr) phx_delete_arr(phx::Memory::g_systemAllocator, Ptr)
 
-#define phx_new_arr_persistent(Type, Count) phx_new_arr<Type>(phx::Memory::g_PersistentAllocator, Count)
-#define phx_delete_arr_persistent(Ptr) phx_delete_arr(phx::Memory::g_PersistentAllocator, Ptr)
+#define phx_new_arr_persistent(Type, Count) phx_new_arr<Type>(phx::Memory::g_persistentAllocator, Count)
+#define phx_delete_arr_persistent(Ptr) phx_delete_arr(phx::Memory::g_persistentAllocator, Ptr)
 
 
-#define phx_new_scratch(Type, Count) phx_new_arr<Type>(phx::Memory::g_frameScratchAllocator, Count)
+#define phx_new_arr_scratch(Type, Count) phx_new_arr<Type>(phx::Memory::g_frameScratchAllocator, Count)
 
-#define phx_new_frame(Type, Count) phx_new_arr<Type>(phx::Memory::g_frameAllocator, Count)
+#define phx_new_arr_frame(Type, Count) phx_new_arr<Type>(phx::Memory::g_frameAllocator, Count)

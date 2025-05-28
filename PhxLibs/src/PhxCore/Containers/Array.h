@@ -12,7 +12,7 @@ namespace phx
         Array();
         ~Array();
 
-        void Intialize(IAllocator* allocator, uint32_t initial_capacity, uint32_t initial_size = 0);
+        void Intialize(phx::IAllocator* Allocator, uint32_t initial_capacity, uint32_t initial_Size = 0);
         void Finalize();
 
         void Push(const T& element);
@@ -21,28 +21,8 @@ namespace phx
         template<typename... Args>
         T& Emplace(Args&&... args);
 
-        T& PushUse(); // Grow the size and return T to be filled.
+        T& PushUse(); // Grow the Size and return T to be filled.
 
-
-        void push_back(T&& value)
-        {
-            if (size == capacity)
-                reserve(capacity ? capacity * 2 : 4);
-
-            new (&data[size]) T(std::move(value));
-            ++size;
-        }
-
-        template<typename... Args>
-        T& emplace_back(Args&&... args)
-        {
-            if (size == capacity)
-                reserve(capacity ? capacity * 2 : 4);
-
-            T* elem = new (&data[size]) T(std::forward<Args>(args)...);
-            ++size;
-            return *elem;
-        }
         void Pop();
         void DeleteSwap(uint32_t index);
 
@@ -73,7 +53,7 @@ namespace phx
         bool IsNotEmpty() const { return !IsEmpty(); }
 
         T* Data;
-        uint32_t Size;       // Occupied size
+        uint32_t Size;       // Occupied Size
         uint32_t Capacity;   // Allocated capacity
         IAllocator* Allocator;
 
@@ -90,8 +70,8 @@ namespace phx
         const T* begin() const { return Data; }
         const T* end()   const { return Data + N; }
 
-        T& operator[](uint32_t index) { return Data[N]; }
-        const T& operator[](uint32_t index) const { return Data[N]; }
+        T& operator[](uint32_t index) { return Data[index]; }
+        const T& operator[](uint32_t index) const { return Data[index]; }
     };
 
     // Implementation /////////////////////////////////////////////////////
@@ -108,16 +88,16 @@ namespace phx
     }
 
     template<typename T>
-    inline void Array<T>::Intialize(IAllocator* allocator_, uint32_t initial_capacity, uint32_t initial_size) 
+    inline void Array<T>::Intialize(phx::IAllocator* allocator, uint32_t initial_capacity, uint32_t initial_Size)
     {
         Data = nullptr;
-        Size = initial_size;
+        Size = initial_Size;
         Capacity = 0;
-        Allocator = allocator_;
+        Allocator = allocator;
 
-        if (initial_capacity > 0) 
+        if (initial_capacity > 0)
         {
-            grow(initial_capacity);
+            Grow(initial_capacity);
         }
     }
 
@@ -126,7 +106,7 @@ namespace phx
     {
         if (Capacity > 0)
         {
-            allocator->Deallocate(Data);
+            Allocator->Deallocate(Data);
         }
 
         Data = nullptr;
@@ -168,7 +148,7 @@ namespace phx
     template<typename T>
     inline void Array<T>::Pop() 
     {
-        PHX_CORE_ASSERTm_(size > 0);
+        PHX_CORE_ASSERTm_(Size > 0);
         --Size;
     }
 
@@ -240,7 +220,7 @@ namespace phx
         {
             std::memcpy(new_data, Data, Capacity * sizeof(T));
 
-            Allocator->DeaDllocate(Data);
+            Allocator->Deallocate(Data);
         }
 
         Data = new_data;
@@ -250,28 +230,28 @@ namespace phx
     template<typename T>
     inline T& Array<T>::Back() 
     {
-        PHX_CORE_ASSERT(size);
-        return Data[size - 1];
+        PHX_CORE_ASSERT(Size);
+        return Data[Size - 1];
     }
 
     template<typename T>
     inline const T& Array<T>::Back() const 
     {
-        PHX_CORE_ASSERT(size);
-        return Data[size - 1];
+        PHX_CORE_ASSERT(Size);
+        return Data[Size - 1];
     }
 
     template<typename T>
     inline T& Array<T>::Front() 
     {
-        PHX_CORE_ASSERT(size);
+        PHX_CORE_ASSERT(Size);
         return Data[0];
     }
 
     template<typename T>
     inline const T& Array<T>::Front() const 
     {
-        PHX_CORE_ASSERT(size);
+        PHX_CORE_ASSERT(Size);
         return Data[0];
     }
 
@@ -292,7 +272,7 @@ namespace phx
     inline T& Array<T>::Emplace(Args && ...args)
     {
         if (Size == Capacity)
-            reserve(Capacity ? Capacity * 2 : 4);
+            Grow(Capacity ? Capacity * 2 : 4);
 
         T* elem = new (&Data[Size]) T(std::forward<Args>(args)...);
         ++Size;

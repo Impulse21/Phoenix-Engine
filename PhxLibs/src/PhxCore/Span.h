@@ -45,13 +45,6 @@ namespace phx
 			: Span(a.data(), a.size(), 0)
 		{}
 
-		template<typename E>
-		Span(EnumArray<T, E>&a)
-			: Span(a.data(), a.size(), 0)
-		{
-		}
-
-		template<typename T>
 		Span(phx::Array<T>& a)
 			: Span(a.Data, a.Size, 0)
 		{
