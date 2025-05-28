@@ -55,6 +55,34 @@ namespace
 	void RunGarbageCollection(uint64_t completedFrame)
 	{
 	}
+	VKAPI_ATTR VkBool32 VKAPI_CALL vk_phx_debug(
+		VkDebugUtilsMessageSeverityFlagBitsEXT       messageSeverity,
+		VkDebugUtilsMessageTypeFlagsEXT              ,
+		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+		void* )
+	{
+
+		if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+		{
+			PHX_CORE_INFO("[Vulkan Debug] {0}\n\t{1}", pCallbackData->pMessageIdName, pCallbackData->pMessage);
+		}
+		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+		{
+			PHX_CORE_WARN("[Vulkan Debug] {0}\n\t{1}", pCallbackData->pMessageIdName, pCallbackData->pMessage);
+		}
+		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+		{
+			PHX_CORE_ERROR("[Vulkan Debug] {0}\n\t{1}", pCallbackData->pMessageIdName, pCallbackData->pMessage);
+		}
+#if false
+		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+		{
+			
+		}
+#endif
+
+		return VK_FALSE; // Return TRUE to break on validation error
+	}
 
 #if USE_PHX_ALLOCATOR
 	void* VKAPI_CALL vk_phx_allocate(
@@ -125,7 +153,7 @@ namespace phx::rhi
 		auto inst_ret = builder.set_app_name("Vulkan Application")
 			.set_engine_name("Phx Engine")
 			.request_validation_layers(bUseValidationLayers)
-			.use_default_debug_messenger()
+			.set_debug_callback(vk_phx_debug)
 			.set_headless(false)
 #if USE_PHX_ALLOCATOR
 			.set_allocation_callbacks(&g_VkContext.AllocCallbacks)
