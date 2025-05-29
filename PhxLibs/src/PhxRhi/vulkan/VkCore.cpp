@@ -52,9 +52,6 @@ namespace phx::rhi::vk
 
 namespace
 {
-	void RunGarbageCollection(uint64_t completedFrame)
-	{
-	}
 	VKAPI_ATTR VkBool32 VKAPI_CALL vk_phx_debug(
 		VkDebugUtilsMessageSeverityFlagBitsEXT       messageSeverity,
 		VkDebugUtilsMessageTypeFlagsEXT              ,
@@ -84,46 +81,8 @@ namespace
 		return VK_FALSE; // Return TRUE to break on validation error
 	}
 
-#if USE_PHX_ALLOCATOR
-	void* VKAPI_CALL vk_phx_allocate(
-		void* pUserData,
-		size_t size,
-		size_t alignment,
-		VkSystemAllocationScope scope)
+	void InitVulkan(void* windowHandle)
 	{
-		auto* allocator = static_cast<phx::IAllocator*>(pUserData);
-		return allocator->Allocate(size, alignment);
-	}
-
-	void* VKAPI_CALL vk_phx_reallocate(
-		void* pUserData,
-		void* pOriginal,
-		size_t size,
-		size_t alignment,
-		VkSystemAllocationScope scope)
-	{
-		auto* allocator = static_cast<phx::IAllocator*>(pUserData);
-		allocator->Deallocate(pOriginal);
-		return allocator->Allocate(size, alignment);
-	}
-
-	void VKAPI_CALL vk_phx_free(
-		void* pUserData,
-		void* pMemory)
-	{
-		auto* allocator = static_cast<phx::IAllocator*>(pUserData);
-		allocator->Deallocate(pMemory);
-	}
-#endif
-}
-
-namespace phx::rhi
-{
-	void Initialize(RhiCreateInfo const& createInfo)
-	{
-		PHX_PROFILE_SECTION("Vulkan::Initialize");
-		PHX_CORE_INFO("Initializing RHI(Vulkan)");
-
 		volkInitialize();
 
 #if PHX_DEBUG
@@ -134,7 +93,7 @@ namespace phx::rhi
 #endif
 
 #if USE_PHX_ALLOCATOR
-		
+
 		g_VkContext.AllocCallbacks = {
 			.pUserData = &phx::Memory::g_persistentAllocator,
 			.pfnAllocation = vk_phx_allocate,
@@ -177,10 +136,10 @@ namespace phx::rhi
 			nullptr, // pNext
 			0, // flags
 			g_hInstance, // hinstance
-			(HWND)createInfo.WindowsHandle};
+			(HWND)windowHandle};
 
 
-		VkResult result = 
+		VkResult result =
 			vkCreateWin32SurfaceKHR(
 				g_VkContext.Instance,
 				&surfaceCreateInfow,
@@ -206,7 +165,7 @@ namespace phx::rhi
 		feats.sparseBinding = true;
 		selector.set_required_features(feats);
 
-		const std::vector<const char*> required_extensions = 
+		const std::vector<const char*> required_extensions =
 		{
 			VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
 			VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
@@ -275,7 +234,7 @@ namespace phx::rhi
 			VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT |
 			VMA_ALLOCATOR_CREATE_KHR_BIND_MEMORY2_BIT;
 
-	
+
 		if (vkbDevice.physical_device.is_extension_present(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME))
 		{
 			allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
@@ -308,7 +267,7 @@ namespace phx::rhi
 		VkPhysicalDeviceMemoryProperties memProperties = physicalDevice.memory_properties;
 
 		std::stringstream memory_ss;
-		for (uint32_t i = 0; i < memProperties.memoryHeapCount; ++i) 
+		for (uint32_t i = 0; i < memProperties.memoryHeapCount; ++i)
 		{
 			const auto& heap = memProperties.memoryHeaps[i];
 			memory_ss << "\t\t\tHeap " << i
@@ -317,7 +276,7 @@ namespace phx::rhi
 				<< std::endl;
 		}
 
-		for (uint32_t i = 0; i < memProperties.memoryTypeCount; ++i) 
+		for (uint32_t i = 0; i < memProperties.memoryTypeCount; ++i)
 		{
 			const auto& type = memProperties.memoryTypes[i];
 			memory_ss << "\t\t\tType " << i
@@ -332,19 +291,114 @@ namespace phx::rhi
 			g_VkContext.PhysicalDeviceProperties.deviceName,
 			g_VkContext.PhysicalDeviceProperties.limits.minUniformBufferOffsetAlignment,
 			memoryInfo.c_str());
+
+	}
+	void InitSwapchain(VkExtent2D extents)
+	{
+		vkb::SwapchainBuilder swapchainBuilder(
+			g_VkContext.ChoosenPhysicalDevice,
+			g_VkContext.Device,
+			g_VkContext.Surface);
+
+
+		vkb::Swapchain vkbSwapchain = swapchainBuilder
+			.use_default_format_selection()
+			//use vsync present mode
+			.set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
+			.set_desired_extent(extents.width, extents.height)
+
+			.build()
+			.value();
+
+		g_VkContext.WindowExtents = extents;
+		g_VkContext.Swapchain = vkbSwapchain.swapchain;
+		g_VkContext.SwachainImageFormat = vkbSwapchain.image_format;
+
+		auto images = vkbSwapchain.get_images().value();
+		auto views = vkbSwapchain.get_image_views().value();
+
+		g_VkContext.SwapchainImages.Initialize(
+			&Memory::g_persistentAllocator,
+			images.data(),
+			images.size());
+		g_VkContext.SwapchainImageViews.Initialize(
+			&Memory::g_persistentAllocator,
+			views.data(),
+			views.size());
+
+	}
+#if USE_PHX_ALLOCATOR
+	void* VKAPI_CALL vk_phx_allocate(
+		void* pUserData,
+		size_t size,
+		size_t alignment,
+		VkSystemAllocationScope scope)
+	{
+		auto* allocator = static_cast<phx::IAllocator*>(pUserData);
+		return allocator->Allocate(size, alignment);
+	}
+
+	void* VKAPI_CALL vk_phx_reallocate(
+		void* pUserData,
+		void* pOriginal,
+		size_t size,
+		size_t alignment,
+		VkSystemAllocationScope scope)
+	{
+		auto* allocator = static_cast<phx::IAllocator*>(pUserData);
+		allocator->Deallocate(pOriginal);
+		return allocator->Allocate(size, alignment);
+	}
+
+	void VKAPI_CALL vk_phx_free(
+		void* pUserData,
+		void* pMemory)
+	{
+		auto* allocator = static_cast<phx::IAllocator*>(pUserData);
+		allocator->Deallocate(pMemory);
+	}
+#endif
+
+	
+}
+
+namespace phx::rhi
+{
+	void Initialize(RhiCreateInfo const& createInfo)
+	{
+		PHX_PROFILE_SECTION("Vulkan::Initialize");
+		PHX_CORE_INFO("Initializing RHI(Vulkan)");
+
+		InitVulkan(createInfo.WindowsHandle);
+		InitSwapchain({
+			.width = createInfo.SwapChianDesc.Width,
+			.height = createInfo.SwapChianDesc.Height,
+		});
+
 	}
 
 	void Finalize()
 	{
 		WaitForIdle();
 
-		vmaDestroyAllocator(g_VkContext.VmaAllocator);
-
 		VkAllocationCallbacks* vkAllocationCallbacks = nullptr;
 #if USE_PHX_ALLOCATOR
 		vkAllocationCallbacks = &g_VkContext.AllocCallbacks;
 #endif
 
+		for (auto imageView : g_VkContext.SwapchainImageViews)
+		{
+			vkDestroyImageView(g_VkContext.Device, imageView, vkAllocationCallbacks);
+		}
+
+		g_VkContext.SwapchainImageViews.Finalize();
+		g_VkContext.SwapchainImages.Finalize();
+
+		vkDestroySwapchainKHR(g_VkContext.Device, g_VkContext.Swapchain, vkAllocationCallbacks);
+
+		vmaDestroyAllocator(g_VkContext.VmaAllocator);
+
+		vkDestroySurfaceKHR(g_VkContext.Instance, g_VkContext.Surface, nullptr);
 		vkDestroyDevice(g_VkContext.Device, vkAllocationCallbacks);
 		vkDestroyInstance(g_VkContext.Instance, vkAllocationCallbacks);
 	}
@@ -368,7 +422,62 @@ namespace phx::rhi
 
 	void Present()
 	{
-		RunGarbageCollection(g_frameCount);
+		PHX_PROFILE_SECTION("Present");
+
+		{
+			VkContext::FrameData& frame = g_VkContext.GetCurrentFrame();
+
+			VkPresentInfoKHR presentInfo = {};
+			presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+			presentInfo.waitSemaphoreCount = 1;
+			presentInfo.pWaitSemaphores = &frame.RenderSemaphore;
+			presentInfo.swapchainCount = 1;
+			presentInfo.pSwapchains = &g_VkContext.Swapchain;
+			presentInfo.pImageIndices = &g_VkContext.SwapchainImageIndex;
+
+			{
+				PHX_PROFILE_SECTION("Queue Present");
+				VkResult res = vkQueuePresentKHR(g_VkContext.GfxQueue, &presentInfo);
+				if (res != VK_SUCCESS)
+				{
+					// Handle outdated error in present:
+					if (res == VK_SUBOPTIMAL_KHR || res == VK_ERROR_OUT_OF_DATE_KHR)
+					{
+						PHX_CORE_ASSERT(false);
+					}
+					else
+					{
+						PHX_CORE_ASSERT(false);
+					}
+				}
+			}
+		}
+		//increase the number of frames drawn
+		g_VkContext.FrameNumber++;
+		g_frameCount++;
+
+		VkContext::FrameData& frame = g_VkContext.GetCurrentFrame();
+		{
+			PHX_PROFILE_SECTION("Fence Wait");
+			
+			//wait until the gpu has finished rendering the last frame. Timeout of 1 second
+			vkWaitForFences(g_VkContext.Device, 1, &frame.RenderFence, VK_TRUE, UINT64_MAX);
+			vkResetFences(g_VkContext.Device, 1, &frame.RenderFence);
+
+		}
+
+		{
+			PHX_PROFILE_SECTION("Aquire Image");
+			//request image from the swapchain
+
+			vkAcquireNextImageKHR(
+				g_VkContext.Device,
+				g_VkContext.Swapchain,
+				0,
+				frame.PresentSemaphore,
+				nullptr,
+				&g_VkContext.SwapchainImageIndex);
+		}
 	}
 
 	ShaderFormat GetShaderFormat() 

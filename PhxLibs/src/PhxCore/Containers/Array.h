@@ -12,7 +12,10 @@ namespace phx
         Array();
         ~Array();
 
-        void Intialize(phx::IAllocator* Allocator, uint32_t initial_capacity, uint32_t initial_Size = 0);
+        void Initialize(phx::IAllocator* Allocator, uint32_t initial_capacity, uint32_t initial_Size = 0);
+        void Initialize(phx::IAllocator* Allocator, std::vector<T> const& init_data);
+        void Initialize(phx::IAllocator* Allocator, const T* init_data, uint32_t count);
+
         void Finalize();
 
         void Push(const T& element);
@@ -88,7 +91,7 @@ namespace phx
     }
 
     template<typename T>
-    inline void Array<T>::Intialize(phx::IAllocator* allocator, uint32_t initial_capacity, uint32_t initial_Size)
+    inline void Array<T>::Initialize(phx::IAllocator* allocator, uint32_t initial_capacity, uint32_t initial_Size)
     {
         Data = nullptr;
         Size = initial_Size;
@@ -99,6 +102,29 @@ namespace phx
         {
             Grow(initial_capacity);
         }
+    }
+    template<typename T>
+    inline void Array<T>::Initialize(phx::IAllocator* allocator, std::vector<T> const& init_data)
+    {
+        Initialize(allocator, init_data.data(), init_data.data());
+    }
+
+    template<typename T>
+    inline void Array<T>::Initialize(phx::IAllocator* allocator, const T* init_data, uint32_t count)
+    {
+        // This should copy the data.
+        if (count == 0)
+        {
+            return;
+        }
+
+        Data = nullptr;
+        Size = count;
+        Capacity = 0;
+        Allocator = allocator;
+        Grow(count);
+
+        std::memcpy(Data, init_data, sizeof(T) * Capacity);
     }
 
     template<typename T>

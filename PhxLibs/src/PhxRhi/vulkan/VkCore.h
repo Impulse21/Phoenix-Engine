@@ -17,6 +17,7 @@
 
 namespace phx::rhi::vk
 {
+	constexpr size_t cMaxInflightFrames = 2;
 	struct VkContext
 	{
 		VkInstance Instance;
@@ -40,8 +41,28 @@ namespace phx::rhi::vk
 		VkQueue ComputeQueue;
 		uint32_t ComputeQueueFamily;
 
+		VkExtent2D WindowExtents;
+
+		VkSwapchainKHR Swapchain;
+		VkFormat SwachainImageFormat;
+		phx::Array<VkImage> SwapchainImages;
+		phx::Array<VkImageView> SwapchainImageViews;
+		uint32_t SwapchainImageIndex = ~0u;
 
 		rhi::DeviceCapability Capabilities;
+
+		struct FrameData
+		{
+			VkSemaphore PresentSemaphore;
+			VkSemaphore RenderSemaphore;
+			VkFence RenderFence;
+		};
+
+		phx::FixedArray<FrameData, cMaxInflightFrames> Frames;
+		
+		size_t FrameNumber = 0;
+		FrameData& GetCurrentFrame() { return Frames[FrameNumber % cMaxInflightFrames]; }
+		FrameData& GetLastFrame() { return Frames[FrameNumber - 1 % cMaxInflightFrames]; }
 	};
 
 	extern VkContext g_VkContext;

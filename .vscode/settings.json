@@ -1,3 +1,11 @@
 {
-    "cmake.sourceDirectory": "C:/Users/dipao/source/repos/Phoenix-Engine/PhxLibs/vendor/glfw/src"
+    "cmake.sourceDirectory": "C:/Users/dipao/source/repos/Phoenix-Engine/PhxLibs/vendor/glfw/src",
+    "files.associations": {
+        "deque": "cpp",
+        "forward_list": "cpp",
+        "list": "cpp",
+        "valarray": "cpp",
+        "vector": "cpp",
+        "xstring": "cpp"
+    }
 }

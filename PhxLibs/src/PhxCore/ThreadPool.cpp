@@ -98,7 +98,7 @@ void ThreadPool::Initialize()
 
 		resource.NumThreads = std::max(1u, std::min(resource.NumThreads, numCores));
 		resource.JobQueuePerThread = phx_new_arr_persistent(JobQueue, resource.NumThreads);
-		resource.WorkerThreads.Intialize(&Memory::g_persistentAllocator, resource.NumThreads);
+		resource.WorkerThreads.Initialize(&Memory::g_persistentAllocator, resource.NumThreads);
 
 		for (uint32_t threadID = 0; threadID < resource.NumThreads; threadID++)
 		{

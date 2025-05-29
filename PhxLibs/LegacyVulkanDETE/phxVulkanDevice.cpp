@@ -2713,7 +2713,7 @@ void phx::gfx::platform::VulkanGpuDevice::Present()
         }
         else
         {
-            assert(0);
+            PHX_CORE_ASSERT(0);
         }
     }
 
