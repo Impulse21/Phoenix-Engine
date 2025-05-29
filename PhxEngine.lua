@@ -117,6 +117,16 @@ function AddVulkanLibraries()
     }
 end
 
+
+local function copy_clang_configs_to_workspace()
+    local dst = workspace_directory
+    os.mkdir(dst)
+    
+    os.copyfile(".clang-tidy", path.join(dst, ".clang-tidy"))
+    os.copyfile(".clang-format", path.join(dst, ".clang-format"))
+end
+
+
 -- Add warnings globally to fix serious issues that could cause incorrect
 -- runtime behavior or crashes.
 -- Remove warnings globally only if it makes sense to do so. For example,
@@ -224,6 +234,8 @@ function HandleGlobalWarnings()
         -Wno-cast-function-type
     --]=====]
 end
+
+copy_clang_configs_to_workspace()
 
 -- Globals
 workspace "PhxEngine"

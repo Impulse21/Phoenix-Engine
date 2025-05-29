@@ -1,0 +1,21 @@
+Checks: >
+  google-*,
+  clang-analyzer-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  bugprone-*,
+  cppcoreguidelines-*,
+  -google-runtime-references,           # Allow non-const refs
+  -cppcoreguidelines-pro-type-vararg,   # Allow vararg functions (like printf)
+  -cppcoreguidelines-owning-memory,     # Allow raw pointers
+
+FormatStyle: google
+HeaderFilterRegex: '.*'
+CheckOptions:
+  - key:             readability-identifier-naming.VariableCase
+    value:           lower_case_with_underscores
+  - key:             readability-identifier-naming.FunctionCase
+    value:           lower_case_with_underscores
+  - key:             modernize-use-nullptr.NullMacros
+    value:           NULL
