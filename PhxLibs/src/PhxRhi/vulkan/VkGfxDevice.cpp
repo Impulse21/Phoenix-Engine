@@ -458,8 +458,8 @@ namespace phx::rhi::vk
         auto images = vkbSwapchain.get_images().value();
         auto views = vkbSwapchain.get_image_views().value();
 
-        m_swapchainImages.Initialize(&Memory::g_persistentAllocator, images.data(), images.size());
-        m_swapchainImageViews.Initialize(&Memory::g_persistentAllocator, views.data(), views.size());
+        m_swapchainImages.Initialize(&Memory::GetMainHeap(), images.data(), images.size());
+        m_swapchainImageViews.Initialize(&Memory::GetMainHeap(), views.data(), views.size());
 
         PHX_CORE_INFO(
             "[RHI] Swapchain Initialized. Extent: {0}x{1}, Format: {2}, Images: {3}",

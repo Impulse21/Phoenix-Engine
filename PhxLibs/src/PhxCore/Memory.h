@@ -206,11 +206,6 @@ namespace phx
 		IAllocator& GetMainHeap();
 		StackAllocator& GetScratchHeap();
 		LinearAllocator& GetFrameHeap();
-
-		extern MallocAllocator g_systemAllocator;
-		extern HeapAllocator g_persistentAllocator;
-		extern StackAllocator g_frameScratchAllocator;
-		extern LinearAllocator g_frameAllocator;
 	}
 
 	struct ScopedScratchMarker
@@ -218,10 +213,10 @@ namespace phx
 		size_t Marker;
 		ScopedScratchMarker()
 		{
-			Marker = Memory::g_frameScratchAllocator.GetMarker();
+			Marker = Memory::GetScratchHeap().GetMarker();
 		}
 
-		~ScopedScratchMarker() { Memory::g_frameScratchAllocator.FreeMarker(Marker); }
+		~ScopedScratchMarker() { Memory::GetScratchHeap().FreeMarker(Marker); }
 	};
 }
 
@@ -450,24 +445,24 @@ inline void phx_delete_arr(Allocator& allocator, T* ptr)
 };
 
 
-#define phx_new_system(Type, ...) phx_new<Type>(phx::Memory::g_systemAllocator, __VA_ARGS__)
-#define phx_delete_system(Ptr) phx_delete(phx::Memory::g_systemAllocator, Ptr)
+#define phx_new_system(Type, ...) phx_new<Type>(phx::Memory::GetSystemHeap(), __VA_ARGS__)
+#define phx_delete_system(Ptr) phx_delete(phx::Memory::GetSystemHeap(), Ptr)
 
-#define phx_new_persistent(Type, ...) phx_new<Type>(phx::Memory::g_persistentAllocator, __VA_ARGS__)
-#define phx_delete_persistent(Ptr) phx_delete(phx::Memory::g_persistentAllocator, Ptr)
+#define phx_new_persistent(Type, ...) phx_new<Type>(phx::Memory::GetMainHeap(), __VA_ARGS__)
+#define phx_delete_persistent(Ptr) phx_delete(phx::Memory::GetMainHeap(), Ptr)
 
-#define phx_new_scratch(Type, ...) phx_new<Type>(phx::Memory::g_frameScratchAllocator, __VA_ARGS__)
+#define phx_new_scratch(Type, ...) phx_new<Type>(phx::Memory::GetScratchHeap(), __VA_ARGS__)
 
-#define phx_new_frame(Type, ...) phx_new<Type>(phx::Memory::g_frameAllocator, __VA_ARGS__)
+#define phx_new_frame(Type, ...) phx_new<Type>(phx::Memory::GetFrameHeap(), __VA_ARGS__)
 
 // -- array varents ---
-#define phx_new_arr_system(Type, Count) phx_new_arr<Type>(phx::Memory::g_systemAllocator, Count)
-#define phx_delete_arr_system(Ptr) phx_delete_arr(phx::Memory::g_systemAllocator, Ptr)
+#define phx_new_arr_system(Type, Count) phx_new_arr<Type>(phx::Memory::GetSystemHeap(), Count)
+#define phx_delete_arr_system(Ptr) phx_delete_arr(phx::Memory::GetSystemHeap(), Ptr)
 
-#define phx_new_arr_persistent(Type, Count) phx_new_arr<Type>(phx::Memory::g_persistentAllocator, Count)
-#define phx_delete_arr_persistent(Ptr) phx_delete_arr(phx::Memory::g_persistentAllocator, Ptr)
+#define phx_new_arr_persistent(Type, Count) phx_new_arr<Type>(phx::Memory::GetMainHeap(), Count)
+#define phx_delete_arr_persistent(Ptr) phx_delete_arr(phx::Memory::GetMainHeap(), Ptr)
 
 
-#define phx_new_arr_scratch(Type, Count) phx_new_arr<Type>(phx::Memory::g_frameScratchAllocator, Count)
+#define phx_new_arr_scratch(Type, Count) phx_new_arr<Type>(phx::Memory::GetScratchHeap(), Count)
 
-#define phx_new_arr_frame(Type, Count) phx_new_arr<Type>(phx::Memory::g_frameAllocator, Count)
+#define phx_new_arr_frame(Type, Count) phx_new_arr<Type>(phx::Memory::GetFrameHeap(), Count)

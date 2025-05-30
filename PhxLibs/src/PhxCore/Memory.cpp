@@ -100,15 +100,7 @@ namespace phx
 
 		void Shutdown()
 		{
-			g_frameAllocator.Shutdown();
-			g_frameScratchAllocator.Shutdown();
-			g_persistentAllocator.Shutdown();
-		}
-
-		void BeginFrame()
-		{
-			g_frameAllocator.Clear();
-			g_frameAllocator.Clear();
+			g_mainHeap.Shutdown();
 		}
 
 		MallocAllocator& GetSystemHeap()

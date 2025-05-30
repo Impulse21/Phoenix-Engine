@@ -54,7 +54,7 @@ namespace phx
 			phx::CommandLineArgs::Initialize(argc, argv);
 
 			Memory::Initialize({
-				.MaxPersistentHeapSize = 1_GiB });
+				.MaxMainHeapSize = 1_GiB });
 
 			phx::ThreadPool::Initialize();
 
@@ -94,7 +94,6 @@ namespace phx
 			PHX_PROFILE_FRAME;
 
 			g_FrameCount++;
-			Memory::BeginFrame();
 
 			// -- Pre-Render ---
 			OnPreRender(phx::IApplication::Ptr);
@@ -134,7 +133,7 @@ namespace phx
 			phx::rhi::Finalize();
 #endif
 			ThreadPool::Finalize();
-			Memory::Finalize();
+			Memory::Shutdown();
 		}
 	}
 }
