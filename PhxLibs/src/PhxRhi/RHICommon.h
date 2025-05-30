@@ -1,12 +1,12 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
+
 #include "PhxCore/Base.h"
 #include "PhxCore/Span.h"
 #include "PhxCore/EnumUtils.h"
 
 #include "PhxCore/Handle.h"
-
 
 namespace phx::rhi
 {
@@ -38,7 +38,7 @@ namespace phx::rhi
     {
         None,		// Not used
         Hlsl6,		// DXIL
-        Spriv,		// SPIR-V
+        Spirv,		// SPIR-V
     };
 
     enum class ShaderStage : uint8_t
@@ -390,19 +390,19 @@ namespace phx::rhi
 
     enum class ResourceMiscFlags
     {
-        None                    = 0,
-        TextureCube             = BIT(0),
-        IndirectArgs            = BIT(1),
-        BufferRaw               = BIT(2),
-        BufferStructured        = BIT(3),
-        RayTracing              = BIT(4),
-        AliasBuffer             = BIT(5),
-        AliasTexture_NonRtDs    = BIT(6),
-        AliasTexture_RtDs       = BIT(7),
-        Sparse                  = BIT(8),
-        HasCounter              = BIT(9),
-        TypedFormatCasting      = BIT(10),	// enable casting formats between same type and different modifiers: eg. UNORM -> SRGB
-        TypelessFormatCasting   = BIT(11),  // enable casting formats to other formats that have the s
+        None = 0,
+        TextureCube = BIT(0),
+        IndirectArgs = BIT(1),
+        BufferRaw = BIT(2),
+        BufferStructured = BIT(3),
+        RayTracing = BIT(4),
+        AliasBuffer = BIT(5),
+        AliasTexture_NonRtDs = BIT(6),
+        AliasTexture_RtDs = BIT(7),
+        Sparse = BIT(8),
+        HasCounter = BIT(9),
+        TypedFormatCasting = BIT(10),	// enable casting formats between same type and different modifiers: eg. UNORM -> SRGB
+        TypelessFormatCasting = BIT(11),  // enable casting formats to other formats that have the s
         Alias = AliasBuffer | AliasTexture_NonRtDs | AliasTexture_RtDs,
 
     };
@@ -486,14 +486,17 @@ namespace phx::rhi
 
         Color()
             : R(0.f), G(0.f), B(0.f), A(0.f)
-        { }
+        {
+        }
 
         Color(float c)
             : R(c), G(c), B(c), A(c)
-        { }
+        {
+        }
 
         Color(float r, float g, float b, float a)
-            : R(r), G(g), B(b), A(a) { }
+            : R(r), G(g), B(b), A(a) {
+        }
 
         bool operator ==(const Color& other) const { return R == other.R && G == other.G && B == other.B && A == other.A; }
         bool operator !=(const Color& other) const { return !(*this == other); }
@@ -517,13 +520,14 @@ namespace phx::rhi
         float MinY, MaxY;
         float MinZ, MaxZ;
 
-        Viewport() : MinX(0.f), MaxX(0.f), MinY(0.f), MaxY(0.f), MinZ(0.f), MaxZ(1.f) { }
+        Viewport() : MinX(0.f), MaxX(0.f), MinY(0.f), MaxY(0.f), MinZ(0.f), MaxZ(1.f) {}
 
-        Viewport(float width, float height) : MinX(0.f), MaxX(width), MinY(0.f), MaxY(height), MinZ(0.f), MaxZ(1.f) { }
+        Viewport(float width, float height) : MinX(0.f), MaxX(width), MinY(0.f), MaxY(height), MinZ(0.f), MaxZ(1.f) {}
 
         Viewport(float _minX, float _maxX, float _minY, float _maxY, float _minZ, float _maxZ)
             : MinX(_minX), MaxX(_maxX), MinY(_minY), MaxY(_maxY), MinZ(_minZ), MaxZ(_maxZ)
-        { }
+        {
+        }
 
         bool operator ==(const Viewport& b) const
         {
@@ -545,9 +549,9 @@ namespace phx::rhi
         int MinX, MaxX;
         int MinY, MaxY;
 
-        Rect() : MinX(0), MaxX(0), MinY(0), MaxY(0) { }
-        Rect(int width, int height) : MinX(0), MaxX(width), MinY(0), MaxY(height) { }
-        Rect(int _minX, int _maxX, int _minY, int _maxY) : MinX(_minX), MaxX(_maxX), MinY(_minY), MaxY(_maxY) { }
+        Rect() : MinX(0), MaxX(0), MinY(0), MaxY(0) {}
+        Rect(int width, int height) : MinX(0), MaxX(width), MinY(0), MaxY(height) {}
+        Rect(int _minX, int _maxX, int _minY, int _maxY) : MinX(_minX), MaxX(_maxX), MinY(_minY), MaxY(_maxY) {}
         explicit Rect(const Viewport& viewport)
             : MinX(int(floorf(viewport.MinX)))
             , MaxX(int(ceilf(viewport.MaxX)))
@@ -780,7 +784,7 @@ namespace phx::rhi
     struct VertexBufferBinding
     {
         static const uint32_t sAppendAlignedElement = ~0u; // automatically figure out AlignedByteOffset depending on Format
-        
+
         const char* SemanticName;
         Format Format = Format::UNKNOWN;
         uint32_t InputSlot = 0;
@@ -860,7 +864,7 @@ namespace phx::rhi
     ResourceMiscFlag misc_flags = ResourceMiscFlag::NONE;
     ResourceState layout = ResourceState::SHADER_RESOURCE;
 #endif
-    
+
     struct Texture;
     using TextureHandle = Handle<Texture>;
     struct TextureDescriptor

@@ -15,7 +15,7 @@
 #include <PhxRenderer/DefaultRenderSystem.h>
 #include <PhxRenderer/MeshResourceHandler.h>
 
-#include <PhxRhi/RHICore.h>
+#include <PhxRhi/GfxDevice.h>
 
 using namespace phx;
 
@@ -67,9 +67,13 @@ namespace phx
 			uint32_t w, h;
 			app->GetDefaultWindowSize(w, h);
 
-			phx::rhi::Initialize({
-				.SwapChianDesc = {.Width = w, .Height = h },
-				.WindowsHandle = windowHandle
+			phx::rhi::GfxDevice& gfxDevice = phx::rhi::GetDevice();
+			gfxDevice.Initialize({
+				.SwapChainDesc = {.Width = w, .Height = h },
+				.WindowsHandle = windowHandle,
+				.MaxNumTextures = 1000,
+				.MaxNumGpuBuffers = 1000,
+				.MaxNumPipelineStates = 1000
 				});
 
 #if false
@@ -117,6 +121,9 @@ namespace phx
 
 			phx_delete_system(phx::IApplication::Ptr);
 			phx::IApplication::Ptr = nullptr;
+
+			phx::rhi::GfxDevice& gfxDevice = phx::rhi::GetDevice();
+			gfxDevice.Shutdown();
 
 #if false
 			gfx::IRenderSystem::Ptr->Finalize();

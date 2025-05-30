@@ -1,0 +1,797 @@
+#include "PhxRhi/PhxRhi_pch.h"
+
+#ifdef PHX_PLATFORM_WINDOWS
+    #define VK_USE_PLATFORM_WIN32_KHR
+    #define WIN32_LEAN_AND_MEAN
+    #include <Windows.h> // For GetModuleHandle
+#endif
+
+#include "VkGfxDevice.h"
+#include "VkCommandCtx.h"
+
+#include <sstream>
+#include <PhxCore/CommandLineArgs.h>
+#include <PhxCore/Log.h>
+#include <PhxCore/Memory.h>
+
+#define VMA_STATIC_VULKAN_FUNCTIONS 1
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
+
+
+namespace phx::rhi::vk
+{
+
+#if USE_PHX_ALLOCATOR
+    void* VKAPI_CALL VkGfxDeviceImpl::vk_phx_allocate(
+        void* pUserData,
+        size_t size,
+        size_t alignment,
+        VkSystemAllocationScope)
+    {
+        auto* allocator = static_cast<phx::IAllocator*>(pUserData);
+        return allocator->Allocate(size, alignment);
+    }
+
+    void* VKAPI_CALL VkGfxDeviceImpl::vk_phx_reallocate(
+        void* pUserData,
+        void* pOriginal,
+        size_t size,
+        size_t alignment,
+        VkSystemAllocationScope)
+    {
+        auto* allocator = static_cast<phx::IAllocator*>(pUserData);
+        allocator->Deallocate(pOriginal);
+        return allocator->Allocate(size, alignment);
+    }
+
+    void VKAPI_CALL VkGfxDeviceImpl::vk_phx_free(
+        void* pUserData,
+        void* pMemory)
+    {
+        auto* allocator = static_cast<phx::IAllocator*>(pUserData);
+        allocator->Deallocate(pMemory);
+    }
+#endif
+
+    VKAPI_ATTR VkBool32 VKAPI_CALL VkGfxDeviceImpl::vk_phx_debug_callback(
+        VkDebugUtilsMessageSeverityFlagBitsEXT       messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT,
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+        void*)
+    {
+        if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+        {
+            PHX_CORE_TRACE("[Vulkan Debug] {0}\n\t{1}", pCallbackData->pMessageIdName, pCallbackData->pMessage);
+        }
+        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+        {
+            PHX_CORE_INFO("[Vulkan Debug] {0}\n\t{1}", pCallbackData->pMessageIdName, pCallbackData->pMessage);
+        }
+        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+        {
+            PHX_CORE_WARN("[Vulkan Debug] {0}\n\t{1}", pCallbackData->pMessageIdName, pCallbackData->pMessage);
+        }
+        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+        {
+            PHX_CORE_ERROR("[Vulkan Debug] {0}\n\t{1}", pCallbackData->pMessageIdName, pCallbackData->pMessage);
+        }
+        return VK_FALSE;
+    }
+
+    VkGfxDeviceImpl::VkGfxDeviceImpl() = default;
+
+    VkGfxDeviceImpl::~VkGfxDeviceImpl()
+    {
+        if (m_isInitialized)
+        {
+            PlatformShutdown();
+        }
+    }
+
+    void VkGfxDeviceImpl::InitializeVolk()
+    {
+        if (!m_volkInitialized)
+        {
+            if (volkInitialize() != VK_SUCCESS)
+            {
+                PHX_CORE_ERROR("[RHI] Failed to initialize Volk.");
+                return;
+            }
+            m_volkInitialized = true;
+        }
+    }
+
+    bool VkGfxDeviceImpl::CreateInstance(const GfxDeviceDescriptor& desc)
+    {
+#if PHX_DEBUG
+        bool useValidationLayers = true;
+#else
+        bool useValidationLayers = false;
+#endif
+
+        vkb::InstanceBuilder builder;
+        builder.set_app_name("Phoenix RHI Application")
+            .set_engine_name("PhxEngine")
+            .request_validation_layers(useValidationLayers)
+            .set_debug_callback(vk_phx_debug_callback)
+            .set_headless(false)
+            .require_api_version(1, 3, 0);
+
+#if USE_PHX_ALLOCATOR
+        m_allocCallbacks = {
+            .pUserData = &phx::Memory::g_persistentAllocator,
+            .pfnAllocation = vk_phx_allocate,
+            .pfnReallocation = vk_phx_reallocate,
+            .pfnFree = vk_phx_free,
+            .pfnInternalAllocation = nullptr,
+            .pfnInternalFree = nullptr
+        };
+
+        builder.set_allocation_callbacks(&m_allocCallbacks);
+#endif
+
+        auto inst_ret = builder.build();
+        if (!inst_ret)
+        {
+            PHX_CORE_ERROR("[RHI] Failed to create Vulkan Instance: {0}", inst_ret.error().message());
+            return false;
+        }
+
+        m_vkbInstance = inst_ret.value();
+        m_instance = m_vkbInstance.instance;
+        m_debugMessenger = m_vkbInstance.debug_messenger;
+        volkLoadInstance(m_instance); // Load instance-level functions
+        return true;
+    }
+
+    bool VkGfxDeviceImpl::CreateSurface(const GfxDeviceDescriptor& desc)
+    {
+#ifdef PHX_PLATFORM_WINDOWS
+        if (!desc.WindowsHandle)
+        {
+            PHX_CORE_ERROR("[RHI] WindowsHandle is null in GfxDeviceDescriptor.");
+            return false;
+        }
+        VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {};
+        surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+        surfaceCreateInfo.hwnd = static_cast<HWND>(desc.WindowsHandle);
+        surfaceCreateInfo.hinstance = GetModuleHandle(nullptr);
+
+        VkResult result = vkCreateWin32SurfaceKHR(m_instance, &surfaceCreateInfo, GetVkAllocationCallbacks(), &m_surface);
+        if (result != VK_SUCCESS)
+        {
+            PHX_CORE_ERROR("[RHI] Failed to create Win32 surface. VkResult: {0}", result);
+            return false;
+        }
+        return true;
+#else
+        PHX_CORE_ERROR("[RHI] Platform not supported for surface creation yet.");
+        return false;
+#endif
+    }
+
+    bool VkGfxDeviceImpl::SelectPhysicalDevice(const GfxDeviceDescriptor&, vkb::PhysicalDevice& outVkbPhysicalDevice)
+    {
+        vkb::PhysicalDeviceSelector selector{ m_vkbInstance };
+        VkPhysicalDeviceFeatures featuresToEnable = {}; // Populate based on desc.requiredFeatures if you add that
+        featuresToEnable.samplerAnisotropy = VK_TRUE;
+        // Add other features you absolutely need enabled
+
+        selector.set_minimum_version(1, 3)
+            .set_surface(m_surface)
+            .set_required_features(featuresToEnable)
+            .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete);
+        // Add specific extension requirements if vkb doesn't infer them well enough
+
+        auto phys_dev_ret = selector.select();
+        if (!phys_dev_ret)
+        {
+            PHX_CORE_ERROR("[RHI] Failed to select suitable Physical Device: {0}", phys_dev_ret.error().message());
+            return false;
+        }
+
+        outVkbPhysicalDevice = phys_dev_ret.value();
+        m_chosenPhysicalDevice = outVkbPhysicalDevice.physical_device;
+        m_physicalDeviceProperties = outVkbPhysicalDevice.properties; // Store properties
+        return true;
+    }
+
+    bool VkGfxDeviceImpl::CreateLogicalDevice(const GfxDeviceDescriptor&, vkb::PhysicalDevice& vkbPhysicalDevice)
+    {
+        vkb::DeviceBuilder deviceBuilder{ vkbPhysicalDevice };
+
+        auto dev_ret = deviceBuilder.build();
+        if (!dev_ret)
+        {
+            PHX_CORE_ERROR("[RHI] Failed to create Logical Device: {0}", dev_ret.error().message());
+            return false;
+        }
+
+        vkb::Device vkbDevice = dev_ret.value();
+        m_device = vkbDevice.device;
+        volkLoadDevice(m_device); // Load device-level functions
+
+        auto gfx_q_ret = vkbDevice.get_queue(vkb::QueueType::graphics);
+        if (!gfx_q_ret) 
+        { 
+            PHX_CORE_ERROR("[RHI] Failed to get graphics queue: {0}", gfx_q_ret.error().message()); 
+            return false; 
+        }
+
+        m_graphicsQueue = gfx_q_ret.value();
+        m_graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
+
+        auto compute_q_ret = vkbDevice.get_queue(vkb::QueueType::compute);
+        if (!compute_q_ret) 
+        { 
+            PHX_CORE_WARN("[RHI] Failed to get dedicated compute queue, using graphics queue: {0}", compute_q_ret.error().message());
+            m_computeQueue = m_graphicsQueue;
+            m_computeQueueFamily = m_graphicsQueueFamily; 
+        }
+        else 
+        { 
+            m_computeQueue = compute_q_ret.value();
+            m_computeQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::compute).value();
+        }
+
+        auto transfer_q_ret = vkbDevice.get_queue(vkb::QueueType::transfer);
+        if (!transfer_q_ret)
+        { 
+            PHX_CORE_WARN("[RHI] Failed to get dedicated transfer queue, using graphics queue: {0}", transfer_q_ret.error().message());
+            m_transferQueue = m_graphicsQueue; m_transferQueueFamily = m_graphicsQueueFamily;
+        }
+        else 
+        { 
+            m_transferQueue = transfer_q_ret.value();
+            m_transferQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::transfer).value(); 
+        }
+
+        return true;
+    }
+
+    bool VkGfxDeviceImpl::CreateAllocator(const GfxDeviceDescriptor&)
+    {
+        VmaAllocatorCreateInfo allocatorInfo = {};
+        allocatorInfo.physicalDevice = m_chosenPhysicalDevice;
+        allocatorInfo.device = m_device;
+        allocatorInfo.instance = m_instance;
+        allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+
+        allocatorInfo.flags = VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT |
+            VMA_ALLOCATOR_CREATE_KHR_BIND_MEMORY2_BIT;
+
+        VkPhysicalDeviceFeatures enabledFeatures; // Need to get this from vkb::Device or query
+        vkGetPhysicalDeviceFeatures(m_chosenPhysicalDevice, &enabledFeatures); // Example, better to use vkb info
+
+        VkBool32 bufferDeviceAddress = VK_FALSE;
+        VkPhysicalDeviceBufferDeviceAddressFeatures bdaFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES };
+        VkPhysicalDeviceFeatures2 features2{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &bdaFeatures };
+        vkGetPhysicalDeviceFeatures2(m_chosenPhysicalDevice, &features2);
+        bufferDeviceAddress = bdaFeatures.bufferDeviceAddress;
+
+        if (bufferDeviceAddress)
+        {
+            allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+        }
+
+        VkResult res = vmaCreateAllocator(&allocatorInfo, &m_vmaAllocator);
+        if (res != VK_SUCCESS)
+        {
+            PHX_CORE_ERROR("[RHI] Failed to create VMA Allocator. VkResult: {0}", res);
+            return false;
+        }
+        return true;
+    }
+
+
+    bool VkGfxDeviceImpl::PlatformInitialize(GfxDeviceDescriptor& desc)
+    {
+        PHX_PROFILE_SECTION("Vulkan::PlatformInitialize");
+        PHX_CORE_INFO("Initializing RHI (Vulkan) - VkGfxDeviceImpl");
+        m_deviceDesc = desc; // Store descriptor
+
+        InitializeVolk();
+
+        VkAllocationCallbacks* allocatorCallbacks = GetVkAllocationCallbacks();
+        if (!CreateInstance(desc))
+            return false;
+
+        if (!CreateSurface(desc))
+        {
+            vkb::destroy_instance(m_vkbInstance);
+            return false; 
+        }
+
+        vkb::PhysicalDevice vkbPhysicalDevice;
+        if (!SelectPhysicalDevice(desc, vkbPhysicalDevice))
+        { 
+            vkDestroySurfaceKHR(m_instance, m_surface, allocatorCallbacks); vkb::destroy_instance(m_vkbInstance);
+            return false; 
+        }
+
+        if (!CreateLogicalDevice(desc, vkbPhysicalDevice))
+        { 
+            vkDestroySurfaceKHR(m_instance, m_surface, allocatorCallbacks);
+            vkb::destroy_instance(m_vkbInstance);
+            return false; 
+        }
+
+        if (!CreateAllocator(desc)) 
+        { 
+            vkDestroyDevice(m_device, allocatorCallbacks);
+            vkDestroySurfaceKHR(m_instance, m_surface, allocatorCallbacks);
+            vkb::destroy_instance(m_vkbInstance);
+            return false; 
+        }
+
+        CreateCommandPools();
+        CreateSwapchain(desc); // Initial swapchain creation
+        CreateFrameSyncObjects();
+
+        m_swapchainExtent = { desc.SwapChainDesc.Width, desc.SwapChainDesc.Height };
+        m_isInitialized = true;
+        PHX_CORE_INFO("[RHI] Vulkan Device Initialized Successfully.");
+        return true;
+    }
+
+    void VkGfxDeviceImpl::PlatformShutdown()
+    {
+        if (!m_isInitialized)
+        {
+            return;
+        }
+        PHX_PROFILE_SECTION("Vulkan::PlatformShutdown");
+        PHX_CORE_INFO("Shutting down RHI (Vulkan) - VkGfxDeviceImpl");
+
+        PlatformWaitForIdle();
+
+        DestroyFrameSyncObjects();
+        CleanupSwapchain();
+        DestroyCommandPools();
+
+        if (m_vmaAllocator != VK_NULL_HANDLE)
+        {
+            vmaDestroyAllocator(m_vmaAllocator);
+            m_vmaAllocator = VK_NULL_HANDLE;
+        }
+
+        if (m_device != VK_NULL_HANDLE) // vkb::Device doesn't have a destructor, must be explicit if not member
+        {
+            vkDestroyDevice(m_device, GetVkAllocationCallbacks());
+            m_device = VK_NULL_HANDLE;
+        }
+
+        if (m_surface != VK_NULL_HANDLE)
+        {
+            vkDestroySurfaceKHR(m_instance, m_surface, GetVkAllocationCallbacks());
+            m_surface = VK_NULL_HANDLE;
+        }
+
+        // m_vkbInstance's destructor will handle VkInstance and debug messenger
+        // No explicit call to vkb::destroy_instance(m_vkbInstance) needed if m_vkbInstance is a member
+        m_instance = VK_NULL_HANDLE; // Its destructor handles it
+        m_debugMessenger = VK_NULL_HANDLE;
+
+
+        m_isInitialized = false;
+        PHX_CORE_INFO("[RHI] Vulkan Device Shutdown Complete.");
+    }
+
+    void VkGfxDeviceImpl::CreateSwapchain(const GfxDeviceDescriptor& desc)
+    {
+        PHX_PROFILE_SECTION("Vulkan::CreateSwapchain");
+        vkb::SwapchainBuilder swapchainBuilder(m_chosenPhysicalDevice, m_device, m_surface);
+
+        auto swap_ret = swapchainBuilder
+            .set_desired_format({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR })
+            .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
+            .set_desired_extent(desc.SwapChainDesc.Width, desc.SwapChainDesc.Height)
+            .set_old_swapchain(VK_NULL_HANDLE) // For initial creation
+            .build();
+
+        if (!swap_ret)
+        {
+            PHX_CORE_ERROR("[RHI] Failed to create swapchain: {0}", swap_ret.error().message());
+            // This is a critical failure during init
+            return;
+        }
+
+        vkb::Swapchain vkbSwapchain = swap_ret.value();
+        m_swapchain = vkbSwapchain.swapchain;
+        m_swapchainImageFormat = vkbSwapchain.image_format;
+        m_swapchainExtent = vkbSwapchain.extent;
+
+        auto images = vkbSwapchain.get_images().value();
+        auto views = vkbSwapchain.get_image_views().value();
+
+        m_swapchainImages.Initialize(&Memory::g_persistentAllocator, images.data(), images.size());
+        m_swapchainImageViews.Initialize(&Memory::g_persistentAllocator, views.data(), views.size());
+
+        PHX_CORE_INFO(
+            "[RHI] Swapchain Initialized. Extent: {0}x{1}, Format: {2}, Images: {3}",
+            m_swapchainExtent.width,
+            m_swapchainExtent.height,
+            "",
+            m_swapchainImages.Size);
+    }
+
+    void VkGfxDeviceImpl::RecreateSwapchain(const GfxDeviceDescriptor& desc)
+    {
+        PlatformWaitForIdle();
+        CleanupSwapchain();
+        CreateSwapchain(desc);
+        // Potentially need to recreate framebuffers if they depend on swapchain image views
+    }
+
+    void VkGfxDeviceImpl::CleanupSwapchain()
+    {
+        if (m_device == VK_NULL_HANDLE) 
+            return;
+
+        for (auto imageView : m_swapchainImageViews)
+        {
+            if (imageView != VK_NULL_HANDLE)
+            {
+                vkDestroyImageView(m_device, imageView, GetVkAllocationCallbacks());
+            }
+        }
+        m_swapchainImageViews.Finalize();
+        m_swapchainImages.Finalize();
+
+        if (m_swapchain != VK_NULL_HANDLE)
+        {
+            vkDestroySwapchainKHR(m_device, m_swapchain, GetVkAllocationCallbacks());
+            m_swapchain = VK_NULL_HANDLE;
+        }
+    }
+
+    void VkGfxDeviceImpl::CreateFrameSyncObjects()
+    {
+        PHX_PROFILE_SECTION("Vulkan::CreateFrameSyncObjects");
+        VkSemaphoreCreateInfo semaphoreInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+        VkFenceCreateInfo fenceInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+        for (size_t i = 0; i < cMaxInflightFrames; ++i)
+        {
+            PHX_CORE_ASSERT(vkCreateSemaphore(m_device, &semaphoreInfo, GetVkAllocationCallbacks(), &m_frames[i].PresentSemaphore));
+            PHX_CORE_ASSERT(vkCreateSemaphore(m_device, &semaphoreInfo, GetVkAllocationCallbacks(), &m_frames[i].RenderSemaphore));
+            PHX_CORE_ASSERT(vkCreateFence(m_device, &fenceInfo, GetVkAllocationCallbacks(), &m_frames[i].RenderFence));
+        }
+        PHX_CORE_INFO("[RHI] Frame synchronization primitives created.");
+    }
+
+    void VkGfxDeviceImpl::DestroyFrameSyncObjects()
+    {
+        if (m_device == VK_NULL_HANDLE) return;
+        for (size_t i = 0; i < cMaxInflightFrames; ++i)
+        {
+            if (m_frames[i].RenderFence != VK_NULL_HANDLE)
+            {
+                vkDestroyFence(m_device, m_frames[i].RenderFence, GetVkAllocationCallbacks());
+                m_frames[i].RenderFence = VK_NULL_HANDLE;
+            }
+            if (m_frames[i].RenderSemaphore != VK_NULL_HANDLE)
+            {
+                vkDestroySemaphore(m_device, m_frames[i].RenderSemaphore, GetVkAllocationCallbacks());
+                m_frames[i].RenderSemaphore = VK_NULL_HANDLE;
+            }
+            if (m_frames[i].PresentSemaphore != VK_NULL_HANDLE)
+            {
+                vkDestroySemaphore(m_device, m_frames[i].PresentSemaphore, GetVkAllocationCallbacks());
+                m_frames[i].PresentSemaphore = VK_NULL_HANDLE;
+            }
+        }
+        PHX_CORE_INFO("[RHI] Frame synchronization primitives destroyed.");
+    }
+
+    void VkGfxDeviceImpl::CreateCommandPools()
+    {
+        PHX_PROFILE_SECTION("Vulkan::CreateCommandPools");
+
+        VkCommandPoolCreateInfo poolInfo = {};
+        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolInfo.queueFamilyIndex = m_graphicsQueueFamily;
+        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        PHX_CORE_ASSERT(vkCreateCommandPool(m_device, &poolInfo, GetVkAllocationCallbacks(), &m_graphicsCommandPool));
+        PHX_CORE_INFO("[RHI] Graphics Command Pool created.");
+        // Create other command pools (compute, transfer) if needed
+    }
+
+    void VkGfxDeviceImpl::DestroyCommandPools()
+    {
+        if (m_graphicsCommandPool != VK_NULL_HANDLE)
+        {
+            vkDestroyCommandPool(m_device, m_graphicsCommandPool, GetVkAllocationCallbacks());
+            m_graphicsCommandPool = VK_NULL_HANDLE;
+            PHX_CORE_INFO("[RHI] Graphics Command Pool destroyed.");
+        }
+    }
+
+    phx::rhi::vk::VkCommandCtxImpl* VkGfxDeviceImpl::PlatformBeginCommandBuffer()
+    {
+        PHX_PROFILE_SECTION("Vulkan::PlatformBeginCommandBuffer");
+        if (!m_isInitialized || m_graphicsCommandPool == VK_NULL_HANDLE)
+        {
+            PHX_CORE_ERROR("[RHI] Cannot begin command buffer: RHI not initialized or no command pool.");
+            return nullptr;
+        }
+
+        FrameData& currentFrame = GetCurrentFrameData();
+
+        VkResult waitResult = vkWaitForFences(m_device, 1, &currentFrame.RenderFence, VK_TRUE, UINT64_MAX);
+        PHX_CORE_ASSERT(waitResult); // Check for VK_TIMEOUT or errors
+        PHX_CORE_ASSERT(vkResetFences(m_device, 1, &currentFrame.RenderFence));
+
+        // Acquire next image before starting new command buffer that might use it
+        VkResult acquireResult = vkAcquireNextImageKHR(
+            m_device,
+            m_swapchain,
+            UINT64_MAX,
+            currentFrame.PresentSemaphore,
+            VK_NULL_HANDLE,
+            &m_swapchainImageIndex);
+
+        if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR || acquireResult == VK_SUBOPTIMAL_KHR)
+        {
+            PHX_CORE_WARN("[RHI] Swapchain out of date or suboptimal during acquire. Recreation needed.");
+            RecreateSwapchain(m_deviceDesc); // Pass stored descriptor
+            // Try acquiring again (or handle failure more gracefully)
+            acquireResult = vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX, currentFrame.PresentSemaphore, VK_NULL_HANDLE, &m_swapchainImageIndex);
+            if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR) // VK_SUBOPTIMAL_KHR is okay to continue with
+            {
+                PHX_CORE_ERROR("[RHI] Failed to acquire swap chain image after recreation! VkResult: {0}", acquireResult);
+                return nullptr;
+            }
+        }
+        else if (acquireResult != VK_SUCCESS)
+        {
+            PHX_CORE_ERROR("[RHI] Failed to acquire swap chain image! VkResult: {0}", acquireResult);
+            return nullptr;
+        }
+
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.commandPool = m_graphicsCommandPool;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandBufferCount = 1;
+
+        VkCommandBuffer vkCmdBuffer;
+        PHX_CORE_ASSERT(vkAllocateCommandBuffers(m_device, &allocInfo, &vkCmdBuffer));
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        PHX_CORE_ASSERT(vkBeginCommandBuffer(vkCmdBuffer, &beginInfo));
+
+        VkCommandCtxImpl* cmdCtx = phx_new_frame(VkCommandCtxImpl);
+        cmdCtx->PlatfomrInitialize(vkCmdBuffer, this, m_swapchainImageIndex);
+
+        return cmdCtx;
+    }
+
+    void VkGfxDeviceImpl::PlatformSubmitFrame(VkCommandCtxImpl* cmdCtx)
+    {
+        PHX_PROFILE_SECTION("Vulkan::PlatformSubmitFrame");
+        if (!cmdCtx|| !m_isInitialized) 
+            return;
+
+        VkCommandBuffer vkCmdBuffer = cmdCtx->GetVkCommandBuffer(); // Assume method exists
+
+        PHX_CORE_ASSERT(vkEndCommandBuffer(vkCmdBuffer)); // End command buffer before submit
+
+        FrameData& currentFrame = GetCurrentFrameData();
+
+        VkSubmitInfo submitInfo = {};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+        VkSemaphore waitSemaphores[] = { currentFrame.PresentSemaphore };
+        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = waitSemaphores;
+        submitInfo.pWaitDstStageMask = waitStages;
+
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &vkCmdBuffer;
+
+        VkSemaphore signalSemaphores[] = { currentFrame.RenderSemaphore };
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = signalSemaphores;
+
+        PHX_CORE_ASSERT(vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, currentFrame.RenderFence));
+
+        // After submission, the command buffer from the pool can often be freed or reset
+        // depending on your VkCommandCtxImpl's lifetime management.
+        // For a one-shot command buffer like this, if not pooled:
+        // vkFreeCommandBuffers(m_device, m_graphicsCommandPool, 1, &vkCmdBuffer);
+        // delete cmdCtx; // If newed directly in PlatformBeginCommandBuffer and not pooled
+    }
+
+
+    void VkGfxDeviceImpl::PlatformPresent()
+    {
+        PHX_PROFILE_SECTION("Vulkan::PlatformPresent");
+        if (!m_isInitialized || m_swapchain == VK_NULL_HANDLE) return;
+
+        FrameData& currentFrame = GetCurrentFrameData();
+
+        VkPresentInfoKHR presentInfo = {};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &currentFrame.RenderSemaphore;
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = &m_swapchain;
+        presentInfo.pImageIndices = &m_swapchainImageIndex;
+        presentInfo.pResults = nullptr;
+
+        VkResult presentResult = vkQueuePresentKHR(m_graphicsQueue, &presentInfo);
+
+        if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR)
+        {
+            PHX_CORE_WARN("[RHI] Swapchain is out of date or suboptimal during present. Attempting recreation.");
+            RecreateSwapchain(m_deviceDesc);
+        }
+        else if (presentResult != VK_SUCCESS)
+        {
+            PHX_CORE_ERROR("[RHI] Failed to present swap chain image. VkResult: {0}", presentResult);
+        }
+        m_frameNumber++;
+    }
+
+    void VkGfxDeviceImpl::PlatformWaitForIdle()
+    {
+        if (m_isInitialized && m_device != VK_NULL_HANDLE)
+        {
+            PHX_CORE_ASSERT(vkDeviceWaitIdle(m_device));
+        }
+    }
+
+    GpuBufferHandle VkGfxDeviceImpl::PlatformCreateBuffer(const GpuBufferDescriptor& desc, const void* initialData)
+    {
+        PHX_PROFILE_SECTION("Vulkan::PlatformCreateBuffer");
+        if (!m_isInitialized || m_vmaAllocator == VK_NULL_HANDLE) return GpuBufferHandle();
+
+#if false
+        VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+        bufferInfo.size = desc.size;
+        bufferInfo.usage = 0;
+
+        if (desc.usage == GpuBufferDescriptor::Usage::VERTEX_BUFFER) bufferInfo.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        if (desc.usage == GpuBufferDescriptor::Usage::INDEX_BUFFER) bufferInfo.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+        if (desc.usage == GpuBufferDescriptor::Usage::CONSTANT_BUFFER) bufferInfo.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+        if (initialData != nullptr || (desc.cpuAccess == CpuAccessFlags::Write))
+        {
+            bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        }
+
+        VmaAllocationCreateInfo allocCI = {};
+        allocCI.usage = VMA_MEMORY_USAGE_AUTO;
+        if (desc.cpuAccess == CpuAccessFlags::Write || desc.cpuAccess == CpuAccessFlags::ReadWrite)
+        {
+            allocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        }
+        else if (desc.memoryUsage == MemoryUsage::GpuOnly) // Assuming MemoryUsage enum in desc
+        {
+            allocCI.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        }
+
+
+        VkBuffer vkBuffer;
+        VmaAllocation vmaAllocation;
+        VmaAllocationInfo vmaAllocInfo;
+        PHX_CORE_ASSERT(vmaCreateBuffer(m_vmaAllocator, &bufferInfo, &allocCI, &vkBuffer, &vmaAllocation, &vmaAllocInfo));
+
+        if (initialData)
+        {
+            if (vmaAllocInfo.pMappedData)
+            {
+                memcpy(vmaAllocInfo.pMappedData, initialData, desc.size);
+                if (!(vmaAllocInfo.memoryType & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+                {
+                    vmaFlushAllocation(m_vmaAllocator, vmaAllocation, 0, VK_WHOLE_SIZE);
+                }
+            }
+            else
+            {
+                void* mappedData;
+                if (vmaMapMemory(m_vmaAllocator, vmaAllocation, &mappedData) == VK_SUCCESS)
+                {
+                    memcpy(mappedData, initialData, desc.size);
+                    if (!(vmaAllocInfo.memoryType & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) // Check again, though map implies host visible
+                    {
+                        vmaFlushAllocation(m_vmaAllocator, vmaAllocation, 0, VK_WHOLE_SIZE);
+                    }
+                    vmaUnmapMemory(m_vmaAllocator, vmaAllocation);
+                }
+                else
+                {
+                    PHX_CORE_ERROR("[RHI] Failed to map buffer memory for initial data upload. Staging buffer required.");
+                }
+            }
+        }
+
+        static uint64_t nextBufferId = 1;
+        GpuBufferHandle handle{ nextBufferId++ };
+        PHX_CORE_INFO("[RHI] Created VkBuffer (Handle: {0})", handle.id);
+        // TODO: Store vkBuffer, vmaAllocation, vmaAllocInfo (for pMappedData) with handle
+        return handle;
+#else
+        return {};
+#endif
+    }
+
+    TextureHandle VkGfxDeviceImpl::PlatformCreateTexture(const TextureDescriptor& desc, const void* initialData)
+    {
+        PHX_PROFILE_SECTION("Vulkan::PlatformCreateTexture");
+        PHX_CORE_WARN("[RHI] PlatformCreateTexture - Not Implemented");
+        return {};
+    }
+
+    PipelineStateHandle VkGfxDeviceImpl::PlatformCreatePipeline(const PipelineStateDescriptor& desc)
+    {
+        PHX_PROFILE_SECTION("Vulkan::PlatformCreatePipeline");
+        PHX_CORE_WARN("[RHI] PlatformCreatePipeline - Not Implemented");
+        return {};
+    }
+
+    void VkGfxDeviceImpl::PlatformDeletePipeline(PipelineStateHandle /*handle*/)
+    {
+        PHX_PROFILE_SECTION("Vulkan::PlatformDeletePipeline");
+        PHX_CORE_WARN("[RHI] PlatformDeletePipeline (Handle: {0}) - Not Implemented");
+    }
+
+    void VkGfxDeviceImpl::PlatformDeleteTexture(TextureHandle /*handle*/)
+    {
+        PHX_PROFILE_SECTION("Vulkan::PlatformDeleteTexture");
+        PHX_CORE_WARN("[RHI] PlatformDeleteTexture (Handle: {0}) - Not Implemented");
+    }
+
+    void VkGfxDeviceImpl::PlatformDeleteBuffer(GpuBufferHandle /*handle*/)
+    {
+        PHX_PROFILE_SECTION("Vulkan::PlatformDeleteBuffer");
+        PHX_CORE_WARN("[RHI] PlatformDeleteBuffer (Handle: {0}) - Not Implemented");
+        // TODO: Retrieve and call vmaDestroyBuffer(m_vmaAllocator, buffer, allocation);
+    }
+
+    DescriptorIndex VkGfxDeviceImpl::PlatformGetDescriptorIndex(TextureHandle /*handle*/, SubresouceType /*type*/) const
+    {
+        PHX_CORE_WARN("[RHI] PlatformGetDescriptorIndex (Handle: {0}) - Not Implemented");
+        return DescriptorIndex();
+    }
+
+    ShaderFormat VkGfxDeviceImpl::PlatformGetShaderFormat() const
+    {
+        return ShaderFormat::Spirv;
+    }
+
+    Budget VkGfxDeviceImpl::PlatformGetBudget() const
+    {
+        if (!m_isInitialized || m_vmaAllocator == VK_NULL_HANDLE)
+            return {};
+
+#if false
+        vmaTotalBudget budgets[VK_MAX_MEMORY_HEAPS]; // Changed to VmaTotalBudget
+        vmaGetBudget(m_vmaAllocator, budgets); // Changed to vmaGetBudget
+
+        Budget rhiBudget = {};
+        VkPhysicalDeviceMemoryProperties memProperties;
+        vkGetPhysicalDeviceMemoryProperties(m_chosenPhysicalDevice, &memProperties);
+
+        for (uint32_t i = 0; i < memProperties.memoryHeapCount; ++i)
+        {
+            if (memProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+            {
+                rhiBudget.TotalBytes += budgets[i].budget;
+                rhiBudget.UsedBytes += budgets[i].usage;
+            }
+        }
+        return rhiBudget;
+#else
+        return {};
+#endif
+    }
+}

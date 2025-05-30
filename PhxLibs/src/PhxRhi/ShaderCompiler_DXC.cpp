@@ -117,7 +117,7 @@ namespace
 		case ShaderFormat::Hlsl6:
 			args.push_back(L"-rootsig-define"); args.push_back(L"PHX_ENGINE_DEFAULT_ROOTSIGNATURE");
 			break;
-		case ShaderFormat::Spriv:
+		case ShaderFormat::Spirv:
 			args.push_back(L"-spirv");
 			// args.push_back(L"-fspv-reflect"); Adds an unwanted extension
 			args.push_back(L"-fspv-target-env=vulkan1.3");
@@ -515,7 +515,7 @@ namespace phx::rhi
 			switch(input.Format)
 			{
 			case ShaderFormat::Hlsl6:
-			case ShaderFormat::Spriv:
+			case ShaderFormat::Spirv:
 				CompileInternal(input, output);
 				break;
 			}

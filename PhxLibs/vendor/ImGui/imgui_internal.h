@@ -95,14 +95,14 @@ Index of this file:
 #pragma clang diagnostic ignored "-Wdouble-promotion"               // warning: implicit conversion from 'float' to 'double' when passing argument to function
 #pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"  // warning: implicit conversion from 'xxx' to 'float' may lose precision
 #pragma clang diagnostic ignored "-Wmissing-noreturn"               // warning: function 'xxx' could be declared with attribute 'noreturn'
-#pragma clang diagnostic ignored "-Wdeprecated-enum-enum-conversion"// warning: bitwise operation between different enumeration types ('XXXFlags_' and 'XXXFlagsPrivate_') is deprecated
+#pragma clang diagnostic ignored "-Wdeprecated-enum-enum-conversion"// warning: bitwise operation between different enumeration types ('XXXFlags_' and 'XXXFlagSpirvate_') is deprecated
 #pragma clang diagnostic ignored "-Wunsafe-buffer-usage"            // warning: 'xxx' is an unsafe pointer used for buffer access
 #pragma clang diagnostic ignored "-Wnontrivial-memaccess"           // warning: first argument in call to 'memset' is a pointer to non-trivially copyable type
 #elif defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpragmas"                          // warning: unknown option after '#pragma GCC diagnostic' kind
 #pragma GCC diagnostic ignored "-Wclass-memaccess"                  // [__GNUC__ >= 8] warning: 'memset/memcpy' clearing/writing an object of type 'xxxx' with no trivial copy-assignment; use assignment or value-initialization instead
-#pragma GCC diagnostic ignored "-Wdeprecated-enum-enum-conversion"  // warning: bitwise operation between different enumeration types ('XXXFlags_' and 'XXXFlagsPrivate_') is deprecated
+#pragma GCC diagnostic ignored "-Wdeprecated-enum-enum-conversion"  // warning: bitwise operation between different enumeration types ('XXXFlags_' and 'XXXFlagSpirvate_') is deprecated
 #endif
 
 // In 1.89.4, we moved the implementation of "courtesy maths operators" from imgui_internal.h in imgui.h
@@ -849,7 +849,7 @@ enum ImGuiDataTypePrivate_
 // Extend ImGuiItemFlags
 // - input: PushItemFlag() manipulates g.CurrentItemFlags, g.NextItemData.ItemFlags, ItemAdd() calls may add extra flags too.
 // - output: stored in g.LastItemData.ItemFlags
-enum ImGuiItemFlagsPrivate_
+enum ImGuiItemFlagSpirvate_
 {
     // Controlled by user
     ImGuiItemFlags_Disabled                 = 1 << 10, // false     // Disable interactions (DOES NOT affect visuals. DO NOT mix direct use of this with BeginDisabled(). See BeginDisabled()/EndDisabled() for full disable feature, and github #211).
@@ -899,7 +899,7 @@ enum ImGuiItemStatusFlags_
 };
 
 // Extend ImGuiHoveredFlags_
-enum ImGuiHoveredFlagsPrivate_
+enum ImGuiHoveredFlagSpirvate_
 {
     ImGuiHoveredFlags_DelayMask_                    = ImGuiHoveredFlags_DelayNone | ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay,
     ImGuiHoveredFlags_AllowedMaskForIsWindowHovered = ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_RootWindow | ImGuiHoveredFlags_AnyWindow | ImGuiHoveredFlags_NoPopupHierarchy | ImGuiHoveredFlags_DockHierarchy | ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem | ImGuiHoveredFlags_ForTooltip | ImGuiHoveredFlags_Stationary,
@@ -907,7 +907,7 @@ enum ImGuiHoveredFlagsPrivate_
 };
 
 // Extend ImGuiInputTextFlags_
-enum ImGuiInputTextFlagsPrivate_
+enum ImGuiInputTextFlagSpirvate_
 {
     // [Internal]
     ImGuiInputTextFlags_Multiline           = 1 << 26,  // For internal use by InputTextMultiline()
@@ -916,7 +916,7 @@ enum ImGuiInputTextFlagsPrivate_
 };
 
 // Extend ImGuiButtonFlags_
-enum ImGuiButtonFlagsPrivate_
+enum ImGuiButtonFlagSpirvate_
 {
     ImGuiButtonFlags_PressedOnClick         = 1 << 4,   // return true on click (mouse down event)
     ImGuiButtonFlags_PressedOnClickRelease  = 1 << 5,   // [Default] return true on click + release on same item <-- this is what the majority of Button are using
@@ -941,20 +941,20 @@ enum ImGuiButtonFlagsPrivate_
 };
 
 // Extend ImGuiComboFlags_
-enum ImGuiComboFlagsPrivate_
+enum ImGuiComboFlagSpirvate_
 {
     ImGuiComboFlags_CustomPreview           = 1 << 20,  // enable BeginComboPreview()
 };
 
 // Extend ImGuiSliderFlags_
-enum ImGuiSliderFlagsPrivate_
+enum ImGuiSliderFlagSpirvate_
 {
     ImGuiSliderFlags_Vertical               = 1 << 20,  // Should this slider be orientated vertically?
     ImGuiSliderFlags_ReadOnly               = 1 << 21,  // Consider using g.NextItemData.ItemFlags |= ImGuiItemFlags_ReadOnly instead.
 };
 
 // Extend ImGuiSelectableFlags_
-enum ImGuiSelectableFlagsPrivate_
+enum ImGuiSelectableFlagSpirvate_
 {
     // NB: need to be in sync with last value of ImGuiSelectableFlags_
     ImGuiSelectableFlags_NoHoldingActiveID      = 1 << 20,
@@ -968,7 +968,7 @@ enum ImGuiSelectableFlagsPrivate_
 };
 
 // Extend ImGuiTreeNodeFlags_
-enum ImGuiTreeNodeFlagsPrivate_
+enum ImGuiTreeNodeFlagSpirvate_
 {
     ImGuiTreeNodeFlags_ClipLabelForTrailingButton = 1 << 28,// FIXME-WIP: Hard-coded for CollapsingHeader()
     ImGuiTreeNodeFlags_UpsideDownArrow            = 1 << 29,// FIXME-WIP: Turn Down arrow into an Up arrow, for reversed trees (#6517)
@@ -1486,7 +1486,7 @@ struct ImGuiKeyOwnerData
 // Extend ImGuiInputFlags_
 // Flags for extended versions of IsKeyPressed(), IsMouseClicked(), Shortcut(), SetKeyOwner(), SetItemKeyOwner()
 // Don't mistake with ImGuiInputTextFlags! (which is for ImGui::InputText() function)
-enum ImGuiInputFlagsPrivate_
+enum ImGuiInputFlagSpirvate_
 {
     // Flags for IsKeyPressed(), IsKeyChordPressed(), IsMouseClicked(), Shortcut()
     // - Repeat mode: Repeat rate selection
@@ -1829,7 +1829,7 @@ struct IMGUI_API ImGuiMultiSelectState
 #ifdef IMGUI_HAS_DOCK
 
 // Extend ImGuiDockNodeFlags_
-enum ImGuiDockNodeFlagsPrivate_
+enum ImGuiDockNodeFlagSpirvate_
 {
     // [Internal]
     ImGuiDockNodeFlags_DockSpace                = 1 << 10,  // Saved // A dockspace is a node that occupy space within an existing user window. Otherwise the node is floating and create its own window.
@@ -2812,7 +2812,7 @@ public:
 //-----------------------------------------------------------------------------
 
 // Extend ImGuiTabBarFlags_
-enum ImGuiTabBarFlagsPrivate_
+enum ImGuiTabBarFlagSpirvate_
 {
     ImGuiTabBarFlags_DockNode                   = 1 << 20,  // Part of a dock node [we don't use this in the master branch but it facilitate branch syncing to keep this around]
     ImGuiTabBarFlags_IsFocused                  = 1 << 21,
@@ -2820,7 +2820,7 @@ enum ImGuiTabBarFlagsPrivate_
 };
 
 // Extend ImGuiTabItemFlags_
-enum ImGuiTabItemFlagsPrivate_
+enum ImGuiTabItemFlagSpirvate_
 {
     ImGuiTabItemFlags_SectionMask_              = ImGuiTabItemFlags_Leading | ImGuiTabItemFlags_Trailing,
     ImGuiTabItemFlags_NoCloseButton             = 1 << 20,  // Track whether p_open was set or not (we'll need this info on the next frame to recompute ContentWidth during layout)
