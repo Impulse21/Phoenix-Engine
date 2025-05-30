@@ -3,7 +3,7 @@
 #include "imgui.h"
 
 #if false
-#include <PhxRhi/RHITypes.h>
+#include <PhxRhi/RHICommon.h>
 #include <PhxRenderer/RenderSubSystem.h>
 
 namespace phx

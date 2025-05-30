@@ -7,7 +7,7 @@
 
 
 #include <PhxResource/FileFormatUtils.h>
-#include <PhxRhi/RHICore.h>
+#include <PhxRhi/RHICommon.h>
 
 namespace phx
 {

@@ -25,7 +25,7 @@ namespace phx::rhi
     class BaseGfxDevice
     {
     public:
-        bool Initialize(GfxDeviceDescriptor& desc)
+        bool Initialize(GfxDeviceDescriptor const& desc)
         {
             return static_cast<TDerivedDevice*>(this)->PlatformInitialize(desc);
         }

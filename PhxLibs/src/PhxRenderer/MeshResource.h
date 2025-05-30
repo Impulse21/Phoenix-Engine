@@ -1,7 +1,7 @@
 #pragma once
 
 #include <PhxCore/IO/MemoryRegion.h>
-#include <PhxRhi/RHITypes.h>
+#include <PhxRhi/RHICommon.h>
 #include <PhxResource/ResourceManger.h>
 
 #include "PhxRenderer/shaders/ShaderInterop.h"

@@ -5,10 +5,6 @@
 namespace phx
 {
 	class World;
-	namespace rhi
-	{
-		class CommandCtx;
-	}
 }
 
 namespace phx::gfx

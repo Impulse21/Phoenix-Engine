@@ -3,7 +3,7 @@
 #include "PhxCore/Span.h"
 #include "PhxCore/BinaryBuilder.h"
 
-#include "PhxRhi/RHITypes.h"
+#include "PhxRhi/RHICommon.h"
 
 #include "PhxResource/ResourceFileFormat.h"
 #include "PhxRenderer/MeshResourceHandler.h"

@@ -40,7 +40,7 @@ namespace phx::rhi::vk
         VkGfxDeviceImpl();
         ~VkGfxDeviceImpl();
 
-        bool PlatformInitialize(GfxDeviceDescriptor& desc);
+        bool PlatformInitialize(GfxDeviceDescriptor const& desc);
         void PlatformShutdown();
 
         phx::rhi::vk::VkCommandCtxImpl* PlatformBeginCommandBuffer();

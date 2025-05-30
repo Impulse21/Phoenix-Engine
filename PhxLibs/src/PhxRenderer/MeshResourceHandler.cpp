@@ -5,7 +5,7 @@
 #include "MeshResourceHandler.h"
 #include "MeshResource.h"
 
-#include <PhxRhi/RHICore.h>
+#include <PhxRhi/GfxDevice.h>
 
 using namespace phx;
 using namespace phx::renderer;
@@ -56,7 +56,7 @@ void phx::renderer::MeshResourceHandler::RequestMeshData(
 	// TODO: Determine if we should just create one large buffer
 	// and alias/srv off it, or create a heap for this resource, 
 	// would require an RHI change.
-	meshResource->m_geometryBuffer = rhi::CreateBuffer({
+	meshResource->m_geometryBuffer = rhi::GetDevice().CreateBuffer({
 		.DebugName = "Geometry Buffer",
 		.Size = meshMetadata->GeometryBufferSize,
 		.BindingFlags = rhi::BindingFlags::ShaderResource | rhi::BindingFlags::IndexBuffer,

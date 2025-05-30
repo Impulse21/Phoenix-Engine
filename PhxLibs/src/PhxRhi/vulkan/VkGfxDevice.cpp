@@ -295,7 +295,7 @@ namespace phx::rhi::vk
     }
 
 
-    bool VkGfxDeviceImpl::PlatformInitialize(GfxDeviceDescriptor& desc)
+    bool VkGfxDeviceImpl::PlatformInitialize(GfxDeviceDescriptor const& desc)
     {
         PHX_PROFILE_SECTION("Vulkan::PlatformInitialize");
         PHX_CORE_INFO("Initializing RHI (Vulkan) - VkGfxDeviceImpl");
