@@ -1,8 +1,7 @@
 #pragma once
 
 #ifdef PHX_PLATFORM_WINDOWS
-
-#include <PhxCore/windows/WindowsPlatformWrapper.h>
+#include "windows\WindowsPlatformWrapper.h"
 
     namespace phx::platform 
     {

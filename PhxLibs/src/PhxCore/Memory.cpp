@@ -20,21 +20,33 @@ namespace
 			PHX_CORE_WARN("Found active allocation {0}, {1}\n", ptr, size);
 	}
 
-	template<typename TAllocator, size_t& AllocatorSize>
+	struct ThreadAllocatorRuntimeConfig
+	{
+		size_t Size = 0;
+	};
+	
+	
+	using ThreadAllocatorRuntimeConfigProviderFunc = ThreadAllocatorRuntimeConfig(*)();
+
+	template<typename TAllocator>
 	class ThreadLocalAllocatorProxy
 	{
 	public:
-		ThreadLocalAllocatorProxy() = default;
+		ThreadLocalAllocatorProxy(ThreadAllocatorRuntimeConfigProviderFunc configProvider)
+			: m_configProvider(configProvider)
+		{}
+
 		~ThreadLocalAllocatorProxy()
 		{
-			m_allocator.Finalize();
+			m_allocator.Shutdown();
 		}
 
 		TAllocator& Get()
 		{
 			if (m_isInitialized == false)
 			{
-				m_allocator.Initialize(AllocatorSize);
+				const ThreadAllocatorRuntimeConfig& cfg = m_configProvider();
+				m_allocator.Initialize(cfg.Size);
 				m_isInitialized = true;
 			}
 
@@ -44,12 +56,27 @@ namespace
 	private:
 		TAllocator m_allocator;
 		bool m_isInitialized = false;
+		ThreadAllocatorRuntimeConfigProviderFunc m_configProvider;
+
 	};
 	
 
-	MemoryDescriptor g_memoryDescriptor;
 	MallocAllocator g_systemHeap;
 	HeapAllocator g_mainHeap;
+
+	ThreadAllocatorRuntimeConfig g_frameHeapConfig;
+	ThreadAllocatorRuntimeConfig g_stackHeapConfig;
+
+
+	ThreadAllocatorRuntimeConfig ProvideFrameHeapConfig() 
+	{
+		return g_frameHeapConfig;
+	}
+
+	ThreadAllocatorRuntimeConfig ProvideScratchHeapConfig()
+	{
+		return g_stackHeapConfig;
+	}
 }
 
 namespace phx
@@ -57,11 +84,18 @@ namespace phx
 	namespace Memory
 	{
 
+		ThreadAllocatorRuntimeConfigProviderFunc g_frameHeapConfigProvider = nullptr;
+		ThreadAllocatorRuntimeConfigProviderFunc g_stackHeapConfigProvider = nullptr;
 		void Initialize(MemoryDescriptor const& desc)
 		{
-			g_memoryDescriptor = desc;
 			PHX_CORE_INFO("[Memory] Initialized Main Heap with {0} Mib", PhxToMB(desc.MaxMainHeapSize));
 			g_mainHeap.Initialize(desc.MaxMainHeapSize);
+
+			g_frameHeapConfig.Size = desc.MaxFrameHeapSize;
+			g_stackHeapConfig.Size = desc.MaxScratchHeapSize;
+
+			g_frameHeapConfigProvider = ProvideFrameHeapConfig;
+			g_stackHeapConfigProvider = ProvideScratchHeapConfig;
 		}
 
 		void Shutdown()
@@ -89,13 +123,13 @@ namespace phx
 
 		StackAllocator& GetScratchHeap()
 		{
-			thread_local ThreadLocalAllocatorProxy<StackAllocator, g_memoryDescriptor.MaxScratchHeapSize> s_proxy;
+			thread_local ThreadLocalAllocatorProxy<StackAllocator> s_proxy(g_stackHeapConfigProvider);
 			return s_proxy.Get();
 		}
 
 		LinearAllocator& GetFrameHeap()
 		{
-			thread_local ThreadLocalAllocatorProxy<LinearAllocator, g_memoryDescriptor.MaxFrameHeapSize> s_proxy;
+			thread_local ThreadLocalAllocatorProxy<LinearAllocator> s_proxy(g_frameHeapConfigProvider);
 			return s_proxy.Get();
 		}
 
