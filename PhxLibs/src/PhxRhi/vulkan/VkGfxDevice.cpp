@@ -28,6 +28,9 @@
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
+#ifdef PHX_PLATFORM_WINDOWS
+extern HINSTANCE g_hInstance;
+#endif
 
 namespace phx::rhi::vk
 {
@@ -70,11 +73,15 @@ namespace phx::rhi::vk
         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
         void*)
     {
+#if false
         if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
         {
             PHX_CORE_TRACE("[Vulkan Debug] {0}\n\t{1}", pCallbackData->pMessageIdName, pCallbackData->pMessage);
         }
         else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+#else
+        if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+#endif
         {
             PHX_CORE_INFO("[Vulkan Debug] {0}\n\t{1}", pCallbackData->pMessageIdName, pCallbackData->pMessage);
         }
@@ -165,8 +172,10 @@ namespace phx::rhi::vk
         }
         VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {};
         surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+        surfaceCreateInfo.pNext = nullptr; 
+        surfaceCreateInfo.flags = 0;
         surfaceCreateInfo.hwnd = static_cast<HWND>(desc.WindowsHandle);
-        surfaceCreateInfo.hinstance = GetModuleHandle(nullptr);
+        surfaceCreateInfo.hinstance = g_hInstance;
 
         VkResult result = vkCreateWin32SurfaceKHR(m_instance, &surfaceCreateInfo, GetVkAllocationCallbacks(), &m_surface);
         if (result != VK_SUCCESS)
@@ -188,10 +197,23 @@ namespace phx::rhi::vk
         featuresToEnable.samplerAnisotropy = VK_TRUE;
         // Add other features you absolutely need enabled
 
+        const std::vector<const char*> required_extensions =
+        {
+            VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
+            VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+            VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
+            VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+            VK_KHR_MULTIVIEW_EXTENSION_NAME,
+            VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME,
+            VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+            VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME
+        };
+
         selector.set_minimum_version(1, 3)
             .set_surface(m_surface)
             .set_required_features(featuresToEnable)
-            .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete);
+            .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
+            .add_required_extensions(required_extensions.size(), required_extensions.data());
         // Add specific extension requirements if vkb doesn't infer them well enough
 
         auto phys_dev_ret = selector.select();
@@ -200,6 +222,22 @@ namespace phx::rhi::vk
             PHX_CORE_ERROR("[RHI] Failed to select suitable Physical Device: {0}", phys_dev_ret.error().message());
             return false;
         }
+
+
+        const std::vector<const char*> optional_extensions =
+        {
+            VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+            VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+            VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+            VK_EXT_DEVICE_GENERATED_COMMANDS_EXTENSION_NAME,
+            VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME,
+            // VK_EXT_SHADER_OBJECT_EXTENSION_NAME,
+            VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
+            VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME,
+            VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME,
+            VK_EXT_MESH_SHADER_EXTENSION_NAME,
+        };
+        outVkbPhysicalDevice.enable_extensions_if_present(optional_extensions);
 
         outVkbPhysicalDevice = phys_dev_ret.value();
         m_chosenPhysicalDevice = outVkbPhysicalDevice.physical_device;
@@ -210,6 +248,7 @@ namespace phx::rhi::vk
     bool VkGfxDeviceImpl::CreateLogicalDevice(const GfxDeviceDescriptor&, vkb::PhysicalDevice& vkbPhysicalDevice)
     {
         vkb::DeviceBuilder deviceBuilder{ vkbPhysicalDevice };
+        
 
         auto dev_ret = deviceBuilder.build();
         if (!dev_ret)
