@@ -11,7 +11,6 @@ namespace phx
 	{
 		return (T)(((size_t)Size + (size_t)Alignment - 1) & ~((size_t)Alignment - 1));
 	}
-	
 	struct MemoryStatistics
 	{
 		size_t AllocatedBytes = 0;
@@ -46,13 +45,30 @@ namespace phx
 		virtual void Deallocate(void* pointer) = 0;
 	};
 
+	class PagedLinearAllocator : public IAllocator
+	{
+	public:
+		void Initialize(size_t size);
+		void Shutdown();
+
+		void* Allocate(size_t size, size_t alignment) override;
+		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
+
+		void Deallocate(void* /*pointer*/) override {};
+
+	private:
+		uint8_t* m_memory;
+		size_t m_reservedSize;
+		size_t m_commitedSize;
+
+	};
 	class HeapAllocator final : public IAllocator
 	{
 	public:
 		~HeapAllocator() override = default;
 
 		void Initialize(size_t size);
-		void Finalize();
+		void Shutdown();
 		
 		void* Allocate(size_t size, size_t alignment) override;
 		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
@@ -72,7 +88,7 @@ namespace phx
 		~StackAllocator() override = default;
 
 		void Initialize(size_t size);
-		void Finalize();
+		void Shutdown();
 		
 		void* Allocate(size_t size, size_t alignment) override;
 		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
@@ -96,7 +112,7 @@ namespace phx
 		~DoubleStackAllocator() override = default;
 
 		void Initialize(size_t size);
-		void Finalize();
+		void Shutdown();
 		
 		void* Allocate(size_t /*size*/, size_t /*alignment*/) override { return nullptr; };
 		void* Allocate(size_t /*size*/, size_t /*alignment*/, const char* /*file*/, int32_t /*line*/) override { return nullptr; };
@@ -134,7 +150,7 @@ namespace phx
 		~LinearAllocator() override = default;
 
 		void Initialize(size_t size);
-		void Finalize();
+		void Shutdown();
 		
 		void* Allocate(size_t size, size_t alignment) override;
 		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
@@ -160,7 +176,7 @@ namespace phx
 		~MallocAllocator() override = default;
 
 		void Initialize(size_t /*size*/) {};
-		void Finalize() {};
+		void Shutdown() {};
 		
 		void* Allocate(size_t size, size_t alignment) override;
 		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
@@ -173,7 +189,7 @@ namespace phx
 	// 
 	struct MemoryDescriptor
 	{
-		size_t MaxPersistentHeapSize = 32_MiB;
+		size_t MaxMainHeapSize = 32_MiB;
 		size_t MaxFrameHeapSize = 32_MiB;
 		size_t MaxScratchHeapSize = 8_MiB;
 
@@ -184,9 +200,12 @@ namespace phx
 	namespace Memory
 	{
 		void Initialize(MemoryDescriptor const& desc);
-		void Finalize();
+		void Shutdown();
 
-		void BeginFrame();
+		MallocAllocator& GetSystemHeap();
+		IAllocator& GetMainHeap();
+		StackAllocator& GetScratchHeap();
+		LinearAllocator& GetFrameHeap();
 
 		extern MallocAllocator g_systemAllocator;
 		extern HeapAllocator g_persistentAllocator;

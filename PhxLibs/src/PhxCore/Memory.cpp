@@ -1,6 +1,7 @@
 #include "PhxCore_pch.h"
 
 #include "PhxCore/Memory.h"
+#include <PhxCore/Platform/PlatformWrapper.h>
 
 #include <tlsf.h>
 #include <iostream>
@@ -18,35 +19,57 @@ namespace
 		if (used)
 			PHX_CORE_WARN("Found active allocation {0}, {1}\n", ptr, size);
 	}
+
+	template<typename TAllocator, size_t& AllocatorSize>
+	class ThreadLocalAllocatorProxy
+	{
+	public:
+		ThreadLocalAllocatorProxy() = default;
+		~ThreadLocalAllocatorProxy()
+		{
+			m_allocator.Finalize();
+		}
+
+		TAllocator& Get()
+		{
+			if (m_isInitialized == false)
+			{
+				m_allocator.Initialize(AllocatorSize);
+				m_isInitialized = true;
+			}
+
+			return m_allocator;
+		}
+
+	private:
+		TAllocator m_allocator;
+		bool m_isInitialized = false;
+	};
+	
+
+	MemoryDescriptor g_memoryDescriptor;
+	MallocAllocator g_systemHeap;
+	HeapAllocator g_mainHeap;
 }
 
 namespace phx
 {
 	namespace Memory
 	{
-		MallocAllocator g_systemAllocator;
-		HeapAllocator g_persistentAllocator;
-		StackAllocator g_frameScratchAllocator;
-		LinearAllocator g_frameAllocator;
 
 		void Initialize(MemoryDescriptor const& desc)
 		{
-			g_persistentAllocator.Initialize(desc.MaxPersistentHeapSize);
-			g_frameAllocator.Initialize(desc.MaxFrameHeapSize);
-			g_frameScratchAllocator.Initialize(desc.MaxScratchHeapSize);
-
-			PHX_CORE_INFO("[Memory] Initialized Persistent Heap with {0} Mib", PhxToMB(desc.MaxPersistentHeapSize));
-			PHX_CORE_INFO("[Memory] Initialized Frame Heap with {0} Mib", PhxToMB(desc.MaxFrameHeapSize));
-			PHX_CORE_INFO("[Memory] Initialized Scratch Heap with {0} Mib", PhxToMB(desc.MaxScratchHeapSize));
+			g_memoryDescriptor = desc;
+			PHX_CORE_INFO("[Memory] Initialized Main Heap with {0} Mib", PhxToMB(desc.MaxMainHeapSize));
+			g_mainHeap.Initialize(desc.MaxMainHeapSize);
 		}
 
-		void Finalize()
+		void Shutdown()
 		{
-			g_frameAllocator.Finalize();
-			g_frameScratchAllocator.Finalize();
-			g_persistentAllocator.Finalize();
+			g_frameAllocator.Shutdown();
+			g_frameScratchAllocator.Shutdown();
+			g_persistentAllocator.Shutdown();
 		}
-
 
 		void BeginFrame()
 		{
@@ -54,11 +77,79 @@ namespace phx
 			g_frameAllocator.Clear();
 		}
 
+		MallocAllocator& GetSystemHeap()
+		{
+			return g_systemHeap;
+		}
+
+		IAllocator& GetMainHeap()
+		{
+			return g_mainHeap;
+		}
+
+		StackAllocator& GetScratchHeap()
+		{
+			thread_local ThreadLocalAllocatorProxy<StackAllocator, g_memoryDescriptor.MaxScratchHeapSize> s_proxy;
+			return s_proxy.Get();
+		}
+
+		LinearAllocator& GetFrameHeap()
+		{
+			thread_local ThreadLocalAllocatorProxy<LinearAllocator, g_memoryDescriptor.MaxFrameHeapSize> s_proxy;
+			return s_proxy.Get();
+		}
 
 	}
 }
 
 
+void PagedLinearAllocator::Initialize(size_t size)
+{
+	m_memory = static_cast<uint8_t*>(
+		Platform::Get().VirtualMemReserve(size));
+	m_commitedSize = 0;
+	m_reservedSize = size;
+
+}
+
+void PagedLinearAllocator::Shutdown()
+{
+	// Free the committed memory
+	if (!Platform::Get().VirtualMemFree(m_memory))
+	{
+		 PHX_CORE_ERROR("Failed to free virtual memory");
+	}
+
+	m_memory = nullptr;
+	m_reservedSize= 0;
+	m_commitedSize = 0;
+}
+
+void* PagedLinearAllocator::Allocate(size_t size, size_t alignment)
+{
+	const size_t newStart = AlignUp(m_commitedSize, alignment);
+	PHX_CORE_ASSERT(newStart < m_reservedSize);
+
+	const size_t newAllocatedSize = newStart + size;
+	if (newAllocatedSize > m_reservedSize)
+	{
+		PHX_CORE_ASSERT(false, "Overflow Detected");
+		return nullptr;
+	}
+
+	if (newAllocatedSize < m_commitedSize)
+		return m_memory + newStart;
+
+
+	Platform::Get().VirtualMemCommit(m_memory + m_commitedSize, size);
+	m_commitedSize += newAllocatedSize;
+	return m_memory + newStart;
+}
+
+void* PagedLinearAllocator::Allocate(size_t size, size_t alignment, const char* /*file*/, int32_t /*line*/)
+{
+	return Allocate(size, alignment);
+}
 
 void HeapAllocator::Initialize(size_t size)
 {
@@ -68,7 +159,7 @@ void HeapAllocator::Initialize(size_t size)
 	m_tlsfHandle = tlsf_create_with_pool(m_memory, size);
 }
 
-void HeapAllocator::Finalize()
+void HeapAllocator::Shutdown()
 {
 	// Check memory at the application exit.
 	MemoryStatistics stats{ 0, m_maxSize };
@@ -134,7 +225,7 @@ void StackAllocator::Initialize(size_t size)
 	m_allocatedSize = 0;
 }
 
-void StackAllocator::Finalize()
+void StackAllocator::Shutdown()
 {
 	Clear();
 	std::free(m_memory);
@@ -178,7 +269,7 @@ void DoubleStackAllocator::Initialize(size_t size)
 	m_bottom = 0;
 }
 
-void DoubleStackAllocator::Finalize()
+void DoubleStackAllocator::Shutdown()
 {
 	ClearTop();
 	ClearBottom();
@@ -251,7 +342,7 @@ void LinearAllocator::Initialize(size_t size)
 	m_allocatedSize= 0;
 }
 
-void LinearAllocator::Finalize()
+void LinearAllocator::Shutdown()
 {
 	Clear();
 	std::free(m_memory);

@@ -2,11 +2,11 @@
 
 #include "PlatformConfig.h"
 
-namespace phx::platform
+namespace phx::Platform
 {
-    inline PlatformWrapper& GetPlatform()
+    inline platform::PlatformWrapper& Get()
     {
-        inline static PlatformWrapper s_instance;
+        static platform::PlatformWrapper s_instance;
         return s_instance;
     }
 }
