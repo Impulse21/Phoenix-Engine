@@ -235,7 +235,7 @@ function HandleGlobalWarnings()
     --]=====]
 end
 
-copy_clang_configs_to_workspace()
+--copy_clang_configs_to_workspace()
 
 -- Globals
 workspace "PhxEngine"

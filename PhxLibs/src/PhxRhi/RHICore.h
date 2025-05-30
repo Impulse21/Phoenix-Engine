@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RHITypes.h"
-#include "RHICommandCtx.h"
+#include <PhxRhi/CurrentCommandCtx.h>
 
 namespace phx::rhi
 {
