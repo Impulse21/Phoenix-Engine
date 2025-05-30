@@ -18,10 +18,14 @@
 #include "VkGfxDevice.h"
 #include "VkCommandCtx.h"
 
-#include <sstream>
 #include <PhxCore/CommandLineArgs.h>
 #include <PhxCore/Log.h>
 #include <PhxCore/Memory.h>
+
+
+
+#define VOLK_IMPLEMENTATION
+#include "volk.h"
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 1
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -504,10 +508,16 @@ namespace phx::rhi::vk
 
         for (size_t i = 0; i < cMaxInflightFrames; ++i)
         {
-            PHX_CORE_ASSERT(vkCreateSemaphore(m_device, &semaphoreInfo, GetVkAllocationCallbacks(), &m_frames[i].PresentSemaphore));
-            PHX_CORE_ASSERT(vkCreateSemaphore(m_device, &semaphoreInfo, GetVkAllocationCallbacks(), &m_frames[i].RenderSemaphore));
-            PHX_CORE_ASSERT(vkCreateFence(m_device, &fenceInfo, GetVkAllocationCallbacks(), &m_frames[i].RenderFence));
+        	VkResult result = vkCreateSemaphore(m_device, &semaphoreInfo, GetVkAllocationCallbacks(), &m_frames[i].PresentSemaphore);
+            PHX_CORE_ASSERT(result == VK_SUCCESS);
+
+            result = vkCreateSemaphore(m_device, &semaphoreInfo, GetVkAllocationCallbacks(), &m_frames[i].RenderSemaphore);
+            PHX_CORE_ASSERT(result == VK_SUCCESS);
+
+            result = vkCreateFence(m_device, &fenceInfo, GetVkAllocationCallbacks(), &m_frames[i].RenderFence);
+            PHX_CORE_ASSERT(result == VK_SUCCESS);
         }
+
         PHX_CORE_INFO("[RHI] Frame synchronization primitives created.");
     }
 
@@ -543,7 +553,9 @@ namespace phx::rhi::vk
         poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         poolInfo.queueFamilyIndex = m_graphicsQueueFamily;
         poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        PHX_CORE_ASSERT(vkCreateCommandPool(m_device, &poolInfo, GetVkAllocationCallbacks(), &m_graphicsCommandPool));
+        VkResult result = vkCreateCommandPool(m_device, &poolInfo, GetVkAllocationCallbacks(), &m_graphicsCommandPool);
+
+        PHX_CORE_ASSERT(result == VK_SUCCESS);
         PHX_CORE_INFO("[RHI] Graphics Command Pool created.");
         // Create other command pools (compute, transfer) if needed
     }
@@ -691,10 +703,8 @@ namespace phx::rhi::vk
 
     void VkGfxDeviceImpl::PlatformWaitForIdle()
     {
-        if (m_isInitialized && m_device != VK_NULL_HANDLE)
-        {
-            PHX_CORE_ASSERT(vkDeviceWaitIdle(m_device));
-        }
+        PHX_CORE_ASSERT(m_isInitialized && m_device != VK_NULL_HANDLE);
+    	vkDeviceWaitIdle(m_device);
     }
 
     GpuBufferHandle VkGfxDeviceImpl::PlatformCreateBuffer(const GpuBufferDescriptor& desc, const void* initialData)
