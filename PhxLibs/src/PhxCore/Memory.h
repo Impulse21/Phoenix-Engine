@@ -6,24 +6,6 @@
 
 namespace phx
 {
-	template<typename T, typename U>
-	constexpr T AlignUp(T Size, U Alignment)
-	{
-		return (T)(((size_t)Size + (size_t)Alignment - 1) & ~((size_t)Alignment - 1));
-	}
-
-	void* VirtualMemReserve(size_t reserveSize);
-
-	template<typename T, size_t _PageSize = 1>
-	T* VirtualMemReserveTyped(size_t numEntries)
-	{
-		void* alloc = VirtualMemReserve(AlignUp(numEntries * sizeof(T), _PageSize));
-		return static_cast<T*>(alloc);
-	}
-
-	void VirtualMemCommit(void* ptr, size_t commitSize);
-	bool VirtualMemFree(void* ptr);
-
 	struct MemoryStatistics
 	{
 		size_t AllocatedBytes = 0;

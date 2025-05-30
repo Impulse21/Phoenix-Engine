@@ -60,22 +60,6 @@ namespace phx
 
 
 
-#if defined(PHX_PLATFORM_WINDOWS)
-void* phx::VirtualMemReserve(size_t reserveSize)
-{
-	return VirtualAlloc(nullptr, reserveSize, MEM_RESERVE, PAGE_READWRITE);
-}
-
-void phx::VirtualMemCommit(void* ptr, size_t commitSize)
-{
-	VirtualAlloc(ptr, commitSize, MEM_COMMIT, PAGE_READWRITE);
-}
-
-bool phx::VirtualMemFree(void* ptr)
-{
-	return VirtualFree(ptr, 0, MEM_RELEASE);
-}
-
 void HeapAllocator::Initialize(size_t size)
 {
 	m_memory = std::malloc(size);
@@ -457,4 +441,3 @@ namespace
 #endif
 
 }
-#endif
