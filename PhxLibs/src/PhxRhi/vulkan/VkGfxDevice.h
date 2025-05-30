@@ -1,10 +1,7 @@
 #pragma once
 
 #include <PhxRhi/BaseGfxDevice.h>
-#include <PhxRhi/RHITypes.h>
 #include <PhxRhi/RHICommon.h>
-
-#include "VkCommandCtx.h"
 
 #ifdef PHX_PLATFORM_WINDOWS
 #define VK_USE_PLATFORM_WIN32_KHR

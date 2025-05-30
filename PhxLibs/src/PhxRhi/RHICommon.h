@@ -899,11 +899,6 @@ namespace phx::rhi
         } Alias = {};
     };
 
-    struct GfxDeviceDescriptor
-    {
-        bool enableValidationLayers : 1 = false;
-    };
-
     struct SwapChainDescriptor
     {
         uint32_t Width = 0;

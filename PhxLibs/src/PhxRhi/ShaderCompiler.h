@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "PhxRhi/RHITypes.h"
+#include "PhxRhi/RHICommon.h"
 
 namespace phx
 {

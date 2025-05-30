@@ -7,6 +7,7 @@ namespace phx::rhi
 	{
 	public:
 
+#if false
 		// Access to the native underlying command buffer object
 		auto GetPlatformHandle()
 			-> decltype(static_cast<TDerivedDevice*>(this)
@@ -14,6 +15,7 @@ namespace phx::rhi
 		{
 			return static_cast<TDerivedDevice*>(this)->PlatformGetNativeHandle();
 		}
+#endif
 	protected:
 
 		BaseCommandBuffer() = default;

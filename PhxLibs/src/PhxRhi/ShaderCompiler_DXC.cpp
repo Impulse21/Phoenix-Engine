@@ -6,7 +6,7 @@
 #include "PhxCore/VFS.h"
 #include "PhxCore/StringUtils.h"
 #include "PhxRhi/ShaderCompiler.h"
-#include "PhxRhi/RHITypes.h"
+#include "PhxRhi/RHICommon.h"
 
 #include "assert.h"
 #include <iostream>

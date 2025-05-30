@@ -1,8 +1,17 @@
 #include "PhxRhi/PhxRhi_pch.h"
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wunused-function"
+#pragma clang diagnostic ignored "-Wunused-variable"
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#endif
+
 #ifdef PHX_PLATFORM_WINDOWS
     #define VK_USE_PLATFORM_WIN32_KHR
+#ifndef WIN32_LEAN_AND_MEAN
     #define WIN32_LEAN_AND_MEAN
+#endif
+
     #include <Windows.h> // For GetModuleHandle
 #endif
 
@@ -162,7 +171,7 @@ namespace phx::rhi::vk
         VkResult result = vkCreateWin32SurfaceKHR(m_instance, &surfaceCreateInfo, GetVkAllocationCallbacks(), &m_surface);
         if (result != VK_SUCCESS)
         {
-            PHX_CORE_ERROR("[RHI] Failed to create Win32 surface. VkResult: {0}", result);
+            PHX_CORE_ERROR("[RHI] Failed to create Win32 surface. VkResult: <TODO>");
             return false;
         }
         return true;
@@ -279,7 +288,7 @@ namespace phx::rhi::vk
         VkResult res = vmaCreateAllocator(&allocatorInfo, &m_vmaAllocator);
         if (res != VK_SUCCESS)
         {
-            PHX_CORE_ERROR("[RHI] Failed to create VMA Allocator. VkResult: {0}", res);
+            PHX_CORE_ERROR("[RHI] Failed to create VMA Allocator. VkResult: <TODO>");
             return false;
         }
         return true;
@@ -542,13 +551,13 @@ namespace phx::rhi::vk
             acquireResult = vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX, currentFrame.PresentSemaphore, VK_NULL_HANDLE, &m_swapchainImageIndex);
             if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR) // VK_SUBOPTIMAL_KHR is okay to continue with
             {
-                PHX_CORE_ERROR("[RHI] Failed to acquire swap chain image after recreation! VkResult: {0}", acquireResult);
+                PHX_CORE_ERROR("[RHI] Failed to acquire swap chain image after recreation! VkResult: <TODO>");
                 return nullptr;
             }
         }
         else if (acquireResult != VK_SUCCESS)
         {
-            PHX_CORE_ERROR("[RHI] Failed to acquire swap chain image! VkResult: {0}", acquireResult);
+            PHX_CORE_ERROR("[RHI] Failed to acquire swap chain image! VkResult: <TODO>");
             return nullptr;
         }
 
@@ -636,7 +645,7 @@ namespace phx::rhi::vk
         }
         else if (presentResult != VK_SUCCESS)
         {
-            PHX_CORE_ERROR("[RHI] Failed to present swap chain image. VkResult: {0}", presentResult);
+            PHX_CORE_ERROR("[RHI] Failed to present swap chain image. VkResult: <TODO>");
         }
         m_frameNumber++;
     }
