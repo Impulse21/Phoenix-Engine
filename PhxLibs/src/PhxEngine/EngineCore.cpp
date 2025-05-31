@@ -9,7 +9,7 @@
 #include <PhxCore/VFS.h>
 #include <PhxCore/Profiler.h>
 
-#include <PhxResource/ResourceManger.h>
+#include <PhxResource/ResourceSystem.h>
 
 #include <PhxRenderer/DefaultRenderSystem.h>
 #include <PhxRenderer/MeshResourceHandler.h>
@@ -84,7 +84,9 @@ namespace phx
 
 			app->SetWindowHandle(windowHandle);
 
-			phx::IRootFileSystem::Ptr = phx_new_system(RootFileSystem);
+			phx::IRootFileSystem::Ptr = phx_new_persistent(RootFileSystem);
+			phx::ResourceSystem::Ptr = phx_new_persistent(ResourceSystem);
+			phx::ResourceSystem::Ptr->Initialize();
 #if false
 
 			phx::ResourceManger::Initialize();
@@ -124,18 +126,23 @@ namespace phx
 		{
 			phx::IApplication::Ptr->Shutdown();
 
-			phx_delete_system(phx::IApplication::Ptr);
+			DeleteApplication(phx::IApplication::Ptr);
 			phx::IApplication::Ptr = nullptr;
 
-			phx_delete_system(phx::IRootFileSystem::Ptr);
-			phx::IRootFileSystem::Ptr;
+			phx::ResourceSystem::Ptr->Shutdown();
+			phx_delete_persistent(phx::ResourceSystem::Ptr);
+			phx::ResourceSystem::Ptr = nullptr;
 
 			phx::rhi::GfxDevice& gfxDevice = phx::rhi::GetDevice();
 			gfxDevice.Shutdown();
 
+			phx_delete_persistent(phx::IRootFileSystem::Ptr);
+			phx::IRootFileSystem::Ptr = nullptr;
+
+
 #if false
 			gfx::IRenderSystem::Ptr->Finalize();
-			phx_delete_system(gfx::IRenderSystem::Ptr);
+			phx_new_persistent(gfx::IRenderSystem::Ptr);
 
 			phx::rhi::Finalize();
 #endif

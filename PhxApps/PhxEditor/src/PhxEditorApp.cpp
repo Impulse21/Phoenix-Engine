@@ -8,6 +8,9 @@
 #include <PhxWorld/Entity.h>
 #include <PhxWorld/World.h>
 #include <PhxWorld/WorldSerializer.h>
+#include <PhxWorld/SceneBlueprint.h>
+
+#include <PhxResource/ResourceSystem.h>
 
 #include <PhxRenderer/RenderSystem.h>
 #include <PhxRenderer/RenderLayers/MeshRenderLayer.h>
@@ -15,7 +18,6 @@
 #include <PhxEngine/EntryPoint.h>
 
 #include <Generated/GlobalVariables.h>
-#include "GltfImporter.h"
 
 #include "MeshResourceCompiler.h"
 #include "ResourceFileBuilder.h"
@@ -24,6 +26,8 @@
 
 #include <meshoptimizer/meshoptimizer.h>
 #include <random>
+
+#include "GltfFileHandler.h"
 
 namespace
 {
@@ -403,7 +407,12 @@ phx::IApplication* phx::CreateApplication()
 		.WorkingDirectory = phx::FileSystem::GetDirectoryWithExecutable()
 	};
 
-	return phx_new_system(PhxEditor, desc);
+	return phx_new_persistent(PhxEditor, desc);
+}
+
+void phx::DeleteApplication(phx::IApplication* ptr)
+{
+	phx_delete_persistent(ptr);
 }
 
 void PhxEditor::Startup()
@@ -420,8 +429,9 @@ void PhxEditor::Startup()
 		fs->Mount("art://", phx::GlobalPaths::ArtSrcDirectory);
 	}
 
-	phxed::GltfSceneImporter::Import(fs, kDefault3DModel);
-
+	auto* resourceSystem = phx::ResourceSystem::Ptr;
+	resourceSystem->RegisterFileHanlder<phxed::GltfFileHandler>();
+	phx::RefCountPtr<phx::SceneBlueprint> sceneBlueptin = resourceSystem->GetTyped<phx::SceneBlueprint>(kDefault3DModel);
 #if false
 	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
 

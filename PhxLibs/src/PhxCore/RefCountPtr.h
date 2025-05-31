@@ -277,4 +277,25 @@ namespace phx
             return result;
         }
     };
+
+    struct RefCounted
+    {
+        std::atomic<unsigned long> RefCount = 1;
+
+        unsigned long AddRef()
+        {
+            return ++RefCount;
+        }
+
+        unsigned long Release()
+        {
+            unsigned long result = --RefCount;
+            if (result == 0) {
+                delete this;
+            }
+            return result;
+        }
+
+        virtual ~RefCounted() = default;
+    };
 }

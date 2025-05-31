@@ -5,6 +5,7 @@ namespace phx
 {
 	class IApplication;
 	extern IApplication* CreateApplication();
+	extern void DeleteApplication(IApplication* ptr);
 
 	namespace EngineCore
 	{

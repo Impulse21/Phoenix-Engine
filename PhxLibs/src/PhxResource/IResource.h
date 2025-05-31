@@ -22,4 +22,14 @@ namespace phx
         // IResource& operator=(const IResource&&) = delete;
 	};
 
+	struct Resource : public RefCounted
+	{
+		uint32_t State = 0;
+
+		bool IsLoaded()
+		{
+			return State == 0;
+		}
+	};
+
 }
