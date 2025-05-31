@@ -1,9 +1,9 @@
-#include "PhxCore_pch.h"
-
-#include "PhxCore/ThreadPool.h"
+#include "PhxEngine/PhxEngine_pch.h"
+#include "JobSystem.h"
 #include "PhxCore/EnumUtils.h"
 #include "PhxCore/RingBuffer.h"
 #include "PhxCore/SystemTime.h"
+#include <PhxCore/Memory.h>
 
 #include <thread>
 #include <algorithm>
@@ -22,7 +22,8 @@ namespace
 	struct Job
 	{
 		std::function<void()> Task;
-		ThreadPool::Barrier* KickoffThreadBarrier = nullptr;
+		JobSystem::Barrier* KickoffThreadBarrier = nullptr;
+		size_t FrameId = ~0u;
 
 		void Execute()
 		{
@@ -50,29 +51,39 @@ namespace
 				JobQueue& jobQueue = JobQueuePerThread[threadId % NumThreads];
 				while (jobQueue.Pop(job))
 				{
+					const size_t currFrameId = phx::EngineSync::g_FrameCount;
+					if (job.FrameId > currFrameId)
+						BeginFrame();
+
 					job.Execute();
 				}
 				threadId++;
 			}
 		}
+
+		void BeginFrame()
+		{
+			Memory::GetFrameHeap().Clear();
+			Memory::GetScratchHeap().Clear();
+		}
 	};
-	
-	thread_local phx::EnumArray<ThreadPool::Barrier, ThreadPool::Type> m_threadBarrier;
+
+	thread_local phx::EnumArray<JobSystem::Barrier, JobSystem::Type> m_threadBarrier;
 	std::atomic_bool m_alive = false;
-	phx::EnumArray<ThreadPoolContext, ThreadPool::Type> m_threadPools;
+	phx::EnumArray<ThreadPoolContext, JobSystem::Type> m_threadPools;
 
 	// use R
 	struct Shutdowner
 	{
 		~Shutdowner()
 		{
-			ThreadPool::Finalize();
+			JobSystem::Shutdown();
 		}
 	} m_shutdowner;
-	
+
 }
 
-void ThreadPool::Initialize()
+void JobSystem::Initialize()
 {
 	const uint32_t numCores = (uint32_t)GetNumCores();
 	m_alive.store(true);
@@ -85,10 +96,10 @@ void ThreadPool::Initialize()
 
 		switch (type)
 		{
-		case ThreadPool::Type::High:
+		case JobSystem::Type::High:
 			resource.NumThreads = numCores - 1; // -1 for main thread;
 			break;
-		case ThreadPool::Type::Streaming:
+		case JobSystem::Type::Streaming:
 			resource.NumThreads = 1;
 			break;
 		default:
@@ -110,12 +121,12 @@ void ThreadPool::Initialize()
 					std::unique_lock<std::mutex> lock(resource.WakeMutex);
 					resource.WakeCondition.wait(lock);
 				}
-			});
-			
+				});
+
 #ifdef _WIN32
 			HANDLE handle = (HANDLE)worker.native_handle();
 			int core = threadID + 1; // put threads on increasing cores starting from 2nd
-			if (type== Type::Streaming)
+			if (type == Type::Streaming)
 			{
 				// Put streaming to last core:
 				core = numCores - 1 - threadID;
@@ -157,7 +168,7 @@ void ThreadPool::Initialize()
 		m_threadPools[Type::Streaming].NumThreads);
 }
 
-void ThreadPool::Finalize()
+void JobSystem::Shutdown()
 {
 	if (!m_alive)
 		return;
@@ -166,13 +177,13 @@ void ThreadPool::Finalize()
 	bool wakeLoop = true;
 
 	std::thread waker([&]
-	{
-		while(wakeLoop)
 		{
-			for (auto& res : m_threadPools)
-				res.WakeCondition.notify_all();
-		}
-	});
+			while (wakeLoop)
+			{
+				for (auto& res : m_threadPools)
+					res.WakeCondition.notify_all();
+			}
+		});
 
 	for (auto& res : m_threadPools)
 	{
@@ -182,17 +193,17 @@ void ThreadPool::Finalize()
 
 	wakeLoop = false;
 	waker.join();
-	
+
 	for (auto& res : m_threadPools)
 	{
-		res.WorkerThreads.Finalize();
+		res.WorkerThreads.Shutdown();
 		res.NumThreads = 0;
 		phx_delete_arr_persistent(res.JobQueuePerThread);
 		res.NextQueue = 0;
 	}
 }
 
-void ThreadPool::SubmitTask(std::function<void()> const& task, Type type)
+void JobSystem::SubmitJob(std::function<void()> const& task, Type type)
 {
 	ThreadPoolContext& ctx = m_threadPools[type];
 	if (ctx.NumThreads < 1)
@@ -201,19 +212,21 @@ void ThreadPool::SubmitTask(std::function<void()> const& task, Type type)
 		return;
 	}
 
+	const size_t frameId = EngineSync::g_FrameCount;
 	Job job = {
 		.Task = task,
-		.KickoffThreadBarrier = &m_threadBarrier[type]
+		.KickoffThreadBarrier = &m_threadBarrier[type],
+		.FrameId = frameId
 	};
 
 	job.KickoffThreadBarrier->Add();
-	
+
 	ctx.JobQueuePerThread[ctx.NextQueue.fetch_add(1) % ctx.NumThreads].Push(job);
 	ctx.WakeCondition.notify_one();
 }
 
 #if false
-void ThreadPool::Dispatch(uint32_t jobCount, uint32_t groupSize, std::function<void(JobDispatchArgs)> const& job)
+void JobSystem::Dispatch(uint32_t jobCount, uint32_t groupSize, std::function<void(JobDispatchArgs)> const& job)
 {
 	if (jobCount == 0 || groupSize == 0)
 		return;
@@ -241,7 +254,7 @@ void ThreadPool::Dispatch(uint32_t jobCount, uint32_t groupSize, std::function<v
 				args.JobIndex = i;
 				job(args);
 			}
-		};
+			};
 
 		// Try to push a new job until it is pushed successfully:
 		while (!m_jobPool.Push(jobGroup)) { Poll(); }
@@ -251,12 +264,12 @@ void ThreadPool::Dispatch(uint32_t jobCount, uint32_t groupSize, std::function<v
 }
 #endif
 
-bool ThreadPool::IsBusy(Type type)
+bool JobSystem::IsBusy(Type type)
 {
 	return m_threadBarrier[type].IsNotCleared();
 }
 
-void ThreadPool::Wait(Type type)
+void JobSystem::Wait(Type type)
 {
 	if (IsBusy(type))
 	{
@@ -271,11 +284,11 @@ void ThreadPool::Wait(Type type)
 	}
 }
 
-void ThreadPool::Wait(Barrier& barrier, Type type)
+void JobSystem::Wait(Barrier& barrier, Type type)
 {
 	// Not sure I want to add here.
 	// barrier.Add();
-	
+
 	while (barrier.IsNotCleared())
 	{
 		ThreadPoolContext& ctx = m_threadPools[type];
@@ -289,19 +302,19 @@ void ThreadPool::Wait(Barrier& barrier, Type type)
 	}
 }
 
-void ThreadPool::Signal(Barrier& barrier, Type type)
+void JobSystem::Signal(Barrier& barrier, Type type)
 {
 	barrier.Signal();
 	ThreadPoolContext& ctx = m_threadPools[type];
 	ctx.WakeCondition.notify_one();
 }
 
-uint32_t ThreadPool::GetThreadCount(Type type)
+uint32_t JobSystem::GetThreadCount(Type type)
 {
 	return m_threadPools[type].NumThreads;
 }
 
-uint32_t phx::ThreadPool::GetNumCores()
+uint32_t phx::JobSystem::GetNumCores()
 {
 	return std::thread::hardware_concurrency();
 }

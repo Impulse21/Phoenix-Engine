@@ -489,8 +489,8 @@ namespace phx::rhi::vk
                 vkDestroyImageView(m_device, imageView, GetVkAllocationCallbacks());
             }
         }
-        m_swapchainImageViews.Finalize();
-        m_swapchainImages.Finalize();
+        m_swapchainImageViews.Shutdown();
+        m_swapchainImages.Shutdown();
 
         if (m_swapchain != VK_NULL_HANDLE)
         {

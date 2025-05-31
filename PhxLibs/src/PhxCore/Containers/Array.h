@@ -16,7 +16,7 @@ namespace phx
         void Initialize(phx::IAllocator* Allocator, std::vector<T> const& init_data);
         void Initialize(phx::IAllocator* Allocator, const T* init_data, uint32_t count);
 
-        void Finalize();
+        void Shutdown();
 
         void Push(const T& element);
         void Push(T&& value);
@@ -128,7 +128,7 @@ namespace phx
     }
 
     template<typename T>
-    inline void Array<T>::Finalize()
+    inline void Array<T>::Shutdown()
     {
         if (Capacity > 0)
         {

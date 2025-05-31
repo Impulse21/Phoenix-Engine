@@ -5,7 +5,6 @@
 
 #include <PhxCore/Log.h>
 #include <PhxCore/Memory.h>
-#include <PhxCore/ThreadPool.h>
 #include <PhxCore/CommandLineArgs.h>
 #include <PhxCore/VFS.h>
 #include <PhxCore/Profiler.h>
@@ -16,6 +15,9 @@
 #include <PhxRenderer/MeshResourceHandler.h>
 
 #include <PhxRhi/GfxDevice.h>
+
+#include <PhxEngine/JobSystem.h>
+#include <PhxEngine/EngineSync.h>
 
 using namespace phx;
 
@@ -44,19 +46,23 @@ namespace
 
 namespace phx
 {
-	namespace EngineCore
+	namespace EngineSync
 	{
 		size_t g_FrameCount = 0;
+	}
+
+	namespace EngineCore
+	{
 		void PreInitialize(int argc, wchar_t** argv)
 		{
-			g_FrameCount = 0;
+			EngineSync::g_FrameCount = 0;
 			phx::Log::Initialize();
 			phx::CommandLineArgs::Initialize(argc, argv);
 
 			Memory::Initialize({
 				.MaxMainHeapSize = 1_GiB });
 
-			phx::ThreadPool::Initialize();
+			phx::JobSystem::Initialize();
 
 			phx::IApplication::Ptr = phx::CreateApplication();
 		}
@@ -93,25 +99,25 @@ namespace phx
 		{
 			PHX_PROFILE_FRAME;
 
-			g_FrameCount++;
+			EngineSync::g_FrameCount++;
 
 			// -- Pre-Render ---
 			OnPreRender(phx::IApplication::Ptr);
 
 			// -- Wait for any submitted taskes before finishing
-			ThreadPool::Wait();
+			JobSystem::Wait();
 
 			// -- Update ---
-			ThreadPool::SubmitTask([]() {
+			JobSystem::SubmitJob([]() {
 				OnUpdate_Threaded(phx::IApplication::Ptr, 0);
 			});
 
 			// -- Render ---
-			ThreadPool::SubmitTask([]() {
+			JobSystem::SubmitJob([]() {
 				OnRender_Threaded(phx::IApplication::Ptr);
 			});
 
-			ThreadPool::Wait();
+			JobSystem::Wait();
 		}
 
 		void Finalize()
@@ -132,7 +138,7 @@ namespace phx
 
 			phx::rhi::Finalize();
 #endif
-			ThreadPool::Finalize();
+			JobSystem::Shutdown();
 			Memory::Shutdown();
 		}
 	}

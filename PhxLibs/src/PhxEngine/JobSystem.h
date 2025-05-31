@@ -11,7 +11,7 @@ namespace phx
 		uint32_t GroupIndex = 0;
 	};
 
-	namespace ThreadPool
+	namespace JobSystem
 	{
 		struct Barrier
 		{
@@ -32,8 +32,9 @@ namespace phx
 		};
 
 		void Initialize();
-		void Finalize();
-		void SubmitTask(std::function<void()> const& task, Type type = Type::High);
+		void Shutdown();
+
+		void SubmitJob(std::function<void()> const& task, Type type = Type::High);
 
 		bool IsBusy(Type type = Type::High);
 
