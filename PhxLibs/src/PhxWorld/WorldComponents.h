@@ -202,4 +202,16 @@ namespace phx
 			DirectX::XMStoreFloat3(&Translation, translate);
 		}
 	};
+
+
+	// Not sure about these yet
+	struct MeshResourceComponent
+	{
+
+	};
+
+	struct MaterialComponent
+	{
+
+	};
 }

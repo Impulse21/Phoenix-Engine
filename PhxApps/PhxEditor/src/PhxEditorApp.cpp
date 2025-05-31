@@ -15,6 +15,7 @@
 #include <PhxEngine/EntryPoint.h>
 
 #include <Generated/GlobalVariables.h>
+#include "GltfImporter.h"
 
 #include "MeshResourceCompiler.h"
 #include "ResourceFileBuilder.h"
@@ -338,6 +339,20 @@ namespace
 		phx::ThreadPool::Wait();
 	}
 #endif
+
+
+
+static const char* kDefault3DModel = "art://Sponza/glTF/Sponza.gltf";
+
+#define InjectDefault3DModel() \
+    if (raptor::file_exists(kDefault3DModel)) {\
+        argc = 2;\
+        argv[1] = const_cast<char*>(kDefault3DModel);\
+    }\
+    else {\
+       printf("Unable to find default model. Please check the README in the root folder and make sure you've run `python ./bootstrap.py` to download all the additional assets for this project.\n");\
+       exit(-1);\
+    }
 }
 
 
@@ -393,9 +408,6 @@ phx::IApplication* phx::CreateApplication()
 
 void PhxEditor::Startup()
 {
-#if false
-	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
-
 	auto fs = phx::IRootFileSystem::Ptr;
 	{
 		std::shared_ptr<phx::IFileSystem> nativeFS = phx::FileSystemFactory::CreateNativeFileSystem();
@@ -407,6 +419,13 @@ void PhxEditor::Startup()
 		PHX_INFO("Filesystem is mounting {0} to {1}", "art://", phx::GlobalPaths::ArtSrcDirectory);
 		fs->Mount("art://", phx::GlobalPaths::ArtSrcDirectory);
 	}
+
+	phxed::GltfSceneImporter::Import(fs, kDefault3DModel);
+
+#if false
+	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
+
+
 	// TODO: Incremental build this to save time.
 	// however, still testing, so generating this every time at startup is fine.
 

@@ -21,13 +21,14 @@ namespace
 {
 	struct Job
 	{
-		std::function<void()> Task;
+		JobSystem::JobCallbackFunc Task;
 		JobSystem::Barrier* KickoffThreadBarrier = nullptr;
 		size_t FrameId = ~0u;
+		JobContext Context;
 
 		void Execute()
 		{
-			Task();
+			Task(Context);
 			KickoffThreadBarrier->Signal();
 		}
 	};
@@ -203,12 +204,16 @@ void JobSystem::Shutdown()
 	}
 }
 
-void JobSystem::SubmitJob(std::function<void()> const& task, Type type)
+void JobSystem::SubmitJob(JobCallbackFunc const& task, Type type, JobContext* specifiedCtx)
 {
+	JobContext context = {
+		.FrameHeap = specifiedCtx ? specifiedCtx->FrameHeap : &Memory::GetFrameHeap(),
+		.ScratchHeaps = specifiedCtx ? specifiedCtx->FrameHeap : &Memory::GetScratchHeap()
+	};
 	ThreadPoolContext& ctx = m_threadPools[type];
 	if (ctx.NumThreads < 1)
 	{
-		task();
+		task(context);
 		return;
 	}
 
@@ -216,7 +221,8 @@ void JobSystem::SubmitJob(std::function<void()> const& task, Type type)
 	Job job = {
 		.Task = task,
 		.KickoffThreadBarrier = &m_threadBarrier[type],
-		.FrameId = frameId
+		.FrameId = frameId,
+		.Context = context
 	};
 
 	job.KickoffThreadBarrier->Add();

@@ -2,11 +2,14 @@
 
 #include <PhxCore/VFS.h>
 #include <PhxCore/Log.h>
+#include <PhxCore/SystemTime.h>
+
+#include <PhxEngine/JobSystem.h>
 
 #include "MeshResourceCompiler.h"
 #include <cgltf.h>
 
-using namespace phxed;
+using namespace phx;
 
 namespace
 {
@@ -202,22 +205,26 @@ namespace
 		}
 	}
 #endif
-}
-phxed::GltfSceneImporter::GltfSceneImporter(const char*)
-{
-}
 
-phxed::GltfSceneImporter::~GltfSceneImporter()
-{
-}
+	phxed::GltfSceneImporter::~GltfSceneImporter()
+	{
+		if (m_gltfData)
+			cgltf_free(m_gltfData);
 
-void phxed::GltfSceneImporter::ImportImpl()
-{
+	}
 
-	// Load GLF File into memory
+	bool phxed::GltfSceneImporter::ImportImpl()
+{
+	std::unique_ptr<phx::IBlob> gltfBlob = m_fs->ReadFile(m_filename);
+	if (!gltfBlob)
+	{
+		PHX_ERROR("Couldn't Read file {0}", m_filename);
+		return false;
+	}
+
 	CgltfContext context =
 	{
-		.FileSystem = nullptr,
+		.FileSystem = m_fs,
 		.Blobs = {}
 	};
 
@@ -226,5 +233,39 @@ void phxed::GltfSceneImporter::ImportImpl()
 	options.file.release = &CgltfReleaseFile;
 	options.file.user_data = &context;
 
+	cgltf_result res = cgltf_parse(&options, gltfBlob->Data(), gltfBlob->Size(), &m_gltfData);
+	if (res != cgltf_result_success)
+	{
+		PHX_ERROR("Couldn't load glTF file {0}", m_filename);
+		return false;
+	}
 
+	res = cgltf_load_buffers(&options, m_gltfData, m_filename);
+	if (res != cgltf_result_success)
+	{
+		PHX_ERROR("Couldn't load glTF Binary data {0}", m_filename);
+		return false;
+	}
+
+	// Create Resource Scratchheap
+	phx::CpuTimer timer;
+
+	JobContext resourceJobContext = {};
+
+	JobSystem::SubmitJob([this](JobContext const&) {
+		LoadMaterialData_Threaded();
+	});
+
+	JobSystem::SubmitJob([this](JobContext const&) {
+		LoadMeshData_Thread();
+	});
+
+	JobSystem::Wait();
+
+	// Load Scene
 }
+
+	void phxed::GltfSceneImporter::LoadMaterialData_Threaded()
+	{
+
+	}

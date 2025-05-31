@@ -5,14 +5,24 @@
 
 namespace phx
 {
+	class IAllocator;
+
 	struct JobDispatchArgs
 	{
 		uint32_t JobIndex = 0;
 		uint32_t GroupIndex = 0;
 	};
+	struct JobContext
+	{
+		IAllocator* FrameHeap = nullptr;
+		IAllocator* ScratchHeaps = nullptr;
+	};
+
+	static_assert(sizeof(JobContext) <= 16, "Try to keep this small as we do a copy of this data");
 
 	namespace JobSystem
 	{
+		using JobCallbackFunc = std::function<void(JobContext const&)>;
 		struct Barrier
 		{
 			std::atomic_int Counter;
@@ -34,7 +44,7 @@ namespace phx
 		void Initialize();
 		void Shutdown();
 
-		void SubmitJob(std::function<void()> const& task, Type type = Type::High);
+		void SubmitJob(JobCallbackFunc const& task, Type type = Type::High, JobContext* specifiedCtx = nullptr);
 
 		bool IsBusy(Type type = Type::High);
 

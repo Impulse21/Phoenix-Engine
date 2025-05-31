@@ -82,10 +82,10 @@ namespace phx
 				.MaxNumPipelineStates = 1000
 				});
 
-#if false
 			app->SetWindowHandle(windowHandle);
 
 			phx::IRootFileSystem::Ptr = phx_new_system(RootFileSystem);
+#if false
 
 			phx::ResourceManger::Initialize();
 			phx::ResourceManger::RegisterHandler<renderer::MeshResourceHandler>();
@@ -108,12 +108,12 @@ namespace phx
 			JobSystem::Wait();
 
 			// -- Update ---
-			JobSystem::SubmitJob([]() {
+			JobSystem::SubmitJob([](JobContext const&) {
 				OnUpdate_Threaded(phx::IApplication::Ptr, 0);
 			});
 
 			// -- Render ---
-			JobSystem::SubmitJob([]() {
+			JobSystem::SubmitJob([](JobContext const&) {
 				OnRender_Threaded(phx::IApplication::Ptr);
 			});
 
@@ -127,14 +127,15 @@ namespace phx
 			phx_delete_system(phx::IApplication::Ptr);
 			phx::IApplication::Ptr = nullptr;
 
+			phx_delete_system(phx::IRootFileSystem::Ptr);
+			phx::IRootFileSystem::Ptr;
+
 			phx::rhi::GfxDevice& gfxDevice = phx::rhi::GetDevice();
 			gfxDevice.Shutdown();
 
 #if false
 			gfx::IRenderSystem::Ptr->Finalize();
 			phx_delete_system(gfx::IRenderSystem::Ptr);
-
-			phx_delete_system(phx::IRootFileSystem::Ptr);
 
 			phx::rhi::Finalize();
 #endif
