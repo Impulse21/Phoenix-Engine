@@ -52,11 +52,14 @@ namespace phx
 		size_t m_size;
 	};
 
+	struct File;
+	using FileHandle = Handle<File>;
 	class IFileSystem
 	{
 	public:
 		virtual ~IFileSystem() = default;
 
+		virtual FileHandle OpenFile(const char* path)
 		virtual bool FileExists(std::filesystem::path const& name) = 0;
 		virtual bool FolderExists(std::filesystem::path const& name) = 0;
 		virtual bool FolderCreate(std::filesystem::path const& name) = 0;

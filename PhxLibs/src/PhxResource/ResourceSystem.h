@@ -20,7 +20,7 @@ namespace phx
 	public:
 		inline static ResourceSystem* Ptr = nullptr;
 
-		void Initialize();
+		void Initialize(IFileSystem* fs);
 		void Shutdown();
 
 		RefCountPtr<Resource> Get(const char* path);
@@ -44,6 +44,8 @@ namespace phx
 		}
 
 	private:
+		IFileSystem* m_fs;
+		std::mutex m_cacheMutex;
 		std::unordered_map<Hash32, RefCountPtr<Resource>> m_cache;
 		std::unordered_map<Hash32, std::unique_ptr<IResourceFileHandler>> m_resourceHandlers;
 	};
