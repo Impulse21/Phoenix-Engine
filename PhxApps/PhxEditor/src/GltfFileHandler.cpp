@@ -1,5 +1,7 @@
 #include "GltfFileHandler.h"
 
+#include <PhxEngine/JobSystem.h>
+
 #include <PhxWorld/SceneBlueprint.h>
 #include <PhxCore/VFS.h>
 
@@ -58,40 +60,48 @@ phx::RefCountPtr<phx::Resource> phxed::GltfFileHandler::LoadFromPak(IFileSystem*
 
 phx::RefCountPtr<phx::Resource> phxed::GltfFileHandler::LoadLoose(IFileSystem* fs, FileHandle handle) const
 {
-	const char* gltfFilename = fs->GetFilename(handle);
-	// Load GLF File into memory
-	CgltfContext context =
-	{
-		.FileSystem = fs,
-		.Blobs = {}
-	};
+	IAllocator& allocator = Memory::GetMainHeap();
+	auto sceneBlueprint = phx::RefCountPtr<SceneBlueprint>::Create(phx_new<SceneBlueprint>(allocator));
+	sceneBlueprint->Allocator = &allocator;
 
-	cgltf_options options = { };
-	options.file.read = &CgltfReadFile;
-	options.file.release = &CgltfReleaseFile;
-	options.file.user_data = &context;
+	JobSystem::SubmitJob([=](JobContext const&) {
+			const char* gltfFilename = fs->GetFilename(handle);
+			// Load GLF File into memory
+			CgltfContext context =
+			{
+				.FileSystem = fs,
+				.Blobs = {}
+			};
 
-	std::unique_ptr<phx::IBlob> blob = fs->ReadFile(handle);
-	if (!blob)
-	{
-		PHX_CORE_ERROR("Couldn't Read file gltf file '{0}'", gltfFilename);
-		return false;
-	}
+			cgltf_options options = { };
+			options.file.read = &CgltfReadFile;
+			options.file.release = &CgltfReleaseFile;
+			options.file.user_data = &context;
 
-	cgltf_data* gltfData = nullptr;
-	cgltf_result res = cgltf_parse(&options, blob->Data(), blob->Size(), &gltfData);
-	if (res != cgltf_result_success)
-	{
-		PHX_ERROR("Couldn't load glTF file '{0}'", gltfFilename);
-		return false;
-	}
+			std::unique_ptr<phx::IBlob> blob = fs->ReadFile(handle);
+			if (!blob)
+			{
+				PHX_CORE_ERROR("Couldn't Read file gltf file '{0}'", gltfFilename);
+				return false;
+			}
 
-	res = cgltf_load_buffers(&options, gltfData, gltfFilename);
-	if (res != cgltf_result_success)
-	{
-		PHX_ERROR("Couldn't load glTF Binary data '{0}'", gltfFilename);
-		return false;
-	}
+			cgltf_data* gltfData = nullptr;
+			cgltf_result res = cgltf_parse(&options, blob->Data(), blob->Size(), &gltfData);
+			if (res != cgltf_result_success)
+			{
+				PHX_ERROR("Couldn't load glTF file '{0}'", gltfFilename);
+				return false;
+			}
 
-    return phx::RefCountPtr<SceneBlueprint>();
+			res = cgltf_load_buffers(&options, gltfData, gltfFilename);
+			if (res != cgltf_result_success)
+			{
+				PHX_ERROR("Couldn't load glTF Binary data '{0}'", gltfFilename);
+				return false;
+			}
+		},
+		JobSystem::Type::Streaming);
+	
+
+    return sceneBlueprint;
 }

@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <atomic>
+#include <PhxCore/Memory.h>
 
 namespace phx
 {
@@ -281,6 +282,7 @@ namespace phx
     struct RefCounted
     {
         std::atomic<unsigned long> RefCount = 1;
+        IAllocator* Allocator = nullptr;
 
         unsigned long AddRef()
         {
@@ -290,8 +292,10 @@ namespace phx
         unsigned long Release()
         {
             unsigned long result = --RefCount;
-            if (result == 0) {
-                delete this;
+            if (result == 0) 
+            {
+                PHX_CORE_ASSERT(Allocator);
+                Allocator->Deallocate(this);
             }
             return result;
         }

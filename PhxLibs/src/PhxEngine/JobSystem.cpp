@@ -23,6 +23,7 @@ namespace
 	{
 		JobSystem::JobCallbackFunc Task;
 		JobSystem::Barrier* KickoffThreadBarrier = nullptr;
+		JobSystem::Type Type = JobSystem::Type::High;
 		size_t FrameId = ~0u;
 		JobContext Context;
 
@@ -52,9 +53,12 @@ namespace
 				JobQueue& jobQueue = JobQueuePerThread[threadId % NumThreads];
 				while (jobQueue.Pop(job))
 				{
-					const size_t currFrameId = phx::EngineSync::g_FrameCount;
-					if (job.FrameId > currFrameId)
-						BeginFrame();
+					if (job.Type != JobSystem::Type::Streaming)
+					{
+						const size_t currFrameId = phx::EngineSync::g_FrameCount;
+						if (job.FrameId > currFrameId)
+							BeginFrame();
+					}
 
 					job.Execute();
 				}
