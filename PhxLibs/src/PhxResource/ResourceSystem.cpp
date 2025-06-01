@@ -70,12 +70,11 @@ RefCountPtr<Resource> phx::ResourceSystem::Get(const char* path)
 	{
 		PHX_CORE_INFO(
 			"Loading Resource '{0}' from disk",
-			path));
+			path);
 
 		auto resolvedPath = IRootFileSystem::Ptr->ResolvePath(path);
-		// StreamFileHandle fileHandle = m_fs->Opwn(resolvedPath);
-
-		// resource = handlerItr->second->LoadLoose(fileHandle);
+		FileHandle fileHandle = m_fs->OpenFile(resolvedPath, FileAccessMode::Read);
+		resource = handlerItr->second->LoadLoose(m_fs, fileHandle);
 	}
 
 	if (resource)

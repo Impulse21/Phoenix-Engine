@@ -11,6 +11,7 @@
 
 #include "PhxCore/Handle.h"
 #include "PhxCore/Memory.h"
+#include "PhxCore/Platform/PlatformWrapper.h"
 
 namespace phx
 {
@@ -62,7 +63,7 @@ namespace phx
 					m_dataHot[i].~TDataHot();
 				}
 
-				phx::VirtualMemFree(m_dataHot);
+				Platform::Get().VirtualMemFree(m_dataHot);
 				m_dataHot = nullptr;
 			}
 
@@ -73,19 +74,19 @@ namespace phx
 					m_dataCold[i].~TDataCold();
 				}
 
-				phx::VirtualMemFree(m_dataCold);
+				Platform::Get().VirtualMemFree(m_dataCold);
 				m_dataCold = nullptr;
 			}
 
 			if (m_freeList)
 			{
-				phx::VirtualMemFree(m_freeList);
+				Platform::Get().VirtualMemFree(m_freeList);
 				m_freeList = nullptr;
 			}
 
 			if (m_generations)
 			{
-				phx::VirtualMemFree(m_generations);
+				Platform::Get().VirtualMemFree(m_generations);
 				m_generations = nullptr;
 			}
 		}
@@ -223,9 +224,9 @@ namespace phx
 		{
 			size_t commitSize = pagesToCommit * kPageSize;
 
-			phx::VirtualMemCommit(reinterpret_cast<char*>(m_dataHot) + m_commitedIndices * sizeof(TDataHot), commitSize);
-			phx::VirtualMemCommit(reinterpret_cast<char*>(m_freeList) + m_commitedIndices * sizeof(uint16_t), commitSize);
-			phx::VirtualMemCommit(reinterpret_cast<char*>(m_generations) + m_commitedIndices * sizeof(uint16_t), commitSize);
+			Platform::Get().VirtualMemCommit(reinterpret_cast<char*>(m_dataHot) + m_commitedIndices * sizeof(TDataHot), commitSize);
+			Platform::Get().VirtualMemCommit(reinterpret_cast<char*>(m_freeList) + m_commitedIndices * sizeof(uint16_t), commitSize);
+			Platform::Get().VirtualMemCommit(reinterpret_cast<char*>(m_generations) + m_commitedIndices * sizeof(uint16_t), commitSize);
 
 			const size_t previousCommitedIndices = m_commitedIndices;
 			m_commitedIndices += pagesToCommit * m_indicesPerCommit;

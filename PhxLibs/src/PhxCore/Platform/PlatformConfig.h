@@ -7,6 +7,7 @@
     {
         // This is the type your engine code will refer to as phx::rhi::CommandBuffer
         using PlatformWrapper = windows::WindowsPlatformWrapperImpl;
+        using window_type = HWND;
     }
     
 #else

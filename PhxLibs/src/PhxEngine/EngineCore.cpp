@@ -86,7 +86,7 @@ namespace phx
 
 			phx::IRootFileSystem::Ptr = phx_new_persistent(RootFileSystem);
 			phx::ResourceSystem::Ptr = phx_new_persistent(ResourceSystem);
-			phx::ResourceSystem::Ptr->Initialize();
+			phx::ResourceSystem::Ptr->Initialize(phx::IRootFileSystem::Ptr);
 #if false
 
 			phx::ResourceManger::Initialize();

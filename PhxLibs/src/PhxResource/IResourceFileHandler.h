@@ -1,6 +1,8 @@
 #pragma once
 
 #include <PhxCore/RefCountPtr.h>
+#include <PhxCore/VFS.h>
+
 namespace phx
 {
 	template<typename T>
@@ -16,8 +18,8 @@ namespace phx
 	public:
 		virtual ~IResourceFileHandler() = default;
 
-		virtual RefCountPtr<Resource> LoadFromPak() const = 0;
-		virtual RefCountPtr<Resource> LoadLoose(const char* filename) const = 0;
+		virtual RefCountPtr<Resource> LoadFromPak(IFileSystem* fs, FileHandle handle) const = 0;
+		virtual RefCountPtr<Resource> LoadLoose(IFileSystem* fs, FileHandle handle) const = 0;
 
 	};
 }

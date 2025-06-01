@@ -1,5 +1,15 @@
 #pragma once
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif // NOMINMAX
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <SDKDDKVer.h>
+#include <windows.h>
+#include <tchar.h>
+
 
 #include <PhxCore/Platform/BasePlatformWrapper.h>
 

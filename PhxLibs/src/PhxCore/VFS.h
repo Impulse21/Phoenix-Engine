@@ -41,6 +41,7 @@ namespace phx
 		Blob(void* Data, size_t size, IAllocator* allocator = nullptr)
 			: m_data(Data)
 			, m_size(size)
+			, m_allocator(allocator)
 		{
 		}
 
@@ -84,6 +85,8 @@ namespace phx
 		virtual uint64_t GetFileSize(FileHandle handle) = 0;
 		virtual size_t ReadSection(FileHandle handle, uint64_t offset, void* buffer, size_t bytesToRead) = 0;
 		virtual std::unique_ptr<IBlob> ReadFileSection(FileHandle handle, uint64_t offset, size_t bytesToRead) = 0;
+		virtual std::unique_ptr<IBlob> ReadFile(FileHandle handle) = 0;
+		virtual const char* GetFilename(FileHandle handle) = 0;
 
 		virtual std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) = 0;
 		virtual bool FileExists(std::filesystem::path const& name) = 0;
@@ -138,6 +141,8 @@ namespace phx
 		uint64_t GetFileSize(FileHandle handle) override;
 		size_t ReadSection(FileHandle handle, uint64_t offset, void* buffer, size_t bytesToRead) override;
 		std::unique_ptr<IBlob> ReadFileSection(FileHandle handle, uint64_t offset, size_t bytesToRead) override;
+		std::unique_ptr<IBlob> ReadFile(FileHandle handle) override;
+		const char* GetFilename(FileHandle handle) override;
 
 		bool FileExists(std::filesystem::path const& name) override;
 		bool FolderExists(std::filesystem::path const& name) override;
@@ -153,6 +158,7 @@ namespace phx
 	private:
 		struct FileData
 		{
+			std::string filename;
 			std::fstream Stream;
 			FileAccessMode AccessMode;
 		};
@@ -173,6 +179,8 @@ namespace phx
 		uint64_t GetFileSize(FileHandle handle) override;
 		size_t ReadSection(FileHandle handle, uint64_t offset, void* buffer, size_t bytesToRead) override;
 		std::unique_ptr<IBlob> ReadFileSection(FileHandle handle, uint64_t offset, size_t bytesToRead) override;
+		std::unique_ptr<IBlob> ReadFile(FileHandle handle) override;
+		const char* GetFilename(FileHandle handle) override;
 
 		bool FileExists(std::filesystem::path const& name) override;
 		bool FolderExists(std::filesystem::path const& name) override;
@@ -203,6 +211,8 @@ namespace phx
 		uint64_t GetFileSize(FileHandle handle) override;
 		size_t ReadSection(FileHandle handle, uint64_t offset, void* buffer, size_t bytesToRead) override;
 		std::unique_ptr<IBlob> ReadFileSection(FileHandle handle, uint64_t offset, size_t bytesToRead) override;
+		std::unique_ptr<IBlob> ReadFile(FileHandle handle) override;
+		const char* GetFilename(FileHandle handle) override;
 
 		bool FileExists(std::filesystem::path const& name) override;
 		bool FolderExists(std::filesystem::path const& name) override; 

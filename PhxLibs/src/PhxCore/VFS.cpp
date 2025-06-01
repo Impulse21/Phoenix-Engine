@@ -18,6 +18,7 @@ namespace phx
         FileHandle handle = m_filePool.Allocate();
         FileData& data = *m_filePool.GetHot(handle);
         data.AccessMode = accessMode;
+        data.filename = path.generic_string();
 
         std::ios_base::openmode flags = std::ios::binary;
         switch (accessMode) 
@@ -45,7 +46,7 @@ namespace phx
 
         if (!data.Stream.is_open())
         {
-            PHX_CORE_ERROR("Failed to open file {0}", path.generic_string().c_str());
+            PHX_CORE_ERROR("Failed to open file {0}", data.filename.c_str());
         }
 
         return handle;
@@ -82,6 +83,9 @@ namespace phx
         PHX_CORE_ASSERT(data && data->Stream.is_open());
         data->Stream.clear();
         data->Stream.seekg(static_cast<std::streamoff>(offset), std::ios::beg);
+
+        data->Stream.read(static_cast<char*>(buffer), bytesToRead);
+
         const size_t bytesActuallyRead = static_cast<size_t>(data->Stream.gcount());
         if (data->Stream.fail() && !data->Stream.eof()) 
         {
@@ -100,9 +104,10 @@ namespace phx
 
         FileData* fileData = m_filePool.GetHot(handle);
         PHX_CORE_ASSERT(fileData && fileData->Stream.is_open());
+        fileData->Stream.clear();
+        fileData->Stream.seekg(static_cast<std::streamoff>(offset), std::ios::beg);
 
         IAllocator* mainHeap = &Memory::GetMainHeap();
-
         char* dataPtr = static_cast<char*>(mainHeap->Allocate(bytesToRead, std::max_align_t()));
 
         fileData->Stream.read(dataPtr, bytesToRead);
@@ -112,9 +117,57 @@ namespace phx
         {
             PHX_CORE_ERROR("File I/O error");
             fileData->Stream.clear();
+            mainHeap->Deallocate(dataPtr);
+            return nullptr;
         }
 
-        return std::make_unique<Blob>(dataPtr, bytesActuallyRead, Memory::GetMainHeap());
+        return std::make_unique<Blob>(dataPtr, bytesActuallyRead, mainHeap);
+    }
+
+    std::unique_ptr<IBlob> NativeFileSystem::ReadFile(FileHandle handle)
+    {
+        FileData* fileData = m_filePool.GetHot(handle);
+        PHX_CORE_ASSERT(fileData && fileData->Stream.is_open());
+        fileData->Stream.clear();
+
+        auto& file = fileData->Stream;
+
+        file.seekg(0, std::ios::end);
+        uint64_t size = static_cast<uint64_t>(file.tellg());
+        file.seekg(0, std::ios::beg);
+
+        if (size > static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))
+        {
+            PHX_CORE_ERROR("File larger then size_t");
+            return nullptr;
+        }
+
+        IAllocator* allocator = &Memory::GetMainHeap();
+        char* Data = static_cast<char*>(allocator->Allocate(size, std::max_align_t()));
+
+        if (Data == nullptr)
+        {
+            PHX_CORE_ERROR("Out of memory");
+            return nullptr;
+        }
+
+        file.read(Data, size);
+
+        if (!file.good())
+        {
+            PHX_CORE_ERROR("Reading error");
+            free(Data);
+            return nullptr;
+        }
+
+        return std::make_unique<Blob>(Data, size, allocator);
+    }
+
+    const char* NativeFileSystem::GetFilename(FileHandle handle)
+    {
+        FileData* fileData = m_filePool.GetHot(handle);
+        PHX_CORE_ASSERT(fileData && fileData->Stream.is_open());
+        return fileData->filename.c_str();
     }
 
     bool NativeFileSystem::FileExists(std::filesystem::path const& name)
@@ -157,7 +210,8 @@ namespace phx
             return nullptr;
         }
 
-        char* Data = static_cast<char*>(malloc(size));
+        IAllocator* allocator = &Memory::GetMainHeap();
+        char* Data = static_cast<char*>(allocator->Allocate(size, std::max_align_t()));
 
         if (Data == nullptr)
         {
@@ -174,7 +228,7 @@ namespace phx
             return nullptr;
         }
 
-        return std::make_unique<Blob>(Data, size);
+        return std::make_unique<Blob>(Data, size, allocator);
     }
 
     bool NativeFileSystem::WriteFile(std::filesystem::path const& name, Span<char> Data)
@@ -230,6 +284,16 @@ namespace phx
     std::unique_ptr<IBlob> RelativeFileSystem::ReadFileSection(FileHandle handle, uint64_t offset, size_t bytesToRead)
     {
         return this->m_underlyingFS->ReadFileSection(handle, offset, bytesToRead);
+    }
+
+    std::unique_ptr<IBlob> RelativeFileSystem::ReadFile(FileHandle handle)
+    {
+        return this->m_underlyingFS->ReadFile(handle);
+    }
+
+    const char* RelativeFileSystem::GetFilename(FileHandle handle)
+    {
+        return this->m_underlyingFS->GetFilename(handle)
     }
 
     bool RelativeFileSystem::FileExists(std::filesystem::path const& name)
@@ -307,15 +371,16 @@ namespace phx
 
     void RootFileSystem::CloseFile(FileHandle handle)
     {
-        auto& itr = m_handleMapping.find(handle);
+        auto itr = m_handleMapping.find(handle);
         PHX_CORE_ASSERT(itr != m_handleMapping.end());
 
         itr->second->CloseFile(handle);
+        m_handleMapping.erase(itr);
     }
 
     uint64_t RootFileSystem::GetFileSize(FileHandle handle)
     {
-        auto& itr = m_handleMapping.find(handle);
+        auto itr = m_handleMapping.find(handle);
 
         PHX_CORE_ASSERT(itr != m_handleMapping.end());
         return itr != m_handleMapping.end()
@@ -325,7 +390,7 @@ namespace phx
 
     size_t RootFileSystem::ReadSection(FileHandle handle, uint64_t offset, void* buffer, size_t bytesToRead)
     {
-        auto& itr = m_handleMapping.find(handle);
+        auto itr = m_handleMapping.find(handle);
 
         PHX_CORE_ASSERT(itr != m_handleMapping.end());
         return itr != m_handleMapping.end()
@@ -335,11 +400,31 @@ namespace phx
 
     std::unique_ptr<IBlob> RootFileSystem::ReadFileSection(FileHandle handle, uint64_t offset, size_t bytesToRead)
     {
-        auto& itr = m_handleMapping.find(handle);
+        auto itr = m_handleMapping.find(handle);
 
         PHX_CORE_ASSERT(itr != m_handleMapping.end());
         return itr != m_handleMapping.end()
             ? itr->second->ReadFileSection(handle, offset, bytesToRead)
+            : nullptr;
+    }
+
+    std::unique_ptr<IBlob> RootFileSystem::ReadFile(FileHandle handle)
+    {
+        auto itr = m_handleMapping.find(handle);
+
+        PHX_CORE_ASSERT(itr != m_handleMapping.end());
+        return itr != m_handleMapping.end()
+            ? itr->second->ReadFile(handle)
+            : nullptr;
+    }
+
+    const char* RootFileSystem::GetFilename(FileHandle handle)
+    {
+        auto itr = m_handleMapping.find(handle);
+
+        PHX_CORE_ASSERT(itr != m_handleMapping.end());
+        return itr != m_handleMapping.end()
+            ? itr->second->GetFilename(handle)
             : nullptr;
     }
 
