@@ -54,26 +54,67 @@ namespace phx
     void NativeFileSystem::CloseFile(FileHandle handle)
     {
         FileData* data = m_filePool.GetHot(handle);
-        if (!data)
-            return;
+        PHX_CORE_ASSERT(data);
 
         data->Stream.close();
         m_filePool.Free(handle);
     }
 
     uint64_t NativeFileSystem::GetFileSize(FileHandle handle)
-    {
-        return 0;
-    }
+	{
+		FileData* data = m_filePool.GetHot(handle);
+		PHX_CORE_ASSERT(data && data->Stream.is_open());
+
+		data->Stream.seekg(0, std::ios::end);
+		const std::streampos pos = data->Stream.tellg();
+		data->Stream.seekg(0, std::ios::beg); // Optional: move back to beginning
+		return static_cast<uint64_t>(pos);
+	}
 
     size_t NativeFileSystem::ReadSection(FileHandle handle, uint64_t offset, void* buffer, size_t bytesToRead)
     {
-        return size_t();
+        if (bytesToRead == 0) 
+        {
+            return 0;
+        }
+
+        FileData* data = m_filePool.GetHot(handle);
+        PHX_CORE_ASSERT(data && data->Stream.is_open());
+        data->Stream.clear();
+        data->Stream.seekg(static_cast<std::streamoff>(offset), std::ios::beg);
+        const size_t bytesActuallyRead = static_cast<size_t>(data->Stream.gcount());
+        if (data->Stream.fail() && !data->Stream.eof()) 
+        {
+            PHX_CORE_ERROR("File I/O error");
+            data->Stream.clear();
+        }
+        return bytesActuallyRead;
     }
 
     std::unique_ptr<IBlob> NativeFileSystem::ReadFileSection(FileHandle handle, uint64_t offset, size_t bytesToRead)
     {
-        return std::unique_ptr<IBlob>();
+        if (bytesToRead == 0)
+        {
+            return 0;
+        }
+
+        FileData* fileData = m_filePool.GetHot(handle);
+        PHX_CORE_ASSERT(fileData && fileData->Stream.is_open());
+
+        IAllocator* mainHeap = &Memory::GetMainHeap();
+
+        char* dataPtr = static_cast<char*>(mainHeap->Allocate(bytesToRead, std::max_align_t()));
+
+        fileData->Stream.read(dataPtr, bytesToRead);
+
+        const size_t bytesActuallyRead = static_cast<size_t>(fileData->Stream.gcount());
+        if (fileData->Stream.fail() && !fileData->Stream.eof())
+        {
+            PHX_CORE_ERROR("File I/O error");
+            fileData->Stream.clear();
+        }
+
+        return std::make_unique<Blob>(dataPtr, bytesActuallyRead, Memory::GetMainHeap());
     }
 
     bool NativeFileSystem::FileExists(std::filesystem::path const& name)
@@ -168,7 +209,7 @@ namespace phx
 
     FileHandle RelativeFileSystem::OpenFile(std::filesystem::path const& path, FileAccessMode accessMode)
     {
-        return this->m_underlyingFS->OpenFile(this->m_basePath / path.relative_path());
+        return this->m_underlyingFS->OpenFile(this->m_basePath / path.relative_path(), accessMode);
     }
 
     void RelativeFileSystem::CloseFile(FileHandle handle)
@@ -257,7 +298,7 @@ namespace phx
         FileHandle handle = {};
         if (this->FindMountPoint(path, &relativePath, &fs))
         {
-            handle = fs->OpenFile(relativePath);
+            handle = fs->OpenFile(relativePath, accessMode);
             m_handleMapping[handle] = fs;
         }
 

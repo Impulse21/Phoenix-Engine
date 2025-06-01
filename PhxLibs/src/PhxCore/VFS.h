@@ -38,7 +38,7 @@ namespace phx
 	class Blob : public IBlob
 	{
 	public:
-		Blob(void* Data, size_t size)
+		Blob(void* Data, size_t size, IAllocator* allocator = nullptr)
 			: m_data(Data)
 			, m_size(size)
 		{
@@ -46,21 +46,29 @@ namespace phx
 
 		~Blob() override
 		{
-			if (this->m_data)
+			if (m_data)
 			{
-				free(this->m_data);
-				this->m_data = nullptr;
+				if (m_allocator)
+				{
+					m_allocator->Deallocate(m_data);
+				}
+				else
+				{
+					Memory::GetSystemHeap().Deallocate(m_data);
+				}
+				m_data = nullptr;
 			}
 
-			this->m_size = 0;
+			m_size = 0;
 		}
 
-		[[nodiscard]] const void* Data() const override { return this->m_data; }
-		[[nodiscard]] size_t Size() const override { return this->m_size; }
+		[[nodiscard]] const void* Data() const override { return m_data; }
+		[[nodiscard]] size_t Size() const override { return m_size; }
 
 	private:
 		void* m_data;
 		size_t m_size;
+		IAllocator* m_allocator = nullptr;
 	};
 
 	struct File;
@@ -157,7 +165,7 @@ namespace phx
 	public:
 		RelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::filesystem::path& baseBath);
 
-		[[nodiscard]] std::filesystem::path const& GetBasePath() const { return this->m_basePath; }
+		[[nodiscard]] std::filesystem::path const& GetBasePath() const { return m_basePath; }
 
 		FileHandle OpenFile(std::filesystem::path const& path, FileAccessMode accessMode) override;
 		void CloseFile(FileHandle handle) override;
@@ -174,7 +182,7 @@ namespace phx
 
 		std::filesystem::path ResolvePath(std::filesystem::path const& name) override
 		{
-			return this->m_basePath / name.relative_path();
+			return m_basePath / name.relative_path();
 		}
 
 	private:
