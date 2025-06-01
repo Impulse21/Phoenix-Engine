@@ -5,11 +5,22 @@
 #include <filesystem>
 #include <functional>
 #include <vector>
+#include <fstream>
+
 #include <PhxCore/Handle.h>
-#include "PhxCore/Span.h"
+#include <PhxCore/Span.h>
+#include <PhxCore/Pool.h>
 
 namespace phx
 {
+	enum class FileAccessMode
+	{
+		Read,
+		Write,
+		WriteAppend,
+		ReadWrite,
+		ReadWriteCreate
+	};
 	class IBlob
 	{
 	public:
@@ -59,11 +70,17 @@ namespace phx
 	public:
 		virtual ~IFileSystem() = default;
 
-		virtual FileHandle OpenFile(const char* path)
+		virtual FileHandle OpenFile(std::filesystem::path const& path, FileAccessMode accessMode) = 0;
+		virtual void CloseFile(FileHandle handle) = 0;
+
+		virtual uint64_t GetFileSize(FileHandle handle) = 0;
+		virtual size_t ReadSection(FileHandle handle, uint64_t offset, void* buffer, size_t bytesToRead) = 0;
+		virtual std::unique_ptr<IBlob> ReadFileSection(FileHandle handle, uint64_t offset, size_t bytesToRead) = 0;
+
+		virtual std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) = 0;
 		virtual bool FileExists(std::filesystem::path const& name) = 0;
 		virtual bool FolderExists(std::filesystem::path const& name) = 0;
 		virtual bool FolderCreate(std::filesystem::path const& name) = 0;
-		virtual std::unique_ptr<IBlob> ReadFile(std::filesystem::path const& name) = 0;
 
 		virtual bool WriteFile(std::filesystem::path const& name, Span<char> Data) = 0;
 		bool WriteFile(std::filesystem::path const& name, IBlob* blob)
@@ -104,10 +121,16 @@ namespace phx
 
 	}
 
-
 	class NativeFileSystem final : public IFileSystem
 	{
 	public:
+		FileHandle OpenFile(std::filesystem::path const& path, FileAccessMode accessMode) override;
+		void CloseFile(FileHandle handle) override;
+
+		uint64_t GetFileSize(FileHandle handle) override;
+		size_t ReadSection(FileHandle handle, uint64_t offset, void* buffer, size_t bytesToRead) override;
+		std::unique_ptr<IBlob> ReadFileSection(FileHandle handle, uint64_t offset, size_t bytesToRead) override;
+
 		bool FileExists(std::filesystem::path const& name) override;
 		bool FolderExists(std::filesystem::path const& name) override;
 		bool FolderCreate(std::filesystem::path const& name) override;
@@ -118,6 +141,15 @@ namespace phx
 		{
 			return name;
 		}
+
+	private:
+		struct FileData
+		{
+			std::fstream Stream;
+			FileAccessMode AccessMode;
+		};
+
+		phx::PagedPool<File, FileData> m_filePool;
 	};
 
 	class RelativeFileSystem final : public IFileSystem
@@ -126,6 +158,13 @@ namespace phx
 		RelativeFileSystem(std::shared_ptr<IFileSystem> fs, const std::filesystem::path& baseBath);
 
 		[[nodiscard]] std::filesystem::path const& GetBasePath() const { return this->m_basePath; }
+
+		FileHandle OpenFile(std::filesystem::path const& path, FileAccessMode accessMode) override;
+		void CloseFile(FileHandle handle) override;
+
+		uint64_t GetFileSize(FileHandle handle) override;
+		size_t ReadSection(FileHandle handle, uint64_t offset, void* buffer, size_t bytesToRead) override;
+		std::unique_ptr<IBlob> ReadFileSection(FileHandle handle, uint64_t offset, size_t bytesToRead) override;
 
 		bool FileExists(std::filesystem::path const& name) override;
 		bool FolderExists(std::filesystem::path const& name) override;
@@ -150,6 +189,13 @@ namespace phx
 		void Mount(const std::filesystem::path& path, const std::filesystem::path& nativePath) override;
 		bool Unmount(const std::filesystem::path& path) override;
 
+		FileHandle OpenFile(std::filesystem::path const& path, FileAccessMode accessMode) override;
+		void CloseFile(FileHandle handle) override;
+
+		uint64_t GetFileSize(FileHandle handle) override;
+		size_t ReadSection(FileHandle handle, uint64_t offset, void* buffer, size_t bytesToRead) override;
+		std::unique_ptr<IBlob> ReadFileSection(FileHandle handle, uint64_t offset, size_t bytesToRead) override;
+
 		bool FileExists(std::filesystem::path const& name) override;
 		bool FolderExists(std::filesystem::path const& name) override; 
 		bool FolderCreate(std::filesystem::path const& name) override;
@@ -162,6 +208,8 @@ namespace phx
 		bool FindMountPoint(const std::filesystem::path& path, std::filesystem::path* pRelativePath, IFileSystem** ppFS);
 
 	private:
+		// World be good to get this to be pooled as well and have it reuse the handle
+		std::unordered_map<FileHandle, IFileSystem*> m_handleMapping;
 		std::vector<std::pair<std::string, std::shared_ptr<IFileSystem>>> m_mountPoints;
 	};
 }

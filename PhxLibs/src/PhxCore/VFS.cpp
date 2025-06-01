@@ -13,6 +13,69 @@
 
 namespace phx
 {
+    FileHandle NativeFileSystem::OpenFile(std::filesystem::path const& path, FileAccessMode accessMode)
+    {
+        FileHandle handle = m_filePool.Allocate();
+        FileData& data = *m_filePool.GetHot(handle);
+        data.AccessMode = accessMode;
+
+        std::ios_base::openmode flags = std::ios::binary;
+        switch (accessMode) 
+        {
+        case FileAccessMode::Read:
+            flags |= std::ios::in;
+            break;
+        case FileAccessMode::Write:
+            flags |= std::ios::out | std::ios::trunc;
+            break;
+        case FileAccessMode::WriteAppend:
+            flags |= std::ios::out | std::ios::app;
+            break;
+        case FileAccessMode::ReadWrite:
+            flags |= std::ios::in | std::ios::out;
+            break;
+        case FileAccessMode::ReadWriteCreate:
+            flags |= std::ios::in | std::ios::out | std::ios::trunc;
+            break;
+        default:
+            throw std::runtime_error("Unsupported FileAccessMode");
+        }
+
+        data.Stream.open(path, flags);
+
+        if (!data.Stream.is_open())
+        {
+            PHX_CORE_ERROR("Failed to open file {0}", path.generic_string().c_str());
+        }
+
+        return handle;
+    }
+
+    void NativeFileSystem::CloseFile(FileHandle handle)
+    {
+        FileData* data = m_filePool.GetHot(handle);
+        if (!data)
+            return;
+
+        data->Stream.close();
+        m_filePool.Free(handle);
+    }
+
+    uint64_t NativeFileSystem::GetFileSize(FileHandle handle)
+    {
+        return 0;
+    }
+
+    size_t NativeFileSystem::ReadSection(FileHandle handle, uint64_t offset, void* buffer, size_t bytesToRead)
+    {
+        return size_t();
+    }
+
+    std::unique_ptr<IBlob> NativeFileSystem::ReadFileSection(FileHandle handle, uint64_t offset, size_t bytesToRead)
+    {
+        return std::unique_ptr<IBlob>();
+    }
+
     bool NativeFileSystem::FileExists(std::filesystem::path const& name)
     {
         return std::filesystem::exists(name) && std::filesystem::is_regular_file(name);
@@ -103,6 +166,31 @@ namespace phx
     {
     }
 
+    FileHandle RelativeFileSystem::OpenFile(std::filesystem::path const& path, FileAccessMode accessMode)
+    {
+        return this->m_underlyingFS->OpenFile(this->m_basePath / path.relative_path());
+    }
+
+    void RelativeFileSystem::CloseFile(FileHandle handle)
+    {
+        this->m_underlyingFS->CloseFile(handle);
+    }
+
+    uint64_t RelativeFileSystem::GetFileSize(FileHandle handle)
+    {
+        return this->m_underlyingFS->GetFileSize(handle);
+    }
+
+    size_t RelativeFileSystem::ReadSection(FileHandle handle, uint64_t offset, void* buffer, size_t bytesToRead)
+    {
+        return this->m_underlyingFS->ReadSection(handle, offset, buffer, bytesToRead);
+    }
+
+    std::unique_ptr<IBlob> RelativeFileSystem::ReadFileSection(FileHandle handle, uint64_t offset, size_t bytesToRead)
+    {
+        return this->m_underlyingFS->ReadFileSection(handle, offset, bytesToRead);
+    }
+
     bool RelativeFileSystem::FileExists(std::filesystem::path const& name)
     {
         return this->m_underlyingFS->FileExists(this->m_basePath / name.relative_path());
@@ -159,6 +247,59 @@ namespace phx
         }
 
         return false;
+    }
+
+    FileHandle RootFileSystem::OpenFile(std::filesystem::path const& path, FileAccessMode accessMode)
+    {
+        std::filesystem::path relativePath;
+        IFileSystem* fs = nullptr;
+
+        FileHandle handle = {};
+        if (this->FindMountPoint(path, &relativePath, &fs))
+        {
+            handle = fs->OpenFile(relativePath);
+            m_handleMapping[handle] = fs;
+        }
+
+        return handle;
+    }
+
+    void RootFileSystem::CloseFile(FileHandle handle)
+    {
+        auto& itr = m_handleMapping.find(handle);
+        PHX_CORE_ASSERT(itr != m_handleMapping.end());
+
+        itr->second->CloseFile(handle);
+    }
+
+    uint64_t RootFileSystem::GetFileSize(FileHandle handle)
+    {
+        auto& itr = m_handleMapping.find(handle);
+
+        PHX_CORE_ASSERT(itr != m_handleMapping.end());
+        return itr != m_handleMapping.end()
+            ? itr->second->GetFileSize(handle) 
+            : 0ul;
+    }
+
+    size_t RootFileSystem::ReadSection(FileHandle handle, uint64_t offset, void* buffer, size_t bytesToRead)
+    {
+        auto& itr = m_handleMapping.find(handle);
+
+        PHX_CORE_ASSERT(itr != m_handleMapping.end());
+        return itr != m_handleMapping.end()
+            ? itr->second->ReadSection(handle, offset, buffer, bytesToRead)
+            : 0ul;
+    }
+
+    std::unique_ptr<IBlob> RootFileSystem::ReadFileSection(FileHandle handle, uint64_t offset, size_t bytesToRead)
+    {
+        auto& itr = m_handleMapping.find(handle);
+
+        PHX_CORE_ASSERT(itr != m_handleMapping.end());
+        return itr != m_handleMapping.end()
+            ? itr->second->ReadFileSection(handle, offset, bytesToRead)
+            : nullptr;
     }
 
     bool RootFileSystem::FileExists(std::filesystem::path const& name)
