@@ -8,7 +8,7 @@
 namespace phx
 {
 
-	class AsyncIOSystem final : public IAsyncIOSystem
+	class StandardAsyncIOSystem final : public IAsyncIOSystem
 	{
 	public:
 		bool Initialize() override;

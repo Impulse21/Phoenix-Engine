@@ -27,7 +27,7 @@ namespace phx
 	public:
 		inline static IAsyncIOSystem* Ptr = nullptr;
 	public:
-		~IAsyncIOSystem() = default;
+		virtual ~IAsyncIOSystem() = default;
 
 		virtual bool Initialize() = 0;
 

@@ -19,7 +19,7 @@
 #include <PhxEngine/JobSystem.h>
 #include <PhxEngine/EngineSync.h>
 #include <PhxEngine/IO/IAsyncIOSystem.h>
-#include <PhxEngine/IO/AsyncIOSystem.h>
+#include <PhxEngine/IO/StandardAsyncIOSystem.h>
 
 using namespace phx;
 
@@ -65,7 +65,7 @@ namespace phx
 
 			phx::JobSystem::Initialize();
 
-			phx::IAsyncIOSystem::Ptr = phx_new phx::AsyncIOSystem();
+			phx::IAsyncIOSystem::Ptr = phx_new phx::StandardAsyncIOSystem();
 			phx::IAsyncIOSystem::Ptr->Initialize();
 
 			phx::IApplication::Ptr = phx::CreateApplication();
