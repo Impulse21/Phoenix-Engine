@@ -1,3 +1,4 @@
+#include <PhxCore/PhxCore_pch.h>
 #include "MemorySystem.h"
 
 using namespace phx;

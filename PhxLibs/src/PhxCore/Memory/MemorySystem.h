@@ -3,6 +3,10 @@
 #include "PhxCore/Base.h"
 #include <PhxCore/Memory/MemoryArenaInterfaces.h>
 
+#define phx_new new
+#define phx_delete delete
+#define phx_new_frame new (MemorySystem::GetCurrentThreadArena())
+
 namespace phx
 {
 	template<typename T, typename U>
@@ -88,3 +92,4 @@ inline void operator delete(void* ptr, phx::ThreadFrameArena& allocator) noexcep
 {
 	allocator.Deallocate(ptr); // Size unknown
 }
+

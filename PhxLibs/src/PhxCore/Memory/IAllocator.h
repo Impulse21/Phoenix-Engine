@@ -18,7 +18,7 @@ namespace phx
 
 		[[nodiscard]] virtual void* Allocate(size_t size, size_t alignment) = 0;
 		[[nodiscard]] virtual void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) = 0;
-
+		virtual bool IsAddressInRange(const void* ptr) const = 0;
 		virtual void Deallocate(void* pointer) = 0;
 	};
 }

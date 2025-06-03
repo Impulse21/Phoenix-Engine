@@ -15,7 +15,6 @@ namespace phx
 	struct JobContext
 	{
 		IAllocator* FrameHeap = nullptr;
-		IAllocator* ScratchHeaps = nullptr;
 	};
 
 	static_assert(sizeof(JobContext) <= 16, "Try to keep this small as we do a copy of this data");

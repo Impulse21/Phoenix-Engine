@@ -55,8 +55,10 @@ namespace phx
 				}
 				else
 				{
-					Memory::GetSystemHeap().Deallocate(m_data);
+					PHX_CORE_ASSERT(MemorySystem::GetMainArena().IsAddressInRange(m_data));
+					MemorySystem::GetMainArena().Deallocate(m_data);
 				}
+
 				m_data = nullptr;
 			}
 

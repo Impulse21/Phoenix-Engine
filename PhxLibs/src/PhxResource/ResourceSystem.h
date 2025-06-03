@@ -1,6 +1,6 @@
 #pragma once
 
-#include <PhxCore/Memory.h>
+#include <PhxCore/Memory/MemorySystem.h>
 #include <PhxCore/StringHash.h>
 #include <PhxCore/RefCountPtr.h>
 

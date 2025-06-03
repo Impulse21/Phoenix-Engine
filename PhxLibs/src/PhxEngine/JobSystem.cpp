@@ -3,7 +3,7 @@
 #include "PhxCore/EnumUtils.h"
 #include "PhxCore/RingBuffer.h"
 #include "PhxCore/SystemTime.h"
-#include <PhxCore/Memory.h>
+#include <PhxCore/Memory/MemorySystem.h>
 
 #include <thread>
 #include <algorithm>
@@ -39,8 +39,8 @@ namespace
 	struct ThreadPoolContext
 	{
 		uint32_t NumThreads = 0;
-		phx::Array<std::thread> WorkerThreads;
-		JobQueue* JobQueuePerThread;
+		std::vector<std::thread> WorkerThreads;
+		std::unique_ptr<JobQueue[]> JobQueuePerThread;
 		std::condition_variable WakeCondition;
 		std::mutex WakeMutex;
 		std::atomic_uint32_t NextQueue = 0;
@@ -68,8 +68,7 @@ namespace
 
 		void BeginFrame()
 		{
-			Memory::GetFrameHeap().Clear();
-			Memory::GetScratchHeap().Clear();
+			MemorySystem::ResetCurrentThreadFrameAreana();
 		}
 	};
 
@@ -113,12 +112,12 @@ void JobSystem::Initialize()
 		}
 
 		resource.NumThreads = std::max(1u, std::min(resource.NumThreads, numCores));
-		resource.JobQueuePerThread = phx_new_arr_persistent(JobQueue, resource.NumThreads);
-		resource.WorkerThreads.Initialize(&Memory::GetMainHeap(), resource.NumThreads);
+		resource.JobQueuePerThread = std::make_unique<JobQueue[]>(resource.NumThreads);
+		resource.WorkerThreads.reserve(resource.NumThreads);
 
 		for (uint32_t threadID = 0; threadID < resource.NumThreads; threadID++)
 		{
-			std::thread& worker = resource.WorkerThreads.Emplace([threadID, &resource] {
+			std::thread& worker = resource.WorkerThreads.emplace_back([threadID, &resource] {
 				while (m_alive)
 				{
 					resource.DoWork(threadID);
@@ -126,7 +125,7 @@ void JobSystem::Initialize()
 					std::unique_lock<std::mutex> lock(resource.WakeMutex);
 					resource.WakeCondition.wait(lock);
 				}
-				});
+			});
 
 #ifdef _WIN32
 			HANDLE handle = (HANDLE)worker.native_handle();
@@ -201,9 +200,9 @@ void JobSystem::Shutdown()
 
 	for (auto& res : m_threadPools)
 	{
-		res.WorkerThreads.Shutdown();
+		res.WorkerThreads.clear();
 		res.NumThreads = 0;
-		phx_delete_arr_persistent(res.JobQueuePerThread);
+		res.JobQueuePerThread.reset();
 		res.NextQueue = 0;
 	}
 }
@@ -211,8 +210,7 @@ void JobSystem::Shutdown()
 void JobSystem::SubmitJob(JobCallbackFunc const& task, Type type, JobContext* specifiedCtx)
 {
 	JobContext context = {
-		.FrameHeap = specifiedCtx ? specifiedCtx->FrameHeap : &Memory::GetFrameHeap(),
-		.ScratchHeaps = specifiedCtx ? specifiedCtx->FrameHeap : &Memory::GetScratchHeap()
+		.FrameHeap = specifiedCtx ? specifiedCtx->FrameHeap : &MemorySystem::GetCurrentThreadArena(),
 	};
 	ThreadPoolContext& ctx = m_threadPools[type];
 	if (ctx.NumThreads < 1)

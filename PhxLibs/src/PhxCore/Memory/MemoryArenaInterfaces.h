@@ -23,7 +23,7 @@ namespace phx
 
         void Deallocate(void* pointer) override;
 
-        bool IsAddressInRange(const void* ptr) const;
+        bool IsAddressInRange(const void* ptr) const override;
         void* GetBaseAddress() const { return m_baseAddress; }
         size_t GetReservedSize() const { return m_reservedSize; }
 
@@ -56,7 +56,7 @@ namespace phx
         void Deallocate(void* pointer) override;
 
         void Reset();
-        bool IsAddressInRange(const void* ptr) const;
+        bool IsAddressInRange(const void* ptr) const override;
         void* GetBaseAddress() const { return m_baseAddress; }
         size_t GetReservedSize() const { return m_reservedSize; }
         size_t GetCommitedSize() const { return m_commitedSize; }
@@ -82,6 +82,7 @@ namespace phx
 		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
 
 		void Deallocate(void* pointer) override;
+		bool IsAddressInRange(const void*) const override{ return true; }
 	};
 }
 

@@ -10,7 +10,7 @@
 #include <variant>
 
 #include "PhxCore/Handle.h"
-#include "PhxCore/Memory.h"
+#include <PhxCore/Memory/MemorySystem.h>
 #include "PhxCore/Platform/PlatformWrapper.h"
 
 namespace phx

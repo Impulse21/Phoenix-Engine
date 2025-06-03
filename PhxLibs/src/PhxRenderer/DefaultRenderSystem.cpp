@@ -3,7 +3,7 @@
 
 #include "MeshResource.h"
 
-#include <PhxCore/Memory.h>
+#include <PhxCore/Memory/MemorySystem.h>
 
 #include <PhxWorld/Entity.h>
 #include <PhxWorld/World.h>

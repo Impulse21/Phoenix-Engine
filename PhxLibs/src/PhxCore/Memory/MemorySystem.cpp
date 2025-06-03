@@ -2,16 +2,15 @@
 
 #include "MemorySystem.h"
 
+using namespace phx;
+
 namespace
 {
     MemorySystemDescriptor g_desc;
     phx::MainArena g_mainArenaInstance;
     thread_local phx::ThreadFrameArena g_threadFrameArenaInstance;
     thread_local bool g_threadFrameArenaIsInitialized = false;
-    size_t g_deafultFrameArenaSizePerThread = 0;
 }
-
-using namespace phx;
 
 
 void MemorySystem::Initialize(MemorySystemDescriptor const& desc)

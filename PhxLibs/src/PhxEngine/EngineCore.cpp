@@ -4,7 +4,7 @@
 #include <PhxCore/Application.h>
 
 #include <PhxCore/Log.h>
-#include <PhxCore/Memory.h>
+#include <PhxCore/Memory/MemorySystem.h>
 #include <PhxCore/CommandLineArgs.h>
 #include <PhxCore/VFS.h>
 #include <PhxCore/Profiler.h>
@@ -59,8 +59,7 @@ namespace phx
 			phx::Log::Initialize();
 			phx::CommandLineArgs::Initialize(argc, argv);
 
-			Memory::Initialize({
-				.MaxMainHeapSize = 1_GiB });
+			MemorySystem::Initialize({});
 
 			phx::JobSystem::Initialize();
 
@@ -84,8 +83,8 @@ namespace phx
 
 			app->SetWindowHandle(windowHandle);
 
-			phx::IRootFileSystem::Ptr = phx_new_persistent(RootFileSystem);
-			phx::ResourceSystem::Ptr = phx_new_persistent(ResourceSystem);
+			phx::IRootFileSystem::Ptr = phx_new RootFileSystem;
+			phx::ResourceSystem::Ptr = phx_new ResourceSystem;
 			phx::ResourceSystem::Ptr->Initialize(phx::IRootFileSystem::Ptr);
 #if false
 
@@ -130,13 +129,13 @@ namespace phx
 			phx::IApplication::Ptr = nullptr;
 
 			phx::ResourceSystem::Ptr->Shutdown();
-			phx_delete_persistent(phx::ResourceSystem::Ptr);
+			phx_delete phx::ResourceSystem::Ptr;
 			phx::ResourceSystem::Ptr = nullptr;
 
 			phx::rhi::GfxDevice& gfxDevice = phx::rhi::GetDevice();
 			gfxDevice.Shutdown();
 
-			phx_delete_persistent(phx::IRootFileSystem::Ptr);
+			phx_delete phx::IRootFileSystem::Ptr;
 			phx::IRootFileSystem::Ptr = nullptr;
 
 
@@ -147,7 +146,7 @@ namespace phx
 			phx::rhi::Finalize();
 #endif
 			JobSystem::Shutdown();
-			Memory::Shutdown();
+			MemorySystem::Shutdown();
 		}
 	}
 }

@@ -2,7 +2,7 @@
 
 #include <deque>
 #include "PhxCore/Assert.h"
-#include "PhxCore/Memory.h"
+#include <PhxCore/Memory/MemorySystem.h>
 
 #include "D3D12Base.h"
 

@@ -107,7 +107,8 @@ namespace phx
         fileData->Stream.clear();
         fileData->Stream.seekg(static_cast<std::streamoff>(offset), std::ios::beg);
 
-        IAllocator* mainHeap = &Memory::GetMainHeap();
+        IAllocator* mainHeap = &MemorySystem::GetMainArena();
+        
         char* dataPtr = static_cast<char*>(mainHeap->Allocate(bytesToRead, std::max_align_t()));
 
         fileData->Stream.read(dataPtr, bytesToRead);
@@ -142,7 +143,7 @@ namespace phx
             return nullptr;
         }
 
-        IAllocator* allocator = &Memory::GetMainHeap();
+        IAllocator* allocator = &MemorySystem::GetMainArena();
         char* Data = static_cast<char*>(allocator->Allocate(size, std::max_align_t()));
 
         if (Data == nullptr)
@@ -210,7 +211,7 @@ namespace phx
             return nullptr;
         }
 
-        IAllocator* allocator = &Memory::GetMainHeap();
+        IAllocator* allocator = &MemorySystem::GetMainArena();
         char* Data = static_cast<char*>(allocator->Allocate(size, std::max_align_t()));
 
         if (Data == nullptr)
@@ -293,7 +294,7 @@ namespace phx
 
     const char* RelativeFileSystem::GetFilename(FileHandle handle)
     {
-        return this->m_underlyingFS->GetFilename(handle)
+        return this->m_underlyingFS->GetFilename(handle);
     }
 
     bool RelativeFileSystem::FileExists(std::filesystem::path const& name)

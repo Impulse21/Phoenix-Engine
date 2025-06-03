@@ -1,7 +1,7 @@
 #pragma once
 
 #include "memory"
-#include "PhxCore/Memory.h"
+#include <PhxCore/Memory/MemorySystem.h>
 #include "PhxCore/Span.h"
 #include <PhxCore/VFS.h>
 

@@ -2,7 +2,7 @@
 
 #include <assert.h>
 #include <atomic>
-#include <PhxCore/Memory.h>
+#include <PhxCore/Memory/MemorySystem.h>
 
 namespace phx
 {

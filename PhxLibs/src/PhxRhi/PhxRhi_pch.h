@@ -34,5 +34,5 @@
 #include "PhxCore/Log.h"
 #include "PhxCore/Platform.h"
 #include "PhxCore/PlatformDetection.h"
-#include <PhxCore/Memory.h>
+#include <PhxCore/Memory/MemorySystem.h>
 #include <PhxCore/Profiler.h>
