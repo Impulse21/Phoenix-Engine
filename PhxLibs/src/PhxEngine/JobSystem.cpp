@@ -118,6 +118,7 @@ void JobSystem::Initialize()
 		for (uint32_t threadID = 0; threadID < resource.NumThreads; threadID++)
 		{
 			std::thread& worker = resource.WorkerThreads.emplace_back([threadID, &resource] {
+				MemorySystem::EnsureThreadFrameArenaInitialized();
 				while (m_alive)
 				{
 					resource.DoWork(threadID);
@@ -125,6 +126,7 @@ void JobSystem::Initialize()
 					std::unique_lock<std::mutex> lock(resource.WakeMutex);
 					resource.WakeCondition.wait(lock);
 				}
+				MemorySystem::ShutdownCurrentThreadFrameArena();
 			});
 
 #ifdef _WIN32

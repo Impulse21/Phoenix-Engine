@@ -9,6 +9,7 @@ namespace phx
 
 	};
 
+
 	struct SceneBlueprint : public Resource
 	{
 		phx::Array<Node> Nodes;

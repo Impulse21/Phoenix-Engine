@@ -24,11 +24,20 @@ namespace phx
 
 	struct Resource : public RefCounted
 	{
-		uint32_t State = 0;
+		std::atomic_uint8_t State = (uint8_t)~0;
+
+		enum State : uint8_t
+		{
+			Loaded = 0,
+			Loading = 0x0F,
+			Error = 0x7F,
+			Unloaded = 0xFF
+
+		};
 
 		bool IsLoaded()
 		{
-			return State == 0;
+			return State == State::Loaded;
 		}
 	};
 

@@ -60,10 +60,9 @@ phx::RefCountPtr<phx::Resource> phxed::GltfFileHandler::LoadFromPak(IFileSystem*
 
 phx::RefCountPtr<phx::Resource> phxed::GltfFileHandler::LoadLoose(IFileSystem* fs, FileHandle handle) const
 {
-	IAllocator& allocator = Memory::GetMainHeap();
-	auto sceneBlueprint = phx::RefCountPtr<SceneBlueprint>::Create(phx_new<SceneBlueprint>(allocator));
-	sceneBlueprint->Allocator = &allocator;
+	auto sceneBlueprint = phx::RefCountPtr<SceneBlueprint>::Create(phx_new SceneBlueprint);
 
+	// TODO implement a DirectStorage style interface for streaming asset.
 	JobSystem::SubmitJob([=](JobContext const&) {
 			const char* gltfFilename = fs->GetFilename(handle);
 			// Load GLF File into memory
@@ -82,7 +81,8 @@ phx::RefCountPtr<phx::Resource> phxed::GltfFileHandler::LoadLoose(IFileSystem* f
 			if (!blob)
 			{
 				PHX_CORE_ERROR("Couldn't Read file gltf file '{0}'", gltfFilename);
-				return false;
+				sceneBlueprint->State = Resource::State::Error;
+				return;
 			}
 
 			cgltf_data* gltfData = nullptr;
@@ -90,15 +90,20 @@ phx::RefCountPtr<phx::Resource> phxed::GltfFileHandler::LoadLoose(IFileSystem* f
 			if (res != cgltf_result_success)
 			{
 				PHX_ERROR("Couldn't load glTF file '{0}'", gltfFilename);
-				return false;
+				sceneBlueprint->State = Resource::State::Error;
+				return;
 			}
 
 			res = cgltf_load_buffers(&options, gltfData, gltfFilename);
 			if (res != cgltf_result_success)
 			{
 				PHX_ERROR("Couldn't load glTF Binary data '{0}'", gltfFilename);
-				return false;
+
+				sceneBlueprint->State = Resource::State::Error;
+				return;
 			}
+
+			sceneBlueprint->State = Resource::State::Loaded;
 		},
 		JobSystem::Type::Streaming);
 	

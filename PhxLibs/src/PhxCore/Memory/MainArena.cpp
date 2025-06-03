@@ -21,6 +21,7 @@ namespace
 
 void MainArena::Initialize(size_t reserveBytes, size_t initialCommitBytes)
 {
+	std::scoped_lock _(m_mutex);
 	m_baseAddress =  Platform::Get().VirtualMemReserve(reserveBytes);
 	m_reservedSize = reserveBytes;
 
@@ -36,6 +37,7 @@ void MainArena::Initialize(size_t reserveBytes, size_t initialCommitBytes)
 
 void MainArena::Shutdown()
 {
+	std::scoped_lock _(m_mutex);
 	MemoryStatistics stats{ 0, m_commitedSize };
 	pool_t pool = tlsf_get_pool(m_tlsfHandle);
 
@@ -61,6 +63,7 @@ void MainArena::Shutdown()
 
 void* MainArena::Allocate(size_t size, size_t alignment)
 {
+	std::scoped_lock _(m_mutex);
 #if defined (HEAP_ALLOCATOR_STATS)
 	void* allocatedMemory = alignment == 1 ? tlsf_malloc(m_tlsfHandle, size) : tlsf_memalign(m_tlsfHandle, alignment, size);
 	sizet actualSize = tlsf_block_size(allocatedMemory);
@@ -101,6 +104,7 @@ void* MainArena::Allocate(size_t size, size_t alignment)
 
 void MainArena::Deallocate(void* pointer)
 {
+	std::scoped_lock _(m_mutex);
 #if defined (HEAP_ALLOCATOR_STATS)
 	sizet actualSize = tlsf_block_size(pointer);
 	m_allocatedSize -= actualSize;

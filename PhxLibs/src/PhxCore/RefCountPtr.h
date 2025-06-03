@@ -282,7 +282,6 @@ namespace phx
     struct RefCounted
     {
         std::atomic<unsigned long> RefCount = 1;
-        IAllocator* Allocator = nullptr;
 
         unsigned long AddRef()
         {
@@ -294,8 +293,7 @@ namespace phx
             unsigned long result = --RefCount;
             if (result == 0) 
             {
-                PHX_CORE_ASSERT(Allocator);
-                Allocator->Deallocate(this);
+                phx_delete this;
             }
             return result;
         }
