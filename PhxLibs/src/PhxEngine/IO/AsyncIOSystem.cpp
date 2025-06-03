@@ -1,0 +1,69 @@
+#include "PhxEngine/PhxEngine_pch.h"
+#include "AsyncIOSystem.h"
+#include <mutex>
+
+#include <PhxEngine/JobSystem.h>
+#include <PhxCore/IO/MemoryRegion.h>
+
+bool phx::AsyncIOSystem::Initialize()
+{
+    m_shutdown = false;
+
+    JobSystem::SubmitJob([this](JobContext const&) {
+        this->StreamingThreadLoop();
+    }, JobSystem::Type::Streaming); // Target your dedicated streaming thread)
+    return true;
+}
+
+void phx::AsyncIOSystem::Shutdown()
+{
+    {
+        std::scoped_lock lock(m_queueMutex);
+        m_shutdown = true;
+    }
+
+    m_cv.notify_one(); // Wake up the streaming thread to exit
+}
+
+void phx::AsyncIOSystem::QueueRead(AsyncReadRequest&& request)
+{
+    {
+        std::scoped_lock lock(m_queueMutex);
+        m_requestQueue.push_back(std::move(request));
+    }
+
+    m_cv.notify_one(); // Signal the streaming thread that new work is available
+}
+
+void phx::AsyncIOSystem::StreamingThreadLoop()
+{
+	while (true)
+	{
+		AsyncReadRequest currentRequest;
+		{
+			std::unique_lock<std::mutex> lock(m_queueMutex);
+
+			m_cv.wait(lock, [this] { return m_shutdown || !m_requestQueue.empty(); });
+
+			if (m_shutdown && m_requestQueue.empty())
+			{
+				break; // Exit loop if shutdown and queue is empty
+			}
+			if (m_requestQueue.empty()) 
+			{
+				continue;
+			}
+
+			currentRequest = std::move(m_requestQueue.front());
+			m_requestQueue.pop_front();
+		} // Mutex is released here
+
+		ProcessReadRequest(currentRequest);
+	}
+
+	PHX_CORE_INFO("AsyncIOManager: Streaming thread shutting down.");
+}
+
+void phx::AsyncIOSystem::ProcessReadRequest(AsyncReadRequest& request)
+{
+}

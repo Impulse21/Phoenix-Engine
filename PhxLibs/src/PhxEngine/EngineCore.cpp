@@ -18,6 +18,8 @@
 
 #include <PhxEngine/JobSystem.h>
 #include <PhxEngine/EngineSync.h>
+#include <PhxEngine/IO/IAsyncIOSystem.h>
+#include <PhxEngine/IO/AsyncIOSystem.h>
 
 using namespace phx;
 
@@ -62,6 +64,9 @@ namespace phx
 			MemorySystem::Initialize({});
 
 			phx::JobSystem::Initialize();
+
+			phx::IAsyncIOSystem::Ptr = phx_new phx::AsyncIOSystem();
+			phx::IAsyncIOSystem::Ptr->Initialize();
 
 			phx::IApplication::Ptr = phx::CreateApplication();
 		}
@@ -134,6 +139,10 @@ namespace phx
 
 			phx::rhi::GfxDevice& gfxDevice = phx::rhi::GetDevice();
 			gfxDevice.Shutdown();
+
+
+			phx::IAsyncIOSystem::Ptr->Shutdown();
+			phx_delete phx::IAsyncIOSystem::Ptr;
 
 			phx_delete phx::IRootFileSystem::Ptr;
 			phx::IRootFileSystem::Ptr = nullptr;
