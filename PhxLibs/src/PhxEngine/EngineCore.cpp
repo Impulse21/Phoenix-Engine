@@ -57,10 +57,10 @@ namespace phx
 		void PreInitialize(int /*argc*/, wchar_t** /*argv*/)
 		{
 			EngineSync::g_FrameCount = 0;
-			MemorySystem::Initialize({});
-
 			phx::Log::Initialize();
 
+			MemorySystem::Initialize({});
+			
 			phx::JobSystem::Initialize();
 
 			phx::data::IVirtualFileSystem::Ptr = phx_new data::VirtualFileSystemImpl();
