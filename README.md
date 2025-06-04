@@ -1,16 +1,15 @@
 # Phoenix Engine
  
 ## TODO List
-### Dx12 Only focus currently
+### Vulkan Only focus currently
 
-- [x] Set up Project Build files (Premake)
-- [x] CLang compile
-- [x] Get ImGui Demo Window Rendering 
-- [ ] Delete old unused code
-- [ ] Create a resource system and resources
-- [ ] Construct a pipeline tool for converting GLTF files into my file format.
-- [ ] Implement a scene using ECS system
-- [ ] Implement a Render Graph to render said scene.
+- [ x ] Implement memory arena
+- [ ] Implement and test new Virtual File system
+- [ ] Implement and Test AsyncIOLoading System
+- [ ] Implement Resource System that loads SceneBlueprint and it's depent resources form a GLTF file. Should make use of new systems
+- [ ] Implement SceneBlueprint to world instancer 
+- [ ] Render the mesh and it's materials to screen 
+- [ ] Replace render logic with a render graph system
 
 ## Bugs
-- [ x ] Ring buffer for my temp allocator isnt working. Keeps waiting on fence.
+- [ ] Need to create a bootstrap allocator to handle pre arean setup allocations 
