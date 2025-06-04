@@ -8,6 +8,7 @@ namespace
 {
     MemorySystemDescriptor g_desc;
     phx::MainArena g_mainArenaInstance;
+    bool g_is_initialized = false;
     thread_local phx::ThreadFrameArena g_threadFrameArenaInstance;
     thread_local bool g_threadFrameArenaIsInitialized = false;
 }
@@ -19,12 +20,21 @@ void MemorySystem::Initialize(MemorySystemDescriptor const& desc)
     g_mainArenaInstance.Initialize(desc.MainArenaReserveBytes, desc.MainArenaInitialCommitBytes);
 
     EnsureThreadFrameArenaInitialized();
+
+    g_is_initialized = true;
 }
 
 void MemorySystem::Shutdown()
 {
     ShutdownCurrentThreadFrameArena();
     g_mainArenaInstance.Shutdown();
+
+    g_is_initialized = false;
+}
+
+bool phx::MemorySystem::IsInitialized()
+{
+    return g_is_initialized;
 }
 
 void phx::MemorySystem::EnsureThreadFrameArenaInitialized()

@@ -1,13 +1,22 @@
 #include <PhxCore/PhxCore_pch.h>
 #include "MemorySystem.h"
+#include "BootstrapAllocator.h"
+#include <PhxCore/Base.h>
 
 using namespace phx;
+
 
 // Helper for delete dispatch
 static void DispatchDeallocate(void* ptr) 
 {
     if (!ptr)
         return;
+
+    if (!MemorySystem::IsInitialized())
+    {
+        BootstrapAllocator::Deallocate(ptr);
+        return;
+    }
 
     MemorySystem::EnsureThreadFrameArenaInitialized(); // Make sure TLS arena is ready for check
     ThreadFrameArena& frameArena = MemorySystem::GetCurrentThreadArena();
@@ -32,23 +41,31 @@ static void DispatchDeallocate(void* ptr)
 [[nodiscard]] void* operator new(size_t size) 
 {
     // All default 'new' calls go to the MainArena
-    return phx::MemorySystem::GetMainArena().Allocate(size, alignof(std::max_align_t));
+    return phx::MemorySystem::IsInitialized()
+        ? phx::MemorySystem::GetMainArena().Allocate(size, alignof(std::max_align_t))
+        : phx::BootstrapAllocator::Allocate(size, alignof(std::max_align_t));
 }
 
 [[nodiscard]] void* operator new[](size_t size) 
 {
-    return phx::MemorySystem::GetMainArena().Allocate(size, alignof(std::max_align_t));
+    return phx::MemorySystem::IsInitialized()
+        ? phx::MemorySystem::GetMainArena().Allocate(size, alignof(std::max_align_t))
+        : phx::BootstrapAllocator::Allocate(size, alignof(std::max_align_t));
 }
 
 // C++17 aligned new
 #if __cplusplus >= 201703L
 [[nodiscard]] void* operator new(size_t size, std::align_val_t al) 
 {
-    return phx::MemorySystem::GetMainArena().Allocate(size, static_cast<size_t>(al));
+    return phx::MemorySystem::IsInitialized()
+        ? phx::MemorySystem::GetMainArena().Allocate(size, static_cast<size_t>(al))
+        : phx::BootstrapAllocator::Allocate(size, static_cast<size_t>(al));
 }
 [[nodiscard]] void* operator new[](size_t size, std::align_val_t al) 
 {
-    return phx::MemorySystem::GetMainArena().Allocate(size, static_cast<size_t>(al));
+    return phx::MemorySystem::IsInitialized()
+        ? phx::MemorySystem::GetMainArena().Allocate(size, static_cast<size_t>(al))
+        : phx::BootstrapAllocator::Allocate(size, static_cast<size_t>(al));
 }
 #endif
 

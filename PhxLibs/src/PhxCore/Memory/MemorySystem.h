@@ -46,6 +46,7 @@ namespace phx
 		void Initialize(MemorySystemDescriptor const& desc);
 		void Shutdown();
 
+		bool IsInitialized();
 		void EnsureThreadFrameArenaInitialized();
 		void ShutdownCurrentThreadFrameArena();
 		void ResetCurrentThreadFrameAreana();
