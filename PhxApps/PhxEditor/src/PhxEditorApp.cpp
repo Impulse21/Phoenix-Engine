@@ -10,6 +10,9 @@
 #include <PhxWorld/WorldSerializer.h>
 #include <PhxWorld/SceneBlueprint.h>
 
+#include <PhxData/IVirtualFileSystem.h>
+#include <PhxData/IAsyncIOSystem.h>
+
 #include <PhxResource/ResourceSystem.h>
 
 #include <PhxRenderer/RenderSystem.h>
@@ -407,26 +410,22 @@ phx::IApplication* phx::CreateApplication()
 		.WorkingDirectory = phx::FileSystem::GetDirectoryWithExecutable()
 	};
 
-	return phx_new_persistent(PhxEditor, desc);
+	return phx_new PhxEditor(desc);
 }
 
 void phx::DeleteApplication(phx::IApplication* ptr)
 {
-	phx_delete_persistent(ptr);
+	phx_delete ptr;
 }
 
 void PhxEditor::Startup()
 {
 	auto fs = phx::IRootFileSystem::Ptr;
 	{
-		std::shared_ptr<phx::IFileSystem> nativeFS = phx::FileSystemFactory::CreateNativeFileSystem();
-		fs->Mount("native://", nativeFS);
-
-		PHX_INFO("Filesystem is mounting {0} to {1}", "res://", phx::GlobalPaths::DefaultProjectDir);
-		fs->Mount("res://", phx::GlobalPaths::DefaultProjectDir);
-
-		PHX_INFO("Filesystem is mounting {0} to {1}", "art://", phx::GlobalPaths::ArtSrcDirectory);
-		fs->Mount("art://", phx::GlobalPaths::ArtSrcDirectory);
+		auto vfs = phx::data::IVirtualFileSystem::Ptr;
+		vfs->Mount("res://", phx::GlobalPaths::DefaultProjectDir);
+		vfs->Mount("art://", phx::GlobalPaths::ArtSrcDirectory);
+		// TODO: TRY mounting a pack
 	}
 
 	auto* resourceSystem = phx::ResourceSystem::Ptr;
@@ -466,7 +465,7 @@ void PhxEditor::OnPreRender()
 	//phx::gfx::IRenderSystem::Ptr->PreRender(m_world);
 }
 
-void PhxEditor::OnUpdate_Threaded(float /*deltaTime*/)
+void PhxEditor::OnUpdate_Threaded(float delta_time)
 {
 	PHX_PROFILE;
 
@@ -478,6 +477,7 @@ void PhxEditor::OnUpdate_Threaded(float /*deltaTime*/)
 		});
 #endif
 
+	phx::data::IAsyncIOSystem::Ptr->Tick(delta_time);
 	// Rotate cube in a random direction
 }
 

@@ -6,7 +6,6 @@
 #include <PhxCore/Log.h>
 #include <PhxCore/Memory/MemorySystem.h>
 #include <PhxCore/CommandLineArgs.h>
-#include <PhxCore/VFS.h>
 #include <PhxCore/Profiler.h>
 
 #include <PhxResource/ResourceSystem.h>
@@ -88,7 +87,6 @@ namespace phx
 
 			app->SetWindowHandle(windowHandle);
 
-			phx::IRootFileSystem::Ptr = phx_new RootFileSystem;
 			phx::ResourceSystem::Ptr = phx_new ResourceSystem;
 			phx::ResourceSystem::Ptr->Initialize(phx::IRootFileSystem::Ptr);
 #if false
@@ -147,13 +145,6 @@ namespace phx
 			phx_delete phx::IRootFileSystem::Ptr;
 			phx::IRootFileSystem::Ptr = nullptr;
 
-
-#if false
-			gfx::IRenderSystem::Ptr->Finalize();
-			phx_new_persistent(gfx::IRenderSystem::Ptr);
-
-			phx::rhi::Finalize();
-#endif
 			JobSystem::Shutdown();
 			MemorySystem::Shutdown();
 		}

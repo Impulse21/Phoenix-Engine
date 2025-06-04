@@ -34,6 +34,4 @@ namespace phx
 		virtual void Shutdown() = 0;
 		virtual void QueueRead(AsyncReadRequest&& request) = 0;
 	};
-
-
 }
