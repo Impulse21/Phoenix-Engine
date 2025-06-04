@@ -5,7 +5,6 @@
 
 #include <PhxCore/Log.h>
 #include <PhxCore/Memory/MemorySystem.h>
-#include <PhxCore/CommandLineArgs.h>
 #include <PhxCore/Profiler.h>
 
 #include <PhxResource/ResourceSystem.h>
@@ -55,13 +54,12 @@ namespace phx
 
 	namespace EngineCore
 	{
-		void PreInitialize(int argc, wchar_t** argv)
+		void PreInitialize(int /*argc*/, wchar_t** /*argv*/)
 		{
 			EngineSync::g_FrameCount = 0;
-			phx::Log::Initialize();
-			phx::CommandLineArgs::Initialize(argc, argv);
-
 			MemorySystem::Initialize({});
+
+			phx::Log::Initialize();
 
 			phx::JobSystem::Initialize();
 

@@ -2,10 +2,10 @@
 
 #include <PhxCore/IO/MemoryRegion.h>
 #include <PhxRhi/RHICommon.h>
-#include <PhxResource/ResourceManger.h>
 
 #include "PhxRenderer/shaders/ShaderInterop.h"
 
+#include <PhxResource/IResource.h>
 namespace phx::renderer
 {
 	// This affects the resource modify qith care

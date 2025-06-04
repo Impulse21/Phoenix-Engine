@@ -12,7 +12,6 @@
 #include <PhxRenderer/RenderComponents.h>
 
 #include <PhxResource/IResource.h>
-#include <PhxResource/ResourceManger.h>
 
 #define ENABLE_ENTT_CALLBACKS false
 
@@ -70,7 +69,7 @@ void phx::gfx::DefaultRenderSystem::PreRender(World& world)
 
 		auto& meshComp = entity.GetComponent<MeshComponent>();
 		PHX_CORE_INFO("Mesh Component was added {0}", meshComp.Mesh.c_str());
-		RefCountPtr<IResource> resource = ResourceManger::Get(meshComp.Mesh.c_str());
+		RefCountPtr<IResource> resource = nullptr; //ResourceManger::Get(meshComp.Mesh.c_str());
 		if (resource)
 		{
 			auto& renderComponent = entity.AddComponent<RenderMeshComponent>();
