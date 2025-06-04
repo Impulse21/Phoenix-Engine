@@ -13,11 +13,12 @@
 #include <PhxRenderer/DefaultRenderSystem.h>
 #include <PhxRenderer/MeshResourceHandler.h>
 
+#include <PhxData/VirtualFileSystemImpl.h>
+
 #include <PhxRhi/GfxDevice.h>
 
 #include <PhxEngine/JobSystem.h>
 #include <PhxEngine/EngineSync.h>
-#include <PhxEngine/IO/IAsyncIOSystem.h>
 #include <PhxEngine/IO/StandardAsyncIOSystem.h>
 
 using namespace phx;
@@ -64,8 +65,10 @@ namespace phx
 
 			phx::JobSystem::Initialize();
 
-			phx::IAsyncIOSystem::Ptr = phx_new phx::StandardAsyncIOSystem();
-			phx::IAsyncIOSystem::Ptr->Initialize();
+			phx::data::IVirtualFileSystem::Ptr = phx_new data::VirtualFileSystemImpl();
+
+			phx::data::IAsyncIOSystem::Ptr = phx_new phx::StandardAsyncIOSystem(phx::data::IVirtualFileSystem::Ptr);
+			phx::data::IAsyncIOSystem::Ptr->Initialize();
 
 			phx::IApplication::Ptr = phx::CreateApplication();
 		}
@@ -138,9 +141,10 @@ namespace phx
 			phx::rhi::GfxDevice& gfxDevice = phx::rhi::GetDevice();
 			gfxDevice.Shutdown();
 
+			phx::data::IAsyncIOSystem::Ptr->Shutdown();
+			phx_delete phx::data::IAsyncIOSystem::Ptr;
 
-			phx::IAsyncIOSystem::Ptr->Shutdown();
-			phx_delete phx::IAsyncIOSystem::Ptr;
+			phx_delete phx::data::IVirtualFileSystem::Ptr;
 
 			phx_delete phx::IRootFileSystem::Ptr;
 			phx::IRootFileSystem::Ptr = nullptr;

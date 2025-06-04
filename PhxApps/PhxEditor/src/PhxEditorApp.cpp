@@ -420,7 +420,6 @@ void phx::DeleteApplication(phx::IApplication* ptr)
 
 void PhxEditor::Startup()
 {
-	auto fs = phx::IRootFileSystem::Ptr;
 	{
 		auto vfs = phx::data::IVirtualFileSystem::Ptr;
 		vfs->Mount("res://", phx::GlobalPaths::DefaultProjectDir);

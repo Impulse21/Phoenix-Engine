@@ -14,18 +14,17 @@ bool VirtualFileSystemImpl::Mount(std::string const& virtual_path, std::string c
     if (!norm_virtual_prefix.empty() && norm_virtual_prefix.back() != '/')
         norm_virtual_prefix += '/';
 
-    phx::platform::FileAttributes fileAttributes = phx::Platform::Get().GetFileAttr(norm_physical_path);
 
-    if (phx::EnumHasAnyFlags(phx::platform::FileAttributes::Invalid, fileAttributes))
+    // Platform-specific OS call to get file size and check if it's a file (not dir)
+    Result<platform::PlatformFileAttributes> file_attributes = phx::Platform::Get().GetFileAttr(norm_physical_path);
+
+    if (!file_attributes)
     {
         PHX_CORE_INFO("Physical path for mount '{0}' doesn't exist");
         return false;
     }
 
-    const bool is_directory_type = 
-        phx::EnumHasAnyFlags(phx::platform::FileAttributes::Directory, fileAttributes);
-
-    if (is_directory_type) 
+    if (file_attributes.GetValue().type == platform::PlatformFileType::Directory)
     {
         m_mount_points.emplace_back(
             MountPointInfo::Type::Directory,
@@ -72,7 +71,7 @@ bool VirtualFileSystemImpl::Unmount(std::string const& virtual_path)
     return false;
 }
 
-Result<AsyncResourceDescriptor> VirtualFileSystemImpl::GetResourceDescriptorForAsync(std::string const& virtual_path)
+phx::Result<AsyncResourceDescriptor> VirtualFileSystemImpl::GetResourceDescriptorForAsync(std::string const& virtual_path) const
 {
     std::string norm_virtual_path = NormalizeVirtualPath(virtual_path);
     const MountPointInfo* best_match = nullptr;
@@ -88,55 +87,88 @@ Result<AsyncResourceDescriptor> VirtualFileSystemImpl::GetResourceDescriptorForA
     if (!best_match) 
     {
         PHX_CORE_ERROR("No mount point found for virtual path: {0}", norm_virtual_path.c_str());
-        return "No mount point found for virtual path: " + norm_virtual_path;
+        return phx::make_unexpected(~0ull);
     }
 
-    AsyncResourceDescriptor desc;
-    desc.virtual_path = norm_virtual_path;
-
     std::string internal_path_segment = norm_virtual_path.substr(best_match->virtual_prefix_normalized.length());
+    std::string physical_path = JoinPaths(best_match->physical_path_normalized, internal_path_segment);
 
     if (best_match->type == MountPointInfo::Type::Directory) 
     {
-        desc.type = AsyncDataSourceType::Os_File;
-        desc.os_path_or_pak_path = JoinPaths(best_match->physical_path_normalized, internal_path_segment);
-        desc.offset_in_pak = 0;
-        desc.compression_info.method = CompressionMethod::None;
-
         // Platform-specific OS call to get file size and check if it's a file (not dir)
-        phx::Platform::Get().GetFileAttr(desc.os_path_or_pak_path);
+        Result<platform::PlatformFileAttributes> file_attributes = phx::Platform::Get().GetFileAttr(physical_path);
 
-        WIN32_FILE_ATTRIBUTE_DATA fileAttributes;
-        std::wstring wide_os_path(desc.os_path_or_archive_path.begin(), desc.os_path_or_archive_path.end());
-        if (GetFileAttributesExW(wide_os_path.c_str(), GetFileExInfoStandard, &fileAttributes)) {
-            if (fileAttributes.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-                return "Path resolves to a directory, not a file: " + desc.os_path_or_archive_path;
-            }
-            ULARGE_INTEGER fileSize;
-            fileSize.HighPart = fileAttributes.nFileSizeHigh;
-            fileSize.LowPart = fileAttributes.nFileSizeLow;
-            desc.length_of_resource = fileSize.QuadPart;
-            desc.compression_info.decompressed_size = desc.length_of_resource; // Same for uncompressed
-        }
-        else 
+        if (!file_attributes)
         {
-            PHX_CORE_ERROR("Loose file not found or access error: {0}", desc.os_path_or_pak_path.c_str());
-            return "Loose file not found or access error: " + desc.os_path_or_pak_path;
+            PHX_CORE_ERROR("Loose file not found or access error: {0}", physical_path.c_str());
+            return make_unexpected(~0ull);
+        }
+
+        return AsyncResourceDescriptor{
+            .type = AsyncDataSourceType::OS_File,
+            .os_path_or_pak_path = physical_path,
+            .virtual_path = norm_virtual_path,
+            .offset_in_pak = 0,
+            .length_of_resource = file_attributes->size,
+            .compression_info = {.method = CompressionMethod::None }
+        };
+	}
+
+	// handle back file
+	PHX_CORE_ERROR("Internal VFS Error: PAK info not loaded for mount point {0}", best_match->virtual_prefix_normalized.c_str());
+    return phx::make_unexpected(~0ull);
+}
+
+phx::Result<phx::platform::PlatformFileAttributes> phx::data::VirtualFileSystemImpl::GetPlatformAttributes(std::string const& virtual_path) const
+{
+    std::string norm_virtual_path = NormalizeVirtualPath(virtual_path);
+    const MountPointInfo* best_match = nullptr;
+    for (const auto& mp : m_mount_points)
+    {
+        if (norm_virtual_path.rfind(mp.virtual_prefix_normalized, 0) == 0)
+        {
+            best_match = &mp;
+            break; // Found longest prefix due to sort order
         }
     }
-    else 
-    { 
-        PHX_CORE_ERROR("Internal VFS Error: PAK info not loaded for mount point {0}", best_match->virtual_prefix_normalized.c_str());
-        return "Internal VFS Error: PAK info not loaded for mount point " + best_match->virtual_prefix_normalized;
+
+    if (!best_match)
+    {
+        PHX_CORE_ERROR("No mount point found for virtual path: {0}", norm_virtual_path.c_str());
+        return phx::make_unexpected(~0ull);
     }
 
-    if (!desc.IsValid()) 
-    { 
-        PHX_CORE_ERROR("Generated descriptor is invalid (e.g., zero length resource): {0}", virtual_path.c_str());
-        return "Generated descriptor is invalid (e.g., zero length resource): " + virtual_path;
-    }
-    return desc;
+    // Platform-specific OS call to get file size and check if it's a file (not dir)
+    std::string internal_path_segment = norm_virtual_path.substr(best_match->virtual_prefix_normalized.length());
+    std::string physical_path = JoinPaths(best_match->physical_path_normalized, internal_path_segment);
+    return phx::Platform::Get().GetFileAttr(physical_path);
+}
 
+bool phx::data::VirtualFileSystemImpl::Exists(std::string const& virtual_path)
+{
+    Result<platform::PlatformFileAttributes> file_attributes = GetPlatformAttributes(virtual_path);
+    if (file_attributes.HasError())
+        return false;
+
+    return file_attributes->type == platform::PlatformFileType::File || file_attributes->type == platform::PlatformFileType::Directory;
+}
+
+phx::Result<uint64_t> phx::data::VirtualFileSystemImpl::GetUncompressedFileSize(const std::string& virtual_path) const
+{
+    phx::Result<AsyncResourceDescriptor> descriptor = GetResourceDescriptorForAsync(virtual_path);
+    if (descriptor.HasError())
+        return make_unexpected(~0ull);
+
+    if (descriptor->compression_info.method == CompressionMethod::None)
+        return descriptor->length_of_resource;
+
+    return descriptor->compression_info.decompressed_size;
+}
+
+phx::Result<Blob> phx::data::VirtualFileSystemImpl::ReadFileSynchronous(const std::string& /*virtual_path*/) const
+{
+    PHX_CORE_ERROR("Not Implementated yet (VirtualFileSystemImpl::ReadFileSynchronous");
+    return make_unexpected(~0ull);;
 }
 
 std::string VirtualFileSystemImpl::NormalizeVirtualPath(const std::string& path) const

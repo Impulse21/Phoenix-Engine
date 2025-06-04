@@ -5,14 +5,13 @@
 #include <PhxEngine/JobSystem.h>
 #include <PhxCore/IO/MemoryRegion.h>
 
-bool phx::StandardAsyncIOSystem::Initialize()
+void phx::StandardAsyncIOSystem::Initialize()
 {
     m_shutdown = false;
 
     JobSystem::SubmitJob([this](JobContext const&) {
         this->StreamingThreadLoop();
     }, JobSystem::Type::Streaming); // Target your dedicated streaming thread)
-    return true;
 }
 
 void phx::StandardAsyncIOSystem::Shutdown()
@@ -25,7 +24,7 @@ void phx::StandardAsyncIOSystem::Shutdown()
     m_cv.notify_one(); // Wake up the streaming thread to exit
 }
 
-void phx::StandardAsyncIOSystem::QueueRead(AsyncReadRequest&& request)
+void phx::StandardAsyncIOSystem::QueueRead(data::AsyncReadRequest&& request)
 {
     {
         std::scoped_lock lock(m_queueMutex);
@@ -35,11 +34,15 @@ void phx::StandardAsyncIOSystem::QueueRead(AsyncReadRequest&& request)
     m_cv.notify_one(); // Signal the streaming thread that new work is available
 }
 
+void phx::StandardAsyncIOSystem::Tick(float /*delta_time*/)
+{
+}
+
 void phx::StandardAsyncIOSystem::StreamingThreadLoop()
 {
 	while (true)
 	{
-		AsyncReadRequest currentRequest;
+		data::AsyncReadRequest currentRequest;
 		{
 			std::unique_lock<std::mutex> lock(m_queueMutex);
 
@@ -64,6 +67,6 @@ void phx::StandardAsyncIOSystem::StreamingThreadLoop()
 	PHX_CORE_INFO("AsyncIOManager: Streaming thread shutting down.");
 }
 
-void phx::StandardAsyncIOSystem::ProcessReadRequest(AsyncReadRequest& request)
+void phx::StandardAsyncIOSystem::ProcessReadRequest(data::AsyncReadRequest& /*request*/)
 {
 }

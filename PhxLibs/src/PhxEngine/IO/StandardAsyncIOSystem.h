@@ -1,6 +1,7 @@
 #pragma once
 
-#include "IAsyncIOSystem.h"
+#include <PhxData/IAsyncIOSystem.h>
+#include <PhxData/IVirtualFileSystem.h>
 #include <deque>
 #include <mutex>
 #include <condition_variable>
@@ -8,20 +9,28 @@
 namespace phx
 {
 
-	class StandardAsyncIOSystem final : public IAsyncIOSystem
+	class StandardAsyncIOSystem final : public data::IAsyncIOSystem
 	{
 	public:
-		bool Initialize() override;
+		StandardAsyncIOSystem(data::IVirtualFileSystem* vfs)
+			: m_vfs(vfs)
+		{
+		}
+
+		void Initialize() override;
 		void Shutdown() override;
 
-		void QueueRead(AsyncReadRequest&& request) override;
+		void QueueRead(data::AsyncReadRequest&& request) override;
+
+		void Tick(float delta_time) override;
 
 	private:
 		void StreamingThreadLoop();
-		void ProcessReadRequest(AsyncReadRequest& request);
-	private:
+		void ProcessReadRequest(data::AsyncReadRequest& request);
 
-		std::deque<AsyncReadRequest> m_requestQueue;
+	private:
+		data::IVirtualFileSystem* m_vfs = nullptr;
+		std::deque<data::AsyncReadRequest> m_requestQueue;
 		std::mutex m_queueMutex;
 		std::condition_variable m_cv;
 		std::atomic<bool> m_shutdown;

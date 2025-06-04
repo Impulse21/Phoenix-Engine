@@ -4,6 +4,7 @@
 #include <functional>
 #include <cstdint>
 #include <variant> // For VFSResult or similar error handling
+#include <PhxCore/Base.h>
 
 namespace phx::data
 {
@@ -14,7 +15,7 @@ namespace phx::data
     enum class AsyncDataSourceType 
     {
         Unknown_Or_Error,
-        Os_File,
+        OS_File,
         Pak_Entry
     };
 
@@ -68,23 +69,4 @@ namespace phx::data
         uint64_t bytes_actually_read = 0;
         std::string error_message;
     };
-
-    // --- VFS Result Type (Example using std::variant for error handling) ---
-    template<typename ValueType, typename ErrorType = std::string>
-    using Result = std::variant<ValueType, ErrorType>;
-
-    template<typename ValueType, typename ErrorType = std::string>
-    bool HasValue(const Result<ValueType, ErrorType>& result) {
-        return std::holds_alternative<ValueType>(result);
-    }
-
-    template<typename ValueType, typename ErrorType = std::string>
-    const ValueType* GetValue(const Result<ValueType, ErrorType>& result) {
-        return std::get_if<ValueType>(&result);
-    }
-
-    template<typename ValueType, typename ErrorType = std::string>
-    const ErrorType* GetError(const Result<ValueType, ErrorType>& result) {
-        return std::get_if<ErrorType>(&result);
-    }
 }

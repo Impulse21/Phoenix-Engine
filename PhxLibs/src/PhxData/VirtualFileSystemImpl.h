@@ -33,7 +33,8 @@ namespace phx::data
 		bool Mount(std::string const& virtual_path, std::string const& physical_path) override;
 		bool Unmount(std::string const& virtual_path) override;
 
-		Result<AsyncResourceDescriptor> GetResourceDescriptorForAsync(std::string const& virtual_path) override;
+		Result<AsyncResourceDescriptor> GetResourceDescriptorForAsync(std::string const& virtual_path) const override;
+		virtual Result<platform::PlatformFileAttributes> GetPlatformAttributes(std::string const& virtual_path) const;
 		bool Exists(std::string const& virtual_path) override;
 		Result<uint64_t> GetUncompressedFileSize(const std::string& virtual_path) const override;
 		Result<Blob> ReadFileSynchronous(const std::string& virtual_path) const override;
