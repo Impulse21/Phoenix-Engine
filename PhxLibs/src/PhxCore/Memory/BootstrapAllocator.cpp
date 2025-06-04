@@ -1,6 +1,7 @@
 #include <PhxCore/PhxCore_pch.h>
 
 #include "BootstrapAllocator.h"
+#include <PhxCore/Base.h>
 #include <iostream>
 
 namespace
@@ -19,17 +20,17 @@ namespace phx
 		{
 			std::scoped_lock _(g_mutex);
 
-			char* align_ptr = reinterpret_cast<char*>((reinterpret_cast<uintptr_t>(g_next_ptr) + (size_t)alignment - 1) & ~((size_t)alignment - 1));
-
-			if (align_ptr + size > g_bootstrap_buffer + kSize)
+			size_t aligned_start = AlignUp(g_allocated_size, alignment);
+			if (aligned_start + size > kSize)
 			{
 				std::cerr << "CRITICAL ERROR: Bootstrap Memory Overflow\n";
 				std::terminate();
 				return nullptr;
 			}
-			g_next_ptr = align_ptr + kSize;
 
-			return g_next_ptr;
+			g_allocated_size = aligned_start + size;
+
+			return g_bootstrap_buffer + aligned_start;
 		}
 
 		void* Allocate(size_t size, size_t alignment, const char*, int32_t)
