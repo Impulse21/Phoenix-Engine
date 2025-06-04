@@ -15,26 +15,19 @@ namespace
 		uli.HighPart = ft.dwHighDateTime;
 
 		// FILETIME is in 100-nanosecond intervals since January 1, 1601 (UTC).
-		// std::chrono::system_clock epoch is typically January 1, 1970 (UTC).
-		// The difference is 11644473600 seconds.
-		constexpr int64_t c_epoch_diff_seconds = 11644473600LL; // Use signed for subtraction
+		constexpr int64_t c_epoch_diff_seconds = 11644473600LL;
+
 		uint64_t intervals = uli.QuadPart;
 
-		// Convert intervals to seconds and nanoseconds relative to FILETIME epoch
 		int64_t seconds_since_1601 = static_cast<int64_t>(intervals / 10000000ULL);
 		int64_t nanoseconds_remainder = static_cast<int64_t>((intervals % 10000000ULL) * 100);
 
-		// Adjust seconds to be relative to system_clock epoch (1970)
 		int64_t seconds_since_1970 = seconds_since_1601 - c_epoch_diff_seconds;
 
-		// Construct time_point
-		// Note: std::chrono::system_clock::from_time_t takes time_t (usually seconds since epoch)
-		// This conversion might be slightly different based on system_clock's exact epoch guarantee,
-		// but for practical purposes this approach is common.
-		// More robust might involve direct duration calculations from a known epoch.
-		std::chrono::seconds s(seconds_since_1970);
-		std::chrono::nanoseconds ns(nanoseconds_remainder);
-		return std::chrono::system_clock::time_point(s + ns);
+		auto total_ns = std::chrono::seconds(seconds_since_1970) + std::chrono::nanoseconds(nanoseconds_remainder);
+
+		// Explicitly cast to system_clock::duration
+		return std::chrono::system_clock::time_point(std::chrono::duration_cast<std::chrono::system_clock::duration>(total_ns));
 	}
 }
 
