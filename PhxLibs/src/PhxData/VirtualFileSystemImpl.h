@@ -34,7 +34,8 @@ namespace phx::data
 		bool Unmount(std::string const& virtual_path) override;
 
 		Result<AsyncResourceDescriptor> GetResourceDescriptorForAsync(std::string const& virtual_path) const override;
-		virtual Result<platform::PlatformFileAttributes> GetPlatformAttributes(std::string const& virtual_path) const;
+		virtual Result<platform::PlatformFileAttributes> GetPlatformAttributes(std::string const& virtual_path) const override;
+
 		bool Exists(std::string const& virtual_path) override;
 		Result<uint64_t> GetUncompressedFileSize(const std::string& virtual_path) const override;
 		Result<Blob> ReadFileSynchronous(const std::string& virtual_path) const override;
@@ -49,7 +50,7 @@ namespace phx::data
 
 	// Helper function (could be in a utility file)
 	// This is a simplified path join. Robust path joining is more complex.
-	std::string JoinPaths(const std::string& p1, const std::string& p2) 
+	inline std::string JoinPaths(const std::string& p1, const std::string& p2) 
 	{
 		if (p1.empty())
 			return p2;

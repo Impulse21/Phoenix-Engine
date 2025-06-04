@@ -145,8 +145,8 @@ namespace phx::rhi::vk
         VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
         VkFormat m_swapchainImageFormat = VK_FORMAT_UNDEFINED;
         VkExtent2D m_swapchainExtent = { 0, 0 };
-        phx::Array<VkImage> m_swapchainImages;
-        phx::Array<VkImageView> m_swapchainImageViews;
+        std::vector<VkImage> m_swapchainImages;
+        std::vector<VkImageView> m_swapchainImageViews;
         uint32_t m_swapchainImageIndex = ~0u;
 
         DeviceCapability m_capabilities = {};

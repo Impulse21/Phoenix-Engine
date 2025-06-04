@@ -8,7 +8,7 @@
 void phx::StandardAsyncIOSystem::Initialize()
 {
     m_shutdown = false;
-
+	(void)m_vfs;
     JobSystem::SubmitJob([this](JobContext const&) {
         this->StreamingThreadLoop();
     }, JobSystem::Type::Streaming); // Target your dedicated streaming thread)

@@ -455,18 +455,15 @@ namespace phx::rhi::vk
         m_swapchainImageFormat = vkbSwapchain.image_format;
         m_swapchainExtent = vkbSwapchain.extent;
 
-        auto images = vkbSwapchain.get_images().value();
-        auto views = vkbSwapchain.get_image_views().value();
-
-        m_swapchainImages.Initialize(&Memory::GetMainHeap(), images.data(), images.size());
-        m_swapchainImageViews.Initialize(&Memory::GetMainHeap(), views.data(), views.size());
+        m_swapchainImages = vkbSwapchain.get_images().value();
+        m_swapchainImageViews = vkbSwapchain.get_image_views().value();
 
         PHX_CORE_INFO(
             "[RHI] Swapchain Initialized. Extent: {0}x{1}, Format: {2}, Images: {3}",
             m_swapchainExtent.width,
             m_swapchainExtent.height,
             "",
-            m_swapchainImages.Size);
+            m_swapchainImages.size());
     }
 
     void VkGfxDeviceImpl::RecreateSwapchain(const GfxDeviceDescriptor& desc)
@@ -489,8 +486,8 @@ namespace phx::rhi::vk
                 vkDestroyImageView(m_device, imageView, GetVkAllocationCallbacks());
             }
         }
-        m_swapchainImageViews.Shutdown();
-        m_swapchainImages.Shutdown();
+        m_swapchainImageViews.clear();
+        m_swapchainImages.clear();
 
         if (m_swapchain != VK_NULL_HANDLE)
         {
