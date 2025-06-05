@@ -1,6 +1,7 @@
 #include <PhxCore/PhxCore_pch.h>
-#include "MemoryArenaInterfaces.h"
+#include "Allocators.h"
 
+using namespace phx;
 
 void* phx::MallocAllocator::Allocate(size_t size, size_t)
 {
@@ -16,8 +17,6 @@ void phx::MallocAllocator::Deallocate(void* pointer)
 {
 	free(pointer);
 }
-
-#if false
 
 void PagedLinearAllocator::Initialize(size_t size)
 {
@@ -65,73 +64,6 @@ void* PagedLinearAllocator::Allocate(size_t size, size_t alignment)
 void* PagedLinearAllocator::Allocate(size_t size, size_t alignment, const char* /*file*/, int32_t /*line*/)
 {
 	return Allocate(size, alignment);
-}
-
-void HeapAllocator::Initialize(size_t size)
-{
-	m_memory = std::malloc(size);
-	m_maxSize = size;
-	m_allocatedSize = 0;
-	m_tlsfHandle = tlsf_create_with_pool(m_memory, size);
-}
-
-void HeapAllocator::Shutdown()
-{
-	// Check memory at the application exit.
-	MemoryStatistics stats{ 0, m_maxSize };
-	pool_t pool = tlsf_get_pool(m_tlsfHandle);
-
-	tlsf_walk_pool(pool, ExitWalker, (void*)&stats);
-
-	if (stats.AllocatedBytes)
-	{
-		PHX_CORE_ERROR(
-			"HeapAllocator Shutdown FAILURE! Allocated memory detected. Allocated {0}, total {1}",
-			stats.AllocatedBytes,
-			stats.TotalBytes);
-	}
-	else {
-		PHX_CORE_INFO("HeapAllocator Shutdown - all memory free!");
-	}
-
-	PHX_CORE_ASSERT(stats.AllocatedBytes == 0, "Allocations still present. Check your code!");
-
-	tlsf_destroy(m_tlsfHandle);
-
-	std::free(m_memory);
-}
-
-void* HeapAllocator::Allocate(size_t size, size_t alignment)
-{
-#if defined (HEAP_ALLOCATOR_STATS)
-	void* allocatedMemory = alignment == 1 ? tlsf_malloc(m_tlsfHandle, size) : tlsf_memalign(m_tlsfHandle, alignment, size);
-	sizet actualSize = tlsf_block_size(allocatedMemory);
-	m_allocatedSize += actualSize;
-
-	/*if ( size == 52224 ) {
-		return allocatedMemory;
-	}*/
-	return allocatedMemory;
-#else
-	return alignment == 1 ? tlsf_malloc(m_tlsfHandle, size) : tlsf_memalign(m_tlsfHandle, alignment, size);
-#endif // HEAP_ALLOCATOR_STATS
-}
-
-void* HeapAllocator::Allocate(size_t size, size_t alignment, const char*, int32_t)
-{
-	return Allocate(size, alignment);
-}
-
-void HeapAllocator::Deallocate(void* pointer)
-{
-#if defined (HEAP_ALLOCATOR_STATS)
-	sizet actualSize = tlsf_block_size(pointer);
-	m_allocatedSize -= actualSize;
-
-	tlsf_free(m_tlsfHandle, pointer);
-#else
-	tlsf_free(m_tlsfHandle, pointer);
-#endif
 }
 
 void StackAllocator::Initialize(size_t size)
@@ -286,4 +218,3 @@ void* LinearAllocator::Allocate(size_t size, size_t alignment, const char*, int3
 {
 	return Allocate(size, alignment);
 }
-#endif
