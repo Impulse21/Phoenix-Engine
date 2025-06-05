@@ -2,7 +2,6 @@
 
 #include <assert.h>
 #include <atomic>
-#include <PhxCore/Memory/MemorySystem.h>
 
 namespace phx
 {
@@ -293,7 +292,7 @@ namespace phx
             unsigned long result = --RefCount;
             if (result == 0) 
             {
-                phx_delete this;
+                delete this;
             }
             return result;
         }

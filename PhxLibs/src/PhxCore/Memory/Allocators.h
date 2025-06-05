@@ -4,24 +4,6 @@
 
 namespace phx
 {
-
-	//
-	// DANGER: this should be used for NON runtime processes, like compilation of resources.
-	class MallocAllocator  final : public IAllocator
-	{
-	public:
-		~MallocAllocator() override = default;
-
-		void Initialize(size_t /*size*/) {};
-		void Shutdown() {};
-
-		void* Allocate(size_t size, size_t alignment) override;
-		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
-
-		void Deallocate(void* pointer) override;
-		bool IsAddressInRange(const void*) const override { return true; }
-	};
-
 	class StackAllocator final : public IAllocator
 	{
 	public:
@@ -37,6 +19,7 @@ namespace phx
 
 		size_t GetMarker() { return m_allocatedSize; }
 		void FreeMarker(size_t marker);
+		bool IsAddressInRange(const void* ptr) const override;
 
 		void Clear() { m_allocatedSize = 0; }
 
@@ -64,6 +47,7 @@ namespace phx
 
 		void	DeallocateTop(size_t size);
 		void	DeallocateBottom(size_t size);
+		bool IsAddressInRange(const void* ptr) const override;
 
 		size_t GetMarkerTop() { return m_top; }
 		size_t GetMarkerButtom() { return m_bottom; }
@@ -96,6 +80,7 @@ namespace phx
 		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
 
 		void Deallocate(void* /*pointer*/) override {};
+		bool IsAddressInRange(const void* ptr) const override;
 
 		void Clear()
 		{
@@ -122,5 +107,6 @@ namespace phx
 		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
 
 		void Deallocate(void* pointer) override;
+		bool IsAddressInRange(const void* ptr) const { return true; }
 	};
 }

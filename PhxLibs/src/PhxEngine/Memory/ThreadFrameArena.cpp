@@ -1,5 +1,6 @@
 #include <PhxCore/PhxCore_pch.h>
-#include "MemoryArenaInterfaces.h"
+#include "ThreadFrameArena.h"
+#include "FrameMemoryManager.h"
 #include <PhxCore/Platform/PlatformWrapper.h>
 
 
@@ -49,7 +50,11 @@ void* ThreadFrameArena::Allocate(size_t size, size_t alignment)
 	if (newAllocatedSize <= m_commitedSize)
 		return m_baseAddress + newStart;
 
-	Platform::Get().VirtualMemCommit(m_baseAddress + m_commitedSize, size);
+	size_t commitSize = m_pageSize;
+	if (newAllocatedSize > m_pageSize)
+		commitSize = size;
+
+	Platform::Get().VirtualMemCommit(m_baseAddress + m_commitedSize, commitSize);
 	m_commitedSize += newAllocatedSize;
 
 	return m_baseAddress + newStart;

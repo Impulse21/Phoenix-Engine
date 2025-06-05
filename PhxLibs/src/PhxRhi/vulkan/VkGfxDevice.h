@@ -13,7 +13,6 @@
 #include <VkBootstrap.h>
 #include <vk_mem_alloc.h>
 
-#include <PhxCore/Containers/Array.h>
 
 namespace phx::rhi::vk
 {
@@ -151,7 +150,7 @@ namespace phx::rhi::vk
 
         DeviceCapability m_capabilities = {};
 
-        phx::FixedArray<FrameData, cMaxInflightFrames> m_frames;
+        std::array<FrameData, cMaxInflightFrames> m_frames;
         VkCommandPool m_graphicsCommandPool = VK_NULL_HANDLE; // Primary graphics command pool
     };
 }

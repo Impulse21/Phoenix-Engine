@@ -38,10 +38,9 @@ namespace phx
 	class Blob : public IBlob
 	{
 	public:
-		Blob(void* Data, size_t size, IAllocator* allocator = nullptr)
+		Blob(void* Data, size_t size)
 			: m_data(Data)
 			, m_size(size)
-			, m_allocator(allocator)
 		{
 		}
 
@@ -49,16 +48,7 @@ namespace phx
 		{
 			if (m_data)
 			{
-				if (m_allocator)
-				{
-					m_allocator->Deallocate(m_data);
-				}
-				else
-				{
-					PHX_CORE_ASSERT(MemorySystem::GetMainArena().IsAddressInRange(m_data));
-					MemorySystem::GetMainArena().Deallocate(m_data);
-				}
-
+				free(m_data);
 				m_data = nullptr;
 			}
 
@@ -71,7 +61,6 @@ namespace phx
 	private:
 		void* m_data;
 		size_t m_size;
-		IAllocator* m_allocator = nullptr;
 	};
 
 	struct File;

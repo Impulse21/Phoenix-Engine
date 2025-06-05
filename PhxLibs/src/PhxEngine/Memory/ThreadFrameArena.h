@@ -1,16 +1,15 @@
 #pragma once
 
 #include <new>     // For std::align_val_t, std::bad_alloc
-#include "IAllocator.h"
+#include <PhxCore/Memory/IAllocator.h>
 
 namespace phx
 {
     // --- Thread Frame Arena Interface ---
-    class ThreadFrameArena final : public IAllocator
-    { 
-    public:
-		ThreadFrameArena() = default;
-		~ThreadFrameArena() = default;
+    struct ThreadFrameArena final : public IAllocator
+    {
+        ThreadFrameArena() = default;
+        ~ThreadFrameArena() = default;
 
         void Initialize(size_t reserveBytes, size_t initialCommitBytes);
         void Shutdown();
@@ -30,8 +29,9 @@ namespace phx
         size_t GetCommitedSize() const { return m_commitedSize; }
 
         uint8_t* m_baseAddress = nullptr;
-		size_t m_allocatedSize = 0;
+        size_t m_allocatedSize = 0;
         size_t m_reservedSize = 0;
         size_t m_commitedSize = 0;
-		size_t m_pageSize = 0;
+        size_t m_pageSize = 0;
     };
+}

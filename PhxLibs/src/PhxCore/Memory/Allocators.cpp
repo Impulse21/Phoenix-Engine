@@ -171,6 +171,17 @@ void DoubleStackAllocator::DeallocateBottom(size_t size)
 		m_bottom -= size;
 }
 
+bool phx::DoubleStackAllocator::IsAddressInRange(const void* ptr) const
+{
+	if (!m_memory || m_totalSize == 0 || !ptr)
+		return false;
+
+	const uint8_t* p_char = static_cast<const uint8_t*>(ptr);
+	const uint8_t* base_char = m_memory;
+
+	return (p_char >= base_char) && (p_char < (base_char + m_totalSize));
+}
+
 void DoubleStackAllocator::FreeMarkerTop(size_t marker)
 {
 	if (marker > m_top && marker < m_totalSize)
@@ -217,4 +228,15 @@ void* LinearAllocator::Allocate(size_t size, size_t alignment)
 void* LinearAllocator::Allocate(size_t size, size_t alignment, const char*, int32_t)
 {
 	return Allocate(size, alignment);
+}
+
+bool phx::LinearAllocator::IsAddressInRange(const void* ptr) const
+{
+	if (!m_memory || m_totalSize == 0 || !ptr)
+		return false;
+
+	const uint8_t* p_char = static_cast<const uint8_t*>(ptr);
+	const uint8_t* base_char = m_memory;
+
+	return (p_char >= base_char) && (p_char < (base_char + m_totalSize));
 }

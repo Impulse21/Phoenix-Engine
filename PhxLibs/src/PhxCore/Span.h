@@ -4,7 +4,6 @@
 #include <vector>
 #include <assert.h>
 #include "PhxCore/EnumUtils.h"
-#include <PhxCore/Containers/Array.h>
 
 namespace phx
 {
@@ -44,11 +43,6 @@ namespace phx
 		Span(EnumArray<T, E>& a)
 			: Span(a.data(), a.size(), 0)
 		{}
-
-		Span(phx::Array<T>& a)
-			: Span(a.Data, a.Size, 0)
-		{
-		}
 
 		template <typename U, std::size_t N>
 		constexpr Span(const U(&arr)[N]) noexcept
