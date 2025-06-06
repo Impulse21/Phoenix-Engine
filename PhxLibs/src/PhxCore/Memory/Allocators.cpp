@@ -1,6 +1,8 @@
 #include <PhxCore/PhxCore_pch.h>
 #include "Allocators.h"
 
+#include <PhxCore/Memory/MemoryUtils.h>
+
 using namespace phx;
 
 void* phx::MallocAllocator::Allocate(size_t size, size_t)
@@ -16,54 +18,6 @@ void* phx::MallocAllocator::Allocate(size_t size, size_t, const char*, int32_t)
 void phx::MallocAllocator::Deallocate(void* pointer)
 {
 	free(pointer);
-}
-
-void PagedLinearAllocator::Initialize(size_t size)
-{
-	m_memory = static_cast<uint8_t*>(
-		Platform::Get().VirtualMemReserve(size));
-	m_commitedSize = 0;
-	m_reservedSize = size;
-
-}
-
-void PagedLinearAllocator::Shutdown()
-{
-	// Free the committed memory
-	if (!Platform::Get().VirtualMemFree(m_memory))
-	{
-		PHX_CORE_ERROR("Failed to free virtual memory");
-	}
-
-	m_memory = nullptr;
-	m_reservedSize = 0;
-	m_commitedSize = 0;
-}
-
-void* PagedLinearAllocator::Allocate(size_t size, size_t alignment)
-{
-	const size_t newStart = AlignUp(m_commitedSize, alignment);
-	PHX_CORE_ASSERT(newStart < m_reservedSize);
-
-	const size_t newAllocatedSize = newStart + size;
-	if (newAllocatedSize > m_reservedSize)
-	{
-		PHX_CORE_ASSERT(false, "Overflow Detected");
-		return nullptr;
-	}
-
-	if (newAllocatedSize < m_commitedSize)
-		return m_memory + newStart;
-
-
-	Platform::Get().VirtualMemCommit(m_memory + m_commitedSize, size);
-	m_commitedSize += newAllocatedSize;
-	return m_memory + newStart;
-}
-
-void* PagedLinearAllocator::Allocate(size_t size, size_t alignment, const char* /*file*/, int32_t /*line*/)
-{
-	return Allocate(size, alignment);
 }
 
 void StackAllocator::Initialize(size_t size)

@@ -44,7 +44,7 @@ namespace phx::rhi::vk
         bool PlatformInitialize(GfxDeviceDescriptor const& desc);
         void PlatformShutdown();
 
-        phx::rhi::vk::VkCommandCtxImpl* PlatformBeginCommandBuffer();
+        phx::rhi::vk::VkCommandCtxImpl* PlatformBeginCommandBuffer(phx::IAllocator* frame_arena);
 
         void PlatformPresent();
         void PlatformSubmitFrame(VkCommandCtxImpl* cmdCtx); // Added for clarity

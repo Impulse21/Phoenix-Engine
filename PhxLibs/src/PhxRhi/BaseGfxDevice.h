@@ -4,6 +4,10 @@
 
 #include <PhxRhi/RHICommon.h> 
 
+namespace phx
+{
+    class IAllocator;
+}
 namespace phx::rhi
 {
     class CommandBuffer;
@@ -35,9 +39,9 @@ namespace phx::rhi
             static_cast<TDerivedDevice*>(this)->PlatformShutdown();
         }
 
-        CommandBuffer* BeginCommandBuffer()
+        CommandBuffer* BeginCommandBuffer(phx::IAllocator* frame_arena)
         {
-            return static_cast<TDerivedDevice*>(this)->PlatformBeginCommandBuffer();
+            return static_cast<TDerivedDevice*>(this)->PlatformBeginCommandBuffer(frame_arena);
         }
 
         void Present()

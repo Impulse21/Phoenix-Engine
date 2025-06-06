@@ -14,12 +14,13 @@
 
     #include <Windows.h> // For GetModuleHandle
 #endif
-
+#include <PhxCore/Memory/IAllocator.h>
 #include "VkGfxDevice.h"
 #include "VkCommandCtx.h"
 
 #include <PhxCore/Log.h>
-#include <PhxCore/Memory/MemorySystem.h>
+#include <PhxCore/Memory/MemoryUtils.h>
+#include <PhxCore/Memory/IAllocator.h>
 
 
 
@@ -566,7 +567,7 @@ namespace phx::rhi::vk
         }
     }
 
-    phx::rhi::vk::VkCommandCtxImpl* VkGfxDeviceImpl::PlatformBeginCommandBuffer()
+    phx::rhi::vk::VkCommandCtxImpl* VkGfxDeviceImpl::PlatformBeginCommandBuffer(phx::IAllocator* frame_arena)
     {
         PHX_PROFILE_SECTION("Vulkan::PlatformBeginCommandBuffer");
         if (!m_isInitialized || m_graphicsCommandPool == VK_NULL_HANDLE)
@@ -623,7 +624,7 @@ namespace phx::rhi::vk
 
         PHX_CORE_ASSERT(vkBeginCommandBuffer(vkCmdBuffer, &beginInfo));
 
-        VkCommandCtxImpl* cmdCtx = phx_new_frame(VkCommandCtxImpl);
+        VkCommandCtxImpl* cmdCtx = frame_arena->Allocate<VkCommandCtxImpl>();
         cmdCtx->PlatfomrInitialize(vkCmdBuffer, this, m_swapchainImageIndex);
 
         return cmdCtx;

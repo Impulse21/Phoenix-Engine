@@ -3,7 +3,6 @@
 #include <filesystem>
 #include <fstream>
 
-#include "PhxCore/VFS.h"
 #include "PhxCore/StringUtils.h"
 #include "PhxRhi/ShaderCompiler.h"
 #include "PhxRhi/RHICommon.h"
@@ -82,6 +81,7 @@ namespace
 			return;
 		}
 
+#if false
 		// Read Shader data byte data
 		std::unique_ptr<IBlob> sourceData = input.FileSystem->ReadFile(input.SourceFilename);
 
@@ -90,6 +90,9 @@ namespace
 			PHX_CORE_ERROR("Failed to load file {0}", input.SourceFilename.c_str());
 			return;
 		}
+#else
+		PHX_CORE_ASSERT(false, "TODO");
+#endif
 
 		std::vector<std::wstring> args = {
 			L"-res-may-alias",
@@ -387,8 +390,8 @@ namespace
 		args.push_back(wsource.c_str());
 
 		DxcBuffer Source;
-		Source.Ptr = sourceData->Data();
-		Source.Size = sourceData->Size();
+		Source.Ptr = nullptr; // TODO
+		Source.Size = 0; // sourceData->Size();
 		Source.Encoding = DXC_CP_ACP;
 
 		struct IncludeHandler : public IDxcIncludeHandler

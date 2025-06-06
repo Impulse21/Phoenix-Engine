@@ -1,7 +1,6 @@
 #include "PhxData/PhxData_pch.h"
 #include "DataSerializer.h"
 
-#include <PhxCore/VFS.h>
 
 void phx::data::Save(IFileSystem* /*fs*/, const char* /*filename*/, data::AnyPtr /*object*/)
 {

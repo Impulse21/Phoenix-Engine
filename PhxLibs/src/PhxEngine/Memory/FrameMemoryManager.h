@@ -1,17 +1,13 @@
 #pragma once
 
-#include "PhxCore/Base.h"
+#include <PhxCore/Base.h>
+#include <PhxCore/Memory/MemoryUtils.h>
 #include "ThreadFrameArena.h"
 
 #define phx_new_frame new (FrameMemoryManager::GetCurrentThreadArena())
 
 namespace phx
 {
-	template<typename T, typename U>
-	constexpr T AlignUp(T Size, U Alignment)
-	{
-		return (T)(((size_t)Size + (size_t)Alignment - 1) & ~((size_t)Alignment - 1));
-	}
 
 	struct MemoryStatistics
 	{

@@ -107,6 +107,6 @@ namespace phx
 		void* Allocate(size_t size, size_t alignment, const char* file, int32_t line) override;
 
 		void Deallocate(void* pointer) override;
-		bool IsAddressInRange(const void* ptr) const { return true; }
+		bool IsAddressInRange(const void*) const override{ return true; }
 	};
 }

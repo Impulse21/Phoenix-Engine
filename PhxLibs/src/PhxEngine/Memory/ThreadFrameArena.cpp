@@ -52,7 +52,7 @@ void* ThreadFrameArena::Allocate(size_t size, size_t alignment)
 
 	size_t commitSize = m_pageSize;
 	if (newAllocatedSize > m_pageSize)
-		commitSize = size;
+		commitSize = AlignUp(size, m_pageSize);
 
 	Platform::Get().VirtualMemCommit(m_baseAddress + m_commitedSize, commitSize);
 	m_commitedSize += newAllocatedSize;
