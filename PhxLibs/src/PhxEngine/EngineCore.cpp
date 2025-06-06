@@ -4,7 +4,6 @@
 #include <PhxCore/Application.h>
 
 #include <PhxCore/Log.h>
-#include <PhxCore/Memory/MemorySystem.h>
 #include <PhxCore/Profiler.h>
 
 #include <PhxResource/ResourceSystem.h>
@@ -18,6 +17,7 @@
 
 #include <PhxEngine/JobSystem.h>
 #include <PhxEngine/EngineSync.h>
+#include <PhxEngine/Memory/FrameMemoryManager.h>
 #include <PhxEngine/IO/StandardAsyncIOSystem.h>
 
 using namespace phx;
@@ -59,13 +59,13 @@ namespace phx
 			EngineSync::g_FrameCount = 0;
 			phx::Log::Initialize();
 
-			MemorySystem::Initialize({});
+			FrameMemoryManager::Initialize({});
 			
 			phx::JobSystem::Initialize();
 
-			phx::data::IVirtualFileSystem::Ptr = phx_new data::VirtualFileSystemImpl();
+			phx::data::IVirtualFileSystem::Ptr = new data::VirtualFileSystemImpl();
 
-			phx::data::IAsyncIOSystem::Ptr = phx_new phx::StandardAsyncIOSystem(phx::data::IVirtualFileSystem::Ptr);
+			phx::data::IAsyncIOSystem::Ptr = new phx::StandardAsyncIOSystem(phx::data::IVirtualFileSystem::Ptr);
 			phx::data::IAsyncIOSystem::Ptr->Initialize();
 
 			phx::IApplication::Ptr = phx::CreateApplication();
@@ -88,8 +88,8 @@ namespace phx
 
 			app->SetWindowHandle(windowHandle);
 
-			phx::ResourceSystem::Ptr = phx_new ResourceSystem;
-			phx::ResourceSystem::Ptr->Initialize(phx::IRootFileSystem::Ptr);
+			phx::ResourceSystem::Ptr = new ResourceSystem;
+			phx::ResourceSystem::Ptr->Initialize(phx::data::IVirtualFileSystem::Ptr);
 #if false
 
 			phx::ResourceManger::Initialize();
@@ -133,22 +133,22 @@ namespace phx
 			phx::IApplication::Ptr = nullptr;
 
 			phx::ResourceSystem::Ptr->Shutdown();
-			phx_delete phx::ResourceSystem::Ptr;
+			delete phx::ResourceSystem::Ptr;
 			phx::ResourceSystem::Ptr = nullptr;
 
 			phx::rhi::GfxDevice& gfxDevice = phx::rhi::GetDevice();
 			gfxDevice.Shutdown();
 
 			phx::data::IAsyncIOSystem::Ptr->Shutdown();
-			phx_delete phx::data::IAsyncIOSystem::Ptr;
+			delete phx::data::IAsyncIOSystem::Ptr;
 
-			phx_delete phx::data::IVirtualFileSystem::Ptr;
-
-			phx_delete phx::IRootFileSystem::Ptr;
-			phx::IRootFileSystem::Ptr = nullptr;
+			delete phx::data::IVirtualFileSystem::Ptr;
+			phx::data::IVirtualFileSystem::Ptr = nullptr;
 
 			JobSystem::Shutdown();
-			MemorySystem::Shutdown();
+
+			FrameMemoryManager::ShutdownCurrentThreadFrameArena();
+			FrameMemoryManager::Shutdown();
 		}
 	}
 }

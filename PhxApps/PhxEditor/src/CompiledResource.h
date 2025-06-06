@@ -1,6 +1,6 @@
 #pragma once
 
-#include <PhxCore/VFS.h>
+#include <string>
 
 namespace phxed
 {
@@ -9,8 +9,10 @@ namespace phxed
 		std::string Name;
 		std::string Ext;
 
+#if false
 		// Keep metadata chunk separate as they are stored differently in pak files.
 		std::unique_ptr<phx::IBlob> MetadataChunk;
 		std::vector<std::unique_ptr<phx::IBlob>> Chunks;
+#endif
 	};
 }

@@ -5,9 +5,9 @@
 
 using namespace phx;
 
-void phx::ResourceSystem::Initialize(IFileSystem* fs)
+void phx::ResourceSystem::Initialize(data::IVirtualFileSystem* vfs)
 {
-	m_fs = fs;
+	m_vfs = vfs;
 }
 
 void phx::ResourceSystem::Shutdown()
@@ -30,7 +30,9 @@ RefCountPtr<Resource> phx::ResourceSystem::Get(const char* path)
 
 	RefCountPtr<Resource> resource = nullptr;
 
-	std::string ext = FileSystem::GetFileExt(path);
+	PHX_CORE_ASSERT(false, "TODO");
+	//std::string ext = FileSystem::GetFileExt(path);
+	std::string ext;
 	auto handlerItr = m_resourceHandlers.find(StringHash(ext));
 
 	if (handlerItr == m_resourceHandlers.end())
@@ -72,9 +74,13 @@ RefCountPtr<Resource> phx::ResourceSystem::Get(const char* path)
 			"Loading Resource '{0}' from disk",
 			path);
 
+#if false
 		auto resolvedPath = IRootFileSystem::Ptr->ResolvePath(path);
 		FileHandle fileHandle = m_fs->OpenFile(resolvedPath, FileAccessMode::Read);
-		resource = handlerItr->second->LoadLoose(m_fs, fileHandle);
+#else
+		PHX_CORE_ASSERT(false, "TODO");
+#endif
+		resource = handlerItr->second->LoadLoose(m_vfs);
 	}
 
 	if (resource)

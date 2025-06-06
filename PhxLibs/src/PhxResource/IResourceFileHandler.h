@@ -1,7 +1,7 @@
 #pragma once
 
 #include <PhxCore/RefCountPtr.h>
-#include <PhxCore/VFS.h>
+#include <PhxData/IVirtualFileSystem.h>
 
 namespace phx
 {
@@ -18,8 +18,8 @@ namespace phx
 	public:
 		virtual ~IResourceFileHandler() = default;
 
-		virtual RefCountPtr<Resource> LoadFromPak(IFileSystem* fs, FileHandle handle) const = 0;
-		virtual RefCountPtr<Resource> LoadLoose(IFileSystem* fs, FileHandle handle) const = 0;
+		virtual RefCountPtr<Resource> LoadFromPak(data::IVirtualFileSystem* vfs) const = 0;
+		virtual RefCountPtr<Resource> LoadLoose(data::IVirtualFileSystem* vfs) const = 0;
 
 	};
 }

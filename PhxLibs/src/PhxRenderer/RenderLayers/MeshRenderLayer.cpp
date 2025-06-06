@@ -1,6 +1,7 @@
 #include "PhxRenderer/PhxRenderer_pch.h"
 #include "MeshRenderLayer.h"
 
+#include <PhxEngine/Memory/FrameMemoryManager.h>
 #include <PhxWorld/World.h>
 #include <PhxRenderer/RenderSystem.h>
 #include <PhxRenderer/RenderComponents.h>
@@ -34,14 +35,14 @@ void* phx::gfx::MeshRenderLayer::PreRender(phx::World& world, View const& view, 
 
 	PHX_PROFILE;
 
-	MeshRenderLayerCache* cache = phx_new_frame(MeshRenderLayerCache);
+	MeshRenderLayerCache* cache = phx_new_frame MeshRenderLayerCache;
 
 	// Collect Meshes
 	auto componentView = world.GetAllEntitiesWith<TransformComponent, gfx::RenderMeshComponent>();
 	size_t estimatedSize = 0;
 	componentView.each([&](entt::entity, TransformComponent, gfx::RenderMeshComponent) { estimatedSize++; });
 
-	cache->Entries = phx_new_frame(CacheEntry);
+	cache->Entries = phx_new_frame CacheEntry;
 
 	cache->NumEntries = 0;
 	for (auto e : componentView)

@@ -3,7 +3,6 @@
 #include "PhxCore/EnumUtils.h"
 #include "PhxCore/RingBuffer.h"
 #include "PhxCore/SystemTime.h"
-#include <PhxCore/Memory/MemorySystem.h>
 
 #include <thread>
 #include <algorithm>
@@ -68,17 +67,13 @@ namespace
 
 		void BeginFrame()
 		{
-			MemorySystem::ResetCurrentThreadFrameAreana();
+			FrameMemoryManager::ResetCurrentThreadFrameAreana();
 		}
 	};
-	struct ThreadPoolInternal
-	{
-		std::atomic_bool is_alive = false;
-		phx::EnumArray<ThreadPoolContext, JobSystem::Type> thread_pools;
-	};
 
+	std::atomic_bool g_is_alive = false;
+	phx::EnumArray<ThreadPoolContext, JobSystem::Type> g_thread_pools;
 	thread_local phx::EnumArray<JobSystem::Barrier, JobSystem::Type> g_thread_barrier;
-	ThreadPoolInternal* g_internal = nullptr;
 
 	// use R
 	struct Shutdowner
@@ -94,15 +89,13 @@ namespace
 void JobSystem::Initialize()
 {
 	const uint32_t numCores = (uint32_t)GetNumCores();
-	g_internal = phx_new ThreadPoolInternal();
-
-	g_internal->is_alive.store(true);
+	g_is_alive.store(true);
 
 	CpuTimer timer;
-	for (size_t i = 0; i < g_internal->thread_pools.size(); i++)
+	for (size_t i = 0; i < g_thread_pools.size(); i++)
 	{
 		Type type = static_cast<Type>(i);
-		ThreadPoolContext& resource = g_internal->thread_pools[i];
+		ThreadPoolContext& resource = g_thread_pools[i];
 
 		switch (type)
 		{
@@ -124,15 +117,15 @@ void JobSystem::Initialize()
 		for (uint32_t threadID = 0; threadID < resource.NumThreads; threadID++)
 		{
 			std::thread& worker = resource.WorkerThreads.emplace_back([threadID, &resource] {
-				MemorySystem::EnsureThreadFrameArenaInitialized();
-				while (g_internal->is_alive)
+				FrameMemoryManager::EnsureThreadFrameArenaInitialized();
+				while (g_is_alive)
 				{
 					resource.DoWork(threadID);
 
 					std::unique_lock<std::mutex> lock(resource.WakeMutex);
 					resource.WakeCondition.wait(lock);
 				}
-				MemorySystem::ShutdownCurrentThreadFrameArena();
+				FrameMemoryManager::ShutdownCurrentThreadFrameArena();
 			});
 
 #ifdef _WIN32
@@ -176,28 +169,28 @@ void JobSystem::Initialize()
 	PHX_CORE_INFO("[ThreadPool] Initialized with {0} cores in {1} ms\n\tHigh priority threads: {2}\n\tStreaming threads: {3}",
 		numCores,
 		duration.GetMilliseconds(),
-		g_internal->thread_pools[Type::High].NumThreads,
-		g_internal->thread_pools[Type::Streaming].NumThreads);
+		g_thread_pools[Type::High].NumThreads,
+		g_thread_pools[Type::Streaming].NumThreads);
 }
 
 void JobSystem::Shutdown()
 {
-	if (!g_internal->is_alive)
+	if (!g_is_alive)
 		return;
 
-	g_internal->is_alive.store(false);
+	g_is_alive.store(false);
 	bool wakeLoop = true;
 
 	std::thread waker([&]
 		{
 			while (wakeLoop)
 			{
-				for (auto& res : g_internal->thread_pools)
+				for (auto& res : g_thread_pools)
 					res.WakeCondition.notify_all();
 			}
 		});
 
-	for (auto& res : g_internal->thread_pools)
+	for (auto& res : g_thread_pools)
 	{
 		for (auto& thread : res.WorkerThreads)
 			thread.join();
@@ -206,7 +199,7 @@ void JobSystem::Shutdown()
 	wakeLoop = false;
 	waker.join();
 
-	for (auto& thread_pool : g_internal->thread_pools)
+	for (auto& thread_pool : g_thread_pools)
 	{
 		thread_pool.NumThreads = 0;
 		thread_pool.WorkerThreads.clear();
@@ -218,9 +211,9 @@ void JobSystem::Shutdown()
 void JobSystem::SubmitJob(JobCallbackFunc const& task, Type type, JobContext* specifiedCtx)
 {
 	JobContext context = {
-		.FrameHeap = specifiedCtx ? specifiedCtx->FrameHeap : &MemorySystem::GetCurrentThreadArena(),
+		.FrameHeap = specifiedCtx ? specifiedCtx->FrameHeap : &FrameMemoryManager::GetCurrentThreadArena(),
 	};
-	ThreadPoolContext& ctx = g_internal->thread_pools[type];
+	ThreadPoolContext& ctx = g_thread_pools[type];
 	if (ctx.NumThreads < 1)
 	{
 		task(context);
@@ -289,7 +282,7 @@ void JobSystem::Wait(Type type)
 {
 	if (IsBusy(type))
 	{
-		ThreadPoolContext& ctx = g_internal->thread_pools[type];
+		ThreadPoolContext& ctx = g_thread_pools[type];
 		ctx.WakeCondition.notify_all();
 		ctx.DoWork(ctx.NextQueue.fetch_add(1) % ctx.NumThreads);
 
@@ -307,7 +300,7 @@ void JobSystem::Wait(Barrier& barrier, Type type)
 
 	while (barrier.IsNotCleared())
 	{
-		ThreadPoolContext& ctx = g_internal->thread_pools[type];
+		ThreadPoolContext& ctx = g_thread_pools[type];
 		ctx.WakeCondition.notify_all();
 		ctx.DoWork(ctx.NextQueue.fetch_add(1) % ctx.NumThreads);
 
@@ -321,13 +314,13 @@ void JobSystem::Wait(Barrier& barrier, Type type)
 void JobSystem::Signal(Barrier& barrier, Type type)
 {
 	barrier.Signal();
-	ThreadPoolContext& ctx = g_internal->thread_pools[type];
+	ThreadPoolContext& ctx = g_thread_pools[type];
 	ctx.WakeCondition.notify_one();
 }
 
 uint32_t JobSystem::GetThreadCount(Type type)
 {
-	return g_internal->thread_pools[type].NumThreads;
+	return g_thread_pools[type].NumThreads;
 }
 
 uint32_t phx::JobSystem::GetNumCores()

@@ -1,6 +1,5 @@
 
 #include <PhxCore/Base.h>
-#include <PhxCore/VFS.h>
 #include <PhxCore/SystemTime.h>
 #include <PhxCore/Profiler.h>
 
@@ -410,12 +409,12 @@ phx::IApplication* phx::CreateApplication()
 		.WorkingDirectory = phx::FileSystem::GetDirectoryWithExecutable()
 	};
 
-	return phx_new PhxEditor(desc);
+	return new PhxEditor(desc);
 }
 
 void phx::DeleteApplication(phx::IApplication* ptr)
 {
-	phx_delete ptr;
+	delete ptr;
 }
 
 void PhxEditor::Startup()

@@ -624,7 +624,7 @@ namespace phx::rhi::vk
 
         PHX_CORE_ASSERT(vkBeginCommandBuffer(vkCmdBuffer, &beginInfo));
 
-        VkCommandCtxImpl* cmdCtx = frame_arena->Allocate<VkCommandCtxImpl>();
+        VkCommandCtxImpl* cmdCtx = frame_arena->NewObject<VkCommandCtxImpl>();
         cmdCtx->PlatfomrInitialize(vkCmdBuffer, this, m_swapchainImageIndex);
 
         return cmdCtx;

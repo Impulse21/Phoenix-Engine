@@ -1,9 +1,7 @@
 #pragma once
 
 #include "memory"
-#include <PhxCore/Memory/MemorySystem.h>
-#include "PhxCore/Span.h"
-#include <PhxCore/VFS.h>
+#include <PhxCore/Span.h>
 
 namespace phx
 {

@@ -1,10 +1,10 @@
 #pragma once
 
-#include <PhxCore/Memory/MemorySystem.h>
 #include <PhxCore/StringHash.h>
 #include <PhxCore/RefCountPtr.h>
 
 #include <PhxResource/IResourceFileHandler.h>
+#include <PhxData/IVirtualFileSystem.h>
 
 namespace phx
 {
@@ -20,7 +20,7 @@ namespace phx
 	public:
 		inline static ResourceSystem* Ptr = nullptr;
 
-		void Initialize(IFileSystem* fs);
+		void Initialize(data::IVirtualFileSystem* fs);
 		void Shutdown();
 
 		RefCountPtr<Resource> Get(const char* path);
@@ -44,7 +44,7 @@ namespace phx
 		}
 
 	private:
-		IFileSystem* m_fs;
+		data::IVirtualFileSystem* m_vfs;
 		std::mutex m_cacheMutex;
 		std::unordered_map<Hash32, RefCountPtr<Resource>> m_cache;
 		std::unordered_map<Hash32, std::unique_ptr<IResourceFileHandler>> m_resourceHandlers;

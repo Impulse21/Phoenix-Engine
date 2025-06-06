@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CompiledResource.h"
+#include <memory>
 
 namespace phx
 {

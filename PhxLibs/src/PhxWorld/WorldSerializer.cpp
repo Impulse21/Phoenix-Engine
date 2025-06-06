@@ -9,7 +9,6 @@
 #include "World.h"
 #include "Entity.h"
 
-#include <PhxCore/VFS.h>
 
 #include <nlohmann/json.hpp>
 
@@ -152,7 +151,7 @@ namespace
     }
 }
 
-bool phx::WorldSerializer::Save(phx::IFileSystem* fs, const char* filename, phx::World& world)
+bool phx::WorldSerializer::Save(phx::IFileSystem* /*fs*/, const char* /*filename*/, phx::World& world)
 {
     nlohmann::json outJson;
 
@@ -177,14 +176,18 @@ bool phx::WorldSerializer::Save(phx::IFileSystem* fs, const char* filename, phx:
     outJson["Entities"] = entitiesArray;
     const int indent = 4;
     std::string jsonStr = outJson.dump(indent);
-    fs->WriteFile(filename, Span(jsonStr.data(), jsonStr.size()));
+    PHX_CORE_ASSERT(false, "IMPLEMENT WRITING");
+    //fs->WriteFile(filename, Span(jsonStr.data(), jsonStr.size()));
 
     return true;
 }
 
-bool phx::WorldSerializer::Load(phx::IFileSystem* fs, const char* filename, phx::World& world)
+bool phx::WorldSerializer::Load(phx::IFileSystem* /*fs*/, const char* /*filename*/, phx::World& world)
 {
-    std::string str = fs->ResolvePath(filename).generic_string();
+    //std::string str = fs->ResolvePath(filename).generic_string();
+
+    PHX_CORE_ASSERT(false, "IMPLEMENT READING");
+    std::string str;
     std::ifstream ifs(str.c_str());
     json inputJson = json::parse(ifs);
 

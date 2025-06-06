@@ -35,7 +35,6 @@
 #include "PhxCore/Platform.h"
 #include "PhxCore/PlatformDetection.h"
 #include <PhxEngine/Memory/FrameMemoryManager.h>
-#include "PhxCore/Containers/Array.h"
 
 #include "EngineSync.h"
 

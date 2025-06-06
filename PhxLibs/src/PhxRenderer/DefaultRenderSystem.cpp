@@ -3,11 +3,11 @@
 
 #include "MeshResource.h"
 
-#include <PhxCore/Memory/MemorySystem.h>
-
 #include <PhxWorld/Entity.h>
 #include <PhxWorld/World.h>
 #include <PhxWorld/WorldComponents.h>
+
+#include <PhxEngine/Memory/FrameMemoryManager.h>
 
 #include <PhxRenderer/RenderComponents.h>
 
@@ -170,7 +170,7 @@ void phx::gfx::DefaultRenderSystem::CacheLayerData(World& world)
 	
 	//const size_t cacheDataSize =  static_cast<size_t>(RenderPass::Count) * m_perFrameCache.NumViews * m_layers.size();
 
-	m_perFrameCache.CachedData = phx_new_frame(void*);
+	m_perFrameCache.CachedData = phx_new_frame void*;
 
 	// TODO: Thread this
 	for (size_t iPass = 0; iPass < static_cast<size_t>(RenderPass::Count); iPass++)
