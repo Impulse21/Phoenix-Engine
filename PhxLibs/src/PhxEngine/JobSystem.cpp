@@ -22,7 +22,7 @@ namespace
 	{
 		JobSystem::JobCallbackFunc Task;
 		JobSystem::Barrier* KickoffThreadBarrier = nullptr;
-		JobSystem::Type Type = JobSystem::Type::High;
+		JobSystem::Type Type = JobSystem::Type::Generic;
 		size_t FrameId = ~0u;
 		JobContext Context;
 
@@ -99,7 +99,7 @@ void JobSystem::Initialize()
 
 		switch (type)
 		{
-		case JobSystem::Type::High:
+		case JobSystem::Type::Generic:
 			resource.NumThreads = numCores - 1; // -1 for main thread;
 			break;
 		case JobSystem::Type::Streaming:
@@ -141,7 +141,7 @@ void JobSystem::Initialize()
 			DWORD_PTR affinityResult = SetThreadAffinityMask(handle, affinityMask);
 			assert(affinityResult > 0);
 
-			if (type == Type::High)
+			if (type == Type::Generic)
 			{
 				BOOL priorityResult = SetThreadPriority(handle, THREAD_PRIORITY_NORMAL);
 				assert(priorityResult != 0);
@@ -151,7 +151,7 @@ void JobSystem::Initialize()
 				HRESULT hr = SetThreadDescription(handle, wss.str().c_str());
 				assert(SUCCEEDED(hr));
 			}
-			else if (type == Type::High)
+			else if (type == Type::Streaming)
 			{
 				BOOL priorityResult = SetThreadPriority(handle, THREAD_PRIORITY_LOWEST);
 				assert(priorityResult != 0);
@@ -169,7 +169,7 @@ void JobSystem::Initialize()
 	PHX_CORE_INFO("[ThreadPool] Initialized with {0} cores in {1} ms\n\tHigh priority threads: {2}\n\tStreaming threads: {3}",
 		numCores,
 		duration.GetMilliseconds(),
-		g_thread_pools[Type::High].NumThreads,
+		g_thread_pools[Type::Generic].NumThreads,
 		g_thread_pools[Type::Streaming].NumThreads);
 }
 
@@ -206,6 +206,17 @@ void JobSystem::Shutdown()
 		thread_pool.JobQueuePerThread.reset();
 		thread_pool.NextQueue = 0;
 	}
+}
+
+
+void JobSystem::SubmitJob(JobCallbackFunc const& task, Priority priority, JobContext* specifiedCtx)
+{
+
+}
+
+void JobSystem::SubmitJobToStreaming(JobCallbackFunc const& task, JobContext* specifiedCtx = nullptr)
+{
+
 }
 
 void JobSystem::SubmitJob(JobCallbackFunc const& task, Type type, JobContext* specifiedCtx)

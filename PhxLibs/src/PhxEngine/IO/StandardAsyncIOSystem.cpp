@@ -9,9 +9,9 @@ void phx::StandardAsyncIOSystem::Initialize()
 {
     m_shutdown = false;
 	(void)m_vfs;
-    JobSystem::SubmitJob([this](JobContext const&) {
+    JobSystem::SubmitJobToStreaming([this](JobContext const&) {
         this->StreamingThreadLoop();
-    }, JobSystem::Type::Streaming); // Target your dedicated streaming thread)
+    }); // Target your dedicated streaming thread)
 }
 
 void phx::StandardAsyncIOSystem::Shutdown()
@@ -123,5 +123,5 @@ void phx::StandardAsyncIOSystem::ProcessReadRequest(data::AsyncReadRequest& requ
         {
             cb(res);
         },
-        JobSystem::Type::High);
+        JobSystem::Type::Low);
 }

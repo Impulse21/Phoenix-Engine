@@ -33,9 +33,16 @@ namespace phx
 			bool IsNotCleared() { return Counter.load() > 0; }
 		};
 
+		enum class Priority
+		{
+			High,
+			Low,
+			Count,
+		};
+
 		enum class Type
 		{
-			High = 0,
+			Generic = 0,
 			Streaming,
 			Count
 		};
@@ -43,17 +50,18 @@ namespace phx
 		void Initialize();
 		void Shutdown();
 
-		void SubmitJob(JobCallbackFunc const& task, Type type = Type::High, JobContext* specifiedCtx = nullptr);
+		void SubmitJob(JobCallbackFunc const& task, Priority priority = Priority::High, JobContext* specifiedCtx = nullptr);
+		void SubmitJobToStreaming(JobCallbackFunc const& task, JobContext* specifiedCtx = nullptr);
 
-		bool IsBusy(Type type = Type::High);
+		bool IsBusy(Type type = Type::Generic);
 
-		void Wait(Type type = Type::High);
+		void Wait(Type type = Type::Generic);
 
-		void Wait(Barrier& barrier, Type type = Type::High);
+		void Wait(Barrier& barrier, Type type = Type::Generic);
 
-		void Signal(Barrier& barrier, Type type = Type::High);
+		void Signal(Barrier& barrier, Type type = Type::Generic);
 
-		uint32_t GetThreadCount(Type type = Type::High);
+		uint32_t GetThreadCount(Type type = Type::Generic);
 		uint32_t GetNumCores();
 	}
 
