@@ -19,7 +19,7 @@ namespace
 		phx::data::IVirtualFileSystem* FileSystem;
 		std::vector<std::shared_ptr<phx::IBlob>> Blobs;
 	};
-#if false
+
 	cgltf_result CgltfReadFile(const cgltf_memory_options*, const cgltf_file_options* file_options, const char* path, cgltf_size* size, void** Data)
 	{
 		CgltfContext* context = (CgltfContext*)file_options->user_data;
@@ -52,28 +52,27 @@ namespace
 	{
 		// do nothing
 	}
-#endif
 }
 
-phx::RefCountPtr<phx::Resource> GltfFileHandler::LoadAsync(phx::data::IVirtualFileSystem* fs, const char* virtual_file_path) const
+phx::RefCountPtr<phx::Resource> GltfFileHandler::LoadAsync(phx::data::IVirtualFileSystem* vfs, const char* virtual_file_path) const
 {
 	auto sceneBlueprint = phx::RefCountPtr<SceneBlueprint>::Create(new SceneBlueprint);
 
-	Result<data::AsyncResourceDescriptor> descriptorResult = fs->GetResourceDescriptorForAsync(virtual_file_path);
+	Result<data::AsyncResourceDescriptor> descriptorResult = vfs->GetResourceDescriptorForAsync(virtual_file_path);
 	if (!descriptorResult)
 	{
+		PHX_CORE_ERROR("[GLTF Handler] Failed to find file info '{0}'", virtual_file_path);
 		sceneBlueprint->State = Resource::State::Error;
 		return sceneBlueprint;
 	}
+	sceneBlueprint->State = Resource::State::Loading;
 
-	// TODO implement a DirectStorage style interface for streaming asset.
 	JobSystem::SubmitJob([=](JobContext const&) {
-#if false
-			const char* gltfFilename = fs->GetFilename(handle);
+
 			// Load GLF File into memory
 			CgltfContext context =
 			{
-				.FileSystem = fs,
+				.FileSystem = vfs,
 				.Blobs = {}
 			};
 
@@ -82,7 +81,15 @@ phx::RefCountPtr<phx::Resource> GltfFileHandler::LoadAsync(phx::data::IVirtualFi
 			options.file.release = &CgltfReleaseFile;
 			options.file.user_data = &context;
 
-			std::unique_ptr<phx::IBlob> blob = fs->ReadFile(handle);
+			phx::Result<std::unique_ptr<phx::IBlob>> readResult = vfs->ReadFileSynchronous(virtual_file_path);
+
+			if (!readResult)
+			{
+				PHX_CORE_ERROR("[GLTF Handler] Failed read file '{0}'", virtual_file_path);
+				sceneBlueprint->State = Resource::State::Error;
+				return;
+			}
+#if false
 			if (!blob)
 			{
 				PHX_CORE_ERROR("Couldn't Read file gltf file '{0}'", gltfFilename);

@@ -121,7 +121,7 @@ phx::Result<AsyncResourceDescriptor> VirtualFileSystemImpl::GetResourceDescripto
     return phx::make_unexpected(~0ull);
 }
 
-phx::Result<std::vector<std::string>> phx::data::VirtualFileSystemImpl::GetResourceDependencies(std::string const& virtual_path) const
+phx::Result<std::vector<std::string>> phx::data::VirtualFileSystemImpl::GetResourceDependencies(std::string const& /*virtual_path*/) const
 {
     // TODO:
     return Result<std::vector<std::string>>();
