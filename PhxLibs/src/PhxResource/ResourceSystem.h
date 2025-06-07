@@ -4,7 +4,6 @@
 #include <PhxCore/RefCountPtr.h>
 
 #include <PhxResource/IResourceFileHandler.h>
-#include <PhxData/IVirtualFileSystem.h>
 
 namespace phx
 {
@@ -15,12 +14,18 @@ namespace phx
 	template<typename T>
 	concept ResourceFileHandlerType = std::is_base_of_v<phx::IResourceFileHandler, T>;
 
+	namespace data
+	{
+		class IVirtualFileSystem;
+		class IAsyncIOSystem;
+	}
+
 	class ResourceSystem
 	{
 	public:
 		inline static ResourceSystem* Ptr = nullptr;
 
-		void Initialize(data::IVirtualFileSystem* fs);
+		void Initialize(data::IVirtualFileSystem* fs, data::IAsyncIOSystem* loader);
 		void Shutdown();
 
 		RefCountPtr<Resource> Get(const char* path);
@@ -45,6 +50,7 @@ namespace phx
 
 	private:
 		data::IVirtualFileSystem* m_vfs;
+		data::IAsyncIOSystem* m_loader;
 		std::mutex m_cacheMutex;
 		std::unordered_map<Hash32, RefCountPtr<Resource>> m_cache;
 		std::unordered_map<Hash32, std::unique_ptr<IResourceFileHandler>> m_resourceHandlers;

@@ -5,6 +5,7 @@
 #include <PhxWorld/SceneBlueprint.h>
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxData/IVirtualFileSystem.h>
+#include <PhxData/IAsyncIOSystem.h>
 
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
@@ -54,7 +55,7 @@ namespace
 	}
 }
 
-phx::RefCountPtr<phx::Resource> GltfFileHandler::LoadAsync(phx::data::IVirtualFileSystem* vfs, const char* virtual_file_path) const
+phx::RefCountPtr<phx::Resource> GltfFileHandler::LoadAsync(phx::data::IVirtualFileSystem* vfs, phx::data::IAsyncIOSystem* loader,  const char* virtual_file_path) const
 {
 	auto sceneBlueprint = phx::RefCountPtr<SceneBlueprint>::Create(new SceneBlueprint);
 
@@ -67,58 +68,61 @@ phx::RefCountPtr<phx::Resource> GltfFileHandler::LoadAsync(phx::data::IVirtualFi
 	}
 	sceneBlueprint->State = Resource::State::Loading;
 
-	JobSystem::SubmitJob([=](JobContext const&) {
+	data::AsyncReadRequest request = {
+		.resource_descriptor = descriptorResult.GetValue(),
+		.bytes_to_read = descriptorResult->length_of_resource,
+	};
 
-			// Load GLF File into memory
-			CgltfContext context =
-			{
-				.FileSystem = vfs,
-				.Blobs = {}
-			};
+	request.callback = [=](data::AsyncReadResult const& result) {
 
-			cgltf_options options = { };
-			options.file.read = &CgltfReadFile;
-			options.file.release = &CgltfReleaseFile;
-			options.file.user_data = &context;
+		if (!result.success)
+		{
+			PHX_CORE_ERROR("[GLTF Handler] Failed read file '{0}' -> {1}", virtual_file_path, result.error_message);
+			sceneBlueprint->State = Resource::State::Error;
+			return;
+		}
 
-			phx::Result<std::unique_ptr<phx::IBlob>> readResult = vfs->ReadFileSynchronous(virtual_file_path);
+		// Load GLF File into memory
+		CgltfContext context =
+		{
+			.FileSystem = vfs,
+			.Blobs = {}
+		};
 
-			if (!readResult)
-			{
-				PHX_CORE_ERROR("[GLTF Handler] Failed read file '{0}'", virtual_file_path);
-				sceneBlueprint->State = Resource::State::Error;
-				return;
-			}
+		cgltf_options options = { };
+		options.file.read = &CgltfReadFile;
+		options.file.release = &CgltfReleaseFile;
+		options.file.user_data = &context;
+
+		cgltf_data* gltfData = nullptr;
+		cgltf_result res = cgltf_parse(
+			&options,
+			result.data_buffer.data(),
+			result.bytes_actually_read,
+			&gltfData);
+
+		if (res != cgltf_result_success)
+		{
+			PHX_ERROR("Couldn't parse glTF file '{0}'", virtual_file_path);
+			sceneBlueprint->State = Resource::State::Error;
+			return;
+		}
+
 #if false
-			if (!blob)
-			{
-				PHX_CORE_ERROR("Couldn't Read file gltf file '{0}'", gltfFilename);
-				sceneBlueprint->State = Resource::State::Error;
-				return;
-			}
+		res = cgltf_load_buffers(&options, gltfData, gltfFilename);
+		if (res != cgltf_result_success)
+		{
+			PHX_ERROR("Couldn't load glTF Binary data '{0}'", gltfFilename);
 
-			cgltf_data* gltfData = nullptr;
-			cgltf_result res = cgltf_parse(&options, blob->Data(), blob->Size(), &gltfData);
-			if (res != cgltf_result_success)
-			{
-				PHX_ERROR("Couldn't load glTF file '{0}'", gltfFilename);
-				sceneBlueprint->State = Resource::State::Error;
-				return;
-			}
+			sceneBlueprint->State = Resource::State::Error;
+			return;
+		}
 
-			res = cgltf_load_buffers(&options, gltfData, gltfFilename);
-			if (res != cgltf_result_success)
-			{
-				PHX_ERROR("Couldn't load glTF Binary data '{0}'", gltfFilename);
-
-				sceneBlueprint->State = Resource::State::Error;
-				return;
-			}
-
-			sceneBlueprint->State = Resource::State::Loaded;
+		sceneBlueprint->State = Resource::State::Loaded;
 #endif
-		},
-		JobSystem::Type::Streaming);
+		};
+
+	loader->QueueRead(std::move(request));
 	
 
     return sceneBlueprint;

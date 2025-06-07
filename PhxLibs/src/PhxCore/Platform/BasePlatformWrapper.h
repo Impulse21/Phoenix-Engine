@@ -17,6 +17,13 @@ namespace phx::platform
 
     using Timestamp = std::chrono::system_clock::time_point;
 
+    enum class FileSeekOrigin 
+    {
+        Begin,
+        Current,
+        End
+    };
+
     struct PlatformFileAttributes 
     {
         PlatformFileType type = PlatformFileType::OtherOrError;
@@ -33,6 +40,17 @@ namespace phx::platform
             last_write_time(Timestamp{}) 
         {
         }
+    };
+
+    struct PlatformFileHandle
+    {
+        void* internal_handle = nullptr;
+
+        bool IsValid() const { return internal_handle != nullptr; }
+        bool operator==(const PlatformFileHandle& other) const { return internal_handle == other.internal_handle; }
+
+        template<typename T>
+        T* As() { return static_cast<T*>(internal_handle); }
     };
 
     template<class TDerived>
@@ -70,6 +88,26 @@ namespace phx::platform
         phx::Result<std::string> GetExectuablePath()
         {
             return static_cast<TDerived*>(this)->PlatformGetExectuablePath();
+        }
+
+        phx::Result<PlatformFileHandle> OpenFile(const std::string& os_path, const char* mode)
+        {
+            return static_cast<TDerived*>(this)->PlatformOpenFile(os_path, mode);
+        }
+
+        void CloseFile(PlatformFileHandle handle)
+        {
+            static_cast<TDerived*>(this)->PlatformCloseFile(handle);
+        }
+
+        bool SeekFile(PlatformFileHandle handle, int64_t offset, FileSeekOrigin origin)
+        {
+            return static_cast<TDerived*>(this)->PlatformSeekFile(handle, offset, origin);
+        }
+
+        size_t ReadFile(PlatformFileHandle handle, void* buffer, size_t size_to_read)
+        {
+            return static_cast<TDerived*>(this)->PlatformReadFile(handle, buffer, size_to_read);
         }
 
     protected:

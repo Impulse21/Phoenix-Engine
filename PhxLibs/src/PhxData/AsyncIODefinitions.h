@@ -58,7 +58,7 @@ namespace phx::data
         void* cpu_destination_buffer = nullptr;
         // uint64_t cpu_destination_buffer_size = 0; // Size of the pre-allocated buffer
 
-        std::function<void(const AsyncReadResult& result)> callback;
+        std::function<void(AsyncReadResult const& result)> callback;
         void* user_context = nullptr;            // Custom data to be passed to the callback
     };
 

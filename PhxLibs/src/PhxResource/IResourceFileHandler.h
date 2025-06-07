@@ -1,7 +1,6 @@
 #pragma once
 
 #include <PhxCore/RefCountPtr.h>
-#include <PhxData/IVirtualFileSystem.h>
 
 namespace phx
 {
@@ -11,6 +10,11 @@ namespace phx
 	template<typename T>
 	struct ResourceFileHandlerId;
 
+	namespace data
+	{
+		class IVirtualFileSystem;
+		class IAsyncIOSystem;
+	}
 
 	struct Resource;
 	class IResourceFileHandler
@@ -18,7 +22,7 @@ namespace phx
 	public:
 		virtual ~IResourceFileHandler() = default;
 
-		virtual RefCountPtr<Resource> LoadAsync(data::IVirtualFileSystem* vfs, const char* virtual_file_path) const = 0;
+		virtual RefCountPtr<Resource> LoadAsync(data::IVirtualFileSystem* vfs, data::IAsyncIOSystem* loader, const char* virtual_file_path) const = 0;
 
 	};
 }

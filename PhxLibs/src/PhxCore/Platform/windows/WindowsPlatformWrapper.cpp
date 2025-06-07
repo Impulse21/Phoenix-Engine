@@ -87,3 +87,51 @@ phx::Result<PlatformFileAttributes>  WindowsPlatformWrapperImpl::PlatformGetFile
 	attrs.is_hidden = (win_file_attributes.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN);
 	return attrs;
 }
+
+phx::Result<PlatformFileHandle> phx::platform::windows::WindowsPlatformWrapperImpl::PlatformOpenFile(const std::string& os_path, const char* mode)
+{
+	FILE* fp = nullptr;
+	errno_t err = fopen_s(&fp, os_path.c_str(), mode);
+	if (err != 0)
+		return make_unexpected(0ull);
+
+	return PlatformFileHandle{ fp };
+}
+
+void phx::platform::windows::WindowsPlatformWrapperImpl::PlatformCloseFile(PlatformFileHandle handle)
+{
+	if (handle.IsValid()) 
+	{
+		fclose(handle.As<FILE>());
+	}
+}
+
+bool phx::platform::windows::WindowsPlatformWrapperImpl::PlatformSeekFile(PlatformFileHandle handle, int64_t offset, FileSeekOrigin origin)
+{
+	if (!handle.IsValid()) 
+		return false;
+
+	int whence = 0;
+	switch (origin)
+	{
+	case FileSeekOrigin::Begin:
+		whence = SEEK_SET;
+		break;
+	case FileSeekOrigin::Current:
+		whence = SEEK_CUR;
+		break;
+	case FileSeekOrigin::End:
+		whence = SEEK_END;
+		break;
+	};
+
+	return _fseeki64(handle.As<FILE>(), offset, whence) == 0;
+}
+
+size_t phx::platform::windows::WindowsPlatformWrapperImpl::PlatformReadFile(PlatformFileHandle handle, void* buffer, size_t size_to_read)
+{
+	if (!handle.IsValid() || !buffer || size_to_read == 0) 
+		return 0;
+
+	return fread(buffer, 1, size_to_read, handle.As<FILE>());
+}

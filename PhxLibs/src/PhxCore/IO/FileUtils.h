@@ -29,6 +29,11 @@ namespace phx
 			, m_size(size)
 		{
 		}
+		Blob(size_t size)
+			: m_data(malloc(size))
+			, m_size(size)
+		{
+		}
 
 		~Blob() override
 		{

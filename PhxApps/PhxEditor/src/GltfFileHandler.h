@@ -9,7 +9,7 @@ namespace phxed
 	{
 	public:
 
-		virtual phx::RefCountPtr<phx::Resource> LoadAsync(phx::data::IVirtualFileSystem* fs, const char* virtual_file_path) const;
+		virtual phx::RefCountPtr<phx::Resource> LoadAsync(phx::data::IVirtualFileSystem* vfs, phx::data::IAsyncIOSystem* loader, const char* virtual_file_path) const;
 	};
 }
 

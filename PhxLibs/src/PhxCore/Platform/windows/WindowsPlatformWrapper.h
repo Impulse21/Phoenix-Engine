@@ -28,5 +28,11 @@ namespace phx::platform::windows
         phx::Result<std::string> PlatformGetExectuablePath();
         
         phx::Result<PlatformFileAttributes>  PlatformGetFileAttributes(std::string const& path);
+
+        phx::Result<PlatformFileHandle> PlatformOpenFile(const std::string& os_path, const char* mode);
+        void PlatformCloseFile(PlatformFileHandle handle);
+
+        bool PlatformSeekFile(PlatformFileHandle handle, int64_t offset, FileSeekOrigin origin);
+        size_t PlatformReadFile(PlatformFileHandle handle, void* buffer, size_t size_to_read);
     };
 }

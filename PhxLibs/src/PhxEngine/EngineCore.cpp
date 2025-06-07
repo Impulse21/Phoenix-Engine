@@ -89,7 +89,7 @@ namespace phx
 			app->SetWindowHandle(windowHandle);
 
 			phx::ResourceSystem::Ptr = new ResourceSystem;
-			phx::ResourceSystem::Ptr->Initialize(phx::data::IVirtualFileSystem::Ptr);
+			phx::ResourceSystem::Ptr->Initialize(phx::data::IVirtualFileSystem::Ptr, phx::data::IAsyncIOSystem::Ptr);
 #if false
 
 			phx::ResourceManger::Initialize();

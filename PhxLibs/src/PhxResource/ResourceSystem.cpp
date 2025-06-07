@@ -3,24 +3,27 @@
 
 #include "IResource.h"
 #include <PhxCore/IO/FileUtils.h>
+#include <PhxData/IVirtualFileSystem.h>
+#include <PhxData/IAsyncIOSystem.h>
 
 using namespace phx;
 
-void phx::ResourceSystem::Initialize(data::IVirtualFileSystem* vfs)
+void phx::ResourceSystem::Initialize(data::IVirtualFileSystem* vfs, data::IAsyncIOSystem* loader)
 {
 	m_vfs = vfs;
+	m_loader = loader;
 }
 
 void phx::ResourceSystem::Shutdown()
 {
 }
 
-RefCountPtr<Resource> phx::ResourceSystem::Get(const char* path)
+RefCountPtr<Resource> phx::ResourceSystem::Get(const char* virtual_file_path)
 {
 	// TODO: Clean up all these allocations and use simpler string functions
 	// that just strip out data a single string.
 	// way to many allocations probably make this code really really slow.
-	StringHash filenameHash(path);
+	StringHash filenameHash(virtual_file_path);
 
 	{
 		std::scoped_lock _(m_cacheMutex);
@@ -31,7 +34,7 @@ RefCountPtr<Resource> phx::ResourceSystem::Get(const char* path)
 
 	RefCountPtr<Resource> resource = nullptr;
 
-	std::string ext = phx::GetFileExt(path);
+	std::string ext = phx::GetFileExt(virtual_file_path);
 	auto handlerItr = m_resourceHandlers.find(StringHash(ext));
 
 	if (handlerItr == m_resourceHandlers.end())
@@ -42,9 +45,9 @@ RefCountPtr<Resource> phx::ResourceSystem::Get(const char* path)
 
 	PHX_CORE_INFO(
 		"Loading Resource '{0}' from disk",
-		path);
+		virtual_file_path);
 
-	resource = handlerItr->second->LoadAsync(m_vfs, path);
+	resource = handlerItr->second->LoadAsync(m_vfs, m_loader, virtual_file_path);
 
 	if (resource)
 	{
