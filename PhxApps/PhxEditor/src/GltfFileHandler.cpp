@@ -54,15 +54,17 @@ namespace
 	}
 #endif
 }
-phx::RefCountPtr<phx::Resource> phxed::GltfFileHandler::LoadFromPak(data::IVirtualFileSystem* /*fs*/) const
-{
-    throw std::runtime_error("Not implemented yet");
-    return nullptr;
-}
 
-phx::RefCountPtr<phx::Resource> phxed::GltfFileHandler::LoadLoose(data::IVirtualFileSystem* /*fs*/) const
+phx::RefCountPtr<phx::Resource> GltfFileHandler::LoadAsync(phx::data::IVirtualFileSystem* fs, const char* virtual_file_path) const
 {
 	auto sceneBlueprint = phx::RefCountPtr<SceneBlueprint>::Create(new SceneBlueprint);
+
+	Result<data::AsyncResourceDescriptor> descriptorResult = fs->GetResourceDescriptorForAsync(virtual_file_path);
+	if (!descriptorResult)
+	{
+		sceneBlueprint->State = Resource::State::Error;
+		return sceneBlueprint;
+	}
 
 	// TODO implement a DirectStorage style interface for streaming asset.
 	JobSystem::SubmitJob([=](JobContext const&) {

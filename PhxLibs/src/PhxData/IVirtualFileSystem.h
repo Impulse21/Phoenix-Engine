@@ -24,6 +24,7 @@ namespace phx::data
 		virtual bool Unmount(std::string const& virtual_path) = 0;
 
 		virtual Result<AsyncResourceDescriptor> GetResourceDescriptorForAsync(std::string const& virtual_path) const = 0;
+		virtual Result<std::vector<std::string>> GetResourceDependencies(std::string const& virtual_path) const = 0;
 
 		virtual Result<platform::PlatformFileAttributes> GetPlatformAttributes(std::string const& virtual_path) const = 0;
 

@@ -18,8 +18,7 @@ namespace phx
 	public:
 		virtual ~IResourceFileHandler() = default;
 
-		virtual RefCountPtr<Resource> LoadFromPak(data::IVirtualFileSystem* vfs) const = 0;
-		virtual RefCountPtr<Resource> LoadLoose(data::IVirtualFileSystem* vfs) const = 0;
+		virtual RefCountPtr<Resource> LoadAsync(data::IVirtualFileSystem* vfs, const char* virtual_file_path) const = 0;
 
 	};
 }

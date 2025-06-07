@@ -121,6 +121,12 @@ phx::Result<AsyncResourceDescriptor> VirtualFileSystemImpl::GetResourceDescripto
     return phx::make_unexpected(~0ull);
 }
 
+phx::Result<std::vector<std::string>> phx::data::VirtualFileSystemImpl::GetResourceDependencies(std::string const& virtual_path) const
+{
+    // TODO:
+    return Result<std::vector<std::string>>();
+}
+
 phx::Result<phx::platform::PlatformFileAttributes> phx::data::VirtualFileSystemImpl::GetPlatformAttributes(std::string const& virtual_path) const
 {
     std::string norm_virtual_path = NormalizeVirtualPath(virtual_path);

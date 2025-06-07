@@ -34,6 +34,8 @@ namespace phx::data
 		bool Unmount(std::string const& virtual_path) override;
 
 		Result<AsyncResourceDescriptor> GetResourceDescriptorForAsync(std::string const& virtual_path) const override;
+		Result<std::vector<std::string>> GetResourceDependencies(std::string const& virtual_path) const;
+
 		virtual Result<platform::PlatformFileAttributes> GetPlatformAttributes(std::string const& virtual_path) const override;
 
 		bool Exists(std::string const& virtual_path) override;
