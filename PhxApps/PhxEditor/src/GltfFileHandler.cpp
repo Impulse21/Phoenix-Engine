@@ -3,7 +3,8 @@
 #include <PhxEngine/JobSystem.h>
 
 #include <PhxWorld/SceneBlueprint.h>
-#include <PhxCore/VFS.h>
+#include <PhxCore/IO/FileUtils.h>
+#include <PhxData/IVirtualFileSystem.h>
 
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
@@ -15,15 +16,15 @@ namespace
 {
 	struct CgltfContext
 	{
-		phx::IFileSystem* FileSystem;
+		phx::data::IVirtualFileSystem* FileSystem;
 		std::vector<std::shared_ptr<phx::IBlob>> Blobs;
 	};
-
+#if false
 	cgltf_result CgltfReadFile(const cgltf_memory_options*, const cgltf_file_options* file_options, const char* path, cgltf_size* size, void** Data)
 	{
 		CgltfContext* context = (CgltfContext*)file_options->user_data;
 
-		std::unique_ptr<phx::IBlob> dataBlob = context->FileSystem->ReadFile(path);
+		std::unique_ptr<phx::IBlob> dataBlob = context->FileSystem->ReadFileSynchronous(path).ValueOr(nullptr);
 		if (!dataBlob)
 		{
 			return cgltf_result_file_not_found;
@@ -51,19 +52,21 @@ namespace
 	{
 		// do nothing
 	}
+#endif
 }
-phx::RefCountPtr<phx::Resource> phxed::GltfFileHandler::LoadFromPak(IFileSystem* /*fs*/, FileHandle /*handle*/) const
+phx::RefCountPtr<phx::Resource> phxed::GltfFileHandler::LoadFromPak(data::IVirtualFileSystem* /*fs*/) const
 {
     throw std::runtime_error("Not implemented yet");
     return nullptr;
 }
 
-phx::RefCountPtr<phx::Resource> phxed::GltfFileHandler::LoadLoose(IFileSystem* fs, FileHandle handle) const
+phx::RefCountPtr<phx::Resource> phxed::GltfFileHandler::LoadLoose(data::IVirtualFileSystem* /*fs*/) const
 {
-	auto sceneBlueprint = phx::RefCountPtr<SceneBlueprint>::Create(phx_new SceneBlueprint);
+	auto sceneBlueprint = phx::RefCountPtr<SceneBlueprint>::Create(new SceneBlueprint);
 
 	// TODO implement a DirectStorage style interface for streaming asset.
 	JobSystem::SubmitJob([=](JobContext const&) {
+#if false
 			const char* gltfFilename = fs->GetFilename(handle);
 			// Load GLF File into memory
 			CgltfContext context =
@@ -104,6 +107,7 @@ phx::RefCountPtr<phx::Resource> phxed::GltfFileHandler::LoadLoose(IFileSystem* f
 			}
 
 			sceneBlueprint->State = Resource::State::Loaded;
+#endif
 		},
 		JobSystem::Type::Streaming);
 	

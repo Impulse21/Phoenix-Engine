@@ -406,7 +406,7 @@ phx::IApplication* phx::CreateApplication()
 {
 	ApplicationDescriptor desc = {
 		.Name = "PhxEditor",
-		.WorkingDirectory = phx::FileSystem::GetDirectoryWithExecutable()
+		.WorkingDirectory = phx::GetDirectoryWithExecutable()
 	};
 
 	return new PhxEditor(desc);

@@ -2,6 +2,7 @@
 
 #include "memory"
 #include <PhxCore/Span.h>
+#include <PhxCore/IO/FileUtils.h>
 
 namespace phx
 {

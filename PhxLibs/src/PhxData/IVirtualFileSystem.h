@@ -6,14 +6,13 @@
 #include <PhxCore/Platform/PlatformWrapper.h>
 
 
+namespace phx
+{
+	class IBlob;
+}
+
 namespace phx::data
 {
-	struct Blob
-	{
-		std::unique_ptr<void> Data;
-		size_t Size;
-	};
-
 	class IVirtualFileSystem
 	{
 	public:
@@ -30,6 +29,6 @@ namespace phx::data
 
 		virtual bool Exists(std::string const& virtual_path) = 0;
 		virtual Result<uint64_t> GetUncompressedFileSize(const std::string& virtual_path) const = 0;
-		virtual Result<Blob> ReadFileSynchronous(const std::string& virtual_path) const = 0;
+		virtual phx::Result<std::unique_ptr<phx::IBlob>> ReadFileSynchronous(const std::string& virtual_path) const = 0;
 	};
 }

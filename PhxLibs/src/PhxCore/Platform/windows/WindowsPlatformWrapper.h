@@ -25,6 +25,7 @@ namespace phx::platform::windows
         void* PlatformVirtualMemReserve(size_t reserveSize);
         void PlatformVirtualMemCommit(void* ptr, size_t commitSize);
         bool PlatformVirtualMemFree(void* ptr);
+        phx::Result<std::string> PlatformGetExectuablePath();
         
         phx::Result<PlatformFileAttributes>  PlatformGetFileAttributes(std::string const& path);
     };

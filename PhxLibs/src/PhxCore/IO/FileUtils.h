@@ -2,17 +2,52 @@
 
 #include <string>
 #include <filesystem>
-
-#ifndef PHX_PLATFORM_WINDOWS
-#include <unistd.h>
-#include <cstdio>
-#include <climits>
-#else
-#define PATH_MAX MAX_PATH
-#endif // _WIN32
+#include <PhxCore/Platform/PlatformWrapper.h>
 
 namespace phx
 {
+
+	class IBlob
+	{
+	public:
+		virtual ~IBlob() = default;
+
+		[[nodiscard]] virtual const void* Data() const = 0;
+		[[nodiscard]] virtual size_t Size() const = 0;
+
+		static bool IsEmpty(IBlob* blob)
+		{
+			return blob == nullptr || blob->Data() == nullptr || blob->Size() == 0;
+		}
+	};
+
+	class Blob : public IBlob
+	{
+	public:
+		Blob(void* Data, size_t size)
+			: m_data(Data)
+			, m_size(size)
+		{
+		}
+
+		~Blob() override
+		{
+			if (m_data)
+			{
+				free(m_data);
+				m_data = nullptr;
+			}
+
+			m_size = 0;
+		}
+
+		[[nodiscard]] const void* Data() const override { return m_data; }
+		[[nodiscard]] size_t Size() const override { return m_size; }
+
+	private:
+		void* m_data;
+		size_t m_size;
+	};
 
 	inline std::string GetWorkingDirectory()
 	{
@@ -21,21 +56,7 @@ namespace phx
 
 	inline std::string GetDirectoryWithExecutable()
 	{
-		char path[PATH_MAX] = { 0 };
-#ifdef PHX_PLATFORM_WINDOWS
-		if (GetModuleFileNameA(nullptr, path, PATH_MAX) == 0)
-			return "";
-#else // _WIN32
-		// /proc/self/exe is mostly linux-only, but can't hurt to try it elsewhere
-		if (readlink("/proc/self/exe", path, std::size(path)) <= 0)
-		{
-			// portable but assumes executable dir == cwd
-			if (!getcwd(path, std::size(path)))
-				return ""; // failure
-		}
-#endif // PHX_PLATFORM_WINDOWS
-
-		std::filesystem::path result = path;
+		std::filesystem::path result = Platform::Get().GetExectuablePath().ValueOr("");
 		result = result.parent_path();
 
 		return result.generic_string();

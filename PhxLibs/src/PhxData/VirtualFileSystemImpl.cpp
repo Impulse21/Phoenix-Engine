@@ -1,7 +1,9 @@
 #include "PhxData/PhxData_pch.h"
 #include "VirtualFileSystemImpl.h"
 
+#include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/Platform//PlatformWrapper.h>
+#include <PhxCore/IO/FileUtils.h>
 
 using namespace phx::data;
 
@@ -165,7 +167,7 @@ phx::Result<uint64_t> phx::data::VirtualFileSystemImpl::GetUncompressedFileSize(
     return descriptor->compression_info.decompressed_size;
 }
 
-phx::Result<Blob> phx::data::VirtualFileSystemImpl::ReadFileSynchronous(const std::string& /*virtual_path*/) const
+phx::Result<std::unique_ptr<phx::IBlob>> phx::data::VirtualFileSystemImpl::ReadFileSynchronous(const std::string& /*virtual_path*/) const
 {
     PHX_CORE_ERROR("Not Implementated yet (VirtualFileSystemImpl::ReadFileSynchronous");
     return make_unexpected(~0ull);;

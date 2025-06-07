@@ -66,6 +66,12 @@ namespace phx::platform
         {
             return static_cast<TDerived*>(this)->PlatformGetFileAttributes(path);
         }
+
+        phx::Result<std::string> GetExectuablePath()
+        {
+            return static_cast<TDerived*>(this)->PlatformGetExectuablePath();
+        }
+
     protected:
         BasePlatformWrapper() = default;
         ~BasePlatformWrapper() = default;

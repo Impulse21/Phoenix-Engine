@@ -3,6 +3,8 @@
 #include "WindowsPlatformWrapper.h"
 #include <PhxCore/StringUtils.h>
 
+#define PATH_MAX MAX_PATH
+
 using namespace phx::platform;
 using namespace phx::platform::windows;
 
@@ -44,6 +46,15 @@ void WindowsPlatformWrapperImpl::PlatformVirtualMemCommit(void* ptr, size_t comm
 bool WindowsPlatformWrapperImpl::PlatformVirtualMemFree(void* ptr)
 {
 	return VirtualFree(ptr, 0, MEM_RELEASE);
+}
+
+phx::Result<std::string> phx::platform::windows::WindowsPlatformWrapperImpl::PlatformGetExectuablePath()
+{
+	char path[PATH_MAX] = { 0 };
+	if (GetModuleFileNameA(nullptr, path, PATH_MAX) == 0)
+		return make_unexpected(~0ull);
+
+	return path;
 }
 
 phx::Result<PlatformFileAttributes>  WindowsPlatformWrapperImpl::PlatformGetFileAttributes(std::string const& norm_physical_path)

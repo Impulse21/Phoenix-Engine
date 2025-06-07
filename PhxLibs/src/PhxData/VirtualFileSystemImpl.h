@@ -38,7 +38,7 @@ namespace phx::data
 
 		bool Exists(std::string const& virtual_path) override;
 		Result<uint64_t> GetUncompressedFileSize(const std::string& virtual_path) const override;
-		Result<Blob> ReadFileSynchronous(const std::string& virtual_path) const override;
+		phx::Result<std::unique_ptr<phx::IBlob>> ReadFileSynchronous(const std::string& virtual_path) const override;
 
 	private:
 		std::string NormalizeVirtualPath(const std::string& path) const;
