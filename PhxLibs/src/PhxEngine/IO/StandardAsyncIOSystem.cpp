@@ -123,5 +123,5 @@ void phx::StandardAsyncIOSystem::ProcessReadRequest(data::AsyncReadRequest& requ
         {
             cb(res);
         },
-        JobSystem::Type::Low);
+        JobSystem::Priority::Low);
 }

@@ -84,6 +84,31 @@ namespace
 		}
 	} g_shutdowner;
 
+	void SubmitJobInternal(JobSystem::JobCallbackFunc const& task, JobSystem::Priority prio, JobSystem::Type type, JobContext* specifiedCtx)
+	{
+		JobContext context = {
+			.FrameHeap = specifiedCtx ? specifiedCtx->FrameHeap : &FrameMemoryManager::GetCurrentThreadArena(),
+		};
+		ThreadPoolContext& ctx = g_thread_pools[type];
+		if (ctx.NumThreads < 1)
+		{
+			task(context);
+			return;
+		}
+
+		const size_t frameId = EngineSync::g_FrameCount;
+		Job job = {
+			.Task = task,
+			.KickoffThreadBarrier = &g_thread_barrier[type],
+			.FrameId = frameId,
+			.Context = context
+		};
+
+		job.KickoffThreadBarrier->Add();
+
+		ctx.JobQueuePerThread[ctx.NextQueue.fetch_add(1) % ctx.NumThreads].Push(job);
+		ctx.WakeCondition.notify_one();
+	};
 }
 
 void JobSystem::Initialize()
@@ -211,40 +236,13 @@ void JobSystem::Shutdown()
 
 void JobSystem::SubmitJob(JobCallbackFunc const& task, Priority priority, JobContext* specifiedCtx)
 {
-
+	SubmitJobInternal(task, priority, Type::Generic, specifiedCtx);
 }
 
 void JobSystem::SubmitJobToStreaming(JobCallbackFunc const& task, JobContext* specifiedCtx = nullptr)
 {
-
+	SubmitJobInternal(task, Priority::High, Type::Streaming, specifiedCtx);
 }
-
-void JobSystem::SubmitJob(JobCallbackFunc const& task, Type type, JobContext* specifiedCtx)
-{
-	JobContext context = {
-		.FrameHeap = specifiedCtx ? specifiedCtx->FrameHeap : &FrameMemoryManager::GetCurrentThreadArena(),
-	};
-	ThreadPoolContext& ctx = g_thread_pools[type];
-	if (ctx.NumThreads < 1)
-	{
-		task(context);
-		return;
-	}
-
-	const size_t frameId = EngineSync::g_FrameCount;
-	Job job = {
-		.Task = task,
-		.KickoffThreadBarrier = &g_thread_barrier[type],
-		.FrameId = frameId,
-		.Context = context
-	};
-
-	job.KickoffThreadBarrier->Add();
-
-	ctx.JobQueuePerThread[ctx.NextQueue.fetch_add(1) % ctx.NumThreads].Push(job);
-	ctx.WakeCondition.notify_one();
-}
-
 #if false
 void JobSystem::Dispatch(uint32_t jobCount, uint32_t groupSize, std::function<void(JobDispatchArgs)> const& job)
 {
