@@ -57,3 +57,13 @@ RefCountPtr<Resource> phx::ResourceSystem::Get(const char* virtual_file_path)
 
 	return resource;
 }
+
+void phx::ResourceSystem::RegisterSubResource(const std::string& virtual_path, RefCountPtr<Resource> resource)
+{
+	if (resource)
+	{
+		StringHash filenameHash(virtual_path);
+		std::scoped_lock _(m_cacheMutex);
+		m_cache[filenameHash] = resource;
+	}
+}

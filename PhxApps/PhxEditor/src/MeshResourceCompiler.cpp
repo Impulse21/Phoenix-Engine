@@ -16,8 +16,8 @@ using namespace phx::renderer;
 
 void phxed::MeshResourceCompiler::Compile()
 {
-	m_outCompiledResource.Name = m_meshData.Name;
-	m_outCompiledResource.Ext = ResourceExtension< renderer::MeshResourceHandler>::value;
+	m_outCompiledResource->Name = m_meshData.Name;
+	m_outCompiledResource->Ext = ResourceExtension< renderer::MeshResourceHandler>::value;
 
 	std::vector<uint8_t> gpuData;
 	BuildGpuBufferData(gpuData);
@@ -29,7 +29,7 @@ void phxed::MeshResourceCompiler::Compile()
 
 		metadata->GeometryBufferSize = static_cast<uint32_t>(gpuData.size());
 		metadata->VertexBufferOffset = m_meshData.Indices.size() * sizeof(uint32_t);
-		m_outCompiledResource.MetadataChunk = std::make_unique<Blob>(metadata, sizeof(MeshMetadata));
+		m_outCompiledResource->MetadataChunk = std::make_unique<Blob>(metadata, sizeof(MeshMetadata));
 	}
 
 	{
@@ -43,21 +43,21 @@ void phxed::MeshResourceCompiler::Compile()
 		cpuData->NumDraws = static_cast<uint16_t>(m_meshData.Geometry.size());
 		for (size_t i = 0; i < m_meshData.Geometry.size(); i++)
 		{
-			const MeshData::GeometryData& srcGeo = m_meshData.Geometry[i];
+			const Mesh::GeometryData& srcGeo = m_meshData.Geometry[i];
 			MeshResource::CpuData::DrawInfo& drawInfo = *(cpuData->Draw + i);
 			drawInfo.IndexCount = srcGeo.IndexCount;
 			drawInfo.StartIndex = srcGeo.IndexOffset;
 			drawInfo.BaseVertex = 0;
 		}
 
-		m_outCompiledResource.Chunks.emplace_back(std::make_unique<Blob>(cpuData, cpuDataSize));
+		m_outCompiledResource->Chunks.emplace_back(std::make_unique<Blob>(cpuData, cpuDataSize));
 	}
 
 	{
 		void* gpuDataDest = malloc(gpuData.size());
 		std::memcpy(gpuDataDest, gpuData.data(), gpuData.size());
 
-		m_outCompiledResource.Chunks.emplace_back(std::make_unique<Blob>(gpuDataDest, gpuData.size()));
+		m_outCompiledResource->Chunks.emplace_back(std::make_unique<Blob>(gpuDataDest, gpuData.size()));
 	}
 }
 

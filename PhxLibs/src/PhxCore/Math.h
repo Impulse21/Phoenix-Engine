@@ -1,16 +1,99 @@
 #pragma once
 
 #include <stdint.h>
-#include <DirectXMath.h>
 #include <algorithm>
+#include <hlsl++.h>
 
 namespace phx::math
 {
-
-	static constexpr DirectX::XMFLOAT4X4 cIdentityMatrix = DirectX::XMFLOAT4X4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
 	constexpr float Saturate(float x) { return std::min(std::max(x, 0.0f), 1.0f); }
 	constexpr float cMaxFloat = std::numeric_limits<float>::max();
 	constexpr float cMinFloat = std::numeric_limits<float>::lowest();
+
+	inline hlslpp::float4 MatrixToQuaternion(const hlslpp::float3x3& m)
+	{
+		hlslpp::float4 q;
+		float trace = m[0][0] + m[1][1] + m[2][2]; // Calculate the trace of the matrix
+
+		if (trace > 0.0f)
+		{
+			// This is the most common case, with a positive trace.
+			float s = 0.5f / sqrtf(trace + 1.0f);
+			q.w = 0.25f / s;
+			q.x = (m[2][1] - m[1][2]) * s;
+			q.y = (m[0][2] - m[2][0]) * s;
+			q.z = (m[1][0] - m[0][1]) * s;
+		}
+		else
+		{
+			// Handle cases where the trace is not positive, to maintain numerical stability.
+			if (m[0][0] > m[1][1] && m[0][0] > m[2][2])
+			{
+				// The X component of the quaternion will be largest.
+				float s = 2.0f * sqrtf(1.0f + m[0][0] - m[1][1] - m[2][2]);
+				q.w = (m[2][1] - m[1][2]) / s;
+				q.x = 0.25f * s;
+				q.y = (m[0][1] + m[1][0]) / s;
+				q.z = (m[0][2] + m[2][0]) / s;
+			}
+			else if (m[1][1] > m[2][2])
+			{
+				// The Y component of the quaternion will be largest.
+				float s = 2.0f * sqrtf(1.0f + m[1][1] - m[0][0] - m[2][2]);
+				q.w = (m[0][2] - m[2][0]) / s;
+				q.x = (m[0][1] + m[1][0]) / s;
+				q.y = 0.25f * s;
+				q.z = (m[1][2] + m[2][1]) / s;
+			}
+			else
+			{
+				// The Z component of the quaternion will be largest.
+				float s = 2.0f * sqrtf(1.0f + m[2][2] - m[0][0] - m[1][1]);
+				q.w = (m[1][0] - m[0][1]) / s;
+				q.x = (m[0][2] + m[2][0]) / s;
+				q.y = (m[1][2] + m[2][1]) / s;
+				q.z = 0.25f * s;
+			}
+		}
+		return q;
+	}
+
+	inline bool Decompose(const hlslpp::float4x4& transform, hlslpp::float3& out_scale, hlslpp::float4& out_rotation, hlslpp::float3& out_translation)
+	{
+
+		// 1. Extract Translation from the last row
+		out_translation = hlslpp::float3(transform[3][0], transform[3][1], transform[3][2]);
+
+		// 2. Extract Scale from the length of the basis vectors (the first three rows)
+		out_scale.x = hlslpp::length(hlslpp::float3(transform[0][0], transform[0][1], transform[0][2]));
+		out_scale.y = hlslpp::length(hlslpp::float3(transform[1][0], transform[1][1], transform[1][2]));
+		out_scale.z = hlslpp::length(hlslpp::float3(transform[2][0], transform[2][1], transform[2][2]));
+
+		// Check for a degenerate matrix
+		if (out_scale.x == 0.0f || out_scale.y == 0.0f || out_scale.z == 0.0f)
+		{
+			return false;
+		}
+
+		// 3. Extract Rotation by removing the scale from the basis vectors.
+		// The result is the final 3x3 rotation matrix.
+		hlslpp::float3x3 rotation_matrix;
+		rotation_matrix[0][0] = transform[0][0] / out_scale.x;
+		rotation_matrix[0][1] = transform[0][1] / out_scale.x;
+		rotation_matrix[0][2] = transform[0][2] / out_scale.x;
+		
+		rotation_matrix[1][0] = transform[1][0] / out_scale.y;
+		rotation_matrix[1][1] = transform[1][1] / out_scale.y;
+		rotation_matrix[1][2] = transform[1][2] / out_scale.y;
+		
+		rotation_matrix[2][0] = transform[2][0] / out_scale.z;
+		rotation_matrix[2][1] = transform[2][1] / out_scale.z;
+		rotation_matrix[2][2] = transform[2][2] / out_scale.z;
+
+		out_rotation = MatrixToQuaternion(rotation_matrix);
+
+		return true;
+	}
 
 	constexpr uint64_t GetNextPowerOfTwo(uint64_t x)
 	{
@@ -23,7 +106,7 @@ namespace phx::math
 		x |= x >> 32u;
 		return ++x;
 	}
-  
+#if false
 	inline uint32_t PackColour(DirectX::XMFLOAT4 const& colour)
 	{
 		uint32_t retVal = 0;
@@ -183,4 +266,5 @@ namespace phx::math
 
 		bool CheckBoxFast(AABB const& aabb) const;
 	};
+#endif
 }

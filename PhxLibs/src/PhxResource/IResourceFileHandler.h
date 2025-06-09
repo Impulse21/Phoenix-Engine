@@ -17,10 +17,10 @@ namespace phx
 	}
 
 	struct Resource;
-	class IResourceFileHandler
+	class ResourceFileHandler
 	{
 	public:
-		virtual ~IResourceFileHandler() = default;
+		virtual ~ResourceFileHandler() = default;
 
 		virtual RefCountPtr<Resource> LoadAsync(data::IVirtualFileSystem* vfs, data::IAsyncIOSystem* loader, const char* virtual_file_path) const = 0;
 

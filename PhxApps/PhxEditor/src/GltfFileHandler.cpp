@@ -3,9 +3,14 @@
 #include <PhxEngine/JobSystem.h>
 
 #include <PhxWorld/SceneBlueprint.h>
+#include <PhxResource/ResourceSystem.h>
+
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxData/IVirtualFileSystem.h>
 #include <PhxData/IAsyncIOSystem.h>
+#include <PhxCore/Math.h>
+
+#include <PhxRenderer/MeshResource.h>
 
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
@@ -15,17 +20,12 @@ using namespace phxed;
 
 namespace
 {
-	struct CgltfContext
-	{
-		phx::data::IVirtualFileSystem* FileSystem;
-		std::vector<std::shared_ptr<phx::IBlob>> Blobs;
-	};
-
 	cgltf_result CgltfReadFile(const cgltf_memory_options*, const cgltf_file_options* file_options, const char* path, cgltf_size* size, void** Data)
 	{
 		CgltfContext* context = (CgltfContext*)file_options->user_data;
 
-		std::unique_ptr<phx::IBlob> dataBlob = context->FileSystem->ReadFileSynchronous(path).ValueOr(nullptr);
+		// TODO: This should load through loading system
+		std::unique_ptr<phx::IBlob> dataBlob = context->vfs->ReadFileSynchronous(path).ValueOr(nullptr);
 		if (!dataBlob)
 		{
 			return cgltf_result_file_not_found;
@@ -57,73 +57,97 @@ namespace
 
 phx::RefCountPtr<phx::Resource> GltfFileHandler::LoadAsync(phx::data::IVirtualFileSystem* vfs, phx::data::IAsyncIOSystem* loader,  const char* virtual_file_path) const
 {
-	auto sceneBlueprint = phx::RefCountPtr<SceneBlueprint>::Create(new SceneBlueprint);
-
-	Result<data::AsyncResourceDescriptor> descriptorResult = vfs->GetResourceDescriptorForAsync(virtual_file_path);
-	if (!descriptorResult)
+	CgltfContext ctx = {};
+	ctx.scene_resource = phx::RefCountPtr<SceneBlueprint>::Create(new SceneBlueprint);
+	ctx.resource_descriptor = vfs->GetResourceDescriptorForAsync(virtual_file_path);
+	if (!ctx.resource_descriptor)
 	{
 		PHX_CORE_ERROR("[GLTF Handler] Failed to find file info '{0}'", virtual_file_path);
-		sceneBlueprint->State = Resource::State::Error;
-		return sceneBlueprint;
+		ctx.scene_resource->State = Resource::State::Error;
+		return ctx.scene_resource;
 	}
-	sceneBlueprint->State = Resource::State::Loading;
+
+	ctx.scene_resource->State = Resource::State::Loading;
+	ctx.virtual_file_path = virtual_file_path;
+	ctx.vfs = vfs;
+	ctx.loader = loader;
 
 	data::AsyncReadRequest request = {
-		.resource_descriptor = descriptorResult.GetValue(),
-		.bytes_to_read = descriptorResult->length_of_resource,
+		.resource_descriptor = ctx.resource_descriptor.GetValue(),
+		.bytes_to_read = ctx.resource_descriptor->length_of_resource,
 	};
 
-	request.callback = [=](data::AsyncReadResult const& result) {
-
-		if (!result.success)
-		{
-			PHX_CORE_ERROR("[GLTF Handler] Failed read file '{0}' -> {1}", virtual_file_path, result.error_message);
-			sceneBlueprint->State = Resource::State::Error;
-			return;
-		}
-
-		// Load GLF File into memory
-		CgltfContext context =
-		{
-			.FileSystem = vfs,
-			.Blobs = {}
-		};
-
-		cgltf_options options = { };
-		options.file.read = &CgltfReadFile;
-		options.file.release = &CgltfReleaseFile;
-		options.file.user_data = &context;
-
-		cgltf_data* gltfData = nullptr;
-		cgltf_result res = cgltf_parse(
-			&options,
-			result.data_buffer.data(),
-			result.bytes_actually_read,
-			&gltfData);
-
-		if (res != cgltf_result_success)
-		{
-			PHX_ERROR("Couldn't parse glTF file '{0}'", virtual_file_path);
-			sceneBlueprint->State = Resource::State::Error;
-			return;
-		}
-
-#if false
-		res = cgltf_load_buffers(&options, gltfData, gltfFilename);
-		if (res != cgltf_result_success)
-		{
-			PHX_ERROR("Couldn't load glTF Binary data '{0}'", gltfFilename);
-
-			sceneBlueprint->State = Resource::State::Error;
-			return;
-		}
-
-		sceneBlueprint->State = Resource::State::Loaded;
-#endif
-		};
+	request.callback = [ctx](data::AsyncReadResult const& result) mutable {
+		OnMainFileLoaded(result, ctx);
+	};
 
 	loader->QueueRead(std::move(request));
 	
 
-    return sceneBlueprint;
+    return ctx.scene_resource;
+}
+
+void phxed::GltfFileHandler::OnMainFileLoaded(phx::data::AsyncReadResult const& result, CgltfContext& ctx)
+{
+	if (!result.success)
+	{
+		PHX_CORE_ERROR("[GLTF Handler] Failed read file '{0}' -> {1}", ctx.virtual_file_path, result.error_message);
+		ctx.scene_resource->State = Resource::State::Error;
+		return;
+	}
+
+	cgltf_options options = { };
+	options.file.read = &CgltfReadFile;
+	options.file.release = &CgltfReleaseFile;
+	options.file.user_data = &ctx;
+
+	cgltf_data* raw_gltf_data = nullptr;
+	cgltf_result res = cgltf_parse(
+		&options,
+		result.data_buffer.data(),
+		result.bytes_actually_read,
+		&raw_gltf_data);
+
+	if (res != cgltf_result_success)
+	{
+		PHX_ERROR("Couldn't parse glTF file '{0}'", ctx.virtual_file_path);
+		ctx.scene_resource->State = Resource::State::Error;
+		return;
+	}
+
+	const char* gltf_filename = ctx.resource_descriptor->os_path_or_pak_path.c_str();
+	res = cgltf_load_buffers(&options, raw_gltf_data, gltf_filename);
+	if (res != cgltf_result_success)
+	{
+		PHX_ERROR("Couldn't load glTF Binary data '{0}'", gltf_filename);
+
+		ctx.scene_resource->State = Resource::State::Error;
+		return;
+	}
+
+	// Load Node Data
+	SceneNode rootNode = {
+		.name = ctx.virtual_file_path,
+	};
+
+	NodeHandle rootHandle = ctx.scene_resource->AddNode(std::move(rootNode));
+	JobSystem::Barrier sub_resource_barrier;
+	ctx.sub_resource_barrier = &sub_resource_barrier;
+
+	cgltf_scene* gltfScene = raw_gltf_data->scene;
+	for (size_t i = 0; i < gltfScene->nodes_count; i++)
+	{
+		// Load Node Data
+		LoadNodeRec(ctx, *gltfScene->nodes[i], *ctx.scene_resource, rootHandle);
+	}
+
+	JobSystem::Wait(sub_resource_barrier);
+
+	cgltf_free(raw_gltf_data);
+
+	ctx.scene_resource->State = Resource::State::Loaded;
+}
+
+void phxed::GltfFileHandler::LoadNodeRec(CgltfContext& /*ctx*/, cgltf_node const& /*gltfNode*/, SceneBlueprint& /*scene*/, NodeHandle /*parent*/)
+{
 }

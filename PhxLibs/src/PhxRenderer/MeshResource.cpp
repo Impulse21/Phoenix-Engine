@@ -5,6 +5,6 @@
 
 phx::renderer::MeshResource::~MeshResource()
 {
-	if (m_geometryBuffer.IsValid())
-		rhi::GetDevice().DeleteBuffer(m_geometryBuffer);
+	if (gemoetry_buffer.IsValid())
+		rhi::GetDevice().DeleteBuffer(gemoetry_buffer);
 }

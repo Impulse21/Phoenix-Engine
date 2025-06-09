@@ -57,7 +57,7 @@ namespace phxed
 		}
 	};
 
-	struct MeshData final
+	struct Mesh final
 	{
 		phx::UUID ID;
 		std::string Name;
@@ -109,14 +109,23 @@ namespace phxed
 	class MeshResourceCompiler final
 	{
 	public:
-		static void Compile(MeshData const& meshData, CompiledResource& outCompiledResource)
+		static void Compile(Mesh const& meshData, CompiledResource& outCompiledResource)
 		{
-			MeshResourceCompiler resourceCompiler(meshData, outCompiledResource);
+			MeshResourceCompiler resourceCompiler(meshData, &outCompiledResource);
 			resourceCompiler.Compile();
 		}
 
+		static std::vector<uint8_t> BuildGpuBufferData(Mesh const& meshData)
+		{
+			MeshResourceCompiler resourceCompiler(meshData, nullptr);
+			std::vector<uint8_t> ret_val;
+			resourceCompiler.BuildGpuBufferData(ret_val);
+
+			return ret_val;
+		}
+
 	private:
-		MeshResourceCompiler(MeshData const& meshData, CompiledResource& outCompiledResource)
+		MeshResourceCompiler(Mesh const& meshData, CompiledResource* outCompiledResource)
 			: m_meshData(meshData)
 			, m_outCompiledResource(outCompiledResource)
 		{
@@ -128,7 +137,7 @@ namespace phxed
 		void BuildVertexBuffer(std::vector<uint8_t>& gpuBuffer) const;
 
 	private:
-		const MeshData& m_meshData;
-		CompiledResource& m_outCompiledResource;
+		const Mesh& m_meshData;
+		CompiledResource* m_outCompiledResource;
 	};
 }

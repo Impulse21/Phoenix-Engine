@@ -37,19 +37,28 @@ namespace
 
 	struct ThreadPoolContext
 	{
+		JobSystem::Type CtxType;
 		uint32_t NumThreads = 0;
 		std::vector<std::thread> WorkerThreads;
-		std::unique_ptr<JobQueue[]> JobQueuePerThread;
+		EnumArray<std::unique_ptr<JobQueue[]>, JobSystem::Priority> JobQueuePerThread;
 		std::condition_variable WakeCondition;
 		std::mutex WakeMutex;
 		std::atomic_uint32_t NextQueue = 0;
 
 		void DoWork(size_t threadId)
 		{
+			DoWork(JobSystem::Priority::High, threadId);
+
+			if (CtxType == JobSystem::Type::Generic)
+				DoWork(JobSystem::Priority::Low, threadId);
+		}
+
+		void DoWork(JobSystem::Priority prio, size_t threadId)
+		{
 			Job job;
 			for (size_t i = 0; i < NumThreads; i++)
 			{
-				JobQueue& jobQueue = JobQueuePerThread[threadId % NumThreads];
+				JobQueue& jobQueue = JobQueuePerThread[prio][threadId % NumThreads];
 				while (jobQueue.Pop(job))
 				{
 					if (job.Type != JobSystem::Type::Streaming)
@@ -106,7 +115,7 @@ namespace
 
 		job.KickoffThreadBarrier->Add();
 
-		ctx.JobQueuePerThread[ctx.NextQueue.fetch_add(1) % ctx.NumThreads].Push(job);
+		ctx.JobQueuePerThread[prio][ctx.NextQueue.fetch_add(1) % ctx.NumThreads].Push(job);
 		ctx.WakeCondition.notify_one();
 	};
 }
@@ -135,8 +144,13 @@ void JobSystem::Initialize()
 			break;
 		}
 
+		resource.CtxType = type;
 		resource.NumThreads = std::max(1u, std::min(resource.NumThreads, numCores));
-		resource.JobQueuePerThread = std::make_unique<JobQueue[]>(resource.NumThreads);
+		resource.JobQueuePerThread[JobSystem::Priority::High] = std::make_unique<JobQueue[]>(resource.NumThreads);
+
+		if (type == Type::Generic)
+			resource.JobQueuePerThread[JobSystem::Priority::Low] = std::make_unique<JobQueue[]>(resource.NumThreads);
+
 		resource.WorkerThreads.reserve(resource.NumThreads);
 
 		for (uint32_t threadID = 0; threadID < resource.NumThreads; threadID++)
@@ -228,7 +242,8 @@ void JobSystem::Shutdown()
 	{
 		thread_pool.NumThreads = 0;
 		thread_pool.WorkerThreads.clear();
-		thread_pool.JobQueuePerThread.reset();
+		for (auto& ctx : thread_pool.JobQueuePerThread)
+			ctx.reset();
 		thread_pool.NextQueue = 0;
 	}
 }
@@ -239,10 +254,11 @@ void JobSystem::SubmitJob(JobCallbackFunc const& task, Priority priority, JobCon
 	SubmitJobInternal(task, priority, Type::Generic, specifiedCtx);
 }
 
-void JobSystem::SubmitJobToStreaming(JobCallbackFunc const& task, JobContext* specifiedCtx = nullptr)
+void JobSystem::SubmitJobToStreaming(JobCallbackFunc const& task, JobContext* specifiedCtx)
 {
 	SubmitJobInternal(task, Priority::High, Type::Streaming, specifiedCtx);
 }
+
 #if false
 void JobSystem::Dispatch(uint32_t jobCount, uint32_t groupSize, std::function<void(JobDispatchArgs)> const& job)
 {

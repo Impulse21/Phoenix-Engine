@@ -16,19 +16,19 @@ namespace phx
 	template<typename T>
 	struct ResourceHandlerId;
 
-	class IResource;
-	class IResourceHandler
+	struct Resource;
+	class ResourceHandler
 	{
 	public:
-		virtual RefCountPtr<IResource> LoadFromPak(
+		virtual RefCountPtr<Resource> LoadFromPak(
 			std::shared_ptr<IAssetStreamer> const& assetStreamer,
 			StreamFileHandle filehandle,
 			PakFileFormat::AssetEntry const& assetEntry) const = 0;
 
-		virtual RefCountPtr<IResource> LoadLoose(
+		virtual RefCountPtr<Resource> LoadLoose(
 			std::shared_ptr<IAssetStreamer> const& assetStreamer,
 			StreamFileHandle filehandle) const = 0;
 
-		virtual ~IResourceHandler() = default;
+		virtual ~ResourceHandler() = default;
 	};
 }

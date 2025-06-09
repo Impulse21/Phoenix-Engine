@@ -24,9 +24,6 @@
 #include "MeshResourceCompiler.h"
 #include "ResourceFileBuilder.h"
 
-#include <fast_obj/fast_obj.h>
-
-#include <meshoptimizer/meshoptimizer.h>
 #include <random>
 
 #include "GltfFileHandler.h"
@@ -37,87 +34,6 @@ namespace
 	// constexpr  size_t kCacheSize = 16;
 	bool ParseObj(const char* filename, phxed::MeshData& meshData)
 	{
-		std::filesystem::path resolvedFilePath = phx::IRootFileSystem::Ptr->ResolvePath(filename);
-		std::string resolvedFilename = resolvedFilePath.generic_string();
-		fastObjMesh* obj = fast_obj_read(resolvedFilename.c_str());
-		if (!obj)
-		{
-			PHX_ERROR("Failed to Load OBJ Mesh '{0}'.", filename);
-			return false;
-		}
-
-		PHX_INFO("Loaded '{0}' with fast obj", filename);
-		size_t totalIndices = 0;
-
-		for (uint32_t i = 0; i < obj->face_count; ++i)
-			totalIndices += 3 * (obj->face_vertices[i] - 2);
-
-		phxed::VertexStream& positionStream = meshData.AddVertexStream<DirectX::XMFLOAT3>(phx::renderer::VertexStream_Position, totalIndices);
-		phx::SpanMutable<DirectX::XMFLOAT3> positionData = positionStream.AsSpanMutable<DirectX::XMFLOAT3>();
-
-		phxed::VertexStream& normalsStream = meshData.AddVertexStream<DirectX::XMFLOAT3>(phx::renderer::VertexStream_Normal, totalIndices);
-		phx::SpanMutable<DirectX::XMFLOAT3> normalData = normalsStream.AsSpanMutable<DirectX::XMFLOAT3>();
-
-		phxed::VertexStream& uv0Stream = meshData.AddVertexStream<DirectX::XMFLOAT2>(phx::renderer::VertexStream_UV0, totalIndices);
-		phx::SpanMutable<DirectX::XMFLOAT2> uv0Data = uv0Stream.AsSpanMutable<DirectX::XMFLOAT2>();
-
-		size_t vertexOffset = 0;
-		size_t indexOffset = 0;
-
-		for (size_t iFace = 0; iFace < obj->face_count; ++iFace)
-		{
-			for (size_t iVert = 0; iVert < obj->face_vertices[iFace]; ++iVert)
-			{
-				fastObjIndex gi = obj->indices[indexOffset + iVert];
-
-
-
-				// triangulate polygon on the fly; offset-3 is always the first polygon vertex
-				if (iVert >= 3)
-				{
-					positionData[vertexOffset + 0] = positionData[vertexOffset - 3];
-					normalData[vertexOffset + 0] = normalData[vertexOffset - 3];
-					uv0Data[vertexOffset + 0] = uv0Data[vertexOffset - 3];
-
-					positionData[vertexOffset + 1] = positionData[vertexOffset - 1];
-					normalData[vertexOffset + 1] = normalData[vertexOffset - 1];
-					uv0Data[vertexOffset + 1] = uv0Data[vertexOffset - 1];
-
-					vertexOffset += 2;
-				}
-
-				positionData[vertexOffset] =
-				{
-					obj->positions[gi.p * 3 + 0],
-					obj->positions[gi.p * 3 + 1],
-					obj->positions[gi.p * 3 + 2],
-				};
-
-				normalData[vertexOffset] =
-				{
-					obj->normals[gi.n * 3 + 0],
-					obj->normals[gi.n * 3 + 1],
-					obj->normals[gi.n * 3 + 2],
-				};
-
-				uv0Data[vertexOffset] =
-				{
-					obj->texcoords[gi.t * 2 + 0],
-					obj->texcoords[gi.t * 2 + 1],
-				};
-				vertexOffset++;
-			}
-
-			indexOffset += obj->face_vertices[iFace];
-		}
-
-		meshData.Geometry.emplace_back(phxed::MeshData::GeometryData{
-				.MaterialId = phx::StringHash("Default"),
-				.IndexOffset = 0,
-				.IndexCount = static_cast<uint32_t>(meshData.Indices.size()),
-			});
-		fast_obj_destroy(obj);
-
 		return true;
 	}
 

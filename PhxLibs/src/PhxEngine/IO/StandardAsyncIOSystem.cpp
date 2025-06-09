@@ -111,7 +111,36 @@ void phx::StandardAsyncIOSystem::ProcessReadRequest(data::AsyncReadRequest& requ
     }
     else
     {
-        PHX_CORE_ASSERT(false, "TODO");
+        const int64_t final_seek_offset = 
+            static_cast<int64_t>(request.resource_descriptor.offset_in_pak) +
+            static_cast<int64_t>(request.read_offset_within_resource);
+
+        // 3. Seek to the calculated offset using the platform layer.
+        if (!Platform::Get().SeekFile(file_handle, final_seek_offset, platform::FileSeekOrigin::Begin))
+        {
+            result.success = false;
+            result.error_message = "Failed to seek in file.";
+        }
+        else
+        {
+            result.data_buffer.resize(request.bytes_to_read);
+            size_t bytes_read = Platform::Get().ReadFile(file_handle, result.data_buffer.data(), request.bytes_to_read);
+
+            result.bytes_actually_read = bytes_read;
+
+            if (bytes_read == request.bytes_to_read)
+            {
+                result.success = true;
+            }
+            else
+            {
+                result.success = false;
+                result.error_message = 
+                    "Short read from file. Expected " + std::to_string(request.bytes_to_read) +
+                    ", got " + std::to_string(bytes_read) + ".";
+                result.data_buffer.resize(bytes_read);
+            }
+        }
     }
 
     if (!request.callback)

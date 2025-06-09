@@ -16,14 +16,13 @@ namespace phx::renderer
 		uint32_t VertexBufferOffset;
 	};
 
-	class MeshResource final : public RefCounter<IResource>
+	struct MeshResource final : public Resource
 	{
-		friend class MeshResourceHandler;
-	public:
-		~MeshResource();
-		bool IsLoaded() const { return m_status == 0; }
+		struct CpuData;
 
-	public:
+		phx::MemoryRegion<CpuData> cpu_data;
+		rhi::GpuBufferHandle gemoetry_buffer;
+
 		struct CpuData
 		{
 			float Bounds[4];
@@ -43,11 +42,7 @@ namespace phx::renderer
 			DrawInfo Draw[1];
 		};
 
-		const CpuData* GetCpuData() const { return m_cpuData.Get(); }
+		~MeshResource();
 
-	protected:
-		phx::MemoryRegion<CpuData> m_cpuData;
-		rhi::GpuBufferHandle m_geometryBuffer;
-		std::atomic_uint8_t m_status = 0xFF;
 	};
 }

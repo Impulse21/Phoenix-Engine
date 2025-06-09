@@ -88,7 +88,7 @@ namespace phx
 		DirectX::XMFLOAT4 Rotation = { 0.0f, 0.0f, 0.0f, 1.0f };
 		DirectX::XMFLOAT3 Translation = { 0.0f, 0.0f, 0.0f };
 
-		DirectX::XMFLOAT4X4 WorldMatrix = math::cIdentityMatrix;
+		DirectX::XMFLOAT4X4 WorldMatrix = {};
 
 		inline void SetDirty(bool value = true)
 		{

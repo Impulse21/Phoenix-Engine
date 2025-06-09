@@ -32,11 +32,11 @@ namespace phx
 	private:
 		data::IVirtualFileSystem* m_vfs = nullptr;
 
-		std::deque<data::AsyncReadRequest> m_requestQueue;
-		std::mutex m_queueMutex;
-
 		std::condition_variable m_cv;
 		std::atomic<bool> m_shutdown;
+
+		std::deque<data::AsyncReadRequest> m_requestQueue;
+		std::mutex m_queueMutex;
 
 		std::unordered_map<std::string, platform::PlatformFileHandle> m_fileHandleCache;
 		std::mutex m_fileHandleCacheMutex;

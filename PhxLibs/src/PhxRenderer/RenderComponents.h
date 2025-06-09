@@ -2,13 +2,13 @@
 
 namespace phx
 {
-	class IResource;
+	struct Resource;
 }
 
 namespace phx::gfx
 {
 	struct RenderMeshComponent
 	{
-		RefCountPtr<IResource> MeshResource;
+		RefCountPtr<Resource> MeshResource;
 	};
 }

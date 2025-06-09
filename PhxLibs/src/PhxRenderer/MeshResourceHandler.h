@@ -6,16 +6,16 @@
 namespace phx::renderer
 {
 	struct MeshMetadata;
-	class MeshResource;
-	class MeshResourceHandler final : public phx::IResourceHandler
+	struct MeshResource;
+	class MeshResourceHandler final : public phx::ResourceHandler
 	{
 	public:
-		RefCountPtr<IResource> LoadFromPak(
+		RefCountPtr<Resource> LoadFromPak(
 			std::shared_ptr<IAssetStreamer> const& assetStreamer,
 			StreamFileHandle filehandle,
 			PakFileFormat::AssetEntry const& assetEntry) const override;
 
-		RefCountPtr<IResource> LoadLoose(
+		RefCountPtr<Resource> LoadLoose(
 			std::shared_ptr<IAssetStreamer> const& assetStreamer,
 			StreamFileHandle filehandle) const override;
 

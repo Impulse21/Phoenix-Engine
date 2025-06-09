@@ -32,6 +32,4 @@
 #include "PhxCore/Base.h"
 
 #include "PhxCore/Log.h"
-#include "PhxCore/Platform.h"
-#include "PhxCore/PlatformDetection.h"
 #include <PhxCore/Profiler.h>

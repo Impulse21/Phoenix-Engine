@@ -1,6 +1,5 @@
 #pragma once
 
-#include "PlatformDetection.h"
 #include <memory>
 
 #ifdef PHX_DEBUG

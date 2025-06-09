@@ -1,7 +1,9 @@
 #pragma once
 
 #include <PhxCore/StringHash.h>
-#include<PhxCore/IO/MemoryRegion.h>
+#include <PhxCore/IO/MemoryRegion.h>
+
+#include <PhxCore/RefCountPtr.h>
 
 #include "PakFileFormat.h"
 #include "IResource.h"
@@ -9,7 +11,7 @@
 
 namespace phx
 {
-	class PakFile final : public RefCounter<IResource>
+	class PakFile final : public Resource
 	{
 	public:
 		PakFile(std::shared_ptr<IAssetStreamer> assetStreamer, std::filesystem::path const& filePath, std::filesystem::path const& resolvedFilePath);
