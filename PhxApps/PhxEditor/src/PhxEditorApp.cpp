@@ -17,254 +17,20 @@
 #include <PhxRenderer/RenderSystem.h>
 #include <PhxRenderer/RenderLayers/MeshRenderLayer.h>
 
+#include <PhxCore/IO/FileUtils.h>
+
 #include <PhxEngine/EntryPoint.h>
 
 #include <Generated/GlobalVariables.h>
 
-#include "MeshResourceCompiler.h"
-#include "ResourceFileBuilder.h"
-
 #include <random>
 
 #include "GltfFileHandler.h"
-
-namespace
-{
-#if false
-	// constexpr  size_t kCacheSize = 16;
-	bool ParseObj(const char* filename, phxed::MeshData& meshData)
-	{
-		return true;
-	}
-
-	phxed::MeshData GenerateMeshIndices(phxed::MeshData const& meshSrc, std::vector<uint32_t>& outRemap)
-	{
-		// Mesh Optimizer
-		const size_t totalIndices = meshSrc.GetVertexCount();
-
-		const phxed::VertexStream& srcPositionStream = *meshSrc.GetVertexStream(phx::renderer::VertexStream_Position);
-		const phxed::VertexStream& srcNormalStream = *meshSrc.GetVertexStream(phx::renderer::VertexStream_Normal);
-		const phxed::VertexStream& srcUv0Stream  = *meshSrc.GetVertexStream(phx::renderer::VertexStream_UV0);
-
-		std::array<meshopt_Stream, 3> vertexStream =
-		{
-			meshopt_Stream{
-				.data = srcPositionStream.Data.get(),
-				.size = srcPositionStream.ElementStride,
-				.stride = srcPositionStream.ElementStride,
-			},
-			meshopt_Stream{
-				.data = srcNormalStream.Data.get(),
-				.size = srcNormalStream.ElementStride,
-				.stride = srcNormalStream.ElementStride,
-			},
-			meshopt_Stream{
-				.data = srcUv0Stream.Data.get(),
-				.size = srcUv0Stream.ElementStride,
-				.stride = srcUv0Stream.ElementStride,
-			},
-		};
-
-		outRemap.clear();
-		outRemap.resize(totalIndices);
-		std::vector<uint32_t>& remap = outRemap;
-		size_t totalVertices =
-			meshopt_generateVertexRemapMulti(
-				&remap[0],
-				NULL,
-				totalIndices,
-				totalIndices,
-				vertexStream.data(),
-				vertexStream.size());
+#include "ObjFileHandler.h"
 
 
-		phxed::MeshData processedMesh = {};
-
-		processedMesh.Indices.resize(totalIndices);
-		meshopt_remapIndexBuffer(processedMesh.Indices.data(), NULL, totalIndices, remap.data());
-
-		phxed::VertexStream& posStream = processedMesh.AddVertexStream<DirectX::XMFLOAT3>(phx::renderer::VertexStream_Position, totalVertices);
-		meshopt_remapVertexBuffer(
-			posStream.Data.get(),
-			srcPositionStream.Data.get(),
-			totalIndices,
-			posStream.ElementStride,
-			&remap[0]);
-
-		phxed::VertexStream& normalStream = processedMesh.AddVertexStream<DirectX::XMFLOAT3>(phx::renderer::VertexStream_Normal, totalVertices);
-		meshopt_remapVertexBuffer(
-			normalStream.Data.get(),
-			srcNormalStream.Data.get(),
-			totalIndices,
-			normalStream.ElementStride,
-			&remap[0]);
-
-		phxed::VertexStream& uvStream  = processedMesh.AddVertexStream<DirectX::XMFLOAT2>(phx::renderer::VertexStream_UV0, totalVertices);
-		meshopt_remapVertexBuffer(
-			uvStream.Data.get(),
-			srcUv0Stream.Data.get(),
-			totalIndices,
-			uvStream.ElementStride,
-			&remap[0]);
-
-
-		PHX_WARN("Hard coding a single mateiral entry into the geometry. Please fix this");
-		PHX_ASSERT(meshSrc.Geometry.size() == 1);
-		processedMesh.Geometry.push_back(meshSrc.Geometry[0]);
-		processedMesh.Geometry[0].IndexCount = totalIndices;
-
-		return processedMesh;
-	}
-
-	void PrintStatistics(phxed::MeshData const&)
-	{
-#if false
-		meshopt_VertexCacheStatistics vcs = meshopt_analyzeVertexCache(mesh.Indices.data(), mesh.Indices.size(), mesh.GetVertexCount(), kCacheSize, 0, 0);
-		meshopt_VertexFetchStatistics vfs = meshopt_analyzeVertexFetch(mesh.Indices.data(), mesh.Indices.size(), mesh.GetVertexCount(), sizeof(Vertex));
-		meshopt_OverdrawStatistics os = meshopt_analyzeOverdraw(mesh.Indices.data(), mesh.Indices.size(), &copy.vertices[0].px, mesh.GetVertexCount(), sizeof(Vertex));
-
-		meshopt_VertexCacheStatistics vcs_nv = meshopt_analyzeVertexCache(mesh.Indices.data(), mesh.Indices.size(), mesh.GetVertexCount(), 32, 32, 32);
-		meshopt_VertexCacheStatistics vcs_amd = meshopt_analyzeVertexCache(mesh.Indices.data(), mesh.Indices.size(), mesh.GetVertexCount(), 14, 64, 128);
-		meshopt_VertexCacheStatistics vcs_intel = meshopt_analyzeVertexCache(mesh.Indices.data(), mesh.Indices.size(), mesh.GetVertexCount(), 128, 0, 0);
-
-		printf("%-9s: ACMR %f ATVR %f (NV %f AMD %f Intel %f) Overfetch %f Overdraw %f in %.2f msec\n", name, vcs.acmr, vcs.atvr, vcs_nv.atvr, vcs_amd.atvr, vcs_intel.atvr, vfs.overfetch, os.overdraw, (end - start) * 1000);
-#endif
-	}
-
-	void OptimizeMesh(phxed::MeshData& mesh, std::vector<uint32_t>& remap)
-	{
-		const size_t totalIndices = mesh.Indices.size();
-		const size_t totalVertices = mesh.GetVertexCount();
-
-		PrintStatistics(mesh);
-		phx::CpuTimer timer;
-		// -- Optimize vertex cache ---
-		meshopt_optimizeVertexCache(mesh.Indices.data(), mesh.Indices.data(), totalIndices, totalVertices);
-
-		// -- Vertex optmized overdraw ---
-		// Not in demo?
-
-		// -- Vertex fetch optimization ---
-		meshopt_optimizeVertexFetchRemap(remap.data(), mesh.Indices.data(), totalIndices, totalVertices);
-
-		for (auto& vertexStreamOpt : mesh.VertexStreams)
-		{
-			if (!vertexStreamOpt.has_value())
-				continue;
-
-			phxed::VertexStream& stream = vertexStreamOpt.value();
-
-			meshopt_remapVertexBuffer(stream.Data.get(), stream.Data.get(), totalVertices, stream.ElementStride, remap.data());
-		}
-
-		phx::CpuTimeStep optimizeTime = timer.Elapsed();
-
-		timer.Reset();
-		phxed::VertexStream* posStream = mesh.GetVertexStream(phx::renderer::VertexStream_Position);
-		meshopt_Stream shadowStream =
-			meshopt_Stream{
-				.data = posStream->Data.get(),
-				.size = posStream->ElementStride,
-				.stride = posStream->ElementStride
-		};
-
-		mesh.ShadowIndices.resize(totalIndices);
-		meshopt_generateShadowIndexBufferMulti(mesh.ShadowIndices.data(), mesh.ShadowIndices.data(), totalIndices, totalVertices, &shadowStream, 1);
-
-		meshopt_optimizeVertexCache(mesh.ShadowIndices.data(), mesh.ShadowIndices.data(), totalIndices, totalVertices);
-		phx::CpuTimeStep shadowOptimize = timer.Elapsed();
-
-		PHX_INFO(
-			"Deintrlvd: {0} vertices, optimized in {1} msec, generated & optimized shadow indices in {2} msec",
-			totalVertices,
-			optimizeTime.GetMilliseconds(),
-			shadowOptimize.GetMilliseconds());
-
-		PrintStatistics(mesh);
-	}
-
-	void CompileObjAndMaterials(const char* filename, const char* outputPath)
-	{
-		phxed::MeshData mesh = {};
-		if (!ParseObj(filename, mesh))
-			return;
-
-		std::vector<uint32_t> remap;
-		phx::CpuTimer timer;
-		mesh = GenerateMeshIndices(mesh, remap);
-		phx::CpuTimeStep generateIndicesTime = timer.Elapsed();
-
-		PHX_INFO(
-			"Deintrlvd: {0} vertices, reindexed in {1} msec",
-			mesh.GetVertexCount(),
-			generateIndicesTime.GetMilliseconds());
-
-		OptimizeMesh(mesh, remap);
-
-		phxed::CompiledResource compiledMesh = {};
-		phxed::MeshResourceCompiler::Compile(mesh, compiledMesh);
-
-		std::unique_ptr<phx::IBlob> resourceFileBlob = phxed::ResourceFileBuilder::Build(&compiledMesh);
-
-		auto fs = phx::IRootFileSystem::Ptr;
-		fs->FolderCreate(outputPath);
-
-		if (!fs->WriteFile(outputPath, resourceFileBlob.get()))
-			PHX_ERROR("Failed to save file '{0}'", outputPath);
-		
-	}
-
-	void GenerateTestResources(const char* worldOutput)
-	{
-		const char* testResourceOutput = "res://modulardungeoncollection/SM_Chest_01.phxmsh";
-
-		// Save Resource
-		phx::ThreadPool::SubmitTask([&]() {
-
-			const char* filename = "art://SM_Chest_01.obj";
-			PHX_INFO("Compiling and Exporting test resource '{0}'", filename);
-			CompileObjAndMaterials(filename, testResourceOutput);
-		});
-
-		// Save World
-		phx::ThreadPool::SubmitTask([&]() {
-			phx::World world;
-
-			phx::Entity camera = world.CreateEntity("main_camera");
-			{
-				auto& cameraComp = camera.AddComponent<phx::CameraComponent>();
-				cameraComp.Active = true;
-
-				DirectX::XMVECTOR eyePos = DirectX::XMVectorSet(0.0f, 0.0f, -2.0f, 0.0f);
-				DirectX::XMVECTOR focusPoint = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
-				DirectX::XMVECTOR eyeDir = DirectX::XMVectorSubtract(focusPoint, eyePos);
-				eyeDir = DirectX::XMVector3Normalize(eyeDir);
-
-				DirectX::XMStoreFloat3(
-					&cameraComp.Eye,
-					eyePos);
-
-				DirectX::XMStoreFloat3(
-					&cameraComp.Forward,
-					eyeDir);
-
-				cameraComp.FoV = DirectX::XMConvertToRadians(60);
-			}
-
-			phx::Entity entity = world.CreateEntity("SM_Chest_01");
-			phx::MeshComponent& meshComp = entity.AddComponent<phx::MeshComponent>();
-			meshComp.Mesh = testResourceOutput;
-
-			phx::WorldSerializer::Save(phx::IRootFileSystem::Ptr, worldOutput, world);
-		});
-
-		phx::ThreadPool::Wait();
-	}
-#endif
-
-
-
-static const char* kDefault3DModel = "art://Sponza/glTF/Sponza.gltf";
+// static const char* kDefault3DModel = "art://Sponza/glTF/Sponza.gltf";
+static const char* kDefault3DModel = "art://SM_Chest_01.obj"; 
 
 #define InjectDefault3DModel() \
     if (raptor::file_exists(kDefault3DModel)) {\
@@ -275,7 +41,6 @@ static const char* kDefault3DModel = "art://Sponza/glTF/Sponza.gltf";
        printf("Unable to find default model. Please check the README in the root folder and make sure you've run `python ./bootstrap.py` to download all the additional assets for this project.\n");\
        exit(-1);\
     }
-}
 
 
 class PhxEditor final : public phx::IApplication
@@ -342,9 +107,13 @@ void PhxEditor::Startup()
 		// TODO: TRY mounting a pack
 	}
 
-	auto* resourceSystem = phx::ResourceSystem::Ptr;
-	resourceSystem->RegisterFileHanlder<phxed::GltfFileHandler>();
-	phx::RefCountPtr<phx::SceneBlueprint> sceneBlueptin = resourceSystem->GetTyped<phx::SceneBlueprint>(kDefault3DModel);
+	auto* resource_system= phx::ResourceSystem::Ptr;
+	resource_system->RegisterFileHanlder<phxed::GltfFileHandler>();
+	resource_system->RegisterFileHanlder<phxed::ObjFileHandler>();
+
+	resource_system->GetTyped<phx::SceneBlueprint>(kDefault3DModel);
+	// phx::RefCountPtr<phx::SceneBlueprint> sceneBlueptin = resourceSystem->GetTyped<phx::SceneBlueprint>(kDefault3DModel);
+
 #if false
 	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
 
