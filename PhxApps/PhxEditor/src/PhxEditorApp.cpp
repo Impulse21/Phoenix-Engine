@@ -108,8 +108,6 @@ void PhxEditor::Startup()
 	}
 
 	auto* resource_system= phx::ResourceSystem::Ptr;
-	resource_system->RegisterFileHanlder<phxed::GltfFileHandler>();
-	resource_system->RegisterFileHanlder<phxed::ObjFileHandler>();
 
 	resource_system->GetTyped<phx::SceneBlueprint>(kDefault3DModel);
 	// phx::RefCountPtr<phx::SceneBlueprint> sceneBlueptin = resourceSystem->GetTyped<phx::SceneBlueprint>(kDefault3DModel);
