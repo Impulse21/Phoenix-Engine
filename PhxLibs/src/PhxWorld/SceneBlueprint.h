@@ -1,7 +1,9 @@
 #pragma once
 
 #include <vector>
-#include <PhxResource/IResource.h>
+
+#include <PhxData/Asset.h>
+
 #include <hlsl++.h>
 
 #include "SceneComponents.h"
@@ -53,12 +55,10 @@ namespace phx
         }
 	};
 
-	struct SceneBlueprint : public Resource
+	struct SceneBlueprint : public data::Asset
 	{
         std::vector<int> root_node_indices;
         std::vector<SceneNode> nodes;
-
-        SceneBlueprint() = default;
 
         NodeHandle AddNode(SceneNode&& node)
         {
@@ -76,5 +76,7 @@ namespace phx
 
             return nullptr;
         }
+
+        PHX_DECLARE_ASSET(SceneBlueprint, data::Asset)
 	};
 }
