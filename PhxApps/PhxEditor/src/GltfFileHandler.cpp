@@ -2,7 +2,7 @@
 
 #include <PhxEngine/JobSystem.h>
 
-#include <PhxWorld/SceneBlueprint.h>
+#include <PhxWorld/WorldMetadata.def.h>
 #include <PhxResource/ResourceSystem.h>
 
 #include <PhxCore/IO/FileUtils.h>

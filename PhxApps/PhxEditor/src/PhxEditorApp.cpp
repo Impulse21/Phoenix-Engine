@@ -7,7 +7,7 @@
 #include <PhxWorld/Entity.h>
 #include <PhxWorld/World.h>
 #include <PhxWorld/WorldSerializer.h>
-#include <PhxWorld/SceneBlueprint.h>
+#include <PhxWorld/WorldMetadata.def.h>
 
 #include <PhxData/IVirtualFileSystem.h>
 #include <PhxData/IAsyncIOSystem.h>

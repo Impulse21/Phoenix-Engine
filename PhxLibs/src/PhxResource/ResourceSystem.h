@@ -60,10 +60,6 @@ namespace phx
 		{
 			constexpr const char* ext = ResourceFileExtension<THandler>::value;
 
-#if false
-			IAllocator& mainHeap = Memory::GetMainHeap();
-			THandler* handler = phx_new<THandler>(mainHeap);
-#endif
 			m_resourceHandlers[StringHash(ext).ToHash()] = std::make_unique<THandler>();
 		}
 

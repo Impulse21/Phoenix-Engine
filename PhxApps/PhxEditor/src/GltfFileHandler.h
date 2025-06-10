@@ -5,7 +5,7 @@
 
 #include <PhxCore/StringHash.h>
 
-#include <PhxWorld/SceneBlueprint.h>
+#include <PhxWorld/WorldMetadata.def.h>
 
 // -- forward declares ---
 struct cgltf_data;
