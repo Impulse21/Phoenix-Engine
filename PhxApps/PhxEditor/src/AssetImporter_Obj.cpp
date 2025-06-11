@@ -171,31 +171,6 @@ Mesh phxed::ObjImporter::GenerateMeshIndices(Mesh const& meshSrc, std::vector<ui
 	// Mesh Optimizer
 
 	phxed::Mesh processedMesh = {};
-	for (auto& geometry : meshSrc.Geometry)
-	{
-		const phxed::VertexStream& srcPositionStream = *meshSrc.GetVertexStream(phx::renderer::VertexStream_Position);
-		const phxed::VertexStream& srcNormalStream = *meshSrc.GetVertexStream(phx::renderer::VertexStream_Normal);
-		const phxed::VertexStream& srcUv0Stream = *meshSrc.GetVertexStream(phx::renderer::VertexStream_UV0);
-
-		std::array<meshopt_Stream, 3> vertexStream =
-		{
-			meshopt_Stream{
-				.data = srcPositionStream.Data.get(),
-				.size = srcPositionStream.ElementStride,
-				.stride = srcPositionStream.ElementStride,
-			},
-			meshopt_Stream{
-				.data = srcNormalStream.Data.get(),
-				.size = srcNormalStream.ElementStride,
-				.stride = srcNormalStream.ElementStride,
-			},
-			meshopt_Stream{
-				.data = srcUv0Stream.Data.get(),
-				.size = srcUv0Stream.ElementStride,
-				.stride = srcUv0Stream.ElementStride,
-			},
-		};
-	}
 	const size_t totalIndices = meshSrc.GetVertexCount();
 
 	const phxed::VertexStream& srcPositionStream = *meshSrc.GetVertexStream(phx::renderer::VertexStream_Position);
@@ -233,8 +208,6 @@ Mesh phxed::ObjImporter::GenerateMeshIndices(Mesh const& meshSrc, std::vector<ui
 			vertexStream.data(),
 			vertexStream.size());
 
-
-	phxed::Mesh processedMesh = {};
 
 	processedMesh.Indices.resize(totalIndices);
 	meshopt_remapIndexBuffer(processedMesh.Indices.data(), NULL, totalIndices, remap.data());
@@ -352,64 +325,72 @@ void phxed::ObjImporter::ProcessMesh(renderer::MeshResource* resource, fastObjMe
 	phxed::VertexStream& uv0Stream = mesh.AddVertexStream<DirectX::XMFLOAT2>(phx::renderer::VertexStream_UV0, totalIndices);
 	phx::SpanMutable<DirectX::XMFLOAT2> uv0Data = uv0Stream.AsSpanMutable<DirectX::XMFLOAT2>();
 
-	size_t vertexOffset = 0;
-
-	for (uint32_t i = 0; i < obj->object_count; i++)
+	size_t global_vertex_offset = 0;
+	for (uint32_t i = 0; i < obj->object_count; ++i)
 	{
 		const fastObjGroup& group = obj->objects[i];
 
-		size_t indexOffset = group.index_offset;
+		const size_t submesh_start_vertex = global_vertex_offset;
 
-		mesh.Geometry.emplace_back(phxed::Mesh::GeometryData{
-				.mat_assignment_id = i,
-				.IndexOffset = static_cast<uint32_t>(vertexOffset),
-				.IndexCount = obj->objects[i].face_count * 3,
-			});
+		size_t input_index_offset = group.index_offset;
 
 		for (size_t iFace = 0; iFace < group.face_count; ++iFace)
 		{
-			for (size_t iVert = 0; iVert < obj->face_vertices[iFace]; ++iVert)
+			uint32_t vertices_in_face = obj->face_vertices[group.face_offset + iFace];
+
+			// We must have at least a triangle.
+			if (vertices_in_face < 3)
 			{
-				fastObjIndex gi = obj->indices[indexOffset + iVert];
-
-				// triangulate polygon on the fly; offset-3 is always the first polygon vertex
-				if (iVert >= 3)
-				{
-					positionData[vertexOffset + 0] = positionData[vertexOffset - 3];
-					normalData[vertexOffset + 0] = normalData[vertexOffset - 3];
-					uv0Data[vertexOffset + 0] = uv0Data[vertexOffset - 3];
-
-					positionData[vertexOffset + 1] = positionData[vertexOffset - 1];
-					normalData[vertexOffset + 1] = normalData[vertexOffset - 1];
-					uv0Data[vertexOffset + 1] = uv0Data[vertexOffset - 1];
-
-					vertexOffset += 2;
-				}
-
-				positionData[vertexOffset] =
-				{
-					obj->positions[gi.p * 3 + 0],
-					obj->positions[gi.p * 3 + 1],
-					obj->positions[gi.p * 3 + 2],
-				};
-
-				normalData[vertexOffset] =
-				{
-					obj->normals[gi.n * 3 + 0],
-					obj->normals[gi.n * 3 + 1],
-					obj->normals[gi.n * 3 + 2],
-				};
-
-				uv0Data[vertexOffset] =
-				{
-					obj->texcoords[gi.t * 2 + 0],
-					obj->texcoords[gi.t * 2 + 1],
-				};
-				vertexOffset++;
+				input_index_offset += vertices_in_face; // Skip degenerate faces.
+				continue;
 			}
 
-			indexOffset += 3;
-		}
+			// --- Robust Fan Triangulation ---
+			// Cache the first vertex of the polygon for creating the fan.
+			fastObjIndex first_v_idx = obj->indices[input_index_offset];
+
+			// Process the rest of the vertices in the face to form a triangle fan.
+			for (unsigned int iVert = 2; iVert < vertices_in_face; ++iVert)
+			{
+				// Get the indices for the other two vertices of the triangle.
+				fastObjIndex prev_v_idx = obj->indices[input_index_offset + iVert - 1];
+				fastObjIndex curr_v_idx = obj->indices[input_index_offset + iVert];
+
+				// Define the 3 vertices of the current triangle in the fan.
+				fastObjIndex triangle_indices[3] = { first_v_idx, prev_v_idx, curr_v_idx };
+
+				// Write out the 3 vertices for this triangle.
+				for (int k = 0; k < 3; ++k)
+				{
+					fastObjIndex gi = triangle_indices[k];
+
+					positionData[global_vertex_offset] = {
+						obj->positions[gi.p * 3 + 0],
+						obj->positions[gi.p * 3 + 1],
+						obj->positions[gi.p * 3 + 2],
+					};
+					normalData[global_vertex_offset] = {
+						obj->normals[gi.n * 3 + 0],
+						obj->normals[gi.n * 3 + 1],
+						obj->normals[gi.n * 3 + 2],
+					};
+					uv0Data[global_vertex_offset] = {
+						obj->texcoords[gi.t * 2 + 0],
+						obj->texcoords[gi.t * 2 + 1],
+					};
+					global_vertex_offset++; // IMPORTANT: Increment master vertex cursor.
+				}
+			}
+
+			// Correctly advance the input index offset by the number of vertices in the face.
+			input_index_offset += vertices_in_face;
+		} 
+		
+		mesh.Geometry.emplace_back(phxed::Mesh::GeometryData{
+			.mat_assignment_id = i,
+			.IndexOffset = static_cast<uint32_t>(submesh_start_vertex),
+			.IndexCount = static_cast<uint32_t>(global_vertex_offset- submesh_start_vertex),
+		});
 	}
 
 	std::vector<uint32_t> remap;
