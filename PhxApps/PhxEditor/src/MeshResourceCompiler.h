@@ -69,7 +69,7 @@ namespace phxed
 		std::vector<uint8_t> GpuBufferData;
 		struct GeometryData
 		{
-			phx::StringHash MaterialId = {};
+			uint32_t mat_assignment_id = {};
 			uint32_t IndexOffset = 0;
 			uint32_t IndexCount = 0;
 		};

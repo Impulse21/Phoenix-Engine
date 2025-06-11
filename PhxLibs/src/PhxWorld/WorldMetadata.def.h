@@ -2,9 +2,6 @@
 
 #include <vector>
 
-
-#include <PhxCore/StringHash.h>
-#include <PhxCore/RefCountPtr.h>
 #include <PhxData/Asset.h>
 
 #include <hlsl++.h>
@@ -43,9 +40,16 @@ namespace phx
             explicit Component(uint64_t hash) : type_hash(hash) {}
         };
 
+        struct MaterialAssignment
+        {
+            std::string material_virutal_path;
+            uint32_t geometry_index = 0;
+        };
+
         struct MeshComponent : public Component
         {
-            RefCountPtr<Resource> mesh;
+            std::string mesh_virtual_path;
+            std::vector<MaterialAssignment> mat_assignments;
 
             PHX_DECLARE_COMPONENT(MeshComponent, Component)
         };
@@ -61,13 +65,6 @@ namespace phx
             float outer_cone_angle = 0.0f;
 
             PHX_DECLARE_COMPONENT(LightComponent, Component)
-        };
-
-        struct MaterialComponent : public Component
-        {
-            RefCountPtr<Resource> material;
-
-            PHX_DECLARE_COMPONENT(MaterialComponent, Component)
         };
 
         struct CameraComponent : public Component

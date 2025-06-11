@@ -32,8 +32,6 @@ namespace phxed
 		void ImportAsync(phx::data::AssetManager* asset_manager, phx::RefCountPtr<phx::data::Asset> asset, std::string const& virtual_file_path) const;
 
 	private:
-		static bool ParseObj(phx::SpanMutable<uint8_t> file_data, Mesh& meshData);
-
 		// shoudl be resued by gltf
 		static Mesh GenerateMeshIndices(Mesh const& meshSrc, std::vector<uint32_t>& outRemap);
 		static void OptimizeMesh(Mesh& mesh, std::vector<uint32_t>& remap);

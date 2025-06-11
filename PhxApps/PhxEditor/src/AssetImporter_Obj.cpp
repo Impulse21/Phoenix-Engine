@@ -52,30 +52,6 @@ namespace
 		auto* memory = static_cast<SpanMutable<uint8_t>*>(user_data);
 		return memory->Size();
 	}
-
-	struct FastObjScopeCtx
-	{
-		fastObjMesh* obj;
-
-		fastObjMesh& operator*() const {
-			return *obj;
-		}
-		fastObjMesh* operator->() const {
-			return obj;
-		}
-		explicit operator fastObjMesh* () const {
-			return obj;
-		}
-
-		explicit FastObjScopeCtx(fastObjMesh* other) : obj(other) {};
-		~FastObjScopeCtx() 
-		{ 
-			if (obj)
-				fast_obj_destroy(obj);
-
-			obj = nullptr;
-		}
-	};
 }
 
 phx::StringHash ObjImporter::GetAssetTypeHash() const
@@ -114,34 +90,48 @@ void ObjImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asset> as
 		};
 
 		SpanMutable file_data(const_cast<uint8_t*>(result.data_buffer.data()), result.bytes_actually_read);
-		fastObjMesh* obj = fast_obj_read_with_callbacks("", &callbacks, &file_data);
-		if (!obj)
+		fastObjMesh* raw_obj = fast_obj_read_with_callbacks("", &callbacks, &file_data);
+		if (!raw_obj)
 		{
 			PHX_CORE_ERROR("[OBJ Handler] Failed to parse obj file '{0}'", virtual_file_path);
 			scene_blueprint->state = Resource::State::Error;
 			return;
 		}
 
-		FastObjScopeCtx scoped_obj(obj);
+		std::shared_ptr<fastObjMesh> obj_data_owner(raw_obj, &fast_obj_destroy);
 
 		// Lets construct out material assets
-		for (uint32_t i = 0; i < scoped_obj->material_count; i++)
+		std::vector<scene::MaterialAssignment> mat_assignments(obj_data_owner->object_count);
+		for (uint32_t i = 0; i < obj_data_owner->object_count; i++)
 		{
-			fastObjMaterial& mtl = scoped_obj->materials[i];
-			std::string mtl_virtual_path = virtual_file_path + "#" + mtl.name;
-			auto mtl_asset = asset_manager->RegisterPrecreatedAsset<MaterialAsset>(mtl_virtual_path.c_str());
+			// Look up the material and process - no material merging yet
+			for (uint32_t j = 0; j < obj_data_owner->material_count; j++)
+			{
+				
+				fastObjGroup& group = obj_data_owner->objects[i];
+				fastObjMaterial& mtl = obj_data_owner->materials[j];
+				if (group.name != mtl.name)
+					continue;
 
-			mtl_asset->parameters["ambient"] = hlslpp::float3(mtl.Ka[0], mtl.Ka[1], mtl.Ka[2]);
-			mtl_asset->parameters["specular"] = hlslpp::float3(mtl.Ks[0], mtl.Ks[1], mtl.Ks[2]);
-			mtl_asset->parameters["emissive"] = hlslpp::float3(mtl.Ke[0], mtl.Ke[1], mtl.Ke[2]);
 
-			mtl_asset->texture_paths["base_colour"] = ProcessTexture(virtual_file_path, obj->textures[mtl.map_Kd].path);
-			mtl_asset->texture_paths["roughness"] = ProcessTexture(virtual_file_path, obj->textures[mtl.map_Ns].path);
-			mtl_asset->texture_paths["metalness"] = ProcessTexture(virtual_file_path, obj->textures[mtl.map_Ni].path); // Not sure about this one
-			mtl_asset->texture_paths["normal"] = ProcessTexture(virtual_file_path, obj->textures[mtl.map_bump].path); // Not sure about this one
+				mat_assignments[i] = scene::MaterialAssignment{
+					.material_virutal_path = virtual_file_path + "#" + mtl.name,
+					.geometry_index = i
+				};
 
+				auto mtl_asset = asset_manager->RegisterPrecreatedAsset<MaterialAsset>(mat_assignments[i].material_virutal_path.c_str());
+
+				mtl_asset->parameters["ambient"] = hlslpp::float3(mtl.Ka[0], mtl.Ka[1], mtl.Ka[2]);
+				mtl_asset->parameters["specular"] = hlslpp::float3(mtl.Ks[0], mtl.Ks[1], mtl.Ks[2]);
+				mtl_asset->parameters["emissive"] = hlslpp::float3(mtl.Ke[0], mtl.Ke[1], mtl.Ke[2]);
+
+				mtl_asset->texture_paths["base_colour"] = ProcessTexture(virtual_file_path, obj_data_owner->textures[mtl.map_Kd].path);
+				mtl_asset->texture_paths["roughness"] = ProcessTexture(virtual_file_path, obj_data_owner->textures[mtl.map_Ns].path);
+				mtl_asset->texture_paths["metalness"] = ProcessTexture(virtual_file_path, obj_data_owner->textures[mtl.map_Ni].path); // Not sure about this one
+				mtl_asset->texture_paths["normal"] = ProcessTexture(virtual_file_path, obj_data_owner->textures[mtl.map_bump].path); // Not sure about this one
+
+			}
 		}
-
 
 		auto rm = phx::ResourceSystem::Ptr;
 		std::string mesh_virtual_path = virtual_file_path + "#Mesh_0";
@@ -149,48 +139,27 @@ void ObjImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asset> as
 		auto [mesh_placeholder, am_i_the_creator] = rm->FindOrCreatePlaceholder<MeshResource>(mesh_virtual_path);
 		if (am_i_the_creator)
 		{
-			// Kick of mesh job
+			JobSystem::SubmitJob([mesh_placeholder, obj_data_owner](JobContext const&) {
+
+				ProcessMesh(mesh_placeholder, obj_data_owner.get());
+
+			}, JobSystem::Priority::Low);
 		}
 
-#if false
-		phxed::Mesh mesh = {};
-		if (!ParseObj(SpanMutable<uint8_t>(const_cast<uint8_t*>(result.data_buffer.data()), result.bytes_actually_read), mesh))
-		{
-			PHX_CORE_ERROR("[OBJ Handler] Failed to parse obj file '{0}'", virtual_file_path);
-			scene_blueprint->state = Resource::State::Error;
-			return;
-		}
-		std::vector<uint32_t> remap;
-		mesh = GenerateMeshIndices(mesh, remap);
+		// Create a node for the car body
+		SceneNode node;
+		node.name = "obj_asset";
 
-		OptimizeMesh(mesh, remap);
-		phxed::CompiledResource compiled_resource;
-		phxed::MeshResourceCompiler::Compile(mesh, compiled_resource);
+		// Create and add the MeshComponent
+		auto mesh_comp = std::make_unique<scene::MeshComponent>();
+		mesh_comp->mesh_virtual_path = mesh_virtual_path; // The path to the mesh resource
+		mesh_comp->mat_assignments = mat_assignments;
 
-		// Upload GPU data
-		auto mesh_metadata = reinterpret_cast<const MeshMetadata*>(compiled_resource.MetadataChunk.get());
+		node.components.push_back(std::move(mesh_comp));
 
-		// Is not compressed
-		phx::IBlob* cpu_data_chunk = compiled_resource.Chunks[0].get();
-		std::unique_ptr<char[]> cpu_data = std::make_unique<char[]>(cpu_data_chunk->Size());
-		std::memcpy(cpu_data.get(), cpu_data_chunk->Data(), cpu_data_chunk->Size());
+		scene_blueprint->nodes.push_back(std::move(node));
 
-		mesh_resource->cpu_data = MemoryRegion<MeshResource::CpuData>(std::move(cpu_data));
-
-		phx::IBlob* gpu_chunk = compiled_resource.Chunks[1].get();
-
-		mesh_resource->gemoetry_buffer = rhi::GetDevice().CreateBuffer({
-				.DebugName = "Geometry Buffer",
-				.Size = mesh_metadata->GeometryBufferSize,
-				.BindingFlags = rhi::BindingFlags::ShaderResource | rhi::BindingFlags::IndexBuffer,
-				.MiscFlags = rhi::ResourceMiscFlags::BufferRaw,
-				.InitialState = rhi::ResourceStates::Common,
-			},
-			gpu_chunk->Data());
-
-		
-		mesh_resource->State = Resource::State::Loaded;
-#endif
+		scene_blueprint->state = Resource::State::Loaded;
 	};
 
 	IAsyncIOSystem::Ptr->QueueRead(std::move(request));
@@ -200,6 +169,33 @@ void ObjImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asset> as
 Mesh phxed::ObjImporter::GenerateMeshIndices(Mesh const& meshSrc, std::vector<uint32_t>& outRemap)
 {
 	// Mesh Optimizer
+
+	phxed::Mesh processedMesh = {};
+	for (auto& geometry : meshSrc.Geometry)
+	{
+		const phxed::VertexStream& srcPositionStream = *meshSrc.GetVertexStream(phx::renderer::VertexStream_Position);
+		const phxed::VertexStream& srcNormalStream = *meshSrc.GetVertexStream(phx::renderer::VertexStream_Normal);
+		const phxed::VertexStream& srcUv0Stream = *meshSrc.GetVertexStream(phx::renderer::VertexStream_UV0);
+
+		std::array<meshopt_Stream, 3> vertexStream =
+		{
+			meshopt_Stream{
+				.data = srcPositionStream.Data.get(),
+				.size = srcPositionStream.ElementStride,
+				.stride = srcPositionStream.ElementStride,
+			},
+			meshopt_Stream{
+				.data = srcNormalStream.Data.get(),
+				.size = srcNormalStream.ElementStride,
+				.stride = srcNormalStream.ElementStride,
+			},
+			meshopt_Stream{
+				.data = srcUv0Stream.Data.get(),
+				.size = srcUv0Stream.ElementStride,
+				.stride = srcUv0Stream.ElementStride,
+			},
+		};
+	}
 	const size_t totalIndices = meshSrc.GetVertexCount();
 
 	const phxed::VertexStream& srcPositionStream = *meshSrc.GetVertexStream(phx::renderer::VertexStream_Position);
@@ -341,6 +337,7 @@ void phxed::ObjImporter::ProcessMesh(renderer::MeshResource* resource, fastObjMe
 {
 	(void)resource;
 	phxed::Mesh mesh;
+
 	size_t totalIndices = 0;
 
 	for (uint32_t i = 0; i < obj->face_count; ++i)
@@ -356,60 +353,64 @@ void phxed::ObjImporter::ProcessMesh(renderer::MeshResource* resource, fastObjMe
 	phx::SpanMutable<DirectX::XMFLOAT2> uv0Data = uv0Stream.AsSpanMutable<DirectX::XMFLOAT2>();
 
 	size_t vertexOffset = 0;
-	size_t indexOffset = 0;
 
-	for (size_t iFace = 0; iFace < obj->face_count; ++iFace)
+	for (uint32_t i = 0; i < obj->object_count; i++)
 	{
-		for (size_t iVert = 0; iVert < obj->face_vertices[iFace]; ++iVert)
+		const fastObjGroup& group = obj->objects[i];
+
+		size_t indexOffset = group.index_offset;
+
+		mesh.Geometry.emplace_back(phxed::Mesh::GeometryData{
+				.mat_assignment_id = i,
+				.IndexOffset = static_cast<uint32_t>(vertexOffset),
+				.IndexCount = obj->objects[i].face_count * 3,
+			});
+
+		for (size_t iFace = 0; iFace < group.face_count; ++iFace)
 		{
-			fastObjIndex gi = obj->indices[indexOffset + iVert];
-
-
-
-			// triangulate polygon on the fly; offset-3 is always the first polygon vertex
-			if (iVert >= 3)
+			for (size_t iVert = 0; iVert < obj->face_vertices[iFace]; ++iVert)
 			{
-				positionData[vertexOffset + 0] = positionData[vertexOffset - 3];
-				normalData[vertexOffset + 0] = normalData[vertexOffset - 3];
-				uv0Data[vertexOffset + 0] = uv0Data[vertexOffset - 3];
+				fastObjIndex gi = obj->indices[indexOffset + iVert];
 
-				positionData[vertexOffset + 1] = positionData[vertexOffset - 1];
-				normalData[vertexOffset + 1] = normalData[vertexOffset - 1];
-				uv0Data[vertexOffset + 1] = uv0Data[vertexOffset - 1];
+				// triangulate polygon on the fly; offset-3 is always the first polygon vertex
+				if (iVert >= 3)
+				{
+					positionData[vertexOffset + 0] = positionData[vertexOffset - 3];
+					normalData[vertexOffset + 0] = normalData[vertexOffset - 3];
+					uv0Data[vertexOffset + 0] = uv0Data[vertexOffset - 3];
 
-				vertexOffset += 2;
+					positionData[vertexOffset + 1] = positionData[vertexOffset - 1];
+					normalData[vertexOffset + 1] = normalData[vertexOffset - 1];
+					uv0Data[vertexOffset + 1] = uv0Data[vertexOffset - 1];
+
+					vertexOffset += 2;
+				}
+
+				positionData[vertexOffset] =
+				{
+					obj->positions[gi.p * 3 + 0],
+					obj->positions[gi.p * 3 + 1],
+					obj->positions[gi.p * 3 + 2],
+				};
+
+				normalData[vertexOffset] =
+				{
+					obj->normals[gi.n * 3 + 0],
+					obj->normals[gi.n * 3 + 1],
+					obj->normals[gi.n * 3 + 2],
+				};
+
+				uv0Data[vertexOffset] =
+				{
+					obj->texcoords[gi.t * 2 + 0],
+					obj->texcoords[gi.t * 2 + 1],
+				};
+				vertexOffset++;
 			}
 
-			positionData[vertexOffset] =
-			{
-				obj->positions[gi.p * 3 + 0],
-				obj->positions[gi.p * 3 + 1],
-				obj->positions[gi.p * 3 + 2],
-			};
-
-			normalData[vertexOffset] =
-			{
-				obj->normals[gi.n * 3 + 0],
-				obj->normals[gi.n * 3 + 1],
-				obj->normals[gi.n * 3 + 2],
-			};
-
-			uv0Data[vertexOffset] =
-			{
-				obj->texcoords[gi.t * 2 + 0],
-				obj->texcoords[gi.t * 2 + 1],
-			};
-			vertexOffset++;
+			indexOffset += 3;
 		}
-
-		indexOffset += obj->face_vertices[iFace];
 	}
-
-	mesh.Geometry.emplace_back(phxed::Mesh::GeometryData{
-			.MaterialId = phx::StringHash("Default"),
-			.IndexOffset = 0,
-			.IndexCount = static_cast<uint32_t>(mesh.Indices.size()),
-		});
 
 	std::vector<uint32_t> remap;
 	mesh = GenerateMeshIndices(mesh, remap);
