@@ -4,7 +4,6 @@
 // Credit to: https://github.dev/FireFlyForLife/NeatReflection
 namespace phx::data
 {
-
 	using TemplateTypeId = uint32_t;
 	inline constexpr TemplateTypeId kEmptyTypeId = 0;
 

@@ -12,6 +12,7 @@
 #include <PhxRenderer/MeshResourceHandler.h>
 
 #include <PhxData/VirtualFileSystemImpl.h>
+#include <PhxData/AssetManager.h>
 
 #include <PhxRhi/GfxDevice.h>
 
@@ -90,6 +91,10 @@ namespace phx
 
 			phx::ResourceSystem::Ptr = new ResourceSystem;
 			phx::ResourceSystem::Ptr->Initialize(phx::data::IVirtualFileSystem::Ptr, phx::data::IAsyncIOSystem::Ptr);
+
+			phx::data::AssetManager::Ptr = new phx::data::AssetManager;
+			phx::data::AssetManager::Ptr->Initialize(phx::data::IVirtualFileSystem::Ptr, phx::data::IAsyncIOSystem::Ptr);
+
 #if false
 
 			phx::ResourceManger::Initialize();
@@ -131,6 +136,10 @@ namespace phx
 
 			DeleteApplication(phx::IApplication::Ptr);
 			phx::IApplication::Ptr = nullptr;
+
+			phx::data::AssetManager::Ptr->Shutdown();
+			delete phx::data::AssetManager::Ptr;
+			phx::data::AssetManager::Ptr = nullptr;
 
 			phx::ResourceSystem::Ptr->Shutdown();
 			delete phx::ResourceSystem::Ptr;

@@ -242,6 +242,12 @@ namespace phx
             return GPtr;
         }
 
+        static RefCountPtr<T> Create()
+        {
+            RefCountPtr<T> GPtr;
+            GPtr.Attach( new T);
+            return GPtr;
+        }
         unsigned long Reset()
         {
             return InternalRelease();

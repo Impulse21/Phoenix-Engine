@@ -1,6 +1,6 @@
 #pragma once
 
-#include <PhxResource/IResource.h>
+#include <PhxResource/Resource.h>
 #include <PhxResource/IResourceHandler.h>
 
 namespace phx::renderer

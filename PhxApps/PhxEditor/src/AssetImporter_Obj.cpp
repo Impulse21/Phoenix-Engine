@@ -1,4 +1,4 @@
-#include "ObjFileHandler.h"
+#include "AssetImporter_Obj.h"
 
 #include <PhxRhi/GfxDevice.h>
 
@@ -13,6 +13,8 @@
 
 #include <fast_obj/fast_obj.h>
 #include <meshoptimizer/meshoptimizer.h>
+
+#include <PhxWorld/WorldMetadata.def.h>
 
 using namespace phxed;
 using namespace phx;
@@ -45,20 +47,19 @@ namespace
 	}
 
 }
-phx::RefCountPtr<phx::Resource> phxed::ObjFileHandler::LoadAsync(phx::data::IVirtualFileSystem* vfs, phx::data::IAsyncIOSystem* loader, const char* virtual_file_path) const
+phx::RefCountPtr<phx::data::Asset> phxed::ObjImporter::ImportAsync(phx::data::IVirtualFileSystem* vfs, phx::data::IAsyncIOSystem* loader, const char* virtual_file_path) const
 {
-	auto mesh_resource = phx::RefCountPtr<MeshResource>::Create(new MeshResource);
-
+	auto scene_blueprint = phx::RefCountPtr<SceneBlueprint>::Create(new SceneBlueprint);
 
 	Result<data::AsyncResourceDescriptor> resource_descriptor = vfs->GetResourceDescriptorForAsync(virtual_file_path);
 	if (!resource_descriptor)
 	{
 		PHX_CORE_ERROR("[GLTF Handler] Failed to find file info '{0}'", virtual_file_path);
-		mesh_resource->State = Resource::State::Error;
-		return mesh_resource;
+		scene_blueprint->State = Resource::State::Error;
+		return scene_blueprint;
 	}
 
-	mesh_resource->State = Resource::State::Loading;
+	scene_blueprint->State = Resource::State::Loading;
 	data::AsyncReadRequest request = {
 		.resource_descriptor = resource_descriptor.GetValue(),
 		.bytes_to_read = resource_descriptor->length_of_resource,
@@ -112,7 +113,7 @@ phx::RefCountPtr<phx::Resource> phxed::ObjFileHandler::LoadAsync(phx::data::IVir
 	return mesh_resource;
 }
 
-bool phxed::ObjFileHandler::ParseObj(phx::SpanMutable<uint8_t> file_data, Mesh& meshData)
+bool phxed::ObjImporter::ParseObj(phx::SpanMutable<uint8_t> file_data, Mesh& meshData)
 {
 	fastObjCallbacks callbacks = {
 		.file_open = memory_open,
@@ -202,7 +203,7 @@ bool phxed::ObjFileHandler::ParseObj(phx::SpanMutable<uint8_t> file_data, Mesh& 
 	return true;
 }
 
-Mesh phxed::ObjFileHandler::GenerateMeshIndices(Mesh const& meshSrc, std::vector<uint32_t>& outRemap)
+Mesh phxed::ObjImporter::GenerateMeshIndices(Mesh const& meshSrc, std::vector<uint32_t>& outRemap)
 {
 	// Mesh Optimizer
 	const size_t totalIndices = meshSrc.GetVertexCount();
@@ -281,7 +282,7 @@ Mesh phxed::ObjFileHandler::GenerateMeshIndices(Mesh const& meshSrc, std::vector
 	return processedMesh;
 }
 
-void phxed::ObjFileHandler::OptimizeMesh(Mesh& mesh, std::vector<uint32_t>& remap)
+void phxed::ObjImporter::OptimizeMesh(Mesh& mesh, std::vector<uint32_t>& remap)
 {
 	const size_t totalIndices = mesh.Indices.size();
 	const size_t totalVertices = mesh.GetVertexCount();
@@ -333,7 +334,7 @@ void phxed::ObjFileHandler::OptimizeMesh(Mesh& mesh, std::vector<uint32_t>& rema
 	PrintStatistics(mesh);
 }
 
-void phxed::ObjFileHandler::PrintStatistics(Mesh const&)
+void phxed::ObjImporter::PrintStatistics(Mesh const&)
 {
 #if false
 	meshopt_VertexCacheStatistics vcs = meshopt_analyzeVertexCache(mesh.Indices.data(), mesh.Indices.size(), mesh.GetVertexCount(), kCacheSize, 0, 0);

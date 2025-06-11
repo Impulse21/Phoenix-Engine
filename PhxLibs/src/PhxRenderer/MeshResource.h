@@ -5,7 +5,7 @@
 
 #include "PhxRenderer/shaders/ShaderInterop.h"
 
-#include <PhxResource/IResource.h>
+#include <PhxResource/Resource.h>
 namespace phx::renderer
 {
 	// This affects the resource modify qith care
@@ -18,6 +18,8 @@ namespace phx::renderer
 
 	struct MeshResource final : public Resource
 	{
+		PHX_DECLARE_RESOURCE(MeshResource)
+
 		struct CpuData;
 
 		phx::MemoryRegion<CpuData> cpu_data;

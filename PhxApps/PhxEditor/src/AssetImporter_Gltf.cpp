@@ -1,4 +1,4 @@
-#include "GltfFileHandler.h"
+#include "AssetImporter_Gltf.h"
 
 #include <PhxEngine/JobSystem.h>
 
@@ -55,7 +55,7 @@ namespace
 	}
 }
 
-phx::RefCountPtr<phx::Resource> GltfFileHandler::LoadAsync(phx::data::IVirtualFileSystem* vfs, phx::data::IAsyncIOSystem* loader,  const char* virtual_file_path) const
+phx::RefCountPtr<phx::data::Asset> GltfFileImporter::ImportAsync(phx::data::IVirtualFileSystem* vfs, phx::data::IAsyncIOSystem* loader,  const char* virtual_file_path) const
 {
 	CgltfContext ctx = {};
 	ctx.scene_resource = phx::RefCountPtr<SceneBlueprint>::Create(new SceneBlueprint);
@@ -87,7 +87,7 @@ phx::RefCountPtr<phx::Resource> GltfFileHandler::LoadAsync(phx::data::IVirtualFi
     return ctx.scene_resource;
 }
 
-void phxed::GltfFileHandler::OnMainFileLoaded(phx::data::AsyncReadResult const& result, CgltfContext& ctx)
+void phxed::GltfFileImporter::OnMainFileLoaded(phx::data::AsyncReadResult const& result, CgltfContext& ctx)
 {
 	if (!result.success)
 	{
@@ -148,6 +148,6 @@ void phxed::GltfFileHandler::OnMainFileLoaded(phx::data::AsyncReadResult const& 
 	ctx.scene_resource->State = Resource::State::Loaded;
 }
 
-void phxed::GltfFileHandler::LoadNodeRec(CgltfContext& /*ctx*/, cgltf_node const& /*gltfNode*/, SceneBlueprint& /*scene*/, NodeHandle /*parent*/)
+void phxed::GltfFileImporter::LoadNodeRec(CgltfContext& /*ctx*/, cgltf_node const& /*gltfNode*/, SceneBlueprint& /*scene*/, NodeHandle /*parent*/)
 {
 }

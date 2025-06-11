@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxCore/RefCountPtr.h>
+#include <PhxCore/StringHash.h>
 
 namespace phx
 {
@@ -16,13 +17,25 @@ namespace phx
 		class IAsyncIOSystem;
 	}
 
+	class ResourceSystem;
 	struct Resource;
+
+	struct LoadAsyncContext
+	{
+		const char* virtual_file_path;
+		RefCountPtr<Resource> resource;
+		ResourceSystem* resource_system;
+		data::IVirtualFileSystem* vfs;
+		data::IAsyncIOSystem* loader;
+	};
+
 	class ResourceFileHandler
 	{
 	public:
 		virtual ~ResourceFileHandler() = default;
 
-		virtual RefCountPtr<Resource> LoadAsync(data::IVirtualFileSystem* vfs, data::IAsyncIOSystem* loader, const char* virtual_file_path) const = 0;
+		virtual StringHash GetResourceTypeHash() const = 0;
+		virtual void LoadAsync(LoadAsyncContext const& context) const = 0;
 
 	};
 }

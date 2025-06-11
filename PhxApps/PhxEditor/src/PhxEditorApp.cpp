@@ -11,6 +11,7 @@
 
 #include <PhxData/IVirtualFileSystem.h>
 #include <PhxData/IAsyncIOSystem.h>
+#include <PhxData/AssetManager.h>
 
 #include <PhxResource/ResourceSystem.h>
 
@@ -25,8 +26,8 @@
 
 #include <random>
 
-#include "GltfFileHandler.h"
-#include "ObjFileHandler.h"
+#include "AssetImporter_Gltf.h"
+#include "AssetImporter_Obj.h"
 
 
 // static const char* kDefault3DModel = "art://Sponza/glTF/Sponza.gltf";
@@ -107,9 +108,12 @@ void PhxEditor::Startup()
 		// TODO: TRY mounting a pack
 	}
 
-	auto* resource_system= phx::ResourceSystem::Ptr;
+	auto* asset_manager = phx::data::AssetManager::Ptr;
+	asset_manager->RegisterImporter<phxed::GltfFileImporter>();
+	asset_manager->RegisterImporter<phxed::ObjImporter>();
 
-	resource_system->GetTyped<phx::SceneBlueprint>(kDefault3DModel);
+	phx::RefCountPtr<phx::SceneBlueprint> scene_blueprint = asset_manager->GetTyped<phx::SceneBlueprint>(kDefault3DModel);
+
 	// phx::RefCountPtr<phx::SceneBlueprint> sceneBlueptin = resourceSystem->GetTyped<phx::SceneBlueprint>(kDefault3DModel);
 
 #if false

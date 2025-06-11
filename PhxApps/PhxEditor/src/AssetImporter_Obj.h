@@ -1,9 +1,13 @@
 #pragma once
 
 #include <PhxCore/Span.h>
-#include <PhxResource/IResourceFileHandler.h>
+
+#include <PhxData/IAssetImporter.h>
+#include <PhxData/IAsyncIOSystem.h>
 #include <PhxData/IVirtualFileSystem.h>
+
 #include <PhxCore/StringHash.h>
+#include <PhxCore/RefCountPtr.h>
 
 
 namespace phx
@@ -20,11 +24,10 @@ namespace phxed
 }
 namespace phxed
 {
-	class ObjFileHandler final : public phx::ResourceFileHandler
+	class ObjImporter final : public phx::data::IAssetImporter
 	{
 	public:
-
-		phx::RefCountPtr<phx::Resource> LoadAsync(phx::data::IVirtualFileSystem* vfs, phx::data::IAsyncIOSystem* loader, const char* virtual_file_path) const;
+		phx::RefCountPtr<phx::data::Asset> ImportAsync(phx::data::IVirtualFileSystem* vfs, phx::data::IAsyncIOSystem* loader, const char* virtual_file_path) const;
 
 	private:
 		static bool ParseObj(phx::SpanMutable<uint8_t> file_data, Mesh& meshData);
@@ -36,16 +39,16 @@ namespace phxed
 	};
 }
 
-namespace phx
+namespace phx::data
 {
 	template<>
-	struct ResourceFileExtension<phxed::ObjFileHandler>
+	struct AssetImporterFileExtension<phxed::ObjImporter>
 	{
 		static constexpr const char* value = ".obj";
 	};
 
 	template<>
-	struct ResourceFileHandlerId<phxed::ObjFileHandler>
+	struct AssetImporterId<phxed::ObjImporter>
 	{
 		static constexpr phx::StringHash value = "obj"_hash;
 	};

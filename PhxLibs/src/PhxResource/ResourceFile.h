@@ -1,6 +1,6 @@
 #pragma once
 
-#include "IResource.h"
+#include "Resource.h"
 #include "ResourceFileFormat.h"
 #include "IAssetStreamer.h"
 

@@ -1,6 +1,7 @@
 #pragma once
 
-#include <PhxResource/IResourceFileHandler.h>
+#include <PhxData/IAssetImporter.h>
+#include <PhxData/IAsyncIOSystem.h>
 #include <PhxData/IVirtualFileSystem.h>
 
 #include <PhxCore/StringHash.h>
@@ -38,10 +39,10 @@ namespace phxed
 		std::vector<std::shared_ptr<phx::IBlob>> Blobs;
 	};
 
-	class GltfFileHandler final : public phx::ResourceFileHandler
+	class GltfFileImporter final : public phx::data::IAssetImporter
 	{
 	public:
-		phx::RefCountPtr<phx::Resource> LoadAsync(phx::data::IVirtualFileSystem* vfs, phx::data::IAsyncIOSystem* loader, const char* virtual_file_path) const;
+		phx::RefCountPtr<phx::data::Asset> ImportAsync(phx::data::IVirtualFileSystem* vfs, phx::data::IAsyncIOSystem* loader, const char* virtual_file_path) const;
 
 	private:
 		static void OnMainFileLoaded(phx::data::AsyncReadResult const& result, CgltfContext& context);
@@ -52,16 +53,16 @@ namespace phxed
 	};
 }
 
-namespace phx
+namespace phx::data
 {
 	template<>
-	struct ResourceFileExtension<phxed::GltfFileHandler>
+	struct AssetImporterFileExtension<phxed::GltfFileImporter>
 	{
 		static constexpr const char* value = ".gltf";
 	};
 
 	template<>
-	struct ResourceFileHandlerId<phxed::GltfFileHandler>
+	struct AssetImporterId<phxed::GltfFileImporter>
 	{
 		static constexpr phx::StringHash value = "gltf"_hash;
 	};
