@@ -6,7 +6,7 @@
 #include <PhxCore/RefCountPtr.h>
 
 #include "PakFileFormat.h"
-#include "IResource.h"
+#include "Resource.h"
 #include "IAssetStreamer.h"
 
 namespace phx

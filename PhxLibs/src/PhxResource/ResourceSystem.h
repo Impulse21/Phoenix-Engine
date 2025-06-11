@@ -5,11 +5,10 @@
 #include <PhxCore/IO/FileUtils.h>
 
 #include <PhxResource/IResourceFileHandler.h>
+#include <PhxResource/Resource.h>
 
 namespace phx
 {
-	struct Resource;
-
 	template<typename T>
 	concept ResourceType = std::is_base_of_v<phx::Resource, T>;
 	template<typename T>
@@ -57,19 +56,20 @@ namespace phx
 	{
 		StringHash filenameHash(virtual_file_path);
 
-		RefCountPtr<Resource> placeholder = nullptr;
+		RefCountPtr<TResource> placeholder = nullptr;
 		ResourceFileHandler* handler_to_use = nullptr;
+
 		// -- Critical section ---
 		{
 			std::scoped_lock _(m_cacheMutex);
 			auto itr = m_cache.find(filenameHash);
 			if (itr != m_cache.end())
-				return itr->second;
+				return itr->second.As<TResource>();
 
 			std::string ext = phx::GetFileExt(virtual_file_path);
 			auto handler_itr = m_resourceHandlers.find(StringHash(ext));
 
-			if (handler_itr == m_resourceHandlers.end() || handler_itr->GetResourceTypeHash() == TResource::StaticTypeHash)
+			if (handler_itr == m_resourceHandlers.end() || handler_itr->second->GetResourceTypeHash() == TResource::StaticTypeHash())
 			{
 				PHX_CORE_ERROR("Resource Type mismatch '{0}'", ext.c_str());
 				return nullptr;
@@ -77,7 +77,7 @@ namespace phx
 
 			placeholder = RefCountPtr<TResource>::Create();
 			placeholder->state = Resource::State::Loading;
-			m_cache[path] = placeholder;
+			m_cache[filenameHash] = placeholder;
 			handler_to_use = handler_itr->second.get();
 		}
 
@@ -85,15 +85,7 @@ namespace phx
 			"Loading Resource '{0}' from disk",
 			virtual_file_path);
 
-		LoadAsyncContext ctx =
-		{
-			.virtual_file_path = virtual_file_path,
-			.resource = placeholder,
-			.resource_system = this,
-			.vfs = m_vfs,
-			.loader = m_lodaer
-		};
-		handler_to_use->second->LoadAsync(ctx);
+		handler_to_use->LoadAsync(this, placeholder, virtual_file_path);
 
 		return placeholder;
 	}
@@ -106,10 +98,10 @@ namespace phx
 		std::scoped_lock _(m_cacheMutex);
 		auto itr = m_cache.find(filenameHash);
 		if (itr != m_cache.end())
-			return std::make_pair(itr->second, false);
+			return std::make_pair(itr->second.As<T>(), false);
 
 		auto placeholder = RefCountPtr<T>::Create();
-		m_cache[path] = placeholder;
+		m_cache[filenameHash] = placeholder;
 		return std::make_pair(placeholder, true);
 	}
 }

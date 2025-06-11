@@ -22,7 +22,7 @@ namespace phx
 
 	struct LoadAsyncContext
 	{
-		const char* virtual_file_path;
+		std::string virtual_file_path;
 		RefCountPtr<Resource> resource;
 		ResourceSystem* resource_system;
 		data::IVirtualFileSystem* vfs;
@@ -35,7 +35,7 @@ namespace phx
 		virtual ~ResourceFileHandler() = default;
 
 		virtual StringHash GetResourceTypeHash() const = 0;
-		virtual void LoadAsync(LoadAsyncContext const& context) const = 0;
+		virtual void LoadAsync(ResourceSystem* resource_system, RefCountPtr<Resource> asset, std::string const& virtual_file_path) const = 0;
 
 	};
 }

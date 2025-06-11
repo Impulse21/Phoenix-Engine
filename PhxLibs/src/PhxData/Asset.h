@@ -5,9 +5,9 @@
 #include <PhxCore/RefCountPtr.h>
 #include <PhxCore/StringHash.h>
 
-#define PHX_DECLARE_ASSET(TYPE)                                       \
-public:                                                                     \
-    static constexpr uint64_t StaticTypeHash() { return StringHash(#TYPE); } \
+#define PHX_DECLARE_ASSET(TYPE)                                                             \
+public:                                                                                     \
+    static constexpr phx::StringHash StaticTypeHash() { return phx::StringHash(#TYPE); }    \
     TYPE() : Asset(StaticTypeHash()) {}
 
 namespace phx::data
@@ -23,7 +23,7 @@ namespace phx::data
             Unloaded = 0xFF
         };
 
-        std::atomic_uint8_t State = State::Unloaded;
+        std::atomic_uint8_t state = State::Unloaded;
         const uint64_t asset_type_hash;
 
         // The virtual destructor is essential for safe polymorphic storage

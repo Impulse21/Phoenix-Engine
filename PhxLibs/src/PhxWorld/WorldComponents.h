@@ -4,7 +4,7 @@
 #include <PhxCore/UUID.h>
 #include <PhxCore/Math.h>
 
-#include <PhxResource/IResource.h>
+#include <PhxResource/Resource.h>
 
 #include <entt/entt.hpp>
 

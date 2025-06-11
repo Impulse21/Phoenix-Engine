@@ -42,7 +42,8 @@ namespace phxed
 	class GltfFileImporter final : public phx::data::IAssetImporter
 	{
 	public:
-		phx::RefCountPtr<phx::data::Asset> ImportAsync(phx::data::IVirtualFileSystem* vfs, phx::data::IAsyncIOSystem* loader, const char* virtual_file_path) const;
+		phx::StringHash GetAssetTypeHash() const;
+		void ImportAsync(phx::data::AssetManager* asset_manager, phx::RefCountPtr<phx::data::Asset> asset, std::string const& virtual_file_path) const;
 
 	private:
 		static void OnMainFileLoaded(phx::data::AsyncReadResult const& result, CgltfContext& context);

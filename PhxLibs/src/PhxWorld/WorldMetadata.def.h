@@ -121,7 +121,7 @@ namespace phx
         std::vector<int> root_node_indices;
         std::vector<SceneNode> nodes;
 
-        PHX_DECLARE_ASSET(SceneBlueprint, phx::data::Asset)
+        PHX_DECLARE_ASSET(SceneBlueprint)
 
         NodeHandle AddNode(SceneNode&& node)
         {

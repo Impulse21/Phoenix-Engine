@@ -11,8 +11,6 @@
 
 #include <PhxRenderer/RenderComponents.h>
 
-#include <PhxResource/IResource.h>
-
 #define ENABLE_ENTT_CALLBACKS false
 
 using namespace phx;

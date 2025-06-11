@@ -21,7 +21,8 @@ namespace
 }
 
 PakFile::PakFile(std::shared_ptr<IAssetStreamer> assetStreamer, std::filesystem::path const& filePath, std::filesystem::path const& resolvedFilePath)
-	: m_filePath(filePath)
+	: Resource("PakFile"_hash)
+	, m_filePath(filePath)
 	, m_cachedFilename(m_filePath.generic_string())
 	, m_resolvedFilePath(resolvedFilePath)
 	, m_cachedResolvedFilename(m_resolvedFilePath.generic_string())

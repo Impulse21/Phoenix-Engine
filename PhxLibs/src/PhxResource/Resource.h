@@ -3,9 +3,9 @@
 #include <PhxCore/RefCountPtr.h>
 #include <PhxCore/StringHash.h>
 
-#define PHX_DECLARE_RESOURCE(TYPE)                                       \
-public:                                                                     \
-    static constexpr uint64_t StaticTypeHash() { return phx::StringHash(#TYPE); } \
+#define PHX_DECLARE_RESOURCE(TYPE)															\
+public:																						\
+    static constexpr phx::StringHash StaticTypeHash() { return phx::StringHash(#TYPE); }	\
     TYPE() : Resource(StaticTypeHash()) {}
 
 namespace phx

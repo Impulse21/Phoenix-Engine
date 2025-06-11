@@ -16,8 +16,10 @@
 #include <cgltf.h>
 
 using namespace phx;
+using namespace phx::data;
 using namespace phxed;
 
+#if false
 namespace
 {
 	cgltf_result CgltfReadFile(const cgltf_memory_options*, const cgltf_file_options* file_options, const char* path, cgltf_size* size, void** Data)
@@ -55,22 +57,35 @@ namespace
 	}
 }
 
-phx::RefCountPtr<phx::data::Asset> GltfFileImporter::ImportAsync(phx::data::IVirtualFileSystem* vfs, phx::data::IAsyncIOSystem* loader,  const char* virtual_file_path) const
+#endif
+
+phx::StringHash GltfFileImporter::GetAssetTypeHash() const
 {
+	return SceneBlueprint::StaticTypeHash();
+}
+
+void GltfFileImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asset> asset, std::string const& virtual_file_path) const
+{
+#if true
+	(void)asset_manager;
+	(void)asset;
+	(void)virtual_file_path;
+	PHX_ASSERT(false, "TODO");
+#else
 	CgltfContext ctx = {};
 	ctx.scene_resource = phx::RefCountPtr<SceneBlueprint>::Create(new SceneBlueprint);
-	ctx.resource_descriptor = vfs->GetResourceDescriptorForAsync(virtual_file_path);
+	ctx.resource_descriptor = context.vfs->GetResourceDescriptorForAsync(context.virtual_file_path);
 	if (!ctx.resource_descriptor)
 	{
 		PHX_CORE_ERROR("[GLTF Handler] Failed to find file info '{0}'", virtual_file_path);
-		ctx.scene_resource->State = Resource::State::Error;
+		ctx.scene_resource->state = Resource::State::Error;
 		return ctx.scene_resource;
 	}
 
-	ctx.scene_resource->State = Resource::State::Loading;
-	ctx.virtual_file_path = virtual_file_path;
-	ctx.vfs = vfs;
-	ctx.loader = loader;
+	ctx.scene_resource->state = Resource::State::Loading;
+	ctx.virtual_file_path = context.virtual_file_path;
+	ctx.vfs = context.vfs;
+	ctx.loader = context.loader;
 
 	data::AsyncReadRequest request = {
 		.resource_descriptor = ctx.resource_descriptor.GetValue(),
@@ -81,14 +96,17 @@ phx::RefCountPtr<phx::data::Asset> GltfFileImporter::ImportAsync(phx::data::IVir
 		OnMainFileLoaded(result, ctx);
 	};
 
-	loader->QueueRead(std::move(request));
-	
-
-    return ctx.scene_resource;
+	context.loader->QueueRead(std::move(request));
+#endif
 }
 
 void phxed::GltfFileImporter::OnMainFileLoaded(phx::data::AsyncReadResult const& result, CgltfContext& ctx)
 {
+#if true
+	(void)result;
+	(void)ctx;
+	PHX_ASSERT(false, "TODO");
+#else
 	if (!result.success)
 	{
 		PHX_CORE_ERROR("[GLTF Handler] Failed read file '{0}' -> {1}", ctx.virtual_file_path, result.error_message);
@@ -146,6 +164,7 @@ void phxed::GltfFileImporter::OnMainFileLoaded(phx::data::AsyncReadResult const&
 	cgltf_free(raw_gltf_data);
 
 	ctx.scene_resource->State = Resource::State::Loaded;
+#endif
 }
 
 void phxed::GltfFileImporter::LoadNodeRec(CgltfContext& /*ctx*/, cgltf_node const& /*gltfNode*/, SceneBlueprint& /*scene*/, NodeHandle /*parent*/)

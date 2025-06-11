@@ -1,5 +1,8 @@
 #pragma once
 
+#include <PhxCore/RefCountPtr.h>
+#include <PhxCore/StringHash.h>
+
 namespace phx::data
 {
 	struct Asset;
@@ -10,12 +13,14 @@ namespace phx::data
 	template<typename T>
 	struct AssetImporterId;
 
-	class IVirtualFileSystem;
-	class IAsyncIOSystem;
+	class AssetManager;
 
 	class IAssetImporter
 	{
 	public:
-		virtual RefCountPtr<Asset> ImportAsync(IVirtualFileSystem* vfs, IAsyncIOSystem* loader, const char* virtual_file_path) const = 0;
+		virtual StringHash GetAssetTypeHash() const = 0;
+		virtual void ImportAsync(AssetManager* asset_manager, RefCountPtr<Asset> asset, std::string const& virtual_file_path) const = 0;
+
+		virtual ~IAssetImporter() = default;
 	};
 }

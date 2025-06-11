@@ -112,7 +112,7 @@ void PhxEditor::Startup()
 	asset_manager->RegisterImporter<phxed::GltfFileImporter>();
 	asset_manager->RegisterImporter<phxed::ObjImporter>();
 
-	phx::RefCountPtr<phx::SceneBlueprint> scene_blueprint = asset_manager->GetTyped<phx::SceneBlueprint>(kDefault3DModel);
+	phx::RefCountPtr<phx::SceneBlueprint> scene_blueprint = asset_manager->Get<phx::SceneBlueprint>(kDefault3DModel);
 
 	// phx::RefCountPtr<phx::SceneBlueprint> sceneBlueptin = resourceSystem->GetTyped<phx::SceneBlueprint>(kDefault3DModel);
 
