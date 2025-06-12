@@ -165,84 +165,88 @@ void ObjImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asset> as
 	IAsyncIOSystem::Ptr->QueueRead(std::move(request));
 }
 
-
-Mesh phxed::ObjImporter::GenerateMeshIndices(Mesh const& meshSrc, std::vector<uint32_t>& outRemap)
+Mesh phxed::ObjImporter::GenerateMeshIndices(Mesh const& mesh_src, std::vector<uint32_t>& out_remap)
 {
 	// Mesh Optimizer
 
-	phxed::Mesh processedMesh = {};
-	const size_t totalIndices = meshSrc.GetVertexCount();
+	phxed::Mesh processed_mesh = {};
 
-	const phxed::VertexStream& srcPositionStream = *meshSrc.GetVertexStream(phx::renderer::VertexStream_Position);
-	const phxed::VertexStream& srcNormalStream = *meshSrc.GetVertexStream(phx::renderer::VertexStream_Normal);
-	const phxed::VertexStream& srcUv0Stream = *meshSrc.GetVertexStream(phx::renderer::VertexStream_UV0);
 
-	std::array<meshopt_Stream, 3> vertexStream =
+	const phxed::VertexStream& srcPositionStream = *mesh_src.GetVertexStream(phx::renderer::VertexStream_Position);
+	const phxed::VertexStream& srcNormalStream = *mesh_src.GetVertexStream(phx::renderer::VertexStream_Normal);
+	const phxed::VertexStream& srcUv0Stream = *mesh_src.GetVertexStream(phx::renderer::VertexStream_UV0);
+
+	std::vector<std::vector<uint32_t>> geometry_remaps;
+	geometry_remaps.reserve(mesh_src.Geometry.size());
+
+	size_t processed_mesh_index_global_offset = 0;
+	size_t processed_mesh_vertex_global_offset = 0;
+	for (auto& geom : mesh_src.Geometry)
 	{
-		meshopt_Stream{
-			.data = srcPositionStream.Data.get(),
-			.size = srcPositionStream.ElementStride,
-			.stride = srcPositionStream.ElementStride,
-		},
-		meshopt_Stream{
-			.data = srcNormalStream.Data.get(),
-			.size = srcNormalStream.ElementStride,
-			.stride = srcNormalStream.ElementStride,
-		},
-		meshopt_Stream{
-			.data = srcUv0Stream.Data.get(),
-			.size = srcUv0Stream.ElementStride,
-			.stride = srcUv0Stream.ElementStride,
-		},
-	};
+		PHX_ASSERT(geom.is_indexed);
+		const size_t geom_total_indices = geom.vertex_count;
 
-	outRemap.clear();
-	outRemap.resize(totalIndices);
-	std::vector<uint32_t>& remap = outRemap;
-	size_t totalVertices =
-		meshopt_generateVertexRemapMulti(
-			&remap[0],
-			NULL,
+		std::array<meshopt_Stream, 3> vertexStream =
+		{
+			meshopt_Stream{
+				.data = srcPositionStream.Data.get() + geom.vertex_offset,
+				.size = srcPositionStream.ElementStride,
+				.stride = srcPositionStream.ElementStride,
+			},
+			meshopt_Stream{
+				.data = srcNormalStream.Data.get() + geom.vertex_offset,
+				.size = srcNormalStream.ElementStride,
+				.stride = srcNormalStream.ElementStride,
+			},
+			meshopt_Stream{
+				.data = srcUv0Stream.Data.get() + geom.vertex_offset,
+				.size = srcUv0Stream.ElementStride,
+				.stride = srcUv0Stream.ElementStride,
+			},
+		};
+
+		auto& remap = geometry_remaps.emplace_back();
+		remap.resize(geom_total_indices);
+
+		size_t geom_total_vertices =
+			meshopt_generateVertexRemapMulti(
+				&remap[0],
+				NULL,
+				geom_total_indices,
+				geom_total_indices,
+				vertexStream.data(),
+				vertexStream.size());
+
+		processed_mesh.Indices.resize(processed_mesh.Indices.size() + geom_total_indices);
+
+		meshopt_remapIndexBuffer(processed_mesh.Indices.data() + mesh_index_offset, NULL, geom_total_indices, remap.data());
+
+		phxed::VertexStream& posStream = processed_mesh.AddVertexStream<DirectX::XMFLOAT3>(phx::renderer::VertexStream_Position, totalVertices);
+		meshopt_remapVertexBuffer(
+			posStream.Data.get(),
+			srcPositionStream.Data.get(),
 			totalIndices,
+			posStream.ElementStride,
+			&remap[0]);
+
+		phxed::VertexStream& normalStream = processed_mesh.AddVertexStream<DirectX::XMFLOAT3>(phx::renderer::VertexStream_Normal, totalVertices);
+		meshopt_remapVertexBuffer(
+			normalStream.Data.get(),
+			srcNormalStream.Data.get(),
 			totalIndices,
-			vertexStream.data(),
-			vertexStream.size());
+			normalStream.ElementStride,
+			&remap[0]);
 
+		phxed::VertexStream& uvStream = processed_mesh.AddVertexStream<DirectX::XMFLOAT2>(phx::renderer::VertexStream_UV0, totalVertices);
+		meshopt_remapVertexBuffer(
+			uvStream.Data.get(),
+			srcUv0Stream.Data.get(),
+			totalIndices,
+			uvStream.ElementStride,
+			&remap[0]);
+	}
 
-	processedMesh.Indices.resize(totalIndices);
-	meshopt_remapIndexBuffer(processedMesh.Indices.data(), NULL, totalIndices, remap.data());
-
-	phxed::VertexStream& posStream = processedMesh.AddVertexStream<DirectX::XMFLOAT3>(phx::renderer::VertexStream_Position, totalVertices);
-	meshopt_remapVertexBuffer(
-		posStream.Data.get(),
-		srcPositionStream.Data.get(),
-		totalIndices,
-		posStream.ElementStride,
-		&remap[0]);
-
-	phxed::VertexStream& normalStream = processedMesh.AddVertexStream<DirectX::XMFLOAT3>(phx::renderer::VertexStream_Normal, totalVertices);
-	meshopt_remapVertexBuffer(
-		normalStream.Data.get(),
-		srcNormalStream.Data.get(),
-		totalIndices,
-		normalStream.ElementStride,
-		&remap[0]);
-
-	phxed::VertexStream& uvStream = processedMesh.AddVertexStream<DirectX::XMFLOAT2>(phx::renderer::VertexStream_UV0, totalVertices);
-	meshopt_remapVertexBuffer(
-		uvStream.Data.get(),
-		srcUv0Stream.Data.get(),
-		totalIndices,
-		uvStream.ElementStride,
-		&remap[0]);
-
-
-	PHX_WARN("Hard coding a single mateiral entry into the geometry. Please fix this");
-	PHX_ASSERT(meshSrc.Geometry.size() == 1);
-	processedMesh.Geometry.push_back(meshSrc.Geometry[0]);
-	processedMesh.Geometry[0].IndexCount = totalIndices;
-
-	return processedMesh;
+	return processed_mesh;
 }
 
 void phxed::ObjImporter::OptimizeMesh(Mesh& mesh, std::vector<uint32_t>& remap)

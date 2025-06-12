@@ -70,8 +70,20 @@ namespace phxed
 		struct GeometryData
 		{
 			uint32_t mat_assignment_id = {};
-			uint32_t IndexOffset = 0;
-			uint32_t IndexCount = 0;
+			bool is_indexed = false;
+			union
+			{
+				struct
+				{
+					uint32_t IndexOffset;
+					uint32_t IndexCount;
+				};
+				struct
+				{
+					uint32_t vertex_offset;
+					uint32_t vertex_count;
+				};
+			};
 		};
 		std::vector<GeometryData> Geometry;
 
