@@ -4,69 +4,46 @@
 
 namespace phx
 {
-	using byte = std::byte;
-
+	// DEPERICATED
 	template<typename T>
-	class MemoryRegionView
-	{
-	public:
-		MemoryRegionView() = default;
-
-		explicit MemoryRegionView(T* ptr)
-			: m_ptr(ptr)
-		{
-		}
-
-		T* Get()
-		{
-			return m_ptr;
-		}
-
-		const T* Get() const
-		{
-			return m_ptr;
-		}
-
-		T* operator->()
-		{
-			return m_ptr;
-		}
-
-		T const* operator->() const
-		{
-			return m_ptr;
-		}
-
-	private:
-		T* m_ptr = nullptr;
-	};
-
 	class MemoryRegion
 	{
 	public:
 		MemoryRegion() = default;
 
-		explicit MemoryRegion(std::unique_ptr<byte[]> buffer, size_t size)
+		MemoryRegion(std::unique_ptr<char[]> buffer)
 			: m_buffer(std::move(buffer))
-			, m_size(size)
 		{
 		}
 
-		byte* Data()
+		char* Data()
 		{
 			return m_buffer.get();
 		}
 
-		size_t Size() const { return m_size; }
-
-		template<typename T>
-		MemoryRegionView<T> GetView(size_t offset = 0)
+		T* Get()
 		{
-			return MemoryRegionView(reinterpret_cast<T*>(m_buffer.get() + offset));
+			return reinterpret_cast<T*>(m_buffer.get());
+		}
+
+		const T* Get() const
+		{
+			return reinterpret_cast<T*>(m_buffer.get());
+		}
+
+		T* operator->()
+		{
+			return reinterpret_cast<T*>(m_buffer.get());
+		}
+
+		T const* operator->() const
+		{
+			return reinterpret_cast<T const*>(m_buffer.get());
 		}
 
 	private:
-		std::unique_ptr<byte[]> m_buffer;
-		size_t m_size = 0ull;
+		std::unique_ptr<char[]> m_buffer;
+
 	};
+
 }
