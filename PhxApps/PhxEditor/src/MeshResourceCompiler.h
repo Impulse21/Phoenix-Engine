@@ -71,17 +71,17 @@ namespace phxed
 		{
 			uint32_t mat_assignment_id = {};
 			bool is_indexed = false;
+			uint32_t vertex_count;
 			union
 			{
 				struct
 				{
-					uint32_t IndexOffset;
-					uint32_t IndexCount;
+					uint32_t index_offset;
+					uint32_t index_count;
 				};
 				struct
 				{
 					uint32_t vertex_offset;
-					uint32_t vertex_count;
 				};
 			};
 		};
@@ -101,6 +101,12 @@ namespace phxed
 			return VertexStreams[type].emplace(type, sizeof(T), numElements);
 		}
 
+		template<typename T>
+		VertexStream& AddVertexStream(phx::renderer::VertexStreamType type, size_t num_components, size_t num_elements)
+		{
+			return VertexStreams[type].emplace(type, sizeof(T) * num_components, num_elements);
+		}
+
 		VertexStream* GetVertexStream(phx::renderer::VertexStreamType type)
 		{
 			return VertexStreams[type].has_value()
@@ -114,7 +120,6 @@ namespace phxed
 				? &VertexStreams[type].value()
 				: nullptr;
 		}
-
 	};
 
 	

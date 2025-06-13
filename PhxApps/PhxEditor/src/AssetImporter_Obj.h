@@ -33,8 +33,8 @@ namespace phxed
 
 	private:
 		// shoudl be resued by gltf
-		static Mesh GenerateMeshIndices(Mesh const& meshSrc, std::vector<uint32_t>& outRemap);
-		static void OptimizeMesh(Mesh& mesh, std::vector<uint32_t>& remap);
+		static Mesh GenerateMeshIndices(Mesh const& meshSrc, std::vector<std::vector<uint32_t>>& geometry_remaps);
+		static void OptimizeMesh(Mesh& mesh, std::vector<std::vector<uint32_t>>& geometry_remaps);
 
 		static std::string ProcessTexture(std::string const& base_viritual_path, const char* path);
 		static void ProcessMesh(phx::renderer::MeshResource* resource, fastObjMesh* obj);

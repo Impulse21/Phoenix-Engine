@@ -2,6 +2,7 @@
 
 #include <PhxCore/RefCountPtr.h>
 #include <PhxCore/StringHash.h>
+#include <string>
 
 namespace phx::data
 {

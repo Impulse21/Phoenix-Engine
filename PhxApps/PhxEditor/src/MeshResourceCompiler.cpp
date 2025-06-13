@@ -43,10 +43,13 @@ void phxed::MeshResourceCompiler::Compile()
 		cpuData->NumDraws = static_cast<uint16_t>(m_meshData.Geometry.size());
 		for (size_t i = 0; i < m_meshData.Geometry.size(); i++)
 		{
-			const Mesh::GeometryData& srcGeo = m_meshData.Geometry[i];
+			const Mesh::GeometryData& src_geo = m_meshData.Geometry[i];
+
+			PHX_ASSERT(src_geo.is_indexed);
+
 			MeshResource::CpuData::DrawInfo& drawInfo = *(cpuData->Draw + i);
-			drawInfo.IndexCount = srcGeo.IndexCount;
-			drawInfo.StartIndex = srcGeo.IndexOffset;
+			drawInfo.IndexCount = src_geo.index_count;
+			drawInfo.StartIndex = src_geo.index_offset;
 			drawInfo.BaseVertex = 0;
 		}
 
