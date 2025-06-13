@@ -1,12 +1,16 @@
 #pragma once
 
 #include <memory>
+#include <type_traits>
 
 namespace phx
 {
+	template<typename T>
+	concept TrivalType = std::is_trivial_v<T>;
+
 	using byte = std::byte;
 
-	template<typename T>
+	template<TrivalType T>
 	class TypedView
 	{
 	public:
@@ -46,11 +50,19 @@ namespace phx
 	public:
 		MemoryBuffer() = default;
 
-		explicit MemoryBuffer(std::unique_ptr<byte[]> buffer, size_t size)
-			: m_buffer(std::move(buffer))
+		explicit MemoryBuffer(size_t size)
+			: m_buffer(std::make_unique<byte[]>(size))
 			, m_size(size)
 		{
 		}
+		
+		MemoryBuffer(const MemoryBuffer&) = delete;
+		MemoryBuffer& operator=(const MemoryBuffer&) = delete;
+
+		MemoryBuffer(MemoryBuffer&&) = default;
+		MemoryBuffer& operator=(MemoryBuffer&&) = default;
+
+		~MemoryBuffer() = default;
 
 		byte* Data()
 		{
@@ -59,7 +71,7 @@ namespace phx
 
 		size_t Size() const { return m_size; }
 
-		template<typename T>
+		template<TrivalType T>
 		TypedView<T> GetView(size_t offset = 0)
 		{
 			return TypedView(reinterpret_cast<T*>(m_buffer.get() + offset));

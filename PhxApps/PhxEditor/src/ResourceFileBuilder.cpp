@@ -19,8 +19,8 @@ std::unique_ptr<phx::IBlob> phxed::ResourceFileBuilder::Build()
     // -- metadata heap offsets ---
     OffsetHandle metadataHeaderOffset = fileBuilder.Reserve<ResourceFileFormat::MetadataHeader>();
 
-    OffsetHandle chunkOffsetHandle = fileBuilder.ReserveArray<ResourceFileFormat::Chunk>(m_resource->Chunks.size());
-    OffsetHandle metadataChunksOffsetHandle = fileBuilder.Reserve(m_resource->MetadataChunk->Size());
+    OffsetHandle chunkOffsetHandle = fileBuilder.ReserveArray<ResourceFileFormat::Chunk>(m_resource->chunks.size());
+    OffsetHandle metadataChunksOffsetHandle = fileBuilder.Reserve(m_resource->metadata_chunk.Size());
 
     OffsetHandle stringTableOffset = fileBuilder.ReserveArray<FileFormat::StringEntry>(1);
     OffsetHandle stringHeapOffsetHandle = fileBuilder.Reserve(stringHeapSize);
@@ -30,9 +30,9 @@ std::unique_ptr<phx::IBlob> phxed::ResourceFileBuilder::Build()
 
     // -- Chunk heap offsets ---
     size_t chunkHeapSize = 0;
-    for (auto& chunk : m_resource->Chunks)
+    for (auto& chunk : m_resource->chunks)
     {
-        chunkHeapSize += chunk->Size();
+        chunkHeapSize += chunk.Size();
     }
     OffsetHandle chunkHeapOffset = fileBuilder.Reserve(chunkHeapSize);
 
@@ -60,26 +60,26 @@ std::unique_ptr<phx::IBlob> phxed::ResourceFileBuilder::Build()
             auto* metadataHeader = fileBuilder.Place<ResourceFileFormat::MetadataHeader>(metadataHeaderOffset);
             metadataHeader->MetadataChunk.Set(metadataChunksDest);
 
-            std::memcpy(metadataChunksDest, m_resource->MetadataChunk->Data(), m_resource->MetadataChunk->Size());
-            metadataChunksDest = metadataChunksDest + m_resource->MetadataChunk->Size();
+            std::memcpy(metadataChunksDest, m_resource->metadata_chunk.Data(), m_resource->metadata_chunk.Size());
+            metadataChunksDest = metadataChunksDest + m_resource->metadata_chunk.Size();
 
-            metadataHeader->NumChunks = m_resource->Chunks.size();
+            metadataHeader->NumChunks = m_resource->chunks.size();
             metadataHeader->Chunks.Set(chunkOffsetDest);
 
             OffsetHandle chunkHeapCurrentOffset = 0;
-            for (size_t i = 0; i < m_resource->Chunks.size(); i++)
+            for (size_t i = 0; i < m_resource->chunks.size(); i++)
             {
-                auto& srcChunk = m_resource->Chunks[i];
+                auto& srcChunk = m_resource->chunks[i];
 
                 // Construct chunk Header
                 ResourceFileFormat::Chunk& destChunk = metadataHeader->Chunks.Get()[i];
                 destChunk.Compression = FileFormat::CompressionType::None;
                 destChunk.Offset.Offset = chunkHeapOffset + chunkHeapCurrentOffset;
-                destChunk.CompressedSize = srcChunk->Size();
-                destChunk.UncompressedSize = srcChunk->Size();
+                destChunk.CompressedSize = srcChunk.Size();
+                destChunk.UncompressedSize = srcChunk.Size();
 
-                std::memcpy(chunkHeapDest + chunkHeapCurrentOffset, srcChunk->Data(), srcChunk->Size());
-                chunkHeapCurrentOffset += srcChunk->Size();
+                std::memcpy(chunkHeapDest + chunkHeapCurrentOffset, srcChunk.Data(), srcChunk.Size());
+                chunkHeapCurrentOffset += srcChunk.Size();
             }
 
             metadataHeader->NumStrings = 1;

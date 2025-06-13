@@ -5,7 +5,6 @@
 
 #include "PhxRhi/RHICommon.h"
 
-#include "PhxResource/ResourceFileFormat.h"
 #include "PhxRenderer/MeshResourceHandler.h"
 
 #include <DirectXMath.h>
@@ -23,18 +22,21 @@ void phxed::MeshResourceCompiler::Compile()
 	BuildGpuBufferData(gpuData);
 	// metadata chunk
 	{
-		auto metadata = static_cast<renderer::MeshMetadata*>(malloc(sizeof(MeshMetadata)));
-		assert(metadata);
-		std::memset(metadata, 0, sizeof(MeshMetadata));
+		m_outCompiledResource->metadata_chunk = MemoryBuffer(sizeof(MeshMetadata));
+		auto metadataView = m_outCompiledResource->metadata_chunk.GetView<renderer::MeshMetadata>();
 
-		metadata->GeometryBufferSize = static_cast<uint32_t>(gpuData.size());
-		metadata->VertexBufferOffset = m_meshData.Indices.size() * sizeof(uint32_t);
-		m_outCompiledResource->MetadataChunk = std::make_unique<Blob>(metadata, sizeof(MeshMetadata));
+		std::memset(metadataView.Get(), 0, sizeof(MeshMetadata));
+
+		metadataView->GeometryBufferSize = static_cast<uint32_t>(gpuData.size());
+		metadataView->VertexBufferOffset = m_meshData.Indices.size() * sizeof(uint32_t);
+
 	}
 
 	{
 		const size_t cpuDataSize = sizeof(renderer::MeshResource::CpuData) + (sizeof(renderer::MeshResource::CpuData::DrawInfo) * m_meshData.Geometry.size());
-		auto cpuData = reinterpret_cast<renderer::MeshResource::CpuData*>(malloc(cpuDataSize));
+		MemoryBuffer cpuDataBuffer(sizeof(cpuDataSize));
+
+		auto cpuData = cpuDataBuffer.GetView<MeshResource::CpuData>();
 		cpuData->IbSize = m_meshData.Indices.size() * sizeof(uint32_t);
 		cpuData->IbOffset = 0;
 		cpuData->IbFormat = 0;
@@ -53,14 +55,14 @@ void phxed::MeshResourceCompiler::Compile()
 			drawInfo.BaseVertex = 0;
 		}
 
-		m_outCompiledResource->Chunks.emplace_back(std::make_unique<Blob>(cpuData, cpuDataSize));
+		m_outCompiledResource->chunks.emplace_back(std::move(cpuDataBuffer));
 	}
 
 	{
-		void* gpuDataDest = malloc(gpuData.size());
-		std::memcpy(gpuDataDest, gpuData.data(), gpuData.size());
+		MemoryBuffer gpuDataBuffer(gpuData.size());
+		std::memcpy(gpuDataBuffer.Data(), gpuData.data(), gpuData.size());
 
-		m_outCompiledResource->Chunks.emplace_back(std::make_unique<Blob>(gpuDataDest, gpuData.size()));
+		m_outCompiledResource->chunks.emplace_back(std::move(gpuDataBuffer));
 	}
 }
 
