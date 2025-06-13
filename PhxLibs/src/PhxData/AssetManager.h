@@ -66,7 +66,7 @@ namespace phx::data
 			std::string ext = phx::GetFileExt(virtual_file_path);
 			auto handler_itr = m_assetImporters.find(StringHash(ext));
 
-			if (handler_itr == m_assetImporters.end() || handler_itr->second->GetAssetTypeHash() == TAsset::StaticTypeHash())
+			if (handler_itr == m_assetImporters.end() || handler_itr->second->GetAssetTypeHash() != TAsset::StaticTypeHash())
 			{
 				PHX_CORE_ERROR("Asset Type mismatch '{0}'", ext.c_str());
 				return nullptr;

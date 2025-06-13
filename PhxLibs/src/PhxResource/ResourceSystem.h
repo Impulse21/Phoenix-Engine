@@ -69,7 +69,7 @@ namespace phx
 			std::string ext = phx::GetFileExt(virtual_file_path);
 			auto handler_itr = m_resourceHandlers.find(StringHash(ext));
 
-			if (handler_itr == m_resourceHandlers.end() || handler_itr->second->GetResourceTypeHash() == TResource::StaticTypeHash())
+			if (handler_itr == m_resourceHandlers.end() || handler_itr->second->GetResourceTypeHash() != TResource::StaticTypeHash())
 			{
 				PHX_CORE_ERROR("Resource Type mismatch '{0}'", ext.c_str());
 				return nullptr;
