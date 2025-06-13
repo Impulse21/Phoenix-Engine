@@ -112,22 +112,30 @@ namespace phx
 			EngineSync::g_FrameCount++;
 
 			// -- Pre-Render ---
-			OnPreRender(phx::IApplication::Ptr);
+			JobSystem::SubmitJob([](JobContext const&) {
+				OnPreRender(phx::IApplication::Ptr);
+				JobSystem::Wait();
+			});
 
-			// -- Wait for any submitted taskes before finishing
-			JobSystem::Wait();
+			JobSystem::Barrier sync;
 
 			// -- Update ---
-			JobSystem::SubmitJob([](JobContext const&) {
+			sync.Add();
+			JobSystem::SubmitJob([&sync](JobContext const&) {
 				OnUpdate_Threaded(phx::IApplication::Ptr, 0);
+				JobSystem::Wait();
+				sync.Signal();
 			});
 
 			// -- Render ---
-			JobSystem::SubmitJob([](JobContext const&) {
+			sync.Add();
+			JobSystem::SubmitJob([&sync](JobContext const&) {
 				OnRender_Threaded(phx::IApplication::Ptr);
+				JobSystem::Wait();
+				sync.Signal();
 			});
 
-			JobSystem::Wait();
+			JobSystem::Wait(sync);
 		}
 
 		void Finalize()

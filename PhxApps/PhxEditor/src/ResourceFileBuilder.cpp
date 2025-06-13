@@ -9,7 +9,7 @@ using namespace phx;
 
 std::unique_ptr<phx::IBlob> phxed::ResourceFileBuilder::Build()
 {
-    std::string filename = std::format("{}{}", m_resource->Name, m_resource->Ext);
+    std::string filename = std::format("{}{}", m_resource->name, m_resource->ext);
     const size_t stringHeapSize = filename.size() + 1;
 
     // Build THe pack file

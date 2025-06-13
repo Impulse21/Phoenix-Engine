@@ -15,8 +15,8 @@ using namespace phx::renderer;
 
 void phxed::MeshResourceCompiler::Compile()
 {
-	m_outCompiledResource->Name = m_meshData.Name;
-	m_outCompiledResource->Ext = ResourceExtension< renderer::MeshResourceHandler>::value;
+	m_outCompiledResource->name = m_meshData.Name;
+	m_outCompiledResource->ext = ResourceExtension< renderer::MeshResourceHandler>::value;
 
 	std::vector<uint8_t> gpuData;
 	BuildGpuBufferData(gpuData);

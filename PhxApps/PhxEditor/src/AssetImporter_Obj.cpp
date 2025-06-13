@@ -29,9 +29,10 @@ using namespace phx::renderer;
 
 namespace
 {
-	void* memory_open(const char*, void*)
+	void* memory_open(const char*, void* user_data)
 	{
-		return nullptr;
+		auto* memory = static_cast<SpanMutable<uint8_t>*>(user_data);
+		return memory->data();
 	}
 	void memory_close(void*, void*)
 	{

@@ -186,7 +186,7 @@ void JobSystem::Initialize()
 				assert(priorityResult != 0);
 
 				std::wstringstream wss;
-				wss << "[PHX] TP_High_" << threadID;
+				wss << "[PHX] TP_Generic_" << threadID;
 				HRESULT hr = SetThreadDescription(handle, wss.str().c_str());
 				assert(SUCCEEDED(hr));
 			}
