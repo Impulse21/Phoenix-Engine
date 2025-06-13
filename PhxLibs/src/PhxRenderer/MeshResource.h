@@ -3,9 +3,8 @@
 #include <PhxCore/IO/MemoryRegion.h>
 #include <PhxRhi/RHICommon.h>
 
-#include "PhxRenderer/shaders/ShaderInterop.h"
-
 #include <PhxResource/Resource.h>
+
 namespace phx::renderer
 {
 	// This affects the resource modify qith care
@@ -19,11 +18,6 @@ namespace phx::renderer
 	struct MeshResource final : public Resource
 	{
 		PHX_DECLARE_RESOURCE(MeshResource)
-
-		struct CpuData;
-
-		phx::MemoryRegion<CpuData> cpu_data;
-		rhi::GpuBufferHandle gemoetry_buffer;
 
 		struct CpuData
 		{
@@ -44,7 +38,11 @@ namespace phx::renderer
 			DrawInfo Draw[1];
 		};
 
-		~MeshResource();
+		phx::MemoryBuffer cpu_data_buffer;
+		TypedView<CpuData> cpu_data;
 
+		rhi::GpuBufferHandle gemoetry_buffer;
+
+		~MeshResource();
 	};
 }

@@ -322,7 +322,6 @@ std::string phxed::ObjImporter::ProcessTexture(std::string const& base_viritual_
 
 void phxed::ObjImporter::ProcessMesh(renderer::MeshResource* resource, fastObjMesh* obj)
 {
-	(void)resource;
 	phxed::Mesh mesh;
 
 	size_t totalIndices = 0;
@@ -414,8 +413,19 @@ void phxed::ObjImporter::ProcessMesh(renderer::MeshResource* resource, fastObjMe
 	OptimizeMesh(mesh, geometry_remaps);
 	phxed::CompiledResource compiled_resource;
 	phxed::MeshResourceCompiler::Compile(mesh, compiled_resource);
-	(void)compiled_resource;
-	// TODO:
+
+	TypedView<MeshMetadata> mesh_metadata = compiled_resource.metadata_chunk.GetView<MeshMetadata>();
+
+	resource->cpu_data_buffer = std::move(compiled_resource.chunks[0]);
+	resource->gemoetry_buffer = rhi::GetDevice().CreateBuffer({
+		.DebugName = "Geometry Buffer",
+		.Size = mesh_metadata->GeometryBufferSize,
+		.BindingFlags = rhi::BindingFlags::ShaderResource | rhi::BindingFlags::IndexBuffer,
+		.MiscFlags = rhi::ResourceMiscFlags::BufferRaw,
+		.InitialState = rhi::ResourceStates::Common,
+		},
+		compiled_resource.chunks[1].Data()
+	);
 }
 
 void phxed::ObjImporter::PrintStatistics(Mesh const&)
