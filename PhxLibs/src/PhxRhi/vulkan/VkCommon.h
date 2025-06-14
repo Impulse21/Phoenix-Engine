@@ -14,9 +14,11 @@
 #include <VkBootstrap.h>
 #include <vk_mem_alloc.h>
 
-
+#define vulkan_check(call) [&]() { VkResult res = call; PHX_CORE_ASSERT(res >= VK_SUCCESS); return res; }()
 namespace phx::rhi::vk
 {
+
+	static constexpr uint64_t timeout_value = 2000000000ull; // 2 seconds
 
 	constexpr VkFormat gVulkanFormatMapping[] =
 	{

@@ -422,6 +422,8 @@ namespace phx::rhi
         DepthStencil = 1 << 5,
         UnorderedAccess = 1 << 6,
         ShadingRate = 1 << 7,
+        IndirectBuffer = 1 << 8,
+        RayTracing = 1 << 9,
     };
 
     PHX_ENUM_CLASS_FLAGS(BindingFlags);
@@ -834,6 +836,9 @@ namespace phx::rhi
 
     struct GpuBuffer;
     using GpuBufferHandle = Handle<GpuBuffer>;
+    struct Texture;
+    using TextureHandle = Handle<Texture>;
+
     struct GpuBufferDescriptor
     {
         const char* DebugName = "";
@@ -876,8 +881,6 @@ namespace phx::rhi
     ResourceState layout = ResourceState::SHADER_RESOURCE;
 #endif
 
-    struct Texture;
-    using TextureHandle = Handle<Texture>;
     struct TextureDescriptor
     {
         const char* DebugName = "";

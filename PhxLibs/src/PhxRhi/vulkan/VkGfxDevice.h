@@ -3,6 +3,8 @@
 #include "VkCommon.h"
 
 #include <PhxCore/Pool.h>
+#include "VkTypes.h"
+#include "VkCopyCtxManager.h"
 
 namespace phx::rhi::vk
 {
@@ -11,8 +13,6 @@ namespace phx::rhi::vk
 
 namespace phx::rhi::vk
 {
-    struct Buffer_VK;
-
     constexpr size_t cMaxInflightFrames = 2;
 
     struct FrameData
@@ -25,7 +25,7 @@ namespace phx::rhi::vk
         // std::vector<VkCommandBuffer> CommandBuffers; // If pre-allocating
     };
 
-    struct VkGfxDeviceImpl : public BaseGfxDevice<VkGfxDeviceImpl>
+    class VkGfxDeviceImpl : public BaseGfxDevice<VkGfxDeviceImpl>
     {
         friend class BaseGfxDevice<VkGfxDeviceImpl>;
 
@@ -53,17 +53,30 @@ namespace phx::rhi::vk
 
         DescriptorIndex PlatformGetDescriptorIndex(TextureHandle handle, SubresouceType type = SubresouceType::SRV) const;
 
+        VkDevice GetLogicalDevice() const { return m_device; }
+
         ShaderFormat PlatformGetShaderFormat() const;
         Budget PlatformGetBudget() const;
 
         VkDevice GetVkDevice() const { return m_device; }
         VmaAllocator GetVmaAllocator() const { return m_vmaAllocator; }
+
         VkQueue GetGraphicsQueue() const { return m_graphicsQueue; }
         uint32_t GetGraphicsQueueFamily() const { return m_graphicsQueueFamily; }
+        std::mutex& GetGraphicsQueueLock() { return m_graphicsQueueLock; }
+
+        VkQueue GetTransferQueue() const { return m_transferQueue; }
+        uint32_t GetTransferQueueFamily() const { return m_transferQueueFamily; }
+        std::mutex& GetTransferQueueLock() { return m_transferQueueLock; }
+
         VkFormat GetSwapchainImageFormat() const { return m_swapchainImageFormat; }
         VkExtent2D GetSwapchainExtent() const { return m_swapchainExtent; }
         VkRenderPass GetDefaultRenderPass() const { return VK_NULL_HANDLE; } // Placeholder for actual default render pass
 
+        Buffer_VK* GetResourceInternal(GpuBufferHandle handle)
+        {
+            return m_bufferPool.GetHot(handle);
+        }
     private:
 
         FrameData& GetCurrentFrameData() { return m_frames[m_frameNumber % cMaxInflightFrames]; }
@@ -90,6 +103,9 @@ namespace phx::rhi::vk
 
         void InitializeResourcePools();
         void ShutdownResourcePools();
+
+        int CreateSubResource(Buffer_VK& buffer, GpuBufferDescriptor const& desc, SubresouceType subresourceType, size_t offset, size_t size = ~0u);
+
 
         VkAllocationCallbacks* GetVkAllocationCallbacks()
         {
@@ -119,6 +135,8 @@ namespace phx::rhi::vk
         GfxDeviceDescriptor m_deviceDesc;
         DeviceCapability m_capabilities = {};
 
+        CopyCtxManager m_copy_ctx_manager = {};
+
         // -- VK Core ---
         VkInstance m_instance = VK_NULL_HANDLE;
         VkSurfaceKHR m_surface = VK_NULL_HANDLE;
@@ -145,12 +163,15 @@ namespace phx::rhi::vk
         // -- VK Queues ---
         VkQueue m_graphicsQueue = VK_NULL_HANDLE;
         uint32_t m_graphicsQueueFamily = UINT32_MAX;
+        std::mutex m_graphicsQueueLock;
 
         VkQueue m_computeQueue = VK_NULL_HANDLE;
         uint32_t m_computeQueueFamily = UINT32_MAX;
+        std::mutex m_computeQueueLock;
 
         VkQueue m_transferQueue = VK_NULL_HANDLE;
         uint32_t m_transferQueueFamily = UINT32_MAX;
+        std::mutex m_transferQueueLock;
 
         // -- VK Swapchain ---
         VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;

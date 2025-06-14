@@ -396,6 +396,9 @@ namespace phx::rhi::vk
         CreateFrameSyncObjects();
 
         m_swapchainExtent = { desc.SwapChainDesc.Width, desc.SwapChainDesc.Height };
+
+        m_copy_ctx_manager.Initialize(this);
+
         m_isInitialized = true;
         PHX_CORE_INFO("[RHI] Vulkan Device Initialized Successfully.");
         return true;
@@ -411,6 +414,10 @@ namespace phx::rhi::vk
         PHX_CORE_INFO("Shutting down RHI (Vulkan) - VkGfxDeviceImpl");
 
         PlatformWaitForIdle();
+
+        m_copy_ctx_manager.Shutdown();
+
+        ProcessDeletionQueue(UINT64_MAX);
 
         DestroyFrameSyncObjects();
         CleanupSwapchain();
@@ -594,6 +601,90 @@ namespace phx::rhi::vk
         LOG_AND_SHUTDOWN_POOL(m_bufferPool);
     }
 
+    int VkGfxDeviceImpl::CreateSubResource(Buffer_VK& buffer, GpuBufferDescriptor const& desc, SubresouceType subresourceType, size_t offset, size_t size)
+    {
+        assert(subresourceType == SubresouceType::SRV || subresourceType == SubresouceType::UAV);
+
+        Format format = desc.Format;
+
+        // Is raw buffer
+        if (format == Format::UNKNOWN)
+        {
+            buffer.srv_is_typed = false;
+            // buffer.srv_index = m_bindlessStorageBuffers.Allocate();
+
+            VkDescriptorBufferInfo bufferInfo = {};
+            bufferInfo.buffer = buffer.vk_buffer;
+            bufferInfo.offset = offset;
+            bufferInfo.range = size;
+
+            VkWriteDescriptorSet write = {};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            write.dstBinding = 0;
+            write.dstArrayElement = buffer.srv_index;
+            write.descriptorCount = 1;
+            //write.dstSet = m_bindlessStorageBuffers.DescritporSetVk;
+            write.pBufferInfo = &bufferInfo;
+
+            vkUpdateDescriptorSets(m_device, 1, &write, 0, nullptr);
+        }
+        else
+        {
+            // Typed buffer
+            buffer.srv_is_typed = true;
+
+            VkBufferViewCreateInfo srvDesc = {};
+            srvDesc.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+            srvDesc.buffer = buffer.vk_buffer;
+            srvDesc.flags = 0;
+            srvDesc.format = FormatToVkFormat(format);
+            srvDesc.offset = offset;
+            srvDesc.range = std::min(size, (uint64_t)desc.Size - srvDesc.offset);
+
+            VkResult res = vkCreateBufferView(m_device, &srvDesc, nullptr, &buffer.buffer_view);
+            assert(res == VK_SUCCESS);
+
+            if (subresourceType == SubresouceType::SRV)
+            {
+                // buffer.srv_index = m_bindlessUniformTexelBuffers.Allocate();
+                if (buffer.buffer_view != VK_NULL_HANDLE)
+                {
+                    VkWriteDescriptorSet write = {};
+                    write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                    write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+                    write.dstBinding = 0;
+                    write.dstArrayElement = buffer.srv_index;
+                    write.descriptorCount = 1;
+                    // write.dstSet = m_bindlessUniformTexelBuffers.DescritporSetVk;
+                    write.pTexelBufferView = &buffer.buffer_view;
+                    vkUpdateDescriptorSets(m_device, 1, &write, 0, nullptr);
+                }
+
+                return -1;
+            }
+            else
+            {
+                // buffer.uav_index = m_bindlessStorageTexelBuffers.Allocate();
+                if (buffer.buffer_view != VK_NULL_HANDLE)
+                {
+                    VkWriteDescriptorSet write = {};
+                    write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                    write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+                    write.dstBinding = 0;
+                    write.dstArrayElement = buffer.uav_index;
+                    write.descriptorCount = 1;
+                    // write.dstSet = m_bindlessStorageTexelBuffers.DescritporSetVk;
+                    write.pTexelBufferView = &buffer.buffer_view;
+                    vkUpdateDescriptorSets(m_device, 1, &write, 0, nullptr);
+                }
+                return -1;
+            }
+        }
+
+        return 0;
+    }
+
     phx::rhi::vk::VkCommandCtxImpl* VkGfxDeviceImpl::PlatformBeginCommandBuffer(phx::IAllocator* frame_arena)
     {
         PHX_PROFILE_SECTION("Vulkan::PlatformBeginCommandBuffer");
@@ -731,7 +822,7 @@ namespace phx::rhi::vk
     	vkDeviceWaitIdle(m_device);
     }
 
-    GpuBufferHandle VkGfxDeviceImpl::PlatformCreateBuffer(const GpuBufferDescriptor& desc, const void* initialData)
+    GpuBufferHandle VkGfxDeviceImpl::PlatformCreateBuffer(const GpuBufferDescriptor& desc, const void* initial_data)
     {
         PHX_PROFILE_SECTION("Vulkan::PlatformCreateBuffer");
         if (!m_isInitialized || m_vmaAllocator == VK_NULL_HANDLE) return GpuBufferHandle();
@@ -903,20 +994,101 @@ namespace phx::rhi::vk
             impl.gpu_address = vkGetBufferDeviceAddress(m_device, &info);
         }
 
-        // TODO Upload Data
+        if (initial_data)
+        {
+            CopyCtx copy_ctx;
+            Buffer_VK* copy_buffer;
+            void* mapped_data = nullptr;
+            if (desc.Usage == Usage::Upload)
+            {
+                mapped_data = impl.mapped_data;
+            }
+            else
+            {
+                copy_ctx = m_copy_ctx_manager.Allocate(impl.allocation->GetSize());
+                copy_buffer = m_bufferPool.GetHot(copy_ctx.upload_buffer);
+                mapped_data = copy_buffer->mapped_data;
+            }
 
-        // TODO: Create Sub Reosurces
-#if false
+            if (copy_ctx.IsValid())
+            {
+                VkBufferCopy copyRegion = {};
+                copyRegion.size = desc.Size;
+                copyRegion.srcOffset = 0;
+                copyRegion.dstOffset = 0;
+
+                vkCmdCopyBuffer(
+                    copy_ctx.transfer_command_buffer,
+                    copy_buffer->vk_buffer,
+                    impl.vk_buffer,
+                    1,
+                    &copyRegion
+                );
+
+                VkBufferMemoryBarrier2 barrier = {};
+                barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+                barrier.buffer = impl.vk_buffer;
+                barrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+                barrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+                barrier.dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+                barrier.size = VK_WHOLE_SIZE;
+
+                barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+                if (EnumHasAnyFlags(desc.BindingFlags, BindingFlags::ConstantBuffer))
+                {
+                    barrier.dstAccessMask |= VK_ACCESS_2_UNIFORM_READ_BIT;
+                }
+                if (EnumHasAnyFlags(desc.BindingFlags, BindingFlags::VertexBuffer))
+                {
+                    barrier.dstStageMask |= VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT;
+                    barrier.dstAccessMask |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+                }
+                if (EnumHasAnyFlags(desc.BindingFlags, BindingFlags::IndexBuffer))
+                {
+                    barrier.dstStageMask |= VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
+                    barrier.dstAccessMask |= VK_ACCESS_2_INDEX_READ_BIT;
+                }
+                if (EnumHasAnyFlags(desc.BindingFlags, BindingFlags::ShaderResource))
+                {
+                    barrier.dstAccessMask |= VK_ACCESS_2_SHADER_READ_BIT;
+                }
+                if (EnumHasAnyFlags(desc.BindingFlags, BindingFlags::UnorderedAccess))
+                {
+                    barrier.dstAccessMask |= VK_ACCESS_2_SHADER_READ_BIT;
+                    barrier.dstAccessMask |= VK_ACCESS_2_SHADER_WRITE_BIT;
+                }
+                if (EnumHasAnyFlags(desc.BindingFlags, BindingFlags::IndirectBuffer))
+                {
+                    barrier.dstAccessMask |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
+                }
+                if (EnumHasAnyFlags(desc.BindingFlags, BindingFlags::RayTracing))
+                {
+                    barrier.dstAccessMask |= VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+                }
+
+                VkDependencyInfo dependencyInfo = {};
+                dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+                dependencyInfo.bufferMemoryBarrierCount = 1;
+                dependencyInfo.pBufferMemoryBarriers = &barrier;
+
+                vkCmdPipelineBarrier2(copy_ctx.transition_command_buffer, &dependencyInfo);
+
+                m_copy_ctx_manager.SubmitAndWait(copy_ctx);
+            }
+        }
+
         if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
         {
-            CreateSubresource(impl, desc, SubresouceType::SRV, 0u);
+            CreateSubResource(impl, desc, SubresouceType::SRV, 0u);
         }
 
         if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
         {
-            CreateSubresource(impl, desc, SubresouceType::UAV, 0u);
+            CreateSubResource(impl, desc, SubresouceType::UAV, 0u);
         }
-#endif
     }
 
     TextureHandle VkGfxDeviceImpl::PlatformCreateTexture(const TextureDescriptor& desc, const void* initialData)
@@ -945,11 +1117,53 @@ namespace phx::rhi::vk
         PHX_CORE_WARN("[RHI] PlatformDeleteTexture (Handle: {0}) - Not Implemented");
     }
 
-    void VkGfxDeviceImpl::PlatformDeleteBuffer(GpuBufferHandle /*handle*/)
+    void VkGfxDeviceImpl::PlatformDeleteBuffer(GpuBufferHandle handle)
     {
-        PHX_PROFILE_SECTION("Vulkan::PlatformDeleteBuffer");
-        PHX_CORE_WARN("[RHI] PlatformDeleteBuffer (Handle: {0}) - Not Implemented");
-        // TODO: Retrieve and call vmaDestroyBuffer(m_vmaAllocator, buffer, allocation);
+        Buffer_VK* impl = m_bufferPool.GetHot(handle);
+        // TODO: Move into the deconstructor of struct
+        if (impl)
+        {
+#if false
+            if (impl->Srv.IsValid())
+            {
+                if (impl->Srv.IsTyped)
+                {
+                    m_bindlessUniformTexelBuffers.Free(impl->Srv.Index);
+                }
+                else
+                {
+                    m_bindlessStorageBuffers.Free(impl->Srv.Index);
+                }
+
+                if (impl->Srv.ViewVk != VK_NULL_HANDLE)
+                    vkDestroyBufferView(m_vkDevice, impl->Uav.ViewVk, nullptr);
+                impl->Srv = {};
+            }
+            if (impl->Uav.IsValid())
+            {
+                if (impl->Uav.IsTyped)
+                {
+                    m_bindlessStorageTexelBuffers.Free(impl->Uav.Index);
+                }
+                else
+                {
+                    m_bindlessStorageBuffers.Free(impl->Uav.Index);
+                }
+
+                if (impl->Uav.ViewVk != VK_NULL_HANDLE)
+                    vkDestroyBufferView(m_vkDevice, impl->Uav.ViewVk, nullptr);
+                impl->Uav = {};
+            }
+#endif
+            // TODO: Descriptors
+            // TODO: Free Views
+            if (impl->buffer_view != VK_NULL_HANDLE)
+                vkDestroyBufferView(m_device, impl->buffer_view, nullptr);
+
+            vmaDestroyBuffer(m_vmaAllocator, impl->vk_buffer, impl->allocation);
+        }
+
+        m_bufferPool.Free(handle);
     }
 
     DescriptorIndex VkGfxDeviceImpl::PlatformGetDescriptorIndex(TextureHandle /*handle*/, SubresouceType /*type*/) const

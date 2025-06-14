@@ -2,12 +2,12 @@
 
 #include <VkCommon.h>
 
-#define DEFINE_ALIGNED(name, alignemnt) alignas(alignemnt) name
+#define RHI_DEFINE_ALIGNED(name, alignemnt) alignas(alignemnt) name
 namespace phx::rhi::vk
 {
 	constexpr size_t kCacheLineSize = 64ull;
 	
-	struct DEFINE_ALIGNED(Buffer_VK, kCacheLineSize)
+	struct RHI_DEFINE_ALIGNED(Buffer_VK, kCacheLineSize)
 	{
 		// -- 8-byte members ---
 		VkBuffer		vk_buffer;
@@ -15,18 +15,19 @@ namespace phx::rhi::vk
 
 		VkDeviceAddress gpu_address= 0;
 		void*			mapped_data = nullptr;
+		VkBufferView	buffer_view = VK_NULL_HANDLE;
 
 		// -- 4-byte members ---
-		uint32_t        mapped_data_size;
-		DescriptorIndex srv_index;
-		DescriptorIndex UavIndex;
+		uint32_t        mapped_data_size = 0;
+		DescriptorIndex srv_index = cInvalidDescriptorIndex;
+		DescriptorIndex uav_index = cInvalidDescriptorIndex;
 
 		// --- bitfield for booleans (1 byte) ---
-		bool            SrvIsTyped : 1;
-		bool            UavIsTyped : 1;
+		bool            srv_is_typed : 1 = false;
+		bool            uav_is_typed : 1 = false;
 
 		// -- Manual Padding ---
-		std::byte padding[19];
+		std::byte padding[11];
 	};
 
 	static_assert(sizeof(Buffer_VK) == kCacheLineSize, "Buffer_VK must be exactly one cache line in size!");
