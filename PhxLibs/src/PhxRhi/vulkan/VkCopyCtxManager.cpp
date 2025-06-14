@@ -170,7 +170,7 @@ void phx::rhi::vk::CopyCtxManager::SubmitAndWait(CopyCtx copy_ctx)
 		std::this_thread::yield();
 	}
 
-	std::scoped_lock lock(lock);
+	std::scoped_lock _(lock);
 	free_list.push_back(copy_ctx);
 }
 

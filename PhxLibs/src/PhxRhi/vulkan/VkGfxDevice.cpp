@@ -1010,6 +1010,7 @@ namespace phx::rhi::vk
                 mapped_data = copy_buffer->mapped_data;
             }
 
+            // TODO: Set mapped data
             if (copy_ctx.IsValid())
             {
                 VkBufferCopy copyRegion = {};
