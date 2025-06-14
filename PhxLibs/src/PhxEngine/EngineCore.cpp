@@ -111,19 +111,21 @@ namespace phx
 
 			EngineSync::g_FrameCount++;
 
+			JobSystem::Barrier sync;
+
 			// -- Pre-Render ---
-			JobSystem::SubmitJob([](JobContext const&) {
+			sync.Add();
+			JobSystem::SubmitJob([&sync](JobContext const&) {
 				OnPreRender(phx::IApplication::Ptr);
-				JobSystem::Wait();
+				sync.Signal();
 			});
 
-			JobSystem::Barrier sync;
+			JobSystem::Wait(sync);
 
 			// -- Update ---
 			sync.Add();
 			JobSystem::SubmitJob([&sync](JobContext const&) {
 				OnUpdate_Threaded(phx::IApplication::Ptr, 0);
-				JobSystem::Wait();
 				sync.Signal();
 			});
 
@@ -131,7 +133,6 @@ namespace phx
 			sync.Add();
 			JobSystem::SubmitJob([&sync](JobContext const&) {
 				OnRender_Threaded(phx::IApplication::Ptr);
-				JobSystem::Wait();
 				sync.Signal();
 			});
 

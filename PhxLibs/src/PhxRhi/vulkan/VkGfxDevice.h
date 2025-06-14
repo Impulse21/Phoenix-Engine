@@ -1,18 +1,8 @@
 #pragma once
 
-#include <PhxRhi/BaseGfxDevice.h>
-#include <PhxRhi/RHICommon.h>
+#include "VkCommon.h"
 
-#ifdef PHX_PLATFORM_WINDOWS
-#define VK_USE_PLATFORM_WIN32_KHR
-#endif
-
-#include <volk.h>
-//#include <vulkan/vulkan.h>
-
-#include <VkBootstrap.h>
-#include <vk_mem_alloc.h>
-
+#include <PhxCore/Pool.h>
 
 namespace phx::rhi::vk
 {
@@ -21,6 +11,8 @@ namespace phx::rhi::vk
 
 namespace phx::rhi::vk
 {
+    struct Buffer_VK;
+
     constexpr size_t cMaxInflightFrames = 2;
 
     struct FrameData
@@ -77,18 +69,27 @@ namespace phx::rhi::vk
         FrameData& GetCurrentFrameData() { return m_frames[m_frameNumber % cMaxInflightFrames]; }
 
         void InitializeVolk();
+
         bool CreateInstance(const GfxDeviceDescriptor& desc);
         bool CreateSurface(const GfxDeviceDescriptor& desc);
+
         bool SelectPhysicalDevice(const GfxDeviceDescriptor& desc, vkb::PhysicalDevice& outVkbPhysicalDevice);
+
         bool CreateLogicalDevice(const GfxDeviceDescriptor& desc, vkb::PhysicalDevice& vkbPhysicalDevice);
         bool CreateAllocator(const GfxDeviceDescriptor& desc);
+
         void CreateSwapchain(const GfxDeviceDescriptor& desc); // Changed from InitSwapchain
         void RecreateSwapchain(const GfxDeviceDescriptor& desc);
         void CleanupSwapchain(); // Changed from DestroySwapchain
+
         void CreateFrameSyncObjects(); // Changed from CreateFrameData
         void DestroyFrameSyncObjects(); // Changed from DestroyFrameData
+
         void CreateCommandPools();
         void DestroyCommandPools();
+
+        void InitializeResourcePools();
+        void ShutdownResourcePools();
 
         VkAllocationCallbacks* GetVkAllocationCallbacks()
         {
@@ -116,11 +117,20 @@ namespace phx::rhi::vk
         bool m_volkInitialized = false;
         size_t m_frameNumber = 0;
         GfxDeviceDescriptor m_deviceDesc;
+        DeviceCapability m_capabilities = {};
 
+        // -- VK Core ---
         VkInstance m_instance = VK_NULL_HANDLE;
         VkSurfaceKHR m_surface = VK_NULL_HANDLE;
         VkPhysicalDevice m_chosenPhysicalDevice = VK_NULL_HANDLE;
         VkPhysicalDeviceProperties m_physicalDeviceProperties = {};
+        VkPhysicalDeviceFeatures m_physicalDeviceFeatures = {};
+
+        VkPhysicalDeviceFeatures2 m_features2 = {};
+        VkPhysicalDeviceVulkan11Features m_features_1_1 = {};
+        VkPhysicalDeviceVulkan12Features m_features_1_2 = {};
+        VkPhysicalDeviceVulkan13Features m_features_1_3 = {};
+
         VkDevice m_device = VK_NULL_HANDLE;
 
         VkDebugUtilsMessengerEXT m_debugMessenger = VK_NULL_HANDLE;
@@ -132,6 +142,7 @@ namespace phx::rhi::vk
         VkAllocationCallbacks m_allocCallbacks = {};
 #endif
 
+        // -- VK Queues ---
         VkQueue m_graphicsQueue = VK_NULL_HANDLE;
         uint32_t m_graphicsQueueFamily = UINT32_MAX;
 
@@ -141,6 +152,7 @@ namespace phx::rhi::vk
         VkQueue m_transferQueue = VK_NULL_HANDLE;
         uint32_t m_transferQueueFamily = UINT32_MAX;
 
+        // -- VK Swapchain ---
         VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
         VkFormat m_swapchainImageFormat = VK_FORMAT_UNDEFINED;
         VkExtent2D m_swapchainExtent = { 0, 0 };
@@ -148,9 +160,12 @@ namespace phx::rhi::vk
         std::vector<VkImageView> m_swapchainImageViews;
         uint32_t m_swapchainImageIndex = ~0u;
 
-        DeviceCapability m_capabilities = {};
+        // -- VK Resources ---
+        PagedPool<phx::rhi::GpuBuffer, Buffer_VK> m_bufferPool;
 
+        // -- Frame Data ---
         std::array<FrameData, cMaxInflightFrames> m_frames;
         VkCommandPool m_graphicsCommandPool = VK_NULL_HANDLE; // Primary graphics command pool
+
     };
 }

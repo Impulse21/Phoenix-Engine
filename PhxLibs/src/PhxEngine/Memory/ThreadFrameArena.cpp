@@ -23,6 +23,9 @@ void ThreadFrameArena::Shutdown()
 {
 	Reset();
 
+	if (!m_baseAddress)
+		return;
+
 	if (!Platform::Get().VirtualMemFree(m_baseAddress))
 	{
 		PHX_CORE_ERROR("Failed to free virtual memory");

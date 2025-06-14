@@ -14,7 +14,10 @@
 
     #include <Windows.h> // For GetModuleHandle
 #endif
+
 #include <PhxCore/Memory/IAllocator.h>
+#include <PhxCore/EnumUtils.h>
+
 #include "VkGfxDevice.h"
 #include "VkCommandCtx.h"
 
@@ -22,6 +25,7 @@
 #include <PhxCore/Memory/MemoryUtils.h>
 #include <PhxCore/Memory/IAllocator.h>
 
+#include "VkTypes.h"
 
 
 #define VOLK_IMPLEMENTATION
@@ -35,6 +39,8 @@
 #ifdef PHX_PLATFORM_WINDOWS
 extern HINSTANCE g_hInstance;
 #endif
+
+#define LOG_AND_SHUTDOWN_POOL(x) if (!x.IsEmpty()) PHX_CORE_WARN("[Vulkan] - Pool '" #x "' still contains active handles"); x.Shutdown();
 
 namespace phx::rhi::vk
 {
@@ -246,6 +252,18 @@ namespace phx::rhi::vk
         outVkbPhysicalDevice = phys_dev_ret.value();
         m_chosenPhysicalDevice = outVkbPhysicalDevice.physical_device;
         m_physicalDeviceProperties = outVkbPhysicalDevice.properties; // Store properties
+
+        m_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        m_features_1_1.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+        m_features_1_2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        m_features_1_3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+
+        m_features2.pNext       = &m_features_1_1;
+        m_features_1_1.pNext    = &m_features_1_2;
+        m_features_1_2.pNext    = &m_features_1_3;
+        // void** features_chain   = &m_features_1_3.pNext;
+
+        vkGetPhysicalDeviceFeatures2(m_chosenPhysicalDevice, &m_features2);
         return true;
     }
 
@@ -253,7 +271,6 @@ namespace phx::rhi::vk
     {
         vkb::DeviceBuilder deviceBuilder{ vkbPhysicalDevice };
         
-
         auto dev_ret = deviceBuilder.build();
         if (!dev_ret)
         {
@@ -317,13 +334,7 @@ namespace phx::rhi::vk
         VkPhysicalDeviceFeatures enabledFeatures; // Need to get this from vkb::Device or query
         vkGetPhysicalDeviceFeatures(m_chosenPhysicalDevice, &enabledFeatures); // Example, better to use vkb info
 
-        VkBool32 bufferDeviceAddress = VK_FALSE;
-        VkPhysicalDeviceBufferDeviceAddressFeatures bdaFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES };
-        VkPhysicalDeviceFeatures2 features2{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &bdaFeatures };
-        vkGetPhysicalDeviceFeatures2(m_chosenPhysicalDevice, &features2);
-        bufferDeviceAddress = bdaFeatures.bufferDeviceAddress;
-
-        if (bufferDeviceAddress)
+        if (m_features_1_2.bufferDeviceAddress)
         {
             allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
         }
@@ -379,6 +390,8 @@ namespace phx::rhi::vk
         }
 
         CreateCommandPools();
+        InitializeResourcePools();
+
         CreateSwapchain(desc); // Initial swapchain creation
         CreateFrameSyncObjects();
 
@@ -401,6 +414,9 @@ namespace phx::rhi::vk
 
         DestroyFrameSyncObjects();
         CleanupSwapchain();
+
+        ShutdownResourcePools();
+
         DestroyCommandPools();
 
         if (m_vmaAllocator != VK_NULL_HANDLE)
@@ -567,6 +583,17 @@ namespace phx::rhi::vk
         }
     }
 
+    void VkGfxDeviceImpl::InitializeResourcePools()
+    {
+        // TODO: Data drive these
+        m_bufferPool.Initialize(4096);
+    }
+
+    void VkGfxDeviceImpl::ShutdownResourcePools()
+    {
+        LOG_AND_SHUTDOWN_POOL(m_bufferPool);
+    }
+
     phx::rhi::vk::VkCommandCtxImpl* VkGfxDeviceImpl::PlatformBeginCommandBuffer(phx::IAllocator* frame_arena)
     {
         PHX_PROFILE_SECTION("Vulkan::PlatformBeginCommandBuffer");
@@ -709,73 +736,186 @@ namespace phx::rhi::vk
         PHX_PROFILE_SECTION("Vulkan::PlatformCreateBuffer");
         if (!m_isInitialized || m_vmaAllocator == VK_NULL_HANDLE) return GpuBufferHandle();
 
-#if false
+        Handle<GpuBuffer> retVal = m_bufferPool.Allocate();
+        Buffer_VK& impl = *this->m_bufferPool.GetHot(retVal);
+
         VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-        bufferInfo.size = desc.size;
+        bufferInfo.size = desc.Size;
         bufferInfo.usage = 0;
 
-        if (desc.usage == GpuBufferDescriptor::Usage::VERTEX_BUFFER) bufferInfo.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-        if (desc.usage == GpuBufferDescriptor::Usage::INDEX_BUFFER) bufferInfo.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-        if (desc.usage == GpuBufferDescriptor::Usage::CONSTANT_BUFFER) bufferInfo.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
-        if (initialData != nullptr || (desc.cpuAccess == CpuAccessFlags::Write))
+        static const std::vector <std::pair<BindingFlags, VkBufferUsageFlags>> kUsageMapping =
         {
-            bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-        }
+            { BindingFlags::VertexBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT},
+            { BindingFlags::IndexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT},
+            { BindingFlags::ConstantBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT},
+            { BindingFlags::ShaderResource, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT},
+            { BindingFlags::UnorderedAccess, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT},
+        };
 
-        VmaAllocationCreateInfo allocCI = {};
-        allocCI.usage = VMA_MEMORY_USAGE_AUTO;
-        if (desc.cpuAccess == CpuAccessFlags::Write || desc.cpuAccess == CpuAccessFlags::ReadWrite)
+        for (const auto& [flag, usageFlag] : kUsageMapping)
         {
-            allocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
-        }
-        else if (desc.memoryUsage == MemoryUsage::GpuOnly) // Assuming MemoryUsage enum in desc
-        {
-            allocCI.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        }
-
-
-        VkBuffer vkBuffer;
-        VmaAllocation vmaAllocation;
-        VmaAllocationInfo vmaAllocInfo;
-        PHX_CORE_ASSERT(vmaCreateBuffer(m_vmaAllocator, &bufferInfo, &allocCI, &vkBuffer, &vmaAllocation, &vmaAllocInfo));
-
-        if (initialData)
-        {
-            if (vmaAllocInfo.pMappedData)
+            if (phx::EnumHasAnyFlags(desc.BindingFlags, flag))
             {
-                memcpy(vmaAllocInfo.pMappedData, initialData, desc.size);
-                if (!(vmaAllocInfo.memoryType & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
-                {
-                    vmaFlushAllocation(m_vmaAllocator, vmaAllocation, 0, VK_WHOLE_SIZE);
-                }
+                bufferInfo.usage |= usageFlag;
+            }
+        }
+
+        // Misc Flags
+        static const std::vector <std::pair<ResourceMiscFlags, VkBufferUsageFlags>> kUsageMappingMisc =
+        {
+            { ResourceMiscFlags::BufferRaw, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT},
+            { ResourceMiscFlags::BufferStructured, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT},
+            { ResourceMiscFlags::IndirectArgs, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT},
+            { ResourceMiscFlags::RayTracing, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR },
+        };
+
+        for (const auto& [flag, usageFlag] : kUsageMappingMisc)
+        {
+            if (EnumHasAnyFlags(desc.MiscFlags, flag))
+            {
+                bufferInfo.usage |= usageFlag;
+            }
+        }
+
+        if (m_features_1_2.bufferDeviceAddress == VK_TRUE)
+        {
+            bufferInfo.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+        }
+
+        bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+        bufferInfo.flags = 0;
+
+        if (m_graphicsQueueFamily != m_computeQueueFamily != m_transferQueueFamily)
+        {
+            bufferInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+
+            std::array<uint32_t, 3> families = { m_graphicsQueueFamily, m_computeQueueFamily, m_transferQueueFamily };
+            bufferInfo.queueFamilyIndexCount = static_cast<uint32_t>(families.size());
+            bufferInfo.pQueueFamilyIndices = families.data();
+            bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        }
+        else
+        {
+            bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        }
+
+        if (EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::AliasBuffer))
+        {
+            // TODO:
+        }
+        else if (EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::Sparse))
+        {
+            // TODO:
+        }
+        else
+        {
+            VmaAllocationCreateInfo allocInfo = {};
+            allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+
+            switch (desc.Usage)
+            {
+            case Usage::ReadBack:
+                allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+                break;
+
+            case Usage::Upload:
+                allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+                break;
+
+            case Usage::Dynamic:
+                allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+                break;
+
+            case Usage::Default:
+            default:
+                break;
+            }
+
+            VkResult res = VK_SUCCESS;
+            if (desc.Alias == nullptr)
+            {
+                res = vmaCreateBuffer(m_vmaAllocator, &bufferInfo, &allocInfo, &impl.vk_buffer, &impl.allocation, nullptr);
             }
             else
             {
-                void* mappedData;
-                if (vmaMapMemory(m_vmaAllocator, vmaAllocation, &mappedData) == VK_SUCCESS)
+                // Aliasing: https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/resource_aliasing.html
+                if (std::holds_alternative<TextureHandle>(desc.Alias->handle))
                 {
-                    memcpy(mappedData, initialData, desc.size);
-                    if (!(vmaAllocInfo.memoryType & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) // Check again, though map implies host visible
-                    {
-                        vmaFlushAllocation(m_vmaAllocator, vmaAllocation, 0, VK_WHOLE_SIZE);
-                    }
-                    vmaUnmapMemory(m_vmaAllocator, vmaAllocation);
+#if false
+                    Texture_VK* aliasTexture = m_texturePool.Get(std::get<TextureHandle>(desc.Alias->Handle));
+                    res = vmaCreateAliasingBuffer2(
+                        m_vmaAllocator,
+                        aliasTexture->Allocation,
+                        desc.Alias->AliasOffset,
+                        &bufferInfo,
+                        &impl.BufferVk);
+#else
+                    PHX_CORE_ASSERT(false, "TODO");
+#endif
                 }
                 else
                 {
-                    PHX_CORE_ERROR("[RHI] Failed to map buffer memory for initial data upload. Staging buffer required.");
+                    Buffer_VK* aliasBuffer = m_bufferPool.GetHot(std::get<GpuBufferHandle>(desc.Alias->handle));
+                    assert(aliasBuffer);
+                    res = vmaCreateAliasingBuffer2(
+                        m_vmaAllocator,
+                        aliasBuffer->allocation,
+                        desc.Alias->offset,
+                        &bufferInfo,
+                        &impl.vk_buffer);
+
                 }
             }
+
+#ifdef PHX_DEBUG
+            // Now you have allocInfo.memoryType, which tells you which memory type was used
+            VkPhysicalDeviceMemoryProperties memoryProperties;
+            vkGetPhysicalDeviceMemoryProperties(m_chosenPhysicalDevice, &memoryProperties);
+
+            // Use the memoryTypeIndex to find the memory type
+            VkMemoryType memoryType = memoryProperties.memoryTypes[impl.allocation->GetMemoryTypeIndex()];
+
+            // Find the corresponding heap
+            uint32_t heapIndex = memoryType.heapIndex;
+            VkMemoryHeap heap = memoryProperties.memoryHeaps[heapIndex];
+
+            VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
+            vmaGetHeapBudgets(m_vmaAllocator, budgets);
+
+            PHX_CORE_INFO("[Vulkan] Created Buffer on {0} - {1}/{2}", heapIndex, budgets[heapIndex].usage, heap.size);
+#endif
         }
 
-        static uint64_t nextBufferId = 1;
-        GpuBufferHandle handle{ nextBufferId++ };
-        PHX_CORE_INFO("[RHI] Created VkBuffer (Handle: {0})", handle.id);
-        // TODO: Store vkBuffer, vmaAllocation, vmaAllocInfo (for pMappedData) with handle
-        return handle;
-#else
-        return {};
+        if (desc.Usage == Usage::ReadBack || desc.Usage == Usage::Upload || desc.Usage == Usage::Dynamic)
+        {
+            impl.mapped_data = impl.allocation->GetMappedData();
+            impl.mapped_data_size= impl.allocation->GetSize();
+        }
+
+        if (bufferInfo.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
+        {
+            VkBufferDeviceAddressInfo info = {};
+            info.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+            info.buffer = impl.vk_buffer;
+            impl.gpu_address = vkGetBufferDeviceAddress(m_device, &info);
+        }
+
+        // TODO Upload Data
+
+        // TODO: Create Sub Reosurces
+#if false
+        if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
+        {
+            CreateSubresource(impl, desc, SubresouceType::SRV, 0u);
+        }
+
+        if ((desc.BindingFlags & BindingFlags::UnorderedAccess) == BindingFlags::UnorderedAccess)
+        {
+            CreateSubresource(impl, desc, SubresouceType::UAV, 0u);
+        }
 #endif
     }
 

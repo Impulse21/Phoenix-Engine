@@ -53,7 +53,13 @@ namespace phx
 			CommitPages();  // Commit an initial 4 pages
 		}
 
+		// Depricated.
 		void Finalize()
+		{
+			Shutdown();
+		}
+
+		void Shutdown()
 		{
 			if (m_dataHot)
 			{

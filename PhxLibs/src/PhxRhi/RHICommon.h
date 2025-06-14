@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <variant>
 
 #include "PhxCore/Base.h"
 #include "PhxCore/Span.h"
@@ -164,7 +165,8 @@ namespace phx::rhi
     {
         Default = 0,
         ReadBack,
-        Upload
+        Upload,
+        Dynamic          // CPU writes, GPU reads directly (for UI, constant buffers, etc.)
     };
 
     enum class FormatKind : uint8_t
@@ -514,6 +516,14 @@ namespace phx::rhi
         } DepthStencil;
     };
 
+    struct Swizzle
+    {
+        ComponentSwizzle r = ComponentSwizzle::R;
+        ComponentSwizzle g = ComponentSwizzle::G;
+        ComponentSwizzle b = ComponentSwizzle::B;
+        ComponentSwizzle a = ComponentSwizzle::A;
+    };
+
     struct Viewport
     {
         float MinX, MaxX;
@@ -838,9 +848,10 @@ namespace phx::rhi
 
         struct AliasDescriptor
         {
-            GpuBufferHandle Buffer;
-            uint64_t Offset;
-        } Alias = {};
+            std::variant<GpuBufferHandle, TextureHandle> handle;
+            uint64_t offset;
+        };
+        AliasDescriptor* Alias = nullptr;
     };
 
 #if false

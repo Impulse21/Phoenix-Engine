@@ -412,6 +412,7 @@ void phxed::ObjImporter::ProcessMesh(renderer::MeshResource* resource, fastObjMe
 	mesh = GenerateMeshIndices(mesh, geometry_remaps);
 
 	OptimizeMesh(mesh, geometry_remaps);
+
 	phxed::CompiledResource compiled_resource;
 	phxed::MeshResourceCompiler::Compile(mesh, compiled_resource);
 
