@@ -847,9 +847,9 @@ namespace phx::rhi
         uint32_t Stride = 0;
         Usage Usage = Usage::Default;
 
-        BindingFlags BindingFlags = BindingFlags::ShaderResource;
+        BindingFlags BindingFlags = BindingFlags::None;
         ResourceMiscFlags MiscFlags = ResourceMiscFlags::None;
-        ResourceStates InitialState = ResourceStates::ShaderResource;
+        ResourceStates InitialState = ResourceStates::Common;
 
         struct AliasDescriptor
         {
