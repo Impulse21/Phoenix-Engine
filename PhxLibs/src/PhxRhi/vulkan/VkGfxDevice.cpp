@@ -925,10 +925,10 @@ namespace phx::rhi::vk
                 break;
             }
 
-            VkResult res = VK_SUCCESS;
             if (desc.Alias == nullptr)
             {
-                res = vmaCreateBuffer(m_vmaAllocator, &bufferInfo, &allocInfo, &impl.vk_buffer, &impl.allocation, nullptr);
+                vulkan_check(
+                    vmaCreateBuffer(m_vmaAllocator, &bufferInfo, &allocInfo, &impl.vk_buffer, &impl.allocation, nullptr));
             }
             else
             {
@@ -951,12 +951,14 @@ namespace phx::rhi::vk
                 {
                     Buffer_VK* aliasBuffer = m_bufferPool.GetHot(std::get<GpuBufferHandle>(desc.Alias->handle));
                     assert(aliasBuffer);
-                    res = vmaCreateAliasingBuffer2(
-                        m_vmaAllocator,
-                        aliasBuffer->allocation,
-                        desc.Alias->offset,
-                        &bufferInfo,
-                        &impl.vk_buffer);
+
+                    vulkan_check(
+                        vmaCreateAliasingBuffer2(
+                            m_vmaAllocator,
+                            aliasBuffer->allocation,
+                            desc.Alias->offset,
+                            &bufferInfo,
+                            &impl.vk_buffer));
 
                 }
             }
@@ -1010,7 +1012,8 @@ namespace phx::rhi::vk
                 mapped_data = copy_buffer->mapped_data;
             }
 
-            // TODO: Set mapped data
+            std::memcpy(mapped_data, initial_data, impl.allocation->GetSize());
+
             if (copy_ctx.IsValid())
             {
                 VkBufferCopy copyRegion = {};
@@ -1090,6 +1093,8 @@ namespace phx::rhi::vk
         {
             CreateSubResource(impl, desc, SubresouceType::UAV, 0u);
         }
+
+        return retVal;
     }
 
     TextureHandle VkGfxDeviceImpl::PlatformCreateTexture(const TextureDescriptor& desc, const void* initialData)

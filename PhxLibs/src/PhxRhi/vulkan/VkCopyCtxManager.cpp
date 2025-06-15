@@ -158,7 +158,7 @@ void phx::rhi::vk::CopyCtxManager::SubmitAndWait(CopyCtx copy_ctx)
 		submit_info.signalSemaphoreInfoCount = 0;
 		submit_info.pSignalSemaphoreInfos = nullptr;
 
-		std::scoped_lock lock(gfx_device->GetGraphicsQueueLock());
+		std::scoped_lock _(gfx_device->GetGraphicsQueueLock());
 		vulkan_check(
 			vkQueueSubmit2(gfx_device->GetGraphicsQueue(), 1, &submit_info, copy_ctx.fence));
 	}

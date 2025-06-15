@@ -114,5 +114,4 @@ namespace phx::platform
         BasePlatformWrapper() = default;
         ~BasePlatformWrapper() = default;
     };
-
 }

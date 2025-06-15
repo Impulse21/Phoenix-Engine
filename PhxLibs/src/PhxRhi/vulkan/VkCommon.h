@@ -97,7 +97,7 @@ namespace phx::rhi::vk
 	static_assert(sizeof(gVulkanFormatMapping) / sizeof(VkFormat) == (int)rhi::Format::COUNT);
 
 	// static assert
-	VkFormat FormatToVkFormat(rhi::Format format)
+	constexpr VkFormat FormatToVkFormat(rhi::Format format)
 	{
 		return gVulkanFormatMapping[(int)format];
 	}
@@ -122,7 +122,7 @@ namespace phx::rhi::vk
 		return mapping;
 	}
 
-	VkBlendFactor ConvertBlendValue(BlendFactor value)
+	constexpr VkBlendFactor ConvertBlendValue(BlendFactor value)
 	{
 		switch (value)
 		{
@@ -165,7 +165,7 @@ namespace phx::rhi::vk
 		}
 	}
 
-	VkBlendOp ConvertBlendOp(EBlendOp value)
+	constexpr VkBlendOp ConvertBlendOp(EBlendOp value)
 	{
 		switch (value)
 		{
@@ -184,7 +184,7 @@ namespace phx::rhi::vk
 		}
 	}
 
-	VkStencilOp ConvertStencilOp(StencilOp value)
+	constexpr VkStencilOp ConvertStencilOp(StencilOp value)
 	{
 		switch (value)
 		{
@@ -209,7 +209,7 @@ namespace phx::rhi::vk
 		}
 	}
 
-	VkCompareOp ConvertComparisonFunc(ComparisonFunc value)
+	constexpr VkCompareOp ConvertComparisonFunc(ComparisonFunc value)
 	{
 		switch (value)
 		{
