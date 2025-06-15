@@ -318,6 +318,12 @@ void JobSystem::Wait(Type type)
 	}
 }
 
+void phx::JobSystem::Flush()
+{
+	JobSystem::Wait(Type::Generic);
+	JobSystem::Wait(Type::Streaming);
+}
+
 void JobSystem::Wait(Barrier& barrier, Type type)
 {
 	// Not sure I want to add here.

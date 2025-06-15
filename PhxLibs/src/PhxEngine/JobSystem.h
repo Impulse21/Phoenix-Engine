@@ -57,6 +57,8 @@ namespace phx
 
 		void Wait(Type type = Type::Generic);
 
+		void Flush();
+
 		void Wait(Barrier& barrier, Type type = Type::Generic);
 
 		void Signal(Barrier& barrier, Type type = Type::Generic);
