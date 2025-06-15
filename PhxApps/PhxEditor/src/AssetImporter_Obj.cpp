@@ -142,7 +142,7 @@ void ObjImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asset> as
 		{
 			JobSystem::SubmitJob([mesh_placeholder, obj_data_owner](JobContext const&) {
 
-				ProcessMesh(mesh_placeholder, obj_data_owner.get());
+				ProcessMesh(mesh_placeholder.Get(), obj_data_owner.get());
 
 			}, JobSystem::Priority::Low);
 		}
