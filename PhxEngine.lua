@@ -324,7 +324,7 @@ workspace "PhxEngine"
     filter{}
             
 	filter { 'configurations:Debug' }
-		defines { 'PHX_DEBUG', "TRACY_ENABLE"}
+		defines { 'PHX_DEBUG', "PHX_PROFILING", "TRACY_ENABLE"}
 		optimize('off')
 		--symbols('on')
 		symbols('fastlink')
@@ -388,6 +388,8 @@ group "Vendors"
             phx_vendor_src_tracy..'/LICENSE.txt'
         }
         
+		defines { TRACY_ON_DEMAND }
+
         filter('toolset:*-clangcl')
             buildoptions {
                 '-Wno-unused-const-variable',
@@ -397,7 +399,7 @@ group "Vendors"
                 '-Wno-missing-field-initializers',
             }
         filter()
-        
+         
         filter "system:linux"
             pic "On"
             systemversion "latest"

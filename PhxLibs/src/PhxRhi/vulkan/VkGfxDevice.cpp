@@ -879,7 +879,7 @@ namespace phx::rhi::vk
 
         bufferInfo.flags = 0;
 
-        if (m_graphicsQueueFamily != m_computeQueueFamily != m_transferQueueFamily)
+        if (m_graphicsQueueFamily != m_computeQueueFamily || m_computeQueueFamily != m_transferQueueFamily)
         {
             bufferInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
 

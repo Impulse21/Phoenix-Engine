@@ -2,7 +2,7 @@
 
 #include <tracy/Tracy.hpp>
 
-#if PHX_PROFILE
+#if PHX_PROFILING
 #define PHX_PROFILE ZoneScoped
 #define PHX_PROFILE_FRAME FrameMark
 #define PHX_PROFILE_SECTION(x) ZoneScopedN(x)
