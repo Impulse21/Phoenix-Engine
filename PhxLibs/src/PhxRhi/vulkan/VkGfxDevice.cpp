@@ -224,6 +224,14 @@ namespace phx::rhi::vk
             .set_required_features(featuresToEnable)
             .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
             .add_required_extensions(required_extensions.size(), required_extensions.data());
+
+
+        VkPhysicalDeviceSynchronization2Features sync2Features = {};
+        sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
+        sync2Features.synchronization2 = VK_TRUE;
+
+        selector.add_required_extension_features(sync2Features);
+
         // Add specific extension requirements if vkb doesn't infer them well enough
 
         auto phys_dev_ret = selector.select();
@@ -248,7 +256,6 @@ namespace phx::rhi::vk
             VK_EXT_MESH_SHADER_EXTENSION_NAME,
         };
         outVkbPhysicalDevice.enable_extensions_if_present(optional_extensions);
-
         outVkbPhysicalDevice = phys_dev_ret.value();
         m_chosenPhysicalDevice = outVkbPhysicalDevice.physical_device;
         m_physicalDeviceProperties = outVkbPhysicalDevice.properties; // Store properties
@@ -270,7 +277,18 @@ namespace phx::rhi::vk
     bool VkGfxDeviceImpl::CreateLogicalDevice(const GfxDeviceDescriptor&, vkb::PhysicalDevice& vkbPhysicalDevice)
     {
         vkb::DeviceBuilder deviceBuilder{ vkbPhysicalDevice };
-        
+
+        if (m_features_1_2.bufferDeviceAddress)
+        {
+            VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures = {};
+            bufferDeviceAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+            bufferDeviceAddressFeatures.pNext = nullptr; // Good practice to null the pNext
+            bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
+
+
+            deviceBuilder.add_pNext(&bufferDeviceAddressFeatures);
+        }
+
         auto dev_ret = deviceBuilder.build();
         if (!dev_ret)
         {
@@ -611,7 +629,8 @@ namespace phx::rhi::vk
         if (format == Format::UNKNOWN)
         {
             buffer.srv_is_typed = false;
-            // buffer.srv_index = m_bindlessStorageBuffers.Allocate();
+#if false
+            buffer.srv_index = m_bindlessStorageBuffers.Allocate();
 
             VkDescriptorBufferInfo bufferInfo = {};
             bufferInfo.buffer = buffer.vk_buffer;
@@ -624,10 +643,13 @@ namespace phx::rhi::vk
             write.dstBinding = 0;
             write.dstArrayElement = buffer.srv_index;
             write.descriptorCount = 1;
-            //write.dstSet = m_bindlessStorageBuffers.DescritporSetVk;
+            write.dstSet = m_bindlessStorageBuffers.DescritporSetVk;
             write.pBufferInfo = &bufferInfo;
 
             vkUpdateDescriptorSets(m_device, 1, &write, 0, nullptr);
+#else
+            PHX_CORE_WARN("[Vulkan] TODO: Add Bindless support");
+#endif
         }
         else
         {

@@ -82,10 +82,10 @@ CopyCtx CopyCtxManager::Allocate(uint64_t staging_size)
 		vulkan_check(
 			vkCreateSemaphore(vk_logical_device, &semaphoreInfo, nullptr, &copy_ctx.semaphore));
 
-		gfx_device->CreateBuffer({
-			.Size = static_cast<uint32_t>(std::max(phx::math::GetNextPowerOfTwo(staging_size), uint64_t(65536))),
-			.Usage = Usage::Upload,
-		});
+		copy_ctx.upload_buffer = gfx_device->CreateBuffer({
+				.Size = static_cast<uint32_t>(std::max(phx::math::GetNextPowerOfTwo(staging_size), uint64_t(65536))),
+				.Usage = Usage::Upload,
+			});
 	}
 
 	// begin command list in valid state:
@@ -149,7 +149,7 @@ void phx::rhi::vk::CopyCtxManager::SubmitAndWait(CopyCtx copy_ctx)
 		wait_semaphore_info.semaphore = copy_ctx.semaphore; // wait for init queue
 		wait_semaphore_info.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 
-		cb_submit_info.commandBuffer = copy_ctx.transfer_command_buffer;
+		cb_submit_info.commandBuffer = copy_ctx.transition_command_buffer;
 
 		submit_info.waitSemaphoreInfoCount = 1;
 		submit_info.pWaitSemaphoreInfos = &wait_semaphore_info;
