@@ -144,8 +144,7 @@ namespace phx
 			PHX_CORE_INFO("Shutting down Application");
 			phx::IApplication::Ptr->Shutdown();
 
-			PHX_CORE_INFO("Flushing job queue");
-			JobSystem::Flush();
+			JobSystem::Wait();
 
 			DeleteApplication(phx::IApplication::Ptr);
 			phx::IApplication::Ptr = nullptr;

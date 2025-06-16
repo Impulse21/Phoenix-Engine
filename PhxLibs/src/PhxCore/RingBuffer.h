@@ -30,9 +30,9 @@ namespace phx
 			if (IsEmpty())
 				return false;
 
-			item = m_data[m_head];
-
-			m_head = m_head + 1 & BufferMask;
+			item = std::move(m_data[m_head]);
+			m_data[m_head] = {};
+			m_head = (m_head + 1) & BufferMask;
 
 			return true;
 		}
