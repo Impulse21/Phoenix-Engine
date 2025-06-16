@@ -209,14 +209,9 @@ namespace phx::rhi::vk
 
         const std::vector<const char*> required_extensions =
         {
-            VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
-            VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-            VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
-            VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+            VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
             VK_KHR_MULTIVIEW_EXTENSION_NAME,
             VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME,
-            VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
-            VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME
         };
 
         selector.set_minimum_version(1, 3)
@@ -225,15 +220,30 @@ namespace phx::rhi::vk
             .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
             .add_required_extensions(required_extensions.size(), required_extensions.data());
 
+        VkPhysicalDeviceVulkan12Features vulkan_features_1_2 = {};
+        vulkan_features_1_2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        vulkan_features_1_2.pNext = nullptr;
 
-        VkPhysicalDeviceSynchronization2Features sync2Features = {};
-        sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
-        sync2Features.synchronization2 = VK_TRUE;
+        vulkan_features_1_2.bufferDeviceAddress = VK_TRUE;
+        vulkan_features_1_2.runtimeDescriptorArray = VK_TRUE;
+        vulkan_features_1_2.descriptorBindingPartiallyBound = VK_TRUE;
+        vulkan_features_1_2.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+        vulkan_features_1_2.timelineSemaphore = VK_TRUE;
+        vulkan_features_1_2.samplerFilterMinmax = VK_TRUE;
 
-        selector.add_required_extension_features(sync2Features);
+
+        selector.add_required_extension_features(vulkan_features_1_2);
+
+        VkPhysicalDeviceVulkan13Features vulkan_features_1_3 = {};
+        vulkan_features_1_3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+        vulkan_features_1_3.pNext = nullptr;
+
+        vulkan_features_1_3.dynamicRendering = VK_TRUE;
+        vulkan_features_1_3.synchronization2 = VK_TRUE;
+
+        selector.add_required_extension_features(vulkan_features_1_3);
 
         // Add specific extension requirements if vkb doesn't infer them well enough
-
         auto phys_dev_ret = selector.select();
         if (!phys_dev_ret)
         {
@@ -244,11 +254,10 @@ namespace phx::rhi::vk
 
         const std::vector<const char*> optional_extensions =
         {
+            VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME,
             VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
             VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
-            VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
             VK_EXT_DEVICE_GENERATED_COMMANDS_EXTENSION_NAME,
-            VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME,
             // VK_EXT_SHADER_OBJECT_EXTENSION_NAME,
             VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
             VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME,
@@ -278,17 +287,6 @@ namespace phx::rhi::vk
     {
         vkb::DeviceBuilder deviceBuilder{ vkbPhysicalDevice };
 
-        if (m_features_1_2.bufferDeviceAddress)
-        {
-            VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures = {};
-            bufferDeviceAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
-            bufferDeviceAddressFeatures.pNext = nullptr; // Good practice to null the pNext
-            bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
-
-
-            deviceBuilder.add_pNext(&bufferDeviceAddressFeatures);
-        }
-
         auto dev_ret = deviceBuilder.build();
         if (!dev_ret)
         {
@@ -309,6 +307,7 @@ namespace phx::rhi::vk
 
         m_graphicsQueue = gfx_q_ret.value();
         m_graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
+        PHX_CORE_INFO("[RHI Vulkan] Using graphics queue {0}", m_graphicsQueueFamily);
 
         auto compute_q_ret = vkbDevice.get_queue(vkb::QueueType::compute);
         if (!compute_q_ret) 
@@ -321,6 +320,8 @@ namespace phx::rhi::vk
         { 
             m_computeQueue = compute_q_ret.value();
             m_computeQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::compute).value();
+
+            PHX_CORE_INFO("[RHI Vulkan] Using compute queue {0}", m_computeQueueFamily);
         }
 
         auto transfer_q_ret = vkbDevice.get_queue(vkb::QueueType::transfer);
@@ -332,7 +333,9 @@ namespace phx::rhi::vk
         else 
         { 
             m_transferQueue = transfer_q_ret.value();
-            m_transferQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::transfer).value(); 
+            m_transferQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::transfer).value();
+
+            PHX_CORE_INFO("[RHI Vulkan] Using transfer queue {0}", m_computeQueueFamily);
         }
 
         return true;
