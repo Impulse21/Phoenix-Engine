@@ -83,62 +83,79 @@ void phx::StandardAsyncIOSystem::ProcessReadRequest(data::AsyncReadRequest& requ
     data::AsyncReadResult result;
     result.user_context = request.user_context;
 
-    platform::PlatformFileHandle file_handle;
-
+    if (request.resource_descriptor.type == data::AsyncDataSourceType::MemoryBuffer)
     {
-        std::scoped_lock _(m_fileHandleCacheMutex);
+        const auto& desc = request.resource_descriptor;
+        void* dest_buffer = request.cpu_destination_buffer;
 
-        auto it = m_fileHandleCache.find(request.resource_descriptor.os_path_or_pak_path);
-        if (it != m_fileHandleCache.end()) 
-        {
-            file_handle = it->second; // Use cached handle
-        }
-        else 
-        {
-            // File not in cache, open it using the platform layer.
-            file_handle = Platform::Get().OpenFile(request.resource_descriptor.os_path_or_pak_path, "rb").GetValue();
-            if (file_handle.IsValid()) 
-            {
-                m_fileHandleCache[request.resource_descriptor.os_path_or_pak_path] = file_handle;
-            }
-        }
-    }
+        PHX_ASSERT(dest_buffer);
+        memcpy(
+            dest_buffer,
+            desc.memory_buffer_ptr + request.read_offset_within_resource,
+            request.bytes_to_read);
 
-    if (!file_handle.IsValid())
-    {
-        result.success = false;
-        result.error_message = "Failed to open OS File: " + request.resource_descriptor.os_path_or_pak_path;
+        result.bytes_actually_read = request.bytes_to_read;
+        result.success = true;
     }
     else
     {
-        const int64_t final_seek_offset = 
-            static_cast<int64_t>(request.resource_descriptor.offset_in_pak) +
-            static_cast<int64_t>(request.read_offset_within_resource);
+        platform::PlatformFileHandle file_handle;
 
-        // 3. Seek to the calculated offset using the platform layer.
-        if (!Platform::Get().SeekFile(file_handle, final_seek_offset, platform::FileSeekOrigin::Begin))
         {
-            result.success = false;
-            result.error_message = "Failed to seek in file.";
-        }
-        else
-        {
-            result.data_buffer.resize(request.bytes_to_read);
-            size_t bytes_read = Platform::Get().ReadFile(file_handle, result.data_buffer.data(), request.bytes_to_read);
+            std::scoped_lock _(m_fileHandleCacheMutex);
 
-            result.bytes_actually_read = bytes_read;
-
-            if (bytes_read == request.bytes_to_read)
+            auto it = m_fileHandleCache.find(request.resource_descriptor.os_path_or_pak_path);
+            if (it != m_fileHandleCache.end())
             {
-                result.success = true;
+                file_handle = it->second; // Use cached handle
             }
             else
             {
+                // File not in cache, open it using the platform layer.
+                file_handle = Platform::Get().OpenFile(request.resource_descriptor.os_path_or_pak_path, "rb").GetValue();
+                if (file_handle.IsValid())
+                {
+                    m_fileHandleCache[request.resource_descriptor.os_path_or_pak_path] = file_handle;
+                }
+            }
+        }
+
+        if (!file_handle.IsValid())
+        {
+            result.success = false;
+            result.error_message = "Failed to open OS File: " + request.resource_descriptor.os_path_or_pak_path;
+        }
+        else
+        {
+            const int64_t final_seek_offset =
+                static_cast<int64_t>(request.resource_descriptor.offset_in_pak) +
+                static_cast<int64_t>(request.read_offset_within_resource);
+
+            // 3. Seek to the calculated offset using the platform layer.
+            if (!Platform::Get().SeekFile(file_handle, final_seek_offset, platform::FileSeekOrigin::Begin))
+            {
                 result.success = false;
-                result.error_message = 
-                    "Short read from file. Expected " + std::to_string(request.bytes_to_read) +
-                    ", got " + std::to_string(bytes_read) + ".";
-                result.data_buffer.resize(bytes_read);
+                result.error_message = "Failed to seek in file.";
+            }
+            else
+            {
+                result.data_buffer.resize(request.bytes_to_read);
+                size_t bytes_read = Platform::Get().ReadFile(file_handle, result.data_buffer.data(), request.bytes_to_read);
+
+                result.bytes_actually_read = bytes_read;
+
+                if (bytes_read == request.bytes_to_read)
+                {
+                    result.success = true;
+                }
+                else
+                {
+                    result.success = false;
+                    result.error_message =
+                        "Short read from file. Expected " + std::to_string(request.bytes_to_read) +
+                        ", got " + std::to_string(bytes_read) + ".";
+                    result.data_buffer.resize(bytes_read);
+                }
             }
         }
     }

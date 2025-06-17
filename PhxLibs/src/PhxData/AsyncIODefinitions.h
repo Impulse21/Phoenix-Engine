@@ -17,7 +17,8 @@ namespace phx::data
     {
         Unknown_Or_Error,
         OS_File,
-        Pak_Entry
+        Pak_Entry,
+        MemoryBuffer,
     };
 
     enum class CompressionMethod 
@@ -35,11 +36,13 @@ namespace phx::data
     struct AsyncResourceDescriptor 
     {
         AsyncDataSourceType type = AsyncDataSourceType::Unknown_Or_Error;
+
         std::string os_path_or_pak_path;
         std::string virtual_path;
 
         uint64_t offset_in_pak = 0;
         uint64_t length_of_resource = 0;
+        const char* memory_buffer_ptr = nullptr;
 
         CompressionInfo compression_info;
 

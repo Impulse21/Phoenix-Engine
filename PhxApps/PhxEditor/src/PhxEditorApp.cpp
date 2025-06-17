@@ -105,6 +105,7 @@ void PhxEditor::Startup()
 		auto vfs = phx::data::IVirtualFileSystem::Ptr;
 		vfs->Mount("res://", phx::GlobalPaths::DefaultProjectDir);
 		vfs->Mount("art://", phx::GlobalPaths::ArtSrcDirectory);
+		vfs->Mount("res_embedded://", "embedded://");
 		// TODO: TRY mounting a pack
 	}
 

@@ -17,26 +17,36 @@ bool VirtualFileSystemImpl::Mount(std::string const& virtual_path, std::string c
         norm_virtual_prefix += '/';
 
 
-    // Platform-specific OS call to get file size and check if it's a file (not dir)
-    Result<platform::PlatformFileAttributes> file_attributes = phx::Platform::Get().GetFileAttr(norm_physical_path);
-
-    if (!file_attributes)
-    {
-        PHX_CORE_INFO("Physical path for mount '{0}' doesn't exist");
-        return false;
-    }
-
-    if (file_attributes.GetValue().type == platform::PlatformFileType::Directory)
+    if (physical_path == "embedded://")
     {
         m_mount_points.emplace_back(
-            MountPointInfo::Type::Directory,
+            MountPointInfo::Type::Embedded,
             norm_physical_path,
             norm_virtual_prefix);
     }
-    else 
-    { 
-        PHX_CORE_WARN("Pak File's are not supported yet");
-        return true;
+    else
+    {
+        // Platform-specific OS call to get file size and check if it's a file (not dir)
+        Result<platform::PlatformFileAttributes> file_attributes = phx::Platform::Get().GetFileAttr(norm_physical_path);
+
+        if (!file_attributes)
+        {
+            PHX_CORE_INFO("Physical path for mount '{0}' doesn't exist");
+            return false;
+        }
+
+        if (file_attributes.GetValue().type == platform::PlatformFileType::Directory)
+        {
+            m_mount_points.emplace_back(
+                MountPointInfo::Type::Directory,
+                norm_physical_path,
+                norm_virtual_prefix);
+        }
+        else
+        {
+            PHX_CORE_WARN("Pak File's are not supported yet");
+            return true;
+        }
     }
 
     // Sort mount points to ensure longest prefix is matched first
@@ -93,9 +103,28 @@ phx::Result<AsyncResourceDescriptor> VirtualFileSystemImpl::GetResourceDescripto
     }
 
     std::string internal_path_segment = norm_virtual_path.substr(best_match->virtual_prefix_normalized.length());
-    std::string physical_path = JoinPaths(best_match->physical_path_normalized, internal_path_segment);
+	std::string physical_path = JoinPaths(best_match->physical_path_normalized, internal_path_segment);
 
-    if (best_match->type == MountPointInfo::Type::Directory) 
+	if (best_match->type == MountPointInfo::Type::Embedded)
+	{
+        Result<Span<char>> embedded_res = phx::Platform::Get().GetEmbeddedResource(internal_path_segment);
+        if (!embedded_res)
+        {
+            PHX_CORE_ERROR("Embedded Resource not found: {0}", physical_path.c_str());
+            return make_unexpected(~0ull);
+        }
+
+        return AsyncResourceDescriptor{
+            .type = AsyncDataSourceType::MemoryBuffer,
+            .os_path_or_pak_path = physical_path,
+            .virtual_path = norm_virtual_path,
+            .offset_in_pak = 0,
+            .length_of_resource = embedded_res->Size(),
+            .memory_buffer_ptr = embedded_res->begin(),
+            .compression_info = {.method = CompressionMethod::None }
+        };
+	}
+    else if (best_match->type == MountPointInfo::Type::Directory) 
     {
         // Platform-specific OS call to get file size and check if it's a file (not dir)
         Result<platform::PlatformFileAttributes> file_attributes = phx::Platform::Get().GetFileAttr(physical_path);

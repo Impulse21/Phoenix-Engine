@@ -1,6 +1,8 @@
 #pragma once
 
 #include <PhxCore/Result.h>
+#include <PhxCore/Span.h>
+
 #include <PhxCore/EnumUtils.h>
 #include <chrono>
 
@@ -93,6 +95,11 @@ namespace phx::platform
         phx::Result<PlatformFileHandle> OpenFile(const std::string& os_path, const char* mode)
         {
             return static_cast<TDerived*>(this)->PlatformOpenFile(os_path, mode);
+        }
+
+        phx::Result<phx::Span<char>> GetEmbeddedResource(std::string const& resource_name)
+        {
+            return static_cast<TDerived*>(this)->PlatformGetEmbeddedResource(resource_name);
         }
 
         void CloseFile(PlatformFileHandle handle)

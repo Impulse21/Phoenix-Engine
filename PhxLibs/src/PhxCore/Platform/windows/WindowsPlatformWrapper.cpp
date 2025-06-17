@@ -135,3 +135,24 @@ size_t phx::platform::windows::WindowsPlatformWrapperImpl::PlatformReadFile(Plat
 
 	return fread(buffer, 1, size_to_read, handle.As<FILE>());
 }
+
+phx::Result<phx::Span<char>> phx::platform::windows::WindowsPlatformWrapperImpl::PlatformGetEmbeddedResource(std::string const& resource_name)
+{
+	std::wstring w_resource_name;
+	StringConvert(resource_name, w_resource_name);
+
+	HRSRC hRes = FindResource(nullptr, w_resource_name.c_str(), RT_RCDATA);
+	if (hRes == nullptr)
+		return make_unexpected(~0ull);
+
+	HGLOBAL hGlob = LoadResource(nullptr, hRes);
+	if (hGlob == nullptr)
+		return make_unexpected(~0ull);
+
+	const char* data = static_cast<const char*>(LockResource(hGlob));
+	if (data == nullptr)
+		return make_unexpected(~0ull);
+
+	DWORD size = SizeofResource(nullptr, hRes);
+	return phx::Span<char>(data, static_cast<size_t>(size));
+}

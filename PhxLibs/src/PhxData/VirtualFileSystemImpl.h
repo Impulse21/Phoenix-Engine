@@ -8,7 +8,7 @@ namespace phx::data
 	// Internal structure for a mount point
 	struct MountPointInfo 
 	{
-		enum class Type { Directory, Pak };
+		enum class Type { Directory, Pak, Embedded, };
 		Type type;
 		std::string physical_path_normalized; // OS path to the directory or the PAK file
 		std::string virtual_prefix_normalized;
