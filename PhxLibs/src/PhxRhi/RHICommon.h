@@ -405,6 +405,7 @@ namespace phx::rhi
         HasCounter = BIT(9),
         TypedFormatCasting = BIT(10),	// enable casting formats between same type and different modifiers: eg. UNORM -> SRGB
         TypelessFormatCasting = BIT(11),  // enable casting formats to other formats that have the s
+        DescriptorTable = BIT(12),
         Alias = AliasBuffer | AliasTexture_NonRtDs | AliasTexture_RtDs,
 
     };

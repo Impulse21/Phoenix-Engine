@@ -77,6 +77,8 @@ namespace phx::rhi::vk
         {
             return m_bufferPool.GetHot(handle);
         }
+
+        const VkPhysicalDeviceDescriptorBufferPropertiesEXT& GetDescriptorBufferProperties() const { return m_descriptor_buffer_properties; }
     private:
 
         FrameData& GetCurrentFrameData() { return m_frames[m_frameNumber % cMaxInflightFrames]; }
@@ -106,6 +108,7 @@ namespace phx::rhi::vk
 
         int CreateSubResource(Buffer_VK& buffer, GpuBufferDescriptor const& desc, SubresouceType subresourceType, size_t offset, size_t size = ~0u);
 
+        void CreateDescriptorBuffers();
 
         VkAllocationCallbacks* GetVkAllocationCallbacks()
         {
@@ -141,13 +144,16 @@ namespace phx::rhi::vk
         VkInstance m_instance = VK_NULL_HANDLE;
         VkSurfaceKHR m_surface = VK_NULL_HANDLE;
         VkPhysicalDevice m_chosenPhysicalDevice = VK_NULL_HANDLE;
-        VkPhysicalDeviceProperties m_physicalDeviceProperties = {};
+
         VkPhysicalDeviceFeatures m_physicalDeviceFeatures = {};
 
         VkPhysicalDeviceFeatures2 m_features2 = {};
         VkPhysicalDeviceVulkan11Features m_features_1_1 = {};
         VkPhysicalDeviceVulkan12Features m_features_1_2 = {};
         VkPhysicalDeviceVulkan13Features m_features_1_3 = {};
+
+        VkPhysicalDeviceProperties2 m_physical_device_properties = {};
+        VkPhysicalDeviceDescriptorBufferPropertiesEXT m_descriptor_buffer_properties = {};
 
         VkDevice m_device = VK_NULL_HANDLE;
 

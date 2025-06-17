@@ -251,7 +251,6 @@ namespace phx::rhi::vk
             return false;
         }
 
-
         const std::vector<const char*> optional_extensions =
         {
             VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME,
@@ -266,8 +265,15 @@ namespace phx::rhi::vk
         };
         outVkbPhysicalDevice.enable_extensions_if_present(optional_extensions);
         outVkbPhysicalDevice = phys_dev_ret.value();
+
         m_chosenPhysicalDevice = outVkbPhysicalDevice.physical_device;
-        m_physicalDeviceProperties = outVkbPhysicalDevice.properties; // Store properties
+
+        m_descriptor_buffer_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
+
+        m_physical_device_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+        m_physical_device_properties.pNext = &m_descriptor_buffer_properties; // Chain the struct here
+
+        vkGetPhysicalDeviceProperties2(m_chosenPhysicalDevice, &m_physical_device_properties);
 
         m_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
         m_features_1_1.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
@@ -277,9 +283,11 @@ namespace phx::rhi::vk
         m_features2.pNext       = &m_features_1_1;
         m_features_1_1.pNext    = &m_features_1_2;
         m_features_1_2.pNext    = &m_features_1_3;
-        // void** features_chain   = &m_features_1_3.pNext;
 
         vkGetPhysicalDeviceFeatures2(m_chosenPhysicalDevice, &m_features2);
+
+        PHX_CORE_ASSERT(m_features_1_2.bufferDeviceAddress == VK_TRUE);
+
         return true;
     }
 
@@ -710,6 +718,10 @@ namespace phx::rhi::vk
         return 0;
     }
 
+    void VkGfxDeviceImpl::CreateDescriptorBuffers()
+    {
+    }
+
     phx::rhi::vk::VkCommandCtxImpl* VkGfxDeviceImpl::PlatformBeginCommandBuffer(phx::IAllocator* frame_arena)
     {
         PHX_PROFILE_SECTION("Vulkan::PlatformBeginCommandBuffer");
@@ -884,6 +896,7 @@ namespace phx::rhi::vk
             { ResourceMiscFlags::BufferStructured, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT},
             { ResourceMiscFlags::IndirectArgs, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT},
             { ResourceMiscFlags::RayTracing, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR },
+            { ResourceMiscFlags::DescriptorTable, VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT },
         };
 
         for (const auto& [flag, usageFlag] : kUsageMappingMisc)
