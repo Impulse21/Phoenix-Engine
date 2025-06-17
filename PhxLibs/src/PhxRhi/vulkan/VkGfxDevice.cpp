@@ -17,13 +17,12 @@
 
 #include <PhxCore/Memory/IAllocator.h>
 #include <PhxCore/EnumUtils.h>
+#include <PhxCore/Base.h>
 
 #include "VkGfxDevice.h"
 #include "VkCommandCtx.h"
 
 #include <PhxCore/Log.h>
-#include <PhxCore/Memory/MemoryUtils.h>
-#include <PhxCore/Memory/IAllocator.h>
 
 #include "VkTypes.h"
 
@@ -44,6 +43,9 @@ extern HINSTANCE g_hInstance;
 
 namespace phx::rhi::vk
 {
+    constexpr size_t kMaxNumBuffers = 4096;
+    constexpr size_t kMaxNumTextures = 4096;
+
 
 #if USE_PHX_ALLOCATOR
     void* VKAPI_CALL VkGfxDeviceImpl::vk_phx_allocate(
@@ -374,6 +376,31 @@ namespace phx::rhi::vk
             PHX_CORE_ERROR("[RHI] Failed to create VMA Allocator. VkResult: <TODO>");
             return false;
         }
+
+        const VkPhysicalDeviceMemoryProperties* memory_properties;
+        vmaGetMemoryProperties(m_vmaAllocator, &memory_properties);
+
+        for (uint32_t i = 0; i < memory_properties->memoryHeapCount; i++)
+        {
+            const VkMemoryHeap& heap = memory_properties->memoryHeaps[i];
+
+            if ((heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) != 0 )
+            {
+	            for (uint32_t j = 0; j < memory_properties->memoryTypeCount; j++)
+	            {
+                    const VkMemoryType& memory_type = memory_properties->memoryTypes[j];
+		            if (memory_type.heapIndex == i)
+		            {
+			            if ((memory_type.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0)
+			            {
+                            m_rebar_heap_size = heap.size;
+                            PHX_CORE_INFO("Rebar Heap found {0}", PhxToMB(m_rebar_heap_size));
+                            break;
+			            }
+		            }
+	            }
+            }
+        }
         return true;
     }
 
@@ -420,6 +447,13 @@ namespace phx::rhi::vk
 
         CreateCommandPools();
         InitializeResourcePools();
+        InitializeDescriptorBuffers();
+
+        VkDeviceSize temp_allocator_size = 256_MiB; // Random Default
+        if (m_rebar_heap_size > 0)
+            temp_allocator_size = m_rebar_heap_size;
+
+        m_temp_memory_allocator.Initialize(this, temp_allocator_size, 4_MiB);
 
         CreateSwapchain(desc); // Initial swapchain creation
         CreateFrameSyncObjects();
@@ -444,7 +478,11 @@ namespace phx::rhi::vk
 
         PlatformWaitForIdle();
 
+        // These need to but shutdown before processing the delete queue
+        // to ensure their resources are cleaned up.
         m_copy_ctx_manager.Shutdown();
+        m_temp_memory_allocator.Shutdown();
+        ShutdownDescriptorBuffers();
 
         ProcessDeletionQueue(UINT64_MAX);
 
@@ -622,7 +660,7 @@ namespace phx::rhi::vk
     void VkGfxDeviceImpl::InitializeResourcePools()
     {
         // TODO: Data drive these
-        m_bufferPool.Initialize(4096);
+        m_bufferPool.Initialize(kMaxNumBuffers);
     }
 
     void VkGfxDeviceImpl::ShutdownResourcePools()
@@ -718,8 +756,14 @@ namespace phx::rhi::vk
         return 0;
     }
 
-    void VkGfxDeviceImpl::CreateDescriptorBuffers()
+    void VkGfxDeviceImpl::InitializeDescriptorBuffers()
     {
+        m_texture_descriptors.Initialize(this, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, kMaxNumTextures);
+    }
+
+    void VkGfxDeviceImpl::ShutdownDescriptorBuffers()
+    {
+        m_texture_descriptors.Shutdown();
     }
 
     phx::rhi::vk::VkCommandCtxImpl* VkGfxDeviceImpl::PlatformBeginCommandBuffer(phx::IAllocator* frame_arena)

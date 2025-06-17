@@ -3,8 +3,11 @@
 #include "VkCommon.h"
 
 #include <PhxCore/Pool.h>
+
 #include "VkTypes.h"
 #include "VkCopyCtxManager.h"
+#include "VkBindlessDescriptorArray.h"
+#include "VkGpuTempMemory.h"
 
 namespace phx::rhi::vk
 {
@@ -108,7 +111,8 @@ namespace phx::rhi::vk
 
         int CreateSubResource(Buffer_VK& buffer, GpuBufferDescriptor const& desc, SubresouceType subresourceType, size_t offset, size_t size = ~0u);
 
-        void CreateDescriptorBuffers();
+        void InitializeDescriptorBuffers();
+        void ShutdownDescriptorBuffers();
 
         VkAllocationCallbacks* GetVkAllocationCallbacks()
         {
@@ -154,6 +158,7 @@ namespace phx::rhi::vk
 
         VkPhysicalDeviceProperties2 m_physical_device_properties = {};
         VkPhysicalDeviceDescriptorBufferPropertiesEXT m_descriptor_buffer_properties = {};
+        VkDeviceSize m_rebar_heap_size = 0;
 
         VkDevice m_device = VK_NULL_HANDLE;
 
@@ -189,6 +194,9 @@ namespace phx::rhi::vk
 
         // -- VK Resources ---
         PagedPool<phx::rhi::GpuBuffer, Buffer_VK> m_bufferPool;
+        VkBindlessDescriptorArray m_texture_descriptors;
+
+    	GpuTempMemoryAllocator m_temp_memory_allocator;
 
         // -- Frame Data ---
         std::array<FrameData, cMaxInflightFrames> m_frames;
