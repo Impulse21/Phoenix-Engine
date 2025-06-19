@@ -88,17 +88,23 @@ namespace phx::data
         bool IsGpuResourceDestination() const { return std::holds_alternative<GpuResourceDestinationInfo>(target); }
     };
 
+    struct StreamingOperation
+    {
+        StreamingSource source;
+        StreamingDestination destination;
+
+    };
+
     struct StreamingRequest
     {
         const char* debug_name = "";
         uint64_t request_id = 0;
 
-        StreamingSource source;
-        StreamingDestination destination;
+        std::vector<StreamingOperation> operations;
 
         std::function<void(StreamingResult const& result)> on_complete;
-    };
 
+    };
     enum class ErrorCode
     {
         Success = 0,

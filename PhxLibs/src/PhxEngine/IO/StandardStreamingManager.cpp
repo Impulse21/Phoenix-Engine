@@ -4,6 +4,7 @@
 
 #include <PhxEngine/JobSystem.h>
 #include <PhxCore/IO/MemoryRegion.h>
+#include <PhxCore/SystemTime.h>
 
 using namespace phx;
 using namespace phx::data;
@@ -15,18 +16,37 @@ struct StreamingRequestProcessor
 	void operator()(StreamingRequest& request, StandardStreamingManager* streaming_manager)
 	{
 		PHX_CORE_INFO(
-			"Processing StreamingRequest {0}:{1}\n\tSource offset: {2}, size: {3}\n\tDestination offset: {4}, size: {5}",
-			request.request_id, request.debug_name,
-			request.source.offset, request.source.size,
-			request.destination.offset, request.destination.size);
+			"Processing StreamingRequest {0}:{1} with {2} operations.",
+			request.request_id,
+			request.debug_name,
+			request.operations.size());
 
-		std::visit([&](auto&& active_source_data) {
-			ProcessSource(streaming_manager, active_source_data, request.source, request.destination, request);
-			}, request.source.data);
+		CpuTimer processing_time;
+
+		for (auto& operation : request.operations)
+		{
+			ErrorCode error_code = ProcessOperation(streaming_manager, operation);
+		}
+
+		CpuTimeStep elapsed_time = processing_time.Elapsed();
+		PHX_CORE_INFO(
+			"Processing StreamingRequest {0}:{1} with {2} operations. Took {3} (ms)",
+			request.request_id,
+			request.debug_name,
+			request.operations.size(),
+			elapsed_time.GetMilliseconds());
 	}
 
+	ErrorCode ProcessOperation(StandardStreamingManager* streaming_manager, StreamingOperation& operation)
+	{
+		ErrorCode retVal = ErrorCode::Success;
+		std::visit([&](auto&& active_source_data) {
+			ProcessSource(streaming_manager, active_source_data, operation.source, operation.destination);
+		}, operation.source.data);
+
+	}
 	template<typename TSource>
-	void ProcessSource(StandardStreamingManager* streaming_manager, TSource& source_data_active_type, StreamingSource& source_info, StreamingDestination& destination_info, StreamingRequest& request)
+	void ProcessSource(StandardStreamingManager* streaming_manager, TSource& source_data_active_type, StreamingSource& source_info, StreamingDestination& destination_info)
 	{
 		if constexpr (std::is_same_v<std::decay_t<TSource>, AsyncResourceDescriptor>)
 		{
