@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <vector>
 #include <functional>
 #include <cstdint>
 #include <variant> // For VFSResult or similar error handling
@@ -11,7 +10,7 @@
 namespace phx::data
 {
     // Forward declarations
-    struct StreamResult;
+    struct StreamingResult;
 
     // --- Enums ---
     enum class AsyncDataSourceType
@@ -67,10 +66,11 @@ namespace phx::data
         bool IsBufferDestination() const { return std::holds_alternative<rhi::GpuBufferHandle>(handle); }
     };
 
-    using CpuMemoryBuffer = std::shared_ptr<const char[]>;
+    using ReadableCpuMemoryBuffer = std::shared_ptr<const char[]>;
+    using WriteableCpuMemoryBuffer = std::shared_ptr<char[]>;
     struct StreamingSource
     {
-        std::variant<AsyncResourceDescriptor, CpuMemoryBuffer> data;
+        std::variant<AsyncResourceDescriptor, ReadableCpuMemoryBuffer> data;
         uint64_t offset = 0;
         uint64_t size = 0;
 
@@ -80,11 +80,11 @@ namespace phx::data
 
     struct StreamingDestination
     {
-        std::variant<CpuMemoryBuffer, GpuResourceDestinationInfo> target;
+        std::variant<WriteableCpuMemoryBuffer, GpuResourceDestinationInfo> target;
         uint64_t offset = 0;
         uint64_t size = 0;
 
-        bool IsCpuMemoryDestination() const { return std::holds_alternative<CpuMemoryBuffer>(target); }
+        bool IsCpuMemoryDestination() const { return std::holds_alternative<WriteableCpuMemoryBuffer>(target); }
         bool IsGpuResourceDestination() const { return std::holds_alternative<GpuResourceDestinationInfo>(target); }
     };
 
@@ -96,16 +96,19 @@ namespace phx::data
         StreamingSource source;
         StreamingDestination destination;
 
-        std::function<void(StreamResult const& result)> on_complete;
-        void* user_context = nullptr;            // Custom data to be passed to the callback
+        std::function<void(StreamingResult const& result)> on_complete;
     };
 
-    struct StreamResult 
+    enum class ErrorCode
     {
-        void* user_context = nullptr;
-        bool success = false;
-        std::vector<uint8_t> data_buffer;
-        uint64_t bytes_actually_read = 0;
-        std::string error_message;
+        Success = 0,
+        InvalidDestination,
+        Unknown,
+    };
+
+    struct StreamingResult 
+    {
+        uint64_t request_id = 0;
+        ErrorCode error_code = ErrorCode::Unknown;
     };
 }
