@@ -100,7 +100,7 @@ void GltfFileImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asse
 #endif
 }
 
-void phxed::GltfFileImporter::OnMainFileLoaded(phx::data::AsyncReadResult const& result, CgltfContext& ctx)
+void phxed::GltfFileImporter::OnMainFileLoaded(phx::data::StreamingResult const& result, CgltfContext& ctx)
 {
 #if true
 	(void)result;

@@ -75,13 +75,26 @@ void ObjImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asset> as
 
 	scene_blueprint->state = Resource::State::Loading;
 
+	std::shared_ptr<char[]> dest = std::make_shared<char[]>(resource_descriptor->length_of_resource);
 	data::StreamingRequest request = {
-		.resource_descriptor = resource_descriptor.GetValue(),
-		.bytes_to_read = resource_descriptor->length_of_resource,
+		.source = {
+			.data = resource_descriptor.GetValue(),
+			.size = resource_descriptor->length_of_resource,
+		},
+		.destination = {
+			.target = dest,
+			.size = resource_descriptor->length_of_resource,
+		}
 	};
 
 	// -- Main Load logic ---
-	request.callback = [=](data::AsyncReadResult const& result) mutable {
+	request.on_complete = [=](data::StreamingResult const& result) mutable {
+
+		if (result.error_code != ErrorCode::Success)
+		{
+			scene_blueprint->state = Asset::State::Error;
+			return;
+		}
 
 		fastObjCallbacks callbacks = {
 			.file_open = memory_open,
@@ -90,7 +103,7 @@ void ObjImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asset> as
 			.file_size = memory_size
 		};
 
-		SpanMutable file_data(const_cast<uint8_t*>(result.data_buffer.data()), result.bytes_actually_read);
+		SpanMutable file_data(reinterpret_cast<uint8_t*>(dest.get()), resource_descriptor->length_of_resource);
 		fastObjMesh* raw_obj = fast_obj_read_with_callbacks("", &callbacks, &file_data);
 		if (!raw_obj)
 		{
@@ -163,7 +176,7 @@ void ObjImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asset> as
 		scene_blueprint->state = Resource::State::Loaded;
 	};
 
-	IStreamingManager::Ptr->SubmitBatch({ std::move(request) });
+	IStreamingManager::Ptr->Submit(std::move(request));
 }
 
 Mesh phxed::ObjImporter::GenerateMeshIndices(Mesh const& mesh_src, std::vector<std::vector<uint32_t>>& geometry_remaps)

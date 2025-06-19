@@ -193,15 +193,12 @@ void phx::StandardStreamingManager::Shutdown()
 	m_fileHandleCache.clear();
 }
 
-void phx::StandardStreamingManager::SubmitBatch(SpanMutable<data::StreamingRequest> requests)
+void phx::StandardStreamingManager::Submit(StreamingRequest&& request)
 {
 	{
 		std::scoped_lock lock(m_queueMutex);
-		for (auto& request : requests)
-		{
-			request.request_id = data::RequestIdGenerator();
-			m_requestQueue.push_back(std::move(request));
-		}
+		request.request_id = data::RequestIdGenerator();
+		m_requestQueue.push_back(std::move(request));
 	}
 
 	m_cv.notify_one(); // Signal the streaming thread that new work is available

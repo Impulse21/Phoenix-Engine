@@ -15,7 +15,7 @@ namespace phx::data
 		virtual void Initialize() = 0;
 		virtual void Shutdown() = 0;
 
-		virtual void SubmitBatch(SpanMutable<StreamingRequest> requests) = 0;
+		virtual void Submit(StreamingRequest&& request) = 0;
 
 		virtual void Tick(float delta_time) = 0;
 	};

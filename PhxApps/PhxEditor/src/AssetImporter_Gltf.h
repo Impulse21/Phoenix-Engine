@@ -46,7 +46,7 @@ namespace phxed
 		void ImportAsync(phx::data::AssetManager* asset_manager, phx::RefCountPtr<phx::data::Asset> asset, std::string const& virtual_file_path) const;
 
 	private:
-		static void OnMainFileLoaded(phx::data::AsyncReadResult const& result, CgltfContext& context);
+		static void OnMainFileLoaded(phx::data::StreamingResult const& result, CgltfContext& context);
 		static void LoadNodeRec(CgltfContext& ctx, cgltf_node const& gltfNode, phx::SceneBlueprint& scene, phx::NodeHandle parent);
 
 		static void ProcessMesh(CgltfContext& context, phx::RefCountPtr<phx::renderer::MeshResource> resource);

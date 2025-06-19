@@ -20,7 +20,7 @@ namespace phx
 		void Initialize() override;
 		void Shutdown() override;
 
-		void SubmitBatch(SpanMutable<data::StreamingRequest> requests) override;
+		void Submit(data::StreamingRequest&& request) override;
 
 		void Tick(float delta_time) override;
 
