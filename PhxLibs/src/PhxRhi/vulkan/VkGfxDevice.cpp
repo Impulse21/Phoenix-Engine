@@ -35,6 +35,8 @@
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
+#include "PhxCore/Math.h"
+
 #ifdef PHX_PLATFORM_WINDOWS
 extern HINSTANCE g_hInstance;
 #endif
@@ -453,7 +455,7 @@ namespace phx::rhi::vk
         if (m_rebar_heap_size > 0)
             temp_allocator_size = m_rebar_heap_size;
 
-        m_temp_memory_allocator.Initialize(this, temp_allocator_size, 4_MiB);
+        m_temp_memory_allocator.Initialize(this,  math::GetPreviousPowerOfTwo(temp_allocator_size), 4_MiB);
 
         CreateSwapchain(desc); // Initial swapchain creation
         CreateFrameSyncObjects();
@@ -906,7 +908,7 @@ namespace phx::rhi::vk
     GpuBufferHandle VkGfxDeviceImpl::PlatformCreateBuffer(const GpuBufferDescriptor& desc, const void* initial_data)
     {
         PHX_PROFILE_SECTION("Vulkan::PlatformCreateBuffer");
-        if (m_vmaAllocator == VK_NULL_HANDLE)
+        if (m_vmaAllocator == VK_NULL_HANDLE) 
             return GpuBufferHandle();
 
         Handle<GpuBuffer> retVal = m_bufferPool.Allocate();
