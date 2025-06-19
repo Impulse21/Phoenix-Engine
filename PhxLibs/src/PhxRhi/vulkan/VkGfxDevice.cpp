@@ -906,7 +906,8 @@ namespace phx::rhi::vk
     GpuBufferHandle VkGfxDeviceImpl::PlatformCreateBuffer(const GpuBufferDescriptor& desc, const void* initial_data)
     {
         PHX_PROFILE_SECTION("Vulkan::PlatformCreateBuffer");
-        if (!m_isInitialized || m_vmaAllocator == VK_NULL_HANDLE) return GpuBufferHandle();
+        if (m_vmaAllocator == VK_NULL_HANDLE)
+            return GpuBufferHandle();
 
         Handle<GpuBuffer> retVal = m_bufferPool.Allocate();
         Buffer_VK& impl = *this->m_bufferPool.GetHot(retVal);
