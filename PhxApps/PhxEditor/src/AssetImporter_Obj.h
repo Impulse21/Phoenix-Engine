@@ -3,7 +3,7 @@
 #include <PhxCore/Span.h>
 
 #include <PhxData/IAssetImporter.h>
-#include <PhxData/IAsyncIOSystem.h>
+#include <PhxData/IStreamingManager.h>
 #include <PhxData/IVirtualFileSystem.h>
 
 #include <PhxCore/StringHash.h>

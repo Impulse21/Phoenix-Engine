@@ -15,7 +15,7 @@
 namespace phx::data
 {
 	class IVirtualFileSystem;
-	class IAsyncIOSystem;
+	class IStreamingManager;
 
 	template<typename T>
 	concept AssetType = std::is_base_of_v<phx::data::Asset, T>;
@@ -28,7 +28,7 @@ namespace phx::data
 		inline static AssetManager* Ptr = nullptr;
 
 	public:
-		void Initialize(IVirtualFileSystem* fs, IAsyncIOSystem* loader);
+		void Initialize(IVirtualFileSystem* fs, IStreamingManager* loader);
 		void Shutdown();
 
 		template<AssetType TAsset>
@@ -42,7 +42,7 @@ namespace phx::data
 
 	private:
 		IVirtualFileSystem* m_vfs;
-		IAsyncIOSystem* m_loader;
+		IStreamingManager* m_loader;
 		std::mutex m_cacheMutex;
 		std::unordered_map<StringHash, RefCountPtr<Asset>> m_cache;
 		std::unordered_map<StringHash, std::unique_ptr<IAssetImporter>> m_assetImporters;

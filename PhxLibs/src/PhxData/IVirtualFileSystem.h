@@ -2,7 +2,7 @@
 
 #include <string>
 #include <memory>
-#include <PhxData/AsyncIODefinitions.h>
+#include <PhxData/StreamingDefintions.h>
 #include <PhxCore/Platform/PlatformWrapper.h>
 
 

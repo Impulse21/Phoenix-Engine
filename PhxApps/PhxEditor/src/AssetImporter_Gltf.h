@@ -1,7 +1,7 @@
 #pragma once
 
 #include <PhxData/IAssetImporter.h>
-#include <PhxData/IAsyncIOSystem.h>
+#include <PhxData/IStreamingManager.h>
 #include <PhxData/IVirtualFileSystem.h>
 
 #include <PhxCore/StringHash.h>
@@ -35,7 +35,7 @@ namespace phxed
 
 		phx::Result<phx::data::AsyncResourceDescriptor> resource_descriptor;
 		phx::data::IVirtualFileSystem* vfs;
-		phx::data::IAsyncIOSystem* loader;
+		phx::data::IStreamingManager* loader;
 		std::vector<std::shared_ptr<phx::IBlob>> Blobs;
 	};
 

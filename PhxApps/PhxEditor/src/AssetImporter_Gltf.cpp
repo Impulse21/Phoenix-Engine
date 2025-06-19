@@ -7,7 +7,7 @@
 
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxData/IVirtualFileSystem.h>
-#include <PhxData/IAsyncIOSystem.h>
+#include <PhxData/IStreamingManager.h>
 #include <PhxCore/Math.h>
 
 #include <PhxRenderer/MeshResource.h>

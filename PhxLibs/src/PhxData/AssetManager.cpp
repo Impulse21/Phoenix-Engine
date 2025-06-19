@@ -6,12 +6,12 @@
 
 
 #include <PhxData/IVirtualFileSystem.h>
-#include <PhxData/IAsyncIOSystem.h>
+#include <PhxData/IStreamingManager.h>
 
 using namespace phx;
 using namespace phx::data;
 
-void AssetManager::Initialize(IVirtualFileSystem* vfs, IAsyncIOSystem* loader)
+void AssetManager::Initialize(IVirtualFileSystem* vfs, IStreamingManager* loader)
 {
 	m_vfs = vfs;
 	m_loader = loader;

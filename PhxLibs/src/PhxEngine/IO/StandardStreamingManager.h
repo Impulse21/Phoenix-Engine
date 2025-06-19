@@ -1,6 +1,6 @@
 #pragma once
 
-#include <PhxData/IAsyncIOSystem.h>
+#include <PhxData/IStreamingManager.h>
 #include <PhxData/IVirtualFileSystem.h>
 #include <PhxCore/Platform/PlatformWrapper.h>
 #include <deque>
@@ -9,11 +9,10 @@
 
 namespace phx
 {
-
-	class StandardAsyncIOSystem final : public data::IAsyncIOSystem
+	class StandardStreamingManager final : public data::IStreamingManager
 	{
 	public:
-		StandardAsyncIOSystem(data::IVirtualFileSystem* vfs)
+		StandardStreamingManager(data::IVirtualFileSystem* vfs)
 			: m_vfs(vfs)
 		{
 		}
@@ -21,13 +20,15 @@ namespace phx
 		void Initialize() override;
 		void Shutdown() override;
 
-		void QueueRead(data::AsyncReadRequest&& request) override;
+		void SubmitBatch(SpanMutable<data::StreamingRequest> requests) override;
 
 		void Tick(float delta_time) override;
 
+	public:
+		platform::PlatformFileHandle FindOrCreateHandle(std::string const& file_path);
+
 	private:
 		void StreamingThreadLoop();
-		void ProcessReadRequest(data::AsyncReadRequest& request);
 
 	private:
 		data::IVirtualFileSystem* m_vfs = nullptr;
@@ -35,7 +36,7 @@ namespace phx
 		std::condition_variable m_cv;
 		std::atomic<bool> m_shutdown;
 
-		std::deque<data::AsyncReadRequest> m_requestQueue;
+		std::deque<data::StreamingRequest> m_requestQueue;
 		std::mutex m_queueMutex;
 
 		std::unordered_map<std::string, platform::PlatformFileHandle> m_fileHandleCache;

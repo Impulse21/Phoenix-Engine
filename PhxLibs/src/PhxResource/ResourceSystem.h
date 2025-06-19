@@ -17,7 +17,7 @@ namespace phx
 	namespace data
 	{
 		class IVirtualFileSystem;
-		class IAsyncIOSystem;
+		class IStreamingManager;
 	}
 
 	class ResourceSystem
@@ -26,7 +26,7 @@ namespace phx
 		inline static ResourceSystem* Ptr = nullptr;
 
 	public:
-		void Initialize(data::IVirtualFileSystem* fs, data::IAsyncIOSystem* loader);
+		void Initialize(data::IVirtualFileSystem* fs, data::IStreamingManager* loader);
 		void Shutdown();
 
 		template<ResourceType TResource>
@@ -44,7 +44,7 @@ namespace phx
 
 	private:
 		data::IVirtualFileSystem* m_vfs;
-		data::IAsyncIOSystem* m_loader;
+		data::IStreamingManager* m_loader;
 		std::mutex m_cacheMutex;
 		std::unordered_map<Hash32, RefCountPtr<Resource>> m_cache;
 		std::unordered_map<Hash32, std::unique_ptr<ResourceFileHandler>> m_resourceHandlers;

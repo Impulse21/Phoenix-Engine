@@ -19,7 +19,7 @@
 #include <PhxEngine/JobSystem.h>
 #include <PhxEngine/EngineSync.h>
 #include <PhxEngine/Memory/FrameMemoryManager.h>
-#include <PhxEngine/IO/StandardAsyncIOSystem.h>
+#include <PhxEngine/IO/StandardStreamingManager.h>
 
 using namespace phx;
 
@@ -66,8 +66,8 @@ namespace phx
 
 			phx::data::IVirtualFileSystem::Ptr = new data::VirtualFileSystemImpl();
 
-			phx::data::IAsyncIOSystem::Ptr = new phx::StandardAsyncIOSystem(phx::data::IVirtualFileSystem::Ptr);
-			phx::data::IAsyncIOSystem::Ptr->Initialize();
+			phx::data::IStreamingManager::Ptr = new phx::StandardStreamingManager(phx::data::IVirtualFileSystem::Ptr);
+			phx::data::IStreamingManager::Ptr->Initialize();
 
 			phx::IApplication::Ptr = phx::CreateApplication();
 		}
@@ -90,10 +90,10 @@ namespace phx
 			app->SetWindowHandle(windowHandle);
 
 			phx::ResourceSystem::Ptr = new ResourceSystem;
-			phx::ResourceSystem::Ptr->Initialize(phx::data::IVirtualFileSystem::Ptr, phx::data::IAsyncIOSystem::Ptr);
+			phx::ResourceSystem::Ptr->Initialize(phx::data::IVirtualFileSystem::Ptr, phx::data::IStreamingManager::Ptr);
 
 			phx::data::AssetManager::Ptr = new phx::data::AssetManager;
-			phx::data::AssetManager::Ptr->Initialize(phx::data::IVirtualFileSystem::Ptr, phx::data::IAsyncIOSystem::Ptr);
+			phx::data::AssetManager::Ptr->Initialize(phx::data::IVirtualFileSystem::Ptr, phx::data::IStreamingManager::Ptr);
 
 #if false
 
@@ -160,8 +160,8 @@ namespace phx
 			phx::rhi::GfxDevice& gfxDevice = phx::rhi::GetDevice();
 			gfxDevice.Shutdown();
 
-			phx::data::IAsyncIOSystem::Ptr->Shutdown();
-			delete phx::data::IAsyncIOSystem::Ptr;
+			phx::data::IStreamingManager::Ptr->Shutdown();
+			delete phx::data::IStreamingManager::Ptr;
 
 			delete phx::data::IVirtualFileSystem::Ptr;
 			phx::data::IVirtualFileSystem::Ptr = nullptr;

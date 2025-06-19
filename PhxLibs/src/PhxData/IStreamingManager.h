@@ -1,0 +1,22 @@
+#pragma once
+
+#include <PhxData/StreamingDefintions.h>
+#include <PhxCore/Span.h>
+
+namespace phx::data
+{
+	class IStreamingManager
+	{
+	public:
+		inline static IStreamingManager* Ptr = nullptr;
+	public:
+		virtual ~IStreamingManager() = default;
+
+		virtual void Initialize() = 0;
+		virtual void Shutdown() = 0;
+
+		virtual void SubmitBatch(SpanMutable<StreamingRequest> requests) = 0;
+
+		virtual void Tick(float delta_time) = 0;
+	};
+}

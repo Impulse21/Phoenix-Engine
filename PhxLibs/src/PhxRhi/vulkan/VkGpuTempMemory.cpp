@@ -22,8 +22,8 @@ void GpuTempMemoryAllocator::Initialize(VkGfxDeviceImpl* device, uint32_t buffer
             .Size = buffer_size,
             .Usage = Usage::Dynamic,
             .BindingFlags = BindingFlags::ShaderResource,
+            .MiscFlags = ResourceMiscFlags::BufferRaw,
             .InitialState = ResourceStates::CopySource,
-            .MiscFlags = ResourceMiscFlags::BufferRaw
         });
 
     Buffer_VK* internal = device->GetResourceInternal(m_buffer);

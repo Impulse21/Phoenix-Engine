@@ -115,7 +115,7 @@ phx::Result<AsyncResourceDescriptor> VirtualFileSystemImpl::GetResourceDescripto
         }
 
         return AsyncResourceDescriptor{
-            .type = AsyncDataSourceType::MemoryBuffer,
+            .type = AsyncDataSourceType::Embedded,
             .os_path_or_pak_path = physical_path,
             .virtual_path = norm_virtual_path,
             .offset_in_pak = 0,

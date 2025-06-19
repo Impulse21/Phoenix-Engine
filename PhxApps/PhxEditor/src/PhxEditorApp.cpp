@@ -10,7 +10,7 @@
 #include <PhxWorld/WorldMetadata.def.h>
 
 #include <PhxData/IVirtualFileSystem.h>
-#include <PhxData/IAsyncIOSystem.h>
+#include <PhxData/IStreamingManager.h>
 #include <PhxData/AssetManager.h>
 
 #include <PhxResource/ResourceSystem.h>
@@ -163,7 +163,7 @@ void PhxEditor::OnUpdate_Threaded(float delta_time)
 		});
 #endif
 
-	phx::data::IAsyncIOSystem::Ptr->Tick(delta_time);
+	phx::data::IStreamingManager::Ptr->Tick(delta_time);
 	// Rotate cube in a random direction
 }
 

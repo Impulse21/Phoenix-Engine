@@ -10,7 +10,7 @@
 #include <PhxRenderer/TextureResource.h>
 
 #include <PhxData/IVirtualFileSystem.h>
-#include <PhxData/IAsyncIOSystem.h>
+#include <PhxData/IStreamingManager.h>
 #include <PhxData/AssetManager.h>
 
 #include <PhxResource/ResourceSystem.h>
@@ -75,7 +75,7 @@ void ObjImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asset> as
 
 	scene_blueprint->state = Resource::State::Loading;
 
-	data::AsyncReadRequest request = {
+	data::StreamingRequest request = {
 		.resource_descriptor = resource_descriptor.GetValue(),
 		.bytes_to_read = resource_descriptor->length_of_resource,
 	};
@@ -163,7 +163,7 @@ void ObjImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asset> as
 		scene_blueprint->state = Resource::State::Loaded;
 	};
 
-	IAsyncIOSystem::Ptr->QueueRead(std::move(request));
+	IStreamingManager::Ptr->SubmitBatch({ std::move(request) });
 }
 
 Mesh phxed::ObjImporter::GenerateMeshIndices(Mesh const& mesh_src, std::vector<std::vector<uint32_t>>& geometry_remaps)

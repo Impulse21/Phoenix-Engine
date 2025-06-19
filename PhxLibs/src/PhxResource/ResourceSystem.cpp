@@ -4,11 +4,11 @@
 #include "Resource.h"
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxData/IVirtualFileSystem.h>
-#include <PhxData/IAsyncIOSystem.h>
+#include <PhxData/IStreamingManager.h>
 
 using namespace phx;
 
-void phx::ResourceSystem::Initialize(data::IVirtualFileSystem* vfs, data::IAsyncIOSystem* loader)
+void phx::ResourceSystem::Initialize(data::IVirtualFileSystem* vfs, data::IStreamingManager* loader)
 {
 	m_vfs = vfs;
 	m_loader = loader;

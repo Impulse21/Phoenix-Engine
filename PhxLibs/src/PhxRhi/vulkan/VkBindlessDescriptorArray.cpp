@@ -12,7 +12,7 @@ void VkBindlessDescriptorArray::Initialize(VkGfxDeviceImpl* device, VkDescriptor
 
 	m_slot_allocator.Initialize(max_slots);
 
-	VkDevice device = m_device->GetLogicalDevice();
+	// VkDevice vk_logical_device = m_device->GetLogicalDevice();
     const VkPhysicalDeviceDescriptorBufferPropertiesEXT& props = device->GetDescriptorBufferProperties();
 
     switch (descriptor_type)
@@ -45,8 +45,8 @@ void VkBindlessDescriptorArray::Initialize(VkGfxDeviceImpl* device, VkDescriptor
     const uint32_t total_size = m_descriptor_size * max_slots;
 
     m_buffer = device->CreateBuffer({
-        .Usage = Usage::Dynamic,
         .Size = total_size,
+        .Usage = Usage::Dynamic,
         .MiscFlags = ResourceMiscFlags::DescriptorTable,
     });
 

@@ -14,7 +14,7 @@ namespace phx
 	namespace data
 	{
 		class IVirtualFileSystem;
-		class IAsyncIOSystem;
+		class IStreamingManager;
 	}
 
 	class ResourceSystem;
@@ -26,7 +26,7 @@ namespace phx
 		RefCountPtr<Resource> resource;
 		ResourceSystem* resource_system;
 		data::IVirtualFileSystem* vfs;
-		data::IAsyncIOSystem* loader;
+		data::IStreamingManager* loader;
 	};
 
 	class ResourceFileHandler
