@@ -23,11 +23,31 @@ struct StreamingRequestProcessor
 
 		CpuTimer processing_time;
 
+		bool successful = true;
+
+		// Begin Upload Context
 		for (auto& operation : request.operations)
 		{
 			ErrorCode error_code = ProcessOperation(streaming_manager, operation);
+			successful &= error_code == ErrorCode::Success;
 		}
 
+		// Submit Upload context if possible
+		
+		// Begin Upload Context
+
+		StreamingResult result = { 
+			.request_id = request.request_id,
+			.error_code = successful ? ErrorCode::Success : ErrorCode::Unknown };
+
+
+		JobSystem::SubmitJob(
+			[cb = std::move(request.on_complete), res = std::move(result)](JobContext const&) mutable
+			{
+				cb(res);
+			},
+			JobSystem::Priority::Low);
+		
 		CpuTimeStep elapsed_time = processing_time.Elapsed();
 		PHX_CORE_INFO(
 			"Processing StreamingRequest {0}:{1} with {2} operations. Took {3} (ms)",
@@ -39,22 +59,20 @@ struct StreamingRequestProcessor
 
 	ErrorCode ProcessOperation(StandardStreamingManager* streaming_manager, StreamingOperation& operation)
 	{
-		ErrorCode retVal = ErrorCode::Success;
+		ErrorCode ret_val = ErrorCode::Success;
 		std::visit([&](auto&& active_source_data) {
-			ProcessSource(streaming_manager, active_source_data, operation.source, operation.destination);
+			ret_val = ProcessSource(streaming_manager, active_source_data, operation.source, operation.destination);
 		}, operation.source.data);
 
+		return ret_val;
 	}
 	template<typename TSource>
-	void ProcessSource(StandardStreamingManager* streaming_manager, TSource& source_data_active_type, StreamingSource& source_info, StreamingDestination& destination_info)
+	ErrorCode ProcessSource(StandardStreamingManager* streaming_manager, TSource& source_data_active_type, StreamingSource& source_info, StreamingDestination& destination_info)
 	{
 		if constexpr (std::is_same_v<std::decay_t<TSource>, AsyncResourceDescriptor>)
 		{
 			if (!ProcessAsyncResourceDesc(source_data_active_type, streaming_manager, source_info))
-			{
-				DispatchOnComplete(request, { request.request_id, ErrorCode::Unknown });
-				return;
-			}
+				return ErrorCode::Unknown;
 		}
 		else if constexpr (std::is_same_v<std::decay_t<TSource>, ReadableCpuMemoryBuffer>)
 		{
@@ -65,10 +83,10 @@ struct StreamingRequestProcessor
 		else
 		{
 			PHX_CORE_ERROR("Unknown Source Type!");
-			DispatchOnComplete(request, { request.request_id, ErrorCode::Unknown });
-			return;
+			return ErrorCode::Unknown;
 		}
 
+		ErrorCode ret_val = ErrorCode::Success;
 		// Process Destination
 		std::visit([&](auto&& dest_active_type) {
 			if constexpr (std::is_same_v<std::decay_t<decltype(dest_active_type)>, WriteableCpuMemoryBuffer>)
@@ -77,18 +95,18 @@ struct StreamingRequestProcessor
 				WriteableCpuMemoryBuffer& dest_buffer = dest_active_type;
 				if (!dest_buffer || dest_buffer.get() == nullptr)
 				{
-					DispatchOnComplete(request, { request.request_id, ErrorCode::InvalidDestination });
+					ret_val = ErrorCode::InvalidDestination;
 					return;
 				}
 
 				if (effective_transfer_size > destination_info.size)
 				{
-					DispatchOnComplete(request, { request.request_id, ErrorCode::InvalidDestination });
+					ret_val = ErrorCode::InvalidDestination;
 					return;
 				}
 
 				std::memcpy(dest_buffer.get() + destination_info.offset, data_to_transfer, effective_transfer_size);
-				DispatchOnComplete(request, { request.request_id, ErrorCode::Success });
+				ret_val = ErrorCode::Success;
 			}
 			else if constexpr (std::is_same_v<std::decay_t<decltype(dest_active_type)>, GpuResourceDestinationInfo>)
 			{
@@ -104,20 +122,22 @@ struct StreamingRequestProcessor
 					}
 					else
 					{
-						request.on_complete({ request.request_id, ErrorCode::Unknown });
+						ret_val = ErrorCode::Unknown;
 						return;
 					}
 
-					DispatchOnComplete(request, { request.request_id, ErrorCode::Success });
+					ret_val = ErrorCode::Success;
 					},
 					gpu_dest_info.handle);
 			}
 			else
 			{
-				DispatchOnComplete(request, { request.request_id, ErrorCode::Unknown });
+				ret_val = ErrorCode::Unknown;
 			}
 			},
 			destination_info.target);
+
+		return ret_val;
 	}
 
 	bool ProcessAsyncResourceDesc(AsyncResourceDescriptor& descriptor, StandardStreamingManager* streaming_manager, StreamingSource& source_info)
@@ -164,16 +184,6 @@ struct StreamingRequestProcessor
 			}
 		}
 		return true;
-	}
-
-	void DispatchOnComplete(StreamingRequest& request, StreamingResult&& result)
-	{
-		JobSystem::SubmitJob(
-			[cb = std::move(request.on_complete), res = std::move(result)](JobContext const&) mutable
-			{
-				cb(res);
-			},
-			JobSystem::Priority::Low);
 	}
 
 	std::shared_ptr<char[]> intermediate_buffer = nullptr;

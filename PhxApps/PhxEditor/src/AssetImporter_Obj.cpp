@@ -77,13 +77,17 @@ void ObjImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asset> as
 
 	std::shared_ptr<char[]> dest = std::make_shared<char[]>(resource_descriptor->length_of_resource);
 	data::StreamingRequest request = {
-		.source = {
-			.data = resource_descriptor.GetValue(),
-			.size = resource_descriptor->length_of_resource,
-		},
-		.destination = {
-			.target = dest,
-			.size = resource_descriptor->length_of_resource,
+		.operations = {
+			{
+				.source = {
+					.data = resource_descriptor.GetValue(),
+					.size = resource_descriptor->length_of_resource,
+				},
+				.destination = {
+					.target = dest,
+					.size = resource_descriptor->length_of_resource,
+				}
+			}
 		}
 	};
 
