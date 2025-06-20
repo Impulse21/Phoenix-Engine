@@ -1,20 +1,19 @@
 #pragma once
 
+#include "VkCommon.h"
 #include <PhxRhi/BaseCommandCtx.h>
-#include "VkGfxDevice.h"
 
-#include <vulkan/vulkan.h>
 
 namespace phx::rhi::vk
 {
-	class VkCommandCtxImpl : public BaseCommandBuffer<VkCommandCtxImpl>
+	class VkGfxCommandCtx : public BaseGfxCommnadCtx<VkGfxCommandCtx>
 	{
 		// Friend BaseCommandBuffer to allow it to call Platform* methods
-		friend class BaseCommandBuffer<VkCommandCtxImpl>;
+		friend class BaseGfxCommnadCtx<VkGfxCommandCtx>;
 
 	public:
 
-		VkCommandCtxImpl() 
+		VkGfxCommandCtx()
 			: m_vkCommandBuffer(VK_NULL_HANDLE)
 		{}
 
@@ -36,4 +35,63 @@ namespace phx::rhi::vk
 		VkCommandBuffer m_vkCommandBuffer;
 	};
 
+	class VkComputeCommandCtx : public BaseComputeCommnadCtx<VkComputeCommandCtx>
+	{
+		// Friend BaseCommandBuffer to allow it to call Platform* methods
+		friend class BaseGfxCommnadCtx<VkComputeCommandCtx>;
+
+	public:
+
+		VkComputeCommandCtx()
+			: m_vkCommandBuffer(VK_NULL_HANDLE)
+		{
+		}
+
+		void PlatfomrInitialize(VkCommandBuffer vkCommandBuffer, VkGfxDeviceImpl* device, uint32_t swapchainImageIndex)
+		{
+			m_vkCommandBuffer = vkCommandBuffer;
+			m_swapchainImageIndex = swapchainImageIndex;
+			m_gfxDevice = device;
+		}
+
+		VkCommandBuffer GetVkCommandBuffer() const
+		{
+			return m_vkCommandBuffer;
+		}
+
+	private:
+		VkGfxDeviceImpl* m_gfxDevice;
+		uint32_t m_swapchainImageIndex;
+		VkCommandBuffer m_vkCommandBuffer;
+	};
+
+	class VkCopyCommandCtx : public BaseCopyCommnadCtx<VkCopyCommandCtx>
+	{
+		// Friend BaseCommandBuffer to allow it to call Platform* methods
+		friend class BaseCopyCommnadCtx<VkCopyCommandCtx>;
+
+	public:
+
+		VkCopyCommandCtx()
+			: m_vkCommandBuffer(VK_NULL_HANDLE)
+		{
+		}
+
+		void PlatfomrInitialize(VkCommandBuffer vkCommandBuffer, VkGfxDeviceImpl* device, uint32_t swapchainImageIndex)
+		{
+			m_vkCommandBuffer = vkCommandBuffer;
+			m_swapchainImageIndex = swapchainImageIndex;
+			m_gfxDevice = device;
+		}
+
+		VkCommandBuffer GetVkCommandBuffer() const
+		{
+			return m_vkCommandBuffer;
+		}
+
+	private:
+		VkGfxDeviceImpl* m_gfxDevice;
+		uint32_t m_swapchainImageIndex;
+		VkCommandBuffer m_vkCommandBuffer;
+	};
 }

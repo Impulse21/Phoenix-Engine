@@ -66,9 +66,6 @@ namespace phx
 
 			phx::data::IVirtualFileSystem::Ptr = new data::VirtualFileSystemImpl();
 
-			phx::data::IStreamingManager::Ptr = new phx::StandardStreamingManager(phx::data::IVirtualFileSystem::Ptr);
-			phx::data::IStreamingManager::Ptr->Initialize();
-
 			phx::IApplication::Ptr = phx::CreateApplication();
 		}
 
@@ -88,6 +85,9 @@ namespace phx
 				});
 
 			app->SetWindowHandle(windowHandle);
+
+			phx::data::IStreamingManager::Ptr = new phx::StandardStreamingManager(phx::data::IVirtualFileSystem::Ptr, &gfxDevice);
+			phx::data::IStreamingManager::Ptr->Initialize();
 
 			phx::ResourceSystem::Ptr = new ResourceSystem;
 			phx::ResourceSystem::Ptr->Initialize(phx::data::IVirtualFileSystem::Ptr, phx::data::IStreamingManager::Ptr);
@@ -157,11 +157,11 @@ namespace phx
 			delete phx::ResourceSystem::Ptr;
 			phx::ResourceSystem::Ptr = nullptr;
 
-			phx::rhi::GfxDevice& gfxDevice = phx::rhi::GetDevice();
-			gfxDevice.Shutdown();
-
 			phx::data::IStreamingManager::Ptr->Shutdown();
 			delete phx::data::IStreamingManager::Ptr;
+
+			phx::rhi::GfxDevice& gfxDevice = phx::rhi::GetDevice();
+			gfxDevice.Shutdown();
 
 			delete phx::data::IVirtualFileSystem::Ptr;
 			phx::data::IVirtualFileSystem::Ptr = nullptr;

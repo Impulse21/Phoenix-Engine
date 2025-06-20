@@ -6,6 +6,8 @@
 #include <PhxCore/IO/MemoryRegion.h>
 #include <PhxCore/SystemTime.h>
 
+#include <PhxRhi/GfxDevice.h>
+
 using namespace phx;
 using namespace phx::data;
 
@@ -23,23 +25,23 @@ struct StreamingRequestProcessor
 
 		CpuTimer processing_time;
 
-		bool successful = true;
+		StreamingResult result = {
+			.request_id = request.request_id,
+			.status_array = {0}
+		};
 
-		// Begin Upload Context
-		for (auto& operation : request.operations)
+		// TODO: Dependecy Injection
+		rhi::GfxDevice* gfx_device = streaming_manager->GetGfxDevice();
+
+		rhi::CopyCommandCtx* copy_ctx = gfx_device->BeginCopyContext();
+		for (size_t i = 0; i < request.operations.size(); i++)
 		{
-			ErrorCode error_code = ProcessOperation(streaming_manager, operation);
-			successful &= error_code == ErrorCode::Success;
+			ErrorCode error_code = ProcessOperation(streaming_manager, copy_ctx, request.operations[i]);
+			if (error_code != ErrorCode::Success)
+				result.status_array.set(i);
 		}
 
-		// Submit Upload context if possible
-		
-		// Begin Upload Context
-
-		StreamingResult result = { 
-			.request_id = request.request_id,
-			.error_code = successful ? ErrorCode::Success : ErrorCode::Unknown };
-
+		gfx_device->SubmitCopyAndWait(copy_ctx);
 
 		JobSystem::SubmitJob(
 			[cb = std::move(request.on_complete), res = std::move(result)](JobContext const&) mutable
@@ -57,17 +59,18 @@ struct StreamingRequestProcessor
 			elapsed_time.GetMilliseconds());
 	}
 
-	ErrorCode ProcessOperation(StandardStreamingManager* streaming_manager, StreamingOperation& operation)
+	ErrorCode ProcessOperation(StandardStreamingManager* streaming_manager, rhi::CopyCommandCtx* copy_ctx, StreamingOperation& operation)
 	{
 		ErrorCode ret_val = ErrorCode::Success;
 		std::visit([&](auto&& active_source_data) {
-			ret_val = ProcessSource(streaming_manager, active_source_data, operation.source, operation.destination);
+			ret_val = ProcessSource(streaming_manager, copy_ctx, active_source_data, operation.source, operation.destination);
 		}, operation.source.data);
 
 		return ret_val;
 	}
+
 	template<typename TSource>
-	ErrorCode ProcessSource(StandardStreamingManager* streaming_manager, TSource& source_data_active_type, StreamingSource& source_info, StreamingDestination& destination_info)
+	ErrorCode ProcessSource(StandardStreamingManager* streaming_manager, rhi::CopyCommandCtx* copy_ctx, TSource& source_data_active_type, StreamingSource& source_info, StreamingDestination& destination_info)
 	{
 		if constexpr (std::is_same_v<std::decay_t<TSource>, AsyncResourceDescriptor>)
 		{

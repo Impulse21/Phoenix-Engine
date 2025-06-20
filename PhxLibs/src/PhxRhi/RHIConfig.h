@@ -9,7 +9,9 @@
     {
         // This is the type your engine code will refer to as phx::rhi::CommandBuffer
         using GfxDevice = vk::VkGfxDeviceImpl;
-        using CommandCtx = vk::VkCommandCtxImpl;
+        using GfxCommandCtx = vk::VkGfxCommandCtx;
+        using ComputeCommandCtx = vk::VkComputeCommandCtx;
+        using CopyCommandCtx = vk::VkCopyCommandCtx;
     }
 
 #elif defined(PHX_RHI_D3D12)

@@ -3,7 +3,9 @@
 #include <string>
 #include <functional>
 #include <cstdint>
-#include <variant> // For VFSResult or similar error handling
+#include <variant> 
+#include <bitset>
+
 #include <PhxCore/Base.h>
 #include <PhxRhi/RHICommon.h>
 
@@ -115,6 +117,7 @@ namespace phx::data
     struct StreamingResult 
     {
         uint64_t request_id = 0;
+        std::bitset<8> status_array;
         ErrorCode error_code = ErrorCode::Unknown;
     };
 }

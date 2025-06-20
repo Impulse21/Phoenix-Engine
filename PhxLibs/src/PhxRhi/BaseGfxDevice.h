@@ -11,12 +11,13 @@ namespace phx
 }
 namespace phx::rhi
 {
-    class CommandBuffer;
+    class GfxCommandCtx;
+    class ComputeCommandCtx;
+    class CopyCommandCtx;
 }
 
 namespace phx::rhi
 {
-
     struct DeferredItem
     {
         uint64_t frame;
@@ -59,6 +60,16 @@ namespace phx::rhi
         void WaitForIdle()
         {
             static_cast<TDerivedDevice*>(this)->PlatformWaitForIdle();
+        }
+
+        CopyCommandCtx* BeginCopyContext()
+        {
+            return static_cast<TDerivedDevice>(this)->PlatformBeginCopyCtx();
+        }
+
+        void SubmitCopyAndWait(CopyCommandCtx* ctx)
+        {
+            return static_cast<TDerivedDevice>(this)->PlatformSubmitCopyAndWait();
         }
 
         GpuBufferHandle CreateBuffer(const GpuBufferDescriptor& desc, const void* initialData = nullptr)

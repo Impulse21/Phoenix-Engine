@@ -557,6 +557,13 @@ namespace phx::rhi
         float GetHeight() const { return MaxY - MinY; }
     };
 
+    struct SubresourceData
+    {
+        const void* data_ptr = nullptr;	// pointer to the beginning of the subresource data (pointer to beginning of resource + subresource offset)
+        uint32_t row_pitch = 0;			// bytes between two rows of a texture (2D and 3D textures)
+        uint32_t slice_pitch = 0;		// bytes between two depth slices of a texture (3D textures only)
+    };
+
     struct Rect
     {
         int MinX, MaxX;
