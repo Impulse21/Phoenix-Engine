@@ -11,7 +11,6 @@
 
 namespace phx::rhi::vk
 {
-    class VkCommandCtxImpl;
 }
 
 namespace phx::rhi::vk
@@ -39,10 +38,14 @@ namespace phx::rhi::vk
         bool PlatformInitialize(GfxDeviceDescriptor const& desc);
         void PlatformShutdown();
 
-        phx::rhi::vk::VkCommandCtxImpl* PlatformBeginCommandBuffer(phx::IAllocator* frame_arena);
+        VkGfxCommandCtx* PlatformBeginFrameGfxContext(phx::IAllocator* frame_arena);
+
+        VkCopyCommandCtx* PlatformBeginAsyncCopyContext();
+
+        void PlatformSubmitAsyncCopyContexts(Span<VkCopyCommandCtx> copyCtx);
 
         void PlatformPresent();
-        void PlatformSubmitFrame(VkCommandCtxImpl* cmdCtx); // Added for clarity
+        void PlatformSubmitFrame(); // Added for clarity
 
         void PlatformWaitForIdle();
 

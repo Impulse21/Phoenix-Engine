@@ -33,7 +33,7 @@ struct StreamingRequestProcessor
 		// TODO: Dependecy Injection
 		rhi::GfxDevice* gfx_device = streaming_manager->GetGfxDevice();
 
-		rhi::CopyCommandCtx* copy_ctx = gfx_device->BeginCopyContext();
+		rhi::CopyCommandCtx* copy_ctx = gfx_device->PlatformBeginAsyncCopyContext();
 		for (size_t i = 0; i < request.operations.size(); i++)
 		{
 			ErrorCode error_code = ProcessOperation(streaming_manager, copy_ctx, request.operations[i]);
@@ -41,7 +41,7 @@ struct StreamingRequestProcessor
 				result.status_array.set(i);
 		}
 
-		gfx_device->SubmitCopyAndWait(copy_ctx);
+		gfx_device->SubmitAsyncCopyContexts(copy_ctx);
 
 		JobSystem::SubmitJob(
 			[cb = std::move(request.on_complete), res = std::move(result)](JobContext const&) mutable

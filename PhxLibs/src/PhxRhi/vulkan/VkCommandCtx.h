@@ -3,9 +3,10 @@
 #include "VkCommon.h"
 #include <PhxRhi/BaseCommandCtx.h>
 
-
 namespace phx::rhi::vk
 {
+	class VkGfxDeviceImpl;
+
 	class VkGfxCommandCtx : public BaseGfxCommnadCtx<VkGfxCommandCtx>
 	{
 		// Friend BaseCommandBuffer to allow it to call Platform* methods

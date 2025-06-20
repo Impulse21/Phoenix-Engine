@@ -1,19 +1,14 @@
 #pragma once
 
-#include <cstdlib>
 #include <deque>
 
 #include <PhxRhi/RHICommon.h> 
 
+#include "RHIConfig.h"
+
 namespace phx
 {
     class IAllocator;
-}
-namespace phx::rhi
-{
-    class GfxCommandCtx;
-    class ComputeCommandCtx;
-    class CopyCommandCtx;
 }
 
 namespace phx::rhi
@@ -47,9 +42,19 @@ namespace phx::rhi
             static_cast<TDerivedDevice*>(this)->PlatformShutdown();
         }
 
-        CommandBuffer* BeginCommandBuffer(phx::IAllocator* frame_arena)
+        GfxCommandCtx* BeginFrameGfxContext(phx::IAllocator* frame_arena)
         {
-            return static_cast<TDerivedDevice*>(this)->PlatformBeginCommandBuffer(frame_arena);
+            return static_cast<TDerivedDevice*>(this)->PlatformBeginFrameGfxContext(frame_arena);
+        }
+
+        CopyCommandCtx* BeginAsyncCopyContext()
+        {
+            return static_cast<TDerivedDevice*>(this)->PlatformBeginAsyncCopyContext();
+        }
+
+        void SubmitAsyncCopyContexts(Span<CopyCommandCtx> contexts)
+        {
+            return static_cast<TDerivedDevice*>(this)->PlatformSubmitAsyncCopyContexts(contexts);
         }
 
         void Present()

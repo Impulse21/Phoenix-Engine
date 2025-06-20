@@ -768,7 +768,7 @@ namespace phx::rhi::vk
         m_texture_descriptors.Shutdown();
     }
 
-    phx::rhi::vk::VkCommandCtxImpl* VkGfxDeviceImpl::PlatformBeginCommandBuffer(phx::IAllocator* frame_arena)
+    VkGfxCommandCtx* VkGfxDeviceImpl::PlatformBeginFrameGfxContext(phx::IAllocator* frame_arena)
     {
         PHX_PROFILE_SECTION("Vulkan::PlatformBeginCommandBuffer");
         if (!m_isInitialized || m_graphicsCommandPool == VK_NULL_HANDLE)
@@ -825,14 +825,25 @@ namespace phx::rhi::vk
 
         PHX_CORE_ASSERT(vkBeginCommandBuffer(vkCmdBuffer, &beginInfo));
 
-        VkCommandCtxImpl* cmdCtx = frame_arena->NewObject<VkCommandCtxImpl>();
-        cmdCtx->PlatfomrInitialize(vkCmdBuffer, this, m_swapchainImageIndex);
+        VkGfxCommandCtx* cmdCtx = frame_arena->NewObject<VkGfxCommandCtx>();
+        //cmdCtx->PlatfomrInitialize(vkCmdBuffer, this, m_swapchainImageIndex);
 
         return cmdCtx;
     }
 
-    void VkGfxDeviceImpl::PlatformSubmitFrame(VkCommandCtxImpl* cmdCtx)
+    CopyCommandCtx* VkGfxDeviceImpl::PlatformBeginAsyncCopyContext()
     {
+        return nullptr;
+    }
+
+    void VkGfxDeviceImpl::PlatformSubmitAsyncCopyContexts(Span<VkCopyCommandCtx> copyCtx)
+    {
+        (void)copyCtx;
+    }
+
+    void VkGfxDeviceImpl::PlatformSubmitFrame()
+    {
+#if false
         PHX_PROFILE_SECTION("Vulkan::PlatformSubmitFrame");
         if (!cmdCtx|| !m_isInitialized) 
             return;
@@ -866,6 +877,7 @@ namespace phx::rhi::vk
         // For a one-shot command buffer like this, if not pooled:
         // vkFreeCommandBuffers(m_device, m_graphicsCommandPool, 1, &vkCmdBuffer);
         // delete cmdCtx; // If newed directly in PlatformBeginCommandBuffer and not pooled
+#endif
     }
 
 
