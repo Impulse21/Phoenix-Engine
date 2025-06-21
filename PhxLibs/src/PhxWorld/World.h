@@ -27,7 +27,7 @@ namespace phx
 		};
 
 		// TODO: Abstract the scene blueprint when we do baked builds
-		void InstantiateFrom(SceneBlueprint const& scene_reader);
+		void InstantiateFrom(SceneBlueprint& scene_reader);
 
 		Entity CreateEntity(std::string const& name = std::string());
 		Entity CreateEntity(UUID uuid, std::string const& name = std::string());

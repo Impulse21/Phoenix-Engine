@@ -65,14 +65,6 @@ void phx::gfx::DefaultRenderSystem::PreRender(World& world)
 		if (entity.HasComponent<RenderMeshComponent>())
 			continue;
 
-		auto& meshComp = entity.GetComponent<MeshComponent>();
-		PHX_CORE_INFO("Mesh Component was added {0}", meshComp.Mesh.c_str());
-		RefCountPtr<Resource> resource = nullptr; //ResourceManger::Get(meshComp.Mesh.c_str());
-		if (resource)
-		{
-			auto& renderComponent = entity.AddComponent<RenderMeshComponent>();
-			renderComponent.MeshResource = resource;
-		}
 	}
 
 	m_observer.clear();
@@ -120,29 +112,28 @@ void phx::gfx::DefaultRenderSystem::CacheRenderViews(World& world)
 
 	m_perFrameCache.Views = phx_new_frame(View);
 
-	auto camerasView = world.GetAllEntitiesWith<phx::NameComponent, phx::CameraComponent>();
+	auto camerasView = world.GetAllEntitiesWith<phx::name_component, phx::camera_component>();
 	for (auto e : camerasView)
 	{
-		auto [nameComp, cameraComp] = camerasView.get<phx::NameComponent, phx::CameraComponent>(e);
+		auto [name_comp, camera_comp] = camerasView.get<phx::name_component, phx::camera_component>(e);
 
-		if (cameraComp.Active)
+		if (camera_comp.Active)
 		{
-			const float nearZ = cameraComp.ZNear;
-			const float farZ = cameraComp.ZFar;
+			const float nearZ = camera_comp.ZNear;
+			const float farZ = camera_comp.ZFar;
 
-			auto viewMatrix = DirectX::XMMatrixLookToRH(
-				DirectX::XMLoadFloat3(&cameraComp.Eye),
-				DirectX::XMLoadFloat3(&cameraComp.Forward),
-				DirectX::XMLoadFloat3(&cameraComp.Up));
-			// auto viewMatrix = this->ConstructViewMatrixLH();
+			auto view_matrix = hlslpp::float4x4::look_at(
+				camera_comp.Eye,
+				camera_comp.Forward,
+				camera_comp.Up);
 
 			auto* view = new (m_perFrameCache.Views) View();
 			
 			DirectX::XMStoreFloat4x4(&view->ViewMatrix, viewMatrix);
 			DirectX::XMStoreFloat4x4(&view->InvViewMatrix, DirectX::XMMatrixInverse(nullptr, viewMatrix));
 
-			float aspectRatio = cameraComp.Width / cameraComp.Height;
-			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(cameraComp.FoV, aspectRatio, nearZ, farZ);
+			float aspectRatio = camera_comp.Width / camera_comp.Height;
+			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(camera_comp.FoV, aspectRatio, nearZ, farZ);
 			DirectX::XMStoreFloat4x4(&view->ProjectionMatrix, projectionMatrix);
 			DirectX::XMStoreFloat4x4(&view->InvProjectionMatrix, DirectX::XMMatrixInverse(nullptr, projectionMatrix));
 

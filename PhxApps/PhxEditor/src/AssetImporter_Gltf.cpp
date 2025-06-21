@@ -167,6 +167,6 @@ void phxed::GltfFileImporter::OnMainFileLoaded(phx::data::StreamingResult const&
 #endif
 }
 
-void phxed::GltfFileImporter::LoadNodeRec(CgltfContext& /*ctx*/, cgltf_node const& /*gltfNode*/, SceneBlueprint& /*scene*/, NodeHandle /*parent*/)
+void phxed::GltfFileImporter::LoadNodeRec(CgltfContext& /*ctx*/, cgltf_node const& /*gltfNode*/, SceneBlueprint& /*scene*/, SceneNodeHandle /*parent*/)
 {
 }

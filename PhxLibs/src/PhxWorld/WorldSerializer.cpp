@@ -139,11 +139,6 @@ namespace
 		}
         if (entity.HasComponent<MeshComponent>())
         {
-            auto& comp = entity.GetComponent<MeshComponent>();
-
-            componentsJson["MeshComponent"] = {
-                {"Mesh", comp.Mesh},
-            };
         }
 #endif
 
@@ -204,12 +199,13 @@ bool phx::WorldSerializer::Load(phx::IFileSystem* /*fs*/, const char* /*filename
 		json componentsJson = entityJson["components"];
 		if (componentsJson.contains("MeshComponent"))
 		{
+#if false
 			nlohmann::json compJson = componentsJson["MeshComponent"];
 			MeshComponent comp = {
 				.Mesh = compJson["Mesh"].get<std::string>()
 			};
-
 			entity.AddComponent<MeshComponent>(comp);
+#endif
 		}
 
 		if (componentsJson.contains("TransformComponent"))

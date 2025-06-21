@@ -279,7 +279,8 @@ workspace "PhxEngine"
 			'NOMINMAX', 
 			'WIN32_LEAN_AND_MEAN', 
 			'VC_EXTRALEAN',
-			'_CRT_SECURE_NO_WARNINGS'
+			'_CRT_SECURE_NO_WARNINGS',
+            'HLSLPP_FEATURE_TRANSFORM'
 		}		
 	filter {}
     

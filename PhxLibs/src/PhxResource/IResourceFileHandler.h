@@ -35,6 +35,7 @@ namespace phx
 		virtual ~ResourceFileHandler() = default;
 
 		virtual StringHash GetResourceTypeHash() const = 0;
+		virtual RefCountPtr<Resource> CreatePlaceholder() = 0;
 		virtual void LoadAsync(ResourceSystem* resource_system, RefCountPtr<Resource> asset, std::string const& virtual_file_path) const = 0;
 
 	};

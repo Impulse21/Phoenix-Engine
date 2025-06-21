@@ -119,6 +119,7 @@ namespace phx::math
 		x |= x >> 32u;
 		return x - (x >> 1);
 	}
+
 #if false
 	inline uint32_t PackColour(DirectX::XMFLOAT4 const& colour)
 	{

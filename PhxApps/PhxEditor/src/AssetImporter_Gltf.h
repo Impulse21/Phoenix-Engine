@@ -47,7 +47,7 @@ namespace phxed
 
 	private:
 		static void OnMainFileLoaded(phx::data::StreamingResult const& result, CgltfContext& context);
-		static void LoadNodeRec(CgltfContext& ctx, cgltf_node const& gltfNode, phx::SceneBlueprint& scene, phx::NodeHandle parent);
+		static void LoadNodeRec(CgltfContext& ctx, cgltf_node const& gltfNode, phx::SceneBlueprint& scene, phx::SceneNodeHandle parent);
 
 		static void ProcessMesh(CgltfContext& context, phx::RefCountPtr<phx::renderer::MeshResource> resource);
 

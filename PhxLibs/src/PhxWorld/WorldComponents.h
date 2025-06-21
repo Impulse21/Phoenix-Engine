@@ -11,6 +11,7 @@
 #include <string>
 
 #include <DirectXMath.h>
+#include <hlsl++.h>
 
 
 namespace phx
@@ -42,13 +43,13 @@ namespace phx
 		float ZFar = 5000.0f;
 		float FoV = 1.0f; // Radians
 
-		DirectX::XMFLOAT3 Eye = { 0.0f, 0.0f, 0.0f };
+		hlslpp::float3 Eye = { 0.0f, 0.0f, 0.0f };
 #ifdef LH
 		DirectX::XMFLOAT3 Forward = { 0.0f, 0.0f, 1.0f };
 #else
-		DirectX::XMFLOAT3 Forward = { 0.0f, 0.0f, -1.0f };
+		hlslpp::float3 Forward = { 0.0f, 0.0f, -1.0f };
 #endif
-		DirectX::XMFLOAT3 Up = { 0.0f, 1.0f, 0.0f };
+		hlslpp::float3 Up = { 0.0f, 1.0f, 0.0f };
 
 		bool Active : 1 = false;
 	};

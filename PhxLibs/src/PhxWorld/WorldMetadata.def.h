@@ -4,6 +4,8 @@
 #include <memory>
 #include <string>
 
+#include "Entity.h"
+
 #include <PhxData/Asset.h>
 
 #include <hlsl++.h>
@@ -91,6 +93,7 @@ namespace phx
         SceneNodeHandle parent_index = kInvalidSceneHandle;
         std::vector<SceneNodeHandle> children_indices;
 
+        entt::entity runtime_entity;
         template<typename T>
         T& EmplaceComponent()
         {
@@ -133,7 +136,17 @@ namespace phx
 
         const SceneNode* GetNode(SceneNodeHandle index) const
         {
-            if (index >= 0 && index < static_cast<int>(nodes.size()))
+            if (index >= 0 && index < nodes.size())
+            {
+                return &nodes[index];
+            }
+
+            return nullptr;
+        }
+
+        SceneNode* GetNode(SceneNodeHandle index)
+        {
+            if (index >= 0 && index < nodes.size())
             {
                 return &nodes[index];
             }

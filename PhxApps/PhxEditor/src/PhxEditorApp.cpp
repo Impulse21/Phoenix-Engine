@@ -116,6 +116,17 @@ void PhxEditor::Startup()
 
 	m_scene_blueprint = asset_manager->Get<phx::SceneBlueprint>(kDefault3DModel);
 
+	phx::Entity camera_entity = m_world.CreateEntity("Debug_Camera");
+	auto& debug_camera_comp = camera_entity.AddComponent<phx::CameraComponent>();
+	
+	uint32_t width, height;
+	GetDefaultWindowSize(width, height);
+	debug_camera_comp.Width = width;
+	debug_camera_comp.Height = height;
+	debug_camera_comp.Eye = { 0.0f, 5.0f, 10.0f };
+	debug_camera_comp.Active = true;
+
+
 #if false
 	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
 
@@ -148,23 +159,18 @@ void PhxEditor::OnPreRender()
 {
 	PHX_PROFILE;
 
-	if (m_)
-	//phx::gfx::IRenderSystem::Ptr->PreRender(m_world);
+	phx::gfx::IRenderSystem::Ptr->PreRender(m_world);
 }
 
 void PhxEditor::OnUpdate_Threaded(float delta_time)
 {
 	PHX_PROFILE;
 
-#if false
-	auto view = m_world.GetAllEntitiesWith<phx::TransformComponent, phx::MeshComponent>();
-
-	view.each([&](entt::entity, phx::TransformComponent& transformComp, phx::MeshComponent&) {
-			TEST_RotateEntity(deltaTime, transformComp);
-		});
-#endif
-
 	phx::data::IStreamingManager::Ptr->Tick(delta_time);
+	if (m_scene_blueprint->state == phx::data::Asset::State::Loaded)
+	{
+		m_world.InstantiateFrom(*m_scene_blueprint);
+	}
 	// Rotate cube in a random direction
 }
 
