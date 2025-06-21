@@ -14,7 +14,7 @@
 
 #include "D3D12MemAlloc.h"
 
-namespace phx::rhi::d3d12
+namespace phx::RHI::d3d12
 {
 	// Helper class for COM exceptions
 	class com_exception : public std::exception

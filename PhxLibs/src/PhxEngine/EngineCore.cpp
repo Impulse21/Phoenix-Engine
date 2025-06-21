@@ -14,7 +14,7 @@
 #include <PhxData/VirtualFileSystemImpl.h>
 #include <PhxData/AssetManager.h>
 
-#include <PhxRhi/GfxDevice.h>
+#include <PhxRhi/PhxRhi.h>
 
 #include <PhxEngine/JobSystem.h>
 #include <PhxEngine/EngineSync.h>
@@ -42,7 +42,7 @@ namespace
 	void OnRender_Threaded(IApplication* app)
 	{
 		app->OnRender_Threaded();
-		//phx::rhi::Present();
+		//phx::RHI::Present();
 	}
 }
 
@@ -75,8 +75,7 @@ namespace phx
 			uint32_t w, h;
 			app->GetDefaultWindowSize(w, h);
 
-			phx::rhi::GfxDevice& gfxDevice = phx::rhi::GetDevice();
-			gfxDevice.Initialize({
+			RHI::Initialize({
 				.SwapChainDesc = {.Width = w, .Height = h },
 				.WindowsHandle = windowHandle,
 				.MaxNumTextures = 1000,
@@ -86,7 +85,7 @@ namespace phx
 
 			app->SetWindowHandle(windowHandle);
 
-			phx::data::IStreamingManager::Ptr = new phx::StandardStreamingManager(phx::data::IVirtualFileSystem::Ptr, &gfxDevice);
+			phx::data::IStreamingManager::Ptr = new phx::StandardStreamingManager(phx::data::IVirtualFileSystem::Ptr);
 			phx::data::IStreamingManager::Ptr->Initialize();
 
 			phx::ResourceSystem::Ptr = new ResourceSystem;
@@ -160,11 +159,10 @@ namespace phx
 			phx::data::IStreamingManager::Ptr->Shutdown();
 			delete phx::data::IStreamingManager::Ptr;
 
-			phx::rhi::GfxDevice& gfxDevice = phx::rhi::GetDevice();
-			gfxDevice.Shutdown();
-
 			delete phx::data::IVirtualFileSystem::Ptr;
 			phx::data::IVirtualFileSystem::Ptr = nullptr;
+
+			RHI::Shutdown();
 
 			JobSystem::Shutdown();
 

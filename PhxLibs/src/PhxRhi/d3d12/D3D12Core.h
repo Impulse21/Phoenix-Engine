@@ -19,7 +19,7 @@ namespace phx::rhi
 	struct RhiCreateInfo;
 }
 
-namespace phx::rhi::d3d12
+namespace phx::RHI::d3d12
 {
 	// -- Forward Declares ---
 	struct D3D12CommandQueue;
@@ -39,7 +39,7 @@ namespace phx::rhi::d3d12
 
 	extern bool g_debugLayersEnabled;
 	extern bool g_isUnderGfxDebugger;
-	extern rhi::DeviceCapability g_capabilities;
+	extern RHI::DeviceCapability g_capabilities;
 	extern D3D12_RESOURCE_HEAP_TIER g_resourceHeapTeir;
 
 	// -- Command queues ---
@@ -61,12 +61,12 @@ namespace phx::rhi::d3d12
 	extern D3D12SwapChain g_swapChain;
 
 	// -- Resource pools --- TODO: Move to a ResourceManager class that wraps these pool
-	extern phx::PagedPool<rhi::PipelineState, d3d12::PipelineState> g_pipelineStatePool;
-	extern phx::PagedPool<rhi::Texture, d3d12::Texture> g_texturePool;
-	extern phx::PagedPool<rhi::GpuBuffer, d3d12::GpuBuffer> g_bufferPool;
+	extern phx::PagedPool<RHI::PipelineState, d3d12::PipelineState> g_pipelineStatePool;
+	extern phx::PagedPool<RHI::Texture, d3d12::Texture> g_texturePool;
+	extern phx::PagedPool<RHI::GpuBuffer, d3d12::GpuBuffer> g_bufferPool;
 
 
-	void InitializeResources(rhi::RhiCreateInfo const& createInfo);
+	void InitializeResources(RHI::RhiCreateInfo const& createInfo);
 	void FinalizeResources();
 
 	struct DeferredItem

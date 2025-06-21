@@ -1,24 +1,166 @@
 #pragma once
 
-#include <PhxRhi/BaseGfxDevice.h>
-
 #include <PhxRhi/RHICommon.h>
+
+#include <deque>
 
 #ifdef PHX_PLATFORM_WINDOWS
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
 #include <volk.h>
-//#include <vulkan/vulkan.h>
 
 #include <VkBootstrap.h>
 #include <vk_mem_alloc.h>
 
-#define vulkan_check(call) [&]() { VkResult res = call; PHX_CORE_ASSERT(res >= VK_SUCCESS); return res; }()
-namespace phx::rhi::vk
-{
+#include <PhxCore/Pool.h>
 
-	static constexpr uint64_t timeout_value = 2000000000ull; // 2 seconds
+#include "VkCopyCtxManager.h"
+#include "VkBindlessDescriptorArray.h"
+#include "VkGpuTempMemory.h"
+
+#define vulkan_check(call) [&]() { VkResult res = call; PHX_CORE_ASSERT(res >= VK_SUCCESS); return res; }()
+#define RHI_DEFINE_ALIGNED(name, alignemnt) alignas(alignemnt) name
+
+namespace phx::RHI
+{
+	constexpr size_t kMaxNumBuffers = 4096;
+	constexpr size_t kMaxNumTextures = 4096;
+
+	constexpr size_t kCacheLineSize = 64ull;
+	constexpr size_t cMaxInflightFrames = 2;
+	constexpr uint64_t kTimeoutValue = 2000000000ull; // 2 seconds
+
+	struct RHI_DEFINE_ALIGNED(Buffer_VK, kCacheLineSize)
+	{
+		// -- 8-byte members ---
+		VkBuffer		vk_buffer;
+		VmaAllocation	allocation;
+
+		VkDeviceAddress gpu_address = 0;
+		void* mapped_data = nullptr;
+		VkBufferView	buffer_view = VK_NULL_HANDLE;
+
+		// -- 4-byte members ---
+		uint32_t        mapped_data_size = 0;
+		DescriptorIndex srv_index = cInvalidDescriptorIndex;
+		DescriptorIndex uav_index = cInvalidDescriptorIndex;
+
+		// --- bitfield for booleans (1 byte) ---
+		bool            srv_is_typed : 1 = false;
+		bool            uav_is_typed : 1 = false;
+
+		// -- Manual Padding ---
+		std::byte padding[11];
+	};
+
+	static_assert(sizeof(Buffer_VK) == kCacheLineSize, "Buffer_VK must be exactly one cache line in size!");
+
+	struct FrameData
+	{
+		VkSemaphore PresentSemaphore = VK_NULL_HANDLE;
+		VkSemaphore RenderSemaphore = VK_NULL_HANDLE;
+		VkFence RenderFence = VK_NULL_HANDLE;
+		// Each frame might have its own command pool if desired for multi-threaded recording
+		// VkCommandPool CommandPool = VK_NULL_HANDLE; 
+		// std::vector<VkCommandBuffer> CommandBuffers; // If pre-allocating
+	};
+
+	struct DeferredItem
+	{
+		uint64_t frame;
+		std::function<void()> deferred_func;
+	};
+
+	struct VkContext
+	{
+		inline static bool is_initialized = false;
+		inline static bool volk_initialized = false;
+
+		inline static size_t frame_number = 0;
+		inline static DeviceCapability capabilities = {};
+
+		inline static RHI::vk::CopyCtxManager copy_ctx_manager = {};
+
+		// -- VK Core ---
+		inline static VkInstance vk_instance = VK_NULL_HANDLE;
+		inline static VkSurfaceKHR vk_surface = VK_NULL_HANDLE;
+		inline static VkPhysicalDevice vk_chosen_physical_device = VK_NULL_HANDLE;
+
+		inline static VkPhysicalDeviceFeatures vk_physical_device_features = {};
+
+		inline static VkPhysicalDeviceFeatures2 vk_features2 = {};
+		inline static VkPhysicalDeviceVulkan11Features vk_features_1_1 = {};
+		inline static VkPhysicalDeviceVulkan12Features vk_features_1_2 = {};
+		inline static VkPhysicalDeviceVulkan13Features vk_features_1_3 = {};
+
+		inline static VkPhysicalDeviceProperties2 vk_physical_device_properties = {};
+		inline static VkPhysicalDeviceDescriptorBufferPropertiesEXT vk_descriptor_buffer_properties = {};
+		inline static VkDeviceSize vk_rebar_heap_size = 0;
+
+		inline static VkDevice vk_device = VK_NULL_HANDLE;
+
+		inline static VkDebugUtilsMessengerEXT vk_debug_messenger = VK_NULL_HANDLE;
+		inline static vkb::Instance vkb_instance; // vkb::Instance manages VkInstance and debug messenger
+
+		inline static VmaAllocator vma_allocator = VK_NULL_HANDLE;
+
+		// -- VK Queues ---
+		inline static VkQueue vk_graphics_queue = VK_NULL_HANDLE;
+		inline static uint32_t vk_graphics_queue_family = UINT32_MAX;
+		inline static std::mutex graphics_queue_lock;
+
+		inline static VkQueue vk_compute_queue = VK_NULL_HANDLE;
+		inline static uint32_t vk_compute_queue_family = UINT32_MAX;
+		inline static std::mutex compute_queue_lock;
+
+		inline static VkQueue vk_transfer_queue = VK_NULL_HANDLE;
+		inline static uint32_t vk_transfer_queue_family = UINT32_MAX;
+		inline static std::mutex transfer_queue_lock;
+
+		// -- VK Swapchain ---
+		inline static VkSwapchainKHR vk_swapchain = VK_NULL_HANDLE;
+		inline static VkFormat vk_swapchain_image_format = VK_FORMAT_UNDEFINED;
+		inline static VkExtent2D vk_swapchain_extent = { 0, 0 };
+		inline static std::vector<VkImage> vk_swapchain_images;
+		inline static std::vector<VkImageView> vk_swapchain_image_views;
+		inline static uint32_t vk_swapchain_image_index = ~0u;
+
+		// -- VK Resources ---
+		inline static phx::PagedPool<RHI::GpuBuffer, Buffer_VK> buffer_pool;
+		inline static phx::RHI::vk::VkBindlessDescriptorArray texture_descriptors;
+
+		inline static phx::RHI::vk::GpuTempMemoryAllocator temp_memory_allocator;
+
+		// -- Frame Data ---
+		inline static std::array<FrameData, cMaxInflightFrames> frames;
+		inline static VkCommandPool vk_graphics_command_pool = VK_NULL_HANDLE; // Primary graphics command pool
+
+		inline static std::deque<DeferredItem> deferred_queue;
+
+		static void ProcessDeletionQueue(uint64_t completed_frame)
+		{
+			while (!VkContext::deferred_queue.empty())
+			{
+				DeferredItem& DeferredItem = VkContext::deferred_queue.front();
+				if (DeferredItem.frame + kBufferCount < completed_frame)
+				{
+					DeferredItem.deferred_func();
+					VkContext::deferred_queue.pop_front();
+				}
+				else
+				{
+					break;
+				}
+			}
+		}
+
+		static void EnqueueDelete(DeferredItem&& item)
+		{
+			deferred_queue.emplace_back(std::forward<DeferredItem>(item));
+		}
+	};
+
 
 	constexpr VkFormat gVulkanFormatMapping[] =
 	{
@@ -94,10 +236,10 @@ namespace phx::rhi::vk
 	   VK_FORMAT_BC7_SRGB_BLOCK,             // BC7_UNORM_SRGB
 	};
 
-	static_assert(sizeof(gVulkanFormatMapping) / sizeof(VkFormat) == (int)rhi::Format::COUNT);
+	static_assert(sizeof(gVulkanFormatMapping) / sizeof(VkFormat) == (int)RHI::Format::COUNT);
 
 	// static assert
-	constexpr VkFormat FormatToVkFormat(rhi::Format format)
+	constexpr VkFormat FormatToVkFormat(RHI::Format format)
 	{
 		return gVulkanFormatMapping[(int)format];
 	}

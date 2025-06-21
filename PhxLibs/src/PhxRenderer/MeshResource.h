@@ -41,7 +41,7 @@ namespace phx::renderer
 		phx::MemoryBuffer cpu_data_buffer;
 		TypedView<CpuData> cpu_data;
 
-		rhi::GpuBufferHandle gemoetry_buffer;
+		RHI::GpuBufferHandle gemoetry_buffer;
 
 		~MeshResource();
 	};

@@ -1,9 +1,11 @@
 #include "PhxRhi/PhxRhi_pch.h"
+
+#include <PhxRhi/PhxRhi.h>
+
+#include "VkRhi_Internal.h"
 #include "VkBindlessDescriptorArray.h"
 
-#include "VkGfxDevice.h"
-
-using namespace phx::rhi::vk;
+using namespace phx::RHI::vk;
 
 void VkBindlessDescriptorArray::Initialize(VkGfxDeviceImpl* device, VkDescriptorType descriptor_type, uint32_t max_slots)
 {
@@ -13,7 +15,7 @@ void VkBindlessDescriptorArray::Initialize(VkGfxDeviceImpl* device, VkDescriptor
 	m_slot_allocator.Initialize(max_slots);
 
 	// VkDevice vk_logical_device = m_device->GetLogicalDevice();
-    const VkPhysicalDeviceDescriptorBufferPropertiesEXT& props = device->GetDescriptorBufferProperties();
+    const VkPhysicalDeviceDescriptorBufferPropertiesEXT& props = RHI::VkContext::vk_descriptor_buffer_properties;
 
     switch (descriptor_type)
     {
@@ -44,22 +46,22 @@ void VkBindlessDescriptorArray::Initialize(VkGfxDeviceImpl* device, VkDescriptor
 
     const uint32_t total_size = m_descriptor_size * max_slots;
 
-    m_buffer = device->CreateBuffer({
+    m_buffer = RHI::CreateBuffer({
         .Size = total_size,
-        .Usage = Usage::Dynamic,
-        .MiscFlags = ResourceMiscFlags::DescriptorTable,
+        .Usage = RHI::Usage::Dynamic,
+        .MiscFlags = RHI::ResourceMiscFlags::DescriptorTable,
     });
 
     // Cache some data
-    Buffer_VK* impl = device->GetResourceInternal(m_buffer);
+    RHI::Buffer_VK* impl = RHI::VkContext::buffer_pool.GetHot(m_buffer);
     m_buffer_address = impl->gpu_address;
     m_mapped_data = static_cast<char*>(impl->mapped_data);
 }
 
-void phx::rhi::vk::VkBindlessDescriptorArray::Shutdown()
+void phx::RHI::vk::VkBindlessDescriptorArray::Shutdown()
 {
     if (m_buffer.IsValid())
-        m_device->DeleteBuffer(m_buffer);
+        RHI::DeleteBuffer(m_buffer);
 
     m_buffer = {};
 }

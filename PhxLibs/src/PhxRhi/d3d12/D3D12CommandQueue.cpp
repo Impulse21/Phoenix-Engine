@@ -6,7 +6,7 @@
 
 using namespace phx;
 using namespace phx::rhi;
-using namespace phx::rhi::d3d12;
+using namespace phx::RHI::d3d12;
 
 ID3D12CommandAllocator* D3D12CommandQueue::RequestAllocator()
 {

@@ -5,16 +5,16 @@
 #include "PhxRhi/RHITypes.h"
 #include "D3D12Core.h"
 
-namespace phx::rhi::d3d12
+namespace phx::RHI::d3d12
 {
 	struct DxgiFormatMapping
 	{
-		rhi::Format AbstractFormat;
+		RHI::Format AbstractFormat;
 		DXGI_FORMAT ResourceFormat;
 		DXGI_FORMAT SrvFormat;
 		DXGI_FORMAT RtvFormat;
 	};
-	const DxgiFormatMapping& GetDxgiFormatMapping(rhi::Format abstractFormat);
+	const DxgiFormatMapping& GetDxgiFormatMapping(RHI::Format abstractFormat);
 
 	inline D3D12_RESOURCE_STATES ConvertResourceStates(ResourceStates stateBits)
 	{
@@ -75,7 +75,7 @@ namespace phx::rhi::d3d12
 		}
 	}
 
-	inline D3D12_SHADER_VISIBILITY ConvertShaderStage(rhi::ShaderStage s)
+	inline D3D12_SHADER_VISIBILITY ConvertShaderStage(RHI::ShaderStage s)
 	{
 		switch (s)  // NOLINT(clang-diagnostic-switch-enum)
 		{

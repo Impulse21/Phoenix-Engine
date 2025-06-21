@@ -1,9 +1,9 @@
 #pragma once
 
-#include "VkCommon.h"
+#include "VkRhi_Internal.h"
 #include "VkBindlessSlotAllocator.h"
 
-namespace phx::rhi::vk
+namespace phx::RHI::vk
 {
 	class VkGfxDeviceImpl;
 	class VkBindlessDescriptorArray
@@ -13,7 +13,7 @@ namespace phx::rhi::vk
 		void Shutdown();
 
 
-		DescriptorIndex Allocate(const VkDescriptorGetInfoEXT& descriptor_info);
+		RHI::DescriptorIndex Allocate(const VkDescriptorGetInfoEXT& descriptor_info);
 		void Free(uint32_t index);
 
 		VkDeviceAddress GetBufferAddress() const { return m_buffer_address; };
@@ -22,7 +22,7 @@ namespace phx::rhi::vk
 		VkGfxDeviceImpl* m_device;
 		VkDescriptorType m_descriptor_type;
 
-		rhi::GpuBufferHandle m_buffer;
+		RHI::GpuBufferHandle m_buffer;
 
 		char* m_mapped_data;
 		VkDeviceAddress m_buffer_address;

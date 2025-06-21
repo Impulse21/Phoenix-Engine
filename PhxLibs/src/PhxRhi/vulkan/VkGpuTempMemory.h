@@ -1,13 +1,14 @@
 #pragma once
 
-#include "VkCommon.h"
+#include <volk.h>
 #include <deque>
 #include <mutex>
 #include <vector>
 
-namespace phx::rhi::vk
+#include <PhxRhi/RHICommon.h>
+
+namespace phx::RHI::vk
 {
-    class VkGfxDeviceImpl;
     class GpuTempMemoryAllocator
     {
     public:
@@ -27,7 +28,7 @@ namespace phx::rhi::vk
             VkDeviceAddress device_address;
         };
 
-        void Initialize(VkGfxDeviceImpl* device, uint32_t buffer_size, uint32_t block_size);
+        void Initialize(uint32_t buffer_size, uint32_t block_size);
         void Shutdown();
 
         void EndFrame(VkQueue queue);
@@ -60,8 +61,7 @@ namespace phx::rhi::vk
         uint64_t m_frame_start_tail = 0;
 
         // Vulkan objects
-        VkGfxDeviceImpl* m_device = nullptr;
-        rhi::GpuBufferHandle m_buffer;
+        RHI::GpuBufferHandle m_buffer;
         void* m_mapped_data = nullptr;
         VkDeviceAddress m_device_address = 0;
 

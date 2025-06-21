@@ -8,7 +8,7 @@
 
 #include "PhxRhi/RHITypes.h"
 
-namespace phx::rhi::d3d12
+namespace phx::RHI::d3d12
 {
 	struct TempBuffer
 	{

@@ -7,7 +7,7 @@
 
 using namespace phx;
 using namespace phx::rhi;
-using namespace phx::rhi::d3d12;
+using namespace phx::RHI::d3d12;
 
 TempMemoryBlockAllocator::TempMemoryBlock TempMemoryBlockAllocator::GetNextMemoryBlock()
 {
@@ -121,7 +121,7 @@ void TempMemoryBlockAllocator::EndFrame()
 		fence = newFence.Get();
 	}
 
-	g_commandQueue[rhi::CommandQueueType::Graphics].Queue->Signal(fence, 1);
+	g_commandQueue[RHI::CommandQueueType::Graphics].Queue->Signal(fence, 1);
 	this->m_inUseRegions.push_front(UsedRegion{
 		.UsedSize = usedSize,
 		.Fence = fence });

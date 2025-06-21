@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <PhxRhi/RHICommon.h>
-namespace phx::rhi::vk
+namespace phx::RHI::vk
 {
     class BindlessSlotAllocator
     {
@@ -17,18 +17,18 @@ namespace phx::rhi::vk
             }
         }
 
-        rhi::DescriptorIndex AllocateSlot()
+        RHI::DescriptorIndex AllocateSlot()
         {
             if (m_free_list.empty())
-                return rhi::cInvalidDescriptorIndex;
+                return RHI::cInvalidDescriptorIndex;
 
-            rhi::DescriptorIndex out_index = m_free_list.back();
+            RHI::DescriptorIndex out_index = m_free_list.back();
             m_free_list.pop_back();
 
             return out_index;
         }
 
-        void FreeSlot(rhi::DescriptorIndex index)
+        void FreeSlot(RHI::DescriptorIndex index)
         {
             if (index < m_max_slots)
             {

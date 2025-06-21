@@ -1,10 +1,10 @@
 #include "PhxRenderer/PhxRenderer_pch.h"
 #include "MeshResource.h"
 
-#include <PhxRhi/GfxDevice.h>
+#include <PhxRhi/PhxRhi.h>
 
 phx::renderer::MeshResource::~MeshResource()
 {
 	if (gemoetry_buffer.IsValid())
-		rhi::GetDevice().DeleteBuffer(gemoetry_buffer);
+		RHI::DeleteBuffer(gemoetry_buffer);
 }

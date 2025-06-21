@@ -1,7 +1,7 @@
 #pragma once
 
 #include <PhxResource/Resource.h>
-#include <PhxRhi/GfxDevice.h>
+#include <PhxRhi/PhxRhi.h>
 
 namespace phx::renderer
 {
@@ -9,11 +9,11 @@ namespace phx::renderer
 	{
 		PHX_DECLARE_RESOURCE(TextureResource);
 
-		rhi::TextureHandle TextureHandle;
+		RHI::TextureHandle TextureHandle;
 
 		~TextureResource() override
 		{
-			rhi::GetDevice().DeleteTexture(TextureHandle);
+			RHI::DeleteTexture(TextureHandle);
 		}
 	};
 }

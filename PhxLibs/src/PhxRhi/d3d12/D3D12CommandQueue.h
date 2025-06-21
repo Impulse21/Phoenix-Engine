@@ -7,7 +7,7 @@
 #include <deque>
 #include <mutex>
 
-namespace phx::rhi::d3d12
+namespace phx::RHI::d3d12
 {
 	struct D3D12CommandQueue
 	{

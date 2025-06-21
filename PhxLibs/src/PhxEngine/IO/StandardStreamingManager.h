@@ -19,9 +19,8 @@ namespace phx
 	class StandardStreamingManager final : public data::IStreamingManager
 	{
 	public:
-		StandardStreamingManager(data::IVirtualFileSystem* vfs, rhi::GfxDevice* gfx_device)
+		StandardStreamingManager(data::IVirtualFileSystem* vfs)
 			: m_vfs(vfs)
-			, m_gfx_device(gfx_device)
 		{
 		}
 
@@ -34,14 +33,12 @@ namespace phx
 
 	public:
 		platform::PlatformFileHandle FindOrCreateHandle(std::string const& file_path);
-		rhi::GfxDevice* GetGfxDevice() { return m_gfx_device; }
 
 	private:
 		void StreamingThreadLoop();
 
 	private:
 		data::IVirtualFileSystem* m_vfs = nullptr;
-		rhi::GfxDevice* m_gfx_device = nullptr;
 
 		std::condition_variable m_cv;
 		std::atomic<bool> m_shutdown;

@@ -11,7 +11,7 @@ namespace D3D12MA
 	class Allocation;
 }
 
-namespace phx::rhi::d3d12
+namespace phx::RHI::d3d12
 {
 	constexpr size_t kCacheLineSize = 8 * sizeof(uint64_t);
 
@@ -54,15 +54,15 @@ namespace phx::rhi::d3d12
 		Microsoft::WRL::ComPtr<IDXGISwapChain1> SwapChain;
 		Microsoft::WRL::ComPtr<IDXGISwapChain4> SwapChain4;
 
-		std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, rhi::kBufferCount> BackBuffers;
+		std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, RHI::kBufferCount> BackBuffers;
 		DescriptorHeapAllocation Rtv;
-		rhi::ClearValue ClearColour = {};
+		RHI::ClearValue ClearColour = {};
 
 		uint32_t        CurrentIndex : 8;
 		bool			Fullscreen : 1 = false;
 		bool			VSync : 1 = false;
 		bool			EnableHDR : 1 = false;
-		rhi::Format		Format : 8;
+		RHI::Format		Format : 8;
 
 		D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView()
 		{
@@ -82,7 +82,7 @@ namespace phx::rhi::d3d12
 		Microsoft::WRL::ComPtr<IDXGISwapChain4> SwapChain4;
 
 		DescriptorHeapAllocation ViewAllocation;
-		std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, rhi::kBufferCount> BackBuffers;
+		std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, RHI::kBufferCount> BackBuffers;
 
 	};
 
@@ -112,8 +112,8 @@ namespace phx::rhi::d3d12
 		DescriptorHeapAllocation DescriptorAllocation_Rtv;
 		DescriptorHeapAllocation DescriptorAllocation_Dsv;
 
-		rhi::DescriptorIndex BindlessIndex_Srv = rhi::cInvalidDescriptorIndex;
-		rhi::DescriptorIndex BindlessIndex_Uav = rhi::cInvalidDescriptorIndex;
+		RHI::DescriptorIndex BindlessIndex_Srv = RHI::cInvalidDescriptorIndex;
+		RHI::DescriptorIndex BindlessIndex_Uav = RHI::cInvalidDescriptorIndex;
 
 		size_t SparsePageSize = 0ull;	// specifies the required alignment of backing allocation for sparse tile pool
 		SparseTextureProperties SparseProperties;
@@ -140,8 +140,8 @@ namespace phx::rhi::d3d12
 
 		DescriptorHeapAllocation DescriptorAllocation_CbvSrvUav; // SRV = 0, UAV = 1
 
-		rhi::DescriptorIndex BindlessIndex_Srv = rhi::cInvalidDescriptorIndex;
-		rhi::DescriptorIndex BindlessIndex_Uav = rhi::cInvalidDescriptorIndex;
+		RHI::DescriptorIndex BindlessIndex_Srv = RHI::cInvalidDescriptorIndex;
+		RHI::DescriptorIndex BindlessIndex_Uav = RHI::cInvalidDescriptorIndex;
 
 		uint8_t SrvOffset = 0xFF;
 		uint8_t UavOffset = 0xFF;

@@ -2,12 +2,10 @@
 
 #include <mutex>
 
-#include "VkCommon.h"
+#include "VkRhi_Internal.h"
 
-namespace phx::rhi::vk
+namespace phx::RHI::vk
 {
-	class VkGfxDeviceImpl;
-
 	struct CopyCtx
 	{
 		VkCommandPool transfer_command_pool = VK_NULL_HANDLE;
@@ -18,17 +16,16 @@ namespace phx::rhi::vk
 		VkFence fence = VK_NULL_HANDLE;
 		VkSemaphore semaphore = VK_NULL_HANDLE;
 
-		GpuBufferHandle upload_buffer;
+		RHI::GpuBufferHandle upload_buffer;
 		constexpr bool IsValid() const { return transfer_command_buffer != VK_NULL_HANDLE; }
 	};
 
 	struct CopyCtxManager
 	{
-		VkGfxDeviceImpl* gfx_device;
 		std::mutex lock;
 		std::vector<CopyCtx> free_list;
 
-		void Initialize(VkGfxDeviceImpl* device);
+		void Initialize();
 		void Shutdown();
 		CopyCtx Allocate(uint64_t staging_size);
 

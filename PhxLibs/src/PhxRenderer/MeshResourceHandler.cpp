@@ -2,10 +2,10 @@
 
 #include <PhxResource/ResourceFile.h>
 
+#include <PhxRhi/PhxRhi.h>
+
 #include "MeshResourceHandler.h"
 #include "MeshResource.h"
-
-#include <PhxRhi/GfxDevice.h>
 
 using namespace phx;
 using namespace phx::renderer;
@@ -56,12 +56,12 @@ void phx::renderer::MeshResourceHandler::RequestMeshData(
 	// TODO: Determine if we should just create one large buffer
 	// and alias/srv off it, or create a heap for this resource, 
 	// would require an RHI change.
-	meshResource->gemoetry_buffer = rhi::GetDevice().CreateBuffer({
+	meshResource->gemoetry_buffer = RHI::CreateBuffer({
 		.DebugName = "Geometry Buffer",
 		.Size = meshMetadata->GeometryBufferSize,
-		.BindingFlags = rhi::BindingFlags::ShaderResource | rhi::BindingFlags::IndexBuffer,
-		.MiscFlags = rhi::ResourceMiscFlags::BufferRaw,
-		.InitialState = rhi::ResourceStates::Common,
+		.BindingFlags = RHI::BindingFlags::ShaderResource |RHI::BindingFlags::IndexBuffer,
+		.MiscFlags = RHI::ResourceMiscFlags::BufferRaw,
+		.InitialState = RHI::ResourceStates::Common,
 		});
 
 	const ResourceFileFormat::Chunk& gpuDataChunk = chunks[1];

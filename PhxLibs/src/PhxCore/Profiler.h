@@ -69,7 +69,7 @@ namespace phx
 		}
 
 	private:
-		rhi::CommandCtx* m_gfxContext;
+		RHI::CommandCtx* m_gfxContext;
 	};
 }
 

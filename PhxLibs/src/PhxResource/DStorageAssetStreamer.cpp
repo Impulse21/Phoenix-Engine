@@ -111,7 +111,7 @@ phx::DStorageAssetStreamer::DStorageAssetStreamer()
 	// Create the GPU queue, used for reading GPU resources.
 	{
 		DSTORAGE_QUEUE_DESC queueDesc{};
-		queueDesc.Device = rhi::d3d12::g_d3d12Device.Get();
+		queueDesc.Device = RHI::d3d12::g_d3d12Device.Get();
 		queueDesc.Capacity = DSTORAGE_MAX_QUEUE_CAPACITY;
 		queueDesc.Priority = DSTORAGE_PRIORITY_NORMAL;
 		queueDesc.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
@@ -238,7 +238,7 @@ void phx::DStorageAssetStreamer::SubmitBatch(Span<StreamRequest> requests, Strea
 		case DestinationType::RHI_GpuBuffer:
 		{
 			// Request
-			auto buffer = rhi::d3d12::g_bufferPool.Get<rhi::d3d12::GpuBuffer>(request.Destination.Buffer);
+			auto buffer = RHI::d3d12::g_bufferPool.Get<RHI::d3d12::GpuBuffer>(request.Destination.Buffer);
 			if (!buffer)
 			{
 				PHX_CORE_ERROR("Cannot make buffer request '{}' as buffer handle is invalid.", request.DebugName);

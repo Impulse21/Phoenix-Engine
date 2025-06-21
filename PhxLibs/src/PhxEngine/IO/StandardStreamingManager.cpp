@@ -6,7 +6,7 @@
 #include <PhxCore/IO/MemoryRegion.h>
 #include <PhxCore/SystemTime.h>
 
-#include <PhxRhi/GfxDevice.h>
+#include <PhxRhi/PhxRhi.h>
 
 using namespace phx;
 using namespace phx::data;
@@ -30,18 +30,15 @@ struct StreamingRequestProcessor
 			.status_array = {0}
 		};
 
-		// TODO: Dependecy Injection
-		rhi::GfxDevice* gfx_device = streaming_manager->GetGfxDevice();
-
-		rhi::CopyCommandCtx* copy_ctx = gfx_device->PlatformBeginAsyncCopyContext();
+		RHI::CommandCtxHandle ctx_handle = RHI::BeginAsyncCopyContext();
 		for (size_t i = 0; i < request.operations.size(); i++)
 		{
-			ErrorCode error_code = ProcessOperation(streaming_manager, copy_ctx, request.operations[i]);
+			ErrorCode error_code = ProcessOperation(streaming_manager, ctx_handle, request.operations[i]);
 			if (error_code != ErrorCode::Success)
 				result.status_array.set(i);
 		}
 
-		gfx_device->SubmitAsyncCopyContexts(copy_ctx);
+		RHI::SubmitAsyncCopyContext({ ctx_handle });
 
 		JobSystem::SubmitJob(
 			[cb = std::move(request.on_complete), res = std::move(result)](JobContext const&) mutable
@@ -59,18 +56,18 @@ struct StreamingRequestProcessor
 			elapsed_time.GetMilliseconds());
 	}
 
-	ErrorCode ProcessOperation(StandardStreamingManager* streaming_manager, rhi::CopyCommandCtx* copy_ctx, StreamingOperation& operation)
+	ErrorCode ProcessOperation(StandardStreamingManager* streaming_manager, RHI::CommandCtxHandle ctx_handle, StreamingOperation& operation)
 	{
 		ErrorCode ret_val = ErrorCode::Success;
 		std::visit([&](auto&& active_source_data) {
-			ret_val = ProcessSource(streaming_manager, copy_ctx, active_source_data, operation.source, operation.destination);
+			ret_val = ProcessSource(streaming_manager, ctx_handle, active_source_data, operation.source, operation.destination);
 		}, operation.source.data);
 
 		return ret_val;
 	}
 
 	template<typename TSource>
-	ErrorCode ProcessSource(StandardStreamingManager* streaming_manager, rhi::CopyCommandCtx* copy_ctx, TSource& source_data_active_type, StreamingSource& source_info, StreamingDestination& destination_info)
+	ErrorCode ProcessSource(StandardStreamingManager* streaming_manager, RHI::CommandCtxHandle /*ctx_handle*/, TSource& source_data_active_type, StreamingSource& source_info, StreamingDestination& destination_info)
 	{
 		if constexpr (std::is_same_v<std::decay_t<TSource>, AsyncResourceDescriptor>)
 		{
@@ -115,11 +112,11 @@ struct StreamingRequestProcessor
 			{
 				GpuResourceDestinationInfo& gpu_dest_info = dest_active_type;
 				std::visit([&](auto&& handle_type) {
-					if constexpr (std::is_same_v<std::decay_t<decltype(handle_type)>, rhi::TextureHandle>)
+					if constexpr (std::is_same_v<std::decay_t<decltype(handle_type)>, RHI::TextureHandle>)
 					{
 						// TODO Texture uploading
 					}
-					else if constexpr (std::is_same_v<std::decay_t<decltype(handle_type)>, rhi::GpuBufferHandle>)
+					else if constexpr (std::is_same_v<std::decay_t<decltype(handle_type)>, RHI::GpuBufferHandle>)
 					{
 						// TODO Buffer Uploading
 					}

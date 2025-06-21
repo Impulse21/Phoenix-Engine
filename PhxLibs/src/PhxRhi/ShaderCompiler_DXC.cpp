@@ -14,7 +14,7 @@
 #include "dxcapi.h"
 
 using namespace phx;
-using namespace phx::rhi;
+using namespace phx::RHI;
 
 #include <wrl/client.h>
 #define CComPtr Microsoft::WRL::ComPtr
@@ -506,7 +506,7 @@ namespace
 	}
 }
 
-namespace phx::rhi
+namespace phx::RHI
 {
 	namespace ShaderCompiler
 	{

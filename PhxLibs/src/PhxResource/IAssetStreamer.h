@@ -40,8 +40,8 @@ namespace phx
 			union
 			{
 				void* Memory = nullptr;
-				rhi::GpuBufferHandle Buffer;
-				rhi::TextureHandle Texture;
+				RHI::GpuBufferHandle Buffer;
+				RHI::TextureHandle Texture;
 			};
 		} Destination;
 
