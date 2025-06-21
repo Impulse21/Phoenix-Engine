@@ -12,6 +12,8 @@
 namespace phx
 {   
 	class Entity;
+	struct SceneBlueprint;
+
 	class World
 	{
 	public:
@@ -23,6 +25,9 @@ namespace phx
 		{
 			this->m_registry.clear();
 		};
+
+		// TODO: Abstract the scene blueprint when we do baked builds
+		void InstantiateFrom(SceneBlueprint const& scene_reader);
 
 		Entity CreateEntity(std::string const& name = std::string());
 		Entity CreateEntity(UUID uuid, std::string const& name = std::string());

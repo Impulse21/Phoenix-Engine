@@ -55,7 +55,7 @@ namespace phx
 
 	struct MeshComponent
 	{
-		std::string Mesh;
+		phx::RefCountPtr<Resource> Mesh;
 		
 		static void Reflect()
 		{

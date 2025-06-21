@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include <memory>
+#include <string>
 
 #include <PhxData/Asset.h>
 
@@ -75,7 +77,8 @@ namespace phx
         };
     }
 
-    using NodeHandle = int32_t;
+    using SceneNodeHandle = size_t;
+    constexpr SceneNodeHandle kInvalidSceneHandle = 0x7FFFFFFFFFFFFF;
 	struct SceneNode
 	{
         std::string name;
@@ -85,8 +88,8 @@ namespace phx
         std::vector<std::unique_ptr<scene::Component>> components;
 
         // Hierarchy information (remains the same)
-        NodeHandle parent_index = -1;
-        std::vector<int> children_indices;
+        SceneNodeHandle parent_index = kInvalidSceneHandle;
+        std::vector<SceneNodeHandle> children_indices;
 
         template<typename T>
         T& EmplaceComponent()
@@ -113,21 +116,22 @@ namespace phx
         }
 	};
 
+    // TODO: this needs to be reworked.
 	struct SceneBlueprint : public phx::data::Asset
 	{
-        std::vector<int> root_node_indices;
+        std::vector<SceneNodeHandle> root_node_indices;
         std::vector<SceneNode> nodes;
 
         PHX_DECLARE_ASSET(SceneBlueprint)
 
-        NodeHandle AddNode(SceneNode&& node)
+        SceneNodeHandle AddNode(SceneNode&& node)
         {
             int index = static_cast<int>(nodes.size());
             nodes.push_back(std::move(node));
             return index;
         }
 
-        const SceneNode* GetNode(NodeHandle index) const
+        const SceneNode* GetNode(SceneNodeHandle index) const
         {
             if (index >= 0 && index < static_cast<int>(nodes.size()))
             {

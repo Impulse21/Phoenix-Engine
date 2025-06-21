@@ -175,7 +175,8 @@ void ObjImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asset> as
 
 		node.components.push_back(std::move(mesh_comp));
 
-		scene_blueprint->nodes.push_back(std::move(node));
+		SceneNodeHandle handle = scene_blueprint->AddNode(std::move(node));
+		scene_blueprint->root_node_indices.push_back(handle);
 
 		scene_blueprint->state = Resource::State::Loaded;
 	};
