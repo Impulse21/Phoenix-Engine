@@ -71,8 +71,8 @@ public:
 		outHeight = m_desc.Height;
 	}
 
-	void SetWindowHandle(void* handle) override { m_windowHandle = handle; }
-	void* GetWindowHandle() const override { return m_windowHandle; }
+	void SetWindowHandle(void* handle) override { m_window_handle = handle; }
+	void* GetWindowHandle() const override { return m_window_handle; }
 
 private:
 	void TEST_RotateEntity(float deltaTime, phx::TransformComponent& comp);
@@ -81,7 +81,8 @@ private:
 	inline static PhxEditor* ms_instance = nullptr;
 	const phx::ApplicationDescriptor m_desc;
 	phx::World m_world;
-	void* m_windowHandle;
+	void* m_window_handle;
+	phx::RefCountPtr<phx::SceneBlueprint> m_scene_blueprint;
 };
 
 phx::IApplication* phx::CreateApplication()
@@ -113,9 +114,7 @@ void PhxEditor::Startup()
 	asset_manager->RegisterImporter<phxed::GltfFileImporter>();
 	asset_manager->RegisterImporter<phxed::ObjImporter>();
 
-	phx::RefCountPtr<phx::SceneBlueprint> scene_blueprint = asset_manager->Get<phx::SceneBlueprint>(kDefault3DModel);
-
-	// phx::RefCountPtr<phx::SceneBlueprint> sceneBlueptin = resourceSystem->GetTyped<phx::SceneBlueprint>(kDefault3DModel);
+	m_scene_blueprint = asset_manager->Get<phx::SceneBlueprint>(kDefault3DModel);
 
 #if false
 	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
@@ -148,6 +147,8 @@ void PhxEditor::Shutdown()
 void PhxEditor::OnPreRender()
 {
 	PHX_PROFILE;
+
+	if (m_)
 	//phx::gfx::IRenderSystem::Ptr->PreRender(m_world);
 }
 

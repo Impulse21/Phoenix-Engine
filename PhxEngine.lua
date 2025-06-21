@@ -908,6 +908,7 @@ group "Applications"
             phx_app_directory.."/"..project_phx_app_editor.."/src/**.h",
             phx_app_directory.."/"..project_phx_app_editor.."/src/resource.rc",
             phx_app_directory.."/"..project_phx_app_editor.."/src/phx_logo.ico",
+            phx_app_directory.."/"..project_phx_app_editor.."/src/phx_splashscreen.png",
             
 
             -- Vendor stuff

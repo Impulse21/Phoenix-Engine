@@ -53,8 +53,26 @@ namespace phx::RHI
 		// -- Manual Padding ---
 		std::byte padding[11];
 	};
-
 	static_assert(sizeof(Buffer_VK) == kCacheLineSize, "Buffer_VK must be exactly one cache line in size!");
+
+	struct RHI_DEFINE_ALIGNED(Texture_VK, kCacheLineSize)
+	{
+		// -- 8-byte members ---
+		VkImage			vk_image;
+		VmaAllocation	allocation;
+
+		VkImageView		rtv_image_view = VK_NULL_HANDLE;
+		VkImageView		dsv_image_view = VK_NULL_HANDLE;
+
+		// -- 4-byte members ---
+		VkImageLayout	default_layout = VK_IMAGE_LAYOUT_GENERAL;
+		DescriptorIndex srv_index = cInvalidDescriptorIndex;
+		DescriptorIndex uav_index = cInvalidDescriptorIndex;
+
+		// -- Manual Padding ---
+		std::byte padding[20];
+	};
+	static_assert(sizeof(Texture_VK) == kCacheLineSize, "Texture_VK must be exactly one cache line in size!");
 
 	struct FrameData
 	{
