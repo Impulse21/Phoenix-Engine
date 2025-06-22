@@ -4,7 +4,7 @@
 #include <PhxCore/Memory/MemoryUtils.h>
 #include "ThreadFrameArena.h"
 
-#define phx_new_frame new (FrameMemoryManager::GetCurrentThreadArena())
+#define phx_new_frame new (phx::FrameMemoryManager::GetCurrentThreadArena())
 
 namespace phx
 {

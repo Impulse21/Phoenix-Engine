@@ -37,21 +37,21 @@ namespace phx
 
 	struct CameraComponent
 	{
-		float Width = 0.0f;
-		float Height = 0.0f;
-		float ZNear = 0.1f;
-		float ZFar = 5000.0f;
-		float FoV = 1.0f; // Radians
+		float width = 0.0f;
+		float height = 0.0f;
+		float z_near = 0.1f;
+		float z_far = 5000.0f;
+		float fov = 1.0f; // Radians
 
-		hlslpp::float3 Eye = { 0.0f, 0.0f, 0.0f };
+		hlslpp::float3 eye = { 0.0f, 0.0f, 0.0f };
 #ifdef LH
 		DirectX::XMFLOAT3 Forward = { 0.0f, 0.0f, 1.0f };
 #else
-		hlslpp::float3 Forward = { 0.0f, 0.0f, -1.0f };
+		hlslpp::float3 forward = { 0.0f, 0.0f, -1.0f };
 #endif
-		hlslpp::float3 Up = { 0.0f, 1.0f, 0.0f };
+		hlslpp::float3 up = { 0.0f, 1.0f, 0.0f };
 
-		bool Active : 1 = false;
+		bool active : 1 = false;
 	};
 
 	struct MeshComponent

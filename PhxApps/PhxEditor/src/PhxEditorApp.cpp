@@ -30,6 +30,9 @@
 #include "AssetImporter_Obj.h"
 
 
+// -- Renderer Includes ---
+#include <PhxEngine/Memory/FrameMemoryManager.h>
+
 // static const char* kDefault3DModel = "art://Sponza/glTF/Sponza.gltf";
 static const char* kDefault3DModel = "art://SM_Chest_01.obj"; 
 
@@ -43,6 +46,36 @@ static const char* kDefault3DModel = "art://SM_Chest_01.obj";
        exit(-1);\
     }
 
+struct View
+{
+	hlslpp::float4x4 view_matrix;
+	hlslpp::float4x4 projection_matrix;
+	hlslpp::float4x4 world_to_clip_matrix; // View - project matrix
+
+	hlslpp::float4x4 inv_view_matrix;
+	hlslpp::float4x4 inv_projection_matrix;
+	hlslpp::float4x4 inv_world_to_clip_matrix;
+};
+
+struct Drawable
+{
+	phx::RefCountPtr<phx::renderer::MeshResource> mesh_resource;
+};
+
+struct ForwardPassDrawData
+{
+	size_t		num_drawables;
+	Drawable*	drawables;
+};
+
+struct FrameRenderData
+{
+	uint32_t num_views = 0;
+	View* views = nullptr;
+
+	// [ view, render_pass, List of cachedData
+	void** cached_data = nullptr;
+};
 
 class PhxEditor final : public phx::IApplication
 {
@@ -80,8 +113,11 @@ private:
 private:
 	inline static PhxEditor* ms_instance = nullptr;
 	const phx::ApplicationDescriptor m_desc;
-	phx::World m_world;
 	void* m_window_handle;
+	
+	FrameRenderData m_per_frame_cache;
+	phx::World m_world;
+
 	phx::RefCountPtr<phx::SceneBlueprint> m_scene_blueprint;
 };
 
@@ -121,10 +157,10 @@ void PhxEditor::Startup()
 	
 	uint32_t width, height;
 	GetDefaultWindowSize(width, height);
-	debug_camera_comp.Width = width;
-	debug_camera_comp.Height = height;
-	debug_camera_comp.Eye = { 0.0f, 5.0f, 10.0f };
-	debug_camera_comp.Active = true;
+	debug_camera_comp.width = width;
+	debug_camera_comp.height = height;
+	debug_camera_comp.eye = { 0.0f, 5.0f, 10.0f };
+	debug_camera_comp.active = true;
 
 
 #if false
@@ -158,8 +194,64 @@ void PhxEditor::Shutdown()
 void PhxEditor::OnPreRender()
 {
 	PHX_PROFILE;
+	{
+		PHX_PROFILE_SECTION("Construct View");
+		m_per_frame_cache.views = phx_new_frame(View);
 
-	phx::gfx::IRenderSystem::Ptr->PreRender(m_world);
+		auto cameras_view = m_world.GetAllEntitiesWith<phx::NameComponent, phx::CameraComponent>();
+		for (auto e : cameras_view)
+		{
+			auto& [name_comp, camera_comp] = cameras_view.get<phx::NameComponent, phx::CameraComponent>(e);
+
+			if (camera_comp.active)
+			{
+				const float near_z = camera_comp.z_near;
+				const float far_z = camera_comp.z_far;
+
+				auto view_matrix = hlslpp::float4x4::look_at(
+					camera_comp.eye,
+					camera_comp.forward,
+					camera_comp.up);
+
+				auto* view = new (m_per_frame_cache.views) View();
+
+				view->view_matrix = view_matrix;
+				view->inv_view_matrix = hlslpp::inverse(view_matrix);
+
+				float aspect_ratio = camera_comp.width / camera_comp.height;
+				hlslpp::projection projection(
+					hlslpp::frustum::field_of_view_x(camera_comp.fov, aspect_ratio, near_z, far_z),
+					hlslpp::zclip::zero);
+
+				view->projection_matrix = hlslpp::float4x4::perspective(projection);
+				view->inv_projection_matrix = hlslpp::inverse(view->projection_matrix);
+
+				// -- VP
+				view->world_to_clip_matrix = view_matrix * view->projection_matrix;
+				view->inv_world_to_clip_matrix = hlslpp::inverse(view->world_to_clip_matrix);
+
+				m_per_frame_cache.num_views++;
+			}
+		}
+
+		{
+			PHX_PROFILE_SECTION("Construct draw");
+			auto* draw_data = phx_new_frame(ForwardPassDrawData);
+			auto drawable_view = m_world.GetAllEntitiesWith<phx::MeshComponent, phx::TransformComponent>();
+			for (auto e : drawable_view)
+			{
+				auto& [mesh_comp, transform_comp] = drawable_view.get<phx::MeshComponent, phx::TransformComponent>(e);
+
+				if (!mesh_comp.Mesh->IsLoaded())
+					continue;
+
+				draw_data->num_drawables++;
+				draw_data->drawables = phx_new_frame(Drawable);
+				draw_data->drawables->mesh_resource = mesh_comp.Mesh.As<phx::renderer::MeshResource>();
+
+			}
+		}
+	}
 }
 
 void PhxEditor::OnUpdate_Threaded(float delta_time)
