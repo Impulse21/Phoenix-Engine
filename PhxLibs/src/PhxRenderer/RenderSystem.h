@@ -3,7 +3,7 @@
 #include <memory>
 #include <PhxRenderer/RenderPasses.h>
 #include <PhxRenderer/RenderLayer.h>
-#include <DirectXMath.h>
+#include <hlsl++.h>
 
 namespace phx
 {
@@ -15,13 +15,13 @@ namespace phx::gfx
 	struct View
 	{
 
-		DirectX::XMFLOAT4X4 ViewMatrix;
-		DirectX::XMFLOAT4X4 ProjectionMatrix;
-		DirectX::XMFLOAT4X4 WorldToClipMatrix; // View - project matrix
+		hlslpp::float4x4 ViewMatrix;
+		hlslpp::float4x4 ProjectionMatrix;
+		hlslpp::float4x4 WorldToClipMatrix; // View - project matrix
 
-		DirectX::XMFLOAT4X4 InvViewMatrix;
-		DirectX::XMFLOAT4X4 InvProjectionMatrix;
-		DirectX::XMFLOAT4X4 InvWorldToClipMatrix;
+		hlslpp::float4x4 InvViewMatrix;
+		hlslpp::float4x4 InvProjectionMatrix;
+		hlslpp::float4x4 InvWorldToClipMatrix;
 	};
 
 	template<typename T>

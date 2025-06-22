@@ -112,10 +112,10 @@ void phx::gfx::DefaultRenderSystem::CacheRenderViews(World& world)
 
 	m_perFrameCache.Views = phx_new_frame(View);
 
-	auto camerasView = world.GetAllEntitiesWith<phx::name_component, phx::camera_component>();
+	auto camerasView = world.GetAllEntitiesWith<phx::NameComponent, phx::CameraComponent>();
 	for (auto e : camerasView)
 	{
-		auto [name_comp, camera_comp] = camerasView.get<phx::name_component, phx::camera_component>(e);
+		auto [name_comp, camera_comp] = camerasView.get<phx::NameComponent, phx::CameraComponent>(e);
 
 		if (camera_comp.Active)
 		{
@@ -129,20 +129,20 @@ void phx::gfx::DefaultRenderSystem::CacheRenderViews(World& world)
 
 			auto* view = new (m_perFrameCache.Views) View();
 			
-			DirectX::XMStoreFloat4x4(&view->ViewMatrix, viewMatrix);
-			DirectX::XMStoreFloat4x4(&view->InvViewMatrix, DirectX::XMMatrixInverse(nullptr, viewMatrix));
+			view->ViewMatrix = view_matrix;
+			view->InvViewMatrix = hlslpp::inverse(view_matrix);
 
 			float aspectRatio = camera_comp.Width / camera_comp.Height;
-			auto projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(camera_comp.FoV, aspectRatio, nearZ, farZ);
-			DirectX::XMStoreFloat4x4(&view->ProjectionMatrix, projectionMatrix);
-			DirectX::XMStoreFloat4x4(&view->InvProjectionMatrix, DirectX::XMMatrixInverse(nullptr, projectionMatrix));
+			hlslpp::projection projection(
+				hlslpp::frustum::field_of_view_x(camera_comp.FoV, aspectRatio, nearZ, farZ),
+				hlslpp::zclip::zero);
+
+			view->ProjectionMatrix = hlslpp::float4x4::perspective(projection);
+			view->InvProjectionMatrix = hlslpp::inverse(view->ProjectionMatrix);
 
 			// -- VP
-			auto viewProjectionMatrix = viewMatrix * projectionMatrix;
-			DirectX::XMStoreFloat4x4(&view->WorldToClipMatrix, viewProjectionMatrix);
-
-			auto viewProjectionInv = DirectX::XMMatrixInverse(nullptr, viewProjectionMatrix);
-			DirectX::XMStoreFloat4x4(&view->InvWorldToClipMatrix, viewProjectionInv);
+			view->WorldToClipMatrix = view_matrix * view->ProjectionMatrix;
+			view->InvWorldToClipMatrix = hlslpp::inverse(view->WorldToClipMatrix);
 
 #if false
 			this->FrustumWS = Core::Frustum(viewProjectionMatrix, false);
