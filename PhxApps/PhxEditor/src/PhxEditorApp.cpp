@@ -3,6 +3,8 @@
 #include <PhxCore/SystemTime.h>
 #include <PhxCore/Profiler.h>
 
+#include <PhxRhi/PhxRhi.h>
+
 #include <PhxWorld/WorldComponents.h>
 #include <PhxWorld/Entity.h>
 #include <PhxWorld/World.h>
@@ -32,6 +34,7 @@
 
 // -- Renderer Includes ---
 #include <PhxEngine/Memory/FrameMemoryManager.h>
+#include <PhxRenderer/MeshResource.h>
 
 // static const char* kDefault3DModel = "art://Sponza/glTF/Sponza.gltf";
 static const char* kDefault3DModel = "art://SM_Chest_01.obj"; 
@@ -196,7 +199,6 @@ void PhxEditor::OnPreRender()
 	PHX_PROFILE;
 	{
 		PHX_PROFILE_SECTION("Construct View");
-		m_per_frame_cache.views = phx_new_frame(View);
 
 		auto cameras_view = m_world.GetAllEntitiesWith<phx::NameComponent, phx::CameraComponent>();
 		for (auto e : cameras_view)
@@ -209,57 +211,70 @@ void PhxEditor::OnPreRender()
 			}
 		}
 
+		m_per_frame_cache.views = phx_new_frame View[m_per_frame_cache.num_views];
+
+		size_t i_view = 0;
 		for (auto e : cameras_view)
 		{
 			auto& [name_comp, camera_comp] = cameras_view.get<phx::NameComponent, phx::CameraComponent>(e);
 
-			if (camera_comp.active)
-			{
-				const float near_z = camera_comp.z_near;
-				const float far_z = camera_comp.z_far;
+			if (!camera_comp.active)
+				continue;
 
-				auto view_matrix = hlslpp::float4x4::look_at(
-					camera_comp.eye,
-					camera_comp.forward,
-					camera_comp.up);
+			const float near_z = camera_comp.z_near;
+			const float far_z = camera_comp.z_far;
 
-				auto* view = new (m_per_frame_cache.views) View();
+			auto view_matrix = hlslpp::float4x4::look_at(
+				camera_comp.eye,
+				camera_comp.forward,
+				camera_comp.up);
 
-				view->view_matrix = view_matrix;
-				view->inv_view_matrix = hlslpp::inverse(view_matrix);
+			auto& view = m_per_frame_cache.views[i_view++];
 
-				float aspect_ratio = camera_comp.width / camera_comp.height;
-				hlslpp::projection projection(
-					hlslpp::frustum::field_of_view_x(camera_comp.fov, aspect_ratio, near_z, far_z),
-					hlslpp::zclip::zero);
+			view.view_matrix = view_matrix;
+			view.inv_view_matrix = hlslpp::inverse(view_matrix);
 
-				view->projection_matrix = hlslpp::float4x4::perspective(projection);
-				view->inv_projection_matrix = hlslpp::inverse(view->projection_matrix);
+			float aspect_ratio = camera_comp.width / camera_comp.height;
+			hlslpp::projection projection(
+				hlslpp::frustum::field_of_view_x(camera_comp.fov, aspect_ratio, near_z, far_z),
+				hlslpp::zclip::zero);
 
-				// -- VP
-				view->world_to_clip_matrix = view_matrix * view->projection_matrix;
-				view->inv_world_to_clip_matrix = hlslpp::inverse(view->world_to_clip_matrix);
+			view.projection_matrix = hlslpp::float4x4::perspective(projection);
+			view.inv_projection_matrix = hlslpp::inverse(view.projection_matrix);
 
-				m_per_frame_cache.num_views++;
-			}
+			// -- VP
+			view.world_to_clip_matrix = view_matrix * view.projection_matrix;
+			view.inv_world_to_clip_matrix = hlslpp::inverse(view.world_to_clip_matrix);
 		}
 
 		{
 			PHX_PROFILE_SECTION("Construct draw");
-			auto* draw_data = phx_new_frame(ForwardPassDrawData);
+			auto* draw_data = phx_new_frame ForwardPassDrawData;
 			auto drawable_view = m_world.GetAllEntitiesWith<phx::MeshComponent, phx::TransformComponent>();
 			for (auto e : drawable_view)
 			{
 				auto& [mesh_comp, transform_comp] = drawable_view.get<phx::MeshComponent, phx::TransformComponent>(e);
-
 				if (!mesh_comp.Mesh->IsLoaded())
 					continue;
 
 				draw_data->num_drawables++;
-				draw_data->drawables = phx_new_frame(Drawable);
-				draw_data->drawables->mesh_resource = mesh_comp.Mesh.As<phx::renderer::MeshResource>();
-
 			}
+
+			draw_data->drawables = phx_new_frame Drawable[draw_data->num_drawables];
+
+			size_t i_drawable = 0;
+			for (auto e : drawable_view)
+			{
+				auto& [mesh_comp, transform_comp] = drawable_view.get<phx::MeshComponent, phx::TransformComponent>(e);
+				if (!mesh_comp.Mesh->IsLoaded())
+					continue;
+
+				Drawable& drawable = draw_data->drawables[i_drawable++];
+				drawable.mesh_resource = mesh_comp.Mesh.As<phx::renderer::MeshResource>();
+			}
+
+			m_per_frame_cache.cached_data = phx_new_frame void*[1];
+			*m_per_frame_cache.cached_data = draw_data;
 		}
 	}
 }
@@ -279,8 +294,25 @@ void PhxEditor::OnUpdate_Threaded(float delta_time)
 void PhxEditor::OnRender_Threaded()
 {
 	PHX_PROFILE;
-	// TODO: Make use of the render graph
-	//phx::gfx::IRenderSystem::Ptr->Render(phx::gfx::RenderPass::Forward);
+
+	phx::RHI::CommandCtxHandle ctx_handle = phx::RHI::BeginFrameGfxContext();
+	ForwardPassDrawData* pass_data = static_cast<ForwardPassDrawData*>(m_per_frame_cache.cached_data[0]);
+	for (size_t i = 0; i < m_per_frame_cache.num_views; i++)
+	{
+		View& view = m_per_frame_cache.views[i];
+
+		for (size_t i_drawable = 0; i_drawable < pass_data->num_drawables; i_drawable++)
+		{
+			Drawable& drawable = pass_data->drawables[i_drawable];
+			
+			for (auto& draw_info : drawable.mesh_resource->cpu_data->Draw)
+			{
+				// Perform Draw
+			}
+		}
+	}
+
+	phx::RHI::SubmitAndPresentFrame();
 }
 
 void PhxEditor::TEST_RotateEntity(float deltaTime, phx::TransformComponent& comp)
