@@ -15,12 +15,6 @@ namespace phx::RHI
 
     bool Initialize(RhiDescriptor const& desc);
     void Shutdown();
-
-    CommandCtxHandle BeginFrameGfxContext();
-
-    CommandCtxHandle BeginAsyncCopyContext();
-    void SubmitAsyncCopyContext(phx::Span<CommandCtxHandle> contexts);
-
     void SubmitAndPresentFrame();
     void WaitForIdle();
 
@@ -35,4 +29,20 @@ namespace phx::RHI
     DescriptorIndex GetDescriptorIndex(TextureHandle handle, SubresouceType type = SubresouceType::SRV);
     Budget GetBudget();
     ShaderFormat GetShaderFormat();
+
+
+
+    CommandBufferHandle BeginFrameCommandBuffer(CommandQueueType type = CommandQueueType::Graphics);
+    CommandBufferHandle BeginAsyncCommandBuffer(CommandQueueType type);
+
+    void SubmitAsyncCommandBuffer(phx::Span<CommandBufferHandle> contexts);
+
+    namespace CommandRecorder
+    {
+        void BindPipelineState(CommandBufferHandle handle, PipelineStateHandle pso);
+        void Draw(CommandBufferHandle handle, uint32_t vertex_count, uint32_t start_vertex_location);
+        void DrawIndexed(CommandBufferHandle handle, uint32_t index_count, uint32_t start_index_location, int32_t base_vertex_location);
+        void DrawInstanced(CommandBufferHandle handle, uint32_t vertex_count, uint32_t instance_count, uint32_t start_vertex_location, uint32_t start_instance_location);
+        void DrawIndexedInstanced(CommandBufferHandle handle, uint32_t index_count, uint32_t instance_count, uint32_t start_index_location, int32_t base_vertex_location, uint32_t startInstanceLocation);
+    }
 }

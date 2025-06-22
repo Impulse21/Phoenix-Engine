@@ -295,7 +295,7 @@ void PhxEditor::OnRender_Threaded()
 {
 	PHX_PROFILE;
 
-	phx::RHI::CommandCtxHandle ctx_handle = phx::RHI::BeginFrameGfxContext();
+	phx::RHI::CommandBufferHandle cmd_buffer = phx::RHI::BeginFrameCommandBuffer();
 	ForwardPassDrawData* pass_data = static_cast<ForwardPassDrawData*>(m_per_frame_cache.cached_data[0]);
 	for (size_t i = 0; i < m_per_frame_cache.num_views; i++)
 	{
@@ -304,10 +304,15 @@ void PhxEditor::OnRender_Threaded()
 		for (size_t i_drawable = 0; i_drawable < pass_data->num_drawables; i_drawable++)
 		{
 			Drawable& drawable = pass_data->drawables[i_drawable];
-			
+
+			// Bind Buffer data
 			for (auto& draw_info : drawable.mesh_resource->cpu_data->Draw)
 			{
-				// Perform Draw
+				phx::RHI::CommandRecorder::DrawIndexed(
+					cmd_buffer,
+					draw_info.IndexCount,
+					draw_info.StartIndex,
+					draw_info.BaseVertex);
 			}
 		}
 	}

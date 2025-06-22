@@ -74,14 +74,35 @@ namespace phx::RHI
 	};
 	static_assert(sizeof(Texture_VK) == kCacheLineSize, "Texture_VK must be exactly one cache line in size!");
 
+	struct RHI_DEFINE_ALIGNED(CommandBuffer_VK, kCacheLineSize)
+	{
+		enum class SubmitPolicy : uint8_t
+		{
+			Frame = 0,
+			Async
+		};
+
+		// -- 8-byte members ---
+		VkCommandPool vk_cmd_pool;
+		VkCommandBuffer vk_cmd_buffer;
+
+		// -- 1-byte members ---
+		CommandQueueType queue_type;
+		SubmitPolicy submit_policy;
+		uint8_t buffer_index;
+	};
+	static_assert(sizeof(CommandBuffer_VK) == kCacheLineSize, "CommandBuffer_VK must be exactly one cache line in size!");
+
 	struct FrameData
 	{
 		VkSemaphore PresentSemaphore = VK_NULL_HANDLE;
 		VkSemaphore RenderSemaphore = VK_NULL_HANDLE;
 		VkFence RenderFence = VK_NULL_HANDLE;
-		// Each frame might have its own command pool if desired for multi-threaded recording
-		// VkCommandPool CommandPool = VK_NULL_HANDLE; 
-		// std::vector<VkCommandBuffer> CommandBuffers; // If pre-allocating
+
+		phx::EnumArray<VkCommandPool, CommandQueueType> command_pools;
+		phx::EnumArray<VkCommandBuffer, VkCommandBuffer> command_buffers;
+		phx::EnumArray<VkFence, VkCommandBuffer> m_fences;
+		VkFence         m_frameFences[cMaxInflightFrames];
 	};
 
 	struct DeferredItem
@@ -155,6 +176,8 @@ namespace phx::RHI
 		inline static VkCommandPool vk_graphics_command_pool = VK_NULL_HANDLE; // Primary graphics command pool
 
 		inline static std::deque<DeferredItem> deferred_queue;
+
+		inline static std::mutex buffers_mutex;
 
 		static void ProcessDeletionQueue(uint64_t completed_frame)
 		{

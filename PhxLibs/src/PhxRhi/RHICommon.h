@@ -945,6 +945,6 @@ namespace phx::RHI
     struct SwapChain;
     using SwapChainHandle = Handle<SwapChain>;
 
-    using CommandCtxHandle = size_t;
+    using CommandBufferHandle = size_t;
 #pragma endregion
 }

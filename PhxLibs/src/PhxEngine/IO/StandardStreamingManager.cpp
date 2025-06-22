@@ -30,7 +30,7 @@ struct StreamingRequestProcessor
 			.status_array = {0}
 		};
 
-		RHI::CommandCtxHandle ctx_handle = RHI::BeginAsyncCopyContext();
+		RHI::CommandBufferHandle ctx_handle = RHI::BeginAsyncCommandBuffer();
 		for (size_t i = 0; i < request.operations.size(); i++)
 		{
 			ErrorCode error_code = ProcessOperation(streaming_manager, ctx_handle, request.operations[i]);
@@ -38,7 +38,7 @@ struct StreamingRequestProcessor
 				result.status_array.set(i);
 		}
 
-		RHI::SubmitAsyncCopyContext({ ctx_handle });
+		RHI::SubmitAsyncCommandBuffer({ ctx_handle });
 
 		JobSystem::SubmitJob(
 			[cb = std::move(request.on_complete), res = std::move(result)](JobContext const&) mutable
@@ -56,7 +56,7 @@ struct StreamingRequestProcessor
 			elapsed_time.GetMilliseconds());
 	}
 
-	ErrorCode ProcessOperation(StandardStreamingManager* streaming_manager, RHI::CommandCtxHandle ctx_handle, StreamingOperation& operation)
+	ErrorCode ProcessOperation(StandardStreamingManager* streaming_manager, RHI::CommandBufferHandle ctx_handle, StreamingOperation& operation)
 	{
 		ErrorCode ret_val = ErrorCode::Success;
 		std::visit([&](auto&& active_source_data) {
@@ -67,7 +67,7 @@ struct StreamingRequestProcessor
 	}
 
 	template<typename TSource>
-	ErrorCode ProcessSource(StandardStreamingManager* streaming_manager, RHI::CommandCtxHandle /*ctx_handle*/, TSource& source_data_active_type, StreamingSource& source_info, StreamingDestination& destination_info)
+	ErrorCode ProcessSource(StandardStreamingManager* streaming_manager, RHI::CommandBufferHandle /*ctx_handle*/, TSource& source_data_active_type, StreamingSource& source_info, StreamingDestination& destination_info)
 	{
 		if constexpr (std::is_same_v<std::decay_t<TSource>, AsyncResourceDescriptor>)
 		{
