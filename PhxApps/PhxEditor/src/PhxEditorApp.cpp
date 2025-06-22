@@ -205,6 +205,16 @@ void PhxEditor::OnPreRender()
 
 			if (camera_comp.active)
 			{
+				m_per_frame_cache.num_views++;
+			}
+		}
+
+		for (auto e : cameras_view)
+		{
+			auto& [name_comp, camera_comp] = cameras_view.get<phx::NameComponent, phx::CameraComponent>(e);
+
+			if (camera_comp.active)
+			{
 				const float near_z = camera_comp.z_near;
 				const float far_z = camera_comp.z_far;
 
