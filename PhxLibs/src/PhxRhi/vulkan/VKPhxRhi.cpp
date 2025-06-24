@@ -286,38 +286,39 @@ namespace
             return false;
         }
 
-        VkContext::vk_graphics_queue = gfx_q_ret.value();
-        VkContext::vk_graphics_queue_family = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
-        PHX_CORE_INFO("[RHI Vulkan] Using graphics queue {0}", VkContext::vk_graphics_queue_family);
+        VkContext::queue_gfx.vk_queue = gfx_q_ret.value();
+        VkContext::queue_gfx.vk_queue_family = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
+        PHX_CORE_INFO("[RHI Vulkan] Using graphics queue {0}", VkContext::queue_gfx.vk_queue_family);
 
         auto compute_q_ret = vkb_device.get_queue(vkb::QueueType::compute);
         if (!compute_q_ret)
         {
             PHX_CORE_WARN("[RHI] Failed to get dedicated compute queue, using graphics queue: {0}", compute_q_ret.error().message());
-            VkContext::vk_compute_queue = VkContext::vk_graphics_queue;
-            VkContext::vk_compute_queue_family = VkContext::vk_graphics_queue_family;
+
+            VkContext::queue_compute.vk_queue = VkContext::queue_gfx.vk_queue;
+            VkContext::queue_compute.vk_queue_family = VkContext::queue_gfx.vk_queue_family;
         }
         else
         {
-            VkContext::vk_compute_queue = compute_q_ret.value();
-            VkContext::vk_compute_queue_family = vkb_device.get_queue_index(vkb::QueueType::compute).value();
+            VkContext::queue_compute.vk_queue = compute_q_ret.value();
+            VkContext::queue_compute.vk_queue_family = vkb_device.get_queue_index(vkb::QueueType::compute).value();
 
-            PHX_CORE_INFO("[RHI Vulkan] Using compute queue {0}", VkContext::vk_compute_queue_family);
+            PHX_CORE_INFO("[RHI Vulkan] Using compute queue {0}", VkContext::queue_compute.vk_queue_family);
         }
 
         auto transfer_q_ret = vkb_device.get_queue(vkb::QueueType::transfer);
         if (!transfer_q_ret)
         {
             PHX_CORE_WARN("[RHI] Failed to get dedicated transfer queue, using graphics queue: {0}", transfer_q_ret.error().message());
-            VkContext::vk_transfer_queue = VkContext::vk_graphics_queue;
-            VkContext::vk_transfer_queue_family = VkContext::vk_graphics_queue_family;
+            VkContext::queue_transfer.vk_queue = VkContext::queue_gfx.vk_queue;
+            VkContext::queue_transfer.vk_queue_family = VkContext::queue_gfx.vk_queue_family;
         }
         else
         {
-            VkContext::vk_transfer_queue = transfer_q_ret.value();
-            VkContext::vk_transfer_queue_family = vkb_device.get_queue_index(vkb::QueueType::transfer).value();
+            VkContext::queue_transfer.vk_queue = transfer_q_ret.value();
+            VkContext::queue_transfer.vk_queue_family = vkb_device.get_queue_index(vkb::QueueType::transfer).value();
 
-            PHX_CORE_INFO("[RHI Vulkan] Using transfer queue {0}", VkContext::vk_transfer_queue_family);
+            PHX_CORE_INFO("[RHI Vulkan] Using transfer queue {0}", VkContext::queue_transfer.vk_queue_family);
         }
 
         return true;
@@ -492,7 +493,7 @@ namespace
 
         VkCommandPoolCreateInfo pool_info = {}; // Renamed to snake_case
         pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        pool_info.queueFamilyIndex = VkContext::vk_graphics_queue_family;
+        pool_info.queueFamilyIndex = VkContext::queue_gfx.vk_queue_family;
         pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         VkResult result = vkCreateCommandPool(VkContext::vk_device, &pool_info, GetVkAllocationCallbacks(), &VkContext::vk_graphics_command_pool);
 
@@ -833,11 +834,11 @@ namespace phx::RHI
 
         buffer_info.flags = 0;
 
-        if (VkContext::vk_graphics_queue_family != VkContext::vk_compute_queue_family || VkContext::vk_compute_queue_family != VkContext::vk_transfer_queue_family)
+        if (VkContext::queue_gfx.vk_queue_family != VkContext::queue_compute.vk_queue_family || VkContext::queue_compute.vk_queue_family != VkContext::queue_transfer.vk_queue_family)
         {
             buffer_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
 
-            std::array<uint32_t, 3> families = { VkContext::vk_graphics_queue_family, VkContext::vk_compute_queue_family, VkContext::vk_transfer_queue_family };
+            std::array<uint32_t, 3> families = { VkContext::queue_gfx.vk_queue_family, VkContext::queue_compute.vk_queue_family, VkContext::queue_transfer.vk_queue_family };
             buffer_info.queueFamilyIndexCount = static_cast<uint32_t>(families.size());
             buffer_info.pQueueFamilyIndices = families.data();
             // Note: The original code sets sharingMode to EXCLUSIVE right after CONCURRENT. This might be a bug or intentional override.
@@ -1174,7 +1175,7 @@ namespace phx::RHI::CommandRecorder
 
     void Draw(CommandBufferHandle handle, uint32_t vertex_count, uint32_t start_vertex_location)
     {
-        CommandBuffer_VK& cmd_buffer = VkContext::command_buffers[handle];
+        CommandBuffer_VK& cmd_buffer = VkContext::GetCurrentFrame().command_buffers[handle];
         vkCmdDraw(
             cmd_buffer.vk_cmd_buffer,
             vertex_count,

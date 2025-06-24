@@ -99,10 +99,28 @@ namespace phx::RHI
 		VkSemaphore RenderSemaphore = VK_NULL_HANDLE;
 		VkFence RenderFence = VK_NULL_HANDLE;
 
-		phx::EnumArray<VkCommandPool, CommandQueueType> command_pools;
-		phx::EnumArray<VkCommandBuffer, CommandQueueType> command_buffers;
-
+		phx::EnumArray<VkCommandPool, CommandQueueType> vk_command_pools;
+		phx::EnumArray<VkCommandBuffer, CommandQueueType> vk_command_buffers;
+		std::vector<CommandBuffer_VK> vk_active;
 		VkFence frame_fence;
+	};
+
+	struct Queue_Vk
+	{
+		struct QueueExecutionInfo
+		{
+			uint64_t fence_value;
+			VkCommandBuffer commad_buffer = VK_NULL_HANDLE;
+			VkCommandPool command_pool = VK_NULL_HANDLE;
+		};
+
+		VkQueue vk_queue = VK_NULL_HANDLE;
+		uint32_t vk_queue_family = UINT32_MAX;
+		std::vector<std::pair<VkCommandBuffer, VkCommandPool>> pending_commands;
+		std::deque<QueueExecutionInfo> available_commands;
+
+		std::mutex lock = {};
+		std::mutex lock_commands = {};
 	};
 
 	struct DeferredItem
@@ -145,17 +163,9 @@ namespace phx::RHI
 		inline static VmaAllocator vma_allocator = VK_NULL_HANDLE;
 
 		// -- VK Queues ---
-		inline static VkQueue vk_graphics_queue = VK_NULL_HANDLE;
-		inline static uint32_t vk_graphics_queue_family = UINT32_MAX;
-		inline static std::mutex graphics_queue_lock;
-
-		inline static VkQueue vk_compute_queue = VK_NULL_HANDLE;
-		inline static uint32_t vk_compute_queue_family = UINT32_MAX;
-		inline static std::mutex compute_queue_lock;
-
-		inline static VkQueue vk_transfer_queue = VK_NULL_HANDLE;
-		inline static uint32_t vk_transfer_queue_family = UINT32_MAX;
-		inline static std::mutex transfer_queue_lock;
+		inline static Queue_Vk queue_gfx = {};
+		inline static Queue_Vk queue_compute = {};
+		inline static Queue_Vk queue_transfer = {};
 
 		// -- VK Swapchain ---
 		inline static VkSwapchainKHR vk_swapchain = VK_NULL_HANDLE;
@@ -178,6 +188,8 @@ namespace phx::RHI
 		inline static std::deque<DeferredItem> deferred_queue;
 
 		inline static std::mutex buffers_mutex;
+
+		constexpr static FrameData& GetCurrentFrame() { return frames[frame_number % cMaxInflightFrames]; }
 
 		static void ProcessDeletionQueue(uint64_t completed_frame)
 		{
