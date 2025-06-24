@@ -100,9 +100,9 @@ namespace phx::RHI
 		VkFence RenderFence = VK_NULL_HANDLE;
 
 		phx::EnumArray<VkCommandPool, CommandQueueType> command_pools;
-		phx::EnumArray<VkCommandBuffer, VkCommandBuffer> command_buffers;
-		phx::EnumArray<VkFence, VkCommandBuffer> m_fences;
-		VkFence         m_frameFences[cMaxInflightFrames];
+		phx::EnumArray<VkCommandBuffer, CommandQueueType> command_buffers;
+
+		VkFence frame_fence;
 	};
 
 	struct DeferredItem
