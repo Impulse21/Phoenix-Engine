@@ -15,12 +15,12 @@ namespace phx::RHI::vk
 			m_vk_logical_device = vk_logical_device;
 		}
 
-		CommandBufferHandle AquireFrameBuffer(uint64_t frame_index, CommandQueueType queue_type);
-		CommandBufferHandle AquireAsyncBuffer(uint64_t frame_index, CommandQueueType queue_type);
+		CommandBufferHandle AcquireFrameBuffer(uint64_t frame_index, CommandQueueType queue_type);
+		CommandBufferHandle AcquireAsyncBuffer(uint64_t frame_index, CommandQueueType queue_type);
 
 		CommandBuffer_VK* GetVkBuffer(CommandBufferHandle handle);
 		void SubmitComplete(Span<CommandBufferHandle> handles);
-		void Recycle(uint64_t current_frame)
+		void Recycle(uint64_t current_frame);
 
 	private:
 		struct FrameCommandPool
@@ -28,6 +28,7 @@ namespace phx::RHI::vk
 			VkCommandPool vk_cmd_pool = VK_NULL_HANDLE;
 			std::vector<VkCommandBuffer> buffers;
 			std::deque<size_t> m_free_indices;
+
 		};
 
 		struct AsyncCommandPool
@@ -45,9 +46,14 @@ namespace phx::RHI::vk
 		};
 
 		VkDevice m_vk_logical_device;
-		std::vector<CommandBuffer_VK> m_command_buffers;
 		std::deque<size_t> m_free_indices;
 
+		std::mutex m_async_mutex;;
+		std::vector<CommandBuffer_VK> m_async_command_buffers;
+
+		std::mutex m_frame_mutex;
+		size_t m_num_frame_buffers;
+		std::vector<CommandBuffer_VK> m_frame_command_buffers;
 
 		FrameCommandPool m_frame_pools[NumCommandQueues];
 		AsyncCommandPool m_async_pools[NumCommandQueues];
@@ -56,13 +62,30 @@ namespace phx::RHI::vk
 	};
 
 	template<size_t _MaxFramesInFlight>
-	inline CommandBufferHandle VkCommandBufferAllocator<_MaxFramesInFlight>::AquireFrameBuffer(uint64_t frame_index, CommandQueueType queue_type)
+	inline CommandBufferHandle VkCommandBufferAllocator<_MaxFramesInFlight>::AcquireFrameBuffer(uint64_t frame_index, CommandQueueType queue_type)
 	{
+		std::scoped_lock _(m_frame_mutex);
+		size_t index = m_num_frame_buffers++;
+
+		if (m_frame_command_buffers.size() < index)
+			m_frame_command_buffers.emplace_back();
+
+		CommandBuffer_VK& command_buffer = m_frame_command_buffers[index];
+
+		// Request data from pool
+		command_buffer.pool_type = PoolType::Frame;
+		command_buffer.queue_type = queue_type;
+
+		FrameCommandPool& command_pool = m_frame_pools[queue_type];
+		command_buffer.vk_cmd_pool = command_pool.vk_cmd_pool;
+
+		if (command_pool.buffers.siz)
+		command_buffer.vk_cmd_buffer = ;
 		return CommandBufferHandle();
 	}
 
 	template<size_t _MaxFramesInFlight>
-	inline CommandBufferHandle VkCommandBufferAllocator<_MaxFramesInFlight>::AquireAsyncBuffer(uint64_t frame_index, CommandQueueType queue_type)
+	inline CommandBufferHandle VkCommandBufferAllocator<_MaxFramesInFlight>::AcquireAsyncBuffer(uint64_t frame_index, CommandQueueType queue_type)
 	{
 		return CommandBufferHandle();
 	}
