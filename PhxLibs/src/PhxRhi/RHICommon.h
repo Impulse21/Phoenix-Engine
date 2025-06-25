@@ -945,6 +945,34 @@ namespace phx::RHI
     struct SwapChain;
     using SwapChainHandle = Handle<SwapChain>;
 
-    using CommandBufferHandle = size_t;
+    enum class PoolType : uint8_t
+    {
+        Async = 0,
+        Frame
+    };
+
+    union CommandBufferHandle
+    {
+        uint32_t value; // The raw 32-bit handle
+
+        struct EncodedData // Anonymous struct
+        {
+            uint16_t index;
+            uint8_t  pool_type;
+            uint8_t  queue_type;
+        } data;
+
+
+        inline bool IsAsync() const { return data.pool_type == (uint8_t)PoolType::Async; }
+        inline bool IsFrame() const { return data.pool_type == (uint8_t)PoolType::Frame; }
+
+        inline CommandQueueType GetQueueType() const { return (CommandQueueType)data.queue_type; }
+        inline PoolType GetPoolType() const { return (PoolType)data.pool_type; }
+        inline uint16_t GetIndex() const { return data.index; }
+    };
+    static_assert(sizeof(CommandBufferHandle) == 4, "Command Buffer handle must be 4-bytes in size");
+
+    using FrameCommandHandle = CommandBufferHandle;
+    using AsyncCommandHandle = CommandBufferHandle;
 #pragma endregion
 }

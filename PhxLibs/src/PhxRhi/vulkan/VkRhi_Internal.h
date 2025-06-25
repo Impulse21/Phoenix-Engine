@@ -76,19 +76,13 @@ namespace phx::RHI
 
 	struct RHI_DEFINE_ALIGNED(CommandBuffer_VK, kCacheLineSize)
 	{
-		enum class SubmitPolicy : uint8_t
-		{
-			Frame = 0,
-			Async
-		};
-
 		// -- 8-byte members ---
 		VkCommandPool vk_cmd_pool;
 		VkCommandBuffer vk_cmd_buffer;
 
 		// -- 1-byte members ---
 		CommandQueueType queue_type;
-		SubmitPolicy submit_policy;
+		PoolType pool_type;
 		uint8_t buffer_index;
 	};
 	static_assert(sizeof(CommandBuffer_VK) == kCacheLineSize, "CommandBuffer_VK must be exactly one cache line in size!");
