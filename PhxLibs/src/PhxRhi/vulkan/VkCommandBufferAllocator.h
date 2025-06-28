@@ -6,6 +6,40 @@
 
 namespace phx::RHI::vk
 {
+	template<size_t TBufferPoolSize>
+	struct FrameCommandBufferPool
+	{
+		VkCommandPool vk_cmd_pool = VK_NULL_HANDLE;
+		std::array<VkCommandBuffer, TBufferPoolSize> vk_cmd_buffers;
+		std::atomic<uint32_t> next_buffer_index = 0;
+	};
+
+	struct AsyncCommandBuffer
+	{
+		VkCommandBuffer vk_buffer = VK_NULL_HANDLE;
+		VkFence         vk_fence = VK_NULL_HANDLE;
+	};
+
+	template<size_t TBufferPoolSize>
+	struct AsyncCommandPool
+	{
+		VkCommandPool vk_cmd_pool = VK_NULL_HANDLE;
+		std::array<AsyncCommandBuffer, TBufferPoolSize> cmd_buffers;
+
+		std::vector<uint16_t> free_indices;
+		std::mutex pool_mutex;
+	};
+
+
+	template<
+		typename TFramesInFlight,
+		size_t TFramePoolSize,
+		size_t TAsyncPoolSize>
+	class CommandBufferAllocator_VK
+	{
+
+	};
+
 	template<size_t _MaxFramesInFlight>
 	class VkCommandBufferAllocator
 	{
