@@ -98,4 +98,8 @@ namespace phx::RHI::vk
 	inline void VkCommandBufferAllocator<_MaxFramesInFlight>::SubmitComplete(Span<CommandBufferHandle> handles)
 	{
 	}
+	template<size_t _MaxFramesInFlight>
+	inline void VkCommandBufferAllocator<_MaxFramesInFlight>::Recycle(uint64_t current_frame)
+	{
+	}
 }
