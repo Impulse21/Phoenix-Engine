@@ -65,7 +65,7 @@ namespace phx::RHI::vk
 		EnumArray<AsyncCommandPool<TAsyncBuffersPerPool>, CommandQueueType> m_async_pools;
 	};
 
-	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	template<size_t TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
 	inline void CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::Initialize(VkDevice device, EnumArray<uint32_t, CommandQueueType> const& queue_family_indices)
 	{
 		m_vk_logical_device = device;
@@ -119,7 +119,7 @@ namespace phx::RHI::vk
 		}
 	}
 
-	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	template<size_t TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
 	inline void CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::Shutdown()
 	{
 		for (uint32_t i = 0; i < TFramesInFlight; ++i) 
@@ -140,7 +140,7 @@ namespace phx::RHI::vk
 		}
 	}
 
-	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	template<size_t TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
 	inline void CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::Recycle(uint64_t current_frame)
 	{
 		for (auto& pool : m_frame_pools[current_frame % TFramesInFlight])
@@ -150,7 +150,7 @@ namespace phx::RHI::vk
 		}
 	}
 
-	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	template<size_t TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
 	inline CommandBufferHandle CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::AcquireFrameCommandBuffer(CommandQueueType queue_type, uint64_t fame_index)
 	{
 		auto& pool = m_frame_pools[fame_index][queue_type];
@@ -179,7 +179,7 @@ namespace phx::RHI::vk
 		return handle;
 	}
 
-	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	template<size_t TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
 	inline CommandBufferHandle CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::AcquireAsyncCommandBuffer(CommandQueueType queue_type)
 	{
 		auto& pool = m_async_pools[queue_type];
@@ -213,7 +213,7 @@ namespace phx::RHI::vk
 		return handle;
 	}
 
-	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	template<size_t TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
 	inline void CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::ReleaseAsyncCommandBuffer(CommandBufferHandle handle)
 	{
 		PHX_CORE_ASSERT(handle.GetPoolType() == PoolType::Async);
@@ -225,7 +225,7 @@ namespace phx::RHI::vk
 		pool.free_indices.push_back(handle.GetIndex());
 	}
 
-	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	template<size_t TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
 	inline VkCommandBuffer CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::GetVkCommandBuffer(CommandBufferHandle handle, uint32_t frameIndex)
 	{
 		if (handle.IsFrame()) {
@@ -234,7 +234,7 @@ namespace phx::RHI::vk
 		return m_async_pools[handle.GetQueueType()].cmd_buffers[handle.GetIndex()].vk_cmd_buffer;
 	}
 
-	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	template<size_t TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
 	inline VkFence CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::GetVkFenceForAsync(CommandBufferHandle handle)
 	{
 		PHX_CORE_ASSERT(handle.GetPoolType() == PoolType::Async);
@@ -244,7 +244,7 @@ namespace phx::RHI::vk
 		return m_async_pools[handle.GetQueueType()].cmd_buffers[handle.GetIndex()].vk_fence;
 	}
 
-	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	template<size_t TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
 	inline void CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::AllocateCommandBuffers(VkCommandPool pool, VkCommandBuffer* pCommandBuffers, uint32_t count)
 	{
 		VkCommandBufferAllocateInfo allocInfo{};
