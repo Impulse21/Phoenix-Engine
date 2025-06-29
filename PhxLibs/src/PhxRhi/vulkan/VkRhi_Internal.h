@@ -18,6 +18,7 @@
 #include "VkCopyCtxManager.h"
 #include "VkBindlessDescriptorArray.h"
 #include "VkGpuTempMemory.h"
+#include "VkCommandBufferAllocator.h"
 
 #define vulkan_check(call) [&]() { VkResult res = call; PHX_CORE_ASSERT(res >= VK_SUCCESS); return res; }()
 #define RHI_DEFINE_ALIGNED(name, alignemnt) alignas(alignemnt) name
@@ -30,6 +31,9 @@ namespace phx::RHI
 	constexpr size_t kCacheLineSize = 64ull;
 	constexpr size_t cMaxInflightFrames = 2;
 	constexpr uint64_t kTimeoutValue = 2000000000ull; // 2 seconds
+	constexpr uint32_t kMaxFrameCmds = 64;
+	constexpr uint32_t kMaxAsyncCmds = 32;
+	using CommandBufferAllocator = phx::RHI::vk::CommandBufferAllocator_VK<cMaxInflightFrames, kMaxFrameCmds, kMaxAsyncCmds>;
 
 	struct RHI_DEFINE_ALIGNED(Buffer_VK, kCacheLineSize)
 	{
@@ -173,6 +177,7 @@ namespace phx::RHI
 		inline static phx::PagedPool<RHI::GpuBuffer, Buffer_VK> buffer_pool;
 		inline static phx::RHI::vk::VkBindlessDescriptorArray texture_descriptors;
 
+		inline static CommandBufferAllocator command_buffer_allocator;
 		inline static phx::RHI::vk::GpuTempMemoryAllocator temp_memory_allocator;
 
 		// -- Frame Data ---

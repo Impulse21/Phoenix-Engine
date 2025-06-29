@@ -34,7 +34,7 @@ namespace phx::RHI::vk
 
 
 	template<
-		typename TFramesInFlight,
+		size_t TFramesInFlight,
 		size_t TFrameBuffersPerPool,
 		size_t TAsyncBuffersPerPool>
 	class CommandBufferAllocator_VK
@@ -48,9 +48,9 @@ namespace phx::RHI::vk
 
 		void Recycle(uint64_t current_frame);
 
-		void AcquireFrameCommandBuffer(CommandQueueType queue_type, uint64_t fame_index);
-		void AcquireAsyncCommandBuffer(CommandQueueType queue_type);
-		void ReleaseAsyncCommandBuffers(phx::Span<CommandBufferHandle> handles);
+		CommandBufferHandle AcquireFrameCommandBuffer(CommandQueueType queue_type, uint64_t fame_index);
+		CommandBufferHandle AcquireAsyncCommandBuffer(CommandQueueType queue_type);
+		void ReleaseAsyncCommandBuffer(CommandBufferHandle handle);
 
 		VkCommandBuffer GetVkCommandBuffer(CommandBufferHandle handle, uint32_t frameIndex);
 		VkFence GetVkFenceForAsync(CommandBufferHandle handle);
@@ -122,6 +122,126 @@ namespace phx::RHI::vk
 	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
 	inline void CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::Shutdown()
 	{
+		for (uint32_t i = 0; i < TFramesInFlight; ++i) 
+		{
+			for (auto& pool : m_frame_pools[i]) 
+			{
+				vkDestroyCommandPool(m_vk_logical_device, pool.vk_cmd_pool, nullptr);
+			}
+		}
+
+		for (auto& pool : m_async_pools) 
+		{
+			for (auto& cmd : pool.cmd_buffers)
+			{
+				vkDestroyFence(m_vk_logical_device, cmd.vk_fence, nullptr);
+			}
+			vkDestroyCommandPool(m_vk_logical_device, pool.vk_cmd_pool, nullptr);
+		}
+	}
+
+	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	inline void CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::Recycle(uint64_t current_frame)
+	{
+		for (auto& pool : m_frame_pools[current_frame % TFramesInFlight])
+		{
+			vkResetCommandPool(m_vk_logical_device, pool.vk_cmd_pool, 0);
+			pool.next_buffer_index.store(0);
+		}
+	}
+
+	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	inline CommandBufferHandle CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::AcquireFrameCommandBuffer(CommandQueueType queue_type, uint64_t fame_index)
+	{
+		auto& pool = m_frame_pools[fame_index][queue_type];
+		const uint32_t buffer_index = pool.next_buffer_index.fetch_add(1);
+
+		if (buffer_index >= TFrameBuffersPerPool)
+		{
+			PHX_CORE_ERROR("Exceeded available frame command buffers for queue type %d! Budget is %u.", (int)queue_type, TFrameBuffersPerPool);
+			return {}; // Return invalid handle after fatal error
+		}
+
+		VkCommandBuffer vk_cmd_buffer = pool.vk_cmd_buffers[buffer_index];
+
+		VkCommandBufferBeginInfo begin_info = {};
+		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		begin_info.pNext = nullptr;
+		begin_info.pInheritanceInfo = nullptr;
+		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		vkBeginCommandBuffer(vk_cmd_buffer, &begin_info);
+
+		CommandBufferHandle handle;
+		handle.data.index = static_cast<uint16_t>(buffer_index);
+		handle.data.queue_type = static_cast<uint8_t>(queue_type);
+		handle.data.pool_type = static_cast<uint8_t>(PoolType::Frame);
+		return handle;
+	}
+
+	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	inline CommandBufferHandle CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::AcquireAsyncCommandBuffer(CommandQueueType queue_type)
+	{
+		auto& pool = m_async_pools[queue_type];
+		std::scoped_lock _(pool.pool_mutex);
+
+		if (pool.free_indices.empty())
+		{
+			PHX_CORE_ERROR("No async command buffers available for queue type %d! Budget is %u.", static_cast<uint32_t>(queue_type), TAsyncBuffersPerPool);
+			return CommandBufferHandle{ 0 };
+		}
+
+		uint16_t buffer_index = pool.free_indices.back();
+		pool.free_indices.pop_back();
+
+		AsyncCommandBuffer& async_cmd = pool.cmd_buffers[buffer_index];
+		vkWaitForFences(m_vk_logical_device, 1, &async_cmd.vk_fence, VK_TRUE, UINT64_MAX);
+		vkResetFences(m_vk_logical_device, 1, &async_cmd.vk_fence);
+
+		VkCommandBufferBeginInfo begin_info = {};
+		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		begin_info.pNext = nullptr;
+		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		begin_info..pInheritanceInfo = nullptr;
+
+		vkBeginCommandBuffer(async_cmd.vk_cmd_buffer, &begin_info);
+
+		CommandBufferHandle handle;
+		handle.data.index = buffer_index;
+		handle.data.queue_type = static_cast<uint8_t>(queue_type);
+		handle.data.pool_type = static_cast<uint8_t>(PoolType::Async);
+		return handle;
+	}
+
+	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	inline void CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::ReleaseAsyncCommandBuffer(CommandBufferHandle handle)
+	{
+		PHX_CORE_ASSERT(handle.GetPoolType() == PoolType::Async);
+		if (handle.GetPoolType() != PoolType::Async)
+			return;
+
+		auto& pool = m_async_pools[static_cast<uint32_t>(handle.GetQueueType())];
+		std::scoped_lock _(pool.pool_mutex);
+		pool.free_indices.push_back(handle.GetIndex());
+	}
+
+	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	inline VkCommandBuffer CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::GetVkCommandBuffer(CommandBufferHandle handle, uint32_t frameIndex)
+	{
+		if (handle.IsFrame()) {
+			return m_frame_pools[frameIndex][handle.GetQueueType()].vk_cmd_buffers[handle.GetIndex()];
+		}
+		return m_async_pools[handle.GetQueueType()].cmd_buffers[handle.GetIndex()].vk_cmd_buffer;
+	}
+
+	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	inline VkFence CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::GetVkFenceForAsync(CommandBufferHandle handle)
+	{
+		PHX_CORE_ASSERT(handle.GetPoolType() == PoolType::Async);
+		if (handle.GetPoolType() != PoolType::Async)
+			return VK_NULL_HANDLE;
+
+		return m_async_pools[handle.GetQueueType()].cmd_buffers[handle.GetIndex()].vk_fence;
 	}
 
 	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
