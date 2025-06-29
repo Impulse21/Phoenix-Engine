@@ -1,7 +1,9 @@
 #pragma once
 
-#include "VkRhi_Internal.h"
-#include <vector>
+#include <PhxRhi/RHICommon.h>
+
+#include <volk.h>
+#include <array>
 #include <mutex>
 
 namespace phx::RHI::vk
@@ -33,123 +35,107 @@ namespace phx::RHI::vk
 
 	template<
 		typename TFramesInFlight,
-		size_t TFramePoolSize,
-		size_t TAsyncPoolSize>
+		size_t TFrameBuffersPerPool,
+		size_t TAsyncBuffersPerPool>
 	class CommandBufferAllocator_VK
 	{
-
-	};
-
-	template<size_t _MaxFramesInFlight>
-	class VkCommandBufferAllocator
-	{
 	public:
-		void Initialize(VkDevice vk_logical_device)
-		{
-			m_vk_logical_device = vk_logical_device;
-		}
+		CommandBufferAllocator_VK() = default;
+		~CommandBufferAllocator_VK() = default;
 
-		CommandBufferHandle AcquireFrameBuffer(uint64_t frame_index, CommandQueueType queue_type);
-		CommandBufferHandle AcquireAsyncBuffer(uint64_t frame_index, CommandQueueType queue_type);
+		void Initialize(VkDevice device, EnumArray<uint32_t, CommandQueueType> const& queue_family_indices);
+		void Shutdown();
 
-		CommandBuffer_VK* GetVkBuffer(CommandBufferHandle handle);
-		void SubmitComplete(Span<CommandBufferHandle> handles);
 		void Recycle(uint64_t current_frame);
 
+		void AcquireFrameCommandBuffer(CommandQueueType queue_type, uint64_t fame_index);
+		void AcquireAsyncCommandBuffer(CommandQueueType queue_type);
+		void ReleaseAsyncCommandBuffers(phx::Span<CommandBufferHandle> handles);
+
+		VkCommandBuffer GetVkCommandBuffer(CommandBufferHandle handle, uint32_t frameIndex);
+		VkFence GetVkFenceForAsync(CommandBufferHandle handle);
+
 	private:
-		struct FrameCommandPool
-		{
-			std::mutex mutex;
-			VkCommandPool vk_cmd_pool = VK_NULL_HANDLE;
-			std::vector<VkCommandBuffer> buffers;
-			size_t num_active_buffers;
+		void AllocateCommandBuffers(VkCommandPool pool, VkCommandBuffer* pCommandBuffers, uint32_t count);
 
-		};
-
-		struct AsyncCommandPool
-		{
-			VkCommandPool vk_cmd_pool = VK_NULL_HANDLE;
-			struct Entry
-			{
-				VkCommandBuffer vk_cmd_buffer = VK_NULL_HANDLE;
-				VkFence fence = VK_NULL_HANDLE;
-				uint16_t generation = 0;
-			};
-
-			std::vector<Entry> entries;
-			std::deque<size_t> m_free_indices;
-		};
-
-		VkDevice m_vk_logical_device;
-		std::deque<size_t> m_free_indices;
-
-		std::mutex m_async_mutex;
-		std::vector<CommandBuffer_VK> m_async_command_buffers;
-
-		std::mutex m_frame_registry_lock;
-		std::vector<std::unique_ptr<CommandBuffer_VK>> m_frame_buffer_registry;
-		EnumArray<FrameCommandPool,  CommandQueueType> m_frame_pools[_MaxFramesInFlight];
-		VkFence m_frame_fences[_MaxFramesInFlight];
-
-		AsyncCommandPool m_async_pools[NumCommandQueues];
+	private:
+		VkDevice m_vk_logical_device = VK_NULL_HANDLE;
+		// We use our template parameters to define the size of our std::array members.
+		std::array<EnumArray<FrameCommandBufferPool<TFrameBuffersPerPool>, CommandQueueType>, TFramesInFlight> m_frame_pools;
+		EnumArray<AsyncCommandPool<TAsyncBuffersPerPool>, CommandQueueType> m_async_pools;
 	};
 
-	template<size_t _MaxFramesInFlight>
-	inline CommandBufferHandle VkCommandBufferAllocator<_MaxFramesInFlight>::AcquireFrameBuffer(uint64_t frame_index, CommandQueueType queue_type)
+	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	inline void CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::Initialize(VkDevice device, EnumArray<uint32_t, CommandQueueType> const& queue_family_indices)
 	{
-		FrameCommandPool& frame_command_pool = m_frame_fences[frame_index % _MaxFramesInFlight][queue_type];
+		m_vk_logical_device = device;
 
-		CommandBufferHandle ret_val = {};
-		ret_val.data.pool_type = PoolType::Frame;
-		ret_val.data.queue_type = queue_type;
-
+		// --- Initialize Frame Pools ---
+		for (uint32_t i = 0; i < TFramesInFlight; ++i)
 		{
-			std::scoped_lock _(m_frame_registry_lock);
-			ret_val.data.index = m_frame_buffer_registry.size();
-			CommandBuffer_VK& cmd_buffer_internal = &m_frame_buffer_registry.emplace_back();
-
-			uint32_t cmd_current = cmd_count++;
-			if (cmd_current >= frame_command_pool.size())
+			for (uint32_t iQueue = 0; iQueue < static_cast<uint32_t>(CommandQueueType::Count); iQueue++)
 			{
-				commandlists.push_back(std::make_unique<CommandList_Vulkan>());
+				auto& frame_pool = m_frame_pools[i][iQueue];
+				VkCommandPoolCreateInfo pool_info = {};
+				pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+				pool_info.queueFamilyIndex = queue_family_indices[iQueue];
+				pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT | VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+
+				vkCreateCommandPool(m_vk_logical_device, &pool_info, nullptr, &frame_pool.vk_cmd_pool);
+				AllocateCommandBuffers(frame_pool.vk_cmd_pool, frame_pool.vk_cmd_buffers.data(), TFrameBuffersPerPool);
 			}
 		}
 
-		size_t index = frame_command_pool.num_active_buffers++;
+		// --- Initialize Async Pools ---
+		for (uint32_t i = 0; i < static_cast<uint32_t>(CommandQueueType::Count); i++)
+		{
+			auto& async_pool = m_async_pools[i];
 
-		if (m_frame_command_buffers.size() < index)
-			m_frame_command_buffers.emplace_back();
+			VkCommandPoolCreateInfo pool_info = {};
+			pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+			pool_info.queueFamilyIndex = queue_family_indices[iQueue];
+			pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-		CommandBuffer_VK& command_buffer = m_frame_command_buffers[index];
+			vkCreateCommandPool(m_vk_logical_device, &pool_info, nullptr, &async_pool.vk_cmd_pool);
 
-		// Request data from pool
-		command_buffer.pool_type = PoolType::Frame;
-		command_buffer.queue_type = queue_type;
+			// Allocate raw handles first
+			std::array<VkCommandBuffer, TAsyncBuffersPerPool> raw_buffers;
+			AllocateCommandBuffers(async_pool.vk_cmd_pool, raw_buffers.data(), TAsyncBuffersPerPool);
 
-		FrameCommandPool& command_pool = m_frame_pools[queue_type];
-		command_buffer.vk_cmd_pool = command_pool.vk_cmd_pool;
+			// Populate our structures and create fences
+			async_pool.freeIndices.reserve(TAsyncBuffersPerPool);
+			for (uint16_t j = 0; j < TAsyncBuffersPerPool; ++j)
+			{
+				async_pool.cmd_buffers[j].vk_cmd_buffer = raw_buffers[j];
 
-		if (command_pool.buffers.siz)
-		command_buffer.vk_cmd_buffer = ;
-		return CommandBufferHandle();
+				VkFenceCreateInfo fence_info = {};
+				fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; 
+				fence_info.pNext = nullptr;
+				fence_info.flags =  VK_FENCE_CREATE_SIGNALED_BIT;
+
+				vkCreateFence(m_vk_logical_device, &fence_info, nullptr, &pool_info.cmd_buffers[j].vk_fence);
+				async_pool.free_indices.push_back(j);
+			}
+		}
 	}
 
-	template<size_t _MaxFramesInFlight>
-	inline CommandBufferHandle VkCommandBufferAllocator<_MaxFramesInFlight>::AcquireAsyncBuffer(uint64_t frame_index, CommandQueueType queue_type)
-	{
-		return CommandBufferHandle();
-	}
-	template<size_t _MaxFramesInFlight>
-	inline CommandBuffer_VK* VkCommandBufferAllocator<_MaxFramesInFlight>::GetVkBuffer(CommandBufferHandle handle)
-	{
-		return nullptr;
-	}
-	template<size_t _MaxFramesInFlight>
-	inline void VkCommandBufferAllocator<_MaxFramesInFlight>::SubmitComplete(Span<CommandBufferHandle> handles)
+	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	inline void CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::Shutdown()
 	{
 	}
-	template<size_t _MaxFramesInFlight>
-	inline void VkCommandBufferAllocator<_MaxFramesInFlight>::Recycle(uint64_t current_frame)
+
+	template<typename TFramesInFlight, size_t TFrameBuffersPerPool, size_t TAsyncBuffersPerPool>
+	inline void CommandBufferAllocator_VK<TFramesInFlight, TFrameBuffersPerPool, TAsyncBuffersPerPool>::AllocateCommandBuffers(VkCommandPool pool, VkCommandBuffer* pCommandBuffers, uint32_t count)
 	{
+		VkCommandBufferAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.commandPool = pool;
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.commandBufferCount = count;
+
+		if (vkAllocateCommandBuffers(m_vk_logical_device, &allocInfo, pCommandBuffers) != VK_SUCCESS) 
+		{
+			PHX_CORE_ERROR("Failed to allocate command buffers!");
+		}
 	}
 }
