@@ -15,7 +15,7 @@ void CopyCtxManager::Initialize()
 
 void CopyCtxManager::Shutdown()
 {
-	vkQueueWaitIdle(VkContext::vk_transfer_queue);
+	vkQueueWaitIdle(VkContext::queue_transfer.vk_queue);
 	for (auto& x : free_list)
 	{
 		VkDevice vk_logical_device = VkContext::vk_device;
@@ -52,11 +52,11 @@ CopyCtx CopyCtxManager::Allocate(uint64_t staging_size)
 		VkCommandPoolCreateInfo pool_info = {};
 		pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		pool_info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-		pool_info.queueFamilyIndex = VkContext::vk_transfer_queue_family;
+		pool_info.queueFamilyIndex = VkContext::queue_transfer.vk_queue_family;
 		vulkan_check(
 			vkCreateCommandPool(vk_logical_device, &pool_info, nullptr, &copy_ctx.transfer_command_pool));
 
-		pool_info.queueFamilyIndex = VkContext::vk_graphics_queue_family;
+		pool_info.queueFamilyIndex = VkContext::queue_transfer.vk_queue_family;
 		vulkan_check(
 			vkCreateCommandPool(vk_logical_device, &pool_info, nullptr, &copy_ctx.transition_command_pool));
 
@@ -141,9 +141,9 @@ void phx::RHI::vk::CopyCtxManager::SubmitAndWait(CopyCtx copy_ctx)
 		submit_info.signalSemaphoreInfoCount = 1;
 		submit_info.pSignalSemaphoreInfos = &signal_semaphore_info;
 
-		std::scoped_lock lock(VkContext::transfer_queue_lock);
+		std::scoped_lock lock(VkContext::queue_transfer.lock);
 		vulkan_check(
-			vkQueueSubmit2(VkContext::vk_transfer_queue, 1, &submit_info, VK_NULL_HANDLE));
+			vkQueueSubmit2(VkContext::queue_transfer.vk_queue, 1, &submit_info, VK_NULL_HANDLE));
 	}
 
 	{
@@ -159,9 +159,9 @@ void phx::RHI::vk::CopyCtxManager::SubmitAndWait(CopyCtx copy_ctx)
 		submit_info.signalSemaphoreInfoCount = 0;
 		submit_info.pSignalSemaphoreInfos = nullptr;
 
-		std::scoped_lock lock(VkContext::graphics_queue_lock);
+		std::scoped_lock lock(VkContext::queue_gfx.lock);
 		vulkan_check(
-			vkQueueSubmit2(VkContext::vk_graphics_queue, 1, &submit_info, copy_ctx.fence));
+			vkQueueSubmit2(VkContext::queue_gfx.vk_queue, 1, &submit_info, copy_ctx.fence));
 	}
 
 	while (vulkan_check(vkWaitForFences(RHI::VkContext::vk_device, 1, &copy_ctx.fence, VK_TRUE, kTimeoutValue)) == VK_TIMEOUT)

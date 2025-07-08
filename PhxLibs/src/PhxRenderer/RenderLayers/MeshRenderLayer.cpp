@@ -30,6 +30,7 @@ namespace
 
 void* phx::gfx::MeshRenderLayer::PreRender(phx::World& world, View const& view, RenderPass renderPass)
 {
+#if false
 	if (renderPass != RenderPass::Forward)
 		return nullptr;
 
@@ -64,6 +65,12 @@ void* phx::gfx::MeshRenderLayer::PreRender(phx::World& world, View const& view, 
 	}
 
 	return cache;
+#else
+	(void)world;
+	(void)view;
+	(void)renderPass;
+	return nullptr;
+#endif
 }
 
 void phx::gfx::MeshRenderLayer::Render(RenderPass /*renderPass*/, void* /*cachedData*/)

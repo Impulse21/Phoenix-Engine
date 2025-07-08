@@ -188,7 +188,7 @@ namespace phx::RHI
 
 		inline static std::mutex buffers_mutex;
 
-		constexpr static FrameData& GetCurrentFrame() { return frames[frame_number % cMaxInflightFrames]; }
+		static FrameData& GetCurrentFrame() { return frames[frame_number % cMaxInflightFrames]; }
 
 		static void ProcessDeletionQueue(uint64_t completed_frame)
 		{

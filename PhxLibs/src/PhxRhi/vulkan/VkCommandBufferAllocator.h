@@ -93,7 +93,7 @@ namespace phx::RHI::vk
 
 			VkCommandPoolCreateInfo pool_info = {};
 			pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-			pool_info.queueFamilyIndex = queue_family_indices[iQueue];
+			pool_info.queueFamilyIndex = queue_family_indices[i];
 			pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 			vkCreateCommandPool(m_vk_logical_device, &pool_info, nullptr, &async_pool.vk_cmd_pool);
@@ -113,7 +113,7 @@ namespace phx::RHI::vk
 				fence_info.pNext = nullptr;
 				fence_info.flags =  VK_FENCE_CREATE_SIGNALED_BIT;
 
-				vkCreateFence(m_vk_logical_device, &fence_info, nullptr, &pool_info.cmd_buffers[j].vk_fence);
+				vkCreateFence(m_vk_logical_device, &fence_info, nullptr, &async_pool.cmd_buffers[j].vk_fence);
 				async_pool.free_indices.push_back(j);
 			}
 		}
@@ -159,7 +159,7 @@ namespace phx::RHI::vk
 		if (buffer_index >= TFrameBuffersPerPool)
 		{
 			PHX_CORE_ERROR("Exceeded available frame command buffers for queue type %d! Budget is %u.", (int)queue_type, TFrameBuffersPerPool);
-			return {}; // Return invalid handle after fatal error
+			return {};
 		}
 
 		VkCommandBuffer vk_cmd_buffer = pool.vk_cmd_buffers[buffer_index];
@@ -202,9 +202,9 @@ namespace phx::RHI::vk
 		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		begin_info.pNext = nullptr;
 		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		begin_info..pInheritanceInfo = nullptr;
+		begin_info.pInheritanceInfo = nullptr;
 
-		vkBeginCommandBuffer(async_cmd.vk_cmd_buffer, &begin_info);
+		vkBeginCommandBuffer(async_cmd.vk_buffer, &begin_info);
 
 		CommandBufferHandle handle;
 		handle.data.index = buffer_index;

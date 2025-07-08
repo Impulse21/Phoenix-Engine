@@ -30,7 +30,7 @@ struct StreamingRequestProcessor
 			.status_array = {0}
 		};
 
-		RHI::CommandBufferHandle ctx_handle = RHI::BeginAsyncCommandBuffer();
+		RHI::CommandBufferHandle ctx_handle = RHI::BeginAsyncCommandBuffer(RHI::CommandQueueType::Copy);
 		for (size_t i = 0; i < request.operations.size(); i++)
 		{
 			ErrorCode error_code = ProcessOperation(streaming_manager, ctx_handle, request.operations[i]);

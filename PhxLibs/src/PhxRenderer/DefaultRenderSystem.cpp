@@ -117,14 +117,14 @@ void phx::gfx::DefaultRenderSystem::CacheRenderViews(World& world)
 	{
 		auto [name_comp, camera_comp] = camerasView.get<phx::NameComponent, phx::CameraComponent>(e);
 
-		if (camera_comp.Active)
+		if (camera_comp.active)
 		{
-			const float nearZ = camera_comp.ZNear;
-			const float farZ = camera_comp.ZFar;
+			const float nearZ = camera_comp.z_near;
+			const float farZ = camera_comp.z_far;
 
 			auto view_matrix = hlslpp::float4x4::look_at(
-				camera_comp.Eye,
-				camera_comp.Forward,
+				camera_comp.eye,
+				camera_comp.forward,
 				camera_comp.Up);
 
 			auto* view = new (m_perFrameCache.Views) View();
