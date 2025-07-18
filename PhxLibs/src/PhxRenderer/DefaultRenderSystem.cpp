@@ -125,16 +125,16 @@ void phx::gfx::DefaultRenderSystem::CacheRenderViews(World& world)
 			auto view_matrix = hlslpp::float4x4::look_at(
 				camera_comp.eye,
 				camera_comp.forward,
-				camera_comp.Up);
+				camera_comp.up);
 
 			auto* view = new (m_perFrameCache.Views) View();
 			
 			view->ViewMatrix = view_matrix;
 			view->InvViewMatrix = hlslpp::inverse(view_matrix);
 
-			float aspectRatio = camera_comp.Width / camera_comp.Height;
+			float aspectRatio = camera_comp.width / camera_comp.height;
 			hlslpp::projection projection(
-				hlslpp::frustum::field_of_view_x(camera_comp.FoV, aspectRatio, nearZ, farZ),
+				hlslpp::frustum::field_of_view_x(camera_comp.fov, aspectRatio, nearZ, farZ),
 				hlslpp::zclip::zero);
 
 			view->ProjectionMatrix = hlslpp::float4x4::perspective(projection);

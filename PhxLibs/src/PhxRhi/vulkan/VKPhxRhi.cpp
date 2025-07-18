@@ -1175,9 +1175,9 @@ namespace phx::RHI::CommandRecorder
 
     void Draw(CommandBufferHandle handle, uint32_t vertex_count, uint32_t start_vertex_location)
     {
-        CommandBuffer_VK& cmd_buffer = VkContext::GetCurrentFrame().command_buffers[handle];
+        VkCommandBuffer& vk_cmd_buffer = VkContext::GetCurrentFrame().vk_command_buffers[handle.GetIndex()];
         vkCmdDraw(
-            cmd_buffer.vk_cmd_buffer,
+            vk_cmd_buffer,
             vertex_count,
             1,
             start_vertex_location,
@@ -1186,9 +1186,9 @@ namespace phx::RHI::CommandRecorder
 
     void DrawIndexed(CommandBufferHandle handle, uint32_t index_count, uint32_t start_index_location, int32_t base_vertex_location)
     {
-        CommandBuffer_VK& cmd_buffer = VkContext::command_buffers[handle];
+        VkCommandBuffer& vk_cmd_buffer = VkContext::GetCurrentFrame().vk_command_buffers[handle.GetIndex()];
         vkCmdDrawIndexed(
-            cmd_buffer.vk_cmd_buffer,
+            vk_cmd_buffer,
             index_count,
             1,
             start_index_location,
@@ -1198,9 +1198,9 @@ namespace phx::RHI::CommandRecorder
 
     void DrawInstanced(CommandBufferHandle handle, uint32_t vertex_count, uint32_t instance_count, uint32_t start_vertex_location, uint32_t start_instance_location)
     {
-        CommandBuffer_VK& cmd_buffer = VkContext::command_buffers[handle];
+        VkCommandBuffer& vk_cmd_buffer = VkContext::GetCurrentFrame().vk_command_buffers[handle.GetIndex()];
         vkCmdDraw(
-            cmd_buffer.vk_cmd_buffer,
+            vk_cmd_buffer,
             vertex_count,
             instance_count,
             start_vertex_location,
@@ -1209,9 +1209,9 @@ namespace phx::RHI::CommandRecorder
 
     void DrawIndexedInstanced(CommandBufferHandle handle, uint32_t index_count, uint32_t instance_count, uint32_t start_index_location, int32_t base_vertex_location, uint32_t start_instance_location)
     {
-        CommandBuffer_VK& cmd_buffer = VkContext::command_buffers[handle];
+        VkCommandBuffer& vk_cmd_buffer = VkContext::GetCurrentFrame().vk_command_buffers[handle.GetIndex()];
         vkCmdDrawIndexed(
-            cmd_buffer.vk_cmd_buffer,
+            vk_cmd_buffer,
             index_count,
             instance_count,
             start_index_location,

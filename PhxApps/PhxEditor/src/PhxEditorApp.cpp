@@ -203,7 +203,7 @@ void PhxEditor::OnPreRender()
 		auto cameras_view = m_world.GetAllEntitiesWith<phx::NameComponent, phx::CameraComponent>();
 		for (auto e : cameras_view)
 		{
-			auto& [name_comp, camera_comp] = cameras_view.get<phx::NameComponent, phx::CameraComponent>(e);
+			auto [name_comp, camera_comp] = cameras_view.get<phx::NameComponent, phx::CameraComponent>(e);
 
 			if (camera_comp.active)
 			{
@@ -216,7 +216,7 @@ void PhxEditor::OnPreRender()
 		size_t i_view = 0;
 		for (auto e : cameras_view)
 		{
-			auto& [name_comp, camera_comp] = cameras_view.get<phx::NameComponent, phx::CameraComponent>(e);
+			auto [name_comp, camera_comp] = cameras_view.get<phx::NameComponent, phx::CameraComponent>(e);
 
 			if (!camera_comp.active)
 				continue;
@@ -253,7 +253,7 @@ void PhxEditor::OnPreRender()
 			auto drawable_view = m_world.GetAllEntitiesWith<phx::MeshComponent, phx::TransformComponent>();
 			for (auto e : drawable_view)
 			{
-				auto& [mesh_comp, transform_comp] = drawable_view.get<phx::MeshComponent, phx::TransformComponent>(e);
+				auto [mesh_comp, transform_comp] = drawable_view.get<phx::MeshComponent, phx::TransformComponent>(e);
 				if (!mesh_comp.Mesh->IsLoaded())
 					continue;
 
@@ -265,7 +265,7 @@ void PhxEditor::OnPreRender()
 			size_t i_drawable = 0;
 			for (auto e : drawable_view)
 			{
-				auto& [mesh_comp, transform_comp] = drawable_view.get<phx::MeshComponent, phx::TransformComponent>(e);
+				auto [mesh_comp, transform_comp] = drawable_view.get<phx::MeshComponent, phx::TransformComponent>(e);
 				if (!mesh_comp.Mesh->IsLoaded())
 					continue;
 
@@ -299,7 +299,7 @@ void PhxEditor::OnRender_Threaded()
 	ForwardPassDrawData* pass_data = static_cast<ForwardPassDrawData*>(m_per_frame_cache.cached_data[0]);
 	for (size_t i = 0; i < m_per_frame_cache.num_views; i++)
 	{
-		View& view = m_per_frame_cache.views[i];
+		//View& view = m_per_frame_cache.views[i];
 
 		for (size_t i_drawable = 0; i_drawable < pass_data->num_drawables; i_drawable++)
 		{
