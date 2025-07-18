@@ -239,7 +239,7 @@ end
 
 -- Globals
 workspace "PhxEngine"
-    configurations { 'Debug', 'Profiling', 'Final' }
+    configurations { 'Debug', 'RelWithDebInfo', 'Shipping' }
 	location (workspace_directory)
     preferredtoolarchitecture('x86_64') -- Prefer this toolset on MSVC as it can handle more memory for multiprocessor compiles
     warnings('extra')
@@ -331,7 +331,7 @@ workspace "PhxEngine"
 		symbols('fastlink')
 		--inlining('auto')
 
-    filter { 'configurations:Profiling or Final' }
+    filter { 'configurations:RelWithDebInfo or Shipping' }
 		defines
 		{
 			'NDEBUG', -- Disables assert
@@ -341,10 +341,10 @@ workspace "PhxEngine"
 		inlining('auto')
 		flags { 'linktimeoptimization' }
 
-    filter { 'configurations:Profiling' }
+    filter { 'configurations:RelWithDebInfo' }
 		defines { 'PHX_PROFILING', "TRACY_ENABLE" }
 
-	filter { 'configurations:Final' }
+	filter { 'configurations:Shipping' }
 		defines { 'PHX_FINAL', }
 
 -- Project definitions
@@ -1061,7 +1061,7 @@ group "Applications"
             filter { 'configurations:Debug' }
                 links(DirectXTexLibrary.libNames[2])
     
-            filter { 'configurations:Profiling or Final' }
+            filter { 'configurations:RelWithDebInfo or Shipping' }
                 links(DirectXTexLibrary.libNames[1])
         filter{}
 
