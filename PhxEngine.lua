@@ -1103,7 +1103,6 @@ group "Applications"
     project(project_model_compiler)
         kind "ConsoleApp"         -- Windows application (no console)
 
-        defines { "YAML_CPP_STATIC_DEFINE" }
 
         files 
         {
