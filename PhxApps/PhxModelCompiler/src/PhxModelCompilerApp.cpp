@@ -1,22 +1,26 @@
 #include <PhxCore/Base.h>
-#include <PhxCore/CommandLineArgs.h>
+#include <PhxCore/StringUtils.h>
+
+#include <PhxEngine/JobSystem.h>
+
+using namespace phx;
 
 int wmain(int argc, wchar_t** argv)
 {
 	phx::Log::Initialize();
 	if (argc == 0)
 	{
-		PHX_INFO("YAML config expected");
+		PHX_INFO("JSON config expected");
 		return -1;
 	}
 
-	phx::CommandLineArgs::Initialize(argc, argv);
-	phx::ThreadPool::Initialize();
+	phx::JobSystem::Initialize();
 
-	std::wstring wConfigFile;
-	phx::CommandLineArgs::GetString(L"config", wConfigFile);
-
+	std::wstring wConfigFile = argv[1];
 	std::string configFile;
 	StringConvert(wConfigFile, configFile);
+
+
+	phx::JobSystem::Shutdown();
 
 }
