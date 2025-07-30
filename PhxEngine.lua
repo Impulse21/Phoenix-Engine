@@ -65,8 +65,9 @@ project_phx_data        = 'PhxData'
 project_phx_engine      = 'PhxEngine'
 
 project_phx_app_editor  = 'PhxEditor'
-project_sandbox         = 'Sandbox'
+project_phx_app_runtime = 'PhxRuntime'
 project_asset_packer    = 'PhxAssetPacker'
+project_model_compiler  = 'PhxModelCompiler'
 
 project_vendor_imgui        = 'ImGui'
 project_vendor_tracy        = 'Tracy'
@@ -243,7 +244,7 @@ workspace "PhxEngine"
 	location (workspace_directory)
     preferredtoolarchitecture('x86_64') -- Prefer this toolset on MSVC as it can handle more memory for multiprocessor compiles
     warnings('extra')
-	startproject(project_phx_app_editor)
+	startproject(project_phx_app_runtime)
     language('C++')
 	cppdialect('C++20')
 	rtti('off')
@@ -900,6 +901,105 @@ group "PhxLibs"
 group ""
 
 group "Applications"
+    project(project_phx_app_runtime)
+        kind "WindowedApp"         -- Windows application (no console)
+
+        files 
+        {
+            phx_app_directory.."/"..project_phx_app_runtime.."/src/**.cpp",
+            phx_app_directory.."/"..project_phx_app_runtime.."/src/**.h",
+            phx_app_directory.."/"..project_phx_app_runtime.."/src/resource.rc",
+            phx_app_directory.."/"..project_phx_app_runtime.."/src/phx_logo.ico",
+            phx_app_directory.."/"..project_phx_app_runtime.."/src/phx_splashscreen.png",
+            
+
+            -- Vendor stuff
+            phx_app_directory.."/"..project_phx_app_runtime.."/vendor/tinyobj/**.cc",
+            phx_app_directory.."/"..project_phx_app_runtime.."/vendor/tinyobj/**.h",
+            phx_app_directory.."/"..project_phx_app_runtime.."/vendor/fast_obj/**.c",
+            phx_app_directory.."/"..project_phx_app_runtime.."/vendor/fast_obj/**.h",
+            phx_app_directory.."/"..project_phx_app_runtime.."/vendor/meshoptimizer/**.cpp",
+            phx_app_directory.."/"..project_phx_app_runtime.."/vendor/meshoptimizer/**.h",
+        }
+
+        includedirs 
+        {
+            phx_lib_src_directory,
+            phx_lib_vendor_directory.."/spdlog/include",
+            phx_lib_vendor_directory.."/cgltf",
+            phx_lib_vendor_directory.."/entt",
+            phx_vendor_src_tracy,
+            phx_vendor_src_imgui_dir,
+            phx_vendor_src_entt_dir,
+            phx_vendor_src_cereal_dir,
+            phx_vendor_src_tracy,
+            phx_vendor_include_hlslpp_dir,
+            project_vendor_tlsf,
+            phx_app_directory.."/"..project_phx_app_runtime.."/vendor",
+        }
+
+        links
+        {
+            project_phx_core,
+            project_phx_rhi,
+            project_phx_renderer,
+            project_phx_resource,
+            project_phx_world,
+            project_phx_data,
+            project_phx_engine,
+            project_vendor_imgui,
+            project_vendor_tracy,
+            project_vendor_tlsf,
+        }
+        
+        filter('platforms:'..clang_win64_d3d12)
+            AddLibraryIncludes(AgilityLibrary)
+            AddLibraryIncludes(DStorageLibrary)
+
+            LinkLibrary(DStorageLibrary)
+            LinkLibrary(DxcLibrary)
+            LinkLibrary(PixLibrary)
+            
+            links
+            {
+                project_vendor_d3d12ma,
+                "d3d12.lib",
+                "dxgi.lib",
+                "dxguid.lib",
+            }
+
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/d3d12',
+                phx_vendor_src_d3d12ma_dir,
+            }
+
+            postbuildcommands
+            {
+		        CopyFileCommand(path.getabsolute(DStorageLibrary.dlls[1]), '%{cfg.buildtarget.directory}'),
+		        CopyFileCommand(path.getabsolute(DStorageLibrary.dlls[2]), '%{cfg.buildtarget.directory}'),
+
+		        CopyFileCommand(path.getabsolute(DxcLibrary.dlls[1]), '%{cfg.buildtarget.directory}'),
+		        CopyFileCommand(path.getabsolute(DxcLibrary.dlls[2]), '%{cfg.buildtarget.directory}'),
+
+		        CopyFileCommand(path.getabsolute(PixLibrary.dlls[1]), '%{cfg.buildtarget.directory}'),
+
+                MakeDirCommand('%{cfg.buildtarget.directory}/D3D12/'),
+                CopyFileCommand(path.getabsolute(AgilityLibrary.dlls[1]), '%{cfg.buildtarget.directory}/D3D12/'),
+                CopyFileCommand(path.getabsolute(AgilityLibrary.dlls[2]), '%{cfg.buildtarget.directory}/D3D12/'),
+            }
+        
+        filter('platforms:'..clang_win64_vulkan)
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/vulkan',
+                phx_vendor_src_vk_bootstrap,
+                phx_vendor_src_volk,
+                phx_vendor_src_vma,
+            }
+            AddVulkanIncludes()
+            AddVulkanLibraries()
+        filter{}
     project(project_phx_app_editor)
         kind "WindowedApp"         -- Windows application (no console)
 
@@ -1000,6 +1100,81 @@ group "Applications"
             AddVulkanLibraries()
         filter{}
 
+    project(project_model_compiler)
+        kind "ConsoleApp"         -- Windows application (no console)
+
+        defines { "YAML_CPP_STATIC_DEFINE" }
+
+        files 
+        {
+            phx_app_directory.."/"..project_model_compiler.."/src/**.cpp",
+            phx_app_directory.."/"..project_model_compiler.."/src/**.h",
+        }
+
+        includedirs 
+        {
+            phx_lib_src_directory,
+            phx_lib_vendor_directory.."/spdlog/include",
+            phx_lib_vendor_directory.."/cgltf",
+            phx_lib_vendor_directory.."/entt",
+            phx_vendor_src_json_dir,
+            phx_vendor_src_cereal_dir,
+        }
+
+        links
+        {
+            project_phx_core,
+            project_phx_rhi,
+            project_phx_renderer,
+            project_phx_resource,
+            project_phx_world,
+            project_phx_engine,
+            project_phx_data,
+            project_vendor_imgui,
+            project_vendor_yaml,
+            project_vendor_tlsf,
+        }
+        
+        postbuildcommands
+        {
+            CopyFileCommand(path.getabsolute(DStorageLibrary.dlls[1]), '%{cfg.buildtarget.directory}'),
+            CopyFileCommand(path.getabsolute(DStorageLibrary.dlls[2]), '%{cfg.buildtarget.directory}'),
+        }
+        
+        -- TODO: Do a better job at abtracting this away.
+        filter('platforms:'..clang_win64_d3d12)
+            AddLibraryIncludes(AgilityLibrary)
+    
+            AddLibraryIncludes(DStorageLibrary)
+            LinkLibrary(DStorageLibrary)
+        
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/d3d12',
+                phx_vendor_src_d3d12ma_dir,
+            }
+    
+            AddLibraryIncludes(DirectXTexLibrary)
+            libdirs(DirectXTexLibrary.libDirs)
+            filter { 'configurations:Debug' }
+                links(DirectXTexLibrary.libNames[2])
+    
+            filter { 'configurations:RelWithDebInfo or Shipping' }
+                links(DirectXTexLibrary.libNames[1])
+        filter{}
+
+        filter('platforms:'..clang_win64_vulkan)
+            includedirs
+            {
+                phx_lib_src_rhi_dir..'/vulkan',
+                phx_vendor_src_vk_bootstrap,
+                phx_vendor_src_volk,
+                phx_vendor_src_vma,
+            }
+            AddVulkanIncludes()
+            AddVulkanLibraries()
+        filter{}
+
     project(project_asset_packer)
         -- kind "ConsoleApp"         -- Windows application (no console)
             kind "None" -- Do not build right now.
@@ -1008,8 +1183,8 @@ group "Applications"
 
         files 
         {
-            "PhxAssetPacker/src/**.cpp",          -- Include all .cpp files in src/
-            "PhxAssetPacker/src/**.h",            -- Include all .h files in src/
+            phx_app_directory.."/"..project_asset_packer.."/src/**.cpp",
+            phx_app_directory.."/"..project_asset_packer.."/src/**.h",
         }
 
         includedirs 
