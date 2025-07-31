@@ -1118,6 +1118,7 @@ group "Applications"
             phx_lib_vendor_directory.."/entt",
             phx_vendor_src_json_dir,
             phx_vendor_src_cereal_dir,
+            phx_vendor_include_hlslpp_dir,
         }
 
         links
