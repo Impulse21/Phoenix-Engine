@@ -23,10 +23,28 @@ namespace phx::math
 
 enum { kBaseColor, kMetallicRoughness, kOcclusion, kEmissive, kNormal, kNumTextures };
 
+// -- TODO: Move to texture compiler
+enum TexConversionFlags
+{
+	kSRGB = 1,          // Texture contains sRGB colors
+	kPreserveAlpha = 2, // Keep four channels
+	kNormalMap = 4,     // Texture contains normals
+	kBumpToNormal = 8,  // Generate a normal map from a bump map
+	kDefaultBC = 16,    // Apply standard block compression (BC1-5)
+	kQualityBC = 32,    // Apply quality block compression (BC6H/7)
+	kFlipVertical = 64,
+};
+
+inline uint8_t TextureOptions(bool sRGB, bool hasAlpha = false, bool invertY = false)
+{
+	return (sRGB ? kSRGB : 0) | (hasAlpha ? kPreserveAlpha : 0) | (invertY ? kFlipVertical : 0);
+}
+// -- end TODO
+
 struct MaterialConstantData
 {
 	std::array<float, 4> base_colour_factor;
-	std::array<float, 3> emissive_colour_factor; // default=[0,0,0]
+	std::array<float, 3> emissive_factor; // default=[0,0,0]
 	float normal_texture_scale; // default=1
 	float metallic_factor; // default=1
 	float roughness_factor; // default=1
@@ -34,8 +52,11 @@ struct MaterialConstantData
 };
 struct MaterialTextureData
 {
-	uint16_t stringIdx[kNumTextures];
-	uint32_t addressModes;
+	uint16_t string_idx[kNumTextures];
+	// Each texture's address mode is packed into 4 bytes within the 32 bits.
+	// Wrap_s = 0x00FF
+	// Wrap_T = 0xFF00
+	uint32_t address_modes;
 };
 
 struct Mesh
