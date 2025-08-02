@@ -10,6 +10,7 @@
 #include <cgltf.h>
 
 
+using namespace hlslpp;
 namespace
 {
 	struct CgltfContext
@@ -60,8 +61,8 @@ phx::Result<ModelData> GltfModelImporter::Import(std::string const& file)
 	options.file.release = &CgltfReleaseFile;
 	options.file.user_data = &ctx;
 
-	cgltf_data* raw_gltf_data = nullptr;
-	cgltf_result result = cgltf_parse_file(&options, file.c_str(), &raw_gltf_data);
+	cgltf_data* gltf_data = nullptr;
+	cgltf_result result = cgltf_parse_file(&options, file.c_str(), &gltf_data);
 
 	if (result != cgltf_result_success)
 	{
@@ -69,7 +70,7 @@ phx::Result<ModelData> GltfModelImporter::Import(std::string const& file)
 		return phx::make_unexpected(~0ull);
 	}
 
-	result = cgltf_load_buffers(&options, raw_gltf_data, file.c_str());
+	result = cgltf_load_buffers(&options, gltf_data, file.c_str());
 	if (result != cgltf_result_success)
 	{
 		PHX_ERROR("Couldn't load glTF Binary data '{0}'", result);
@@ -80,8 +81,28 @@ phx::Result<ModelData> GltfModelImporter::Import(std::string const& file)
 	// Walk the Scene 
 	ModelData model_data = {};
 
-	ImportMaterials(raw_gltf_data, model_data);
-	ImportMeshes(raw_gltf_data, model_data);
+	ImportMaterials(gltf_data, model_data);
+
+	// Walk scene graph and import meshes and build Object Transforms
+	
+	// TODO: Support scene selections
+	cgltf_scene* scene = gltf_data->scene;
+	if (!scene)
+	{
+		PHX_ERROR("Attempting to import a model with no scene definition '{0}'", file.c_str());
+	}
+
+	model_data.bounding_sphere = phx::math::BoundingSphere(phx::math::kZero);
+	model_data.bounding_box = phx::math::AxisAlignedBox(phx::math::kZero);
+
+	uint32_t num_nodes = WalkGraph(
+		gltf_data,
+		model_data.bounding_sphere,
+		model_data.bounding_box,
+		model_data.meshes,
+		model_data.geometry_data,
+		phx::Span(*scene->nodes, scene->nodes_count),
+		hlslpp::float4x4::identity());
 
 	return model_data;
 }
@@ -187,4 +208,62 @@ bool GltfModelImporter::ImportMaterials(cgltf_data* gltf_data, ModelData& model_
 bool GltfModelImporter::ImportMeshes(cgltf_data* gltf_data, ModelData& model_data)
 {
 	return true;
+}
+
+uint32_t GltfModelImporter::WalkGraph(cgltf_data* gltf_data, phx::math::BoundingSphere bounding_sphere, phx::math::AxisAlignedBox bounding_box, std::vector<Mesh*> mesh_list, std::vector<std::byte> geometry_buffer, phx::Span<cgltf_node> siblings, hlslpp::float4x4 parent_xform)
+{
+	for (auto& sibling : siblings)
+	{
+		// calculate transform
+		float4x4 local_transform = float4x4::identity();
+		if (sibling.has_matrix)
+		{
+
+		}
+		else
+		{
+			const float3 scale = sibling.has_scale
+				? float3(sibling.scale[0], sibling.scale[1], sibling.scale[2])
+				: float3(1.0f);
+
+			float4x4 scale_matrix = float4x4::identity();
+			scale_matrix.scale(scale);
+
+			const quaternion rotation = sibling.has_rotation
+				? quaternion(sibling.rotation[0], sibling.rotation[1], sibling.rotation[2], sibling.rotation[3])
+				: quaternion::identity();
+
+			float4x4 rotation_matrix = float4x4(rotation);
+
+			const float3 translation = sibling.has_translation
+				? float3(sibling.translation[0], sibling.translation[1], sibling.translation[2])
+				: float3(0.0f);
+
+			float4x4 translation_matrix = float4x4::identity();
+			translation_matrix.translation(translation);
+
+			local_transform = translation_matrix * rotation_matrix * scale_matrix;
+		}
+
+		const hlslpp::float4x4 object_transform = local_transform * parent_xform;
+
+		if (!sibling.camera && sibling.mesh)
+		{
+
+		}
+
+		if (sibling.children_count > 0)
+		{
+			WalkGraph(
+				gltf_data,
+				bounding_sphere,
+				bounding_box,
+				mesh_list,
+				geometry_buffer,
+				siblings,
+				parent_xform);
+		}
+	}
+
+	return 0;
 }

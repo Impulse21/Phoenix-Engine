@@ -7,17 +7,36 @@
 // TODO: Move this into it's own location
 namespace phx::math
 {
+
+	enum EZeroTag { kZero, kOrigin };
+	enum EIdentityTag { kOne, kIdentity };
+	enum EXUnitVector { kXUnitVector };
+	enum EYUnitVector { kYUnitVector };
+	enum EZUnitVector { kZUnitVector };
+	enum EWUnitVector { kWUnitVector };
+
 	// These structs are not packed
 	struct BoundingSphere
 	{
 		hlslpp::float3 centre;
 		hlslpp::float1 radius;
+
+		BoundingSphere(EZeroTag) 
+			: centre(0)
+			, radius(0)
+		{}
 	};
 
 	struct AxisAlignedBox
 	{
 		hlslpp::float3 min;
 		hlslpp::float3 max;
+
+		AxisAlignedBox(EZeroTag)
+			: min(0)
+			, max(0)
+		{
+		}
 	};
 }
 
@@ -91,6 +110,9 @@ struct Mesh
 
 struct ModelData
 {
+	phx::math::BoundingSphere bounding_sphere;
+	phx::math::AxisAlignedBox bounding_box;
+
 	std::vector<std::byte> geometry_data;
 	std::vector<MaterialTextureData> material_textures;
 	std::vector<MaterialConstantData> material_constants;
