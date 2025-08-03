@@ -9,8 +9,10 @@
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 
-
+using namespace phx;
+using namespace phx::math;
 using namespace hlslpp;
+
 namespace
 {
 	struct CgltfContext
@@ -92,17 +94,17 @@ phx::Result<ModelData> GltfModelImporter::Import(std::string const& file)
 		PHX_ERROR("Attempting to import a model with no scene definition '{0}'", file.c_str());
 	}
 
-	model_data.bounding_sphere = phx::math::BoundingSphere(phx::math::kZero);
-	model_data.bounding_box = phx::math::AxisAlignedBox(phx::math::kZero);
+	model_data.bounding_sphere = {};
+	model_data.bounding_box = {};
 
 	uint32_t num_nodes = WalkGraph(
 		gltf_data,
+		phx::Span(*scene->nodes, scene->nodes_count),
+		hlslpp::float4x4::identity(),
 		model_data.bounding_sphere,
 		model_data.bounding_box,
 		model_data.meshes,
-		model_data.geometry_data,
-		phx::Span(*scene->nodes, scene->nodes_count),
-		hlslpp::float4x4::identity());
+		model_data.geometry_data);
 
 	return model_data;
 }
@@ -210,37 +212,40 @@ bool GltfModelImporter::ImportMeshes(cgltf_data* gltf_data, ModelData& model_dat
 	return true;
 }
 
-uint32_t GltfModelImporter::WalkGraph(cgltf_data* gltf_data, phx::math::BoundingSphere bounding_sphere, phx::math::AxisAlignedBox bounding_box, std::vector<Mesh*> mesh_list, std::vector<std::byte> geometry_buffer, phx::Span<cgltf_node> siblings, hlslpp::float4x4 parent_xform)
+uint32_t GltfModelImporter::WalkGraph(
+	cgltf_data* gltf_data,
+	phx::Span<cgltf_node> siblings,
+	hlslpp::float4x4 const& parent_xform,
+	phx::math::BoundingSphere& model_bounding_sphere,
+	phx::math::AxisAlignedBox& model_bounding_box,
+	std::vector<Mesh*>& mesh_list,
+	std::vector<std::byte>& geometry_buffer)
 {
-	for (auto& sibling : siblings)
+	for (const auto& sibling : siblings)
 	{
 		// calculate transform
 		float4x4 local_transform = float4x4::identity();
 		if (sibling.has_matrix)
 		{
-
+			static_assert(sizeof(float4x4) == sizeof(sibling.matrix));
+			hlslpp::load(local_transform, static_cast<const float*>(&sibling.matrix[0]));
 		}
 		else
 		{
-			const float3 scale = sibling.has_scale
-				? float3(sibling.scale[0], sibling.scale[1], sibling.scale[2])
-				: float3(1.0f);
+			const float4x4 scale_matrix = sibling.has_scale
+				? float4x4::scale(sibling.scale[0], sibling.scale[1], sibling.scale[2])
+				: float4x4::identity();
 
-			float4x4 scale_matrix = float4x4::identity();
-			scale_matrix.scale(scale);
+			quaternion rot;
+			hlslpp::load(rot, static_cast<const float*>(&sibling.rotation[0]));
 
-			const quaternion rotation = sibling.has_rotation
-				? quaternion(sibling.rotation[0], sibling.rotation[1], sibling.rotation[2], sibling.rotation[3])
-				: quaternion::identity();
+			const float4x4 rotation_matrix = sibling.has_rotation
+				? float4x4(rot)
+				: float4x4(quaternion::identity());
 
-			float4x4 rotation_matrix = float4x4(rotation);
-
-			const float3 translation = sibling.has_translation
-				? float3(sibling.translation[0], sibling.translation[1], sibling.translation[2])
-				: float3(0.0f);
-
-			float4x4 translation_matrix = float4x4::identity();
-			translation_matrix.translation(translation);
+			float4x4 translation_matrix = sibling.has_translation
+				? float4x4::translation(sibling.translation[0], sibling.translation[1], sibling.translation[2])
+				: float4x4::identity();
 
 			local_transform = translation_matrix * rotation_matrix * scale_matrix;
 		}
@@ -249,19 +254,23 @@ uint32_t GltfModelImporter::WalkGraph(cgltf_data* gltf_data, phx::math::Bounding
 
 		if (!sibling.camera && sibling.mesh)
 		{
-
+			BoundingSphere sphere_object_space;
+			AxisAlignedBox box_object_space;
+			ImportMesh(mesh_list, geometry_buffer, sibling.mesh, object_transform, sphere_object_space, box_object_space);
+			model_bounding_sphere = model_bounding_sphere.Union(sphere_object_space);
+			model_bounding_box.AddBoundingBox(box_object_space);
 		}
 
 		if (sibling.children_count > 0)
 		{
 			WalkGraph(
 				gltf_data,
-				bounding_sphere,
-				bounding_box,
-				mesh_list,
-				geometry_buffer,
 				siblings,
-				parent_xform);
+				parent_xform,
+				model_bounding_sphere,
+				model_bounding_box,
+				mesh_list,
+				geometry_buffer);
 		}
 	}
 

@@ -427,7 +427,7 @@ hlslpp_module_export namespace hlslpp
 		_hlslpp_store4_ps(f, v.vec);
 	}
 
-	hlslpp_inline void load(quaternion& v, float* f)
+	hlslpp_inline void load(quaternion& v, const float* f)
 	{
 		_hlslpp_load4_ps(f, v.vec);
 	}

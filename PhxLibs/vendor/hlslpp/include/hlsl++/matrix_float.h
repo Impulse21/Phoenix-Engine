@@ -1887,7 +1887,7 @@ hlslpp_module_export namespace hlslpp
 		_hlslpp_load3x3_ps(f, m.vec0, m.vec1, m.vec2);
 	}
 
-	hlslpp_inline void load(float4x4& m, float* f)
+	hlslpp_inline void load(float4x4& m, const float* f)
 	{
 #if defined(HLSLPP_SIMD_REGISTER_256)
 		_hlslpp256_load4x4_ps(f, m.vec0, m.vec1);

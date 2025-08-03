@@ -18,24 +18,52 @@ namespace phx::math
 	// These structs are not packed
 	struct BoundingSphere
 	{
-		hlslpp::float3 centre;
-		hlslpp::float1 radius;
+		hlslpp::float3 centre = hlslpp::float3(0.0f);
+		hlslpp::float1 radius = hlslpp::float1(0.0f);
 
-		BoundingSphere(EZeroTag) 
-			: centre(0)
-			, radius(0)
-		{}
+		BoundingSphere Union(const BoundingSphere& rhs) const
+		{
+			using namespace hlslpp;
+
+			float1 rad_a = radius;
+			if (rad_a == 0.0f)
+				return rhs;
+
+			float1 rad_b = rhs.radius;
+			if (rad_b == 0.0f)
+				return *this;
+
+			float3 diff = centre - rhs.centre;
+			float1 dist = length(diff);
+
+			// Safe normalize vector between sphere centers
+			diff = (float)dist < 1e-6f ? float3(1.0, 0.0, 0.0) : diff * rcp(dist);
+
+			float3 extreme_a = centre + diff * hlslpp::max(rad_a, rad_b - dist);
+			float3 extreme_b = rhs.centre - diff * hlslpp::max(rad_b, rad_a - dist);
+
+			return {
+				.centre = (extreme_a + extreme_b) * 0.5f,
+				.radius = length(extreme_a - extreme_b) * 0.5f
+			};
+		}
 	};
 
 	struct AxisAlignedBox
 	{
-		hlslpp::float3 min;
-		hlslpp::float3 max;
+		hlslpp::float3 min = hlslpp::float3(0.0f);
+		hlslpp::float3 max = hlslpp::float3(0.0f);
 
-		AxisAlignedBox(EZeroTag)
-			: min(0)
-			, max(0)
+		void AddPoint(float3 point)
 		{
+			min = hlslpp::min(point, min);
+			max = hlslpp::max(point, max);
+		}
+
+		void AddBoundingBox(AxisAlignedBox const& box)
+		{
+			AddPoint(box.min);
+			AddPoint(box.max);
 		}
 	};
 }

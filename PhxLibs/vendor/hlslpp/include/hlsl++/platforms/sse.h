@@ -369,7 +369,7 @@ hlslpp_inline void _hlslpp_load3_ps(float* p, n128& x)
 	x = _mm_movelh_ps(_mm_castsi128_ps(_mm_loadl_epi64((__m128i*)p)), _mm_load_ss(p + 2));
 }
 
-hlslpp_inline void _hlslpp_load4_ps(float* p, n128& x)
+hlslpp_inline void _hlslpp_load4_ps(const float* p, n128& x)
 {
 	x = _mm_loadu_ps(p);
 }
@@ -381,7 +381,7 @@ hlslpp_inline void _hlslpp_load3x3_ps(float* p, n128& x0, n128& x1, n128& x2)
 	x2 = _mm_loadu_ps(p + 6);
 }
 
-hlslpp_inline void _hlslpp_load4x4_ps(float* p, n128& x0, n128& x1, n128& x2, n128& x3)
+hlslpp_inline void _hlslpp_load4x4_ps(const float* p, n128& x0, n128& x1, n128& x2, n128& x3)
 {
 	x0 = _mm_loadu_ps(p);
 	x1 = _mm_loadu_ps(p + 4);
@@ -569,7 +569,7 @@ hlslpp_inline void _hlslpp256_store4x4_ps(float* p, const n256& x0, const n256& 
 	_mm256_storeu_ps(p + 8, x1);
 }
 
-hlslpp_inline void _hlslpp256_load4x4_ps(float* p, n256& x0, n256& x1)
+hlslpp_inline void _hlslpp256_load4x4_ps(const float* p, n256& x0, n256& x1)
 {
 	x0 = _mm256_loadu_ps(p);
 	x1 = _mm256_loadu_ps(p + 8);
