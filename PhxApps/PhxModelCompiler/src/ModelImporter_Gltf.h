@@ -9,6 +9,7 @@
 
 struct cgltf_data;
 struct cgltf_node;
+struct cgltf_mesh;
 
 class GltfModelImporter : public IModelImporter
 {
@@ -18,7 +19,14 @@ public:
 private:
 	bool ImportMaterials(cgltf_data* gltf_data, ModelData& model_data);
 	bool ImportMeshes(cgltf_data* gltf_data, ModelData& model_data);
-	bool ImportMesh();
+	bool ImportMesh(
+		std::vector<Mesh*>& mesh_list,
+		std::vector<std::byte>& geometry_buffer,
+		cgltf_mesh* gltf_mesh,
+		hlslpp::float4x4 const& local_to_object,
+		phx::math::BoundingSphere& sphere_object_space,
+		phx::math::AxisAlignedBox& box_object_space);
+
 	uint32_t WalkGraph(
 		cgltf_data* gltf_data,
 		phx::Span<cgltf_node> siblings,

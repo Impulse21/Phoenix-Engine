@@ -212,6 +212,17 @@ bool GltfModelImporter::ImportMeshes(cgltf_data* gltf_data, ModelData& model_dat
 	return true;
 }
 
+bool GltfModelImporter::ImportMesh(
+	std::vector<Mesh*>& mesh_list,
+	std::vector<std::byte>& geometry_buffer,
+	cgltf_mesh* gltf_mesh,
+	float4x4 const& local_to_object,
+	phx::math::BoundingSphere& sphere_object_space,
+	phx::math::AxisAlignedBox& box_object_space)
+{
+	return false;
+}
+
 uint32_t GltfModelImporter::WalkGraph(
 	cgltf_data* gltf_data,
 	phx::Span<cgltf_node> siblings,
