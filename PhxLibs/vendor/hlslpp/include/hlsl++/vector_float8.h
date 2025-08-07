@@ -651,6 +651,8 @@ hlslpp_module_export namespace hlslpp
 
 	hlslpp_inline float8 clamp(const float8& f, const float8& minf, const float8& maxf) { return float8(_hlslpp256_clamp_ps(f.vec, minf.vec, maxf.vec)); }
 
+	hlslpp_inline float8 copysign(const float8& from, const float8& to) { return float8(_hlslpp256_copysign_ps(from.vec, to.vec)); }
+
 	hlslpp_inline float8 cos(const float8& f) { return float8(_hlslpp256_cos_ps(f.vec)); }
 
 	hlslpp_inline float8 cosh(const float8& f) { return float8(_hlslpp256_cosh_ps(f.vec)); }
@@ -737,14 +739,14 @@ hlslpp_module_export namespace hlslpp
 
 	hlslpp_inline float8 trunc(const float8& f) { return float8(_hlslpp256_trunc_ps(f.vec)); }
 
-	hlslpp_inline void store(const float8& v, float* f)
+	hlslpp_inline void store(float* dst, const float8& src)
 	{
-		_hlslpp256_store8_ps(f, v.vec);
+		_hlslpp256_store8_ps(dst, src.vec);
 	}
 
-	hlslpp_inline void load(float8& v, float* f)
+	hlslpp_inline void load(float8& dst, const float* src)
 	{
-		_hlslpp256_load8_ps(f, v.vec);
+		_hlslpp256_load8_ps(dst.vec, src);
 	}
 }
 

@@ -2,7 +2,7 @@
 
 #include "hlsl++/common.h"
 
-HLSLPP_WARNINGS_IMPLICIT_CONSTRUCTOR_BEGIN
+HLSLPP_WARNING_IMPLICIT_CONSTRUCTOR_BEGIN
 
 hlslpp_module_export namespace hlslpp
 {
@@ -316,7 +316,73 @@ hlslpp_module_export namespace hlslpp
 		HLSLPP_WARNING_ANONYMOUS_STRUCT_UNION_END
 	};
 
+	hlslpp_inline void store(int32_t* dst, const int1& src)
+	{
+		_hlslpp_store1_epi32(dst, src.vec);
+	}
+
+	hlslpp_inline void store(int32_t* dst, const int2& src)
+	{
+		_hlslpp_store2_epi32(dst, src.vec);
+	}
+
+	hlslpp_inline void store(int32_t* dst, const int3& src)
+	{
+		_hlslpp_store3_epi32(dst, src.vec);
+	}
+
+	hlslpp_inline void store(int32_t* dst, const int4& src)
+	{
+		_hlslpp_store4_epi32(dst, src.vec);
+	}
+
+	hlslpp_inline void load(int1& dst, const int32_t* src)
+	{
+		_hlslpp_load1_epi32(dst.vec, src);
+	}
+
+	hlslpp_inline void load(int2& dst, const int32_t* src)
+	{
+		_hlslpp_load2_epi32(dst.vec, src);
+	}
+
+	hlslpp_inline void load(int3& dst, const int32_t* src)
+	{
+		_hlslpp_load3_epi32(dst.vec, src);
+	}
+
+	hlslpp_inline void load(int4& dst, const int32_t* src)
+	{
+		_hlslpp_load4_epi32(dst.vec, src);
+	}
+
+	namespace interop
+	{
+		struct int4
+		{
+			int4() hlslpp_constructor_default;
+			int4(const hlslpp::int4& f) { hlslpp::store(&x, f); }
+			int32_t x, y, z, w;
+		};
+
+		struct int3
+		{
+			int3() hlslpp_constructor_default;
+			int3(const hlslpp::int3& f) { hlslpp::store(&x, f); }
+			int32_t x, y, z;
+		};
+
+		struct int2
+		{
+			int2() hlslpp_constructor_default;
+			int2(const hlslpp::int2& f) { hlslpp::store(&x, f); }
+			int32_t x, y;
+		};
+
+		typedef int32_t int1;
+	};
+
 	static_assert(hlslpp_alignof(int4) == 16, "Mismatched alignment");
 };
 
-HLSLPP_WARNINGS_IMPLICIT_CONSTRUCTOR_END
+HLSLPP_WARNING_IMPLICIT_CONSTRUCTOR_END
