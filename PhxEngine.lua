@@ -1011,7 +1011,6 @@ group "Applications"
             phx_app_directory.."/"..project_phx_app_editor.."/src/phx_logo.ico",
             phx_app_directory.."/"..project_phx_app_editor.."/src/phx_splashscreen.png",
             
-
             -- Vendor stuff
             phx_app_directory.."/"..project_phx_app_editor.."/vendor/tinyobj/**.cc",
             phx_app_directory.."/"..project_phx_app_editor.."/vendor/tinyobj/**.h",
@@ -1119,6 +1118,7 @@ group "Applications"
             phx_vendor_src_json_dir,
             phx_vendor_src_cereal_dir,
             phx_vendor_include_hlslpp_dir,
+            phx_app_directory.."/"..project_model_compiler.."/vendor",
         }
 
         links

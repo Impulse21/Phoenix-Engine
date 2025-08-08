@@ -68,7 +68,7 @@ namespace phx::math
 	};
 }
 
-enum { kBaseColor, kMetallicRoughness, kOcclusion, kEmissive, kNormal, kNumTextures };
+enum { kBaseColor, kMetallicRoughness, kOcclusion, kEmissive, kNormalMap, kNumTextures };
 
 // -- TODO: Move to texture compiler
 enum TexConversionFlags

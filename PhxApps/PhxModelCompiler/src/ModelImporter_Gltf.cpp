@@ -9,6 +9,8 @@
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 
+#include <meshoptimizer/meshoptimizer.h>
+
 using namespace phx;
 using namespace phx::math;
 using namespace hlslpp;
@@ -51,6 +53,206 @@ namespace
 		void*)
 	{
 		// do nothing
+	}
+
+	enum VertexStreamType
+	{
+		VertexStream_Position = 0,
+		VertexStream_Normal,
+		VertexStream_Tangent,
+		VertexStream_Texcoord0,
+		VertexStream_Texcoord1,
+		VertexStream_Colour0,
+		VertexStream_Joints0,
+		VertexStream_Weights0,
+		VertexStream_Count,
+
+	};
+
+	struct VertexStream
+	{
+		VertexStreamType type;
+		size_t vertex_offset;
+		size_t element_stride;
+		size_t num_elements;
+	};
+
+	struct Primitive
+	{
+		BoundingSphere bounds_ls;	// local space bounds
+		BoundingSphere bounds_os;	// object space bounds
+		AxisAlignedBox bbox_ls;		// local space AABB
+		AxisAlignedBox bbox_os;		// object space AABB
+		std::array<std::optional<VertexStream>, VertexStream_Count> vertex_streams;
+		std::vector<std::byte> vertex_buffer;
+		std::vector<std::byte> index_buffer;
+		std::vector< std::byte> shadow_indices_buffer;
+
+		uint32_t prim_count;
+
+		union
+		{
+			uint32_t hash;
+			struct {
+				uint32_t pso_flags : 16;
+				uint32_t index_32 : 1;
+				uint32_t material_index : 15;
+			};
+		};
+		uint16_t vertex_stride;
+	};
+
+	void CreateVertexStream(Primitive& prim, const cgltf_attribute& attribute, VertexStreamType stream_type)
+	{
+		const cgltf_accessor* accessor = attribute.data;
+		PHX_ASSERT(accessor);
+		if (!accessor) 
+			return;
+
+		size_t num_components = cgltf_num_components(accessor->type);
+		PHX_ASSERT(accessor->component_type == cgltf_component_type_r_32f);
+
+		const size_t attribute_size = accessor->count * num_components * sizeof(float);
+		const size_t start_offset = prim.vertex_buffer.size();
+
+		prim.vertex_buffer.resize(start_offset + attribute_size);
+		cgltf_accessor_unpack_floats(
+			accessor,
+			(float*)(prim.vertex_buffer.data() + start_offset),
+			accessor->count * num_components);
+
+		VertexStream& stream = prim.vertex_streams[stream_type].emplace();
+
+		stream.type = stream_type;
+		stream.num_elements = accessor->count;
+		stream.vertex_offset = start_offset;
+		stream.element_stride = num_components * sizeof(float);
+	}
+
+	void BucketAttributes(phx::Span<cgltf_attribute> attributes, Primitive& prim)
+	{
+		auto FillStreamData = [&]() {
+
+		};
+
+		for (uint32_t i = 0; i < attributes.size(); i++)
+		{
+			const cgltf_attribute& attribute = attributes[i];
+
+			// No need for the local 'stream' pointer anymore
+			switch (attribute.type)
+			{
+			case cgltf_attribute_type_position:
+				CreateVertexStream(prim, attribute, VertexStream_Position);
+				break;
+
+			case cgltf_attribute_type_normal:
+				CreateVertexStream(prim, attribute, VertexStream_Normal);
+				break;
+
+			case cgltf_attribute_type_tangent:
+				CreateVertexStream(prim, attribute, VertexStream_Tangent);
+				break;
+
+			case cgltf_attribute_type_texcoord:
+				if (attribute.index == 0)
+				{
+					CreateVertexStream(prim, attribute, VertexStream_Texcoord0);
+				}
+				else if (attribute.index == 1)
+				{
+					CreateVertexStream(prim, attribute, VertexStream_Texcoord1);
+				}
+				else
+				{
+					PHX_WARN("Unsupported texture coordinate set TEXCOORD_{0} found.", attribute.index);
+				}
+				break;
+
+			case cgltf_attribute_type_color:
+				if (attribute.index == 0)
+				{
+					CreateVertexStream(prim, attribute, VertexStream_Colour0);
+				}
+				else
+				{
+					PHX_WARN("Unsupported color set COLOR_{0} found.", attribute.index);
+				}
+				break;
+
+			case cgltf_attribute_type_joints:
+				if (attribute.index == 0)
+				{
+					CreateVertexStream(prim, attribute, VertexStream_Joints0);
+				}
+				else
+				{
+					PHX_WARN("Unsupported joint set JOINTS_{0} found.", attribute.index);
+				}
+				break;
+
+			case cgltf_attribute_type_weights:
+				if (attribute.index == 0)
+				{
+					CreateVertexStream(prim, attribute, VertexStream_Weights0);
+				}
+				else
+				{
+					PHX_WARN("Unsupported weight set WEIGHTS_{0} found.", attribute.index);
+				}
+				break;
+
+			case cgltf_attribute_type_invalid:
+			case cgltf_attribute_type_custom:
+			default:
+				PHX_WARN("Unhandled or invalid cgltf attribute type encountered: {0}", attribute.type);
+				break;
+			}
+		}
+	}
+
+	void OptimizePrimitive(Primitive& prim, cgltf_primitive const& src_prim, hlslpp::float4x4 local_to_object)
+	{
+		BucketAttributes(Span(src_prim.attributes, src_prim.attributes_count), prim);
+
+		bool is_32bit_indices = false;
+		void* indices = nullptr;
+		uint32_t index_count;
+
+		std::vector<meshopt_Stream> meshopt_vertex_streams;
+		meshopt_vertex_streams.reserve(VertexStream_Count);
+
+		for (auto& vertex_stream : prim.vertex_streams)
+		{
+			if (!vertex_stream.has_value())
+				continue;
+
+			meshopt_vertex_streams.emplace_back(meshopt_Stream{
+
+				.data = prim.vertex_buffer.data() + vertex_stream->vertex_offset,
+				.size = sizeof(float),
+				.stride = vertex_stream->element_stride,
+				});
+		}
+
+		if (src_prim.indices == nullptr)
+		{
+
+		}
+		else
+		{
+			size_t vertex_count = src_prim.indices.count;
+			std::vector<unsigned int> remap_table(original_vertex_count);
+			size_t unique_vertex_count = meshopt_generateVertexRemapMulti(
+				remap_table.data(),
+				nullptr, // No index buffer provided for de-duplication of raw vertices
+				original_vertex_count,
+				original_vertex_count,
+				meshopt_vertex_streams.data(),
+				meshopt_vertex_streams.size()
+			);
+
+		}
 	}
 }
 
@@ -186,7 +388,7 @@ bool GltfModelImporter::ImportMaterials(cgltf_data* gltf_data, ModelData& model_
 		SetTextureOptions(src_texture_map[kMetallicRoughness], TextureOptions(false));
 		SetTextureOptions(src_texture_map[kOcclusion], TextureOptions(false));
 		SetTextureOptions(src_texture_map[kEmissive], TextureOptions(true));
-		SetTextureOptions(src_texture_map[kNormal], TextureOptions(false));
+		SetTextureOptions(src_texture_map[kNormalMap], TextureOptions(false));
 	}
 
 	model_data.texture_options.clear();
@@ -220,6 +422,18 @@ bool GltfModelImporter::ImportMesh(
 	phx::math::BoundingSphere& sphere_object_space,
 	phx::math::AxisAlignedBox& box_object_space)
 {
+
+	BoundingSphere sphereOS;
+	AxisAlignedBox bboxOS;
+
+	// Optimize Mesh
+	std::vector<Primitive> primitives(gltf_mesh->primitives_count);
+	for (uint32_t i = 0; i < gltf_mesh->primitives_count; i++)
+	{
+		OptimizePrimitive(primitives[i], gltf_mesh->primitives[i], local_to_object);
+		sphereOS = sphereOS.Union(primitives[i].bounds_os);
+		bboxOS.AddBoundingBox(primitives[i].bbox_os);
+	}
 	return false;
 }
 
