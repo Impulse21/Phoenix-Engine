@@ -235,64 +235,41 @@ namespace
 				});
 		}
 
+		size_t vert_count = 0;
+		size_t optimized_vert_count = 0;
+		std::unique_ptr<uint32_t[]> index_buffer = nullptr;
+		std::vector<unsigned int> remap_table;
 		if (src_prim.indices == nullptr)
+		{
+			const size_t num_vertics = 0;
+		}
+		else
 		{
 			const cgltf_accessor* accessor = src_prim.indices;
 			const size_t index_count = accessor->count;
 
-			if (src_prim.indices->component_type == cgltf_component_type_r_32u)
+			index_buffer = std::make_unique<uint32_t[]>(index_count);
+			prim.index_32 = src_prim.indices->component_type == cgltf_component_type_r_32u;
+
+			for (size_t i = 0; i < index_count; ++i)
 			{
-				prim.index_32 = true;
-				prim.index_buffer.resize(index_count * sizeof(uint32_t));
-
-				for (size_t i = 0; i < index_count; ++i)
-				{
-					cgltf_accessor_read_uint(accessor, i, reinterpret_cast<uint32_t*>(&prim.index_buffer[i]), 1);
-				}
+				cgltf_accessor_read_uint(accessor, i, &index_buffer[i], 1);
 			}
-			else if (src_prim.indices->component_type != cgltf_component_type_r_16u)
-			{
-				prim.index_32 = false;
-				prim.index_buffer.resize(index_count * sizeof(uint16_t));
+		}
 
-				uint16_t* dest = reinterpret_cast<uint16_t*>(prim.index_buffer.data());
+		remap_table.resize(vert_count);
 
-				for (size_t i = 0; i < index_count; ++i) 
-				{
-					unsigned int temp;
-					cgltf_accessor_read_uint(accessor, i, &temp, 1);
-					dest[i] = static_cast<uint16_t>(temp);
-				}
-			}
-			else
-			{
-				PHX_ERROR("Unsupport index stride found");
-				throw std::runtime_error("Unsupport stride");
-			}
-
-			// Now remap			size_t unique_vertex_count = meshopt_generateVertexRemapMulti(
+		size_t unique_vertex_count = meshopt_generateVertexRemapMulti(
 			remap_table.data(),
-				nullptr, // No index buffer provided for de-duplication of raw vertices
-				original_vertex_count,
-				original_vertex_count,
-				meshopt_vertex_streams.data(),
-				meshopt_vertex_streams.size()
-				);
-		}
-		else
-		{
-			size_t vertex_count = src_prim.indices.count;
-			std::vector<unsigned int> remap_table(original_vertex_count);
-			size_t unique_vertex_count = meshopt_generateVertexRemapMulti(
-				remap_table.data(),
-				nullptr, // No index buffer provided for de-duplication of raw vertices
-				original_vertex_count,
-				original_vertex_count,
-				meshopt_vertex_streams.data(),
-				meshopt_vertex_streams.size()
-			);
+			index_buffer.get(), // null if we don't have a vertex buffer
+			index_count,
+			index_count,
+			meshopt_vertex_streams.data(),
+			meshopt_vertex_streams.size());
 
-		}
+		meshopt_remapIndexBuffer(indices, NULL, index_count, remap_table.data());
+		meshopt_remapVertexBuffer(vertices, &unindexed_vertices[0], unindexed_vertex_count, sizeof(Vertex), &remap[0]);
+
 	}
 }
 
