@@ -235,40 +235,62 @@ namespace
 				});
 		}
 
-		size_t vert_count = 0;
-		size_t optimized_vert_count = 0;
+		size_t total_index_count = 0;
 		std::unique_ptr<uint32_t[]> index_buffer = nullptr;
 		std::vector<unsigned int> remap_table;
 		if (src_prim.indices == nullptr)
 		{
-			const size_t num_vertics = 0;
+			total_index_count = 0;
+			index_buffer = std::make_unique<uint32_t[]>(total_index_count);
 		}
 		else
 		{
 			const cgltf_accessor* accessor = src_prim.indices;
-			const size_t index_count = accessor->count;
+			total_index_count = accessor->count;
 
-			index_buffer = std::make_unique<uint32_t[]>(index_count);
+			index_buffer = std::make_unique<uint32_t[]>(total_index_count);
 			prim.index_32 = src_prim.indices->component_type == cgltf_component_type_r_32u;
 
-			for (size_t i = 0; i < index_count; ++i)
+			for (size_t i = 0; i < total_index_count; ++i)
 			{
 				cgltf_accessor_read_uint(accessor, i, &index_buffer[i], 1);
 			}
 		}
 
-		remap_table.resize(vert_count);
-
+		remap_table.resize(total_index_count);
 		size_t unique_vertex_count = meshopt_generateVertexRemapMulti(
 			remap_table.data(),
-			index_buffer.get(), // null if we don't have a vertex buffer
+			index_buffer.get(), // null if we don't have an index buffer
 			index_count,
 			index_count,
 			meshopt_vertex_streams.data(),
 			meshopt_vertex_streams.size());
 
-		meshopt_remapIndexBuffer(indices, NULL, index_count, remap_table.data());
-		meshopt_remapVertexBuffer(vertices, &unindexed_vertices[0], unindexed_vertex_count, sizeof(Vertex), &remap[0]);
+		std::unique_ptr<uint32_t[]> optimized_index_buffer = std::make_unique<uint32_t[]>(unique_vertex_count);
+		meshopt_remapIndexBuffer(optimized_index_buffer.get(), index_buffer.get(), index_count, remap_table.data());
+
+		std::unique_ptr<std::byte[]> stagging_buffer;
+		size_t stagging_buffer_size = 0;
+		for (auto& vertex_stream : prim.vertex_streams)
+		{
+			if (!vertex_stream.has_value())
+				continue;
+
+			const size_t required_size = vertex_stream->num_elements * vertex_stream->element_stride;
+			if (stagging_buffer_size < expected_size)
+			{
+
+			}
+
+			stagging_buffer_size
+			void* vertex_data = prim.vertex_buffer.data() + vertex_stream->vertex_offset;
+			meshopt_remapVertexBuffer(
+				stagging_buffer,
+				vertex_data,
+				vertex_stream->num_elements,
+				vertex_stream->element_stride,
+				remap_table.data());
+		}
 
 	}
 }
