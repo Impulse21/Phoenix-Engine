@@ -237,7 +237,47 @@ namespace
 
 		if (src_prim.indices == nullptr)
 		{
+			const cgltf_accessor* accessor = src_prim.indices;
+			const size_t index_count = accessor->count;
 
+			if (src_prim.indices->component_type == cgltf_component_type_r_32u)
+			{
+				prim.index_32 = true;
+				prim.index_buffer.resize(index_count * sizeof(uint32_t));
+
+				for (size_t i = 0; i < index_count; ++i)
+				{
+					cgltf_accessor_read_uint(accessor, i, reinterpret_cast<uint32_t*>(&prim.index_buffer[i]), 1);
+				}
+			}
+			else if (src_prim.indices->component_type != cgltf_component_type_r_16u)
+			{
+				prim.index_32 = false;
+				prim.index_buffer.resize(index_count * sizeof(uint16_t));
+
+				uint16_t* dest = reinterpret_cast<uint16_t*>(prim.index_buffer.data());
+
+				for (size_t i = 0; i < index_count; ++i) 
+				{
+					unsigned int temp;
+					cgltf_accessor_read_uint(accessor, i, &temp, 1);
+					dest[i] = static_cast<uint16_t>(temp);
+				}
+			}
+			else
+			{
+				PHX_ERROR("Unsupport index stride found");
+				throw std::runtime_error("Unsupport stride");
+			}
+
+			// Now remap			size_t unique_vertex_count = meshopt_generateVertexRemapMulti(
+			remap_table.data(),
+				nullptr, // No index buffer provided for de-duplication of raw vertices
+				original_vertex_count,
+				original_vertex_count,
+				meshopt_vertex_streams.data(),
+				meshopt_vertex_streams.size()
+				);
 		}
 		else
 		{
