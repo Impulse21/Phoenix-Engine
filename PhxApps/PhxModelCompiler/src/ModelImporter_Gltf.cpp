@@ -85,10 +85,11 @@ namespace
 		AxisAlignedBox bbox_os;		// object space AABB
 		std::array<std::optional<VertexStream>, VertexStream_Count> vertex_streams;
 		std::vector<std::byte> vertex_buffer;
-		std::vector<std::byte> index_buffer;
+		std::vector<uint32_t> index_buffer;
 		std::vector< std::byte> shadow_indices_buffer;
 
-		uint32_t prim_count;
+		uint32_t index_count;
+		uint32_t vertex_count;
 
 		union
 		{
@@ -99,9 +100,23 @@ namespace
 				uint32_t material_index : 15;
 			};
 		};
-		uint16_t vertex_stride;
 	};
 
+
+	void PrintStatistics(Primitive const&)
+	{
+#if false
+		meshopt_VertexCacheStatistics vcs = meshopt_analyzeVertexCache(mesh.Indices.data(), mesh.Indices.size(), mesh.GetVertexCount(), kCacheSize, 0, 0);
+		meshopt_VertexFetchStatistics vfs = meshopt_analyzeVertexFetch(mesh.Indices.data(), mesh.Indices.size(), mesh.GetVertexCount(), sizeof(Vertex));
+		meshopt_OverdrawStatistics os = meshopt_analyzeOverdraw(mesh.Indices.data(), mesh.Indices.size(), &copy.vertices[0].px, mesh.GetVertexCount(), sizeof(Vertex));
+
+		meshopt_VertexCacheStatistics vcs_nv = meshopt_analyzeVertexCache(mesh.Indices.data(), mesh.Indices.size(), mesh.GetVertexCount(), 32, 32, 32);
+		meshopt_VertexCacheStatistics vcs_amd = meshopt_analyzeVertexCache(mesh.Indices.data(), mesh.Indices.size(), mesh.GetVertexCount(), 14, 64, 128);
+		meshopt_VertexCacheStatistics vcs_intel = meshopt_analyzeVertexCache(mesh.Indices.data(), mesh.Indices.size(), mesh.GetVertexCount(), 128, 0, 0);
+
+		printf("%-9s: ACMR %f ATVR %f (NV %f AMD %f Intel %f) Overfetch %f Overdraw %f in %.2f msec\n", name, vcs.acmr, vcs.atvr, vcs_nv.atvr, vcs_amd.atvr, vcs_intel.atvr, vfs.overfetch, os.overdraw, (end - start) * 1000);
+#endif
+	}
 	void CreateVertexStream(Primitive& prim, const cgltf_attribute& attribute, VertexStreamType stream_type)
 	{
 		const cgltf_accessor* accessor = attribute.data;
@@ -131,10 +146,6 @@ namespace
 
 	void BucketAttributes(phx::Span<cgltf_attribute> attributes, Primitive& prim)
 	{
-		auto FillStreamData = [&]() {
-
-		};
-
 		for (uint32_t i = 0; i < attributes.size(); i++)
 		{
 			const cgltf_attribute& attribute = attributes[i];
@@ -211,17 +222,84 @@ namespace
 		}
 	}
 
+	void GenerateMeshIndices(
+		Primitive& prim,
+		cgltf_primitive const& src_prim,
+		phx::SpanMutable<meshopt_Stream> meshopt_vertex_streams,
+		size_t total_new_vb_size,
+		std::vector<uint32_t>& remap_table)
+	{
+
+		PHX_ASSERT(prim.vertex_streams[VertexStream_Position].has_value());
+		size_t vertex_count = prim.vertex_streams[VertexStream_Position]->num_elements;
+		size_t index_count = 0;
+		std::unique_ptr<uint32_t[]> temp_indices = nullptr;
+
+		if (src_prim.indices)
+		{
+			const cgltf_accessor* accessor = src_prim.indices;
+			index_count = accessor->count;
+			temp_indices = std::make_unique<uint32_t[]>(index_count);
+			for (size_t i = 0; i < index_count; ++i)
+			{
+				cgltf_accessor_read_uint(accessor, i, &temp_indices[i], 1);
+			}
+		}
+		else
+		{
+			index_count = vertex_count;
+		}
+
+		remap_table.resize(vertex_count);
+		size_t unique_vertex_count = meshopt_generateVertexRemapMulti(
+			remap_table.data(),
+			temp_indices.get(),
+			index_count,
+			vertex_count,
+			meshopt_vertex_streams.data(),
+			meshopt_vertex_streams.Size());
+
+		prim.index_buffer.resize(index_count * sizeof(uint32_t));
+		meshopt_remapIndexBuffer(
+			prim.index_buffer.data(),
+			temp_indices.get(),
+			index_count,
+			remap_table.data());
+
+		std::vector<std::byte> final_vertex_buffer;
+		final_vertex_buffer.reserve(total_new_vb_size * unique_vertex_count); // Pre-allocate
+
+		for (auto& vertex_stream : prim.vertex_streams)
+		{
+			if (!vertex_stream.has_value())
+				continue;
+
+			const size_t required_size = vertex_stream->num_elements * vertex_stream->element_stride;
+			vertex_stream->vertex_offset = final_vertex_buffer.size();
+			final_vertex_buffer.resize(final_vertex_buffer.size() + required_size);
+
+			void* vertex_data = prim.vertex_buffer.data() + vertex_stream->vertex_offset;
+			meshopt_remapVertexBuffer(
+				final_vertex_buffer.data() + vertex_stream->vertex_offset,
+				vertex_data,
+				vertex_stream->num_elements,
+				vertex_stream->element_stride,
+				remap_table.data());
+		}
+
+		prim.vertex_buffer = std::move(final_vertex_buffer);
+		prim.vertex_count = vertex_count;
+		prim.index_count = index_count;
+	}
+
 	void OptimizePrimitive(Primitive& prim, cgltf_primitive const& src_prim, hlslpp::float4x4 local_to_object)
 	{
 		BucketAttributes(Span(src_prim.attributes, src_prim.attributes_count), prim);
 
-		bool is_32bit_indices = false;
-		void* indices = nullptr;
-		uint32_t index_count;
-
 		std::vector<meshopt_Stream> meshopt_vertex_streams;
 		meshopt_vertex_streams.reserve(VertexStream_Count);
 
+		size_t total_new_vb_size = 0;
 		for (auto& vertex_stream : prim.vertex_streams)
 		{
 			if (!vertex_stream.has_value())
@@ -233,65 +311,43 @@ namespace
 				.size = sizeof(float),
 				.stride = vertex_stream->element_stride,
 				});
+
+			total_new_vb_size += vertex_stream->element_stride;
 		}
 
-		size_t total_index_count = 0;
-		std::unique_ptr<uint32_t[]> index_buffer = nullptr;
-		std::vector<unsigned int> remap_table;
-		if (src_prim.indices == nullptr)
-		{
-			total_index_count = 0;
-			index_buffer = std::make_unique<uint32_t[]>(total_index_count);
-		}
-		else
-		{
-			const cgltf_accessor* accessor = src_prim.indices;
-			total_index_count = accessor->count;
+		std::vector<uint32_t> remap_table;
+		GenerateMeshIndices(prim, src_prim, meshopt_vertex_streams, total_new_vb_size, remap_table);
 
-			index_buffer = std::make_unique<uint32_t[]>(total_index_count);
-			prim.index_32 = src_prim.indices->component_type == cgltf_component_type_r_32u;
+		PrintStatistics(prim);
 
-			for (size_t i = 0; i < total_index_count; ++i)
-			{
-				cgltf_accessor_read_uint(accessor, i, &index_buffer[i], 1);
-			}
-		}
+		uint32_t* index_buffer = reinterpret_cast<uint32_t*>(prim.index_buffer.data());
 
-		remap_table.resize(total_index_count);
-		size_t unique_vertex_count = meshopt_generateVertexRemapMulti(
-			remap_table.data(),
-			index_buffer.get(), // null if we don't have an index buffer
-			index_count,
-			index_count,
-			meshopt_vertex_streams.data(),
-			meshopt_vertex_streams.size());
+		// -- Optimize vertex cache ---
+		meshopt_optimizeVertexCache(index_buffer, index_buffer, prim.index_count, prim.vertex_count);
 
-		std::unique_ptr<uint32_t[]> optimized_index_buffer = std::make_unique<uint32_t[]>(unique_vertex_count);
-		meshopt_remapIndexBuffer(optimized_index_buffer.get(), index_buffer.get(), index_count, remap_table.data());
+		// -- Vertex optmized overdraw ---
+		// Not in demo?
 
-		std::unique_ptr<std::byte[]> stagging_buffer;
-		size_t stagging_buffer_size = 0;
+		// -- Vertex fetch optimization ---
+		meshopt_optimizeVertexFetchRemap(remap_table.data(), index_buffer, prim.index_count, prim.vertex_count);
+
 		for (auto& vertex_stream : prim.vertex_streams)
 		{
 			if (!vertex_stream.has_value())
 				continue;
 
-			const size_t required_size = vertex_stream->num_elements * vertex_stream->element_stride;
-			if (stagging_buffer_size < expected_size)
-			{
-
-			}
-
-			stagging_buffer_size
-			void* vertex_data = prim.vertex_buffer.data() + vertex_stream->vertex_offset;
+			void* stream_data = prim.vertex_buffer.data() + vertex_stream->vertex_offset;
 			meshopt_remapVertexBuffer(
-				stagging_buffer,
-				vertex_data,
-				vertex_stream->num_elements,
+				stream_data,
+				stream_data,
+				prim.vertex_count,
 				vertex_stream->element_stride,
 				remap_table.data());
 		}
 
+		PrintStatistics(prim);
+
+		// todo: strink indices and calculate bounding boxes.
 	}
 }
 
