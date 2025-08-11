@@ -292,7 +292,22 @@ namespace
 		prim.index_count = index_count;
 	}
 
-	void OptimizePrimitive(Primitive& prim, cgltf_primitive const& src_prim, hlslpp::float4x4 local_to_object)
+	void CalculatePrimtiveBounds(Primitive& prim, hlslpp::float4x4 local_to_object)
+	{
+		PHX_ASSERT(prim.vertex_streams[VertexStream_Position].has_value());
+		const VertexStream& position_stream = prim.vertex_streams[VertexStream_Position].value();
+		const size_t vertex_count = position_stream.num_elements;
+
+		PHX_ASSERT(position_stream.element_stride == sizeof(float) * 3);
+
+		float* position_daa = reinterpret_cast<float*>(prim.vertex_buffer.data() + position_stream.vertex_offset);
+		for (size_t i = 0; i < vertex_count; i++)
+		{
+
+		}
+	}
+
+	void OptimizePrimitive(Primitive& prim, cgltf_primitive const& src_prim)
 	{
 		BucketAttributes(Span(src_prim.attributes, src_prim.attributes_count), prim);
 
@@ -525,7 +540,7 @@ bool GltfModelImporter::ImportMesh(
 	std::vector<Primitive> primitives(gltf_mesh->primitives_count);
 	for (uint32_t i = 0; i < gltf_mesh->primitives_count; i++)
 	{
-		OptimizePrimitive(primitives[i], gltf_mesh->primitives[i], local_to_object);
+		OptimizePrimitive(primitives[i], gltf_mesh->primitives[i]);
 		sphereOS = sphereOS.Union(primitives[i].bounds_os);
 		bboxOS.AddBoundingBox(primitives[i].bbox_os);
 	}
