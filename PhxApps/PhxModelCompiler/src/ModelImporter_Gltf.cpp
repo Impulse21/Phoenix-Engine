@@ -315,8 +315,30 @@ namespace
 		
 		float3 sphere_centre_ls = min_position + max_position * 0.5f;
 		float1 max_radius_ls_sq;
+
 		float3 sphere_centre_os = hlslpp::mul(local_to_object, float4(sphere_centre_ls, 0.0f)).xyz;
 		float1 max_radius_os_sq = 0;
+
+		for (size_t i = 0; i < vertex_count; ++i)
+		{
+			hlslpp::float3 position_ls(position_data[i * 3 + 0], position_data[i * 3 + 1], position_data[i * 3 + 2]);
+
+			float1 length_sqrt_ls = hlslpp::sqrt(hlslpp::length(sphere_centre_ls - position_ls));
+			max_radius_ls_sq = hlslpp::max(max_radius_ls_sq, length_sqrt_ls);
+
+			prim.bbox_ls.AddPoint(position_ls);
+
+			hlslpp::float3 position_os = hlslpp::mul(local_to_object, float4(position_ls, 0.0f)).xyz;
+
+			// -- TODO SWIITCH TO DOT PRODUCT ---
+			float1 length_sqrt_os = hlslpp::sqrt(hlslpp::length(sphere_centre_os - position_os));
+			max_radius_os_sq = hlslpp::max(max_radius_os_sq, length_sqrt_os);
+
+			prim.bbox_os.AddPoint(position_os);
+		}
+
+		prim.bounds_ls = math::BoundingSphere(sphere_centre_ls, hlslpp::sqrt(max_radius_ls_sq));
+		prim.bounds_os = math::BoundingSphere(sphere_centre_os, hlslpp::sqrt(max_radius_os_sq));
 	}
 
 	void OptimizePrimitive(Primitive& prim, cgltf_primitive const& src_prim)
