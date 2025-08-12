@@ -4,6 +4,7 @@
 #include <PhxCore/Log.h>
 #include <PhxCore/SystemTime.h>
 
+#include <limits>
 #include <memory>
 #include <map>
 #define CGLTF_IMPLEMENTATION
@@ -302,11 +303,20 @@ namespace
 
 		float* position_data = reinterpret_cast<float*>(prim.vertex_buffer.data() + position_stream.vertex_offset);
 		
-		// calculate max point
+		float3 min_position(std::numeric_limits<float>::max());
+		float3 max_position(std::numeric_limits<float>::min());
 		for (size_t i = 0; i < vertex_count; i++)
 		{
 			hlslpp::float3 position(position_data[i * 3 + 0], position_data[i * 3 + 1], position_data[i * 3 + 2]);
+			hlslpp::min(min_position, position);
+			hlslpp::max(max_position, position);
 		}
+
+		
+		float3 sphere_centre_ls = min_position + max_position * 0.5f;
+		float1 max_radius_ls_sq;
+		float3 sphere_centre_os = hlslpp::mul(local_to_object, float4(sphere_centre_ls, 0.0f)).xyz;
+		float1 max_radius_os_sq = 0;
 	}
 
 	void OptimizePrimitive(Primitive& prim, cgltf_primitive const& src_prim)
