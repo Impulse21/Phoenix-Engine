@@ -323,7 +323,7 @@ namespace
 		{
 			hlslpp::float3 position_ls(position_data[i * 3 + 0], position_data[i * 3 + 1], position_data[i * 3 + 2]);
 
-			float1 length_sqrt_ls = hlslpp::sqrt(hlslpp::length(sphere_centre_ls - position_ls));
+			float1 length_sqrt_ls = hlslpp::length(sphere_centre_ls - position_ls);
 			max_radius_ls_sq = hlslpp::max(max_radius_ls_sq, length_sqrt_ls);
 
 			prim.bbox_ls.AddPoint(position_ls);
@@ -331,7 +331,7 @@ namespace
 			hlslpp::float3 position_os = hlslpp::mul(local_to_object, float4(position_ls, 0.0f)).xyz;
 
 			// -- TODO SWIITCH TO DOT PRODUCT ---
-			float1 length_sqrt_os = hlslpp::sqrt(hlslpp::length(sphere_centre_os - position_os));
+			float1 length_sqrt_os = hlslpp::length(sphere_centre_os - position_os);
 			max_radius_os_sq = hlslpp::max(max_radius_os_sq, length_sqrt_os);
 
 			prim.bbox_os.AddPoint(position_os);

@@ -54,7 +54,7 @@ namespace phx::math
 		hlslpp::float3 min = hlslpp::float3(0.0f);
 		hlslpp::float3 max = hlslpp::float3(0.0f);
 
-		void AddPoint(float3 point)
+		void AddPoint(hlslpp::float3 point)
 		{
 			min = hlslpp::min(point, min);
 			max = hlslpp::max(point, max);
