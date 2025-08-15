@@ -11,14 +11,15 @@ struct cgltf_data;
 struct cgltf_node;
 struct cgltf_mesh;
 
+struct Primitive;
+
 class GltfModelImporter : public IModelImporter
 {
 public:
-	phx::Result<ModelData> Import(std::string const& file) override;
+	phx::Result<ModelData> Import(std::string const& file, ImportOptions const& import_options) override;
 
 private:
 	bool ImportMaterials(cgltf_data* gltf_data, ModelData& model_data);
-	bool ImportMeshes(cgltf_data* gltf_data, ModelData& model_data);
 	bool ImportMesh(
 		std::vector<Mesh*>& mesh_list,
 		std::vector<std::byte>& geometry_buffer,
@@ -35,5 +36,14 @@ private:
 		phx::math::AxisAlignedBox& model_bounding_box,
 		std::vector<Mesh*>& mesh_list,
 		std::vector<std::byte>& geometry_buffer);
+
+	void CompileMesh(
+		Primitive& prim,
+		std::vector<Mesh*>& mesh_list,
+		std::vector<std::byte>& geometry_buffer,
+		hlslpp::float4x4 const& local_to_object);
+
+private:
+	ImportOptions m_import_options;
 };
 

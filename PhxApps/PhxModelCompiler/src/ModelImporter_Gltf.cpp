@@ -78,31 +78,6 @@ namespace
 		size_t num_elements;
 	};
 
-	struct Primitive
-	{
-		BoundingSphere bounds_ls;	// local space bounds
-		BoundingSphere bounds_os;	// object space bounds
-		AxisAlignedBox bbox_ls;		// local space AABB
-		AxisAlignedBox bbox_os;		// object space AABB
-		std::array<std::optional<VertexStream>, VertexStream_Count> vertex_streams;
-		std::vector<std::byte> vertex_buffer;
-		std::vector<uint32_t> index_buffer;
-		std::vector< std::byte> shadow_indices_buffer;
-
-		uint32_t index_count;
-		uint32_t vertex_count;
-
-		union
-		{
-			uint32_t hash;
-			struct {
-				uint32_t pso_flags : 16;
-				uint32_t index_32 : 1;
-				uint32_t material_index : 15;
-			};
-		};
-	};
-
 
 	void PrintStatistics(Primitive const&)
 	{
@@ -345,6 +320,21 @@ namespace
 	{
 		BucketAttributes(Span(src_prim.attributes, src_prim.attributes_count), prim);
 
+		bool generated_normals = false;
+		if (!prim.vertex_streams[VertexStream_Normal].has_value())
+		{
+			PHX_INFO("Mesh doens't contain normal data. Generating normals.");
+			PHX_ASSERT(false, "TODO: Generate normals");
+			generated_normals = true;
+		}
+
+		if (!prim.vertex_streams[VertexStream_Tangent] || generated_normals)
+		{
+			PHX_INFO("Generating tangent data.");
+
+			PHX_ASSERT(false, "TODO: Generate tangents");
+		}
+
 		std::vector<meshopt_Stream> meshopt_vertex_streams;
 		meshopt_vertex_streams.reserve(VertexStream_Count);
 
@@ -400,8 +390,35 @@ namespace
 	}
 }
 
-phx::Result<ModelData> GltfModelImporter::Import(std::string const& file)
+struct Primitive
 {
+	BoundingSphere bounds_ls;	// local space bounds
+	BoundingSphere bounds_os;	// object space bounds
+	AxisAlignedBox bbox_ls;		// local space AABB
+	AxisAlignedBox bbox_os;		// object space AABB
+	std::array<std::optional<VertexStream>, VertexStream_Count> vertex_streams;
+	std::vector<std::byte> vertex_buffer;
+	std::vector<uint32_t> index_buffer;
+	std::vector< std::byte> shadow_indices_buffer;
+
+	uint32_t index_count;
+	uint32_t vertex_count;
+
+	union
+	{
+		uint32_t hash;
+		struct {
+			uint32_t pso_flags : 16;
+			uint32_t index_32 : 1;
+			uint32_t material_index : 15;
+		};
+	};
+};
+
+phx::Result<ModelData> GltfModelImporter::Import(std::string const& file, ImportOptions const& import_options)
+{
+	m_import_options = import_options;
+
 	CgltfContext ctx = {};
 	cgltf_options options = { };
 
@@ -426,7 +443,7 @@ phx::Result<ModelData> GltfModelImporter::Import(std::string const& file)
 	}
 
 	phx::CpuTimer timer;
-	// Walk the Scene 
+
 	ModelData model_data = {};
 
 	ImportMaterials(gltf_data, model_data);
@@ -451,6 +468,8 @@ phx::Result<ModelData> GltfModelImporter::Import(std::string const& file)
 		model_data.bounding_box,
 		model_data.meshes,
 		model_data.geometry_data);
+
+	m_import_options = {};
 
 	return model_data;
 }
@@ -553,11 +572,6 @@ bool GltfModelImporter::ImportMaterials(cgltf_data* gltf_data, ModelData& model_
 	return true;
 }
 
-bool GltfModelImporter::ImportMeshes(cgltf_data* gltf_data, ModelData& model_data)
-{
-	return true;
-}
-
 bool GltfModelImporter::ImportMesh(
 	std::vector<Mesh*>& mesh_list,
 	std::vector<std::byte>& geometry_buffer,
@@ -566,7 +580,6 @@ bool GltfModelImporter::ImportMesh(
 	phx::math::BoundingSphere& sphere_object_space,
 	phx::math::AxisAlignedBox& box_object_space)
 {
-
 	BoundingSphere sphereOS;
 	AxisAlignedBox bboxOS;
 
@@ -577,9 +590,12 @@ bool GltfModelImporter::ImportMesh(
 		OptimizePrimitive(primitives[i], gltf_mesh->primitives[i]);
 		CalculatePrimtiveBounds(primitives[i], local_to_object);
 
+		CompileMesh(primitives[i], mesh_list, geometry_buffer, local_to_object);
+
 		sphereOS = sphereOS.Union(primitives[i].bounds_os);
 		bboxOS.AddBoundingBox(primitives[i].bbox_os);
 	}
+
 	return false;
 }
 
@@ -627,7 +643,9 @@ uint32_t GltfModelImporter::WalkGraph(
 		{
 			BoundingSphere sphere_object_space;
 			AxisAlignedBox box_object_space;
+
 			ImportMesh(mesh_list, geometry_buffer, sibling.mesh, object_transform, sphere_object_space, box_object_space);
+
 			model_bounding_sphere = model_bounding_sphere.Union(sphere_object_space);
 			model_bounding_box.AddBoundingBox(box_object_space);
 		}
@@ -646,4 +664,14 @@ uint32_t GltfModelImporter::WalkGraph(
 	}
 
 	return 0;
+}
+
+void GltfModelImporter::CompileMesh(
+	Primitive& prim,
+	std::vector<Mesh*>& mesh_list,
+	std::vector<std::byte>& geometry_buffer,
+	float4x4 const& local_to_object)
+{
+	// Build Geometry Bufffer.
+
 }

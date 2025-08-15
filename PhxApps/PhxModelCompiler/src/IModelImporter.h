@@ -7,10 +7,15 @@
 
 #include "ModelBuildData.h"
 
+struct ImportOptions
+{
+	bool bake_transforms = false;
+};
+
 class IModelImporter
 {
 public:
 	virtual ~IModelImporter() = default;
 
-	virtual phx::Result<ModelData> Import(std::string const& file_name) = 0;
+	virtual phx::Result<ModelData> Import(std::string const& file_name, ImportOptions const& import_options) = 0;
 };

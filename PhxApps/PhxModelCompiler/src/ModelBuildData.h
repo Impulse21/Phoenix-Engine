@@ -7,14 +7,6 @@
 // TODO: Move this into it's own location
 namespace phx::math
 {
-
-	enum EZeroTag { kZero, kOrigin };
-	enum EIdentityTag { kOne, kIdentity };
-	enum EXUnitVector { kXUnitVector };
-	enum EYUnitVector { kYUnitVector };
-	enum EZUnitVector { kZUnitVector };
-	enum EWUnitVector { kWUnitVector };
-
 	// These structs are not packed
 	struct BoundingSphere
 	{
