@@ -335,6 +335,7 @@ namespace
 			PHX_ASSERT(false, "TODO: Generate tangents");
 		}
 
+		// PSO flags
 		std::vector<meshopt_Stream> meshopt_vertex_streams;
 		meshopt_vertex_streams.reserve(VertexStream_Count);
 
@@ -471,6 +472,8 @@ phx::Result<ModelData> GltfModelImporter::Import(std::string const& file, Import
 
 	m_import_options = {};
 
+	cgltf_free(gltf_data);
+
 	return model_data;
 }
 
@@ -575,25 +578,51 @@ bool GltfModelImporter::ImportMaterials(cgltf_data* gltf_data, ModelData& model_
 bool GltfModelImporter::ImportMesh(
 	std::vector<Mesh*>& mesh_list,
 	std::vector<std::byte>& geometry_buffer,
+	cgltf_data* gltf_data,
 	cgltf_mesh* gltf_mesh,
 	float4x4 const& local_to_object,
 	phx::math::BoundingSphere& sphere_object_space,
 	phx::math::AxisAlignedBox& box_object_space)
 {
-	BoundingSphere sphereOS;
-	AxisAlignedBox bboxOS;
+	BoundingSphere sphere_os;
+	AxisAlignedBox bbox_os;
 
 	// Optimize Mesh
 	std::vector<Primitive> primitives(gltf_mesh->primitives_count);
 	for (uint32_t i = 0; i < gltf_mesh->primitives_count; i++)
 	{
-		OptimizePrimitive(primitives[i], gltf_mesh->primitives[i]);
-		CalculatePrimtiveBounds(primitives[i], local_to_object);
+		const cgltf_primitive& src_prim = gltf_mesh->primitives[i];
+		Primitive& prim = primitives[i];
 
-		CompileMesh(primitives[i], mesh_list, geometry_buffer, local_to_object);
+		OptimizePrimitive(prim, src_prim);
 
-		sphereOS = sphereOS.Union(primitives[i].bounds_os);
-		bboxOS.AddBoundingBox(primitives[i].bbox_os);
+		if (src_prim.material->alpha_mode == cgltf_alpha_mode_blend)
+			prim.pso_flags |= PSOFlags::kAlphaBlend;
+
+		if (src_prim.material->alpha_mode == cgltf_alpha_mode_mask)
+			prim.pso_flags |= PSOFlags::kAlphaTest;
+
+		if (src_prim.material->double_sided)
+			prim.pso_flags |= PSOFlags::kTwoSided;
+
+		prim.material_index = static_cast<uint32_t>(src_prim.material - gltf_data->materials);
+
+		CalculatePrimtiveBounds(prim, local_to_object);
+		sphere_os = sphere_os.Union(prim.bounds_os);
+		bbox_os.AddBoundingBox(prim.bbox_os);
+	}
+
+	sphere_object_space = sphere_os;
+	box_object_space = bbox_os;
+
+	// Calculate vertex buffer info.
+	size_t total_vertex_size = 0;
+	size_t total_index_size = 0;
+	for (auto& prim : primitives)
+	{
+		totalVertexSize += prim.VB->size();
+		totalDepthVertexSize += prim.DepthVB->size();
+		totalIndexSize += Math::AlignUp(prim.IB->size(), 4);
 	}
 
 	return false;
@@ -644,7 +673,7 @@ uint32_t GltfModelImporter::WalkGraph(
 			BoundingSphere sphere_object_space;
 			AxisAlignedBox box_object_space;
 
-			ImportMesh(mesh_list, geometry_buffer, sibling.mesh, object_transform, sphere_object_space, box_object_space);
+			ImportMesh(mesh_list, geometry_buffer, gltf_data, sibling.mesh, object_transform, sphere_object_space, box_object_space);
 
 			model_bounding_sphere = model_bounding_sphere.Union(sphere_object_space);
 			model_bounding_box.AddBoundingBox(box_object_space);
@@ -664,14 +693,4 @@ uint32_t GltfModelImporter::WalkGraph(
 	}
 
 	return 0;
-}
-
-void GltfModelImporter::CompileMesh(
-	Primitive& prim,
-	std::vector<Mesh*>& mesh_list,
-	std::vector<std::byte>& geometry_buffer,
-	float4x4 const& local_to_object)
-{
-	// Build Geometry Bufffer.
-
 }

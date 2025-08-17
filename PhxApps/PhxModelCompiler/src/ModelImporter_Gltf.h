@@ -23,6 +23,7 @@ private:
 	bool ImportMesh(
 		std::vector<Mesh*>& mesh_list,
 		std::vector<std::byte>& geometry_buffer,
+		cgltf_data* gltf_data,
 		cgltf_mesh* gltf_mesh,
 		hlslpp::float4x4 const& local_to_object,
 		phx::math::BoundingSphere& sphere_object_space,
@@ -37,13 +38,8 @@ private:
 		std::vector<Mesh*>& mesh_list,
 		std::vector<std::byte>& geometry_buffer);
 
-	void CompileMesh(
-		Primitive& prim,
-		std::vector<Mesh*>& mesh_list,
-		std::vector<std::byte>& geometry_buffer,
-		hlslpp::float4x4 const& local_to_object);
-
 private:
 	ImportOptions m_import_options;
+	cgltf_data* m_cgltf_data;
 };
 

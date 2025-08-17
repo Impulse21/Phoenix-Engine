@@ -1,5 +1,6 @@
 #pragma once
 
+#include <PhxCore/Base.h>
 #include <hlsl++.h>
 #include <array>
 #include <vector>
@@ -98,6 +99,15 @@ struct MaterialTextureData
 	uint32_t address_modes;
 };
 
+namespace PSOFlags
+{
+	enum : uint16_t
+	{
+		kAlphaBlend = BIT(1),
+		kAlphaTest = BIT(2),
+		kTwoSided = BIT(3),
+	};
+}
 struct Mesh
 {
 	std::array<float, 4> bounds;           // A bounding sphere
