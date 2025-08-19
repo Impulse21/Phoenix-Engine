@@ -2,7 +2,10 @@
 
 #include <PhxCore/Base.h>
 #include <PhxCore/Log.h>
+#include <PhxCore/Memory/MemoryUtils.h>
+#include <PhxCore/BinaryBuilder.h>
 #include <PhxCore/SystemTime.h>
+#include <PhxRenderer/shaders/ShaderInterop.h>
 
 #include <limits>
 #include <memory>
@@ -14,6 +17,8 @@
 
 using namespace phx;
 using namespace phx::math;
+using namespace phx::renderer;
+
 using namespace hlslpp;
 
 namespace
@@ -56,23 +61,9 @@ namespace
 		// do nothing
 	}
 
-	enum VertexStreamType
-	{
-		VertexStream_Position = 0,
-		VertexStream_Normal,
-		VertexStream_Tangent,
-		VertexStream_Texcoord0,
-		VertexStream_Texcoord1,
-		VertexStream_Colour0,
-		VertexStream_Joints0,
-		VertexStream_Weights0,
-		VertexStream_Count,
-
-	};
-
 	struct VertexStream
 	{
-		VertexStreamType type;
+		renderer::VertexStreamType type;
 		size_t vertex_offset;
 		size_t element_stride;
 		size_t num_elements;
@@ -93,7 +84,7 @@ namespace
 		printf("%-9s: ACMR %f ATVR %f (NV %f AMD %f Intel %f) Overfetch %f Overdraw %f in %.2f msec\n", name, vcs.acmr, vcs.atvr, vcs_nv.atvr, vcs_amd.atvr, vcs_intel.atvr, vfs.overfetch, os.overdraw, (end - start) * 1000);
 #endif
 	}
-	void CreateVertexStream(Primitive& prim, const cgltf_attribute& attribute, VertexStreamType stream_type)
+	void CreateVertexStream(Primitive& prim, const cgltf_attribute& attribute, renderer::VertexStreamType stream_type)
 	{
 		const cgltf_accessor* accessor = attribute.data;
 		PHX_ASSERT(accessor);
@@ -104,12 +95,12 @@ namespace
 		PHX_ASSERT(accessor->component_type == cgltf_component_type_r_32f);
 
 		const size_t attribute_size = accessor->count * num_components * sizeof(float);
-		const size_t start_offset = prim.vertex_buffer.size();
+		const size_t start_offset = prim.vertex_buffer->size();
 
-		prim.vertex_buffer.resize(start_offset + attribute_size);
+		prim.vertex_buffer = std::make_shared<std::vector<std::byte>>(start_offset + attribute_size);
 		cgltf_accessor_unpack_floats(
 			accessor,
-			(float*)(prim.vertex_buffer.data() + start_offset),
+			(float*)(prim.vertex_buffer->data() + start_offset),
 			accessor->count * num_components);
 
 		VertexStream& stream = prim.vertex_streams[stream_type].emplace();
@@ -120,84 +111,6 @@ namespace
 		stream.element_stride = num_components * sizeof(float);
 	}
 
-	void BucketAttributes(phx::Span<cgltf_attribute> attributes, Primitive& prim)
-	{
-		for (uint32_t i = 0; i < attributes.size(); i++)
-		{
-			const cgltf_attribute& attribute = attributes[i];
-
-			// No need for the local 'stream' pointer anymore
-			switch (attribute.type)
-			{
-			case cgltf_attribute_type_position:
-				CreateVertexStream(prim, attribute, VertexStream_Position);
-				break;
-
-			case cgltf_attribute_type_normal:
-				CreateVertexStream(prim, attribute, VertexStream_Normal);
-				break;
-
-			case cgltf_attribute_type_tangent:
-				CreateVertexStream(prim, attribute, VertexStream_Tangent);
-				break;
-
-			case cgltf_attribute_type_texcoord:
-				if (attribute.index == 0)
-				{
-					CreateVertexStream(prim, attribute, VertexStream_Texcoord0);
-				}
-				else if (attribute.index == 1)
-				{
-					CreateVertexStream(prim, attribute, VertexStream_Texcoord1);
-				}
-				else
-				{
-					PHX_WARN("Unsupported texture coordinate set TEXCOORD_{0} found.", attribute.index);
-				}
-				break;
-
-			case cgltf_attribute_type_color:
-				if (attribute.index == 0)
-				{
-					CreateVertexStream(prim, attribute, VertexStream_Colour0);
-				}
-				else
-				{
-					PHX_WARN("Unsupported color set COLOR_{0} found.", attribute.index);
-				}
-				break;
-
-			case cgltf_attribute_type_joints:
-				if (attribute.index == 0)
-				{
-					CreateVertexStream(prim, attribute, VertexStream_Joints0);
-				}
-				else
-				{
-					PHX_WARN("Unsupported joint set JOINTS_{0} found.", attribute.index);
-				}
-				break;
-
-			case cgltf_attribute_type_weights:
-				if (attribute.index == 0)
-				{
-					CreateVertexStream(prim, attribute, VertexStream_Weights0);
-				}
-				else
-				{
-					PHX_WARN("Unsupported weight set WEIGHTS_{0} found.", attribute.index);
-				}
-				break;
-
-			case cgltf_attribute_type_invalid:
-			case cgltf_attribute_type_custom:
-			default:
-				PHX_WARN("Unhandled or invalid cgltf attribute type encountered: {0}", attribute.type);
-				break;
-			}
-		}
-	}
-
 	void GenerateMeshIndices(
 		Primitive& prim,
 		cgltf_primitive const& src_prim,
@@ -206,8 +119,8 @@ namespace
 		std::vector<uint32_t>& remap_table)
 	{
 
-		PHX_ASSERT(prim.vertex_streams[VertexStream_Position].has_value());
-		size_t vertex_count = prim.vertex_streams[VertexStream_Position]->num_elements;
+		PHX_ASSERT(prim.vertex_streams[renderer::VertexStream_Position].has_value());
+		size_t vertex_count = prim.vertex_streams[renderer::VertexStream_Position]->num_elements;
 		size_t index_count = 0;
 		std::unique_ptr<uint32_t[]> temp_indices = nullptr;
 
@@ -235,15 +148,16 @@ namespace
 			meshopt_vertex_streams.data(),
 			meshopt_vertex_streams.Size());
 
-		prim.index_buffer.resize(index_count * sizeof(uint32_t));
+
+		prim.index_buffer = std::make_shared<std::vector<std::byte>>(index_count * sizeof(uint32_t));
 		meshopt_remapIndexBuffer(
-			prim.index_buffer.data(),
+			reinterpret_cast<uint32_t*>(prim.index_buffer->data()),
 			temp_indices.get(),
 			index_count,
 			remap_table.data());
 
-		std::vector<std::byte> final_vertex_buffer;
-		final_vertex_buffer.reserve(total_new_vb_size * unique_vertex_count); // Pre-allocate
+		auto stagging_vertex_buffer = std::make_shared<std::vector<std::byte>>();
+		stagging_vertex_buffer->reserve(total_new_vb_size * unique_vertex_count); // Pre-allocate
 
 		for (auto& vertex_stream : prim.vertex_streams)
 		{
@@ -251,19 +165,19 @@ namespace
 				continue;
 
 			const size_t required_size = vertex_stream->num_elements * vertex_stream->element_stride;
-			vertex_stream->vertex_offset = final_vertex_buffer.size();
-			final_vertex_buffer.resize(final_vertex_buffer.size() + required_size);
+			vertex_stream->vertex_offset = stagging_vertex_buffer->size();
+			stagging_vertex_buffer->resize(stagging_vertex_buffer->size() + required_size);
 
-			void* vertex_data = prim.vertex_buffer.data() + vertex_stream->vertex_offset;
+			void* vertex_data = prim.vertex_buffer->data() + vertex_stream->vertex_offset;
 			meshopt_remapVertexBuffer(
-				final_vertex_buffer.data() + vertex_stream->vertex_offset,
+				stagging_vertex_buffer->data() + vertex_stream->vertex_offset,
 				vertex_data,
 				vertex_stream->num_elements,
 				vertex_stream->element_stride,
 				remap_table.data());
 		}
 
-		prim.vertex_buffer = std::move(final_vertex_buffer);
+		prim.vertex_buffer = std::move(stagging_vertex_buffer);
 		prim.vertex_count = vertex_count;
 		prim.index_count = index_count;
 	}
@@ -276,7 +190,7 @@ namespace
 
 		PHX_ASSERT(position_stream.element_stride == sizeof(float) * 3);
 
-		float* position_data = reinterpret_cast<float*>(prim.vertex_buffer.data() + position_stream.vertex_offset);
+		float* position_data = reinterpret_cast<float*>(prim.vertex_buffer->data() + position_stream.vertex_offset);
 		
 		float3 min_position(std::numeric_limits<float>::max());
 		float3 max_position(std::numeric_limits<float>::min());
@@ -316,79 +230,6 @@ namespace
 		prim.bounds_os = math::BoundingSphere(sphere_centre_os, hlslpp::sqrt(max_radius_os_sq));
 	}
 
-	void OptimizePrimitive(Primitive& prim, cgltf_primitive const& src_prim)
-	{
-		BucketAttributes(Span(src_prim.attributes, src_prim.attributes_count), prim);
-
-		bool generated_normals = false;
-		if (!prim.vertex_streams[VertexStream_Normal].has_value())
-		{
-			PHX_INFO("Mesh doens't contain normal data. Generating normals.");
-			PHX_ASSERT(false, "TODO: Generate normals");
-			generated_normals = true;
-		}
-
-		if (!prim.vertex_streams[VertexStream_Tangent] || generated_normals)
-		{
-			PHX_INFO("Generating tangent data.");
-
-			PHX_ASSERT(false, "TODO: Generate tangents");
-		}
-
-		// PSO flags
-		std::vector<meshopt_Stream> meshopt_vertex_streams;
-		meshopt_vertex_streams.reserve(VertexStream_Count);
-
-		size_t total_new_vb_size = 0;
-		for (auto& vertex_stream : prim.vertex_streams)
-		{
-			if (!vertex_stream.has_value())
-				continue;
-
-			meshopt_vertex_streams.emplace_back(meshopt_Stream{
-
-				.data = prim.vertex_buffer.data() + vertex_stream->vertex_offset,
-				.size = sizeof(float),
-				.stride = vertex_stream->element_stride,
-				});
-
-			total_new_vb_size += vertex_stream->element_stride;
-		}
-
-		std::vector<uint32_t> remap_table;
-		GenerateMeshIndices(prim, src_prim, meshopt_vertex_streams, total_new_vb_size, remap_table);
-
-		PrintStatistics(prim);
-
-		uint32_t* index_buffer = reinterpret_cast<uint32_t*>(prim.index_buffer.data());
-
-		// -- Optimize vertex cache ---
-		meshopt_optimizeVertexCache(index_buffer, index_buffer, prim.index_count, prim.vertex_count);
-
-		// -- Vertex optmized overdraw ---
-		// Not in demo?
-
-		// -- Vertex fetch optimization ---
-		meshopt_optimizeVertexFetchRemap(remap_table.data(), index_buffer, prim.index_count, prim.vertex_count);
-
-		for (auto& vertex_stream : prim.vertex_streams)
-		{
-			if (!vertex_stream.has_value())
-				continue;
-
-			void* stream_data = prim.vertex_buffer.data() + vertex_stream->vertex_offset;
-			meshopt_remapVertexBuffer(
-				stream_data,
-				stream_data,
-				prim.vertex_count,
-				vertex_stream->element_stride,
-				remap_table.data());
-		}
-
-		PrintStatistics(prim);
-
-		// todo: strink indices and calculate bounding boxes.
-	}
 }
 
 struct Primitive
@@ -398,9 +239,9 @@ struct Primitive
 	AxisAlignedBox bbox_ls;		// local space AABB
 	AxisAlignedBox bbox_os;		// object space AABB
 	std::array<std::optional<VertexStream>, VertexStream_Count> vertex_streams;
-	std::vector<std::byte> vertex_buffer;
-	std::vector<uint32_t> index_buffer;
-	std::vector< std::byte> shadow_indices_buffer;
+	std::shared_ptr<std::vector<std::byte>> vertex_buffer;
+	std::shared_ptr<std::vector<std::byte>> index_buffer;
+	std::shared_ptr<std::vector<std::byte>> shadow_indices_buffer;
 
 	uint32_t index_count;
 	uint32_t vertex_count;
@@ -594,20 +435,9 @@ bool GltfModelImporter::ImportMesh(
 		const cgltf_primitive& src_prim = gltf_mesh->primitives[i];
 		Primitive& prim = primitives[i];
 
-		OptimizePrimitive(prim, src_prim);
-
-		if (src_prim.material->alpha_mode == cgltf_alpha_mode_blend)
-			prim.pso_flags |= PSOFlags::kAlphaBlend;
-
-		if (src_prim.material->alpha_mode == cgltf_alpha_mode_mask)
-			prim.pso_flags |= PSOFlags::kAlphaTest;
-
-		if (src_prim.material->double_sided)
-			prim.pso_flags |= PSOFlags::kTwoSided;
-
-		prim.material_index = static_cast<uint32_t>(src_prim.material - gltf_data->materials);
-
+		InitializePrimitive(prim, src_prim, gltf_data);
 		CalculatePrimtiveBounds(prim, local_to_object);
+
 		sphere_os = sphere_os.Union(prim.bounds_os);
 		bbox_os.AddBoundingBox(prim.bbox_os);
 	}
@@ -615,14 +445,35 @@ bool GltfModelImporter::ImportMesh(
 	sphere_object_space = sphere_os;
 	box_object_space = bbox_os;
 
-	// Calculate vertex buffer info.
 	size_t total_vertex_size = 0;
 	size_t total_index_size = 0;
+
+	std::map<uint32_t, std::vector<Primitive*>> render_meshes;
 	for (auto& prim : primitives)
 	{
-		totalVertexSize += prim.VB->size();
-		totalDepthVertexSize += prim.DepthVB->size();
-		totalIndexSize += Math::AlignUp(prim.IB->size(), 4);
+		uint32_t hash = prim.hash;
+		render_meshes[hash].push_back(&prim);
+	}
+
+	BinaryBuilder vbBuilder;
+	OffsetHandle headerOffset = vbBuilder.Reserve<renderer::VertexStreamsHeader>();
+
+	std::array<OffsetHandle, renderer::VertexStream_Count> streamOffsets;
+	std::memset(streamOffsets.data(), 0xFF, sizeof(OffsetHandle) * renderer::VertexStream_Count);
+
+	for (auto& [hash, primitives ] : render_meshes)
+	{
+		size_t numDraws = primitives.size();
+	}
+
+	for (auto& streamOpt : m_meshData.VertexStreams)
+	{
+		if (!streamOpt.has_value())
+			continue;
+
+		const VertexStream& stream = streamOpt.value();
+		const std::size_t sizeInBytes = stream.ElementStride * stream.NumElements;
+		streamOffsets[stream.Type] = vbBuilder.Reserve(sizeInBytes, 16u);
 	}
 
 	return false;
@@ -693,4 +544,165 @@ uint32_t GltfModelImporter::WalkGraph(
 	}
 
 	return 0;
+}
+
+void GltfModelImporter::InitializePrimitive(Primitive& prim, cgltf_primitive const& src_prim, cgltf_data* gltf_data)
+{
+	for (uint32_t i = 0; i < src_prim.attributes_count; i++)
+	{
+		const cgltf_attribute& attribute = src_prim.attributes[i];
+
+		// No need for the local 'stream' pointer anymore
+		switch (attribute.type)
+		{
+		case cgltf_attribute_type_position:
+			CreateVertexStream(prim, attribute, VertexStream_Position);
+			break;
+
+		case cgltf_attribute_type_normal:
+			CreateVertexStream(prim, attribute, VertexStream_Normal);
+			break;
+
+		case cgltf_attribute_type_tangent:
+			CreateVertexStream(prim, attribute, VertexStream_Tangent);
+			break;
+
+		case cgltf_attribute_type_texcoord:
+			if (attribute.index == 0)
+			{
+				CreateVertexStream(prim, attribute, VertexStream_Texcoord0);
+			}
+			else if (attribute.index == 1)
+			{
+				CreateVertexStream(prim, attribute, VertexStream_Texcoord1);
+			}
+			else
+			{
+				PHX_WARN("Unsupported texture coordinate set TEXCOORD_{0} found.", attribute.index);
+			}
+			break;
+
+		case cgltf_attribute_type_color:
+			if (attribute.index == 0)
+			{
+				CreateVertexStream(prim, attribute, VertexStream_Colour0);
+			}
+			else
+			{
+				PHX_WARN("Unsupported color set COLOR_{0} found.", attribute.index);
+			}
+			break;
+
+		case cgltf_attribute_type_joints:
+			if (attribute.index == 0)
+			{
+				CreateVertexStream(prim, attribute, VertexStream_Joints0);
+			}
+			else
+			{
+				PHX_WARN("Unsupported joint set JOINTS_{0} found.", attribute.index);
+			}
+			break;
+
+		case cgltf_attribute_type_weights:
+			if (attribute.index == 0)
+			{
+				CreateVertexStream(prim, attribute, VertexStream_Weights0);
+			}
+			else
+			{
+				PHX_WARN("Unsupported weight set WEIGHTS_{0} found.", attribute.index);
+			}
+			break;
+
+		case cgltf_attribute_type_invalid:
+		case cgltf_attribute_type_custom:
+		default:
+			PHX_WARN("Unhandled or invalid cgltf attribute type encountered: {0}", attribute.type);
+			break;
+		}
+	}
+
+	bool generated_normals = false;
+	if (!prim.vertex_streams[VertexStream_Normal].has_value())
+	{
+		PHX_INFO("Mesh doens't contain normal data. Generating normals.");
+		PHX_ASSERT(false, "TODO: Generate normals");
+		generated_normals = true;
+	}
+
+	if (!prim.vertex_streams[VertexStream_Tangent] || generated_normals)
+	{
+		PHX_INFO("Generating tangent data.");
+
+		PHX_ASSERT(false, "TODO: Generate tangents");
+	}
+
+	if (src_prim.material->alpha_mode == cgltf_alpha_mode_blend)
+		prim.pso_flags |= PSOFlags::kAlphaBlend;
+
+	if (src_prim.material->alpha_mode == cgltf_alpha_mode_mask)
+		prim.pso_flags |= PSOFlags::kAlphaTest;
+
+	if (src_prim.material->double_sided)
+		prim.pso_flags |= PSOFlags::kTwoSided;
+
+	prim.material_index = static_cast<uint32_t>(src_prim.material - gltf_data->materials);
+
+	OptimizePrimitive(prim, src_prim);
+}
+
+void GltfModelImporter::OptimizePrimitive(Primitive& prim, cgltf_primitive const& src_prim)
+{
+	// PSO flags
+	std::vector<meshopt_Stream> meshopt_vertex_streams;
+	meshopt_vertex_streams.reserve(VertexStream_Count);
+
+	size_t total_new_vb_size = 0;
+	for (auto& vertex_stream : prim.vertex_streams)
+	{
+		if (!vertex_stream.has_value())
+			continue;
+
+		meshopt_vertex_streams.emplace_back(meshopt_Stream{
+
+			.data = prim.vertex_buffer->data() + vertex_stream->vertex_offset,
+			.size = sizeof(float),
+			.stride = vertex_stream->element_stride,
+			});
+
+		total_new_vb_size += vertex_stream->element_stride;
+	}
+
+	std::vector<uint32_t> remap_table;
+	GenerateMeshIndices(prim, src_prim, meshopt_vertex_streams, total_new_vb_size, remap_table);
+
+	PrintStatistics(prim);
+
+	uint32_t* index_buffer = reinterpret_cast<uint32_t*>(prim.index_buffer->data());
+
+	// -- Optimize vertex cache ---
+	meshopt_optimizeVertexCache(index_buffer, index_buffer, prim.index_count, prim.vertex_count);
+
+	// -- Vertex optmized overdraw ---
+	// Not in demo?
+
+	// -- Vertex fetch optimization ---
+	meshopt_optimizeVertexFetchRemap(remap_table.data(), index_buffer, prim.index_count, prim.vertex_count);
+
+	for (auto& vertex_stream : prim.vertex_streams)
+	{
+		if (!vertex_stream.has_value())
+			continue;
+
+		void* stream_data = prim.vertex_buffer->data() + vertex_stream->vertex_offset;
+		meshopt_remapVertexBuffer(
+			stream_data,
+			stream_data,
+			prim.vertex_count,
+			vertex_stream->element_stride,
+			remap_table.data());
+	}
+
+	PrintStatistics(prim);
 }

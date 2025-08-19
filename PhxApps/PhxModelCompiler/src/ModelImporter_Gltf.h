@@ -10,6 +10,7 @@
 struct cgltf_data;
 struct cgltf_node;
 struct cgltf_mesh;
+struct cgltf_primitive;
 
 struct Primitive;
 
@@ -38,8 +39,12 @@ private:
 		std::vector<Mesh*>& mesh_list,
 		std::vector<std::byte>& geometry_buffer);
 
+
+	void InitializePrimitive(Primitive& prim, cgltf_primitive const& src_prim, cgltf_data* gltf_data);
+	void OptimizePrimitive(Primitive& prim, cgltf_primitive const& src_prim);
+
 private:
 	ImportOptions m_import_options;
-	cgltf_data* m_cgltf_data;
+	cgltf_data* m_gltf_data;
 };
 
