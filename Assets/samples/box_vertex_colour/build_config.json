@@ -1,0 +1,8 @@
+{
+  "assets": [
+    {
+      "input": "BoxVertexColors.gltf",
+      "output": "Assets/Compiled/Models/BoxVertexColors.phxmdl"
+    }
+  ]
+}

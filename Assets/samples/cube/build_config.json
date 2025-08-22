@@ -1,0 +1,8 @@
+{
+  "assets": [
+    {
+      "input": "Cube.gltf",
+      "output": "Assets/Compiled/Models/Cube.phxmdl"
+    }
+  ]
+}
