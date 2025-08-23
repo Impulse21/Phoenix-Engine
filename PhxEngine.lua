@@ -24,6 +24,7 @@ phx_vendor_src_cereal_dir   = phx_lib_vendor_directory.."/cereal"
 phx_vendor_src_tlsf         = phx_lib_vendor_directory.."/tlsf"
 phx_vendor_src_tracy        = phx_lib_vendor_directory.."/tracy"
 phx_vendor_src_hlslpp       = phx_lib_vendor_directory.."/hlslpp"
+phx_vendor_src_meshoptimizer= phx_lib_vendor_directory.."/meshoptimizer"
 
 phx_vendor_src_vk_bootstrap = phx_lib_vendor_directory.."/vk-bootstrap"
 phx_vendor_src_vma          = phx_lib_vendor_directory.."/vma"
@@ -70,6 +71,7 @@ project_asset_packer    = 'PhxAssetPacker'
 project_model_compiler  = 'PhxModelCompiler'
 
 project_vendor_imgui        = 'ImGui'
+project_vendor_meshoptimizer= 'mesh_optimizer'
 project_vendor_tracy        = 'Tracy'
 project_vendor_tlsf         = 'tlsf'
 
@@ -351,6 +353,28 @@ workspace "PhxEngine"
 -- Project definitions
 
 group "Vendors"
+    project(project_vendor_meshoptimizer)
+        kind "StaticLib"
+        language "C++"
+        cppdialect "c++17"
+        
+        files
+        {
+            phx_vendor_src_meshoptimizer..'/*.cpp',
+            phx_vendor_src_meshoptimizer..'/*.h',
+            phx_vendor_src_meshoptimizer..'/version_0.25.txt',
+            phx_vendor_src_meshoptimizer..'/LICENSE.txt'
+        }
+
+        filter "system:linux"
+            pic "On"
+            systemversion "latest"
+        removefiles {}
+
+        filter { 'configurations:*' } -- Workaround for MacOS nil in cfg
+
+        filter {}
+
     project(project_vendor_imgui)
         kind "StaticLib"
         language "C++"
@@ -1102,11 +1126,17 @@ group "Applications"
     project(project_model_compiler)
         kind "ConsoleApp"         -- Windows application (no console)
 
+        defines { "PHX_ASSET_COMPILER" }
 
         files 
         {
             phx_app_directory.."/"..project_model_compiler.."/src/**.cpp",
             phx_app_directory.."/"..project_model_compiler.."/src/**.h",
+        }
+
+        removefiles {
+            phx_lib_src_world_dir.."/vendor/meshoptimizer/Demo/*.h",
+            phx_lib_src_world_dir.."/vendor/meshoptimizer/Demo/*.cpp",
         }
 
         includedirs 
@@ -1115,9 +1145,11 @@ group "Applications"
             phx_lib_vendor_directory.."/spdlog/include",
             phx_lib_vendor_directory.."/cgltf",
             phx_lib_vendor_directory.."/entt",
+            phx_lib_vendor_directory.."/meshoptimizer",
             phx_vendor_src_json_dir,
             phx_vendor_src_cereal_dir,
             phx_vendor_include_hlslpp_dir,
+            phx_vendor_src_tracy,
             phx_app_directory.."/"..project_model_compiler.."/vendor",
         }
 
@@ -1131,8 +1163,10 @@ group "Applications"
             project_phx_engine,
             project_phx_data,
             project_vendor_imgui,
+            project_vendor_meshoptimizer,
             project_vendor_yaml,
             project_vendor_tlsf,
+            project_vendor_tracy,
         }
         
         postbuildcommands
@@ -1153,14 +1187,6 @@ group "Applications"
                 phx_lib_src_rhi_dir..'/d3d12',
                 phx_vendor_src_d3d12ma_dir,
             }
-    
-            AddLibraryIncludes(DirectXTexLibrary)
-            libdirs(DirectXTexLibrary.libDirs)
-            filter { 'configurations:Debug' }
-                links(DirectXTexLibrary.libNames[2])
-    
-            filter { 'configurations:RelWithDebInfo or Shipping' }
-                links(DirectXTexLibrary.libNames[1])
         filter{}
 
         filter('platforms:'..clang_win64_vulkan)

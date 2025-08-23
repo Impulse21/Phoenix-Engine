@@ -45,6 +45,5 @@ private:
 
 private:
 	ImportOptions m_import_options;
-	cgltf_data* m_gltf_data;
 };
 

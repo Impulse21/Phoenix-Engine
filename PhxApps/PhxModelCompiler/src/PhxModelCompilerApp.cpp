@@ -8,11 +8,34 @@
 #include "ModelImporterFactory.h"
 #include "ModelExporter.h"
 
+#include <PhxCore/Application.h>
 using namespace phx;
+
+
+// TOOD: Fix this up, these are just stubs for now, but asset compilers shouldn't need to do this.
+
+namespace phx
+{
+	IApplication* CreateApplication()
+	{
+		return nullptr;
+	}
+
+	void DeleteApplication(IApplication* ptr)
+	{
+		delete ptr;
+	}
+}
 
 
 int wmain(int argc, wchar_t** argv)
 {
+	if (argc != 0 && wcscmp(argv[1], L"-version") == 0)
+	{
+		std::cout << "0.0.1" << std::endl;
+		return 0;
+	}
+
 	phx::Log::Initialize();
 	if (argc == 0)
 	{
@@ -36,7 +59,7 @@ int wmain(int argc, wchar_t** argv)
 	if (ModelImporterFactory::IsSupported(extension))
 	{
 		std::unique_ptr<IModelImporter> model_compiler = ModelImporterFactory::Create(extension);
-		phx::Result<ModelData> model_data = model_compiler->Import(input_file);
+		phx::Result<ModelData> model_data = model_compiler->Import(input_file, {});
 
 		if (model_data)
 		{

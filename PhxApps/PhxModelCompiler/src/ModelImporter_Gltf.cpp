@@ -9,6 +9,8 @@
 
 #include <limits>
 #include <memory>
+#include <vector>
+#include <memory>
 #include <map>
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
@@ -20,6 +22,39 @@ using namespace phx::math;
 using namespace phx::renderer;
 
 using namespace hlslpp;
+
+struct VertexStream
+{
+	renderer::VertexStreamType type;
+	size_t vertex_offset;
+	size_t element_stride;
+	size_t num_elements;
+};
+
+struct Primitive
+{
+	BoundingSphere bounds_ls;	// local space bounds
+	BoundingSphere bounds_os;	// object space bounds
+	AxisAlignedBox bbox_ls;		// local space AABB
+	AxisAlignedBox bbox_os;		// object space AABB
+	std::array<std::optional<VertexStream>, VertexStream_Count> vertex_streams;
+	std::shared_ptr<std::vector<std::byte>> vertex_buffer;
+	std::shared_ptr<std::vector<std::byte>> index_buffer;
+	std::shared_ptr<std::vector<std::byte>> shadow_indices_buffer;
+
+	uint32_t index_count;
+	uint32_t vertex_count;
+
+	union
+	{
+		uint32_t hash;
+		struct {
+			uint32_t pso_flags : 16;
+			uint32_t index_32 : 1;
+			uint32_t material_index : 15;
+		};
+	};
+};
 
 namespace
 {
@@ -60,15 +95,6 @@ namespace
 	{
 		// do nothing
 	}
-
-	struct VertexStream
-	{
-		renderer::VertexStreamType type;
-		size_t vertex_offset;
-		size_t element_stride;
-		size_t num_elements;
-	};
-
 
 	void PrintStatistics(Primitive const&)
 	{
@@ -197,8 +223,8 @@ namespace
 		for (size_t i = 0; i < vertex_count; i++)
 		{
 			hlslpp::float3 position(position_data[i * 3 + 0], position_data[i * 3 + 1], position_data[i * 3 + 2]);
-			hlslpp::min(min_position, position);
-			hlslpp::max(max_position, position);
+			min_position = hlslpp::min(min_position, position);
+			max_position = hlslpp::max(max_position, position);
 		}
 
 		
@@ -232,31 +258,6 @@ namespace
 
 }
 
-struct Primitive
-{
-	BoundingSphere bounds_ls;	// local space bounds
-	BoundingSphere bounds_os;	// object space bounds
-	AxisAlignedBox bbox_ls;		// local space AABB
-	AxisAlignedBox bbox_os;		// object space AABB
-	std::array<std::optional<VertexStream>, VertexStream_Count> vertex_streams;
-	std::shared_ptr<std::vector<std::byte>> vertex_buffer;
-	std::shared_ptr<std::vector<std::byte>> index_buffer;
-	std::shared_ptr<std::vector<std::byte>> shadow_indices_buffer;
-
-	uint32_t index_count;
-	uint32_t vertex_count;
-
-	union
-	{
-		uint32_t hash;
-		struct {
-			uint32_t pso_flags : 16;
-			uint32_t index_32 : 1;
-			uint32_t material_index : 15;
-		};
-	};
-};
-
 phx::Result<ModelData> GltfModelImporter::Import(std::string const& file, ImportOptions const& import_options)
 {
 	m_import_options = import_options;
@@ -280,7 +281,8 @@ phx::Result<ModelData> GltfModelImporter::Import(std::string const& file, Import
 	result = cgltf_load_buffers(&options, gltf_data, file.c_str());
 	if (result != cgltf_result_success)
 	{
-		PHX_ERROR("Couldn't load glTF Binary data '{0}'", result);
+		// TODO: Conver to proper error code.
+		PHX_ERROR("Couldn't load glTF Binary data '{0}'", static_cast<uint32_t>(result));
 		return phx::make_unexpected(~0ull);
 	}
 
@@ -302,7 +304,7 @@ phx::Result<ModelData> GltfModelImporter::Import(std::string const& file, Import
 	model_data.bounding_sphere = {};
 	model_data.bounding_box = {};
 
-	uint32_t num_nodes = WalkGraph(
+	WalkGraph(
 		gltf_data,
 		phx::Span(*scene->nodes, scene->nodes_count),
 		hlslpp::float4x4::identity(),
@@ -417,8 +419,8 @@ bool GltfModelImporter::ImportMaterials(cgltf_data* gltf_data, ModelData& model_
 }
 
 bool GltfModelImporter::ImportMesh(
-	std::vector<Mesh*>& mesh_list,
-	std::vector<std::byte>& geometry_buffer,
+	std::vector<Mesh*>& /*mesh_list*/,
+	std::vector<std::byte>& /*geometry_buffer*/,
 	cgltf_data* gltf_data,
 	cgltf_mesh* gltf_mesh,
 	float4x4 const& local_to_object,
@@ -445,6 +447,7 @@ bool GltfModelImporter::ImportMesh(
 	sphere_object_space = sphere_os;
 	box_object_space = bbox_os;
 
+#if false
 	size_t total_vertex_size = 0;
 	size_t total_index_size = 0;
 
@@ -455,8 +458,8 @@ bool GltfModelImporter::ImportMesh(
 		render_meshes[hash].push_back(&prim);
 	}
 
-	BinaryBuilder vbBuilder;
-	OffsetHandle headerOffset = vbBuilder.Reserve<renderer::VertexStreamsHeader>();
+	BinaryBuilder vb_buffer;
+	OffsetHandle header_offset = vb_buffer.Reserve<renderer::VertexStreamsHeader>();
 
 	std::array<OffsetHandle, renderer::VertexStream_Count> streamOffsets;
 	std::memset(streamOffsets.data(), 0xFF, sizeof(OffsetHandle) * renderer::VertexStream_Count);
@@ -475,7 +478,7 @@ bool GltfModelImporter::ImportMesh(
 		const std::size_t sizeInBytes = stream.ElementStride * stream.NumElements;
 		streamOffsets[stream.Type] = vbBuilder.Reserve(sizeInBytes, 16u);
 	}
-
+#endif
 	return false;
 }
 
@@ -618,7 +621,8 @@ void GltfModelImporter::InitializePrimitive(Primitive& prim, cgltf_primitive con
 		case cgltf_attribute_type_invalid:
 		case cgltf_attribute_type_custom:
 		default:
-			PHX_WARN("Unhandled or invalid cgltf attribute type encountered: {0}", attribute.type);
+			// TODO: Convert to a proper error message.
+			PHX_WARN("Unhandled or invalid cgltf attribute type encountered: {0}", static_cast<uint32_t>(attribute.type));
 			break;
 		}
 	}

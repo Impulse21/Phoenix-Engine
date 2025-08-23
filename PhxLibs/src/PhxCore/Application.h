@@ -35,6 +35,7 @@ namespace phx
 	};
 
 	// To be defined in CLIENT
+
 	IApplication* CreateApplication();
 }
 

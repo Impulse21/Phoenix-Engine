@@ -20,10 +20,9 @@ INPUT_TO_OUTPUT_MAP = {}
 # A set to prevent processing the same asset multiple times in a single run.
 PROCESSED_ASSETS = set()
 
+# TODO: change to have a more offical directory were we publish the asset compilers.
 IMPLICIT_COMPILERS = {
-    ".gltf": "C:/PhoenixEngine/bin/PhxModelCompiler.exe",
-    ".png": "C:/PhoenixEngine/bin/PhxTextureCompiler.exe",
-    ".jpg": "C:/PhoenixEngine/bin/PhxTextureCompiler.exe"
+    ".gltf": r".workspace/vs2022/bin/Debug-windows-x86_64/PhxModelCompiler/PhxModelCompiler.exe"
 }
 
 # --- Pretty Banner ---
@@ -58,12 +57,14 @@ def get_compiler_versions(compilers):
     global COMPILER_VERSIONS
     for compiler in compilers:
         try:
-            result = subprocess.run([compiler, '--version'], capture_output=True, text=True, check=True)
+            result = subprocess.run([compiler, '-version'], capture_output=True, text=True, check=True)
             version = result.stdout.strip()
+
+            print(f"\tCompiler {compiler} version: {version}\n")
             COMPILER_VERSIONS[compiler] = version
 
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print(f"Error: Could not get version for compiler '{compiler}'. Aborting.")
+            print(f"Error: Could not get version for compiler '{compiler}'. Ensure compilers are built prior to executing. Aborting.")
             sys.exit(1)
     print("-" * 30)
 
@@ -108,7 +109,7 @@ def process_asset(output_path):
 
     input_path = rule['input']
 
-    if rule['compiler']:
+    if 'compiler' in rule:
         compiler = rule['compiler']
         print(f"Using explicit compiler = {compiler}")
 
@@ -179,31 +180,31 @@ def process_asset(output_path):
         print(f"Building: {os.path.basename(output_path)}... (Reason: {rebuild_reason})")
         command = [compiler, "-i", input_path, "-o", output_path]
         try:
-            print(f"  CMD: {' '.join(command)}")
+            print(f"\tCMD: {' '.join(command)}")
             # --- REAL IMPLEMENTATION ---
             # subprocess.run(command, check=True, capture_output=True, text=True)
             
-            print(f"  -> Success.")
+            print(f"\t-> Success.")
 
             with open(manifest_path, 'r') as f:
                 new_manifest_data = json.load(f)
                 
             associated_assets = manifest_data.get("associated_assets", [])
             if associated_assets:
-                print(f"  -> Processing newly discovered assoiciated assets...")
+                print(f"\t-> Processing newly discovered assoiciated assets...")
                 for associated_asset in associated_assets:
                     asset_rule = get_or_create_rule_for_source(associated_asset)
                     if asset_rule:
                         process_asset(asset_rule['output'])
                     else:
-                        print(f"     - Warning: No rule found for '{asset_rule}'.")
+                        print(f"\t\t- Warning: No rule found for '{asset_rule}'.")
 
         except Exception as e:
-            print(f"  -> ERROR: Compiler for '{output_path}' failed: {e}")
+            print(f"\t-> ERROR: Compiler for '{output_path}' failed: {e}")
             PROCESSED_ASSETS.add(output_path)
             return False
     else:
-        print(f"  -> Up-to-date.")
+        print(f"\t-> Up-to-date.")
     
     PROCESSED_ASSETS.add(output_path)
     return needs_rebuild
@@ -233,6 +234,10 @@ def main():
 
 
     build_file_path = sys.argv[1]
+    
+    base_path = os.path.dirname(os.path.abspath(build_file_path))
+    print(f"Resolving paths relative to: {base_path}")
+    print("-" * 40)
 
     if not os.path.exists(build_file_path):
         print(f"Error: Build file not found at '{build_file_path}'")
@@ -241,15 +246,15 @@ def main():
     with open(build_file_path, 'r') as f:
         build_config = json.load(f)
 
-    all_compilers = {rule['compiler'] for rule in build_config['assets']}
+    all_compilers = {rule['compiler'] for rule in build_config['assets'] if 'compiler' in rule}
     all_compilers.update(IMPLICIT_COMPILERS.values())
+
+    get_compiler_versions(list(all_compilers))
 
     global OUTPUT_DIRECTORY
     OUTPUT_DIRECTORY = "Assets/Build/"
     ensure_trailing_slash(OUTPUT_DIRECTORY)
-
-    # TODO: Enable compiler version retrival.
-    # get_compiler_versions(list(all_compilers))
+    
     
     global ASSET_BUILD_RULES
     global INPUT_TO_OUTPUT_MAP
