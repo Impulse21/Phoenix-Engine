@@ -27,6 +27,44 @@ namespace phx
 	}
 }
 
+bool parse_args(Span<wchar_t*> args, std::string& input_file, std::string& output_file)
+{
+	// Start at 1 to skip the program name (argv[0])
+	for (size_t i = 0; i < args.size(); i++)
+	{
+		std::wstring arg = args[i];
+		if (arg == L"-i")
+		{
+			if (i + 1 < args.size())
+			{
+				std::wstring input_file_w = args[i + 1];
+				StringConvert(input_file_w, input_file);
+				i++;
+			}
+			else 
+			{
+				PHX_ERROR("Error: -i flag requires a value.");
+				return false;
+			}
+		}
+		else if (arg == L"-o") 
+		{
+			if (i + 1 < args.size())
+			{
+				std::wstring output_file_w = args[i + 1];
+				StringConvert(output_file_w, output_file);
+				i++;
+			}
+			else
+			{
+				PHX_ERROR("Error: -o flag requires a value.");
+				return false;
+			}
+		}
+	}
+
+	return !input_file.empty() && !output_file.empty();
+}
 
 int wmain(int argc, wchar_t** argv)
 {
@@ -37,14 +75,17 @@ int wmain(int argc, wchar_t** argv)
 	}
 
 	phx::Log::Initialize();
-	if (argc == 0)
+	std::string input_file;
+	std::string output_file;
+
+	if (!parse_args(Span(argv, argc), input_file, output_file))
 	{
-		PHX_INFO("JSON config expected");
+		PHX_ERROR("Usage: {0} -i <input_file> -o <output_file>");
 		return -1;
 	}
 
-	phx::JobSystem::Initialize();
-
+	// Old config style - might switch back to this to allow processing multi payloads.
+#if false
 	std::wstring w_config_file = argv[1];
 	std::string config_file;
 	StringConvert(w_config_file, config_file);
@@ -53,11 +94,15 @@ int wmain(int argc, wchar_t** argv)
 
 	const std::string& input_file = config["input_file"];
 	const std::string& output_file = config["output_file"];
+#endif
 
+	// TODO: Set up virtual file system
 	std::string extension = GetFileExt(input_file);
 
 	if (ModelImporterFactory::IsSupported(extension))
 	{
+		phx::JobSystem::Initialize();
+
 		std::unique_ptr<IModelImporter> model_compiler = ModelImporterFactory::Create(extension);
 		phx::Result<ModelData> model_data = model_compiler->Import(input_file, {});
 
@@ -67,6 +112,11 @@ int wmain(int argc, wchar_t** argv)
 			ExportOptions options = {};
 
 			ModelExporter::Export(out_stream, model_data.GetValue(), options);
+
+			// save external data.
+			// Export Material data
+			
+			// Export Manifiest file.
 		}
 		else
 		{

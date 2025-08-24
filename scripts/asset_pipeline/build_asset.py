@@ -7,7 +7,10 @@ import subprocess
 import datetime
 
 # --- Globals ---
+
 OUTPUT_DIRECTORY = ""
+BUILD_PATH = ""
+
 # This will be populated by querying the compilers at startup.
 COMPILER_VERSIONS = {}
 
@@ -22,8 +25,15 @@ PROCESSED_ASSETS = set()
 
 # TODO: change to have a more offical directory were we publish the asset compilers.
 IMPLICIT_COMPILERS = {
-    ".gltf": r".workspace/vs2022/bin/Debug-windows-x86_64/PhxModelCompiler/PhxModelCompiler.exe"
+    ".gltf": r".workspace/vs2022/bin/AssetCompilers/PhxModelCompiler/PhxModelCompiler.exe"
 }
+
+def resolve_paths(build_config):
+    for rule in build_config['assets']:
+        # os.path.join() correctly combines the paths.
+        rule['input'] = os.path.join(BUILD_PATH, rule['input']).replace("\\", "/")
+        rule['output'] = os.path.join(OUTPUT_DIRECTORY, rule['output']).replace("\\", "/")
+        
 
 # --- Pretty Banner ---
 def print_banner():
@@ -234,10 +244,6 @@ def main():
 
 
     build_file_path = sys.argv[1]
-    
-    base_path = os.path.dirname(os.path.abspath(build_file_path))
-    print(f"Resolving paths relative to: {base_path}")
-    print("-" * 40)
 
     if not os.path.exists(build_file_path):
         print(f"Error: Build file not found at '{build_file_path}'")
@@ -251,11 +257,17 @@ def main():
 
     get_compiler_versions(list(all_compilers))
 
+    global BUILD_PATH
+    BUILD_PATH = os.path.dirname(os.path.abspath(build_file_path))
+
     global OUTPUT_DIRECTORY
-    OUTPUT_DIRECTORY = "Assets/Build/"
+    OUTPUT_DIRECTORY = os.path.join(BUILD_PATH,".build/")
     ensure_trailing_slash(OUTPUT_DIRECTORY)
-    
-    
+
+    print(f"Resolving paths relative to:\n\t->Build Path= '{BUILD_PATH}'\n\tOutput Path='{OUTPUT_DIRECTORY}'")
+    resolve_paths(build_config)
+    print("-" * 40)
+
     global ASSET_BUILD_RULES
     global INPUT_TO_OUTPUT_MAP
     for rule in build_config['assets']:

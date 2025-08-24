@@ -1128,6 +1128,9 @@ group "Applications"
 
         defines { "PHX_ASSET_COMPILER" }
 
+        -- TODO: copy to a common directory
+	    targetdir ("%{wks.location}/bin/AssetCompilers/%{prj.name}")
+        
         files 
         {
             phx_app_directory.."/"..project_model_compiler.."/src/**.cpp",
