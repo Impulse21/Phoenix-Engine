@@ -62,6 +62,7 @@ namespace
 	{
 	};
 
+#if false
 	cgltf_result CgltfReadFile(const cgltf_memory_options*, const cgltf_file_options* /*file_options*/, const char* /*path*/, cgltf_size* /*size*/, void** /*Data*/)
 	{
 #if false
@@ -95,6 +96,7 @@ namespace
 	{
 		// do nothing
 	}
+#endif
 
 	void PrintStatistics(Primitive const&)
 	{
@@ -265,8 +267,8 @@ phx::Result<ModelData> GltfModelImporter::Import(std::string const& file, Import
 	CgltfContext ctx = {};
 	cgltf_options options = { };
 
-	options.file.read = &CgltfReadFile;
-	options.file.release = &CgltfReleaseFile;
+	// options.file.read = &CgltfReadFile;
+	// options.file.release = &CgltfReleaseFile;
 	options.file.user_data = &ctx;
 
 	cgltf_data* gltf_data = nullptr;
@@ -322,20 +324,15 @@ phx::Result<ModelData> GltfModelImporter::Import(std::string const& file, Import
 
 bool GltfModelImporter::ImportMaterials(cgltf_data* gltf_data, ModelData& model_data)
 {
-	model_data.texture_names.resize(gltf_data->images_count);
-	for (cgltf_size i = 0; i < gltf_data->images_count; i++)
-		model_data.texture_names[i] = gltf_data->images[i].name;
-
 	std::map<std::string, uint8_t> texture_options;
 
 	const cgltf_size num_materials = gltf_data->materials_count;
-	model_data.material_constants.resize(num_materials);
-	model_data.material_textures.resize(num_materials);
+	model_data.material_dependencies.resize(num_materials);
 
 	for (cgltf_size i = 0; i < num_materials; i++)
 	{
 		const cgltf_material& gltf_mtl = gltf_data->materials[i];
-		MaterialConstantData& dst_mtl_data = model_data.material_constants[i];
+		MaterialData& dst_mtl_data = model_data.material_dependencies[i];
 
 		PHX_ASSERT(gltf_mtl.has_pbr_metallic_roughness);
 		dst_mtl_data.base_colour_factor[0]	= gltf_mtl.pbr_metallic_roughness.base_color_factor[0];
@@ -349,9 +346,8 @@ bool GltfModelImporter::ImportMaterials(cgltf_data* gltf_data, ModelData& model_
 		dst_mtl_data.metallic_factor		= gltf_mtl.pbr_metallic_roughness.metallic_factor;
 		dst_mtl_data.roughness_factor		= gltf_mtl.pbr_metallic_roughness.roughness_factor;
 		dst_mtl_data.flags					= 0;
-
-		MaterialTextureData& dst_mtl_textures = model_data.material_textures[i];
-		dst_mtl_textures.address_modes = 0;
+		dst_mtl_data.alpha_blend			= gltf_mtl.alpha_mode == cgltf_alpha_mode_blend;
+		dst_mtl_data.alpha_test				= gltf_mtl.alpha_mode == cgltf_alpha_mode_mask;
 		
 		std::array<cgltf_texture*, kNumTextures> src_texture_map = {
 			gltf_mtl.pbr_metallic_roughness.base_color_texture.texture,
@@ -361,45 +357,66 @@ bool GltfModelImporter::ImportMaterials(cgltf_data* gltf_data, ModelData& model_
 			gltf_mtl.normal_texture.texture
 		};
 
+		auto translate_wrap_mode = [](cgltf_wrap_mode gltf_wrap_mode) {
+				switch (gltf_wrap_mode)
+				{
+				case cgltf_wrap_mode_mirrored_repeat:
+				{
+					return MaterialTextureData::WrapMode::MirroredRepeat;
+				}
+				case cgltf_wrap_mode_repeat:
+				{
+					return MaterialTextureData::WrapMode::Repeat;
+				}
+				case cgltf_wrap_mode_clamp_to_edge:
+				default:
+				{
+					return MaterialTextureData::WrapMode::ClampToEdge;
+				}
+				}
+			};
+
 		for (uint32_t ti = 0; ti < kNumTextures; ++ti)
 		{
-			dst_mtl_textures.string_idx[ti] = 0xFFFF;
+			MaterialTextureData& texture_data = dst_mtl_data.texture_data[ti];
 
 			cgltf_texture* src_tex = src_texture_map[ti];
 			if (src_tex != nullptr)
 			{
-				const ptrdiff_t index = src_tex->image - gltf_data->images;
-				dst_mtl_textures.string_idx[ti] = uint16_t(index);
+				if (src_tex->image->buffer_view != nullptr)
+				{
+					PHX_ERROR("Unable to support embedded texture at this time. ");
+					throw std::runtime_error("Unsupported operation");
+				}
 
-				if (src_tex->sampler != nullptr)
-				{
-					dst_mtl_textures.address_modes |= src_tex->sampler->wrap_s << (ti * 4);
-					dst_mtl_textures.address_modes |= src_tex->sampler->wrap_t << (ti * 4 + 2);
-				}
-				else
-				{
-					dst_mtl_textures.address_modes |= 0x5 << (ti * 4);
-				}
-			}
-			else
-			{
-				dst_mtl_textures.address_modes |= 0x5 << (ti * 4);
+				texture_data.name = src_tex->image->uri;
+				if (src_tex->sampler == nullptr)
+					continue;
+
+
+				texture_data.wrap_s = translate_wrap_mode(src_tex->sampler->wrap_s);
+				texture_data.wrap_t = translate_wrap_mode(src_tex->sampler->wrap_t);
 			}
 		}
+
+		// TODO: Move to Material Importer
+#if false
 		// Set Texture Options
 		auto SetTextureOptions = [&](cgltf_texture* texture, uint8_t options) {
 			if (texture && texture->image && texture_options.find(texture->image->name) == texture_options.end())
 				texture_options[texture->image->name] = options;
 		};
 
-
 		SetTextureOptions(src_texture_map[kBaseColor], TextureOptions(true, gltf_mtl.alpha_mode == cgltf_alpha_mode_blend  || gltf_mtl.alpha_mode == cgltf_alpha_mode_mask));
 		SetTextureOptions(src_texture_map[kMetallicRoughness], TextureOptions(false));
 		SetTextureOptions(src_texture_map[kOcclusion], TextureOptions(false));
 		SetTextureOptions(src_texture_map[kEmissive], TextureOptions(true));
 		SetTextureOptions(src_texture_map[kNormalMap], TextureOptions(false));
+#endif
 	}
 
+	// TODO: Move to Material Importer
+#if false
 	model_data.texture_options.clear();
 	for (auto name : model_data.texture_names)
 	{
@@ -414,7 +431,7 @@ bool GltfModelImporter::ImportMaterials(cgltf_data* gltf_data, ModelData& model_
 	}
 
 	PHX_ASSERT(model_data.texture_options.size() == model_data.texture_names.size());
-
+#endif
 	return true;
 }
 

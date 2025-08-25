@@ -84,24 +84,6 @@ inline uint8_t TextureOptions(bool sRGB, bool hasAlpha = false, bool invertY = f
 }
 // -- end TODO
 
-struct MaterialConstantData
-{
-	std::array<float, 4> base_colour_factor;
-	std::array<float, 3> emissive_factor; // default=[0,0,0]
-	float normal_texture_scale; // default=1
-	float metallic_factor; // default=1
-	float roughness_factor; // default=1
-	uint32_t flags;
-};
-struct MaterialTextureData
-{
-	uint16_t string_idx[kNumTextures];
-	// Each texture's address mode is packed into 4 bytes within the 32 bits.
-	// Wrap_s = 0x00FF
-	// Wrap_T = 0xFF00
-	uint32_t address_modes;
-};
-
 namespace PSOFlags
 {
 	enum : uint16_t
@@ -141,19 +123,57 @@ struct Mesh
 	Draw draw[1];               // Actually 1 or more draws
 };
 
+
+struct MaterialTextureData
+{
+	std::string name = "";
+
+	enum class WrapMode
+	{
+		ClampToEdge = 0,
+		MirroredRepeat,
+		Repeat
+	};
+	WrapMode wrap_s;
+	WrapMode wrap_t;
+};
+
+struct MaterialData
+{
+	std::string id;
+	std::array<float, 4> base_colour_factor;
+	std::array<float, 3> emissive_factor; // default=[0,0,0]
+	float normal_texture_scale; // default=1
+	float metallic_factor; // default=1
+	float roughness_factor; // default=1
+	union
+	{
+		uint32_t flags;
+		struct
+		{
+			uint32_t baseColorUV : 1;
+			uint32_t metallic_roughness_uv : 1;
+			uint32_t occlusion_uv : 1;
+			uint32_t emissive_uv : 1;
+			uint32_t normal_uv : 1;
+			uint32_t two_sided : 1;
+			uint32_t alpha_test : 1;
+			uint32_t alpha_blend : 1;
+			uint32_t _pad : 8;
+			uint32_t alpha_cutoff : 16; // FP16
+		};
+	};;
+
+	std::array<MaterialTextureData, kNumTextures> texture_data;
+};
+
 struct ModelData
 {
 	phx::math::BoundingSphere bounding_sphere;
 	phx::math::AxisAlignedBox bounding_box;
 
 	std::vector<std::byte> geometry_data;
-	std::vector<MaterialTextureData> material_textures;
-	std::vector<MaterialConstantData> material_constants;
 	std::vector<Mesh*> meshes;
 
-	// TODO: Animation and skinning data
-	std::vector<hlslpp::float4x4> transforms;
-	std::vector<std::string> texture_names;
-	std::vector<uint8_t> texture_options;
-
+	std::vector<MaterialData> material_dependencies;
 };
