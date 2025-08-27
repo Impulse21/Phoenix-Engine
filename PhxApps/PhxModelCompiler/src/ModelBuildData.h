@@ -98,16 +98,11 @@ struct Mesh
 	std::array<float, 4> bounds;           // A bounding sphere
 	uint32_t             vb_offset;         // BufferLocation - Buffer.GpuVirtualAddress
 	uint32_t             vb_size;           // SizeInBytes
-	uint32_t             vb_depth_offset;   // BufferLocation - Buffer.GpuVirtualAddress
-	uint32_t             vb_depth_size;     // SizeInBytes
 	uint32_t             ib_offset;         // BufferLocation - Buffer.GpuVirtualAddress
 	uint32_t             ib_size;           // SizeInBytes
-	uint8_t              vb_stride;         // StrideInBytes
 	uint8_t              ib_format;         // DXGI_FORMAT
 	uint16_t             mesh_cbv;          // Index of mesh constant buffer
 	uint16_t             material_cbv;      // Index of material constant buffer
-	uint16_t             srv_table;         // Offset into SRV descriptor heap for textures
-	uint16_t             sampler_table;     // Offset into sampler descriptor heap for samplers
 	uint16_t             pso_flags;         // Flags needed to request a PSO
 	uint16_t             pso;               // Index of pipeline state object
 	uint16_t             num_joints;        // Number of skeleton joints when skinning

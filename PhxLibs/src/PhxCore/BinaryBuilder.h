@@ -7,10 +7,13 @@
 namespace phx
 {
 	using OffsetHandle = size_t;
+	using OffsetHandle32 = uint32_t;
+
+	template<class TOffsetHandle = size_t>
 	class BinaryBuilder
 	{
 	public:
-		OffsetHandle Reserve(size_t sizeInBytes, size_t alignment = 1)
+		TOffsetHandle Reserve(size_t sizeInBytes, size_t alignment = 1)
 		{
 			uint32_t offset = MemoryAlign(m_totalSize, alignment);
 			m_totalSize = offset + sizeInBytes;
@@ -19,13 +22,13 @@ namespace phx
 		}
 
 		template<typename T>
-		OffsetHandle Reserve(size_t alignment = alignof(T))
+		TOffsetHandle Reserve(size_t alignment = alignof(T))
 		{
 			return Reserve(sizeof(T), alignment);
 		}
 
 		template<typename T>
-		OffsetHandle ReserveArray(size_t count, size_t alignment = alignof(T))
+		TOffsetHandle ReserveArray(size_t count, size_t alignment = alignof(T))
 		{
 			return Reserve(sizeof(T) * count, alignment);
 		}
@@ -36,13 +39,13 @@ namespace phx
 			m_data = std::make_unique<uint8_t[]>(m_totalSize);
 		}
 
-		void* Place(OffsetHandle offset)
+		void* Place(TOffsetHandle offset)
 		{
 			return m_data.get() + offset;
 		}
 
 		template<typename T>
-		T* Place(OffsetHandle offset)
+		T* Place(TOffsetHandle offset)
 		{
 			return reinterpret_cast<T*>(Place(offset));
 		}

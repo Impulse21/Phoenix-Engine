@@ -5,6 +5,7 @@
 #include <PhxCore/Memory/MemoryUtils.h>
 #include <PhxCore/BinaryBuilder.h>
 #include <PhxCore/SystemTime.h>
+#include <PhxRhi/RHICommon.h>
 #include <PhxRenderer/shaders/ShaderInterop.h>
 
 #include <limits>
@@ -436,8 +437,8 @@ bool GltfModelImporter::ImportMaterials(cgltf_data* gltf_data, ModelData& model_
 }
 
 bool GltfModelImporter::ImportMesh(
-	std::vector<Mesh*>& /*mesh_list*/,
-	std::vector<std::byte>& /*geometry_buffer*/,
+	std::vector<Mesh*>& mesh_list,
+	std::vector<std::byte>& geometry_buffer,
 	cgltf_data* gltf_data,
 	cgltf_mesh* gltf_mesh,
 	float4x4 const& local_to_object,
@@ -464,10 +465,6 @@ bool GltfModelImporter::ImportMesh(
 	sphere_object_space = sphere_os;
 	box_object_space = bbox_os;
 
-#if false
-	size_t total_vertex_size = 0;
-	size_t total_index_size = 0;
-
 	std::map<uint32_t, std::vector<Primitive*>> render_meshes;
 	for (auto& prim : primitives)
 	{
@@ -475,28 +472,109 @@ bool GltfModelImporter::ImportMesh(
 		render_meshes[hash].push_back(&prim);
 	}
 
-	BinaryBuilder vb_buffer;
-	OffsetHandle header_offset = vb_buffer.Reserve<renderer::VertexStreamsHeader>();
-
-	std::array<OffsetHandle, renderer::VertexStream_Count> streamOffsets;
-	std::memset(streamOffsets.data(), 0xFF, sizeof(OffsetHandle) * renderer::VertexStream_Count);
-
-	for (auto& [hash, primitives ] : render_meshes)
+	for (auto& [hash, mesh_primitives] : render_meshes)
 	{
-		size_t numDraws = primitives.size();
-	}
+		BinaryBuilder<OffsetHandle32> geometry_buffer_builder;
 
-	for (auto& streamOpt : m_meshData.VertexStreams)
-	{
-		if (!streamOpt.has_value())
-			continue;
+		const size_t num_draws = mesh_primitives.size();
+		Mesh* mesh = (Mesh*)malloc(sizeof(Mesh) + sizeof(Mesh::Draw) * (num_draws - 1));
+		math::BoundingSphere ls_bounding_sphere;
 
-		const VertexStream& stream = streamOpt.value();
-		const std::size_t sizeInBytes = stream.ElementStride * stream.NumElements;
-		streamOffsets[stream.Type] = vbBuilder.Reserve(sizeInBytes, 16u);
-	}
+		mesh->bounds[0] = ls_bounding_sphere.centre.x;
+		mesh->bounds[1] = ls_bounding_sphere.centre.y;
+		mesh->bounds[2] = ls_bounding_sphere.centre.z;
+		mesh->bounds[3] = ls_bounding_sphere.radius.x;
+		mesh->ib_format = static_cast<uint8_t>(mesh_primitives[0]->index_32 ? phx::RHI::Format::R32_UINT : phx::RHI::Format::R16_UINT);
+		// mesh->mesh_cbv = (uint16_t)matrixIdx;
+		//mesh->material_cbv = iter.second[0]->materialIdx;
+		mesh->pso_flags = mesh_primitives[0]->pso_flags;
+		mesh->pso = 0xFFFF;
+
+		// TODO: Skinned
+#if false
+		if (gltf_mesh.skin >= 0)
+		{
+			mesh->numJoints = 0xFFFF;
+			mesh->startJoint = (uint16_t)srcMesh.skin;
+		}
+		else
+		{
+			mesh->numJoints = 0;
+			mesh->startJoint = 0xFFFF;
+		}
 #endif
-	return false;
+
+		// calculate offsets
+
+		std::vector<OffsetHandle32> vb_header_offsets(num_draws);
+		std::vector<OffsetHandle32> vb_data_offsets(num_draws);
+		std::vector< OffsetHandle32> ib_offsets(num_draws);
+
+		mesh->vb_size = 0;
+		mesh->vb_offset = geometry_buffer_builder.GetSize();
+		for (size_t i = 0; i < mesh_primitives.size(); i++)
+		{
+			Primitive* mesh_prim = mesh_primitives[i];
+
+			vb_header_offsets[i] = geometry_buffer_builder.Reserve<renderer::VertexStreamsHeader>();
+			vb_data_offsets[i] = geometry_buffer_builder.Reserve(mesh_prim->vertex_buffer->size(), 16u);
+			mesh->vb_size += mesh_prim->vertex_buffer->size();
+
+		}
+
+		mesh->ib_size = 0;
+		mesh->ib_offset = geometry_buffer_builder.GetSize();
+		for (size_t i = 0; i < mesh_primitives.size(); i++)
+		{
+			Primitive* mesh_prim = mesh_primitives[i];
+			ib_offsets[i] = geometry_buffer_builder.Reserve(mesh_prim->index_buffer->size(), 4u);
+			mesh->ib_size += mesh_prim->index_buffer->size();
+		}
+
+		mesh->num_draws = static_cast<uint16_t>(num_draws);
+
+		for (size_t i = 0; i < mesh_primitives.size(); i++)
+		{
+			Primitive* mesh_prim = mesh_primitives[i];
+			Mesh::Draw& d = mesh->draw[i];
+			d.prim_count = mesh_prim->index_count;
+			d.base_vertex = vb_header_offsets[i];
+			d.start_index = (uint32_t)mesh_prim->index_buffer->size() >> (mesh_prim->index_32 + 1);
+		}
+
+		geometry_buffer_builder.Commit();
+
+		for (size_t i = 0; i < mesh_primitives.size(); i++)
+		{
+			Primitive* mesh_prim = mesh_primitives[i];
+			auto* vb_header = geometry_buffer_builder.Place<renderer::VertexStreamsHeader>(vb_header_offsets[i]);
+
+			for (size_t i_attr = 0; i < VertexStream_Count; i_attr++)
+			{
+				std::optional<VertexStream>& stream = mesh_prim->vertex_streams[i_attr];
+				if (!stream.has_value())
+					vb_header->Desc[i_attr].Stride4_Offset28 = 0xFFFF;
+
+				vb_header->Desc[i_attr].SetOffset(stream->vertex_offset);
+				vb_header->Desc[i_attr].SetStride(stream->element_stride);
+			}
+
+			std::byte* vb_buffer_dest = geometry_buffer_builder.Place<std::byte>(vb_data_offsets[i]);
+			std::memcpy(vb_buffer_dest, mesh_prim->vertex_buffer->data(), mesh_prim->vertex_buffer->size());
+
+			std::byte* ib_buffer_dest = geometry_buffer_builder.Place<std::byte>(ib_offsets[i]);
+			std::memcpy(ib_buffer_dest, mesh_prim->index_buffer->data(), mesh_prim->index_buffer->size());
+		}
+
+		std::unique_ptr<IBlob> mesh_geometry_buffer = geometry_buffer_builder.Finalize();
+		const size_t offset = geometry_buffer.size();
+		geometry_buffer.resize(offset + mesh_geometry_buffer->Size());
+		std::memcpy(geometry_buffer.data() + offset, mesh_geometry_buffer->Data(), mesh_geometry_buffer->Size());
+
+		mesh_list.push_back(mesh);
+	}
+
+	return true;
 }
 
 uint32_t GltfModelImporter::WalkGraph(
@@ -568,6 +646,9 @@ uint32_t GltfModelImporter::WalkGraph(
 
 void GltfModelImporter::InitializePrimitive(Primitive& prim, cgltf_primitive const& src_prim, cgltf_data* gltf_data)
 {
+	prim.vertex_buffer = std::make_shared<std::vector<std::byte>>();
+	prim.index_buffer = std::make_shared<std::vector<std::byte>>();
+
 	for (uint32_t i = 0; i < src_prim.attributes_count; i++)
 	{
 		const cgltf_attribute& attribute = src_prim.attributes[i];
@@ -659,16 +740,19 @@ void GltfModelImporter::InitializePrimitive(Primitive& prim, cgltf_primitive con
 		PHX_ASSERT(false, "TODO: Generate tangents");
 	}
 
-	if (src_prim.material->alpha_mode == cgltf_alpha_mode_blend)
-		prim.pso_flags |= PSOFlags::kAlphaBlend;
+	if (src_prim.material)
+	{
+		if (src_prim.material->alpha_mode == cgltf_alpha_mode_blend)
+			prim.pso_flags |= PSOFlags::kAlphaBlend;
 
-	if (src_prim.material->alpha_mode == cgltf_alpha_mode_mask)
-		prim.pso_flags |= PSOFlags::kAlphaTest;
+		if (src_prim.material->alpha_mode == cgltf_alpha_mode_mask)
+			prim.pso_flags |= PSOFlags::kAlphaTest;
 
-	if (src_prim.material->double_sided)
-		prim.pso_flags |= PSOFlags::kTwoSided;
+		if (src_prim.material->double_sided)
+			prim.pso_flags |= PSOFlags::kTwoSided;
 
-	prim.material_index = static_cast<uint32_t>(src_prim.material - gltf_data->materials);
+		prim.material_index = static_cast<uint32_t>(src_prim.material - gltf_data->materials);
+	}
 
 	OptimizePrimitive(prim, src_prim);
 }
