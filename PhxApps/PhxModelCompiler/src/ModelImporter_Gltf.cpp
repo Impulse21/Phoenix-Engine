@@ -549,11 +549,14 @@ bool GltfModelImporter::ImportMesh(
 			Primitive* mesh_prim = mesh_primitives[i];
 			auto* vb_header = geometry_buffer_builder.Place<renderer::VertexStreamsHeader>(vb_header_offsets[i]);
 
-			for (size_t i_attr = 0; i < VertexStream_Count; i_attr++)
+			for (size_t i_attr = 0; i_attr < VertexStream_Count; i_attr++)
 			{
 				std::optional<VertexStream>& stream = mesh_prim->vertex_streams[i_attr];
 				if (!stream.has_value())
+				{
 					vb_header->Desc[i_attr].Stride4_Offset28 = 0xFFFF;
+					continue;
+				}
 
 				vb_header->Desc[i_attr].SetOffset(stream->vertex_offset);
 				vb_header->Desc[i_attr].SetStride(stream->element_stride);
@@ -736,8 +739,7 @@ void GltfModelImporter::InitializePrimitive(Primitive& prim, cgltf_primitive con
 	if (!prim.vertex_streams[VertexStream_Tangent] || generated_normals)
 	{
 		PHX_INFO("Generating tangent data.");
-
-		PHX_ASSERT(false, "TODO: Generate tangents");
+		PHX_WARN("TODO: Generate tangents not implemented");
 	}
 
 	if (src_prim.material)
