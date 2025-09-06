@@ -115,6 +115,7 @@ namespace
 		printf("%-9s: ACMR %f ATVR %f (NV %f AMD %f Intel %f) Overfetch %f Overdraw %f in %.2f msec\n", name, vcs.acmr, vcs.atvr, vcs_nv.atvr, vcs_amd.atvr, vcs_intel.atvr, vfs.overfetch, os.overdraw, (end - start) * 1000);
 #endif
 	}
+
 	void CreateVertexStream(Primitive& prim, const cgltf_attribute& attribute, renderer::VertexStreamType stream_type)
 	{
 		const cgltf_accessor* accessor = attribute.data;
@@ -148,7 +149,6 @@ namespace
 		Primitive& prim,
 		cgltf_primitive const& src_prim,
 		phx::SpanMutable<meshopt_Stream> meshopt_vertex_streams,
-		size_t total_new_vb_size,
 		std::vector<uint32_t>& remap_table)
 	{
 
@@ -172,6 +172,9 @@ namespace
 			index_count = vertex_count;
 		}
 
+		PHX_INFO("Original vertex count: {0}", vertex_count);
+		PHX_INFO("Original index count: {0}", index_count);
+
 		remap_table.resize(vertex_count);
 		size_t unique_vertex_count = meshopt_generateVertexRemapMulti(
 			remap_table.data(),
@@ -182,6 +185,8 @@ namespace
 			meshopt_vertex_streams.Size());
 
 
+		PHX_INFO("Unique vertex count:: {0}", unique_vertex_count);
+
 		prim.index_buffer = std::make_shared<std::vector<std::byte>>(index_count * sizeof(uint32_t));
 		meshopt_remapIndexBuffer(
 			reinterpret_cast<uint32_t*>(prim.index_buffer->data()),
@@ -189,29 +194,26 @@ namespace
 			index_count,
 			remap_table.data());
 
-		auto stagging_vertex_buffer = std::make_shared<std::vector<std::byte>>();
-		stagging_vertex_buffer->reserve(total_new_vb_size * unique_vertex_count); // Pre-allocate
-
 		for (auto& vertex_stream : prim.vertex_streams)
 		{
 			if (!vertex_stream.has_value())
 				continue;
 
-			const size_t required_size = vertex_stream->num_elements * vertex_stream->element_stride;
-			vertex_stream->vertex_offset = stagging_vertex_buffer->size();
-			stagging_vertex_buffer->resize(stagging_vertex_buffer->size() + required_size);
+			// TODO: reuse memory .
+			std::shared_ptr<std::vector<std::byte>> stagging_buffer = std::make_shared<std::vector<std::byte>>(unique_vertex_count *  vertex_stream->element_stride);
 
 			void* vertex_data = prim.vertex_buffer->data() + vertex_stream->vertex_offset;
 			meshopt_remapVertexBuffer(
-				stagging_vertex_buffer->data() + vertex_stream->vertex_offset,
+				stagging_buffer->data(),
 				vertex_data,
 				vertex_stream->num_elements,
 				vertex_stream->element_stride,
 				remap_table.data());
+
+			vertex_stream->buffer_data = std::move(stagging_buffer);
 		}
 
-		prim.vertex_buffer = std::move(stagging_vertex_buffer);
-		prim.vertex_count = vertex_count;
+		prim.vertex_count = unique_vertex_count;
 		prim.index_count = index_count;
 	}
 
@@ -223,7 +225,7 @@ namespace
 
 		PHX_ASSERT(position_stream.element_stride == sizeof(float) * 3);
 
-		float* position_data = reinterpret_cast<float*>(prim.vertex_buffer->data() + position_stream.vertex_offset);
+		float* position_data = reinterpret_cast<float*>(position_stream.buffer_data->data());
 		
 		float3 min_position(std::numeric_limits<float>::max());
 		float3 max_position(std::numeric_limits<float>::min());
@@ -482,12 +484,18 @@ bool GltfModelImporter::ImportMesh(
 
 		const size_t num_draws = mesh_primitives.size();
 		Mesh* mesh = (Mesh*)malloc(sizeof(Mesh) + sizeof(Mesh::Draw) * (num_draws - 1));
-		math::BoundingSphere ls_bounding_sphere;
+		math::BoundingSphere ls_collective_sphere;
 
-		mesh->bounds[0] = ls_bounding_sphere.centre.x;
-		mesh->bounds[1] = ls_bounding_sphere.centre.y;
-		mesh->bounds[2] = ls_bounding_sphere.centre.z;
-		mesh->bounds[3] = ls_bounding_sphere.radius.x;
+		for (auto& draw_prim : mesh_primitives)
+		{
+			ls_collective_sphere = ls_collective_sphere.Union(draw_prim->bounds_ls);
+		}
+
+		mesh->bounds[0] = ls_collective_sphere.centre.x;
+		mesh->bounds[1] = ls_collective_sphere.centre.y;
+		mesh->bounds[2] = ls_collective_sphere.centre.z;
+		mesh->bounds[3] = ls_collective_sphere.radius.x;
+
 		mesh->ib_format = static_cast<uint8_t>(mesh_primitives[0]->index_32 ? phx::RHI::Format::R32_UINT : phx::RHI::Format::R16_UINT);
 		// mesh->mesh_cbv = (uint16_t)matrixIdx;
 		//mesh->material_cbv = iter.second[0]->materialIdx;
@@ -520,6 +528,7 @@ bool GltfModelImporter::ImportMesh(
 		{
 			Primitive* mesh_prim = mesh_primitives[i];
 
+			// TODO I am here.
 			vb_header_offsets[i] = geometry_buffer_builder.Reserve<renderer::VertexStreamsHeader>();
 			vb_data_offsets[i] = geometry_buffer_builder.Reserve(mesh_prim->vertex_buffer->size(), 16u);
 			mesh->vb_size += mesh_prim->vertex_buffer->size();
@@ -766,7 +775,8 @@ void GltfModelImporter::InitializePrimitive(Primitive& prim, cgltf_primitive con
 		prim.material_index = static_cast<uint32_t>(src_prim.material - gltf_data->materials);
 	}
 
-	OptimizePrimitive(prim, src_prim);
+	// TODOL: Optimize mesh
+	// OptimizePrimitive(prim, src_prim);
 }
 
 void GltfModelImporter::OptimizePrimitive(Primitive& prim, cgltf_primitive const& src_prim)
@@ -775,7 +785,6 @@ void GltfModelImporter::OptimizePrimitive(Primitive& prim, cgltf_primitive const
 	std::vector<meshopt_Stream> meshopt_vertex_streams;
 	meshopt_vertex_streams.reserve(VertexStream_Count);
 
-	size_t total_new_vb_size = 0;
 	for (auto& vertex_stream : prim.vertex_streams)
 	{
 		if (!vertex_stream.has_value())
@@ -783,16 +792,14 @@ void GltfModelImporter::OptimizePrimitive(Primitive& prim, cgltf_primitive const
 
 		meshopt_vertex_streams.emplace_back(meshopt_Stream{
 
-			.data = prim.vertex_buffer->data() + vertex_stream->vertex_offset,
+			.data = vertex_stream->buffer_data->data(),
 			.size = sizeof(float),
 			.stride = vertex_stream->element_stride,
 			});
-
-		total_new_vb_size += vertex_stream->element_stride;
 	}
 
 	std::vector<uint32_t> remap_table;
-	GenerateMeshIndices(prim, src_prim, meshopt_vertex_streams, total_new_vb_size, remap_table);
+	GenerateMeshIndices(prim, src_prim, meshopt_vertex_streams, remap_table);
 
 	PrintStatistics(prim);
 
