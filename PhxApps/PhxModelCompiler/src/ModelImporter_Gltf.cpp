@@ -30,6 +30,7 @@ struct VertexStream
 	size_t vertex_offset;
 	size_t element_stride;
 	size_t num_elements;
+	std::shared_ptr<std::vector<std::byte>> buffer_data;
 };
 
 struct Primitive
@@ -42,6 +43,7 @@ struct Primitive
 	std::shared_ptr<std::vector<std::byte>> vertex_buffer;
 	std::shared_ptr<std::vector<std::byte>> index_buffer;
 	std::shared_ptr<std::vector<std::byte>> shadow_indices_buffer;
+	std::string material_id;
 
 	uint32_t index_count;
 	uint32_t vertex_count;
@@ -124,20 +126,22 @@ namespace
 		PHX_ASSERT(accessor->component_type == cgltf_component_type_r_32f);
 
 		const size_t attribute_size = accessor->count * num_components * sizeof(float);
-		const size_t start_offset = prim.vertex_buffer->size();
 
-		prim.vertex_buffer = std::make_shared<std::vector<std::byte>>(start_offset + attribute_size);
+		VertexStream stream = {
+			.type = stream_type,
+			.vertex_offset = 0,
+			.element_stride = num_components * sizeof(float),
+			.num_elements = accessor->count,
+			.buffer_data = std::make_shared<std::vector<std::byte>>(attribute_size)
+		};
+
+		float* dest_ptr = reinterpret_cast<float*>(stream.buffer_data->data());
 		cgltf_accessor_unpack_floats(
 			accessor,
-			(float*)(prim.vertex_buffer->data() + start_offset),
+			dest_ptr,
 			accessor->count * num_components);
 
-		VertexStream& stream = prim.vertex_streams[stream_type].emplace();
-
-		stream.type = stream_type;
-		stream.num_elements = accessor->count;
-		stream.vertex_offset = start_offset;
-		stream.element_stride = num_components * sizeof(float);
+		prim.vertex_streams[stream_type] = stream;
 	}
 
 	void GenerateMeshIndices(
@@ -736,7 +740,13 @@ void GltfModelImporter::InitializePrimitive(Primitive& prim, cgltf_primitive con
 		generated_normals = true;
 	}
 
-	if (!prim.vertex_streams[VertexStream_Tangent] || generated_normals)
+
+	const bool generate_tangents = 
+		src_prim.material && 
+		src_prim.material->normal_texture.texture && 
+		(!prim.vertex_streams[VertexStream_Tangent] || generated_normals);
+
+	if (generate_tangents)
 	{
 		PHX_INFO("Generating tangent data.");
 		PHX_WARN("TODO: Generate tangents not implemented");
