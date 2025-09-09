@@ -501,6 +501,7 @@ bool GltfModelImporter::ImportMesh(
 		//mesh->material_cbv = iter.second[0]->materialIdx;
 		mesh->pso_flags = mesh_primitives[0]->pso_flags;
 		mesh->pso = 0xFFFF;
+		mesh->num_draws = static_cast<uint16_t>(num_draws);
 
 		// TODO: Skinned
 #if false
@@ -519,18 +520,22 @@ bool GltfModelImporter::ImportMesh(
 		// calculate offsets
 
 		std::vector<OffsetHandle32> vb_header_offsets(num_draws);
-		std::vector<OffsetHandle32> vb_data_offsets(num_draws);
-		std::vector< OffsetHandle32> ib_offsets(num_draws);
+		std::vector<OffsetHandle32> ib_offsets(num_draws);
 
 		mesh->vb_size = 0;
 		mesh->vb_offset = geometry_buffer_builder.GetSize();
 		for (size_t i = 0; i < mesh_primitives.size(); i++)
 		{
 			Primitive* mesh_prim = mesh_primitives[i];
-
-			// TODO I am here.
 			vb_header_offsets[i] = geometry_buffer_builder.Reserve<renderer::VertexStreamsHeader>();
-			vb_data_offsets[i] = geometry_buffer_builder.Reserve(mesh_prim->vertex_buffer->size(), 16u);
+			for (size_t i_stream = 0; i_stream < mesh_prim->vertex_streams.size(); ++i_stream)
+			{
+				if (mesh_prim->vertex_streams[i_stream].has_value())
+				{
+					mesh_prim->vertex_streams[i_stream]->vertex_offset = geometry_buffer_builder.Reserve(mesh_prim->vertex_streams[i_stream]->buffer_data->size(), 16u);
+				}
+			}
+			 
 			mesh->vb_size += mesh_prim->vertex_buffer->size();
 
 		}
@@ -544,7 +549,6 @@ bool GltfModelImporter::ImportMesh(
 			mesh->ib_size += mesh_prim->index_buffer->size();
 		}
 
-		mesh->num_draws = static_cast<uint16_t>(num_draws);
 
 		for (size_t i = 0; i < mesh_primitives.size(); i++)
 		{
@@ -573,10 +577,10 @@ bool GltfModelImporter::ImportMesh(
 
 				vb_header->Desc[i_attr].SetOffset(stream->vertex_offset);
 				vb_header->Desc[i_attr].SetStride(stream->element_stride);
-			}
 
-			std::byte* vb_buffer_dest = geometry_buffer_builder.Place<std::byte>(vb_data_offsets[i]);
-			std::memcpy(vb_buffer_dest, mesh_prim->vertex_buffer->data(), mesh_prim->vertex_buffer->size());
+				std::byte* vb_buffer_dest = geometry_buffer_builder.Place<std::byte>(stream->vertex_offset);
+				std::memcpy(vb_buffer_dest, stream->buffer_data->data(), stream->buffer_data->size());
+			}
 
 			std::byte* ib_buffer_dest = geometry_buffer_builder.Place<std::byte>(ib_offsets[i]);
 			std::memcpy(ib_buffer_dest, mesh_prim->index_buffer->data(), mesh_prim->index_buffer->size());

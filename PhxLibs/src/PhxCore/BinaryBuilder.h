@@ -8,6 +8,7 @@ namespace phx
 {
 	using OffsetHandle = size_t;
 	using OffsetHandle32 = uint32_t;
+	constexpr OffsetHandle32 kInvalidOffset = ~0u;
 
 	template<class TOffsetHandle = size_t>
 	class BinaryBuilder
