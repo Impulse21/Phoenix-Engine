@@ -27,7 +27,7 @@ using namespace hlslpp;
 struct VertexStream
 {
 	renderer::VertexStreamType type;
-	size_t vertex_offset;
+	OffsetHandle32 vertex_offset;
 	size_t element_stride;
 	size_t num_elements;
 	std::shared_ptr<std::vector<std::byte>> buffer_data;
@@ -40,7 +40,6 @@ struct Primitive
 	AxisAlignedBox bbox_ls;		// local space AABB
 	AxisAlignedBox bbox_os;		// object space AABB
 	std::array<std::optional<VertexStream>, VertexStream_Count> vertex_streams;
-	std::shared_ptr<std::vector<std::byte>> vertex_buffer;
 	std::shared_ptr<std::vector<std::byte>> index_buffer;
 	std::shared_ptr<std::vector<std::byte>> shadow_indices_buffer;
 	std::string material_id;
@@ -202,7 +201,7 @@ namespace
 			// TODO: reuse memory .
 			std::shared_ptr<std::vector<std::byte>> stagging_buffer = std::make_shared<std::vector<std::byte>>(unique_vertex_count *  vertex_stream->element_stride);
 
-			void* vertex_data = prim.vertex_buffer->data() + vertex_stream->vertex_offset;
+			void* vertex_data = vertex_stream->buffer_data->data();
 			meshopt_remapVertexBuffer(
 				stagging_buffer->data(),
 				vertex_data,
@@ -533,11 +532,9 @@ bool GltfModelImporter::ImportMesh(
 				if (mesh_prim->vertex_streams[i_stream].has_value())
 				{
 					mesh_prim->vertex_streams[i_stream]->vertex_offset = geometry_buffer_builder.Reserve(mesh_prim->vertex_streams[i_stream]->buffer_data->size(), 16u);
+					mesh->vb_size += mesh_prim->vertex_streams[i_stream]->buffer_data->size();
 				}
 			}
-			 
-			mesh->vb_size += mesh_prim->vertex_buffer->size();
-
 		}
 
 		mesh->ib_size = 0;
@@ -666,7 +663,6 @@ uint32_t GltfModelImporter::WalkGraph(
 
 void GltfModelImporter::InitializePrimitive(Primitive& prim, cgltf_primitive const& src_prim, cgltf_data* gltf_data)
 {
-	prim.vertex_buffer = std::make_shared<std::vector<std::byte>>();
 	prim.index_buffer = std::make_shared<std::vector<std::byte>>();
 
 	for (uint32_t i = 0; i < src_prim.attributes_count; i++)
@@ -823,7 +819,7 @@ void GltfModelImporter::OptimizePrimitive(Primitive& prim, cgltf_primitive const
 		if (!vertex_stream.has_value())
 			continue;
 
-		void* stream_data = prim.vertex_buffer->data() + vertex_stream->vertex_offset;
+		void* stream_data = vertex_stream->buffer_data->data();
 		meshopt_remapVertexBuffer(
 			stream_data,
 			stream_data,

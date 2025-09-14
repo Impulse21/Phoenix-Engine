@@ -4,6 +4,9 @@
 
 #include "ModelBuildData.h"
 
+#include <PhxCore/IO/FileUtils.h>
+#include <PhxCore/IO/MemoryRegion.h>
+
 struct ExportOptions
 {
 
@@ -36,9 +39,19 @@ private:
     void Export();
 
 private:
+    struct CompiledResource
+    {
+        std::string name;
+        std::string ext;
+
+        // Keep metadata chunk separate as they are stored differently in pak files.
+        phx::MemoryBuffer metadata_chunk;
+        std::vector<phx::MemoryBuffer> chunks;
+    } m_compiled_resource;
 
     std::ostream& m_out;
     const ModelData& m_model_data;
+
     const ExportOptions& m_options;
 };
 

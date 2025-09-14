@@ -7,12 +7,12 @@
 
 namespace phx::renderer
 {
-	// This affects the resource modify qith care
+	// This affects the resource modify with care
 
 	struct MeshMetadata
 	{
-		uint32_t GeometryBufferSize;
-		uint32_t VertexBufferOffset;
+		uint32_t geometry_bufer_size;
+		uint32_t vertex_buffer_size;
 	};
 
 	struct MeshResource final : public Resource
@@ -21,19 +21,21 @@ namespace phx::renderer
 
 		struct CpuData
 		{
-			float Bounds[4];
-			uint32_t VbOffset;
-			uint32_t VbSize;
-			uint32_t IbOffset;
-			uint32_t IbSize;
-			uint8_t IbFormat;
-			uint16_t NumDraws;
+			float		bounds[4];
+			uint32_t	vb_offset;
+			uint32_t	vb_size;
+			uint32_t	ib_offset;
+			uint32_t	ib_size;
+			uint8_t		ib_format;
+			uint16_t	num_joints;        // Number of skeleton joints when skinning
+			uint16_t	start_joint;       // Flat offset to first joint index
+			uint16_t	num_draws;
 
 			struct DrawInfo
 			{
-				uint32_t IndexCount;
-				uint32_t StartIndex;
-				uint32_t BaseVertex;
+				uint32_t prim_count;
+				uint32_t start_index;
+				uint32_t base_vertex;
 			};
 			DrawInfo Draw[1];
 		};
