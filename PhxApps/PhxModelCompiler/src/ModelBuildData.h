@@ -168,7 +168,7 @@ struct ModelData
 	phx::math::AxisAlignedBox bounding_box;
 
 	std::vector<std::byte> geometry_data;
-	std::vector<Mesh*> meshes;
+	std::vector<::Mesh*> meshes;
 
 	std::vector<MaterialData> material_dependencies;
 };

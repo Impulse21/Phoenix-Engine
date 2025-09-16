@@ -48,6 +48,9 @@ namespace phx
 	class MemoryBuffer
 	{
 	public:
+		template<typename T>
+		inline static MemoryBuffer Create() { return MemoryBuffer(sizeof(T)); }
+	public:
 		MemoryBuffer() = default;
 
 		explicit MemoryBuffer(size_t size)
@@ -81,6 +84,7 @@ namespace phx
 		std::unique_ptr<byte[]> m_buffer;
 		size_t m_size = 0ull;
 	};
+
 
 	// DEPERICATED
 	template<typename T>

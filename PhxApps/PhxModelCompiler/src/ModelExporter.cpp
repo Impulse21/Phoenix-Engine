@@ -1,6 +1,7 @@
 #include "ModelExporter.h"
 
-#include "PhxRenderer/MeshResource.h"
+#include "PhxRenderer/ModelResoure.h"
+#include <PhxCore/BinaryBuilder.h>
 
 using namespace phx;
 using namespace phx::renderer;
@@ -8,23 +9,30 @@ void ModelExporter::Export()
 {
 	// metadata chunk
 	{
-		m_compiled_resource.metadata_chunk = MemoryBuffer(sizeof(MeshMetadata));
+		m_compiled_resource.metadata_chunk = MemoryBuffer::Create<ModelMetadata>();
 
-		auto metadata_view = m_compiled_resource.metadata_chunk.GetView<MeshMetadata>();
-		std::memset(metadata_view.Get(), 0, sizeof(MeshMetadata));
+		auto metadata_view = m_compiled_resource.metadata_chunk.GetView<ModelMetadata>();
+		std::memset(metadata_view.Get(), 0, m_compiled_resource.metadata_chunk.Size());
 
 		metadata_view->geometry_bufer_size = static_cast<uint32_t>(m_model_data.geometry_data.size());
-		metadata_view->vertex_buffer_size = 0;
-		{
-			const size_t cpu_data_size = sizeof(renderer::MeshResource::CpuData) + (sizeof(renderer::MeshResource::CpuData::DrawInfo) * m_model_data.meshes.size());
 
-			m_compiled_resource.chunks.emplace_back(cpu_data_size);
-			auto metadata_view = m_compiled_resource.metadata_chunk.GetView<MeshMetadata>();
-			auto cpuData = reinterpret_cast<renderer::MeshResource::CpuData*>(malloc(cpuDataSize));
-			cpuData->IbSize = m_meshData.Indices.size() * sizeof(uint32_t);
-			cpuData->VbOffset = m_meshData.Indices.size() * sizeof(uint32_t);
-			cpuData->VbSize = gpuData.size() - cpuData->IbSize;
-			cpuData->NumDraws = static_cast<uint16_t>(m_meshData.Geometry.size());
+		{
+			BinaryBuilder cpu_data_builder = {};
+
+			// fill in data
+			
+			// TODO: I am here
+			const size_t cpu_data_size = 
+				sizeof(renderer::mesh::CpuData) + 
+				(sizeof(renderer::MeshResource::CpuData::DrawInfo) * m_model_data.meshes.size());
+
+			MemoryBuffer& cpu_chunk_data = m_compiled_resource.chunks.emplace_back<MemoryBuffer>(MemoryBuffer(cpu_data_size));
+			auto cpu_chunk_view = cpu_chunk_data.GetView<renderer::MeshResource::CpuData>();
+
+			cpu_chunk_view->ib_size = 0;
+			cpu_chunk_view->vb_offset = 0;
+			cpu_chunk_view->vb_size = 0;
+			cpu_chunk_view->num_draws = static_cast<uint16_t>(m_model_data.meshes.Geometry.size());
 			for (size_t i = 0; i < m_meshData.Geometry.size(); i++)
 			{
 				const MeshData::GeometryData& srcGeo = m_meshData.Geometry[i];
