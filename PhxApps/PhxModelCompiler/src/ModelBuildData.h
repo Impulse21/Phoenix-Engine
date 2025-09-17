@@ -164,11 +164,12 @@ struct MaterialData
 
 struct ModelData
 {
+	std::string name;
 	phx::math::BoundingSphere bounding_sphere;
 	phx::math::AxisAlignedBox bounding_box;
 
 	std::vector<std::byte> geometry_data;
-	std::vector<::Mesh*> meshes;
+	std::vector<std::unique_ptr<::Mesh>> meshes;
 
 	std::vector<MaterialData> material_dependencies;
 };

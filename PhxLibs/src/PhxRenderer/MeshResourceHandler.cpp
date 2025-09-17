@@ -58,7 +58,7 @@ void phx::renderer::MeshResourceHandler::RequestMeshData(
 	// would require an RHI change.
 	meshResource->gemoetry_buffer = RHI::CreateBuffer({
 		.DebugName = "Geometry Buffer",
-		.Size = meshMetadata->GeometryBufferSize,
+		.Size = meshMetadata->geometry_bufer_size,
 		.BindingFlags = RHI::BindingFlags::ShaderResource |RHI::BindingFlags::IndexBuffer,
 		.MiscFlags = RHI::ResourceMiscFlags::BufferRaw,
 		.InitialState = RHI::ResourceStates::Common,

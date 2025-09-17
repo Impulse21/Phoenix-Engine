@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxCore/IO/MemoryRegion.h>
+#include <PhxResource/FileFormatUtils.h>
 #include <PhxRhi/RHICommon.h>
 
 #include <PhxResource/Resource.h>
@@ -44,10 +45,10 @@ namespace phx::renderer
 		~ModelResoure() override;
 		struct CpuData
 		{
-			float		bounding_sphere[4];
-			float		bounding_box[4];
-			Mesh*		meshes;
-			uint32_t	num_meshes;
+			float							bounding_sphere[4];
+			float							bounding_box[6];
+			FileFormat::RelativePtr<Mesh>	meshes;
+			uint32_t						num_meshes;
 		};
 
 		phx::MemoryBuffer cpu_data_buffer;

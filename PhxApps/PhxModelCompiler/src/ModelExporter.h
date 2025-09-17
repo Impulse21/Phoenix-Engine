@@ -2,6 +2,7 @@
 
 #include <fstream>
 
+#include "CompiledResource.h"
 #include "ModelBuildData.h"
 
 #include <PhxCore/IO/FileUtils.h>
@@ -39,15 +40,7 @@ private:
     void Export();
 
 private:
-    struct CompiledResource
-    {
-        std::string name;
-        std::string ext;
-
-        // Keep metadata chunk separate as they are stored differently in pak files.
-        phx::MemoryBuffer metadata_chunk;
-        std::vector<phx::MemoryBuffer> chunks;
-    } m_compiled_resource;
+    CompiledResource m_compiled_resource;
 
     std::ostream& m_out;
     const ModelData& m_model_data;

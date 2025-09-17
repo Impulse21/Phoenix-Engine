@@ -279,7 +279,6 @@ phx::Result<ModelData> GltfModelImporter::Import(std::string const& file, Import
 
 	cgltf_data* gltf_data = nullptr;
 	cgltf_result result = cgltf_parse_file(&options, file.c_str(), &gltf_data);
-
 	if (result != cgltf_result_success)
 	{
 		PHX_ERROR("Couldn't parse glTF file '{0}'", file);
@@ -298,6 +297,7 @@ phx::Result<ModelData> GltfModelImporter::Import(std::string const& file, Import
 
 	ModelData model_data = {};
 
+	model_data.name = gltf_data->scene->name;
 	ImportMaterials(gltf_data, model_data);
 
 	// Walk scene graph and import meshes and build Object Transforms
@@ -442,7 +442,7 @@ bool GltfModelImporter::ImportMaterials(cgltf_data* gltf_data, ModelData& model_
 }
 
 bool GltfModelImporter::ImportMesh(
-	std::vector<Mesh*>& mesh_list,
+	std::vector<std::unique_ptr<::Mesh>>& mesh_list,
 	std::vector<std::byte>& geometry_buffer,
 	cgltf_data* gltf_data,
 	cgltf_mesh* gltf_mesh,
@@ -588,7 +588,7 @@ bool GltfModelImporter::ImportMesh(
 		geometry_buffer.resize(offset + mesh_geometry_buffer->Size());
 		std::memcpy(geometry_buffer.data() + offset, mesh_geometry_buffer->Data(), mesh_geometry_buffer->Size());
 
-		mesh_list.push_back(mesh);
+		mesh_list.emplace_back(std::unique_ptr<::Mesh>(mesh));
 	}
 
 	return true;
@@ -600,7 +600,7 @@ uint32_t GltfModelImporter::WalkGraph(
 	hlslpp::float4x4 const& parent_xform,
 	phx::math::BoundingSphere& model_bounding_sphere,
 	phx::math::AxisAlignedBox& model_bounding_box,
-	std::vector<Mesh*>& mesh_list,
+	std::vector<std::unique_ptr<::Mesh>>& mesh_list,
 	std::vector<std::byte>& geometry_buffer)
 {
 	for (const auto& sibling : siblings)
