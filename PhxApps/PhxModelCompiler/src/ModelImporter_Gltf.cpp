@@ -3,6 +3,7 @@
 #include <PhxCore/Base.h>
 #include <PhxCore/Log.h>
 #include <PhxCore/Memory/MemoryUtils.h>
+#include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/BinaryBuilder.h>
 #include <PhxCore/SystemTime.h>
 #include <PhxRhi/RHICommon.h>
@@ -297,7 +298,8 @@ phx::Result<ModelData> GltfModelImporter::Import(std::string const& file, Import
 
 	ModelData model_data = {};
 
-	model_data.name = gltf_data->scene->name;
+	
+	model_data.name = phx::GetFileNameWithoutExt(file);
 	ImportMaterials(gltf_data, model_data);
 
 	// Walk scene graph and import meshes and build Object Transforms

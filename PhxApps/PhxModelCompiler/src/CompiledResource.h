@@ -1,5 +1,9 @@
 #pragma once
 
+#include <vector>
+#include <string>
+#include <PhxCore/IO/MemoryRegion.h>
+
 struct CompiledResource
 {
     std::string name;

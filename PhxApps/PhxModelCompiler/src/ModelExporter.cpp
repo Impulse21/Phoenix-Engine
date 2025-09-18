@@ -13,6 +13,7 @@ using namespace phx::renderer;
 
 void ModelExporter::Export()
 {
+	(void)m_options;
 	m_compiled_resource.name = m_model_data.name;
 	m_compiled_resource.ext = ResourceExtension< renderer::ModelResourceHandler>::value;
 
@@ -96,5 +97,6 @@ void ModelExporter::Export()
 
 	}
 
-	ResourceFileBuilder::Build(&m_compiled_resource);
+	std::unique_ptr<phx::IBlob> file_data = ResourceFileBuilder::Build(&m_compiled_resource);
+	m_out.write(static_cast<const char*>(file_data->Data()), file_data->Size());
 }
