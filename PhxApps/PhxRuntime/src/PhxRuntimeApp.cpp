@@ -4,6 +4,8 @@
 #include <PhxCore/Profiler.h>
 #include <PhxData/IVirtualFileSystem.h>
 
+#include <PhxWorld/LevelBlueprint.data.h>
+
 #include <PhxCore/IO/FileUtils.h>
 
 #include <PhxEngine/EntryPoint.h>
@@ -74,6 +76,12 @@ void PhxRuntime::Startup()
 		// TODO: TRY mounting a pack
 	}
 
+	{
+		phx::reflection::Reflect<phx::world::LevelBlueprint>("LevelBlueprint")
+			.Property(""
+			.Register();
+
+	}
 #if false
 	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
 

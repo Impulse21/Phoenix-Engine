@@ -1,8 +1,12 @@
 #pragma once
 
 #include <vector>
-#include <PhxReflection\TypeInfo.h>
-#include "PhxReflection\ReflectionBuilder.h"
+#include <PhxReflection/TypeInfo.h>
+#include "PhxReflection/ReflectionBuilder.h"
+
+// 1. The macro to be placed inside each reflectable struct/class
+#define PHX_REFLECT_TYPE() \
+    static phx::reflection::TypeInfo s_typeInfo; \
 
 namespace phx::reflection
 {
@@ -14,8 +18,6 @@ namespace phx::reflection
     {
         return ReflectionBuilder<T>(name);
     }
-
-    struct MemberInfo;
 
     class IReflectionRegistry
     {

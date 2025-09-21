@@ -166,6 +166,8 @@ namespace phx
 			delete phx::data::IVirtualFileSystem::Ptr;
 			phx::data::IVirtualFileSystem::Ptr = nullptr;
 
+			phx::reflection::Shutdown();
+
 			RHI::Shutdown();
 
 			JobSystem::Shutdown();

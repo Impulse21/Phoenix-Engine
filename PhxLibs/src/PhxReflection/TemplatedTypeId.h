@@ -2,7 +2,7 @@
 #include <cstdint>
 
 // Credit to: https://github.dev/FireFlyForLife/NeatReflection
-namespace phx::data
+namespace phx::reflection
 {
 	using TemplateTypeId = uint32_t;
 	inline constexpr TemplateTypeId kEmptyTypeId = 0;

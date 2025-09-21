@@ -31,11 +31,11 @@ namespace phx::reflection
 				.Destructor = destructor
 			};
 #endif
-			T
 			m_typeInfo = &T::s_typeInfo;
 			m_typeInfo->name = name;
 			m_typeInfo->size = sizeof(T);
 		}
+		
 
         template<typename ParentT>
         ReflectionBuilder& Parent()
@@ -43,6 +43,23 @@ namespace phx::reflection
             m_typeInfo->parent = ParentT::GetStaticTypeInfo();
             return *this;
         }
+
+		template<typename TObject, typename TType, TType TObject::* PtrToMember>
+		ReflectionBuilder& Create(const char* name)
+		{
+			MemberInfo info = {
+				.type = GetId<TType>(),
+				.object_type = GetId<TObject>(),
+				.name = name,
+				.properties = {},
+				.get_value = &detail::GetFieldErased<TObject, TType, PtrToMember>,
+				.set_value = setValue,
+				.get_address = &detail::GetFieldAddressErased<TObject, TType, PtrToMember>,
+			};
+
+			m_typeInfo->members.push_back(info);
+			return *this;
+		}
 
         template<typename MemberType>
         ReflectionBuilder& Property(const char* name, MemberType T::* memberPtr, std::initializer_list<Property> props = {})
@@ -55,7 +72,46 @@ namespace phx::reflection
                 });
             return *this;
         }
+
+		void Register()
+		{
+			IReflectionRegistry::Ptr->RegisterType(m_typeInfo);
+		}
+
 	private:
 		TypeInfo* m_typeInfo;
 	};
+
+	namespace detail
+	{
+		template<typename TObject, typename TType, TType TObject::* PtrToMember>
+		Any GetFieldErased(AnyPtr object)
+		{
+			assert(object.type_id == GetId<TObject>());
+
+			TObject* object_ = static_cast<TObject*>(object.value_ptr);
+			return object_->*PtrToMember;
+		}
+
+		template<typename TObject, typename TType, TType TObject::* PtrToMember>
+		void SetFieldErased(AnyPtr object, Any value)
+		{
+			assert(object.type_id == GetId<TObject>());
+			assert(value.TypeId() == GetId<TType>());
+
+			TObject* object_ = static_cast<TObject*>(object.value_ptr);
+			object_->*PtrToMember = value.Value<TType>();
+		}
+
+		template<typename TObject, typename TType, TType TObject::* PtrToMember>
+		AnyPtr GetFieldAddressErased(AnyPtr object)
+		{
+			assert(object.type_id == GetId<TObject>());
+
+			TObject* object_ = static_cast<TObject*>(object.value_ptr);
+
+			TType* address = &(object_->*PtrToMember);
+			return AnyPtr{ (void*)address, GetId<TType>() };
+		}
+	}
 }

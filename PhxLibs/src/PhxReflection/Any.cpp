@@ -6,44 +6,44 @@
 
 // Credit to: https://github.dev/FireFlyForLife/NeatReflection
 
-namespace phx::data
+namespace phx::reflection
 {
 	Any::Any(const Any& other) noexcept
 	{
 		// Assign other storage
-		if (other.m_storageMode == StorageMode::InlineValue) 
+		if (other.m_storage_mode == StorageMode::InlineValue) 
 		{
 			memcpy(m_storage.InlineValue, other.m_storage.InlineValue, Storage::kInlineStorageSize);
 		}
-		else if (other.m_storageMode == StorageMode::BoxedValue) 
+		else if (other.m_storage_mode == StorageMode::BoxedValue) 
 		{
 			new (&m_storage.BoxedValue) std::shared_ptr<void>{ other.m_storage.BoxedValue };
 		}
 
 		// Assign other storage
-		m_tempalateTypeId = other.m_tempalateTypeId;
-		m_storageMode = other.m_storageMode;
+		m_tempalate_type_id = other.m_tempalate_type_id;
+		m_storage_mode = other.m_storage_mode;
 	}
 
 	Any::Any(Any&& other) noexcept
 	{
 		// Assign other storage
-		if (other.m_storageMode == StorageMode::InlineValue) 
+		if (other.m_storage_mode == StorageMode::InlineValue) 
 		{
 			memcpy(m_storage.InlineValue, other.m_storage.InlineValue, Storage::kInlineStorageSize);
 		}
-		else if (other.m_storageMode == StorageMode::BoxedValue) 
+		else if (other.m_storage_mode == StorageMode::BoxedValue) 
 		{
 			new (&m_storage.BoxedValue) std::shared_ptr<void>{ std::move(other.m_storage.BoxedValue) };
 		}
 
 		// Assign other storage
-		m_tempalateTypeId = other.m_tempalateTypeId;
-		m_storageMode = other.m_storageMode;
+		m_tempalate_type_id = other.m_tempalate_type_id;
+		m_storage_mode = other.m_storage_mode;
 
 		// Clear other
-		other.m_tempalateTypeId = kEmptyTypeId;
-		other.m_storageMode = StorageMode::Empty;
+		other.m_tempalate_type_id = kEmptyTypeId;
+		other.m_storage_mode = StorageMode::Empty;
 	}
 
 	Any& Any::operator=(const Any& other) noexcept
@@ -83,11 +83,11 @@ namespace phx::data
 	Any::~Any()
 	{
 		// Destroy storage
-		if (m_storageMode == StorageMode::BoxedValue) 
+		if (m_storage_mode == StorageMode::BoxedValue) 
 		{
 			m_storage.BoxedValue.~shared_ptr();
 		}
-		else if (m_storageMode == StorageMode::InlineValue) 
+		else if (m_storage_mode == StorageMode::InlineValue) 
 		{
 			// SBO is limited to trivial type currently, so no destruction needs to happen
 		}
@@ -95,12 +95,12 @@ namespace phx::data
 
 	bool Any::HasValue() const
 	{
-		return m_storageMode != StorageMode::Empty;
+		return m_storage_mode != StorageMode::Empty;
 	}
 
 	TemplateTypeId Any::TypeId() const
 	{
-		return m_tempalateTypeId;
+		return m_tempalate_type_id;
 	}
 
 	AnyPtr Any::ToAnyPtr()
@@ -110,12 +110,12 @@ namespace phx::data
 			return AnyPtr{};
 		}
 
-		return AnyPtr{ .ValuePtr = ObjectPtr(), .TypeId = m_tempalateTypeId };
+		return AnyPtr{ .value_ptr = ObjectPtr(), .type_id = m_tempalate_type_id };
 	}
 
 	void* Any::ObjectPtr()
 	{
-		switch (m_storageMode)
+		switch (m_storage_mode)
 		{
 		case StorageMode::InlineValue: return m_storage.InlineValue;
 		case StorageMode::BoxedValue: return m_storage.BoxedValue.get();

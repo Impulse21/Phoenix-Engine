@@ -3,6 +3,7 @@
 #include <vector>
 
 // TODO: Use Any
+#include "Any.h"
 #include <variant>
 
 namespace phx::reflection
@@ -11,12 +12,27 @@ namespace phx::reflection
 	using PropertyValue = std::variant<int, float, bool, const char*>;
 	struct PropertyInfo { uint32_t m_key; PropertyValue m_value; };
 
+
     struct TypeInfo;
     struct MemberInfo
     {
+        TemplateTypeId type;
+        TemplateTypeId object_type;
         const char* name = nullptr;
-        const TypeInfo* type = nullptr;
-        size_t offset = 0;
+        std::vector<PropertyInfo> properties;
+
+        using GetValueFunction = Any(*)(AnyPtr object);
+        using SetValueFunction = void (*)(AnyPtr object, Any value);
+        using GetAddressFunction = AnyPtr(*)(AnyPtr object);
+
+        GetValueFunction get_value;
+        SetValueFunction set_value;
+        GetAddressFunction get_address;
+
+
+        // Operators
+        bool operator==(const MemberInfo& other) const noexcept;
+        std::strong_ordering operator<=>(const MemberInfo& other) const noexcept;
     };
 
     struct TypeInfo

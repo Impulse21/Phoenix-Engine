@@ -44,6 +44,9 @@ namespace
 void phx::reflection::Initialize()
 {
 	IReflectionRegistry::Ptr = new ReflectionRegistryImpl();
+
+	// Reflect Core Types
+
 }
 
 void phx::reflection::Shutdown()

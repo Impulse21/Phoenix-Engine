@@ -5,15 +5,15 @@
 #include <memory>
 
 // Credit to: https://github.dev/FireFlyForLife/NeatReflection
-namespace phx::data
+namespace phx::reflection
 {
 	class Any;
 
 	struct AnyPtr
     {
         // Data
-        void* ValuePtr = nullptr;
-        TemplateTypeId TypeId = kEmptyTypeId;
+        void* value_ptr = nullptr;
+        TemplateTypeId type_id = kEmptyTypeId;
 
         // Operators
         auto operator<=>(const AnyPtr& other) const noexcept = default;
@@ -69,14 +69,14 @@ namespace phx::data
 
 		// Data
 		Storage m_storage;
-		TemplateTypeId m_tempalateTypeId = kEmptyTypeId;
-		StorageMode m_storageMode = StorageMode::Empty;
+		TemplateTypeId m_tempalate_type_id = kEmptyTypeId;
+		StorageMode m_storage_mode = StorageMode::Empty;
 	};
 }
 
 
 // Implementation
-namespace phx::data
+namespace phx::reflection
 {
 	template<NotAny T>
 	Any::Any(T&& value)
