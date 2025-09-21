@@ -34,7 +34,7 @@ void ModelExporter::Export()
 			::Mesh& mesh = *m_model_data.meshes[i];
 			const size_t size_of_draw_data = sizeof(renderer::Mesh::Draw) * mesh.num_draws - 1;
 			OffsetHandle32 mesh_offset = cpu_data_builder.Reserve(sizeof(renderer::Mesh) + size_of_draw_data);
-			mesh_offsets.push_back(mesh_offset);
+			mesh_offsets[i] = mesh_offset;
 		}
 
 		cpu_data_builder.Commit();

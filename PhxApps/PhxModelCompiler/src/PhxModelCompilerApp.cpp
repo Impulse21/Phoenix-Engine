@@ -109,10 +109,16 @@ int wmain(int argc, wchar_t** argv)
 		if (model_data)
 		{
 			std::ofstream out_stream(output_file, std::ios::out | std::ios::trunc | std::ios::binary);
+			if (!out_stream.is_open())
+			{
+				PHX_ERROR("Failed to create file output file '{0}'", output_file.c_str());
+				return -1;
+			}
 			ExportOptions options = {};
 
 			ModelExporter::Export(out_stream, model_data.GetValue(), options);
 
+			PHX_INFO("Save Model Resrouce to {0}", output_file.c_str());
 			// save external data.
 			// Export Material data
 			

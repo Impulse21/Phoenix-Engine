@@ -104,6 +104,7 @@ void PhxRuntime::Shutdown()
 
 void PhxRuntime::OnPreRender()
 {
+#if false
 	PHX_PROFILE;
 	{
 		PHX_PROFILE_SECTION("Construct View");
@@ -185,10 +186,12 @@ void PhxRuntime::OnPreRender()
 			*m_per_frame_cache.cached_data = draw_data;
 		}
 	}
+#endif
 }
 
-void PhxRuntime::OnUpdate_Threaded(float delta_time)
+void PhxRuntime::OnUpdate_Threaded(float /*delta_time*/)
 {
+#if false
 	PHX_PROFILE;
 
 	phx::data::IStreamingManager::Ptr->Tick(delta_time);
@@ -197,10 +200,12 @@ void PhxRuntime::OnUpdate_Threaded(float delta_time)
 		m_world.InstantiateFrom(*m_scene_blueprint);
 	}
 	// Rotate cube in a random direction
+#endif
 }
 
 void PhxRuntime::OnRender_Threaded()
 {
+#if false
 	PHX_PROFILE;
 
 	phx::RHI::CommandBufferHandle cmd_buffer = phx::RHI::BeginFrameCommandBuffer();
@@ -226,8 +231,10 @@ void PhxRuntime::OnRender_Threaded()
 	}
 
 	phx::RHI::SubmitAndPresentFrame();
+#endif
 }
 
+#if false
 void PhxRuntime::TEST_RotateEntity(float deltaTime, phx::TransformComponent& comp)
 {
 	using namespace DirectX;
@@ -264,3 +271,4 @@ void PhxRuntime::TEST_RotateEntity(float deltaTime, phx::TransformComponent& com
 	DirectX::XMStoreFloat4(&comp.Rotation, rotationQuat);
 	DirectX::XMStoreFloat4x4(&comp.WorldMatrix, comp.GetMatrix());
 }
+#endif

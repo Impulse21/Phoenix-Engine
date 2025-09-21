@@ -14,6 +14,8 @@
 #include <PhxData/VirtualFileSystemImpl.h>
 #include <PhxData/AssetManager.h>
 
+#include <PhxReflection/Reflection.h>
+
 #include <PhxRhi/PhxRhi.h>
 
 #include <PhxEngine/JobSystem.h>
@@ -63,6 +65,8 @@ namespace phx
 			FrameMemoryManager::Initialize({});
 			
 			phx::JobSystem::Initialize();
+
+			phx::reflection::Initialize();
 
 			phx::data::IVirtualFileSystem::Ptr = new data::VirtualFileSystemImpl();
 

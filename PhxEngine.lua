@@ -13,6 +13,7 @@ phx_lib_src_resource_dir    = phx_lib_src_directory.."/PhxResource"
 phx_lib_src_world_dir       = phx_lib_src_directory.."/PhxWorld"
 phx_lib_src_data_dir        = phx_lib_src_directory.."/PhxData"
 phx_lib_src_engine_dir      = phx_lib_src_directory.."/PhxEngine"
+phx_lib_src_reflection_dir  = phx_lib_src_directory.."/PhxReflection"
 
 phx_vendor_src_imgui_dir    = phx_lib_vendor_directory.."/ImGui"
 phx_vendor_src_d3d12ma_dir  = phx_lib_vendor_directory.."/D3D12MA"
@@ -64,6 +65,7 @@ project_phx_resource    = 'PhxResource'
 project_phx_world       = 'PhxWorld'
 project_phx_data        = 'PhxData'
 project_phx_engine      = 'PhxEngine'
+project_phx_reflection  = 'PhxReflection'
 
 project_phx_app_editor  = 'PhxEditor'
 project_phx_app_runtime = 'PhxRuntime'
@@ -892,6 +894,35 @@ group "PhxLibs"
             "python ../../"..phx_generate_reflection_script.." --output ../../"..phx_reflection_output_dir.." ../../"..phx_lib_src_data_dir
         }--]]
 
+    project(project_phx_reflection)
+        kind('StaticLib')
+        pchheader('PhxData/PhxData_pch.h')
+        pchsource(phx_lib_src_data_dir..'/PhxData_pch.cpp')
+        
+        files
+        {
+            phx_lib_src_reflection_dir.."/**.h",
+            phx_lib_src_reflection_dir.."/**.cpp",
+        }
+
+        includedirs
+        {
+            phx_lib_src_directory,
+            phx_lib_vendor_directory.."/spdlog/include",
+            phx_lib_vendor_directory.."/entt",
+            phx_vendor_include_yaml_dir,
+            phx_vendor_src_cereal_dir,
+            phx_vendor_src_tracy,
+            phx_vendor_include_hlslpp_dir,
+        }
+
+        defines { "YAML_CPP_STATIC_DEFINE" }
+
+        -- Pre-build step to generate reflection
+        --[[prebuildcommands {
+            "python ../../"..phx_generate_reflection_script.." --output ../../"..phx_reflection_output_dir.." ../../"..phx_lib_src_data_dir
+        }--]]
+
     project(project_phx_world)
         kind('StaticLib')
         pchheader('PhxWorld/PhxWorld_pch.h')
@@ -970,6 +1001,7 @@ group "Applications"
             project_phx_resource,
             project_phx_world,
             project_phx_data,
+            project_phx_reflection,
             project_phx_engine,
             project_vendor_imgui,
             project_vendor_tracy,
@@ -1068,6 +1100,7 @@ group "Applications"
             project_phx_resource,
             project_phx_world,
             project_phx_data,
+            project_phx_reflection,
             project_phx_engine,
             project_vendor_imgui,
             project_vendor_tracy,
@@ -1165,6 +1198,7 @@ group "Applications"
             project_phx_world,
             project_phx_engine,
             project_phx_data,
+            project_phx_reflection,
             project_vendor_imgui,
             project_vendor_meshoptimizer,
             project_vendor_yaml,
@@ -1236,6 +1270,7 @@ group "Applications"
             project_phx_world,
             project_phx_engine,
             project_phx_data,
+            project_phx_reflection,
             project_vendor_imgui,
             project_vendor_yaml,
             project_vendor_tlsf,

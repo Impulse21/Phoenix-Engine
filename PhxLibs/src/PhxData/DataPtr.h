@@ -6,6 +6,25 @@
 
 namespace phx::data
 {
+#if true
+    template<typename T>
+    class DataPtr
+    {
+    public:
+
+    private:
+        void* m_data;
+    };
+
+    template<typename T>
+    class DataRef
+    {
+    public:
+    private:
+        void* m_data;
+    };
+
+#else // TODO: Remove
     struct AnyPtr
     {
         // Data
@@ -167,5 +186,5 @@ namespace phx::data
         ControlBlockBase* control;
         T* Ptr;
     };
-
+#endif
 }
