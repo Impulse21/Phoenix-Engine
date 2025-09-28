@@ -9,6 +9,7 @@ namespace phx::world
 {
 	struct Component
 	{
+		uint64_t type;
 		PHX_REFLECT_TYPE();
 	};
 

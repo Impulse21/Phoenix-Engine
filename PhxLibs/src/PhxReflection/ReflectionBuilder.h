@@ -5,6 +5,21 @@
 
 namespace phx::reflection
 {
+	namespace detail
+	{
+		// Forward declaration for GetFieldErased
+		template<typename TObject, typename TType, TType TObject::* PtrToMember>
+		Any GetFieldErased(AnyPtr object);
+
+		// Forward declaration for SetFieldErased
+		template<typename TObject, typename TType, TType TObject::* PtrToMember>
+		void SetFieldErased(AnyPtr object, Any value);
+
+		// Forward declaration for GetFieldAddressErased
+		template<typename TObject, typename TType, TType TObject::* PtrToMember>
+		AnyPtr GetFieldAddressErased(AnyPtr object);
+	}
+
 	template<typename T>
 	class ReflectionBuilder
 	{
@@ -44,33 +59,26 @@ namespace phx::reflection
             return *this;
         }
 
-		template<typename TObject, typename TType, TType TObject::* PtrToMember>
-		ReflectionBuilder& Create(const char* name)
-		{
+		template<typename TType, TType T::* PtrToMember>
+        ReflectionBuilder& Property(const char* name, std::initializer_list<PropertyInfo> props = {})
+        {
+			MemberInfo::SetValueFunction set_value = nullptr;
+			if constexpr (std::is_assignable_v<TType&, TType>)
+			{
+				set_value = &detail::SetFieldErased<T, TType, PtrToMember>;
+			}
 			MemberInfo info = {
 				.type = GetId<TType>(),
-				.object_type = GetId<TObject>(),
+				.object_type = GetId<T>(),
 				.name = name,
 				.properties = {},
-				.get_value = &detail::GetFieldErased<TObject, TType, PtrToMember>,
-				.set_value = setValue,
-				.get_address = &detail::GetFieldAddressErased<TObject, TType, PtrToMember>,
+				.get_value = &detail::GetFieldErased<T, TType, PtrToMember>,
+				.set_value = set_value,
+				.get_address = &detail::GetFieldAddressErased<T, TType, PtrToMember>,
 			};
 
 			m_typeInfo->members.push_back(info);
 			return *this;
-		}
-
-        template<typename MemberType>
-        ReflectionBuilder& Property(const char* name, MemberType T::* memberPtr, std::initializer_list<Property> props = {})
-        {
-            m_typeInfo->members.push_back({
-                name,
-                GetTypeInfo_Internal<MemberType>(),
-                offsetof(T, *(&((T*)0->*memberPtr))),
-                std::vector<PropertyInfo>(props)
-                });
-            return *this;
         }
 
 		void Register()
