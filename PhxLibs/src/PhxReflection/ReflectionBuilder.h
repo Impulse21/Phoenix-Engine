@@ -3,6 +3,8 @@
 #include "Reflection.h"
 #include "TypeInfo.h"
 
+#include "Any.h"
+
 namespace phx::reflection
 {
 	namespace detail
@@ -46,7 +48,7 @@ namespace phx::reflection
 				.Destructor = destructor
 			};
 #endif
-			m_typeInfo = &T::s_typeInfo;
+			m_typeInfo = &T::s_type_info;
 			m_typeInfo->name = name;
 			m_typeInfo->size = sizeof(T);
 		}
@@ -55,12 +57,12 @@ namespace phx::reflection
         template<typename ParentT>
         ReflectionBuilder& Parent()
         {
-            m_typeInfo->parent = ParentT::GetStaticTypeInfo();
+            m_typeInfo->parent = ParentT::s_type_info;
             return *this;
         }
 
 		template<typename TType, TType T::* PtrToMember>
-        ReflectionBuilder& Property(const char* name, std::initializer_list<PropertyInfo> props = {})
+        ReflectionBuilder& Property(const char* name/*, std::initializer_list<PropertyInfo> props = {}*/)
         {
 			MemberInfo::SetValueFunction set_value = nullptr;
 			if constexpr (std::is_assignable_v<TType&, TType>)

@@ -1,4 +1,5 @@
 #pragma once
+
 #include <cstdint>
 
 // Credit to: https://github.dev/FireFlyForLife/NeatReflection

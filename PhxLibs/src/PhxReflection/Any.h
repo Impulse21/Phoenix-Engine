@@ -83,16 +83,16 @@ namespace phx::reflection
 	{
 		using CleanT = std::remove_cvref_t<T>;
 
-		m_tempalateTypeId = GetId<CleanT>();
+		m_tempalate_type_id = GetId<CleanT>();
 
 		if (sizeof(CleanT) <= Storage::kInlineStorageSize && alignof(CleanT) <= alignof(Storage) && std::is_trivial_v<CleanT>) 
 		{
 			new (m_storage.InlineValue) CleanT{ value };
-			m_storageMode = StorageMode::InlineValue;
+			m_storage_mode = StorageMode::InlineValue;
 		}
 		else {
 			new (&m_storage.BoxedValue) std::shared_ptr<void>{ std::make_shared<CleanT>(value) };
-			m_storageMode = StorageMode::BoxedValue;
+			m_storage_mode = StorageMode::BoxedValue;
 		}
 	}
 
@@ -112,14 +112,14 @@ namespace phx::reflection
 	T& Any::Value()
 	{
 		assert(HasValue());
-		assert(GetId<T>() == m_tempalateTypeId);
+		assert(GetId<T>() == m_tempalate_type_id);
 		return *static_cast<T*>(ObjectPtr());
 	}
 
 	template<typename T>
 	T* Any::ValuePtr()
 	{
-		if (GetId<T>() != m_tempalateTypeId) 
+		if (GetId<T>() != m_tempalate_type_id) 
 		{
 			return nullptr;
 		}

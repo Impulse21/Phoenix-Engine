@@ -1,13 +1,14 @@
 #pragma once
 
-#include "Any.h"
+#if false
+#include <PhxReflection/Any.h>
 namespace phx
 {
 	class IFileSystem;
 }
 namespace phx::data
 {
-	void Save(IFileSystem* fs, const char* filename, data::AnyPtr object);
+	void Save(IFileSystem* fs, const char* filename, reflection::AnyPtr object);
 
 	template<class T>
 	void Save(IFileSystem* fs, const char* filename, T const& object)
@@ -20,7 +21,7 @@ namespace phx::data
 				.TypeId = GetId<T>() });
 	}
 
-	void Load(IFileSystem* fs, const char* filename, data::AnyPtr object);
+	void Load(IFileSystem* fs, const char* filename, reflection::AnyPtr object);
 
 	template<class T>
 	void Load(IFileSystem* fs, const char* filename, T& object)
@@ -33,3 +34,4 @@ namespace phx::data
 				.TypeId = GetId<T>() });
 	}
 }
+#endif

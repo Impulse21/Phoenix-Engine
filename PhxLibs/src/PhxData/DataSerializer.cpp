@@ -1,6 +1,11 @@
 #include "PhxData/PhxData_pch.h"
 #include "DataSerializer.h"
 
+#if false
+namespace data
+{
+    struct AnyPtr{};
+}
 
 void phx::data::Save(IFileSystem* /*fs*/, const char* /*filename*/, data::AnyPtr /*object*/)
 {
@@ -76,3 +81,4 @@ void phx::data::Load(IFileSystem* /*fs*/, const char* /*filename*/, data::AnyPtr
     field.set_value(object, value);
 #endif
 }
+#endif

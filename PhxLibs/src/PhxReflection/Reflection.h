@@ -5,8 +5,12 @@
 #include "PhxReflection/ReflectionBuilder.h"
 
 // 1. The macro to be placed inside each reflectable struct/class
-#define PHX_REFLECT_TYPE() \
-    static phx::reflection::TypeInfo s_typeInfo; \
+#define PHX_REFLECTION_VARS() \
+    static phx::reflection::TypeInfo s_type_info;
+#define PHX_DEFINE_REFLECTION() \
+    static inline void RegisterReflectionBody()
+
+#define PHX_REGISTER_REFLECTION(type) type::RegisterReflectionBody()
 
 namespace phx::reflection
 {
@@ -28,6 +32,7 @@ namespace phx::reflection
         virtual void RegisterType(const TypeInfo* typeInfo) = 0;
         virtual const TypeInfo* FindType(const char* name) const = 0;
 
+        virtual ~IReflectionRegistry() = default;
     };
 
     // Template helper for convenience

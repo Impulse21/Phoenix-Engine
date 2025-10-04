@@ -77,20 +77,9 @@ void PhxRuntime::Startup()
 	}
 
 	{
-		phx::reflection::Reflect<phx::world::LevelBlueprint>("LevelBlueprint")
-			.Property<phx::data::String, &phx::world::LevelBlueprint::name>("name")
-			.Property<phx::data::DataPtr<phx::world::Component>, &phx::world::LevelBlueprint::component>("components")
-			.Register();
-
-		phx::reflection::Reflect<phx::world::Component>("Component")
-			.Register();
-
-		phx::reflection::Reflect<phx::world::TranslationComponent>("TranslationComponent")
-			.Parent<phx::world::Component>()
-			.Property<hlslpp::float3, &phx::world::TranslationComponent::translation>("translation")
-			.Property<hlslpp::float4, &phx::world::TranslationComponent::rotation>("rotation")
-			.Property<hlslpp::float3, &phx::world::TranslationComponent::scale>("scale")
-			.Register();
+		PHX_REGISTER_REFLECTION(phx::world::LevelBlueprint);
+		PHX_REGISTER_REFLECTION(phx::world::Component);
+		PHX_REGISTER_REFLECTION(phx::world::TranslationComponent);
 	}
 #if false
 	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();

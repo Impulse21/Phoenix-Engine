@@ -896,8 +896,8 @@ group "PhxLibs"
 
     project(project_phx_reflection)
         kind('StaticLib')
-        pchheader('PhxData/PhxData_pch.h')
-        pchsource(phx_lib_src_data_dir..'/PhxData_pch.cpp')
+        pchheader('PhxReflection/PhxReflection_pch.h')
+        pchsource(phx_lib_src_reflection_dir..'/PhxReflection_pch.cpp')
         
         files
         {
