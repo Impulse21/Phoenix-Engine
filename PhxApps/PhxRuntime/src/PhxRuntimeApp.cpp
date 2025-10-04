@@ -2,11 +2,11 @@
 #include <PhxCore/Base.h>
 #include <PhxCore/SystemTime.h>
 #include <PhxCore/Profiler.h>
+#include <PhxCore/IO/FileUtils.h>
+
 #include <PhxData/IVirtualFileSystem.h>
 
 #include <PhxWorld/LevelBlueprint.data.h>
-
-#include <PhxCore/IO/FileUtils.h>
 
 #include <PhxEngine/EntryPoint.h>
 
@@ -17,6 +17,7 @@ class PhxRuntime final : public phx::IApplication
 public:
 	static PhxRuntime* Instance() { return ms_instance; }
 
+public:
 	PhxRuntime(const phx::ApplicationDescriptor& desc)
 		: m_desc(desc)
 	{
@@ -76,11 +77,15 @@ void PhxRuntime::Startup()
 		// TODO: TRY mounting a pack
 	}
 
+	// reflection
 	{
 		PHX_REGISTER_REFLECTION(phx::world::LevelBlueprint);
 		PHX_REGISTER_REFLECTION(phx::world::Component);
 		PHX_REGISTER_REFLECTION(phx::world::TranslationComponent);
 	}
+
+	phx::world::LevelBlueprint  level_blueprint = {};
+	level_blueprint.
 #if false
 	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
 

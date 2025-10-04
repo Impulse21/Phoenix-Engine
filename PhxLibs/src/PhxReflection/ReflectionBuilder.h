@@ -7,6 +7,15 @@
 
 namespace phx::reflection
 {
+	template<typename T>
+	class ReflectionBuilder;
+
+	template<typename T>
+	ReflectionBuilder<T> Reflect(const char* name)
+	{
+		return ReflectionBuilder<T>(name);
+	}
+
 	namespace detail
 	{
 		// Forward declaration for GetFieldErased
@@ -53,11 +62,10 @@ namespace phx::reflection
 			m_typeInfo->size = sizeof(T);
 		}
 		
-
         template<typename ParentT>
         ReflectionBuilder& Parent()
         {
-            m_typeInfo->parent = ParentT::s_type_info;
+            m_typeInfo->parent = &ParentT::s_type_info;
             return *this;
         }
 

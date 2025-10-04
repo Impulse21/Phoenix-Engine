@@ -31,7 +31,6 @@ namespace phx
         hlslpp::float3 scale = { 0.0f, 0.0f, 0.0f };
     };
 
-
     namespace scene
     {
         struct Component
@@ -94,6 +93,7 @@ namespace phx
         std::vector<SceneNodeHandle> children_indices;
 
         entt::entity runtime_entity;
+
         template<typename T>
         T& EmplaceComponent()
         {
@@ -120,12 +120,10 @@ namespace phx
 	};
 
     // TODO: this needs to be reworked.
-	struct SceneBlueprint : public phx::data::Asset
+	struct SceneBlueprint
 	{
         std::vector<SceneNodeHandle> root_node_indices;
         std::vector<SceneNode> nodes;
-
-        PHX_DECLARE_ASSET(SceneBlueprint)
 
         SceneNodeHandle AddNode(SceneNode&& node)
         {

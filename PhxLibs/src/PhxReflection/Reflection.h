@@ -3,12 +3,9 @@
 #include <vector>
 #include <PhxReflection/TypeInfo.h>
 
-// TODO: Fix Circular dependency.
-#include "PhxReflection/ReflectionBuilder.h"
-
 // 1. The macro to be placed inside each reflectable struct/class
 #define PHX_REFLECTION_VARS() \
-    static phx::reflection::TypeInfo s_type_info;
+    static inline phx::reflection::TypeInfo s_type_info;
 #define PHX_DEFINE_REFLECTION() \
     static inline void RegisterReflectionBody()
 
@@ -18,12 +15,6 @@ namespace phx::reflection
 {
     void Initialize();
     void Shutdown();
-
-    template<typename T>
-    ReflectionBuilder<T> Reflect(const char* name)
-    {
-        return ReflectionBuilder<T>(name);
-    }
 
     class IReflectionRegistry
     {
