@@ -61,7 +61,8 @@ namespace
 
 phx::StringHash GltfFileImporter::GetAssetTypeHash() const
 {
-	return SceneBlueprint::StaticTypeHash();
+	//return SceneBlueprint::StaticTypeHash();
+	return {};
 }
 
 void GltfFileImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asset> asset, std::string const& virtual_file_path) const

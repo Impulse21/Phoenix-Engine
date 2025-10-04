@@ -18,7 +18,7 @@
 #include "MeshResourceCompiler.h"
 
 #include <fast_obj/fast_obj.h>
-#include <meshoptimizer/meshoptimizer.h>
+//#include <meshoptimizer/meshoptimizer.h>
 
 #include <PhxWorld/WorldMetadata.def.h>
 
@@ -29,6 +29,7 @@ using namespace phx::renderer;
 
 namespace
 {
+#if false
 	void* memory_open(const char*, void* user_data)
 	{
 		auto* memory = static_cast<SpanMutable<uint8_t>*>(user_data);
@@ -53,15 +54,21 @@ namespace
 		auto* memory = static_cast<SpanMutable<uint8_t>*>(user_data);
 		return memory->Size();
 	}
+#endif
 }
 
 phx::StringHash ObjImporter::GetAssetTypeHash() const
 {
+#if false
 	return SceneBlueprint::StaticTypeHash();
+#else
+	return {};
+#endif
 }
 
-void ObjImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asset> asset, std::string const& virtual_file_path) const
+void ObjImporter::ImportAsync(AssetManager* /*asset_manager*/, RefCountPtr<Asset> /*asset*/, std::string const& /*virtual_file_path*/) const
 {
+#if false
 	RefCountPtr<SceneBlueprint> scene_blueprint = asset.As<SceneBlueprint>();
 
 	auto vfs = IVirtualFileSystem::Ptr;
@@ -182,10 +189,12 @@ void ObjImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asset> as
 	};
 
 	IStreamingManager::Ptr->Submit(std::move(request));
+#endif
 }
 
-Mesh phxed::ObjImporter::GenerateMeshIndices(Mesh const& mesh_src, std::vector<std::vector<uint32_t>>& geometry_remaps)
+Mesh phxed::ObjImporter::GenerateMeshIndices(Mesh const& /*mesh_src*/, std::vector<std::vector<uint32_t>>& /*geometry_remaps*/)
 {
+#if false
 	// Mesh Optimizer
 
 	const phxed::VertexStream& srcPositionStream = *mesh_src.GetVertexStream(phx::renderer::VertexStream_Position);
@@ -298,10 +307,14 @@ Mesh phxed::ObjImporter::GenerateMeshIndices(Mesh const& mesh_src, std::vector<s
 	meshopt_optimizeVertexCache(mesh.ShadowIndices.data(), mesh.ShadowIndices.data(), totalIndices, totalVertices);
 #endif
 	return processed_mesh;
+#else
+return {};
+#endif
 }
 
-void phxed::ObjImporter::OptimizeMesh(Mesh& mesh, std::vector<std::vector<uint32_t>>& geometry_remaps)
+void phxed::ObjImporter::OptimizeMesh(Mesh& /*mesh*/, std::vector<std::vector<uint32_t>>& /*geometry_remaps*/)
 {
+#if false
 	PrintStatistics(mesh);
 	for (size_t i = 0; i < mesh.Geometry.size(); i++)
 	{
@@ -327,7 +340,7 @@ void phxed::ObjImporter::OptimizeMesh(Mesh& mesh, std::vector<std::vector<uint32
 			meshopt_remapVertexBuffer(stream.Data.get(), stream.Data.get(), geom.vertex_count, stream.ElementStride, geometry_remaps[i].data());
 		}
 	}
-
+#endif
 }
 
 std::string phxed::ObjImporter::ProcessTexture(std::string const& base_viritual_path, const char* path)
@@ -339,8 +352,9 @@ std::string phxed::ObjImporter::ProcessTexture(std::string const& base_viritual_
 	return virtual_path;
 }
 
-void phxed::ObjImporter::ProcessMesh(renderer::MeshResource* resource, fastObjMesh* obj)
+void phxed::ObjImporter::ProcessMesh(renderer::MeshResource* /*resource*/, fastObjMesh* /*obj*/)
 {
+#if false
 	phxed::Mesh mesh;
 
 	size_t totalIndices = 0;
@@ -446,6 +460,7 @@ void phxed::ObjImporter::ProcessMesh(renderer::MeshResource* resource, fastObjMe
 		},
 		compiled_resource.chunks[1].Data()
 	);
+#endif
 }
 
 void phxed::ObjImporter::PrintStatistics(Mesh const&)

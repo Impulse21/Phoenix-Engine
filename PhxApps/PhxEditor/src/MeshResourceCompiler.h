@@ -142,9 +142,9 @@ namespace phxed
 		}
 
 	private:
-		MeshResourceCompiler(Mesh const& meshData, CompiledResource* outCompiledResource)
+		MeshResourceCompiler(Mesh const& meshData, CompiledResource* /*outCompiledResource*/)
 			: m_meshData(meshData)
-			, m_outCompiledResource(outCompiledResource)
+			//, m_outCompiledResource(outCompiledResource)
 		{
 		}
 
@@ -155,6 +155,6 @@ namespace phxed
 
 	private:
 		const Mesh& m_meshData;
-		CompiledResource* m_outCompiledResource;
+		//CompiledResource* m_outCompiledResource;
 	};
 }

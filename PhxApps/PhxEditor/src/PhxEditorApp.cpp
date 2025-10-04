@@ -37,7 +37,7 @@
 #include <PhxRenderer/MeshResource.h>
 
 // static const char* kDefault3DModel = "art://Sponza/glTF/Sponza.gltf";
-static const char* kDefault3DModel = "art://SM_Chest_01.obj"; 
+//static const char* kDefault3DModel = "art://SM_Chest_01.obj"; 
 
 #define InjectDefault3DModel() \
     if (raptor::file_exists(kDefault3DModel)) {\
@@ -120,8 +120,6 @@ private:
 	
 	FrameRenderData m_per_frame_cache;
 	phx::World m_world;
-
-	phx::RefCountPtr<phx::SceneBlueprint> m_scene_blueprint;
 };
 
 phx::IApplication* phx::CreateApplication()
@@ -153,7 +151,7 @@ void PhxEditor::Startup()
 	asset_manager->RegisterImporter<phxed::GltfFileImporter>();
 	asset_manager->RegisterImporter<phxed::ObjImporter>();
 
-	m_scene_blueprint = asset_manager->Get<phx::SceneBlueprint>(kDefault3DModel);
+	//m_scene_blueprint = asset_manager->Get<phx::SceneBlueprint>(kDefault3DModel);
 
 	phx::Entity camera_entity = m_world.CreateEntity("Debug_Camera");
 	auto& debug_camera_comp = camera_entity.AddComponent<phx::CameraComponent>();
@@ -284,17 +282,13 @@ void PhxEditor::OnUpdate_Threaded(float delta_time)
 	PHX_PROFILE;
 
 	phx::data::IStreamingManager::Ptr->Tick(delta_time);
-	if (m_scene_blueprint->state == phx::data::Asset::State::Loaded)
-	{
-		m_world.InstantiateFrom(*m_scene_blueprint);
-	}
-	// Rotate cube in a random direction
 }
 
 void PhxEditor::OnRender_Threaded()
 {
 	PHX_PROFILE;
 
+#if false
 	phx::RHI::CommandBufferHandle cmd_buffer = phx::RHI::BeginFrameCommandBuffer();
 	ForwardPassDrawData* pass_data = static_cast<ForwardPassDrawData*>(m_per_frame_cache.cached_data[0]);
 	for (size_t i = 0; i < m_per_frame_cache.num_views; i++)
@@ -316,43 +310,10 @@ void PhxEditor::OnRender_Threaded()
 			}
 		}
 	}
-
+#endif
 	phx::RHI::SubmitAndPresentFrame();
 }
 
-void PhxEditor::TEST_RotateEntity(float deltaTime, phx::TransformComponent& comp)
+void PhxEditor::TEST_RotateEntity(float /*deltaTime*/, phx::TransformComponent& /*comp*/)
 {
-	using namespace DirectX;
-
-	static std::default_random_engine s_rng;
-	static std::uniform_real_distribution<float> axisDist(-1.0f, 1.0f);       // For x/y/z axis
-	static std::uniform_real_distribution<float> factorDist(-1.0f, 1.0f);     // For random sign/scale
-	// You can define a max angular speed (in radians per second)
-	constexpr static float MAX_ANGULAR_SPEED = XM_PIDIV4; // 45 degrees/sec
-
-	// Generate a random axis
-	XMVECTOR axis = XMVectorSet(
-		axisDist(s_rng),
-		axisDist(s_rng),
-		axisDist(s_rng),
-		0.0f
-	);
-	axis = XMVector3Normalize(axis);
-
-	// Random scale factor for the rotation angle
-	float randomFactor = factorDist(s_rng); // Range [-1, 1]
-
-	// Calculate final angle based on deltaTime
-	float angle = randomFactor * MAX_ANGULAR_SPEED * deltaTime;
-
-	// Delta rotation quaternion
-	XMVECTOR deltaRotation = XMQuaternionRotationAxis(axis, angle);
-
-	XMVECTOR rotationQuat = DirectX::XMLoadFloat4(&comp.Rotation);
-
-	// Accumulate rotation
-	rotationQuat = XMQuaternionNormalize(XMQuaternionMultiply(rotationQuat, deltaRotation));
-
-	DirectX::XMStoreFloat4(&comp.Rotation, rotationQuat);
-	DirectX::XMStoreFloat4x4(&comp.WorldMatrix, comp.GetMatrix());
 }

@@ -2,7 +2,7 @@
 
 #include <atomic>
 #include <cassert>
-#include <PhxReflection/TemplatedTypeId.h>
+#include <PhxData/TemplatedTypeId.h>
 
 namespace phx::data
 {

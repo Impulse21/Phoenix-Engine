@@ -15,6 +15,7 @@ using namespace phx::renderer;
 
 void phxed::MeshResourceCompiler::Compile()
 {
+#if false
 	m_outCompiledResource->name = m_meshData.Name;
 	m_outCompiledResource->ext = ResourceExtension< renderer::MeshResourceHandler>::value;
 
@@ -27,8 +28,8 @@ void phxed::MeshResourceCompiler::Compile()
 
 		std::memset(metadataView.Get(), 0, sizeof(MeshMetadata));
 
-		metadataView->GeometryBufferSize = static_cast<uint32_t>(gpuData.size());
-		metadataView->VertexBufferOffset = m_meshData.Indices.size() * sizeof(uint32_t);
+		metadataView->geometry_bufer_size = static_cast<uint32_t>(gpuData.size());
+		//metadataView->VertexBufferOffset = m_meshData.Indices.size() * sizeof(uint32_t);
 
 	}
 
@@ -65,6 +66,7 @@ void phxed::MeshResourceCompiler::Compile()
 
 		m_outCompiledResource->chunks.emplace_back(std::move(gpuDataBuffer));
 	}
+#endif
 }
 
 void phxed::MeshResourceCompiler::BuildGpuBufferData(std::vector<uint8_t>& gpuBuffer) const

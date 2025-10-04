@@ -76,7 +76,7 @@ namespace phx::data
 
 
 // Implementation
-namespace phx::reflection
+namespace phx::data
 {
 	template<NotAny T>
 	Any::Any(T&& value)
