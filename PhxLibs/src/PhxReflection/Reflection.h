@@ -2,6 +2,8 @@
 
 #include <vector>
 #include <PhxReflection/TypeInfo.h>
+
+// TODO: Fix Circular dependency.
 #include "PhxReflection/ReflectionBuilder.h"
 
 // 1. The macro to be placed inside each reflectable struct/class
