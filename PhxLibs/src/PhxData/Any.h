@@ -5,7 +5,7 @@
 #include <memory>
 
 // Credit to: https://github.dev/FireFlyForLife/NeatReflection
-namespace phx::reflection
+namespace phx::data
 {
 	class Any;
 

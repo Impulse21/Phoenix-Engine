@@ -1,12 +1,12 @@
-#include "PhxReflection_pch.h"
+#include <PhxData/PhxData_pch.h>
 
 #include "TemplatedTypeId.h"
 
 #include <atomic>
 
-using namespace phx::reflection;
+using namespace phx::data;
 
-TemplateTypeId phx::reflection::GenerateNewTypeId()
+TemplateTypeId GenerateNewTypeId()
 {
 	// Reserve id 0 for invalid id's.
 	static constinit std::atomic<TemplateTypeId> s_IdCounter = 1;
