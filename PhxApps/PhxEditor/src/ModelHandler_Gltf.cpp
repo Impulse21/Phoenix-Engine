@@ -1,4 +1,4 @@
-#include "AssetImporter_Gltf.h"
+#include "ModelHandler_Gltf.h"
 
 #include <PhxEngine/JobSystem.h>
 
@@ -10,15 +10,30 @@
 #include <PhxData/IStreamingManager.h>
 #include <PhxCore/Math.h>
 
-#include <PhxRenderer/MeshResource.h>
+#include <PhxRenderer/ModelResoure.h>
 
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 
 using namespace phx;
-using namespace phx::data;
+using namespace phx::renderer;
 using namespace phxed;
 
+phx::StringHash phxed::GtlfModelHandler::GetResourceTypeHash() const
+{
+	return ModelResoure::StaticTypeHash();
+}
+
+phx::RefCountPtr<phx::Resource> phxed::GtlfModelHandler::CreatePlaceholder() const
+{
+	return phx::RefCountPtr<phx::Resource>(new ModelResoure());
+}
+
+void phxed::GtlfModelHandler::LoadAsync(phx::ResourceSystem* /*resource_system*/, phx::RefCountPtr<phx::Resource> /*asset*/, std::string const& /*virtual_file_path*/) const
+{
+}
+
+#if false
 #if false
 namespace
 {
@@ -95,7 +110,7 @@ void GltfFileImporter::ImportAsync(AssetManager* asset_manager, RefCountPtr<Asse
 
 	request.callback = [ctx](data::AsyncReadResult const& result) mutable {
 		OnMainFileLoaded(result, ctx);
-	};
+		};
 
 	context.loader->QueueRead(std::move(request));
 #endif
@@ -171,3 +186,5 @@ void phxed::GltfFileImporter::OnMainFileLoaded(phx::data::StreamingResult const&
 void phxed::GltfFileImporter::LoadNodeRec(CgltfContext& /*ctx*/, cgltf_node const& /*gltfNode*/, SceneBlueprint& /*scene*/, SceneNodeHandle /*parent*/)
 {
 }
+
+#endif

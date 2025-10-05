@@ -1,46 +1,30 @@
 #pragma once
 
 #include <PhxResource/Resource.h>
-#include <PhxResource/IResourceHandler.h>
+#include <PhxResource/IResourceFileHandler.h>
+#include "ModelResoure.h"
 
 namespace phx::renderer
 {
 	struct ModelMetadata;
-	struct ModelResoure;
 
-	class ModelResourceHandler final : public phx::ResourceHandler
+	class ModelResourceHandler final : public phx::ResourceFileHandler
 	{
 	public:
-		RefCountPtr<Resource> LoadFromPak(
-			std::shared_ptr<IAssetStreamer> const& assetStreamer,
-			StreamFileHandle filehandle,
-			PakFileFormat::AssetEntry const& assetEntry) const override;
-
-		RefCountPtr<Resource> LoadLoose(
-			std::shared_ptr<IAssetStreamer> const& assetStreamer,
-			StreamFileHandle filehandle) const override;
+		StringHash GetResourceTypeHash() const override { return renderer::ModelResoure::StaticTypeHash(); };
+		RefCountPtr<Resource> CreatePlaceholder() const override { return RefCountPtr<Resource>::Create(new ModelResoure()); }
+		void LoadAsync(ResourceSystem* resource_system, RefCountPtr<Resource> asset, std::string const& virtual_file_path) const override;
 
 	private:
+#if false
 		static void RequestMeshData(
 			RefCountPtr<ModelResoure> modelResoure,
 			std::shared_ptr<IAssetStreamer> const& assetStreamer,
 			StreamFileHandle fileHandle,
 			const ModelMetadata* metadata,
 			const ResourceFileFormat::Chunk* chunks);
+#endif
 	};
 }
 
-namespace phx
-{
-	template<>
-	struct ResourceExtension<renderer::ModelResourceHandler>
-	{
-		static constexpr const char* value = ".phxmdl";
-	};
-
-	template<>
-	struct ResourceHandlerId<renderer::ModelResourceHandler>
-	{
-		static constexpr phx::StringHash value = "phxmdl"_hash;
-	};
-}
+PHX_DEFINE_RES_FILE_EXT(renderer::ModelResourceHandler, .phxmdl)

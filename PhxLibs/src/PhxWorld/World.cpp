@@ -6,8 +6,6 @@
 #include "WorldMetadata.def.h"
 
 #include <PhxResource/ResourceSystem.h>
-#include <PhxRenderer/MeshResourceHandler.h>
-
 #include <DirectXMath.h>
 
 #include <algorithm>

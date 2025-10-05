@@ -4,27 +4,18 @@
 #include "ModelResoure.h"
 
 #include <PhxResource/ResourceFile.h>
+#include <PhxResource/ResourceSystem.h>
 
 #include <PhxRhi/PhxRhi.h>
 
 using namespace phx;
 using namespace phx::renderer;
 
-RefCountPtr<Resource> phx::renderer::ModelResourceHandler::LoadFromPak(std::shared_ptr<IAssetStreamer> const& assetStreamer, StreamFileHandle filehandle, PakFileFormat::AssetEntry const& assetEntry) const
+void phx::renderer::ModelResourceHandler::LoadAsync(ResourceSystem* /*resource_system*/, RefCountPtr<Resource> /*asset*/, std::string const& /*virtual_file_path*/) const
 {
-	auto metadata = reinterpret_cast<const ModelMetadata*>(assetEntry.MetadataChunk.Get());
-
-	auto modelResoure = RefCountPtr<ModelResoure>::Create(new ModelResoure());
-	RequestMeshData(modelResoure, assetStreamer, filehandle, metadata, assetEntry.Chunks.Get());
-	return modelResoure;
-}
-
-RefCountPtr<Resource> phx::renderer::ModelResourceHandler::LoadLoose(std::shared_ptr<IAssetStreamer> const& assetStreamer, StreamFileHandle fileHandle) const
-{
-	auto retVal = RefCountPtr<ModelResoure>::Create(new ModelResoure());
-
+#if false
 	ResourceFile::Load(
-		assetStreamer,
+		resource_system->,
 		fileHandle,
 		[retVal](std::shared_ptr<ResourceFile> resourceFile)
 		{
@@ -36,10 +27,10 @@ RefCountPtr<Resource> phx::renderer::ModelResourceHandler::LoadLoose(std::shared
 				meshMetadata,
 				resourceFile->Metadata->Chunks);
 		});
-
-	return retVal;
+#endif
 }
 
+#if false
 void phx::renderer::ModelResourceHandler::RequestMeshData(
 	RefCountPtr<ModelResoure> modelResoure,
 	std::shared_ptr<IAssetStreamer> const& assetStreamer,
@@ -81,3 +72,4 @@ void phx::renderer::ModelResourceHandler::RequestMeshData(
 		[resource = modelResoure]() {
 		});
 }
+#endif

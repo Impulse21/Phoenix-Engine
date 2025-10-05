@@ -4,7 +4,6 @@
 
 #include <PhxCore/UUID.h>
 #include <PhxCore/StringHash.h>
-#include <PhxRenderer/MeshResource.h>
 #include <PhxRenderer/shaders/ShaderInterop.h>
 #include "CompiledResource.h"
 

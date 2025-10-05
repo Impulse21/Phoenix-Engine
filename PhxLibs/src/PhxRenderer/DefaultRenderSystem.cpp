@@ -1,8 +1,6 @@
 #include "PhxRenderer/PhxRenderer_pch.h"
 #include "DefaultRenderSystem.h"
 
-#include "MeshResource.h"
-
 #include <PhxWorld/Entity.h>
 #include <PhxWorld/World.h>
 #include <PhxWorld/WorldComponents.h>

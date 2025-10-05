@@ -9,8 +9,6 @@
 #include <PhxResource/ResourceSystem.h>
 
 #include <PhxRenderer/DefaultRenderSystem.h>
-#include <PhxRenderer/MeshResourceHandler.h>
-
 #include <PhxData/VirtualFileSystemImpl.h>
 #include <PhxData/AssetManager.h>
 

@@ -5,8 +5,6 @@
 
 #include "PhxRhi/RHICommon.h"
 
-#include "PhxRenderer/MeshResourceHandler.h"
-
 #include <DirectXMath.h>
 
 using namespace phxed;

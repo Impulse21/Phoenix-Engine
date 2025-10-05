@@ -87,7 +87,7 @@ generated_shaders_dir = workspace_directory..'/GeneratedShaders'
 generated_code_dir = workspace_directory..'/GeneratedCode'
 
 default_project_dir = workspace_directory.."/../projects/sandbox"
-art_src_dir = workspace_directory.."/../../Art"
+art_src_dir = workspace_directory.."/../../Assets"
 
 -- Utility Functions
 function ExcludePlatformSpecificCode(rootPath)

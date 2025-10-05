@@ -5,7 +5,6 @@
 #include <PhxCore/SystemTime.h>
 #include <PhxEngine/JobSystem.h>
 
-#include <PhxRenderer/MeshResource.h>
 #include <PhxRenderer/MaterialAsset.h>
 #include <PhxRenderer/TextureResource.h>
 
