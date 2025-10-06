@@ -31,5 +31,17 @@ namespace phxed
 
 	};
 }
-
-PHX_DEFINE_RES_FILE_EXT(phxed::GtlfModelHandler, ".gltf")
+namespace phx 
+{
+		template<> 
+		struct ResourceFileExtension<phxed::GtlfModelHandler> 
+		{ 
+			static constexpr const char* value = ".gltf";
+		};
+		
+		template<>
+		struct ResourceFileHandlerId<phxed::GtlfModelHandler> 
+		{ 
+			static constexpr phx::StringHash value = ".gltf"_hash;
+		};
+}

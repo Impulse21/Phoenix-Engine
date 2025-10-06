@@ -60,7 +60,6 @@ struct View
 
 struct Drawable
 {
-	phx::RefCountPtr<phx::renderer::MeshResource> mesh_resource;
 };
 
 struct ForwardPassDrawData
@@ -144,13 +143,12 @@ void PhxEditor::Startup()
 		// TODO: TRY mounting a pack
 	}
 
-	// TODO: Remove Asset Manager
-	auto* resource_ptr = phx::ResourceSystem::Ptr;
-	// resource_ptr->RegisterFileHanlder();
+	auto resource_system = phx::ResourceSystem::Ptr;
+	resource_system->RegisterFileHanlder<phxed::GtlfModelHandler>();
 
 	const char* test_asset_path = "art://samples/samples/cube/Cube.gltf";
 	PHX_INFO("Loading Test Resources '{0}'", test_asset_path);
-	m_model = phx::ResourceSystem::Ptr->Get(test_asset_path);
+	m_model = resource_system->Get(test_asset_path);
 
 #if false
 	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();

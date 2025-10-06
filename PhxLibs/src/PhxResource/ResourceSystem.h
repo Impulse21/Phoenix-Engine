@@ -64,7 +64,8 @@ namespace phx
 				return itr->second;
 
 			std::string ext = phx::GetFileExt(virtual_file_path);
-			auto handler_itr = m_resourceHandlers.find(StringHash(ext));
+			StringHash extId(ext);
+			auto handler_itr = m_resourceHandlers.find(extId);
 
 			if (handler_itr == m_resourceHandlers.end())
 			{

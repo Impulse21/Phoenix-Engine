@@ -56,7 +56,7 @@ bool VirtualFileSystemImpl::Mount(std::string const& virtual_path, std::string c
         });
 
     // Log: Successfully mounted virtual_mount_point_str -> physical_path_str
-    PHX_CORE_INFO("Successfully mounted '{0}' to '{1}'", norm_virtual_prefix.c_str(), norm_virtual_prefix.c_str());
+    PHX_CORE_INFO("Successfully mounted '{0}' to '{1}'", norm_virtual_prefix.c_str(), norm_physical_path.c_str());
     return true;
 }
 

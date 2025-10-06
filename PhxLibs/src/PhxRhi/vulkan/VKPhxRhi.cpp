@@ -670,11 +670,13 @@ namespace phx::RHI
 		InitializeResourcePools();
 		InitializeDescriptorBuffers();
 
+#if false
 		VkDeviceSize temp_allocator_size = 256_MiB; // Random Default
 		if (VkContext::vk_rebar_heap_size > 0)
 			temp_allocator_size = VkContext::vk_rebar_heap_size;
 
 		VkContext::temp_memory_allocator.Initialize(math::GetPreviousPowerOfTwo(temp_allocator_size), 4_MiB);
+#endif
 
 		CreateSwapchain(desc); // Initial swapchain creation
 		CreateFrameSyncObjects();
