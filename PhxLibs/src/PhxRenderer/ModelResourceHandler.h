@@ -13,7 +13,7 @@ namespace phx::renderer
 	public:
 		StringHash GetResourceTypeHash() const override { return renderer::ModelResoure::StaticTypeHash(); };
 		RefCountPtr<Resource> CreatePlaceholder() const override { return RefCountPtr<Resource>::Create(new ModelResoure()); }
-		void LoadAsync(ResourceSystem* resource_system, RefCountPtr<Resource> asset, std::string const& virtual_file_path) const override;
+		void LoadAsync(data::IStreamingManager* streaming_manager, data::IVirtualFileSystem* vfs, RefCountPtr<Resource> resource, std::string const& virtual_file_path) const override;
 
 	private:
 #if false

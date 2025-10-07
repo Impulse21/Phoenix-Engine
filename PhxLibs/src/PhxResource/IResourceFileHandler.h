@@ -43,7 +43,7 @@ namespace phx
 
 		virtual StringHash GetResourceTypeHash() const = 0;
 		virtual RefCountPtr<Resource> CreatePlaceholder() const = 0;
-		virtual void LoadAsync(ResourceSystem* resource_system, RefCountPtr<Resource> asset, std::string const& virtual_file_path) const = 0;
+		virtual void LoadAsync(data::IStreamingManager* streaming_manager, data::IVirtualFileSystem* vfs, RefCountPtr<Resource> asset, std::string const& virtual_file_path) const = 0;
 
 	};
 }

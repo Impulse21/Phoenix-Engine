@@ -83,7 +83,7 @@ namespace phx
 			"Loading Resource '{0}' from disk",
 			virtual_file_path);
 
-		handler_to_use->LoadAsync(this, placeholder, virtual_file_path);
+		handler_to_use->LoadAsync(m_loader, m_vfs, placeholder, virtual_file_path);
 
 		return placeholder;
 	}

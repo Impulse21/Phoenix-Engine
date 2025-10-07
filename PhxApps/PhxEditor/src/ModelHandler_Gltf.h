@@ -18,6 +18,10 @@ namespace phx
 		struct Barrier;
 	}
 
+	namespace data
+	{
+		class IStreamingManager;
+	}
 }
 
 namespace phxed
@@ -27,7 +31,11 @@ namespace phxed
 	public:
 		phx::StringHash GetResourceTypeHash() const override;
 		phx::RefCountPtr<phx::Resource> CreatePlaceholder() const override;
-		void LoadAsync(phx::ResourceSystem* resource_system, phx::RefCountPtr<phx::Resource> asset, std::string const& virtual_file_path) const override;
+		void LoadAsync(
+			phx::data::IStreamingManager* streaming_manager,
+			phx::data::IVirtualFileSystem* vfs,
+			phx::RefCountPtr<phx::Resource> asset,
+			std::string const& virtual_file_path) const override;
 
 	};
 }

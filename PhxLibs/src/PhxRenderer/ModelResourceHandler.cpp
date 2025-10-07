@@ -11,7 +11,7 @@
 using namespace phx;
 using namespace phx::renderer;
 
-void phx::renderer::ModelResourceHandler::LoadAsync(ResourceSystem* /*resource_system*/, RefCountPtr<Resource> /*asset*/, std::string const& /*virtual_file_path*/) const
+void phx::renderer::ModelResourceHandler::LoadAsync(data::IStreamingManager* /*streaming_manager*/, data::IVirtualFileSystem* /*vfs*/, RefCountPtr<Resource> /*resource*/, std::string const& /*virtual_file_path*/) const
 {
 #if false
 	ResourceFile::Load(
