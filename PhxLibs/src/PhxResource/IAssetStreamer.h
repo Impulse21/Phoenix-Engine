@@ -68,6 +68,7 @@ namespace phx
 
 	using StreamCallback = std::function<void()>;
 
+	// TODO: REMOVE?
 	class IAssetStreamer
 	{
 	public:
