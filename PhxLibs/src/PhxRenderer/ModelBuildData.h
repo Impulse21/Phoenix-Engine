@@ -5,6 +5,7 @@
 #include <array>
 #include <vector>
 
+// TODO: Move this into it's own location
 namespace phx::math
 {
 	// These structs are not packed
@@ -60,7 +61,6 @@ namespace phx::math
 	};
 }
 
-// TODO: Move this into it's own location
 namespace phx::renderer
 {
 	enum { kBaseColor, kMetallicRoughness, kOcclusion, kEmissive, kNormalMap, kNumTextures };
@@ -171,7 +171,7 @@ namespace phx::renderer
 		phx::math::AxisAlignedBox bounding_box;
 
 		std::vector<std::byte> geometry_data;
-		std::vector<std::unique_ptr<phx::renderer::Mesh>> meshes;
+		std::vector<std::unique_ptr<Mesh>> meshes;
 
 		std::vector<MaterialData> material_dependencies;
 	};

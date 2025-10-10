@@ -12,6 +12,7 @@
 #include <PhxResource/ResourceSystem.h>
 
 #include <PhxRenderer/ModelResoure.h>
+#include <PhxRenderer/ModelImporter_Gltf.h>
 
 #include <PhxEngine/JobSystem.h>
 
@@ -23,6 +24,22 @@ using namespace phx;
 using namespace phx::data;
 using namespace phx::renderer;
 
+namespace
+{
+	void OnFileLoaded(RefCountPtr<ModelResoure>& model_resource, SpanMutable<uint8_t> file_data)
+	{
+		ImportOptions options = {};
+		Result<phx::renderer::ModelData> model_data = ModelImporter_Gltf::Import(options, file_data);
+
+		if (model_data.HasError())
+		{
+			model_resource->state = Resource::State::Error;
+			return;
+		}
+
+		// TODO Compile resource save and cache. Dispatch loading dependencies.
+	}
+}
 
 phx::StringHash phxed::GtlfModelHandler::GetResourceTypeHash() const
 {
@@ -66,9 +83,18 @@ void phxed::GtlfModelHandler::LoadAsync(data::IStreamingManager* streaming_manag
 		}
 	};
 
-	request.on_complete = [=](data::StreamingResult const& /*result*/) mutable {
-		PHX_CORE_ERROR("Loaded File '{0}'", virtual_file_path);
-		};
+	request.on_complete = [=](data::StreamingResult const& result) mutable {
+		if (result.error_code == ErrorCode::Success)
+		{
+			SpanMutable file_data(reinterpret_cast<uint8_t*>(dest.get()), resource_descriptor->length_of_resource);
+			OnFileLoaded(model_resource, file_data);
+		}
+		else
+		{
+			PHX_CORE_ERROR("Failed to load '{0}'", virtual_file_path);
+			model_resource->state = Resource::State::Error;
+		}
+	};
 
 	streaming_manager->Submit(std::move(request));
 }
