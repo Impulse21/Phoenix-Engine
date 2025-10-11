@@ -12,7 +12,6 @@
 #include <limits>
 #include <memory>
 #include <vector>
-#include <memory>
 #include <map>
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>

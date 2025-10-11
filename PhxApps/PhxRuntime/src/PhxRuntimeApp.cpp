@@ -5,9 +5,6 @@
 #include <PhxCore/IO/FileUtils.h>
 
 #include <PhxData/IVirtualFileSystem.h>
-
-#include <PhxWorld/LevelBlueprint.data.h>
-
 #include <PhxEngine/EntryPoint.h>
 
 #include <Generated/GlobalVariables.h>
@@ -77,15 +74,6 @@ void PhxRuntime::Startup()
 		// TODO: TRY mounting a pack
 	}
 
-	// reflection
-	{
-		PHX_REGISTER_REFLECTION(phx::world::LevelBlueprint);
-		PHX_REGISTER_REFLECTION(phx::world::Component);
-		PHX_REGISTER_REFLECTION(phx::world::TranslationComponent);
-	}
-
-	phx::world::LevelBlueprint  level_blueprint = {};
-	level_blueprint.
 #if false
 	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
 
