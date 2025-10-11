@@ -1,13 +1,13 @@
 @echo off
-REM Sets the working directory to the location of this batch script.
-echo Changing directory to script location...
-pushd "%~dp0"
+REM Sets the working directory.
+echo Changing directory to root location...
+pushd "%~dp0../../../"
 
 echo Current working directory: %cd%
 echo.
 
-set PYTHON_SCRIPT_PATH="../../../scripts/asset_pipeline/build_asset.py"
-set BUILD_FILE_PATH="build_config.json"
+set PYTHON_SCRIPT_PATH="scripts/asset_pipeline/build_asset.py"
+set BUILD_FILE_PATH="%~dp0/build_config.json"
 
 echo Executing Python script: %PYTHON_SCRIPT_PATH%
 echo ------------------------------------------
