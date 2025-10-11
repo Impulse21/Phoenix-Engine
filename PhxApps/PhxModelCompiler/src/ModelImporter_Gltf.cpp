@@ -17,11 +17,12 @@
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 
-#include <meshoptimizer/meshoptimizer.h>
+#include <meshoptimizer.h>
 
 using namespace phx;
 using namespace phx::math;
 using namespace phx::renderer;
+using namespace phx::compiler;
 
 using namespace hlslpp;
 

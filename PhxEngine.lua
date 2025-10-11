@@ -747,6 +747,8 @@ group "PhxLibs"
             phx_vendor_src_imgui_dir,
             phx_lib_vendor_directory.."/spdlog/include",
             phx_lib_vendor_directory.."/entt",
+            phx_lib_vendor_directory.."/cgltf",
+            phx_lib_vendor_directory.."/meshoptimizer",
             phx_vendor_src_cereal_dir,
             phx_vendor_src_tracy,
             phx_vendor_include_hlslpp_dir,
@@ -1105,6 +1107,7 @@ group "Applications"
             project_vendor_imgui,
             project_vendor_tracy,
             project_vendor_tlsf,
+            project_vendor_meshoptimizer,
         }
         
         filter('platforms:'..clang_win64_d3d12)
@@ -1180,8 +1183,8 @@ group "Applications"
             phx_lib_src_directory,
             phx_lib_vendor_directory.."/spdlog/include",
             phx_lib_vendor_directory.."/cgltf",
-            phx_lib_vendor_directory.."/entt",
             phx_lib_vendor_directory.."/meshoptimizer",
+            phx_lib_vendor_directory.."/entt",
             phx_vendor_src_json_dir,
             phx_vendor_src_cereal_dir,
             phx_vendor_include_hlslpp_dir,
