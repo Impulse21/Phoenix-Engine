@@ -9,6 +9,7 @@
 #include <PhxResource/ResourceSystem.h>
 
 #include <PhxRenderer/DefaultRenderSystem.h>
+#include <PhxRenderer/ModelResourceHandler.h>
 #include <PhxData/VirtualFileSystemImpl.h>
 #include <PhxData/AssetManager.h>
 
@@ -92,6 +93,7 @@ namespace phx
 
 			phx::ResourceSystem::Ptr = new ResourceSystem;
 			phx::ResourceSystem::Ptr->Initialize(phx::data::IVirtualFileSystem::Ptr, phx::data::IStreamingManager::Ptr);
+			phx::ResourceSystem::Ptr->RegisterFileHanlder<renderer::ModelResourceHandler>();
 
 			phx::data::AssetManager::Ptr = new phx::data::AssetManager;
 			phx::data::AssetManager::Ptr->Initialize(phx::data::IVirtualFileSystem::Ptr, phx::data::IStreamingManager::Ptr);

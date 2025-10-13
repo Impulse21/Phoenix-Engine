@@ -192,7 +192,7 @@ def process_asset(output_path):
         try:
             print(f"\tCMD: {' '.join(command)}")
             # --- REAL IMPLEMENTATION ---
-            # subprocess.run(command, check=True, capture_output=True, text=True)
+            subprocess.run(command, check=True, capture_output=True, text=True)
             
             print(f"\t-> Success.")
 

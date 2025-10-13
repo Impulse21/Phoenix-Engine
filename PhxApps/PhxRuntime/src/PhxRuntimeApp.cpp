@@ -4,6 +4,8 @@
 #include <PhxCore/Profiler.h>
 #include <PhxCore/IO/FileUtils.h>
 
+#include <PhxResource/ResourceSystem.h>
+
 #include <PhxData/IVirtualFileSystem.h>
 #include <PhxEngine/EntryPoint.h>
 
@@ -46,6 +48,7 @@ private:
 	inline static PhxRuntime* ms_instance = nullptr;
 	const phx::ApplicationDescriptor m_desc;
 	void* m_window_handle;
+	phx::RefCountPtr<phx::Resource> m_model;
 	
 };
 
@@ -74,6 +77,13 @@ void PhxRuntime::Startup()
 		// TODO: TRY mounting a pack
 	}
 
+
+	auto resource_system = phx::ResourceSystem::Ptr;
+
+
+	const char* test_asset_path = "art://samples/.compiled/BoxVertexColors.phxmdl";
+	PHX_INFO("Loading Test Resources '{0}'", test_asset_path);
+	m_model = resource_system->Get(test_asset_path);
 #if false
 	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
 
