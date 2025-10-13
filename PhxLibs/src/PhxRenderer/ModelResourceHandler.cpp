@@ -24,13 +24,21 @@ void phx::renderer::ModelResourceHandler::LoadAsync(data::IStreamingManager* str
 
 	if (!resource_descriptor)
 	{
-		PHX_CORE_ERROR("[GLTF Handler] Failed to find file info '{0}'", virtual_file_path);
+		PHX_CORE_ERROR("Failed to find file info '{0}'", virtual_file_path);
 		model_resource->state = Resource::State::Error;
 		return;
 	}
 
 	model_resource->state = Resource::State::Loading;
+	ResourceFile::Load(
+		streaming_manager,
+		resource_descriptor.GetValue(),
+		[model_resource](std::shared_ptr<ResourceFile> resourceFile)
+		{
+			// auto meshMetadata = reinterpret_cast<const ModelMetadata*>(resourceFile->Metadata->MetadataChunk.Get());
+			resourceFile->Metadata->MetadataChunk.Get();
 
+		});
 	// TODO: Fix boiler plate stuff.
 	std::shared_ptr<char[]> dest = std::make_shared<char[]>(resource_descriptor->length_of_resource);
 	data::StreamingRequest request = {

@@ -84,48 +84,4 @@ namespace phx
 		std::unique_ptr<byte[]> m_buffer;
 		size_t m_size = 0ull;
 	};
-
-
-	// DEPERICATED
-	template<typename T>
-	class MemoryRegion
-	{
-	public:
-		MemoryRegion() = default;
-
-		MemoryRegion(std::unique_ptr<char[]> buffer)
-			: m_buffer(std::move(buffer))
-		{
-		}
-
-		char* Data()
-		{
-			return m_buffer.get();
-		}
-
-		T* Get()
-		{
-			return reinterpret_cast<T*>(m_buffer.get());
-		}
-
-		const T* Get() const
-		{
-			return reinterpret_cast<T*>(m_buffer.get());
-		}
-
-		T* operator->()
-		{
-			return reinterpret_cast<T*>(m_buffer.get());
-		}
-
-		T const* operator->() const
-		{
-			return reinterpret_cast<T const*>(m_buffer.get());
-		}
-
-	private:
-		std::unique_ptr<char[]> m_buffer;
-
-	};
-
 }

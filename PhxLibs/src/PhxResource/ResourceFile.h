@@ -13,20 +13,25 @@ namespace phx
 	using MetadataLoadCallbackFunc = std::function<void(std::shared_ptr<ResourceFile>)>;
 	using FailureCallbackFunc = std::function<void()>;
 
+	namespace data
+	{
+		class IStreamingManager;
+	}
+
 	struct ResourceFile
 	{
-		std::shared_ptr<IAssetStreamer> AssetStreamer;
-		StreamFileHandle FileHandle;
-		ResourceFileFormat::Header Header = {};
-		MemoryRegion<ResourceFileFormat::MetadataHeader> Metadata;
+		IStreamingManager* streaming_manager;
+		AsyncResourceDescriptor resource_descriptor;
+		ResourceFileFormat::Header header = {};
+		MemoryRegion<ResourceFileFormat::MetadataHeader> metadata;
 
-		MetadataLoadCallbackFunc MetadataLoadedCallback;
-		FailureCallbackFunc FailureCallback;
+		MetadataLoadCallbackFunc metadata_loaded_callback;
+		FailureCallbackFunc failure_callack;
 
 		static void Load(
-			std::shared_ptr<IAssetStreamer> assetStreamer,
-			StreamFileHandle fileHandle,
-			MetadataLoadCallbackFunc metadataLoadedCallback);
+			data::IStreamingManager* streaming_manager,
+			data::AsyncResourceDescriptor const& resource_descriptor,
+			MetadataLoadCallbackFunc metadata_loaded_callback);
 	};
 }
 

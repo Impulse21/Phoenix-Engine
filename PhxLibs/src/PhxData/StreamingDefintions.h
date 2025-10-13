@@ -82,19 +82,19 @@ namespace phx::data
 
     struct StreamingDestination
     {
-        std::variant<WriteableCpuMemoryBuffer, GpuResourceDestinationInfo> target;
+        std::variant<WriteableCpuMemoryBuffer, GpuResourceDestinationInfo, void*> target;
         uint64_t offset = 0;
         uint64_t size = 0;
 
         bool IsCpuMemoryDestination() const { return std::holds_alternative<WriteableCpuMemoryBuffer>(target); }
         bool IsGpuResourceDestination() const { return std::holds_alternative<GpuResourceDestinationInfo>(target); }
+        bool IsPointer() const { return std::holds_alternative<void*>(target); }
     };
 
     struct StreamingOperation
     {
         StreamingSource source;
         StreamingDestination destination;
-
     };
 
     struct StreamingRequest
