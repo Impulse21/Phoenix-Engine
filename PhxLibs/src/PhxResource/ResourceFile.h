@@ -2,9 +2,10 @@
 
 #include "Resource.h"
 #include "ResourceFileFormat.h"
-#include "IAssetStreamer.h"
 
 #include <PhxCore/IO/MemoryRegion.h>
+#include <PhxData/StreamingDefintions.h>
+
 #include <functional>
 
 namespace phx
@@ -20,10 +21,10 @@ namespace phx
 
 	struct ResourceFile
 	{
-		IStreamingManager* streaming_manager;
-		AsyncResourceDescriptor resource_descriptor;
+		data::IStreamingManager* streaming_manager;
+		data::AsyncResourceDescriptor resource_descriptor;
 		ResourceFileFormat::Header header = {};
-		MemoryRegion<ResourceFileFormat::MetadataHeader> metadata;
+		MemoryBuffer metadata;
 
 		MetadataLoadCallbackFunc metadata_loaded_callback;
 		FailureCallbackFunc failure_callack;

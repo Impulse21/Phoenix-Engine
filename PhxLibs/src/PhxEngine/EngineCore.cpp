@@ -11,7 +11,6 @@
 #include <PhxRenderer/DefaultRenderSystem.h>
 #include <PhxRenderer/ModelResourceHandler.h>
 #include <PhxData/VirtualFileSystemImpl.h>
-#include <PhxData/AssetManager.h>
 
 #include <PhxReflection/Reflection.h>
 
@@ -95,14 +94,7 @@ namespace phx
 			phx::ResourceSystem::Ptr->Initialize(phx::data::IVirtualFileSystem::Ptr, phx::data::IStreamingManager::Ptr);
 			phx::ResourceSystem::Ptr->RegisterFileHanlder<renderer::ModelResourceHandler>();
 
-			phx::data::AssetManager::Ptr = new phx::data::AssetManager;
-			phx::data::AssetManager::Ptr->Initialize(phx::data::IVirtualFileSystem::Ptr, phx::data::IStreamingManager::Ptr);
-
 #if false
-
-			phx::ResourceManger::Initialize();
-			phx::ResourceManger::RegisterHandler<renderer::MeshResourceHandler>();
-
 			phx::gfx::IRenderSystem::Ptr = phx_new_system(gfx::DefaultRenderSystem);
 #endif
 			app->Startup();
@@ -151,10 +143,6 @@ namespace phx
 
 			DeleteApplication(phx::IApplication::Ptr);
 			phx::IApplication::Ptr = nullptr;
-
-			phx::data::AssetManager::Ptr->Shutdown();
-			delete phx::data::AssetManager::Ptr;
-			phx::data::AssetManager::Ptr = nullptr;
 
 			phx::ResourceSystem::Ptr->Shutdown();
 			delete phx::ResourceSystem::Ptr;

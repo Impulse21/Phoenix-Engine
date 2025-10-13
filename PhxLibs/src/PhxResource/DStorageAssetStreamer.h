@@ -1,7 +1,5 @@
 #pragma once
 
-#include "IAssetStreamer.h"
-
 #ifdef PHX_RHI_D3D12
 #include <PhxCore/Pool.h>
 #include <PhxCore/FreeList.h>

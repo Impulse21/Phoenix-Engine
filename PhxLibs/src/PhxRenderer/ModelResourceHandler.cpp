@@ -5,7 +5,6 @@
 
 #include <PhxData/IVirtualFileSystem.h>
 #include <PhxData/IStreamingManager.h>
-#include <PhxData/AssetManager.h>
 
 #include <PhxResource/ResourceFile.h>
 #include <PhxResource/ResourceSystem.h>
@@ -33,10 +32,10 @@ void phx::renderer::ModelResourceHandler::LoadAsync(data::IStreamingManager* str
 	ResourceFile::Load(
 		streaming_manager,
 		resource_descriptor.GetValue(),
-		[model_resource](std::shared_ptr<ResourceFile> resourceFile)
+		[model_resource](std::shared_ptr<ResourceFile> /*resourceFile*/)
 		{
 			// auto meshMetadata = reinterpret_cast<const ModelMetadata*>(resourceFile->Metadata->MetadataChunk.Get());
-			resourceFile->Metadata->MetadataChunk.Get();
+			//resourceFile->metadata->MetadataChunk.Get();
 
 		});
 	// TODO: Fix boiler plate stuff.

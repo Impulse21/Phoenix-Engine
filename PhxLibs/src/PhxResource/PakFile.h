@@ -7,6 +7,7 @@
 
 #include "PakFileFormat.h"
 #include "Resource.h"
+#if false
 #include "IAssetStreamer.h"
 
 namespace phx
@@ -66,4 +67,4 @@ namespace phx
 #endif
 	};
 }
-
+#endif
