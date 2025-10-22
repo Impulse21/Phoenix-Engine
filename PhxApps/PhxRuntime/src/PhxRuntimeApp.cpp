@@ -3,10 +3,11 @@
 #include <PhxCore/SystemTime.h>
 #include <PhxCore/Profiler.h>
 #include <PhxCore/IO/FileUtils.h>
+#include <PhxCore/IVirtualFileSystem.h>
 
 #include <PhxResource/ResourceSystem.h>
 
-#include <PhxCore/IVirtualFileSystem.h>
+#include <PhxWorld/GltfPrefabHandler.h>
 #include <PhxEngine/EntryPoint.h>
 
 #include <Generated/GlobalVariables.h>
@@ -48,7 +49,7 @@ private:
 	inline static PhxRuntime* ms_instance = nullptr;
 	const phx::ApplicationDescriptor m_desc;
 	void* m_window_handle;
-	phx::RefCountPtr<phx::Resource> m_model;
+	phx::RefCountPtr<phx::Resource> m_box_prefab;
 	
 };
 
@@ -77,13 +78,12 @@ void PhxRuntime::Startup()
 		// TODO: TRY mounting a pack
 	}
 
-
 	auto resource_system = phx::ResourceSystem::Ptr;
+	resource_system->RegisterFileHanlder<phx::GltfPrefabHandler>();
 
-
-	const char* test_asset_path = "art://samples/.compiled/BoxVertexColors.phxmdl";
-	PHX_INFO("Loading Test Resources '{0}'", test_asset_path);
-	m_model = resource_system->Get(test_asset_path);
+	const char* box_prefab_path = "art://samples/box_vertex_colour/BoxVertexColors.gltf";
+	PHX_INFO("Loading Test Resources '{0}'", box_prefab_path);
+	m_box_prefab = resource_system->Get(box_prefab_path);
 #if false
 	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
 
