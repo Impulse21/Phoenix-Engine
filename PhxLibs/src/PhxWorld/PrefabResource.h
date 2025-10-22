@@ -39,6 +39,13 @@ namespace phx
         ~PrefabResource() override = default;
 
         PHX_DECLARE_RESOURCE(PrefabResource)
+	};
 
+    struct PrefabHandleResource final : public Resource
+    {
+        RefCountPtr<PrefabResource> prefab;
+
+        ~PrefabHandleResource() override = default;
+        PHX_DECLARE_RESOURCE(PrefabHandleResource)
 	};
 }

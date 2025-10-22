@@ -39,6 +39,7 @@ namespace phx
 		virtual ~ResourceFileHandler() = default;
 
 		virtual StringHash GetResourceTypeHash() const = 0;
+		virtual bool IsStale(std::string const& virtual_file_path, IVirtualFileSystem* vfs) const = 0;
 		virtual RefCountPtr<Resource> CreatePlaceholder() const = 0;
 		virtual void LoadAsync(IStreamingManager* streaming_manager, IVirtualFileSystem* vfs, RefCountPtr<Resource> asset, std::string const& virtual_file_path) const = 0;
 

@@ -76,6 +76,11 @@ namespace phx
 		return std::filesystem::path(path).extension().generic_string();
 	}
 
+	inline std::string GetDirectory(std::string const& path)
+	{
+		return std::filesystem::path(path).parent_path().generic_string();
+	}
+
 	inline std::string JoinPaths(const std::string& p1, const std::string& p2)
 	{
 		if (p1.empty())
