@@ -1,9 +1,9 @@
 #pragma once
 
-#include <PhxData/StreamingDefintions.h>
+#include <PhxEngine/StreamingDefintions.h>
 #include <PhxCore/Span.h>
 
-namespace phx::data
+namespace phx
 {
 	class IStreamingManager
 	{

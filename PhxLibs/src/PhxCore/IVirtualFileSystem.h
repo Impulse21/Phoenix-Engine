@@ -2,16 +2,16 @@
 
 #include <string>
 #include <memory>
-#include <PhxData/StreamingDefintions.h>
-#include <PhxCore/Platform/PlatformWrapper.h>
 
+#include <PhxCore/Platform/PlatformWrapper.h>
+#include <PhxEngine/StreamingDefintions.h>
 
 namespace phx
 {
 	class IBlob;
 }
 
-namespace phx::data
+namespace phx
 {
 	class IVirtualFileSystem
 	{

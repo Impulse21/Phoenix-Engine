@@ -1,10 +1,10 @@
-#include <PhxData/PhxData_pch.h>
+#include <PhxReflection/PhxReflection_pch.h>
 
 #include "TemplatedTypeId.h"
 
 #include <atomic>
 
-using namespace phx::data;
+using namespace phx::reflection;
 
 TemplateTypeId GenerateNewTypeId()
 {

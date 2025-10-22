@@ -1,13 +1,12 @@
-#include "PhxData/PhxData_pch.h"
-#include "VirtualFileSystemImpl.h"
+#include "PhxCore/PhxCore_pch.h"
+#include "VirtualFileSystem.h"
 
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/Platform//PlatformWrapper.h>
-#include <PhxCore/IO/FileUtils.h>
 
-using namespace phx::data;
+using namespace phx;
 
-bool VirtualFileSystemImpl::Mount(std::string const& virtual_path, std::string const& physical_path)
+bool VirtualFileSystem::Mount(std::string const& virtual_path, std::string const& physical_path)
 {
     std::string norm_virtual_prefix = NormalizeVirtualPath(virtual_path);
     std::string norm_physical_path = NormalizePhysicalPath(physical_path);
@@ -60,7 +59,7 @@ bool VirtualFileSystemImpl::Mount(std::string const& virtual_path, std::string c
     return true;
 }
 
-bool VirtualFileSystemImpl::Unmount(std::string const& virtual_path)
+bool VirtualFileSystem::Unmount(std::string const& virtual_path)
 {
     std::string norm_virtual_prefix = NormalizeVirtualPath(virtual_path);
     if (!norm_virtual_prefix.empty() && norm_virtual_prefix.back() != '/')
@@ -83,7 +82,7 @@ bool VirtualFileSystemImpl::Unmount(std::string const& virtual_path)
     return false;
 }
 
-phx::Result<AsyncResourceDescriptor> VirtualFileSystemImpl::GetResourceDescriptorForAsync(std::string const& virtual_path) const
+phx::Result<AsyncResourceDescriptor> VirtualFileSystem::GetResourceDescriptorForAsync(std::string const& virtual_path) const
 {
     std::string norm_virtual_path = NormalizeVirtualPath(virtual_path);
     const MountPointInfo* best_match = nullptr;
@@ -150,13 +149,13 @@ phx::Result<AsyncResourceDescriptor> VirtualFileSystemImpl::GetResourceDescripto
     return phx::make_unexpected(~0ull);
 }
 
-phx::Result<std::vector<std::string>> phx::data::VirtualFileSystemImpl::GetResourceDependencies(std::string const& /*virtual_path*/) const
+phx::Result<std::vector<std::string>> VirtualFileSystem::GetResourceDependencies(std::string const& /*virtual_path*/) const
 {
     // TODO:
     return Result<std::vector<std::string>>();
 }
 
-phx::Result<phx::platform::PlatformFileAttributes> phx::data::VirtualFileSystemImpl::GetPlatformAttributes(std::string const& virtual_path) const
+phx::Result<phx::platform::PlatformFileAttributes> VirtualFileSystem::GetPlatformAttributes(std::string const& virtual_path) const
 {
     std::string norm_virtual_path = NormalizeVirtualPath(virtual_path);
     const MountPointInfo* best_match = nullptr;
@@ -181,7 +180,7 @@ phx::Result<phx::platform::PlatformFileAttributes> phx::data::VirtualFileSystemI
     return phx::Platform::Get().GetFileAttr(physical_path);
 }
 
-bool phx::data::VirtualFileSystemImpl::Exists(std::string const& virtual_path)
+bool VirtualFileSystem::Exists(std::string const& virtual_path)
 {
     Result<platform::PlatformFileAttributes> file_attributes = GetPlatformAttributes(virtual_path);
     if (file_attributes.HasError())
@@ -190,7 +189,7 @@ bool phx::data::VirtualFileSystemImpl::Exists(std::string const& virtual_path)
     return file_attributes->type == platform::PlatformFileType::File || file_attributes->type == platform::PlatformFileType::Directory;
 }
 
-phx::Result<uint64_t> phx::data::VirtualFileSystemImpl::GetUncompressedFileSize(const std::string& virtual_path) const
+phx::Result<uint64_t> VirtualFileSystem::GetUncompressedFileSize(const std::string& virtual_path) const
 {
     phx::Result<AsyncResourceDescriptor> descriptor = GetResourceDescriptorForAsync(virtual_path);
     if (descriptor.HasError())
@@ -202,13 +201,13 @@ phx::Result<uint64_t> phx::data::VirtualFileSystemImpl::GetUncompressedFileSize(
     return descriptor->compression_info.decompressed_size;
 }
 
-phx::Result<std::unique_ptr<phx::IBlob>> phx::data::VirtualFileSystemImpl::ReadFileSynchronous(const std::string& /*virtual_path*/) const
+phx::Result<std::unique_ptr<phx::IBlob>> VirtualFileSystem::ReadFileSynchronous(const std::string& /*virtual_path*/) const
 {
-    PHX_CORE_ERROR("Not Implementated yet (VirtualFileSystemImpl::ReadFileSynchronous");
+    PHX_CORE_ERROR("Not Implementated yet (VirtualFileSystem::ReadFileSynchronous");
     return make_unexpected(~0ull);;
 }
 
-std::string VirtualFileSystemImpl::NormalizeVirtualPath(const std::string& path) const
+std::string VirtualFileSystem::NormalizeVirtualPath(const std::string& path) const
 {
     std::string temp = path;
     std::replace(temp.begin(), temp.end(), '\\', '/');
@@ -216,7 +215,7 @@ std::string VirtualFileSystemImpl::NormalizeVirtualPath(const std::string& path)
     return temp;
 }
 
-std::string VirtualFileSystemImpl::NormalizePhysicalPath(const std::string& path) const
+std::string VirtualFileSystem::NormalizePhysicalPath(const std::string& path) const
 {
     std::string temp = path;
     std::replace(temp.begin(), temp.end(), '\\', '/');

@@ -10,7 +10,7 @@
 
 #include <PhxRenderer/DefaultRenderSystem.h>
 #include <PhxRenderer/ModelResourceHandler.h>
-#include <PhxData/VirtualFileSystemImpl.h>
+#include <PhxCore/VirtualFileSystem.h>
 
 #include <PhxReflection/Reflection.h>
 
@@ -18,6 +18,7 @@
 
 #include <PhxEngine/JobSystem.h>
 #include <PhxEngine/EngineSync.h>
+#include <PhxEngine/IStreamingManager.h>
 #include <PhxEngine/Memory/FrameMemoryManager.h>
 #include <PhxEngine/IO/StandardStreamingManager.h>
 
@@ -66,7 +67,7 @@ namespace phx
 
 			phx::reflection::Initialize();
 
-			phx::data::IVirtualFileSystem::Ptr = new data::VirtualFileSystemImpl();
+			phx::IVirtualFileSystem::Ptr = new VirtualFileSystem();
 
 			phx::IApplication::Ptr = phx::CreateApplication();
 		}
@@ -87,11 +88,11 @@ namespace phx
 
 			app->SetWindowHandle(windowHandle);
 
-			phx::data::IStreamingManager::Ptr = new phx::StandardStreamingManager(phx::data::IVirtualFileSystem::Ptr);
-			phx::data::IStreamingManager::Ptr->Initialize();
+			phx::IStreamingManager::Ptr = new phx::StandardStreamingManager(phx::IVirtualFileSystem::Ptr);
+			phx::IStreamingManager::Ptr->Initialize();
 
 			phx::ResourceSystem::Ptr = new ResourceSystem;
-			phx::ResourceSystem::Ptr->Initialize(phx::data::IVirtualFileSystem::Ptr, phx::data::IStreamingManager::Ptr);
+			phx::ResourceSystem::Ptr->Initialize(IVirtualFileSystem::Ptr, IStreamingManager::Ptr);
 			phx::ResourceSystem::Ptr->RegisterFileHanlder<renderer::ModelResourceHandler>();
 
 #if false
@@ -148,11 +149,11 @@ namespace phx
 			delete phx::ResourceSystem::Ptr;
 			phx::ResourceSystem::Ptr = nullptr;
 
-			phx::data::IStreamingManager::Ptr->Shutdown();
-			delete phx::data::IStreamingManager::Ptr;
+			IStreamingManager::Ptr->Shutdown();
+			delete IStreamingManager::Ptr;
 
-			delete phx::data::IVirtualFileSystem::Ptr;
-			phx::data::IVirtualFileSystem::Ptr = nullptr;
+			delete IVirtualFileSystem::Ptr;
+			IVirtualFileSystem::Ptr = nullptr;
 
 			phx::reflection::Shutdown();
 

@@ -1,4 +1,4 @@
-#include <PhxData/PhxData_pch.h>
+#include <PhxReflection/PhxReflection_pch.h>
 #include "Any.h"
 
 #include <type_traits>
@@ -6,7 +6,7 @@
 
 // Credit to: https://github.dev/FireFlyForLife/NeatReflection
 
-namespace phx::data
+namespace phx::reflection
 {
 	Any::Any(const Any& other) noexcept
 	{

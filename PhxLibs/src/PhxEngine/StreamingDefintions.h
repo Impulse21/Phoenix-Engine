@@ -9,7 +9,7 @@
 #include <PhxCore/Base.h>
 #include <PhxRhi/RHICommon.h>
 
-namespace phx::data
+namespace phx
 {
     // Forward declarations
     struct StreamingResult;

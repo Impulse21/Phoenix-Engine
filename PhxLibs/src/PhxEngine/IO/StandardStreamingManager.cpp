@@ -9,7 +9,6 @@
 #include <PhxRhi/PhxRhi.h>
 
 using namespace phx;
-using namespace phx::data;
 
 namespace
 {
@@ -227,7 +226,7 @@ void phx::StandardStreamingManager::Submit(StreamingRequest&& request)
 {
 	{
 		std::scoped_lock lock(m_queueMutex);
-		request.request_id = data::RequestIdGenerator();
+		request.request_id = RequestIdGenerator();
 		m_requestQueue.push_back(std::move(request));
 	}
 
@@ -262,7 +261,7 @@ void phx::StandardStreamingManager::StreamingThreadLoop()
 {
 	while (true)
 	{
-		data::StreamingRequest currentRequest;
+		StreamingRequest currentRequest;
 		{
 			std::unique_lock<std::mutex> lock(m_queueMutex);
 

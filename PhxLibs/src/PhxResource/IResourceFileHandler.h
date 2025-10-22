@@ -18,11 +18,8 @@ namespace phx
 	template<typename T>
 	struct ResourceFileHandlerId;
 
-	namespace data
-	{
-		class IVirtualFileSystem;
-		class IStreamingManager;
-	}
+	class IVirtualFileSystem;
+	class IStreamingManager;
 
 	class ResourceSystem;
 	struct Resource;
@@ -32,8 +29,8 @@ namespace phx
 		std::string virtual_file_path;
 		RefCountPtr<Resource> resource;
 		ResourceSystem* resource_system;
-		data::IVirtualFileSystem* vfs;
-		data::IStreamingManager* loader;
+		IVirtualFileSystem* vfs;
+		IStreamingManager* loader;
 	};
 
 	class ResourceFileHandler
@@ -43,7 +40,7 @@ namespace phx
 
 		virtual StringHash GetResourceTypeHash() const = 0;
 		virtual RefCountPtr<Resource> CreatePlaceholder() const = 0;
-		virtual void LoadAsync(data::IStreamingManager* streaming_manager, data::IVirtualFileSystem* vfs, RefCountPtr<Resource> asset, std::string const& virtual_file_path) const = 0;
+		virtual void LoadAsync(IStreamingManager* streaming_manager, IVirtualFileSystem* vfs, RefCountPtr<Resource> asset, std::string const& virtual_file_path) const = 0;
 
 	};
 }

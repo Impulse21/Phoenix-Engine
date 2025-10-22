@@ -1,8 +1,10 @@
 #pragma once
 
-#include <PhxData/IStreamingManager.h>
-#include <PhxData/IVirtualFileSystem.h>
+#include <PhxCore/IVirtualFileSystem.h>
 #include <PhxCore/Platform/PlatformWrapper.h>
+
+#include <PhxEngine/IStreamingManager.h>
+
 #include <deque>
 #include <mutex>
 #include <condition_variable>
@@ -16,10 +18,10 @@ namespace phx
 }
 namespace phx
 {
-	class StandardStreamingManager final : public data::IStreamingManager
+	class StandardStreamingManager final : public IStreamingManager
 	{
 	public:
-		StandardStreamingManager(data::IVirtualFileSystem* vfs)
+		StandardStreamingManager(IVirtualFileSystem* vfs)
 			: m_vfs(vfs)
 		{
 		}
@@ -27,7 +29,7 @@ namespace phx
 		void Initialize() override;
 		void Shutdown() override;
 
-		void Submit(data::StreamingRequest&& request) override;
+		void Submit(StreamingRequest&& request) override;
 
 		void Tick(float delta_time) override;
 
@@ -38,12 +40,12 @@ namespace phx
 		void StreamingThreadLoop();
 
 	private:
-		data::IVirtualFileSystem* m_vfs = nullptr;
+		IVirtualFileSystem* m_vfs = nullptr;
 
 		std::condition_variable m_cv;
 		std::atomic<bool> m_shutdown;
 
-		std::deque<data::StreamingRequest> m_requestQueue;
+		std::deque<StreamingRequest> m_requestQueue;
 		std::mutex m_queueMutex;
 
 		std::unordered_map<std::string, platform::PlatformFileHandle> m_fileHandleCache;

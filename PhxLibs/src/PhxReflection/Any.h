@@ -5,7 +5,7 @@
 #include <memory>
 
 // Credit to: https://github.dev/FireFlyForLife/NeatReflection
-namespace phx::data
+namespace phx::reflection
 {
 	class Any;
 
@@ -76,7 +76,7 @@ namespace phx::data
 
 
 // Implementation
-namespace phx::data
+namespace phx::reflection
 {
 	template<NotAny T>
 	Any::Any(T&& value)

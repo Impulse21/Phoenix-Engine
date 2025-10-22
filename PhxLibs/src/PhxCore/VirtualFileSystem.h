@@ -1,8 +1,8 @@
 #pragma once
 
-#include <PhxData/IVirtualFileSystem.h>
+#include <PhxCore/IVirtualFileSystem.h>
 
-namespace phx::data
+namespace phx
 {
 
 	// Internal structure for a mount point
@@ -23,11 +23,11 @@ namespace phx::data
 		}
 	};
 
-	class VirtualFileSystemImpl final : public IVirtualFileSystem
+	class VirtualFileSystem final : public IVirtualFileSystem
 	{
 	public:
-		VirtualFileSystemImpl() = default;
-		~VirtualFileSystemImpl() override = default;
+		VirtualFileSystem() = default;
+		~VirtualFileSystem() override = default;
 
 	public:
 		bool Mount(std::string const& virtual_path, std::string const& physical_path) override;

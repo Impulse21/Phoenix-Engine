@@ -6,7 +6,7 @@
 
 #include <PhxResource/ResourceSystem.h>
 
-#include <PhxData/IVirtualFileSystem.h>
+#include <PhxCore/IVirtualFileSystem.h>
 #include <PhxEngine/EntryPoint.h>
 
 #include <Generated/GlobalVariables.h>
@@ -70,7 +70,7 @@ void phx::DeleteApplication(phx::IApplication* ptr)
 void PhxRuntime::Startup()
 {
 	{
-		auto vfs = phx::data::IVirtualFileSystem::Ptr;
+		auto vfs = phx::IVirtualFileSystem::Ptr;
 		vfs->Mount("res://", phx::GlobalPaths::DefaultProjectDir);
 		vfs->Mount("art://", phx::GlobalPaths::ArtSrcDirectory);
 		vfs->Mount("res_embedded://", "embedded://");
