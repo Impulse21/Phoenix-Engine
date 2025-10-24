@@ -14,23 +14,15 @@
 using namespace phx;
 using namespace phx::renderer;
 
-void phx::renderer::ModelResourceHandler::LoadAsync(IStreamingManager* streaming_manager, IVirtualFileSystem* vfs, phx::RefCountPtr<phx::Resource> resource, std::string const& virtual_file_path) const
+void phx::renderer::ModelResourceHandler::LoadAsync(IStreamingManager* streaming_manager, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const
 {
 	// TODO: Check if cached version is loaded already. If so, load from there.
 	RefCountPtr<ModelResoure> model_resource = resource.As<ModelResoure>();
-	Result<AsyncResourceDescriptor> resource_descriptor = vfs->GetResourceDescriptorForAsync(virtual_file_path);
-
-	if (!resource_descriptor)
-	{
-		PHX_CORE_ERROR("Failed to find file info '{0}'", virtual_file_path);
-		model_resource->state = Resource::State::Error;
-		return;
-	}
 
 	model_resource->state = Resource::State::Loading;
 	ResourceFile::Load(
 		streaming_manager,
-		resource_descriptor.GetValue(),
+		resource_descriptor,
 		[model_resource](std::shared_ptr<ResourceFile> /*resourceFile*/)
 		{
 			// auto meshMetadata = reinterpret_cast<const ModelMetadata*>(resourceFile->Metadata->MetadataChunk.Get());
@@ -38,17 +30,17 @@ void phx::renderer::ModelResourceHandler::LoadAsync(IStreamingManager* streaming
 
 		});
 	// TODO: Fix boiler plate stuff.
-	std::shared_ptr<char[]> dest = std::make_shared<char[]>(resource_descriptor->length_of_resource);
+	std::shared_ptr<char[]> dest = std::make_shared<char[]>(resource_descriptor.length_of_resource);
 	StreamingRequest request = {
 		.operations = {
 			{
 				.source = {
-					.data = resource_descriptor.GetValue(),
-					.size = resource_descriptor->length_of_resource,
+					.data = resource_descriptor,
+					.size = resource_descriptor.length_of_resource,
 				},
 				.destination = {
 					.target = dest,
-					.size = resource_descriptor->length_of_resource,
+					.size = resource_descriptor.length_of_resource,
 				}
 			}
 		}
@@ -57,11 +49,13 @@ void phx::renderer::ModelResourceHandler::LoadAsync(IStreamingManager* streaming
 	request.on_complete = [=](StreamingResult const& result) mutable {
 		if (result.error_code != ErrorCode::Success)
 		{
-			PHX_CORE_ERROR("Failed to load '{0}'", virtual_file_path);
+			PHX_CORE_ERROR("Failed to load '{0}'", resource_descriptor.virtual_path);
 			model_resource->state = Resource::State::Error;
+
 			return;
 		}
 	};
+
 	streaming_manager->Submit(std::move(request));
 #if false
 	ResourceFile::Load(

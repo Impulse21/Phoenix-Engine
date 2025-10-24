@@ -3,9 +3,12 @@
 #include <PhxCore/StringHash.h>
 #include <PhxCore/RefCountPtr.h>
 #include <PhxCore/IO/FileUtils.h>
+#include <PhxCore/IVirtualFileSystem.h>
 
 #include <PhxResource/IResourceFileHandler.h>
 #include <PhxResource/Resource.h>
+
+#include <PhxEngine/StreamingDefintions.h>
 
 namespace phx
 {
@@ -14,7 +17,6 @@ namespace phx
 	template<typename T>
 	concept ResourceFileHandlerType = std::is_base_of_v<phx::ResourceFileHandler, T>;
 
-	class IVirtualFileSystem;
 	class IStreamingManager;
 
 	class ResourceSystem
@@ -80,7 +82,18 @@ namespace phx
 			"Loading Resource '{0}' from disk",
 			virtual_file_path);
 
-		handler_to_use->LoadAsync(m_loader, m_vfs, placeholder, virtual_file_path);
+		Result<AsyncResourceDescriptor> resource_descriptor = m_vfs->GetResourceDescriptorForAsync(virtual_file_path);
+		if (resource_descriptor.HasError())
+		{
+			PHX_CORE_INFO(
+				"Failed to load resource '{0}'. Unable to retrieve resource descriptor",
+				virtual_file_path);
+
+			placeholder->state = Resource::State::Error;
+			return placeholder;
+		}
+
+		handler_to_use->LoadAsync(m_loader, placeholder, resource_descriptor.GetValue());
 
 		return placeholder;
 	}

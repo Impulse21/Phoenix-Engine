@@ -21,7 +21,6 @@
 
 using namespace phxed;
 using namespace phx;
-using namespace phx::data;
 using namespace phx::renderer;
 
 namespace
@@ -51,7 +50,7 @@ phx::RefCountPtr<phx::Resource> phxed::GtlfModelHandler::CreatePlaceholder() con
 	return phx::RefCountPtr<phx::Resource>(new ModelResoure());
 }
 
-void phxed::GtlfModelHandler::LoadAsync(data::IStreamingManager* streaming_manager, IVirtualFileSystem* vfs, phx::RefCountPtr<phx::Resource> resource, std::string const& virtual_file_path) const
+void phxed::GtlfModelHandler::LoadAsync(IStreamingManager* streaming_manager, RefCountPtr<Resource> asset, AsyncResourceDescriptor const& resource_descriptor) const
 {
 	// TODO: Check if cached version is loaded already. If so, load from there.
 	RefCountPtr<ModelResoure> model_resource = resource.As<ModelResoure>();

@@ -1,9 +1,15 @@
 #pragma once
 
+#include <unordered_map>
+
+#include <PhxCore/Span.h>
+
 #include <PhxResource/Resource.h>
 #include <PhxResource/IResourceFileHandler.h>
 
 #include <PhxWorld/PrefabResource.h>
+
+struct cgltf_mesh;
 
 namespace phx
 {
@@ -15,10 +21,11 @@ namespace phx
 		StringHash GetResourceTypeHash() const override { return PrefabResource::StaticTypeHash(); };
 		bool IsStale(std::string const& virtual_file_path, IVirtualFileSystem* vfs) const override;
 		RefCountPtr<Resource> CreatePlaceholder() const override { return RefCountPtr<Resource>::Create(new PrefabHandleResource()); }
-		void LoadAsync(IStreamingManager* streaming_manager, IVirtualFileSystem* vfs, RefCountPtr<Resource> resource, std::string const& virtual_file_path) const override;
+		void LoadAsync(IStreamingManager* streaming_manager, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const override;
 
 	private:
 		static void CookPrefab(RefCountPtr<PrefabHandleResource> prefab_handle_resource, AsyncResourceDescriptor const& resource_descriptor, void* file_data);
+		static void CookMeshes(Span<cgltf_mesh> meshes, std::unordered_map<cgltf_mesh*, std::string> cooked_files_registery);
 	};
 }
 

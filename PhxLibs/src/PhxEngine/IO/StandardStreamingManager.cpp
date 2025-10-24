@@ -37,6 +37,11 @@ struct StreamingRequestProcessor
 				result.status_array.set(i);
 		}
 
+		if (result.status_array.none())
+		{
+			result.error_code = ErrorCode::Success;
+		}
+
 		RHI::SubmitAsyncCommandBuffer({ ctx_handle });
 
 		JobSystem::SubmitJob(

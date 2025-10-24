@@ -70,6 +70,23 @@ namespace
 
     }
 #endif
+
+    class CGltfPrefabCooker
+    {
+    public:
+        static void Cook(cgltf_data* gltf_data);
+
+    protected:
+        CGltfPrefabCooker(cgltf_data* gltf_data);
+
+        bool operator()(int x)
+        {
+        }
+
+    private:
+        std::unordered_map<cgltf_mesh*, std::string> m_cooked_files_registery;
+
+    };
 }
 
 namespace CookedPathBuilder
@@ -119,24 +136,22 @@ bool phx::GltfPrefabHandler::IsStale(std::string const& virtual_file_path, IVirt
     return true;
 }
 
-void GltfPrefabHandler::LoadAsync(IStreamingManager* streaming_manager, IVirtualFileSystem* vfs, RefCountPtr<Resource> resource, std::string const& virtual_file_path) const
+void GltfPrefabHandler::LoadAsync(IStreamingManager* streaming_manager, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const
 {
     RefCountPtr<PrefabHandleResource> prefab_handle_resource = resource.As<PrefabHandleResource>();
 
-    Result<AsyncResourceDescriptor> gltf_resource_descriptor = vfs->GetResourceDescriptorForAsync(virtual_file_path);
-
     // TODO: the streaming manager can handle allocating and dealloating stagging buffer data
-    std::shared_ptr<char[]> dest = std::make_shared<char[]>(gltf_resource_descriptor->length_of_resource);
+    std::shared_ptr<char[]> dest = std::make_shared<char[]>(resource_descriptor.length_of_resource);
     StreamingRequest request = {
         .operations = {
             {
                 .source = {
-                    .data = gltf_resource_descriptor.GetValue(),
-                    .size = gltf_resource_descriptor->length_of_resource,
+                    .data = resource_descriptor,
+                    .size = resource_descriptor.length_of_resource,
                 },
                 .destination = {
                     .target = dest,
-                    .size = gltf_resource_descriptor->length_of_resource,
+                    .size = resource_descriptor.length_of_resource,
                 }
             }
         }
@@ -145,12 +160,12 @@ void GltfPrefabHandler::LoadAsync(IStreamingManager* streaming_manager, IVirtual
     request.on_complete = [=](StreamingResult const& result) mutable {
         if (result.error_code != ErrorCode::Success)
         {
-            PHX_CORE_ERROR("Failed to load '{0}'", virtual_file_path);
+            PHX_CORE_ERROR("Failed to load '{0}'", resource_descriptor.virtual_path);
             prefab_handle_resource->state = Resource::State::Error;
             return;
         }
 
-        CookPrefab(prefab_handle_resource, *gltf_resource_descriptor, dest.get());
+        CookPrefab(prefab_handle_resource, resource_descriptor, dest.get());
      };
 
     streaming_manager->Submit(std::move(request));
@@ -189,4 +204,30 @@ void phx::GltfPrefabHandler::CookPrefab(RefCountPtr<PrefabHandleResource> prefab
         return;
     }
 
+    // Cook Meshes Meshes
+    
+    CookMeshes(Span(gltf_data->meshes, gltf_data->meshes_count), cooked_files_registery);
+
+}
+
+void phx::GltfPrefabHandler::CookMeshes(Span<cgltf_mesh> meshes, std::unordered_map<cgltf_mesh*, std::string> cooked_files_registery)
+{
+    for (const cgltf_mesh& mesh : meshes)
+    {
+        CookedPathBuilder
+        Result<AsyncResourceDescriptor> gltf_resource_descriptor = vfs->GetResourceDescriptorForAsync(virtual_file_path);
+        phx::Result<platform::PlatformFileAttributes> gltf_resource_attr = phx::Platform::Get().GetFileAttr(gltf_resource_descriptor->os_path_or_pak_path);
+
+        // cooked prefab path
+        std::string cooked_prefab_path = CookedPathBuilder::ForPrefab(virtual_file_path);
+        Result<AsyncResourceDescriptor> prefab_resource_descriptor = vfs->GetResourceDescriptorForAsync(cooked_prefab_path);
+
+        // TODO: Handle pack files
+        phx::Result<platform::PlatformFileAttributes> cooked_file_attr = phx::Platform::Get().GetFileAttr(prefab_resource_descriptor->os_path_or_pak_path);
+
+        if (cooked_file_attr && gltf_resource_attr)
+        {
+            return gltf_resource_attr->last_write_time > cooked_file_attr->last_write_time;
+        }
+    }
 }

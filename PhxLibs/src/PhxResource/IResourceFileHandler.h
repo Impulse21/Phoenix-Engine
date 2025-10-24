@@ -20,6 +20,7 @@ namespace phx
 
 	class IVirtualFileSystem;
 	class IStreamingManager;
+	struct AsyncResourceDescriptor;
 
 	class ResourceSystem;
 	struct Resource;
@@ -41,7 +42,7 @@ namespace phx
 		virtual StringHash GetResourceTypeHash() const = 0;
 		virtual bool IsStale(std::string const& virtual_file_path, IVirtualFileSystem* vfs) const = 0;
 		virtual RefCountPtr<Resource> CreatePlaceholder() const = 0;
-		virtual void LoadAsync(IStreamingManager* streaming_manager, IVirtualFileSystem* vfs, RefCountPtr<Resource> asset, std::string const& virtual_file_path) const = 0;
+		virtual void LoadAsync(IStreamingManager* streaming_manager, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const = 0;
 
 	};
 }
