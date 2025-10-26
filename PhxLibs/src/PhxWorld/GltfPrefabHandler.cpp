@@ -74,14 +74,16 @@ namespace
     class CGltfPrefabCooker
     {
     public:
-        static void Cook(cgltf_data* gltf_data);
+        static bool Cook(cgltf_data* gltf_data)
+        {
+            CGltfPrefabCooker cook(gltf_data);
+            return cook();
+        }
 
     protected:
         CGltfPrefabCooker(cgltf_data* gltf_data);
 
-        bool operator()(int x)
-        {
-        }
+        bool operator()();
 
     private:
         std::unordered_map<cgltf_mesh*, std::string> m_cooked_files_registery;
@@ -205,7 +207,7 @@ void phx::GltfPrefabHandler::CookPrefab(RefCountPtr<PrefabHandleResource> prefab
     }
 
     // Cook Meshes Meshes
-    
+    // TODO: check if prefab is static by examining the scenes extra section - if it is collapse the hierachy.
     CookMeshes(Span(gltf_data->meshes, gltf_data->meshes_count), cooked_files_registery);
 
 }
@@ -230,4 +232,9 @@ void phx::GltfPrefabHandler::CookMeshes(Span<cgltf_mesh> meshes, std::unordered_
             return gltf_resource_attr->last_write_time > cooked_file_attr->last_write_time;
         }
     }
+}
+
+bool CGltfPrefabCooker::operator()
+{
+    return false;
 }
