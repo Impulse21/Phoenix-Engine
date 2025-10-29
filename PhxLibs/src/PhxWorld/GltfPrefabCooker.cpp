@@ -46,6 +46,7 @@ namespace phx::compiler
 		};
 	};
 
+
 	enum { kBaseColor, kMetallicRoughness, kOcclusion, kEmissive, kNormalMap, kNumTextures };
 
 	// -- TODO: Move to texture compiler
@@ -160,7 +161,7 @@ namespace phx::compiler
 	};
 }
 
-namespace CookedPathBuilder
+namespace phx::CookedPathBuilder
 {
     std::string ForPrefab(const std::string& source_path)
     {
@@ -194,6 +195,12 @@ phx::CGltfPrefabCooker::CGltfPrefabCooker(cgltf_data const& gltf_data, AsyncReso
 {
 }
 
+bool phx::CGltfPrefabCooker::operator()()
+{
+	CookMeshes(Span<cgltf_mesh>(m_gltf.meshes, m_gltf.meshes_count));
+	return true;
+}
+
 void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
 {
     const IVirtualFileSystem* vfs = IVirtualFileSystem::Ptr;
@@ -204,7 +211,7 @@ void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
         const cgltf_mesh& gltf_mesh = cgltf_meshes[i];
 
         // build mesh name
-        std::string mesh_name = gltf_mesh.name ? gltf_mesh.name : "Mesh " + std::to_string(name_mesh_count++);
+        std::string mesh_name = gltf_mesh.name ? gltf_mesh.name : "Mesh_" + std::to_string(name_mesh_count++);
         std::string cooked_mesh_virtual_path = CookedPathBuilder::ForMesh(m_resource_description.virtual_path, mesh_name);
         phx::Result<AsyncResourceDescriptor> cooked_mesh_file_descriptor = vfs->GetResourceDescriptorForAsync(cooked_mesh_virtual_path);
 
@@ -221,6 +228,7 @@ void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
 
     }
 }
+
 bool CGltfPrefabCooker::IsCookedResourceStale(phx::Result<AsyncResourceDescriptor> const& cooked_resource_descriptor) const
 {
     if (cooked_resource_descriptor.HasError())
@@ -266,8 +274,19 @@ namespace
 	template <typename VertexType>
 	void CopyAttributeToVector(std::vector<VertexType>& out_vector, const cgltf_accessor* accessor)
 	{
+		static_assert(sizeof(VertexType) == sizeof(float) * 4);
+		const size_t num_components = cgltf_num_components(accessor->type);
+
+		std::vector<float> temp_floats(accessor->count * num_components);
+		cgltf_accessor_unpack_floats(accessor, temp_floats.data(), temp_floats.size());
+
 		out_vector.resize(accessor->count);
-		cgltf_accessor_unpack_floats(accessor, reinterpret_cast<cgltf_float*>(&out_vector[0]), accessor->count * (sizeof(VertexType) / sizeof(float)));
+		for (cgltf_size i = 0; i < accessor->count; ++i)
+		{
+			const float* source_floats = &temp_floats[i * num_components];
+			void* dest_ptr = &out_vector[i];
+			memcpy(dest_ptr, source_floats, num_components * sizeof(float));
+		}
 	}
 	
 	void CopyIntegerAttributeToVector(std::vector<hlslpp::uint4>& out_vector, const cgltf_accessor* accessor)
@@ -376,7 +395,7 @@ void phx::CGltfMeshCooker::InitializeSubMesh(compiler::IntermediateSubMesh& sub_
 	}
 
 	// Handle indices separately
-	if (src_prim.indices->count > -1) 
+	if (src_prim.indices->count != 0) 
 	{
 		sub_mesh.indices.resize(src_prim.indices->count);
 		cgltf_accessor_unpack_indices(src_prim.indices, &sub_mesh.indices[0], sizeof(uint32_t), src_prim.indices->count);
@@ -441,4 +460,14 @@ void CGltfMeshCooker::CalculateBounds(compiler::IntermediateSubMesh& sub_mesh)
 	}
 
 	sub_mesh.bounds_ls = math::BoundingSphere(sphere_centre_ls, hlslpp::sqrt(max_radius_ls_sq));
+}
+
+compiler::IntermediateMesh phx::CGltfMeshCooker::CompileIntermediateMesh(Span<compiler::IntermediateSubMesh> sub_meshes)
+{
+	return compiler::IntermediateMesh();
+}
+
+bool phx::CGltfMeshCooker::SerializeMeshToDisk(const compiler::IntermediateMesh& final_mesh, const std::string& output_path)
+{
+	return false;
 }

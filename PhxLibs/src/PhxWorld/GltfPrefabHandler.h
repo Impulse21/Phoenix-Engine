@@ -25,7 +25,6 @@ namespace phx
 
 	private:
 		static void CookPrefab(RefCountPtr<PrefabHandleResource> prefab_handle_resource, AsyncResourceDescriptor const& resource_descriptor, void* file_data);
-		static void CookMeshes(Span<cgltf_mesh> meshes, std::unordered_map<cgltf_mesh*, std::string> cooked_files_registery);
 	};
 }
 
