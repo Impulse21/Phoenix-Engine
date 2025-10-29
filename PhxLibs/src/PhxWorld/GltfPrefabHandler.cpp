@@ -8,18 +8,14 @@
 #include <PhxEngine/StreamingDefintions.h>
 #include <PhxEngine/IStreamingManager.h>
 
+#include "GltfPrefabCooker.h"
+
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 
 #include <string>
 
 using namespace phx;
-
-namespace CookedPathBuilder
-{
-    std::string ForPrefab(const std::string& source_path);
-    std::string ForMesh(const std::string& source_path, const std::string& sub_asset_name);
-}
 
 namespace
 {
@@ -78,46 +74,6 @@ namespace
 #endif
 
 }
-
-
-class CGltfPrefabCooker
-{
-public:
-    static bool Cook(cgltf_data const& gltf_data, AsyncResourceDescriptor const& resource_descriptor)
-    {
-        CGltfPrefabCooker cook(gltf_data, resource_descriptor);
-        return cook();
-    }
-
-protected:
-    CGltfPrefabCooker(cgltf_data const& gltf_data, AsyncResourceDescriptor const& resource_description)
-        : m_gltf(gltf_data)
-        , m_resource_description(resource_description)
-        , m_cgltf_file_attributes(phx::Platform::Get().GetFileAttr(resource_description.os_path_or_pak_path).GetValue())
-    {
-    }
-
-    bool operator()()
-    {
-        // Cook Meshes Meshes
-        // TODO: check if prefab is static by examining the scenes extra section - if it is collapse the hierachy.
-        CookMeshes(Span(m_gltf.meshes, m_gltf.meshes_count));
-        return false;
-    }
-
-    void CookMeshes(Span<cgltf_mesh> cgltf_meshes);
-    void CookMesh(cgltf_mesh const& gltf_mesh);
-
-private:
-    bool IsCookedResourceStale(phx::Result<AsyncResourceDescriptor> const& cooked_resource_descriptor) const;
-
-private:
-    const cgltf_data& m_gltf;
-    const AsyncResourceDescriptor& m_resource_description;
-    platform::PlatformFileAttributes m_cgltf_file_attributes;
-    std::unordered_map<const cgltf_mesh*, std::string> m_cooked_files_registery;
-
-};
 
 bool phx::GltfPrefabHandler::IsStale(std::string const& virtual_file_path, IVirtualFileSystem* vfs) const
 {
@@ -208,85 +164,4 @@ void phx::GltfPrefabHandler::CookPrefab(RefCountPtr<PrefabHandleResource> prefab
     }
 
 	CGltfPrefabCooker::Cook(*gltf_data, resource_descriptor);
-
-}
-
-
-
-namespace CookedPathBuilder
-{
-    std::string ForPrefab(const std::string& source_path)
-    {
-        std::string dir = GetDirectory(source_path);
-        std::string filename = GetFileNameWithoutExt(source_path);
-
-        // 2. Construct the new cache directory.
-        std::string cache_dir = JoinPaths(dir, ".cache/prefabs/");
-
-        // 3. Assemble the final path with the new extension.
-        return JoinPaths(cache_dir, filename + ".phxfab");
-    }
-
-    std::string ForMesh(const std::string& source_path, const std::string& sub_asset_name)
-    {
-        std::string dir = GetDirectory(source_path);
-        std::string source_filename = GetFileNameWithoutExt(source_path);
-
-        std::string cache_dir = JoinPaths(dir, ".cache/meshes/");
-
-        std::string new_filename = source_filename + "_" + sub_asset_name + ".phxmsh";
-
-        return JoinPaths(cache_dir, new_filename);
-    }
-}
-
-void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
-{
-	const IVirtualFileSystem* vfs = IVirtualFileSystem::Ptr;
-
-	size_t name_mesh_count = 0;
-	for (size_t i = 0; i < cgltf_meshes.size(); ++i)
-	{
-		const cgltf_mesh& gltf_mesh = cgltf_meshes[i];
-
-		// build mesh name
-		std::string mesh_name = gltf_mesh.name ? gltf_mesh.name : "Mesh " + std::to_string(name_mesh_count++);
-		std::string cooked_mesh_virtual_path = CookedPathBuilder::ForMesh(m_resource_description.virtual_path, mesh_name);
-		phx::Result<AsyncResourceDescriptor> cooked_mesh_file_descriptor = vfs->GetResourceDescriptorForAsync(cooked_mesh_virtual_path);
-
-		m_cooked_files_registery[&gltf_mesh] = cooked_mesh_virtual_path;
-
-		// Determine if the mesh is stale
-		const bool is_stale = IsCookedResourceStale(cooked_mesh_file_descriptor);
-
-		// Nothing to do here - continuing
-		if (!is_stale)
-			continue;
-
-		// Start cooking asset - can be dispatched into low prio thread maybe.
-		// TODO: Test dispatching work.
-
-        // TODO: Create Mesh data CPU
-		CookMesh(gltf_mesh);
-        
-		// Save Resource to disk - TODO: Implement
-
-	}
-}
-
-void CGltfPrefabCooker::CookMesh(cgltf_mesh const& gltf_mesh)
-{
-}
-
-bool CGltfPrefabCooker::IsCookedResourceStale(phx::Result<AsyncResourceDescriptor> const& cooked_resource_descriptor) const
-{
-	if (cooked_resource_descriptor.HasError())
-		return true;
-
-	phx::Result<platform::PlatformFileAttributes> cooked_resource_attribute = phx::Platform::Get().GetFileAttr(cooked_resource_descriptor->os_path_or_pak_path);
-
-	if (cooked_resource_attribute.HasError())
-		return false;
-
-	return cooked_resource_attribute->last_write_time < m_cgltf_file_attributes.last_write_time;
 }
