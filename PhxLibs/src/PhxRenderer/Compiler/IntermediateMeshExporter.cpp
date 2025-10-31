@@ -130,7 +130,7 @@ bool IntermediateMeshExporter::operator()()
 			m_intermediate_mesh.vertex_buffer.Data(), m_intermediate_mesh.vertex_buffer.Size());
 	}
 
-	MemoryBuffer file_data_buffer = MemoryBuffer(file_builder.GetSize());
+	MemoryBuffer file_data_buffer = file_builder.Finalize();
 	m_out.write(reinterpret_cast<const char*>(file_data_buffer.Data()), file_data_buffer.Size());
 
 	return true;

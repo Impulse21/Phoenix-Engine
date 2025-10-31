@@ -23,8 +23,11 @@ namespace phx
 		RefCountPtr<Resource> CreatePlaceholder() const override { return RefCountPtr<Resource>::Create(new PrefabHandleResource()); }
 		void LoadAsync(IStreamingManager* streaming_manager, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const override;
 
+		static void SetForceRecook(bool enable) { g_force_recook = enable; }
+
 	private:
 		static void CookPrefab(RefCountPtr<PrefabHandleResource> prefab_handle_resource, AsyncResourceDescriptor const& resource_descriptor, void* file_data);
+		inline static bool g_force_recook = false;
 	};
 }
 

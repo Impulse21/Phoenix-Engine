@@ -124,14 +124,18 @@ void GltfPrefabHandler::LoadAsync(IStreamingManager* streaming_manager, RefCount
             return;
         }
 
+        // TODO: Check if resource is stale.
         CookPrefab(prefab_handle_resource, resource_descriptor, dest.get());
      };
 
     streaming_manager->Submit(std::move(request));
 }
 
+
 void phx::GltfPrefabHandler::CookPrefab(RefCountPtr<PrefabHandleResource> prefab_handle_resource, AsyncResourceDescriptor const& resource_descriptor, void* file_data)
 {
+	PHX_CORE_INFO("Cooking glTF Prefab '{0}'", resource_descriptor.virtual_path);
+
     std::string cooked_prefab_path = CookedPathBuilder::ForPrefab(resource_descriptor.virtual_path);
 
     CgltfContext ctx = {};
@@ -163,5 +167,5 @@ void phx::GltfPrefabHandler::CookPrefab(RefCountPtr<PrefabHandleResource> prefab
         return;
     }
 
-	CGltfPrefabCooker::Cook(*gltf_data, resource_descriptor);
+	CGltfPrefabCooker::Cook(*gltf_data, resource_descriptor, g_force_recook);
 }

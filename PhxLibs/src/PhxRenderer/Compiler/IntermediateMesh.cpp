@@ -28,13 +28,12 @@ namespace
         if (vertex_data.IsEmpty())
             return;
 
-        float* dest = vertex_builder.template PlaceType<float>(static_cast<TOffsetHandle>(stream_desc.GetOffset()));
+        auto* dest = vertex_builder.template PlaceType<std::byte>(static_cast<TOffsetHandle>(stream_desc.GetOffset()));
 
         const size_t stride = stream_desc.GetStride();
         for (size_t v = 0; v < vertex_data.size(); ++v)
         {
             std::memcpy(dest + (v * stride), &vertex_data[v], stride);
-
         }
     }
 }

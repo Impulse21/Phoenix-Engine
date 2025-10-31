@@ -26,14 +26,14 @@ namespace phx
     class CGltfPrefabCooker
     {
     public:
-        static bool Cook(cgltf_data const& gltf_data, AsyncResourceDescriptor const& resource_descriptor)
+        static bool Cook(cgltf_data const& gltf_data, AsyncResourceDescriptor const& resource_descriptor, bool force_recook = false)
         {
-            CGltfPrefabCooker cook(gltf_data, resource_descriptor);
+            CGltfPrefabCooker cook(gltf_data, resource_descriptor, force_recook);
             return cook();
         }
 
     protected:
-        CGltfPrefabCooker(cgltf_data const& gltf_data, AsyncResourceDescriptor const& resource_description);
+        CGltfPrefabCooker(cgltf_data const& gltf_data, AsyncResourceDescriptor const& resource_description, bool force_recook);
 
         bool operator()();
 
@@ -43,6 +43,7 @@ namespace phx
         bool IsCookedResourceStale(phx::Result<AsyncResourceDescriptor> const& cooked_resource_descriptor) const;
 
     private:
+		const bool m_force_recook;
         const cgltf_data& m_gltf;
         const AsyncResourceDescriptor& m_resource_description;
         platform::PlatformFileAttributes m_cgltf_file_attributes;

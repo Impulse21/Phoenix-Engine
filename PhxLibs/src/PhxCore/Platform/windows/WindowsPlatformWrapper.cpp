@@ -65,7 +65,7 @@ phx::Result<PlatformFileAttributes>  WindowsPlatformWrapperImpl::PlatformGetFile
 	WIN32_FILE_ATTRIBUTE_DATA win_file_attributes;
 	if (!GetFileAttributesExW(wide_os_path.c_str(), GetFileExInfoStandard, &win_file_attributes))
 	{
-		PHX_CORE_ERROR("Failed to retrieve platform file attributes: {0}", norm_physical_path);
+		PHX_CORE_WARN("Failed to retrieve platform file attributes: {0}", norm_physical_path);
 		return make_unexpected(~0ull);
 	}
 

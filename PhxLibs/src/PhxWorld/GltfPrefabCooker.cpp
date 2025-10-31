@@ -7,6 +7,8 @@
 #include <PhxCore/Math.h>
 
 #include <PhxCore/BinaryBuilder.h>
+#include <PhxCore/IO/FileUtils.h>
+
 #include <PhxRenderer/shaders/ShaderInterop.h>
 #include <PhxRenderer/Compiler/IntermediateMeshExporter.h>
 #include <PhxRenderer/MeshResourceHandler.h>
@@ -145,8 +147,9 @@ namespace phx::CookedPathBuilder
     }
 }
 
-phx::CGltfPrefabCooker::CGltfPrefabCooker(cgltf_data const& gltf_data, AsyncResourceDescriptor const& resource_description)
-	: m_gltf(gltf_data)
+phx::CGltfPrefabCooker::CGltfPrefabCooker(cgltf_data const& gltf_data, AsyncResourceDescriptor const& resource_description, bool force_recook)
+	: m_force_recook(force_recook)
+	, m_gltf(gltf_data)
 	, m_resource_description(resource_description)
 	, m_cgltf_file_attributes(phx::Platform::Get().GetFileAttr(resource_description.os_path_or_pak_path).GetValue())
 {
@@ -178,11 +181,17 @@ void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
         const bool is_stale = IsCookedResourceStale(cooked_mesh_file_descriptor);
 
         // Nothing to do here - continuing
-        if (!is_stale)
-            continue;
+		if (!is_stale)
+		{
+			PHX_CORE_INFO("Mesh '{0}' is up to date. Skipping cook.", mesh_name);
+			continue;
+		}
 
-		CGltfIntermediateMeshCooker::Cook(m_gltf, gltf_mesh, cooked_mesh_virtual_path);
-
+		PHX_CORE_INFO("Mesh '{0}' is stale or missing. Cooking to '{1}'", mesh_name, cooked_mesh_virtual_path);
+		if (!CGltfIntermediateMeshCooker::Cook(m_gltf, gltf_mesh, cooked_mesh_virtual_path))
+		{
+			PHX_CORE_ERROR("Failed to cook mesh '{0}' to '{1}'", mesh_name, cooked_mesh_virtual_path);
+		}
     }
 }
 
@@ -190,6 +199,12 @@ bool CGltfPrefabCooker::IsCookedResourceStale(phx::Result<AsyncResourceDescripto
 {
     if (cooked_resource_descriptor.HasError())
         return true;
+
+	if (m_force_recook)
+	{
+		PHX_CORE_WARN("Forcing recook of resource '{0}'", cooked_resource_descriptor->virtual_path);
+		return true;
+	}
 
     phx::Result<platform::PlatformFileAttributes> cooked_resource_attribute = phx::Platform::Get().GetFileAttr(cooked_resource_descriptor->os_path_or_pak_path);
 
@@ -233,7 +248,18 @@ bool CGltfIntermediateMeshCooker::operator()()
 		return false;
 	}
 
+	if (!DirectoryExists(physical_path.GetValue()))
+	{
+		CreateDirectories(physical_path.GetValue());
+	}
+
 	std::ofstream out_file(physical_path.GetValue(), std::ios::binary);
+	if (out_file.is_open() == false)
+	{
+		PHX_ERROR("Failed to open output file '{0}' for writing.", physical_path.GetValue());
+		return false;
+	}
+
 	compiler::IntermediateMeshExporter::Export(intermediate_mesh, out_file);
 
 	return true;
@@ -318,7 +344,7 @@ void phx::CGltfIntermediateMeshCooker::InitializeSubMesh(compiler::IntermediateS
 			}
 			else
 			{
-				PHX_WARN("Unsupported texture coordinate set TEXCOORD_{0} found.", attribute.index);
+				PHX_CORE_WARN("Unsupported texture coordinate set TEXCOORD_{0} found.", attribute.index);
 			}
 			break;
 
@@ -329,7 +355,7 @@ void phx::CGltfIntermediateMeshCooker::InitializeSubMesh(compiler::IntermediateS
 			}
 			else
 			{
-				PHX_WARN("Unsupported color set COLOR_{0} found.", attribute.index);
+				PHX_CORE_WARN("Unsupported color set COLOR_{0} found.", attribute.index);
 			}
 			break;
 
@@ -340,7 +366,7 @@ void phx::CGltfIntermediateMeshCooker::InitializeSubMesh(compiler::IntermediateS
 			}
 			else
 			{
-				PHX_WARN("Unsupported joint set JOINTS_{0} found.", attribute.index);
+				PHX_CORE_WARN("Unsupported joint set JOINTS_{0} found.", attribute.index);
 			}
 			break;
 
@@ -351,7 +377,7 @@ void phx::CGltfIntermediateMeshCooker::InitializeSubMesh(compiler::IntermediateS
 			}
 			else
 			{
-				PHX_WARN("Unsupported weight set WEIGHTS_{0} found.", attribute.index);
+				PHX_CORE_WARN("Unsupported weight set WEIGHTS_{0} found.", attribute.index);
 			}
 			break;
 
@@ -359,7 +385,7 @@ void phx::CGltfIntermediateMeshCooker::InitializeSubMesh(compiler::IntermediateS
 		case cgltf_attribute_type_custom:
 		default:
 			// TODO: Convert to a proper error message.
-			PHX_WARN("Unhandled or invalid cgltf attribute type encountered: {0}", static_cast<uint32_t>(attribute.type));
+			PHX_CORE_WARN("Unhandled or invalid cgltf attribute type encountered: {0}", static_cast<uint32_t>(attribute.type));
 			break;
 		}
 	}
@@ -374,8 +400,8 @@ void phx::CGltfIntermediateMeshCooker::InitializeSubMesh(compiler::IntermediateS
 	bool generated_normals = false;
 	if (sub_mesh.normals.empty())
 	{
-		PHX_INFO("Mesh doens't contain normal data. Generating normals.");
-		PHX_ASSERT(false, "TODO: Generate normals");
+		PHX_CORE_INFO("Mesh doens't contain normal data. Generating normals.");
+		PHX_CORE_ASSERT(false, "TODO: Generate normals");
 		generated_normals = true;
 	}
 
@@ -386,8 +412,8 @@ void phx::CGltfIntermediateMeshCooker::InitializeSubMesh(compiler::IntermediateS
 
 	if (generate_tangents || sub_mesh.tangents.empty())
 	{
-		PHX_INFO("Generating tangent data.");
-		PHX_WARN("TODO: Generate tangents not implemented");
+		PHX_CORE_INFO("Generating tangent data.");
+		PHX_CORE_WARN("TODO: Generate tangents not implemented");
 	}
 
 	if (src_prim.material)

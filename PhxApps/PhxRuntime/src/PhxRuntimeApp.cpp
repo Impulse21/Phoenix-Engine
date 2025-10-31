@@ -80,6 +80,7 @@ void PhxRuntime::Startup()
 
 	auto resource_system = phx::ResourceSystem::Ptr;
 	resource_system->RegisterFileHanlder<phx::GltfPrefabHandler>();
+	phx::GltfPrefabHandler::SetForceRecook(true);
 
 	const char* box_prefab_path = "art://samples/box_vertex_colour/BoxVertexColors.gltf";
 	PHX_INFO("Loading Test Resources '{0}'", box_prefab_path);

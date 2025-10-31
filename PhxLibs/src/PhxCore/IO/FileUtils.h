@@ -81,6 +81,18 @@ namespace phx
 		return std::filesystem::path(path).parent_path().generic_string();
 	}
 
+	inline bool DirectoryExists(std::string const& path)
+	{
+		auto dir = std::filesystem::path(path).parent_path();
+		return std::filesystem::exists(dir) && std::filesystem::is_directory(dir);
+	}
+
+	inline bool CreateDirectories(std::string const& path)
+	{
+		auto dir = std::filesystem::path(path).parent_path();
+		return std::filesystem::create_directories(dir);
+	}
+
 	inline std::string JoinPaths(const std::string& p1, const std::string& p2)
 	{
 		if (p1.empty())

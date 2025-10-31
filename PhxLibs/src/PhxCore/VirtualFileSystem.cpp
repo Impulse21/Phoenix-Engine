@@ -97,7 +97,7 @@ Result<std::string> phx::VirtualFileSystem::ResolveVirtualToPhysicalPath(std::st
 
     if (!best_match)
     {
-        PHX_CORE_ERROR("No mount point found for virtual path: {0}", norm_virtual_path.c_str());
+        PHX_CORE_WARN("No mount point found for virtual path: {0}", norm_virtual_path.c_str());
         return phx::make_unexpected(~0ull);
     }
 
@@ -120,7 +120,7 @@ phx::Result<AsyncResourceDescriptor> VirtualFileSystem::GetResourceDescriptorFor
 
     if (!best_match) 
     {
-        PHX_CORE_ERROR("No mount point found for virtual path: {0}", norm_virtual_path.c_str());
+        PHX_CORE_WARN("No mount point found for virtual path: {0}", norm_virtual_path.c_str());
         return phx::make_unexpected(~0ull);
     }
 
@@ -132,7 +132,7 @@ phx::Result<AsyncResourceDescriptor> VirtualFileSystem::GetResourceDescriptorFor
         Result<Span<char>> embedded_res = phx::Platform::Get().GetEmbeddedResource(internal_path_segment);
         if (!embedded_res)
         {
-            PHX_CORE_ERROR("Embedded Resource not found: {0}", physical_path.c_str());
+            PHX_CORE_WARN("Embedded Resource not found: {0}", physical_path.c_str());
             return make_unexpected(~0ull);
         }
 
@@ -153,7 +153,7 @@ phx::Result<AsyncResourceDescriptor> VirtualFileSystem::GetResourceDescriptorFor
 
         if (!file_attributes)
         {
-            PHX_CORE_ERROR("Loose file not found or access error: {0}", physical_path.c_str());
+            PHX_CORE_WARN("Loose file not found or access error: {0}", physical_path.c_str());
             return make_unexpected(~0ull);
         }
 
@@ -168,7 +168,7 @@ phx::Result<AsyncResourceDescriptor> VirtualFileSystem::GetResourceDescriptorFor
 	}
 
 	// handle back file
-	PHX_CORE_ERROR("Internal VFS Error: PAK info not loaded for mount point {0}", best_match->virtual_prefix_normalized.c_str());
+    PHX_CORE_ERROR("Internal VFS Error: PAK info not loaded for mount point {0}", best_match->virtual_prefix_normalized.c_str());
     return phx::make_unexpected(~0ull);
 }
 
