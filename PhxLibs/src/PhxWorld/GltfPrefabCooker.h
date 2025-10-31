@@ -3,6 +3,8 @@
 #include <PhxCore/Span.h>
 #include <PhxCore/Platform/PlatformWrapper.h>
 
+#include <PhxResource/Compiler/IntermediateMesh.h>
+
 #include <hlsl++.h>
 
 
@@ -11,35 +13,8 @@ struct cgltf_primitive;
 struct cgltf_mesh;
 struct cgltf_attribute;
 
-namespace phx::compiler
-{
-    struct IntermediateSubMesh;
-
-    struct IntermediateMesh
-    {
-        // The single, interleaved vertex buffer for ALL submeshes.
-        std::vector<std::byte> vertex_buffer;
-        std::vector<std::byte> index_buffer;
-
-        struct SubMeshView
-        {
-            uint32_t index_count;
-            uint32_t index_offset;
-            uint32_t vertex_offset;
-
-            // Bounding box, material ID, etc.
-            math::AxisAlignedBox bbox_ls;
-            math::BoundingSphere bounds_ls;
-            std::string material_id;
-        };
-
-        std::vector<SubMeshView> subMeshes;
-    };
-}
-
 namespace phx
 {
-
     struct AsyncResourceDescriptor;
 
     namespace CookedPathBuilder
@@ -92,11 +67,6 @@ namespace phx
         void InitializeSubMesh(compiler::IntermediateSubMesh& sub_mesh, cgltf_primitive const& src_prim);
         void CalculateBounds(compiler::IntermediateSubMesh& sub_mesh);
     
-        // -- these functions are agnostic and could apply to other handlers ---
-        // TODO: consider moving out.
-        compiler::IntermediateMesh CompileIntermediateMesh(Span<compiler::IntermediateSubMesh> sub_meshes);
-        bool SerializeMeshToDisk(const compiler::IntermediateMesh& final_mesh, const std::string& output_path);
-
     private:
         const cgltf_data& m_gltf;
         const cgltf_mesh& m_gltf_mesh;

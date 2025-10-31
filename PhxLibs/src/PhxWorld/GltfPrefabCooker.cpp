@@ -19,34 +19,6 @@ using namespace hlslpp;
 // TODO: Move this into it's own location
 namespace phx::compiler
 {
-	struct IntermediateSubMesh
-	{
-		std::vector<hlslpp::float3> positions;   
-		std::vector<hlslpp::float3> normals;     
-		std::vector<hlslpp::float2> texCoords_0;
-		std::vector<hlslpp::float2> texCoords_1;
-		std::vector<hlslpp::float4> tangents;
-		std::vector<hlslpp::float3> colour;
-		std::vector<hlslpp::uint4> joints_0;
-		std::vector<hlslpp::float4> weights_0;
-
-		std::vector<uint32_t> indices;
-
-		math::BoundingSphere bounds_ls;		// local space bounds
-		math::AxisAlignedBox bbox_ls;		// local space AABB
-		std::string material_id;
-		union
-		{
-			uint32_t hash;
-			struct {
-				uint32_t pso_flags : 16;
-				uint32_t index_32 : 1;
-				uint32_t material_index : 15;
-			};
-		};
-	};
-
-
 	enum { kBaseColor, kMetallicRoughness, kOcclusion, kEmissive, kNormalMap, kNumTextures };
 
 	// -- TODO: Move to texture compiler
@@ -266,6 +238,10 @@ bool CGltfMeshCooker::operator()()
 		CalculateBounds(sub_mesh);
 	}
 
+	compiler::IntermediateMesh intermediate_mesh = compiler::IntermediateMesh::Create(sub_meshes);
+	
+	// Save to disk.
+
 	return true;
 }
 
@@ -460,14 +436,4 @@ void CGltfMeshCooker::CalculateBounds(compiler::IntermediateSubMesh& sub_mesh)
 	}
 
 	sub_mesh.bounds_ls = math::BoundingSphere(sphere_centre_ls, hlslpp::sqrt(max_radius_ls_sq));
-}
-
-compiler::IntermediateMesh phx::CGltfMeshCooker::CompileIntermediateMesh(Span<compiler::IntermediateSubMesh> sub_meshes)
-{
-	return compiler::IntermediateMesh();
-}
-
-bool phx::CGltfMeshCooker::SerializeMeshToDisk(const compiler::IntermediateMesh& final_mesh, const std::string& output_path)
-{
-	return false;
 }
