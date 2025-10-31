@@ -5,12 +5,22 @@
 
 #include <PhxCore/Span.h>
 #include <PhxCore/Math.h>
+#include <PhxCore/IO/MemoryRegion.h>
 
 #include <PhxRenderer/shaders/ShaderInterop.h>
 
 
-namespace phx::compiler
+namespace phx::renderer::compiler
 {
+	namespace PSOFlags
+	{
+		enum : uint16_t
+		{
+			kAlphaBlend = BIT(1),
+			kAlphaTest = BIT(2),
+			kTwoSided = BIT(3),
+		};
+	}
 	struct IntermediateSubMesh
 	{
 		std::vector<hlslpp::float3> positions;   
@@ -43,11 +53,8 @@ namespace phx::compiler
         [[nodiscard]] static IntermediateMesh Create(Span<IntermediateSubMesh> sub_meshes);
         
         // The single, interleaved vertex buffer for ALL submeshes.
-        std::unique_ptr<std::byte[]> vertex_buffer;
-		size_t vertex_buffer_size;
-
-		std::unique_ptr<std::byte[]> index_buffer;
-		size_t index_buffer_size;
+        MemoryBuffer vertex_buffer;
+		MemoryBuffer index_buffer;
 
         struct SubMeshView
         {

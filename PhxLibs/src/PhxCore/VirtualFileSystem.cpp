@@ -82,6 +82,29 @@ bool VirtualFileSystem::Unmount(std::string const& virtual_path)
     return false;
 }
 
+Result<std::string> phx::VirtualFileSystem::ResolveVirtualToPhysicalPath(std::string const& virtual_path) const
+{
+    std::string norm_virtual_path = NormalizeVirtualPath(virtual_path);
+    const MountPointInfo* best_match = nullptr;
+    for (const auto& mp : m_mount_points)
+    {
+        if (norm_virtual_path.rfind(mp.virtual_prefix_normalized, 0) == 0)
+        {
+            best_match = &mp;
+            break; // Found longest prefix due to sort order
+        }
+    }
+
+    if (!best_match)
+    {
+        PHX_CORE_ERROR("No mount point found for virtual path: {0}", norm_virtual_path.c_str());
+        return phx::make_unexpected(~0ull);
+    }
+
+    std::string internal_path_segment = norm_virtual_path.substr(best_match->virtual_prefix_normalized.length());
+    return JoinPaths(best_match->physical_path_normalized, internal_path_segment);
+}
+
 phx::Result<AsyncResourceDescriptor> VirtualFileSystem::GetResourceDescriptorForAsync(std::string const& virtual_path) const
 {
     std::string norm_virtual_path = NormalizeVirtualPath(virtual_path);

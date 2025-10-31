@@ -23,6 +23,7 @@ namespace phx
 		virtual bool Mount(std::string const& virtual_path, std::string const& physical_path) = 0;
 		virtual bool Unmount(std::string const& virtual_path) = 0;
 
+		virtual Result<std::string> ResolveVirtualToPhysicalPath(std::string const& virtual_path) const = 0;
 		virtual Result<AsyncResourceDescriptor> GetResourceDescriptorForAsync(std::string const& virtual_path) const = 0;
 		virtual Result<std::vector<std::string>> GetResourceDependencies(std::string const& virtual_path) const = 0;
 

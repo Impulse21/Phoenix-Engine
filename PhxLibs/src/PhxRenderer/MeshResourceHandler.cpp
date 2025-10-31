@@ -1,6 +1,6 @@
 #include "PhxRenderer/PhxRenderer_pch.h"
 
-#include "ModelResourceHandler.h"
+#include "MeshResourceHandler.h"
 #include "ModelResoure.h"
 
 #include <PhxCore/IVirtualFileSystem.h>
@@ -14,7 +14,7 @@
 using namespace phx;
 using namespace phx::renderer;
 
-void phx::renderer::ModelResourceHandler::LoadAsync(IStreamingManager* streaming_manager, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const
+void phx::renderer::MeshResourceHandler::LoadAsync(IStreamingManager* streaming_manager, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const
 {
 	// TODO: Check if cached version is loaded already. If so, load from there.
 	RefCountPtr<ModelResoure> model_resource = resource.As<ModelResoure>();
@@ -75,7 +75,7 @@ void phx::renderer::ModelResourceHandler::LoadAsync(IStreamingManager* streaming
 }
 
 #if false
-void phx::renderer::ModelResourceHandler::RequestMeshData(
+void phx::renderer::MeshResourceHandler::RequestMeshData(
 	RefCountPtr<ModelResoure> modelResoure,
 	std::shared_ptr<IAssetStreamer> const& assetStreamer,
 	StreamFileHandle fileHandle,

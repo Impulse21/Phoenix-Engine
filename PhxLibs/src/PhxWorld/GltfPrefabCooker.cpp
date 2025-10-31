@@ -8,8 +8,11 @@
 
 #include <PhxCore/BinaryBuilder.h>
 #include <PhxRenderer/shaders/ShaderInterop.h>
+#include <PhxRenderer/Compiler/IntermediateMeshExporter.h>
+#include <PhxRenderer/MeshResourceHandler.h>
 #include <PhxEngine/StreamingDefintions.h>
 
+#include <fstream>
 #include <cgltf.h>
 
 using namespace phx;
@@ -17,7 +20,7 @@ using namespace phx::renderer;
 using namespace hlslpp;
 
 // TODO: Move this into it's own location
-namespace phx::compiler
+namespace phx::old::compiler
 {
 	enum { kBaseColor, kMetallicRoughness, kOcclusion, kEmissive, kNormalMap, kNumTextures };
 
@@ -42,15 +45,6 @@ namespace phx::compiler
 	}
 	// -- end TODO
 
-	namespace PSOFlags
-	{
-		enum : uint16_t
-		{
-			kAlphaBlend = BIT(1),
-			kAlphaTest = BIT(2),
-			kTwoSided = BIT(3),
-		};
-	}
 	struct Mesh
 	{
 		std::array<float, 4> bounds;           // A bounding sphere
@@ -120,17 +114,6 @@ namespace phx::compiler
 		std::array<MaterialTextureData, kNumTextures> texture_data;
 	};
 
-	struct ModelData
-	{
-		std::string name;
-		phx::math::BoundingSphere bounding_sphere;
-		phx::math::AxisAlignedBox bounding_box;
-
-		std::vector<std::byte> geometry_data;
-		std::vector<std::unique_ptr<phx::compiler::Mesh>> meshes;
-
-		std::vector<MaterialData> material_dependencies;
-	};
 }
 
 namespace phx::CookedPathBuilder
@@ -154,7 +137,9 @@ namespace phx::CookedPathBuilder
 
         std::string cache_dir = JoinPaths(dir, ".cache/meshes/");
 
-        std::string new_filename = source_filename + "_" + sub_asset_name + ".phxmsh";
+		// TODO: Use the extenion type from resource
+		const char* extension = ResourceFileExtension< renderer::MeshResourceHandler>::value;
+        std::string new_filename = source_filename + "_" + sub_asset_name + extension;
 
         return JoinPaths(cache_dir, new_filename);
     }
@@ -196,7 +181,7 @@ void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
         if (!is_stale)
             continue;
 
-		CGltfMeshCooker::Cook(m_gltf, gltf_mesh);
+		CGltfIntermediateMeshCooker::Cook(m_gltf, gltf_mesh, cooked_mesh_virtual_path);
 
     }
 }
@@ -214,13 +199,14 @@ bool CGltfPrefabCooker::IsCookedResourceStale(phx::Result<AsyncResourceDescripto
     return cooked_resource_attribute->last_write_time < m_cgltf_file_attributes.last_write_time;
 }
 
-phx::CGltfMeshCooker::CGltfMeshCooker(cgltf_data const& gltf_data, cgltf_mesh const& gltf_mesh)
+phx::CGltfIntermediateMeshCooker::CGltfIntermediateMeshCooker(cgltf_data const& gltf_data, cgltf_mesh const& gltf_mesh, std::string const& virtual_path)
 	: m_gltf(gltf_data)
 	, m_gltf_mesh(gltf_mesh)
+	, m_virtual_path(virtual_path)
 {
 }
 
-bool CGltfMeshCooker::operator()()
+bool CGltfIntermediateMeshCooker::operator()()
 {
 	math::BoundingSphere sphere_os;
 	math::AxisAlignedBox bbox_os;
@@ -239,8 +225,16 @@ bool CGltfMeshCooker::operator()()
 	}
 
 	compiler::IntermediateMesh intermediate_mesh = compiler::IntermediateMesh::Create(sub_meshes);
-	
-	// Save to disk.
+
+	phx::Result<std::string> physical_path = IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(m_virtual_path);
+	if (physical_path.HasError())
+	{
+		PHX_ERROR("Failed to resolve physical path for virtual path '{0}': {1}", m_virtual_path, physical_path.GetError());
+		return false;
+	}
+
+	std::ofstream out_file(physical_path.GetValue(), std::ios::binary);
+	compiler::IntermediateMeshExporter::Export(intermediate_mesh, out_file);
 
 	return true;
 }
@@ -294,7 +288,7 @@ namespace
 	}
 }
 
-void phx::CGltfMeshCooker::InitializeSubMesh(compiler::IntermediateSubMesh& sub_mesh, cgltf_primitive const& src_prim)
+void phx::CGltfIntermediateMeshCooker::InitializeSubMesh(compiler::IntermediateSubMesh& sub_mesh, cgltf_primitive const& src_prim)
 {
 	Span<cgltf_attribute> attributes(src_prim.attributes, src_prim.attributes_count);
 	for (const auto& attribute : attributes)
@@ -411,7 +405,7 @@ void phx::CGltfMeshCooker::InitializeSubMesh(compiler::IntermediateSubMesh& sub_
 	}
 }
 
-void CGltfMeshCooker::CalculateBounds(compiler::IntermediateSubMesh& sub_mesh)
+void CGltfIntermediateMeshCooker::CalculateBounds(compiler::IntermediateSubMesh& sub_mesh)
 {
 	PHX_ASSERT(!sub_mesh.positions.empty());
 	const std::vector<hlslpp::float3>& position_stream = sub_mesh.positions;

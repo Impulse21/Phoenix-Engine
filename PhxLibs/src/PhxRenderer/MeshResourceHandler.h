@@ -8,7 +8,7 @@ namespace phx::renderer
 {
 	struct ModelMetadata;
 
-	class ModelResourceHandler final : public phx::ResourceFileHandler
+	class MeshResourceHandler final : public phx::ResourceFileHandler
 	{
 	public:
 		StringHash GetResourceTypeHash() const override { return renderer::ModelResoure::StaticTypeHash(); };
@@ -28,4 +28,4 @@ namespace phx::renderer
 	};
 }
 
-PHX_DEFINE_RES_FILE_EXT(renderer::ModelResourceHandler, .phxmdl)
+PHX_DEFINE_RES_FILE_EXT(renderer::MeshResourceHandler, .phxmsh)

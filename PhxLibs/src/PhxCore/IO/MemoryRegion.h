@@ -58,7 +58,13 @@ namespace phx
 			, m_size(size)
 		{
 		}
-		
+
+		explicit MemoryBuffer(std::unique_ptr<std::byte[]>&& data, size_t size)
+			: m_buffer(std::move(data))
+			, m_size(size)
+		{
+		}
+
 		MemoryBuffer(const MemoryBuffer&) = delete;
 		MemoryBuffer& operator=(const MemoryBuffer&) = delete;
 
@@ -68,6 +74,11 @@ namespace phx
 		~MemoryBuffer() = default;
 
 		byte* Data()
+		{
+			return m_buffer.get();
+		}
+
+		const byte* Data() const
 		{
 			return m_buffer.get();
 		}

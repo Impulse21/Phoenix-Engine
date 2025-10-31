@@ -5,6 +5,7 @@
 
 #include <PhxCore/Span.h>
 #include <PhxCore/IO/FileUtils.h>
+#include <PhxCore/IO/MemoryRegion.h>
 
 namespace phx
 {
@@ -58,14 +59,14 @@ namespace phx
 			return { m_data.get(), m_totalSize };
 		}
 
-		std::tuple<size_t, std::unique_ptr<std::byte[]>> Finalize()
+		MemoryBuffer Finalize()
 		{
 			const size_t final_size = m_totalSize;
 			std::unique_ptr<std::byte[]> data_to_return = std::move(m_data);
 
 			m_totalSize = 0;
 
-			return { final_size, std::move(data_to_return) };
+			return MemoryBuffer(std::move(data_to_return), final_size);
 		}
 
 	private:

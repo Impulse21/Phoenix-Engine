@@ -1,10 +1,10 @@
-#include <PhxResource/PhxResource_pch.h>
+#include <PhxRenderer/PhxRenderer_pch.h>
 #include "IntermediateMesh.h"
 
 #include <PhxCore/BinaryBuilder.h>
 
 using namespace phx;
-using namespace phx::compiler;
+using namespace phx::renderer::compiler;
 
 namespace
 {
@@ -39,7 +39,7 @@ namespace
     }
 }
 
-IntermediateMesh phx::compiler::IntermediateMesh::Create(Span<IntermediateSubMesh> sub_meshes)
+IntermediateMesh IntermediateMesh::Create(Span<IntermediateSubMesh> sub_meshes)
 {
     IntermediateMesh mesh = {};
     mesh.sub_meshes.resize(sub_meshes.size());
@@ -97,13 +97,8 @@ IntermediateMesh phx::compiler::IntermediateMesh::Create(Span<IntermediateSubMes
         std::memcpy(dest_index, sub_mesh.indices.data(), sizeof(uint32_t) * sub_mesh_view.index_count);
     }
 
-    auto [vertex_buffer_size, vertex_buffer] = vertex_builder.Finalize();
-    mesh.vertex_buffer_size = vertex_buffer_size;
-    mesh.vertex_buffer = std::move(vertex_buffer);
-
-    auto [index_buffer_size, index_buffer] = index_builder.Finalize();
-    mesh.index_buffer_size = index_buffer_size;
-    mesh.index_buffer = std::move(index_buffer);
+    mesh.vertex_buffer = vertex_builder.Finalize();
+    mesh.index_buffer = index_builder.Finalize();
 
     return mesh;
 }

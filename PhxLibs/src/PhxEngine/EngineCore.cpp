@@ -9,7 +9,7 @@
 #include <PhxResource/ResourceSystem.h>
 
 #include <PhxRenderer/DefaultRenderSystem.h>
-#include <PhxRenderer/ModelResourceHandler.h>
+#include <PhxRenderer/MeshResourceHandler.h>
 #include <PhxCore/VirtualFileSystem.h>
 
 #include <PhxReflection/Reflection.h>
@@ -93,7 +93,7 @@ namespace phx
 
 			phx::ResourceSystem::Ptr = new ResourceSystem;
 			phx::ResourceSystem::Ptr->Initialize(IVirtualFileSystem::Ptr, IStreamingManager::Ptr);
-			phx::ResourceSystem::Ptr->RegisterFileHanlder<renderer::ModelResourceHandler>();
+			phx::ResourceSystem::Ptr->RegisterFileHanlder<renderer::MeshResourceHandler>();
 
 #if false
 			phx::gfx::IRenderSystem::Ptr = phx_new_system(gfx::DefaultRenderSystem);

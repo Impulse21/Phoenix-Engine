@@ -3,7 +3,7 @@
 #include <PhxCore/Span.h>
 #include <PhxCore/Platform/PlatformWrapper.h>
 
-#include <PhxResource/Compiler/IntermediateMesh.h>
+#include <PhxRenderer/Compiler/IntermediateMesh.h>
 
 #include <hlsl++.h>
 
@@ -50,26 +50,27 @@ namespace phx
 
     };
 
-    class CGltfMeshCooker
+    class CGltfIntermediateMeshCooker
     {
     public:
-        static bool Cook(cgltf_data const& gltf_data, cgltf_mesh const& gltf_mesh)
+        static bool Cook(cgltf_data const& gltf_data, cgltf_mesh const& gltf_mesh, std::string const& virtual_path)
         {
-            CGltfMeshCooker cook(gltf_data, gltf_mesh);
+            CGltfIntermediateMeshCooker cook(gltf_data, gltf_mesh, virtual_path);
             return cook();
         }
 
     protected:
-        CGltfMeshCooker(cgltf_data const& gltf_data, cgltf_mesh const& gltf_mesh);
+        CGltfIntermediateMeshCooker(cgltf_data const& gltf_data, cgltf_mesh const& gltf_mesh, std::string const& virtual_path);
         bool operator()();
 
     protected:
-        void InitializeSubMesh(compiler::IntermediateSubMesh& sub_mesh, cgltf_primitive const& src_prim);
-        void CalculateBounds(compiler::IntermediateSubMesh& sub_mesh);
+        void InitializeSubMesh(renderer::compiler::IntermediateSubMesh& sub_mesh, cgltf_primitive const& src_prim);
+        void CalculateBounds(renderer::compiler::IntermediateSubMesh& sub_mesh);
     
     private:
         const cgltf_data& m_gltf;
         const cgltf_mesh& m_gltf_mesh;
+        const std::string& m_virtual_path;
     };
 }
 

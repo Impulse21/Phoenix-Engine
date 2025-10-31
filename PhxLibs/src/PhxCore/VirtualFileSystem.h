@@ -33,6 +33,7 @@ namespace phx
 		bool Mount(std::string const& virtual_path, std::string const& physical_path) override;
 		bool Unmount(std::string const& virtual_path) override;
 
+		Result<std::string> ResolveVirtualToPhysicalPath(std::string const& virtual_path) const override;
 		Result<AsyncResourceDescriptor> GetResourceDescriptorForAsync(std::string const& virtual_path) const override;
 		Result<std::vector<std::string>> GetResourceDependencies(std::string const& virtual_path) const override;
 
