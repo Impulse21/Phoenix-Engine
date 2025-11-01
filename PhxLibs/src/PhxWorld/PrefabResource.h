@@ -7,8 +7,8 @@
 
 namespace phx
 {
-    // Goes into the GLTF handler
-    struct PrefabFile
+    // -- on disk representation ---
+    struct PrefabManifest
     {
         struct Node
         {
@@ -17,6 +17,7 @@ namespace phx
 
             std::string mesh_path;
             std::string material_path;
+            std::string nested_prefab_path;
         };
 
         std::vector<Node> nodes;
@@ -32,6 +33,7 @@ namespace phx
             // Handles to the *actual* loaded resources
             RefCountPtr<Resource> mesh;
             RefCountPtr<Resource> material;
+            RefCountPtr<Resource> nested_prefab;
         };
 
         std::vector<Node> nodes;

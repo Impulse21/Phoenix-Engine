@@ -8,7 +8,7 @@
 #include <PhxEngine/StreamingDefintions.h>
 #include <PhxEngine/IStreamingManager.h>
 
-#include "GltfPrefabCooker.h"
+#include "Compiler/GltfPrefabCooker.h"
 
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
