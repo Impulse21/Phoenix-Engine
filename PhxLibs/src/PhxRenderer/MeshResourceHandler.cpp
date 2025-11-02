@@ -1,7 +1,7 @@
 #include "PhxRenderer/PhxRenderer_pch.h"
 
 #include "MeshResourceHandler.h"
-#include "ModelResoure.h"
+#include "MeshResource.h"
 
 #include <PhxCore/IVirtualFileSystem.h>
 #include <PhxEngine/IStreamingManager.h>
@@ -23,12 +23,16 @@ void phx::renderer::MeshResourceHandler::LoadAsync(IStreamingManager* streaming_
 	ResourceFile::Load(
 		streaming_manager,
 		resource_descriptor,
-		[model_resource](std::shared_ptr<ResourceFile> /*resourceFile*/)
+		[model_resource](std::shared_ptr<ResourceFile> resourceFile)
 		{
-			// auto meshMetadata = reinterpret_cast<const ModelMetadata*>(resourceFile->Metadata->MetadataChunk.Get());
-			//resourceFile->metadata->MetadataChunk.Get();
-
+			TypedView<MeshMetadata> metadata_view = resourceFile->metadata.GetView<MeshMetadata>();
+			PHX_CORE_INFO("Loading mesh with geometry buffer size: {0} bytes", metadata_view->geometry_bufer_size);
+		},
+		[model_resource] {
+			PHX_CORE_ERROR("Failed to load mesh resource.");
+			model_resource->state = Resource::State::Error;
 		});
+#if false
 	// TODO: Fix boiler plate stuff.
 	std::shared_ptr<char[]> dest = std::make_shared<char[]>(resource_descriptor.length_of_resource);
 	StreamingRequest request = {
@@ -57,7 +61,6 @@ void phx::renderer::MeshResourceHandler::LoadAsync(IStreamingManager* streaming_
 	};
 
 	streaming_manager->Submit(std::move(request));
-#if false
 	ResourceFile::Load(
 		resource_system->,
 		fileHandle,

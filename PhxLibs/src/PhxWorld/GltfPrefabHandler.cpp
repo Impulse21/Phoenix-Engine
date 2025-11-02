@@ -142,15 +142,19 @@ void GltfPrefabHandler::LoadAsync(IStreamingManager* streaming_manager, RefCount
             CookPrefab(prefab_handle_resource, resource_descriptor, dest.get());
         }
 
-        std::string cooked_prefab_path = CookedPathBuilder::ForPrefab(resource_descriptor.virtual_path);
-        std::ifstream stream(cooked_prefab_path.c_str());
+        std::string cooked_resource_virtual_path = CookedPathBuilder::ForPrefab(resource_descriptor.virtual_path);
+        std::string cooked_prefab_physical_path = 
+            IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(cooked_resource_virtual_path).GetValue();
+        std::ifstream stream(cooked_prefab_physical_path.c_str());
 
         if (stream.is_open() == false)
         {
-            PHX_CORE_ERROR("Failed to open cooked glTF Prefab '{0}'", cooked_prefab_path);
+            PHX_CORE_ERROR("Failed to open cooked glTF Prefab '{0}'", cooked_resource_virtual_path);
             prefab_handle_resource->state = Resource::State::Error;
             return;
 		}
+
+        LoadPrefab(stream, prefab_handle_resource);
      };
 
     streaming_manager->Submit(std::move(request));

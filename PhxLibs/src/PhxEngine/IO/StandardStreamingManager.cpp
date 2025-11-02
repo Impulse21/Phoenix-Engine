@@ -93,7 +93,8 @@ struct StreamingRequestProcessor
 		ErrorCode ret_val = ErrorCode::Success;
 		// Process Destination
 		std::visit([&](auto&& dest_active_type) {
-			if constexpr (std::is_same_v<std::decay_t<decltype(dest_active_type)>, WriteableCpuMemoryBuffer>)
+			using T = std::decay_t<decltype(dest_active_type)>;
+			if constexpr (std::is_same_v<T, WriteableCpuMemoryBuffer>)
 			{
 				// Case A: Destination is CPU Memory Buffer (WritableCpuMemoryBuffer)
 				WriteableCpuMemoryBuffer& dest_buffer = dest_active_type;
@@ -112,7 +113,20 @@ struct StreamingRequestProcessor
 				std::memcpy(dest_buffer.get() + destination_info.offset, data_to_transfer, effective_transfer_size);
 				ret_val = ErrorCode::Success;
 			}
-			else if constexpr (std::is_same_v<std::decay_t<decltype(dest_active_type)>, GpuResourceDestinationInfo>)
+			else if (constexpr (std::is_same_v<T, void*>))
+			{
+				void* dest_buffer = dest_active_type;
+				if (!dest_buffer)
+				{
+					ret_val = ErrorCode::InvalidDestination;
+					return;
+				}
+
+				void* dest_with_offset = static_cast<std::byte*>(dest_buffer) + destination_info.offset;
+
+				std::memcpy(dest_with_offset, data_to_transfer, effective_transfer_size);
+			}
+			else if constexpr (std::is_same_v<T, GpuResourceDestinationInfo>)
 			{
 				GpuResourceDestinationInfo& gpu_dest_info = dest_active_type;
 				std::visit([&](auto&& handle_type) {

@@ -20,12 +20,17 @@ namespace
 	}
 }
 
-void phx::ResourceFile::Load(IStreamingManager* streaming_manager, AsyncResourceDescriptor const& resource_descriptor, MetadataLoadCallbackFunc metadata_loaded_callback)
+void phx::ResourceFile::Load(
+	IStreamingManager* streaming_manager,
+	AsyncResourceDescriptor const& resource_descriptor,
+	MetadataLoadCallbackFunc metadata_loaded_callback,
+	FailureCallbackFunc failure_callback)
 {
 	std::shared_ptr<phx::ResourceFile> resource_file = std::make_shared<phx::ResourceFile>();
 	resource_file->streaming_manager = streaming_manager;
 	resource_file->resource_descriptor = resource_descriptor;
 	resource_file->metadata_loaded_callback = std::move(metadata_loaded_callback);
+	resource_file->failure_callack = failure_callback;
 
 	StreamingRequest request = {
 		   .operations = {
@@ -42,6 +47,7 @@ void phx::ResourceFile::Load(IStreamingManager* streaming_manager, AsyncResource
 		   }
 	};
 
+
 	request.on_complete = [resource_file](StreamingResult const& result) mutable {
 		if (result.error_code != ErrorCode::Success)
 		{
@@ -53,32 +59,7 @@ void phx::ResourceFile::Load(IStreamingManager* streaming_manager, AsyncResource
 		{
 			return;
 		}
-#if false
-		StreamingRequest request = {
-			   .operations = {
-				   {
-					   .source = {
-						   .data = resource_file->resource_descriptor,
-						   .offset = sizeof(ResourceFileFormat::Header),
-						   .size = resource_file->header.MetadataHeapSize,
-					   },
-					   .destination = {
-							.target = resource_file->metadata,
-							.size = resource_file->header.MetadataHeapSize,
-					   }
-				   }
-			   }
-		};
+	};
 
-		request.on_complete = [resource_file](StreamingResult const& result) mutable {
-			if (result.error_code != ErrorCode::Success)
-			{
-				resource_file->failure_callack();
-			}
-
-			resource_file->metadata_loaded_callback(resource_file);
-			};
-		};
-#endif
-		};
+	streaming_manager->Submit(std::move(request));
 }

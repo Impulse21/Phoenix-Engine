@@ -68,8 +68,12 @@ namespace phx
         bool IsBufferDestination() const { return std::holds_alternative<RHI::GpuBufferHandle>(handle); }
     };
 
+    struct CpuResourceDestinationInfo
+    {
+        std::variant<std::shared_ptr<char[]>, void*> handle;
+	};
+
     using ReadableCpuMemoryBuffer = std::shared_ptr<const char[]>;
-    using WriteableCpuMemoryBuffer = std::shared_ptr<char[]>;
     struct StreamingSource
     {
         std::variant<AsyncResourceDescriptor, ReadableCpuMemoryBuffer> data;
@@ -82,11 +86,11 @@ namespace phx
 
     struct StreamingDestination
     {
-        std::variant<WriteableCpuMemoryBuffer, GpuResourceDestinationInfo, void*> target;
+        std::variant<CpuResourceDestinationInfo, GpuResourceDestinationInfo, void*> target;
         uint64_t offset = 0;
         uint64_t size = 0;
 
-        bool IsCpuMemoryDestination() const { return std::holds_alternative<WriteableCpuMemoryBuffer>(target); }
+        bool IsCpuMemoryDestination() const { return std::holds_alternative<CpuResourceDestinationInfo>(target); }
         bool IsGpuResourceDestination() const { return std::holds_alternative<GpuResourceDestinationInfo>(target); }
         bool IsPointer() const { return std::holds_alternative<void*>(target); }
     };

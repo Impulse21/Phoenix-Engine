@@ -29,7 +29,8 @@ namespace phx
 		static void Load(
 			IStreamingManager* streaming_manager,
 			AsyncResourceDescriptor const& resource_descriptor,
-			MetadataLoadCallbackFunc metadata_loaded_callback);
+			MetadataLoadCallbackFunc metadata_loaded_callback,
+			FailureCallbackFunc failure_callback);
 	};
 }
 
