@@ -158,6 +158,16 @@ phx::CGltfPrefabCooker::CGltfPrefabCooker(cgltf_data const& gltf_data, AsyncReso
 bool phx::CGltfPrefabCooker::operator()()
 {
 	CookMeshes(Span<cgltf_mesh>(m_gltf.meshes, m_gltf.meshes_count));
+	// TODO: Cook materials
+	
+	cgltf_scene* scene = m_gltf.scene;
+
+	Span<cgltf_node*> nodes(scene->nodes, scene->nodes_count);
+	WalkNodesRec(nodes);
+
+	const std::string virtual_output_path = CookedPathBuilder::ForPrefab(m_resource_description.virtual_path);
+	Result<std::string> os_output_path = IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(virtual_output_path);
+
 	return true;
 }
 
@@ -175,7 +185,7 @@ void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
         std::string cooked_mesh_virtual_path = CookedPathBuilder::ForMesh(m_resource_description.virtual_path, mesh_name);
         phx::Result<AsyncResourceDescriptor> cooked_mesh_file_descriptor = vfs->GetResourceDescriptorForAsync(cooked_mesh_virtual_path);
 
-        m_cooked_files_registery[&gltf_mesh] = cooked_mesh_virtual_path;
+		m_mesh_registry[&gltf_mesh] = cooked_mesh_virtual_path;
 
         // Determine if the mesh is stale
         const bool is_stale = IsCookedResourceStale(cooked_mesh_file_descriptor);
@@ -193,6 +203,65 @@ void CGltfPrefabCooker::CookMeshes(Span<cgltf_mesh> cgltf_meshes)
 			PHX_CORE_ERROR("Failed to cook mesh '{0}' to '{1}'", mesh_name, cooked_mesh_virtual_path);
 		}
     }
+}
+
+void phx::CGltfPrefabCooker::WalkNodesRec(phx::Span<cgltf_node*> gltf_nodes, int parent_index)
+{
+	for (auto* gltf_node : gltf_nodes)
+	{
+		const size_t node_index = m_prefab_manifest.nodes.size();
+		PrefabManifest::Node& node_manifest = m_prefab_manifest.nodes.emplace_back();
+
+		if (gltf_node->has_matrix)
+		{
+			static_assert(sizeof(node_manifest.local_transform) == sizeof(gltf_node->matrix));
+			std::memcpy(
+				&node_manifest.local_transform,
+				static_cast<const float*>(&gltf_node->matrix[0]),
+				sizeof(node_manifest.local_transform));
+		}
+		else
+		{
+			float4x4 local_transform = float4x4::identity();
+			const float4x4 scale_matrix = gltf_node->has_scale
+				? float4x4::scale(gltf_node->scale[0], gltf_node->scale[1], gltf_node->scale[2])
+				: float4x4::identity();
+
+			quaternion rot;
+			hlslpp::load(rot, static_cast<const float*>(&gltf_node->rotation[0]));
+
+			const float4x4 rotation_matrix = gltf_node->has_rotation
+				? float4x4(rot)
+				: float4x4(quaternion::identity());
+
+			float4x4 translation_matrix = gltf_node->has_translation
+				? float4x4::translation(gltf_node->translation[0], gltf_node->translation[1], gltf_node->translation[2])
+				: float4x4::identity();
+
+			local_transform = translation_matrix * rotation_matrix * scale_matrix;
+			node_manifest.local_transform = interop::float4x4(local_transform);
+		}
+
+		node_manifest.node_type = NodeTypeIds::Empty;
+		if (gltf_node->mesh)
+		{
+			auto itr = m_mesh_registry.find(gltf_node->mesh);
+			if (itr == m_mesh_registry.end())
+			{
+				continue;
+			}
+
+			node_manifest.node_type = NodeTypeIds::Mesh;
+			node_manifest.mesh_instance_data = { {} };
+			node_manifest.mesh_instance_data->mesh_path = itr->second;
+		}
+
+		if (gltf_node->children_count > 0)
+		{
+			Span<cgltf_node*> nodes(gltf_node->children, gltf_node->children_count);
+			WalkNodesRec(nodes);
+		}
+	}
 }
 
 bool CGltfPrefabCooker::IsCookedResourceStale(phx::Result<AsyncResourceDescriptor> const& cooked_resource_descriptor) const

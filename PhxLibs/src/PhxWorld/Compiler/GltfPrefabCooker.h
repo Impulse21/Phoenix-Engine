@@ -5,6 +5,8 @@
 
 #include <PhxRenderer/Compiler/IntermediateMesh.h>
 
+#include <PhxWorld/PrefabResource.h>
+
 #include <hlsl++.h>
 
 
@@ -12,6 +14,7 @@ struct cgltf_data;
 struct cgltf_primitive;
 struct cgltf_mesh;
 struct cgltf_attribute;
+struct cgltf_node;
 
 namespace phx
 {
@@ -39,15 +42,17 @@ namespace phx
 
         void CookMeshes(Span<cgltf_mesh> cgltf_meshes);
 
-    private:
+        void WalkNodesRec(phx::Span<cgltf_node*> siblings, int parent_index = -1);
+        
         bool IsCookedResourceStale(phx::Result<AsyncResourceDescriptor> const& cooked_resource_descriptor) const;
 
     private:
 		const bool m_force_recook;
         const cgltf_data& m_gltf;
         const AsyncResourceDescriptor& m_resource_description;
+        PrefabManifest m_prefab_manifest = {};
         platform::PlatformFileAttributes m_cgltf_file_attributes;
-        std::unordered_map<const cgltf_mesh*, std::string> m_cooked_files_registery;
+        std::unordered_map<const cgltf_mesh*, std::string> m_mesh_registry;
 
     };
 
