@@ -261,7 +261,7 @@ void phx::CGltfPrefabCooker::WalkNodesRec(phx::Span<cgltf_node*> gltf_nodes, int
 			node_manifest.local_transform = interop::float4x4(local_transform);
 		}
 
-		node_manifest.node_type = NodeTypeIds::Empty;
+		node_manifest.node_type = ManifiestNodeTypeIds::Empty;
 		if (gltf_node->mesh)
 		{
 			auto itr = m_mesh_registry.find(gltf_node->mesh);
@@ -270,7 +270,7 @@ void phx::CGltfPrefabCooker::WalkNodesRec(phx::Span<cgltf_node*> gltf_nodes, int
 				continue;
 			}
 
-			node_manifest.node_type = NodeTypeIds::Mesh;
+			node_manifest.node_type = ManifiestNodeTypeIds::Mesh;
 			node_manifest.mesh_instance_data = { {} };
 			node_manifest.mesh_instance_data->mesh_path = itr->second;
 		}

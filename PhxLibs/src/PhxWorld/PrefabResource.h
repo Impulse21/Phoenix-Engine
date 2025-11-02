@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <variant>
 
 #include <hlsl++.h>
 
@@ -16,6 +17,13 @@ namespace phx
         std::optional<std::string> material_path;
     };
 
+    namespace ManifiestLightTypeIds
+    {
+        constexpr const char* Point = "Point";
+        constexpr const char* Spot = "Spot";
+        constexpr const char* Directional = "Directional";
+    }
+
     struct ManifestLightData 
     {
         std::string type; // "point", "spot", "directional"
@@ -23,16 +31,21 @@ namespace phx
         float intensity;
     };
 
+    namespace ManifiestNodeTypeIds
+    {
+        constexpr const char* Perspective = "Perspective";
+        constexpr const char* Orthographic = "Orthographic";
+    }
+
     struct ManifestCameraData 
     {
         std::string type; // "perspective" or "orthographic"
         float fov_y;
         float z_near;
         float z_far;
-        // ... other camera props
     };
 
-    namespace NodeTypeIds
+    namespace ManifiestNodeTypeIds
     {
         constexpr const char* Empty = "Empty";
         constexpr const char* Mesh = "Mesh";
@@ -64,6 +77,36 @@ namespace phx
         std::vector<Node> nodes;
     };
 
+    struct EmptyNodeData {};
+
+    struct MeshNodeData 
+    {
+        RefCountPtr<Resource> mesh;
+        RefCountPtr<Resource> material;
+    };
+
+    struct NestedPrefabData 
+    {
+        RefCountPtr<Resource> prefabHandle;
+    };
+
+    struct CameraNodeData 
+    {
+        enum class Type { Perspective, Orthographic };
+        Type type;
+        float fov_y;
+        float z_near;
+        float z_far;
+    };
+
+    struct LightNodeData 
+    {
+        enum class Type { Point, Spot, Directional };
+        Type type;
+        hlslpp::float3 colour;
+        float intensity;
+    };
+
 	struct PrefabResource final : public Resource
 	{
         struct Node 
@@ -71,10 +114,16 @@ namespace phx
             std::string name;
             int parent_index;
 
-            // Handles to the *actual* loaded resources
-            RefCountPtr<Resource> mesh;
-            RefCountPtr<Resource> material;
-            RefCountPtr<Resource> nested_prefab;
+            std::string name;
+            int parent_index;
+            hlslpp::float4x4 local_transform;
+
+            std::variant<
+                EmptyNodeData,
+                MeshNodeData,
+                CameraNodeData,
+                LightNodeData,
+                NestedPrefabData> data;
         };
 
         std::vector<Node> nodes;

@@ -2,18 +2,24 @@
 
 #include "GltfPrefabHandler.h"
 
+#include "PrefabResource.h"
+#include "Compiler/PrefabManifestSerialization.h"
+
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
+
+#include <PhxResource/ResourceSystem.h>
 
 #include <PhxEngine/StreamingDefintions.h>
 #include <PhxEngine/IStreamingManager.h>
 
+#include <nlohmann/json.hpp>
 #include "Compiler/GltfPrefabCooker.h"
-
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 
 #include <string>
+#include <fstream>
 
 using namespace phx;
 
@@ -75,18 +81,23 @@ namespace
 
 }
 
-bool phx::GltfPrefabHandler::IsStale(std::string const& virtual_file_path, IVirtualFileSystem* vfs) const
+bool phx::GltfPrefabHandler::IsStale(AsyncResourceDescriptor const& gltf_resource_descriptor, IVirtualFileSystem* vfs) const
 {
-    Result<AsyncResourceDescriptor> gltf_resource_descriptor = vfs->GetResourceDescriptorForAsync(virtual_file_path);
-    phx::Result<platform::PlatformFileAttributes> gltf_resource_attr = phx::Platform::Get().GetFileAttr(gltf_resource_descriptor->os_path_or_pak_path);
+    if (g_force_recook)
+        return true;
+
+    phx::Result<platform::PlatformFileAttributes> gltf_resource_attr = phx::Platform::Get().GetFileAttr(gltf_resource_descriptor.os_path_or_pak_path);
 
     // cooked prefab path
-    std::string cooked_prefab_path = CookedPathBuilder::ForPrefab(virtual_file_path);
+    std::string cooked_prefab_path = CookedPathBuilder::ForPrefab(gltf_resource_descriptor.virtual_path);
     Result<AsyncResourceDescriptor> prefab_resource_descriptor = vfs->GetResourceDescriptorForAsync(cooked_prefab_path);
 
-    // TODO: Handle pack files
-    phx::Result<platform::PlatformFileAttributes> cooked_file_attr = phx::Platform::Get().GetFileAttr(prefab_resource_descriptor->os_path_or_pak_path);
+    if (prefab_resource_descriptor.HasError())
+    {
+        return true;
+	}
 
+    phx::Result<platform::PlatformFileAttributes> cooked_file_attr = phx::Platform::Get().GetFileAttr(prefab_resource_descriptor->os_path_or_pak_path);
     if (cooked_file_attr && gltf_resource_attr)
     {
         return gltf_resource_attr->last_write_time > cooked_file_attr->last_write_time;
@@ -125,19 +136,29 @@ void GltfPrefabHandler::LoadAsync(IStreamingManager* streaming_manager, RefCount
         }
 
         // TODO: Check if resource is stale.
-        PHX_CORE_INFO("glTF Prefab '{0}' is stale or missing. Cooking...", resource_descriptor.virtual_path);
-        CookPrefab(prefab_handle_resource, resource_descriptor, dest.get());
+        if (IsStale(resource_descriptor, IVirtualFileSystem::Ptr))
+        {
+            PHX_CORE_INFO("glTF Prefab '{0}' is stale or missing. Cooking...", resource_descriptor.virtual_path);
+            CookPrefab(prefab_handle_resource, resource_descriptor, dest.get());
+        }
+
+        std::string cooked_prefab_path = CookedPathBuilder::ForPrefab(resource_descriptor.virtual_path);
+        std::ifstream stream(cooked_prefab_path.c_str());
+
+        if (stream.is_open() == false)
+        {
+            PHX_CORE_ERROR("Failed to open cooked glTF Prefab '{0}'", cooked_prefab_path);
+            prefab_handle_resource->state = Resource::State::Error;
+            return;
+		}
      };
 
     streaming_manager->Submit(std::move(request));
 }
 
-
 void phx::GltfPrefabHandler::CookPrefab(RefCountPtr<PrefabHandleResource> prefab_handle_resource, AsyncResourceDescriptor const& resource_descriptor, void* file_data)
 {
 	PHX_CORE_INFO("Cooking glTF Prefab '{0}'", resource_descriptor.virtual_path);
-
-    std::string cooked_prefab_path = CookedPathBuilder::ForPrefab(resource_descriptor.virtual_path);
 
     CgltfContext ctx = {};
     cgltf_options options = { };
@@ -169,4 +190,61 @@ void phx::GltfPrefabHandler::CookPrefab(RefCountPtr<PrefabHandleResource> prefab
     }
 
 	CGltfPrefabCooker::Cook(*gltf_data, resource_descriptor, g_force_recook);
+}
+
+void GltfPrefabHandler::LoadPrefab(std::ifstream const& stream, RefCountPtr<PrefabHandleResource> prefab_handle_resource)
+{
+    nlohmann::json j = nlohmann::json::parse(stream);
+    PrefabManifest manifest = j.get<phx::PrefabManifest>();
+
+    prefab_handle_resource->prefab = RefCountPtr<PrefabResource>::Create(new PrefabResource());
+    PrefabResource& prefab_resource = *prefab_handle_resource->prefab;
+
+    prefab_resource.nodes.reserve(manifest.nodes.size());
+    for (const PrefabManifest::Node& manifest_node : manifest.nodes)
+    {
+        PrefabResource::Node& node = prefab_resource.nodes.emplace_back();
+        node.name = manifest_node.name;
+        node.parent_index = manifest_node.parent_index;
+
+        if (manifest_node.node_type == ManifiestNodeTypeIds::Mesh)
+        {
+            MeshNodeData mesh_node_data = {};
+            mesh_node_data.mesh = phx::ResourceSystem::Ptr->Get(manifest_node.mesh_instance_data->mesh_path.c_str());
+            if (manifest_node.mesh_instance_data->material_path)
+                PHX_CORE_ERROR("Material paths are not supported at the moment");
+
+            node.data = mesh_node_data;
+        }
+        else if (manifest_node.node_type == ManifiestNodeTypeIds::Camera)
+        {
+            CameraNodeData camera_node_data = {};
+
+            // TODO: I am here.
+            if ()
+                camera_node_data.type = manifest_node.camera_data->type;
+            camera_node_data.fov_y = manifest_node.camera_data->fov_y;
+            camera_node_data.z_near = manifest_node.camera_data->z_near;
+            camera_node_data.z_far = manifest_node.camera_data->z_far;
+            node.data = camera_node_data;
+        }
+        else if (manifest_node.node_type == ManifiestNodeTypeIds::Light)
+        {
+            LightNodeData light_node_data = {};
+            light_node_data.type = manifest_node.light_data->type;
+            light_node_data.colour = manifest_node.light_data->colour;
+            light_node_data.intensity = manifest_node.light_data->intensity;
+            node.data = light_node_data;
+        }
+        else if (manifest_node.node_type == ManifiestNodeTypeIds::Prefab)
+        {
+            NestedPrefabData nested_prefab_data = {};
+            nested_prefab_data.prefabHandle = manifest_node.nested_prefab_path->prefabHandle;
+            node.data = nested_prefab_data;
+        }
+        else
+        {
+            node.data = EmptyNodeData{};
+        }
+    }
 }

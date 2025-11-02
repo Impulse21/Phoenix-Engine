@@ -19,14 +19,16 @@ namespace phx
 	{
 	public:
 		StringHash GetResourceTypeHash() const override { return PrefabResource::StaticTypeHash(); };
-		bool IsStale(std::string const& virtual_file_path, IVirtualFileSystem* vfs) const override;
+		bool IsStale(AsyncResourceDescriptor const& resource_descriptor, IVirtualFileSystem* vfs) const override;
 		RefCountPtr<Resource> CreatePlaceholder() const override { return RefCountPtr<Resource>::Create(new PrefabHandleResource()); }
 		void LoadAsync(IStreamingManager* streaming_manager, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const override;
 
 		static void SetForceRecook(bool enable) { g_force_recook = enable; }
 
 	private:
-		static void CookPrefab(RefCountPtr<PrefabHandleResource> prefab_handle_resource, AsyncResourceDescriptor const& resource_descriptor, void* file_data);
+		static void CookPrefab(RefCountPtr<PrefabHandleResource> prefab_handle_resource, AsyncResourceDescriptor const& gltf_resource_descriptor, void* file_data);
+		static void LoadPrefab(std::ifstream const& stream, RefCountPtr<PrefabHandleResource> prefab_handle_resource);
+
 		inline static bool g_force_recook = false;
 	};
 }
