@@ -31,7 +31,7 @@ namespace phx
         float intensity;
     };
 
-    namespace ManifiestNodeTypeIds
+    namespace ManifiestCameraTypeIds
     {
         constexpr const char* Perspective = "Perspective";
         constexpr const char* Orthographic = "Orthographic";
@@ -111,9 +111,6 @@ namespace phx
 	{
         struct Node 
         {
-            std::string name;
-            int parent_index;
-
             std::string name;
             int parent_index;
             hlslpp::float4x4 local_transform;

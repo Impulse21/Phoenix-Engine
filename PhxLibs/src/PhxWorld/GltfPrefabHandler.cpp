@@ -206,6 +206,7 @@ void GltfPrefabHandler::LoadPrefab(std::ifstream const& stream, RefCountPtr<Pref
         PrefabResource::Node& node = prefab_resource.nodes.emplace_back();
         node.name = manifest_node.name;
         node.parent_index = manifest_node.parent_index;
+		hlslpp::load(node.local_transform, &manifest_node.local_transform.m00);
 
         if (manifest_node.node_type == ManifiestNodeTypeIds::Mesh)
         {
@@ -220,31 +221,54 @@ void GltfPrefabHandler::LoadPrefab(std::ifstream const& stream, RefCountPtr<Pref
         {
             CameraNodeData camera_node_data = {};
 
-            // TODO: I am here.
-            if ()
-                camera_node_data.type = manifest_node.camera_data->type;
+            if (manifest_node.camera_data->type == ManifiestCameraTypeIds::Orthographic)
+            {
+				camera_node_data.type = CameraNodeData::Type::Orthographic;
+            }
+            else
+            {
+				camera_node_data.type = CameraNodeData::Type::Perspective;
+            }
+
             camera_node_data.fov_y = manifest_node.camera_data->fov_y;
             camera_node_data.z_near = manifest_node.camera_data->z_near;
             camera_node_data.z_far = manifest_node.camera_data->z_far;
+
             node.data = camera_node_data;
         }
         else if (manifest_node.node_type == ManifiestNodeTypeIds::Light)
         {
             LightNodeData light_node_data = {};
-            light_node_data.type = manifest_node.light_data->type;
-            light_node_data.colour = manifest_node.light_data->colour;
+
+            if (manifest_node.camera_data->type == ManifiestLightTypeIds::Directional)
+            {
+                light_node_data.type = LightNodeData::Type::Directional;
+            }
+            else if (manifest_node.camera_data->type == ManifiestLightTypeIds::Spot)
+            {
+                light_node_data.type = LightNodeData::Type::Spot;
+            }
+			else
+            {
+                light_node_data.type = LightNodeData::Type::Point;
+            }
+
+            hlslpp::load(light_node_data.colour, &manifest_node.light_data->colour.x);
             light_node_data.intensity = manifest_node.light_data->intensity;
             node.data = light_node_data;
         }
         else if (manifest_node.node_type == ManifiestNodeTypeIds::Prefab)
         {
             NestedPrefabData nested_prefab_data = {};
-            nested_prefab_data.prefabHandle = manifest_node.nested_prefab_path->prefabHandle;
+			const char* nested_prefab_path = manifest_node.nested_prefab_path->c_str();
+            nested_prefab_data.prefabHandle = ResourceSystem::Ptr->Get(nested_prefab_path);
             node.data = nested_prefab_data;
         }
         else
         {
             node.data = EmptyNodeData{};
         }
+
+		prefab_handle_resource->state = Resource::State::Loaded;
     }
 }
