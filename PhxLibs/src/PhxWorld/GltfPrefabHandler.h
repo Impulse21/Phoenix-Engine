@@ -27,7 +27,7 @@ namespace phx
 
 	private:
 		static void CookPrefab(RefCountPtr<PrefabHandleResource> prefab_handle_resource, AsyncResourceDescriptor const& gltf_resource_descriptor, void* file_data);
-		static void LoadPrefab(std::ifstream const& stream, RefCountPtr<PrefabHandleResource> prefab_handle_resource);
+		static void LoadPrefab(std::ifstream& stream, RefCountPtr<PrefabHandleResource> prefab_handle_resource);
 
 		inline static bool g_force_recook = false;
 	};

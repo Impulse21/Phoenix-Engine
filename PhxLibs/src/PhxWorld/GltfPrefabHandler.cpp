@@ -192,7 +192,7 @@ void phx::GltfPrefabHandler::CookPrefab(RefCountPtr<PrefabHandleResource> prefab
 	CGltfPrefabCooker::Cook(*gltf_data, resource_descriptor, g_force_recook);
 }
 
-void GltfPrefabHandler::LoadPrefab(std::ifstream const& stream, RefCountPtr<PrefabHandleResource> prefab_handle_resource)
+void GltfPrefabHandler::LoadPrefab(std::ifstream& stream, RefCountPtr<PrefabHandleResource> prefab_handle_resource)
 {
     nlohmann::json j = nlohmann::json::parse(stream);
     PrefabManifest manifest = j.get<phx::PrefabManifest>();

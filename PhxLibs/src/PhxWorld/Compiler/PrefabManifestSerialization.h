@@ -12,12 +12,12 @@ namespace hlslpp
     {
             static_assert(sizeof(hlslpp::interop::float4x4) == sizeof(float) * 16);
 
-            void to_json(nlohmann::json& j, const hlslpp::interop::float3& v)
+            inline void to_json(nlohmann::json& j, const hlslpp::interop::float3& v)
             {
                 j = { v.x, v.y, v.z };
             }
 
-            void from_json(nlohmann::json const& j, hlslpp::interop::float3& v)
+            inline void from_json(nlohmann::json const& j, hlslpp::interop::float3& v)
             {
                 j.at(0).get_to(v.x);
                 j.at(1).get_to(v.y);
@@ -25,13 +25,13 @@ namespace hlslpp
             }
 
             // --- Serializer for math::Mat4 ---
-            void to_json(nlohmann::json& j, const hlslpp::interop::float4x4& m)
+            inline void to_json(nlohmann::json& j, const hlslpp::interop::float4x4& m)
             {
                 const float* p = reinterpret_cast<const float*>(&m);
                 j = std::vector<float>(p, p + 16);
             }
 
-            void from_json(nlohmann::json const& j, hlslpp::interop::float4x4& m)
+            inline void from_json(nlohmann::json const& j, hlslpp::interop::float4x4& m)
             {
                 // Read the array of 16 floats back from the JSON
                 auto v = j.get<std::vector<float>>();
@@ -45,7 +45,7 @@ namespace hlslpp
 
 namespace phx
 {
-    void to_json(nlohmann::json& j, ManifestMeshInstance const& d)
+    inline void to_json(nlohmann::json& j, ManifestMeshInstance const& d)
     {
         j = nlohmann::json{
             {"mesh", d.mesh_path},
@@ -57,7 +57,7 @@ namespace phx
         }
     }
 
-    void from_json(nlohmann::json const& j, ManifestMeshInstance& d)
+    inline void from_json(nlohmann::json const& j, ManifestMeshInstance& d)
     {
         j.at("mesh").get_to(d.mesh_path);
 
@@ -67,7 +67,7 @@ namespace phx
         }
     }
 
-    void to_json(nlohmann::json& j, ManifestCameraData const& d)
+    inline void to_json(nlohmann::json& j, ManifestCameraData const& d)
     {
         j = nlohmann::json{
             {"type", d.type},
@@ -76,7 +76,8 @@ namespace phx
             {"z_far", d.z_far}
         };
     }
-    void from_json(nlohmann::json const& j, ManifestCameraData& d) 
+
+    inline void from_json(nlohmann::json const& j, ManifestCameraData& d)
     {
         j.at("type").get_to(d.type);
         j.at("fov_y").get_to(d.fov_y);
@@ -84,7 +85,7 @@ namespace phx
         j.at("z_far").get_to(d.z_far);
     }
 
-    void to_json(nlohmann::json& j, const ManifestLightData& d) 
+    inline void to_json(nlohmann::json& j, const ManifestLightData& d)
     {
         j = nlohmann::json{
             {"type", d.type},
@@ -92,7 +93,8 @@ namespace phx
             {"intensity", d.intensity}
         };
     }
-    void from_json(const nlohmann::json& j, ManifestLightData& d) 
+
+    inline void from_json(const nlohmann::json& j, ManifestLightData& d)
     {
         j.at("type").get_to(d.type);
         j.at("colour").get_to(d.colour); // This will now correctly call the from_json for math::float3
@@ -100,7 +102,7 @@ namespace phx
     }
 
     // --- Serializer for PrefabManifest::Node ---
-    void to_json(nlohmann::json& j, PrefabManifest::Node const& n)
+    inline void to_json(nlohmann::json& j, PrefabManifest::Node const& n)
     {
         // Required fields
         j = nlohmann::json{
@@ -135,7 +137,7 @@ namespace phx
         }
     }
 
-    void from_json(const nlohmann::json& j, PrefabManifest::Node& n)
+    inline void from_json(const nlohmann::json& j, PrefabManifest::Node& n)
     {
 
         // Required fields
@@ -174,12 +176,12 @@ namespace phx
 
     // --- Serializer for PrefabManifest (The Root Object) ---
 
-    void to_json(nlohmann::json& j, const PrefabManifest& p)
+    inline void to_json(nlohmann::json& j, const PrefabManifest& p)
     {
         j = { {"nodes", p.nodes} };
     }
 
-    void from_json(const nlohmann::json& j, PrefabManifest& p)
+    inline void from_json(const nlohmann::json& j, PrefabManifest& p)
     {
         j.at("nodes").get_to(p.nodes);
     }
