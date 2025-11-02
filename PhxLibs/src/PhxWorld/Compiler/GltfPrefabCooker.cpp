@@ -1,6 +1,7 @@
 #include "PhxWorld/PhxWorld_pch.h"
 
 #include "GltfPrefabCooker.h"
+#include "PrefabManifestSerialization.h"
 
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
@@ -168,6 +169,22 @@ bool phx::CGltfPrefabCooker::operator()()
 	const std::string virtual_output_path = CookedPathBuilder::ForPrefab(m_resource_description.virtual_path);
 	Result<std::string> os_output_path = IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(virtual_output_path);
 
+	if (os_output_path.HasError())
+	{
+		PHX_CORE_ERROR("Failed to resolve physical path for prefab output '{0}'", virtual_output_path);
+		return false;
+	}
+
+	if (!DirectoryExists(os_output_path.GetValue()))
+	{
+		CreateDirectories(os_output_path.GetValue());
+	}
+
+	nlohmann::json prefab_json = m_prefab_manifest;
+
+	std::ofstream out(os_output_path.GetValue());
+	out << prefab_json.dump(4); // .dump(4) "pretty prints" the JSON with 4-space indents
+
 	return true;
 }
 
@@ -211,6 +228,8 @@ void phx::CGltfPrefabCooker::WalkNodesRec(phx::Span<cgltf_node*> gltf_nodes, int
 	{
 		const size_t node_index = m_prefab_manifest.nodes.size();
 		PrefabManifest::Node& node_manifest = m_prefab_manifest.nodes.emplace_back();
+
+		node_manifest.parent_index = parent_index;
 
 		if (gltf_node->has_matrix)
 		{
@@ -259,7 +278,7 @@ void phx::CGltfPrefabCooker::WalkNodesRec(phx::Span<cgltf_node*> gltf_nodes, int
 		if (gltf_node->children_count > 0)
 		{
 			Span<cgltf_node*> nodes(gltf_node->children, gltf_node->children_count);
-			WalkNodesRec(nodes);
+			WalkNodesRec(nodes, node_index);
 		}
 	}
 }

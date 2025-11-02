@@ -125,6 +125,7 @@ void GltfPrefabHandler::LoadAsync(IStreamingManager* streaming_manager, RefCount
         }
 
         // TODO: Check if resource is stale.
+        PHX_CORE_INFO("glTF Prefab '{0}' is stale or missing. Cooking...", resource_descriptor.virtual_path);
         CookPrefab(prefab_handle_resource, resource_descriptor, dest.get());
      };
 

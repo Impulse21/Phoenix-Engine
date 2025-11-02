@@ -26,7 +26,7 @@ namespace phx
     struct ManifestCameraData 
     {
         std::string type; // "perspective" or "orthographic"
-        float fovY;
+        float fov_y;
         float z_near;
         float z_far;
         // ... other camera props
