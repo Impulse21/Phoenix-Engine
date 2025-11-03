@@ -48,7 +48,7 @@ void phx::ResourceFile::Load(
 	};
 
 
-	request.on_complete = [resource_file](StreamingResult const& result) mutable {
+	request.on_complete = [resource_file, streaming_manager](StreamingResult const& result) mutable {
 		if (result.error_code != ErrorCode::Success)
 		{
 			resource_file->failure_callack();
@@ -61,6 +61,33 @@ void phx::ResourceFile::Load(
 		}
 
 		// TODO: Load data chunks (metadata, cpu, gpu)
+		resource_file->metadata = MemoryBuffer(resource_file->header.MetadataHeapSize);
+		StreamingRequest metadata_request = {
+			.operations = {
+				{
+					.source = {
+						.data = resource_file->resource_descriptor,
+						.offset = sizeof(ResourceFileFormat::Header),
+						.size = resource_file->header.MetadataHeapSize,
+					},
+					.destination = {
+						.target = CpuResourceDestinationInfo{ .handle = resource_file->metadata.Data() },
+						.offset = 0,
+						.size = resource_file->header.MetadataHeapSize,
+					}
+				}
+			}
+		};
+		metadata_request.on_complete = [resource_file](StreamingResult const& metadata_result) mutable {
+			if (metadata_result.error_code != ErrorCode::Success)
+			{
+				resource_file->failure_callack();
+				return;
+			}
+			resource_file->metadata_loaded_callback(resource_file);
+		};
+
+		streaming_manager->Submit(std::move(metadata_request));
 	};
 
 	streaming_manager->Submit(std::move(request));

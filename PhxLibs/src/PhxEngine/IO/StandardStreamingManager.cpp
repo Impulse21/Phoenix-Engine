@@ -146,7 +146,7 @@ struct StreamingRequestProcessor
 				return ErrorCode::InvalidSource;
 			}
 
-			data_to_transfer = buffer.get() + source_info.offset;
+			data_to_transfer = reinterpret_cast<const std::byte*>(buffer.get()) + source_info.offset;
 			effective_transfer_size = source_info.size;
 		}
 		else
@@ -228,7 +228,7 @@ struct StreamingRequestProcessor
 		// Determine effective source data pointer and size
 		if (descriptor.type == AsyncDataSourceType::Embedded)
 		{
-			data_to_transfer = descriptor.memory_buffer_ptr + source_info.offset;
+			data_to_transfer = reinterpret_cast<const std::byte*>(descriptor.memory_buffer_ptr) + source_info.offset;
 			effective_transfer_size = source_info.size;
 		}
 		else
@@ -251,10 +251,12 @@ struct StreamingRequestProcessor
 				return false;
 			}
 
-			intermediate_buffer = std::make_shared<char[]>(source_info.size);
+			if (intermediate_buffer.Size() <= source_info.size)
+				intermediate_buffer = MemoryBuffer(source_info.size);
+
 			effective_transfer_size = source_info.size;
-			data_to_transfer = intermediate_buffer.get();
-			size_t bytes_read = Platform::Get().ReadFile(file_handle, intermediate_buffer.get(), source_info.size);
+			data_to_transfer = intermediate_buffer.Data();
+			size_t bytes_read = Platform::Get().ReadFile(file_handle, intermediate_buffer.Data(), source_info.size);
 
 			if (bytes_read != source_info.size)
 			{
@@ -269,8 +271,8 @@ struct StreamingRequestProcessor
 		return true;
 	}
 
-	std::shared_ptr<char[]> intermediate_buffer = nullptr;
-	const char* data_to_transfer = nullptr;
+	MemoryBuffer intermediate_buffer;
+	const std::byte* data_to_transfer = nullptr;
 	uint64_t effective_transfer_size = 0;
 
 };

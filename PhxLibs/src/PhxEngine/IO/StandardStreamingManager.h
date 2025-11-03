@@ -26,6 +26,11 @@ namespace phx
 		{
 		}
 
+		~StandardStreamingManager() override
+		{
+			Shutdown();
+		}
+
 		void Initialize() override;
 		void Shutdown() override;
 
