@@ -120,7 +120,7 @@ void GltfPrefabHandler::LoadAsync(IStreamingManager* streaming_manager, RefCount
                     .size = resource_descriptor.length_of_resource,
                 },
                 .destination = {
-                    .target = dest,
+                    .target = CpuResourceDestinationInfo{ .handle = dest },
                     .size = resource_descriptor.length_of_resource,
                 }
             }

@@ -40,7 +40,7 @@ void phx::ResourceFile::Load(
 					   .size = sizeof(ResourceFileFormat::Header),
 				   },
 				   .destination = {
-					   .target = &resource_file->header,
+					   .target = CpuResourceDestinationInfo{.handle = &resource_file->header },
 					   .size = sizeof(ResourceFileFormat::Header),
 				   }
 			   }
@@ -59,6 +59,8 @@ void phx::ResourceFile::Load(
 		{
 			return;
 		}
+
+		// TODO: Load data chunks (metadata, cpu, gpu)
 	};
 
 	streaming_manager->Submit(std::move(request));

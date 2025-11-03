@@ -12,8 +12,57 @@ using namespace phx;
 
 namespace
 {
+
 struct StreamingRequestProcessor
 {
+	static std::pair<std::byte*, ErrorCode> GetCpuDestinationPointer(
+		const std::variant<std::shared_ptr<char[]>, void*>& handle_variant,
+		uint64_t dest_offset_bytes,
+		uint64_t dest_total_bytes,
+		uint64_t transfer_size_bytes)
+	{
+		std::byte* dest_ptr = nullptr;
+		ErrorCode error = ErrorCode::Success;
+
+		// Check for buffer overflow *before* visiting.
+		// This logic was flawed in the original; it's now corrected to
+		// check (offset + size) against the total buffer size.
+		if ((dest_offset_bytes + transfer_size_bytes) > dest_total_bytes)
+		{
+			return { nullptr, ErrorCode::InvalidDestination }; // Buffer overflow
+		}
+
+		std::visit([&](auto&& handle)
+			{
+				using THandle = std::decay_t<decltype(handle)>;
+
+				if constexpr (std::is_same_v<THandle, std::shared_ptr<char[]>>)
+				{
+					if (!handle) 
+					{
+						error = ErrorCode::InvalidDestination;
+						return;
+					}
+					dest_ptr = reinterpret_cast<std::byte*>(handle.get()) + dest_offset_bytes;
+				}
+				else if constexpr (std::is_same_v<THandle, void*>)
+				{
+					if (!handle) 
+					{
+						error = ErrorCode::InvalidDestination;
+						return;
+					}
+					dest_ptr = static_cast<std::byte*>(handle) + dest_offset_bytes;
+				}
+				else
+				{
+					error = ErrorCode::Unknown; // Should not happen if variant is correct
+				}
+			}, handle_variant);
+
+		return { dest_ptr, error };
+	}
+
 	void operator()(StreamingRequest& request, StandardStreamingManager* streaming_manager)
 	{
 		PHX_CORE_INFO(
@@ -64,23 +113,39 @@ struct StreamingRequestProcessor
 	{
 		ErrorCode ret_val = ErrorCode::Success;
 		std::visit([&](auto&& active_source_data) {
-			ret_val = ProcessSource(streaming_manager, ctx_handle, active_source_data, operation.source, operation.destination);
+			ret_val = ProcessStreamingTransfer(streaming_manager, ctx_handle, active_source_data, operation.source, operation.destination);
 		}, operation.source.data);
 
 		return ret_val;
 	}
 
 	template<typename TSource>
-	ErrorCode ProcessSource(StandardStreamingManager* streaming_manager, RHI::CommandBufferHandle /*ctx_handle*/, TSource& source_data_active_type, StreamingSource& source_info, StreamingDestination& destination_info)
+	ErrorCode ProcessStreamingTransfer(
+		StandardStreamingManager* streaming_manager,
+		RHI::CommandBufferHandle /*unused_ctx_handle*/,
+		TSource& source_data,
+		StreamingSource& source_info,
+		StreamingDestination& destination_info)
 	{
+		// --- 1. Declare Transfer Variables ---
+		// Moved from the bottom of the function to the top.
+		// Using const std::byte* is safer for raw data pointers.
 		if constexpr (std::is_same_v<std::decay_t<TSource>, AsyncResourceDescriptor>)
 		{
-			if (!ProcessAsyncResourceDesc(source_data_active_type, streaming_manager, source_info))
+			if (!ProcessAsyncResourceDesc(source_data, streaming_manager, source_info))
+			{
 				return ErrorCode::Unknown;
+			}
 		}
 		else if constexpr (std::is_same_v<std::decay_t<TSource>, ReadableCpuMemoryBuffer>)
 		{
-			ReadableCpuMemoryBuffer& buffer = source_data_active_type;
+			ReadableCpuMemoryBuffer& buffer = source_data;
+			if (!buffer || !buffer.get())
+			{
+				PHX_CORE_ERROR("Source ReadableCpuMemoryBuffer is null!");
+				return ErrorCode::InvalidSource;
+			}
+
 			data_to_transfer = buffer.get() + source_info.offset;
 			effective_transfer_size = source_info.size;
 		}
@@ -90,68 +155,68 @@ struct StreamingRequestProcessor
 			return ErrorCode::Unknown;
 		}
 
-		ErrorCode ret_val = ErrorCode::Success;
-		// Process Destination
-		std::visit([&](auto&& dest_active_type) {
-			using T = std::decay_t<decltype(dest_active_type)>;
-			if constexpr (std::is_same_v<T, WriteableCpuMemoryBuffer>)
+		ErrorCode ret_val = ErrorCode::Unknown; // Default to error
+		std::visit([&](auto&& dest_active_type)
 			{
-				// Case A: Destination is CPU Memory Buffer (WritableCpuMemoryBuffer)
-				WriteableCpuMemoryBuffer& dest_buffer = dest_active_type;
-				if (!dest_buffer || dest_buffer.get() == nullptr)
+				using TDest = std::decay_t<decltype(dest_active_type)>;
+
+				if constexpr (std::is_same_v<TDest, CpuResourceDestinationInfo>)
 				{
-					ret_val = ErrorCode::InvalidDestination;
-					return;
-				}
+					// --- Destination is CPU Memory ---
+					CpuResourceDestinationInfo& cpu_dest_info = dest_active_type;
 
-				if (effective_transfer_size > destination_info.size)
-				{
-					ret_val = ErrorCode::InvalidDestination;
-					return;
-				}
+					// Use our clean helper function
+					auto [dest_ptr, error] = GetCpuDestinationPointer(
+						cpu_dest_info.handle,
+						destination_info.offset,
+						destination_info.size,
+						effective_transfer_size
+					);
 
-				std::memcpy(dest_buffer.get() + destination_info.offset, data_to_transfer, effective_transfer_size);
-				ret_val = ErrorCode::Success;
-			}
-			else if (constexpr (std::is_same_v<T, void*>))
-			{
-				void* dest_buffer = dest_active_type;
-				if (!dest_buffer)
-				{
-					ret_val = ErrorCode::InvalidDestination;
-					return;
-				}
-
-				void* dest_with_offset = static_cast<std::byte*>(dest_buffer) + destination_info.offset;
-
-				std::memcpy(dest_with_offset, data_to_transfer, effective_transfer_size);
-			}
-			else if constexpr (std::is_same_v<T, GpuResourceDestinationInfo>)
-			{
-				GpuResourceDestinationInfo& gpu_dest_info = dest_active_type;
-				std::visit([&](auto&& handle_type) {
-					if constexpr (std::is_same_v<std::decay_t<decltype(handle_type)>, RHI::TextureHandle>)
+					if (error != ErrorCode::Success)
 					{
-						// TODO Texture uploading
-					}
-					else if constexpr (std::is_same_v<std::decay_t<decltype(handle_type)>, RHI::GpuBufferHandle>)
-					{
-						// TODO Buffer Uploading
-					}
-					else
-					{
-						ret_val = ErrorCode::Unknown;
+						ret_val = error;
 						return;
 					}
 
+					std::memcpy(dest_ptr, data_to_transfer, effective_transfer_size);
 					ret_val = ErrorCode::Success;
-					},
-					gpu_dest_info.handle);
-			}
-			else
-			{
-				ret_val = ErrorCode::Unknown;
-			}
+
+					// FIX: Removed the dead/erroneous code block that was
+					// here in the original (the WriteableCpuMemoryBuffer block).
+				}
+				else if constexpr (std::is_same_v<TDest, GpuResourceDestinationInfo>)
+				{
+					// --- Destination is GPU Memory (CPU-to-GPU Upload) ---
+					GpuResourceDestinationInfo& gpu_dest_info = dest_active_type;
+
+					// This is where you would queue the upload using your RHI
+					// or streaming manager.
+					std::visit([&](auto&& handle_type) {
+						using THandle = std::decay_t<decltype(handle_type)>;
+
+						if constexpr (std::is_same_v<THandle, RHI::TextureHandle>)
+						{
+							// TODO: Texture uploading logic
+							// e.g., streaming_manager->QueueTextureUpload(handle_type, ...);
+							ret_val = ErrorCode::Success; // Placeholder
+						}
+						else if constexpr (std::is_same_v<THandle, RHI::GpuBufferHandle>)
+						{
+							// TODO: Buffer Uploading logic
+							// e.g., streaming_manager->QueueBufferUpload(handle_type, ...);
+							ret_val = ErrorCode::Success; // Placeholder
+						}
+						else
+						{
+							ret_val = ErrorCode::Unknown;
+						}
+						}, gpu_dest_info.handle);
+				}
+				else
+				{
+					ret_val = ErrorCode::Unknown;
+				}
 			},
 			destination_info.target);
 

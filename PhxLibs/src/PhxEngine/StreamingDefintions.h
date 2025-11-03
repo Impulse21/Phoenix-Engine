@@ -114,6 +114,7 @@ namespace phx
     enum class ErrorCode
     {
         Success = 0,
+        InvalidSource,
         InvalidDestination,
         Unknown,
     };
