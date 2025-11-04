@@ -11,11 +11,13 @@ namespace phx::renderer
 {
     struct MeshMetadata
     {
-        uint32_t geometry_bufer_size;
+        uint32_t packed_mesh_buffer;
     };
 
     struct MeshResource final : public Resource
     {
+        PHX_DECLARE_RESOURCE(MeshResource)
+
         struct CpuData
         {
             struct Draw
@@ -38,7 +40,9 @@ namespace phx::renderer
         phx::MemoryBuffer cpu_data_buffer;
         TypedView<CpuData> cpu_data;
 
-        RHI::GpuBufferHandle gemoetry_buffer;
+        RHI::GpuBufferHandle packed_mesh_buffer;
+
+        ~MeshResource();
     };
 }
 

@@ -2,8 +2,7 @@
 
 #include <PhxResource/Resource.h>
 #include <PhxResource/IResourceFileHandler.h>
-#include "ModelResoure.h"
-
+#include <PhxRenderer/MeshResource.h>
 namespace phx::renderer
 {
 	struct ModelMetadata;
@@ -11,9 +10,9 @@ namespace phx::renderer
 	class MeshResourceHandler final : public phx::ResourceFileHandler
 	{
 	public:
-		StringHash GetResourceTypeHash() const override { return renderer::ModelResoure::StaticTypeHash(); };
+		StringHash GetResourceTypeHash() const override { return renderer::MeshResource::StaticTypeHash(); };
 		bool IsStale(AsyncResourceDescriptor const&, IVirtualFileSystem*) const override { return false; }
-		RefCountPtr<Resource> CreatePlaceholder() const override { return RefCountPtr<Resource>::Create(new ModelResoure()); }
+		RefCountPtr<Resource> CreatePlaceholder() const override { return RefCountPtr<Resource>::Create(new MeshResource()); }
 		void LoadAsync(IStreamingManager* streaming_manager, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const override;
 
 	private:

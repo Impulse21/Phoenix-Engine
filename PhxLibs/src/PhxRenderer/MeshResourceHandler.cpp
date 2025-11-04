@@ -17,64 +17,79 @@ using namespace phx::renderer;
 void phx::renderer::MeshResourceHandler::LoadAsync(IStreamingManager* streaming_manager, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const
 {
 	// TODO: Check if cached version is loaded already. If so, load from there.
-	RefCountPtr<ModelResoure> model_resource = resource.As<ModelResoure>();
+	RefCountPtr<MeshResource> mesh_resource = resource.As<MeshResource>();
 
-	model_resource->state = Resource::State::Loading;
+	mesh_resource->state = Resource::State::Loading;
 	ResourceFile::Load(
 		streaming_manager,
 		resource_descriptor,
-		[model_resource](std::shared_ptr<ResourceFile> resourceFile)
+		[mesh_resource, resource_descriptor, streaming_manager](std::shared_ptr<ResourceFile> resource_file)
 		{
-			MeshMetadata* metadata_view = reinterpret_cast<MeshMetadata*>(resourceFile->metadata_header->MetadataChunk.Get());
-			PHX_CORE_INFO("Loading mesh with geometry buffer size: {0} bytes", metadata_view->geometry_bufer_size);
-		},
-		[model_resource] {
-			PHX_CORE_ERROR("Failed to load mesh resource.");
-			model_resource->state = Resource::State::Error;
-		});
-#if false
-	// TODO: Fix boiler plate stuff.
-	std::shared_ptr<char[]> dest = std::make_shared<char[]>(resource_descriptor.length_of_resource);
-	StreamingRequest request = {
-		.operations = {
+			ResourceFileFormat::MetadataHeader* metadata_header = resource_file->metadata_header.Get();
+			MeshMetadata* metadata_view = reinterpret_cast<MeshMetadata*>(metadata_header->MetadataChunk.Get());
+			PHX_CORE_INFO("Loading mesh with packed mesh buffer size: {0} bytes", metadata_view->packed_mesh_buffer);
+
+			mesh_resource->packed_mesh_buffer = RHI::CreateBuffer({
+					.DebugName = "packed_mesh_buffer",
+					.Size = metadata_view->packed_mesh_buffer,
+					.BindingFlags = RHI::BindingFlags::IndexBuffer | RHI::BindingFlags::ShaderResource,
+					.MiscFlags = RHI::ResourceMiscFlags::BufferRaw
+				});
+			
+
+			const ResourceFileFormat::Chunk& cpu_chunk_header = metadata_header->Chunks[0];
+			mesh_resource->cpu_data_buffer = MemoryBuffer(cpu_chunk_header.UncompressedSize);
+			mesh_resource->cpu_data = mesh_resource->cpu_data_buffer.GetView<MeshResource::CpuData>();
+
+			StreamingOperation cpu_operation =
 			{
 				.source = {
 					.data = resource_descriptor,
-					.size = resource_descriptor.length_of_resource,
+					.offset = cpu_chunk_header.Offset.Offset,
+					.size = cpu_chunk_header.CompressedSize,
 				},
 				.destination = {
-					.target = dest,
-					.size = resource_descriptor.length_of_resource,
+					.target = CpuResourceDestinationInfo{.handle = &mesh_resource->cpu_data },
+					.size = cpu_chunk_header.UncompressedSize,
 				}
-			}
-		}
-	};
+			};
 
-	request.on_complete = [=](StreamingResult const& result) mutable {
-		if (result.error_code != ErrorCode::Success)
-		{
-			PHX_CORE_ERROR("Failed to load '{0}'", resource_descriptor.virtual_path);
-			model_resource->state = Resource::State::Error;
+			const ResourceFileFormat::Chunk& gpu_chunk_header = metadata_header->Chunks[1];
 
-			return;
-		}
-	};
+			StreamingOperation gpu_operation =
+			{
+				.source = {
+					.data = resource_descriptor,
+					.offset = gpu_chunk_header.Offset.Offset,
+					.size = gpu_chunk_header.CompressedSize,
+				},
+				.destination = {
+					.target = GpuResourceDestinationInfo{ .handle = mesh_resource->packed_mesh_buffer },
+					.size = gpu_chunk_header.UncompressedSize,
+				}
+			};
 
-	streaming_manager->Submit(std::move(request));
-	ResourceFile::Load(
-		resource_system->,
-		fileHandle,
-		[retVal](std::shared_ptr<ResourceFile> resourceFile)
-		{
-			auto meshMetadata = reinterpret_cast<const ModelMetadata*>(resourceFile->Metadata->MetadataChunk.Get());
-			RequestMeshData(
-				retVal,
-				resourceFile->AssetStreamer,
-				resourceFile->FileHandle,
-				meshMetadata,
-				resourceFile->Metadata->Chunks);
+			StreamingRequest request = {
+			   .operations = { cpu_operation, gpu_operation}
+			};
+
+			request.on_complete = [mesh_resource](StreamingResult const& result) mutable {
+				if (result.error_code != ErrorCode::Success)
+				{
+					mesh_resource->state = Resource::State::Error;
+					return;
+				}
+
+				mesh_resource->state = Resource::State::Loaded;
+			};
+
+			streaming_manager->Submit(std::move(request));
+		},
+		[mesh_resource] {
+			PHX_CORE_ERROR("Failed to load mesh resource.");
+			mesh_resource->state = Resource::State::Error;
 		});
-#endif
+
 }
 
 #if false

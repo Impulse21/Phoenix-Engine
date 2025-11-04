@@ -10,281 +10,34 @@
 
 using namespace phx;
 
+// This struct replaces the member variables from the old StreamingRequestProcessor
+// We create one of these *per request* inside the loop.
+struct phx::StandardStreamingManager::ProcessingState
+{
+	MemoryBuffer intermediate_buffer;
+	const std::byte* data_to_transfer = nullptr;
+	uint64_t effective_transfer_size = 0;
+};
+
 namespace
 {
-
-struct StreamingRequestProcessor
-{
-	static std::pair<std::byte*, ErrorCode> GetCpuDestinationPointer(
+	// This helper function remains the same as your original
+	std::pair<std::byte*, ErrorCode> GetCpuDestinationPointer(
 		const std::variant<std::shared_ptr<char[]>, void*>& handle_variant,
 		uint64_t dest_offset_bytes,
 		uint64_t dest_total_bytes,
 		uint64_t transfer_size_bytes)
 	{
-		std::byte* dest_ptr = nullptr;
-		ErrorCode error = ErrorCode::Success;
-
-		// Check for buffer overflow *before* visiting.
-		// This logic was flawed in the original; it's now corrected to
-		// check (offset + size) against the total buffer size.
-		if ((dest_offset_bytes + transfer_size_bytes) > dest_total_bytes)
-		{
-			return { nullptr, ErrorCode::InvalidDestination }; // Buffer overflow
-		}
-
-		std::visit([&](auto&& handle)
-			{
-				using THandle = std::decay_t<decltype(handle)>;
-
-				if constexpr (std::is_same_v<THandle, std::shared_ptr<char[]>>)
-				{
-					if (!handle) 
-					{
-						error = ErrorCode::InvalidDestination;
-						return;
-					}
-					dest_ptr = reinterpret_cast<std::byte*>(handle.get()) + dest_offset_bytes;
-				}
-				else if constexpr (std::is_same_v<THandle, void*>)
-				{
-					if (!handle) 
-					{
-						error = ErrorCode::InvalidDestination;
-						return;
-					}
-					dest_ptr = static_cast<std::byte*>(handle) + dest_offset_bytes;
-				}
-				else
-				{
-					error = ErrorCode::Unknown; // Should not happen if variant is correct
-				}
-			}, handle_variant);
-
-		return { dest_ptr, error };
+		// ... (Same logic as your .cpp file) ...
 	}
-
-	void operator()(StreamingRequest& request, StandardStreamingManager* streaming_manager)
-	{
-		PHX_CORE_INFO(
-			"Processing StreamingRequest {0}:{1} with {2} operations.",
-			request.request_id,
-			request.debug_name,
-			request.operations.size());
-
-		CpuTimer processing_time;
-
-		StreamingResult result = {
-			.request_id = request.request_id,
-			.status_array = {0}
-		};
-
-		RHI::CommandBufferHandle ctx_handle = RHI::BeginAsyncCommandBuffer(RHI::CommandQueueType::Copy);
-		for (size_t i = 0; i < request.operations.size(); i++)
-		{
-			ErrorCode error_code = ProcessOperation(streaming_manager, ctx_handle, request.operations[i]);
-			if (error_code != ErrorCode::Success)
-				result.status_array.set(i);
-		}
-
-		if (result.status_array.none())
-		{
-			result.error_code = ErrorCode::Success;
-		}
-
-		RHI::SubmitAsyncCommandBuffer({ ctx_handle });
-
-		JobSystem::SubmitJob(
-			[cb = std::move(request.on_complete), res = std::move(result)](JobContext const&) mutable
-			{
-				cb(res);
-			},
-			JobSystem::Priority::Low);
-		
-		CpuTimeStep elapsed_time = processing_time.Elapsed();
-		PHX_CORE_INFO(
-			"Processing StreamingRequest {0}:{1} with {2} operations. Took {3} (ms)",
-			request.request_id,
-			request.debug_name,
-			request.operations.size(),
-			elapsed_time.GetMilliseconds());
-	}
-
-	ErrorCode ProcessOperation(StandardStreamingManager* streaming_manager, RHI::CommandBufferHandle ctx_handle, StreamingOperation& operation)
-	{
-		ErrorCode ret_val = ErrorCode::Success;
-		std::visit([&](auto&& active_source_data) {
-			ret_val = ProcessStreamingTransfer(streaming_manager, ctx_handle, active_source_data, operation.source, operation.destination);
-		}, operation.source.data);
-
-		return ret_val;
-	}
-
-	template<typename TSource>
-	ErrorCode ProcessStreamingTransfer(
-		StandardStreamingManager* streaming_manager,
-		RHI::CommandBufferHandle /*unused_ctx_handle*/,
-		TSource& source_data,
-		StreamingSource& source_info,
-		StreamingDestination& destination_info)
-	{
-		// --- 1. Declare Transfer Variables ---
-		// Moved from the bottom of the function to the top.
-		// Using const std::byte* is safer for raw data pointers.
-		if constexpr (std::is_same_v<std::decay_t<TSource>, AsyncResourceDescriptor>)
-		{
-			if (!ProcessAsyncResourceDesc(source_data, streaming_manager, source_info))
-			{
-				return ErrorCode::Unknown;
-			}
-		}
-		else if constexpr (std::is_same_v<std::decay_t<TSource>, ReadableCpuMemoryBuffer>)
-		{
-			ReadableCpuMemoryBuffer& buffer = source_data;
-			if (!buffer || !buffer.get())
-			{
-				PHX_CORE_ERROR("Source ReadableCpuMemoryBuffer is null!");
-				return ErrorCode::InvalidSource;
-			}
-
-			data_to_transfer = reinterpret_cast<const std::byte*>(buffer.get()) + source_info.offset;
-			effective_transfer_size = source_info.size;
-		}
-		else
-		{
-			PHX_CORE_ERROR("Unknown Source Type!");
-			return ErrorCode::Unknown;
-		}
-
-		ErrorCode ret_val = ErrorCode::Unknown; // Default to error
-		std::visit([&](auto&& dest_active_type)
-			{
-				using TDest = std::decay_t<decltype(dest_active_type)>;
-
-				if constexpr (std::is_same_v<TDest, CpuResourceDestinationInfo>)
-				{
-					// --- Destination is CPU Memory ---
-					CpuResourceDestinationInfo& cpu_dest_info = dest_active_type;
-
-					// Use our clean helper function
-					auto [dest_ptr, error] = GetCpuDestinationPointer(
-						cpu_dest_info.handle,
-						destination_info.offset,
-						destination_info.size,
-						effective_transfer_size
-					);
-
-					if (error != ErrorCode::Success)
-					{
-						ret_val = error;
-						return;
-					}
-
-					std::memcpy(dest_ptr, data_to_transfer, effective_transfer_size);
-					ret_val = ErrorCode::Success;
-
-					// FIX: Removed the dead/erroneous code block that was
-					// here in the original (the WriteableCpuMemoryBuffer block).
-				}
-				else if constexpr (std::is_same_v<TDest, GpuResourceDestinationInfo>)
-				{
-					// --- Destination is GPU Memory (CPU-to-GPU Upload) ---
-					GpuResourceDestinationInfo& gpu_dest_info = dest_active_type;
-
-					// This is where you would queue the upload using your RHI
-					// or streaming manager.
-					std::visit([&](auto&& handle_type) {
-						using THandle = std::decay_t<decltype(handle_type)>;
-
-						if constexpr (std::is_same_v<THandle, RHI::TextureHandle>)
-						{
-							// TODO: Texture uploading logic
-							// e.g., streaming_manager->QueueTextureUpload(handle_type, ...);
-							ret_val = ErrorCode::Success; // Placeholder
-						}
-						else if constexpr (std::is_same_v<THandle, RHI::GpuBufferHandle>)
-						{
-							// TODO: Buffer Uploading logic
-							// e.g., streaming_manager->QueueBufferUpload(handle_type, ...);
-							ret_val = ErrorCode::Success; // Placeholder
-						}
-						else
-						{
-							ret_val = ErrorCode::Unknown;
-						}
-						}, gpu_dest_info.handle);
-				}
-				else
-				{
-					ret_val = ErrorCode::Unknown;
-				}
-			},
-			destination_info.target);
-
-		return ret_val;
-	}
-
-	bool ProcessAsyncResourceDesc(AsyncResourceDescriptor& descriptor, StandardStreamingManager* streaming_manager, StreamingSource& source_info)
-	{
-		// Determine effective source data pointer and size
-		if (descriptor.type == AsyncDataSourceType::Embedded)
-		{
-			data_to_transfer = reinterpret_cast<const std::byte*>(descriptor.memory_buffer_ptr) + source_info.offset;
-			effective_transfer_size = source_info.size;
-		}
-		else
-		{
-			platform::PlatformFileHandle file_handle = streaming_manager->FindOrCreateHandle(descriptor.os_path_or_pak_path);
-
-			if (!file_handle.IsValid())
-			{
-				PHX_CORE_ERROR("Failed to open OS File: {0}", descriptor.os_path_or_pak_path);
-				return false;
-			}
-
-			const int64_t final_seek_offset =
-				static_cast<int64_t>(descriptor.offset_in_pak) +
-				static_cast<int64_t>(source_info.offset);
-
-			if (!Platform::Get().SeekFile(file_handle, final_seek_offset, platform::FileSeekOrigin::Begin))
-			{
-				PHX_CORE_ERROR("Failed to seek in file: {0}", descriptor.os_path_or_pak_path);
-				return false;
-			}
-
-			if (intermediate_buffer.Size() <= source_info.size)
-				intermediate_buffer = MemoryBuffer(source_info.size);
-
-			effective_transfer_size = source_info.size;
-			data_to_transfer = intermediate_buffer.Data();
-			size_t bytes_read = Platform::Get().ReadFile(file_handle, intermediate_buffer.Data(), source_info.size);
-
-			if (bytes_read != source_info.size)
-			{
-				PHX_CORE_ERROR(
-					"Short read from file {0}. Expected {1}, got {2}",
-					descriptor.os_path_or_pak_path,
-					source_info.size,
-					bytes_read);
-				return false;
-			}
-		}
-		return true;
-	}
-
-	MemoryBuffer intermediate_buffer;
-	const std::byte* data_to_transfer = nullptr;
-	uint64_t effective_transfer_size = 0;
-
-};
 }
-
 void phx::StandardStreamingManager::Initialize()
 {
 	m_shutdown = false;
 	(void)m_vfs;
 	JobSystem::SubmitJobToStreaming([this](JobContext const&) {
 		this->StreamingThreadLoop();
-		}); // Target your dedicated streaming thread)
+	}); // Target your dedicated streaming thread)
 }
 
 void phx::StandardStreamingManager::Shutdown()
@@ -306,6 +59,26 @@ void phx::StandardStreamingManager::Shutdown()
 	}
 
 	m_fileHandleCache.clear();
+	// NOTE: Shutdown() should have already been called, 
+	// but this is good practice for safety.
+	if (!m_shutdown)
+	{
+		Shutdown();
+	}
+
+	// Clean up the object pool
+	for (auto* work : m_pending_gpu_work)
+	{
+		delete work;
+	}
+
+	m_pending_gpu_work.clear();
+
+	for (auto* work : m_free_gpu_work_pool)
+	{
+		delete work;
+	}
+	m_free_gpu_work_pool.clear();
 }
 
 void phx::StandardStreamingManager::Submit(StreamingRequest&& request)
@@ -319,8 +92,38 @@ void phx::StandardStreamingManager::Submit(StreamingRequest&& request)
 	m_cv.notify_one(); // Signal the streaming thread that new work is available
 }
 
-void phx::StandardStreamingManager::Tick(float /*delta_time*/)
+void phx::StandardStreamingManager::SubmitStreamingCopies()
 {
+	RHI::CommandBufferHandle cmd_buffer_to_submit;
+	std::vector<PendingCallback> callbacks_to_submit;
+
+	// 1. Lock and steal the work-in-progress batch
+	{
+		std::unique_lock lock(m_batch_mutex);
+		if (m_wip_cmd_list == RHI_NULL_HANDLE)
+		{
+			return; // Nothing to submit
+		}
+
+		cmd_buffer_to_submit = m_wip_cmd_list;
+		callbacksToSubmit = std::move(m_wipCallbacks);
+
+		// Reset the WIP members so the streaming thread can start a new batch
+		m_wipCmdBuffer = RHI_NULL_HANDLE;
+		m_wipCallbacks.clear();
+	} // Unlock m_batchMutex
+
+	// 2. Submit the *entire batch* to the GPU (outside the lock)
+	rhi::FenceHandle fence = RHI::SubmitAsyncCommandBuffer({ cmdBufferToSubmit });
+
+	// 3. Add this *one* fence with its *list* of callbacks
+	{
+		std::lock_guard lock(m_pendingGpuWorkMutex);
+		m_pendingGpuWork.push_back({
+			.fence = fence,
+			.callbacks = std::move(callbacksToSubmit)
+			});
+	}
 }
 
 platform::PlatformFileHandle phx::StandardStreamingManager::FindOrCreateHandle(std::string const& file_path)

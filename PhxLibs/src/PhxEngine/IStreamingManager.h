@@ -17,6 +17,7 @@ namespace phx
 
 		virtual void Submit(StreamingRequest&& request) = 0;
 
-		virtual void Tick(float delta_time) = 0;
+		virtual void SubmitStreamingCopies() = 0;
+		virtual void PollGpuCompletions() = 0;
 	};
 }
