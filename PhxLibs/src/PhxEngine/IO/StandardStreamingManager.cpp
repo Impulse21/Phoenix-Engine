@@ -100,7 +100,7 @@ void phx::StandardStreamingManager::SubmitStreamingCopies()
 	// 1. Lock and steal the work-in-progress batch
 	{
 		std::unique_lock lock(m_batch_mutex);
-		if (m_wip_cmd_list == RHI_NULL_HANDLE)
+		if (!m_wip_cmd_list.IsValid())
 		{
 			return; // Nothing to submit
 		}
