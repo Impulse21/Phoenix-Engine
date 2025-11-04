@@ -97,7 +97,6 @@ void phx::StandardStreamingManager::SubmitStreamingCopies()
 	RHI::CommandBufferHandle cmd_buffer_to_submit;
 	std::vector<PendingCallback> callbacks_to_submit;
 
-	// 1. Lock and steal the work-in-progress batch
 	{
 		std::unique_lock lock(m_batch_mutex);
 		if (!m_wip_cmd_list.IsValid())
@@ -106,23 +105,67 @@ void phx::StandardStreamingManager::SubmitStreamingCopies()
 		}
 
 		cmd_buffer_to_submit = m_wip_cmd_list;
-		callbacksToSubmit = std::move(m_wipCallbacks);
+		callbacks_to_submit = std::move(m_wip_callbacks);
 
 		// Reset the WIP members so the streaming thread can start a new batch
-		m_wipCmdBuffer = RHI_NULL_HANDLE;
-		m_wipCallbacks.clear();
-	} // Unlock m_batchMutex
+		m_wip_cmd_list = RHI::INVALID_COMMAND_HANDLE;
+		m_wip_callbacks.clear();
+	}
 
-	// 2. Submit the *entire batch* to the GPU (outside the lock)
-	rhi::FenceHandle fence = RHI::SubmitAsyncCommandBuffer({ cmdBufferToSubmit });
+	RHI::FenceHandle fence = RHI::SubmitAsyncCommandBuffer({ cmd_buffer_to_submit });
+
+	GpuPendingWork* work = nullptr;
+	{
+		std::lock_guard lock(m_gpu_work_mutex);
+		if (!m_free_gpu_work_pool.empty())
+		{
+			// 1. Get from pool
+			work = m_free_gpu_work_pool.front();
+			m_free_gpu_work_pool.pop_front();
+		}
+	}
+
+	if (work == nullptr)
+		work = new GpuPendingWork();
+
+	// 3. Fill the recycled object
+	work->fence = fence;
+	work->callbacks = std::move(callbacks_to_submit); // Move the callbacks in
 
 	// 3. Add this *one* fence with its *list* of callbacks
 	{
-		std::lock_guard lock(m_pendingGpuWorkMutex);
-		m_pendingGpuWork.push_back({
-			.fence = fence,
-			.callbacks = std::move(callbacksToSubmit)
-			});
+		std::lock_guard lock(m_gpu_work_mutex);
+		m_pending_gpu_work.push_back(work);
+	}
+}
+
+void phx::StandardStreamingManager::PollGpuCompletions()
+{
+	std::lock_guard lock(m_gpu_work_mutex);
+
+	for (int i = m_pending_gpu_work.size() - 1; i >= 0; --i)
+	{
+		auto* work = m_pending_gpu_work[i]; // It's a pointer
+
+		if (true)// RHI::IsFenceSignaled(work->fence))
+		{
+			// ... (Same logic to submit jobs for each callback) ...
+			for (auto& cb : work->callbacks)
+			{
+				JobSystem::SubmitJob([cb]() {
+					cb.on_complete(cb.result);
+				}, JobSystem::Priority::Low, nullptr);
+			}
+
+			RHI::DestroyFence(work->fence);
+			work->callbacks.clear()
+
+			m_freeGpuWorkPool.push_back(work); // 1. Return object to pool
+
+			// 2. Remove from pending list
+			std::swap(m_pending_gpu_work[i], m_pending_gpu_work.back());
+			m_pending_gpu_work.pop_back();
+		}
 	}
 }
 
@@ -169,8 +212,48 @@ void phx::StandardStreamingManager::StreamingThreadLoop()
 			m_requestQueue.pop_front();
 		} // Mutex is released here
 
-		StreamingRequestProcessor processor;
-		processor(currentRequest, this);
+		{
+			std::lock_guard lock(m_batch_mutex);
+
+			// 1. Get a command buffer if we don't have one
+			if (!m_wip_cmd_list.IsValid()) 
+			{
+				m_wip_cmd_list = RHI::BeginAsyncCommandBuffer(RHI::CommandQueueType::Copy);
+			}
+
+			PHX_CORE_INFO("Processing StreamingRequest {0}...", currentRequest.debug_name);
+
+			// 2. Process all operations
+			StreamingResult result = {
+				.request_id = currentRequest.request_id,
+				.status_array = {0}
+			};
+
+			// Create a state object *for this request*
+			ProcessingState state;
+
+			for (size_t i = 0; i < currentRequest.operations.size(); i++)
+			{
+				// Pass the WIP command buffer and state to ProcessOperation
+				ErrorCode error_code = ProcessOperation(m_wip_cmd_list, state, currentRequest.operations[i]);
+				if (error_code != ErrorCode::Success) 
+				{
+					result.status_array.set(i);
+				}
+			}
+
+			if (result.status_array.none()) 
+			{
+				result.error_code = ErrorCode::Success;
+			}
+
+			// 3. Add this request's callback to the batch
+			//    (We DO NOT submit the job here)
+			m_wip_callbacks.push_back({
+				.on_complete = std::move(currentRequest.on_complete),
+				.result = std::move(result)
+				});
+		} // Release m_batchMutex
 	}
 
 	PHX_CORE_INFO("AsyncIOManager: Streaming thread shutting down.");

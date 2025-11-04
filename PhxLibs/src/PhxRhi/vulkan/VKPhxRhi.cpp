@@ -763,7 +763,7 @@ namespace phx::RHI
         return {};
 	}
 
-	void SubmitAsyncCommandBuffer(phx::Span<CommandBufferHandle> /*contexts*/)
+    FenceHandle SubmitAsyncCommandBuffer(phx::Span<CommandBufferHandle> /*contexts*/)
 	{
 	}
 

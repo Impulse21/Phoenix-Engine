@@ -30,7 +30,7 @@ namespace phx
 		// One fence for a whole batch of callbacks
 		struct GpuPendingWork
 		{
-			uint64_t fence;
+			RHI::FenceHandle fence;
 			std::vector<PendingCallback> callbacks;
 		};
 

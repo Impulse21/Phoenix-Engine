@@ -945,6 +945,9 @@ namespace phx::RHI
     struct SwapChain;
     using SwapChainHandle = Handle<SwapChain>;
 
+    struct Fence;
+    using FenceHandle = Handle<Fence>;
+
     enum class PoolType : uint8_t
     {
         Async = 0,
@@ -962,7 +965,7 @@ namespace phx::RHI
             uint8_t  pool_type;   // (8 bits) Which pool to look in?
         } data;
 
-        CommandBufferHandle() : value(0) {}
+        constexpr CommandBufferHandle() : value(0) {}
 
         inline bool IsValid() const { return data.generation != 0; }
 
@@ -973,6 +976,8 @@ namespace phx::RHI
         inline bool IsValid() const { return data.generation != 0; }
     };
     static_assert(sizeof(CommandBufferHandle) == 4, "Command Buffer handle must be 4-bytes in size");
+
+    static constexpr CommandBufferHandle INVALID_COMMAND_HANDLE = {};
 
     using FrameCommandHandle = CommandBufferHandle;
     using AsyncCommandHandle = CommandBufferHandle;

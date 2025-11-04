@@ -35,7 +35,7 @@ namespace phx::RHI
     CommandBufferHandle BeginFrameCommandBuffer(CommandQueueType type = CommandQueueType::Graphics);
     CommandBufferHandle BeginAsyncCommandBuffer(CommandQueueType type);
 
-    void SubmitAsyncCommandBuffer(phx::Span<CommandBufferHandle> contexts);
+    FenceHandle SubmitAsyncCommandBuffer(phx::Span<CommandBufferHandle> contexts);
 
     namespace CommandRecorder
     {
