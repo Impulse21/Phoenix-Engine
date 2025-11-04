@@ -25,7 +25,7 @@ void phx::renderer::MeshResourceHandler::LoadAsync(IStreamingManager* streaming_
 		resource_descriptor,
 		[model_resource](std::shared_ptr<ResourceFile> resourceFile)
 		{
-			TypedView<MeshMetadata> metadata_view = resourceFile->metadata.GetView<MeshMetadata>();
+			MeshMetadata* metadata_view = reinterpret_cast<MeshMetadata*>(resourceFile->metadata_header->MetadataChunk.Get());
 			PHX_CORE_INFO("Loading mesh with geometry buffer size: {0} bytes", metadata_view->geometry_bufer_size);
 		},
 		[model_resource] {

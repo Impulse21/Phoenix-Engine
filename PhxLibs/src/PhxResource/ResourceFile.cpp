@@ -61,7 +61,8 @@ void phx::ResourceFile::Load(
 		}
 
 		// TODO: Load data chunks (metadata, cpu, gpu)
-		resource_file->metadata = MemoryBuffer(resource_file->header.MetadataHeapSize);
+		resource_file->metadata_buffer = MemoryBuffer(resource_file->header.MetadataHeapSize);
+		resource_file->metadata_header = resource_file->metadata_buffer.GetView<ResourceFileFormat::MetadataHeader>();
 		StreamingRequest metadata_request = {
 			.operations = {
 				{
@@ -71,7 +72,7 @@ void phx::ResourceFile::Load(
 						.size = resource_file->header.MetadataHeapSize,
 					},
 					.destination = {
-						.target = CpuResourceDestinationInfo{ .handle = resource_file->metadata.Data() },
+						.target = CpuResourceDestinationInfo{ .handle = resource_file->metadata_buffer.Data() },
 						.offset = 0,
 						.size = resource_file->header.MetadataHeapSize,
 					}

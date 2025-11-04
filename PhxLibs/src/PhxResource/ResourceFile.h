@@ -21,7 +21,8 @@ namespace phx
 		IStreamingManager* streaming_manager;
 		AsyncResourceDescriptor resource_descriptor;
 		ResourceFileFormat::Header header = {};
-		MemoryBuffer metadata;
+		MemoryBuffer metadata_buffer;
+		TypedView<ResourceFileFormat::MetadataHeader> metadata_header;
 
 		MetadataLoadCallbackFunc metadata_loaded_callback;
 		FailureCallbackFunc failure_callack;

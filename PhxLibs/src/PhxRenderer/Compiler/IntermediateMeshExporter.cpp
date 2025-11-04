@@ -62,6 +62,7 @@ bool IntermediateMeshExporter::operator()()
 	{
 		auto* mesh_metadata = file_builder.PlaceType<MeshMetadata>(metadata_chunk_offset);
 		mesh_metadata->geometry_bufer_size = static_cast<uint32_t>(gpu_chunk_data_size);
+		metdata_header->MetadataChunk.Set(mesh_metadata);
 	}
 
 	{
