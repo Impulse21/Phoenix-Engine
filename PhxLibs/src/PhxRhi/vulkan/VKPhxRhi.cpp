@@ -765,6 +765,7 @@ namespace phx::RHI
 
     FenceHandle SubmitAsyncCommandBuffer(phx::Span<CommandBufferHandle> /*contexts*/)
 	{
+        return {};
 	}
 
 	void SubmitAndPresentFrame()

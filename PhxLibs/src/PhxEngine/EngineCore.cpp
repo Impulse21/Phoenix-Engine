@@ -20,7 +20,7 @@
 #include <PhxEngine/EngineSync.h>
 #include <PhxEngine/IStreamingManager.h>
 #include <PhxEngine/Memory/FrameMemoryManager.h>
-#include <PhxEngine/IO/StandardStreamingManager.h>
+#include <PhxEngine/IO/IoQueue.h>
 
 using namespace phx;
 
@@ -88,7 +88,7 @@ namespace phx
 
 			app->SetWindowHandle(windowHandle);
 
-			phx::IStreamingManager::Ptr = new phx::StandardStreamingManager(phx::IVirtualFileSystem::Ptr);
+			phx::IIoQueue::Ptr = new phx::IoQueue();
 			phx::IStreamingManager::Ptr->Initialize();
 
 			phx::ResourceSystem::Ptr = new ResourceSystem;

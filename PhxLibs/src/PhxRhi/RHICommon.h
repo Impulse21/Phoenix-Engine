@@ -958,26 +958,24 @@ namespace phx::RHI
     {
         uint32_t value; // The raw 32-bit handle
 
-        struct EncodedData
+        struct EncodedData // Anonymous struct
         {
-            uint16_t index;       // (16 bits) Index into the specific pool
-            uint8_t  generation;  // (8 bits) Safety check for stale handles
-            uint8_t  pool_type;   // (8 bits) Which pool to look in?
+            uint16_t index;
+            uint8_t  pool_type;
+            uint8_t  queue_type;
         } data;
 
-        constexpr CommandBufferHandle() : value(0) {}
 
-        inline bool IsValid() const { return data.generation != 0; }
+        inline bool IsAsync() const { return data.pool_type == (uint8_t)PoolType::Async; }
+        inline bool IsFrame() const { return data.pool_type == (uint8_t)PoolType::Frame; }
 
-        // --- Helper Functions ---
+        inline CommandQueueType GetQueueType() const { return (CommandQueueType)data.queue_type; }
+        inline PoolType GetPoolType() const { return (PoolType)data.pool_type; }
         inline uint16_t GetIndex() const { return data.index; }
-        inline uint8_t  GetGeneration() const { return data.generation; }
-        inline uint8_t  GetPoolType() const { return data.pool_type; }
-        inline bool IsValid() const { return data.generation != 0; }
     };
     static_assert(sizeof(CommandBufferHandle) == 4, "Command Buffer handle must be 4-bytes in size");
 
-    static constexpr CommandBufferHandle INVALID_COMMAND_HANDLE = {};
+    static constexpr CommandBufferHandle NULL_CMD_HANDLE = {};
 
     using FrameCommandHandle = CommandBufferHandle;
     using AsyncCommandHandle = CommandBufferHandle;

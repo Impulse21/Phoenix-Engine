@@ -49,7 +49,7 @@ void phx::renderer::MeshResourceHandler::LoadAsync(IStreamingManager* streaming_
 					.size = cpu_chunk_header.CompressedSize,
 				},
 				.destination = {
-					.target = CpuResourceDestinationInfo{.handle = &mesh_resource->cpu_data },
+					.target = CpuResourceDestinationInfo{ .handle = mesh_resource->cpu_data_buffer.Data()},
 					.size = cpu_chunk_header.UncompressedSize,
 				}
 			};
@@ -70,7 +70,7 @@ void phx::renderer::MeshResourceHandler::LoadAsync(IStreamingManager* streaming_
 			};
 
 			StreamingRequest request = {
-			   .operations = { cpu_operation, gpu_operation}
+			   .operations = { cpu_operation, gpu_operation }
 			};
 
 			request.on_complete = [mesh_resource](StreamingResult const& result) mutable {

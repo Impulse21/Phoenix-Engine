@@ -8,6 +8,7 @@
 
 #include <PhxCore/Base.h>
 #include <PhxRhi/RHICommon.h>
+#include <PhxCore/IO/MemoryRegion.h>
 
 namespace phx
 {
@@ -70,10 +71,10 @@ namespace phx
 
     struct CpuResourceDestinationInfo
     {
-        std::variant<std::shared_ptr<char[]>, void*> handle;
+        void* handle;
 	};
 
-    using ReadableCpuMemoryBuffer = std::shared_ptr<const char[]>;
+    using ReadableCpuMemoryBuffer = const std::byte*;
     struct StreamingSource
     {
         std::variant<AsyncResourceDescriptor, ReadableCpuMemoryBuffer> data;
@@ -81,18 +82,17 @@ namespace phx
         uint64_t size = 0;
 
         bool IsFileSource() const { return std::holds_alternative<AsyncResourceDescriptor>(data); }
-        bool IsCpuMemorySource() const { return std::holds_alternative<std::shared_ptr<const char[]>>(data); }
+        bool IsCpuMemorySource() const { return std::holds_alternative<ReadableCpuMemoryBuffer>(data); }
     };
 
     struct StreamingDestination
     {
-        std::variant<CpuResourceDestinationInfo, GpuResourceDestinationInfo, void*> target;
+        std::variant<CpuResourceDestinationInfo, GpuResourceDestinationInfo> target;
         uint64_t offset = 0;
         uint64_t size = 0;
 
         bool IsCpuMemoryDestination() const { return std::holds_alternative<CpuResourceDestinationInfo>(target); }
         bool IsGpuResourceDestination() const { return std::holds_alternative<GpuResourceDestinationInfo>(target); }
-        bool IsPointer() const { return std::holds_alternative<void*>(target); }
     };
 
     struct StreamingOperation
