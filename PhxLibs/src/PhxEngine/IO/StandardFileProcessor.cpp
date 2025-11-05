@@ -58,6 +58,28 @@ void phx::StandardFileProcessor::PullCompletions()
 {
 }
 
+
+platform::PlatformFileHandle phx::StandardFileProcessor::FindOrCreateHandle(std::string const& file_path)
+{
+	// TODO: CLean up cache
+	std::scoped_lock _(m_file_handle_cache_mutex);
+
+	auto it = m_file_handle_cache.find(file_path);
+	if (it != m_file_handle_cache.end())
+	{
+		return it->second; // Use cached handle
+	}
+
+	// File not in cache, open it using the platform layer.
+	platform::PlatformFileHandle file_handle = Platform::Get().OpenFile(file_path, "rb").GetValue();
+	if (file_handle.IsValid())
+	{
+		m_file_handle_cache[file_path] = file_handle;
+	}
+
+	return file_handle;
+}
+
 ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 	StreamingSource& source_info,
 	StreamingDestination& destination_info,
