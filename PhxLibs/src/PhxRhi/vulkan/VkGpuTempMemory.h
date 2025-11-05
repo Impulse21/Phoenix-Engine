@@ -7,7 +7,7 @@
 
 #include <PhxRhi/RHICommon.h>
 
-namespace phx::RHI::vk
+namespace phx::rhi::vk
 {
     class GpuTempMemoryAllocator
     {
@@ -61,7 +61,7 @@ namespace phx::RHI::vk
         uint64_t m_frame_start_tail = 0;
 
         // Vulkan objects
-        RHI::GpuBufferHandle m_buffer;
+        rhi::GpuBufferHandle m_buffer;
         void* m_mapped_data = nullptr;
         VkDeviceAddress m_device_address = 0;
 

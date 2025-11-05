@@ -3,7 +3,7 @@
 #include "VkRhi_Internal.h"
 #include "VkBindlessSlotAllocator.h"
 
-namespace phx::RHI::vk
+namespace phx::rhi::vk
 {
 	class VkGfxDeviceImpl;
 	class VkBindlessDescriptorArray
@@ -13,7 +13,7 @@ namespace phx::RHI::vk
 		void Shutdown();
 
 
-		RHI::DescriptorIndex Allocate(const VkDescriptorGetInfoEXT& descriptor_info);
+		rhi::DescriptorIndex Allocate(const VkDescriptorGetInfoEXT& descriptor_info);
 		void Free(uint32_t index);
 
 		VkDeviceAddress GetBufferAddress() const { return m_buffer_address; };
@@ -22,7 +22,7 @@ namespace phx::RHI::vk
 		VkGfxDeviceImpl* m_device;
 		VkDescriptorType m_descriptor_type;
 
-		RHI::GpuBufferHandle m_buffer;
+		rhi::GpuBufferHandle m_buffer;
 
 		char* m_mapped_data;
 		VkDeviceAddress m_buffer_address;

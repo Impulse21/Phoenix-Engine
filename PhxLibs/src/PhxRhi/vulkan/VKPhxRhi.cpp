@@ -36,7 +36,7 @@ extern HINSTANCE g_hInstance;
 #define LOG_AND_SHUTDOWN_POOL(x) if (!x.IsEmpty()) PHX_CORE_WARN("[Vulkan] - Pool '" #x "' still contains active handles"); x.Shutdown();
 
 using namespace phx;
-using namespace phx::RHI;
+using namespace phx::rhi;
 
 namespace
 {
@@ -624,7 +624,7 @@ namespace
     }
 }
 
-namespace phx::RHI
+namespace phx::rhi
 {
 	bool Initialize(RhiDescriptor const& desc)
 	{
@@ -752,15 +752,31 @@ namespace phx::RHI
         PHX_CORE_INFO("[RHI] Vulkan Device Shutdown Complete.");
 	}
 
-	CommandBufferHandle BeginFrameCommandBuffer(CommandQueueType type)
+    CommandRecorder BeginFrameCommandBuffer(CommandQueueType type)
 	{
+        FrameData& frame_data = VkContext::GetCurrentFrame();
+
+        CommandBufferHandle frame_cmd_handle = {};
+
+        frame_cmd_handle.data.queue_type = static_cast<uint8_t>(PoolType::Frame);
+        frame_cmd_handle.data.queue_type = static_cast<uint8_t>(type);
+
+        CommandBuffer_VK* vk_cmd = nullptr;
+        {
+			std::scoped_lock lock(frame_data.vk_active_cmd_lock);
+
+            frame_cmd_handle.data.index = frame_data.vk_active_cmd.size(); 
+			vk_cmd = &frame_data.vk_active_cmd.emplace_back();
+
+            
+        }
         // Request a command Queue
-        return {};
+        return CommandRecorder({});
 	}
 
-	CommandBufferHandle BeginAsyncCommandBuffer(CommandQueueType type)
+    CommandRecorder BeginAsyncCommandBuffer(CommandQueueType type)
 	{
-        return {};
+        return CommandRecorder({});
 	}
 
     FenceHandle SubmitAsyncCommandBuffer(phx::Span<CommandBufferHandle> /*contexts*/)
@@ -960,7 +976,7 @@ namespace phx::RHI
 
         if (initial_data) // Assuming initial_data is a parameter to this function
         {
-            RHI::vk::CopyCtx copy_ctx;
+            rhi::vk::CopyCtx copy_ctx;
             Buffer_VK* copy_buffer;
             void* mapped_data = nullptr;
             if (desc.Usage == Usage::Upload)
@@ -1170,7 +1186,7 @@ namespace phx::RHI
 
 }
 
-namespace phx::RHI::CommandRecorder
+namespace phx::rhi::command_recorder::impl
 {
     void BindPipelineState(CommandBufferHandle handle, PipelineStateHandle pso)
     {

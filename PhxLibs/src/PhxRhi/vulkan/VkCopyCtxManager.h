@@ -4,7 +4,7 @@
 
 #include "VkRhi_Internal.h"
 
-namespace phx::RHI::vk
+namespace phx::rhi::vk
 {
 	struct CopyCtx
 	{
@@ -16,7 +16,7 @@ namespace phx::RHI::vk
 		VkFence fence = VK_NULL_HANDLE;
 		VkSemaphore semaphore = VK_NULL_HANDLE;
 
-		RHI::GpuBufferHandle upload_buffer;
+		rhi::GpuBufferHandle upload_buffer;
 		constexpr bool IsValid() const { return transfer_command_buffer != VK_NULL_HANDLE; }
 	};
 

@@ -29,11 +29,11 @@ void phx::renderer::MeshResourceHandler::LoadAsync(IStreamingManager* streaming_
 			MeshMetadata* metadata_view = reinterpret_cast<MeshMetadata*>(metadata_header->MetadataChunk.Get());
 			PHX_CORE_INFO("Loading mesh with packed mesh buffer size: {0} bytes", metadata_view->packed_mesh_buffer);
 
-			mesh_resource->packed_mesh_buffer = RHI::CreateBuffer({
+			mesh_resource->packed_mesh_buffer = rhi::CreateBuffer({
 					.DebugName = "packed_mesh_buffer",
 					.Size = metadata_view->packed_mesh_buffer,
-					.BindingFlags = RHI::BindingFlags::IndexBuffer | RHI::BindingFlags::ShaderResource,
-					.MiscFlags = RHI::ResourceMiscFlags::BufferRaw
+					.BindingFlags = rhi::BindingFlags::IndexBuffer | rhi::BindingFlags::ShaderResource,
+					.MiscFlags = rhi::ResourceMiscFlags::BufferRaw
 				});
 			
 
@@ -108,12 +108,12 @@ void phx::renderer::MeshResourceHandler::RequestMeshData(
 	// TODO: Determine if we should just create one large buffer
 	// and alias/srv off it, or create a heap for this resource, 
 	// would require an RHI change.
-	modelResoure->gemoetry_buffer = RHI::CreateBuffer({
+	modelResoure->gemoetry_buffer = rhi::CreateBuffer({
 		.DebugName = "Geometry Buffer",
 		.Size = meshMetadata->geometry_bufer_size,
-		.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::IndexBuffer,
-		.MiscFlags = RHI::ResourceMiscFlags::BufferRaw,
-		.InitialState = RHI::ResourceStates::Common,
+		.BindingFlags = rhi::BindingFlags::ShaderResource | rhi::BindingFlags::IndexBuffer,
+		.MiscFlags = rhi::ResourceMiscFlags::BufferRaw,
+		.InitialState = rhi::ResourceStates::Common,
 		});
 
 	const ResourceFileFormat::Chunk& gpuDataChunk = chunks[1];
@@ -124,7 +124,7 @@ void phx::renderer::MeshResourceHandler::RequestMeshData(
 		.SrcSize = gpuDataChunk.CompressedSize,
 		.DestSize = gpuDataChunk.UncompressedSize,
 		.Offset = gpuDataChunk.Offset.Offset,
-		.Destination = {.Type = DestinationType::RHI_GpuBuffer, .Buffer = modelResoure->gemoetry_buffer }
+		.Destination = {.Type = DestinationType::rhi_GpuBuffer, .Buffer = modelResoure->gemoetry_buffer }
 	};
 #else
 	StreamRequest gpuDataRequest = StreamRequest::Create(fileHandle, gpuDataChunk.Offset.Offset, gpuDataChunk.UncompressedSize, modelResoure->m_gpuData);

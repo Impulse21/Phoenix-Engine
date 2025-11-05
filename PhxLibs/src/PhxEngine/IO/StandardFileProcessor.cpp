@@ -12,7 +12,7 @@ void StandardFileProcessor::ProcessRequest(StreamingRequest&& request)
 	};
 
 	bool has_gpu_work = false;
-	RHI::CommandBufferHandle ctx_handle = RHI::NULL_CMD_HANDLE;
+	rhi::CommandBufferHandle ctx_handle = rhi::NULL_CMD_HANDLE;
 	for (size_t i = 0; i < request.operations.size(); i++)
 	{
 		// Pass the WIP command buffer and state to ProcessOperation

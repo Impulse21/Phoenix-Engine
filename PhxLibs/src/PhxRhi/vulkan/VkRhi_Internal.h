@@ -23,7 +23,7 @@
 #define vulkan_check(call) [&]() { VkResult res = call; PHX_CORE_ASSERT(res >= VK_SUCCESS); return res; }()
 #define RHI_DEFINE_ALIGNED(name, alignemnt) alignas(alignemnt) name
 
-namespace phx::RHI
+namespace phx::rhi
 {
 	constexpr size_t kMaxNumBuffers = 4096;
 	constexpr size_t kMaxNumTextures = 4096;
@@ -33,7 +33,7 @@ namespace phx::RHI
 	constexpr uint64_t kTimeoutValue = 2000000000ull; // 2 seconds
 	constexpr uint32_t kMaxFrameCmds = 64;
 	constexpr uint32_t kMaxAsyncCmds = 32;
-	using CommandBufferAllocator = phx::RHI::vk::CommandBufferAllocator_VK<cMaxInflightFrames, kMaxFrameCmds, kMaxAsyncCmds>;
+	using CommandBufferAllocator = phx::rhi::vk::CommandBufferAllocator_VK<cMaxInflightFrames, kMaxFrameCmds, kMaxAsyncCmds>;
 
 	struct RHI_DEFINE_ALIGNED(Buffer_VK, kCacheLineSize)
 	{
@@ -93,14 +93,17 @@ namespace phx::RHI
 
 	struct FrameData
 	{
-		VkSemaphore PresentSemaphore = VK_NULL_HANDLE;
-		VkSemaphore RenderSemaphore = VK_NULL_HANDLE;
-		VkFence RenderFence = VK_NULL_HANDLE;
+		VkSemaphore present_semaphore = VK_NULL_HANDLE;
+		VkSemaphore render_semaphore= VK_NULL_HANDLE;
+		VkFence render_fence= VK_NULL_HANDLE;
 
 		phx::EnumArray<VkCommandPool, CommandQueueType> vk_command_pools;
-		phx::EnumArray<VkCommandBuffer, CommandQueueType> vk_command_buffers;
-		std::vector<CommandBuffer_VK> vk_active;
-		VkFence frame_fence;
+		phx::EnumArray<std::vector<VkCommandBuffer>, CommandQueueType> vk_command_buffers;
+
+		std::mutex vk_active_cmd_lock = {};
+		std::vector<CommandBuffer_VK> vk_active_cmd;
+
+		VkFence frame_fence = VK_NULL_HANDLE;
 	};
 
 	struct Queue_Vk
@@ -135,7 +138,7 @@ namespace phx::RHI
 		inline static size_t frame_number = 0;
 		inline static DeviceCapability capabilities = {};
 
-		inline static RHI::vk::CopyCtxManager copy_ctx_manager = {};
+		inline static rhi::vk::CopyCtxManager copy_ctx_manager = {};
 
 		// -- VK Core ---
 		inline static VkInstance vk_instance = VK_NULL_HANDLE;
@@ -174,11 +177,11 @@ namespace phx::RHI
 		inline static uint32_t vk_swapchain_image_index = ~0u;
 
 		// -- VK Resources ---
-		inline static phx::PagedPool<RHI::GpuBuffer, Buffer_VK> buffer_pool;
-		inline static phx::RHI::vk::VkBindlessDescriptorArray texture_descriptors;
+		inline static phx::PagedPool<rhi::GpuBuffer, Buffer_VK> buffer_pool;
+		inline static phx::rhi::vk::VkBindlessDescriptorArray texture_descriptors;
 
 		inline static CommandBufferAllocator command_buffer_allocator;
-		inline static phx::RHI::vk::GpuTempMemoryAllocator temp_memory_allocator;
+		inline static phx::rhi::vk::GpuTempMemoryAllocator temp_memory_allocator;
 
 		// -- Frame Data ---
 		inline static std::array<FrameData, cMaxInflightFrames> frames;
@@ -288,10 +291,10 @@ namespace phx::RHI
 	   VK_FORMAT_BC7_SRGB_BLOCK,             // BC7_UNORM_SRGB
 	};
 
-	static_assert(sizeof(gVulkanFormatMapping) / sizeof(VkFormat) == (int)RHI::Format::COUNT);
+	static_assert(sizeof(gVulkanFormatMapping) / sizeof(VkFormat) == (int)rhi::Format::COUNT);
 
 	// static assert
-	constexpr VkFormat FormatToVkFormat(RHI::Format format)
+	constexpr VkFormat FormatToVkFormat(rhi::Format format)
 	{
 		return gVulkanFormatMapping[(int)format];
 	}

@@ -7,7 +7,7 @@
 
 #include "D3D12Base.h"
 
-namespace phx::RHI::d3d12
+namespace phx::rhi::d3d12
 {
 	class DescriptorHeapAllocation;
 	class DescriptorHeapAllocationPage;

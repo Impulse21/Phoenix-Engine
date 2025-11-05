@@ -6,7 +6,7 @@
 #include <array>
 #include <mutex>
 
-namespace phx::RHI::vk
+namespace phx::rhi::vk
 {
 	template<size_t TBufferPoolSize>
 	struct FrameCommandBufferPool

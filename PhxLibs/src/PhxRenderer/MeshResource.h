@@ -40,7 +40,7 @@ namespace phx::renderer
         phx::MemoryBuffer cpu_data_buffer;
         TypedView<CpuData> cpu_data;
 
-        RHI::GpuBufferHandle packed_mesh_buffer;
+        rhi::GpuBufferHandle packed_mesh_buffer;
 
         ~MeshResource();
     };

@@ -5,7 +5,7 @@
 
 using namespace phx;
 using namespace phx::rhi;
-using namespace phx::RHI::d3d12;
+using namespace phx::rhi::d3d12;
 
 
 void CpuDescriptorHeap::Initialize(

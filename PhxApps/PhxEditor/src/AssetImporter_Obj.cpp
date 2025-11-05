@@ -450,12 +450,12 @@ void phxed::ObjImporter::ProcessMesh(renderer::MeshResource* /*resource*/, fastO
 	TypedView<MeshMetadata> mesh_metadata = compiled_resource.metadata_chunk.GetView<MeshMetadata>();
 
 	resource->cpu_data_buffer = std::move(compiled_resource.chunks[0]);
-	resource->gemoetry_buffer = RHI::CreateBuffer({
+	resource->gemoetry_buffer = rhi::CreateBuffer({
 		.DebugName = "Geometry Buffer",
 		.Size = mesh_metadata->GeometryBufferSize,
-		.BindingFlags = RHI::BindingFlags::ShaderResource | RHI::BindingFlags::IndexBuffer,
-		.MiscFlags = RHI::ResourceMiscFlags::BufferRaw,
-		.InitialState = RHI::ResourceStates::Common,
+		.BindingFlags = rhi::BindingFlags::ShaderResource | rhi::BindingFlags::IndexBuffer,
+		.MiscFlags = rhi::ResourceMiscFlags::BufferRaw,
+		.InitialState = rhi::ResourceStates::Common,
 		},
 		compiled_resource.chunks[1].Data()
 	);

@@ -7,7 +7,7 @@
 
 #include "VkCopyCtxManager.h"
 
-using namespace phx::RHI::vk;
+using namespace phx::rhi::vk;
 
 void CopyCtxManager::Initialize()
 {
@@ -24,7 +24,7 @@ void CopyCtxManager::Shutdown()
 		vkDestroySemaphore(vk_logical_device, x.semaphore, nullptr);
 		vkDestroyFence(vk_logical_device, x.fence, nullptr);
 
-		RHI::DeleteBuffer(x.upload_buffer);
+		rhi::DeleteBuffer(x.upload_buffer);
 	}
 }
 
@@ -83,9 +83,9 @@ CopyCtx CopyCtxManager::Allocate(uint64_t staging_size)
 		vulkan_check(
 			vkCreateSemaphore(vk_logical_device, &semaphoreInfo, nullptr, &copy_ctx.semaphore));
 
-		copy_ctx.upload_buffer = RHI::CreateBuffer({
+		copy_ctx.upload_buffer = rhi::CreateBuffer({
 				.Size = static_cast<uint32_t>(std::max(phx::math::GetNextPowerOfTwo(staging_size), uint64_t(65536))),
-				.Usage = RHI::Usage::Upload,
+				.Usage = rhi::Usage::Upload,
 			});
 	}
 
@@ -112,7 +112,7 @@ CopyCtx CopyCtxManager::Allocate(uint64_t staging_size)
 	return copy_ctx;
 }
 
-void phx::RHI::vk::CopyCtxManager::SubmitAndWait(CopyCtx copy_ctx)
+void phx::rhi::vk::CopyCtxManager::SubmitAndWait(CopyCtx copy_ctx)
 {
 	vulkan_check(
 		vkEndCommandBuffer(copy_ctx.transfer_command_buffer));
@@ -164,7 +164,7 @@ void phx::RHI::vk::CopyCtxManager::SubmitAndWait(CopyCtx copy_ctx)
 			vkQueueSubmit2(VkContext::queue_gfx.vk_queue, 1, &submit_info, copy_ctx.fence));
 	}
 
-	while (vulkan_check(vkWaitForFences(RHI::VkContext::vk_device, 1, &copy_ctx.fence, VK_TRUE, kTimeoutValue)) == VK_TIMEOUT)
+	while (vulkan_check(vkWaitForFences(rhi::VkContext::vk_device, 1, &copy_ctx.fence, VK_TRUE, kTimeoutValue)) == VK_TIMEOUT)
 	{
 		PHX_CORE_ERROR("[Vulkan] Copy Ctx Manager vkWaitForFences resulted in VK_TIMEOUT");
 		std::this_thread::yield();

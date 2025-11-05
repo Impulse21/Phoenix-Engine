@@ -9,7 +9,7 @@
 
 #include "PhxCore/Handle.h"
 
-namespace phx::RHI
+namespace phx::rhi
 {
 
     using DescriptorIndex = uint32_t;
@@ -835,7 +835,7 @@ namespace phx::RHI
         DepthStencilRenderState DepthStencilState = {};
         RasterRenderState       RasterState = {};
 
-        RHI::PrimitiveType              PrimType = RHI::PrimitiveType::TriangleList;
+        rhi::PrimitiveType              PrimType = rhi::PrimitiveType::TriangleList;
         phx::Span<VertexBufferBinding>  VertexBufferBindings;
         RenderPassInfo                  RenderPassInfo;
         uint32_t                        PatchControlPoints = 3;
@@ -850,7 +850,7 @@ namespace phx::RHI
     struct GpuBufferDescriptor
     {
         const char* DebugName = "";
-        RHI::Format Format = RHI::Format::UNKNOWN;
+        rhi::Format Format = rhi::Format::UNKNOWN;
         uint32_t Size = 0;
         uint32_t Stride = 0;
         Usage Usage = Usage::Default;
@@ -893,7 +893,7 @@ namespace phx::RHI
     {
         const char* DebugName = "";
         TextureType Type = TextureType::Texture2D;
-        RHI::Format Format = RHI::Format::UNKNOWN;
+        rhi::Format Format = rhi::Format::UNKNOWN;
 
         uint32_t Width = 1;
         uint32_t Height = 1;
@@ -906,7 +906,7 @@ namespace phx::RHI
         uint16_t MipLevels = 1;
         uint16_t SampleCount = 1;
 
-        RHI::ClearValue ClearValue = {};
+        rhi::ClearValue ClearValue = {};
         Usage Usage = Usage::Default;
 
         BindingFlags BindingFlags = BindingFlags::ShaderResource;
@@ -925,8 +925,8 @@ namespace phx::RHI
     {
         uint32_t Width = 0;
         uint32_t Height = 0;
-        RHI::Format Format = RHI::Format::R10G10B10A2_UNORM;
-        RHI::ClearValue OptmizedClearValue =
+        rhi::Format Format = rhi::Format::R10G10B10A2_UNORM;
+        rhi::ClearValue OptmizedClearValue =
         {
             .Colour =
             {

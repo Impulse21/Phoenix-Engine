@@ -43,7 +43,7 @@ namespace
 	void OnRender_Threaded(IApplication* app)
 	{
 		app->OnRender_Threaded();
-		//phx::RHI::Present();
+		//phx::rhi::Present();
 	}
 }
 
@@ -78,7 +78,7 @@ namespace phx
 			uint32_t w, h;
 			app->GetDefaultWindowSize(w, h);
 
-			RHI::Initialize({
+			rhi::Initialize({
 				.SwapChainDesc = {.Width = w, .Height = h },
 				.WindowsHandle = windowHandle,
 				.MaxNumTextures = 1000,
@@ -157,7 +157,7 @@ namespace phx
 
 			phx::reflection::Shutdown();
 
-			RHI::Shutdown();
+			rhi::Shutdown();
 
 			JobSystem::Shutdown();
 

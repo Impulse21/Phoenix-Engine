@@ -23,7 +23,7 @@ namespace phx
 		// One fence for a whole batch of callbacks
 		struct GpuPendingWork
 		{
-			RHI::FenceHandle fence;
+			rhi::FenceHandle fence;
 			std::vector<PendingCallback> callbacks;
 		};
 
@@ -57,7 +57,7 @@ namespace phx
 		std::mutex m_file_handle_cache_mutex;
 
 		std::mutex m_batch_mutex;
-		RHI::CommandBufferHandle m_wip_cmd_list;
+		rhi::CommandBufferHandle m_wip_cmd_list;
 		std::vector<PendingCallback> m_wip_callbacks;
 
 		std::mutex m_gpu_work_mutex;

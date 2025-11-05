@@ -497,7 +497,7 @@ bool GltfModelImporter::ImportMesh(
 		mesh->bounds[2] = ls_collective_sphere.centre.z;
 		mesh->bounds[3] = ls_collective_sphere.radius.x;
 
-		mesh->ib_format = static_cast<uint8_t>(mesh_primitives[0]->index_32 ? phx::RHI::Format::R32_UINT : phx::RHI::Format::R16_UINT);
+		mesh->ib_format = static_cast<uint8_t>(mesh_primitives[0]->index_32 ? phx::rhi::Format::R32_UINT : phx::rhi::Format::R16_UINT);
 		// mesh->mesh_cbv = (uint16_t)matrixIdx;
 		//mesh->material_cbv = iter.second[0]->materialIdx;
 		mesh->pso_flags = mesh_primitives[0]->pso_flags;

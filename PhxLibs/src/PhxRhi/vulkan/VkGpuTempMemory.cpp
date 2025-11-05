@@ -4,7 +4,7 @@
 #include "VkRhi_Internal.h"
 
 #include <PhxRhi/PhxRhi.h>
-using namespace phx::RHI::vk;
+using namespace phx::rhi::vk;
 
 void GpuTempMemoryAllocator::Initialize(uint32_t buffer_size, uint32_t block_size)
 {
@@ -18,15 +18,15 @@ void GpuTempMemoryAllocator::Initialize(uint32_t buffer_size, uint32_t block_siz
     m_buffer_mask = buffer_size - 1;
 
     // Create the GPU buffer
-    m_buffer = RHI::CreateBuffer({
+    m_buffer = rhi::CreateBuffer({
             .Size = buffer_size,
-            .Usage = RHI::Usage::Dynamic,
-            .BindingFlags = RHI::BindingFlags::ShaderResource,
-            .MiscFlags = RHI::ResourceMiscFlags::BufferRaw,
-            .InitialState = RHI::ResourceStates::CopySource,
+            .Usage = rhi::Usage::Dynamic,
+            .BindingFlags = rhi::BindingFlags::ShaderResource,
+            .MiscFlags = rhi::ResourceMiscFlags::BufferRaw,
+            .InitialState = rhi::ResourceStates::CopySource,
         });
 
-    RHI::Buffer_VK* internal = RHI::VkContext::buffer_pool.GetHot(m_buffer);
+    rhi::Buffer_VK* internal = rhi::VkContext::buffer_pool.GetHot(m_buffer);
     m_mapped_data = internal->mapped_data;
     m_device_address = internal->gpu_address;
 }
@@ -38,7 +38,7 @@ void GpuTempMemoryAllocator::Shutdown()
 
     std::scoped_lock lock(m_mutex);
 
-    VkDevice logical_device = RHI::VkContext::vk_device;
+    VkDevice logical_device = rhi::VkContext::vk_device;
 
     // Wait for any remaining in-flight fences to complete.
     while (!m_in_use_regions.empty())
@@ -55,7 +55,7 @@ void GpuTempMemoryAllocator::Shutdown()
     }
     m_fence_pool.clear();
 
-    RHI::DeleteBuffer(m_buffer);
+    rhi::DeleteBuffer(m_buffer);
     m_buffer = {};
 }
 
@@ -87,7 +87,7 @@ void GpuTempMemoryAllocator::EndFrame(VkQueue queue)
         return;
     }
 
-    VkDevice logical_device = RHI::VkContext::vk_device;
+    VkDevice logical_device = rhi::VkContext::vk_device;
     while (!m_in_use_regions.empty())
     {
         UsedRegion& region = m_in_use_regions.front();
@@ -137,7 +137,7 @@ void GpuTempMemoryAllocator::WaitForFreeRegions()
         throw std::runtime_error("No regions to free, but buffer is full!");
     }
 
-    VkDevice logical_device = RHI::VkContext::vk_device;
+    VkDevice logical_device = rhi::VkContext::vk_device;
     UsedRegion& oldest_region = m_in_use_regions.front();
 
     vkWaitForFences(logical_device, 1, &oldest_region.fence, VK_TRUE, UINT64_MAX);

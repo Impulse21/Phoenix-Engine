@@ -47,7 +47,7 @@
 
     namespace phx::platform 
     {
-        // This is the type your engine code will refer to as phx::RHI::CommandBuffer
+        // This is the type your engine code will refer to as phx::rhi::CommandBuffer
         using PlatformWrapper = windows::WindowsPlatformWrapperImpl;
         using window_type = HWND;
     }
