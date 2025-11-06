@@ -5,6 +5,7 @@
 
 namespace phx::rhi
 {
+	struct VulkanDevice;
 	class VulkanGpuMemoryAllocator final : public IGpuMemoryAllocator
 	{
 	public:

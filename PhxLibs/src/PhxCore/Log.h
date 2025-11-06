@@ -13,10 +13,13 @@ namespace phx
 	public:
 		static void Initialize();
 		inline static spdlog::logger* GetCoreLogger() { return s_CoreLogger.get(); }
+		inline static spdlog::logger* GetRhiLogger() { return s_ClientLogger.get(); }
+
 		inline static spdlog::logger* GetClientLogger() { return s_ClientLogger.get(); }
 
 	private:
 		inline static std::shared_ptr<spdlog::logger> s_CoreLogger;
+		inline static std::shared_ptr<spdlog::logger> s_RhiLogger;
 		inline static std::shared_ptr<spdlog::logger> s_ClientLogger;
 	};
 }

@@ -5,7 +5,7 @@
 #include "VulkanTypes.h"
 namespace phx::rhi
 {
-	class VulkanDevice;
+	struct VulkanDevice;
 
 	class VulkanResourceManager final : public IResourceManager
 	{
@@ -29,6 +29,13 @@ namespace phx::rhi
 		// -- Pipeline States ---
 		PipelineStateHandle CreatePipeline(const PipelineStateDescriptor& desc) override;
 		void DeletePipeline(PipelineStateHandle handle) override;
+
+
+		struct DeferredItem
+		{
+			uint64_t frame;
+			std::function<void()> deferred_func;
+		};
 
 		static void ProcessDeletionQueue(uint64_t completed_frame)
 		{

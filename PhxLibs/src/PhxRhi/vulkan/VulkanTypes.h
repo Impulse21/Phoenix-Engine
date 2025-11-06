@@ -1,6 +1,7 @@
 #pragma once
 
 
+#include <PhxCore/StaticArray.h>
 #include <PhxRhi/RHICommon.h>
 
 #include <volk.h>
@@ -14,14 +15,22 @@ namespace phx::rhi
 {
 	constexpr size_t kCacheLineSize = 64ull;
 
+	constexpr size_t kMaxNumBuffers = 4096;
+	constexpr size_t kMaxNumTextures = 4096;
+
+	constexpr size_t cMaxInflightFrames = 2;
+	constexpr uint64_t kTimeoutValue = 2000000000ull; // 2 seconds
+	constexpr uint32_t kMaxFrameCmds = 64;
+	constexpr uint32_t kMaxAsyncCmds = 32;
+
 	struct RHI_DEFINE_ALIGNED(VulkanSwapchain, kCacheLineSize)
 	{
 		// -- 8-byte members ---
 		VkSwapchainKHR vk_swapchain = VK_NULL_HANDLE;
 		VkExtent2D vk_swapchain_extent = { 0, 0 };
 
-		VkImage* vk_images = nullptr;
-		VkImageView vk_image_views = VK_NULL_HANDLE;
+		StaticArray<VkImage, cMaxInflightFrames> vk_images;
+		StaticArray<VkImageView, cMaxInflightFrames> vk_image_views;
 
 		// -- 4-byte members ---
 		VkFormat vk_swapchain_image_format = VK_FORMAT_UNDEFINED;
@@ -33,7 +42,6 @@ namespace phx::rhi
 		uint8_t buffer_index;
 
 		// -- Manual Padding ---
-		std::byte padding[21];
 	};
 	static_assert(sizeof(VulkanSwapchain) == kCacheLineSize, "VulkanSwapchain must be exactly one cache line in size!");
 
