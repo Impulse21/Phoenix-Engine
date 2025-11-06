@@ -818,6 +818,28 @@ namespace phx::rhi
         Format DsFormat = Format::UNKNOWN;
         uint32_t SampleCount = 1;
     };
+    
+    struct Swapchain;
+    using SwapchainHandle = Handle<Swapchain>;
+    struct SwapchainDesc
+    {
+        uint32_t Width = 0;
+        uint32_t Height = 0;
+        rhi::Format Format = rhi::Format::R10G10B10A2_UNORM;
+        rhi::ClearValue OptmizedClearValue =
+        {
+            .Colour =
+            {
+                0.0f,
+                0.0f,
+                0.0f,
+                1.0f,
+            }
+        };
+        bool Fullscreen : 1 = false;
+        bool VSync : 1 = false;
+		bool EnableHDR : 1 = false;
+    };
 
     struct PipelineState;
     using PipelineStateHandle = Handle<PipelineState>;
@@ -842,12 +864,12 @@ namespace phx::rhi
         uint32_t			            SampleMask = ~0u;
     };
 
-    struct GpuBuffer;
-    using GpuBufferHandle = Handle<GpuBuffer>;
+    struct Buffer;
+    using BufferHandle = Handle<Buffer>;
     struct Texture;
     using TextureHandle = Handle<Texture>;
 
-    struct GpuBufferDescriptor
+    struct BufferDescriptor
     {
         const char* DebugName = "";
         rhi::Format Format = rhi::Format::UNKNOWN;
@@ -861,7 +883,7 @@ namespace phx::rhi
 
         struct AliasDescriptor
         {
-            std::variant<GpuBufferHandle, TextureHandle> handle;
+            std::variant<BufferHandle, TextureHandle> handle;
             uint64_t offset;
         };
         AliasDescriptor* Alias = nullptr;
@@ -943,7 +965,7 @@ namespace phx::rhi
     };
 
     struct SwapChain;
-    using SwapChainHandle = Handle<SwapChain>;
+    using SwapchainHandle = Handle<SwapChain>;
 
     struct Fence;
     using FenceHandle = Handle<Fence>;

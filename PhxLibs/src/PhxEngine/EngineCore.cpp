@@ -28,6 +28,7 @@ using namespace phx;
 HWND g_hWnd;
 HINSTANCE g_hInstance;
 #endif
+
 namespace
 {
 	void OnPreRender(IApplication* app)
@@ -53,7 +54,7 @@ namespace phx
 	{
 		size_t g_FrameCount = 0;
 	}
-
+	rhi::SwapchainHandle g_swapchain = {};
 	namespace EngineCore
 	{
 		void PreInitialize(int /*argc*/, wchar_t** /*argv*/)
@@ -72,21 +73,21 @@ namespace phx
 			phx::IApplication::Ptr = phx::CreateApplication();
 		}
 
-		void Initialize(void* windowHandle)
+		void Initialize(void* window_handle)
 		{
 			auto* app = phx::IApplication::Ptr;
 			uint32_t w, h;
 			app->GetDefaultWindowSize(w, h);
 
-			rhi::Initialize({
-				.SwapChainDesc = {.Width = w, .Height = h },
-				.WindowsHandle = windowHandle,
-				.MaxNumTextures = 1000,
-				.MaxNumGpuBuffers = 1000,
-				.MaxNumPipelineStates = 1000
-				});
+			phx::rhi::Initialize({});
 
-			app->SetWindowHandle(windowHandle);
+			g_swapchain = rhi::IDevice::Ptr->CreateSwapchain({
+				.Width = w,
+				.Height = h,
+			},
+			window_handle);
+
+			app->SetSwapchain(g_swapchain, window_handle);
 
 			phx::IIoQueue::Ptr = new phx::IoQueue();
 			phx::IStreamingManager::Ptr->Initialize();
@@ -157,6 +158,7 @@ namespace phx
 
 			phx::reflection::Shutdown();
 
+			rhi::IDevice::Ptr->DestroySwapchain(g_swapchain);
 			rhi::Shutdown();
 
 			JobSystem::Shutdown();

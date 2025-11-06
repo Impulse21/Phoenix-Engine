@@ -9,9 +9,9 @@
 
 #include <PhxWorld/GltfPrefabHandler.h>
 #include <PhxEngine/EntryPoint.h>
+#include <PhxRhi/RHICommon.h>
 
 #include <Generated/GlobalVariables.h>
-
 class PhxRuntime final : public phx::IApplication
 {
 public:
@@ -40,7 +40,12 @@ public:
 		outHeight = m_desc.Height;
 	}
 
-	void SetWindowHandle(void* handle) override { m_window_handle = handle; }
+	void SetSwapchain(phx::rhi::SwapchainHandle swapchain, void* handle) override
+	{ 
+		m_swapchain = swapchain;
+		m_window_handle = handle; 
+	}
+
 	void* GetWindowHandle() const override { return m_window_handle; }
 
 private:
@@ -48,6 +53,7 @@ private:
 private:
 	inline static PhxRuntime* ms_instance = nullptr;
 	const phx::ApplicationDescriptor m_desc;
+	phx::rhi::SwapchainHandle m_swapchain = {};
 	void* m_window_handle;
 	phx::RefCountPtr<phx::Resource> m_box_prefab;
 	
