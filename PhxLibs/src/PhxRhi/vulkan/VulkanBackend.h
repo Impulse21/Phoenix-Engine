@@ -9,6 +9,7 @@
 
 #include <deque>
 
+
 namespace phx::rhi
 {
 	constexpr size_t kMaxNumBuffers = 4096;
@@ -26,6 +27,8 @@ namespace phx::rhi
 		// -- VK Core ---
 		VkInstance vk_instance = VK_NULL_HANDLE;
 		vkb::Instance vkb_instance; // vkb::Instance manages VkInstance and debug messenger
+
+		VkSurfaceKHR vk_surface = VK_NULL_HANDLE;
 
 		VkPhysicalDevice vk_chosen_physical_device = VK_NULL_HANDLE;
 
@@ -82,5 +85,9 @@ namespace phx::rhi
 	private:
 		bool SelectPhysicalDevice(vkb::PhysicalDevice& out_vkb_physical_device);
 		bool CreateLogicalDevice(vkb::PhysicalDevice& vkb_physical_device);
+
+#if defined(PHX_PLATFORM_WINDOWS)
+		bool CreateSurface_Win32(void* window_handle);
+#endif
 	};
 }

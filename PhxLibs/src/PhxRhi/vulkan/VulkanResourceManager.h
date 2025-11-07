@@ -10,16 +10,14 @@ namespace phx::rhi
 
 	struct VulkanResourceManager final : public IResourceManager
 	{
-	public:
-		VulkanResourceManager(VulkanBackend* vulkan_device, VulkanGpuAllocator* vulkan_allocator);
-		~VulkanResourceManager() override = default;
+		VulkanDevice* m_vulkan_device = nullptr;
+		phx::PagedPool<rhi::GpuBuffer, Buffer_VK> buffer_pool;
+		std::deque<DeferredItem> deferred_queue;
 
-		VulkanResourceManager(const VulkanResourceManager&) = delete;
-	public:
-		void Initialize();
-		void Shutdown();
+		// -- Interface implementation ---
+		void Initialize() override;
+		void Shutdown() override;
 
-	public:
 		BufferHandle CreateBuffer(const BufferDescriptor& desc, const void* initialData = nullptr) override;
 		void DeleteBuffer(BufferHandle handle) override;
 
@@ -60,11 +58,12 @@ namespace phx::rhi
 			deferred_queue.emplace_back(std::forward<DeferredItem>(item));
 		}
 
-	private:
-		VulkanDevice* m_vulkan_device = nullptr;
-		phx::PagedPool<rhi::GpuBuffer, Buffer_VK> buffer_pool;
 
-		inline static std::deque<DeferredItem> deferred_queue;
+		VulkanResourceManager(VulkanBackend* vulkan_device, VulkanGpuAllocator* vulkan_allocator);
+		~VulkanResourceManager() override = default;
+
+		VulkanResourceManager(const VulkanResourceManager&) = delete;
+
 	};
 }
 

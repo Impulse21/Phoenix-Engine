@@ -33,6 +33,7 @@ inline static VKAPI_ATTR VkBool32 VKAPI_CALL vk_phx_debug_callback(
     const VkDebugUtilsMessengerCallbackDataEXT * pCallbackData,
     void*);
 
+
 bool phx::rhi::VulkanBackend::Initialize()
 {
     PHX_PROFILE_SECTION("Vulkan::PlatformInitialize");
@@ -61,7 +62,7 @@ bool phx::rhi::VulkanBackend::Initialize()
     auto inst_ret = builder.build();
     if (!inst_ret)
     {
-        PHX_RHI_ERROR("[RHI] Failed to create Vulkan Instance: {0}", inst_ret.error().message());
+        PHX_RHI_ERROR("Failed to create Vulkan Instance: {0}", inst_ret.error().message());
         return false;
     }
 
@@ -70,19 +71,34 @@ bool phx::rhi::VulkanBackend::Initialize()
     vk_debug_messenger = vkb_instance.debug_messenger;
     volkLoadInstance(vk_instance);
 
+#if defined(PHX_PLATFORM_WINDOWS)
+    void* window_handle = nullptr;
+    if (!CreateSurface_Win32(static_cast<HWND>(window_handle)))
+    {
+        vkb::destroy_instance(vkb_instance);
+        return false;
+    }
+#else
+	PHX_RHI_ERROR("Vulkan surface creation not implemented for this platform.");
+    vkb::destroy_instance(VkContext::vkb_instance);
+    return false;
+#endif
+
     vkb::PhysicalDevice vkb_physical_device; // Renamed to snake_case
     if (!SelectPhysicalDevice(vkb_physical_device))
     {
-        // vkDestroySurfaceKHR(vk_instance, vk_surface, nullptr);
+        vkDestroySurfaceKHR(vk_instance, vk_surface, nullptr);
         vkb::destroy_instance(vkb_instance);
         return false;
     }
 
     if (!CreateLogicalDevice(vkb_physical_device))
     {
+        vkDestroySurfaceKHR(vk_instance, vk_surface, nullptr);
         vkb::destroy_instance(vkb_instance);
         return false;
     }
+
 	return false;
 }
 
@@ -94,13 +110,13 @@ void phx::rhi::VulkanBackend::Shutdown()
         vkDestroyDevice(vk_device, nullptr);
         vk_device = VK_NULL_HANDLE;
     }
-#if false
+
     if (vk_surface != VK_NULL_HANDLE)
     {
-        vkDestroySurfaceKHR(vk_instance, vk_surface, GetVkAllocationCallbacks());
+        vkDestroySurfaceKHR(vk_instance, vk_surface, nullptr);
         vk_surface = VK_NULL_HANDLE;
     }
-#endif
+
     // vkb_instance's destructor will handle VkInstance and debug messenger
     // No explicit call to vkb::destroy_instance(vkb_instance) needed if vkb_instance is a member
     // The VkInstance and VkDebugUtilsMessengerEXT handles within VkContext are associated with vkb_instance.
@@ -127,7 +143,7 @@ bool phx::rhi::VulkanBackend::SelectPhysicalDevice(vkb::PhysicalDevice& out_vkb_
     };
 
     selector.set_minimum_version(1, 3)
-        //.set_surface(vk_surface)
+        .set_surface(vk_surface)
         .set_required_features(features_to_enable)
         .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
         .add_required_extensions(required_extensions.size(), required_extensions.data());
@@ -262,6 +278,34 @@ bool phx::rhi::VulkanBackend::CreateLogicalDevice(vkb::PhysicalDevice& vkb_physi
 
     return true;
 }
+
+
+#if defined(PHX_PLATFORM_WINDOWS)
+bool VulkanBackend::CreateSurface_Win32(HWND window_handle)
+{
+    if (!window_handle)
+    {
+        PHX_CORE_ERROR("[RHI] WindowsHandle is null in RhiDescriptor.");
+        return false;
+    }
+
+    VkWin32SurfaceCreateInfoKHR surface_create_info = {};
+    surface_create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+    surface_create_info.pNext = nullptr;
+    surface_create_info.flags = 0;
+    surface_create_info.hwnd = window_handle;
+    surface_create_info.hinstance = g_hInstance;
+
+    VkResult result = vkCreateWin32SurfaceKHR(vk_instance, &surface_create_info, nullptr, vk_surface);
+    if (result != VK_SUCCESS)
+    {
+        PHX_CORE_ERROR("[RHI] Failed to create Win32 surface. VkResult: <TODO>");
+        return false;
+    }
+    return true;
+}
+
+#endif
 
 inline static VKAPI_ATTR VkBool32 VKAPI_CALL vk_phx_debug_callback(
     VkDebugUtilsMessageSeverityFlagBitsEXT       messageSeverity,

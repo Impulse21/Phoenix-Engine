@@ -971,9 +971,6 @@ namespace phx::rhi
         bool EnableHDR : 1 = false;
     };
 
-    struct SwapChain;
-    using SwapchainHandle = Handle<SwapChain>;
-
     struct Fence;
     using FenceHandle = Handle<Fence>;
 
