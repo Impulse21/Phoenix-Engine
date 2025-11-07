@@ -457,6 +457,13 @@ namespace phx::rhi
 
 #pragma region Types
 
+    struct Descriptor
+    {
+        uint32_t MaxNumTextures = 1000;
+        uint32_t MaxNumGpuBuffers = 1000;
+        uint32_t MaxNumPipelineStates = 1000;
+
+    };
     struct Budget
     {
         uint64_t BudgetBytes = 0ull;

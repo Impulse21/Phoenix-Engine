@@ -5,12 +5,13 @@
 #include "VulkanTypes.h"
 namespace phx::rhi
 {
-	struct VulkanDevice;
+	struct VulkanBackend;
+	struct VulkanGpuAllocator;
 
-	class VulkanResourceManager final : public IResourceManager
+	struct VulkanResourceManager final : public IResourceManager
 	{
 	public:
-		VulkanResourceManager(VulkanDevice* vulkan_device);
+		VulkanResourceManager(VulkanBackend* vulkan_device, VulkanGpuAllocator* vulkan_allocator);
 		~VulkanResourceManager() override = default;
 
 		VulkanResourceManager(const VulkanResourceManager&) = delete;

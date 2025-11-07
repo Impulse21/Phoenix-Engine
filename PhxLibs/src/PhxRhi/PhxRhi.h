@@ -1,6 +1,6 @@
 #pragma once
 
-#include "IDevice.h"
+#include "RHICommon.h"
 
 namespace phx::rhi
 {

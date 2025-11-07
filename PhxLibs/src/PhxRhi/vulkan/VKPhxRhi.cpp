@@ -56,34 +56,7 @@ namespace
     static void VKAPI_CALL vk_phx_free(void* pUserData, void* pMemory);
 #endif
 
-    inline static VKAPI_ATTR VkBool32 VKAPI_CALL vk_phx_debug_callback(
-        VkDebugUtilsMessageSeverityFlagBitsEXT       messageSeverity,
-        VkDebugUtilsMessageTypeFlagsEXT,
-        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-        void*)
-    {
-#if false
-        if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
-        {
-            PHX_CORE_TRACE("[Vulkan Debug] {0}\n\t{1}", pCallbackData->pMessageIdName, pCallbackData->pMessage);
-        }
-        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-#else
-        if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-#endif
-        {
-            PHX_CORE_INFO("[Vulkan Debug] {0}\n\t{1}", pCallbackData->pMessageIdName, pCallbackData->pMessage);
-        }
-        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-        {
-            PHX_CORE_WARN("[Vulkan Debug] {0}\n\t{1}", pCallbackData->pMessageIdName, pCallbackData->pMessage);
-        }
-        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-        {
-            PHX_CORE_ERROR("[Vulkan Debug] {0}\n\t{1}", pCallbackData->pMessageIdName, pCallbackData->pMessage);
-        }
-        return VK_FALSE;
-    }
+ 
 
 
     void InitializeVolk()
@@ -266,115 +239,10 @@ namespace
 
     bool CreateLogicalDevice(const RhiDescriptor&, vkb::PhysicalDevice& vkb_physical_device)
     {
-        vkb::DeviceBuilder device_builder{ vkb_physical_device };
-
-        auto dev_ret = device_builder.build();
-        if (!dev_ret)
-        {
-            PHX_CORE_ERROR("[RHI] Failed to create Logical Device: {0}", dev_ret.error().message());
-            return false;
-        }
-
-        vkb::Device vkb_device = dev_ret.value();
-        VkContext::vk_device = vkb_device.device;
-        volkLoadDevice(VkContext::vk_device); // Load device-level functions
-
-        auto gfx_q_ret = vkb_device.get_queue(vkb::QueueType::graphics);
-        if (!gfx_q_ret)
-        {
-            PHX_CORE_ERROR("[RHI] Failed to get graphics queue: {0}", gfx_q_ret.error().message());
-            return false;
-        }
-
-        VkContext::queue_gfx.vk_queue = gfx_q_ret.value();
-        VkContext::queue_gfx.vk_queue_family = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
-        PHX_CORE_INFO("[RHI Vulkan] Using graphics queue {0}", VkContext::queue_gfx.vk_queue_family);
-
-        auto compute_q_ret = vkb_device.get_queue(vkb::QueueType::compute);
-        if (!compute_q_ret)
-        {
-            PHX_CORE_WARN("[RHI] Failed to get dedicated compute queue, using graphics queue: {0}", compute_q_ret.error().message());
-
-            VkContext::queue_compute.vk_queue = VkContext::queue_gfx.vk_queue;
-            VkContext::queue_compute.vk_queue_family = VkContext::queue_gfx.vk_queue_family;
-        }
-        else
-        {
-            VkContext::queue_compute.vk_queue = compute_q_ret.value();
-            VkContext::queue_compute.vk_queue_family = vkb_device.get_queue_index(vkb::QueueType::compute).value();
-
-            PHX_CORE_INFO("[RHI Vulkan] Using compute queue {0}", VkContext::queue_compute.vk_queue_family);
-        }
-
-        auto transfer_q_ret = vkb_device.get_queue(vkb::QueueType::transfer);
-        if (!transfer_q_ret)
-        {
-            PHX_CORE_WARN("[RHI] Failed to get dedicated transfer queue, using graphics queue: {0}", transfer_q_ret.error().message());
-            VkContext::queue_transfer.vk_queue = VkContext::queue_gfx.vk_queue;
-            VkContext::queue_transfer.vk_queue_family = VkContext::queue_gfx.vk_queue_family;
-        }
-        else
-        {
-            VkContext::queue_transfer.vk_queue = transfer_q_ret.value();
-            VkContext::queue_transfer.vk_queue_family = vkb_device.get_queue_index(vkb::QueueType::transfer).value();
-
-            PHX_CORE_INFO("[RHI Vulkan] Using transfer queue {0}", VkContext::queue_transfer.vk_queue_family);
-        }
-
-        return true;
     }
 
     bool CreateAllocator(const RhiDescriptor&)
     {
-        VmaAllocatorCreateInfo allocator_info = {};
-        allocator_info.physicalDevice = VkContext::vk_chosen_physical_device;
-        allocator_info.device = VkContext::vk_device;
-        allocator_info.instance = VkContext::vk_instance;
-        allocator_info.vulkanApiVersion = VK_API_VERSION_1_3;
-
-        allocator_info.flags = VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT |
-            VMA_ALLOCATOR_CREATE_KHR_BIND_MEMORY2_BIT;
-
-        // VkPhysicalDeviceFeatures enabled_features; // Not needed, using VkContext::vk_features_1_2 directly
-        // vkGetPhysicalDeviceFeatures(VkContext::vk_chosen_physical_device, &enabled_features); // Example, better to use vkb info
-
-        if (VkContext::vk_features_1_2.bufferDeviceAddress)
-        {
-            allocator_info.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
-        }
-
-        VkResult res = vmaCreateAllocator(&allocator_info, &VkContext::vma_allocator);
-        if (res != VK_SUCCESS)
-        {
-            PHX_CORE_ERROR("[RHI] Failed to create VMA Allocator. VkResult: <TODO>");
-            return false;
-        }
-
-        const VkPhysicalDeviceMemoryProperties* memory_properties;
-        vmaGetMemoryProperties(VkContext::vma_allocator, &memory_properties);
-
-        for (uint32_t i = 0; i < memory_properties->memoryHeapCount; i++)
-        {
-            const VkMemoryHeap& heap = memory_properties->memoryHeaps[i];
-
-            if ((heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) != 0)
-            {
-                for (uint32_t j = 0; j < memory_properties->memoryTypeCount; j++)
-                {
-                    const VkMemoryType& memory_type = memory_properties->memoryTypes[j];
-                    if (memory_type.heapIndex == i)
-                    {
-                        if ((memory_type.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0)
-                        {
-                            VkContext::vk_rebar_heap_size = heap.size;
-                            PHX_CORE_INFO("Rebar Heap found {0}", PhxToMB(VkContext::vk_rebar_heap_size));
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        return true;
     }
 
     void CreateSwapchain(const RhiDescriptor& desc)
@@ -691,7 +559,7 @@ namespace phx::rhi
 		return true;
 	}
 
-	void Shutdown()
+    void Shutdown()
 	{
         if (!VkContext::is_initialized)
         {
@@ -718,38 +586,11 @@ namespace phx::rhi
 
         DestroyCommandPools(); // This function was already updated
 
-        if (VkContext::vma_allocator != VK_NULL_HANDLE)
-        {
-            vmaDestroyAllocator(VkContext::vma_allocator);
-            VkContext::vma_allocator = VK_NULL_HANDLE;
-        }
 
         // vkb::Device doesn't have a destructor, must be explicit if not member
         // In the VkContext, vk_device is a VkDevice handle, not a vkb::Device object.
         // It's already handled by the vkb_instance or needs explicit destruction.
-        if (VkContext::vk_device != VK_NULL_HANDLE)
-        {
-            vkDestroyDevice(VkContext::vk_device, GetVkAllocationCallbacks());
-            VkContext::vk_device = VK_NULL_HANDLE;
-        }
-
-        if (VkContext::vk_surface != VK_NULL_HANDLE)
-        {
-            vkDestroySurfaceKHR(VkContext::vk_instance, VkContext::vk_surface, GetVkAllocationCallbacks());
-            VkContext::vk_surface = VK_NULL_HANDLE;
-        }
-
-        // VkContext::vkb_instance's destructor will handle VkInstance and debug messenger
-        // No explicit call to vkb::destroy_instance(VkContext::vkb_instance) needed if vkb_instance is a member
-        // The VkInstance and VkDebugUtilsMessengerEXT handles within VkContext are associated with vkb_instance.
-        // So, once vkb_instance is destroyed (implicitly when VkContext goes out of scope or explicitly if VkContext is static and its members need to be reset),
-        // these handles are also handled. Setting them to VK_NULL_HANDLE here reflects that they are no longer valid.
-        VkContext::vk_instance = VK_NULL_HANDLE;
-        VkContext::vk_debug_messenger = VK_NULL_HANDLE;
-
-
-        VkContext::is_initialized = false;
-        PHX_CORE_INFO("[RHI] Vulkan Device Shutdown Complete.");
+     
 	}
 
     CommandRecorder BeginFrameCommandBuffer(CommandQueueType type)

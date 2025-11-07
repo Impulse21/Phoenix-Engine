@@ -7,7 +7,13 @@ namespace phx::rhi
 	class IResourceManager
 	{
 	public:
+		inline static IResourceManager* Ptr = nullptr;
+
+	public:
 		virtual ~IResourceManager() = default;
+
+		virtual bool Initialize() = 0;
+		virtual void Shutdown() = 0;
 
 		// -- Gpu Buffers  ---
 		virtual BufferHandle CreateBuffer(const BufferDescriptor& desc, const void* initialData = nullptr) = 0;
