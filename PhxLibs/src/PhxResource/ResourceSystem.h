@@ -17,15 +17,13 @@ namespace phx
 	template<typename T>
 	concept ResourceFileHandlerType = std::is_base_of_v<phx::ResourceFileHandler, T>;
 
-	class IStreamingManager;
-
 	class ResourceSystem
 	{
 	public:
 		inline static ResourceSystem* Ptr = nullptr;
 
 	public:
-		void Initialize(IVirtualFileSystem* fs, IStreamingManager* loader);
+		void Initialize(IVirtualFileSystem* fs);
 		void Shutdown();
 
 		RefCountPtr<Resource> Get(const char* path);
@@ -42,7 +40,6 @@ namespace phx
 
 	private:
 		IVirtualFileSystem* m_vfs;
-		IStreamingManager* m_loader;
 		std::mutex m_cacheMutex;
 		std::unordered_map<Hash32, RefCountPtr<Resource>> m_cache;
 		std::unordered_map<Hash32, std::unique_ptr<ResourceFileHandler>> m_resourceHandlers;
@@ -93,7 +90,7 @@ namespace phx
 			return placeholder;
 		}
 
-		handler_to_use->LoadAsync(m_loader, placeholder, resource_descriptor.GetValue());
+		handler_to_use->LoadAsync(placeholder, resource_descriptor.GetValue());
 
 		return placeholder;
 	}

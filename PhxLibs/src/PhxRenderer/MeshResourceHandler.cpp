@@ -4,32 +4,31 @@
 #include "MeshResource.h"
 
 #include <PhxCore/IVirtualFileSystem.h>
-#include <PhxEngine/IStreamingManager.h>
 
 #include <PhxResource/ResourceFile.h>
 #include <PhxResource/ResourceSystem.h>
 
+#include <PhxEngine/IO/IIoQueue.h>
 #include <PhxRhi/PhxRhi.h>
 
 using namespace phx;
 using namespace phx::renderer;
 
-void phx::renderer::MeshResourceHandler::LoadAsync(IStreamingManager* streaming_manager, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const
+void phx::renderer::MeshResourceHandler::LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const
 {
 	// TODO: Check if cached version is loaded already. If so, load from there.
 	RefCountPtr<MeshResource> mesh_resource = resource.As<MeshResource>();
 
 	mesh_resource->state = Resource::State::Loading;
 	ResourceFile::Load(
-		streaming_manager,
 		resource_descriptor,
-		[mesh_resource, resource_descriptor, streaming_manager](std::shared_ptr<ResourceFile> resource_file)
+		[mesh_resource, resource_descriptor](std::shared_ptr<ResourceFile> resource_file)
 		{
 			ResourceFileFormat::MetadataHeader* metadata_header = resource_file->metadata_header.Get();
 			MeshMetadata* metadata_view = reinterpret_cast<MeshMetadata*>(metadata_header->MetadataChunk.Get());
 			PHX_CORE_INFO("Loading mesh with packed mesh buffer size: {0} bytes", metadata_view->packed_mesh_buffer);
 
-			mesh_resource->packed_mesh_buffer = rhi::CreateBuffer({
+			mesh_resource->packed_mesh_buffer = rhi::IResourceManager::Ptr->CreateBuffer({
 					.DebugName = "packed_mesh_buffer",
 					.Size = metadata_view->packed_mesh_buffer,
 					.BindingFlags = rhi::BindingFlags::IndexBuffer | rhi::BindingFlags::ShaderResource,
@@ -83,7 +82,7 @@ void phx::renderer::MeshResourceHandler::LoadAsync(IStreamingManager* streaming_
 				mesh_resource->state = Resource::State::Loaded;
 			};
 
-			streaming_manager->Submit(std::move(request));
+			IIoQueue::Ptr->Submit(std::move(request));
 		},
 		[mesh_resource] {
 			PHX_CORE_ERROR("Failed to load mesh resource.");

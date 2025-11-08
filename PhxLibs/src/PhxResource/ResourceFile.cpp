@@ -2,7 +2,7 @@
 #include "ResourceFile.h"
 
 #include <PhxCore/IVirtualFileSystem.h>
-#include <PhxEngine/IStreamingManager.h>
+#include <PhxEngine/IO/IIoQueue.h>
 
 using namespace phx;
 
@@ -21,7 +21,7 @@ namespace
 }
 
 void phx::ResourceFile::Load(
-	IStreamingManager* streaming_manager,
+	IIoQueue* asynic_queue,
 	AsyncResourceDescriptor const& resource_descriptor,
 	MetadataLoadCallbackFunc metadata_loaded_callback,
 	FailureCallbackFunc failure_callback)
@@ -48,7 +48,7 @@ void phx::ResourceFile::Load(
 	};
 
 
-	request.on_complete = [resource_file, streaming_manager](StreamingResult const& result) mutable {
+	request.on_complete = [resource_file, asynic_queue](StreamingResult const& result) mutable {
 		if (result.error_code != ErrorCode::Success)
 		{
 			resource_file->failure_callack();
@@ -88,8 +88,8 @@ void phx::ResourceFile::Load(
 			resource_file->metadata_loaded_callback(resource_file);
 		};
 
-		streaming_manager->Submit(std::move(metadata_request));
+		asynic_queue->Submit(std::move(metadata_request));
 	};
 
-	streaming_manager->Submit(std::move(request));
+	asynic_queue->Submit(std::move(request));
 }

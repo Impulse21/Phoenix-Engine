@@ -14,11 +14,11 @@ namespace phx
 	using MetadataLoadCallbackFunc = std::function<void(std::shared_ptr<ResourceFile>)>;
 	using FailureCallbackFunc = std::function<void()>;
 
-	class IStreamingManager;
+	class IIoQueue;
 
 	struct ResourceFile
 	{
-		IStreamingManager* streaming_manager;
+		IIoQueue* io_queue;
 		AsyncResourceDescriptor resource_descriptor;
 		ResourceFileFormat::Header header = {};
 		MemoryBuffer metadata_buffer;
@@ -28,7 +28,7 @@ namespace phx
 		FailureCallbackFunc failure_callack;
 
 		static void Load(
-			IStreamingManager* streaming_manager,
+			IIoQueue* io_queue,
 			AsyncResourceDescriptor const& resource_descriptor,
 			MetadataLoadCallbackFunc metadata_loaded_callback,
 			FailureCallbackFunc failure_callback);

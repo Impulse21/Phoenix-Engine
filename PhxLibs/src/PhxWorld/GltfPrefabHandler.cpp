@@ -11,7 +11,7 @@
 #include <PhxResource/ResourceSystem.h>
 
 #include <PhxEngine/StreamingDefintions.h>
-#include <PhxEngine/IStreamingManager.h>
+#include <PhxEngine/IO/IoQueue.h>
 
 #include <nlohmann/json.hpp>
 #include "Compiler/GltfPrefabCooker.h"
@@ -106,7 +106,7 @@ bool phx::GltfPrefabHandler::IsStale(AsyncResourceDescriptor const& gltf_resourc
     return true;
 }
 
-void GltfPrefabHandler::LoadAsync(IStreamingManager* streaming_manager, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const
+void GltfPrefabHandler::LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const
 {
     RefCountPtr<PrefabHandleResource> prefab_handle_resource = resource.As<PrefabHandleResource>();
 
@@ -157,7 +157,7 @@ void GltfPrefabHandler::LoadAsync(IStreamingManager* streaming_manager, RefCount
         LoadPrefab(stream, prefab_handle_resource);
      };
 
-    streaming_manager->Submit(std::move(request));
+    io_queue->Submit(std::move(request));
 }
 
 void phx::GltfPrefabHandler::CookPrefab(RefCountPtr<PrefabHandleResource> prefab_handle_resource, AsyncResourceDescriptor const& resource_descriptor, void* file_data)

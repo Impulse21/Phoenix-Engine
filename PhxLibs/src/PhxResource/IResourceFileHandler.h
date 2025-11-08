@@ -19,7 +19,7 @@ namespace phx
 	struct ResourceFileHandlerId;
 
 	class IVirtualFileSystem;
-	class IStreamingManager;
+	class IIoQueue;
 	struct AsyncResourceDescriptor;
 
 	class ResourceSystem;
@@ -31,7 +31,7 @@ namespace phx
 		RefCountPtr<Resource> resource;
 		ResourceSystem* resource_system;
 		IVirtualFileSystem* vfs;
-		IStreamingManager* loader;
+		IIoQueue* io_queue;
 	};
 
 	class ResourceFileHandler
@@ -42,7 +42,7 @@ namespace phx
 		virtual StringHash GetResourceTypeHash() const = 0;
 		virtual bool IsStale(AsyncResourceDescriptor const& resource_descriptor, IVirtualFileSystem* vfs) const = 0;
 		virtual RefCountPtr<Resource> CreatePlaceholder() const = 0;
-		virtual void LoadAsync(IStreamingManager* streaming_manager, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const = 0;
+		virtual void LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const = 0;
 
 	};
 }

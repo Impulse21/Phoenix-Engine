@@ -18,7 +18,6 @@
 
 #include <PhxEngine/JobSystem.h>
 #include <PhxEngine/EngineSync.h>
-#include <PhxEngine/IStreamingManager.h>
 #include <PhxEngine/Memory/FrameMemoryManager.h>
 #include <PhxEngine/IO/IoQueue.h>
 
@@ -44,7 +43,6 @@ namespace
 	void OnRender_Threaded(IApplication* app)
 	{
 		app->OnRender_Threaded();
-		//phx::rhi::Present();
 	}
 }
 
@@ -81,7 +79,7 @@ namespace phx
 
 			phx::rhi::Initialize({}, window_handle);
 
-			app->SetSwapchain(g_swapchain, window_handle);
+			app->SetWindowHandle(window_handle);
 
 			phx::IIoQueue::Ptr = new phx::IoQueue();
 
@@ -143,15 +141,13 @@ namespace phx
 			delete phx::ResourceSystem::Ptr;
 			phx::ResourceSystem::Ptr = nullptr;
 
-			IStreamingManager::Ptr->Shutdown();
-			delete IStreamingManager::Ptr;
+			IIoQueue::Ptr->Shutdown();
+			delete IIoQueue::Ptr;
 
 			delete IVirtualFileSystem::Ptr;
 			IVirtualFileSystem::Ptr = nullptr;
 
 			phx::reflection::Shutdown();
-
-			rhi::IDevice::Ptr->DestroySwapchain(g_swapchain);
 			rhi::Shutdown();
 
 			JobSystem::Shutdown();

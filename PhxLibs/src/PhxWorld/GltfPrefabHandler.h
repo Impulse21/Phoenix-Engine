@@ -21,7 +21,7 @@ namespace phx
 		StringHash GetResourceTypeHash() const override { return PrefabResource::StaticTypeHash(); };
 		bool IsStale(AsyncResourceDescriptor const& resource_descriptor, IVirtualFileSystem* vfs) const override;
 		RefCountPtr<Resource> CreatePlaceholder() const override { return RefCountPtr<Resource>::Create(new PrefabHandleResource()); }
-		void LoadAsync(IStreamingManager* streaming_manager, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const override;
+		void LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const override;
 
 		static void SetForceRecook(bool enable) { g_force_recook = enable; }
 

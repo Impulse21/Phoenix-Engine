@@ -9,11 +9,14 @@
 
 #include <PhxWorld/GltfPrefabHandler.h>
 #include <PhxEngine/EntryPoint.h>
-#include <PhxRhi/RHICommon.h>
+
+#include <PhxRhi/PhxRhi.h>
 
 #include <PhxRhi/IResourceManager.h>
 
 #include <Generated/GlobalVariables.h>
+
+using namespace phx;
 
 class PhxRuntime final : public phx::IApplication
 {
@@ -222,7 +225,6 @@ void PhxRuntime::OnUpdate_Threaded(float /*delta_time*/)
 #if false
 	PHX_PROFILE;
 
-	phx::data::IStreamingManager::Ptr->Tick(delta_time);
 	if (m_scene_blueprint->state == phx::data::Asset::State::Loaded)
 	{
 		m_world.InstantiateFrom(*m_scene_blueprint);
@@ -233,8 +235,14 @@ void PhxRuntime::OnUpdate_Threaded(float /*delta_time*/)
 
 void PhxRuntime::OnRender_Threaded()
 {
-#if false
 	PHX_PROFILE;
+	rhi::ISubmissionManager* ptr = rhi::ISubmissionManager::Ptr;
+	ptr->BeginFrame(m_swapchain);
+
+	phx::Span<rhi::ICommandBuffer*> frame_commands;
+	ptr->EndFrame(frame_commands, m_swapchain);
+
+#if false
 
 	phx::rhi::CommandBufferHandle cmd_buffer = phx::rhi::BeginFrameCommandBuffer();
 	ForwardPassDrawData* pass_data = static_cast<ForwardPassDrawData*>(m_per_frame_cache.cached_data[0]);

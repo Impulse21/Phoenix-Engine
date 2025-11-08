@@ -1,6 +1,11 @@
 #pragma once
 
-#include "RHICommon.h"
+#include <PhxRhi/RHICommon.h>
+
+#include <PhxRhi/IBackend.h>
+#include <PhxRhi/IGpuAllocator.h>
+#include <PhxRhi/IResourceManager.h>
+#include <PhxRhi/ISubmissionManager.h>
 
 namespace phx::rhi
 {
