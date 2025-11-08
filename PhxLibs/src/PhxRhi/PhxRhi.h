@@ -9,6 +9,6 @@
 
 namespace phx::rhi
 {
-	bool Initialize(Descriptor const& descriptor, void* window_handle);
+	bool Initialize(Descriptor const& descriptor, void* window_handle, size_t thread_count);
 	bool Shutdown();
 }

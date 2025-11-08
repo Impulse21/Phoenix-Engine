@@ -10,6 +10,39 @@ namespace phx::rhi
 	struct VulkanBackend;
 	struct VulkanGpuAllocator;
 
+	struct DeferredCallbackQueue
+	{
+		struct DeferredItem
+		{
+			uint64_t frame;
+			std::function<void()> deferred_func;
+		};
+
+		std::deque<DeferredItem> queue;
+
+		void Flush(uint64_t completed_frame = ~0u)
+		{
+			while (!queue.empty())
+			{
+				DeferredItem& deferred_item = queue.front();
+				if (deferred_item.frame + kBufferCount < completed_frame)
+				{
+					deferred_item.deferred_func();
+					queue.pop_front();
+				}
+				else
+				{
+					break;
+				}
+			}
+		}
+
+		void EnqueueDelete(DeferredItem&& item)
+		{
+			queue.emplace_back(std::forward<DeferredItem>(item));
+		}
+	};
+
 	struct VulkanResourceManager final : public IResourceManager
 	{
 		VulkanBackend* vulkan_backend = nullptr;
@@ -19,12 +52,7 @@ namespace phx::rhi
 		phx::PagedPool<rhi::Swapchain, VulkanSwapchain> swapchain_pool;
 		phx::PagedPool<rhi::Buffer, VulkanBuffer> buffer_pool;
 
-		struct DeferredItem
-		{
-			uint64_t frame;
-			std::function<void()> deferred_func;
-		};
-		std::deque<DeferredItem> deferred_queue;
+		DeferredCallbackQueue deferred_delete_queue;
 
 		// -- Interface implementation ---
 		bool Initialize() override;
@@ -51,10 +79,6 @@ namespace phx::rhi
 
 		void RunGarbageCollection(uint64_t completed_frame);
 
-		void EnqueueDelete(DeferredItem&& item)
-		{
-			deferred_queue.emplace_back(std::forward<DeferredItem>(item));
-		}
 
 
 		VulkanResourceManager(VulkanBackend* vulkan_backend, VulkanGpuAllocator* vulkan_allocator);

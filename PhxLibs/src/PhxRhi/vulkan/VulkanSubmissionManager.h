@@ -3,6 +3,7 @@
 #include <PhxCore/StaticArray.h>
 #include <PhxRhi/ISubmissionManager.h>
 
+#include "VulkanCommandBuffer.h"
 #include <volk.h>
 
 namespace phx::rhi
@@ -15,10 +16,26 @@ namespace phx::rhi
 		VulkanBackend* vulkan_backend;
 		VulkanResourceManager* vulkan_resource_manager;
 
+		struct PerThreadData
+		{
+			struct CommandPool
+			{
+				VkCommandPool vk_cmd_pool;
+				std::vector<std::unique_ptr<VulkanCommandBuffer>> buffer_pool;
+				std::vector<VulkanCommandBuffer*> free_buffers;
+			};
+
+			CommandPool graphics_cmd_pool;
+			CommandPool compute_cmd_pool;
+			CommandPool upload_cmd_pool;
+		};
+
+		std::unique_ptr<PerThreadData[]> per_thread_cmd_pool;
+
 		size_t frame_number = 0;
 		struct Frame
 		{
-			VkSemaphore present_semaphore = VK_NULL_HANDLE;
+			VkSemaphore present_semaphore =VK_NULL_HANDLE;
 			VkSemaphore render_semaphore = VK_NULL_HANDLE;
 			VkFence render_fence = VK_NULL_HANDLE;
 
@@ -46,7 +63,7 @@ namespace phx::rhi
 		FenceHandle Submit(Span<ICommandBuffer*> cmd_buffers) override;
 
 
-		VulkanSubmissionManager(VulkanBackend* vulkan_backend, VulkanResourceManager* vulkan_resource_manager);
+		VulkanSubmissionManager(VulkanBackend* vulkan_backend, VulkanResourceManager* vulkan_resource_manager, size_t thread_count);
 		~VulkanSubmissionManager() override = default;
 
 	};

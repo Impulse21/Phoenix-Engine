@@ -117,20 +117,9 @@ void phx::rhi::VulkanResourceManager::ResizeSwapchain(SwapchainHandle /*handle*/
 
 void VulkanResourceManager::RunGarbageCollection(uint64_t completed_frame)
 {
-    while (!deferred_queue.empty())
-    {
-        DeferredItem& DeferredItem = deferred_queue.front();
-        if (DeferredItem.frame + kBufferCount < completed_frame)
-        {
-            DeferredItem.deferred_func();
-            deferred_queue.pop_front();
-        }
-        else
-        {
-            break;
-        }
-    }
+    deferred_delete_queue.Flush(completed_frame);
 }
+
 BufferHandle VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, const void* initial_data)
 {
     PHX_PROFILE_SECTION("Vulkan::PlatformCreateBuffer");
@@ -421,7 +410,7 @@ BufferHandle VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, c
 
 void VulkanResourceManager::DeleteBuffer(BufferHandle handle)
 {
-    EnqueueDelete({
+    deferred_delete_queue.EnqueueDelete({
         frame_number,
         [=]()
         {

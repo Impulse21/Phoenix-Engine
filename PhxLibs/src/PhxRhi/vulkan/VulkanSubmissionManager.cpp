@@ -10,10 +10,11 @@ using namespace phx;
 using namespace phx::rhi;
 
 
-VulkanSubmissionManager::VulkanSubmissionManager(VulkanBackend* vulkan_backend, VulkanResourceManager* vulkan_resource_manager)
+VulkanSubmissionManager::VulkanSubmissionManager(VulkanBackend* vulkan_backend, VulkanResourceManager* vulkan_resource_manager, size_t thread_count)
     : vulkan_backend(vulkan_backend)
     , vulkan_resource_manager(vulkan_resource_manager)
 {
+
 }
 
 bool VulkanSubmissionManager::Initialize()

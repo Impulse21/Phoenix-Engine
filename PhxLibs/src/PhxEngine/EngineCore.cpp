@@ -77,7 +77,11 @@ namespace phx
 			uint32_t w, h;
 			app->GetDefaultWindowSize(w, h);
 
-			phx::rhi::Initialize({}, window_handle);
+			const size_t thread_count = 
+				JobSystem::GetThreadCount(JobSystem::Type::Generic) + 
+				JobSystem::GetThreadCount(JobSystem::Type::Streaming);
+
+			phx::rhi::Initialize({}, window_handle, thread_count);
 
 			app->SetWindowHandle(window_handle);
 
