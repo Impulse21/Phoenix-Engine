@@ -72,6 +72,7 @@ void phx::rhi::VulkanSubmissionManager::Shutdown()
     WaitForIdle();
     vulkan_resource_manager->RunGarbageCollection(~0u);
 
+    static_assert(false, "Free per thread data");
     per_thread_cmd_pool.reset();
 
     for (size_t i = 0; i < cMaxInflightFrames; ++i)
