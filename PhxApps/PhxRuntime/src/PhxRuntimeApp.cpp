@@ -11,7 +11,10 @@
 #include <PhxEngine/EntryPoint.h>
 #include <PhxRhi/RHICommon.h>
 
+#include <PhxRhi/IResourceManager.h>
+
 #include <Generated/GlobalVariables.h>
+
 class PhxRuntime final : public phx::IApplication
 {
 public:
@@ -40,9 +43,8 @@ public:
 		outHeight = m_desc.Height;
 	}
 
-	void SetSwapchain(phx::rhi::SwapchainHandle swapchain, void* handle) override
+	void SetWindowHandle(void* handle) override
 	{ 
-		m_swapchain = swapchain;
 		m_window_handle = handle; 
 	}
 
@@ -88,6 +90,14 @@ void PhxRuntime::Startup()
 	resource_system->RegisterFileHanlder<phx::GltfPrefabHandler>();
 	phx::GltfPrefabHandler::SetForceRecook(true);
 
+	uint32_t win_height, win_width;
+	GetDefaultWindowSize(win_width, win_height);
+
+	m_swapchain = phx::rhi::IResourceManager::Ptr->CreateSwapchain({
+		.Width = win_width,
+		.Height = win_height,
+	});
+
 	const char* box_prefab_path = "art://samples/box_vertex_colour/BoxVertexColors.gltf";
 	PHX_INFO("Loading Test Resources '{0}'", box_prefab_path);
 	m_box_prefab = resource_system->Get(box_prefab_path);
@@ -117,6 +127,7 @@ void PhxRuntime::Startup()
 
 void PhxRuntime::Shutdown()
 {
+	phx::rhi::IResourceManager::Ptr->DeleteSwapchain(m_swapchain);
 }
 
 void PhxRuntime::OnPreRender()

@@ -54,7 +54,7 @@ namespace phx
 	{
 		size_t g_FrameCount = 0;
 	}
-	rhi::SwapchainHandle g_swapchain = {};
+
 	namespace EngineCore
 	{
 		void PreInitialize(int /*argc*/, wchar_t** /*argv*/)
@@ -79,21 +79,14 @@ namespace phx
 			uint32_t w, h;
 			app->GetDefaultWindowSize(w, h);
 
-			phx::rhi::Initialize({});
-
-			g_swapchain = rhi::IDevice::Ptr->CreateSwapchain({
-				.Width = w,
-				.Height = h,
-			},
-			window_handle);
+			phx::rhi::Initialize({}, window_handle);
 
 			app->SetSwapchain(g_swapchain, window_handle);
 
 			phx::IIoQueue::Ptr = new phx::IoQueue();
-			phx::IStreamingManager::Ptr->Initialize();
 
 			phx::ResourceSystem::Ptr = new ResourceSystem;
-			phx::ResourceSystem::Ptr->Initialize(IVirtualFileSystem::Ptr, IStreamingManager::Ptr);
+			phx::ResourceSystem::Ptr->Initialize(IVirtualFileSystem::Ptr);
 			phx::ResourceSystem::Ptr->RegisterFileHanlder<renderer::MeshResourceHandler>();
 
 #if false
