@@ -72,7 +72,6 @@ bool phx::rhi::VulkanBackend::Initialize()
     volkLoadInstance(vk_instance);
 
 #if defined(PHX_PLATFORM_WINDOWS)
-    void* window_handle = nullptr;
     if (!CreateSurface_Win32(static_cast<HWND>(window_handle)))
     {
         vkb::destroy_instance(vkb_instance);
@@ -126,6 +125,11 @@ void phx::rhi::VulkanBackend::Shutdown()
     vk_debug_messenger = VK_NULL_HANDLE;
 
     PHX_RHI_INFO("Vulkan Device Shutdown Complete.");
+}
+
+phx::rhi::VulkanBackend::VulkanBackend(void* window_handle)
+    : window_handle(window_handle)
+{
 }
 
 bool phx::rhi::VulkanBackend::SelectPhysicalDevice(vkb::PhysicalDevice& out_vkb_physical_device)
@@ -281,7 +285,7 @@ bool phx::rhi::VulkanBackend::CreateLogicalDevice(vkb::PhysicalDevice& vkb_physi
 
 
 #if defined(PHX_PLATFORM_WINDOWS)
-bool VulkanBackend::CreateSurface_Win32(HWND window_handle)
+bool phx::rhi::VulkanBackend::CreateSurface_Win32(void* window_handle)
 {
     if (!window_handle)
     {

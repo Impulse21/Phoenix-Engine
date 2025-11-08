@@ -18,6 +18,7 @@ namespace phx::rhi
 
 
 		VulkanGpuAllocator(VulkanBackend* vulkan_device);
+
 		~VulkanGpuAllocator() override = default;
 		VulkanGpuAllocator(const VulkanGpuAllocator&) = delete;
 	};

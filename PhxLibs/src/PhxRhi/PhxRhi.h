@@ -4,6 +4,6 @@
 
 namespace phx::rhi
 {
-	bool Initialize(Descriptor const& descriptor);
+	bool Initialize(Descriptor const& descriptor, void* window_handle);
 	bool Shutdown();
 }

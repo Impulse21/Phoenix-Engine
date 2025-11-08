@@ -12,13 +12,13 @@
 using namespace phx;
 using namespace phx::rhi;
 
-bool rhi::Initialize(Descriptor const& descriptor)
+bool rhi::Initialize(Descriptor const& descriptor, void* window_handle)
 {
 #if PHX_RHI_VULKAN
-    VulkanBackend*              platform_backend            = new VulkanBackend();
+    VulkanBackend*              platform_backend            = new VulkanBackend(window_handle);
     VulkanGpuAllocator*         platform_gpu_allocator      = new VulkanGpuAllocator(platform_backend);
-    VulkanResourceManager*      platform_resource_manager   = new VulkanResourceManager(platform_backend);
-    VulkanSubmissionManager*    platform_submission_manager = new VulkanSubmissionManager();
+    VulkanResourceManager*      platform_resource_manager   = new VulkanResourceManager(platform_backend, platform_gpu_allocator);
+    VulkanSubmissionManager*    platform_submission_manager = new VulkanSubmissionManager(platform_backend, VulkanResourceManager);
 #endif
 
     IBackend::Ptr               = platform_backend;

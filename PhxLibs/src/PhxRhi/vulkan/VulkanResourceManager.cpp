@@ -1,109 +1,144 @@
 #include "PhxRhi/PhxRhi_pch.h"
 #include "VulkanResourceManager.h"
 
+#include "VulkanBackend.h"
+#include "VulkanGpuAllocator.h"
+
 #define LOG_AND_SHUTDOWN_POOL(x) if (!x.IsEmpty()) PHX_RHI_WARN(" Pool '" #x "' still contains active handles"); x.Shutdown();
 
 
-int CreateSubResource(Buffer_VK & buffer, GpuBufferDescriptor const& desc, SubresouceType subresource_type, size_t offset, size_t size = ~0u)
+using namespace phx;
+using namespace phx::rhi;
+
+namespace
 {
-    assert(subresource_type == SubresouceType::SRV || subresource_type == SubresouceType::UAV);
+    constexpr size_t kMaxNumSwapchains = 1;
+    constexpr size_t kMaxNumBuffers = 4096;
+    constexpr size_t kMaxNumTextures = 4096;
+}
 
-    Format format = desc.Format;
+phx::rhi::VulkanResourceManager::VulkanResourceManager(VulkanBackend* vulkan_backend, VulkanGpuAllocator* vulkan_allocator)
+    : vulkan_backend(vulkan_backend)
+    , vulkan_allocator(vulkan_allocator)
+{
+}
 
-    // Is raw buffer
-    if (format == Format::UNKNOWN)
+bool VulkanResourceManager::Initialize()
+{
+    swapchain_pool.Initialize(kMaxNumSwapchains);
+    buffer_pool.Initialize(kMaxNumBuffers);
+
+    return true;
+}
+
+void phx::rhi::VulkanResourceManager::Shutdown()
+{
+    LOG_AND_SHUTDOWN_POOL(buffer_pool);
+    LOG_AND_SHUTDOWN_POOL(swapchain_pool);
+}
+
+SwapchainHandle phx::rhi::VulkanResourceManager::CreateSwapchain(const SwapchainDesc& desc)
+{
+    PHX_PROFILE_SECTION("Vulkan::CreateSwapchain");
+    vkb::SwapchainBuilder swapchain_builder(
+        vulkan_backend->vk_chosen_physical_device,
+        vulkan_backend->vk_device,
+        vulkan_backend->vk_surface); // Renamed to snake_case
+
+    auto swap_ret = swapchain_builder
+        .set_desired_format({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR })
+        .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
+        .set_desired_extent(desc.Width, desc.Height)
+        .set_old_swapchain(VK_NULL_HANDLE) // For initial creation
+        .build();
+
+    if (!swap_ret)
     {
-        buffer.srv_is_typed = false;
-#if false
-        // These sections are commented out in the original code, keeping them commented.
-        // If uncommented, they would need VkContext:: prefix for m_bindlessStorageBuffers and m_device
-        // buffer.srv_index = VkContext::bindless_storage_buffers.Allocate(); // Assuming a new name for this member
-
-        // VkDescriptorBufferInfo buffer_info = {}; // Renamed to snake_case
-        // buffer_info.buffer = buffer.vk_buffer;
-        // buffer_info.offset = offset;
-        // buffer_info.range = size;
-
-        // VkWriteDescriptorSet write = {};
-        // write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        // write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        // write.dstBinding = 0;
-        // write.dstArrayElement = buffer.srv_index;
-        // write.descriptorCount = 1;
-        // write.dstSet = VkContext::bindless_storage_buffers.DescritporSetVk; // Assuming new name
-        // write.pBufferInfo = &buffer_info;
-
-        // vkUpdateDescriptorSets(VkContext::vk_device, 1, &write, 0, nullptr);
-#else
-        PHX_CORE_WARN("[Vulkan] TODO: Add Bindless support");
-#endif
+        PHX_RHI_ERROR("Failed to create swapchain: {0}", swap_ret.error().message());
+        // This is a critical failure during init
+        return {};
     }
-    else
+
+    Handle<Swapchain> ret_val = swapchain_pool.Allocate(); 
+    VulkanSwapchain& impl = *swapchain_pool.GetHot(ret_val); 
+
+    vkb::Swapchain vkb_swapchain = swap_ret.value(); // Renamed to snake_case
+    impl.vk_swapchain = vkb_swapchain.swapchain;
+    impl.vk_swapchain_image_format = vkb_swapchain.image_format;
+    impl.vk_swapchain_extent = vkb_swapchain.extent;
+
+    auto& swapchain_images = vkb_swapchain.get_images().value();
+    auto& swapchain_image_views = vkb_swapchain.get_image_views().value();
+
+    for (size_t i = 0; i < kBufferCount; i++)
     {
-        // Typed buffer
-        buffer.srv_is_typed = true;
+        impl.vk_images[i] = swapchain_images[i];
+        impl.vk_image_views[i] = swapchain_image_views[i];
+    }
 
-        VkBufferViewCreateInfo srv_desc = {}; // Renamed to snake_case
-        srv_desc.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
-        srv_desc.buffer = buffer.vk_buffer;
-        srv_desc.flags = 0;
-        srv_desc.format = FormatToVkFormat(format);
-        srv_desc.offset = offset;
-        srv_desc.range = std::min(size, (uint64_t)desc.Size - srv_desc.offset);
+    PHX_RHI_INFO(
+        "Swapchain Initialized. Extent: {0}x{1}, Format: {2}, Images: {3}",
+        impl.vk_swapchain_extent.width,
+        impl.vk_swapchain_extent.height,
+        "", // Placeholder for format name conversion
+        kBufferCount);
+}
 
-        VkResult res = vkCreateBufferView(VkContext::vk_device, &srv_desc, nullptr, &buffer.buffer_view);
-        assert(res == VK_SUCCESS);
-
-        if (subresource_type == SubresouceType::SRV)
+void phx::rhi::VulkanResourceManager::DeleteSwapchain(SwapchainHandle handle)
+{
+    // SHould I be waiting here?
+    VulkanSwapchain* impl = swapchain_pool.GetHot(handle);
+    for (auto image_view : impl->vk_image_views) // Renamed to snake_case
+    {
+        if (image_view != VK_NULL_HANDLE)
         {
-            // buffer.srv_index = VkContext::bindless_uniform_texel_buffers.Allocate(); // Assuming new name
-            if (buffer.buffer_view != VK_NULL_HANDLE)
-            {
-                VkWriteDescriptorSet write = {};
-                write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-                write.dstBinding = 0;
-                write.dstArrayElement = buffer.srv_index;
-                write.descriptorCount = 1;
-                // write.dstSet = VkContext::bindless_uniform_texel_buffers.DescritporSetVk; // Assuming new name
-                write.pTexelBufferView = &buffer.buffer_view;
-                vkUpdateDescriptorSets(VkContext::vk_device, 1, &write, 0, nullptr);
-            }
+            vkDestroyImageView(vulkan_backend->vk_device, image_view, nullptr);
+        }
+    }
 
-            return -1;
+    if (impl->vk_swapchain != VK_NULL_HANDLE)
+    {
+        vkDestroySwapchainKHR(vulkan_backend->vk_device, impl->vk_swapchain, nullptr);
+        impl->vk_swapchain = VK_NULL_HANDLE;
+    }
+
+    swapchain_pool.Free(handle);
+}
+
+TextureHandle phx::rhi::VulkanResourceManager::GetSwapchainBackBuffer(SwapchainHandle /*handle*/)
+{
+    PHX_RHI_WARN("Unable to get back buffer at the moment");
+    return {};
+}
+
+void phx::rhi::VulkanResourceManager::ResizeSwapchain(SwapchainHandle /*handle*/, uint32_t /*width*/, uint32_t /*height*/)
+{
+}
+
+void VulkanResourceManager::RunGarbageCollection(uint64_t completed_frame)
+{
+    while (!deferred_queue.empty())
+    {
+        DeferredItem& DeferredItem = deferred_queue.front();
+        if (DeferredItem.frame + kBufferCount < completed_frame)
+        {
+            DeferredItem.deferred_func();
+            deferred_queue.pop_front();
         }
         else
         {
-            // buffer.uav_index = VkContext::bindless_storage_texel_buffers.Allocate(); // Assuming new name
-            if (buffer.buffer_view != VK_NULL_HANDLE)
-            {
-                VkWriteDescriptorSet write = {};
-                write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-                write.dstBinding = 0;
-                write.dstArrayElement = buffer.uav_index;
-                write.descriptorCount = 1;
-                // write.dstSet = VkContext::bindless_storage_texel_buffers.DescritporSetVk; // Assuming new name
-                write.pTexelBufferView = &buffer.buffer_view;
-                vkUpdateDescriptorSets(VkContext::vk_device, 1, &write, 0, nullptr);
-            }
-            return -1;
+            break;
         }
     }
-
-    return 0;
 }
-
-BufferHandle phx::rhi::VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, const void* initialData)
+BufferHandle VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, const void* initial_data)
 {
     PHX_PROFILE_SECTION("Vulkan::PlatformCreateBuffer");
-    if (VkContext::vma_allocator == VK_NULL_HANDLE)
-        return GpuBufferHandle();
 
-    Handle<GpuBuffer> ret_val = VkContext::buffer_pool.Allocate(); // Renamed to snake_case
-    Buffer_VK& impl = *VkContext::buffer_pool.GetHot(ret_val); // Corrected access to buffer_pool
+    Handle<Buffer> ret_val = buffer_pool.Allocate(); // Renamed to snake_case
+    VulkanBuffer& impl = *buffer_pool.GetHot(ret_val); // Corrected access to buffer_pool
 
-    VkBufferCreateInfo buffer_info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO }; // Renamed to snake_case
+    VkBufferCreateInfo buffer_info = { .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO }; // Renamed to snake_case
     buffer_info.size = desc.Size;
     buffer_info.usage = 0;
 
@@ -142,7 +177,7 @@ BufferHandle phx::rhi::VulkanResourceManager::CreateBuffer(const BufferDescripto
         }
     }
 
-    if (VkContext::vk_features_1_2.bufferDeviceAddress == VK_TRUE)
+    if (vulkan_backend->vk_features_1_2.bufferDeviceAddress == VK_TRUE)
     {
         buffer_info.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
     }
@@ -152,11 +187,18 @@ BufferHandle phx::rhi::VulkanResourceManager::CreateBuffer(const BufferDescripto
 
     buffer_info.flags = 0;
 
-    if (VkContext::queue_gfx.vk_queue_family != VkContext::queue_compute.vk_queue_family || VkContext::queue_compute.vk_queue_family != VkContext::queue_transfer.vk_queue_family)
+    if (vulkan_backend->queue_gfx.vk_queue_family != vulkan_backend->queue_compute.vk_queue_family || 
+        vulkan_backend->queue_compute.vk_queue_family != vulkan_backend->queue_transfer.vk_queue_family)
     {
         buffer_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
 
-        std::array<uint32_t, 3> families = { VkContext::queue_gfx.vk_queue_family, VkContext::queue_compute.vk_queue_family, VkContext::queue_transfer.vk_queue_family };
+        std::array<uint32_t, 3> families = 
+        { 
+            vulkan_backend->queue_gfx.vk_queue_family,
+            vulkan_backend->queue_compute.vk_queue_family,
+            vulkan_backend->queue_transfer.vk_queue_family 
+        };
+
         buffer_info.queueFamilyIndexCount = static_cast<uint32_t>(families.size());
         buffer_info.pQueueFamilyIndices = families.data();
         // Note: The original code sets sharingMode to EXCLUSIVE right after CONCURRENT. This might be a bug or intentional override.
@@ -170,11 +212,11 @@ BufferHandle phx::rhi::VulkanResourceManager::CreateBuffer(const BufferDescripto
 
     if (EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::AliasBuffer))
     {
-        // TODO:
+        PHX_RHI_WARN("Alias Buffers are not implemented yet");
     }
     else if (EnumHasAnyFlags(desc.MiscFlags, ResourceMiscFlags::Sparse))
     {
-        // TODO:
+        PHX_RHI_WARN("Sparse Buffers are not implemented yet");
     }
     else
     {
@@ -203,7 +245,7 @@ BufferHandle phx::rhi::VulkanResourceManager::CreateBuffer(const BufferDescripto
         if (desc.Alias == nullptr)
         {
             vulkan_check(
-                vmaCreateBuffer(VkContext::vma_allocator, &buffer_info, &alloc_info, &impl.vk_buffer, &impl.allocation, nullptr));
+                vmaCreateBuffer(vulkan_allocator->vma_allocator, &buffer_info, &alloc_info, &impl.vk_buffer, &impl.allocation, nullptr));
         }
         else
         {
@@ -212,10 +254,10 @@ BufferHandle phx::rhi::VulkanResourceManager::CreateBuffer(const BufferDescripto
             {
 #if false
                 // This section is commented out in the original code, keeping it commented.
-                // If uncommented, they would need VkContext:: prefix for m_texturePool and VkResult res.
-                // Texture_VK* alias_texture = VkContext::texture_pool.Get(std::get<TextureHandle>(desc.Alias->Handle)); // Renamed to snake_case
+                // If uncommented, they would need  prefix for m_texturePool and VkResult res.
+                // Texture_VK* alias_texture = texture_pool.Get(std::get<TextureHandle>(desc.Alias->Handle)); // Renamed to snake_case
                 // res = vmaCreateAliasingBuffer2(
-                //     VkContext::vma_allocator,
+                //     vma_allocator,
                 //     alias_texture->Allocation,
                 //     desc.Alias->AliasOffset,
                 //     &buffer_info,
@@ -226,12 +268,12 @@ BufferHandle phx::rhi::VulkanResourceManager::CreateBuffer(const BufferDescripto
             }
             else
             {
-                Buffer_VK* alias_buffer = VkContext::buffer_pool.GetHot(std::get<GpuBufferHandle>(desc.Alias->handle)); // Renamed to snake_case
+                VulkanBuffer* alias_buffer = buffer_pool.GetHot(std::get<BufferHandle>(desc.Alias->handle)); // Renamed to snake_case
                 assert(alias_buffer);
 
                 vulkan_check(
                     vmaCreateAliasingBuffer2(
-                        VkContext::vma_allocator,
+                        vulkan_allocator->vma_allocator,
                         alias_buffer->allocation,
                         desc.Alias->offset,
                         &buffer_info,
@@ -243,7 +285,7 @@ BufferHandle phx::rhi::VulkanResourceManager::CreateBuffer(const BufferDescripto
 #ifdef PHX_DEBUG
         // Now you have allocInfo.memoryType, which tells you which memory type was used
         VkPhysicalDeviceMemoryProperties memory_properties; // Renamed to snake_case
-        vkGetPhysicalDeviceMemoryProperties(VkContext::vk_chosen_physical_device, &memory_properties);
+        vkGetPhysicalDeviceMemoryProperties(vulkan_backend->vk_chosen_physical_device, &memory_properties);
 
         // Use the memoryTypeIndex to find the memory type
         VkMemoryType memory_type = memory_properties.memoryTypes[impl.allocation->GetMemoryTypeIndex()]; // Renamed to snake_case
@@ -253,7 +295,7 @@ BufferHandle phx::rhi::VulkanResourceManager::CreateBuffer(const BufferDescripto
         VkMemoryHeap heap = memory_properties.memoryHeaps[heap_index]; // Renamed to snake_case
 
         VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
-        vmaGetHeapBudgets(VkContext::vma_allocator, budgets);
+        vmaGetHeapBudgets(vulkan_allocator->vma_allocator, budgets);
 
         PHX_CORE_INFO("[Vulkan] Created Buffer on {0} - {1}/{2}", heap_index, budgets[heap_index].usage, heap.size);
 #endif
@@ -270,11 +312,13 @@ BufferHandle phx::rhi::VulkanResourceManager::CreateBuffer(const BufferDescripto
         VkBufferDeviceAddressInfo info = {};
         info.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
         info.buffer = impl.vk_buffer;
-        impl.gpu_address = vkGetBufferDeviceAddress(VkContext::vk_device, &info);
+        impl.gpu_address = vkGetBufferDeviceAddress(vulkan_backend->vk_device, &info);
     }
 
     if (initial_data) // Assuming initial_data is a parameter to this function
     {
+        PHX_RHI_WARN("Initializing a buffer with data at start up is not currently supported");
+#if false
         rhi::vk::CopyCtx copy_ctx;
         Buffer_VK* copy_buffer;
         void* mapped_data = nullptr;
@@ -284,8 +328,8 @@ BufferHandle phx::rhi::VulkanResourceManager::CreateBuffer(const BufferDescripto
         }
         else
         {
-            copy_ctx = VkContext::copy_ctx_manager.Allocate(impl.allocation->GetSize());
-            copy_buffer = VkContext::buffer_pool.GetHot(copy_ctx.upload_buffer);
+            copy_ctx = copy_ctx_manager.Allocate(impl.allocation->GetSize());
+            copy_buffer = buffer_pool.GetHot(copy_ctx.upload_buffer);
             mapped_data = copy_buffer->mapped_data;
         }
 
@@ -357,8 +401,9 @@ BufferHandle phx::rhi::VulkanResourceManager::CreateBuffer(const BufferDescripto
 
             vkCmdPipelineBarrier2(copy_ctx.transition_command_buffer, &dependency_info);
 
-            VkContext::copy_ctx_manager.SubmitAndWait(copy_ctx);
+            copy_ctx_manager.SubmitAndWait(copy_ctx);
         }
+#endif
     }
 
     if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
@@ -374,59 +419,150 @@ BufferHandle phx::rhi::VulkanResourceManager::CreateBuffer(const BufferDescripto
     return ret_val;
 }
 
-void phx::rhi::VulkanResourceManager::DeleteBuffer(BufferHandle handle)
+void VulkanResourceManager::DeleteBuffer(BufferHandle handle)
 {
-    VkContext::EnqueueDelete({
-        VkContext::frame_number,
-        [handle]()
+    EnqueueDelete({
+        frame_number,
+        [=]()
         {
-            Buffer_VK* impl = VkContext::buffer_pool.GetHot(handle);
+            VulkanBuffer* impl = buffer_pool.GetHot(handle);
             // TODO: Move into the deconstructor of struct
             if (impl)
             {
 #if false
                 // These sections are commented out in the original code, keeping them commented.
-                // If uncommented, they would need VkContext:: prefix for the pools and VkContext::vk_device.
+                // If uncommented, they would need  prefix for the pools and vk_device.
                 // if (impl->Srv.IsValid())
                 // {
                 //     if (impl->Srv.IsTyped)
                 //     {
-                //         VkContext::bindless_uniform_texel_buffers.Free(impl->Srv.Index);
+                //         bindless_uniform_texel_buffers.Free(impl->Srv.Index);
                 //     }
                 //     else
                 //     {
-                //         VkContext::bindless_storage_buffers.Free(impl->Srv.Index);
+                //         bindless_storage_buffers.Free(impl->Srv.Index);
                 //     }
                 //
                 //     if (impl->Srv.ViewVk != VK_NULL_HANDLE)
-                //         vkDestroyBufferView(VkContext::vk_device, impl->Uav.ViewVk, nullptr);
+                //         vkDestroyBufferView(vk_device, impl->Uav.ViewVk, nullptr);
                 //     impl->Srv = {};
                 // }
                 // if (impl->Uav.IsValid())
                 // {
                 //     if (impl->Uav.IsTyped)
                 //     {
-                //         VkContext::bindless_storage_texel_buffers.Free(impl->Uav.Index);
+                //         bindless_storage_texel_buffers.Free(impl->Uav.Index);
                 //     }
                 //     else
                 //     {
-                //         VkContext::bindless_storage_buffers.Free(impl->Uav.Index);
+                //         bindless_storage_buffers.Free(impl->Uav.Index);
                 //     }
                 //
                 //     if (impl->Uav.ViewVk != VK_NULL_HANDLE)
-                //         vkDestroyBufferView(VkContext::vk_device, impl->Uav.ViewVk, nullptr);
+                //         vkDestroyBufferView(vk_device, impl->Uav.ViewVk, nullptr);
                 //     impl->Uav = {};
                 // }
 #endif
                     // TODO: Descriptors
                     // TODO: Free Views
                     if (impl->buffer_view != VK_NULL_HANDLE)
-                        vkDestroyBufferView(VkContext::vk_device, impl->buffer_view, nullptr);
+                        vkDestroyBufferView(vulkan_backend->vk_device, impl->buffer_view, nullptr);
 
-                    vmaDestroyBuffer(VkContext::vma_allocator, impl->vk_buffer, impl->allocation);
+                    vmaDestroyBuffer(vulkan_allocator->vma_allocator, impl->vk_buffer, impl->allocation);
                 }
 
-                VkContext::buffer_pool.Free(handle);
+                buffer_pool.Free(handle);
             }
         });
 }
+
+int VulkanResourceManager::CreateSubResource(VulkanBuffer& buffer, BufferDescriptor const& desc, SubresouceType subresource_type, size_t offset, size_t size = ~0u)
+{
+    assert(subresource_type == SubresouceType::SRV || subresource_type == SubresouceType::UAV);
+
+    Format format = desc.Format;
+
+    // Is raw buffer
+    if (format == Format::UNKNOWN)
+    {
+        buffer.srv_is_typed = false;
+#if false
+        // These sections are commented out in the original code, keeping them commented.
+        // If uncommented, they would need  prefix for m_bindlessStorageBuffers and m_device
+        // buffer.srv_index = bindless_storage_buffers.Allocate(); // Assuming a new name for this member
+
+        // VkDescriptorBufferInfo buffer_info = {}; // Renamed to snake_case
+        // buffer_info.buffer = buffer.vk_buffer;
+        // buffer_info.offset = offset;
+        // buffer_info.range = size;
+
+        // VkWriteDescriptorSet write = {};
+        // write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        // write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        // write.dstBinding = 0;
+        // write.dstArrayElement = buffer.srv_index;
+        // write.descriptorCount = 1;
+        // write.dstSet = bindless_storage_buffers.DescritporSetVk; // Assuming new name
+        // write.pBufferInfo = &buffer_info;
+
+        // vkUpdateDescriptorSets(vk_device, 1, &write, 0, nullptr);
+#else
+        PHX_CORE_WARN("[Vulkan] TODO: Add Bindless support");
+#endif
+    }
+    else
+    {
+        // Typed buffer
+        buffer.srv_is_typed = true;
+
+        VkBufferViewCreateInfo srv_desc = {}; // Renamed to snake_case
+        srv_desc.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+        srv_desc.buffer = buffer.vk_buffer;
+        srv_desc.flags = 0;
+        srv_desc.format = FormatToVkFormat(format);
+        srv_desc.offset = offset;
+        srv_desc.range = std::min(size, (uint64_t)desc.Size - srv_desc.offset);
+
+        VkResult res = vkCreateBufferView(vulkan_backend->vk_device, &srv_desc, nullptr, &buffer.buffer_view);
+        assert(res == VK_SUCCESS);
+
+        if (subresource_type == SubresouceType::SRV)
+        {
+            // buffer.srv_index = bindless_uniform_texel_buffers.Allocate(); // Assuming new name
+            if (buffer.buffer_view != VK_NULL_HANDLE)
+            {
+                VkWriteDescriptorSet write = {};
+                write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+                write.dstBinding = 0;
+                write.dstArrayElement = buffer.srv_index;
+                write.descriptorCount = 1;
+                // write.dstSet = bindless_uniform_texel_buffers.DescritporSetVk; // Assuming new name
+                write.pTexelBufferView = &buffer.buffer_view;
+                vkUpdateDescriptorSets(vulkan_backend->vk_device, 1, &write, 0, nullptr);
+            }
+
+            return -1;
+        }
+        else
+        {
+            // buffer.uav_index = bindless_storage_texel_buffers.Allocate(); // Assuming new name
+            if (buffer.buffer_view != VK_NULL_HANDLE)
+            {
+                VkWriteDescriptorSet write = {};
+                write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+                write.dstBinding = 0;
+                write.dstArrayElement = buffer.uav_index;
+                write.descriptorCount = 1;
+                // write.dstSet = bindless_storage_texel_buffers.DescritporSetVk; // Assuming new name
+                write.pTexelBufferView = &buffer.buffer_view;
+                vkUpdateDescriptorSets(vulkan_backend->vk_device, 1, &write, 0, nullptr);
+            }
+            return -1;
+        }
+    }
+
+    return 0;
+}
+

@@ -15,7 +15,13 @@ namespace phx::rhi
 		virtual bool Initialize() = 0;
 		virtual void Shutdown() = 0;
 
-		// -- Gpu Buffers  ---
+		// -- Swapchain ---
+		virtual SwapchainHandle CreateSwapchain(const SwapchainDesc& desc) = 0;
+		virtual void DeleteSwapchain(SwapchainHandle handle) = 0;
+		virtual TextureHandle GetSwapchainBackBuffer(SwapchainHandle handle) = 0;
+		virtual void ResizeSwapchain(SwapchainHandle handle, uint32_t width, uint32_t height) = 0;
+
+		// -- Buffers  ---
 		virtual BufferHandle CreateBuffer(const BufferDescriptor& desc, const void* initialData = nullptr) = 0;
 		virtual void DeleteBuffer(BufferHandle handle) = 0;
 

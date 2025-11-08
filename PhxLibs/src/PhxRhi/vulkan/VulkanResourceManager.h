@@ -2,7 +2,9 @@
 
 #include <PhxCore/Pool.h>
 #include <PhxRhi/IResourceManager.h>
+
 #include "VulkanTypes.h"
+
 namespace phx::rhi
 {
 	struct VulkanBackend;
@@ -10,19 +12,36 @@ namespace phx::rhi
 
 	struct VulkanResourceManager final : public IResourceManager
 	{
-		VulkanDevice* m_vulkan_device = nullptr;
-		phx::PagedPool<rhi::GpuBuffer, Buffer_VK> buffer_pool;
+		VulkanBackend* vulkan_backend = nullptr;
+		VulkanGpuAllocator* vulkan_allocator = nullptr;
+
+		uint64_t frame_number = 0;
+		phx::PagedPool<rhi::Swapchain, VulkanSwapchain> swapchain_pool;
+		phx::PagedPool<rhi::Buffer, VulkanBuffer> buffer_pool;
+
+		struct DeferredItem
+		{
+			uint64_t frame;
+			std::function<void()> deferred_func;
+		};
 		std::deque<DeferredItem> deferred_queue;
 
 		// -- Interface implementation ---
-		void Initialize() override;
+		bool Initialize() override;
 		void Shutdown() override;
 
-		BufferHandle CreateBuffer(const BufferDescriptor& desc, const void* initialData = nullptr) override;
+		//-- Swapchain ---
+		SwapchainHandle CreateSwapchain(const SwapchainDesc & desc) override;
+		void DeleteSwapchain(SwapchainHandle handle) override;
+		TextureHandle GetSwapchainBackBuffer(SwapchainHandle handle) override;
+		void ResizeSwapchain(SwapchainHandle handle, uint32_t width, uint32_t height) override;
+
+		// -- Buffer ---
+		BufferHandle CreateBuffer(const BufferDescriptor& desc, const void* initial_data = nullptr) override;
 		void DeleteBuffer(BufferHandle handle) override;
 
 		// -- Textures ---
-		TextureHandle CreateTexture(const TextureDescriptor& desc, const void* initialData = nullptr) override;
+		TextureHandle CreateTexture(const TextureDescriptor& desc, const void* initial_data = nullptr) override;
 		void DeleteTexture(TextureHandle handle) override;
 
 		// -- Pipeline States ---
@@ -30,40 +49,21 @@ namespace phx::rhi
 		void DeletePipeline(PipelineStateHandle handle) override;
 
 
-		struct DeferredItem
-		{
-			uint64_t frame;
-			std::function<void()> deferred_func;
-		};
+		void RunGarbageCollection(uint64_t completed_frame);
 
-		static void ProcessDeletionQueue(uint64_t completed_frame)
-		{
-			while (!VkContext::deferred_queue.empty())
-			{
-				DeferredItem& DeferredItem = VkContext::deferred_queue.front();
-				if (DeferredItem.frame + kBufferCount < completed_frame)
-				{
-					DeferredItem.deferred_func();
-					VkContext::deferred_queue.pop_front();
-				}
-				else
-				{
-					break;
-				}
-			}
-		}
-
-		static void EnqueueDelete(DeferredItem&& item)
+		void EnqueueDelete(DeferredItem&& item)
 		{
 			deferred_queue.emplace_back(std::forward<DeferredItem>(item));
 		}
 
 
-		VulkanResourceManager(VulkanBackend* vulkan_device, VulkanGpuAllocator* vulkan_allocator);
+		VulkanResourceManager(VulkanBackend* vulkan_backend, VulkanGpuAllocator* vulkan_allocator);
 		~VulkanResourceManager() override = default;
 
 		VulkanResourceManager(const VulkanResourceManager&) = delete;
 
+	private:
+		int CreateSubResource(VulkanBuffer& buffer, BufferDescriptor const& desc, SubresouceType subresource_type, size_t offset, size_t size = ~0u);
 	};
 }
 

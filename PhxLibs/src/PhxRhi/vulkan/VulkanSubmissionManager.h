@@ -1,5 +1,6 @@
 #pragma once
 
+#include <PhxCore/StaticArray.h>
 #include <PhxRhi/ISubmissionManager.h>
 
 #include <volk.h>
@@ -11,8 +12,25 @@ namespace phx::rhi
 
 	struct VulkanSubmissionManager : public ISubmissionManager
 	{
+		VulkanBackend* vulkan_backend;
+		VulkanResourceManager* vulkan_resource_manager;
+
 		size_t frame_number = 0;
-		VkSurfaceKHR vk_surface = VK_NULL_HANDLE;
+		struct Frame
+		{
+			VkSemaphore present_semaphore = VK_NULL_HANDLE;
+			VkSemaphore render_semaphore = VK_NULL_HANDLE;
+			VkFence render_fence = VK_NULL_HANDLE;
+
+			phx::EnumArray<VkCommandPool, CommandQueueType> vk_command_pools;
+			phx::EnumArray<std::vector<VkCommandBuffer>, CommandQueueType> vk_command_buffers;
+
+			std::mutex vk_active_cmd_lock = {};
+			// std::vector<CommandBuffer_VK> vk_active_cmd;
+
+			VkFence frame_fence = VK_NULL_HANDLE;
+		};
+		StaticArray<Frame, kBufferCount> frames;
 
 		// -- Interface implementation ---
 		bool Initialize() override;
@@ -27,12 +45,8 @@ namespace phx::rhi
 
 		FenceHandle Submit(Span<ICommandBuffer*> cmd_buffers) override;
 
-		SwapchainHandle CreateSwapchain(const SwapchainDesc& desc, void* window_handle) override;
-		void DestroySwapchain(SwapchainHandle handle) override;
-		TextureHandle GetSwapchainBackBuffer(SwapchainHandle handle) override;
-		void ResizeSwapchain(SwapchainHandle handle, uint32_t width, uint32_t height) override;
 
-		VulkanSubmissionManager(VulkanBackend* vulkan_device, VulkanResourceManager* vulkan_resource_manager);
+		VulkanSubmissionManager(VulkanBackend* vulkan_backend, VulkanResourceManager* vulkan_resource_manager);
 		~VulkanSubmissionManager() override = default;
 
 	};

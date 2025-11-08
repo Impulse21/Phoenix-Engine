@@ -23,10 +23,5 @@ namespace phx::rhi
 
 		virtual ICommandBuffer* BeginCommandBuffer() = 0;
 		virtual FenceHandle Submit(Span<ICommandBuffer*> cmd_buffers) = 0;
-		
-		virtual SwapchainHandle CreateSwapchain(const SwapchainDesc& desc, void* window_handle) = 0;
-		virtual void DestroySwapchain(SwapchainHandle handle) = 0;
-		virtual TextureHandle GetSwapchainBackBuffer(SwapchainHandle handle) = 0;
-		virtual void ResizeSwapchain(SwapchainHandle handle, uint32_t width, uint32_t height) = 0;
 	};
 }

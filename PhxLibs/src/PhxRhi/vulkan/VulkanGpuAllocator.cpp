@@ -64,3 +64,8 @@ void phx::rhi::VulkanGpuAllocator::Shutdown()
         vma_allocator = VK_NULL_HANDLE;
     }
 }
+
+phx::rhi::VulkanGpuAllocator::VulkanGpuAllocator(VulkanBackend* vulkan_backend)
+    : vulkan_backend(vulkan_backend)
+{
+}

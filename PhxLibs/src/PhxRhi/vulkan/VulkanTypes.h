@@ -14,11 +14,7 @@
 namespace phx::rhi
 {
 	constexpr size_t kCacheLineSize = 64ull;
-
-	constexpr size_t kMaxNumBuffers = 4096;
-	constexpr size_t kMaxNumTextures = 4096;
-
-	constexpr size_t cMaxInflightFrames = 2;
+	
 	constexpr uint64_t kTimeoutValue = 2000000000ull; // 2 seconds
 	constexpr uint32_t kMaxFrameCmds = 64;
 	constexpr uint32_t kMaxAsyncCmds = 32;

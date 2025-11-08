@@ -9,7 +9,6 @@
 
 #include <deque>
 
-
 namespace phx::rhi
 {
 	constexpr size_t kMaxNumBuffers = 4096;
@@ -22,12 +21,13 @@ namespace phx::rhi
 
 	struct VulkanBackend final : public IBackend
 	{
-		inline static DeviceCapability capabilities = {};
+		DeviceCapability capabilities = {};
 
 		// -- VK Core ---
 		VkInstance vk_instance = VK_NULL_HANDLE;
 		vkb::Instance vkb_instance; // vkb::Instance manages VkInstance and debug messenger
 
+		void* window_handle = nullptr;
 		VkSurfaceKHR vk_surface = VK_NULL_HANDLE;
 
 		VkPhysicalDevice vk_chosen_physical_device = VK_NULL_HANDLE;
@@ -77,7 +77,7 @@ namespace phx::rhi
 		ShaderFormat GetShaderFormat() override { return ShaderFormat::Spirv; }
 		GfxBackend GetBackend() const { return GfxBackend::Vulkan; }
 
-		VulkanBackend() = default;
+		VulkanBackend(void* window_handle);
 		~VulkanBackend() override = default;
 
 		VulkanBackend(const VulkanBackend&) = delete;
