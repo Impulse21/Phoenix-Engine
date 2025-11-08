@@ -6,6 +6,8 @@
 #include "VulkanCommandBuffer.h"
 #include <volk.h>
 
+#include <deque>
+
 namespace phx::rhi
 {
 	struct VulkanBackend;
@@ -30,22 +32,26 @@ namespace phx::rhi
 			CommandPool upload_cmd_pool;
 		};
 
-		std::unique_ptr<PerThreadData[]> per_thread_cmd_pool;
+		struct PendingCommandBuffer
+		{
+			ICommandBuffer* buffer;
+			FenceHandle     fence;
+		};
 
 		size_t frame_number = 0;
+		size_t num_threads;
+		std::unique_ptr<PerThreadData[]> per_thread_cmd_pool;
+		std::vector<PendingCommandBuffer> inflight_command_queue;
+
+		std::mutex inglight_commands_queue_mutex;
 		struct Frame
 		{
 			VkSemaphore present_semaphore =VK_NULL_HANDLE;
 			VkSemaphore render_semaphore = VK_NULL_HANDLE;
 			VkFence render_fence = VK_NULL_HANDLE;
 
-			phx::EnumArray<VkCommandPool, CommandQueueType> vk_command_pools;
-			phx::EnumArray<std::vector<VkCommandBuffer>, CommandQueueType> vk_command_buffers;
-
-			std::mutex vk_active_cmd_lock = {};
-			// std::vector<CommandBuffer_VK> vk_active_cmd;
-
 			VkFence frame_fence = VK_NULL_HANDLE;
+
 		};
 		StaticArray<Frame, kBufferCount> frames;
 

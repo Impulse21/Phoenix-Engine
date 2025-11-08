@@ -13,6 +13,8 @@ using namespace phx::rhi;
 VulkanSubmissionManager::VulkanSubmissionManager(VulkanBackend* vulkan_backend, VulkanResourceManager* vulkan_resource_manager, size_t thread_count)
     : vulkan_backend(vulkan_backend)
     , vulkan_resource_manager(vulkan_resource_manager)
+    , num_threads(thread_count)
+    , per_thread_cmd_pool(std::make_unique<PerThreadData[]>(thread_count))
 {
 
 }
@@ -39,6 +41,29 @@ bool VulkanSubmissionManager::Initialize()
 
         PHX_RHI_INFO("Frame synchronization primitives created.");
     }
+
+    PHX_RHI_INFO("Initializing Per thread Command data.");
+    for (size_t i = 0; i < num_threads; ++i)
+    {
+        PerThreadData& thread_data = per_thread_cmd_pool[i];
+
+        auto init_cmd_pool = [&](PerThreadData::CommandPool& pool, uint32_t queue_family) {
+            VkCommandPoolCreateInfo pool_info = {
+                .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                .queueFamilyIndex = queue_family,
+                .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
+            };
+
+            VkResult result = vkCreateCommandPool(vulkan_backend->vk_device, &pool_info, nullptr, &pool.vk_cmd_pool);
+            if (result != VK_SUCCESS)
+                PHX_RHI_ERROR("Failed to create command pool");
+        };
+
+        init_cmd_pool(thread_data.graphics_cmd_pool, vulkan_backend->queue_gfx.vk_queue_family);
+        init_cmd_pool(thread_data.compute_cmd_pool, vulkan_backend->queue_compute.vk_queue_family);
+        init_cmd_pool(thread_data.upload_cmd_pool, vulkan_backend->queue_transfer.vk_queue_family);
+    }
+
     return true;
 }
 
@@ -46,6 +71,8 @@ void phx::rhi::VulkanSubmissionManager::Shutdown()
 {
     WaitForIdle();
     vulkan_resource_manager->RunGarbageCollection(~0u);
+
+    per_thread_cmd_pool.reset();
 
     for (size_t i = 0; i < cMaxInflightFrames; ++i)
     {
@@ -66,9 +93,8 @@ void phx::rhi::VulkanSubmissionManager::Shutdown()
             vkDestroySemaphore(vulkan_backend->vk_device, frames[i].present_semaphore, nullptr);
             frames[i].present_semaphore = VK_NULL_HANDLE;
         }
+        PHX_RHI_INFO("Frame synchronization primitives destroyed.");
     }
-
-    PHX_RHI_INFO("Frame synchronization primitives destroyed.");
 }
 
 void CreateCommandPools()
