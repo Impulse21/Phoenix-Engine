@@ -139,20 +139,18 @@ void phx::rhi::VulkanSubmissionManager::BeginFrame(SwapchainHandle swapchain)
         PHX_RHI_CRITICAL("Unable to local swapchain when ending frame.");
         return;
     }
-    ;
-    VkSemaphore image_available_binary_sem = image_available_semaphores[GetCurrentFrameIndex()];
 
     uint32_t image_index;
     vkAcquireNextImageKHR(
         vulkan_backend->vk_device,
         swapchain_impl->vk_swapchain,
         UINT64_MAX,
-        image_available_binary_sem,
+        image_available_semaphores[GetCurrentFrameIndex()],
         VK_NULL_HANDLE,
         &image_index
     );
 
-    // TODO - I am here
+    swapchain_impl->buffer_index = static_cast<uint8_t>(image_index);
 }
 
 void phx::rhi::VulkanSubmissionManager::EndFrame(
@@ -165,6 +163,7 @@ void phx::rhi::VulkanSubmissionManager::EndFrame(
             CommandQueueType::Graphics,
             graphics_buffers,
             wait_fences,
+            { image_available_semaphores[GetCurrentFrameIndex()] },
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
     VulkanSwapchain* swapchain_impl = vulkan_resource_manager->swapchain_pool.GetHot(swapchain);
@@ -175,14 +174,6 @@ void phx::rhi::VulkanSubmissionManager::EndFrame(
     }
 
     PerQueueSync& queue_sync = per_queue_syncs[CommandQueueType::Graphics];
-
-    static thread_local std::vector<uint64_t> s_wait_fence_values;
-    s_wait_fence_values.clear();
-    s_wait_fence_values.resize(wait_fences.size());
-    for (auto& wait_fence : wait_fences)
-        s_wait_fence_values.push_back(wait_fence.value);
-
-
     VkTimelineSemaphoreSubmitInfo timeline_info = {
         .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
         .waitSemaphoreValueCount = 1,
@@ -259,7 +250,17 @@ void phx::rhi::VulkanSubmissionManager::RetireCommandBuffers(Span<ICommandBuffer
     }
 }
 
-FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(CommandQueueType queue_type, Span<ICommandBuffer*> cmd_buffers, Span<FenceHandle> wait_fences, VkPipelineStageFlags flags)
+void phx::rhi::VulkanSubmissionManager::ReclaimFinishedCommandBuffers()
+{
+    // TODO: I am here.
+}
+
+FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(
+    CommandQueueType queue_type,
+    Span<ICommandBuffer*> cmd_buffers,
+    Span<FenceHandle> wait_fences,
+    Span<VkSemaphore> binary_semaphores,
+    VkPipelineStageFlags flags)
 {
     PerQueueSync& queue_sync = per_queue_syncs[queue_type];
     const FenceHandle fence_handle = {
@@ -279,19 +280,28 @@ FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(CommandQueueType q
 
     static thread_local std::vector<uint64_t> s_wait_fence_values;
     s_wait_fence_values.clear();
-    s_wait_fence_values.resize(wait_fences.size());
+    s_wait_fence_values.reserve(binary_semaphores.size() + wait_fences.size());
+
+    for (size_t i = 0; i < binary_semaphores.size(); ++i)
+        s_wait_fence_values.push_back(0);
+
     for (auto& wait_fence : wait_fences)
         s_wait_fence_values.push_back(wait_fence.value);
 
     static thread_local std::vector<VkSemaphore> s_wait_semaphores;
     s_wait_semaphores.clear();
-    s_wait_semaphores.resize(wait_fences.size());
+    s_wait_semaphores.reserve(binary_semaphores.size() + wait_fences.size());
 
-    std::fill(s_wait_semaphores.begin(), s_wait_semaphores.end(), queue_sync.vk_timeline_semaphore);
+    for (auto& binary_semaphore : binary_semaphores)
+        s_wait_semaphores.push_back(binary_semaphore);
+
+    for (size_t i = 0; i < binary_semaphores.size(); ++i)
+        s_wait_semaphores.push_back(queue_sync.vk_timeline_semaphore);
+
 
     static thread_local std::vector<VkPipelineStageFlags> s_wait_stages;
     s_wait_stages.clear();
-    s_wait_stages.resize(wait_fences.size());
+    s_wait_stages.resize(binary_semaphores.size() + wait_fences.size());
 
     std::fill(s_wait_stages.begin(), s_wait_stages.end(), flags);
 
