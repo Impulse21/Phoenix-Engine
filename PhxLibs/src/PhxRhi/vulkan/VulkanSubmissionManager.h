@@ -41,11 +41,11 @@ namespace phx::rhi
 		};
 		EnumArray<PerQueueSync, CommandQueueType> per_queue_syncs;
 
+		StaticArray<VkSemaphore, kBufferCount> image_available_semaphores;
 		StaticArray<FenceHandle, kBufferCount> frame_fences = { .data = {{}, {}} };
 
 		size_t frame_number = 0;
 		size_t num_threads = 0;
-		
 
 		struct PendingCommandBuffer
 		{
@@ -77,6 +77,7 @@ namespace phx::rhi
 		~VulkanSubmissionManager() override = default;
 
 	private:
+		size_t GetCurrentFrameIndex() { return frame_number % kBufferCount; }
 		void RetireCommandBuffers(Span<ICommandBuffer*> command_buffers, FenceHandle fence_value);
 		void ReclaimFinishedCommandBuffers();
 

@@ -27,22 +27,34 @@ bool VulkanSubmissionManager::Initialize()
         PHX_RHI_ERROR("Required VK 1.2 feature - Timeline Semaphore is not available on this device.");
         return false;
     }
-    VkSemaphoreTypeCreateInfo timelineCreateInfo = {
+    VkSemaphoreTypeCreateInfo timeline_create_info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
         .pNext = NULL,
         .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
         .initialValue = 0
     };
 
-    VkSemaphoreCreateInfo createInfo = {
+    VkSemaphoreCreateInfo image_available_semaphore_info = {};
+    image_available_semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    for (int i = 0; i < kBufferCount; ++i)
+    {
+        // Create the semaphore and store it in the array
+        VkResult result = vkCreateSemaphore(vulkan_backend->vk_device, &image_available_semaphore_info, nullptr, &image_available_semaphores[i]);
+
+        if (result != VK_SUCCESS)
+            PHX_RHI_ERROR("Failed to create queue timeline semaphore");
+    }
+
+    VkSemaphoreCreateInfo semaphore_create_info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-        .pNext = &timelineCreateInfo,
+        .pNext = &timeline_create_info,
         .flags = 0,
     };
-
     for (size_t q = 0; q < static_cast<size_t>(CommandQueueType::Count); ++q)
     {
-        vkCreateSemaphore(vulkan_backend->vk_device, &createInfo, NULL, &per_queue_syncs[q].vk_timeline_semaphore);
+        VkResult result = vkCreateSemaphore(vulkan_backend->vk_device, &semaphore_create_info, NULL, &per_queue_syncs[q].vk_timeline_semaphore);
+        if (result != VK_SUCCESS)
+            PHX_RHI_ERROR("Failed to create queue timeline semaphore");
     }
 
     PHX_RHI_INFO("Initializing Per thread Command data.");
@@ -74,6 +86,11 @@ void phx::rhi::VulkanSubmissionManager::Shutdown()
     WaitForIdle();
     vulkan_resource_manager->RunGarbageCollection(~0u);
 
+    for (int i = 0; i < kBufferCount; ++i)
+    {
+        vkDestroySemaphore(vulkan_backend->vk_device, image_available_semaphores[i], nullptr);
+    }
+
     for (size_t q = 0; q < static_cast<size_t>(CommandQueueType::Count); ++q)
     {
         vkDestroySemaphore(vulkan_backend->vk_device, per_queue_syncs[q].vk_timeline_semaphore, nullptr);
@@ -94,7 +111,7 @@ void phx::rhi::VulkanSubmissionManager::Shutdown()
 
 void phx::rhi::VulkanSubmissionManager::BeginFrame(SwapchainHandle swapchain)
 {
-    FenceHandle frame_to_wait_for = frame_fences[frame_number % kBufferCount];
+    FenceHandle frame_to_wait_for = frame_fences[GetCurrentFrameIndex()];
     if (frame_to_wait_for.value > 0)
     {
         VkSemaphore wait_timline_sem = per_queue_syncs[frame_to_wait_for.queue_type].vk_timeline_semaphore;
@@ -123,7 +140,7 @@ void phx::rhi::VulkanSubmissionManager::BeginFrame(SwapchainHandle swapchain)
         return;
     }
     ;
-    VkSemaphore image_available_binary_sem = m_ImageAvailableSemaphores[m_CurrentFrameIndex];
+    VkSemaphore image_available_binary_sem = image_available_semaphores[GetCurrentFrameIndex()];
 
     uint32_t image_index;
     vkAcquireNextImageKHR(
@@ -134,6 +151,8 @@ void phx::rhi::VulkanSubmissionManager::BeginFrame(SwapchainHandle swapchain)
         VK_NULL_HANDLE,
         &image_index
     );
+
+    // TODO - I am here
 }
 
 void phx::rhi::VulkanSubmissionManager::EndFrame(
@@ -184,7 +203,7 @@ void phx::rhi::VulkanSubmissionManager::EndFrame(
 
     VulkanBackend::Queue& queue = vulkan_backend->queues[CommandQueueType::Graphics];
     vkQueuePresentKHR(queue.vk_queue, &present_info);
-    frame_fences[frame_number % kBufferCount] = fence_handle;
+    frame_fences[GetCurrentFrameIndex()] = fence_handle;
     frame_number++;
 }
 
