@@ -61,7 +61,7 @@ namespace phx::rhi::vk
         uint64_t m_frame_start_tail = 0;
 
         // Vulkan objects
-        rhi::GpuBufferHandle m_buffer;
+        rhi::BufferHandle m_buffer;
         void* m_mapped_data = nullptr;
         VkDeviceAddress m_device_address = 0;
 

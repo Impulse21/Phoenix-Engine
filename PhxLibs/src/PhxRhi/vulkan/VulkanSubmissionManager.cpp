@@ -212,7 +212,7 @@ ICommandBuffer* VulkanSubmissionManager::BeginCommandBuffer(CommandQueueType que
     PerThreadData& thread_data = per_thread_cmd_pool[thread_index];
     PerThreadData::CommandPool& pool = thread_data.command_pools[queue_type];
 
-    return pool.GetFreeBuffer();
+    return pool.GetFreeBuffer(thread_index);
 }
 
 FenceHandle VulkanSubmissionManager::Submit(
@@ -224,7 +224,7 @@ FenceHandle VulkanSubmissionManager::Submit(
     return SubmitInternal(queue_type, cmd_buffers, wait_fences, {}, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 }
 
-phx::rhi::VulkanCommandBuffer* phx::rhi::VulkanSubmissionManager::PerThreadData::CommandPool::GetFreeBuffer()
+phx::rhi::VulkanCommandBuffer* phx::rhi::VulkanSubmissionManager::PerThreadData::CommandPool::GetFreeBuffer(uint32_t thread_id)
 {
     if (!free_buffers.empty())
     {
@@ -234,7 +234,6 @@ phx::rhi::VulkanCommandBuffer* phx::rhi::VulkanSubmissionManager::PerThreadData:
         return buffer;
     }
 
-    // TODO: I am here
     VkCommandBuffer vk_buffer;
     auto& vulkan_cmd_buffer = buffer_pool.emplace_back(
         std::make_unique<VulkanCommandBuffer>(vk_buffer, queue_type, thread_id));
@@ -284,7 +283,7 @@ void phx::rhi::VulkanSubmissionManager::ReclaimFinishedCommandBuffers()
 
                 const uint32_t thread_id = pending.buffer->thread_id;
                 PerThreadData& thread_data = per_thread_cmd_pool[thread_id];
-                PerThreadData::CommandPool& pool = thread_data.command_pools[pending.buffer->type];
+                PerThreadData::CommandPool& pool = thread_data.command_pools[pending.buffer->queue_type];
                 pool.free_buffers.push_back(pending.buffer);
 
                 return true;

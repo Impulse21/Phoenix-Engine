@@ -22,7 +22,7 @@ namespace phx::rhi::vk
 		VkGfxDeviceImpl* m_device;
 		VkDescriptorType m_descriptor_type;
 
-		rhi::GpuBufferHandle m_buffer;
+		rhi::BufferHandle m_buffer;
 
 		char* m_mapped_data;
 		VkDeviceAddress m_buffer_address;

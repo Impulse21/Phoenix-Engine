@@ -84,22 +84,6 @@ namespace phx::rhi
 	};
 	static_assert(sizeof(VulkanTexture) == kCacheLineSize, "VulkanTexture must be exactly one cache line in size!");
 
-	struct FrameData
-	{
-		VkSemaphore present_semaphore = VK_NULL_HANDLE;
-		VkSemaphore render_semaphore = VK_NULL_HANDLE;
-		VkFence render_fence = VK_NULL_HANDLE;
-
-		phx::EnumArray<VkCommandPool, CommandQueueType> vk_command_pools;
-		phx::EnumArray<std::vector<VkCommandBuffer>, CommandQueueType> vk_command_buffers;
-
-		std::mutex vk_active_cmd_lock = {};
-		std::vector<VulkanCommandBuffer> vk_active_cmd;
-
-		VkFence frame_fence = VK_NULL_HANDLE;
-	};
-
-
 	constexpr VkFormat gVulkanFormatMapping[] =
 	{
 	   VK_FORMAT_UNDEFINED,                  // UNKNOWN

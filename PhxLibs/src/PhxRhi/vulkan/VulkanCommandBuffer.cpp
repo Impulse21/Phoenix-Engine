@@ -49,12 +49,10 @@ void phx::rhi::VulkanCommandBuffer::DrawIndexedInstanced(uint32_t index_count, u
 
 phx::rhi::VulkanCommandBuffer::VulkanCommandBuffer(VkCommandBuffer vk_handle, CommandQueueType type, uint32_t thread_id)
     : vk_handle(vk_handle)
-    , type(type)
+    , queue_type(type)
     , thread_id(thread_id)
 {
 
 }
 
-phx::rhi::VulkanCommandBuffer::~VulkanCommandBuffer()
-{
-}
+phx::rhi::VulkanCommandBuffer::~VulkanCommandBuffer() = default;

@@ -16,7 +16,7 @@ namespace phx::rhi::vk
 		VkFence fence = VK_NULL_HANDLE;
 		VkSemaphore semaphore = VK_NULL_HANDLE;
 
-		rhi::GpuBufferHandle upload_buffer;
+		rhi::BufferHandle upload_buffer;
 		constexpr bool IsValid() const { return transfer_command_buffer != VK_NULL_HANDLE; }
 	};
 

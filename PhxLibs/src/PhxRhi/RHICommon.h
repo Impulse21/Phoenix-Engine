@@ -945,7 +945,7 @@ namespace phx::rhi
         // COMBINE with Buffer
         struct AliasDescriptor
         {
-            GpuBufferHandle Buffer;
+            BufferHandle Buffer;
             uint64_t Offset;
         } Alias = {};
     };

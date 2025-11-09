@@ -27,8 +27,9 @@ namespace phx::rhi
 				std::vector<std::unique_ptr<phx::rhi::VulkanCommandBuffer>> buffer_pool;
 				std::vector<phx::rhi::VulkanCommandBuffer*> free_buffers;
 
-				phx::rhi::VulkanCommandBuffer* GetFreeBuffer();
+				phx::rhi::VulkanCommandBuffer* GetFreeBuffer(uint32_t thread_id);
 			};
+
 			uint32_t thread_id = 0;
 			EnumArray<CommandPool, CommandQueueType> command_pools;
 

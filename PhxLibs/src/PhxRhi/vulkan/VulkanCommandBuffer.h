@@ -20,7 +20,7 @@ namespace phx::rhi
 		void DrawIndexedInstanced(uint32_t index_count, uint32_t instance_count, uint32_t start_index_location, int32_t base_vertex_location, uint32_t startInstanceLocation) override;
 
 		VulkanCommandBuffer(VkCommandBuffer vk_handle, CommandQueueType type, uint32_t thread_id);
-		~VulkanCommandBuffer() override = default;
+		~VulkanCommandBuffer() override;
 
 	};
 }

@@ -11,7 +11,6 @@
 #include <Windows.h> // For GetModuleHandle
 #endif
 
-
 #define VOLK_IMPLEMENTATION
 #include "volk.h"
 

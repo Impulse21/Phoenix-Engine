@@ -12,7 +12,7 @@
 using namespace phx;
 using namespace phx::rhi;
 
-bool rhi::Initialize(Descriptor const& descriptor, void* window_handle, size_t thread_count)
+bool rhi::Initialize(Descriptor const& /*descriptor*/, void* window_handle, size_t thread_count)
 {
 #if PHX_RHI_VULKAN
     VulkanBackend*              platform_backend            = new VulkanBackend(window_handle);
@@ -51,4 +51,6 @@ bool rhi::Shutdown()
     IResourceManager::Ptr       = nullptr;
     IGpuMemoryAllocator::Ptr    = nullptr;
     IBackend::Ptr               = nullptr;
+
+    return true;
 }
