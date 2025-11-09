@@ -4,11 +4,6 @@
 
 namespace phx::rhi
 {
-	struct FenceHandle
-	{
-		uint64_t cpu_fence_value = 0;
-	};
-
 	class IBackend
 	{
 	public:

@@ -245,9 +245,14 @@ bool phx::rhi::VulkanBackend::CreateLogicalDevice(vkb::PhysicalDevice& vkb_physi
         return false;
     }
 
+    Queue& queue_gfx = queues[CommandQueueType::Graphics];
     queue_gfx.vk_queue = gfx_q_ret.value();
     queue_gfx.vk_queue_family = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
     PHX_RHI_INFO("[RHI Vulkan] Using graphics queue {0}", queue_gfx.vk_queue_family);
+
+
+    Queue& queue_compute = queues[CommandQueueType::Compute];
+    Queue& queue_transfer = queues[CommandQueueType::Copy];
 
     auto compute_q_ret = vkb_device.get_queue(vkb::QueueType::compute);
     if (!compute_q_ret)

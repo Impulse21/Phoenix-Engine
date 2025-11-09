@@ -10,28 +10,6 @@
 using namespace phx;
 using namespace phx::rhi;
 
-
-namespace
-{
-    VulkanSubmissionManager::PerThreadData::CommandPool& GetPoolForType(
-        VulkanSubmissionManager::PerThreadData& thread_data,
-        CommandQueueType type)
-    {
-        switch (type)
-        {
-        case CommandQueueType::Graphics:
-            return thread_data.graphics_cmd_pool;
-        case CommandQueueType::Compute:
-            return thread_data.compute_cmd_pool;
-        case CommandQueueType::Copy:
-            return thread_data.upload_cmd_pool;
-        default:
-            PHX_ASSERT(false, "Unexpected types");
-            throw std::exception();
-        }
-    }
-}
-
 VulkanSubmissionManager::VulkanSubmissionManager(VulkanBackend* vulkan_backend, VulkanResourceManager* vulkan_resource_manager, size_t thread_count)
     : vulkan_backend(vulkan_backend)
     , vulkan_resource_manager(vulkan_resource_manager)
@@ -43,25 +21,28 @@ VulkanSubmissionManager::VulkanSubmissionManager(VulkanBackend* vulkan_backend, 
 
 bool VulkanSubmissionManager::Initialize()
 {
+    PHX_PROFILE;
+    if (vulkan_backend->vk_features_1_2.timelineSemaphore != VK_TRUE)
     {
-        PHX_PROFILE_SECTION("Vulkan::CreateFrameSyncObjects");
-        VkSemaphoreCreateInfo semaphore_info = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO }; // Renamed to snake_case
-        VkFenceCreateInfo fence_info = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO }; // Renamed to snake_case
-        fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        PHX_RHI_ERROR("Required VK 1.2 feature - Timeline Semaphore is not available on this device.");
+        return false;
+    }
+    VkSemaphoreTypeCreateInfo timelineCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+        .pNext = NULL,
+        .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+        .initialValue = 0
+    };
 
-        for (size_t i = 0; i < kBufferCount; ++i)
-        {
-            VkResult result = vkCreateSemaphore(vulkan_backend->vk_device, &semaphore_info, nullptr, &frames[i].present_semaphore);
-            PHX_CORE_ASSERT(result == VK_SUCCESS);
+    VkSemaphoreCreateInfo createInfo = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = &timelineCreateInfo,
+        .flags = 0,
+    };
 
-            result = vkCreateSemaphore(vulkan_backend->vk_device, &semaphore_info, nullptr, &frames[i].render_semaphore);
-            PHX_CORE_ASSERT(result == VK_SUCCESS);
-
-            result = vkCreateFence(vulkan_backend->vk_device, &fence_info, nullptr, &frames[i].frame_fence);
-            PHX_CORE_ASSERT(result == VK_SUCCESS);
-        }
-
-        PHX_RHI_INFO("Frame synchronization primitives created.");
+    for (size_t q = 0; q < static_cast<size_t>(CommandQueueType::Count); ++q)
+    {
+        vkCreateSemaphore(vulkan_backend->vk_device, &createInfo, NULL, &per_queue_syncs[q].vk_timeline_semaphore);
     }
 
     PHX_RHI_INFO("Initializing Per thread Command data.");
@@ -69,21 +50,20 @@ bool VulkanSubmissionManager::Initialize()
     {
         PerThreadData& thread_data = per_thread_cmd_pool[i];
 
-        auto init_cmd_pool = [&](PerThreadData::CommandPool& pool, uint32_t queue_family) {
+        for (size_t q = 0; q < static_cast<size_t>(CommandQueueType::Count); ++q)
+        {
+
             VkCommandPoolCreateInfo pool_info = {
                 .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                .queueFamilyIndex = queue_family,
+                .queueFamilyIndex = vulkan_backend->queues[q].vk_queue_family,
                 .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
             };
 
-            VkResult result = vkCreateCommandPool(vulkan_backend->vk_device, &pool_info, nullptr, &pool.vk_cmd_pool);
+            VkResult result = vkCreateCommandPool(vulkan_backend->vk_device, &pool_info, nullptr, &thread_data.command_pools[q].vk_cmd_pool);
             if (result != VK_SUCCESS)
                 PHX_RHI_ERROR("Failed to create command pool");
-        };
 
-        init_cmd_pool(thread_data.graphics_cmd_pool, vulkan_backend->queue_gfx.vk_queue_family);
-        init_cmd_pool(thread_data.compute_cmd_pool, vulkan_backend->queue_compute.vk_queue_family);
-        init_cmd_pool(thread_data.upload_cmd_pool, vulkan_backend->queue_transfer.vk_queue_family);
+        }
     }
 
     return true;
@@ -94,39 +74,119 @@ void phx::rhi::VulkanSubmissionManager::Shutdown()
     WaitForIdle();
     vulkan_resource_manager->RunGarbageCollection(~0u);
 
+    for (size_t q = 0; q < static_cast<size_t>(CommandQueueType::Count); ++q)
+    {
+        vkDestroySemaphore(vulkan_backend->vk_device, per_queue_syncs[q].vk_timeline_semaphore, nullptr);
+    }
+
     for (size_t i = 0; i < num_threads; ++i)
     {
         PerThreadData& thread_data = per_thread_cmd_pool[i];
 
-        vkDestroyCommandPool(vulkan_backend->vk_device, thread_data.graphics_cmd_pool.vk_cmd_pool, nullptr);
-        vkDestroyCommandPool(vulkan_backend->vk_device, thread_data.compute_cmd_pool.vk_cmd_pool, nullptr);
-        vkDestroyCommandPool(vulkan_backend->vk_device, thread_data.upload_cmd_pool.vk_cmd_pool, nullptr);
+        for (size_t q = 0; q < static_cast<size_t>(CommandQueueType::Count); ++q)
+        {
+            vkDestroyCommandPool(vulkan_backend->vk_device, thread_data.command_pools[q].vk_cmd_pool, nullptr);
+        }
     }
+
     per_thread_cmd_pool.reset();
-
-    for (size_t i = 0; i < cMaxInflightFrames; ++i)
-    {
-        if (frames[i].frame_fence != VK_NULL_HANDLE)
-        {
-            vkDestroyFence(vulkan_backend->vk_device, frames[i].frame_fence, nullptr);
-            frames[i].frame_fence = VK_NULL_HANDLE;
-        }
-
-        if (frames[i].render_semaphore != VK_NULL_HANDLE)
-        {
-            vkDestroySemaphore(vulkan_backend->vk_device, frames[i].render_semaphore, nullptr);
-            frames[i].render_semaphore = VK_NULL_HANDLE;
-        }
-
-        if (frames[i].present_semaphore != VK_NULL_HANDLE)
-        {
-            vkDestroySemaphore(vulkan_backend->vk_device, frames[i].present_semaphore, nullptr);
-            frames[i].present_semaphore = VK_NULL_HANDLE;
-        }
-        PHX_RHI_INFO("Frame synchronization primitives destroyed.");
-    }
 }
 
+void phx::rhi::VulkanSubmissionManager::BeginFrame(SwapchainHandle swapchain)
+{
+    FenceHandle frame_to_wait_for = frame_fences[frame_number % kBufferCount];
+    if (frame_to_wait_for.value > 0)
+    {
+        VkSemaphore wait_timline_sem = per_queue_syncs[frame_to_wait_for.queue_type].vk_timeline_semaphore;
+        VkSemaphoreWaitInfo wait_info = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .semaphoreCount = 1,
+            .pSemaphores = &wait_timline_sem,
+            .pValues = &frame_to_wait_for.value
+        };
+
+        VkResult result = vkWaitSemaphores(
+            vulkan_backend->vk_device,
+            &wait_info,
+            UINT64_MAX
+        );
+    }
+
+    ReclaimFinishedCommandBuffers();
+
+    VulkanSwapchain* swapchain_impl = vulkan_resource_manager->swapchain_pool.GetHot(swapchain);
+    if (!swapchain_impl)
+    {
+        PHX_RHI_CRITICAL("Unable to local swapchain when ending frame.");
+        return;
+    }
+    ;
+    VkSemaphore image_available_binary_sem = m_ImageAvailableSemaphores[m_CurrentFrameIndex];
+
+    uint32_t image_index;
+    vkAcquireNextImageKHR(
+        vulkan_backend->vk_device,
+        swapchain_impl->vk_swapchain,
+        UINT64_MAX,
+        image_available_binary_sem,
+        VK_NULL_HANDLE,
+        &image_index
+    );
+}
+
+void phx::rhi::VulkanSubmissionManager::EndFrame(
+    SwapchainHandle swapchain,
+    Span<ICommandBuffer*> graphics_buffers,
+    Span<FenceHandle> wait_fences)
+{
+    const FenceHandle fence_handle = 
+        SubmitInternal(
+            CommandQueueType::Graphics,
+            graphics_buffers,
+            wait_fences,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+
+    VulkanSwapchain* swapchain_impl = vulkan_resource_manager->swapchain_pool.GetHot(swapchain);
+    if (!swapchain_impl)
+    {
+        PHX_RHI_CRITICAL("Unable to local swapchain when ending frame.");
+        return;
+    }
+
+    PerQueueSync& queue_sync = per_queue_syncs[CommandQueueType::Graphics];
+
+    static thread_local std::vector<uint64_t> s_wait_fence_values;
+    s_wait_fence_values.clear();
+    s_wait_fence_values.resize(wait_fences.size());
+    for (auto& wait_fence : wait_fences)
+        s_wait_fence_values.push_back(wait_fence.value);
+
+
+    VkTimelineSemaphoreSubmitInfo timeline_info = {
+        .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
+        .waitSemaphoreValueCount = 1,
+        .pWaitSemaphoreValues = &fence_handle.value,
+        .signalSemaphoreValueCount = 1,
+        .pSignalSemaphoreValues = 0, // Present doesn't signal
+    };
+
+    VkPresentInfoKHR present_info = {
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &queue_sync.vk_timeline_semaphore,
+        .pNext = &timeline_info,
+        .swapchainCount = 1,
+        .pSwapchains = &swapchain_impl->vk_swapchain,
+        .pImageIndices = &swapchain_impl->vk_swapchain_image_index,
+    };
+
+    VulkanBackend::Queue& queue = vulkan_backend->queues[CommandQueueType::Graphics];
+    vkQueuePresentKHR(queue.vk_queue, &present_info);
+    frame_fences[frame_number % kBufferCount] = fence_handle;
+    frame_number++;
+}
 
 void VulkanSubmissionManager::WaitForIdle()
 {
@@ -139,7 +199,7 @@ ICommandBuffer* VulkanSubmissionManager::BeginCommandBuffer(CommandQueueType que
     const uint32_t thread_index = g_rhi_thread_index;
 
     PerThreadData& thread_data = per_thread_cmd_pool[thread_index];
-    PerThreadData::CommandPool& pool = GetPoolForType(thread_data, queue_type);
+    PerThreadData::CommandPool& pool = thread_data.command_pools[queue_type];
 
     return pool.GetFreeBuffer();
 }
@@ -149,7 +209,8 @@ FenceHandle VulkanSubmissionManager::Submit(
     Span<ICommandBuffer*> cmd_buffers,
     Span<FenceHandle> wait_fences)
 {
-    return FenceHandle();
+    // Using VK_PIPELINE_STAGE_ALL_COMMANDS_BIT as it's a safe choice.
+    return SubmitInternal(queue_type, cmd_buffers, wait_fences, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 }
 
 phx::rhi::VulkanCommandBuffer* phx::rhi::VulkanSubmissionManager::PerThreadData::CommandPool::GetFreeBuffer()
@@ -164,4 +225,82 @@ phx::rhi::VulkanCommandBuffer* phx::rhi::VulkanSubmissionManager::PerThreadData:
 
     auto& vulkan_cmd_buffer = buffer_pool.emplace_back(std::make_unique<VulkanCommandBuffer>());
     return vulkan_cmd_buffer.get();
+}
+
+void phx::rhi::VulkanSubmissionManager::RetireCommandBuffers(Span<ICommandBuffer*> command_buffers, FenceHandle fence_value)
+{
+    std::scoped_lock _(inglight_commands_queue_mutex);
+
+    for (auto cmd_buffer : command_buffers)
+    {
+        inflight_cmd_queue.push_back({
+                .buffer = static_cast<VulkanCommandBuffer*>(command_buffers),
+                .fence_handle = fence_value,
+            });
+    }
+}
+
+FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(CommandQueueType queue_type, Span<ICommandBuffer*> cmd_buffers, Span<FenceHandle> wait_fences, VkPipelineStageFlags flags)
+{
+    PerQueueSync& queue_sync = per_queue_syncs[queue_type];
+    const FenceHandle fence_handle = {
+        .value = queue_sync.fence_counter.fetch_add(1),
+        .queue_type = queue_type
+    };
+
+    static thread_local std::vector<VkCommandBuffer> s_vk_cmd_buffers;
+    s_vk_cmd_buffers.clear();
+    s_vk_cmd_buffers.reserve(cmd_buffers.size());
+
+    for (auto& cmd_buffer : cmd_buffers)
+    {
+        VkCommandBuffer vk_handle = static_cast<VulkanCommandBuffer*>(cmd_buffer)->vk_handle;
+        s_vk_cmd_buffers.push_back(vk_handle);
+    }
+
+    static thread_local std::vector<uint64_t> s_wait_fence_values;
+    s_wait_fence_values.clear();
+    s_wait_fence_values.resize(wait_fences.size());
+    for (auto& wait_fence : wait_fences)
+        s_wait_fence_values.push_back(wait_fence.value);
+
+    static thread_local std::vector<VkSemaphore> s_wait_semaphores;
+    s_wait_semaphores.clear();
+    s_wait_semaphores.resize(wait_fences.size());
+
+    std::fill(s_wait_semaphores.begin(), s_wait_semaphores.end(), queue_sync.vk_timeline_semaphore);
+
+    static thread_local std::vector<VkPipelineStageFlags> s_wait_stages;
+    s_wait_stages.clear();
+    s_wait_stages.resize(wait_fences.size());
+
+    std::fill(s_wait_stages.begin(), s_wait_stages.end(), flags);
+
+    VkTimelineSemaphoreSubmitInfo timeline_info = {
+        .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
+        .waitSemaphoreValueCount = static_cast<uint32_t>(wait_fences.size()),
+        .pWaitSemaphoreValues = s_wait_fence_values.data(),
+        .signalSemaphoreValueCount = 1,
+        .pSignalSemaphoreValues = &fence_handle.value,
+    };
+
+    VkSubmitInfo submit_info = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext = &timeline_info,
+        .commandBufferCount = static_cast<uint32_t>(s_vk_cmd_buffers.size()),
+        .pCommandBuffers = s_vk_cmd_buffers.data(),
+        .waitSemaphoreCount = static_cast<uint32_t>(wait_fences.size()),
+        .pWaitSemaphores = s_wait_semaphores.data(),
+        .pWaitDstStageMask = s_wait_stages.data(),
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = &queue_sync.vk_timeline_semaphore, // Signal our one timeline
+    };
+
+    // Get queue
+    VulkanBackend::Queue& queue = vulkan_backend->queues[queue_type];
+    vkQueueSubmit(queue.vk_queue, 1, &submit_info, VK_NULL_HANDLE);
+
+    RetireCommandBuffers(cmd_buffers, fence_handle);
+
+    return fence_handle;
 }

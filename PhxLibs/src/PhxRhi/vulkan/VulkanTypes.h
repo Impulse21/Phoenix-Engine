@@ -25,8 +25,8 @@ namespace phx::rhi
 		VkSwapchainKHR vk_swapchain = VK_NULL_HANDLE;
 		VkExtent2D vk_swapchain_extent = { 0, 0 };
 
-		StaticArray<VkImage, cMaxInflightFrames> vk_images;
-		StaticArray<VkImageView, cMaxInflightFrames> vk_image_views;
+		StaticArray<VkImage, kBufferCount> vk_images;
+		StaticArray<VkImageView, kBufferCount> vk_image_views;
 
 		// -- 4-byte members ---
 		VkFormat vk_swapchain_image_format = VK_FORMAT_UNDEFINED;

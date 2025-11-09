@@ -14,7 +14,7 @@ namespace phx::rhi
 
     using DescriptorIndex = uint32_t;
 
-    constexpr size_t kBufferCount = 3;
+    constexpr size_t kBufferCount = 2;
     constexpr DescriptorIndex cInvalidDescriptorIndex = ~0u;
 
     constexpr uint32_t cMaxRenderTargets = 8;
@@ -971,8 +971,11 @@ namespace phx::rhi
         bool EnableHDR : 1 = false;
     };
 
-    struct Fence;
-    using FenceHandle = Handle<Fence>;
+    struct FenceHandle
+    {
+        uint64_t value = 0;
+        CommandQueueType queue_type = CommandQueueType::Graphics;
+    };
 
     enum class PoolType : uint8_t
     {

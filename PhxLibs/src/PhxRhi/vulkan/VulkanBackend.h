@@ -65,9 +65,7 @@ namespace phx::rhi
 			std::mutex lock_commands = {};
 		};
 
-		Queue queue_gfx = {};
-		Queue queue_compute = {};
-		Queue queue_transfer = {};
+		EnumArray<Queue, CommandQueueType> queues;
 
 		// -- Interface Implementation ---
 		bool Initialize() override;

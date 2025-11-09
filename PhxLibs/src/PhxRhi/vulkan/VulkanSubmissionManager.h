@@ -29,34 +29,31 @@ namespace phx::rhi
 				phx::rhi::VulkanCommandBuffer* GetFreeBuffer();
 			};
 
-			CommandPool graphics_cmd_pool;
-			CommandPool compute_cmd_pool;
-			CommandPool upload_cmd_pool;
+			EnumArray<CommandPool, CommandQueueType> command_pools;
 
 		};
+		std::unique_ptr<PerThreadData[]> per_thread_cmd_pool;
+
+		struct PerQueueSync
+		{
+			VkSemaphore vk_timeline_semaphore = VK_NULL_HANDLE;
+			std::atomic_uint64_t fence_counter = 0;
+		};
+		EnumArray<PerQueueSync, CommandQueueType> per_queue_syncs;
+
+		StaticArray<FenceHandle, kBufferCount> frame_fences = { .data = {{}, {}} };
+
+		size_t frame_number = 0;
+		size_t num_threads = 0;
+		
 
 		struct PendingCommandBuffer
 		{
-			ICommandBuffer* buffer;
-			FenceHandle     fence;
+			VulkanCommandBuffer*	buffer;
+			FenceHandle				fence_handle;
 		};
-
-		size_t frame_number = 0;
-		size_t num_threads;
-		std::unique_ptr<PerThreadData[]> per_thread_cmd_pool;
-		std::vector<PendingCommandBuffer> inflight_command_queue;
-
+		std::deque<PendingCommandBuffer> inflight_cmd_queue;
 		std::mutex inglight_commands_queue_mutex;
-		struct Frame
-		{
-			VkSemaphore present_semaphore =VK_NULL_HANDLE;
-			VkSemaphore render_semaphore = VK_NULL_HANDLE;
-			VkFence render_fence = VK_NULL_HANDLE;
-
-			VkFence frame_fence = VK_NULL_HANDLE;
-
-		};
-		StaticArray<Frame, kBufferCount> frames;
 
 		// -- Interface implementation ---
 		bool Initialize() override;
@@ -79,6 +76,15 @@ namespace phx::rhi
 		VulkanSubmissionManager(VulkanBackend* vulkan_backend, VulkanResourceManager* vulkan_resource_manager, size_t thread_count);
 		~VulkanSubmissionManager() override = default;
 
+	private:
+		void RetireCommandBuffers(Span<ICommandBuffer*> command_buffers, FenceHandle fence_value);
+		void ReclaimFinishedCommandBuffers();
+
+		FenceHandle SubmitInternal(
+			CommandQueueType queue_type,
+			Span<ICommandBuffer*> cmd_buffers,
+			Span<FenceHandle> wait_fences,
+			VkPipelineStageFlags flags);
 	};
 }
 
