@@ -23,13 +23,16 @@ namespace phx::rhi
 			struct CommandPool
 			{
 				VkCommandPool vk_cmd_pool;
-				std::vector<std::unique_ptr<VulkanCommandBuffer>> buffer_pool;
-				std::vector<VulkanCommandBuffer*> free_buffers;
+				std::vector<std::unique_ptr<phx::rhi::VulkanCommandBuffer>> buffer_pool;
+				std::vector<phx::rhi::VulkanCommandBuffer*> free_buffers;
+
+				phx::rhi::VulkanCommandBuffer* GetFreeBuffer();
 			};
 
 			CommandPool graphics_cmd_pool;
 			CommandPool compute_cmd_pool;
 			CommandPool upload_cmd_pool;
+
 		};
 
 		struct PendingCommandBuffer
@@ -60,14 +63,18 @@ namespace phx::rhi
 		void Shutdown() override;
 
 		void BeginFrame(SwapchainHandle swapChain) override;
-		void EndFrame(Span<ICommandBuffer*> cmd_buffers, SwapchainHandle swapChain) override;
+		void EndFrame(
+			SwapchainHandle swapChain,
+			Span<ICommandBuffer*> graphics_buffers,
+			Span<FenceHandle> wait_fences = {}) override;
 
 		void WaitForIdle() override;
 
-		ICommandBuffer* BeginCommandBuffer() override;
-
-		FenceHandle Submit(Span<ICommandBuffer*> cmd_buffers) override;
-
+		ICommandBuffer* BeginCommandBuffer(CommandQueueType queue_type) override;
+		FenceHandle Submit(
+			CommandQueueType queue_type,
+			Span<ICommandBuffer*> cmd_buffers,
+			Span<FenceHandle> wait_fences) override;
 
 		VulkanSubmissionManager(VulkanBackend* vulkan_backend, VulkanResourceManager* vulkan_resource_manager, size_t thread_count);
 		~VulkanSubmissionManager() override = default;

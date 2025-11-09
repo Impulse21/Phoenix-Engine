@@ -18,10 +18,17 @@ namespace phx::rhi
 		virtual void Shutdown() = 0;
 
 		virtual void BeginFrame(SwapchainHandle swapChain) = 0;
-		virtual void EndFrame(Span<ICommandBuffer*> cmd_buffers, SwapchainHandle  swapChain) = 0;
+		virtual void EndFrame(
+			SwapchainHandle swapChain,
+			Span<ICommandBuffer*> graphics_buffers,
+			Span<FenceHandle> wait_fences = {}) = 0;
+
 		virtual void WaitForIdle() = 0;
 
-		virtual ICommandBuffer* BeginCommandBuffer() = 0;
-		virtual FenceHandle Submit(Span<ICommandBuffer*> cmd_buffers) = 0;
+		virtual ICommandBuffer* BeginCommandBuffer(CommandQueueType queue_type) = 0;
+		virtual FenceHandle Submit(
+			CommandQueueType queue_type,
+			Span<ICommandBuffer*> cmd_buffers,
+			Span<FenceHandle> wait_fences) = 0;
 	};
 }

@@ -1,4 +1,5 @@
 #include "PhxRhi/PhxRhi_pch.h"
+#include <PhxRhi/PhxRhi_Thread.h>
 #include "VulkanSubmissionManager.h"
 
 #include "VulkanBackend.h"
@@ -9,6 +10,27 @@
 using namespace phx;
 using namespace phx::rhi;
 
+
+namespace
+{
+    VulkanSubmissionManager::PerThreadData::CommandPool& GetPoolForType(
+        VulkanSubmissionManager::PerThreadData& thread_data,
+        CommandQueueType type)
+    {
+        switch (type)
+        {
+        case CommandQueueType::Graphics:
+            return thread_data.graphics_cmd_pool;
+        case CommandQueueType::Compute:
+            return thread_data.compute_cmd_pool;
+        case CommandQueueType::Copy:
+            return thread_data.upload_cmd_pool;
+        default:
+            PHX_ASSERT(false, "Unexpected types");
+            throw std::exception();
+        }
+    }
+}
 
 VulkanSubmissionManager::VulkanSubmissionManager(VulkanBackend* vulkan_backend, VulkanResourceManager* vulkan_resource_manager, size_t thread_count)
     : vulkan_backend(vulkan_backend)
@@ -72,7 +94,14 @@ void phx::rhi::VulkanSubmissionManager::Shutdown()
     WaitForIdle();
     vulkan_resource_manager->RunGarbageCollection(~0u);
 
-    static_assert(false, "Free per thread data");
+    for (size_t i = 0; i < num_threads; ++i)
+    {
+        PerThreadData& thread_data = per_thread_cmd_pool[i];
+
+        vkDestroyCommandPool(vulkan_backend->vk_device, thread_data.graphics_cmd_pool.vk_cmd_pool, nullptr);
+        vkDestroyCommandPool(vulkan_backend->vk_device, thread_data.compute_cmd_pool.vk_cmd_pool, nullptr);
+        vkDestroyCommandPool(vulkan_backend->vk_device, thread_data.upload_cmd_pool.vk_cmd_pool, nullptr);
+    }
     per_thread_cmd_pool.reset();
 
     for (size_t i = 0; i < cMaxInflightFrames; ++i)
@@ -98,39 +127,41 @@ void phx::rhi::VulkanSubmissionManager::Shutdown()
     }
 }
 
-void CreateCommandPools()
-{
-    PHX_PROFILE_SECTION("Vulkan::CreateCommandPools");
 
-    VkCommandPoolCreateInfo pool_info = {}; // Renamed to snake_case
-    pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    pool_info.queueFamilyIndex = vulkan_backend->queue_gfx.vk_queue_family;
-    pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    VkResult result = vkCreateCommandPool(vulkan_backend->vk_device, &pool_info, nullptr, &VkContext::vk_graphics_command_pool);
-
-    PHX_CORE_ASSERT(result == VK_SUCCESS);
-    PHX_CORE_INFO("[RHI] Graphics Command Pool created.");
-    // Create other command pools (compute, transfer) if needed
-}
-
-void DestroyCommandPools()
-{
-    if (VkContext::vk_graphics_command_pool != VK_NULL_HANDLE)
-    {
-        vkDestroyCommandPool(vulkan_backend->vk_device, VkContext::vk_graphics_command_pool, nullptr);
-        VkContext::vk_graphics_command_pool = VK_NULL_HANDLE;
-        PHX_CORE_INFO("[RHI] Graphics Command Pool destroyed.");
-    }
-}
-
-
-void phx::rhi::VulkanSubmissionManager::WaitForIdle()
+void VulkanSubmissionManager::WaitForIdle()
 {
     PHX_CORE_ASSERT(vulkan_backend->vk_device != VK_NULL_HANDLE);
     vkDeviceWaitIdle(vulkan_backend->vk_device);
 }
 
-ICommandBuffer* phx::rhi::VulkanSubmissionManager::BeginCommandBuffer()
+ICommandBuffer* VulkanSubmissionManager::BeginCommandBuffer(CommandQueueType queue_type)
 {
-    return nullptr;
+    const uint32_t thread_index = g_rhi_thread_index;
+
+    PerThreadData& thread_data = per_thread_cmd_pool[thread_index];
+    PerThreadData::CommandPool& pool = GetPoolForType(thread_data, queue_type);
+
+    return pool.GetFreeBuffer();
+}
+
+FenceHandle VulkanSubmissionManager::Submit(
+    CommandQueueType queue_type,
+    Span<ICommandBuffer*> cmd_buffers,
+    Span<FenceHandle> wait_fences)
+{
+    return FenceHandle();
+}
+
+phx::rhi::VulkanCommandBuffer* phx::rhi::VulkanSubmissionManager::PerThreadData::CommandPool::GetFreeBuffer()
+{
+    if (!free_buffers.empty())
+    {
+        phx::rhi::VulkanCommandBuffer* buffer = free_buffers.back();
+        free_buffers.pop_back();
+
+        return buffer;
+    }
+
+    auto& vulkan_cmd_buffer = buffer_pool.emplace_back(std::make_unique<VulkanCommandBuffer>());
+    return vulkan_cmd_buffer.get();
 }

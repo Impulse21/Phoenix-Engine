@@ -51,3 +51,23 @@ void DrawIndexedInstanced(CommandBufferHandle handle, uint32_t index_count, uint
         base_vertex_location,
         start_instance_location);
 }
+
+void phx::rhi::VulkanCommandBuffer::BindPipelineState(PipelineStateHandle pso)
+{
+}
+
+void phx::rhi::VulkanCommandBuffer::Draw(uint32_t vertex_count, uint32_t start_vertex_location)
+{
+}
+
+void phx::rhi::VulkanCommandBuffer::DrawIndexed(uint32_t index_count, uint32_t start_index_location, int32_t base_vertex_location)
+{
+}
+
+void phx::rhi::VulkanCommandBuffer::DrawInstanced(uint32_t vertex_count, uint32_t instance_count, uint32_t start_vertex_location, uint32_t start_instance_location)
+{
+}
+
+void phx::rhi::VulkanCommandBuffer::DrawIndexedInstanced(uint32_t index_count, uint32_t instance_count, uint32_t start_index_location, int32_t base_vertex_location, uint32_t startInstanceLocation)
+{
+}

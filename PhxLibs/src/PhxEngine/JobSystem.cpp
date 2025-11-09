@@ -4,6 +4,8 @@
 #include "PhxCore/RingBuffer.h"
 #include "PhxCore/SystemTime.h"
 
+#include <PhxRhi/PhxRhi_Thread.h>
+
 #include <thread>
 #include <algorithm>
 #include <condition_variable>
@@ -125,6 +127,7 @@ void JobSystem::Initialize()
 	const uint32_t numCores = (uint32_t)GetNumCores();
 	g_is_alive.store(true);
 
+	uint32_t global_rhi_thread_counter = 0;
 	CpuTimer timer;
 	for (size_t i = 0; i < g_thread_pools.size(); i++)
 	{
@@ -155,7 +158,9 @@ void JobSystem::Initialize()
 
 		for (uint32_t threadID = 0; threadID < resource.NumThreads; threadID++)
 		{
-			std::thread& worker = resource.WorkerThreads.emplace_back([threadID, &resource] {
+			uint32_t global_rhi_thread_index = global_rhi_thread_counter++;
+			std::thread& worker = resource.WorkerThreads.emplace_back([threadID, global_rhi_thread_index, &resource] {
+				rhi::g_rhi_thread_index = global_rhi_thread_index;
 				FrameMemoryManager::EnsureThreadFrameArenaInitialized();
 				while (g_is_alive)
 				{
