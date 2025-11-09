@@ -47,12 +47,12 @@ namespace phx::rhi
 		size_t frame_number = 0;
 		size_t num_threads = 0;
 
-		struct PendingCommandBuffer
+		struct InflightCommandBuffer
 		{
 			VulkanCommandBuffer*	buffer;
 			FenceHandle				fence_handle;
 		};
-		std::deque<PendingCommandBuffer> inflight_cmd_queue;
+		std::deque<InflightCommandBuffer> inflight_cmd_queue;
 		std::mutex inglight_commands_queue_mutex;
 
 		// -- Interface implementation ---

@@ -84,19 +84,6 @@ namespace phx::rhi
 	};
 	static_assert(sizeof(VulkanTexture) == kCacheLineSize, "VulkanTexture must be exactly one cache line in size!");
 
-	struct RHI_DEFINE_ALIGNED(VulkanCommandBuffer, kCacheLineSize)
-	{
-		// -- 8-byte members ---
-		VkCommandPool vk_cmd_pool;
-		VkCommandBuffer vk_cmd_buffer;
-
-		// -- 1-byte members ---
-		CommandQueueType queue_type;
-		PoolType pool_type;
-		uint8_t buffer_index;
-	};
-	static_assert(sizeof(VulkanCommandBuffer) == kCacheLineSize, "VulkanCommandBuffer must be exactly one cache line in size!");
-
 	struct FrameData
 	{
 		VkSemaphore present_semaphore = VK_NULL_HANDLE;

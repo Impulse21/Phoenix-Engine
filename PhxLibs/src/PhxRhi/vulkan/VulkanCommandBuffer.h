@@ -9,6 +9,8 @@ namespace phx::rhi
 	struct VulkanCommandBuffer : public ICommandBuffer
 	{
 		VkCommandBuffer vk_handle;
+		uint32_t thread_id;
+		CommandQueueType type;
 
 		// -- Interface Implementation ---
 		void BindPipelineState(PipelineStateHandle pso) override;

@@ -220,7 +220,7 @@ FenceHandle VulkanSubmissionManager::Submit(
     Span<FenceHandle> wait_fences)
 {
     // Using VK_PIPELINE_STAGE_ALL_COMMANDS_BIT as it's a safe choice.
-    return SubmitInternal(queue_type, cmd_buffers, wait_fences, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+    return SubmitInternal(queue_type, cmd_buffers, wait_fences, {}, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 }
 
 phx::rhi::VulkanCommandBuffer* phx::rhi::VulkanSubmissionManager::PerThreadData::CommandPool::GetFreeBuffer()
@@ -244,7 +244,7 @@ void phx::rhi::VulkanSubmissionManager::RetireCommandBuffers(Span<ICommandBuffer
     for (auto cmd_buffer : command_buffers)
     {
         inflight_cmd_queue.push_back({
-                .buffer = static_cast<VulkanCommandBuffer*>(command_buffers),
+                .buffer = static_cast<VulkanCommandBuffer*>(cmd_buffer),
                 .fence_handle = fence_value,
             });
     }
@@ -252,7 +252,44 @@ void phx::rhi::VulkanSubmissionManager::RetireCommandBuffers(Span<ICommandBuffer
 
 void phx::rhi::VulkanSubmissionManager::ReclaimFinishedCommandBuffers()
 {
-    // TODO: I am here.
+    EnumArray<uint64_t, CommandQueueType> completed_values = {};
+    VkResult result;
+    for (size_t i = 0; i < static_cast<uint32_t>(CommandQueueType::Count); ++i)
+    {
+        // This is the key function:
+        result = vkGetSemaphoreCounterValue(
+            vulkan_backend->vk_device,
+            per_queue_syncs[i].vk_timeline_semaphore,
+            &completed_values[i]);
+
+        if (result != VK_SUCCESS)
+        {
+            PHX_RHI_ERROR("Failed to get semaphore fence value");
+            completed_values[i] = 0; // Or last known good value
+        }
+    }
+
+    std::scoped_lock _(inglight_commands_queue_mutex);
+    auto it = std::remove_if(inflight_cmd_queue.begin(), inflight_cmd_queue.end(),
+        [&](const InflightCommandBuffer& pending) {
+            const FenceHandle& fence = pending.fence_handle;
+
+            if (fence.value <= completed_values[fence.queue_type])
+            {
+                vkResetCommandBuffer(pending.buffer->vk_handle, 0);
+
+                const uint32_t thread_id = pending.buffer->thread_id;
+                PerThreadData& thread_data = per_thread_cmd_pool[thread_id];
+                PerThreadData::CommandPool& pool = thread_data.command_pools[pending.buffer->type];
+                pool.free_buffers.push_back(pending.buffer);
+
+                return true;
+            }
+
+            return false;
+        });
+
+    inflight_cmd_queue.erase(it);
 }
 
 FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(
