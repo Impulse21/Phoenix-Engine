@@ -16,7 +16,6 @@ VulkanSubmissionManager::VulkanSubmissionManager(VulkanBackend* vulkan_backend, 
     , num_threads(thread_count)
     , per_thread_cmd_pool(std::make_unique<PerThreadData[]>(thread_count))
 {
-
 }
 
 bool VulkanSubmissionManager::Initialize()
@@ -61,9 +60,12 @@ bool VulkanSubmissionManager::Initialize()
     for (size_t i = 0; i < num_threads; ++i)
     {
         PerThreadData& thread_data = per_thread_cmd_pool[i];
+        thread_data.thread_id = i;
 
         for (size_t q = 0; q < static_cast<size_t>(CommandQueueType::Count); ++q)
         {
+            PerThreadData::CommandPool& pool = thread_data.command_pools[q];
+            pool.queue_type = static_cast<CommandQueueType>(q);
 
             VkCommandPoolCreateInfo pool_info = {
                 .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -71,10 +73,9 @@ bool VulkanSubmissionManager::Initialize()
                 .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
             };
 
-            VkResult result = vkCreateCommandPool(vulkan_backend->vk_device, &pool_info, nullptr, &thread_data.command_pools[q].vk_cmd_pool);
+            VkResult result = vkCreateCommandPool(vulkan_backend->vk_device, &pool_info, nullptr, &pool.vk_cmd_pool);
             if (result != VK_SUCCESS)
                 PHX_RHI_ERROR("Failed to create command pool");
-
         }
     }
 
@@ -233,7 +234,10 @@ phx::rhi::VulkanCommandBuffer* phx::rhi::VulkanSubmissionManager::PerThreadData:
         return buffer;
     }
 
-    auto& vulkan_cmd_buffer = buffer_pool.emplace_back(std::make_unique<VulkanCommandBuffer>());
+    // TODO: I am here
+    VkCommandBuffer vk_buffer;
+    auto& vulkan_cmd_buffer = buffer_pool.emplace_back(
+        std::make_unique<VulkanCommandBuffer>(vk_buffer, queue_type, thread_id));
     return vulkan_cmd_buffer.get();
 }
 

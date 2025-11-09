@@ -22,13 +22,14 @@ namespace phx::rhi
 		{
 			struct CommandPool
 			{
+				CommandQueueType queue_type;
 				VkCommandPool vk_cmd_pool;
 				std::vector<std::unique_ptr<phx::rhi::VulkanCommandBuffer>> buffer_pool;
 				std::vector<phx::rhi::VulkanCommandBuffer*> free_buffers;
 
 				phx::rhi::VulkanCommandBuffer* GetFreeBuffer();
 			};
-
+			uint32_t thread_id = 0;
 			EnumArray<CommandPool, CommandQueueType> command_pools;
 
 		};
