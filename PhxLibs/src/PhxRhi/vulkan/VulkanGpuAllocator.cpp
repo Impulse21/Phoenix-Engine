@@ -1,4 +1,11 @@
 #include "PhxRhi/PhxRhi_pch.h"
+
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wunused-function"
+#pragma clang diagnostic ignored "-Wunused-variable"
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#endif
+
 #include "VulkanGpuAllocator.h"
 
 #include "VulkanBackend.h"
@@ -54,6 +61,7 @@ bool phx::rhi::VulkanGpuAllocator::Initialize()
         }
     }
 
+    return true;
 }
 
 void phx::rhi::VulkanGpuAllocator::Shutdown()

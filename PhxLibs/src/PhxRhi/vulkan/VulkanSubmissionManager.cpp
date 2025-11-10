@@ -35,7 +35,7 @@ bool VulkanSubmissionManager::Initialize()
 
     VkSemaphoreCreateInfo image_available_semaphore_info = {};
     image_available_semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    for (int i = 0; i < kBufferCount; ++i)
+    for (size_t i = 0; i < kBufferCount; ++i)
     {
         // Create the semaphore and store it in the array
         VkResult result = vkCreateSemaphore(vulkan_backend->vk_device, &image_available_semaphore_info, nullptr, &image_available_semaphores[i]);
@@ -69,8 +69,8 @@ bool VulkanSubmissionManager::Initialize()
 
             VkCommandPoolCreateInfo pool_info = {
                 .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
                 .queueFamilyIndex = vulkan_backend->queues[q].vk_queue_family,
-                .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
             };
 
             VkResult result = vkCreateCommandPool(vulkan_backend->vk_device, &pool_info, nullptr, &pool.vk_cmd_pool);
@@ -87,7 +87,7 @@ void phx::rhi::VulkanSubmissionManager::Shutdown()
     WaitForIdle();
     vulkan_resource_manager->RunGarbageCollection(~0u);
 
-    for (int i = 0; i < kBufferCount; ++i)
+    for (size_t i = 0; i < kBufferCount; ++i)
     {
         vkDestroySemaphore(vulkan_backend->vk_device, image_available_semaphores[i], nullptr);
     }
@@ -125,7 +125,7 @@ void phx::rhi::VulkanSubmissionManager::BeginFrame(SwapchainHandle swapchain)
             .pValues = &frame_to_wait_for.value
         };
 
-        VkResult result = vkWaitSemaphores(
+        vkWaitSemaphores(
             vulkan_backend->vk_device,
             &wait_info,
             UINT64_MAX
@@ -185,9 +185,9 @@ void phx::rhi::VulkanSubmissionManager::EndFrame(
 
     VkPresentInfoKHR present_info = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .pNext = &timeline_info,
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = &queue_sync.vk_timeline_semaphore,
-        .pNext = &timeline_info,
         .swapchainCount = 1,
         .pSwapchains = &swapchain_impl->vk_swapchain,
         .pImageIndices = &swapchain_impl->vk_swapchain_image_index,
@@ -356,11 +356,11 @@ FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(
     VkSubmitInfo submit_info = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext = &timeline_info,
-        .commandBufferCount = static_cast<uint32_t>(s_vk_cmd_buffers.size()),
-        .pCommandBuffers = s_vk_cmd_buffers.data(),
         .waitSemaphoreCount = static_cast<uint32_t>(wait_fences.size()),
         .pWaitSemaphores = s_wait_semaphores.data(),
         .pWaitDstStageMask = s_wait_stages.data(),
+        .commandBufferCount = static_cast<uint32_t>(s_vk_cmd_buffers.size()),
+        .pCommandBuffers = s_vk_cmd_buffers.data(),
         .signalSemaphoreCount = 1,
         .pSignalSemaphores = &queue_sync.vk_timeline_semaphore, // Signal our one timeline
     };

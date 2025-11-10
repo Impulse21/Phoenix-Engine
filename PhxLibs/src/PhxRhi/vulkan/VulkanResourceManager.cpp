@@ -14,7 +14,7 @@ namespace
 {
     constexpr size_t kMaxNumSwapchains = 1;
     constexpr size_t kMaxNumBuffers = 4096;
-    constexpr size_t kMaxNumTextures = 4096;
+    //constexpr size_t kMaxNumTextures = 4096;
 }
 
 phx::rhi::VulkanResourceManager::VulkanResourceManager(VulkanBackend* vulkan_backend, VulkanGpuAllocator* vulkan_allocator)
@@ -67,8 +67,8 @@ SwapchainHandle phx::rhi::VulkanResourceManager::CreateSwapchain(const Swapchain
     impl.vk_swapchain_image_format = vkb_swapchain.image_format;
     impl.vk_swapchain_extent = vkb_swapchain.extent;
 
-    auto& swapchain_images = vkb_swapchain.get_images().value();
-    auto& swapchain_image_views = vkb_swapchain.get_image_views().value();
+    auto swapchain_images = vkb_swapchain.get_images().value();
+    auto swapchain_image_views = vkb_swapchain.get_image_views().value();
 
     for (size_t i = 0; i < kBufferCount; i++)
     {
@@ -82,6 +82,8 @@ SwapchainHandle phx::rhi::VulkanResourceManager::CreateSwapchain(const Swapchain
         impl.vk_swapchain_extent.height,
         "", // Placeholder for format name conversion
         kBufferCount);
+
+    return ret_val;
 }
 
 void phx::rhi::VulkanResourceManager::DeleteSwapchain(SwapchainHandle handle)
@@ -126,6 +128,9 @@ BufferHandle VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, c
 
     Handle<Buffer> ret_val = buffer_pool.Allocate(); // Renamed to snake_case
     VulkanBuffer& impl = *buffer_pool.GetHot(ret_val); // Corrected access to buffer_pool
+
+    VmaAllocationInfo vma_alloc_info;
+    vmaGetAllocationInfo(vulkan_allocator->vma_allocator, impl.allocation, &vma_alloc_info);
 
     VkBufferCreateInfo buffer_info = { .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO }; // Renamed to snake_case
     buffer_info.size = desc.Size;
@@ -176,16 +181,16 @@ BufferHandle VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, c
 
     buffer_info.flags = 0;
 
-    if (vulkan_backend->queue_gfx.vk_queue_family != vulkan_backend->queue_compute.vk_queue_family || 
-        vulkan_backend->queue_compute.vk_queue_family != vulkan_backend->queue_transfer.vk_queue_family)
+    if (vulkan_backend->queues[CommandQueueType::Graphics].vk_queue_family != vulkan_backend->queues[CommandQueueType::Compute].vk_queue_family ||
+        vulkan_backend->queues[CommandQueueType::Compute].vk_queue_family != vulkan_backend->queues[CommandQueueType::Copy].vk_queue_family)
     {
         buffer_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
 
         std::array<uint32_t, 3> families = 
         { 
-            vulkan_backend->queue_gfx.vk_queue_family,
-            vulkan_backend->queue_compute.vk_queue_family,
-            vulkan_backend->queue_transfer.vk_queue_family 
+            vulkan_backend->queues[CommandQueueType::Graphics].vk_queue_family,
+            vulkan_backend->queues[CommandQueueType::Compute].vk_queue_family,
+            vulkan_backend->queues[CommandQueueType::Copy].vk_queue_family
         };
 
         buffer_info.queueFamilyIndexCount = static_cast<uint32_t>(families.size());
@@ -276,8 +281,7 @@ BufferHandle VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, c
         VkPhysicalDeviceMemoryProperties memory_properties; // Renamed to snake_case
         vkGetPhysicalDeviceMemoryProperties(vulkan_backend->vk_chosen_physical_device, &memory_properties);
 
-        // Use the memoryTypeIndex to find the memory type
-        VkMemoryType memory_type = memory_properties.memoryTypes[impl.allocation->GetMemoryTypeIndex()]; // Renamed to snake_case
+        VkMemoryType memory_type = memory_properties.memoryTypes[vma_alloc_info.memoryType]; // Renamed to snake_case
 
         // Find the corresponding heap
         uint32_t heap_index = memory_type.heapIndex; // Renamed to snake_case
@@ -292,8 +296,8 @@ BufferHandle VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, c
 
     if (desc.Usage == Usage::ReadBack || desc.Usage == Usage::Upload || desc.Usage == Usage::Dynamic)
     {
-        impl.mapped_data = impl.allocation->GetMappedData();
-        impl.mapped_data_size = impl.allocation->GetSize();
+        impl.mapped_data = vma_alloc_info.pMappedData;
+        impl.mapped_data_size = vma_alloc_info.size;
     }
 
     if (buffer_info.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
@@ -412,7 +416,7 @@ void VulkanResourceManager::DeleteBuffer(BufferHandle handle)
 {
     deferred_delete_queue.EnqueueDelete({
         frame_number,
-        [=]()
+        [=, this]()
         {
             VulkanBuffer* impl = buffer_pool.GetHot(handle);
             // TODO: Move into the deconstructor of struct
@@ -465,7 +469,7 @@ void VulkanResourceManager::DeleteBuffer(BufferHandle handle)
         });
 }
 
-int VulkanResourceManager::CreateSubResource(VulkanBuffer& buffer, BufferDescriptor const& desc, SubresouceType subresource_type, size_t offset, size_t size = ~0u)
+int VulkanResourceManager::CreateSubResource(VulkanBuffer& buffer, BufferDescriptor const& desc, SubresouceType subresource_type, size_t offset, size_t size)
 {
     assert(subresource_type == SubresouceType::SRV || subresource_type == SubresouceType::UAV);
 

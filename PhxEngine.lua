@@ -715,6 +715,7 @@ group "PhxLibs"
                 phx_lib_src_rhi_dir.."/vulkan/**.cpp",
             }
 
+            excludes  { phx_lib_src_rhi_dir..'/vulkan/old/**' }
             includedirs
             {
                 phx_lib_src_rhi_dir..'/vulkan',

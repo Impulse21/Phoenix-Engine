@@ -4,6 +4,10 @@
 
 #include "VulkanResourceManager.h"
 
+#ifdef PHX_PLATFORM_WINDOWS
+#define VK_USE_PLATFORM_WIN32_KHR
+#endif
+
 #include <volk.h>
 #include <VkBootstrap.h>
 
@@ -11,9 +15,6 @@
 
 namespace phx::rhi
 {
-	constexpr size_t kMaxNumBuffers = 4096;
-	constexpr size_t kMaxNumTextures = 4096;
-
 	constexpr size_t cMaxInflightFrames = 2;
 
 	struct VulkanBackend final : public IBackend

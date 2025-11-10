@@ -2,6 +2,15 @@
 #include "VulkanBackend.h"
 
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wunused-function"
+#pragma clang diagnostic ignored "-Wunused-variable"
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic ignored "-Wunused-private-field"
+
+#endif
+
+
 #ifdef PHX_PLATFORM_WINDOWS
 #define VK_USE_PLATFORM_WIN32_KHR
 #ifndef WIN32_LEAN_AND_MEAN
@@ -9,10 +18,12 @@
 #endif
 
 #include <Windows.h> // For GetModuleHandle
+#define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
 #define VOLK_IMPLEMENTATION
 #include "volk.h"
+
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 1
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -301,10 +312,10 @@ bool phx::rhi::VulkanBackend::CreateSurface_Win32(void* window_handle)
     surface_create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
     surface_create_info.pNext = nullptr;
     surface_create_info.flags = 0;
-    surface_create_info.hwnd = window_handle;
+    surface_create_info.hwnd = static_cast<HWND>(window_handle);
     surface_create_info.hinstance = g_hInstance;
 
-    VkResult result = vkCreateWin32SurfaceKHR(vk_instance, &surface_create_info, nullptr, vk_surface);
+    VkResult result = vkCreateWin32SurfaceKHR(vk_instance, &surface_create_info, nullptr, &vk_surface);
     if (result != VK_SUCCESS)
     {
         PHX_CORE_ERROR("[RHI] Failed to create Win32 surface. VkResult: <TODO>");

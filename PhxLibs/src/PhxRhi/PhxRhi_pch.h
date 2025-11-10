@@ -27,7 +27,16 @@
 // WinHelp is deprecated
 #define NOHELP
 
-#include <windows.h>
+
+#ifdef PHX_PLATFORM_WINDOWS
+#define VK_USE_PLATFORM_WIN32_KHR
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
+#include <Windows.h> // For GetModuleHandle
+#define VK_USE_PLATFORM_WIN32_KHR
+#endif
 
 #include "PhxCore/Base.h"
 
