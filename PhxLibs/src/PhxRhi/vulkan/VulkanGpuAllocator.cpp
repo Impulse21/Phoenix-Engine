@@ -73,6 +73,11 @@ void phx::rhi::VulkanGpuAllocator::Shutdown()
     }
 }
 
+phx::rhi::Budget phx::rhi::VulkanGpuAllocator::GetBudget()
+{
+    return Budget();
+}
+
 phx::rhi::VulkanGpuAllocator::VulkanGpuAllocator(VulkanBackend* vulkan_backend)
     : vulkan_backend(vulkan_backend)
 {

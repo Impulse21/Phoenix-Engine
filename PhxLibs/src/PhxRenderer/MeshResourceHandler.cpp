@@ -21,6 +21,7 @@ void phx::renderer::MeshResourceHandler::LoadAsync(IIoQueue* io_queue, RefCountP
 
 	mesh_resource->state = Resource::State::Loading;
 	ResourceFile::Load(
+		io_queue,
 		resource_descriptor,
 		[mesh_resource, resource_descriptor](std::shared_ptr<ResourceFile> resource_file)
 		{

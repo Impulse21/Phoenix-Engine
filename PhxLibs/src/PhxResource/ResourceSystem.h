@@ -9,6 +9,7 @@
 #include <PhxResource/Resource.h>
 
 #include <PhxEngine/StreamingDefintions.h>
+#include <PhxEngine/IO/IoQueue.h>
 
 namespace phx
 {
@@ -90,7 +91,7 @@ namespace phx
 			return placeholder;
 		}
 
-		handler_to_use->LoadAsync(placeholder, resource_descriptor.GetValue());
+		handler_to_use->LoadAsync(IIoQueue::Ptr, placeholder, resource_descriptor.GetValue());
 
 		return placeholder;
 	}

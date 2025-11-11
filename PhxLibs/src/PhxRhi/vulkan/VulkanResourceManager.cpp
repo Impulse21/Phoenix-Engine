@@ -469,6 +469,24 @@ void VulkanResourceManager::DeleteBuffer(BufferHandle handle)
         });
 }
 
+TextureHandle phx::rhi::VulkanResourceManager::CreateTexture(const TextureDescriptor& /*desc*/, const void* /*initial_data*/)
+{
+    return TextureHandle();
+}
+
+void phx::rhi::VulkanResourceManager::DeleteTexture(TextureHandle /*handle*/)
+{
+}
+
+PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const PipelineStateDescriptor& /*desc*/)
+{
+    return PipelineStateHandle();
+}
+
+void phx::rhi::VulkanResourceManager::DeletePipeline(PipelineStateHandle /*handle*/)
+{
+}
+
 int VulkanResourceManager::CreateSubResource(VulkanBuffer& buffer, BufferDescriptor const& desc, SubresouceType subresource_type, size_t offset, size_t size)
 {
     assert(subresource_type == SubresouceType::SRV || subresource_type == SubresouceType::UAV);

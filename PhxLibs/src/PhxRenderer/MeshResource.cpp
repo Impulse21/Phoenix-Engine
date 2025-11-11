@@ -5,5 +5,5 @@
 
 phx::renderer::MeshResource::~MeshResource()
 {
-	rhi::DeleteBuffer(packed_mesh_buffer);
+	rhi::IResourceManager::Ptr->DeleteBuffer(packed_mesh_buffer);
 }

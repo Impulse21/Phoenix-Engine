@@ -21,13 +21,13 @@ namespace
 }
 
 void phx::ResourceFile::Load(
-	IIoQueue* asynic_queue,
+	IIoQueue* io_queue,
 	AsyncResourceDescriptor const& resource_descriptor,
 	MetadataLoadCallbackFunc metadata_loaded_callback,
 	FailureCallbackFunc failure_callback)
 {
 	std::shared_ptr<phx::ResourceFile> resource_file = std::make_shared<phx::ResourceFile>();
-	resource_file->streaming_manager = streaming_manager;
+	resource_file->io_queue = io_queue;
 	resource_file->resource_descriptor = resource_descriptor;
 	resource_file->metadata_loaded_callback = std::move(metadata_loaded_callback);
 	resource_file->failure_callack = failure_callback;
@@ -48,7 +48,7 @@ void phx::ResourceFile::Load(
 	};
 
 
-	request.on_complete = [resource_file, asynic_queue](StreamingResult const& result) mutable {
+	request.on_complete = [resource_file, io_queue](StreamingResult const& result) mutable {
 		if (result.error_code != ErrorCode::Success)
 		{
 			resource_file->failure_callack();
@@ -88,8 +88,8 @@ void phx::ResourceFile::Load(
 			resource_file->metadata_loaded_callback(resource_file);
 		};
 
-		asynic_queue->Submit(std::move(metadata_request));
+		io_queue->Submit(std::move(metadata_request));
 	};
 
-	asynic_queue->Submit(std::move(request));
+	io_queue->Submit(std::move(request));
 }

@@ -76,10 +76,7 @@ namespace phx::rhi
 		PipelineStateHandle CreatePipeline(const PipelineStateDescriptor& desc) override;
 		void DeletePipeline(PipelineStateHandle handle) override;
 
-
 		void RunGarbageCollection(uint64_t completed_frame);
-
-
 
 		VulkanResourceManager(VulkanBackend* vulkan_backend, VulkanGpuAllocator* vulkan_allocator);
 		~VulkanResourceManager() override = default;

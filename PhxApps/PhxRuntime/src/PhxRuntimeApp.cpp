@@ -240,7 +240,7 @@ void PhxRuntime::OnRender_Threaded()
 	ptr->BeginFrame(m_swapchain);
 
 	phx::Span<rhi::ICommandBuffer*> frame_commands;
-	ptr->EndFrame(frame_commands, m_swapchain);
+	ptr->EndFrame(m_swapchain, frame_commands);
 
 #if false
 
