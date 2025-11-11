@@ -6,10 +6,12 @@
 
 #include <PhxEngine/StreamingDefintions.h>
 
+#include <PhxRhi/PhxRhi_ForwardDeclares.h>
 #include <PhxRhi/RHICommon.h>
 
 #include <deque>
 #include <mutex>
+
 namespace phx
 {
 	class StandardFileProcessor final : public IIoProcessor
@@ -21,6 +23,12 @@ namespace phx
 		};
 
 		// One fence for a whole batch of callbacks
+		struct GpuWorkItem
+		{
+			rhi::ICommandBuffer* command_buffer;
+			std::function<void(StreamingResult const&)> on_complete;
+		};
+
 		struct GpuPendingWork
 		{
 			rhi::FenceHandle fence;
@@ -34,8 +42,8 @@ namespace phx
 
 	public:
 		void ProcessRequest(StreamingRequest&& request) override;
-		void SubmitBatchedWork() override;
-		void PullCompletions() override;
+		void SubmitBatchedWork(IAllocator* frame_allocator, rhi::ISubmissionManager* submission_manager) override;
+		void PullCompletions(rhi::ISubmissionManager* submission_manager) override;
 
 	public:
 		platform::PlatformFileHandle FindOrCreateHandle(std::string const& file_path);
@@ -57,12 +65,12 @@ namespace phx
 		std::mutex m_file_handle_cache_mutex;
 
 		std::mutex m_batch_mutex;
-		rhi::CommandBufferHandle m_wip_cmd_list;
-		std::vector<PendingCallback> m_wip_callbacks;
+		std::vector<GpuWorkItem> m_pending_batch;
 
-		std::mutex m_gpu_work_mutex;
-		std::vector<GpuPendingWork*> m_pending_gpu_work;
-		std::deque<GpuPendingWork*> m_free_gpu_work_pool;
+		// These are local to one thread
+		std::vector<GpuPendingWork>		m_work_slots;
+		std::vector<size_t>				m_inflight_indices;
+		std::deque<size_t>				m_free_indices;
 	};
 }
 

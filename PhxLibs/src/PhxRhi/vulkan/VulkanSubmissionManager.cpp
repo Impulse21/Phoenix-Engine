@@ -205,6 +205,26 @@ void VulkanSubmissionManager::WaitForIdle()
     vkDeviceWaitIdle(vulkan_backend->vk_device);
 }
 
+bool phx::rhi::VulkanSubmissionManager::IsFenceCompleted(FenceHandle fence_handle)
+{
+    PerQueueSync& queue_sync = per_queue_syncs[fence_handle.queue_type];
+
+    uint64_t completed_value = 0;
+
+    VkResult result = vkGetSemaphoreCounterValue(
+        vulkan_backend->vk_device,
+        queue_sync.vk_timeline_semaphore,
+        &completed_value);
+    if (result == VK_SUCCESS)
+    {
+        PHX_RHI_ERROR("Failed to retrieve timeline semaphore's completed value");
+        return false;
+    }
+
+
+    return fence_handle.value <=  completed_value;
+}
+
 ICommandBuffer* VulkanSubmissionManager::BeginCommandBuffer(CommandQueueType queue_type)
 {
     const uint32_t thread_index = g_rhi_thread_index;

@@ -105,13 +105,33 @@ namespace phx
 
 			JobSystem::Barrier sync;
 
+			ThreadFrameArena* frame_allocator = FrameMemoryManager::GetCurrentThreadArenaPtr();
+
+			rhi::ISubmissionManager* rhi_submitter = rhi::ISubmissionManager::Ptr;
+
+			// -- Pump IO Queue ---
+			{
+				// Consider threading this
+				// the risk is that we might miss things that are loaded already.
+				auto* io_queue = IIoQueue::Ptr;
+
+				io_queue->PollGpuCompletions(rhi_submitter);
+				io_queue->SubmitBatchedWork(frame_allocator, rhi_submitter);
+			}
+
 			// -- Pre-Render ---
 			sync.Add();
 			JobSystem::SubmitJob([&sync](JobContext const&) {
 				OnPreRender(phx::IApplication::Ptr);
 				sync.Signal();
+				});
+
+			JobSystem::SubmitJob([&sync](JobContext const&) {
+				OnPreRender(phx::IApplication::Ptr);
+				sync.Signal();
 			});
 
+			// -- Sync point ---
 			JobSystem::Wait(sync);
 
 			// -- Update ---

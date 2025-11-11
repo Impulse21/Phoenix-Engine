@@ -60,3 +60,8 @@ ThreadFrameArena& phx::FrameMemoryManager::GetCurrentThreadArena()
 {
     return g_threadFrameArenaInstance;
 }
+
+ThreadFrameArena* phx::FrameMemoryManager::GetCurrentThreadArenaPtr()
+{
+    return &g_threadFrameArenaInstance;
+}

@@ -2,6 +2,11 @@
 
 #include <PhxEngine/StreamingDefintions.h>
 
+namespace phx::rhi
+{
+	class ISubmissionManager;
+}
+
 namespace phx
 {
 	class IIoQueue
@@ -16,7 +21,7 @@ namespace phx
 
 		virtual void Submit(StreamingRequest&& request) = 0;
 
-		virtual void SubmitBatchedWork() = 0;
-		virtual void PollGpuCompletions() = 0;
+		virtual void SubmitBatchedWork(IAllocator* frame_allocator, rhi::ISubmissionManager* submission_manager) = 0;
+		virtual void PollGpuCompletions(rhi::ISubmissionManager* submission_manager) = 0;
 	};
 }

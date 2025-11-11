@@ -68,12 +68,13 @@ namespace phx::rhi
 			Span<FenceHandle> wait_fences = {}) override;
 
 		void WaitForIdle() override;
+		bool IsFenceCompleted(FenceHandle handle) override;
 
 		ICommandBuffer* BeginCommandBuffer(CommandQueueType queue_type) override;
 		FenceHandle Submit(
 			CommandQueueType queue_type,
 			Span<ICommandBuffer*> cmd_buffers,
-			Span<FenceHandle> wait_fences) override;
+			Span<FenceHandle> wait_fences = {}) override;
 
 		VulkanSubmissionManager(VulkanBackend* vulkan_backend, VulkanResourceManager* vulkan_resource_manager, size_t thread_count);
 		~VulkanSubmissionManager() override = default;

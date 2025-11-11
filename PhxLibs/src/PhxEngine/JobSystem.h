@@ -12,6 +12,7 @@ namespace phx
 		uint32_t JobIndex = 0;
 		uint32_t GroupIndex = 0;
 	};
+
 	struct JobContext
 	{
 		IAllocator* FrameHeap = nullptr;

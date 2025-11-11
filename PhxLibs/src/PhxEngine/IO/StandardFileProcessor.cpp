@@ -1,6 +1,9 @@
 #include "PhxEngine/PhxEngine_pch.h"
 #include "StandardFileProcessor.h"
 
+#include <PhxRhi/ISubmissionManager.h>
+#include <PhxRhi/ICommandBuffer.h>
+
 #include <PhxEngine/JobSystem.h>
 using namespace phx;
 
@@ -50,12 +53,74 @@ void StandardFileProcessor::ProcessRequest(StreamingRequest&& request)
 	}
 }
 
-void phx::StandardFileProcessor::SubmitBatchedWork()
+void phx::StandardFileProcessor::SubmitBatchedWork(IAllocator* frame_allocator, rhi::ISubmissionManager* submission_manager)
 {
+	PHX_PROFILE;
+
+	// Frame allocator would be best to use here.
+	SpanMutable<GpuWorkItem> batches_to_submit;
+	{
+		std::scoped_lock _(m_batch_mutex);
+		batches_to_submit = AllocateArray<GpuWorkItem>(frame_allocator, m_pending_batch.size());
+		
+		for (size_t i = 0; i < m_pending_batch.size(); i++)
+		{
+			batches_to_submit[i] = std::move(m_pending_batch[i]);
+		}
+		m_pending_batch.clear();
+	}
+
+	// Request a free Gpu Pending work item
+	// TODO: Request a pending work item from the pool.
+
+	size_t pending_work_index = 0;
+	if (!m_free_indices.empty())
+	{
+		pending_work_index = m_free_indices.back();
+		m_free_indices.pop_back();
+	}
+	else
+	{
+		pending_work_index = m_work_slots.size();
+		m_work_slots.emplace_back();
+	}
+
+	GpuPendingWork& pending_work = m_work_slots[pending_work_index];
+
+	SpanMutable<rhi::ICommandBuffer*> commands_to_submit = AllocateArray<rhi::ICommandBuffer*>(frame_allocator, m_pending_batch.size());
+	for (size_t i = 0; i < batches_to_submit.Size(); ++i)
+	{
+		// 1. Move the callback
+		pending_work.callbacks.emplace_back(std::move(batches_to_submit[i].on_complete));
+
+		// 2. (THE FIX) Get the command list handle
+		commands_to_submit[i] = batches_to_submit[i].command_buffer;
+	}
+	
+	pending_work.fence = submission_manager->Submit(rhi::CommandQueueType::Copy, commands_to_submit, {});
+	m_inflight_indices.push_back(pending_work_index);
 }
 
-void phx::StandardFileProcessor::PullCompletions()
+void phx::StandardFileProcessor::PullCompletions(rhi::ISubmissionManager* submission_manager)
 {
+	for (size_t inflight_index : m_inflight_indices)
+	{
+		GpuPendingWork& inflight_work = m_work_slots[inflight_index];
+
+		if (!submission_manager->IsFenceCompleted(inflight_work.fence))
+			continue;
+
+		for (auto& callback : inflight_work.callbacks)
+		{
+			JobSystem::SubmitJob(JobSystem::Priority::Low, [&]() {
+				callback();
+			});
+		}
+
+		// retire work item
+		inflight_work.callbacks.clear();
+		m_free_indices.push_back(inflight_index);
+	}
 }
 
 

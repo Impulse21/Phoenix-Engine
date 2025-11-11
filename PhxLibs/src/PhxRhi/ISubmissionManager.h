@@ -2,10 +2,9 @@
 
 #include "RHICommon.h"
 
+#include <PhxRhi/ICommandBuffer.h>
 namespace phx::rhi
 {
-	class ICommandBuffer;
-
 	class ISubmissionManager
 	{
 	public:
@@ -24,6 +23,7 @@ namespace phx::rhi
 			Span<FenceHandle> wait_fences = {}) = 0;
 
 		virtual void WaitForIdle() = 0;
+		virtual bool IsFenceCompleted(FenceHandle handle) = 0;
 
 		virtual ICommandBuffer* BeginCommandBuffer(CommandQueueType queue_type) = 0;
 		virtual FenceHandle Submit(
