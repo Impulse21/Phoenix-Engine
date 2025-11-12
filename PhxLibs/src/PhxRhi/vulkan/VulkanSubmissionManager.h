@@ -70,6 +70,8 @@ namespace phx::rhi
 		void WaitForIdle() override;
 		bool IsFenceCompleted(FenceHandle handle) override;
 
+		StagingBlock RequestStagingMemory(uint32_t size, uint32_t aligmnet = 16) override;
+
 		ICommandBuffer* BeginCommandBuffer(CommandQueueType queue_type) override;
 		FenceHandle Submit(
 			CommandQueueType queue_type,

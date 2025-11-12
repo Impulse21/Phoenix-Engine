@@ -6,11 +6,13 @@
 
 namespace phx::rhi
 {
+	struct VulkanResourceManager;
 	struct VulkanCommandBuffer : public ICommandBuffer
 	{
 		VkCommandBuffer vk_handle;
 		uint32_t thread_id;
 		CommandQueueType queue_type;
+		rhi::VulkanResourceManager* rsc_manager;
 
 		// -- Interface Implementation ---
 		void BindPipelineState(PipelineStateHandle pso) override;
@@ -19,7 +21,10 @@ namespace phx::rhi
 		void DrawInstanced(uint32_t vertex_count, uint32_t instance_count, uint32_t start_vertex_location, uint32_t start_instance_location) override;
 		void DrawIndexedInstanced(uint32_t index_count, uint32_t instance_count, uint32_t start_index_location, int32_t base_vertex_location, uint32_t startInstanceLocation) override;
 
-		VulkanCommandBuffer(VkCommandBuffer vk_handle, CommandQueueType type, uint32_t thread_id);
+
+		void CopyBuffer(BufferHandle src_buffer, uint64_t src_offset, BufferHandle dest_buffer, uint64_t dest_offset, size_t size) override;
+
+		VulkanCommandBuffer(rhi::VulkanResourceManager* rsc_manager, VkCommandBuffer vk_handle, CommandQueueType type, uint32_t thread_id);
 		~VulkanCommandBuffer() override;
 
 	};

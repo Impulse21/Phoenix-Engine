@@ -15,14 +15,18 @@ void StandardFileProcessor::ProcessRequest(StreamingRequest&& request)
 	};
 
 	bool has_gpu_work = false;
-	rhi::CommandBufferHandle ctx_handle = rhi::NULL_CMD_HANDLE;
+	rhi::ICommandBuffer* cmd_buffer = nullptr;
 	for (size_t i = 0; i < request.operations.size(); i++)
 	{
 		// Pass the WIP command buffer and state to ProcessOperation
 		bool gpu_operation = false;
 
 		StreamingOperation& operation = request.operations[i];
-		ErrorCode error_code = ProcessStreamingTransfer(operation.source, operation.destination, gpu_operation);
+		ErrorCode error_code = ProcessStreamingTransfer(
+			operation.source,
+			operation.destination,
+			gpu_operation,
+			&cmd_buffer);
 
 		has_gpu_work |= gpu_operation;
 
@@ -34,13 +38,12 @@ void StandardFileProcessor::ProcessRequest(StreamingRequest&& request)
 	{
 		std::scoped_lock lock(m_batch_mutex);
 
-		ctx_handle = m_wip_cmd_list;
-
-		PendingCallback callback_entry;
+		GpuWorkItem callback_entry;
 		callback_entry.on_complete = std::move(request.on_complete);
+		callback_entry.command_buffer = nullptr;
 		callback_entry.result = std::move(result);
 
-		m_wip_callbacks.push_back(std::move(callback_entry));
+		m_pending_batch.push_back(std::move(callback_entry));
 	}
 	else
 	{
@@ -81,23 +84,23 @@ void phx::StandardFileProcessor::SubmitBatchedWork(IAllocator* frame_allocator, 
 	}
 	else
 	{
-		pending_work_index = m_work_slots.size();
-		m_work_slots.emplace_back();
+		pending_work_index = m_inflight_work_slots.size();
+		m_inflight_work_slots.emplace_back();
 	}
 
-	GpuPendingWork& pending_work = m_work_slots[pending_work_index];
+	InFlightWorkItem& inflight_work_item = m_inflight_work_slots[pending_work_index];
 
 	SpanMutable<rhi::ICommandBuffer*> commands_to_submit = AllocateArray<rhi::ICommandBuffer*>(frame_allocator, m_pending_batch.size());
 	for (size_t i = 0; i < batches_to_submit.Size(); ++i)
 	{
 		// 1. Move the callback
-		pending_work.callbacks.emplace_back(std::move(batches_to_submit[i].on_complete));
+		inflight_work_item.callbacks.emplace_back(std::move(batches_to_submit[i].on_complete));
 
 		// 2. (THE FIX) Get the command list handle
 		commands_to_submit[i] = batches_to_submit[i].command_buffer;
 	}
 	
-	pending_work.fence = submission_manager->Submit(rhi::CommandQueueType::Copy, commands_to_submit, {});
+	inflight_work_item.fence = submission_manager->Submit(rhi::CommandQueueType::Copy, commands_to_submit, {});
 	m_inflight_indices.push_back(pending_work_index);
 }
 
@@ -105,16 +108,19 @@ void phx::StandardFileProcessor::PullCompletions(rhi::ISubmissionManager* submis
 {
 	for (size_t inflight_index : m_inflight_indices)
 	{
-		GpuPendingWork& inflight_work = m_work_slots[inflight_index];
+		InFlightWorkItem& inflight_work = m_inflight_work_slots[inflight_index];
 
 		if (!submission_manager->IsFenceCompleted(inflight_work.fence))
 			continue;
 
-		for (auto& callback : inflight_work.callbacks)
+		for (auto& pending_callback: inflight_work.callbacks)
 		{
-			JobSystem::SubmitJob(JobSystem::Priority::Low, [&]() {
-				callback();
-			});
+			JobSystem::SubmitJob(
+				[pc = std::move(pending_callback)](JobContext const&) mutable
+				{
+					pc.on_complete(pc.result);
+				},
+				JobSystem::Priority::Low);
 		}
 
 		// retire work item
@@ -148,12 +154,17 @@ platform::PlatformFileHandle phx::StandardFileProcessor::FindOrCreateHandle(std:
 ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 	StreamingSource& source_info,
 	StreamingDestination& destination_info,
-	bool& gpu_operation)
+	bool& gpu_operation,
+	rhi::ICommandBuffer** out_cmd_buffer)
 {
 	// TODO: Check for overrun.
 	const std::byte* src_ptr = nullptr;
-	std::byte* dest_ptr = nullptr;
+	void* dest_ptr = nullptr;
 
+	auto submission_manager = rhi::ISubmissionManager::Ptr;
+	rhi::StagingBlock staging_block;
+	
+	// Collect Desitantion ptr;
 	std::visit([&](auto&& target) {
 		using TTarget = std::decay_t<decltype(target)>;
 		if constexpr (std::is_same_v<TTarget, CpuResourceDestinationInfo>)
@@ -163,11 +174,14 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 		}
 		else if constexpr (std::is_same_v<TTarget, GpuResourceDestinationInfo>)
 		{
+			// Begin the command buffer if we haven't already
 			gpu_operation = true;
-			// TODO: Get mapped memory from command list.
+			staging_block = submission_manager->RequestStagingMemory(source_info.size);
+			dest_ptr = staging_block.data_ptr;
 		}
 	}, destination_info.target);
 
+	// copy to the dest position.
 	ErrorCode ret_val = ErrorCode::Success;
 	std::visit([&](auto&& src_data)
 		{
@@ -177,6 +191,7 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 				if (!ProcessAsyncResourceDesc(src_data, source_info, dest_ptr))
 				{
 					ret_val = ErrorCode::Unknown;
+
 					return;
 				}
 			}
@@ -188,6 +203,7 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 				{
 					PHX_CORE_ERROR("Source ReadableCpuMemoryBuffer is null!");
 					ret_val = ErrorCode::InvalidSource;
+
 					return;
 				}
 
@@ -197,19 +213,46 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 		},
 		source_info.data); // We visit the source variant here
 
+	if (gpu_operation)
+	{
+		rhi::ICommandBuffer* cmd_buffer = *out_cmd_buffer;
+		if (!cmd_buffer)
+			*out_cmd_buffer = submission_manager->BeginCommandBuffer(rhi::CommandQueueType::Copy);
+
+		auto& gpu_dest_info = std::get<GpuResourceDestinationInfo>(destination_info.target);
+		std::visit([&](auto&& gpu_handle) {
+			using THandle = std::decay_t<decltype(gpu_handle)>;
+
+			if constexpr (std::is_same_v<THandle, rhi::BufferHandle>)
+			{
+				cmd_buffer->CopyBuffer(
+					staging_block.buffer_handle,
+					staging_block.gpu_offset,
+					gpu_handle,
+					destination_info.offset,
+					source_info.size);
+			}
+			else if constexpr (std::is_same_v<THandle, rhi::TextureHandle>)
+			{
+				// TODO:
+			}
+			}, gpu_dest_info.handle);
+	}
+
 	return ErrorCode::Success;
 }
 
 bool phx::StandardFileProcessor::ProcessAsyncResourceDesc(
 	AsyncResourceDescriptor& descriptor,
 	StreamingSource& source_info,
-	std::byte* dest_ptr)
+	void* dest_ptr)
 {
 	const std::byte* src_ptr = nullptr;
 	if (descriptor.type == AsyncDataSourceType::Embedded)
 	{
 		src_ptr = reinterpret_cast<const std::byte*>(descriptor.memory_buffer_ptr) + source_info.offset;
 		std::memcpy(dest_ptr, src_ptr, source_info.size);
+
 		return true;
 	}
 
@@ -240,6 +283,7 @@ bool phx::StandardFileProcessor::ProcessAsyncResourceDesc(
 			descriptor.os_path_or_pak_path,
 			source_info.size,
 			bytes_read);
+
 		return false;
 	}
 

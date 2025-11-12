@@ -225,6 +225,11 @@ bool phx::rhi::VulkanSubmissionManager::IsFenceCompleted(FenceHandle fence_handl
     return fence_handle.value <=  completed_value;
 }
 
+StagingBlock phx::rhi::VulkanSubmissionManager::RequestStagingMemory(uint32_t size, uint32_t aligmnet)
+{
+    return StagingBlock();
+}
+
 ICommandBuffer* VulkanSubmissionManager::BeginCommandBuffer(CommandQueueType queue_type)
 {
     const uint32_t thread_index = g_rhi_thread_index;

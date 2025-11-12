@@ -111,6 +111,7 @@ namespace phx
         std::function<void(StreamingResult const& result)> on_complete;
 
     };
+
     enum class ErrorCode
     {
         Success = 0,

@@ -977,36 +977,14 @@ namespace phx::rhi
         CommandQueueType queue_type = CommandQueueType::Graphics;
     };
 
-    enum class PoolType : uint8_t
+    struct StagingBlock
     {
-        Async = 0,
-        Frame
+        void* data_ptr = nullptr;
+        uint32_t size = 0;
+
+        // Internal data
+        rhi::BufferHandle buffer_handle;
+        uint64_t gpu_offset;
     };
-
-    union CommandBufferHandle
-    {
-        uint32_t value; // The raw 32-bit handle
-
-        struct EncodedData // Anonymous struct
-        {
-            uint16_t index;
-            uint8_t  pool_type;
-            uint8_t  queue_type;
-        } data;
-
-
-        inline bool IsAsync() const { return data.pool_type == (uint8_t)PoolType::Async; }
-        inline bool IsFrame() const { return data.pool_type == (uint8_t)PoolType::Frame; }
-
-        inline CommandQueueType GetQueueType() const { return (CommandQueueType)data.queue_type; }
-        inline PoolType GetPoolType() const { return (PoolType)data.pool_type; }
-        inline uint16_t GetIndex() const { return data.index; }
-    };
-    static_assert(sizeof(CommandBufferHandle) == 4, "Command Buffer handle must be 4-bytes in size");
-
-    static constexpr CommandBufferHandle NULL_CMD_HANDLE = {};
-
-    using FrameCommandHandle = CommandBufferHandle;
-    using AsyncCommandHandle = CommandBufferHandle;
 #pragma endregion
 }

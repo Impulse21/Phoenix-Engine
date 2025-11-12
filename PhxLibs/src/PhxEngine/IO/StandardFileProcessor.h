@@ -9,6 +9,7 @@
 #include <PhxRhi/PhxRhi_ForwardDeclares.h>
 #include <PhxRhi/RHICommon.h>
 
+#include <vector>
 #include <deque>
 #include <mutex>
 
@@ -16,20 +17,21 @@ namespace phx
 {
 	class StandardFileProcessor final : public IIoProcessor
 	{
+		// One fence for a whole batch of callbacks
+		struct GpuWorkItem
+		{
+			rhi::ICommandBuffer* command_buffer;
+			std::function<void(StreamingResult const&)> on_complete;
+			StreamingResult result;
+		};
+
 		struct PendingCallback
 		{
 			std::function<void(StreamingResult const&)> on_complete;
 			StreamingResult result;
 		};
 
-		// One fence for a whole batch of callbacks
-		struct GpuWorkItem
-		{
-			rhi::ICommandBuffer* command_buffer;
-			std::function<void(StreamingResult const&)> on_complete;
-		};
-
-		struct GpuPendingWork
+		struct InFlightWorkItem
 		{
 			rhi::FenceHandle fence;
 			std::vector<PendingCallback> callbacks;
@@ -52,12 +54,13 @@ namespace phx
 		ErrorCode ProcessStreamingTransfer(
 			StreamingSource& source_info,
 			StreamingDestination& destination_info,
-			bool& gpu_operation);
+			bool& gpu_operation,
+			rhi::ICommandBuffer** out_cmd_buffer);
 
 		bool ProcessAsyncResourceDesc(
 			AsyncResourceDescriptor& descriptor,
 			StreamingSource& source_info,
-			std::byte* dest_ptr);
+			void* dest_ptr);
 
 	private:
 
@@ -68,7 +71,7 @@ namespace phx
 		std::vector<GpuWorkItem> m_pending_batch;
 
 		// These are local to one thread
-		std::vector<GpuPendingWork>		m_work_slots;
+		std::vector<InFlightWorkItem>	m_inflight_work_slots;
 		std::vector<size_t>				m_inflight_indices;
 		std::deque<size_t>				m_free_indices;
 	};

@@ -25,6 +25,8 @@ namespace phx::rhi
 		virtual void WaitForIdle() = 0;
 		virtual bool IsFenceCompleted(FenceHandle handle) = 0;
 
+		virtual StagingBlock RequestStagingMemory(uint32_t size, uint32_t aligmnet = 16) = 0;
+
 		virtual ICommandBuffer* BeginCommandBuffer(CommandQueueType queue_type) = 0;
 		virtual FenceHandle Submit(
 			CommandQueueType queue_type,
