@@ -980,7 +980,7 @@ namespace phx::rhi
     struct StagingBlock
     {
         void* data_ptr = nullptr;
-        uint32_t size = 0;
+        uint64_t size = 0;
 
         // Internal data
         rhi::BufferHandle buffer_handle;

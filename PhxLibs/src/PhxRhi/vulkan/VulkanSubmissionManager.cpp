@@ -1,7 +1,9 @@
 #include "PhxRhi/PhxRhi_pch.h"
-#include <PhxRhi/PhxRhi_Thread.h>
-#include "VulkanSubmissionManager.h"
 
+#include <PhxCore/Memory/MemoryUtils.h>
+#include <PhxRhi/PhxRhi_Thread.h>
+
+#include "VulkanSubmissionManager.h"
 #include "VulkanBackend.h"
 #include "VulkanResourceManager.h"
 
@@ -14,7 +16,7 @@ VulkanSubmissionManager::VulkanSubmissionManager(VulkanBackend* vulkan_backend, 
     : vulkan_backend(vulkan_backend)
     , vulkan_resource_manager(vulkan_resource_manager)
     , num_threads(thread_count)
-    , per_thread_cmd_pool(std::make_unique<PerThreadData[]>(thread_count))
+    , per_thread_data(std::make_unique<PerThreadData[]>(thread_count))
 {
 }
 
@@ -59,13 +61,15 @@ bool VulkanSubmissionManager::Initialize()
     PHX_RHI_INFO("Initializing Per thread Command data.");
     for (size_t i = 0; i < num_threads; ++i)
     {
-        PerThreadData& thread_data = per_thread_cmd_pool[i];
+        PerThreadData& thread_data = per_thread_data[i];
         thread_data.thread_id = i;
+        thread_data.sub_manager = this;
 
         for (size_t q = 0; q < static_cast<size_t>(CommandQueueType::Count); ++q)
         {
             PerThreadData::CommandPool& pool = thread_data.command_pools[q];
             pool.queue_type = static_cast<CommandQueueType>(q);
+            pool.vulkan_resource_manager = vulkan_resource_manager;
 
             VkCommandPoolCreateInfo pool_info = {
                 .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -99,7 +103,7 @@ void phx::rhi::VulkanSubmissionManager::Shutdown()
 
     for (size_t i = 0; i < num_threads; ++i)
     {
-        PerThreadData& thread_data = per_thread_cmd_pool[i];
+        PerThreadData& thread_data = per_thread_data[i];
 
         for (size_t q = 0; q < static_cast<size_t>(CommandQueueType::Count); ++q)
         {
@@ -107,7 +111,7 @@ void phx::rhi::VulkanSubmissionManager::Shutdown()
         }
     }
 
-    per_thread_cmd_pool.reset();
+    per_thread_data.reset();
 }
 
 void phx::rhi::VulkanSubmissionManager::BeginFrame(SwapchainHandle swapchain)
@@ -227,14 +231,17 @@ bool phx::rhi::VulkanSubmissionManager::IsFenceCompleted(FenceHandle fence_handl
 
 StagingBlock phx::rhi::VulkanSubmissionManager::RequestStagingMemory(uint32_t size, uint32_t aligmnet)
 {
-    return StagingBlock();
+    const uint32_t thread_id = g_rhi_thread_index;
+    PerThreadData& thread_data =  per_thread_data[thread_id];
+
+    return thread_data.RequestStagingBlock(size, aligmnet);
 }
 
 ICommandBuffer* VulkanSubmissionManager::BeginCommandBuffer(CommandQueueType queue_type)
 {
     const uint32_t thread_index = g_rhi_thread_index;
 
-    PerThreadData& thread_data = per_thread_cmd_pool[thread_index];
+    PerThreadData& thread_data = per_thread_data[thread_index];
     PerThreadData::CommandPool& pool = thread_data.command_pools[queue_type];
 
     return pool.GetFreeBuffer(thread_index);
@@ -261,13 +268,14 @@ phx::rhi::VulkanCommandBuffer* phx::rhi::VulkanSubmissionManager::PerThreadData:
 
     VkCommandBuffer vk_buffer;
     auto& vulkan_cmd_buffer = buffer_pool.emplace_back(
-        std::make_unique<VulkanCommandBuffer>(vk_buffer, queue_type, thread_id));
+        std::make_unique<VulkanCommandBuffer>(vulkan_resource_manager, vk_buffer, queue_type, thread_id));
+
     return vulkan_cmd_buffer.get();
 }
 
 void phx::rhi::VulkanSubmissionManager::RetireCommandBuffers(Span<ICommandBuffer*> command_buffers, FenceHandle fence_value)
 {
-    std::scoped_lock _(inglight_commands_queue_mutex);
+    std::scoped_lock _(inflight_commands_queue_mutex);
 
     for (auto cmd_buffer : command_buffers)
     {
@@ -297,7 +305,7 @@ void phx::rhi::VulkanSubmissionManager::ReclaimFinishedCommandBuffers()
         }
     }
 
-    std::scoped_lock _(inglight_commands_queue_mutex);
+    std::scoped_lock _(inflight_commands_queue_mutex);
     auto it = std::remove_if(inflight_cmd_queue.begin(), inflight_cmd_queue.end(),
         [&](const InflightCommandBuffer& pending) {
             const FenceHandle& fence = pending.fence_handle;
@@ -307,7 +315,7 @@ void phx::rhi::VulkanSubmissionManager::ReclaimFinishedCommandBuffers()
                 vkResetCommandBuffer(pending.buffer->vk_handle, 0);
 
                 const uint32_t thread_id = pending.buffer->thread_id;
-                PerThreadData& thread_data = per_thread_cmd_pool[thread_id];
+                PerThreadData& thread_data = per_thread_data[thread_id];
                 PerThreadData::CommandPool& pool = thread_data.command_pools[pending.buffer->queue_type];
                 pool.free_buffers.push_back(pending.buffer);
 
@@ -318,6 +326,109 @@ void phx::rhi::VulkanSubmissionManager::ReclaimFinishedCommandBuffers()
         });
 
     inflight_cmd_queue.erase(it);
+}
+
+void phx::rhi::VulkanSubmissionManager::ReclaimFinishedUploads()
+{
+    uint64_t completed_fence_value = 0;
+
+    VkResult result = vkGetSemaphoreCounterValue(
+        vulkan_backend->vk_device,
+        per_queue_syncs[CommandQueueType::Copy].vk_timeline_semaphore,
+        &completed_fence_value);
+
+    if (result != VK_SUCCESS)
+    {
+        PHX_RHI_ERROR("Failed to get semaphore fence value");
+        completed_fence_value = 0; // Or last known good value
+    }
+
+    static thread_local std::vector<uint64_t> s_new_tail_values(num_threads, 0);
+
+    std::scoped_lock _(inflight_uploads_mutex);
+
+    auto it = inflight_upload_queue.begin();
+    while (it != inflight_upload_queue.end())
+    {
+        InflightUpload& upload = *it;
+
+        // Check if this upload's fence is complete
+        if (upload.fence_handle.value <= completed_fence_value)
+        {
+            uint64_t& current_max = s_new_tail_values[upload.thread_id];
+            current_max = std::max(current_max, upload.head_offset);
+
+            // Remove this item from the list
+            it = inflight_upload_queue.erase(it);
+        }
+        else
+        {
+            // Not done, check the next item
+            ++it;
+        }
+    }
+    
+    for (uint32_t thread_id = 0; thread_id < num_threads; ++thread_id)
+    {
+        if (s_new_tail_values[thread_id] > 0)
+        {
+            per_thread_data[thread_id].staging_ring_buffer.tail.store(
+                s_new_tail_values[thread_id],
+                std::memory_order_release);
+
+            // Reset our temp value
+            s_new_tail_values[thread_id] = 0;
+        }
+    }
+
+    inflight_upload_queue.erase(it);
+}
+
+StagingBlock phx::rhi::VulkanSubmissionManager::PerThreadData::RequestStagingBlock(size_t size, uint32_t alignment)
+{
+    if (size > UPLOAD_RING_BUFFER_SIZE)
+        return CreateOneShotUploadBuffer(size, alignment);
+
+    Result<StagingBlock> result = staging_ring_buffer.Allocate(size, alignment);
+    if (result)
+    {
+        return result.GetValue();
+    }
+
+    sub_manager->ReclaimFinishedUploads();
+
+    result = staging_ring_buffer.Allocate(size, alignment);
+    if (result)
+    {
+        return result.GetValue();
+    }
+
+    PHX_RHI_WARN("Staging buffer fragmented! Promoting to one-off");
+    return CreateOneShotUploadBuffer(size, alignment);
+}
+
+StagingBlock phx::rhi::VulkanSubmissionManager::PerThreadData::CreateOneShotUploadBuffer(size_t size, uint32_t alignment)
+{
+    VulkanResourceManager* vulkan_rm = sub_manager->vulkan_resource_manager;
+
+    const size_t aligned_size = AlignUp(size, alignment);
+    BufferHandle buffer_handle = vulkan_rm->CreateBuffer({
+        .DebugName = "One_shot_bufffer",
+        .Size = static_cast<uint32_t>(aligned_size),
+        .Usage = Usage::Upload,
+        .MiscFlags = ResourceMiscFlags::BufferRaw,
+        .InitialState = ResourceStates::CopySource
+    });
+    
+    VulkanBuffer* vulkan_buffer = vulkan_rm->buffer_pool.GetHot(buffer_handle);
+    StagingBlock block = {
+        .data_ptr = vulkan_buffer->mapped_data,
+        .size = size,
+        .buffer_handle = buffer_handle,
+        .gpu_offset = 0
+    };
+
+    return block;
 }
 
 FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(
@@ -395,6 +506,35 @@ FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(
     vkQueueSubmit(queue.vk_queue, 1, &submit_info, VK_NULL_HANDLE);
 
     RetireCommandBuffers(cmd_buffers, fence_handle);
+    
+    uint32_t thread_index = g_rhi_thread_index;
+    PerThreadData& thread_data = per_thread_data[thread_index];
+    std::scoped_lock _(inflight_uploads_mutex);
+
+    InflightUpload& inflight_data = inflight_upload_queue.emplace_back();
+    inflight_data.fence_value = fence_handle.value;
+    inflight_data.thread_id = thread_index;
+    inflight_data.head_offset = thread_data.staging_ring_buffer.head;
 
     return fence_handle;
+}
+
+Result<StagingBlock> phx::rhi::StagingRingBuffer::Allocate(uint64_t alloc_size, uint32_t alignment)
+{
+    uint64_t aligned_head = AlignUp(alloc_size, alignment);
+    uint64_t new_head = aligned_head + alloc_size;
+    uint64_t current_tail = tail.load(std::memory_order_acquire);
+    if ((new_head - current_tail) > size)
+        return make_unexpected(1ull);
+
+    head = new_head;
+    
+    StagingBlock staging_block = {
+        .data_ptr = mapped_ptr + (aligned_head & mask),
+        .size = alloc_size,
+        .buffer_handle = buffer_handle,
+        .gpu_offset = (aligned_head & mask)
+    };
+
+    return staging_block;
 }

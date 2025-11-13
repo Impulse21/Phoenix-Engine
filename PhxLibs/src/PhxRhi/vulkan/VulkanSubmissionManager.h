@@ -1,6 +1,8 @@
 #pragma once
 
 #include <PhxCore/StaticArray.h>
+#include <PhxCore/Result.h>
+
 #include <PhxRhi/ISubmissionManager.h>
 
 #include "VulkanCommandBuffer.h"
@@ -13,8 +15,25 @@ namespace phx::rhi
 	struct VulkanBackend;
 	struct VulkanResourceManager;
 
+	struct StagingRingBuffer
+	{
+		BufferHandle buffer_handle = {};
+		std::byte* mapped_ptr = nullptr;
+		uint64_t size = 0ull;
+		uint64_t mask = 0ull;
+		uint64_t head = 0ull;
+
+		// Main thread writes tot his
+		std::atomic_uint64_t tail;
+
+		Result<StagingBlock> Allocate(uint64_t alloc_size, uint32_t alignment);
+
+	};
+
 	struct VulkanSubmissionManager : public ISubmissionManager
 	{
+		static constexpr size_t UPLOAD_RING_BUFFER_SIZE = 64_MiB;
+
 		VulkanBackend* vulkan_backend;
 		VulkanResourceManager* vulkan_resource_manager;
 
@@ -23,6 +42,7 @@ namespace phx::rhi
 			struct CommandPool
 			{
 				CommandQueueType queue_type;
+				VulkanResourceManager* vulkan_resource_manager;
 				VkCommandPool vk_cmd_pool;
 				std::vector<std::unique_ptr<phx::rhi::VulkanCommandBuffer>> buffer_pool;
 				std::vector<phx::rhi::VulkanCommandBuffer*> free_buffers;
@@ -31,10 +51,21 @@ namespace phx::rhi
 			};
 
 			uint32_t thread_id = 0;
+			VulkanSubmissionManager* sub_manager;
+
 			EnumArray<CommandPool, CommandQueueType> command_pools;
 
+			// -- Upload manager info ---
+			// TODO: Move to it's own class.
+
+			std::vector<BufferHandle> active_one_off_buffers;
+			StagingRingBuffer staging_ring_buffer;
+
+			StagingBlock RequestStagingBlock(size_t size, uint32_t alignment);
+			StagingBlock CreateOneShotUploadBuffer(size_t size, uint32_t alignment);
+
 		};
-		std::unique_ptr<PerThreadData[]> per_thread_cmd_pool;
+		std::unique_ptr<PerThreadData[]> per_thread_data;
 
 		struct PerQueueSync
 		{
@@ -55,7 +86,16 @@ namespace phx::rhi
 			FenceHandle				fence_handle;
 		};
 		std::deque<InflightCommandBuffer> inflight_cmd_queue;
-		std::mutex inglight_commands_queue_mutex;
+		std::mutex inflight_commands_queue_mutex;
+
+		struct InflightUpload
+		{
+			uint64_t fence_value = 0;;
+			uint32_t thread_id;
+			uint64_t head_offset;
+		};
+		std::vector<InflightUpload> inflight_upload_queue;
+		std::mutex inflight_uploads_mutex;
 
 		// -- Interface implementation ---
 		bool Initialize() override;
@@ -85,6 +125,7 @@ namespace phx::rhi
 		size_t GetCurrentFrameIndex() { return frame_number % kBufferCount; }
 		void RetireCommandBuffers(Span<ICommandBuffer*> command_buffers, FenceHandle fence_value);
 		void ReclaimFinishedCommandBuffers();
+		void ReclaimFinishedUploads();
 
 		FenceHandle SubmitInternal(
 			CommandQueueType queue_type,

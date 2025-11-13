@@ -469,6 +469,7 @@ void VulkanResourceManager::DeleteBuffer(BufferHandle handle)
         });
 }
 
+
 TextureHandle phx::rhi::VulkanResourceManager::CreateTexture(const TextureDescriptor& /*desc*/, const void* /*initial_data*/)
 {
     return TextureHandle();
