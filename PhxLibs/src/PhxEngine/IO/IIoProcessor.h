@@ -1,5 +1,6 @@
 #pragma once
 
+#include <PhxRhi/PhxRhi_ForwardDeclares.h>
 #include <PhxEngine/StreamingDefintions.h>
 
 namespace phx

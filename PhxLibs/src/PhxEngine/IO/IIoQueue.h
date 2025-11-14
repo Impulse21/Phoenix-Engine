@@ -9,6 +9,7 @@ namespace phx::rhi
 
 namespace phx
 {
+	class IAllocator;
 	class IIoQueue
 	{
 	public:

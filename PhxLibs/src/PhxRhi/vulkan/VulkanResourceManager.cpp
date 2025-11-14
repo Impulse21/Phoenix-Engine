@@ -416,57 +416,59 @@ void VulkanResourceManager::DeleteBuffer(BufferHandle handle)
 {
     deferred_delete_queue.EnqueueDelete({
         frame_number,
-        [=, this]()
-        {
-            VulkanBuffer* impl = buffer_pool.GetHot(handle);
-            // TODO: Move into the deconstructor of struct
-            if (impl)
-            {
+        [=, this]() { DeleteBufferImmediate(handle); }
+    });
+}
+
+void phx::rhi::VulkanResourceManager::DeleteBufferImmediate(BufferHandle handle)
+{
+	VulkanBuffer* impl = buffer_pool.GetHot(handle);
+	// TODO: Move into the deconstructor of struct
+	if (impl)
+	{
 #if false
-                // These sections are commented out in the original code, keeping them commented.
-                // If uncommented, they would need  prefix for the pools and vk_device.
-                // if (impl->Srv.IsValid())
-                // {
-                //     if (impl->Srv.IsTyped)
-                //     {
-                //         bindless_uniform_texel_buffers.Free(impl->Srv.Index);
-                //     }
-                //     else
-                //     {
-                //         bindless_storage_buffers.Free(impl->Srv.Index);
-                //     }
-                //
-                //     if (impl->Srv.ViewVk != VK_NULL_HANDLE)
-                //         vkDestroyBufferView(vk_device, impl->Uav.ViewVk, nullptr);
-                //     impl->Srv = {};
-                // }
-                // if (impl->Uav.IsValid())
-                // {
-                //     if (impl->Uav.IsTyped)
-                //     {
-                //         bindless_storage_texel_buffers.Free(impl->Uav.Index);
-                //     }
-                //     else
-                //     {
-                //         bindless_storage_buffers.Free(impl->Uav.Index);
-                //     }
-                //
-                //     if (impl->Uav.ViewVk != VK_NULL_HANDLE)
-                //         vkDestroyBufferView(vk_device, impl->Uav.ViewVk, nullptr);
-                //     impl->Uav = {};
-                // }
+        // These sections are commented out in the original code, keeping them commented.
+        // If uncommented, they would need  prefix for the pools and vk_device.
+        // if (impl->Srv.IsValid())
+        // {
+        //     if (impl->Srv.IsTyped)
+        //     {
+        //         bindless_uniform_texel_buffers.Free(impl->Srv.Index);
+        //     }
+        //     else
+        //     {
+        //         bindless_storage_buffers.Free(impl->Srv.Index);
+        //     }
+        //
+        //     if (impl->Srv.ViewVk != VK_NULL_HANDLE)
+        //         vkDestroyBufferView(vk_device, impl->Uav.ViewVk, nullptr);
+        //     impl->Srv = {};
+        // }
+        // if (impl->Uav.IsValid())
+        // {
+        //     if (impl->Uav.IsTyped)
+        //     {
+        //         bindless_storage_texel_buffers.Free(impl->Uav.Index);
+        //     }
+        //     else
+        //     {
+        //         bindless_storage_buffers.Free(impl->Uav.Index);
+        //     }
+        //
+        //     if (impl->Uav.ViewVk != VK_NULL_HANDLE)
+        //         vkDestroyBufferView(vk_device, impl->Uav.ViewVk, nullptr);
+        //     impl->Uav = {};
+        // }
 #endif
                     // TODO: Descriptors
                     // TODO: Free Views
-                    if (impl->buffer_view != VK_NULL_HANDLE)
-                        vkDestroyBufferView(vulkan_backend->vk_device, impl->buffer_view, nullptr);
+        if (impl->buffer_view != VK_NULL_HANDLE)
+            vkDestroyBufferView(vulkan_backend->vk_device, impl->buffer_view, nullptr);
 
-                    vmaDestroyBuffer(vulkan_allocator->vma_allocator, impl->vk_buffer, impl->allocation);
-                }
+        vmaDestroyBuffer(vulkan_allocator->vma_allocator, impl->vk_buffer, impl->allocation);
+	}
 
-                buffer_pool.Free(handle);
-            }
-        });
+	buffer_pool.Free(handle);
 }
 
 

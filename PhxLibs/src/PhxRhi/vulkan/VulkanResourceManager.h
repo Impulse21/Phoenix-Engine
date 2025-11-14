@@ -67,6 +67,7 @@ namespace phx::rhi
 		// -- Buffer ---
 		BufferHandle CreateBuffer(const BufferDescriptor& desc, const void* initial_data = nullptr) override;
 		void DeleteBuffer(BufferHandle handle) override;
+		void DeleteBufferImmediate(BufferHandle handle);
 
 		// -- Textures ---
 		TextureHandle CreateTexture(const TextureDescriptor& desc, const void* initial_data = nullptr) override;

@@ -12,8 +12,12 @@
 
 namespace phx::rhi
 {
+	constexpr size_t UPLOAD_RING_BUFFER_SIZE = 64_MiB;
+	static_assert((UPLOAD_RING_BUFFER_SIZE& (UPLOAD_RING_BUFFER_SIZE - 1)) == 0, "Buffer Size must be a power of 2");
+
 	struct VulkanBackend;
 	struct VulkanResourceManager;
+	struct VulkanSubmissionManager;
 
 	struct StagingRingBuffer
 	{
@@ -27,44 +31,46 @@ namespace phx::rhi
 		std::atomic_uint64_t tail;
 
 		Result<StagingBlock> Allocate(uint64_t alloc_size, uint32_t alignment);
+		void Initialize(VulkanSubmissionManager* sub_manager);
+		void Shutdown(VulkanSubmissionManager* sub_manager);
+	};
 
+	struct PerThreadData
+	{
+		struct CommandPool
+		{
+			CommandQueueType queue_type;
+			VulkanResourceManager* vulkan_resource_manager;
+			VkCommandPool vk_cmd_pool;
+			std::vector<std::unique_ptr<phx::rhi::VulkanCommandBuffer>> buffer_pool;
+			std::vector<phx::rhi::VulkanCommandBuffer*> free_buffers;
+
+			phx::rhi::VulkanCommandBuffer* GetFreeBuffer(uint32_t thread_id);
+		};
+
+		uint32_t thread_id = 0;
+		VulkanSubmissionManager* sub_manager;
+
+		EnumArray<CommandPool, CommandQueueType> command_pools;
+
+		// -- Upload manager info ---
+		// TODO: Move to it's own class.
+
+		std::vector<BufferHandle> active_one_off_buffers;
+		StagingRingBuffer staging_ring_buffer;
+
+		StagingBlock RequestStagingBlock(size_t size, uint32_t alignment);
+		StagingBlock CreateOneShotUploadBuffer(size_t size, uint32_t alignment);
+
+		void Initialize(VulkanSubmissionManager* sub_manager, uint32_t thread_id);
+		void Shutdown();
 	};
 
 	struct VulkanSubmissionManager : public ISubmissionManager
 	{
-		static constexpr size_t UPLOAD_RING_BUFFER_SIZE = 64_MiB;
 
 		VulkanBackend* vulkan_backend;
 		VulkanResourceManager* vulkan_resource_manager;
-
-		struct PerThreadData
-		{
-			struct CommandPool
-			{
-				CommandQueueType queue_type;
-				VulkanResourceManager* vulkan_resource_manager;
-				VkCommandPool vk_cmd_pool;
-				std::vector<std::unique_ptr<phx::rhi::VulkanCommandBuffer>> buffer_pool;
-				std::vector<phx::rhi::VulkanCommandBuffer*> free_buffers;
-
-				phx::rhi::VulkanCommandBuffer* GetFreeBuffer(uint32_t thread_id);
-			};
-
-			uint32_t thread_id = 0;
-			VulkanSubmissionManager* sub_manager;
-
-			EnumArray<CommandPool, CommandQueueType> command_pools;
-
-			// -- Upload manager info ---
-			// TODO: Move to it's own class.
-
-			std::vector<BufferHandle> active_one_off_buffers;
-			StagingRingBuffer staging_ring_buffer;
-
-			StagingBlock RequestStagingBlock(size_t size, uint32_t alignment);
-			StagingBlock CreateOneShotUploadBuffer(size_t size, uint32_t alignment);
-
-		};
 		std::unique_ptr<PerThreadData[]> per_thread_data;
 
 		struct PerQueueSync
@@ -95,7 +101,14 @@ namespace phx::rhi
 			uint64_t head_offset;
 		};
 		std::vector<InflightUpload> inflight_upload_queue;
-		std::mutex inflight_uploads_mutex;
+
+		struct PendingDeletion
+		{
+			uint64_t fence_value = 0;
+			BufferHandle buffer = {};
+		};
+		std::vector<PendingDeletion> pending_one_off_deletions;
+		std::mutex upload_tracking_mutex;
 
 		// -- Interface implementation ---
 		bool Initialize() override;
@@ -122,6 +135,8 @@ namespace phx::rhi
 		~VulkanSubmissionManager() override = default;
 
 	private:
+		friend PerThreadData;
+
 		size_t GetCurrentFrameIndex() { return frame_number % kBufferCount; }
 		void RetireCommandBuffers(Span<ICommandBuffer*> command_buffers, FenceHandle fence_value);
 		void ReclaimFinishedCommandBuffers();

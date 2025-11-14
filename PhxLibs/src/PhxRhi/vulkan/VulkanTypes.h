@@ -34,7 +34,6 @@ namespace phx::rhi
 
 		// -- 1-byte members ---
 		CommandQueueType queue_type;
-		PoolType pool_type;
 		uint8_t buffer_index;
 
 		// -- Manual Padding ---
