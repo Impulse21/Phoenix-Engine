@@ -161,6 +161,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*l
 		fclose(stream);
 	}
 
+#if PHX_DEBUG
+	__builtin_debugtrap();
+#endif
+
 	return 0;
 }
 
