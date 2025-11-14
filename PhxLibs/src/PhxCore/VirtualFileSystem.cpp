@@ -30,7 +30,7 @@ bool VirtualFileSystem::Mount(std::string const& virtual_path, std::string const
 
         if (!file_attributes)
         {
-            PHX_CORE_INFO("Physical path for mount '{0}' doesn't exist");
+            PHX_CORE_INFO("Physical path for mount '{0}' doesn't exist", virtual_path);
             return false;
         }
 

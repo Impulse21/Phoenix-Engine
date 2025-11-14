@@ -7,6 +7,12 @@
 #include <PhxEngine/JobSystem.h>
 using namespace phx;
 
+phx::StandardFileProcessor::~StandardFileProcessor()
+{
+	for (auto& [_, file_handle] : m_file_handle_cache)
+		Platform::Get().CloseFile(file_handle);
+}
+
 void StandardFileProcessor::ProcessRequest(StreamingRequest&& request)
 {
 	StreamingResult result = {
@@ -60,6 +66,9 @@ void phx::StandardFileProcessor::SubmitBatchedWork(IAllocator* frame_allocator, 
 {
 	PHX_PROFILE;
 
+	if (m_pending_batch.empty())
+		return;
+
 	// Frame allocator would be best to use here.
 	SpanMutable<GpuWorkItem> batches_to_submit;
 	{
@@ -72,9 +81,6 @@ void phx::StandardFileProcessor::SubmitBatchedWork(IAllocator* frame_allocator, 
 		}
 		m_pending_batch.clear();
 	}
-
-	// Request a free Gpu Pending work item
-	// TODO: Request a pending work item from the pool.
 
 	size_t pending_work_index = 0;
 	if (!m_free_indices.empty())
@@ -225,12 +231,27 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 
 			if constexpr (std::is_same_v<THandle, rhi::BufferHandle>)
 			{
+				rhi::GpuBarrier pre_copy_barrier = rhi::GpuBarrier::CreateBuffer(
+					gpu_handle,
+					rhi::ResourceStates::Common,
+					rhi::ResourceStates::CopyDest);
+
+				cmd_buffer->InsertBarriers({ pre_copy_barrier });
+
 				cmd_buffer->CopyBuffer(
 					staging_block.buffer_handle,
 					staging_block.gpu_offset,
 					gpu_handle,
 					destination_info.offset,
 					source_info.size);
+
+
+				rhi::GpuBarrier post_copy_barrier = rhi::GpuBarrier::CreateBuffer(
+					gpu_handle,
+					rhi::ResourceStates::CopyDest,
+					gpu_dest_info.final_resource_state);
+
+				cmd_buffer->InsertBarriers({ post_copy_barrier });
 			}
 			else if constexpr (std::is_same_v<THandle, rhi::TextureHandle>)
 			{

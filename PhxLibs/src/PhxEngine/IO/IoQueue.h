@@ -14,6 +14,7 @@ namespace phx
 	{
 	public:
 		IoQueue() = default;
+		~IoQueue() = default;
 
 		void Initialize(bool use_dstroage) override;
 		void Shutdown() override;

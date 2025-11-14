@@ -596,6 +596,7 @@ namespace phx::rhi
         int GetHeight() const { return MaxY - MinY; }
     };
 
+
     // -- Pipeline State objects ---
     struct BlendRenderState
     {
@@ -985,6 +986,93 @@ namespace phx::rhi
         // Internal data
         rhi::BufferHandle buffer_handle;
         uint64_t gpu_offset;
+    };
+
+    struct GpuBarrier
+    {
+        struct BufferBarrier
+        {
+            BufferHandle buffer;
+            ResourceStates before_state;
+            ResourceStates after_state;
+
+            uint64_t offset;
+            uint64_t size;
+        };
+
+        struct TextureBarrier
+        {
+            TextureHandle texture;
+            ResourceStates before_state;
+            ResourceStates after_state;
+            int mip;
+            int slice;
+        };
+
+        struct GlobalBarrier
+        {
+            ResourceStates before_state;
+            ResourceStates after_state;
+        };
+
+        std::variant<BufferBarrier, TextureBarrier, GlobalBarrier> Data;
+
+        static GpuBarrier CreateGlobal(ResourceStates before_state, ResourceStates after_state)
+        {
+            GpuBarrier::GlobalBarrier g = {
+                .before_state = before_state,
+                .after_state = after_state
+            };
+
+            GpuBarrier barrier = {
+                .Data = g
+            };
+
+            return barrier;
+        }
+
+        static GpuBarrier CreateTexture(
+            TextureHandle texture,
+            ResourceStates before_state,
+            ResourceStates after_state,
+            int mip = -1,
+            int slice = -1)
+        {
+            GpuBarrier::TextureBarrier t = {
+                .texture = texture,
+                .before_state = before_state,
+                .after_state = after_state,
+                .mip = mip,
+                .slice = slice
+            };
+
+            GpuBarrier barrier = {
+                .Data = t
+            };
+            return barrier;
+        }
+
+        static GpuBarrier CreateBuffer(
+            BufferHandle buffer,
+            ResourceStates before_state,
+            ResourceStates after_state,
+            uint32_t size = ~0,
+            uint32_t offset = 0)
+        {
+            GpuBarrier::BufferBarrier b = {
+                .buffer = buffer,
+                .before_state = before_state,
+                .after_state = after_state,
+                .offset = offset,
+                .size = size
+            };
+
+            GpuBarrier barrier = {
+                .Data = b
+            };
+
+            return barrier;
+        }
     };
 #pragma endregion
 }

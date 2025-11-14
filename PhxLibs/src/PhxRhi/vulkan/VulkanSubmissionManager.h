@@ -91,7 +91,7 @@ namespace phx::rhi
 			VulkanCommandBuffer*	buffer;
 			FenceHandle				fence_handle;
 		};
-		std::deque<InflightCommandBuffer> inflight_cmd_queue;
+		std::vector<InflightCommandBuffer> inflight_cmd_queue;
 		std::mutex inflight_commands_queue_mutex;
 
 		struct InflightUpload

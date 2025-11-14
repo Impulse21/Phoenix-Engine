@@ -40,7 +40,7 @@ namespace phx
 
 	public:
 		StandardFileProcessor() = default;
-		~StandardFileProcessor() override = default;
+		~StandardFileProcessor() override;
 
 	public:
 		void ProcessRequest(StreamingRequest&& request) override;
@@ -63,7 +63,6 @@ namespace phx
 			void* dest_ptr);
 
 	private:
-
 		std::unordered_map<std::string, platform::PlatformFileHandle> m_file_handle_cache;
 		std::mutex m_file_handle_cache_mutex;
 

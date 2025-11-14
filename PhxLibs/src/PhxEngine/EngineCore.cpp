@@ -30,6 +30,8 @@ HINSTANCE g_hInstance;
 
 namespace
 {
+	std::unique_ptr<IIoQueue> g_io_queue;
+
 	void OnPreRender(IApplication* app)
 	{
 		app->OnPreRender();
@@ -86,6 +88,10 @@ namespace phx
 			app->SetWindowHandle(window_handle);
 
 			phx::IIoQueue::Ptr = new phx::IoQueue();
+			g_io_queue.reset(phx::IIoQueue::Ptr);
+
+			const bool use_dstorage = false;
+			phx::IIoQueue::Ptr->Initialize(use_dstorage);
 
 			phx::ResourceSystem::Ptr = new ResourceSystem;
 			phx::ResourceSystem::Ptr->Initialize(IVirtualFileSystem::Ptr);
@@ -124,11 +130,6 @@ namespace phx
 			JobSystem::SubmitJob([&sync](JobContext const&) {
 				OnPreRender(phx::IApplication::Ptr);
 				sync.Signal();
-				});
-
-			JobSystem::SubmitJob([&sync](JobContext const&) {
-				OnPreRender(phx::IApplication::Ptr);
-				sync.Signal();
 			});
 
 			// -- Sync point ---
@@ -136,13 +137,13 @@ namespace phx
 
 			// -- Update ---
 			sync.Add();
+			sync.Add();
 			JobSystem::SubmitJob([&sync](JobContext const&) {
 				OnUpdate_Threaded(phx::IApplication::Ptr, 0);
 				sync.Signal();
 			});
 
 			// -- Render ---
-			sync.Add();
 			JobSystem::SubmitJob([&sync](JobContext const&) {
 				OnRender_Threaded(phx::IApplication::Ptr);
 				sync.Signal();
@@ -166,7 +167,7 @@ namespace phx
 			phx::ResourceSystem::Ptr = nullptr;
 
 			IIoQueue::Ptr->Shutdown();
-			delete IIoQueue::Ptr;
+			g_io_queue.reset();
 
 			delete IVirtualFileSystem::Ptr;
 			IVirtualFileSystem::Ptr = nullptr;

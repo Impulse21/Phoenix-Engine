@@ -64,6 +64,7 @@ namespace phx
     struct GpuResourceDestinationInfo
     {
         std::variant<rhi::TextureHandle, rhi::BufferHandle> handle;
+        rhi::ResourceStates final_resource_state = rhi::ResourceStates::Common;
 
         bool IsTextureDestination() const { return std::holds_alternative<rhi::TextureHandle>(handle); }
         bool IsBufferDestination() const { return std::holds_alternative<rhi::BufferHandle>(handle); }

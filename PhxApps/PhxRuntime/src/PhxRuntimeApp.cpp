@@ -236,12 +236,13 @@ void PhxRuntime::OnUpdate_Threaded(float /*delta_time*/)
 void PhxRuntime::OnRender_Threaded()
 {
 	PHX_PROFILE;
+#if false
 	rhi::ISubmissionManager* ptr = rhi::ISubmissionManager::Ptr;
 	ptr->BeginFrame(m_swapchain);
 
 	phx::Span<rhi::ICommandBuffer*> frame_commands;
 	ptr->EndFrame(m_swapchain, frame_commands);
-
+#endif
 #if false
 
 	phx::rhi::CommandBufferHandle cmd_buffer = phx::rhi::BeginFrameCommandBuffer();

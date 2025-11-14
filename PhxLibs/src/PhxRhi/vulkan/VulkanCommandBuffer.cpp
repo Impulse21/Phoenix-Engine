@@ -49,6 +49,139 @@ void phx::rhi::VulkanCommandBuffer::DrawIndexedInstanced(uint32_t index_count, u
         start_instance_location);
 }
 
+void phx::rhi::VulkanCommandBuffer::InsertBarriers(Span<GpuBarrier> barriers)
+{
+    if (barriers.IsEmpty())
+        return;
+
+
+    constexpr size_t MAX_BARRIER_COUNT = 16;
+    std::array<VkMemoryBarrier2, MAX_BARRIER_COUNT> vk_mem_barriers;
+    std::array<VkBufferMemoryBarrier2, MAX_BARRIER_COUNT> vk_buffer_barriers;
+    std::array<VkImageMemoryBarrier2, MAX_BARRIER_COUNT> vk_texture_barriers;
+
+    uint32_t mem_barrier_count = 0;
+    uint32_t buffer_barrier_count = 0;
+    uint32_t texture_barrier_count = 0;
+
+    VkPipelineStageFlags all_src_stage_mask = 0;
+    VkPipelineStageFlags all_dst_stage_mask = 0;
+    for (auto& barrier : barriers)
+    {
+        std::visit(
+            [&](auto&& arg) {
+                using T = std::decay_t<decltype(arg)>;
+
+                if constexpr (std::is_same_v<T, rhi::GpuBarrier::GlobalBarrier>)
+                {
+                    if (mem_barrier_count == MAX_BARRIER_COUNT)
+                        return;
+
+                    // --- Global Barrier ---
+                    VkPipelineStageFlags src_stage = ConvertPipelineStages(arg.before_state);
+                    VkPipelineStageFlags dest_stage = ConvertPipelineStages(arg.after_state);
+                    all_src_stage_mask |= src_stage;
+                    all_dst_stage_mask |= dest_stage;
+
+                    vk_mem_barriers[mem_barrier_count++] = {
+                        .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+                        .pNext = nullptr,
+                        .srcStageMask = src_stage,
+                        .srcAccessMask = _ParseResourceState(arg.before_state),
+                        .dstStageMask = dest_stage,
+                        .dstAccessMask = _ParseResourceState(arg.after_state)
+                    };
+                }
+                else if constexpr (std::is_same_v<T, GpuBarrier::BufferBarrier>)
+                {
+                    if (buffer_barrier_count== MAX_BARRIER_COUNT)
+                        return;
+                    VkPipelineStageFlags src_stage = ConvertPipelineStages(arg.before_state);
+                    VkPipelineStageFlags dest_stage = ConvertPipelineStages(arg.after_state);
+                    all_src_stage_mask |= src_stage;
+                    all_dst_stage_mask |= dest_stage;
+
+                    VulkanBuffer* vulkan_buffer =  rsc_manager->buffer_pool.GetHot(arg.buffer);
+                    vk_buffer_barriers[buffer_barrier_count++] = {
+                        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                        .pNext = nullptr,
+                        .srcStageMask = src_stage,
+                        .srcAccessMask = _ParseResourceState(arg.before_state),
+                        .dstStageMask = dest_stage,
+                        .dstAccessMask = _ParseResourceState(arg.after_state),
+                        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                        .buffer = vulkan_buffer->vk_buffer,
+                        .offset = arg.offset,
+                        .size = (arg.size == ~0u) ? VK_WHOLE_SIZE : arg.size
+                    };
+                }
+                else if constexpr (std::is_same_v<T, GpuBarrier::TextureBarrier>)
+                {
+#if false
+                    if (texture_barrier_count == MAX_BARRIER_COUNT)
+                        return;
+
+                    // --- Texture Barrier ---
+                    VkPipelineStageFlags src_stage = ConvertPipelineStages(arg.before_state);
+                    VkPipelineStageFlags dest_stage = ConvertPipelineStages(arg.after_state);
+                    all_src_stage_mask |= src_stage;
+                    all_dst_stage_mask |= dest_stage;
+
+                    vk_texture_barriers[texture_barrier_count++] = {
+                        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                        .pNext = nullptr,
+                        .srcStageMask = src_stage,
+                        .srcAccessMask = _ParseResourceState(arg.before_state),
+                        .dstStageMask = dest_stage,
+                        .dstAccessMask = _ParseResourceState(arg.after_state),
+                        .oldLayout = ConvertImageLayout(arg.before_state),
+                        .newLayout = ConvertImageLayout(arg.after_state),
+                        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                        .image = arg.texture,
+                        .subresourceRange = {
+                            .aspectMask = TranslateImageAspects(arg.Aspects),
+                            .baseMipLevel = static_cast<uint32_t>(arg.FirstMip),
+                            .levelCount = (arg.mip == -1) ? VK_REMAINING_MIP_LEVELS : static_cast<uint32_t>(arg.mip),
+                            .baseArrayLayer = static_cast<uint32_t>(arg.FirstSlice),
+                            .layerCount = (arg.slice == -1) ? VK_REMAINING_ARRAY_LAYERS : static_cast<uint32_t>(arg.slice)
+                        }
+                     });
+#endif
+                }
+            },
+            barrier.Data
+        );
+    }
+
+    if (all_src_stage_mask == 0) 
+        all_src_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+    if (all_dst_stage_mask == 0) 
+        all_dst_stage_mask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+
+    // --- Select the correct data pointer (stack or heap) ---
+    const VkMemoryBarrier2* memory_barriers_ptr = vk_mem_barriers.data();
+    const VkBufferMemoryBarrier2* buffer_barriers_ptr = vk_buffer_barriers.data();
+    const VkImageMemoryBarrier2* image_barriers_ptr = vk_texture_barriers.data();
+
+    VkDependencyInfo dependency_info = {
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .pNext = nullptr,
+        .dependencyFlags = 0, // or VK_DEPENDENCY_BY_REGION_BIT
+        .memoryBarrierCount = static_cast<uint32_t>(mem_barrier_count),
+        .pMemoryBarriers = memory_barriers_ptr,
+        .bufferMemoryBarrierCount = static_cast<uint32_t>(buffer_barrier_count),
+        .pBufferMemoryBarriers = buffer_barriers_ptr,
+        .imageMemoryBarrierCount = static_cast<uint32_t>(texture_barrier_count),
+        .pImageMemoryBarriers = image_barriers_ptr
+
+    };
+
+    vkCmdPipelineBarrier2(vk_handle, &dependency_info);
+}
+
 void phx::rhi::VulkanCommandBuffer::CopyBuffer(
     BufferHandle src_buffer,
     uint64_t src_offset,

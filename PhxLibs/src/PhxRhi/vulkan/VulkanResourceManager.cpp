@@ -129,9 +129,6 @@ BufferHandle VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, c
     Handle<Buffer> ret_val = buffer_pool.Allocate(); // Renamed to snake_case
     VulkanBuffer& impl = *buffer_pool.GetHot(ret_val); // Corrected access to buffer_pool
 
-    VmaAllocationInfo vma_alloc_info;
-    vmaGetAllocationInfo(vulkan_allocator->vma_allocator, impl.allocation, &vma_alloc_info);
-
     VkBufferCreateInfo buffer_info = { .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO }; // Renamed to snake_case
     buffer_info.size = desc.Size;
     buffer_info.usage = 0;
@@ -180,6 +177,8 @@ BufferHandle VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, c
     buffer_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
     buffer_info.flags = 0;
+
+    VmaAllocationInfo vma_alloc_info;
 
     if (vulkan_backend->queues[CommandQueueType::Graphics].vk_queue_family != vulkan_backend->queues[CommandQueueType::Compute].vk_queue_family ||
         vulkan_backend->queues[CommandQueueType::Compute].vk_queue_family != vulkan_backend->queues[CommandQueueType::Copy].vk_queue_family)
@@ -240,6 +239,7 @@ BufferHandle VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, c
         {
             vulkan_check(
                 vmaCreateBuffer(vulkan_allocator->vma_allocator, &buffer_info, &alloc_info, &impl.vk_buffer, &impl.allocation, nullptr));
+            vmaGetAllocationInfo(vulkan_allocator->vma_allocator, impl.allocation, &vma_alloc_info);
         }
         else
         {
@@ -280,6 +280,7 @@ BufferHandle VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, c
         // Now you have allocInfo.memoryType, which tells you which memory type was used
         VkPhysicalDeviceMemoryProperties memory_properties; // Renamed to snake_case
         vkGetPhysicalDeviceMemoryProperties(vulkan_backend->vk_chosen_physical_device, &memory_properties);
+
 
         VkMemoryType memory_type = memory_properties.memoryTypes[vma_alloc_info.memoryType]; // Renamed to snake_case
 

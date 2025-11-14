@@ -340,7 +340,7 @@ namespace phx::rhi
 	}
 	constexpr VkAccessFlags2 _ParseResourceState(ResourceStates value)
 	{
-		VkAccessFlags2 flags = 0;
+		VkAccessFlags2 flags = VK_ACCESS_2_NONE;
 
 		if (EnumHasAnyFlags(value, ResourceStates::ShaderResource))
 		{
@@ -395,7 +395,7 @@ namespace phx::rhi
 		}
 		if (EnumHasAnyFlags(value, ResourceStates::AccelStructRead))
 		{
-			flags |= VK_ACCESS_2_CONDITIONAL_RENDERING_READ_BIT_EXT;
+			flags |= VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
 		}
 		if (EnumHasAnyFlags(value, ResourceStates::ShadingRateSurface))
 		{
@@ -404,13 +404,134 @@ namespace phx::rhi
 		// Assuming the following states are added to map to the original VIDEO_DECODE_DST and VIDEO_DECODE_SRC
 		if (EnumHasAnyFlags(value, ResourceStates::AccelStructWrite))
 		{
-			flags |= VK_ACCESS_2_VIDEO_DECODE_WRITE_BIT_KHR;
+			flags |= VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
 		}
 		if (EnumHasAnyFlags(value, ResourceStates::AccelStructBuildInput))
 		{
-			flags |= VK_ACCESS_2_VIDEO_DECODE_READ_BIT_KHR;
+			flags |= VK_ACCESS_2_SHADER_READ_BIT;
 		}
 
 		return flags;
+	}
+
+	constexpr VkPipelineStageFlags ConvertPipelineStages(rhi::ResourceStates states)
+	{
+		VkPipelineStageFlags vk_stages = VK_PIPELINE_STAGE_2_NONE;
+
+		// --- Helper Masks ---
+		// Note: Assumes you have KHR extensions enabled in your Vulkan context
+		constexpr VkPipelineStageFlags ALL_SHADER_STAGES =
+			VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
+			VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT |
+			VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
+			VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT |
+			VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR;
+
+		constexpr VkPipelineStageFlags NON_PIXEL_SHADER_STAGES =
+			VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
+			VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT |
+			VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
+			VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT |
+			VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR;
+
+
+		if (EnumHasAnyFlags(states, ResourceStates::ConstantBuffer))
+		{
+			vk_stages |= ALL_SHADER_STAGES;
+		}
+
+		if (EnumHasAnyFlags(states, ResourceStates::VertexBuffer) || EnumHasAnyFlags(states, ResourceStates::IndexGpuBuffer))
+		{
+			vk_stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+		}
+
+		if (EnumHasAnyFlags(states, ResourceStates::IndirectArgument))
+		{
+			vk_stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+		}
+
+		if (EnumHasAnyFlags(states, ResourceStates::ShaderResource))
+		{
+			vk_stages |= ALL_SHADER_STAGES;
+		}
+
+		if (EnumHasAnyFlags(states, ResourceStates::UnorderedAccess))
+		{
+			vk_stages |= ALL_SHADER_STAGES;
+		}
+
+		if (EnumHasAnyFlags(states, ResourceStates::RenderTarget))
+		{
+			vk_stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		}
+
+		if (EnumHasAnyFlags(states, ResourceStates::DepthWrite))
+		{
+			vk_stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+		}
+
+		if (EnumHasAnyFlags(states, ResourceStates::DepthRead))
+		{
+			// Can be read via tests OR as a shader resource
+			vk_stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		}
+
+		if (EnumHasAnyFlags(states, ResourceStates::StreamOut))
+		{
+			vk_stages |= VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT; // Requires VK_EXT_transform_feedback
+		}
+
+		if (EnumHasAnyFlags(states, ResourceStates::CopyDest) || EnumHasAnyFlags(states, ResourceStates::CopySource) ||
+			EnumHasAnyFlags(states, ResourceStates::ResolveDest) || EnumHasAnyFlags(states, ResourceStates::ResolveSource))
+		{
+			vk_stages |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+		}
+
+		if (EnumHasAnyFlags(states, ResourceStates::Present))
+		{
+			// Sync against the final operations before present
+			vk_stages |= VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		}
+
+		if (EnumHasAnyFlags(states, ResourceStates::AccelStructRead))
+		{
+			// AS can be read by RT, Compute, or even Vertex shaders
+			vk_stages |= VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+		}
+
+		if (EnumHasAnyFlags(states, ResourceStates::AccelStructWrite) || EnumHasAnyFlags(states, ResourceStates::AccelStructBuildInput) || EnumHasAnyFlags(states, ResourceStates::AccelStructBuildBlas))
+		{
+			vk_stages |= VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+		}
+
+		if (EnumHasAnyFlags(states, ResourceStates::ShadingRateSurface))
+		{
+			vk_stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR; // Requires VK_KHR_fragment_shading_rate
+		}
+
+		if (EnumHasAnyFlags(states, ResourceStates::GenericRead))
+		{
+			// This is a broad "read" state
+			vk_stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
+				VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
+				VK_PIPELINE_STAGE_TRANSFER_BIT |
+				ALL_SHADER_STAGES;
+		}
+
+		if (EnumHasAnyFlags(states, ResourceStates::ShaderResourceNonPixel))
+		{
+			vk_stages |= NON_PIXEL_SHADER_STAGES;
+		}
+
+		// If no state was specified, default to a safe value
+		if (vk_stages == 0)
+		{
+			vk_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		}
+
+		return vk_stages;
 	}
 }

@@ -280,7 +280,7 @@ void phx::rhi::VulkanSubmissionManager::ReclaimFinishedCommandBuffers()
     }
 
     std::scoped_lock _(inflight_commands_queue_mutex);
-    auto it = std::remove_if(inflight_cmd_queue.begin(), inflight_cmd_queue.end(),
+    std::erase_if(inflight_cmd_queue,
         [&](const InflightCommandBuffer& pending) {
             const FenceHandle& fence = pending.fence_handle;
 
@@ -299,7 +299,6 @@ void phx::rhi::VulkanSubmissionManager::ReclaimFinishedCommandBuffers()
             return false;
         });
 
-    inflight_cmd_queue.erase(it);
 }
 
 void phx::rhi::VulkanSubmissionManager::ReclaimFinishedUploads()
@@ -353,10 +352,7 @@ void phx::rhi::VulkanSubmissionManager::ReclaimFinishedUploads()
         }
     }
 
-    inflight_upload_queue.erase(it);
-
-
-    auto it_one_offs = std::remove_if(pending_one_off_deletions.begin(), pending_one_off_deletions.end(),
+    std::erase_if(pending_one_off_deletions,
         [&](const PendingDeletion& pending) {
 
             if (pending.fence_value <= completed_fence_value)
@@ -367,8 +363,6 @@ void phx::rhi::VulkanSubmissionManager::ReclaimFinishedUploads()
 
             return false;
         });
-
-    pending_one_off_deletions.erase(it_one_offs);
 }
 
 StagingBlock PerThreadData::RequestStagingBlock(size_t size, uint32_t alignment)

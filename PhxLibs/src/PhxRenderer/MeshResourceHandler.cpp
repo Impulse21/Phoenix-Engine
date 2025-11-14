@@ -33,7 +33,7 @@ void phx::renderer::MeshResourceHandler::LoadAsync(IIoQueue* io_queue, RefCountP
 					.DebugName = "packed_mesh_buffer",
 					.Size = metadata_view->packed_mesh_buffer,
 					.BindingFlags = rhi::BindingFlags::IndexBuffer | rhi::BindingFlags::ShaderResource,
-					.MiscFlags = rhi::ResourceMiscFlags::BufferRaw
+					.MiscFlags = rhi::ResourceMiscFlags::BufferRaw,
 				});
 			
 
@@ -64,7 +64,11 @@ void phx::renderer::MeshResourceHandler::LoadAsync(IIoQueue* io_queue, RefCountP
 					.size = gpu_chunk_header.CompressedSize,
 				},
 				.destination = {
-					.target = GpuResourceDestinationInfo{ .handle = mesh_resource->packed_mesh_buffer },
+					.target = GpuResourceDestinationInfo
+						{ 
+							.handle = mesh_resource->packed_mesh_buffer, 
+							.final_resource_state = rhi::ResourceStates::IndexGpuBuffer | rhi::ResourceStates::ShaderResourceNonPixel 
+					},
 					.size = gpu_chunk_header.UncompressedSize,
 				}
 			};
