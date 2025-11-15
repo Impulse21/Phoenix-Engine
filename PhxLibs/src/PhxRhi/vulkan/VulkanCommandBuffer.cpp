@@ -3,8 +3,19 @@
 
 #include "VulkanResourceManager.h"
 
+void phx::rhi::VulkanCommandBuffer::Begin()
+{
+    VkCommandBufferBeginInfo being_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+    };
+
+    vkBeginCommandBuffer(vk_handle, &being_info);
+}
+
 void phx::rhi::VulkanCommandBuffer::BindPipelineState(PipelineStateHandle /*pso*/)
 {
+    vkEndCommandBuffer(vk_handle);
 }
 
 void phx::rhi::VulkanCommandBuffer::Draw(uint32_t vertex_count, uint32_t start_vertex_location)

@@ -14,6 +14,9 @@ namespace phx::rhi
 		CommandQueueType queue_type;
 		rhi::VulkanResourceManager* rsc_manager;
 
+		void Begin();
+		void End();
+
 		// -- Interface Implementation ---
 		void BindPipelineState(PipelineStateHandle pso) override;
 		void Draw(uint32_t vertex_count, uint32_t start_vertex_location) override;

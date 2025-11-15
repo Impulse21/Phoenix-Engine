@@ -78,7 +78,9 @@ void phx::rhi::VulkanSubmissionManager::Shutdown()
 
 void phx::rhi::VulkanSubmissionManager::BeginFrame(SwapchainHandle swapchain)
 {
-    FenceHandle frame_to_wait_for = frame_fences[GetCurrentFrameIndex()];
+    const size_t frame_index = GetCurrentFrameIndex();
+    const FenceHandle frame_to_wait_for = frame_fences[frame_index];
+
     if (frame_to_wait_for.value > 0)
     {
         VkSemaphore wait_timline_sem = per_queue_syncs[frame_to_wait_for.queue_type].vk_timeline_semaphore;
@@ -108,7 +110,6 @@ void phx::rhi::VulkanSubmissionManager::BeginFrame(SwapchainHandle swapchain)
         return;
     }
 
-    const size_t frame_index = GetCurrentFrameIndex();
     VulkanSwapchainFrame* impl_frame = vulkan_resource_manager->swapchain_pool.GetHot(swapchain);
     
     impl_frame->vk_image_available_sem = swapchain_impl->vk_image_available_sem[frame_index];
@@ -133,8 +134,18 @@ void phx::rhi::VulkanSubmissionManager::EndFrame(
     Span<ICommandBuffer*> graphics_buffers,
     Span<FenceHandle> wait_fences)
 {
+    if (graphics_buffers.IsEmpty())
+        return;
+
     VulkanSwapchainFrame* swapchain_impl_frame = vulkan_resource_manager->swapchain_pool.GetHot(swapchain);
-    const FenceHandle fence_handle = 
+    if (!swapchain_impl_frame)
+    {
+        PHX_RHI_CRITICAL("Unable to local swapchain when ending frame.");
+        return;
+    }
+
+    const uint64_t current_fame_index = GetCurrentFrameIndex();
+    frame_fences[current_fame_index] =
         SubmitInternal(
             CommandQueueType::Graphics,
             graphics_buffers,
@@ -143,11 +154,6 @@ void phx::rhi::VulkanSubmissionManager::EndFrame(
             { swapchain_impl_frame->vk_render_finished_sem },
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
-    if (!swapchain_impl_frame)
-    {
-        PHX_RHI_CRITICAL("Unable to local swapchain when ending frame.");
-        return;
-    }
 
     const uint32_t image_index = static_cast<uint32_t>(swapchain_impl_frame->image_index);
 
@@ -163,7 +169,7 @@ void phx::rhi::VulkanSubmissionManager::EndFrame(
 
     VulkanBackend::Queue& queue = vulkan_backend->queues[CommandQueueType::Graphics];
     vkQueuePresentKHR(queue.vk_queue, &present_info);
-    frame_fences[GetCurrentFrameIndex()] = fence_handle;
+
     frame_number++;
 }
 
@@ -183,12 +189,12 @@ bool phx::rhi::VulkanSubmissionManager::IsFenceCompleted(FenceHandle fence_handl
         vulkan_backend->vk_device,
         queue_sync.vk_timeline_semaphore,
         &completed_value);
-    if (result == VK_SUCCESS)
+
+    PHX_CORE_ASSERT(result == VK_SUCCESS, "Failed to retrieve timeline semaphore's completed value")
+    if (result != VK_SUCCESS)
     {
-        PHX_RHI_ERROR("Failed to retrieve timeline semaphore's completed value");
         return false;
     }
-
 
     return fence_handle.value <=  completed_value;
 }
@@ -208,7 +214,10 @@ ICommandBuffer* VulkanSubmissionManager::BeginCommandBuffer(CommandQueueType que
     PerThreadData& thread_data = per_thread_data[thread_index];
     PerThreadData::CommandPool& pool = thread_data.command_pools[queue_type];
 
-    return pool.GetFreeBuffer(thread_index);
+    VulkanCommandBuffer* cmd_buffer = pool.GetFreeBuffer(thread_index);
+    cmd_buffer->Begin();
+
+    return cmd_buffer;
 }
 
 FenceHandle VulkanSubmissionManager::Submit(
@@ -469,7 +478,10 @@ FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(
 
         for (auto& cmd_buffer : cmd_buffers)
         {
-            VkCommandBuffer vk_handle = static_cast<VulkanCommandBuffer*>(cmd_buffer)->vk_handle;
+            auto vulkan_cmd_buffer = static_cast<VulkanCommandBuffer*>(cmd_buffer);
+            vulkan_cmd_buffer->End();
+
+            VkCommandBuffer vk_handle = vulkan_cmd_buffer->vk_handle;
             s_vk_cmd_buffers.push_back(vk_handle);
         }
     }
@@ -526,12 +538,6 @@ FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(
             s_signal_semaphores.push_back(binary_signal_sem);
 
         s_signal_semaphores.push_back(queue_sync.vk_timeline_semaphore);
-    }
-
-    // -- close command buffer --
-    for (VkCommandBuffer vk_buffer : s_vk_cmd_buffers)
-    {
-        vkEndCommandBuffer(vk_buffer);
     }
 
     VkTimelineSemaphoreSubmitInfo timeline_info = {

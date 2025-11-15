@@ -241,11 +241,12 @@ void PhxRuntime::OnRender_Threaded()
 	uint32_t c = _thread_counter.fetch_add(1);
 	PHX_ASSERT(c == 0);
 
-	rhi::ISubmissionManager* ptr = rhi::ISubmissionManager::Ptr;
-	ptr->BeginFrame(m_swapchain);
+	rhi::ISubmissionManager* submit_manager = rhi::ISubmissionManager::Ptr;
+	submit_manager->BeginFrame(m_swapchain);
 
-	phx::Span<rhi::ICommandBuffer*> frame_commands;
-	ptr->EndFrame(m_swapchain, frame_commands);
+	rhi::ICommandBuffer* command_buffer = submit_manager->BeginCommandBuffer(rhi::CommandQueueType::Graphics);
+
+	submit_manager->EndFrame(m_swapchain, { command_buffer });
 
 	_thread_counter.fetch_sub(1);
 #if false
