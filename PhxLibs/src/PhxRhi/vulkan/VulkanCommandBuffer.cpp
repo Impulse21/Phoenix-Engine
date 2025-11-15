@@ -13,9 +13,13 @@ void phx::rhi::VulkanCommandBuffer::Begin()
     vkBeginCommandBuffer(vk_handle, &being_info);
 }
 
-void phx::rhi::VulkanCommandBuffer::BindPipelineState(PipelineStateHandle /*pso*/)
+void phx::rhi::VulkanCommandBuffer::End()
 {
     vkEndCommandBuffer(vk_handle);
+}
+
+void phx::rhi::VulkanCommandBuffer::BindPipelineState(PipelineStateHandle /*pso*/)
+{
 }
 
 void phx::rhi::VulkanCommandBuffer::Draw(uint32_t vertex_count, uint32_t start_vertex_location)
