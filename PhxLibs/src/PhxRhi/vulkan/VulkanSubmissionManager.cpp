@@ -528,6 +528,12 @@ FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(
         s_signal_semaphores.push_back(queue_sync.vk_timeline_semaphore);
     }
 
+    // -- close command buffer --
+    for (VkCommandBuffer vk_buffer : s_vk_cmd_buffers)
+    {
+        vkEndCommandBuffer(vk_buffer);
+    }
+
     VkTimelineSemaphoreSubmitInfo timeline_info = {
         .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
         .waitSemaphoreValueCount = static_cast<uint32_t>(wait_fences.size()),
