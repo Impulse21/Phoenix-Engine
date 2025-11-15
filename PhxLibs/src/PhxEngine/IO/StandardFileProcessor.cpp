@@ -97,7 +97,7 @@ void phx::StandardFileProcessor::SubmitBatchedWork(IAllocator* frame_allocator, 
 
 	InFlightWorkItem& inflight_work_item = m_inflight_work_slots[pending_work_index];
 
-	SpanMutable<rhi::ICommandBuffer*> commands_to_submit = AllocateArray<rhi::ICommandBuffer*>(frame_allocator, m_pending_batch.size());
+	SpanMutable<rhi::ICommandBuffer*> commands_to_submit = AllocateArray<rhi::ICommandBuffer*>(frame_allocator, batches_to_submit.Size());
 	for (size_t i = 0; i < batches_to_submit.Size(); ++i)
 	{
 		// 1. Move the callback
