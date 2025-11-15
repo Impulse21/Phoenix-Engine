@@ -146,7 +146,8 @@ namespace phx::rhi
 			CommandQueueType queue_type,
 			Span<ICommandBuffer*> cmd_buffers,
 			Span<FenceHandle> wait_fences,
-			Span<VkSemaphore> binary_semaphores,
+			Span<VkSemaphore> binary_wait_sems,
+			Span<VkSemaphore> binary_signal_sems,
 			VkPipelineStageFlags flags);
 	};
 }

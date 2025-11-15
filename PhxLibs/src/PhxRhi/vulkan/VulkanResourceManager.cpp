@@ -114,9 +114,7 @@ SwapchainHandle phx::rhi::VulkanResourceManager::CreateSwapchain(const Swapchain
 
 void phx::rhi::VulkanResourceManager::DeleteSwapchain(SwapchainHandle handle)
 {
-    // SHould I be waiting here?
-    VulkanSwapchainFrame* impl_frame = swapchain_pool.GetHot(handle);
-    VulkanSwapchain*    impl = swapchain_pool.GetCold(handle);
+    VulkanSwapchain* impl = swapchain_pool.GetCold(handle);
     for (auto image_view : impl->vk_image_views) // Renamed to snake_case
     {
         if (image_view != VK_NULL_HANDLE)

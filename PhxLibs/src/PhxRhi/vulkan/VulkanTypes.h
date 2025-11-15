@@ -27,12 +27,13 @@ namespace phx::rhi
 		VkSemaphore vk_render_finished_sem;
 		VkImage		vk_image;
 		VkImageView vk_image_view;
+		VkSwapchainKHR vk_swapchain = VK_NULL_HANDLE;
 
 		// -- 4-byte members ---
 		VkFormat vk_swapchain_image_format = VK_FORMAT_UNDEFINED;
 		uint32_t vk_swapchain_image_index = ~0u;
 
-		VkSwapchainKHR vk_swapchain = VK_NULL_HANDLE;
+		uint8_t image_index = 0;
 	};
 	static_assert(sizeof(VulkanSwapchainFrame) == kCacheLineSize, "VulkanSwapchain must be exactly one cache line in size!");
 	

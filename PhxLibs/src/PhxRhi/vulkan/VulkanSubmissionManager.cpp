@@ -1,4 +1,4 @@
-#include "PhxRhi/PhxRhi_pch.h"
+ #include "PhxRhi/PhxRhi_pch.h"
 
 #include <PhxCore/Memory/MemoryUtils.h>
 #include <PhxRhi/PhxRhi_Thread.h>
@@ -123,6 +123,7 @@ void phx::rhi::VulkanSubmissionManager::BeginFrame(SwapchainHandle swapchain)
         VK_NULL_HANDLE,
         &image_index);
 
+    impl_frame->image_index     = static_cast<uint8_t>(image_index);
     impl_frame->vk_image        = swapchain_impl->vk_images[image_index];
     impl_frame->vk_image_view   = swapchain_impl->vk_image_views[image_index];
 }
@@ -139,6 +140,7 @@ void phx::rhi::VulkanSubmissionManager::EndFrame(
             graphics_buffers,
             wait_fences,
             { swapchain_impl_frame->vk_image_available_sem },
+            { swapchain_impl_frame->vk_render_finished_sem },
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
     if (!swapchain_impl_frame)
@@ -147,24 +149,16 @@ void phx::rhi::VulkanSubmissionManager::EndFrame(
         return;
     }
 
-    PerQueueSync& queue_sync = per_queue_syncs[CommandQueueType::Graphics];
-    VkTimelineSemaphoreSubmitInfo timeline_info = {
-        .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
-        .waitSemaphoreValueCount = 1,
-        .pWaitSemaphoreValues = &fence_handle.value,
-        .signalSemaphoreValueCount = 1,
-        .pSignalSemaphoreValues = 0, // Present doesn't signal
-    };
-    (void)timeline_info;
+    const uint32_t image_index = static_cast<uint32_t>(swapchain_impl_frame->image_index);
 
     VkPresentInfoKHR present_info = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .pNext = nullptr,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &queue_sync.vk_timeline_semaphore,
+        .pWaitSemaphores = &swapchain_impl_frame->vk_render_finished_sem,
         .swapchainCount = 1,
         .pSwapchains = &swapchain_impl_frame->vk_swapchain,
-        .pImageIndices = &swapchain_impl_frame->vk,
+        .pImageIndices = &image_index,
     };
 
     VulkanBackend::Queue& queue = vulkan_backend->queues[CommandQueueType::Graphics];
@@ -223,7 +217,7 @@ FenceHandle VulkanSubmissionManager::Submit(
     Span<FenceHandle> wait_fences)
 {
     // Using VK_PIPELINE_STAGE_ALL_COMMANDS_BIT as it's a safe choice.
-    return SubmitInternal(queue_type, cmd_buffers, wait_fences, {}, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+    return SubmitInternal(queue_type, cmd_buffers, wait_fences, {}, {}, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 }
 
 phx::rhi::VulkanCommandBuffer* PerThreadData::CommandPool::GetFreeBuffer(uint32_t thread_id)
@@ -447,7 +441,8 @@ FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(
     CommandQueueType queue_type,
     Span<ICommandBuffer*> cmd_buffers,
     Span<FenceHandle> wait_fences,
-    Span<VkSemaphore> binary_semaphores,
+    Span<VkSemaphore> binary_wait_sems,
+    Span<VkSemaphore> binary_signal_sems,
     VkPipelineStageFlags flags)
 {
     PerQueueSync& queue_sync = per_queue_syncs[queue_type];
@@ -468,9 +463,9 @@ FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(
 
     static thread_local std::vector<uint64_t> s_wait_fence_values;
     s_wait_fence_values.clear();
-    s_wait_fence_values.reserve(binary_semaphores.size() + wait_fences.size());
+    s_wait_fence_values.reserve(binary_wait_sems.size() + wait_fences.size());
 
-    for (size_t i = 0; i < binary_semaphores.size(); ++i)
+    for (size_t i = 0; i < binary_wait_sems.size(); ++i)
         s_wait_fence_values.push_back(0);
 
     for (auto& wait_fence : wait_fences)
@@ -478,20 +473,29 @@ FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(
 
     static thread_local std::vector<VkSemaphore> s_wait_semaphores;
     s_wait_semaphores.clear();
-    s_wait_semaphores.reserve(binary_semaphores.size() + wait_fences.size());
+    s_wait_semaphores.reserve(binary_wait_sems.size() + wait_fences.size());
 
-    for (auto& binary_semaphore : binary_semaphores)
+    for (auto& binary_semaphore : binary_wait_sems)
         s_wait_semaphores.push_back(binary_semaphore);
 
-    for (size_t i = 0; i < binary_semaphores.size(); ++i)
+    for (size_t i = 0; i < binary_wait_sems.size(); ++i)
         s_wait_semaphores.push_back(queue_sync.vk_timeline_semaphore);
 
 
     static thread_local std::vector<VkPipelineStageFlags> s_wait_stages;
     s_wait_stages.clear();
-    s_wait_stages.resize(binary_semaphores.size() + wait_fences.size());
+    s_wait_stages.resize(binary_wait_sems.size() + wait_fences.size());
 
     std::fill(s_wait_stages.begin(), s_wait_stages.end(), flags);
+
+    static thread_local std::vector<VkSemaphore> s_signal_semaphores;
+    s_signal_semaphores.clear();
+    s_signal_semaphores.reserve(binary_signal_sems.size() + 1);
+
+    for (auto& binary_signal_sem : binary_signal_sems)
+        s_signal_semaphores.push_back(binary_signal_sem);
+
+    s_signal_semaphores.push_back(queue_sync.vk_timeline_semaphore);
 
     VkTimelineSemaphoreSubmitInfo timeline_info = {
         .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
@@ -504,13 +508,16 @@ FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(
     VkSubmitInfo submit_info = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext = &timeline_info,
+
         .waitSemaphoreCount = static_cast<uint32_t>(wait_fences.size()),
         .pWaitSemaphores = s_wait_semaphores.data(),
         .pWaitDstStageMask = s_wait_stages.data(),
+
         .commandBufferCount = static_cast<uint32_t>(s_vk_cmd_buffers.size()),
         .pCommandBuffers = s_vk_cmd_buffers.data(),
-        .signalSemaphoreCount = 1,
-        .pSignalSemaphores = &queue_sync.vk_timeline_semaphore, // Signal our one timeline
+
+        .signalSemaphoreCount = static_cast<uint32_t>(s_signal_semaphores.size()),
+        .pSignalSemaphores = s_signal_semaphores.data(),
     };
 
     // Get queue

@@ -230,6 +230,17 @@ bool phx::rhi::VulkanBackend::SelectPhysicalDevice(vkb::PhysicalDevice& out_vkb_
 
     PHX_CORE_ASSERT(vk_features_1_2.bufferDeviceAddress == VK_TRUE);
 
+    {
+        uint32_t major = VK_VERSION_MAJOR(vk_physical_device_properties.properties.apiVersion);
+        uint32_t minor = VK_VERSION_MINOR(vk_physical_device_properties.properties.apiVersion);
+        uint32_t patch = VK_VERSION_PATCH(vk_physical_device_properties.properties.apiVersion);
+
+        PHX_RHI_INFO("Selected Devices API version: {0}.{1}.{2}",
+            major,
+            minor,
+            patch);
+    }
+
     return true;
 }
 

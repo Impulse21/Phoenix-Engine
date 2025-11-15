@@ -54,7 +54,6 @@ void phx::rhi::VulkanCommandBuffer::InsertBarriers(Span<GpuBarrier> barriers)
     if (barriers.IsEmpty())
         return;
 
-
     constexpr size_t MAX_BARRIER_COUNT = 16;
     std::array<VkMemoryBarrier2, MAX_BARRIER_COUNT> vk_mem_barriers;
     std::array<VkBufferMemoryBarrier2, MAX_BARRIER_COUNT> vk_buffer_barriers;
@@ -179,6 +178,7 @@ void phx::rhi::VulkanCommandBuffer::InsertBarriers(Span<GpuBarrier> barriers)
 
     };
 
+    PHX_ASSERT(vk_handle != VK_NULL_HANDLE, "Unexpected state of buffer handle");
     vkCmdPipelineBarrier2(vk_handle, &dependency_info);
 }
 

@@ -222,9 +222,10 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 
 	if (gpu_operation)
 	{
-		rhi::ICommandBuffer* cmd_buffer = *out_cmd_buffer;
-		if (!cmd_buffer)
+		if (!*out_cmd_buffer)
 			*out_cmd_buffer = submission_manager->BeginCommandBuffer(rhi::CommandQueueType::Copy);
+
+		rhi::ICommandBuffer* cmd_buffer = *out_cmd_buffer;
 
 		auto& gpu_dest_info = std::get<GpuResourceDestinationInfo>(destination_info.target);
 		std::visit([&](auto&& gpu_handle) {
