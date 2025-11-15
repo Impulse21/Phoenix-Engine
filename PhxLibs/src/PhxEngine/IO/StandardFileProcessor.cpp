@@ -47,7 +47,7 @@ void StandardFileProcessor::ProcessRequest(StreamingRequest&& request)
 
 		GpuWorkItem callback_entry;
 		callback_entry.on_complete = std::move(request.on_complete);
-		callback_entry.command_buffer = nullptr;
+		callback_entry.command_buffer = cmd_buffer;
 		callback_entry.result = std::move(result);
 
 		m_pending_batch.push_back(std::move(callback_entry));
