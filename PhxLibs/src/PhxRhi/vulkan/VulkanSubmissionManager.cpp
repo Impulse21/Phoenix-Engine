@@ -34,17 +34,6 @@ bool VulkanSubmissionManager::Initialize()
         .initialValue = 0
     };
 
-    VkSemaphoreCreateInfo image_available_semaphore_info = {};
-    image_available_semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    for (size_t i = 0; i < kBufferCount; ++i)
-    {
-        // Create the semaphore and store it in the array
-        VkResult result = vkCreateSemaphore(vulkan_backend->vk_device, &image_available_semaphore_info, nullptr, &image_available_semaphores[i]);
-
-        if (result != VK_SUCCESS)
-            PHX_RHI_ERROR("Failed to create queue timeline semaphore");
-    }
-
     VkSemaphoreCreateInfo semaphore_create_info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
         .pNext = &timeline_create_info,
@@ -112,24 +101,30 @@ void phx::rhi::VulkanSubmissionManager::BeginFrame(SwapchainHandle swapchain)
     ReclaimFinishedCommandBuffers();
     ReclaimFinishedUploads();
 
-    VulkanSwapchain* swapchain_impl = vulkan_resource_manager->swapchain_pool.GetHot(swapchain);
+    VulkanSwapchain* swapchain_impl = vulkan_resource_manager->swapchain_pool.GetCold(swapchain);
     if (!swapchain_impl)
     {
         PHX_RHI_CRITICAL("Unable to local swapchain when ending frame.");
         return;
     }
 
+    const size_t frame_index = GetCurrentFrameIndex();
+    VulkanSwapchainFrame* impl_frame = vulkan_resource_manager->swapchain_pool.GetHot(swapchain);
+    
+    impl_frame->vk_image_available_sem = swapchain_impl->vk_image_available_sem[frame_index];
+    impl_frame->vk_render_finished_sem = swapchain_impl->vk_render_finished_sem[frame_index];
+    
     uint32_t image_index;
     vkAcquireNextImageKHR(
         vulkan_backend->vk_device,
         swapchain_impl->vk_swapchain,
         UINT64_MAX,
-        image_available_semaphores[GetCurrentFrameIndex()],
+        impl_frame->vk_image_available_sem,
         VK_NULL_HANDLE,
-        &image_index
-    );
+        &image_index);
 
-    swapchain_impl->buffer_index = static_cast<uint8_t>(image_index);
+    impl_frame->vk_image        = swapchain_impl->vk_images[image_index];
+    impl_frame->vk_image_view   = swapchain_impl->vk_image_views[image_index];
 }
 
 void phx::rhi::VulkanSubmissionManager::EndFrame(
@@ -137,16 +132,16 @@ void phx::rhi::VulkanSubmissionManager::EndFrame(
     Span<ICommandBuffer*> graphics_buffers,
     Span<FenceHandle> wait_fences)
 {
+    VulkanSwapchainFrame* swapchain_impl_frame = vulkan_resource_manager->swapchain_pool.GetHot(swapchain);
     const FenceHandle fence_handle = 
         SubmitInternal(
             CommandQueueType::Graphics,
             graphics_buffers,
             wait_fences,
-            { image_available_semaphores[GetCurrentFrameIndex()] },
+            { swapchain_impl_frame->vk_image_available_sem },
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
-    VulkanSwapchain* swapchain_impl = vulkan_resource_manager->swapchain_pool.GetHot(swapchain);
-    if (!swapchain_impl)
+    if (!swapchain_impl_frame)
     {
         PHX_RHI_CRITICAL("Unable to local swapchain when ending frame.");
         return;
@@ -160,15 +155,16 @@ void phx::rhi::VulkanSubmissionManager::EndFrame(
         .signalSemaphoreValueCount = 1,
         .pSignalSemaphoreValues = 0, // Present doesn't signal
     };
+    (void)timeline_info;
 
     VkPresentInfoKHR present_info = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-        .pNext = &timeline_info,
+        .pNext = nullptr,
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = &queue_sync.vk_timeline_semaphore,
         .swapchainCount = 1,
-        .pSwapchains = &swapchain_impl->vk_swapchain,
-        .pImageIndices = &swapchain_impl->vk_swapchain_image_index,
+        .pSwapchains = &swapchain_impl_frame->vk_swapchain,
+        .pImageIndices = &swapchain_impl_frame->vk,
     };
 
     VulkanBackend::Queue& queue = vulkan_backend->queues[CommandQueueType::Graphics];

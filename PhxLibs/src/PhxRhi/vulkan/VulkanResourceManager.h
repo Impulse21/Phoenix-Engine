@@ -49,7 +49,7 @@ namespace phx::rhi
 		VulkanGpuAllocator* vulkan_allocator = nullptr;
 
 		uint64_t frame_number = 0;
-		phx::PagedPool<rhi::Swapchain, VulkanSwapchain> swapchain_pool;
+		phx::PagedPool<rhi::Swapchain, VulkanSwapchain_Hot, VulkanSwapchain> swapchain_pool;
 		phx::PagedPool<rhi::Buffer, VulkanBuffer> buffer_pool;
 
 		DeferredCallbackQueue deferred_delete_queue;

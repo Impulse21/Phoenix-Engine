@@ -19,26 +19,34 @@ namespace phx::rhi
 	constexpr uint32_t kMaxFrameCmds = 64;
 	constexpr uint32_t kMaxAsyncCmds = 32;
 
-	struct RHI_DEFINE_ALIGNED(VulkanSwapchain, kCacheLineSize)
+	struct RHI_DEFINE_ALIGNED(VulkanSwapchainFrame, kCacheLineSize)
 	{
 		// -- 8-byte members ---
-		VkSwapchainKHR vk_swapchain = VK_NULL_HANDLE;
 		VkExtent2D vk_swapchain_extent = { 0, 0 };
-
-		StaticArray<VkImage, kBufferCount> vk_images;
-		StaticArray<VkImageView, kBufferCount> vk_image_views;
+		VkSemaphore vk_image_available_sem;
+		VkSemaphore vk_render_finished_sem;
+		VkImage		vk_image;
+		VkImageView vk_image_view;
 
 		// -- 4-byte members ---
 		VkFormat vk_swapchain_image_format = VK_FORMAT_UNDEFINED;
 		uint32_t vk_swapchain_image_index = ~0u;
 
-		// -- 1-byte members ---
-		CommandQueueType queue_type;
-		uint8_t buffer_index;
-
-		// -- Manual Padding ---
+		VkSwapchainKHR vk_swapchain = VK_NULL_HANDLE;
 	};
-	static_assert(sizeof(VulkanSwapchain) == kCacheLineSize, "VulkanSwapchain must be exactly one cache line in size!");
+	static_assert(sizeof(VulkanSwapchainFrame) == kCacheLineSize, "VulkanSwapchain must be exactly one cache line in size!");
+	
+	struct VulkanSwapchain
+	{
+		// -- 8-byte members ---
+		StaticArray<VkSemaphore, kBufferCount> vk_image_available_sem;
+		StaticArray<VkSemaphore, kBufferCount> vk_render_finished_sem;
+
+		StaticArray<VkImage, kBufferCount> vk_images;
+		StaticArray<VkImageView, kBufferCount> vk_image_views;
+
+		VkSwapchainKHR vk_swapchain = VK_NULL_HANDLE;
+	};
 
 	struct RHI_DEFINE_ALIGNED(VulkanBuffer, kCacheLineSize)
 	{

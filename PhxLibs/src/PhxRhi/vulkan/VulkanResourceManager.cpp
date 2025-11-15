@@ -59,13 +59,15 @@ SwapchainHandle phx::rhi::VulkanResourceManager::CreateSwapchain(const Swapchain
         return {};
     }
 
-    Handle<Swapchain> ret_val = swapchain_pool.Allocate(); 
-    VulkanSwapchain& impl = *swapchain_pool.GetHot(ret_val); 
+    Handle<Swapchain> ret_val           = swapchain_pool.Allocate();
+    VulkanSwapchainFrame& impl_frame    = *swapchain_pool.GetHot(ret_val);
+    VulkanSwapchain& impl               = *swapchain_pool.GetCold(ret_val);
 
     vkb::Swapchain vkb_swapchain = swap_ret.value(); // Renamed to snake_case
     impl.vk_swapchain = vkb_swapchain.swapchain;
-    impl.vk_swapchain_image_format = vkb_swapchain.image_format;
-    impl.vk_swapchain_extent = vkb_swapchain.extent;
+    impl_frame.vk_swapchain_image_format = vkb_swapchain.image_format;
+    impl_frame.vk_swapchain_extent = vkb_swapchain.extent;
+    impl_frame.vk_swapchain = impl.vk_swapchain;
 
     auto swapchain_images = vkb_swapchain.get_images().value();
     auto swapchain_image_views = vkb_swapchain.get_image_views().value();
@@ -76,10 +78,34 @@ SwapchainHandle phx::rhi::VulkanResourceManager::CreateSwapchain(const Swapchain
         impl.vk_image_views[i] = swapchain_image_views[i];
     }
 
+    VkSemaphoreCreateInfo swapchain_sem_info = {};
+    swapchain_sem_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    for (size_t i = 0; i < kBufferCount; ++i)
+    {
+        // Create the semaphore and store it in the array
+        VkResult result = vkCreateSemaphore(
+            vulkan_backend->vk_device,
+            &swapchain_sem_info,
+            nullptr,
+            &impl.vk_image_available_sem[i]);
+
+        if (result != VK_SUCCESS)
+            PHX_RHI_ERROR("Failed to create queue swapchain semaphores");
+
+        result = vkCreateSemaphore(
+            vulkan_backend->vk_device,
+            &swapchain_sem_info,
+            nullptr,
+            &impl.vk_render_finished_sem[i]);
+
+        if (result != VK_SUCCESS)
+            PHX_RHI_ERROR("Failed to create queue swapchain semaphores");
+    }
+
     PHX_RHI_INFO(
         "Swapchain Initialized. Extent: {0}x{1}, Format: {2}, Images: {3}",
-        impl.vk_swapchain_extent.width,
-        impl.vk_swapchain_extent.height,
+        impl_frame.vk_swapchain_extent.width,
+        impl_frame.vk_swapchain_extent.height,
         "", // Placeholder for format name conversion
         kBufferCount);
 
@@ -89,7 +115,8 @@ SwapchainHandle phx::rhi::VulkanResourceManager::CreateSwapchain(const Swapchain
 void phx::rhi::VulkanResourceManager::DeleteSwapchain(SwapchainHandle handle)
 {
     // SHould I be waiting here?
-    VulkanSwapchain* impl = swapchain_pool.GetHot(handle);
+    VulkanSwapchainFrame* impl_frame = swapchain_pool.GetHot(handle);
+    VulkanSwapchain*    impl = swapchain_pool.GetCold(handle);
     for (auto image_view : impl->vk_image_views) // Renamed to snake_case
     {
         if (image_view != VK_NULL_HANDLE)
@@ -102,6 +129,12 @@ void phx::rhi::VulkanResourceManager::DeleteSwapchain(SwapchainHandle handle)
     {
         vkDestroySwapchainKHR(vulkan_backend->vk_device, impl->vk_swapchain, nullptr);
         impl->vk_swapchain = VK_NULL_HANDLE;
+    }
+
+    for (size_t i = 0; i < kBufferCount; ++i)
+    {
+        vkDestroySemaphore(vulkan_backend->vk_device, impl->vk_image_available_sem[i], nullptr);
+        vkDestroySemaphore(vulkan_backend->vk_device, impl->vk_render_finished_sem[i], nullptr);
     }
 
     swapchain_pool.Free(handle);

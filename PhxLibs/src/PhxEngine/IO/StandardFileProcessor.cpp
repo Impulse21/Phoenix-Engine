@@ -36,6 +36,7 @@ void StandardFileProcessor::ProcessRequest(StreamingRequest&& request)
 
 		has_gpu_work |= gpu_operation;
 
+		result.error_code = error_code;
 		if (error_code != ErrorCode::Success)
 			result.status_array.set(i);
 	}

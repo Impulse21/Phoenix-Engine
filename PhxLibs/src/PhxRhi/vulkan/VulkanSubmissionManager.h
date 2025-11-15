@@ -76,7 +76,7 @@ namespace phx::rhi
 		struct PerQueueSync
 		{
 			VkSemaphore vk_timeline_semaphore = VK_NULL_HANDLE;
-			std::atomic_uint64_t fence_counter = 0;
+			std::atomic_uint64_t fence_counter = 1;
 		};
 		EnumArray<PerQueueSync, CommandQueueType> per_queue_syncs;
 
