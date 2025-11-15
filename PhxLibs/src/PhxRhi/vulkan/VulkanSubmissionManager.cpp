@@ -230,7 +230,17 @@ phx::rhi::VulkanCommandBuffer* PerThreadData::CommandPool::GetFreeBuffer(uint32_
         return buffer;
     }
 
-    VkCommandBuffer vk_buffer;
+    VkCommandBufferAllocateInfo cmd_alloc_info= {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = vk_cmd_pool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1,
+    };
+
+    // 2. Actually create the handle
+    VkCommandBuffer vk_buffer = VK_NULL_HANDLE;
+    vkAllocateCommandBuffers(vulkan_backend->vk_device, &cmd_alloc_info, &vk_buffer);
+
     auto& vulkan_cmd_buffer = buffer_pool.emplace_back(
         std::make_unique<VulkanCommandBuffer>(vulkan_resource_manager, vk_buffer, queue_type, thread_id));
 
@@ -412,6 +422,7 @@ void PerThreadData::Initialize(VulkanSubmissionManager* sub_manager, uint32_t th
         PerThreadData::CommandPool& pool = command_pools[q];
         pool.queue_type = static_cast<CommandQueueType>(q);
         pool.vulkan_resource_manager = sub_manager->vulkan_resource_manager;
+        pool.vulkan_backend = sub_manager->vulkan_backend;
 
         VkCommandPoolCreateInfo pool_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -452,57 +463,77 @@ FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(
     };
 
     static thread_local std::vector<VkCommandBuffer> s_vk_cmd_buffers;
-    s_vk_cmd_buffers.clear();
-    s_vk_cmd_buffers.reserve(cmd_buffers.size());
-
-    for (auto& cmd_buffer : cmd_buffers)
     {
-        VkCommandBuffer vk_handle = static_cast<VulkanCommandBuffer*>(cmd_buffer)->vk_handle;
-        s_vk_cmd_buffers.push_back(vk_handle);
+        s_vk_cmd_buffers.clear();
+        s_vk_cmd_buffers.reserve(cmd_buffers.size());
+
+        for (auto& cmd_buffer : cmd_buffers)
+        {
+            VkCommandBuffer vk_handle = static_cast<VulkanCommandBuffer*>(cmd_buffer)->vk_handle;
+            s_vk_cmd_buffers.push_back(vk_handle);
+        }
     }
 
     static thread_local std::vector<uint64_t> s_wait_fence_values;
-    s_wait_fence_values.clear();
-    s_wait_fence_values.reserve(binary_wait_sems.size() + wait_fences.size());
+    {
+        s_wait_fence_values.clear();
+        s_wait_fence_values.reserve(binary_wait_sems.size() + wait_fences.size());
 
-    for (size_t i = 0; i < binary_wait_sems.size(); ++i)
-        s_wait_fence_values.push_back(0);
+        for (size_t i = 0; i < binary_wait_sems.size(); ++i)
+            s_wait_fence_values.push_back(0);
 
-    for (auto& wait_fence : wait_fences)
-        s_wait_fence_values.push_back(wait_fence.value);
+        for (auto& wait_fence : wait_fences)
+            s_wait_fence_values.push_back(wait_fence.value);
+    }
 
     static thread_local std::vector<VkSemaphore> s_wait_semaphores;
-    s_wait_semaphores.clear();
-    s_wait_semaphores.reserve(binary_wait_sems.size() + wait_fences.size());
+    {
+        s_wait_semaphores.clear();
+        s_wait_semaphores.reserve(binary_wait_sems.size() + wait_fences.size());
 
-    for (auto& binary_semaphore : binary_wait_sems)
-        s_wait_semaphores.push_back(binary_semaphore);
+        for (auto& binary_semaphore : binary_wait_sems)
+            s_wait_semaphores.push_back(binary_semaphore);
 
-    for (size_t i = 0; i < binary_wait_sems.size(); ++i)
-        s_wait_semaphores.push_back(queue_sync.vk_timeline_semaphore);
-
+        for (size_t i = 0; i < binary_wait_sems.size(); ++i)
+            s_wait_semaphores.push_back(queue_sync.vk_timeline_semaphore);
+    }
 
     static thread_local std::vector<VkPipelineStageFlags> s_wait_stages;
-    s_wait_stages.clear();
-    s_wait_stages.resize(binary_wait_sems.size() + wait_fences.size());
+    {
+        s_wait_stages.clear();
+        s_wait_stages.resize(binary_wait_sems.size() + wait_fences.size());
 
-    std::fill(s_wait_stages.begin(), s_wait_stages.end(), flags);
+        std::fill(s_wait_stages.begin(), s_wait_stages.end(), flags);
+    }
+
+    static thread_local std::vector<uint64_t> s_signal_fence_values;
+    {
+        s_signal_fence_values.clear();
+        s_signal_fence_values.reserve(binary_signal_sems.size() + 1);
+
+        for (size_t i = 0; i < binary_signal_sems.size(); ++i)
+            s_signal_fence_values.push_back(0);
+
+        s_signal_fence_values.push_back(fence_handle.value);
+    }
 
     static thread_local std::vector<VkSemaphore> s_signal_semaphores;
-    s_signal_semaphores.clear();
-    s_signal_semaphores.reserve(binary_signal_sems.size() + 1);
+    {
+        s_signal_semaphores.clear();
+        s_signal_semaphores.reserve(binary_signal_sems.size() + 1);
 
-    for (auto& binary_signal_sem : binary_signal_sems)
-        s_signal_semaphores.push_back(binary_signal_sem);
+        for (auto& binary_signal_sem : binary_signal_sems)
+            s_signal_semaphores.push_back(binary_signal_sem);
 
-    s_signal_semaphores.push_back(queue_sync.vk_timeline_semaphore);
+        s_signal_semaphores.push_back(queue_sync.vk_timeline_semaphore);
+    }
 
     VkTimelineSemaphoreSubmitInfo timeline_info = {
         .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
         .waitSemaphoreValueCount = static_cast<uint32_t>(wait_fences.size()),
         .pWaitSemaphoreValues = s_wait_fence_values.data(),
-        .signalSemaphoreValueCount = 1,
-        .pSignalSemaphoreValues = &fence_handle.value,
+        .signalSemaphoreValueCount = static_cast<uint32_t>(s_signal_fence_values.size()),
+        .pSignalSemaphoreValues = s_signal_fence_values.data(),
     };
 
     VkSubmitInfo submit_info = {

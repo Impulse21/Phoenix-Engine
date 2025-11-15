@@ -259,6 +259,9 @@ bool phx::rhi::VulkanBackend::CreateLogicalDevice(vkb::PhysicalDevice& vkb_physi
     vk_device = vkb_device.device;
     volkLoadDevice(vk_device); // Load device-level functions
 
+    // -- hitting a device_dispatch nullptr exception. this check is to see what is going on ---
+    PHX_ASSERT(vkCmdPipelineBarrier2 != nullptr, "vkCmdPipelineBarrier2 function pointer is NULL! Check device feature enablement.");
+
     auto gfx_q_ret = vkb_device.get_queue(vkb::QueueType::graphics);
     if (!gfx_q_ret)
     {

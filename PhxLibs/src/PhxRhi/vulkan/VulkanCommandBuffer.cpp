@@ -222,7 +222,7 @@ phx::rhi::VulkanCommandBuffer::VulkanCommandBuffer(rhi::VulkanResourceManager* r
     , thread_id(thread_id)
     , rsc_manager(rsc_manager)
 {
-
+    PHX_CORE_ASSERT(vk_handle != VK_NULL_HANDLE);
 }
 
 phx::rhi::VulkanCommandBuffer::~VulkanCommandBuffer() = default;

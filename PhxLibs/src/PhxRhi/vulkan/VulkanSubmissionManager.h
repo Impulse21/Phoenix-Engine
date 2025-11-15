@@ -41,6 +41,7 @@ namespace phx::rhi
 		{
 			CommandQueueType queue_type;
 			VulkanResourceManager* vulkan_resource_manager;
+			VulkanBackend* vulkan_backend;
 			VkCommandPool vk_cmd_pool;
 			std::vector<std::unique_ptr<phx::rhi::VulkanCommandBuffer>> buffer_pool;
 			std::vector<phx::rhi::VulkanCommandBuffer*> free_buffers;
