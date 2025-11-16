@@ -25,7 +25,7 @@ namespace phx::rhi
 			while (!queue.empty())
 			{
 				DeferredItem& deferred_item = queue.front();
-				if (deferred_item.frame + kBufferCount < completed_frame)
+				if (deferred_item.frame + cMaxInflightFrames < completed_frame)
 				{
 					deferred_item.deferred_func();
 					queue.pop_front();

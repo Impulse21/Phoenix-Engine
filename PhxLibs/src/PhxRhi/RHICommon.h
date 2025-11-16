@@ -14,7 +14,7 @@ namespace phx::rhi
 
     using DescriptorIndex = uint32_t;
 
-    constexpr size_t kBufferCount = 2;
+    constexpr size_t cMaxInflightFrames = 3;
     constexpr DescriptorIndex cInvalidDescriptorIndex = ~0u;
 
     constexpr uint32_t cMaxRenderTargets = 8;

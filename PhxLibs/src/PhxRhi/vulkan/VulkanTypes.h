@@ -40,13 +40,13 @@ namespace phx::rhi
 	struct VulkanSwapchain
 	{
 		// -- 8-byte members ---
-		StaticArray<VkSemaphore, kBufferCount> vk_image_available_sem;
-		StaticArray<VkSemaphore, kBufferCount> vk_render_finished_sem;
+		std::vector<VkSemaphore>	vk_image_available_sem;
+		std::vector<VkSemaphore>	vk_render_finished_sem;
 
-		StaticArray<VkImage, kBufferCount> vk_images;
-		StaticArray<VkImageView, kBufferCount> vk_image_views;
+		std::vector<VkImage>		vk_images;
+		std::vector<VkImageView>	vk_image_views;
 
-		VkSwapchainKHR vk_swapchain = VK_NULL_HANDLE;
+		VkSwapchainKHR				vk_swapchain = VK_NULL_HANDLE;
 	};
 
 	struct RHI_DEFINE_ALIGNED(VulkanBuffer, kCacheLineSize)

@@ -15,8 +15,6 @@
 
 namespace phx::rhi
 {
-	constexpr size_t cMaxInflightFrames = 2;
-
 	struct VulkanBackend final : public IBackend
 	{
 		DeviceCapability capabilities = {};

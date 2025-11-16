@@ -43,7 +43,7 @@ SwapchainHandle phx::rhi::VulkanResourceManager::CreateSwapchain(const Swapchain
     vkb::SwapchainBuilder swapchain_builder(
         vulkan_backend->vk_chosen_physical_device,
         vulkan_backend->vk_device,
-        vulkan_backend->vk_surface); // Renamed to snake_case
+        vulkan_backend->vk_surface); 
 
     auto swap_ret = swapchain_builder
         .set_desired_format({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR })
@@ -69,10 +69,18 @@ SwapchainHandle phx::rhi::VulkanResourceManager::CreateSwapchain(const Swapchain
     impl_frame.vk_swapchain_extent = vkb_swapchain.extent;
     impl_frame.vk_swapchain = impl.vk_swapchain;
 
+    const uint32_t num_images = vkb_swapchain.image_count;
+    impl.vk_images.resize(num_images);
+    impl.vk_image_views.resize(num_images);
+    impl.vk_render_finished_sem.resize(num_images);
+
+    // We only need to aquire for the number inflight.
+    impl.vk_image_available_sem.resize(cMaxInflightFrames);
+
     auto swapchain_images = vkb_swapchain.get_images().value();
     auto swapchain_image_views = vkb_swapchain.get_image_views().value();
 
-    for (size_t i = 0; i < kBufferCount; i++)
+    for (size_t i = 0; i < num_images; i++)
     {
         impl.vk_images[i] = swapchain_images[i];
         impl.vk_image_views[i] = swapchain_image_views[i];
@@ -80,19 +88,9 @@ SwapchainHandle phx::rhi::VulkanResourceManager::CreateSwapchain(const Swapchain
 
     VkSemaphoreCreateInfo swapchain_sem_info = {};
     swapchain_sem_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    for (size_t i = 0; i < kBufferCount; ++i)
+    for (size_t i = 0; i < impl.vk_render_finished_sem.size(); ++i)
     {
-        // Create the semaphore and store it in the array
         VkResult result = vkCreateSemaphore(
-            vulkan_backend->vk_device,
-            &swapchain_sem_info,
-            nullptr,
-            &impl.vk_image_available_sem[i]);
-
-        if (result != VK_SUCCESS)
-            PHX_RHI_ERROR("Failed to create queue swapchain semaphores");
-
-        result = vkCreateSemaphore(
             vulkan_backend->vk_device,
             &swapchain_sem_info,
             nullptr,
@@ -102,12 +100,25 @@ SwapchainHandle phx::rhi::VulkanResourceManager::CreateSwapchain(const Swapchain
             PHX_RHI_ERROR("Failed to create queue swapchain semaphores");
     }
 
+    for (size_t i = 0; i < impl.vk_image_available_sem.size(); ++i)
+    {
+        // Create the semaphore and store it in the array
+        VkResult result = vkCreateSemaphore(
+            vulkan_backend->vk_device,
+            &swapchain_sem_info,
+            nullptr,
+            &impl.vk_image_available_sem[i]);
+
+            if (result != VK_SUCCESS)
+                PHX_RHI_ERROR("Failed to create queue swapchain semaphores");
+    }
+
     PHX_RHI_INFO(
         "Swapchain Initialized. Extent: {0}x{1}, Format: {2}, Images: {3}",
         impl_frame.vk_swapchain_extent.width,
         impl_frame.vk_swapchain_extent.height,
         "", // Placeholder for format name conversion
-        kBufferCount);
+        num_images);
 
     return ret_val;
 }
@@ -129,12 +140,15 @@ void phx::rhi::VulkanResourceManager::DeleteSwapchain(SwapchainHandle handle)
         impl->vk_swapchain = VK_NULL_HANDLE;
     }
 
-    for (size_t i = 0; i < kBufferCount; ++i)
+    for (size_t i = 0; i < impl->vk_image_available_sem.size(); ++i)
     {
         vkDestroySemaphore(vulkan_backend->vk_device, impl->vk_image_available_sem[i], nullptr);
-        vkDestroySemaphore(vulkan_backend->vk_device, impl->vk_render_finished_sem[i], nullptr);
     }
 
+    for (size_t i = 0; i < impl->vk_render_finished_sem.size(); ++i)
+    {
+        vkDestroySemaphore(vulkan_backend->vk_device, impl->vk_render_finished_sem[i], nullptr);
+    }
     swapchain_pool.Free(handle);
 }
 

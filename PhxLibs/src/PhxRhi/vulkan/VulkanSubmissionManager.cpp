@@ -61,11 +61,6 @@ void phx::rhi::VulkanSubmissionManager::Shutdown()
     WaitForIdle();
     vulkan_resource_manager->RunGarbageCollection(~0u);
 
-    for (size_t i = 0; i < kBufferCount; ++i)
-    {
-        vkDestroySemaphore(vulkan_backend->vk_device, image_available_semaphores[i], nullptr);
-    }
-
     for (size_t q = 0; q < static_cast<size_t>(CommandQueueType::Count); ++q)
     {
         vkDestroySemaphore(vulkan_backend->vk_device, per_queue_syncs[q].vk_timeline_semaphore, nullptr);
@@ -111,9 +106,7 @@ void phx::rhi::VulkanSubmissionManager::BeginFrame(SwapchainHandle swapchain)
     }
 
     VulkanSwapchainFrame* impl_frame = vulkan_resource_manager->swapchain_pool.GetHot(swapchain);
-    
     impl_frame->vk_image_available_sem = swapchain_impl->vk_image_available_sem[frame_index];
-    impl_frame->vk_render_finished_sem = swapchain_impl->vk_render_finished_sem[frame_index];
     
     uint32_t image_index;
     vkAcquireNextImageKHR(
@@ -124,9 +117,10 @@ void phx::rhi::VulkanSubmissionManager::BeginFrame(SwapchainHandle swapchain)
         VK_NULL_HANDLE,
         &image_index);
 
-    impl_frame->image_index     = static_cast<uint8_t>(image_index);
-    impl_frame->vk_image        = swapchain_impl->vk_images[image_index];
-    impl_frame->vk_image_view   = swapchain_impl->vk_image_views[image_index];
+    impl_frame->image_index             = static_cast<uint8_t>(image_index);
+    impl_frame->vk_render_finished_sem  = swapchain_impl->vk_render_finished_sem[image_index];
+    impl_frame->vk_image                = swapchain_impl->vk_images[image_index];
+    impl_frame->vk_image_view           = swapchain_impl->vk_image_views[image_index];
 }
 
 void phx::rhi::VulkanSubmissionManager::EndFrame(
@@ -506,7 +500,7 @@ FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(
         for (auto& binary_semaphore : binary_wait_sems)
             s_wait_semaphores.push_back(binary_semaphore);
 
-        for (size_t i = 0; i < binary_wait_sems.size(); ++i)
+        for (size_t i = 0; i < wait_fences.size(); ++i)
             s_wait_semaphores.push_back(queue_sync.vk_timeline_semaphore);
     }
 
@@ -542,7 +536,7 @@ FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(
 
     VkTimelineSemaphoreSubmitInfo timeline_info = {
         .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
-        .waitSemaphoreValueCount = static_cast<uint32_t>(wait_fences.size()),
+        .waitSemaphoreValueCount = static_cast<uint32_t>(s_wait_fence_values.size()),
         .pWaitSemaphoreValues = s_wait_fence_values.data(),
         .signalSemaphoreValueCount = static_cast<uint32_t>(s_signal_fence_values.size()),
         .pSignalSemaphoreValues = s_signal_fence_values.data(),
@@ -552,7 +546,7 @@ FenceHandle phx::rhi::VulkanSubmissionManager::SubmitInternal(
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext = &timeline_info,
 
-        .waitSemaphoreCount = static_cast<uint32_t>(wait_fences.size()),
+        .waitSemaphoreCount = static_cast<uint32_t>(s_wait_semaphores.size()),
         .pWaitSemaphores = s_wait_semaphores.data(),
         .pWaitDstStageMask = s_wait_stages.data(),
 

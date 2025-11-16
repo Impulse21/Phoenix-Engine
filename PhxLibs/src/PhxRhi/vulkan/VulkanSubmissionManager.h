@@ -81,8 +81,7 @@ namespace phx::rhi
 		};
 		EnumArray<PerQueueSync, CommandQueueType> per_queue_syncs;
 
-		StaticArray<VkSemaphore, kBufferCount> image_available_semaphores;
-		StaticArray<FenceHandle, kBufferCount> frame_fences = { .data = {{}, {}} };
+		StaticArray<FenceHandle, cMaxInflightFrames> frame_fences = { .data = {{}, {}} };
 
 		size_t frame_number = 0;
 		size_t num_threads = 0;
@@ -138,7 +137,7 @@ namespace phx::rhi
 	private:
 		friend PerThreadData;
 
-		size_t GetCurrentFrameIndex() { return frame_number % kBufferCount; }
+		size_t GetCurrentFrameIndex() { return frame_number % cMaxInflightFrames; }
 		void RetireCommandBuffers(Span<ICommandBuffer*> command_buffers, FenceHandle fence_value);
 		void ReclaimFinishedCommandBuffers();
 		void ReclaimFinishedUploads();

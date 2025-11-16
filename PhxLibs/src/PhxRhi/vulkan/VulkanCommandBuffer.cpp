@@ -98,7 +98,7 @@ void phx::rhi::VulkanCommandBuffer::InsertBarriers(Span<GpuBarrier> barriers)
                     all_dst_stage_mask |= dest_stage;
 
                     vk_mem_barriers[mem_barrier_count++] = {
-                        .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+                        .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
                         .pNext = nullptr,
                         .srcStageMask = src_stage,
                         .srcAccessMask = _ParseResourceState(arg.before_state),
@@ -117,7 +117,7 @@ void phx::rhi::VulkanCommandBuffer::InsertBarriers(Span<GpuBarrier> barriers)
 
                     VulkanBuffer* vulkan_buffer =  rsc_manager->buffer_pool.GetHot(arg.buffer);
                     vk_buffer_barriers[buffer_barrier_count++] = {
-                        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
                         .pNext = nullptr,
                         .srcStageMask = src_stage,
                         .srcAccessMask = _ParseResourceState(arg.before_state),
@@ -143,7 +143,7 @@ void phx::rhi::VulkanCommandBuffer::InsertBarriers(Span<GpuBarrier> barriers)
                     all_dst_stage_mask |= dest_stage;
 
                     vk_texture_barriers[texture_barrier_count++] = {
-                        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
                         .pNext = nullptr,
                         .srcStageMask = src_stage,
                         .srcAccessMask = _ParseResourceState(arg.before_state),
