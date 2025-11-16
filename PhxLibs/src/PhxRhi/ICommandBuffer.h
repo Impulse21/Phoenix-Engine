@@ -16,6 +16,10 @@ namespace phx::rhi
 		virtual void DrawInstanced(uint32_t vertex_count, uint32_t instance_count, uint32_t start_vertex_location, uint32_t start_instance_location) = 0;
 		virtual void DrawIndexedInstanced(uint32_t index_count, uint32_t instance_count, uint32_t start_index_location, int32_t base_vertex_location, uint32_t startInstanceLocation) = 0;
 
+
+		virtual void BeginRendering(SwapchainHandle handle, rhi::ClearValue const& clear_value) = 0;
+		virtual void EndRendering() = 0;
+
 		virtual void InsertSwapchainBarrier(SwapchainHandle handle, rhi::ResourceStates resource_state) = 0;
 		virtual void InsertBarriers(Span<GpuBarrier> barriers) = 0;
 

@@ -1,6 +1,7 @@
 #include "PhxRhi/PhxRhi_pch.h"
 #include "VulkanCommandBuffer.h"
 
+#include "VulkanBackend.h"
 #include "VulkanResourceManager.h"
 
 void phx::rhi::VulkanCommandBuffer::Begin()
@@ -64,23 +65,64 @@ void phx::rhi::VulkanCommandBuffer::DrawIndexedInstanced(uint32_t index_count, u
         start_instance_location);
 }
 
+void phx::rhi::VulkanCommandBuffer::BeginRendering(SwapchainHandle handle, rhi::ClearValue const& clear_value)
+{
+    InsertSwapchainBarrier(handle, ResourceStates::RenderTarget);
+
+    VulkanSwapchainFrame* swapchain = vulkan_rm->swapchain_pool.GetHot(handle);
+    VkClearValue vk_clear_value = {
+        .color = {
+            .float32 = { clear_value.Colour.R, clear_value.Colour.G, clear_value.Colour.B, clear_value.Colour.A }
+        }
+    };
+
+    VkRenderingAttachmentInfo color_attachment_info = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView = swapchain->vk_image_view,
+        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue = vk_clear_value // Use this clear value
+    };
+
+    VkRenderingInfo rendering_info = {
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .renderArea = {
+            .offset = {.x = 0u, .y = 0u},
+            .extent = swapchain->vk_swapchain_extent,
+        },
+        .layerCount = 1,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &color_attachment_info,
+        .pDepthAttachment = nullptr,
+        .pStencilAttachment = nullptr,
+    };
+
+    vkCmdBeginRendering(vk_handle, &rendering_info);
+}
+
+void phx::rhi::VulkanCommandBuffer::EndRendering()
+{
+    vkCmdEndRendering(vk_handle);
+}
+
 void phx::rhi::VulkanCommandBuffer::InsertSwapchainBarrier(SwapchainHandle handle, rhi::ResourceStates resource_state)
 {
     VulkanSwapchainFrame* swapchain_handle = vulkan_rm->swapchain_pool.GetHot(handle);
 
-    VkImageLayout old_layout = swapchain_handle->vk_image_layout;
-    VkImageLayout new_layout = ConvertImageLayout(resource_state);
+    VkImageLayout old_layout = ResourceStateToImageLayout(swapchain_handle->resource_state);
+    VkImageLayout new_layout = ResourceStateToImageLayout(resource_state);
 
-    VkPipelineStageFlags src_stage = swapchain_handle->vk_swapchain_image_format;
-    VkPipelineStageFlags dest_stage = ConvertPipelineStages(resource_state);
+    VkPipelineStageFlags src_stage = ResourceStateToPipelineStage(swapchain_handle->resource_state);
+    VkPipelineStageFlags dest_stage = ResourceStateToPipelineStage(resource_state);
 
     VkImageMemoryBarrier2 barrier = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
         .pNext = nullptr,
         .srcStageMask = src_stage,
-        .srcAccessMask = _ParseResourceState(arg.before_state),
+        .srcAccessMask = ResourceStateToAccessFlags2(swapchain_handle->resource_state),
         .dstStageMask = dest_stage,
-        .dstAccessMask = _ParseResourceState(arg.after_state),
+        .dstAccessMask = ResourceStateToAccessFlags2(resource_state),
         .oldLayout = old_layout,
         .newLayout = new_layout,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -93,7 +135,7 @@ void phx::rhi::VulkanCommandBuffer::InsertSwapchainBarrier(SwapchainHandle handl
             .baseArrayLayer = 0,
             .layerCount = 1
         }
-    });
+    };
 
     VkDependencyInfo dependency_info = {
         .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
@@ -108,6 +150,8 @@ void phx::rhi::VulkanCommandBuffer::InsertSwapchainBarrier(SwapchainHandle handl
     };
 
     vkCmdPipelineBarrier2(vk_handle, &dependency_info);
+
+    swapchain_handle->resource_state = resource_state;
 }
 
 void phx::rhi::VulkanCommandBuffer::InsertBarriers(Span<GpuBarrier> barriers)
@@ -138,8 +182,8 @@ void phx::rhi::VulkanCommandBuffer::InsertBarriers(Span<GpuBarrier> barriers)
                         return;
 
                     // --- Global Barrier ---
-                    VkPipelineStageFlags src_stage = ConvertPipelineStages(arg.before_state);
-                    VkPipelineStageFlags dest_stage = ConvertPipelineStages(arg.after_state);
+                    VkPipelineStageFlags src_stage = ResourceStateToPipelineStage(arg.before_state);
+                    VkPipelineStageFlags dest_stage = ResourceStateToPipelineStage(arg.after_state);
                     all_src_stage_mask |= src_stage;
                     all_dst_stage_mask |= dest_stage;
 
@@ -147,34 +191,64 @@ void phx::rhi::VulkanCommandBuffer::InsertBarriers(Span<GpuBarrier> barriers)
                         .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
                         .pNext = nullptr,
                         .srcStageMask = src_stage,
-                        .srcAccessMask = _ParseResourceState(arg.before_state),
+                        .srcAccessMask = ResourceStateToAccessFlags2(arg.before_state),
                         .dstStageMask = dest_stage,
-                        .dstAccessMask = _ParseResourceState(arg.after_state)
+                        .dstAccessMask = ResourceStateToAccessFlags2(arg.after_state)
                     };
                 }
                 else if constexpr (std::is_same_v<T, GpuBarrier::BufferBarrier>)
                 {
                     if (buffer_barrier_count== MAX_BARRIER_COUNT)
                         return;
-                    VkPipelineStageFlags src_stage = ConvertPipelineStages(arg.before_state);
-                    VkPipelineStageFlags dest_stage = ConvertPipelineStages(arg.after_state);
+
+                    VkPipelineStageFlags src_stage = ResourceStateToPipelineStage(arg.before_state);
+                    VkPipelineStageFlags dest_stage = ResourceStateToPipelineStage(arg.after_state);
+
+
+                    const DeviceCapability& capabilities = vulkan_rm->vulkan_backend->capabilities;
+
+                    VkPipelineStageFlags dest_stage_mask = 0u;
+                    if (this->queue_type == CommandQueueType::Copy)
+                    {
+                        dest_stage_mask |=
+                            VK_PIPELINE_STAGE_VERTEX_INPUT_BIT      |
+                            VK_PIPELINE_STAGE_VERTEX_SHADER_BIT     |
+                            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT    |
+                            VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
+                            VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT |
+                            VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT |
+                            VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR;
+                    }
+
+                    if (!EnumHasAnyFlags(capabilities, DeviceCapability::RayTracing))
+                    {
+                        dest_stage_mask |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT_KHR;
+                    }
+
+                    dest_stage &= ~dest_stage_mask;
+
                     all_src_stage_mask |= src_stage;
                     all_dst_stage_mask |= dest_stage;
 
                     VulkanBuffer* vulkan_buffer = vulkan_rm->buffer_pool.GetHot(arg.buffer);
-                    vk_buffer_barriers[buffer_barrier_count++] = {
+                    VkBufferMemoryBarrier2& buffer_barrier = vk_buffer_barriers[buffer_barrier_count++];
+                    buffer_barrier = {
                         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
                         .pNext = nullptr,
                         .srcStageMask = src_stage,
-                        .srcAccessMask = _ParseResourceState(arg.before_state),
+                        .srcAccessMask = ResourceStateToAccessFlags2(arg.before_state),
                         .dstStageMask = dest_stage,
-                        .dstAccessMask = _ParseResourceState(arg.after_state),
+                        .dstAccessMask = ResourceStateToAccessFlags2(arg.after_state),
                         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                         .buffer = vulkan_buffer->vk_buffer,
                         .offset = arg.offset,
                         .size = (arg.size == ~0u) ? VK_WHOLE_SIZE : arg.size
                     };
+
+                    VkAccessFlagBits2 acces_flags = 0u;
+                    acces_flags |= VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
+                    buffer_barrier.dstAccessMask &= ~(acces_flags);
                 }
                 else if constexpr (std::is_same_v<T, GpuBarrier::TextureBarrier>)
                 {
@@ -192,9 +266,9 @@ void phx::rhi::VulkanCommandBuffer::InsertBarriers(Span<GpuBarrier> barriers)
                         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
                         .pNext = nullptr,
                         .srcStageMask = src_stage,
-                        .srcAccessMask = _ParseResourceState(arg.before_state),
+                        .srcAccessMask = ResourceStateToAccessFlags2(arg.before_state),
                         .dstStageMask = dest_stage,
-                        .dstAccessMask = _ParseResourceState(arg.after_state),
+                        .dstAccessMask = ResourceStateToAccessFlags2(arg.after_state),
                         .oldLayout = ConvertImageLayout(arg.before_state),
                         .newLayout = ConvertImageLayout(arg.after_state),
                         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -258,8 +332,8 @@ void phx::rhi::VulkanCommandBuffer::CopyBuffer(
     };
     
 
-    VulkanBuffer* src_buffer_impl = rsc_manager->buffer_pool.GetHot(src_buffer);
-    VulkanBuffer* dest_buffer_impl = rsc_manager->buffer_pool.GetHot(dest_buffer);
+    VulkanBuffer* src_buffer_impl = vulkan_rm->buffer_pool.GetHot(src_buffer);
+    VulkanBuffer* dest_buffer_impl = vulkan_rm->buffer_pool.GetHot(dest_buffer);
 
     // Define the overall copy operation
     VkCopyBufferInfo2 copyBufferInfo = { 

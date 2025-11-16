@@ -65,11 +65,11 @@ SwapchainHandle phx::rhi::VulkanResourceManager::CreateSwapchain(const Swapchain
 
     vkb::Swapchain vkb_swapchain = swap_ret.value(); // Renamed to snake_case
     impl.vk_swapchain = vkb_swapchain.swapchain;
-    impl_frame.vk_swapchain_image_format = vkb_swapchain.image_format;
     impl_frame.vk_swapchain_extent = vkb_swapchain.extent;
     impl_frame.vk_swapchain = impl.vk_swapchain;
 
     const uint32_t num_images = vkb_swapchain.image_count;
+    impl.vk_swapchain_image_format = vkb_swapchain.image_format;
     impl.vk_images.resize(num_images);
     impl.vk_image_views.resize(num_images);
     impl.vk_render_finished_sem.resize(num_images);

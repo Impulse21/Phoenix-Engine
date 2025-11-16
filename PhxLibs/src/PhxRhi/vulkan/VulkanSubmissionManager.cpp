@@ -121,6 +121,7 @@ void phx::rhi::VulkanSubmissionManager::BeginFrame(SwapchainHandle swapchain)
     impl_frame->vk_render_finished_sem  = swapchain_impl->vk_render_finished_sem[image_index];
     impl_frame->vk_image                = swapchain_impl->vk_images[image_index];
     impl_frame->vk_image_view           = swapchain_impl->vk_image_views[image_index];
+    impl_frame->resource_state          = ResourceStates::Unknown;
 }
 
 void phx::rhi::VulkanSubmissionManager::EndFrame(

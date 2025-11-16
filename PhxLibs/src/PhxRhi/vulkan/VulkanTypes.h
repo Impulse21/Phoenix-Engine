@@ -30,8 +30,7 @@ namespace phx::rhi
 		VkSwapchainKHR		vk_swapchain = VK_NULL_HANDLE;
 
 		// -- 4-byte members ---
-		VkFormat			vk_swapchain_image_format = VK_FORMAT_UNDEFINED;
-		VkImageLayout		vk_image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+		rhi::ResourceStates resource_state = ResourceStates::Unknown;
 		uint32_t			vk_swapchain_image_index = ~0u;
 
 		uint8_t image_index = 0;
@@ -48,6 +47,7 @@ namespace phx::rhi
 		std::vector<VkImageView>	vk_image_views;
 
 		VkSwapchainKHR				vk_swapchain = VK_NULL_HANDLE;
+		VkFormat					vk_swapchain_image_format = VK_FORMAT_UNDEFINED;
 	};
 
 	struct RHI_DEFINE_ALIGNED(VulkanBuffer, kCacheLineSize)
@@ -320,7 +320,7 @@ namespace phx::rhi
 		}
 	}
 
-	constexpr VkImageLayout ConvertImageLayout(ResourceStates value)
+	constexpr VkImageLayout ResourceStateToImageLayout(ResourceStates value)
 	{
 		switch (value)
 		{
@@ -343,12 +343,14 @@ namespace phx::rhi
 			return VK_IMAGE_LAYOUT_GENERAL;
 		case ResourceStates::ShadingRateSurface:
 			return VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+		case ResourceStates::Present:
+			return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		default:
 			// Combination of state flags will default to general
 			return VK_IMAGE_LAYOUT_GENERAL;
 		}
 	}
-	constexpr VkAccessFlags2 _ParseResourceState(ResourceStates value)
+	constexpr VkAccessFlags2 ResourceStateToAccessFlags2(ResourceStates value)
 	{
 		VkAccessFlags2 flags = VK_ACCESS_2_NONE;
 
@@ -424,7 +426,7 @@ namespace phx::rhi
 		return flags;
 	}
 
-	constexpr VkPipelineStageFlags ConvertPipelineStages(rhi::ResourceStates states)
+	constexpr VkPipelineStageFlags ResourceStateToPipelineStage(rhi::ResourceStates states)
 	{
 		VkPipelineStageFlags vk_stages = VK_PIPELINE_STAGE_2_NONE;
 

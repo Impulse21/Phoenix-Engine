@@ -246,6 +246,11 @@ void PhxRuntime::OnRender_Threaded()
 
 	rhi::ICommandBuffer* command_buffer = submit_manager->BeginCommandBuffer(rhi::CommandQueueType::Graphics);
 
+	command_buffer->BeginRendering(m_swapchain, { .Colour = rhi::Color(0.0f, 1.0f, 0.0f, 1.0f) });
+	command_buffer->EndRendering();
+
+	command_buffer->InsertSwapchainBarrier(m_swapchain, rhi::ResourceStates::Present);
+
 	submit_manager->EndFrame(m_swapchain, { command_buffer });
 
 	_thread_counter.fetch_sub(1);
