@@ -64,6 +64,52 @@ void phx::rhi::VulkanCommandBuffer::DrawIndexedInstanced(uint32_t index_count, u
         start_instance_location);
 }
 
+void phx::rhi::VulkanCommandBuffer::InsertSwapchainBarrier(SwapchainHandle handle, rhi::ResourceStates resource_state)
+{
+    VulkanSwapchainFrame* swapchain_handle = vulkan_rm->swapchain_pool.GetHot(handle);
+
+    VkImageLayout old_layout = swapchain_handle->vk_image_layout;
+    VkImageLayout new_layout = ConvertImageLayout(resource_state);
+
+    VkPipelineStageFlags src_stage = swapchain_handle->vk_swapchain_image_format;
+    VkPipelineStageFlags dest_stage = ConvertPipelineStages(resource_state);
+
+    VkImageMemoryBarrier2 barrier = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+        .pNext = nullptr,
+        .srcStageMask = src_stage,
+        .srcAccessMask = _ParseResourceState(arg.before_state),
+        .dstStageMask = dest_stage,
+        .dstAccessMask = _ParseResourceState(arg.after_state),
+        .oldLayout = old_layout,
+        .newLayout = new_layout,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = swapchain_handle->vk_image,
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1
+        }
+    });
+
+    VkDependencyInfo dependency_info = {
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .pNext = nullptr,
+        .dependencyFlags = 0,
+        .memoryBarrierCount = 0,
+        .pMemoryBarriers = nullptr,
+        .bufferMemoryBarrierCount = 0,
+        .pBufferMemoryBarriers = nullptr,
+        .imageMemoryBarrierCount = 1,
+        .pImageMemoryBarriers = &barrier
+    };
+
+    vkCmdPipelineBarrier2(vk_handle, &dependency_info);
+}
+
 void phx::rhi::VulkanCommandBuffer::InsertBarriers(Span<GpuBarrier> barriers)
 {
     if (barriers.IsEmpty())
@@ -115,7 +161,7 @@ void phx::rhi::VulkanCommandBuffer::InsertBarriers(Span<GpuBarrier> barriers)
                     all_src_stage_mask |= src_stage;
                     all_dst_stage_mask |= dest_stage;
 
-                    VulkanBuffer* vulkan_buffer =  rsc_manager->buffer_pool.GetHot(arg.buffer);
+                    VulkanBuffer* vulkan_buffer = vulkan_rm->buffer_pool.GetHot(arg.buffer);
                     vk_buffer_barriers[buffer_barrier_count++] = {
                         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
                         .pNext = nullptr,
@@ -190,7 +236,6 @@ void phx::rhi::VulkanCommandBuffer::InsertBarriers(Span<GpuBarrier> barriers)
         .pBufferMemoryBarriers = buffer_barriers_ptr,
         .imageMemoryBarrierCount = static_cast<uint32_t>(texture_barrier_count),
         .pImageMemoryBarriers = image_barriers_ptr
-
     };
 
     PHX_ASSERT(vk_handle != VK_NULL_HANDLE, "Unexpected state of buffer handle");
@@ -235,7 +280,7 @@ phx::rhi::VulkanCommandBuffer::VulkanCommandBuffer(rhi::VulkanResourceManager* r
     : vk_handle(vk_handle)
     , queue_type(type)
     , thread_id(thread_id)
-    , rsc_manager(rsc_manager)
+    , vulkan_rm(rsc_manager)
 {
     PHX_CORE_ASSERT(vk_handle != VK_NULL_HANDLE);
 }

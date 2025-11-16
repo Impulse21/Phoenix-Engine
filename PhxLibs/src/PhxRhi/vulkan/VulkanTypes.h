@@ -22,16 +22,17 @@ namespace phx::rhi
 	struct RHI_DEFINE_ALIGNED(VulkanSwapchainFrame, kCacheLineSize)
 	{
 		// -- 8-byte members ---
-		VkExtent2D vk_swapchain_extent = { 0, 0 };
-		VkSemaphore vk_image_available_sem;
-		VkSemaphore vk_render_finished_sem;
-		VkImage		vk_image;
-		VkImageView vk_image_view;
-		VkSwapchainKHR vk_swapchain = VK_NULL_HANDLE;
+		VkExtent2D			vk_swapchain_extent = { 0, 0 };
+		VkSemaphore			vk_image_available_sem;
+		VkSemaphore			vk_render_finished_sem;
+		VkImage				vk_image;
+		VkImageView			vk_image_view;
+		VkSwapchainKHR		vk_swapchain = VK_NULL_HANDLE;
 
 		// -- 4-byte members ---
-		VkFormat vk_swapchain_image_format = VK_FORMAT_UNDEFINED;
-		uint32_t vk_swapchain_image_index = ~0u;
+		VkFormat			vk_swapchain_image_format = VK_FORMAT_UNDEFINED;
+		VkImageLayout		vk_image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+		uint32_t			vk_swapchain_image_index = ~0u;
 
 		uint8_t image_index = 0;
 	};
