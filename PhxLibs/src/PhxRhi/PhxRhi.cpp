@@ -37,6 +37,7 @@ bool rhi::Initialize(Descriptor const& /*descriptor*/, void* window_handle, size
 
 bool rhi::Shutdown()
 {
+    ISubmissionManager::Ptr->WaitForIdle();
     ISubmissionManager::Ptr->Shutdown();
     IResourceManager::Ptr->Shutdown();
     IGpuMemoryAllocator::Ptr->Shutdown();

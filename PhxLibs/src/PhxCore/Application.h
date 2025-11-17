@@ -4,6 +4,7 @@
 #include <filesystem>
 
 #include <PhxRhi/RHICommon.h>
+#include <PhxCore/Memory/IAllocator.h>
 
 namespace phx
 {
@@ -24,8 +25,8 @@ namespace phx
 		virtual ~IApplication() = default;
 
 		virtual void OnPreRender() = 0;
-		virtual void OnUpdate_Threaded(float deltaTime) = 0;
-		virtual void OnRender_Threaded() = 0;
+		virtual void OnUpdate_Threaded(float deltaTime, IAllocator* frame_allocator) = 0;
+		virtual void OnRender_Threaded(IAllocator* frame_allocator) = 0;
 
 		virtual void Startup() = 0;
 		virtual void Shutdown() = 0;

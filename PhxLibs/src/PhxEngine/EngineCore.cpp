@@ -37,14 +37,14 @@ namespace
 		app->OnPreRender();
 	}
 
-	void OnUpdate_Threaded(IApplication* app, float deltaTime)
+	void OnUpdate_Threaded(IApplication* app, float deltaTime, IAllocator* frame_allocator)
 	{
-		app->OnUpdate_Threaded(deltaTime);
+		app->OnUpdate_Threaded(deltaTime, frame_allocator);
 	}
 
-	void OnRender_Threaded(IApplication* app)
+	void OnRender_Threaded(IApplication* app, IAllocator* frame_allocator)
 	{
-		app->OnRender_Threaded();
+		app->OnRender_Threaded(frame_allocator);
 	}
 }
 
@@ -138,14 +138,14 @@ namespace phx
 			// -- Update ---
 			sync.Add();
 			sync.Add();
-			JobSystem::SubmitJob([&sync](JobContext const&) {
-				OnUpdate_Threaded(phx::IApplication::Ptr, 0);
+			JobSystem::SubmitJob([&sync](JobContext const& job_ctx) {
+				OnUpdate_Threaded(phx::IApplication::Ptr, 0, job_ctx.FrameHeap);
 				sync.Signal();
 			});
 
 			// -- Render ---
-			JobSystem::SubmitJob([&sync](JobContext const&) {
-				OnRender_Threaded(phx::IApplication::Ptr);
+			JobSystem::SubmitJob([&sync](JobContext const& job_ctx) {
+				OnRender_Threaded(phx::IApplication::Ptr, job_ctx.FrameHeap);
 				sync.Signal();
 			});
 

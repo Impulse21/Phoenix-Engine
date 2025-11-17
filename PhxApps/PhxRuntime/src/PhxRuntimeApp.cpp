@@ -4,12 +4,12 @@
 #include <PhxCore/Profiler.h>
 #include <PhxCore/IO/FileUtils.h>
 #include <PhxCore/IVirtualFileSystem.h>
+#include <PhxCore/Memory/IAllocator.h>
 
 #include <PhxResource/ResourceSystem.h>
 
 #include <PhxWorld/GltfPrefabHandler.h>
 #include <PhxEngine/EntryPoint.h>
-
 #include <PhxRhi/PhxRhi.h>
 
 #include <PhxRhi/IResourceManager.h>
@@ -36,8 +36,8 @@ public:
 	void Shutdown() override;
 
 	void OnPreRender() override;
-	void OnUpdate_Threaded(float deltaTime) override;
-	void OnRender_Threaded() override;
+	void OnUpdate_Threaded(float deltaTime, IAllocator* frame_allocator) override;
+	void OnRender_Threaded(IAllocator* frame_allocator) override;
 
 	const char* GetName() const override { return this->m_desc.Name.c_str(); }
 	void GetDefaultWindowSize(uint32_t& outWidth, uint32_t& outHeight) const override
@@ -220,7 +220,7 @@ void PhxRuntime::OnPreRender()
 #endif
 }
 
-void PhxRuntime::OnUpdate_Threaded(float /*delta_time*/)
+void PhxRuntime::OnUpdate_Threaded(float /*delta_time*/, IAllocator* /*frame_allocator*/)
 {
 #if false
 	PHX_PROFILE;
@@ -233,7 +233,7 @@ void PhxRuntime::OnUpdate_Threaded(float /*delta_time*/)
 #endif
 }
 
-void PhxRuntime::OnRender_Threaded()
+void PhxRuntime::OnRender_Threaded(IAllocator* frame_allocator)
 {
 	PHX_PROFILE;
 	static std::atomic_uint32_t _thread_counter;
@@ -246,7 +246,56 @@ void PhxRuntime::OnRender_Threaded()
 
 	rhi::ICommandBuffer* command_buffer = submit_manager->BeginCommandBuffer(rhi::CommandQueueType::Graphics);
 
-	command_buffer->BeginRendering(m_swapchain, { .Colour = rhi::Color(0.0f, 1.0f, 0.0f, 1.0f) });
+	// -- this should be in the pre stage stage ---
+
+	static constexpr size_t MAX_NUM_TRANSISIONS_PER_FRAME = 50;
+	SpanMutable transitions = AllocateArray<GpuTransitionWork>(frame_allocator, MAX_NUM_TRANSISIONS_PER_FRAME);
+	size_t num_transitions = 0;
+
+	if (m_box_prefab->state == Resource::State::Loaded)
+	{
+		// this doesn't see right - Not sure we kno it's a handle resource
+		auto prefab = static_cast<PrefabHandleResource*>(m_box_prefab.Get());
+		for (const auto& node : prefab->prefab->nodes)
+		{
+			if (auto* mesh_node = std::get_if<MeshNodeData>(&node.data))
+			{
+				if (mesh_node->mesh->state == Resource::State::On_Gpu)
+				{
+					mesh_node->mesh->CollectPendingGpuTransitions(transitions, num_transitions);
+				}
+			}
+		}
+	}
+
+	if (num_transitions)
+	{
+		SpanMutable<rhi::GpuBarrier> barriers = AllocateArray<rhi::GpuBarrier>(frame_allocator, num_transitions);
+		for (size_t i = 0; i < num_transitions; i++)
+		{
+			if (auto* buffer_work = std::get_if<GpuTransitionWork::BufferWork>(&transitions[i].Data))
+			{
+				rhi::GpuBarrier::BufferBarrier barrier = {
+					.buffer = buffer_work->buffer,
+					.before_state =  rhi::ResourceStates::CopyDest,
+					.after_state = buffer_work->state,
+					.offset = buffer_work->offset,
+					.size = buffer_work->size
+				};
+
+				barriers[i].Data = barrier;
+			}
+			else
+			{
+				PHX_ASSERT(false);
+			}
+		}
+
+		command_buffer->InsertBarriers(barriers);
+	}
+
+	// -- End Caching
+	command_buffer->BeginRendering(m_swapchain, { .Colour = rhi::Color(0.0f, 0.0f, 0.0f, 1.0f) });
 	command_buffer->EndRendering();
 
 	command_buffer->InsertSwapchainBarrier(m_swapchain, rhi::ResourceStates::Present);

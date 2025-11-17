@@ -66,8 +66,7 @@ void phx::renderer::MeshResourceHandler::LoadAsync(IIoQueue* io_queue, RefCountP
 				.destination = {
 					.target = GpuResourceDestinationInfo
 						{ 
-							.handle = mesh_resource->packed_mesh_buffer, 
-							.final_resource_state = rhi::ResourceStates::IndexGpuBuffer | rhi::ResourceStates::ShaderResourceNonPixel 
+							.handle = mesh_resource->packed_mesh_buffer,
 					},
 					.size = gpu_chunk_header.UncompressedSize,
 				}
@@ -84,7 +83,7 @@ void phx::renderer::MeshResourceHandler::LoadAsync(IIoQueue* io_queue, RefCountP
 					return;
 				}
 
-				mesh_resource->state = Resource::State::Loaded;
+				mesh_resource->state = Resource::State::On_Gpu;
 			};
 
 			IIoQueue::Ptr->Submit(std::move(request));

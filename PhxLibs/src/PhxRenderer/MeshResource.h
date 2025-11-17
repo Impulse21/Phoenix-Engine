@@ -43,6 +43,9 @@ namespace phx::renderer
         rhi::BufferHandle packed_mesh_buffer;
 
         ~MeshResource();
+
+        // Inherited via Resource
+        bool CollectPendingGpuTransitions(SpanMutable<GpuTransitionWork> transitions, size_t& fill_index) override;
     };
 }
 

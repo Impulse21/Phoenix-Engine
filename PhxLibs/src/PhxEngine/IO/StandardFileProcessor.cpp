@@ -246,14 +246,6 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 					gpu_handle,
 					destination_info.offset,
 					source_info.size);
-
-
-				rhi::GpuBarrier post_copy_barrier = rhi::GpuBarrier::CreateBuffer(
-					gpu_handle,
-					rhi::ResourceStates::CopyDest,
-					gpu_dest_info.final_resource_state);
-
-				cmd_buffer->InsertBarriers({ post_copy_barrier });
 			}
 			else if constexpr (std::is_same_v<THandle, rhi::TextureHandle>)
 			{

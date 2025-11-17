@@ -127,6 +127,7 @@ namespace phx
 
         ~PrefabResource() override = default;
 
+        bool CollectPendingGpuTransitions(SpanMutable<GpuTransitionWork>, size_t&) override { return false; }
         PHX_DECLARE_RESOURCE(PrefabResource)
 	};
 
@@ -134,7 +135,13 @@ namespace phx
     {
         RefCountPtr<PrefabResource> prefab;
 
+        PHX_DECLARE_RESOURCE(PrefabHandleResource);
+
         ~PrefabHandleResource() override = default;
-        PHX_DECLARE_RESOURCE(PrefabHandleResource)
+
+        bool CollectPendingGpuTransitions(SpanMutable<GpuTransitionWork> /*transitions*/, size_t& /*fill_index*/) override
+        {
+            return false;
+        };
 	};
 }

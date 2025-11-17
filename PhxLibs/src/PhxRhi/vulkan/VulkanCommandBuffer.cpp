@@ -203,30 +203,6 @@ void phx::rhi::VulkanCommandBuffer::InsertBarriers(Span<GpuBarrier> barriers)
 
                     VkPipelineStageFlags src_stage = ResourceStateToPipelineStage(arg.before_state);
                     VkPipelineStageFlags dest_stage = ResourceStateToPipelineStage(arg.after_state);
-
-
-                    const DeviceCapability& capabilities = vulkan_rm->vulkan_backend->capabilities;
-
-                    VkPipelineStageFlags dest_stage_mask = 0u;
-                    if (this->queue_type == CommandQueueType::Copy)
-                    {
-                        dest_stage_mask |=
-                            VK_PIPELINE_STAGE_VERTEX_INPUT_BIT      |
-                            VK_PIPELINE_STAGE_VERTEX_SHADER_BIT     |
-                            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT    |
-                            VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
-                            VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT |
-                            VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT |
-                            VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR;
-                    }
-
-                    if (!EnumHasAnyFlags(capabilities, DeviceCapability::RayTracing))
-                    {
-                        dest_stage_mask |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT_KHR;
-                    }
-
-                    dest_stage &= ~dest_stage_mask;
-
                     all_src_stage_mask |= src_stage;
                     all_dst_stage_mask |= dest_stage;
 
@@ -245,10 +221,6 @@ void phx::rhi::VulkanCommandBuffer::InsertBarriers(Span<GpuBarrier> barriers)
                         .offset = arg.offset,
                         .size = (arg.size == ~0u) ? VK_WHOLE_SIZE : arg.size
                     };
-
-                    VkAccessFlagBits2 acces_flags = 0u;
-                    acces_flags |= VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
-                    buffer_barrier.dstAccessMask &= ~(acces_flags);
                 }
                 else if constexpr (std::is_same_v<T, GpuBarrier::TextureBarrier>)
                 {
