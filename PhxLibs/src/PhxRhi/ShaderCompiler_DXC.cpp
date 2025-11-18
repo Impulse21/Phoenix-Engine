@@ -1,5 +1,6 @@
 #include "PhxRhi_pch.h"
 
+#if false
 #include <filesystem>
 #include <fstream>
 
@@ -506,25 +507,4 @@ namespace
 	}
 }
 
-namespace phx::rhi
-{
-	namespace ShaderCompiler
-	{
-
-		Output Compile(Input const& input)
-		{
-			Output output = {};
-
-			switch(input.Format)
-			{
-			case ShaderFormat::Hlsl6:
-			case ShaderFormat::Spirv:
-				CompileInternal(input, output);
-				break;
-			}
-
-			return output;
-		}
-
-	}
-}
+#endif

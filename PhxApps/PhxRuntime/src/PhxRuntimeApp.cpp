@@ -91,7 +91,6 @@ void PhxRuntime::Startup()
 
 	auto resource_system = phx::ResourceSystem::Ptr;
 	resource_system->RegisterFileHanlder<phx::GltfPrefabHandler>();
-	phx::GltfPrefabHandler::SetForceRecook(true);
 
 	uint32_t win_height, win_width;
 	GetDefaultWindowSize(win_width, win_height);

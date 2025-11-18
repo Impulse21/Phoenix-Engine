@@ -8,6 +8,7 @@ LibDStorage             = prebuild_direcotry..'/directstorage_1.2.4'
 LibPix                  = prebuild_direcotry..'/winpix_1.0.240308001'
 LibDirectXTex			= prebuild_direcotry..'/directx_tex_oct2024'
 LibVulkan				= prebuild_direcotry..'/vulkan_1.4.313.0'
+LibSlang				= prebuild_direcotry..'/slang-2025.22.1'
 
 AgilityLibrary =
 {
@@ -40,6 +41,19 @@ DStorageLibrary =
 	{
 		LibDStorage..'/bin/x64/dstorage.dll',
 		LibDStorage..'/bin/x64/dstoragecore.dll'
+	}
+}
+
+SlangLibrary = 
+{
+	includeDirs = LibSlang..'/include',
+	libDirs     = LibSlang..'/lib',
+    libNames    = {'gfx', 'slang-compiler', 'slang-rt', 'slang'},
+	dlls        =
+	{
+		LibSlang..'/bin/slang.dll',
+		LibSlang..'/bin/slang-llvm.dll',
+		LibSlang..'/bin/slang-rt.dll',
 	}
 }
 
