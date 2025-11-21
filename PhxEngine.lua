@@ -977,6 +977,8 @@ group "Applications"
             project_vendor_tlsf,
         }
         
+        AddLibraryIncludes(SlangLibrary)
+        LinkLibrary(SlangLibrary)
         filter('platforms:'..clang_win64_d3d12)
             AddLibraryIncludes(AgilityLibrary)
             AddLibraryIncludes(DStorageLibrary)

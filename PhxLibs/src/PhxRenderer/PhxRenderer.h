@@ -1,9 +1,10 @@
 #pragma once
 
-#include <PhxRhi/PhxRhi_ForwardDeclares.h>
+#include <PhxRenderer/ShaderLibrary.h>
 
 namespace phx::renderer
 {
-	void Initialize(rhi::IBackend* rhi_backend);
-	void Shutdown();
+    void Initialize(ShaderLibraryDescriptor const& library_desc);
+    void Shutdown();
+
 }

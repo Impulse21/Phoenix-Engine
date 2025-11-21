@@ -283,3 +283,15 @@ Hash64 phx::renderer::ShaderCompileDescriptor::GetHash() const
 
     return (uint64_t)seed;
 }
+
+const void* phx::renderer::SlangShader::GetEntryPointCode(int /*entry_point_index*/, size_t& out_size) const
+{
+    if (m_code_blob)
+    {
+        out_size = m_code_blob->getBufferSize();
+        return m_code_blob->getBufferPointer();
+    }
+
+    out_size = 0;
+    return nullptr;
+}

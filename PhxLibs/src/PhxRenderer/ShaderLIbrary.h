@@ -16,22 +16,17 @@ namespace phx::renderer
     class SlangShader : public RefCounted
     {
     public:
-        // The Raw Bytecode for the RHI (Vulkan/DX12)
-        const void* GetByteCode() const;
-        size_t GetByteCodeSize() const;
+        const void* GetByteCode() const { return m_code_blob->getBufferPointer(); }
+        size_t GetByteCodeSize() const { return m_code_blob->getBufferSize(); }
 
-        // The Reflection Data for the Material System
-        slang::ProgramLayout* GetReflection() const;
+        slang::ProgramLayout* GetReflection() const { return m_linked_programs ? m_linked_programs->getLayout() : nullptr; }
 
-        // The Entry Point code (sometimes needed separately for Vulkan)
-        // If entryPointIndex is -1, returns the composite blob.
         const void* GetEntryPointCode(int entryPointIndex, size_t& outSize) const;
 
     private:
         friend class ShaderLibrary;
 
     private:
-        // We hold these to keep the pointers valid
         Slang::ComPtr<slang::IComponentType> m_linked_programs;
         Slang::ComPtr<slang::IBlob> m_code_blob;
     };

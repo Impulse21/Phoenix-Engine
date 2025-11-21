@@ -6,13 +6,15 @@
 #include <PhxCore/IVirtualFileSystem.h>
 #include <PhxCore/Memory/IAllocator.h>
 
+#include <PhxRhi/PhxRhi.h>
+#include <PhxRhi/IResourceManager.h>
+
+#include <PhxRenderer/PhxRenderer.h>
+
 #include <PhxResource/ResourceSystem.h>
 
 #include <PhxWorld/GltfPrefabHandler.h>
 #include <PhxEngine/EntryPoint.h>
-#include <PhxRhi/PhxRhi.h>
-
-#include <PhxRhi/IResourceManager.h>
 
 #include <Generated/GlobalVariables.h>
 
@@ -92,6 +94,17 @@ void PhxRuntime::Startup()
 	auto resource_system = phx::ResourceSystem::Ptr;
 	resource_system->RegisterFileHanlder<phx::GltfPrefabHandler>();
 
+	renderer::ShaderLibraryDescriptor shader_librar_desc = {
+		.target = rhi::IBackend::Ptr->GetShaderFormat(),
+		.include_paths = { "art://shaders/"},
+		.defines = {},
+#if PHX_DEBUG
+		.debug_info = true,
+#endif
+	};
+
+	renderer::Initialize(shader_librar_desc);
+
 	uint32_t win_height, win_width;
 	GetDefaultWindowSize(win_width, win_height);
 
@@ -129,6 +142,8 @@ void PhxRuntime::Startup()
 
 void PhxRuntime::Shutdown()
 {
+	phx::renderer::Shutdown();
+
 	phx::rhi::IResourceManager::Ptr->DeleteSwapchain(m_swapchain);
 }
 

@@ -1,28 +1,21 @@
-#include "PhxRenderer/PhxRenderer_pch.h"
 #include "PhxRenderer.h"
 
-#include "PhxRenderer.h"
+using namespace phx;
 
-#include <PhxRhi/IBackend.h>
-
-#include <PhxRenderer/ShaderLibrary.h>
-
-void phx::renderer::Initialize(rhi::IBackend* rhi_backend)
+void renderer::Initialize(ShaderLibraryDescriptor const& library_desc)
 {
-	ShaderLibrary::Ptr = new ShaderLibrary();
-	ShaderLibraryDescriptor shader_libraryDesc = {
-		.target = rhi_backend->GetShaderFormat(),
-	};
+	renderer::ShaderLibrary::Ptr = new ShaderLibrary();
+	renderer::ShaderLibrary::Ptr->Initialize(library_desc);
+
 }
 
-void phx::renderer::Shutdown()
+void renderer::Shutdown()
 {
-	if (ShaderLibrary::Ptr)
+	if (renderer::ShaderLibrary::Ptr)
 	{
-		ShaderLibrary::Ptr->Shutdown();
-		delete ShaderLibrary::Ptr;
-		ShaderLibrary::Ptr = nullptr;
+		renderer::ShaderLibrary::Ptr->Shutdown();
+		delete renderer::ShaderLibrary::Ptr;
+		renderer::ShaderLibrary::Ptr = nullptr;
 	}
 
 }
-
