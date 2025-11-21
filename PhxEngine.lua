@@ -752,6 +752,7 @@ group "PhxLibs"
 
         AddLibraryIncludes(SlangLibrary)
         LinkLibrary(SlangLibrary)
+        
         filter('platforms:'..clang_win64_d3d12)
             excludes  { phx_lib_src_rhi_dir..'/vulkan/**' }
     

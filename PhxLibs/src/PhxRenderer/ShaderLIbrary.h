@@ -1,6 +1,7 @@
 #pragma once
 
 #include <PhxCore/RefCountPtr.h>
+#include <PhxCore/Hash.h>
 #include <PhxRhi/RHICommon.h>
 #include <string>
 
@@ -12,7 +13,7 @@
 
 namespace phx::renderer
 {
-    class SlangShader
+    class SlangShader : public RefCounted
     {
     public:
         // The Raw Bytecode for the RHI (Vulkan/DX12)
@@ -35,7 +36,7 @@ namespace phx::renderer
         Slang::ComPtr<slang::IBlob> m_code_blob;
     };
 
-	class ShaderAsset
+	class ShaderAsset : public RefCounted
 	{
 	public:
         RefCountPtr<SlangShader> Get() const { return m_current; }
@@ -64,7 +65,7 @@ namespace phx::renderer
         bool optimization = true;
         bool warning_as_errors = true; 
 
-        uint64_t GetHash() const;
+        Hash64 GetHash() const;
     };
 
 	class ShaderLibrary
@@ -76,7 +77,7 @@ namespace phx::renderer
 		void Initialize(std::vector<std::string>&& include_paths);
 		void Shutdown();
 
-        bool LoadShader(ShaderCompileDescriptor const& compile_desc);
+        RefCountPtr<ShaderAsset> LoadShader(ShaderCompileDescriptor const& compile_desc);
 
         void ReloadAll();
 
@@ -85,9 +86,10 @@ namespace phx::renderer
 
     private:
         Slang::ComPtr<slang::IGlobalSession> m_global_session;
-        
-        std::unordered_map<uint64_t, RefCountPtr<ShaderAsset>> m_cached_assets;
-        std::unordered_map<uint64_t, RefCountPtr<ShaderCompileDescriptor>> m_cached_compile_desc;
+        Slang::ComPtr<slang::ISession> m_session; // Not thread safe
+
+        std::unordered_map<Hash64, RefCountPtr<ShaderAsset>> m_cached_assets;
+        std::unordered_map<Hash64, ShaderCompileDescriptor> m_cached_compile_desc;
         std::mutex m_cache_mutex;
 
         std::vector<std::string> m_include_paths;
