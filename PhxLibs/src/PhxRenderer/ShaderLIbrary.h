@@ -50,7 +50,15 @@ namespace phx::renderer
     struct ShaderCompileDescriptor
     {
         std::string source_file_path;
-        std::vector<std::pair<std::string, std::string>> defines;
+        struct GenericArg
+        {
+            std::string name;
+            std::string value;
+
+            bool is_type= false;
+        };
+
+        std::vector<GenericArg> generic_args;
 
         struct EntryPoint
         {
@@ -59,13 +67,20 @@ namespace phx::renderer
         };
         std::vector<EntryPoint> entry_points;
 
+        Hash64 GetHash() const;
+    };
+
+    struct ShaderLibraryDescriptor
+    {
         rhi::ShaderFormat target = rhi::ShaderFormat::Spirv;
+        std::vector<std::string> include_paths;
+
+        std::vector<std::pair<std::string, std::string>> defines;
 
         bool debug_info = false;
         bool optimization = true;
-        bool warning_as_errors = true; 
-
-        Hash64 GetHash() const;
+        bool warning_as_errors = true;
+        bool ForceColumnMajor = true;   // C++ standard matrix layout
     };
 
 	class ShaderLibrary
@@ -74,7 +89,7 @@ namespace phx::renderer
 		inline static ShaderLibrary* Ptr = nullptr;
 
 	public:
-		void Initialize(std::vector<std::string>&& include_paths);
+		void Initialize(const ShaderLibraryDescriptor& librar_desc);
 		void Shutdown();
 
         RefCountPtr<ShaderAsset> LoadShader(ShaderCompileDescriptor const& compile_desc);
@@ -83,16 +98,17 @@ namespace phx::renderer
 
     private:
         RefCountPtr<SlangShader> Compile(ShaderCompileDescriptor const& compile_desc);
+        void ConstructSession();
 
     private:
+        ShaderLibraryDescriptor m_library_desc;
+
         Slang::ComPtr<slang::IGlobalSession> m_global_session;
         Slang::ComPtr<slang::ISession> m_session; // Not thread safe
 
         std::unordered_map<Hash64, RefCountPtr<ShaderAsset>> m_cached_assets;
         std::unordered_map<Hash64, ShaderCompileDescriptor> m_cached_compile_desc;
         std::mutex m_cache_mutex;
-
-        std::vector<std::string> m_include_paths;
 
 	};
 }

@@ -1,5 +1,5 @@
 #include "PhxRenderer/PhxRenderer_pch.h"
-#include "ShaderLIbrary.h"
+#include "ShaderLibrary.h"
 
 #include <PhxCore/IVirtualFileSystem.h>
 
@@ -19,7 +19,7 @@ namespace
     }
 }
 
-void phx::renderer::ShaderLibrary::Initialize(std::vector<std::string>&& include_paths)
+void phx::renderer::ShaderLibrary::Initialize(const ShaderLibraryDescriptor& librar_desc)
 {
     if (SLANG_FAILED(slang::createGlobalSession(m_global_session.writeRef())))
     {
@@ -27,9 +27,8 @@ void phx::renderer::ShaderLibrary::Initialize(std::vector<std::string>&& include
         return;
     }
 
-    PHX_CORE_INFO("Initialized with {0} include paths.", include_paths.size());
-
-	m_include_paths = std::move(include_paths);
+    m_library_desc = librar_desc;
+    ConstructSession();
 }
 
 void phx::renderer::ShaderLibrary::Shutdown()
@@ -43,13 +42,12 @@ void phx::renderer::ShaderLibrary::Shutdown()
 RefCountPtr<ShaderAsset> phx::renderer::ShaderLibrary::LoadShader(ShaderCompileDescriptor const& compile_desc)
 {
     const Hash64 cache_key = compile_desc.GetHash();
-
     {
         std::scoped_lock _(m_cache_mutex);
         auto it = m_cached_assets.find(cache_key);
         if (it != m_cached_assets.end())
         {
-            return it->second; // Cache Hit! Return existing proxy.
+            return it->second;
         }
     }
 
@@ -75,86 +73,16 @@ RefCountPtr<ShaderAsset> phx::renderer::ShaderLibrary::LoadShader(ShaderCompileD
 
 void phx::renderer::ShaderLibrary::ReloadAll()
 {
+    ConstructSession();
 }
 
 RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDescriptor const& compile_desc)
 {
-    PHX_ASSERT(m_global_session, "Shader Library was never Initialized");
-
-    slang::SessionDesc session_desc = {};
-
-    std::vector<const char*> search_paths;
-    search_paths.reserve(m_include_paths.size());
-    for (const auto& path : m_include_paths) 
-        search_paths.push_back(path.c_str());
-
-    session_desc.searchPaths = search_paths.data();
-    session_desc.searchPathCount = (SlangInt)search_paths.size();
-
-    std::vector<slang::PreprocessorMacroDesc> macros;
-    for (const auto& [key, val] : compile_desc.defines)
-    {
-        macros.push_back({ key.c_str(), val.c_str() });
-    }
-
-    session_desc.preprocessorMacros = macros.data();
-    session_desc.preprocessorMacroCount = (SlangInt)macros.size();
-
-    session_desc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
-
-    slang::TargetDesc target_desc= {};
-
-    switch (compile_desc.target)
-    {
-    case rhi::ShaderFormat::Spirv:
-        target_desc.format = SLANG_SPIRV;
-        target_desc.flags |= SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY;
-        target_desc.profile = m_global_session->findProfile("spirv_1_6");
-
-        break;
-    case rhi::ShaderFormat::Hlsl6:
-        target_desc.format = SLANG_DXIL;
-        target_desc.profile = m_global_session->findProfile("sm_6_6");
-        break;
-    }
-
-    std::vector<slang::CompilerOptionEntry> options;
-
-    // Optimization Level
-    {
-        slang::CompilerOptionEntry opt = {};
-        opt.name = slang::CompilerOptionName::Optimization;
-        opt.value.kind = slang::CompilerOptionValueKind::Int;
-        opt.value.intValue0 = compile_desc.optimization ? SLANG_OPTIMIZATION_LEVEL_HIGH : SLANG_OPTIMIZATION_LEVEL_NONE;
-        options.push_back(opt);
-    }
-
-    // Debug Info
-    if (compile_desc.debug_info)
-    {
-        slang::CompilerOptionEntry opt = {};
-        opt.name = slang::CompilerOptionName::DebugInformation;
-        opt.value.kind = slang::CompilerOptionValueKind::Int;
-        opt.value.intValue0 = SLANG_DEBUG_INFO_LEVEL_STANDARD;
-        options.push_back(opt);
-    }
-
-    target_desc.compilerOptionEntries = options.data();
-    target_desc.compilerOptionEntryCount = (uint32_t)options.size();
-
-    session_desc.targets = &target_desc;
-    session_desc.targetCount = 1;
-
-    Slang::ComPtr<slang::ISession> session;
-    if (SLANG_FAILED(m_global_session->createSession(session_desc, session.writeRef())))
-    {
-        PHX_CORE_ERROR("Failed to create SLANG session");
-        return nullptr;
-    }
+    PHX_ASSERT(m_session, "Initialize wasn't called");
 
     Result<std::string> physical_path = IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(compile_desc.source_file_path);
     Slang::ComPtr<slang::IBlob> diagnostic_blob;
-    slang::IModule* module = session->loadModule(physical_path.GetValue().c_str(), diagnostic_blob.writeRef());
+    slang::IModule* module = m_session->loadModule(physical_path.GetValue().c_str(), diagnostic_blob.writeRef());
 
     if (!module)
     {
@@ -182,14 +110,27 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
 
     diagnostic_blob = nullptr;
 
-    Slang::ComPtr<slang::IComponentType> linked_programs;
-    session->createCompositeComponentType(
+    // createCompositeComponentType can be skipped if just using all entry points
+    Slang::ComPtr<slang::IComponentType> composed_program;
+    m_session->createCompositeComponentType(
         components.data(),
         components.size(),
-        linked_programs.writeRef(),
+        composed_program.writeRef(),
         diagnostic_blob.writeRef());
 
-    if (!linked_programs)
+    if (!composed_program)
+    {
+        LogSlangDiagnostics(diagnostic_blob, "Failed to compose");
+        return nullptr;
+    }
+
+    diagnostic_blob = nullptr;
+    Slang::ComPtr<slang::IComponentType> linked_programs;
+
+    SlangResult result = composed_program->link(
+        linked_programs.writeRef(),
+        diagnostic_blob.writeRef());
+    if (SLANG_FAILED(result))
     {
         LogSlangDiagnostics(diagnostic_blob, "Failed to link");
         return nullptr;
@@ -198,11 +139,12 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
     Slang::ComPtr<slang::IBlob> code_blob;
     diagnostic_blob = nullptr;
 
+    // IComponentType::getTargetCode() can be called if using all Components
     SlangResult res = linked_programs->getEntryPointCode(
         0, 
         0, 
         code_blob.writeRef(),
-        code_blob.writeRef());
+        diagnostic_blob.writeRef());
 
     if (SLANG_FAILED(res))
     {
@@ -217,14 +159,88 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
     return shader;
 }
 
+void phx::renderer::ShaderLibrary::ConstructSession()
+{
+    PHX_ASSERT(m_global_session, "Shader Library was never Initialized");
+
+    slang::SessionDesc session_desc = {};
+
+    std::vector<const char*> search_paths;
+    search_paths.reserve(m_library_desc.include_paths.size());
+    for (const auto& path : m_library_desc.include_paths)
+        search_paths.push_back(path.c_str());
+
+    session_desc.searchPaths = search_paths.data();
+    session_desc.searchPathCount = (SlangInt)search_paths.size();
+
+    std::vector<slang::PreprocessorMacroDesc> macros;
+    for (const auto& [key, val] : m_library_desc.defines)
+    {
+        macros.push_back({ key.c_str(), val.c_str() });
+    }
+
+    session_desc.preprocessorMacros = macros.data();
+    session_desc.preprocessorMacroCount = (SlangInt)macros.size();
+
+    session_desc.defaultMatrixLayoutMode = m_library_desc.ForceColumnMajor 
+        ? SLANG_MATRIX_LAYOUT_COLUMN_MAJOR
+        : SLANG_MATRIX_LAYOUT_ROW_MAJOR;
+
+    slang::TargetDesc target_desc = {};
+
+    switch (m_library_desc.target)
+    {
+    case rhi::ShaderFormat::Spirv:
+        target_desc.format = SLANG_SPIRV;
+        target_desc.flags |= SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY;
+        target_desc.profile = m_global_session->findProfile("spirv_1_6");
+
+        break;
+    case rhi::ShaderFormat::Hlsl6:
+        target_desc.format = SLANG_DXIL;
+        target_desc.profile = m_global_session->findProfile("sm_6_6");
+        break;
+    }
+
+    std::vector<slang::CompilerOptionEntry> options;
+
+    // Optimization Level
+    {
+        slang::CompilerOptionEntry opt = {};
+        opt.name = slang::CompilerOptionName::Optimization;
+        opt.value.kind = slang::CompilerOptionValueKind::Int;
+        opt.value.intValue0 = m_library_desc.optimization ? SLANG_OPTIMIZATION_LEVEL_HIGH : SLANG_OPTIMIZATION_LEVEL_NONE;
+        options.push_back(opt);
+    }
+
+    // Debug Info
+    if (m_library_desc.debug_info)
+    {
+        slang::CompilerOptionEntry opt = {};
+        opt.name = slang::CompilerOptionName::DebugInformation;
+        opt.value.kind = slang::CompilerOptionValueKind::Int;
+        opt.value.intValue0 = SLANG_DEBUG_INFO_LEVEL_STANDARD;
+        options.push_back(opt);
+    }
+
+    target_desc.compilerOptionEntries = options.data();
+    target_desc.compilerOptionEntryCount = (uint32_t)options.size();
+
+    session_desc.targets = &target_desc;
+    session_desc.targetCount = 1;
+
+    m_session = nullptr;
+    if (SLANG_FAILED(m_global_session->createSession(session_desc, m_session.writeRef())))
+    {
+        PHX_CORE_ERROR("Failed to create SLANG session");
+    }
+}
+
 Hash64 phx::renderer::ShaderCompileDescriptor::GetHash() const
 {
     std::size_t seed = 0;
 
     HashCombine(seed, source_file_path);
-    HashCombine(seed, (uint32_t)target);
-    HashCombine(seed, debug_info);
-    HashCombine(seed, optimization);
 
     std::vector<const EntryPoint*> sorted_entries;
     sorted_entries.reserve(entry_points.size());
@@ -245,23 +261,24 @@ Hash64 phx::renderer::ShaderCompileDescriptor::GetHash() const
         HashCombine(seed, (uint32_t)ep->stage);
     }
 
-    std::vector<const std::pair<std::string, std::string>*> sorted_defines;
-    sorted_defines.reserve(defines.size());
-
-    for (const auto& def : defines)
+    std::vector<const GenericArg*> sorted_generic_args;
+    sorted_generic_args.reserve(generic_args.size());
+    for (const auto& ga : generic_args)
     {
-        sorted_defines.push_back(&def);
+        sorted_generic_args.push_back(&ga);
     }
 
-    // Sort the pointers based on the string keys
-    std::sort(sorted_defines.begin(), sorted_defines.end(),
-        [](const auto* a, const auto* b) { return a->first < b->first; });
+    // Sort by Name (or Stage) to ensure VS+PS hashes same as PS+VS
+    std::sort(sorted_generic_args.begin(), sorted_generic_args.end(),
+        [](const GenericArg* a, const GenericArg* b) {
+            return a->name < b->name;
+        });
 
-    // Now hash in deterministic order
-    for (const auto* def : sorted_defines)
+    for (const auto* ga : sorted_generic_args)
     {
-        HashCombine(seed, def->first);
-        HashCombine(seed, def->second);
+        HashCombine(seed, ga->name);
+        HashCombine(seed, ga->value);
+        HashCombine(seed, ga->is_type);
     }
 
     return (uint64_t)seed;

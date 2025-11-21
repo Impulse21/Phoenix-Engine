@@ -5,12 +5,14 @@
 
 #include <PhxCore/Log.h>
 #include <PhxCore/Profiler.h>
+#include <PhxCore/VirtualFileSystem.h>
 
 #include <PhxResource/ResourceSystem.h>
 
+#include <PhxRenderer/PhxRenderer.h>
+
 #include <PhxRenderer/DefaultRenderSystem.h>
 #include <PhxRenderer/MeshResourceHandler.h>
-#include <PhxCore/VirtualFileSystem.h>
 
 #include <PhxReflection/Reflection.h>
 
@@ -97,6 +99,7 @@ namespace phx
 			phx::ResourceSystem::Ptr->Initialize(IVirtualFileSystem::Ptr);
 			phx::ResourceSystem::Ptr->RegisterFileHanlder<renderer::MeshResourceHandler>();
 
+			phx::renderer::Initialize(rhi::IBackend::Ptr);
 #if false
 			phx::gfx::IRenderSystem::Ptr = phx_new_system(gfx::DefaultRenderSystem);
 #endif
@@ -161,6 +164,8 @@ namespace phx
 
 			DeleteApplication(phx::IApplication::Ptr);
 			phx::IApplication::Ptr = nullptr;
+
+			phx::renderer::Shutdown();
 
 			phx::ResourceSystem::Ptr->Shutdown();
 			delete phx::ResourceSystem::Ptr;
