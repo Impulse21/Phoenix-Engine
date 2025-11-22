@@ -17,7 +17,8 @@ void StandardFileProcessor::ProcessRequest(StreamingRequest&& request)
 {
 	StreamingResult result = {
 		.request_id = request.request_id,
-		.status_array = {0}
+		.status_array = {0},
+		.error_code = ErrorCode::Success,
 	};
 
 	bool has_gpu_work = false;
@@ -100,10 +101,7 @@ void phx::StandardFileProcessor::SubmitBatchedWork(IAllocator* frame_allocator, 
 	SpanMutable<rhi::ICommandBuffer*> commands_to_submit = AllocateArray<rhi::ICommandBuffer*>(frame_allocator, batches_to_submit.Size());
 	for (size_t i = 0; i < batches_to_submit.Size(); ++i)
 	{
-		// 1. Move the callback
 		inflight_work_item.callbacks.emplace_back(std::move(batches_to_submit[i].on_complete));
-
-		// 2. (THE FIX) Get the command list handle
 		commands_to_submit[i] = batches_to_submit[i].command_buffer;
 	}
 	

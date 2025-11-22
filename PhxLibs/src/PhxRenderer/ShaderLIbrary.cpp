@@ -90,9 +90,10 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
         return nullptr;
     }
 
-    // TODO: Check ref counts
     Slang::ComPtr<slang::IComponentType> composed_program;
-    if (compile_desc.entry_points.empty())
+    const bool compile_full_module = compile_desc.entry_points.empty();
+
+    if (compile_full_module)
     {
         composed_program = shader_module;
     }
@@ -147,13 +148,22 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
 
     Slang::ComPtr<slang::IBlob> code_blob;
     diagnostic_blob = nullptr;
-
-    // IComponentType::getTargetCode() can be called if using all Components
-    SlangResult res = linked_programs->getEntryPointCode(
-        0, 
-        0, 
-        code_blob.writeRef(),
-        diagnostic_blob.writeRef());
+    SlangResult res = 0;
+	if (compile_full_module)
+	{
+		res = linked_programs->getTargetCode(
+			0,
+			code_blob.writeRef(),
+			diagnostic_blob.writeRef());
+	}
+	else
+    {
+        res = linked_programs->getEntryPointCode(
+            0,
+            0,
+            code_blob.writeRef(),
+            diagnostic_blob.writeRef());
+    } 
 
     if (SLANG_FAILED(res))
     {
