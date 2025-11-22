@@ -82,46 +82,55 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
 
     Result<std::string> physical_path = IVirtualFileSystem::Ptr->ResolveVirtualToPhysicalPath(compile_desc.source_file_path);
     Slang::ComPtr<slang::IBlob> diagnostic_blob;
-    slang::IModule* module = m_session->loadModule(physical_path.GetValue().c_str(), diagnostic_blob.writeRef());
+    slang::IModule* shader_module = m_session->loadModule(physical_path.GetValue().c_str(), diagnostic_blob.writeRef());
 
-    if (!module)
+    if (!shader_module)
     {
         LogSlangDiagnostics(diagnostic_blob, compile_desc.source_file_path);
         return nullptr;
     }
 
     // TODO: Check ref counts
-    std::vector<Slang::ComPtr<slang::IEntryPoint>> entry_points;
-    std::vector<slang::IComponentType*> components;
-    for (const auto& ep : compile_desc.entry_points)
+    Slang::ComPtr<slang::IComponentType> composed_program;
+    if (compile_desc.entry_points.empty())
     {
-        Slang::ComPtr<slang::IEntryPoint> entry_point;
-        module->findEntryPointByName(ep.name.c_str(), entry_point.writeRef());
+        composed_program = shader_module;
+    }
+    else
+    {
+        std::vector<Slang::ComPtr<slang::IEntryPoint>> entry_points;
+        std::vector<slang::IComponentType*> components;
 
-        if (!entry_point)
+        components.push_back(shader_module);
+        for (const auto& ep : compile_desc.entry_points)
         {
-            PHX_CORE_ERROR("Entry point {0} not found in '{1}'", ep.name, compile_desc.source_file_path);
-            return nullptr;
+            Slang::ComPtr<slang::IEntryPoint> entry_point;
+            shader_module->findEntryPointByName(ep.name.c_str(), entry_point.writeRef());
+
+            if (!entry_point)
+            {
+                PHX_CORE_ERROR("Entry point {0} not found in '{1}'", ep.name, compile_desc.source_file_path);
+                return nullptr;
+            }
+
+            components.push_back(entry_point);
+            entry_points.push_back(entry_point);
         }
 
-        components.push_back(entry_point);
-        entry_points.push_back(entry_point);
-    }
+        diagnostic_blob = nullptr;
 
-    diagnostic_blob = nullptr;
+        // createCompositeComponentType can be skipped if just using all entry points;
+        m_session->createCompositeComponentType(
+            components.data(),
+            components.size(),
+            composed_program.writeRef(),
+            diagnostic_blob.writeRef());
 
-    // createCompositeComponentType can be skipped if just using all entry points
-    Slang::ComPtr<slang::IComponentType> composed_program;
-    m_session->createCompositeComponentType(
-        components.data(),
-        components.size(),
-        composed_program.writeRef(),
-        diagnostic_blob.writeRef());
-
-    if (!composed_program)
-    {
-        LogSlangDiagnostics(diagnostic_blob, "Failed to compose");
-        return nullptr;
+        if (!composed_program)
+        {
+            LogSlangDiagnostics(diagnostic_blob, "Failed to compose");
+            return nullptr;
+        }
     }
 
     diagnostic_blob = nullptr;

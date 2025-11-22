@@ -152,6 +152,7 @@ bool phx::rhi::VulkanBackend::SelectPhysicalDevice(vkb::PhysicalDevice& out_vkb_
     const std::vector<const char*> required_extensions =
     {
         VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
+        VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
         VK_KHR_MULTIVIEW_EXTENSION_NAME,
         VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME,
     };

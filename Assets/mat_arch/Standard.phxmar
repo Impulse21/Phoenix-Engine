@@ -1,0 +1,32 @@
+{
+  "asset_type": "MaterialArchetype",
+  "name": "Standard",
+
+  "shader": {
+    "source": "art://Shaders/Standard.slang",
+    "entry_points": [
+      { "name": "vsMain", "stage": "Vertex" },
+      { "name": "psMain", "stage": "Pixel" }
+    ],
+
+    "generics": {
+      "ENABLE_NORMAL_MAP": "true",
+      "LIGHTING_MODEL": "PBR"
+    }
+  },
+
+  "render_state": {
+    "blend_mode": "Opaque",
+    "cull_mode": "Back",
+    "depth_write": true,
+    "depth_test": true
+  },
+
+  "properties": {
+    "baseColorFactor": [1.0, 1.0, 1.0, 1.0],
+    "baseColorMap": "art://Textures/Defaults/White.phxtex",
+    "normalMap": "art://Textures/Defaults/FlatNormal.phxtex",
+    "roughnessFactor": 0.5,
+    "metalnessFactor": 0.0
+  }
+}
