@@ -14,7 +14,7 @@ namespace
         if (blob)
         {
             std::string_view msg((const char*)blob->getBufferPointer(), blob->getBufferSize());
-            PHX_CORE_ERROR("Slang error -> {0}", context);
+            PHX_CORE_ERROR("Slang error[{0}] {1}", context, msg);
         }
     }
 }

@@ -105,6 +105,11 @@ void PhxRuntime::Startup()
 
 	renderer::Initialize(shader_librar_desc);
 
+	phx::RefCountPtr<renderer::ShaderAsset> shader_asset = 
+		renderer::ShaderLibrary::Ptr->LoadShader({
+			.source_file_path = "art://shaders/unlit.slang",
+		});
+
 	uint32_t win_height, win_width;
 	GetDefaultWindowSize(win_width, win_height);
 

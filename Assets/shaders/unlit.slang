@@ -62,5 +62,5 @@ VSOutput VertexMain(
 [shader("fragment")]
 float4 FragmentMain(VSOutput input) : SV_Target
 {
-    return input.color;
+    return input.colour;
 }
