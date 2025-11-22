@@ -1,105 +1,66 @@
-// --- Data Structures ---
-
-struct Vertex
-{
-    float3 position;
-    float2 uv;
-    float4 color;
-};
-
-// We use pointers for data buffers (VK_KHR_buffer_device_address)
-struct MaterialData
-{
-    float4x4 modelViewProjection;
-    float4 tintColor;
-    int textureIndex; // This is the offset/index into your Descriptor Buffer
-    float blendFactor;
-};
+import VertexFetch;
 
 // --- Pointers & Push Constants ---
-
-struct PushConstants
-{
-    Vertex* vertices;      // Address of Vertex Buffer
-    MaterialData* material; // Address of Material Buffer
-};
-
-[[vk::push_constant]] PushConstants pc;
-
-// --- Bindless Descriptor Heap (VK_EXT_descriptor_buffer) ---
-
-// Even with the extension, Shaders view the descriptor buffer as an array.
-// The API binds the start of the Descriptor Buffer to Set 0.
-// 'textureIndex' in MaterialData tells us which descriptor to read from that buffer.
-[[vk::binding(0, 0)]] 
-Texture2D<float4> descriptorHeap[]; 
-
-// Static sampler (or fetched from a sampler heap)
-[[vk::binding(1, 0)]] 
-SamplerState mainSampler;
-
-// --- Generics Helper ---
-
-// Helper to safely sample from the heap using an index
-T SampleHeap<T>(Texture2D<T> heap[], SamplerState s, int index, float2 uv, T fallback)
-{
-    // Index -1 implies "no texture"
-    if (index < 0) return fallback;
-
-    // NonUniformResourceIndex is crucial! 
-    // It tells the compiler the index varies per-pixel (dynamically),
-    // which prevents it from assuming a constant texture for the draw call.
-    return heap[NonUniformResourceIndex(index)].Sample(s, uv);
-}
-
-// --- Shader I/O ---
 
 struct VSOutput
 {
     float4 position : SV_Position;
-    float2 uv       : TEXCOORD0;
-    float4 color    : COLOR;
+    float4 colour    : COLOR;
 };
 
 // --- Vertex Shader ---
 [shader("vertex")]
-VSOutput vertexMain(uint vertexID : SV_VertexID)
+VSOutput VertexMain(
+    uint vertexID: SV_VertexID,
+    uniform float4x4 modelViewProjection,
+    uniform VertexStreamsHeader *bufferPtr)
 {
     VSOutput output;
 
-    // 1. Vertex Pulling via Pointer
-    // Loads directly from the GPU address specified in Push Constants
-    Vertex v = pc.vertices[vertexID];
+    uint8_t *rawBuffer = (uint8_t *)bufferPtr;
 
-    // 2. Material Data via Pointer
-    float4x4 mvp = pc.material->modelViewProjection;
+    VertexStreamDesc posDesc = bufferPtr->desc[STREAM_POSITION];
+    uint posOffset = posDesc.GetOffset();
+    uint posStride = posDesc.GetStride();
+    float3 *posPtr = (float3 *)(rawBuffer + posOffset + (vertexID * posStride));
+    float3 position = *posPtr;
 
-    output.position = mul(mvp, float4(v.position, 1.0));
-    output.uv = v.uv;
-    output.color = v.color;
+    VertexStreamDesc colDesc = bufferPtr->desc[STREAM_COLOUR0];
+    uint colOffset = colDesc.GetOffset();
+    uint colStride = colDesc.GetStride(); // Likely 4 bytes if packed RGBA
+    float4 color;
+    if (colStride == 4)
+    {
+        // Load as uint, unpack to float4
+        uint *colPtr = (uint *)(rawBuffer + colOffset + (vertexID * colStride));
+        uint packedColor = *colPtr;
+
+        // Manual unpack (Unorm)
+        color = float4(
+            (packedColor & 0xFF) / 255.0,
+            ((packedColor >> 8) & 0xFF) / 255.0,
+            ((packedColor >> 16) & 0xFF) / 255.0,
+            ((packedColor >> 24) & 0xFF) / 255.0
+        );
+    }
+    else
+    {
+        // Fallback or assume float4 (requires stride > 15 which is impossible in 4 bits!)
+        // Assuming white if invalid setup
+        // color = float4(1.0, 1.0, 1.0, 1.0);
+        color = float4(1.0f, 0.0f, 0.0f, 1.0f);
+    }
+
+    float4x4 mvp = modelViewProjection;
+    output.position = mul(modelViewProjection, float4(position, 1.0));
+    output.colour = color;
 
     return output;
 }
 
 // --- Fragment (Pixel) Shader ---
 [shader("fragment")]
-float4 fragmentMain(VSOutput input) : SV_Target
+float4 FragmentMain(VSOutput input) : SV_Target
 {
-    // 1. Get Material Data via Pointer
-    MaterialData* mat = pc.material;
-    
-    // 2. Sample from Descriptor Buffer
-    // We use the integer index from the material data to find the
-    // specific descriptor in the bound heap.
-    float4 texColor = SampleHeap(
-        descriptorHeap, 
-        mainSampler, 
-        mat->textureIndex, 
-        input.uv, 
-        input.color // Fallback to vertex color if index is -1
-    );
-
-    // 3. Blend and Tint
-    float4 finalColor = lerp(input.color, texColor, mat->blendFactor);
-    return finalColor * mat->tintColor;
+    return input.color;
 }
