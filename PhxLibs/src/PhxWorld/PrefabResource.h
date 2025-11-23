@@ -113,7 +113,10 @@ namespace phx
         {
             std::string name;
             int parent_index;
-            hlslpp::float4x4 local_transform;
+
+            hlslpp::float3 scale = { 1.0f, 1.0f, 1.0f };
+            hlslpp::float4 rotation = { 0.0f, 0.0f, 0.0f, 1.0f };
+            hlslpp::float3 translation = { 0.0f, 0.0f, 0.0f };
 
             std::variant<
                 EmptyNodeData,

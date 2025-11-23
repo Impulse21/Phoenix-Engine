@@ -11,12 +11,6 @@
 using namespace phx;
 using namespace DirectX;
 
-void phx::World::RegisterReflection()
-{
-	TransformComponent::Reflect();
-	MeshComponent::Reflect();
-}
-
 void phx::World::InstantiateFrom(SceneBlueprint& /*scene_reader*/)
 {
 }

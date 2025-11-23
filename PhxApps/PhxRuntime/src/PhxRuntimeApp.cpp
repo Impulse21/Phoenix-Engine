@@ -14,9 +14,13 @@
 #include <PhxResource/ResourceSystem.h>
 
 #include <PhxWorld/GltfPrefabHandler.h>
+#include <PhxWorld/World.h>
+#include <PhxWorld/Entity.h>
+
 #include <PhxEngine/EntryPoint.h>
 
 #include <Generated/GlobalVariables.h>
+
 
 using namespace phx;
 
@@ -56,13 +60,18 @@ public:
 	void* GetWindowHandle() const override { return m_window_handle; }
 
 private:
+	void ProcessSpawnRequests();
 
 private:
 	inline static PhxRuntime* ms_instance = nullptr;
 	const phx::ApplicationDescriptor m_desc;
 	phx::rhi::SwapchainHandle m_swapchain = {};
 	void* m_window_handle;
-	phx::RefCountPtr<phx::Resource> m_box_prefab;
+	
+	// TODO: Move some stuff into the application level that don't need to be global.
+	// Example, renderer, shader libary, material system etc.
+	World m_world;
+	std::vector<phx::RefCountPtr<phx::Resource>> m_spawn_requests;
 	
 };
 
@@ -120,7 +129,8 @@ void PhxRuntime::Startup()
 
 	const char* box_prefab_path = "art://samples/box_vertex_colour/BoxVertexColors.gltf";
 	PHX_INFO("Loading Test Resources '{0}'", box_prefab_path);
-	m_box_prefab = resource_system->Get(box_prefab_path);
+	m_spawn_requests.push_back(resource_system->Get(box_prefab_path));
+
 #if false
 	phx::gfx::IRenderSystem::Ptr->AddLayer<phx::gfx::MeshRenderLayer>();
 
@@ -241,6 +251,9 @@ void PhxRuntime::OnPreRender()
 
 void PhxRuntime::OnUpdate_Threaded(float /*delta_time*/, IAllocator* /*frame_allocator*/)
 {
+	{
+		ProcessSpawnRequests();
+	}
 #if false
 	PHX_PROFILE;
 
@@ -323,69 +336,52 @@ void PhxRuntime::OnRender_Threaded(IAllocator* frame_allocator)
 	submit_manager->EndFrame(m_swapchain, { command_buffer });
 
 	_thread_counter.fetch_sub(1);
-#if false
-
-	phx::rhi::CommandBufferHandle cmd_buffer = phx::rhi::BeginFrameCommandBuffer();
-	ForwardPassDrawData* pass_data = static_cast<ForwardPassDrawData*>(m_per_frame_cache.cached_data[0]);
-	for (size_t i = 0; i < m_per_frame_cache.num_views; i++)
-	{
-		//View& view = m_per_frame_cache.views[i];
-
-		for (size_t i_drawable = 0; i_drawable < pass_data->num_drawables; i_drawable++)
-		{
-			Drawable& drawable = pass_data->drawables[i_drawable];
-
-			// Bind Buffer data
-			for (auto& draw_info : drawable.mesh_resource->cpu_data->Draw)
-			{
-				phx::rhi::CommandRecorder::DrawIndexed(
-					cmd_buffer,
-					draw_info.IndexCount,
-					draw_info.StartIndex,
-					draw_info.BaseVertex);
-			}
-		}
-	}
-
-	phx::rhi::SubmitAndPresentFrame();
-#endif
 }
 
-#if false
-void PhxRuntime::TEST_RotateEntity(float deltaTime, phx::TransformComponent& comp)
+void PhxRuntime::ProcessSpawnRequests()
 {
-	using namespace DirectX;
+	CpuTimer spawn_timer;
 
-	static std::default_random_engine s_rng;
-	static std::uniform_real_distribution<float> axisDist(-1.0f, 1.0f);       // For x/y/z axis
-	static std::uniform_real_distribution<float> factorDist(-1.0f, 1.0f);     // For random sign/scale
-	// You can define a max angular speed (in radians per second)
-	constexpr static float MAX_ANGULAR_SPEED = XM_PIDIV4; // 45 degrees/sec
+	for (size_t i = m_spawn_requests.size() - 1; i >= 0; --i)
+	{
+		if (spawn_timer.Elapsed().GetMilliseconds() >= 2)
+		{
+			PHX_INFO("Spawner excited allocated frame time of 2MS. Deferring spawns until next frame");
+			break;
+		}
 
-	// Generate a random axis
-	XMVECTOR axis = XMVectorSet(
-		axisDist(s_rng),
-		axisDist(s_rng),
-		axisDist(s_rng),
-		0.0f
-	);
-	axis = XMVector3Normalize(axis);
+		RefCountPtr<Resource>& resource = m_spawn_requests[i];
 
-	// Random scale factor for the rotation angle
-	float randomFactor = factorDist(s_rng); // Range [-1, 1]
+		if (!resource->IsLoaded())
+			continue;
 
-	// Calculate final angle based on deltaTime
-	float angle = randomFactor * MAX_ANGULAR_SPEED * deltaTime;
+		if (resource->type_id != PrefabHandleResource::StaticTypeId())
+			continue;
 
-	// Delta rotation quaternion
-	XMVECTOR deltaRotation = XMQuaternionRotationAxis(axis, angle);
+		auto prefab = static_cast<PrefabHandleResource*>(resource.Get())->prefab;
 
-	XMVECTOR rotationQuat = DirectX::XMLoadFloat4(&comp.Rotation);
+		PHX_INFO("Spawning prefab into world.");
+		for (const auto& node : prefab->nodes)
+		{
+			Entity entity = m_world.CreateEntity(node.name);
+			auto& transform_component = entity.GetComponent<TransformComponent>();
 
-	// Accumulate rotation
-	rotationQuat = XMQuaternionNormalize(XMQuaternionMultiply(rotationQuat, deltaRotation));
+			transform_component.scale = node.scale;
+			transform_component.rotation= node.rotation;
+			transform_component.translation = node.translation;
 
-	DirectX::XMStoreFloat4(&comp.Rotation, rotationQuat);
-	DirectX::XMStoreFloat4x4(&comp.WorldMatrix, comp.GetMatrix());
+			std::visit([&](auto&& target) {
+				using TTarget = std::decay_t<decltype(target)>;
+
+				if constexpr (std::is_same_v<TTarget, MeshNodeData>)
+				{
+					const MeshNodeData& mesh_node_data = target;
+
+				}
+			}, node.data);
+
+		}
+		m_spawn_requests[i] = std::move(m_spawn_requests.back());
+		m_spawn_requests.pop_back();
+	}
 }
-#endif

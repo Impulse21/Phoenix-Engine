@@ -18,9 +18,9 @@ namespace phx
 	class GltfPrefabHandler final : public phx::ResourceFileHandler
 	{
 	public:
-		StringHash GetResourceTypeHash() const override { return PrefabResource::StaticTypeHash(); };
+		StringHash GetResourceTypeHash() const override { return PrefabResource::StaticTypeId(); };
 		bool IsStale(AsyncResourceDescriptor const& resource_descriptor, IVirtualFileSystem* vfs) const override;
-		RefCountPtr<Resource> CreatePlaceholder() const override { return RefCountPtr<Resource>::Create(new PrefabHandleResource()); }
+		RefCountPtr<Resource> CreatePlaceholder() const override;
 		void LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const override;
 
 		static void SetForceRecook(bool enable) { g_force_recook = enable; }

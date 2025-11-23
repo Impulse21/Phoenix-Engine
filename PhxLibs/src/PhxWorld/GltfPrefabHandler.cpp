@@ -106,6 +106,11 @@ bool phx::GltfPrefabHandler::IsStale(AsyncResourceDescriptor const& gltf_resourc
     return true;
 }
 
+RefCountPtr<Resource> phx::GltfPrefabHandler::CreatePlaceholder() const
+{
+    return RefCountPtr<Resource>::Create(new PrefabHandleResource());
+}
+
 void GltfPrefabHandler::LoadAsync(IIoQueue* io_queue, RefCountPtr<Resource> resource, AsyncResourceDescriptor const& resource_descriptor) const
 {
     RefCountPtr<PrefabHandleResource> prefab_handle_resource = resource.As<PrefabHandleResource>();

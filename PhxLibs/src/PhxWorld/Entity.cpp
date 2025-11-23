@@ -13,7 +13,7 @@ Entity::Entity(entt::entity handle, World* scene)
 {
 }
 
-void Entity::AttachToParent(Entity parent, bool childInLocalSpace)
+void Entity::AttachToParent(Entity parent, bool /*childInLocalSpace*/)
 {
 	assert(*this != parent);
 
@@ -26,19 +26,22 @@ void Entity::AttachToParent(Entity parent, bool childInLocalSpace)
 	auto& comp = AddComponent<HierarchyComponent>();
 	comp.ParentID = (entt::entity)parent;
 
+	// TODO:
+#if false
 	assert(parent.HasComponent<TransformComponent>());
-	assert(HasComponent<TransformComponent>());
+	assert(HasComponent<WorldTransformComponent>());
 
 	auto& transformChild = GetComponent<TransformComponent>();
-	auto& transformParent = parent.GetComponent<TransformComponent>();
+	auto& parent_world_transform = parent.GetComponent<WorldTransformComponent>();
 	if (!childInLocalSpace)
-	{
-		XMMATRIX B = XMMatrixInverse(nullptr, XMLoadFloat4x4(&transformParent.WorldMatrix));
+
+		hlslpp::float4x4 inverse = hlslpp::inverse(parent_world_transform.world_matrix);
+		
+		// TODO: Construct matrix
 		transformChild.MatrixTransform(B);
 		transformChild.UpdateTransform();
 	}
-
-	transformChild.UpdateTransform(transformParent);
+#endif
 }
 
 void Entity::DetachFromParent()
@@ -49,8 +52,6 @@ void Entity::DetachFromParent()
 	}
 
 	assert(HasComponent<TransformComponent>());
-	auto& transform = GetComponent<TransformComponent>();
-	transform.ApplyTransform();
 
 	RemoveComponent<HierarchyComponent>();
 }

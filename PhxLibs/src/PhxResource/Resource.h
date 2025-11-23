@@ -7,8 +7,8 @@
 
 #define PHX_DECLARE_RESOURCE(TYPE)															\
 public:																						\
-    static constexpr phx::StringHash StaticTypeHash() { return phx::StringHash(#TYPE); }	\
-    TYPE() : Resource(StaticTypeHash()) {}
+    static constexpr phx::StringHash StaticTypeId() { return phx::StringHash(#TYPE); }	    \
+    TYPE() : Resource(StaticTypeId()) {}
 
 namespace phx
 {
@@ -75,7 +75,7 @@ namespace phx
 
 	struct Resource : public RefCounted
 	{
-		const uint64_t resource_type_hash;
+		const phx::StringHash type_id;
 		
 		enum State : uint8_t
 		{
@@ -89,15 +89,33 @@ namespace phx
 		std::atomic_uint8_t state = State::Unloaded;
 
 		virtual bool CollectPendingGpuTransitions(SpanMutable<GpuTransitionWork> transitions, size_t& fill_index) = 0;
+        virtual RefCountPtr<Resource> GetAliasedResource() { return nullptr; }
         virtual ~Resource() = default;
 		bool IsLoaded()
 		{
-			return state == State::Loaded;
+			return state <= State::On_Gpu;
 		}
 
     protected:
-        explicit Resource(uint64_t hash) : resource_type_hash(hash) {}
+        explicit Resource(phx::StringHash hash) : type_id(hash) {}
 
 	};
+
+    struct AliasResource final : public Resource 
+    {
+        RefCountPtr<Resource> real_resource;
+
+        bool CollectPendingGpuTransitions(SpanMutable<GpuTransitionWork> transitions, size_t& fill_index) override 
+        {
+            return real_resource 
+                ? real_resource->CollectPendingGpuTransitions(transitions, fill_index) 
+                : false;
+        }
+
+        RefCountPtr<Resource> GetAliasedResource() override
+        {
+            return real_resource;
+        }
+    };
 
 }
