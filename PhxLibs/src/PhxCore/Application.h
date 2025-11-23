@@ -24,7 +24,7 @@ namespace phx
 	public:
 		virtual ~IApplication() = default;
 
-		virtual void OnPreRender() = 0;
+		virtual void OnPreRender(IAllocator* frame_allocator) = 0;
 		virtual void OnUpdate_Threaded(float deltaTime, IAllocator* frame_allocator) = 0;
 		virtual void OnRender_Threaded(IAllocator* frame_allocator) = 0;
 

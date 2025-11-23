@@ -61,7 +61,9 @@ namespace phx
         {
             std::string name;
             int parent_index = -1;
-            hlslpp::interop::float4x4 local_transform;
+            hlslpp::interop::float3 scale = hlslpp::float3{ 1.0f, 1.0f, 1.0f };
+            hlslpp::interop::float4 rotation = hlslpp::float4{ 0.0f, 0.0f, 0.0f, 1.0f };
+            hlslpp::interop::float3 translation = hlslpp::float3{ 0.0f, 0.0f, 0.0f };
 
             std::string node_type; // e.g., "Empty", "Mesh", "Camera", "Light", "Prefab"
 
@@ -115,7 +117,7 @@ namespace phx
             int parent_index;
 
             hlslpp::float3 scale = { 1.0f, 1.0f, 1.0f };
-            hlslpp::float4 rotation = { 0.0f, 0.0f, 0.0f, 1.0f };
+            hlslpp::quaternion rotation = { 0.0f, 0.0f, 0.0f, 1.0f };
             hlslpp::float3 translation = { 0.0f, 0.0f, 0.0f };
 
             std::variant<

@@ -3,6 +3,8 @@
 #include <PhxCore/Base.h>
 #include <PhxCore/UUID.h>
 #include <PhxCore/Math.h>
+#include <PhxCore/StaticArray.h>
+#include <PhxRenderer/IMaterialSystem.h>
 
 #include <PhxResource/Resource.h>
 
@@ -54,16 +56,21 @@ namespace phx
 		bool active : 1 = false;
 	};
 
-	struct MeshComponent
+	struct alignas(64) StaticMeshComponent
 	{
-		phx::RefCountPtr<Resource> Mesh;
-		
-		static void Reflect()
-		{
-			using namespace entt;
-			entt::meta<MeshComponent>()
-				.data<&MeshComponent::Mesh>("Mesh"_hs);
-		}
+		Resource* mesh;
+		StaticArray<renderer::MaterialInstance*, 6> materials;
+		uint8_t num_materials;
+		uint8_t layer_mask;
+		bool visible;
+		uint8_t _padding[5];
+	};
+	static_assert(sizeof(StaticMeshComponent) <= 64);
+
+	struct StaticMeshStorageComponent
+	{
+		phx::RefCountPtr<Resource> mesh;
+		StaticArray<phx::RefCountPtr<renderer::MaterialInstance>, 8> materials;
 	};
 
 	struct alignas(16) TransformComponent
@@ -79,7 +86,7 @@ namespace phx
 		};
 
 		hlslpp::float3 scale		= { 1.0f, 1.0f, 1.0f };
-		hlslpp::float4 rotation		= { 0.0f, 0.0f, 0.0f, 1.0f };
+		hlslpp::quaternion rotation	= { 0.0f, 0.0f, 0.0f, 1.0f };
 		hlslpp::float3 translation	= { 0.0f, 0.0f, 0.0f };
 
 		inline bool IsDirty() const { return dirty; }
@@ -92,14 +99,4 @@ namespace phx
 	};
 	static_assert(sizeof(WorldTransformComponent) <= 64);
 
-	// Not sure about these yet
-	struct MeshResourceComponent
-	{
-
-	};
-
-	struct MaterialComponent
-	{
-
-	};
 }

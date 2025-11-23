@@ -24,6 +24,19 @@ namespace hlslpp
                 j.at(2).get_to(v.z);
             }
 
+            inline void to_json(nlohmann::json& j, const hlslpp::interop::float4& v)
+            {
+                j = { v.x, v.y, v.z, v.w };
+            }
+
+            inline void from_json(nlohmann::json const& j, hlslpp::interop::float4& v)
+            {
+                j.at(0).get_to(v.x);
+                j.at(1).get_to(v.y);
+                j.at(2).get_to(v.z);
+                j.at(3).get_to(v.w);
+            }
+
             // --- Serializer for math::Mat4 ---
             inline void to_json(nlohmann::json& j, const hlslpp::interop::float4x4& m)
             {
@@ -108,7 +121,11 @@ namespace phx
         j = nlohmann::json{
             {"name", n.name},
             {"parent_index", n.parent_index},
-            {"local_transform", n.local_transform},
+            {"transform", 
+                { "scale", n.scale },
+                { "rotation", n.rotation },
+                { "translation", n.translation},
+            },
             {"node_type", n.node_type}
         };
 
@@ -143,7 +160,9 @@ namespace phx
         // Required fields
         j.at("name").get_to(n.name);
         j.at("parent_index").get_to(n.parent_index);
-        j.at("local_transform").get_to(n.local_transform);
+        j.at("transform").at("scale").get_to(n.scale);
+        j.at("transform").at("rotation").get_to(n.rotation);
+        j.at("transform").at("translation").get_to(n.translation);
         j.at("node_type").get_to(n.node_type);
 
         // --- Optional fields ---

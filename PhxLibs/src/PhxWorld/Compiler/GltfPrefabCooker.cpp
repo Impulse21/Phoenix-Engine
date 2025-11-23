@@ -233,14 +233,22 @@ void phx::CGltfPrefabCooker::WalkNodesRec(phx::Span<cgltf_node*> gltf_nodes, int
 
 		if (gltf_node->has_matrix)
 		{
-			static_assert(sizeof(node_manifest.local_transform) == sizeof(gltf_node->matrix));
-			std::memcpy(
-				&node_manifest.local_transform,
-				static_cast<const float*>(&gltf_node->matrix[0]),
-				sizeof(node_manifest.local_transform));
+			hlslpp::float4x4 local_transform;
+			static_assert(sizeof(local_transform) == sizeof(gltf_node->matrix));
+			hlslpp::load(local_transform, &gltf_node->matrix[0]);
+
+			hlslpp::float3 scale;
+			hlslpp::float4 rotation;
+			hlslpp::float3 translation;
+			math::Decompose(local_transform, scale, rotation, translation);
+
+			hlslpp::store(&node_manifest.scale.x, scale);
+			hlslpp::store(&node_manifest.rotation.x, rotation);
+			hlslpp::store(&node_manifest.translation.x, translation);
 		}
 		else
 		{
+#if false
 			float4x4 local_transform = float4x4::identity();
 			const float4x4 scale_matrix = gltf_node->has_scale
 				? float4x4::scale(gltf_node->scale[0], gltf_node->scale[1], gltf_node->scale[2])
@@ -259,6 +267,29 @@ void phx::CGltfPrefabCooker::WalkNodesRec(phx::Span<cgltf_node*> gltf_nodes, int
 
 			local_transform = translation_matrix * rotation_matrix * scale_matrix;
 			node_manifest.local_transform = interop::float4x4(local_transform);
+#else
+			if (gltf_node->has_scale)
+			{
+				node_manifest.scale.x = gltf_node->scale[0];
+				node_manifest.scale.y = gltf_node->scale[1];
+				node_manifest.scale.z = gltf_node->scale[2];
+			}
+
+			if (gltf_node->has_rotation)
+			{
+				node_manifest.rotation.x = gltf_node->rotation[0];
+				node_manifest.rotation.y = gltf_node->rotation[1];
+				node_manifest.rotation.z = gltf_node->rotation[2];
+				node_manifest.rotation.w = gltf_node->rotation[3];
+			}
+
+			if (gltf_node->has_rotation)
+			{
+				node_manifest.translation.x = gltf_node->translation[0];
+				node_manifest.translation.y = gltf_node->translation[1];
+				node_manifest.translation.z = gltf_node->translation[2];
+			}
+#endif
 		}
 
 		node_manifest.node_type = ManifiestNodeTypeIds::Empty;

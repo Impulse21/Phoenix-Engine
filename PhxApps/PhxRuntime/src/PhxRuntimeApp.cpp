@@ -10,6 +10,7 @@
 #include <PhxRhi/IResourceManager.h>
 
 #include <PhxRenderer/PhxRenderer.h>
+#include <PhxRenderer/MeshResource.h>
 
 #include <PhxResource/ResourceSystem.h>
 
@@ -41,7 +42,7 @@ public:
 	void Startup() override;
 	void Shutdown() override;
 
-	void OnPreRender() override;
+	void OnPreRender(IAllocator* frame_allocator) override;
 	void OnUpdate_Threaded(float deltaTime, IAllocator* frame_allocator) override;
 	void OnRender_Threaded(IAllocator* frame_allocator) override;
 
@@ -72,6 +73,15 @@ private:
 	// Example, renderer, shader libary, material system etc.
 	World m_world;
 	std::vector<phx::RefCountPtr<phx::Resource>> m_spawn_requests;
+
+	struct RenderPacket
+	{
+
+	};
+
+
+	SpanMutable<rhi::GpuBarrier> m_render_transitions;
+	SpanMutable<RenderPacket> m_render_packets;
 	
 };
 
@@ -162,91 +172,25 @@ void PhxRuntime::Shutdown()
 	phx::rhi::IResourceManager::Ptr->DeleteSwapchain(m_swapchain);
 }
 
-void PhxRuntime::OnPreRender()
+void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 {
-#if false
-	PHX_PROFILE;
+	auto group = m_world.GetRegistry().group<StaticMeshComponent>(entt::get<TransformComponent>);
+	const size_t max_num_packets = group.size();
+
+	static constexpr size_t MAX_NUM_SUB_MESHES = 6;
+	m_render_packets = AllocateArray<RenderPacket>(frame_allocator, max_num_packets * MAX_NUM_SUB_MESHES);
+
+	static constexpr size_t MAX_NUM_TRANSISIONS_PER_FRAME = 50;
+	m_render_transitions = AllocateArray<rhi::GpuBarrier>(frame_allocator, MAX_NUM_TRANSISIONS_PER_FRAME);
+
+	for (auto entity : group)
 	{
-		PHX_PROFILE_SECTION("Construct View");
+		const auto& mesh_component		= group.get<StaticMeshComponent>(entity);
+		const auto& transform_component	= group.get<TransformComponent>(entity);
 
-		auto cameras_view = m_world.GetAllEntitiesWith<phx::NameComponent, phx::CameraComponent>();
-		for (auto e : cameras_view)
-		{
-			auto [name_comp, camera_comp] = cameras_view.get<phx::NameComponent, phx::CameraComponent>(e);
-
-			if (camera_comp.active)
-			{
-				m_per_frame_cache.num_views++;
-			}
-		}
-
-		m_per_frame_cache.views = phx_new_frame View[m_per_frame_cache.num_views];
-
-		size_t i_view = 0;
-		for (auto e : cameras_view)
-		{
-			auto [name_comp, camera_comp] = cameras_view.get<phx::NameComponent, phx::CameraComponent>(e);
-
-			if (!camera_comp.active)
-				continue;
-
-			const float near_z = camera_comp.z_near;
-			const float far_z = camera_comp.z_far;
-
-			auto view_matrix = hlslpp::float4x4::look_at(
-				camera_comp.eye,
-				camera_comp.forward,
-				camera_comp.up);
-
-			auto& view = m_per_frame_cache.views[i_view++];
-
-			view.view_matrix = view_matrix;
-			view.inv_view_matrix = hlslpp::inverse(view_matrix);
-
-			float aspect_ratio = camera_comp.width / camera_comp.height;
-			hlslpp::projection projection(
-				hlslpp::frustum::field_of_view_x(camera_comp.fov, aspect_ratio, near_z, far_z),
-				hlslpp::zclip::zero);
-
-			view.projection_matrix = hlslpp::float4x4::perspective(projection);
-			view.inv_projection_matrix = hlslpp::inverse(view.projection_matrix);
-
-			// -- VP
-			view.world_to_clip_matrix = view_matrix * view.projection_matrix;
-			view.inv_world_to_clip_matrix = hlslpp::inverse(view.world_to_clip_matrix);
-		}
-
-		{
-			PHX_PROFILE_SECTION("Construct draw");
-			auto* draw_data = phx_new_frame ForwardPassDrawData;
-			auto drawable_view = m_world.GetAllEntitiesWith<phx::MeshComponent, phx::TransformComponent>();
-			for (auto e : drawable_view)
-			{
-				auto [mesh_comp, transform_comp] = drawable_view.get<phx::MeshComponent, phx::TransformComponent>(e);
-				if (!mesh_comp.Mesh->IsLoaded())
-					continue;
-
-				draw_data->num_drawables++;
-			}
-
-			draw_data->drawables = phx_new_frame Drawable[draw_data->num_drawables];
-
-			size_t i_drawable = 0;
-			for (auto e : drawable_view)
-			{
-				auto [mesh_comp, transform_comp] = drawable_view.get<phx::MeshComponent, phx::TransformComponent>(e);
-				if (!mesh_comp.Mesh->IsLoaded())
-					continue;
-
-				Drawable& drawable = draw_data->drawables[i_drawable++];
-				drawable.mesh_resource = mesh_comp.Mesh.As<phx::renderer::MeshResource>();
-			}
-
-			m_per_frame_cache.cached_data = phx_new_frame void*[1];
-			*m_per_frame_cache.cached_data = draw_data;
-		}
+		renderer::MeshResource* mesh_resources = static_cast<renderer::MeshResource*>(mesh_component.mesh);
+		
 	}
-#endif
 }
 
 void PhxRuntime::OnUpdate_Threaded(float /*delta_time*/, IAllocator* /*frame_allocator*/)
@@ -280,8 +224,6 @@ void PhxRuntime::OnRender_Threaded(IAllocator* frame_allocator)
 
 	// -- this should be in the pre stage stage ---
 
-	static constexpr size_t MAX_NUM_TRANSISIONS_PER_FRAME = 50;
-	SpanMutable transitions = AllocateArray<GpuTransitionWork>(frame_allocator, MAX_NUM_TRANSISIONS_PER_FRAME);
 	size_t num_transitions = 0;
 
 	if (m_box_prefab->state == Resource::State::Loaded)
@@ -367,8 +309,9 @@ void PhxRuntime::ProcessSpawnRequests()
 			auto& transform_component = entity.GetComponent<TransformComponent>();
 
 			transform_component.scale = node.scale;
-			transform_component.rotation= node.rotation;
+			transform_component.rotation = node.rotation;
 			transform_component.translation = node.translation;
+			transform_component.dirty = true;
 
 			std::visit([&](auto&& target) {
 				using TTarget = std::decay_t<decltype(target)>;
@@ -376,7 +319,17 @@ void PhxRuntime::ProcessSpawnRequests()
 				if constexpr (std::is_same_v<TTarget, MeshNodeData>)
 				{
 					const MeshNodeData& mesh_node_data = target;
+					auto& static_mesh_component = entity.AddComponent<StaticMeshComponent>();
+					auto& storage_component = entity.AddComponent<StaticMeshStorageComponent>();
 
+					storage_component.mesh = mesh_node_data.mesh;
+					static_mesh_component.mesh = mesh_node_data.mesh.Get();
+
+					storage_component.materials[0] = mesh_node_data.material;
+#if false
+					static_mesh_component.materials[0] = mesh_node_data.material.Get();
+					static_mesh_component.num_materials = 1;
+#endif
 				}
 			}, node.data);
 

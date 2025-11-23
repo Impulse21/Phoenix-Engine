@@ -215,7 +215,10 @@ void GltfPrefabHandler::LoadPrefab(std::ifstream& stream, RefCountPtr<PrefabHand
         PrefabResource::Node& node = prefab_resource.nodes.emplace_back();
         node.name = manifest_node.name;
         node.parent_index = manifest_node.parent_index;
-		hlslpp::load(node.local_transform, &manifest_node.local_transform.m00);
+
+        hlslpp::load(node.scale, &manifest_node.scale.x);
+        hlslpp::load(node.rotation, &manifest_node.rotation.x);
+        hlslpp::load(node.translation, &manifest_node.translation.x);
 
         if (manifest_node.node_type == ManifiestNodeTypeIds::Mesh)
         {
