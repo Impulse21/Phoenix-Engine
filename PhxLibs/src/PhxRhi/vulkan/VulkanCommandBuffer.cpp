@@ -203,6 +203,21 @@ void phx::rhi::VulkanCommandBuffer::InsertBarriers(Span<GpuBarrier> barriers)
 
                     VkPipelineStageFlags src_stage = ResourceStateToPipelineStage(arg.before_state);
                     VkPipelineStageFlags dest_stage = ResourceStateToPipelineStage(arg.after_state);
+
+                    VulkanBackend* vulkan_backend = vulkan_rm->vulkan_backend;
+                    uint64_t mask = 0;
+                    const VkPhysicalDeviceFeatures& device_features = vulkan_backend->vk_physical_device_features;
+                    if (!device_features.tessellationShader)
+                        mask |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
+
+                    if (!device_features.geometryShader)
+                        mask |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
+
+                    if (!EnumHasAnyFlags(vulkan_backend->capabilities, DeviceCapability::RayTracing))
+                        mask |= VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR;
+
+                    dest_stage &= ~mask;
+
                     all_src_stage_mask |= src_stage;
                     all_dst_stage_mask |= dest_stage;
 

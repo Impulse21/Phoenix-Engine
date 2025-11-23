@@ -282,6 +282,7 @@ void PhxRuntime::OnRender_Threaded(IAllocator* frame_allocator)
 				if (mesh_node->mesh->state == Resource::State::On_Gpu)
 				{
 					mesh_node->mesh->CollectPendingGpuTransitions(transitions, num_transitions);
+					mesh_node->mesh->state = Resource::State::Loaded;
 				}
 			}
 		}

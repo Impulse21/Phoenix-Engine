@@ -101,7 +101,9 @@ void phx::StandardFileProcessor::SubmitBatchedWork(IAllocator* frame_allocator, 
 	SpanMutable<rhi::ICommandBuffer*> commands_to_submit = AllocateArray<rhi::ICommandBuffer*>(frame_allocator, batches_to_submit.Size());
 	for (size_t i = 0; i < batches_to_submit.Size(); ++i)
 	{
-		inflight_work_item.callbacks.emplace_back(std::move(batches_to_submit[i].on_complete));
+		PendingCallback& pending_callback = inflight_work_item.callbacks.emplace_back();
+		pending_callback.on_complete = std::move(batches_to_submit[i].on_complete);
+		pending_callback.result = batches_to_submit[i].result;
 		commands_to_submit[i] = batches_to_submit[i].command_buffer;
 	}
 	
