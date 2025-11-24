@@ -80,8 +80,10 @@ private:
 	};
 
 
-	SpanMutable<rhi::GpuBarrier> m_render_transitions;
-	SpanMutable<RenderPacket> m_render_packets;
+	GpuTransitionWork* m_render_transitions;
+	size_t m_num_render_transitions;
+	RenderPacket* m_render_packets;
+	size_t m_num_render_packets;
 	
 };
 
@@ -178,10 +180,12 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 	const size_t max_num_packets = group.size();
 
 	static constexpr size_t MAX_NUM_SUB_MESHES = 6;
-	m_render_packets = AllocateArray<RenderPacket>(frame_allocator, max_num_packets * MAX_NUM_SUB_MESHES);
+	m_render_packets = AllocateArray<RenderPacket>(frame_allocator, max_num_packets * MAX_NUM_SUB_MESHES).data();
+	m_num_render_packets = 0;
 
 	static constexpr size_t MAX_NUM_TRANSISIONS_PER_FRAME = 50;
-	m_render_transitions = AllocateArray<rhi::GpuBarrier>(frame_allocator, MAX_NUM_TRANSISIONS_PER_FRAME);
+	m_render_transitions = AllocateArray<GpuTransitionWork>(frame_allocator, MAX_NUM_TRANSISIONS_PER_FRAME).data();
+	m_num_render_transitions = 0;
 
 	for (auto entity : group)
 	{
@@ -189,7 +193,11 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 		const auto& transform_component	= group.get<TransformComponent>(entity);
 
 		renderer::MeshResource* mesh_resources = static_cast<renderer::MeshResource*>(mesh_component.mesh);
-		
+		if (m_num_render_transitions < MAX_NUM_TRANSISIONS_PER_FRAME && mesh_resources->state == Resource::State::On_Gpu)
+		{
+			mesh_resources->CollectPendingGpuTransitions({ m_render_transitions, MAX_NUM_TRANSISIONS_PER_FRAME }, m_num_render_transitions);
+			mesh_resources->state = Resource::State::Loaded;
+		}
 	}
 }
 
@@ -224,49 +232,51 @@ void PhxRuntime::OnRender_Threaded(IAllocator* frame_allocator)
 
 	// -- this should be in the pre stage stage ---
 
-	size_t num_transitions = 0;
-
-	if (m_box_prefab->state == Resource::State::Loaded)
+	if (m_num_render_transitions)
 	{
-		// this doesn't see right - Not sure we kno it's a handle resource
-		auto prefab = static_cast<PrefabHandleResource*>(m_box_prefab.Get());
-		for (const auto& node : prefab->prefab->nodes)
-		{
-			if (auto* mesh_node = std::get_if<MeshNodeData>(&node.data))
-			{
-				if (mesh_node->mesh->state == Resource::State::On_Gpu)
-				{
-					mesh_node->mesh->CollectPendingGpuTransitions(transitions, num_transitions);
-					mesh_node->mesh->state = Resource::State::Loaded;
-				}
-			}
-		}
-	}
+		StaticArray<rhi::GpuBarrier, 16> barriers;
+		uint32_t batch_count = 0;
 
-	if (num_transitions)
-	{
-		SpanMutable<rhi::GpuBarrier> barriers = AllocateArray<rhi::GpuBarrier>(frame_allocator, num_transitions);
-		for (size_t i = 0; i < num_transitions; i++)
+		for (uint32_t i = 0; i < m_num_render_transitions; ++i)
 		{
-			if (auto* buffer_work = std::get_if<GpuTransitionWork::BufferWork>(&transitions[i].Data))
+			if (auto* buffer_work = std::get_if<GpuTransitionWork::BufferWork>(&m_render_transitions[i].Data))
 			{
-				rhi::GpuBarrier::BufferBarrier barrier = {
+				// 2. Create the barrier data
+				rhi::GpuBarrier::BufferBarrier barrier_data = {
 					.buffer = buffer_work->buffer,
-					.before_state =  rhi::ResourceStates::CopyDest,
+					.before_state = rhi::ResourceStates::CopyDest,
 					.after_state = buffer_work->state,
 					.offset = buffer_work->offset,
 					.size = buffer_work->size
 				};
 
-				barriers[i].Data = barrier;
+				barriers[batch_count].Data = barrier_data;
+
+				batch_count++;
 			}
 			else
 			{
 				PHX_ASSERT(false);
 			}
+
+			// 4. If the batch is full, submit and reset
+			if (batch_count == 16)
+			{
+				// If your StaticArray has a '.count' member, make sure to update it!
+				// barriers.count = 16; 
+
+				command_buffer->InsertBarriers(barriers);
+
+				// Reset counter for the next batch
+				batch_count = 0;
+			}
 		}
 
-		command_buffer->InsertBarriers(barriers);
+		if (batch_count > 0)
+		{
+			barriers.Resize(batch_count); // or barriers.Count = batch_count;
+			command_buffer->InsertBarriers(barriers);
+		}
 	}
 
 	// -- End Caching
