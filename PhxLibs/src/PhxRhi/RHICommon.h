@@ -597,61 +597,63 @@ namespace phx::rhi
     {
         struct RenderTarget
         {
-            bool        BlendEnable = false;
-            BlendFactor SrcBlend = BlendFactor::One;
-            BlendFactor DestBlend = BlendFactor::Zero;
-            EBlendOp    BlendOp = EBlendOp::Add;
-            BlendFactor SrcBlendAlpha = BlendFactor::One;
-            BlendFactor DestBlendAlpha = BlendFactor::Zero;
-            EBlendOp    BlendOpAlpha = EBlendOp::Add;
-            ColorMask   ColorWriteMask = ColorMask::All;
+            bool        blend_enable = false;
+            BlendFactor src_blend = BlendFactor::One;
+            BlendFactor dest_blend = BlendFactor::Zero;
+            EBlendOp    blend_op = EBlendOp::Add;
+            BlendFactor src_blend_alpha = BlendFactor::One;
+            BlendFactor dest_blend_alpha = BlendFactor::Zero;
+            EBlendOp    blend_op_alpha = EBlendOp::Add;
+            ColorMask   color_write_mask = ColorMask::All;
         };
 
-        RenderTarget Targets[cMaxRenderTargets];
-        bool alphaToCoverageEnable = false;
+        RenderTarget targets[cMaxRenderTargets];
+        bool         alpha_to_coverage_enable = false;
     };
 
     struct DepthStencilRenderState
     {
-        bool DepthEnable = false;
-        DepthWriteMask DepthWriteMask = DepthWriteMask::Zero;
-        ComparisonFunc DepthFunc = ComparisonFunc::Never;
-        bool StencilEnable = false;
-        uint8_t StencilReadMask = 0xff;
-        uint8_t StencilWriteMask = 0xff;
+        bool           depth_enable = false;
+        DepthWriteMask depth_write_mask = DepthWriteMask::Zero;
+        ComparisonFunc depth_func = ComparisonFunc::Never;
+        bool           stencil_enable = false;
+        uint8_t        stencil_read_mask = 0xff;
+        uint8_t        stencil_write_mask = 0xff;
 
         struct DepthStencilOp
         {
-            StencilOp StencilFailOp = StencilOp::Keep;
-            StencilOp StencilDepthFailOp = StencilOp::Keep;
-            StencilOp StencilPassOp = StencilOp::Keep;
-            ComparisonFunc StencilFunc = ComparisonFunc::Never;
+            StencilOp      stencil_fail_op = StencilOp::Keep;
+            StencilOp      stencil_depth_fail_op = StencilOp::Keep;
+            StencilOp      stencil_pass_op = StencilOp::Keep;
+            ComparisonFunc stencil_func = ComparisonFunc::Never;
         };
-        DepthStencilOp FrontFace = {};
-        DepthStencilOp BackFace = {};
-        bool DepthBoundsTestEnable = false;
+
+        DepthStencilOp front_face = {};
+        DepthStencilOp back_face = {};
+        bool           depth_bounds_test_enable = false;
     };
 
     struct RasterRenderState
     {
-        RasterFillMode FillMode = RasterFillMode::Solid;
-        RasterCullMode CullMode = RasterCullMode::Back;
-        bool FrontCounterClockwise = false;
-        bool DepthClipEnable = false;
-        bool ScissorEnable = false;
-        bool MultisampleEnable = false;
-        bool AntialiasedLineEnable = false;
-        int DepthBias = 0;
-        float DepthBiasClamp = 0.f;
-        float SlopeScaledDepthBias = 0.f;
+        RasterFillMode fill_mode = RasterFillMode::Solid;
+        RasterCullMode cull_mode = RasterCullMode::Back;
+        bool           front_counter_clockwise = false;
+        bool           depth_clip_enable = false;
+        bool           scissor_enable = false;
+        bool           multisample_enable = false;
+        bool           antialiased_line_enable = false;
+        int            depth_bias = 0;
+        float          depth_bias_clamp = 0.f;
+        float          slope_scaled_depth_bias = 0.f;
 
-        uint8_t ForcedSampleCount = 0;
-        bool programmableSamplePositionsEnable = false;
-        bool ConservativeRasterEnable = false;
-        bool quadFillEnable = false;
-        char samplePositionsX[16]{};
-        char samplePositionsY[16]{};
+        uint8_t        forced_sample_count = 0;
+        bool           programmable_sample_positions_enable = false;
+        bool           conservative_raster_enable = false;
+        bool           quad_fill_enable = false;
+        char           sample_positions_x[16]{};
+        char           sample_positions_y[16]{};
     };
+
     // -- Pipeline State Objects End ---
 #pragma endregion
 
@@ -809,9 +811,9 @@ namespace phx::rhi
 
     struct RenderPassInfo
     {
-        phx::Span<Format> RTFormats = {};
-        Format DsFormat = Format::UNKNOWN;
-        uint32_t SampleCount = 1;
+        phx::Span<Format> color_attachments = {};
+        Format            depth_stencil_format = Format::UNKNOWN;
+        uint32_t          sample_count = 1;
     };
     
     struct Swapchain;
@@ -856,18 +858,17 @@ namespace phx::rhi
     using PipelineStateHandle = Handle<PipelineState>;
     struct PipelineStateDescriptor
     {
+        Span<ShaderStageInfo>           shader_stages;
 
-        Span<ShaderStageInfo> shader_stages;
+        BlendRenderState                blend_state = {};
+        DepthStencilRenderState         depth_stencil_state = {};
+        RasterRenderState               raster_state = {};
 
-        BlendRenderState        BlendState = {};
-        DepthStencilRenderState DepthStencilState = {};
-        RasterRenderState       RasterState = {};
-
-        rhi::PrimitiveType              PrimType = rhi::PrimitiveType::TriangleList;
-        phx::Span<VertexBufferBinding>  VertexBufferBindings;
-        RenderPassInfo                  RenderPassInfo;
-        uint32_t                        PatchControlPoints = 3;
-        uint32_t			            SampleMask = ~0u;
+        rhi::PrimitiveType              prim_type = rhi::PrimitiveType::TriangleList;
+        phx::Span<VertexBufferBinding>  vertex_buffer_bindings;
+        RenderPassInfo                  render_pass_info;
+        uint32_t                        patch_control_points = 3;
+        uint32_t                        sample_mask = ~0u;
     };
 
     struct Buffer;
