@@ -781,11 +781,14 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
         // this->global_bindless_descriptor_layout // The layout containing unbounded descriptor arrays
     };
 
-    VkPipelineLayoutCreateInfo layout_ci = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    layout_ci.setLayoutCount = 1;
-    layout_ci.pSetLayouts = set_layouts;
-    layout_ci.pushConstantRangeCount = 1;
-    layout_ci.pPushConstantRanges = &push_constant_range;
+    // TODO: Cache this layout.
+    VkPipelineLayoutCreateInfo layout_ci = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 1,
+        .pSetLayouts = set_layouts,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &push_constant_range,
+    };
 
     vulkan_check(
         vkCreatePipelineLayout(vulkan_backend->vk_device, &layout_ci, nullptr, &impl.vk_pipeline_layout));
