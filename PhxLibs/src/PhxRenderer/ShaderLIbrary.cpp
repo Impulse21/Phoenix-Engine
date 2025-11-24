@@ -1,7 +1,8 @@
 #include "PhxRenderer/PhxRenderer_pch.h"
-#include "ShaderLibrary.h"
+#include "ShaderLIbrary.h"
 
 #include <PhxCore/IVirtualFileSystem.h>
+#include <PhxRhi/IResourceManager.h>
 
 using namespace phx;
 using namespace phx::renderer;
@@ -313,4 +314,10 @@ const void* phx::renderer::SlangShader::GetEntryPointCode(int /*entry_point_inde
 
     out_size = 0;
     return nullptr;
+}
+
+phx::renderer::SlangShader::~SlangShader()
+{
+    if (m_shader_module.IsValid())
+        rhi::IResourceManager::Ptr->DeleteShaderModule(m_shader_module);
 }

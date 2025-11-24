@@ -796,14 +796,6 @@ namespace phx::rhi
 
 #pragma region Device_Types
 
-    struct ShaderProgram
-    {
-        phx::Span<uint8_t> ByteCode;
-        const char* EntryPoint = "main";
-
-        bool IsValid() const { return !ByteCode.IsEmpty(); }
-    };
-
     struct VertexBufferBinding
     {
         static const uint32_t sAppendAlignedElement = ~0u; // automatically figure out AlignedByteOffset depending on Format
@@ -844,17 +836,28 @@ namespace phx::rhi
 		bool EnableHDR : 1 = false;
     };
 
+    struct ShaderModuleDescriptor
+    {
+        phx::Span<uint8_t> byte_code;
+        const char* entry_point = "main";
+
+        bool IsValid() const { return !byte_code.IsEmpty(); }
+    };
+
+    struct ShaderModule;
+    using ShaderModuleHandle = Handle<ShaderModule>;
+
     struct PipelineState;
     using PipelineStateHandle = Handle<PipelineState>;
     struct PipelineStateDescriptor
     {
-        ShaderProgram VS = {};
-        ShaderProgram PS = {};
-        ShaderProgram HS = {};
-        ShaderProgram DS = {};
-        ShaderProgram GS = {};
-        ShaderProgram MS = {};
-        ShaderProgram AS = {};
+        ShaderModuleHandle VS = {};
+        ShaderModuleHandle PS = {};
+        ShaderModuleHandle HS = {};
+        ShaderModuleHandle DS = {};
+        ShaderModuleHandle GS = {};
+        ShaderModuleHandle MS = {};
+        ShaderModuleHandle AS = {};
 
         BlendRenderState        BlendState = {};
         DepthStencilRenderState DepthStencilState = {};

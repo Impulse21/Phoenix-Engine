@@ -39,17 +39,19 @@ void phx::gfx::DefaultRenderSystem::Finalize()
 	m_layers.clear();
 }
 
-void phx::gfx::DefaultRenderSystem::RegisterObservers(phx::World& world)
+void phx::gfx::DefaultRenderSystem::RegisterObservers(phx::World& /*world*/)
 {
 #if ENABLE_ENTT_CALLBACKS
     world.GetRegistry().on_construct<MeshComponent>().connect<&WorldCallbacks::OnConstruct>();
 
 #else
+#if false
     // This observer tracks when MeshComponent is constructed on any entity
     m_observer.connect(
         world.GetRegistry(),
         entt::collector
         .group<MeshComponent>());  // group just ensures it's on construct
+#endif
 #endif
 }
 

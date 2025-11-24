@@ -3,7 +3,8 @@
 #include <initializer_list>
 #include <vector>
 #include <assert.h>
-#include "PhxCore/EnumUtils.h"
+#include <PhxCore/EnumUtils.h>
+#include <PhxCore/StaticArray.h>
 
 namespace phx
 {
@@ -29,6 +30,12 @@ namespace phx
 		SpanMutable(std::vector<T>& v)
 			: SpanMutable(v.data(), v.size(), 0)
 		{}
+
+		template <typename U, std::size_t N>
+		SpanMutable(const StaticArray<U, N>& arr)
+			: SpanMutable(arr.begin(), N, 0)
+		{
+		}
 
 		SpanMutable(T* array, size_t length, size_t skip)
 			: m_array(array + skip)
@@ -92,6 +99,12 @@ namespace phx
 		template <typename U, std::size_t N>
 		Span(const std::array<U, N>& arr)
 			: Span(arr.data(), arr.size(), 0)
+		{
+		}
+
+		template <typename U, std::size_t N>
+		Span(const StaticArray<U, N>& arr)
+			: Span(arr.begin(), N, 0)
 		{
 		}
 

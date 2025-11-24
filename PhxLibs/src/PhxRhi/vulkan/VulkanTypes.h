@@ -93,6 +93,23 @@ namespace phx::rhi
 	};
 	static_assert(sizeof(VulkanTexture) == kCacheLineSize, "VulkanTexture must be exactly one cache line in size!");
 
+	struct RHI_DEFINE_ALIGNED(VulkanShaderModule, kCacheLineSize)
+	{
+		VkShaderModule vk_shader_module = VK_NULL_HANDLE;
+	};
+	static_assert(sizeof(VulkanShaderModule) == kCacheLineSize, "VulkanShaderModule must be exactly one cache line in size!");
+
+	struct RHI_DEFINE_ALIGNED(VulkanPipelineState, kCacheLineSize)
+	{
+		VkPipeline                      vk_pipeline;
+		VkPipelineLayout                vk_pipeline_layout;
+
+		VkPipelineBindPoint             bind_point;
+
+		bool                            graphics_pipeline = true;
+	};
+	static_assert(sizeof(VulkanPipelineState) == kCacheLineSize, "VulkanPipelineState must be exactly one cache line in size!");
+
 	constexpr VkFormat gVulkanFormatMapping[] =
 	{
 	   VK_FORMAT_UNDEFINED,                  // UNKNOWN

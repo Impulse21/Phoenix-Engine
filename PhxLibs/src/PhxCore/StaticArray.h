@@ -11,6 +11,9 @@ namespace phx
 		const T& operator[](size_t index) const { return data[index]; }
 
 		T* begin() { return data; }
+		const T* begin() const { return data; }
+
 		T* end() { return data + N; }
+		const T* end() const { return data + N; }
 	};
 }

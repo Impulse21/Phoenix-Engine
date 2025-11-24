@@ -63,22 +63,55 @@ public:
 private:
 	void ProcessSpawnRequests();
 
+	// potential shader/material functions
+	rhi::PipelineStateHandle CreateTestPso(const renderer::ShaderAsset& shader_asset);
+
+	// Potential renderer functions
+	void Renderer_RecordTransitions(rhi::ICommandBuffer* command_buffer, Span<GpuTransitionWork> transisions);
+
 private:
 	inline static PhxRuntime* ms_instance = nullptr;
 	const phx::ApplicationDescriptor m_desc;
 	phx::rhi::SwapchainHandle m_swapchain = {};
 	void* m_window_handle;
 	
+	// -- Prototyping memebers ---
+	phx::RefCountPtr<renderer::ShaderAsset> m_test_shader;
+	rhi::PipelineStateHandle m_test_pso;
+
 	// TODO: Move some stuff into the application level that don't need to be global.
 	// Example, renderer, shader libary, material system etc.
 	World m_world;
 	std::vector<phx::RefCountPtr<phx::Resource>> m_spawn_requests;
 
-	struct RenderPacket
+	struct alignas(64) RenderPacket
 	{
+		uint64_t sort_key;
 
+		rhi::PipelineStateHandle pso;
+		rhi::BufferHandle packed_buffer;
+
+		uint64_t index_buffer_address;
+		uint64_t vertex_buffer_address;
+
+		// --- 24 Bytes: Draw Args ---
+		uint32_t index_count;
+		uint32_t first_index;
+		int32_t  vertex_offset; // standard "baseVertex"
+#if false
+		uint32_t instance_index;
+#else
+		hlslpp::float4x4 world_matrix;
+#endif
+
+		// --- 16 Bytes: Push Constants ---
+		uint32_t material_id;   // Index into Global Material Buffer
 	};
-
+#if false
+	static_assert(sizeof(RenderPacket) == 64);
+#else
+	static_assert(sizeof(RenderPacket) == 128);
+#endif
 
 	GpuTransitionWork* m_render_transitions;
 	size_t m_num_render_transitions;
@@ -126,10 +159,11 @@ void PhxRuntime::Startup()
 
 	renderer::Initialize(shader_librar_desc);
 
-	phx::RefCountPtr<renderer::ShaderAsset> shader_asset = 
-		renderer::ShaderLibrary::Ptr->LoadShader({
+	m_test_shader = renderer::ShaderLibrary::Ptr->LoadShader({
 			.source_file_path = "art://shaders/unlit.slang",
 		});
+
+	m_test_pso = CreateTestPso(*m_test_shader);
 
 	uint32_t win_height, win_width;
 	GetDefaultWindowSize(win_width, win_height);
@@ -171,16 +205,19 @@ void PhxRuntime::Shutdown()
 {
 	phx::renderer::Shutdown();
 
-	phx::rhi::IResourceManager::Ptr->DeleteSwapchain(m_swapchain);
+	auto rm = phx::rhi::IResourceManager::Ptr;
+	rm->DeleteSwapchain(m_swapchain);
+	if (m_test_pso.IsValid())
+		rm->DeletePipeline(m_test_pso);
 }
 
 void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 {
-	auto group = m_world.GetRegistry().group<StaticMeshComponent>(entt::get<TransformComponent>);
+	auto group = m_world.GetRegistry().group<StaticMeshComponent>(entt::get<WorldTransformComponent>);
 	const size_t max_num_packets = group.size();
 
-	static constexpr size_t MAX_NUM_SUB_MESHES = 6;
-	m_render_packets = AllocateArray<RenderPacket>(frame_allocator, max_num_packets * MAX_NUM_SUB_MESHES).data();
+	static constexpr size_t MAX_NUM_PER_MESH_DRAWS = 6;
+	m_render_packets = AllocateArray<RenderPacket>(frame_allocator, max_num_packets * MAX_NUM_PER_MESH_DRAWS).data();
 	m_num_render_packets = 0;
 
 	static constexpr size_t MAX_NUM_TRANSISIONS_PER_FRAME = 50;
@@ -189,32 +226,88 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 
 	for (auto entity : group)
 	{
-		const auto& mesh_component		= group.get<StaticMeshComponent>(entity);
-		const auto& transform_component	= group.get<TransformComponent>(entity);
+		const auto& mesh_component				= group.get<StaticMeshComponent>(entity);
+		const auto& world_transform_component	= group.get<WorldTransformComponent>(entity);
 
-		renderer::MeshResource* mesh_resources = static_cast<renderer::MeshResource*>(mesh_component.mesh);
-		if (m_num_render_transitions < MAX_NUM_TRANSISIONS_PER_FRAME && mesh_resources->state == Resource::State::On_Gpu)
+		renderer::MeshResource* mesh_resource = static_cast<renderer::MeshResource*>(mesh_component.mesh);
+		if (m_num_render_transitions < MAX_NUM_TRANSISIONS_PER_FRAME && mesh_resource->state == Resource::State::On_Gpu)
 		{
-			mesh_resources->CollectPendingGpuTransitions({ m_render_transitions, MAX_NUM_TRANSISIONS_PER_FRAME }, m_num_render_transitions);
-			mesh_resources->state = Resource::State::Loaded;
+			mesh_resource->CollectPendingGpuTransitions({ m_render_transitions, MAX_NUM_TRANSISIONS_PER_FRAME }, m_num_render_transitions);
+			mesh_resource->state = Resource::State::Loaded;
+		}
+
+		uint64_t packed_buffer_address = rhi::IResourceManager::Ptr->GetGpuAddress(mesh_resource->packed_mesh_buffer);
+		TypedView<renderer::MeshResource::CpuData>& cpu_data = mesh_resource->cpu_data;
+
+		// TODO: Validate against materials
+		uint8_t draw_count = (uint8_t)cpu_data->num_draws;
+		if (draw_count >= MAX_NUM_PER_MESH_DRAWS)
+		{
+			auto& name_component = m_world.GetRegistry().get<NameComponent>(entity);
+			PHX_WARN(
+				"Mesh instance {0} has {1} draws. Which exceeds upper limit of {2}",
+				name_component.Name.c_str(),
+				draw_count,
+				MAX_NUM_PER_MESH_DRAWS);
+		}
+
+		for (uint8_t i = 0; i < draw_count; ++i)
+		{
+			const auto& draw_info = cpu_data->draws[i];
+			const auto* material = mesh_component.materials[i];
+			RenderPacket& packet = m_render_packets[m_num_render_packets++];
+
+			packet.index_count = draw_info.prim_count;
+			packet.first_index = draw_info.start_index;
+			packet.vertex_offset = draw_info.base_vertex;
+
+			packet.packed_buffer = mesh_resource->packed_mesh_buffer;
+			packet.index_buffer_address = packed_buffer_address + cpu_data->index_data_offset;
+			packet.vertex_buffer_address = packed_buffer_address + cpu_data->vertex_data_offset;
+
+#if false // Example of how to link pso with material instance
+			packet.pso = material->GetPSO(RenderPass::Forward);
+#else
+			packet.pso = m_test_pso;
+#endif
+
+			// TODO: Use instance ID
+			packet.world_matrix = world_transform_component.world_matrix;
+			packet.material_id = ~0u;
+
+			// example_sorting
+			// packet.sort_key = CalculateSortKey(0, transform.depth, material->bindless_index);
+			packet.sort_key = 0ul;
 		}
 	}
 }
 
 void PhxRuntime::OnUpdate_Threaded(float /*delta_time*/, IAllocator* /*frame_allocator*/)
 {
+	using namespace hlslpp;
+
 	{
 		ProcessSpawnRequests();
 	}
-#if false
-	PHX_PROFILE;
 
-	if (m_scene_blueprint->state == phx::data::Asset::State::Loaded)
+	// -- Update world transforms ---
+	// TODO: Handle parent logic here as well
+	// TODO: Profile if group is better then view here.
+	auto& view = m_world.GetRegistry().view<TransformComponent>();
+	for (auto entity : view)
 	{
-		m_world.InstantiateFrom(*m_scene_blueprint);
+		auto transform = view.get<TransformComponent>(entity);
+		if (!transform.IsDirty())
+			continue;
+
+		const float4x4 rotation_matrix(transform.rotation);
+		const float4x4 scale_matrix = float4x4::scale(transform.scale);
+		const float4x4 translation_matrix = float4x4::translation(transform.translation);
+
+		auto& world_transform = m_world.GetRegistry().emplace_or_replace<WorldTransformComponent>(entity);
+		world_transform.world_matrix = hlslpp::float4x4::identity();
+		world_transform.world_matrix = translation_matrix * rotation_matrix * scale_matrix;
 	}
-	// Rotate cube in a random direction
-#endif
 }
 
 void PhxRuntime::OnRender_Threaded(IAllocator* frame_allocator)
@@ -230,57 +323,17 @@ void PhxRuntime::OnRender_Threaded(IAllocator* frame_allocator)
 
 	rhi::ICommandBuffer* command_buffer = submit_manager->BeginCommandBuffer(rhi::CommandQueueType::Graphics);
 
-	// -- this should be in the pre stage stage ---
-
+	// -- Process pending transisions ---
 	if (m_num_render_transitions)
 	{
-		StaticArray<rhi::GpuBarrier, 16> barriers;
-		uint32_t batch_count = 0;
-
-		for (uint32_t i = 0; i < m_num_render_transitions; ++i)
-		{
-			if (auto* buffer_work = std::get_if<GpuTransitionWork::BufferWork>(&m_render_transitions[i].Data))
-			{
-				// 2. Create the barrier data
-				rhi::GpuBarrier::BufferBarrier barrier_data = {
-					.buffer = buffer_work->buffer,
-					.before_state = rhi::ResourceStates::CopyDest,
-					.after_state = buffer_work->state,
-					.offset = buffer_work->offset,
-					.size = buffer_work->size
-				};
-
-				barriers[batch_count].Data = barrier_data;
-
-				batch_count++;
-			}
-			else
-			{
-				PHX_ASSERT(false);
-			}
-
-			// 4. If the batch is full, submit and reset
-			if (batch_count == 16)
-			{
-				// If your StaticArray has a '.count' member, make sure to update it!
-				// barriers.count = 16; 
-
-				command_buffer->InsertBarriers(barriers);
-
-				// Reset counter for the next batch
-				batch_count = 0;
-			}
-		}
-
-		if (batch_count > 0)
-		{
-			barriers.Resize(batch_count); // or barriers.Count = batch_count;
-			command_buffer->InsertBarriers(barriers);
-		}
+		Renderer_RecordTransitions(command_buffer, Span(m_render_transitions, m_num_render_transitions));
 	}
 
 	// -- End Caching
 	command_buffer->BeginRendering(m_swapchain, { .Colour = rhi::Color(0.0f, 0.0f, 0.0f, 1.0f) });
+
+	// Render Packets
+
 	command_buffer->EndRendering();
 
 	command_buffer->InsertSwapchainBarrier(m_swapchain, rhi::ResourceStates::Present);
@@ -318,6 +371,7 @@ void PhxRuntime::ProcessSpawnRequests()
 			Entity entity = m_world.CreateEntity(node.name);
 			auto& transform_component = entity.GetComponent<TransformComponent>();
 
+			// TODO: Collapse transforms and link parents
 			transform_component.scale = node.scale;
 			transform_component.rotation = node.rotation;
 			transform_component.translation = node.translation;
@@ -335,7 +389,8 @@ void PhxRuntime::ProcessSpawnRequests()
 					storage_component.mesh = mesh_node_data.mesh;
 					static_mesh_component.mesh = mesh_node_data.mesh.Get();
 
-					storage_component.materials[0] = mesh_node_data.material;
+					// TODO: implement material system.
+					// storage_component.materials[0] = mesh_node_data.material;
 #if false
 					static_mesh_component.materials[0] = mesh_node_data.material.Get();
 					static_mesh_component.num_materials = 1;
@@ -346,5 +401,59 @@ void PhxRuntime::ProcessSpawnRequests()
 		}
 		m_spawn_requests[i] = std::move(m_spawn_requests.back());
 		m_spawn_requests.pop_back();
+	}
+}
+
+rhi::PipelineStateHandle PhxRuntime::CreateTestPso(const renderer::ShaderAsset& shader_asset)
+{
+	rhi::PipelineStateDescriptor desc = {
+
+	};
+
+	return rhi::IResourceManager::Ptr->CreatePipeline(desc);
+}
+
+void PhxRuntime::Renderer_RecordTransitions(rhi::ICommandBuffer* command_buffer, Span<GpuTransitionWork> transitions)
+{
+	StaticArray<rhi::GpuBarrier, 16> barriers;
+	uint32_t batch_count = 0;
+
+	for (uint32_t i = 0; i < transitions.size(); ++i)
+	{
+		if (auto* buffer_work = std::get_if<GpuTransitionWork::BufferWork>(&transitions[i].Data))
+		{
+			// 2. Create the barrier data
+			rhi::GpuBarrier::BufferBarrier barrier_data = {
+				.buffer = buffer_work->buffer,
+				.before_state = rhi::ResourceStates::CopyDest,
+				.after_state = buffer_work->state,
+				.offset = buffer_work->offset,
+				.size = buffer_work->size
+			};
+
+			barriers[batch_count].Data = barrier_data;
+			batch_count++;
+		}
+		else
+		{
+			PHX_ASSERT(false);
+		}
+
+		// 4. If the batch is full, submit and reset
+		if (batch_count == 16)
+		{
+			// If your StaticArray has a '.count' member, make sure to update it!
+			// barriers.count = 16; 
+
+			command_buffer->InsertBarriers(barriers);
+
+			// Reset counter for the next batch
+			batch_count = 0;
+		}
+	}
+
+	if (batch_count > 0)
+	{
+		command_buffer->InsertBarriers(Span(barriers.begin(), batch_count));
 	}
 }

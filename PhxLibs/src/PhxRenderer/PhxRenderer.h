@@ -1,6 +1,6 @@
 #pragma once
 
-#include <PhxRenderer/ShaderLibrary.h>
+#include <PhxRenderer/ShaderLIbrary.h>
 
 namespace phx::renderer
 {

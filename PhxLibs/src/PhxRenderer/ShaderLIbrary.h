@@ -23,12 +23,15 @@ namespace phx::renderer
 
         const void* GetEntryPointCode(int entryPointIndex, size_t& outSize) const;
 
+        ~SlangShader();
+
     private:
         friend class ShaderLibrary;
 
     private:
         Slang::ComPtr<slang::IComponentType> m_linked_programs;
         Slang::ComPtr<slang::IBlob> m_code_blob;
+        rhi::ShaderModuleHandle m_shader_module;
     };
 
 	class ShaderAsset : public RefCounted

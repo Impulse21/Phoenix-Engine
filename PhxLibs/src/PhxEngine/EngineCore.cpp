@@ -31,9 +31,9 @@ namespace
 {
 	std::unique_ptr<IIoQueue> g_io_queue;
 
-	void OnPreRender(IApplication* app)
+	void OnPreRender(IApplication* app, IAllocator* frame_allocator)
 	{
-		app->OnPreRender();
+		app->OnPreRender(frame_allocator);
 	}
 
 	void OnUpdate_Threaded(IApplication* app, float deltaTime, IAllocator* frame_allocator)
@@ -127,8 +127,8 @@ namespace phx
 
 			// -- Pre-Render ---
 			sync.Add();
-			JobSystem::SubmitJob([&sync](JobContext const&) {
-				OnPreRender(phx::IApplication::Ptr);
+			JobSystem::SubmitJob([&sync](JobContext const& job_ctx) {
+				OnPreRender(phx::IApplication::Ptr, job_ctx.FrameHeap);
 				sync.Signal();
 			});
 

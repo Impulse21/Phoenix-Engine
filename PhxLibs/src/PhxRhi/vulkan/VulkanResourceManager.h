@@ -51,6 +51,8 @@ namespace phx::rhi
 		uint64_t frame_number = 0;
 		phx::PagedPool<rhi::Swapchain, VulkanSwapchainFrame, VulkanSwapchain> swapchain_pool;
 		phx::PagedPool<rhi::Buffer, VulkanBuffer> buffer_pool;
+		phx::PagedPool<rhi::PipelineState, VulkanPipelineState> pipeline_state_pool;
+		phx::PagedPool<rhi::ShaderModule, VulkanShaderModule> shader_module_pool;
 
 		DeferredCallbackQueue deferred_delete_queue;
 
@@ -67,11 +69,16 @@ namespace phx::rhi
 		// -- Buffer ---
 		BufferHandle CreateBuffer(const BufferDescriptor& desc, const void* initial_data = nullptr) override;
 		void DeleteBuffer(BufferHandle handle) override;
+		uint64_t GetGpuAddress(BufferHandle handle) override;
 		void DeleteBufferImmediate(BufferHandle handle);
 
 		// -- Textures ---
 		TextureHandle CreateTexture(const TextureDescriptor& desc, const void* initial_data = nullptr) override;
 		void DeleteTexture(TextureHandle handle) override;
+
+		// -- Shaders ---
+		ShaderModuleHandle CreateShaderModule(ShaderModuleDescriptor const& desc) override;
+		void DeleteShaderModule(ShaderModuleHandle handle) override;
 
 		// -- Pipeline States ---
 		PipelineStateHandle CreatePipeline(const PipelineStateDescriptor& desc) override;

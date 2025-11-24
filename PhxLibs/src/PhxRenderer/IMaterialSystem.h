@@ -24,6 +24,6 @@ namespace phx::renderer
 		virtual void Initialize(const char* archetypes_root_path) = 0;
 		virtual void Shutdonw() = 0;
 
-		virtual RefCountPtr<MaterialInstance> MaterialSystem::CreateFromResource(RefCounter<MaterialResource> resource) = 0;
+		virtual RefCountPtr<MaterialInstance> CreateFromResource(RefCounter<MaterialResource> resource) = 0;
 	};
 }
