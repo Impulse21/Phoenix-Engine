@@ -725,7 +725,7 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
     for (int i = 0; i < 8; ++i) // Assuming max 8 attachments
     {
         const auto& target = desc.blend_state.targets[i];
-        if (i >= desc.render_pass_info.RTFormats.size()) 
+        if (i >= desc.render_pass_info.color_attachments.size()) 
             break;
 
         auto& att = blend_attachments[valid_attachment_count++];
@@ -778,7 +778,7 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
     // Even if "bindless", the pipeline needs to know the layout of the global set.
     // Assuming your backend stores the global layout for the bindless heap.
     VkDescriptorSetLayout set_layouts[] = {
-        this->global_bindless_descriptor_layout // The layout containing unbounded descriptor arrays
+        // this->global_bindless_descriptor_layout // The layout containing unbounded descriptor arrays
     };
 
     VkPipelineLayoutCreateInfo layout_ci = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
@@ -787,7 +787,8 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
     layout_ci.pushConstantRangeCount = 1;
     layout_ci.pPushConstantRanges = &push_constant_range;
 
-    VK_CHECK(vkCreatePipelineLayout(device, &layout_ci, nullptr, &impl.pipeline_layout));
+    vulkan_check(
+        vkCreatePipelineLayout(vulkan_backend->vk_device, &layout_ci, nullptr, &impl.vk_pipeline_layout));
 
     VkGraphicsPipelineCreateInfo pipeline_ci = { 
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -802,7 +803,7 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
         .pDepthStencilState = &depth_stencil_ci,
         .pColorBlendState = &color_blend_ci,
         .pDynamicState = &dynamic_state_ci,
-        .layout = impl.pipeline_layout,
+        .layout = impl.vk_pipeline_layout,
         .renderPass = VK_NULL_HANDLE,
         .subpass = 0,
     };
