@@ -161,6 +161,10 @@ void PhxRuntime::Startup()
 
 	m_test_shader = renderer::ShaderLibrary::Ptr->LoadShader({
 			.source_file_path = "art://shaders/unlit.slang",
+			.entry_points = {
+				{ .name = "VertexMain",		.stage = rhi::ShaderStage::VS },
+				{ .name = "FragmentMain",	.stage = rhi::ShaderStage::PS }
+			}
 		});
 
 	m_test_pso = CreateTestPso(*m_test_shader);
@@ -209,6 +213,7 @@ void PhxRuntime::Shutdown()
 	rm->DeleteSwapchain(m_swapchain);
 	if (m_test_pso.IsValid())
 		rm->DeletePipeline(m_test_pso);
+
 }
 
 void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
@@ -254,7 +259,7 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 		for (uint8_t i = 0; i < draw_count; ++i)
 		{
 			const auto& draw_info = cpu_data->draws[i];
-			const auto* material = mesh_component.materials[i];
+			// const auto* material = mesh_component.materials[i];
 			RenderPacket& packet = m_render_packets[m_num_render_packets++];
 
 			packet.index_count = draw_info.prim_count;
@@ -293,7 +298,7 @@ void PhxRuntime::OnUpdate_Threaded(float /*delta_time*/, IAllocator* /*frame_all
 	// -- Update world transforms ---
 	// TODO: Handle parent logic here as well
 	// TODO: Profile if group is better then view here.
-	auto& view = m_world.GetRegistry().view<TransformComponent>();
+	const auto& view = m_world.GetRegistry().view<TransformComponent>();
 	for (auto entity : view)
 	{
 		auto transform = view.get<TransformComponent>(entity);
@@ -310,7 +315,7 @@ void PhxRuntime::OnUpdate_Threaded(float /*delta_time*/, IAllocator* /*frame_all
 	}
 }
 
-void PhxRuntime::OnRender_Threaded(IAllocator* frame_allocator)
+void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 {
 	PHX_PROFILE;
 	static std::atomic_uint32_t _thread_counter;
@@ -406,8 +411,18 @@ void PhxRuntime::ProcessSpawnRequests()
 
 rhi::PipelineStateHandle PhxRuntime::CreateTestPso(const renderer::ShaderAsset& shader_asset)
 {
+	const RefCountPtr<renderer::SlangShader>& shader = shader_asset.Get();
 	rhi::PipelineStateDescriptor desc = {
-
+		.shader_stages = {
+			rhi::ShaderStageInfo{ 
+				.stage = rhi::ShaderStage::VS,
+				.module_handle = shader->GetShaderModule(),
+				.entry_point = shader->GetEntryPoint(rhi::ShaderStage::VS)},
+			rhi::ShaderStageInfo{
+				.stage = rhi::ShaderStage::PS,
+				.module_handle = shader->GetShaderModule(),
+				.entry_point = shader->GetEntryPoint(rhi::ShaderStage::PS)},
+		},
 	};
 
 	return rhi::IResourceManager::Ptr->CreatePipeline(desc);

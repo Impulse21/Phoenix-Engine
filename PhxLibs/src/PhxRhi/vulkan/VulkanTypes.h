@@ -192,6 +192,25 @@ namespace phx::rhi
 		return gVulkanFormatMapping[(int)format];
 	}
 
+	constexpr std::array<VkShaderStageFlagBits, (size_t)ShaderStage::Count> kShaderStageToVk =
+	{
+		VK_SHADER_STAGE_MESH_BIT_EXT,                 // MS
+		VK_SHADER_STAGE_TASK_BIT_EXT,                 // AS (Amplification == Task in Vulkan)
+		VK_SHADER_STAGE_VERTEX_BIT,                   // VS
+		VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,     // HS (Hull == Tess Control)
+		VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,  // DS (Domain == Tess Eval)
+		VK_SHADER_STAGE_GEOMETRY_BIT,                 // GS
+		VK_SHADER_STAGE_FRAGMENT_BIT,                 // PS (Pixel == Fragment)
+		VK_SHADER_STAGE_COMPUTE_BIT,                  // CS
+		VK_SHADER_STAGE_ALL                           // LIB (Generic Library)
+	};
+
+	// Helper for cleaner casting
+	inline VkShaderStageFlagBits ShaderStageToVulkanShaderStage(ShaderStage stage)
+	{
+		return kShaderStageToVk[static_cast<uint8_t>(stage)];
+	}
+
 	constexpr VkComponentSwizzle ComponentSwizzleMap[] =
 	{
 		VK_COMPONENT_SWIZZLE_R,        // ComponentSwizzle::R

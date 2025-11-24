@@ -47,6 +47,7 @@ namespace phx::rhi
 	{
 		VulkanBackend* vulkan_backend = nullptr;
 		VulkanGpuAllocator* vulkan_allocator = nullptr;
+		VkPipelineCache vk_pipeline_cache = VK_NULL_HANDLE;
 
 		uint64_t frame_number = 0;
 		phx::PagedPool<rhi::Swapchain, VulkanSwapchainFrame, VulkanSwapchain> swapchain_pool;

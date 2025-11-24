@@ -147,11 +147,14 @@ bool phx::rhi::VulkanBackend::SelectPhysicalDevice(vkb::PhysicalDevice& out_vkb_
     vkb::PhysicalDeviceSelector selector{ vkb_instance };
     VkPhysicalDeviceFeatures features_to_enable = {};
     features_to_enable.samplerAnisotropy = VK_TRUE;
+    features_to_enable.shaderInt64 = VK_TRUE;
+
     // Add other features you absolutely need enabled
 
     const std::vector<const char*> required_extensions =
     {
         VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
+        VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
         VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
         VK_KHR_MULTIVIEW_EXTENSION_NAME,
         VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME,
@@ -163,6 +166,15 @@ bool phx::rhi::VulkanBackend::SelectPhysicalDevice(vkb::PhysicalDevice& out_vkb_
         .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
         .add_required_extensions(required_extensions.size(), required_extensions.data());
 
+    VkPhysicalDeviceFeatures vulkan_features_1_0 = {};
+    vulkan_features_1_0.samplerAnisotropy = VK_TRUE;
+    vulkan_features_1_0.multiDrawIndirect = VK_TRUE; // Almost guaranteed you'll need this later
+
+    // --- 1.1 Features (THE FIX) ---
+    VkPhysicalDeviceVulkan11Features vulkan_features_1_1 = {};
+    vulkan_features_1_1.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+    vulkan_features_1_1.shaderDrawParameters = VK_TRUE;
+
     VkPhysicalDeviceVulkan12Features vulkan_features_1_2 = {};
     vulkan_features_1_2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
     vulkan_features_1_2.pNext = nullptr;
@@ -173,9 +185,7 @@ bool phx::rhi::VulkanBackend::SelectPhysicalDevice(vkb::PhysicalDevice& out_vkb_
     vulkan_features_1_2.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
     vulkan_features_1_2.timelineSemaphore = VK_TRUE;
     vulkan_features_1_2.samplerFilterMinmax = VK_TRUE;
-
-
-    selector.add_required_extension_features(vulkan_features_1_2);
+    vulkan_features_1_2.shaderInt8 = VK_TRUE;
 
     VkPhysicalDeviceVulkan13Features vulkan_features_1_3 = {};
     vulkan_features_1_3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -184,7 +194,15 @@ bool phx::rhi::VulkanBackend::SelectPhysicalDevice(vkb::PhysicalDevice& out_vkb_
     vulkan_features_1_3.dynamicRendering = VK_TRUE;
     vulkan_features_1_3.synchronization2 = VK_TRUE;
 
-    selector.add_required_extension_features(vulkan_features_1_3);
+    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state = {};
+    extended_dynamic_state.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+    extended_dynamic_state.extendedDynamicState = VK_TRUE;
+
+    selector.set_required_features(vulkan_features_1_0);
+    selector.set_required_features_11(vulkan_features_1_1);
+    selector.set_required_features_12(vulkan_features_1_2);
+    selector.set_required_features_13(vulkan_features_1_3);
+    selector.add_required_extension_features(extended_dynamic_state);
 
     // Add specific extension requirements if vkb doesn't infer them well enough
     auto phys_dev_ret = selector.select();

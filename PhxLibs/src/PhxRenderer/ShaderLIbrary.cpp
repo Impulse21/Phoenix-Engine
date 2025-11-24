@@ -92,7 +92,7 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
     }
 
     Slang::ComPtr<slang::IComponentType> composed_program;
-    const bool compile_full_module = compile_desc.entry_points.empty();
+    const bool compile_full_module = compile_desc.entry_points.IsEmpty();
 
     if (compile_full_module)
     {
@@ -175,7 +175,11 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
     auto shader = RefCountPtr<SlangShader>::Create();
     shader->m_linked_programs = linked_programs;
     shader->m_code_blob = code_blob;
-    shader->m_entry_points = compile_desc.entry_points;
+    shader->m_entry_points.resize(compile_desc.entry_points.Size());
+    std::memcpy(
+        shader->m_entry_points.data(),
+        compile_desc.entry_points.data(),
+        sizeof(ShaderEntryPoint) * compile_desc.entry_points.Size());
 
     Span<uint8_t> byte_code_span(
         reinterpret_cast<const uint8_t*>(shader->m_code_blob->getBufferPointer()), shader->m_code_blob->getBufferSize());

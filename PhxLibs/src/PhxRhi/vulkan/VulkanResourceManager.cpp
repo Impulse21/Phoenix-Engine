@@ -31,6 +31,12 @@ bool VulkanResourceManager::Initialize()
     pipeline_state_pool.Initialize(kMaxPipelineStates);
     shader_module_pool.Initialize(kMaxPipelineStates * 2);
 
+    VkPipelineCacheCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+
+    vulkan_check(
+        vkCreatePipelineCache(vulkan_backend->vk_device, &createInfo, nullptr, &vk_pipeline_cache));
+
     return true;
 }
 
@@ -40,6 +46,8 @@ void phx::rhi::VulkanResourceManager::Shutdown()
     LOG_AND_SHUTDOWN_POOL(pipeline_state_pool);
     LOG_AND_SHUTDOWN_POOL(shader_module_pool);
     LOG_AND_SHUTDOWN_POOL(swapchain_pool);
+
+    vkDestroyPipelineCache(vulkan_backend->vk_device, vk_pipeline_cache, nullptr);
 }
 
 SwapchainHandle phx::rhi::VulkanResourceManager::CreateSwapchain(const SwapchainDesc& desc)
@@ -578,58 +586,56 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
         pipelineLayoutInfo.pushConstantRangeCount = 0; // No push constants
         pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
-        VkResult result = vkCreatePipelineLayout(m_vkDevice, &pipelineLayoutInfo, nullptr, &impl.PipelineLayout);
+        vkCreatePipelineLayout(vulkan_backend->vk_device, &pipelineLayoutInfo, nullptr, &impl.vk_pipeline_layout);
     }
 
     VkGraphicsPipelineCreateInfo pipelineInfo = {};
     //pipelineInfo.flags = VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineInfo.layout = impl.PipelineLayout;
+    pipelineInfo.layout = impl.vk_pipeline_layout;
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
+    Span<VkDynamicState> dynamic_states = {
+        VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
+        VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
+
+        // 2. Other Standard Dynamic States you likely want
+        VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE,
+        VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
+        // VK_DYNAMIC_STATE_CULL_MODE,  (If you enabled extendedDynamicState)
+        // VK_DYNAMIC_STATE_FRONT_FACE, (If you enabled extendedDynamicState)
+        // VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE, (If you enabled extendedDynamicState)
+        // VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE (If you enabled extendedDynamicState)
+    };
+
+    VkPipelineDynamicStateCreateInfo dynamic_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = (uint32_t)dynamic_states.size(),
+        .pDynamicStates = dynamic_states.data()
+    };
+
+    pipelineInfo.pDynamicState = &dynamic_info;
+
     // -- Shader Stages ---
-    std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
-    shaderStages.reserve(static_cast<size_t>(ShaderStage::Count));
+    StaticArray<VkPipelineShaderStageCreateInfo, static_cast<size_t>(ShaderStage::Count)> shader_stages;
+    size_t num_stages = 0;
 
-    if (desc.MS.IsValid())
+    for (auto& stage_info : desc.shader_stages)
     {
-        Shader_VK* impl = m_shaderPool.Get(desc.MS);
-        shaderStages.push_back(impl->StageInfo);
-    }
-    if (desc.AS.IsValid())
-    {
-        Shader_VK* impl = m_shaderPool.Get(desc.AS);
-        shaderStages.push_back(impl->StageInfo);;
-    }
-    if (desc.VS.IsValid())
-    {
-        Shader_VK* impl = m_shaderPool.Get(desc.VS);
-        shaderStages.push_back(impl->StageInfo);
-    }
-    if (desc.HS.IsValid())
-    {
-        Shader_VK* impl = m_shaderPool.Get(desc.HS);
-        shaderStages.push_back(impl->StageInfo);
-    }
-    if (desc.DS.IsValid())
-    {
-        Shader_VK* impl = m_shaderPool.Get(desc.DS);
-        shaderStages.push_back(impl->StageInfo);
-    }
-    if (desc.GS.IsValid())
-    {
-        Shader_VK* impl = m_shaderPool.Get(desc.GS);
-        shaderStages.push_back(impl->StageInfo);
-    }
-    if (desc.PS.IsValid())
-    {
-        Shader_VK* impl = m_shaderPool.Get(desc.PS);
-        shaderStages.push_back(impl->StageInfo);
+        if (!stage_info.module_handle.IsValid())
+            continue;
+
+        VulkanShaderModule& impl = *shader_module_pool.GetHot(stage_info.module_handle);
+
+        VkPipelineShaderStageCreateInfo& create_info = shader_stages[num_stages++];
+        create_info.sType   = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        create_info.stage   = ShaderStageToVulkanShaderStage(stage_info.stage);
+        create_info.module  = impl.vk_shader_module; 
+        create_info.pName   = stage_info.entry_point; 
     }
 
-    pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-    pipelineInfo.pStages = shaderStages.data();
-
+    pipelineInfo.stageCount = num_stages;
+    pipelineInfo.pStages = shader_stages.begin();
 
     // -- Primitive type ---
     VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
@@ -687,9 +693,8 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
     *tail = &depthClipStateInfo;
     tail = &depthClipStateInfo.pNext;
 
-    if (desc.RasterRenderState != nullptr)
     {
-        const RasterRenderState& rs = *desc.RasterRenderState;
+        const RasterRenderState& rs = desc.RasterState;
 
         switch (rs.FillMode)
         {
@@ -749,32 +754,32 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
     // -- Depth-Stencil ---
     VkPipelineDepthStencilStateCreateInfo depthstencil = {};
     depthstencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    if (desc.DepthStencilRenderState)
-    {
-        DepthStencilRenderState* dss = desc.DepthStencilRenderState;
-        depthstencil.depthTestEnable = dss->DepthEnable ? VK_TRUE : VK_FALSE;
-        depthstencil.depthWriteEnable = dss->DepthWriteMask == DepthWriteMask::Zero ? VK_FALSE : VK_TRUE;
-        depthstencil.depthCompareOp = ConvertComparisonFunc(dss->DepthFunc);
 
-        if (dss->StencilEnable)
+    {
+        const DepthStencilRenderState& dss = desc.DepthStencilState;
+        depthstencil.depthTestEnable = dss.DepthEnable ? VK_TRUE : VK_FALSE;
+        depthstencil.depthWriteEnable = dss.DepthWriteMask == DepthWriteMask::Zero ? VK_FALSE : VK_TRUE;
+        depthstencil.depthCompareOp = ConvertComparisonFunc(dss.DepthFunc);
+
+        if (dss.StencilEnable)
         {
             depthstencil.stencilTestEnable = VK_TRUE;
 
-            depthstencil.front.compareMask = dss->StencilReadMask;
-            depthstencil.front.writeMask = dss->StencilWriteMask;
+            depthstencil.front.compareMask = dss.StencilReadMask;
+            depthstencil.front.writeMask = dss.StencilWriteMask;
             depthstencil.front.reference = 0; // runtime supplied
-            depthstencil.front.compareOp = ConvertComparisonFunc(dss->FrontFace.StencilFunc);
-            depthstencil.front.passOp = ConvertStencilOp(dss->FrontFace.StencilPassOp);
-            depthstencil.front.failOp = ConvertStencilOp(dss->FrontFace.StencilFailOp);
-            depthstencil.front.depthFailOp = ConvertStencilOp(dss->FrontFace.StencilDepthFailOp);
+            depthstencil.front.compareOp = ConvertComparisonFunc(dss.FrontFace.StencilFunc);
+            depthstencil.front.passOp = ConvertStencilOp(dss.FrontFace.StencilPassOp);
+            depthstencil.front.failOp = ConvertStencilOp(dss.FrontFace.StencilFailOp);
+            depthstencil.front.depthFailOp = ConvertStencilOp(dss.FrontFace.StencilDepthFailOp);
 
-            depthstencil.back.compareMask = dss->StencilReadMask;
-            depthstencil.back.writeMask = dss->StencilWriteMask;
+            depthstencil.back.compareMask = dss.StencilReadMask;
+            depthstencil.back.writeMask = dss.StencilWriteMask;
             depthstencil.back.reference = 0; // runtime supplied
-            depthstencil.back.compareOp = ConvertComparisonFunc(dss->BackFace.StencilFunc);
-            depthstencil.back.passOp = ConvertStencilOp(dss->BackFace.StencilPassOp);
-            depthstencil.back.failOp = ConvertStencilOp(dss->BackFace.StencilFailOp);
-            depthstencil.back.depthFailOp = ConvertStencilOp(dss->BackFace.StencilDepthFailOp);
+            depthstencil.back.compareOp = ConvertComparisonFunc(dss.BackFace.StencilFunc);
+            depthstencil.back.passOp = ConvertStencilOp(dss.BackFace.StencilPassOp);
+            depthstencil.back.failOp = ConvertStencilOp(dss.BackFace.StencilFailOp);
+            depthstencil.back.depthFailOp = ConvertStencilOp(dss.BackFace.StencilDepthFailOp);
         }
         else
         {
@@ -800,7 +805,7 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
 #if false
         if (CheckCapability(GraphicsDeviceCapability::DEPTH_BOUNDS_TEST))
         {
-            depthstencil.depthBoundsTestEnable = dss->DepthBoundsTestEnable ? VK_TRUE : VK_FALSE;
+            depthstencil.depthBoundsTestEnable = dss.DepthBoundsTestEnable ? VK_TRUE : VK_FALSE;
         }
         else
         {
@@ -823,23 +828,15 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
     pipelineInfo.pTessellationState = &tessellationInfo;
 #endif
 
-    // -- Dynamic States ---
-    if (!desc.MS.IsValid())
-    {
-        pipelineInfo.pDynamicState = &m_dynamicStateInfo;
-    }
-    else
-    {
-        pipelineInfo.pDynamicState = &m_dynamicStateInfo_MeshShader;
-    }
-
     // -- Input Layout ---
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     std::vector<VkVertexInputBindingDescription> bindings;
     std::vector<VkVertexInputAttributeDescription> attributes;
-    if (desc.InputLayout)
+    PHX_ASSERT(desc.VertexBufferBindings.IsEmpty());
+    if (!desc.VertexBufferBindings.IsEmpty())
     {
+#if false
         InputLayout* inputLayout = desc.InputLayout;
         uint32_t lastBinding = 0xFFFFFFFF;
         for (auto& e : inputLayout->elements)
@@ -884,6 +881,7 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
         vertexInputInfo.pVertexBindingDescriptions = bindings.data();
         vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
         vertexInputInfo.pVertexAttributeDescriptions = attributes.data();
+#endif
     }
 
     pipelineInfo.pVertexInputState = &vertexInputInfo;
@@ -898,13 +896,32 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
     multisampling.alphaToOneEnable = VK_FALSE; // Optional
     pipelineInfo.pMultisampleState = &multisampling;
 
-    VkResult res = vkCreateGraphicsPipelines(m_vkDevice, m_vkPipelineCache, 1, &pipelineInfo, nullptr, &impl.Pipeline);
-    assert(res == VK_SUCCESS);
-    return retVal;
+    pipelineInfo.renderPass = VK_NULL_HANDLE;
+
+    vulkan_check(
+        vkCreateGraphicsPipelines(vulkan_backend->vk_device, vk_pipeline_cache, 1, &pipelineInfo, nullptr, &impl.vk_pipeline));
+
+    return ret_val;
 }
 
-void phx::rhi::VulkanResourceManager::DeletePipeline(PipelineStateHandle /*handle*/)
+void phx::rhi::VulkanResourceManager::DeletePipeline(PipelineStateHandle handle)
 {
+    deferred_delete_queue.EnqueueDelete({
+        frame_number,
+        [=, this]() 
+        { 
+            VulkanPipelineState* impl = pipeline_state_pool.GetHot(handle);
+            // TODO: Move into the deconstructor of struct
+            if (impl)
+            {
+                vkDestroyPipeline(vulkan_backend->vk_device, impl->vk_pipeline, nullptr);
+
+                vkDestroyPipelineLayout(vulkan_backend->vk_device, impl->vk_pipeline_layout, nullptr);
+
+                pipeline_state_pool.Free(handle);
+            }
+        }
+    });
 }
 
 int VulkanResourceManager::CreateSubResource(VulkanBuffer& buffer, BufferDescriptor const& desc, SubresouceType subresource_type, size_t offset, size_t size)

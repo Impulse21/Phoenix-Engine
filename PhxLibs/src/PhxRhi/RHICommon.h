@@ -845,23 +845,19 @@ namespace phx::rhi
     struct ShaderModule;
     using ShaderModuleHandle = Handle<ShaderModule>;
 
+    struct ShaderStageInfo
+    {
+        ShaderStage stage;
+        ShaderModuleHandle module_handle;
+        const char* entry_point;
+    };
+
     struct PipelineState;
     using PipelineStateHandle = Handle<PipelineState>;
     struct PipelineStateDescriptor
     {
-        struct ShaderStageInfo 
-        {
-            ShaderModuleHandle module;
-            const char* entry_point;
-        };
 
-        ShaderStageInfo VS = {};
-        ShaderStageInfo PS = {};
-        ShaderStageInfo HS = {};
-        ShaderStageInfo DS = {};
-        ShaderStageInfo GS = {};
-        ShaderStageInfo MS = {};
-        ShaderStageInfo AS = {};
+        Span<ShaderStageInfo> shader_stages;
 
         BlendRenderState        BlendState = {};
         DepthStencilRenderState DepthStencilState = {};
