@@ -839,8 +839,6 @@ namespace phx::rhi
     struct ShaderModuleDescriptor
     {
         phx::Span<uint8_t> byte_code;
-        const char* entry_point = "main";
-
         bool IsValid() const { return !byte_code.IsEmpty(); }
     };
 
@@ -851,13 +849,19 @@ namespace phx::rhi
     using PipelineStateHandle = Handle<PipelineState>;
     struct PipelineStateDescriptor
     {
-        ShaderModuleHandle VS = {};
-        ShaderModuleHandle PS = {};
-        ShaderModuleHandle HS = {};
-        ShaderModuleHandle DS = {};
-        ShaderModuleHandle GS = {};
-        ShaderModuleHandle MS = {};
-        ShaderModuleHandle AS = {};
+        struct ShaderStageInfo 
+        {
+            ShaderModuleHandle module;
+            const char* entry_point;
+        };
+
+        ShaderStageInfo VS = {};
+        ShaderStageInfo PS = {};
+        ShaderStageInfo HS = {};
+        ShaderStageInfo DS = {};
+        ShaderStageInfo GS = {};
+        ShaderStageInfo MS = {};
+        ShaderStageInfo AS = {};
 
         BlendRenderState        BlendState = {};
         DepthStencilRenderState DepthStencilState = {};

@@ -13,6 +13,11 @@
 
 namespace phx::renderer
 {
+    struct ShaderEntryPoint
+    {
+        std::string name;
+        rhi::ShaderStage stage;
+    };
     class SlangShader : public RefCounted
     {
     public:
@@ -22,6 +27,9 @@ namespace phx::renderer
         slang::ProgramLayout* GetReflection() const { return m_linked_programs ? m_linked_programs->getLayout() : nullptr; }
 
         const void* GetEntryPointCode(int entryPointIndex, size_t& outSize) const;
+        const char* GetEntryPoint(rhi::ShaderStage stage);
+
+        rhi::ShaderModuleHandle GetShaderModule() const { return m_shader_module; }
 
         ~SlangShader();
 
@@ -31,6 +39,7 @@ namespace phx::renderer
     private:
         Slang::ComPtr<slang::IComponentType> m_linked_programs;
         Slang::ComPtr<slang::IBlob> m_code_blob;
+        std::vector<ShaderEntryPoint> m_entry_points;
         rhi::ShaderModuleHandle m_shader_module;
     };
 
@@ -57,13 +66,7 @@ namespace phx::renderer
         };
 
         std::vector<GenericArg> generic_args;
-
-        struct EntryPoint
-        {
-            std::string name;
-            rhi::ShaderStage stage;
-        };
-        std::vector<EntryPoint> entry_points;
+        std::vector<ShaderEntryPoint> entry_points;
 
         Hash64 GetHash() const;
     };

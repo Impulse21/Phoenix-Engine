@@ -175,6 +175,13 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
     auto shader = RefCountPtr<SlangShader>::Create();
     shader->m_linked_programs = linked_programs;
     shader->m_code_blob = code_blob;
+    shader->m_entry_points = compile_desc.entry_points;
+
+    Span<uint8_t> byte_code_span(
+        reinterpret_cast<const uint8_t*>(shader->m_code_blob->getBufferPointer()), shader->m_code_blob->getBufferSize());
+    shader->m_shader_module = rhi::IResourceManager::Ptr->CreateShaderModule({
+        .byte_code = byte_code_span
+    });
 
     return shader;
 }
@@ -262,7 +269,7 @@ Hash64 phx::renderer::ShaderCompileDescriptor::GetHash() const
 
     HashCombine(seed, source_file_path);
 
-    std::vector<const EntryPoint*> sorted_entries;
+    std::vector<const ShaderEntryPoint*> sorted_entries;
     sorted_entries.reserve(entry_points.size());
     for (const auto& ep : entry_points)
     {
@@ -271,7 +278,7 @@ Hash64 phx::renderer::ShaderCompileDescriptor::GetHash() const
 
     // Sort by Name (or Stage) to ensure VS+PS hashes same as PS+VS
     std::sort(sorted_entries.begin(), sorted_entries.end(),
-        [](const EntryPoint* a, const EntryPoint* b) {
+        [](const ShaderEntryPoint* a, const ShaderEntryPoint* b) {
             return a->name < b->name;
         });
 
@@ -313,6 +320,17 @@ const void* phx::renderer::SlangShader::GetEntryPointCode(int /*entry_point_inde
     }
 
     out_size = 0;
+    return nullptr;
+}
+
+const char* phx::renderer::SlangShader::GetEntryPoint(rhi::ShaderStage stage)
+{
+    for (const auto& ep : m_entry_points)
+    {
+        if (ep.stage == stage)
+            return ep.name.c_str();
+    }
+
     return nullptr;
 }
 
