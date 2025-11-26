@@ -81,6 +81,6 @@ namespace phx::rhi::vulkan
         char*                   m_mapped_ptr;
         VkDeviceAddress         m_buffer_address;
 
-        SlotAllocator           m_allocator;
+        SlotAllocator           m_slot_allocator;
 	};
 }
