@@ -273,6 +273,20 @@ namespace phx::rhi
 		}
 	}
 
+	constexpr VkColorComponentFlags ToVkColorComponentFlags(ColorMask mask)
+	{
+		// Cast to integer to allow bitwise operations on enum class
+		const uint8_t m = static_cast<uint8_t>(mask);
+
+		VkColorComponentFlags flags = 0;
+
+		if (m & static_cast<uint8_t>(rhi::ColorMask::Red))   flags |= VK_COLOR_COMPONENT_R_BIT;
+		if (m & static_cast<uint8_t>(rhi::ColorMask::Green)) flags |= VK_COLOR_COMPONENT_G_BIT;
+		if (m & static_cast<uint8_t>(rhi::ColorMask::Blue))  flags |= VK_COLOR_COMPONENT_B_BIT;
+		if (m & static_cast<uint8_t>(rhi::ColorMask::Alpha)) flags |= VK_COLOR_COMPONENT_A_BIT;
+
+		return flags;
+	}
 	constexpr VkBlendOp ConvertBlendOp(EBlendOp value)
 	{
 		switch (value)
