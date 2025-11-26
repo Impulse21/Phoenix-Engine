@@ -4,9 +4,14 @@
 
 #include <volk.h>
 
+namespace phx::rhi
+{
+    class VulkanBackend;
+    class VulkanGpuAllocator;
+}
+
 namespace phx::rhi::vulkan
 {
-	class VulkanBackend;
     class SlotAllocator
     {
     public:
@@ -51,10 +56,11 @@ namespace phx::rhi::vulkan
         Sampler,
         Count
     };
+
 	class DescriptorHeap
 	{
 	public:
-		void Initialize(VulkanBackend* vulkan_backend, HeapType heap_type, uint32_t max_slots);
+		void Initialize(phx::rhi::VulkanBackend* vulkan_backend, VulkanGpuAllocator* vulkan_allocator, HeapType heap_type, uint32_t max_slots);
 		void Shutdown();
 
 
@@ -63,19 +69,18 @@ namespace phx::rhi::vulkan
 
 		VkDeviceAddress GetBufferAddress() const { return m_buffer_address; };
 
-        Span<VkDescriptorSetLayout> GetDescriptorSetLayout();
 	private:
-		VulkanBackend* m_vulkan_backend;
-		VkDescriptorType m_descriptor_type;
+		VulkanBackend*          m_vulkan_backend;
+        VulkanGpuAllocator*     m_vulkan_allocator;
+		VkDescriptorType        m_descriptor_type;
+        size_t                  m_descriptor_stride;
 
-        size_t m_descriptor_stride;
+        VkBuffer		        m_vk_buffer;
+        VmaAllocation	        m_vma_allocation;
 
-        VkBuffer		m_vk_buffer;
-        VmaAllocation	m_vma_allocation;
+        char*                   m_mapped_ptr;
+        VkDeviceAddress         m_buffer_address;
 
-        char*           m_mapped_ptr;
-        VkDeviceAddress m_buffer_address;
-
-        SlotAllocator m_allocator;
+        SlotAllocator           m_allocator;
 	};
 }
