@@ -102,7 +102,6 @@ namespace phx::rhi
 	struct RHI_DEFINE_ALIGNED(VulkanPipelineState, kCacheLineSize)
 	{
 		VkPipeline                      vk_pipeline;
-		VkPipelineLayout                vk_pipeline_layout;
 
 		VkPipelineBindPoint             bind_point;
 

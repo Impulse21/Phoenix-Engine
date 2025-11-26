@@ -47,6 +47,7 @@ void phx::rhi::VulkanResourceManager::Shutdown()
     LOG_AND_SHUTDOWN_POOL(shader_module_pool);
     LOG_AND_SHUTDOWN_POOL(swapchain_pool);
 
+    vkDestroyPipelineLayout(vulkan_backend->vk_device, vk_default_pipeline_layout, nullptr);
     vkDestroyPipelineCache(vulkan_backend->vk_device, vk_pipeline_cache, nullptr);
 }
 
@@ -725,7 +726,7 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
     for (int i = 0; i < 8; ++i) // Assuming max 8 attachments
     {
         const auto& target = desc.blend_state.targets[i];
-        if (i >= desc.render_pass_info.RTFormats.size()) 
+        if (i >= desc.render_pass_info.color_attachments.size()) 
             break;
 
         auto& att = blend_attachments[valid_attachment_count++];
@@ -769,25 +770,32 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
     // A. Push Constants
     // In a Bindless/GPU-Driven pipeline, we typically use one large Push Constant block 
     // (e.g., 128 bytes) accessible by ALL stages to pass indices (DrawID, MaterialID).
-    VkPushConstantRange push_constant_range = {};
-    push_constant_range.stageFlags = VK_SHADER_STAGE_ALL;
-    push_constant_range.offset = 0;
-    push_constant_range.size = 128; // Standard guarantee on all hardware (max is often 256)
+    if (vk_default_pipeline_layout != VK_NULL_HANDLE)
+    {
+        VkPushConstantRange push_constant_range = {
+            .stageFlags = VK_SHADER_STAGE_ALL,
+            .offset = 0,
+            .size = 128, // Standard guarantee on all hardware (max is often 256)
+        };
 
-    // B. Descriptor Set Layouts
-    // Even if "bindless", the pipeline needs to know the layout of the global set.
-    // Assuming your backend stores the global layout for the bindless heap.
-    VkDescriptorSetLayout set_layouts[] = {
-        this->global_bindless_descriptor_layout // The layout containing unbounded descriptor arrays
-    };
+        // B. Descriptor Set Layouts
+        // Even if "bindless", the pipeline needs to know the layout of the global set.
+        // Assuming your backend stores the global layout for the bindless heap.
+        VkDescriptorSetLayout set_layouts[] = {
+            // TODO: Bindless Layout
+        };
 
-    VkPipelineLayoutCreateInfo layout_ci = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    layout_ci.setLayoutCount = 1;
-    layout_ci.pSetLayouts = set_layouts;
-    layout_ci.pushConstantRangeCount = 1;
-    layout_ci.pPushConstantRanges = &push_constant_range;
+        VkPipelineLayoutCreateInfo layout_ci = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount = 1,
+            .pSetLayouts = set_layouts,
+            .pushConstantRangeCount = 1,
+            .pPushConstantRanges = &push_constant_range,
+        };
 
-    VK_CHECK(vkCreatePipelineLayout(device, &layout_ci, nullptr, &impl.pipeline_layout));
+        vulkan_check(
+            vkCreatePipelineLayout(vulkan_backend->vk_device, &layout_ci, nullptr, &vk_default_pipeline_layout));
+    }
 
     VkGraphicsPipelineCreateInfo pipeline_ci = { 
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -802,7 +810,7 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
         .pDepthStencilState = &depth_stencil_ci,
         .pColorBlendState = &color_blend_ci,
         .pDynamicState = &dynamic_state_ci,
-        .layout = impl.pipeline_layout,
+        .layout = vk_default_pipeline_layout,
         .renderPass = VK_NULL_HANDLE,
         .subpass = 0,
     };
