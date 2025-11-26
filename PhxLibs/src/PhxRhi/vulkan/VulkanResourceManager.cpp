@@ -2,7 +2,6 @@
 #include "VulkanResourceManager.h"
 
 #include "VulkanBackend.h"
-#include "VulkanGpuAllocator.h"
 
 #define LOG_AND_SHUTDOWN_POOL(x) if (!x.IsEmpty()) PHX_RHI_WARN(" Pool '" #x "' still contains active handles"); x.Shutdown();
 
@@ -20,7 +19,6 @@ namespace
 
 phx::rhi::VulkanResourceManager::VulkanResourceManager(VulkanBackend* vulkan_backend, VulkanGpuAllocator* vulkan_allocator)
     : vulkan_backend(vulkan_backend)
-    , vulkan_allocator(vulkan_allocator)
 {
 }
 

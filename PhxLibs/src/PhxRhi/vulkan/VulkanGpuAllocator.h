@@ -1,25 +1,25 @@
 #pragma once
 
-#include <PhxRhi/IGpuAllocator.h>
+#include <PhxRhi/RHICommon.h>
 #include <vk_mem_alloc.h>
 
 namespace phx::rhi
 {
 	struct VulkanBackend;
-	struct VulkanGpuAllocator final : public IGpuMemoryAllocator
+	struct VulkanGpuAllocator
 	{
 		VulkanBackend* vulkan_backend = nullptr;
 		inline static VmaAllocator vma_allocator = VK_NULL_HANDLE;
 
-		bool Initialize() override;
-		void Shutdown() override;
+		bool Initialize();
+		void Shutdown();
 
-		Budget GetBudget() override;
+		Budget GetBudget();
 
 
 		VulkanGpuAllocator(VulkanBackend* vulkan_device);
 
-		~VulkanGpuAllocator() override = default;
+		~VulkanGpuAllocator() = default;
 		VulkanGpuAllocator(const VulkanGpuAllocator&) = delete;
 	};
 }

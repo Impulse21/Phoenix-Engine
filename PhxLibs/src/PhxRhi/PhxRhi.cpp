@@ -16,18 +16,15 @@ bool rhi::Initialize(Descriptor const& /*descriptor*/, void* window_handle, size
 {
 #if PHX_RHI_VULKAN
     VulkanBackend*              platform_backend            = new VulkanBackend(window_handle);
-    VulkanGpuAllocator*         platform_gpu_allocator      = new VulkanGpuAllocator(platform_backend);
-    VulkanResourceManager*      platform_resource_manager   = new VulkanResourceManager(platform_backend, platform_gpu_allocator);
+    VulkanResourceManager*      platform_resource_manager   = new VulkanResourceManager(platform_backend);
     VulkanSubmissionManager*    platform_submission_manager = new VulkanSubmissionManager(platform_backend, platform_resource_manager, thread_count);
 #endif
 
     IBackend::Ptr               = platform_backend;
-    IGpuMemoryAllocator::Ptr    = platform_gpu_allocator;
     IResourceManager::Ptr       = platform_resource_manager;
     ISubmissionManager::Ptr     = platform_submission_manager;
 
     IBackend::Ptr->Initialize();
-    IGpuMemoryAllocator::Ptr->Initialize();
     IResourceManager::Ptr->Initialize();
     ISubmissionManager::Ptr->Initialize();
 
@@ -40,17 +37,14 @@ bool rhi::Shutdown()
     ISubmissionManager::Ptr->WaitForIdle();
     ISubmissionManager::Ptr->Shutdown();
     IResourceManager::Ptr->Shutdown();
-    IGpuMemoryAllocator::Ptr->Shutdown();
     IBackend::Ptr->Shutdown();
 
     delete ISubmissionManager::Ptr;
     delete IResourceManager::Ptr;
-    delete IGpuMemoryAllocator::Ptr;
     delete IBackend::Ptr;
 
     ISubmissionManager::Ptr     = nullptr;
     IResourceManager::Ptr       = nullptr;
-    IGpuMemoryAllocator::Ptr    = nullptr;
     IBackend::Ptr               = nullptr;
 
     return true;

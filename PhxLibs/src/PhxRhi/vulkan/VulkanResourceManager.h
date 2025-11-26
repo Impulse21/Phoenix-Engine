@@ -9,7 +9,6 @@
 namespace phx::rhi
 {
 	struct VulkanBackend;
-	struct VulkanGpuAllocator;
 
 	struct DeferredCallbackQueue
 	{
@@ -47,7 +46,6 @@ namespace phx::rhi
 	struct VulkanResourceManager final : public IResourceManager
 	{
 		VulkanBackend*		vulkan_backend = nullptr;
-		VulkanGpuAllocator* vulkan_allocator = nullptr;
 		VkPipelineCache		vk_pipeline_cache = VK_NULL_HANDLE;
 		VkPipelineLayout	vk_default_pipeline_layout = VK_NULL_HANDLE;
 
