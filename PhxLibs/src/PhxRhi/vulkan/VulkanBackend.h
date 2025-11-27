@@ -43,6 +43,8 @@ namespace phx::rhi
 
 		VkDebugUtilsMessengerEXT vk_debug_messenger = VK_NULL_HANDLE;
 
+		VulkanGpuAllocator vulkan_allocator;
+
 		struct Queue
 		{
 			struct QueueExecutionInfo

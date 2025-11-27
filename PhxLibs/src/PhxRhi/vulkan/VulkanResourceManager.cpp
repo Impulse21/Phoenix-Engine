@@ -36,94 +36,7 @@ bool VulkanResourceManager::Initialize()
         vkCreatePipelineCache(vulkan_backend->vk_device, &createInfo, nullptr, &vk_pipeline_cache));
 
 
-    const uint32_t max_resource_descriptors = 500'000;
-    const uint32_t max_sampler_descriptors = 2048;
-    descriptor_heaps[vulkan::HeapType::Resource].Initialize(vulkan_backend, vulkan::HeapType::Resource, max_resource_descriptors);
-    descriptor_heaps[vulkan::HeapType::Sampler].Initialize(vulkan_backend, vulkan::HeapType::Sampler, max_sampler_descriptors);
 
-    {// Define the bindings for Textures, Buffers, Images, etc.
-        VkDescriptorSetLayoutBinding resource_bindings[] = {
-            { // -- Textures ---
-                .binding = 0,
-                .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                .descriptorCount = max_resource_descriptors,
-                .stageFlags = VK_SHADER_STAGE_ALL,
-                .pImmutableSamplers = nullptr,
-            },
-            { // -- Buffers (UNIFORM_BUFFER) ---
-                .binding = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .descriptorCount = max_resource_descriptors,
-                .stageFlags = VK_SHADER_STAGE_ALL,
-                .pImmutableSamplers = nullptr,
-            },
-            { // -- Buffers (STORAGE_BUFFER) ---
-                .binding = 2,
-                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                .descriptorCount = max_resource_descriptors,
-                .stageFlags = VK_SHADER_STAGE_ALL,
-                .pImmutableSamplers = nullptr,
-            },
-            { // -- RW Images (STORAGE_IMAGE) ---
-                .binding = 3,
-                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                .descriptorCount = max_resource_descriptors,
-                .stageFlags = VK_SHADER_STAGE_ALL,
-                .pImmutableSamplers = nullptr,
-            },
-        };
-
-        VkDescriptorBindingFlags bindless_flags =
-            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
-            VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT; // Optional for descriptor_buffer, but good practice
-
-        std::vector<VkDescriptorBindingFlags> binding_flags(std::size(resource_bindings), bindless_flags);
-
-        VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flags_info = { 
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
-            .bindingCount = (uint32_t)binding_flags.size(),
-            .pBindingFlags = binding_flags.data(),
-        };
-
-        VkDescriptorSetLayoutCreateInfo layout_info = { 
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-            .pNext = &binding_flags_info,
-            .bindingCount = (uint32_t)std::size(resource_bindings),
-            .pBindings = resource_bindings,
-            .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
-        };
-
-        vulkan_check(
-            vkCreateDescriptorSetLayout(vulkan_backend->vk_device, &layout_info, nullptr, &vk_descriptor_layouts[vulkan::HeapType::Resource]));
-    }
-
-    {
-        VkDescriptorSetLayoutBinding sampler_binding = {
-            .binding = 0,
-            .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-            .descriptorCount = max_sampler_descriptors,
-            .stageFlags = VK_SHADER_STAGE_ALL,
-            .pImmutableSamplers = nullptr,
-        };
-
-        VkDescriptorBindingFlags bindless_flags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
-        VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flags_info = { 
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
-            .bindingCount = 1,
-            .pBindingFlags = &bindless_flags,
-        };
-
-        VkDescriptorSetLayoutCreateInfo layout_info = { 
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-            .pNext = &binding_flags_info,
-            .bindingCount = 1,
-            .pBindings = &sampler_binding,
-            .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
-        };
-
-        vulkan_check(
-            vkCreateDescriptorSetLayout(vulkan_backend->vk_device, &layout_info, nullptr, &vk_descriptor_layouts[vulkan::HeapType::Sampler]));
-    }
 
     return true;
 }
@@ -842,13 +755,6 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
             descriptor_heaps[vulkan::HeapType::Sampler].GetDescriptorSetLayout(),
         }; 
 
-        VkPipelineLayoutCreateInfo layout_ci = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount = 1,
-            .pSetLayouts = set_layouts,
-            .pushConstantRangeCount = 1,
-            .pPushConstantRanges = &push_constant_range,
-        };
 
         vulkan_check(
             vkCreatePipelineLayout(vulkan_backend->vk_device, &layout_ci, nullptr, &vk_default_pipeline_layout));

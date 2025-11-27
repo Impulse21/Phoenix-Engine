@@ -47,10 +47,6 @@ namespace phx::rhi
 	{
 		VulkanBackend*		vulkan_backend = nullptr;
 		VkPipelineCache		vk_pipeline_cache = VK_NULL_HANDLE;
-		VkPipelineLayout	vk_default_pipeline_layout = VK_NULL_HANDLE;
-
-		EnumArray<vulkan::DescriptorHeap, vulkan::HeapType> descriptor_heaps;
-		EnumArray<VkDescriptorSetLayout, vulkan::HeapType> vk_descriptor_layouts;
 
 		uint64_t frame_number = 0;
 		phx::PagedPool<rhi::Swapchain, VulkanSwapchainFrame, VulkanSwapchain> swapchain_pool;

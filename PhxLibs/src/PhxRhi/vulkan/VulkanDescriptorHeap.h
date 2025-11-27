@@ -7,7 +7,6 @@
 namespace phx::rhi
 {
     class VulkanBackend;
-    class VulkanGpuAllocator;
 }
 
 namespace phx::rhi::vulkan
@@ -60,7 +59,7 @@ namespace phx::rhi::vulkan
 	class DescriptorHeap
 	{
 	public:
-		void Initialize(phx::rhi::VulkanBackend* vulkan_backend, VulkanGpuAllocator* vulkan_allocator, HeapType heap_type, uint32_t max_slots);
+		void Initialize(phx::rhi::VulkanBackend* vulkan_backend, HeapType heap_type, uint32_t max_slots);
 		void Shutdown();
 
 

@@ -108,12 +108,15 @@ bool phx::rhi::VulkanBackend::Initialize()
         return false;
     }
 
+    vulkan_allocator.Initialize();
 	return false;
 }
 
 
 void phx::rhi::VulkanBackend::Shutdown()
 {
+    vulkan_allocator.Shutdown();
+
     if (vk_device != VK_NULL_HANDLE)
     {
         vkDestroyDevice(vk_device, nullptr);
@@ -139,6 +142,7 @@ void phx::rhi::VulkanBackend::Shutdown()
 
 phx::rhi::VulkanBackend::VulkanBackend(void* window_handle)
     : window_handle(window_handle)
+    , vulkan_allocator(this)
 {
 }
 

@@ -9,7 +9,7 @@ using namespace phx;
 using namespace phx::rhi;
 
 
-void phx::rhi::vulkan::DescriptorHeap::Initialize(phx::rhi::VulkanBackend* vulkan_backend, VulkanGpuAllocator* vulkan_allocator, HeapType heap_type, uint32_t max_slots)
+void phx::rhi::vulkan::DescriptorHeap::Initialize(phx::rhi::VulkanBackend* vulkan_backend, HeapType heap_type, uint32_t max_slots)
 {
 	m_vulkan_backend = vulkan_backend;
     m_vulkan_allocator = vulkan_allocator;
