@@ -46,5 +46,7 @@
 #ifdef PHX_RHI_VULKAN
 #define VK_NO_PROTOTYPES
 
+#define USE_BUFFER_ADDRESS true
+
 #define vulkan_check(call) [&]() { VkResult res = call; PHX_CORE_ASSERT(res >= VK_SUCCESS); return res; }()
 #endif

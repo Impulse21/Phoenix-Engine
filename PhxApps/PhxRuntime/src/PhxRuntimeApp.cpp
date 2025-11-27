@@ -423,6 +423,10 @@ rhi::PipelineStateHandle PhxRuntime::CreateTestPso(const renderer::ShaderAsset& 
 				.module_handle = shader->GetShaderModule(),
 				.entry_point = shader->GetEntryPoint(rhi::ShaderStage::PS)},
 		},
+		.render_pass_info = {
+			.color_attachments = { rhi::Format::RGBA16_FLOAT },
+			.depth_stencil_format = rhi::Format::D32,
+		}
 	};
 
 	return rhi::IResourceManager::Ptr->CreatePipeline(desc);

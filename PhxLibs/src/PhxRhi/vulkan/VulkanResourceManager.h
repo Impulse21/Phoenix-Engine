@@ -86,13 +86,15 @@ namespace phx::rhi
 
 		void RunGarbageCollection(uint64_t completed_frame);
 
-		VulkanResourceManager(VulkanBackend* vulkan_backend, VulkanGpuAllocator* vulkan_allocator);
+		VulkanResourceManager(VulkanBackend* vulkan_backend);
 		~VulkanResourceManager() override = default;
 
 		VulkanResourceManager(const VulkanResourceManager&) = delete;
 
 	private:
+#if !USE_BUFFER_ADDRESS
 		int CreateSubResource(VulkanBuffer& buffer, BufferDescriptor const& desc, SubresouceType subresource_type, size_t offset, size_t size = ~0u);
+#endif
 	};
 }
 

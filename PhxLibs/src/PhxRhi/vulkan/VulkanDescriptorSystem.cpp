@@ -9,93 +9,78 @@ using namespace phx::rhi;
 
 void phx::rhi::vulkan::DescriptorSystem::Initialize(VulkanBackend* vulkan_backend)
 {
+    PHX_RHI_INFO("Initializing Descriptor System system");
+
+
+    PHX_RHI_INFO("Initializing resource heap of {0} descriptors", max_resource_descriptors);
     resource_heap.Initialize(vulkan_backend, vulkan::HeapType::Resource, max_resource_descriptors);
+
+    PHX_RHI_INFO("Initializing sampler heap of {0} descriptors", max_sampler_descriptors);
     sampler_heap.Initialize(vulkan_backend, vulkan::HeapType::Sampler, max_sampler_descriptors);
 
     CreateMasterPipelineLayout(vulkan_backend);
-
-
 }
 
-void phx::rhi::vulkan::DescriptorSystem::Bind(VkCommandBuffer cmd)
+void phx::rhi::vulkan::DescriptorSystem::Bind(VkCommandBuffer cmd, VkPipelineBindPoint bind_point)
 {
-    VkDescriptorBufferBindingInfoEXT resource_bindings[4] = {};
-    VkDeviceAddress resource_addr = resource_heap.GetBufferAddress();
+#if USE_BUFFER_ADDRESS
+    constexpr uint32_t k_num_resource_bindings = 2;
+#else
+    constexpr uint32_t k_num_resource_bindings = 4;
+#endif
 
-    for (int i = 0; i < 4; ++i) 
+    constexpr uint32_t k_total_bindings = k_num_resource_bindings + 1;
+
+    VkDescriptorBufferBindingInfoEXT binding_infos[k_total_bindings];
+    VkDeviceAddress resource_addr = resource_heap.GetBufferAddress();
+    VkDeviceAddress sampler_addr = sampler_heap.GetBufferAddress();
+
+    for (uint32_t i = 0; i < k_num_resource_bindings; ++i)
     {
-        resource_bindings[i].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT;
-        resource_bindings[i].address = resource_addr;
-        resource_bindings[i].usage = VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT;
+        binding_infos[i].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT;
+        binding_infos[i].pNext = nullptr;
+        binding_infos[i].address = resource_addr;
+        binding_infos[i].usage = VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT;
     }
 
-    // 2. Prepare Sampler Heap Binding Info
-    // "For Set 1, Binding 0, use THAT address."
-    VkDescriptorBufferBindingInfoEXT sampler_binding = {};
-    sampler_binding.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT;
-    sampler_binding.address = m_sampler_heap.GetBufferAddress();
-    sampler_binding.usage = VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT;
+    binding_infos[k_num_resource_bindings].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT;
+    binding_infos[k_num_resource_bindings].pNext = nullptr;
+    binding_infos[k_num_resource_bindings].address = sampler_addr;
+    binding_infos[k_num_resource_bindings].usage = VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT;
 
-    // 3. Bind the Buffers
-    // NOTE: The indices here must match the "Global Binding Index"
-    // Since Set 0 has 4 bindings, Set 1's binding 0 is actually index 4 ? 
-    // NO: vkCmdBindDescriptorBuffersEXT works on a straight array of bindings index-by-index.
-    // We need to bind them carefully.
+    vkCmdBindDescriptorBuffersEXT(cmd, k_total_bindings, binding_infos);
 
-    // Bind Set 0 (Indices 0, 1, 2, 3)
-    vkCmdBindDescriptorBuffersEXT(cmd, 4, resource_bindings);
+    uint32_t set0_indices[k_num_resource_bindings];
+    VkDeviceSize set0_offsets[k_num_resource_bindings];
 
-    // Bind Set 1 (Index 0) - Wait, we need to map sets to buffer indices.
-    // We need `vkCmdSetDescriptorBufferOffsetsEXT` to map Sets -> Buffer Indices.
+    for (uint32_t i = 0; i < k_num_resource_bindings; ++i) 
+    {
+        set0_indices[i] = i;
+        set0_offsets[i] = 0; // Always 0 offset into the heap
+    }
 
-    // Let's configure the offsets to make this robust:
-    // Pipeline Layout tells Vulkan:
-    // Set 0: Binding 0, 1, 2, 3
-    // Set 1: Binding 0
+    vkCmdSetDescriptorBufferOffsetsEXT(
+        cmd,
+        bind_point,
+        pipeline_layout,
+        0,
+        k_num_resource_bindings,
+        set0_indices,
+        set0_offsets
+    );
 
-    // We are assigning:
-    // Buffer Index 0 -> Set 0, Binding 0
-    // Buffer Index 1 -> Set 0, Binding 1
-    // Buffer Index 2 -> Set 0, Binding 2
-    // Buffer Index 3 -> Set 0, Binding 3
-    // Buffer Index 4 -> Set 1, Binding 0
+    uint32_t set1_index = k_num_resource_bindings;
+    VkDeviceSize set1_offset = 0;
 
-    // Bind the sampler info as the 5th buffer (index 4)
-    vkCmdBindDescriptorBuffersEXT(cmd, 1, &sampler_binding); // This appends? No.
-
-    // Correct approach: Bind ALL buffers in one call or use offsets.
-    VkDescriptorBufferBindingInfoEXT all_bindings[5] = {
-        resource_bindings[0],
-        resource_bindings[1],
-        resource_bindings[2],
-        resource_bindings[3],
-        sampler_binding
-    };
-    vkCmdBindDescriptorBuffersEXT(cmd, 5, all_bindings);
-
-    // 4. Set Offsets
-    // We need to tell the pipeline: "Set 0 starts at buffer index 0, Set 1 starts at buffer index 4"
-    // Also the offset INTO the buffer is always 0 for us (start of heap).
-
-    uint32_t buffer_indices_set0[] = { 0, 1, 2, 3 };
-    VkDeviceSize offsets_set0[] = { 0, 0, 0, 0 };
-
-    uint32_t buffer_indices_set1[] = { 4 };
-    VkDeviceSize offsets_set1[] = { 0 };
-
-    // Apply offsets for Set 0
-    vkCmdSetDescriptorBufferOffsetsEXT(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout,
-        0, // firstSet
-        4, // bindingCount (0,1,2,3)
-        buffer_indices_set0,
-        offsets_set0);
-
-    // Apply offsets for Set 1
-    vkCmdSetDescriptorBufferOffsetsEXT(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline_layout,
-        1, // firstSet
-        1, // bindingCount (0)
-        buffer_indices_set1,
-        offsets_set1);
+    vkCmdSetDescriptorBufferOffsetsEXT(
+        cmd,
+        bind_point,
+        pipeline_layout,
+        1,
+        1,
+        &set1_index,
+        &set1_offset
+    );
 }
 
 void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VulkanBackend* vulkan_backend)
@@ -110,32 +95,33 @@ void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VulkanBacken
                 .stageFlags = VK_SHADER_STAGE_ALL,
                 .pImmutableSamplers = nullptr,
             },
-            { // -- Buffers (UNIFORM_BUFFER) ---
+            { // -- RW Images (STORAGE_IMAGE) ---
                 .binding = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                .descriptorCount = max_resource_descriptors,
+                .stageFlags = VK_SHADER_STAGE_ALL,
+                .pImmutableSamplers = nullptr,
+            },
+#if !USE_BUFFER_ADDRESS
+            { // -- Buffers (UNIFORM_BUFFER) ---
+                .binding = 2,
                 .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                 .descriptorCount = max_resource_descriptors,
                 .stageFlags = VK_SHADER_STAGE_ALL,
                 .pImmutableSamplers = nullptr,
             },
             { // -- Buffers (STORAGE_BUFFER) ---
-                .binding = 2,
+                .binding = 3,
                 .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                 .descriptorCount = max_resource_descriptors,
                 .stageFlags = VK_SHADER_STAGE_ALL,
                 .pImmutableSamplers = nullptr,
             },
-            { // -- RW Images (STORAGE_IMAGE) ---
-                .binding = 3,
-                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                .descriptorCount = max_resource_descriptors,
-                .stageFlags = VK_SHADER_STAGE_ALL,
-                .pImmutableSamplers = nullptr,
-            },
+#endif
         };
 
         VkDescriptorBindingFlags bindless_flags =
-            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
-            VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT; // Optional for descriptor_buffer, but good practice
+            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
 
         std::vector<VkDescriptorBindingFlags> binding_flags(std::size(resource_bindings), bindless_flags);
 
@@ -148,9 +134,9 @@ void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VulkanBacken
         VkDescriptorSetLayoutCreateInfo layout_info = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             .pNext = &binding_flags_info,
+            .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
             .bindingCount = (uint32_t)std::size(resource_bindings),
             .pBindings = resource_bindings,
-            .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
         };
 
         vulkan_check(
@@ -176,9 +162,9 @@ void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VulkanBacken
         VkDescriptorSetLayoutCreateInfo layout_info = {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             .pNext = &binding_flags_info,
+            .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
             .bindingCount = 1,
             .pBindings = &sampler_binding,
-            .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
         };
 
         vulkan_check(
@@ -187,7 +173,8 @@ void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VulkanBacken
 
     VkDescriptorSetLayout sets[] = { resource_layout, sampler_layout };
 
-    // 2. Define MAX push constant range (e.g. 128 bytes)
+
+    PHX_RHI_INFO("Max push constant size per shader is ", max_push_constant_size);
     VkPushConstantRange push_constant = {
         .stageFlags = VK_SHADER_STAGE_ALL,
         .offset = 0,

@@ -4,6 +4,7 @@
 #include "VulkanBackend.h"
 #include "VulkanGpuAllocator.h"
 
+#include <PhxCore/Memory/MemoryUtils.h>
 
 using namespace phx;
 using namespace phx::rhi;
@@ -29,69 +30,72 @@ void phx::rhi::vulkan::DescriptorHeap::Initialize(phx::rhi::VulkanBackend* vulka
 
     if (heap_type == HeapType::Resource)
     {
+        PHX_RHI_INFO("Resource heap - Sampled Image descriptor Size {0}", buffer_props.sampledImageDescriptorSize);
         raw_size = std::max(raw_size, buffer_props.sampledImageDescriptorSize);
-        raw_size = std::max(raw_size, buffer_props.storageImageDescriptorSize);
-        raw_size = std::max(raw_size, buffer_props.uniformBufferDescriptorSize);
-        raw_size = std::max(raw_size, buffer_props.storageBufferDescriptorSize);
 
+        PHX_RHI_INFO("Resource heap - Storaged Image descriptor Size {0}", buffer_props.storageImageDescriptorSize);
+        raw_size = std::max(raw_size, buffer_props.storageImageDescriptorSize);
+
+#if !USE_BUFFER_ADDRESS
+        PHX_RHI_INFO("Resource heap - Uniform Buffer descriptor Size {0}", buffer_props.uniformBufferDescriptorSize);
+        raw_size = std::max(raw_size, buffer_props.uniformBufferDescriptorSize);
+
+        PHX_RHI_INFO("Resource heap - Stroage Buffer descriptor Size {0}", buffer_props.storageBufferDescriptorSize);
+        raw_size = std::max(raw_size, buffer_props.storageBufferDescriptorSize);
+#else
+        PHX_RHI_INFO("Resource heap - Bindless buffers are disabled.");
+#endif
         usage_flags |= VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT;
     }
     else // Sampler
     {
+        PHX_RHI_INFO("Sampler Heap - Descriptor Stride {0}", buffer_props.samplerDescriptorSize);
         raw_size = buffer_props.samplerDescriptorSize;
         usage_flags |= VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT;
     }
 
+    PHX_RHI_INFO("Descriptore Heap Storage Stride {0}", raw_size);
     m_descriptor_stride = AlignUp(raw_size, buffer_props.descriptorBufferOffsetAlignment);
-    VkDeviceSize buffer_size = m_descriptor_stride * max_slots;
+
+    const VkDeviceSize buffer_size = m_descriptor_stride * max_slots;
+
+    PHX_RHI_INFO("Descriptor heap size is {0} bytes - {1} MB", buffer_size, PhxToMB(buffer_size));
 
 
     // =====================================================================================
     // STEP 2: Configure Buffer (VMA)
     // =====================================================================================
-    VkBufferCreateInfo buffer_info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-    buffer_info.size = buffer_size;
-    buffer_info.usage = usage_flags;
-    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    VkBufferCreateInfo buffer_info = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = buffer_size,
+        .usage = usage_flags,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
 
-    VmaAllocationCreateInfo alloc_info = {};
-    // "Auto" lets VMA decide the best heap (System RAM vs VRAM BAR)
-    alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
+    VmaAllocationCreateInfo alloc_info = {
+        .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+        .usage = VMA_MEMORY_USAGE_AUTO,
+    };
 
-    // CRITICAL FLAGS:
-    // 1. HOST_ACCESS_SEQUENTIAL_WRITE: Ensures we can write to it from CPU (Host Visible).
-    // 2. MAPPED: Tells VMA to map it immediately and keep it mapped (saves a vkMapMemory call).
-    alloc_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-        VMA_ALLOCATION_CREATE_MAPPED_BIT;
-
-    // Output struct to get the pointer
     VmaAllocationInfo result_info;
-
-    // Create Buffer, Allocate Memory, Bind, and Map in one go
-    vulkan_check(vmaCreateBuffer(
-        m_backend->GetVmaAllocator(),
-        &buffer_info,
-        &alloc_info,
-        &m_buffer,
-        &m_allocation, // Store this member!
-        &result_info
+    vulkan_check(
+        vmaCreateBuffer(
+            vulkan_backend->vulkan_allocator.vma_allocator,
+            &buffer_info,
+            &alloc_info,
+            &m_vk_buffer,
+            &m_vma_allocation,
+            &result_info
     ));
 
-    // Get the mapped pointer directly from the result
-    m_mapped_data = (char*)result_info.pMappedData;
+    m_mapped_ptr = (char*)result_info.pMappedData;
 
+    VkBufferDeviceAddressInfo address_info = { 
+        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+        .buffer = m_vk_buffer, 
+    };
 
-    // =====================================================================================
-    // STEP 3: Get Device Address (Still required manually)
-    // =====================================================================================
-    VkBufferDeviceAddressInfo address_info = { VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO };
-    address_info.buffer = m_buffer;
-    m_buffer_address = vkGetBufferDeviceAddress(m_backend->GetDevice(), &address_info);
-
-
-    // =====================================================================================
-    // STEP 4: Init Allocator
-    // =====================================================================================
+    m_buffer_address = vkGetBufferDeviceAddress(vulkan_backend->vk_device, &address_info);
     m_slot_allocator.Initialize(max_slots);
 }
 
@@ -99,7 +103,8 @@ void phx::rhi::vulkan::DescriptorHeap::Shutdown()
 {
     if (m_vk_buffer != VK_NULL_HANDLE)
     {
-        vmaDestroyBuffer(m_vulkan_allocator->vma_allocator, m_vk_buffer, m_vma_allocation);
+        vmaDestroyBuffer(
+            m_vulkan_backend->vulkan_allocator.vma_allocator, m_vk_buffer, m_vma_allocation);
         m_vk_buffer = VK_NULL_HANDLE;
         m_vma_allocation = VK_NULL_HANDLE;
     }
@@ -107,14 +112,27 @@ void phx::rhi::vulkan::DescriptorHeap::Shutdown()
 
 rhi::DescriptorIndex phx::rhi::vulkan::DescriptorHeap::Allocate(const VkDescriptorGetInfoEXT& descriptor_info)
 {
-	return rhi::DescriptorIndex();
+    rhi::DescriptorIndex index = m_slot_allocator.AllocateSlot();
+
+    if (index == rhi::cInvalidDescriptorIndex)
+    {
+        PHX_RHI_CRITICAL("Out of descriptor heap memory");
+        return rhi::cInvalidDescriptorIndex;
+    }
+
+    char* dest_ptr = m_mapped_ptr + (index * m_descriptor_stride);
+
+    vkGetDescriptorEXT(
+        m_vulkan_backend->vk_device,
+        &descriptor_info,
+        m_descriptor_stride,
+        dest_ptr
+    );
+
+    return index;
 }
 
 void phx::rhi::vulkan::DescriptorHeap::Free(uint32_t index)
 {
-}
-
-const VkDescriptorSetLayout& phx::rhi::vulkan::DescriptorHeap::GetDescriptorSetLayout()
-{
-	// TODO: insert return statement here
+    m_slot_allocator.FreeSlot(index);
 }

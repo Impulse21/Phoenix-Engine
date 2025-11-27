@@ -46,7 +46,7 @@ namespace phx::rhi::vulkan
             sampler_heap.Free(index);
         }
 
-        void Bind(VkCommandBuffer cmd);
+        void Bind(VkCommandBuffer cmd, VkPipelineBindPoint bind_point);
 
     private:
         void CreateMasterPipelineLayout(VulkanBackend* vulkan_backend);

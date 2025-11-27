@@ -109,12 +109,14 @@ bool phx::rhi::VulkanBackend::Initialize()
     }
 
     vulkan_allocator.Initialize();
+    descriptor_system.Initialize(this);
 	return false;
 }
 
 
 void phx::rhi::VulkanBackend::Shutdown()
 {
+    descriptor_system.Shutdown(this);
     vulkan_allocator.Shutdown();
 
     if (vk_device != VK_NULL_HANDLE)
@@ -152,6 +154,7 @@ bool phx::rhi::VulkanBackend::SelectPhysicalDevice(vkb::PhysicalDevice& out_vkb_
     VkPhysicalDeviceFeatures features_to_enable = {};
     features_to_enable.samplerAnisotropy = VK_TRUE;
     features_to_enable.shaderInt64 = VK_TRUE;
+  
 
     // Add other features you absolutely need enabled
 
@@ -179,17 +182,27 @@ bool phx::rhi::VulkanBackend::SelectPhysicalDevice(vkb::PhysicalDevice& out_vkb_
     vulkan_features_1_1.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
     vulkan_features_1_1.shaderDrawParameters = VK_TRUE;
 
-    VkPhysicalDeviceVulkan12Features vulkan_features_1_2 = {};
-    vulkan_features_1_2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-    vulkan_features_1_2.pNext = nullptr;
-
-    vulkan_features_1_2.bufferDeviceAddress = VK_TRUE;
-    vulkan_features_1_2.runtimeDescriptorArray = VK_TRUE;
-    vulkan_features_1_2.descriptorBindingPartiallyBound = VK_TRUE;
-    vulkan_features_1_2.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
-    vulkan_features_1_2.timelineSemaphore = VK_TRUE;
-    vulkan_features_1_2.samplerFilterMinmax = VK_TRUE;
-    vulkan_features_1_2.shaderInt8 = VK_TRUE;
+	VkPhysicalDeviceVulkan12Features vulkan_features_1_2 = {
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+        .pNext = nullptr,
+        .bufferDeviceAddress = VK_TRUE,
+        .runtimeDescriptorArray = VK_TRUE,
+        .descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
+        .descriptorBindingStorageImageUpdateAfterBind = VK_TRUE,
+        .descriptorBindingPartiallyBound = VK_TRUE,
+        .runtimeDescriptorArray = VK_TRUE,
+#if !USE_BUFFER_ADDRESS
+        .descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE,
+        .descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE,
+        .descriptorBindingUpdateUnusedWhilePending = VK_TRUE,
+        .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+        .shaderStorageBufferArrayNonUniformIndexing = VK_TRUE,
+#endif
+        .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+        .timelineSemaphore = VK_TRUE,
+        .samplerFilterMinmax = VK_TRUE,
+        .shaderInt8 = VK_TRUE,
+	};
 
     VkPhysicalDeviceVulkan13Features vulkan_features_1_3 = {};
     vulkan_features_1_3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -201,6 +214,7 @@ bool phx::rhi::VulkanBackend::SelectPhysicalDevice(vkb::PhysicalDevice& out_vkb_
     VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state = {};
     extended_dynamic_state.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
     extended_dynamic_state.extendedDynamicState = VK_TRUE;
+
 
     selector.set_required_features(vulkan_features_1_0);
     selector.set_required_features_11(vulkan_features_1_1);

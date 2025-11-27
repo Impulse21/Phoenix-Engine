@@ -62,6 +62,9 @@ namespace phx::rhi
 
 		// -- 4-byte members ---
 		uint32_t        mapped_data_size = 0;
+#if USE_BUFFER_ADDRESS
+		std::byte padding[20];
+#else
 		DescriptorIndex srv_index = cInvalidDescriptorIndex;
 		DescriptorIndex uav_index = cInvalidDescriptorIndex;
 
@@ -71,6 +74,7 @@ namespace phx::rhi
 
 		// -- Manual Padding ---
 		std::byte padding[11];
+#endif
 	};
 	static_assert(sizeof(VulkanBuffer) == kCacheLineSize, "VulkanBuffer must be exactly one cache line in size!");
 

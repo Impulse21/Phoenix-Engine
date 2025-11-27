@@ -17,7 +17,7 @@ namespace
     //constexpr size_t kMaxNumTextures = 4096;
 }
 
-phx::rhi::VulkanResourceManager::VulkanResourceManager(VulkanBackend* vulkan_backend, VulkanGpuAllocator* vulkan_allocator)
+phx::rhi::VulkanResourceManager::VulkanResourceManager(VulkanBackend* vulkan_backend)
     : vulkan_backend(vulkan_backend)
 {
 }
@@ -48,17 +48,7 @@ void phx::rhi::VulkanResourceManager::Shutdown()
     LOG_AND_SHUTDOWN_POOL(shader_module_pool);
     LOG_AND_SHUTDOWN_POOL(swapchain_pool);
 
-    vkDestroyPipelineLayout(vulkan_backend->vk_device, vk_default_pipeline_layout, nullptr);
     vkDestroyPipelineCache(vulkan_backend->vk_device, vk_pipeline_cache, nullptr);
-
-    for (auto& layout : vk_descriptor_layouts)
-    {
-        if (layout != VK_NULL_HANDLE)
-            vkDestroyDescriptorSetLayout(vulkan_backend->vk_device, layout, nullptr);
-    }
-
-    for (auto& heap : descriptor_heaps)
-        heap.Shutdown();
 }
 
 SwapchainHandle phx::rhi::VulkanResourceManager::CreateSwapchain(const SwapchainDesc& desc)
@@ -198,9 +188,11 @@ BufferHandle VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, c
     Handle<Buffer> ret_val = buffer_pool.Allocate(); // Renamed to snake_case
     VulkanBuffer& impl = *buffer_pool.GetHot(ret_val); // Corrected access to buffer_pool
 
-    VkBufferCreateInfo buffer_info = { .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO }; // Renamed to snake_case
-    buffer_info.size = desc.Size;
-    buffer_info.usage = 0;
+    VkBufferCreateInfo buffer_info = { 
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO ,
+        .size = desc.Size,
+        .usage = 0,
+    };
 
     static const std::vector <std::pair<BindingFlags, VkBufferUsageFlags>> k_usage_mapping = // Renamed to snake_case
     {
@@ -307,8 +299,8 @@ BufferHandle VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, c
         if (desc.Alias == nullptr)
         {
             vulkan_check(
-                vmaCreateBuffer(vulkan_allocator->vma_allocator, &buffer_info, &alloc_info, &impl.vk_buffer, &impl.allocation, nullptr));
-            vmaGetAllocationInfo(vulkan_allocator->vma_allocator, impl.allocation, &vma_alloc_info);
+                vmaCreateBuffer(vulkan_backend->vulkan_allocator.vma_allocator, &buffer_info, &alloc_info, &impl.vk_buffer, &impl.allocation, nullptr));
+            vmaGetAllocationInfo(vulkan_backend->vulkan_allocator.vma_allocator, impl.allocation, &vma_alloc_info);
         }
         else
         {
@@ -336,7 +328,7 @@ BufferHandle VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, c
 
                 vulkan_check(
                     vmaCreateAliasingBuffer2(
-                        vulkan_allocator->vma_allocator,
+                        vulkan_backend->vulkan_allocator.vma_allocator,
                         alias_buffer->allocation,
                         desc.Alias->offset,
                         &buffer_info,
@@ -358,7 +350,7 @@ BufferHandle VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, c
         VkMemoryHeap heap = memory_properties.memoryHeaps[heap_index]; // Renamed to snake_case
 
         VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
-        vmaGetHeapBudgets(vulkan_allocator->vma_allocator, budgets);
+        vmaGetHeapBudgets(vulkan_backend->vulkan_allocator.vma_allocator, budgets);
 
         PHX_CORE_INFO("[Vulkan] Created Buffer on {0} - {1}/{2}", heap_index, budgets[heap_index].usage, heap.size);
 #endif
@@ -469,6 +461,9 @@ BufferHandle VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, c
 #endif
     }
 
+#if USE_BUFFER_ADDRESS
+    PHX_RHI_INFO("Making use of Buffer addresses. No views created");
+#else
     if ((desc.BindingFlags & BindingFlags::ShaderResource) == BindingFlags::ShaderResource)
     {
         CreateSubResource(impl, desc, SubresouceType::SRV, 0u);
@@ -478,7 +473,7 @@ BufferHandle VulkanResourceManager::CreateBuffer(const BufferDescriptor& desc, c
     {
         CreateSubResource(impl, desc, SubresouceType::UAV, 0u);
     }
-
+#endif
     return ret_val;
 }
 
@@ -541,7 +536,7 @@ void phx::rhi::VulkanResourceManager::DeleteBufferImmediate(BufferHandle handle)
         if (impl->buffer_view != VK_NULL_HANDLE)
             vkDestroyBufferView(vulkan_backend->vk_device, impl->buffer_view, nullptr);
 
-        vmaDestroyBuffer(vulkan_allocator->vma_allocator, impl->vk_buffer, impl->allocation);
+        vmaDestroyBuffer(vulkan_backend->vulkan_allocator.vma_allocator, impl->vk_buffer, impl->allocation);
 	}
 
 	buffer_pool.Free(handle);
@@ -690,9 +685,9 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
     }
 
     VkPipelineColorBlendAttachmentState blend_attachments[8];
-    int valid_attachment_count = 0;
+    uint32_t valid_attachment_count = 0;
 
-    for (int i = 0; i < 8; ++i) // Assuming max 8 attachments
+    for (uint32_t i = 0; i < 8; ++i) // Assuming max 8 attachments
     {
         const auto& target = desc.blend_state.targets[i];
         if (i >= desc.render_pass_info.color_attachments.size()) 
@@ -724,7 +719,7 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
 
     VkPipelineRenderingCreateInfo rendering_ci = { 
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
-        .colorAttachmentCount = desc.render_pass_info.color_attachments.Size(),
+        .colorAttachmentCount = static_cast<uint32_t>(desc.render_pass_info.color_attachments.Size()),
         .pColorAttachmentFormats = color_formats,
         .depthAttachmentFormat = FormatToVkFormat(desc.render_pass_info.depth_stencil_format),
         .stencilAttachmentFormat = FormatToVkFormat(desc.render_pass_info.depth_stencil_format),
@@ -735,30 +730,6 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
         .viewportCount = 1,
         .scissorCount = 1,
     };
-
-    // A. Push Constants
-    // In a Bindless/GPU-Driven pipeline, we typically use one large Push Constant block 
-    // (e.g., 128 bytes) accessible by ALL stages to pass indices (DrawID, MaterialID).
-    if (vk_default_pipeline_layout != VK_NULL_HANDLE)
-    {
-        VkPushConstantRange push_constant_range = {
-            .stageFlags = VK_SHADER_STAGE_ALL,
-            .offset = 0,
-            .size = 128, // Standard guarantee on all hardware (max is often 256)
-        };
-
-        // B. Descriptor Set Layouts
-        // Even if "bindless", the pipeline needs to know the layout of the global set.
-        // Assuming your backend stores the global layout for the bindless heap.
-        VkDescriptorSetLayout set_layouts[] = {
-            descriptor_heaps[vulkan::HeapType::Resource].GetDescriptorSetLayout(),
-            descriptor_heaps[vulkan::HeapType::Sampler].GetDescriptorSetLayout(),
-        }; 
-
-
-        vulkan_check(
-            vkCreatePipelineLayout(vulkan_backend->vk_device, &layout_ci, nullptr, &vk_default_pipeline_layout));
-    }
 
     VkGraphicsPipelineCreateInfo pipeline_ci = { 
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -773,7 +744,7 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
         .pDepthStencilState = &depth_stencil_ci,
         .pColorBlendState = &color_blend_ci,
         .pDynamicState = &dynamic_state_ci,
-        .layout = vk_default_pipeline_layout,
+        .layout = vulkan_backend->descriptor_system.pipeline_layout,
         .renderPass = VK_NULL_HANDLE,
         .subpass = 0,
     };
@@ -796,14 +767,12 @@ void phx::rhi::VulkanResourceManager::DeletePipeline(PipelineStateHandle handle)
             {
                 vkDestroyPipeline(vulkan_backend->vk_device, impl->vk_pipeline, nullptr);
 
-                vkDestroyPipelineLayout(vulkan_backend->vk_device, impl->vk_pipeline_layout, nullptr);
-
                 pipeline_state_pool.Free(handle);
             }
         }
     });
 }
-
+#if !USE_BUFFER_ADDRESS
 int VulkanResourceManager::CreateSubResource(VulkanBuffer& buffer, BufferDescriptor const& desc, SubresouceType subresource_type, size_t offset, size_t size)
 {
     assert(subresource_type == SubresouceType::SRV || subresource_type == SubresouceType::UAV);
@@ -894,3 +863,4 @@ int VulkanResourceManager::CreateSubResource(VulkanBuffer& buffer, BufferDescrip
     return 0;
 }
 
+#endif

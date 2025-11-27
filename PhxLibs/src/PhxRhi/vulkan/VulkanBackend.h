@@ -3,6 +3,7 @@
 #include <PhxRhi/IBackend.h>
 
 #include "VulkanGpuAllocator.h"
+#include "VulkanDescriptorSystem.h"
 
 #ifdef PHX_PLATFORM_WINDOWS
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -44,7 +45,7 @@ namespace phx::rhi
 		VkDebugUtilsMessengerEXT vk_debug_messenger = VK_NULL_HANDLE;
 
 		VulkanGpuAllocator vulkan_allocator;
-
+		vulkan::DescriptorSystem descriptor_system;
 		struct Queue
 		{
 			struct QueueExecutionInfo

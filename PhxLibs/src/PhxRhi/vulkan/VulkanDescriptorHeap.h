@@ -6,7 +6,7 @@
 
 namespace phx::rhi
 {
-    class VulkanBackend;
+    struct VulkanBackend;
 }
 
 namespace phx::rhi::vulkan
@@ -69,7 +69,6 @@ namespace phx::rhi::vulkan
 
 	private:
 		VulkanBackend*          m_vulkan_backend;
-		VkDescriptorType        m_descriptor_type;
         size_t                  m_descriptor_stride;
 
         VkBuffer		        m_vk_buffer;

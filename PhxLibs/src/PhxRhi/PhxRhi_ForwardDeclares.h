@@ -5,6 +5,5 @@ namespace phx::rhi
 	class ICommandBuffer;
 	class ISubmissionManager;
 	class IResourceManager;
-	class IGpuAllocator;
 	class IBackend;
 }
