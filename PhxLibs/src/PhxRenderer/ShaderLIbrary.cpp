@@ -18,6 +18,27 @@ namespace
             PHX_CORE_ERROR("Slang error[{0}] {1}", context, msg);
         }
     }
+    rhi::ShaderStage MapSlangStage(SlangStage stage)
+    {
+        switch (stage)
+        {
+        case SLANG_STAGE_VERTEX:        return rhi::ShaderStage::VS;
+        case SLANG_STAGE_FRAGMENT:      return rhi::ShaderStage::PS;
+        case SLANG_STAGE_COMPUTE:       return rhi::ShaderStage::CS;
+
+        case SLANG_STAGE_GEOMETRY:      return rhi::ShaderStage::GS;
+
+        case SLANG_STAGE_HULL:          return rhi::ShaderStage::HS;
+        case SLANG_STAGE_DOMAIN:        return rhi::ShaderStage::DS;
+
+        case SLANG_STAGE_AMPLIFICATION: return rhi::ShaderStage::AS;
+        case SLANG_STAGE_MESH:          return rhi::ShaderStage::MS;
+
+        default:
+            // Fallback or Error
+            return rhi::ShaderStage::Count;
+        }
+    }
 }
 
 void phx::renderer::ShaderLibrary::Initialize(const ShaderLibraryDescriptor& librar_desc)
@@ -100,10 +121,10 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
     }
     else
     {
-        std::vector<Slang::ComPtr<slang::IEntryPoint>> entry_points;
         std::vector<slang::IComponentType*> components;
-
         components.push_back(shader_module);
+
+        std::vector<Slang::ComPtr<slang::IEntryPoint>> keep_alive;
         for (const auto& ep : compile_desc.entry_points)
         {
             Slang::ComPtr<slang::IEntryPoint> entry_point;
@@ -116,7 +137,7 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
             }
 
             components.push_back(entry_point);
-            entry_points.push_back(entry_point);
+            keep_alive.push_back(entry_point);
         }
 
         diagnostic_blob = nullptr;
@@ -137,10 +158,10 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
 
     diagnostic_blob = nullptr;
     Slang::ComPtr<slang::IComponentType> linked_programs;
-
     SlangResult result = composed_program->link(
         linked_programs.writeRef(),
         diagnostic_blob.writeRef());
+
     if (SLANG_FAILED(result))
     {
         LogSlangDiagnostics(diagnostic_blob, "Failed to link");
@@ -149,22 +170,10 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
 
     Slang::ComPtr<slang::IBlob> code_blob;
     diagnostic_blob = nullptr;
-    SlangResult res = 0;
-	if (compile_full_module)
-	{
-		res = linked_programs->getTargetCode(
-			0,
-			code_blob.writeRef(),
-			diagnostic_blob.writeRef());
-	}
-	else
-    {
-        res = linked_programs->getEntryPointCode(
-            0,
-            0,
-            code_blob.writeRef(),
-            diagnostic_blob.writeRef());
-    } 
+    SlangResult res = linked_programs->getTargetCode(
+        0,
+        code_blob.writeRef(),
+        diagnostic_blob.writeRef());
 
     if (SLANG_FAILED(res))
     {
@@ -175,14 +184,30 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
     auto shader = RefCountPtr<SlangShader>::Create();
     shader->m_linked_programs = linked_programs;
     shader->m_code_blob = code_blob;
-    shader->m_entry_points.resize(compile_desc.entry_points.Size());
-    std::memcpy(
-        shader->m_entry_points.data(),
-        compile_desc.entry_points.data(),
-        sizeof(ShaderEntryPoint) * compile_desc.entry_points.Size());
+
+    slang::ProgramLayout* layout = linked_programs->getLayout();
+    uint32_t ep_count = (uint32_t)layout->getEntryPointCount();
+
+    for (uint32_t i = 0; i < ep_count; ++i)
+    {
+        auto* entryPointRef = layout->getEntryPointByIndex(i);
+
+        // Get the real name (will remain "vsMain" because of the Option we set)
+        const char* real_name = entryPointRef->getNameOverride();
+        if (!real_name) real_name = entryPointRef->getName();
+
+        // Map Slang Stage to RHI Stage
+        rhi::ShaderStage stage = MapSlangStage(entryPointRef->getStage());
+
+        // Store in our SlangShader manifest
+        shader->m_entry_points.push_back({ std::string(real_name), stage });
+    }
 
     Span<uint8_t> byte_code_span(
-        reinterpret_cast<const uint8_t*>(shader->m_code_blob->getBufferPointer()), shader->m_code_blob->getBufferSize());
+        reinterpret_cast<const uint8_t*>(shader->m_code_blob->getBufferPointer()),
+        shader->m_code_blob->getBufferSize()
+    );
+
     shader->m_shader_module = rhi::IResourceManager::Ptr->CreateShaderModule({
         .byte_code = byte_code_span
     });
@@ -241,6 +266,14 @@ void phx::renderer::ShaderLibrary::ConstructSession()
         opt.name = slang::CompilerOptionName::Optimization;
         opt.value.kind = slang::CompilerOptionValueKind::Int;
         opt.value.intValue0 = m_library_desc.optimization ? SLANG_OPTIMIZATION_LEVEL_HIGH : SLANG_OPTIMIZATION_LEVEL_NONE;
+        options.push_back(opt);
+    }
+
+    {
+        slang::CompilerOptionEntry opt = {};
+        opt.name = slang::CompilerOptionName::VulkanUseEntryPointName;
+        opt.value.kind = slang::CompilerOptionValueKind::Int;
+        opt.value.intValue0 = 1;
         options.push_back(opt);
     }
 

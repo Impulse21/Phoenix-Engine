@@ -151,12 +151,11 @@ phx::rhi::VulkanBackend::VulkanBackend(void* window_handle)
 bool phx::rhi::VulkanBackend::SelectPhysicalDevice(vkb::PhysicalDevice& out_vkb_physical_device)
 {
     vkb::PhysicalDeviceSelector selector{ vkb_instance };
-    VkPhysicalDeviceFeatures features_to_enable = {};
-    features_to_enable.samplerAnisotropy = VK_TRUE;
-    features_to_enable.shaderInt64 = VK_TRUE;
-  
-
-    // Add other features you absolutely need enabled
+    VkPhysicalDeviceFeatures features_to_enable = {
+        .depthClamp = VK_TRUE,
+        .samplerAnisotropy = VK_TRUE,
+        .shaderInt64 = VK_TRUE,
+    };
 
     const std::vector<const char*> required_extensions =
     {

@@ -11,7 +11,7 @@ struct VSOutput
 // --- Vertex Shader ---
 [shader("vertex")]
 VSOutput VertexMain(
-    uint vertexID: SV_VertexID,
+    uint vertexID : SV_VertexID,
     uniform float4x4 modelViewProjection,
     uniform VertexStreamsHeader *bufferPtr)
 {

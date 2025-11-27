@@ -59,7 +59,7 @@ void phx::rhi::vulkan::DescriptorHeap::Initialize(phx::rhi::VulkanBackend* vulka
 
     const VkDeviceSize buffer_size = m_descriptor_stride * max_slots;
 
-    PHX_RHI_INFO("Descriptor heap size is {0} bytes - {1} MB", buffer_size, PhxToMB(buffer_size));
+    PHX_RHI_INFO("Descriptor heap size is {0} bytes - {1} KB", buffer_size, PhxToKB(buffer_size));
 
 
     // =====================================================================================

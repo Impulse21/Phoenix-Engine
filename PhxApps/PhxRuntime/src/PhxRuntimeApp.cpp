@@ -220,14 +220,17 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 {
 	auto group = m_world.GetRegistry().group<StaticMeshComponent>(entt::get<WorldTransformComponent>);
 	const size_t max_num_packets = group.size();
+	m_num_render_transitions = 0;
+	m_num_render_packets = 0;
+
+	if (max_num_packets == 0)
+		return;
 
 	static constexpr size_t MAX_NUM_PER_MESH_DRAWS = 6;
 	m_render_packets = AllocateArray<RenderPacket>(frame_allocator, max_num_packets * MAX_NUM_PER_MESH_DRAWS).data();
-	m_num_render_packets = 0;
 
 	static constexpr size_t MAX_NUM_TRANSISIONS_PER_FRAME = 50;
 	m_render_transitions = AllocateArray<GpuTransitionWork>(frame_allocator, MAX_NUM_TRANSISIONS_PER_FRAME).data();
-	m_num_render_transitions = 0;
 
 	for (auto entity : group)
 	{
@@ -240,6 +243,9 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 			mesh_resource->CollectPendingGpuTransitions({ m_render_transitions, MAX_NUM_TRANSISIONS_PER_FRAME }, m_num_render_transitions);
 			mesh_resource->state = Resource::State::Loaded;
 		}
+
+		if (mesh_resource->state != Resource::State::Loaded)
+			continue;
 
 		uint64_t packed_buffer_address = rhi::IResourceManager::Ptr->GetGpuAddress(mesh_resource->packed_mesh_buffer);
 		TypedView<renderer::MeshResource::CpuData>& cpu_data = mesh_resource->cpu_data;
@@ -338,7 +344,7 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 	command_buffer->BeginRendering(m_swapchain, { .Colour = rhi::Color(0.0f, 0.0f, 0.0f, 1.0f) });
 
 	// Render Packets
-
+	// I am here.
 	command_buffer->EndRendering();
 
 	command_buffer->InsertSwapchainBarrier(m_swapchain, rhi::ResourceStates::Present);
@@ -352,7 +358,7 @@ void PhxRuntime::ProcessSpawnRequests()
 {
 	CpuTimer spawn_timer;
 
-	for (size_t i = m_spawn_requests.size() - 1; i >= 0; --i)
+	for (int i = (int)m_spawn_requests.size() - 1; i >= 0; --i)
 	{
 		if (spawn_timer.Elapsed().GetMilliseconds() >= 2)
 		{
@@ -404,6 +410,7 @@ void PhxRuntime::ProcessSpawnRequests()
 			}, node.data);
 
 		}
+		// swap and pop to delete the procedded request.
 		m_spawn_requests[i] = std::move(m_spawn_requests.back());
 		m_spawn_requests.pop_back();
 	}

@@ -121,11 +121,11 @@ namespace phx
         j = nlohmann::json{
             {"name", n.name},
             {"parent_index", n.parent_index},
-            {"transform", 
+            {"transform", {
                 { "scale", n.scale },
                 { "rotation", n.rotation },
                 { "translation", n.translation},
-            },
+            }},
             {"node_type", n.node_type}
         };
 
