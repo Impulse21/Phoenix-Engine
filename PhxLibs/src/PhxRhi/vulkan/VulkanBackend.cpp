@@ -182,27 +182,28 @@ bool phx::rhi::VulkanBackend::SelectPhysicalDevice(vkb::PhysicalDevice& out_vkb_
     vulkan_features_1_1.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
     vulkan_features_1_1.shaderDrawParameters = VK_TRUE;
 
-	VkPhysicalDeviceVulkan12Features vulkan_features_1_2 = {
-		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+    VkPhysicalDeviceVulkan12Features vulkan_features_1_2 = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
         .pNext = nullptr,
-        .bufferDeviceAddress = VK_TRUE,
-        .runtimeDescriptorArray = VK_TRUE,
+        .shaderInt8 = VK_TRUE,
+        .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+    #if !USE_BUFFER_ADDRESS
+        .shaderStorageBufferArrayNonUniformIndexing = VK_TRUE,
+        .descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE,
+    #endif
         .descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
         .descriptorBindingStorageImageUpdateAfterBind = VK_TRUE,
-        .descriptorBindingPartiallyBound = VK_TRUE,
-        .runtimeDescriptorArray = VK_TRUE,
-#if !USE_BUFFER_ADDRESS
-        .descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE,
+    #if !USE_BUFFER_ADDRESS
         .descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE,
         .descriptorBindingUpdateUnusedWhilePending = VK_TRUE,
-        .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
-        .shaderStorageBufferArrayNonUniformIndexing = VK_TRUE,
-#endif
-        .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
-        .timelineSemaphore = VK_TRUE,
+    #endif
+        .descriptorBindingPartiallyBound = VK_TRUE,
+        .runtimeDescriptorArray = VK_TRUE,
         .samplerFilterMinmax = VK_TRUE,
-        .shaderInt8 = VK_TRUE,
-	};
+        .timelineSemaphore = VK_TRUE,
+        .bufferDeviceAddress = VK_TRUE,
+    };
+
 
     VkPhysicalDeviceVulkan13Features vulkan_features_1_3 = {};
     vulkan_features_1_3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
