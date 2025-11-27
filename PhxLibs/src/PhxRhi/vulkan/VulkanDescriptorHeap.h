@@ -62,7 +62,6 @@ namespace phx::rhi::vulkan
 		void Initialize(phx::rhi::VulkanBackend* vulkan_backend, HeapType heap_type, uint32_t max_slots);
 		void Shutdown();
 
-
 		rhi::DescriptorIndex Allocate(const VkDescriptorGetInfoEXT& descriptor_info);
 		void Free(uint32_t index);
 
@@ -70,7 +69,6 @@ namespace phx::rhi::vulkan
 
 	private:
 		VulkanBackend*          m_vulkan_backend;
-        VulkanGpuAllocator*     m_vulkan_allocator;
 		VkDescriptorType        m_descriptor_type;
         size_t                  m_descriptor_stride;
 

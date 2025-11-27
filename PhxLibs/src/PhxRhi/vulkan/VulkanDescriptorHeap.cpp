@@ -12,14 +12,17 @@ using namespace phx::rhi;
 void phx::rhi::vulkan::DescriptorHeap::Initialize(phx::rhi::VulkanBackend* vulkan_backend, HeapType heap_type, uint32_t max_slots)
 {
 	m_vulkan_backend = vulkan_backend;
-    m_vulkan_allocator = vulkan_allocator;
-    // =====================================================================================
-        // STEP 1: Query Hardware Properties (Same as before)
-        // =====================================================================================
-    VkPhysicalDeviceDescriptorBufferPropertiesEXT buffer_props{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT };
-    VkPhysicalDeviceProperties2 props2{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
-    props2.pNext = &buffer_props;
-    vkGetPhysicalDeviceProperties2(m_vulkan_backend->GetPhysicalDevice(), &props2);
+
+    VkPhysicalDeviceDescriptorBufferPropertiesEXT buffer_props = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT
+    };
+
+    VkPhysicalDeviceProperties2 props2 = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+        .pNext = &buffer_props
+    };
+
+    vkGetPhysicalDeviceProperties2(m_vulkan_backend->vk_chosen_physical_device, &props2);
 
     size_t raw_size = 0;
     VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
