@@ -583,7 +583,7 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
     Handle<PipelineState> ret_val = pipeline_state_pool.Allocate(); // Renamed to snake_case
     VulkanPipelineState& impl = *pipeline_state_pool.GetHot(ret_val); // Corrected access to buffer_pool
 
-    VkPipelineShaderStageCreateInfo shader_stages[static_cast<size_t>(ShaderStage::Count)];
+    VkPipelineShaderStageCreateInfo shader_stages[static_cast<size_t>(ShaderStage::Count)] = {};
     size_t num_stages = 0;
 
     for (auto& stage_info : desc.shader_stages)
@@ -717,18 +717,25 @@ PipelineStateHandle phx::rhi::VulkanResourceManager::CreatePipeline(const Pipeli
         color_formats[i] = FormatToVkFormat(desc.render_pass_info.color_attachments[i]);
     }
 
+    VkFormat ds_format = FormatToVkFormat(desc.render_pass_info.depth_stencil_format);
+    auto IsStencilFormat = [](VkFormat fmt) {
+        return fmt == VK_FORMAT_D32_SFLOAT_S8_UINT ||
+            fmt == VK_FORMAT_D24_UNORM_S8_UINT ||
+            fmt == VK_FORMAT_S8_UINT;
+        };
+
     VkPipelineRenderingCreateInfo rendering_ci = { 
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
         .colorAttachmentCount = static_cast<uint32_t>(desc.render_pass_info.color_attachments.Size()),
         .pColorAttachmentFormats = color_formats,
-        .depthAttachmentFormat = FormatToVkFormat(desc.render_pass_info.depth_stencil_format),
-        .stencilAttachmentFormat = FormatToVkFormat(desc.render_pass_info.depth_stencil_format),
+        .depthAttachmentFormat = ds_format,
+        .stencilAttachmentFormat = IsStencilFormat(ds_format) ? ds_format : VK_FORMAT_UNDEFINED,
     };
 
     VkPipelineViewportStateCreateInfo viewport_ci = { 
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-        .viewportCount = 1,
-        .scissorCount = 1,
+        .viewportCount = 0,
+        .scissorCount = 0,
     };
 
     VkGraphicsPipelineCreateInfo pipeline_ci = { 
