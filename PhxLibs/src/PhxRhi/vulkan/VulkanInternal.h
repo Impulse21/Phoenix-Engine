@@ -1,10 +1,15 @@
 #pragma once
 
-
+#include <PhxCore/Pool.h>
 #include <PhxCore/StaticArray.h>
-#include <PhxRhi/RHICommon.h>
+#include <PhxRhi/PhxRhi_Types.h>
+
+#ifdef PHX_PLATFORM_WINDOWS
+#define VK_USE_PLATFORM_WIN32_KHR
+#endif
 
 #include <volk.h>
+#include <VkBootstrap.h>
 #include <vk_mem_alloc.h>
 #include <deque>
 
@@ -13,6 +18,7 @@
 
 namespace phx::rhi
 {
+    
 	constexpr size_t kCacheLineSize = 64ull;
 	
 	constexpr uint64_t kTimeoutValue = 2000000000ull; // 2 seconds
@@ -112,6 +118,100 @@ namespace phx::rhi
 		bool                            graphics_pipeline = true;
 	};
 	static_assert(sizeof(VulkanPipelineState) == kCacheLineSize, "VulkanPipelineState must be exactly one cache line in size!");
+
+    struct DeferredCallbackQueue
+	{
+		struct DeferredItem
+		{
+			uint64_t frame;
+			std::function<void()> deferred_func;
+		};
+
+		std::deque<DeferredItem> queue;
+
+		void Flush(uint64_t completed_frame = ~0u)
+		{
+			while (!queue.empty())
+			{
+				DeferredItem& deferred_item = queue.front();
+				if (deferred_item.frame + cMaxInflightFrames < completed_frame)
+				{
+					deferred_item.deferred_func();
+					queue.pop_front();
+				}
+				else
+				{
+					break;
+				}
+			}
+		}
+
+		void EnqueueDelete(DeferredItem&& item)
+		{
+			queue.emplace_back(std::forward<DeferredItem>(item));
+		}
+	};
+
+    struct VulkanContext
+    {
+		DeviceCapability capabilities = {};
+
+		// -- VK Core ---
+		VkInstance vk_instance = VK_NULL_HANDLE;
+		vkb::Instance vkb_instance; // vkb::Instance manages VkInstance and debug messenger
+
+		void* window_handle = nullptr;
+		VkSurfaceKHR vk_surface = VK_NULL_HANDLE;
+
+		VkPhysicalDevice vk_chosen_physical_device = VK_NULL_HANDLE;
+
+		VkDevice vk_device = VK_NULL_HANDLE;
+
+		VkPhysicalDeviceFeatures vk_physical_device_features = {};
+
+		VkPhysicalDeviceFeatures2 vk_features2 = {};
+		VkPhysicalDeviceVulkan11Features vk_features_1_1 = {};
+		VkPhysicalDeviceVulkan12Features vk_features_1_2 = {};
+		VkPhysicalDeviceVulkan13Features vk_features_1_3 = {};
+
+		VkPhysicalDeviceProperties2 vk_physical_device_properties = {};
+		VkPhysicalDeviceDescriptorBufferPropertiesEXT vk_descriptor_buffer_properties = {};
+		VkDeviceSize vk_rebar_heap_size = 0;
+
+		VkDebugUtilsMessengerEXT vk_debug_messenger = VK_NULL_HANDLE;
+
+        VmaAllocator vma_allocator = VK_NULL_HANDLE;
+
+		struct Queue
+		{
+			struct QueueExecutionInfo
+			{
+				uint64_t fence_value;
+				VkCommandBuffer commad_buffer = VK_NULL_HANDLE;
+				VkCommandPool command_pool = VK_NULL_HANDLE;
+			};
+
+			VkQueue vk_queue = VK_NULL_HANDLE;
+			uint32_t vk_queue_family = UINT32_MAX;
+			std::vector<std::pair<VkCommandBuffer, VkCommandPool>> pending_commands;
+			std::deque<QueueExecutionInfo> available_commands;
+
+			std::mutex lock = {};
+			std::mutex lock_commands = {};
+		};
+
+		EnumArray<Queue, CommandQueueType> queues;
+		uint64_t frame_number = 0;
+		phx::PagedPool<rhi::Swapchain, VulkanSwapchainFrame, VulkanSwapchain> swapchain_pool;
+		phx::PagedPool<rhi::Buffer, VulkanBuffer> buffer_pool;
+		phx::PagedPool<rhi::PipelineState, VulkanPipelineState> pipeline_state_pool;
+		phx::PagedPool<rhi::ShaderModule, VulkanShaderModule> shader_module_pool;
+
+		DeferredCallbackQueue deferred_delete_queue;
+
+    }
+
+    inline VulkanContext g_vulkan_context;
 
 	constexpr VkFormat gVulkanFormatMapping[] =
 	{

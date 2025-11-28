@@ -1073,5 +1073,7 @@ namespace phx::rhi
             return barrier;
         }
     };
+
+    using CmdHandle = uint32_t;
 #pragma endregion
 }
