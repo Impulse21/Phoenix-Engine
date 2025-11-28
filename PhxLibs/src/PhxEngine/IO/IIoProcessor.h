@@ -1,6 +1,5 @@
 #pragma once
 
-#include <PhxRhi/PhxRhi_ForwardDeclares.h>
 #include <PhxEngine/StreamingDefintions.h>
 
 namespace phx
@@ -12,7 +11,7 @@ namespace phx
 
 		virtual void ProcessRequest(StreamingRequest&& request) = 0;
 
-		virtual void SubmitBatchedWork(IAllocator* frame_allocator, rhi::ISubmissionManager* submission_manager) = 0;
-		virtual void PullCompletions(rhi::ISubmissionManager* submission_manager) = 0;
+		virtual void SubmitBatchedWork(IAllocator* frame_allocator) = 0;
+		virtual void PullCompletions() = 0;
 	};
 }

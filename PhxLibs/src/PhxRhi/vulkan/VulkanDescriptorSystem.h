@@ -1,12 +1,10 @@
 #pragma once
+
+#include <PhxRhi/PhxRhi_Types.h>
+
 #include <vulkan/vulkan.h>
 
 #include "VulkanDescriptorHeap.h"
-
-namespace phx::rhi
-{
-    struct VulkanBackend;
-}
 
 namespace phx::rhi::vulkan 
 {
@@ -24,8 +22,8 @@ namespace phx::rhi::vulkan
         VkDescriptorSetLayout sampler_layout;
         VkPipelineLayout pipeline_layout;
 
-        void Initialize(VulkanBackend* vulkan_backend);
-        void Shutdown(VulkanBackend* vulkan_backend);
+        void Initialize(VkDevice vk_device, VmaAllocator vma_allocator, VkPhysicalDevice vk_physical_device);
+        void Shutdown(VkDevice vk_device);
 
         rhi::DescriptorIndex AllocateResource(const VkDescriptorGetInfoEXT& info)
         {
@@ -49,6 +47,6 @@ namespace phx::rhi::vulkan
         void Bind(VkCommandBuffer cmd, VkPipelineBindPoint bind_point);
 
     private:
-        void CreateMasterPipelineLayout(VulkanBackend* vulkan_backend);
+        void CreateMasterPipelineLayout(VkDevice vk_device);
     };
 }

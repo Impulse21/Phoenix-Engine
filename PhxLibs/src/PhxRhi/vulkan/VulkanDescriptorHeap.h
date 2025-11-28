@@ -1,6 +1,7 @@
 #pragma once
 
-#include "VulkanTypes.h"
+#include <PhxRhi/PhxRhi_Types.h>
+#include <vk_mem_alloc.h>
 
 #include <volk.h>
 
@@ -59,7 +60,13 @@ namespace phx::rhi::vulkan
 	class DescriptorHeap
 	{
 	public:
-		void Initialize(phx::rhi::VulkanBackend* vulkan_backend, HeapType heap_type, uint32_t max_slots);
+		void Initialize(
+            VkDevice vk_device,
+            VmaAllocator vma_allocator,
+            VkPhysicalDevice physical_device,
+            HeapType heap_type,
+            uint32_t max_slots);
+
 		void Shutdown();
 
 		rhi::DescriptorIndex Allocate(const VkDescriptorGetInfoEXT& descriptor_info);
@@ -71,8 +78,11 @@ namespace phx::rhi::vulkan
 		VulkanBackend*          m_vulkan_backend;
         size_t                  m_descriptor_stride;
 
+        VkDevice                m_vk_device;
+        VmaAllocator            m_vma_allocator;
+
         VkBuffer		        m_vk_buffer;
-        VmaAllocation	        m_vma_allocation;
+        VmaAllocation           m_vma_allocation;
 
         char*                   m_mapped_ptr;
         VkDeviceAddress         m_buffer_address;

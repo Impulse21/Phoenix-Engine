@@ -22,7 +22,7 @@ void StandardFileProcessor::ProcessRequest(StreamingRequest&& request)
 	};
 
 	bool has_gpu_work = false;
-	rhi::ICommandBuffer* cmd_buffer = nullptr;
+	rhi::CmdHandle cmd_buffer = ~0u;
 	for (size_t i = 0; i < request.operations.size(); i++)
 	{
 		// Pass the WIP command buffer and state to ProcessOperation
@@ -33,7 +33,7 @@ void StandardFileProcessor::ProcessRequest(StreamingRequest&& request)
 			operation.source,
 			operation.destination,
 			gpu_operation,
-			&cmd_buffer);
+			cmd_buffer);
 
 		has_gpu_work |= gpu_operation;
 
@@ -64,7 +64,7 @@ void StandardFileProcessor::ProcessRequest(StreamingRequest&& request)
 	}
 }
 
-void phx::StandardFileProcessor::SubmitBatchedWork(IAllocator* frame_allocator, rhi::ISubmissionManager* submission_manager)
+void phx::StandardFileProcessor::SubmitBatchedWork(IAllocator* frame_allocator)
 {
 	PHX_PROFILE;
 
@@ -98,7 +98,7 @@ void phx::StandardFileProcessor::SubmitBatchedWork(IAllocator* frame_allocator, 
 
 	InFlightWorkItem& inflight_work_item = m_inflight_work_slots[pending_work_index];
 
-	SpanMutable<rhi::ICommandBuffer*> commands_to_submit = AllocateArray<rhi::ICommandBuffer*>(frame_allocator, batches_to_submit.Size());
+	SpanMutable commands_to_submit = AllocateArray<rhi::CmdHandle>(frame_allocator, batches_to_submit.Size());
 	for (size_t i = 0; i < batches_to_submit.Size(); ++i)
 	{
 		PendingCallback& pending_callback = inflight_work_item.callbacks.emplace_back();
@@ -107,17 +107,17 @@ void phx::StandardFileProcessor::SubmitBatchedWork(IAllocator* frame_allocator, 
 		commands_to_submit[i] = batches_to_submit[i].command_buffer;
 	}
 	
-	inflight_work_item.fence = submission_manager->Submit(rhi::CommandQueueType::Copy, commands_to_submit, {});
+	inflight_work_item.fence = rhi::Submit(rhi::CommandQueueType::Copy, commands_to_submit, {});
 	m_inflight_indices.push_back(pending_work_index);
 }
 
-void phx::StandardFileProcessor::PullCompletions(rhi::ISubmissionManager* submission_manager)
+void phx::StandardFileProcessor::PullCompletions()
 {
 	for (size_t inflight_index : m_inflight_indices)
 	{
 		InFlightWorkItem& inflight_work = m_inflight_work_slots[inflight_index];
 
-		if (!submission_manager->IsFenceCompleted(inflight_work.fence))
+		if (!rhi::IsFenceCompleted(inflight_work.fence))
 			continue;
 
 		for (auto& pending_callback: inflight_work.callbacks)
@@ -162,13 +162,12 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 	StreamingSource& source_info,
 	StreamingDestination& destination_info,
 	bool& gpu_operation,
-	rhi::ICommandBuffer** out_cmd_buffer)
+	rhi::CmdHandle& out_cmd_buffer)
 {
 	// TODO: Check for overrun.
 	const std::byte* src_ptr = nullptr;
 	void* dest_ptr = nullptr;
 
-	auto submission_manager = rhi::ISubmissionManager::Ptr;
 	rhi::StagingBlock staging_block;
 	
 	// Collect Desitantion ptr;
@@ -183,7 +182,7 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 		{
 			// Begin the command buffer if we haven't already
 			gpu_operation = true;
-			staging_block = submission_manager->RequestStagingMemory(source_info.size);
+			staging_block = rhi::RequestStagingMemory(source_info.size);
 			dest_ptr = staging_block.data_ptr;
 		}
 	}, destination_info.target);
@@ -222,10 +221,8 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 
 	if (gpu_operation)
 	{
-		if (!*out_cmd_buffer)
-			*out_cmd_buffer = submission_manager->BeginCommandBuffer(rhi::CommandQueueType::Copy);
-
-		rhi::ICommandBuffer* cmd_buffer = *out_cmd_buffer;
+		if (out_cmd_buffer == ~0u)
+			out_cmd_buffer = rhi::BeginCommandBuffer(rhi::CommandQueueType::Copy);
 
 		auto& gpu_dest_info = std::get<GpuResourceDestinationInfo>(destination_info.target);
 		std::visit([&](auto&& gpu_handle) {
@@ -238,9 +235,10 @@ ErrorCode phx::StandardFileProcessor::ProcessStreamingTransfer(
 					rhi::ResourceStates::Common,
 					rhi::ResourceStates::CopyDest);
 
-				cmd_buffer->InsertBarriers({ pre_copy_barrier });
+				rhi::InsertBarriers(out_cmd_buffer, { pre_copy_barrier });
 
-				cmd_buffer->CopyBuffer(
+				rhi::CopyBuffer(
+					out_cmd_buffer,
 					staging_block.buffer_handle,
 					staging_block.gpu_offset,
 					gpu_handle,

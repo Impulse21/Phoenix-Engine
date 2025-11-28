@@ -13,6 +13,9 @@
 #include <vk_mem_alloc.h>
 #include <deque>
 
+#include "VulkanDescriptorSystem.h"
+#include "VulkanSubmissionCtx.h"
+
 #define vulkan_check(call) [&]() { VkResult res = call; PHX_CORE_ASSERT(res >= VK_SUCCESS); return res; }()
 #define RHI_DEFINE_ALIGNED(name, alignemnt) alignas(alignemnt) name
 
@@ -24,6 +27,7 @@ namespace phx::rhi
 	constexpr uint64_t kTimeoutValue = 2000000000ull; // 2 seconds
 	constexpr uint32_t kMaxFrameCmds = 64;
 	constexpr uint32_t kMaxAsyncCmds = 32;
+
 
 	struct RHI_DEFINE_ALIGNED(VulkanSwapchainFrame, kCacheLineSize)
 	{
@@ -152,8 +156,8 @@ namespace phx::rhi
 		}
 	};
 
-    struct VulkanContext
-    {
+	struct VulkanContext
+	{
 		DeviceCapability capabilities = {};
 
 		// -- VK Core ---
@@ -180,7 +184,9 @@ namespace phx::rhi
 
 		VkDebugUtilsMessengerEXT vk_debug_messenger = VK_NULL_HANDLE;
 
-        VmaAllocator vma_allocator = VK_NULL_HANDLE;
+		VmaAllocator vma_allocator = VK_NULL_HANDLE;
+		vulkan::DescriptorSystem descriptor_system;
+		vulkan::SubmissionContext submission;
 
 		struct Queue
 		{
@@ -202,6 +208,8 @@ namespace phx::rhi
 
 		EnumArray<Queue, CommandQueueType> queues;
 		uint64_t frame_number = 0;
+
+		VkPipelineCache		vk_pipeline_cache = VK_NULL_HANDLE;
 		phx::PagedPool<rhi::Swapchain, VulkanSwapchainFrame, VulkanSwapchain> swapchain_pool;
 		phx::PagedPool<rhi::Buffer, VulkanBuffer> buffer_pool;
 		phx::PagedPool<rhi::PipelineState, VulkanPipelineState> pipeline_state_pool;
@@ -209,9 +217,24 @@ namespace phx::rhi
 
 		DeferredCallbackQueue deferred_delete_queue;
 
-    }
+	};
+    inline VulkanContext g_vulkan;
 
-    inline VulkanContext g_vulkan_context;
+	inline CmdHandle EncodeCmdHandle(uint32_t thread_id, uint32_t index)
+	{
+		// Layout: [16: Unused] [8: ThreadID] [16: Index]
+		return (thread_id << 16) | (index & 0xFFFF);
+	}
+
+	inline VkCommandBuffer ResolveCmd(CmdHandle handle)
+	{
+		const uint32_t thread_id = (handle >> 16) & 0xFF;
+		const uint32_t index = handle & 0xFFFF;
+
+		// Direct array access - No locks, No maps, No searching.
+		vulkan::PerThreadData& thread_data = g_vulkan.submission.per_thread_data[thread_id];
+		return thread_data.active_command_buffers[index];
+	}
 
 	constexpr VkFormat gVulkanFormatMapping[] =
 	{

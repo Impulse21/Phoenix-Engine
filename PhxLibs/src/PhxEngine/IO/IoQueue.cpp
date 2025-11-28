@@ -48,14 +48,14 @@ void phx::IoQueue::Submit(StreamingRequest&& request)
 	m_cv.notify_one(); // Signal the streaming thread that new work is available
 }
 
-void phx::IoQueue::SubmitBatchedWork(IAllocator* frame_allocator, rhi::ISubmissionManager* submission_manager)
+void phx::IoQueue::SubmitBatchedWork(IAllocator* frame_allocator)
 {
-	m_io_processor->SubmitBatchedWork(frame_allocator, submission_manager);
+	m_io_processor->SubmitBatchedWork(frame_allocator);
 }
 
-void phx::IoQueue::PollGpuCompletions(rhi::ISubmissionManager* submission_manager)
+void phx::IoQueue::PollGpuCompletions()
 {
-	m_io_processor->PullCompletions(submission_manager);
+	m_io_processor->PullCompletions();
 }
 
 void IoQueue::StreamingThreadLoop()

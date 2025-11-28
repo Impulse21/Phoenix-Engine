@@ -6,8 +6,7 @@
 
 #include <PhxEngine/StreamingDefintions.h>
 
-#include <PhxRhi/PhxRhi_ForwardDeclares.h>
-#include <PhxRhi/RHICommon.h>
+#include <PhxRhi/PhxRhi.h>
 
 #include <vector>
 #include <deque>
@@ -20,7 +19,7 @@ namespace phx
 		// One fence for a whole batch of callbacks
 		struct GpuWorkItem
 		{
-			rhi::ICommandBuffer* command_buffer;
+			rhi::CmdHandle command_buffer;
 			std::function<void(StreamingResult const&)> on_complete;
 			StreamingResult result;
 		};
@@ -44,8 +43,8 @@ namespace phx
 
 	public:
 		void ProcessRequest(StreamingRequest&& request) override;
-		void SubmitBatchedWork(IAllocator* frame_allocator, rhi::ISubmissionManager* submission_manager) override;
-		void PullCompletions(rhi::ISubmissionManager* submission_manager) override;
+		void SubmitBatchedWork(IAllocator* frame_allocator) override;
+		void PullCompletions() override;
 
 	public:
 		platform::PlatformFileHandle FindOrCreateHandle(std::string const& file_path);
@@ -55,7 +54,7 @@ namespace phx
 			StreamingSource& source_info,
 			StreamingDestination& destination_info,
 			bool& gpu_operation,
-			rhi::ICommandBuffer** out_cmd_buffer);
+			rhi::CmdHandle& out_cmd_buffer);
 
 		bool ProcessAsyncResourceDesc(
 			AsyncResourceDescriptor& descriptor,

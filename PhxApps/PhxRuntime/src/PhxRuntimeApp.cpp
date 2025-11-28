@@ -7,7 +7,6 @@
 #include <PhxCore/Memory/IAllocator.h>
 
 #include <PhxRhi/PhxRhi.h>
-#include <PhxRhi/IResourceManager.h>
 
 #include <PhxRenderer/PhxRenderer.h>
 #include <PhxRenderer/MeshResource.h>
@@ -67,7 +66,7 @@ private:
 	rhi::PipelineStateHandle CreateTestPso(const renderer::ShaderAsset& shader_asset);
 
 	// Potential renderer functions
-	void Renderer_RecordTransitions(rhi::ICommandBuffer* command_buffer, Span<GpuTransitionWork> transisions);
+	void Renderer_RecordTransitions(rhi::CmdHandle command_buffer, Span<GpuTransitionWork> transisions);
 
 private:
 	inline static PhxRuntime* ms_instance = nullptr;
@@ -149,7 +148,7 @@ void PhxRuntime::Startup()
 	resource_system->RegisterFileHanlder<phx::GltfPrefabHandler>();
 
 	renderer::ShaderLibraryDescriptor shader_librar_desc = {
-		.target = rhi::IBackend::Ptr->GetShaderFormat(),
+		.target = rhi::GetShaderFormat(),
 		.include_paths = { "art://shaders/"},
 		.defines = {},
 #if PHX_DEBUG
@@ -172,7 +171,7 @@ void PhxRuntime::Startup()
 	uint32_t win_height, win_width;
 	GetDefaultWindowSize(win_width, win_height);
 
-	m_swapchain = phx::rhi::IResourceManager::Ptr->CreateSwapchain({
+	m_swapchain = phx::rhi::CreateSwapchain({
 		.Width = win_width,
 		.Height = win_height,
 	});
@@ -209,10 +208,9 @@ void PhxRuntime::Shutdown()
 {
 	phx::renderer::Shutdown();
 
-	auto rm = phx::rhi::IResourceManager::Ptr;
-	rm->DeleteSwapchain(m_swapchain);
+	phx::rhi::DeleteSwapchain(m_swapchain);
 	if (m_test_pso.IsValid())
-		rm->DeletePipeline(m_test_pso);
+		phx::rhi::DeletePipeline(m_test_pso);
 
 }
 
@@ -247,7 +245,7 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 		if (mesh_resource->state != Resource::State::Loaded)
 			continue;
 
-		uint64_t packed_buffer_address = rhi::IResourceManager::Ptr->GetGpuAddress(mesh_resource->packed_mesh_buffer);
+		uint64_t packed_buffer_address = phx::rhi::GetGpuAddress(mesh_resource->packed_mesh_buffer);
 		TypedView<renderer::MeshResource::CpuData>& cpu_data = mesh_resource->cpu_data;
 
 		// TODO: Validate against materials
@@ -329,10 +327,9 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 	uint32_t c = _thread_counter.fetch_add(1);
 	PHX_ASSERT(c == 0);
 
-	rhi::ISubmissionManager* submit_manager = rhi::ISubmissionManager::Ptr;
-	submit_manager->BeginFrame(m_swapchain);
+	phx::rhi::BeginFrame(m_swapchain);
 
-	rhi::ICommandBuffer* command_buffer = submit_manager->BeginCommandBuffer(rhi::CommandQueueType::Graphics);
+	rhi::CmdHandle command_buffer = phx::rhi::BeginCommandBuffer(rhi::CommandQueueType::Graphics);
 
 	// -- Process pending transisions ---
 	if (m_num_render_transitions)
@@ -341,15 +338,16 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 	}
 
 	// -- End Caching
-	command_buffer->BeginRendering(m_swapchain, { .Colour = rhi::Color(0.0f, 0.0f, 0.0f, 1.0f) });
+
+	rhi::BeginRendering(command_buffer, m_swapchain, { .Colour = rhi::Color(0.0f, 0.0f, 0.0f, 1.0f) });
 
 	// Render Packets
 	// I am here.
-	command_buffer->EndRendering();
+	rhi::EndRendering(command_buffer);
 
-	command_buffer->InsertSwapchainBarrier(m_swapchain, rhi::ResourceStates::Present);
+	rhi::InsertSwapchainBarrier(command_buffer, m_swapchain, rhi::ResourceStates::Present);
 
-	submit_manager->EndFrame(m_swapchain, { command_buffer });
+	rhi::EndFrame(m_swapchain, { command_buffer });
 
 	_thread_counter.fetch_sub(1);
 }
@@ -436,10 +434,10 @@ rhi::PipelineStateHandle PhxRuntime::CreateTestPso(const renderer::ShaderAsset& 
 		}
 	};
 
-	return rhi::IResourceManager::Ptr->CreatePipeline(desc);
+	return rhi::CreatePipeline(desc);
 }
 
-void PhxRuntime::Renderer_RecordTransitions(rhi::ICommandBuffer* command_buffer, Span<GpuTransitionWork> transitions)
+void PhxRuntime::Renderer_RecordTransitions(rhi::CmdHandle command_buffer, Span<GpuTransitionWork> transitions)
 {
 	StaticArray<rhi::GpuBarrier, 16> barriers;
 	uint32_t batch_count = 0;
@@ -471,7 +469,7 @@ void PhxRuntime::Renderer_RecordTransitions(rhi::ICommandBuffer* command_buffer,
 			// If your StaticArray has a '.count' member, make sure to update it!
 			// barriers.count = 16; 
 
-			command_buffer->InsertBarriers(barriers);
+			rhi::InsertBarriers(command_buffer, barriers);
 
 			// Reset counter for the next batch
 			batch_count = 0;
@@ -480,6 +478,6 @@ void PhxRuntime::Renderer_RecordTransitions(rhi::ICommandBuffer* command_buffer,
 
 	if (batch_count > 0)
 	{
-		command_buffer->InsertBarriers(Span(barriers.begin(), batch_count));
+		rhi::InsertBarriers(command_buffer, Span(barriers.begin(), batch_count));
 	}
 }

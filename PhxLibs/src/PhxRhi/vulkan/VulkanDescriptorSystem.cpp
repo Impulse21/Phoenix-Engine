@@ -1,24 +1,25 @@
 #include "PhxRhi/PhxRhi_pch.h"
 #include "VulkanDescriptorSystem.h"
 
-#include "VulkanBackend.h"
-#include "VulkanTypes.h"
 
 using namespace phx;
 using namespace phx::rhi;
 
-void phx::rhi::vulkan::DescriptorSystem::Initialize(VulkanBackend* vulkan_backend)
+void phx::rhi::vulkan::DescriptorSystem::Initialize(
+    VkDevice vk_device,
+    VmaAllocator vma_allocator,
+    VkPhysicalDevice vk_physical_device)
 {
     PHX_RHI_INFO("Initializing Descriptor System system");
 
 
     PHX_RHI_INFO("Initializing resource heap of {0} descriptors", max_resource_descriptors);
-    resource_heap.Initialize(vulkan_backend, vulkan::HeapType::Resource, max_resource_descriptors);
+    resource_heap.Initialize(vk_device, vma_allocator, vk_physical_device, vulkan::HeapType::Resource, max_resource_descriptors);
 
     PHX_RHI_INFO("Initializing sampler heap of {0} descriptors", max_sampler_descriptors);
-    sampler_heap.Initialize(vulkan_backend, vulkan::HeapType::Sampler, max_sampler_descriptors);
+    sampler_heap.Initialize(vk_device, vma_allocator, vk_physical_device, vulkan::HeapType::Sampler, max_sampler_descriptors);
 
-    CreateMasterPipelineLayout(vulkan_backend);
+    CreateMasterPipelineLayout(vk_device);
 }
 
 void phx::rhi::vulkan::DescriptorSystem::Bind(VkCommandBuffer cmd, VkPipelineBindPoint bind_point)
@@ -83,7 +84,7 @@ void phx::rhi::vulkan::DescriptorSystem::Bind(VkCommandBuffer cmd, VkPipelineBin
     );
 }
 
-void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VulkanBackend* vulkan_backend)
+void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VkDevice vk_device)
 {
     {
         // Define the bindings for Textures, Buffers, Images, etc.
@@ -140,7 +141,7 @@ void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VulkanBacken
         };
 
         vulkan_check(
-            vkCreateDescriptorSetLayout(vulkan_backend->vk_device, &layout_info, nullptr, &resource_layout));
+            vkCreateDescriptorSetLayout(vk_device, &layout_info, nullptr, &resource_layout));
     }
 
     {
@@ -168,7 +169,7 @@ void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VulkanBacken
         };
 
         vulkan_check(
-            vkCreateDescriptorSetLayout(vulkan_backend->vk_device, &layout_info, nullptr, &sampler_layout));
+            vkCreateDescriptorSetLayout(vk_device, &layout_info, nullptr, &sampler_layout));
     }
 
     VkDescriptorSetLayout sets[] = { resource_layout, sampler_layout };
@@ -190,19 +191,19 @@ void phx::rhi::vulkan::DescriptorSystem::CreateMasterPipelineLayout(VulkanBacken
         .pPushConstantRanges = &push_constant,
     };
 
-    vkCreatePipelineLayout(vulkan_backend->vk_device, &layout_ci, nullptr, &pipeline_layout);
+    vkCreatePipelineLayout(vk_device, &layout_ci, nullptr, &pipeline_layout);
 }
 
-void phx::rhi::vulkan::DescriptorSystem::Shutdown(VulkanBackend* vulkan_backend)
+void phx::rhi::vulkan::DescriptorSystem::Shutdown(VkDevice vk_device)
 {
     if (pipeline_layout == VK_NULL_HANDLE) 
-        vkDestroyPipelineLayout(vulkan_backend->vk_device, pipeline_layout, nullptr);
+        vkDestroyPipelineLayout(vk_device, pipeline_layout, nullptr);
 
     if (resource_layout == VK_NULL_HANDLE)
-        vkDestroyDescriptorSetLayout(vulkan_backend->vk_device, resource_layout, nullptr);
+        vkDestroyDescriptorSetLayout(vk_device, resource_layout, nullptr);
 
     if (sampler_layout == VK_NULL_HANDLE)
-        vkDestroyDescriptorSetLayout(vulkan_backend->vk_device, sampler_layout, nullptr);
+        vkDestroyDescriptorSetLayout(vk_device, sampler_layout, nullptr);
 
     resource_heap.Shutdown();
     sampler_heap.Shutdown();

@@ -1,18 +1,21 @@
 #include "PhxRhi/PhxRhi_pch.h"
 #include "VulkanDescriptorHeap.h"
 
-#include "VulkanBackend.h"
-#include "VulkanGpuAllocator.h"
-
 #include <PhxCore/Memory/MemoryUtils.h>
 
 using namespace phx;
 using namespace phx::rhi;
 
 
-void phx::rhi::vulkan::DescriptorHeap::Initialize(phx::rhi::VulkanBackend* vulkan_backend, HeapType heap_type, uint32_t max_slots)
+void phx::rhi::vulkan::DescriptorHeap::Initialize(
+    VkDevice vk_device,
+    VmaAllocator vma_allocator,
+    VkPhysicalDevice vk_physical_device,
+    HeapType heap_type,
+    uint32_t max_slots)
 {
-	m_vulkan_backend = vulkan_backend;
+    m_vk_device = vk_device;
+    m_vma_allocator = vma_allocator;
 
     VkPhysicalDeviceDescriptorBufferPropertiesEXT buffer_props = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT
@@ -23,7 +26,7 @@ void phx::rhi::vulkan::DescriptorHeap::Initialize(phx::rhi::VulkanBackend* vulka
         .pNext = &buffer_props
     };
 
-    vkGetPhysicalDeviceProperties2(m_vulkan_backend->vk_chosen_physical_device, &props2);
+    vkGetPhysicalDeviceProperties2(vk_physical_device, &props2);
 
     size_t raw_size = 0;
     VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
@@ -80,7 +83,7 @@ void phx::rhi::vulkan::DescriptorHeap::Initialize(phx::rhi::VulkanBackend* vulka
     VmaAllocationInfo result_info;
     vulkan_check(
         vmaCreateBuffer(
-            vulkan_backend->vulkan_allocator.vma_allocator,
+            m_vma_allocator,
             &buffer_info,
             &alloc_info,
             &m_vk_buffer,
@@ -95,7 +98,7 @@ void phx::rhi::vulkan::DescriptorHeap::Initialize(phx::rhi::VulkanBackend* vulka
         .buffer = m_vk_buffer, 
     };
 
-    m_buffer_address = vkGetBufferDeviceAddress(vulkan_backend->vk_device, &address_info);
+    m_buffer_address = vkGetBufferDeviceAddress(vk_device, &address_info);
     m_slot_allocator.Initialize(max_slots);
 }
 
@@ -104,7 +107,7 @@ void phx::rhi::vulkan::DescriptorHeap::Shutdown()
     if (m_vk_buffer != VK_NULL_HANDLE)
     {
         vmaDestroyBuffer(
-            m_vulkan_backend->vulkan_allocator.vma_allocator, m_vk_buffer, m_vma_allocation);
+            m_vma_allocator, m_vk_buffer, m_vma_allocation);
         m_vk_buffer = VK_NULL_HANDLE;
         m_vma_allocation = VK_NULL_HANDLE;
     }
@@ -123,7 +126,7 @@ rhi::DescriptorIndex phx::rhi::vulkan::DescriptorHeap::Allocate(const VkDescript
     char* dest_ptr = m_mapped_ptr + (index * m_descriptor_stride);
 
     vkGetDescriptorEXT(
-        m_vulkan_backend->vk_device,
+        m_vk_device,
         &descriptor_info,
         m_descriptor_stride,
         dest_ptr

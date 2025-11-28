@@ -1,10 +1,7 @@
 #include "PhxRhi/PhxRhi_pch.h"
-#include <PhxRhi.h>
+#include <PhxRhi/PhxRhi.h>
 
 #include "VulkanInternal.h"
-
-using namespace phx;
-using namespace phx::rhi;
 
 
 #ifdef __clang__
@@ -49,7 +46,27 @@ inline static VKAPI_ATTR VkBool32 VKAPI_CALL vk_phx_debug_callback(
     void*);
 
 
-bool phx::rhi::Initialize()
+namespace
+{
+    constexpr size_t kMaxNumSwapchains = 1;
+    constexpr size_t kMaxPipelineStates = 200;
+    constexpr size_t kMaxNumBuffers = 4096;
+    //constexpr size_t kMaxNumTextures = 4096;
+}
+
+namespace phx::rhi::vulkan
+{
+    bool SelectPhysicalDevice(vkb::PhysicalDevice&);
+    bool CreateLogicalDevice(vkb::PhysicalDevice&);
+    bool InitVma();
+    bool CreateSurface_Win32(void*);
+}
+
+using namespace phx;
+using namespace phx::rhi;
+using namespace phx::rhi::vulkan;
+
+bool phx::rhi::Initialize(Descriptor const& descriptor, void* window_handle, size_t thread_count)
 {
     PHX_PROFILE_SECTION("Vulkan::PlatformInitialize");
     PHX_RHI_INFO("Initializing RHI (Vulkan) - VkGfxDeviceImpl");
@@ -81,15 +98,15 @@ bool phx::rhi::Initialize()
         return false;
     }
 
-    vkb_instance = inst_ret.value();
-    vk_instance = vkb_instance.instance;
-    vk_debug_messenger = vkb_instance.debug_messenger;
-    volkLoadInstance(vk_instance);
+    g_vulkan.vkb_instance = inst_ret.value();
+    g_vulkan.vk_instance = g_vulkan.vkb_instance.instance;
+    g_vulkan.vk_debug_messenger = g_vulkan.vkb_instance.debug_messenger;
+    volkLoadInstance(g_vulkan.vk_instance);
 
 #if defined(PHX_PLATFORM_WINDOWS)
-    if (!CreateSurface_Win32(static_cast<HWND>(window_handle)))
+    if (!vulkan::CreateSurface_Win32(static_cast<HWND>(window_handle)))
     {
-        vkb::destroy_instance(vkb_instance);
+        vkb::destroy_instance(g_vulkan.vkb_instance);
         return false;
     }
 #else
@@ -99,41 +116,73 @@ bool phx::rhi::Initialize()
 #endif
 
     vkb::PhysicalDevice vkb_physical_device; // Renamed to snake_case
-    if (!SelectPhysicalDevice(vkb_physical_device))
+    if (!vulkan::SelectPhysicalDevice(vkb_physical_device))
     {
-        vkDestroySurfaceKHR(vk_instance, vk_surface, nullptr);
-        vkb::destroy_instance(vkb_instance);
+        vkDestroySurfaceKHR(g_vulkan.vk_instance, g_vulkan.vk_surface, nullptr);
+        vkb::destroy_instance(g_vulkan.vkb_instance);
         return false;
     }
 
-    if (!CreateLogicalDevice(vkb_physical_device))
+    if (!vulkan::CreateLogicalDevice(vkb_physical_device))
     {
-        vkDestroySurfaceKHR(vk_instance, vk_surface, nullptr);
-        vkb::destroy_instance(vkb_instance);
+        vkDestroySurfaceKHR(g_vulkan.vk_instance, g_vulkan.vk_surface, nullptr);
+        vkb::destroy_instance(g_vulkan.vkb_instance);
         return false;
     }
 
-    vulkan_allocator.Initialize();
-    descriptor_system.Initialize(this);
+    vulkan::InitVma();
+    g_vulkan.descriptor_system.Initialize(
+        g_vulkan.vk_device,
+        g_vulkan.vma_allocator,
+        g_vulkan.vk_chosen_physical_device);
+
+    g_vulkan.swapchain_pool.Initialize(kMaxNumSwapchains);
+    g_vulkan.buffer_pool.Initialize(kMaxNumBuffers);
+    g_vulkan.pipeline_state_pool.Initialize(kMaxPipelineStates);
+    g_vulkan.shader_module_pool.Initialize(kMaxPipelineStates * 2);
+
+    VkPipelineCacheCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+
+    vulkan_check(
+        vkCreatePipelineCache(g_vulkan.vk_device, &createInfo, nullptr, &g_vulkan.vk_pipeline_cache));
+
+    g_vulkan.submission.Initialize(thread_count);
+
 	return false;
 }
 
-
 void phx::rhi::Shutdown()
 {
-    descriptor_system.Shutdown(this);
-    vulkan_allocator.Shutdown();
+    WaitForIdle();
+    g_vulkan.submission.Shutdown();
 
-    if (vk_device != VK_NULL_HANDLE)
+#define LOG_AND_SHUTDOWN_POOL(x) if (!x.IsEmpty()) PHX_RHI_WARN(" Pool '" #x "' still contains active handles"); x.Shutdown();
+    LOG_AND_SHUTDOWN_POOL(g_vulkan.buffer_pool);
+    LOG_AND_SHUTDOWN_POOL(g_vulkan.pipeline_state_pool);
+    LOG_AND_SHUTDOWN_POOL(g_vulkan.shader_module_pool);
+    LOG_AND_SHUTDOWN_POOL(g_vulkan.swapchain_pool);
+
+    vkDestroyPipelineCache(g_vulkan.vk_device, g_vulkan.vk_pipeline_cache, nullptr);
+
+    g_vulkan.descriptor_system.Shutdown(g_vulkan.vk_device);
+
+    if (g_vulkan.vma_allocator != VK_NULL_HANDLE)
     {
-        vkDestroyDevice(vk_device, nullptr);
-        vk_device = VK_NULL_HANDLE;
+        vmaDestroyAllocator(g_vulkan.vma_allocator);
+        g_vulkan.vma_allocator = VK_NULL_HANDLE;
     }
 
-    if (vk_surface != VK_NULL_HANDLE)
+    if (g_vulkan.vk_device != VK_NULL_HANDLE)
     {
-        vkDestroySurfaceKHR(vk_instance, vk_surface, nullptr);
-        vk_surface = VK_NULL_HANDLE;
+        vkDestroyDevice(g_vulkan.vk_device, nullptr);
+        g_vulkan.vk_device = VK_NULL_HANDLE;
+    }
+
+    if (g_vulkan.vk_surface != VK_NULL_HANDLE)
+    {
+        vkDestroySurfaceKHR(g_vulkan.vk_instance, g_vulkan.vk_surface, nullptr);
+        g_vulkan.vk_surface = VK_NULL_HANDLE;
     }
 
     // vkb_instance's destructor will handle VkInstance and debug messenger
@@ -141,246 +190,336 @@ void phx::rhi::Shutdown()
     // The VkInstance and VkDebugUtilsMessengerEXT handles within VkContext are associated with vkb_instance.
     // So, once vkb_instance is destroyed (implicitly when VkContext goes out of scope or explicitly if VkContext is static and its members need to be reset),
     // these handles are also handled. Setting them to VK_NULL_HANDLE here reflects that they are no longer valid.
-    vk_instance = VK_NULL_HANDLE;
-    vk_debug_messenger = VK_NULL_HANDLE;
+    g_vulkan.vk_instance = VK_NULL_HANDLE;
+    g_vulkan.vk_debug_messenger = VK_NULL_HANDLE;
 
     PHX_RHI_INFO("Vulkan Device Shutdown Complete.");
 }
 
-phx::rhi::VulkanBackend(void* window_handle)
-    : window_handle(window_handle)
-    , vulkan_allocator(this)
+ShaderFormat phx::rhi::GetShaderFormat() { return ShaderFormat::Spirv; }
+GfxBackend phx::rhi::GetBackend() { return GfxBackend::Vulkan; }
+
+namespace phx::rhi::vulkan
 {
-}
-
-bool phx::rhi::SelectPhysicalDevice(vkb::PhysicalDevice& out_vkb_physical_device)
-{
-    vkb::PhysicalDeviceSelector selector{ vkb_instance };
-    VkPhysicalDeviceFeatures features_to_enable = {
-        .depthClamp = VK_TRUE,
-        .samplerAnisotropy = VK_TRUE,
-        .shaderInt64 = VK_TRUE,
-    };
-
-    const std::vector<const char*> required_extensions =
+    bool SelectPhysicalDevice(vkb::PhysicalDevice& out_vkb_physical_device)
     {
-        VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
-        VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
-        VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-        VK_KHR_MULTIVIEW_EXTENSION_NAME,
-        VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME,
-    };
+        vkb::PhysicalDeviceSelector selector{ g_vulkan.vkb_instance };
+        VkPhysicalDeviceFeatures features_to_enable = {
+            .depthClamp = VK_TRUE,
+            .samplerAnisotropy = VK_TRUE,
+            .shaderInt64 = VK_TRUE,
+        };
 
-    selector.set_minimum_version(1, 3)
-        .set_surface(vk_surface)
-        .set_required_features(features_to_enable)
-        .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
-        .add_required_extensions(required_extensions.size(), required_extensions.data());
+        const std::vector<const char*> required_extensions =
+        {
+            VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
+            VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
+            VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+            VK_KHR_MULTIVIEW_EXTENSION_NAME,
+            VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME,
+        };
 
-    VkPhysicalDeviceFeatures vulkan_features_1_0 = {};
-    vulkan_features_1_0.samplerAnisotropy = VK_TRUE;
-    vulkan_features_1_0.multiDrawIndirect = VK_TRUE; // Almost guaranteed you'll need this later
+        selector.set_minimum_version(1, 3)
+            .set_surface(g_vulkan.vk_surface)
+            .set_required_features(features_to_enable)
+            .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
+            .add_required_extensions(required_extensions.size(), required_extensions.data());
 
-    // --- 1.1 Features (THE FIX) ---
-    VkPhysicalDeviceVulkan11Features vulkan_features_1_1 = {};
-    vulkan_features_1_1.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-    vulkan_features_1_1.shaderDrawParameters = VK_TRUE;
+        VkPhysicalDeviceFeatures vulkan_features_1_0 = {};
+        vulkan_features_1_0.samplerAnisotropy = VK_TRUE;
+        vulkan_features_1_0.multiDrawIndirect = VK_TRUE; // Almost guaranteed you'll need this later
 
-    VkPhysicalDeviceVulkan12Features vulkan_features_1_2 = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-        .pNext = nullptr,
-        .shaderInt8 = VK_TRUE,
-        .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
-    #if !USE_BUFFER_ADDRESS
-        .shaderStorageBufferArrayNonUniformIndexing = VK_TRUE,
-        .descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE,
-    #endif
-        .descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
-        .descriptorBindingStorageImageUpdateAfterBind = VK_TRUE,
-    #if !USE_BUFFER_ADDRESS
-        .descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE,
-        .descriptorBindingUpdateUnusedWhilePending = VK_TRUE,
-    #endif
-        .descriptorBindingPartiallyBound = VK_TRUE,
-        .runtimeDescriptorArray = VK_TRUE,
-        .samplerFilterMinmax = VK_TRUE,
-        .timelineSemaphore = VK_TRUE,
-        .bufferDeviceAddress = VK_TRUE,
-    };
+        // --- 1.1 Features (THE FIX) ---
+        VkPhysicalDeviceVulkan11Features vulkan_features_1_1 = {};
+        vulkan_features_1_1.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+        vulkan_features_1_1.shaderDrawParameters = VK_TRUE;
 
-
-    VkPhysicalDeviceVulkan13Features vulkan_features_1_3 = {};
-    vulkan_features_1_3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-    vulkan_features_1_3.pNext = nullptr;
-
-    vulkan_features_1_3.dynamicRendering = VK_TRUE;
-    vulkan_features_1_3.synchronization2 = VK_TRUE;
-
-    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state = {};
-    extended_dynamic_state.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
-    extended_dynamic_state.extendedDynamicState = VK_TRUE;
+        VkPhysicalDeviceVulkan12Features vulkan_features_1_2 = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+            .pNext = nullptr,
+            .shaderInt8 = VK_TRUE,
+            .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+        #if !USE_BUFFER_ADDRESS
+            .shaderStorageBufferArrayNonUniformIndexing = VK_TRUE,
+            .descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE,
+        #endif
+            .descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
+            .descriptorBindingStorageImageUpdateAfterBind = VK_TRUE,
+        #if !USE_BUFFER_ADDRESS
+            .descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE,
+            .descriptorBindingUpdateUnusedWhilePending = VK_TRUE,
+        #endif
+            .descriptorBindingPartiallyBound = VK_TRUE,
+            .runtimeDescriptorArray = VK_TRUE,
+            .samplerFilterMinmax = VK_TRUE,
+            .timelineSemaphore = VK_TRUE,
+            .bufferDeviceAddress = VK_TRUE,
+        };
 
 
-    selector.set_required_features(vulkan_features_1_0);
-    selector.set_required_features_11(vulkan_features_1_1);
-    selector.set_required_features_12(vulkan_features_1_2);
-    selector.set_required_features_13(vulkan_features_1_3);
-    selector.add_required_extension_features(extended_dynamic_state);
+        VkPhysicalDeviceVulkan13Features vulkan_features_1_3 = {};
+        vulkan_features_1_3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+        vulkan_features_1_3.pNext = nullptr;
 
-    // Add specific extension requirements if vkb doesn't infer them well enough
-    auto phys_dev_ret = selector.select();
-    if (!phys_dev_ret)
-    {
-        PHX_RHI_ERROR("[RHI] Failed to select suitable Physical Device: {0}", phys_dev_ret.error().message());
-        return false;
+        vulkan_features_1_3.dynamicRendering = VK_TRUE;
+        vulkan_features_1_3.synchronization2 = VK_TRUE;
+
+        VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state = {};
+        extended_dynamic_state.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+        extended_dynamic_state.extendedDynamicState = VK_TRUE;
+
+
+        selector.set_required_features(vulkan_features_1_0);
+        selector.set_required_features_11(vulkan_features_1_1);
+        selector.set_required_features_12(vulkan_features_1_2);
+        selector.set_required_features_13(vulkan_features_1_3);
+        selector.add_required_extension_features(extended_dynamic_state);
+
+        // Add specific extension requirements if vkb doesn't infer them well enough
+        auto phys_dev_ret = selector.select();
+        if (!phys_dev_ret)
+        {
+            PHX_RHI_ERROR("[RHI] Failed to select suitable Physical Device: {0}", phys_dev_ret.error().message());
+            return false;
+        }
+
+        const std::vector<const char*> optional_extensions =
+        {
+            VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME,
+            VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+            VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+            VK_EXT_DEVICE_GENERATED_COMMANDS_EXTENSION_NAME,
+            // VK_EXT_SHADER_OBJECT_EXTENSION_NAME,
+            VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
+            VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME,
+            VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME,
+            VK_EXT_MESH_SHADER_EXTENSION_NAME,
+        };
+        out_vkb_physical_device.enable_extensions_if_present(optional_extensions);
+        out_vkb_physical_device = phys_dev_ret.value();
+
+        g_vulkan.vk_chosen_physical_device = out_vkb_physical_device.physical_device;
+        g_vulkan.vk_descriptor_buffer_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
+        g_vulkan.vk_physical_device_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+        g_vulkan.vk_physical_device_properties.pNext = &g_vulkan.vk_descriptor_buffer_properties; // Chain the struct here
+
+        vkGetPhysicalDeviceProperties2(g_vulkan.vk_chosen_physical_device, &g_vulkan.vk_physical_device_properties);
+
+        g_vulkan.vk_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        g_vulkan.vk_features_1_1.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+        g_vulkan.vk_features_1_2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        g_vulkan.vk_features_1_3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+
+        g_vulkan.vk_features2.pNext = &g_vulkan.vk_features_1_1;
+        g_vulkan.vk_features_1_1.pNext = &g_vulkan.vk_features_1_2;
+        g_vulkan.vk_features_1_2.pNext = &g_vulkan.vk_features_1_3;
+
+        vkGetPhysicalDeviceFeatures2(g_vulkan.vk_chosen_physical_device, &g_vulkan.vk_features2);
+
+        PHX_CORE_ASSERT(g_vulkan.vk_features_1_2.bufferDeviceAddress == VK_TRUE);
+
+        {
+            uint32_t major = VK_VERSION_MAJOR(g_vulkan.vk_physical_device_properties.properties.apiVersion);
+            uint32_t minor = VK_VERSION_MINOR(g_vulkan.vk_physical_device_properties.properties.apiVersion);
+            uint32_t patch = VK_VERSION_PATCH(g_vulkan.vk_physical_device_properties.properties.apiVersion);
+
+            PHX_RHI_INFO("Selected Devices API version: {0}.{1}.{2}",
+                major,
+                minor,
+                patch);
+        }
+
+        return true;
     }
 
-    const std::vector<const char*> optional_extensions =
+    bool InitVma()
     {
-        VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME,
-        VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
-        VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
-        VK_EXT_DEVICE_GENERATED_COMMANDS_EXTENSION_NAME,
-        // VK_EXT_SHADER_OBJECT_EXTENSION_NAME,
-        VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
-        VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME,
-        VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME,
-        VK_EXT_MESH_SHADER_EXTENSION_NAME,
-    };
-    out_vkb_physical_device.enable_extensions_if_present(optional_extensions);
-    out_vkb_physical_device = phys_dev_ret.value();
+        VmaAllocatorCreateInfo allocator_info = {};
+        allocator_info.physicalDevice = g_vulkan.vk_chosen_physical_device;
+        allocator_info.device = g_vulkan.vk_device;
+        allocator_info.instance = g_vulkan.vk_instance;
+        allocator_info.vulkanApiVersion = VK_API_VERSION_1_3;
 
-    vk_chosen_physical_device = out_vkb_physical_device.physical_device;
+        allocator_info.flags = VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT |
+            VMA_ALLOCATOR_CREATE_KHR_BIND_MEMORY2_BIT;
 
-    vk_descriptor_buffer_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
+        // VkPhysicalDeviceFeatures enabled_features; // Not needed, using vulkan_backend->vk_features_1_2 directly
+        // vkGetPhysicalDeviceFeatures(vulkan_backend->vk_chosen_physical_device, &enabled_features); // Example, better to use vkb info
 
-    vk_physical_device_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-    vk_physical_device_properties.pNext = &vk_descriptor_buffer_properties; // Chain the struct here
+        if (g_vulkan.vk_features_1_2.bufferDeviceAddress)
+        {
+            allocator_info.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+        }
 
-    vkGetPhysicalDeviceProperties2(vk_chosen_physical_device, &vk_physical_device_properties);
+        VkResult res = vmaCreateAllocator(&allocator_info, &g_vulkan.vma_allocator);
+        if (res != VK_SUCCESS)
+        {
+            PHX_RHI_ERROR("Failed to create VMA Allocator. VkResult: <TODO>");
+            return false;
+        }
 
-    vk_features2.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-    vk_features_1_1.sType   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-    vk_features_1_2.sType   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-    vk_features_1_3.sType   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+        const VkPhysicalDeviceMemoryProperties* memory_properties;
+        vmaGetMemoryProperties(g_vulkan.vma_allocator, &memory_properties);
 
-    vk_features2.pNext      = &vk_features_1_1;
-    vk_features_1_1.pNext   = &vk_features_1_2;
-    vk_features_1_2.pNext   = &vk_features_1_3;
+        for (uint32_t i = 0; i < memory_properties->memoryHeapCount; i++)
+        {
+            const VkMemoryHeap& heap = memory_properties->memoryHeaps[i];
 
-    vkGetPhysicalDeviceFeatures2(vk_chosen_physical_device, &vk_features2);
+            if ((heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) != 0)
+            {
+                for (uint32_t j = 0; j < memory_properties->memoryTypeCount; j++)
+                {
+                    const VkMemoryType& memory_type = memory_properties->memoryTypes[j];
+                    if (memory_type.heapIndex == i)
+                    {
+                        if ((memory_type.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0)
+                        {
+                            g_vulkan.vk_rebar_heap_size = heap.size;
+                            PHX_RHI_INFO("Rebar Heap found {0}", PhxToMB(g_vulkan.vk_rebar_heap_size));
+                            break;
+                        }
+                    }
+                }
+            }
+        }
 
-    PHX_CORE_ASSERT(vk_features_1_2.bufferDeviceAddress == VK_TRUE);
-
-    {
-        uint32_t major = VK_VERSION_MAJOR(vk_physical_device_properties.properties.apiVersion);
-        uint32_t minor = VK_VERSION_MINOR(vk_physical_device_properties.properties.apiVersion);
-        uint32_t patch = VK_VERSION_PATCH(vk_physical_device_properties.properties.apiVersion);
-
-        PHX_RHI_INFO("Selected Devices API version: {0}.{1}.{2}",
-            major,
-            minor,
-            patch);
+        return true;
     }
 
-    return true;
-}
-
-bool phx::rhi::CreateLogicalDevice(vkb::PhysicalDevice& vkb_physical_device)
-{
-    vkb::DeviceBuilder device_builder{ vkb_physical_device };
-
-    auto dev_ret = device_builder.build();
-    if (!dev_ret)
+    bool CreateLogicalDevice(vkb::PhysicalDevice& vkb_physical_device)
     {
-        PHX_RHI_ERROR("[RHI] Failed to create Logical Device: {0}", dev_ret.error().message());
-        return false;
+        vkb::DeviceBuilder device_builder{ vkb_physical_device };
+
+        auto dev_ret = device_builder.build();
+        if (!dev_ret)
+        {
+            PHX_RHI_ERROR("[RHI] Failed to create Logical Device: {0}", dev_ret.error().message());
+            return false;
+        }
+
+        vkb::Device vkb_device = dev_ret.value();
+        g_vulkan.vk_device = vkb_device.device;
+        volkLoadDevice(g_vulkan.vk_device); // Load device-level functions
+
+        // -- hitting a device_dispatch nullptr exception. this check is to see what is going on ---
+        PHX_ASSERT(vkCmdPipelineBarrier2 != nullptr, "vkCmdPipelineBarrier2 function pointer is NULL! Check device feature enablement.");
+
+        auto gfx_q_ret = vkb_device.get_queue(vkb::QueueType::graphics);
+        if (!gfx_q_ret)
+        {
+            PHX_RHI_ERROR("[RHI] Failed to get graphics queue: {0}", gfx_q_ret.error().message());
+            return false;
+        }
+
+        VulkanContext::Queue& queue_gfx = g_vulkan.queues[CommandQueueType::Graphics];
+        queue_gfx.vk_queue = gfx_q_ret.value();
+        queue_gfx.vk_queue_family = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
+        PHX_RHI_INFO("[RHI Vulkan] Using graphics queue {0}", queue_gfx.vk_queue_family);
+
+
+        VulkanContext::Queue& queue_compute = g_vulkan.queues[CommandQueueType::Compute];
+        VulkanContext::Queue& queue_transfer = g_vulkan.queues[CommandQueueType::Copy];
+
+        auto compute_q_ret = vkb_device.get_queue(vkb::QueueType::compute);
+        if (!compute_q_ret)
+        {
+            PHX_RHI_WARN("[RHI] Failed to get dedicated compute queue, using graphics queue: {0}", compute_q_ret.error().message());
+
+            queue_compute.vk_queue = queue_gfx.vk_queue;
+            queue_compute.vk_queue_family = queue_gfx.vk_queue_family;
+        }
+        else
+        {
+            queue_compute.vk_queue = compute_q_ret.value();
+            queue_compute.vk_queue_family = vkb_device.get_queue_index(vkb::QueueType::compute).value();
+
+            PHX_RHI_INFO("[RHI Vulkan] Using compute queue {0}", queue_compute.vk_queue_family);
+        }
+
+        auto transfer_q_ret = vkb_device.get_queue(vkb::QueueType::transfer);
+        if (!transfer_q_ret)
+        {
+            PHX_RHI_WARN("[RHI] Failed to get dedicated transfer queue, using graphics queue: {0}", transfer_q_ret.error().message());
+            queue_transfer.vk_queue = queue_gfx.vk_queue;
+            queue_transfer.vk_queue_family = queue_gfx.vk_queue_family;
+        }
+        else
+        {
+            queue_transfer.vk_queue = transfer_q_ret.value();
+            queue_transfer.vk_queue_family = vkb_device.get_queue_index(vkb::QueueType::transfer).value();
+
+            PHX_RHI_INFO("[RHI Vulkan] Using transfer queue {0}", queue_transfer.vk_queue_family);
+        }
+
+        return true;
     }
-
-    vkb::Device vkb_device = dev_ret.value();
-    vk_device = vkb_device.device;
-    volkLoadDevice(vk_device); // Load device-level functions
-
-    // -- hitting a device_dispatch nullptr exception. this check is to see what is going on ---
-    PHX_ASSERT(vkCmdPipelineBarrier2 != nullptr, "vkCmdPipelineBarrier2 function pointer is NULL! Check device feature enablement.");
-
-    auto gfx_q_ret = vkb_device.get_queue(vkb::QueueType::graphics);
-    if (!gfx_q_ret)
-    {
-        PHX_RHI_ERROR("[RHI] Failed to get graphics queue: {0}", gfx_q_ret.error().message());
-        return false;
-    }
-
-    Queue& queue_gfx = queues[CommandQueueType::Graphics];
-    queue_gfx.vk_queue = gfx_q_ret.value();
-    queue_gfx.vk_queue_family = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
-    PHX_RHI_INFO("[RHI Vulkan] Using graphics queue {0}", queue_gfx.vk_queue_family);
-
-
-    Queue& queue_compute = queues[CommandQueueType::Compute];
-    Queue& queue_transfer = queues[CommandQueueType::Copy];
-
-    auto compute_q_ret = vkb_device.get_queue(vkb::QueueType::compute);
-    if (!compute_q_ret)
-    {
-        PHX_RHI_WARN("[RHI] Failed to get dedicated compute queue, using graphics queue: {0}", compute_q_ret.error().message());
-
-        queue_compute.vk_queue = queue_gfx.vk_queue;
-        queue_compute.vk_queue_family = queue_gfx.vk_queue_family;
-    }
-    else
-    {
-        queue_compute.vk_queue = compute_q_ret.value();
-        queue_compute.vk_queue_family = vkb_device.get_queue_index(vkb::QueueType::compute).value();
-
-        PHX_RHI_INFO("[RHI Vulkan] Using compute queue {0}", queue_compute.vk_queue_family);
-    }
-
-    auto transfer_q_ret = vkb_device.get_queue(vkb::QueueType::transfer);
-    if (!transfer_q_ret)
-    {
-        PHX_RHI_WARN("[RHI] Failed to get dedicated transfer queue, using graphics queue: {0}", transfer_q_ret.error().message());
-        queue_transfer.vk_queue = queue_gfx.vk_queue;
-        queue_transfer.vk_queue_family = queue_gfx.vk_queue_family;
-    }
-    else
-    {
-        queue_transfer.vk_queue = transfer_q_ret.value();
-        queue_transfer.vk_queue_family = vkb_device.get_queue_index(vkb::QueueType::transfer).value();
-
-        PHX_RHI_INFO("[RHI Vulkan] Using transfer queue {0}", queue_transfer.vk_queue_family);
-    }
-
-    return true;
-}
 
 
 #if defined(PHX_PLATFORM_WINDOWS)
-bool phx::rhi::CreateSurface_Win32(void* window_handle)
-{
-    if (!window_handle)
+    bool CreateSurface_Win32(void* window_handle)
     {
-        PHX_CORE_ERROR("[RHI] WindowsHandle is null in RhiDescriptor.");
-        return false;
-    }
+        if (!window_handle)
+        {
+            PHX_CORE_ERROR("[RHI] WindowsHandle is null in RhiDescriptor.");
+            return false;
+        }
 
-    VkWin32SurfaceCreateInfoKHR surface_create_info = {};
-    surface_create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-    surface_create_info.pNext = nullptr;
-    surface_create_info.flags = 0;
-    surface_create_info.hwnd = static_cast<HWND>(window_handle);
-    surface_create_info.hinstance = g_hInstance;
+        VkWin32SurfaceCreateInfoKHR surface_create_info = {};
+        surface_create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+        surface_create_info.pNext = nullptr;
+        surface_create_info.flags = 0;
+        surface_create_info.hwnd = static_cast<HWND>(window_handle);
+        surface_create_info.hinstance = g_hInstance;
 
-    VkResult result = vkCreateWin32SurfaceKHR(vk_instance, &surface_create_info, nullptr, &vk_surface);
-    if (result != VK_SUCCESS)
-    {
-        PHX_CORE_ERROR("[RHI] Failed to create Win32 surface. VkResult: <TODO>");
-        return false;
+        VkResult result = vkCreateWin32SurfaceKHR(g_vulkan.vk_instance, &surface_create_info, nullptr, &g_vulkan.vk_surface);
+        if (result != VK_SUCCESS)
+        {
+            PHX_CORE_ERROR("[RHI] Failed to create Win32 surface. VkResult: <TODO>");
+            return false;
+        }
+        return true;
     }
-    return true;
-}
 
 #endif
+
+
+    bool InitializeCmdSystem()
+    {
+        PHX_PROFILE;
+        if (g_vulkan.vk_features_1_2.timelineSemaphore != VK_TRUE)
+        {
+            PHX_RHI_ERROR("Required VK 1.2 feature - Timeline Semaphore is not available on this device.");
+            return false;
+        }
+        VkSemaphoreTypeCreateInfo timeline_create_info = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+            .pNext = NULL,
+            .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+            .initialValue = 0
+        };
+
+        VkSemaphoreCreateInfo semaphore_create_info = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = &timeline_create_info,
+            .flags = 0,
+        };
+
+        for (size_t q = 0; q < static_cast<size_t>(CommandQueueType::Count); ++q)
+        {
+            VkResult result = vkCreateSemaphore(g_vulkan.vk_device, &semaphore_create_info, NULL, &per_queue_syncs[q].vk_timeline_semaphore);
+            if (result != VK_SUCCESS)
+                PHX_RHI_ERROR("Failed to create queue timeline semaphore");
+        }
+
+        PHX_RHI_INFO("Initializing Per thread Command data.");
+        per_thread_data = std::make_unique<PerThreadData[]>(num_threads);
+        for (size_t i = 0; i < num_threads; ++i)
+        {
+            per_thread_data[i].Initialize(this, i);
+        }
+
+    }
+}
 
 inline static VKAPI_ATTR VkBool32 VKAPI_CALL vk_phx_debug_callback(
     VkDebugUtilsMessageSeverityFlagBitsEXT       messageSeverity,

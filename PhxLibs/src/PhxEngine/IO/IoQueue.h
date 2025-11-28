@@ -20,8 +20,8 @@ namespace phx
 		void Shutdown() override;
 
 		void Submit(StreamingRequest&& request) override;
-		void SubmitBatchedWork(IAllocator* frame_allocator, rhi::ISubmissionManager* submission_manager) override;
-		void PollGpuCompletions(rhi::ISubmissionManager* submission_manager) override;
+		void SubmitBatchedWork(IAllocator* frame_allocator) override;
+		void PollGpuCompletions() override;
 
 	private:
 		void StreamingThreadLoop();
