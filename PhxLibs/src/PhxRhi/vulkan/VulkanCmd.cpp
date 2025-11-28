@@ -28,8 +28,14 @@ CmdHandle phx::rhi::BeginCommandBuffer(CommandQueueType queue_type)
     return EncodeCmdHandle(thread_id, queue_type, index);
 }
 
-void phx::rhi::BindPipelineState(rhi::CmdHandle /*handle*/, PipelineStateHandle /*pso*/)
+void phx::rhi::BindPipelineState(rhi::CmdHandle handle, PipelineStateHandle pso)
 {
+    const VulkanPipelineState& vulkan_pso = *g_vulkan.pipeline_state_pool.GetHot(pso);
+    VkCommandBuffer vk_cmd_buffer = ResolveCmdBuffer(handle);
+    vkCmdBindPipeline(
+        vk_cmd_buffer,
+        0,
+        vulkan_pso.vk_pipeline)
 }
 
 void phx::rhi::Draw(rhi::CmdHandle handle, uint32_t vertex_count, uint32_t start_vertex_location)

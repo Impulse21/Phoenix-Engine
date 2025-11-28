@@ -291,7 +291,7 @@ void PhxRuntime::OnPreRender(IAllocator* frame_allocator)
 	}
 }
 
-void PhxRuntime::OnUpdate_Threaded(float /*delta_time*/, IAllocator* /*frame_allocator*/)
+void PhxRuntime::OnUpdate_Threaded(float delta_time, IAllocator* /*frame_allocator*/)
 {
 	using namespace hlslpp;
 
@@ -299,10 +299,35 @@ void PhxRuntime::OnUpdate_Threaded(float /*delta_time*/, IAllocator* /*frame_all
 		ProcessSpawnRequests();
 	}
 
+	// -- Rototation Logic ---
+	// Define rotation speed (Radians per second). 
+	// 1.0f radian approx 57 degrees. Use a small number for "slow".
+	const float rotation_speed = 0.5f;
+	const float angle_step = rotation_speed * delta_time;
+
+	const auto& view = m_world.GetRegistry().view<TransformComponent>();
+	for (auto entity : view)
+	{
+		// Get transform by REFERENCE (&) so we can modify it
+		auto& transform = view.get<TransformComponent>(entity);
+
+		// Create a rotation quaternion around Y-Axis (0, 1, 0)
+		// In a RH system, positive angle rotates Counter-Clockwise looking from top down.
+		quaternion delta_rot = quaternion::rotation_y(angle_step);
+
+		// Apply rotation. 
+		// Order matters: 
+		// transform.rotation * delta_rot = Local Axis Rotation (Spinning a top)
+		// delta_rot * transform.rotation = World Axis Rotation (Orbiting)
+		transform.rotation = hlslpp::normalize(hlslpp::mul(transform.rotation, delta_rot));
+
+		// Mark as dirty so the matrix update loop below picks it up
+		transform.dirty = true;
+	}
+
 	// -- Update world transforms ---
 	// TODO: Handle parent logic here as well
 	// TODO: Profile if group is better then view here.
-	const auto& view = m_world.GetRegistry().view<TransformComponent>();
 	for (auto entity : view)
 	{
 		auto transform = view.get<TransformComponent>(entity);
@@ -341,8 +366,14 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 
 	rhi::BeginRendering(command_buffer, m_swapchain, { .Colour = rhi::Color(0.0f, 0.0f, 0.0f, 1.0f) });
 
-	// Render Packets
-	// I am here.
+	for (size_t i_render_packet = 0; i_render_packet < m_num_render_packets; ++i_render_packet)
+	{
+		const RenderPacket& render_packet = m_render_packets[i_render_packet];
+	
+		rhi::BindPipelineState(command_buffer, render_packet.pso);
+		rhi::DrawIndexed(command_buffer, render_packet.index_count, render_packet.first_index, 0);
+	}
+
 	rhi::EndRendering(command_buffer);
 
 	rhi::InsertSwapchainBarrier(command_buffer, m_swapchain, rhi::ResourceStates::Present);
