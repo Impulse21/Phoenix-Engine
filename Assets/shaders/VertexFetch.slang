@@ -71,9 +71,24 @@ public struct VertexInputStream
         return LoadAttributeOr<float3>(&m_header.desc[STREAM_NORMAL], vertexID, float3(0, 0, 0));
     }
 
-    public float3 GetColor(uint vertexID)
+    public float4 GetColor(uint vertexID)
     {
-        return LoadAttributeOr<float3>(&m_header.desc[STREAM_COLOUR0], vertexID, float3(0, 0, 0));
+        VertexStreamDesc *desc = &m_header.desc[STREAM_COLOUR0];
+        if (desc->GetStride() == 4)
+        {
+            uint packedColor = LoadAttributeOr<uint>(desc, vertexID, 0);
+
+            // Manual unpack (Unorm)
+            return float4(
+                (packedColor & 0xFF) / 255.0,
+                ((packedColor >> 8) & 0xFF) / 255.0,
+                ((packedColor >> 16) & 0xFF) / 255.0,
+                ((packedColor >> 24) & 0xFF) / 255.0);
+        }
+        else
+        {
+            return LoadAttributeOr<float4>(desc, vertexID, float4(0, 0, 0, 0));
+        }
     }
 
     public float2 GetUV(uint vertexID)

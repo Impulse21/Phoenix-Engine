@@ -159,7 +159,7 @@ void PhxRuntime::Startup()
 	renderer::Initialize(shader_librar_desc);
 
 	m_test_shader = renderer::ShaderLibrary::Ptr->LoadShader({
-			.source_file_path = "art://shaders/unlit.slang",
+			.source_file_path = "art://shaders/cube_validate_raw.slang",
 			.entry_points = {
 				{ .name = "VertexMain",		.stage = rhi::ShaderStage::VS },
 				{ .name = "FragmentMain",	.stage = rhi::ShaderStage::PS }

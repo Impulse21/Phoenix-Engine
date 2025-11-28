@@ -4,66 +4,38 @@ import VertexFetch;
 struct PushConstants
 {
     float4x4 mvp;
-    float4x4 modelMatrix;
-    // We use a void pointer or uint64_t address here.
-    // In Slang, 'void*' works well for raw blobs with BDA.
-    void *rawBufferPtr;
+    float4x4 model_matrix;
+    void *vertex_buffer_ptr;
 };
 
 [[vk::push_constant]] ConstantBuffer<PushConstants> g_push_constants;
 
 struct VSOutput
-{
-    float4 position : SV_Position;
-    float4 colour    : COLOR;
+{ 
+    float4 position     : SV_Position;
+    float4 colour       : COLOR;
+    float3 normal       : NORMAL;
+    float3 world_pos    : TEXCOORD0;
 };
 
 // --- Vertex Shader ---
 [shader("vertex")]
-VSOutput VertexMain(
-    uint vertexID : SV_VertexID,
-    uniform float4x4 modelViewProjection,
-    uniform VertexStreamsHeader *bufferPtr)
+VSOutput VertexMain(uint vertex_id : SV_VertexID)
 {
+    VertexInputStream stream = VertexInputStream(g_push_constants.vertex_buffer_ptr);
+
+    float3 pos  = stream.GetPosition(vertex_id);
+    float3 norm = stream.GetNormal(vertex_id);
+    float4 col  = stream.GetColor(vertex_id);
+
     VSOutput output;
+    output.position = mul(g_push_constants.mvp, float4(pos, 1.0));
+    output.world_pos = mul(g_push_constants.model_matrix, float4(pos, 1.0)).xyz;
 
-    uint8_t *rawBuffer = (uint8_t *)bufferPtr;
-
-    VertexStreamDesc posDesc = bufferPtr->desc[STREAM_POSITION];
-    uint posOffset = posDesc.GetOffset();
-    uint posStride = posDesc.GetStride();
-    float3 *posPtr = (float3 *)(rawBuffer + posOffset + (vertexID * posStride));
-    float3 position = *posPtr;
-
-    VertexStreamDesc colDesc = bufferPtr->desc[STREAM_COLOUR0];
-    uint colOffset = colDesc.GetOffset();
-    uint colStride = colDesc.GetStride(); // Likely 4 bytes if packed RGBA
-    float4 color;
-    if (colStride == 4)
-    {
-        // Load as uint, unpack to float4
-        uint *colPtr = (uint *)(rawBuffer + colOffset + (vertexID * colStride));
-        uint packedColor = *colPtr;
-
-        // Manual unpack (Unorm)
-        color = float4(
-            (packedColor & 0xFF) / 255.0,
-            ((packedColor >> 8) & 0xFF) / 255.0,
-            ((packedColor >> 16) & 0xFF) / 255.0,
-            ((packedColor >> 24) & 0xFF) / 255.0
-        );
-    }
-    else
-    {
-        // Fallback or assume float4 (requires stride > 15 which is impossible in 4 bits!)
-        // Assuming white if invalid setup
-        // color = float4(1.0, 1.0, 1.0, 1.0);
-        color = float4(1.0f, 0.0f, 0.0f, 1.0f);
-    }
-
-    float4x4 mvp = modelViewProjection;
-    output.position = mul(modelViewProjection, float4(position, 1.0));
-    output.colour = color;
+    output.normal = mul(g_push_constants.model_matrix, float4(norm, 0.0)).xyz;
+    output.normal = normalize(output.normal); 
+    
+    output.colour = col;
 
     return output;
 }
@@ -71,6 +43,25 @@ VSOutput VertexMain(
 // --- Fragment (Pixel) Shader ---
 [shader("fragment")]
 float4 FragmentMain(VSOutput input) : SV_Target
-{
-    return input.colour;
+{ 
+    // Same Phong logic as before
+    float3 light_dir = normalize(float3(0.5, 1.0, -0.5));
+    float3 light_colour = float3(1.0, 1.0, 1.0);
+    float3 view_dir = normalize(-input.world_pos);
+
+    // Ambient
+    float3 ambient = 0.1 * input.colour.xyz;
+
+    // Diffuse
+    float3 N = normalize(input.normal);
+    float diff = max(dot(N, light_dir), 0.0);
+    float3 diffuse = diff * light_colour * input.colour.xyz;
+
+    // Specular
+    float3 reflect_dir = reflect(-light_dir, N);
+    float spec = pow(max(dot(view_dir, reflect_dir), 0.0), 32.0);
+    float3 specular = float3(0.5) * spec * light_colour;
+
+    float3 final_colour = pow(ambient + diffuse + specular, float3(1.0 / 2.2));
+    return float4(final_colour, 1.0);
 }
