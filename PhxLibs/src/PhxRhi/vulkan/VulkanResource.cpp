@@ -139,7 +139,7 @@ void RunGarbageCollection(uint64_t completed_frame)
     g_vulkan.deferred_delete_queue.Flush(completed_frame);
 }
 
-BufferHandle CreateBuffer(const BufferDescriptor& desc, const void* initial_data)
+BufferHandle phx::rhi::CreateBuffer(const BufferDescriptor& desc, const void* initial_data)
 {
     PHX_PROFILE_SECTION("Vulkan::PlatformCreateBuffer");
 
@@ -435,11 +435,11 @@ BufferHandle CreateBuffer(const BufferDescriptor& desc, const void* initial_data
     return ret_val;
 }
 
-void DeleteBuffer(BufferHandle handle)
+void phx::rhi::DeleteBuffer(BufferHandle handle)
 {
     g_vulkan.deferred_delete_queue.EnqueueDelete({
         g_vulkan.frame_number,
-        [=]() { DeleteBufferImmediate(handle); }
+        [=]() { phx::rhi::DeleteBufferImmediate(handle); }
     });
 }
 
@@ -449,7 +449,7 @@ uint64_t phx::rhi::GetGpuAddress(BufferHandle handle)
     return impl->gpu_address;
 }
 
-void DeleteBufferImmediate(BufferHandle handle)
+void phx::rhi::DeleteBufferImmediate(BufferHandle handle)
 {
     VulkanBuffer* impl = g_vulkan.buffer_pool.GetHot(handle);
     // TODO: Move into the deconstructor of struct

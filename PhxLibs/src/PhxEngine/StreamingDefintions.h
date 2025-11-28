@@ -7,7 +7,7 @@
 #include <bitset>
 
 #include <PhxCore/Base.h>
-#include <PhxRhi/RHICommon.h>
+#include <PhxRhi/PhxRhi.h>
 #include <PhxCore/IO/MemoryRegion.h>
 
 namespace phx

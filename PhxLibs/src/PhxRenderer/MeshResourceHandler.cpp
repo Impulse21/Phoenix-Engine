@@ -29,7 +29,7 @@ void phx::renderer::MeshResourceHandler::LoadAsync(IIoQueue* io_queue, RefCountP
 			MeshMetadata* metadata_view = reinterpret_cast<MeshMetadata*>(metadata_header->MetadataChunk.Get());
 			PHX_CORE_INFO("Loading mesh with packed mesh buffer size: {0} bytes", metadata_view->packed_mesh_buffer);
 
-			mesh_resource->packed_mesh_buffer = rhi::IResourceManager::Ptr->CreateBuffer({
+			mesh_resource->packed_mesh_buffer = rhi::CreateBuffer({
 					.DebugName = "packed_mesh_buffer",
 					.Size = metadata_view->packed_mesh_buffer,
 					.BindingFlags = rhi::BindingFlags::IndexBuffer | rhi::BindingFlags::ShaderResource,

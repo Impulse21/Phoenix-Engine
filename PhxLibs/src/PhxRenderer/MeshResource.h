@@ -5,7 +5,7 @@
 #include <PhxResource/Resource.h>
 #include <PhxResource/FileFormatUtils.h>
 
-#include <PhxRhi/RHICommon.h>
+#include <PhxRhi/PhxRhi.h>
 
 namespace phx::renderer
 {

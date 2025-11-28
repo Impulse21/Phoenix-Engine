@@ -156,6 +156,24 @@ namespace phx::rhi
 		}
 	};
 
+	struct VulkanQueue
+	{
+		struct QueueExecutionInfo
+		{
+			uint64_t fence_value;
+			VkCommandBuffer commad_buffer = VK_NULL_HANDLE;
+			VkCommandPool command_pool = VK_NULL_HANDLE;
+		};
+
+		VkQueue vk_queue = VK_NULL_HANDLE;
+		uint32_t vk_queue_family = UINT32_MAX;
+		std::vector<std::pair<VkCommandBuffer, VkCommandPool>> pending_commands;
+		std::deque<QueueExecutionInfo> available_commands;
+
+		std::mutex lock = {};
+		std::mutex lock_commands = {};
+	};
+
 	struct VulkanContext
 	{
 		DeviceCapability capabilities = {};
@@ -188,25 +206,7 @@ namespace phx::rhi
 		vulkan::DescriptorSystem descriptor_system;
 		vulkan::SubmissionContext submission;
 
-		struct Queue
-		{
-			struct QueueExecutionInfo
-			{
-				uint64_t fence_value;
-				VkCommandBuffer commad_buffer = VK_NULL_HANDLE;
-				VkCommandPool command_pool = VK_NULL_HANDLE;
-			};
-
-			VkQueue vk_queue = VK_NULL_HANDLE;
-			uint32_t vk_queue_family = UINT32_MAX;
-			std::vector<std::pair<VkCommandBuffer, VkCommandPool>> pending_commands;
-			std::deque<QueueExecutionInfo> available_commands;
-
-			std::mutex lock = {};
-			std::mutex lock_commands = {};
-		};
-
-		EnumArray<Queue, CommandQueueType> queues;
+		EnumArray<VulkanQueue, CommandQueueType> queues;
 		uint64_t frame_number = 0;
 
 		VkPipelineCache		vk_pipeline_cache = VK_NULL_HANDLE;
@@ -220,20 +220,38 @@ namespace phx::rhi
 	};
     inline VulkanContext g_vulkan;
 
-	inline CmdHandle EncodeCmdHandle(uint32_t thread_id, uint32_t index)
+	void DeleteBufferImmediate(BufferHandle buffer_handle);
+
+	inline CmdHandle EncodeCmdHandle(uint32_t thread_id, CommandQueueType& queue, uint32_t index)
 	{
-		// Layout: [16: Unused] [8: ThreadID] [16: Index]
-		return (thread_id << 16) | (index & 0xFFFF);
+		const uint32_t generation = 0;
+		uint32_t q_int = static_cast<uint32_t>(queue);
+
+		// Bit Layout: [Thread:8] [Queue:2] [Gen:8] [Index:14]
+		return ((thread_id & 0xFF) << 24) |
+			((q_int & 0x03) << 22) |
+			((generation & 0xFF) << 14) |
+			((index & 0x3FFF) << 0);
 	}
 
-	inline VkCommandBuffer ResolveCmd(CmdHandle handle)
+	inline void DecodeCmdHande(CmdHandle handle, CommandQueueType& queue, uint32_t& thread_id, uint32_t& index)
 	{
-		const uint32_t thread_id = (handle >> 16) & 0xFF;
-		const uint32_t index = handle & 0xFFFF;
+		thread_id = (handle >> 24) & 0xFF;
+		queue = static_cast<CommandQueueType>((handle >> 22) & 0x03);
+		// uint32_t gen		= (handle >> 14) & 0xFF;
+		index = (handle >> 0) & 0x3FFF;
+	}
+
+	inline VkCommandBuffer ResolveCmdBuffer(CmdHandle handle)
+	{
+		const uint32_t thread_id	= (handle >> 24) & 0xFF;
+		const uint32_t q_int		= (handle >> 22) & 0x03;
+		// const uint32_t gen		= (handle >> 14) & 0xFF;
+		const uint32_t index		= (handle >> 0) & 0x3FFF;
 
 		// Direct array access - No locks, No maps, No searching.
 		vulkan::PerThreadData& thread_data = g_vulkan.submission.per_thread_data[thread_id];
-		return thread_data.active_command_buffers[index];
+		return thread_data.command_pools[q_int].cmd_buffer_pool[index];
 	}
 
 	constexpr VkFormat gVulkanFormatMapping[] =

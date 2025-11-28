@@ -29,9 +29,9 @@ namespace phx::rhi::vulkan
         CommandQueueType queue_type;
         VkCommandPool vk_cmd_pool;
         std::vector<VkCommandBuffer> cmd_buffer_pool;
-        std::vector<VkCommandBuffer> free_cmd_buffers;
+        std::vector<uint32_t> free_cmd_buffers;
 
-        VkCommandBuffer GetFreeBuffer(uint32_t thread_id);
+        uint32_t GetFreeBufferIndex();
     };
 
     struct PerThreadData
@@ -41,8 +41,6 @@ namespace phx::rhi::vulkan
         std::vector<BufferHandle> active_one_off_buffers;
         StagingRingBuffer staging_ring_buffer;
 
-        std::vector<VkCommandBuffer> active_command_buffers;
-
         void Initialize(uint32_t thread_id);
         void Shutdown();
 
@@ -50,13 +48,14 @@ namespace phx::rhi::vulkan
         StagingBlock CreateOneShotUploadBuffer(size_t size, uint32_t alignment);
     };
 
+    struct PerQueueSync
+    {
+        VkSemaphore vk_timeline_semaphore = VK_NULL_HANDLE;
+        std::atomic_uint64_t fence_counter = 1;
+    };
+
     struct SubmissionContext
     {
-        struct PerQueueSync
-        {
-            VkSemaphore vk_timeline_semaphore = VK_NULL_HANDLE;
-            std::atomic_uint64_t fence_counter = 1;
-        };
         EnumArray<PerQueueSync, CommandQueueType> per_queue_syncs;
 
         StaticArray<FenceHandle, MAX_INFLIGHT_FRAMES> frame_fences = { .data = {{}, {}} };
@@ -67,7 +66,7 @@ namespace phx::rhi::vulkan
 
         struct InflightCommandBuffer
         {
-            VulkanCommandBuffer* buffer;
+            CmdHandle buffer_handle;
             FenceHandle fence_handle;
         };
         std::vector<InflightCommandBuffer> inflight_cmd_queue;
@@ -96,11 +95,11 @@ namespace phx::rhi::vulkan
 
         void ReclaimFinishedCommandBuffers();
         void ReclaimFinishedUploads();
-        void RetireCommandBuffers(Span<VulkanCommandBuffer*> command_buffers, FenceHandle fence_value);
+        void RetireCommandBuffers(Span<CmdHandle> command_buffers, FenceHandle fence_value);
 
         FenceHandle SubmitInternal(
             CommandQueueType queue_type,
-            Span<VkCommandBuffer> cmd_buffers,
+            Span<CmdHandle> cmd_buffers,
             Span<FenceHandle> wait_fences,
             Span<VkSemaphore> binary_wait_sems,
             Span<VkSemaphore> binary_signal_sems,

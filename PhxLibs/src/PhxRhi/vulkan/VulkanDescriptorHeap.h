@@ -5,11 +5,6 @@
 
 #include <volk.h>
 
-namespace phx::rhi
-{
-    struct VulkanBackend;
-}
-
 namespace phx::rhi::vulkan
 {
     class SlotAllocator
@@ -75,7 +70,6 @@ namespace phx::rhi::vulkan
 		VkDeviceAddress GetBufferAddress() const { return m_buffer_address; };
 
 	private:
-		VulkanBackend*          m_vulkan_backend;
         size_t                  m_descriptor_stride;
 
         VkDevice                m_vk_device;

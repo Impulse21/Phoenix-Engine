@@ -2,7 +2,7 @@
 #include "ShaderLIbrary.h"
 
 #include <PhxCore/IVirtualFileSystem.h>
-#include <PhxRhi/IResourceManager.h>
+#include <PhxRhi/PhxRhi.h>
 
 using namespace phx;
 using namespace phx::renderer;
@@ -208,7 +208,7 @@ RefCountPtr<SlangShader> phx::renderer::ShaderLibrary::Compile(ShaderCompileDesc
         shader->m_code_blob->getBufferSize()
     );
 
-    shader->m_shader_module = rhi::IResourceManager::Ptr->CreateShaderModule({
+    shader->m_shader_module = rhi::CreateShaderModule({
         .byte_code = byte_code_span
     });
 
@@ -374,5 +374,5 @@ const char* phx::renderer::SlangShader::GetEntryPoint(rhi::ShaderStage stage)
 phx::renderer::SlangShader::~SlangShader()
 {
     if (m_shader_module.IsValid())
-        rhi::IResourceManager::Ptr->DeleteShaderModule(m_shader_module);
+        rhi::DeleteShaderModule(m_shader_module);
 }

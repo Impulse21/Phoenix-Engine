@@ -2,7 +2,7 @@
 
 #include <PhxCore/RefCountPtr.h>
 #include <PhxCore/Hash.h>
-#include <PhxRhi/RHICommon.h>
+#include <PhxRhi/PhxRhi.h>
 #include <string>
 
 #include <vector>

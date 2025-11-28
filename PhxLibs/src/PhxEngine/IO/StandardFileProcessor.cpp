@@ -1,8 +1,7 @@
 #include "PhxEngine/PhxEngine_pch.h"
 #include "StandardFileProcessor.h"
 
-#include <PhxRhi/ISubmissionManager.h>
-#include <PhxRhi/ICommandBuffer.h>
+#include <PhxRhi/PhxRhi.h>
 
 #include <PhxEngine/JobSystem.h>
 using namespace phx;

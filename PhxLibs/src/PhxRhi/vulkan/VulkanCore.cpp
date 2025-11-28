@@ -157,7 +157,6 @@ void phx::rhi::Shutdown()
     WaitForIdle();
     g_vulkan.submission.Shutdown();
 
-#define LOG_AND_SHUTDOWN_POOL(x) if (!x.IsEmpty()) PHX_RHI_WARN(" Pool '" #x "' still contains active handles"); x.Shutdown();
     LOG_AND_SHUTDOWN_POOL(g_vulkan.buffer_pool);
     LOG_AND_SHUTDOWN_POOL(g_vulkan.pipeline_state_pool);
     LOG_AND_SHUTDOWN_POOL(g_vulkan.shader_module_pool);
@@ -411,14 +410,14 @@ namespace phx::rhi::vulkan
             return false;
         }
 
-        VulkanContext::Queue& queue_gfx = g_vulkan.queues[CommandQueueType::Graphics];
+        VulkanQueue& queue_gfx = g_vulkan.queues[CommandQueueType::Graphics];
         queue_gfx.vk_queue = gfx_q_ret.value();
         queue_gfx.vk_queue_family = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
         PHX_RHI_INFO("[RHI Vulkan] Using graphics queue {0}", queue_gfx.vk_queue_family);
 
 
-        VulkanContext::Queue& queue_compute = g_vulkan.queues[CommandQueueType::Compute];
-        VulkanContext::Queue& queue_transfer = g_vulkan.queues[CommandQueueType::Copy];
+        VulkanQueue& queue_compute = g_vulkan.queues[CommandQueueType::Compute];
+        VulkanQueue& queue_transfer = g_vulkan.queues[CommandQueueType::Copy];
 
         auto compute_q_ret = vkb_device.get_queue(vkb::QueueType::compute);
         if (!compute_q_ret)
@@ -481,44 +480,6 @@ namespace phx::rhi::vulkan
     }
 
 #endif
-
-
-    bool InitializeCmdSystem()
-    {
-        PHX_PROFILE;
-        if (g_vulkan.vk_features_1_2.timelineSemaphore != VK_TRUE)
-        {
-            PHX_RHI_ERROR("Required VK 1.2 feature - Timeline Semaphore is not available on this device.");
-            return false;
-        }
-        VkSemaphoreTypeCreateInfo timeline_create_info = {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
-            .pNext = NULL,
-            .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
-            .initialValue = 0
-        };
-
-        VkSemaphoreCreateInfo semaphore_create_info = {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .pNext = &timeline_create_info,
-            .flags = 0,
-        };
-
-        for (size_t q = 0; q < static_cast<size_t>(CommandQueueType::Count); ++q)
-        {
-            VkResult result = vkCreateSemaphore(g_vulkan.vk_device, &semaphore_create_info, NULL, &per_queue_syncs[q].vk_timeline_semaphore);
-            if (result != VK_SUCCESS)
-                PHX_RHI_ERROR("Failed to create queue timeline semaphore");
-        }
-
-        PHX_RHI_INFO("Initializing Per thread Command data.");
-        per_thread_data = std::make_unique<PerThreadData[]>(num_threads);
-        for (size_t i = 0; i < num_threads; ++i)
-        {
-            per_thread_data[i].Initialize(this, i);
-        }
-
-    }
 }
 
 inline static VKAPI_ATTR VkBool32 VKAPI_CALL vk_phx_debug_callback(

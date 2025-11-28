@@ -1,7 +1,6 @@
 #pragma once
 
-#include <PhxRhi/RHICommon.h>
-#include <PhxRhi/PhxRhi_ForwardDeclares.h>
+#include <PhxRhi/PhxRhi.h>
 #include <PhxCore/RefCountPtr.h>
 #include <PhxCore/StringHash.h>
 

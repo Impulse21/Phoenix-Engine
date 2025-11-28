@@ -5,7 +5,7 @@
 
 phx::renderer::MeshResource::~MeshResource()
 {
-	rhi::IResourceManager::Ptr->DeleteBuffer(packed_mesh_buffer);
+	rhi::DeleteBuffer(packed_mesh_buffer);
 }
 
 bool phx::renderer::MeshResource::CollectPendingGpuTransitions(SpanMutable<GpuTransitionWork> transitions, size_t& fill_index)

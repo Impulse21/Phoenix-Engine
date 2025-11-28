@@ -3,7 +3,7 @@
 #include <string>
 #include <filesystem>
 
-#include <PhxRhi/RHICommon.h>
+#include <PhxRhi/PhxRhi.h>
 #include <PhxCore/Memory/IAllocator.h>
 
 namespace phx
