@@ -237,9 +237,14 @@ namespace phx::rhi
 	inline void DecodeCmdHande(CmdHandle handle, CommandQueueType& queue, uint32_t& thread_id, uint32_t& index)
 	{
 		thread_id = (handle >> 24) & 0xFF;
-		queue = static_cast<CommandQueueType>((handle >> 22) & 0x03);
+		queue = DecodeCmdHandleQueueType(handle);
 		// uint32_t gen		= (handle >> 14) & 0xFF;
 		index = (handle >> 0) & 0x3FFF;
+	}
+
+	inline CommandQueueType DecodeCmdHandleQueueType(CmdHandle handle)
+	{
+		return static_cast<CommandQueueType>((handle >> 22) & 0x03);
 	}
 
 	inline VkCommandBuffer ResolveCmdBuffer(CmdHandle handle)
@@ -758,6 +763,27 @@ namespace phx::rhi
 		case PrimitiveType::TriangleStrip:
 		default:
 			return  VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+		}
+	}
+
+	constexpr VkPipelineBindPoint ToVkPipelineBindPoint(PipelineType type) 
+	{
+		switch (type) 
+		{
+		case PipelineType::Graphics:
+			return VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+		case PipelineType::Compute:
+			return VK_PIPELINE_BIND_POINT_COMPUTE;
+
+		case PipelineType::RayTracing:
+			return VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
+
+		default:
+			// This should never happen. 
+			// Return Graphics as a safe fallback to prevent uninitialized usage, 
+			// but in debug builds this should ideally assert.
+			return VK_PIPELINE_BIND_POINT_GRAPHICS;
 		}
 	}
 }

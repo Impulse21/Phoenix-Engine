@@ -83,20 +83,32 @@ private:
 	World m_world;
 	std::vector<phx::RefCountPtr<phx::Resource>> m_spawn_requests;
 
+
+	/*
+	[Byte 0  - 8  ] Sort Key
+	[Byte 8  - 12 ] PSO Handle
+	[Byte 12 - 16 ] Packed Buffer Handle
+	[Byte 16 - 24 ] Index Buffer Address (64-bit)
+	[Byte 24 - 40 ] Draw Args (IndexCount, FirstIndex, VertexOffset, Instance)
+	[Byte 40 - 48 ] Padding (Empty space)
+	-----------------------------------------------------------------------
+	[Byte 48 - 112] Model Matrix (64 Bytes)   <-- START PUSH CONSTANTS
+	[Byte 112- 116] Material ID
+	[Byte 116- 120] Padding (Alignment for address)
+	[Byte 120- 128] Vertex Buffer Address     <-- END PUSH CONSTANTS
+	*/
 	struct alignas(64) RenderPacket
 	{
 		uint64_t sort_key;
-
 		rhi::PipelineStateHandle pso;
 		rhi::BufferHandle packed_buffer;
-
-		uint64_t index_buffer_address;
-		uint64_t vertex_buffer_address;
 
 		// --- 24 Bytes: Draw Args ---
 		uint32_t index_count;
 		uint32_t first_index;
 		int32_t  vertex_offset; // standard "baseVertex"
+		
+		std::byte _padding[8];
 #if false
 		uint32_t instance_index;
 #else
@@ -116,7 +128,6 @@ private:
 	size_t m_num_render_transitions;
 	RenderPacket* m_render_packets;
 	size_t m_num_render_packets;
-	
 };
 
 phx::IApplication* phx::CreateApplication()
@@ -366,11 +377,24 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 
 	rhi::BeginRendering(command_buffer, m_swapchain, { .Colour = rhi::Color(0.0f, 0.0f, 0.0f, 1.0f) });
 
+	struct PushConstant
+	{
+		hlslpp::float4x4 model_matrix;
+		uint64_t vertex_buffer_address;
+	};
+
 	for (size_t i_render_packet = 0; i_render_packet < m_num_render_packets; ++i_render_packet)
 	{
 		const RenderPacket& render_packet = m_render_packets[i_render_packet];
 	
+		PushConstant p{
+			.model_matrix = render_packet.world_matrix,
+			.vertex_buffer_address = render_packet.vertex_buffer_address
+		};
+
 		rhi::BindPipelineState(command_buffer, render_packet.pso);
+		rhi::PushConstants(command_buffer, &p, sizeof(p));
+
 		rhi::DrawIndexed(command_buffer, render_packet.index_count, render_packet.first_index, 0);
 	}
 

@@ -854,10 +854,19 @@ namespace phx::rhi
         const char* entry_point;
     };
 
+    enum class PipelineType 
+    {
+        Graphics,
+        Compute,
+        RayTracing,
+        Count,
+    };
+
     struct PipelineState;
     using PipelineStateHandle = Handle<PipelineState>;
     struct PipelineStateDescriptor
     {
+        PipelineType                    type = PipelineType::Graphics;
         Span<ShaderStageInfo>           shader_stages;
 
         BlendRenderState                blend_state = {};

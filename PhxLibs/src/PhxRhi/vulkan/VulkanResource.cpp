@@ -504,6 +504,8 @@ PipelineStateHandle phx::rhi::CreatePipeline(const PipelineStateDescriptor& desc
 
     Handle<PipelineState> ret_val = g_vulkan.pipeline_state_pool.Allocate(); // Renamed to snake_case
     VulkanPipelineState& impl = *g_vulkan.pipeline_state_pool.GetHot(ret_val); // Corrected access to buffer_pool
+    
+    impl.bind_point = ToVkPipelineBindPoint(desc.type);
 
     VkPipelineShaderStageCreateInfo shader_stages[static_cast<size_t>(ShaderStage::Count)] = {};
     size_t num_stages = 0;

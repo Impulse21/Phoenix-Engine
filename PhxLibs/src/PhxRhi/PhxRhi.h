@@ -45,6 +45,7 @@ namespace phx::rhi
 
     CmdHandle BeginCommandBuffer(CommandQueueType queue_type);
 
+    void PushConstants(CmdHandle cmd, const void* data, uint32_t size, uint32_t offset = 0);
     void BindPipelineState(CmdHandle cmd, PipelineStateHandle pso);
 
     void Draw(CmdHandle cmd, uint32_t vertex_count, uint32_t start_vertex_location);
