@@ -67,7 +67,8 @@ import <math.h>;
 // Default HLSL++ coordinate system is Left-Handed
 // It can be changed by overriding this definition value externally
 #if !defined(HLSLPP_COORDINATES)
-	#define HLSLPP_COORDINATES HLSLPP_COORDINATES_LEFT_HANDED
+	//#define HLSLPP_COORDINATES HLSLPP_COORDINATES_LEFT_HANDED
+	#define HLSLPP_COORDINATES HLSLPP_COORDINATES_RIGHT_HANDED
 #endif
 
 #if HLSLPP_COORDINATES == HLSLPP_COORDINATES_LEFT_HANDED

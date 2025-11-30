@@ -441,7 +441,7 @@ void PhxRuntime::OnRender_Threaded(IAllocator* /*frame_allocator*/)
 			rhi::SetDepthTest(command_buffer, true, true, rhi::ComparisonFunc::Less);
 			rhi::SetStencilTest(command_buffer, false);
 			rhi::SetCullMode(command_buffer, rhi::RasterCullMode::Back);
-			rhi::SetFrontFace(command_buffer, rhi::FrontFace::Clockwise);
+			rhi::SetFrontFace(command_buffer, rhi::FrontFace::CounterClockwise);
 		}
 
 		rhi::BindIndexBuffer(command_buffer, render_packet.packed_buffer, 0ul);
